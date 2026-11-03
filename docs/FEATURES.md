@@ -1671,6 +1671,8 @@ in Rust, retaining their phases and roles across replay. The five playable
 missions also retain objectives, scripted reinforcements, support, autopilots
 and conclusions. Generated starting battlefields can be handed from Godot to
 Rust before the first tick, including exact random state and map geometry.
+Starting battlefields and recorded checkpoints use bounded, lossless compressed
+blocks so larger maps do not require equally large uncompressed handoff files.
 Desktop solo play now starts that Rust process and connects the Godot renderer
 over an authenticated ENet socket. The server sends team-filtered entity state,
 effects, messages, HUD data and reports; orders travel back to the same authority.

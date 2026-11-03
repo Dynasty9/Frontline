@@ -345,15 +345,11 @@ impl WorldGeometry {
     }
     pub fn checkpoint(&self) -> Vec<u8> {
         let mut w = Writer::new(b"FLWG\x01\0\0\0");
-        for bytes in [
-            self.terrain.checkpoint(),
-            self.navigation.checkpoint(),
-            self.collision.checkpoint(),
-            self.structures.checkpoint(),
-            self.doors.checkpoint(),
-        ] {
-            w.bytes(&bytes);
-        }
+        w.bytes(&self.terrain.checkpoint());
+        w.bytes(&self.navigation.checkpoint());
+        w.bytes(&self.collision.checkpoint());
+        w.bytes(&self.structures.checkpoint());
+        w.bytes(&self.doors.checkpoint());
         w.bytes(&self.deck);
         w.u32(self.retired.len() as u32);
         for &id in &self.retired {

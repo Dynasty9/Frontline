@@ -1,5 +1,6 @@
 pub mod client_command;
 pub mod commander;
+pub mod compression;
 pub mod content;
 pub mod initial;
 pub mod mission;

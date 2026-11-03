@@ -9,6 +9,8 @@ class DrawGroup:
 	var origin: Vector3
 	var count := 0
 	var last_used := 0.0
+	var min_y := -4.0
+	var max_y := 12.0
 
 var world: World
 const CELL := 64.0
@@ -122,6 +124,12 @@ func _process(dt: float) -> void:
 		if s.srv:
 			transform *= s.ip_offset()
 		transform.origin -= group.origin
+		# A flat-map bound would cull soldiers on hills or lifted by a blast.
+		var height := transform.origin.y
+		if height < group.min_y + 3.0 or height > group.max_y - 3.0:
+			group.min_y = minf(group.min_y, height - 4.0)
+			group.max_y = maxf(group.max_y, height + 4.0)
+			mm.custom_aabb = AABB(Vector3(-3, group.min_y, -3), Vector3(CELL + 6, group.max_y - group.min_y, CELL + 6))
 		mm.set_instance_transform(slot, transform)
 		group.count = slot + 1
 		group.last_used = world.time

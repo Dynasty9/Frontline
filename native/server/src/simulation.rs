@@ -274,7 +274,7 @@ impl Simulation {
         {
             return Err("invalid player registry");
         }
-        let mut w = Writer::new(b"FLSS\x01\0\0\0");
+        let mut w = Writer::new(b"FLSS\x02\0\0\0");
         w.bytes(crate::ENGINE_ID.as_bytes());
         w.u32(self.host_peer as u32);
         w.u32(self.names.len() as u32);
@@ -310,7 +310,7 @@ impl Simulation {
             w.u32(id);
             w.bytes(model.as_bytes());
         }
-        w.bytes(&self.state.checkpoint()?);
+        w.bytes(&crate::compression::encode(&self.state.checkpoint()?)?);
         if w.0.len() > MAX_STATE {
             return Err("simulation checkpoint exceeds limit");
         }
@@ -320,7 +320,7 @@ impl Simulation {
         if bytes.len() > MAX_STATE {
             return Err("simulation checkpoint exceeds limit");
         }
-        let mut r = Reader::new(bytes, b"FLSS\x01\0\0\0")?;
+        let mut r = Reader::new(bytes, b"FLSS\x02\0\0\0")?;
         if r.bytes(64)? != crate::ENGINE_ID.as_bytes() {
             return Err("incompatible simulation build");
         }
@@ -384,7 +384,10 @@ impl Simulation {
                 return Err("duplicate aircraft appearance");
             }
         }
-        let state = MatchState::restore(r.bytes(MAX_STATE)?)?;
+        let state = MatchState::restore(&crate::compression::decode(
+            r.bytes(MAX_STATE)?,
+            sim::match_state::MAX_CHECKPOINT,
+        )?)?;
         r.finish()?;
         if names
             .keys()

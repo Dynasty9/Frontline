@@ -26,7 +26,7 @@ use crate::world_geometry::WorldGeometry;
 use std::collections::HashSet;
 
 pub const FIXED_DELTA: f64 = 1. / 60.;
-const MAX_CHECKPOINT: usize = 512 * 1024 * 1024;
+pub const MAX_CHECKPOINT: usize = 1024 * 1024 * 1024;
 const MAX_GROUPS: usize = 100_000;
 
 #[derive(Clone, Copy, Default)]

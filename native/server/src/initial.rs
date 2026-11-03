@@ -34,7 +34,7 @@ pub fn load(bytes: &[u8], content: &Content) -> Result<Simulation, &'static str>
     if bytes.len() > MAX_STATE {
         return Err("initial battlefield exceeds limit");
     }
-    let mut r = Reader::new(bytes, b"FLIN\x01\0\0\0")?;
+    let mut r = Reader::new(bytes, b"FLIN\x02\0\0\0")?;
     if blake3::hash(r.bytes(4 * 1024 * 1024)?).as_bytes() != &content.digest {
         return Err("initial battlefield uses different game content");
     }
@@ -43,7 +43,10 @@ pub fn load(bytes: &[u8], content: &Content) -> Result<Simulation, &'static str>
     let seed = r.u64()?;
     let random = r.u64()?;
     let next_squad = r.u64()?;
-    let geometry = WorldGeometry::restore(r.bytes(MAX_STATE)?)?;
+    let geometry = WorldGeometry::restore(&crate::compression::decode(
+        r.bytes(MAX_STATE)?,
+        sim::match_state::MAX_CHECKPOINT,
+    )?)?;
     let actors = Actors::restore(r.bytes(MAX_STATE)?)?;
     let network = SupplyNetwork::restore(r.bytes(MAX_STATE)?)?;
     let battle = BattleStats::restore(r.bytes(64 * 1024 * 1024)?)?;

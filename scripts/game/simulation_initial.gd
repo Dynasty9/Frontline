@@ -14,6 +14,19 @@ static func block(data: PackedByteArray) -> PackedByteArray:
 	result.append_array(data)
 	return result
 
+static func compressed(data: PackedByteArray) -> PackedByteArray:
+	if data.is_empty():
+		return data
+	var out := StreamPeerBuffer.new()
+	out.put_data(header("FLZB"))
+	out.put_u32(data.size())
+	for offset in range(0, data.size(), 65536):
+		var chunk := data.slice(offset, mini(offset + 65536, data.size())).compress(FileAccess.COMPRESSION_DEFLATE)
+		if chunk.is_empty():
+			return PackedByteArray()
+		out.put_data(block(chunk))
+	return out.data_array
+
 static func spatial(grid: Dictionary, size: float) -> PackedByteArray:
 	var index: RefCounted = ClassDB.instantiate("SpatialIndexCore")
 	var cells := []
@@ -179,13 +192,13 @@ static func capture(w: World) -> PackedByteArray:
 		"fob_names": w.rules.fob_names_used,
 		"presentation": {"decor": w.decor, "mood": Atmosphere.pick_mood(w.settings)}}
 	var out := StreamPeerBuffer.new()
-	out.put_data(header("FLIN"))
+	out.put_data(header("FLIN", 2))
 	out.put_data(block(FileAccess.get_file_as_bytes("res://native/content.json")))
 	out.put_data(block(JSON.stringify(plain(meta), "", true, true).to_utf8_buffer()))
 	out.put_u64(w.rng.seed)
 	out.put_u64(w.rng.state)
 	out.put_u64(w.next_sid)
-	for data: PackedByteArray in [geometry(w), actors.checkpoint(), network.checkpoint(), ledger(w.battle), water.checkpoint()]:
+	for data: PackedByteArray in [compressed(geometry(w)), actors.checkpoint(), network.checkpoint(), ledger(w.battle), water.checkpoint()]:
 		if data.is_empty():
 			return PackedByteArray()
 		out.put_data(block(data))

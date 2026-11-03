@@ -95,6 +95,20 @@ commander checkpoints in debug and release without tolerances. Godot parity test
 separately allow documented differences from the engine's platform math functions.
 These covered trajectories are not a proof for every possible floating-point input.
 
+Large map handoffs and server checkpoints compress their largest state block with
+zlib in independent 64 KiB blocks. The versioned `FLZB` envelope records the exact
+expanded size; decoding validates each stream's checksum, consumed bytes and
+output length before appending it. The outer file limit remains 512 MiB and the
+expanded match limit is 1 GiB. Raw core checkpoints retain their canonical bytes,
+so the numeric gameplay goldens do not change. Compression does not quantize
+positions, terrain, timers or random state. The Godot handoff is `FLIN` version 2
+and the server checkpoint is `FLSS` version 2; older builds remain fail-closed.
+
+The generated 3,072 m test reached 14,352 entities and 91 squads but exceeded the
+old 512 MiB initial-state limit before simulation could start. That failure is
+recorded in `build/rust-socket-generated-3072-cap-check/`; a successful full-size
+rendered repeat remains required after the compression change.
+
 ## Build and exercise
 
 Run from the repository root with Rust 1.94.0 and Godot 4.7.2 installed:
@@ -243,3 +257,12 @@ peaked at 18.30 ms, total ticks at 26.54 ms, and frames at 37.40 ms. Eleven of
 not proof of sustained minimum 60 FPS. Raw local reports are in
 `build/rust-socket-generated-2048-phases/` and
 `build/rust-socket-generated-2048-optimized/`.
+
+The distant-soldier regression view places the same baked rifleman at 180 m with
+an unchanged camera and lighting. The before image restores the former fixed
+bounding box; the after image runs the corrected batch update. The CPU fixture
+also checks a soldier below the waterline and preservation of spatial batching.
+
+| Former bounds | Bounds expanded to the actual soldiers |
+| --- | --- |
+| ![Soldier incorrectly culled at elevation](screenshots/rust-simulation/batch-bounds-before.png) | ![The same soldier remains visible](screenshots/rust-simulation/batch-bounds-after.png) |

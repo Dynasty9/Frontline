@@ -54,13 +54,13 @@ fn encode(a: &Simulation, mut edit: impl FnMut(&mut serde_json::Value)) -> Vec<u
         "presentation":{"decor":[["lamp",[1,0,2],0,{}]],"mood":"rain"}});
     edit(&mut meta);
     let f = &a.state.field;
-    let mut w = sim::state_codec::Writer::new(b"FLIN\x01\0\0\0");
+    let mut w = sim::state_codec::Writer::new(b"FLIN\x02\0\0\0");
     w.bytes(SOURCE.as_bytes());
     w.bytes(&serde_json::to_vec(&meta).unwrap());
     w.u64(f.rng.seed());
     w.u64(f.rng.state());
     w.u64(f.next_squad);
-    w.bytes(&f.geometry.checkpoint());
+    w.bytes(&frontline_server::compression::encode(&f.geometry.checkpoint()).unwrap());
     w.bytes(&f.actors.checkpoint().unwrap());
     w.bytes(&a.state.rules.network.checkpoint().unwrap());
     w.bytes(&f.battle.checkpoint());
