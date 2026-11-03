@@ -364,6 +364,57 @@ impl TerrainCore {
     }
 
     #[func]
+    fn collision_heights(
+        &self,
+        rect: Rect2i,
+        mask: PackedByteArray,
+        mask_scale: i32,
+        floor: f64,
+    ) -> PackedFloat32Array {
+        let Some(core) = &self.core else {
+            return PackedFloat32Array::new();
+        };
+        if rect.position.x < 0
+            || rect.position.y < 0
+            || !(1..=65).contains(&rect.size.x)
+            || !(1..=65).contains(&rect.size.y)
+            || i64::from(rect.position.x) + i64::from(rect.size.x) > core.n as i64 + 1
+            || i64::from(rect.position.y) + i64::from(rect.size.y) > core.n as i64 + 1
+            || !(1..=8).contains(&mask_scale)
+            || !floor.is_finite()
+            || floor.abs() > 100_000.
+        {
+            return PackedFloat32Array::new();
+        }
+        let n = core.n * mask_scale as usize;
+        let mask = mask.as_slice();
+        if !mask.is_empty() && mask.len() != n * n {
+            return PackedFloat32Array::new();
+        }
+        // One boundary crossing per cosmetic collider instead of one per height sample.
+        let mut output = Vec::with_capacity(rect.size.x as usize * rect.size.y as usize);
+        for z in rect.position.y..rect.end().y {
+            for x in rect.position.x..rect.end().x {
+                let p = frontline_core::vector::Vector3::new(
+                    (f64::from(x) - core.half()) as f32,
+                    0.,
+                    (f64::from(z) - core.half()) as f32,
+                );
+                let trench = !mask.is_empty()
+                    && mask[(z as usize * mask_scale as usize).min(n - 1) * n
+                        + (x as usize * mask_scale as usize).min(n - 1)]
+                        > 150;
+                output.push(if trench {
+                    core.landform.height(p) + floor
+                } else {
+                    core.deform_at(p)
+                } as f32);
+            }
+        }
+        output.as_slice().into()
+    }
+
+    #[func]
     fn paint_box(&mut self, p: Vector3, half: Vector2, yaw: f64, kind: i32) -> PackedInt32Array {
         let Some(core) = self.core.as_mut() else {
             return PackedInt32Array::new();

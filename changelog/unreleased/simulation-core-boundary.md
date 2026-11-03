@@ -46,6 +46,7 @@ caption = "After: selected and nearby troops receive the articulated-model budge
 - Detailed soldiers reuse prepared geometry with independent animation, reducing construction pauses when troops enter the camera view. Clothing and face variation is reduced within each unit type and team.
 - Closing the game during music preparation waits for the audio worker to finish safely.
 - Wildlife looks for nearby threats through spatial cells; soaring birds check aircraft directly instead of scanning every soldier.
+- Cosmetic ground colliders sample hills, craters and trenches in one Rust call per tile, reducing collision-update spikes.
 - Squad strength indicators reuse their geometry until the number or condition of their soldiers changes, reducing HUD drawing calls.
 - Minimap soldier dots share one draw batch and reuse map transforms and team colors, retaining selection, wounded colors, overlap and immediate camera feedback.
 - Supply dispatch checks active buildings instead of every scenery object. Infantry refresh activity descriptions only when their existing status timer expires.

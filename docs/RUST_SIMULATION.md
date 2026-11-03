@@ -652,3 +652,19 @@ Evidence: `build/model-copy-bench.log`, `build/close-templates.json`, and paired
 render comparisons in `build/soldier-template-{forward_plus,gl_compatibility}.png`.
 The preceding `73d721f` passed full Godot regressions and all desktop/browser
 exports; final-head platform checks remain required.
+
+### Bulk cosmetic collision sampling
+
+Cosmetic heightfield tiles now sample the existing Rust terrain in one call,
+replacing 1,089 GDScript/native crossings per tile. The original GDScript path
+remains for comparison mode. Hills, craters, trench-mask thresholds and the far
+map boundary compare byte-for-byte across four elevated fixtures, with invalid
+requests rejected and canonical terrain unchanged. Both native terrain suites
+and all 140 numeric contract fixtures pass.
+
+Eight alternating warmed rounds of 50 tile samples measured 1.944 ms for the
+per-sample path versus 0.0247 ms for the bulk path (98.7% less sampling work).
+This excludes the engine's collision-shape update and is not an FPS measurement.
+The retained measurement is `build/collision-sampling-bench.log`; an earlier
+run overlapping numeric tests is explicitly excluded. The Windows release export
+also completes without import or export errors.

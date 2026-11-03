@@ -43,6 +43,7 @@ func compare(pair: Array[World]) -> void:
 func _ready() -> void:
 	MapDims.N = 64; MapDims.SIZE = 64.0; MapDims.HALF = 32.0; MapDims.BIOME = 64
 	TerrainMap.N = 64; TerrainMap.H = 32.0; TerrainMap.DN = 128
+	TrenchNet.N = MapDims.N * TrenchNet.RES
 	random.seed = 771920
 	for seed_value in 4:
 		var heights := PackedFloat32Array()
@@ -73,7 +74,36 @@ func _ready() -> void:
 		var actual := pair[1].terrain.deform_img
 		assert(expected.get_format() == Image.FORMAT_RGH and actual.get_format() == Image.FORMAT_RGH)
 		assert(expected.get_data() == actual.get_data(), "Surface and geology texture channels")
+		check_collision_tiles(pair[1])
 		for w in pair:
 			w.free()
 	print("NATIVE_LANDFORM passed queries=", queries)
 	get_tree().quit()
+
+
+func check_collision_tiles(world: World) -> void:
+	var fx := PhysicsFx.new(world)
+	add_child(fx)
+	var mask := PackedByteArray()
+	mask.resize(TrenchNet.N * TrenchNet.N)
+	for i in mask.size():
+		mask[i] = [0, 150, 151, 255][(i / TrenchNet.RES + i / TrenchNet.N) % 4]
+	var core := world.terrain._native
+	var saved: PackedByteArray = core.checkpoint()
+	for carved in [false, true]:
+		fx._mask = mask if carved else PackedByteArray()
+		for key in [Vector2i.ZERO, Vector2i(1, 0), Vector2i(0, 1), Vector2i.ONE]:
+			fx._rebuild_ground_tile(key)
+			var actual: PackedFloat32Array = fx._ground_tiles[key].shape.map_data
+			var expected := PackedFloat32Array()
+			for z in PhysicsFx.GROUND_TILE + 1:
+				for x in PhysicsFx.GROUND_TILE + 1:
+					expected.append(fx._height(key.x * PhysicsFx.GROUND_TILE + x, key.y * PhysicsFx.GROUND_TILE + z))
+			assert(actual == expected, "Batched collision must preserve hills, craters, trench thresholds and map edges exactly")
+	for rect in [Rect2i(-1, 0, 2, 2), Rect2i(63, 63, 3, 3), Rect2i(0, 0, 0, 1), Rect2i(0, 0, 66, 1), Rect2i(2147483647, 0, 2, 2)]:
+		assert(core.collision_heights(rect, mask, TrenchNet.RES, TrenchNet.FLOOR_Y).is_empty())
+	assert(core.collision_heights(Rect2i(0, 0, 2, 2), PackedByteArray([1]), 4, -1.2).is_empty())
+	assert(core.collision_heights(Rect2i(0, 0, 2, 2), mask, 0, -1.2).is_empty())
+	assert(core.collision_heights(Rect2i(0, 0, 2, 2), mask, 4, NAN).is_empty())
+	assert(core.checkpoint() == saved, "Cosmetic collision sampling must not change canonical terrain")
+	fx.free()
