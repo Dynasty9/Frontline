@@ -1,7 +1,11 @@
 +++
 title = "Move solo battle simulation into a separate Rust server"
-summary = "Solo battles run separately from rendering, with authenticated commands, reconnect support and deterministic command recordings. The wider multiplayer and replay-viewer migration remains in progress."
+summary = "Solo battles run separately from rendering, with authenticated commands, reconnect support and deterministic command recordings. Command recordings play, seek and verify in the replay viewer; multiplayer and browser integration remain in progress."
 kind = "improved"
+
+[[screenshots]]
+file = "verified-replay.jpg"
+caption = "The replay viewer independently reruns a short recorded battle and verifies its final state. This battle ended before either side won."
 +++
 
 - Solo battles now run in a separate Rust process while Godot draws the battlefield and handles your orders. Infantry, vehicles, combat, logistics, tactical AI, commanders and the five operations use the same authoritative simulation.
@@ -10,4 +14,6 @@ kind = "improved"
 - Transport capacity includes squads carried by vehicles without separate seat definitions. Helicopter boarding uses height above the local ground, and Beachhead reinforcements start aboard their transport.
 - Troops can complete long routes across navigation regions. Diving uses current ground height, and starting a different-sized map rebuilds its ground correctly.
 - Cosmetic debris no longer advances gameplay randomness. New command recordings preserve the full starting battlefield and player inputs; existing observer archives remain unverified recordings.
-- Multiplayer lobby, replay viewing and browser integration are still being completed. Large-map rendering performance is still under measurement; this change does not yet establish 60 FPS with 500 units.
+- Command recordings open in Replays, with pause, speed and timeline controls. Rewinding reruns the recorded commands; verification checks the final state and distinguishes unfinished battles from concluded games.
+- Generated-map scenery restores pavements, fences and overhead wires correctly through the socket connection.
+- Multiplayer lobby and browser integration are still being completed. Large-map rendering performance is still under measurement; this change does not yet establish 60 FPS with 500 units.

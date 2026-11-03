@@ -110,31 +110,67 @@ pub struct Verification {
     pub initial_hash: [u8; 32],
 }
 
-pub fn verify(mut source: impl Read, content: &Content) -> Result<Verification, String> {
-    let header = read_block(&mut source, HEADER_LIMIT)?;
-    let mut h = Reader::new(&header, b"FLRH\x01\0\0\0")?;
-    if h.bytes(64)? != crate::ENGINE_ID.as_bytes() {
-        return Err("incompatible replay simulation build".into());
+/// The verifier and visual player consume exactly the same bounded input stream.
+pub struct Playback<R: Read> {
+    source: R,
+    chain: blake3::Hasher,
+    pub frames: u64,
+    pub initial_tick: u64,
+    last_tick: u64,
+    initial_hash: [u8; 32],
+    state_hash: Option<[u8; 32]>,
+}
+impl<R: Read> Playback<R> {
+    pub fn new(mut source: R, content: &Content) -> Result<(Self, Simulation), String> {
+        let header = read_block(&mut source, HEADER_LIMIT)?;
+        let mut h = Reader::new(&header, b"FLRH\x01\0\0\0")?;
+        if h.bytes(64)? != crate::ENGINE_ID.as_bytes() {
+            return Err("incompatible replay simulation build".into());
+        }
+        if digest(&mut h)? != content.digest {
+            return Err("incompatible replay content".into());
+        }
+        let initial = h.bytes(MAX_STATE)?;
+        let initial_hash = *blake3::hash(initial).as_bytes();
+        let simulation = Simulation::restore(initial, content)?;
+        h.finish()?;
+        let mut chain = blake3::Hasher::new();
+        chain.update(&header);
+        let tick = simulation.state.tick;
+        Ok((
+            Self {
+                source,
+                chain,
+                frames: 0,
+                initial_tick: tick,
+                last_tick: tick,
+                initial_hash,
+                state_hash: None,
+            },
+            simulation,
+        ))
     }
-    if digest(&mut h)? != content.digest {
-        return Err("incompatible replay content".into());
+    pub fn verified(&self) -> bool {
+        self.state_hash.is_some()
     }
-    let initial = h.bytes(MAX_STATE)?;
-    let initial_hash = *blake3::hash(initial).as_bytes();
-    let mut simulation = Simulation::restore(initial, content)?;
-    h.finish()?;
-    let mut chain = blake3::Hasher::new();
-    chain.update(&header);
-    drop(header);
-    let mut frames = 0;
-    loop {
-        let bytes = read_block(&mut source, FRAME_LIMIT)?;
+    pub fn step(
+        &mut self,
+        simulation: &mut Simulation,
+        content: &Content,
+    ) -> Result<Option<Frame>, String> {
+        if simulation.state.tick != self.last_tick {
+            return Err("unrecorded playback tick".into());
+        }
+        if self.verified() {
+            return Ok(None);
+        }
+        let bytes = read_block(&mut self.source, FRAME_LIMIT)?;
         let mut r = Reader::new(&bytes, b"FLRF\x01\0\0\0")?;
         let tag = r.byte()?;
         let tick = r.u64()?;
         match tag {
             0 => {
-                if tick != simulation.state.tick + 1 || frames >= MAX_REPLAY_TICKS {
+                if tick != self.last_tick + 1 || self.frames >= MAX_REPLAY_TICKS {
                     return Err("replay tick is out of sequence".into());
                 }
                 let count = r.u32()? as usize;
@@ -152,39 +188,71 @@ pub fn verify(mut source: impl Read, content: &Content) -> Result<Verification, 
                     inputs.push(Input::decode(data)?);
                 }
                 r.finish()?;
-                simulation
+                let frame = simulation
                     .step(content, &inputs)
                     .map_err(|e| format!("tick {tick}: {e}"))?;
-                chain.update(&bytes);
-                frames += 1;
+                self.chain.update(&bytes);
+                self.frames += 1;
+                self.last_tick = tick;
+                Ok(Some(frame))
             }
             1 => {
-                if tick != simulation.state.tick {
+                if tick != self.last_tick {
                     return Err("replay conclusion tick differs".into());
                 }
                 let expected = digest(&mut r)?;
                 let winner = r.byte()? as i8;
                 let transcript = digest(&mut r)?;
                 r.finish()?;
-                if transcript != *chain.finalize().as_bytes() {
+                if transcript != *self.chain.finalize().as_bytes() {
                     return Err("replay input digest differs".into());
                 }
-                let actual = hash(&simulation)?;
+                let actual = hash(simulation)?;
                 if actual != expected || winner != simulation.state.victory.winner {
                     return Err("replay conclusion differs".into());
                 }
                 let mut extra = [0];
-                if source.read(&mut extra).map_err(|e| e.to_string())? != 0 {
+                if self.source.read(&mut extra).map_err(|e| e.to_string())? != 0 {
                     return Err("trailing replay data".into());
                 }
-                return Ok(Verification {
-                    simulation,
-                    frames,
-                    state_hash: actual,
-                    initial_hash,
-                });
+                self.state_hash = Some(actual);
+                Ok(None)
             }
-            _ => return Err("unknown replay record".into()),
+            _ => Err("unknown replay record".into()),
         }
     }
+}
+
+/// A footer supplies a timeline length, never a verification result.
+pub fn declared_tick(source: &mut (impl Read + std::io::Seek)) -> Result<u64, String> {
+    // The fixed conclusion block includes two length-prefixed 32-byte digests.
+    const FOOTER_BYTES: i64 = 4 + 8 + 1 + 8 + 36 + 1 + 36;
+    source
+        .seek(std::io::SeekFrom::End(-FOOTER_BYTES))
+        .map_err(|e| format!("incomplete replay: {e}"))?;
+    let bytes = read_block(source, FOOTER_BYTES as usize - 4)?;
+    let mut r = Reader::new(&bytes, b"FLRF\x01\0\0\0")?;
+    if r.byte()? != 1 {
+        return Err("missing replay conclusion".into());
+    }
+    let tick = r.u64()?;
+    digest(&mut r)?;
+    if !(-1..=1).contains(&(r.byte()? as i8)) {
+        return Err("invalid replay winner".into());
+    }
+    digest(&mut r)?;
+    r.finish()?;
+    source.rewind().map_err(|e| e.to_string())?;
+    Ok(tick)
+}
+
+pub fn verify(source: impl Read, content: &Content) -> Result<Verification, String> {
+    let (mut playback, mut simulation) = Playback::new(source, content)?;
+    while playback.step(&mut simulation, content)?.is_some() {}
+    Ok(Verification {
+        simulation,
+        frames: playback.frames,
+        state_hash: playback.state_hash.ok_or("missing replay conclusion")?,
+        initial_hash: playback.initial_hash,
+    })
 }

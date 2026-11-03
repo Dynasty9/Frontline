@@ -1675,7 +1675,10 @@ Desktop solo play now starts that Rust process and connects the Godot renderer
 over an authenticated ENet socket. The server sends team-filtered entity state,
 effects, messages, HUD data and reports; orders travel back to the same authority.
 Reconnect preserves ownership, pause controls server pacing, and leaving closes
-the deterministic command recording. Multiplayer lobby and replay-viewer
+the deterministic command recording. The replay viewer opens those recordings,
+re-executes commands for playback and seeking, and labels verification only after
+checking the complete input stream, final state and result. Existing observer
+archives keep their separate unverified status. Multiplayer lobby and browser
 integration remain in progress; see [RUST_SIMULATION.md](RUST_SIMULATION.md).
 
 See [SIMULATION_SCALING.md](SIMULATION_SCALING.md) for the native perception

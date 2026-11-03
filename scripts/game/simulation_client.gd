@@ -24,6 +24,7 @@ const MESSAGE := 25
 const OVER := 26
 const REPORT := 27
 const BLOB := 28
+const PLAYBACK := 29
 const MAX_PACKET := 65568
 const MAX_MAP := 64 * 1024 * 1024
 const FX_FIELDS := ["vvnsn", "vn", "ns", "vv", "vcn", "vvn", "vv", "sv", "vv", "v", "vnnn", "vnn", "v", "vn", "snv", "nvn", "vnn", "vvn", "nv"]
@@ -34,6 +35,7 @@ var peer: ENetPacketPeer
 var identity := 0
 var team := -1
 var connected := false
+var playback_info := {}
 var _token := ""
 var _engine := ""
 var _sequence := 0
@@ -75,6 +77,7 @@ func close() -> void:
 	_map_data.clear()
 	_blob_data.clear()
 	_blob_total = 0
+	playback_info.clear()
 
 func _exit_tree() -> void:
 	close()
@@ -151,6 +154,28 @@ static func _props(d: Dictionary) -> Dictionary:
 
 static func _point(a: Array) -> Vector3:
 	return Vector3(float(a[0]), float(a[1]), float(a[2]))
+
+static func _valid_point(value: Variant) -> bool:
+	return value is Array and value.size() == 3 and value.all(func(v: Variant) -> bool: return v is float and is_finite(v) and absf(v) <= 100000)
+
+static func decode_decor(entries: Variant) -> bool:
+	if not entries is Array or entries.size() > 200000:
+		return false
+	for entry in entries:
+		if not entry is Array or entry.size() != 4 or not entry[0] is String or not _valid_point(entry[1]) or not entry[2] is float or not is_finite(entry[2]):
+			return false
+		entry[1] = _point(entry[1])
+		if entry[0] == "wire":
+			if not entry[3] is Array or entry[3].size() != 2 or not _valid_point(entry[3][0]) or not entry[3][1] is float or not is_finite(entry[3][1]):
+				return false
+			entry[3][0] = _point(entry[3][0])
+		elif entry[0] in ["walk", "curb", "junction", "awning", "fence", "garden", "soft", "drive", "path", "pave", "lot_pave", "drop"]:
+			if not _valid_point(entry[3]):
+				return false
+			entry[3] = _point(entry[3])
+		elif entry[3] != null and (not entry[3] is float or not is_finite(entry[3])):
+			return false
+	return true
 
 static func _block(b: StreamPeerBuffer, limit: int) -> PackedByteArray:
 	if b.get_available_bytes() < 4:
@@ -346,7 +371,9 @@ func _dispatch(kind: int, payload: PackedByteArray) -> bool:
 			var winner = JSON.parse_string(payload.get_string_from_utf8())
 			if not winner is float or int(winner) < 0 or int(winner) > 1:
 				return false
-			if world:
+			if world and world.settings.get("replay", false):
+				world.winner = int(winner)
+			elif world:
 				world._rpc_over(int(winner))
 			received.emit(kind, winner)
 		REPORT:
@@ -356,6 +383,14 @@ func _dispatch(kind: int, payload: PackedByteArray) -> bool:
 			if world:
 				world._rpc_report(report)
 			received.emit(kind, report)
+		PLAYBACK:
+			var status = JSON.parse_string(payload.get_string_from_utf8())
+			if not status is Dictionary or not status.get("position") is float or not status.get("duration") is float or not status.get("verified") is bool or not status.get("concluded") is bool:
+				return false
+			if not is_finite(status.position) or not is_finite(status.duration) or status.position < 0 or status.duration < status.position or status.duration > 86400:
+				return false
+			playback_info = status
+			received.emit(kind, status)
 		_:
 			return false
 	return true
@@ -392,8 +427,8 @@ func _install_map() -> bool:
 			for p: Array in roads[i]:
 				points.append(_point(p))
 			roads[i] = points
-	for entry: Array in d.decor:
-		entry[1] = _point(entry[1])
+	if not decode_decor(d.get("decor")):
+		return false
 	if world:
 		if MapDims.N != side:
 			return false
@@ -404,6 +439,10 @@ func _install_map() -> bool:
 		world.decor = d.decor
 		world.town_rect = Rect2(float(d.town[0]), float(d.town[1]), float(d.town[2]), float(d.town[3]))
 		world._join_ground = true
+		if d.get("mood") is String and Atmosphere.MOODS.has(d.mood):
+			world.settings.mood = d.mood
+			if world.atmo:
+				world.atmo.apply_mood(d.mood)
 		world._load_mark("map")
 	received.emit(MAP, {"side": side, "kinds": kinds.size(), "heights": heights.size()})
 	return true

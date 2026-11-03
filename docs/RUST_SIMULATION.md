@@ -1,7 +1,7 @@
 # Rust simulation migration
 
 Status: **desktop solo play runs in the separate Rust server; multiplayer lobby,
-replay viewing and browser integration are still being completed.** This branch
+and browser integration are still being completed.** This branch
 is not ready to release. The socket server already accepts multiple authenticated
 Godot clients, but the multiplayer menu still starts the legacy host path.
 
@@ -76,6 +76,17 @@ Verification establishes consistency with the supplied starting state and inputs
 It does not authenticate a client-created history. Competitive result acceptance
 must additionally trust the server that admitted and recorded those inputs.
 
+The native replay viewer opens `.flrp` files from the Replays menu or `--replay`.
+Its play/pause, speed and timeline controls drive a private Rust playback process
+using the same parser and tick entry point as the verifier. Seeking re-executes
+from the starting state and reconnects a fresh observer so transient effects and
+entities cannot survive a rewind. Seeking far into a long battle therefore costs
+simulation work; it does not load an unverified visual snapshot as game state.
+A readable footer supplies the timeline length only. The viewer labels the result
+verified after the input digest, final state hash and winner all match, including
+when seeking directly to the end. It distinguishes unfinished battles from
+concluded games. Viewer commands and connections never enter the recorded world.
+
 Numeric version 2 pins Rust 1.94.0, glam 0.32.1 with `libm`, and libm 0.2.16 with
 `force-soft-floats`. Gameplay iteration, tie-breaking and work quotas have explicit
 orders. Cosmetic randomness and wall-clock/network scheduling are outside state.
@@ -133,7 +144,6 @@ rendering results or natural full-mission balance playthroughs.
 Remaining release gates:
 
 - Connect multiplayer lobby, drop-in/rejoin and co-command interactions to Rust.
-- Play command recordings through the normal replay UI with seek and verification.
 - Carry current roads, terrain deformation and remaining cosmetic lifecycle events
   through joining and live observations.
 - Integrate browser transport/runtime without a desktop process assumption.

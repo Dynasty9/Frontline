@@ -276,7 +276,7 @@ func _ready() -> void:
 		Net.players = {int(connection.peer): {"team": int(connection.team), "name": Net.my_name, "col": 0}}
 		Net.in_game = true
 		_on_game_start.call_deferred({"simulation_connection": connection, "map_size": int(connection.map_size), "players": Net.players, "seed": 1})
-	elif args.has("replay-test"):
+	elif args.has("replay-test") or args.has("native-replay-test"):
 		var replay_test: Node = GameScripts.load_script("res://scripts/test/replay_test.gd").new()
 		replay_test.main = self
 		add_child(replay_test)

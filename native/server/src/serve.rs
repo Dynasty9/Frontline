@@ -6,7 +6,7 @@ use crate::{
         events::{self, Events},
         Update, View,
     },
-    replay::Recorder,
+    replay::{Playback, Recorder},
     simulation::{Input, Simulation},
 };
 use frontline_core::{state_codec::Writer, vector::Vector3};
@@ -14,7 +14,7 @@ use serde_json::{json, Value};
 use std::{
     collections::{BTreeMap, VecDeque},
     fs::File,
-    io::{BufWriter, Write},
+    io::{BufReader, BufWriter, Write},
     net::SocketAddr,
     path::PathBuf,
     sync::Arc,
@@ -31,6 +31,7 @@ pub struct Config {
     pub error: Option<PathBuf>,
     pub lease: Option<PathBuf>,
     pub profile: Option<crate::profiling::Profile>,
+    pub seek: u64,
 }
 impl Config {
     pub fn decode(bytes: &[u8]) -> Result<Self, String> {
@@ -106,6 +107,14 @@ impl Config {
             error: path("error")?,
             lease: path("lease")?,
             profile: crate::profiling::Profile::decode(&d["profile"])?,
+            seek: if d["seek"].is_null() {
+                0
+            } else {
+                d["seek"]
+                    .as_u64()
+                    .filter(|n| *n <= crate::replay::MAX_REPLAY_TICKS)
+                    .ok_or("invalid replay seek")?
+            },
         })
     }
 }
@@ -282,13 +291,131 @@ fn publish_events(
     }
     Ok(())
 }
+enum Timeline {
+    Live(Recorder<BufWriter<File>>),
+    Replay {
+        playback: Playback<BufReader<File>>,
+        end: u64,
+    },
+}
+impl Timeline {
+    fn is_replay(&self) -> bool {
+        matches!(self, Self::Replay { .. })
+    }
+    fn complete(&self) -> bool {
+        matches!(self,Self::Replay{playback,..} if playback.verified())
+    }
+    fn status(&self, s: &Simulation) -> Value {
+        match self {
+            Self::Live(_) => Value::Null,
+            Self::Replay { playback, end } => {
+                json!({"position":(s.state.tick-playback.initial_tick) as f64/60.,
+                "duration":(end-playback.initial_tick) as f64/60.,"verified":playback.verified(),
+                "concluded":playback.verified() && s.state.victory.winner>=0})
+            }
+        }
+    }
+    fn step(
+        &mut self,
+        s: &mut Simulation,
+        c: &Content,
+        inputs: &[Input],
+    ) -> Result<Option<crate::simulation::Frame>, String> {
+        match self {
+            Self::Live(recording) => recording.step(s, c, inputs).map(Some),
+            Self::Replay { playback, end } => {
+                let frame = playback.step(s, c)?;
+                if s.state.tick > *end || (frame.is_none() && s.state.tick != *end) {
+                    return Err("replay duration differs".into());
+                }
+                Ok(frame)
+            }
+        }
+    }
+}
+fn lease_alive(path: &Option<PathBuf>, seen: &mut Instant, previous: &mut Vec<u8>) -> bool {
+    let Some(path) = path else { return true };
+    if std::fs::metadata(path).is_ok_and(|m| m.len() <= 1024) {
+        if let Ok(value) = std::fs::read(path) {
+            if !value.is_empty() && value != *previous {
+                *previous = value;
+                *seen = Instant::now();
+            }
+        }
+    }
+    seen.elapsed() <= Duration::from_secs(30)
+}
+#[test]
+fn lease_requires_changing_heartbeat_and_expires_without_one() {
+    let path = std::env::temp_dir().join(format!("frontline-lease-{}", std::process::id()));
+    std::fs::write(&path, b"first").unwrap();
+    let mut seen = Instant::now() - Duration::from_secs(31);
+    let mut previous = Vec::new();
+    assert!(lease_alive(&Some(path.clone()), &mut seen, &mut previous));
+    seen = Instant::now() - Duration::from_secs(31);
+    assert!(!lease_alive(&Some(path.clone()), &mut seen, &mut previous));
+    std::fs::write(&path, b"second").unwrap();
+    assert!(lease_alive(&Some(path.clone()), &mut seen, &mut previous));
+    std::fs::remove_file(&path).unwrap();
+    seen = Instant::now() - Duration::from_secs(31);
+    assert!(!lease_alive(&Some(path), &mut seen, &mut previous));
+    assert!(lease_alive(&None, &mut seen, &mut previous));
+}
+pub fn playback(source: File, content: &Content, config: Config) -> Result<(), String> {
+    if config.admissions.iter().any(|a| a.team != -1) {
+        return Err("replay clients must be observers".into());
+    }
+    let mut source = BufReader::new(source);
+    let end = crate::replay::declared_tick(&mut source)?;
+    let (mut playback, mut simulation) = Playback::new(source, content)?;
+    if end < playback.initial_tick || end - playback.initial_tick > crate::replay::MAX_REPLAY_TICKS
+    {
+        return Err("invalid replay duration".into());
+    }
+    let target = playback.initial_tick.saturating_add(config.seek).min(end);
+    let mut control_at = Instant::now() - Duration::from_millis(100);
+    let mut lease_seen = Instant::now();
+    let mut lease_value = Vec::new();
+    // Seeking re-executes inputs; a visual snapshot must never substitute for simulation state.
+    while simulation.state.tick < target {
+        if control_at.elapsed() >= Duration::from_millis(100) {
+            control_at = Instant::now();
+            if config.stop.as_ref().is_some_and(|p| p.exists())
+                || !lease_alive(&config.lease, &mut lease_seen, &mut lease_value)
+            {
+                return Ok(());
+            }
+        }
+        if playback.step(&mut simulation, content)?.is_none() {
+            return Err("replay ended before seek position".into());
+        }
+    }
+    if target == end && playback.step(&mut simulation, content)?.is_some() {
+        return Err("replay duration differs".into());
+    }
+    run_timeline(
+        simulation,
+        content,
+        config,
+        Timeline::Replay { playback, end },
+    )
+}
 pub fn run(
-    mut simulation: Simulation,
+    simulation: Simulation,
     content: &Content,
     config: Config,
     output: File,
 ) -> Result<(), String> {
-    for a in &config.admissions {
+    let recording = Recorder::new(BufWriter::new(output), &simulation, content)?;
+    run_timeline(simulation, content, config, Timeline::Live(recording))
+}
+fn run_timeline(
+    mut simulation: Simulation,
+    content: &Content,
+    config: Config,
+    mut timeline: Timeline,
+) -> Result<(), String> {
+    for a in config.admissions.iter().filter(|_| !timeline.is_replay()) {
         if simulation
             .state
             .owners
@@ -306,8 +433,10 @@ pub fn run(
     let mut network = Network::bind(config.bind, config.admissions)?;
     let mut profile = config.profile;
     let public_map = chunks(&map(&simulation)?);
-    let mut recording = Recorder::new(BufWriter::new(output), &simulation, content)?;
-    let ready = json!({"address":network.address()?.to_string(),"engine":crate::ENGINE_ID,"version":net::VERSION});
+    let presentation: Value =
+        serde_json::from_slice(&simulation.presentation).map_err(|e| e.to_string())?;
+    let ready = json!({"address":network.address()?.to_string(),"engine":crate::ENGINE_ID,"version":net::VERSION,
+        "side":simulation.state.water.side,"mood":presentation.get("mood"),"replay":timeline.status(&simulation)});
     if let Some(path) = &config.ready {
         let mut f = File::options()
             .write(true)
@@ -328,24 +457,14 @@ pub fn run(
     let mut last_client = next;
     let mut last_winner = -1;
     let mut speed = 1.0;
-    let mut control_at = Instant::now();
+    let mut control_at = Instant::now() - Duration::from_millis(100);
     let mut lease_seen = Instant::now();
     let mut lease_value = Vec::new();
     loop {
         if control_at.elapsed() >= Duration::from_millis(100) {
             control_at = Instant::now();
-            if let Some(path) = &config.lease {
-                if std::fs::metadata(path).is_ok_and(|m| m.len() <= 1024) {
-                    if let Ok(value) = std::fs::read(path) {
-                        if !value.is_empty() && value != lease_value {
-                            lease_value = value;
-                            lease_seen = Instant::now();
-                        }
-                    }
-                }
-                if lease_seen.elapsed() > Duration::from_secs(30) {
-                    break;
-                }
+            if !lease_alive(&config.lease, &mut lease_seen, &mut lease_value) {
+                break;
             }
             if let Some(path) = config.speed.as_ref().filter(|p| p.exists()) {
                 if std::fs::metadata(path).is_ok_and(|m| m.len() <= 1024) {
@@ -392,7 +511,7 @@ pub fn run(
                         && !pending
                             .iter()
                             .any(|i| matches!(i,Input::Leave{peer} if *peer==a.peer));
-                    if !exists {
+                    if !exists && !timeline.is_replay() {
                         let reclaim = a.reclaim.or_else(|| {
                             (simulation
                                 .state
@@ -433,6 +552,14 @@ pub fn run(
                         net::HUD,
                         crate::observation::hud(&simulation, content, a.team)?,
                     )?;
+                    if timeline.is_replay() {
+                        json_packet(
+                            &mut network,
+                            slot,
+                            net::PLAYBACK,
+                            timeline.status(&simulation),
+                        )?;
+                    }
                     if simulation.state.victory.winner >= 0 {
                         json_packet(
                             &mut network,
@@ -451,9 +578,14 @@ pub fn run(
                 Incoming::Left { slot, peer } => {
                     slots.remove(&slot);
                     views.remove(&slot);
-                    pending.push_back(Input::Leave { peer });
+                    if !timeline.is_replay() {
+                        pending.push_back(Input::Leave { peer });
+                    }
                 }
                 Incoming::Command(input) => {
+                    if timeline.is_replay() {
+                        continue;
+                    }
                     if pending.len() < 1024 {
                         pending.push_back(input);
                     } else if let Input::Command { peer, .. } = input {
@@ -478,7 +610,7 @@ pub fn run(
             next = Instant::now();
         }
         for _ in 0..4 {
-            if !start || speed == 0.0 || Instant::now() < next {
+            if !start || speed == 0.0 || timeline.complete() || Instant::now() < next {
                 break;
             }
             let mut bytes = 0;
@@ -492,7 +624,39 @@ pub fn run(
                 count += 1;
             }
             let inputs: Vec<_> = pending.drain(..count).collect();
-            let frame = recording.step(&mut simulation, content, &inputs)?;
+            let Some(frame) = timeline.step(&mut simulation, content, &inputs)? else {
+                // Flush the final partial snapshot group before declaring verification.
+                for (&slot, view) in &mut views {
+                    publish(
+                        &mut network,
+                        &[slot],
+                        &view.update(&simulation, content),
+                        simulation.state.tick,
+                    )?;
+                    json_packet(
+                        &mut network,
+                        slot,
+                        net::HUD,
+                        crate::observation::hud(&simulation, content, -1)?,
+                    )?;
+                    json_packet(
+                        &mut network,
+                        slot,
+                        net::REPORT,
+                        crate::observation::report(&simulation, content, -1)?,
+                    )?;
+                    json_packet(
+                        &mut network,
+                        slot,
+                        net::PLAYBACK,
+                        timeline.status(&simulation),
+                    )?;
+                }
+                for events in render_events.drain(..) {
+                    publish_events(&mut network, &slots, &events, simulation.state.tick)?;
+                }
+                break;
+            };
             let simulation_ms = tick_started.elapsed().as_secs_f64() * 1000.;
             render_events.push(Events::collect(&simulation, &frame));
             next += Duration::from_secs_f64(frontline_core::match_state::FIXED_DELTA / speed);
@@ -510,6 +674,16 @@ pub fn run(
                 }
             }
             if simulation.state.tick % 30 == 0 {
+                if timeline.is_replay() {
+                    for &slot in slots.keys() {
+                        json_packet(
+                            &mut network,
+                            slot,
+                            net::PLAYBACK,
+                            timeline.status(&simulation),
+                        )?;
+                    }
+                }
                 for team in [-1, 0, 1]
                     .into_iter()
                     .filter(|team| slots.values().any(|t| t == team))
@@ -558,9 +732,11 @@ pub fn run(
         }
         std::thread::sleep(Duration::from_millis(1));
     }
-    let mut output = recording.finish(&simulation)?;
-    output.flush().map_err(|e| e.to_string())?;
-    output.get_ref().sync_all().map_err(|e| e.to_string())?;
+    if let Timeline::Live(recording) = timeline {
+        let mut output = recording.finish(&simulation)?;
+        output.flush().map_err(|e| e.to_string())?;
+        output.get_ref().sync_all().map_err(|e| e.to_string())?;
+    }
     for _ in 0..50 {
         network.poll()?;
         std::thread::sleep(Duration::from_millis(2));

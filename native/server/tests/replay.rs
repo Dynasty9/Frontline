@@ -1,7 +1,7 @@
 use frontline_core as sim;
 use frontline_server::{
     content::Content,
-    replay::{verify, Recorder},
+    replay::{declared_tick, verify, Playback, Recorder},
     simulation::{Input, Simulation},
 };
 use sim::match_commands::{Action, Command};
@@ -158,6 +158,38 @@ fn recorded_combat_and_rejoins_rerun_to_the_same_state_and_events() {
     assert!(live.state.owners.players.contains(&(11, 0)));
     assert!(live.state.field.squads.iter().any(|q| q.owner == 11));
     assert_eq!(live.state.tick, 180);
+}
+
+#[test]
+fn visual_playback_advances_the_verifiers_stream_and_only_verifies_the_footer() {
+    let c = Content::bundled().unwrap();
+    let mut live = battle(&c);
+    let mut recording = Recorder::new(Vec::new(), &live, &c).unwrap();
+    let frames: Vec<_> = (0..100)
+        .map(|t| recording.step(&mut live, &c, &inputs(t)).unwrap())
+        .collect();
+    let bytes = recording.finish(&live).unwrap();
+    let mut source = std::io::Cursor::new(bytes.clone());
+    assert_eq!(declared_tick(&mut source).unwrap(), 100);
+    let (mut stream, mut state) = Playback::new(source, &c).unwrap();
+    for frame in frames {
+        assert!(!stream.verified());
+        assert_eq!(stream.step(&mut state, &c).unwrap(), Some(frame));
+    }
+    assert!(!stream.verified());
+    assert_eq!(stream.step(&mut state, &c).unwrap(), None);
+    assert!(stream.verified());
+    assert_eq!(state.checkpoint().unwrap(), live.checkpoint().unwrap());
+    assert_eq!(stream.step(&mut state, &c).unwrap(), None);
+    let mut bad = bytes.clone();
+    *bad.last_mut().unwrap() ^= 1;
+    let mut bad = std::io::Cursor::new(bad);
+    assert_eq!(declared_tick(&mut bad).unwrap(), 100);
+    assert!(
+        verify(bad, &c).is_err(),
+        "a readable timeline is not a verified replay"
+    );
+    assert!(declared_tick(&mut std::io::Cursor::new(&bytes[..bytes.len() - 1])).is_err());
 }
 
 #[test]

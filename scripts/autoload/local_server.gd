@@ -9,6 +9,8 @@ var connected := false
 var child := false
 var disconnected_peer := 0
 var recording := ""
+var replaying := false
+var replay_status := {}
 var client: Node
 var _generating := false
 var _started_ms := 0
@@ -93,6 +95,37 @@ func start_child(path: String) -> void:
 		if not _write(".settings", settings):
 			_fail_child("Could not save battlefield settings"))
 	Net.start_game.call_deferred()
+
+func play_replay(source: String, seconds := 0.0) -> int:
+	if OS.has_feature("web"):
+		return ERR_UNAVAILABLE
+	var server := executable()
+	if server.is_empty() or not FileAccess.file_exists(source):
+		return ERR_FILE_NOT_FOUND
+	stop()
+	Net.leave()
+	var error := DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path("user://local_servers"))
+	if error != OK:
+		return error
+	_server = server
+	replaying = true
+	_team = -1
+	token = Crypto.new().generate_random_bytes(24).hex_encode()
+	session = ProjectSettings.globalize_path("user://local_servers".path_join(token))
+	_settings = {"replay": true, "players": {1: {"team": -1, "name": "Observer"}}}
+	var config := {"bind": "127.0.0.1:0", "players": [{"peer": 1, "team": -1, "name": "Observer", "token": token}],
+		"ready": session + ".ready", "stop": session + ".stop", "speed": session + ".speed", "error": session + ".error", "lease": session + ".heartbeat", "seek": maxi(0, roundi(seconds * 60.0))}
+	# Keep the seek position exact until the viewer has installed its baseline.
+	if not _write(".server", config) or not _write(".speed", {"speed": 0.0}):
+		stop()
+		return ERR_CANT_CREATE
+	pid = OS.create_process(_server, PackedStringArray(["play", ProjectSettings.globalize_path(source), session + ".server"]), false)
+	if pid <= 0:
+		stop()
+		return ERR_CANT_FORK
+	starting = true
+	_started_ms = Time.get_ticks_msec()
+	return OK
 
 func authorize(_candidate: String, _version: int) -> bool:
 	return not child
@@ -192,6 +225,14 @@ func _process(_dt: float) -> void:
 		if address.size() != 2:
 			_fail("Invalid local simulation address.")
 			return
+		if replaying:
+			if not ready.get("replay") is Dictionary or not int(ready.get("side", 0)) in [1024, 2048, 3072]:
+				_fail("Invalid replay battlefield metadata.")
+				return
+			_settings.map_size = int(ready.side)
+			if ready.get("mood") is String:
+				_settings.mood = ready.mood
+			replay_status = ready.replay
 		_settings["simulation_connection"] = {"address": address[0], "port": int(address[1]), "token": token, "engine": ready.engine, "peer": 1, "team": _team}
 		# The recording now owns the initial checkpoint; don't leave the large handoff behind.
 		if FileAccess.file_exists(session + ".initial"):
@@ -243,6 +284,8 @@ func stop() -> void:
 	pid = -1
 	starting = false
 	connected = false
+	replaying = false
+	replay_status = {}
 	_generating = false
 	_retry_at = 0
 	_retries = 0

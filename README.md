@@ -41,7 +41,7 @@ To run it from source instead:
 3. Install Rust 1.94.0 and Python 3, then run `python tools/build_native.py` from the project folder to build the native simulation binaries.
 4. Open Godot, click **Import**, choose the `project.godot` file in this folder, then press **F5** to play.
 
-Desktop solo battles use a separate Rust server. The multiplayer and replay-viewer
+Desktop solo battles use a separate Rust server. The multiplayer and browser
 migration is still in progress; see the current [simulation boundary and checks](docs/RUST_SIMULATION.md).
 
 ## Your first battle

@@ -107,6 +107,7 @@ impl Server {
             speed: None,
             error: None,
             lease: None,
+            seek: 0,
             profile: frontline_server::profiling::Profile::decode(
                 &json!({"path":directory.join("profile.json"),"warmup":0,"duration":1}),
             )
@@ -143,6 +144,30 @@ impl Server {
         )
         .unwrap()
     }
+    fn playback(&mut self, seek: u64) {
+        fs::remove_file(&self.ready).unwrap();
+        fs::remove_file(&self.stop).unwrap();
+        let config = Config::decode(
+            &serde_json::to_vec(&json!({"bind":"127.0.0.1:0",
+            "players":[{"peer":11,"team":-1,"name":"Observer","token":"3".repeat(48)}],
+            "ready":self.ready,"stop":self.stop,"seek":seek}))
+            .unwrap(),
+        )
+        .unwrap();
+        let source = File::open(&self.replay).unwrap();
+        self.handle = Some(thread::spawn(move || {
+            serve::playback(source, &Content::bundled().unwrap(), config)
+        }));
+        let deadline = Instant::now() + Duration::from_secs(12);
+        while fs::read(&self.ready)
+            .ok()
+            .and_then(|b| serde_json::from_slice::<serde_json::Value>(&b).ok())
+            .is_none()
+        {
+            assert!(Instant::now() < deadline);
+            thread::sleep(Duration::from_millis(2));
+        }
+    }
 }
 impl Drop for Server {
     fn drop(&mut self) {
@@ -166,6 +191,7 @@ struct Client {
     spawns: usize,
     tick: u64,
     messages: Vec<serde_json::Value>,
+    playback: serde_json::Value,
 }
 impl Client {
     fn new(server: &Server, token: char) -> Self {
@@ -191,6 +217,7 @@ impl Client {
             spawns: 0,
             tick: 0,
             messages: vec![],
+            playback: serde_json::Value::Null,
         }
     }
     fn poll(&mut self) {
@@ -220,6 +247,7 @@ impl Client {
                         net::SPAWN => self.spawns += 1,
                         net::SNAPSHOT => self.tick = seq,
                         net::MESSAGE => self.messages.push(serde_json::from_slice(data).unwrap()),
+                        net::PLAYBACK => self.playback = serde_json::from_slice(data).unwrap(),
                         net::BASELINE_END => {
                             self.loaded = true;
                             peer.send(0, &Packet::reliable(net::packet(net::LOADED, 0, &[])))
@@ -244,6 +272,41 @@ impl Client {
                 &Packet::reliable(net::packet(net::COMMAND, 0, data.to_string().as_bytes())),
             )
             .unwrap();
+    }
+}
+#[test]
+fn replay_socket_ignores_live_commands_and_seek_reexecutes_the_same_inputs() {
+    let mut server = Server::new();
+    let mut live = Client::new(&server, '1');
+    let deadline = Instant::now() + Duration::from_secs(20);
+    while live.tick < 40 {
+        live.poll();
+        assert!(Instant::now() < deadline);
+        thread::sleep(Duration::from_millis(1));
+    }
+    let verified = server.finish();
+    drop(live);
+    let bytes = fs::read(&server.replay).unwrap();
+    for seek in [0, 20, verified.frames] {
+        server.playback(seek);
+        let mut viewer = Client::new(&server, '3');
+        let mut sent = false;
+        while viewer.playback["verified"] != true {
+            viewer.poll();
+            if viewer.loaded && !sent {
+                viewer.command(json!({"t":"chat","text":"Must not enter replay"}));
+                sent = true;
+            }
+            assert!(Instant::now() < deadline);
+            thread::sleep(Duration::from_millis(1));
+        }
+        assert!(viewer.spawns > 0 && viewer.playback["position"] == viewer.playback["duration"]);
+        assert!(!viewer
+            .messages
+            .iter()
+            .any(|m| m.to_string().contains("Must not enter replay")));
+        server.finish();
+        assert_eq!(fs::read(&server.replay).unwrap(), bytes);
     }
 }
 #[test]

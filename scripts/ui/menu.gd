@@ -2061,11 +2061,15 @@ class StepBar extends Range:
 func _open_replay() -> void:
 	var dialog := FileDialog.new()
 	dialog.title = "Open battle recording"
-	dialog.file_mode = FileDialog.FILE_MODE_OPEN_DIR
+	dialog.file_mode = FileDialog.FILE_MODE_OPEN_ANY
+	dialog.filters = PackedStringArray(["*.flrp; Command recordings", "index.json; Observer recordings"])
 	dialog.access = FileDialog.ACCESS_FILESYSTEM
 	dialog.current_dir = ProjectSettings.globalize_path("user://replays")
 	dialog.dir_selected.connect(func(path: String):
 		get_tree().root.get_node("Main").open_replay(path)
+		dialog.queue_free())
+	dialog.file_selected.connect(func(path: String):
+		get_tree().root.get_node("Main").open_replay(path.get_base_dir() if path.get_file() == "index.json" else path)
 		dialog.queue_free())
 	dialog.canceled.connect(dialog.queue_free)
 	add_child(dialog)

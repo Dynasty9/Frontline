@@ -20,8 +20,8 @@ both binaries; a missing server is reported instead of silently changing simulat
 starts the Rust server. Desktop solo menu actions use this automatically. Local
 sessions bind loopback and require a random ticket and matching simulation build.
 Logs are under `user://local_servers/`; command recordings are written to
-`user://replays/`. Closing the session flushes the recording. Verify it with
-`frontline-server verify PATH.flrp`. `FRONTLINE_SERVER` can select a binary in a
+`user://replays/`. Closing the session flushes the recording. Open a `.flrp` through the Replays menu or `--replay=PATH.flrp`.
+Verify it without Godot with `frontline-server verify PATH.flrp`. `FRONTLINE_SERVER` can select a binary in a
 source checkout. The public `--host` path is still awaiting migration.
 
 Run a measured 500-unit case with:

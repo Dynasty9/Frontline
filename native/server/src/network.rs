@@ -28,6 +28,7 @@ pub const MESSAGE: u8 = 25;
 pub const OVER: u8 = 26;
 pub const REPORT: u8 = 27;
 pub const BLOB: u8 = 28;
+pub const PLAYBACK: u8 = 29;
 pub const MAX_PACKET: usize = 64 * 1024 + 32;
 const MAX_PENDING: usize = 128 * 1024 * 1024;
 const WINDOW: usize = 512 * 1024;

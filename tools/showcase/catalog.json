@@ -3,12 +3,18 @@
   "entries": [
     {
       "entry": "changelog/unreleased/simulation-core-boundary.md",
-      "medium": "text",
-      "stage": "text",
-      "rationale": "The simulation migration preserves gameplay and remains incomplete. Component reference checks and workload-specific timings are documented in docs/RUST_SIMULATION.md; no battle FPS improvement or independently verified replay is claimed.",
+      "medium": "still",
+      "stage": "native-media",
+      "rationale": "Actual rendered command-replay viewer after independent final-state verification. The unfinished battle is labeled explicitly. This screenshot demonstrates playback and verification status, not performance.",
       "source_ref": "codex/rust-simulation",
-      "sources": [],
-      "output": null
+      "sources": [
+        {
+          "file": "changelog/unreleased/simulation-core-boundary/verified-replay.jpg",
+          "sha256": "a4e0ea3c7b6ca0e4a14f2f5ccfca879c4156da360f92ce35281fda96d782d336",
+          "caption": "Verified command replay of a short unfinished battle."
+        }
+      ],
+      "output": "changelog/unreleased/simulation-core-boundary/verified-replay.jpg"
     },
     {
       "entry": "changelog/v0.1.0/camera-and-minimap.md",

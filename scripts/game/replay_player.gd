@@ -26,8 +26,12 @@ var download_progress: ProgressBar
 var playback_buttons: Array[BaseButton] = []
 var panel: PanelContainer
 var loading_backdrop: TopoBackdrop
+var native := false
+var native_status := {}
+var _native_speed := -1.0
 
 func _ready() -> void:
+	native = source.to_lower().ends_with(".flrp")
 	layer = 30
 	loading_backdrop = TopoBackdrop.new()
 	add_child(loading_backdrop)
@@ -67,6 +71,8 @@ func _ready() -> void:
 	playing.text = "PAUSE"
 	playing.pressed.connect(func():
 		speed = 1.0 if speed == 0 else 0.0
+		if native and speed > 0 and native_status.get("verified", false):
+			seek(0.0)
 		if speed == 0:
 			follow_live = false
 		playing.text = "PLAY" if speed == 0 else "PAUSE")
@@ -81,8 +87,8 @@ func _ready() -> void:
 		playing.text = "PAUSE")
 	row.add_child(rate)
 	var live := Button.new()
-	live.text = "LATEST"
-	live.pressed.connect(func(): seek(maxf(0.0, float(manifest.get("duration", 0)) - 1.0)))
+	live.text = "END" if native else "LATEST"
+	live.pressed.connect(func(): seek(maxf(0.0, float(manifest.get("duration", 0)) - (0.0 if native else 1.0))))
 	live.pressed.connect(func(): follow_live = true)
 	row.add_child(live)
 	var follow := Button.new()
@@ -223,6 +229,9 @@ func _valid_state(state: Dictionary, full: bool) -> bool:
 	return true
 
 func _refresh() -> void:
+	if native:
+		seek(0.0)
+		return
 	refreshing = true
 	var next := await fetch_json("")
 	refreshing = false
@@ -278,6 +287,21 @@ func _download_recording() -> bool:
 	return true
 
 func seek(target: float) -> void:
+	if native:
+		if busy or failed:
+			return
+		busy = true
+		native_status.clear()
+		_native_speed = -1.0
+		label.text = "Replaying to %02d:%02d…" % [int(target) / 60, int(target) % 60]
+		loading_backdrop.show()
+		slider.editable = false
+		var error := LocalServer.play_replay(source, target)
+		if error != OK:
+			busy = false
+			failed = true
+			label.text = "Could not open command recording: " + error_string(error)
+		return
 	if busy or failed or manifest.get("chunks", []).is_empty():
 		return
 	if sequence >= 0:
@@ -360,6 +384,9 @@ func _layout_controls() -> void:
 
 func _process(dt: float) -> void:
 	_layout_controls()
+	if native:
+		_process_native()
+		return
 	Engine.time_scale = 0.0 if busy or failed else speed
 	if failed or busy:
 		return
@@ -377,6 +404,44 @@ func _process(dt: float) -> void:
 	if not seeking:
 		slider.set_value_no_signal(position)
 	_update_label()
+
+func _process_native() -> void:
+	Engine.time_scale = 1.0 if busy or failed else speed
+	if failed or not LocalServer.connected or not is_instance_valid(main.world):
+		return
+	var world: World = main.world
+	if not world.settings.get("replay", false) or not world.simulation_client:
+		return
+	if speed != _native_speed:
+		LocalServer.set_speed(speed)
+		_native_speed = speed
+	if not world.loaded:
+		return
+	if busy:
+		busy = false
+		loading_backdrop.hide()
+		slider.editable = true
+		if world.cam and world.director:
+			world.cam.user_moved = false
+			world.director.active = true
+			world.director._pick_shot()
+	var status: Dictionary = world.simulation_client.playback_info
+	if status.is_empty():
+		status = LocalServer.replay_status
+	if status.is_empty():
+		return
+	native_status = status
+	manifest["duration"] = float(status.duration)
+	position = float(status.position)
+	slider.max_value = maxf(0.1, float(status.duration))
+	if not seeking:
+		slider.set_value_no_signal(position)
+	if status.verified:
+		speed = 0.0
+		playing.text = "PLAY"
+	label.text = "%02d:%02d / %02d:%02d · %s" % [int(position) / 60, int(position) % 60,
+		int(status.duration) / 60, int(status.duration) % 60,
+		("VERIFIED CONCLUSION" if status.concluded else "VERIFIED · battle unfinished") if status.verified else "COMMAND REPLAY · verification pending"]
 
 func _next_chunk() -> void:
 	busy = true

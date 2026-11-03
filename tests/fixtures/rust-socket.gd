@@ -61,6 +61,11 @@ func on_packet(kind: int, value: Variant) -> void:
 				get_tree().quit()
 
 func check_packets() -> void:
+	var decor = JSON.parse_string('[["fence",[1,2,3],0,[4,1,2]],["wire",[0,0,0],1,[[5,0,0],2]],["lamp",[0,0,0],0,1]]')
+	assert(SimulationClient.decode_decor(decor))
+	assert(decor[0][1] is Vector3 and decor[0][3] is Vector3 and decor[1][3][0] is Vector3 and decor[2][3] == 1)
+	assert(not SimulationClient.decode_decor(JSON.parse_string('[["fence",[0,0,0],0,1]]')))
+	assert(not SimulationClient.decode_decor(JSON.parse_string('[["wire",[0,0,0],0,[[1,2],0]]]')))
 	var probe := SimulationClient.new()
 	var report := {"padding": "x".repeat(70000)}
 	var bytes := JSON.stringify(report).to_utf8_buffer()

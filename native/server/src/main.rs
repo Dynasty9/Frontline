@@ -5,7 +5,7 @@ use std::{
     path::PathBuf,
 };
 
-const USAGE: &str = "usage: frontline-server verify RECORDING | prepare INITIAL CHECKPOINT | run INITIAL RECORDING TICKS | serve INITIAL CONFIG RECORDING";
+const USAGE: &str = "usage: frontline-server verify RECORDING | prepare INITIAL CHECKPOINT | run INITIAL RECORDING TICKS | serve INITIAL CONFIG RECORDING | play RECORDING CONFIG";
 
 fn read_initial(path: PathBuf) -> Result<Vec<u8>, String> {
     let file = File::open(path).map_err(|e| e.to_string())?;
@@ -23,10 +23,14 @@ fn run() -> Result<(), String> {
     let mut args = std::env::args_os().skip(1);
     let command = args.next().ok_or(USAGE)?;
     match command.to_str() {
-        Some("serve") => {
+        Some("serve" | "play") => {
             let initial = PathBuf::from(args.next().ok_or("missing initial battlefield")?);
             let config = PathBuf::from(args.next().ok_or("missing server configuration")?);
-            let recording = PathBuf::from(args.next().ok_or("missing recording path")?);
+            let recording = if command == "serve" {
+                Some(PathBuf::from(args.next().ok_or("missing recording path")?))
+            } else {
+                None
+            };
             if args.next().is_some() {
                 return Err("unexpected server argument".into());
             }
@@ -40,11 +44,18 @@ fn run() -> Result<(), String> {
             let error_path = config.error.clone();
             let result = (|| {
                 let content = Content::bundled()?;
+                if recording.is_none() {
+                    return frontline_server::serve::playback(
+                        File::open(initial).map_err(|e| e.to_string())?,
+                        &content,
+                        config,
+                    );
+                }
                 let simulation = initial::load(&read_initial(initial)?, &content)?;
                 let output = File::options()
                     .write(true)
                     .create_new(true)
-                    .open(recording)
+                    .open(recording.unwrap())
                     .map_err(|e| e.to_string())?;
                 frontline_server::serve::run(simulation, &content, config, output)
             })();
