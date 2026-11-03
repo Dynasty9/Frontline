@@ -54,6 +54,7 @@ p.add_argument("--units", type=int, default=500)
 p.add_argument("--vehicles", type=int, default=0)
 p.add_argument("--mode", choices=["idle", "march", "combat"], default="combat")
 p.add_argument("--seed", type=int, default=3)
+p.add_argument("--team", type=int, choices=[-1, 0, 1], default=-1, help="Observer (-1) or a player's filtered view")
 p.add_argument("--warmup", type=float, default=15)
 p.add_argument("--duration", type=float, default=10)
 p.add_argument("--zoom", type=float, default=130)
@@ -79,7 +80,7 @@ else:
 cmd += ["--", "--novsync", "--set=fps_cap:0", "--scenario=stress", f"--units={a.units}", f"--map-size={a.map_size}",
         f"--preset={a.preset}",
         f"--vehicles={a.vehicles}",
-        f"--stress-mode={a.mode}", f"--seed={a.seed}", "--team=-1", f"--perf-at={a.warmup}",
+        f"--stress-mode={a.mode}", f"--seed={a.seed}", f"--team={a.team}", f"--perf-at={a.warmup}",
         f"--perf-json={report_path}", f"--perf-duration={a.duration}", f"--quit-after={a.warmup+a.duration+15}", "--focus=0,0", f"--zoom={a.zoom}"]
 with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as port_socket:
     port_socket.bind(("127.0.0.1", 0))

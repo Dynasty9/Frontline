@@ -57,6 +57,9 @@ Rendered captures normally run offscreen without focus. Add `--visible` for a
 normal game window and leave it focused during capture. Reports include
 `focused_frames`, `window_pixels`, `render_scale` and the current shadow distance;
 compare focused and background runs separately, with other apps left running.
+The default `--team=-1` shows both armies as an observer. Use `--team=0` or
+`--team=1` to measure the corresponding player's filtered view, and report that
+choice alongside the result rather than comparing it to an observer capture.
 
 Use `--exported` with an exported executable. Use a fresh output folder. The runner
 saves frame/tick percentiles, process RSS samples, logs and a screenshot. `--mode`

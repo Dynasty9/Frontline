@@ -18,6 +18,7 @@ const CLOSE_Z := 22.0
 const FAR_Z := 42.0
 var _refresh_left := 0.0
 var _refresh_view := Transform3D.IDENTITY
+var _bubble_layouts := {}
 static var _contact_mesh: ArrayMesh
 
 
@@ -665,11 +666,7 @@ func _leader_marks(men: Array, a: float) -> void:
 			continue
 		var sp: Vector2 = m[2] + Vector2(0, -6)
 		var tc: Color = (Defs.TEAM_COLORS[s.team] if s.team >= 0 else Color.WHITE).lightened(0.3)
-		for i in 2:
-			var y := sp.y - i * 4.0
-			var pts := PackedVector2Array([Vector2(sp.x - 5, y + 2.5), Vector2(sp.x, y - 1.0), Vector2(sp.x + 5, y + 2.5)])
-			draw_polyline(pts, Color(0, 0, 0, 0.6 * a), 3.4, true)
-			draw_polyline(pts, Color(tc.r, tc.g, tc.b, a), 1.8, true)
+		MapSymbols.glyph(self, "leader", sp, 6.0, tc, a, false)
 		var o: Array = hud.orders.get(s.sid, [])
 		if not o.is_empty() and int(o[5]) >= 0 and now - int(o[5]) < 3500:
 			var blink := 0.6 + 0.4 * sin(now / 90.0)
@@ -785,14 +782,29 @@ func _command_fan(cam: Camera3D, lead: Soldier, a: float) -> void:
 		draw_line(s0, s1, Color(1.0, 0.86, 0.55, 0.3 * a), 1.2, true)
 		draw_circle(s0.lerp(s1, k), 2.4, Color(1.0, 0.86, 0.55, 0.9 * a))
 
+func _bubble_layout(text: String, fs: int, weight: int, wmax: float) -> Array:
+	var key := [text, fs, weight, wmax]
+	var layout: Array = _bubble_layouts.get(key, [])
+	if layout.is_empty():
+		var lines := MapSymbols.wrap(text, fs, weight, wmax)
+		var width := 0.0
+		for line: String in lines:
+			width = maxf(width, UiKit.text_width(line, fs, weight))
+		layout = [lines, width]
+		# Orders include changing map references; keep only a bounded set of phrases.
+		if _bubble_layouts.size() >= 256:
+			_bubble_layouts.clear()
+		_bubble_layouts[key] = layout
+	return layout
+
+
 func _bubble(anchor: Vector2, text: String, kind: String, a: float, fs: int, wmax: float) -> void:
 	if a <= 0.01:
 		return
 	var weight := 600 if kind != "chat" else 400
-	var lines := MapSymbols.wrap(text, fs, weight, wmax)
-	var lw := 0.0
-	for l in lines:
-		lw = maxf(lw, UiKit.text_width(l, fs, weight))
+	var layout := _bubble_layout(text, fs, weight, wmax)
+	var lines: Array = layout[0]
+	var lw: float = layout[1]
 	var icon := 15.0 if kind == "radio" else 0.0
 	var lh := fs + 3.0
 	var sz := Vector2(lw + 16.0 + icon, lines.size() * lh + 8.0)
@@ -825,7 +837,10 @@ func _bubble(anchor: Vector2, text: String, kind: String, a: float, fs: int, wma
 	var tx := clampf(anchor.x, r.position.x + 9.0, r.end.x - 9.0)
 	if anchor.y > r.end.y + 1.0:
 		MapSymbols.poly(self, PackedVector2Array([Vector2(tx - 5, r.end.y - 1), Vector2(tx + 5, r.end.y - 1), anchor]), bg)
-	draw_style_box(UiKit.boxc(bg, 0, edge, 1, 0.0), r)
+	# Match the shared style's color quantization without rebuilding its border mesh.
+	bg = Color(int(bg.r * 63.0) / 63.0, int(bg.g * 63.0) / 63.0, int(bg.b * 63.0) / 63.0, int(bg.a * 63.0) / 63.0)
+	draw_rect(r.grow(-1.0), bg)
+	draw_rect(r.grow(-0.5), edge, false, 1.0)
 	var x0 := r.position.x + 8.0
 	if kind == "radio":
 		MapSymbols.glyph(self, "radio", Vector2(x0 + 5, r.position.y + r.size.y * 0.5), 6.0, fg, a, false)

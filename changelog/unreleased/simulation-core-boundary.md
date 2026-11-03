@@ -22,6 +22,14 @@ caption = "Before: shared soldier models use the default distance for reducing m
 [[screenshots]]
 file = "shared-lod-after.png"
 caption = "After: shared soldiers reduce geometry earlier while nearby articulated models keep their detail. This close-view sample reduced GPU p99 from 5.63 to 5.05 ms; overall frame spikes still exceed the 60 FPS budget."
+
+[[screenshots]]
+file = "leader-marks-before.png"
+caption = "Before: squad leader chevrons are rebuilt from lines whenever the battlefield overlay refreshes."
+
+[[screenshots]]
+file = "leader-marks-after.png"
+caption = "After: the same leader cues use the shared symbol atlas. Repeated close-view runs reduced frame p99 from 23.1–25.0 ms to 21.1–22.7 ms; the 60 FPS frame-time target remains open."
 +++
 
 - Desktop battles now run in a separate Rust process while Godot draws the battlefield and handles your orders. Infantry, vehicles, combat, logistics, tactical AI, commanders and the five operations use the same authoritative simulation.
@@ -49,6 +57,8 @@ caption = "After: shared soldiers reduce geometry earlier while nearby articulat
 - Unchanged scenery reuses its prepared network state, while damage, construction, supply and visibility changes still reach clients immediately at the next observation update.
 - Long order lines skip offscreen dash projections without moving the visible dashes. Routine roster refreshes move to the next frame when the battlefield overlay is also updating.
 - Attack-plan markers discard old drawing records each refresh, preventing their cache from growing throughout a long battle.
+- Squad leader chevrons reuse the symbol atlas, reducing overlay drawing spikes while retaining the same leaders and troops.
+- Speech bubbles reuse wrapped text and draw their flat backgrounds directly, reducing repeated overlay work while retaining the messages, colors and placement.
 - Wildlife waits for the battlefield to finish loading before reading terrain being prepared on a worker thread.
 - Large-map starting states and command recordings use lossless compressed blocks, retaining exact state for independent verification.
 - Distant soldier batches expand their bounds for elevated and airborne troops, preventing models from disappearing above the old flat-ground bounds.
@@ -59,7 +69,7 @@ caption = "After: shared soldiers reduce geometry earlier while nearby articulat
 - New detailed models build one at a time. Squad-overview preparation yields at most one frame to a HUD redraw, keeping selection immediate.
 - Soldier-batch uploads also avoid squad-summary and roster work, yielding at most two frames while GPU motion continues. This reduces overlapping client work without changing simulation timing.
 - Detailed soldiers reuse prepared geometry with independent animation, reducing construction pauses when troops enter the camera view. Clothing and face variation is reduced within each unit type and team.
-- Closing the game during music preparation waits for the audio worker to finish safely.
+- Closing the game during music or sound preparation waits for the audio workers to finish safely.
 - Wildlife looks for nearby threats through spatial cells; soaring birds check aircraft directly instead of scanning every soldier.
 - Cosmetic ground colliders sample hills, craters and trenches in one Rust call per tile, reducing collision-update spikes.
 - Squad summaries calculate each group once, reducing repeated HUD work while keeping selection immediate.

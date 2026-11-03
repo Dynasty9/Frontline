@@ -1027,3 +1027,62 @@ capture. Windows Performance Recorder could not start CPU recording because
 the OS denied its profiling policy (`0xc5585011`); no kernel trace was collected
 and no system policies or unrelated processes were changed. Evidence:
 `build/frame-cpu.json` and `build/frame-cpu.meta.json`.
+
+### Current-main HUD isolation
+
+The branch incorporates main through `5589b7a`. The refreshed Windows export
+passes nine focused frame, minimap, soldier, overlay and terrain checks. Attack
+plans now discard their drawing deduplication keys each refresh; previously
+they retained a key for every rendered frame throughout the battle.
+
+At close zoom on the same 3 km / 500-soldier command recording, an ABBA diagnostic
+measured 75.10/79.16 FPS with the HUD and 109.76/104.34 FPS with it hidden.
+Frame p99 was 24.76/23.88 ms with the HUD versus 16.33/16.89 ms without it;
+GPU p99 stayed within 5.04-5.15 ms. The hidden HUD still runs some preparation,
+so this does not isolate every HUD operation. It does identify client UI drawing
+as a substantial remaining cost. Hiding the interface is only a diagnostic and
+is not a shipped optimization. Evidence: `build/hud-cost-comparison.json`.
+
+A retained speech-bubble prototype reused text and background drawing commands
+while moving and fading the resulting nodes. Lifecycle checks passed; Vulkan and
+Compatibility comparisons exposed fractional-position text filtering, fixed by
+snapping the retained origins to pixels. Speech CPU mean fell from 0.214 ms to
+0.161/0.142 ms per frame, but ABBA whole-frame p99 regressed: 25.38/24.43 ms for
+controls versus 28.85/30.13 ms for the prototype. The nodes and their extra cache
+are not included. Evidence: `build/speech-bubbles-comparison.json` and
+`build/rejected-speech-bubbles.patch`.
+
+An isolated cached-camera projection loop matched the engine's perspective,
+orthographic and frustum positions within 0.005 pixels, including camera offsets,
+but saved only 3.8% over the existing loop. The extra projection code is not
+included. Evidence: `build/camera-project-bench.log`.
+
+Squad-leader chevrons now use the existing symbol atlas instead of four
+antialiased polylines per leader. An ABBA close-view comparison measured
+76.97/75.28 FPS and frame p99 23.11/24.98 ms for controls, versus 78.21/78.93 FPS
+and 21.15/22.70 ms with the atlas. The interaction-drawing phase fell from
+1.96/2.33 ms p99 to 0.18/0.21 ms; adjacent-frame difference p99 fell from
+12.40/12.78 ms to 10.18/11.78 ms. Both renderers passed the chevron visual probe;
+the atlas changes edge antialiasing slightly while preserving the rank cue.
+All soldiers remain visible. This improves close-view tails but does not close
+the 60 FPS gate. Evidence: `build/leader-atlas-comparison.json` and adjacent
+captures.
+
+Early-exit visual probes also exposed sound-synthesis workers surviving their
+owner during startup shutdown. The sound autoload now joins its existing
+worker group on tree exit, as music already does. The headless regression and
+early-exit Vulkan/Compatibility renders finish without the worker allocator
+error. This is separate from the documented upstream threaded-loading leak.
+
+A smaller speech optimization keeps at most 256 wrapped layouts and draws the
+flat background and border as rectangles, retaining immediate-mode text and
+placement. Four visual states match pixel-for-pixel on both Vulkan and
+Compatibility, including wrapped text, fading and fractional anchors. Layout
+checks cover both weights, multiple sizes/widths, empty text and eviction.
+The isolated 40-bubble loop fell from 232,662 to 161,773 microseconds across
+120 samples (30%). In full-battle ABBA playback, speech p99 fell from
+2.81/2.84 ms to 2.11/2.14 ms, while overall frame p99 stayed similar:
+22.43/22.68 ms before and 22.56/22.25 ms after. This is a component saving,
+not a claim that the 60 FPS target is met. Evidence:
+`build/bubble-layout-comparison.json`, `build/bubble-cache-micro.log` and
+`build/bubble-current-visual*.log`.
