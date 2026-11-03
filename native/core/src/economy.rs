@@ -19,15 +19,10 @@ fn team_valid(team: i8) -> bool {
 }
 pub fn fobs(actors: &Actors, team: i8, wrecked: bool) -> impl Iterator<Item = &Structure> {
     actors
-        .iter_kind(Kind::Structure)
-        .filter_map(move |a| match a {
-            Actor::Structure(s)
-                if s.kind == "fob" && s.team == team && s.built && (wrecked || !s.wrecked) =>
-            {
-                Some(s.as_ref())
-            }
-            _ => None,
-        })
+        .simulated_structures()
+        .iter()
+        .filter_map(|id| actors.structure(*id))
+        .filter(move |s| s.kind == "fob" && s.team == team && s.built && (wrecked || !s.wrecked))
 }
 pub fn nearest_fob(actors: &Actors, team: i8, position: Vector3) -> Option<u32> {
     let mut best = None;
@@ -53,7 +48,7 @@ pub fn used(
     vehicle_cap: &dyn Fn(&Vehicle) -> u32,
 ) -> u64 {
     actors
-        .iter()
+        .iter_combatants()
         .map(|a| match a {
             Actor::Soldier(s)
                 if s.identity.team == team

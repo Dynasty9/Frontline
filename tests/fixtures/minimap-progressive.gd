@@ -8,6 +8,12 @@ class TrackedMap extends HudMinimap:
 			draws[frame] = []
 		draws[frame].append(phase)
 
+class TrackedCamera extends RtsCamera:
+	var casts := 0
+	func ground_point(screen: Vector2) -> Vector3:
+		casts += 1
+		return Vector3(screen.x, 0, screen.y) + cam.position
+
 func _ready() -> void:
 	var world := World.new()
 	var hud := Hud.new()
@@ -58,6 +64,31 @@ func _ready() -> void:
 	rotated.sort()
 	assert(rotated == [0, 1, 2, 3, 4], "Rotation must update all layers in the same coordinate system")
 	world.cam.free()
+	world.cam = null
+	var tracked := TrackedCamera.new()
+	tracked.cam = Camera3D.new()
+	add_child(tracked.cam)
+	world.cam = tracked
+	var corners := map._view_corners(world, Vector2(1280, 720)).duplicate()
+	for i in 8:
+		assert(map._view_corners(world, Vector2(1280, 720)) == corners)
+	assert(tracked.casts == 4, "Stationary minimap views must reuse terrain intersections")
+	tracked.cam.position.x += 10
+	assert(map._view_corners(world, Vector2(1280, 720))[0].x == corners[0].x + 10)
+	assert(tracked.casts == 8, "Moving the camera must immediately update its minimap wedge")
+	tracked.cam.fov += 5
+	map._view_corners(world, Vector2(1280, 720))
+	assert(tracked.casts == 12, "Projection changes invalidate ground intersections")
+	map._view_corners(world, Vector2(1600, 900))
+	assert(tracked.casts == 16, "Resizing the viewport invalidates ground intersections")
+	world.has_view = false
+	world.terrain = TerrainMap.new(world)
+	map._view_corners(world, Vector2(1600, 900))
+	world.terrain.version += 1
+	map._view_corners(world, Vector2(1600, 900))
+	assert(tracked.casts == 24, "Changing the ground invalidates the minimap wedge")
+	tracked.cam.free()
+	tracked.free()
 	world.cam = null
 	map.free()
 	hud.free()

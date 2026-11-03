@@ -61,6 +61,53 @@ fn records(packets: &[Vec<u8>]) -> Vec<(u32, Vec<u8>)> {
     out
 }
 #[test]
+fn reused_snapshot_storage_preserves_refreshes_changes_and_actor_layouts() {
+    let c = Content::bundled().unwrap();
+    let mut s = map(
+        &c,
+        vec![
+            soldier(1, 0),
+            Actor::Structure(Box::new(Structure {
+                id: 3,
+                kind: "fob".into(),
+                team: 0,
+                ..Default::default()
+            })),
+        ],
+    );
+    let mut view = View::new(0).unwrap();
+    assert_eq!(view.update(&s, &c).births.len(), 2);
+    let mut refreshed = false;
+    for tick in 0..65 {
+        if tick == 10 {
+            replace(&mut s, |a| {
+                if let Actor::Structure(b) = a {
+                    b.hp *= 0.5;
+                }
+            });
+        }
+        let update = view.update(&s, &c);
+        let rows = records(&update.snapshots);
+        assert!(rows.iter().any(|(id, _)| *id == 1));
+        for (id, bytes) in &rows {
+            assert_eq!(
+                *bytes,
+                observation::state(&s, s.state.field.actors.get(*id).unwrap(), 0, &c)
+            );
+        }
+        if tick == 10 {
+            assert!(rows.iter().any(|(id, _)| *id == 3));
+        }
+        if tick > 10 && rows.iter().any(|(id, _)| *id == 3) {
+            refreshed = true;
+        }
+    }
+    assert!(
+        refreshed,
+        "Stationary objects must recover after a lost unreliable update"
+    );
+}
+#[test]
 fn unseen_units_never_enter_the_stream_and_lost_contacts_stop_exposing_state() {
     let c = Content::bundled().unwrap();
     let mut s = map(&c, vec![soldier(1, 0), soldier(2, 1)]);

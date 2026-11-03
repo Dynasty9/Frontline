@@ -2,11 +2,37 @@
 use crate::simulation::Simulation;
 use serde_json::{json, Value};
 use std::{
+    collections::BTreeMap,
     fs::File,
     io::Write,
     path::PathBuf,
     time::{Duration, Instant},
 };
+
+pub struct TickProfile {
+    at: Instant,
+    pub phases: BTreeMap<&'static str, f64>,
+}
+impl Default for TickProfile {
+    fn default() -> Self {
+        Self {
+            at: Instant::now(),
+            phases: BTreeMap::new(),
+        }
+    }
+}
+impl TickProfile {
+    pub fn begin(&mut self) {
+        self.phases.clear();
+        self.at = Instant::now();
+    }
+    pub fn mark(&mut self, phase: &'static str) {
+        let now = Instant::now();
+        self.phases
+            .insert(phase, now.duration_since(self.at).as_secs_f64() * 1000.);
+        self.at = now;
+    }
+}
 
 pub struct Profile {
     path: PathBuf,
@@ -15,6 +41,7 @@ pub struct Profile {
     began: Option<Instant>,
     ticks: Vec<f64>,
     simulation: Vec<f64>,
+    phases: BTreeMap<&'static str, Vec<f64>>,
 }
 impl Profile {
     pub fn decode(d: &Value) -> Result<Option<Self>, String> {
@@ -39,6 +66,7 @@ impl Profile {
             began: None,
             ticks: vec![],
             simulation: vec![],
+            phases: BTreeMap::new(),
         }))
     }
     pub fn start(&mut self) {
@@ -60,6 +88,11 @@ impl Profile {
         if elapsed < self.warmup + self.duration {
             self.ticks.push(tick.elapsed().as_secs_f64() * 1000.);
             self.simulation.push(simulation_ms);
+            if let Some(timing) = &state.profile {
+                for (&name, &ms) in &timing.phases {
+                    self.phases.entry(name).or_default().push(ms);
+                }
+            }
             return Ok(false);
         }
         let projection: Vec<_> = self
@@ -81,7 +114,8 @@ impl Profile {
         let report = json!({"runtime":"rust", "tick_hz":60, "engine":crate::ENGINE_ID,
             "tick":state.state.tick, "entities":state.state.field.actors.entities().len(),
             "soldiers_alive":alive,"shots_since_start":shots,"duration_seconds":self.duration.as_secs_f64(),
-            "ticks":samples(&self.ticks),"simulation":samples(&self.simulation),"projection":samples(&projection)});
+            "ticks":samples(&self.ticks),"simulation":samples(&self.simulation),"projection":samples(&projection),
+            "phases":self.phases.iter().map(|(name, times)|(*name,samples(times))).collect::<BTreeMap<_,_>>()});
         let mut file = File::options()
             .write(true)
             .create_new(true)

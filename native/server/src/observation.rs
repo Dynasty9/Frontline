@@ -63,10 +63,15 @@ pub fn can_know(s: &Simulation, a: &Actor, view: i8) -> bool {
 
 pub fn state(s: &Simulation, a: &Actor, view: i8, content: &Content) -> Vec<u8> {
     let mut out = Vec::with_capacity(32);
+    write_state(s, a, view, content, &mut out);
+    out
+}
+fn write_state(s: &Simulation, a: &Actor, view: i8, content: &Content, out: &mut Vec<u8>) {
+    out.clear();
     match a {
         Actor::Soldier(s) => {
-            position(&mut out, s.motion.position);
-            angle(&mut out, s.motion.yaw);
+            position(out, s.motion.position);
+            angle(out, s.motion.yaw);
             let v = &s.vitals;
             out.extend_from_slice(&[
                 v.life as u8,
@@ -114,9 +119,9 @@ pub fn state(s: &Simulation, a: &Actor, view: i8, content: &Content) -> Vec<u8> 
             out.push(cover);
         }
         Actor::Vehicle(v) => {
-            position(&mut out, v.position);
-            angle(&mut out, v.yaw);
-            angle(&mut out, v.turret_yaw);
+            position(out, v.position);
+            angle(out, v.yaw);
+            angle(out, v.turret_yaw);
             out.extend_from_slice(&[
                 fraction(v.hp / v.max_hp.max(1.)),
                 v.flags,
@@ -124,8 +129,8 @@ pub fn state(s: &Simulation, a: &Actor, view: i8, content: &Content) -> Vec<u8> 
                 v.team as u8,
             ]);
             out.extend_from_slice(&v.sling_cargo.to_le_bytes());
-            angle(&mut out, v.flight_pitch);
-            angle(&mut out, v.flight_roll);
+            angle(out, v.flight_pitch);
+            angle(out, v.flight_roll);
         }
         Actor::Structure(s) => {
             let private = view >= 0 && s.team >= 0 && view != s.team;
@@ -171,7 +176,7 @@ pub fn state(s: &Simulation, a: &Actor, view: i8, content: &Content) -> Vec<u8> 
             }
         }
         Actor::Projectile(p) => {
-            position(&mut out, p.motion.position());
+            position(out, p.motion.position());
             match &p.motion {
                 Motion::Ballistic(f) => {
                     out.extend_from_slice(&[(f.smoke_radius * 20.) as u8, f.flying.into()])
@@ -180,8 +185,8 @@ pub fn state(s: &Simulation, a: &Actor, view: i8, content: &Content) -> Vec<u8> 
             }
         }
         Actor::Drone(d) => {
-            position(&mut out, d.flight.position);
-            angle(&mut out, f64::from(d.flight.yaw));
+            position(out, d.flight.position);
+            angle(out, f64::from(d.flight.yaw));
             out.extend_from_slice(&[
                 u8::from(d.flight.diving)
                     | (u8::from(d.flight.phase == sim::drone::Phase::Uncontrolled) << 1),
@@ -189,7 +194,6 @@ pub fn state(s: &Simulation, a: &Actor, view: i8, content: &Content) -> Vec<u8> 
             ]);
         }
     }
-    out
 }
 
 pub fn props(s: &Simulation, a: &Actor, view: i8) -> Value {
@@ -363,18 +367,22 @@ impl View {
         let mut out = Update::default();
         self.sequence += 1;
         let mut packet = (simulation.state.field.now as f32).to_le_bytes().to_vec();
+        let mut bytes = Vec::with_capacity(32);
         for a in simulation.state.field.actors.iter() {
             let id = a.identity().id;
             let visible = can_know(simulation, a, self.team);
             if !visible && !self.known.contains_key(&id) {
                 continue;
             }
-            let bytes = if visible {
-                state(simulation, a, self.team, content)
+            bytes.clear();
+            if visible {
+                write_state(simulation, a, self.team, content, &mut bytes);
+            }
+            let stamp = if visible {
+                property_stamp(a, self.team)
             } else {
-                vec![]
+                0
             };
-            let stamp = property_stamp(a, self.team);
             if visible && !self.known.contains_key(&id) {
                 let p = props(simulation, a, self.team);
                 out.births.push(Spawn {
@@ -444,7 +452,7 @@ impl View {
             packet.extend_from_slice(&id.to_le_bytes());
             packet.push(bytes.len() as u8);
             packet.extend_from_slice(&bytes);
-            known.state = bytes;
+            std::mem::swap(&mut known.state, &mut bytes);
             known.refresh = self.sequence + 45 + u64::from(id % 15);
         }
         if packet.len() > 4 {

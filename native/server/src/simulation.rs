@@ -124,6 +124,7 @@ pub struct Simulation {
     pub mission: Option<crate::mission::Mission>,
     pub presentation: Vec<u8>,
     pub aircraft_models: BTreeMap<u32, String>,
+    pub profile: Option<crate::profiling::TickProfile>,
     search: PerceptionSearch,
 }
 impl Simulation {
@@ -171,6 +172,7 @@ impl Simulation {
             mission,
             presentation: b"{}".to_vec(),
             aircraft_models: BTreeMap::new(),
+            profile: None,
             search: PerceptionSearch::default(),
         })
     }
@@ -403,6 +405,9 @@ impl Simulation {
         Ok(result)
     }
     pub fn step(&mut self, content: &Content, inputs: &[Input]) -> Result<Frame, &'static str> {
+        if let Some(timing) = &mut self.profile {
+            timing.begin();
+        }
         if inputs.len() > MAX_FRAME_INPUTS {
             return Err("too many frame inputs");
         }
@@ -546,8 +551,18 @@ impl Simulation {
                     }
                 }
             }
-            out.events
-                .extend(self.state.advance_battlefield(p, &mut self.search)?);
+            if let Some(timing) = &mut self.profile {
+                timing.mark("commands");
+            }
+            out.events.extend(self.state.advance_battlefield_profiled(
+                p,
+                &mut self.search,
+                |phase| {
+                    if let Some(timing) = &mut self.profile {
+                        timing.mark(phase);
+                    }
+                },
+            )?);
             for commander in &mut self.commanders {
                 out.commands.extend(commander.advance(
                     &mut self.state,
@@ -573,6 +588,9 @@ impl Simulation {
                     ));
                 }
             }
+            if let Some(timing) = &mut self.profile {
+                timing.mark("commanders_and_missions");
+            }
             out.events.extend(self.state.finish_battlefield(p)?);
             let births = out
                 .commands
@@ -594,6 +612,9 @@ impl Simulation {
             }
             self.aircraft_models
                 .retain(|id, _| self.state.field.actors.get(*id).is_some());
+            if let Some(timing) = &mut self.profile {
+                timing.mark("deferred_effects");
+            }
             Ok(out)
         })
     }

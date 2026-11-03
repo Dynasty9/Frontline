@@ -88,7 +88,7 @@ impl Server {
         let ready = directory.join("ready.json");
         let stop = directory.join("stop");
         let replay = directory.join("match.flrp");
-        let players = [(7, 0, '1'), (9, 1, '2'), (11, -1, '3')]
+        let players = [(7, 0, '1'), (9, 1, '2'), (11, -1, '3'), (13, 0, '4')]
             .map(|(peer, team, digit)| Admission {
                 peer,
                 team,
@@ -368,10 +368,12 @@ fn late_join_and_reconnect_receive_fresh_baselines_without_changing_ownership() 
     }
     let mut returning = Client::new(&server, '1');
     let mut observer = Client::new(&server, '3');
-    while returning.tick < 76 || observer.tick < 76 {
+    let mut ally = Client::new(&server, '4');
+    while returning.tick < 76 || observer.tick < 76 || ally.tick < 76 {
         b.poll();
         returning.poll();
         observer.poll();
+        ally.poll();
         assert!(Instant::now() < deadline);
         thread::sleep(Duration::from_millis(1));
     }
@@ -379,6 +381,8 @@ fn late_join_and_reconnect_receive_fresh_baselines_without_changing_ownership() 
         returning.loaded
             && returning.spawns >= first_baseline
             && observer.spawns >= returning.spawns
+            && ally.loaded
+            && ally.spawns == returning.spawns
     );
     let profile: serde_json::Value =
         serde_json::from_slice(&fs::read(server.directory.join("profile.json")).unwrap()).unwrap();

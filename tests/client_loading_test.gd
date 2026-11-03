@@ -2,6 +2,11 @@ extends Node
 
 var failures := 0
 
+class TrackedWildlife extends Wildlife:
+	var ticks := 0
+	func _tick(_dt: float) -> void:
+		ticks += 1
+
 
 func check(ok: bool, message: String) -> void:
 	if not ok:
@@ -13,6 +18,19 @@ func _ready() -> void:
 	var world := World.new()
 	world.srv = false
 	world.has_view = false
+	world.cam = RtsCamera.new()
+	var wildlife := TrackedWildlife.new()
+	wildlife.world = world
+	wildlife.level = 1
+	wildlife._process(0.016)
+	check(wildlife.ticks == 0, "Wildlife must not read terrain while the loading worker replaces it")
+	world.loaded = true
+	wildlife._process(0.016)
+	check(wildlife.ticks == 1, "Wildlife resumes on the completed battlefield")
+	world.loaded = false
+	world.cam.free()
+	world.cam = null
+	wildlife.free()
 	world.terrain = TerrainMap.new(world)
 	var batch := []
 	for id in range(1, 19):

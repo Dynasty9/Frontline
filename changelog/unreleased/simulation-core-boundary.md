@@ -16,4 +16,6 @@ caption = "The replay viewer independently reruns a short recorded battle and ve
 - Cosmetic debris no longer advances gameplay randomness. New command recordings preserve the full starting battlefield and player inputs; existing observer archives remain unverified recordings.
 - Command recordings open in Replays, with pause, speed and timeline controls. Rewinding reruns the recorded commands; verification checks the final state and distinguishes unfinished battles from concluded games.
 - Generated-map scenery restores pavements, fences and overhead wires correctly through the socket connection.
+- Soldier updates reuse prepared weapon definitions, supply totals use the existing unit/building indexes, and teammates share observation preparation. Stationary minimap camera wedges reuse their ground intersections while retaining immediate camera feedback.
+- Wildlife waits for the battlefield to finish loading before reading terrain being prepared on a worker thread.
 - Multiplayer lobby and browser integration are still being completed. Large-map rendering performance is still under measurement; this change does not yet establish 60 FPS with 500 units.

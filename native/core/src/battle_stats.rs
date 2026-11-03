@@ -625,7 +625,7 @@ impl BattleStats {
         }
         let mut men = [0.0; 2];
         let mut vehicles = [0.0; 2];
-        for a in actors.iter() {
+        for a in actors.iter_combatants() {
             match a {
                 Actor::Soldier(s)
                     if side(s.identity.team)

@@ -27,12 +27,79 @@ fn point(d: &Value) -> Vector3 {
     Vector3::new(a[0] as f32, a[1] as f32, a[2] as f32)
 }
 
+struct WeaponDefinition {
+    fire: sim::infantry_fire::FireProfile,
+    bullet: sim::bullet::Weapon,
+    interval: f64,
+    suppression: f64,
+    sound: String,
+    piercing: bool,
+}
+impl WeaponDefinition {
+    fn decode(d: &Value) -> Self {
+        let sound = text(d, "snd", "rifle");
+        let piercing = flag(d, "ap");
+        let penetration = if piercing || sound == "hmg" {
+            3
+        } else if matches!(sound, "mg" | "minigun") {
+            2
+        } else if sound == "rifle" {
+            1
+        } else {
+            0
+        };
+        Self {
+            fire: sim::infantry_fire::FireProfile {
+                weapon: sim::infantry_weapon::Weapon {
+                    ammunition: number(d, "ammo", 0.) as i32,
+                    magazine: number(d, "mag", 30.) as i32,
+                    reload_time: number(d, "reload", 2.),
+                },
+                burst_min: d["burst"][0].as_i64().unwrap() as i32,
+                burst_max: d["burst"][1].as_i64().unwrap() as i32,
+            },
+            bullet: sim::bullet::Weapon {
+                accuracy: number(d, "acc", 0.),
+                range: number(d, "range", 0.),
+                damage: number(d, "dmg", 0.),
+                anti_air: flag(d, "aa"),
+                penetration,
+                drone_accuracy: if sound == "hmg" {
+                    0.08
+                } else if sound == "mg" {
+                    0.045
+                } else {
+                    0.03
+                },
+                explosive_radius: d["he"].as_f64(),
+                airburst: flag(d, "airburst"),
+            },
+            interval: number(d, "interval", 0.),
+            suppression: number(d, "supp", 0.),
+            sound: sound.into(),
+            piercing,
+        }
+    }
+    fn profile(&self) -> sim::infantry_fight_world::Profile<'_> {
+        sim::infantry_fight_world::Profile {
+            fire: self.fire,
+            bullet: self.bullet,
+            interval: self.interval,
+            suppression: self.suppression,
+            sound: &self.sound,
+            piercing: self.piercing,
+            optics: false,
+        }
+    }
+}
+
 pub struct Content {
     pub digest: [u8; 32],
     pub definitions: Value,
     pub loadouts: BTreeMap<String, Loadout>,
     pub members: BTreeMap<String, Vec<Loadout>>,
     pub names: [Vec<String>; 2],
+    weapons: BTreeMap<String, WeaponDefinition>,
     crew: [Loadout; 2],
     fob_names: [Vec<String>; 2],
     items: BTreeMap<String, sim::production_orders::Item>,
@@ -187,7 +254,17 @@ impl Content {
             }
             produces.insert(key.clone(), list);
         }
+        let weapons: BTreeMap<_, _> = definitions["weapons"]
+            .as_object()
+            .ok_or("invalid weapon definitions")?
+            .iter()
+            .map(|(key, value)| (key.clone(), WeaponDefinition::decode(value)))
+            .collect();
+        if weapons.values().any(|w| !w.profile().valid()) {
+            return Err("invalid baked weapon profile".into());
+        }
         Ok(Self {
+            weapons,
             digest: *blake3::hash(SOURCE.replace("\r\n", "\n").as_bytes()).as_bytes(),
             definitions,
             loadouts,
@@ -215,53 +292,7 @@ impl Content {
         })
     }
     pub fn weapon(&self, key: &str) -> Option<sim::infantry_fight_world::Profile<'_>> {
-        let d = &self.definitions["weapons"][key];
-        if d.is_null() {
-            return None;
-        }
-        let sound = text(d, "snd", "rifle");
-        let piercing = flag(d, "ap");
-        let penetration = if piercing || sound == "hmg" {
-            3
-        } else if matches!(sound, "mg" | "minigun") {
-            2
-        } else if sound == "rifle" {
-            1
-        } else {
-            0
-        };
-        Some(sim::infantry_fight_world::Profile {
-            fire: sim::infantry_fire::FireProfile {
-                weapon: sim::infantry_weapon::Weapon {
-                    ammunition: number(d, "ammo", 0.) as i32,
-                    magazine: number(d, "mag", 30.) as i32,
-                    reload_time: number(d, "reload", 2.),
-                },
-                burst_min: d["burst"][0].as_i64().unwrap() as i32,
-                burst_max: d["burst"][1].as_i64().unwrap() as i32,
-            },
-            bullet: sim::bullet::Weapon {
-                accuracy: number(d, "acc", 0.),
-                range: number(d, "range", 0.),
-                damage: number(d, "dmg", 0.),
-                anti_air: flag(d, "aa"),
-                penetration,
-                drone_accuracy: if sound == "hmg" {
-                    0.08
-                } else if sound == "mg" {
-                    0.045
-                } else {
-                    0.03
-                },
-                explosive_radius: d["he"].as_f64(),
-                airburst: flag(d, "airburst"),
-            },
-            interval: number(d, "interval", 0.),
-            suppression: number(d, "supp", 0.),
-            sound,
-            optics: false,
-            piercing,
-        })
+        self.weapons.get(key).map(WeaponDefinition::profile)
     }
     pub fn infantry_weapon(&self, s: &Infantry) -> Option<sim::infantry_fight_world::Profile<'_>> {
         self.weapon(if s.identity.mounted_weapon.is_empty() {

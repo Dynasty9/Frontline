@@ -178,7 +178,7 @@ func apply_settings() -> void:
 
 
 func _process(dt: float) -> void:
-	if level <= 0 or world.cam == null or world.building:
+	if level <= 0 or world.cam == null or world.building or not world.loaded:
 		return
 	var t0 := Time.get_ticks_usec()
 	_tick(dt)

@@ -74,6 +74,15 @@ impl MatchState {
         p: &Profiles<'_>,
         search: &mut PerceptionSearch,
     ) -> Result<Vec<Event>, &'static str> {
+        self.advance_battlefield_profiled(p, search, |_| {})
+    }
+    /// Phase boundaries are observations only; their timing never changes the work quota.
+    pub fn advance_battlefield_profiled(
+        &mut self,
+        p: &Profiles<'_>,
+        search: &mut PerceptionSearch,
+        mut phase: impl FnMut(&'static str),
+    ) -> Result<Vec<Event>, &'static str> {
         if self.tick >= i64::MAX as u64
             || !self.field.now.is_finite()
             || !(0. ..1e12 - 100_000.).contains(&self.field.now)
@@ -118,10 +127,12 @@ impl MatchState {
                 }
             }
         }
+        phase("navigation");
         f.actors.rebuild_units(&mut f.units)?;
         search.rebuild_actors(&f.actors, &f.geometry.terrain, f.now, |v| {
             (p.shared.vehicle)(v).crew.helicopter
         })?;
+        phase("perception_index");
         let owned: Vec<_> = f
             .actors
             .iter_kind(Kind::Structure)
@@ -189,6 +200,7 @@ impl MatchState {
                 .map(Event::Infantry),
             );
         }
+        phase("infantry");
         let structures = f.actors.simulated_structures().to_vec();
         for id in structures {
             // A preceding research building can change later tent staff, refills and vehicle crews.
@@ -235,6 +247,7 @@ impl MatchState {
                 .map(Event::Building),
             );
         }
+        phase("structures");
         out.extend(
             f.fires
                 .tick(
@@ -258,6 +271,7 @@ impl MatchState {
                 .into_iter()
                 .map(Event::Fire),
         );
+        phase("fires");
         // Snapshot all three lists before vehicles fire. Their new rounds fly on the next tick.
         let [vehicles, projectiles, drones] =
             [Kind::Vehicle, Kind::Projectile, Kind::Drone].map(|k| {
@@ -266,14 +280,17 @@ impl MatchState {
                     .map(|a| a.identity().id)
                     .collect::<Vec<_>>()
             });
-        let owned: Vec<_> = f
-            .actors
-            .iter_kind(Kind::Structure)
-            .filter_map(|a| match a {
-                Actor::Structure(s) if s.team >= 0 => Some(s.id),
-                _ => None,
-            })
-            .collect();
+        let owned: Vec<_> = if vehicles.is_empty() {
+            vec![]
+        } else {
+            f.actors
+                .iter_kind(Kind::Structure)
+                .filter_map(|a| match a {
+                    Actor::Structure(s) if s.team >= 0 => Some(s.id),
+                    _ => None,
+                })
+                .collect()
+        };
         let upgrades = Upgrades::from(&self.rules.economy);
         let cannon = |v: &Vehicle| match (p.vehicle)(v) {
             VehicleProfile::Ground(p) => p.weapons.cannon.is_some(),
@@ -353,6 +370,7 @@ impl MatchState {
             })?;
             out.extend(events.into_iter().map(Event::Vehicle));
         }
+        phase("vehicles");
         for id in projectiles {
             if f.actors.get(id).is_none() {
                 continue;
@@ -390,6 +408,7 @@ impl MatchState {
                 .map(Event::Ordnance),
             );
         }
+        phase("ordnance");
         let squads: Vec<_> = f.squads.iter().map(|q| q.id).collect();
         for id in squads {
             let events = squad_movement::Context {
@@ -422,6 +441,7 @@ impl MatchState {
                 out.push(Event::Squad(event));
             }
         }
+        phase("squads");
         let rules = rules_world::Profiles {
             reserves: p.rules.reserves,
             truck: p.rules.truck,
@@ -453,6 +473,7 @@ impl MatchState {
         f.battle.tick(dt, f.now, supply, &f.actors, |s| {
             (p.shared.movement)(s).bearer
         })?;
+        phase("rules_and_ledger");
         Ok(out)
     }
 

@@ -432,6 +432,7 @@ fn run_timeline(
     }
     let mut network = Network::bind(config.bind, config.admissions)?;
     let mut profile = config.profile;
+    simulation.profile = profile.as_ref().map(|_| Default::default());
     let public_map = chunks(&map(&simulation)?);
     let presentation: Value =
         serde_json::from_slice(&simulation.presentation).map_err(|e| e.to_string())?;
@@ -448,7 +449,7 @@ fn run_timeline(
     }
     println!("SIMULATION_LISTENING {ready}");
     let mut slots = BTreeMap::<usize, i8>::new();
-    let mut views = BTreeMap::<usize, View>::new();
+    let mut views = BTreeMap::<i8, View>::new();
     let mut pending = VecDeque::<Input>::new();
     let mut render_events = Vec::with_capacity(4);
     let mut start = false;
@@ -534,7 +535,8 @@ fn run_timeline(
                     slots.insert(slot, a.team);
                     let mut view = View::new(a.team)?;
                     let baseline = view.update(&simulation, content);
-                    views.insert(slot, view);
+                    // Late joiners get their own baseline without resetting the team's deltas.
+                    views.entry(a.team).or_insert(view);
                     json_packet(
                         &mut network,
                         slot,
@@ -577,7 +579,7 @@ fn run_timeline(
                 }
                 Incoming::Left { slot, peer } => {
                     slots.remove(&slot);
-                    views.remove(&slot);
+                    views.retain(|team, _| slots.values().any(|side| side == team));
                     if !timeline.is_replay() {
                         pending.push_back(Input::Leave { peer });
                     }
@@ -626,13 +628,19 @@ fn run_timeline(
             let inputs: Vec<_> = pending.drain(..count).collect();
             let Some(frame) = timeline.step(&mut simulation, content, &inputs)? else {
                 // Flush the final partial snapshot group before declaring verification.
-                for (&slot, view) in &mut views {
+                for (&team, view) in &mut views {
+                    let recipients: Vec<_> = slots
+                        .iter()
+                        .filter_map(|(&slot, &side)| (side == team).then_some(slot))
+                        .collect();
                     publish(
                         &mut network,
-                        &[slot],
+                        &recipients,
                         &view.update(&simulation, content),
                         simulation.state.tick,
                     )?;
+                }
+                for &slot in slots.keys() {
                     json_packet(
                         &mut network,
                         slot,
@@ -661,10 +669,14 @@ fn run_timeline(
             render_events.push(Events::collect(&simulation, &frame));
             next += Duration::from_secs_f64(frontline_core::match_state::FIXED_DELTA / speed);
             if simulation.state.tick % 4 == 0 {
-                for (&slot, view) in &mut views {
+                for (&team, view) in &mut views {
+                    let recipients: Vec<_> = slots
+                        .iter()
+                        .filter_map(|(&slot, &side)| (side == team).then_some(slot))
+                        .collect();
                     publish(
                         &mut network,
-                        &[slot],
+                        &recipients,
                         &view.update(&simulation, content),
                         simulation.state.tick,
                     )?;

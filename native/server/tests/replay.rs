@@ -66,6 +66,24 @@ fn battle(content: &Content) -> Simulation {
     });
     Simulation::new(state, 7, content).unwrap()
 }
+
+#[test]
+fn phase_measurements_do_not_change_commands_events_or_checkpoint() {
+    let content = Content::bundled().unwrap();
+    let mut measured = battle(&content);
+    let mut plain = Simulation::restore(&measured.checkpoint().unwrap(), &content).unwrap();
+    measured.profile = Some(Default::default());
+    for _ in 0..120 {
+        let a = measured.step(&content, &[]).unwrap();
+        let b = plain.step(&content, &[]).unwrap();
+        assert_eq!(a.commands, b.commands);
+        assert_eq!(a.events, b.events);
+    }
+    assert_eq!(measured.checkpoint().unwrap(), plain.checkpoint().unwrap());
+    let phases = &measured.profile.as_ref().unwrap().phases;
+    assert!(phases.len() >= 12 && phases.contains_key("infantry"));
+    assert!(phases.values().all(|ms| ms.is_finite() && *ms >= 0.));
+}
 fn inputs(tick: u64) -> Vec<Input> {
     match tick {
         0 => vec![

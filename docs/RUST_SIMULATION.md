@@ -125,8 +125,9 @@ RECORDING` starts the socket host. Its private JSON config contains `bind`, admi
 `players` (`peer`, `team`, `name`, `token`) and optional `ready`, `stop`, `speed`,
 `error` control-file paths. A private launcher can supply a `lease` heartbeat path;
 the server finishes its recording if that owner stops renewing it for 30 seconds.
-An optional `profile` (`path`, `warmup`, `duration`) measures wall-clock tick and
-observation costs outside deterministic state. Keep admission tickets private. The initial importer
+An optional `profile` (`path`, `warmup`, `duration`) measures wall-clock tick,
+observation and individual simulation-phase costs outside deterministic state.
+The clock never changes AI work quotas or enters a checkpoint. Keep admission tickets private. The initial importer
 rejects already-running Godot worlds with active ordnance/plans rather than
 silently losing state. Output recordings are created exclusively, never overwritten.
 

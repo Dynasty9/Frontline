@@ -57,6 +57,11 @@ var _xf := Transform2D.IDENTITY  # map pixels -> the control (turning with the c
 var _fight := {}  # grid cell -> where men are firing in it, rebuilt each redraw
 var sketch := PackedVector3Array()  # a line being drawn on the minimap (Alt+right-drag)
 var _sk_last := Vector2.ZERO
+var _view_points := PackedVector3Array()
+var _view_camera_transform := Transform3D.IDENTITY
+var _view_projection := Projection.IDENTITY
+var _view_viewport := Vector2.ZERO
+var _view_ground_version := -2
 
 
 func _ready() -> void:
@@ -778,14 +783,31 @@ func _sketch_line(pts: PackedVector3Array, col: Color, a: float, grow: float) ->
 
 ## What the camera sees: the patch of ground on screen, lit, and faint lines
 ## back to where the camera stands, so you can tell which way it looks.
+func _view_corners(w: World, viewport_size: Vector2) -> PackedVector3Array:
+	var camera := w.cam.cam
+	var camera_transform := camera.global_transform
+	var projection := camera.get_camera_projection()
+	var ground_version := w.terrain.version if w.terrain else -1
+	if _view_points.size() != 4 or camera_transform != _view_camera_transform or projection != _view_projection or viewport_size != _view_viewport or ground_version != _view_ground_version:
+		_view_camera_transform = camera_transform
+		_view_projection = projection
+		_view_viewport = viewport_size
+		_view_ground_version = ground_version
+		_view_points.clear()
+		for screen in [Vector2.ZERO, Vector2(viewport_size.x, 0), viewport_size, Vector2(0, viewport_size.y)]:
+			_view_points.append(w.cam.ground_point(screen))
+	return _view_points
+
+
 func _draw_view(w: World) -> void:
 	var cam := w.cam
 	if cam == null:
 		return
 	var vs := get_viewport().get_visible_rect().size
 	var pts := PackedVector2Array()
-	for sp in [Vector2(0, 0), Vector2(vs.x, 0), vs, Vector2(0, vs.y)]:
-		pts.append(_pt(cam.ground_point(sp)))
+	# The camera wedge stays live; unchanged ground intersections need no new raycasts.
+	for point in _view_corners(w, vs):
+		pts.append(_pt(point))
 	var eye := _pt(cam.cam.global_position)
 	_ink.draw_line(eye, pts[3], Color(1, 1, 1, 0.3), 1.0, true)
 	_ink.draw_line(eye, pts[2], Color(1, 1, 1, 0.3), 1.0, true)
