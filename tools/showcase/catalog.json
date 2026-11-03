@@ -3437,6 +3437,69 @@
         "compatibility": "Target after with --rendering-method gl_compatibility",
         "command": "godot --main-pack PACK --resolution 1600x900 -- --aivai --seed=3 --offscreen --nohud --set=perf:0 --preset=high --mood=MOOD --focus=FOCUS --zoom=ZOOM --pitch=PITCH --cam-yaw=0.7 --screenshot=OUTPUT --shot-at=2 --quit-after=3"
       }
+    },
+    {
+      "entry": "changelog/unreleased/realism-04-talus.md",
+      "summary": "Sheltered lower slopes collect pale loose stone while exposed walls retain darker bedrock.",
+      "medium": "still",
+      "stage": "native-media",
+      "rationale": "Isolate this refinement against its immediate parent, with a targeted view and a distant view.",
+      "source_ref": "codex/realism-04-talus",
+      "sources": [
+        {
+          "file": "changelog/unreleased/realism-04-talus/target-before.jpg",
+          "sha256": "ff8494002ac166da0294874da8fb84423ad23703ef9ccd4f57ef68f4ffa22f22",
+          "caption": "target before"
+        },
+        {
+          "file": "changelog/unreleased/realism-04-talus/target-after.jpg",
+          "sha256": "44f68ec33da357bef2042a5f98fcc2c0bf2aa076c6e5b9cc700e588a8579152a",
+          "caption": "target after"
+        },
+        {
+          "file": "changelog/unreleased/realism-04-talus/wide-before.jpg",
+          "sha256": "1405db7e3626b7db01f623b293b89c9c4730979681fc9828f8f96da4bc799fcc",
+          "caption": "wide before"
+        },
+        {
+          "file": "changelog/unreleased/realism-04-talus/wide-after.jpg",
+          "sha256": "41886eca37cdce279a507e30dffda1256808c0a0c7e8d8fc75e7c03497bed71e",
+          "caption": "wide after"
+        },
+        {
+          "file": "changelog/unreleased/realism-04-talus/target-compat.jpg",
+          "sha256": "63cafd86772957bab13bb5adff611a3813163d56178f5d43ae497657013dc76f",
+          "caption": "target compat"
+        },
+        {
+          "file": "changelog/unreleased/realism-04-talus/compare.gif",
+          "sha256": "3f0202ba6a128303b9d344f3f5c6d8b5b81dd461ca561b8d00dae7be86c13b00",
+          "caption": "Native frames, separate labels, shared palette, 2.5 seconds each."
+        }
+      ],
+      "output": null,
+      "title": "Distinguish loose scree from solid cliffs",
+      "version": "unreleased",
+      "kind": "improved",
+      "capture": {
+        "before_ref": "a3888ca5a3a4b6c333906acf019e36abe900099a",
+        "after_ref": "codex/realism-04-talus",
+        "before_pack": "realism-03.pck",
+        "after_pack": "realism-04.pck",
+        "seed": 3,
+        "preset": "high",
+        "mood": "day",
+        "resolution": "1600x900",
+        "focus": "250,250",
+        "zoom": 350,
+        "pitch": -28,
+        "yaw": 0.7,
+        "shot_at": 2,
+        "quit_after": 3,
+        "wide": "focus 0,0; zoom 900; pitch -22; yaw 0.7",
+        "compatibility": "Target after with --rendering-method gl_compatibility",
+        "command": "godot --main-pack PACK --resolution 1600x900 -- --aivai --seed=3 --offscreen --nohud --set=perf:0 --preset=high --mood=MOOD --focus=FOCUS --zoom=ZOOM --pitch=PITCH --cam-yaw=0.7 --screenshot=OUTPUT --shot-at=2 --quit-after=3"
+      }
     }
   ],
   "layout_capture": {
