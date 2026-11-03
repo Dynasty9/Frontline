@@ -6,6 +6,14 @@ kind = "improved"
 [[screenshots]]
 file = "verified-replay.jpg"
 caption = "The replay viewer independently reruns a short recorded battle and verifies its final state. This battle ended before either side won."
+
+[[screenshots]]
+file = "close-detail-before.png"
+caption = "Before: detailed soldier models make this close view of a 500-unit battle expensive to draw."
+
+[[screenshots]]
+file = "close-detail-after.png"
+caption = "After: selected and nearby troops receive the articulated-model budget; all other troops remain visible through shared models. The same replay averaged 65.7 FPS versus 30.0 FPS before, though frame spikes remain."
 +++
 
 - Desktop battles now run in a separate Rust process while Godot draws the battlefield and handles your orders. Infantry, vehicles, combat, logistics, tactical AI, commanders and the five operations use the same authoritative simulation.
@@ -33,9 +41,11 @@ caption = "The replay viewer independently reruns a short recorded battle and ve
 - Large-map starting states and command recordings use lossless compressed blocks, retaining exact state for independent verification.
 - Distant soldier batches expand their bounds for elevated and airborne troops, preventing models from disappearing above the old flat-ground bounds.
 - Distant soldiers smooth their movement on the GPU between socket updates, reducing repeated CPU transform uploads while preserving immediate visibility and teleport changes.
+- Close views limit fully articulated models to 16 selected or nearby soldiers. Other troops use shared standing, crouching, prone and walking models, preserving the full army and gameplay while reducing drawing cost.
 - Squad strength indicators reuse their geometry until the number or condition of their soldiers changes, reducing HUD drawing calls.
 - Minimap soldier dots share one draw batch and reuse map transforms and team colors, retaining selection, wounded colors, overlap and immediate camera feedback.
 - Supply dispatch checks active buildings instead of every scenery object. Infantry refresh activity descriptions only when their existing status timer expires.
+- Victory checks use the active-building index rather than scanning every tree and wall.
 - Browser solo games run the same Rust simulation in a separate worker. Leaving through the menu saves a command recording that can be reopened and verified in Replays.
 - Public battle broadcasts read the Rust server's observer stream without running another battlefield. Seeking restores roads and terrain changes; older observer recordings still open. These viewing archives remain separate from verified command replays.
 - Exported games include the immutable game data required to start their simulation.

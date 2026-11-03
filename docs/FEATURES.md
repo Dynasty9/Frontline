@@ -1243,8 +1243,10 @@ moving, resizing, disabling or removing a blocker invalidates the result;
 smoke and positive visibility are checked afresh. Detection timing is unchanged.
 
 Distant soldiers use shared baked poses of their procedural models, including
-standing, crouching, prone and walking poses. Nearby soldiers retain articulated
-animation. Distant batches outside the camera frustum and its shadow margin do
+standing, crouching, prone and walking poses. Up to 16 nearby soldiers retain
+articulated animation, prioritizing selected troops and then proximity. Other
+soldiers remain visible through the shared poses; the simulation and selection
+still include everyone. Distant batches outside the camera frustum and its shadow margin do
 not upload transforms; panning restores them immediately. Socket clients interpolate distant
 transforms on the GPU between updates, keeping the same exponential smoothing used
 for CPU selection and nearby models. Routine motion uploads wait one frame after

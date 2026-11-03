@@ -14,6 +14,10 @@ class DrawGroup:
 
 var world: World
 const CELL := 64.0
+const MAX_DETAILED := 16
+var detail_ids := {}
+var _detail_left := 0.0
+var _detail_view := Transform3D.IDENTITY
 var groups := {}
 var poses := {}
 var prototypes := {}
@@ -72,6 +76,33 @@ func acquire_detail_slot() -> bool:
 	return true
 
 
+func _choose_detail(dt: float) -> void:
+	if not world.cam:
+		return
+	var camera := world.cam.cam
+	_detail_left -= dt
+	if _detail_left > 0.0 and camera.global_transform == _detail_view:
+		return
+	_detail_left = 0.2
+	_detail_view = camera.global_transform
+	var candidates := []
+	for soldier: Soldier in world.soldiers:
+		if soldier.gone or not soldier.visible or soldier.life == Soldier.Life.HIDDEN:
+			continue
+		var distance := camera.global_position.distance_squared_to(soldier.position)
+		if distance > 8100.0 or not camera.is_position_in_frustum(soldier.position + Vector3(0, 1, 0)):
+			continue
+		# Favour selected men and retain nearby detail to avoid switching models at a tie.
+		var priority := distance * (0.85 if detail_ids.has(soldier.eid) else 1.0)
+		if not soldier.selected:
+			priority += 10000.0
+		candidates.append([priority, soldier.eid])
+	candidates.sort_custom(func(a: Array, b: Array) -> bool: return a[0] < b[0] if a[0] != b[0] else a[1] < b[1])
+	detail_ids.clear()
+	for i in mini(MAX_DETAILED, candidates.size()):
+		detail_ids[candidates[i][1]] = true
+
+
 func _ready() -> void:
 	process_priority = 10
 	_material = ShaderMaterial.new()
@@ -100,6 +131,7 @@ func _process(dt: float) -> void:
 	var started := Time.get_ticks_usec()
 	# Keep individual smoothing and poses, but pay frame bookkeeping once per army.
 	if world.has_view and world.soldier_view == self:
+		_choose_detail(dt)
 		var blend := 1.0 - exp(-dt * 14.0)
 		for soldier: Soldier in world.soldiers:
 			if not soldier.gone:

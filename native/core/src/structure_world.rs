@@ -1,7 +1,6 @@
 //! Captures change ownership, battle credit and supply roads before the next building updates.
 use crate::actors::Actor;
 use crate::battle_stats;
-use crate::entities::Kind;
 use crate::infantry::Infantry;
 use crate::infantry_vitals::Life;
 use crate::squad::Report;
@@ -75,8 +74,10 @@ fn structure<'a>(ctx: &'a mut Context<'_>, id: u32) -> &'a mut Structure {
 }
 fn fobs(ctx: &Context<'_>, team: i8) -> usize {
     ctx.actors
-        .iter_kind(Kind::Structure)
-        .filter(|a| matches!(a,Actor::Structure(st) if st.kind=="fob" && st.team==team && st.built))
+        .simulated_structures()
+        .iter()
+        .filter_map(|&id| ctx.actors.structure(id))
+        .filter(|st| st.kind == "fob" && st.team == team && st.built)
         .count()
 }
 impl Context<'_> {

@@ -43,6 +43,23 @@ fn queue() -> Production {
     }
 }
 #[test]
+fn victory_ignores_scenery_and_unfinished_fobs_after_restore_and_removal() {
+    let mut enemy = structure(31, "fob", 8.);
+    enemy.team = 1;
+    let mut unfinished = enemy.clone();
+    unfinished.id = 32;
+    unfinished.built = false;
+    let mut entries = vec![actor(structure(30, "fob", 0.)), actor(enemy), actor(unfinished)];
+    entries.extend((100..164).map(|id| actor(structure(id, "tree", (id % 8) as f32))));
+    let scene = fixture::Scene::new(entries, 7);
+    let mut resumed = scene.resume();
+    let mut victory = Victory { winner: -1, mission: false };
+    assert_eq!(resumed.world.actors.simulated_structures().len(), 3);
+    assert_eq!(resumed.context().check_victory(&mut victory), None);
+    resumed.world.actors.remove(31).unwrap();
+    assert_eq!(resumed.context().check_victory(&mut victory), Some(0));
+}
+#[test]
 fn taking_the_last_fob_updates_ownership_credit_routes_and_victory_together() {
     let mut fob = structure(30, "fob", 0.);
     fob.name = "Delta".into();

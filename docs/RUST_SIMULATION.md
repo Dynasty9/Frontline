@@ -550,3 +550,40 @@ the existing status timer expires. All 140 numeric fixtures retain their exact
 expected state; focused regressions cover scenery, restored indices and status
 changes between refreshes. No new simulation performance claim is made for
 these changes until the generated-map benchmark is repeated.
+
+## Close-camera model budget
+
+The 3 km / 500-unit control replay at zoom 35 exposed a separate rendering
+bottleneck: many nearby articulated soldiers each carry multiple material surfaces.
+The renderer now reserves full articulation for 16 visible soldiers, preferring
+selected troops and then proximity, with hysteresis to prevent swaps at a tie.
+Every other soldier remains visible through the existing shared poses. Simulation,
+fog, selection and commands retain the complete army.
+
+On the same 1280 x 720 High replay, with other applications left running:
+
+| Measurement | Unbounded nearby detail | 16 detailed models |
+| --- | ---: | ---: |
+| Average FPS | 30.02 | 65.74 |
+| Frame p99 / maximum | 61.59 / 75.79 ms | 28.62 / 38.10 ms |
+| Adjacent-frame difference p99 | 23.92 ms | 16.60 ms |
+| Sampled draw calls | 15,714 | 4,424 |
+| Soldier view mean / p99 | 5.129 / 14.884 ms | 2.177 / 4.354 ms |
+| Render CPU median | 10.491 ms | 3.705 ms |
+| GPU median | 8.500 ms | 4.708 ms |
+
+This exceeds 60 FPS on average but still misses the minimum-frame target.
+The largest remaining frame included a new detailed model plus HUD and shared
+pose work. The detail-budget fixture checks the cap, selected-unit priority,
+hidden/despawned exclusion and immediate refresh on camera turns. Existing
+smoothing, visibility, pose and despawn checks pass. Reports are
+`build/close-detail-control.json` and `build/close-detail-16.json`; paired screenshots
+are included in the changelog. A material-per-joint LOD prototype was discarded:
+it reduced draws but its extra mesh construction worsened frame-time tails.
+
+The presentation lifecycle audit also covers retained data for removed trees and
+sinking boats, post-despawn sinking effects in Godot, death impulses, recoil,
+surrender and persistent fires, without changing canonical state. Twelve observation
+tests, ten socket tests and the real Godot socket/replay check pass. Cursor presence
+tests now refresh their intentionally unreliable packet, matching normal clients;
+the previous send-once assumption caused a macOS CI timeout.

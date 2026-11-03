@@ -479,6 +479,44 @@ fn recoil_and_surrender_effects_follow_actor_visibility_without_advancing_gamepl
 }
 
 #[test]
+fn removed_scenery_and_boats_keep_their_final_visual_events() {
+    use sim::structure_damage::{Damage, Event as DamageEvent};
+    use sim::vehicle_loss_world::{Event as LossEvent, Notice};
+    let c = Content::bundled().unwrap();
+    let s = map(&c, vec![]);
+    let before = s.checkpoint().unwrap();
+    let frame = frontline_server::simulation::Frame {
+        tick: 1,
+        commands: vec![],
+        events: vec![
+            sim::match_tick::Event::Fire(sim::fires::Event::BurnedDown {
+                structure: 1,
+                damage: Damage {
+                    applied: true,
+                    removed: Some(Box::new(Structure {
+                        id: 1, kind: "tree".into(), team: -1, variant: 2,
+                        position: Vector3::X, size: Vector3::splat(4.), yaw: 0.3,
+                        ..Default::default()
+                    })),
+                    events: vec![DamageEvent::TreeFall(0.5)],
+                },
+            }),
+            sim::match_tick::Event::Vehicle(sim::vehicle_world::Event::Loss(LossEvent::Sunk {
+                vehicle: Notice { id: 2, team: 0, position: Vector3::Z, name: "Patrol boat".into() },
+                heavy: false,
+            })),
+        ],
+    };
+    let out = observation::events::Events::collect(&s, &frame);
+    assert_eq!(out.effects.len(), 3);
+    assert_eq!(out.effects[0].data, serde_json::json!([17, [1., 0., 0.], [2., 2., 2.], 0.3]));
+    assert_eq!(out.effects[1].data, serde_json::json!([10, [1., 0., 0.], 0.5, 1, 2]));
+    assert_eq!(out.effects[2].data, serde_json::json!([18, 2, [0., 0., 1.]]));
+    assert!(out.effects.iter().all(|effect| effect.reliable && effect.mask == 3));
+    assert_eq!(before, s.checkpoint().unwrap());
+}
+
+#[test]
 fn persistent_effects_keep_the_newest_live_fires_with_their_remaining_lifetime() {
     let c = Content::bundled().unwrap();
     let mut s = map(&c, vec![]);

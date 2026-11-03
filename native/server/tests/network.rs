@@ -400,7 +400,6 @@ fn co_command_is_team_private_authenticated_bounded_and_absent_from_replay_input
         assert!(Instant::now() < deadline);
         thread::sleep(Duration::from_millis(1));
     }
-    clients[0].presentation(net::SEND_PRESENCE, &[0; 97]);
     let ping =
         json!({"t":"ping","peer":9,"kind":"enemy","position":[999,0,-999],"entity":u32::MAX})
             .to_string();
@@ -409,15 +408,23 @@ fn co_command_is_team_private_authenticated_bounded_and_absent_from_replay_input
     for _ in 0..6 {
         clients[0].presentation(net::MARK, ping.as_bytes());
     }
+    let mut next_presence = Instant::now();
     while clients[2].marks.len() < 4
         || clients[3].marks.len() < 4
         || clients[2].presence.is_empty()
         || clients[3].presence.is_empty()
     {
+        // Cursor presence is unreliable and refreshed by real clients; marks are sent once.
+        if Instant::now() >= next_presence {
+            clients[0].presentation(net::SEND_PRESENCE, &[0; 97]);
+            next_presence = Instant::now() + Duration::from_millis(100);
+        }
         for c in &mut clients {
             c.poll();
         }
-        assert!(Instant::now() < deadline);
+        assert!(Instant::now() < deadline, "observer/team marks={}/{} presence={}/{}",
+            clients[2].marks.len(), clients[3].marks.len(),
+            clients[2].presence.len(), clients[3].presence.len());
         thread::sleep(Duration::from_millis(1));
     }
     assert!(clients[0].marks.is_empty() && clients[0].presence.is_empty());

@@ -1,13 +1,17 @@
 extends Node
 
 class OffscreenFx extends Fx:
+	var in_view := false
 	func _visible_at(_p: Vector3) -> bool:
-		return false
+		return in_view
 
 class RecoilVehicle extends Vehicle:
 	var kicked := Vector3.ZERO
+	var sank := false
 	func recoil(direction: Vector3) -> void:
 		kicked = direction
+	func sink_view() -> void:
+		sank = true
 
 var client: SimulationClient
 var spawns := 0
@@ -197,8 +201,15 @@ func check_surface() -> void:
 	world.has_view = true
 	fx.play([Fx.RECOIL, 17, Vector3(0, 0, -1)])
 	assert(vehicle.kicked == Vector3(0, 0, -1))
-	world.has_view = false
 	world.entities.erase(17)
+	vehicle.eid = 17
+	world._graveyard.append([vehicle, 240.0])
+	fx.in_view = true
+	fx.play([Fx.SINK, 17, Vector3.ZERO])
+	assert(vehicle.sank, "A reliable sinking effect must find a boat after its despawn")
+	world._graveyard.clear()
+	fx.in_view = false
+	world.has_view = false
 	vehicle.free()
 	var holder := Node3D.new()
 	add_child(holder)

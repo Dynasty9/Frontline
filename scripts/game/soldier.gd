@@ -5426,7 +5426,7 @@ func _view_process(dt: float, blend := -1.0) -> void:
 		return
 	if world.cam and world.soldier_view and debug_pose.is_empty():
 		var distance := world.cam.cam.global_position.distance_to(position)
-		view_lod = distance > (80.0 if view_lod else 90.0) or not world.cam.cam.is_position_in_frustum(position + Vector3(0, 1.0, 0))
+		view_lod = distance > (80.0 if view_lod else 90.0) or not world.soldier_view.detail_ids.has(eid) or not world.cam.cam.is_position_in_frustum(position + Vector3(0, 1.0, 0))
 		if not view_lod and model == null and not world.soldier_view.acquire_detail_slot():
 			view_lod = true  # keep the shared model visible while detail warms up
 	else:

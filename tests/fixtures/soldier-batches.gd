@@ -10,6 +10,7 @@ class TrackedSoldier extends Soldier:
 		elapsed += dt
 
 func _ready() -> void:
+	check_detail_budget()
 	var world := World.new()
 	var view := SoldierViewBatch.new()
 	view.world = world
@@ -89,3 +90,35 @@ func _ready() -> void:
 	world.free()
 	print("SOLDIER_BATCHES passed")
 	get_tree().quit()
+
+
+func check_detail_budget() -> void:
+	var world := World.new()
+	world.cam = RtsCamera.new()
+	world.cam.cam = Camera3D.new()
+	add_child(world.cam.cam)
+	var view := SoldierViewBatch.new()
+	view.world = world
+	for i in SoldierViewBatch.MAX_DETAILED * 2:
+		var soldier := Soldier.new()
+		soldier.eid = i + 1
+		soldier.position = Vector3(0, 0, -20 - i)
+		world.soldiers.append(soldier)
+	view._choose_detail(1.0)
+	assert(view.detail_ids.size() == SoldierViewBatch.MAX_DETAILED)
+	assert(view.detail_ids.has(1) and not view.detail_ids.has(world.soldiers.size()))
+	world.soldiers.back().selected = true
+	world.soldiers[0].visible = false
+	world.soldiers[1].gone = true
+	view._choose_detail(1.0)
+	assert(view.detail_ids.size() == SoldierViewBatch.MAX_DETAILED)
+	assert(view.detail_ids.has(world.soldiers.size()) and not view.detail_ids.has(1) and not view.detail_ids.has(2))
+	world.cam.cam.rotation.y = PI
+	view._choose_detail(0.0)
+	assert(view.detail_ids.is_empty(), "Camera turns must refresh the detailed-model budget immediately")
+	for soldier: Soldier in world.soldiers:
+		soldier.free()
+	world.cam.cam.free()
+	world.cam.free()
+	view.free()
+	world.free()
