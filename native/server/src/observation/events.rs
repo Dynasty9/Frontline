@@ -32,6 +32,15 @@ pub fn admits(a: Audience, peer: i32, team: i8) -> bool {
     }
 }
 impl Events {
+    pub fn persistent(s: &Simulation) -> Value {
+        // Match Godot's 24 grass-fire slots, retaining the newest live patches.
+        let patches = s.state.field.fires.patches();
+        json!(patches[patches.len().saturating_sub(24)..]
+            .iter()
+            .filter(|f| f.life > 0.)
+            .map(|f| json!([16, p(f.position), f.radius, f.life]))
+            .collect::<Vec<_>>())
+    }
     pub fn collect(s: &Simulation, frame: &Frame) -> Self {
         let mut out = Self::default();
         for e in &frame.commands {
@@ -513,7 +522,11 @@ impl Events {
                     }
                     _ => {}
                 },
-                sim::vehicle_combat_world::Event::Recoil { .. } => {}
+                sim::vehicle_combat_world::Event::Recoil { vehicle, direction } => self.fx(
+                    Self::mask(s, *vehicle),
+                    false,
+                    json!([19, vehicle, p(*direction)]),
+                ),
             },
             E::Movement(e) => match e {
                 sim::vehicle_movement_world::Event::Loss(e) => self.loss(s, e),
@@ -691,12 +704,12 @@ impl Events {
                 }
             }
             E::Surrendered {
-                team,
+                soldier,
                 position,
                 drop_direction,
                 ..
             } => self.fx(
-                1u8 << *team,
+                Self::mask(s, *soldier),
                 true,
                 json!([3, p(*position), p(*drop_direction)]),
             ),

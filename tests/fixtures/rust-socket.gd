@@ -4,6 +4,11 @@ class OffscreenFx extends Fx:
 	func _visible_at(_p: Vector3) -> bool:
 		return false
 
+class RecoilVehicle extends Vehicle:
+	var kicked := Vector3.ZERO
+	func recoil(direction: Vector3) -> void:
+		kicked = direction
+
 var client: SimulationClient
 var spawns := 0
 var snapshots := 0
@@ -92,6 +97,9 @@ func check_packets() -> void:
 	assert(not probe._dispatch(SimulationClient.BLOB, PackedByteArray([27, 1, 0, 0, 0, 1, 0, 0, 0, 1])))
 	assert(probe._dispatch(SimulationClient.FX, JSON.stringify([[0, [1, 2, 3], [4, 5, 6], 2, "rifle", 17], [4, [0, 0, 0], [0.2, 0.3, 0.4, 1], 8]]).to_utf8_buffer()))
 	assert(observed.back()[1][0][1] is Vector3 and observed.back()[1][1][2] is Color)
+	assert(probe._dispatch(SimulationClient.FX, "[[19,17,[0,0,-1]]]".to_utf8_buffer()))
+	assert(observed.back()[1][0] == [float(Fx.RECOIL), 17.0, Vector3(0, 0, -1)])
+	assert(not probe._dispatch(SimulationClient.FX, "[[19,17,[0,0]]]".to_utf8_buffer()))
 	assert(not probe._dispatch(SimulationClient.FX, "[[0]]".to_utf8_buffer()))
 	assert(not probe._dispatch(SimulationClient.FX, "[[1,2,3]]".to_utf8_buffer()))
 	assert(not probe._dispatch(SimulationClient.FX, "[[7,[],[0,0,0]]]".to_utf8_buffer()))
@@ -184,6 +192,30 @@ func check_surface() -> void:
 	# The terrain packet owns digging; a delayed cosmetic blast cannot dig again.
 	fx._explode(Vector3(8, 0, -8), 1.0)
 	assert(world.terrain.dh[32 * 128 + 80] == -0.75)
+	var vehicle := RecoilVehicle.new()
+	world.entities[17] = vehicle
+	world.has_view = true
+	fx.play([Fx.RECOIL, 17, Vector3(0, 0, -1)])
+	assert(vehicle.kicked == Vector3(0, 0, -1))
+	world.has_view = false
+	world.entities.erase(17)
+	vehicle.free()
+	var holder := Node3D.new()
+	add_child(holder)
+	holder.global_position = Vector3(8, 0.25, -8)
+	fx.vfx._ground_fires.append([holder, 5.0, 30.0, 2.0, 0])
+	fx.vfx.ground_fire(Vector3(8, 0, -8), 2.0, 12.0)
+	assert(fx.vfx._ground_fires.size() == 1 and fx.vfx._ground_fires[0][2] == 17.0)
+	fx.vfx._ground_fires.clear()
+	holder.free()
+	var temporary := Node3D.new()
+	var particles := GPUParticles3D.new()
+	particles.process_material = ParticleProcessMaterial.new()
+	var program: WeakRef = weakref(particles.process_material)
+	temporary.add_child(particles)
+	fx.vfx._keep_particle_programs(temporary)
+	temporary.free()
+	assert(fx.vfx._warm_materials.size() == 1 and program.get_ref() != null)
 	fx.vfx.free()
 	fx.free()
 	var invalid := data.data_array.duplicate()

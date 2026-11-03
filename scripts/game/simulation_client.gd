@@ -35,7 +35,7 @@ const SKETCH := 34
 const DEED := 35
 const MAX_PACKET := 65568
 const MAX_MAP := 192 * 1024 * 1024
-const FX_FIELDS := ["vvnsn", "vn", "ns", "vv", "vcn", "vvn", "vv", "sv", "vv", "v", "vnnn", "vnn", "v", "vn", "snv", "nvn", "vnn", "vvn", "nv"]
+const FX_FIELDS := ["vvnsn", "vn", "ns", "vv", "vcn", "vvn", "vv", "sv", "vv", "v", "vnnn", "vnn", "v", "vn", "snv", "nvn", "vnn", "vvn", "nv", "nv"]
 
 var world: World
 var host: ENetConnection

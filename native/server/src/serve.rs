@@ -693,6 +693,13 @@ fn run_timeline(
                 }
                 Incoming::Loaded { slot } => {
                     if slots.contains_key(&slot) {
+                        // Effects sent with the baseline would be discarded under the loading screen.
+                        json_packet(
+                            &mut network,
+                            slot,
+                            net::FX,
+                            crate::observation::events::Events::persistent(&simulation),
+                        )?;
                         start = true;
                         if let Some(p) = &mut profile {
                             p.start();

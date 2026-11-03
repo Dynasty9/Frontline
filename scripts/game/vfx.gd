@@ -43,6 +43,7 @@ var _smokes: Array = []
 var _plumes := {"M": [], "L": []}  # [node, t, emit seconds, life] - smoke that hangs over a strike
 var _late_clods: Array = []  # [pos, size, t] clods that land once the debris comes down
 var _rig_check_t := 0.0
+var _warm_materials: Array[ParticleProcessMaterial] = []
 
 
 func _ready() -> void:
@@ -97,6 +98,8 @@ func prewarm(at: Vector3) -> void:
 	var tr := make_trail()
 	add_child(tr)
 	tr.global_position = p
+	for temporary: Node in [b, ss, tr]:
+		_keep_particle_programs(temporary)
 	_shockwave(p, 1.0)
 	scorch(p, 1.0)
 	# hide everything again once compiled: the prewarm smoke would otherwise
@@ -120,6 +123,14 @@ func prewarm(at: Vector3) -> void:
 		ss.queue_free()
 		cm.queue_free()
 		tr.queue_free())
+
+
+func _keep_particle_programs(node: Node) -> void:
+	# Godot drops a particle shader when its last material is freed after prewarming.
+	if node is GPUParticles3D and node.process_material is ParticleProcessMaterial:
+		_warm_materials.append(node.process_material)
+	for child in node.get_children():
+		_keep_particle_programs(child)
 
 
 # --- textures & materials ------------------------------------------------------
@@ -1064,6 +1075,12 @@ func char_material() -> ShaderMaterial:
 ## A grass fire `r` across at p, burning `life` seconds: a ring of low flames
 ## creeping outward over black ground, pale smoke, and the grass gone after.
 func ground_fire(p: Vector3, r: float, life: float) -> void:
+	# A joining client's current fires can overlap an in-flight ignition event.
+	for gf: Array in _ground_fires:
+		var at: Vector3 = gf[0].global_position
+		if at.x == p.x and at.z == p.z and float(gf[3]) == r:
+			gf[2] = float(gf[1]) + life
+			return
 	if _ground_fires.size() >= 24:
 		var old: Array = _ground_fires.pop_front()
 		smoulder(old[0], 8.0)

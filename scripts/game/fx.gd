@@ -22,6 +22,7 @@ const DIE := 15
 const FIRE := 16  # a grass fire: [FIRE, pos, radius, seconds]
 const BURNT_OUT := 17  # something burnt through falls in: [BURNT_OUT, pos, half extents, yaw]
 const SINK := 18  # a boat founders: [SINK, eid, pos]
+const RECOIL := 19  # artillery kicks back without a direct-fire cannon flash
 
 ## What a round struck, as a SHOT event carries it: it decides what flies off.
 const HIT_DIRT := 1
@@ -136,6 +137,10 @@ func play(ev: Array) -> void:
 			_debris(ev[1], ev[2], int(ev[3]))
 		CANNON:
 			_cannon(_muzzle_of(ev, 3, ev[1], true), ev[2], world.entity(int(ev[3])) if ev.size() > 3 else null)
+		RECOIL:
+			var vehicle = world.entity(int(ev[1]))
+			if vehicle is Vehicle:
+				vehicle.recoil(ev[2])
 		RICOCHET:
 			_ricochet(ev[1], ev[2])
 		SOUND:

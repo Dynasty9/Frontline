@@ -18,7 +18,9 @@ caption = "The replay viewer independently reruns a short recorded battle and ve
 - Cosmetic debris no longer advances gameplay randomness. New command recordings preserve the full starting battlefield and player inputs; existing observer archives remain unverified recordings.
 - Command recordings open in Replays, with pause, speed and timeline controls. Rewinding reruns the recorded commands; verification checks the final state and distinguishes unfinished battles from concluded games.
 - Generated-map scenery restores pavements, fences and overhead wires correctly through the socket connection.
-- Reconnecting and seeking a replay restore the current craters and roads. Ground updates arrive independently of explosion effects and apply progressively.
+- Reconnecting and seeking a replay restore the current craters, roads and active grass fires. Ground updates arrive independently of explosion effects and apply progressively.
+- Artillery recoil and visible surrendering soldiers' dropped rifles reach the Godot client through simulation events.
+- Prewarmed fire, smoke-screen and missile-trail particle materials remain cached for the match, avoiding shader recompilation when their first visible effect appears.
 - Loading a socket battlefield imports its finished terrain instead of rebuilding the same elevated surface in GDScript.
 - Soldier updates reuse prepared weapon definitions, supply totals use the existing unit/building indexes, and teammates share observation preparation. Stationary minimap camera wedges reuse their ground intersections while retaining immediate camera feedback.
 - Wildlife waits for the battlefield to finish loading before reading terrain being prepared on a worker thread.

@@ -77,6 +77,9 @@ struct Server {
 }
 impl Server {
     fn new() -> Self {
+        Self::start(map)
+    }
+    fn start(initial: fn(&Content) -> Simulation) -> Self {
         static NEXT_DIRECTORY: AtomicU64 = AtomicU64::new(0);
         let directory = std::env::temp_dir().join(format!(
             "frontline-socket-{}-{}-{}",
@@ -120,7 +123,7 @@ impl Server {
         let output = File::create(&replay).unwrap();
         let handle = thread::spawn(move || {
             let c = Content::bundled().unwrap();
-            serve::run(map(&c), &c, config, output)
+            serve::run(initial(&c), &c, config, output)
         });
         let deadline = Instant::now() + Duration::from_secs(10);
         while fs::read(&ready)
@@ -200,6 +203,8 @@ struct Client {
     playback: serde_json::Value,
     presence: Vec<Vec<u8>>,
     marks: Vec<(u8, serde_json::Value)>,
+    effects: Vec<serde_json::Value>,
+    hold_load: bool,
 }
 impl Client {
     fn new(server: &Server, token: char) -> Self {
@@ -228,6 +233,8 @@ impl Client {
             playback: serde_json::Value::Null,
             presence: vec![],
             marks: vec![],
+            effects: vec![],
+            hold_load: false,
         }
     }
     fn poll(&mut self) {
@@ -259,13 +266,18 @@ impl Client {
                         net::MESSAGE => self.messages.push(serde_json::from_slice(data).unwrap()),
                         net::PLAYBACK => self.playback = serde_json::from_slice(data).unwrap(),
                         net::PRESENCE => self.presence.push(data.to_vec()),
+                        net::FX => self.effects.extend(
+                            serde_json::from_slice::<Vec<serde_json::Value>>(data).unwrap(),
+                        ),
                         net::PING | net::SKETCH | net::DEED => self
                             .marks
                             .push((kind, serde_json::from_slice(data).unwrap())),
                         net::BASELINE_END => {
                             self.loaded = true;
-                            peer.send(0, &Packet::reliable(net::packet(net::LOADED, 0, &[])))
-                                .unwrap();
+                            if !self.hold_load {
+                                peer.send(0, &Packet::reliable(net::packet(net::LOADED, 0, &[])))
+                                    .unwrap();
+                            }
                         }
                         _ => {}
                     }
@@ -301,6 +313,68 @@ impl Client {
             .unwrap();
         self.host.flush();
     }
+}
+
+#[test]
+fn current_fires_arrive_after_loading_for_late_join_and_replay_seek() {
+    let mut server = Server::start(|c| {
+        let mut s = map(c);
+        s.state
+            .field
+            .fires
+            .start_patch(
+                sim::vector::Vector3::new(0., 0., 25.),
+                1.,
+                60.,
+                0,
+                &mut s.state.field.geometry,
+                &mut vec![],
+            )
+            .unwrap();
+        s
+    });
+    let deadline = Instant::now() + Duration::from_secs(20);
+    let mut live = Client::new(&server, '1');
+    while live.tick < 16 {
+        live.poll();
+        assert!(Instant::now() < deadline);
+        thread::sleep(Duration::from_millis(1));
+    }
+    assert!(live.effects.iter().any(|e| e[0] == 16));
+    let mut late = Client::new(&server, '3');
+    late.hold_load = true;
+    while !late.loaded {
+        live.poll();
+        late.poll();
+        assert!(Instant::now() < deadline);
+        thread::sleep(Duration::from_millis(1));
+    }
+    assert!(!late.effects.iter().any(|e| e[0] == 16));
+    late.presentation(net::LOADED, &[]);
+    while !late.effects.iter().any(|e| e[0] == 16) {
+        late.poll();
+        assert!(Instant::now() < deadline);
+        thread::sleep(Duration::from_millis(1));
+    }
+    let fire = late.effects.iter().find(|e| e[0] == 16).unwrap();
+    assert!(fire[3].as_f64().unwrap() < 60.);
+    server.finish();
+    drop(live);
+    drop(late);
+    server.playback(16);
+    let mut viewer = Client::new(&server, '3');
+    while !viewer.effects.iter().any(|e| e[0] == 16) {
+        viewer.poll();
+        assert!(Instant::now() < deadline);
+        thread::sleep(Duration::from_millis(1));
+    }
+    assert!(
+        viewer.effects.iter().find(|e| e[0] == 16).unwrap()[3]
+            .as_f64()
+            .unwrap()
+            < 60.
+    );
+    server.finish();
 }
 
 #[test]

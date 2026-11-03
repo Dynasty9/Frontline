@@ -346,6 +346,92 @@ fn render_events_preserve_visibility_impulses_and_private_messages_without_chang
 }
 
 #[test]
+fn recoil_and_surrender_effects_follow_actor_visibility_without_advancing_gameplay() {
+    use observation::events::Events;
+    let c = Content::bundled().unwrap();
+    let mut s = map(
+        &c,
+        vec![
+            soldier(1, 1),
+            Actor::Vehicle(Box::new(sim::vehicle::Vehicle {
+                id: 2,
+                team: 1,
+                kind: "sochor".into(),
+                ..Default::default()
+            })),
+        ],
+    );
+    let frame = frontline_server::simulation::Frame {
+        tick: 1,
+        commands: vec![sim::match_commands::Event::Brain(
+            sim::squad_brain::Event::Surrendered {
+                soldier: 1,
+                team: 1,
+                position: Vector3::X,
+                drop_direction: Vector3::Z,
+            },
+        )],
+        events: vec![sim::match_tick::Event::Vehicle(
+            sim::vehicle_world::Event::Combat(sim::vehicle_combat_world::Event::Recoil {
+                vehicle: 2,
+                direction: -Vector3::Z,
+            }),
+        )],
+    };
+    for visible in [false, true] {
+        replace(&mut s, |a| match a {
+            Actor::Soldier(m) => m.identity.visible = if visible { 3 } else { 0 },
+            Actor::Vehicle(v) => v.visible = if visible { 3 } else { 0 },
+            _ => {}
+        });
+        let before = s.checkpoint().unwrap();
+        let out = Events::collect(&s, &frame);
+        assert_eq!(out.effects.len(), 2);
+        assert_eq!(
+            out.effects[0].data,
+            serde_json::json!([3, [1., 0., 0.], [0., 0., 1.]])
+        );
+        assert_eq!(
+            out.effects[1].data,
+            serde_json::json!([19, 2, [0., 0., -1.]])
+        );
+        assert!(out.effects[0].reliable && !out.effects[1].reliable);
+        assert!(out
+            .effects
+            .iter()
+            .all(|e| e.mask == if visible { 3 } else { 2 }));
+        assert_eq!(before, s.checkpoint().unwrap());
+    }
+}
+
+#[test]
+fn persistent_effects_keep_the_newest_live_fires_with_their_remaining_lifetime() {
+    let c = Content::bundled().unwrap();
+    let mut s = map(&c, vec![]);
+    for i in 0..26 {
+        s.state
+            .field
+            .fires
+            .start_patch(
+                Vector3::X * i as f32,
+                1.,
+                20. + i as f64,
+                0,
+                &mut s.state.field.geometry,
+                &mut vec![],
+            )
+            .unwrap();
+    }
+    let before = s.checkpoint().unwrap();
+    let fires = observation::events::Events::persistent(&s);
+    let fires = fires.as_array().unwrap();
+    assert_eq!(fires.len(), 24);
+    assert_eq!(fires[0], serde_json::json!([16, [2., 0., 0.], 1., 22.]));
+    assert_eq!(fires[23], serde_json::json!([16, [25., 0., 0.], 1., 45.]));
+    assert_eq!(before, s.checkpoint().unwrap());
+}
+
+#[test]
 fn map_projection_uses_godots_bridge_tags_and_never_sends_simulation_geometry() {
     let c = Content::bundled().unwrap();
     let mut s = map(&c, vec![]);

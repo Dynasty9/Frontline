@@ -220,7 +220,38 @@ sets return no route without an exhaustive A* traversal. Team graphs must have
 matching topology when restoring a checkpoint. All 140 numeric transcripts still
 match, including route choices and subsequent simulation state. The separate
 stronger-heuristic experiment passed shortest-cost tests but changed six transcripts;
-it was not retained.
+it was not included in this connectivity measurement.
+
+The connectivity run (`build/rust-socket-generated-3072-connectivity/`, `8b5d601`)
+reduced expanded graph nodes from 7.12 million to 2.83 million. Path preparation
+fell from 3.36 to 1.85 ms per tick on average; path p99 fell from 25.72 to 12.89 ms.
+Total Rust tick mean/p99 fell from 11.62/34.83 to 10.01/24.54 ms, with 110 of 1,199
+ticks exceeding 16.67 ms. Rendered average was 69.46 FPS, frame p99 26.21 ms and
+maximum 37.84 ms. Other applications remained running; these measurements still
+miss the smooth-60 target. The slowest rendered frame included 16.21 ms of
+snapshot processing. Per-frame view reports now expose these occasional costs
+as well as average view totals.
+
+The exact benchmark server independently verified all 3,018 recorded ticks and
+final state `21ae4023f9e5a002fa33be114430ac2a4b7310db9df0a6c2ceb21410f6c9ad7a`.
+The recording ended before victory and is verified as an unfinished battle.
+
+Replaying that exact battle traced the long snapshot update to a burning roof:
+creating its flame and ember particle programs took 16-21 ms. Temporary prewarm
+nodes were freed along with the last references to their particle materials.
+Godot then discarded the shared particle shaders and compiled them again on the
+first visible fire. The client now retains those few materials for the match,
+including the temporary smoke-screen and missile-trail programs, while freeing
+their nodes normally. A focused rendered test measured first-fire construction
+at 26.49 ms before and 0.53 ms with retained programs. Replaying the same command
+recording reduced maximum snapshot processing from 21.46 to 2.08 ms. The automatic
+replay director selected different camera views between runs, so their overall
+frame rates are not a controlled comparison. Camera movement still exposes
+scenery-construction spikes; a separate VFX spike also remains.
+
+Presentation tests cover artillery recoil, rifle drops for visible surrendering
+enemies, and retained grass-fire state after loading and replay seek. Fire effects
+deduplicate overlapping ignition/bootstrap messages without changing gameplay.
 
 Client loading in that control fell from 79.12 to 28.81 seconds, with the ground
 stage completing at 18.28 rather than 67.49 seconds. These are elapsed loading
