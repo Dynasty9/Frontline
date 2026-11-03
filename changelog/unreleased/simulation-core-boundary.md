@@ -61,4 +61,5 @@ caption = "After: selected and nearby troops receive the articulated-model budge
 - Browser solo games run the same Rust simulation in a separate worker. Leaving through the menu saves a command recording that can be reopened and verified in Replays.
 - Public battle broadcasts read the Rust server's observer stream without running another battlefield. Seeking restores roads and terrain changes; older observer recordings still open. These viewing archives remain separate from verified command replays.
 - Exported games include the immutable game data required to start their simulation.
+- Windows native components include their C runtime, so starting a battle does not require a separate Visual C++ redistributable installation.
 - Large-map rendering performance is still under measurement; this change does not yet establish steady 60 FPS with 500 units.

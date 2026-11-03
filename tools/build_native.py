@@ -37,6 +37,9 @@ else:
     macos = "apple-darwin" in (args.target or "")
     library = "frontline_sim.dll" if windows else "libfrontline_sim.dylib" if macos else "libfrontline_sim.so"
     server = "frontline-server.exe" if windows else "frontline-server"
+    if windows:
+        subprocess.run([sys.executable, str(ROOT / "tools/check_windows_imports.py"),
+                        str(output / library), str(output / server)], check=True)
     shutil.copy2(output / library, destination / library)
     server_dir = destination / "macos" if macos else destination
     server_dir.mkdir(exist_ok=True)
