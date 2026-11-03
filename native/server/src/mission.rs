@@ -231,6 +231,55 @@ impl Context<'_, '_, '_> {
             .unwrap_or(p)
     }
 
+    fn vehicle_approach(&mut self, from: Vector3, to: Vector3) -> Result<Vector3, &'static str> {
+        // Mountain slopes can isolate the old flat-map reinforcement positions.
+        let length = distance(from, to);
+        let mut candidates = vec![from];
+        let mut roads: Vec<_> = self.state.rules.network.roads[2]
+            .iter()
+            .flat_map(|road| road.iter().copied())
+            .filter(|p| distance(*p, to) >= 60. && distance(*p, to) <= length * 1.5)
+            .collect();
+        roads.sort_by(|a, b| distance(*a, from).total_cmp(&distance(*b, from)));
+        candidates.extend(roads.into_iter().take(64));
+        for step in 1..=32 {
+            let advance = step as f32 * 10.;
+            if length - advance < 60. {
+                break;
+            }
+            candidates.push(from.lerp(to, advance / length));
+        }
+        let g = &mut self.state.field.geometry;
+        let ground = sim::traversal::Ground::new(&g.terrain, &g.deck);
+        for requested in candidates {
+            let p = g
+                .navigation
+                .planner
+                .nearest_walkable_for(requested, true, false, ground)
+                .ok_or("invalid mission vehicle approach")?;
+            if g.navigation.planner.kind_at(p, true) != 3
+                && distance(p, to) >= 60.
+                && !g
+                    .navigation
+                    .planner
+                    .find_path(
+                        &mut g.navigation.vehicles,
+                        p,
+                        to,
+                        true,
+                        -1,
+                        0.,
+                        false,
+                        ground,
+                    )
+                    .is_empty()
+            {
+                return Ok(p);
+            }
+        }
+        Err("no reachable mission vehicle approach")
+    }
+
     fn squad(
         &mut self,
         kind: &str,

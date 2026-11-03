@@ -50,7 +50,9 @@ impl Mission {
         let required: &[&str] = match self.kind {
             Kind::Bridgehead => &["c", "east", "west", "nv", "fv", "e", "n"],
             Kind::Beachhead => &["h", "beach", "sea0"],
-            Kind::Skyhook => &["op", "pad", "c", "e", "c0"],
+            Kind::Skyhook => &[
+                "op", "pad", "c", "e", "c0", "column_0", "column_1", "column_2",
+            ],
             Kind::Ambush => &["kz", "t", "n", "ap", "rp"],
             Kind::Kingpin => &["hv", "cp", "start", "street"],
         };

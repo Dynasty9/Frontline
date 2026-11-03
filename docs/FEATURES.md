@@ -361,6 +361,7 @@ The code: `scripts/game/mission_director.gd` (the machinery), `scripts/game/miss
 catalogue entry in `MissionList.LIST`, a setup function and an autopilot function.
 
 Ambush Alley autoplay can call its existing mortar support against spotted, stopped convoy vehicles before extracting; player resources and mission objectives are unchanged.
+Sky Hook prepares reachable vehicle approaches for its convoy before the battle starts, keeping reinforcements off disconnected mountain slopes and at least 60 metres from their assault destinations.
 
 ## The systems
 

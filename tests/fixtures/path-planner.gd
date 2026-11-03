@@ -26,6 +26,10 @@ func _ready() -> void:
 					set_cell(nav, cell, kind, weight, fire)
 		reference.finalize()
 		actual.finalize()
+		var built_core: RefCounted = actual.hnav_i._core
+		reference.finalize()
+		actual.finalize()
+		assert(actual.hnav_i._core == built_core, "Finalizing prepared mission routes must retain the existing hierarchy")
 		assert(actual._planner != null and reference._planner == null)
 		var danger := PackedFloat32Array()
 		danger.resize(HNav.NC * HNav.NC)

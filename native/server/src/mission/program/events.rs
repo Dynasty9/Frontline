@@ -157,15 +157,17 @@ impl Mission {
                 let op = self.p("op");
                 let mut column = vec![];
                 if event == 19 {
-                    let id = w.vehicle("technical", foe, enemy, w.walk(c0), yaw_of(Vector3::Z), false)?;
+                    let spawn = self.p("column_0");
+                    let id = w.vehicle("technical", foe, enemy, spawn, yaw_of(Vector3::Z), false)?;
                     w.vehicle_order(id, Action::Assault { position: op - Vector3::Z * 20., face: Vector3::ZERO })?;
                     column.push(id);
-                    self.enemy_squad(w, "fighter_cell", c0 - Vector3::Z * 16., Action::Assault { position: op - Vector3::Z * 14., face: Vector3::Z })?;
+                    self.enemy_squad(w, "fighter_cell", spawn - Vector3::Z * 6., Action::Assault { position: op - Vector3::Z * 14., face: Vector3::Z })?;
                     self.radio(w, "Kilo: Contact north! A technical and infantry coming down the road. Armour behind them.", Some(c0));
                     self.start(w, "column", 21);
                 } else {
-                    for (offset, ahead) in [(Vector3::new(-8., 0., -10.), 24.), (Vector3::new(10., 0., -24.), 30.)] {
-                        let id = w.vehicle("btr", foe, enemy, w.walk(c0 + offset), yaw_of(Vector3::Z), false)?;
+                    for (key, ahead) in [("column_1", 24.), ("column_2", 30.)] {
+                        let spawn = self.p(key);
+                        let id = w.vehicle("btr", foe, enemy, spawn, yaw_of(Vector3::Z), false)?;
                         w.vehicle_order(id, Action::Assault { position: op - Vector3::Z * ahead, face: Vector3::ZERO })?;
                         column.push(id);
                     }

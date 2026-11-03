@@ -91,6 +91,35 @@ fn objective(goal: Goal) -> Objective {
 }
 
 #[test]
+fn convoy_approach_avoids_disconnected_ground_and_keeps_its_distance() {
+    let c = Content::bundled().unwrap();
+    let mut s = scene(&c);
+    let nav = &mut s.field.geometry.navigation;
+    for z in 0..64 {
+        assert!(nav.planner.set_cell(z * 64 + 11, 0, 3, 0));
+        assert!(nav.vehicles.set_cell([11, z as i32], true, 1.));
+    }
+    assert!(nav.finalize(1));
+    c.with_profiles(&[], |p, profiles| {
+        let mut events = vec![];
+        let mut w = Context {
+            state: &mut s,
+            content: &c,
+            shared: &p.shared,
+            profiles,
+            host: 7,
+            events: &mut events,
+        };
+        let from = Vector3::new(-27., 0., -27.);
+        let to = Vector3::new(27., 0., 27.);
+        let spawn = w.vehicle_approach(from, to).unwrap();
+        assert!(spawn.x > -20. && distance(spawn, to) >= 60.);
+        assert_eq!(w.vehicle_approach(spawn, to).unwrap(), spawn);
+        assert!(w.vehicle_approach(to - Vector3::X * 40., to).is_err());
+    });
+}
+
+#[test]
 fn hud_keeps_briefings_hidden_objectives_and_casualties_consistent() {
     let c = Content::bundled().unwrap();
     let mut s = scene(&c);

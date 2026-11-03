@@ -310,7 +310,14 @@ func find_boat_path(from: Vector3, to: Vector3) -> PackedVector3Array:
 
 ## Builds the abstract graphs once the map is laid out.
 func finalize() -> void:
-	HNav.build_all([hnav_i, hnav_v, hnav_t])
+	var unbuilt: Array = []
+	for graph: HNav in [hnav_i, hnav_v, hnav_t]:
+		if graph.built:
+			graph.update(HNav.NCC)
+		else:
+			unbuilt.append(graph)
+	if not unbuilt.is_empty():
+		HNav.build_all(unbuilt)
 	for grid in [inf, veh, tracked]:
 		grid.build_regions()
 	# Preliminary loading-tool routes cannot describe the finished battlefield.

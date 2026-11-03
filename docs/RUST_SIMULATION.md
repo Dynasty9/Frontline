@@ -98,9 +98,13 @@ Full seed-1 mission playthroughs use the normal mission autopilot, then independ
 verify the entire command recording. The November 3 numeric-4 run reached these
 unmodified conclusions: Bridgehead victory at tick 10,219; Beachhead victory at
 10,975; Ambush defeat at 8,278; Kingpin defeat at 14,106. Each final checkpoint and
-winner matched verification. Skyhook remained unfinished at tick 108,000 (30
-simulated minutes); its unfinished state also verified, but mission completion
-remains under investigation. These results do not claim every autopilot wins.
+winner matched verification. Skyhook initially remained unfinished at tick 108,000
+(30 simulated minutes): the old Godot mission also stranded its convoy on
+disconnected mountain terrain. Preparing reachable vehicle approaches before the
+battle fixes that stall without changing its objectives or autopilot. The corrected
+Rust mission reaches defeat at tick 22,848; independent verification matches hash
+`588d13dc030186525dac4aec29dab214754e135783fc2b939a0fc9fec99e08f1`.
+These results do not claim every autopilot wins.
 The manual `natural_mission_reaches_and_verifies_its_conclusion` test accepts
 `FL_PLAYTHROUGH_INITIAL` and a new `FL_PLAYTHROUGH_RECORDING` path. Initial states
 are authored with `--mission=KEY --seed=1 --export-simulation=PATH --port=UNIQUE`.

@@ -422,6 +422,14 @@ impl Mission {
             )?;
         }
         self.grant(w, &["artillery"], 320.)?;
+        for (index, offset, ahead) in [
+            (0, Vector3::ZERO, 20.),
+            (1, Vector3::new(-8., 0., -10.), 24.),
+            (2, Vector3::new(10., 0., -24.), 30.),
+        ] {
+            let p = w.vehicle_approach(c0 + offset, op - Vector3::Z * ahead)?;
+            self.places.insert(format!("column_{index}"), p);
+        }
         let mut o = Objective::new(
             "deliver",
             "Sling the Nyx to Outpost Kilo",

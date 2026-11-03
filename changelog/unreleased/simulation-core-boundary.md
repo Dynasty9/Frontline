@@ -13,6 +13,7 @@ caption = "The replay viewer independently reruns a short recorded battle and ve
 - Pausing freezes battle time. Reconnecting returns you to the same battle and troops. Closing a session finishes its command recording so the independent verifier can reproduce its final state and outcome.
 - The server sends each side only the enemy state it is allowed to see. Orders, sounds, combat effects, radio messages and battle reports travel through the socket connection.
 - Transport capacity includes squads carried by vehicles without separate seat definitions. Helicopter boarding uses height above the local ground, and Beachhead reinforcements start aboard their transport.
+- Sky Hook's convoy starts on ground from which its vehicles can reach the outpost, fixing a mission stall caused by reinforcements stranded on mountain slopes.
 - Troops can complete long routes across navigation regions. Diving uses current ground height, and starting a different-sized map rebuilds its ground correctly.
 - Unreachable movement orders use cached map connectivity instead of repeatedly searching the whole navigation graph. Opening or closing a crossing refreshes that connectivity.
 - Reachable route searches use a tighter distance estimate to examine fewer junctions while preserving shortest route cost. Equally priced routes can differ, so command recordings require the matching simulation version.
