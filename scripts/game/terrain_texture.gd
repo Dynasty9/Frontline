@@ -48,6 +48,14 @@ static func shader(code: String) -> String:
 
 
 const SHADER_HELPER := """
+float terrain_geology(sampler2DArray heights, vec2 uv) {
+	float tiles = sqrt(float(textureSize(heights, 0).z));
+	vec2 grid = clamp(uv, vec2(0.0), vec2(0.999999)) * tiles;
+	vec2 cell = floor(grid);
+	vec2 local_uv = (fract(grid) * 512.0 + 1.0) / 514.0;
+	return textureLod(heights, vec3(local_uv, cell.y * tiles + cell.x), 0.0).g;
+}
+
 float terrain_height(sampler2DArray heights, vec2 uv) {
 	float tiles = sqrt(float(textureSize(heights, 0).z));
 	vec2 grid = clamp(uv, vec2(0.0), vec2(0.999999)) * tiles;
