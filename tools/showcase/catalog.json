@@ -3500,6 +3500,69 @@
         "compatibility": "Target after with --rendering-method gl_compatibility",
         "command": "godot --main-pack PACK --resolution 1600x900 -- --aivai --seed=3 --offscreen --nohud --set=perf:0 --preset=high --mood=MOOD --focus=FOCUS --zoom=ZOOM --pitch=PITCH --cam-yaw=0.7 --screenshot=OUTPUT --shot-at=2 --quit-after=3"
       }
+    },
+    {
+      "entry": "changelog/unreleased/realism-05-snow-surface.md",
+      "summary": "Snow shelves gain shallow wind grooves and granular highlights instead of perfectly smooth white surfaces.",
+      "medium": "still",
+      "stage": "native-media",
+      "rationale": "Isolate this refinement against its immediate parent, with a targeted view and a distant view.",
+      "source_ref": "codex/realism-05-snow-surface",
+      "sources": [
+        {
+          "file": "changelog/unreleased/realism-05-snow-surface/target-before.jpg",
+          "sha256": "1883f9018649b4a2797d2762eb777358e4def0f01c71618ffc62fe43fd097acf",
+          "caption": "target before"
+        },
+        {
+          "file": "changelog/unreleased/realism-05-snow-surface/target-after.jpg",
+          "sha256": "519d02ee30167ecb5ac52269b5bde5a80a32de3d02630df7caa15ce6ba9478b5",
+          "caption": "target after"
+        },
+        {
+          "file": "changelog/unreleased/realism-05-snow-surface/wide-before.jpg",
+          "sha256": "41886eca37cdce279a507e30dffda1256808c0a0c7e8d8fc75e7c03497bed71e",
+          "caption": "wide before"
+        },
+        {
+          "file": "changelog/unreleased/realism-05-snow-surface/wide-after.jpg",
+          "sha256": "e54beed0d77c3484c571e05b6e4fb2951367471113521335b8a9b605cd7483b1",
+          "caption": "wide after"
+        },
+        {
+          "file": "changelog/unreleased/realism-05-snow-surface/target-compat.jpg",
+          "sha256": "8ecac4d5e1860c1ad84c2690b2ee60c0cfe0f8d489ca349976e84c70781668e6",
+          "caption": "target compat"
+        },
+        {
+          "file": "changelog/unreleased/realism-05-snow-surface/compare.gif",
+          "sha256": "9bc08385e8344785e05a34712153edcf85b2347f5e2a21d25823e46ae18fcf2a",
+          "caption": "Native frames, separate labels, shared palette, 2.5 seconds each."
+        }
+      ],
+      "output": null,
+      "title": "Break up smooth snow with wind-shaped surface detail",
+      "version": "unreleased",
+      "kind": "improved",
+      "capture": {
+        "before_ref": "7e2016aebe2be35b015ac1ab9c799a7f52cc614c",
+        "after_ref": "codex/realism-05-snow-surface",
+        "before_pack": "realism-04.pck",
+        "after_pack": "realism-05.pck",
+        "seed": 3,
+        "preset": "high",
+        "mood": "day",
+        "resolution": "1600x900",
+        "focus": "220,300",
+        "zoom": 180,
+        "pitch": -50,
+        "yaw": 0.7,
+        "shot_at": 2,
+        "quit_after": 3,
+        "wide": "focus 0,0; zoom 900; pitch -22; yaw 0.7",
+        "compatibility": "Target after with --rendering-method gl_compatibility",
+        "command": "godot --main-pack PACK --resolution 1600x900 -- --aivai --seed=3 --offscreen --nohud --set=perf:0 --preset=high --mood=MOOD --focus=FOCUS --zoom=ZOOM --pitch=PITCH --cam-yaw=0.7 --screenshot=OUTPUT --shot-at=2 --quit-after=3"
+      }
     }
   ],
   "layout_capture": {
