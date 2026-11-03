@@ -3183,6 +3183,71 @@
           "gif": "Same full native frames with separate label bar; common 256-colour palette; no resizing or contrast adjustment; two seconds per frame."
         }
       }
+    },
+    {
+      "entry": "changelog/unreleased/alpine-massifs.md",
+      "summary": "Uneven mountain groups, lower passes and reshaped cliff shoulders replace repetitive ridges, with more varied moss-to-rock transitions.",
+      "medium": "still",
+      "stage": "native-media",
+      "rationale": "Matched distant and closer native renders expose silhouette changes rather than relying on subtle texture differences.",
+      "source_ref": "codex/alpine-massifs",
+      "sources": [
+        {
+          "file": "changelog/unreleased/alpine-massifs/wide-before.jpg",
+          "sha256": "91c7a64ae24589f0fbc49f11122fa1883a91421e2b8eed0f575010f12e931e4f",
+          "caption": "wide before"
+        },
+        {
+          "file": "changelog/unreleased/alpine-massifs/wide-after.jpg",
+          "sha256": "554ee96f90ac717ebd3cf6437b0386dc7ccac8f701603ce9376470d89af6d265",
+          "caption": "wide after"
+        },
+        {
+          "file": "changelog/unreleased/alpine-massifs/close-before.jpg",
+          "sha256": "99adc873656618e8ed48457008ae48ed38c71b151b7e57a77b2ea088dffead74",
+          "caption": "close before"
+        },
+        {
+          "file": "changelog/unreleased/alpine-massifs/close-after.jpg",
+          "sha256": "d8741e8e32dcee01971d80c6626610c6c2bdbef6c380793922a1826d414cfda7",
+          "caption": "close after"
+        },
+        {
+          "file": "changelog/unreleased/alpine-massifs/detail-before.jpg",
+          "sha256": "ae0b97d7676469dc0d26653bd51968535c4f3ecd2db9a2be9ac01c6edddf5769",
+          "caption": "before native render"
+        },
+        {
+          "file": "changelog/unreleased/alpine-massifs/detail-after.jpg",
+          "sha256": "d8a71c0ea32b184110173492c1cb943c344da0b95cf98db2853b0a73111249f3",
+          "caption": "after native render"
+        },
+        {
+          "file": "changelog/unreleased/alpine-massifs/detail-compatibility.jpg",
+          "sha256": "eac954235bfb2c0f6a420d79c5a03ea9ef4c98a1f91566101e395fca48ff55b6",
+          "caption": "compatibility native render"
+        },
+        {
+          "file": "changelog/unreleased/alpine-massifs/wide-compare.gif",
+          "sha256": "8be7d525416714147bac4cbeb07098fcf0fb18994c70cd856558432f524fac22",
+          "caption": "Native wide frames with a separate label bar; no scene retouching. Common palette, 2.5 seconds each."
+        }
+      ],
+      "output": null,
+      "title": "Break up mountain silhouettes",
+      "version": "unreleased",
+      "kind": "improved",
+      "capture": {
+        "before_ref": "d48bb0323232353f4a5caa4bba520670374930aa",
+        "after_ref": "codex/alpine-massifs",
+        "before_pack": "integrated-before.pck",
+        "after_pack": "massifs-v5.pck",
+        "command": "godot --main-pack PACK --resolution 1600x900 -- --aivai --seed=3 --offscreen --nohud --set=perf:0 --mood=day --preset=high --focus=0,0 --zoom=900 --pitch=-22 --cam-yaw=0.7 --screenshot=OUTPUT --shot-at=2 --quit-after=3",
+        "close": "Same controls with --focus=250,250 --zoom=350 --pitch=-28",
+        "camera_note": "Ground-following camera; matching control inputs, absolute Y may change with the terrain.",
+        "detail": "Same controls with --focus=300,300 --zoom=100 --pitch=-28; camera height follows the changed terrain.",
+        "compatibility": "Final wide view with --rendering-method gl_compatibility"
+      }
     }
   ],
   "layout_capture": {
