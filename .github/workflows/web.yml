@@ -30,9 +30,16 @@ jobs:
   viewer:
     name: Browser viewer image
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: npm ci
+      - run: npx playwright install --with-deps --only-shell chromium
       - name: Build website and Godot viewer
         working-directory: .
         run: docker build -f Dockerfile.web -t frontline-web .
@@ -47,6 +54,14 @@ jobs:
           curl --fail -H 'Accept-Encoding: identity' http://localhost:8080/game/index.wasm -o /tmp/plain.wasm
           cmp /tmp/compressed.wasm /tmp/plain.wasm
           WEB_ORIGIN=http://localhost:8080 node .github/scripts/production_web_smoke.mjs
+          node tools/browser_smoke.mjs
+
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: browser-simulation
+          path: build/browser-*.png
+          if-no-files-found: ignore
 
   check:
     name: Lint, types, unit tests, build

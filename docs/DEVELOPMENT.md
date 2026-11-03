@@ -8,13 +8,28 @@ Desktop solo and hosted multiplayer run the authoritative simulation in `frontli
 Godot handles visuals and interaction. `native/core` contains gameplay state and
 algorithms; `native/server` connects the fixed tick, commanders, missions, socket
 transport and command recordings. `native/src` supplies map-generation bindings
-and parity tests. Browser migration is still in progress;
+and parity tests. Browser solo games run the same Rust simulation in a Web Worker;
 see [RUST_SIMULATION.md](RUST_SIMULATION.md) for the current boundary and checks.
 
 Install Rust 1.94.0, run `python tools/build_native.py`, then re-import Godot.
 The builder stages both the extension and server; release builds include them on
 Windows, Linux and macOS. Do not commit generated binaries. Native solo play needs
 both binaries; a missing server is reported instead of silently changing simulation.
+
+For web exports, also install Rust's `wasm32-unknown-unknown` target for 1.94.0,
+`nightly-2026-01-15` with `rust-src` and `wasm32-unknown-emscripten`, and Emscripten
+3.1.74. Activate its environment, then run `python tools/build_web.py --godot PATH
+--output build/web`. Godot needs its `web_dlink_nothreads_release.zip` export
+template. The script stages the extension, worker and game data together; serve
+the entire output directory. `Dockerfile.web` and release CI perform these steps.
+The worker uses the desktop packet and recording formats. Browser multiplayer
+remains unavailable because the existing ENet lobby requires UDP.
+
+After `npm ci` in `web`, `FRONTLINE_WEB_URL=http://localhost:8080/game/index.html
+node tools/browser_smoke.mjs` exercises an exported battle, movement, pause, saved
+recording verification and the website's model viewer. Run it from the repository
+root. Browser recordings are saved when leaving the match through the menu;
+closing or crashing the browser tab can interrupt the final write.
 
 `--local-server` prepares a map in a short-lived headless Godot child and then
 starts the Rust server. Desktop solo menu actions use this automatically. Local

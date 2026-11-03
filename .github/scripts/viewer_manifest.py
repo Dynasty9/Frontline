@@ -12,6 +12,7 @@ destination = pathlib.Path(sys.argv[1])
 assert (destination / "index.wasm").is_file() and (destination / "index.pck").is_file(), "Export the game first"
 (destination / "viewer.json").write_text(json.dumps({"format": 1, "protocol": int(protocol[1]), "manual": 3}) + "\n")
 # Compress once during the build, rather than on every first visit to a model or battle.
-for filename in ("index.wasm", "index.pck", "index.js"):
-    source = destination / filename
+for source in sorted(destination.iterdir()):
+    if source.suffix not in (".wasm", ".pck", ".js"):
+        continue
     source.with_suffix(source.suffix + ".gz").write_bytes(gzip.compress(source.read_bytes(), mtime=0))

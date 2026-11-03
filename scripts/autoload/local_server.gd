@@ -13,6 +13,7 @@ var replaying := false
 var networked := false
 var replay_status := {}
 var client: Node
+var worker: Node
 var _generating := false
 var _started_ms := 0
 var _next_poll := 0
@@ -50,7 +51,19 @@ func executable() -> String:
 
 func launch(options: Dictionary, team: int, lobby := false) -> int:
 	if OS.has_feature("web"):
-		return ERR_UNAVAILABLE
+		if lobby or not ClassDB.class_exists("ActorStateCore"):
+			return ERR_UNAVAILABLE
+		stop()
+		Net.leave()
+		var error := _new_worker(true)
+		if error != OK:
+			return error
+		Net.host_offline(team)
+		Net.settings = options.duplicate(true)
+		Net.settings["simulation_export"] = ""
+		Net.start_game()
+		starting = true
+		return OK
 	var server := executable()
 	if server.is_empty() or not ClassDB.class_exists("ActorStateCore"):
 		return ERR_FILE_NOT_FOUND
@@ -113,7 +126,18 @@ func start_child(path: String) -> void:
 
 func play_replay(source: String, seconds := 0.0) -> int:
 	if OS.has_feature("web"):
-		return ERR_UNAVAILABLE
+		if not FileAccess.file_exists(source):
+			return ERR_FILE_NOT_FOUND
+		stop()
+		Net.leave()
+		var error := _new_worker(false)
+		if error != OK:
+			return error
+		replaying = true
+		starting = true
+		_settings = {"replay": true, "players": {1: {"team": -1, "name": "Observer"}}}
+		worker.start.call_deferred(FileAccess.get_file_as_bytes(source), true, maxi(0, roundi(seconds * 60.0)))
+		return OK
 	var server := executable()
 	if server.is_empty() or not FileAccess.file_exists(source):
 		return ERR_FILE_NOT_FOUND
@@ -149,8 +173,51 @@ func requested_team() -> int:
 	return int(_config.get("team", 0))
 
 func set_speed(value: float) -> void:
+	if is_instance_valid(worker) and connected:
+		worker.set_speed(value)
 	if pid > 0 and connected:
 		_write(".speed", {"speed": clampf(value, 0.0, 4.0)})
+
+func _new_worker(save_recording: bool) -> Error:
+	if save_recording:
+		var error := DirAccess.make_dir_recursive_absolute("user://replays")
+		if error != OK:
+			return error
+		recording = "user://replays/battle-" + Crypto.new().generate_random_bytes(16).hex_encode() + ".flrp"
+	worker = GameScripts.load_script("res://scripts/game/browser_server.gd").new()
+	worker.recording = recording if save_recording else ""
+	worker.available.connect(_worker_ready)
+	worker.failed.connect(_fail)
+	add_child(worker)
+	return OK
+
+func generated(bytes: PackedByteArray, settings: Dictionary) -> void:
+	if not is_instance_valid(worker):
+		return
+	if bytes.is_empty():
+		_fail("Could not prepare the battlefield for the simulation.")
+		return
+	_settings = settings.duplicate(true)
+	_settings.erase("simulation_export")
+	worker.start(bytes, false, 0)
+
+func _worker_ready(metadata: Dictionary) -> void:
+	if not metadata.get("engine") is String or not int(metadata.get("side", 0)) in [1024, 2048, 3072] or not int(metadata.get("team", -2)) in [-1, 0, 1]:
+		_fail("Invalid browser simulation metadata.")
+		return
+	_team = int(metadata.team)
+	_settings.map_size = int(metadata.side)
+	if replaying:
+		if not metadata.get("replay") is Dictionary:
+			_fail("Invalid replay metadata.")
+			return
+		replay_status = metadata.replay
+		_settings.mood = String(metadata.get("mood", "clear"))
+	_settings.simulation_connection = {"worker": true, "engine": metadata.engine, "peer": int(metadata.peer), "team": _team}
+	starting = false
+	connected = true
+	Net.host_offline(_team)
+	Net._start(_settings)
 
 func reconnect() -> bool:
 	if child or pid <= 0 or _generating or not OS.is_process_running(pid) or _retries >= 10:
@@ -387,6 +454,13 @@ func stop() -> void:
 	if is_instance_valid(client):
 		client.close()
 	client = null
+	if is_instance_valid(worker):
+		# The worker finishes its recording after the old view has gone away.
+		worker.available.disconnect(_worker_ready)
+		worker.failed.disconnect(_fail)
+		worker.failed.connect(func(message: String): Net.net_error.emit(message))
+		worker.stop()
+		worker = null
 	if pid > 0 and OS.is_process_running(pid):
 		if _generating:
 			OS.kill(pid)

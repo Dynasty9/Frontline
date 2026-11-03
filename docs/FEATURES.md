@@ -1226,7 +1226,9 @@ Desktop solo games, missions and multiplayer launch a private Rust simulation
 process. The visible game sends commands and draws interpolated snapshots;
 the simulation remains authoritative for every soldier, including off-screen units.
 Pause, resume and returning to the menu control the owned simulation process.
-Web retains the in-process host path.
+Browser solo play runs the same Rust simulation in a Web Worker. Godot prepares
+the initial map once, then receives the worker's state through the same packet
+decoder as desktop clients. Browser multiplayer still needs the desktop build.
 
 Squads stagger their planning and share nearby threat assessments (up to 0.25 s)
 and building contacts (up to 0.75 s, invalidated by new contacts). Men separated
@@ -1301,8 +1303,10 @@ Pausing changes server pacing. Leaving finishes the deterministic command record
 The replay viewer re-executes admitted commands for playback and seeking, and labels
 a result verified only after checking its input stream, final state and winner.
 An unfinished battle can verify as unfinished; it is never presented as a victory.
-Existing observer archives keep their separate unverified status. Browser integration
-remains in progress; see [RUST_SIMULATION.md](RUST_SIMULATION.md) for the process
+Existing observer archives keep their separate unverified status. Browser command
+recordings use the same verifier and replay controls. Leaving through the menu
+saves them in browser storage; closing the tab can interrupt the final write.
+See [RUST_SIMULATION.md](RUST_SIMULATION.md) for the process
 boundary, replay contract, validation and remaining release gates.
 
 See [SIMULATION_SCALING.md](SIMULATION_SCALING.md) for the native perception

@@ -11,6 +11,7 @@ parser.add_argument("--target", help="Optional Rust target triple for cross comp
 args = parser.parse_args()
 destination = ROOT / "bin/native"
 destination.mkdir(parents=True, exist_ok=True)
+shutil.copy2(ROOT / "native/content.json", ROOT / "bin/content.json")
 
 
 def build(target):
@@ -49,5 +50,6 @@ reloadable = false
 windows.x86_64 = "res://bin/native/frontline_sim.dll"
 linux.x86_64 = "res://bin/native/libfrontline_sim.so"
 macos = "res://bin/native/libfrontline_sim.dylib"
+web.wasm32 = "res://bin/web/frontline_sim.wasm"
 ''', encoding="utf-8")
 print(f"Staged simulation binaries in {destination}")

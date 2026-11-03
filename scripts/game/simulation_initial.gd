@@ -194,7 +194,7 @@ static func capture(w: World) -> PackedByteArray:
 		"presentation": {"decor": w.decor, "mood": Atmosphere.pick_mood(w.settings)}}
 	var out := StreamPeerBuffer.new()
 	out.put_data(header("FLIN", 2))
-	out.put_data(block(FileAccess.get_file_as_bytes("res://native/content.json")))
+	out.put_data(block(FileAccess.get_file_as_bytes("res://bin/content.json")))
 	out.put_data(block(JSON.stringify(plain(meta), "", true, true).to_utf8_buffer()))
 	out.put_u64(w.rng.seed)
 	out.put_u64(w.rng.state)

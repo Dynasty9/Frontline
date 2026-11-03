@@ -11,6 +11,24 @@ on:
   pull_request:
 
 jobs:
+  browser-simulation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+      - name: Verify native and WebAssembly worker recordings
+        env:
+          FL_BROWSER_CONTRACT: ${{ github.workspace }}/build/browser-contract.flrp
+        run: |
+          mkdir -p build
+          rustup toolchain install 1.94.0 --profile minimal --target wasm32-unknown-unknown
+          cargo +1.94.0 test --locked --release --manifest-path native/Cargo.toml -p frontline_browser
+          cargo +1.94.0 build --locked --release --target wasm32-unknown-unknown --manifest-path native/Cargo.toml -p frontline_browser
+          node --test tests/browser-worker.test.mjs
+
   numeric-contract:
     strategy:
       fail-fast: false

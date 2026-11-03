@@ -4,6 +4,9 @@
 **/dist
 web/public/game
 build
+native/target
+bin
+frontline_sim.gdextension
 *.log
 .claude
 

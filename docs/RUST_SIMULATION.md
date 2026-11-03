@@ -1,8 +1,9 @@
 # Rust simulation migration
 
-Status: **desktop solo and multiplayer battles run in the separate Rust server.**
-Browser integration, remaining presentation checks and frame-time targets are
-still being completed. This branch is not ready to release.
+Status: **desktop solo and multiplayer battles run in the separate Rust server;
+browser solo battles run the same Rust simulation in a Web Worker.** Remaining
+presentation checks and frame-time targets are still being completed. This
+branch is not ready to release.
 
 ## Process boundary
 
@@ -26,7 +27,8 @@ protocol. Rendering never advances gameplay randomness or decides a casualty.
 The GDExtension in `native/src` remains necessary for map preparation and reference
 comparisons. The engine-independent code in `native/core` and `native/server`
 contains no Godot objects. The old GDScript simulation remains as a parity
-reference and for the browser path still awaiting integration.
+reference. Browser map preparation uses the WebAssembly GDExtension once, then
+releases the authoring world before starting the Rust worker and visual client.
 
 ## Socket protocol
 
@@ -62,6 +64,15 @@ Desktop packaging includes the server beside the Windows/Linux executable and
 in `Contents/Helpers` on macOS. The updater installs and rolls back the game,
 GDExtension and server together. Closing a game asks its owned server to finish
 and flush the recording; unrelated applications are never stopped.
+
+The browser worker replaces only the socket transport and filesystem. It uses
+the shared FLNP packet encoder, simulation tick, command validator and FLRP
+recorder/verifier. Its identity comes from the starting state, not from commands.
+One packet bundle is transferred at a time; Godot consumes it within the same
+2 ms packet-processing budget as socket clients. Worker catch-up is capped at
+four ticks per turn. Browser multiplayer still requires the desktop build.
+Leaving through the menu saves the finished recording to browser-local storage;
+force-closing the tab cannot guarantee that final asynchronous write.
 
 ## Deterministic recording and verification
 
@@ -206,11 +217,23 @@ reinforcements have a deterministic replay regression.
 Remaining release gates:
 
 - Audit remaining cosmetic lifecycle events through joining and live observations.
-- Integrate browser transport/runtime without a desktop process assumption.
 - Run generated large-map, 500-unit rendered cases and inspect tail frame times,
   frame-to-frame variation and memory with other applications running.
 - Complete exports/installers and current-head cross-platform CI. Preserve gameplay
   with full scenario/mission regressions and visible comparison evidence.
+
+Browser validation on 3 November: the real Chromium export generated a 1 km
+battle with 20 soldiers, sent a move order, replicated movement, paused its clock,
+saved on exit and reopened at a verified final tick (`BROWSER_SERVER_TEST failures=0`).
+The native session test produces byte-identical commands, checkpoints and
+recording bytes to `frontline-server`; the actual JavaScript worker also replays
+the native fixture and a fresh WebAssembly instance verifies its live recording.
+These are correctness checks, not browser FPS or 3 km memory measurements.
+The production model-viewer bridge also rendered its Hunter after the battle test.
+The reproducible web build completed, and a packaged Windows executable started
+its Rust child and received all 24 entities in the 20-soldier fixture without script
+errors. Native launcher/reconnect/recording regression and shared render-packet
+server tests pass; current-head Linux/Docker and cross-platform CI remain release checks.
 
 The 3 km navigation breakdown in `build/rust-socket-generated-3072-navigation/`
 measured 74.59 FPS, frame p99 26.66 ms, and Rust tick p99 35.72 ms. Path searches

@@ -90,6 +90,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "frontline_browser"
+version = "0.1.0"
+dependencies = [
+ "frontline_core",
+ "frontline_server",
+ "serde_json",
+]
+
+[[package]]
 name = "frontline_core"
 version = "0.1.0"
 dependencies = [

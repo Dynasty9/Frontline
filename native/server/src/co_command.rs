@@ -75,7 +75,7 @@ pub fn project(s: &Simulation, peer: i32, team: i8, d: &Value) -> (u8, Value) {
             0
         };
         (
-            crate::network::PING,
+            crate::protocol::PING,
             json!([
                 peer,
                 d["kind"],
@@ -90,7 +90,7 @@ pub fn project(s: &Simulation, peer: i32, team: i8, d: &Value) -> (u8, Value) {
             .iter()
             .map(|p| [bounded(&p[0]), bounded(&p[1])])
             .collect();
-        (crate::network::SKETCH, json!([peer, points]))
+        (crate::protocol::SKETCH, json!([peer, points]))
     }
 }
 

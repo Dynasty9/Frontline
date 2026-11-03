@@ -139,7 +139,7 @@ func _ready() -> void:
 	# only delays construction on large maps. Processing and RPCs stay active.
 	visible = srv
 	_local_loading = srv and LocalServer.child
-	has_view = DisplayServer.get_name() != "headless"
+	has_view = DisplayServer.get_name() != "headless" and not settings.has("simulation_export")
 	local_peer = multiplayer.get_unique_id()
 	if settings.has("simulation_connection"):
 		local_peer = int(settings.simulation_connection.peer)
@@ -237,6 +237,11 @@ func build() -> void:
 		_load_mark("navigation ready")
 		print("Hierarchical nav: %s infantry, %s vehicles (%d ms)" % [nav.hnav_i.stats(), nav.hnav_v.stats(), Time.get_ticks_msec() - tn])
 		if settings.has("simulation_export"):
+			if OS.has_feature("web"):
+				get_tree().multiplayer_poll = polled
+				process_mode = Node.PROCESS_MODE_DISABLED
+				building = false
+				return
 			var error := SimulationInitial.save(self, String(settings.simulation_export))
 			if error == OK:
 				print("SIMULATION_INITIAL exported entities=%d squads=%d" % [entities.size(), squads.size()])
@@ -294,7 +299,13 @@ func build() -> void:
 		simulation_client.failed.connect(func(message: String):
 			if not LocalServer.reconnect():
 				Net.net_error.emit(message))
-		var error := simulation_client.connect_relay(String(connection.engine)) if connection.get("relay", false) else simulation_client.connect_to(String(connection.address), int(connection.port), String(connection.token), String(connection.engine))
+		var error: Error
+		if connection.get("worker", false):
+			error = simulation_client.connect_worker(LocalServer.worker, String(connection.engine))
+		elif connection.get("relay", false):
+			error = simulation_client.connect_relay(String(connection.engine))
+		else:
+			error = simulation_client.connect_to(String(connection.address), int(connection.port), String(connection.token), String(connection.engine))
 		if error != OK:
 			Net.net_error.emit("Could not connect to the simulation: " + error_string(error))
 	elif not srv and not settings.get("replay", false):

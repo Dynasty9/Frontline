@@ -12,8 +12,10 @@ path = "src/main.rs"
 frontline_core = { path = "../core" }
 serde_json = { version = "=1.0.154", features = ["float_roundtrip"] }
 blake3 = "=1.8.7"
-rusty_enet = "=0.4.0"
 flate2 = { version = "=1.1.10", default-features = false, features = ["rust_backend"] }
+
+[target.'cfg(not(target_family = "wasm"))'.dependencies]
+rusty_enet = "=0.4.0"
 
 [build-dependencies]
 blake3 = "=1.8.7"

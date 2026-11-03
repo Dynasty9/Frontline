@@ -60,6 +60,17 @@ var _surface_tiles := {}
 var _roads_pending := false
 var _relay := false
 var _relay_at := 0
+var _worker: Node
+
+func connect_worker(worker: Node, engine: String) -> Error:
+	close()
+	if not is_instance_valid(worker):
+		return ERR_CANT_CONNECT
+	_worker = worker
+	_engine = engine
+	connected = true
+	_worker.open()
+	return OK
 
 func connect_relay(engine: String) -> Error:
 	close()
@@ -95,6 +106,7 @@ func connect_to(address: String, port: int, token: String, engine: String) -> Er
 
 func close() -> void:
 	connected = false
+	_worker = null
 	identity = 0
 	if _relay:
 		Net.simulation_packet.disconnect(_relay_packet)
@@ -142,6 +154,8 @@ static func packet(kind: int, sequence: int, payload: PackedByteArray) -> Packed
 func _send(kind: int, payload: PackedByteArray, sequence := 0) -> Error:
 	if not connected or payload.size() + 16 > MAX_PACKET:
 		return ERR_UNAVAILABLE
+	if is_instance_valid(_worker):
+		return _worker.send(packet(kind, sequence, payload))
 	if _relay:
 		if kind == SEND_PRESENCE:
 			return Net.rpc_id(1, "_simulation_presence_up", packet(kind, sequence, payload))
@@ -166,6 +180,19 @@ func request_report() -> Error:
 	return _send(REQUEST_REPORT, PackedByteArray())
 
 func _process(_delta: float) -> void:
+	if is_instance_valid(_worker):
+		var started := Time.get_ticks_usec()
+		for _i in 256:
+			var data: PackedByteArray = _worker.read()
+			if data.is_empty():
+				break
+			if not _receive(data.slice(1), int(data[0])):
+				_error("The simulation sent an invalid packet.")
+				return
+			if Time.get_ticks_usec() - started >= 2000:
+				break
+		flush_surface()
+		return
 	if _relay:
 		if identity == 0 and Time.get_ticks_msec() - _relay_at > 30000:
 			_error("The simulation did not answer.")

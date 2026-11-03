@@ -268,7 +268,11 @@ func _ready() -> void:
 		var replay_url = JavaScriptBridge.eval("new URLSearchParams(location.search).get('replay') || ''")
 		if replay_url is String and not replay_url.is_empty():
 			args["replay"] = replay_url
-	if args.has("simulation-client"):
+	if args.has("browser-simulation-test"):
+		var test: Node = GameScripts.load_script("res://scripts/test/browser_server_test.gd").new()
+		test.main = self
+		add_child(test)
+	elif args.has("simulation-client"):
 		var connection = JSON.parse_string(FileAccess.get_file_as_string(String(args["simulation-client"])))
 		if not connection is Dictionary or not ["address", "port", "token", "engine", "peer", "team", "map_size"].all(func(key): return connection.has(key)):
 			push_error("Invalid simulation connection file")
@@ -521,6 +525,12 @@ func _on_game_start(s: Dictionary) -> void:
 	# (with a window, a frame of the loading screen between its stages: World._breathe)
 	await world.build()
 	if s.has("simulation_export"):
+		if OS.has_feature("web"):
+			var bytes: PackedByteArray = GameScripts.load_script("res://scripts/game/simulation_initial.gd").capture(world)
+			world.free()
+			world = null
+			await get_tree().process_frame
+			LocalServer.generated(bytes, s)
 		return
 	if not is_instance_valid(world):
 		return

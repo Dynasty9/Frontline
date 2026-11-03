@@ -74,31 +74,34 @@ pub fn cluster_costs(
     if clusters.is_empty() {
         return Some(Vec::new());
     }
+    let calculate = |chunk: &[ClusterQuery]| {
+        let mut results = Vec::with_capacity(chunk.len());
+        for cluster in chunk {
+            let mut grid =
+                NavigationGrid::new(cluster.origin, cluster_side as i32, cluster_side as i32)
+                    .unwrap();
+            for row in 0..cluster_side {
+                let from =
+                    (cluster.origin[1] as usize + row) * map_side + cluster.origin[0] as usize;
+                for x in 0..cluster_side {
+                    grid.solid[row * cluster_side + x] = solid[from + x] != 0;
+                    grid.weight[row * cluster_side + x] = weight[from + x];
+                }
+            }
+            results.push(grid.pair_costs(&cluster.entrances));
+        }
+        results
+    };
     let count = workers.clamp(1, 8).min(clusters.len());
+    // Browser workers own their thread; spawning Rust threads is unavailable there.
+    if count == 1 || cfg!(target_family = "wasm") {
+        return Some(calculate(clusters));
+    }
     std::thread::scope(|scope| {
         let mut handles = Vec::new();
         for chunk in clusters.chunks(clusters.len().div_ceil(count)) {
-            handles.push(scope.spawn(move || {
-                let mut results = Vec::with_capacity(chunk.len());
-                for cluster in chunk {
-                    let mut grid = NavigationGrid::new(
-                        cluster.origin,
-                        cluster_side as i32,
-                        cluster_side as i32,
-                    )
-                    .unwrap();
-                    for row in 0..cluster_side {
-                        let from = (cluster.origin[1] as usize + row) * map_side
-                            + cluster.origin[0] as usize;
-                        for x in 0..cluster_side {
-                            grid.solid[row * cluster_side + x] = solid[from + x] != 0;
-                            grid.weight[row * cluster_side + x] = weight[from + x];
-                        }
-                    }
-                    results.push(grid.pair_costs(&cluster.entrances));
-                }
-                results
-            }));
+            let calculate = &calculate;
+            handles.push(scope.spawn(move || calculate(chunk)));
         }
         let mut results = Vec::with_capacity(clusters.len());
         for handle in handles {
