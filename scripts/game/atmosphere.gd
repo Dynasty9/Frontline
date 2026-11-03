@@ -600,6 +600,7 @@ func apply_mood(m: String) -> void:
 
 func apply_settings() -> void:
 	var s := Settings
+	ground_mat.set_shader_parameter("terrain_detail", int(s.get_v("lod")) >= 1)
 	# the battle's own mood stands (the host's choice, or a mission's) until
 	# the player changes the setting while it's on
 	var want := String(s.get_v("mood"))
@@ -993,6 +994,7 @@ render_mode specular_schlick_ggx;
 uniform vec3 sun_direction = vec3(0.0, 1.0, 0.0);
 uniform vec3 air_color : source_color = vec3(0.5, 0.6, 0.7);
 uniform float terrain_air = 0.0;
+uniform bool terrain_detail = true;
 uniform sampler2D surface_bake : hint_default_white, filter_linear_mipmap, repeat_disable;
 uniform sampler2D cliff_color : source_color, filter_linear_mipmap_anisotropic, repeat_enable;
 uniform sampler2D cliff_normal : filter_linear_mipmap_anisotropic, repeat_enable;
@@ -1171,6 +1173,11 @@ void fragment() {
 	vec3 scree_uv = wpos / 16.0 + 0.37;
 	vec3 moss_uv = wpos / 18.0;
 	vec4 rock_sample = surface_color(rock_color, rock_uv, weights);
+	vec3 secondary_uv = rock_uv * 2.31 + vec3(0.37, 0.61, 0.23);
+	float secondary_mix = smoothstep(0.25, 0.72, patch) * 0.55;
+	if (terrain_detail) {
+		rock_sample = mix(rock_sample, surface_color(rock_color, secondary_uv, weights), secondary_mix);
+	}
 	vec4 scree_sample = surface_color(cliff_color, scree_uv, weights);
 	vec4 moss_sample = surface_color(moss_color, moss_uv, weights);
 	float macro = texture(detail_tex, p / 190.0 + 0.19).r;
@@ -1202,6 +1209,12 @@ void fragment() {
 	moss *= mix(0.93, 1.07, patch);
 	vec3 rock_n; vec3 scree_n; vec3 moss_n;
 	vec2 rock_data = surface_data(rock_normal, rock_uv, weights, geometric, rock_n);
+	if (terrain_detail) {
+		vec3 secondary_n;
+		vec2 secondary_data = surface_data(rock_normal, secondary_uv, weights, geometric, secondary_n);
+		rock_data = mix(rock_data, secondary_data, secondary_mix);
+		rock_n = normalize(mix(rock_n, secondary_n, secondary_mix));
+	}
 	vec2 scree_data = surface_data(cliff_normal, scree_uv, weights, geometric, scree_n);
 	vec2 moss_data = surface_data(moss_normal, moss_uv, weights, geometric, moss_n);
 	rock_data = mix(rock_data, scree_data, scree * 0.7);
