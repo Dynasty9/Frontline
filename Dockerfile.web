@@ -2,7 +2,7 @@
 # context and this Dockerfile for the Railway web service.
 FROM debian:bookworm-slim AS viewer
 ARG GODOT_VERSION=4.7.2
-RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates curl unzip python3 git build-essential && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates curl unzip python3 git build-essential libfontconfig1 && rm -rf /var/lib/apt/lists/*
 ENV PATH="/root/.cargo/bin:/opt/emsdk/upstream/emscripten:${PATH}"
 ENV EMSDK=/opt/emsdk EM_CONFIG=/opt/emsdk/.emscripten
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal --default-toolchain 1.94.0 \

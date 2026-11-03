@@ -1,6 +1,6 @@
 +++
 title = "Move battle simulation into a separate Rust server"
-summary = "Desktop solo and multiplayer battles run separately from rendering, with authenticated commands, reconnect support and deterministic command recordings. Command recordings play, seek and verify in the replay viewer; browser integration remains in progress."
+summary = "Desktop battles run in a separate Rust server and browser solo battles use a Rust worker, with authenticated commands, reconnect support and deterministic command recordings that play, seek and verify in the replay viewer."
 kind = "improved"
 
 [[screenshots]]
