@@ -44,6 +44,7 @@ caption = "After: selected and nearby troops receive the articulated-model budge
 - Large-map starting states and command recordings use lossless compressed blocks, retaining exact state for independent verification.
 - Distant soldier batches expand their bounds for elevated and airborne troops, preventing models from disappearing above the old flat-ground bounds.
 - Distant soldiers smooth their movement on the GPU between socket updates, reducing repeated CPU transform uploads while preserving immediate visibility and teleport changes.
+- Client movement smoothing reuses each unit's current transform, reducing repeated engine reads while keeping movement and teleport behavior unchanged.
 - Close views limit fully articulated models to 16 selected or nearby soldiers. Other troops use shared standing, crouching, prone and walking models, preserving the full army and gameplay while reducing drawing cost.
 - New detailed models build one at a time. Squad-overview preparation yields at most one frame to a HUD redraw, keeping selection immediate.
 - Soldier-batch uploads also avoid squad-summary and roster work, yielding at most two frames while GPU motion continues. This reduces overlapping client work without changing simulation timing.

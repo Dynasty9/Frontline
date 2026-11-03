@@ -40,6 +40,7 @@ var _shot_done := false
 var _shot_i := 0
 var _perf_t0 := 0
 var _perf_frames := 0
+var _perf_focused_frames := 0
 var _perf_started := false
 var _perf_ready_ms := -1
 var _perf_frame_us := 0
@@ -1036,9 +1037,11 @@ func _process(_dt: float) -> void:
 					(_perf_view_samples[key] as Array[float]).append(float(world.measured_view_frame[key]))
 					world.measured_view_frame[key] = 0.0
 				if world.has_view:
+					_perf_focused_frames += int(get_tree().root.has_focus())
 					var viewport := get_viewport().get_viewport_rid()
 					_perf_render_cpu.append(RenderingServer.viewport_get_measured_render_time_cpu(viewport) + RenderingServer.get_frame_setup_time_cpu())
 					_perf_render_gpu.append(RenderingServer.viewport_get_measured_render_time_gpu(viewport))
+					# Godot exposes the previous second's maxima through these two monitors.
 					_perf_process.append(Performance.get_monitor(Performance.TIME_PROCESS) * 1000.0)
 					_perf_physics.append(Performance.get_monitor(Performance.TIME_PHYSICS_PROCESS) * 1000.0)
 			_perf_frame_us = frame_now
@@ -1048,6 +1051,7 @@ func _process(_dt: float) -> void:
 			Engine.time_scale = 1.0
 			_perf_t0 = Time.get_ticks_msec()
 			_perf_frames = Engine.get_frames_drawn()
+			_perf_focused_frames = 0
 			_perf_frame_us = Time.get_ticks_usec()
 			_perf_frame_samples.clear()
 			_perf_render_cpu.clear()
@@ -1103,12 +1107,18 @@ func _process(_dt: float) -> void:
 				"nested_total_ms": world.measured_details.duplicate(), "nested_max_ms": world.measured_detail_max.duplicate(), "views_total_ms": world.measured_views.duplicate(),
 				"views": view_samples, "worst_frame": _perf_worst_frame.duplicate(true),
 				"events_since_start": world.stats.duplicate()}
+			if world.has_view:
+				report["focused_frames"] = _perf_focused_frames
+				report["window_pixels"] = [get_tree().root.size.x, get_tree().root.size.y]
+				report["render_scale"] = get_viewport().scaling_3d_scale
+				if world.atmo and world.atmo.sun:
+					report["shadow_distance_m"] = world.atmo.sun.directional_shadow_max_distance
 			print("BENCHMARK ", JSON.stringify(report))
 			if args.has("perf-json"):
 				if OS.has_environment("FL_DEBUG_FRAME_TRACE"):
 					report["frame_samples_ms"] = {"total": _perf_frame_samples, "views": _perf_view_samples,
 						"render_cpu": _perf_render_cpu, "render_gpu": _perf_render_gpu,
-						"process": _perf_process, "physics": _perf_physics}
+						"process_monitor": _perf_process, "physics_monitor": _perf_physics}
 				var report_file := FileAccess.open(String(args["perf-json"]), FileAccess.WRITE)
 				if report_file:
 					report_file.store_string(JSON.stringify(report, "\t"))

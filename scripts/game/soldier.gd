@@ -5409,12 +5409,14 @@ func _view_process(dt: float, blend := -1.0) -> void:
 	if not srv:
 		if blend < 0.0:
 			blend = 1.0 - exp(-dt * 14.0)
-		if absf(net_pos.y - position.y) > 0.01 or position.distance_to(net_pos) > 0.01:
+		var offset := net_pos - position
+		if absf(offset.y) > 0.01 or offset.length() > 0.01:
 			net_smooth(dt, blend)
 		else:
 			var facing := rotation
+			var previous_facing := facing
 			facing.y = lerp_angle(facing.y, net_yaw, blend)
-			if facing != rotation:
+			if facing != previous_facing:
 				rotation = facing
 	var v := life != Life.HIDDEN and seen_by_local()
 	if v != _vis:

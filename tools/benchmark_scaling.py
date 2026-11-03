@@ -43,6 +43,7 @@ p.add_argument("--output", required=True)
 p.add_argument("--exported", action="store_true")
 p.add_argument("--details", action="store_true", help="Time individual soldier methods; adds profiling overhead")
 p.add_argument("--rendered", action="store_true")
+p.add_argument("--visible", action="store_true", help="Use a normal game window to measure foreground play; leave it focused during capture")
 p.add_argument("--nohud", action="store_true", help="Hide the HUD to isolate its rendering cost")
 p.add_argument("--require-target", action="store_true", help="Fail if a measured frame or tick exceeds its runtime budget (Rust runs at 60 Hz)")
 p.add_argument("--local-server", action="store_true")
@@ -61,6 +62,8 @@ p.add_argument("--height", type=int, default=720)
 p.add_argument("--preset", choices=["low", "medium", "high", "ultra"], default="high")
 p.add_argument("--timeout", type=float, default=300)
 a = p.parse_args()
+if a.visible and not a.rendered:
+    p.error("--visible requires --rendered")
 out = Path(a.output).resolve()
 out.mkdir(parents=True, exist_ok=True)
 report_path = out / "client.json"
@@ -70,7 +73,7 @@ cmd = [str(Path(a.godot).resolve()), "--log-file", str(out / "engine.log")]
 if not a.exported:
     cmd += ["--path", str(ROOT)]
 if a.rendered:
-    cmd += ["--resolution", f"{a.width}x{a.height}", "--position", "-12000,-12000"]
+    cmd += ["--resolution", f"{a.width}x{a.height}", "--position", "100,100" if a.visible else "-12000,-12000"]
 else:
     cmd += ["--headless"]
 cmd += ["--", "--novsync", "--set=fps_cap:0", "--scenario=stress", f"--units={a.units}", f"--map-size={a.map_size}",
@@ -82,7 +85,9 @@ with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as port_socket:
     port_socket.bind(("127.0.0.1", 0))
     cmd.append(f"--port={port_socket.getsockname()[1]}")
 if a.rendered:
-    cmd += ["--offscreen", f"--screenshot={out / 'battle.png'}", f"--shot-at={a.warmup+a.duration+2}"]
+    if not a.visible:
+        cmd += ["--offscreen"]
+    cmd += [f"--screenshot={out / 'battle.png'}", f"--shot-at={a.warmup+a.duration+2}"]
 if a.details:
     cmd += ["--perf-details"]
 if a.nohud:

@@ -916,3 +916,46 @@ does not establish an overall tail improvement. Maximum frames fell from
 8.1-8.4 ms. The component does less work without a visual concession, but the
 60 FPS tail gate remains open. Evidence: `build/roster-retained-comparison.json`,
 `build/packet-scheduling-tests.log` and `build/roster-pixels-*.log`.
+
+### Frame traces and rejected scheduling experiments
+
+The optional `FL_DEBUG_FRAME_TRACE=1` export preserves chronological frame and
+component samples. The collector runs before early network/effect callbacks so
+their work belongs to the same measured frame. Godot's process and physics
+monitors expose cached one-second maxima, not individual-frame costs; use direct
+frame and component timers when investigating a particular hitch.
+
+Deferring overview work around early packet decoding did not improve the target.
+With the corrected collector, a paired playback measured frame p99 17.524 ms
+before and 19.711 ms after, with adjacent-frame difference p99 8.187 versus
+9.253 ms. The scheduling experiment was reverted. Evidence:
+`build/packet-trace-comparison.json`.
+
+A second experiment drew the overlay's orders and unit symbols on alternating
+frames while retaining their original refresh rate. ABBA playback measured
+frame p99 17.046/17.837 ms before and 17.101/17.608 ms after, and adjacent-frame
+difference p99 8.384/8.283 versus 8.338/8.250 ms. This did not establish a reliable
+tail improvement, so the extra overlay layer was also reverted. Evidence:
+`build/overlay-progressive-comparison.json`. Neither experiment changed the
+simulation or its command recordings.
+
+Reusing transform reads in the client smoothing loop reduced soldier presentation
+mean from 1.250/1.255 ms to 1.205/1.217 ms in ABBA playback. Frame p99 stayed
+17.634/18.022 ms before versus 17.145/18.380 after; this is a small component
+saving, not evidence that the overall frame-time target has passed. Movement,
+teleport and lifecycle checks pass, and the CPU/GPU smoothing comparison remains
+pixel-identical on Vulkan and Compatibility. Evidence:
+`build/transform-reads-comparison.json` and `build/static-runtime-smoothing-*.log`.
+
+### Portable Windows native artifacts
+
+The server and GDExtension now link the MSVC C runtime statically. The previous
+artifacts imported `VCRUNTIME140.dll` without packaging it. The native build checks
+the actual PE import tables and rejects external C/C++ runtime dependencies before
+staging either artifact. The original server fails this check; both rebuilt
+artifacts pass. The rebuilt server independently verifies the existing 3,015-tick
+large-map recording with the same final hash
+`51145ce8bc311dd3c5f0f5d89cc95ad9029414ff5f4e3d0b50c4332a408a9983`.
+All 140 release numeric transcripts and six client regressions pass. Evidence:
+`build/static-runtime-native-build.log`, `build/static-runtime-replay-verification.log`,
+`build/static-runtime-numeric-tests.log` and `build/static-runtime-client-tests.log`.

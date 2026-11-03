@@ -12,6 +12,9 @@ and parity tests. Browser solo games run the same Rust simulation in a Web Worke
 see [RUST_SIMULATION.md](RUST_SIMULATION.md) for the current boundary and checks.
 
 Install Rust 1.94.0, run `python tools/build_native.py`, then re-import Godot.
+Windows MSVC builds link the C runtime statically through `.cargo/config.toml`.
+The build checks both PE import tables before staging a release, rejecting external
+C/C++ runtime DLL dependencies that a clean Windows installation might lack.
 The builder stages both the extension and server; release builds include them on
 Windows, Linux and macOS. Do not commit generated binaries. Native solo play needs
 both binaries; a missing server is reported instead of silently changing simulation.
@@ -49,6 +52,11 @@ Run a measured 500-unit case with:
 ```powershell
 python tools/benchmark_scaling.py --godot "C:/path/to/Godot_console.exe" --rendered --local-server --map-size 3072 --duration 90 --output build/my-benchmark
 ```
+
+Rendered captures normally run offscreen without focus. Add `--visible` for a
+normal game window and leave it focused during capture. Reports include
+`focused_frames`, `window_pixels`, `render_scale` and the current shadow distance;
+compare focused and background runs separately, with other apps left running.
 
 Use `--exported` with an exported executable. Use a fresh output folder. The runner
 saves frame/tick percentiles, process RSS samples, logs and a screenshot. `--mode`
@@ -227,10 +235,13 @@ contain several simulation ticks; its system table is time per tick.
 
 With `--perf-json=ABSOLUTE_PATH`, `FL_DEBUG_FRAME_TRACE=1` also exports the samples
 already collected in `frame_samples_ms`: chronological frame, renderer, process,
-physics and per-view component times, all in milliseconds. This adds no sampling
+physics monitor and per-view component times, all in milliseconds. This adds no sampling
 work inside the measurement window. The collector runs before early network and
 effect callbacks so each view sample belongs to the preceding complete frame.
 Component timings can overlap; do not sum nested phases as independent costs.
+The `process_monitor` and `physics_monitor` samples (and summary fields `process_cpu`
+and `physics_cpu`) are Godot's cached maxima from the previous second, not individual
+frame durations; see [Godot's monitor update](https://github.com/godotengine/godot/blob/4.7.2-stable/main/main.cpp#L4756-L4762).
 
 Run `godot --headless --path . res://tests/structure_index_test.tscn` for building-index
 lifecycle checks and a same-process FOB lookup comparison with 1,000 scenery objects.
@@ -281,7 +292,7 @@ Scenarios, AI-vs-AI battles and missions run offline: they take no port, so any 
                                                       next tab after each of --shots
 --report-at=SECONDS                                   (client) ask the host for the statistics then; a headless client
                                                       prints a CLIENT report line for each it gets
---perf-at=480 [--perf-shot=path.png]                  fast-forward, then measure real FPS and server tick cost
+--perf-at=15 --perf-duration=20 [--perf-shot=path.png] warm up after loading, then measure real FPS and frame times
 --screenshot=out.png --shot-at=30 --focus=X,Z --zoom=40 [--shots=N --shot-every=0.5]
 --mood=golden --perf=3 --preset=ultra                 lighting, overlay level and graphics preset for screenshots
 --fx-demo=1.4 --fx-every=3                            set off explosions near the camera (visual test, no damage)

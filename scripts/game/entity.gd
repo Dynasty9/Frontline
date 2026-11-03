@@ -152,13 +152,15 @@ func net_smooth(dt: float, blend := -1.0) -> void:
 		return
 	if blend < 0.0:
 		blend = 1.0 - exp(-dt * 14.0)
-	var next_pos := net_pos if position.distance_to(net_pos) > 8.0 else position.lerp(net_pos, blend)
-	var next_rotation := rotation
-	next_rotation.y = lerp_angle(rotation.y, net_yaw, blend)
+	var current_pos := position
+	var current_rotation := rotation
+	var next_pos := net_pos if current_pos.distance_to(net_pos) > 8.0 else current_pos.lerp(net_pos, blend)
+	var next_rotation := current_rotation
+	next_rotation.y = lerp_angle(current_rotation.y, net_yaw, blend)
 	# Unchanged transforms still dirty every child model in the scene tree.
-	if next_pos != position:
+	if next_pos != current_pos:
 		position = next_pos
-	if next_rotation != rotation:
+	if next_rotation != current_rotation:
 		rotation = next_rotation
 
 
