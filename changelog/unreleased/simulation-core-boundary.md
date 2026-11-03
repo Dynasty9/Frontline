@@ -43,6 +43,8 @@ caption = "After: selected and nearby troops receive the articulated-model budge
 - Distant soldiers smooth their movement on the GPU between socket updates, reducing repeated CPU transform uploads while preserving immediate visibility and teleport changes.
 - Close views limit fully articulated models to 16 selected or nearby soldiers. Other troops use shared standing, crouching, prone and walking models, preserving the full army and gameplay while reducing drawing cost.
 - New detailed models build one at a time. Routine shared-model uploads and squad-overview preparation yield at most one frame to a HUD redraw, keeping selection, visibility changes and teleports immediate.
+- Detailed soldiers reuse prepared geometry with independent animation, reducing construction pauses when troops enter the camera view. Clothing and face variation is reduced within each unit type and team.
+- Closing the game during music preparation waits for the audio worker to finish safely.
 - Wildlife looks for nearby threats through spatial cells; soaring birds check aircraft directly instead of scanning every soldier.
 - Squad strength indicators reuse their geometry until the number or condition of their soldiers changes, reducing HUD drawing calls.
 - Minimap soldier dots share one draw batch and reuse map transforms and team colors, retaining selection, wounded colors, overlap and immediate camera feedback.

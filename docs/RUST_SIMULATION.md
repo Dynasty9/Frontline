@@ -240,10 +240,10 @@ preserve a live connection when the admission list is reordered, and enforce mar
 limits and team privacy. Drop-in starter squads and reconnecting without duplicate
 reinforcements have a deterministic replay regression.
 
-Remaining release gates:
+Remaining release gates (latest measurements are recorded below):
 
-- Run generated large-map, 500-unit rendered cases and inspect tail frame times,
-  frame-to-frame variation and memory with other applications running.
+- Meet the tail-frame budget in generated large-map, 500-unit rendered cases;
+  average FPS alone is not a pass. Continue measuring with other apps running.
 - Complete exports/installers and current-head cross-platform CI. Preserve gameplay
   with full scenario/mission regressions and visible comparison evidence.
 
@@ -630,3 +630,25 @@ and its [pending engine fix](https://github.com/godotengine/godot/pull/121025).
 The probes are in `build/load-leak-{sync,threaded,worker}.log`; this is an engine
 loading caveat, not evidence of retained Rust battle state. No engine fork or
 synchronous-startup workaround is included.
+
+### Prepared articulated models
+
+Live detailed soldiers now copy pristine per-unit/team rigs prepared during
+loading. Meshes and materials are shared; joints and all animation state are
+independent. This reduces clothing/face variation to one appearance per unit and
+team, while retaining individual breathing and death variants. Debug model views
+still use the original builder. The fixture covers all unit definitions on both
+teams; six representative types also render pixel-identically to the original
+seed in Forward+ and Compatibility (`soldier-template-visual.tscn`). A quick-exit
+music-worker lifetime error found by that fixture is fixed.
+
+Eight alternating, warmed rounds of 30 constructions each measured 7.923 ms for
+original construction and 0.816 ms for copies (90% less), including insertion
+into the scene tree. The same close replay measured a 2.384 ms construction peak
+versus 9.536 ms in the preceding run. Overall performance was worse in this
+repeat: 56.38 FPS, frame p99 36.93 ms, adjacent-frame difference p99 15.99 ms.
+Other applications remained running; this does not establish a total FPS gain.
+Evidence: `build/model-copy-bench.log`, `build/close-templates.json`, and paired
+render comparisons in `build/soldier-template-{forward_plus,gl_compatibility}.png`.
+The preceding `73d721f` passed full Godot regressions and all desktop/browser
+exports; final-head platform checks remain required.

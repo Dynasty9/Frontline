@@ -11,6 +11,7 @@ class TrackedSoldier extends Soldier:
 
 func _ready() -> void:
 	check_detail_budget()
+	check_detail_templates()
 	var world := World.new()
 	var view := SoldierViewBatch.new()
 	view.world = world
@@ -124,3 +125,37 @@ func check_detail_budget() -> void:
 	world.cam.free()
 	view.free()
 	world.free()
+
+
+func check_detail_templates() -> void:
+	var view := SoldierViewBatch.new()
+	add_child(view)
+	view.set_process(false)
+	assert(view.make_detail("rifleman", 0, 71) == null, "Unprepared models retain the normal construction fallback")
+	for unit: String in Defs.UNITS:
+		for team in [0, 1]:
+			view.prepare(unit, team)
+			var base: int = view._types[unit][team]
+			view._make_pose(base, unit, team, 0, 0)
+			var template: SoldierModel = view.detail_templates[base]
+			var a := view.make_detail(unit, team, 71)
+			var b := view.make_detail(unit, team, 238)
+			add_child(a)
+			add_child(b)
+			assert(a.visible and b.visible and not template.visible)
+			assert(a.seedf != b.seedf and b.dvar == int(238 / 7) % 3)
+			for property: Dictionary in template.get_property_list():
+				if (int(property.usage) & PROPERTY_USAGE_SCRIPT_VARIABLE) == 0:
+					continue
+				var original: Variant = template.get(property.name)
+				if original is Node3D:
+					var joint: Node3D = a.get(property.name)
+					assert(joint != original and a.is_ancestor_of(joint), "Copied joints must never drive the template or another soldier")
+					assert(joint.transform == original.transform and joint.visible == original.visible)
+			var rest := template.hips.transform
+			a.pose(0.25, Soldier.Life.ALIVE, Soldier.Post.PRONE, Soldier.Act.CRAWL, 1.0, false, false)
+			a.pose(0.25, Soldier.Life.ALIVE, Soldier.Post.STAND, Soldier.Act.LAUNCH, 0.0, false, true)
+			assert(template.hips.transform == rest and b.hips.transform == rest)
+			a.free()
+			b.free()
+	view.free()

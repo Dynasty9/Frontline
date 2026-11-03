@@ -21,6 +21,7 @@ var _detail_view := Transform3D.IDENTITY
 var groups := {}
 var poses := {}
 var prototypes := {}
+var detail_templates := {}
 var _types := {}
 var _next_pose := 0
 var _warmup: Array = []
@@ -75,6 +76,12 @@ func acquire_detail_slot() -> bool:
 		return false
 	_detail_count += 1
 	return true
+
+
+func make_detail(unit: String, team: int, seed: int) -> SoldierModel:
+	var teams: Dictionary = _types.get(unit, {})
+	var template: SoldierModel = detail_templates.get(int(teams.get(team, -1)))
+	return template.duplicate_for_soldier(seed) if template else null
 
 
 func _choose_detail(dt: float) -> void:
@@ -276,6 +283,11 @@ func _make_pose(key: int, unit: String, team: int, posture: int, frame: int) -> 
 		prototype.build(unit, team, 71)
 		prototype.visible = false
 		prototypes[prototype_key] = prototype
+		# Keep an untouched rig while the other copy is posed for distant batches.
+		var template := prototype.duplicate_for_soldier(71)
+		add_child(template)
+		template.visible = false
+		detail_templates[prototype_key] = template
 	# Settle the stance, then sample a walk cycle at a repeatable phase.
 	for i in 4:
 		prototype.pose(0.25, Soldier.Life.ALIVE, posture, Soldier.Act.IDLE, 0.0, false, false)

@@ -263,6 +263,30 @@ func build(utype: String, team: int, seed: int) -> void:
 			Mats.merge_static(j, [], false, false, true)
 
 
+## Copy a pristine template's geometry, with independent joints and animation state.
+func duplicate_for_soldier(seed: int) -> SoldierModel:
+	var model := duplicate(Node.DUPLICATE_SCRIPTS) as SoldierModel
+	for property: Dictionary in get_property_list():
+		if (int(property.usage) & PROPERTY_USAGE_SCRIPT_VARIABLE) == 0:
+			continue
+		var value: Variant = get(property.name)
+		if value is Node:
+			# Godot renames generated child names when duplicating a runtime rig.
+			var indices: Array[int] = []
+			var source := value as Node
+			while source != self:
+				indices.push_front(source.get_index())
+				source = source.get_parent()
+			value = model
+			for index in indices:
+				value = value.get_child(index)
+		model.set(property.name, value)
+	model.seedf = float(seed % 997) * 0.731
+	model.dvar = int(seed / 7) % 3
+	model.visible = true
+	return model
+
+
 ## What he wears, by side: a dictionary of colours (and the surfaces they go on).
 func _palette(team: int, is_crew: bool, rng: RandomNumberGenerator) -> Dictionary:
 	var k := {}

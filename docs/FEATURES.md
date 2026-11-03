@@ -1252,7 +1252,9 @@ transforms on the GPU between updates, keeping the same exponential smoothing us
 for CPU selection and nearby models. Routine motion uploads wait one frame after
 packet processing and may yield one further frame to a HUD redraw; visibility
 changes, teleports, camera movement and despawns remain immediate. New articulated
-models are constructed at most one per frame. Distant palette variation and subtle gestures are simplified.
+models copy a prepared rig at most one per frame, keeping independent joints,
+breathing and death animations. Each unit type and team shares its appearance;
+distant subtle gestures are simplified.
 Distant vehicles use a single material surface per moving part beyond 100 m;
 turrets, wheels and rotors keep their pivots. Near vehicles retain their original
 materials. Wrecks retain their original materials to avoid baking meshes during

@@ -5425,8 +5425,11 @@ func _view_process(dt: float, blend := -1.0) -> void:
 		_last_view_pos = position
 		return
 	if world.cam and world.soldier_view and debug_pose.is_empty():
-		var distance := world.cam.cam.global_position.distance_to(position)
-		view_lod = distance > (80.0 if view_lod else 90.0) or not world.soldier_view.detail_ids.has(eid) or not world.cam.cam.is_position_in_frustum(position + Vector3(0, 1.0, 0))
+		var was_lod := view_lod
+		view_lod = not world.soldier_view.detail_ids.has(eid)
+		if not view_lod:
+			var distance := world.cam.cam.global_position.distance_to(position)
+			view_lod = distance > (80.0 if was_lod else 90.0) or not world.cam.cam.is_position_in_frustum(position + Vector3(0, 1.0, 0))
 		if not view_lod and model == null and not world.soldier_view.acquire_detail_slot():
 			view_lod = true  # keep the shared model visible while detail warms up
 	else:
@@ -5439,9 +5442,14 @@ func _view_process(dt: float, blend := -1.0) -> void:
 		return
 	if model == null:
 		var started := Time.get_ticks_usec()
-		model = SoldierModel.new()
-		add_child(model)
-		model.build(utype, team, eid * 31 + 7)
+		if world.soldier_view and debug_pose.is_empty():
+			model = world.soldier_view.make_detail(utype, team, eid * 31 + 7)
+		if model:
+			add_child(model)
+		else:
+			model = SoldierModel.new()
+			add_child(model)
+			model.build(utype, team, eid * 31 + 7)
 		world.vp("soldier model construction", started)
 	model.visible = true
 	# off-screen men are posed a few times a second, distant ones every other
