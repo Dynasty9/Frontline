@@ -46,6 +46,10 @@ New connections and reconnects receive their own reliable baseline. Hidden enemy
 IDs and private supply, orders and intelligence are filtered before transmission.
 Map and large report data are chunked. Reliable queues, acknowledged bytes,
 command rates and per-frame client parsing are bounded; a stalled peer is closed.
+Lobby-relayed packets queue before decoding, with a 4 MiB / 32,768-packet limit.
+Each frame finishes at most 256 packets and stops starting more after 2 ms;
+the current packet always finishes. Reliable acknowledgements advance only after
+decoding, and close/reconnect clears pending packets.
 
 Protocol 3 sends the current deformation and crater layer in the compressed map
 baseline, then absolute 32 m surface tiles on the reliable channel. Tiles are
@@ -875,3 +879,19 @@ The colored GPU/CPU smoothing comparison also passes pixel-identically on
 Vulkan and Compatibility after the scheduling change.
 Evidence: `build/hud-scheduling-comparison.json`, `build/hud-scheduling-tests.log`
 and the corrected fixture rerun `build/hud-scheduling-map-test.log`.
+
+Reducing the articulated-soldier budget from 16 to eight was also tested in a
+matched close view (zoom 35) and discarded. ABBA playback averaged 82.19/83.17 FPS
+with 16 models and 91.06/90.46 FPS with eight. Soldier presentation mean fell from
+1.734/1.689 ms to 1.537/1.567 ms, but frame p99 stayed 21.043/20.517 versus
+20.192/21.398 ms, and adjacent-frame difference p99 worsened from 10.656/10.446
+to 10.973/12.137 ms. The retained budget is 16 because the concession did not
+improve the target frame tails. Evidence: `build/detail-eight-comparison.json`.
+
+The relay receive-budget regression covers ordered bursts, acknowledgements after
+decoding, a slow packet yielding subsequent work, byte/count overflow, reconnect
+cleanup and a callback closing the battle. The actual two-client lobby test
+passes late join, commands, team privacy, reconnect and independent replay
+verification; the direct Godot/socket command recording also verifies all 46 ticks.
+Evidence: `build/relay-budget-tests.log`, `build/relay-budget-lobby.log` and
+`build/relay-budget-socket.log`.

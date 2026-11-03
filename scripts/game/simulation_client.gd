@@ -36,6 +36,8 @@ const PING := 33
 const SKETCH := 34
 const DEED := 35
 const MAX_PACKET := 65568
+const MAX_RELAY_BYTES := 4 * 1024 * 1024
+const MAX_RELAY_PACKETS := 32768
 const MAX_MAP := 192 * 1024 * 1024
 const FX_FIELDS := ["vvnsn", "vn", "ns", "vv", "vcn", "vvn", "vv", "sv", "vv", "v", "vnnn", "vnn", "v", "vn", "snv", "nvn", "vnn", "vvn", "nv", "nv"]
 
@@ -62,6 +64,8 @@ var _surface_tiles := {}
 var _roads_pending := false
 var _relay := false
 var _relay_at := 0
+var _relay_pending: Array = []
+var _relay_bytes := 0
 var _worker: Node
 
 func connect_worker(worker: Node, engine: String) -> Error:
@@ -85,11 +89,12 @@ func connect_relay(engine: String) -> Error:
 	return Net.rpc_id(1, "_simulation_open")
 
 func _relay_packet(channel: int, data: PackedByteArray) -> void:
-	var ack := _sequence
-	if not _receive(data, channel):
-		_error("The simulation sent an invalid packet.")
-	elif _sequence > ack:
-		_send(ACK, PackedByteArray(), _sequence)
+	# Godot can deliver a burst of RPCs before this client's next frame.
+	if data.size() < 16 or data.size() > MAX_PACKET or _relay_pending.size() >= MAX_RELAY_PACKETS or _relay_bytes + data.size() > MAX_RELAY_BYTES:
+		_error("The simulation relay exceeded its receive limit.")
+		return
+	_relay_pending.append([channel, data])
+	_relay_bytes += data.size()
 
 func connect_to(address: String, port: int, token: String, engine: String) -> Error:
 	close()
@@ -114,6 +119,8 @@ func close() -> void:
 		Net.simulation_packet.disconnect(_relay_packet)
 		Net.simulation_failed.disconnect(_error)
 	_relay = false
+	_relay_pending.clear()
+	_relay_bytes = 0
 	if host:
 		if peer:
 			peer.peer_disconnect_now()
@@ -199,6 +206,24 @@ func _process(_delta: float) -> void:
 		if identity == 0 and Time.get_ticks_msec() - _relay_at > 30000:
 			_error("The simulation did not answer.")
 			return
+		var started := Time.get_ticks_usec()
+		var ack := _sequence
+		var consumed := 0
+		while consumed < mini(256, _relay_pending.size()):
+			var packet: Array = _relay_pending[consumed]
+			consumed += 1
+			_relay_bytes -= (packet[1] as PackedByteArray).size()
+			if not _receive(packet[1], packet[0]):
+				_error("The simulation sent an invalid packet.")
+				return
+			if not _relay:
+				return  # A received event can close the battle.
+			if Time.get_ticks_usec() - started >= 2000:
+				break
+		if consumed > 0:
+			_relay_pending = _relay_pending.slice(consumed)
+		if _sequence > ack:
+			_send(ACK, PackedByteArray(), _sequence)
 		flush_surface()
 		return
 	if host == null:
