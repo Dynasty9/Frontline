@@ -1461,6 +1461,9 @@ func _rpc_join_map(pk: Array) -> void:
 	if not d is Dictionary:
 		push_error("The host's map didn't unpack.")
 		return
+	install_join_map(d)
+
+func install_join_map(d: Dictionary) -> void:
 	var relief = d.get("landform", PackedFloat32Array())
 	if not Landform.valid(relief, MapDims.N):
 		push_error("The host terrain is invalid.")

@@ -123,25 +123,29 @@ func _ready() -> void:
 func fetch_json(path: String) -> Dictionary:
 	if downloaded.has(path):
 		return downloaded[path]
+	var body: PackedByteArray
 	if not source.begins_with("http://") and not source.begins_with("https://"):
 		var file := source.path_join("index.json" if path.is_empty() else path.trim_prefix("/chunks/") + ".json")
 		if not FileAccess.file_exists(file) or FileAccess.get_file_as_bytes(file).size() > 12 * 1024 * 1024:
 			return {}
-		var value = JSON.parse_string(FileAccess.get_file_as_string(file))
-		return value if value is Dictionary else {}
-	var request := HTTPRequest.new()
-	request.timeout = 20
-	request.body_size_limit = 12 * 1024 * 1024
-	add_child(request)
-	if request.request(source + path) != OK:
+		body = FileAccess.get_file_as_bytes(file)
+	else:
+		var request := HTTPRequest.new()
+		request.timeout = 20
+		request.body_size_limit = 12 * 1024 * 1024
+		add_child(request)
+		if request.request(source + path) != OK:
+			request.queue_free()
+			return {}
+		var result: Array = await request.request_completed
 		request.queue_free()
+		if result[0] != HTTPRequest.RESULT_SUCCESS or result[1] != 200:
+			return {}
+		body = result[3]
+	var json := JSON.new()
+	if json.parse(body.get_string_from_utf8()) != OK:
 		return {}
-	var result: Array = await request.request_completed
-	request.queue_free()
-	if result[0] != HTTPRequest.RESULT_SUCCESS or result[1] != 200:
-		return {}
-	var value = JSON.parse_string((result[3] as PackedByteArray).get_string_from_utf8())
-	return value if value is Dictionary else {}
+	return json.data if json.data is Dictionary else {}
 
 func decode(body: Dictionary) -> Dictionary:
 	var size := int(body.get("size", 0))
@@ -153,7 +157,7 @@ func decode(body: Dictionary) -> Dictionary:
 		return {}
 	# Objects are never deserialized: recordings contain only data, not scripts.
 	var value = bytes_to_var(raw)
-	if not value is Dictionary or value.get("format") != 1 or value.get("protocol") != Net.NET_VERSION:
+	if not value is Dictionary or not value.get("format") in [1, 2] or value.get("protocol") != Net.NET_VERSION:
 		return {}
 	if not value.get("checkpoint") is Dictionary or not value.get("frames") is Array or value.frames.size() > 200:
 		return {}
@@ -177,6 +181,23 @@ func _valid_state(state: Dictionary, full: bool) -> bool:
 		return false
 	if full and not _valid_roads(state.get("roads")):
 		return false
+	if state.has("roads") and not _valid_roads(state.roads):
+		return false
+	state["_terrain"] = []
+	if state.has("terrain"):
+		var terrain: Variant = state.terrain
+		if not terrain is Dictionary or not terrain.get("side") in [1024, 2048, 3072] or not terrain.get("tiles") is Array or terrain.tiles.size() > terrain.side * terrain.side / 1024:
+			return false
+		for tile: Variant in terrain.tiles:
+			if not tile is Array or tile.size() != 2 or not tile[0] is int or tile[0] < 36 or tile[0] > 18468 or not tile[1] is PackedByteArray:
+				return false
+			var raw: PackedByteArray = tile[1].decompress(tile[0], FileAccess.COMPRESSION_ZSTD)
+			if raw.size() != tile[0]:
+				return false
+			var decoded := SimulationClient.decode_surface(raw, terrain.side)
+			if decoded.is_empty():
+				return false
+			state._terrain.append(decoded)
 	var records = state.get("entities" if full else "spawn")
 	if not records is Array or records.size() > 100000:
 		return false
@@ -239,7 +260,7 @@ func _refresh() -> void:
 	if next.is_empty():
 		label.text = "Recording unavailable. Retrying…"
 		return
-	if next.get("format") != 1 or next.get("protocol") != Net.NET_VERSION or not next.get("chunks") is Array:
+	if (next.get("format") != 1 and next.get("format") != 2) or next.get("protocol") != Net.NET_VERSION or not next.get("chunks") is Array:
 		failed = true
 		label.text = "This recording needs a different version of Frontline."
 		return
@@ -327,7 +348,9 @@ func seek(target: float) -> void:
 	# A fresh observer resets transient effects, fog, and entities when rewinding.
 	await main._on_game_start({"replay": true, "map_size": int(map.get("map_size", 1024)), "players": {1: {"team": -1, "name": "Observer"}}})
 	var world: World = main.world
-	world._rpc_join_map(World._pack(map))
+	world.install_join_map(map)
+	world._join_surface = map.get("_surface", PackedFloat32Array())
+	world._join_craters = map.get("_craters", PackedByteArray())
 	world._rpc_spawn(chunk.checkpoint.entities)
 	world._rpc_join_end()
 	while is_instance_valid(world) and not world.loaded:
@@ -368,9 +391,12 @@ func _apply(state: Dictionary, full: bool, effects: bool) -> void:
 	world.mission_info = state.mission
 	world.winner = int(state.get("winner", -1))
 	world.report = state.get("report", world.report)
+	for tile: Array in state.get("_terrain", []):
+		world.terrain.import_surface(tile[0], tile[1], tile[2], tile[3])
+	if state.has("roads"):
+		world._rpc_roads(state.roads)
 	if full:
 		world.report = state.get("report", {})
-		world._rpc_roads(state.get("roads", map.roads))
 	elif effects:
 		world._rpc_fx(state.fx)
 
@@ -476,6 +502,10 @@ func _valid_props(kind: String, values: Dictionary, full: bool) -> bool:
 			if toss != null and (not toss is Array or toss.size() != 4 or not toss[0] is Vector3 or not toss[1] is float or not toss[2] is Vector3 or not toss[3] is Vector3):
 				return false
 			continue
+		if schema.has(key) and schema[key] is int and values[key] is float:
+			if not is_finite(values[key]) or absf(values[key]) > 9007199254740991 or values[key] != int(values[key]):
+				return false
+			values[key] = int(values[key])
 		if not schema.has(key) or typeof(values[key]) != typeof(schema[key]):
 			return false
 		if values[key] is Vector3 and (not values[key].is_finite() or values[key].length() > 100000):
@@ -510,7 +540,9 @@ func _valid_fx(event: Variant) -> bool:
 		8: [TYPE_VECTOR3, TYPE_VECTOR3], 9: [TYPE_VECTOR3], 10: [TYPE_VECTOR3, TYPE_FLOAT],
 		11: [TYPE_VECTOR3, TYPE_INT, TYPE_INT], 12: [TYPE_VECTOR3], 13: [TYPE_VECTOR3, TYPE_FLOAT],
 		14: [TYPE_STRING, TYPE_FLOAT], 15: [TYPE_INT, TYPE_VECTOR3, TYPE_INT],
-		16: [TYPE_VECTOR3, TYPE_FLOAT, TYPE_FLOAT], 17: [TYPE_VECTOR3, TYPE_VECTOR3], 18: [TYPE_INT, TYPE_VECTOR3]}
+		16: [TYPE_VECTOR3, TYPE_FLOAT, TYPE_FLOAT], 17: [TYPE_VECTOR3, TYPE_VECTOR3], 18: [TYPE_INT, TYPE_VECTOR3], 19: [TYPE_INT, TYPE_VECTOR3]}
+	if event is Array and not event.is_empty() and event[0] is float and is_finite(event[0]) and event[0] >= 0 and event[0] < 20 and event[0] == int(event[0]):
+		event[0] = int(event[0])
 	if not event is Array or event.is_empty() or not event[0] is int or not FIELDS.has(event[0]):
 		return false
 	var fields: Array = FIELDS[event[0]]
@@ -518,9 +550,15 @@ func _valid_fx(event: Variant) -> bool:
 		return false
 	for i in fields.size():
 		var value = event[i + 1]
+		if fields[i] == TYPE_INT and value is float and is_finite(value) and absf(value) <= 9007199254740991 and value == int(value):
+			value = int(value)
+			event[i + 1] = value
 		if typeof(value) != fields[i] and not (fields[i] == TYPE_FLOAT and value is int):
 			return false
 		if value is Vector3 and (not value.is_finite() or value.length() > 100000):
+			return false
+	for value: Variant in event:
+		if value is float and not is_finite(value):
 			return false
 	return true
 
@@ -558,6 +596,20 @@ func _valid_map(value: Dictionary) -> bool:
 		return false
 	if not value.get("kinds") is PackedByteArray or value.kinds.size() != metres * metres or not _valid_roads(value.get("roads")):
 		return false
+	value["_surface"] = PackedFloat32Array()
+	value["_craters"] = PackedByteArray()
+	if value.has("surface") or value.has("craters"):
+		if not value.get("surface") is PackedByteArray or not value.get("craters") is PackedByteArray:
+			return false
+		var raw: PackedByteArray = value.surface.decompress(metres * metres * 16, FileAccess.COMPRESSION_ZSTD)
+		var craters: PackedByteArray = value.craters.decompress(metres * metres, FileAccess.COMPRESSION_ZSTD)
+		if raw.size() != metres * metres * 16:
+			return false
+		var surface := raw.to_float32_array()
+		if not SimulationClient._valid_surface(value.kinds, craters, surface, metres * metres):
+			return false
+		value._surface = surface
+		value._craters = craters
 	if not value.get("town") is Rect2 or not value.get("decor") is Array or value.decor.size() > 100000 or not value.get("water") is Dictionary:
 		return false
 	for item in value.decor:

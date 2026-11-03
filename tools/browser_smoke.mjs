@@ -14,9 +14,11 @@ const browser = await chromium.launch({headless:true,
 try {
   const page = await browser.newPage({viewport:{width:960,height:640}});
   const errors = [];
+  let observerPassed = false;
   page.on('pageerror', error => errors.push(error.message));
   page.on('console', message => {
     const text = message.text();
+    if (text.includes('BROWSER_OBSERVER_TEST failures=0')) observerPassed = true;
     if (/SCRIPT ERROR|ERROR:|panicked/.test(text)) errors.push(text);
     if (message.type() !== 'warning') console.log(text);
   });
@@ -24,13 +26,16 @@ try {
     const response = await route.fetch();
     const html = await response.text();
     assert.ok(html.includes('"args":[]'), 'Expected an unmodified Godot export');
-    await route.fulfill({response, body:html.replace('"args":[]','"args":["--","--browser-simulation-test"]')});
+    const args = ['--', '--browser-simulation-test'];
+    if (process.env.FRONTLINE_OBSERVER_URL) args.push('--observer-source=' + process.env.FRONTLINE_OBSERVER_URL);
+    await route.fulfill({response, body:html.replace('"args":[]','"args":' + JSON.stringify(args))});
   });
   const completed = page.waitForEvent('console', {predicate:message=>message.text().includes('BROWSER_SERVER_TEST'),timeout:300000});
   await page.goto(url.href);
   const result = (await completed).text();
   assert.match(result, /BROWSER_SERVER_TEST failures=0/);
   assert.deepEqual(errors, []);
+  if (process.env.FRONTLINE_OBSERVER_URL) assert.ok(observerPassed, 'Observer archive must load and seek in the actual browser');
   await mkdir(resolve('build'), {recursive:true});
   await page.screenshot({path:resolve('build/browser-simulation.png')});
   await page.unroute(url.href);

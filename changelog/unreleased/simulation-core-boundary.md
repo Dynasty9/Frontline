@@ -37,5 +37,6 @@ caption = "The replay viewer independently reruns a short recorded battle and ve
 - Minimap soldier dots share one draw batch and reuse map transforms and team colors, retaining selection, wounded colors, overlap and immediate camera feedback.
 - Supply dispatch checks active buildings instead of every scenery object. Infantry refresh activity descriptions only when their existing status timer expires.
 - Browser solo games run the same Rust simulation in a separate worker. Leaving through the menu saves a command recording that can be reopened and verified in Replays.
+- Public battle broadcasts read the Rust server's observer stream without running another battlefield. Seeking restores roads and terrain changes; older observer recordings still open. These viewing archives remain separate from verified command replays.
 - Exported games include the immutable game data required to start their simulation.
 - Large-map rendering performance is still under measurement; this change does not yet establish steady 60 FPS with 500 units.

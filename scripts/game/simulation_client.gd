@@ -4,6 +4,8 @@ extends Node
 
 signal received(kind: int, value: Variant)
 signal failed(message: String)
+signal map_received(data: Dictionary)
+signal surface_received(rect: Rect2i, data: PackedByteArray)
 
 const VERSION := Net.SIMULATION_VERSION
 const AUTH := 0
@@ -368,6 +370,13 @@ func _receive(data: PackedByteArray, channel: int) -> bool:
 
 func _dispatch(kind: int, payload: PackedByteArray) -> bool:
 	match kind:
+		SNAPSHOT:
+			# The host's recorder receives reliable snapshots through the same decoder.
+			if payload.size() < 4 or not is_finite(payload.decode_float(0)):
+				return false
+			if world:
+				world._rpc_snap(payload)
+			received.emit(kind, payload)
 		PRESENCE:
 			if payload.size() < 101 or payload.size() > 704 or payload.decode_s32(0) <= 0:
 				return false
@@ -406,27 +415,13 @@ func _dispatch(kind: int, payload: PackedByteArray) -> bool:
 						world.coop._add_deed(int(data[0]), data[1], _point(data[2]), data[3])
 			received.emit(kind, data)
 		SURFACE:
-			if _side == 0 or payload.size() < 36 or payload.slice(0, 8) != SimulationInitial.header("FLVT"):
+			var tile := decode_surface(payload, _side)
+			if tile.is_empty():
 				return false
-			var b := StreamPeerBuffer.new()
-			b.data_array = payload
-			b.seek(8)
-			var rect := Rect2i(b.get_u32(), b.get_u32(), b.get_u32(), b.get_u32())
-			if rect.position.x < 0 or rect.position.y < 0 or rect.position.x % 32 != 0 or rect.position.y % 32 != 0 or rect.size.x < 1 or rect.size.y < 1 or rect.size.x > 32 or rect.size.y > 32 or rect.end.x > _side or rect.end.y > _side:
-				return false
-			if rect.size != Vector2i(mini(32, _side - rect.position.x), mini(32, _side - rect.position.y)):
-				return false
-			var cells := rect.size.x * rect.size.y
-			var kinds := _block(b, cells)
-			var craters := _block(b, cells)
-			var raw := _block(b, cells * 16)
-			if raw.size() != cells * 16:
-				return false
-			var heights := raw.to_float32_array()
-			if b.get_available_bytes() != 0 or not _valid_surface(kinds, craters, heights, cells):
-				return false
+			var rect: Rect2i = tile[0]
 			if world:
-				_surface_tiles[rect.position] = [rect, kinds, craters, heights]
+				_surface_tiles[rect.position] = tile
+			surface_received.emit(rect, payload)
 			received.emit(kind, rect)
 		ROADS:
 			var roads = JSON.parse_string(payload.get_string_from_utf8())
@@ -540,8 +535,9 @@ func _dispatch(kind: int, payload: PackedByteArray) -> bool:
 			var d = JSON.parse_string(payload.get_string_from_utf8())
 			if not d is Array or d.size() != 2 or not d[1] is Dictionary:
 				return false
+			d[1] = _props(d[1])
 			if world:
-				world._rpc_props({int(d[0]): _props(d[1])})
+				world._rpc_props({int(d[0]): d[1]})
 			received.emit(kind, d)
 		DESPAWN:
 			if payload.size() % 4 != 0:
@@ -562,7 +558,7 @@ func _dispatch(kind: int, payload: PackedByteArray) -> bool:
 			var d = JSON.parse_string(payload.get_string_from_utf8())
 			if not d is Dictionary:
 				return false
-			if world and d.get("teams") is Array:
+			if d.get("teams") is Array:
 				for t: Dictionary in d.teams:
 					if t.is_empty():
 						continue
@@ -581,14 +577,16 @@ func _dispatch(kind: int, payload: PackedByteArray) -> bool:
 					for i in t.marks.size():
 						var mark: Array = t.marks[i]
 						t.marks[i] = Vector4(float(mark[0]), float(mark[1]), float(mark[2]), float(mark[3]))
-				world._rpc_team(d.teams)
-			if world and d.get("mission") is Dictionary:
+				if world:
+					world._rpc_team(d.teams)
+			if d.get("mission") is Dictionary:
 				var m: Dictionary = d.mission
 				m.focus = _point(m.focus)
 				for objective: Array in m.get("objs", []):
 					if objective[4] is Array:
 						objective[4] = _point(objective[4])
-				world._rpc_mission(m)
+				if world:
+					world._rpc_mission(m)
 			received.emit(kind, d)
 		OVER:
 			var winner = JSON.parse_string(payload.get_string_from_utf8())
@@ -664,8 +662,35 @@ func _install_map() -> bool:
 				world.atmo.apply_mood(d.mood)
 		world._load_mark("map")
 	_side = side
+	if not map_received.get_connections().is_empty():
+		map_received.emit({"map_size": side, "water": d.water, "roads": d.roads, "decor": d.decor,
+			"town": Rect2(float(d.town[0]), float(d.town[1]), float(d.town[2]), float(d.town[3])),
+			"kinds": kinds, "landform": heights, "surface": surface.to_byte_array().compress(FileAccess.COMPRESSION_ZSTD),
+			"craters": craters.compress(FileAccess.COMPRESSION_ZSTD)})
 	received.emit(MAP, {"side": side, "kinds": kinds.size(), "heights": heights.size()})
 	return true
+
+static func decode_surface(payload: PackedByteArray, side: int) -> Array:
+	if side < 2 or side > 3072 or payload.size() < 36 or payload.size() > 18468 or payload.slice(0, 8) != SimulationInitial.header("FLVT"):
+		return []
+	var b := StreamPeerBuffer.new()
+	b.data_array = payload
+	b.seek(8)
+	var rect := Rect2i(b.get_u32(), b.get_u32(), b.get_u32(), b.get_u32())
+	if rect.position.x < 0 or rect.position.y < 0 or rect.position.x % 32 != 0 or rect.position.y % 32 != 0 or rect.size.x < 1 or rect.size.y < 1 or rect.size.x > 32 or rect.size.y > 32 or rect.end.x > side or rect.end.y > side:
+		return []
+	if rect.size != Vector2i(mini(32, side - rect.position.x), mini(32, side - rect.position.y)):
+		return []
+	var cells := rect.size.x * rect.size.y
+	var kinds := _block(b, cells)
+	var craters := _block(b, cells)
+	var raw := _block(b, cells * 16)
+	if raw.size() != cells * 16:
+		return []
+	var heights := raw.to_float32_array()
+	if b.get_available_bytes() != 0 or not _valid_surface(kinds, craters, heights, cells):
+		return []
+	return [rect, kinds, craters, heights]
 
 static func decode_water(water: Variant, side: int) -> bool:
 	if not water is Dictionary or not water.get("coast") is Dictionary:

@@ -17,6 +17,7 @@ const home = await get("/");
 assert.match(await home.text(), /<div id="root"/);
 const manifest = await (await get("/game/viewer.json")).json();
 assert.equal(manifest.format, 1);
+assert.ok(manifest.formats?.includes(2), "The browser viewer cannot play Rust observer archives");
 assert.ok(
   manifest.manual >= 3,
   "The production Field Manual viewer is out of date",

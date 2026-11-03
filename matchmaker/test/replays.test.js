@@ -16,6 +16,7 @@ test('durable ordered chunks, delayed reads, no secret exposure, and retention',
 	let now = 100000;
 	const replays = new Replays({ dir, now: () => now });
 	const { id, token } = replays.create(lobby, header);
+	assert.throws(() => replays.create(lobby, { ...header, format: 2 }), { status: 409 });
 	assert.throws(() => replays.append(id, 'wrong', chunk), { status: 403 });
 	assert.throws(() => replays.create({ ...lobby, locked: true }, header), { status: 403 });
 	assert.throws(() => replays.append(id, token, { ...chunk, sequence: 1 }), { status: 409 });
@@ -56,7 +57,8 @@ test('HTTP requires the active public lobby owner, and reports disabled storage 
 		fetch(base + path, { method: 'POST', headers: { 'Content-Type': 'application/json', ...headers }, body: JSON.stringify(body) });
 	const listing = await (await post('/lobbies', { port: 7777, host: 'Raven', in_game: true })).json();
 	assert.equal((await post('/replays', { ...header, lobby: listing.id })).status, 403);
-	const created = await post('/replays', { ...header, lobby: listing.id }, { 'X-Lobby-Token': listing.token });
+	assert.equal((await post('/replays', { ...header, format: 3, lobby: listing.id }, { 'X-Lobby-Token': listing.token })).status, 400);
+	const created = await post('/replays', { ...header, format: 2, lobby: listing.id }, { 'X-Lobby-Token': listing.token });
 	assert.equal(created.status, 200);
 	const recording = await created.json();
 	assert.equal((await post(`/replays/${recording.id}/chunks`, chunk)).status, 403);
@@ -66,5 +68,7 @@ test('HTTP requires the active public lobby owner, and reports disabled storage 
 	assert.equal(view.enabled, true);
 	assert.equal(view.replays.length, 1);
 	assert.equal(view.replays[0].verified, false);
+	assert.equal(view.replays[0].format, 2);
+	assert.throws(() => new Replays({ dir }).create({ ...lobby, locked: true }, { ...header, format: 2 }), { status: 403 });
 	assert.throws(() => new Replays().create(lobby, header), { status: 503 });
 });

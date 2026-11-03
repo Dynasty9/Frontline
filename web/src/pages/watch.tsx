@@ -19,11 +19,15 @@ export default function WatchPage() {
     queryFn: async ({ signal }) => {
       const response = await fetch("/game/viewer.json", { signal })
       if (!response.ok) return null
-      return response.json() as Promise<{ format: number; protocol: number }>
+      return response.json() as Promise<{ format: number; formats?: number[]; protocol: number }>
     },
     retry: false,
   })
-  const available = build.isPending ? null : build.data?.format === 1 && build.data?.protocol === data?.protocol
+  const available = build.isPending
+    ? null
+    : !!data &&
+      build.data?.protocol === data.protocol &&
+      (build.data?.formats ?? [build.data?.format]).includes(data.format ?? 1)
   return (
     <section className="mx-auto max-w-7xl px-4 py-8 sm:px-6">
       <Link to="/battles" className="text-sm text-muted-foreground underline underline-offset-4">

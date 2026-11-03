@@ -12,6 +12,7 @@ use std::{
 pub use crate::protocol::*;
 const MAX_PENDING: usize = 384 * 1024 * 1024;
 const WINDOW: usize = 512 * 1024;
+pub const RECORDER_PEER: i32 = -1;
 
 #[derive(Clone, PartialEq, Eq)]
 pub struct Admission {
@@ -25,7 +26,7 @@ impl Admission {
     pub fn decode(value: &Value) -> Result<Vec<Self>, &'static str> {
         let rows = value
             .as_array()
-            .filter(|a| !a.is_empty() && a.len() <= 32)
+            .filter(|a| !a.is_empty() && a.len() <= 33)
             .ok_or("invalid admitted players")?;
         let mut players = Vec::with_capacity(rows.len());
         for a in rows {
@@ -59,7 +60,8 @@ impl Admission {
     }
     fn valid_list(players: &[Self]) -> bool {
         !players.is_empty()
-            && players.len() <= 32
+            && players.len() <= 33
+            && players.iter().filter(|a| !a.recorder()).count() <= 32
             && players.iter().all(Self::valid)
             && players.iter().enumerate().all(|(i, a)| {
                 players[..i]
@@ -70,14 +72,19 @@ impl Admission {
     pub fn valid(&self) -> bool {
         self.token.len() == 48
             && self.token.bytes().all(|b| b.is_ascii_hexdigit())
+            && (!self.recorder() || (self.team == -1 && self.reclaim.is_none()))
             && Input::Join {
-                peer: self.peer,
+                peer: if self.recorder() { 1 } else { self.peer },
                 team: self.team,
                 name: self.name.clone(),
                 reclaim: self.reclaim,
             }
             .encode()
             .is_ok()
+    }
+    /// A trusted host-only ticket observes without joining the deterministic player roster.
+    pub fn recorder(&self) -> bool {
+        self.peer == RECORDER_PEER
     }
 }
 pub enum Incoming {
@@ -148,7 +155,7 @@ impl Network {
         let host = Host::new(
             socket,
             HostSettings {
-                peer_limit: 32,
+                peer_limit: 33,
                 channel_limit: 3,
                 time: Box::new(move || epoch.elapsed()),
                 ..Default::default()
@@ -158,7 +165,7 @@ impl Network {
         Ok(Self {
             host,
             admissions,
-            connections: (0..32).map(|_| None).collect(),
+            connections: (0..33).map(|_| None).collect(),
             closed: vec![],
         })
     }
@@ -380,6 +387,9 @@ impl Network {
             return Ok(());
         }
         let index = c.admission.ok_or("unauthorized command")?;
+        if self.admissions[index].recorder() && matches!(kind, COMMAND | SEND_PRESENCE | MARK) {
+            return Err("recording connection is read-only");
+        }
         match kind {
             SEND_PRESENCE if sequence == 0 => {
                 c.presence += 1;

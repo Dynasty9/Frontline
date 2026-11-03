@@ -94,7 +94,7 @@ impl Server {
         let ready = directory.join("ready.json");
         let stop = directory.join("stop");
         let replay = directory.join("match.flrp");
-        let players = [(7, 0, '1'), (9, 1, '2'), (11, -1, '3'), (13, 0, '4')]
+        let players = [(7, 0, '1'), (9, 1, '2'), (11, -1, '3'), (13, 0, '4'), (net::RECORDER_PEER, -1, '5')]
             .map(|(peer, team, digit)| Admission {
                 peer,
                 team,
@@ -205,6 +205,9 @@ struct Client {
     marks: Vec<(u8, serde_json::Value)>,
     effects: Vec<serde_json::Value>,
     hold_load: bool,
+    reliable_snapshots: usize,
+    report: serde_json::Value,
+    over_tick: Option<u64>,
 }
 impl Client {
     fn new(server: &Server, token: char) -> Self {
@@ -235,6 +238,9 @@ impl Client {
             marks: vec![],
             effects: vec![],
             hold_load: false,
+            reliable_snapshots: 0,
+            report: serde_json::Value::Null,
+            over_tick: None,
         }
     }
     fn poll(&mut self) {
@@ -262,8 +268,13 @@ impl Client {
                     match kind {
                         net::WELCOME => self.joined = true,
                         net::SPAWN => self.spawns += 1,
-                        net::SNAPSHOT => self.tick = seq,
+                        net::SNAPSHOT => {
+                            self.tick = (f32::from_le_bytes(data[..4].try_into().unwrap()) as f64 * 60.).round() as u64;
+                            self.reliable_snapshots += usize::from(channel_id == 0);
+                        }
                         net::MESSAGE => self.messages.push(serde_json::from_slice(data).unwrap()),
+                        net::REPORT => self.report = serde_json::from_slice(data).unwrap(),
+                        net::OVER => self.over_tick = Some(self.tick),
                         net::PLAYBACK => self.playback = serde_json::from_slice(data).unwrap(),
                         net::PRESENCE => self.presence.push(data.to_vec()),
                         net::FX => self.effects.extend(
@@ -502,6 +513,100 @@ fn socket_clients_receive_private_views_and_record_admitted_commands() {
     assert!(bytes
         .windows(b"Recorded socket command".len())
         .any(|b| b == b"Recorded socket command"));
+}
+
+#[test]
+fn recorder_is_read_only_does_not_start_time_and_does_not_change_the_replay() {
+    let mut server = Server::new();
+    let mut observer = Client::new(&server, '5');
+    let deadline = Instant::now() + Duration::from_secs(20);
+    while !observer.loaded {
+        observer.poll();
+        assert!(Instant::now() < deadline);
+        thread::sleep(Duration::from_millis(1));
+    }
+    let settle = Instant::now() + Duration::from_millis(100);
+    while Instant::now() < settle {
+        observer.poll();
+        thread::sleep(Duration::from_millis(1));
+    }
+    assert_eq!(observer.tick, 0, "The recorder must not start a loading battle");
+    let mut player = Client::new(&server, '1');
+    while player.tick < 16 || observer.tick < 16 {
+        player.poll();
+        observer.poll();
+        assert!(Instant::now() < deadline);
+        thread::sleep(Duration::from_millis(1));
+    }
+    assert!(observer.reliable_snapshots > 0);
+    assert_eq!(player.reliable_snapshots, 0);
+    observer.command(json!({"t":"chat","text":"Recorder must not play"}));
+    while !observer.closed {
+        observer.poll();
+        player.poll();
+        assert!(Instant::now() < deadline);
+        thread::sleep(Duration::from_millis(1));
+    }
+    while player.tick < 32 {
+        player.poll();
+        assert!(Instant::now() < deadline);
+        thread::sleep(Duration::from_millis(1));
+    }
+    let players: Vec<_> = [(7, 0, '1'), (9, 1, '2'), (11, -1, '3'), (13, 0, '4'), (net::RECORDER_PEER, -1, '5')]
+        .into_iter().map(|(peer, team, digit)| json!({"peer":peer,"team":team,
+            "name":format!("Commander {peer}"),"token":digit.to_string().repeat(48)})).collect();
+    let broadcast = "abcdef0123456789abcdef01";
+    fs::write(server.directory.join("admissions.json"),
+        json!({"players":players,"broadcast":broadcast}).to_string()).unwrap();
+    while !server.directory.join("admissions.admitted").exists() {
+        player.poll();
+        assert!(Instant::now() < deadline);
+        thread::sleep(Duration::from_millis(1));
+    }
+    player.presentation(net::REQUEST_REPORT, &[]);
+    while player.report.is_null() {
+        player.poll();
+        assert!(Instant::now() < deadline);
+        thread::sleep(Duration::from_millis(1));
+    }
+    assert_eq!(player.report["replay"], broadcast);
+    let verified = server.finish();
+    let c = Content::bundled().unwrap();
+    let mut expected = map(&c);
+    for _ in 0..verified.frames {
+        expected.step(&c, &[]).unwrap();
+    }
+    assert_eq!(verified.simulation.checkpoint().unwrap(), expected.checkpoint().unwrap());
+    assert!(!player.messages.iter().any(|m| m.to_string().contains("Recorder must not play")));
+    let invalid = json!([{"peer":net::RECORDER_PEER,"team":0,"name":"Recorder","token":"5".repeat(48)}]);
+    assert!(Admission::decode(&invalid).is_err());
+}
+
+#[test]
+fn recorder_receives_the_winning_tick_before_the_final_report_and_end() {
+    let mut server = Server::start(|c| {
+        let mut s = map(c);
+        // No FOBs remain; the next rules tick ends the match between observation ticks.
+        s.state.field.now = 10.;
+        s
+    });
+    let deadline = Instant::now() + Duration::from_secs(20);
+    let mut observer = Client::new(&server, '5');
+    while !observer.loaded {
+        observer.poll();
+        assert!(Instant::now() < deadline);
+        thread::sleep(Duration::from_millis(1));
+    }
+    let mut player = Client::new(&server, '1');
+    while observer.over_tick.is_none() {
+        observer.poll();
+        player.poll();
+        assert!(Instant::now() < deadline);
+        thread::sleep(Duration::from_millis(1));
+    }
+    assert_eq!(observer.over_tick, Some(601));
+    assert!(!observer.report.is_null());
+    assert_eq!(server.finish().simulation.state.victory.winner, 1);
 }
 
 #[test]

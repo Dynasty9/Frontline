@@ -171,6 +171,32 @@ Screen presence, pings and sketches are separately validated, rate-limited and
 filtered to teammates and observers. Action notifications come from completed
 simulation commands. These presentation messages do not affect replay state.
 
+Public broadcasts use a separate trusted, read-only recorder ticket (peer -1).
+It receives an omniscient render stream, with reliable snapshots and effects so
+a lost static-state delta cannot leave a permanent hole in the archive. It never
+joins the player roster, starts the match clock, submits commands, or changes
+the canonical checkpoint. The host caches plain records and encoded state in
+small entity-ID blocks; it creates no second Godot World or entity scene tree.
+The winning tick's state and HUD precede the final report and end message.
+
+Listed, unlocked games upload seekable format-2 observer archives through the
+existing bounded, delayed replay service. Private games stay local. Archives
+contain compressed terrain baselines and absolute ground updates, current roads
+and public entity/HUD state; connection settings and tickets are excluded.
+Successful broadcasts add their public replay ID to after-action reports through
+the host's trusted control file, without modifying simulation state. The viewer
+still reads format 1, advertises both formats, and keeps observer archives
+explicitly unverified. The independent `.flrp` recording remains the source for
+deterministic verification; uploading an observer archive cannot certify a win.
+
+The native upload integration test records a Rust battle through a local
+matchmaker, downloads every completed observer chunk, seeks both directions,
+and independently verifies the separate command recording. The exported Chromium
+test also loads the HTTP observer archive and seeks to its end and start after
+verifying a browser-worker command replay. The existing model viewer still loads.
+The website's 245 tests and matchmaker's 65 tests pass, including format negotiation
+and refusal to label observer recordings as verified.
+
 A generated initial state can also be run without a renderer:
 
 ```text

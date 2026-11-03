@@ -54,12 +54,16 @@ export class Replays {
 	create(lobby, body) {
 		if (!this.dir) throw new ReplayError(503, 'Battle recording is not enabled on this server.');
 		if (!lobby || lobby.locked || !lobby.inGame) throw new ReplayError(403, 'Only the host of a public active battle can broadcast it.');
-		if (body.format !== 1 || !Number.isInteger(body.protocol) || typeof body.version !== 'string' || body.version.length > 40)
+		if (![1, 2].includes(body.format) || !Number.isInteger(body.protocol) || typeof body.version !== 'string' || body.version.length > 40)
 			throw new ReplayError(400, 'Unsupported recording version.');
 		this.sweep();
 		const token = hash(String(lobby.token) + ':replay');
 		const existing = [...this.records.values()].find((r) => r.lobby === lobby.id);
-		if (existing) return { id: existing.id, token, delay: DELAY_MS / 1000 };
+		if (existing) {
+			if (existing.format !== body.format || existing.protocol !== body.protocol)
+				throw new ReplayError(409, 'This battle already has a recording with a different format.');
+			return { id: existing.id, token, delay: DELAY_MS / 1000 };
+		}
 		if (this.records.size >= 500 || [...this.records.values()].reduce((n, r) => n + r.bytes, 0) >= MAX_STORAGE)
 			throw new ReplayError(507, 'Recording storage is full.');
 		const r = {
@@ -67,7 +71,7 @@ export class Replays {
 			lobby: lobby.id,
 			name: lobby.name,
 			host: lobby.host,
-			format: 1,
+			format: body.format,
 			protocol: body.protocol,
 			version: body.version,
 			created: this.now(),

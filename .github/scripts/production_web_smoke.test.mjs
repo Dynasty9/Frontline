@@ -8,7 +8,7 @@ const server = createServer((req, res) => {
     res.end(
       mode === "fallback"
         ? "<html>fallback</html>"
-        : JSON.stringify({ format: 1, manual: 3 }),
+        : JSON.stringify({ format: 1, formats: mode === "old-viewer" ? [1] : [1, 2], manual: 3 }),
     );
   else
     res.end(
@@ -19,7 +19,7 @@ const server = createServer((req, res) => {
 });
 await new Promise((r) => server.listen(0, "127.0.0.1", r));
 try {
-  for (const item of ["valid", "fallback", "bad-wasm"]) {
+  for (const item of ["valid", "fallback", "bad-wasm", "old-viewer"]) {
     mode = item;
     const child = spawn(
       process.execPath,

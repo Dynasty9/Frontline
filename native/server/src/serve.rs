@@ -114,7 +114,12 @@ impl crate::render::Output for SocketOutput<'_> {
     }
     fn unreliable(&mut self, kind: u8, tick: u64, data: &[u8]) -> Result<(), String> {
         for &slot in self.slots {
-            if self.network.peer(slot).is_some()
+            if self.network.peer(slot).is_some_and(Admission::recorder) {
+                // A lost scenery delta must not leave a permanent hole in the archive.
+                if self.network.reliable(slot, kind, Arc::new(data.to_vec())).is_err() {
+                    self.network.close(slot);
+                }
+            } else if self.network.peer(slot).is_some()
                 && self.network.unreliable(slot, kind, tick, data).is_err()
             {
                 self.network.close(slot);
@@ -132,6 +137,13 @@ fn json_packet(n: &mut Network, slot: usize, kind: u8, data: Value) -> Result<()
         kind,
         data,
     )
+}
+fn report(s: &Simulation, c: &Content, team: i8, broadcast: &str) -> Result<Value, String> {
+    let mut result = crate::observation::report(s, c, team)?;
+    if !broadcast.is_empty() {
+        result["replay"] = Value::String(broadcast.into());
+    }
+    Ok(result)
 }
 pub fn publish(n: &mut Network, slots: &[usize], u: &Update, tick: u64) -> Result<(), String> {
     crate::render::update(&mut SocketOutput { network: n, slots }, u, tick)
@@ -335,6 +347,7 @@ fn run_timeline(
     }
     println!("SIMULATION_LISTENING {ready}");
     let mut slots = BTreeMap::<usize, i8>::new();
+    let mut broadcast = String::new();
     let mut views = BTreeMap::<i8, View>::new();
     let mut pending = if timeline.is_replay() {
         VecDeque::new()
@@ -369,6 +382,11 @@ fn run_timeline(
                 }
                 if bytes != admission_bytes {
                     let data: Value = serde_json::from_slice(&bytes).map_err(|e| e.to_string())?;
+                    let id = data["broadcast"].as_str().unwrap_or("");
+                    if !id.is_empty() && (id.len() != 24 || !id.bytes().all(|b| b.is_ascii_hexdigit())) {
+                        return Err("invalid public broadcast identifier".into());
+                    }
+                    broadcast = id.into();
                     let players = Admission::decode(&data["players"])?;
                     if !timeline.is_replay() {
                         validate_admissions(&simulation, &players)?;
@@ -454,7 +472,7 @@ fn run_timeline(
                             &mut network,
                             slot,
                             net::REPORT,
-                            crate::observation::report(&simulation, content, team)?,
+                            report(&simulation, content, team, &broadcast)?,
                         )?;
                     }
                 }
@@ -469,7 +487,7 @@ fn run_timeline(
                         && !pending
                             .iter()
                             .any(|i| matches!(i,Input::Leave{peer} if *peer==a.peer));
-                    if !exists && !timeline.is_replay() {
+                    if !exists && !timeline.is_replay() && !a.recorder() {
                         let reclaim = a.reclaim.or_else(|| {
                             (simulation
                                 .state
@@ -534,7 +552,7 @@ fn run_timeline(
                             &mut network,
                             slot,
                             net::REPORT,
-                            crate::observation::report(&simulation, content, -1)?,
+                            report(&simulation, content, -1, &broadcast)?,
                         )?;
                         json_packet(
                             &mut network,
@@ -547,7 +565,7 @@ fn run_timeline(
                 Incoming::Left { slot, peer } => {
                     slots.remove(&slot);
                     views.retain(|team, _| slots.values().any(|side| side == team));
-                    if !timeline.is_replay() {
+                    if !timeline.is_replay() && peer != net::RECORDER_PEER {
                         pending.push_back(Input::Leave { peer });
                     }
                 }
@@ -574,9 +592,11 @@ fn run_timeline(
                             net::FX,
                             crate::observation::events::Events::persistent(&simulation),
                         )?;
-                        start = true;
-                        if let Some(p) = &mut profile {
-                            p.start();
+                        if network.peer(slot).is_some_and(|a| !a.recorder()) {
+                            start = true;
+                            if let Some(p) = &mut profile {
+                                p.start();
+                            }
                         }
                     }
                 }
@@ -625,7 +645,7 @@ fn run_timeline(
                         &mut network,
                         slot,
                         net::REPORT,
-                        crate::observation::report(&simulation, content, -1)?,
+                        report(&simulation, content, -1, &broadcast)?,
                     )?;
                     json_packet(
                         &mut network,
@@ -698,12 +718,27 @@ fn run_timeline(
             }
             if simulation.state.victory.winner != last_winner {
                 last_winner = simulation.state.victory.winner;
+                // The final casualty and objective state must precede the end of an archive.
+                for (&team, view) in &mut views {
+                    let recipients: Vec<_> = slots.iter()
+                        .filter_map(|(&slot, &side)| (side == team).then_some(slot)).collect();
+                    if simulation.state.tick % 4 != 0 {
+                        publish(&mut network, &recipients, &view.update(&simulation, content), simulation.state.tick)?;
+                    }
+                    let info = crate::observation::hud(&simulation, content, team)?;
+                    for slot in recipients {
+                        json_packet(&mut network, slot, net::HUD, info.clone())?;
+                    }
+                }
+                for events in render_events.drain(..) {
+                    publish_events(&mut network, &slots, &events, simulation.state.tick)?;
+                }
                 for &slot in slots.keys() {
                     json_packet(
                         &mut network,
                         slot,
                         net::REPORT,
-                        crate::observation::report(&simulation, content, -1)?,
+                        report(&simulation, content, -1, &broadcast)?,
                     )?;
                     json_packet(&mut network, slot, net::OVER, json!(last_winner))?;
                 }

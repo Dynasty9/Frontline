@@ -30,6 +30,7 @@ var _relays := {}
 var _connection := {}
 var _relay_waiting := {}
 var _admission_revision := 0
+var broadcast: Node
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
@@ -84,6 +85,10 @@ func launch(options: Dictionary, team: int, lobby := false) -> int:
 	if networked:
 		for id: int in Net.players:
 			admit_player(id, 0, false)
+	var main := get_tree().root.get_node("Main")
+	var args: Dictionary = main.args if "args" in main else {}
+	if (networked and Online.record_battles) or args.has("record-replay"):
+		_admissions[-1] = {"peer": -1, "team": -1, "name": "Battle recorder", "token": Crypto.new().generate_random_bytes(24).hex_encode()}
 	_config.merge({"team": team, "name": Net.my_name, "version": Net.NET_VERSION, "parent_pid": OS.get_process_id()}, true)
 	if not _write(".json", _config):
 		return ERR_CANT_CREATE
@@ -272,6 +277,8 @@ func _process(_dt: float) -> void:
 		_team = int(players[1].team)
 		var config := {"bind": "127.0.0.1:0", "players": _admissions.values() if networked else [{"peer": 1, "team": _team, "name": Net.my_name, "token": token}],
 			"ready": session + ".ready", "stop": session + ".stop", "speed": session + ".speed", "error": session + ".error", "lease": session + ".heartbeat"}
+		if not networked and _admissions.has(-1):
+			config.players.append(_admissions[-1])
 		if networked:
 			for id: int in Net.players:
 				admit_player(id, 0, false)
@@ -323,6 +330,14 @@ func _process(_dt: float) -> void:
 				_settings.mood = ready.mood
 			replay_status = ready.replay
 		_connection = {"address": address[0], "port": int(address[1]), "engine": ready.engine}
+		if _admissions.has(-1) and not is_instance_valid(broadcast):
+			broadcast = GameScripts.load_script("res://scripts/game/socket_recording.gd").new()
+			broadcast.settings = {"name": _settings.get("name", ""), "seed": _settings.get("seed", 1)}
+			broadcast.connection = _connection.duplicate()
+			broadcast.connection["token"] = _admissions[-1].token
+			if networked:
+				broadcast.broadcast_started.connect(_publish_admissions)
+			add_child(broadcast)
 		_settings["simulation_connection"] = {"address": address[0], "port": int(address[1]), "token": token, "engine": ready.engine, "peer": 1, "team": _team}
 		# The recording now owns the initial checkpoint; don't leave the large handoff behind.
 		if FileAccess.file_exists(session + ".initial"):
@@ -357,7 +372,8 @@ func admit_player(id: int, reclaim := 0, publish := true) -> void:
 
 func _publish_admissions() -> bool:
 	_admission_revision += 1
-	if _write(".admissions", {"players": _admissions.values(), "revision": _admission_revision}):
+	if _write(".admissions", {"players": _admissions.values(), "revision": _admission_revision,
+		"broadcast": broadcast.replay_id if is_instance_valid(broadcast) else ""}):
 		return true
 	_fail("Could not update simulation admissions.")
 	return false
@@ -442,6 +458,9 @@ func _cleanup(path: String) -> void:
 func stop() -> void:
 	if child:
 		return
+	if is_instance_valid(broadcast):
+		broadcast.finish()
+		broadcast = null
 	for relay: Node in _relays.values():
 		relay.close()
 		relay.queue_free()

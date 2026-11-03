@@ -58,6 +58,19 @@ func start() -> void:
 		check(main.world.local_team == -1, "Replay must be an observer view")
 	else:
 		check(false, "Browser replay did not load")
+	if main.args.has("observer-source"):
+		var viewer: Node = main.open_replay(String(main.args["observer-source"]))
+		deadline = Time.get_ticks_msec() + 180000
+		while (viewer.sequence < 0 or viewer.busy) and not viewer.failed and Time.get_ticks_msec() < deadline:
+			await get_tree().process_frame
+		check(not viewer.failed and viewer.sequence >= 0, "Browser observer archive must load")
+		if not viewer.failed and viewer.sequence >= 0:
+			viewer.speed = 0
+			check(viewer.manifest.format == 2 and not viewer.manifest.verified, "Observer archives must remain distinct from verified command recordings")
+			for target in [float(viewer.manifest.duration), 0.0]:
+				await viewer.seek(target)
+				check(not viewer.failed and main.world.loaded and not main.world.srv and main.world.local_team == -1, "Browser observer seeks must restore a visual-only world")
+		print("BROWSER_OBSERVER_TEST failures=%d" % failures)
 	finish()
 
 func finish() -> void:
@@ -66,5 +79,5 @@ func finish() -> void:
 		main.world.director.active = false
 		main.world.cam.dist = 55.0
 		main.world.cam.focus(main.world.soldiers[0].net_pos)
-		await get_tree().create_timer(1.5).timeout
+		await get_tree().create_timer(1.5, true, false, true).timeout
 	print("BROWSER_SERVER_TEST failures=%d" % failures)
