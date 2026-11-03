@@ -10,6 +10,14 @@ caption = "Before: shared terrain baseline, identical seed and camera."
 [[screenshots]]
 file = "after.jpg"
 caption = "After: Sheltered rock crevices receive stronger ambient occlusion while exposed rock stays open to sky light."
+
+[[screenshots]]
+file = "close-before.jpg"
+caption = "Before: matching closer camera, shared baseline."
+
+[[screenshots]]
+file = "close-after.jpg"
+caption = "After: the same closer camera; surface changes remain subtle."
 +++
 
 No new texture reads. Occlusion affects ambient lighting, with the existing direct-light contribution retained. This is a material approximation, not new ray tracing.
