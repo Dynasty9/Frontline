@@ -18,6 +18,14 @@ caption = "Before: matching closer camera, shared baseline."
 [[screenshots]]
 file = "close-after.jpg"
 caption = "After: the same closer camera; surface changes remain subtle."
+
+[[screenshots]]
+file = "target-before.jpg"
+caption = "Before: focused comparison under matched lighting."
+
+[[screenshots]]
+file = "target-after.jpg"
+caption = "After: Watch the boundary between snow and bare rock on the foreground peak."
 +++
 
 No new texture reads. Fixed prevailing wind is a visual deposition heuristic, not weather simulation. Authoritative terrain and snowline settings are unchanged.
