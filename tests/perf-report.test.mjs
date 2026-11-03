@@ -20,6 +20,11 @@ test("performance reports attribute the worst measured tick including terrain wo
   const data = JSON.parse(await readFile(report, "utf8"));
   assert.ok(data.ticks.count > 0);
   assert.equal(data.frame_changes.count, Math.max(0, data.frames.count - 1));
+  assert.equal(data.worst_frame.total_ms, data.frames.max_ms);
+  for (const [key, timing] of Object.entries(data.views)) {
+    assert.equal(timing.count, data.frames.count);
+    assert.ok(timing.max_ms <= data.views_total_ms[key] + 0.001);
+  }
   assert.equal(data.worst_tick.total_ms, data.ticks.max_ms);
   assert.ok(data.worst_tick.systems_ms["terrain + cleanup"] >= 0);
   const attributed = Object.values(data.worst_tick.systems_ms).reduce((a, b) => a + b, 0);

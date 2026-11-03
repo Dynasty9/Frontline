@@ -1,9 +1,8 @@
 # Rust simulation migration
 
-Status: **desktop solo play runs in the separate Rust server; multiplayer lobby,
-and browser integration are still being completed.** This branch
-is not ready to release. The socket server already accepts multiple authenticated
-Godot clients, but the multiplayer menu still starts the legacy host path.
+Status: **desktop solo and multiplayer battles run in the separate Rust server.**
+Browser integration, remaining presentation checks and frame-time targets are
+still being completed. This branch is not ready to release.
 
 ## Process boundary
 
@@ -27,7 +26,7 @@ protocol. Rendering never advances gameplay randomness or decides a casualty.
 The GDExtension in `native/src` remains necessary for map preparation and reference
 comparisons. The engine-independent code in `native/core` and `native/server`
 contains no Godot objects. The old GDScript simulation remains as a parity
-reference and for the multiplayer/browser paths still awaiting integration.
+reference and for the browser path still awaiting integration.
 
 ## Socket protocol
 
@@ -46,7 +45,7 @@ IDs and private supply, orders and intelligence are filtered before transmission
 Map and large report data are chunked. Reliable queues, acknowledged bytes,
 command rates and per-frame client parsing are bounded; a stalled peer is closed.
 
-Protocol 2 sends the current deformation and crater layer in the compressed map
+Protocol 3 sends the current deformation and crater layer in the compressed map
 baseline, then absolute 32 m surface tiles on the reliable channel. Tiles are
 idempotent and retained for late joiners; explosions only play cosmetic effects
 on socket clients. Loading queues the latest copy of each tile, then applies a
@@ -204,8 +203,30 @@ alone peaked at 45.08 ms; terrain-cover work peaked at 0.019 ms and hierarchy
 repairs at 8.93 ms. This isolates long searches as a remaining simulation target;
 the average frame rate does not establish steady 60 FPS. Other applications stayed
 running. Socket clients now skip GDScript terrain reconstruction because the
-baseline includes the completed surface; the loading-time improvement still needs
-a matched large-map measurement.
+baseline includes the completed surface; the follow-up below measures loading.
+
+The next 3 km run, `build/rust-socket-generated-3072-path-detail/`, measured
+67.46 FPS and frame p99 28.96 ms with other applications running. Rust ticks
+averaged 11.62 ms, p99 34.83 ms. Of 3,983 path queries, 525 reused cached paths
+and 83 failed. Global routing consumed 2.99 ms per tick on average and peaked
+at 42.02 ms; local refinement peaked at 3.24 ms and smoothing at 1.19 ms.
+There were 83 global-route samples over 16.67 ms. This points to failed searches
+exhausting disconnected regions, rather than local refinement or smoothing.
+
+The connectivity cache groups the permanent hierarchy graph. Temporary query
+anchors and danger costs keep the cache; permanent links and border edits discard
+it. Endpoints still attach and allocate in the same order, but disjoint component
+sets return no route without an exhaustive A* traversal. Team graphs must have
+matching topology when restoring a checkpoint. All 140 numeric transcripts still
+match, including route choices and subsequent simulation state. The separate
+stronger-heuristic experiment passed shortest-cost tests but changed six transcripts;
+it was not retained.
+
+Client loading in that control fell from 79.12 to 28.81 seconds, with the ground
+stage completing at 18.28 rather than 67.49 seconds. These are elapsed loading
+milestones from separate desktop runs, not isolated CPU measurements. The complete
+harness took 399.70 seconds, including map generation and shutdown, and reported
+no script/server errors. Rendering still misses the frame-time target.
 
 ## Standalone infantry scale measurement
 

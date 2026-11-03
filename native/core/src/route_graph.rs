@@ -45,6 +45,7 @@ pub struct RouteGraph {
     generation: u64,
     open: BinaryHeap<Step>,
     minimum_weight: f64,
+    pub last_expanded: u64,
 }
 
 impl RouteGraph {
@@ -274,6 +275,44 @@ impl RouteGraph {
         self.ids.len() as i64
     }
 
+    pub(crate) fn same_topology(&self, other: &Self) -> bool {
+        self.points.len() == other.points.len()
+            && self
+                .points
+                .iter()
+                .zip(&other.points)
+                .all(|(a, b)| match (a, b) {
+                    (Some(a), Some(b)) => a.id == b.id && a.edges == b.edges,
+                    (None, None) => true,
+                    _ => false,
+                })
+    }
+
+    pub(crate) fn components(&self) -> Vec<usize> {
+        let mut groups = vec![usize::MAX; self.points.len()];
+        let mut pending = Vec::new();
+        for root in 0..self.points.len() {
+            if self.points[root].is_none() || groups[root] != usize::MAX {
+                continue;
+            }
+            groups[root] = root;
+            pending.push(root);
+            while let Some(index) = pending.pop() {
+                for &(next, _) in &self.points[index].as_ref().unwrap().edges {
+                    if groups[next] == usize::MAX {
+                        groups[next] = root;
+                        pending.push(next);
+                    }
+                }
+            }
+        }
+        groups
+    }
+
+    pub(crate) fn component(&self, id: i64, groups: &[usize]) -> usize {
+        groups[self.ids[&id]]
+    }
+
     pub fn get_point_position(&self, id: i64) -> Vector3 {
         self.ids
             .get(&id)
@@ -292,6 +331,7 @@ impl RouteGraph {
     }
 
     pub fn get_id_path(&mut self, from: i64, to: i64) -> Vec<i64> {
+        self.last_expanded = 0;
         let (Some(&start), Some(&goal)) = (self.ids.get(&from), self.ids.get(&to)) else {
             return Vec::new();
         };
@@ -314,6 +354,7 @@ impl RouteGraph {
             if step.cost != self.costs[step.index] {
                 continue;
             }
+            self.last_expanded += 1;
             if step.index == goal {
                 let mut path = vec![to];
                 let mut index = goal;

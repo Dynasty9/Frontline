@@ -408,6 +408,8 @@ impl Simulation {
         Ok(result)
     }
     pub fn step(&mut self, content: &Content, inputs: &[Input]) -> Result<Frame, &'static str> {
+        self.state.field.geometry.navigation.planner.profile =
+            self.profile.as_ref().map(|_| Default::default());
         if let Some(timing) = &mut self.profile {
             timing.begin();
         }

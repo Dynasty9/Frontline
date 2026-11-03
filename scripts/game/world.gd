@@ -894,6 +894,7 @@ var _measured_tick_systems := {}
 var measured_details := {}
 var measured_detail_max := {}
 var measured_views := {}
+var measured_view_frame := {}
 
 
 func detail(key: String, since: int) -> int:
@@ -916,6 +917,7 @@ func vp(key: String, since: int) -> void:
 	vp_usec += elapsed
 	if measure_ticks:
 		measured_views[key] = float(measured_views.get(key, 0.0)) + elapsed / 1000.0
+		measured_view_frame[key] = float(measured_view_frame.get(key, 0.0)) + elapsed / 1000.0
 
 
 func _p(key: String, since: int) -> int:

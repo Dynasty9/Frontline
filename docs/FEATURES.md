@@ -365,8 +365,8 @@ Ambush Alley autoplay can call its existing mortar support against spotted, stop
 ## The systems
 
 **Soldier AI** (`scripts/game/soldier.gd`, `soldier_brain.gd`, `bt.gd`, `combat.gd`)
-- Rust projectile actors retain grenade handlers, missile targets and player credit through checkpoint resumes, preserving impact, smoke and support-aircraft effects. The shared world dispatcher is still being migrated.
-- The Rust migration also retains action interruptions and casualty transitions, including rescue/stretcher claims, pending throws, blast recovery, loot and revival. Shared world effects still run in Godot while the complete simulation is being moved.
+- Rust projectile actors retain grenade handlers, missile targets and player credit through checkpoint resumes, preserving impact, smoke and support-aircraft effects. The Rust world dispatcher owns their shared effects.
+- The Rust migration also retains action interruptions and casualty transitions, including rescue/stretcher claims, pending throws, blast recovery, loot and revival. The Rust world dispatcher owns shared gameplay effects; Godot presents them.
 - **Priority decisions govern each man** (`soldier_brain.gd`): reflexes come first, most urgent first;
   then, if he's free, the fight. Direct checks avoid dispatching a tree of callbacks for every soldier.
   The action that won is kept on the soldier (`bt_path`) for debugging and the stats.
@@ -594,7 +594,7 @@ Ambush Alley autoplay can call its existing mortar support against spotted, stop
   and knockback cannot carry a man through deep water. Spawns and disembarking find safe ground;
   a living man stranded by a removed crossing is repositioned to the nearest safe bank. Bridges and the harbour are key points the AI fights over. The water is laid
   out on the server as a few shapes and rasterized identically on every client by the shared Rust core.
-  Joining a flat battle paints and carves the ground on a Rust worker; elevated joins retain the geology-aware loading worker during the Rust migration.
+  Socket clients import the completed surface on a Rust worker, including elevated terrain and existing craters.
 - **How the water looks** (`water_view.gd`). The surface is drawn in tiles only where there's water. The sea
   runs two wave systems that cross: a swell from weather far out at sea, long and regular and coming in sets
   (its heading a little different on each map), and the wind's own shorter, steeper sea running offshore with
@@ -1221,8 +1221,8 @@ Hosts save seekable observer recordings. Unchanged scenery is cached and complet
 ## Large battles and shared AI work
 
 Desktop skirmishes and observer games can select 1,024, 2,048 or 3,072 metre maps.
-Solo games and missions launch a private headless simulation with the same game
-executable. The visible game sends commands and draws interpolated snapshots;
+Desktop solo games, missions and multiplayer launch a private Rust simulation
+process. The visible game sends commands and draws interpolated snapshots;
 the simulation remains authoritative for every soldier, including off-screen units.
 Pause, resume and returning to the menu control the owned simulation process.
 Web retains the in-process host path.
@@ -1263,433 +1263,43 @@ Grass, bushes and stones are generated around the camera, beyond their visible
 fade distance. Panning reuses nearby chunks and evicts distant ones; returning
 to an area recreates the same vegetation from its seed.
 
-The native perception, formation and route algorithms now share an engine-independent
-Rust crate with standalone tests and a versioned numeric contract. Exact checkpoint
-fixtures run on Windows, Linux and ARM to catch differing arithmetic. Gameplay random streams and ballistic projectile
-flight, missile guidance, FPV drone flight and support-aircraft attack schedules
-now run in that core too, with restorable component checkpoints. Local weighted
-navigation grids, boat routes, hierarchical map repairs, route smoothing and
-movement-order queues also use Rust. Ground cells, crater deformation and queued
-cover repairs use the same core, with numeric terrain edits and queries. The
-geometric sight test and smoke screens use the same core, with unchanged walls
-reused as obstruction proofs and moving smoke checked immediately. Infantry
-contact evaluation also runs in Rust, preserving weapon priorities, mounted-gun
-arcs, drone reactions, forced targets and squad reports. Infantry route movement
-also has a checkpointed Rust implementation and tick-by-tick compatibility tests;
-its per-soldier adapter stays disabled because copying state across that boundary
-is slower than the existing movement. Cover-fire cycles, weapon postures,
-ammunition and burst timing also have checkpointed Rust implementations under
-compatibility tests; normal games still use the existing weapon controller while
-actor ownership moves. Infantry health, suppression and fatigue rules also have
-restorable Rust state and
-comparisons covering damage credit, squad responses and repeat wounds. Aim selection
-and its short sight cache also have Rust compatibility checks, including blind
-fire, firing through cover and last-known positions. Combat pose calculations
-(eyes, exposed points and hit factors) are also checked against pure Rust
-geometry, independent of animated models. Bullet accuracy, scatter, penetration,
-damage rolls and near-miss suppression have Rust compatibility checks too,
-preserving the order of damage, explosions and random draws. Blast exposure
-checks also preserve cover, trench shelter, prone protection and the order of
-damage, knockback and flinching. Knockback trajectories, obstacle bounces,
-landings and dazed movement also have checkpointed Rust state.
-Wounded timers and corpse collection decisions also have Rust compatibility
-checks, including rescue, medicine and the order of speech and pistol effects.
-Grenade reflex checks preserve protection of wounded squadmates, throwback and
-kick priority, shelter decisions, kick direction and cooking time.
-Grenade task checks also cover approaches, pickup and kick deadlines, smothering
-and dives, including the existing action callbacks and rethrows.
-House-entry phases also have Rust checkpoints, preserving the stack, door kick,
-grenade cooking, retreat and entry sequence while task effects remain in Godot.
-Building and breach-selection checks preserve rotated floors, doors, windows,
-blocked stacking positions and yielding to a better-positioned squadmate.
-Automatic grenade targeting also has Rust state for inventory and cooldowns,
-preserving contact scores, throw scatter and the following cook/throw sequence.
-Incoming-round checks preserve warning order, shared grenade/mortar memory,
-suppression, ducking and dive priority, including busy soldiers.
-Drone-avoidance checks preserve hearing memory, warning choices, dive priority
-and altitude-aware distance, with the same gameplay random draws.
-Retained soldiers now apply grenade, shell and drone reactions from shared Rust
-actors, preserving contested grenade handlers, rescue/breach cleanup, warning
-memory and dives. The live decision loop still runs in Godot.
-Actor-kind lists preserve registration order while keeping scenery out of unit,
-vehicle and projectile scans; checkpoint restores rebuild the lists identically.
-Special-attack checks preserve rocket and melee target priority, queued mortar
-orders, drone launch timing, ammunition, cooldowns and the following actions.
-Retained actors now select these targets directly, preserving friendly mortar
-clearance, shared fire queues, rocket sight lines and FPV priorities. The live
-dispatcher and completed weapon effects still run in Godot.
-Supply checks preserve scavenging, nearby-body priority, cache and FOB choices,
-refill rates, special-ammunition draws and reload order. Retained actors now also
-transfer shared corpse stock and own resupply searches, destinations and arrival
-orders, preserving stock contention and cooldowns across saved-state resumes.
-Shared infantry combat now also updates retained casualties, rescue/breach
-claims, last-attacker credit, squad contacts, morale and near-miss suppression
-in their existing order. Whole-world dispatch still runs in Godot.
-Battle-record checks preserve commander credit and rejoins, casualties, prisoners,
-unit history, timeline thinning and report privacy while the ledger moves into
-Rust. Complete battle replay verification remains unfinished.
-Complete cover searches run in Rust, including reachable candidates, protection,
-occupied positions and final scoring. Equal candidate scores retain their existing
-order and the same 20-position evaluation budget; 4,270 reference searches compare
-the result with GDScript.
-Stationary movement checks also preserve spacing, terrain settling, cover alignment
-and watch-sector or mounted turns, including overlap randomness and cache deadlines.
-Retained cover decisions read shared squad contacts and existing building anchors,
-preserving occupied positions, destroyed or burning cover and reevaluation timing.
-Medical-task checks preserve approaching and claiming a casualty, dragging him to
-safety, treatment timing, medicine and the escort's movement and firing. Rescue,
-healing and escort also safely release patients or rescuers removed from the world.
-Construction, stretcher and prisoner-escort checks preserve work priorities,
-paired pickup, casualty delivery, solo takeover and escort spacing. Removed
-casualties, partners, tents, prisoners and work targets are handled safely.
-Arrival checks preserve boarding boats and helicopters, entering tunnels,
-collecting ammunition and ordered frag/smoke throws. Removed destinations are
-handled safely, and unknown grenade types are rejected before changing orders.
-Mounted-weapon checks preserve tower climbing, gun traverse, mortar aim and
-anti-tank target selection, including smoke, distance ties and removed mounts.
-Action checks preserve cooking and queued throws, grenade pickup/rethrow/kicks,
-door kicks, melee, rockets, drones and mortar launches, including callback order
-and targets removed before the action completes.
-Lifecycle checks preserve hidden vehicle/tunnel duties, treatment deadlines,
-drone operators, moving postures and status flags. Removed tents, tunnels,
-vehicles and drones are safely released.
-Retained downtime also updates both conversation partners and team cooldowns,
-including interruptions and timed speech, before another soldier acts.
-Downtime checks preserve calm timers, idle choices, conversation partners,
-scheduled dialogue, laughter and interruptions, including gameplay random draws.
-Target validation also safely rejects a unit that has already been removed.
-Scheduling checks preserve interruption priority, dive movement, scanning and
-thinking deadlines, plus order and busy-duty gates. Dazed, diving and acting men
-retain the same pause in their ordinary tasks.
-Infantry state can also be imported into a retained Rust actor, including pending
-paths, timed actions, conversations, casualty links and mounted-weapon orders.
-Its checkpoint validates the complete soldier state; whole-battle saves still
-need the remaining world state and simulation ownership to move into Rust.
-Retained actor checks now cover issuing and replacing movement orders, rejecting
-late path results, applying arrivals, reviewing shelter and selecting new cover.
-Flank and rear sectors, crawling and fatigue-dependent speed retain their previous
-behavior. These operations still await the complete Rust world loop.
-Connected actor-update checks preserve recovery, fatigue, route progress,
-automatic replanning, arrivals, stationary movement and the posture and activity
-codes shown to players. Shared effects still await the Rust world implementation.
-Retained squad-order checks preserve order gates, rescue and breach claims,
-mount release, formation route reuse and grenade-throw approaches. A breacher
-holding a cooked grenade still completes that commitment before moving on.
-Shared squad movement now consumes retained formations and applies member orders
-and direct route results in sequence. Travel keeps followers behind their leader,
-slows him for stragglers, and releases them into their final cover. Bounding teams,
-recon fire, leader succession and speech draws retain their existing rules.
-Crew return uses the same movement operation, respects manual orders and contact,
-and refunds supply once when surviving crewmen reach their friendly FOB. Wounded
-members remain in the world. The complete squad/world dispatcher is still pending.
-The Rust core now allocates authoritative entity IDs and retains their lifecycle
-order. Retired IDs stay retired, and restored lifecycle checkpoints continue the
-same allocation sequence; clients use the server's IDs for their visual objects.
-Shared actor checks now keep rescue/stretcher cleanup and controlled FPV drones
-inside one Rust collection. Drones resolve their operator and target from retained
-actors, keeping their last aim point after losing the target. The live battle
-still uses Godot ownership while the other entity types and world loop migrate.
-Building-state checks retain geometry, supply, queues, crew links and fire state.
-Ammo-cache cook-offs use a saved simulation-time explosion queue, so damage waits
-for the battle to advance and does not depend on render callbacks.
-Destroyed buildings queue their rubble in the same owned state; ruins register
-after deferred blasts and before the next simulation step.
-Spatial checkpoint checks preserve nearby infantry, vehicle, building and door
-query order, including units that moved after the step's buckets were built.
-Vehicle checkpoints retain orders, passenger/sling links, weapon and flight state,
-repair progress and naval timers. Repairs, turret aiming, order transitions and
-shared boarding match the existing game. Ground-driving checks preserve steering,
-traffic spacing, braking, reversing and recovery from obstacles across saved-state
-resumes. Crew checks preserve withdrawal for repairs, missile evasion, waiting
-for infantry and resuming saved orders. Flight and combat dispatch still need to
-join the full Rust world loop.
-Rotorcraft and UAV guidance checks preserve momentum, hover braking, ground
-clearance, sling-load handling, orbit phase and flight attitude across saved-state
-resumes. Paired sling checks preserve pickup, swing, release and dropped cargo;
-pilot checks preserve pickup hover, touchdown, unloading, supply destinations
-and return flights. Aircraft combat and shared delivery effects still need to
-join the Rust world dispatcher.
-Vehicle combat checks preserve armour, blast shove, ricochets, track breaks,
-damage alerts, missile priority, cannon aim gates and machine-gun burst timing.
-Connected vehicle firing now applies shared cannon and machine-gun damage,
-defensive smoke and crew evasion before launch effects, then weapon recovery.
-Artillery missions create attributed shells before advancing their salvos;
-service vehicles credit medical revivals and retain repair and reload effects.
-These operations still await the complete vehicle/world dispatcher.
-Shared transport checks preserve passenger exits, boat landing gates and the
-exiting squad's next order request in retained Rust actor state.
-Vehicle missile and smoke launches now create retained Rust projectile state;
-reference checks preserve warning order, smoke ammunition and random continuation.
-Cannon checks preserve barrel sockets, aircraft attitude, blocked shots and
-trench-lip impacts, including firing along a trench instead of across its lip.
-Artillery checks preserve queued fire missions, aiming delays, salvos and shell
-scatter. Gunship checks preserve attack orbits, damaged-aircraft altitude, rocket
-firing gates and smoke responses between successive rocket launches.
-Boat checks preserve water routes, separate bodies of water, bridge clearance,
-shallow-water costs, current, rudder and engine response, traffic, coming about,
-rejoining a route and backing off the shore. Saved-state resumes preserve the
-same route and driving decisions.
-Support-vehicle checks now update retained recipients together, preserving repair
-progress, ammunition and missile refills, healing, medical revivals and the order
-of speech and random draws. Missing loadout data leaves the service step unchanged.
-Vehicle target checks now read retained infantry poses, vehicle positions and
-building visibility directly, preserving aircraft priorities, forced targets and
-squad reports. Unchanged obstacles reuse visibility results; smoke remains live.
-Retained infantry also builds its perception snapshot from Rust actors and terrain,
-preserving concealment, wounded firing, netted vehicles, mounted-gun arcs, drone
-reactions and the seven-contact limit. Selected and visible targets survive saved
-state resumes; the full soldier decision loop still needs the Rust world.
-Retained perception preserves alternating scan deadlines, immediate scans without
-a target, shared squad reports and separation between thoughts, including
-overlapping soldiers and casualty duties.
-Retained firing reads target poses and squad knowledge directly, preserves
-covering-fire responses and morale-dependent accuracy, and derives muzzle positions
-from authoritative poses and mount geometry. Ammunition, speech and burst recovery
-keep their ordering around shared bullet effects and random draws.
-The retained weapon sequence advances timers, ducks and reloads, asks for cover,
-shifts along reachable unclaimed positions, chooses posture and lays the gun in
-the same order. Mounted traverse and firing arcs, suppression and escort/crew
-exceptions are compared against the complete existing weapon tick.
-Retained action completion updates shared grenade holders, melee casualties,
-opened doors, launched rounds and drone pilots. Rocket warnings preserve vehicle
-smoke and crew evasion in the same event and random order.
-Connected action completion applies door geometry, melee battle credit and
-interrupted/evasive routes immediately to the shared world.
-Retained gun crews connect tower climbing, mounted weapon claims, machine-gun
-fire, ordered and autonomous mortar rounds and anti-tank launches. Gun traverse,
-target visibility and vehicle smoke responses preserve the existing sequence.
-Retained travel tasks connect movement to retreat, grenade orders, boarding,
-tunnel entry, drone operation and resupply, including shared seats, occupants and
-finite ammunition. The complete world dispatcher is still being migrated.
-Retained explosions connect cover, casualties, shared carrier links, squad
-reactions, knockback, vehicle/building destruction, fire and craters in victim
-order. Structure losses update doors, tunnel occupants, gunners, collision,
-navigation, battle credit and supply routes immediately. Delayed cache explosions
-finish before rubble is registered. The complete live world dispatcher remains
-in Godot while its remaining behavior is migrated.
-Retained infantry births preserve every unit loadout, upgrades, initial cooldowns,
-names and squad recruitment. Live spawning and squad ledger callbacks remain in
-Godot until the shared world dispatcher owns them.
-Retained vehicle destruction connects passenger injuries, nearby flinching,
-crew survival and births, battle credit, supply-truck replacement timers and
-recursive sling-cargo damage. Crew return orders and refunds happen before wreck
-creation, shared geometry registration and ignition. The live game still uses
-the Godot dispatcher until the complete Rust world loop is ready.
-Retained supply routes preserve FOB completion order, town deliveries, wrecked
-base handling and obstacle clearing. Road changes update shared terrain and
-navigation before the next route is calculated, including after saved-state resumes.
-Retained medical duties update shared rescue claims, shelter routes, dragging,
-healing and revival, so later soldiers immediately see a claimed or recovered
-patient. Squad rejoining, battle-record callbacks and live dispatch still need
-world-level integration.
-Retained stretcher duties preserve paired pickup, follower movement, solo takeover
-and delivery, including both bearers' return routes and the casualty's removal
-from his squad before treatment. Hidden soldiers also follow transports, leave
-tunnels, complete treatment and depart after their prisoner timer, with shared
-occupancy and squad updates. Ledger callbacks and the full world loop still need
-integration.
-Retained corpse cleanup checks shared carrier state and ground caches before
-removing expired bodies; captive movement keeps the existing route speed and
-hands-up posture. Connected wounded updates preserve bleeding, carrier cleanup,
-cries, pistol hits and crawl routes against retained world state, including death
-credit and shared casualty links. The full world dispatcher remains unfinished.
-Retained fires connect ignition, spreading, heat, smoke, casualties and escape
-orders to shared actors and navigation. Burned structures update the battle record
-and retire their geometry before later fire victims act. Checkpoints preserve
-burning lists, grass patches, heat counts and update timers. The live world still
-calls Godot's fire loop until the complete Rust dispatcher is ready.
-Connected Rust bullet fire applies cover penetration, injuries, vehicle losses,
-explosive rounds, near-miss suppression and squad reports in gameplay order.
-Checkpointed gunfire deadlines preserve when enemies hear the shooter. Normal
-fighting and escort updates now connect movement, cover shifts, aiming, bullet
-effects, reloads and downtime against that retained state. Connected house entry
-uses those same movement and firing paths, then applies door kicks, grenade
-preparation, retreat and the buddy's room-entry order. The production world loop
-and remaining infantry, vehicle and emplacement duties still need integration.
-Connected construction preserves engineers stopping work under fire, approach
-routes, building completion, cover and collision changes, repairable FOBs, supply
-roads, vehicle tracks and squad completion calls. These operations still await
-the production Rust dispatcher.
-The complete retained soldier tick now connects those duties with recovery,
-interruptions, perception, decisions and final status in the existing gameplay
-order. Medical recovery, carrying, boarding, tunnels and prisoners update shared
-actors and squads. This dispatcher is checked against Godot; the production world,
-standalone server and complete battle replay verification remain unfinished.
-Retained vehicle movement now connects target reports, crew decisions, submitted
-routes, driving, infantry shoving and obstacle destruction to the same battlefield.
-Destroyed obstacles stop blocking navigation immediately and stop shielding shots
-at tick end, preserving the existing update order.
-Connected Rust projectiles resolve their holders, guided targets and gunship
-contacts from retained actors. Impacts apply shared casualties, blast effects,
-attribution and removal in order; smoke updates visibility and reconnaissance
-retains timed marks. FPV flight now connects operator loss, target movement and
-detonation to that same battlefield. Production world dispatch remains unfinished.
-Retained navigation owns each structure's overlapping obstacle cells together with
-the infantry and vehicle route hierarchies. Fire counts, bridge decks, terrain
-costs and obstacle removal preserve incremental repair order and pending routes
-through checkpoints. Retained path completion now applies results to soldiers and
-vehicles with a fixed job quota. Missing or stopped units do not use that quota;
-routes blocked during hierarchy repairs remain queued for a later update. The
-complete world dispatcher still needs to call these operations for every duty.
-Retained structure removal now connects terrain, navigation, spatial membership
-and doors. Collision bodies remain until tick end, preserving shielding for later
-shots in the same update. Tree cover changes immediately; other cover repairs keep
-their queue order. Pending collision removals survive geometry checkpoints.
-Rust also constructs structure collision directly from retained parts, including
-construction, movement, rotated pieces and opened doors. Cosmetic tilt leaves
-authoritative cover unchanged. Live collision lifecycle calls still come from
-Godot while the complete Rust world dispatcher is being assembled.
-Retained structure creation now generates the gameplay parts, fighting positions,
-default dimensions, health and cache stock inside Rust. Spawning registers the
-same navigation obstacles, doors, collision boxes, spatial cells and terrain
-repairs; it also preserves custom health, unfinished construction and the geometry
-needed by later destruction. Definition values are supplied as match content.
-Blast-tossed cars and crates now update retained cover, navigation, collision and
-spatial membership together. Their final position is authoritative immediately;
-the flight velocity and spin remain presentation events for Godot. Blocked landings,
-map margins and the original random-draw order are preserved.
-Formation placement now queries the retained Rust world directly. A squad shares
-one ground candidate search and reuses anchor approach and occupancy checks;
-cover scores, first-choice ties and the rule against splitting across a wall stay
-the same. The live squad-order dispatcher remains in Godot during migration.
-Squad battle drills now operate on retained Rust actors and routes: morale,
-routing and rallying, displacement under shellfire, bounding withdrawal, contact
-reactions, house clearing, ambush fire discipline and ammunition sharing. Decisions
-keep their existing priority, deadlines and random draws. The complete retained
-squad tick now connects these decisions with upkeep, plans, movement and support
-duties in gameplay order. The production world dispatcher still needs migration
-before Rust owns the live battle.
-Rust recruitment now creates complete squads and transport passengers against the
-same actor registry, random stream, battle ledger and navigation. Unit definitions,
-upgrades, names, initial spacing and rally orders preserve their gameplay order.
-Vehicle creation also initializes health, ammunition, flight state and collision
-without a scene object. Production still needs to call these operations from the
-complete retained building update.
-Squad care and construction assignments now share those retained actors, rescue
-claims and paths. Covering smoke, medic priority, repair selection, surrender,
-straggler transfers and their battle records keep their existing order and timing.
-Deliberate road ambushes also retain their rally, formation, fire discipline and
-withdrawal state in Rust, including checkpoint continuation and cancellation when
-the squad makes contact on approach or cannot hold its position.
-Retained captors update capture credit, prison selection and escort movement;
-arrival applies detention and the guard's return order before the next actor.
-Removed prisons are handled safely. Retained prisoner rules now handle guard
-claims, rescue and squad rejoining. Intelligence retains the original fact order,
-private reports, deadlines and random draws, with report history saved for replay
-continuation. The full rules loop still needs integration.
-Construction, town income, capture and production transitions match the existing
-game. Tents now recruit and assign stretcher teams against retained casualties;
-gun positions select and route their crews; ammunition caches refill nearby men
-and retire their shared geometry when empty. These services preserve decision
-clocks, claims, random draws and route continuation. FOB and town captures now
-change shared ownership, battle credit and supply roads immediately, including
-last-FOB victory, town income and nearby resupply. Minefields resolve shared
-casualties, vehicle damage and terrain effects. Production now checks shared
-capacity, creates complete forces and routes them to their rally point; research
-updates existing soldiers. Reinforcements queued by an absent commander use the
-current acting owner and remain reclaimable, including transport passengers.
-Remaining rule effects and
-the full building dispatcher still need migration before Rust owns the complete
-battle.
-Retained fog now combines observers, reconnaissance photographs, camouflage and
-remembered sightings in Rust. Hidden prisoners and mines retain their privacy;
-seen emplacements and visible enemies update both route danger maps. Observer
-cells bound nearby checks without changing actor order or visibility deadlines.
-Retained rejoining now selects or creates squads, transfers disconnected ownership
-and updates membership, battle records and return routes. Recovery and prisoner
-rule dispatch still need to call this from the complete Rust world loop.
-Squad-state checks preserve shared contact reports, briefing timing, leader
-succession and casualty morale against the existing game. Squad checkpoints retain
-orders, formation slots, queued fire missions and plan links; the full squad
-decision loop still runs in Godot during migration.
-Retained defense and assault orders now place members in cover and preserve
-pinning, alternating bounds and covering fire. Deliberate attacks retain their
-support/assault teams, covered flanks, smoke and grenade rushes, shifting fire,
-reinforcement, fallback and consolidation through checkpoints. The Rust world
-dispatcher still needs to own and schedule these plans in production.
-Ground vehicles now have a connected Rust update for movement, scans, crew decisions,
-unloading, combat, support and obstacle collisions. Unloading restores the squad's
-defense or deliberate attack; vehicles lost to their own blast stop before support work.
-Connected Rust aircraft updates preserve shared targets and combat, rocket-warning
-order, cargo pickup and release, troop landings and supply deliveries. Vehicle
-recovery now respects the same map-edge clearance as its route graph; checkpoints
-use numeric contract 2 so older route rules cannot silently change during a resume.
-Connected boat updates combine steering, currents, combat and shore landings.
-Supply trucks now update shared deliveries, income, roadblock notices and replacement
-timers together, retaining those decisions across checkpoints.
-Rust now dispatches town lorries and FOB replacements in the same order, preserving
-stock thresholds, broken-route retries and existing convoys. HQ reserves use the
-opening delay, current surviving troop count, research and the first connected
-commander; scenario and mission exclusions remain unchanged.
-Support calls now retain supply charges, cooldowns and delayed salvos in Rust.
-Aircraft preserve their entry course, payload, reconnaissance camera and gun
-sockets; arriving shells preserve reverse queue order and the match random stream.
-The combined Rust rules update connects support, visibility, reserves, prisoners,
-victory, danger maps and logistics in their original order, including saved-state
-continuation and their existing update cadence.
-Training and research admission also run against retained supply and queues in
-Rust, preserving prerequisites, private warnings and cancellation credit. The
-building pass applies captures, production and services in registration order.
-Rust placement validation preserves rotated footprints, trench gun positions,
-dock approaches, road clearance and expansion from existing bases and towns.
-Rust command ownership preserves allied control without changing another human's
-attribution, transfers departing commanders' forces, and restores surviving units,
-queued reinforcements and battle credit when an authenticated commander returns.
-Explicit Rust squad orders also preserve attacks, construction, boarding, tunnel
-entry, garrisoning, specialist gun crews, mortar missions and grenade orders,
-including shared route queues and interrupted rescue claims.
-Building creation now connects placement validation, supply charges, base names,
-collision registration and engineer assignment in Rust. Allied players retain
-their attribution; giving orders to AI builders transfers their command.
-Individual orders also operate on retained soldiers, preserving cover selection,
-detachment, rescue claims, grenade availability, retreat and mounted-gun ownership.
-Vehicle commands use retained ground and water routes, helicopter landing searches,
-crew refusal rules and path cancellation, including saved-state continuation.
-The Rust command dispatcher connects selection, permissions, formation spacing,
-combat, transport, construction, production, support and tunnel orders. Command
-packets carry player intent; the authenticated session supplies the commander.
-Observer demonstrations and private readiness warnings retain their existing behavior.
-The retained battlefield now advances infantry, buildings, fire, vehicles, rounds,
-drones, squads and rules in one fixed-step Rust scheduler. Births and destruction
-affect later phases in the same order as the game, and checkpoints retain their
-shared state. Scenery is excluded from the active-building and perception scans.
-Native routes retain separate foot, wheeled and tracked slope limits, bridge
-decks and water depth. Exact wall footprints let soldiers reach cover inside
-planning padding; swept steps prevent stale routes from crossing solid walls or
-newly blocked water. Dives, blast recovery, escorts and stretcher followers use
-the same terrain and clearance rules, including elevated casualty positions.
-Combat queries share the terrain and box index: hills block sight and fire,
-craters can reopen sight, and ordnance, FPV drones and support aircraft use the
-actual surface and terrain-relative flight. The heightfield is borrowed by
-these queries rather than copied between simulation phases.
-The standalone runtime now uses definitions baked from the same game tables.
-Its replay runner records initial state, player admissions and ordered commands;
-a separate Rust executable reruns them and checks the final state and winner.
-It rejects incomplete, altered and incompatible recordings. Strategic commanders
-now advance production, construction, defenses, attacks, support and naval landings
-in Rust, retaining their phases and roles across replay. The five playable
-missions also retain objectives, scripted reinforcements, support, autopilots
-and conclusions. Generated starting battlefields can be handed from Godot to
-Rust before the first tick, including exact random state and map geometry.
-Starting battlefields and recorded checkpoints use bounded, lossless compressed
-blocks so larger maps do not require equally large uncompressed handoff files.
-Desktop solo and hosted multiplayer start that Rust process and connect the Godot renderer
-over an authenticated ENet socket. The server sends team-filtered entity state,
-effects, messages, HUD data and reports; orders travel back to the same authority.
+The authoritative Rust runtime owns the complete battlefield: infantry, vehicles,
+buildings, fire, rounds, drones, squads, economy, visibility and victory. Tactical
+plans, strategic commanders and all five mission programs advance on fixed ticks.
+Orders contain player intent; authenticated connections supply their commander
+identity. Gameplay uses retained numeric state and deterministic random streams,
+independent of Godot objects, render callbacks and network arrival timing.
+
+The headless Godot generator authors the initial map before the first tick, then
+exits. It exports terrain, collision geometry, formations, queues and random state.
+Rust checkpoints retain those systems, entity allocation and pending work. Bounded,
+lossless compression keeps large-map handoffs and recordings practical without
+quantizing positions, terrain or timers. Windows, Linux and ARM tests compare
+committed state transcripts; separate Godot fixtures check gameplay compatibility.
+
+Desktop solo and hosted multiplayer start that Rust process and connect the Godot
+renderer over an authenticated ENet socket. The server sends team-filtered entity
+state, effects, messages, HUD data and reports. The multiplayer lobby forwards
+opaque packets through its existing port; Rust admits each player, handles drop-in
+reinforcements and restores ownership after reconnecting. Teammate cursors, pings,
+sketches and committed actions use the same server's team filtering. These
+presentation messages do not enter the gameplay recording.
+
 Current terrain deformation and crater cover arrive in the map baseline, followed
 by reliable absolute tiles. Missed cosmetic explosions cannot change the ground,
 and late joins and replay seeks restore the server's current surface and roads.
-Reconnect preserves ownership, pause controls server pacing, and leaving closes
-the deterministic command recording. The replay viewer opens those recordings,
-re-executes commands for playback and seeking, and labels verification only after
-checking the complete input stream, final state and result. Existing observer
-archives keep their separate unverified status. The multiplayer lobby forwards
-opaque packets through its existing port; Rust admits each player, handles drop-in
-reinforcements and restores ownership after reconnecting. Teammate cursors, pings,
-sketches and committed actions use the same server's team filtering. They do not
-enter the gameplay recording. Socket clients import the finished elevated surface
-without rebuilding its heights and slopes in GDScript. Browser integration remains
-in progress; see [RUST_SIMULATION.md](RUST_SIMULATION.md).
+Clients import the finished elevated surface without rebuilding its heights and
+slopes in GDScript. Rust movement and combat use the same terrain: slopes, water
+depth, bridge decks, wall clearance, sight, ballistic collisions and flight heights
+remain independent of how the models animate.
+
+Pausing changes server pacing. Leaving finishes the deterministic command recording.
+The replay viewer re-executes admitted commands for playback and seeking, and labels
+a result verified only after checking its input stream, final state and winner.
+An unfinished battle can verify as unfinished; it is never presented as a victory.
+Existing observer archives keep their separate unverified status. Browser integration
+remains in progress; see [RUST_SIMULATION.md](RUST_SIMULATION.md) for the process
+boundary, replay contract, validation and remaining release gates.
 
 See [SIMULATION_SCALING.md](SIMULATION_SCALING.md) for the native perception
 boundary, measurement results and remaining limits.

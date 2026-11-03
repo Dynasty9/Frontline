@@ -7,6 +7,26 @@ use std::collections::{HashMap, VecDeque};
 const UNKNOWN: f64 = -2.0;
 const CACHE_CELLS: usize = 131_072;
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn connectivity_cache_ignores_weights_and_query_anchors_but_checks_team_topology() {
+        let mut nav = Hierarchy::new(32, 16).unwrap();
+        build_all(&mut [&mut nav], 1);
+        nav.route([2, 2], [29, 29], 0, 1.0);
+        let groups = nav.components.clone().unwrap();
+        nav.set_danger(0, &[2.0; 4]);
+        nav.route([3, 3], [28, 28], 0, 1.0);
+        assert_eq!(nav.components.as_ref(), Some(&groups));
+        assert!(Hierarchy::restore(&nav.checkpoint()).is_ok());
+        let (&(a, b), _) = nav.mids.iter().next().unwrap();
+        nav.graphs[1].connect_points(a, b);
+        assert!(Hierarchy::restore(&nav.checkpoint()).is_err());
+    }
+}
+
 #[derive(Default)]
 struct Cluster {
     nodes: Vec<i64>,
@@ -41,6 +61,7 @@ pub struct Hierarchy {
     node_base: HashMap<i64, f64>,
     mids: HashMap<(i64, i64), i64>,
     graphs: [RouteGraph; 3],
+    components: Option<Vec<usize>>,
     next_id: i64,
     dirty: VecDeque<usize>,
     queued: Vec<bool>,
@@ -49,6 +70,7 @@ pub struct Hierarchy {
     pub built: bool,
     pub terrain_revision: u64,
     pub danger_revision: [u64; 2],
+    pub last_expanded: u64,
 }
 
 impl Hierarchy {
@@ -373,6 +395,12 @@ impl Hierarchy {
                 }
             }
         }
+        if nav.graphs[1..]
+            .iter()
+            .any(|graph| !nav.graphs[0].same_topology(graph))
+        {
+            return Err("hierarchy team topology mismatch");
+        }
         let count = input.u32()? as usize;
         if count > nav.clusters.len() {
             return Err("too many pending hierarchy repairs");
@@ -413,6 +441,7 @@ impl Hierarchy {
             node_base: HashMap::new(),
             mids: HashMap::new(),
             graphs: std::array::from_fn(|_| RouteGraph::new()),
+            components: None,
             next_id: 1,
             dirty: VecDeque::new(),
             queued: vec![false; across * across],
@@ -421,6 +450,7 @@ impl Hierarchy {
             built: false,
             terrain_revision: 0,
             danger_revision: [0; 2],
+            last_expanded: 0,
         })
     }
 
@@ -646,6 +676,7 @@ impl Hierarchy {
     }
 
     fn make_border(&mut self, a: usize, b: usize, picks: Vec<i32>) {
+        self.components = None;
         let horizontal = b == a + 1;
         let [x, z] = self.corner(a);
         let c = self.cluster_side as i32;
@@ -681,6 +712,7 @@ impl Hierarchy {
         let Some(border) = self.borders.remove(&(a, b)) else {
             return;
         };
+        self.components = None;
         for id in border.nodes {
             if let Some(&cluster) = self.node_cluster.get(&id) {
                 for other in self.clusters[cluster].nodes.clone() {
@@ -698,6 +730,9 @@ impl Hierarchy {
     }
 
     fn link(&mut self, a: i64, b: i64, cost: f64, cluster: usize, temporary: bool) -> Option<i64> {
+        if !temporary {
+            self.components = None;
+        }
         let pa = self.graphs[0].get_point_position(a);
         let pb = self.graphs[0].get_point_position(b);
         let length = f64::from(pa.distance(pb));
@@ -723,6 +758,7 @@ impl Hierarchy {
         let mid = self.mids.get(&key(a, b)).copied();
         if cost < 0.0 {
             if let Some(mid) = mid {
+                self.components = None;
                 self.mids.remove(&key(a, b));
                 self.clusters[cluster].mids.retain(|m| *m != mid);
                 self.remove_point(mid);
@@ -731,6 +767,7 @@ impl Hierarchy {
         }
         let length = f64::from(position(self.cells[&a]).distance(position(self.cells[&b])));
         if length < 0.5 {
+            self.components = None;
             self.connect(a, b);
             return;
         }
@@ -943,6 +980,7 @@ impl Hierarchy {
     }
 
     pub fn route(&mut self, from: [i32; 2], to: [i32; 2], team: i32, care: f64) -> Vec<[i32; 2]> {
+        self.last_expanded = 0;
         if self.index(from).is_none()
             || self.index(to).is_none()
             || (!self.built && !build_all(&mut [self], 1))
@@ -956,6 +994,13 @@ impl Hierarchy {
         };
         let a = self.cluster_of(from);
         let b = self.cluster_of(to);
+        // Disconnected destinations must not search every entrance on a large map.
+        // Temporary query anchors and danger weights do not invalidate connectivity.
+        if self.components.is_none() {
+            self.components = Some(self.graphs[0].components());
+        }
+        let mut from_components = Vec::new();
+        let mut connected = false;
         let start = self.next_id;
         let goal = start + 1;
         self.next_id += 2;
@@ -967,6 +1012,14 @@ impl Hierarchy {
                 let destination = self.cells[&id];
                 let cost = self.local_grid(cluster).path_cost(cell, destination);
                 if cost >= 0.0 {
+                    let component = self.graphs[0].component(id, self.components.as_ref().unwrap());
+                    if endpoint == start {
+                        if !from_components.contains(&component) {
+                            from_components.push(component);
+                        }
+                    } else if from_components.contains(&component) {
+                        connected = true;
+                    }
                     if let Some(mid) = self.link(endpoint, id, cost, cluster, true) {
                         temporary.push(mid);
                     }
@@ -976,12 +1029,20 @@ impl Hierarchy {
         if a == b {
             let cost = self.local_grid(a).path_cost(from, to);
             if cost >= 0.0 {
+                connected = true;
                 if let Some(mid) = self.link(start, goal, cost, a, true) {
                     temporary.push(mid);
                 }
             }
         }
-        let ids = self.graphs[graph].get_id_path(start, goal);
+        // Keep anchor allocation and cleanup identical even when no route exists.
+        let ids = if connected {
+            let ids = self.graphs[graph].get_id_path(start, goal);
+            self.last_expanded = self.graphs[graph].last_expanded;
+            ids
+        } else {
+            Vec::new()
+        };
         let out = ids
             .into_iter()
             .filter_map(|id| {

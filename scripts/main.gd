@@ -48,6 +48,8 @@ var _perf_physics: Array[float] = []
 var _perf_render_cpu: Array[float] = []
 var _perf_render_gpu: Array[float] = []
 var _perf_process: Array[float] = []
+var _perf_view_samples := {}
+var _perf_worst_frame := {}
 var _battle_pending := false  # the rank's battle clock starts once the world is running
 var _curtains := false  # intro and loading screens (normal launches; tests skip them)
 var _curtain_layer: CanvasLayer
@@ -1009,7 +1011,18 @@ func _process(_dt: float) -> void:
 		if _perf_t0 > 0:
 			var frame_now := Time.get_ticks_usec()
 			if _perf_frame_us > 0:
-				_perf_frame_samples.append((frame_now - _perf_frame_us) / 1000.0)
+				var frame_ms := (frame_now - _perf_frame_us) / 1000.0
+				_perf_frame_samples.append(frame_ms)
+				if frame_ms > float(_perf_worst_frame.get("total_ms", 0.0)):
+					_perf_worst_frame = {"total_ms": frame_ms, "views_ms": world.measured_view_frame.duplicate()}
+				for key: String in world.measured_view_frame:
+					if not _perf_view_samples.has(key):
+						var samples: Array[float] = []
+						samples.resize(_perf_frame_samples.size() - 1)
+						samples.fill(0.0)
+						_perf_view_samples[key] = samples
+					(_perf_view_samples[key] as Array[float]).append(float(world.measured_view_frame[key]))
+					world.measured_view_frame[key] = 0.0
 				if world.has_view:
 					var viewport := get_viewport().get_viewport_rid()
 					_perf_render_cpu.append(RenderingServer.viewport_get_measured_render_time_cpu(viewport) + RenderingServer.get_frame_setup_time_cpu())
@@ -1029,6 +1042,8 @@ func _process(_dt: float) -> void:
 			_perf_render_gpu.clear()
 			_perf_process.clear()
 			_perf_physics.clear()
+			_perf_view_samples.clear()
+			_perf_worst_frame.clear()
 			if world.has_view:
 				RenderingServer.viewport_set_measure_render_time(get_viewport().get_viewport_rid(), true)
 			world.measured_ticks.clear()
@@ -1037,6 +1052,7 @@ func _process(_dt: float) -> void:
 			world.measured_details.clear()
 			world.measured_detail_max.clear()
 			world.measured_views.clear()
+			world.measured_view_frame.clear()
 			world.measure_ticks = true
 			world.measure_details = args.has("perf-details")
 			if world.nav:
@@ -1053,6 +1069,9 @@ func _process(_dt: float) -> void:
 			print("PERF fps=%.1f server_tick_ms=%.2f entities=%d soldiers_alive=%d total_soldiers=%d vehicles=%d" % [fps, world.tick_ms, world.entities.size(), alive, world.soldiers.size(), world.vehicles.size()])
 			print("PERF systems_ms=", JSON.stringify(world.prof))
 			print("PERF nested_total_ms=", JSON.stringify(world.measured_details))
+			var view_samples := {}
+			for key: String in _perf_view_samples:
+				view_samples[key] = _sample_report(_perf_view_samples[key])
 			var report := {"rendered": DisplayServer.get_name() != "headless", "fps": fps,
 				"worker_threads": ProjectSettings.get_setting("threading/worker_pool/max_threads"),
 				"render_thread_mode": ProjectSettings.get_setting("rendering/driver/threads/thread_model"),
@@ -1070,6 +1089,7 @@ func _process(_dt: float) -> void:
 				"render_primitives": Performance.get_monitor(Performance.RENDER_TOTAL_PRIMITIVES_IN_FRAME),
 				"soldiers_alive": alive, "systems_total_ms": world.measured_systems.duplicate(), "worst_tick": world.measured_worst_tick.duplicate(true),
 				"nested_total_ms": world.measured_details.duplicate(), "nested_max_ms": world.measured_detail_max.duplicate(), "views_total_ms": world.measured_views.duplicate(),
+				"views": view_samples, "worst_frame": _perf_worst_frame.duplicate(true),
 				"events_since_start": world.stats.duplicate()}
 			print("BENCHMARK ", JSON.stringify(report))
 			if args.has("perf-json"):

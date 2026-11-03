@@ -1,6 +1,50 @@
 use frontline_core::hierarchy::{build_all, Hierarchy};
 
 #[test]
+fn disconnected_destinations_skip_search_and_reconnect_after_repairs() {
+    let mut nav = Hierarchy::new(64, 16).unwrap();
+    for z in 0..64 {
+        nav.set_cell([31, z], true, 1.0);
+    }
+    assert!(build_all(&mut [&mut nav], 1));
+    for team in [-1, 0, 1] {
+        assert!(nav.route([2, 2], [61, 61], team, 1.0).is_empty());
+        assert_eq!(nav.last_expanded, 0);
+    }
+    let mut restored = Hierarchy::restore(&nav.checkpoint()).unwrap();
+    for blocked in [false, true, false] {
+        for graph in [&mut nav, &mut restored] {
+            graph.set_cell([31, 20], blocked, 0.3);
+            graph.update(1);
+        }
+        for team in [-1, 0, 1] {
+            let path = nav.route([2, 2], [61, 61], team, 1.0);
+            assert_eq!(path, restored.route([2, 2], [61, 61], team, 1.0));
+            assert_eq!(path.is_empty(), blocked);
+            assert_eq!(nav.last_expanded == 0, blocked);
+        }
+        assert_eq!(nav.checkpoint(), restored.checkpoint());
+    }
+}
+
+#[test]
+fn same_cluster_can_detour_through_neighbors_but_not_across_a_complete_wall() {
+    let mut nav = Hierarchy::new(32, 16).unwrap();
+    for z in 0..16 {
+        nav.set_cell([8, z], true, 1.0);
+    }
+    build_all(&mut [&mut nav], 1);
+    assert!(!nav.route([2, 2], [12, 2], 0, 1.0).is_empty());
+    for z in 16..32 {
+        nav.set_cell([8, z], true, 1.0);
+    }
+    nav.update(2);
+    assert!(nav.route([2, 2], [12, 2], 0, 1.0).is_empty());
+    assert_eq!(nav.last_expanded, 0);
+    assert!(!nav.route([2, 2], [3, 3], 0, 1.0).is_empty());
+}
+
+#[test]
 fn map_edits_queue_once_and_repair_with_fixed_work_quotas() {
     let mut nav = Hierarchy::new(64, 16).unwrap();
     assert!(build_all(&mut [&mut nav], 2));

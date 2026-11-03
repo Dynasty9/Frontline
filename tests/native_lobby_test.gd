@@ -114,18 +114,26 @@ func _client() -> void:
 	check(bool(world.settings.simulation_connection.get("relay", false)), "Remote view must use the established lobby connection")
 	check(not world.settings.simulation_connection.has("token"), "Remote player must never receive host or other player tickets")
 	var mine: Soldier
-	for soldier: Soldier in world.soldiers:
-		if soldier.owner_peer == world.local_peer or (role == "late" and soldier.team == world.local_team):
-			mine = soldier
-			break
+	# The baseline can precede the fixed tick that records a returning commander's admission.
+	var ownership_deadline := Time.get_ticks_msec() + 5000
+	while mine == null and Time.get_ticks_msec() < ownership_deadline:
+		for soldier: Soldier in world.soldiers:
+			if soldier.owner_peer == world.local_peer or (role == "late" and soldier.team == world.local_team):
+				mine = soldier
+				break
+		if mine == null:
+			await get_tree().process_frame
 	check(mine != null, "Admitted player must be able to command friendly troops")
 	if mine:
 		var original := mine.net_pos
 		world.coop.ping("look", original, mine.eid)
 		world.coop.sketch(PackedVector3Array([original, original + Vector3(10, 0, 0)]))
-		world.simulation_client.send_presence(CoCommand.Presence.new().encode())
 		world.send_cmd({"t": "move", "squads": [mine.sid], "pos": original + Vector3(30, 0, 0), "mode": 1})
-		await get_tree().create_timer(3.0).timeout
+		# Screen presence is expendable; the headless fixture sends the normal heartbeat too.
+		var until := Time.get_ticks_msec() + 3000
+		while Time.get_ticks_msec() < until:
+			check(world.simulation_client.send_presence(CoCommand.Presence.new().encode()) == OK, "Screen presence must enter the relay")
+			await get_tree().create_timer(0.1).timeout
 		check(mine.net_pos.distance_to(original) > 1.0, "Remote commands must move server-owned troops")
 	if role == "returning":
 		var old_peer := world.local_peer

@@ -14,6 +14,59 @@ fn job(id: u64) -> PathJob {
 }
 
 #[test]
+fn route_measurements_do_not_change_paths_ties_caches_or_checkpoints() {
+    let mut graph = Hierarchy::new(64, 16).unwrap();
+    assert!(build_all(&mut [&mut graph], 1));
+    let mut plain_graph = Hierarchy::restore(&graph.checkpoint()).unwrap();
+    let mut measured = PathPlanner::new(64).unwrap();
+    let mut plain = PathPlanner::restore(&measured.checkpoint()).unwrap();
+    measured.profile = Some(Default::default());
+    let from = Vector3::new(-20., 0., -20.);
+    let to = Vector3::new(20., 0., 20.);
+    for blocked in [false, false, true, true] {
+        if blocked {
+            for z in 0..64 {
+                graph.set_cell([31, z], true, 1.);
+                plain_graph.set_cell([31, z], true, 1.);
+                measured.set_cell(z as usize * 64 + 31, 3, 3, 0);
+                plain.set_cell(z as usize * 64 + 31, 3, 3, 0);
+            }
+            graph.update(64);
+            plain_graph.update(64);
+        }
+        let a = measured.find_path(
+            &mut graph,
+            from,
+            to,
+            false,
+            -1,
+            0.,
+            false,
+            Default::default(),
+        );
+        let b = plain.find_path(
+            &mut plain_graph,
+            from,
+            to,
+            false,
+            -1,
+            0.,
+            false,
+            Default::default(),
+        );
+        assert_eq!(a, b);
+        assert_eq!(a.is_empty(), blocked);
+        assert_eq!(graph.checkpoint(), plain_graph.checkpoint());
+        assert_eq!(measured.checkpoint(), plain.checkpoint());
+    }
+    let profile = measured.profile.unwrap();
+    assert_eq!(profile.queries, 4);
+    assert_eq!(profile.failed, 2);
+    assert!(profile.cache_hits > 0 && profile.routes > 0 && profile.expanded > 0);
+    assert!(profile.route_ms >= 0. && profile.refine_ms >= 0. && profile.smooth_ms >= 0.);
+}
+
+#[test]
 fn vehicle_recovery_keeps_the_three_cell_rim_used_by_navigation() {
     let nav = PathPlanner::new(64).unwrap();
     let edge = Vector3::new(7.354009, 0.0, -29.74264);

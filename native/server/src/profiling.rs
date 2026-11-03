@@ -42,6 +42,7 @@ pub struct Profile {
     ticks: Vec<f64>,
     simulation: Vec<f64>,
     phases: BTreeMap<&'static str, Vec<f64>>,
+    paths: [u64; 5],
 }
 impl Profile {
     pub fn decode(d: &Value) -> Result<Option<Self>, String> {
@@ -67,6 +68,7 @@ impl Profile {
             ticks: vec![],
             simulation: vec![],
             phases: BTreeMap::new(),
+            paths: [0; 5],
         }))
     }
     pub fn start(&mut self) {
@@ -93,6 +95,24 @@ impl Profile {
                     self.phases.entry(name).or_default().push(ms);
                 }
             }
+            if let Some(p) = &state.state.field.geometry.navigation.planner.profile {
+                for (total, value) in self.paths.iter_mut().zip([
+                    p.queries,
+                    p.cache_hits,
+                    p.failed,
+                    p.routes,
+                    p.expanded,
+                ]) {
+                    *total += value;
+                }
+                for (name, ms) in [
+                    ("path_route", p.route_ms),
+                    ("path_refine", p.refine_ms),
+                    ("path_smooth", p.smooth_ms),
+                ] {
+                    self.phases.entry(name).or_default().push(ms);
+                }
+            }
             return Ok(false);
         }
         let projection: Vec<_> = self
@@ -116,6 +136,8 @@ impl Profile {
             "soldiers_alive":alive,"shots_since_start":shots,"duration_seconds":self.duration.as_secs_f64(),
             "ticks":samples(&self.ticks),"simulation":samples(&self.simulation),"projection":samples(&projection),
             "phases":self.phases.iter().map(|(name, times)|(*name,samples(times))).collect::<BTreeMap<_,_>>()});
+        let mut report = report;
+        report["path_searches"] = json!({"queries":self.paths[0],"cache_hits":self.paths[1],"failed":self.paths[2],"routes":self.paths[3],"expanded":self.paths[4]});
         let mut file = File::options()
             .write(true)
             .create_new(true)

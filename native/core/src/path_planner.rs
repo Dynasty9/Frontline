@@ -4,9 +4,23 @@ use crate::terrain::Terrain;
 use crate::traversal::{Ground, Occupancy};
 use crate::vector::Vector3;
 use std::collections::{HashMap, VecDeque};
+use std::time::Instant;
 
 const CACHE_LIMIT: usize = 128;
 const JOB_LIMIT: usize = 131_072;
+
+/// Optional measurements are discarded every tick and never enter route decisions or saves.
+#[derive(Clone, Copy, Default)]
+pub struct PathProfile {
+    pub queries: u64,
+    pub cache_hits: u64,
+    pub failed: u64,
+    pub routes: u64,
+    pub expanded: u64,
+    pub route_ms: f64,
+    pub refine_ms: f64,
+    pub smooth_ms: f64,
+}
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct PathJob {
@@ -41,6 +55,7 @@ pub struct PathPlanner {
     batch_left: usize,
     pub cache_hits: u64,
     pub queue_peak: usize,
+    pub profile: Option<PathProfile>,
 }
 
 impl PathPlanner {
@@ -63,6 +78,7 @@ impl PathPlanner {
             batch_left: 0,
             cache_hits: 0,
             queue_peak: 0,
+            profile: None,
         })
     }
 
@@ -340,6 +356,27 @@ impl PathPlanner {
         tracked: bool,
         ground: Ground<'_>,
     ) -> Vec<Vector3> {
+        if let Some(p) = &mut self.profile {
+            p.queries += 1;
+        }
+        let out = self.find_path_inner(graph, from, to, vehicle, team, care, tracked, ground);
+        if let Some(p) = &mut self.profile {
+            p.failed += u64::from(out.is_empty());
+        }
+        out
+    }
+
+    fn find_path_inner(
+        &mut self,
+        graph: &mut Hierarchy,
+        from: Vector3,
+        to: Vector3,
+        vehicle: bool,
+        team: i32,
+        care: f64,
+        tracked: bool,
+        ground: Ground<'_>,
+    ) -> Vec<Vector3> {
         if !self.valid(graph, from, to, care)
             || !ground.valid_for(self.side)
             || (tracked && !vehicle)
@@ -404,12 +441,15 @@ impl PathPlanner {
                     let mut out = cached.clone();
                     *out.last_mut().unwrap() = flat(to);
                     self.cache_hits += 1;
+                    if let Some(p) = &mut self.profile {
+                        p.cache_hits += 1;
+                    }
                     return out;
                 }
             }
         }
         let ids = if graph.built {
-            refined_path(graph, a, b, team, care)
+            refined_path(graph, a, b, team, care, &mut self.profile)
         } else if graph.cluster_of(a) == graph.cluster_of(b) {
             graph.local_path(graph.cluster_of(a), a, b)
         } else {
@@ -418,6 +458,7 @@ impl PathPlanner {
         if ids.is_empty() {
             return Vec::new();
         }
+        let began = self.profile.as_ref().map(|_| Instant::now());
         let mut points: Vec<_> = ids.iter().map(|c| self.center(*c)).collect();
         if ids.last() == Some(&b) {
             if end_exact {
@@ -446,6 +487,9 @@ impl PathPlanner {
             } else {
                 self.cache.push_back((key, out.clone()));
             }
+        }
+        if let (Some(p), Some(began)) = (&mut self.profile, began) {
+            p.smooth_ms += began.elapsed().as_secs_f64() * 1000.;
         }
         out
     }
@@ -671,17 +715,36 @@ fn refined_path(
     to: [i32; 2],
     team: i32,
     care: f64,
+    profile: &mut Option<PathProfile>,
 ) -> Vec<[i32; 2]> {
+    let began = profile.as_ref().map(|_| Instant::now());
     if graph.cluster_of(from) == graph.cluster_of(to) {
         let direct = graph.local_path(graph.cluster_of(from), from, to);
         if !direct.is_empty() {
+            if let (Some(p), Some(began)) = (profile.as_mut(), began) {
+                p.refine_ms += began.elapsed().as_secs_f64() * 1000.;
+            }
             return direct;
         }
     }
     let waypoints = graph.route(from, to, team, care);
+    if let (Some(p), Some(began)) = (profile.as_mut(), began) {
+        p.routes += 1;
+        p.expanded += graph.last_expanded;
+        p.route_ms += began.elapsed().as_secs_f64() * 1000.;
+    }
     if waypoints.len() < 2 {
         return Vec::new();
     }
+    let began = profile.as_ref().map(|_| Instant::now());
+    let out = refine_segments(graph, &waypoints);
+    if let (Some(p), Some(began)) = (profile.as_mut(), began) {
+        p.refine_ms += began.elapsed().as_secs_f64() * 1000.;
+    }
+    out
+}
+
+fn refine_segments(graph: &mut Hierarchy, waypoints: &[[i32; 2]]) -> Vec<[i32; 2]> {
     let mut out = vec![waypoints[0]];
     for pair in waypoints.windows(2) {
         let [a, b] = [pair[0], pair[1]];
