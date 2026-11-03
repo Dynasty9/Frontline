@@ -20,6 +20,29 @@ fn soldier(id: u32) -> Infantry {
 }
 
 #[test]
+fn mission_supply_rejects_invalid_amounts_and_non_structures_without_changes() {
+    let mut a = Actors::from_entries(
+        10,
+        vec![
+            Actor::Soldier(Box::new(soldier(1))),
+            Actor::Structure(Box::new(frontline_core::structure::Structure {
+                id: 2,
+                kind: "fob".into(),
+                ..Default::default()
+            })),
+        ],
+    )
+    .unwrap();
+    let before = a.checkpoint().unwrap();
+    for (id, supply) in [(1, 300.), (3, 300.), (2, -1.), (2, f64::NAN)] {
+        assert!(a.set_structure_supply(id, supply).is_err());
+        assert_eq!(before, a.checkpoint().unwrap());
+    }
+    a.set_structure_supply(2, 320.).unwrap();
+    assert_eq!(a.structure(2).unwrap().supply, 320.);
+}
+
+#[test]
 fn combatant_index_keeps_mixed_registration_order_without_scenery() {
     use frontline_core::structure::Structure;
     use frontline_core::vehicle::Vehicle;

@@ -454,9 +454,8 @@ func _beachhead_air(d: MissionDirector) -> void:
 	var gs := d.vehicle("blackfoot", Vector3(hx, 0, h.z + 60.0), PI * 0.5, d.side, d.ai_owner(d.side))
 	gs.order_move(h + Vector3(-30, 0, 0))
 	var gh := d.vehicle("ghosthawk", Vector3(hx, 0, beach.z + 30.0), PI * 0.5, d.side, d.next_owner())
-	var sq := d.squad("rifle_squad", _walk(d, beach))
-	for m in sq.members:
-		gh.board(m)
+	# The reinforcement starts aboard; troops cannot board a helicopter over open water.
+	gh.embark_new_squad()
 	gh.order_move(beach + Vector3(-30, 0, -10))
 	d.start("harbour", func():
 		d.radio("Overlord: Harbour's clear. Landing craft are ninety seconds out: hold the quay till they're in.", h)

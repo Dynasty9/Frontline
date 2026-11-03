@@ -217,9 +217,10 @@ func build() -> void:
 		elif String(settings.get("mission", "")) != "":
 			var mgen := MapGen.new(self)
 			await mgen.generate()
-			mission = MissionDirector.new(self, String(settings.mission), mgen)
-			mission.setup()
-			set_mission_info(mission.info())
+			if not settings.has("simulation_export"):
+				mission = MissionDirector.new(self, String(settings.mission), mgen)
+				mission.setup()
+				set_mission_info(mission.info())
 		else:
 			await MapGen.new(self).generate()
 		_load_mark("map generated")
@@ -232,6 +233,15 @@ func build() -> void:
 		nav.finalize()
 		_load_mark("navigation ready")
 		print("Hierarchical nav: %s infantry, %s vehicles (%d ms)" % [nav.hnav_i.stats(), nav.hnav_v.stats(), Time.get_ticks_msec() - tn])
+		if settings.has("simulation_export"):
+			var error := SimulationInitial.save(self, String(settings.simulation_export))
+			if error == OK:
+				print("SIMULATION_INITIAL exported entities=%d squads=%d" % [entities.size(), squads.size()])
+			else:
+				push_error("Simulation initial export failed: %s" % error_string(error))
+			process_mode = Node.PROCESS_MODE_DISABLED
+			get_tree().quit(0 if error == OK else 1)
+			return
 		if OS.has_environment("FL_DEBUG_HPA"):
 			nav.benchmark(rng)
 		for t in settings.get("ai_teams", []):

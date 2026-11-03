@@ -6,6 +6,8 @@ kind = "fixed"
 
 - Cosmetic debris no longer consumes gameplay randomness when cosmetic physics is unavailable.
 - Strategic AI production, defenses, attacks, support calls and naval landings now run in the standalone Rust simulation and resume from saved state. Its replay verifier recomputes those decisions from the starting state and player commands.
+- The five playable missions now run their objectives, reinforcements, support and autopilots in Rust, preserving progress and outcomes through deterministic replay. Generated battlefields can be handed to the standalone simulation before play starts.
+- Transport capacity now includes the squad carried by vehicles that do not specify separate seats. Helicopter boarding checks height above the local ground, and Beachhead's airborne reinforcement starts with its rifle squad aboard.
 - Standalone navigation now builds its initial hierarchy before admitting long routes; troops can cross navigation regions and reach transports instead of repeatedly waiting for a path.
 - Diving soldiers use the current ground height instead of a stale movement sample, avoiding a height jump during the dive.
 - Idle-conversation cooldowns reset with each battle, so replaying a seed is unaffected by the previous match.

@@ -206,6 +206,14 @@ impl Content {
     pub fn vehicle(&self, v: &Vehicle) -> &Value {
         &self.definitions["vehicles"][&v.kind]
     }
+    pub fn seats(&self, kind: &str) -> u32 {
+        let d = &self.definitions["vehicles"][kind];
+        d["seats"].as_u64().map(|n| n as u32).unwrap_or_else(|| {
+            self.members
+                .get(text(d, "carry", ""))
+                .map_or(0, |q| q.len().max(4) as u32)
+        })
+    }
     pub fn weapon(&self, key: &str) -> Option<sim::infantry_fight_world::Profile<'_>> {
         let d = &self.definitions["weapons"][key];
         if d.is_null() {
@@ -728,7 +736,7 @@ impl Content {
                 armor: &armor,
                 vehicle_hit: &|v| number(self.vehicle(v), "hit", 2.),
                 transport: &|v| sim::infantry_travel_owned::Transport {
-                    seats: number(self.vehicle(v), "seats", 0.) as u32,
+                    seats: self.seats(&v.kind),
                     helicopter: flag(self.vehicle(v), "air"),
                     boat: text(self.vehicle(v), "base", "") == "boat",
                 },
@@ -807,7 +815,7 @@ impl Content {
             vehicle: &|v| {
                 let d = self.vehicle(v);
                 sim::match_commands::VehicleOptions {
-                    seats: number(d, "seats", 0.) as i32,
+                    seats: self.seats(&v.kind) as i32,
                     artillery: (!d["art"].is_null()).then(|| {
                         (
                             number(&d["art"], "min", 40.),

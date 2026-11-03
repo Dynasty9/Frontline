@@ -18,11 +18,8 @@ fn armed(w: &Context<'_, '_, '_>, id: u32) -> bool {
     !text(d, "mg").is_empty() || flag(d, "cannon")
 }
 fn seats(w: &Context<'_, '_, '_>, id: u32) -> i32 {
-    number(
-        w.content.vehicle(w.state.field.actors.vehicle(id).unwrap()),
-        "seats",
-        0.,
-    ) as i32
+    w.content
+        .seats(&w.state.field.actors.vehicle(id).unwrap().kind) as i32
 }
 fn enemy(a: &Actor, team: i8) -> bool {
     match a {
@@ -105,7 +102,7 @@ impl Commander {
             .filter_map(|key| {
                 let d = &w.content.definitions["vehicles"][key];
                 let armed = !text(d, "mg").is_empty();
-                let seats = number(d, "seats", 0.);
+                let seats = f64::from(w.content.seats(key));
                 if gun && !armed || !gun && seats <= 0. {
                     return None;
                 }

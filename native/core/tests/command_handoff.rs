@@ -3,6 +3,37 @@ mod fixture;
 use frontline_core::command_ownership::Ownership;
 
 #[test]
+fn coop_mission_shares_every_other_unit_and_rejects_wrong_side_atomically() {
+    let (o, mut a, mut qs, _) = fixture::scene(0, true);
+    let before = a.checkpoint().unwrap();
+    let original = qs.clone();
+    for (from, to, every) in [(7, 9, 2), (7, 999, 1), (7, 8, 0)] {
+        assert!(o.share_force(from, to, every, &mut qs, &mut a).is_err());
+        assert_eq!(before, a.checkpoint().unwrap());
+        assert_eq!(qs, original);
+    }
+    let expected: Vec<_> = original
+        .iter()
+        .filter(|q| q.team == 0 && q.owner == 7)
+        .enumerate()
+        .filter(|(i, _)| (i + 1) % 2 == 0)
+        .map(|(_, q)| q.id)
+        .collect();
+    let changed = o.share_force(7, 8, 2, &mut qs, &mut a).unwrap();
+    assert_eq!(changed.squads, expected);
+    assert!(!expected.is_empty());
+    for id in changed.soldiers {
+        assert_eq!(a.soldier(id).unwrap().identity.owner, 8);
+    }
+    for q in qs.iter().filter(|q| !expected.contains(&q.id)) {
+        assert_eq!(
+            q.owner,
+            original.iter().find(|p| p.id == q.id).unwrap().owner
+        );
+    }
+}
+
+#[test]
 fn authority_comes_from_the_connected_side_and_preserves_selection_order() {
     let (o, a, qs, _) = fixture::scene(0, true);
     assert_eq!(

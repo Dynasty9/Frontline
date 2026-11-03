@@ -5,7 +5,8 @@ The engine-independent crate retains actors, squads, geometry, terrain, economy,
 commands and the connected battlefield scheduler. Its checkpoints and exact-byte
 continuation tests cover these shared systems. The standalone battlefield runner
 loads production definitions and verifies its command recordings without Godot.
-Commander/naval and mission scheduling, initial-map setup, the socket host and
+Commander/naval and mission scheduling now run in that process, and Godot can
+export a generated starting battlefield for it. The socket host and
 the live Godot client transition still need integration. Existing live-game
 observer recordings remain unverified; they are not the new command recordings.
 
@@ -2998,7 +2999,49 @@ All 13 standalone checks pass in debug and release, including complete boarding,
 transport and landing, checkpoint resumes, independent replay and disconnect/rejoin.
 Two committed commander state hashes also match in both modes locally; the same
 tests run on the four CI platforms.
-Map landmark outposts still need the initial-map handoff.
+Spare AI squads can now hold map landmarks as outposts without taking human units.
+
+## Mission programs and generated starting states
+
+The five playable operations now run their objectives, timed reinforcements,
+support permissions, autopilots and victory/defeat in Rust. Objective evaluation
+runs every half second and mission orders every four seconds. Co-op joining,
+disconnect inheritance and returning-player ownership remain authoritative.
+Mission clocks, objective progress, pending callbacks, convoy waypoints and AI
+staging are checkpointed. HUD briefings use the exported `MissionList` catalogue.
+
+Godot's map authoring can export a battlefield before its first simulation tick:
+
+```text
+godot --headless --path . -- --mission=bridgehead --seed=1 --export-simulation=build/bridgehead.initial --port=7961
+frontline-server prepare build/bridgehead.initial build/bridgehead.prepared
+frontline-server run build/bridgehead.initial build/bridgehead.flrp 180
+frontline-server verify build/bridgehead.flrp
+```
+
+The initial handoff contains generated terrain, geology, collision, navigation,
+actors, squads, supply routes, the battle ledger, ownership, map landmarks,
+visual dressing and the exact gameplay random state. Rust checks the content
+version, starts the mission or strategic commanders and owns all subsequent
+ticks. `prepare` and `run` refuse to overwrite an existing output. This is an
+initial-deployment import; an already-running Godot battle with active plans,
+ordnance or fires is rejected rather than losing those systems.
+
+A real seed-1 Bridgehead export contained 3,509 entities. Rust started its eight
+squads and independently verified 180 recorded ticks on that generated map.
+This checks the process boundary and replay continuity; it is not a completed
+mission playthrough or a rendering benchmark. Live socket play, observation
+filtering, browser transport, client integration and packaging remain unfinished.
+
+All 28 standalone server checks pass in release. Debug checks also pass across
+the full run and focused replay/command reruns. Mission tests exercise all nine
+objective rules, every scripted reinforcement and conclusion, co-op ownership,
+checkpoint resumes and five exact state hashes; forced objective completion in
+the callback tests does not establish natural mission balance. The 140 core
+numeric transcripts and the affected actor, ownership, boarding and travel
+checks pass in release. Godot boarding, travel and battle-ledger comparisons pass.
+The command adapter accepts the existing UI command vocabulary and rejects
+malformed input and attempts to supply another player's identity.
 
 ## Standalone infantry scale measurement
 

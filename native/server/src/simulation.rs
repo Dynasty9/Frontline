@@ -120,19 +120,26 @@ pub struct Simulation {
     pub host_peer: i32,
     pub names: BTreeMap<i32, String>,
     pub commanders: Vec<crate::commander::Commander>,
+    pub landmarks: Vec<crate::mission::Landmark>,
+    pub mission: Option<crate::mission::Mission>,
+    pub presentation: Vec<u8>,
     search: PerceptionSearch,
 }
 impl Simulation {
-    pub fn new(
+    pub fn new(state: MatchState, host_peer: i32, content: &Content) -> Result<Self, &'static str> {
+        Self::from_state(state, host_peer, content, None)
+    }
+    fn from_state(
         mut state: MatchState,
         host_peer: i32,
         content: &Content,
+        mission: Option<crate::mission::Mission>,
     ) -> Result<Self, &'static str> {
         if host_peer <= 0 {
             return Err("invalid host identity");
         }
-        if state.victory.mission {
-            return Err("mission program required");
+        if state.victory.mission != mission.is_some() {
+            return Err("inconsistent mission program");
         }
         content.validate_state(&state)?;
         let nav = &mut state.field.geometry.navigation;
@@ -159,10 +166,16 @@ impl Simulation {
             host_peer,
             names,
             commanders: vec![],
+            landmarks: vec![],
+            mission,
+            presentation: b"{}".to_vec(),
             search: PerceptionSearch::default(),
         })
     }
     pub fn enable_commander(&mut self, team: i8) -> Result<(), &'static str> {
+        if self.mission.is_some() {
+            return Err("missions direct their own forces");
+        }
         if self.commanders.iter().any(|c| c.team == team) {
             return Err("duplicate commander");
         }
@@ -174,7 +187,81 @@ impl Simulation {
         self.commanders.sort_by_key(|c| c.team);
         Ok(())
     }
+    pub fn enable_mission(
+        &mut self,
+        key: &str,
+        autoplay: bool,
+        content: &Content,
+    ) -> Result<Vec<sim::match_commands::Event>, &'static str> {
+        if self.mission.is_some() || !self.commanders.is_empty() {
+            return Err("match already has a director");
+        }
+        let mut mission =
+            crate::mission::Mission::new(crate::mission::Kind::parse(key)?, &self.state, autoplay);
+        if self
+            .state
+            .owners
+            .players
+            .iter()
+            .any(|p| p.1 >= 0 && p.1 != mission.side)
+        {
+            return Err("mission player is on the opposing side");
+        }
+        let events = content.with_profiles(&[], |p, commands| {
+            mission.setup(
+                &mut self.state,
+                content,
+                &p.shared,
+                commands,
+                self.host_peer,
+                &self.landmarks,
+            )
+        })?;
+        self.mission = Some(mission);
+        Ok(events)
+    }
     pub fn checkpoint(&self) -> Result<Vec<u8>, &'static str> {
+        if self.presentation.len() > 16 * 1024 * 1024 {
+            return Err("map presentation exceeds limit");
+        }
+        let presentation: serde_json::Value =
+            serde_json::from_slice(&self.presentation).map_err(|_| "invalid map presentation")?;
+        if !presentation.is_object()
+            || serde_json::to_vec(&presentation).unwrap() != self.presentation
+        {
+            return Err("noncanonical map presentation");
+        }
+        if let Some(m) = &self.mission {
+            let winner = match m.over {
+                0 => -1,
+                1 => m.side,
+                2 => 1 - m.side,
+                _ => return Err("invalid mission conclusion"),
+            };
+            if winner != self.state.victory.winner
+                || m.owners
+                    .iter()
+                    .any(|p| *p > 0 && self.state.owners.team_of(*p) != m.side)
+            {
+                return Err("inconsistent mission ownership or winner");
+            }
+        }
+        if self.state.victory.mission != self.mission.is_some()
+            || self.mission.is_some() && !self.commanders.is_empty()
+        {
+            return Err("inconsistent mission director");
+        }
+        if self.landmarks.len() > 4096
+            || self.landmarks.iter().any(|p| {
+                p.kind.is_empty()
+                    || p.kind.len() > 64
+                    || p.kind.contains('\0')
+                    || !p.position.is_finite()
+                    || p.position.abs().max_element() > 1_000_000.
+            })
+        {
+            return Err("invalid map landmarks");
+        }
         if self.names.len() > 32
             || self
                 .names
@@ -198,6 +285,16 @@ impl Simulation {
         for c in &self.commanders {
             w.bytes(&c.checkpoint()?);
         }
+        w.u32(self.landmarks.len() as u32);
+        for p in &self.landmarks {
+            w.bytes(p.kind.as_bytes());
+            w.point(p.position);
+        }
+        w.byte(self.mission.is_some().into());
+        if let Some(mission) = &self.mission {
+            w.bytes(&mission.checkpoint()?);
+        }
+        w.bytes(&self.presentation);
         w.bytes(&self.state.checkpoint()?);
         if w.0.len() > MAX_STATE {
             return Err("simulation checkpoint exceeds limit");
@@ -239,6 +336,26 @@ impl Simulation {
         }) {
             return Err("commander references unknown vehicle");
         }
+        let count = r.u32()?;
+        if count > 4096 {
+            return Err("too many map landmarks");
+        }
+        let mut landmarks = Vec::with_capacity(count as usize);
+        for _ in 0..count {
+            landmarks.push(crate::mission::Landmark {
+                kind: String::from_utf8(r.bytes(64)?.to_vec())
+                    .map_err(|_| "invalid landmark kind")?,
+                position: r.point()?,
+            });
+        }
+        let mission = if r.boolean()? {
+            Some(crate::mission::Mission::restore(
+                r.bytes(16 * 1024 * 1024)?,
+            )?)
+        } else {
+            None
+        };
+        let presentation = r.bytes(16 * 1024 * 1024)?.to_vec();
         let state = MatchState::restore(r.bytes(MAX_STATE)?)?;
         r.finish()?;
         if names
@@ -248,9 +365,11 @@ impl Simulation {
         {
             return Err("inconsistent player registry");
         }
-        let mut result = Self::new(state, host, content)?;
+        let mut result = Self::from_state(state, host, content, mission)?;
         result.names = names;
         result.commanders = commanders;
+        result.landmarks = landmarks;
+        result.presentation = presentation;
         if result.checkpoint()? != bytes {
             return Err("noncanonical simulation checkpoint");
         }
@@ -278,6 +397,10 @@ impl Simulation {
                 } => {
                     if present.contains_key(peer)
                         || present.len() >= 32
+                        || self
+                            .mission
+                            .as_ref()
+                            .is_some_and(|m| *team >= 0 && *team != m.side)
                         || reclaim.is_some_and(|old| present.contains_key(&old))
                     {
                         return Err("invalid player admission");
@@ -319,12 +442,16 @@ impl Simulation {
                         let f = &mut self.state.field;
                         f.battle.joined(*peer, *team, name)?;
                         self.names.insert(*peer, name.clone());
+                        let mut returned = false;
                         if let Some(old) = reclaim {
                             let stand_down = self
                                 .commanders
                                 .iter()
-                                .any(|c| c.team == *team && !c.permanent);
-                            let (_, changed) = self.state.owners.reclaim(
+                                .any(|c| c.team == *team && !c.permanent)
+                                || self.mission.as_ref().is_some_and(|m| {
+                                    m.side == *team && m.owners.contains(&(-1 - i32::from(*team)))
+                                });
+                            let (got_back, changed) = self.state.owners.reclaim(
                                 *peer,
                                 *old,
                                 name,
@@ -334,11 +461,17 @@ impl Simulation {
                                 stand_down,
                                 p.shared.automatic,
                             )?;
+                            returned = got_back > 0;
                             out.commands
                                 .push(sim::match_commands::Event::Ownership(changed));
                             if stand_down {
                                 self.commanders.retain(|c| c.team != *team);
                             }
+                        }
+                        if let Some(mission) = &mut self.mission {
+                            out.commands.push(sim::match_commands::Event::Ownership(
+                                mission.joined(&mut self.state, *peer, returned)?,
+                            ));
                         }
                     }
                     Input::Leave { peer } => {
@@ -350,6 +483,9 @@ impl Simulation {
                         {
                             out.commands
                                 .push(sim::match_commands::Event::Ownership(changed));
+                            if let Some(mission) = &mut self.mission {
+                                mission.owner_changed(*peer, heir);
+                            }
                             if team >= 0
                                 && heir < 0
                                 && !self.state.victory.mission
@@ -389,10 +525,26 @@ impl Simulation {
                 out.commands.extend(commander.advance(
                     &mut self.state,
                     content,
+                    &self.landmarks,
                     &p.shared,
                     commands,
                     self.host_peer,
                 )?);
+            }
+            if let Some(mission) = &mut self.mission {
+                let winner = self.state.victory.winner;
+                out.commands.extend(mission.advance(
+                    &mut self.state,
+                    content,
+                    &p.shared,
+                    commands,
+                    self.host_peer,
+                )?);
+                if winner < 0 && self.state.victory.winner >= 0 {
+                    out.events.push(sim::match_tick::Event::Rules(
+                        sim::rules_world::Event::Winner(self.state.victory.winner),
+                    ));
+                }
             }
             out.events.extend(self.state.finish_battlefield(p)?);
             Ok(out)

@@ -36,6 +36,7 @@ pub struct Commander {
     pub obstacle_at: f64,
     pub recon_at: f64,
     pub town_at: f64,
+    pub outpost_at: f64,
     pub back_at: f64,
     pub next_vehicle: String,
     pub support_cursor: usize,
@@ -91,6 +92,7 @@ struct Census {
 struct Context<'a, 's, 'p> {
     state: &'a mut MatchState,
     content: &'a Content,
+    landmarks: &'a [crate::mission::Landmark],
     shared: &'a Shared<'s>,
     profiles: &'a Profiles<'p>,
     host: i32,
@@ -241,6 +243,7 @@ impl Commander {
             obstacle_at: 240.,
             recon_at: 150.,
             town_at: 0.,
+            outpost_at: 0.,
             back_at: 0.,
             next_vehicle: String::new(),
             support_cursor: 0,
@@ -341,6 +344,7 @@ impl Commander {
         &mut self,
         state: &mut MatchState,
         content: &Content,
+        landmarks: &[crate::mission::Landmark],
         shared: &Shared<'_>,
         profiles: &Profiles<'_>,
         host: i32,
@@ -356,6 +360,7 @@ impl Commander {
         let mut w = Context {
             state,
             content,
+            landmarks,
             shared,
             profiles,
             host,
@@ -1163,6 +1168,7 @@ impl Commander {
         }
         self.towns(w, &fighters)?;
         self.reinforce(w, &fighters)?;
+        self.outposts(w, &fighters)?;
         if w.state
             .field
             .actors
@@ -1331,6 +1337,93 @@ impl Commander {
         self.sling(w, c)?;
         self.tunnel_progress(w)?;
         self.ambush(w, &attackers)?;
+        Ok(())
+    }
+    fn outposts(
+        &mut self,
+        w: &mut Context<'_, '_, '_>,
+        fighters: &[&Squad],
+    ) -> Result<(), &'static str> {
+        let now = w.state.field.now;
+        if now < self.outpost_at || w.landmarks.is_empty() {
+            return Ok(());
+        }
+        self.outpost_at = now + 15.;
+        let Some(front) = self.front(w) else {
+            return Ok(());
+        };
+        let mut held = vec![];
+        let mut idle = 0_usize;
+        for q in fighters {
+            if self.role(q.id) == "outpost" {
+                let role = &self.roles[&q.id];
+                if now - role.since > 300.
+                    || q.alive * 2 < q.total
+                    || matches!(q.drill.as_str(), "rout" | "withdraw")
+                {
+                    self.assign(q.id, "idle", now, 0, Vector3::ZERO);
+                } else {
+                    held.push(role.position);
+                }
+            } else if self.role(q.id) == "town" {
+                held.push(self.roles[&q.id].position);
+            } else if self.role(q.id) == "idle" && q.plan == 0 {
+                idle += 1;
+            }
+        }
+        let wave = if now < 600. { 3 } else { 4 };
+        let mut want = idle.saturating_sub(wave).min(1 + self.fobs(w).len() / 2);
+        if held.is_empty() && idle >= 2 && now > 90. {
+            want = want.max(1);
+        }
+        if held.len() >= want {
+            return Ok(());
+        }
+        let face = self.forward();
+        let mut best = None;
+        let mut score = f32::NEG_INFINITY;
+        for point in w.landmarks {
+            let p = point.position;
+            let ahead = flat(p - front).dot(face);
+            if !(25. ..=190.).contains(&ahead)
+                || held.iter().any(|h| distance(*h, p) < 40.)
+                || sim::economy::fobs(&w.state.field.actors, 1 - self.team, false)
+                    .any(|f| distance(f.position, p) < 90.)
+            {
+                continue;
+            }
+            let side = flat(p - front).dot(face.cross(Vector3::Y)).abs();
+            let value = -ahead * 0.5 - side * 0.3
+                + match point.kind.as_str() {
+                    "town" => 40.,
+                    "village" => 30.,
+                    "woods" => 10.,
+                    _ => 0.,
+                };
+            if value > score {
+                score = value;
+                best = Some(p);
+            }
+        }
+        if let Some(p) = best {
+            if let Some(q) = by_distance(fighters, p).into_iter().find(|q| {
+                self.role(q.id) == "idle" && q.plan == 0 && q.drill.is_empty() && q.alive >= 2
+            }) {
+                self.assign(q.id, "outpost", now, 0, p);
+                let g = &w.state.field.geometry;
+                let at = g
+                    .navigation
+                    .planner
+                    .nearest_walkable(p, sim::traversal::Ground::new(&g.terrain, &g.deck))
+                    .unwrap_or(p);
+                w.command(
+                    self.team,
+                    vec![q.id],
+                    vec![],
+                    Action::Defend { position: at, face },
+                )?;
+            }
+        }
         Ok(())
     }
     fn towns(
@@ -1691,6 +1784,7 @@ impl Commander {
             self.obstacle_at,
             self.recon_at,
             self.town_at,
+            self.outpost_at,
             self.back_at,
             self.ambush_at,
         ] {
@@ -1765,6 +1859,7 @@ impl Commander {
         c.obstacle_at = r.f64()?;
         c.recon_at = r.f64()?;
         c.town_at = r.f64()?;
+        c.outpost_at = r.f64()?;
         c.back_at = r.f64()?;
         c.ambush_at = r.f64()?;
         let n = r.u32()?;

@@ -3209,9 +3209,16 @@ impl ActorStateCore {
         self.core.remove(id).is_some()
     }
     #[func]
-    fn board(&mut self, vehicle: u32, soldier: u32, seats: u32, helicopter: bool) -> i32 {
+    fn board(
+        &mut self,
+        vehicle: u32,
+        soldier: u32,
+        seats: u32,
+        helicopter: bool,
+        ground_height: f64,
+    ) -> i32 {
         self.core
-            .board(vehicle, soldier, seats, helicopter)
+            .board(vehicle, soldier, seats, helicopter, ground_height)
             .map_or(-1, i32::from)
     }
     #[func]

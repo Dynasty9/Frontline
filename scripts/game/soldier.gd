@@ -5208,7 +5208,9 @@ func _board_tick(dt: float) -> void:
 	var boat := v.is_boat()
 	var enter := d < 3.6 or (boat and (d < 8.0 or (d < 18.0 and not is_moving())))
 	if _native_duties():
-		var result: int = _duties_core().boarding(true, position, v.position, seats, helicopter, boat, is_moving())
+		var boarding_pos := v.position
+		boarding_pos.y -= world.ground_y(v.position)
+		var result: int = _duties_core().boarding(true, position, boarding_pos, seats, helicopter, boat, is_moving())
 		assert(result in [1, 2], "Invalid boarding decision")
 		enter = result == 1
 	if enter:

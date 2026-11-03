@@ -1,6 +1,10 @@
 // Pinned glam/libm arithmetic without platform fast-math; checkpoint goldens guard the contract.
 pub use glam::Vec3 as Vector3;
 
+pub fn yaw_of(direction: Vector3) -> f64 {
+    libm::atan2(-f64::from(direction.x), -f64::from(direction.z))
+}
+
 pub(crate) fn wrap_yaw(value: f64) -> f64 {
     use std::f64::consts::{PI, TAU};
     let wrapped = value - TAU * ((value + PI) / TAU).floor();

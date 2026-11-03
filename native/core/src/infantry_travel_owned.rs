@@ -15,6 +15,7 @@ use crate::infantry_vitals::Life;
 use crate::random::SimulationRandom;
 use crate::spatial::{SpatialIndex, DOOR_CELL, UNIT_CELL};
 use crate::squad::Squad;
+use crate::vector::Vector3;
 use crate::vehicle::Vehicle;
 
 #[derive(Clone, Copy, Debug)]
@@ -307,7 +308,13 @@ impl Actors {
             match infantry_travel::boarding(
                 true,
                 s.motion.position,
-                position,
+                Vector3::new(
+                    position.x,
+                    (f64::from(position.y)
+                        - crate::traversal::Ground::new(world.terrain, world.deck).height(position))
+                        as f32,
+                    position.z,
+                ),
                 seats,
                 profile.helicopter,
                 profile.boat,
@@ -319,7 +326,13 @@ impl Actors {
                 }
                 Boarding::Enter => {
                     self.soldier_mut(id).unwrap().duty.kind = Task::Fight;
-                    if self.board(target, id, profile.seats, profile.helicopter)? {
+                    if self.board(
+                        target,
+                        id,
+                        profile.seats,
+                        profile.helicopter,
+                        crate::traversal::Ground::new(world.terrain, world.deck).height(position),
+                    )? {
                         events.push(Event::CancelPath);
                         events.push(Event::Stat("boarded"));
                     }
@@ -415,7 +428,14 @@ impl Actors {
                 )? {
                     AfterBoarding::Enter => {
                         self.soldier_mut(id).unwrap().duty.kind = Task::Fight;
-                        if self.board(target, id, profile.seats, profile.helicopter)? {
+                        if self.board(
+                            target,
+                            id,
+                            profile.seats,
+                            profile.helicopter,
+                            crate::traversal::Ground::new(world.terrain, world.deck)
+                                .height(position),
+                        )? {
                             events.push(Event::CancelPath);
                             events.push(Event::Stat("boarded"));
                         }

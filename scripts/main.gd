@@ -363,6 +363,8 @@ func start_local(a: Dictionary) -> void:
 		"rust_infantry": args.has("test-port") and a.has("rust-infantry")})
 	Net.set_setting("verbose", a.has("verbose"))
 	Net.set_setting("debug_trucks", a.has("debug-trucks"))
+	if a.has("export-simulation"):
+		Net.set_setting("simulation_export", String(a["export-simulation"]))
 	if a.has("scenario"):
 		# --play: command the Coalition side yourself instead of watching
 		Net.set_setting("scenario", String(a.scenario))
@@ -506,6 +508,8 @@ func _on_game_start(s: Dictionary) -> void:
 		world.visible = false
 	# (with a window, a frame of the loading screen between its stages: World._breathe)
 	await world.build()
+	if args.has("export-simulation"):
+		return
 	if not is_instance_valid(world):
 		return
 	if OS.has_feature("web"):

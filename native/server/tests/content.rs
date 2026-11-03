@@ -124,3 +124,24 @@ fn every_unit_uses_the_production_weapon_and_supply_definitions() {
         }
     });
 }
+
+#[test]
+fn passenger_capacity_matches_explicit_seats_or_the_carried_squad() {
+    let c = Content::bundled().unwrap();
+    assert_eq!(
+        c.seats("ghosthawk"),
+        c.members["rifle_squad"].len().max(4) as u32
+    );
+    assert_eq!(c.seats("rhib"), 6);
+    assert_eq!(c.seats("tank"), 0);
+    c.with_profiles(&[], |p, commands| {
+        for kind in c.definitions["vehicles"].as_object().unwrap().keys() {
+            let v = sim::vehicle::Vehicle {
+                kind: kind.clone(),
+                ..Default::default()
+            };
+            assert_eq!((p.infantry.transport)(&v).seats, c.seats(kind));
+            assert_eq!((commands.vehicle)(&v).seats, c.seats(kind) as i32);
+        }
+    });
+}

@@ -174,6 +174,16 @@ impl Actors {
             _ => None,
         }
     }
+    pub fn set_structure_supply(&mut self, id: u32, supply: f64) -> Result<(), &'static str> {
+        if !supply.is_finite() || !(0. ..=1e12).contains(&supply) {
+            return Err("invalid structure supply");
+        }
+        let Some(Actor::Structure(s)) = self.get_mut(id) else {
+            return Err("missing supply structure");
+        };
+        s.supply = supply;
+        Ok(())
+    }
     pub fn iter(&self) -> impl Iterator<Item = &Actor> {
         self.entities.iter().map(|entry| &self.values[&entry.id])
     }
@@ -206,8 +216,9 @@ impl Actors {
         soldier: u32,
         seats: u32,
         helicopter: bool,
+        ground_height: f64,
     ) -> Result<bool, &'static str> {
-        if seats > 100_000 {
+        if seats > 100_000 || !ground_height.is_finite() || ground_height.abs() > 1_000_000. {
             return Err("invalid vehicle capacity");
         }
         let v = self.vehicle(vehicle).ok_or("missing transport")?;
@@ -219,7 +230,9 @@ impl Actors {
             .iter()
             .filter(|&&id| self.get(id).is_some())
             .count();
-        if occupied >= seats as usize || (helicopter && v.position.y > 1.0) {
+        if occupied >= seats as usize
+            || (helicopter && f64::from(v.position.y) - ground_height > 1.0)
+        {
             return Ok(false);
         }
         let s = self.soldier_mut(soldier).ok_or("missing passenger")?;

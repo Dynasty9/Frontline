@@ -1667,8 +1667,11 @@ Its replay runner records initial state, player admissions and ordered commands;
 a separate Rust executable reruns them and checks the final state and winner.
 It rejects incomplete, altered and incompatible recordings. Strategic commanders
 now advance production, construction, defenses, attacks, support and naval landings
-in Rust, retaining their phases and roles across replay. Mission migration and
-the live socket/visual-client transition remain in progress;
+in Rust, retaining their phases and roles across replay. The five playable
+missions also retain objectives, scripted reinforcements, support, autopilots
+and conclusions. Generated starting battlefields can be handed from Godot to
+Rust before the first tick, including exact random state and map geometry.
+The live socket/visual-client transition remains in progress;
 see [RUST_SIMULATION.md](RUST_SIMULATION.md).
 
 See [SIMULATION_SCALING.md](SIMULATION_SCALING.md) for the native perception

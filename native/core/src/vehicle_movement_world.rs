@@ -32,13 +32,7 @@ fn flat(v: Vector3) -> Vector3 {
 fn direction(yaw: f64) -> Vector3 {
     Vector3::new(-libm::sin(yaw) as f32, 0.0, -libm::cos(yaw) as f32)
 }
-pub(crate) fn overlaps(
-    position: Vector3,
-    half: Vec2,
-    yaw: f64,
-    st: &Structure,
-    inset: f32,
-) -> bool {
+pub fn overlaps(position: Vector3, half: Vec2, yaw: f64, st: &Structure, inset: f32) -> bool {
     fn axes(yaw: f64) -> [Vec2; 2] {
         let c = libm::cos(yaw) as f32;
         let s = libm::sin(yaw) as f32;

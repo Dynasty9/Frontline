@@ -28,6 +28,42 @@ fn give_vehicle(id: u32, peer: i32, a: &mut Actors, out: &mut Changed) {
     }
 }
 impl Ownership {
+    pub fn share_force(
+        &self,
+        from: i32,
+        to: i32,
+        every: usize,
+        squads: &mut [Squad],
+        actors: &mut Actors,
+    ) -> Result<Changed, &'static str> {
+        let team = self.team_of(to);
+        if to <= 0 || team < 0 || self.team_of(from) != team || !(1..=2).contains(&every) {
+            return Err("invalid mission force handover");
+        }
+        let mut out = Changed::default();
+        for (i, q) in squads
+            .iter_mut()
+            .filter(|q| q.team == team && q.owner == from)
+            .enumerate()
+        {
+            if (i + 1) % every == 0 {
+                give_squad(q, to, actors, &mut out);
+            }
+        }
+        let ids: Vec<_> = actors
+            .iter()
+            .filter_map(|a| match a {
+                Actor::Vehicle(v) if v.team == team && v.owner == from => Some(v.id),
+                _ => None,
+            })
+            .collect();
+        for (i, id) in ids.into_iter().enumerate() {
+            if (i + 1) % every == 0 {
+                give_vehicle(id, to, actors, &mut out);
+            }
+        }
+        Ok(out)
+    }
     pub fn connect(&mut self, peer: i32, team: i8) -> Result<bool, &'static str> {
         if peer <= 0 || !(-1..=1).contains(&team) || !self.valid() {
             return Err("invalid connected commander");

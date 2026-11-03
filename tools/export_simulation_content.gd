@@ -34,6 +34,7 @@ func _export() -> void:
 		"weapons": defs.WEAPONS, "units": defs.UNITS, "squads": defs.SQUADS,
 		"vehicles": defs.VEHICLES, "buildings": defs.BUILDINGS,
 		"support": defs.SUPPORT, "upgrades": defs.UPGRADES,
+		"missions": MissionList.playable(),
 		"sockets": VehicleSockets.DATA.LAYOUTS,
 		"motion": motion, "boat_hulls": Vehicle.BOAT_HULLS, "mounted_guns": WeaponModels.GUNS,
 		"names": Defs.NAMES, "team_names": Defs.TEAM_NAMES, "fob_names": Defs.FOB_NAMES,

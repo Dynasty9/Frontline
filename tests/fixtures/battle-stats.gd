@@ -53,6 +53,10 @@ func compare_ledger(b: BattleStats, core: RefCounted, label: String) -> void:
 	assert(actual.size() == expected.size())
 	for group in expected.size():
 		assert(expected[group] == actual[group], "%s group %d: %s / %s" % [label, group, expected[group], actual[group]])
+	if b._blame.is_empty():
+		var imported: RefCounted = ClassDB.instantiate("BattleStatsCore")
+		assert(imported.restore(SimulationInitial.ledger(b)))
+		assert(imported.values() == expected, "%s initial ledger handoff" % label)
 	checks += 1
 
 func _ready() -> void:

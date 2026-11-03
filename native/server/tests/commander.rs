@@ -1,3 +1,5 @@
+#[path = "fixtures/numeric.rs"]
+mod numeric;
 use frontline_core as sim;
 use frontline_server::{
     commander::Commander,
@@ -5,31 +7,36 @@ use frontline_server::{
     replay::{verify, Recorder},
     simulation::Simulation,
 };
+use numeric::golden;
 use sim::{actors::Actor, match_state::MatchState, vector::Vector3};
 
 fn battle(content: &Content) -> Simulation {
     battle_on(content, false)
 }
-fn golden(name: &str, simulation: &Simulation) {
-    let mut hash = blake3::Hasher::new();
-    hash.update(&simulation.state.checkpoint().unwrap());
-    for commander in &simulation.commanders {
-        hash.update(&commander.checkpoint().unwrap());
+
+#[test]
+fn spare_squads_hold_map_landmarks_without_taking_human_units() {
+    let c = Content::bundled().unwrap();
+    let mut a = battle(&c);
+    a.landmarks = vec![frontline_server::mission::Landmark {
+        kind: "woods".into(),
+        position: Vector3::new(0., 0., 25.),
+    }];
+    for _ in 0..360 {
+        a.step(&c, &[]).unwrap();
     }
-    let actual = hash.finalize().to_hex().to_string();
-    let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join(format!(
-        "tests/numeric_v{}/{name}.txt",
-        sim::NUMERIC_VERSION
-    ));
-    if std::env::var_os("FL_WRITE_NUMERIC_GOLDENS").is_some() {
-        assert!(
-            std::env::var_os("CI").is_none(),
-            "CI must never rewrite goldens"
-        );
-        std::fs::create_dir_all(path.parent().unwrap()).unwrap();
-        std::fs::write(&path, &actual).unwrap();
-    }
-    assert_eq!(actual, std::fs::read_to_string(path).unwrap(), "{name}");
+    let commander = a.commanders.iter().find(|c| c.team == 0).unwrap();
+    assert!(commander.roles.values().any(|r| r.kind == "outpost"));
+    assert!(a
+        .state
+        .field
+        .squads
+        .iter()
+        .filter(|q| q.owner == 7)
+        .all(|q| q.order_number == 0));
+    let saved = a.checkpoint().unwrap();
+    let b = Simulation::restore(&saved, &c).unwrap();
+    assert_eq!(saved, b.checkpoint().unwrap());
 }
 fn battle_on(content: &Content, coast: bool) -> Simulation {
     let water = sim::water::Water {

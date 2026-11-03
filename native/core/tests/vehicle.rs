@@ -198,14 +198,14 @@ fn shared_vehicle_links_and_queries_survive_checkpoint_and_boarding() {
         actors.units_near(&index, Vector3::ZERO, 10.0, -1).unwrap(),
         vec![3, 7]
     );
-    assert!(actors.board(7, 3, 1, false).unwrap());
+    assert!(actors.board(7, 3, 1, false, 0.).unwrap());
     assert_eq!(actors.soldier(3).unwrap().links.vehicle, 7);
     assert_eq!(actors.soldier(3).unwrap().vitals.life, Life::Hidden);
     assert_eq!(actors.vehicle(7).unwrap().passengers, vec![99, 3]);
     let saved = actors.checkpoint().unwrap();
     let mut restored = Actors::restore(&saved).unwrap();
     assert_eq!(restored.checkpoint().unwrap(), saved);
-    assert!(!restored.board(7, 3, 1, false).unwrap());
+    assert!(!restored.board(7, 3, 1, false, 0.).unwrap());
     restored.rebuild_units(&mut index).unwrap();
     assert_eq!(
         restored
@@ -213,4 +213,28 @@ fn shared_vehicle_links_and_queries_survive_checkpoint_and_boarding() {
             .unwrap(),
         vec![7]
     );
+}
+
+#[test]
+fn helicopter_boarding_measures_clearance_above_the_local_ground() {
+    use frontline_core::{
+        actors::{Actor, Actors},
+        infantry::Infantry,
+    };
+    let mut s = Infantry::default();
+    s.identity.id = 3;
+    s.identity.unit = "rifleman".into();
+    let mut v = vehicle();
+    v.position.y = 30.;
+    v.passengers.clear();
+    let mut actors = Actors::from_entries(
+        100,
+        vec![Actor::Vehicle(Box::new(v)), Actor::Soldier(Box::new(s))],
+    )
+    .unwrap();
+    let before = actors.checkpoint().unwrap();
+    assert!(!actors.board(7, 3, 1, true, 28.).unwrap());
+    assert!(actors.board(7, 3, 1, true, f64::NAN).is_err());
+    assert_eq!(before, actors.checkpoint().unwrap());
+    assert!(actors.board(7, 3, 1, true, 30.).unwrap());
 }

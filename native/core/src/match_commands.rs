@@ -236,6 +236,8 @@ pub enum MessageKind {
     Warning,
     Info,
     Chat,
+    Radio,
+    Intel,
 }
 #[derive(Clone, Debug, PartialEq)]
 pub enum Event {
