@@ -10,6 +10,7 @@ var native_socket := Transform3D.IDENTITY
 var native_support_basis := Basis.IDENTITY
 var native_fingers := {}
 var native_rifle_arms := {}
+var native_hits := {}
 var native_hit_clip: Animation
 var native_hit_tracks: Array = []
 var native_hit_time := INF
@@ -379,6 +380,11 @@ func hit(direction: Vector3, strength := 1.0) -> void:
 	# Further impacts add momentum without rewinding or erasing the current flinch.
 	if native_hit_clip != null and native_hit_time < native_hit_clip.length and native_hit_strength > 0.0:
 		return
+	var prone := _pose_mode == 10 or (_pose_mode >= 30 and _pose_mode <= 37)
+	var captured: Array = native_hits.get(prone, native_hits.get(false, []))
+	if not captured.is_empty():
+		native_hit_clip = captured[0]
+		native_hit_tracks = captured[1]
 	native_hit_time = 0.0
 	# This clip recoils backward; do not play it against side or rear impacts.
 	var frontal := maxf(0.0, direction.normalized().dot(global_basis.z.normalized()))

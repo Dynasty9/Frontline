@@ -14,6 +14,6 @@ poster = "actions.jpg"
 caption = "Controlled preview: prone firing, reload, grenade throw and kneeling recovery."
 +++
 
-Locally installed Mixamo prone clips replace procedural crawling and the frozen prone idle. Crawl playback follows movement speed, backward crawl uses its captured start, stops settle into idle, and a captured recovery returns the rifleman to crouched movement. Idle and firing keep the support hand on the rifle while hit reactions recover.
+Locally installed Mixamo prone clips replace procedural crawling and the frozen prone idle. Crawl playback follows movement speed, backward crawl uses its captured start, stops settle into idle, and a captured recovery returns the rifleman to crouched movement. The new crouch/prone transitions supply entry and recovery. Prone hits use their stance-specific captured reaction; idle and firing keep the support hand on the rifle while it recovers.
 
 The optional assets remain local; installations without them retain the fallback. Prone magazine timing still needs clip-specific calibration. These fixed-step recordings show a controlled animation fixture, not battlefield performance or uneven-terrain validation.

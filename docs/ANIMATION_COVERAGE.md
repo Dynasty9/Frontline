@@ -1,6 +1,6 @@
 # Imported infantry animation coverage
 
-Audited 2026-11-01 against the shared SoldierModel routing and local Mixamo files.
+Audited 2026-11-03 against the shared SoldierModel routing and local Mixamo files.
 This is routing coverage, not visual approval. A clip appearing in the viewer does not mean gameplay uses it.
 
 ## Procedural action routes (28)
@@ -64,7 +64,9 @@ Downloaded and locally installed prone family:
 
 Prone Backwards Start, Prone Left Turn, Prone Right Turn and Prone Roll are now imported and available in the viewer. Backwards Start is wired before the backward crawl loop; turns and roll are inspection clips, not gameplay routes yet.
 
-Requested exports awaiting completed files: Crouch To Prone, Prone To Crouch Transition, Rifle Prone Hit Reaction, Prone Death, and Crawl Backwards In Prone. Only completed FBX files count as installed.
+Imported: Crouch To Prone, Prone To Crouch Transition, Rifle Prone Hit Reaction, Prone Death, and Crawl Backwards In Prone. The first three now supply gameplay entry, recovery and prone hit overlays. Prone Death and the alternate crawl are viewer clips; lethal gameplay still uses physical ragdolls, and backward movement uses the already validated rifle crawl.
+
+Further sourcing is blocked on renewing Adobe sign-in. Getting Up was requested but no completed download was received. Crouched/kneeling throws, rifle stand-to-kneel/aim-down, melee, dive/vault and pistol pack remain to acquire and validate.
 
 Other visible candidates to preview before choosing:
 - Grenade Throw — kneeling, pulling pin with teeth.

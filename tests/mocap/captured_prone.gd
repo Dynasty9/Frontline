@@ -14,6 +14,7 @@ func _ready() -> void:
 		var hand := soldier.joint("LeftHand").origin
 		if frame > 240 and frame < 400: traveled += hand.distance_to(previous)
 		previous = hand
+		if frame == 0: assert(proxy.rifle_driver.prone_clip == "mixamo_prone__Crouch_To_Prone", "Prone entry did not use the installed crouch transition")
 		if frame == 360: assert(proxy.rifle_driver.prone_clip.ends_with("Prone_Forward"), "Crawl loop was not selected")
 		if frame == 590: assert(proxy.rifle_driver.prone_clip.ends_with("Prone_Idle"), "Crawl did not settle into idle")
 		assert(soldier.joint("Head").origin.y > 0.1, "Prone head penetrated the ground")
@@ -35,8 +36,11 @@ func _ready() -> void:
 	assert(soldier._activity_clip == "mixamo_prone__Throw_Grenade", "Prone throw used a standing overlay")
 	proxy.pose(1.0 / 60.0, 0, Soldier.Post.PRONE, Soldier.Act.IDLE, 0.0, false, false)
 	assert(proxy.rifle_driver.prone_clip.ends_with("Prone_Idle"), "Throw recovery replayed the kneel-to-prone entry")
+	soldier.hit(Vector3.BACK)
+	assert(soldier.native_hit_clip == soldier.native_player.get_animation("mixamo_prone__Rifle_Prone_Hit_Reaction"), "Prone hit selected the standing flinch")
 	proxy.pose(1.0 / 60.0, 0, Soldier.Post.CROUCH, Soldier.Act.IDLE, 0.0, false, false)
 	assert(proxy.rifle_driver.state == "Prone recovery", "Get-up did not use captured recovery")
+	assert(proxy.rifle_driver.prone_clip == "mixamo_prone__Prone_To_Crouch_Transition", "Recovery did not select the new transition")
 	for frame in 240: proxy.pose(1.0 / 60.0, 0, Soldier.Post.CROUCH, Soldier.Act.IDLE, 0.0, false, false)
 	assert(proxy.rifle_driver.prone_clip.is_empty(), "Recovery never returned control to locomotion")
 	print("CAPTURED PRONE PASS entry, moving rifle crawl, stop to idle, animated limbs")

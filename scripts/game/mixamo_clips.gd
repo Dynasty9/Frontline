@@ -75,22 +75,25 @@ static func install(actor: SkinnedRifleman, gameplay := false) -> Dictionary:
 					animation.position_track_insert_key(track, 0.0, rest.origin)
 			_retarget(animation, source, actor)
 			animation.loop_mode = Animation.LOOP_LINEAR
-			for action in ["Stop", "Start", "Turn", "Throw", "Reloading", "Death", "Reaction", "transition", "reloading", "hit_reaction", "dying", "toss", "jump", "start", "stop", "turn", "Entering", "Exiting"]:
+			for action in ["Stop", "Start", "Turn", "Throw", "Reloading", "Death", "Reaction", "Transition", "To_Prone", "Getting_Up", "transition", "reloading", "hit_reaction", "dying", "toss", "jump", "start", "stop", "turn", "Entering", "Exiting"]:
 				if action in key: animation.loop_mode = Animation.LOOP_NONE
 			library.add_animation(key, animation)
 			scene.free()
 		libraries[cache_key] = library
 	actor.native_player.add_animation_library("", library)
-	var hit_key := "mixamo_basic_shooter__hit_reaction"
-	if library.has_animation(hit_key):
-		actor.native_hit_clip = library.get_animation(hit_key)
-		actor.native_hit_tracks.clear()
+	for hit_key in ["mixamo_basic_shooter__hit_reaction", "mixamo_prone__Rifle_Prone_Hit_Reaction"]:
+		if not library.has_animation(hit_key): continue
+		var hit_clip := library.get_animation(hit_key)
+		var tracks: Array = []
 		for name in ["Spine", "Spine1", "Spine2", "Neck", "Head"]:
 			var index: int = actor.bones[name]
 			var path := NodePath(String(actor.get_path_to(actor.skeleton)) + ":" + String(actor.skeleton.get_bone_name(index)))
-			var track := actor.native_hit_clip.find_track(path, Animation.TYPE_ROTATION_3D)
-			if track >= 0:
-				actor.native_hit_tracks.append([index, track, actor.native_hit_clip.rotation_track_interpolate(track, 0.0)])
+			var track := hit_clip.find_track(path, Animation.TYPE_ROTATION_3D)
+			if track >= 0: tracks.append([index, track, hit_clip.rotation_track_interpolate(track, 0.0)])
+		actor.native_hits[hit_key.begins_with("mixamo_prone__")] = [hit_clip, tracks]
+	if actor.native_hits.has(false):
+		actor.native_hit_clip = actor.native_hits[false][0]
+		actor.native_hit_tracks = actor.native_hits[false][1]
 	actor.native_player.play("mixamo_basic_shooter__rifle_aiming_idle", 0.0)
 	actor.native_player.advance(0.0)
 	actor.calibrate_native_weapon()
