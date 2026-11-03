@@ -2829,7 +2829,7 @@
       "summary": "Optional alpine haze takes on the sky colour and settles lightly into lower valleys.",
       "medium": "still",
       "stage": "native-media",
-      "rationale": "Matched native renders isolate this refinement against the shared terrain baseline.",
+      "rationale": "Matched wide and closer native renders; PR places the unaltered before and after images side by side. Subtle differences are explicitly identified.",
       "source_ref": "codex/alpine-perspective",
       "sources": [
         {
@@ -2841,6 +2841,16 @@
           "file": "changelog/unreleased/alpine-perspective/after.jpg",
           "sha256": "bfe4017f26fd27ac5cd980ae4f97ff5c0cd1e309d92e3c40b5f7787c78de80f9",
           "caption": "after"
+        },
+        {
+          "file": "changelog/unreleased/alpine-perspective/close-before.jpg",
+          "sha256": "aef5c10c118f85a5407e6689a3fae6e48f69b7d9c72f07f6e9c35ffddd2611a6",
+          "caption": "Matching closer camera: before"
+        },
+        {
+          "file": "changelog/unreleased/alpine-perspective/close-after.jpg",
+          "sha256": "b7d67da34ae9649a9879d38b33d257a434ff2bec78316ee37fb8919364d5baa7",
+          "caption": "Matching closer camera: after"
         }
       ],
       "output": null,
@@ -2850,7 +2860,8 @@
       "capture": {
         "before_ref": "322c5a4",
         "after_ref": "codex/alpine-perspective",
-        "command": "godot --main-pack PACK --resolution 1600x900 -- --aivai --seed=3 --offscreen --nohud --set=perf:0 --mood=day --preset=high --focus=0,0 --zoom=900 --pitch=-22 --cam-yaw=0.7 --screenshot=OUTPUT --shot-at=2 --quit-after=3"
+        "command": "godot --main-pack PACK --resolution 1600x900 -- --aivai --seed=3 --offscreen --nohud --set=perf:0 --mood=day --preset=high --focus=0,0 --zoom=900 --pitch=-22 --cam-yaw=0.7 --screenshot=OUTPUT --shot-at=2 --quit-after=3",
+        "close": "godot --main-pack PACK --resolution 1600x900 -- --aivai --seed=3 --offscreen --nohud --set=perf:0 --mood=day --preset=high --focus=250,250 --zoom=350 --pitch=-28 --cam-yaw=0.7 --screenshot=OUTPUT --shot-at=2 --quit-after=3"
       }
     }
   ],

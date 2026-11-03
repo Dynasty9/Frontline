@@ -10,6 +10,14 @@ caption = "Before: shared terrain baseline, identical seed and camera."
 [[screenshots]]
 file = "after.jpg"
 caption = "After: Optional alpine haze takes on the sky colour and settles lightly into lower valleys."
+
+[[screenshots]]
+file = "close-before.jpg"
+caption = "Before: matching closer camera, shared baseline."
+
+[[screenshots]]
+file = "close-after.jpg"
+caption = "After: the same closer camera; surface changes remain subtle."
 +++
 
 Uses existing alpine_haze option and engine fog; no new volumetric pass. Disabled/flat-map paths reset both additions. Compatibility may approximate aerial perspective differently.
