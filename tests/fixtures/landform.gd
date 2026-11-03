@@ -17,6 +17,15 @@ func _ready() -> void:
 	var boughs := Res.spruce_boughs()
 	assert(boughs == Res.spruce_boughs(), "Trees share their bough mesh")
 	assert(boughs.surface_get_array_len(0) == 216 and boughs.get_aabb().size.y > 0.8, "Boughs retain a bounded tree silhouette and triangle budget")
+	assert(Res.alpine_stone(0) == Res.alpine_stone(4), "Scree variants reuse four cached meshes")
+	assert(Res.alpine_stone(0).surface_get_array_len(0) == 60)
+	for variant in 4:
+		var arrays := Res.alpine_stone(variant).surface_get_arrays(0)
+		var vertices: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
+		var normals: PackedVector3Array = arrays[Mesh.ARRAY_NORMAL]
+		for j in vertices.size():
+			assert(normals[j].dot(vertices[j]) > 0.0, "Stone faces point outward")
+	assert(Res.alpine_stone(0).get_aabb() != Res.alpine_stone(1).get_aabb(), "Stone variants have distinct fractured profiles")
 	var horizon := Atmosphere.backdrop_image(3)
 	assert(horizon.get_size() == Vector2i(512, 512) and horizon.has_mipmaps() and horizon.get_format() == Image.FORMAT_RF)
 	assert(horizon.get_data() == Atmosphere.backdrop_image(3).get_data(), "Scenery is deterministic for every peer")
