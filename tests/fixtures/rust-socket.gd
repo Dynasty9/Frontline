@@ -1,5 +1,9 @@
 extends Node
 
+class OffscreenFx extends Fx:
+	func _visible_at(_p: Vector3) -> bool:
+		return false
+
 var client: SimulationClient
 var spawns := 0
 var snapshots := 0
@@ -61,6 +65,7 @@ func on_packet(kind: int, value: Variant) -> void:
 				get_tree().quit()
 
 func check_packets() -> void:
+	check_surface()
 	var decor = JSON.parse_string('[["fence",[1,2,3],0,[4,1,2]],["wire",[0,0,0],1,[[5,0,0],2]],["lamp",[0,0,0],0,1]]')
 	assert(SimulationClient.decode_decor(decor))
 	assert(decor[0][1] is Vector3 and decor[0][3] is Vector3 and decor[1][3][0] is Vector3 and decor[2][3] == 1)
@@ -90,6 +95,96 @@ func check_packets() -> void:
 	assert(not probe._dispatch(SimulationClient.FX, "[[7,[],[0,0,0]]]".to_utf8_buffer()))
 	assert(not probe._dispatch(SimulationClient.FX, "[[1.5,[0,0,0],1]]".to_utf8_buffer()))
 	assert(not probe._receive(SimulationClient.packet(SimulationClient.SNAPSHOT, 1, PackedByteArray()), 2))
+	probe.free()
+
+func check_surface() -> void:
+	var raw := PackedByteArray()
+	raw.resize(200000)
+	for i in raw.size():
+		raw[i] = (i * 13) % 251
+	var packed := SimulationInitial.compressed(raw)
+	assert(SimulationClient._expanded(packed, raw.size()) == raw)
+	assert(SimulationClient._expanded(packed, raw.size() - 1).is_empty())
+	packed.append(1)
+	assert(SimulationClient._expanded(packed, raw.size()).is_empty())
+	assert(SimulationClient.decode_roads(JSON.parse_string('[[[[1,2,3],[4,5,6]]],[],[]]')))
+	assert(not SimulationClient.decode_roads(JSON.parse_string('[[[[1,2]]],[],[]]')))
+	assert(not SimulationClient.decode_water({"coast": {}, "rivers": [7], "ponds": [], "fords": [], "bridges": []}, 64))
+	var native: RefCounted = ClassDB.instantiate("TerrainCore")
+	var layers := []
+	for i in 9:
+		var layer := PackedByteArray()
+		layer.resize(4096)
+		layer.fill(1 if i == 4 else 255 if i == 5 else 0)
+		layers.append(layer)
+	var surface := PackedFloat32Array()
+	surface.resize(64 * 64 * 4)
+	assert(native.configure(64, layers, surface))
+	var kinds := PackedByteArray()
+	kinds.resize(32 * 32)
+	var craters := kinds.duplicate()
+	craters.fill(1)
+	var heights := PackedFloat32Array()
+	heights.resize(64 * 64)
+	heights.fill(-0.75)
+	var rect := Rect2i(32, 0, 32, 32)
+	for repeat in 2:
+		var result: Array = native.import_surface(rect, kinds, craters, heights, true)
+		assert(result.size() == 2 and result[0].size() == 64 * 64 * 8)
+		assert(is_equal_approx(float(native.query(Vector3(8, 0, -8), Vector3.ZERO, 10, false, false)), -0.75))
+		assert(is_zero_approx(float(native.query(Vector3(-8, 0, -8), Vector3.ZERO, 10, false, false))))
+	var before: PackedByteArray = native.checkpoint()
+	heights[1] = NAN
+	assert(not native.valid_surface(kinds, craters, heights, 1024))
+	assert(native.import_surface(rect, kinds, craters, heights, true).is_empty())
+	assert(before == native.checkpoint())
+	heights[1] = -0.75
+	var data := StreamPeerBuffer.new()
+	data.put_data(SimulationInitial.header("FLVT"))
+	for n in [32, 0, 32, 32]:
+		data.put_u32(n)
+	for block in [kinds, craters, heights.to_byte_array()]:
+		data.put_data(SimulationInitial.block(block))
+	var probe := SimulationClient.new()
+	probe._side = 64
+	TerrainMap.N = 64
+	TerrainMap.H = 32
+	TerrainMap.DN = 128
+	MapDims.N = 64
+	MapDims.SIZE = 64
+	MapDims.HALF = 32
+	MapDims.BIOME = 64
+	var world := World.new()
+	world.has_view = false
+	world.settings = {"seed": 3}
+	world.terrain = TerrainMap.new(world)
+	world.terrain.deform_img = Image.create(128, 128, false, Image.FORMAT_RGH)
+	probe.world = world
+	assert(probe._dispatch(SimulationClient.SURFACE, data.data_array))
+	probe.flush_surface()
+	assert(probe._surface_tiles.size() == 1 and world.terrain.dh[32 * 128 + 80] == 0.0)
+	probe.surface_ready = true
+	probe.flush_surface()
+	assert(probe._surface_tiles.is_empty() and world.terrain.dh[32 * 128 + 80] == -0.75)
+	assert(world.terrain.crater[16 * 64 + 40] == 1 and world.terrain.cover_at(Vector3(8, 0, -8)) == TerrainMap.LIGHT)
+	assert(world.terrain.deform_img.get_pixel(80, 32).r == -0.75 and world.terrain.deform_img.get_pixel(80, 32).g == 0.0)
+	var fx := OffscreenFx.new()
+	fx.world = world
+	fx.vfx = Vfx.new()
+	fx.vfx.world = world
+	world.simulation_client = probe
+	# The terrain packet owns digging; a delayed cosmetic blast cannot dig again.
+	fx._explode(Vector3(8, 0, -8), 1.0)
+	assert(world.terrain.dh[32 * 128 + 80] == -0.75)
+	fx.vfx.free()
+	fx.free()
+	var invalid := data.data_array.duplicate()
+	invalid.encode_u32(8, 33)
+	assert(not probe._dispatch(SimulationClient.SURFACE, invalid))
+	assert(not probe._dispatch(SimulationClient.SURFACE, data.data_array.slice(0, -1)))
+	probe.world = null
+	world.simulation_client = null
+	world.free()
 	probe.free()
 
 func _process(_delta: float) -> void:

@@ -10,5 +10,6 @@ pub mod profiling;
 pub mod replay;
 pub mod serve;
 pub mod simulation;
+pub mod terrain_view;
 
 pub const ENGINE_ID: &str = env!("FRONTLINE_ENGINE_ID");

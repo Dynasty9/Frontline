@@ -9,7 +9,7 @@ use std::{
     time::{Duration, Instant},
 };
 
-pub const VERSION: u16 = 1;
+pub const VERSION: u16 = 2;
 pub const AUTH: u8 = 0;
 pub const COMMAND: u8 = 1;
 pub const LOADED: u8 = 2;
@@ -29,8 +29,10 @@ pub const OVER: u8 = 26;
 pub const REPORT: u8 = 27;
 pub const BLOB: u8 = 28;
 pub const PLAYBACK: u8 = 29;
+pub const SURFACE: u8 = 30;
+pub const ROADS: u8 = 31;
 pub const MAX_PACKET: usize = 64 * 1024 + 32;
-const MAX_PENDING: usize = 128 * 1024 * 1024;
+const MAX_PENDING: usize = 384 * 1024 * 1024;
 const WINDOW: usize = 512 * 1024;
 
 pub fn packet(kind: u8, sequence: u64, data: &[u8]) -> Vec<u8> {

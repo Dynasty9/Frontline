@@ -1676,6 +1676,9 @@ blocks so larger maps do not require equally large uncompressed handoff files.
 Desktop solo play now starts that Rust process and connects the Godot renderer
 over an authenticated ENet socket. The server sends team-filtered entity state,
 effects, messages, HUD data and reports; orders travel back to the same authority.
+Current terrain deformation and crater cover arrive in the map baseline, followed
+by reliable absolute tiles. Missed cosmetic explosions cannot change the ground,
+and late joins and replay seeks restore the server's current surface and roads.
 Reconnect preserves ownership, pause controls server pacing, and leaving closes
 the deterministic command recording. The replay viewer opens those recordings,
 re-executes commands for playback and seeking, and labels verification only after

@@ -1379,6 +1379,8 @@ var _join_ground := false  # the ground has come
 var _join_end := false  # and everything else
 var _join_landform := PackedFloat32Array()
 var _join_kinds := PackedByteArray()  # the host's ground kinds, until laid
+var _join_surface := PackedFloat32Array()
+var _join_craters := PackedByteArray()
 var _load_q: Array = []  # [eid, kind ("" once gone), props], to build in the order they came
 var _load_i := 0
 var _load_rec := {}  # eid -> its record in _load_q, while it waits
@@ -1645,6 +1647,13 @@ func _ground_done() -> void:
 		WorkerThreadPool.wait_for_task_completion(_ground_task)
 		_ground_task = -1
 	terrain.end_ground_import()
+	if simulation_client:
+		if not terrain.import_surface(Rect2i(0, 0, MapDims.N, MapDims.N), _join_kinds, _join_craters, _join_surface):
+			simulation_client._error("Invalid simulation ground.")
+			return
+		_join_surface = PackedFloat32Array()
+		_join_craters = PackedByteArray()
+		simulation_client.surface_ready = true
 	var w := _ground_water
 	_ground_water = null
 	_join_kinds = PackedByteArray()
@@ -1660,6 +1669,8 @@ func _ground_done() -> void:
 
 
 func _load_done() -> void:
+	if simulation_client and not simulation_client._surface_tiles.is_empty():
+		return
 	_try_focus()
 	if soldier_view != null and soldier_view.warming():
 		return

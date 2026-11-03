@@ -49,6 +49,93 @@ pub(crate) fn ground(
 #[godot_api]
 impl TerrainCore {
     #[func]
+    fn valid_surface(
+        kinds: PackedByteArray,
+        craters: PackedByteArray,
+        heights: PackedFloat32Array,
+        cells: i64,
+    ) -> bool {
+        cells > 0
+            && cells <= 3072 * 3072
+            && kinds.len() == cells as usize
+            && craters.len() == cells as usize
+            && heights.len() == cells as usize * terrain::DRES * terrain::DRES
+            && kinds.as_slice().iter().all(|v| *v <= terrain::SHALLOW)
+            && craters.as_slice().iter().all(|v| *v <= 1)
+            && heights
+                .as_slice()
+                .iter()
+                .all(|v| v.is_finite() && v.abs() <= 100_000.)
+    }
+
+    #[func]
+    fn import_surface(
+        &mut self,
+        rect: Rect2i,
+        kinds: PackedByteArray,
+        craters: PackedByteArray,
+        heights: PackedFloat32Array,
+        view: bool,
+    ) -> Array<Variant> {
+        let Some(core) = &mut self.core else {
+            return Array::new();
+        };
+        let (x, z, w, h) = (rect.position.x, rect.position.y, rect.size.x, rect.size.y);
+        if x < 0
+            || z < 0
+            || w <= 0
+            || h <= 0
+            || i64::from(x) + i64::from(w) > core.n as i64
+            || i64::from(z) + i64::from(h) > core.n as i64
+            || !Self::valid_surface(
+                kinds.clone(),
+                craters.clone(),
+                heights.clone(),
+                i64::from(w) * i64::from(h),
+            )
+        {
+            return Array::new();
+        }
+        let (x, z, w, h) = (x as usize, z as usize, w as usize, h as usize);
+        let mut changed = Vec::new();
+        for row in 0..h {
+            let target = (z + row) * core.n + x;
+            for col in 0..w {
+                if core.layers[terrain::BASE][target + col] != kinds[row * w + col]
+                    || core.layers[terrain::CRATER][target + col] != craters[row * w + col]
+                {
+                    changed.push((target + col) as u32);
+                }
+            }
+            core.layers[terrain::BASE][target..target + w]
+                .copy_from_slice(&kinds.as_slice()[row * w..(row + 1) * w]);
+            core.layers[terrain::CRATER][target..target + w]
+                .copy_from_slice(&craters.as_slice()[row * w..(row + 1) * w]);
+        }
+        core.refresh_ground(&changed);
+        let d = terrain::DRES;
+        let mut pixels = Vec::with_capacity(if view { w * h * d * d * 8 } else { 0 });
+        for row in 0..h * d {
+            let target = (z * d + row) * core.n * d + x * d;
+            core.heights[target..target + w * d]
+                .copy_from_slice(&heights.as_slice()[row * w * d..(row + 1) * w * d]);
+            if view {
+                for col in 0..w * d {
+                    let geology = core.landform.height(frontline_core::vector::Vector3::new(
+                        ((x * d + col) as f64 / d as f64 + 0.5 / d as f64 - core.half()) as f32,
+                        0.,
+                        ((z * d + row) as f64 / d as f64 + 0.5 / d as f64 - core.half()) as f32,
+                    )) as f32;
+                    pixels.extend_from_slice(&core.heights[target + col].to_le_bytes());
+                    pixels.extend_from_slice(&geology.to_le_bytes());
+                }
+            }
+        }
+        let pixels: PackedByteArray = pixels.as_slice().into();
+        varray![&pixels, &packed(changed)]
+    }
+
+    #[func]
     fn configure(&mut self, n: i32, layers: Array<Variant>, heights: PackedFloat32Array) -> bool {
         let Some(core) = ground(n, layers, heights) else {
             return false;

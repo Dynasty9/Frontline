@@ -121,6 +121,37 @@ func sync_deformation() -> void:
 		assert(valid, "Invalid water deformation")
 
 
+## Socket clients receive absolute ground state, independently of cosmetic effects.
+func import_surface(rect: Rect2i, kinds: PackedByteArray, craters: PackedByteArray, heights: PackedFloat32Array) -> bool:
+	if not _native:
+		return false
+	var output: Array = _native.import_surface(rect, kinds, craters, heights, deform_img != null)
+	if output.size() != 2:
+		return false
+	if rect == Rect2i(0, 0, N, N):
+		base = kinds
+		crater = craters
+		dh = heights
+	else:
+		for z in rect.size.y:
+			for x in rect.size.x:
+				var i := (rect.position.y + z) * N + rect.position.x + x
+				base[i] = kinds[z * rect.size.x + x]
+				crater[i] = craters[z * rect.size.x + x]
+		for z in rect.size.y * DRES:
+			for x in rect.size.x * DRES:
+				dh[(rect.position.y * DRES + z) * DN + rect.position.x * DRES + x] = heights[z * rect.size.x * DRES + x]
+	var samples := Rect2i(rect.position * DRES, rect.size * DRES)
+	if deform_img:
+		var image := Image.create_from_data(samples.size.x, samples.size.y, false, Image.FORMAT_RGF, output[0])
+		image.convert(Image.FORMAT_RGH)
+		deform_img.blit_rect(image, Rect2i(Vector2i.ZERO, samples.size), samples.position)
+		deform_dirty.append(samples)
+	_native_changes(output[1], false)
+	version += 1
+	return true
+
+
 ## The loading worker edits plain arrays; native bindings stay on the main thread.
 func begin_ground_import() -> void:
 	assert(_ground_core == null)

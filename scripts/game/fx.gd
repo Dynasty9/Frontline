@@ -292,7 +292,7 @@ func _light(p: Vector3, energy: float, rng_m: float) -> void:
 
 
 func _explode(p: Vector3, size: float) -> void:
-	if not world.srv and world.terrain:
+	if not world.srv and not world.simulation_client and world.terrain:
 		world.terrain.add_crater(p, size)
 	var wet: bool = world.water and not world.water.is_empty() and p.y < 3.0 and world.water.wet_at(p)
 	if wet and p.y < 1.2 and not _on_boat(p):

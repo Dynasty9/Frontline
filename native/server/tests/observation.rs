@@ -333,14 +333,25 @@ fn map_projection_uses_godots_bridge_tags_and_never_sends_simulation_geometry() 
         half_width: 3.,
         quay: true,
     });
+    s.state.field.geometry.terrain.crater(Vector3::ZERO, 2.0);
     let data = frontline_server::serve::map(&s).unwrap();
-    let mut r = sim::state_codec::Reader::new(&data, b"FLVM\x01\0\0\0").unwrap();
+    let mut r = sim::state_codec::Reader::new(&data, b"FLVM\x02\0\0\0").unwrap();
     let meta: serde_json::Value = serde_json::from_slice(r.bytes(1_000_000).unwrap()).unwrap();
     assert_eq!(meta["water"]["bridges"][0][3], "quay");
     assert_eq!(r.bytes(4096).unwrap().len(), 4096);
     assert_eq!(
         r.bytes(1_000_000).unwrap().len(),
         s.state.field.geometry.terrain.landform.samples().len() * 4
+    );
+    let heights = frontline_server::compression::decode(r.bytes(100_000).unwrap(), 65536).unwrap();
+    assert_eq!(
+        heights,
+        frontline_server::terrain_view::heights(&s.state.field.geometry.terrain)
+    );
+    let craters = frontline_server::compression::decode(r.bytes(100_000).unwrap(), 4096).unwrap();
+    assert_eq!(
+        craters,
+        s.state.field.geometry.terrain.layers[sim::terrain::CRATER]
     );
     r.finish().unwrap();
     assert!(data.len() < 20_000);

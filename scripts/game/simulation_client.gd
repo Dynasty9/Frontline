@@ -25,8 +25,10 @@ const OVER := 26
 const REPORT := 27
 const BLOB := 28
 const PLAYBACK := 29
+const SURFACE := 30
+const ROADS := 31
 const MAX_PACKET := 65568
-const MAX_MAP := 64 * 1024 * 1024
+const MAX_MAP := 192 * 1024 * 1024
 const FX_FIELDS := ["vvnsn", "vn", "ns", "vv", "vcn", "vvn", "vv", "sv", "vv", "v", "vnnn", "vnn", "v", "vn", "snv", "nvn", "vnn", "vvn", "nv"]
 
 var world: World
@@ -46,6 +48,10 @@ var _map_data := PackedByteArray()
 var _blob_data := PackedByteArray()
 var _blob_kind := 0
 var _blob_total := 0
+var _side := 0
+var surface_ready := false
+var _surface_tiles := {}
+var _roads_pending := false
 
 func connect_to(address: String, port: int, token: String, engine: String) -> Error:
 	close()
@@ -78,6 +84,10 @@ func close() -> void:
 	_blob_data.clear()
 	_blob_total = 0
 	playback_info.clear()
+	_side = 0
+	surface_ready = false
+	_surface_tiles.clear()
+	_roads_pending = false
 
 func _exit_tree() -> void:
 	close()
@@ -140,6 +150,29 @@ func _process(_delta: float) -> void:
 		_send(ACK, PackedByteArray(), _sequence)
 	if host:
 		host.flush()
+	flush_surface()
+
+func flush_surface() -> void:
+	if not world or not surface_ready:
+		return
+	if _roads_pending:
+		_roads_pending = false
+		world._rebuild_roads()
+	var started := Time.get_ticks_usec()
+	for _i in 4:
+		if _surface_tiles.is_empty():
+			break
+		var key := Vector2i.ZERO
+		for candidate: Vector2i in _surface_tiles:
+			key = candidate
+			break
+		var tile: Array = _surface_tiles[key]
+		_surface_tiles.erase(key)
+		if not world.terrain.import_surface(tile[0], tile[1], tile[2], tile[3]):
+			_error("Invalid simulation surface tile.")
+			return
+		if Time.get_ticks_usec() - started >= 1000:
+			break
 
 static func _props(d: Dictionary) -> Dictionary:
 	for key: String in ["pos", "size", "vel", "origin", "target", "zc"]:
@@ -185,6 +218,51 @@ static func _block(b: StreamPeerBuffer, limit: int) -> PackedByteArray:
 		return PackedByteArray()
 	return b.get_data(size)[1]
 
+static func _expanded(data: PackedByteArray, expected: int) -> PackedByteArray:
+	if data.size() < 12 or data.slice(0, 8) != SimulationInitial.header("FLZB") or data.decode_u32(8) != expected:
+		return PackedByteArray()
+	var b := StreamPeerBuffer.new()
+	b.data_array = data
+	b.seek(12)
+	var result := PackedByteArray()
+	while result.size() < expected:
+		var count := mini(65536, expected - result.size())
+		var compressed := _block(b, 65536 + 1024)
+		if compressed.is_empty():
+			return PackedByteArray()
+		var chunk := compressed.decompress(count, FileAccess.COMPRESSION_DEFLATE)
+		if chunk.size() != count:
+			return PackedByteArray()
+		result.append_array(chunk)
+	return result if b.get_available_bytes() == 0 else PackedByteArray()
+
+static func _valid_surface(kinds: PackedByteArray, craters: PackedByteArray, heights: PackedFloat32Array, cells: int) -> bool:
+	if not ClassDB.class_exists("TerrainCore"):
+		return false
+	var native: RefCounted = ClassDB.instantiate("TerrainCore")
+	return bool(native.valid_surface(kinds, craters, heights, cells))
+
+static func decode_roads(value: Variant) -> bool:
+	if not value is Array or value.size() != 3:
+		return false
+	var total := 0
+	for roads: Variant in value:
+		if not roads is Array or roads.size() > 100000:
+			return false
+		for i in roads.size():
+			if not roads[i] is Array or roads[i].size() > 1000000:
+				return false
+			total += roads[i].size()
+			if total > 1000000:
+				return false
+			var points := PackedVector3Array()
+			for p: Variant in roads[i]:
+				if not _valid_point(p):
+					return false
+				points.append(_point(p))
+			roads[i] = points
+	return true
+
 func _receive(data: PackedByteArray, channel: int) -> bool:
 	if data.size() < 16 or data.size() > MAX_PACKET or data.slice(0, 4).get_string_from_utf8() != "FLNP" or data.decode_u16(4) != VERSION or data[7] != 0:
 		return false
@@ -213,6 +291,37 @@ func _receive(data: PackedByteArray, channel: int) -> bool:
 
 func _dispatch(kind: int, payload: PackedByteArray) -> bool:
 	match kind:
+		SURFACE:
+			if _side == 0 or payload.size() < 36 or payload.slice(0, 8) != SimulationInitial.header("FLVT"):
+				return false
+			var b := StreamPeerBuffer.new()
+			b.data_array = payload
+			b.seek(8)
+			var rect := Rect2i(b.get_u32(), b.get_u32(), b.get_u32(), b.get_u32())
+			if rect.position.x < 0 or rect.position.y < 0 or rect.position.x % 32 != 0 or rect.position.y % 32 != 0 or rect.size.x < 1 or rect.size.y < 1 or rect.size.x > 32 or rect.size.y > 32 or rect.end.x > _side or rect.end.y > _side:
+				return false
+			if rect.size != Vector2i(mini(32, _side - rect.position.x), mini(32, _side - rect.position.y)):
+				return false
+			var cells := rect.size.x * rect.size.y
+			var kinds := _block(b, cells)
+			var craters := _block(b, cells)
+			var raw := _block(b, cells * 16)
+			if raw.size() != cells * 16:
+				return false
+			var heights := raw.to_float32_array()
+			if b.get_available_bytes() != 0 or not _valid_surface(kinds, craters, heights, cells):
+				return false
+			if world:
+				_surface_tiles[rect.position] = [rect, kinds, craters, heights]
+			received.emit(kind, rect)
+		ROADS:
+			var roads = JSON.parse_string(payload.get_string_from_utf8())
+			if not decode_roads(roads):
+				return false
+			if world:
+				world.roads = roads
+				_roads_pending = true
+			received.emit(kind, roads)
 		FX:
 			var effects = JSON.parse_string(payload.get_string_from_utf8())
 			if not effects is Array or effects.size() > 256:
@@ -256,7 +365,7 @@ func _dispatch(kind: int, payload: PackedByteArray) -> bool:
 			var inner := int(payload[0])
 			var total := payload.decode_u32(1)
 			var offset := payload.decode_u32(5)
-			if inner not in [HUD, REPORT] or total <= 0 or total > 16 * 1024 * 1024 or offset != _blob_data.size() or offset + payload.size() - 9 > total:
+			if inner not in [HUD, REPORT, ROADS] or total <= 0 or total > 16 * 1024 * 1024 or offset != _blob_data.size() or offset + payload.size() - 9 > total:
 				return false
 			if _blob_total != 0 and (_blob_total != total or _blob_kind != inner):
 				return false
@@ -396,37 +505,31 @@ func _dispatch(kind: int, payload: PackedByteArray) -> bool:
 	return true
 
 func _install_map() -> bool:
-	if _map_data.slice(0, 8) != SimulationInitial.header("FLVM"):
+	if _side != 0 or _map_data.slice(0, 8) != SimulationInitial.header("FLVM", 2):
 		return false
 	var b := StreamPeerBuffer.new()
 	b.data_array = _map_data
 	b.seek(8)
 	var d = JSON.parse_string(_block(b, 16 * 1024 * 1024).get_string_from_utf8())
 	var kinds := _block(b, 3072 * 3072)
-	var heights := _block(b, 4 * 770 * 770).to_float32_array()
-	if not d is Dictionary or b.get_available_bytes() != 0:
+	var geology := _block(b, 4 * 770 * 770)
+	if not d is Dictionary or not d.get("side") is float or not is_finite(d.side) or d.side != int(d.side) or geology.size() % 4 != 0:
 		return false
+	var heights := geology.to_float32_array()
 	var side := int(d.get("side", 0))
 	if side < 2 or side > 3072 or kinds.size() != side * side or not Landform.valid(heights, side):
 		return false
-	for river: Dictionary in d.water.rivers:
-		var points := PackedVector3Array()
-		for p: Array in river.pts:
-			points.append(_point(p))
-		river.pts = points
-	for pond: Dictionary in d.water.ponds:
-		pond.c = _point(pond.c)
-	for i in d.water.fords.size():
-		d.water.fords[i] = _point(d.water.fords[i])
-	for bridge: Array in d.water.bridges:
-		bridge[0] = _point(bridge[0])
-		bridge[1] = _point(bridge[1])
-	for roads: Array in d.roads:
-		for i in roads.size():
-			var points := PackedVector3Array()
-			for p: Array in roads[i]:
-				points.append(_point(p))
-			roads[i] = points
+	var raw := _expanded(_block(b, MAX_MAP), side * side * 16)
+	if raw.size() != side * side * 16:
+		return false
+	var surface := raw.to_float32_array()
+	var craters := _expanded(_block(b, MAX_MAP), side * side)
+	if b.get_available_bytes() != 0 or not _valid_surface(kinds, craters, surface, side * side):
+		return false
+	if not decode_water(d.get("water"), side) or not d.get("town") is Array or d.town.size() != 4 or not d.town.all(func(v): return v is float and is_finite(v) and absf(v) <= 100000):
+		return false
+	if not decode_roads(d.get("roads")):
+		return false
 	if not decode_decor(d.get("decor")):
 		return false
 	if world:
@@ -434,6 +537,8 @@ func _install_map() -> bool:
 			return false
 		world._join_landform = heights
 		world._join_kinds = kinds
+		world._join_surface = surface
+		world._join_craters = craters
 		world.water.from_dict(d.water)
 		world.roads = d.roads
 		world.decor = d.decor
@@ -444,5 +549,43 @@ func _install_map() -> bool:
 			if world.atmo:
 				world.atmo.apply_mood(d.mood)
 		world._load_mark("map")
+	_side = side
 	received.emit(MAP, {"side": side, "kinds": kinds.size(), "heights": heights.size()})
 	return true
+
+static func decode_water(water: Variant, side: int) -> bool:
+	if not water is Dictionary or not water.get("coast") is Dictionary:
+		return false
+	for key in ["rivers", "ponds", "fords", "bridges"]:
+		if not water.get(key) is Array or water[key].size() > 4096:
+			return false
+	var total := 0
+	for river: Variant in water.rivers:
+		if not river is Dictionary or not river.get("pts") is Array or river.pts.size() > 65536:
+			return false
+		total += river.pts.size()
+		if total > 65536:
+			return false
+		var points := PackedVector3Array()
+		for p: Variant in river.pts:
+			if not _valid_point(p):
+				return false
+			points.append(_point(p))
+		river.pts = points
+	for pond: Variant in water.ponds:
+		if not pond is Dictionary or not _valid_point(pond.get("c")):
+			return false
+		pond.c = _point(pond.c)
+	for i in water.fords.size():
+		if not _valid_point(water.fords[i]):
+			return false
+		water.fords[i] = _point(water.fords[i])
+	for bridge: Variant in water.bridges:
+		if not bridge is Array or bridge.size() != 4 or not _valid_point(bridge[0]) or not _valid_point(bridge[1]) or not bridge[3] in ["bridge", "quay"]:
+			return false
+		bridge[0] = _point(bridge[0])
+		bridge[1] = _point(bridge[1])
+	if not ClassDB.class_exists("WaterRaster"):
+		return false
+	var native: RefCounted = ClassDB.instantiate("WaterRaster")
+	return bool(native.configure(side, water))

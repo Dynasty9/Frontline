@@ -15,6 +15,7 @@ pub struct Message {
 }
 #[derive(Default)]
 pub struct Events {
+    pub blasts: Vec<(Vector3, f64)>,
     pub effects: Vec<Effect>,
     pub messages: Vec<Message>,
     pub properties: Vec<(u32, u8, Value)>,
@@ -236,7 +237,10 @@ impl Events {
                 position,
                 direction,
             } => self.fx(3, false, json!([6, p(*position), p(*direction)])),
-            E::Explosion { position, size } => self.fx(3, true, json!([1, p(*position), size])),
+            E::Explosion { position, size } => {
+                self.blasts.push((*position, *size));
+                self.fx(3, true, json!([1, p(*position), size]));
+            }
             E::Infantry(v) => {
                 if let Some(hit) = &v.hit {
                     self.hit(s, v.soldier, hit);

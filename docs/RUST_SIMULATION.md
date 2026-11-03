@@ -34,7 +34,7 @@ reference and for the multiplayer/browser paths still awaiting integration.
 Raw ENet/UDP carries versioned application messages, not Godot scene RPCs.
 The 16-byte header contains `FLNP`, protocol version, message kind and sequence.
 Reliable channel 0 carries authentication, orders, baselines, births, removals,
-properties, HUD updates, messages and reports. Channel 1 carries independently
+properties, ground tiles, roads, HUD updates, messages and reports. Channel 1 carries independently
 applicable tick-stamped entity snapshots. Channel 2 carries expendable effects.
 
 The trusted host supplies a 192-bit ticket, commander identity and team for each
@@ -45,6 +45,14 @@ New connections and reconnects receive their own reliable baseline. Hidden enemy
 IDs and private supply, orders and intelligence are filtered before transmission.
 Map and large report data are chunked. Reliable queues, acknowledged bytes,
 command rates and per-frame client parsing are bounded; a stalled peer is closed.
+
+Protocol 2 sends the current deformation and crater layer in the compressed map
+baseline, then absolute 32 m surface tiles on the reliable channel. Tiles are
+idempotent and retained for late joiners; explosions only play cosmetic effects
+on socket clients. Loading queues the latest copy of each tile, then applies a
+bounded amount per frame through the existing progressive terrain texture upload.
+Replay seeks receive the ground at the re-simulated tick. Roads also have current
+baselines and reliable updates.
 
 Simulation ticks run at 60 Hz. Observations currently publish at 15 Hz, with Godot
 interpolation independent of tick advancement. Catch-up work is bounded; a slow
@@ -106,8 +114,8 @@ and the server checkpoint is `FLSS` version 2; older builds remain fail-closed.
 
 The generated 3,072 m test reached 14,352 entities and 91 squads but exceeded the
 old 512 MiB initial-state limit before simulation could start. That failure is
-recorded in `build/rust-socket-generated-3072-cap-check/`; a successful full-size
-rendered repeat remains required after the compression change.
+recorded in `build/rust-socket-generated-3072-cap-check/`. The compressed repeat
+completed successfully; its performance and replay results are recorded below.
 
 ## Build and exercise
 
@@ -257,6 +265,22 @@ peaked at 18.30 ms, total ticks at 26.54 ms, and frames at 37.40 ms. Eleven of
 not proof of sustained minimum 60 FPS. Raw local reports are in
 `build/rust-socket-generated-2048-phases/` and
 `build/rust-socket-generated-2048-optimized/`.
+
+The generated 3,072 m repeat at `2b8da93` used the same seed, 500 infantry,
+commanders, preset and measurement window, with other applications running.
+It completed without script/server errors: 72.56 FPS average, frame p95/p99
+21.673/26.507 ms, and adjacent-frame difference p95/p99 10.670/14.205 ms.
+The Rust tick averaged 11.613 ms, with p95/p99 28.483/36.183 ms. Navigation alone
+averaged 3.408 ms and peaked at 50.167 ms; infantry averaged 3.803 ms. Thus the
+larger map works but still misses the minimum frame and tick budgets. The client
+spent 73.15 seconds loading after its terrain allocation; the complete harness
+took 442.61 seconds including generation and shutdown.
+
+Reports and the rendered view are in `build/rust-socket-generated-3072-compressed/`.
+Independent verification reproduced all 3,023 ticks of its command recording,
+matching final hash `ac892adeaad9a10f3d39de02d26bf10a09b832902a60024083bb2b8a80fd3627`.
+The battle was unfinished, with no declared winner. Verification output is in
+`build/verify-3072-compressed.log`.
 
 The distant-soldier regression view places the same baked rifleman at 180 m with
 an unchanged camera and lighting. The before image restores the former fixed

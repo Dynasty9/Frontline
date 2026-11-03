@@ -121,6 +121,19 @@ impl Config {
 fn point(p: Vector3) -> Value {
     json!(p.to_array())
 }
+fn roads(s: &Simulation) -> Value {
+    json!(s
+        .state
+        .rules
+        .network
+        .roads
+        .iter()
+        .map(|r| r
+            .iter()
+            .map(|p| p.iter().copied().map(point).collect::<Vec<_>>())
+            .collect::<Vec<_>>())
+        .collect::<Vec<_>>())
+}
 pub fn map(s: &Simulation) -> Result<Vec<u8>, String> {
     let water = &s.state.water;
     let presentation: Value = serde_json::from_slice(&s.presentation).map_err(|e| e.to_string())?;
@@ -132,16 +145,22 @@ pub fn map(s: &Simulation) -> Result<Vec<u8>, String> {
         "ponds":water.ponds.iter().map(|p|json!({"c":point(p.center),"r":p.radius,"s":p.seed})).collect::<Vec<_>>(),
         "fords":water.fords.iter().copied().map(point).collect::<Vec<_>>(),
         "bridges":water.bridges.iter().map(|b|json!([point(b.a),point(b.b),b.half_width,if b.quay {"quay"} else {"bridge"}])).collect::<Vec<_>>()},
-        "roads":s.state.rules.network.roads.iter().map(|r|r.iter().map(|p|p.iter().copied().map(point).collect::<Vec<_>>()).collect::<Vec<_>>()).collect::<Vec<_>>(),
+        "roads":roads(s),
         "town":s.state.field.town,"decor":presentation.get("decor").cloned().unwrap_or(json!([])),"mood":presentation.get("mood")});
     let terrain = &s.state.field.geometry.terrain;
-    let mut w = Writer::new(b"FLVM\x01\0\0\0");
+    let mut w = Writer::new(b"FLVM\x02\0\0\0");
     w.bytes(&serde_json::to_vec(&data).map_err(|e| e.to_string())?);
     w.bytes(&terrain.layers[frontline_core::terrain::BASE]);
     w.u32((terrain.landform.samples().len() * 4) as u32);
     for &height in terrain.landform.samples() {
         w.f32(height);
     }
+    w.bytes(&crate::compression::encode(&crate::terrain_view::heights(
+        terrain,
+    ))?);
+    w.bytes(&crate::compression::encode(
+        &terrain.layers[frontline_core::terrain::CRATER],
+    )?);
     Ok(w.0)
 }
 fn chunks(data: &[u8]) -> Vec<Arc<Vec<u8>>> {
@@ -434,6 +453,8 @@ fn run_timeline(
     let mut profile = config.profile;
     simulation.profile = profile.as_ref().map(|_| Default::default());
     let public_map = chunks(&map(&simulation)?);
+    let mut surface = crate::terrain_view::Surface::default();
+    let mut road_state = simulation.state.rules.network.roads.clone();
     let presentation: Value =
         serde_json::from_slice(&simulation.presentation).map_err(|e| e.to_string())?;
     let ready = json!({"address":network.address()?.to_string(),"engine":crate::ENGINE_ID,"version":net::VERSION,
@@ -544,8 +565,18 @@ fn run_timeline(
                         json!({"peer":a.peer,"team":a.team,"entities":baseline.births.len(),"side":simulation.state.water.side,"tick":simulation.state.tick,"engine":crate::ENGINE_ID}),
                     )?;
                     for data in &public_map {
-                        network.reliable(slot, net::MAP, data.clone())?;
+                        if network.reliable(slot, net::MAP, data.clone()).is_err() {
+                            network.close(slot);
+                            break;
+                        }
                     }
+                    for data in surface.tiles.values() {
+                        if network.reliable(slot, net::SURFACE, data.clone()).is_err() {
+                            network.close(slot);
+                            break;
+                        }
+                    }
+                    json_packet(&mut network, slot, net::ROADS, roads(&simulation))?;
                     publish(&mut network, &[slot], &baseline, simulation.state.tick)?;
                     reliable(&mut network, slot, net::BASELINE_END, vec![])?;
                     json_packet(
@@ -666,7 +697,21 @@ fn run_timeline(
                 break;
             };
             let simulation_ms = tick_started.elapsed().as_secs_f64() * 1000.;
-            render_events.push(Events::collect(&simulation, &frame));
+            let events = Events::collect(&simulation, &frame);
+            for data in surface.update(&simulation.state.field.geometry.terrain, &events.blasts)? {
+                for &slot in slots.keys() {
+                    if network.reliable(slot, net::SURFACE, data.clone()).is_err() {
+                        network.close(slot);
+                    }
+                }
+            }
+            if road_state != simulation.state.rules.network.roads {
+                road_state.clone_from(&simulation.state.rules.network.roads);
+                for &slot in slots.keys() {
+                    json_packet(&mut network, slot, net::ROADS, roads(&simulation))?;
+                }
+            }
+            render_events.push(events);
             next += Duration::from_secs_f64(frontline_core::match_state::FIXED_DELTA / speed);
             if simulation.state.tick % 4 == 0 {
                 for (&team, view) in &mut views {
