@@ -10,6 +10,14 @@ caption = "Before: shared terrain baseline, identical seed and camera."
 [[screenshots]]
 file = "after.jpg"
 caption = "After: Narrow mineral stains run down exposed cliffs, interrupted by ledges and changes in rock type."
+
+[[screenshots]]
+file = "close-before.jpg"
+caption = "Before: matching closer camera, shared baseline."
+
+[[screenshots]]
+file = "close-after.jpg"
+caption = "After: the same closer camera; surface changes remain subtle."
 +++
 
 One extra scalar noise read per terrain fragment. This is directional material weathering rather than a hydrology simulation; geometry and traversal do not change.
