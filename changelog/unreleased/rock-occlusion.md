@@ -18,6 +18,14 @@ caption = "Before: matching closer camera, shared baseline."
 [[screenshots]]
 file = "close-after.jpg"
 caption = "After: the same closer camera; surface changes remain subtle."
+
+[[screenshots]]
+file = "target-before.jpg"
+caption = "Before: focused comparison under matched lighting."
+
+[[screenshots]]
+file = "target-after.jpg"
+caption = "After: Watch the shaded recess beside the central rib under diffuse light."
 +++
 
 No new texture reads. Occlusion affects ambient lighting, with the existing direct-light contribution retained. This is a material approximation, not new ray tracing.
