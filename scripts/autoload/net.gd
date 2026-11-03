@@ -11,6 +11,8 @@ signal player_joined(id: int, team: int, pname: String)
 ## A player who left came back: `old_id` is the peer id they had before.
 signal player_rejoined(id: int, old_id: int, team: int, pname: String)
 signal session_closed  # left a lobby or a battle, or stopped hosting
+signal simulation_packet(channel: int, data: PackedByteArray)
+signal simulation_failed(message: String)
 ## The host wants a password before letting us in (`wrong`: we offered one
 ## and it wasn't it). We've already been disconnected: set join_password and
 ## join again.
@@ -20,8 +22,8 @@ const DEFAULT_PORT := 7777
 const MAX_PLAYERS := 8
 ## Bump when what host and client send each other changes, so the matchmaker
 ## only pairs players who can understand each other.
-const NET_VERSION := 12
-const SIMULATION_VERSION := 2
+const NET_VERSION := 13
+const SIMULATION_VERSION := 3
 ## Each commander's colour: his cursor, his view and his pings on his
 ## teammates' screens. Handed out in the lobby so it stays the same all battle
 ## (and "I'm the pink one" works over voice). Clear of the sides' blue and red.
@@ -166,6 +168,8 @@ func join_game(ip: String, port := DEFAULT_PORT, local_port := 0, lobby := "") -
 
 
 func leave() -> void:
+	if LocalServer.networked:
+		LocalServer.stop()
 	if in_game and multiplayer.multiplayer_peer.get_connection_status() == MultiplayerPeer.CONNECTION_CONNECTED and not multiplayer.is_server() and not rejoin.is_empty():
 		_touch_rejoin()
 	if multiplayer.multiplayer_peer and not (multiplayer.multiplayer_peer is OfflineMultiplayerPeer):
@@ -342,9 +346,11 @@ func _on_peer_disconnected(id: int) -> void:
 	if players.has(id):
 		var p: Dictionary = players[id]
 		players.erase(id)
+		if LocalServer.networked:
+			LocalServer.remove_player(id)
 		if LocalServer.child:
 			LocalServer.disconnected_peer = id
-		if in_game and tok != "":
+		if (in_game or LocalServer.networked and LocalServer.starting) and tok != "":
 			# their place is kept for the rest of the battle
 			away[tok] = {"peer": id, "name": String(p.name), "team": int(p.team), "col": int(p.get("col", -1))}
 		player_left.emit(id, int(p.team), String(p.name))
@@ -421,7 +427,7 @@ func _register(pname: String, pw: String, team := -2, icon := "", rank := -1, to
 			if _tokens[pid] == tok and int(pid) != id:
 				_drop_stale(int(pid))
 		_tokens[id] = tok
-	if in_game and tok != "" and away.has(tok):
+	if (in_game or LocalServer.networked and LocalServer.starting) and tok != "" and away.has(tok):
 		# a player back in the battle they left: their own place, even when
 		# the battle is closed to newcomers or its seats have filled, and no
 		# password asked (they were let in before)
@@ -437,7 +443,12 @@ func _register(pname: String, pw: String, team := -2, icon := "", rank := -1, to
 		_sync_to_players(id)
 		var rs: Dictionary = settings.duplicate(true)
 		rs["players"] = players.duplicate(true)
-		_start.rpc_id(id, rs)
+		if LocalServer.networked:
+			LocalServer.admit_player(id, int(was.peer))
+			if in_game:
+				_start.rpc_id(id, LocalServer.player_settings(id))
+		else:
+			_start.rpc_id(id, rs)
 		player_rejoined.emit(id, int(was.peer), int(was.team), back)
 		return
 	# (spaces either end are a slip of the copy and paste, not the password)
@@ -462,7 +473,11 @@ func _register(pname: String, pw: String, team := -2, icon := "", rank := -1, to
 		_sync_to_players(id)
 		var s: Dictionary = settings.duplicate(true)
 		s["players"] = players.duplicate(true)
-		_start.rpc_id(id, s)
+		if LocalServer.networked:
+			LocalServer.admit_player(id)
+			_start.rpc_id(id, LocalServer.player_settings(id))
+		else:
+			_start.rpc_id(id, s)
 		player_joined.emit(id, side, clean)
 		return
 	players[id] = {"name": clean, "team": _pick_join_team(), "ready": false, "col": _free_color(), "icon": icon, "rank": rank}
@@ -614,7 +629,7 @@ func _sync_lobby(p: Dictionary, s: Dictionary, n_arriving: int, running := false
 
 @rpc("any_peer", "call_local", "reliable")
 func request_team(team: int) -> void:
-	if not multiplayer.is_server() or in_game:
+	if not multiplayer.is_server() or in_game or LocalServer.starting:
 		return
 	var id := _sender()
 	if players.has(id):
@@ -631,7 +646,7 @@ func _put_on_team(id: int, team: int) -> void:
 ## Ready or not: the host sees who is still getting set before starting.
 @rpc("any_peer", "call_local", "reliable")
 func set_ready(on: bool) -> void:
-	if not multiplayer.is_server() or in_game:
+	if not multiplayer.is_server() or in_game or LocalServer.starting:
 		return
 	var id := _sender()
 	if players.has(id):
@@ -641,7 +656,7 @@ func set_ready(on: bool) -> void:
 
 ## The host removes a player from the lobby.
 func kick(id: int) -> void:
-	if not multiplayer.is_server() or in_game or id == 1 or not players.has(id):
+	if not multiplayer.is_server() or in_game or LocalServer.starting or id == 1 or not players.has(id):
 		return
 	var pname := String(players[id].name)
 	players.erase(id)
@@ -665,7 +680,7 @@ func _herd_to_locked_side() -> void:
 
 ## The host's choices for the lobby, all at once.
 func configure(values: Dictionary) -> void:
-	if not multiplayer.is_server():
+	if not multiplayer.is_server() or LocalServer.starting:
 		return
 	settings.merge(values, true)
 	_herd_to_locked_side()
@@ -673,7 +688,7 @@ func configure(values: Dictionary) -> void:
 
 
 func set_setting(key: String, value) -> void:
-	if not multiplayer.is_server():
+	if not multiplayer.is_server() or LocalServer.starting:
 		return
 	settings[key] = value
 	if key in ["mode", "coop_side", "mission"]:
@@ -711,7 +726,7 @@ func _lobby_msg(text: String, system: bool) -> void:
 
 
 func start_game() -> void:
-	if not multiplayer.is_server() or _closing or in_game:
+	if not multiplayer.is_server() or _closing or in_game or LocalServer.starting:
 		return
 	var s: Dictionary = settings.duplicate(true)
 	s["seed"] = int(s.get("fixed_seed", randi()))
@@ -745,9 +760,19 @@ func start_game() -> void:
 				players[id].team = int(md.get("side", 0))
 	s["players"] = players.duplicate(true)
 	away.clear()
+	if multiplayer.multiplayer_peer is ENetMultiplayerPeer and not LocalServer.child:
+		s["fixed_seed"] = s.seed
+		var error := LocalServer.launch(s, int(players[1].team), true)
+		if error != OK:
+			net_error.emit("Could not start the simulation: " + error_string(error))
+		else:
+			settings = s.duplicate(true)
+			settings["preparing"] = true
+			_broadcast_lobby()
+		return
 	# to the players: anyone still at the door gets the game when they're let in
 	for pid in players:
-		if pid != 1:
+		if pid != 1 and not LocalServer.child:
 			_start.rpc_id(pid, s)
 	_start(s)
 
@@ -756,7 +781,9 @@ func start_game() -> void:
 func _start(s: Dictionary) -> void:
 	_dbg("battle starting")
 	in_game = true
-	settings = s
+	# Connection tickets belong to this view, never to the broadcast lobby settings.
+	settings = s.duplicate(true)
+	settings.erase("simulation_connection")
 	players = s.players
 	if not multiplayer.is_server() and not _target.is_empty():
 		# remembered, so we can get back in if we drop out
@@ -766,3 +793,41 @@ func _start(s: Dictionary) -> void:
 			"host": String(hp.get("name", "")), "token": token}
 		_touch_rejoin()
 	game_start.emit(s)
+
+
+@rpc("any_peer", "call_remote", "reliable")
+func _simulation_open() -> void:
+	if multiplayer.is_server() and in_game:
+		LocalServer.open_relay(multiplayer.get_remote_sender_id())
+
+
+@rpc("any_peer", "call_remote", "reliable")
+func _simulation_up(data: PackedByteArray) -> void:
+	if multiplayer.is_server() and LocalServer.networked:
+		LocalServer.relay_packet(multiplayer.get_remote_sender_id(), data)
+
+
+@rpc("authority", "call_remote", "reliable")
+func _simulation_down(data: PackedByteArray) -> void:
+	simulation_packet.emit(0, data)
+
+
+@rpc("any_peer", "call_remote", "unreliable_ordered", 8)
+func _simulation_presence_up(data: PackedByteArray) -> void:
+	if multiplayer.is_server() and LocalServer.networked:
+		LocalServer.relay_packet(multiplayer.get_remote_sender_id(), data, true)
+
+
+@rpc("authority", "call_remote", "unreliable_ordered", 6)
+func _simulation_snapshot(data: PackedByteArray) -> void:
+	simulation_packet.emit(1, data)
+
+
+@rpc("authority", "call_remote", "unreliable_ordered", 7)
+func _simulation_effects(data: PackedByteArray) -> void:
+	simulation_packet.emit(2, data)
+
+
+@rpc("authority", "call_remote", "reliable")
+func _simulation_failed(message: String) -> void:
+	simulation_failed.emit(message)

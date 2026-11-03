@@ -127,12 +127,24 @@ godot --headless --path . --import
 godot --path . -- --local-server --mission=bridgehead --seed=1
 cargo +1.94.0 test --locked --manifest-path native/Cargo.toml -p frontline_core -p frontline_server
 godot --headless --path . res://tests/local_server_test.tscn
+godot --headless --path . res://tests/native_lobby_test.tscn -- --port=7985
 ```
 
 The launcher stores logs in `user://local_servers/` and recordings in
 `user://replays/battle-<session>.flrp`. `FRONTLINE_SERVER` selects a server binary
 in a source checkout. Set `FRONTLINE_GODOT` and run the ignored `godot_connects`
 network test to exercise actual Godot/Rust ENet interoperability.
+
+Desktop multiplayer uses the existing Godot ENet lobby as an opaque packet relay,
+preserving its port and NAT mapping. The host renderer connects directly to Rust;
+each remote player has a separately authenticated Rust connection behind the relay.
+The lobby updates a private admission list and waits for Rust to acknowledge it
+before opening a new connection. Tickets never enter broadcast lobby settings.
+Joins, departures and ownership reclamation are recorded as authoritative inputs.
+New arrivals receive the same starter squads at the earliest completed FOB as before.
+Screen presence, pings and sketches are separately validated, rate-limited and
+filtered to teammates and observers. Action notifications come from completed
+simulation commands. These presentation messages do not affect replay state.
 
 A generated initial state can also be run without a renderer:
 
@@ -152,6 +164,10 @@ observation and individual simulation-phase costs outside deterministic state.
 The clock never changes AI work quotas or enters a checkpoint. Keep admission tickets private. The initial importer
 rejects already-running Godot worlds with active ordnance/plans rather than
 silently losing state. Output recordings are created exclusively, never overwritten.
+An optional `admissions` path accepts atomic updates containing `players` and a
+lobby revision. The server writes the applied revision beside it with an
+`.admitted` extension. Revoked connections close before replacements are admitted.
+The application protocol is `FLNP` version 3; the Godot lobby version is 13.
 
 ## Validation and remaining completion gates
 
@@ -164,16 +180,32 @@ completion, independent verification and an owned-server crash. An 80-soldier
 rendered socket battle completed without script errors. These are not 500-unit
 rendering results or natural full-mission balance playthroughs.
 
+The lobby integration check now passes two remote clients, joining after start,
+commands that move replicated troops, team-only pings/sketches/presence, a lost
+connection during generation, a later reconnect with a new ENet identity, ownership
+recovery, private-ticket isolation, and independent verification of the resulting
+recording. Rust socket tests also reject identity spoofing and revoked tickets,
+preserve a live connection when the admission list is reordered, and enforce mark
+limits and team privacy. Drop-in starter squads and reconnecting without duplicate
+reinforcements have a deterministic replay regression.
+
 Remaining release gates:
 
-- Connect multiplayer lobby, drop-in/rejoin and co-command interactions to Rust.
-- Carry current roads, terrain deformation and remaining cosmetic lifecycle events
-  through joining and live observations.
+- Audit remaining cosmetic lifecycle events through joining and live observations.
 - Integrate browser transport/runtime without a desktop process assumption.
 - Run generated large-map, 500-unit rendered cases and inspect tail frame times,
   frame-to-frame variation and memory with other applications running.
 - Complete exports/installers and current-head cross-platform CI. Preserve gameplay
   with full scenario/mission regressions and visible comparison evidence.
+
+The 3 km navigation breakdown in `build/rust-socket-generated-3072-navigation/`
+measured 74.59 FPS, frame p99 26.66 ms, and Rust tick p99 35.72 ms. Path searches
+alone peaked at 45.08 ms; terrain-cover work peaked at 0.019 ms and hierarchy
+repairs at 8.93 ms. This isolates long searches as a remaining simulation target;
+the average frame rate does not establish steady 60 FPS. Other applications stayed
+running. Socket clients now skip GDScript terrain reconstruction because the
+baseline includes the completed surface; the loading-time improvement still needs
+a matched large-map measurement.
 
 ## Standalone infantry scale measurement
 

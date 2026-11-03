@@ -48,6 +48,8 @@ func on_packet(kind: int, value: Variant) -> void:
 		SimulationClient.BASELINE_END:
 			assert(map_received and spawns > 0)
 			assert(client.loaded() == OK)
+			assert(client.send_presence(CoCommand.Presence.new().encode()) == OK)
+			assert(client.send_mark({"t": "ping", "kind": "look", "position": Vector3.ZERO, "entity": 0}) == OK)
 			assert(client.send_command({"t": "chat", "text": "Socket command from Godot", "team_only": true}) == OK)
 			assert(client.request_report() == OK)
 		SimulationClient.MESSAGE:
@@ -95,6 +97,12 @@ func check_packets() -> void:
 	assert(not probe._dispatch(SimulationClient.FX, "[[7,[],[0,0,0]]]".to_utf8_buffer()))
 	assert(not probe._dispatch(SimulationClient.FX, "[[1.5,[0,0,0],1]]".to_utf8_buffer()))
 	assert(not probe._receive(SimulationClient.packet(SimulationClient.SNAPSHOT, 1, PackedByteArray()), 2))
+	assert(probe._dispatch(SimulationClient.PING, '[7,"look",[1,0,2],0]'.to_utf8_buffer()))
+	assert(probe._dispatch(SimulationClient.SKETCH, '[7,[[1,2],[3,4]]]'.to_utf8_buffer()))
+	assert(probe._dispatch(SimulationClient.DEED, '[7,"Training a squad",[1,0,2],true]'.to_utf8_buffer()))
+	assert(not probe._dispatch(SimulationClient.PING, '[7,"unknown",[1,0,2],0]'.to_utf8_buffer()))
+	assert(not probe._dispatch(SimulationClient.SKETCH, '[7,[[1,2]]]'.to_utf8_buffer()))
+	assert(not probe._dispatch(SimulationClient.DEED, '[7,"Training a squad",[1,0,2],0]'.to_utf8_buffer()))
 	probe.free()
 
 func check_surface() -> void:
@@ -182,6 +190,24 @@ func check_surface() -> void:
 	invalid.encode_u32(8, 33)
 	assert(not probe._dispatch(SimulationClient.SURFACE, invalid))
 	assert(not probe._dispatch(SimulationClient.SURFACE, data.data_array.slice(0, -1)))
+	# An elevated join uses the loading worker and the server's final surface exactly once.
+	world.water = WaterMap.new(world)
+	world._join_landform.resize(17 * 17)
+	for z in 17:
+		for x in 17:
+			world._join_landform[z * 17 + x] = 8.0 + x * 0.5
+	world._join_kinds.resize(64 * 64)
+	world._join_craters.resize(64 * 64)
+	world._join_surface.resize(128 * 128)
+	world._join_surface.fill(12.0)
+	world._lay_ground()
+	assert(world._ground_native != null and world._ground_task == -1)
+	world._ground_done()
+	assert(world.terrain.slopes.is_empty() and world.terrain.vehicle_slopes.is_empty())
+	assert(is_equal_approx(world.terrain.slope_at(Vector3.ZERO), 0.125))
+	assert(world.terrain.landform.peak == 16.0 and world.terrain.deform_at(Vector3.ZERO) == 12.0)
+	assert(world.terrain.deform_img.get_pixel(64, 64).r == 12.0)
+	assert(is_equal_approx(world.terrain.deform_img.get_pixel(64, 64).g, 12.03125))
 	probe.world = null
 	world.simulation_client = null
 	world.free()

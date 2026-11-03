@@ -1673,7 +1673,7 @@ and conclusions. Generated starting battlefields can be handed from Godot to
 Rust before the first tick, including exact random state and map geometry.
 Starting battlefields and recorded checkpoints use bounded, lossless compressed
 blocks so larger maps do not require equally large uncompressed handoff files.
-Desktop solo play now starts that Rust process and connects the Godot renderer
+Desktop solo and hosted multiplayer start that Rust process and connect the Godot renderer
 over an authenticated ENet socket. The server sends team-filtered entity state,
 effects, messages, HUD data and reports; orders travel back to the same authority.
 Current terrain deformation and crater cover arrive in the map baseline, followed
@@ -1683,8 +1683,13 @@ Reconnect preserves ownership, pause controls server pacing, and leaving closes
 the deterministic command recording. The replay viewer opens those recordings,
 re-executes commands for playback and seeking, and labels verification only after
 checking the complete input stream, final state and result. Existing observer
-archives keep their separate unverified status. Multiplayer lobby and browser
-integration remain in progress; see [RUST_SIMULATION.md](RUST_SIMULATION.md).
+archives keep their separate unverified status. The multiplayer lobby forwards
+opaque packets through its existing port; Rust admits each player, handles drop-in
+reinforcements and restores ownership after reconnecting. Teammate cursors, pings,
+sketches and committed actions use the same server's team filtering. They do not
+enter the gameplay recording. Socket clients import the finished elevated surface
+without rebuilding its heights and slopes in GDScript. Browser integration remains
+in progress; see [RUST_SIMULATION.md](RUST_SIMULATION.md).
 
 See [SIMULATION_SCALING.md](SIMULATION_SCALING.md) for the native perception
 boundary, measurement results and remaining limits.

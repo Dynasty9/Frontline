@@ -294,7 +294,7 @@ func build() -> void:
 		simulation_client.failed.connect(func(message: String):
 			if not LocalServer.reconnect():
 				Net.net_error.emit(message))
-		var error := simulation_client.connect_to(String(connection.address), int(connection.port), String(connection.token), String(connection.engine))
+		var error := simulation_client.connect_relay(String(connection.engine)) if connection.get("relay", false) else simulation_client.connect_to(String(connection.address), int(connection.port), String(connection.token), String(connection.engine))
 		if error != OK:
 			Net.net_error.emit("Could not connect to the simulation: " + error_string(error))
 	elif not srv and not settings.get("replay", false):
@@ -1616,15 +1616,17 @@ func _lay_ground() -> void:
 	_ground_water = WaterMap.new(self)
 	_ground_water.from_dict(water.to_dict())
 	terrain.begin_ground_import()
-	# shortcut: the native loading worker must import geology before it can handle elevated joins.
-	_ground_native = _ground_water.begin_loading(_join_kinds) if _join_landform.is_empty() else null
+	if simulation_client:
+		terrain.install_landform(_join_landform, true)
+	_ground_native = _ground_water.begin_loading(_join_kinds) if simulation_client or _join_landform.is_empty() else null
 	if _ground_native:
 		return
 	_ground_task = WorkerThreadPool.add_task(_ground_job, false, "Laying out the ground")
 
 
 func _ground_job() -> void:
-	terrain.install_landform(_join_landform)
+	if not simulation_client:
+		terrain.install_landform(_join_landform)
 	var w := _ground_water
 	if not w.is_empty():
 		w.paint_kinds()

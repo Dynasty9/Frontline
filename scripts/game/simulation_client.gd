@@ -11,6 +11,8 @@ const COMMAND := 1
 const LOADED := 2
 const ACK := 3
 const REQUEST_REPORT := 4
+const SEND_PRESENCE := 5
+const MARK := 6
 const SNAPSHOT := 16
 const WELCOME := 17
 const SPAWN := 18
@@ -27,6 +29,10 @@ const BLOB := 28
 const PLAYBACK := 29
 const SURFACE := 30
 const ROADS := 31
+const PRESENCE := 32
+const PING := 33
+const SKETCH := 34
+const DEED := 35
 const MAX_PACKET := 65568
 const MAX_MAP := 192 * 1024 * 1024
 const FX_FIELDS := ["vvnsn", "vn", "ns", "vv", "vcn", "vvn", "vv", "sv", "vv", "v", "vnnn", "vnn", "v", "vn", "snv", "nvn", "vnn", "vvn", "nv"]
@@ -52,6 +58,25 @@ var _side := 0
 var surface_ready := false
 var _surface_tiles := {}
 var _roads_pending := false
+var _relay := false
+var _relay_at := 0
+
+func connect_relay(engine: String) -> Error:
+	close()
+	_engine = engine
+	_relay = true
+	_relay_at = Time.get_ticks_msec()
+	connected = true
+	Net.simulation_packet.connect(_relay_packet)
+	Net.simulation_failed.connect(_error)
+	return Net.rpc_id(1, "_simulation_open")
+
+func _relay_packet(channel: int, data: PackedByteArray) -> void:
+	var ack := _sequence
+	if not _receive(data, channel):
+		_error("The simulation sent an invalid packet.")
+	elif _sequence > ack:
+		_send(ACK, PackedByteArray(), _sequence)
 
 func connect_to(address: String, port: int, token: String, engine: String) -> Error:
 	close()
@@ -70,6 +95,11 @@ func connect_to(address: String, port: int, token: String, engine: String) -> Er
 
 func close() -> void:
 	connected = false
+	identity = 0
+	if _relay:
+		Net.simulation_packet.disconnect(_relay_packet)
+		Net.simulation_failed.disconnect(_error)
+	_relay = false
 	if host:
 		if peer:
 			peer.peer_disconnect_now()
@@ -110,9 +140,21 @@ static func packet(kind: int, sequence: int, payload: PackedByteArray) -> Packed
 	return data
 
 func _send(kind: int, payload: PackedByteArray, sequence := 0) -> Error:
-	if not connected or peer == null or payload.size() + 16 > MAX_PACKET:
+	if not connected or payload.size() + 16 > MAX_PACKET:
 		return ERR_UNAVAILABLE
-	return peer.send(0, packet(kind, sequence, payload), ENetPacketPeer.FLAG_RELIABLE)
+	if _relay:
+		if kind == SEND_PRESENCE:
+			return Net.rpc_id(1, "_simulation_presence_up", packet(kind, sequence, payload))
+		return Net.rpc_id(1, "_simulation_up", packet(kind, sequence, payload))
+	if peer == null:
+		return ERR_UNAVAILABLE
+	return peer.send(1 if kind == SEND_PRESENCE else 0, packet(kind, sequence, payload), 0 if kind == SEND_PRESENCE else ENetPacketPeer.FLAG_RELIABLE)
+
+func send_presence(data: PackedByteArray) -> Error:
+	return _send(SEND_PRESENCE, data)
+
+func send_mark(mark: Dictionary) -> Error:
+	return _send(MARK, JSON.stringify(SimulationInitial.plain(mark), "", true, true).to_utf8_buffer())
 
 func send_command(command: Dictionary) -> Error:
 	return _send(COMMAND, JSON.stringify(SimulationInitial.plain(command), "", true, true).to_utf8_buffer())
@@ -124,6 +166,12 @@ func request_report() -> Error:
 	return _send(REQUEST_REPORT, PackedByteArray())
 
 func _process(_delta: float) -> void:
+	if _relay:
+		if identity == 0 and Time.get_ticks_msec() - _relay_at > 30000:
+			_error("The simulation did not answer.")
+			return
+		flush_surface()
+		return
 	if host == null:
 		return
 	var started := Time.get_ticks_usec()
@@ -275,6 +323,8 @@ func _receive(data: PackedByteArray, channel: int) -> bool:
 				return true
 			_fx_tick = sequence
 			return _dispatch(FX, payload)
+		if kind == PRESENCE and channel == 1:
+			return _dispatch(kind, payload)
 		if kind != SNAPSHOT or channel != 1:
 			return false
 		if sequence < _tick:
@@ -291,6 +341,43 @@ func _receive(data: PackedByteArray, channel: int) -> bool:
 
 func _dispatch(kind: int, payload: PackedByteArray) -> bool:
 	match kind:
+		PRESENCE:
+			if payload.size() < 101 or payload.size() > 704 or payload.decode_s32(0) <= 0:
+				return false
+			var data := payload.slice(4)
+			if not CoCommand.Presence.new().decode(data):
+				return false
+			if world and world.coop:
+				world.coop._store(payload.decode_s32(0), data)
+			received.emit(kind, payload)
+		PING, SKETCH, DEED:
+			var data = JSON.parse_string(payload.get_string_from_utf8())
+			if not data is Array or data.size() != (2 if kind == SKETCH else 4) or not data[0] is float or data[0] <= 0 or data[0] != int(data[0]):
+				return false
+			if kind == SKETCH:
+				if not data[1] is Array or data[1].size() < 2 or data[1].size() > 64:
+					return false
+				var points := PackedVector2Array()
+				for p in data[1]:
+					if not p is Array or p.size() != 2 or not p.all(func(v: Variant) -> bool: return v is float and is_finite(v) and absf(v) <= 100000):
+						return false
+					points.append(Vector2(p[0], p[1]))
+				if world and world.coop:
+					world.coop._add_sketch(int(data[0]), points)
+			else:
+				if not data[1] is String or data[1].length() > 1000 or not data[2] is Array or data[2].size() != 3 or not data[2].all(func(v: Variant) -> bool: return v is float and is_finite(v) and absf(v) <= 100000):
+					return false
+				if kind == PING:
+					if not data[1] in CoCommand.PING_KINDS or not data[3] is float or data[3] < 0 or data[3] > 4294967295 or data[3] != int(data[3]):
+						return false
+					if world and world.coop:
+						world.coop._add_ping(int(data[0]), data[1], _point(data[2]), int(data[3]))
+				else:
+					if not data[3] is bool:
+						return false
+					if world and world.coop:
+						world.coop._add_deed(int(data[0]), data[1], _point(data[2]), data[3])
+			received.emit(kind, data)
 		SURFACE:
 			if _side == 0 or payload.size() < 36 or payload.slice(0, 8) != SimulationInitial.header("FLVT"):
 				return false

@@ -373,6 +373,7 @@ func refresh() -> void:
 	var host := multiplayer.is_server()
 	var me := multiplayer.get_unique_id()
 	var s := Net.settings
+	var preparing := bool(s.get("preparing", false))
 	var mk := String(s.get("mission", ""))
 	var mode := "mission" if mk != "" else String(s.get("mode", "versus"))
 	var locked := Net.locked_side()
@@ -421,7 +422,7 @@ func refresh() -> void:
 		var ids: Array = on_side[t]
 		ids.sort()
 		for id in ids:
-			rows.add_child(_player_row(int(id), Net.players[id], host, now))
+			rows.add_child(_player_row(int(id), Net.players[id], host and not preparing, now))
 		var players_here := locked < 0 or locked == t
 		if not (ai[t] as Array).is_empty():
 			rows.add_child(_ai_row(ai[t]))
@@ -447,7 +448,7 @@ func refresh() -> void:
 		(col.note as Label).text = note
 		var jb: Button = col.join
 		jb.visible = players_here and _my_team() != t and not Net.players.get(me, {}).is_empty()
-		jb.disabled = false
+		jb.disabled = preparing
 
 	# spectators, arrivals
 	var names: Array = []
@@ -459,8 +460,9 @@ func refresh() -> void:
 	_arr_label.text = "%d CONNECTING" % Net.arriving
 	_spec_btn.text = "WATCH INSTEAD" if _my_team() >= 0 else "PLAY INSTEAD"
 	_spec_btn.visible = not Net.players.get(me, {}).is_empty()
+	_spec_btn.disabled = preparing
 
-	_refresh_settings(host, mode, mk)
+	_refresh_settings(host and not preparing, mode, mk)
 	_refresh_invite(host)
 
 	# ready, start, leave
@@ -493,6 +495,11 @@ func refresh() -> void:
 	else:
 		_wait_note.text = "Waiting for %s to start the battle." % host_name if _ready_btn.button_pressed else "Press Ready when you're set."
 		_wait_note.add_theme_color_override("font_color", UiKit.DIM)
+	_start_btn.disabled = preparing
+	_ready_btn.disabled = preparing
+	if preparing:
+		_start_btn.text = "PREPARING BATTLE"
+		_wait_note.text = "Preparing the battlefield. You will join when it is ready."
 
 
 ## A figure in the header: its name in faint capitals, its value as a code.

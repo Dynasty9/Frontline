@@ -100,6 +100,7 @@ impl Server {
         let config = Config {
             bind: "127.0.0.1:0".parse().unwrap(),
             admissions: players,
+            admission_file: Some(directory.join("admissions.json")),
             // Reconnect can wait for ENet retries on a busy desktop.
             max_ticks: Some(600),
             ready: Some(ready.clone()),
@@ -179,6 +180,8 @@ impl Drop for Server {
             let _ = fs::remove_file(file);
         }
         let _ = fs::remove_file(self.directory.join("profile.json"));
+        let _ = fs::remove_file(self.directory.join("admissions.json"));
+        let _ = fs::remove_file(self.directory.join("admissions.admitted"));
         let _ = fs::remove_dir(&self.directory);
     }
 }
@@ -192,6 +195,8 @@ struct Client {
     tick: u64,
     messages: Vec<serde_json::Value>,
     playback: serde_json::Value,
+    presence: Vec<Vec<u8>>,
+    marks: Vec<(u8, serde_json::Value)>,
 }
 impl Client {
     fn new(server: &Server, token: char) -> Self {
@@ -218,6 +223,8 @@ impl Client {
             tick: 0,
             messages: vec![],
             playback: serde_json::Value::Null,
+            presence: vec![],
+            marks: vec![],
         }
     }
     fn poll(&mut self) {
@@ -248,6 +255,10 @@ impl Client {
                         net::SNAPSHOT => self.tick = seq,
                         net::MESSAGE => self.messages.push(serde_json::from_slice(data).unwrap()),
                         net::PLAYBACK => self.playback = serde_json::from_slice(data).unwrap(),
+                        net::PRESENCE => self.presence.push(data.to_vec()),
+                        net::PING | net::SKETCH | net::DEED => self
+                            .marks
+                            .push((kind, serde_json::from_slice(data).unwrap())),
                         net::BASELINE_END => {
                             self.loaded = true;
                             peer.send(0, &Packet::reliable(net::packet(net::LOADED, 0, &[])))
@@ -273,6 +284,77 @@ impl Client {
             )
             .unwrap();
     }
+    fn presentation(&mut self, kind: u8, data: &[u8]) {
+        self.host
+            .peer_mut(rusty_enet::PeerID(0))
+            .send(
+                if kind == net::SEND_PRESENCE { 1 } else { 0 },
+                &if kind == net::SEND_PRESENCE {
+                    Packet::unreliable(net::packet(kind, 0, data))
+                } else {
+                    Packet::reliable(net::packet(kind, 0, data))
+                },
+            )
+            .unwrap();
+        self.host.flush();
+    }
+}
+
+#[test]
+fn co_command_is_team_private_authenticated_bounded_and_absent_from_replay_inputs() {
+    let mut server = Server::new();
+    let mut clients = ['1', '2', '3', '4'].map(|token| Client::new(&server, token));
+    let deadline = Instant::now() + Duration::from_secs(20);
+    while clients.iter().any(|c| c.tick < 16) {
+        for c in &mut clients {
+            c.poll();
+        }
+        assert!(Instant::now() < deadline);
+        thread::sleep(Duration::from_millis(1));
+    }
+    clients[0].presentation(net::SEND_PRESENCE, &[0; 97]);
+    let ping =
+        json!({"t":"ping","peer":9,"kind":"enemy","position":[999,0,-999],"entity":u32::MAX})
+            .to_string();
+    clients[0].presentation(net::MARK, ping.as_bytes());
+    clients[0].presentation(net::MARK, br#"{"t":"sketch","points":[[0,0],[999,-999]]}"#);
+    for _ in 0..6 {
+        clients[0].presentation(net::MARK, ping.as_bytes());
+    }
+    while clients[2].marks.len() < 4
+        || clients[3].marks.len() < 4
+        || clients[2].presence.is_empty()
+        || clients[3].presence.is_empty()
+    {
+        for c in &mut clients {
+            c.poll();
+        }
+        assert!(Instant::now() < deadline);
+        thread::sleep(Duration::from_millis(1));
+    }
+    assert!(clients[0].marks.is_empty() && clients[0].presence.is_empty());
+    assert!(clients[1].marks.is_empty() && clients[1].presence.is_empty());
+    for c in &clients[2..] {
+        assert_eq!(c.marks.len(), 4);
+        assert_eq!(
+            i32::from_le_bytes(c.presence[0][..4].try_into().unwrap()),
+            7
+        );
+        assert_eq!(
+            c.marks[0],
+            (net::PING, json!([7, "enemy", [32., 0., -32.], 0]))
+        );
+        assert_eq!(
+            c.marks[1],
+            (net::SKETCH, json!([7, [[0., 0.], [32., -32.]]]))
+        );
+    }
+    let verified = server.finish();
+    assert!(verified.frames >= 16);
+    let bytes = fs::read(&server.replay).unwrap();
+    assert!(!bytes
+        .windows(b"\"sketch\"".len())
+        .any(|b| b == b"\"sketch\""));
 }
 #[test]
 fn replay_socket_ignores_live_commands_and_seek_reexecutes_the_same_inputs() {
@@ -400,6 +482,69 @@ fn late_join_and_reconnect_receive_fresh_baselines_without_changing_ownership() 
         .any(|a| matches!(a,sim::actors::Actor::Soldier(s) if s.identity.owner==7)));
 }
 #[test]
+fn lobby_admission_changes_revoke_tickets_preserve_connections_and_record_reclaims() {
+    let mut server = Server::new();
+    let mut a = Client::new(&server, '1');
+    let mut b = Client::new(&server, '2');
+    let deadline = Instant::now() + Duration::from_secs(20);
+    while a.tick < 16 || b.tick < 16 {
+        a.poll();
+        b.poll();
+        assert!(Instant::now() < deadline);
+        thread::sleep(Duration::from_millis(1));
+    }
+    let players = json!({"players":[
+        {"peer":9,"team":1,"name":"Commander 9","token":"2".repeat(48)},
+        {"peer":17,"team":0,"name":"Returned commander","token":"5".repeat(48),"reclaim":7}
+    ]});
+    let temporary = server.directory.join("admissions.tmp");
+    fs::write(&temporary, serde_json::to_vec(&players).unwrap()).unwrap();
+    fs::rename(temporary, server.directory.join("admissions.json")).unwrap();
+    while !a.closed {
+        a.poll();
+        b.poll();
+        assert!(
+            Instant::now() < deadline,
+            "revoked ticket remained connected"
+        );
+        thread::sleep(Duration::from_millis(1));
+    }
+    let mut revoked = Client::new(&server, '1');
+    let mut returning = Client::new(&server, '5');
+    while !revoked.closed || returning.tick < 64 {
+        b.poll();
+        revoked.poll();
+        returning.poll();
+        assert!(
+            Instant::now() < deadline,
+            "admitted returning player did not join"
+        );
+        thread::sleep(Duration::from_millis(1));
+    }
+    assert!(!revoked.joined && !b.closed && returning.loaded);
+    b.command(json!({"t":"chat","text":"Kept my identity","team_only":true}));
+    while !b
+        .messages
+        .iter()
+        .any(|m| m.to_string().contains("Kept my identity"))
+    {
+        b.poll();
+        returning.poll();
+        assert!(Instant::now() < deadline);
+        thread::sleep(Duration::from_millis(1));
+    }
+    let verified = server.finish();
+    assert_eq!(verified.simulation.state.owners.team_of(17), 0);
+    assert!(verified
+        .simulation
+        .state
+        .field
+        .actors
+        .iter()
+        .any(|a| matches!(a, sim::actors::Actor::Soldier(s) if s.identity.owner == 17)));
+}
+
+#[test]
 fn unauthorized_connections_and_identity_spoofs_are_disconnected() {
     let mut server = Server::new();
     let mut bad = Client::new(&server, 'f');
@@ -435,6 +580,8 @@ fn network_headers_and_configuration_are_bounded() {
     assert!(net::decode(&vec![0; net::MAX_PACKET + 1]).is_err());
     assert!(Config::decode(b"{}").is_err());
     assert!(Config::decode(&vec![0; 65537]).is_err());
+    let player = json!({"peer":7,"team":0,"name":"Commander","token":"1".repeat(48)});
+    assert!(Admission::decode(&json!([player.clone(), player])).is_err());
 }
 #[test]
 #[ignore = "requires a Godot executable in FRONTLINE_GODOT"]

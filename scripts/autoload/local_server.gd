@@ -10,6 +10,7 @@ var child := false
 var disconnected_peer := 0
 var recording := ""
 var replaying := false
+var networked := false
 var replay_status := {}
 var client: Node
 var _generating := false
@@ -23,6 +24,11 @@ var _server := ""
 var _retry_at := 0
 var _retries := 0
 var _retiring: Array = []
+var _admissions := {}
+var _relays := {}
+var _connection := {}
+var _relay_waiting := {}
+var _admission_revision := 0
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
@@ -42,14 +48,16 @@ func executable() -> String:
 		bundled = OS.get_executable_path().get_base_dir().get_base_dir().path_join("Helpers/" + name)
 	return bundled if FileAccess.file_exists(bundled) else ""
 
-func launch(options: Dictionary, team: int) -> int:
+func launch(options: Dictionary, team: int, lobby := false) -> int:
 	if OS.has_feature("web"):
 		return ERR_UNAVAILABLE
 	var server := executable()
 	if server.is_empty() or not ClassDB.class_exists("ActorStateCore"):
 		return ERR_FILE_NOT_FOUND
 	stop()
-	Net.leave()
+	if not lobby:
+		Net.leave()
+	networked = lobby
 	_server = server
 	_team = team
 	token = Crypto.new().generate_random_bytes(24).hex_encode()
@@ -60,6 +68,9 @@ func launch(options: Dictionary, team: int) -> int:
 	session = ProjectSettings.globalize_path("user://local_servers".path_join(token))
 	recording = ProjectSettings.globalize_path("user://replays".path_join("battle-" + token + ".flrp"))
 	_config = options.duplicate(true)
+	if networked:
+		for id: int in Net.players:
+			admit_player(id, 0, false)
 	_config.merge({"team": team, "name": Net.my_name, "version": Net.NET_VERSION, "parent_pid": OS.get_process_id()}, true)
 	if not _write(".json", _config):
 		return ERR_CANT_CREATE
@@ -87,6 +98,10 @@ func start_child(path: String) -> void:
 	_config = parsed
 	Net.my_name = String(_config.name)
 	Net.host_offline(int(_config.team))
+	if _config.get("players") is Dictionary:
+		Net.players.clear()
+		for id: String in _config.players:
+			Net.players[int(id)] = _config.players[id]
 	Net.settings = _config.duplicate(true)
 	for key in ["team", "name", "version", "benchmark_output", "parent_pid", "child_pid"]:
 		Net.settings.erase(key)
@@ -188,8 +203,13 @@ func _process(_dt: float) -> void:
 			players[int(id)] = _settings.players[id]
 		_settings.players = players
 		_team = int(players[1].team)
-		var config := {"bind": "127.0.0.1:0", "players": [{"peer": 1, "team": _team, "name": Net.my_name, "token": token}],
+		var config := {"bind": "127.0.0.1:0", "players": _admissions.values() if networked else [{"peer": 1, "team": _team, "name": Net.my_name, "token": token}],
 			"ready": session + ".ready", "stop": session + ".stop", "speed": session + ".speed", "error": session + ".error", "lease": session + ".heartbeat"}
+		if networked:
+			for id: int in Net.players:
+				admit_player(id, 0, false)
+			config.players = _admissions.values()
+			config["admissions"] = session + ".admissions"
 		if _config.has("perf_at"):
 			config["profile"] = {"path": session + ".perf.json", "warmup": _config.perf_at, "duration": _config.get("perf_duration", 10.0)}
 		if not _write(".server", config):
@@ -207,6 +227,8 @@ func _process(_dt: float) -> void:
 		pid = -1
 		_fail("The local simulation stopped. Recording: " + recording)
 		return
+	if networked and not _relay_waiting.is_empty():
+		_open_relays()
 	if not starting:
 		return
 	if now < _retry_at:
@@ -233,14 +255,98 @@ func _process(_dt: float) -> void:
 			if ready.get("mood") is String:
 				_settings.mood = ready.mood
 			replay_status = ready.replay
+		_connection = {"address": address[0], "port": int(address[1]), "engine": ready.engine}
 		_settings["simulation_connection"] = {"address": address[0], "port": int(address[1]), "token": token, "engine": ready.engine, "peer": 1, "team": _team}
 		# The recording now owns the initial checkpoint; don't leave the large handoff behind.
 		if FileAccess.file_exists(session + ".initial"):
 			DirAccess.remove_absolute(session + ".initial")
 		starting = false
 		connected = true
-		Net.host_offline(_team)
-		Net._start(_settings)
+		if networked:
+			for id: int in Net.players:
+				admit_player(id, 0, false)
+			if not _publish_admissions():
+				return
+			if _retries == 0:
+				for id: int in Net.players:
+					if id != 1:
+						Net._start.rpc_id(id, player_settings(id))
+			Net._start(player_settings(1))
+		else:
+			Net.host_offline(_team)
+			Net._start(_settings)
+
+func admit_player(id: int, reclaim := 0, publish := true) -> void:
+	if not networked or not Net.players.has(id):
+		return
+	if not _admissions.has(id):
+		var p: Dictionary = Net.players[id]
+		var admission := {"peer": id, "team": int(p.team), "name": String(p.name), "token": token if id == 1 else Crypto.new().generate_random_bytes(24).hex_encode()}
+		if reclaim > 0:
+			admission["reclaim"] = reclaim
+		_admissions[id] = admission
+	if publish and not _generating:
+		_publish_admissions()
+
+func _publish_admissions() -> bool:
+	_admission_revision += 1
+	if _write(".admissions", {"players": _admissions.values(), "revision": _admission_revision}):
+		return true
+	_fail("Could not update simulation admissions.")
+	return false
+
+func remove_player(id: int) -> void:
+	if _relays.has(id):
+		_relays[id].close()
+		_relays[id].queue_free()
+		_relays.erase(id)
+	_admissions.erase(id)
+	_relay_waiting.erase(id)
+	if networked and not _generating:
+		_publish_admissions()
+
+func player_settings(id: int) -> Dictionary:
+	var result := _settings.duplicate(true)
+	result.players = Net.players.duplicate(true)
+	var config := _connection.duplicate()
+	config.merge({"peer": id, "team": int(Net.players[id].team)})
+	if id == 1:
+		config["token"] = token
+	else:
+		config = {"relay": true, "engine": _connection.engine, "peer": id, "team": config.team}
+	result.simulation_connection = config
+	return result
+
+func open_relay(id: int) -> void:
+	if not networked or not connected or id == 1 or not _admissions.has(id) or _relays.has(id):
+		return
+	_relay_waiting[id] = true
+
+func _open_relays() -> void:
+	if not FileAccess.file_exists(session + ".admitted"):
+		return
+	var applied = JSON.parse_string(FileAccess.get_file_as_string(session + ".admitted"))
+	if not applied is Dictionary or int(applied.get("revision", -1)) != _admission_revision:
+		return
+	for id: int in _relay_waiting.keys():
+		_relay_waiting.erase(id)
+		_start_relay(id)
+
+func _start_relay(id: int) -> void:
+	var relay: Node = GameScripts.load_script("res://scripts/game/simulation_relay.gd").new()
+	add_child(relay)
+	var config := _connection.duplicate()
+	config["token"] = _admissions[id].token
+	var error: Error = relay.start(id, config)
+	if error != OK:
+		relay.queue_free()
+		Net._simulation_failed.rpc_id(id, "Could not connect to the simulation.")
+		return
+	_relays[id] = relay
+
+func relay_packet(id: int, data: PackedByteArray, presence := false) -> void:
+	if _relays.has(id):
+		_relays[id].receive(data, presence)
 
 func _write(suffix: String, value: Dictionary) -> bool:
 	var file := FileAccess.open(session + suffix + ".tmp", FileAccess.WRITE)
@@ -262,13 +368,22 @@ func _fail(message: String) -> void:
 	Net.net_error.emit(message)
 
 func _cleanup(path: String) -> void:
-	for suffix in [".json", ".settings", ".initial", ".server", ".ready", ".stop", ".speed", ".heartbeat"]:
+	for suffix in [".json", ".settings", ".initial", ".server", ".ready", ".stop", ".speed", ".heartbeat", ".admissions", ".admitted"]:
 		if FileAccess.file_exists(path + suffix):
 			DirAccess.remove_absolute(path + suffix)
 
 func stop() -> void:
 	if child:
 		return
+	for relay: Node in _relays.values():
+		relay.close()
+		relay.queue_free()
+	_relays.clear()
+	_admissions.clear()
+	_connection.clear()
+	_relay_waiting.clear()
+	_admission_revision = 0
+	networked = false
 	if is_instance_valid(client):
 		client.close()
 	client = null

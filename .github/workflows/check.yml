@@ -79,6 +79,8 @@ jobs:
           FRONTLINE_GODOT=~/godot/godot cargo +1.94.0 test --locked --release --manifest-path native/Cargo.toml -p frontline_server --test network godot_connects -- --ignored --nocapture
           timeout 240 ~/godot/godot --headless --path . res://tests/local_server_test.tscn 2>&1 | tee local_server.log
           if grep -E "SCRIPT ERROR|Parse Error|failures=[1-9]" local_server.log || ! grep -q "LOCAL_SERVER_TEST failures=0" local_server.log; then exit 1; fi
+          timeout 300 ~/godot/godot --headless --path . res://tests/native_lobby_test.tscn -- --port=7985 2>&1 | tee native_lobby.log
+          if grep -E "SCRIPT ERROR|Parse Error|failures=[1-9]" native_lobby.log || ! grep -q "NATIVE_LOBBY_TEST role=host failures=0" native_lobby.log; then exit 1; fi
           timeout 240 ~/godot/godot --headless --path . -- --native-replay-test --port=7966 2>&1 | tee native_replay.log
           if grep -E "SCRIPT ERROR|Parse Error" native_replay.log || ! grep -q "RUST_REPLAY_TEST failures=0 scripts=0" native_replay.log; then exit 1; fi
 

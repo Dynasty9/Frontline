@@ -92,11 +92,13 @@ impl MatchState {
         let dt = FIXED_DELTA;
         let f = &mut self.field;
         f.geometry.tick_cover(2500)?;
+        phase("terrain_cover");
         f.now += dt;
         self.tick += 1;
         if !f.geometry.navigation.update_hierarchy(1) {
             return Err("navigation update failed");
         }
+        phase("navigation_hierarchy");
         let routes = f.geometry.navigation.process_paths(
             &mut f.actors,
             4,
@@ -127,7 +129,7 @@ impl MatchState {
                 }
             }
         }
-        phase("navigation");
+        phase("navigation_paths");
         f.actors.rebuild_units(&mut f.units)?;
         search.rebuild_actors(&f.actors, &f.geometry.terrain, f.now, |v| {
             (p.shared.vehicle)(v).crew.helicopter

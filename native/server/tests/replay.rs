@@ -82,7 +82,84 @@ fn phase_measurements_do_not_change_commands_events_or_checkpoint() {
     assert_eq!(measured.checkpoint().unwrap(), plain.checkpoint().unwrap());
     let phases = &measured.profile.as_ref().unwrap().phases;
     assert!(phases.len() >= 12 && phases.contains_key("infantry"));
+    for phase in ["terrain_cover", "navigation_hierarchy", "navigation_paths"] {
+        assert!(phases.contains_key(phase));
+    }
     assert!(phases.values().all(|ms| ms.is_finite() && *ms >= 0.));
+}
+
+#[test]
+fn late_join_reinforcements_use_the_first_fob_and_reconnect_does_not_duplicate_them() {
+    let content = Content::bundled().unwrap();
+    let mut simulation = battle(&content);
+    for (x, order) in [(18., 8), (-18., 2)] {
+        let f = &mut simulation.state.field;
+        f.geometry
+            .spawn_structure(
+                &mut f.actors,
+                sim::structure::Structure {
+                    kind: "fob".into(),
+                    team: 0,
+                    built: true,
+                    completed_order: order,
+                    position: Vector3::new(x, 0., 0.),
+                    ..Default::default()
+                },
+                None,
+            )
+            .unwrap();
+    }
+    let count = simulation.state.field.squads.len();
+    let mut recording = Recorder::new(Vec::new(), &simulation, &content).unwrap();
+    recording
+        .step(
+            &mut simulation,
+            &content,
+            &[Input::Join {
+                peer: 31,
+                team: 0,
+                name: "Late commander".into(),
+                reclaim: None,
+            }],
+        )
+        .unwrap();
+    let squads = &simulation.state.field.squads;
+    assert_eq!(squads.len(), count + 2);
+    let mine: Vec<_> = squads.iter().filter(|s| s.owner == 31).collect();
+    assert_eq!(mine.len(), 2);
+    assert!(mine.iter().all(|s| s.order_position.x < 0.));
+    recording
+        .step(&mut simulation, &content, &[Input::Leave { peer: 31 }])
+        .unwrap();
+    recording
+        .step(
+            &mut simulation,
+            &content,
+            &[Input::Join {
+                peer: 41,
+                team: 0,
+                name: "Returned commander".into(),
+                reclaim: Some(31),
+            }],
+        )
+        .unwrap();
+    assert_eq!(simulation.state.field.squads.len(), count + 2);
+    assert_eq!(
+        simulation
+            .state
+            .field
+            .squads
+            .iter()
+            .filter(|s| s.owner == 41)
+            .count(),
+        2
+    );
+    let bytes = recording.finish(&simulation).unwrap();
+    let verified = verify(std::io::Cursor::new(bytes), &content).unwrap();
+    assert_eq!(
+        verified.simulation.checkpoint().unwrap(),
+        simulation.checkpoint().unwrap()
+    );
 }
 fn inputs(tick: u64) -> Vec<Input> {
     match tick {

@@ -507,6 +507,47 @@ impl Simulation {
                             out.commands.push(sim::match_commands::Event::Ownership(
                                 mission.joined(&mut self.state, *peer, returned)?,
                             ));
+                        } else if reclaim.is_none() && *team >= 0 {
+                            let f = &mut self.state.field;
+                            let home = sim::economy::fobs(&f.actors, *team, false)
+                                .min_by_key(|s| s.completed_order)
+                                .map(|s| s.position);
+                            if let Some(home) = home {
+                                let forward = if *team == 0 {
+                                    sim::vector::Vector3::NEG_Z
+                                } else {
+                                    sim::vector::Vector3::Z
+                                };
+                                let side = sim::vector::Vector3::X * f.rng.randf_range(-12., 12.);
+                                let kinds = if *team == 0 {
+                                    ["rifle_squad", "engineer_team"]
+                                } else {
+                                    ["fighter_cell", "digger_team"]
+                                };
+                                for (i, kind) in kinds.iter().enumerate() {
+                                    let (_, events) = f.with_context(
+                                        &p.shared,
+                                        sim::match_state::Upgrades::from(&self.state.rules.economy),
+                                        |w| {
+                                            w.spawn_squad(
+                                                sim::squad_birth::Spawn {
+                                                    team: *team,
+                                                    owner: *peer,
+                                                    position: home
+                                                        + forward * if i == 0 { 11. } else { -10. }
+                                                        + side,
+                                                    destination: (i == 0)
+                                                        .then_some(home + forward * 18. + side),
+                                                },
+                                                content.squad(kind).unwrap(),
+                                            )
+                                        },
+                                    )?;
+                                    out.commands.extend(
+                                        events.into_iter().map(sim::match_commands::Event::Squad),
+                                    );
+                                }
+                            }
                         }
                     }
                     Input::Leave { peer } => {

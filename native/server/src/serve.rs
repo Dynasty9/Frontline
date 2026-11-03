@@ -14,7 +14,7 @@ use serde_json::{json, Value};
 use std::{
     collections::{BTreeMap, VecDeque},
     fs::File,
-    io::{BufReader, BufWriter, Write},
+    io::{BufReader, BufWriter, Read, Write},
     net::SocketAddr,
     path::PathBuf,
     sync::Arc,
@@ -24,6 +24,7 @@ use std::{
 pub struct Config {
     pub bind: SocketAddr,
     pub admissions: Vec<Admission>,
+    pub admission_file: Option<PathBuf>,
     pub max_ticks: Option<u64>,
     pub ready: Option<PathBuf>,
     pub stop: Option<PathBuf>,
@@ -44,35 +45,7 @@ impl Config {
             .ok_or("missing bind address")?
             .parse()
             .map_err(|_| "invalid bind address")?;
-        let mut admissions = vec![];
-        for a in d["players"]
-            .as_array()
-            .filter(|a| !a.is_empty() && a.len() <= 32)
-            .ok_or("invalid admitted players")?
-        {
-            admissions.push(Admission {
-                token: a["token"].as_str().ok_or("missing ticket")?.into(),
-                peer: a["peer"]
-                    .as_i64()
-                    .and_then(|v| v.try_into().ok())
-                    .ok_or("invalid player")?,
-                team: a["team"]
-                    .as_i64()
-                    .and_then(|v| v.try_into().ok())
-                    .ok_or("invalid side")?,
-                name: a["name"].as_str().ok_or("missing player name")?.into(),
-                reclaim: if a["reclaim"].is_null() {
-                    None
-                } else {
-                    Some(
-                        a["reclaim"]
-                            .as_i64()
-                            .and_then(|v| v.try_into().ok())
-                            .ok_or("invalid returning player")?,
-                    )
-                },
-            });
-        }
+        let admissions = Admission::decode(&d["players"])?;
         let max_ticks = if d["ticks"].is_null() {
             None
         } else {
@@ -94,12 +67,10 @@ impl Config {
                     .ok_or_else(|| format!("invalid {key} path"))
             }
         };
-        if admissions.iter().any(|a| !a.valid()) {
-            return Err("invalid admission".into());
-        }
         Ok(Self {
             bind,
             admissions,
+            admission_file: path("admissions")?,
             max_ticks,
             ready: path("ready")?,
             stop: path("stop")?,
@@ -307,6 +278,11 @@ fn publish_events(
                 json_packet(n, slot, net::MESSAGE, m.data.clone())?;
             }
         }
+        for (from, side, data) in &events.deeds {
+            if peer != *from && (team < 0 || team == *side) {
+                json_packet(n, slot, net::DEED, data.clone())?;
+            }
+        }
     }
     Ok(())
 }
@@ -428,13 +404,8 @@ pub fn run(
     let recording = Recorder::new(BufWriter::new(output), &simulation, content)?;
     run_timeline(simulation, content, config, Timeline::Live(recording))
 }
-fn run_timeline(
-    mut simulation: Simulation,
-    content: &Content,
-    config: Config,
-    mut timeline: Timeline,
-) -> Result<(), String> {
-    for a in config.admissions.iter().filter(|_| !timeline.is_replay()) {
+fn validate_admissions(simulation: &Simulation, players: &[Admission]) -> Result<(), String> {
+    for a in players {
         if simulation
             .state
             .owners
@@ -449,6 +420,26 @@ fn run_timeline(
             return Err("admission disagrees with battlefield ownership".into());
         }
     }
+    Ok(())
+}
+fn run_timeline(
+    mut simulation: Simulation,
+    content: &Content,
+    config: Config,
+    mut timeline: Timeline,
+) -> Result<(), String> {
+    if !timeline.is_replay() {
+        validate_admissions(&simulation, &config.admissions)?;
+    }
+    let mut admission_bytes = Vec::new();
+    let absent = simulation
+        .state
+        .owners
+        .players
+        .iter()
+        .filter(|p| p.0 > 0 && !config.admissions.iter().any(|a| a.peer == p.0))
+        .map(|p| Input::Leave { peer: p.0 })
+        .collect::<VecDeque<_>>();
     let mut network = Network::bind(config.bind, config.admissions)?;
     let mut profile = config.profile;
     simulation.profile = profile.as_ref().map(|_| Default::default());
@@ -471,7 +462,11 @@ fn run_timeline(
     println!("SIMULATION_LISTENING {ready}");
     let mut slots = BTreeMap::<usize, i8>::new();
     let mut views = BTreeMap::<i8, View>::new();
-    let mut pending = VecDeque::<Input>::new();
+    let mut pending = if timeline.is_replay() {
+        VecDeque::new()
+    } else {
+        absent
+    };
     let mut render_events = Vec::with_capacity(4);
     let mut start = false;
     let mut next = Instant::now();
@@ -487,6 +482,36 @@ fn run_timeline(
             control_at = Instant::now();
             if !lease_alive(&config.lease, &mut lease_seen, &mut lease_value) {
                 break;
+            }
+            if let Some(path) = config.admission_file.as_ref().filter(|p| p.exists()) {
+                let mut bytes = Vec::new();
+                File::open(path)
+                    .map_err(|e| e.to_string())?
+                    .take(64 * 1024 + 1)
+                    .read_to_end(&mut bytes)
+                    .map_err(|e| e.to_string())?;
+                if bytes.len() > 64 * 1024 {
+                    return Err("admission update exceeds limit".into());
+                }
+                if bytes != admission_bytes {
+                    let data: Value = serde_json::from_slice(&bytes).map_err(|e| e.to_string())?;
+                    let players = Admission::decode(&data["players"])?;
+                    if !timeline.is_replay() {
+                        validate_admissions(&simulation, &players)?;
+                        for &(peer, _) in &simulation.state.owners.players {
+                            if peer > 0 && !players.iter().any(|a| a.peer == peer) {
+                                pending.push_back(Input::Leave { peer });
+                            }
+                        }
+                    }
+                    network.replace_admissions(players)?;
+                    let applied = path.with_extension("admitted");
+                    let temporary = path.with_extension("admitted.tmp");
+                    std::fs::write(&temporary, json!({"revision":data["revision"]}).to_string())
+                        .map_err(|e| e.to_string())?;
+                    std::fs::rename(temporary, applied).map_err(|e| e.to_string())?;
+                    admission_bytes = bytes;
+                }
             }
             if let Some(path) = config.speed.as_ref().filter(|p| p.exists()) {
                 if std::fs::metadata(path).is_ok_and(|m| m.len() <= 1024) {
@@ -507,6 +532,43 @@ fn run_timeline(
         }
         for event in network.poll()? {
             match event {
+                Incoming::Presence { slot, data } => {
+                    if timeline.is_replay() {
+                        continue;
+                    }
+                    let Some(a) = network.peer(slot) else {
+                        continue;
+                    };
+                    let (peer, team) = (a.peer, a.team);
+                    let mut bytes = peer.to_le_bytes().to_vec();
+                    bytes.extend_from_slice(&data);
+                    for (&target, &side) in &slots {
+                        if target != slot
+                            && (side < 0 || side == team)
+                            && network
+                                .unreliable(target, net::PRESENCE, simulation.state.tick, &bytes)
+                                .is_err()
+                        {
+                            network.close(target);
+                        }
+                    }
+                }
+                Incoming::Mark { slot, data } => {
+                    if timeline.is_replay() {
+                        continue;
+                    }
+                    let Some(a) = network.peer(slot) else {
+                        continue;
+                    };
+                    let (peer, team) = (a.peer, a.team);
+                    let (kind, message) =
+                        crate::co_command::project(&simulation, peer, team, &data);
+                    for (&target, &side) in &slots {
+                        if target != slot && (side < 0 || side == team) {
+                            json_packet(&mut network, target, kind, message.clone())?;
+                        }
+                    }
+                }
                 Incoming::Report { slot } => {
                     if let Some(&team) = slots.get(&slot) {
                         let team = if simulation.state.victory.winner >= 0 {

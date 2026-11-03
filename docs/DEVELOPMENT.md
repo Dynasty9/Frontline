@@ -4,11 +4,11 @@ How the code is laid out, and the command-line modes used to test it. See also [
 
 ## Rust simulation and native builds
 
-Desktop solo play runs the authoritative simulation in `frontline-server` while
+Desktop solo and hosted multiplayer run the authoritative simulation in `frontline-server` while
 Godot handles visuals and interaction. `native/core` contains gameplay state and
 algorithms; `native/server` connects the fixed tick, commanders, missions, socket
 transport and command recordings. `native/src` supplies map-generation bindings
-and parity tests. Multiplayer lobby and browser migration are still in progress;
+and parity tests. Browser migration is still in progress;
 see [RUST_SIMULATION.md](RUST_SIMULATION.md) for the current boundary and checks.
 
 Install Rust 1.94.0, run `python tools/build_native.py`, then re-import Godot.
@@ -22,7 +22,12 @@ sessions bind loopback and require a random ticket and matching simulation build
 Logs are under `user://local_servers/`; command recordings are written to
 `user://replays/`. Closing the session flushes the recording. Open a `.flrp` through the Replays menu or `--replay=PATH.flrp`.
 Verify it without Godot with `frontline-server verify PATH.flrp`. `FRONTLINE_SERVER` can select a binary in a
-source checkout. The public `--host` path is still awaiting migration.
+source checkout. The public `--host` path keeps the existing ENet lobby and forwards
+remote players' simulation packets through that port. The host's renderer connects
+directly to the same Rust server over loopback. Lobby credentials authorize late
+joins and reclaim ownership after reconnects; gameplay never runs in the relay.
+`res://tests/native_lobby_test.tscn` exercises this complete connection path,
+including team-only map marks and independent verification of its recording.
 
 Run a measured 500-unit case with:
 

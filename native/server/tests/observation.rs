@@ -265,6 +265,8 @@ fn render_events_preserve_visibility_impulses_and_private_messages_without_chang
     use sim::match_commands::{Audience, Event, MessageKind};
     let c = Content::bundled().unwrap();
     let mut s = map(&c, vec![soldier(1, 0), soldier(2, 1)]);
+    s.state.owners.connect(7, 0).unwrap();
+    s.names.insert(7, "Commander".into());
     replace(&mut s, |a| {
         if let Actor::Soldier(m) = a {
             if m.identity.id == 1 {
@@ -277,6 +279,18 @@ fn render_events_preserve_visibility_impulses_and_private_messages_without_chang
     let frame = frontline_server::simulation::Frame {
         tick: 1,
         commands: vec![
+            Event::Deed {
+                peer: 7,
+                text: "Training a squad".into(),
+                position: Vector3::X,
+                major: false,
+            },
+            Event::Deed {
+                peer: -1,
+                text: "AI training".into(),
+                position: Vector3::X,
+                major: false,
+            },
             Event::Message {
                 audience: Audience::Peer(7),
                 kind: MessageKind::Warning,
@@ -307,6 +321,14 @@ fn render_events_preserve_visibility_impulses_and_private_messages_without_chang
     };
     let before = s.checkpoint().unwrap();
     let out = Events::collect(&s, &frame);
+    assert_eq!(
+        out.deeds,
+        vec![(
+            7,
+            0,
+            serde_json::json!([7, "Training a squad", [1., 0., 0.], false])
+        )]
+    );
     assert_eq!(out.effects.len(), 2);
     assert_eq!(out.effects[0].mask, 2);
     assert!(!out.effects[0].reliable);

@@ -184,7 +184,7 @@ func queue_cells(cells: PackedInt32Array) -> void:
 				_queue.append(i)
 
 
-func install_landform(samples: PackedFloat32Array) -> void:
+func install_landform(samples: PackedFloat32Array, surface_follows := false) -> void:
 	if _native:
 		var valid: bool = _native.set_landform(samples)
 		assert(valid, "Invalid geology samples")
@@ -192,7 +192,8 @@ func install_landform(samples: PackedFloat32Array) -> void:
 	landform.peak = 0.0
 	for h in samples:
 		landform.peak = maxf(landform.peak, h)
-	if samples.is_empty():
+	# Socket baselines already contain the finished surface; the native core derives slopes on import.
+	if samples.is_empty() or surface_follows:
 		return
 	slopes.resize(N * N)
 	for z in N:
@@ -230,6 +231,8 @@ func install_landform(samples: PackedFloat32Array) -> void:
 
 
 func slope_at(p: Vector3) -> float:
+	if _native:
+		return float(_native.query(p, Vector3.ZERO, 12, false, false))
 	return slopes[idx_of(p)] if not slopes.is_empty() else 0.0
 
 

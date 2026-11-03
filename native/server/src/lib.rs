@@ -1,4 +1,5 @@
 pub mod client_command;
+pub mod co_command;
 pub mod commander;
 pub mod compression;
 pub mod content;

@@ -19,6 +19,7 @@ pub struct Events {
     pub effects: Vec<Effect>,
     pub messages: Vec<Message>,
     pub properties: Vec<(u32, u8, Value)>,
+    pub deeds: Vec<(i32, i8, Value)>,
 }
 fn p(v: Vector3) -> Value {
     json!(v.to_array())
@@ -139,7 +140,21 @@ impl Events {
                 sim::placement_world::Event::Squad(e) => self.movement(s, e),
                 sim::placement_world::Event::Placed { .. } => {}
             },
-            E::Ownership(_) | E::Deed { .. } => {}
+            E::Deed {
+                peer,
+                text,
+                position,
+                major,
+            } => {
+                if *peer > 0 {
+                    self.deeds.push((
+                        *peer,
+                        s.state.owners.team_of(*peer),
+                        json!([peer, text, p(*position), major]),
+                    ));
+                }
+            }
+            E::Ownership(_) => {}
         }
     }
     fn death(&mut self, s: &Simulation, id: u32) {
