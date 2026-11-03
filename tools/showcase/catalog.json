@@ -2825,6 +2825,78 @@
       }
     },
     {
+      "entry": "changelog/unreleased/alpine-perspective.md",
+      "summary": "Optional alpine haze takes on the sky colour and settles lightly into lower valleys.",
+      "medium": "still",
+      "stage": "native-media",
+      "rationale": "Matched wide and closer native renders; PR places the unaltered before and after images side by side. Subtle differences are explicitly identified.",
+      "source_ref": "codex/alpine-perspective",
+      "sources": [
+        {
+          "file": "changelog/unreleased/alpine-perspective/before.jpg",
+          "sha256": "f329ad746630d6675d333cc9915804de68180026896cd6bc86985841887fa1a3",
+          "caption": "before"
+        },
+        {
+          "file": "changelog/unreleased/alpine-perspective/after.jpg",
+          "sha256": "bfe4017f26fd27ac5cd980ae4f97ff5c0cd1e309d92e3c40b5f7787c78de80f9",
+          "caption": "after"
+        },
+        {
+          "file": "changelog/unreleased/alpine-perspective/close-before.jpg",
+          "sha256": "aef5c10c118f85a5407e6689a3fae6e48f69b7d9c72f07f6e9c35ffddd2611a6",
+          "caption": "Matching closer camera: before"
+        },
+        {
+          "file": "changelog/unreleased/alpine-perspective/close-after.jpg",
+          "sha256": "b7d67da34ae9649a9879d38b33d257a434ff2bec78316ee37fb8919364d5baa7",
+          "caption": "Matching closer camera: after"
+        },
+        {
+          "file": "changelog/unreleased/alpine-perspective/target-before.jpg",
+          "sha256": "25e91f2dfaa8c61194181c5fbfb54fe1e2c0a8d2d8993751773e21b6fce7be84",
+          "caption": "before - Watch the tone and separation of the distant ridges in hazy weather."
+        },
+        {
+          "file": "changelog/unreleased/alpine-perspective/target-after.jpg",
+          "sha256": "97c4429f0b5388f0d19e06c77bdc7e60c590d1da86d8442cea4abffdaa381d88",
+          "caption": "after - Watch the tone and separation of the distant ridges in hazy weather."
+        },
+        {
+          "file": "changelog/unreleased/alpine-perspective/compare.gif",
+          "sha256": "8c84b4ab7fca63f1e122bec0799b91787f243ef3fc3933603ab72812138e8317",
+          "caption": "Two-second BEFORE/AFTER toggle; original rendered scene unchanged, label bar added above it."
+        }
+      ],
+      "output": null,
+      "title": "Separate distant mountain ranges with sky haze",
+      "version": "unreleased",
+      "kind": "improved",
+      "capture": {
+        "before_ref": "322c5a4",
+        "after_ref": "codex/alpine-perspective",
+        "command": "godot --main-pack PACK --resolution 1600x900 -- --aivai --seed=3 --offscreen --nohud --set=perf:0 --mood=day --preset=high --focus=0,0 --zoom=900 --pitch=-22 --cam-yaw=0.7 --screenshot=OUTPUT --shot-at=2 --quit-after=3",
+        "close": "godot --main-pack PACK --resolution 1600x900 -- --aivai --seed=3 --offscreen --nohud --set=perf:0 --mood=day --preset=high --focus=250,250 --zoom=350 --pitch=-28 --cam-yaw=0.7 --screenshot=OUTPUT --shot-at=2 --quit-after=3",
+        "targeted": {
+          "focus": "-200,-200",
+          "zoom": 450,
+          "pitch": -20,
+          "yaw": 0.7,
+          "mood": "hazy",
+          "cue": "Watch the tone and separation of the distant ridges in hazy weather.",
+          "seed": 3,
+          "resolution": "1600x900",
+          "preset": "high",
+          "shot_at": 2,
+          "quit_after": 3,
+          "before_pack": "weathered.pck",
+          "after_pack": "alpine-perspective.pck",
+          "renderer": "Forward+",
+          "gif": "Same full native frames with separate label bar; common 256-colour palette; no resizing or contrast adjustment; two seconds per frame."
+        }
+      }
+    },
+    {
       "entry": "changelog/unreleased/cliff-runoff.md",
       "summary": "Narrow mineral stains run down exposed cliffs, interrupted by ledges and changes in rock type.",
       "medium": "still",
