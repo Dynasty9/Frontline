@@ -3563,6 +3563,69 @@
         "compatibility": "Target after with --rendering-method gl_compatibility",
         "command": "godot --main-pack PACK --resolution 1600x900 -- --aivai --seed=3 --offscreen --nohud --set=perf:0 --preset=high --mood=MOOD --focus=FOCUS --zoom=ZOOM --pitch=PITCH --cam-yaw=0.7 --screenshot=OUTPUT --shot-at=2 --quit-after=3"
       }
+    },
+    {
+      "entry": "changelog/unreleased/realism-06-seepage.md",
+      "summary": "Sheltered runoff channels darken and develop a restrained sheen while exposed rock remains dry.",
+      "medium": "still",
+      "stage": "native-media",
+      "rationale": "Isolate this refinement against its immediate parent, with a targeted view and a distant view.",
+      "source_ref": "codex/realism-06-seepage",
+      "sources": [
+        {
+          "file": "changelog/unreleased/realism-06-seepage/target-before.jpg",
+          "sha256": "b8c6395d810e7412c83d73c5a64e9720565e012cfef343f9327ebb50f63ef58e",
+          "caption": "target before"
+        },
+        {
+          "file": "changelog/unreleased/realism-06-seepage/target-after.jpg",
+          "sha256": "91bc3519e5dd7bf33a6c5607d2a7629ef33f909c7662278cd725425f40e274cf",
+          "caption": "target after"
+        },
+        {
+          "file": "changelog/unreleased/realism-06-seepage/wide-before.jpg",
+          "sha256": "e54beed0d77c3484c571e05b6e4fb2951367471113521335b8a9b605cd7483b1",
+          "caption": "wide before"
+        },
+        {
+          "file": "changelog/unreleased/realism-06-seepage/wide-after.jpg",
+          "sha256": "e83a95e40c93578c61e69bf022e1fd5d90d4a689999e130b5c0985839bb58669",
+          "caption": "wide after"
+        },
+        {
+          "file": "changelog/unreleased/realism-06-seepage/target-compat.jpg",
+          "sha256": "6abfd5cd6c79953fcd7d41ccccf07ddf733433f5a66b6f72624049b9fe085f54",
+          "caption": "target compat"
+        },
+        {
+          "file": "changelog/unreleased/realism-06-seepage/compare.gif",
+          "sha256": "60515ea84cc6e4ca9f9555a5dd97ab5571cf7e9e16e3366bdab0eb4afd4b8458",
+          "caption": "Native frames, separate labels, shared palette, 2.5 seconds each."
+        }
+      ],
+      "output": null,
+      "title": "Give damp cliff streaks a wet surface response",
+      "version": "unreleased",
+      "kind": "improved",
+      "capture": {
+        "before_ref": "640191c35a6c2af6f64fe512eaf16533d964df43",
+        "after_ref": "codex/realism-06-seepage",
+        "before_pack": "realism-05.pck",
+        "after_pack": "realism-06.pck",
+        "seed": 3,
+        "preset": "high",
+        "mood": "day",
+        "resolution": "1600x900",
+        "focus": "300,300",
+        "zoom": 100,
+        "pitch": -28,
+        "yaw": 0.7,
+        "shot_at": 2,
+        "quit_after": 3,
+        "wide": "focus 0,0; zoom 900; pitch -22; yaw 0.7",
+        "compatibility": "Target after with --rendering-method gl_compatibility",
+        "command": "godot --main-pack PACK --resolution 1600x900 -- --aivai --seed=3 --offscreen --nohud --set=perf:0 --preset=high --mood=MOOD --focus=FOCUS --zoom=ZOOM --pitch=PITCH --cam-yaw=0.7 --screenshot=OUTPUT --shot-at=2 --quit-after=3"
+      }
     }
   ],
   "layout_capture": {
