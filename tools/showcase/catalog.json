@@ -3752,6 +3752,69 @@
         "compatibility": "Target after with --rendering-method gl_compatibility",
         "command": "godot --main-pack PACK --resolution 1600x900 -- --aivai --seed=3 --offscreen --nohud --set=perf:0 --preset=high --mood=MOOD --focus=FOCUS --zoom=ZOOM --pitch=PITCH --cam-yaw=0.7 --screenshot=OUTPUT --shot-at=2 --quit-after=3"
       }
+    },
+    {
+      "entry": "changelog/unreleased/realism-09-meadow-mosaic.md",
+      "summary": "Connected dry grass and richer moss patches replace evenly green valley floors.",
+      "medium": "still",
+      "stage": "native-media",
+      "rationale": "Isolate this refinement against its immediate parent, with a targeted view and a distant view.",
+      "source_ref": "codex/realism-09-meadow-mosaic",
+      "sources": [
+        {
+          "file": "changelog/unreleased/realism-09-meadow-mosaic/target-before.jpg",
+          "sha256": "a53ec830a472a2bb08b9d279d8b7c6585987135e79a1e94169c203881861fcbf",
+          "caption": "target before"
+        },
+        {
+          "file": "changelog/unreleased/realism-09-meadow-mosaic/target-after.jpg",
+          "sha256": "c910dc630777a1699150d2f7a715dc492298569ad00400f61b4b4a2fb0f1ec38",
+          "caption": "target after"
+        },
+        {
+          "file": "changelog/unreleased/realism-09-meadow-mosaic/wide-before.jpg",
+          "sha256": "bc222d8d932df5fd1cea476f5db7177e01e90c295ac6d3b156e421efc5834fa2",
+          "caption": "wide before"
+        },
+        {
+          "file": "changelog/unreleased/realism-09-meadow-mosaic/wide-after.jpg",
+          "sha256": "0bc7728710eac4a51eb19f6e057e5460d8ef035288834fab89ee824b83d49f63",
+          "caption": "wide after"
+        },
+        {
+          "file": "changelog/unreleased/realism-09-meadow-mosaic/target-compat.jpg",
+          "sha256": "0644c0737f85ca1eccde3052b5fefc2d077b93eb61f440a585d03404e51efd5d",
+          "caption": "target compat"
+        },
+        {
+          "file": "changelog/unreleased/realism-09-meadow-mosaic/compare.gif",
+          "sha256": "31ee0354d94ead3912a419f4eeef42b4a2ff5e55917bfad80ad52cc6f034c409",
+          "caption": "Native frames, separate labels, shared palette, 2.5 seconds each."
+        }
+      ],
+      "output": null,
+      "title": "Make meadow colour follow broad soil pockets",
+      "version": "unreleased",
+      "kind": "improved",
+      "capture": {
+        "before_ref": "c322cea5c9d238c733f8b0380aaf537b04eea554",
+        "after_ref": "codex/realism-09-meadow-mosaic",
+        "before_pack": "realism-08.pck",
+        "after_pack": "realism-09.pck",
+        "seed": 3,
+        "preset": "high",
+        "mood": "day",
+        "resolution": "1600x900",
+        "focus": "0,0",
+        "zoom": 250,
+        "pitch": -45,
+        "yaw": 0.7,
+        "shot_at": 2,
+        "quit_after": 3,
+        "wide": "focus 0,0; zoom 900; pitch -22; yaw 0.7",
+        "compatibility": "Target after with --rendering-method gl_compatibility",
+        "command": "godot --main-pack PACK --resolution 1600x900 -- --aivai --seed=3 --offscreen --nohud --set=perf:0 --preset=high --mood=MOOD --focus=FOCUS --zoom=ZOOM --pitch=PITCH --cam-yaw=0.7 --screenshot=OUTPUT --shot-at=2 --quit-after=3"
+      }
     }
   ],
   "layout_capture": {
