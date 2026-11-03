@@ -1260,6 +1260,11 @@ void fragment() {
 	vec3 alpine = mix(moss, rock, exposed);
 	float clean = (1.0 - wm.g) * (1.0 - wm.a) * (1.0 - clamp(bowl, 0.0, 1.0));
 	col = mix(col, alpine, clean);
+	// Wave-washed rocky margins retain gravel above the wet line instead of uniform sand.
+	float shore_stone = wm.g * wm.b * (1.0 - wm.a) * smoothstep(0.18, 0.65, patch + slope * 0.4);
+	shore_stone *= 1.0 - step(9999.0, snow_line);
+	vec3 gravel = scree_sample.rgb * mix(vec3(0.95, 0.92, 0.84), vec3(0.36, 0.40, 0.42), wet_sand);
+	col = mix(col, gravel, shore_stone * 0.85);
 	// Connected snowfields collect in sheltered bowls, leaving dark ribs and cliff faces.
 	float local_snow_line = max(abs(p.x), abs(p.y)) >= __MAP_HALF__ ? max(150.0, snow_line * 1.5) : snow_line;
 	float snow_field = (geology - local_snow_line) / 35.0 + cavity * 0.8 - geometric.x * 0.25 + (d1 - 0.5) * 0.3;
@@ -1299,6 +1304,7 @@ void fragment() {
 	rock_damp *= exposed * clean * (1.0 - snow);
 	ROUGHNESS = mix(ROUGHNESS, 0.28, rock_damp);
 	ROUGHNESS = mix(ROUGHNESS, 0.55, wet * 0.5);
+	ROUGHNESS = mix(ROUGHNESS, mix(0.92, 0.3, wet_sand), shore_stone);
 	ROUGHNESS = mix(ROUGHNESS, 0.45, max(wm.a * 0.8, wet_sand * 0.6));
 	ROUGHNESS = mix(ROUGHNESS, 0.16, puddle);
 	SPECULAR = mix(0.25, 0.38, wet);
@@ -1318,6 +1324,7 @@ void fragment() {
 	n = surface_relief(n, mineral * 0.28, exposed * clean * (1.0 - snow) * smoothstep(0.3, 1.0, slope));
 	n = normalize(mix(n, geometric, snow * 0.9));
 	n = surface_relief(n, snow_ripple * 0.065 + scree_sample.a * 0.025, snow);
+	n = normalize(mix(n, scree_n, shore_stone * 0.8));
 	n = normalize(mix(n, vec3(0.0, 1.0, 0.0), puddle * 0.9));
 	NORMAL = normalize((VIEW_MATRIX * vec4(n, 0.0)).xyz);
 }

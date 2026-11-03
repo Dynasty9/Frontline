@@ -3815,6 +3815,69 @@
         "compatibility": "Target after with --rendering-method gl_compatibility",
         "command": "godot --main-pack PACK --resolution 1600x900 -- --aivai --seed=3 --offscreen --nohud --set=perf:0 --preset=high --mood=MOOD --focus=FOCUS --zoom=ZOOM --pitch=PITCH --cam-yaw=0.7 --screenshot=OUTPUT --shot-at=2 --quit-after=3"
       }
+    },
+    {
+      "entry": "changelog/unreleased/realism-10-shore-gravel.md",
+      "summary": "Coastal margins transition through exposed gravel and darker wet stone instead of a uniformly sandy strip.",
+      "medium": "still",
+      "stage": "native-media",
+      "rationale": "Isolate this refinement against its immediate parent, with a targeted view and a distant view.",
+      "source_ref": "codex/realism-10-shore-gravel",
+      "sources": [
+        {
+          "file": "changelog/unreleased/realism-10-shore-gravel/target-before.jpg",
+          "sha256": "08443252dba77afd6706d487986807efaab40aa2b6b0372b3101a78210bb6c4f",
+          "caption": "target before"
+        },
+        {
+          "file": "changelog/unreleased/realism-10-shore-gravel/target-after.jpg",
+          "sha256": "9c12fac7dfb8adc56d052826f83560e6cd3edefa6057f8307f3c3562de344628",
+          "caption": "target after"
+        },
+        {
+          "file": "changelog/unreleased/realism-10-shore-gravel/wide-before.jpg",
+          "sha256": "0bc7728710eac4a51eb19f6e057e5460d8ef035288834fab89ee824b83d49f63",
+          "caption": "wide before"
+        },
+        {
+          "file": "changelog/unreleased/realism-10-shore-gravel/wide-after.jpg",
+          "sha256": "5dee3a2f91ad37496061fc3d55d2f7432c1aca36a493e4cc0d4617bf273d76a1",
+          "caption": "wide after"
+        },
+        {
+          "file": "changelog/unreleased/realism-10-shore-gravel/target-compat.jpg",
+          "sha256": "34dd445078854105ce50fd3b84f3830b60db9a52630bad7016a8bc2604315bed",
+          "caption": "target compat"
+        },
+        {
+          "file": "changelog/unreleased/realism-10-shore-gravel/compare.gif",
+          "sha256": "96d35293a814a40d7b652c1ace674d38dd0f262c61704cdbe86411d0618f6928",
+          "caption": "Native frames, separate labels, shared palette, 2.5 seconds each."
+        }
+      ],
+      "output": null,
+      "title": "Blend gravel into alpine shorelines",
+      "version": "unreleased",
+      "kind": "improved",
+      "capture": {
+        "before_ref": "05acc28e84f5306a0b2c30713f7101fd4bb990a5",
+        "after_ref": "codex/realism-10-shore-gravel",
+        "before_pack": "realism-09.pck",
+        "after_pack": "realism-10.pck",
+        "seed": 3,
+        "preset": "high",
+        "mood": "day",
+        "resolution": "1600x900",
+        "focus": "400,0",
+        "zoom": 150,
+        "pitch": -45,
+        "yaw": 0.7,
+        "shot_at": 2,
+        "quit_after": 3,
+        "wide": "focus 0,0; zoom 900; pitch -22; yaw 0.7",
+        "compatibility": "Target after with --rendering-method gl_compatibility",
+        "command": "godot --main-pack PACK --resolution 1600x900 -- --aivai --seed=3 --offscreen --nohud --set=perf:0 --preset=high --mood=MOOD --focus=FOCUS --zoom=ZOOM --pitch=PITCH --cam-yaw=0.7 --screenshot=OUTPUT --shot-at=2 --quit-after=3"
+      }
     }
   ],
   "layout_capture": {
