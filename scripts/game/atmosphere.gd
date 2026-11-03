@@ -1024,6 +1024,7 @@ uniform float sea_x = 1e9;
 varying vec3 wpos;
 varying float puddle;
 varying float terrain_sun;
+varying float rock_damp;
 
 float backdrop(vec2 p) {
 	float edge = max(abs(p.x), abs(p.y)) - __MAP_HALF__;
@@ -1208,6 +1209,9 @@ void fragment() {
 	float runoff = smoothstep(0.50, 0.68, texture(detail_tex, runoff_uv).r);
 	runoff *= smoothstep(0.55, 1.2, slope) * mix(0.25, 0.85, patch);
 	rock *= mix(vec3(1.0), vec3(0.56, 0.61, 0.63), runoff);
+	rock_damp = runoff * shelter * smoothstep(0.5, 1.2, slope);
+	rock_damp *= 1.0 - smoothstep(snow_line * 0.75, snow_line * 1.1, geology);
+	rock *= mix(vec3(1.0), vec3(0.48, 0.55, 0.58), rock_damp);
 	float rock_height = mix(rock_sample.a, scree_sample.a, scree * 0.7);
 	float grass_detail = dot(moss_sample.rgb, vec3(0.2126, 0.7152, 0.0722));
 	float alpine_soil = clamp(0.52 + (habitat_bake.g - 0.5) * 1.3 + geometric.z * 0.18 - slope * 0.14, 0.0, 1.0);
@@ -1276,6 +1280,8 @@ void fragment() {
 	EMISSION = air_color * aerial * 0.65;
 	ROUGHNESS = mix(mix(0.96, 0.82, dirt_m), clamp(material_data.y, 0.55, 1.0), clean);
 	ROUGHNESS = mix(ROUGHNESS, clamp(mix(0.68, 0.94, macro) + snow_ripple * 0.06, 0.6, 1.0), snow);
+	rock_damp *= exposed * clean * (1.0 - snow);
+	ROUGHNESS = mix(ROUGHNESS, 0.28, rock_damp);
 	ROUGHNESS = mix(ROUGHNESS, 0.55, wet * 0.5);
 	ROUGHNESS = mix(ROUGHNESS, 0.45, max(wm.a * 0.8, wet_sand * 0.6));
 	ROUGHNESS = mix(ROUGHNESS, 0.16, puddle);
@@ -1312,10 +1318,11 @@ void light() {
 	}
 	float ndl = clamp(dot(NORMAL, LIGHT), 0.0, 1.0);
 	DIFFUSE_LIGHT += ndl * ATTENUATION * LIGHT_COLOR / PI * cloud;
-	if (wet > 0.0) {
+	// shortcut: Compatibility produces bright facets with this seepage lobe; retain colour and roughness until its lighting path is fixed.
+	if (wet > 0.0 || (!OUTPUT_IS_SRGB && rock_damp > 0.0)) {
 		vec3 hv = normalize(LIGHT + VIEW);
 		float sp = pow(clamp(dot(NORMAL, hv), 0.0, 1.0), mix(16.0, 60.0, puddle));
-		SPECULAR_LIGHT += sp * ATTENUATION * LIGHT_COLOR * wet * (0.03 + puddle * 0.2) * cloud;
+		SPECULAR_LIGHT += sp * ATTENUATION * LIGHT_COLOR * (wet * (0.03 + puddle * 0.2) + (OUTPUT_IS_SRGB ? 0.0 : rock_damp * 0.045)) * cloud;
 	}
 }
 """
