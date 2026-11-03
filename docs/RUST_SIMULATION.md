@@ -773,3 +773,40 @@ An extra typed squad-summary object was also rejected after measuring slower
 than the original; the retained change uses locals without that allocation.
 Evidence: `build/minimap-background-comparison.json` and
 `build/squad-summary-bench.log`.
+
+### Deterministic route work budget
+
+Finer timing separated endpoint attachment, graph search and cleanup. In 1,705
+routes, search averaged 0.466 ms and reached 2.938 ms p99, versus 0.139/0.617 ms
+for attachment and 0.029/0.111 ms for cleanup. Up to four expensive searches could
+land in one tick. Production ticks now finish at most four requests but start no
+further search after 3,000 graph expansions. The current search always finishes;
+this is not a hard time limit. Requests remain in their existing order. Cheap
+cached corridors correctly reset the previous search's expansion count.
+
+The decision uses deterministic work, never measured elapsed time. Delayed route
+completion can change later battle outcomes, so this is an intentional scheduling
+change requiring the matching replay build, not a claim of identical gameplay
+state. Zero-budget, queue-order, cached-route and save/restore checks pass,
+including profiling enabled on only one restored copy. All 140 existing numeric
+contracts still pass without changed expected bytes.
+
+In the same 2,100-tick diagnostic ABBA battle, navigation p99 fell from
+7.47/8.84 ms to 5.15/5.30 ms. Total tick p99 fell from 12.57/15.08 ms to
+10.78/11.07 ms, with means 4.599/4.688 ms before and 4.539/4.509 ms after.
+Maximum ticks were 20.16/21.06 ms before and 27.43/26.06 ms after; outliers remain.
+The two changed runs produced the same canonical state hash
+`1d4ec2cc7c1f4771b747269e97173c388ace447c2352089003fd0ad72351e930`;
+the two controls retained the earlier `736d4bdb...` state. This simulation-only
+comparison does not establish rendered FPS. Evidence: `build/nav-detail-profile.log`
+and `build/path-budget-comparison.json`.
+
+A separate queue diagnostic tracks how long each actor's current request remains
+pending, including requests later replaced or cancelled. Across the 2,100 ticks,
+median pending duration stayed at one tick; p99 increased from 29 to 37 ticks
+(0.48 to 0.62 seconds), maximum from 41 to 45 ticks (0.68 to 0.75 seconds).
+Mean pending requests increased from 6.08 to 7.30, with the same peak of 134;
+five/eight remained pending at the end. These include startup orders and are
+not measurements of network input latency. Evidence: `build/path-budget-wait-before.json`
+and `build/path-budget-wait.json`. Commander, mission and replay regression suites
+pass, including independent verifier rejection of a changed conclusion.

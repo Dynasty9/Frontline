@@ -106,13 +106,31 @@ impl NavigationScene {
         rng: &mut SimulationRandom,
         ground: Ground<'_>,
     ) -> Result<Vec<Completion>, &'static str> {
+        self.process_paths_with_work_limit(actors, max_jobs, u64::MAX, now, rng, ground)
+    }
+
+    /// Finish the current search, then leave excess work queued for the next tick.
+    /// Node counts, rather than elapsed time, keep scheduling reproducible on every machine.
+    pub fn process_paths_with_work_limit(
+        &mut self,
+        actors: &mut Actors,
+        max_jobs: usize,
+        max_expanded: u64,
+        now: f64,
+        rng: &mut SimulationRandom,
+        ground: Ground<'_>,
+    ) -> Result<Vec<Completion>, &'static str> {
         if !ground.valid_for(self.planner.side()) || max_jobs > 131_072 || !clock(now) {
             return Err("invalid path completion budget");
         }
         let mut finished = vec![];
+        if max_expanded == 0 {
+            return Ok(finished);
+        }
         let mut count = 0;
+        let mut expanded = 0;
         self.planner.begin_batch();
-        while count < max_jobs {
+        while count < max_jobs && expanded < max_expanded {
             let Some(job) = self.planner.next_job() else {
                 break;
             };
@@ -146,6 +164,7 @@ impl NavigationScene {
                 ground,
             );
             count += 1;
+            expanded += graph.last_expanded;
             if path.is_empty() && graph.has_work() {
                 if !self.planner.request(job) {
                     return Err("pending path lost its queue slot");

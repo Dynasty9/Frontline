@@ -98,9 +98,10 @@ impl MatchState {
             return Err("navigation update failed");
         }
         phase("navigation_hierarchy");
-        let routes = f.geometry.navigation.process_paths(
+        let routes = f.geometry.navigation.process_paths_with_work_limit(
             &mut f.actors,
             4,
+            3000,
             f.now,
             &mut f.rng,
             crate::traversal::Ground::new(&f.geometry.terrain, &f.geometry.deck),

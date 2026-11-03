@@ -384,3 +384,91 @@ fn tracked_requests_keep_their_class_through_queue_and_restore() {
     assert_eq!(actors.checkpoint().unwrap(), resumed.checkpoint().unwrap());
     assert_eq!(nav.checkpoint(), copy.checkpoint());
 }
+
+#[test]
+fn search_work_limit_defers_in_order_and_restores_without_profile_or_cache_timing() {
+    let (terrain, mut nav) = navigation();
+    let ground = frontline_core::traversal::Ground::new(&terrain, &[]);
+    let mut rng = SimulationRandom::new(137);
+    let mut entries = vec![];
+    for id in 1..=3 {
+        let mut s = soldier(id, -13.0);
+        let order = s.go_to(Vector3::X * 13.0, Goal::Slot, 0).unwrap();
+        assert_eq!(
+            nav.submit_infantry(&mut s, order, 0., &mut rng, ground)
+                .unwrap(),
+            None
+        );
+        entries.push(Actor::Soldier(Box::new(s)));
+    }
+    let mut actors = Actors::from_entries(10, entries).unwrap();
+    let queued = nav.checkpoint();
+    let state = actors.checkpoint().unwrap();
+    let cursor = rng.state();
+    assert!(nav
+        .process_paths_with_work_limit(&mut actors, 4, 0, 1., &mut rng, ground)
+        .unwrap()
+        .is_empty());
+    assert!(
+        nav.checkpoint() == queued,
+        "A zero work budget must leave the queue unchanged"
+    );
+    assert_eq!(actors.checkpoint().unwrap(), state);
+    assert_eq!(rng.state(), cursor);
+    let first = nav
+        .process_paths_with_work_limit(&mut actors, 4, 1, 1., &mut rng, ground)
+        .unwrap();
+    assert_eq!(
+        first,
+        [Completion::Infantry {
+            id: 1,
+            finish: PathFinish::Following
+        }]
+    );
+    assert!(nav.infantry.last_expanded > 0);
+    assert!(actors.soldier(2).unwrap().orders.pending_path);
+    assert!(actors.soldier(3).unwrap().orders.pending_path);
+    let mut restored = NavigationScene::restore(&nav.checkpoint()).unwrap();
+    let mut restored_actors = Actors::restore(&actors.checkpoint().unwrap()).unwrap();
+    let mut restored_rng = rng;
+    restored.planner.profile = Some(Default::default());
+    let next = nav
+        .process_paths_with_work_limit(&mut actors, 4, 1, 2., &mut rng, ground)
+        .unwrap();
+    assert_eq!(
+        next,
+        [
+            Completion::Infantry {
+                id: 2,
+                finish: PathFinish::Following
+            },
+            Completion::Infantry {
+                id: 3,
+                finish: PathFinish::Following
+            },
+        ]
+    );
+    assert_eq!(
+        nav.infantry.last_expanded, 0,
+        "Cached corridors must not reuse the preceding search's work count"
+    );
+    assert_eq!(
+        next,
+        restored
+            .process_paths_with_work_limit(
+                &mut restored_actors,
+                4,
+                1,
+                2.,
+                &mut restored_rng,
+                ground
+            )
+            .unwrap()
+    );
+    assert_eq!(nav.checkpoint(), restored.checkpoint());
+    assert_eq!(
+        actors.checkpoint().unwrap(),
+        restored_actors.checkpoint().unwrap()
+    );
+    assert_eq!(rng.state(), restored_rng.state());
+}

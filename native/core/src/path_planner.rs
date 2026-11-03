@@ -356,6 +356,7 @@ impl PathPlanner {
         tracked: bool,
         ground: Ground<'_>,
     ) -> Vec<Vector3> {
+        graph.last_expanded = 0;
         if let Some(p) = &mut self.profile {
             p.queries += 1;
         }
