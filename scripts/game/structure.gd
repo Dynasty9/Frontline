@@ -1141,7 +1141,7 @@ static func _conifer(bake: Mats.Bake, rng: RandomNumberGenerator) -> void:
 		var pos := Vector3(rng.randf_range(-0.06, 0.06), y + h * 0.5, rng.randf_range(-0.06, 0.06))
 		var rot := Vector3(rng.randf_range(-0.07, 0.07), rng.randf() * TAU, rng.randf_range(-0.07, 0.07))
 		var scl := Vector3(r * rng.randf_range(0.9, 1.1), h, r * rng.randf_range(0.9, 1.1))
-		bake.part(Res.cyl(0.04, 1.0, 1.0, 9), Mats.foliage(), Mats.place(pos, rot, scl), Res.vary(needles, 0.05, rng).darkened(0.12 * (1.0 - t)))
+		bake.part(Res.spruce_boughs(), Mats.foliage(), Mats.place(pos, rot, scl), Res.vary(needles, 0.05, rng).darkened(0.12 * (1.0 - t)))
 
 
 static func _bark(bake: Mats.Bake, a: Vector3, b: Vector3, r0: float, r1: float, col: Color) -> void:

@@ -3626,6 +3626,69 @@
         "compatibility": "Target after with --rendering-method gl_compatibility",
         "command": "godot --main-pack PACK --resolution 1600x900 -- --aivai --seed=3 --offscreen --nohud --set=perf:0 --preset=high --mood=MOOD --focus=FOCUS --zoom=ZOOM --pitch=PITCH --cam-yaw=0.7 --screenshot=OUTPUT --shot-at=2 --quit-after=3"
       }
+    },
+    {
+      "entry": "changelog/unreleased/realism-07-spruce-boughs.md",
+      "summary": "Conifers have broken, asymmetric branch silhouettes that read as trees against rock and snow.",
+      "medium": "still",
+      "stage": "native-media",
+      "rationale": "Isolate this refinement against its immediate parent, with a targeted view and a distant view.",
+      "source_ref": "codex/realism-07-spruce-boughs",
+      "sources": [
+        {
+          "file": "changelog/unreleased/realism-07-spruce-boughs/target-before.jpg",
+          "sha256": "3c7247136d7273dea7842c39998b7d4e27c825a3ce24da405fbed30c3bb1c5f5",
+          "caption": "target before"
+        },
+        {
+          "file": "changelog/unreleased/realism-07-spruce-boughs/target-after.jpg",
+          "sha256": "4785fa86aed4037aee14ee6d25648802baba6f023bcf5875d1e01b2dc9eecd8b",
+          "caption": "target after"
+        },
+        {
+          "file": "changelog/unreleased/realism-07-spruce-boughs/wide-before.jpg",
+          "sha256": "e83a95e40c93578c61e69bf022e1fd5d90d4a689999e130b5c0985839bb58669",
+          "caption": "wide before"
+        },
+        {
+          "file": "changelog/unreleased/realism-07-spruce-boughs/wide-after.jpg",
+          "sha256": "89959e24d2f5898d9aee0f7c2448a0003d7a8f5ce0e38791e411b20589c9870d",
+          "caption": "wide after"
+        },
+        {
+          "file": "changelog/unreleased/realism-07-spruce-boughs/target-compat.jpg",
+          "sha256": "a654a7a8ae1d15009ab67e0723d3169d942105122faaa5999ab18ea1032d9a48",
+          "caption": "target compat"
+        },
+        {
+          "file": "changelog/unreleased/realism-07-spruce-boughs/compare.gif",
+          "sha256": "1800ab8872719f098d228aca7443b21fdff6862cd7789f99ec6f257bde78ecb9",
+          "caption": "Native frames, separate labels, shared palette, 2.5 seconds each."
+        }
+      ],
+      "output": null,
+      "title": "Replace cone-like spruce tiers with ragged boughs",
+      "version": "unreleased",
+      "kind": "improved",
+      "capture": {
+        "before_ref": "2dea5c6135fceafc4a8cbdd1180da9fc7f9c9b03",
+        "after_ref": "codex/realism-07-spruce-boughs",
+        "before_pack": "realism-06.pck",
+        "after_pack": "realism-07.pck",
+        "seed": 3,
+        "preset": "high",
+        "mood": "day",
+        "resolution": "1600x900",
+        "focus": "220,300",
+        "zoom": 80,
+        "pitch": -28,
+        "yaw": 0.7,
+        "shot_at": 2,
+        "quit_after": 3,
+        "wide": "focus 0,0; zoom 900; pitch -22; yaw 0.7",
+        "compatibility": "Target after with --rendering-method gl_compatibility",
+        "command": "godot --main-pack PACK --resolution 1600x900 -- --aivai --seed=3 --offscreen --nohud --set=perf:0 --preset=high --mood=MOOD --focus=FOCUS --zoom=ZOOM --pitch=PITCH --cam-yaw=0.7 --screenshot=OUTPUT --shot-at=2 --quit-after=3"
+      }
     }
   ],
   "layout_capture": {
