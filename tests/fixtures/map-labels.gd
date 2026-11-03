@@ -79,6 +79,7 @@ func _ready() -> void:
 	var camera := Camera3D.new()
 	add_child(camera)
 	var refreshed := Overlay.new()
+	refreshed.hud = HudStub.new()
 	add_child(refreshed)
 	refreshed.refresh_for_view(0.0, camera)
 	await get_tree().process_frame
@@ -120,6 +121,7 @@ func _ready() -> void:
 		await get_tree().process_frame
 		await get_tree().process_frame
 	assert(refreshed.draws - before >= 14 and refreshed.draws - before <= 16, "Blast shake must keep the status cadence instead of redrawing every frame")
+	refreshed.hud.free()
 	refreshed.free()
 	var hud := HudStub.new()
 	add_child(hud)
@@ -189,11 +191,14 @@ func _ready() -> void:
 	await get_tree().process_frame
 	await get_tree().process_frame
 	before = roster.draws
+	hud.overview_frame = -1
 	hud._refresh_roster(true, true)
+	assert(hud.overview_frame == -1, "A deferred roster does not reserve a drawing frame")
 	await get_tree().process_frame
 	await get_tree().process_frame
 	assert(roster.draws == before and hud._roster_pending, "A routine roster refresh must avoid the overlay's frame")
 	hud._refresh_roster(false, true)
+	assert(hud.overview_frame == Engine.get_process_frames(), "A queued roster redraw reserves its frame")
 	await get_tree().process_frame
 	await get_tree().process_frame
 	assert(roster.draws == before + 1 and not hud._roster_pending, "Camera movement must not delay roster updates beyond one frame")

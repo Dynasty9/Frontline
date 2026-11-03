@@ -20,6 +20,7 @@ func _ready() -> void:
 	members[2].life = Soldier.Life.DEAD
 	members[3].visible = false
 	overlay._build_groups({"sel_squads": []})
+	assert(hud.overview_frame == Engine.get_process_frames(), "Squad preparation reserves the HUD's frame")
 	var group: Dictionary = overlay._groups[7]
 	assert(group.n == 1 and group.firing == 1 and group.supp == 1)
 	assert(group.lead == members[0] and group.c == members[0].position)
@@ -41,9 +42,12 @@ func _ready() -> void:
 	assert(overlay._groups[7].n == 2 and overlay._groups[7].c == Vector3(1, 0, 0), "Only living visible members contribute to the centroid")
 	members[0].flags = Soldier.F_SHOOTING
 	overlay._groups_at = -1000
+	hud.overview_frame = -1
 	overlay.prepare_groups({"sel_squads": [7]}, true)
+	assert(hud.overview_frame == -1, "A deferred summary must leave the frame available")
 	assert(overlay._groups[7].firing == 0 and overlay._sel_sids.has(7), "Squad rebuilding yields to a redraw while selection stays immediate")
 	overlay.prepare_groups({"sel_squads": []}, true)
+	assert(hud.overview_frame == Engine.get_process_frames())
 	assert(overlay._groups[7].firing == 1 and overlay._sel_sids.is_empty(), "Continuous camera redraws cannot postpone the overview more than one frame")
 	members[0].flags = 0
 	overlay._groups_at = -1000

@@ -14,7 +14,6 @@ var _marker_offsets := {}
 var _label_epoch := 0
 var _groups_at := -1000
 var _groups_pending := false
-var refreshed_frame := -1
 const CLOSE_Z := 22.0
 const FAR_Z := 42.0
 var _refresh_left := 0.0
@@ -44,7 +43,7 @@ func refresh_for_view(dt: float, camera: Camera3D) -> bool:
 		return false
 	_refresh_left = maxf(0.0, _refresh_left + 1.0 / 15.0) if _refresh_left <= 0.0 else 1.0 / 15.0
 	_refresh_view = view
-	refreshed_frame = Engine.get_process_frames()
+	hud.overview_frame = Engine.get_process_frames()
 	queue_redraw()
 	if raster:
 		raster.render_target_update_mode = SubViewport.UPDATE_ONCE
@@ -259,6 +258,7 @@ func _build_groups(inp, rebuild := true) -> void:
 	if not rebuild or now - _groups_at < 100:
 		return
 	_groups_at = now
+	hud.overview_frame = Engine.get_process_frames()
 	var previous := _groups
 	_groups = {}
 	for s: Soldier in hud.world.soldiers:

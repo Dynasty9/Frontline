@@ -827,3 +827,51 @@ winner. The 500-unit diagnostic still reaches the exact budgeted canonical hash
 `1d4ec2cc...` and the same queue measurements. Artifacts are in
 `build/mission-playthroughs-path-budget-scaled/` and
 `build/path-budget-scale-profile.json`.
+
+The subsequent packaged live run at `b3d2554` used the generated 3,072 m map,
+500 soldiers, commanders, seed 3, High settings and a 1,280 × 720 viewport.
+Other desktop apps remained running; this task's builds and tests had finished.
+Across the 20-second measured window it averaged 98.03 FPS, with frame p50/p95/p99
+of 9.682/14.921/18.114 ms and maximum 22.639 ms. Adjacent-frame difference p99 was
+9.186 ms. This still fails the 16.67 ms tail-frame target.
+
+The corresponding 1,200 Rust ticks averaged 6.102 ms, with p95/p99 of
+11.460/14.580 ms and maximum 28.246 ms; four ticks exceeded 16.67 ms.
+Navigation averaged 1.302 ms with p99 5.820 ms, while infantry averaged
+2.699 ms with p99 5.100 ms. Renderer CPU/GPU p99 were 4.332/4.798 ms;
+client marker drawing, distant soldiers and roster drawing each reached
+roughly 2.7 ms p99. These are phase measurements, not additive frame quantiles.
+
+The complete 3,015-tick command recording independently verifies as unfinished,
+with final hash `51145ce8bc311dd3c5f0f5d89cc95ad9029414ff5f4e3d0b50c4332a408a9983`.
+The matching Windows release export, actual Godot socket command/replay check,
+full browser export and Chromium gameplay/observer/model checks pass. Evidence:
+`build/rust-release-generated-3072-path-budget/`,
+`build/path-budget-live-replay-verification.log`,
+`build/path-budget-socket-test.log` and `build/path-budget-browser-smoke.log`.
+
+A subsequent roof-batching experiment passed occupancy and lifecycle checks but
+was discarded. ABBA playback measured original frame p99 16.946/18.830 ms versus
+17.303/19.212 ms with the extra batches; renderer GPU p99 stayed near 4.86 ms.
+The existing per-roof rendering remains. Evidence: `build/roof-batches-comparison.json`.
+
+### Staggering client overview work
+
+The slow-frame trace showed squad preparation, roster drawing and soldier uploads
+overlapping. They now share the HUD's frame marker. Routine uploads can yield
+at most two frames after their existing one-frame packet separation, while GPU
+interpolation continues. At 60 FPS this permits up to 50 ms before a routine
+upload; fog changes, teleports, LOD changes and despawns still bypass the delay.
+The roster and squad summary retain their existing one-frame delay limits.
+
+In the same recorded battle, ABBA playback measured frame p99 18.939/18.452 ms
+before and 18.518/17.364 ms after. Maximum frames were 28.444/27.537 ms before
+and 22.784/21.097 ms after. Adjacent-frame difference p99 was 9.002/9.468 ms
+before and 9.087/7.914 ms after; averages were 91.89/93.53 FPS before and
+94.08/97.87 FPS after. This is a modest improvement and still misses the tail
+target. The HUD, summary and soldier tests cover the bounded delay and immediate
+updates; the isolated map-overlay fixture was updated to provide its HUD owner.
+The colored GPU/CPU smoothing comparison also passes pixel-identically on
+Vulkan and Compatibility after the scheduling change.
+Evidence: `build/hud-scheduling-comparison.json`, `build/hud-scheduling-tests.log`
+and the corrected fixture rerun `build/hud-scheduling-map-test.log`.

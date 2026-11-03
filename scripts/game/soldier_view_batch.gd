@@ -34,7 +34,7 @@ var _motion_frame := -1
 var _sample_pose := -1
 var _sample_view := Transform3D.IDENTITY
 var _sample_projection := Projection()
-var _batch_deferred := false
+var _batch_deferred := 0
 var _age := 0.0
 var _material: ShaderMaterial
 
@@ -166,14 +166,15 @@ func _process(dt: float) -> void:
 	_age += dt
 	if interpolate and not _dirty and view == _sample_view and projection == _sample_projection:
 		var unchanged := not motion_due and pose_frame == _sample_pose
-		var overlay_drawing := world.hud and world.hud.overlay and world.hud.overlay.refreshed_frame == Engine.get_process_frames()
-		if unchanged or (overlay_drawing and not _batch_deferred):
-			# GPU smoothing continues while a routine upload yields one frame to the HUD.
-			_batch_deferred = _batch_deferred or not unchanged
+		var overview_busy := world.hud and world.hud.overview_frame == Engine.get_process_frames()
+		if unchanged or (overview_busy and _batch_deferred < 2):
+			# Two frames let the summary and roster finish separately while GPU motion continues.
+			if not unchanged:
+				_batch_deferred += 1
 			_material.set_shader_parameter("age", _age)
 			world.vp("distant soldiers", started)
 			return
-	_batch_deferred = false
+	_batch_deferred = 0
 	_dirty = false
 	_motion_frame = -1
 	_sample_pose = pose_frame

@@ -77,6 +77,7 @@ var orders := {}
 var orbat: HudOrbat
 var _slow_t := 0.0
 var _roster_pending := false
+var overview_frame := -1
 var layers_ui: HudLayers
 var tint: ColorRect
 var root: Control
@@ -1531,7 +1532,7 @@ func _view_process(dt: float) -> void:
 		overlay_changed = overlay.refresh_for_view(rdt, world.cam.cam)
 	if world.input:
 		overlay.prepare_groups(world.input, overlay_changed)
-	_refresh_roster(slow, overlay_changed)
+	_refresh_roster(slow, overview_frame == Engine.get_process_frames())
 	pointer_overlay.queue_redraw()
 	coop.queue_redraw()
 
@@ -1540,6 +1541,7 @@ func _refresh_roster(due: bool, overlay_changed: bool) -> void:
 	# Split routine HUD work across frames, with at most one frame of delay.
 	if _roster_pending or (due and not overlay_changed):
 		orbat.queue_redraw()
+		overview_frame = Engine.get_process_frames()
 		_roster_pending = false
 	else:
 		_roster_pending = due

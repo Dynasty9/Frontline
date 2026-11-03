@@ -1251,7 +1251,7 @@ still include everyone. Distant batches outside the camera frustum and its shado
 not upload transforms; panning restores them immediately. Socket clients interpolate distant
 transforms on the GPU between updates, keeping the same exponential smoothing used
 for CPU selection and nearby models. Routine motion uploads wait one frame after
-packet processing and may yield one further frame to a HUD redraw; visibility
+packet processing and may yield two further frames to HUD drawing or preparation; visibility
 changes, teleports, camera movement and despawns remain immediate. New articulated
 models copy a prepared rig at most one per frame, keeping independent joints,
 breathing and death animations. Each unit type and team shares its appearance;

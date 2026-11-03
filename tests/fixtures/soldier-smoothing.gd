@@ -125,13 +125,17 @@ func _ready() -> void:
 	await get_tree().process_frame
 	world.hud = Hud.new()
 	world.hud.overlay = HudOverlay.new()
-	world.hud.overlay.refreshed_frame = Engine.get_process_frames()
+	world.hud.overview_frame = Engine.get_process_frames()
 	view._process(0.016)
-	assert(view._age > 0.0 and view._motion_frame >= 0, "Routine batch uploads yield to a HUD refresh")
+	assert(view._age > 0.0 and view._motion_frame >= 0, "Routine batch uploads yield to HUD drawing or preparation")
 	await get_tree().process_frame
-	world.hud.overlay.refreshed_frame = Engine.get_process_frames()
+	world.hud.overview_frame = Engine.get_process_frames()
 	view._process(0.016)
-	assert(view._age == 0.0 and view._motion_frame < 0)
+	assert(view._age > 0.0 and view._motion_frame >= 0, "The roster can use the frame after summary preparation")
+	await get_tree().process_frame
+	world.hud.overview_frame = Engine.get_process_frames()
+	view._process(0.016)
+	assert(view._age == 0.0 and view._motion_frame < 0, "Continuous HUD work cannot defer routine motion more than two frames")
 	var packet := StreamPeerBuffer.new()
 	packet.put_float(0.0)
 	packet.put_u32(s.eid)
