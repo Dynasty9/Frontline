@@ -785,6 +785,7 @@ func _physics_process(dt: float) -> void:
 			net_in_bps = _net_in / _net_in_t
 			_net_in = 0.0
 			_net_in_t = 0.0
+		vp("client terrain + cleanup", t0)
 		return
 	# A private battle begins once its renderer has built the initial world.
 	# Network flushing continues, so loading never advances combat unseen.

@@ -11,6 +11,7 @@ test("benchmark trace exports aligned chronological samples without changing the
   const folder = await mkdtemp(join(tmpdir(), "frontline-frame-trace-"));
   try {
     const output = join(folder, "frames.json");
+    const began = Date.now() / 1000;
     const { stdout, stderr } = await promisify(execFile)(process.env.GODOT || "godot", [
       "--headless", "--path", ROOT, "--", "--scenario=attack", "--seed=3",
       "--perf-at=0.25", "--perf-duration=1", "--quit-after=3", `--perf-json=${output}`, "--no-stun",
@@ -18,6 +19,9 @@ test("benchmark trace exports aligned chronological samples without changing the
     assert.doesNotMatch(stdout + stderr, /SCRIPT ERROR|Parse Error/);
     const report = JSON.parse(await readFile(output, "utf8"));
     const samples = report.frame_samples_ms;
+    assert.ok(samples.started_unix_s >= began - 1 && samples.started_unix_s <= Date.now() / 1000 + 1);
+    const marker = stdout.split("\n").find((line) => line.startsWith("FRAME_TRACE_BEGIN "));
+    assert.equal(JSON.parse(marker.slice("FRAME_TRACE_BEGIN ".length)), samples.started_unix_s);
     assert.ok(report.frames.count > 0 && Object.keys(samples.views).length > 0);
     for (const values of [samples.total, ...Object.values(samples.views)]) {
       assert.equal(values.length, report.frames.count);

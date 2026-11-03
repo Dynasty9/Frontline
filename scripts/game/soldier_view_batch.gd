@@ -318,6 +318,8 @@ func _group_for(pose: int, cell: Vector2i) -> DrawGroup:
 	mm.custom_aabb = AABB(Vector3(-11, -4, -11), Vector3(CELL + 22, 16, CELL + 22))
 	var node := MultiMeshInstance3D.new()
 	node.multimesh = mm
+	# Shared models are small on screen; keep fine geometry for the articulated rigs.
+	node.lod_bias = 0.25
 	node.material_override = _material
 	node.position = Vector3(cell.x * CELL, 0, cell.y * CELL)
 	add_child(node)

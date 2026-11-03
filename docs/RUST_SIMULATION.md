@@ -959,3 +959,71 @@ large-map recording with the same final hash
 All 140 release numeric transcripts and six client regressions pass. Evidence:
 `build/static-runtime-native-build.log`, `build/static-runtime-replay-verification.log`,
 `build/static-runtime-numeric-tests.log` and `build/static-runtime-client-tests.log`.
+
+
+### Shadow-range and visible-window checks (3 November)
+
+An adaptive shadow-range experiment bounded the sun cascades by the camera's
+visible ground. Geometry regressions covered perspective/orthographic views,
+wide FOVs, hills, seabed depth and horizon fallback. At command zoom it reduced
+GPU p99 from 4.86–4.88 ms to 4.55–4.57 ms, but frame p99 stayed at
+18.50–18.51 ms versus 17.63–18.21 ms for the control. At close zoom the two
+controls measured 79.10/74.63 FPS and 22.59/23.82 ms p99; the experiment measured
+79.79/82.13 FPS and 23.06/21.96 ms p99, with no consistent GPU reduction.
+The extra shadow-range code is not included. Evidence:
+`build/shadow-distance-comparison.json`, `build/shadow-close-comparison.json`.
+
+The identical client was also checked in normal visible windows and with the
+benchmark's offscreen configuration. One manually activated visible run reached
+100.77 FPS and 16.03 ms frame p99; another visible run measured 88.76 FPS and
+18.95 ms p99. Offscreen controls measured 94.24/87.81 FPS and 18.27/19.92 ms p99.
+These samples do not establish that window focus causes the difference or that
+the 60 FPS tail target is met reliably. Godot reported focus in all four captures;
+the OS foreground sample taken during loading was not a synchronized measurement
+of focus during the capture. Other applications remained running throughout.
+Evidence: `build/window-focus-comparison.json`.
+
+
+### Rejected partial soldier uploads (3 November)
+
+Two successive prototypes split routine uploads over two frames, retaining
+independent GPU smoothing clocks and immediate fog, teleport, camera and despawn
+updates. Headless lifecycle tests and Vulkan/Compatibility smoothing comparisons
+passed. Splitting by entity ID introduced extra mesh groups and regressed frame
+p99 from 20.72/21.23 ms to 22.08/22.17 ms, despite smaller individual uploads.
+
+Alternating the existing per-side groups avoided those extra mesh groups. Batch
+p99 fell from 3.36/3.07 ms to 2.31/2.20 ms, but batch CPU mean rose from
+0.432/0.440 ms per frame to 0.503/0.517 ms. Whole-frame p99 remained effectively
+unchanged: 19.33/19.20 ms before and 18.93/19.61 ms after. Average FPS was
+91.85/88.35 before and 88.19/86.74 after. The additional scheduling code is not
+included. Raw reports: `build/progressive-soldiers-comparison.json` and
+`build/progressive-teams-comparison.json`.
+
+A smaller minimap change reuses each firing soldier's position and the shared
+canvas transform, ring radius and colors. In 200 alternating paired draws of a
+500-soldier fixture, mean draw CPU fell from 1,906 to 1,753 microseconds (8%).
+Marker grouping, hidden/dead filtering and progressive-layer regressions pass.
+This isolated result is not an end-to-end FPS claim; p99 did not improve in the
+microbenchmark. Evidence: `build/minimap-fighting-bench.log`.
+
+### Shared soldier mesh detail and remaining client cost
+
+Shared soldier models now choose their existing mesh LODs earlier; the nearby
+articulated rigs keep their original geometry. Wide-view ABBA playback reduced
+GPU p99 from 5.77/5.71 ms to 5.43/5.44 ms. The first control's final primitive
+sample was 6.67 million versus 5.68/5.65 million in the two changed runs. These
+are instantaneous samples, not capture averages. Close-view playback reduced
+GPU p99 from 5.63 to 5.05 ms, with frame p99 22.71 versus 22.37 ms. Inspected
+1280x720 captures retain the visible army and nearby articulated models.
+Neither comparison establishes a reliable whole-frame improvement or closes
+the 60 FPS tail gate. Evidence: `build/soldier-lod-comparison.json`,
+`build/soldier-lod-close-comparison.json` and their adjacent screenshots.
+
+The frame trace now records its Unix start time for alignment with external
+profilers. Separately timing client terrain maintenance and cleanup measured
+0.009 ms mean, 0.043 ms p99 and 0.122 ms maximum, ruling out that phase in this
+capture. Windows Performance Recorder could not start CPU recording because
+the OS denied its profiling policy (`0xc5585011`); no kernel trace was collected
+and no system policies or unrelated processes were changed. Evidence:
+`build/frame-cpu.json` and `build/frame-cpu.meta.json`.

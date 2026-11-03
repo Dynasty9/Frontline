@@ -239,6 +239,10 @@ physics monitor and per-view component times, all in milliseconds. This adds no 
 work inside the measurement window. The collector runs before early network and
 effect callbacks so each view sample belongs to the preceding complete frame.
 Component timings can overlap; do not sum nested phases as independent costs.
+The trace includes `started_unix_s` and prints `FRAME_TRACE_BEGIN` once, allowing
+its frame intervals to be aligned with an external CPU/scheduling trace. Client
+terrain updates and graveyard cleanup have their own measured view category.
+
 The `process_monitor` and `physics_monitor` samples (and summary fields `process_cpu`
 and `physics_cpu`) are Godot's cached maxima from the previous second, not individual
 frame durations; see [Godot's monitor update](https://github.com/godotengine/godot/blob/4.7.2-stable/main/main.cpp#L4756-L4762).

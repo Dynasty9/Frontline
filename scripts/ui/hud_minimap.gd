@@ -598,17 +598,23 @@ func _draw_town(st: Structure, sc: float) -> void:
 ## glance at the map shows where the battle is.
 func _draw_fighting(w: World, sc: float) -> void:
 	_fight.clear()
-	for s in w.soldiers:
+	for s: Soldier in w.soldiers:
 		if not s.visible or s.life != Soldier.Life.ALIVE or (s.flags & Soldier.F_SHOOTING) == 0:
 			continue
-		var key := Vector2i(floori((s.position.x + MapDims.HALF) / 24.0), floori((s.position.z + MapDims.HALF) / 24.0))
+		var position_3d := s.position
+		var key := Vector2i(floori((position_3d.x + MapDims.HALF) / 24.0), floori((position_3d.z + MapDims.HALF) / 24.0))
 		if not _fight.has(key):
-			_fight[key] = s.position
+			_fight[key] = position_3d
 	var ph := fmod(Time.get_ticks_msec() / 1000.0 * 1.4, 1.0)
+	var to_canvas := _xf * Transform2D(Vector2(size.x / MapDims.SIZE, 0), Vector2(0, size.y / MapDims.SIZE), size * 0.5)
+	var radius := (3.5 + ph * 5.0) * sc
+	var ring := Color(C_FIGHT.r, C_FIGHT.g, C_FIGHT.b, 0.85 * (1.0 - ph))
+	var dot := Color(C_FIGHT.r, C_FIGHT.g, C_FIGHT.b, 0.5)
 	for key in _fight:
-		var p := _pt(_fight[key])
-		_ink.draw_arc(p, (3.5 + ph * 5.0) * sc, 0, TAU, 14, Color(C_FIGHT.r, C_FIGHT.g, C_FIGHT.b, 0.85 * (1.0 - ph)), 1.6, true)
-		_ink.draw_circle(p, 1.6 * sc, Color(C_FIGHT.r, C_FIGHT.g, C_FIGHT.b, 0.5))
+		var position_3d: Vector3 = _fight[key]
+		var p := to_canvas * Vector2(position_3d.x, position_3d.z)
+		_ink.draw_arc(p, radius, 0, TAU, 14, ring, 1.6, true)
+		_ink.draw_circle(p, 1.6 * sc, dot)
 
 
 ## Every man you can see as a dot with a dark edge (allies brightest, the

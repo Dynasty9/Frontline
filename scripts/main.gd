@@ -42,6 +42,7 @@ var _perf_t0 := 0
 var _perf_frames := 0
 var _perf_focused_frames := 0
 var _perf_started := false
+var _perf_started_unix := 0.0
 var _perf_ready_ms := -1
 var _perf_frame_us := 0
 var _perf_frame_samples: Array[float] = []
@@ -1053,6 +1054,9 @@ func _process(_dt: float) -> void:
 			_perf_frames = Engine.get_frames_drawn()
 			_perf_focused_frames = 0
 			_perf_frame_us = Time.get_ticks_usec()
+			_perf_started_unix = Time.get_unix_time_from_system()
+			if OS.has_environment("FL_DEBUG_FRAME_TRACE"):
+				print("FRAME_TRACE_BEGIN ", JSON.stringify(_perf_started_unix))
 			_perf_frame_samples.clear()
 			_perf_render_cpu.clear()
 			_perf_render_gpu.clear()
@@ -1116,7 +1120,8 @@ func _process(_dt: float) -> void:
 			print("BENCHMARK ", JSON.stringify(report))
 			if args.has("perf-json"):
 				if OS.has_environment("FL_DEBUG_FRAME_TRACE"):
-					report["frame_samples_ms"] = {"total": _perf_frame_samples, "views": _perf_view_samples,
+					report["frame_samples_ms"] = {"started_unix_s": _perf_started_unix,
+						"total": _perf_frame_samples, "views": _perf_view_samples,
 						"render_cpu": _perf_render_cpu, "render_gpu": _perf_render_gpu,
 						"process_monitor": _perf_process, "physics_monitor": _perf_physics}
 				var report_file := FileAccess.open(String(args["perf-json"]), FileAccess.WRITE)

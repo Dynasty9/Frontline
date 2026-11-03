@@ -14,6 +14,14 @@ caption = "Before: detailed soldier models make this close view of a 500-unit ba
 [[screenshots]]
 file = "close-detail-after.png"
 caption = "After: selected and nearby troops receive the articulated-model budget; all other troops remain visible through shared models. The same replay averaged 65.7 FPS versus 30.0 FPS before, though frame spikes remain."
+
+[[screenshots]]
+file = "shared-lod-before.png"
+caption = "Before: shared soldier models use the default distance for reducing mesh detail."
+
+[[screenshots]]
+file = "shared-lod-after.png"
+caption = "After: shared soldiers reduce geometry earlier while nearby articulated models keep their detail. This close-view sample reduced GPU p99 from 5.63 to 5.05 ms; overall frame spikes still exceed the 60 FPS budget."
 +++
 
 - Desktop battles now run in a separate Rust process while Godot draws the battlefield and handles your orders. Infantry, vehicles, combat, logistics, tactical AI, commanders and the five operations use the same authoritative simulation.
@@ -46,6 +54,7 @@ caption = "After: selected and nearby troops receive the articulated-model budge
 - Distant soldiers smooth their movement on the GPU between socket updates, reducing repeated CPU transform uploads while preserving immediate visibility and teleport changes.
 - Client movement smoothing reuses each unit's current transform, reducing repeated engine reads while keeping movement and teleport behavior unchanged.
 - Close views limit fully articulated models to 16 selected or nearby soldiers. Other troops use shared standing, crouching, prone and walking models, preserving the full army and gameplay while reducing drawing cost.
+- Shared soldier models reduce mesh detail earlier as they recede, cutting geometry without removing troops.
 - New detailed models build one at a time. Squad-overview preparation yields at most one frame to a HUD redraw, keeping selection immediate.
 - Soldier-batch uploads also avoid squad-summary and roster work, yielding at most two frames while GPU motion continues. This reduces overlapping client work without changing simulation timing.
 - Detailed soldiers reuse prepared geometry with independent animation, reducing construction pauses when troops enter the camera view. Clothing and face variation is reduced within each unit type and team.
@@ -55,6 +64,7 @@ caption = "After: selected and nearby troops receive the articulated-model budge
 - Squad summaries calculate each group once, reducing repeated HUD work while keeping selection immediate.
 - Squad strength indicators reuse their geometry until the number or condition of their soldiers changes, reducing HUD drawing calls.
 - Unchanged roster rows retain their drawing commands, refreshing when selection, casualties, status or appearance changes. Fractional scrolling and interface scaling keep the same text and symbols.
+- Minimap firefight markers reuse position reads, map transforms and ring styling within each refresh.
 - Minimap soldier dots share one draw batch and reuse map transforms and team colors, retaining selection, wounded colors, overlap and immediate camera feedback.
 - Supply dispatch checks active buildings instead of every scenery object. Infantry refresh activity descriptions only when their existing status timer expires.
 - Victory checks use the active-building index rather than scanning every tree and wall.
