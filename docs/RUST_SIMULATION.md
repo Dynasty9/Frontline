@@ -895,3 +895,24 @@ passes late join, commands, team privacy, reconnect and independent replay
 verification; the direct Godot/socket command recording also verifies all 46 ticks.
 Evidence: `build/relay-budget-tests.log`, `build/relay-budget-lobby.log` and
 `build/relay-budget-socket.log`.
+
+### Retaining unchanged roster rows
+
+The order of battle now retains native drawing commands for each squad's icon,
+callsign, status and strength. Backgrounds and hit targets still update normally;
+changed rows redraw, offscreen rows hide, and removed squads release their nodes.
+Atlas replacement and theme changes invalidate the drawing. Integer node positions
+leave fractional scrolling in the draw coordinates, preserving font snapping.
+Eight before/after states, including atlas replacement and interface scaling,
+match pixel-for-pixel on Vulkan and Compatibility. Lifecycle regressions cover
+selection, casualties, ammunition, hover, scrolling, closing and removal.
+
+Same-recording ABBA playback reduced roster CPU mean from 0.224/0.225 ms per
+frame to 0.161/0.156 ms, about 28-30%; roster p99 fell from 2.656/2.667 ms
+to 1.993/1.946 ms. Overall averages were 97.49/95.68 FPS before and 96.54/99.08
+after. Frame p99 was 17.184/17.453 ms before and 17.872/17.536 after, so this
+does not establish an overall tail improvement. Maximum frames fell from
+28.777/28.033 ms to 24.389/23.174 ms; adjacent-frame difference p99 stayed near
+8.1-8.4 ms. The component does less work without a visual concession, but the
+60 FPS tail gate remains open. Evidence: `build/roster-retained-comparison.json`,
+`build/packet-scheduling-tests.log` and `build/roster-pixels-*.log`.

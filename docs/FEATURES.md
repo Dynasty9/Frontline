@@ -743,6 +743,8 @@ Sky Hook prepares reachable vehicle approaches for its convoy before the battle 
   with its symbol, callsign, a pip per man, what it has been told to do and where an attack has got to ("Base of
   fire on D3", "Assaulting D3"), and alerts for contact, pinned, casualties and low ammunition. Click to select
   and look at it, Shift+click to add, double-click to zoom in. Observers see both sides.
+  Unchanged squad rows retain their drawing commands; status, strength, selection,
+  theme and symbol-atlas changes refresh them without changing scrolling or hit targets.
 - **Map layers** (the column beside the minimap): unit symbols at any zoom, orders and attack plans for all your
   units, intelligence (where the enemy was last seen and how long ago), the fog of war, weapon ranges of the
   selection, soldier labels. **Tactical map** (Tab): the battlefield dims under the symbols, every order, plan and contact, and the

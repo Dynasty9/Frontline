@@ -53,6 +53,7 @@ caption = "After: selected and nearby troops receive the articulated-model budge
 - Cosmetic ground colliders sample hills, craters and trenches in one Rust call per tile, reducing collision-update spikes.
 - Squad summaries calculate each group once, reducing repeated HUD work while keeping selection immediate.
 - Squad strength indicators reuse their geometry until the number or condition of their soldiers changes, reducing HUD drawing calls.
+- Unchanged roster rows retain their drawing commands, refreshing when selection, casualties, status or appearance changes. Fractional scrolling and interface scaling keep the same text and symbols.
 - Minimap soldier dots share one draw batch and reuse map transforms and team colors, retaining selection, wounded colors, overlap and immediate camera feedback.
 - Supply dispatch checks active buildings instead of every scenery object. Infantry refresh activity descriptions only when their existing status timer expires.
 - Victory checks use the active-building index rather than scanning every tree and wall.
