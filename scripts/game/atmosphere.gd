@@ -1108,7 +1108,12 @@ void fragment() {
 	float region = smoothstep(0.25, 0.72, texture(detail_tex, p / 2300.0 + warp * 0.35).r);
 	float patch = smoothstep(0.30, 0.68, texture(detail_tex, p / 620.0 + warp * 0.18).r);
 	float seams = texture(detail_tex, vec2(p.x * 0.0005 + p.y * 0.00025, wpos.y * 0.0018) + warp * 0.12).r;
-	vec3 rock_uv = (wpos + vec3(warp.x, warp.y, warp.x) * 7.0) / 48.0;
+	// Warp the projection in three dimensions so the same slab does not repeat up every face.
+	vec3 fracture_warp = vec3(
+		texture(detail_tex, wpos.zy / 900.0 + 0.17).r,
+		texture(detail_tex, wpos.xz / 1100.0 + 0.53).r,
+		texture(detail_tex, wpos.xy / 800.0 + 0.81).r) - vec3(0.5);
+	vec3 rock_uv = (wpos + fracture_warp * 22.0) / 48.0;
 	vec3 scree_uv = wpos / 16.0 + 0.37;
 	vec3 moss_uv = wpos / 18.0;
 	vec4 rock_sample = surface_color(rock_color, rock_uv, weights);
