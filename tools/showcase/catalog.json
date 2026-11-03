@@ -2849,6 +2849,36 @@
         }
       ],
       "output": null
+    },
+    {
+      "entry": "changelog/unreleased/captured-kneel.md",
+      "summary": "Captured stationary kneeling and crouched grenade throws for the optional rifleman.",
+      "medium": "motion",
+      "stage": "native-media",
+      "rationale": "Show stance changes, throw recovery and crouch movement through the shared game controller.",
+      "source_ref": "PR98 shared controller local Mixamo evaluation; crouch_sequence.tscn fixed 30 fps; baseline disables the three new stance/throw clips.",
+      "sources": [
+        {
+          "file": "changelog/unreleased/captured-kneel/actions.mp4",
+          "sha256": "db0704dadc998b73805d28c28e1a26cb373159faa9abeacb340f8dd0c4e94adf",
+          "caption": "Controlled shared-controller sequence, not battlefield performance."
+        },
+        {
+          "file": "changelog/unreleased/captured-kneel/before.jpg",
+          "sha256": "7370fc0dcc90ef78b58cf38a65317fc792159afa07432246c293d44d825f79b5",
+          "caption": "Prior crouch base pose without the new stance clips."
+        },
+        {
+          "file": "changelog/unreleased/captured-kneel/after.jpg",
+          "sha256": "5d3c38805dc8489a6c02f0f2738a10733485139c5bc4107e985ef6b13e51355b",
+          "caption": "Captured stationary kneeling with contacts."
+        }
+      ],
+      "output": null,
+      "title": "Captured kneeling and crouched grenade throws",
+      "version": "unreleased",
+      "kind": "improved",
+      "attribution": "Native fixed-step capture; optional assets remain local."
     }
   ],
   "layout_capture": {

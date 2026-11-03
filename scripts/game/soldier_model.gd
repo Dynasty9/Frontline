@@ -1367,6 +1367,8 @@ func pose(dt: float, life: int, posture: int, act: int, speed: float, backwards:
 			var activity := "mixamo_basic_shooter__toss_grenade" if act == Soldier.Act.THROW else "mixamo_activities__Smoking" if act == Soldier.Act.IDLE_SMOKE else ("mixamo_activities__Digging" if act == Soldier.Act.BUILD else "")
 			if act == Soldier.Act.THROW and posture == Soldier.Post.PRONE and skinned.native_player != null and skinned.native_player.has_animation("mixamo_prone__Throw_Grenade"):
 				activity = "mixamo_prone__Throw_Grenade"
+			if act == Soldier.Act.THROW and posture == Soldier.Post.CROUCH and skinned.native_player != null and skinned.native_player.has_animation("mixamo_activities__Crouch_Throw_Grenade"):
+				activity = "mixamo_activities__Crouch_Throw_Grenade"
 			var captured_activity := (speed < 0.1 or act == Soldier.Act.THROW) and not crew and skinned.native_player != null and not activity.is_empty() and skinned.native_player.has_animation(activity)
 			var captured_prone := rifle_driver != null and posture == Soldier.Post.PRONE and (speed < 0.1 or skinned.native_player.has_animation(rifle_driver.PRONE_PACK + "Prone_Forward")) and act in [Soldier.Act.IDLE, Soldier.Act.SHOOT, Soldier.Act.RELOAD, Soldier.Act.CRAWL] and not crew and not over_wall and skinned.native_player.has_animation(rifle_driver.PRONE_CLIP)
 			if not captured_prone and not (posture == Soldier.Post.PRONE and captured_activity): _native_prone = false

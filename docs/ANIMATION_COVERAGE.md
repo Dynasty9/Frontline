@@ -40,7 +40,7 @@ This is routing coverage, not visual approval. A clip appearing in the viewer do
 - Downed/writhing, wounded crawl, surrender/captive poses, dragging and carrying need appropriate clips and partner alignment.
 - Physical ragdolls and blast flight should remain physics-driven; captured hit reactions can precede them.
 - Installed prone clips supply entry, idle, forward/backward crawl, stops, firing, reload, full-body grenade throw and kneeling recovery. Terrain contacts and weapon grips still need correction; prone magazine events currently reuse standing reload timing and need clip-specific calibration.
-- Crouch direction clips are captured, but stance blending, toe flattening, foot contacts and knee direction are procedural corrections. Matching start/stop/stance clips should supply base movement; terrain IK still belongs on top.
+- Crouch direction clips and stationary stand/kneel transitions are captured. Stance blending, toe flattening, foot contacts and knee direction remain procedural corrections; terrain IK belongs on top.
 - Vehicle-specific sitting, boarding and piloting are not covered merely by installing a clip. Seat and hand anchors, timing and visibility still need integration.
 - Without the optional imported actor/assets, the original procedural model remains a fallback.
 
@@ -66,7 +66,7 @@ Prone Backwards Start, Prone Left Turn, Prone Right Turn and Prone Roll are now 
 
 Imported: Crouch To Prone, Prone To Crouch Transition, Rifle Prone Hit Reaction, Prone Death, and Crawl Backwards In Prone. The first three now supply gameplay entry, recovery and prone hit overlays. Prone Death and the alternate crawl are viewer clips; lethal gameplay still uses physical ragdolls, and backward movement uses the already validated rifle crawl.
 
-Further sourcing is blocked on renewing Adobe sign-in. Getting Up was requested but no completed download was received. Crouched/kneeling throws, rifle stand-to-kneel/aim-down, melee, dive/vault and pistol pack remain to acquire and validate.
+Downloaded in this pass: Getting Up, Rifle Stand To Kneel, Rifle Kneel To Stand, Rifle Aim To Down, Rifle Down To Aim, crouched Throw Grenade, kneeling Grenade Throw, Smash and rifle Dive Roll. The stance pair and crouched throw are routed into gameplay. Getting Up, aim transitions, the longer kneeling throw, melee and roll remain inspection candidates until their timing, grips and action fit are validated. Jumping Over Into Combat and the 20-clip Pistol/Handgun Locomotion Pack are also downloaded and installed for inspection, not yet gameplay-routed.
 
 Other visible candidates to preview before choosing:
 - Grenade Throw — kneeling, pulling pin with teeth.

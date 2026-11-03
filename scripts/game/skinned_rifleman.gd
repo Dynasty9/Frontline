@@ -703,7 +703,11 @@ func pose_activity(dt: float, clip: String, throw_time := -1.0, prone_throw := f
 		native_player.play(clip, 0.0)
 		_activity_clip = clip
 	if throw_time >= 0.0:
-		native_player.seek(minf(throw_time / 0.6, 1.0) * native_player.get_animation(clip).length, true)
+		var sample_time := minf(throw_time / 0.6, 1.0) * native_player.get_animation(clip).length
+		if clip == "mixamo_activities__Crouch_Throw_Grenade":
+			# Keep the captured release at the shared visual grenade release, omitting the long pin-pull lead-in.
+			sample_time = lerpf(1.2, 1.75, clampf(throw_time / 0.36, 0.0, 1.0)) if throw_time < 0.36 else lerpf(1.75, 2.3, clampf((throw_time - 0.36) / 0.24, 0.0, 1.0))
+		native_player.seek(sample_time, true)
 	else:
 		native_player.advance(dt)
 	if throw_time >= 0.0 and not full_body_throw:

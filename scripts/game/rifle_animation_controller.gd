@@ -29,6 +29,9 @@ var actor: SkinnedRifleman
 var phase := 0.0
 var elapsed := 0.0
 var crouch_weight := 0.0
+var stance_crouched := false
+var stance_clock := 10.0
+var stance_from: Array[Transform3D] = []
 var crouch_drop := 0.0
 var _crouch_phase := INF
 var _crouch_transform := Transform3D.IDENTITY
@@ -202,6 +205,8 @@ func request_action(next: String) -> bool:
 	return true
 
 func reset() -> void:
+	stance_crouched = false
+	stance_clock = 10.0
 	crouch_phase = 0.0
 	crouch_direction = 0.0
 	crouch_blends.fill(0.0)
@@ -265,6 +270,12 @@ func advance(dt: float, velocity: Vector3, crouching: bool, grounded: bool, relo
 	if actor.dead:
 		if is_instance_valid(actor.ragdoll): actor.ragdoll.draw()
 		return
+	if crouching != stance_crouched:
+		stance_crouched = crouching
+		stance_clock = 0.0
+		stance_from.clear()
+		for i in poses.size(): stance_from.append(actor.skeleton.get_bone_pose(i))
+	stance_clock += dt
 	elapsed += dt
 	blend_velocity = blend_velocity.lerp(velocity, 1.0 - exp(-12.0 * dt))
 	var speed := Vector2(blend_velocity.x, blend_velocity.z).length()
@@ -335,6 +346,24 @@ func advance(dt: float, velocity: Vector3, crouching: bool, grounded: bool, relo
 		# Local upper-body poses would otherwise inherit the unarmed pelvis lean.
 		poses[spine].basis = poses[hips].basis.inverse() * aim_basis
 		state = "Crouch walk" if speed > 0.1 else "Crouch"
+	var stance_clip := "mixamo_activities__Rifle_Stand_To_Kneel" if crouching else "mixamo_activities__Rifle_Kneel_To_Stand"
+	if grounded and actor.native_player.has_animation(stance_clip):
+		var stance_length := actor.native_player.get_animation(stance_clip).length
+		var stance_weight := 1.0 - smoothstep(0.05, 0.35, speed)
+		if not crouching: stance_weight *= 1.0 - smoothstep(stance_length - 0.12, stance_length, stance_clock)
+		if stance_weight > 0.0:
+			var hips: int = actor.bones["Hips"]
+			var spine: int = actor.bones["Spine"]
+			var aim := poses[hips].basis * poses[spine].basis
+			actor.native_player.play(stance_clip, 0.0)
+			actor.native_player.seek(minf(stance_clock, stance_length), true)
+			for i in poses.size():
+				if upper[i]: continue
+				var sample := actor.skeleton.get_bone_pose(i)
+				if stance_clock < 0.12 and stance_from.size() == poses.size():
+					sample = stance_from[i].interpolate_with(sample, smoothstep(0.0, 0.12, stance_clock))
+				poses[i] = poses[i].interpolate_with(sample, stance_weight)
+			poses[spine].basis = poses[hips].basis.inverse() * aim
 	if reload_progress >= 0.0:
 		action = "reloading"
 		action_time = clampf(reload_progress, 0.0, 1.0) * actor.native_player.get_animation(PACK + action).length
