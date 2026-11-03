@@ -123,6 +123,13 @@ func _ready() -> void:
 	assert(view._age > 0.0, "Routine motion uploads should leave packet decoding on its own frame")
 	await get_tree().process_frame
 	await get_tree().process_frame
+	world.hud = Hud.new()
+	world.hud.overlay = HudOverlay.new()
+	world.hud.overlay.refreshed_frame = Engine.get_process_frames()
+	view._process(0.016)
+	assert(view._age > 0.0 and view._motion_frame >= 0, "Routine batch uploads yield to a HUD refresh")
+	await get_tree().process_frame
+	world.hud.overlay.refreshed_frame = Engine.get_process_frames()
 	view._process(0.016)
 	assert(view._age == 0.0 and view._motion_frame < 0)
 	var packet := StreamPeerBuffer.new()
@@ -151,6 +158,9 @@ func _ready() -> void:
 	assert(view._active.is_empty(), "Despawn must remove the cached model immediately")
 	await get_tree().process_frame
 	s.free()
+	world.hud.overlay.free()
+	world.hud.free()
+	world.hud = null
 	world.simulation_client.free()
 	view.free()
 	world.free()

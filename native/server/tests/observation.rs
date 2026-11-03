@@ -259,6 +259,47 @@ fn enemy_buildings_redact_supply_and_orders_in_spawns_snapshots_and_capture_upda
     assert_eq!(lost.properties[0].1["queue"], serde_json::json!([]));
     assert_eq!(&records(&lost.snapshots)[0].1[6..8], &[0, 0]);
 }
+
+#[test]
+fn cached_buildings_cannot_bypass_visibility_changes_after_restore() {
+    let c = Content::bundled().unwrap();
+    let mut s = map(
+        &c,
+        vec![Actor::Structure(Box::new(Structure {
+            id: 3,
+            kind: "fob".into(),
+            team: 1,
+            seen: 1,
+            ..Default::default()
+        }))],
+    );
+    let mut view = View::new(0).unwrap();
+    assert_eq!(view.update(&s, &c).births.len(), 1);
+    assert!(view.update(&s, &c).snapshots.is_empty());
+    replace(&mut s, |a| {
+        if let Actor::Structure(b) = a {
+            b.seen = 0;
+        }
+    });
+    let hidden = view.update(&s, &c);
+    assert_eq!(records(&hidden.snapshots), [(3, vec![])]);
+    assert!(hidden.properties.is_empty());
+    replace(&mut s, |a| {
+        if let Actor::Structure(b) = a {
+            b.seen = 1;
+            b.hp *= 0.5;
+        }
+    });
+    let revealed = view.update(&s, &c);
+    assert!(revealed.births.is_empty());
+    assert_eq!(
+        records(&revealed.snapshots),
+        [(
+            3,
+            observation::state(&s, s.state.field.actors.get(3).unwrap(), 0, &c)
+        )]
+    );
+}
 #[test]
 fn compact_entity_payloads_keep_godot_layout_and_packet_boundaries() {
     let c = Content::bundled().unwrap();
@@ -494,25 +535,47 @@ fn removed_scenery_and_boats_keep_their_final_visual_events() {
                 damage: Damage {
                     applied: true,
                     removed: Some(Box::new(Structure {
-                        id: 1, kind: "tree".into(), team: -1, variant: 2,
-                        position: Vector3::X, size: Vector3::splat(4.), yaw: 0.3,
+                        id: 1,
+                        kind: "tree".into(),
+                        team: -1,
+                        variant: 2,
+                        position: Vector3::X,
+                        size: Vector3::splat(4.),
+                        yaw: 0.3,
                         ..Default::default()
                     })),
                     events: vec![DamageEvent::TreeFall(0.5)],
                 },
             }),
             sim::match_tick::Event::Vehicle(sim::vehicle_world::Event::Loss(LossEvent::Sunk {
-                vehicle: Notice { id: 2, team: 0, position: Vector3::Z, name: "Patrol boat".into() },
+                vehicle: Notice {
+                    id: 2,
+                    team: 0,
+                    position: Vector3::Z,
+                    name: "Patrol boat".into(),
+                },
                 heavy: false,
             })),
         ],
     };
     let out = observation::events::Events::collect(&s, &frame);
     assert_eq!(out.effects.len(), 3);
-    assert_eq!(out.effects[0].data, serde_json::json!([17, [1., 0., 0.], [2., 2., 2.], 0.3]));
-    assert_eq!(out.effects[1].data, serde_json::json!([10, [1., 0., 0.], 0.5, 1, 2]));
-    assert_eq!(out.effects[2].data, serde_json::json!([18, 2, [0., 0., 1.]]));
-    assert!(out.effects.iter().all(|effect| effect.reliable && effect.mask == 3));
+    assert_eq!(
+        out.effects[0].data,
+        serde_json::json!([17, [1., 0., 0.], [2., 2., 2.], 0.3])
+    );
+    assert_eq!(
+        out.effects[1].data,
+        serde_json::json!([10, [1., 0., 0.], 0.5, 1, 2])
+    );
+    assert_eq!(
+        out.effects[2].data,
+        serde_json::json!([18, 2, [0., 0., 1.]])
+    );
+    assert!(out
+        .effects
+        .iter()
+        .all(|effect| effect.reliable && effect.mask == 3));
     assert_eq!(before, s.checkpoint().unwrap());
 }
 

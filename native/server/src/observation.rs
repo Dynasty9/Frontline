@@ -6,9 +6,11 @@ use crate::{content::Content, simulation::Simulation};
 use frontline_core as sim;
 pub use hud::{hud, report};
 use serde_json::{json, Value};
-use sim::{actors::Actor, infantry_vitals::Life, projectile_actor::Motion, vector::Vector3};
+use sim::{
+    actors::Actor, entities::Kind, infantry_vitals::Life, projectile_actor::Motion, vector::Vector3,
+};
 use std::{
-    collections::BTreeMap,
+    collections::HashMap,
     hash::{DefaultHasher, Hash, Hasher},
 };
 
@@ -350,7 +352,7 @@ struct Known {
 }
 pub struct View {
     team: i8,
-    known: BTreeMap<u32, Known>,
+    known: HashMap<u32, Known>,
     sequence: u64,
 }
 impl View {
@@ -360,7 +362,7 @@ impl View {
         }
         Ok(Self {
             team,
-            known: BTreeMap::new(),
+            known: HashMap::new(),
             sequence: 0,
         })
     }
@@ -369,18 +371,24 @@ impl View {
         self.sequence += 1;
         let mut packet = (simulation.state.field.now as f32).to_le_bytes().to_vec();
         let mut bytes = Vec::with_capacity(32);
-        for a in simulation.state.field.actors.iter() {
-            let id = a.identity().id;
-            let visible = can_know(simulation, a, self.team);
-            let revision = simulation.state.field.actors.structure_revision(id);
-            if visible
-                && revision.is_some()
+        let actors = &simulation.state.field.actors;
+        for identity in actors.entities().iter() {
+            let id = identity.id;
+            let revision = if identity.kind == Kind::Structure {
+                actors.structure_revision(id)
+            } else {
+                None
+            };
+            // Unchanged scenery needs no actor lookup; fog and ownership edits change its revision.
+            if revision.is_some()
                 && self.known.get(&id).is_some_and(|known| {
                     known.revision == revision && self.sequence < known.refresh
                 })
             {
                 continue;
             }
+            let a = actors.get(id).unwrap();
+            let visible = can_know(simulation, a, self.team);
             if !visible && !self.known.contains_key(&id) {
                 continue;
             }
@@ -478,6 +486,7 @@ impl View {
                 false
             }
         });
+        out.despawns.sort_unstable();
         out
     }
 }

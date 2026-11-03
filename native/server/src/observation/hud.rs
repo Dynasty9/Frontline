@@ -3,6 +3,7 @@ use sim::{
     battle_stats::{self, Counters},
     economy,
 };
+use std::collections::BTreeMap;
 
 fn symbol(c: &Content, a: &Actor) -> String {
     match a {

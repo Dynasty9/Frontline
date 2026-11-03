@@ -133,7 +133,7 @@ func _draw_content() -> void:
 	var teams: Array = [lt] if lt >= 0 else [0, 1]
 	# gather: squads by sid, vehicles
 	var by_sid := {}
-	for s in w.soldiers:
+	for s: Soldier in w.soldiers:
 		if s.sid == 0 or s.team < 0 or not s.team in teams:
 			continue
 		if not by_sid.has(s.sid):
@@ -143,7 +143,7 @@ func _draw_content() -> void:
 	for sid in by_sid:
 		var mem: Array = by_sid[sid]
 		var alive := 0
-		for s in mem:
+		for s: Soldier in mem:
 			if s.life == Soldier.Life.ALIVE or s.life == Soldier.Life.HIDDEN or s.life == Soldier.Life.DOWNED:
 				alive += 1
 		if alive > 0:

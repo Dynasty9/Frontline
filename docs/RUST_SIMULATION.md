@@ -242,11 +242,14 @@ reinforcements have a deterministic replay regression.
 
 Remaining release gates:
 
-- Audit remaining cosmetic lifecycle events through joining and live observations.
 - Run generated large-map, 500-unit rendered cases and inspect tail frame times,
   frame-to-frame variation and memory with other applications running.
 - Complete exports/installers and current-head cross-platform CI. Preserve gameplay
   with full scenario/mission regressions and visible comparison evidence.
+
+The cosmetic lifecycle audit covers removed trees, burning buildings, artillery
+recoil, surrender, death impulses and ships sinking after they leave the live
+registry. The current observer and actual Godot/socket fixtures pass these cases.
 
 Browser validation on 3 November: the real Chromium export generated a 1 km
 battle with 20 soldiers, sent a move order, replicated movement, paused its clock,
@@ -587,3 +590,43 @@ surrender and persistent fires, without changing canonical state. Twelve observa
 tests, ten socket tests and the real Godot socket/replay check pass. Cursor presence
 tests now refresh their intentionally unreliable packet, matching normal clients;
 the previous send-once assumption caused a macOS CI timeout.
+
+### Indexed observations and spread visual work
+
+The next live 3 km / 500-soldier generated battle averaged 74.06 FPS, frame p99
+26.58 ms and maximum 35.53 ms. Rust tick mean/p99 were 8.74/23.00 ms; rules and
+ledger mean fell to 0.226 ms after using the active-building index. The saved
+server independently verified all 3,019 recorded ticks as an unfinished battle,
+with final hash `8c7a5b7fd2913661502861bbfe1d8e7dedf2bb31a91afe3667660c3af42af3f5`.
+All 140 core numeric fixtures pass. Artifacts and the matching server are retained
+in `build/rust-socket-generated-3072-detail-head/`.
+
+Observation preparation now checks scenery revisions before looking up actor
+state and uses hashed lookup storage, retaining registration order and explicitly
+sorting removals. An alternating 14,000-scenery / 500-soldier microbenchmark measured
+means of 4.144, 4.146 and 4.619 ms before versus 1.570, 1.304 and 1.212 ms after
+(68% lower across these runs). Each emitted the same 132,933 rows over 180 updates.
+Thirteen observation tests and ten socket tests pass, including visibility changes
+after restoring actors and recovery of lost static updates. This microbenchmark
+is not a new full-game FPS measurement.
+
+Wildlife queries use 32 m cells and a separate aircraft list while retaining
+nearest-threat ties and fog visibility. In 5,120 matched queries, CPU time fell
+from 544,450 to 110,301 microseconds; rebuilding 200 indexes cost 159,984 instead
+of 88,920 microseconds. The full close-view replay did not establish an overall
+FPS gain from this change. Routine shared-pose uploads and squad-data preparation
+now yield at most one frame to an overlay redraw. The subsequent close replay
+measured 64.44 FPS, frame p99 30.32 ms and adjacent-frame difference p99 14.82 ms,
+versus 63.28 FPS, 35.85 ms and 20.54 ms just before scheduling those updates.
+Other apps remained running. Both runs still miss the frame budget; the first
+16-model run above had lower frame p99 than these later repeats. Focused scheduling,
+selection, fog, teleport and rendering fixtures pass.
+
+The shutdown warning also occurs when loading scripts without creating a World:
+synchronous loading leaked no objects, threaded ResourceLoader loading left seven
+zero-reference RefCounted objects, and loading through WorkerThreadPool left eight.
+This matches the open Godot [LoadToken leak](https://github.com/godotengine/godot/issues/120661)
+and its [pending engine fix](https://github.com/godotengine/godot/pull/121025).
+The probes are in `build/load-leak-{sync,threaded,worker}.log`; this is an engine
+loading caveat, not evidence of retained Rust battle state. No engine fork or
+synchronous-startup workaround is included.

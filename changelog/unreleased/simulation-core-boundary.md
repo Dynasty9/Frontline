@@ -42,6 +42,8 @@ caption = "After: selected and nearby troops receive the articulated-model budge
 - Distant soldier batches expand their bounds for elevated and airborne troops, preventing models from disappearing above the old flat-ground bounds.
 - Distant soldiers smooth their movement on the GPU between socket updates, reducing repeated CPU transform uploads while preserving immediate visibility and teleport changes.
 - Close views limit fully articulated models to 16 selected or nearby soldiers. Other troops use shared standing, crouching, prone and walking models, preserving the full army and gameplay while reducing drawing cost.
+- New detailed models build one at a time. Routine shared-model uploads and squad-overview preparation yield at most one frame to a HUD redraw, keeping selection, visibility changes and teleports immediate.
+- Wildlife looks for nearby threats through spatial cells; soaring birds check aircraft directly instead of scanning every soldier.
 - Squad strength indicators reuse their geometry until the number or condition of their soldiers changes, reducing HUD drawing calls.
 - Minimap soldier dots share one draw batch and reuse map transforms and team colors, retaining selection, wounded colors, overlap and immediate camera feedback.
 - Supply dispatch checks active buildings instead of every scenery object. Infantry refresh activity descriptions only when their existing status timer expires.

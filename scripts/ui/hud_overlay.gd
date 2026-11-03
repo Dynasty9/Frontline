@@ -13,6 +13,8 @@ var _map_labels := {}
 var _marker_offsets := {}
 var _label_epoch := 0
 var _groups_at := -1000
+var _groups_pending := false
+var refreshed_frame := -1
 const CLOSE_Z := 22.0
 const FAR_Z := 42.0
 var _refresh_left := 0.0
@@ -42,6 +44,7 @@ func refresh_for_view(dt: float, camera: Camera3D) -> bool:
 		return false
 	_refresh_left = maxf(0.0, _refresh_left + 1.0 / 15.0) if _refresh_left <= 0.0 else 1.0 / 15.0
 	_refresh_view = view
+	refreshed_frame = Engine.get_process_frames()
 	queue_redraw()
 	if raster:
 		raster.render_target_update_mode = SubViewport.UPDATE_ONCE
@@ -91,7 +94,7 @@ func _draw() -> void:
 			if st2.team < 0 and st2.label_h > 0.0:
 				_team_structs.append(st2)
 	_clear_placed()
-	_build_groups(inp)
+	_build_groups(inp, false)
 	_mark("groups")
 	_town_marks()
 	_structure_labels(cam, vs, zoom)
@@ -127,7 +130,7 @@ func _draw() -> void:
 	_command_links(cam, a_units)
 	_mark("command links")
 	# health bars: selected, wounded or downed friendlies
-	for s in w.soldiers:
+	for s: Soldier in w.soldiers:
 		if not s.visible or s.life == Soldier.Life.HIDDEN or s.life == Soldier.Life.DEAD:
 			continue
 		var own: bool = s.team == lt
@@ -239,18 +242,26 @@ func _ground_arrow(a: Vector3, b: Vector3, col: Color) -> void:
 
 # --- levels of detail -------------------------------------------------------
 
-func _build_groups(inp) -> void:
+func prepare_groups(inp, drawing: bool) -> void:
+	# Keep the next squad overview off a redraw frame, without starving it during a camera pan.
+	_groups_pending = drawing and not _groups_pending and not _groups.is_empty() and Time.get_ticks_msec() - _groups_at >= 100
+	var started := Time.get_ticks_usec()
+	_build_groups(inp, not _groups_pending)
+	hud.world.vp("ovl groups", started)
+
+
+func _build_groups(inp, rebuild := true) -> void:
 	_sel_sids.clear()
 	for sid in inp.sel_squads:
 		_sel_sids[sid] = true
 	# Membership and squad markers are an overview; selection stays immediate.
 	var now := Time.get_ticks_msec()
-	if now - _groups_at < 100:
+	if not rebuild or now - _groups_at < 100:
 		return
 	_groups_at = now
 	var previous := _groups
 	_groups = {}
-	for s in hud.world.soldiers:
+	for s: Soldier in hud.world.soldiers:
 		if s.sid == 0 or not s.visible or s.life == Soldier.Life.HIDDEN:
 			continue
 		var g: Dictionary = _groups.get(s.sid, {})
@@ -285,7 +296,7 @@ func _build_groups(inp) -> void:
 func _men_on_screen(cam: Camera3D, vs: Vector2) -> Array:
 	var out := []
 	var center := vs * 0.5
-	for s in hud.world.soldiers:
+	for s: Soldier in hud.world.soldiers:
 		if not s.visible or s.life == Soldier.Life.DEAD or s.life == Soldier.Life.HIDDEN:
 			continue
 		var p0: Vector3 = s.position + Vector3(0, _head_h(s), 0)

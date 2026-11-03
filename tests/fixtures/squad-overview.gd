@@ -35,6 +35,16 @@ func _ready() -> void:
 	overlay._groups_at = -1000
 	overlay._build_groups({"sel_squads": []})
 	assert(overlay._groups[7].pip_mesh != strength, "Healing must change the colored strength indicator")
+	members[0].flags = Soldier.F_SHOOTING
+	overlay._groups_at = -1000
+	overlay.prepare_groups({"sel_squads": [7]}, true)
+	assert(overlay._groups[7].firing == 0 and overlay._sel_sids.has(7), "Squad rebuilding yields to a redraw while selection stays immediate")
+	overlay.prepare_groups({"sel_squads": []}, true)
+	assert(overlay._groups[7].firing == 1 and overlay._sel_sids.is_empty(), "Continuous camera redraws cannot postpone the overview more than one frame")
+	members[0].flags = 0
+	overlay._groups_at = -1000
+	overlay.prepare_groups({"sel_squads": []}, false)
+	assert(overlay._groups[7].firing == 0, "An idle drawing frame can prepare the next overview immediately")
 	var squad := Squad.new()
 	squad.members = members.duplicate()
 	assert(squad.has_alive_members() == not squad.alive_members().is_empty())

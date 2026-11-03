@@ -33,6 +33,7 @@ var _motion_frame := -1
 var _sample_pose := -1
 var _sample_view := Transform3D.IDENTITY
 var _sample_projection := Projection()
+var _batch_deferred := false
 var _age := 0.0
 var _material: ShaderMaterial
 
@@ -70,7 +71,7 @@ func acquire_detail_slot() -> bool:
 	if frame != _detail_frame:
 		_detail_frame = frame
 		_detail_count = 0
-	if _detail_count >= 2:
+	if _detail_count >= 1:
 		return false
 	_detail_count += 1
 	return true
@@ -151,16 +152,21 @@ func _process(dt: float) -> void:
 		_make_pose(pose[0], pose[1], pose[2], pose[3], pose[4])
 		_dirty = true
 	var interpolate := world.simulation_client != null
-	if _motion_frame >= 0 and Engine.get_process_frames() >= _motion_frame:
-		_dirty = true
+	var motion_due := _motion_frame >= 0 and Engine.get_process_frames() >= _motion_frame
 	var pose_frame := int(world.time * 8.0)
 	var view := world.cam.cam.global_transform if world.cam else Transform3D.IDENTITY
 	var projection := world.cam.cam.get_camera_projection() if world.cam else Projection()
 	_age += dt
-	if interpolate and not _dirty and pose_frame == _sample_pose and view == _sample_view and projection == _sample_projection:
-		_material.set_shader_parameter("age", _age)
-		world.vp("distant soldiers", started)
-		return
+	if interpolate and not _dirty and view == _sample_view and projection == _sample_projection:
+		var unchanged := not motion_due and pose_frame == _sample_pose
+		var overlay_drawing := world.hud and world.hud.overlay and world.hud.overlay.refreshed_frame == Engine.get_process_frames()
+		if unchanged or (overlay_drawing and not _batch_deferred):
+			# GPU smoothing continues while a routine upload yields one frame to the HUD.
+			_batch_deferred = _batch_deferred or not unchanged
+			_material.set_shader_parameter("age", _age)
+			world.vp("distant soldiers", started)
+			return
+	_batch_deferred = false
 	_dirty = false
 	_motion_frame = -1
 	_sample_pose = pose_frame

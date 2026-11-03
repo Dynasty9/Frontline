@@ -79,6 +79,8 @@ func _ready() -> void:
 	assert(not tracked.is_processing(), "The shared view loop replaces individual frame callbacks")
 	for i in 4:
 		await get_tree().process_frame
+		assert(view.acquire_detail_slot(), "A new frame can construct one detailed soldier")
+		assert(not view.acquire_detail_slot(), "Cold detailed models must be spread across frames")
 	assert(tracked.frames.size() >= 2 and tracked.elapsed > 0.0)
 	var updates := tracked.frames.size()
 	tracked.gone = true

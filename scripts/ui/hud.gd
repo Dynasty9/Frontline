@@ -1529,6 +1529,8 @@ func _view_process(dt: float) -> void:
 	var overlay_changed := false
 	if world.cam:
 		overlay_changed = overlay.refresh_for_view(rdt, world.cam.cam)
+	if world.input:
+		overlay.prepare_groups(world.input, overlay_changed)
 	_refresh_roster(slow, overlay_changed)
 	pointer_overlay.queue_redraw()
 	coop.queue_redraw()

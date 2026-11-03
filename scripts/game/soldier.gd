@@ -5438,9 +5438,11 @@ func _view_process(dt: float, blend := -1.0) -> void:
 		_last_view_pos = position
 		return
 	if model == null:
+		var started := Time.get_ticks_usec()
 		model = SoldierModel.new()
 		add_child(model)
 		model.build(utype, team, eid * 31 + 7)
+		world.vp("soldier model construction", started)
 	model.visible = true
 	# off-screen men are posed a few times a second, distant ones every other
 	# or third frame, close ones every frame
