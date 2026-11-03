@@ -98,10 +98,16 @@ impl MatchState {
             return Err("navigation update failed");
         }
         phase("navigation_hierarchy");
+        // Small armies have time for the original queue cadence; crowded battles share the tick with more AI.
+        let route_work = if f.actors.iter_combatants().count() >= 256 {
+            3000
+        } else {
+            u64::MAX
+        };
         let routes = f.geometry.navigation.process_paths_with_work_limit(
             &mut f.actors,
             4,
-            3000,
+            route_work,
             f.now,
             &mut f.rng,
             crate::traversal::Ground::new(&f.geometry.terrain, &f.geometry.deck),

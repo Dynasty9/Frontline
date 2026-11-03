@@ -779,8 +779,9 @@ Evidence: `build/minimap-background-comparison.json` and
 Finer timing separated endpoint attachment, graph search and cleanup. In 1,705
 routes, search averaged 0.466 ms and reached 2.938 ms p99, versus 0.139/0.617 ms
 for attachment and 0.029/0.111 ms for cleanup. Up to four expensive searches could
-land in one tick. Production ticks now finish at most four requests but start no
-further search after 3,000 graph expansions. The current search always finishes;
+land in one tick. Production ticks finish at most four requests. Armies of at least 256 combatants
+start no further search after 3,000 graph expansions; smaller armies retain their
+original queue cadence. The current search always finishes;
 this is not a hard time limit. Requests remain in their existing order. Cheap
 cached corridors correctly reset the previous search's expansion count.
 
@@ -810,3 +811,19 @@ five/eight remained pending at the end. These include startup orders and are
 not measurements of network input latency. Evidence: `build/path-budget-wait-before.json`
 and `build/path-budget-wait.json`. Commander, mission and replay regression suites
 pass, including independent verifier rejection of a changed conclusion.
+
+The initial unconditional budget was rejected after the full Ambush playthrough
+stalled with two convoy vehicles surviving at tick 108,000. Its recording still
+verified, demonstrating why determinism alone does not establish gameplay
+compatibility. The retained policy applies the limit only at 256 registered
+combatants or more, where large-army AI competes for the tick budget; smaller
+battles keep the original four-job cadence and mission rules are unchanged.
+
+With the scaled policy, all five full seed-1 missions conclude at their original
+ticks and outcomes: Bridgehead 10,219 (victory), Beachhead 10,975 (victory),
+Ambush 8,278 (victory), Kingpin 14,106 (defeat), and Skyhook 22,848 (defeat).
+Every new command recording independently verifies its final checkpoint and
+winner. The 500-unit diagnostic still reaches the exact budgeted canonical hash
+`1d4ec2cc...` and the same queue measurements. Artifacts are in
+`build/mission-playthroughs-path-budget-scaled/` and
+`build/path-budget-scale-profile.json`.

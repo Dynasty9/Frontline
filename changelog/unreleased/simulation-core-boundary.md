@@ -24,7 +24,7 @@ caption = "After: selected and nearby troops receive the articulated-model budge
 - Sky Hook's convoy starts on ground from which its vehicles can reach the outpost, fixing a mission stall caused by reinforcements stranded on mountain slopes.
 - Troops can complete long routes across navigation regions. Diving uses current ground height, and starting a different-sized map rebuilds its ground correctly.
 - Unreachable movement orders use cached map connectivity instead of repeatedly searching the whole navigation graph. Opening or closing a crossing refreshes that connectivity.
-- Large route searches share a deterministic work budget, carrying excess requests into following ticks to reduce simulation spikes.
+- Armies of at least 256 combatants share a deterministic route-search budget, carrying excess requests into following ticks to reduce simulation spikes. Smaller battles keep their existing schedule.
 - Repeated local navigation costs reuse bounded caches, clearing them when obstacles or terrain weights change; route choices stay the same.
 - Reachable route searches use a tighter distance estimate to examine fewer junctions while preserving shortest route cost. Equally priced routes can differ, so command recordings require the matching simulation version.
 - Cosmetic debris no longer advances gameplay randomness. New command recordings preserve the full starting battlefield and player inputs; existing observer archives remain unverified recordings.
