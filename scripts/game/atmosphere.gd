@@ -59,6 +59,7 @@ var cam_attr: CameraAttributesPractical
 var biome_img: Image
 var biome_tex: ImageTexture
 var detail_tex: ImageTexture
+var backdrop_tex: ImageTexture
 var road_mat: ShaderMaterial
 var grass: Grass
 var wildlife: Wildlife
@@ -115,6 +116,30 @@ func _make_noise() -> void:
 	var di := d.get_seamless_image(256, 256, false, false, 0.1, true)
 	di.generate_mipmaps()
 	detail_tex = ImageTexture.create_from_image(di)
+	backdrop_tex = ImageTexture.create_from_image(backdrop_image(n.seed))
+
+
+## A separate low-frequency field gives the horizon massifs instead of equal-height noise walls.
+static func backdrop_image(seed_value: int) -> Image:
+	var noise := FastNoiseLite.new()
+	noise.seed = seed_value + 1907
+	noise.noise_type = FastNoiseLite.TYPE_SIMPLEX_SMOOTH
+	noise.frequency = 0.008
+	noise.fractal_type = FastNoiseLite.FRACTAL_FBM
+	noise.fractal_octaves = 5
+	noise.fractal_gain = 0.42
+	noise.domain_warp_enabled = true
+	noise.domain_warp_amplitude = 38.0
+	noise.domain_warp_frequency = 0.012
+	# Eight-bit noise makes metre-high terraces when expanded to mountain heights.
+	var values := PackedFloat32Array()
+	values.resize(512 * 512)
+	for z in 512:
+		for x in 512:
+			values[z * 512 + x] = noise.get_noise_2d(x, z) * 0.5 + 0.5
+	var img := Image.create_from_data(512, 512, false, Image.FORMAT_RF, values.to_byte_array())
+	img.generate_mipmaps()
+	return img
 
 
 ## 0..1 biome value at a world position (same data the ground shader uses).
@@ -267,6 +292,7 @@ func _build_ground() -> void:
 	ground_mat.shader = sh
 	ground_mat.set_shader_parameter("biome_tex", biome_tex)
 	ground_mat.set_shader_parameter("detail_tex", detail_tex)
+	ground_mat.set_shader_parameter("backdrop_tex", backdrop_tex)
 	ground_mat.set_shader_parameter("cliff_color", preload("res://assets/terrain/aerial_rocks_02_color_height.png"))
 	ground_mat.set_shader_parameter("cliff_normal", preload("res://assets/terrain/aerial_rocks_02_surface.png"))
 	ground_mat.set_shader_parameter("rock_color", preload("res://assets/terrain/rock_face_03_color_height.png"))
@@ -724,9 +750,15 @@ func _update_terrain_probe(refresh := false) -> void:
 func _apply_haze(distance: float) -> void:
 	var k := haze_distance_factor(distance)
 	var volume_k := k
+	env.fog_aerial_perspective = 0.0
+	env.fog_height_density = 0.0
 	if bool(Settings.get_v("alpine_haze")) and world != null and world.terrain and world.terrain.landform.peak > 1.0:
 		var downward := absf(sin(world.cam.rotation.x)) if world.cam else 0.0
 		k = maxf(k, 0.45 * pow(1.0 - downward, 2.0))
+		# Sky tint separates distant ranges; keep the low valley veil out of the overhead view.
+		env.fog_aerial_perspective = 0.38 * (1.0 - downward)
+		env.fog_height = 18.0
+		env.fog_height_density = 0.0012 * pow(1.0 - downward, 2.0)
 	env.fog_density = float(_d.fog_d) * HAZE_STRENGTH * k
 	env.volumetric_fog_density = (0.0011 if mood != "hazy" else 0.003) * VOLUME_STRENGTH * volume_k
 
@@ -782,9 +814,10 @@ func _ground_ring(inner: float, outer: float) -> ArrayMesh:
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
 	var rects := [Rect2(-outer, -outer, outer * 2.0, outer - inner), Rect2(-outer, inner, outer * 2.0, outer - inner),
 		Rect2(-outer, -inner, outer - inner, inner * 2.0), Rect2(inner, -inner, outer - inner, inner * 2.0)]
+	var spacing := 8.0 if int(Settings.get_v("lod")) >= 1 else 16.0
 	for r in rects:
-		var nx := ceili(r.size.x / 16.0)
-		var nz := ceili(r.size.y / 16.0)
+		var nx := ceili(r.size.x / spacing)
+		var nz := ceili(r.size.y / spacing)
 		for z in nz:
 			for x in nx:
 				var lo: Vector2 = r.position + r.size * Vector2(float(x) / nx, float(z) / nz)
@@ -796,6 +829,7 @@ func _ground_ring(inner: float, outer: float) -> ArrayMesh:
 				for p in [a, b, c, a, c, d]:
 					st.set_normal(Vector3.UP)
 					st.add_vertex(p)
+	st.index()
 	return st.commit()
 
 
@@ -963,6 +997,7 @@ uniform sampler2D rock_normal : filter_linear_mipmap_anisotropic, repeat_enable;
 uniform sampler2D moss_normal : filter_linear_mipmap_anisotropic, repeat_enable;
 uniform sampler2D biome_tex : filter_linear, repeat_enable;
 uniform sampler2D detail_tex : filter_linear_mipmap, repeat_enable;
+uniform sampler2D backdrop_tex : filter_linear_mipmap, repeat_disable;
 uniform vec3 grass_a : source_color = vec3(0.24, 0.29, 0.19);
 uniform vec3 grass_b : source_color = vec3(0.32, 0.36, 0.24);
 uniform vec3 dry : source_color = vec3(0.36, 0.33, 0.19);
@@ -986,9 +1021,11 @@ varying float terrain_sun;
 float backdrop(vec2 p) {
 	float edge = max(abs(p.x), abs(p.y)) - __MAP_HALF__;
 	float coast = 1.0 - smoothstep(sea_x - 90.0, sea_x, p.x);
-	float ridge = 1.0 - abs(textureLod(detail_tex, p / 8000.0, 0.0).r * 2.0 - 1.0);
-	float hills = pow(ridge, 3.0) * 260.0 + textureLod(detail_tex, p / 2000.0, 0.0).r * 35.0;
-	return hills * smoothstep(8.0, 300.0, edge) * coast * (1.0 - step(9999.0, snow_line))
+	vec2 uv = (p + __MAP_HALF__ + 1800.0) / (__MAP_SIZE__ + 3600.0);
+	float mountain = textureLod(backdrop_tex, uv, 0.0).r;
+	float hills = pow(smoothstep(0.18, 0.88, mountain), 2.2) * 440.0;
+	return hills * smoothstep(8.0, 380.0, edge) * coast * (1.0 - step(9999.0, snow_line))
+		* (1.0 - smoothstep(1450.0, 1800.0, edge))
 		- 3.2 * smoothstep(sea_x, sea_x + 30.0, p.x);
 }
 
@@ -1097,8 +1134,10 @@ void fragment() {
 	col = mix(col, churn, clamp(bowl * 1.1, 0.0, 1.0));
 	col = mix(col, vec3(0.018, 0.016, 0.014), smoothstep(-0.3, -0.75, hd) * 0.55);
 	col = mix(col, mix(dirt, vec3(0.085, 0.066, 0.047), 0.6) * (0.85 + 0.3 * d3), lip * 0.75);
-	float rx = (dfm(p + vec2(1.0, 0.0)) - dfm(p - vec2(1.0, 0.0))) * 0.5;
-	float rz = (dfm(p + vec2(0.0, 1.0)) - dfm(p - vec2(0.0, 1.0))) * 0.5;
+	// Sample distant slopes across their mesh spacing, not within one height texel.
+	float normal_step = edge >= __MAP_HALF__ ? 16.0 : 1.0;
+	float rx = (dfm(p + vec2(normal_step, 0.0)) - dfm(p - vec2(normal_step, 0.0))) / (2.0 * normal_step);
+	float rz = (dfm(p + vec2(0.0, normal_step)) - dfm(p - vec2(0.0, normal_step))) / (2.0 * normal_step);
 	float slope = length(vec2(rx, rz));
 	vec3 geometric = normalize(vec3(-rx, 1.0, -rz));
 	vec3 weights = pow(abs(geometric), vec3(4.0));
@@ -1108,7 +1147,12 @@ void fragment() {
 	float region = smoothstep(0.25, 0.72, texture(detail_tex, p / 2300.0 + warp * 0.35).r);
 	float patch = smoothstep(0.30, 0.68, texture(detail_tex, p / 620.0 + warp * 0.18).r);
 	float seams = texture(detail_tex, vec2(p.x * 0.0005 + p.y * 0.00025, wpos.y * 0.0018) + warp * 0.12).r;
-	vec3 rock_uv = (wpos + vec3(warp.x, warp.y, warp.x) * 7.0) / 48.0;
+	// Warp the projection in three dimensions so the same slab does not repeat up every face.
+	vec3 fracture_warp = vec3(
+		texture(detail_tex, wpos.zy / 900.0 + 0.17).r,
+		texture(detail_tex, wpos.xz / 1100.0 + 0.53).r,
+		texture(detail_tex, wpos.xy / 800.0 + 0.81).r) - vec3(0.5);
+	vec3 rock_uv = (wpos + fracture_warp * 22.0) / 48.0;
 	vec3 scree_uv = wpos / 16.0 + 0.37;
 	vec3 moss_uv = wpos / 18.0;
 	vec4 rock_sample = surface_color(rock_color, rock_uv, weights);
@@ -1130,6 +1174,11 @@ void fragment() {
 	rock *= mix(1.12, 0.65, weathered);
 	rock = mix(rock, rock * vec3(1.45, 1.40, 1.29), mineral * 0.65);
 	rock *= mix(0.86, 1.14, smoothstep(0.25, 0.75, macro));
+	// Stretch the stain field vertically; ledges and material patches interrupt each streak.
+	vec2 runoff_uv = vec2((p.x + p.y * 0.73) / 135.0, wpos.y / 2100.0 + seams * 0.035);
+	float runoff = smoothstep(0.50, 0.68, texture(detail_tex, runoff_uv).r);
+	runoff *= smoothstep(0.55, 1.2, slope) * mix(0.25, 0.85, patch);
+	rock *= mix(vec3(1.0), vec3(0.56, 0.61, 0.63), runoff);
 	float rock_height = mix(rock_sample.a, scree_sample.a, scree * 0.7);
 	float grass_detail = dot(moss_sample.rgb, vec3(0.2126, 0.7152, 0.0722));
 	float alpine_soil = clamp(0.52 + (habitat_bake.g - 0.5) * 1.3 + geometric.z * 0.18 - slope * 0.14, 0.0, 1.0);
@@ -1152,7 +1201,8 @@ void fragment() {
 		sky = 1.0 - max(cavity, 0.0) * 0.45;
 		terrain_sun = 1.0;
 	}
-	float cover = smoothstep(0.24, 0.95, slope + elevation * 0.20 + (0.5 - alpine_soil) * 0.32 + (patch - 0.5) * 0.08);
+	float cover = smoothstep(0.18, 1.05, slope + elevation * 0.32 + (0.5 - alpine_soil) * 0.32
+		+ (patch - 0.5) * 0.24 + (rock_height - 0.5) * 0.35);
 	float exposed = height_blend(moss_sample.a, rock_height, cover);
 	vec3 alpine = mix(moss, rock, exposed);
 	float clean = (1.0 - wm.g) * (1.0 - wm.a) * (1.0 - clamp(bowl, 0.0, 1.0));
@@ -1161,13 +1211,19 @@ void fragment() {
 	float local_snow_line = max(abs(p.x), abs(p.y)) >= __MAP_HALF__ ? max(150.0, snow_line * 1.5) : snow_line;
 	float snow_field = (geology - local_snow_line) / 35.0 + cavity * 0.8 - geometric.x * 0.25 + (d1 - 0.5) * 0.3;
 	snow_field -= min(3.0, max(0.0, slope - 0.75)) * 0.18;
-	snow_field += (macro - 0.5) * 0.25;
+	// Snow catches behind ribs and in surface depressions; exposed faces retain bare rock.
+	float lee = clamp(dot(geometric.xz, normalize(vec2(0.8, 0.6))) + cavity, -1.0, 1.0);
+	snow_field += (macro - 0.5) * 0.45 + lee * 0.18 + (0.5 - rock_height) * 0.22;
 	float snow = height_blend(rock_height, 0.6, smoothstep(-0.16, 0.20, snow_field));
 	snow *= 1.0 - smoothstep(0.85, 2.1, slope);
 	snow *= clean;
-	col = mix(col, vec3(0.82, 0.87, 0.91) * (0.97 + d3 * 0.03), snow);
+	vec3 snow_color = mix(vec3(0.65, 0.75, 0.84), vec3(0.88, 0.90, 0.92), smoothstep(-0.3, 0.6, lee + macro));
+	col = mix(col, snow_color * (0.95 + d3 * 0.05), snow);
 	vec2 material_data = mix(moss_data, rock_data, exposed);
-	AO = sky * mix(1.0, max(0.35, material_data.x), clean * (1.0 - snow));
+	// Combine photographic crevices with broad shelter; do not bake a second direct-light shadow.
+	float crevice = clamp(rock_data.x * mix(1.0, 0.72, shelter), 0.25, 1.0);
+	float material_ao = mix(moss_data.x, crevice, exposed);
+	AO = sky * mix(1.0, max(0.25, material_ao), clean * (1.0 - snow));
 	AO_LIGHT_AFFECT = 0.25;
 	col *= mix(vec3(0.72, 0.80, 0.90), vec3(1.0), sky);
 
@@ -1175,7 +1231,7 @@ void fragment() {
 	ALBEDO = col * (1.0 - aerial);
 	EMISSION = air_color * aerial * 0.22;
 	ROUGHNESS = mix(mix(0.96, 0.82, dirt_m), clamp(material_data.y, 0.55, 1.0), clean);
-	ROUGHNESS = mix(ROUGHNESS, 0.88, snow);
+	ROUGHNESS = mix(ROUGHNESS, mix(0.74, 0.94, macro), snow);
 	ROUGHNESS = mix(ROUGHNESS, 0.55, wet * 0.5);
 	ROUGHNESS = mix(ROUGHNESS, 0.45, max(wm.a * 0.8, wet_sand * 0.6));
 	ROUGHNESS = mix(ROUGHNESS, 0.16, puddle);
@@ -1187,7 +1243,7 @@ void fragment() {
 	float bm = bump * mix(0.6, 1.4, dirt_m) * (1.0 + bowl * 1.5);
 	vec3 n = normalize(vec3((hc - hx) * bm / e * 0.1, 1.0, (hc - hz) * bm / e * 0.1));
 	// the crater's own slopes
-	float de = 2.0;
+	float de = max(2.0, normal_step);
 	float gx = (dfm(p + vec2(de, 0.0)) - dfm(p - vec2(de, 0.0))) / (2.0 * de);
 	float gz = (dfm(p + vec2(0.0, de)) - dfm(p - vec2(0.0, de))) / (2.0 * de);
 	n = normalize(n + vec3(-gx, 0.0, -gz));

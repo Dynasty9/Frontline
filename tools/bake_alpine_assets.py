@@ -87,18 +87,37 @@ def forms():
     # Broad rock masses, with asymmetric escarpments and sloping backs. Heights
     # are baked once; the game rotates/scales these forms before erosion.
     z, x = np.mgrid[-1:1:33j, -1:1:33j]
-    ridge = np.clip(1 - np.abs(x + .12 * np.sin(z * 4)), 0, 1)
-    escarpment = np.clip((x + .62) / .16, 0, 1) * np.clip((1 - x) / 1.05, 0, 1)
-    buttress = escarpment * (.74 + .26 * np.cos(z * 8 + x * 1.8) ** 4)
-    cirque = np.clip(1 - np.abs(np.sqrt((x * .9) ** 2 + (z + .18) ** 2) - .60) / .34, 0, 1)
-    cirque *= np.clip((z + .85) / .5, 0, 1)
-    saddle = ridge * (.64 + .28 * np.cos(z * 3.8) ** 2)
+    rng = np.random.default_rng(1907)
+
+    def noise(u, v, scale):
+        grid = rng.uniform(-1, 1, (64, 64))
+        u, v = (u + 3) * scale, (v + 3) * scale
+        ix, iz = np.floor(u).astype(int), np.floor(v).astype(int)
+        fx, fz = u - ix, v - iz
+        fx, fz = fx * fx * (3 - 2 * fx), fz * fz * (3 - 2 * fz)
+        a = grid[iz % 64, ix % 64] * (1 - fx) + grid[iz % 64, (ix + 1) % 64] * fx
+        b = grid[(iz + 1) % 64, ix % 64] * (1 - fx) + grid[(iz + 1) % 64, (ix + 1) % 64] * fx
+        return a * (1 - fz) + b * fz
+
+    # Broad shoulders carry branching gullies; avoid parallel sinusoidal flutes.
+    warp = noise(x, z, 2.2)
+    u, v = x + warp * .14, z + noise(x, z, 1.8) * .16
+    ridge = np.clip(1 - np.abs(u + .16 * np.sin(v * 3)), 0, 1)
+    escarpment = np.clip((u + .62) / .28, 0, 1) * np.clip((1 - u) / 1.05, 0, 1)
+    crest = .38 + .62 * np.sqrt(np.clip(1 - (v + .15) ** 2, 0, 1))
+    buttress = escarpment * crest
+    cirque = np.clip(1 - np.abs(np.sqrt((u * .9) ** 2 + (v + .18) ** 2) - .60) / .34, 0, 1)
+    cirque *= np.clip((v + .85) / .5, 0, 1) * (.76 + .24 * crest)
+    saddle = ridge * (.50 + .38 * np.abs(v - .12))
+    drainage = np.abs(noise(u + warp * .2, v * .38, 6.0))
+    tributaries = np.abs(noise(u + warp * .35, v * .65, 12.0))
+    incision = .13 * np.exp(-drainage * 12) + .045 * np.exp(-tributaries * 15)
     kit = {"buttress": buttress, "cirque": cirque, "saddle": saddle}
     lines = ['[gd_resource type="Resource" format=3]', '', '[resource]',
              'resource_name = "Baked alpine forms"', 'metadata/width = 33']
     for name, field in kit.items():
         # Cut narrow drainage seams into the faces without making isolated cones.
-        field *= .94 + .06 * np.sin(x * 23 + z * 7) ** 2
+        field = np.clip(field * (1 - incision) + noise(x, z, 9.0) * .012 * field, 0, 1)
         assert np.isfinite(field).all() and field.min() >= 0 and field.max() <= 1
         values = ", ".join(f"{v:.5f}" for v in field.flat)
         lines.append(f'metadata/{name} = PackedFloat32Array({values})')

@@ -14,6 +14,10 @@ func _ready() -> void:
 	assert(MapGen.alpine_dressing(0.2, 0.6, 0.8) == "alpine_stones")
 	assert(MapGen.alpine_dressing(0.8, 0.1, 0.8) == "")
 	assert(MapGen.alpine_dressing(0.2, 1.2, 0.8) == "")
+	var horizon := Atmosphere.backdrop_image(3)
+	assert(horizon.get_size() == Vector2i(512, 512) and horizon.has_mipmaps() and horizon.get_format() == Image.FORMAT_RF)
+	assert(horizon.get_data() == Atmosphere.backdrop_image(3).get_data(), "Scenery is deterministic for every peer")
+	assert(horizon.get_data() != Atmosphere.backdrop_image(4).get_data(), "Different maps have different mountain silhouettes")
 	TerrainMap.N = 64
 	TerrainMap.H = 32.0
 	TerrainMap.DN = 128
@@ -49,6 +53,16 @@ func _ready() -> void:
 	world.terrain.landform.heights = PackedFloat32Array()
 	world.terrain.landform.peak = 0.0
 	var atmosphere := Atmosphere.new()
+	var old_lod: int = Settings.get_v("lod")
+	Settings.v.lod = 0
+	var low_ring := atmosphere._ground_ring(32.0, 64.0)
+	Settings.v.lod = 2
+	var high_ring := atmosphere._ground_ring(32.0, 64.0)
+	Settings.v.lod = old_lod
+	var ring_data: Array = high_ring.surface_get_arrays(0)
+	assert(high_ring.get_aabb() == low_ring.get_aabb(), "Detail settings preserve scenery boundaries")
+	assert(high_ring.surface_get_array_len(0) > low_ring.surface_get_array_len(0), "Low detail retains the cheaper scenery mesh")
+	assert(ring_data[Mesh.ARRAY_INDEX].size() > ring_data[Mesh.ARRAY_VERTEX].size(), "Scenery shares vertices rather than duplicating triangle corners")
 	atmosphere.world = world
 	atmosphere._surface_baked = true
 	var reflections_before: bool = Settings.get_v("terrain_reflections")
@@ -64,6 +78,21 @@ func _ready() -> void:
 	atmosphere._update_terrain_probe()
 	assert(atmosphere._terrain_probe == null, "Disabling reflections releases the probe")
 	Settings.v.terrain_reflections = reflections_before
+	var haze_before: bool = Settings.get_v("alpine_haze")
+	atmosphere.env = Environment.new()
+	atmosphere._d = {"fog_d": 0.002}
+	world.terrain.landform.peak = 80.0
+	Settings.v.alpine_haze = true
+	atmosphere._apply_haze(600.0)
+	assert(atmosphere.env.fog_aerial_perspective > 0.0 and atmosphere.env.fog_height_density > 0.0, "Alpine haze adds sky tint and a valley veil")
+	Settings.v.alpine_haze = false
+	atmosphere._apply_haze(600.0)
+	assert(atmosphere.env.fog_aerial_perspective == 0.0 and atmosphere.env.fog_height_density == 0.0, "Disabling alpine haze clears both additions")
+	Settings.v.alpine_haze = true
+	world.terrain.landform.peak = 0.0
+	atmosphere._apply_haze(600.0)
+	assert(atmosphere.env.fog_height_density == 0.0, "Flat scenarios retain their existing atmosphere")
+	Settings.v.alpine_haze = haze_before
 	atmosphere.free()
 	var geology := Landform.new(64)
 	geology.generate(3, [[], [], []], world.water, [])
