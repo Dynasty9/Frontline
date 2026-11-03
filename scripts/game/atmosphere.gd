@@ -1084,6 +1084,16 @@ vec2 surface_data(sampler2D tex, vec3 p, vec3 weights, vec3 geometric, out vec3 
 	return x.ba * weights.x + y.ba * weights.y + z.ba * weights.z;
 }
 
+vec3 surface_relief(vec3 normal, float height, float strength) {
+	vec3 dx = dFdx(wpos); vec3 dy = dFdy(wpos);
+	vec3 face = normalize(cross(dx, dy));
+	face *= sign(dot(face, normal));
+	vec3 r1 = cross(dy, face); vec3 r2 = cross(face, dx);
+	float det = dot(dx, r1);
+	vec3 gradient = sign(det) * (dFdx(height) * r1 + dFdy(height) * r2);
+	return normalize(normal - gradient * strength / max(abs(det), 0.000001));
+}
+
 float height_blend(float bed, float deposit, float coverage) {
 	vec2 relief = vec2(bed * 0.36 + 1.0 - coverage, deposit * 0.36 + coverage);
 	vec2 weight = max(relief - max(relief.x, relief.y) + 0.18, vec2(0.0));
@@ -1257,6 +1267,7 @@ void fragment() {
 	n = normalize(n + vec3(-gx, 0.0, -gz));
 	vec3 mapped = normalize(mix(moss_n, rock_n, exposed));
 	n = normalize(mix(n, mapped, 0.85 * clean * (1.0 - snow)));
+	n = surface_relief(n, mineral * 0.28, exposed * clean * (1.0 - snow) * smoothstep(0.3, 1.0, slope));
 	n = normalize(mix(n, geometric, snow * 0.9));
 	n = normalize(mix(n, vec3(0.0, 1.0, 0.0), puddle * 0.9));
 	NORMAL = normalize((VIEW_MATRIX * vec4(n, 0.0)).xyz);
