@@ -24,6 +24,23 @@ var _detail_frame := -1
 var _detail_count := 0
 var _active: Array[DrawGroup] = []
 var _expires_at := 0.0
+var _dirty := true
+var _motion_frame := -1
+var _sample_pose := -1
+var _sample_view := Transform3D.IDENTITY
+var _sample_projection := Projection()
+var _age := 0.0
+var _material: ShaderMaterial
+
+
+func invalidate() -> void:
+	_dirty = true
+
+
+func motion_changed() -> void:
+	# Spread routine uploads away from packet decoding; visibility is still immediate.
+	if _motion_frame < 0:
+		_motion_frame = Engine.get_process_frames() + 1
 
 
 func prepare(unit: String, team: int) -> void:
@@ -57,6 +74,26 @@ func acquire_detail_slot() -> bool:
 
 func _ready() -> void:
 	process_priority = 10
+	_material = ShaderMaterial.new()
+	var shader := Shader.new()
+	# The GPU follows the same exponential smoothing between network updates.
+	# Small relative offsets retain precision on the Compatibility renderer.
+	shader.code = """shader_type spatial;
+render_mode world_vertex_coords;
+uniform float age = 0.0;
+vec3 turn(vec3 v, float a) {
+	float c = cos(a); float s = sin(a);
+	return vec3(c * v.x + s * v.z, v.y, -s * v.x + c * v.z);
+}
+void vertex() {
+	float blend = 1.0 - exp(-14.0 * age);
+	vec3 origin = MODEL_MATRIX[3].xyz;
+	VERTEX = origin + turn(VERTEX - origin, INSTANCE_CUSTOM.w * blend) + INSTANCE_CUSTOM.xyz * blend;
+	NORMAL = turn(NORMAL, INSTANCE_CUSTOM.w * blend);
+}
+void fragment() { ALBEDO = COLOR.rgb; ROUGHNESS = 0.9; }
+"""
+	_material.shader = shader
 
 
 func _process(dt: float) -> void:
@@ -66,7 +103,13 @@ func _process(dt: float) -> void:
 		var blend := 1.0 - exp(-dt * 14.0)
 		for soldier: Soldier in world.soldiers:
 			if not soldier.gone:
+				if _motion_frame >= 0 and soldier.position.distance_squared_to(soldier.net_pos) > 64.0:
+					_dirty = true
+				var was_lod := soldier.view_lod
+				var was_visible := soldier.visible
 				soldier._view_process(dt, blend)
+				if soldier.view_lod != was_lod or soldier.visible != was_visible:
+					_dirty = true
 		world.vp("soldiers", started)
 		started = Time.get_ticks_usec()
 	# Bake one pose per frame while loading, rather than baking a whole new
@@ -74,6 +117,25 @@ func _process(dt: float) -> void:
 	if not _warmup.is_empty():
 		var pose: Array = _warmup.pop_front()
 		_make_pose(pose[0], pose[1], pose[2], pose[3], pose[4])
+		_dirty = true
+	var interpolate := world.simulation_client != null
+	if _motion_frame >= 0 and Engine.get_process_frames() >= _motion_frame:
+		_dirty = true
+	var pose_frame := int(world.time * 8.0)
+	var view := world.cam.cam.global_transform if world.cam else Transform3D.IDENTITY
+	var projection := world.cam.cam.get_camera_projection() if world.cam else Projection()
+	_age += dt
+	if interpolate and not _dirty and pose_frame == _sample_pose and view == _sample_view and projection == _sample_projection:
+		_material.set_shader_parameter("age", _age)
+		world.vp("distant soldiers", started)
+		return
+	_dirty = false
+	_motion_frame = -1
+	_sample_pose = pose_frame
+	_sample_view = view
+	_sample_projection = projection
+	_age = 0.0
+	_material.set_shader_parameter("age", 0.0)
 	var previous_groups := _active
 	_active = []
 	for group: DrawGroup in previous_groups:
@@ -114,23 +176,30 @@ func _process(dt: float) -> void:
 		if slot >= mm.instance_count:
 			# Resizing clears transforms; copy only when this cell first grows.
 			var previous := mm.buffer
+			var old_count := mm.instance_count
 			mm.instance_count = maxi(16, mm.instance_count * 2)
 			var expanded := mm.buffer
 			for i in previous.size():
 				expanded[i] = previous[i]
 			if not previous.is_empty():
 				mm.buffer = expanded
+			for i in range(old_count, mm.instance_count):
+				mm.set_instance_color(i, Color.WHITE)
 		var transform := s.transform
 		if s.srv:
 			transform *= s.ip_offset()
 		transform.origin -= group.origin
+		var offset := s.net_pos - s.position if interpolate else Vector3.ZERO
+		var turn := angle_difference(s.rotation.y, s.net_yaw) if interpolate else 0.0
 		# A flat-map bound would cull soldiers on hills or lifted by a blast.
-		var height := transform.origin.y
-		if height < group.min_y + 3.0 or height > group.max_y - 3.0:
-			group.min_y = minf(group.min_y, height - 4.0)
-			group.max_y = maxf(group.max_y, height + 4.0)
-			mm.custom_aabb = AABB(Vector3(-3, group.min_y, -3), Vector3(CELL + 6, group.max_y - group.min_y, CELL + 6))
+		var low := minf(transform.origin.y, transform.origin.y + offset.y)
+		var high := maxf(transform.origin.y, transform.origin.y + offset.y)
+		if low < group.min_y + 3.0 or high > group.max_y - 3.0:
+			group.min_y = minf(group.min_y, low - 4.0)
+			group.max_y = maxf(group.max_y, high + 4.0)
+			mm.custom_aabb = AABB(Vector3(-11, group.min_y, -11), Vector3(CELL + 22, group.max_y - group.min_y, CELL + 22))
 		mm.set_instance_transform(slot, transform)
+		mm.set_instance_custom_data(slot, Color(offset.x, offset.y, offset.z, turn))
 		group.count = slot + 1
 		group.last_used = world.time
 	for group: DrawGroup in previous_groups:
@@ -185,14 +254,20 @@ func _group_for(pose: int, cell: Vector2i) -> DrawGroup:
 		return groups[key]
 	var mm := MultiMesh.new()
 	mm.transform_format = MultiMesh.TRANSFORM_3D
+	mm.use_colors = true
+	mm.use_custom_data = true
 	mm.mesh = poses[pose]
 	mm.instance_count = 16
+	# Keep the instance tint neutral when custom-data buffers are allocated.
+	for i in mm.instance_count:
+		mm.set_instance_color(i, Color.WHITE)
 	mm.visible_instance_count = 0
 	# Separate spatial batches let culling and mesh LOD consider nearby men,
 	# rather than the bounding box of every soldier of this type on the map.
-	mm.custom_aabb = AABB(Vector3(-3, -4, -3), Vector3(CELL + 6, 16, CELL + 6))
+	mm.custom_aabb = AABB(Vector3(-11, -4, -11), Vector3(CELL + 22, 16, CELL + 22))
 	var node := MultiMeshInstance3D.new()
 	node.multimesh = mm
+	node.material_override = _material
 	node.position = Vector3(cell.x * CELL, 0, cell.y * CELL)
 	add_child(node)
 	var group := DrawGroup.new()

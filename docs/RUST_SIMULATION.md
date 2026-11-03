@@ -97,7 +97,7 @@ concluded games. Viewer commands and connections never enter the recorded world.
 Full seed-1 mission playthroughs use the normal mission autopilot, then independently
 verify the entire command recording. The November 3 numeric-4 run reached these
 unmodified conclusions: Bridgehead victory at tick 10,219; Beachhead victory at
-10,975; Ambush defeat at 8,278; Kingpin defeat at 14,106. Each final checkpoint and
+10,975; Ambush victory at 8,278; Kingpin defeat at 14,106. Each final checkpoint and
 winner matched verification. Skyhook initially remained unfinished at tick 108,000
 (30 simulated minutes): the old Godot mission also stranded its convoy on
 disconnected mountain terrain. Preparing reachable vehicle approaches before the
@@ -458,3 +458,18 @@ also checks a soldier below the waterline and preservation of spatial batching.
 | Former bounds | Bounds expanded to the actual soldiers |
 | --- | --- |
 | ![Soldier incorrectly culled at elevation](screenshots/rust-simulation/batch-bounds-before.png) | ![The same soldier remains visible](screenshots/rust-simulation/batch-bounds-after.png) |
+
+Distant soldier transforms now use GPU exponential smoothing between socket updates.
+CPU positions retain the same smoothing for selection and detailed-model transitions.
+Pose changes, camera movement, teleports, visibility and despawns refresh immediately;
+ordinary packet motion uploads on the next rendered frame. A colored asymmetric
+model at large coordinates matches CPU translation, wrapped yaw and lighting in
+both Compatibility and Vulkan, with tests for fog, teleport and LOD transitions.
+
+A fixed-camera replay of the same 3 km, 500-unit recording at 1280 x 720 High,
+with other applications running, reduced mean distant-batch CPU work from 2.348 ms
+to 0.671 ms (71%). The control averaged 68.54 FPS and the revised run 72.99 FPS.
+Frame p99 was 24.85 ms before and 26.21 ms after; adjacent-frame difference p99
+was 12.56 ms before and 14.81 ms after. This saves repeated transform work but
+has not established lower frame-time tails or steady 60 FPS. The full reports
+are `build/smoothing-cpu-replay.json` and `build/smoothing-deferred-replay.json`.

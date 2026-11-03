@@ -1243,7 +1243,10 @@ smoke and positive visibility are checked afresh. Detection timing is unchanged.
 Distant soldiers use shared baked poses of their procedural models, including
 standing, crouching, prone and walking poses. Nearby soldiers retain articulated
 animation. Distant batches outside the camera frustum and its shadow margin do
-not upload transforms; panning restores them immediately. Distant palette variation and subtle gestures are simplified.
+not upload transforms; panning restores them immediately. Socket clients interpolate distant
+transforms on the GPU between updates, keeping the same exponential smoothing used
+for CPU selection and nearby models. Routine motion uploads wait one frame after
+packet processing; visibility changes, teleports and despawns remain immediate. Distant palette variation and subtle gestures are simplified.
 Distant vehicles use a single material surface per moving part beyond 100 m;
 turrets, wheels and rotors keep their pivots. Near vehicles retain their original
 materials. Wrecks retain their original materials to avoid baking meshes during

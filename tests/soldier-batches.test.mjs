@@ -11,3 +11,11 @@ test("soldier batches distinguish poses, teams and cells and expire hidden insta
   assert.doesNotMatch(stdout + stderr, /SCRIPT ERROR|Parse Error/);
   assert.match(stdout, /SOLDIER_BATCHES passed/);
 });
+
+test("socket soldier batches retain smooth motion and immediate visibility changes", async () => {
+  const { stdout, stderr } = await promisify(execFile)(process.env.GODOT || "godot", [
+    "--headless", "--path", ROOT, "res://tests/fixtures/soldier-smoothing.tscn",
+  ], { timeout: 120_000 });
+  assert.doesNotMatch(stdout + stderr, /SCRIPT ERROR|Parse Error/);
+  assert.match(stdout, /SOLDIER_SMOOTHING passed/);
+});

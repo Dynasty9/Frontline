@@ -462,6 +462,7 @@ func _register(e: Entity) -> void:
 		soldiers.append(e)
 		if soldier_view:
 			soldier_view.prepare(e.utype, e.team)
+			soldier_view.invalidate()
 	elif e is Vehicle:
 		vehicles.append(e)
 	elif e is Structure:
@@ -503,6 +504,8 @@ func despawn(e: Entity) -> void:
 		pending.erase(e.eid)
 	if e is Soldier:
 		soldiers.erase(e)
+		if soldier_view:
+			soldier_view.invalidate()
 		# out of his squad now: nothing may touch him once he's freed
 		if e.squad and is_instance_valid(e.squad):
 			e.squad.members.erase(e)
@@ -1232,6 +1235,8 @@ func _rpc_props(d: Dictionary) -> void:
 	for id in d:
 		var e: Entity = entities.get(id)
 		if e:
+			if e is Soldier and soldier_view:
+				soldier_view.invalidate()
 			var moved: bool = e is Structure and structure_view != null and (d[id] as Dictionary).has("pos")
 			if moved:
 				structure_view.remove(e)
@@ -1259,6 +1264,8 @@ func _rpc_snap(data: PackedByteArray) -> void:
 		return
 	_snapshot_time = snapshot_time
 	time = _snapshot_time
+	if soldier_view:
+		soldier_view.motion_changed()
 	while b.get_position() + 5 <= n:
 		var id := b.get_u32()
 		var ln := b.get_u8()
