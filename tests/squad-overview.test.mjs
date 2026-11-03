@@ -12,3 +12,11 @@ test("squad overview caches live, wounded and lost status without delaying selec
   assert.match(stdout, /SQUAD_OVERVIEW passed/);
 });
 
+
+test("squad strength meshes preserve individual pip geometry and colors", async () => {
+  const { stdout, stderr } = await promisify(execFile)(process.env.GODOT || "godot", [
+    "--headless", "--path", ROOT, "res://tests/fixtures/squad-strength.tscn",
+  ], { timeout: 120_000 });
+  assert.doesNotMatch(stdout + stderr, /SCRIPT ERROR|Parse Error/);
+  assert.match(stdout, /SQUAD_STRENGTH passed/);
+});

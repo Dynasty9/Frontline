@@ -473,3 +473,12 @@ Frame p99 was 24.85 ms before and 26.21 ms after; adjacent-frame difference p99
 was 12.56 ms before and 14.81 ms after. This saves repeated transform work but
 has not established lower frame-time tails or steady 60 FPS. The full reports
 are `build/smoothing-cpu-replay.json` and `build/smoothing-deferred-replay.json`.
+
+Squad strength indicators now retain their colored quad geometry while strength
+is unchanged, using one mesh draw instead of two rectangle draws per soldier.
+Vulkan and Compatibility image comparisons cover fractional placement and opacity
+with mean pixel difference 0.000086. In a fresh controlled replay pair, squad-symbol
+mean CPU time was 0.507 ms before and 0.485 ms after (p99 3.899/3.709 ms).
+Sampled draw calls fell from 4,295 to 3,672. Overall FPS was 79.38/78.13 and frame
+p99 was 25.08/25.55 ms; no overall frame-rate improvement is established by this
+small batching change. Reports: `build/strength-{rects,mesh}-replay.json`.

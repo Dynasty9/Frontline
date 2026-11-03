@@ -24,11 +24,17 @@ func _ready() -> void:
 	assert(group.n == 1 and group.firing == 1 and group.supp == 1)
 	assert(group.pips == [Color(0.92, 0.95, 0.9), Color(1, 0.32, 0.26), Color(0.32, 0.32, 0.3)])
 	assert(group.symbol == ["inf", ""] and group.callsign == Squad.callsign_of(0, 7).to_upper())
+	var strength: ArrayMesh = group.pip_mesh
 	members[0].flags = 0
 	overlay._groups_at = -1000
 	overlay._build_groups({"sel_squads": [7]})
 	assert(overlay._groups[7].firing == 0 and overlay._groups[7].supp == 0)
 	assert(overlay._sel_sids.has(7))
+	assert(overlay._groups[7].pip_mesh == strength, "Unchanged strength keeps its drawing mesh")
+	members[1].life = Soldier.Life.ALIVE
+	overlay._groups_at = -1000
+	overlay._build_groups({"sel_squads": []})
+	assert(overlay._groups[7].pip_mesh != strength, "Healing must change the colored strength indicator")
 	var squad := Squad.new()
 	squad.members = members.duplicate()
 	assert(squad.has_alive_members() == not squad.alive_members().is_empty())

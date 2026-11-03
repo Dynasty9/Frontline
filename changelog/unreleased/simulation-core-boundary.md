@@ -33,4 +33,5 @@ caption = "The replay viewer independently reruns a short recorded battle and ve
 - Large-map starting states and command recordings use lossless compressed blocks, retaining exact state for independent verification.
 - Distant soldier batches expand their bounds for elevated and airborne troops, preventing models from disappearing above the old flat-ground bounds.
 - Distant soldiers smooth their movement on the GPU between socket updates, reducing repeated CPU transform uploads while preserving immediate visibility and teleport changes.
+- Squad strength indicators reuse their geometry until the number or condition of their soldiers changes, reducing HUD drawing calls.
 - Browser integration is still being completed. Large-map rendering performance is still under measurement; this change does not yet establish steady 60 FPS with 500 units.

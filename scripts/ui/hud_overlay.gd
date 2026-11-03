@@ -248,7 +248,8 @@ func _build_groups(inp) -> void:
 	if now - _groups_at < 100:
 		return
 	_groups_at = now
-	_groups.clear()
+	var previous := _groups
+	_groups = {}
 	for s in hud.world.soldiers:
 		if s.sid == 0 or not s.visible or s.life == Soldier.Life.HIDDEN:
 			continue
@@ -274,6 +275,8 @@ func _build_groups(inp) -> void:
 				g["lead"] = s
 	for sid in _groups:
 		var g: Dictionary = _groups[sid]
+		var old: Dictionary = previous.get(sid, {})
+		g.pip_mesh = old.pip_mesh if old.get("pips", []) == g.pips else _strength_mesh(g.pips)
 		g.symbol = MapSymbols.squad_symbol(g.mem)
 		g.callsign = Squad.callsign_of(g.team, int(sid)).to_upper()
 		if int(g["n"]) > 0:
@@ -936,11 +939,7 @@ func _nato_markers(cam: Camera3D, lt: int, a: float) -> void:
 				MapSymbols.glyph(self, og, sp + Vector2(hw + 10.0, -1.0), 7.5, MapSymbols.ORDER_COLORS.get(String(o[0]), UiKit.TEXT), a)
 		# strength: a pip per man (white standing, red down, grey lost)
 		var py := sp.y + hw * 0.68 + 4.0
-		var px := sp.x - mem.size() * 2.5
-		for pc: Color in g.pips:
-			draw_rect(Rect2(px - 0.5, py - 0.5, 5, 4), Color(0, 0, 0, 0.6 * a))
-			draw_rect(Rect2(px, py, 4, 3), Color(pc.r, pc.g, pc.b, a))
-			px += 5.0
+		draw_mesh(g.pip_mesh, null, Transform2D(0.0, Vector2(sp.x - mem.size() * 2.5, py)), Color(1, 1, 1, a))
 		var ty := py + 15.0
 		if mine:
 			_map_text(Vector2i(int(sid), 0), Vector2(sp.x, ty), g.callsign, UiKit.cond(600, 1), 10, UiKit.fa(UiKit.TEXT, 0.85 * a))
@@ -977,6 +976,31 @@ func _nato_markers(cam: Camera3D, lt: int, a: float) -> void:
 		if vby != 0:
 			draw_arc(vp, 21.0, 0.0, TAU, 28, HudCoop._a(Net.player_color(vby), 0.55 * a), 1.3, true)
 			_owner_tab(vp + Vector2(6.0, -22.5), vby, a)
+
+# Strength changes infrequently; keep the same colored quads in one drawing call.
+static func _strength_mesh(pips: Array) -> ArrayMesh:
+	var vertices := PackedVector2Array()
+	var colors := PackedColorArray()
+	var indices := PackedInt32Array()
+	for i in pips.size():
+		for part in 2:
+			var r := Rect2(i * 5.0 - 0.5, -0.5, 5, 4) if part == 0 else Rect2(i * 5.0, 0, 4, 3)
+			var color: Color = Color(0, 0, 0, 0.6) if part == 0 else pips[i]
+			var start := vertices.size()
+			vertices.append_array(PackedVector2Array([r.position, Vector2(r.end.x, r.position.y), r.end, Vector2(r.position.x, r.end.y)]))
+			for corner in 4:
+				colors.append(color)
+			indices.append_array(PackedInt32Array([start, start + 1, start + 2, start, start + 2, start + 3]))
+	var arrays := []
+	arrays.resize(Mesh.ARRAY_MAX)
+	arrays[Mesh.ARRAY_VERTEX] = vertices
+	arrays[Mesh.ARRAY_COLOR] = colors
+	arrays[Mesh.ARRAY_INDEX] = indices
+	var mesh := ArrayMesh.new()
+	if not pips.is_empty():
+		mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays, [], {}, Mesh.ARRAY_FLAG_USE_2D_VERTICES)
+	return mesh
+
 
 func _marker_offset(sid: int, foot: Rect2) -> Vector2:
 	# Keep a clear placement as units move, avoiding jitter and repeated searches.
