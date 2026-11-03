@@ -18,6 +18,14 @@ caption = "Before: matching closer camera, shared baseline."
 [[screenshots]]
 file = "close-after.jpg"
 caption = "After: the same closer camera; surface changes remain subtle."
+
+[[screenshots]]
+file = "target-before.jpg"
+caption = "Before: focused comparison under matched lighting."
+
+[[screenshots]]
+file = "target-after.jpg"
+caption = "After: Watch the tone and separation of the distant ridges in hazy weather."
 +++
 
 Uses existing alpine_haze option and engine fog; no new volumetric pass. Disabled/flat-map paths reset both additions. Compatibility may approximate aerial perspective differently.
