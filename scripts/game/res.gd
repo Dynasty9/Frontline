@@ -222,6 +222,35 @@ static func spruce_boughs() -> ArrayMesh:
 	return mesh
 
 
+## A handful of fractured blocks share meshes across the decorative scree batches.
+static func alpine_stone(variant: int) -> ArrayMesh:
+	var key := "alpine_stone_%d" % posmod(variant, 4)
+	if _meshes.has(key):
+		return _meshes[key]
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 3187 + posmod(variant, 4)
+	var phi := (1.0 + sqrt(5.0)) * 0.5
+	var corners := PackedVector3Array([
+		Vector3(-1, phi, 0), Vector3(1, phi, 0), Vector3(-1, -phi, 0), Vector3(1, -phi, 0),
+		Vector3(0, -1, phi), Vector3(0, 1, phi), Vector3(0, -1, -phi), Vector3(0, 1, -phi),
+		Vector3(phi, 0, -1), Vector3(phi, 0, 1), Vector3(-phi, 0, -1), Vector3(-phi, 0, 1)])
+	for i in corners.size():
+		corners[i] = corners[i].normalized() * rng.randf_range(0.65, 1.1)
+	var faces := [0, 11, 5, 0, 5, 1, 0, 1, 7, 0, 7, 10, 0, 10, 11,
+		1, 5, 9, 5, 11, 4, 11, 10, 2, 10, 7, 6, 7, 1, 8,
+		3, 9, 4, 3, 4, 2, 3, 2, 6, 3, 6, 8, 3, 8, 9,
+		4, 9, 5, 2, 4, 11, 6, 2, 10, 8, 6, 7, 9, 8, 1]
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	for i in range(0, faces.size(), 3):
+		for j in [0, 2, 1]:
+			st.add_vertex(corners[faces[i + j]])
+	st.generate_normals()
+	var mesh := st.commit()
+	_meshes[key] = mesh
+	return mesh
+
+
 static func prism(s: Vector3) -> PrismMesh:
 	var key := "p%.3f,%.3f,%.3f" % [s.x, s.y, s.z]
 	if _meshes.has(key):

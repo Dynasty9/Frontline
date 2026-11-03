@@ -680,6 +680,9 @@ static func _preset(kind: String) -> Dictionary:
 			return {"pattern": EARTH, "col_a": Color(0.3, 0.28, 0.18), "col_b": Color(0.2, 0.19, 0.12), "rough": 0.97, "bump": 0.45, "grime": 0.0, "scale": 0.6}
 		"earth":
 			return {"pattern": EARTH, "col_a": Color(0.33, 0.26, 0.17), "col_b": Color(0.22, 0.17, 0.11), "rough": 0.97, "bump": 1.6, "grime": 0.0}
+		"alpine_stone":
+			# Broken natural stone has grain, without the mortar joints used by masonry.
+			return {"pattern": CONCRETE, "col_a": Color(0.49, 0.47, 0.42), "col_b": Color(0.29, 0.28, 0.25), "rough": 0.95, "bump": 1.2, "grime": 0.0, "scale": 2.0}
 		"stone":
 			return {"pattern": STONE, "col_a": Color(0.58, 0.55, 0.5), "col_b": Color(0.42, 0.4, 0.36), "col_c": Color(0.5, 0.46, 0.4), "rough": 0.9, "bump": 2.0, "grime": 0.7}
 		"rubble":
