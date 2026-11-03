@@ -18,6 +18,14 @@ caption = "Before: matching closer camera, shared baseline."
 [[screenshots]]
 file = "close-after.jpg"
 caption = "After: the same closer camera; surface changes remain subtle."
+
+[[screenshots]]
+file = "target-before.jpg"
+caption = "Before: focused comparison under matched lighting."
+
+[[screenshots]]
+file = "target-after.jpg"
+caption = "After: Watch for narrow dark vertical stains across the lit central face."
 +++
 
 One extra scalar noise read per terrain fragment. This is directional material weathering rather than a hydrology simulation; geometry and traversal do not change.

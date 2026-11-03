@@ -2851,6 +2851,21 @@
           "file": "changelog/unreleased/cliff-runoff/close-after.jpg",
           "sha256": "4c653eac1a9a169df948366952fa07f7826d02be9df181f2b623f70555ea3028",
           "caption": "Matching closer camera: after"
+        },
+        {
+          "file": "changelog/unreleased/cliff-runoff/target-before.jpg",
+          "sha256": "05110d1a4bc3075c37b837c4c772d3c9b1147c5fdd0de13fa292170f0c84d5d7",
+          "caption": "before - Watch for narrow dark vertical stains across the lit central face."
+        },
+        {
+          "file": "changelog/unreleased/cliff-runoff/target-after.jpg",
+          "sha256": "c0a7ba7c134d82e7a944cf8865a1532f5a71af5598603912957aab6d4be628bf",
+          "caption": "after - Watch for narrow dark vertical stains across the lit central face."
+        },
+        {
+          "file": "changelog/unreleased/cliff-runoff/compare.gif",
+          "sha256": "256d15420f8fe90f06c94fa51d3cb63bf921de2c7e20d58944c6bb34d3bca9de",
+          "caption": "Two-second BEFORE/AFTER toggle; original rendered scene unchanged, label bar added above it."
         }
       ],
       "output": null,
@@ -2861,7 +2876,24 @@
         "before_ref": "322c5a4",
         "after_ref": "codex/cliff-runoff",
         "command": "godot --main-pack PACK --resolution 1600x900 -- --aivai --seed=3 --offscreen --nohud --set=perf:0 --mood=day --preset=high --focus=0,0 --zoom=900 --pitch=-22 --cam-yaw=0.7 --screenshot=OUTPUT --shot-at=2 --quit-after=3",
-        "close": "godot --main-pack PACK --resolution 1600x900 -- --aivai --seed=3 --offscreen --nohud --set=perf:0 --mood=day --preset=high --focus=250,250 --zoom=350 --pitch=-28 --cam-yaw=0.7 --screenshot=OUTPUT --shot-at=2 --quit-after=3"
+        "close": "godot --main-pack PACK --resolution 1600x900 -- --aivai --seed=3 --offscreen --nohud --set=perf:0 --mood=day --preset=high --focus=250,250 --zoom=350 --pitch=-28 --cam-yaw=0.7 --screenshot=OUTPUT --shot-at=2 --quit-after=3",
+        "targeted": {
+          "focus": "300,300",
+          "zoom": 100,
+          "pitch": -28,
+          "yaw": 0.7,
+          "mood": "day",
+          "cue": "Watch for narrow dark vertical stains across the lit central face.",
+          "seed": 3,
+          "resolution": "1600x900",
+          "preset": "high",
+          "shot_at": 2,
+          "quit_after": 3,
+          "before_pack": "weathered.pck",
+          "after_pack": "cliff-runoff.pck",
+          "renderer": "Forward+",
+          "gif": "Same full native frames with separate label bar; common 256-colour palette; no resizing or contrast adjustment; two seconds per frame."
+        }
       }
     }
   ],
