@@ -5,7 +5,8 @@ import { mkdir } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 const require = createRequire(new URL('../web/package.json', import.meta.url));
-const {chromium} = await import(pathToFileURL(process.env.PLAYWRIGHT_MODULE || require.resolve('playwright')).href);
+const playwright = await import(pathToFileURL(process.env.PLAYWRIGHT_MODULE || require.resolve('playwright')).href);
+const {chromium} = playwright.default || playwright;
 const url = new URL(process.env.FRONTLINE_WEB_URL || 'http://localhost:8080/game/index.html');
 const browser = await chromium.launch({headless:true,
   executablePath: process.env.CHROME_BIN || undefined,
