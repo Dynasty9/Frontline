@@ -1,5 +1,14 @@
 extends Node
 
+class PlanProbe extends HudOverlay:
+	var paths := 0
+	func _ground_path(_a: Vector3, _b: Vector3, _col: Color, _alpha: float, _grow: float, _dashed: bool, _width: float, _arrow := true) -> void:
+		paths += 1
+	func _dashed_ring(_c: Vector3, _r: float, _col: Color, _alpha: float) -> void:
+		pass
+	func _tag(_at: Vector2, _text: String, _col: Color, _a: float) -> void:
+		pass
+
 class Overlay extends HudOverlay:
 	var draws := 0
 	func _draw() -> void:
@@ -166,6 +175,17 @@ func _ready() -> void:
 	hud.world = world
 	world.cam = RtsCamera.new()
 	world.cam.cam = camera
+	var plans := PlanProbe.new()
+	plans.hud = hud
+	for frame in 200:
+		plans._clear_placed()
+		var objective := Vector3(frame, 0, 10)
+		var plan := ["assault", objective, objective, objective + Vector3(10, 0, 0)]
+		plans._plan_graphics(plan, 0, 1.0, false)
+		plans._plan_graphics(plan, 0, 1.0, false)
+		assert(plans.paths == frame + 1, "Shared plans draw once per refresh and return on the next refresh")
+		assert(plans._plans_drawn.size() == 1, "Old frame and objective keys must not accumulate during long battles")
+	plans.free()
 	var input := PointerInput.new()
 	input.world = world
 	input.ability = "smoke"

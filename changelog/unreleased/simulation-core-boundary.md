@@ -48,6 +48,7 @@ caption = "After: shared soldiers reduce geometry earlier while nearby articulat
 - Soldier updates reuse prepared weapon definitions, supply totals use the existing unit/building indexes, and teammates share observation preparation. Stationary minimap camera wedges reuse their ground intersections while retaining immediate camera feedback.
 - Unchanged scenery reuses its prepared network state, while damage, construction, supply and visibility changes still reach clients immediately at the next observation update.
 - Long order lines skip offscreen dash projections without moving the visible dashes. Routine roster refreshes move to the next frame when the battlefield overlay is also updating.
+- Attack-plan markers discard old drawing records each refresh, preventing their cache from growing throughout a long battle.
 - Wildlife waits for the battlefield to finish loading before reading terrain being prepared on a worker thread.
 - Large-map starting states and command recordings use lossless compressed blocks, retaining exact state for independent verification.
 - Distant soldier batches expand their bounds for elevated and airborne troops, preventing models from disappearing above the old flat-ground bounds.

@@ -1179,6 +1179,7 @@ var _pgrid := {}  # Vector2i cell -> [Rect2]
 func _clear_placed() -> void:
 	_placed.clear()
 	_pgrid.clear()
+	_plans_drawn.clear()
 
 
 func _place_rect(r: Rect2) -> void:
@@ -1222,7 +1223,7 @@ func _plan_graphics(pl: Array, team: int, a: float, sel: bool) -> void:
 	var obj: Vector3 = pl[1]
 	var sbf: Vector3 = pl[2]
 	var ap: Vector3 = pl[3]
-	var key := "%d|%d|%d" % [int(obj.x), int(obj.z), Engine.get_frames_drawn()]
+	var key := Vector2i(int(obj.x), int(obj.z))
 	if _plans_drawn.has(key):
 		return
 	_plans_drawn[key] = true
