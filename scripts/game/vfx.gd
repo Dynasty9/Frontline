@@ -71,6 +71,11 @@ func _ready() -> void:
 ## shaders and particle programs compile during loading, not mid-battle.
 func prewarm(at: Vector3) -> void:
 	var p := at + Vector3(0, -30.0, 0)
+	_prepare_clods()
+	if _clod_n == 0:
+		_clods.multimesh.set_instance_transform(0, Transform3D(Basis.IDENTITY, p))
+		_clods.multimesh.set_instance_color(0, Color(0.2, 0.16, 0.11))
+		_clods.multimesh.visible_instance_count = 1
 	for cls in ["s", "m", "l"]:
 		var rig := _get_rig(cls)
 		rig.global_position = p
@@ -105,6 +110,8 @@ func prewarm(at: Vector3) -> void:
 	# hide everything again once compiled: the prewarm smoke would otherwise
 	# drift up out of the ground as stray puffs
 	get_tree().create_timer(0.6).timeout.connect(func():
+		if _clod_n == 0:
+			_clods.multimesh.visible_instance_count = 0
 		for cls in ["s", "m", "l"]:
 			for r in _rigs[cls]:
 				for key in r.get_meta("layers"):
@@ -265,28 +272,33 @@ func crater(p: Vector3, size: float) -> void:
 		world.atmo.grass.scar(p, 0.9 + 0.95 * size, 1.0)
 
 
+func _prepare_clods() -> void:
+	if _clods != null:
+		return
+	var mm := MultiMesh.new()
+	mm.transform_format = MultiMesh.TRANSFORM_3D
+	mm.use_colors = true
+	var bm := SphereMesh.new()
+	bm.radius = 0.5
+	bm.height = 0.7
+	bm.radial_segments = 6
+	bm.rings = 3
+	mm.mesh = bm
+	mm.instance_count = MAX_CLODS
+	mm.visible_instance_count = 0
+	_clods = MultiMeshInstance3D.new()
+	_clods.multimesh = mm
+	var m := StandardMaterial3D.new()
+	m.vertex_color_use_as_albedo = true
+	m.vertex_color_is_srgb = true
+	m.roughness = 1.0
+	_clods.material_override = m
+	_clods.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
+	add_child(_clods)
+
+
 func _add_clods(p: Vector3, size: float) -> void:
-	if _clods == null:
-		var mm := MultiMesh.new()
-		mm.transform_format = MultiMesh.TRANSFORM_3D
-		mm.use_colors = true
-		var bm := SphereMesh.new()
-		bm.radius = 0.5
-		bm.height = 0.7
-		bm.radial_segments = 6
-		bm.rings = 3
-		mm.mesh = bm
-		mm.instance_count = MAX_CLODS
-		mm.visible_instance_count = 0
-		_clods = MultiMeshInstance3D.new()
-		_clods.multimesh = mm
-		var m := StandardMaterial3D.new()
-		m.vertex_color_use_as_albedo = true
-		m.vertex_color_is_srgb = true
-		m.roughness = 1.0
-		_clods.material_override = m
-		_clods.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
-		add_child(_clods)
+	_prepare_clods()
 	var mm2 := _clods.multimesh
 	var cnt := int(12 + 16 * size * Settings.fx_mult())
 	for i in cnt:

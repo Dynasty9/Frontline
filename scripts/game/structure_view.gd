@@ -23,6 +23,21 @@ var _draw_batches := {}
 var _draw_members := {}
 var _draw_broken := {}
 
+class DrawBuild:
+	var cell: Vector2i
+	var origin: Vector3
+	var candidates: Array
+	var next := 0
+	var groups := {}
+	var meshes := []
+	var members := {}
+	var holder: Node3D
+	var materials := []
+	var surface := 0
+	var surfaces := {}
+
+var _draw_build: DrawBuild
+
 func add(st: Structure) -> void:
 	var keys := []
 	var r := st.radius
@@ -57,7 +72,7 @@ func request(st: Structure) -> void:
 	pending[st.eid] = st
 
 func warming() -> bool:
-	return center == Vector2i(-999, -999) or not pending.is_empty() or not _draw_waiting.is_empty()
+	return center == Vector2i(-999, -999) or not pending.is_empty() or not _draw_waiting.is_empty() or _draw_build != null
 
 func focus_at(pos: Vector3, camera: Camera3D = null) -> void:
 	var next := Vector2i(floori(pos.x / CELL), floori(pos.z / CELL))
@@ -132,8 +147,8 @@ func _process(_dt: float) -> void:
 	if head == order.size():
 		order.clear()
 		head = 0
-		while not _draw_waiting.is_empty() and Time.get_ticks_usec() - started < 2000:
-			_build_draw_batch(_draw_waiting.keys()[0])
+		while (_draw_build != null or not _draw_waiting.is_empty()) and Time.get_ticks_usec() - started < 2000:
+			_build_draw_batch(_draw_build.cell if _draw_build else _draw_waiting.keys()[0])
 	world.vp("scenery construction", started)
 
 
@@ -151,30 +166,41 @@ func _queue_draw_batch(st: Structure) -> void:
 	var cell := _draw_cell(st)
 	if _draw_broken.has(st.eid) or _draw_batches.has(cell):
 		return
+	if _draw_build and _draw_build.cell == cell:
+		if st in _draw_build.candidates:
+			return
+		_cancel_draw_batch()
 	if not _draw_waiting.has(cell):
 		_draw_waiting[cell] = []
-	(_draw_waiting[cell] as Array).append(st)
+	if st not in _draw_waiting[cell]:
+		(_draw_waiting[cell] as Array).append(st)
 
 
-func _build_draw_batch(cell: Vector2i) -> void:
-	var candidates: Array = _draw_waiting[cell]
-	_draw_waiting.erase(cell)
-	var origin := Vector3(cell.x * DRAW_CELL, 0, cell.y * DRAW_CELL)
-	var groups := {}
-	var meshes := []
-	var members := {}
-	for st in candidates:
-		if not is_instance_valid(st) or st.gone or not _batchable(st) or _draw_cell(st) != cell:
-			continue
+func _build_draw_batch(cell: Vector2i) -> bool:
+	# One model or surface per step lets the frame budget interrupt a large block.
+	if _draw_build == null:
+		_draw_build = DrawBuild.new()
+		_draw_build.cell = cell
+		_draw_build.origin = Vector3(cell.x * DRAW_CELL, 0, cell.y * DRAW_CELL)
+		_draw_build.candidates = _draw_waiting[cell]
+		_draw_waiting.erase(cell)
+	var job := _draw_build
+	var groups := job.groups
+	var members := job.members
+	if job.next < job.candidates.size():
+		var st = job.candidates[job.next]
+		job.next += 1
+		if not is_instance_valid(st) or st.gone or _draw_broken.has(st.eid) or not _batchable(st) or _draw_cell(st) != cell:
+			return false
 		var own := {}
 		var parts := []
-		Mats._collect(st.model, Transform3D(Basis.IDENTITY, -origin) * st.transform * st.model.transform, own, parts, [], true, true, false)
+		Mats._collect(st.model, Transform3D(Basis.IDENTITY, -job.origin) * st.transform * st.model.transform, own, parts, [], true, true, false)
 		var suitable := not own.is_empty()
 		for group: Dictionary in own.values():
 			if group.mat.get_shader_parameter("local_space") == true or group.mat.shader not in [Mats.shader(), Mats.foliage().shader]:
 				suitable = false
 		if not suitable:
-			continue
+			return false
 		var ranges := []
 		for key in own:
 			ranges.append([key, (groups[key].v as PackedVector3Array).size() if groups.has(key) else 0, (own[key].v as PackedVector3Array).size()])
@@ -183,15 +209,21 @@ func _build_draw_batch(cell: Vector2i) -> void:
 			else:
 				for attribute in ["v", "n", "c"]:
 					groups[key][attribute].append_array(own[key][attribute])
-		meshes.append_array(parts)
+		job.meshes.append_array(parts)
 		members[st.eid] = {"cell": cell, "meshes": parts, "ranges": ranges}
+		return false
 	if members.size() < 2:
-		return
-	var holder := Node3D.new()
-	world.add_child(holder)
-	holder.position = origin
-	var surfaces := {}
-	for key in groups:
+		_draw_build = null
+		return true
+	if job.holder == null:
+		job.holder = Node3D.new()
+		job.holder.visible = false
+		world.add_child(job.holder)
+		job.holder.position = job.origin
+		job.materials = groups.keys()
+	if job.surface < job.materials.size():
+		var key: Variant = job.materials[job.surface]
+		job.surface += 1
 		var group: Dictionary = groups[key]
 		var arrays := []
 		arrays.resize(Mesh.ARRAY_MAX)
@@ -204,22 +236,37 @@ func _build_draw_batch(cell: Vector2i) -> void:
 		instance.mesh = mesh
 		instance.material_override = group.mat if group.mat.get_shader_parameter("use_vcolor") == true else Mats.vc_variant(group.mat)
 		instance.cast_shadow = group.shadow
-		holder.add_child(instance)
-		surfaces[key] = mesh
-	for mesh: MeshInstance3D in meshes:
+		job.holder.add_child(instance)
+		job.surfaces[key] = mesh
+		return false
+	for mesh: MeshInstance3D in job.meshes:
 		mesh.visible = false
-	_draw_batches[cell] = {"node": holder, "meshes": meshes, "members": members}
+	job.holder.visible = true
+	_draw_batches[cell] = {"node": job.holder, "meshes": job.meshes, "members": members}
 	for id in members:
 		var member: Dictionary = members[id]
 		for span: Array in member.ranges:
-			span[0] = surfaces[span[0]]
+			span[0] = job.surfaces[span[0]]
 		_draw_members[id] = member
+	_draw_build = null
+	return true
+
+
+func _cancel_draw_batch() -> void:
+	if _draw_build.holder:
+		_draw_build.holder.queue_free()
+	_draw_waiting[_draw_build.cell] = _draw_build.candidates
+	_draw_build = null
 
 
 ## Remove only the changed object's triangles; the rest of the block stays batched.
 func unbatch(st: Structure, leaving := false) -> void:
 	if leaving:
 		_draw_broken.erase(st.eid)
+	if _draw_build and _draw_build.members.has(st.eid):
+		if not leaving:
+			_draw_broken[st.eid] = true
+		_cancel_draw_batch()
 	if not _draw_members.has(st.eid):
 		return
 	var member: Dictionary = _draw_members[st.eid]

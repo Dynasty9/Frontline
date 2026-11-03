@@ -216,6 +216,10 @@ func check_surface() -> void:
 	fx.vfx._keep_particle_programs(temporary)
 	temporary.free()
 	assert(fx.vfx._warm_materials.size() == 1 and program.get_ref() != null)
+	fx.vfx._prepare_clods()
+	var clods := fx.vfx._clods
+	fx.vfx._prepare_clods()
+	assert(fx.vfx._clods == clods and clods.multimesh.visible_instance_count == 0 and fx.vfx._clod_n == 0)
 	fx.vfx.free()
 	fx.free()
 	var invalid := data.data_array.duplicate()

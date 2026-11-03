@@ -12,6 +12,27 @@ mod tests {
     use super::*;
 
     #[test]
+    fn restored_graph_cannot_break_the_midpoint_cost_bound() {
+        let mut nav = Hierarchy::new(32, 16).unwrap();
+        assert!(build_all(&mut [&mut nav], 1));
+        let checkpoint = nav.checkpoint();
+        let (&(a, b), &mid) = nav.mids.iter().next().unwrap();
+        for graph in 0..3 {
+            for (id, weight) in [(a, 0.9), (mid, 0.04)] {
+                let mut bad = Hierarchy::restore(&checkpoint).unwrap();
+                bad.graphs[graph].set_point_weight_scale(id, weight);
+                assert!(Hierarchy::restore(&bad.checkpoint()).is_err());
+            }
+            let mut bad = Hierarchy::restore(&checkpoint).unwrap();
+            let other = *bad.cells.keys().find(|&&id| id != a && id != b).unwrap();
+            bad.graphs[graph].connect_points(mid, other);
+            assert!(Hierarchy::restore(&bad.checkpoint()).is_err());
+        }
+        nav.clusters[0].mid_factor[0] = 0.5;
+        assert!(Hierarchy::restore(&nav.checkpoint()).is_err());
+    }
+
+    #[test]
     fn connectivity_cache_ignores_weights_and_query_anchors_but_checks_team_topology() {
         let mut nav = Hierarchy::new(32, 16).unwrap();
         build_all(&mut [&mut nav], 1);
@@ -221,8 +242,8 @@ impl Hierarchy {
             }
             for value in &mut cluster.mid_factor {
                 *value = input.f64()?;
-                if *value < 0.0 {
-                    return Err("negative hierarchy danger factor");
+                if *value < 0.0 || (built && *value < 1.0) {
+                    return Err("invalid hierarchy danger factor");
                 }
             }
             cluster.nodes = read_ids(&mut input, 256, next_id)?;
@@ -383,13 +404,17 @@ impl Hierarchy {
                 return Err("hierarchy graph membership mismatch");
             }
             for (&id, &cell) in &nav.cells {
-                if graph.get_point_position(id) != position(cell) {
+                if graph.get_point_position(id) != position(cell)
+                    || graph.get_point_weight_scale(id) < 1.0
+                {
                     return Err("hierarchy graph entrance mismatch");
                 }
             }
             for (&(a, b), &mid) in &nav.mids {
                 if graph.get_point_position(mid)
                     != (position(nav.cells[&a]) + position(nav.cells[&b])) * 0.5
+                    || graph.get_point_weight_scale(mid) < 0.05
+                    || !graph.connects_only(mid, a, b)
                 {
                     return Err("hierarchy graph link mismatch");
                 }
@@ -1037,7 +1062,9 @@ impl Hierarchy {
         }
         // Keep anchor allocation and cleanup identical even when no route exists.
         let ids = if connected {
-            let ids = self.graphs[graph].get_id_path(start, goal);
+            // A full midpoint crossing costs at least (0.05 + 1) / 2 of its length;
+            // the final half-edge from a midpoint costs at least its full length.
+            let ids = self.graphs[graph].get_id_path_with_heuristic(start, goal, 0.5);
             self.last_expanded = self.graphs[graph].last_expanded;
             ids
         } else {

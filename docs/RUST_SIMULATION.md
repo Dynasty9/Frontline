@@ -94,7 +94,7 @@ verified after the input digest, final state hash and winner all match, includin
 when seeking directly to the end. It distinguishes unfinished battles from
 concluded games. Viewer commands and connections never enter the recorded world.
 
-Numeric version 2 pins Rust 1.94.0, glam 0.32.1 with `libm`, and libm 0.2.16 with
+Numeric version 3 pins Rust 1.94.0, glam 0.32.1 with `libm`, and libm 0.2.16 with
 `force-soft-floats`. Gameplay iteration, tie-breaking and work quotas have explicit
 orders. Cosmetic randomness and wall-clock/network scheduling are outside state.
 Cross-platform tests compare committed numeric transcripts and complete mission/
@@ -247,7 +247,22 @@ at 26.49 ms before and 0.53 ms with retained programs. Replaying the same comman
 recording reduced maximum snapshot processing from 21.46 to 2.08 ms. The automatic
 replay director selected different camera views between runs, so their overall
 frame rates are not a controlled comparison. Camera movement still exposes
-scenery-construction spikes; a separate VFX spike also remains.
+scenery-construction spikes. A focused test traced the separate VFX spike to
+first-use dirt-clod rendering: 16.50 ms before prewarming and 0.12 ms after.
+The client now creates and draws that shared mesh below ground during loading.
+Scenery batching collects one model or uploads one material surface per step,
+checking the frame budget between steps. Original meshes stay visible until the
+whole block is ready; changes or despawns cancel an unfinished replacement.
+
+Numeric contract 3 also strengthens hierarchy A*'s distance estimate using the
+minimum cost of a complete midpoint crossing. Independent Dijkstra comparisons
+check shortest costs with roads, danger weights and disconnected goals. Six of
+the former 140 exact transcripts changed through route tie-breaking; the other
+134 matched before the deliberate version bump. The old corpus remains in Git
+history, and incompatible checkpoints are rejected. Current local release checks
+pass the complete core and server suites, all 140 new transcripts, and actual
+Godot/Rust socket interoperability. The new large-map measurement and current-head
+cross-platform checks remain pending.
 
 Presentation tests cover artillery recoil, rifle drops for visible surrendering
 enemies, and retained grass-fire state after loading and replay seek. Fire effects

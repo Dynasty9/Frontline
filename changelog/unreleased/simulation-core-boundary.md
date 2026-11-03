@@ -14,13 +14,16 @@ caption = "The replay viewer independently reruns a short recorded battle and ve
 - The server sends each side only the enemy state it is allowed to see. Orders, sounds, combat effects, radio messages and battle reports travel through the socket connection.
 - Transport capacity includes squads carried by vehicles without separate seat definitions. Helicopter boarding uses height above the local ground, and Beachhead reinforcements start aboard their transport.
 - Troops can complete long routes across navigation regions. Diving uses current ground height, and starting a different-sized map rebuilds its ground correctly.
-- Unreachable movement orders use cached map connectivity instead of repeatedly searching the whole navigation graph. Opening or closing a crossing refreshes that connectivity; reachable route choices remain unchanged.
+- Unreachable movement orders use cached map connectivity instead of repeatedly searching the whole navigation graph. Opening or closing a crossing refreshes that connectivity.
+- Reachable route searches use a tighter distance estimate to examine fewer junctions while preserving shortest route cost. Equally priced routes can differ, so command recordings require the matching simulation version.
 - Cosmetic debris no longer advances gameplay randomness. New command recordings preserve the full starting battlefield and player inputs; existing observer archives remain unverified recordings.
 - Command recordings open in Replays, with pause, speed and timeline controls. Rewinding reruns the recorded commands; verification checks the final state and distinguishes unfinished battles from concluded games.
 - Generated-map scenery restores pavements, fences and overhead wires correctly through the socket connection.
+- Scenery batching spreads collection and mesh uploads across frames, keeping the original models visible until each block is ready.
 - Reconnecting and seeking a replay restore the current craters, roads and active grass fires. Ground updates arrive independently of explosion effects and apply progressively.
 - Artillery recoil and visible surrendering soldiers' dropped rifles reach the Godot client through simulation events.
 - Prewarmed fire, smoke-screen and missile-trail particle materials remain cached for the match, avoiding shader recompilation when their first visible effect appears.
+- Dirt-clod rendering warms up during loading, avoiding another shader-creation pause after the first explosion.
 - Loading a socket battlefield imports its finished terrain instead of rebuilding the same elevated surface in GDScript.
 - Soldier updates reuse prepared weapon definitions, supply totals use the existing unit/building indexes, and teammates share observation preparation. Stationary minimap camera wedges reuse their ground intersections while retaining immediate camera feedback.
 - Wildlife waits for the battlefield to finish loading before reading terrain being prepared on a worker thread.

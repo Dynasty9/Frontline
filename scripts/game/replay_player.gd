@@ -347,7 +347,7 @@ func seek(target: float) -> void:
 		if e.net_init:
 			e.position = e.net_pos
 			e.rotation.y = e.net_yaw
-	if world.cam and not world.soldiers.is_empty():
+	if world.cam and not world.soldiers.is_empty() and not main.args.has("focus"):
 		world.cam.focus(world.soldiers[0].position)
 		world.cam.user_moved = false
 		world.director.active = true
@@ -421,7 +421,7 @@ func _process_native() -> void:
 		busy = false
 		loading_backdrop.hide()
 		slider.editable = true
-		if world.cam and world.director:
+		if world.cam and world.director and not main.args.has("focus"):
 			world.cam.user_moved = false
 			world.director.active = true
 			world.director._pick_shot()

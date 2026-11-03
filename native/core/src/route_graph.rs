@@ -10,6 +10,124 @@ struct Point {
     edges: Vec<(usize, f64)>,
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn road_grid(side: i64, variant: i64) -> RouteGraph {
+        let mut graph = RouteGraph::new();
+        for id in 0..side * side {
+            graph.add_point(
+                id,
+                Vector3::new((id % side * 10) as f32, 0.0, (id / side * 10) as f32),
+                if (id + variant) % 17 == 0 { 4.0 } else { 1.0 },
+            );
+        }
+        let mut mid = side * side;
+        for a in 0..side * side {
+            for b in [a + 1, a + side] {
+                if b >= side * side
+                    || (b == a + 1 && b % side == 0)
+                    || (a * 3 + b + variant) % 11 == 0
+                {
+                    continue;
+                }
+                let weight = [0.05, 0.3, 1.0, 6.0][((a + b + variant) % 4) as usize];
+                graph.add_point(
+                    mid,
+                    (graph.get_point_position(a) + graph.get_point_position(b)) * 0.5,
+                    weight,
+                );
+                graph.connect_points(a, mid);
+                graph.connect_points(mid, b);
+                mid += 1;
+            }
+        }
+        graph.add_point(10_000, Vector3::new(-10.0, 0.0, -10.0), 1.0);
+        graph
+    }
+
+    // Independent uncontracted Dijkstra checks the admissible bound, including
+    // road detours, danger costs and degree-two entrances skipped by the live search.
+    fn shortest_cost(graph: &RouteGraph, from: i64, to: i64) -> f64 {
+        let mut costs = vec![f64::INFINITY; graph.points.len()];
+        let mut done = vec![false; costs.len()];
+        costs[graph.ids[&from]] = 0.0;
+        loop {
+            let next = (0..costs.len())
+                .filter(|&i| !done[i])
+                .min_by(|&a, &b| costs[a].total_cmp(&costs[b]));
+            let Some(next) = next else {
+                return f64::INFINITY;
+            };
+            if next == graph.ids[&to] || !costs[next].is_finite() {
+                return costs[next];
+            }
+            done[next] = true;
+            for &(other, length) in &graph.points[next].as_ref().unwrap().edges {
+                costs[other] = costs[other]
+                    .min(costs[next] + length * graph.points[other].as_ref().unwrap().weight);
+            }
+        }
+    }
+
+    #[test]
+    fn midpoint_heuristic_preserves_shortest_cost_and_checkpoint() {
+        for variant in 0..8 {
+            let mut graph = road_grid(8, variant);
+            let checkpoint = graph.checkpoint();
+            for from in [0, 7, 25, 63] {
+                for to in [1, 28, 56, 10_000] {
+                    let expected = shortest_cost(&graph, from, to);
+                    let path = graph.get_id_path_with_heuristic(from, to, 0.5);
+                    if !expected.is_finite() {
+                        assert!(path.is_empty());
+                        continue;
+                    }
+                    assert_eq!(path.first(), Some(&from));
+                    assert_eq!(path.last(), Some(&to));
+                    let cost: f64 = path
+                        .windows(2)
+                        .map(|pair| {
+                            let a = graph.ids[&pair[0]];
+                            let b = graph.ids[&pair[1]];
+                            graph.points[a]
+                                .as_ref()
+                                .unwrap()
+                                .edges
+                                .iter()
+                                .find(|e| e.0 == b)
+                                .unwrap()
+                                .1
+                                * graph.points[b].as_ref().unwrap().weight
+                        })
+                        .sum();
+                    assert!(
+                        (cost - expected).abs() < 1e-9,
+                        "{variant}: {from}->{to}: {cost} != {expected}"
+                    );
+                }
+            }
+            assert_eq!(graph.checkpoint(), checkpoint);
+        }
+    }
+
+    #[test]
+    fn midpoint_heuristic_explores_less_of_a_large_road_graph() {
+        let mut graph = road_grid(32, 0);
+        let from = 32 * 16;
+        let to = from + 31;
+        assert!(!graph.get_id_path(from, to).is_empty());
+        let original = graph.last_expanded;
+        assert!(!graph.get_id_path_with_heuristic(from, to, 0.5).is_empty());
+        assert!(
+            graph.last_expanded < original,
+            "{} >= {original}",
+            graph.last_expanded
+        );
+    }
+}
+
 #[derive(Clone, Copy, PartialEq)]
 struct Step {
     index: usize,
@@ -320,6 +438,24 @@ impl RouteGraph {
             .map_or(Vector3::ZERO, |p| p.position)
     }
 
+    pub(crate) fn get_point_weight_scale(&self, id: i64) -> f64 {
+        self.ids
+            .get(&id)
+            .and_then(|&i| self.points[i].as_ref())
+            .map_or(0.0, |p| p.weight)
+    }
+
+    pub(crate) fn connects_only(&self, id: i64, a: i64, b: i64) -> bool {
+        let Some(point) = self.ids.get(&id).and_then(|&i| self.points[i].as_ref()) else {
+            return false;
+        };
+        point.edges.len() == 2
+            && point.edges.iter().all(|&(i, _)| {
+                let other = self.points[i].as_ref().unwrap().id;
+                other == a || other == b
+            })
+    }
+
     pub fn set_point_weight_scale(&mut self, id: i64, weight: f64) {
         if !weight.is_finite() || weight < 0.0 {
             return;
@@ -331,6 +467,15 @@ impl RouteGraph {
     }
 
     pub fn get_id_path(&mut self, from: i64, to: i64) -> Vec<i64> {
+        self.get_id_path_with_heuristic(from, to, self.minimum_weight)
+    }
+
+    pub(crate) fn get_id_path_with_heuristic(
+        &mut self,
+        from: i64,
+        to: i64,
+        minimum_cost: f64,
+    ) -> Vec<i64> {
         self.last_expanded = 0;
         let (Some(&start), Some(&goal)) = (self.ids.get(&from), self.ids.get(&to)) else {
             return Vec::new();
@@ -392,7 +537,7 @@ impl RouteGraph {
                         .unwrap()
                         .position
                         .distance(destination) as f64
-                        * self.minimum_weight;
+                        * minimum_cost;
                 self.open.push(Step {
                     index: next,
                     cost,

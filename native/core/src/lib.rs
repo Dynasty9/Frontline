@@ -1,6 +1,6 @@
 //! Engine-independent simulation code. No scene objects, wall clock or global RNG.
 /// Pinned scalar math and geometry rules; incompatible checkpoints must fail closed.
-pub const NUMERIC_VERSION: u16 = 2;
+pub const NUMERIC_VERSION: u16 = 3;
 pub mod actors;
 pub mod aircraft_world;
 pub mod ambush_plan;
