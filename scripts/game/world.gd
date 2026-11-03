@@ -12,6 +12,7 @@ signal build_stage(text: String, frac: float)
 var settings: Dictionary = {}
 var _breach_queries: RefCounted
 var recording: BattleRecording
+var simulation_client: SimulationClient
 var srv := false
 var has_view := true
 var local_peer := 1
@@ -133,13 +134,15 @@ func _ready() -> void:
 	HNav.NC = MapDims.N / HNav.C
 	TrenchNet.N = MapDims.N * TrenchNet.RES
 	Defs.MAP_HALF = MapDims.HALF
-	srv = multiplayer.is_server() and not settings.get("replay", false)
+	srv = multiplayer.is_server() and not settings.get("replay", false) and not settings.has("simulation_connection")
 	# The loading curtain covers the scene; drawing partially built scenery
 	# only delays construction on large maps. Processing and RPCs stay active.
 	visible = srv
 	_local_loading = srv and LocalServer.child
 	has_view = DisplayServer.get_name() != "headless"
 	local_peer = multiplayer.get_unique_id()
+	if settings.has("simulation_connection"):
+		local_peer = int(settings.simulation_connection.peer)
 	var pl: Dictionary = settings.get("players", {})
 	local_team = int(pl[local_peer].team) if pl.has(local_peer) else -1
 	view_team = local_team
@@ -281,7 +284,20 @@ func build() -> void:
 		hud.world = self
 		add_child(hud)
 		_try_focus()
-	if not srv and not settings.get("replay", false):
+	if settings.has("simulation_connection"):
+		var connection: Dictionary = settings.simulation_connection
+		simulation_client = SimulationClient.new()
+		simulation_client.world = self
+		add_child(simulation_client)
+		if LocalServer.connected:
+			LocalServer.client = simulation_client
+		simulation_client.failed.connect(func(message: String):
+			if not LocalServer.reconnect():
+				Net.net_error.emit(message))
+		var error := simulation_client.connect_to(String(connection.address), int(connection.port), String(connection.token), String(connection.engine))
+		if error != OK:
+			Net.net_error.emit("Could not connect to the simulation: " + error_string(error))
+	elif not srv and not settings.get("replay", false):
 		_client_ready.rpc_id(1)
 	if _staged:
 		get_tree().multiplayer_poll = polled
@@ -1651,7 +1667,10 @@ func _load_done() -> void:
 		return
 	loaded = true
 	_load_mark("client ready")
-	if is_inside_tree() and multiplayer.get_unique_id() != 1:
+	if simulation_client:
+		simulation_client.loaded()
+		LocalServer.client_loaded()
+	elif is_inside_tree() and multiplayer.get_unique_id() != 1:
 		_client_loaded.rpc_id(1)
 		Net._long_timeout(1, false)
 	set_process(false)
@@ -1781,6 +1800,8 @@ func request_report() -> void:
 	if srv:
 		report = battle.report(local_team)
 		report_updated.emit()
+	elif simulation_client:
+		simulation_client.request_report()
 	else:
 		_rpc_report_req.rpc_id(1)
 
@@ -2067,6 +2088,8 @@ func send_cmd(d: Dictionary) -> void:
 		return
 	if srv:
 		execute_cmd(local_peer, d)
+	elif simulation_client:
+		simulation_client.send_command(d)
 	else:
 		_rpc_cmd.rpc_id(1, d)
 

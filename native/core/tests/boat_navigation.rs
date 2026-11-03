@@ -20,7 +20,15 @@ fn terrain_import_blocks_partial_land_and_bridge_decks() {
     assert!(!n.open(Vector3::new(-1.0, 0.0, -1.0)));
     assert!(!n.open(Vector3::new(1.0, 0.0, 1.0)));
     assert!(n.open(Vector3::new(3.0, 0.0, 3.0)));
-    assert!(BoatNavigation::from_terrain(&terrain, &[]).is_err());
+    assert_eq!(
+        BoatNavigation::from_terrain(&terrain, &[])
+            .unwrap()
+            .checkpoint(),
+        BoatNavigation::from_terrain(&terrain, &vec![0; terrain.n * terrain.n])
+            .unwrap()
+            .checkpoint()
+    );
+    assert!(BoatNavigation::from_terrain(&terrain, &[0; 3]).is_err());
 }
 
 #[test]

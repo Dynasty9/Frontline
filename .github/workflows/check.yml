@@ -71,6 +71,15 @@ jobs:
             if grep -E "SCRIPT ERROR|Parse Error|failures=[1-9]" ${test}.log; then exit 1; fi
           done
 
+      - name: Rust socket and local launcher
+        env:
+          FRONTLINE_SERVER: ${{ github.workspace }}/bin/native/frontline-server
+        run: |
+          set -o pipefail
+          FRONTLINE_GODOT=~/godot/godot cargo +1.94.0 test --locked --release --manifest-path native/Cargo.toml -p frontline_server --test network godot_connects -- --ignored --nocapture
+          timeout 240 ~/godot/godot --headless --path . res://tests/local_server_test.tscn 2>&1 | tee local_server.log
+          if grep -E "SCRIPT ERROR|Parse Error|failures=[1-9]" local_server.log || ! grep -q "LOCAL_SERVER_TEST failures=0" local_server.log; then exit 1; fi
+
       # Installing an update (one executable, or a Mac's app, which is a folder)
       # and reading frontline:// links the way each system hands them over, in
       # a scratch folder: the Mac's side of the updater gets checked here too

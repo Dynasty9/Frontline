@@ -1,0 +1,407 @@
+use frontline_core as sim;
+use frontline_server::{
+    content::Content,
+    network::{self as net, Admission},
+    replay,
+    serve::{self, Config},
+    simulation::Simulation,
+};
+use rusty_enet::{Event, Host, HostSettings, Packet};
+use serde_json::json;
+use std::{
+    fs::{self, File},
+    net::UdpSocket,
+    path::PathBuf,
+    thread,
+    time::{Duration, Instant, SystemTime, UNIX_EPOCH},
+};
+
+fn map(c: &Content) -> Simulation {
+    let terrain = sim::terrain::Terrain::blank(64).unwrap();
+    let deck = vec![0; 4096];
+    let boats = sim::boat_navigation::BoatNavigation::from_terrain(&terrain, &deck).unwrap();
+    let geometry = sim::world_geometry::WorldGeometry::new(terrain, deck, 16).unwrap();
+    let water = sim::water::Water {
+        side: 64,
+        coast: None,
+        rivers: vec![],
+        ponds: vec![],
+        fords: vec![],
+        bridges: vec![],
+    };
+    let mut state = sim::match_state::MatchState::empty(geometry, water, boats, 1, false).unwrap();
+    state.scenario = true;
+    for (peer, team) in [(7, 0), (9, 1)] {
+        state.owners.players.push((peer, team));
+        state.field.battle.joined(peer, team, "Commander").unwrap();
+        c.with_profiles(&[], |p, _| {
+            state
+                .field
+                .with_context(&p.shared, Default::default(), |w| {
+                    w.spawn_squad(
+                        sim::squad_birth::Spawn {
+                            team,
+                            owner: peer,
+                            position: sim::vector::Vector3::new(
+                                if team == 0 { -20. } else { 20. },
+                                0.,
+                                0.,
+                            ),
+                            destination: None,
+                        },
+                        c.squad(if team == 0 {
+                            "rifle_squad"
+                        } else {
+                            "fighter_cell"
+                        })
+                        .unwrap(),
+                    )
+                })
+        })
+        .unwrap();
+    }
+    state
+        .field
+        .actors
+        .rebuild_units(&mut state.field.units)
+        .unwrap();
+    Simulation::new(state, 7, c).unwrap()
+}
+struct Server {
+    directory: PathBuf,
+    ready: PathBuf,
+    stop: PathBuf,
+    replay: PathBuf,
+    handle: Option<thread::JoinHandle<Result<(), String>>>,
+}
+impl Server {
+    fn new() -> Self {
+        let directory = std::env::temp_dir().join(format!(
+            "frontline-socket-{}-{}",
+            std::process::id(),
+            SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        fs::create_dir(&directory).unwrap();
+        let ready = directory.join("ready.json");
+        let stop = directory.join("stop");
+        let replay = directory.join("match.flrp");
+        let players = [(7, 0, '1'), (9, 1, '2'), (11, -1, '3')]
+            .map(|(peer, team, digit)| Admission {
+                peer,
+                team,
+                token: digit.to_string().repeat(48),
+                name: format!("Commander {peer}"),
+                reclaim: None,
+            })
+            .to_vec();
+        let config = Config {
+            bind: "127.0.0.1:0".parse().unwrap(),
+            admissions: players,
+            // Reconnect can wait for ENet retries on a busy desktop.
+            max_ticks: Some(600),
+            ready: Some(ready.clone()),
+            stop: Some(stop.clone()),
+            speed: None,
+            error: None,
+            lease: None,
+            profile: frontline_server::profiling::Profile::decode(
+                &json!({"path":directory.join("profile.json"),"warmup":0,"duration":1}),
+            )
+            .unwrap(),
+        };
+        let output = File::create(&replay).unwrap();
+        let handle = thread::spawn(move || {
+            let c = Content::bundled().unwrap();
+            serve::run(map(&c), &c, config, output)
+        });
+        let deadline = Instant::now() + Duration::from_secs(10);
+        while fs::read(&ready)
+            .ok()
+            .and_then(|b| serde_json::from_slice::<serde_json::Value>(&b).ok())
+            .is_none()
+        {
+            assert!(Instant::now() < deadline, "server did not bind");
+            thread::sleep(Duration::from_millis(2));
+        }
+        Self {
+            directory,
+            ready,
+            stop,
+            replay,
+            handle: Some(handle),
+        }
+    }
+    fn finish(&mut self) -> replay::Verification {
+        fs::write(&self.stop, []).unwrap();
+        self.handle.take().unwrap().join().unwrap().unwrap();
+        replay::verify(
+            File::open(&self.replay).unwrap(),
+            &Content::bundled().unwrap(),
+        )
+        .unwrap()
+    }
+}
+impl Drop for Server {
+    fn drop(&mut self) {
+        if let Some(handle) = self.handle.take() {
+            let _ = fs::write(&self.stop, []);
+            let _ = handle.join();
+        }
+        for file in [&self.ready, &self.stop, &self.replay] {
+            let _ = fs::remove_file(file);
+        }
+        let _ = fs::remove_file(self.directory.join("profile.json"));
+        let _ = fs::remove_dir(&self.directory);
+    }
+}
+struct Client {
+    host: Host<UdpSocket>,
+    token: String,
+    joined: bool,
+    loaded: bool,
+    closed: bool,
+    spawns: usize,
+    tick: u64,
+    messages: Vec<serde_json::Value>,
+}
+impl Client {
+    fn new(server: &Server, token: char) -> Self {
+        let ready: serde_json::Value =
+            serde_json::from_slice(&fs::read(&server.ready).unwrap()).unwrap();
+        let mut host = Host::new(
+            UdpSocket::bind("127.0.0.1:0").unwrap(),
+            HostSettings {
+                peer_limit: 1,
+                channel_limit: 3,
+                ..Default::default()
+            },
+        )
+        .unwrap();
+        host.connect(ready["address"].as_str().unwrap().parse().unwrap(), 3, 0)
+            .unwrap();
+        Self {
+            host,
+            token: token.to_string().repeat(48),
+            joined: false,
+            loaded: false,
+            closed: false,
+            spawns: 0,
+            tick: 0,
+            messages: vec![],
+        }
+    }
+    fn poll(&mut self) {
+        while let Some(event) = self.host.service().unwrap() {
+            match event {
+                Event::Connect { peer, .. } => peer
+                    .send(
+                        0,
+                        &Packet::reliable(net::packet(
+                            net::AUTH,
+                            0,
+                            json!({"token":self.token,"engine":frontline_server::ENGINE_ID})
+                                .to_string()
+                                .as_bytes(),
+                        )),
+                    )
+                    .unwrap(),
+                Event::Disconnect { .. } => self.closed = true,
+                Event::Receive {
+                    peer,
+                    channel_id,
+                    packet,
+                } => {
+                    let (kind, seq, data) = net::decode(packet.data()).unwrap();
+                    match kind {
+                        net::WELCOME => self.joined = true,
+                        net::SPAWN => self.spawns += 1,
+                        net::SNAPSHOT => self.tick = seq,
+                        net::MESSAGE => self.messages.push(serde_json::from_slice(data).unwrap()),
+                        net::BASELINE_END => {
+                            self.loaded = true;
+                            peer.send(0, &Packet::reliable(net::packet(net::LOADED, 0, &[])))
+                                .unwrap();
+                        }
+                        _ => {}
+                    }
+                    if channel_id == 0 {
+                        peer.send(0, &Packet::reliable(net::packet(net::ACK, seq, &[])))
+                            .unwrap();
+                    }
+                }
+            }
+        }
+        self.host.flush();
+    }
+    fn command(&mut self, data: serde_json::Value) {
+        self.host
+            .peer_mut(rusty_enet::PeerID(0))
+            .send(
+                0,
+                &Packet::reliable(net::packet(net::COMMAND, 0, data.to_string().as_bytes())),
+            )
+            .unwrap();
+    }
+}
+#[test]
+fn socket_clients_receive_private_views_and_record_admitted_commands() {
+    let mut server = Server::new();
+    let mut a = Client::new(&server, '1');
+    let mut b = Client::new(&server, '2');
+    let deadline = Instant::now() + Duration::from_secs(12);
+    let mut sent = false;
+    while a.tick < 40 || b.tick < 40 {
+        a.poll();
+        b.poll();
+        if a.loaded && b.loaded && !sent {
+            a.command(json!({"t":"chat","text":"Recorded socket command","team_only":true}));
+            sent = true;
+        }
+        assert!(Instant::now() < deadline, "socket match stalled");
+        thread::sleep(Duration::from_millis(1));
+    }
+    assert!(a.joined && b.joined && a.spawns > 0 && b.spawns > 0);
+    assert!(a
+        .messages
+        .iter()
+        .any(|m| m.to_string().contains("Recorded socket command")));
+    assert!(!b
+        .messages
+        .iter()
+        .any(|m| m.to_string().contains("Recorded socket command")));
+    let verified = server.finish();
+    assert!(verified.frames >= 40);
+    assert_eq!(verified.simulation.state.owners.team_of(7), 0);
+    assert_eq!(verified.simulation.state.owners.team_of(9), 1);
+    let bytes = fs::read(&server.replay).unwrap();
+    assert!(bytes
+        .windows(b"Recorded socket command".len())
+        .any(|b| b == b"Recorded socket command"));
+}
+
+#[test]
+fn late_join_and_reconnect_receive_fresh_baselines_without_changing_ownership() {
+    let mut server = Server::new();
+    let mut a = Client::new(&server, '1');
+    let mut b = Client::new(&server, '2');
+    let deadline = Instant::now() + Duration::from_secs(12);
+    while a.tick < 20 || b.tick < 20 {
+        a.poll();
+        b.poll();
+        assert!(Instant::now() < deadline);
+        thread::sleep(Duration::from_millis(1));
+    }
+    let first_baseline = a.spawns;
+    a.host.peer_mut(rusty_enet::PeerID(0)).disconnect_now(0);
+    a.host.flush();
+    drop(a);
+    while b.tick < 28 {
+        b.poll();
+        assert!(Instant::now() < deadline);
+        thread::sleep(Duration::from_millis(1));
+    }
+    let mut returning = Client::new(&server, '1');
+    let mut observer = Client::new(&server, '3');
+    while returning.tick < 76 || observer.tick < 76 {
+        b.poll();
+        returning.poll();
+        observer.poll();
+        assert!(Instant::now() < deadline);
+        thread::sleep(Duration::from_millis(1));
+    }
+    assert!(
+        returning.loaded
+            && returning.spawns >= first_baseline
+            && observer.spawns >= returning.spawns
+    );
+    let profile: serde_json::Value =
+        serde_json::from_slice(&fs::read(server.directory.join("profile.json")).unwrap()).unwrap();
+    assert_eq!(profile["runtime"], "rust");
+    assert_eq!(profile["tick_hz"], 60);
+    assert!(profile["ticks"]["count"].as_u64().unwrap() > 0);
+    let verified = server.finish();
+    assert_eq!(verified.simulation.state.owners.team_of(7), 0);
+    assert!(verified
+        .simulation
+        .state
+        .field
+        .actors
+        .iter()
+        .any(|a| matches!(a,sim::actors::Actor::Soldier(s) if s.identity.owner==7)));
+}
+#[test]
+fn unauthorized_connections_and_identity_spoofs_are_disconnected() {
+    let mut server = Server::new();
+    let mut bad = Client::new(&server, 'f');
+    let mut a = Client::new(&server, '1');
+    let deadline = Instant::now() + Duration::from_secs(10);
+    let mut sent = false;
+    while !bad.closed || !a.closed {
+        bad.poll();
+        a.poll();
+        if a.loaded && !sent {
+            a.command(json!({"t":"chat","text":"spoof","peer":9}));
+            sent = true;
+        }
+        assert!(
+            Instant::now() < deadline,
+            "invalid peer was not disconnected"
+        );
+        thread::sleep(Duration::from_millis(1));
+    }
+    assert!(!bad.joined && bad.spawns == 0);
+    server.finish();
+}
+#[test]
+fn network_headers_and_configuration_are_bounded() {
+    let p = net::packet(net::COMMAND, 0, b"{}");
+    assert_eq!(net::decode(&p).unwrap(), (net::COMMAND, 0, &b"{}"[..]));
+    for len in 0..16 {
+        assert!(net::decode(&p[..len]).is_err());
+    }
+    let mut bad = p.clone();
+    bad[4] = 255;
+    assert!(net::decode(&bad).is_err());
+    assert!(net::decode(&vec![0; net::MAX_PACKET + 1]).is_err());
+    assert!(Config::decode(b"{}").is_err());
+    assert!(Config::decode(&vec![0; 65537]).is_err());
+}
+#[test]
+#[ignore = "requires a Godot executable in FRONTLINE_GODOT"]
+fn godot_connects_to_the_rust_socket_and_its_commands_replay() {
+    let godot = std::env::var_os("FRONTLINE_GODOT").expect("set FRONTLINE_GODOT");
+    let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..");
+    let mut server = Server::new();
+    let output = std::process::Command::new(godot)
+        .args([
+            "--headless",
+            "--max-fps",
+            "120",
+            "--quit-after",
+            "2400",
+            "--path",
+        ])
+        .arg(&root)
+        .args(["res://tests/fixtures/rust-socket.tscn", "--"])
+        .arg(format!("--socket-ready={}", server.ready.display()))
+        .output()
+        .unwrap();
+    let text = format!(
+        "{}{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    assert!(
+        output.status.success() && text.contains("RUST_SOCKET passed") && !text.contains("ERROR"),
+        "{text}"
+    );
+    let verified = server.finish();
+    assert!(verified.frames >= 32);
+    let bytes = fs::read(&server.replay).unwrap();
+    assert!(bytes
+        .windows(b"Socket command from Godot".len())
+        .any(|b| b == b"Socket command from Godot"));
+}

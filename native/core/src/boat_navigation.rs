@@ -20,7 +20,7 @@ fn point(p: Vector3) -> bool {
 impl BoatNavigation {
     pub fn from_terrain(terrain: &Terrain, decks: &[u8]) -> Result<Self, &'static str> {
         if terrain.n % 2 != 0
-            || decks.len() != terrain.n * terrain.n
+            || (!decks.is_empty() && decks.len() != terrain.n * terrain.n)
             || decks.iter().any(|&v| v > 1)
         {
             return Err("invalid boat terrain");
@@ -40,7 +40,7 @@ impl BoatNavigation {
                 for dz in 0..2 {
                     for dx in 0..2 {
                         let i = first + dz * terrain.n + dx;
-                        if base[i] == WATER && decks[i] == 0 {
+                        if base[i] == WATER && decks.get(i).copied().unwrap_or(0) == 0 {
                             deep += 1;
                             wet += 1;
                         } else if base[i] == SHALLOW {

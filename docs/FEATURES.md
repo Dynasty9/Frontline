@@ -1671,8 +1671,12 @@ in Rust, retaining their phases and roles across replay. The five playable
 missions also retain objectives, scripted reinforcements, support, autopilots
 and conclusions. Generated starting battlefields can be handed from Godot to
 Rust before the first tick, including exact random state and map geometry.
-The live socket/visual-client transition remains in progress;
-see [RUST_SIMULATION.md](RUST_SIMULATION.md).
+Desktop solo play now starts that Rust process and connects the Godot renderer
+over an authenticated ENet socket. The server sends team-filtered entity state,
+effects, messages, HUD data and reports; orders travel back to the same authority.
+Reconnect preserves ownership, pause controls server pacing, and leaving closes
+the deterministic command recording. Multiplayer lobby and replay-viewer
+integration remain in progress; see [RUST_SIMULATION.md](RUST_SIMULATION.md).
 
 See [SIMULATION_SCALING.md](SIMULATION_SCALING.md) for the native perception
 boundary, measurement results and remaining limits.

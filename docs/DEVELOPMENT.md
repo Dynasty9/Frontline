@@ -2,32 +2,27 @@
 
 How the code is laid out, and the command-line modes used to test it. See also [CONTRIBUTING](../CONTRIBUTING.md).
 
-## Scaling and the optional native extension
+## Rust simulation and native builds
 
-Most gameplay remains GDScript. A Rust GDExtension owns gameplay random streams
-and projectile/drone flight, guided missiles, support-aircraft attack schedules,
-weighted navigation grids, hierarchical routing, route smoothing and path request
-queues. It also accelerates nearest-enemy
-candidate selection using numeric snapshots. Battlefield box raycasts, smoke
-volumes and geometric visibility run in Rust; perception policy and damage stay
-in Godot. Terrain cells, crater deformation and queued cover reconstruction also
-run in the core; Godot still supplies structure geometry and generated biome/water
-data and mirrors changed cells. Hierarchical graph assembly and repair
-use engine-independent state; local-grid costing uses Rust workers.
-The numeric algorithms live in the engine-independent `native/core` crate;
-`native/src` contains the Godot bindings. Run their standalone tests with
-`cargo +1.94.0 test --locked --manifest-path native/Cargo.toml -p frontline_core`.
-See [RUST_SIMULATION.md](RUST_SIMULATION.md) for the migration boundary and
-the outstanding requirements for deterministic battle verification.
-Install Rust 1.94.0 (`rustup toolchain install 1.94.0 --profile minimal`), then run
-`python tools/build_native.py` from the root. Re-import Godot afterward. A checkout
-without the generated extension uses GDScript perception and Godot AStar3D routes. Release CI builds
-and includes native Windows/Linux libraries. Do not commit generated binaries.
+Desktop solo play runs the authoritative simulation in `frontline-server` while
+Godot handles visuals and interaction. `native/core` contains gameplay state and
+algorithms; `native/server` connects the fixed tick, commanders, missions, socket
+transport and command recordings. `native/src` supplies map-generation bindings
+and parity tests. Multiplayer lobby and browser migration are still in progress;
+see [RUST_SIMULATION.md](RUST_SIMULATION.md) for the current boundary and checks.
 
-`--local-server` launches a private headless child using the current executable.
-Desktop solo menu actions do this automatically; `--host` retains the public host
-path. Local sessions bind loopback, require a random session token and protocol
-version, and stop when the owner exits. Logs are under `user://local_servers/`.
+Install Rust 1.94.0, run `python tools/build_native.py`, then re-import Godot.
+The builder stages both the extension and server; release builds include them on
+Windows, Linux and macOS. Do not commit generated binaries. Native solo play needs
+both binaries; a missing server is reported instead of silently changing simulation.
+
+`--local-server` prepares a map in a short-lived headless Godot child and then
+starts the Rust server. Desktop solo menu actions use this automatically. Local
+sessions bind loopback and require a random ticket and matching simulation build.
+Logs are under `user://local_servers/`; command recordings are written to
+`user://replays/`. Closing the session flushes the recording. Verify it with
+`frontline-server verify PATH.flrp`. `FRONTLINE_SERVER` can select a binary in a
+source checkout. The public `--host` path is still awaiting migration.
 
 Run a measured 500-unit case with:
 

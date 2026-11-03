@@ -170,7 +170,10 @@ func apply_props(d: Dictionary) -> void:
 	if d.has("vk"):
 		vk = d.vk
 	if d.has("door"):
-		door_shut = d.door
+		if model and door_shut and not d.door:
+			open_door(null, bool(d.get("dk", false)))
+		else:
+			door_shut = d.door
 	if d.has("zc"):
 		zone_c = d.zc
 		zone_r = d.zr

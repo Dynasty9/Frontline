@@ -129,8 +129,8 @@ func _ready() -> void:
 		if DisplayServer.get_name() != "headless":
 			DisplayServer.window_set_vsync_mode(DisplayServer.VSYNC_DISABLED)
 	if args.has("managed-server"):
-		Net.game_start.connect(_on_game_start)
 		LocalServer.start_child(String(args["managed-server"]))
+		Net.game_start.connect(_on_game_start)
 		return
 	if args.has("offscreen") and DisplayServer.get_name() != "headless":
 		# renders for tooling (model sheets): the window starts minimized (the
@@ -266,7 +266,17 @@ func _ready() -> void:
 		var replay_url = JavaScriptBridge.eval("new URLSearchParams(location.search).get('replay') || ''")
 		if replay_url is String and not replay_url.is_empty():
 			args["replay"] = replay_url
-	if args.has("replay-test"):
+	if args.has("simulation-client"):
+		var connection = JSON.parse_string(FileAccess.get_file_as_string(String(args["simulation-client"])))
+		if not connection is Dictionary or not ["address", "port", "token", "engine", "peer", "team", "map_size"].all(func(key): return connection.has(key)):
+			push_error("Invalid simulation connection file")
+			get_tree().quit(1)
+			return
+		Net.host_offline(int(connection.team))
+		Net.players = {int(connection.peer): {"team": int(connection.team), "name": Net.my_name, "col": 0}}
+		Net.in_game = true
+		_on_game_start.call_deferred({"simulation_connection": connection, "map_size": int(connection.map_size), "players": Net.players, "seed": 1})
+	elif args.has("replay-test"):
 		var replay_test: Node = GameScripts.load_script("res://scripts/test/replay_test.gd").new()
 		replay_test.main = self
 		add_child(replay_test)
@@ -508,7 +518,7 @@ func _on_game_start(s: Dictionary) -> void:
 		world.visible = false
 	# (with a window, a frame of the loading screen between its stages: World._breathe)
 	await world.build()
-	if args.has("export-simulation"):
+	if s.has("simulation_export"):
 		return
 	if not is_instance_valid(world):
 		return

@@ -123,6 +123,7 @@ pub struct Simulation {
     pub landmarks: Vec<crate::mission::Landmark>,
     pub mission: Option<crate::mission::Mission>,
     pub presentation: Vec<u8>,
+    pub aircraft_models: BTreeMap<u32, String>,
     search: PerceptionSearch,
 }
 impl Simulation {
@@ -169,6 +170,7 @@ impl Simulation {
             landmarks: vec![],
             mission,
             presentation: b"{}".to_vec(),
+            aircraft_models: BTreeMap::new(),
             search: PerceptionSearch::default(),
         })
     }
@@ -295,6 +297,17 @@ impl Simulation {
             w.bytes(&mission.checkpoint()?);
         }
         w.bytes(&self.presentation);
+        w.u32(self.aircraft_models.len() as u32);
+        for (&id, model) in &self.aircraft_models {
+            if model.len() > 128
+                || model.contains('\0')
+                || !matches!(self.state.field.actors.get(id), Some(sim::actors::Actor::Projectile(p)) if matches!(p.motion, sim::projectile_actor::Motion::Support(_)))
+            {
+                return Err("invalid support aircraft appearance");
+            }
+            w.u32(id);
+            w.bytes(model.as_bytes());
+        }
         w.bytes(&self.state.checkpoint()?);
         if w.0.len() > MAX_STATE {
             return Err("simulation checkpoint exceeds limit");
@@ -356,6 +369,19 @@ impl Simulation {
             None
         };
         let presentation = r.bytes(16 * 1024 * 1024)?.to_vec();
+        let count = r.u32()?;
+        if count > sim::entities::MAX_ENTITIES as u32 {
+            return Err("too many aircraft appearances");
+        }
+        let mut aircraft_models = BTreeMap::new();
+        for _ in 0..count {
+            let id = r.u32()?;
+            let model = String::from_utf8(r.bytes(128)?.to_vec())
+                .map_err(|_| "invalid aircraft appearance")?;
+            if aircraft_models.insert(id, model).is_some() {
+                return Err("duplicate aircraft appearance");
+            }
+        }
         let state = MatchState::restore(r.bytes(MAX_STATE)?)?;
         r.finish()?;
         if names
@@ -370,6 +396,7 @@ impl Simulation {
         result.commanders = commanders;
         result.landmarks = landmarks;
         result.presentation = presentation;
+        result.aircraft_models = aircraft_models;
         if result.checkpoint()? != bytes {
             return Err("noncanonical simulation checkpoint");
         }
@@ -547,6 +574,26 @@ impl Simulation {
                 }
             }
             out.events.extend(self.state.finish_battlefield(p)?);
+            let births = out
+                .commands
+                .iter()
+                .filter_map(|e| match e {
+                    sim::match_commands::Event::Support(e) => Some(e),
+                    _ => None,
+                })
+                .chain(out.events.iter().filter_map(|e| match e {
+                    sim::match_tick::Event::Rules(sim::rules_world::Event::Support(e)) => Some(e),
+                    _ => None,
+                }));
+            for e in births {
+                if let sim::support_calls::Event::Born { id, model } = e {
+                    if !model.is_empty() {
+                        self.aircraft_models.insert(*id, model.clone());
+                    }
+                }
+            }
+            self.aircraft_models
+                .retain(|id, _| self.state.field.actors.get(*id).is_some());
             Ok(out)
         })
     }

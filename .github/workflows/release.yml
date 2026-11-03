@@ -147,7 +147,7 @@ jobs:
     needs: plan
     strategy:
       matrix:
-        os: [ubuntu-latest, windows-latest]
+        os: [ubuntu-latest, windows-latest, macos-latest]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
@@ -159,7 +159,7 @@ jobs:
         with:
           name: native-${{ matrix.os }}
           path: |
-            bin/native/*
+            bin/native/**
             frontline_sim.gdextension
 
   build:
@@ -235,8 +235,13 @@ jobs:
           test -s build/web/index.html && test -s build/web/index.wasm && test -s build/web/index.pck
           unzip -l build/Frontline-macos.zip | grep -E ' Frontline\.app/Contents/MacOS/Frontline$'
           unzip -l build/Frontline-macos.zip | grep -E ' Frontline\.app/Contents/Resources/Frontline\.pck$'
+          unzip -l build/Frontline-macos.zip | grep -E ' Frontline\.app/Contents/Helpers/frontline-server$'
           zipinfo build/Frontline-macos.zip Frontline.app/Contents/MacOS/Frontline | grep -E '^-rwx'
+          zipinfo build/Frontline-macos.zip Frontline.app/Contents/Helpers/frontline-server | grep -E '^-rwx'
           test -s build/windows/frontline_sim.dll && test -s build/linux/libfrontline_sim.so
+          cp bin/native/frontline-server.exe build/windows/
+          cp bin/native/frontline-server build/linux/
+          chmod +x build/linux/frontline-server
           chmod +x build/linux/Frontline.x86_64
           for d in windows linux web; do cp LICENSE build/$d/; (cd build/$d && zip -q -9 -r ../Frontline-$d.zip .); done
           zip -q -j build/Frontline-macos.zip LICENSE
@@ -250,6 +255,7 @@ jobs:
           # the licence page shows Windows line endings
           sed 's/$/\r/' LICENSE > "$RUNNER_TEMP/LICENSE.txt"
           makensis -NOCD -V2 -DVERSION="$VERSION" -DVERSION4="${VERSION%%-*}.0" -DNATIVE=build/windows/frontline_sim.dll \
+            -DSERVER=build/windows/frontline-server.exe \
             -DEXE=build/windows/Frontline.exe -DLICENSE="$RUNNER_TEMP/LICENSE.txt" \
             -DOUT=build/Frontline-windows-setup.exe installer/windows.nsi
           ls -la build/Frontline-windows-setup.exe

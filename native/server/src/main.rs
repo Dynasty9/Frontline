@@ -5,7 +5,7 @@ use std::{
     path::PathBuf,
 };
 
-const USAGE: &str = "usage: frontline-server verify RECORDING | prepare INITIAL CHECKPOINT | run INITIAL RECORDING TICKS";
+const USAGE: &str = "usage: frontline-server verify RECORDING | prepare INITIAL CHECKPOINT | run INITIAL RECORDING TICKS | serve INITIAL CONFIG RECORDING";
 
 fn read_initial(path: PathBuf) -> Result<Vec<u8>, String> {
     let file = File::open(path).map_err(|e| e.to_string())?;
@@ -23,6 +23,36 @@ fn run() -> Result<(), String> {
     let mut args = std::env::args_os().skip(1);
     let command = args.next().ok_or(USAGE)?;
     match command.to_str() {
+        Some("serve") => {
+            let initial = PathBuf::from(args.next().ok_or("missing initial battlefield")?);
+            let config = PathBuf::from(args.next().ok_or("missing server configuration")?);
+            let recording = PathBuf::from(args.next().ok_or("missing recording path")?);
+            if args.next().is_some() {
+                return Err("unexpected server argument".into());
+            }
+            let mut bytes = vec![];
+            File::open(config)
+                .map_err(|e| e.to_string())?
+                .take(64 * 1024 + 1)
+                .read_to_end(&mut bytes)
+                .map_err(|e| e.to_string())?;
+            let config = frontline_server::serve::Config::decode(&bytes)?;
+            let error_path = config.error.clone();
+            let result = (|| {
+                let content = Content::bundled()?;
+                let simulation = initial::load(&read_initial(initial)?, &content)?;
+                let output = File::options()
+                    .write(true)
+                    .create_new(true)
+                    .open(recording)
+                    .map_err(|e| e.to_string())?;
+                frontline_server::serve::run(simulation, &content, config, output)
+            })();
+            if let (Err(error), Some(path)) = (&result, error_path) {
+                let _ = std::fs::write(path, error.to_string());
+            }
+            result
+        }
         Some("verify") => {
             let path = PathBuf::from(args.next().ok_or("missing replay path")?);
             if args.next().is_some() {
