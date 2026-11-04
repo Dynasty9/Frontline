@@ -89,6 +89,7 @@ caption = "Before (left) and prepared emitters (right): collapse sparks and ash 
 - Command views limit fully articulated models to four selected or nearby soldiers; zooming below 22 m retains up to 16 for close inspection. Other troops use shared standing, crouching, prone and walking models, preserving the full army and gameplay while reducing drawing cost.
 - Shared soldier models reduce mesh detail earlier as they recede, cutting geometry without removing troops.
 - New detailed models build one at a time. Squad-overview preparation yields at most one frame to a HUD redraw, keeping selection immediate.
+- Stationary battlefield overlays prepare drawing across three frames and display the completed image together. Camera movement, zoom and commands still refresh immediately, reducing routine frame-time variation.
 - Soldier-batch uploads also avoid squad-summary and roster work, yielding at most two frames while GPU motion continues. This reduces overlapping client work without changing simulation timing.
 - Detailed soldiers reuse prepared geometry with independent animation, reducing construction pauses when troops enter the camera view. Clothing and face variation is reduced within each unit type and team.
 - Closing the game during music or sound preparation waits for the audio workers to finish safely.

@@ -1214,8 +1214,8 @@ These are CPU construction timings, not complete frame timings. Evidence:
 `build/collapse-pool-tests.log`.
 
 A cached GDScript camera-projection experiment was slower than the engine call
-and was discarded. Preparing the overlay across three frames also failed to
-establish a useful overall improvement and remains excluded. The frame-phase
+and was discarded. The first three-frame overlay experiment failed to establish
+a useful overall improvement; a later comparison follows below. The frame-phase
 probe places most remaining spikes in process callbacks and deferred drawing,
 with a smaller gap before those callbacks. See `build/player-frame-detail-1/`
 and `build/overlay-staged-comparison.json`; child-viewport GPU timing was not
@@ -1247,3 +1247,38 @@ The initial export exposed a draw during terrain import; that run is excluded.
 The loading guard now has a regression check. Vulkan and Compatibility renders
 compare the former cell rectangles and the new luminance texture pixel-for-pixel;
 both images were inspected (`build/fog-mask-{vulkan,gl}.png`).
+
+
+### Overlay preparation after the fog fix
+
+With native fog and the four-model command-view budget, a fresh ABBA comparison
+supports preparing stationary overlay drawing in three phases. Controls averaged
+68.89/66.68 FPS, with frame p99 26.427/26.644 ms; staged runs averaged 70.28/68.28
+FPS, with frame p99 24.516/24.970 ms. Adjacent-frame difference p99 was
+11.280/10.218 ms before and 9.322/9.684 ms after. This is about 7% lower frame p99
+and 12% lower adjacent-frame difference p99, while the steady-60 gate remains open.
+The early, busier part of the capture still has slow frames near 30 ms.
+
+The renderer prepares orders/contacts, men/speech and markers on consecutive
+frames, then displays the completed image at the existing 15 Hz cadence. Camera,
+projection, input, resize and hide/show changes cancel partial preparation and
+refresh all layers immediately. The full army, selection and simulation continue
+updating. Evidence: `build/native-fog-overlay-comparison.json` and the four
+`build/player-native-fog-{fixed,staged}-{1,2}/` folders.
+
+Seven focused fog, overlay, minimap, soldier and support-panel tests pass. Both
+renderers pass the staged-display/invalidation fixture. Nine actual overlay
+scenes per renderer differ by at most 15 image bytes from the previous drawing
+path (timed marker pulses), including tactical/close/command views, selection,
+casualties, removed units and atlas resizing. The rendered command view was
+inspected. The actual Chromium export passes the direct WebAssembly fog check,
+movement, pause, saved replay verification, observer seeking and the Hunter
+viewer; Chromium also reported nonfatal resource-load warnings. Evidence:
+`build/staged-final-*.log` and `build/overlay-{before,after}-*.png`.
+
+A diagnostic with no articulated soldiers at command zoom averaged 71.08 FPS,
+with frame p99 24.321 ms and adjacent-frame difference p99 8.978 ms. That single
+sample does not justify removing the remaining four detailed models. The
+production limit remains four (16 below 22 m). The first zero-detail package
+had an export-source formatting error and is excluded; the corrected probe is
+`build/player-native-fog-staged-zero-1/`.

@@ -192,6 +192,7 @@ func _ready() -> void:
 	overlay.raster = overlay_view
 	overlay.theme = root.theme
 	overlay_view.add_child(overlay)
+	overlay.prepare_layers()
 	var overlay_image := TextureRect.new()
 	overlay_image.texture = overlay_view.get_texture()
 	overlay_image.expand_mode = TextureRect.EXPAND_IGNORE_SIZE

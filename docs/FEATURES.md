@@ -1279,8 +1279,9 @@ turrets, wheels and rotors keep their pivots. Near vehicles retain their origina
 materials. Wrecks retain their original materials to avoid baking meshes during
 combat. Squad overview status refreshes at 10 Hz, preparing its data away from an
 overlay redraw where possible, with at most one frame of delay. Selection remains immediate.
-The battlefield status overlay retains a rasterized image between 15 Hz refreshes when the camera
-is still. Panning, zooming and command input refresh it immediately; blast shake does not
+The battlefield status overlay prepares orders, men/speech and markers over three frames,
+then displays the complete image at 15 Hz when the camera is still. Panning, zooming and
+command input cancel partial preparation and refresh it immediately; blast shake does not
 invalidate this cache. Cursor hints, selection boxes and placement previews draw in a separate
 layer each frame, so moving the pointer does not rebuild all squad counters. Leader chevrons reuse
 the symbol atlas; speech bubbles retain bounded wrapped layouts and draw their flat backgrounds
