@@ -3821,37 +3821,37 @@
       "summary": "Coastal margins transition through exposed gravel and darker wet stone instead of a uniformly sandy strip.",
       "medium": "still",
       "stage": "native-media",
-      "rationale": "Isolate this refinement against its immediate parent, with a targeted view and a distant view.",
+      "rationale": "Isolate the revision from the previous proposal with identical upstream changes, seed and camera.",
       "source_ref": "codex/realism-10-shore-gravel",
       "sources": [
         {
           "file": "changelog/unreleased/realism-10-shore-gravel/target-before.jpg",
-          "sha256": "08443252dba77afd6706d487986807efaab40aa2b6b0372b3101a78210bb6c4f",
+          "sha256": "6dd87ae5f05dc03215e902b08ede4dbac562ab7ff2222597c704adb84c5d30d2",
           "caption": "target before"
         },
         {
           "file": "changelog/unreleased/realism-10-shore-gravel/target-after.jpg",
-          "sha256": "9c12fac7dfb8adc56d052826f83560e6cd3edefa6057f8307f3c3562de344628",
+          "sha256": "3f881d908bdc22f68d94cbebeaf343b1c0a902bcd6af9785cb21239929c57f54",
           "caption": "target after"
         },
         {
           "file": "changelog/unreleased/realism-10-shore-gravel/wide-before.jpg",
-          "sha256": "0bc7728710eac4a51eb19f6e057e5460d8ef035288834fab89ee824b83d49f63",
+          "sha256": "0f51e90a8a7082e398dfa61c77fbbe25964eb2b853143866255fbd5be5304ca0",
           "caption": "wide before"
         },
         {
           "file": "changelog/unreleased/realism-10-shore-gravel/wide-after.jpg",
-          "sha256": "5dee3a2f91ad37496061fc3d55d2f7432c1aca36a493e4cc0d4617bf273d76a1",
+          "sha256": "48925fe53292fbfdc53631fec6790561586eafeb330898941a865ddfd8d3e97c",
           "caption": "wide after"
         },
         {
           "file": "changelog/unreleased/realism-10-shore-gravel/target-compat.jpg",
-          "sha256": "34dd445078854105ce50fd3b84f3830b60db9a52630bad7016a8bc2604315bed",
+          "sha256": "df42a0922120345bde6455df16ca1a1364f36473c0f66f282ccc19378bcdf2e6",
           "caption": "target compat"
         },
         {
           "file": "changelog/unreleased/realism-10-shore-gravel/compare.gif",
-          "sha256": "96d35293a814a40d7b652c1ace674d38dd0f262c61704cdbe86411d0618f6928",
+          "sha256": "5af7ed922c401c5ada409255c05cbc63babee9ddf2046e4f0ab677867d840fb4",
           "caption": "Native frames, separate labels, shared palette, 2.5 seconds each."
         }
       ],
@@ -3860,10 +3860,10 @@
       "version": "unreleased",
       "kind": "improved",
       "capture": {
-        "before_ref": "05acc28e84f5306a0b2c30713f7101fd4bb990a5",
+        "before_ref": "1a31b2f255e8c92dc1d75d4b1eba35676119889d",
         "after_ref": "codex/realism-10-shore-gravel",
-        "before_pack": "realism-09.pck",
-        "after_pack": "realism-10.pck",
+        "before_pack": "iterate-10-before.pck",
+        "after_pack": "iterate-10-after.pck",
         "seed": 3,
         "preset": "high",
         "mood": "day",

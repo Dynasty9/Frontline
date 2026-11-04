@@ -1261,9 +1261,10 @@ void fragment() {
 	float clean = (1.0 - wm.g) * (1.0 - wm.a) * (1.0 - clamp(bowl, 0.0, 1.0));
 	col = mix(col, alpine, clean);
 	// Wave-washed rocky margins retain gravel above the wet line instead of uniform sand.
-	float shore_stone = wm.g * wm.b * (1.0 - wm.a) * smoothstep(0.18, 0.65, patch + slope * 0.4);
+	float shore_stone = smoothstep(0.08, 0.55, wm.g) * wm.b * (1.0 - wm.a)
+		* smoothstep(0.35, 0.75, patch * 0.65 + macro * 0.2 + slope * 0.6);
 	shore_stone *= 1.0 - step(9999.0, snow_line);
-	vec3 gravel = scree_sample.rgb * mix(vec3(0.95, 0.92, 0.84), vec3(0.36, 0.40, 0.42), wet_sand);
+	vec3 gravel = scree_sample.rgb * mix(vec3(0.86, 0.91, 0.96), vec3(0.32, 0.37, 0.40), wet_sand);
 	col = mix(col, gravel, shore_stone * 0.85);
 	// Connected snowfields collect in sheltered bowls, leaving dark ribs and cliff faces.
 	float local_snow_line = max(abs(p.x), abs(p.y)) >= __MAP_HALF__ ? max(150.0, snow_line * 1.5) : snow_line;
