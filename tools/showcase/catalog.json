@@ -3506,37 +3506,37 @@
       "summary": "Snow shelves gain shallow wind grooves and granular highlights instead of perfectly smooth white surfaces.",
       "medium": "still",
       "stage": "native-media",
-      "rationale": "Isolate this refinement against its immediate parent, with a targeted view and a distant view.",
+      "rationale": "Isolate the revision from the previous proposal with identical upstream changes, seed and camera.",
       "source_ref": "codex/realism-05-snow-surface",
       "sources": [
         {
           "file": "changelog/unreleased/realism-05-snow-surface/target-before.jpg",
-          "sha256": "1883f9018649b4a2797d2762eb777358e4def0f01c71618ffc62fe43fd097acf",
+          "sha256": "3aa4df11495c259a1250a566693ce153e7964b6c0866ca501c3540fcf2b529a6",
           "caption": "target before"
         },
         {
           "file": "changelog/unreleased/realism-05-snow-surface/target-after.jpg",
-          "sha256": "519d02ee30167ecb5ac52269b5bde5a80a32de3d02630df7caa15ce6ba9478b5",
+          "sha256": "017a58f4685b71eaf1fb2b74fbd5eb470291c2b4d0da58ff98527aa7a795a799",
           "caption": "target after"
         },
         {
           "file": "changelog/unreleased/realism-05-snow-surface/wide-before.jpg",
-          "sha256": "41886eca37cdce279a507e30dffda1256808c0a0c7e8d8fc75e7c03497bed71e",
+          "sha256": "a871cd6e15ebd2a2ed9b61b76705cb1648714e8265c3badf08cd7d850a55b983",
           "caption": "wide before"
         },
         {
           "file": "changelog/unreleased/realism-05-snow-surface/wide-after.jpg",
-          "sha256": "e54beed0d77c3484c571e05b6e4fb2951367471113521335b8a9b605cd7483b1",
+          "sha256": "7be687b40c16bea37fe08c2ace7513bf941c9863e722c6a9f0d3708e302efe6a",
           "caption": "wide after"
         },
         {
           "file": "changelog/unreleased/realism-05-snow-surface/target-compat.jpg",
-          "sha256": "8ecac4d5e1860c1ad84c2690b2ee60c0cfe0f8d489ca349976e84c70781668e6",
+          "sha256": "0d63eae20cf99df068d1eaf28274328d7d58c9d3e75f1e25c0426bf216367997",
           "caption": "target compat"
         },
         {
           "file": "changelog/unreleased/realism-05-snow-surface/compare.gif",
-          "sha256": "9bc08385e8344785e05a34712153edcf85b2347f5e2a21d25823e46ae18fcf2a",
+          "sha256": "1666ac2a2b4a19cad545ed8fb68017e918a926c7f8f1f6042f9e08793001750a",
           "caption": "Native frames, separate labels, shared palette, 2.5 seconds each."
         }
       ],
@@ -3545,10 +3545,10 @@
       "version": "unreleased",
       "kind": "improved",
       "capture": {
-        "before_ref": "7e2016aebe2be35b015ac1ab9c799a7f52cc614c",
+        "before_ref": "d006571fca84b56157fab5bdd24a42435d952b70",
         "after_ref": "codex/realism-05-snow-surface",
-        "before_pack": "realism-04.pck",
-        "after_pack": "realism-05.pck",
+        "before_pack": "iterate-05-before.pck",
+        "after_pack": "iterate-05-after.pck",
         "seed": 3,
         "preset": "high",
         "mood": "day",

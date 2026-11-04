@@ -1254,11 +1254,12 @@ void fragment() {
 	snow *= 1.0 - smoothstep(0.85, 2.1, slope);
 	snow *= clean;
 	// Wind ripples are resolved only while they cover several pixels.
-	float snow_phase = dot(p, vec2(0.8, 0.6)) * 2.2 + (macro - 0.5) * 5.0;
+	float snow_phase = dot(p, vec2(0.8, 0.6)) * 1.3 + (macro - 0.5) * 7.0 + patch * 9.0;
 	float snow_resolved = 1.0 - smoothstep(0.5, 2.5, fwidth(snow_phase));
-	float snow_ripple = sin(snow_phase) * snow_resolved;
+	float snow_ripple = sin(snow_phase) * snow_resolved * smoothstep(0.18, 0.65, macro) * 0.65;
+	snow_ripple += sin(snow_phase * 0.47 + macro * 6.0) * (1.0 - smoothstep(0.5, 2.5, fwidth(snow_phase * 0.47))) * 0.35;
 	vec3 snow_color = mix(vec3(0.65, 0.75, 0.84), vec3(0.88, 0.90, 0.92), smoothstep(-0.3, 0.6, lee + macro));
-	col = mix(col, snow_color * (0.92 + d3 * 0.08 + snow_ripple * 0.025), snow);
+	col = mix(col, snow_color * (0.94 + d3 * 0.06 + snow_ripple * 0.018), snow);
 	vec2 material_data = mix(moss_data, rock_data, exposed);
 	// Combine photographic crevices with broad shelter; do not bake a second direct-light shadow.
 	float crevice = clamp(rock_data.x * mix(1.0, 0.72, shelter), 0.25, 1.0);
@@ -1294,7 +1295,7 @@ void fragment() {
 	n = normalize(mix(n, mapped, 0.85 * clean * (1.0 - snow)));
 	n = surface_relief(n, mineral * 0.28, exposed * clean * (1.0 - snow) * smoothstep(0.3, 1.0, slope));
 	n = normalize(mix(n, geometric, snow * 0.9));
-	n = surface_relief(n, snow_ripple * 0.12, snow);
+	n = surface_relief(n, snow_ripple * 0.10 + scree_sample.a * 0.045, snow);
 	n = normalize(mix(n, vec3(0.0, 1.0, 0.0), puddle * 0.9));
 	NORMAL = normalize((VIEW_MATRIX * vec4(n, 0.0)).xyz);
 }
