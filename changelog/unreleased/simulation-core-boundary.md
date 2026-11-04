@@ -42,6 +42,10 @@ caption = "After: unchanged HUD state is retained and minimap intel uses the sha
 [[screenshots]]
 file = "world-contact-markers.png"
 caption = "Last-seen battlefield contacts, before on the left and after on the right. Shared diamond drawings retain the normal question-mark font, fading and larger vehicle markers."
+[[screenshots]]
+file = "collapse-pool.png"
+caption = "Before (left) and prepared emitters (right): collapse sparks and ash retain their appearance while reusing particle systems. Individual particle positions differ."
+
 +++
 
 - Desktop battles now run in a separate Rust process while Godot draws the battlefield and handles your orders. Infantry, vehicles, combat, logistics, tactical AI, commanders and the five operations use the same authoritative simulation.
@@ -75,13 +79,14 @@ caption = "Last-seen battlefield contacts, before on the left and after on the r
 - Last-seen enemy markers reuse the minimap symbol atlas, retaining their fading and the larger vehicle diamonds while reducing drawing spikes.
 - Last-seen battlefield diamonds also reuse the symbol atlas. The minimap retains its camera and compass drawing while unchanged, with immediate updates when the view or pointer moves.
 - Hidden articulated soldier models stop updating their joints as shared models move, reducing CPU work without removing troops or nearby detail. Revealing a soldier or starting a ragdoll restores its current position immediately.
+- Burned-out buildings reuse prepared spark and ash emitters, avoiding repeated particle-system construction during combat. Up to eight collapses keep their effects at once; further collapses replace the oldest fading effect. Building damage and scorch marks are unchanged.
 - Closing an already disconnected simulation session avoids a redundant disconnect call and its engine error.
 - Wildlife waits for the battlefield to finish loading before reading terrain being prepared on a worker thread.
 - Large-map starting states and command recordings use lossless compressed blocks, retaining exact state for independent verification.
 - Distant soldier batches expand their bounds for elevated and airborne troops, preventing models from disappearing above the old flat-ground bounds.
 - Distant soldiers smooth their movement on the GPU between socket updates, reducing repeated CPU transform uploads while preserving immediate visibility and teleport changes.
 - Client movement smoothing reuses each unit's current transform, reducing repeated engine reads while keeping movement and teleport behavior unchanged.
-- Close views limit fully articulated models to 16 selected or nearby soldiers. Other troops use shared standing, crouching, prone and walking models, preserving the full army and gameplay while reducing drawing cost.
+- Command views limit fully articulated models to four selected or nearby soldiers; zooming below 22 m retains up to 16 for close inspection. Other troops use shared standing, crouching, prone and walking models, preserving the full army and gameplay while reducing drawing cost.
 - Shared soldier models reduce mesh detail earlier as they recede, cutting geometry without removing troops.
 - New detailed models build one at a time. Squad-overview preparation yields at most one frame to a HUD redraw, keeping selection immediate.
 - Soldier-batch uploads also avoid squad-summary and roster work, yielding at most two frames while GPU motion continues. This reduces overlapping client work without changing simulation timing.
@@ -93,6 +98,7 @@ caption = "Last-seen battlefield contacts, before on the left and after on the r
 - Squad strength indicators reuse their geometry until the number or condition of their soldiers changes, reducing HUD drawing calls.
 - Unchanged roster rows retain their drawing commands, refreshing when selection, casualties, status or appearance changes. Fractional scrolling and interface scaling keep the same text and symbols.
 - Minimap firefight markers reuse position reads, map transforms and ring styling within each refresh.
+- Terrain fog of war calculates its cached visibility mask in Rust and draws one texture, reducing visibility-update spikes while preserving the same terrain horizon and refresh rate.
 - Minimap soldier dots share one draw batch and reuse map transforms and team colors, retaining selection, wounded colors, overlap and immediate camera feedback.
 - Supply dispatch checks active buildings instead of every scenery object. Infantry refresh activity descriptions only when their existing status timer expires.
 - Victory checks use the active-building index rather than scanning every tree and wall.

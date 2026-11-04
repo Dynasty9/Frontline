@@ -15,6 +15,7 @@ class DrawGroup:
 var world: World
 const CELL := 64.0
 const MAX_DETAILED := 16
+const COMMAND_DETAILED := 4
 var detail_ids := {}
 var _detail_left := 0.0
 var _detail_view := Transform3D.IDENTITY
@@ -107,7 +108,9 @@ func _choose_detail(dt: float) -> void:
 		candidates.append([priority, soldier.eid])
 	candidates.sort_custom(func(a: Array, b: Array) -> bool: return a[0] < b[0] if a[0] != b[0] else a[1] < b[1])
 	detail_ids.clear()
-	for i in mini(MAX_DETAILED, candidates.size()):
+	# At command zoom shared poses retain the army; close inspection keeps more articulated men.
+	var budget := MAX_DETAILED if world.cam.dist < 22.0 else COMMAND_DETAILED
+	for i in mini(budget, candidates.size()):
 		detail_ids[candidates[i][1]] = true
 
 

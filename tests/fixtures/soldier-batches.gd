@@ -107,6 +107,7 @@ func _ready() -> void:
 func check_detail_budget() -> void:
 	var world := World.new()
 	world.cam = RtsCamera.new()
+	world.cam.dist = 18.0
 	world.cam.cam = Camera3D.new()
 	add_child(world.cam.cam)
 	var view := SoldierViewBatch.new()
@@ -125,6 +126,12 @@ func check_detail_budget() -> void:
 	view._choose_detail(1.0)
 	assert(view.detail_ids.size() == SoldierViewBatch.MAX_DETAILED)
 	assert(view.detail_ids.has(world.soldiers.size()) and not view.detail_ids.has(1) and not view.detail_ids.has(2))
+	world.cam.dist = 35.0
+	view._choose_detail(1.0)
+	assert(view.detail_ids.size() == SoldierViewBatch.COMMAND_DETAILED and view.detail_ids.has(world.soldiers.size()), "Command zoom keeps every troop but limits articulated models, with selection first")
+	world.cam.dist = 18.0
+	view._choose_detail(1.0)
+	assert(view.detail_ids.size() == SoldierViewBatch.MAX_DETAILED, "Close inspection restores the larger detail budget")
 	world.cam.cam.rotation.y = PI
 	view._choose_detail(0.0)
 	assert(view.detail_ids.is_empty(), "Camera turns must refresh the detailed-model budget immediately")

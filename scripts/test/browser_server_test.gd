@@ -29,6 +29,7 @@ func start() -> void:
 		finish()
 		return
 	check(LocalServer.pid == -1 and is_instance_valid(LocalServer.worker), "Browser match must run in a worker")
+	check_fog_mask()
 	var soldier: Node3D
 	for unit: Node3D in main.world.soldiers:
 		if unit.owner_peer == main.world.local_peer:
@@ -72,6 +73,17 @@ func start() -> void:
 				check(not viewer.failed and main.world.loaded and not main.world.srv and main.world.local_team == -1, "Browser observer seeks must restore a visual-only world")
 		print("BROWSER_OBSERVER_TEST failures=%d" % failures)
 	finish()
+
+func check_fog_mask() -> void:
+	var fog: RefCounted = ClassDB.instantiate("FogSightMask")
+	var terrain: TerrainMap = main.world.terrain
+	var eyes := PackedVector4Array([Vector4(0, 1000, 0, 56)])
+	var mask: PackedByteArray = fog.raster(terrain._native, eyes, terrain.version)
+	check(mask.size() == FogView.N * FogView.N and mask.count(255) > 100, "WebAssembly visual fog must sweep the terrain horizon")
+	check(mask == fog.raster(terrain._native, eyes, terrain.version), "WebAssembly visual fog must retain cached observers")
+	mask = fog.raster(terrain._native, PackedVector4Array(), terrain.version)
+	check(mask.size() == FogView.N * FogView.N and mask.count(255) == 0, "Removed observers must leave no visible cells")
+	print("BROWSER_FOG_TEST failures=%d" % failures)
 
 func finish() -> void:
 	LocalServer.set_speed(0.0)

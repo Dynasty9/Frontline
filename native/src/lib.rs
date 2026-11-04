@@ -17,6 +17,7 @@ mod drone_reaction;
 mod entities;
 mod fires;
 mod fog;
+mod fog_view;
 mod formation_ground;
 mod frame_thread_clock;
 mod grenade_attack;

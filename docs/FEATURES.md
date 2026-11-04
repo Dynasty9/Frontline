@@ -511,9 +511,10 @@ Sky Hook prepares reachable vehicle approaches for its convoy before the battle 
   110 m, drones 70-75 m), a FOB or HQ its perimeter, other positions their sentries, an FPV drone its camera. The
   host works out the fog from them two and a half times a second; enemies outside every circle aren't sent.
 - **You see the fog.** Ground your side can't see right now is drawn darker and cooler, on the battlefield and on the
-  minimap, so the edge of what you know is plain. Every eye is drawn as a soft disc into a small map of the
-  battlefield (about 5 m to the pixel, fifteen times a second); a full-screen pass finds where each pixel lies on the
-  ground from the depth buffer and darkens it there. Aircraft high overhead aren't darkened; at night the fog is
+  minimap, so the edge of what you know is plain. On hills, cached horizon sweeps produce a 256-pixel sight map
+  four times a second. Rust calculates the mask in one call and Godot draws one texture; flat scenarios retain
+  soft discs at fifteen updates per second. Observers are gathered once per refresh. A full-screen pass finds
+  the ground from the depth buffer and darkens it there. Aircraft high overhead aren't darkened; at night the fog is
   lighter, because everything is dark already. The "Fog of war" map layer (the eye) turns it off.
 - **Watchtowers** see over the hedges and roofs: 85 m, and 115 m with a lookout up it (any idle soldier beside it
   climbs up). Placing one shows both rings; selecting one shows what it sees now.
@@ -1253,8 +1254,9 @@ moving, resizing, disabling or removing a blocker invalidates the result;
 smoke and positive visibility are checked afresh. Detection timing is unchanged.
 
 Distant soldiers use shared baked poses of their procedural models, including
-standing, crouching, prone and walking poses. Up to 16 nearby soldiers retain
-articulated animation, prioritizing selected troops and then proximity. Other
+standing, crouching, prone and walking poses. Four nearby soldiers retain
+articulated animation at command zoom, rising to 16 below 22 m for close inspection,
+prioritizing selected troops and then proximity. Other
 soldiers remain visible through the shared poses; the simulation and selection
 still include everyone. Distant batches outside the camera frustum and its shadow margin do
 not upload transforms; panning restores them immediately. Socket clients interpolate distant
@@ -1267,6 +1269,11 @@ breathing and death animations. Each unit type and team shares its appearance;
 distant subtle gestures are simplified. Hidden articulated rigs stop inheriting their
 soldier's movement until needed again, restoring their local offsets before posing
 or starting a ragdoll. Active ragdolls continue to move normally.
+Burned-out structures reuse eight prepared spark-and-ash emitters. Footprints,
+particle counts, velocities and scorch marks follow each collapse; a ninth
+simultaneous effect replaces the oldest fading sparks and ash. These cosmetic
+limits do not change building damage or the authoritative battlefield.
+
 Distant vehicles use a single material surface per moving part beyond 100 m;
 turrets, wheels and rotors keep their pivots. Near vehicles retain their original
 materials. Wrecks retain their original materials to avoid baking meshes during

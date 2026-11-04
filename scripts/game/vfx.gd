@@ -34,6 +34,8 @@ var debris_mat: StandardMaterial3D
 var ejecta_mat: ShaderMaterial
 var quad: QuadMesh
 var _rigs := {"s": [], "m": [], "l": []}
+const MAX_COLLAPSES := 8  # shortcut: a ninth collapse replaces the oldest tail; raise if battles visibly exhaust the pool.
+var _collapses: Array = []  # [sparks, ash, last used seconds]
 var _small := {}  # kind -> [array, index]
 var _waves: Array = []  # [mi, t, size]
 var _wave_pool: Array = []
@@ -81,6 +83,8 @@ func prewarm(at: Vector3) -> void:
 		rig.global_position = p
 		for key in rig.get_meta("layers"):
 			_fire_layer(rig.get_meta("layers")[key], 1.0, 0.0)
+	for i in MAX_COLLAPSES:
+		_start_collapse(p, Vector3.ONE)
 	for kind in SMALL_KINDS:
 		puff(kind, p)
 	plume(p, 1.0)
@@ -116,6 +120,10 @@ func prewarm(at: Vector3) -> void:
 			for r in _rigs[cls]:
 				for key in r.get_meta("layers"):
 					(r.get_meta("layers")[key] as GeometryInstance3D).visible = false
+		for collapse_rig: Array in _collapses:
+			for emitter: GeometryInstance3D in collapse_rig.slice(0, 2):
+				set_emitting(emitter, false)
+				emitter.visible = false
 		for kind in SMALL_KINDS:
 			for e in _small[kind][0]:
 				(e as GeometryInstance3D).visible = false
@@ -1126,10 +1134,39 @@ func ground_fire(p: Vector3, r: float, life: float) -> void:
 ## Something burnt through falls in: a shower of sparks and a gust of ash and
 ## smoke where it stood, and a black scorch on the ground.
 func collapse(p: Vector3, ext: Vector3) -> void:
+	_start_collapse(p, ext)
+	if Settings.get_v("decals"):
+		scorch(Vector3(p.x, 0.0, p.z), 1.0 + 2.2 * maxf(ext.x, ext.z))
+
+
+func _start_collapse(p: Vector3, ext: Vector3) -> void:
 	var k := clampf(sqrt(maxf(ext.x * ext.z * 4.0, 0.4)) * 0.5, 0.5, 2.5)
-	var pm := _pm(Vector3.UP, 60.0, 3.0, 7.0 * sqrt(k), Vector3(0, -2.0, 0) + WIND, 0.6, 1.2)
+	# Keep particle programs and buffers prepared; a burning block may fall all at once.
+	var rig: Array = _make_collapse() if _collapses.size() < MAX_COLLAPSES else _collapses.pop_front()
+	rig[2] = Time.get_ticks_msec() / 1000.0
+	_collapses.append(rig)
+	var sparks: GeometryInstance3D = rig[0]
+	var ash: GeometryInstance3D = rig[1]
+	pm_set(sparks, &"initial_velocity_max", 7.0 * sqrt(k))
+	pm_set(ash, &"scale_min", 1.4 * k)
+	pm_set(ash, &"scale_max", 2.4 * k)
+	for part_info: Array in [[sparks, int(30 * k * Settings.fx_mult()) + 6, 81], [ash, int(14 * k) + 4, 39]]:
+		var ps: GeometryInstance3D = part_info[0]
+		if ps is GPUParticles3D:
+			ps.amount_ratio = float(part_info[1]) / float(part_info[2])
+		else:
+			(ps as CPUParticles3D).amount = int(part_info[1])
+		pm_set(ps, &"emission_box_extents", ext)
+		ps.global_position = p
+		ps.visible = true
+		restart_particles(ps)
+		set_emitting(ps, true)
+
+
+func _make_collapse() -> Array:
+	var pm := _pm(Vector3.UP, 60.0, 3.0, 7.0, Vector3(0, -2.0, 0) + WIND, 0.6, 1.2)
 	pm.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_BOX
-	pm.emission_box_extents = ext
+	pm.emission_box_extents = Vector3.ONE
 	pm.angle_min = 0.0
 	pm.angle_max = 0.0
 	pm.damping_min = 1.0
@@ -1138,26 +1175,24 @@ func collapse(p: Vector3, ext: Vector3) -> void:
 	pm.color_ramp = _ramp([0.0, 1.0], [Color(1, 1, 1, 1), Color(1, 0.5, 0.2, 0)])
 	var spq := QuadMesh.new()
 	spq.size = Vector2(0.04, 0.22)
-	var sp := _sys(int(30 * k * Settings.fx_mult()) + 6, 1.8, pm, spark_mat, spq)
+	var sp := _sys(81, 1.8, pm, spark_mat, spq)
 	sp.transform_align = GPUParticles3D.TRANSFORM_ALIGN_Z_BILLBOARD_Y_TO_VELOCITY
 	sp.draw_order = GPUParticles3D.DRAW_ORDER_INDEX
-	pm = _pm(Vector3.UP, 70.0, 1.0, 3.0, Vector3(WIND.x * 0.4, 0.5, WIND.z * 0.4), 1.4 * k, 2.4 * k)
+	pm = _pm(Vector3.UP, 70.0, 1.0, 3.0, Vector3(WIND.x * 0.4, 0.5, WIND.z * 0.4), 1.4, 2.4)
 	pm.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_BOX
-	pm.emission_box_extents = ext
+	pm.emission_box_extents = Vector3.ONE
 	pm.damping_min = 1.5
 	pm.damping_max = 2.5
 	pm.scale_curve = _curve([Vector2(0, 0.4), Vector2(1, 1.3)])
 	pm.color_ramp = _ramp([0.0, 0.08, 1.0], [Color(0.16, 0.15, 0.14, 0.0), Color(0.16, 0.15, 0.14, 0.8), Color(0.32, 0.31, 0.3, 0.0)])
-	var ash := _sys(int(14 * k) + 4, 4.5, pm, smoke_mat)
+	var ash := _sys(39, 4.5, pm, smoke_mat)
 	Mats.set_inst(ash, &"heat", 0.8)
 	Mats.set_inst(ash, &"heat_fade", 0.2)
-	for ps: GeometryInstance3D in [part(sp), part(ash)]:
-		add_child(ps)
-		ps.global_position = p
-		set_emitting(ps, true)
-		get_tree().create_timer(6.0).timeout.connect(ps.queue_free)
-	if Settings.get_v("decals"):
-		scorch(Vector3(p.x, 0.0, p.z), 1.0 + 2.2 * maxf(ext.x, ext.z))
+	var sparks := part(sp)
+	var ashes := part(ash)
+	add_child(sparks)
+	add_child(ashes)
+	return [sparks, ashes, 0.0]
 
 
 var _timed: Array = []  # [holder, t, fire_secs, smoke_secs]
@@ -1596,6 +1631,10 @@ func _view_process(dt: float) -> void:
 	_rig_check_t -= dt
 	if _rig_check_t <= 0.0:
 		_rig_check_t = 0.5
+		for collapse_rig: Array in _collapses:
+			if t - float(collapse_rig[2]) > 6.0:
+				(collapse_rig[0] as GeometryInstance3D).visible = false
+				(collapse_rig[1] as GeometryInstance3D).visible = false
 		for cls in _rigs:
 			var life: float = CLASSES[cls].sml + 1.0
 			for r in _rigs[cls]:

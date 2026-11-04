@@ -29,10 +29,9 @@ var _eyes: Node2D
 var _disc: Texture2D
 var _mi: MeshInstance3D
 var _mat: ShaderMaterial
-var _list := PackedVector3Array()
 var _observers := PackedVector4Array()
-var _visibility_cache := {}
-var _terrain_version := -1
+var _sight_mask: RefCounted = ClassDB.instantiate("FogSightMask")
+var _mask_texture: ImageTexture
 var _t := 0.0
 var _own: Array = []  # your side's buildings (re-gathered every second, not every update)
 var _own_t := 0.0
@@ -120,6 +119,14 @@ func _make_disc() -> Texture2D:
 
 
 func _process(dt: float) -> void:
+	if not world.loaded:
+		return
+	var started := Time.get_ticks_usec()
+	_update_observers(dt)
+	world.vp("fog observers", started)
+
+
+func _update_observers(dt: float) -> void:
 	var team := world.view_team
 	var on := team >= 0 and team <= 1 and bool(Settings.get_v("lyr_vision"))
 	if on != active:
@@ -135,7 +142,7 @@ func _process(dt: float) -> void:
 	if _t > 0.0:
 		return
 	_t = EVERY if world.terrain.landform.heights.is_empty() else 0.25
-	_own_t -= EVERY
+	_own_t -= _t
 	if _own_t <= 0.0:
 		_own_t = 1.0
 		_own.clear()
@@ -143,7 +150,6 @@ func _process(dt: float) -> void:
 			if st.team == team:
 				_own.append(st)
 	var marks: Array = (world.team_info[team] as Dictionary).get("marks", []) if team < world.team_info.size() else []
-	_list = Vision.eyes(world, team, marks, _own)
 	_observers = Vision.observers(world, team, marks, _own)
 	_eyes.queue_redraw()
 	_vp.render_target_update_mode = SubViewport.UPDATE_ONCE
@@ -151,52 +157,31 @@ func _process(dt: float) -> void:
 
 
 func _draw_eyes() -> void:
+	var started := Time.get_ticks_usec()
+	_draw_visibility()
+	world.vp("fog visibility", started)
+
+
+func _draw_visibility() -> void:
+	# The loader temporarily detaches native terrain while its worker imports the ground.
+	if not world.loaded:
+		return
 	var k := N / span()
 	var o := MapDims.HALF + MARGIN
 	if not world.terrain.landform.heights.is_empty():
-		if _terrain_version != world.terrain.version:
-			_terrain_version = world.terrain.version
-			_visibility_cache.clear()
-		var used := {}
-		var visible_cells := {}
-		for eye in _observers:
-			var key := Vector4i(roundi(eye.x * k), roundi(eye.z * k), roundi(eye.y), roundi(eye.w * k))
-			used[key] = true
-			if not _visibility_cache.has(key):
-				var pixels := {}
-				var center := Vector2((eye.x + o) * k, (eye.z + o) * k)
-				var radius := ceili(eye.w * k)
-				pixels[Vector2i(center)] = true
-				# Sweep the horizon once per bearing; testing every pixel with a
-				# full ray would repeat the same terrain thousands of times.
-				var bearings := maxi(32, ceili(TAU * radius))
-				for bearing in bearings:
-					var direction := Vector2.from_angle(bearing * TAU / bearings)
-					var horizon := -INF
-					for step in range(1, radius + 1):
-						var pixel := Vector2i(center + direction * step)
-						if pixel.x < 0 or pixel.y < 0 or pixel.x >= N or pixel.y >= N:
-							break
-						var target := Vector3((pixel.x + 0.5) / k - o, 0, (pixel.y + 0.5) / k - o)
-						var distance := Vector2(target.x - eye.x, target.z - eye.z).length()
-						if distance > eye.w or distance < 0.1:
-							continue
-						var height := world.terrain.deform_at(target) - eye.y
-						if (height + 1.5) / distance >= horizon:
-							pixels[pixel] = true
-						horizon = maxf(horizon, height / distance)
-				_visibility_cache[key] = pixels.keys()
-			for pixel in _visibility_cache[key]:
-				visible_cells[pixel] = true
-		for key in _visibility_cache.keys():
-			if not used.has(key):
-				_visibility_cache.erase(key)
-		for pixel in visible_cells:
-			_eyes.draw_rect(Rect2(Vector2(pixel), Vector2.ONE), Color.WHITE)
+		var data: PackedByteArray = _sight_mask.raster(world.terrain._native, _observers, world.terrain.version)
+		if data.size() != N * N:
+			return
+		var mask := Image.create_from_data(N, N, false, Image.FORMAT_L8, data)
+		if _mask_texture == null:
+			_mask_texture = ImageTexture.create_from_image(mask)
+		else:
+			_mask_texture.update(mask)
+		_eyes.draw_texture(_mask_texture, Vector2.ZERO)
 		return
-	for e in _list:
-		var c := Vector2((e.x + o) * k, (e.y + o) * k)
-		var rr := e.z * k * EDGE
+	for e in _observers:
+		var c := Vector2((e.x + o) * k, (e.z + o) * k)
+		var rr := e.w * k * EDGE
 		_eyes.draw_texture_rect(_disc, Rect2(c.x - rr, c.y - rr, rr * 2.0, rr * 2.0), false)
 
 

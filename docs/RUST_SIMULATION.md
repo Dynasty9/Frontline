@@ -5,11 +5,11 @@ browser solo battles run the same Rust simulation in a Web Worker.** Remaining
 presentation checks and frame-time targets are still being completed. This
 branch is not ready to release.
 
-Latest live player-view check (3 November, `c02b18c`): a generated 3072 m map
-with 500 starting soldiers, commanders, High at 1280×720 and zoom 35 averaged
-**57.96 FPS**, with **29.15 ms frame p99**, during seconds 60–120 of combat.
-Rust ticks averaged **8.01 ms**, with **16.63 ms p99**. The 60 FPS target remains
-open. This later, close, team-filtered workload is different from the earlier
+Latest live player-view check (3 November, native-fog candidate): a generated
+3072 m map with 500 starting soldiers, commanders, High at 1280×720 and zoom 35
+averaged **68.89 FPS**, with **26.43 ms frame p99**, during seconds 60–120 of combat.
+Rust ticks averaged **8.76 ms**, with **18.28 ms p99**. The steady 60 FPS target
+remains open. This close, team-filtered workload is different from the earlier
 98.03 FPS wide observer run; those numbers are not a before/after comparison.
 
 ## Process boundary
@@ -1198,3 +1198,52 @@ component savings do not establish an overall frame-tail improvement.
 Evidence: `build/contact-camera-comparison.json`, `build/player-contact-*/`,
 `build/contact-atlas-{vulkan,gl}.{log,png}` and `build/contact-atlas-tests.log`
 (the separate disconnected-peer fixture was corrected and passed afterward).
+
+### Collapse emitters and command-view detail
+
+A release-player trace separated network packets by effect type. Burned-out
+buildings were the most expensive individual effect category in that run
+(6.145 ms maximum in a frame), followed by explosions (4.066 ms). Collapse
+sparks and ash now reuse eight emitters prepared while loading, preserving
+footprints, counts, speed and scorch marks. A ninth simultaneous collapse
+replaces the oldest fading effect. Vulkan and Compatibility regression and
+rendered comparisons pass. Across 64 creation calls, the isolated probe took
+13,122/578 microseconds before/after on Vulkan and 318,760/2,724 on Compatibility.
+These are CPU construction timings, not complete frame timings. Evidence:
+`build/player-effect-trace-1/`, `build/collapse-{vulkan,gl}.{log,png}` and
+`build/collapse-pool-tests.log`.
+
+A cached GDScript camera-projection experiment was slower than the engine call
+and was discarded. Preparing the overlay across three frames also failed to
+establish a useful overall improvement and remains excluded. The frame-phase
+probe places most remaining spikes in process callbacks and deferred drawing,
+with a smaller gap before those callbacks. See `build/player-frame-detail-1/`
+and `build/overlay-staged-comparison.json`; child-viewport GPU timing was not
+reliable enough to attribute that work to a particular viewport.
+
+
+### Visual fog horizon batching
+
+Adding timers exposed a previously unreported client cost. In the 500-unit,
+3072 m player run, fog-mask drawing reached 11.410 ms in a frame (p99 6.356 ms).
+The renderer gathered observers twice, crossed into native terrain queries for
+each horizon sample, then issued one rectangle per visible cell. It now gathers
+observers once, caches the same pixel horizons in a Godot extension helper and
+uploads one 256-square luminance texture. The simulation core, authoritative
+visibility, command recordings and engine identity are unchanged.
+
+The pixel oracle retains the former GDScript calculation. It compares 32 masks
+on 64, 256, 1024 and 3072 m maps, including 500 observers, cache reuse and eviction,
+quantized motion, map edges, elevated eyes, craters and replacement terrain.
+Evidence: `build/fog-view-tests.log` and `tests/fixtures/fog-view.gd`.
+
+The first clean exported-player run reduced visual-fog p99 from 6.356 to 0.413 ms
+and its maximum from 11.410 to 0.640 ms. Observer gathering p99 fell from 0.790
+to 0.456 ms. Complete frames still averaged 68.89 FPS with p99 26.427 ms and
+adjacent-frame difference p99 11.280 ms. This is a component improvement and one
+full-run sample, not a steady-60 pass. Other applications remained running.
+Evidence: `build/player-command-detail-1/` and `build/player-native-fog-fixed-1/`.
+The initial export exposed a draw during terrain import; that run is excluded.
+The loading guard now has a regression check. Vulkan and Compatibility renders
+compare the former cell rectangles and the new luminance texture pixel-for-pixel;
+both images were inspected (`build/fog-mask-{vulkan,gl}.png`).
