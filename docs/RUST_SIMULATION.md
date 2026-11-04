@@ -1282,3 +1282,43 @@ sample does not justify removing the remaining four detailed models. The
 production limit remains four (16 below 22 m). The first zero-detail package
 had an export-source formatting error and is excluded; the corrected probe is
 `build/player-native-fog-staged-zero-1/`.
+
+
+### Batched native soldier presentation
+
+The client now retains soldier motion targets in a native presentation batch and
+advances all registered positions once per frame. Snapshot targets update the
+batch; property corrections reset retained transforms and despawns remove them.
+Unchanged shared models skip repeated visibility and model checks while their
+CPU positions and GPU motion stay current. Selection, team visibility, hidden
+snapshots and promotion to detailed models invalidate that retained presentation.
+This changes no simulation rules, protocol bytes or replay identity.
+
+In a reverse-order comparison, controls averaged 72.95/71.69 FPS and the native
+batch averaged 74.74/72.88 FPS. Soldier-presentation CPU mean fell from
+1.389/1.422 ms to 1.187/1.234 ms (about 14%). Frame p99 was 23.061/23.419 ms before
+and 22.845/24.046 ms after; adjacent-frame difference p99 was 8.944/8.884 versus
+8.319/9.494 ms. This is a component saving and a modest average-frame improvement,
+not a consistent frame-tail improvement or a passed 60 FPS gate. Evidence:
+`build/native-motion-comparison.json` and `build/player-native-motion-*`.
+
+Focused checks cover 1,000 reference transforms, 500 frames across changing
+snapshots, property corrections, selection, visibility, detail promotion,
+despawns and freed nodes. The actual Chromium export passes rendered movement,
+pause, saved command replay verification, observer seeking and the Hunter viewer.
+Vulkan and Compatibility retain pixel-identical GPU/CPU smoothing. Evidence:
+`build/native-retained-tests.log`, `build/native-motion-browser-smoke.log` and
+`build/native-motion-smoothing-*.log`. The exported battle image was inspected.
+
+A settled-soldier shortcut did not establish a useful whole-frame improvement and
+was discarded. A native call per soldier was slower in an isolated comparison;
+retaining state and advancing the batch avoids those repeated crossings and reads.
+The next investigation times packet dispatch and effect creation separately,
+because the worst frames consume CPU beyond the existing view callback timers.
+
+The new recorded battle independently verifies all 8,171 ticks as unfinished
+(winner -1), with final state
+`472e5b83b0f92c05a37242a2d6a91bd2703c19cf6a0fb80be4b5b900df1a4599`.
+Its engine identity remains
+`589f5fe1ac986031fdb80da9a1be9c3d41bcffc4bb9b12c934567e5baed48dd5`.
+See `build/native-motion-replay-verify.log`.

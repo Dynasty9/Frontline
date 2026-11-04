@@ -2,7 +2,7 @@ extends Node
 
 class ViewSoldier extends Soldier:
 	var detailed := false
-	func _view_process(dt: float, blend := -1.0) -> void:
+	func _view_process(dt: float, blend := -1.0, _motion_done := false) -> void:
 		net_smooth(dt, blend)
 		visible = seen_by_local()
 		view_lod = not detailed

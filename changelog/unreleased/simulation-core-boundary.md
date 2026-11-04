@@ -84,6 +84,7 @@ caption = "Before (left) and prepared emitters (right): collapse sparks and ash 
 - Wildlife waits for the battlefield to finish loading before reading terrain being prepared on a worker thread.
 - Large-map starting states and command recordings use lossless compressed blocks, retaining exact state for independent verification.
 - Distant soldier batches expand their bounds for elevated and airborne troops, preventing models from disappearing above the old flat-ground bounds.
+- Soldier positions advance together in a native client batch, while unchanged shared models skip repeated presentation checks. Movement, selection, fog changes and nearby detail remain responsive.
 - Distant soldiers smooth their movement on the GPU between socket updates, reducing repeated CPU transform uploads while preserving immediate visibility and teleport changes.
 - Client movement smoothing reuses each unit's current transform, reducing repeated engine reads while keeping movement and teleport behavior unchanged.
 - Command views limit fully articulated models to four selected or nearby soldiers; zooming below 22 m retains up to 16 for close inspection. Other troops use shared standing, crouching, prone and walking models, preserving the full army and gameplay while reducing drawing cost.

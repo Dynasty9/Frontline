@@ -53,6 +53,7 @@ mod projectile_flight;
 mod route_graph;
 mod rules_world;
 mod simulation_random;
+mod soldier_view_motion;
 mod spatial;
 mod squad;
 mod squad_movement;

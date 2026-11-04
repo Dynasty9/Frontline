@@ -37,11 +37,13 @@ func start() -> void:
 			break
 	check(soldier != null, "Browser player must own troops")
 	if soldier:
+		check(soldier._native_view_motion, "Browser soldiers must use the batched native presentation path")
 		var original: Vector3 = soldier.net_pos
 		main.world.cam.focus(original)
 		main.world.send_cmd({"t": "move", "squads": [soldier.sid], "pos": original + Vector3(25, 0, 0), "mode": 1})
 		await get_tree().create_timer(5.0).timeout
-		check(soldier.net_pos.distance_to(original) > 1.0, "Worker commands must produce visible movement")
+		check(soldier.net_pos.distance_to(original) > 1.0, "Worker commands must produce movement targets")
+		check(soldier.position.distance_to(original) > 1.0 and soldier.position.distance_to(soldier.net_pos) < 1.0, "The browser view must follow received movement targets")
 	LocalServer.set_speed(0.0)
 	await get_tree().create_timer(0.7).timeout
 	var paused: float = main.world.time

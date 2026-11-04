@@ -12,6 +12,7 @@ class DrawGroup:
 	var min_y := -4.0
 	var max_y := 12.0
 
+var motion := SoldierViewMotion.new()
 var world: World
 const CELL := 64.0
 const MAX_DETAILED := 16
@@ -144,13 +145,15 @@ func _process(dt: float) -> void:
 	if world.has_view and world.soldier_view == self:
 		_choose_detail(dt)
 		var blend := 1.0 - exp(-dt * 14.0)
+		if motion.advance(blend):
+			_dirty = true
 		for soldier: Soldier in world.soldiers:
 			if not soldier.gone:
 				if _motion_frame >= 0 and soldier.position.distance_squared_to(soldier.net_pos) > 64.0:
 					_dirty = true
 				var was_lod := soldier.view_lod
 				var was_visible := soldier.visible
-				soldier._view_process(dt, blend)
+				soldier._view_process(dt, blend, soldier._native_view_motion)
 				if soldier.view_lod != was_lod or soldier.visible != was_visible:
 					_dirty = true
 		world.vp("soldiers", started)

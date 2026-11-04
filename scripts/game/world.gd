@@ -516,6 +516,7 @@ func despawn(e: Entity) -> void:
 	if e is Soldier:
 		soldiers.erase(e)
 		if soldier_view:
+			soldier_view.motion.remove(e)
 			soldier_view.invalidate()
 		# out of his squad now: nothing may touch him once he's freed
 		if e.squad and is_instance_valid(e.squad):
@@ -1290,6 +1291,8 @@ func _rpc_snap(data: PackedByteArray) -> void:
 				e.read_state(b)
 			elif local_team >= 0:
 				e.vis_mask &= ~(1 << local_team)
+				if e is Soldier:
+					e._view_dirty = true
 		elif _load_rec.has(id):
 			_spawn_states[id] = data.slice(st, st + ln)
 		b.seek(st + ln)

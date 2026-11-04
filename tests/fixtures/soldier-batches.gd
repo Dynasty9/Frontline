@@ -11,7 +11,7 @@ class TransformProbe extends Node3D:
 class TrackedSoldier extends Soldier:
 	var frames := {}
 	var elapsed := 0.0
-	func _view_process(dt: float, _blend := -1.0) -> void:
+	func _view_process(dt: float, _blend := -1.0, _motion_done := false) -> void:
 		var frame := Engine.get_process_frames()
 		assert(not frames.has(frame), "A registered soldier must update only once per frame")
 		frames[frame] = true

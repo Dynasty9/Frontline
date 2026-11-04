@@ -428,6 +428,7 @@ func display_name() -> String:
 
 
 func apply_props(d: Dictionary) -> void:
+	_view_dirty = true
 	if d.has("utype"):
 		utype = d.utype
 	if d.has("team"):
@@ -452,6 +453,8 @@ func apply_props(d: Dictionary) -> void:
 		posture = d.posture
 	if d.has("dpose"):
 		debug_pose = d.dpose
+	if _native_view_motion:
+		world.soldier_view.motion.target(self, net_pos, net_yaw, true)
 
 
 func get_props() -> Dictionary:
@@ -490,6 +493,9 @@ func on_spawned() -> void:
 	net_pos = position
 	net_yaw = rotation.y
 	net_init = true
+	if not srv and world.has_view and world.simulation_client and world.soldier_view:
+		_native_view_motion = true
+		world.soldier_view.motion.target(self, net_pos, net_yaw, true)
 	if world.has_view:
 		ring = Res.mi(self, Res.plane(1.25), Res.ring_mat(Defs.TEAM_COLORS[team] if team >= 0 else Color.WHITE), Vector3(0, 0.06, 0), Vector3.ZERO, false)
 		ring.visible = false
@@ -5317,6 +5323,7 @@ func write_state(b: StreamPeerBuffer) -> void:
 
 
 func read_state(b: StreamPeerBuffer) -> void:
+	_view_dirty = true
 	net_pos = get_v3(b)
 	net_yaw = get_ang(b)
 	life = b.get_u8()
@@ -5332,6 +5339,8 @@ func read_state(b: StreamPeerBuffer) -> void:
 	doing = b.get_u8()
 	doing_ent = b.get_u32()
 	cov_net = b.get_u8()
+	if _native_view_motion:
+		world.soldier_view.motion.target(self, net_pos, net_yaw, false)
 
 
 var _was_on_gun := false
@@ -5388,6 +5397,10 @@ func supp_value() -> float:
 # --- view ----------------------------------------------------------------------------------
 
 var _corpse_t := 0.0
+var _native_view_motion := false
+var _view_dirty := true
+var _view_selected := false
+var _view_team := -1
 
 
 func _process(dt: float) -> void:
@@ -5397,16 +5410,25 @@ func _process(dt: float) -> void:
 		world.vp("soldiers", _t0)
 
 
-func _view_process(dt: float, blend := -1.0) -> void:
+func _view_process(dt: float, blend := -1.0, motion_done := false) -> void:
 	if not world.has_view:
 		return
+	# Native motion keeps selection positions current; shared models only need changed presentation.
+	if motion_done and view_lod and not _view_dirty and selected == _view_selected \
+			and world.view_team == _view_team and world.cam and debug_pose.is_empty() \
+			and (model == null or (not model._baked and model.ragdoll == null)) and not world.soldier_view.detail_ids.has(eid):
+		_last_view_pos = position
+		return
+	_view_dirty = false
+	_view_selected = selected
+	_view_team = world.view_team
 	# a body that has come to rest only needs a look now and then
 	if model and life == Life.DEAD and model._baked and is_static():
 		_corpse_t -= dt
 		if _corpse_t > 0.0:
 			return
 		_corpse_t = 0.4
-	if not srv:
+	if not srv and not motion_done:
 		if blend < 0.0:
 			blend = 1.0 - exp(-dt * 14.0)
 		var offset := net_pos - position
