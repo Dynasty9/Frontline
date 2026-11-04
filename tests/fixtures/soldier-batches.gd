@@ -1,5 +1,13 @@
 extends Node
 
+class TransformProbe extends Node3D:
+	var updates := 0
+	func _ready() -> void:
+		set_notify_transform(true)
+	func _notification(what: int) -> void:
+		if what == NOTIFICATION_TRANSFORM_CHANGED:
+			updates += 1
+
 class TrackedSoldier extends Soldier:
 	var frames := {}
 	var elapsed := 0.0
@@ -12,6 +20,7 @@ class TrackedSoldier extends Soldier:
 func _ready() -> void:
 	check_detail_budget()
 	check_detail_templates()
+	await check_hidden_rigs()
 	var world := World.new()
 	var view := SoldierViewBatch.new()
 	view.world = world
@@ -159,3 +168,74 @@ func check_detail_templates() -> void:
 			a.free()
 			b.free()
 	view.free()
+
+
+func check_hidden_rigs() -> void:
+	var world := World.new()
+	world.view_team = 0
+	world.cam = RtsCamera.new()
+	world.cam.cam = Camera3D.new()
+	add_child(world.cam.cam)
+	world.soldier_view = SoldierViewBatch.new()
+	var s := Soldier.new()
+	s.world = world
+	s.eid = 1
+	s.team = 1
+	s.vis_mask = 1
+	s.position = Vector3(0, 0, -20)
+	add_child(s)
+	s.set_process(false)
+	s.on_spawned()
+	world.soldier_view.detail_ids[1] = true
+	s._view_process(0.016)
+	assert(s.model != null and s.model.visible and not s.model.top_level)
+	var local := Transform3D(Basis(Vector3.UP, 0.2), Vector3(0.4, 0.2, -0.3))
+	s.model.transform = local
+	var probe := TransformProbe.new()
+	s.model.hips.add_child(probe)
+	await get_tree().process_frame
+	world.soldier_view.detail_ids.clear()
+	s._view_process(0.016)
+	assert(s.view_lod and not s.model.visible and s.model.top_level)
+	await get_tree().process_frame
+	var updates := probe.updates
+	s.net_pos = Vector3(3, 2, -24)
+	s.net_yaw = 0.7
+	for i in 3:
+		s._view_process(0.016)
+		await get_tree().process_frame
+	assert(probe.updates == updates, "Moving a batched soldier must not update his hidden rig")
+	assert(s.muzzle_world() == Vector3.INF, "A hidden cached weapon must not place visible shot effects")
+	world.soldier_view.detail_ids[1] = true
+	s._view_process(0.016)
+	assert(not s.view_lod and s.model.visible and not s.model.top_level)
+	assert(s.model.transform.is_equal_approx(local), "Restoring a cached rig preserves its local crew/interpolation offset")
+	assert(s.model.global_transform.is_equal_approx(s.global_transform * local), "Restored detail must follow current position, elevation and facing")
+	s.vis_mask = 0
+	s._view_process(0.016)
+	assert(not s.visible and not s.model.visible and s.model.top_level)
+	s.vis_mask = 1
+	s._view_process(0.016)
+	assert(s.visible and s.model.visible and not s.model.top_level, "Fog reveal restores detail immediately")
+	world.soldier_view.detail_ids.clear()
+	s._view_process(0.016)
+	s.position += Vector3(2, 0, 0)
+	var phys := PhysicsFx.new(world)
+	add_child(phys)
+	phys.set_process(false)
+	phys.set_physics_process(false)
+	var ragdolls: bool = Settings.v.ragdolls
+	Settings.v.ragdolls = true
+	phys.ragdoll(s, Vector3.ZERO, 0)
+	Settings.v.ragdolls = ragdolls
+	assert(s.model.ragdoll != null and not s.model.top_level)
+	assert(s.model.global_transform.is_equal_approx(s.global_transform * local), "Ragdolls start at the current soldier, not the cached rig location")
+	s._view_process(0.016)
+	assert(not s.model.top_level, "Live ragdoll joints retain their world transforms while hidden")
+	s.model.ragdoll.finish()
+	phys.free()
+	s.free()
+	world.soldier_view.free()
+	world.cam.cam.free()
+	world.cam.free()
+	world.free()

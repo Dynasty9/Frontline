@@ -1724,6 +1724,19 @@ func fire_kick(k: float) -> void:
 
 
 var _alive_pose := true
+var _dormant_transform := Transform3D.IDENTITY
+
+
+func set_dormant(value: bool) -> void:
+	if top_level == value:
+		return
+	# Hidden cached rigs must not dirty every joint when their batched soldier moves.
+	if value:
+		_dormant_transform = transform
+		top_level = true
+	else:
+		top_level = false
+		transform = _dormant_transform
 
 
 ## Where the shot leaves the weapon in his hands right now (world space), or

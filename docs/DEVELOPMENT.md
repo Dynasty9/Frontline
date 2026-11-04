@@ -238,8 +238,11 @@ contain several simulation ticks; its system table is time per tick.
 
 With `--perf-json=ABSOLUTE_PATH`, `FL_DEBUG_FRAME_TRACE=1` also exports the samples
 already collected in `frame_samples_ms`: chronological frame, renderer, process,
-physics monitor and per-view component times, all in milliseconds. This adds no sampling
-work inside the measurement window. The collector runs before early network and
+physics monitor and per-view component times, all in milliseconds. On Windows it also
+samples the calling thread's cumulative CPU accounting and cycle counter, exporting
+their per-frame differences in `thread_accounting`. CPU accounting can have coarser
+resolution than a frame: compare aggregates, and do not convert cycles to elapsed
+time. These extra calls run only with the trace enabled. The collector runs before early network and
 effect callbacks so each view sample belongs to the preceding complete frame.
 Component timings can overlap; do not sum nested phases as independent costs.
 The trace includes `started_unix_s` and prints `FRAME_TRACE_BEGIN` once, allowing

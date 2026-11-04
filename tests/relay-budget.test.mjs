@@ -8,6 +8,6 @@ test("relayed simulation packets drain within frame and queue limits", async () 
   const { stdout, stderr } = await promisify(execFile)(process.env.GODOT || "godot", [
     "--headless", "--path", ROOT, "res://tests/fixtures/relay-budget.tscn",
   ], { timeout: 120_000 });
-  assert.doesNotMatch(stdout + stderr, /SCRIPT ERROR|Parse Error/);
+  assert.doesNotMatch(stdout + stderr, /SCRIPT ERROR|Parse Error|^ERROR:/m);
   assert.match(stdout, /RELAY_BUDGET passed/);
 });

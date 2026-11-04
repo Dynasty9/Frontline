@@ -69,6 +69,8 @@ caption = "After: unchanged HUD state is retained and minimap intel uses the sha
 - Speech bubbles reuse wrapped text and draw their flat backgrounds directly, reducing repeated overlay work while retaining the messages, colors and placement.
 - The fire-support panel changes label themes only when their state changes, and squad-order labels update when a new server summary arrives. Cooldowns and command input remain responsive.
 - Last-seen enemy markers reuse the minimap symbol atlas, retaining their fading and the larger vehicle diamonds while reducing drawing spikes.
+- Hidden articulated soldier models stop updating their joints as shared models move, reducing CPU work without removing troops or nearby detail. Revealing a soldier or starting a ragdoll restores its current position immediately.
+- Closing an already disconnected simulation session avoids a redundant disconnect call and its engine error.
 - Wildlife waits for the battlefield to finish loading before reading terrain being prepared on a worker thread.
 - Large-map starting states and command recordings use lossless compressed blocks, retaining exact state for independent verification.
 - Distant soldier batches expand their bounds for elevated and airborne troops, preventing models from disappearing above the old flat-ground bounds.

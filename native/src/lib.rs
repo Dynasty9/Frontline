@@ -18,6 +18,7 @@ mod entities;
 mod fires;
 mod fog;
 mod formation_ground;
+mod frame_thread_clock;
 mod grenade_attack;
 mod grenade_reaction;
 mod guided_flight;

@@ -32,6 +32,16 @@ func snapshot(sequence: int) -> PackedByteArray:
 
 
 func _ready() -> void:
+	var closed := SimulationClient.new()
+	closed.host = ENetConnection.new()
+	assert(closed.host.create_host(1, 3) == OK)
+	closed.peer = closed.host.connect_to_host("127.0.0.1", 9, 3)
+	assert(closed.peer != null and closed.peer.is_active())
+	closed.peer.reset()
+	assert(not closed.peer.is_active())
+	closed.close()
+	closed.close()
+	closed.free()
 	var client := Relay.new()
 	client.received.connect(func(_kind, data): client.delivered.append(int(data.decode_float(0))))
 	client.failed.connect(func(message): client.failures.append(message))

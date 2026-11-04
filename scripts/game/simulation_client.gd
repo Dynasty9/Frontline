@@ -122,7 +122,7 @@ func close() -> void:
 	_relay_pending.clear()
 	_relay_bytes = 0
 	if host:
-		if peer:
+		if peer and peer.is_active():
 			peer.peer_disconnect_now()
 		host.destroy()
 	host = null

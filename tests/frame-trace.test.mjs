@@ -31,6 +31,15 @@ test("benchmark trace exports aligned chronological samples without changing the
     const printed = JSON.parse(stdout.split("\n").find((line) => line.startsWith("BENCHMARK ")).slice(10));
     assert.deepEqual(printed.frames, report.frames);
     assert.equal(printed.frame_samples_ms, undefined, "Raw samples stay in the requested file");
+    assert.equal(printed.thread_accounting, undefined);
+    if (process.platform === "win32") {
+      assert.ok(report.thread_accounting, "Windows trace includes calling-thread CPU accounting");
+      for (const values of Object.values(report.thread_accounting)) {
+        assert.equal(values.length, report.frames.count);
+        assert.ok(values.every((value) => Number.isFinite(value) && value >= 0));
+      }
+      assert.ok(report.thread_accounting.cycles.some((value) => value > 0));
+    }
   } finally {
     await rm(folder, { recursive: true, force: true });
   }

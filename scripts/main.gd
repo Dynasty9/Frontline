@@ -50,6 +50,10 @@ var _perf_physics: Array[float] = []
 var _perf_render_cpu: Array[float] = []
 var _perf_render_gpu: Array[float] = []
 var _perf_process: Array[float] = []
+var _perf_cpu_clock: RefCounted
+var _perf_cpu_last := PackedInt64Array()
+var _perf_cpu_samples: Array[float] = []
+var _perf_cycles: Array[int] = []
 var _perf_view_samples := {}
 var _perf_worst_frame := {}
 var _battle_pending := false  # the rank's battle clock starts once the world is running
@@ -1027,6 +1031,16 @@ func _process(_dt: float) -> void:
 			if _perf_frame_us > 0:
 				var frame_ms := (frame_now - _perf_frame_us) / 1000.0
 				_perf_frame_samples.append(frame_ms)
+				if _perf_cpu_clock:
+					var counters: PackedInt64Array = _perf_cpu_clock.sample()
+					if counters.size() == 2 and counters[0] >= _perf_cpu_last[0] and counters[1] >= _perf_cpu_last[1]:
+						_perf_cpu_samples.append((counters[0] - _perf_cpu_last[0]) / 10000.0)
+						_perf_cycles.append(counters[1] - _perf_cpu_last[1])
+						_perf_cpu_last = counters
+					else:
+						_perf_cpu_clock = null
+						_perf_cpu_samples.clear()
+						_perf_cycles.clear()
 				if frame_ms > float(_perf_worst_frame.get("total_ms", 0.0)):
 					_perf_worst_frame = {"total_ms": frame_ms, "views_ms": world.measured_view_frame.duplicate()}
 				for key: String in world.measured_view_frame:
@@ -1057,6 +1071,13 @@ func _process(_dt: float) -> void:
 			_perf_started_unix = Time.get_unix_time_from_system()
 			if OS.has_environment("FL_DEBUG_FRAME_TRACE"):
 				print("FRAME_TRACE_BEGIN ", JSON.stringify(_perf_started_unix))
+				if ClassDB.class_exists("FrameThreadClock"):
+					_perf_cpu_clock = ClassDB.instantiate("FrameThreadClock")
+					_perf_cpu_last = _perf_cpu_clock.sample()
+					if _perf_cpu_last.size() != 2:
+						_perf_cpu_clock = null
+			_perf_cpu_samples.clear()
+			_perf_cycles.clear()
 			_perf_frame_samples.clear()
 			_perf_render_cpu.clear()
 			_perf_render_gpu.clear()
@@ -1124,6 +1145,9 @@ func _process(_dt: float) -> void:
 						"total": _perf_frame_samples, "views": _perf_view_samples,
 						"render_cpu": _perf_render_cpu, "render_gpu": _perf_render_gpu,
 						"process_monitor": _perf_process, "physics_monitor": _perf_physics}
+					if not _perf_cpu_samples.is_empty():
+						# OS accounting can be coarser than a frame; cycles are not elapsed time.
+						report["thread_accounting"] = {"cpu_ms": _perf_cpu_samples, "cycles": _perf_cycles}
 				var report_file := FileAccess.open(String(args["perf-json"]), FileAccess.WRITE)
 				if report_file:
 					report_file.store_string(JSON.stringify(report, "\t"))

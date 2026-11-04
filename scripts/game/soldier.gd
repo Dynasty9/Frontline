@@ -5423,6 +5423,9 @@ func _view_process(dt: float, blend := -1.0) -> void:
 		visible = v
 		_vis = v
 	if not v:
+		if model:
+			model.visible = false
+			model.set_dormant(model.ragdoll == null)
 		view_lod = false
 		_last_view_pos = position
 		return
@@ -5439,6 +5442,7 @@ func _view_process(dt: float, blend := -1.0) -> void:
 	if view_lod:
 		if model:
 			model.visible = false
+			model.set_dormant(model.ragdoll == null)
 		ring.visible = selected
 		_last_view_pos = position
 		return
@@ -5453,6 +5457,7 @@ func _view_process(dt: float, blend := -1.0) -> void:
 			add_child(model)
 			model.build(utype, team, eid * 31 + 7)
 		world.vp("soldier model construction", started)
+	model.set_dormant(false)
 	model.visible = true
 	# off-screen men are posed a few times a second, distant ones every other
 	# or third frame, close ones every frame

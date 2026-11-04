@@ -1153,3 +1153,28 @@ FPS, while the minimum-60 target remains open. The captures show normal
 player intel and fire support. Evidence: `build/player-hud-comparison.json`,
 `build/player-hud-{before,after}-{1,2}/`, `build/intel-atlas*.log`,
 `build/support-panel-tests.log` and `build/player-hud-regressions.log`.
+
+### Hidden soldier rigs and main-thread accounting
+
+Cached articulated models still inherited every parent movement while hidden
+behind shared soldier models. Hidden rigs now detach their transforms until
+needed again, preserving local offsets and restoring the current world position
+before detailed posing or ragdoll creation. Active ragdolls stay attached. The
+regression checks transform notifications, fog reveal, nonidentity local offsets,
+ground height and real ragdoll creation.
+
+The same 500-unit, 3072 m player-view ABBA comparison averaged 57.48/59.07 FPS
+before and 60.65/60.37 after, about 4% faster. Soldier updates averaged
+2.09/2.07 ms before and 1.92/1.94 ms after. Frame p99 changed from 31.57/30.78 ms
+to 29.30/30.57 ms; adjacent-frame variation did not materially improve, and
+maximum frame times were mixed. The minimum-60 frame-time gate remains open.
+Evidence: `build/dormant-rig-comparison.json`, `build/player-dormant-rigs-{1,2}/`,
+`build/player-thread-clock-{1,2}/` and `build/dormant-rig-tests.log`.
+
+Optional Windows calling-thread counters accompany `FL_DEBUG_FRAME_TRACE`.
+In the first control, aggregate main-thread CPU time was 98% of elapsed time;
+slow frames also consumed more thread cycles. This supports investigating CPU
+work inside Godot rather than attributing these spikes primarily to scheduling.
+CPU accounting is coarse, and cycle counts are not elapsed time or a function
+profile. Normal play does not sample these counters. The simulation engine and
+recording identity are unchanged by these client-only changes.

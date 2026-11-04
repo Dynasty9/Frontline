@@ -1264,7 +1264,9 @@ packet processing and may yield two further frames to HUD drawing or preparation
 changes, teleports, camera movement and despawns remain immediate. New articulated
 models copy a prepared rig at most one per frame, keeping independent joints,
 breathing and death animations. Each unit type and team shares its appearance;
-distant subtle gestures are simplified.
+distant subtle gestures are simplified. Hidden articulated rigs stop inheriting their
+soldier's movement until needed again, restoring their local offsets before posing
+or starting a ragdoll. Active ragdolls continue to move normally.
 Distant vehicles use a single material surface per moving part beyond 100 m;
 turrets, wheels and rotors keep their pivots. Near vehicles retain their original
 materials. Wrecks retain their original materials to avoid baking meshes during
