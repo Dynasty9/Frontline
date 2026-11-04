@@ -142,6 +142,7 @@ var _stats_t := 0.0
 var support_box: VBoxContainer
 var _support_btns := {}  # kind -> Button
 var _support_key := ""
+var _orders_info: Array = []
 var demo_panel: PanelContainer
 var _inspect: Entity = null
 var _inspect_t := 0.0
@@ -840,6 +841,10 @@ func toggle_orbat() -> void:
 ## Tracks every squad's orders from the team summary; a new order number means
 ## the commander (you or the AI) has just sent that squad something.
 func _track_orders() -> void:
+	# Host summaries, socket updates and replay seeks replace the whole array.
+	if is_same(_orders_info, world.team_info):
+		return
+	_orders_info = world.team_info
 	var now := Time.get_ticks_msec()
 	var seen := {}
 	for t in mini(2, world.team_info.size()):
@@ -1606,15 +1611,18 @@ func _update_support() -> void:
 		if left <= 0.0:
 			var zk := Keys.label("support")
 			state.text = ("[%s] RDY · %d" % [zk.to_upper(), int(sd.cost)]) if first and zk != "" else ("RDY · %d" % int(sd.cost))
-			state.add_theme_color_override("font_color", UiKit.GOOD)
-			nm.add_theme_color_override("font_color", UiKit.TEXT)
 			first = false
 			b.visible = true
 		else:
 			state.text = "%dS" % int(ceil(left))
-			state.add_theme_color_override("font_color", UiKit.FAINT)
-			nm.add_theme_color_override("font_color", UiKit.DIM)
 			cooling.append([left, b])
+		# Theme changes invalidate layout, even when the colour stays the same.
+		var state_col: Color = UiKit.GOOD if left <= 0.0 else UiKit.FAINT
+		var name_col: Color = UiKit.TEXT if left <= 0.0 else UiKit.DIM
+		if state.get_theme_color("font_color") != state_col:
+			state.add_theme_color_override("font_color", state_col)
+		if nm.get_theme_color("font_color") != name_col:
+			nm.add_theme_color_override("font_color", name_col)
 	# the ones cooling down: shown when opened, or a couple when few are ready
 	cooling.sort_custom(func(a, c): return float(a[0]) < float(c[0]))
 	var show_n := cooling.size() if _fires_open else maxi(0, 2 - (kinds.size() - cooling.size()))

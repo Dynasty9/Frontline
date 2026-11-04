@@ -271,10 +271,11 @@ Every release also comes as a browser build (WebAssembly and WebGL 2), the same 
 plays alone: **Play vs AI**, **Missions** and **Watch AI Battle**, the Field Manual and Settings, and signing in for
 a service record. Multiplayer needs the desktop game, since a browser can't make the direct connections a battle
 between players runs over; the menu links to the downloads instead. It looks a little different (no screen-space
-lighting, volumetric fog or particle trails, which the browser's renderer doesn't have) and, with no threads to
-spread the work over, the map takes about 30 seconds to lay out, a stage at a time behind the loading screen. The
-simulation runs about as fast as on the desktop. The first battle also waits while the browser compiles the game's
-shaders (it keeps them, so only the first time); to keep that short, lighting is worked out per vertex, particles
+lighting, volumetric fog or particle trails, which the browser's renderer doesn't have). Godot builds the initial
+map in stages behind the loading screen, then a separate Rust Web Worker runs the simulation. Loading time and
+battle performance depend on the browser, hardware and map; desktop-sized 500-unit browser performance has not
+been established. The first battle also waits while the browser compiles the game's shaders (it keeps them, so
+only the first time); to keep that short, lighting is worked out per vertex, particles
 run on the processor, and explosions, muzzle flashes and fires don't cast light.
 
 ## The console: finding out why it's slow
@@ -1272,9 +1273,15 @@ overlay redraw where possible, with at most one frame of delay. Selection remain
 The battlefield status overlay retains a rasterized image between 15 Hz refreshes when the camera
 is still. Panning, zooming and command input refresh it immediately; blast shake does not
 invalidate this cache. Cursor hints, selection boxes and placement previews draw in a separate
-layer each frame, so moving the pointer does not rebuild all squad counters. Hiding the HUD
-also stops its raster updates. Smoke sight checks visit smoke grenades directly rather than every
+layer each frame, so moving the pointer does not rebuild all squad counters. Leader chevrons reuse
+the symbol atlas; speech bubbles retain bounded wrapped layouts and draw their flat backgrounds
+directly. Hiding the HUD also stops its raster updates. Smoke sight checks visit smoke grenades directly rather than every
 projectile; cloud growth, movement and dissipation still take effect immediately.
+
+The player HUD retains squad-order labels between incoming team summaries and
+only changes support-label themes when their colors change. Cooldowns and new
+commands still update immediately. Last-seen minimap diamonds use the shared
+symbol atlas, including the larger vehicle markers and fading with age.
 
 Clients build scenery in and around the camera's view first and cache visited models; distant models and
 cosmetic collision bodies remain inactive. The server still simulates the complete
@@ -1289,8 +1296,9 @@ The authoritative Rust runtime owns the complete battlefield: infantry, vehicles
 buildings, fire, rounds, drones, squads, economy, visibility and victory. Tactical
 plans, strategic commanders and all five mission programs advance on fixed ticks.
 Orders contain player intent; authenticated connections supply their commander
-identity. Gameplay uses retained numeric state and deterministic random streams,
-independent of Godot objects, render callbacks and network arrival timing.
+identity. Gameplay uses retained numeric state and deterministic random streams;
+Godot objects and render callbacks do not advance it. The server records the tick
+and order of admitted inputs, so a replay repeats the same input schedule.
 
 The headless Godot generator authors the initial map before the first tick, then
 exits. It exports terrain, collision geometry, formations, queues and random state.
@@ -1325,5 +1333,5 @@ saves them in browser storage; closing the tab can interrupt the final write.
 See [RUST_SIMULATION.md](RUST_SIMULATION.md) for the process
 boundary, replay contract, validation and remaining release gates.
 
-See [SIMULATION_SCALING.md](SIMULATION_SCALING.md) for the native perception
-boundary, measurement results and remaining limits.
+See [SIMULATION_SCALING.md](SIMULATION_SCALING.md) for the earlier profiling
+experiments and the process boundary before the full Rust migration.

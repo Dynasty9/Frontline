@@ -690,10 +690,8 @@ func _draw_intel(w: World, sc: float) -> void:
 			continue  # in sight: drawn as a unit
 		var a := clampf(1.0 - age / 90.0, 0.25, 0.85)
 		var p := _pt(it[0])
-		var hs := (2.6 if String(it[1]) == "inf" else 3.6) * sc
-		var d := PackedVector2Array([p + Vector2(0, -hs), p + Vector2(hs, 0), p + Vector2(0, hs), p + Vector2(-hs, 0), p + Vector2(0, -hs)])
-		_ink.draw_polyline(d, Color(0, 0, 0, 0.55 * a), 2.6, true)
-		_ink.draw_polyline(d, Color(C_INTEL.r, C_INTEL.g, C_INTEL.b, a), 1.2, true)
+		var infantry := String(it[1]) == "inf"
+		MapSymbols.glyph(_ink, "intel_inf" if infantry else "intel_vehicle", p, (4.0 if infantry else 5.0) * sc, C_INTEL, a, false)
 
 
 ## Aircraft over the battlefield (you hear and see them, whoever's they are): a

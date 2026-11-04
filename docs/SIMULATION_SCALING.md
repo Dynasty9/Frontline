@@ -1,6 +1,13 @@
 # Simulation scaling
 
-## Implemented boundary
+This document records the profiling and experiments that preceded the complete
+Rust simulation migration. Its builds, process boundary and measurements are
+historical. Desktop battles now run in a separate Rust server, browser solo play
+uses the same core in a Web Worker, and Godot handles presentation and commands.
+See [RUST_SIMULATION.md](RUST_SIMULATION.md) for the current architecture,
+deterministic replays, validation and remaining performance limits.
+
+## Earlier process boundary
 
 Desktop solo games use the existing authoritative Godot host in a separate,
 private headless process. The visible process retains input, UI, interpolation,
@@ -186,10 +193,10 @@ Regression scenes cover structure lifecycle/index filtering, native and GDScript
 perception against exhaustive candidate selection, blocked/reopened navigation,
 replaced/cancelled path orders, and local-server commands/pause/reconnect/cleanup.
 
-Rust is deliberately limited to numerical search. A full Rust server would also
-need terrain, physics/LOS, combat, economy, AI, deterministic replay and a specified
-transport. Godot high-level RPC is not a public interoperability contract. Retaining
-Godot as the simulation host avoids silently changing those gameplay systems.
+At this stage Rust was limited to numerical search. Completing the migration also
+required terrain, physics/LOS, combat, economy, AI, deterministic replay and a
+specified transport. Those systems now belong to the authoritative Rust runtime;
+the earlier Godot host remains a comparison reference.
 
 ## References
 

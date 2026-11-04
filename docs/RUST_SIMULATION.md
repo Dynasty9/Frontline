@@ -5,6 +5,13 @@ browser solo battles run the same Rust simulation in a Web Worker.** Remaining
 presentation checks and frame-time targets are still being completed. This
 branch is not ready to release.
 
+Latest live player-view check (3 November, `c02b18c`): a generated 3072 m map
+with 500 starting soldiers, commanders, High at 1280×720 and zoom 35 averaged
+**57.96 FPS**, with **29.15 ms frame p99**, during seconds 60–120 of combat.
+Rust ticks averaged **8.01 ms**, with **16.63 ms p99**. The 60 FPS target remains
+open. This later, close, team-filtered workload is different from the earlier
+98.03 FPS wide observer run; those numbers are not a before/after comparison.
+
 ## Process boundary
 
 Godot authors the initial battlefield in a short-lived headless process, then
@@ -1086,3 +1093,63 @@ The isolated 40-bubble loop fell from 232,662 to 161,773 microseconds across
 not a claim that the 60 FPS target is met. Evidence:
 `build/bubble-layout-comparison.json`, `build/bubble-cache-micro.log` and
 `build/bubble-current-visual*.log`.
+
+### Longer foreground player-view check
+
+The `c02b18c` Windows release ran the generated 3072 m, seed-3 battle with 500
+starting infantry and both commanders. The camera used zoom 35, team 0, High
+at 1280×720; capture covered seconds 60–120. Other applications remained
+running. All 120 external foreground-window samples during capture matched the
+game, and all 3,478 frame samples reported focus.
+
+Frames averaged 57.96 FPS, with p50/p95/p99 16.559/24.494/29.146 ms and a
+42.915 ms maximum. Adjacent-frame difference p99 was 11.980 ms. Render CPU
+p99 was 6.999 ms and GPU p99 was 6.890 ms. These phases overlap and must not
+be added to infer a frame time. The 3,600 measured Rust ticks averaged
+8.006 ms, with p99 16.634 ms, maximum 36.164 ms and 36 over 16.667 ms.
+Navigation requests accounted for 2.128 ms mean and 6.547 ms p99; one route
+search reached 21.252 ms. The existing per-tick admission budget does not
+interrupt a single search already in progress.
+
+Unlike observer runs, the player view also draws last-seen minimap intel and
+the support panel. Minimap ground drawing reached 2.360 ms p99; HUD updates
+averaged 1.052 ms with 2.916 ms p99. These are current optimization targets,
+not evidence that removing either cost alone will close the frame-time gate.
+
+The resulting 8,114-tick recording independently verifies its complete final
+state (`fb171fa7df0a7ccee7c771b24873adfe15c4ade4bf65afafe5e76fbf8daf9ed1`).
+It is an unfinished battle, winner `-1`. The current full web export and actual
+Chromium simulation, HTTP observer seeking and Hunter model checks also pass.
+Evidence: `build/rust-release-generated-3072-player-hud/`,
+`build/player-hud-focus.jsonl`, `build/player-hud-replay-verification.log`,
+`build/hud-web-build.log` and `build/hud-browser-smoke.log`.
+
+### Player HUD invalidation and minimap intel
+
+Support rows were reapplying their label colors every frame, repeatedly
+invalidating Godot themes and layout. They now set an override only when its
+color changes. Squad orders retain their display data until the next team
+summary replaces the input array; host summaries, socket updates and replay
+seeks all replace it. The regression covers readiness, cooldowns, opening the
+support list, new orders and disappearing squads.
+
+Last-seen minimap diamonds use the existing symbol atlas. Their shape, age
+filter, fading and infantry/vehicle distinction remain; stroke antialiasing
+and scaling differ slightly. The actual Vulkan and Compatibility visual
+probes pass. A 96-marker drawing loop over 120 samples fell from
+332,945 to 37,845 microseconds on Vulkan, and 256,137 to 58,725 on Compatibility.
+
+For the full comparison, an ignored benchmark helper restores the initial
+checkpoint of the preceding live recording and calls the production server
+loop with team-0 admission. Both builds use that same engine and starting
+state, High 1280×720, zoom 35, a 60-second warmup and 60-second capture.
+These repeated windows are offscreen; other applications stay running.
+ABBA averages were 52.23/53.24 FPS before and 60.59/60.11 FPS after.
+Frame p99 fell from 33.18/32.20 ms to 29.80/29.38 ms; adjacent-frame difference
+p99 fell from 13.39/13.64 ms to 11.47/12.59 ms. HUD updates fell from
+1.18 ms mean per frame to 0.44 ms, and minimap ground drawing from 0.35 to
+0.18 ms (p99 2.54/2.72 ms to 1.07/1.06 ms). This is about 14% more average
+FPS, while the minimum-60 target remains open. The captures show normal
+player intel and fire support. Evidence: `build/player-hud-comparison.json`,
+`build/player-hud-{before,after}-{1,2}/`, `build/intel-atlas*.log`,
+`build/support-panel-tests.log` and `build/player-hud-regressions.log`.

@@ -30,6 +30,14 @@ caption = "Before: squad leader chevrons are rebuilt from lines whenever the bat
 [[screenshots]]
 file = "leader-marks-after.png"
 caption = "After: the same leader cues use the shared symbol atlas. Repeated close-view runs reduced frame p99 from 23.1–25.0 ms to 21.1–22.7 ms; the 60 FPS frame-time target remains open."
+
+[[screenshots]]
+file = "player-hud-before.png"
+caption = "Before: the player HUD repeatedly rebuilds unchanged support labels and squad orders, while last-seen minimap markers are drawn from lines."
+
+[[screenshots]]
+file = "player-hud-after.png"
+caption = "After: unchanged HUD state is retained and minimap intel uses the shared atlas. Repeated 500-unit player-view runs averaged 60.1–60.6 FPS versus 52.2–53.2 before; frame spikes still exceed the 60 FPS budget."
 +++
 
 - Desktop battles now run in a separate Rust process while Godot draws the battlefield and handles your orders. Infantry, vehicles, combat, logistics, tactical AI, commanders and the five operations use the same authoritative simulation.
@@ -59,6 +67,8 @@ caption = "After: the same leader cues use the shared symbol atlas. Repeated clo
 - Attack-plan markers discard old drawing records each refresh, preventing their cache from growing throughout a long battle.
 - Squad leader chevrons reuse the symbol atlas, reducing overlay drawing spikes while retaining the same leaders and troops.
 - Speech bubbles reuse wrapped text and draw their flat backgrounds directly, reducing repeated overlay work while retaining the messages, colors and placement.
+- The fire-support panel changes label themes only when their state changes, and squad-order labels update when a new server summary arrives. Cooldowns and command input remain responsive.
+- Last-seen enemy markers reuse the minimap symbol atlas, retaining their fading and the larger vehicle diamonds while reducing drawing spikes.
 - Wildlife waits for the battlefield to finish loading before reading terrain being prepared on a worker thread.
 - Large-map starting states and command recordings use lossless compressed blocks, retaining exact state for independent verification.
 - Distant soldier batches expand their bounds for elevated and airborne troops, preventing models from disappearing above the old flat-ground bounds.

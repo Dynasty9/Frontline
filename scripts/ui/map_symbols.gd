@@ -116,6 +116,12 @@ static func glyph_vec(ci: CanvasItem, kind: String, c: Vector2, r: float, col: C
 	var s := r * (0.62 if badge else 0.92)
 	var lw := maxf(1.3, r * 0.17)
 	match kind:
+		"intel_inf", "intel_vehicle":
+			var scale := r / (4.0 if kind == "intel_inf" else 5.0)
+			var hs := (2.6 if kind == "intel_inf" else 3.6) * scale
+			var diamond := PackedVector2Array([c + Vector2(0, -hs), c + Vector2(hs, 0), c + Vector2(0, hs), c + Vector2(-hs, 0), c + Vector2(0, -hs)])
+			ci.draw_polyline(diamond, Color(0, 0, 0, 0.55 * a), 2.6 * scale, true)
+			ci.draw_polyline(diamond, k, 1.2 * scale, true)
 		"leader":
 			var scale := r / 6.0
 			for i in 2:
@@ -278,7 +284,7 @@ const GLYPH_R := 24.0  # badge radius inside its cell
 const NATO_GLYPHS := ["inf", "armor", "mech", "motor", "air"]
 const GLYPH_KINDS := ["fire", "supp", "pinned", "reload", "noammo", "ammo", "grenade", "medic", "wounded", "drag",
 	"build", "gun", "retreat", "move", "assault", "defend", "cover", "hold", "flag", "drone", "melee", "chat",
-	"radio", "eye", "smoke", "tunnel", "leader"]
+	"radio", "eye", "smoke", "tunnel", "leader", "intel_inf", "intel_vehicle"]
 const COLS := 16
 
 static var atlas: Texture2D
