@@ -1,14 +1,10 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { execFile } from "node:child_process";
-import { promisify } from "node:util";
-import { Game, ROOT } from "./lib/game.mjs";
+import { Game } from "./lib/game.mjs";
+import { runFixture } from "./lib/fixture.mjs";
 
 test("complete Rust infantry checkpoints retain pending work and safely reject malformed state", async () => {
-  const { stdout, stderr } = await promisify(execFile)(process.env.GODOT || "godot", [
-    "--headless", "--quit-after", "2", "--path", ROOT, "res://tests/fixtures/infantry-state.tscn",
-  ], { timeout: 120_000 });
-  assert.doesNotMatch(stdout + stderr, /SCRIPT ERROR|Parse Error|ERROR:|panicked/);
+  const stdout = await runFixture("infantry-state");
   assert.match(stdout, /INFANTRY_STATE passed actors=256 removed=5/);
 });
 

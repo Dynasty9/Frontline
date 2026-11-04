@@ -1,4 +1,5 @@
 use super::*;
+use sim::state_codec::{Reader, Writer};
 
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub(super) struct BoatRole {

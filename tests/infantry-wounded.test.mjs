@@ -1,13 +1,8 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { execFile } from "node:child_process";
-import { promisify } from "node:util";
-import { ROOT } from "./lib/game.mjs";
+import { runFixture } from "./lib/fixture.mjs";
 
 test("Rust wounded infantry preserve bleeding, rescue, pistol timing and corpse collection", async () => {
-  const { stdout, stderr } = await promisify(execFile)(process.env.GODOT || "godot", [
-    "--headless", "--quit-after", "2", "--path", ROOT, "res://tests/fixtures/infantry-wounded.tscn",
-  ], { timeout: 120_000 });
-  assert.doesNotMatch(stdout + stderr, /SCRIPT ERROR|Parse Error|ERROR:|panicked/);
+  const stdout = await runFixture("infantry-wounded");
   assert.match(stdout, /INFANTRY_WOUNDED passed steps=61441/);
 });

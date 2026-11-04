@@ -10,6 +10,9 @@ algorithms; `native/server` connects the fixed tick, commanders, missions, socke
 transport and command recordings. `native/src` supplies map-generation bindings
 and parity tests. Browser solo games run the same Rust simulation in a Web Worker;
 see [RUST_SIMULATION.md](RUST_SIMULATION.md) for the current boundary and checks.
+Its [code map](RUST_SIMULATION.md#code-organization) separates tick orchestration,
+input/checkpoint codecs and commander responsibilities. Historical benchmark results
+are in [the measurement log](performance/rust-simulation.md).
 
 Install Rust 1.94.0, run `python tools/build_native.py`, then re-import Godot.
 Windows MSVC builds link the C runtime statically through `.cargo/config.toml`.
@@ -82,6 +85,12 @@ pause/resume, ownership after reconnect, and process cleanup.
 `tests/snapshot_index_test.tscn` verifies bounded scenery refresh and initial-state privacy.
 `tests/terrain_cover_test.tscn` compares bounded cover changes with exhaustive recomputation.
 `tests/soldier_batch_test.tscn` checks spatial batching and generated mesh LOD; run it rendered as well to verify GPU transform buffers.
+`tests/fixtures/soldier-poses.tscn` checks every soldier appearance, loading-time
+batch replacement, pose encoding, pause and animation without fresh instance uploads.
+Run `tests/fixtures/soldier-poses-render.tscn` with both `--rendering-method forward_plus`
+and `--rendering-method gl_compatibility` to compare all poses against their original
+meshes while translating and turning at large map coordinates. It writes comparison
+sheets to `build/soldier-poses-<renderer>.png`.
 `tests/terrain_updates_test.tscn` checks texture/collision seams and mesh boundaries;
 `tests/squad_assessment_test.tscn` checks shared assessment expiry and immediate
 new-contact handling. `tests/update_sidecars_test.tscn` checks executable/native

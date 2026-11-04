@@ -1,14 +1,10 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { execFile } from "node:child_process";
-import { promisify } from "node:util";
-import { Game, ROOT } from "./lib/game.mjs";
+import { Game } from "./lib/game.mjs";
+import { runFixture } from "./lib/fixture.mjs";
 
 test("Rust infantry cover fire preserves peeking, reloads, buddy cover and randomness", async () => {
-  const { stdout, stderr } = await promisify(execFile)(process.env.GODOT || "godot", [
-    "--headless", "--quit-after", "2", "--path", ROOT, "res://tests/fixtures/infantry-weapon.tscn",
-  ], { timeout: 120_000 });
-  assert.doesNotMatch(stdout + stderr, /SCRIPT ERROR|Parse Error|ERROR:|panicked/);
+  const stdout = await runFixture("infantry-weapon");
   assert.match(stdout, /INFANTRY_WEAPON passed steps=168960/);
   assert.match(stdout, /INFANTRY_SHOTS rounds=/);
 });

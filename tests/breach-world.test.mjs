@@ -1,13 +1,8 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { execFile } from "node:child_process";
-import { promisify } from "node:util";
-import { ROOT } from "./lib/game.mjs";
+import { runFixture } from "./lib/fixture.mjs";
 
 test("Rust house entry connects approach fire, doors, grenades and buddy orders against the shared world", async () => {
-  const { stdout, stderr } = await promisify(execFile)(process.env.GODOT || "godot", [
-    "--headless", "--quit-after", "2", "--path", ROOT, "res://tests/fixtures/breach-world.tscn",
-  ], { timeout: 120_000 });
-  assert.doesNotMatch(stdout + stderr, /SCRIPT ERROR|Parse Error|ERROR:|panicked/);
+  const stdout = await runFixture("breach-world");
   assert.match(stdout, /BREACH_WORLD passed states=444/);
 });

@@ -1,13 +1,8 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { execFile } from "node:child_process";
-import { promisify } from "node:util";
-import { ROOT } from "./lib/game.mjs";
+import { runFixture } from "./lib/fixture.mjs";
 
 test("Rust structure damage preserves occupants, gunners, repairable FOBs and delayed destruction effects", async () => {
-  const { stdout, stderr } = await promisify(execFile)(process.env.GODOT || "godot", [
-    "--headless", "--quit-after", "2", "--path", ROOT, "res://tests/fixtures/structure-damage.tscn",
-  ], { timeout: 120_000 });
-  assert.doesNotMatch(stdout + stderr, /SCRIPT ERROR|Parse Error|ERROR:|panicked/);
+  const stdout = await runFixture("structure-damage");
   assert.match(stdout, /STRUCTURE_DAMAGE passed states=6144/);
 });
