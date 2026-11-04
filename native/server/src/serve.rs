@@ -1,7 +1,8 @@
 //! Socket scheduling and render projection stay outside deterministic gameplay.
-use crate::{
+use crate::network::{self as net, Admission, Incoming, Network};
+use frontline_runtime::protocol;
+use frontline_runtime::{
     content::Content,
-    network::{self as net, Admission, Incoming, Network},
     observation::{events::Events, Update, View},
     replay::{Playback, Recorder},
     simulation::{Input, Simulation},
@@ -48,7 +49,7 @@ impl Config {
             Some(
                 d["ticks"]
                     .as_u64()
-                    .filter(|n| *n > 0 && *n <= crate::replay::MAX_REPLAY_TICKS)
+                    .filter(|n| *n > 0 && *n <= frontline_runtime::replay::MAX_REPLAY_TICKS)
                     .ok_or("invalid tick limit")?,
             )
         };
@@ -79,16 +80,15 @@ impl Config {
             } else {
                 d["seek"]
                     .as_u64()
-                    .filter(|n| *n <= crate::replay::MAX_REPLAY_TICKS)
+                    .filter(|n| *n <= frontline_runtime::replay::MAX_REPLAY_TICKS)
                     .ok_or("invalid replay seek")?
             },
         })
     }
 }
-pub use crate::render::map;
-use crate::render::{chunks, roads};
+use frontline_runtime::render::{chunks, map, roads};
 fn reliable(n: &mut Network, slot: usize, kind: u8, data: Vec<u8>) -> Result<(), String> {
-    if data.len() + 16 > net::MAX_PACKET {
+    if data.len() + 16 > protocol::MAX_PACKET {
         return Err("outgoing packet exceeds limit".into());
     }
     if n.reliable(slot, kind, Arc::new(data)).is_err() {
@@ -100,9 +100,9 @@ struct SocketOutput<'a> {
     network: &'a mut Network,
     slots: &'a [usize],
 }
-impl crate::render::Output for SocketOutput<'_> {
+impl frontline_runtime::render::Output for SocketOutput<'_> {
     fn reliable(&mut self, kind: u8, data: Arc<Vec<u8>>) -> Result<(), String> {
-        if data.len() + 16 > net::MAX_PACKET {
+        if data.len() + 16 > protocol::MAX_PACKET {
             return Err("outgoing packet exceeds limit".into());
         }
         for &slot in self.slots {
@@ -133,7 +133,7 @@ impl crate::render::Output for SocketOutput<'_> {
     }
 }
 fn json_packet(n: &mut Network, slot: usize, kind: u8, data: Value) -> Result<(), String> {
-    crate::render::json(
+    frontline_runtime::render::json(
         &mut SocketOutput {
             network: n,
             slots: &[slot],
@@ -143,14 +143,14 @@ fn json_packet(n: &mut Network, slot: usize, kind: u8, data: Value) -> Result<()
     )
 }
 fn report(s: &Simulation, c: &Content, team: i8, broadcast: &str) -> Result<Value, String> {
-    let mut result = crate::observation::report(s, c, team)?;
+    let mut result = frontline_runtime::observation::report(s, c, team)?;
     if !broadcast.is_empty() {
         result["replay"] = Value::String(broadcast.into());
     }
     Ok(result)
 }
-pub fn publish(n: &mut Network, slots: &[usize], u: &Update, tick: u64) -> Result<(), String> {
-    crate::render::update(&mut SocketOutput { network: n, slots }, u, tick)
+fn publish(n: &mut Network, slots: &[usize], u: &Update, tick: u64) -> Result<(), String> {
+    frontline_runtime::render::update(&mut SocketOutput { network: n, slots }, u, tick)
 }
 fn publish_events(
     n: &mut Network,
@@ -162,7 +162,7 @@ fn publish_events(
         let Some(peer) = n.peer(slot).map(|a| a.peer) else {
             continue;
         };
-        crate::render::events(
+        frontline_runtime::render::events(
             &mut SocketOutput {
                 network: n,
                 slots: &[slot],
@@ -205,7 +205,7 @@ impl Timeline {
         s: &mut Simulation,
         c: &Content,
         inputs: &[Input],
-    ) -> Result<Option<crate::simulation::Frame>, String> {
+    ) -> Result<Option<frontline_runtime::simulation::Frame>, String> {
         match self {
             Self::Live(recording) => recording.step(s, c, inputs).map(Some),
             Self::Replay { playback, end } => {
@@ -251,9 +251,10 @@ pub fn playback(source: File, content: &Content, config: Config) -> Result<(), S
         return Err("replay clients must be observers".into());
     }
     let mut source = BufReader::new(source);
-    let end = crate::replay::declared_tick(&mut source)?;
+    let end = frontline_runtime::replay::declared_tick(&mut source)?;
     let (mut playback, mut simulation) = Playback::new(source, content)?;
-    if end < playback.initial_tick || end - playback.initial_tick > crate::replay::MAX_REPLAY_TICKS
+    if end < playback.initial_tick
+        || end - playback.initial_tick > frontline_runtime::replay::MAX_REPLAY_TICKS
     {
         return Err("invalid replay duration".into());
     }
@@ -334,11 +335,11 @@ fn run_timeline(
     let mut profile = config.profile;
     simulation.profile = profile.as_ref().map(|_| Default::default());
     let public_map = chunks(&map(&simulation)?);
-    let mut surface = crate::terrain_view::Surface::default();
+    let mut surface = frontline_runtime::terrain_view::Surface::default();
     let mut road_state = simulation.state.rules.network.roads.clone();
     let presentation: Value =
         serde_json::from_slice(&simulation.presentation).map_err(|e| e.to_string())?;
-    let ready = json!({"address":network.address()?.to_string(),"engine":crate::ENGINE_ID,"version":net::VERSION,
+    let ready = json!({"address":network.address()?.to_string(),"engine":frontline_runtime::ENGINE_ID,"version":protocol::VERSION,
         "side":simulation.state.water.side,"mood":presentation.get("mood"),"replay":timeline.status(&simulation)});
     if let Some(path) = &config.ready {
         let mut f = File::options()
@@ -444,7 +445,12 @@ fn run_timeline(
                         if target != slot
                             && (side < 0 || side == team)
                             && network
-                                .unreliable(target, net::PRESENCE, simulation.state.tick, &bytes)
+                                .unreliable(
+                                    target,
+                                    protocol::PRESENCE,
+                                    simulation.state.tick,
+                                    &bytes,
+                                )
                                 .is_err()
                         {
                             network.close(target);
@@ -460,7 +466,7 @@ fn run_timeline(
                     };
                     let (peer, team) = (a.peer, a.team);
                     let (kind, message) =
-                        crate::co_command::project(&simulation, peer, team, &data);
+                        frontline_runtime::co_command::project(&simulation, peer, team, &data);
                     for (&target, &side) in &slots {
                         if target != slot && (side < 0 || side == team) {
                             json_packet(&mut network, target, kind, message.clone())?;
@@ -477,7 +483,7 @@ fn run_timeline(
                         json_packet(
                             &mut network,
                             slot,
-                            net::REPORT,
+                            protocol::REPORT,
                             report(&simulation, content, team, &broadcast)?,
                         )?;
                     }
@@ -521,35 +527,38 @@ fn run_timeline(
                     json_packet(
                         &mut network,
                         slot,
-                        net::WELCOME,
-                        json!({"peer":a.peer,"team":a.team,"entities":baseline.births.len(),"side":simulation.state.water.side,"tick":simulation.state.tick,"engine":crate::ENGINE_ID}),
+                        protocol::WELCOME,
+                        json!({"peer":a.peer,"team":a.team,"entities":baseline.births.len(),"side":simulation.state.water.side,"tick":simulation.state.tick,"engine":frontline_runtime::ENGINE_ID}),
                     )?;
                     for data in &public_map {
-                        if network.reliable(slot, net::MAP, data.clone()).is_err() {
+                        if network.reliable(slot, protocol::MAP, data.clone()).is_err() {
                             network.close(slot);
                             break;
                         }
                     }
                     for data in surface.tiles.values() {
-                        if network.reliable(slot, net::SURFACE, data.clone()).is_err() {
+                        if network
+                            .reliable(slot, protocol::SURFACE, data.clone())
+                            .is_err()
+                        {
                             network.close(slot);
                             break;
                         }
                     }
-                    json_packet(&mut network, slot, net::ROADS, roads(&simulation))?;
+                    json_packet(&mut network, slot, protocol::ROADS, roads(&simulation))?;
                     publish(&mut network, &[slot], &baseline, simulation.state.tick)?;
-                    reliable(&mut network, slot, net::BASELINE_END, vec![])?;
+                    reliable(&mut network, slot, protocol::BASELINE_END, vec![])?;
                     json_packet(
                         &mut network,
                         slot,
-                        net::HUD,
-                        crate::observation::hud(&simulation, content, a.team)?,
+                        protocol::HUD,
+                        frontline_runtime::observation::hud(&simulation, content, a.team)?,
                     )?;
                     if timeline.is_replay() {
                         json_packet(
                             &mut network,
                             slot,
-                            net::PLAYBACK,
+                            protocol::PLAYBACK,
                             timeline.status(&simulation),
                         )?;
                     }
@@ -557,13 +566,13 @@ fn run_timeline(
                         json_packet(
                             &mut network,
                             slot,
-                            net::REPORT,
+                            protocol::REPORT,
                             report(&simulation, content, -1, &broadcast)?,
                         )?;
                         json_packet(
                             &mut network,
                             slot,
-                            net::OVER,
+                            protocol::OVER,
                             json!(simulation.state.victory.winner),
                         )?;
                     }
@@ -595,8 +604,8 @@ fn run_timeline(
                         json_packet(
                             &mut network,
                             slot,
-                            net::FX,
-                            crate::observation::events::Events::persistent(&simulation),
+                            protocol::FX,
+                            frontline_runtime::observation::events::Events::persistent(&simulation),
                         )?;
                         if network.peer(slot).is_some_and(|a| !a.recorder()) {
                             start = true;
@@ -618,9 +627,12 @@ fn run_timeline(
             let mut bytes = 0;
             let tick_started = Instant::now();
             let mut count = 0;
-            for input in pending.iter().take(crate::simulation::MAX_FRAME_INPUTS) {
+            for input in pending
+                .iter()
+                .take(frontline_runtime::simulation::MAX_FRAME_INPUTS)
+            {
                 bytes += input.encode()?.len();
-                if bytes > crate::simulation::MAX_FRAME_BYTES {
+                if bytes > frontline_runtime::simulation::MAX_FRAME_BYTES {
                     break;
                 }
                 count += 1;
@@ -644,19 +656,19 @@ fn run_timeline(
                     json_packet(
                         &mut network,
                         slot,
-                        net::HUD,
-                        crate::observation::hud(&simulation, content, -1)?,
+                        protocol::HUD,
+                        frontline_runtime::observation::hud(&simulation, content, -1)?,
                     )?;
                     json_packet(
                         &mut network,
                         slot,
-                        net::REPORT,
+                        protocol::REPORT,
                         report(&simulation, content, -1, &broadcast)?,
                     )?;
                     json_packet(
                         &mut network,
                         slot,
-                        net::PLAYBACK,
+                        protocol::PLAYBACK,
                         timeline.status(&simulation),
                     )?;
                 }
@@ -669,7 +681,10 @@ fn run_timeline(
             let events = Events::collect(&simulation, &frame);
             for data in surface.update(&simulation.state.field.geometry.terrain, &events.blasts)? {
                 for &slot in slots.keys() {
-                    if network.reliable(slot, net::SURFACE, data.clone()).is_err() {
+                    if network
+                        .reliable(slot, protocol::SURFACE, data.clone())
+                        .is_err()
+                    {
                         network.close(slot);
                     }
                 }
@@ -677,7 +692,7 @@ fn run_timeline(
             if road_state != simulation.state.rules.network.roads {
                 road_state.clone_from(&simulation.state.rules.network.roads);
                 for &slot in slots.keys() {
-                    json_packet(&mut network, slot, net::ROADS, roads(&simulation))?;
+                    json_packet(&mut network, slot, protocol::ROADS, roads(&simulation))?;
                 }
             }
             render_events.push(events);
@@ -705,7 +720,7 @@ fn run_timeline(
                         json_packet(
                             &mut network,
                             slot,
-                            net::PLAYBACK,
+                            protocol::PLAYBACK,
                             timeline.status(&simulation),
                         )?;
                     }
@@ -714,10 +729,10 @@ fn run_timeline(
                     .into_iter()
                     .filter(|team| slots.values().any(|t| t == team))
                 {
-                    let info = crate::observation::hud(&simulation, content, team)?;
+                    let info = frontline_runtime::observation::hud(&simulation, content, team)?;
                     for (&slot, &side) in &slots {
                         if side == team {
-                            json_packet(&mut network, slot, net::HUD, info.clone())?;
+                            json_packet(&mut network, slot, protocol::HUD, info.clone())?;
                         }
                     }
                 }
@@ -738,9 +753,9 @@ fn run_timeline(
                             simulation.state.tick,
                         )?;
                     }
-                    let info = crate::observation::hud(&simulation, content, team)?;
+                    let info = frontline_runtime::observation::hud(&simulation, content, team)?;
                     for slot in recipients {
-                        json_packet(&mut network, slot, net::HUD, info.clone())?;
+                        json_packet(&mut network, slot, protocol::HUD, info.clone())?;
                     }
                 }
                 for events in render_events.drain(..) {
@@ -750,10 +765,10 @@ fn run_timeline(
                     json_packet(
                         &mut network,
                         slot,
-                        net::REPORT,
+                        protocol::REPORT,
                         report(&simulation, content, -1, &broadcast)?,
                     )?;
-                    json_packet(&mut network, slot, net::OVER, json!(last_winner))?;
+                    json_packet(&mut network, slot, protocol::OVER, json!(last_winner))?;
                 }
             }
             if let Some(p) = &mut profile {

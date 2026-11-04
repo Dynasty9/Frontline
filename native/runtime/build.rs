@@ -18,14 +18,14 @@ fn main() {
     let root = manifest.parent().unwrap();
     let mut files = vec![];
     source_files(&root.join("core/src"), &mut files);
-    source_files(&root.join("server/src"), &mut files);
+    source_files(&root.join("runtime/src"), &mut files);
     files.extend(
         [
             "Cargo.toml",
             "Cargo.lock",
             "core/Cargo.toml",
-            "server/Cargo.toml",
-            "server/build.rs",
+            "runtime/Cargo.toml",
+            "runtime/build.rs",
             "content.json",
         ]
         .map(|p| root.join(p)),

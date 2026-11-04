@@ -22,7 +22,8 @@ scripts/game/missions.gd       the missions (content); mission_director.gd runs 
 scripts/game/co_command.gd     co-commanders: each player's view, cursor and plans, pings, sketches (relayed to their side only)
 scripts/game/terrain.gd, nav.gd, hnav.gd   ground kinds, cover map, pathfinding grids (HPA*)
 native/core/                  engine-independent Rust simulation state and algorithms
-native/server/                authoritative match, commanders, missions, socket protocol and replay verification
+native/runtime/               shared authoritative match, commanders, missions, protocol and replay verification
+native/server/                native sockets, process controls and the server executable
 native/browser/               WebAssembly worker adapter for the same simulation
 native/src/                   Godot bindings; keep scene objects out of native/core
 scripts/ui/                    HUD, minimap, Field Manual, menus
@@ -51,7 +52,7 @@ Data lives in tables: units, weapons, squads, buildings and upgrades in `scripts
 
 Run every command from the repository root. `godot` means your Godot 4.7.x executable; on Windows use the `_console.exe` build so output reaches the terminal.
 
-For Rust changes, run `cargo +1.94.0 test --locked --manifest-path native/Cargo.toml -p frontline_core -p frontline_server`, then `python tools/build_native.py` before importing Godot. Numeric contract fixtures also run in release mode across platforms; do not rewrite their expected bytes to hide an unintended gameplay change. Generated libraries are ignored; release CI builds them. Do not stage a new Windows library while a test process has the old one loaded. The Godot scenario commands below exercise the retained reference simulation; also validate the Rust socket/client and replay paths described in `docs/RUST_SIMULATION.md`.
+For Rust changes, run `cargo +1.94.0 test --locked --manifest-path native/Cargo.toml -p frontline_core -p frontline_runtime -p frontline_server`, then `python tools/build_native.py` before importing Godot. Numeric contract fixtures also run in release mode across platforms; do not rewrite their expected bytes to hide an unintended gameplay change. Generated libraries are ignored; release CI builds them. Do not stage a new Windows library while a test process has the old one loaded. The Godot scenario commands below exercise the retained reference simulation; also validate the Rust socket/client and replay paths described in `docs/RUST_SIMULATION.md`.
 
 1. **Everything compiles.** This prints nothing when all is well:
    ```
@@ -73,7 +74,7 @@ CI (`.github/workflows/check.yml`) runs steps 1 to 3 on every push and pull requ
 
 - **Tabs**, and explicit types wherever the type isn't obvious from the right-hand side. GDScript can't infer through untyped values (`var x := some_dict.get(k)` and `var y := untyped_call()` are parse errors), so write `var x: float = ...`.
 - **Comments explain why, in plain language**: what a real soldier, crew or commander does, and how the code models it. Match the voice and density of the code around you. Don't leave debug prints behind; gate optional diagnostics behind an environment variable (`if OS.has_environment("FL_DEBUG_X"):`).
-- **The server is authoritative.** Production gameplay belongs in `native/core` and `native/server`; Godot sends commands and applies filtered observations, properties and effects. Use the versioned socket protocol for new replicated state. The retained GDScript reference simulation uses `world.srv`, entity `write_state` / `read_state`, `world.push_props`, `world.fx_event` and map RPCs; changing that reference alone does not change the Rust game.
+- **The server is authoritative.** Production gameplay belongs in `native/core` and `native/runtime`; Godot sends commands and applies filtered observations, properties and effects. Use the versioned socket protocol for new replicated state. The retained GDScript reference simulation uses `world.srv`, entity `write_state` / `read_state`, `world.push_props`, `world.fx_event` and map RPCs; changing that reference alone does not change the Rust game.
 - **Determinism.** Gameplay uses the Rust match's saved `SimulationRandom`; Godot map authoring and reference gameplay use `world.rng` (or a generator seeded from it). Global randomness, wall clocks and frame rate must not decide gameplay. Optional profiling clocks are diagnostic only. Replays preserve initial state, ordered inputs and exact build/content identifiers; validate commands, events and checkpoint bytes after simulation changes.
 - **Map size comes from `MapDims`** (`scripts/game/map_dims.gd`). Never hard-code the map's dimensions.
 - **The interface follows Signal** ([docs/UI.md](docs/UI.md)): build it from `UiKit`'s tokens, fonts and parts (`UiSeg`, `UiSteps`, `UiMotion`), capitals for labels and names, mono for figures and codes, rules and corner ticks rather than boxes, and no colour literals where a token fits.

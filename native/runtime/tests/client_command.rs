@@ -1,5 +1,5 @@
 use frontline_core::match_commands::{Action, Command};
-use frontline_server::client_command::decode;
+use frontline_runtime::client_command::decode;
 use serde_json::json;
 
 #[test]
@@ -71,7 +71,11 @@ fn malformed_or_impersonating_commands_never_reach_admission() {
             "{value}"
         );
     }
-    assert!(decode(&vec![b' '; frontline_server::client_command::MAX_BYTES + 1]).is_err());
+    assert!(decode(&vec![
+        b' ';
+        frontline_runtime::client_command::MAX_BYTES + 1
+    ])
+    .is_err());
     assert!(decode(b"{\"t\":\"move\",\"pos\":[NaN,0,0]}").is_err());
     let c = decode(br#"{"t":"chat","text":"  On your left  ","team_only":true}"#).unwrap();
     assert_eq!(

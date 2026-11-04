@@ -1,5 +1,5 @@
 use frontline_core as sim;
-use frontline_server::{content::Content, mission::Landmark, simulation::Simulation};
+use frontline_runtime::{content::Content, mission::Landmark, simulation::Simulation};
 use sim::{match_state::MatchState, vector::Vector3};
 
 pub fn map(content: &Content) -> Simulation {

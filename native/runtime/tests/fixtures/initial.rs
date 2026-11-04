@@ -1,5 +1,5 @@
 use frontline_core as sim;
-use frontline_server::{
+use frontline_runtime::{
     content::{Content, SOURCE},
     simulation::Simulation,
 };
@@ -58,7 +58,7 @@ pub fn encode(a: &Simulation, mut edit: impl FnMut(&mut serde_json::Value)) -> V
     w.u64(f.rng.seed());
     w.u64(f.rng.state());
     w.u64(f.next_squad);
-    w.bytes(&frontline_server::compression::encode(&f.geometry.checkpoint()).unwrap());
+    w.bytes(&frontline_runtime::compression::encode(&f.geometry.checkpoint()).unwrap());
     w.bytes(&f.actors.checkpoint().unwrap());
     w.bytes(&a.state.rules.network.checkpoint().unwrap());
     w.bytes(&f.battle.checkpoint());

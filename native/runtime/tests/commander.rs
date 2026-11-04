@@ -1,7 +1,7 @@
 #[path = "fixtures/numeric.rs"]
 mod numeric;
 use frontline_core as sim;
-use frontline_server::{
+use frontline_runtime::{
     commander::Commander,
     content::Content,
     replay::{verify, Recorder},
@@ -18,7 +18,7 @@ fn battle(content: &Content) -> Simulation {
 fn spare_squads_hold_map_landmarks_without_taking_human_units() {
     let c = Content::bundled().unwrap();
     let mut a = battle(&c);
-    a.landmarks = vec![frontline_server::mission::Landmark {
+    a.landmarks = vec![frontline_runtime::mission::Landmark {
         kind: "woods".into(),
         position: Vector3::new(0., 0., 25.),
     }];
@@ -320,7 +320,7 @@ fn commander_checkpoint_rejects_corruption_and_preserves_phase_randomness_and_ro
 
 #[test]
 fn disconnected_players_get_a_replayable_stand_in_that_returns_control_on_rejoin() {
-    use frontline_server::simulation::Input;
+    use frontline_runtime::simulation::Input;
     let content = Content::bundled().unwrap();
     let mut a = battle(&content);
     a.commanders.retain(|c| c.team == 1);
@@ -375,7 +375,7 @@ fn disconnected_players_get_a_replayable_stand_in_that_returns_control_on_rejoin
 
 #[test]
 fn initial_navigation_is_built_before_admitting_long_distance_routes() {
-    use frontline_server::simulation::Input;
+    use frontline_runtime::simulation::Input;
     use sim::match_commands::{Action, Command};
     let content = Content::bundled().unwrap();
     let mut a = battle(&content);

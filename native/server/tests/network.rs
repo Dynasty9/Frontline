@@ -1,10 +1,8 @@
 use frontline_core as sim;
+use frontline_runtime::{content::Content, protocol, replay, simulation::Simulation};
 use frontline_server::{
-    content::Content,
-    network::{self as net, Admission},
-    replay,
     serve::{self, Config},
-    simulation::Simulation,
+    Admission, RECORDER_PEER,
 };
 use rusty_enet::{Event, Host, HostSettings, Packet};
 use serde_json::json;
@@ -99,7 +97,7 @@ impl Server {
             (9, 1, '2'),
             (11, -1, '3'),
             (13, 0, '4'),
-            (net::RECORDER_PEER, -1, '5'),
+            (RECORDER_PEER, -1, '5'),
         ]
         .map(|(peer, team, digit)| Admission {
             peer,
@@ -121,7 +119,7 @@ impl Server {
             error: None,
             lease: None,
             seek: 0,
-            profile: frontline_server::profiling::Profile::decode(
+            profile: frontline_server::Profile::decode(
                 &json!({"path":directory.join("profile.json"),"warmup":0,"duration":1}),
             )
             .unwrap(),
@@ -255,10 +253,10 @@ impl Client {
                 Event::Connect { peer, .. } => peer
                     .send(
                         0,
-                        &Packet::reliable(net::packet(
-                            net::AUTH,
+                        &Packet::reliable(protocol::packet(
+                            protocol::AUTH,
                             0,
-                            json!({"token":self.token,"engine":frontline_server::ENGINE_ID})
+                            json!({"token":self.token,"engine":frontline_runtime::ENGINE_ID})
                                 .to_string()
                                 .as_bytes(),
                         )),
@@ -270,39 +268,47 @@ impl Client {
                     channel_id,
                     packet,
                 } => {
-                    let (kind, seq, data) = net::decode(packet.data()).unwrap();
+                    let (kind, seq, data) = protocol::decode(packet.data()).unwrap();
                     match kind {
-                        net::WELCOME => self.joined = true,
-                        net::SPAWN => self.spawns += 1,
-                        net::SNAPSHOT => {
+                        protocol::WELCOME => self.joined = true,
+                        protocol::SPAWN => self.spawns += 1,
+                        protocol::SNAPSHOT => {
                             self.tick = (f32::from_le_bytes(data[..4].try_into().unwrap()) as f64
                                 * 60.)
                                 .round() as u64;
                             self.reliable_snapshots += usize::from(channel_id == 0);
                         }
-                        net::MESSAGE => self.messages.push(serde_json::from_slice(data).unwrap()),
-                        net::REPORT => self.report = serde_json::from_slice(data).unwrap(),
-                        net::OVER => self.over_tick = Some(self.tick),
-                        net::PLAYBACK => self.playback = serde_json::from_slice(data).unwrap(),
-                        net::PRESENCE => self.presence.push(data.to_vec()),
-                        net::FX => self.effects.extend(
+                        protocol::MESSAGE => {
+                            self.messages.push(serde_json::from_slice(data).unwrap())
+                        }
+                        protocol::REPORT => self.report = serde_json::from_slice(data).unwrap(),
+                        protocol::OVER => self.over_tick = Some(self.tick),
+                        protocol::PLAYBACK => self.playback = serde_json::from_slice(data).unwrap(),
+                        protocol::PRESENCE => self.presence.push(data.to_vec()),
+                        protocol::FX => self.effects.extend(
                             serde_json::from_slice::<Vec<serde_json::Value>>(data).unwrap(),
                         ),
-                        net::PING | net::SKETCH | net::DEED => self
+                        protocol::PING | protocol::SKETCH | protocol::DEED => self
                             .marks
                             .push((kind, serde_json::from_slice(data).unwrap())),
-                        net::BASELINE_END => {
+                        protocol::BASELINE_END => {
                             self.loaded = true;
                             if !self.hold_load {
-                                peer.send(0, &Packet::reliable(net::packet(net::LOADED, 0, &[])))
-                                    .unwrap();
+                                peer.send(
+                                    0,
+                                    &Packet::reliable(protocol::packet(protocol::LOADED, 0, &[])),
+                                )
+                                .unwrap();
                             }
                         }
                         _ => {}
                     }
                     if channel_id == 0 {
-                        peer.send(0, &Packet::reliable(net::packet(net::ACK, seq, &[])))
-                            .unwrap();
+                        peer.send(
+                            0,
+                            &Packet::reliable(protocol::packet(protocol::ACK, seq, &[])),
+                        )
+                        .unwrap();
                     }
                 }
             }
@@ -314,7 +320,11 @@ impl Client {
             .peer_mut(rusty_enet::PeerID(0))
             .send(
                 0,
-                &Packet::reliable(net::packet(net::COMMAND, 0, data.to_string().as_bytes())),
+                &Packet::reliable(protocol::packet(
+                    protocol::COMMAND,
+                    0,
+                    data.to_string().as_bytes(),
+                )),
             )
             .unwrap();
     }
@@ -322,11 +332,15 @@ impl Client {
         self.host
             .peer_mut(rusty_enet::PeerID(0))
             .send(
-                if kind == net::SEND_PRESENCE { 1 } else { 0 },
-                &if kind == net::SEND_PRESENCE {
-                    Packet::unreliable(net::packet(kind, 0, data))
+                if kind == protocol::SEND_PRESENCE {
+                    1
                 } else {
-                    Packet::reliable(net::packet(kind, 0, data))
+                    0
+                },
+                &if kind == protocol::SEND_PRESENCE {
+                    Packet::unreliable(protocol::packet(kind, 0, data))
+                } else {
+                    Packet::reliable(protocol::packet(kind, 0, data))
                 },
             )
             .unwrap();
@@ -369,7 +383,7 @@ fn current_fires_arrive_after_loading_for_late_join_and_replay_seek() {
         thread::sleep(Duration::from_millis(1));
     }
     assert!(!late.effects.iter().any(|e| e[0] == 16));
-    late.presentation(net::LOADED, &[]);
+    late.presentation(protocol::LOADED, &[]);
     while !late.effects.iter().any(|e| e[0] == 16) {
         late.poll();
         assert!(Instant::now() < deadline);
@@ -411,10 +425,13 @@ fn co_command_is_team_private_authenticated_bounded_and_absent_from_replay_input
     let ping =
         json!({"t":"ping","peer":9,"kind":"enemy","position":[999,0,-999],"entity":u32::MAX})
             .to_string();
-    clients[0].presentation(net::MARK, ping.as_bytes());
-    clients[0].presentation(net::MARK, br#"{"t":"sketch","points":[[0,0],[999,-999]]}"#);
+    clients[0].presentation(protocol::MARK, ping.as_bytes());
+    clients[0].presentation(
+        protocol::MARK,
+        br#"{"t":"sketch","points":[[0,0],[999,-999]]}"#,
+    );
     for _ in 0..6 {
-        clients[0].presentation(net::MARK, ping.as_bytes());
+        clients[0].presentation(protocol::MARK, ping.as_bytes());
     }
     let mut next_presence = Instant::now();
     while clients[2].marks.len() < 4
@@ -424,7 +441,7 @@ fn co_command_is_team_private_authenticated_bounded_and_absent_from_replay_input
     {
         // Cursor presence is unreliable and refreshed by real clients; marks are sent once.
         if Instant::now() >= next_presence {
-            clients[0].presentation(net::SEND_PRESENCE, &[0; 97]);
+            clients[0].presentation(protocol::SEND_PRESENCE, &[0; 97]);
             next_presence = Instant::now() + Duration::from_millis(100);
         }
         for c in &mut clients {
@@ -450,11 +467,11 @@ fn co_command_is_team_private_authenticated_bounded_and_absent_from_replay_input
         );
         assert_eq!(
             c.marks[0],
-            (net::PING, json!([7, "enemy", [32., 0., -32.], 0]))
+            (protocol::PING, json!([7, "enemy", [32., 0., -32.], 0]))
         );
         assert_eq!(
             c.marks[1],
-            (net::SKETCH, json!([7, [[0., 0.], [32., -32.]]]))
+            (protocol::SKETCH, json!([7, [[0., 0.], [32., -32.]]]))
         );
     }
     let verified = server.finish();
@@ -580,7 +597,7 @@ fn recorder_is_read_only_does_not_start_time_and_does_not_change_the_replay() {
         (9, 1, '2'),
         (11, -1, '3'),
         (13, 0, '4'),
-        (net::RECORDER_PEER, -1, '5'),
+        (RECORDER_PEER, -1, '5'),
     ]
     .into_iter()
     .map(|(peer, team, digit)| {
@@ -599,7 +616,7 @@ fn recorder_is_read_only_does_not_start_time_and_does_not_change_the_replay() {
         assert!(Instant::now() < deadline);
         thread::sleep(Duration::from_millis(1));
     }
-    player.presentation(net::REQUEST_REPORT, &[]);
+    player.presentation(protocol::REQUEST_REPORT, &[]);
     while player.report.is_null() {
         player.poll();
         assert!(Instant::now() < deadline);
@@ -620,8 +637,7 @@ fn recorder_is_read_only_does_not_start_time_and_does_not_change_the_replay() {
         .messages
         .iter()
         .any(|m| m.to_string().contains("Recorder must not play")));
-    let invalid =
-        json!([{"peer":net::RECORDER_PEER,"team":0,"name":"Recorder","token":"5".repeat(48)}]);
+    let invalid = json!([{"peer":RECORDER_PEER,"team":0,"name":"Recorder","token":"5".repeat(48)}]);
     assert!(Admission::decode(&invalid).is_err());
 }
 
@@ -794,15 +810,18 @@ fn unauthorized_connections_and_identity_spoofs_are_disconnected() {
 }
 #[test]
 fn network_headers_and_configuration_are_bounded() {
-    let p = net::packet(net::COMMAND, 0, b"{}");
-    assert_eq!(net::decode(&p).unwrap(), (net::COMMAND, 0, &b"{}"[..]));
+    let p = protocol::packet(protocol::COMMAND, 0, b"{}");
+    assert_eq!(
+        protocol::decode(&p).unwrap(),
+        (protocol::COMMAND, 0, &b"{}"[..])
+    );
     for len in 0..16 {
-        assert!(net::decode(&p[..len]).is_err());
+        assert!(protocol::decode(&p[..len]).is_err());
     }
     let mut bad = p.clone();
     bad[4] = 255;
-    assert!(net::decode(&bad).is_err());
-    assert!(net::decode(&vec![0; net::MAX_PACKET + 1]).is_err());
+    assert!(protocol::decode(&bad).is_err());
+    assert!(protocol::decode(&vec![0; protocol::MAX_PACKET + 1]).is_err());
     assert!(Config::decode(b"{}").is_err());
     assert!(Config::decode(&vec![0; 65537]).is_err());
     let player = json!({"peer":7,"team":0,"name":"Commander","token":"1".repeat(48)});

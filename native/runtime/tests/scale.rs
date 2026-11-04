@@ -1,6 +1,6 @@
 //! Run explicitly in release mode; wall-clock timing is never part of the simulation.
 use frontline_core as sim;
-use frontline_server::{content::Content, simulation::Simulation};
+use frontline_runtime::{content::Content, simulation::Simulation};
 use sim::{match_state::MatchState, vector::Vector3};
 use std::time::Instant;
 

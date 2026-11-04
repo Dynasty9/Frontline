@@ -6,8 +6,8 @@ How the code is laid out, and the command-line modes used to test it. See also [
 
 Desktop solo and hosted multiplayer run the authoritative simulation in `frontline-server` while
 Godot handles visuals and interaction. `native/core` contains gameplay state and
-algorithms; `native/server` connects the fixed tick, commanders, missions, socket
-transport and command recordings. `native/src` supplies map-generation bindings
+algorithms; `native/runtime` connects the fixed tick, commanders, missions, protocol
+and command recordings. `native/server` owns native sockets and process controls. `native/src` supplies map-generation bindings
 and parity tests. Browser solo games run the same Rust simulation in a Web Worker;
 see [RUST_SIMULATION.md](RUST_SIMULATION.md) for the current boundary and checks.
 Its [code map](RUST_SIMULATION.md#code-organization) separates tick orchestration,

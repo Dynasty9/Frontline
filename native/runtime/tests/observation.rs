@@ -1,5 +1,5 @@
 use frontline_core as sim;
-use frontline_server::{
+use frontline_runtime::{
     content::Content,
     observation::{self, View},
     simulation::Simulation,
@@ -391,7 +391,7 @@ fn render_events_preserve_visibility_impulses_and_private_messages_without_chang
             }
         }
     });
-    let frame = frontline_server::simulation::Frame {
+    let frame = frontline_runtime::simulation::Frame {
         tick: 1,
         commands: vec![
             Event::Deed {
@@ -476,7 +476,7 @@ fn recoil_and_surrender_effects_follow_actor_visibility_without_advancing_gamepl
             })),
         ],
     );
-    let frame = frontline_server::simulation::Frame {
+    let frame = frontline_runtime::simulation::Frame {
         tick: 1,
         commands: vec![sim::match_commands::Event::Brain(
             sim::squad_brain::Event::Surrendered {
@@ -526,7 +526,7 @@ fn removed_scenery_and_boats_keep_their_final_visual_events() {
     let c = Content::bundled().unwrap();
     let s = map(&c, vec![]);
     let before = s.checkpoint().unwrap();
-    let frame = frontline_server::simulation::Frame {
+    let frame = frontline_runtime::simulation::Frame {
         tick: 1,
         commands: vec![],
         events: vec![
@@ -617,7 +617,7 @@ fn map_projection_uses_godots_bridge_tags_and_never_sends_simulation_geometry() 
         quay: true,
     });
     s.state.field.geometry.terrain.crater(Vector3::ZERO, 2.0);
-    let data = frontline_server::serve::map(&s).unwrap();
+    let data = frontline_runtime::render::map(&s).unwrap();
     let mut r = sim::state_codec::Reader::new(&data, b"FLVM\x02\0\0\0").unwrap();
     let meta: serde_json::Value = serde_json::from_slice(r.bytes(1_000_000).unwrap()).unwrap();
     assert_eq!(meta["water"]["bridges"][0][3], "quay");
@@ -626,12 +626,12 @@ fn map_projection_uses_godots_bridge_tags_and_never_sends_simulation_geometry() 
         r.bytes(1_000_000).unwrap().len(),
         s.state.field.geometry.terrain.landform.samples().len() * 4
     );
-    let heights = frontline_server::compression::decode(r.bytes(100_000).unwrap(), 65536).unwrap();
+    let heights = frontline_runtime::compression::decode(r.bytes(100_000).unwrap(), 65536).unwrap();
     assert_eq!(
         heights,
-        frontline_server::terrain_view::heights(&s.state.field.geometry.terrain)
+        frontline_runtime::terrain_view::heights(&s.state.field.geometry.terrain)
     );
-    let craters = frontline_server::compression::decode(r.bytes(100_000).unwrap(), 4096).unwrap();
+    let craters = frontline_runtime::compression::decode(r.bytes(100_000).unwrap(), 4096).unwrap();
     assert_eq!(
         craters,
         s.state.field.geometry.terrain.layers[sim::terrain::CRATER]

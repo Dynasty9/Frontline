@@ -1,5 +1,5 @@
 use frontline_core as sim;
-use frontline_server::content::Content;
+use frontline_runtime::content::Content;
 use sim::actors::Actor;
 use sim::infantry::Infantry;
 use sim::match_state::MatchState;

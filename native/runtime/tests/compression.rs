@@ -1,4 +1,4 @@
-use frontline_server::compression::{decode, encode, CHUNK};
+use frontline_runtime::compression::{decode, encode, CHUNK};
 
 #[test]
 fn compressed_blocks_preserve_exact_bytes_at_each_boundary() {

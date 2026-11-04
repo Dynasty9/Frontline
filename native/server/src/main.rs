@@ -1,4 +1,4 @@
-use frontline_server::{content::Content, initial, replay, simulation::MAX_STATE};
+use frontline_runtime::{content::Content, initial, replay, simulation::MAX_STATE};
 use std::{
     fs::File,
     io::{BufReader, Read, Write},
@@ -81,7 +81,7 @@ fn run() -> Result<(), String> {
                 state.victory.winner >= 0,
                 blake3::Hash::from(verified.initial_hash),
                 blake3::Hash::from(verified.state_hash),
-                frontline_server::ENGINE_ID
+                frontline_runtime::ENGINE_ID
             );
             Ok(())
         }
@@ -115,7 +115,7 @@ fn run() -> Result<(), String> {
                     simulation.state.field.actors.entities().len(),
                     simulation.state.field.squads.len(),
                     simulation.mission.as_ref().map_or("", |m| m.kind.key()),
-                    frontline_server::ENGINE_ID
+                    frontline_runtime::ENGINE_ID
                 );
             } else {
                 let mut recording = replay::Recorder::new(file, &simulation, &content)?;

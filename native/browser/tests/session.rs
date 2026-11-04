@@ -1,7 +1,7 @@
-#[path = "../../server/tests/fixtures/initial.rs"]
+#[path = "../../runtime/tests/fixtures/initial.rs"]
 mod fixture;
 use frontline_browser::session::Session;
-use frontline_server::{
+use frontline_runtime::{
     content::Content,
     initial, protocol as net,
     replay::{verify, Recorder},
@@ -52,9 +52,9 @@ fn worker_commands_and_observations_preserve_native_ticks_and_recording() {
         "Persistent effects must arrive after loading"
     );
     let command = br#"{"t":"chat","text":"Worker command","team_only":true}"#;
-    let input = frontline_server::simulation::Input::Command {
+    let input = frontline_runtime::simulation::Input::Command {
         peer: 7,
-        command: frontline_server::client_command::decode(command).unwrap(),
+        command: frontline_runtime::client_command::decode(command).unwrap(),
     };
     worker
         .receive(&net::packet(net::COMMAND, 0, command))

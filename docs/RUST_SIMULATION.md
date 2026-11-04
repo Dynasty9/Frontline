@@ -24,13 +24,14 @@ protocol. Rendering never advances gameplay randomness or decides a casualty.
 | Combat, injuries, rescue, prisoners, transport and construction | Rust `frontline_core` |
 | Squads, perception, pathfinding, morale and tactical plans | Rust `frontline_core` |
 | Economy, visibility, supply, support and victory rules | Rust `frontline_core` |
-| Strategic commanders, naval plans and all five mission programs | Rust `frontline_server` |
-| Authenticated commands, input ordering, checkpoints and verification | Rust `frontline_server` |
+| Strategic commanders, naval plans and all five mission programs | Rust `frontline_runtime` |
+| Command validation, input ordering, checkpoints and verification | Rust `frontline_runtime` |
+| Connection authentication, sockets and native process controls | Rust `frontline_server` |
 | Initial procedural map authoring and immutable content export | Godot, before the first tick |
 | Models, animation, smoothing, effects, sound, camera, minimap and UI | Godot client |
 
 The GDExtension in `native/src` remains necessary for map preparation and reference
-comparisons. The engine-independent code in `native/core` and `native/server`
+comparisons. The engine-independent code in `native/core` and `native/runtime`
 contains no Godot objects. The old GDScript simulation remains as a parity
 reference. Browser map preparation uses the WebAssembly GDExtension once, then
 releases the authoring world before starting the Rust worker and visual client.
@@ -143,7 +144,7 @@ Run from the repository root with Rust 1.94.0 and Godot 4.7.2 installed:
 python tools/build_native.py
 godot --headless --path . --import
 godot --path . -- --local-server --mission=bridgehead --seed=1
-cargo +1.94.0 test --locked --manifest-path native/Cargo.toml -p frontline_core -p frontline_server
+cargo +1.94.0 test --locked --manifest-path native/Cargo.toml -p frontline_core -p frontline_runtime -p frontline_server
 godot --headless --path . res://tests/local_server_test.tscn
 godot --headless --path . res://tests/native_lobby_test.tscn -- --port=7985
 ```
@@ -220,20 +221,23 @@ The application protocol is `FLNP` version 3; the Godot lobby version is 14.
 | Responsibility | Location |
 | --- | --- |
 | Numeric state, tactical rules and algorithms | `native/core/src/` |
-| Tick order, command admission and player lifecycle | `native/server/src/simulation.rs` |
-| Canonical inputs and full-match checkpoint validation | `native/server/src/simulation/{input,codec}.rs` |
-| Commander state, census and phase scheduling | `native/server/src/commander.rs` |
-| Construction and recruitment, squad assignments, navy, checkpoints | `native/server/src/commander/{logistics,tactics,naval,codec}.rs` |
-| Shared render projection and application framing | `native/server/src/{render,observation,protocol}.rs` |
+| Tick order, command admission and player lifecycle | `native/runtime/src/simulation.rs` |
+| Canonical inputs and full-match checkpoint validation | `native/runtime/src/simulation/{input,codec}.rs` |
+| Commander state, census and phase scheduling | `native/runtime/src/commander.rs` |
+| Construction and recruitment, squad assignments, navy, checkpoints | `native/runtime/src/commander/{logistics,tactics,naval,codec}.rs` |
+| Shared render projection and application framing | `native/runtime/src/{render,observation,protocol}.rs` |
 | Socket transport and scheduling | `native/server/src/{network,serve}.rs` |
 | Browser worker adapter | `native/browser/src/session.rs` |
-| Recording, playback and independent verification | `native/server/src/replay.rs` |
+| Recording, playback and independent verification | `native/runtime/src/replay.rs` |
 | Godot transport consumption and visual world updates | `scripts/game/simulation_client.gd` |
 | Shared soldier meshes and animation shader | `scripts/game/soldier_view_batch.gd`, `scripts/shaders/soldier_batch.gdshader` |
 
-The desktop host and browser worker use the same input, checkpoint and render
-code. Transport adapters own I/O and wall-clock scheduling; they do not duplicate
-simulation rules. Keep algorithm modules in the core free of Godot objects.
+The desktop host and browser worker depend on `frontline_runtime`; neither is
+a dependency of the runtime. Shared package metadata and dependency versions live
+in `native/Cargo.toml`. The [crate-boundary decision](architecture/rust-workspace.md)
+describes the interfaces and dependency direction. Transport adapters own I/O and
+wall-clock scheduling; they do not duplicate simulation rules. Keep algorithm
+modules in the core free of Godot objects.
 The legacy Godot simulation and bindings still support map authoring and parity
 checks, so removing them is a separate migration rather than code cleanup.
 
@@ -242,7 +246,7 @@ checks, so removing them is a separate migration rather than code cleanup.
 Run the native server and browser suites after changing simulation orchestration:
 
 ```sh
-cargo +1.94.0 test --locked --release --manifest-path native/Cargo.toml -p frontline_server -p frontline_browser
+cargo +1.94.0 test --locked --release --manifest-path native/Cargo.toml -p frontline_runtime -p frontline_server -p frontline_browser
 ```
 
 Commander and mission tests compare deterministic state against checked-in golden
@@ -255,8 +259,10 @@ Numeric Godot fixture tests share `tests/lib/fixture.mjs` for process launch,
 timeout and engine-error detection; each test retains its own behavioral asserts.
 Interactive, rendered and long-running scenes keep their own lifecycle settings.
 
-Source layout contributes to `ENGINE_ID`, so even a behavior-preserving Rust
-refactor creates a new build identity. Existing recordings require their original
+Core and runtime source layout contributes to `ENGINE_ID`, so even a
+behavior-preserving runtime refactor creates a new build identity. Native transport
+source is outside that simulation identity; incompatible wire changes must bump
+the protocol version. Existing recordings require their original
 build; do not bypass identity checks to open them in a changed simulation.
 
 Remaining release gates:

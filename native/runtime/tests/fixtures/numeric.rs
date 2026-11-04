@@ -1,4 +1,4 @@
-use frontline_server::simulation::Simulation;
+use frontline_runtime::simulation::Simulation;
 
 pub fn golden(name: &str, simulation: &Simulation) {
     // Source fingerprints differ as code evolves; compare the actual deterministic state.

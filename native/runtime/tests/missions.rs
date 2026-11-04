@@ -2,7 +2,7 @@
 mod fixture;
 #[path = "fixtures/numeric.rs"]
 mod numeric;
-use frontline_server::{
+use frontline_runtime::{
     content::Content,
     mission::Mission,
     replay::{verify, Recorder},
@@ -21,11 +21,11 @@ fn natural_mission_reaches_and_verifies_its_conclusion() {
     let mut bytes = vec![];
     File::open(initial)
         .unwrap()
-        .take(frontline_server::simulation::MAX_STATE as u64 + 1)
+        .take(frontline_runtime::simulation::MAX_STATE as u64 + 1)
         .read_to_end(&mut bytes)
         .unwrap();
     let content = Content::bundled().unwrap();
-    let mut simulation = frontline_server::initial::load(&bytes, &content).unwrap();
+    let mut simulation = frontline_runtime::initial::load(&bytes, &content).unwrap();
     let mission = simulation
         .mission
         .as_ref()
@@ -114,7 +114,7 @@ fn mission_callbacks_reach_every_scripted_reinforcement_and_conclusion() {
                 .iter_mut()
                 .find(|o| o.id == id)
                 .unwrap_or_else(|| panic!("{key}: missing {id}"));
-            o.goal = frontline_server::mission::Goal::Timer;
+            o.goal = frontline_runtime::mission::Goal::Timer;
             o.seconds = 0.;
             o.state = 1;
             for _ in 0..31 {

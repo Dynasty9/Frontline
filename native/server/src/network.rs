@@ -1,5 +1,5 @@
 //! ENet carries the same application packets for local and remote visual clients.
-use crate::{client_command, simulation::Input};
+use frontline_runtime::{client_command, simulation::Input};
 use rusty_enet::{Event, Host, HostSettings, Packet, PeerID};
 use serde_json::Value;
 use std::{
@@ -9,7 +9,7 @@ use std::{
     time::{Duration, Instant},
 };
 
-pub use crate::protocol::*;
+use frontline_runtime::protocol::*;
 const MAX_PENDING: usize = 384 * 1024 * 1024;
 const WINDOW: usize = 512 * 1024;
 pub const RECORDER_PEER: i32 = -1;
@@ -69,7 +69,7 @@ impl Admission {
                     .all(|b| a.peer != b.peer && a.token != b.token)
             })
     }
-    pub fn valid(&self) -> bool {
+    pub(crate) fn valid(&self) -> bool {
         self.token.len() == 48
             && self.token.bytes().all(|b| b.is_ascii_hexdigit())
             && (!self.recorder() || (self.team == -1 && self.reclaim.is_none()))
@@ -83,11 +83,11 @@ impl Admission {
             .is_ok()
     }
     /// A trusted host-only ticket observes without joining the deterministic player roster.
-    pub fn recorder(&self) -> bool {
+    pub(crate) fn recorder(&self) -> bool {
         self.peer == RECORDER_PEER
     }
 }
-pub enum Incoming {
+pub(crate) enum Incoming {
     Joined { slot: usize, admission: Admission },
     Left { slot: usize, peer: i32 },
     Command(Input),
@@ -139,14 +139,14 @@ impl Connection {
         }
     }
 }
-pub struct Network {
+pub(crate) struct Network {
     host: Host<UdpSocket>,
     admissions: Vec<Admission>,
     connections: Vec<Option<Connection>>,
     closed: Vec<Incoming>,
 }
 impl Network {
-    pub fn bind(address: SocketAddr, admissions: Vec<Admission>) -> Result<Self, String> {
+    pub(crate) fn bind(address: SocketAddr, admissions: Vec<Admission>) -> Result<Self, String> {
         if !Admission::valid_list(&admissions) {
             return Err("invalid connection admissions".into());
         }
@@ -169,11 +169,14 @@ impl Network {
             closed: vec![],
         })
     }
-    pub fn address(&self) -> Result<SocketAddr, String> {
+    pub(crate) fn address(&self) -> Result<SocketAddr, String> {
         self.host.socket().local_addr().map_err(|e| e.to_string())
     }
     /// The trusted lobby can admit a late join or revoke a ticket without restarting the match.
-    pub fn replace_admissions(&mut self, players: Vec<Admission>) -> Result<(), &'static str> {
+    pub(crate) fn replace_admissions(
+        &mut self,
+        players: Vec<Admission>,
+    ) -> Result<(), &'static str> {
         if !Admission::valid_list(&players) {
             return Err("invalid connection admissions");
         }
@@ -189,14 +192,14 @@ impl Network {
         self.admissions = players;
         Ok(())
     }
-    pub fn peer(&self, slot: usize) -> Option<&Admission> {
+    pub(crate) fn peer(&self, slot: usize) -> Option<&Admission> {
         self.connections
             .get(slot)?
             .as_ref()?
             .admission
             .map(|i| &self.admissions[i])
     }
-    pub fn close(&mut self, slot: usize) {
+    pub(crate) fn close(&mut self, slot: usize) {
         if let Some(c) = self.connections.get_mut(slot).and_then(Option::take) {
             if let Some(i) = c.admission {
                 self.closed.push(Incoming::Left {
@@ -207,7 +210,7 @@ impl Network {
             self.host.peer_mut(PeerID(slot)).disconnect_now(1);
         }
     }
-    pub fn reliable(
+    pub(crate) fn reliable(
         &mut self,
         slot: usize,
         kind: u8,
@@ -228,7 +231,7 @@ impl Network {
         c.pending.push_back(Pending { kind, data });
         Ok(())
     }
-    pub fn unreliable(
+    pub(crate) fn unreliable(
         &mut self,
         slot: usize,
         kind: u8,
@@ -246,7 +249,7 @@ impl Network {
             )
             .map_err(|e| e.to_string())
     }
-    pub fn poll(&mut self) -> Result<Vec<Incoming>, String> {
+    pub(crate) fn poll(&mut self) -> Result<Vec<Incoming>, String> {
         let mut incoming = std::mem::take(&mut self.closed);
         // A chatty peer cannot monopolize the fixed-tick loop.
         for _ in 0..512 {
@@ -363,7 +366,7 @@ impl Network {
             let value: Value =
                 serde_json::from_slice(payload).map_err(|_| "invalid authorization")?;
             let token = value["token"].as_str().ok_or("missing admission token")?;
-            if value["engine"].as_str() != Some(crate::ENGINE_ID) {
+            if value["engine"].as_str() != Some(frontline_runtime::ENGINE_ID) {
                 return Err("incompatible simulation build");
             }
             let index = self
@@ -393,7 +396,7 @@ impl Network {
         match kind {
             SEND_PRESENCE if sequence == 0 => {
                 c.presence += 1;
-                if c.presence > 30 || !crate::co_command::presence(payload) {
+                if c.presence > 30 || !frontline_runtime::co_command::presence(payload) {
                     return Err("invalid screen presence");
                 }
                 if c.loaded {
@@ -404,7 +407,7 @@ impl Network {
                 }
             }
             MARK if sequence == 0 => {
-                let data = crate::co_command::mark(payload)?;
+                let data = frontline_runtime::co_command::mark(payload)?;
                 while c
                     .marks
                     .front()

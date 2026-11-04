@@ -94,7 +94,7 @@ name = "frontline_browser"
 version = "0.1.0"
 dependencies = [
  "frontline_core",
- "frontline_server",
+ "frontline_runtime",
  "serde_json",
 ]
 
@@ -107,12 +107,22 @@ dependencies = [
 ]
 
 [[package]]
-name = "frontline_server"
+name = "frontline_runtime"
 version = "0.1.0"
 dependencies = [
  "blake3",
  "flate2",
  "frontline_core",
+ "serde_json",
+]
+
+[[package]]
+name = "frontline_server"
+version = "0.1.0"
+dependencies = [
+ "blake3",
+ "frontline_core",
+ "frontline_runtime",
  "rusty_enet",
  "serde_json",
 ]

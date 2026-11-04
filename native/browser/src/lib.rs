@@ -1,6 +1,6 @@
 //! Browser workers run the desktop simulation and verifier without a socket or filesystem.
 pub mod session;
-use frontline_server::{content::Content, replay, simulation::MAX_STATE};
+use frontline_runtime::{content::Content, replay, simulation::MAX_STATE};
 use session::Session;
 use std::cell::RefCell;
 
@@ -47,7 +47,7 @@ pub extern "C" fn run(operation: u32, argument: u32) -> u32 {
             if operation == 1 {
                 let content = Content::bundled()?;
                 let verified = replay::verify(input.as_slice(), &content)?;
-                return serde_json::to_vec(&serde_json::json!({"engine":frontline_server::ENGINE_ID,
+                return serde_json::to_vec(&serde_json::json!({"engine":frontline_runtime::ENGINE_ID,
                     "frames":verified.frames,"winner":verified.simulation.state.victory.winner,
                     "state_hash":verified.state_hash.iter().map(|v|format!("{v:02x}")).collect::<String>()}))
                     .map_err(|e|e.to_string());

@@ -3,7 +3,7 @@ use frontline_core::{
     terrain::{Terrain, BASE, CRATER, DRES},
     vector::Vector3,
 };
-use frontline_server::terrain_view::{self, Surface};
+use frontline_runtime::terrain_view::{self, Surface};
 
 fn apply(bytes: &[u8], t: &mut Terrain) {
     let mut r = Reader::new(bytes, b"FLVT\x01\0\0\0").unwrap();

@@ -1,4 +1,4 @@
-use frontline_server::{
+use frontline_runtime::{
     co_command,
     content::Content,
     initial,
@@ -126,7 +126,7 @@ impl Session {
     pub fn metadata(&self) -> Value {
         let presentation: Value = serde_json::from_slice(&self.simulation.presentation)
             .expect("validated simulation presentation");
-        json!({"engine":frontline_server::ENGINE_ID,"peer":self.peer,"team":self.team,
+        json!({"engine":frontline_runtime::ENGINE_ID,"peer":self.peer,"team":self.team,
             "side":self.simulation.state.water.side,"mood":presentation.get("mood"),"replay":self.status()})
     }
     fn status(&self) -> Value {
@@ -158,7 +158,7 @@ impl Session {
         render::json(
             &mut self.packets,
             net::WELCOME,
-            json!({"engine":frontline_server::ENGINE_ID,
+            json!({"engine":frontline_runtime::ENGINE_ID,
             "peer":self.peer,"team":self.team,"entities":update.births.len(),
             "side":self.simulation.state.water.side,"tick":self.simulation.state.tick}),
         )?;
@@ -201,7 +201,7 @@ impl Session {
             net::COMMAND if self.playback.is_none() && !self.finished => {
                 let input = Input::Command {
                     peer: self.peer,
-                    command: frontline_server::client_command::decode(payload)?,
+                    command: frontline_runtime::client_command::decode(payload)?,
                 };
                 let bytes = input.encode()?.len();
                 if self.inputs.len() >= MAX_FRAME_INPUTS
