@@ -759,7 +759,7 @@ func _apply_haze(distance: float) -> void:
 		k = maxf(k, 0.45 * pow(1.0 - downward, 2.0))
 		# Sky tint separates distant ranges; keep the low valley veil out of the overhead view.
 		env.fog_aerial_perspective = 0.38 * (1.0 - downward)
-		terrain_air = float(_d.fog_d) * 0.5 * pow(1.0 - downward, 2.0)
+		terrain_air = float(_d.fog_d) * 0.22 * pow(1.0 - downward, 2.0)
 		env.fog_height = 18.0
 		env.fog_height_density = 0.0012 * pow(1.0 - downward, 2.0)
 	if ground_mat:
@@ -1255,12 +1255,12 @@ void fragment() {
 	AO_LIGHT_AFFECT = 0.25;
 	col *= mix(vec3(0.72, 0.80, 0.90), vec3(1.0), sky);
 
-	// Extinction depends on the air between the camera and rock, not the map boundary.
-	float optical_depth = max(0.0, distance(CAMERA_POSITION_WORLD, wpos) - 250.0) * terrain_air;
-	float aerial = min(0.75, 1.0 - exp(-optical_depth * exp(-max(wpos.y, 0.0) / 900.0)));
+	// Thin low-altitude air separates ranges without whitening their sunlit faces.
+	float optical_depth = max(0.0, distance(CAMERA_POSITION_WORLD, wpos) - 500.0) * terrain_air;
+	float aerial = min(0.24, 1.0 - exp(-optical_depth * exp(-max(wpos.y, 0.0) / 320.0)));
 	aerial *= smoothstep(__MAP_HALF__, __MAP_HALF__ + 200.0, edge);
 	ALBEDO = col * (1.0 - aerial);
-	EMISSION = air_color * aerial;
+	EMISSION = air_color * aerial * 0.65;
 	ROUGHNESS = mix(mix(0.96, 0.82, dirt_m), clamp(material_data.y, 0.55, 1.0), clean);
 	ROUGHNESS = mix(ROUGHNESS, mix(0.74, 0.94, macro), snow);
 	ROUGHNESS = mix(ROUGHNESS, 0.55, wet * 0.5);

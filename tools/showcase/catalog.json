@@ -3254,37 +3254,37 @@
       "summary": "Distant mountain groups lose contrast into sky-coloured haze while nearby ground retains its detail.",
       "medium": "still",
       "stage": "native-media",
-      "rationale": "Isolate this refinement against its immediate parent, with a targeted view and a distant view.",
+      "rationale": "Isolate the revision from the previous proposal with identical upstream changes, seed and camera.",
       "source_ref": "codex/realism-01-aerial",
       "sources": [
         {
           "file": "changelog/unreleased/realism-01-aerial/target-before.jpg",
-          "sha256": "52257b3e43de0cfc898b954135a6c4fde787565ad7dd6ed0579c88b4945b0d94",
+          "sha256": "24703b23c8f2a842db5ad3a72c0a3b12f696cdb171c9ee65189ca63f531a0459",
           "caption": "target before"
         },
         {
           "file": "changelog/unreleased/realism-01-aerial/target-after.jpg",
-          "sha256": "c60a5b4b3532b5e696ad516c2ef02774a1750bc60ce4108f2eccb7b4b7060218",
+          "sha256": "3910c178b48bab353d3c2449b10a3479c26d7ad04221b7964157dc4aa6340ff0",
           "caption": "target after"
         },
         {
           "file": "changelog/unreleased/realism-01-aerial/wide-before.jpg",
-          "sha256": "52257b3e43de0cfc898b954135a6c4fde787565ad7dd6ed0579c88b4945b0d94",
+          "sha256": "24703b23c8f2a842db5ad3a72c0a3b12f696cdb171c9ee65189ca63f531a0459",
           "caption": "wide before"
         },
         {
           "file": "changelog/unreleased/realism-01-aerial/wide-after.jpg",
-          "sha256": "c60a5b4b3532b5e696ad516c2ef02774a1750bc60ce4108f2eccb7b4b7060218",
+          "sha256": "3910c178b48bab353d3c2449b10a3479c26d7ad04221b7964157dc4aa6340ff0",
           "caption": "wide after"
         },
         {
           "file": "changelog/unreleased/realism-01-aerial/target-compat.jpg",
-          "sha256": "45f68275c6eff0f5d0e95d0bb9af2b53caecb847dc56838c91af6e8ca35fe7ec",
+          "sha256": "29462b38fe814784bb21c2846f182a889c4655ce19e724b5348cbb38324b2c67",
           "caption": "target compat"
         },
         {
           "file": "changelog/unreleased/realism-01-aerial/compare.gif",
-          "sha256": "8012e2b346bee5fb124efed92ab636193146c3849f1cc4bfc566e16e429e0575",
+          "sha256": "1002af6ed02f53fb03a86f43f3a2ffc8da302cc66c909cf298a61614926824c8",
           "caption": "Native frames, separate labels, shared palette, 2.5 seconds each."
         }
       ],
@@ -3293,10 +3293,10 @@
       "version": "unreleased",
       "kind": "improved",
       "capture": {
-        "before_ref": "5589b7a547d9b8089976410a6abe496befb9fdd8",
+        "before_ref": "79e9f6aa6fb9f60c26756a30f4045700a9edfe67",
         "after_ref": "codex/realism-01-aerial",
-        "before_pack": "realism-00.pck",
-        "after_pack": "realism-01.pck",
+        "before_pack": "iterate-01-before.pck",
+        "after_pack": "iterate-01-after.pck",
         "seed": 3,
         "preset": "high",
         "mood": "day",
