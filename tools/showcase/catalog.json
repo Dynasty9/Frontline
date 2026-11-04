@@ -3569,37 +3569,37 @@
       "summary": "Sheltered runoff channels darken and develop a restrained sheen while exposed rock remains dry.",
       "medium": "still",
       "stage": "native-media",
-      "rationale": "Isolate this refinement against its immediate parent, with a targeted view and a distant view.",
+      "rationale": "Isolate the revision from the previous proposal with identical upstream changes, seed and camera.",
       "source_ref": "codex/realism-06-seepage",
       "sources": [
         {
           "file": "changelog/unreleased/realism-06-seepage/target-before.jpg",
-          "sha256": "b8c6395d810e7412c83d73c5a64e9720565e012cfef343f9327ebb50f63ef58e",
+          "sha256": "f00bf5fe9a172fc02cfc9b91be9d38f8e67da1554da7b1c5972b14942123092f",
           "caption": "target before"
         },
         {
           "file": "changelog/unreleased/realism-06-seepage/target-after.jpg",
-          "sha256": "91bc3519e5dd7bf33a6c5607d2a7629ef33f909c7662278cd725425f40e274cf",
+          "sha256": "182f8f9fc4389531ee925ce17fc3cc1ceb6989921c3c2c6d207cc7e11e541377",
           "caption": "target after"
         },
         {
           "file": "changelog/unreleased/realism-06-seepage/wide-before.jpg",
-          "sha256": "e54beed0d77c3484c571e05b6e4fb2951367471113521335b8a9b605cd7483b1",
+          "sha256": "bcb4cf1e3d7e105d870106ef63f6c4afff27b85c9705b291b3bf514a53540c14",
           "caption": "wide before"
         },
         {
           "file": "changelog/unreleased/realism-06-seepage/wide-after.jpg",
-          "sha256": "e83a95e40c93578c61e69bf022e1fd5d90d4a689999e130b5c0985839bb58669",
+          "sha256": "509b432fe594dab403e02010c93553fa7c430f9165104615e8bc0b30da860d9c",
           "caption": "wide after"
         },
         {
           "file": "changelog/unreleased/realism-06-seepage/target-compat.jpg",
-          "sha256": "6abfd5cd6c79953fcd7d41ccccf07ddf733433f5a66b6f72624049b9fe085f54",
+          "sha256": "a0318b5137f319aa68eb715c6523d4b704879acfff9620071346bc253b54cccb",
           "caption": "target compat"
         },
         {
           "file": "changelog/unreleased/realism-06-seepage/compare.gif",
-          "sha256": "60515ea84cc6e4ca9f9555a5dd97ab5571cf7e9e16e3366bdab0eb4afd4b8458",
+          "sha256": "335ea15588aa219cc7c1759eda97fdc887b40a6092de3aa3a8159e1cffcb3721",
           "caption": "Native frames, separate labels, shared palette, 2.5 seconds each."
         }
       ],
@@ -3608,10 +3608,10 @@
       "version": "unreleased",
       "kind": "improved",
       "capture": {
-        "before_ref": "640191c35a6c2af6f64fe512eaf16533d964df43",
+        "before_ref": "4443a7be7617229081faee3b5d1458b04043b6ce",
         "after_ref": "codex/realism-06-seepage",
-        "before_pack": "realism-05.pck",
-        "after_pack": "realism-06.pck",
+        "before_pack": "iterate-06-before.pck",
+        "after_pack": "iterate-06-after.pck",
         "seed": 3,
         "preset": "high",
         "mood": "day",

@@ -1213,9 +1213,10 @@ void fragment() {
 	float runoff = smoothstep(0.50, 0.68, texture(detail_tex, runoff_uv).r);
 	runoff *= smoothstep(0.55, 1.2, slope) * mix(0.25, 0.85, patch);
 	rock *= mix(vec3(1.0), vec3(0.56, 0.61, 0.63), runoff);
-	rock_damp = runoff * shelter * smoothstep(0.5, 1.2, slope);
+	rock_damp = smoothstep(0.08, 0.62, runoff) * mix(0.18, 1.0, shelter) * smoothstep(0.5, 1.2, slope);
+	rock_damp *= mix(0.55, 1.0, macro);
 	rock_damp *= 1.0 - smoothstep(snow_line * 0.75, snow_line * 1.1, geology);
-	rock *= mix(vec3(1.0), vec3(0.48, 0.55, 0.58), rock_damp);
+	rock *= mix(vec3(1.0), vec3(0.40, 0.48, 0.51), rock_damp);
 	float rock_height = mix(rock_sample.a, scree_sample.a, scree * 0.7);
 	float grass_detail = dot(moss_sample.rgb, vec3(0.2126, 0.7152, 0.0722));
 	float alpine_soil = clamp(0.52 + (habitat_bake.g - 0.5) * 1.3 + geometric.z * 0.18 - slope * 0.14, 0.0, 1.0);
