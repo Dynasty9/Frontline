@@ -94,15 +94,21 @@ impl Server {
         let ready = directory.join("ready.json");
         let stop = directory.join("stop");
         let replay = directory.join("match.flrp");
-        let players = [(7, 0, '1'), (9, 1, '2'), (11, -1, '3'), (13, 0, '4'), (net::RECORDER_PEER, -1, '5')]
-            .map(|(peer, team, digit)| Admission {
-                peer,
-                team,
-                token: digit.to_string().repeat(48),
-                name: format!("Commander {peer}"),
-                reclaim: None,
-            })
-            .to_vec();
+        let players = [
+            (7, 0, '1'),
+            (9, 1, '2'),
+            (11, -1, '3'),
+            (13, 0, '4'),
+            (net::RECORDER_PEER, -1, '5'),
+        ]
+        .map(|(peer, team, digit)| Admission {
+            peer,
+            team,
+            token: digit.to_string().repeat(48),
+            name: format!("Commander {peer}"),
+            reclaim: None,
+        })
+        .to_vec();
         let config = Config {
             bind: "127.0.0.1:0".parse().unwrap(),
             admissions: players,
@@ -269,7 +275,9 @@ impl Client {
                         net::WELCOME => self.joined = true,
                         net::SPAWN => self.spawns += 1,
                         net::SNAPSHOT => {
-                            self.tick = (f32::from_le_bytes(data[..4].try_into().unwrap()) as f64 * 60.).round() as u64;
+                            self.tick = (f32::from_le_bytes(data[..4].try_into().unwrap()) as f64
+                                * 60.)
+                                .round() as u64;
                             self.reliable_snapshots += usize::from(channel_id == 0);
                         }
                         net::MESSAGE => self.messages.push(serde_json::from_slice(data).unwrap()),
@@ -422,9 +430,14 @@ fn co_command_is_team_private_authenticated_bounded_and_absent_from_replay_input
         for c in &mut clients {
             c.poll();
         }
-        assert!(Instant::now() < deadline, "observer/team marks={}/{} presence={}/{}",
-            clients[2].marks.len(), clients[3].marks.len(),
-            clients[2].presence.len(), clients[3].presence.len());
+        assert!(
+            Instant::now() < deadline,
+            "observer/team marks={}/{} presence={}/{}",
+            clients[2].marks.len(),
+            clients[3].marks.len(),
+            clients[2].presence.len(),
+            clients[3].presence.len()
+        );
         thread::sleep(Duration::from_millis(1));
     }
     assert!(clients[0].marks.is_empty() && clients[0].presence.is_empty());
@@ -537,7 +550,10 @@ fn recorder_is_read_only_does_not_start_time_and_does_not_change_the_replay() {
         observer.poll();
         thread::sleep(Duration::from_millis(1));
     }
-    assert_eq!(observer.tick, 0, "The recorder must not start a loading battle");
+    assert_eq!(
+        observer.tick, 0,
+        "The recorder must not start a loading battle"
+    );
     let mut player = Client::new(&server, '1');
     while player.tick < 16 || observer.tick < 16 {
         player.poll();
@@ -559,12 +575,25 @@ fn recorder_is_read_only_does_not_start_time_and_does_not_change_the_replay() {
         assert!(Instant::now() < deadline);
         thread::sleep(Duration::from_millis(1));
     }
-    let players: Vec<_> = [(7, 0, '1'), (9, 1, '2'), (11, -1, '3'), (13, 0, '4'), (net::RECORDER_PEER, -1, '5')]
-        .into_iter().map(|(peer, team, digit)| json!({"peer":peer,"team":team,
-            "name":format!("Commander {peer}"),"token":digit.to_string().repeat(48)})).collect();
+    let players: Vec<_> = [
+        (7, 0, '1'),
+        (9, 1, '2'),
+        (11, -1, '3'),
+        (13, 0, '4'),
+        (net::RECORDER_PEER, -1, '5'),
+    ]
+    .into_iter()
+    .map(|(peer, team, digit)| {
+        json!({"peer":peer,"team":team,
+            "name":format!("Commander {peer}"),"token":digit.to_string().repeat(48)})
+    })
+    .collect();
     let broadcast = "abcdef0123456789abcdef01";
-    fs::write(server.directory.join("admissions.json"),
-        json!({"players":players,"broadcast":broadcast}).to_string()).unwrap();
+    fs::write(
+        server.directory.join("admissions.json"),
+        json!({"players":players,"broadcast":broadcast}).to_string(),
+    )
+    .unwrap();
     while !server.directory.join("admissions.admitted").exists() {
         player.poll();
         assert!(Instant::now() < deadline);
@@ -583,9 +612,16 @@ fn recorder_is_read_only_does_not_start_time_and_does_not_change_the_replay() {
     for _ in 0..verified.frames {
         expected.step(&c, &[]).unwrap();
     }
-    assert_eq!(verified.simulation.checkpoint().unwrap(), expected.checkpoint().unwrap());
-    assert!(!player.messages.iter().any(|m| m.to_string().contains("Recorder must not play")));
-    let invalid = json!([{"peer":net::RECORDER_PEER,"team":0,"name":"Recorder","token":"5".repeat(48)}]);
+    assert_eq!(
+        verified.simulation.checkpoint().unwrap(),
+        expected.checkpoint().unwrap()
+    );
+    assert!(!player
+        .messages
+        .iter()
+        .any(|m| m.to_string().contains("Recorder must not play")));
+    let invalid =
+        json!([{"peer":net::RECORDER_PEER,"team":0,"name":"Recorder","token":"5".repeat(48)}]);
     assert!(Admission::decode(&invalid).is_err());
 }
 

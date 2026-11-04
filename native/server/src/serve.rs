@@ -116,7 +116,11 @@ impl crate::render::Output for SocketOutput<'_> {
         for &slot in self.slots {
             if self.network.peer(slot).is_some_and(Admission::recorder) {
                 // A lost scenery delta must not leave a permanent hole in the archive.
-                if self.network.reliable(slot, kind, Arc::new(data.to_vec())).is_err() {
+                if self
+                    .network
+                    .reliable(slot, kind, Arc::new(data.to_vec()))
+                    .is_err()
+                {
                     self.network.close(slot);
                 }
             } else if self.network.peer(slot).is_some()
@@ -383,7 +387,9 @@ fn run_timeline(
                 if bytes != admission_bytes {
                     let data: Value = serde_json::from_slice(&bytes).map_err(|e| e.to_string())?;
                     let id = data["broadcast"].as_str().unwrap_or("");
-                    if !id.is_empty() && (id.len() != 24 || !id.bytes().all(|b| b.is_ascii_hexdigit())) {
+                    if !id.is_empty()
+                        && (id.len() != 24 || !id.bytes().all(|b| b.is_ascii_hexdigit()))
+                    {
                         return Err("invalid public broadcast identifier".into());
                     }
                     broadcast = id.into();
@@ -720,10 +726,17 @@ fn run_timeline(
                 last_winner = simulation.state.victory.winner;
                 // The final casualty and objective state must precede the end of an archive.
                 for (&team, view) in &mut views {
-                    let recipients: Vec<_> = slots.iter()
-                        .filter_map(|(&slot, &side)| (side == team).then_some(slot)).collect();
+                    let recipients: Vec<_> = slots
+                        .iter()
+                        .filter_map(|(&slot, &side)| (side == team).then_some(slot))
+                        .collect();
                     if simulation.state.tick % 4 != 0 {
-                        publish(&mut network, &recipients, &view.update(&simulation, content), simulation.state.tick)?;
+                        publish(
+                            &mut network,
+                            &recipients,
+                            &view.update(&simulation, content),
+                            simulation.state.tick,
+                        )?;
                     }
                     let info = crate::observation::hud(&simulation, content, team)?;
                     for slot in recipients {
