@@ -3695,37 +3695,37 @@
       "summary": "Stones at the mountain foot have irregular broken faces instead of flattened round primitives.",
       "medium": "still",
       "stage": "native-media",
-      "rationale": "Isolate this refinement against its immediate parent, with a targeted view and a distant view.",
+      "rationale": "Isolate the revision from the previous proposal with identical upstream changes, seed and camera.",
       "source_ref": "codex/realism-08-fractured-stones",
       "sources": [
         {
           "file": "changelog/unreleased/realism-08-fractured-stones/target-before.jpg",
-          "sha256": "3bf3f297ce748f643905176aede83c1f7ce33691cf44baaf534115817c698f9e",
+          "sha256": "aee181676ff10ea6541460bd581783a72f67b80b6767a768bb35bcdf1da1b80e",
           "caption": "target before"
         },
         {
           "file": "changelog/unreleased/realism-08-fractured-stones/target-after.jpg",
-          "sha256": "0e5b7a4ae80575729f0624dd06cfffa2c3e18ddabf36021e048fce1ae4ff7c75",
+          "sha256": "8e3998f085c244f2c877fa3772fe5d198a5cb4956d3ac96ebbefc98e86d97298",
           "caption": "target after"
         },
         {
           "file": "changelog/unreleased/realism-08-fractured-stones/wide-before.jpg",
-          "sha256": "89959e24d2f5898d9aee0f7c2448a0003d7a8f5ce0e38791e411b20589c9870d",
+          "sha256": "61642036b7bd3a3f2b9dcc1edcf0a6cd3033cb8ea412ae9feb9305cb962937cb",
           "caption": "wide before"
         },
         {
           "file": "changelog/unreleased/realism-08-fractured-stones/wide-after.jpg",
-          "sha256": "bc222d8d932df5fd1cea476f5db7177e01e90c295ac6d3b156e421efc5834fa2",
+          "sha256": "836d0107f59af2ac45e6512e702d00cedbedf9a72eecfe9aff47f44c6a023aef",
           "caption": "wide after"
         },
         {
           "file": "changelog/unreleased/realism-08-fractured-stones/target-compat.jpg",
-          "sha256": "9ede269ec904d8050a64368c0ab023592af3952f5e9fec1a0073193ba5190a3a",
+          "sha256": "9d4b24954b1962d10cafe09539a472da3d3be3ffa78eb93a0debb6cc470aa205",
           "caption": "target compat"
         },
         {
           "file": "changelog/unreleased/realism-08-fractured-stones/compare.gif",
-          "sha256": "86f513fc68a941be16ea7d092a0352c15b63a4a5bf0702312ac56d5d941cec58",
+          "sha256": "53779c95a21550aa0427883dba7b11c14901e8ce06fa45a13faffec2c5731f4c",
           "caption": "Native frames, separate labels, shared palette, 2.5 seconds each."
         }
       ],
@@ -3734,10 +3734,10 @@
       "version": "unreleased",
       "kind": "improved",
       "capture": {
-        "before_ref": "57382f236b41aa16787b64c5e054f45304f82c8f",
+        "before_ref": "f1bdd404ee20a10886bcec30f8e47afaf2d96085",
         "after_ref": "codex/realism-08-fractured-stones",
-        "before_pack": "realism-07.pck",
-        "after_pack": "realism-08.pck",
+        "before_pack": "iterate-08-before.pck",
+        "after_pack": "iterate-08-after.pck",
         "seed": 3,
         "preset": "high",
         "mood": "day",

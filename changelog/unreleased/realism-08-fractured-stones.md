@@ -5,19 +5,19 @@ kind = "improved"
 
 [[screenshots]]
 file = "target-before.jpg"
-caption = "Before: target view, matching seed and camera."
+caption = "Previous proposal: target view, matching seed and camera."
 
 [[screenshots]]
 file = "target-after.jpg"
-caption = "After: target view, matching seed and camera."
+caption = "Revised: target view, matching seed and camera."
 
 [[screenshots]]
 file = "wide-before.jpg"
-caption = "Before: wide view, matching seed and camera."
+caption = "Previous proposal: wide view, matching seed and camera."
 
 [[screenshots]]
 file = "wide-after.jpg"
-caption = "After: wide view, matching seed and camera."
+caption = "Revised: wide view, matching seed and camera."
 +++
 
 A small set of cached seeded faceted meshes replaces decorative pebble spheres. Placement, passability and replicated dressing data stay unchanged.
@@ -25,3 +25,5 @@ A small set of cached seeded faceted meshes replaces decorative pebble spheres. 
 Research: [primary reference](https://wargaming.com/en/news/creating_levels/).
 
 Natural stones also use a rough granular material instead of the masonry material with mortar joints.
+
+Decorative stones use the bundled rock photograph with triplanar projection, retaining their shared fractured meshes and avoiding flat grey surfaces.

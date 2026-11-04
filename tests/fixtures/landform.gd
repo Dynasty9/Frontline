@@ -26,6 +26,7 @@ func _ready() -> void:
 		for j in vertices.size():
 			assert(normals[j].dot(vertices[j]) > 0.0, "Stone faces point outward")
 	assert(Res.alpine_stone(0).get_aabb() != Res.alpine_stone(1).get_aabb(), "Stone variants have distinct fractured profiles")
+	assert(Mats.get_mat("alpine_stone").get_shader_parameter("stone_texture") is Texture2D, "Natural stones bind their photographic surface in merged batches")
 	var horizon := Atmosphere.backdrop_image(3)
 	assert(horizon.get_size() == Vector2i(512, 512) and horizon.has_mipmaps() and horizon.get_format() == Image.FORMAT_RF)
 	assert(horizon.get_data() == Atmosphere.backdrop_image(3).get_data(), "Scenery is deterministic for every peer")
