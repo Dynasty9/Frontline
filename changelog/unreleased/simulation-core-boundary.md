@@ -54,9 +54,14 @@ caption = "Before: damage rebuilds the whole street-decoration chunk. This fixtu
 file = "decor-damage-after.png"
 caption = "After: only the damaged geometry, lights and wires are removed. The same fixture is pixel-identical on Vulkan and Compatibility, without rebuilding neighboring scenery. Falling props are omitted in this geometry comparison."
 
+[[screenshots]]
+file = "soldier-pose-atlas.png"
+caption = "Original meshes on the left of each pair and GPU animated meshes on the right, with identical translation and turning. Rows show standing, crouching and prone; columns show idle and four walking phases. Shared animation keeps these poses while reducing repeated draw batches."
+
 +++
 
 - Desktop battles now run in a separate Rust process while Godot draws the battlefield and handles your orders. Infantry, vehicles, combat, logistics, tactical AI, commanders and the five operations use the same authoritative simulation.
+- Shared soldier models animate their existing standing, crouching, prone and walking poses on the GPU, reducing draw batches and repeated CPU uploads while preserving the whole army. Pausing and replay speed also control these animations.
 - Multiplayer keeps its existing lobby connection. Friends can join running battles, receive their starter troops at the original FOB, and reclaim surviving forces after reconnecting. Teammate cursors, pings, sketches and action notifications pass through the Rust server with team privacy intact.
 - Remote clients process relayed updates within the same per-frame budget as direct connections, avoiding a burst of network messages decoding all at once. Queues are bounded, and acknowledgements follow processed state.
 - Pausing freezes battle time. Reconnecting returns you to the same battle and troops. Closing a session finishes its command recording so the independent verifier can reproduce its final state and outcome.

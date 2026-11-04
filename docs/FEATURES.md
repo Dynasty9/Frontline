@@ -1255,7 +1255,10 @@ moving, resizing, disabling or removing a blocker invalidates the result;
 smoke and positive visibility are checked afresh. Detection timing is unchanged.
 
 Distant soldiers use shared baked poses of their procedural models, including
-standing, crouching, prone and walking poses. Four nearby soldiers retain
+standing, crouching, prone and walking poses. A vertex-animation texture retains
+the same 15 poses per appearance and selects the 8 Hz walking phase on the GPU.
+Stances share one spatial batch, and walking alone does not rebuild instance buffers.
+The animation follows battle time, including pause and replay speed. Four nearby soldiers retain
 articulated animation at command zoom, rising to 16 below 22 m for close inspection,
 prioritizing selected troops and then proximity. Other
 soldiers remain visible through the shared poses; the simulation and selection
