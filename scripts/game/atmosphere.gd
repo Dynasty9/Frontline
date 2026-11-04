@@ -1192,14 +1192,15 @@ void fragment() {
 	// Loose debris persists below rock walls, especially in concave sheltered ground.
 	float talus = smoothstep(0.12, 0.45, slope) * (1.0 - smoothstep(0.85, 1.5, slope));
 	talus *= smoothstep(4.0, 22.0, geology) * (1.0 - smoothstep(snow_line * 0.65, snow_line, geology));
-	talus *= mix(0.35, 1.0, shelter) * mix(0.55, 1.0, patch);
+	talus *= smoothstep(0.25, 0.72, shelter * 0.55 + patch * 0.25 + macro * 0.2);
+	talus *= height_blend(rock_sample.a, scree_sample.a, 0.65);
 	scree = max(scree, talus);
 	float stone = dot(rock_sample.rgb, vec3(0.2126, 0.7152, 0.0722));
 	vec3 rock = mix(vec3(stone), rock_sample.rgb, 0.45) * vec3(1.04, 1.10, 1.18);
 	rock = mix(rock, scree_sample.rgb * vec3(1.04, 1.06, 1.07), scree * 0.7);
 	rock *= mix(vec3(0.58, 0.67, 0.78), vec3(1.28, 1.17, 0.98), region);
 	rock *= mix(1.12, 0.65, weathered);
-	rock = mix(rock, scree_sample.rgb * vec3(1.12, 1.10, 1.05), talus * 0.7);
+	rock = mix(rock, scree_sample.rgb * vec3(1.01, 1.04, 1.07), talus * 0.8);
 	rock = mix(rock, rock * vec3(1.45, 1.40, 1.29), mineral * 0.65);
 	rock *= mix(0.86, 1.14, smoothstep(0.25, 0.75, macro));
 	// Stretch the stain field vertically; ledges and material patches interrupt each streak.
