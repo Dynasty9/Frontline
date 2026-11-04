@@ -3443,37 +3443,37 @@
       "summary": "Sheltered lower slopes collect pale loose stone while exposed walls retain darker bedrock.",
       "medium": "still",
       "stage": "native-media",
-      "rationale": "Isolate this refinement against its immediate parent, with a targeted view and a distant view.",
+      "rationale": "Isolate the revision from the previous proposal with identical upstream changes, seed and camera.",
       "source_ref": "codex/realism-04-talus",
       "sources": [
         {
           "file": "changelog/unreleased/realism-04-talus/target-before.jpg",
-          "sha256": "ff8494002ac166da0294874da8fb84423ad23703ef9ccd4f57ef68f4ffa22f22",
+          "sha256": "93592fe7672b9e0ac07b84999eb758b91d8f2dfb318875eb6bf8dcd96084c807",
           "caption": "target before"
         },
         {
           "file": "changelog/unreleased/realism-04-talus/target-after.jpg",
-          "sha256": "44f68ec33da357bef2042a5f98fcc2c0bf2aa076c6e5b9cc700e588a8579152a",
+          "sha256": "2f39c4f37b581794ec6419e6a2992e6708be2ff17c2b503417a75cd21f1967ad",
           "caption": "target after"
         },
         {
           "file": "changelog/unreleased/realism-04-talus/wide-before.jpg",
-          "sha256": "1405db7e3626b7db01f623b293b89c9c4730979681fc9828f8f96da4bc799fcc",
+          "sha256": "c62e7616aad5fea7bccc1d12e19ac97cc3a347519f5829d013971fd06f6c34f1",
           "caption": "wide before"
         },
         {
           "file": "changelog/unreleased/realism-04-talus/wide-after.jpg",
-          "sha256": "41886eca37cdce279a507e30dffda1256808c0a0c7e8d8fc75e7c03497bed71e",
+          "sha256": "89e55c72d23841cbb1e2cec9bfa5fe4b0127565a206bb4be80714444d755a593",
           "caption": "wide after"
         },
         {
           "file": "changelog/unreleased/realism-04-talus/target-compat.jpg",
-          "sha256": "63cafd86772957bab13bb5adff611a3813163d56178f5d43ae497657013dc76f",
+          "sha256": "1d5817886d1b1e8d47c816ee93c9378b2f2b65ebfe634352c1f4222d3c811e09",
           "caption": "target compat"
         },
         {
           "file": "changelog/unreleased/realism-04-talus/compare.gif",
-          "sha256": "3f0202ba6a128303b9d344f3f5c6d8b5b81dd461ca561b8d00dae7be86c13b00",
+          "sha256": "d22ea60f6315f687b005574dfb7eca65c9575f7c901b5be5c64922155a89c1b2",
           "caption": "Native frames, separate labels, shared palette, 2.5 seconds each."
         }
       ],
@@ -3482,10 +3482,10 @@
       "version": "unreleased",
       "kind": "improved",
       "capture": {
-        "before_ref": "a3888ca5a3a4b6c333906acf019e36abe900099a",
+        "before_ref": "4ca53c19e70b0c95b2758cee0e057882da3bd749",
         "after_ref": "codex/realism-04-talus",
-        "before_pack": "realism-03.pck",
-        "after_pack": "realism-04.pck",
+        "before_pack": "iterate-04-before.pck",
+        "after_pack": "iterate-04-after.pck",
         "seed": 3,
         "preset": "high",
         "mood": "day",
