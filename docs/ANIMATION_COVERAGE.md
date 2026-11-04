@@ -48,6 +48,8 @@ This is routing coverage, not visual approval. A clip appearing in the viewer do
 
 Standing/crouched idle, walking/running, standard shooting/reload; grenade toss; stationary digging and smoking; prone entry; weapon stow/draw. Hit reaction is a captured upper-body overlay. Playground jumping also uses the installed rifle jump.
 
+The playground jump samples that captured flight using vertical velocity and waits for physical ground contact before blending back to locomotion. Early, normal and delayed landing timing is covered by `tests/mocap/jump_timing.tscn`; this is not a new battlefield jump action.
+
 ## Installed but not fully routed
 
 Sitting Idle, Piloting, Jostled Passenger, Entering Car, Exiting Car; rifle-pack turn/start/stop/death variants. Rifle Prone To Kneel now supplies the exit to crouched/standing locomotion.
@@ -69,13 +71,13 @@ Imported: Crouch To Prone, Prone To Crouch Transition, Rifle Prone Hit Reaction,
 Downloaded in this pass: Getting Up, Rifle Stand To Kneel, Rifle Kneel To Stand, Rifle Aim To Down, Rifle Down To Aim, crouched Throw Grenade, kneeling Grenade Throw, Smash and rifle Dive Roll. The stance pair and crouched throw are routed into gameplay. Getting Up, aim transitions, the longer kneeling throw, melee and roll remain inspection candidates until their timing, grips and action fit are validated. Jumping Over Into Combat and the 20-clip Pistol/Handgun Locomotion Pack are also downloaded and installed for inspection, not yet gameplay-routed.
 
 Other visible candidates to preview before choosing:
-- Grenade Throw — kneeling, pulling pin with teeth.
-- Throw Grenade — crouched throw.
+- Grenade Throw â€” kneeling, pulling pin with teeth.
+- Throw Grenade â€” crouched throw.
 - Rifle Stand To Kneel; Rifle Aim To Down.
-- Smash — strike with the back of a rifle or staff.
-- Dive Roll — rifle dive roll (not automatically a suitable belly-down dive).
-- Jumping Over Into Combat — obstacle crossing (must match obstacle height).
-- Pistol/Handgun Locomotion Pack — 20 animations.
+- Smash â€” strike with the back of a rifle or staff.
+- Dive Roll â€” rifle dive roll (not automatically a suitable belly-down dive).
+- Jumping Over Into Combat â€” obstacle crossing (must match obstacle height).
+- Pistol/Handgun Locomotion Pack â€” 20 animations.
 
 Generic Crawling (hands and knees), Low Crawl, Crawl Forward and zombie variants are also listed. Do not substitute these blindly for the armed prone family.
 

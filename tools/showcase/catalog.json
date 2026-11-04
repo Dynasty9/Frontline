@@ -2879,6 +2879,36 @@
       "version": "unreleased",
       "kind": "improved",
       "attribution": "Native fixed-step capture; optional assets remain local."
+    },
+    {
+      "entry": "changelog/unreleased/jump-landing.md",
+      "summary": "Captured jump flight follows vertical movement and recovers after ground contact.",
+      "medium": "motion",
+      "stage": "native-media",
+      "rationale": "Before and after frames expose the early return to locomotion; the recording shows the corrected level-ground jump.",
+      "source_ref": "PR98 shared controller jump-preview fixture; fixed 30 fps, level ground. Before: 78b36be; after: physical landing synchronization.",
+      "sources": [
+        {
+          "file": "changelog/unreleased/jump-landing/jump.mp4",
+          "sha256": "4e3160d5d381ec59c73b5a43d708c045fec31def05f47ef6a615a6fa43c24fd1",
+          "caption": "Controlled level-ground jump, not battlefield performance."
+        },
+        {
+          "file": "changelog/unreleased/jump-landing/before.jpg",
+          "sha256": "bc75417e69e8a33091023845e9146a6ce05aa20aae8a0e9e897726bb436ced00",
+          "caption": "Before: early fade to locomotion in flight."
+        },
+        {
+          "file": "changelog/unreleased/jump-landing/after.jpg",
+          "sha256": "d6181093507c7a3e5b3db3fe28d1088dca76b3458a98982cc4a5eb5e471b8dc4",
+          "caption": "After: flight pose persists until landing."
+        }
+      ],
+      "output": null,
+      "title": "Jump animation follows the landing",
+      "version": "unreleased",
+      "kind": "fixed",
+      "attribution": "Native fixed-step capture; optional assets remain local."
     }
   ],
   "layout_capture": {

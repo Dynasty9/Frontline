@@ -53,6 +53,8 @@ var slope_normals := [Vector3.UP, Vector3.UP]
 var socket := Transform3D.IDENTITY
 var support_grip := Transform3D.IDENTITY
 var jump_count := 0
+var jump_launch_speed := 0.0
+var jump_landing_time := -1.0
 var reload_count := 0
 var max_contact_change := 0.0
 var worst_contact_time := 0.0
@@ -200,7 +202,10 @@ func request_action(next: String) -> bool:
 	if actor.dead or action != "": return false
 	action = next
 	action_time = 0.0
-	if next == "rifle_jump": jump_count += 1
+	if next == "rifle_jump":
+		jump_count += 1
+		jump_launch_speed = 0.0
+		jump_landing_time = -1.0
 	if next == "reloading": reload_count += 1
 	return true
 
@@ -373,9 +378,18 @@ func advance(dt: float, velocity: Vector3, crouching: bool, grounded: bool, relo
 		var animation := actor.native_player.get_animation(PACK + action)
 		var length := animation.length
 		var t := minf(action_time, length)
+		if action == "rifle_jump":
+			jump_launch_speed = maxf(jump_launch_speed, velocity.y)
+			# The captured clip is one flight; keep its apex and landing tied to the collision body.
+			t = length * clampf(0.5 - velocity.y / maxf(jump_launch_speed * 2.0, 0.01), 0.0, 1.0)
+			if grounded:
+				jump_landing_time = maxf(jump_landing_time, 0.0) + dt
+				t = length
 		_sample(action, t)
 		var action_hips := actor.skeleton.get_bone_pose(int(actor.bones["Hips"])).basis
 		action_weight = minf(smoothstep(0.0, 0.18, t), 1.0 - smoothstep(length - 0.22, length, t))
+		if action == "rifle_jump":
+			action_weight = smoothstep(0.0, 0.08, action_time) * (1.0 - smoothstep(0.0, 0.14, maxf(jump_landing_time, 0.0)))
 		for i in poses.size():
 			if action == "reloading" and not upper[i]: continue
 			var sample := actor.skeleton.get_bone_pose(i)
@@ -386,7 +400,7 @@ func advance(dt: float, velocity: Vector3, crouching: bool, grounded: bool, relo
 			poses[i] = poses[i].interpolate_with(sample, action_weight)
 		target_socket = actor.native_socket.interpolate_with(actor.native_sockets.get(PACK + action, actor.native_socket), action_weight)
 		state = "Reload" if action == "reloading" else "Jump"
-		if action_time >= length:
+		if (action == "rifle_jump" and jump_landing_time >= 0.14) or (action != "rifle_jump" and action_time >= length):
 			action = ""
 			action_weight = 0.0
 	for i in poses.size(): actor.skeleton.set_bone_pose(i, poses[i])
