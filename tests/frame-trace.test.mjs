@@ -32,6 +32,13 @@ test("benchmark trace exports aligned chronological samples without changing the
     assert.deepEqual(printed.frames, report.frames);
     assert.equal(printed.frame_samples_ms, undefined, "Raw samples stay in the requested file");
     assert.equal(printed.thread_accounting, undefined);
+    assert.equal(printed.frame_engine_counters, undefined);
+    assert.deepEqual(Object.keys(report.frame_engine_counters).sort(), ["nodes", "pipeline_compilations"]);
+    for (const values of Object.values(report.frame_engine_counters)) {
+      assert.equal(values.length, report.frames.count);
+      assert.ok(values.every((value) => Number.isInteger(value) && value >= 0));
+    }
+    assert.ok(report.frame_engine_counters.nodes.every((value) => value > 0));
     if (process.platform === "win32") {
       assert.ok(report.thread_accounting, "Windows trace includes calling-thread CPU accounting");
       for (const values of Object.values(report.thread_accounting)) {

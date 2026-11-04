@@ -290,7 +290,7 @@ static func merge_static(root: Node3D, keep: Array = [], deep := true, remerge :
 
 ## The merged meshes, under `root`: one per material (and shadow setting), or
 ## with `single` one mesh with a surface per material.
-static func _emit(root: Node3D, groups: Dictionary, single: bool) -> void:
+static func _emit(root: Node3D, groups: Dictionary, single: bool, flags := 0) -> void:
 	if single and not groups.is_empty():
 		# one mesh, a surface per material: one render instance to move, not a dozen
 		var am2 := ArrayMesh.new()
@@ -319,12 +319,25 @@ static func _emit(root: Node3D, groups: Dictionary, single: bool) -> void:
 		arrays[Mesh.ARRAY_NORMAL] = g.n
 		arrays[Mesh.ARRAY_COLOR] = g.c
 		var am := ArrayMesh.new()
-		am.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+		am.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays, [], {}, flags)
 		var mi := MeshInstance3D.new()
 		mi.mesh = am
 		mi.material_override = g.mat if g.mat.get_shader_parameter("use_vcolor") == true else vc_variant(g.mat)
 		mi.cast_shadow = g.shadow
 		root.add_child(mi)
+
+
+const HIDDEN_VERTEX := Vector3(0, -1000000, 0)
+
+
+static func hide_vertices(mesh: ArrayMesh, first: int, count: int) -> void:
+	# Foliage shaders can expand a collapsed triangle, and a collapsed line can draw a pixel.
+	var stride := RenderingServer.mesh_surface_get_format_vertex_stride(mesh.surface_get_format(0), mesh.surface_get_array_len(0))
+	assert(stride == 12, "Mutable scenery uses uncompressed 3D positions")
+	var hidden := PackedVector3Array()
+	hidden.resize(count)
+	hidden.fill(HIDDEN_VERTEX)
+	mesh.surface_update_vertex_region(0, first * stride, hidden.to_byte_array())
 
 
 ## The parts that went into the merged meshes let go of their meshes now, and
@@ -612,9 +625,19 @@ class Bake:
 			tint, parent * xf, single)
 
 	## The merged meshes, added under `root` (as merge_static adds them).
-	func commit(root: Node3D) -> void:
-		Mats._emit(root, groups, single)
+	## Mutable batches return their meshes by material so damage can remove individual parts.
+	func commit(root: Node3D, mutable := false) -> Dictionary:
+		assert(not mutable or not single)
+		var first := root.get_child_count()
+		Mats._emit(root, groups, single, Mesh.ARRAY_FLAG_USE_DYNAMIC_UPDATE if mutable else 0)
+		var surfaces := {}
+		if mutable:
+			# One direct mesh per material, in the same order as the collected groups.
+			for key in groups:
+				surfaces[key] = (root.get_child(first) as MeshInstance3D).mesh
+				first += 1
 		groups = {}
+		return surfaces
 
 
 ## A node's transform from its position, rotation and scale, worked out as

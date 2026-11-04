@@ -273,11 +273,7 @@ func unbatch(st: Structure, leaving := false) -> void:
 	var cell: Vector2i = member.cell
 	var batch: Dictionary = _draw_batches[cell]
 	for span: Array in member.ranges:
-		var mesh: ArrayMesh = span[0]
-		var stride := RenderingServer.mesh_surface_get_format_vertex_stride(mesh.surface_get_format(0), mesh.surface_get_array_len(0))
-		var empty := PackedByteArray()
-		empty.resize(int(span[2]) * stride)
-		mesh.surface_update_vertex_region(0, int(span[1]) * stride, empty)
+		Mats.hide_vertices(span[0], span[1], span[2])
 	for mesh in member.meshes:
 		batch.meshes.erase(mesh)
 		if is_instance_valid(mesh):

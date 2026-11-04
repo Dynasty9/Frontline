@@ -244,6 +244,9 @@ their per-frame differences in `thread_accounting`. CPU accounting can have coar
 resolution than a frame: compare aggregates, and do not convert cycles to elapsed
 time. These extra calls run only with the trace enabled. The collector runs before early network and
 effect callbacks so each view sample belongs to the preceding complete frame.
+`frame_engine_counters` records pipeline compilations during each frame and the
+node count at its end. These aligned counts help distinguish shader stalls and
+scene churn from script work; they are not durations.
 Component timings can overlap; do not sum nested phases as independent costs.
 The trace includes `started_unix_s` and prints `FRAME_TRACE_BEGIN` once, allowing
 its frame intervals to be aligned with an external CPU/scheduling trace. Client

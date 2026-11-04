@@ -1322,3 +1322,52 @@ The new recorded battle independently verifies all 8,171 ticks as unfinished
 Its engine identity remains
 `589f5fe1ac986031fdb80da9a1be9c3d41bcffc4bb9b12c934567e5baed48dd5`.
 See `build/native-motion-replay-verify.log`.
+
+## Decoration damage and remaining frame spikes
+
+Frame traces now include aligned pipeline-compilation and node counts. The
+500-unit, 3,072 m battle recorded zero pipeline compilations during capture.
+Separate phase probes found that music, the performance overlay, console and
+scenery visibility were inexpensive. Timing the complete decoration callback
+revealed 6.6–12.5 ms spikes when damage rebuilt whole street-furniture chunks.
+See `build/player-callback-detail-1/` and `build/player-deferred-detail-1/`.
+
+Decoration meshes now retain vertex ranges for each breakable item. Damage
+removes those ranges and the corresponding glow, lights and attached wires;
+the fallen physical prop uses the existing model and impulse. Undamaged parts
+and meshes remain in place. The shared removal helper also fixes tiny foliage
+remnants in structure batches: shader-displaced triangles and zero-length lines
+are placed below the visible world instead of collapsed at the batch origin.
+
+Two matched controls averaged 71.01–72.36 FPS, with frame p99 of 23.78–24.02 ms.
+The two changed runs averaged 69.37–70.98 FPS, with p99 of 23.43–24.95 ms. They
+do not establish an average-FPS or p99 improvement. Decoration callback maxima
+fell to 0.033–0.081 ms, and frames above 30 ms fell from 7/6 to 1/4 across the
+paired captures. The largest adjacent-frame changes fell from 21.29/20.73 ms
+to 13.65/16.68 ms. All four runs recorded 50 destroyed decoration items. Other
+applications remained running. These captures precede the final shared
+below-world removal correction, which has a separate final validation run.
+Evidence: `build/decor-regions-comparison.json` and the corresponding
+`build/player-decor-{control,regions}-*/` directories.
+
+The final geometry fixture covers every breakable type, repeated hits, adjacent
+geometry, attached and unrelated wires, fallen-prop construction, night lights
+and mood changes. Both Vulkan and Compatibility produce pixel-identical images
+against the previous chunk-rebuild implementation after destroying a lamp, pole,
+clothesline and planter. Tests also cover structure-batch removal and trace-array
+alignment. See `build/decor-final2-tests.log`,
+`build/decor-final2-{decor-damage,structure-batches,decor-pixels}-*.log`, and the
+before/after decoration images in the changelog. The steady 60 FPS gate remains
+open; this removes a measured combat spike rather than proving that gate.
+
+The final corrected package averaged 68.40 FPS, with 24.891 ms frame p99,
+31.680 ms maximum, 9.850 ms adjacent-frame p99 and a 0.061 ms decoration-callback
+maximum. All 50 decoration damage events still occurred. This result also misses
+the frame-time target. See `build/player-decor-regions-final/`.
+The Web export and actual Chromium move/pause/save/verified-reopen/observer-seek
+flow passed, including the Hunter preview (`build/decor-final2-browser.log`).
+The independent verifier reproduced all 8,179 recorded ticks as an unfinished
+battle, with final state
+`62fd899a0daeb34211693d83659cb5002f38d0fd363396ae172bb5f6af25dd18` and the unchanged
+`589f5fe1ac986031fdb80da9a1be9c3d41bcffc4bb9b12c934567e5baed48dd5` engine identity.
+See `build/decor-final-replay-verify.log`.

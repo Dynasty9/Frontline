@@ -50,7 +50,7 @@ func _ready() -> void:
 		for span: Array in spans:
 			var vertices: PackedVector3Array = (span[0] as ArrayMesh).surface_get_arrays(0)[Mesh.ARRAY_VERTEX]
 			for i in range(span[1], span[1] + span[2]):
-				assert(vertices[i] == Vector3.ZERO, "Removed triangles must collapse, including their shadows")
+				assert(vertices[i] == Mats.HIDDEN_VERTEX, "Removed triangles and their shadows must leave the visible world")
 			assert(vertices[vertices.size() - 1] != Vector3.ZERO, "Neighbouring geometry must remain intact")
 	assert(view._draw_batches.size() == 1 and view._draw_members.size() == 1)
 	assert(a.model.get_child(0).visible and not b.model.get_child(0).visible, "Changing one structure restores only its original meshes")

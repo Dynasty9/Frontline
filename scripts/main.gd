@@ -54,6 +54,9 @@ var _perf_cpu_clock: RefCounted
 var _perf_cpu_last := PackedInt64Array()
 var _perf_cpu_samples: Array[float] = []
 var _perf_cycles: Array[int] = []
+var _perf_compiles: Array[int] = []
+var _perf_nodes: Array[int] = []
+var _perf_compiles_last := 0
 var _perf_view_samples := {}
 var _perf_worst_frame := {}
 var _battle_pending := false  # the rank's battle clock starts once the world is running
@@ -1031,6 +1034,11 @@ func _process(_dt: float) -> void:
 			if _perf_frame_us > 0:
 				var frame_ms := (frame_now - _perf_frame_us) / 1000.0
 				_perf_frame_samples.append(frame_ms)
+				if OS.has_environment("FL_DEBUG_FRAME_TRACE"):
+					var compiles := PerfProbe._compiles()
+					_perf_compiles.append(maxi(0, compiles - _perf_compiles_last))
+					_perf_compiles_last = compiles
+					_perf_nodes.append(int(Performance.get_monitor(Performance.OBJECT_NODE_COUNT)))
 				if _perf_cpu_clock:
 					var counters: PackedInt64Array = _perf_cpu_clock.sample()
 					if counters.size() == 2 and counters[0] >= _perf_cpu_last[0] and counters[1] >= _perf_cpu_last[1]:
@@ -1078,6 +1086,9 @@ func _process(_dt: float) -> void:
 						_perf_cpu_clock = null
 			_perf_cpu_samples.clear()
 			_perf_cycles.clear()
+			_perf_compiles.clear()
+			_perf_nodes.clear()
+			_perf_compiles_last = PerfProbe._compiles()
 			_perf_frame_samples.clear()
 			_perf_render_cpu.clear()
 			_perf_render_gpu.clear()
@@ -1145,6 +1156,7 @@ func _process(_dt: float) -> void:
 						"total": _perf_frame_samples, "views": _perf_view_samples,
 						"render_cpu": _perf_render_cpu, "render_gpu": _perf_render_gpu,
 						"process_monitor": _perf_process, "physics_monitor": _perf_physics}
+					report["frame_engine_counters"] = {"pipeline_compilations": _perf_compiles, "nodes": _perf_nodes}
 					if not _perf_cpu_samples.is_empty():
 						# OS accounting can be coarser than a frame; cycles are not elapsed time.
 						report["thread_accounting"] = {"cpu_ms": _perf_cpu_samples, "cycles": _perf_cycles}

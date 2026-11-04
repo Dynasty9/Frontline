@@ -638,7 +638,8 @@ Sky Hook prepares reachable vehicle approaches for its convoy before the battle 
 - Walls, hedges, trees, cars and crates are all real cover. Street furniture is set dressing generated on the
   server and built on each client, and it breaks: a blast or a vehicle driving through knocks lamps, utility poles
   (their wires come down with them), signs, benches, bins, fences and playground kit over, and the pieces fall and
-  lie where they land. Broken street lights stay dark at night.
+  lie where they land. Broken street lights stay dark at night. Damage removes only the fallen item's
+  vertices, glow and attached wires from the shared scenery meshes, avoiding whole-block rebuilds during combat.
 - Trees are broadleaves (a flared trunk forking into limbs that carry clumps of leaves, darker underneath),
   spruces (many overlapping tiers of boughs) and small orchard trees; foliage has ragged, leafy edges and throws
   dappled shadows. A tree that is shelled or run over falls away from what hit it and stays down.

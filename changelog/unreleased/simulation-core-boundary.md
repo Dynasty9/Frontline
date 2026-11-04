@@ -46,6 +46,14 @@ caption = "Last-seen battlefield contacts, before on the left and after on the r
 file = "collapse-pool.png"
 caption = "Before (left) and prepared emitters (right): collapse sparks and ash retain their appearance while reusing particle systems. Individual particle positions differ."
 
+[[screenshots]]
+file = "decor-damage-before.png"
+caption = "Before: damage rebuilds the whole street-decoration chunk. This fixture shows the remaining scenery after a lamp, pole, clothesline and planter have been destroyed."
+
+[[screenshots]]
+file = "decor-damage-after.png"
+caption = "After: only the damaged geometry, lights and wires are removed. The same fixture is pixel-identical on Vulkan and Compatibility, without rebuilding neighboring scenery. Falling props are omitted in this geometry comparison."
+
 +++
 
 - Desktop battles now run in a separate Rust process while Godot draws the battlefield and handles your orders. Infantry, vehicles, combat, logistics, tactical AI, commanders and the five operations use the same authoritative simulation.
@@ -110,3 +118,5 @@ caption = "Before (left) and prepared emitters (right): collapse sparks and ash 
 - Exported games include the immutable game data required to start their simulation.
 - Windows native components include their C runtime, so starting a battle does not require a separate Visual C++ redistributable installation.
 - Large-map rendering performance is still under measurement; this change does not yet establish steady 60 FPS with 500 units.
+- Optional frame traces now include shader-compilation and scene-node counts to help diagnose remaining stutters.
+- Explosions and vehicles remove only the broken street furniture from shared scenery meshes, avoiding full decoration-block rebuilds. Falling props, disconnected wires and darkened lamps retain their behavior.
