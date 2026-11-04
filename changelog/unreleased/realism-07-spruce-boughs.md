@@ -5,21 +5,23 @@ kind = "improved"
 
 [[screenshots]]
 file = "target-before.jpg"
-caption = "Before: target view, matching seed and camera."
+caption = "Previous proposal: target view, matching seed and camera."
 
 [[screenshots]]
 file = "target-after.jpg"
-caption = "After: target view, matching seed and camera."
+caption = "Revised: target view, matching seed and camera."
 
 [[screenshots]]
 file = "wide-before.jpg"
-caption = "Before: wide view, matching seed and camera."
+caption = "Previous proposal: wide view, matching seed and camera."
 
 [[screenshots]]
 file = "wide-after.jpg"
-caption = "After: wide view, matching seed and camera."
+caption = "Revised: wide view, matching seed and camera."
 +++
 
 A shared low-polygon bough mesh replaces each solid cone tier, preserving the existing tree batching, burn state and placement.
 
 Research: [primary reference](https://wargaming.com/en/news/creating_levels/).
+
+Spruce sprays have divided tips and irregular branch lengths, producing fuller foliage with broken edges rather than flat triangular tiers.

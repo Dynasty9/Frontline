@@ -206,12 +206,15 @@ static func spruce_boughs() -> ArrayMesh:
 		var a := TAU * i / 9.0
 		var out := Vector3(cos(a), 0, sin(a))
 		var side := Vector3(-out.z, 0, out.x)
-		var reach := 0.82 + 0.18 * sin(i * 2.4 + 0.7)
-		var tip := out * reach + Vector3(0, -0.48, 0)
-		var left := out * 0.38 - side * 0.32 + Vector3(0, -0.12, 0)
-		var right := out * 0.38 + side * 0.32 + Vector3(0, -0.12, 0)
-		var top := Vector3(0, 0.5, 0)
-		for point in [top, tip, right, top, left, tip, top, right, left, left, right, tip]:
+		var reach := 0.76 + 0.24 * sin(i * 2.4 + 0.7)
+		var top := out * 0.12 + Vector3(0, 0.42, 0)
+		var left := out * 0.36 - side * 0.30 + Vector3(0, -0.08, 0)
+		var right := out * 0.36 + side * 0.30 + Vector3(0, -0.08, 0)
+		var tip_l := out * reach - side * 0.12 + Vector3(0, -0.43, 0)
+		var tip_r := out * (reach * 0.84) + side * 0.15 + Vector3(0, -0.34, 0)
+		var notch := out * (reach * 0.64) + Vector3(0, -0.29, 0)
+		for point in [top, left, tip_l, top, tip_l, notch, top, notch, tip_r, top, tip_r, right,
+			left, notch, tip_l, right, tip_r, notch, top, right, left, left, right, notch]:
 			st.add_vertex(point)
 	st.generate_normals()
 	var mesh := st.commit()
