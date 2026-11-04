@@ -1178,3 +1178,23 @@ work inside Godot rather than attributing these spikes primarily to scheduling.
 CPU accounting is coarse, and cycle counts are not elapsed time or a function
 profile. Normal play does not sample these counters. The simulation engine and
 recording identity are unchanged by these client-only changes.
+
+### Contact diamonds and retained minimap camera drawing
+
+The existing atlas now also draws world-space contact diamonds. Their question
+marks and ages retain normal font rendering; the atlas changes stroke
+antialiasing slightly. In a 96-marker, 120-redraw probe, drawing took 483,748
+microseconds before and 82,989 after on Vulkan, and 308,013/115,501 on Compatibility.
+Both rendered comparisons were inspected. This is an isolated drawing benchmark.
+
+Stationary minimap camera drawing is retained rather than rebuilt each frame.
+Movement, projection, focus, terrain changes and hover remain immediate, while
+resize and rotating-map changes invalidate all layers. Focused regressions pass.
+In the same full player-view ABBA comparison, this layer's mean fell from
+0.161/0.163 ms to 0.009/0.008 ms. Overall FPS was 59.57/58.08 before and
+59.18/60.44 after; frame p99 was 29.30/30.32 ms before and 30.39/29.82 after.
+Adjacent-frame difference p99 was 12.33/12.74 versus 12.73/12.73 ms. These
+component savings do not establish an overall frame-tail improvement.
+Evidence: `build/contact-camera-comparison.json`, `build/player-contact-*/`,
+`build/contact-atlas-{vulkan,gl}.{log,png}` and `build/contact-atlas-tests.log`
+(the separate disconnected-peer fixture was corrected and passed afterward).

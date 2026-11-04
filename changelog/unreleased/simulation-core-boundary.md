@@ -38,6 +38,10 @@ caption = "Before: the player HUD repeatedly rebuilds unchanged support labels a
 [[screenshots]]
 file = "player-hud-after.png"
 caption = "After: unchanged HUD state is retained and minimap intel uses the shared atlas. Repeated 500-unit player-view runs averaged 60.1–60.6 FPS versus 52.2–53.2 before; frame spikes still exceed the 60 FPS budget."
+
+[[screenshots]]
+file = "world-contact-markers.png"
+caption = "Last-seen battlefield contacts, before on the left and after on the right. Shared diamond drawings retain the normal question-mark font, fading and larger vehicle markers."
 +++
 
 - Desktop battles now run in a separate Rust process while Godot draws the battlefield and handles your orders. Infantry, vehicles, combat, logistics, tactical AI, commanders and the five operations use the same authoritative simulation.
@@ -69,6 +73,7 @@ caption = "After: unchanged HUD state is retained and minimap intel uses the sha
 - Speech bubbles reuse wrapped text and draw their flat backgrounds directly, reducing repeated overlay work while retaining the messages, colors and placement.
 - The fire-support panel changes label themes only when their state changes, and squad-order labels update when a new server summary arrives. Cooldowns and command input remain responsive.
 - Last-seen enemy markers reuse the minimap symbol atlas, retaining their fading and the larger vehicle diamonds while reducing drawing spikes.
+- Last-seen battlefield diamonds also reuse the symbol atlas. The minimap retains its camera and compass drawing while unchanged, with immediate updates when the view or pointer moves.
 - Hidden articulated soldier models stop updating their joints as shared models move, reducing CPU work without removing troops or nearby detail. Revealing a soldier or starting a ragdoll restores its current position immediately.
 - Closing an already disconnected simulation session avoids a redundant disconnect call and its engine error.
 - Wildlife waits for the battlefield to finish loading before reading terrain being prepared on a worker thread.

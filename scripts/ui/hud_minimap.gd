@@ -42,6 +42,7 @@ var _dot_batch: MultiMesh
 var _phase := 0
 var _layer_xf := Transform2D.IDENTITY
 var _layer_size := Vector2.ZERO
+var _camera_layer_state: Array = []
 var _ink: CanvasItem = self
 var hud: Hud
 var _drag := false
@@ -88,6 +89,14 @@ func refresh_layers() -> void:
 	if not is_visible_in_tree():
 		return
 	_update_xf()
+	var world := hud.world
+	var camera := world.cam.cam if world.cam else null
+	var camera_state := [_hover, world.cam.focus_pos if world.cam else Vector3.ZERO,
+		world.cam.yaw if world.cam else 0.0, camera.global_transform if camera else Transform3D.IDENTITY,
+		camera.get_camera_projection() if camera else Projection.IDENTITY,
+		get_viewport().get_visible_rect().size, world.terrain.version if world.terrain else -1]
+	var camera_changed := camera_state != _camera_layer_state
+	_camera_layer_state = camera_state
 	if _xf != _layer_xf or size != _layer_size:
 		# Rotating or resizing changes every layer's coordinate system together.
 		_layer_xf = _xf
@@ -100,7 +109,8 @@ func refresh_layers() -> void:
 		queue_redraw()
 	else:
 		_layers[_phase - 1].queue_redraw()
-	_layers[3].queue_redraw()
+	if camera_changed:
+		_layers[3].queue_redraw()
 	_phase = (_phase + 1) % 4
 
 

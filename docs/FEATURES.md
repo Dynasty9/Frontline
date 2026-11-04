@@ -1283,7 +1283,11 @@ projectile; cloud growth, movement and dissipation still take effect immediately
 The player HUD retains squad-order labels between incoming team summaries and
 only changes support-label themes when their colors change. Cooldowns and new
 commands still update immediately. Last-seen minimap diamonds use the shared
-symbol atlas, including the larger vehicle markers and fading with age.
+symbol atlas, including the larger vehicle markers and fading with age. Battlefield
+contact diamonds share the atlas while retaining normal font rendering for their
+question marks and ages. The minimap camera layer retains its drawing until the
+camera, focus, projection, ground or pointer changes; resize and rotation redraw
+all layers together.
 
 Clients build scenery in and around the camera's view first and cache visited models; distant models and
 cosmetic collision bodies remain inactive. The server still simulates the complete

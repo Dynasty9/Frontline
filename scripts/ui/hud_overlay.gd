@@ -1332,9 +1332,7 @@ func _intel(cam: Camera3D, vs: Vector2, lt: int) -> void:
 			var a := clampf(1.0 - age / 90.0, 0.25, 0.9)
 			var red := Color(1.0, 0.42, 0.36, a)
 			var hs := 8.0 if String(it[1]) == "inf" else 10.0
-			var d := PackedVector2Array([sp + Vector2(0, -hs), sp + Vector2(hs, 0), sp + Vector2(0, hs), sp + Vector2(-hs, 0), sp + Vector2(0, -hs)])
-			draw_polyline(d, Color(0, 0, 0, 0.5 * a), 4.0, true)
-			draw_polyline(d, red, 2.0, true)
+			MapSymbols.glyph(self, "contact_inf" if String(it[1]) == "inf" else "contact_vehicle", sp, 12.0, red, a, false)
 			UiKit.mono_at(self, sp + Vector2(-3, 4), "?", 10, red)
 			if age > 10.0:
 				UiKit.mono_at(self, sp + Vector2(hs + 3, 4), "%dS" % int(age), 9, UiKit.fa(UiKit.TEXT, 0.6 * a))
