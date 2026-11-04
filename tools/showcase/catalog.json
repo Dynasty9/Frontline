@@ -3758,37 +3758,37 @@
       "summary": "Connected dry grass and richer moss patches replace evenly green valley floors.",
       "medium": "still",
       "stage": "native-media",
-      "rationale": "Isolate this refinement against its immediate parent, with a targeted view and a distant view.",
+      "rationale": "Isolate the revision from the previous proposal with identical upstream changes, seed and camera.",
       "source_ref": "codex/realism-09-meadow-mosaic",
       "sources": [
         {
           "file": "changelog/unreleased/realism-09-meadow-mosaic/target-before.jpg",
-          "sha256": "a53ec830a472a2bb08b9d279d8b7c6585987135e79a1e94169c203881861fcbf",
+          "sha256": "aedded0468437d84581cf5396cac823505ee861cbf627223306f24acb962fa25",
           "caption": "target before"
         },
         {
           "file": "changelog/unreleased/realism-09-meadow-mosaic/target-after.jpg",
-          "sha256": "c910dc630777a1699150d2f7a715dc492298569ad00400f61b4b4a2fb0f1ec38",
+          "sha256": "13154c8b397cafd8bd8eb4e3ca103e7b70f063df37dee37648af67c6dd692099",
           "caption": "target after"
         },
         {
           "file": "changelog/unreleased/realism-09-meadow-mosaic/wide-before.jpg",
-          "sha256": "bc222d8d932df5fd1cea476f5db7177e01e90c295ac6d3b156e421efc5834fa2",
+          "sha256": "dad58819629d46e75f1b520b5d4cf24166905feb51dd589f11c767b96fe4a5ce",
           "caption": "wide before"
         },
         {
           "file": "changelog/unreleased/realism-09-meadow-mosaic/wide-after.jpg",
-          "sha256": "0bc7728710eac4a51eb19f6e057e5460d8ef035288834fab89ee824b83d49f63",
+          "sha256": "c3b67996d8f1af6a2f6cca85b2c4715a0d71dc644e905ab739b5aeca86790270",
           "caption": "wide after"
         },
         {
           "file": "changelog/unreleased/realism-09-meadow-mosaic/target-compat.jpg",
-          "sha256": "0644c0737f85ca1eccde3052b5fefc2d077b93eb61f440a585d03404e51efd5d",
+          "sha256": "71366209a6ecd7aeffae8d66c8118d53468abe99dfb24ae5620120e856d2ead4",
           "caption": "target compat"
         },
         {
           "file": "changelog/unreleased/realism-09-meadow-mosaic/compare.gif",
-          "sha256": "31ee0354d94ead3912a419f4eeef42b4a2ff5e55917bfad80ad52cc6f034c409",
+          "sha256": "9d7e367fa2c4bd54c9b91badb2f0ca8c39417783b5c3b81191b52fa301c2b322",
           "caption": "Native frames, separate labels, shared palette, 2.5 seconds each."
         }
       ],
@@ -3797,10 +3797,10 @@
       "version": "unreleased",
       "kind": "improved",
       "capture": {
-        "before_ref": "c322cea5c9d238c733f8b0380aaf537b04eea554",
+        "before_ref": "5878471092560aeab9f6f604c365e6cd28f20433",
         "after_ref": "codex/realism-09-meadow-mosaic",
-        "before_pack": "realism-08.pck",
-        "after_pack": "realism-09.pck",
+        "before_pack": "iterate-09-before.pck",
+        "after_pack": "iterate-09-after.pck",
         "seed": 3,
         "preset": "high",
         "mood": "day",

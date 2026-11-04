@@ -1219,11 +1219,11 @@ void fragment() {
 	float alpine_dry = smoothstep(0.25, 0.85, 1.0 - alpine_soil + (patch - 0.5) * 0.12);
 	vec3 moss = mix(vec3(0.05, 0.078, 0.025), vec3(0.115, 0.12, 0.06), alpine_dry) * (0.60 + grass_detail * 1.6);
 	// Broad soil pockets connect the meadow colours; fine noise only supplies texture.
-	float meadow = smoothstep(0.25, 0.72, region * 0.55 + patch * 0.25 + alpine_soil * 0.2);
+	float meadow = smoothstep(0.25, 0.72, region * 0.15 + patch * 0.2 + alpine_soil * 0.65);
 	float turf = (1.0 - smoothstep(0.35, 0.9, slope)) * (1.0 - smoothstep(0.65, 1.0, geology / max(snow_line, 1.0)));
-	vec3 dry_turf = vec3(0.17, 0.145, 0.075) * (0.65 + grass_detail * 1.3);
-	vec3 rich_turf = moss * vec3(0.78, 0.91, 0.87);
-	moss = mix(moss, mix(dry_turf, rich_turf, meadow), turf * 0.85);
+	vec3 dry_turf = vec3(0.135, 0.132, 0.065) * (0.65 + grass_detail * 1.3);
+	vec3 rich_turf = moss * vec3(0.88, 1.0, 0.91);
+	moss = mix(moss, mix(dry_turf, rich_turf, meadow), turf * 0.72);
 	moss *= mix(0.93, 1.07, patch);
 	vec3 rock_n; vec3 scree_n; vec3 moss_n;
 	vec2 rock_data = surface_data(rock_normal, rock_uv, weights, geometric, rock_n);
