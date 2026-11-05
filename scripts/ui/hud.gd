@@ -1,7 +1,7 @@
 class_name Hud
 extends CanvasLayer
 ## In-game interface. Deliberately quiet: resources top-left, fading toasts
-## top-right, a floating minimap, and selection / command panels that only
+## top-right, a fixed tactical map, and selection / command panels that only
 ## appear when something is selected. Zooming in reveals what each soldier is
 ## doing; hovering one shows a small card. Spectators get an observer bar
 ## (pause, speed, director camera, whose eyes to watch through).
@@ -20,57 +20,94 @@ func refresh_minimap() -> void:
 		minimap.rebake(true)
 
 
-## The minimap's side in pixels for each size setting, and the panel's margin round it.
-const MINIMAP_PX := [200.0, 250.0, 320.0]
-const MINIMAP_PAD := 5.0
+## The minimap size changes only through Interface settings, never through tools.
+const MINIMAP_PX := [220.0, 260.0, 320.0]
+const MINIMAP_PAD := 18.0
 
 
 func minimap_side() -> float:
 	var s: float = MINIMAP_PX[clampi(int(Settings.get_v("minimap_size")), 0, MINIMAP_PX.size() - 1)]
-	# a short screen (a big interface scale) keeps room above it for the support buttons
-	return minf(s, maxf(160.0, root.size.y * 0.4)) if root and root.size.y > 0.0 else s
+	if root and root.size.y > 0.0:
+		# Reserve a readable selection and three orders even with the largest map.
+		# This depends on the viewport, never on which tool or unit is selected.
+		var available := root.size.x - SEL_MIN_W - 288.0 - 48.0 - MINIMAP_PAD * 2.0 - HudLayers.S - 14.0
+		s = minf(s, maxf(160.0, minf(root.size.y * 0.48, available)))
+	return s
 
 
-## Lays out the bottom-left corner round the minimap's size: the map, its
-## layer column to the right, the support buttons and the chat line above.
+## The map stays at one size and position. Tools live above it, and layers
+## open beside it; chat remains clear of the complete module.
+func station_width() -> float:
+	return maxf(336.0, minimap_side() + MINIMAP_PAD * 2.0 + HudLayers.S + 14.0)
+
+
 func layout_minimap() -> void:
 	var s := minimap_side()
 	var outer := s + MINIMAP_PAD * 2.0
 	minimap.custom_minimum_size = Vector2(s, s)
-	minimap_panel.offset_left = 14
-	minimap_panel.offset_right = 14 + outer
-	minimap_panel.offset_bottom = -14
-	minimap_panel.offset_top = -14 - outer
+	var station_w := station_width()
+	var mx := 22.0
+	minimap_panel.offset_left = mx
+	minimap_panel.offset_right = mx + outer
+	minimap_panel.offset_bottom = -22
+	minimap_panel.offset_top = -22 - outer
 	minimap_panel.size = Vector2(outer, outer)
 	var lh := HudLayers.S * HudLayers.ITEMS.size() + 4.0 * (HudLayers.ITEMS.size() - 1)
-	layers_ui.offset_left = 14 + outer + 6
+	layers_ui.offset_left = mx + outer + 6
 	layers_ui.offset_right = layers_ui.offset_left + HudLayers.S
-	layers_ui.offset_bottom = -14
-	layers_ui.offset_top = -14 - lh
-	var above := -14 - outer - 16
-	support_box.offset_right = 14 + maxf(outer, 300.0)
-	support_box.offset_bottom = above
-	support_box.offset_top = above
+	layers_ui.offset_bottom = -22
+	layers_ui.offset_top = -22 - lh
+	var above := -22 - outer - 64
+	if task_bar:
+		task_bar.position = Vector2(22, root.size.y - outer - 82)
+		for button in task_bar.get_children():
+			button.custom_minimum_size.x = (outer - 4.0) / 3.0
+		task_bar.size = Vector2(outer, 32)
+	if map_caption:
+		map_caption.position = Vector2(26, root.size.y - outer - 42)
+	if station_frame:
+		station_frame.position = Vector2(14, root.size.y - outer - 82)
+		station_frame.size = Vector2(station_w, outer + 68)
 	chat_edit.offset_bottom = above
 	chat_edit.offset_top = above - 34
 
 
+
 ## The narrowest the selection panel gets, and an order in the orders grid.
-const SEL_MIN_W := 300.0
-const CARD_BTN := Vector2(136, 26)
+const SEL_MIN_W := 240.0
+const CARD_BTN := UiDeckAction.DEFAULT_SIZE
 
 
 ## Where the bottom-left cluster (minimap and layer column) ends on the right.
 func minimap_right() -> float:
-	return 14 + minimap_side() + MINIMAP_PAD * 2.0 + 6 + HudLayers.S
+	return 14.0 + station_width()
 
 
 ## How the map is drawn (each toggled from the layer column by the minimap).
 const LAYER_KEYS := {"units": "lyr_units", "orders": "lyr_orders", "intel": "lyr_intel", "vision": "lyr_vision", "ranges": "lyr_ranges", "labels": "labels"}
 const PHASE_NAMES := {"plan": "Planning", "move": "Moving into position", "fix": "Fixing the enemy", "assault": "Assault", "fallback": "Falling back"}
 
+var command_deck
+var unit_portrait
+var _portrait_inset := -1.0
+var _portrait_entity: Entity
 var world: World
 var typing := false
+var workspace := "battle"
+var task_bar: HBoxContainer
+var squad_search: LineEdit
+var _task_buttons := {}
+var workspace_title: Label
+var workspace_hint: Label
+var map_caption: Label
+var support_scroll: ScrollContainer
+var station_frame: Panel
+var drawer_frame: Panel
+var drawer_close: Button
+var drawer_footer: Label
+var focus_unit: Button
+var task_scrim: UiScrim
+var roster_filters: HBoxContainer
 var tactical := false
 ## sid -> [order, where, facing, order number, team, msec the order came in (-1: already standing), attack plan or null]
 var orders := {}
@@ -89,6 +126,9 @@ var obs_slower: Button
 var obs_faster: Button
 var _log_head: Label  # the log's header text
 var _log_key: Label  # and, after it, the key that closes it
+var events_toggle: Button
+var events_collapsed := false
+var unread_events := 0
 var toasts: HudToasts
 var objectives: HudObjectives
 var log_panel: PanelContainer
@@ -98,7 +138,10 @@ var chat_team := false
 var card_panel: PanelContainer
 var card: GridContainer
 var card_title: Label
+var card_scroll: ScrollContainer
+var command_grid: UiDeckGrid
 var _card_key := ""
+var _card_identity := ""
 var _card_page := "main"
 var _page_base := ""  # the card a production page was opened on
 ## Production categories: [label, tooltip].
@@ -139,8 +182,7 @@ var _over_row: HBoxContainer  # the report's footer: its note and buttons come i
 var _stats_t := 0.0
 var support_box: VBoxContainer
 var _support_btns := {}  # kind -> Button
-var _support_key := ""
-var demo_panel: PanelContainer
+var _support_key := "unbuilt"
 var _inspect: Entity = null
 var _inspect_t := 0.0
 var _msgs: Array = []
@@ -210,11 +252,15 @@ func _ready() -> void:
 
 	# the edge scrims: the ink fading in from the screen's edges, so the HUD
 	# reads over the battlefield without a box round anything
-	for e in [["top", 96.0, 0.0], ["left", 400.0, 640.0], ["right", 560.0, 320.0], ["bottom", 250.0, 0.0]]:
+	for e in [["top", 156.0, 0.0], ["left", 400.0, 640.0], ["right", 560.0, 320.0], ["bottom", 250.0, 0.0]]:
 		var sc := UiScrim.make(e[0], e[1], e[2])
 		_scrims[e[0]] = sc
 		root.add_child(sc)
 
+	command_deck = preload("res://scripts/ui/hud_command_deck.gd").new()
+	command_deck.hud = self
+	command_deck.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	root.add_child(command_deck)
 	top = HudTopInfo.new()
 	top.hud = self
 	top.position = Vector2(14, 12)
@@ -234,6 +280,7 @@ func _ready() -> void:
 	toasts.offset_bottom = 290
 	toasts.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	root.add_child(toasts)
+	_build_events_toggle()
 
 	# a mission's objectives, top right (the notifications move down under them)
 	objectives = HudObjectives.new()
@@ -266,7 +313,7 @@ func _ready() -> void:
 
 	# minimap, bottom-left (sized by the settings: see layout_minimap)
 	minimap_panel = PanelContainer.new()
-	minimap_panel.add_theme_stylebox_override("panel", UiKit.frame(Color(-1, 0, 0), MINIMAP_PAD))
+	minimap_panel.add_theme_stylebox_override("panel", UiKit.bare(MINIMAP_PAD))
 	minimap_panel.anchor_top = 1.0
 	minimap_panel.anchor_bottom = 1.0
 	root.add_child(minimap_panel)
@@ -289,7 +336,7 @@ func _ready() -> void:
 	orbat.size = Vector2(HudOrbat.W, 300)
 	root.add_child(orbat)
 
-	# off-map support: one button per power, stacked above the minimap
+	# off-map support: one button per power in the task workspace
 	support_box = VBoxContainer.new()
 	support_box.anchor_top = 1.0
 	support_box.anchor_bottom = 1.0
@@ -312,6 +359,7 @@ func _ready() -> void:
 	chat_edit.text_submitted.connect(_on_chat)
 	chat_edit.focus_exited.connect(func(): _close_chat())
 	root.add_child(chat_edit)
+	_build_workspaces()
 	layout_minimap()
 	Settings.changed.connect(layout_minimap)
 	_theme_rev = UiKit.theme_rev
@@ -335,42 +383,20 @@ func _ready() -> void:
 	sel_panel.offset_right = 230
 	sel_panel.offset_top = -196
 	sel_panel.offset_bottom = -14
-	sel_panel.add_theme_stylebox_override("panel", UiKit.bare(4.0))
+	sel_panel.add_theme_stylebox_override("panel", UiKit.bare(12.0))
 	sel_panel.mouse_filter = Control.MOUSE_FILTER_STOP
 	root.add_child(sel_panel)
 	sel_info = HudSelInfo.new()
 	sel_info.hud = self
 	sel_info.custom_minimum_size = Vector2(540, 120)
 	sel_info.mouse_filter = Control.MOUSE_FILTER_STOP
+	sel_info.clip_contents = true
 	sel_panel.add_child(sel_info)
+	unit_portrait = preload("res://scripts/ui/hud_unit_portrait.gd").new()
+	unit_portrait.hide()
+	root.add_child(unit_portrait)
 
-	# command card, bottom-right
-	card_panel = PanelContainer.new()
-	card_panel.anchor_left = 1.0
-	card_panel.anchor_right = 1.0
-	card_panel.anchor_top = 1.0
-	card_panel.anchor_bottom = 1.0
-	card_panel.grow_horizontal = Control.GROW_DIRECTION_BEGIN
-	card_panel.grow_vertical = Control.GROW_DIRECTION_BEGIN
-	card_panel.offset_right = -14
-	card_panel.offset_bottom = -14
-	card_panel.offset_left = -14
-	card_panel.offset_top = -14
-	card_panel.add_theme_stylebox_override("panel", UiKit.bare(0.0))
-	root.add_child(card_panel)
-	var cv := VBoxContainer.new()
-	cv.add_theme_constant_override("separation", 4)
-	card_panel.add_child(cv)
-	var ch := UiKit.header("Orders")
-	card_title = ch.get_node("Text") as Label
-	card_title.clip_text = true  # the keys set the card's width, not the title
-	card_title.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
-	cv.add_child(ch)
-	card = GridContainer.new()
-	card.columns = 3
-	card.add_theme_constant_override("h_separation", 12)
-	card.add_theme_constant_override("v_separation", 0)
-	cv.add_child(card)
+	_build_command_card()
 
 	# message history (L): it opens in place of the latest lines, top right,
 	# on a lighter ink rather than in a box
@@ -444,9 +470,235 @@ func _ready() -> void:
 	_keys_changed()
 
 
+## Navigation stays on the left; one temporary task workspace opens on the right.
+func _build_workspaces() -> void:
+	station_frame = Panel.new()
+	station_frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	station_frame.add_theme_stylebox_override("panel", UiKit.bare())
+	root.add_child(station_frame)
+	root.move_child(station_frame, minimap_panel.get_index() if minimap_panel.get_parent() == root else 0)
+	task_scrim = UiScrim.make("right", HudOrbat.W + 180.0)
+	task_scrim.content_column = true
+	root.add_child(task_scrim)
+	root.move_child(task_scrim, orbat.get_index() if orbat.get_parent() == root else 0)
+	drawer_frame = Panel.new()
+	drawer_frame.mouse_filter = Control.MOUSE_FILTER_STOP
+	drawer_frame.add_theme_stylebox_override("panel", UiKit.bare())
+	root.add_child(drawer_frame)
+	root.move_child(drawer_frame, orbat.get_index() if orbat.get_parent() == root else 0)
+	task_bar = HBoxContainer.new()
+	task_bar.add_theme_constant_override("separation", 2)
+	root.add_child(task_bar)
+	for item in [["squads", "Units"], ["fires", "Support"], ["map", "Layers"]]:
+		var key: String = item[0]
+		var b := UiDeckNav.new()
+		b.icon_id = {"squads": "units", "fires": "support", "map": "layers"}[key]
+		b.caption = item[1]
+		b.focus_mode = Control.FOCUS_NONE
+		b.toggle_mode = true
+		b.tooltip_text = {"squads": "Find a squad or vehicle. Type to search. Click to select without moving the camera; Enter or double-click to focus and return to battle.", "map": "Map layers · Show or hide overlay controls. The map stays fixed.", "fires": "Support · Off-map artillery and air strikes. Commanders spend supply; spectators can try a free demo."}[key]
+		b.set_meta("base_tooltip", b.tooltip_text)
+		b.pressed.connect(func(): set_workspace("battle" if workspace == key else key))
+		task_bar.add_child(b)
+		_task_buttons[key] = b
+	workspace_title = UiKit.caps("", 20, UiKit.TEXT)
+	workspace_title.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	root.add_child(workspace_title)
+	drawer_close = UiKit.button("×", "quiet", 28, 28)
+	drawer_close.add_theme_font_override("font", UiKit.font())
+	drawer_close.add_theme_font_size_override("font_size", 20)
+	drawer_close.tooltip_text = "Close this tool; keep the map visible"
+	drawer_close.pressed.connect(func(): set_workspace("battle"))
+	root.add_child(drawer_close)
+	workspace_hint = UiKit.label("", 12, UiKit.DIM)
+	workspace_hint.size = Vector2(310, 30)
+	workspace_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	workspace_hint.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	root.add_child(workspace_hint)
+	drawer_footer = UiKit.mono_label("↑ ↓ BROWSE · ENTER FOCUS · ESC CLOSE", 10, UiKit.DIM)
+	drawer_footer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	root.add_child(drawer_footer)
+	focus_unit = UiKit.primary_button("Focus selected", 148, 32, 12)
+	focus_unit.pressed.connect(func():
+		if squad_search.has_focus():
+			orbat.activate_cursor()
+		else:
+			orbat.focus_selected())
+	root.add_child(focus_unit)
+	map_caption = UiKit.caps("", 10, UiKit.DIM)
+	map_caption.mouse_filter = Control.MOUSE_FILTER_PASS
+	root.add_child(map_caption)
+	support_scroll = ScrollContainer.new()
+	support_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	support_scroll.add_theme_stylebox_override("panel", UiKit.bare())
+	root.add_child(support_scroll)
+	if support_box.get_parent():
+		support_box.reparent(support_scroll)
+	else:
+		support_scroll.add_child(support_box)
+	support_box.set_anchors_and_offsets_preset(Control.PRESET_TOP_LEFT)
+	support_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	squad_search = LineEdit.new()
+	squad_search.size = Vector2(HudOrbat.W, 32)
+	squad_search.placeholder_text = "Find callsign, role or vehicle…"
+	squad_search.clear_button_enabled = true
+	var search_ink := UiKit.underline(UiKit.RULE2, 8.0, 6.0)
+	search_ink.bg_color = UiKit.fa(UiKit.INK, 0.24)
+	squad_search.add_theme_stylebox_override("normal", search_ink)
+	squad_search.text_changed.connect(func(value: String): orbat.set_query(value))
+	squad_search.focus_entered.connect(func(): typing = true)
+	squad_search.focus_exited.connect(func(): typing = false)
+	squad_search.gui_input.connect(func(event: InputEvent):
+		if event is InputEventKey and event.pressed:
+			if event.keycode == KEY_ESCAPE:
+				set_workspace("battle")
+			elif event.keycode in [KEY_DOWN, KEY_UP]:
+				orbat.move_cursor(1 if event.keycode == KEY_DOWN else -1)
+			elif event.keycode in [KEY_ENTER, KEY_KP_ENTER]:
+				orbat.activate_cursor()
+			else:
+				return
+			squad_search.accept_event())
+	root.add_child(squad_search)
+	roster_filters = HBoxContainer.new()
+	roster_filters.add_theme_constant_override("separation", 2)
+	root.add_child(roster_filters)
+	for choice in [["all", "All"], ["infantry", "Infantry"], ["vehicles", "Vehicles"], ["attention", "Attention"]]:
+		var filter_key: String = choice[0]
+		var filter_button := UiKit.button(choice[1], "quiet", (HudOrbat.W - 6.0) / 4.0, 28)
+		var selected_rule := UiKit.underline(UiKit.ACCENT, 4.0, 6.0)
+		selected_rule.bg_color = UiKit.fa(UiKit.ACCENT, 0.06)
+		filter_button.add_theme_stylebox_override("pressed", selected_rule)
+		filter_button.add_theme_stylebox_override("hover_pressed", selected_rule)
+		filter_button.toggle_mode = true
+		filter_button.set_pressed_no_signal(filter_key == "all")
+		filter_button.tooltip_text = "Pinned, routing, wounded, low-ammo or damaged units" if filter_key == "attention" else "Show " + String(choice[1]).to_lower() + " units"
+		filter_button.pressed.connect(func():
+			orbat.set_filter(filter_key)
+			for sibling in roster_filters.get_children():
+				sibling.set_pressed_no_signal(sibling == filter_button))
+		roster_filters.add_child(filter_button)
+	set_workspace("battle")
+
+
+func set_workspace(value: String) -> void:
+	workspace = value
+	orbat.visible = value == "squads"
+	orbat.open = true
+	squad_search.visible = value == "squads"
+	roster_filters.visible = value == "squads"
+	var drawer_open := value in ["squads", "fires"]
+	drawer_frame.visible = drawer_open
+	drawer_close.visible = drawer_open
+	workspace_title.visible = drawer_open
+	workspace_hint.visible = drawer_open
+	drawer_footer.visible = value == "squads"
+	focus_unit.visible = value == "squads"
+	task_scrim.visible = false
+	if not drawer_open:
+		if objectives:
+			objectives.modulate.a = 1.0
+		if coop_roster:
+			coop_roster.modulate.a = 1.0
+			coop_roster.mouse_filter = Control.MOUSE_FILTER_STOP
+	if squad_search.visible:
+		squad_search.grab_focus()
+		squad_search.select_all()
+	elif squad_search.has_focus():
+		squad_search.release_focus()
+	minimap_panel.visible = true
+	layers_ui.visible = value == "map"
+	support_box.visible = value == "fires"
+	support_scroll.visible = value == "fires"
+	layout_minimap()
+	for key in _task_buttons:
+		(_task_buttons[key] as Button).set_pressed_no_signal(key == value)
+		(_task_buttons[key] as Button).queue_redraw()
+	# Tactical symbols belong to map observation; returning to another task
+	# restores the scene immediately.
+	if value != "map" and tactical:
+		tactical = false
+		tint.visible = false
+
+
+## Normal play exposes the selected plan; the tactical workspace exposes the army.
+func show_order_for(selected: bool) -> bool:
+	return selected or ((tactical or workspace == "map") and map_layer("orders"))
+
+
+## The task workspace stays clear of the fixed map and contextual command card.
+func _layout_workspace() -> void:
+	layout_minimap()
+	var spectator := world.local_team < 0
+	# The map is navigation; the opposite edge is the temporary task workspace.
+	# Reserve the command card below, so selecting a unit never hides its orders.
+	var drawer_y := maxf(92.0, 24.0 + objectives.need_h) if objectives else 92.0
+	if coop_roster and coop_roster.need_h > 0:
+		drawer_y = maxf(drawer_y, coop_roster.position.y + coop_roster.need_h + 18.0)
+	var drawer_bottom := root.size.y - 152.0
+	if card_panel and card_panel.visible:
+		drawer_bottom = minf(drawer_bottom, card_panel.position.y - 18.0)
+	# On a short viewport the task takes priority over the right-edge briefing.
+	# Keep its controls above orders; restore objectives/net as soon as it closes.
+	var brief_yields := drawer_frame.visible and drawer_bottom - drawer_y < 284.0
+	if brief_yields:
+		drawer_y = maxf(36.0, drawer_bottom - 284.0)
+	if objectives:
+		objectives.modulate.a = 0.0 if brief_yields else 1.0
+	if coop_roster:
+		coop_roster.modulate.a = 0.0 if brief_yields else 1.0
+		coop_roster.mouse_filter = Control.MOUSE_FILTER_IGNORE if brief_yields else Control.MOUSE_FILTER_STOP
+	var drawer_h := maxf(244.0, drawer_bottom - drawer_y)
+	if workspace == "squads" and orbat.content_h() > 0:
+		drawer_h = minf(drawer_h, maxf(284.0, orbat.content_h() + 204.0))
+	var drawer_x := root.size.x - HudOrbat.W - 30.0
+	drawer_frame.position = Vector2(drawer_x - 12, drawer_y)
+	drawer_frame.size = Vector2(HudOrbat.W + 24.0, drawer_h)
+	task_scrim.offset_top = drawer_y - 44.0
+	if task_scrim.span != drawer_h * 1.6:
+		task_scrim.span = drawer_h * 1.6
+		task_scrim.queue_redraw()
+	workspace_title.position = Vector2(drawer_x, drawer_y + 8)
+	drawer_close.position = Vector2(drawer_x + HudOrbat.W - 28, drawer_y + 4)
+	workspace_hint.position = Vector2(drawer_x, drawer_y + 38)
+	workspace_hint.size.x = HudOrbat.W
+	workspace_title.text = ("BATTLE FORCES" if spectator else "YOUR FORCES") if workspace == "squads" else ("SUPPORT DEMOS" if spectator else "FIRE SUPPORT")
+	workspace_hint.text = ("Select to inspect · Double-click to focus" if spectator else "Select to command · Double-click to focus") if workspace == "squads" else ("Choose a demo, then click its target" if spectator else "Choose a strike, then click its target")
+	map_caption.text = "GRID %d M  /  %s" % [int(MapDims.CELL), "TRACK UP" if Settings.get_v("minimap_rotate") else "NORTH UP"]
+	map_caption.visible = true
+	map_caption.tooltip_text = "Click or drag to move the camera. Right-click to order selected units."
+	var compact := drawer_h < 320.0
+	workspace_title.add_theme_font_size_override("font_size", 16 if compact else 20)
+	workspace_hint.visible = drawer_frame.visible and not compact
+	squad_search.position = Vector2(drawer_x, drawer_y + (40 if compact else 67))
+	roster_filters.position = Vector2(drawer_x, drawer_y + (76 if compact else 108))
+	orbat.position = Vector2(drawer_x, drawer_y + (112 if compact else 147))
+	# Even the shortest drawer must show its result header, section and a full row.
+	orbat.size = Vector2(HudOrbat.W, maxf(88.0, drawer_h - (156.0 if compact else 204.0)))
+	drawer_footer.text = "ENTER TO FOCUS" if compact else "↑ ↓ BROWSE · ENTER FOCUS · ESC CLOSE"
+	drawer_footer.position = Vector2(drawer_x, drawer_y + drawer_h - (30 if compact else 18))
+	focus_unit.position = Vector2(drawer_x + HudOrbat.W - focus_unit.size.x, drawer_y + drawer_h - (38 if compact else 53))
+	focus_unit.text = "FOCUS RESULT" if squad_search.has_focus() else "FOCUS SELECTED"
+	focus_unit.disabled = orbat._entries.is_empty() if squad_search.has_focus() else (world.input == null or not world.input.has_units())
+	support_scroll.position = Vector2(drawer_x, drawer_y + (54 if compact else 78))
+	support_scroll.size = Vector2(HudOrbat.W, maxf(80.0, drawer_h - (66.0 if compact else 90.0)))
+	var left_scrim: UiScrim = _scrims.get("left")
+	if left_scrim:
+		left_scrim.visible = false
+		var shade_top := station_frame.position.y - 26.0
+		var shade_span := root.size.y * 1.6
+		var shade_reach := station_width() + 160.0
+		if not left_scrim.content_column or left_scrim.offset_top != shade_top or left_scrim.span != shade_span or left_scrim.reach != shade_reach:
+			left_scrim.content_column = true
+			left_scrim.offset_top = shade_top
+			left_scrim.span = shade_span
+			left_scrim.reach = shade_reach
+			left_scrim.queue_redraw()
+
+
 func _build_observer_bar() -> void:
 	obs_bar = PanelContainer.new()
-	obs_bar.add_theme_stylebox_override("panel", UiKit.frame(Color(-1, 0, 0), 6.0, 0.6, 8.0))
+	obs_bar.add_theme_stylebox_override("panel", UiKit.underline(UiKit.LINE, 6.0, 3.0))
 	obs_bar.anchor_left = 0.5
 	obs_bar.anchor_right = 0.5
 	obs_bar.grow_horizontal = Control.GROW_DIRECTION_BOTH
@@ -480,13 +732,6 @@ func _build_observer_bar() -> void:
 	obs_view = _small_button("View: Both", "Whose eyes to watch through: both sides, or one side's fog of war (V)", func(): world.director.cycle_view())
 	obs_view.custom_minimum_size = Vector2(130, 30)
 	hb.add_child(obs_view)
-	var s2 := VSeparator.new()
-	hb.add_child(s2)
-	var fs := _small_button("Fire support", "Call in any air or artillery support to watch it (observer demo)", func(): demo_panel.visible = not demo_panel.visible)
-	fs.toggle_mode = true
-	fs.custom_minimum_size = Vector2(110, 30)
-	hb.add_child(fs)
-	_build_demo_panel()
 
 
 var _obs_place := Vector2(-1, -1)  # (bottom?, slide right) as last laid out
@@ -508,7 +753,7 @@ func _place_obs_bar() -> void:
 	if key == _obs_place:
 		return
 	_obs_place = key
-	for p in [obs_bar, demo_panel]:
+	for p in [obs_bar]:
 		var c: Control = p
 		c.anchor_left = 1.0 if _obs_low else 0.5
 		c.anchor_right = c.anchor_left
@@ -521,17 +766,13 @@ func _place_obs_bar() -> void:
 	if _obs_low:
 		obs_bar.offset_top = -14.0
 		obs_bar.offset_bottom = -14.0
-		demo_panel.offset_top = -14.0 - obs_bar.size.y - 8.0
-		demo_panel.offset_bottom = demo_panel.offset_top
 	else:
 		obs_bar.offset_top = 12.0
 		obs_bar.offset_bottom = 12.0
-		demo_panel.offset_top = 62.0
-		demo_panel.offset_bottom = 62.0
 
 
 func _small_button(text: String, tip: String, cb: Callable) -> Button:
-	var b := Button.new()
+	var b := UiKit.button(text, "quiet")
 	b.text = text.to_upper()
 	b.tooltip_text = tip
 	b.focus_mode = Control.FOCUS_NONE
@@ -656,22 +897,22 @@ func _kr(first: String, last: String) -> Array:
 
 ## A key in its box, for the key reference.
 static func _key_box(k: String) -> PanelContainer:
-	var p := PanelContainer.new()
-	var sb := UiKit.box(Color(0, 0, 0, 0), 0, UiKit.RULE2, 1, 0.0)
-	sb.content_margin_left = 5
-	sb.content_margin_right = 5
-	sb.content_margin_top = 1
-	sb.content_margin_bottom = 1
-	p.add_theme_stylebox_override("panel", sb)
-	p.add_child(UiKit.mono_label(k, 11, UiKit.TEXT))
-	return p
+	var keycap := UiDeckKeycap.new()
+	keycap.set_binding(k, 0)
+	return keycap
 
 
 ## Everything on screen that names a key, again after a key has been changed.
 func _keys_changed() -> void:
 	_build_help()
 	_card_key = ""
+	if command_grid:
+		command_grid.previous.text = Keys.label("orders_previous") + "  ‹"
+		command_grid.next.text = "›  " + Keys.label("orders_next")
 	_support_key = ""
+	if _task_buttons.has("squads"):
+		var units: Button = _task_buttons["squads"]
+		units.tooltip_text = String(units.get_meta("base_tooltip")) + _kt("orbat")
 	if obs_pause:
 		obs_pause.tooltip_text = "Pause / resume%s" % _kt("pause")
 		obs_slower.tooltip_text = "Slower%s" % _kt("slower")
@@ -752,6 +993,8 @@ static func list_item(text: String, key: String, cb: Callable, danger := false) 
 	b.add_child(row)
 	var l := UiKit.caps(text, 14, UiKit.BAD if danger else UiKit.TEXT, 600, 1)
 	l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	l.clip_text = true
+	l.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	row.add_child(l)
@@ -784,6 +1027,9 @@ func toggle_manual() -> void:
 
 
 func toggle_menu() -> void:
+	if workspace != "battle":
+		set_workspace("battle")
+		return
 	if stats_panel.visible:
 		close_stats()
 		return
@@ -827,12 +1073,14 @@ func set_map_layer(key: String, on: bool) -> void:
 func toggle_tactical() -> void:
 	tactical = not tactical
 	tint.visible = tactical
+	if tactical:
+		set_workspace("map")
 	layers_ui.queue_redraw()
 	Sfx.ui("click")
 
 
 func toggle_orbat() -> void:
-	orbat.toggle()
+	set_workspace("battle" if workspace == "squads" else "squads")
 
 
 ## Tracks every squad's orders from the team summary; a new order number means
@@ -998,10 +1246,39 @@ func plan_text(pl: Array) -> String:
 	return "Attacking " + obj
 
 
+func _build_events_toggle() -> void:
+	events_toggle = UiKit.button("EVENTS  −", "quiet", 146, 26)
+	events_toggle.alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	events_toggle.pressed.connect(toggle_events)
+	root.add_child(events_toggle)
+	_update_events_toggle()
+
+
+func toggle_events() -> void:
+	events_collapsed = not events_collapsed
+	if events_collapsed:
+		log_panel.hide()
+	else:
+		unread_events = 0
+	toasts.visible = not events_collapsed and not log_panel.visible
+	_update_events_toggle()
+
+
+func _update_events_toggle() -> void:
+	if events_toggle:
+		events_toggle.text = "EVENTS  %s%s" % [("%02d  " % unread_events) if events_collapsed and unread_events > 0 else "", "+" if events_collapsed else "−"]
+		events_toggle.tooltip_text = "Expand events · %d new · Full history: %s" % [unread_events, Keys.label("log")] if events_collapsed else "Minimize events · Full history: " + Keys.label("log")
+
+
 func toggle_log() -> void:
+	if drawer_frame and drawer_frame.visible:
+		set_workspace("battle")
 	log_panel.visible = not log_panel.visible
-	toasts.visible = not log_panel.visible
+	toasts.visible = not log_panel.visible and not events_collapsed
 	if log_panel.visible:
+		events_collapsed = false
+		unread_events = 0
+		_update_events_toggle()
 		_fit_log()
 		UiMotion.arrive(log_panel, Vector2(0, -1))
 
@@ -1037,6 +1314,9 @@ func add_message(kind: String, text: String, toast := true) -> void:
 	log_box.append_text(line + "\n")
 	if toast:
 		toasts.push(kind, text)
+		if events_collapsed:
+			unread_events += 1
+			_update_events_toggle()
 	if kind == "alert":
 		Sfx.ui("click")
 
@@ -1427,6 +1707,7 @@ func _view_process(dt: float) -> void:
 	_track_orders()
 	_update_support()
 	_update_card()
+	_layout_command_card()
 	_update_veil(rdt)
 	# the battle statistics stay current while they're up
 	if stats_panel.visible:
@@ -1434,50 +1715,66 @@ func _view_process(dt: float) -> void:
 		if _stats_t >= 2.0:
 			_stats_t = 0.0
 			world.request_report()
-	# the order of battle fits its contents, down to the support buttons at
-	# most, below however many FOB and town lines there are
-	orbat.position.y = maxf(100.0, top.position.y + top.content_h + 8.0) if world.local_team >= 0 else 100.0
-	var limit := minimap_panel.position.y - 10.0
-	if support_box.get_child_count() > 0:
-		limit = support_box.global_position.y - 10.0
-	var want := HudOrbat.HEAD_H if not orbat.open else orbat.content_h()
-	orbat.size = Vector2(HudOrbat.W, clampf(want, HudOrbat.HEAD_H, maxf(HudOrbat.HEAD_H, limit - orbat.position.y)))
-	# on a narrow screen (a big interface scale) the command card gives up
-	# columns before the selection panel beside it is squeezed
-	var room := root.size.x - minimap_right() - 10.0 - SEL_MIN_W - 12.0 - 14.0
-	var cols := clampi(int((room - 15.0) / (CARD_BTN.x + 12.0)), 2, 3)
-	if card.columns != cols:
-		card.columns = cols
+	_layout_workspace()
+	# Three stable command columns keep action positions predictable.
+	card.columns = 3
 	var has_sel := world.input != null and (world.input.has_units() or world.input.sel_structure != 0 or (_inspect_t > 0.0 and _inspect != null and not _inspect.gone))
 	sel_panel.visible = has_sel
 	_slow_t -= rdt
 	var slow := _slow_t <= 0.0
 	if slow:
 		_slow_t = 0.1
-	if has_sel and slow:
-		sel_info.queue_redraw()
-		sel_info.custom_minimum_size.y = sel_info.need_h
-		# (above the observer bar when that's down here)
+	var portrait_entity: Entity = null
+	if has_sel:
+		var left := minimap_right() + 8.0
+		var right := root.size.x - 14.0 - (card_panel.size.x + 12.0 if card_panel.visible else 0.0)
+		var one_unit := world.input.sel_unit != 0 or world.input.sel_squads.size() + world.input.sel_vehicles.size() == 1
+		var width := maxf(SEL_MIN_W, minf(right - left, 520.0) if one_unit else right - left)
+		left = right - width
+		if width >= 500 and (world.input.sel_unit != 0 or world.input.sel_squads.size() + world.input.sel_vehicles.size() == 1):
+			if slow or not is_instance_valid(_portrait_entity):
+				_portrait_entity = null
+				if world.input.sel_unit != 0:
+					_portrait_entity = world.entity(world.input.sel_unit)
+				elif not world.input.sel_squads.is_empty():
+					for soldier in world.soldiers:
+						if soldier.sid == world.input.sel_squads[0] and not soldier.gone and soldier.life != Soldier.Life.DEAD:
+							_portrait_entity = soldier
+							break
+				elif not world.input.sel_vehicles.is_empty():
+					_portrait_entity = world.entity(world.input.sel_vehicles[0])
+			if is_instance_valid(_portrait_entity) and not _portrait_entity.gone:
+				portrait_entity = _portrait_entity
+		var portrait_on := portrait_entity != null
+		var inset := 120.0 if portrait_on else 16.0
+		if inset != _portrait_inset:
+			_portrait_inset = inset
+			var style := UiKit.bare(16.0)
+			style.content_margin_left = inset
+			sel_panel.add_theme_stylebox_override("panel", style)
 		var sb := 14.0 + (obs_bar.size.y + 8.0 if obs_bar.visible and _obs_low else 0.0)
-		sel_panel.offset_bottom = -sb
-		sel_panel.offset_top = -sb - sel_info.need_h - 22.0
-		# fit between the minimap and the command card, centred in the free space
-		var vw := root.size.x
-		var left := minimap_right() + 10.0
-		var right := vw - 14.0 - (card_panel.size.x + 12.0 if card_panel.visible else 0.0)
-		var w := clampf(right - left, SEL_MIN_W, 580.0)
-		var x0 := left + maxf(0.0, (right - left - w) * 0.5)
+		var height := maxf(144.0 if portrait_on else 104.0, sel_info.need_h + 32.0)
 		sel_panel.anchor_left = 0.0
 		sel_panel.anchor_right = 0.0
-		sel_panel.offset_left = x0
-		sel_panel.offset_right = x0 + w
-		sel_info.custom_minimum_size.x = w - 22.0
+		sel_panel.offset_left = left
+		sel_panel.offset_right = left + width
+		sel_panel.offset_bottom = -sb
+		sel_panel.offset_top = -sb - height
+		sel_info.custom_minimum_size = Vector2(maxf(200, width - inset - 16), sel_info.need_h)
+		if slow:
+			sel_info.queue_redraw()
+		if portrait_on:
+			unit_portrait.position = Vector2(left + 12, root.size.y - sb - height + 12)
+			unit_portrait.size = Vector2(96, minf(128, height - 24))
+			unit_portrait.show_entity(portrait_entity)
+	unit_portrait.visible = portrait_entity != null
 	card_panel.visible = card.get_child_count() > 0
 	_card_active()
+	command_deck.refresh()
 	if menu_panel.visible:
 		_menu_context()
 	var bs: UiScrim = _scrims["bottom"]
-	var want_b := 1.0 if (sel_panel.visible or card_panel.visible) else 0.55
+	var want_b := 0.25
 	if absf(bs.strength - want_b) > 0.01:
 		bs.strength = move_toward(bs.strength, want_b, rdt * 4.0)
 		bs.queue_redraw()
@@ -1518,12 +1815,26 @@ func _view_process(dt: float) -> void:
 		var ty := 36.0 if objectives.need_h <= 0.0 else 12.0 + objectives.need_h + 10.0
 		if coop_roster.need_h > 0.0:
 			ty = ry + coop_roster.need_h + 10.0
-		var tb := ty + 254.0
+		events_toggle.position = Vector2(root.size.x - 160.0, ty)
+		log_panel.offset_top = ty + 30.0
+		ty += 30.0
+		var tb := ty + 154.0
 		if card_panel.visible:
 			tb = clampf(card_panel.position.y - 10.0, ty + 40.0, tb)
 		if toasts.offset_top != ty or toasts.offset_bottom != tb:
 			toasts.offset_top = ty
 			toasts.offset_bottom = tb
+	if perf_big:
+		events_toggle.position = Vector2(294, 160)
+	events_toggle.visible = not drawer_frame.visible
+	toasts.visible = not events_collapsed and not log_panel.visible and not drawer_frame.visible
+	if drawer_frame.visible:
+		log_panel.hide()
+	var right_scrim: UiScrim = _scrims["right"]
+	var right_span := 90.0 if events_collapsed and objectives.need_h <= 0.0 and coop_roster.need_h <= 0.0 else 320.0
+	if right_scrim.span != right_span:
+		right_scrim.span = right_span
+		right_scrim.queue_redraw()
 	toasts.tick(rdt)
 	minimap.refresh_layers()
 	if world.cam:
@@ -1548,12 +1859,12 @@ static func fire_short(name: String) -> String:
 	return " ".join(out).to_upper()
 
 
-## FIRES (docs/UI.md, Layout): the fire missions on call, a row each above the
-## minimap. The ready ones are listed; the ones cooling down fold into a last
+## Support (docs/UI.md, Layout): the fire missions on call, a row in the task
+## workspace. The ready ones are listed; the ones cooling down fold into a last
 ## row (+9 ON COOLDOWN · NEXT 81S) that opens them.
 func _update_support() -> void:
-	var kinds: Array = Defs.supports_for(world.local_team) if world.local_team >= 0 else []
-	if not world.mission_info.is_empty():
+	var kinds: Array = Defs.supports_for(world.local_team) if world.local_team >= 0 else Defs.DEMO_SUPPORT.duplicate()
+	if world.local_team >= 0 and not world.mission_info.is_empty():
 		# a mission has what's on call for it, and nothing else
 		var on_call: Array = world.mission_info.get("sup", [])
 		kinds = kinds.filter(func(k): return k in on_call)
@@ -1563,17 +1874,21 @@ func _update_support() -> void:
 		for c in support_box.get_children():
 			c.queue_free()
 		_support_btns.clear()
+		if kinds.is_empty():
+			support_box.add_child(UiKit.caps("No support on call", 12, UiKit.DIM))
 		if not kinds.is_empty():
-			support_box.add_child(UiKit.header("Fires", "%02d" % kinds.size()))
+			support_box.add_child(UiKit.header("On call" if world.local_team >= 0 else "Available demos", "%02d" % kinds.size()))
 		for k in kinds:
 			var kk: String = k
 			var b := _fire_row(fire_short(String(Defs.SUPPORT[k].name)), "%s\n%s" % [Defs.SUPPORT[k].name, Defs.SUPPORT[k].desc], func():
 				world.input.cancel_modes()
-				world.input.ability = "support:" + kk)
+				world.input.ability = ("support:" if world.local_team >= 0 else "demo:") + kk
+				set_workspace("battle"))
 			support_box.add_child(b)
 			_support_btns[k] = b
 		_fires_more = _fire_row("", "Show every fire mission", func(): _fires_open = not _fires_open)
 		support_box.add_child(_fires_more)
+		_fires_more.visible = not kinds.is_empty()
 	if kinds.is_empty():
 		return
 	var sup: Dictionary = world.team_info[world.local_team].get("sup", {}) if world.local_team >= 0 else {}
@@ -1584,16 +1899,22 @@ func _update_support() -> void:
 		if b == null:
 			continue
 		var sd: Dictionary = Defs.SUPPORT[k]
-		var left := float(sup.get(k, Defs.support_from(k))) - world.time
-		b.disabled = left > 0.0
+		var left := float(sup.get(k, Defs.support_from(k))) - world.time if world.local_team >= 0 else 0.0
+		var affordable := world.local_team < 0 or float(world.team_info[world.local_team].get("supply", 0)) >= float(sd.cost)
+		b.disabled = left > 0.0 or not affordable
 		var state: Label = b.get_meta("state")
 		var nm: Label = b.get_meta("name")
 		if left <= 0.0:
 			var zk := Keys.label("support")
 			state.text = ("[%s] RDY · %d" % [zk.to_upper(), int(sd.cost)]) if first and zk != "" else ("RDY · %d" % int(sd.cost))
-			state.add_theme_color_override("font_color", UiKit.GOOD)
+			if world.local_team < 0:
+				state.text = "DEMO"
+			if not affordable:
+				state.text = "NEED %d SUP" % int(sd.cost)
+			state.add_theme_color_override("font_color", (UiKit.DIM if world.local_team < 0 else UiKit.GOOD) if affordable else UiKit.FAINT)
 			nm.add_theme_color_override("font_color", UiKit.TEXT)
-			first = false
+			if affordable:
+				first = false
 			b.visible = true
 		else:
 			state.text = "%dS" % int(ceil(left))
@@ -1615,7 +1936,7 @@ func _update_support() -> void:
 func _fire_row(name: String, tip: String, cb: Callable) -> Button:
 	var b := Button.new()
 	b.focus_mode = Control.FOCUS_NONE
-	b.custom_minimum_size = Vector2(0, 24)
+	b.custom_minimum_size = Vector2(0, 38)
 	b.tooltip_text = tip
 	var n := UiKit.box(Color(0, 0, 0, 0), 0, UiKit.LINE, 0, 0.0)
 	n.border_width_bottom = 1
@@ -1634,12 +1955,14 @@ func _fire_row(name: String, tip: String, cb: Callable) -> Button:
 	row.offset_right = -2
 	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	b.add_child(row)
-	var l := UiKit.caps(name, 12, UiKit.TEXT, 600, 1)
+	var l := UiKit.caps(name, 13, UiKit.TEXT, 600, 1)
 	l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	l.clip_text = true
+	l.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	row.add_child(l)
-	var st := UiKit.mono_label("", 12, UiKit.FAINT)
+	var st := UiKit.mono_label("", 11, UiKit.FAINT)
 	st.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	st.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	row.add_child(st)
@@ -1647,39 +1970,6 @@ func _fire_row(name: String, tip: String, cb: Callable) -> Button:
 	b.set_meta("state", st)
 	b.pressed.connect(func(): Sfx.ui("click"); cb.call())
 	return b
-
-
-## Observer: every kind of support, free, anywhere - to see the effects.
-func _build_demo_panel() -> void:
-	demo_panel = PanelContainer.new()
-	demo_panel.add_theme_stylebox_override("panel", UiKit.frame(Color(-1, 0, 0), 6.0, 0.6, 8.0))
-	demo_panel.anchor_left = 0.5
-	demo_panel.anchor_right = 0.5
-	demo_panel.grow_horizontal = Control.GROW_DIRECTION_BOTH
-	demo_panel.offset_top = 62
-	demo_panel.visible = false
-	root.add_child(demo_panel)
-	var vb := VBoxContainer.new()
-	vb.add_theme_constant_override("separation", 6)
-	demo_panel.add_child(vb)
-	vb.add_child(UiKit.caps("Fire support demo · pick one, click the map, drag sets the run-in", 12, UiKit.ACCENT))
-	var g := GridContainer.new()
-	g.columns = 4
-	g.add_theme_constant_override("h_separation", 6)
-	g.add_theme_constant_override("v_separation", 6)
-	vb.add_child(g)
-	for k in Defs.DEMO_SUPPORT:
-		var b := Button.new()
-		b.text = String(Defs.SUPPORT[k].name)
-		b.tooltip_text = String(Defs.SUPPORT[k].desc)
-		b.custom_minimum_size = Vector2(150, 34)
-		b.focus_mode = Control.FOCUS_NONE
-		var kk: String = k
-		b.pressed.connect(func():
-			Sfx.ui("click")
-			world.input.cancel_modes()
-			world.input.ability = "demo:" + kk)
-		g.add_child(b)
 
 
 func mode_text() -> String:
@@ -1741,8 +2031,10 @@ func _update_card() -> void:
 	if key == _card_key:
 		return
 	_card_key = key
-	for c in card.get_children():
-		c.queue_free()
+	var previous_page := command_grid.page if key == _card_identity else 0
+	_card_identity = key
+	command_grid.clear_actions()
+	command_grid.paged = _card_page != "main" or st != null
 	card_title.text = ""
 	var lt := world.local_team
 	if lt < 0:
@@ -1761,10 +2053,10 @@ func _update_card() -> void:
 				inp.sel_squads.append(s2.sid))
 	elif key.begins_with("units:inf"):
 		if _card_page == "main":
-			card_title.text = "Orders"
+			card_title.text = "Command"
+			_button("Base", "Build", "Base construction: FOBs, barracks, factory, medic tent and research.", func(): _card_page = "base")
 			_button("Attack-move", Keys.label("attack_move"), "Push to a spot in bounds, one fire team moving while the other covers. They stop to fight anything they meet, then dig in at the objective. (Ctrl+right-click)", func(): inp.cancel_modes(); inp.order_mode = "assault")
 			_button("Defend", Keys.label("defend"), "Hold an area: the squad spreads into the best cover there facing the way you drag, and stays put.", func(): inp.cancel_modes(); inp.order_mode = "defend")
-			_button("Base", "Build", "FOBs, barracks, factory, medic tent, research...", func(): _card_page = "base")
 			_button("Defenses", "Build", "Trenches, sandbags, wire, mines, nests, mortar pits, bunkers...", func(): _card_page = "def")
 			if key.contains(":mortar"):
 				_button("Mortar HE", Keys.label("fire_mission"), "Fire mission: 4 high-explosive rounds (25-140 m).", func(): inp.ability = "mortar_he")
@@ -1853,6 +2145,7 @@ func _update_card() -> void:
 				if t.skind == "tunnel" and t.team == lt and t.built and t != st:
 					var ex: int = t.eid
 					_button("Exit " + Defs.grid_ref(t.position), "", "Move everyone inside to the entrance at %s." % Defs.grid_ref(t.position), func(): world.send_cmd({"t": "tunnel_exit", "building": st.eid, "exit": ex}))
+	command_grid.turn_page(previous_page)
 
 
 ## Which production page an item is on.
@@ -1877,55 +2170,94 @@ func _prod_cat(item: String) -> String:
 ## An order in the orders grid (docs/UI.md, Keys): its key in a box, its name
 ## in capitals, and (for a build, a train or a page) its cost or a mark at the
 ## end. A key fills with the accent while its order is the one in hand.
+func _build_command_card() -> void:
+	command_grid = UiDeckGrid.new()
+	card_panel = command_grid
+	root.add_child(command_grid)
+	card_title = command_grid.title
+	card_scroll = command_grid.scroll
+	card = command_grid.grid
+	command_grid.previous.text = Keys.label("orders_previous") + "  ‹"
+	command_grid.next.text = "›  " + Keys.label("orders_next")
+
+
+func _layout_command_card() -> void:
+	var room := root.size.x - minimap_right() - 8 - SEL_MIN_W - 12 - 14
+	command_grid.fit_width(room)
+	card_panel.size = card_panel.get_combined_minimum_size()
+	card_panel.position = root.size - card_panel.size - Vector2(14, 14)
+
+
 func _button(text: String, sub: String, tip: String, cb: Callable) -> Button:
-	var b := Button.new()
-	b.tooltip_text = tip
-	b.custom_minimum_size = CARD_BTN
-	b.focus_mode = Control.FOCUS_NONE
-	var n := UiKit.box(Color(0, 0, 0, 0), 0, Color(0, 0, 0, 0), 0, 0.0)
-	var h := UiKit.box(UiKit.fa(UiKit.TEXT, 0.05), 0, Color(0, 0, 0, 0), 0, 0.0)
-	for st in ["normal", "disabled", "focus"]:
-		b.add_theme_stylebox_override(st, n)
-	for st in ["hover", "pressed", "hover_pressed"]:
-		b.add_theme_stylebox_override(st, h)
-	var row := HBoxContainer.new()
-	row.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	row.add_theme_constant_override("separation", 7)
-	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	b.add_child(row)
 	var is_key := sub != "" and not sub.is_valid_int() and sub != "Build" and sub != "‹" and not sub.begins_with("tier ") and not sub.ends_with(" types")
-	var kb: PanelContainer = null
-	if is_key:
-		kb = _key_box(sub.to_upper())
-		kb.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-		kb.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		row.add_child(kb)
-	var danger := text in ["Retreat", "Fall back", "Cancel"]
-	var l := UiKit.caps(text, 12, UiKit.BAD if danger else UiKit.TEXT, 600, 1)
-	l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	l.clip_text = true
-	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	row.add_child(l)
-	if sub != "" and not is_key:
-		var tag := sub
-		if sub == "Build":
-			tag = "›"
-		elif sub.begins_with("tier "):
-			tag = "T" + sub.trim_prefix("tier ")
-		elif sub.ends_with(" types"):
-			tag = sub.trim_suffix(" types")
-		var sl := UiKit.mono_label(tag, 11, UiKit.FAINT)
-		sl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-		sl.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		row.add_child(sl)
-	b.set_meta("name", l)
-	if kb:
-		b.set_meta("key", kb)
-	b.set_meta("order", text)
-	b.pressed.connect(func(): Sfx.ui("click"); cb.call(); _card_key = "")
-	card.add_child(b)
+	var icons := {"Attack-move": "attack", "Defend": "defend", "Hold": "hold", "Retreat": "back", "Fall back": "back", "Back": "back", "Cancel": "back",
+		"Grenade": "grenade", "Smoke": "smoke", "Mortar smoke": "smoke", "Fire smoke": "smoke", "Dismount": "exit", "Exit here": "exit", "Base": "build", "Defenses": "defenses",
+		"Mortar HE": "target", "Fire mission": "target", "Fire HE": "target", "Squad": "units"}
+	var bindings := {"Base": "build_base", "Defenses": "build_defenses", "Dismount": "dismount", "Squad": "select_squad", "Back": "orders_back", "Cancel": "cancel_production",
+		"Attack-move": "attack_move", "Defend": "defend", "Hold": "hold", "Retreat": "retreat", "Fall back": "retreat", "Grenade": "grenade", "Smoke": "smoke",
+		"Mortar HE": "fire_mission", "Fire mission": "fire_mission", "Fire HE": "fire_mission", "Mortar smoke": "fire_smoke", "Fire smoke": "fire_smoke", "Exit here": "tunnel_exit"}
+	var shortcut: String = bindings.get(text, "order_slot_%d" % (card.get_child_count() % UiDeckGrid.PAGE_SIZE + 1))
+	var b := command_grid.add_action({"id": text, "label": text, "icon": icons.get(text, "build"),
+		"key": (sub if is_key else Keys.label(shortcut)), "shortcut_id": shortcut, "primary": text == "Base",
+		"value": sub if not is_key and sub != "Build" and sub != "‹" else "",
+		"dangerous": text in ["Retreat", "Fall back", "Cancel"], "tooltip": tip},
+		func():
+			Sfx.ui("click"); cb.call(); _card_key = "")
+	b.focus_mode = Control.FOCUS_NONE
 	return b
+
+
+## Contextual shortcuts share the actual button callback, including disabled state.
+func card_key_actions() -> Array:
+	var ids: Array = []
+	if not command_grid:
+		return ids
+	for button: UiDeckAction in card.get_children():
+		if button.visible:
+			ids.append(button.shortcut_id)
+	if command_grid.paged:
+		# Empty slots must consume Alt+number too, rather than recall a control group.
+		for slot in UiDeckGrid.PAGE_SIZE:
+			ids.append("order_slot_%d" % (slot + 1))
+	if command_grid.page_count() > 1:
+		ids.append_array(["orders_previous", "orders_next"])
+	if _card_page != "main":
+		ids.append("orders_back")
+	return ids
+
+
+func back_to_orders() -> bool:
+	if _card_page == "main":
+		return false
+	_card_page = "main"
+	_card_key = ""
+	_update_card()
+	return true
+
+
+func activate_card_action(id: String) -> bool:
+	if not command_grid or not world.input.can_command() or typing or (menu_panel and menu_panel.visible):
+		return false
+	if id == "orders_back":
+		return back_to_orders()
+	if id in ["orders_previous", "orders_next"] and command_grid.page_count() > 1:
+		command_grid.turn_page(1 if id == "orders_next" else -1)
+		return true
+	if command_grid.paged and id.begins_with("order_slot_"):
+		var index := command_grid.page * UiDeckGrid.PAGE_SIZE + int(id.trim_prefix("order_slot_")) - 1
+		if index >= 0 and index < card.get_child_count():
+			var button := card.get_child(index) as UiDeckAction
+			if not button.disabled:
+				button.pressed.emit()
+				_update_card()
+		return true
+	for button: UiDeckAction in card.get_children():
+		if button.visible and button.shortcut_id == id:
+			if not button.disabled:
+				button.pressed.emit()
+				_update_card()
+			return true
+	return false
 
 
 ## Which order is in hand (attack-move, defend, a grenade, a fire mission):
@@ -1937,19 +2269,5 @@ func _card_active() -> void:
 	var hand := {"Attack-move": inp.order_mode == "assault", "Defend": inp.order_mode == "defend", "Grenade": inp.ability == "frag",
 		"Smoke": inp.ability == "smoke", "Mortar HE": inp.ability == "mortar_he", "Mortar smoke": inp.ability == "mortar_smoke",
 		"Fire mission": inp.ability == "arty_he", "Fire HE": inp.ability == "pit_he", "Fire smoke": inp.ability == "pit_smoke"}
-	for b in card.get_children():
-		if not b.has_meta("key"):
-			continue
-		var on: bool = hand.get(String(b.get_meta("order")), false)
-		if on == b.get_meta("on", false):
-			continue
-		b.set_meta("on", on)
-		var kb: PanelContainer = b.get_meta("key")
-		var sb := UiKit.box(UiKit.ACCENT if on else Color(0, 0, 0, 0), 0, UiKit.ACCENT if on else UiKit.RULE2, 1, 0.0)
-		sb.content_margin_left = 5
-		sb.content_margin_right = 5
-		sb.content_margin_top = 1
-		sb.content_margin_bottom = 1
-		kb.add_theme_stylebox_override("panel", sb)
-		(kb.get_child(0) as Label).add_theme_color_override("font_color", UiKit.ON_ACCENT if on else UiKit.TEXT)
-		(b.get_meta("name") as Label).add_theme_color_override("font_color", UiKit.ACCENT if on else UiKit.TEXT)
+	for b: UiDeckAction in card.get_children():
+		b.set_active(hand.get(b.action_id, false))

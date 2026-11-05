@@ -2,7 +2,7 @@ class_name HudSelInfo
 extends Control
 ## What's selected, bottom centre, in Signal (docs/UI.md): a name and its type,
 ## one line of codes, then a cell per man (or a row per squad or vehicle, or a
-## structure's state). It sits on the bottom scrim: no box.
+## structure's state). The command deck supplies its housing.
 
 var hud: Hud
 var need_h := 120.0
@@ -79,6 +79,12 @@ func _draw() -> void:
 			y += 26.0
 		need_h = y + 4.0
 		return
+	if inp.sel_vehicles.size() == 1:
+		var selected_vehicle := w.entity(inp.sel_vehicles[0]) as Vehicle
+		if selected_vehicle:
+			_vehicle_detail(selected_vehicle)
+			need_h = 140.0
+			return
 	if not inp.sel_vehicles.is_empty():
 		var y2 := 2.0
 		for id in inp.sel_vehicles:
@@ -104,9 +110,28 @@ func _draw() -> void:
 		_describe(e)
 
 
+## Replicated condition and static capabilities, useful to a commander on host or client.
+func _vehicle_detail(v: Vehicle) -> void:
+	var title := v.display_name()
+	while title.length() > 3 and UiKit.caps_w(title, 17) > size.x - 60:
+		title = title.left(title.length() - 2).trim_suffix("…") + "…"
+	UiKit.caps_at(self, Vector2(0, NAME_Y), title, 17, UiKit.TEXT)
+	UiKit.mono_at(self, Vector2(size.x - 42, NAME_Y), "%d%%" % roundi(v.health_frac() * 100), 12, _health_col(v.health_frac()))
+	var state := "IMMOBILISED · NEEDS ENGINEERS" if (v.flags & Vehicle.F_TRACK) != 0 else ("ENGAGING" if (v.flags & Vehicle.F_FIRE) != 0 else "READY")
+	UiKit.caps_at(self, Vector2(0, CODE_Y), state, 11, UiKit.WARN if v.flags & (Vehicle.F_TRACK | Vehicle.F_FIRE) else UiKit.DIM)
+	UiKit.rule(self, Vector2(0, 49), Vector2(size.x, 49))
+	_row(72, "Position", Defs.grid_ref(v.position))
+	_row(92, "Armour", ["LIGHT", "MEDIUM", "HEAVY"][clampi(int(v.vdef.get("armor", 0)), 0, 2)])
+	_row(112, "Top speed", "%d KM/H" % roundi(float(v.vdef.get("speed", 0)) * 3.6))
+	if size.x > 420:
+		var lines := MapSymbols.wrap(String(v.vdef.get("desc", "")), 12, 400, size.x - 240)
+		for i in mini(3, lines.size()):
+			UiKit.text(self, Vector2(240, 72 + i * 18), lines[i], 12, UiKit.DIM)
+
+
 ## How many men's cells fit across.
 func _cols() -> int:
-	return clampi(int(size.x / 112.0), 3, 6)
+	return clampi(int(size.x / 112.0), 2, 6)
 
 
 ## A state code's colour: dim unless it needs the commander.
@@ -132,22 +157,28 @@ func _squad_detail(mem: Array) -> void:
 			alive += 1
 	var st: Dictionary = hud.squad_state(mem[0].sid, mem)
 	var x := UiKit.caps_at(self, Vector2(0, NAME_Y), cs, 17, UiKit.TEXT)
-	x += 10.0 + UiKit.caps_at(self, Vector2(x + 10.0, NAME_Y), _squad_name(mem), 11, UiKit.FAINT)
+	var type_name := _squad_name(mem)
+	if size.x > x + UiKit.caps_w(type_name, 11) + 150:
+		x += 10.0 + UiKit.caps_at(self, Vector2(x + 10.0, NAME_Y), type_name, 11, UiKit.FAINT)
 	# right: its nerve, then how many are still fighting
 	var rx := size.x - UiKit.mono_w("%d/%d" % [alive, mem.size()], 12)
 	UiKit.mono_at(self, Vector2(rx, NAME_Y), "%d/%d" % [alive, mem.size()], 12, UiKit.TEXT if alive * 2 > mem.size() else UiKit.BAD)
 	if int(st.morale) >= 0:
 		var mcol: Color = [UiKit.GOOD, UiKit.WARN, Color(1.0, 0.62, 0.35), UiKit.BAD][int(st.mstate)]
 		var mtxt: String = SquadBrain.STATE_NAMES[int(st.mstate)].to_upper()
-		UiKit.mono_at(self, Vector2(rx - 16.0 - UiKit.mono_w(mtxt, 12), NAME_Y), mtxt, 12, mcol)
+		var mx := rx - 16.0 - UiKit.mono_w(mtxt, 12)
+		if mx > x + 12:
+			UiKit.mono_at(self, Vector2(mx, NAME_Y), mtxt, 12, mcol)
 	# the codes: what it's doing, then what most of the men are doing, then the attack's steps
 	var line: String = st.code
 	var common := _common_doing(mem)
 	if common != "" and not (bool(st.pinned) and common.to_lower().contains("pinned")):
 		line += " · " + common.to_upper()
+	while line.length() > 3 and UiKit.mono_w(line, 12) > size.x - 8:
+		line = line.left(line.length() - 2).trim_suffix("…") + "…"
 	var cx := UiKit.mono_at(self, Vector2(0, CODE_Y), line, 12, _code_col(st))
 	var o: Array = hud.orders.get(mem[0].sid, [])
-	if not o.is_empty() and o[6] != null:
+	if not o.is_empty() and o[6] != null and size.x >= cx + 312:
 		_stepper(Vector2(maxf(cx + 24.0, size.x - 300.0), CODE_Y), String(o[6][0]))
 	# the men
 	var cols := _cols()

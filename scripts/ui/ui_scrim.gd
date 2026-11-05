@@ -9,8 +9,10 @@ var edge := "top"  # top, bottom, left or right
 var reach := 120.0
 var span := 0.0
 var strength := 1.0
+var content_column := false  # hold readable ink under a HUD column, then feather its edges
 
 static var _mask: ImageTexture
+static var _column_mask: ImageTexture
 
 
 ## A scrim on an edge, as a child of a full-screen parent.
@@ -27,23 +29,30 @@ static func make(on_edge: String, reach_px: float, span_px := 0.0, k := 1.0) -> 
 
 ## One alpha mask for every scrim: full at the edge (x = 0) easing to nothing
 ## across, and along the edge full until two thirds of the way, then fading.
-static func _get_mask() -> ImageTexture:
-	if _mask == null:
+static func _get_mask(column := false) -> ImageTexture:
+	var cached := _column_mask if column else _mask
+	if cached == null:
 		var img := Image.create(64, 64, false, Image.FORMAT_RGBA8)
 		for y in 64:
 			var v := float(y) / 63.0
 			var along := 1.0 - smoothstep(0.62, 1.0, v)
+			if column:
+				along *= smoothstep(0.0, 0.03, v)
 			for x in 64:
 				var u := float(x) / 63.0
-				var across := pow(1.0 - u, 1.7)
+				var across := 1.0 - smoothstep(0.62, 1.0, u) if column else pow(1.0 - u, 1.7)
 				img.set_pixel(x, y, Color(1, 1, 1, across * along))
-		_mask = ImageTexture.create_from_image(img)
-	return _mask
+		cached = ImageTexture.create_from_image(img)
+		if column:
+			_column_mask = cached
+		else:
+			_mask = cached
+	return cached
 
 
 func _draw() -> void:
 	var col := Color(UiKit.SCRIM.r, UiKit.SCRIM.g, UiKit.SCRIM.b, UiKit.SCRIM.a * strength)
-	var m := _get_mask()
+	var m := _get_mask(content_column)
 	var w := size.x
 	var h := size.y
 	var sp_v := span if span > 0.0 else h * 1.6  # (a whole edge: the fade along it falls past the end)
