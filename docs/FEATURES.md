@@ -554,6 +554,7 @@ Ambush Alley autoplay can call its existing mortar support against spotted, stop
 - Sheltered runoff channels darken and develop a restrained sheen while exposed rock remains dry.
 - Conifers have broken, asymmetric branch silhouettes that read as trees against rock and snow.
 - Stones at the mountain foot have irregular broken faces instead of flattened round primitives.
+- Connected dry grass and richer moss patches replace evenly green valley floors.
 - Moss and soil blend into exposed stone on slopes, with baked slab fractures, broken mineral beds, sheltered weathering, loose-stone pockets and snow on high sheltered ground.
 - Optional alpine haze takes on the sky colour and settles lightly into lower valleys.
 - Narrow mineral stains run down exposed cliffs, interrupted by ledges and changes in rock type.
