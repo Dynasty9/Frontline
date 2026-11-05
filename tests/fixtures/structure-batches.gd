@@ -69,10 +69,34 @@ func _ready() -> void:
 	for tree in trees:
 		for part in tree.model.get_children():
 			assert(not part.visible, "Batched foliage must not draw twice")
+	for part: MeshInstance3D in view._draw_batches[Vector2i.ZERO].node.get_children():
+		if part.material_override.get_shader_parameter("leaf_cards") == true:
+			var arrays: Array = part.mesh.surface_get_arrays(0)
+			assert(arrays[Mesh.ARRAY_TEX_UV].size() == arrays[Mesh.ARRAY_VERTEX].size(), "Leaf atlas coordinates survive spatial batching")
+			assert((arrays[Mesh.ARRAY_TEX_UV] as PackedVector2Array).has(Vector2.ONE), "Merged cards retain the complete texture extent")
 	view.unbatch(trees[0])
 	assert(view._draw_members.has(11) and not view._draw_members.has(10), "Felling or burning one tree preserves its neighbour")
 	for part in trees[0].model.get_children():
 		assert(part.visible, "Changed trees regain individual foliage and bark")
+	# Background forests cannot masquerade as cover inside the combat map.
+	var atmosphere := Atmosphere.new()
+	atmosphere.world = w
+	w.terrain = TerrainMap.new(w)
+	w.terrain.landform.peak = 100.0
+	atmosphere.ground_mat = ShaderMaterial.new()
+	atmosphere.ground_mat.shader = Shader.new()
+	atmosphere.ground_mat.shader.code = "shader_type spatial; uniform float sea_x = 1000000000.0;"
+	atmosphere.backdrop_tex = ImageTexture.create_from_image(Image.create(2, 2, false, Image.FORMAT_RF))
+	var forest := DistantForest.new()
+	forest.setup(atmosphere)
+	assert(forest.tree_count > 10000 and forest.get_child_count() < 300, "Dense forests share bounded spatial draw batches")
+	if DisplayServer.get_name() != "headless":
+		for chunk: MultiMeshInstance3D in forest.get_children():
+			for i in chunk.multimesh.instance_count:
+				var position := chunk.position + chunk.multimesh.get_instance_transform(i).origin
+				assert(maxf(absf(position.x), absf(position.z)) >= MapDims.HALF + 48.0)
+	forest.free()
+	atmosphere.free()
 	w.free()
 	print("STRUCTURE_BATCHES passed")
 	Sfx._ensure()

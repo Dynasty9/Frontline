@@ -63,6 +63,7 @@ var detail_tex: ImageTexture
 var backdrop_tex: ImageTexture
 var road_mat: ShaderMaterial
 var grass: Grass
+var forest: DistantForest
 var wildlife: Wildlife
 var _d := {}
 var _mood_asked := ""  # the Time of day setting as the battle began: changing it mid-battle switches the mood live
@@ -309,7 +310,7 @@ func _build_ground() -> void:
 	ground.mesh = _ground_ring(GROUND_HALF, MapDims.HALF + 1800.0)
 	ground_mat = ShaderMaterial.new()
 	var sh := Shader.new()
-	sh.code = MapDims.shader(GROUND_SHADER)
+	sh.code = MapDims.shader(GROUND_SHADER.replace("// BACKDROP_HEIGHT", BACKDROP_HEIGHT))
 	ground_mat.shader = sh
 	ground_mat.set_shader_parameter("biome_tex", biome_tex)
 	ground_mat.set_shader_parameter("detail_tex", detail_tex)
@@ -630,6 +631,8 @@ func apply_mood(m: String) -> void:
 func apply_settings() -> void:
 	var s := Settings
 	ground_mat.set_shader_parameter("terrain_detail", int(s.get_v("lod")) >= 1)
+	if forest:
+		forest.visible = int(s.get_v("lod")) >= 1
 	# the battle's own mood stands (the host's choice, or a mission's) until
 	# the player changes the setting while it's on
 	var want := String(s.get_v("mood"))
@@ -905,6 +908,9 @@ func _update_deform(dt: float) -> void:
 		ground_mat.set_shader_parameter("surface_bake", ImageTexture.create_from_image(tm.landform.bake_surface(sun.basis.z)))
 		ground_mat.set_shader_parameter("sun_direction", sun.basis.z)
 		_surface_baked = true
+		forest = DistantForest.new()
+		add_child(forest)
+		forest.setup(self)
 		_update_terrain_probe(true)
 		var post := post_rect.material as ShaderMaterial
 		post.set_shader_parameter("fringe", 0.00015)
@@ -1029,6 +1035,20 @@ void sky() {
 }
 """
 
+const BACKDROP_HEIGHT := """
+float backdrop(vec2 p) {
+	float edge = max(abs(p.x), abs(p.y)) - __MAP_HALF__;
+	float coast = 1.0 - smoothstep(sea_x - 90.0, sea_x, p.x);
+	vec2 uv = (p + __MAP_HALF__ + 1800.0) / (__MAP_SIZE__ + 3600.0);
+	float mountain = textureLod(backdrop_tex, uv, 0.0).r;
+	float hills = pow(smoothstep(0.18, 0.88, mountain), 2.2) * 440.0;
+	return hills * smoothstep(8.0, 380.0, edge) * coast * (1.0 - step(9999.0, snow_line))
+		* (1.0 - smoothstep(1450.0, 1800.0, edge))
+		- 3.2 * smoothstep(sea_x, sea_x + 30.0, p.x);
+}
+
+"""
+
 const GROUND_SHADER := """
 shader_type spatial;
 render_mode specular_schlick_ggx;
@@ -1070,16 +1090,7 @@ varying float puddle;
 varying float terrain_sun;
 varying float rock_damp;
 
-float backdrop(vec2 p) {
-	float edge = max(abs(p.x), abs(p.y)) - __MAP_HALF__;
-	float coast = 1.0 - smoothstep(sea_x - 90.0, sea_x, p.x);
-	vec2 uv = (p + __MAP_HALF__ + 1800.0) / (__MAP_SIZE__ + 3600.0);
-	float mountain = textureLod(backdrop_tex, uv, 0.0).r;
-	float hills = pow(smoothstep(0.18, 0.88, mountain), 2.2) * 440.0;
-	return hills * smoothstep(8.0, 380.0, edge) * coast * (1.0 - step(9999.0, snow_line))
-		* (1.0 - smoothstep(1450.0, 1800.0, edge))
-		- 3.2 * smoothstep(sea_x, sea_x + 30.0, p.x);
-}
+// BACKDROP_HEIGHT
 
 float dfm(vec2 p) {
 	if (max(abs(p.x), abs(p.y)) >= __MAP_HALF__) { return backdrop(p); }

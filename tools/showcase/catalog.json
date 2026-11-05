@@ -3960,7 +3960,7 @@
         },
         {
           "file": "changelog/unreleased/town-ground-and-frontages/target-after.jpg",
-          "sha256": "ce05f9868ef622f1ab17d62a69f65250a65a62b2cd47f46d353ff654e7d6bac1",
+          "sha256": "02d11f41d98ec462a4c5aee86fd918f48ddcd490f13db9bace82cb8e9ecb2a01",
           "caption": "target after"
         },
         {
@@ -3970,12 +3970,12 @@
         },
         {
           "file": "changelog/unreleased/town-ground-and-frontages/wide-after.jpg",
-          "sha256": "fee50838bf1c69c382a60a047ca65fb0d3a7013ea93588434b4c5ae3fae85123",
+          "sha256": "8a56af1f8e75b74e83c3f889895096e107d4bc647068368fcddd1222f9f2d549",
           "caption": "wide after"
         },
         {
           "file": "changelog/unreleased/town-ground-and-frontages/target-compat.jpg",
-          "sha256": "d383a52122b0d31f64b22a8838f45c0477d51b24da96d8b6a162afa54557f72f",
+          "sha256": "7ce021ea336a43de5b6c3f855a5547f8bf96bb24c448ed4206ece482621a27aa",
           "caption": "target compat"
         },
         {
@@ -3985,12 +3985,22 @@
         },
         {
           "file": "changelog/unreleased/town-ground-and-frontages/detail-after.jpg",
-          "sha256": "a5e03b7cd01df6e0fe9369d15f0305ced6852aa65049cdfc8090fbfc240a0fe4",
+          "sha256": "4cf89bdda8934ca3be070f1d9e39fe7b7d8e1bac59fc4d8f7876c942e1419cda",
           "caption": "detail after"
         },
         {
+          "file": "changelog/unreleased/town-ground-and-frontages/forest-before.jpg",
+          "sha256": "1c41c1fa0f8ae01c27e8679b679ff979b8fe491247b17175fdcbe1878902e1d9",
+          "caption": "forest before"
+        },
+        {
+          "file": "changelog/unreleased/town-ground-and-frontages/forest-after.jpg",
+          "sha256": "a8a57b7e286fce06dc59b83602478dcb75e65ce51ef9aa74de92252dc81ea158",
+          "caption": "forest after"
+        },
+        {
           "file": "changelog/unreleased/town-ground-and-frontages/compare.gif",
-          "sha256": "ca0661936d634c34a7bc5ddea930a7d55968a39a59afb3ef1ecf961263ce5639",
+          "sha256": "eca37891e7a5f729e6324c6def4fcf504c71bc078ec652ee71735a142ce02eca",
           "caption": "Native frames, separate labels, shared palette, 2.5 seconds each."
         }
       ],
@@ -4013,7 +4023,8 @@
         "wide": "focus 0,0; zoom 220; pitch -40; yaw 0.7",
         "compatibility": "Target after with --rendering-method gl_compatibility",
         "command": "godot --main-pack PACK --resolution 1600x900 -- --aivai --seed=3 --offscreen --nohud --set=perf:0 --preset=high --mood=day --focus=FOCUS --zoom=ZOOM --pitch=PITCH --cam-yaw=0.7 --screenshot=OUTPUT --shot-at=2 --quit-after=3",
-        "detail": "focus -55,-4; zoom 15; pitch -55; yaw 0.7; shot 2s"
+        "detail": "focus -55,-4; zoom 15; pitch -55; yaw 0.7; shot 2s",
+        "forest": "focus 0,0; zoom 900; pitch -22; yaw 0.7; shot 2s; same seed, resolution, High/day"
       }
     }
   ],

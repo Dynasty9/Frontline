@@ -1141,7 +1141,7 @@ static func _conifer(bake: Mats.Bake, rng: RandomNumberGenerator) -> void:
 		var pos := Vector3(rng.randf_range(-0.06, 0.06), y + h * 0.5, rng.randf_range(-0.06, 0.06))
 		var rot := Vector3(rng.randf_range(-0.07, 0.07), rng.randf() * TAU, rng.randf_range(-0.07, 0.07))
 		var scl := Vector3(r * rng.randf_range(0.9, 1.1), h, r * rng.randf_range(0.9, 1.1))
-		bake.part(Res.spruce_boughs(), Mats.foliage(), Mats.place(pos, rot, scl), Res.vary(needles, 0.05, rng).darkened(0.12 * (1.0 - t)))
+		bake.part(Res.foliage_cards(true), Mats.leaf_cards(true), Mats.place(pos, rot, scl), Res.vary(needles, 0.05, rng).darkened(0.12 * (1.0 - t)))
 
 
 static func _bark(bake: Mats.Bake, a: Vector3, b: Vector3, r0: float, r1: float, col: Color) -> void:
@@ -1164,7 +1164,7 @@ static func _bark_part(bake: Mats.Bake, mesh: Mesh, xf: Transform3D, col: Color)
 static func _leaves(bake: Mats.Bake, p: Vector3, r: float, squash: float, col: Color) -> void:
 	if _snag:
 		return
-	bake.part(Res.sphere(1.0, 10), Mats.foliage(), Mats.place(p, Vector3.ZERO, Vector3(r, r * squash, r)), col)
+	bake.part(Res.foliage_cards(false), Mats.leaf_cards(false), Mats.place(p, Vector3.ZERO, Vector3(r, r * squash, r)), col)
 
 
 ## A house roof: tiled and pitched (ridge along the long side, gable ends in
@@ -2304,7 +2304,7 @@ func _skinned(mesh: Mesh, sm: StandardMaterial3D, p: Vector3, rot: Vector3, scl:
 	var xf := Mats.place(p, rot, scl)
 	var kind := _surf_kind(col, mesh)
 	if kind == "foliage":
-		_bake.part(mesh, Mats.foliage(), xf, col, shadow)
+		_bake.part(Res.foliage_cards(false), Mats.leaf_cards(false), xf * Transform3D(Basis.from_scale(mesh.get_aabb().size * 0.5), Vector3.ZERO), col, shadow)
 	else:
 		var t := Mats.tint_for(kind, col)
 		_bake.part(mesh, Mats.get_mat(kind), xf, t if t != Color(1, 1, 1) else null, shadow)

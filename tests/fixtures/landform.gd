@@ -14,9 +14,9 @@ func _ready() -> void:
 	assert(MapGen.alpine_dressing(0.2, 0.6, 0.8) == "alpine_stones")
 	assert(MapGen.alpine_dressing(0.8, 0.1, 0.8) == "")
 	assert(MapGen.alpine_dressing(0.2, 1.2, 0.8) == "")
-	var boughs := Res.spruce_boughs()
-	assert(boughs == Res.spruce_boughs(), "Trees share their bough mesh")
-	assert(boughs.surface_get_array_len(0) == 216 and boughs.get_aabb().size.y > 0.8, "Boughs retain a bounded tree silhouette and triangle budget")
+	var boughs := Res.foliage_cards(true)
+	assert(boughs == Res.foliage_cards(true), "Trees share their bough mesh")
+	assert(boughs.surface_get_array_len(0) == 108 and boughs.get_aabb().size.y > 0.8, "Boughs retain a bounded tree silhouette and triangle budget")
 	assert(Res.alpine_stone(0) == Res.alpine_stone(4), "Scree variants reuse four cached meshes")
 	assert(Res.alpine_stone(0).surface_get_array_len(0) == 60)
 	for variant in 4:

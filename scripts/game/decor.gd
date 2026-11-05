@@ -316,7 +316,7 @@ func _paving_mesh(box: Mesh, local: Transform3D) -> ArrayMesh:
 
 
 func _leaf(r: float, p: Vector3, col: Color, shadow := true) -> void:
-	_bake.part(Res.sphere(r, 8), Mats.foliage(), Transform3D(Basis.IDENTITY, p), col, shadow, _at)
+	_bake.part(Res.foliage_cards(false), Mats.leaf_cards(false), Transform3D(Basis.IDENTITY.scaled(Vector3.ONE * r), p), col, shadow, _at)
 
 
 ## A straight member between two local points (legs, braces, chains, rails).

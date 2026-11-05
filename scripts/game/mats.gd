@@ -288,6 +288,17 @@ static func foliage() -> ShaderMaterial:
 	return _foliage
 
 
+static var _leaf_cards := {}
+
+static func leaf_cards(conifer: bool) -> ShaderMaterial:
+	if not _leaf_cards.has(conifer):
+		var material := foliage().duplicate() as ShaderMaterial
+		material.set_shader_parameter("leaf_cards", true)
+		material.set_shader_parameter("leaf_texture", preload("res://assets/foliage/fir.png") if conifer else preload("res://assets/foliage/broadleaf.png"))
+		_leaf_cards[conifer] = material
+	return _leaf_cards[conifer]
+
+
 static var _vc_cache := {}
 ## Merged parts carry their tint as vertex colour, which is stored 8 bits per
 ## channel and clamps at 1: a tint brighter than the material's base (a sand
@@ -334,6 +345,8 @@ static func _emit(root: Node3D, groups: Dictionary, single: bool) -> void:
 			arrays2[Mesh.ARRAY_VERTEX] = g2.v
 			arrays2[Mesh.ARRAY_NORMAL] = g2.n
 			arrays2[Mesh.ARRAY_COLOR] = g2.c
+			if not g2.uv.is_empty():
+				arrays2[Mesh.ARRAY_TEX_UV] = g2.uv
 			am2.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays2)
 			am2.surface_set_material(am2.get_surface_count() - 1, g2.mat if g2.mat.get_shader_parameter("use_vcolor") == true else vc_variant(g2.mat))
 			if int(g2.shadow) != GeometryInstance3D.SHADOW_CASTING_SETTING_OFF:
@@ -350,6 +363,8 @@ static func _emit(root: Node3D, groups: Dictionary, single: bool) -> void:
 		arrays[Mesh.ARRAY_VERTEX] = g.v
 		arrays[Mesh.ARRAY_NORMAL] = g.n
 		arrays[Mesh.ARRAY_COLOR] = g.c
+		if not g.uv.is_empty():
+			arrays[Mesh.ARRAY_TEX_UV] = g.uv
 		var am := ArrayMesh.new()
 		am.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
 		var mi := MeshInstance3D.new()
@@ -471,6 +486,8 @@ static func _flat(mesh: Mesh, si: int) -> Array:
 	var v: PackedVector3Array = arr[Mesh.ARRAY_VERTEX]
 	var n: PackedVector3Array = arr[Mesh.ARRAY_NORMAL]
 	var c = arr[Mesh.ARRAY_COLOR]
+	var uv = arr[Mesh.ARRAY_TEX_UV]
+	var hasuv: bool = uv != null and (uv as PackedVector2Array).size() == v.size()
 	var hasc: bool = c != null and (c as PackedColorArray).size() == v.size()
 	var idx = arr[Mesh.ARRAY_INDEX]
 	if idx != null and not (idx as PackedInt32Array).is_empty():
@@ -478,6 +495,9 @@ static func _flat(mesh: Mesh, si: int) -> Array:
 		var v2 := PackedVector3Array()
 		var n2 := PackedVector3Array()
 		var c2 := PackedColorArray()
+		var uv2 := PackedVector2Array()
+		if hasuv:
+			uv2.resize(ii.size())
 		v2.resize(ii.size())
 		n2.resize(ii.size())
 		if hasc:
@@ -486,12 +506,15 @@ static func _flat(mesh: Mesh, si: int) -> Array:
 			var j := ii[k]
 			v2[k] = v[j]
 			n2[k] = n[j]
+			if hasuv:
+				uv2[k] = (uv as PackedVector2Array)[j]
 			if hasc:
 				c2[k] = (c as PackedColorArray)[j]
 		v = v2
 		n = n2
 		c = c2
-	var out := [v, n, c if hasc else null]
+		uv = uv2
+	var out := [v, n, c if hasc else null, uv if hasuv else null]
 	if cacheable:
 		_flat_cache[key] = out
 	else:
@@ -590,7 +613,7 @@ static func _append(groups: Dictionary, mesh: Mesh, mats: Array, shadow: int, ti
 		var vc: bool = sm.get_shader_parameter("use_vcolor") == true
 		var key := str(sm.get_instance_id()) if single else "%d|%d" % [sm.get_instance_id(), shadow]
 		if not groups.has(key):
-			groups[key] = {"mat": sm, "shadow": shadow, "v": PackedVector3Array(), "n": PackedVector3Array(), "c": PackedColorArray()}
+			groups[key] = {"mat": sm, "shadow": shadow, "v": PackedVector3Array(), "n": PackedVector3Array(), "c": PackedColorArray(), "uv": PackedVector2Array()}
 		var g: Dictionary = groups[key]
 		if shadow != GeometryInstance3D.SHADOW_CASTING_SETTING_OFF:
 			g.shadow = shadow
@@ -600,6 +623,9 @@ static func _append(groups: Dictionary, mesh: Mesh, mats: Array, shadow: int, ti
 		var verts: PackedVector3Array = fa[0]
 		g.v.append_array(cx * verts)
 		g.n.append_array(nb * (fa[1] as PackedVector3Array))
+		if sm.get_shader_parameter("leaf_cards") == true:
+			assert(fa[3] != null, "Photographed foliage keeps its card coordinates through batching")
+			g.uv.append_array(fa[3])
 		if vc and fa[2] != null and (fa[2] as PackedColorArray).size() == verts.size():
 			g.c.append_array(fa[2])
 		else:
@@ -1106,8 +1132,8 @@ void fragment() {
 		NORMAL = normalize((VIEW_MATRIX * vec4(normal.x, normal.z, -normal.y, 0.0)).xyz);
 		ROUGHNESS = clamp(surface.a, 0.65, 1.0);
 	}
-	if (pattern == 21) {
-		vec4 photo = texture(photo_surface, uv + off * 0.03);
+	if (pattern == 21 || pattern == 2) {
+		vec4 photo = texture(photo_surface, pattern == 2 ? uv * 0.5 : uv + off * 0.03);
 		vec3 n = photo.rgb * 2.0 - 1.0;
 		n.xy *= 0.45;
 		vec3 dx = dFdx(VERTEX); vec3 dy = dFdy(VERTEX);
@@ -1145,6 +1171,8 @@ render_mode cull_disabled;
 
 instance uniform vec4 tint : source_color = vec4(0.2, 0.32, 0.14, 1.0);
 uniform float wind = 1.0;
+uniform bool leaf_cards = false;
+uniform sampler2D leaf_texture : source_color, filter_linear_mipmap_anisotropic, repeat_disable;
 uniform bool use_vcolor = false;
 // on fire (a burning tree's own copy, see Structure._apply_char): the leaves
 // shrivel brown, blacken and burn away, glowing at the edges while it burns
@@ -1164,7 +1192,7 @@ float n3(vec3 p) {
 void vertex() {
 	vec3 wp = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
 	float lump = n3(wp * 1.3) * 0.55 + n3(wp * 3.1) * 0.25;
-	VERTEX += NORMAL * (lump - 0.4) * 0.5;
+	if (!leaf_cards) { VERTEX += NORMAL * (lump - 0.4) * 0.5; }
 	float t = TIME * 1.3 + wp.x * 0.11 + wp.z * 0.07;
 	float sway = (sin(t) * 0.6 + sin(t * 2.3 + 1.7) * 0.3) * wind * 0.06 * clamp(VERTEX.y + 1.0, 0.0, 2.0);
 	VERTEX.x += sway;
@@ -1183,7 +1211,7 @@ void fragment() {
 	float k6 = smoothstep(1.5, 5.0, (1.0 / 6.0) / px);
 	float k15 = smoothstep(1.5, 5.0, (1.0 / 15.0) / px);
 	float holes = mix(0.5, n3(lpos * 6.0 + 11.0), k6) * 0.6 + mix(0.5, n3(lpos * 15.0), k15) * 0.4;
-	if (rim > 0.12 && holes < (rim - 0.12) * 1.25) {
+	if (!leaf_cards && rim > 0.12 && holes < (rim - 0.12) * 1.25) {
 		discard;
 	}
 	float burnt = holes - scorch * 1.15 + 0.3;
@@ -1193,6 +1221,11 @@ void fragment() {
 	float leaves = mix(0.5, n3(lpos * 9.0), smoothstep(1.5, 5.0, (1.0 / 9.0) / px));
 	float gaps = mix(0.5, n3(lpos * 4.2 + 7.0), smoothstep(1.5, 5.0, (1.0 / 4.2) / px));
 	vec3 c = (use_vcolor ? COLOR.rgb : tint.rgb) * (0.7 + 0.5 * leaves);
+	if (leaf_cards) {
+		vec4 photo = texture(leaf_texture, UV);
+		if (photo.a < 0.22) { discard; }
+		c = photo.rgb * mix(vec3(0.75), vec3(1.15), clamp(c * 12.0, vec3(0.0), vec3(1.0)));
+	}
 	c = mix(c, c * vec3(1.15, 1.1, 0.7), smoothstep(0.55, 0.8, gaps) * 0.5);
 	if (scorch > 0.0) {
 		// (linear colours: a withered brown, then soot)

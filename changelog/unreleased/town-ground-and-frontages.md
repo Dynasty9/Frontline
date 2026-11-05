@@ -1,6 +1,6 @@
 +++
 title = "Connect houses and streets with gardens, paths and grounded furniture"
-summary = "Photographic asphalt, paving and grass give towns worn surfaces, connected house paths and distinct garden plots."
+summary = "Scanned materials, weathered roads and leafy canopies give towns and their surrounding hills more natural detail."
 kind = "improved"
 
 [[screenshots]]
@@ -27,6 +27,14 @@ caption = "Previous proposal: wide view, matching seed and camera."
 file = "wide-after.jpg"
 caption = "Revised: wide view, matching seed and camera."
 
+[[screenshots]]
+file = "forest-before.jpg"
+caption = "Previous canopy and bare background slopes: matching panorama."
+
+[[screenshots]]
+file = "forest-after.jpg"
+caption = "Photographed canopy and dense background forest patches: matching panorama."
+
 +++
 
 Paving follows the terrain instead of sitting at flat-map height. Street furniture and wire endpoints carry their authoritative elevation into multiplayer and replays. House plots have maintained ground, narrow foundation aprons and routes to actual front or side doors; fences leave pedestrian and driveway gaps and break into short sections. Wild grass and shrubs stay outside maintained plots.
@@ -36,3 +44,5 @@ Photographic CC0 asphalt, paving slabs and grass/soil replace the flat procedura
 Road entrances blend through broken gravel edges; repaired asphalt patches and dark stains interrupt the carriageway. Roofs use aged tile and rough concrete scans, while timber fences have photographed grain and section-to-section weathering. Metal fences show dull paint and rust.
 
 Brick, plaster, bark and country-road gravel also use scanned detail. Concrete driveways differ from paving-slab footpaths, with broad staining across sidewalks and roofs.
+
+Trees, hedges and shrubs have open, photographed leaf and needle silhouettes. Patchy distant forests follow hills outside the battlefield using a small prebaked tree atlas: two triangles per tree, with cliffs, high peaks and coasts kept clear. Set View distance / detail to Near for the lighter view.

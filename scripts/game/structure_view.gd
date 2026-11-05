@@ -181,7 +181,7 @@ func _build_draw_batch(cell: Vector2i) -> void:
 			if not groups.has(key):
 				groups[key] = own[key]
 			else:
-				for attribute in ["v", "n", "c"]:
+				for attribute in ["v", "n", "c", "uv"]:
 					groups[key][attribute].append_array(own[key][attribute])
 		meshes.append_array(parts)
 		members[st.eid] = {"cell": cell, "meshes": parts, "ranges": ranges}
@@ -198,6 +198,8 @@ func _build_draw_batch(cell: Vector2i) -> void:
 		arrays[Mesh.ARRAY_VERTEX] = group.v
 		arrays[Mesh.ARRAY_NORMAL] = group.n
 		arrays[Mesh.ARRAY_COLOR] = group.c
+		if not group.uv.is_empty():
+			arrays[Mesh.ARRAY_TEX_UV] = group.uv
 		var mesh := ArrayMesh.new()
 		mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays, [], {}, Mesh.ARRAY_FLAG_USE_DYNAMIC_UPDATE)
 		var instance := MeshInstance3D.new()
