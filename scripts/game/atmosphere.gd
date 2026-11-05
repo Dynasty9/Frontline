@@ -600,6 +600,7 @@ func apply_mood(m: String) -> void:
 
 func apply_settings() -> void:
 	var s := Settings
+	ground_mat.set_shader_parameter("terrain_detail", int(s.get_v("lod")) >= 1)
 	# the battle's own mood stands (the host's choice, or a mission's) until
 	# the player changes the setting while it's on
 	var want := String(s.get_v("mood"))
@@ -750,6 +751,7 @@ func _update_terrain_probe(refresh := false) -> void:
 func _apply_haze(distance: float) -> void:
 	var k := haze_distance_factor(distance)
 	var volume_k := k
+	var terrain_air := 0.0
 	env.fog_aerial_perspective = 0.0
 	env.fog_height_density = 0.0
 	if bool(Settings.get_v("alpine_haze")) and world != null and world.terrain and world.terrain.landform.peak > 1.0:
@@ -757,8 +759,11 @@ func _apply_haze(distance: float) -> void:
 		k = maxf(k, 0.45 * pow(1.0 - downward, 2.0))
 		# Sky tint separates distant ranges; keep the low valley veil out of the overhead view.
 		env.fog_aerial_perspective = 0.38 * (1.0 - downward)
+		terrain_air = float(_d.fog_d) * 0.22 * pow(1.0 - downward, 2.0)
 		env.fog_height = 18.0
 		env.fog_height_density = 0.0012 * pow(1.0 - downward, 2.0)
+	if ground_mat:
+		ground_mat.set_shader_parameter("terrain_air", terrain_air)
 	env.fog_density = float(_d.fog_d) * HAZE_STRENGTH * k
 	env.volumetric_fog_density = (0.0011 if mood != "hazy" else 0.003) * VOLUME_STRENGTH * volume_k
 
@@ -988,6 +993,8 @@ render_mode specular_schlick_ggx;
 
 uniform vec3 sun_direction = vec3(0.0, 1.0, 0.0);
 uniform vec3 air_color : source_color = vec3(0.5, 0.6, 0.7);
+uniform float terrain_air = 0.0;
+uniform bool terrain_detail = true;
 uniform sampler2D surface_bake : hint_default_white, filter_linear_mipmap, repeat_disable;
 uniform sampler2D cliff_color : source_color, filter_linear_mipmap_anisotropic, repeat_enable;
 uniform sampler2D cliff_normal : filter_linear_mipmap_anisotropic, repeat_enable;
@@ -1079,6 +1086,16 @@ vec2 surface_data(sampler2D tex, vec3 p, vec3 weights, vec3 geometric, out vec3 
 	return x.ba * weights.x + y.ba * weights.y + z.ba * weights.z;
 }
 
+vec3 surface_relief(vec3 normal, float height, float strength) {
+	vec3 dx = dFdx(wpos); vec3 dy = dFdy(wpos);
+	vec3 face = normalize(cross(dx, dy));
+	face *= sign(dot(face, normal));
+	vec3 r1 = cross(dy, face); vec3 r2 = cross(face, dx);
+	float det = dot(dx, r1);
+	vec3 gradient = sign(det) * (dFdx(height) * r1 + dFdy(height) * r2);
+	return normalize(normal - gradient * strength / max(abs(det), 0.000001));
+}
+
 float height_blend(float bed, float deposit, float coverage) {
 	vec2 relief = vec2(bed * 0.36 + 1.0 - coverage, deposit * 0.36 + coverage);
 	vec2 weight = max(relief - max(relief.x, relief.y) + 0.18, vec2(0.0));
@@ -1156,6 +1173,11 @@ void fragment() {
 	vec3 scree_uv = wpos / 16.0 + 0.37;
 	vec3 moss_uv = wpos / 18.0;
 	vec4 rock_sample = surface_color(rock_color, rock_uv, weights);
+	vec3 secondary_uv = rock_uv * 2.31 + vec3(0.37, 0.61, 0.23);
+	float secondary_mix = smoothstep(0.25, 0.72, patch) * 0.55;
+	if (terrain_detail) {
+		rock_sample = mix(rock_sample, surface_color(rock_color, secondary_uv, weights), secondary_mix);
+	}
 	vec4 scree_sample = surface_color(cliff_color, scree_uv, weights);
 	vec4 moss_sample = surface_color(moss_color, moss_uv, weights);
 	float macro = texture(detail_tex, p / 190.0 + 0.19).r;
@@ -1187,6 +1209,12 @@ void fragment() {
 	moss *= mix(0.93, 1.07, patch);
 	vec3 rock_n; vec3 scree_n; vec3 moss_n;
 	vec2 rock_data = surface_data(rock_normal, rock_uv, weights, geometric, rock_n);
+	if (terrain_detail) {
+		vec3 secondary_n;
+		vec2 secondary_data = surface_data(rock_normal, secondary_uv, weights, geometric, secondary_n);
+		rock_data = mix(rock_data, secondary_data, secondary_mix);
+		rock_n = normalize(mix(rock_n, secondary_n, secondary_mix));
+	}
 	vec2 scree_data = surface_data(cliff_normal, scree_uv, weights, geometric, scree_n);
 	vec2 moss_data = surface_data(moss_normal, moss_uv, weights, geometric, moss_n);
 	rock_data = mix(rock_data, scree_data, scree * 0.7);
@@ -1227,9 +1255,12 @@ void fragment() {
 	AO_LIGHT_AFFECT = 0.25;
 	col *= mix(vec3(0.72, 0.80, 0.90), vec3(1.0), sky);
 
-	float aerial = smoothstep(__MAP_HALF__ + 80.0, __MAP_HALF__ + 1300.0, max(abs(p.x), abs(p.y))) * 0.35;
+	// Thin low-altitude air separates ranges without whitening their sunlit faces.
+	float optical_depth = max(0.0, distance(CAMERA_POSITION_WORLD, wpos) - 500.0) * terrain_air;
+	float aerial = min(0.24, 1.0 - exp(-optical_depth * exp(-max(wpos.y, 0.0) / 320.0)));
+	aerial *= smoothstep(__MAP_HALF__, __MAP_HALF__ + 200.0, edge);
 	ALBEDO = col * (1.0 - aerial);
-	EMISSION = air_color * aerial * 0.22;
+	EMISSION = air_color * aerial * 0.65;
 	ROUGHNESS = mix(mix(0.96, 0.82, dirt_m), clamp(material_data.y, 0.55, 1.0), clean);
 	ROUGHNESS = mix(ROUGHNESS, mix(0.74, 0.94, macro), snow);
 	ROUGHNESS = mix(ROUGHNESS, 0.55, wet * 0.5);
@@ -1249,6 +1280,7 @@ void fragment() {
 	n = normalize(n + vec3(-gx, 0.0, -gz));
 	vec3 mapped = normalize(mix(moss_n, rock_n, exposed));
 	n = normalize(mix(n, mapped, 0.85 * clean * (1.0 - snow)));
+	n = surface_relief(n, mineral * 0.28, exposed * clean * (1.0 - snow) * smoothstep(0.3, 1.0, slope));
 	n = normalize(mix(n, geometric, snow * 0.9));
 	n = normalize(mix(n, vec3(0.0, 1.0, 0.0), puddle * 0.9));
 	NORMAL = normalize((VIEW_MATRIX * vec4(n, 0.0)).xyz);
