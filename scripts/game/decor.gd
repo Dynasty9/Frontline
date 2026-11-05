@@ -280,9 +280,32 @@ var _at := Transform3D.IDENTITY
 ## in the piece (`xf`, else at p turned by rot).
 ## cut: paving, holed where the ground under it is cratered or dug out.
 func _m(mesh: Mesh, kind: String, p: Vector3, col = null, rot := Vector3.ZERO, shadow := true, cut := false, xf: Variant = null) -> void:
+	var local: Transform3D = xf if xf is Transform3D else Mats.place(p, rot)
+	if cut and (mesh is BoxMesh or mesh is BevelMesh):
+		mesh = _paving_mesh(mesh, local)
 	var tn: Color = Mats.tint_for(kind, col) if col is Color else Color(1, 1, 1)
-	_bake.part(mesh, Mats.paving(kind) if cut else Mats.get_mat(kind), xf if xf is Transform3D else Mats.place(p, rot),
+	_bake.part(mesh, Mats.paving(kind) if cut else Mats.get_mat(kind), local,
 		tn if tn != Color(1, 1, 1) else null, shadow, _at)
+
+
+func _paving_mesh(box: Mesh, local: Transform3D) -> ArrayMesh:
+	var grid := BoxMesh.new()
+	grid.size = Res.box_size(box)
+	grid.subdivide_width = maxi(0, ceili(grid.size.x / 2.0) - 1)
+	grid.subdivide_depth = maxi(0, ceili(grid.size.z / 2.0) - 1)
+	var arrays := grid.get_mesh_arrays()
+	var vertices: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
+	var xf := _at * local
+	for i in vertices.size():
+		var point := xf * vertices[i]
+		vertices[i].y += world.terrain.landform.height(point) - _at.origin.y
+	arrays[Mesh.ARRAY_VERTEX] = vertices
+	var mesh := ArrayMesh.new()
+	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+	var surface := SurfaceTool.new()
+	surface.create_from(mesh, 0)
+	surface.generate_normals()
+	return surface.commit()
 
 
 func _leaf(r: float, p: Vector3, col: Color, shadow := true) -> void:
@@ -324,6 +347,9 @@ func _make(h: Node3D, kind: String, ex) -> void:
 				p.y = world.ground_y(_at * p) - _at.origin.y - 0.08
 				var r := rng.randf_range(0.22, 0.55) * scale
 				_leaf(r, p + Vector3(0, r * 0.35, 0), Res.vary(Color(0.19, 0.25, 0.10), 0.1, rng), false)
+		"yard":
+			var size: Vector3 = ex
+			_m(Res.box(size), "bank", Vector3(0, size.y * 0.5, 0), Res.vary(Color(0.28, 0.34, 0.19), 0.12, rng), Vector3.ZERO, false, true)
 		"walk":
 			var s: Vector3 = ex
 			_m(Res.box(s), "concrete", Vector3(0, s.y * 0.5, 0), Color(0.6, 0.58, 0.54), Vector3.ZERO, false, true)

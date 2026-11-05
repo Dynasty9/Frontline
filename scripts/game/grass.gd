@@ -195,7 +195,7 @@ func _blocked_job() -> BlockedJob:
 			j.boxes.append([Vector2(st.position.x, st.position.z), st.foot + Vector2(0.4, 0.4), float(st.yaw)])
 	# sidewalks, squares, gardens and the like
 	for e in w.decor:
-		if not String(e[0]) in ["walk", "pave", "junction", "soft", "lot_pave", "drive", "path", "garden"]:
+		if not String(e[0]) in ["walk", "pave", "junction", "soft", "lot_pave", "drive", "path", "garden", "yard"]:
 			continue
 		var s3: Vector3 = e[3]
 		var c3: Vector3 = e[1]

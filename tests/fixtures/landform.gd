@@ -73,6 +73,37 @@ func _ready() -> void:
 	assert(not gen._is_free(Vector3.ZERO, Vector2(0.6, 0.6), 0.0), "Building foundations still require level ground")
 	assert(gen._is_free(Vector3.ZERO, Vector2(0.6, 0.6), 0.0, 0.6, true, 0.7), "Tree roots can occupy a moderate slope")
 	assert(absf(gen._contour(Vector3.ZERO).x) < 0.01, "Woodland follows the contour rather than running straight uphill")
+	var town := TownGen.new(gen)
+	town._d("lamp", Vector3(0, 2, 0))
+	assert(is_equal_approx(town.decor[0][1].y, world.terrain.landform.height(Vector3.ZERO) + 2.0))
+	var wire := [Vector3(4, 0, 0), 0.0]
+	town._d("wire", Vector3.ZERO, 0.0, wire)
+	assert(wire[0].y == 0.0, "Grounding must not mutate the generator's endpoint array")
+	assert(is_equal_approx(town.decor[1][3][0].y, world.terrain.landform.height(Vector3(4, 0, 0))))
+	town._d("drop", Vector3(0, 7, 0), 0.0, Vector3(4, 2.85, 0))
+	assert(is_equal_approx(town.decor[2][3].y, world.terrain.landform.height(Vector3(4, 0, 0)) + 2.85))
+	assert(World._unpack(World._pack(town.decor)) == town.decor, "Town elevations survive map transfer and replay serialization")
+	town.decor.clear()
+	town._front_fence(Vector3.ZERO, Vector3.BACK, Vector3.RIGHT, 14.0, 1.0, -4.0, 0)
+	for entry in town.decor:
+		var center: Vector3 = entry[1]
+		var size: Vector3 = entry[3]
+		assert(size.x <= 2.2, "Fences have bounded breakable sections")
+		for opening in [Vector2(0.2, 1.8), Vector2(-5.4, -2.6)]:
+			assert(center.x + size.x * 0.5 <= opening.x + 0.001 or center.x - size.x * 0.5 >= opening.y - 0.001, "Fences leave paths and drives open")
+	town.decor.clear()
+	var gate := town._approach(Vector3.ZERO, Vector3.BACK, Vector3.RIGHT, Vector3(4, 0, 5), 0.0, 2.0, 12.0)
+	assert(gate > 4.5 and town.decor.size() == 2, "Side-door paths go around the house before turning toward its door")
+	var paving := Decor.new()
+	paving.world = world
+	paving._at.origin.y = world.terrain.landform.height(Vector3.ZERO)
+	var paved := paving._paving_mesh(Res.box(Vector3(12, 0.1, 3)), Transform3D.IDENTITY)
+	var paved_vertices: PackedVector3Array = paved.surface_get_arrays(0)[Mesh.ARRAY_VERTEX]
+	assert(paved_vertices.size() > 24, "Long paving is subdivided to follow grades")
+	for vertex in paved_vertices:
+		var point := paving._at * vertex
+		assert(absf(absf(point.y - world.terrain.landform.height(point)) - 0.05) < 0.001, "Paving follows the local geology without a floating centre")
+	paving.free()
 	MapDims.HALF = previous_half
 	world.terrain.landform.heights = PackedFloat32Array()
 	world.terrain.landform.peak = 0.0
