@@ -1183,7 +1183,7 @@ but balance needs real playtesting. With the base defenses, most games last 10â€
 
 ### Imported rifleman and shared impacts
 
-The optional skinned rifleman uses imported rifle locomotion, a captured kneel-to-prone transition, contact IK, hand-attached weapons, moving reloads with a separate magazine, directional hit recovery, and a thirteen-body constrained ragdoll. The shared motion and impact helpers also serve the procedural soldiers and tank. Damage and movement remain server-authoritative; the skin is presentation.
+The optional skinned rifleman uses imported rifle locomotion, a captured kneel-to-prone transition, contact IK, hand-attached weapons, moving reloads with a separate magazine, directional hit recovery, and a thirteen-body constrained ragdoll. Locally installed Male Injured Pack clips supply standing limping and dazed recovery with the rifle slung. The shared motion and impact helpers also serve the procedural soldiers and tank. Damage and movement remain server-authoritative; the skin is presentation.
 
 When the local Mixamo prone family is installed, forward/backward crawling, stops, idle, firing, reload and grenade throw use captured clips. The installed crouch-to-prone and prone-to-crouch transitions supply entry and recovery; the kneeling pair remains the fallback. A prone-specific captured flinch supplies frontal hit reactions while keeping the weapon grips. The shared controller preserves hand contacts during prone idle/fire and releases the hands for crawling, reloading and throwing. These local evaluation assets are not bundled automatically; missing clips retain the procedural fallback.
 

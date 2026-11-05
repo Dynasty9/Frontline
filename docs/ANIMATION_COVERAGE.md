@@ -3,7 +3,7 @@
 Audited 2026-11-03 against the shared SoldierModel routing and local Mixamo files.
 This is routing coverage, not visual approval. A clip appearing in the viewer does not mean gameplay uses it.
 
-## Procedural action routes (28)
+## Procedural action routes (26)
 
 - `MELEE`
 - `HEAL`
@@ -15,11 +15,9 @@ This is routing coverage, not visual approval. A clip appearing in the viewer do
 - `DIVE`
 - `SLIDE`
 - `FLUNG`
-- `DAZED`
 - `FLINCH`
 - `HANDSUP`
 - `PICKUP`
-- `LIMP`
 - `PISTOL`
 - `LAUNCH`
 - `CLIMB`
@@ -47,6 +45,12 @@ This is routing coverage, not visual approval. A clip appearing in the viewer do
 ## Already using captured base animation
 
 Standing/crouched idle, walking/running, standard shooting/reload; grenade toss; stationary digging and smoking; prone entry; weapon stow/draw. Hit reaction is a captured upper-body overlay. Playground jumping also uses the installed rifle jump.
+
+With the local Male Injured Pack installed, standing LIMP uses injured walk/idle and DAZED uses injured stumble idle. The rifle is slung, walk playback follows movement speed, and activity time persists while equipment transitions sample other clips. `injured_actions.tscn -- --swat-units` covers movement, idle, dazed and armed recovery. The other injured clips and Action Adventure Pack are candidates, not additional gameplay routes. The latter's tucked jump has not replaced the current jump.
+
+The playground's prone key now uses the battlefield soldier's clearance/backstep logic, then settles before lowering. Directional movement cancels a pending backstep. The playground test includes a wall case; this does not certify all terrain or dynamic-obstacle combinations.
+
+2026-11-05 validation: SWAT injury/recovery and playground controls/wall sequence pass and were rendered. The stricter `prone_backstep.tscn -- --swat-units` still fails its unchanged planted-foot speed limit: 0.108795 m/s versus 0.002 m/s allowed, with zero wall crossing and a 0.032740 m maximum joint step. Running the previous committed renderer/controller routing produces identical values. This existing foot-slide issue remains open; the passing wall test is not a no-sliding claim.
 
 The playground jump samples that captured flight using vertical velocity and waits for physical ground contact before blending back to locomotion. Early, normal and delayed landing timing is covered by `tests/mocap/jump_timing.tscn`; this is not a new battlefield jump action.
 

@@ -5,7 +5,7 @@ const ROOT := "res://assets/local_mocap/mixamo/"
 
 static func files() -> Dictionary:
 	var result := {}
-	for folder in ["shooter", "basic_shooter", "activities", "rifle_locomotion", "pro_rifle", "prone", "pistol"]:
+	for folder in ["shooter", "basic_shooter", "activities", "rifle_locomotion", "pro_rifle", "prone", "pistol", "injured"]:
 		for file in DirAccess.get_files_at(ROOT + folder):
 			file = file.trim_suffix(".remap")
 			if file.to_lower().ends_with(".fbx"):
@@ -19,7 +19,7 @@ static func install(actor: SkinnedRifleman, gameplay := false) -> Dictionary:
 	var paths := files()
 	if gameplay:
 		for key in paths.keys():
-			if not key.begins_with("mixamo_prone__") and not key.begins_with("mixamo_basic_shooter__") and not key.begins_with("mixamo_activities__") and not key.begins_with("mixamo_transition__") and not key.begins_with("mixamo_rifle_locomotion__walk_crouching_"): paths.erase(key)
+			if not key.begins_with("mixamo_injured__") and not key.begins_with("mixamo_prone__") and not key.begins_with("mixamo_basic_shooter__") and not key.begins_with("mixamo_activities__") and not key.begins_with("mixamo_transition__") and not key.begins_with("mixamo_rifle_locomotion__walk_crouching_"): paths.erase(key)
 	actor.native_player = AnimationPlayer.new()
 	actor.native_player.name = "MixamoClips"
 	actor.add_child(actor.native_player)

@@ -2,6 +2,8 @@ extends "res://tests/mocap/controller.gd"
 ## Play the shared gameplay poses on collision terrain; inspect source clips separately.
 var proxy: SoldierModel
 var prone := false
+var prone_requested := false
+var clearance: Soldier
 var working := false
 var firing := false
 var activity := -1
@@ -63,6 +65,11 @@ func _ready() -> void:
 	_refresh_inspector()
 	_surface(Vector3(-4, 0.4, 1), Vector3(3, 0.8, 0.4), Color("777265"))
 	_surface(Vector3(-6, 0.65, -3), Vector3(1.4, 1.3, 1.4), Color("666347"))
+	for node in get_children():
+		if node is StaticBody3D: node.collision_layer |= Defs.L_COVER
+	clearance = Soldier.new()
+	add_child(clearance)
+	clearance.set_process(false)
 	_reset_controller()
 	if "--playground-test" in OS.get_cmdline_user_args(): call_deferred("_playground_test")
 	print("PLAYGROUND ready")
@@ -95,11 +102,13 @@ func _unhandled_input(event: InputEvent) -> void:
 			working = not working
 			if working:
 				prone = false
+				prone_requested = false
 				crouching = false
 		"motion_prone":
 			_automatic()
-			prone = not prone
-			crouching = prone
+			prone_requested = not (prone or prone_requested)
+			prone = false
+			crouching = prone_requested
 		"motion_grenade":
 			activity = Soldier.Act.THROW
 			activity_left = 1.2
@@ -109,7 +118,9 @@ func _unhandled_input(event: InputEvent) -> void:
 		"motion_impact": _shoot(camera.unproject_position(soldier.joint("Spine2").origin))
 	if key != "": get_viewport().set_input_as_handled()
 	else:
-		if event.is_pressed() and Keys.action_for(event, ["motion_crouch"]) != "": prone = false
+		if event.is_pressed() and Keys.action_for(event, ["motion_crouch"]) != "":
+			prone = false
+			prone_requested = false
 		super._unhandled_input(event)
 
 func _automatic() -> void:
@@ -120,6 +131,8 @@ func _reset_controller() -> void:
 	look_offset = 0.0
 	super._reset_controller()
 	prone = false
+	prone_requested = false
+	if clearance != null: clearance._cancel_prone_backstep()
 	working = false
 	firing = false
 	_automatic()
@@ -129,6 +142,30 @@ func _reset_controller() -> void:
 
 func _movement_speed(running: bool) -> float:
 	return 0.45 if prone else super._movement_speed(running)
+
+func _prepare_movement(dt: float, input: Vector2) -> void:
+	if clearance == null: return
+	if not prone_requested or prone or soldier.dead or input.length_squared() > 0.0:
+		clearance._cancel_prone_backstep()
+		if not prone: prone_requested = false
+		return
+	if not body.is_on_floor(): return
+	# Use the same swept clearance and settling interval as battlefield soldiers.
+	clearance.global_transform = body.global_transform
+	if clearance._prone_back_goal != Vector3.INF:
+		clearance._prone_back_goal.y = body.global_position.y
+	clearance._prone_check_t = 0.0
+	var ready := clearance._prepare_prone(dt)
+	var step := clearance.global_position - body.global_position
+	if absf(_floor_height(body.global_position + step) - body.position.y) > 0.25:
+		clearance._cancel_prone_backstep()
+		step = Vector3.ZERO
+		ready = false
+	body.velocity.x = step.x / dt
+	body.velocity.z = step.z / dt
+	if ready:
+		prone = true
+		prone_requested = false
 
 func _animate_character(dt: float) -> void:
 	if proxy == null or soldier.dead: return
@@ -220,6 +257,17 @@ func _playground_test() -> void:
 	_reset_controller()
 	assert(not prone and not working and not soldier.dead)
 	assert(actions.item_count == Soldier.Act.size() + 1 and clip_keys.size() > 100)
+	body.rotation.y = 0.0
+	yaw = PI
+	var barrier := _surface(Vector3(0, body.position.y + 0.65, -0.8), Vector3(3, 1.3, 0.2), Color("777265"))
+	barrier.collision_layer |= Defs.L_COVER
+	await get_tree().physics_frame
+	_test_key("motion_prone")
+	await get_tree().create_timer(0.1).timeout
+	assert(not prone, "Prone started before making room at the wall")
+	await get_tree().create_timer(5.0).timeout
+	print("PLAYGROUND wall position=", body.position, " prone=", prone, " requested=", prone_requested, " goal=", clearance._prone_back_goal)
+	assert(prone and body.position.z > 0.5, "Playground failed to back away before going prone")
 	print("PLAYGROUND PASS Alt free look, movement, work, prone, reload, reset and complete action catalog")
 	get_tree().quit()
 

@@ -59,6 +59,7 @@ var recoil := ImpactResponse.new()
 var solve_contacts := true
 var hold_weapon := true
 var _activity_clip := ""
+var _activity_clock := 0.0
 var grenade_prop: Node3D
 var _sling_socket := Transform3D.IDENTITY
 var weapon_stowed := false
@@ -693,7 +694,10 @@ func pose_native(dt: float, clip: String) -> void:
 	last_velocity = Vector3.ZERO
 
 
-func pose_activity(dt: float, clip: String, throw_time := -1.0, prone_throw := false) -> void:
+func pose_activity(dt: float, clip: String, throw_time := -1.0, prone_throw := false, move_speed := 0.0) -> void:
+	if _activity_clip != clip or _pose_mode not in [20, 21, 24]:
+		_activity_clock = 0.0
+		_pose_mode = -1
 	_begin_pose(24 if throw_time >= 0.0 else (21 if clip.ends_with("Digging") else 20))
 	var full_body_throw := clip == "mixamo_prone__Throw_Grenade"
 	var lower: Array[Transform3D] = []
@@ -709,7 +713,11 @@ func pose_activity(dt: float, clip: String, throw_time := -1.0, prone_throw := f
 			sample_time = lerpf(1.2, 1.75, clampf(throw_time / 0.36, 0.0, 1.0)) if throw_time < 0.36 else lerpf(1.75, 2.3, clampf((throw_time - 0.36) / 0.24, 0.0, 1.0))
 		native_player.seek(sample_time, true)
 	else:
-		native_player.advance(dt)
+		var animation := native_player.get_animation(clip)
+		var travel: Vector3 = animation.get_meta("root_travel", Vector3.ZERO)
+		var rate := move_speed * animation.length / travel.length() if move_speed > 0.0 and travel.length() > 0.05 else 1.0
+		_activity_clock += dt * rate
+		native_player.seek(fmod(_activity_clock, animation.length) if animation.loop_mode != Animation.LOOP_NONE else minf(_activity_clock, animation.length), true)
 	if throw_time >= 0.0 and not full_body_throw:
 		var native_hips := skeleton.get_bone_pose(int(bones["Hips"])).basis
 		for name in bones:
@@ -723,7 +731,7 @@ func pose_activity(dt: float, clip: String, throw_time := -1.0, prone_throw := f
 			skeleton.set_bone_pose(spine_index, spine)
 	_apply_hit(dt)
 	_blend_pose(0.0 if throw_time >= 0.0 and not full_body_throw else dt)
-	if throw_time < 0.0: _ground_feet(0.0, dt)
+	if throw_time < 0.0: _ground_feet(move_speed, dt)
 	# The sling follows the captured torso, leaving both hands free.
 	weapon.global_transform = joint("Spine2") * _sling_socket
 	weapon.visible = true

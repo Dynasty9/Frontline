@@ -6,7 +6,7 @@ import zipfile
 root = Path(__file__).resolve().parents[2] / 'assets/local_mocap/mixamo'
 downloads = Path.home() / 'Downloads'
 root.mkdir(parents=True, exist_ok=True)
-for filename, folder in [('Shooter Pack.zip', 'shooter'), ('Basic Shooter Pack.zip', 'basic_shooter'), ('Rifle 8-Way Locomotion Pack.zip', 'rifle_locomotion'), ('Pro Rifle Pack.zip', 'pro_rifle')]:
+for filename, folder in [('Shooter Pack.zip', 'shooter'), ('Basic Shooter Pack.zip', 'basic_shooter'), ('Rifle 8-Way Locomotion Pack.zip', 'rifle_locomotion'), ('Pro Rifle Pack.zip', 'pro_rifle'), ('Male Injured Pack.zip', 'injured')]:
     if not (downloads / filename).exists():
         continue
     with zipfile.ZipFile(downloads / filename) as archive:

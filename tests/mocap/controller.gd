@@ -126,6 +126,7 @@ func _physics_process(dt: float) -> void:
 	# Movement is relative to the camera; A/D remain rifle-facing strafes.
 	body.velocity.x = move_toward(body.velocity.x, desired.x, dt * 7.0)
 	body.velocity.z = move_toward(body.velocity.z, desired.z, dt * 7.0)
+	_prepare_movement(dt, input)
 	if soldier.dead:
 		body.velocity.x = 0.0
 		body.velocity.z = 0.0
@@ -251,6 +252,9 @@ func _movement_speed(running: bool) -> float:
 
 func _animate_character(dt: float) -> void:
 	driver.advance(dt, soldier.global_basis.inverse() * body.velocity, crouching, body.is_on_floor())
+
+func _prepare_movement(_dt: float, _input: Vector2) -> void:
+	pass
 
 func _collision_height() -> float:
 	return 1.3 if crouching else 1.8
