@@ -3826,32 +3826,32 @@
       "sources": [
         {
           "file": "changelog/unreleased/realism-10-shore-gravel/target-before.jpg",
-          "sha256": "6dd87ae5f05dc03215e902b08ede4dbac562ab7ff2222597c704adb84c5d30d2",
+          "sha256": "d353cdb3671a9db00cf4b19a487a7ba55672751e98f4f33948e21060ba5bfafe",
           "caption": "target before"
         },
         {
           "file": "changelog/unreleased/realism-10-shore-gravel/target-after.jpg",
-          "sha256": "3f881d908bdc22f68d94cbebeaf343b1c0a902bcd6af9785cb21239929c57f54",
+          "sha256": "b772b866e090088f5c16ffb94526e320b8def9c171a046321e9ab8d642f226d5",
           "caption": "target after"
         },
         {
           "file": "changelog/unreleased/realism-10-shore-gravel/wide-before.jpg",
-          "sha256": "0f51e90a8a7082e398dfa61c77fbbe25964eb2b853143866255fbd5be5304ca0",
+          "sha256": "146c72a448e194764b69e5a4f9076825c99dd9a1611dd1a6f764c0b2d46e6153",
           "caption": "wide before"
         },
         {
           "file": "changelog/unreleased/realism-10-shore-gravel/wide-after.jpg",
-          "sha256": "48925fe53292fbfdc53631fec6790561586eafeb330898941a865ddfd8d3e97c",
+          "sha256": "6d08a5447ade7a907d4f2c4d8e32d85822a88396a66508fab34ce7590420ff91",
           "caption": "wide after"
         },
         {
           "file": "changelog/unreleased/realism-10-shore-gravel/target-compat.jpg",
-          "sha256": "df42a0922120345bde6455df16ca1a1364f36473c0f66f282ccc19378bcdf2e6",
+          "sha256": "9218825c532699ffbeedbd918e461beee9874370926279202d6e0c9ea9d3b400",
           "caption": "target compat"
         },
         {
           "file": "changelog/unreleased/realism-10-shore-gravel/compare.gif",
-          "sha256": "5af7ed922c401c5ada409255c05cbc63babee9ddf2046e4f0ab677867d840fb4",
+          "sha256": "0d8723adf28cea047fc1cd8e6da3da3e9e48f4df91482ae0090e3e12c4243838",
           "caption": "Native frames, separate labels, shared palette, 2.5 seconds each."
         }
       ],
@@ -3860,10 +3860,10 @@
       "version": "unreleased",
       "kind": "improved",
       "capture": {
-        "before_ref": "1a31b2f255e8c92dc1d75d4b1eba35676119889d",
+        "before_ref": "cce80defda71e6cdcf8abffe5bed64671cddaa4a",
         "after_ref": "codex/realism-10-shore-gravel",
-        "before_pack": "iterate-10-before.pck",
-        "after_pack": "iterate-10-after.pck",
+        "before_pack": "review-10-before.pck",
+        "after_pack": "review-10-after.pck",
         "seed": 3,
         "preset": "high",
         "mood": "day",

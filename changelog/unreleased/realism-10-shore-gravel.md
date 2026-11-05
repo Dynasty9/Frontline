@@ -25,3 +25,5 @@ The existing shoreline and slope masks select photographic gravel and damp rough
 Research: [primary reference](https://seblagarde.wordpress.com/2013/03/19/water-drop-3a-physically-based-wet-surfaces/).
 
 Gravel collects in broken coves and steeper banks, preserving sandy openings instead of tracing a continuous band around the whole coast.
+
+Shorelines now blend neutral gravel, darker washed margins and exposed sand through irregular deposits, with photographic breakup at their edges.

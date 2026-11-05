@@ -1264,8 +1264,11 @@ void fragment() {
 	float shore_stone = smoothstep(0.08, 0.55, wm.g) * wm.b * (1.0 - wm.a)
 		* smoothstep(0.35, 0.75, patch * 0.65 + macro * 0.2 + slope * 0.6);
 	shore_stone *= 1.0 - step(9999.0, snow_line);
-	vec3 gravel = scree_sample.rgb * mix(vec3(0.86, 0.91, 0.96), vec3(0.32, 0.37, 0.40), wet_sand);
-	col = mix(col, gravel, shore_stone * 0.85);
+	vec4 shore_sample = texture(cliff_color, p / 4.0 + 0.37);
+	float shore_luma = dot(shore_sample.rgb, vec3(0.2126, 0.7152, 0.0722));
+	vec3 gravel = mix(vec3(shore_luma), shore_sample.rgb, 0.12) * mix(vec3(0.78, 0.86, 0.92), vec3(0.24, 0.29, 0.33), wet_sand);
+	float shingle = height_blend(0.5, shore_sample.a, shore_stone);
+	col = mix(col, gravel, shingle * 0.95);
 	// Connected snowfields collect in sheltered bowls, leaving dark ribs and cliff faces.
 	float local_snow_line = max(abs(p.x), abs(p.y)) >= __MAP_HALF__ ? max(150.0, snow_line * 1.5) : snow_line;
 	float snow_field = (geology - local_snow_line) / 35.0 + cavity * 0.8 - geometric.x * 0.25 + (d1 - 0.5) * 0.3;
@@ -1325,7 +1328,7 @@ void fragment() {
 	n = surface_relief(n, mineral * 0.28, exposed * clean * (1.0 - snow) * smoothstep(0.3, 1.0, slope));
 	n = normalize(mix(n, geometric, snow * 0.9));
 	n = surface_relief(n, snow_ripple * 0.065 + scree_sample.a * 0.025, snow);
-	n = normalize(mix(n, scree_n, shore_stone * 0.8));
+	n = surface_relief(n, shore_sample.a * 0.045, shingle);
 	n = normalize(mix(n, vec3(0.0, 1.0, 0.0), puddle * 0.9));
 	NORMAL = normalize((VIEW_MATRIX * vec4(n, 0.0)).xyz);
 }
