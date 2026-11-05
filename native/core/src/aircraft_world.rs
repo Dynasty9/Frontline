@@ -13,11 +13,11 @@ use crate::vehicle_air::{HomeLanding, LiftEvent, SlingTarget, SupplyPoint};
 use crate::vehicle_combat_world::{Event as Combat, Profile as Weapons};
 use crate::vehicle_damage::Armor;
 use crate::vehicle_flight::FlightProfile;
-use crate::vehicle_loss_world::Context;
 use crate::vehicle_movement_world::Event as Movement;
 use crate::vehicle_scan::ScanProfile;
 use crate::vehicle_sling::SlingSpec;
 use crate::vehicle_world::Event;
+use crate::world::WorldContext;
 
 #[derive(Clone, Copy, Debug)]
 pub enum Kind {
@@ -59,7 +59,7 @@ fn flat(p: Vector3) -> Vector3 {
 fn stat(key: &'static str, out: &mut Vec<Event>) {
     out.push(Event::Movement(Movement::Stat(key)));
 }
-impl Context<'_> {
+impl WorldContext<'_> {
     pub fn landing_spot(&self, position: Vector3) -> Result<Vector3, &'static str> {
         if !position.is_finite() || position.abs().max_element() > 1e6 {
             return Err("invalid landing search");

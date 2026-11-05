@@ -35,7 +35,7 @@ pub fn load(bytes: &[u8], content: &Content) -> Result<Simulation, &'static str>
         return Err("initial battlefield exceeds limit");
     }
     let mut r = Reader::new(bytes, b"FLIN\x02\0\0\0")?;
-    if blake3::hash(r.bytes(4 * 1024 * 1024)?).as_bytes() != &content.digest {
+    if blake3::hash(r.bytes(4 * 1024 * 1024)?).as_bytes() != &content.digest() {
         return Err("initial battlefield uses different game content");
     }
     let meta: Value = serde_json::from_slice(r.bytes(16 * 1024 * 1024)?)
@@ -70,7 +70,7 @@ pub fn load(bytes: &[u8], content: &Content) -> Result<Simulation, &'static str>
     for keys in &state.rules.economy.upgrades {
         if keys
             .iter()
-            .any(|key| content.definitions["upgrades"][key].is_null())
+            .any(|key| !content.definitions().upgrades.contains_key(key))
         {
             return Err("unknown initial upgrade");
         }

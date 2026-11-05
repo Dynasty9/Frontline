@@ -11,7 +11,8 @@ use crate::supply_network::SupplyNetwork;
 use crate::vector::Vector3;
 use crate::vehicle::Vehicle;
 use crate::vehicle_damage::{Armor, BlastHit};
-use crate::vehicle_loss_world::{self, Context};
+use crate::vehicle_loss_world::{self};
+use crate::world::WorldContext;
 use crate::world_geometry::Toss;
 
 #[derive(Clone, Copy, Debug)]
@@ -146,7 +147,7 @@ pub enum Event {
     },
     Stat(&'static str),
 }
-impl Context<'_> {
+impl WorldContext<'_> {
     pub(crate) fn fire_context(&mut self) -> (&mut fires::Fires, fires::Context<'_>) {
         (
             self.fires,

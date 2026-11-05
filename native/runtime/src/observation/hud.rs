@@ -10,15 +10,15 @@ fn symbol(c: &Content, a: &Actor) -> String {
         Actor::Structure(_) => "post".into(),
         Actor::Vehicle(v) => {
             let d = c.vehicle(v);
-            if let Some(s) = d["symbol"][0].as_str() {
+            if let Some(s) = d.symbol.as_ref().map(|s| s[0].as_str()) {
                 return s.into();
             }
-            match d["base"].as_str().unwrap_or("") {
+            match d.base.as_str() {
                 "tank" => "armor",
                 "afv" => "mech",
                 "arty" => "arty",
                 "attack_heli" | "lift_heli" => "air",
-                "spaa" if d["tracked"].as_bool() == Some(true) => "armor",
+                "spaa" if d.tracked => "armor",
                 _ => "motor",
             }
             .into()
@@ -39,14 +39,14 @@ fn summary(s: &Simulation, c: &Content, team: i8) -> Value {
     let used = economy::used(
         actors,
         team,
-        &|i| c.loadouts.get(&i.identity.unit).is_some_and(|l| l.bearer),
-        &|v| c.vehicle(v)["cap"].as_u64().unwrap_or(0) as u32,
+        &|i| c.loadouts().get(&i.identity.unit).is_some_and(|l| l.bearer),
+        &|v| c.vehicle(v).cap.unwrap_or(0.) as u32,
     );
     let cap = economy::capacity(
         actors,
         team,
-        c.definitions["base_cap"].as_u64().unwrap_or(6) as u32,
-        c.definitions["cap_per_fob"].as_u64().unwrap_or(20) as u32,
+        c.definitions().base_cap as u32,
+        c.definitions().cap_per_fob as u32,
     );
     let mut squads = serde_json::Map::new();
     let mut intel = BTreeMap::<u32, (Vector3, String, f64)>::new();
@@ -123,9 +123,7 @@ fn summary(s: &Simulation, c: &Content, team: i8) -> Value {
         .filter_map(|id| actors.structure(*id))
         .filter(|b| b.team == team)
         .map(|b| {
-            let rate = c.definitions["town_yield"][b.variant.clamp(0, 1) as usize]
-                .as_f64()
-                .unwrap_or(0.)
+            let rate = c.definitions().town_yield[b.variant.clamp(0, 1) as usize]
                 * (0.35 + 0.65 * b.intact);
             json!([
                 b.id,
@@ -189,7 +187,7 @@ pub fn report(s: &Simulation, c: &Content, view: i8) -> Result<Value, &'static s
             .sum()
     });
     let row = f.battle.row(f.now, supply, &f.actors, |i| {
-        c.loadouts.get(&i.identity.unit).is_some_and(|l| l.bearer)
+        c.loadouts().get(&i.identity.unit).is_some_and(|l| l.bearer)
     })?;
     // Refreshing display totals must not mutate a checkpoint according to who requested a report.
     let r = f

@@ -11,8 +11,10 @@ same command recordings. Previously, the browser imported the server library,
 which also contained native sockets, process controls and file-based profiling.
 Conditional compilation made that build, but the package boundary obscured ownership.
 
-The priority is clear interfaces and shared rules. This change preserves gameplay,
-wire messages and numeric golden results; it does not pursue frame-rate changes.
+The priority is clear interfaces and shared rules. The interfaces preserve gameplay
+rules, wire messages and unbounded numeric golden results. Bounded route searches
+may finish on a later simulation tick; their exact
+frontier and queue position are saved so that replays preserve that timing.
 
 ## Decision
 
@@ -39,11 +41,27 @@ flowchart TD
 
 The shared runtime exposes concrete interfaces:
 
-- `Content` validates immutable definitions; `initial::load` imports an authored battlefield.
+- `Content` validates typed, immutable definitions and compiles numeric vehicle profiles
+  once. Its loader owns JSON decoding; gameplay, AI and HUD consumers borrow typed
+  data. `initial::load` imports an authored battlefield.
 - `Simulation::step` accepts ordered `Input` values and returns one tick's `Frame`.
-- `Recorder`, `Playback` and `verify` use that same tick and checkpoint encoding.
+- `session::Session` owns either a `Recorder` or `Playback`, including its simulation.
+  Adapters submit inputs and receive read-only observations. `Recorder::finish`
+  consumes the recorder before returning its final state; a failed record or playback
+  cannot later claim successful completion. `verify` uses the same playback path.
 - `View` projects team-visible state. `render::Output` lets adapters deliver the
   same messages over a socket or worker queue; `protocol` owns their wire encoding.
+  `render::publications` defines shared cadence and final-state ordering.
+- `WorldContext` belongs to the core world module and borrows the current world,
+  profiles and output buffer; vehicle destruction is one consumer.
+- Installed infantry `RoutePoints` validate coordinates once and expose a read-only
+  slice. Public soldier entry points remain checked; owned actor phases use internal
+  updates on already validated state. Actions stage only the fields they modify.
+- Bounded navigation owns a frontier and a small query overlay. Shared graph nodes
+  stay available to other queries; edits invalidate the frontier. Checkpoints include
+  pending work, while idle scratch buffers and profiling clocks stay outside state.
+  The quota counts hierarchical node expansions; local cluster preparation and
+  route refinement are separate work, not a wall-clock deadline.
 
 Native files and browser buffers implement the existing standard `Read`/`Write`
 interfaces for recordings. No custom storage or generic transport framework is added.

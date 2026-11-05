@@ -21,7 +21,7 @@ fn soldier() -> Infantry {
 fn cooking_stops_the_route_then_begins_the_queued_throw_with_one_shout_draw() {
     let mut s = soldier();
     s.posture = Posture::Prone;
-    s.motion.path = vec![Vector3::X * 10.0];
+    s.motion.path = (vec![Vector3::X * 10.0]).try_into().unwrap();
     let throw = Throw {
         position: Vector3::Z * 15.0,
         round: Round::Frag,
@@ -203,7 +203,7 @@ fn landing_and_flinching_apply_the_actor_pose_and_keep_busy_rescuers_working() {
 #[test]
 fn invalid_actions_and_stages_do_not_change_retained_state_or_random_draws() {
     let mut s = soldier();
-    s.motion.path = vec![Vector3::X * 10.0];
+    s.motion.path = (vec![Vector3::X * 10.0]).try_into().unwrap();
     let before = s.clone();
     let mut rng = SimulationRandom::new(137);
     let random = rng;

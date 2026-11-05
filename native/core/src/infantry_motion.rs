@@ -8,11 +8,57 @@ use crate::terrain::Terrain;
 use crate::vector::{normalized, turn_yaw, Vector3};
 use std::f64::consts::TAU;
 
+/// Waypoints are validated when installed and cannot be edited through a mutable slice.
+/// ```compile_fail
+/// fn edit(motion: &mut frontline_core::infantry_motion::InfantryMotion) {
+///     motion.path[0] = frontline_core::vector::Vector3::NAN;
+/// }
+/// ```
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct RoutePoints(Vec<Vector3>);
+impl TryFrom<Vec<Vector3>> for RoutePoints {
+    type Error = &'static str;
+    fn try_from(points: Vec<Vector3>) -> Result<Self, Self::Error> {
+        if points.len() > 1_000_000 || !points.iter().copied().all(valid_point) {
+            return Err("invalid infantry waypoints");
+        }
+        Ok(Self(points))
+    }
+}
+impl std::ops::Deref for RoutePoints {
+    type Target = [Vector3];
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+impl RoutePoints {
+    pub fn clear(&mut self) {
+        self.0.clear();
+    }
+}
+impl<const N: usize> PartialEq<[Vector3; N]> for RoutePoints {
+    fn eq(&self, other: &[Vector3; N]) -> bool {
+        self.0 == other
+    }
+}
+impl PartialEq<Vec<Vector3>> for RoutePoints {
+    fn eq(&self, other: &Vec<Vector3>) -> bool {
+        &self.0 == other
+    }
+}
+impl<'a> IntoIterator for &'a RoutePoints {
+    type Item = &'a Vector3;
+    type IntoIter = std::slice::Iter<'a, Vector3>;
+    fn into_iter(self) -> Self::IntoIter {
+        self.0.iter()
+    }
+}
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct InfantryMotion {
     pub position: Vector3,
     pub yaw: f64,
-    pub path: Vec<Vector3>,
+    pub path: RoutePoints,
     pub path_index: usize,
     pub stuck_position: Vector3,
     pub stuck_timer: f64,
@@ -35,7 +81,7 @@ impl Default for InfantryMotion {
         Self {
             position: Vector3::ZERO,
             yaw: 0.0,
-            path: Vec::new(),
+            path: RoutePoints::default(),
             path_index: 0,
             stuck_position: Vector3::ZERO,
             stuck_timer: 0.0,
@@ -210,7 +256,6 @@ impl InfantryMotion {
             .all(|n| n.is_finite() && n.abs() <= 1e12)
             && self.path.len() <= 1_000_000
             && self.path_index <= self.path.len()
-            && self.path.iter().copied().all(valid_point)
             && self.door <= i64::MAX as u64
     }
 
@@ -532,7 +577,7 @@ impl InfantryMotion {
         let value = Self {
             position,
             yaw,
-            path,
+            path: path.try_into()?,
             path_index: input.u32()? as usize,
             stuck_position: input.point()?,
             stuck_timer: input.f64()?,

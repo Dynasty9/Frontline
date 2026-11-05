@@ -27,20 +27,17 @@ fn empty() -> MatchState {
 #[test]
 fn baked_content_resolves_every_unit_squad_building_and_support() {
     let c = Content::bundled().unwrap();
-    assert_eq!(
-        c.loadouts.len(),
-        c.definitions["units"].as_object().unwrap().len()
-    );
-    for key in c.definitions["weapons"].as_object().unwrap().keys() {
+    assert_eq!(c.loadouts().len(), c.definitions().units.len());
+    for key in c.definitions().weapons.keys() {
         assert!(c.weapon(key).is_some(), "{key}");
     }
-    for key in c.definitions["buildings"].as_object().unwrap().keys() {
+    for key in c.definitions().buildings.keys() {
         assert!(c.building(key).unwrap().valid(), "{key}");
     }
-    for key in c.definitions["support"].as_object().unwrap().keys() {
+    for key in c.definitions().support.keys() {
         assert!(c.support(key).unwrap().valid(), "{key}");
     }
-    for key in c.definitions["squads"].as_object().unwrap().keys() {
+    for key in c.definitions().squads.keys() {
         assert!(!c.squad(key).unwrap().members.is_empty(), "{key}");
     }
     assert!(
@@ -54,14 +51,14 @@ fn baked_content_resolves_every_unit_squad_building_and_support() {
 fn each_production_vehicle_advances_without_a_godot_callback_and_resumes_exactly() {
     let c = Content::bundled().unwrap();
     c.with_profiles(&[], |p, _| {
-        for (key, d) in c.definitions["vehicles"].as_object().unwrap() {
+        for (key, d) in &c.definitions().vehicles {
             let mut a = empty();
             a.field
                 .geometry
                 .spawn_vehicle(
                     &mut a.field.actors,
                     sim::vehicle_birth::Spawn {
-                        team: d["team"].as_i64().unwrap().max(0) as i8,
+                        team: d.team.unwrap().max(0.) as i8,
                         owner: 0,
                         position: Vector3::ZERO,
                         yaw: 0.,
@@ -94,7 +91,7 @@ fn each_production_vehicle_advances_without_a_godot_callback_and_resumes_exactly
 fn every_unit_uses_the_production_weapon_and_supply_definitions() {
     let c = Content::bundled().unwrap();
     c.with_profiles(&[], |p, _| {
-        for (key, loadout) in &c.loadouts {
+        for (key, loadout) in c.loadouts() {
             let mut a = empty();
             let s = Infantry::from_spawn(
                 1,
@@ -130,12 +127,12 @@ fn passenger_capacity_matches_explicit_seats_or_the_carried_squad() {
     let c = Content::bundled().unwrap();
     assert_eq!(
         c.seats("ghosthawk"),
-        c.members["rifle_squad"].len().max(4) as u32
+        c.members()["rifle_squad"].len().max(4) as u32
     );
     assert_eq!(c.seats("rhib"), 6);
     assert_eq!(c.seats("tank"), 0);
     c.with_profiles(&[], |p, commands| {
-        for kind in c.definitions["vehicles"].as_object().unwrap().keys() {
+        for kind in c.definitions().vehicles.keys() {
             let v = sim::vehicle::Vehicle {
                 kind: kind.clone(),
                 ..Default::default()

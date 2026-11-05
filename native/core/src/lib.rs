@@ -156,6 +156,7 @@ pub mod vehicle_weapon;
 pub mod vehicle_world;
 pub mod visibility;
 pub mod water;
+pub mod world;
 pub mod world_combat;
 pub mod world_commands;
 pub mod world_formation;

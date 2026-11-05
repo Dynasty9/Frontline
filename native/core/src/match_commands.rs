@@ -23,7 +23,6 @@ use crate::support_calls;
 use crate::unit_orders;
 use crate::vector::{normalized, Vector3};
 use crate::vehicle::Vehicle;
-use crate::vehicle_loss_world;
 use crate::vehicle_orders::Order as VehicleOrder;
 use crate::vehicle_sling::SlingSpec;
 use crate::water::Water;
@@ -265,7 +264,7 @@ pub enum Event {
     },
 }
 pub struct Dispatcher<'a, 'w, 'p> {
-    pub world: &'a mut vehicle_loss_world::Context<'w>,
+    pub world: &'a mut crate::world::WorldContext<'w>,
     pub rules: &'a mut Rules,
     pub owners: &'a Ownership,
     pub boats: &'a mut BoatNavigation,
@@ -286,7 +285,7 @@ fn team(a: &Actor) -> i8 {
         Actor::Drone(d) => d.team,
     }
 }
-fn movement<'a>(w: &'a mut vehicle_loss_world::Context<'_>) -> squad_movement::Context<'a> {
+fn movement<'a>(w: &'a mut crate::world::WorldContext<'_>) -> squad_movement::Context<'a> {
     squad_movement::Context {
         actors: w.actors,
         geometry: w.geometry,

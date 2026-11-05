@@ -377,8 +377,8 @@ impl Commander {
             if !w.unlocked(self.team, key) {
                 continue;
             }
-            let d = &w.content.definitions["vehicles"][key];
-            let weight = match text(d, "base") {
+            let d = &w.content.definitions().vehicles[key];
+            let weight = match d.base.as_str() {
                 "tank" => 2.2 + c.enemy_armor as f64 * 0.6,
                 "afv" => 2.4,
                 "car" => 1.6,
@@ -391,14 +391,14 @@ impl Commander {
                 }
                 "arty" => 0.8,
                 "util" => {
-                    if d["service"].is_null() {
+                    if d.service.is_empty() {
                         0.8
                     } else {
                         0.5
                     }
                 }
                 _ => 1.,
-            } * (1. + 0.25 * (number(d, "tier", 1.) - 1.));
+            } * (1. + 0.25 * (d.tier.unwrap_or(1.) - 1.));
             total += weight;
             picks.push((key, weight));
         }
@@ -442,11 +442,9 @@ impl Commander {
                 }
                 if let Some(item) = (w.profiles.item)(&self.next_vehicle, false) {
                     saving = item.cost;
-                    room = number(
-                        &w.content.definitions["vehicles"][&self.next_vehicle],
-                        "cap",
-                        0.,
-                    ) as u64;
+                    room = w.content.definitions().vehicles[&self.next_vehicle]
+                        .cap
+                        .unwrap_or(0.) as u64;
                     if w.stock(self.team) >= saving + self.reserve(w) && w.room(self.team, room) {
                         w.command(
                             self.team,
@@ -484,7 +482,7 @@ impl Commander {
                 }
                 "helipad" if queued == 0 => {
                     let count = |base: &str| {
-                        w.state.field.actors.iter().filter(|a| matches!(a, Actor::Vehicle(v) if v.team == self.team && if base == "supply" {flag(w.content.vehicle(v),"supply")} else {text(w.content.vehicle(v),"base") == base && !flag(w.content.vehicle(v),"supply")})).count()
+                        w.state.field.actors.iter().filter(|a| matches!(a, Actor::Vehicle(v) if v.team == self.team && if base == "supply" {w.content.vehicle(v).supply} else {w.content.vehicle(v).base.as_str() == base && !w.content.vehicle(v).supply})).count()
                     };
                     let want = if count("supply") < 1 {
                         "supply"
@@ -500,12 +498,12 @@ impl Commander {
                     let opts: Vec<_> = (w.profiles.produces)("helipad")
                         .iter()
                         .filter(|k| {
-                            let d = &w.content.definitions["vehicles"][*k];
+                            let d = &w.content.definitions().vehicles[*k];
                             w.unlocked(self.team, k)
                                 && if want == "supply" {
-                                    flag(d, "supply")
+                                    d.supply
                                 } else {
-                                    text(d, "base") == want && !flag(d, "supply")
+                                    d.base.as_str() == want && !d.supply
                                 }
                         })
                         .collect();
@@ -517,9 +515,10 @@ impl Commander {
                         )
                     })
                 }
-                "research" if queued == 0 => w.content.definitions["upgrades"]
-                    .as_object()
-                    .unwrap()
+                "research" if queued == 0 => w
+                    .content
+                    .definitions()
+                    .upgrades
                     .keys()
                     .find(|k| {
                         (w.profiles.item)(k, true).is_some_and(|i| {

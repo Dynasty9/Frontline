@@ -16,7 +16,7 @@ const HUNT: u8 = 4;
 const PATROL: u8 = 5;
 fn armed(w: &Context<'_, '_, '_>, id: u32) -> bool {
     let d = w.content.vehicle(w.state.field.actors.vehicle(id).unwrap());
-    !text(d, "mg").is_empty() || flag(d, "cannon")
+    !d.mg.as_str().is_empty() || d.cannon
 }
 fn seats(w: &Context<'_, '_, '_>, id: u32) -> i32 {
     w.content
@@ -101,8 +101,8 @@ impl Commander {
             .iter()
             .filter(|key| w.unlocked(self.team, key))
             .filter_map(|key| {
-                let d = &w.content.definitions["vehicles"][key];
-                let armed = !text(d, "mg").is_empty();
+                let d = &w.content.definitions().vehicles[key];
+                let armed = !d.mg.as_str().is_empty();
                 let seats = f64::from(w.content.seats(key));
                 if gun && !armed || !gun && seats <= 0. {
                     return None;
@@ -110,7 +110,7 @@ impl Commander {
                 Some((
                     key,
                     if gun {
-                        number(d, "hp", 0.)
+                        d.hp.unwrap_or(0.)
                     } else {
                         seats * 50. + if armed { 30. } else { 0. }
                     },
@@ -131,7 +131,7 @@ impl Commander {
             .iter()
             .filter_map(|a| match a {
                 Actor::Vehicle(v)
-                    if v.team == self.team && text(w.content.vehicle(v), "base") == "boat" =>
+                    if v.team == self.team && w.content.vehicle(v).base.as_str() == "boat" =>
                 {
                     Some(v.id)
                 }
@@ -211,11 +211,11 @@ impl Commander {
             .iter()
             .copied()
             .filter(|id| {
-                text(
-                    w.content
-                        .vehicle(w.state.field.actors.vehicle(*id).unwrap()),
-                    "base",
-                ) == "boat"
+                w.content
+                    .vehicle(w.state.field.actors.vehicle(*id).unwrap())
+                    .base
+                    .as_str()
+                    == "boat"
             })
             .collect();
         self.boats.retain(|id, _| boats.contains(id));
@@ -247,9 +247,7 @@ impl Commander {
             .units_near(&w.state.field.units, position, 260., -1)?
         {
             let a = w.state.field.actors.get(target).unwrap();
-            if !enemy(a, self.team)
-                || matches!(a,Actor::Vehicle(v) if flag(w.content.vehicle(v),"air"))
-            {
+            if !enemy(a, self.team) || matches!(a,Actor::Vehicle(v) if w.content.vehicle(v).air) {
                 continue;
             }
             let p = match a {
@@ -583,8 +581,8 @@ impl Commander {
         for &id in &c.vehicles {
             let h = w.state.field.actors.vehicle(id).unwrap();
             let d = w.content.vehicle(h);
-            if text(d, "base") != "lift_heli"
-                || number(d, "sling", -1.) < 0.
+            if d.base.as_str() != "lift_heli"
+                || d.sling.unwrap_or(-1.) < 0.
                 || !h.passengers.is_empty()
             {
                 continue;
@@ -630,11 +628,11 @@ impl Commander {
                     cargo,
                     sim::vehicle_sling::SlingSpec {
                         lift: true,
-                        capacity: number(d, "sling", -1.) as i8,
-                        cargo_weight: number(vd, "weight", 1.) as u8,
-                        cargo_helicopter: flag(vd, "air"),
-                        cargo_boat: text(vd, "base") == "boat",
-                        cargo_automatic: flag(vd, "auto"),
+                        capacity: d.sling.unwrap_or(-1.) as i8,
+                        cargo_weight: vd.weight.unwrap_or(1.) as u8,
+                        cargo_helicopter: vd.air,
+                        cargo_boat: vd.base.as_str() == "boat",
+                        cargo_automatic: vd.automatic,
                     },
                 )? {
                     best = Some(cargo);

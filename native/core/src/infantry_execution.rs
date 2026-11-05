@@ -1,6 +1,6 @@
 //! Retained action and interruption stages; the world applies returned combat effects.
-use crate::infantry::Infantry;
-use crate::infantry_action::{Action, Context, Gesture, Related};
+use crate::infantry::{Goal, Infantry, Orders};
+use crate::infantry_action::{Action, ActionState, Context, Gesture, Related};
 use crate::infantry_controller::{Stage, Task};
 use crate::infantry_pose::Posture;
 use crate::infantry_shock::Stagger;
@@ -16,6 +16,74 @@ pub struct ActionEffect {
     pub cancel_path: bool,
     // 0..2 are the existing throw shouts; 3 is the throwback shout.
     pub speech: Option<u8>,
+}
+
+// Actions stage only the fields they change, so validation cannot copy a soldier's route.
+pub(crate) struct ActionUpdate {
+    pub effect: ActionEffect,
+    action: ActionState,
+    orders: Orders,
+    activity: u8,
+    pub posture: Posture,
+    pub yaw: f64,
+    hit_dirt_timer: f64,
+    speech_cooldown: f64,
+    clear_path: bool,
+}
+impl ActionUpdate {
+    fn new(s: &Infantry) -> Self {
+        Self {
+            effect: ActionEffect::default(),
+            action: s.action,
+            orders: s.orders,
+            activity: s.activity,
+            posture: s.posture,
+            yaw: s.motion.yaw,
+            hit_dirt_timer: s.vitals.hit_dirt_timer,
+            speech_cooldown: s.vitals.speech_cooldown,
+            clear_path: false,
+        }
+    }
+    fn stop(&mut self) -> Result<(), &'static str> {
+        if self.orders.path_revision == i64::MAX as u64 {
+            return Err("invalid infantry stop order");
+        }
+        self.orders.path_revision += 1;
+        self.orders.pending_path = false;
+        self.orders.purpose = Goal::None;
+        self.clear_path = true;
+        Ok(())
+    }
+    pub fn begin(
+        &mut self,
+        action: Action,
+        duration: f64,
+        context: Context,
+    ) -> Result<(), &'static str> {
+        let gesture = self.action.begin(action, duration)?;
+        let yaw = action.begin_yaw(context)?;
+        self.stop()?;
+        if let Some(gesture) = gesture {
+            self.activity = activity(gesture);
+        }
+        if let Some(yaw) = yaw {
+            self.yaw = yaw;
+        }
+        Ok(())
+    }
+    pub fn apply(self, s: &mut Infantry) {
+        s.action = self.action;
+        s.orders = self.orders;
+        s.activity = self.activity;
+        s.posture = self.posture;
+        s.motion.yaw = self.yaw;
+        s.vitals.hit_dirt_timer = self.hit_dirt_timer;
+        s.vitals.speech_cooldown = self.speech_cooldown;
+        if self.clear_path {
+            s.motion.path.clear();
+            s.motion.path_index = 0;
+        }
+    }
 }
 
 fn related_valid(r: Option<Related>) -> bool {
@@ -70,17 +138,9 @@ impl Infantry {
         if !self.valid() || !related_valid(related) || action_id(action) > u32::MAX as u64 {
             return Err("invalid retained infantry action");
         }
-        let mut next = self.action;
-        let gesture = next.begin(action, duration)?;
-        let yaw = action.begin_yaw(self.action_context(related))?;
-        self.stop_moving()?;
-        self.action = next;
-        if let Some(gesture) = gesture {
-            self.activity = activity(gesture);
-        }
-        if let Some(yaw) = yaw {
-            self.motion.yaw = yaw;
-        }
+        let mut update = ActionUpdate::new(self);
+        update.begin(action, duration, self.action_context(related))?;
+        update.apply(self);
         Ok(())
     }
 
@@ -89,7 +149,18 @@ impl Infantry {
         dt: f64,
         rng: &mut SimulationRandom,
     ) -> Result<Stage, &'static str> {
-        if !self.valid() || self.vitals.life != Life::Alive {
+        if !self.valid() {
+            return Err("invalid living infantry stage");
+        }
+        self.advance_alive_stage(dt, rng)
+    }
+
+    pub(crate) fn advance_alive_stage(
+        &mut self,
+        dt: f64,
+        rng: &mut SimulationRandom,
+    ) -> Result<Stage, &'static str> {
+        if self.vitals.life != Life::Alive {
             return Err("invalid living infantry stage");
         }
         let mut controller = self.controller;
@@ -116,51 +187,57 @@ impl Infantry {
         related: Option<Related>,
         rng: &mut SimulationRandom,
     ) -> Result<ActionEffect, &'static str> {
-        if !self.valid() || !related_valid(related) {
+        if !self.valid() {
+            return Err("invalid retained action update");
+        }
+        let update = self.plan_action(related, rng)?;
+        let effect = update.effect;
+        update.apply(self);
+        Ok(effect)
+    }
+
+    pub(crate) fn plan_action(
+        &self,
+        related: Option<Related>,
+        rng: &mut SimulationRandom,
+    ) -> Result<ActionUpdate, &'static str> {
+        if !related_valid(related) {
             return Err("invalid retained action update");
         }
         let context = self.action_context(related);
         let pose = self.action.current.pose(context)?;
-        let mut next = self.action;
-        let mut out = ActionEffect::default();
-        let completion = if next.remaining <= 0.0 {
-            Some(next.finish(context)?)
-        } else {
-            None
-        };
-        let mut next_activity = self.activity;
-        let mut next_yaw = pose.yaw;
-        if let Some(done) = completion {
-            next_activity = 0;
+        let mut update = ActionUpdate::new(self);
+        let mut yaw = pose.yaw;
+        if update.action.remaining <= 0.0 {
+            let done = update.action.finish(context)?;
+            update.activity = 0;
             if done.begin_throw {
-                next.begin(done.effect, 0.6)?;
-                next_yaw = done.effect.begin_yaw(context)?;
-                self.stop_moving()?;
-                out.cancel_path = true;
-                out.speech = Some((rng.randi() % 3) as u8);
-                next_activity = 5;
+                update.action.begin(done.effect, 0.6)?;
+                yaw = done.effect.begin_yaw(context)?;
+                update.stop()?;
+                update.effect.cancel_path = true;
+                update.effect.speech = Some((rng.randi() % 3) as u8);
+                update.activity = 5;
             } else {
-                out.effect = done.effect;
+                update.effect.effect = done.effect;
                 if matches!(done.effect, Action::Rethrow { .. }) {
-                    out.speech = Some(3);
+                    update.effect.speech = Some(3);
                 }
             }
             if done.duck_after {
-                self.vitals.hit_dirt_timer = self.vitals.hit_dirt_timer.max(1.6);
+                update.hit_dirt_timer = update.hit_dirt_timer.max(1.6);
             }
         }
-        self.action = next;
-        self.activity = next_activity;
         if let Some(posture) = pose.posture {
-            self.posture = posture;
+            update.posture = posture;
         }
-        if let Some(yaw) = next_yaw {
-            self.motion.yaw = yaw;
+        if let Some(yaw) = yaw {
+            update.yaw = yaw;
         }
-        if out.speech.is_some() {
-            self.vitals.speech_cooldown = 2.6;
+        if update.effect.speech.is_some() {
+            update.speech_cooldown = 2.6;
         }
-        Ok(out)
+        Ok(update)
     }
 
     pub fn dive_tick(

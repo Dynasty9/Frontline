@@ -151,7 +151,7 @@ fn cleanup_respects_three_hundred_seconds_and_stretcher_claims() {
 fn only_captives_follow_routes_and_both_states_keep_their_hands_up() {
     for life in [Life::Surrender, Life::Captive] {
         let mut s = soldier(life);
-        s.motion.path = vec![Vector3::X * 8.0];
+        s.motion.path = (vec![Vector3::X * 8.0]).try_into().unwrap();
         s.posture = Posture::Prone;
         let mut f = Field::new(s, true);
         let random = f.rng.state();

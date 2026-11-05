@@ -54,15 +54,6 @@ fn flat(p: Vector3) -> Vector3 {
 fn distance(a: Vector3, b: Vector3) -> f32 {
     flat(a - b).length()
 }
-fn number(d: &serde_json::Value, key: &str, default: f64) -> f64 {
-    d[key].as_f64().unwrap_or(default)
-}
-fn flag(d: &serde_json::Value, key: &str) -> bool {
-    d[key].as_bool().unwrap_or(false)
-}
-fn text<'a>(d: &'a serde_json::Value, key: &str) -> &'a str {
-    d[key].as_str().unwrap_or("")
-}
 fn rotate(p: Vector3, angle: f64) -> Vector3 {
     sim::cover::transform(sim::cover::rotation(angle), p)
 }
@@ -167,7 +158,7 @@ impl Context<'_, '_, '_> {
                     if v.team >= 0 && v.team != team && v.visible & (1 << team) != 0 =>
                 {
                     c.enemy_armor += usize::from(!(self.shared.automatic)(&v.kind));
-                    c.enemy_air |= flag(self.content.vehicle(v), "air");
+                    c.enemy_air |= self.content.vehicle(v).air;
                 }
                 _ => {}
             }
@@ -180,20 +171,12 @@ impl Context<'_, '_, '_> {
             .sum()
     }
     fn room(&self, team: i8, count: u64) -> bool {
-        let d = &self.content.definitions;
+        let d = &self.content.definitions();
         let actors = &self.state.field.actors;
-        sim::economy::used(
-            actors,
-            team,
-            &|s| flag(self.content.unit(s), "bearer"),
-            &|v| number(self.content.vehicle(v), "cap", 0.) as u32,
-        ) + count
-            <= sim::economy::capacity(
-                actors,
-                team,
-                number(d, "base_cap", 0.) as u32,
-                number(d, "cap_per_fob", 0.) as u32,
-            )
+        sim::economy::used(actors, team, &|s| self.content.unit(s).bearer, &|v| {
+            self.content.vehicle(v).cap.unwrap_or(0.) as u32
+        }) + count
+            <= sim::economy::capacity(actors, team, d.base_cap as u32, d.cap_per_fob as u32)
     }
     fn placeable(
         &self,
@@ -395,15 +378,16 @@ impl Commander {
         reserve: i32,
     ) -> Option<String> {
         let now = w.state.field.now;
-        let choices: Vec<_> = w.content.definitions["support"]
-            .as_object()
-            .unwrap()
+        let choices: Vec<_> = w
+            .content
+            .definitions()
+            .support
             .iter()
             .filter(|(k, d)| {
-                number(d, "team", -1.) as i8 == self.team
-                    && flag(d, "recon") == recon
-                    && w.stock(self.team) >= number(d, "cost", 0.) as i32 + reserve
-                    && now >= number(d, "from", 0.)
+                d.team.unwrap_or(-1.) as i8 == self.team
+                    && d.recon == recon
+                    && w.stock(self.team) >= d.cost.unwrap_or(0.) as i32 + reserve
+                    && now >= d.from.unwrap_or(0.)
                     && w.state.rules.support.ready[self.team as usize]
                         .iter()
                         .find(|p| p.0 == **k)

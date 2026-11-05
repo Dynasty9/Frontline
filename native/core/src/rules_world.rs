@@ -17,7 +17,7 @@ use crate::supply_network::SupplyNetwork;
 use crate::support_calls::{self, SupportCalls};
 use crate::vector::Vector3;
 use crate::vehicle::Vehicle;
-use crate::vehicle_loss_world::Context;
+use crate::world::WorldContext;
 
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct Rules {
@@ -148,7 +148,7 @@ impl Rules {
         Ok(out)
     }
 }
-impl Context<'_> {
+impl WorldContext<'_> {
     pub fn advance_rules(
         &mut self,
         dt: f64,

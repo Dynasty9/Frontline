@@ -118,11 +118,11 @@ fn run() -> Result<(), String> {
                     frontline_runtime::ENGINE_ID
                 );
             } else {
-                let mut recording = replay::Recorder::new(file, &simulation, &content)?;
+                let mut recording = replay::Recorder::new(file, simulation, &content)?;
                 for _ in 0..ticks {
-                    recording.step(&mut simulation, &content, &[])?;
+                    recording.step(&content, &[])?;
                 }
-                file = recording.finish(&simulation)?;
+                (file, simulation) = recording.finish()?;
                 println!(
                     "SIMULATION_RUN ticks={} winner={}",
                     simulation.state.tick, simulation.state.victory.winner

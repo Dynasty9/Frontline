@@ -3,7 +3,7 @@ use crate::boat_navigation::BoatNavigation;
 use crate::squad_movement::point;
 use crate::vector::Vector3;
 use crate::vehicle::Route;
-use crate::vehicle_loss_world::Context;
+use crate::world::WorldContext;
 
 #[derive(Clone, Copy, Debug)]
 pub enum Order {
@@ -28,7 +28,7 @@ impl crate::actors::Actors {
         Ok(())
     }
 }
-impl Context<'_> {
+impl WorldContext<'_> {
     pub fn order_vehicle(
         &mut self,
         id: u32,

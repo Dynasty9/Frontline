@@ -88,7 +88,7 @@ impl Actors {
             None
         };
         let s = self.soldier_mut(id).unwrap();
-        s.compute_separation(&neighbors, rng)?;
+        s.advance_compute_separation(&neighbors, rng)?;
         s.controller = clock;
         Ok(scan)
     }

@@ -5,10 +5,10 @@ use crate::infantry_fight_world::Event;
 use crate::infantry_travel_owned::Event as Movement;
 use crate::infantry_vitals::Life;
 use crate::vehicle::Vehicle;
-use crate::vehicle_loss_world::Context;
+use crate::world::WorldContext;
 use crate::world_combat;
 
-impl Context<'_> {
+impl WorldContext<'_> {
     pub fn advance_infantry_action<'a>(
         &mut self,
         id: u32,

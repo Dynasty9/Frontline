@@ -3,7 +3,7 @@ use crate::traversal::Ground;
 use crate::actors::{Actor, Actors};
 use crate::infantry::Infantry;
 use crate::infantry_orders::{PathFinish, RouteOrder};
-use crate::navigation_scene::NavigationScene;
+use crate::navigation_scene::{NavigationScene, PendingPath};
 use crate::path_planner::PathJob;
 use crate::random::SimulationRandom;
 use crate::vehicle::Vehicle;
@@ -17,6 +17,12 @@ fn clock(now: f64) -> bool {
     now.is_finite() && now.abs() <= 1e12 - 100.0
 }
 impl NavigationScene {
+    fn cancel_pending_path(&mut self) {
+        self.pending_path = None;
+        self.infantry.cancel_route();
+        self.vehicles.cancel_route();
+        self.tracked.cancel_route();
+    }
     pub fn submit_infantry(
         &mut self,
         soldier: &mut Infantry,
@@ -109,7 +115,7 @@ impl NavigationScene {
         self.process_paths_with_work_limit(actors, max_jobs, u64::MAX, now, rng, ground)
     }
 
-    /// Finish the current search, then leave excess work queued for the next tick.
+    /// Pause the frontier at the node quota and resume the same queued order next tick.
     /// Node counts, rather than elapsed time, keep scheduling reproducible on every machine.
     pub fn process_paths_with_work_limit(
         &mut self,
@@ -132,6 +138,7 @@ impl NavigationScene {
         self.planner.begin_batch();
         while count < max_jobs && expanded < max_expanded {
             let Some(job) = self.planner.next_job() else {
+                self.cancel_pending_path();
                 break;
             };
             let Ok(id) = u32::try_from(job.id) else {
@@ -146,6 +153,16 @@ impl NavigationScene {
                 }
                 _ => continue,
             };
+            let position = if let Some(p) = self
+                .pending_path
+                .as_ref()
+                .filter(|p| p.job == job && p.revision == revision)
+            {
+                p.position
+            } else {
+                self.cancel_pending_path();
+                position
+            };
             let graph = if job.tracked {
                 &mut self.tracked
             } else if job.vehicle {
@@ -153,25 +170,33 @@ impl NavigationScene {
             } else {
                 &mut self.infantry
             };
-            let path = self.planner.find_path(
+            let path = self.planner.find_path_with_limit(
                 graph,
                 position,
-                job.destination,
-                job.vehicle,
-                job.team,
-                job.care,
-                job.tracked,
+                job,
                 ground,
+                max_expanded - expanded,
             );
             count += 1;
             expanded += graph.last_expanded;
+            let Some(path) = path else {
+                self.pending_path = Some(PendingPath {
+                    job,
+                    revision,
+                    position,
+                });
+                self.planner.defer_front(job);
+                break;
+            };
+            graph.cancel_route();
+            self.pending_path = None;
             if path.is_empty() && graph.has_work() {
                 if !self.planner.request(job) {
                     return Err("pending path lost its queue slot");
                 }
                 continue;
             }
-            // Solving and applying are synchronous; replacing an order replaces its queued job.
+            // Only the current order revision can receive a completed route.
             let result = match actors.get_mut(id).unwrap() {
                 Actor::Soldier(s) => Completion::Infantry {
                     id,

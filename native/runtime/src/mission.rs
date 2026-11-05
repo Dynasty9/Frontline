@@ -334,9 +334,7 @@ impl Context<'_, '_, '_> {
             profile,
         )?;
         if embark {
-            let key = self.content.definitions["vehicles"][kind]["carry"]
-                .as_str()
-                .unwrap_or("");
+            let key = self.content.definitions().vehicles[kind].carry.as_str();
             if let Some(profile) = self.content.squad(key) {
                 f.with_context(
                     self.shared,
@@ -363,7 +361,7 @@ impl Context<'_, '_, '_> {
         )
         .height(v.position);
         let seats = self.content.seats(&v.kind);
-        let helicopter = matches!(d["base"].as_str(), Some("attack_heli" | "lift_heli"));
+        let helicopter = matches!(d.base.as_str(), "attack_heli" | "lift_heli");
         let ids = self
             .state
             .field

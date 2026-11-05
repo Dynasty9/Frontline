@@ -14,7 +14,7 @@ fn authored_initial_state_preserves_units_randomness_ledger_and_replay() {
     let c = Content::bundled().unwrap();
     let original = map(&c);
     let bytes = encode(&original, |_| {});
-    let mut a = initial::load(&bytes, &c).unwrap();
+    let a = initial::load(&bytes, &c).unwrap();
     assert_eq!(
         original.state.checkpoint().unwrap(),
         a.state.checkpoint().unwrap()
@@ -25,12 +25,12 @@ fn authored_initial_state_preserves_units_randomness_ledger_and_replay() {
         serde_json::from_slice::<serde_json::Value>(&a.presentation).unwrap()["mood"],
         "rain"
     );
-    let mut recorder = Recorder::new(Vec::new(), &a, &c).unwrap();
+    let mut recorder = Recorder::new(Vec::new(), a, &c).unwrap();
     for _ in 0..60 {
-        recorder.step(&mut a, &c, &[]).unwrap();
+        recorder.step(&c, &[]).unwrap();
     }
-    let saved = a.checkpoint().unwrap();
-    let bytes = recorder.finish(&a).unwrap();
+    let saved = recorder.simulation().checkpoint().unwrap();
+    let (bytes, _a) = recorder.finish().unwrap();
     assert_eq!(
         saved,
         verify(bytes.as_slice(), &c)

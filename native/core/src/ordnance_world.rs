@@ -10,8 +10,8 @@ use crate::supply_network::SupplyNetwork;
 use crate::vector::Vector3;
 use crate::vehicle::Vehicle;
 use crate::vehicle_damage::Armor;
-use crate::vehicle_loss_world::Context;
 use crate::visibility::Smoke;
+use crate::world::WorldContext;
 use crate::world_combat;
 
 #[derive(Clone, Debug, PartialEq)]
@@ -31,7 +31,7 @@ pub enum Event {
     },
 }
 
-impl Context<'_> {
+impl WorldContext<'_> {
     pub fn advance_projectile_world(
         &mut self,
         id: u32,

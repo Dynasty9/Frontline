@@ -111,14 +111,10 @@ impl Infantry {
         now: f64,
         rng: &mut SimulationRandom,
     ) -> Result<PathFinish, &'static str> {
-        if !self.valid()
-            || !time(now)
-            || revision > i64::MAX as u64
-            || path.len() > 1_000_000
-            || !path.iter().copied().all(point)
-        {
+        if !self.valid() || !time(now) || revision > i64::MAX as u64 {
             return Err("invalid infantry path completion");
         }
+        let path = crate::infantry_motion::RoutePoints::try_from(path)?;
         if revision != self.orders.path_revision {
             return Ok(PathFinish::Ignored);
         }

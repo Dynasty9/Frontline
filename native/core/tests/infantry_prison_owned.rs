@@ -189,7 +189,7 @@ fn captive_movement_delivers_to_tunnel_and_releases_guard_in_the_same_update() {
     f.step(0).unwrap();
     f.edit(2, |p| {
         p.orders.pending_path = false;
-        p.motion.path = vec![Vector3::X];
+        p.motion.path = (vec![Vector3::X]).try_into().unwrap();
     });
     let mut units = SpatialIndex::new(UNIT_CELL).unwrap();
     f.a.rebuild_units(&mut units).unwrap();

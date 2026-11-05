@@ -39,17 +39,25 @@ fn digest(r: &mut Reader<'_>) -> Result<[u8; 32], String> {
         .map_err(|_| "invalid replay digest".into())
 }
 
+/// Owns the live state until its recording closes. Observations cannot bypass recorded inputs.
+/// ```compile_fail
+/// fn edit<W: std::io::Write>(recording: &mut frontline_runtime::replay::Recorder<W>) {
+///     recording.simulation().state.field.rng.randi();
+/// }
+/// ```
 pub struct Recorder<W: Write> {
+    simulation: Simulation,
     output: W,
     last_tick: u64,
+    failed: bool,
     frames: u64,
     chain: blake3::Hasher,
 }
 impl<W: Write> Recorder<W> {
-    pub fn new(mut output: W, simulation: &Simulation, content: &Content) -> Result<Self, String> {
+    pub fn new(mut output: W, simulation: Simulation, content: &Content) -> Result<Self, String> {
         let mut h = Writer::new(b"FLRH\x01\0\0\0");
         h.bytes(crate::ENGINE_ID.as_bytes());
-        h.bytes(&content.digest);
+        h.bytes(&content.digest());
         h.bytes(&simulation.checkpoint()?);
         if h.0.len() > HEADER_LIMIT {
             return Err("replay header exceeds limit".into());
@@ -60,16 +68,23 @@ impl<W: Write> Recorder<W> {
         Ok(Self {
             output,
             last_tick: simulation.state.tick,
+            failed: false,
+            simulation,
             frames: 0,
             chain,
         })
     }
-    pub fn step(
-        &mut self,
-        simulation: &mut Simulation,
-        content: &Content,
-        inputs: &[Input],
-    ) -> Result<Frame, String> {
+    pub fn step(&mut self, content: &Content, inputs: &[Input]) -> Result<Frame, String> {
+        if self.failed {
+            return Err("recording previously failed".into());
+        }
+        self.failed = true;
+        let result = self.step_inner(content, inputs);
+        self.failed = result.is_err();
+        result
+    }
+    fn step_inner(&mut self, content: &Content, inputs: &[Input]) -> Result<Frame, String> {
+        let simulation = &mut self.simulation;
         if simulation.state.tick != self.last_tick || self.frames >= MAX_REPLAY_TICKS {
             return Err("recording tick is out of sequence".into());
         }
@@ -88,7 +103,17 @@ impl<W: Write> Recorder<W> {
         self.frames += 1;
         Ok(frame)
     }
-    pub fn finish(mut self, simulation: &Simulation) -> Result<W, String> {
+    pub(crate) fn enable_profiling(&mut self, enabled: bool) {
+        self.simulation.profile = enabled.then(Default::default);
+    }
+    pub fn simulation(&self) -> &Simulation {
+        &self.simulation
+    }
+    pub fn finish(mut self) -> Result<(W, Simulation), String> {
+        if self.failed {
+            return Err("recording previously failed".into());
+        }
+        let simulation = &self.simulation;
         if simulation.state.tick != self.last_tick {
             return Err("unrecorded simulation tick".into());
         }
@@ -100,7 +125,7 @@ impl<W: Write> Recorder<W> {
         w.bytes(self.chain.finalize().as_bytes());
         write_block(&mut self.output, &w.0)?;
         self.output.flush().map_err(|e| e.to_string())?;
-        Ok(self.output)
+        Ok((self.output, self.simulation))
     }
 }
 pub struct Verification {
@@ -112,22 +137,24 @@ pub struct Verification {
 
 /// The verifier and visual player consume exactly the same bounded input stream.
 pub struct Playback<R: Read> {
+    simulation: Simulation,
     source: R,
     chain: blake3::Hasher,
-    pub frames: u64,
-    pub initial_tick: u64,
+    frames: u64,
+    initial_tick: u64,
     last_tick: u64,
+    failed: bool,
     initial_hash: [u8; 32],
     state_hash: Option<[u8; 32]>,
 }
 impl<R: Read> Playback<R> {
-    pub fn new(mut source: R, content: &Content) -> Result<(Self, Simulation), String> {
+    pub fn new(mut source: R, content: &Content) -> Result<Self, String> {
         let header = read_block(&mut source, HEADER_LIMIT)?;
         let mut h = Reader::new(&header, b"FLRH\x01\0\0\0")?;
         if h.bytes(64)? != crate::ENGINE_ID.as_bytes() {
             return Err("incompatible replay simulation build".into());
         }
-        if digest(&mut h)? != content.digest {
+        if digest(&mut h)? != content.digest() {
             return Err("incompatible replay content".into());
         }
         let initial = h.bytes(MAX_STATE)?;
@@ -137,33 +164,44 @@ impl<R: Read> Playback<R> {
         let mut chain = blake3::Hasher::new();
         chain.update(&header);
         let tick = simulation.state.tick;
-        Ok((
-            Self {
-                source,
-                chain,
-                frames: 0,
-                initial_tick: tick,
-                last_tick: tick,
-                initial_hash,
-                state_hash: None,
-            },
+        Ok(Self {
+            source,
+            chain,
+            frames: 0,
+            initial_tick: tick,
+            last_tick: tick,
+            failed: false,
+            initial_hash,
+            state_hash: None,
             simulation,
-        ))
+        })
+    }
+    pub(crate) fn enable_profiling(&mut self, enabled: bool) {
+        self.simulation.profile = enabled.then(Default::default);
+    }
+    pub fn simulation(&self) -> &Simulation {
+        &self.simulation
+    }
+    pub fn initial_tick(&self) -> u64 {
+        self.initial_tick
     }
     pub fn verified(&self) -> bool {
         self.state_hash.is_some()
     }
-    pub fn step(
-        &mut self,
-        simulation: &mut Simulation,
-        content: &Content,
-    ) -> Result<Option<Frame>, String> {
-        if simulation.state.tick != self.last_tick {
-            return Err("unrecorded playback tick".into());
+    pub fn step(&mut self, content: &Content) -> Result<Option<Frame>, String> {
+        if self.failed {
+            return Err("playback previously failed".into());
         }
+        self.failed = true;
+        let result = self.step_inner(content);
+        self.failed = result.is_err();
+        result
+    }
+    fn step_inner(&mut self, content: &Content) -> Result<Option<Frame>, String> {
         if self.verified() {
             return Ok(None);
         }
+        let simulation = &mut self.simulation;
         let bytes = read_block(&mut self.source, FRAME_LIMIT)?;
         let mut r = Reader::new(&bytes, b"FLRF\x01\0\0\0")?;
         let tag = r.byte()?;
@@ -247,10 +285,10 @@ pub fn declared_tick(source: &mut (impl Read + std::io::Seek)) -> Result<u64, St
 }
 
 pub fn verify(source: impl Read, content: &Content) -> Result<Verification, String> {
-    let (mut playback, mut simulation) = Playback::new(source, content)?;
-    while playback.step(&mut simulation, content)?.is_some() {}
+    let mut playback = Playback::new(source, content)?;
+    while playback.step(content)?.is_some() {}
     Ok(Verification {
-        simulation,
+        simulation: playback.simulation,
         frames: playback.frames,
         state_hash: playback.state_hash.ok_or("missing replay conclusion")?,
         initial_hash: playback.initial_hash,

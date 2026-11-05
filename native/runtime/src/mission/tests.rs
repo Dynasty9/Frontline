@@ -32,7 +32,7 @@ fn scene(c: &Content) -> MatchState {
                     armor_upgrade: false,
                     grenade_upgrade: false,
                 },
-                &c.loadouts["rifleman"],
+                &c.loadouts()["rifleman"],
                 &mut state.field.rng,
             )
             .unwrap();

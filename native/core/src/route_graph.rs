@@ -1,8 +1,8 @@
 use crate::state_codec::{Reader, Writer};
 use crate::vector::Vector3;
-use std::cmp::Ordering;
-use std::collections::{BinaryHeap, HashMap};
+use std::collections::HashMap;
 
+#[derive(Clone)]
 struct Point {
     id: i64,
     position: Vector3,
@@ -134,27 +134,9 @@ mod tests {
     }
 }
 
-#[derive(Clone, Copy, PartialEq)]
-struct Step {
-    index: usize,
-    cost: f64,
-    estimate: f64,
-}
-impl Eq for Step {}
-impl Ord for Step {
-    fn cmp(&self, other: &Self) -> Ordering {
-        other
-            .estimate
-            .total_cmp(&self.estimate)
-            .then_with(|| self.cost.total_cmp(&other.cost))
-            .then_with(|| other.index.cmp(&self.index))
-    }
-}
-impl PartialOrd for Step {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        Some(self.cmp(other))
-    }
-}
+mod search;
+pub(crate) use search::RouteQuery;
+use search::Search;
 
 /// HPA's two-edge cost nodes need not become separate A* search states.
 /// Keep their directional costs and include them when reconstructing the path.
@@ -163,11 +145,7 @@ pub struct RouteGraph {
     ids: HashMap<i64, usize>,
     points: Vec<Option<Point>>,
     free: Vec<usize>,
-    costs: Vec<f64>,
-    parents: Vec<(usize, Option<usize>)>,
-    visited: Vec<u64>,
-    generation: u64,
-    open: BinaryHeap<Step>,
+    search: Search,
     minimum_weight: f64,
     pub last_expanded: u64,
 }
@@ -287,9 +265,9 @@ impl RouteGraph {
                 }
             }
         }
-        graph.costs.resize(count, 0.0);
-        graph.parents.resize(count, (0, None));
-        graph.visited.resize(count, 0);
+        graph.search.costs.resize(count, 0.0);
+        graph.search.parents.resize(count, (0, None));
+        graph.search.visited.resize(count, 0);
         Ok(graph)
     }
 
@@ -340,14 +318,14 @@ impl RouteGraph {
         });
         let index = if let Some(index) = self.free.pop() {
             self.points[index] = point;
-            self.visited[index] = 0;
+            self.search.visited[index] = 0;
             index
         } else {
             let index = self.points.len();
             self.points.push(point);
-            self.costs.push(0.0);
-            self.parents.push((index, None));
-            self.visited.push(0);
+            self.search.costs.push(0.0);
+            self.search.parents.push((index, None));
+            self.search.visited.push(0);
             index
         };
         self.ids.insert(id, index);
@@ -484,73 +462,26 @@ impl RouteGraph {
     fn get_id_path_with_heuristic(&mut self, from: i64, to: i64, minimum_cost: f64) -> Vec<i64> {
         self.last_expanded = 0;
         let (Some(&start), Some(&goal)) = (self.ids.get(&from), self.ids.get(&to)) else {
-            return Vec::new();
+            return vec![];
         };
-        self.generation = self.generation.wrapping_add(1);
-        if self.generation == 0 {
-            self.visited.fill(0);
-            self.generation = 1;
-        }
-        let generation = self.generation;
-        let destination = self.points[goal].as_ref().unwrap().position;
-        self.open.clear();
-        self.costs[start] = 0.0;
-        self.visited[start] = generation;
-        self.open.push(Step {
-            index: start,
-            cost: 0.0,
-            estimate: 0.0,
-        });
-        while let Some(step) = self.open.pop() {
-            if step.cost != self.costs[step.index] {
-                continue;
-            }
-            self.last_expanded += 1;
-            if step.index == goal {
-                let mut path = vec![to];
-                let mut index = goal;
-                while index != start {
-                    let (parent, via) = self.parents[index];
-                    if let Some(via) = via {
-                        path.push(self.points[via].as_ref().unwrap().id);
-                    }
-                    path.push(self.points[parent].as_ref().unwrap().id);
-                    index = parent;
-                }
-                path.reverse();
-                return path;
-            }
-            for &(neighbour, distance) in &self.points[step.index].as_ref().unwrap().edges {
-                let point = self.points[neighbour].as_ref().unwrap();
-                let mut next = neighbour;
-                let mut cost = step.cost + distance * point.weight;
-                let mut via = None;
-                if neighbour != goal && point.edges.len() == 2 {
-                    let &(other, length) = point.edges.iter().find(|e| e.0 != step.index).unwrap();
-                    next = other;
-                    cost += length * self.points[other].as_ref().unwrap().weight;
-                    via = Some(neighbour);
-                }
-                if self.visited[next] == generation && cost >= self.costs[next] {
-                    continue;
-                }
-                self.visited[next] = generation;
-                self.costs[next] = cost;
-                self.parents[next] = (step.index, via);
-                let estimate = cost
-                    + self.points[next]
-                        .as_ref()
-                        .unwrap()
-                        .position
-                        .distance(destination) as f64
-                        * minimum_cost;
-                self.open.push(Step {
-                    index: next,
-                    cost,
-                    estimate,
-                });
-            }
-        }
-        Vec::new()
+        self.search
+            .begin(start, goal, minimum_cost, self.points.len());
+        let path = self
+            .search
+            .poll(|i| self.points[i].as_ref().unwrap(), u64::MAX);
+        self.last_expanded = self.search.expanded;
+        path.unwrap()
+            .into_iter()
+            .map(|i| self.points[i].as_ref().unwrap().id)
+            .collect()
+    }
+    pub(crate) fn query(
+        &self,
+        from: i64,
+        to: i64,
+        temporary: &[i64],
+        spare: Option<RouteQuery>,
+    ) -> RouteQuery {
+        RouteQuery::new(self, from, to, temporary, spare)
     }
 }

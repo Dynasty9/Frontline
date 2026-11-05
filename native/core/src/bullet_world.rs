@@ -11,7 +11,7 @@ use crate::supply_network::SupplyNetwork;
 use crate::vector::{normalized, Vector3};
 use crate::vehicle::Vehicle;
 use crate::vehicle_damage::Armor;
-use crate::vehicle_loss_world::Context;
+use crate::world::WorldContext;
 use crate::world_combat::{Event, Explosion};
 use std::collections::BTreeMap;
 
@@ -68,7 +68,7 @@ pub struct Shot<'a> {
     pub sound: &'a str,
 }
 
-fn location(context: &Context<'_>, id: u32) -> Option<TargetLocation> {
+fn location(context: &WorldContext<'_>, id: u32) -> Option<TargetLocation> {
     let actor = context.actors.get(id)?;
     let position = actor.position();
     Some(TargetLocation {
@@ -108,7 +108,7 @@ fn surface(st: &crate::structure::Structure, p: Vector3) -> u8 {
         _ => 5,
     }
 }
-impl Context<'_> {
+impl WorldContext<'_> {
     pub fn hit_infantry(
         &mut self,
         id: u32,

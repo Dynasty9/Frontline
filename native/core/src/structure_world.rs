@@ -10,7 +10,7 @@ use crate::supply_network::SupplyNetwork;
 use crate::vector::Vector3;
 use crate::vehicle::Vehicle;
 use crate::vehicle_damage::Armor;
-use crate::vehicle_loss_world::Context;
+use crate::world::WorldContext;
 use crate::world_combat::{self, Explosion};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -66,13 +66,13 @@ pub enum Event {
     Despawn(u32),
     Stat(&'static str),
 }
-fn structure<'a>(ctx: &'a mut Context<'_>, id: u32) -> &'a mut Structure {
+fn structure<'a>(ctx: &'a mut WorldContext<'_>, id: u32) -> &'a mut Structure {
     let Some(Actor::Structure(st)) = ctx.actors.get_mut(id) else {
         unreachable!()
     };
     st
 }
-fn fobs(ctx: &Context<'_>, team: i8) -> usize {
+fn fobs(ctx: &WorldContext<'_>, team: i8) -> usize {
     ctx.actors
         .simulated_structures()
         .iter()
@@ -80,7 +80,7 @@ fn fobs(ctx: &Context<'_>, team: i8) -> usize {
         .filter(|st| st.kind == "fob" && st.team == team && st.built)
         .count()
 }
-impl Context<'_> {
+impl WorldContext<'_> {
     pub fn check_victory(&self, victory: &mut Victory) -> Option<i8> {
         if victory.winner >= 0 || self.now < 10.0 || victory.mission {
             return None;

@@ -125,6 +125,25 @@ impl Field {
     }
 }
 #[test]
+fn unfinished_actions_keep_owned_identity_and_route_storage() {
+    let mut s = soldier(1, 0.0, 0);
+    s.action.current = Action::Cook;
+    s.action.remaining = 1.0;
+    s.motion.path = vec![Vector3::X; 500].try_into().unwrap();
+    let mut f = Field::new(vec![actor(s)]);
+    let s = f.actors.soldier(1).unwrap();
+    let route = s.motion.path.as_ptr();
+    let unit = s.identity.unit.as_ptr();
+    let random = f.rng.state();
+    f.complete().unwrap();
+    let s = f.actors.soldier(1).unwrap();
+    assert_eq!(s.motion.path.as_ptr(), route);
+    assert_eq!(s.identity.unit.as_ptr(), unit);
+    assert_eq!(s.motion.path.len(), 500);
+    assert_eq!(f.rng.state(), random);
+}
+
+#[test]
 fn cooking_starts_the_queued_throw_without_creating_a_projectile_early() {
     let mut s = soldier(1, 0.0, 0);
     s.action.current = Action::Cook;

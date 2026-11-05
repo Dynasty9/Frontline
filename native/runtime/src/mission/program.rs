@@ -153,7 +153,7 @@ impl Context<'_, '_, '_> {
                 grenade_upgrade: false,
             },
             self.content
-                .loadouts
+                .loadouts()
                 .get(unit)
                 .ok_or("unknown mission soldier")?,
             &mut f.rng,

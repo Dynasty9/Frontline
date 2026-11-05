@@ -216,7 +216,7 @@ impl Mission {
                 if let Some(v) = w.state.field.actors.vehicle(id) {
                     let at = v.position;
                     let d = distance(at, op);
-                    if w.content.vehicle(v)["weight"].as_u64().unwrap_or(1) < 1 {
+                    if w.content.vehicle(v).weight.unwrap_or(1.) < 1. {
                         continue;
                     }
 

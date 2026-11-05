@@ -12,7 +12,7 @@ use crate::structure_services::{self, Supply};
 use crate::structure_world::{self, Victory};
 use crate::vehicle::Vehicle;
 use crate::vehicle_damage::Armor;
-use crate::vehicle_loss_world::Context;
+use crate::world::WorldContext;
 
 pub struct Profiles<'a> {
     pub product: &'a dyn Fn(&Structure) -> Option<Product<'a>>,
@@ -32,7 +32,7 @@ pub enum Event {
     Production(structure_production::Event),
     Service(structure_services::Event),
 }
-impl Context<'_> {
+impl WorldContext<'_> {
     pub fn advance_structures(
         &mut self,
         dt: f64,

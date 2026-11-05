@@ -42,7 +42,7 @@ fn retained_routes_replan_and_apply_cover_or_prison_arrivals() {
     let mut s = soldier();
     s.orders.purpose = Goal::Cover;
     s.orders.move_mode = 2;
-    s.motion.path = vec![Vector3::X * 5.0];
+    s.motion.path = (vec![Vector3::X * 5.0]).try_into().unwrap();
     s.motion.stuck_timer = 3.0;
     let out = s
         .move_route(
@@ -81,7 +81,7 @@ fn retained_routes_replan_and_apply_cover_or_prison_arrivals() {
     assert!(s.motion.path.is_empty());
     assert_ne!(rng, before);
     s.orders.purpose = Goal::Prison;
-    s.motion.path = vec![Vector3::ZERO];
+    s.motion.path = (vec![Vector3::ZERO]).try_into().unwrap();
     let out = s
         .move_route(
             movement(),
@@ -99,7 +99,7 @@ fn retained_routes_replan_and_apply_cover_or_prison_arrivals() {
 #[test]
 fn opened_door_reports_the_position_before_the_actor_steps_through_it() {
     let mut s = soldier();
-    s.motion.path = vec![Vector3::Z * 8.0];
+    s.motion.path = (vec![Vector3::Z * 8.0]).try_into().unwrap();
     s.motion.door = 10;
     s.motion.door_wait = 0.01;
     s.motion.door_kick = true;
@@ -217,7 +217,9 @@ fn retained_movement_continues_identically_after_a_checkpoint_each_tick() {
     continuous.orders.purpose = Goal::Cover;
     continuous.orders.move_mode = 1;
     continuous.vitals.suppression = 30.0;
-    continuous.motion.path = vec![Vector3::new(1.1, 0.0, 3.7), Vector3::new(3.9, 0.0, 7.1)];
+    continuous.motion.path = (vec![Vector3::new(1.1, 0.0, 3.7), Vector3::new(3.9, 0.0, 7.1)])
+        .try_into()
+        .unwrap();
     continuous.cover.normal = Vector3::new(0.3, 0.0, -0.9);
     let mut restored = continuous.clone();
     let mut randoms = [SimulationRandom::new(137); 2];
@@ -257,7 +259,7 @@ fn invalid_input_does_not_mutate_the_actor_or_consume_draws() {
     let terrain = Terrain::blank(32).unwrap();
     let mut collision = CollisionWorld::default();
     let mut s = soldier();
-    s.motion.path = vec![Vector3::X * 5.0];
+    s.motion.path = (vec![Vector3::X * 5.0]).try_into().unwrap();
     let mut rng = SimulationRandom::new(137);
     let before = s.clone();
     let draws = rng;

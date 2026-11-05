@@ -14,7 +14,7 @@ use crate::squad::Report;
 use crate::supply_network::SupplyNetwork;
 use crate::vehicle::Vehicle;
 use crate::vehicle_damage::Armor;
-use crate::vehicle_loss_world::Context;
+use crate::world::WorldContext;
 use crate::world_combat::{self, Explosion};
 
 #[derive(Clone, Copy, Debug)]
@@ -75,7 +75,7 @@ pub(crate) fn valid_step(dt: f64, now: f64, gun: Option<MountedGun>) -> bool {
         && gun.is_none_or(MountedGun::valid)
 }
 
-impl Context<'_> {
+impl WorldContext<'_> {
     pub(crate) fn move_infantry_world(
         &mut self,
         id: u32,
@@ -360,7 +360,7 @@ impl Context<'_> {
                 let s = self.actors.soldier(id).unwrap();
                 let target_valid = self.actors.infantry_target_valid(s.fight.target as u32);
                 let mount = self.actors.mount_turn(s, gun)?;
-                self.actors.soldier_mut(id).unwrap().stand(
+                self.actors.soldier_mut(id).unwrap().advance_stand(
                     dt,
                     self.now,
                     target_valid,

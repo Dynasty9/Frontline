@@ -418,57 +418,89 @@ fn search_work_limit_defers_in_order_and_restores_without_profile_or_cache_timin
     let first = nav
         .process_paths_with_work_limit(&mut actors, 4, 1, 1., &mut rng, ground)
         .unwrap();
-    assert_eq!(
-        first,
-        [Completion::Infantry {
-            id: 1,
-            finish: PathFinish::Following
-        }]
+    assert!(
+        first.is_empty(),
+        "one expansion must not finish the entire route"
     );
-    assert!(nav.infantry.last_expanded > 0);
-    assert!(actors.soldier(2).unwrap().orders.pending_path);
-    assert!(actors.soldier(3).unwrap().orders.pending_path);
-    let mut restored = NavigationScene::restore(&nav.checkpoint()).unwrap();
-    let mut restored_actors = Actors::restore(&actors.checkpoint().unwrap()).unwrap();
-    let mut restored_rng = rng;
-    restored.planner.profile = Some(Default::default());
-    let next = nav
-        .process_paths_with_work_limit(&mut actors, 4, 1, 2., &mut rng, ground)
+    assert_eq!(nav.infantry.last_expanded, 1);
+    assert_eq!(actors.checkpoint().unwrap(), state);
+    assert_eq!(rng.state(), cursor);
+    let mut completed = vec![];
+    for _ in 0..100 {
+        let mut restored = NavigationScene::restore(&nav.checkpoint()).unwrap();
+        assert_eq!(nav.checkpoint(), restored.checkpoint());
+        let mut restored_actors = Actors::restore(&actors.checkpoint().unwrap()).unwrap();
+        let mut restored_rng = rng;
+        restored.planner.profile = Some(Default::default());
+        let next = nav
+            .process_paths_with_work_limit(&mut actors, 4, 1, 1., &mut rng, ground)
+            .unwrap();
+        assert!(nav.infantry.last_expanded <= 1);
+        assert_eq!(
+            next,
+            restored
+                .process_paths_with_work_limit(
+                    &mut restored_actors,
+                    4,
+                    1,
+                    1.,
+                    &mut restored_rng,
+                    ground
+                )
+                .unwrap()
+        );
+        assert_eq!(nav.checkpoint(), restored.checkpoint());
+        assert_eq!(
+            actors.checkpoint().unwrap(),
+            restored_actors.checkpoint().unwrap()
+        );
+        assert_eq!(rng.state(), restored_rng.state());
+        completed.extend(next);
+        if completed.len() == 3 {
+            break;
+        }
+    }
+    assert_eq!(
+        completed,
+        (1..=3)
+            .map(|id| Completion::Infantry {
+                id,
+                finish: PathFinish::Following
+            })
+            .collect::<Vec<_>>()
+    );
+}
+
+#[test]
+fn replacing_a_partly_searched_order_never_installs_the_old_destination() {
+    let (terrain, mut nav) = navigation();
+    let ground = frontline_core::traversal::Ground::new(&terrain, &[]);
+    let mut rng = SimulationRandom::new(137);
+    let mut s = soldier(1, -13.);
+    let order = s.go_to(Vector3::X * 13., Goal::Slot, 0).unwrap();
+    nav.submit_infantry(&mut s, order, 0., &mut rng, ground)
         .unwrap();
-    assert_eq!(
-        next,
-        [
-            Completion::Infantry {
-                id: 2,
-                finish: PathFinish::Following
-            },
-            Completion::Infantry {
-                id: 3,
-                finish: PathFinish::Following
-            },
-        ]
-    );
-    assert_eq!(
-        nav.infantry.last_expanded, 0,
-        "Cached corridors must not reuse the preceding search's work count"
-    );
-    assert_eq!(
-        next,
-        restored
-            .process_paths_with_work_limit(
-                &mut restored_actors,
-                4,
-                1,
-                2.,
-                &mut restored_rng,
-                ground
-            )
-            .unwrap()
-    );
-    assert_eq!(nav.checkpoint(), restored.checkpoint());
-    assert_eq!(
-        actors.checkpoint().unwrap(),
-        restored_actors.checkpoint().unwrap()
-    );
-    assert_eq!(rng.state(), restored_rng.state());
+    let mut actors = Actors::from_entries(2, vec![Actor::Soldier(Box::new(s))]).unwrap();
+    assert!(nav
+        .process_paths_with_work_limit(&mut actors, 4, 1, 1., &mut rng, ground)
+        .unwrap()
+        .is_empty());
+    let Actor::Soldier(mut s) = actors.remove(1).unwrap() else {
+        panic!()
+    };
+    let target = Vector3::new(12., 0., 12.);
+    let order = s.go_to(target, Goal::Slot, 0).unwrap();
+    nav.submit_infantry(&mut s, order, 1., &mut rng, ground)
+        .unwrap();
+    actors = Actors::from_entries(2, vec![Actor::Soldier(s)]).unwrap();
+    for _ in 0..100 {
+        let out = nav
+            .process_paths_with_work_limit(&mut actors, 4, 1, 1., &mut rng, ground)
+            .unwrap();
+        assert!(nav.infantry.last_expanded <= 1);
+        if !out.is_empty() {
+            break;
+        }
+    }
+    assert_eq!(actors.soldier(1).unwrap().motion.path.last(), Some(&target));
 }

@@ -13,11 +13,12 @@ use crate::vehicle_brain::CrewProfile;
 use crate::vehicle_combat_world::{Event as Combat, Profile as Weapons};
 use crate::vehicle_damage::Armor;
 use crate::vehicle_flight::move_toward;
-use crate::vehicle_loss_world::{Context, Event as Loss};
+use crate::vehicle_loss_world::Event as Loss;
 use crate::vehicle_motion::GroundProfile;
 use crate::vehicle_movement_world::Event as Movement;
 use crate::vehicle_scan::ScanProfile;
 use crate::vehicle_service::{Service, SoldierSupply};
+use crate::world::WorldContext;
 
 #[derive(Clone, Copy, Debug)]
 pub struct Ground<'a> {
@@ -77,7 +78,7 @@ pub enum Event {
         amount: i32,
     },
 }
-impl Context<'_> {
+impl WorldContext<'_> {
     pub(crate) fn begin_vehicle(
         &mut self,
         id: u32,

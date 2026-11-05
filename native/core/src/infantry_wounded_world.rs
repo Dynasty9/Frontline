@@ -13,8 +13,8 @@ use crate::supply_network::SupplyNetwork;
 use crate::vector::{normalized, Vector3};
 use crate::vehicle::Vehicle;
 use crate::vehicle_damage::Armor;
-use crate::vehicle_loss_world::Context;
 use crate::visibility::Sight;
+use crate::world::WorldContext;
 use crate::world_combat;
 
 #[derive(Clone, Copy, Debug)]
@@ -35,7 +35,7 @@ fn flat(v: Vector3) -> Vector3 {
     Vector3::new(v.x, 0.0, v.z)
 }
 
-impl Context<'_> {
+impl WorldContext<'_> {
     fn wounded_death(&mut self, id: u32) -> Result<Vec<Event>, &'static str> {
         let s = self.actors.soldier(id).unwrap();
         let profile = (self.man)(s, self.squads);

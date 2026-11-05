@@ -10,7 +10,7 @@ use crate::infantry_supply;
 use crate::infantry_vitals::Life;
 use crate::structure::{Structure, Tick, TownEconomy};
 use crate::vector::{normalized, Vector3};
-use crate::vehicle_loss_world::Context;
+use crate::world::WorldContext;
 
 #[derive(Clone, Copy)]
 pub struct Supply {
@@ -53,13 +53,13 @@ pub enum Event {
 fn flat(v: Vector3) -> Vector3 {
     Vector3::new(v.x, 0.0, v.z)
 }
-fn structure<'a>(ctx: &'a mut Context<'_>, id: u32) -> &'a mut Structure {
+fn structure<'a>(ctx: &'a mut WorldContext<'_>, id: u32) -> &'a mut Structure {
     let Some(Actor::Structure(st)) = ctx.actors.get_mut(id) else {
         unreachable!()
     };
     st
 }
-impl Context<'_> {
+impl WorldContext<'_> {
     pub fn advance_structure_service(
         &mut self,
         id: u32,

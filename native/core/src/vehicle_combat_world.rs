@@ -16,9 +16,9 @@ use crate::vehicle::Vehicle;
 use crate::vehicle_artillery::{ArtilleryEvent, ArtilleryProfile};
 use crate::vehicle_cannon::{CannonProfile, Muzzle};
 use crate::vehicle_damage::Armor;
-use crate::vehicle_loss_world::Context;
 use crate::vehicle_service::{Service, ServiceEffect, SoldierSupply};
 use crate::vehicle_weapon::{Fire, FireProfile, Target, TargetKind};
+use crate::world::WorldContext;
 use crate::world_combat::{self, Explosion};
 
 #[derive(Clone, Copy, Debug)]
@@ -100,7 +100,7 @@ impl Actors {
         }
     }
 }
-impl Context<'_> {
+impl WorldContext<'_> {
     pub fn advance_vehicle_fire<'a>(
         &mut self,
         id: u32,

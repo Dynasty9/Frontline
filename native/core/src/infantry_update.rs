@@ -64,8 +64,23 @@ impl Infantry {
         decks: &[u8],
         doors: &[Door],
     ) -> Result<Moved, &'static str> {
-        if !self.valid()
-            || !clock(i.dt, i.time)
+        if !self.valid() {
+            return Err("invalid retained infantry movement");
+        }
+        self.advance_move_route(i, nav, terrain, collision, rng, decks, doors)
+    }
+
+    pub(crate) fn advance_move_route(
+        &mut self,
+        i: Movement,
+        nav: &PathPlanner,
+        terrain: &Terrain,
+        collision: &mut dyn Raycast,
+        rng: &mut SimulationRandom,
+        decks: &[u8],
+        doors: &[Door],
+    ) -> Result<Moved, &'static str> {
+        if !clock(i.dt, i.time)
             || self.orders.path_revision == i64::MAX as u64
             || doors.iter().any(|d| d.id > u32::MAX as u64)
         {
@@ -136,7 +151,18 @@ impl Infantry {
         neighbors: &[Neighbor],
         rng: &mut SimulationRandom,
     ) -> Result<(), &'static str> {
-        if !self.valid() || neighbors.iter().any(|n| n.id > u32::MAX as u64) {
+        if !self.valid() {
+            return Err("invalid retained infantry neighbors");
+        }
+        self.advance_compute_separation(neighbors, rng)
+    }
+
+    pub(crate) fn advance_compute_separation(
+        &mut self,
+        neighbors: &[Neighbor],
+        rng: &mut SimulationRandom,
+    ) -> Result<(), &'static str> {
+        if neighbors.iter().any(|n| n.id > u32::MAX as u64) {
             return Err("invalid retained infantry neighbors");
         }
         self.fight.separation = infantry_motion::separation(
@@ -162,7 +188,23 @@ impl Infantry {
         terrain: &Terrain,
         decks: &[u8],
     ) -> Result<(), &'static str> {
-        if !self.valid() || !clock(dt, now) {
+        if !self.valid() {
+            return Err("invalid retained stationary infantry");
+        }
+        self.advance_stand(dt, now, target_valid, mount, nav, terrain, decks)
+    }
+
+    pub(crate) fn advance_stand(
+        &mut self,
+        dt: f64,
+        now: f64,
+        target_valid: bool,
+        mount: Option<(Vector3, f64)>,
+        nav: &PathPlanner,
+        terrain: &Terrain,
+        decks: &[u8],
+    ) -> Result<(), &'static str> {
+        if !clock(dt, now) {
             return Err("invalid retained stationary infantry");
         }
         self.fight.shuffling = self.motion.stationary(
@@ -227,7 +269,20 @@ impl Infantry {
         ammunition: Option<i32>,
         leader: bool,
     ) -> Result<u8, &'static str> {
-        if !self.valid() || !clock(dt, now) {
+        if !self.valid() {
+            return Err("invalid infantry end of tick");
+        }
+        self.advance_finish_tick(dt, now, ammunition, leader)
+    }
+
+    pub(crate) fn advance_finish_tick(
+        &mut self,
+        dt: f64,
+        now: f64,
+        ammunition: Option<i32>,
+        leader: bool,
+    ) -> Result<u8, &'static str> {
+        if !clock(dt, now) {
             return Err("invalid infantry end of tick");
         }
         let mut control = self.control;

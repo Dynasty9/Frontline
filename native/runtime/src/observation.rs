@@ -92,9 +92,9 @@ fn write_state(s: &Simulation, a: &Actor, view: i8, content: &Content, out: &mut
             } else {
                 &s.identity.mounted_weapon
             };
-            let ammo = content.definitions["weapons"][weapon]["ammo"]
-                .as_f64()
-                .unwrap_or(9000.);
+            let ammo = content
+                .weapon(weapon)
+                .map_or(9000., |w| f64::from(w.fire.weapon.ammunition));
             let cover = if s.cover.at_cover
                 && s.cover.height > 0.
                 && s.emplacement.structure == 0

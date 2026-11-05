@@ -101,7 +101,7 @@ fn speed_and_crawl_require_an_active_cover_route_and_preserve_fatigue_thresholds
     s.orders.goal = Vector3::X * 2.5;
     s.vitals.suppression = 70.0;
     assert!(!s.crawling(true));
-    s.motion.path.push(s.orders.goal);
+    s.motion.path = vec![s.orders.goal].try_into().unwrap();
     assert!(s.crawling(false));
     assert_eq!(s.movement_speed(false), 0.95);
     s.vitals.suppression = 69.9;

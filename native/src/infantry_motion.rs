@@ -39,7 +39,14 @@ pub(crate) fn state(values: &[f64], path: PackedVector3Array, door: i64) -> Opti
     let state = InfantryMotion {
         position: p(0),
         yaw: values[3],
-        path: path.as_slice().iter().copied().map(crate::point).collect(),
+        path: (path
+            .as_slice()
+            .iter()
+            .copied()
+            .map(crate::point)
+            .collect::<Vec<_>>())
+        .try_into()
+        .ok()?,
         path_index: values[4] as usize,
         stuck_position: p(5),
         stuck_timer: values[8],

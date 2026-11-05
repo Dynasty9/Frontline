@@ -10,7 +10,7 @@ use crate::structure::{Tick, TownEconomy};
 use crate::vector::Vector3;
 use crate::vehicle::{Route, Vehicle};
 use crate::vehicle_birth;
-use crate::vehicle_loss_world::Context;
+use crate::world::WorldContext;
 
 pub enum Product<'a> {
     Squad(Squad<'a>),
@@ -99,7 +99,7 @@ fn upgrades<'a>(q: Squad<'a>, team: i8, economy: &Economy) -> Squad<'a> {
         ..q
     }
 }
-impl Context<'_> {
+impl WorldContext<'_> {
     pub fn advance_production(
         &mut self,
         id: u32,

@@ -8,7 +8,7 @@ use frontline_core::structure_production::Product;
 use frontline_core::structure_world::Victory;
 use frontline_core::supply_network::SupplyNetwork;
 use frontline_core::support_calls::SupportCalls;
-use frontline_core::vehicle_loss_world::Context;
+use frontline_core::world::WorldContext;
 use godot::prelude::*;
 use std::collections::HashMap;
 fn read<T: FromGodot>(a: &Array<Variant>, i: usize) -> Option<T> {
@@ -146,7 +146,7 @@ impl RulesWorldCore {
     }
 }
 pub(crate) fn advance(
-    context: &mut Context<'_>,
+    context: &mut WorldContext<'_>,
     input: Array<Variant>,
     rules: &mut Rules,
     known_unit: impl Fn(&str) -> bool,

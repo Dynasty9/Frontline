@@ -276,7 +276,7 @@ fn arriving_soldiers_share_finite_body_ammunition() {
 #[test]
 fn kicked_movement_doors_warn_shared_squads_before_the_next_actor() {
     let mut s = soldier(1, Task::Retreat);
-    s.motion.path = vec![Vector3::X * 10.0];
+    s.motion.path = (vec![Vector3::X * 10.0]).try_into().unwrap();
     s.orders.purpose = Goal::Task;
     s.motion.door = 10;
     s.motion.door_wait = 0.05;

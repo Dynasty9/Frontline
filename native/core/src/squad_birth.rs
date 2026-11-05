@@ -9,7 +9,7 @@ use crate::infantry_vitals::Life;
 use crate::squad::Squad;
 use crate::squad_movement::{self, flat, point};
 use crate::vector::{normalized, Vector3};
-use crate::vehicle_loss_world::Context;
+use crate::world::WorldContext;
 
 #[derive(Clone, Copy)]
 pub struct Definition<'a> {
@@ -26,7 +26,7 @@ pub struct Spawn {
     pub position: Vector3,
     pub destination: Option<Vector3>,
 }
-impl Context<'_> {
+impl WorldContext<'_> {
     pub fn spawn_squad(
         &mut self,
         spawn: Spawn,

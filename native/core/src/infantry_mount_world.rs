@@ -22,8 +22,8 @@ use crate::supply_network::SupplyNetwork;
 use crate::vector::{normalized, turn_yaw, Vector3};
 use crate::vehicle::{Route, Vehicle};
 use crate::vehicle_damage::Armor;
-use crate::vehicle_loss_world::Context;
 use crate::visibility::Sight;
+use crate::world::WorldContext;
 use crate::world_combat;
 
 pub(crate) fn mortar_round(
@@ -67,7 +67,7 @@ pub(crate) fn mortar_round(
     )
 }
 
-impl Context<'_> {
+impl WorldContext<'_> {
     pub(crate) fn apply_ordnance(
         &mut self,
         completed: Completed,

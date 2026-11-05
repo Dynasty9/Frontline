@@ -1,5 +1,5 @@
 use crate::navigation_grid::{cluster_costs, ClusterQuery, NavigationGrid};
-use crate::route_graph::RouteGraph;
+use crate::route_graph::{RouteGraph, RouteQuery};
 use crate::state_codec::{Reader, Writer};
 use crate::vector::Vector3;
 use std::collections::{HashMap, VecDeque};
@@ -10,6 +10,63 @@ const CACHE_CELLS: usize = 131_072;
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn bounded_queries_restart_after_terrain_and_selected_team_danger_changes() {
+        let mut nav = Hierarchy::new(64, 16).unwrap();
+        assert!(build_all(&mut [&mut nav], 1));
+        let from = [1, 1];
+        let to = [62, 62];
+        for terrain in [false, true] {
+            assert!(nav.route_with_limit(from, to, 0, 1., 1).is_none());
+            if terrain {
+                assert!(nav.set_cell([31, 31], true, 1.));
+                assert!(nav.update(100));
+            } else {
+                let mut danger = vec![0.; 16];
+                danger[5] = 20.;
+                assert!(nav.set_danger(0, &danger));
+            }
+            assert!(!nav.has_pending_route());
+            let mut control = Hierarchy::restore(&nav.checkpoint()).unwrap();
+            let expected = control.route(from, to, 0, 1.);
+            let mut result = None;
+            for _ in 0..200 {
+                result = nav.route_with_limit(from, to, 0, 1., 2);
+                assert!(nav.last_expanded <= 2);
+                if result.is_some() {
+                    break;
+                }
+            }
+            assert_eq!(result, Some(expected));
+        }
+    }
+
+    #[test]
+    fn bounded_search_survives_other_queries_and_checkpoint_restore() {
+        let mut nav = Hierarchy::new(64, 16).unwrap();
+        assert!(build_all(&mut [&mut nav], 1));
+        let from = [1, 1];
+        let to = [62, 62];
+        let initial = nav.checkpoint();
+        let expected = nav.route(from, to, 0, 1.);
+        nav = Hierarchy::restore(&initial).unwrap();
+        assert!(nav.route_with_limit(from, to, 0, 1., 1).is_none());
+        assert_eq!(nav.last_expanded, 1);
+        for _ in 0..200 {
+            assert!(!nav.route([2, 50], [55, 2], 1, 1.).is_empty());
+            let checkpoint = nav.checkpoint();
+            nav = Hierarchy::restore(&checkpoint).unwrap();
+            assert_eq!(nav.checkpoint(), checkpoint);
+            if let Some(path) = nav.route_with_limit(from, to, 0, 1., 1) {
+                assert!(nav.last_expanded <= 1);
+                assert_eq!(path, expected);
+                return;
+            }
+            assert_eq!(nav.last_expanded, 1);
+        }
+        panic!("bounded route never completed");
+    }
 
     #[test]
     fn restored_graph_cannot_break_the_midpoint_cost_bound() {
@@ -69,6 +126,15 @@ struct Border {
     danger_version: [u64; 4],
 }
 
+struct PendingRoute {
+    from: [i32; 2],
+    to: [i32; 2],
+    graph: usize,
+    start: i64,
+    goal: i64,
+    search: RouteQuery,
+}
+
 pub struct Hierarchy {
     side: usize,
     cluster_side: usize,
@@ -83,6 +149,8 @@ pub struct Hierarchy {
     mids: HashMap<(i64, i64), i64>,
     graphs: [RouteGraph; 3],
     components: Option<Vec<usize>>,
+    pending_route: Option<PendingRoute>,
+    query_spare: Option<RouteQuery>,
     next_id: i64,
     dirty: VecDeque<usize>,
     queued: Vec<bool>,
@@ -185,6 +253,18 @@ impl Hierarchy {
         out.u32(self.dirty.len() as u32);
         for &cluster in &self.dirty {
             out.u32(cluster as u32);
+        }
+        if let Some(q) = &self.pending_route {
+            out.byte(1);
+            for cell in [q.from, q.to] {
+                for n in cell {
+                    out.u32(n as u32);
+                }
+            }
+            out.byte(q.graph as u8);
+            out.u64(q.start as u64);
+            out.u64(q.goal as u64);
+            q.search.write(&mut out);
         }
         out.0
     }
@@ -438,6 +518,38 @@ impl Hierarchy {
             nav.queued[cluster] = true;
             nav.dirty.push_back(cluster);
         }
+        if !input.is_empty() {
+            if input.byte()? != 1 {
+                return Err("unsupported pending route version");
+            }
+            let from = [input.u32()? as i32, input.u32()? as i32];
+            let to = [input.u32()? as i32, input.u32()? as i32];
+            let graph = input.byte()? as usize;
+            let start = input.u64()?;
+            let goal = input.u64()?;
+            if !built
+                || nav.index(from).is_none()
+                || nav.index(to).is_none()
+                || graph > 2
+                || start >= nav.next_id as u64
+                || goal >= nav.next_id as u64
+                || start == goal
+            {
+                return Err("invalid pending route");
+            }
+            let search = RouteQuery::read(&mut input, &nav.graphs[graph])?;
+            if search.endpoints() != [(start as i64, position(from)), (goal as i64, position(to))] {
+                return Err("pending route endpoints differ");
+            }
+            nav.pending_route = Some(PendingRoute {
+                from,
+                to,
+                graph,
+                start: start as i64,
+                goal: goal as i64,
+                search,
+            });
+        }
         input.finish()?;
         if !built && (nodes != 0 || count != 0) {
             return Err("unbuilt hierarchy has graph state");
@@ -467,6 +579,8 @@ impl Hierarchy {
             mids: HashMap::new(),
             graphs: std::array::from_fn(|_| RouteGraph::new()),
             components: None,
+            pending_route: None,
+            query_spare: None,
             next_id: 1,
             dirty: VecDeque::new(),
             queued: vec![false; across * across],
@@ -508,6 +622,9 @@ impl Hierarchy {
             return true;
         }
         let cluster = self.cluster_of(cell);
+        if let Some(q) = self.pending_route.take() {
+            self.query_spare = Some(q.search);
+        }
         self.solid[index] = u8::from(solid);
         self.weight[index] = weight;
         if let Some(grid) = self.local.get_mut(&cluster) {
@@ -966,6 +1083,9 @@ impl Hierarchy {
             let Some(cluster) = self.dirty.pop_front() else {
                 break;
             };
+            if let Some(q) = self.pending_route.take() {
+                self.query_spare = Some(q.search);
+            }
             self.queued[cluster] = false;
             self.rebuild_cluster(cluster);
         }
@@ -991,6 +1111,15 @@ impl Hierarchy {
             if (f64::from(old) - f64::from(value)).abs() < 0.05 {
                 continue;
             }
+            if self
+                .pending_route
+                .as_ref()
+                .is_some_and(|q| q.graph == team + 1)
+            {
+                if let Some(q) = self.pending_route.take() {
+                    self.query_spare = Some(q.search);
+                }
+            }
             self.danger_revision[team] += 1;
             let factor = 1.0 + f64::from(value);
             for &id in &cluster.nodes {
@@ -1004,13 +1133,19 @@ impl Hierarchy {
         true
     }
 
-    pub fn route(&mut self, from: [i32; 2], to: [i32; 2], team: i32, care: f64) -> Vec<[i32; 2]> {
+    fn prepare_route(
+        &mut self,
+        from: [i32; 2],
+        to: [i32; 2],
+        team: i32,
+        care: f64,
+    ) -> Option<(usize, i64, i64, Vec<i64>, bool)> {
         self.last_expanded = 0;
         if self.index(from).is_none()
             || self.index(to).is_none()
             || (!self.built && !build_all(&mut [self], 1))
         {
-            return Vec::new();
+            return None;
         }
         let graph = if care > 0.0 && (0..2).contains(&team) {
             team as usize + 1
@@ -1060,18 +1195,17 @@ impl Hierarchy {
                 }
             }
         }
-        // Keep anchor allocation and cleanup identical even when no route exists.
-        let ids = if connected {
-            // Average the cheapest midpoint with its >=1 entrance, rather than
-            // weakening infantry's existing road bound with a fixed coefficient.
-            let ids = self.graphs[graph].get_midpoint_path(start, goal);
-            self.last_expanded = self.graphs[graph].last_expanded;
-            ids
-        } else {
-            Vec::new()
-        };
-        let out = ids
-            .into_iter()
+        Some((graph, start, goal, temporary, connected))
+    }
+    fn route_cells(
+        &self,
+        ids: Vec<i64>,
+        from: [i32; 2],
+        to: [i32; 2],
+        start: i64,
+        goal: i64,
+    ) -> Vec<[i32; 2]> {
+        ids.into_iter()
             .filter_map(|id| {
                 if id == start {
                     Some(from)
@@ -1081,13 +1215,97 @@ impl Hierarchy {
                     self.cells.get(&id).copied()
                 }
             })
-            .collect();
+            .collect()
+    }
+    fn remove_anchors(&mut self, temporary: Vec<i64>, start: i64, goal: i64) {
         for id in temporary {
             self.remove_point(id);
         }
         self.remove_point(start);
         self.remove_point(goal);
+    }
+    pub fn route(&mut self, from: [i32; 2], to: [i32; 2], team: i32, care: f64) -> Vec<[i32; 2]> {
+        let Some((graph, start, goal, temporary, connected)) =
+            self.prepare_route(from, to, team, care)
+        else {
+            return vec![];
+        };
+        let ids = if connected {
+            self.graphs[graph].get_midpoint_path(start, goal)
+        } else {
+            vec![]
+        };
+        self.last_expanded = if connected {
+            self.graphs[graph].last_expanded
+        } else {
+            0
+        };
+        let out = self.route_cells(ids, from, to, start, goal);
+        self.remove_anchors(temporary, start, goal);
         out
+    }
+    pub(crate) fn has_pending_route(&self) -> bool {
+        self.pending_route.is_some()
+    }
+    pub(crate) fn cancel_route(&mut self) {
+        if let Some(q) = self.pending_route.take() {
+            self.query_spare = Some(q.search);
+        }
+    }
+    pub(crate) fn route_with_limit(
+        &mut self,
+        from: [i32; 2],
+        to: [i32; 2],
+        team: i32,
+        care: f64,
+        budget: u64,
+    ) -> Option<Vec<[i32; 2]>> {
+        self.last_expanded = 0;
+        let policy = if care > 0. && (0..2).contains(&team) {
+            team as usize + 1
+        } else {
+            0
+        };
+        if self
+            .pending_route
+            .as_ref()
+            .is_some_and(|q| q.from != from || q.to != to || q.graph != policy)
+        {
+            if let Some(q) = self.pending_route.take() {
+                self.query_spare = Some(q.search);
+            }
+        }
+        if self.pending_route.is_none() {
+            let Some((graph, start, goal, temporary, connected)) =
+                self.prepare_route(from, to, team, care)
+            else {
+                return Some(vec![]);
+            };
+            let search = connected.then(|| {
+                self.graphs[graph].query(start, goal, &temporary, self.query_spare.take())
+            });
+            self.remove_anchors(temporary, start, goal);
+            let Some(search) = search else {
+                return Some(vec![]);
+            };
+            self.pending_route = Some(PendingRoute {
+                from,
+                to,
+                graph,
+                start,
+                goal,
+                search,
+            });
+        }
+        let query = self.pending_route.as_mut().unwrap();
+        let out = query.search.poll(&self.graphs[query.graph], budget);
+        self.last_expanded = query.search.expanded();
+        out.map(|ids| {
+            let q = self.pending_route.take().unwrap();
+            let out = self.route_cells(ids, q.from, q.to, q.start, q.goal);
+            self.query_spare = Some(q.search);
+            out
+        })
     }
 }
 

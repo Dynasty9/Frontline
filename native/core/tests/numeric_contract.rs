@@ -1429,11 +1429,13 @@ fn prisoner_capture_and_delivery_are_identical_across_platforms() {
             c.duty.phase = if trial % 3 == 0 { 1 } else { 0 };
             c.motion.yaw = f64::from([0.0f32, 1.3, -2.5][trial % 3]);
             c.orders.hold_position = Vector3::X * -20.0;
-            c.motion.path = if trial % 5 == 0 {
+            c.motion.path = (if trial % 5 == 0 {
                 vec![Vector3::X * 8.0]
             } else {
                 vec![]
-            };
+            })
+            .try_into()
+            .unwrap();
             c.orders.pending_path = trial % 7 == 0;
             let mut p = Soldier::default();
             p.identity.id = 2;
@@ -1962,7 +1964,7 @@ fn retained_infantry_blasts_are_identical_across_platforms() {
                 s.vitals.speech_cooldown = if trial % 2 == 0 { 4.0 } else { 0.0 };
                 s.weapon.magazine = 17;
                 s.weapon.reserve = 103;
-                s.motion.path = vec![Vector3::new(12.0, 0.0, 5.0)];
+                s.motion.path = (vec![Vector3::new(12.0, 0.0, 5.0)]).try_into().unwrap();
                 if id == 1 {
                     s.duty.kind = Task::Breach;
                 }
@@ -2160,11 +2162,13 @@ fn inactive_infantry_movement_and_cleanup_are_identical_across_platforms() {
             s.vitals.dead_at = [0.0, 10.0, 10.0001][trial % 3];
             s.motion.position = Vector3::new(0.0, [-0.55, 0.0, 0.5, 1.3][trial % 4], 0.0);
             s.motion.yaw = [0.0f32, 1.3, -2.5][trial % 3].into();
-            s.motion.path = if trial % 3 == 0 {
+            s.motion.path = (if trial % 3 == 0 {
                 vec![Vector3::X * 8.0]
             } else {
                 vec![]
-            };
+            })
+            .try_into()
+            .unwrap();
             s.orders.pending_path = trial % 7 == 0;
             s.motion.ground = -0.4;
             s.motion.ground_until = [309.9, 310.0, 310.2][trial % 3];
@@ -2413,11 +2417,13 @@ fn shared_stretcher_delivery_is_identical_across_platforms() {
                 s.duty.phase = ((trial / if id == 1 { 1 } else { 4 }) % 4) as u8;
                 s.duty.timer = [-8.0, -0.1, 0.1, 0.35, 1.0][trial % 5];
                 s.links.home = if trial % 11 == 0 { 0 } else { 10 };
-                s.motion.path = if trial % 5 == 0 {
+                s.motion.path = (if trial % 5 == 0 {
                     vec![Vector3::X * 8.0]
                 } else {
                     vec![]
-                };
+                })
+                .try_into()
+                .unwrap();
                 s.orders.pending_path = trial % 7 == 0;
                 s.orders.goal = Vector3::X * 8.0;
                 if id == 2 && trial % 13 == 0 {
@@ -2557,11 +2563,13 @@ fn retained_infantry_care_is_identical_across_platforms() {
             medic.duty.phase = (trial % if task == Task::Heal { 2 } else { 3 }) as u8;
             medic.duty.timer = [0.0, 0.1, 0.35, 1.0][trial % 4];
             medic.motion.yaw = [0.0f32, 1.3, -2.5][trial % 3].into();
-            medic.motion.path = if trial % 4 >= 2 {
+            medic.motion.path = (if trial % 4 >= 2 {
                 vec![Vector3::X * 8.0]
             } else {
                 vec![]
-            };
+            })
+            .try_into()
+            .unwrap();
             medic.orders.pending_path = trial % 11 == 0;
             medic.orders.goal = Vector3::X * 8.0;
             medic.vitals.stamina = [0.1, 0.3, 0.349, 0.8][trial % 4];
@@ -2721,11 +2729,13 @@ fn retained_infantry_travel_is_identical_across_platforms() {
             s.fight.controlled_drone = if trial % 5 == 0 { 0 } else { 30 };
             s.motion.yaw = [0.0f32, 1.3, -2.5][trial % 3].into();
             s.posture = Posture::try_from((trial % 5) as u8).unwrap();
-            s.motion.path = if trial % 4 >= 2 {
+            s.motion.path = (if trial % 4 >= 2 {
                 vec![Vector3::X * 8.0]
             } else {
                 vec![]
-            };
+            })
+            .try_into()
+            .unwrap();
             s.motion.stuck_timer = if trial % 13 == 0 { 3.1 } else { 0.0 };
             s.orders.pending_path = trial % 11 == 0;
             s.orders.goal = Vector3::X * 8.0;
@@ -2939,7 +2949,7 @@ fn completed_infantry_actions_are_identical_across_platforms() {
                     100.0
                 };
                 s.vitals.speech_cooldown = if trial % 2 == 0 { 0.0 } else { 5.0 };
-                s.motion.path = vec![Vector3::new(12.0, 0.0, 12.0)];
+                s.motion.path = (vec![Vector3::new(12.0, 0.0, 12.0)]).try_into().unwrap();
                 if id == 1 {
                     s.action.current = match mode {
                         0 => Action::Cook,
@@ -7273,7 +7283,7 @@ fn retained_infantry_casualties_are_identical_across_platforms() {
         };
         initial.motion.position = Vector3::new(0.3, -0.4, -1.1);
         initial.motion.yaw = trial as f64 * 0.37;
-        initial.motion.path = vec![Vector3::new(10.0, 0.0, 1.0)];
+        initial.motion.path = (vec![Vector3::new(10.0, 0.0, 1.0)]).try_into().unwrap();
         initial.vitals.life = Life::try_from((trial % 6) as u8).unwrap();
         initial.vitals.times_downed = (trial % 5) as u32;
         initial.vitals.dead_at = -400.0;
@@ -7418,7 +7428,7 @@ fn retained_infantry_execution_is_identical_across_platforms() {
         };
         actor.motion.position = Vector3::new(0.3, 0.4, -1.1);
         actor.motion.yaw = trial as f64 * 0.37;
-        actor.motion.path = vec![Vector3::new(3.0, 0.0, 8.0)];
+        actor.motion.path = (vec![Vector3::new(3.0, 0.0, 8.0)]).try_into().unwrap();
         actor.controller.dive_timer = if trial % 3 == 0 { 0.12 } else { 0.0 };
         actor.controller.dive_direction = Vector3::new(0.7, 0.0, -0.3);
         actor.shock.dazed_timer = if trial % 5 == 0 { 0.16 } else { 0.0 };
@@ -7541,7 +7551,7 @@ fn retained_infantry_commands_are_identical_across_platforms() {
             ..Default::default()
         };
         s.motion.position = Vector3::new(1.3, -0.4, -2.7);
-        s.motion.path = vec![Vector3::new(8.0, 0.0, 2.1)];
+        s.motion.path = (vec![Vector3::new(8.0, 0.0, 2.1)]).try_into().unwrap();
         s.orders.goal = s.motion.path[0];
         s.orders.purpose = Goal::Cover;
         s.orders.pending_path = trial % 2 == 0;
@@ -7671,7 +7681,9 @@ fn retained_infantry_updates_are_identical_across_platforms() {
         };
         s.motion.position = Vector3::new(-3.1, 0.2, 1.7);
         s.motion.stuck_position = s.motion.position;
-        s.motion.path = vec![Vector3::new(-1.7, 0.0, 0.31), Vector3::new(3.7, 0.0, 7.1)];
+        s.motion.path = (vec![Vector3::new(-1.7, 0.0, 0.31), Vector3::new(3.7, 0.0, 7.1)])
+            .try_into()
+            .unwrap();
         s.orders.purpose = if trial % 2 == 0 {
             Goal::Cover
         } else {
@@ -7814,7 +7826,7 @@ fn retained_infantry_tactics_are_identical_across_platforms() {
         s.orders.purpose = Goal::try_from((trial % 6) as u8).unwrap();
         s.orders.move_mode = (trial % 3) as u8;
         s.orders.goal = s.motion.position + Vector3::X * [2.59, 2.6, 10.0][trial % 3];
-        s.motion.path = vec![s.orders.goal];
+        s.motion.path = (vec![s.orders.goal]).try_into().unwrap();
         s.motion.path_index = trial % 2;
         s.cover.height = [0.0, 0.6, 1.12, 2.1][trial % 4];
         s.cover.shifting = trial % 3 == 0;
@@ -7960,7 +7972,9 @@ fn retained_infantry_is_identical_across_platforms() {
         },
         ..Default::default()
     };
-    s.motion.path = vec![Vector3::new(1.2, -3.4, 5.6), Vector3::new(12.3, 4.5, -6.7)];
+    s.motion.path = (vec![Vector3::new(1.2, -3.4, 5.6), Vector3::new(12.3, 4.5, -6.7)])
+        .try_into()
+        .unwrap();
     s.idle.lines.push_back(Line {
         at: 14.2,
         text: "Ready?".into(),
@@ -10480,7 +10494,9 @@ fn geometry_and_movement_transcripts_are_identical_across_platforms() {
     nav.load_cells(&vec![1; 1024], &vec![0; 1024], &vec![0; 1024]);
     let mut motion = InfantryMotion {
         position: Vector3::new(-3.2, 0.0, 10.7),
-        path: vec![Vector3::new(1.1, 0.0, -0.7), Vector3::new(-7.3, 0.0, -12.1)],
+        path: (vec![Vector3::new(1.1, 0.0, -0.7), Vector3::new(-7.3, 0.0, -12.1)])
+            .try_into()
+            .unwrap(),
         ..Default::default()
     };
     let mut rng = SimulationRandom::new(137);

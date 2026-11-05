@@ -20,7 +20,8 @@ use frontline_core::squad::Report;
 use frontline_core::squad_movement;
 use frontline_core::vehicle_damage::Armor;
 use frontline_core::vehicle_loss::Crew;
-use frontline_core::vehicle_loss_world::{Context, Event, Profile};
+use frontline_core::vehicle_loss_world::{Event, Profile};
+use frontline_core::world::WorldContext;
 use frontline_core::world_combat::{self, Explosion};
 use godot::prelude::*;
 use std::collections::BTreeMap;
@@ -1108,7 +1109,7 @@ impl VehicleLossWorldCore {
         let mut deferred = deferred.bind_mut();
         let mut visibility = visibility.bind_mut();
         let mut rng = rng.bind_mut();
-        let mut context = Context {
+        let mut context = WorldContext {
             actors: &mut actors.core,
             geometry,
             units,

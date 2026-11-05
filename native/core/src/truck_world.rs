@@ -2,15 +2,15 @@
 use crate::actors::Actor;
 use crate::battle_stats::DELIVERED;
 use crate::vector::{normalized, Vector3};
-use crate::vehicle_loss_world::Context;
 use crate::vehicle_motion::GroundProfile;
 use crate::vehicle_movement_world::Event as Movement;
 use crate::vehicle_world::Event;
+use crate::world::WorldContext;
 
 fn flat(v: Vector3) -> Vector3 {
     Vector3::new(v.x, 0.0, v.z)
 }
-impl Context<'_> {
+impl WorldContext<'_> {
     fn road_blocked(&self, id: u32) -> Result<bool, &'static str> {
         let v = self.actors.vehicle(id).ok_or("missing supply truck")?;
         if v.route.len() < 2

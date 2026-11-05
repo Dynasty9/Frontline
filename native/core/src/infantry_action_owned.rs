@@ -165,9 +165,9 @@ impl Actors {
                     0
                 },
             });
-        let mut next = s.clone();
         let mut random = *rng;
-        let step = next.action_tick(related, &mut random)?;
+        let mut next = s.plan_action(related, &mut random)?;
+        let step = next.effect;
         let effect = step.effect;
         let mut out = Completed {
             cancel_path: step.cancel_path,
@@ -189,9 +189,9 @@ impl Actors {
         {
             return Err("infantry action exceeds match limits");
         }
-        let position = next.motion.position;
-        let facing = direction(next.motion.yaw);
-        let team = next.identity.team;
+        let position = s.motion.position;
+        let facing = direction(next.yaw);
+        let team = s.identity.team;
         let mut spawn = None;
         match effect {
             Action::Throw(t) => {
@@ -325,13 +325,17 @@ impl Actors {
                         gone: false,
                         holder: id.into(),
                     };
-                    next.begin_action(
+                    next.begin(
                         Action::Rethrow {
                             grenade,
                             position: target,
                         },
                         0.3,
-                        Some(related),
+                        crate::infantry_action::Context {
+                            actor: id.into(),
+                            position,
+                            related: Some(related),
+                        },
                     )?;
                     out.cancel_path = true;
                 }
@@ -349,7 +353,7 @@ impl Actors {
             }
             _ => {}
         }
-        *self.soldier_mut(id).unwrap() = next;
+        next.apply(self.soldier_mut(id).unwrap());
         if let Some(p) = changed_round {
             let id = p.id;
             *self.get_mut(id).unwrap() = Actor::Projectile(p);

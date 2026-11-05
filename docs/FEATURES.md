@@ -541,7 +541,7 @@ Sky Hook prepares reachable vehicle approaches for its convoy before the battle 
   neighbouring clusters connect (and wherever a road crosses), true costs inside each cluster precomputed. Long
   trips plan on the abstract graph, then refine cluster by cluster. When walls go up or are blown down only the
   touched clusters are rebuilt, and of those only the borders and links the change can reach.
-- Rust finishes at most four queued routes per tick. With at least 256 combatants, it starts no further search after 3,000 graph expansions; smaller armies retain their original schedule. Expensive requests carry over in order; this deterministic budget reduces tick spikes but can delay path completion.
+- Rust finishes at most four queued routes per tick. With at least 256 combatants, it pauses route search at 3,000 hierarchical graph expansions, including a search already in progress; smaller armies retain their original schedule. Expensive requests carry over in order with their frontier saved in checkpoints. Orders and terrain or danger changes invalidate stale work. This deterministic budget can delay path completion; local cluster searches and refinement remain separate work.
 - **Danger maps:** every second each side marks the clusters its spotted enemies cover (MG nests, bunkers and
   armour count for more). Ordinary moves skirt them, retreats keep well clear.
 - **Cover map:** every 1 m cell knows its cover level (heavy, light, none, exposed) and which way it faces, updated

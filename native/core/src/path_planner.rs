@@ -32,6 +32,39 @@ pub struct PathJob {
     pub care: f64,
 }
 
+impl PathJob {
+    fn valid(&self) -> bool {
+        self.id != 0
+            && self.id <= i64::MAX as u64
+            && self.destination.is_finite()
+            && self.care.is_finite()
+            && (!self.tracked || self.vehicle)
+    }
+    pub(crate) fn write(&self, out: &mut Writer) {
+        out.u64(self.id);
+        out.point(self.destination);
+        out.byte(u8::from(self.vehicle));
+        out.byte(u8::from(self.tracked));
+        out.u32(self.team as u32);
+        out.f64(self.care);
+    }
+    pub(crate) fn read(input: &mut Reader<'_>) -> Result<Self, &'static str> {
+        let job = Self {
+            id: input.u64()?,
+            destination: input.point()?,
+            vehicle: input.boolean()?,
+            tracked: input.boolean()?,
+            team: input.u32()? as i32,
+            care: input.f64()?,
+        };
+        if job.valid() {
+            Ok(job)
+        } else {
+            Err("invalid path job")
+        }
+    }
+}
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 struct CacheKey {
     vehicle: bool,
@@ -360,9 +393,40 @@ impl PathPlanner {
         if let Some(p) = &mut self.profile {
             p.queries += 1;
         }
-        let out = self.find_path_inner(graph, from, to, vehicle, team, care, tracked, ground);
+        let out = self
+            .find_path_inner(graph, from, to, vehicle, team, care, tracked, ground, None)
+            .unwrap();
         if let Some(p) = &mut self.profile {
             p.failed += u64::from(out.is_empty());
+        }
+        out
+    }
+
+    pub(crate) fn find_path_with_limit(
+        &mut self,
+        graph: &mut Hierarchy,
+        from: Vector3,
+        job: PathJob,
+        ground: Ground<'_>,
+        budget: u64,
+    ) -> Option<Vec<Vector3>> {
+        graph.last_expanded = 0;
+        if let Some(p) = &mut self.profile {
+            p.queries += 1;
+        }
+        let out = self.find_path_inner(
+            graph,
+            from,
+            job.destination,
+            job.vehicle,
+            job.team,
+            job.care,
+            job.tracked,
+            ground,
+            Some(budget),
+        );
+        if let Some(p) = &mut self.profile {
+            p.failed += u64::from(out.as_ref().is_some_and(Vec::is_empty));
         }
         out
     }
@@ -377,12 +441,13 @@ impl PathPlanner {
         care: f64,
         tracked: bool,
         ground: Ground<'_>,
-    ) -> Vec<Vector3> {
+        budget: Option<u64>,
+    ) -> Option<Vec<Vector3>> {
         if !self.valid(graph, from, to, care)
             || !ground.valid_for(self.side)
             || (tracked && !vehicle)
         {
-            return Vec::new();
+            return Some(Vec::new());
         }
         let mut a = self.cell(from);
         let mut b = self.cell(to);
@@ -398,18 +463,18 @@ impl PathPlanner {
             });
         }
         if graph.is_solid(a) || graph.is_solid(b) {
-            return Vec::new();
+            return Some(Vec::new());
         }
         let end = self.center(b);
         let near_end = f64::from(flat(end - to).length()) < 1.7;
         if a == b {
-            return vec![
+            return Some(vec![
                 if end_exact || self.step_clear(end, to, vehicle, tracked, ground) {
                     to
                 } else {
                     end
                 },
-            ];
+            ]);
         }
         let policy = if care > 0.0 && (0..2).contains(&team) {
             team
@@ -445,19 +510,19 @@ impl PathPlanner {
                     if let Some(p) = &mut self.profile {
                         p.cache_hits += 1;
                     }
-                    return out;
+                    return Some(out);
                 }
             }
         }
         let ids = if graph.built {
-            refined_path(graph, a, b, team, care, &mut self.profile)
+            refined_path(graph, a, b, team, care, &mut self.profile, budget)?
         } else if graph.cluster_of(a) == graph.cluster_of(b) {
             graph.local_path(graph.cluster_of(a), a, b)
         } else {
             Vec::new()
         };
         if ids.is_empty() {
-            return Vec::new();
+            return Some(Vec::new());
         }
         let began = self.profile.as_ref().map(|_| Instant::now());
         let mut points: Vec<_> = ids.iter().map(|c| self.center(*c)).collect();
@@ -492,16 +557,11 @@ impl PathPlanner {
         if let (Some(p), Some(began)) = (&mut self.profile, began) {
             p.smooth_ms += began.elapsed().as_secs_f64() * 1000.;
         }
-        out
+        Some(out)
     }
 
     pub fn request(&mut self, job: PathJob) -> bool {
-        if job.id == 0
-            || job.id > i64::MAX as u64
-            || !job.destination.is_finite()
-            || !job.care.is_finite()
-            || (job.tracked && !job.vehicle)
-        {
+        if !job.valid() {
             return false;
         }
         if !self.jobs.contains_key(&job.id) {
@@ -515,6 +575,10 @@ impl PathPlanner {
         true
     }
 
+    pub(crate) fn defer_front(&mut self, job: PathJob) {
+        self.jobs.insert(job.id, job);
+        self.order.push_front(job.id);
+    }
     pub fn cancel(&mut self, id: u64) {
         self.jobs.remove(&id);
     }
@@ -570,12 +634,7 @@ impl PathPlanner {
         jobs.sort_unstable_by_key(|job| job.id);
         out.u32(jobs.len() as u32);
         for job in jobs {
-            out.u64(job.id);
-            out.point(job.destination);
-            out.byte(u8::from(job.vehicle));
-            out.byte(u8::from(job.tracked));
-            out.u32(job.team as u32);
-            out.f64(job.care);
+            job.write(&mut out);
         }
         out.u32(self.order.len() as u32);
         for id in &self.order {
@@ -644,19 +703,8 @@ impl PathPlanner {
             return Err("too many path jobs");
         }
         for _ in 0..count {
-            let job = PathJob {
-                id: input.u64()?,
-                destination: input.point()?,
-                vehicle: input.boolean()?,
-                tracked: input.boolean()?,
-                team: input.u32()? as i32,
-                care: input.f64()?,
-            };
-            if job.id == 0
-                || job.id > i64::MAX as u64
-                || (job.tracked && !job.vehicle)
-                || planner.jobs.insert(job.id, job).is_some()
-            {
+            let job = PathJob::read(&mut input)?;
+            if planner.jobs.insert(job.id, job).is_some() {
                 return Err("invalid path job");
             }
         }
@@ -717,7 +765,8 @@ fn refined_path(
     team: i32,
     care: f64,
     profile: &mut Option<PathProfile>,
-) -> Vec<[i32; 2]> {
+    budget: Option<u64>,
+) -> Option<Vec<[i32; 2]>> {
     let began = profile.as_ref().map(|_| Instant::now());
     if graph.cluster_of(from) == graph.cluster_of(to) {
         let direct = graph.local_path(graph.cluster_of(from), from, to);
@@ -725,24 +774,33 @@ fn refined_path(
             if let (Some(p), Some(began)) = (profile.as_mut(), began) {
                 p.refine_ms += began.elapsed().as_secs_f64() * 1000.;
             }
-            return direct;
+            return Some(direct);
         }
     }
-    let waypoints = graph.route(from, to, team, care);
+    let waypoints = if let Some(budget) = budget {
+        if budget == u64::MAX && !graph.has_pending_route() {
+            Some(graph.route(from, to, team, care))
+        } else {
+            graph.route_with_limit(from, to, team, care, budget)
+        }
+    } else {
+        Some(graph.route(from, to, team, care))
+    };
     if let (Some(p), Some(began)) = (profile.as_mut(), began) {
         p.routes += 1;
         p.expanded += graph.last_expanded;
         p.route_ms += began.elapsed().as_secs_f64() * 1000.;
     }
+    let waypoints = waypoints?;
     if waypoints.len() < 2 {
-        return Vec::new();
+        return Some(Vec::new());
     }
     let began = profile.as_ref().map(|_| Instant::now());
     let out = refine_segments(graph, &waypoints);
     if let (Some(p), Some(began)) = (profile.as_mut(), began) {
         p.refine_ms += began.elapsed().as_secs_f64() * 1000.;
     }
-    out
+    Some(out)
 }
 
 fn refine_segments(graph: &mut Hierarchy, waypoints: &[[i32; 2]]) -> Vec<[i32; 2]> {

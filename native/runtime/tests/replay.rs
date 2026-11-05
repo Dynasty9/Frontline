@@ -53,10 +53,9 @@ fn late_join_reinforcements_use_the_first_fob_and_reconnect_does_not_duplicate_t
             .unwrap();
     }
     let count = simulation.state.field.squads.len();
-    let mut recording = Recorder::new(Vec::new(), &simulation, &content).unwrap();
+    let mut recording = Recorder::new(Vec::new(), simulation, &content).unwrap();
     recording
         .step(
-            &mut simulation,
             &content,
             &[Input::Join {
                 peer: 31,
@@ -66,17 +65,16 @@ fn late_join_reinforcements_use_the_first_fob_and_reconnect_does_not_duplicate_t
             }],
         )
         .unwrap();
-    let squads = &simulation.state.field.squads;
+    let squads = &recording.simulation().state.field.squads;
     assert_eq!(squads.len(), count + 2);
     let mine: Vec<_> = squads.iter().filter(|s| s.owner == 31).collect();
     assert_eq!(mine.len(), 2);
     assert!(mine.iter().all(|s| s.order_position.x < 0.));
     recording
-        .step(&mut simulation, &content, &[Input::Leave { peer: 31 }])
+        .step(&content, &[Input::Leave { peer: 31 }])
         .unwrap();
     recording
         .step(
-            &mut simulation,
             &content,
             &[Input::Join {
                 peer: 41,
@@ -86,9 +84,10 @@ fn late_join_reinforcements_use_the_first_fob_and_reconnect_does_not_duplicate_t
             }],
         )
         .unwrap();
-    assert_eq!(simulation.state.field.squads.len(), count + 2);
+    assert_eq!(recording.simulation().state.field.squads.len(), count + 2);
     assert_eq!(
-        simulation
+        recording
+            .simulation()
             .state
             .field
             .squads
@@ -97,7 +96,7 @@ fn late_join_reinforcements_use_the_first_fob_and_reconnect_does_not_duplicate_t
             .count(),
         2
     );
-    let bytes = recording.finish(&simulation).unwrap();
+    let (bytes, simulation) = recording.finish().unwrap();
     let verified = verify(std::io::Cursor::new(bytes), &content).unwrap();
     assert_eq!(
         verified.simulation.checkpoint().unwrap(),
@@ -107,16 +106,16 @@ fn late_join_reinforcements_use_the_first_fob_and_reconnect_does_not_duplicate_t
 #[test]
 fn recorded_combat_and_rejoins_rerun_to_the_same_state_and_events() {
     let c = Content::bundled().unwrap();
-    let mut live = battle(&c);
+    let live = battle(&c);
     let mut resumed = Simulation::restore(&live.checkpoint().unwrap(), &c).unwrap();
-    let mut recording = Recorder::new(Vec::new(), &live, &c).unwrap();
+    let mut recording = Recorder::new(Vec::new(), live, &c).unwrap();
     for tick in 0..180 {
         let commands = inputs(tick);
         for input in &commands {
             assert_eq!(*input, Input::decode(&input.encode().unwrap()).unwrap());
         }
         assert_eq!(
-            recording.step(&mut live, &c, &commands).unwrap(),
+            recording.step(&c, &commands).unwrap(),
             resumed.step(&c, &commands).unwrap(),
             "tick {tick}"
         );
@@ -124,7 +123,7 @@ fn recorded_combat_and_rejoins_rerun_to_the_same_state_and_events() {
             resumed = Simulation::restore(&resumed.checkpoint().unwrap(), &c).unwrap();
         }
     }
-    let bytes = recording.finish(&live).unwrap();
+    let (bytes, live) = recording.finish().unwrap();
     let result = verify(bytes.as_slice(), &c).unwrap();
     assert_eq!(result.frames, 180);
     assert_eq!(
@@ -140,24 +139,27 @@ fn recorded_combat_and_rejoins_rerun_to_the_same_state_and_events() {
 #[test]
 fn visual_playback_advances_the_verifiers_stream_and_only_verifies_the_footer() {
     let c = Content::bundled().unwrap();
-    let mut live = battle(&c);
-    let mut recording = Recorder::new(Vec::new(), &live, &c).unwrap();
+    let live = battle(&c);
+    let mut recording = Recorder::new(Vec::new(), live, &c).unwrap();
     let frames: Vec<_> = (0..100)
-        .map(|t| recording.step(&mut live, &c, &inputs(t)).unwrap())
+        .map(|t| recording.step(&c, &inputs(t)).unwrap())
         .collect();
-    let bytes = recording.finish(&live).unwrap();
+    let (bytes, live) = recording.finish().unwrap();
     let mut source = std::io::Cursor::new(bytes.clone());
     assert_eq!(declared_tick(&mut source).unwrap(), 100);
-    let (mut stream, mut state) = Playback::new(source, &c).unwrap();
+    let mut stream = Playback::new(source, &c).unwrap();
     for frame in frames {
         assert!(!stream.verified());
-        assert_eq!(stream.step(&mut state, &c).unwrap(), Some(frame));
+        assert_eq!(stream.step(&c).unwrap(), Some(frame));
     }
     assert!(!stream.verified());
-    assert_eq!(stream.step(&mut state, &c).unwrap(), None);
+    assert_eq!(stream.step(&c).unwrap(), None);
     assert!(stream.verified());
-    assert_eq!(state.checkpoint().unwrap(), live.checkpoint().unwrap());
-    assert_eq!(stream.step(&mut state, &c).unwrap(), None);
+    assert_eq!(
+        stream.simulation().checkpoint().unwrap(),
+        live.checkpoint().unwrap()
+    );
+    assert_eq!(stream.step(&c).unwrap(), None);
     let mut bad = bytes.clone();
     *bad.last_mut().unwrap() ^= 1;
     let mut bad = std::io::Cursor::new(bad);
@@ -172,10 +174,10 @@ fn visual_playback_advances_the_verifiers_stream_and_only_verifies_the_footer() 
 #[test]
 fn truncated_tampered_and_incompatible_replays_cannot_verify() {
     let c = Content::bundled().unwrap();
-    let mut s = battle(&c);
-    let mut rec = Recorder::new(Vec::new(), &s, &c).unwrap();
-    rec.step(&mut s, &c, &inputs(0)).unwrap();
-    let bytes = rec.finish(&s).unwrap();
+    let s = battle(&c);
+    let mut rec = Recorder::new(Vec::new(), s, &c).unwrap();
+    rec.step(&c, &inputs(0)).unwrap();
+    let (bytes, _s) = rec.finish().unwrap();
     for length in [0, 4, 16, bytes.len() - 1] {
         assert!(verify(&bytes[..length], &c).is_err(), "truncation {length}");
     }
@@ -246,10 +248,10 @@ fn conclusion_is_recomputed_by_the_rules_and_cannot_be_changed_in_the_recording(
     s.state.field.now = 10.;
     assert_eq!(s.state.victory.winner, -1);
     let initial = *blake3::hash(&s.checkpoint().unwrap()).as_bytes();
-    let mut rec = Recorder::new(Vec::new(), &s, &c).unwrap();
-    rec.step(&mut s, &c, &[]).unwrap();
-    assert_eq!(s.state.victory.winner, 0);
-    let mut bytes = rec.finish(&s).unwrap();
+    let mut rec = Recorder::new(Vec::new(), s, &c).unwrap();
+    rec.step(&c, &[]).unwrap();
+    assert_eq!(rec.simulation().state.victory.winner, 0);
+    let (mut bytes, _s) = rec.finish().unwrap();
     let result = verify(bytes.as_slice(), &c).unwrap();
     assert_eq!(result.initial_hash, initial);
     assert_eq!(result.simulation.state.victory.winner, 0);
@@ -260,4 +262,121 @@ fn conclusion_is_recomputed_by_the_rules_and_cannot_be_changed_in_the_recording(
         .err()
         .unwrap()
         .contains("conclusion differs"));
+}
+
+#[test]
+fn a_recording_cannot_continue_or_finish_after_an_output_failure() {
+    use std::{
+        cell::Cell,
+        io::{self, Write},
+        rc::Rc,
+    };
+    struct Output {
+        fail: Rc<Cell<bool>>,
+    }
+    impl Write for Output {
+        fn write(&mut self, data: &[u8]) -> io::Result<usize> {
+            if self.fail.get() {
+                Err(io::Error::other("disk full"))
+            } else {
+                Ok(data.len())
+            }
+        }
+        fn flush(&mut self) -> io::Result<()> {
+            Ok(())
+        }
+    }
+    let content = Content::bundled().unwrap();
+    let fail = Rc::new(Cell::new(false));
+    let mut recording =
+        Recorder::new(Output { fail: fail.clone() }, battle(&content), &content).unwrap();
+    fail.set(true);
+    assert!(recording.step(&content, &[]).is_err());
+    fail.set(false);
+    assert!(recording.step(&content, &[]).is_err());
+    assert!(recording.finish().is_err());
+}
+
+#[test]
+fn playback_cannot_skip_a_bad_record_and_later_claim_verification() {
+    let content = Content::bundled().unwrap();
+    let mut recording = Recorder::new(Vec::new(), battle(&content), &content).unwrap();
+    recording.step(&content, &[]).unwrap();
+    let (mut bytes, _) = recording.finish().unwrap();
+    let header_len = 4 + u32::from_le_bytes(bytes[..4].try_into().unwrap()) as usize;
+    let mut bad = sim::state_codec::Writer::new(b"FLRF\x01\0\0\0");
+    bad.byte(99);
+    bad.u64(0);
+    let mut record = (bad.0.len() as u32).to_le_bytes().to_vec();
+    record.extend(bad.0);
+    bytes.splice(header_len..header_len, record);
+    let mut playback = Playback::new(bytes.as_slice(), &content).unwrap();
+    assert!(playback.step(&content).is_err());
+    assert!(playback.step(&content).is_err());
+    assert!(!playback.verified());
+}
+
+#[test]
+fn recording_can_start_with_an_unfinished_route_and_verify_its_continuation() {
+    use sim::{
+        actors::{Actor, Actors},
+        infantry::Goal,
+        traversal::Ground,
+    };
+    let content = Content::bundled().unwrap();
+    let mut simulation = battle(&content);
+    let f = &mut simulation.state.field;
+    let id = f
+        .actors
+        .iter()
+        .find_map(|a| match a {
+            Actor::Soldier(s) => Some(s.identity.id),
+            _ => None,
+        })
+        .unwrap();
+    let mut soldier = f.actors.soldier(id).unwrap().clone();
+    let order = soldier
+        .go_to(Vector3::new(28., 0., -25.), Goal::Slot, 0)
+        .unwrap();
+    let ground = Ground::new(&f.geometry.terrain, &f.geometry.deck);
+    assert!(f
+        .geometry
+        .navigation
+        .submit_infantry(&mut soldier, order, f.now, &mut f.rng, ground)
+        .unwrap()
+        .is_none());
+    let entries = f
+        .actors
+        .iter()
+        .map(|a| match a {
+            Actor::Soldier(s) if s.identity.id == id => Actor::Soldier(Box::new(soldier.clone())),
+            _ => a.clone(),
+        })
+        .collect();
+    f.actors = Actors::from_entries(f.actors.entities().next_id(), entries).unwrap();
+    assert!(f
+        .geometry
+        .navigation
+        .process_paths_with_work_limit(&mut f.actors, 4, 1, f.now, &mut f.rng, ground)
+        .unwrap()
+        .is_empty());
+    assert_eq!(f.geometry.navigation.infantry.last_expanded, 1);
+    let initial = simulation.checkpoint().unwrap();
+    assert_eq!(
+        Simulation::restore(&initial, &content)
+            .unwrap()
+            .checkpoint()
+            .unwrap(),
+        initial
+    );
+    let mut recording = Recorder::new(Vec::new(), simulation, &content).unwrap();
+    for _ in 0..60 {
+        recording.step(&content, &[]).unwrap();
+    }
+    let (bytes, final_state) = recording.finish().unwrap();
+    let verified = verify(bytes.as_slice(), &content).unwrap();
+    assert_eq!(
+        verified.simulation.checkpoint().unwrap(),
+        final_state.checkpoint().unwrap()
+    );
 }

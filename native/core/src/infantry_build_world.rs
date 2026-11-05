@@ -16,7 +16,7 @@ use crate::supply_network::SupplyNetwork;
 use crate::vector::Vector3;
 use crate::vehicle::Vehicle;
 use crate::vehicle_damage::Armor;
-use crate::vehicle_loss_world::Context;
+use crate::world::WorldContext;
 use crate::world_combat;
 
 #[derive(Clone, Debug, PartialEq)]
@@ -27,7 +27,7 @@ pub enum Construction {
     Sound { position: Vector3 },
 }
 
-impl Context<'_> {
+impl WorldContext<'_> {
     fn finish_build_order(&mut self, id: u32, target: u32, out: &mut Vec<Event>) {
         let s = self.actors.soldier_mut(id).unwrap();
         s.duty.kind = Task::Fight;

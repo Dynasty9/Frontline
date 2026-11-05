@@ -228,7 +228,11 @@ The application protocol is `FLNP` version 3; the Godot lobby version is 14.
 | Shared render projection and application framing | `native/runtime/src/{render,observation,protocol}.rs` |
 | Socket transport and scheduling | `native/server/src/{network,serve}.rs` |
 | Browser worker adapter | `native/browser/src/session.rs` |
+| Running match ownership and live/replay lifecycle | `native/runtime/src/session.rs` |
 | Recording, playback and independent verification | `native/runtime/src/replay.rs` |
+| Immutable content schema, loading and compiled profiles | `native/runtime/src/content/` |
+| Shared world context | `native/core/src/world.rs` |
+| Pausable route frontier and query overlay | `native/core/src/route_graph/search.rs` |
 | Godot transport consumption and visual world updates | `scripts/game/simulation_client.gd` |
 | Shared soldier meshes and animation shader | `scripts/game/soldier_view_batch.gd`, `scripts/shaders/soldier_batch.gdshader` |
 

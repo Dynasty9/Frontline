@@ -52,13 +52,15 @@ pub extern "C" fn run(operation: u32, argument: u32) -> u32 {
                     "state_hash":verified.state_hash.iter().map(|v|format!("{v:02x}")).collect::<String>()}))
                     .map_err(|e|e.to_string());
             }
+            if operation == 6 {
+                return b.session.take().ok_or("No simulation is running")?.finish();
+            }
             let session = b.session.as_mut().ok_or("No simulation is running")?;
             match operation {
                 2 => session.step(argument)?,
                 3 => session.receive(&input)?,
                 4 => session.open()?,
                 5 => return Ok(session.take_packets()),
-                6 => return session.finish(),
                 8 => {
                     session.seek(argument)?;
                     return serde_json::to_vec(&session.metadata()).map_err(|e|e.to_string());

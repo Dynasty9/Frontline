@@ -47,9 +47,11 @@ impl Objective {
 impl Mission {
     /// Presentation only: observation filtering decides which peers receive this briefing.
     pub fn info(&self, state: &MatchState, content: &Content) -> Value {
-        let definition = content.definitions["missions"]
-            .as_array()
-            .and_then(|missions| missions.iter().find(|m| m["key"] == self.kind.key()));
+        let definition = content
+            .definitions()
+            .missions
+            .iter()
+            .find(|m| m.key == self.kind.key());
         let lost = |ids: &BTreeSet<u32>| {
             ids.iter()
                 .filter(|&&id| match state.field.actors.get(id) {
@@ -84,8 +86,8 @@ impl Mission {
             .collect();
         json!({
             "key": self.kind.key(),
-            "title": definition.and_then(|d| d["title"].as_str()).unwrap_or(self.kind.key()),
-            "op": definition.and_then(|d| d["op"].as_str()).unwrap_or(""),
+            "title": definition.map(|d| d.title.as_str()).unwrap_or(self.kind.key()),
+            "op": definition.map(|d| d.op.as_str()).unwrap_or(""),
             "side": self.side, "over": self.over, "end": self.end_text,
             "el": state.field.now - self.start_time,
             "left": if self.deadline > 0. { self.deadline - state.field.now } else { -1. },

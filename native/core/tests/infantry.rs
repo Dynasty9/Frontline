@@ -144,7 +144,9 @@ fn soldier() -> Infantry {
     s.vitals.hp = 42.7;
     s.vitals.suppression = 69.3;
     s.motion.position = Vector3::new(1.2, -3.4, 5.6);
-    s.motion.path = vec![Vector3::X, Vector3::Y, Vector3::NEG_Z];
+    s.motion.path = (vec![Vector3::X, Vector3::Y, Vector3::NEG_Z])
+        .try_into()
+        .unwrap();
     s.motion.path_index = 1;
     s.motion.door = 21;
     s.weapon.magazine = 17;
@@ -307,7 +309,9 @@ fn infantry_limits_apply_before_writing_and_to_embedded_component_links() {
 #[test]
 fn actor_blocks_accept_the_component_limits_without_silently_dropping_memory() {
     let mut s = soldier();
-    s.motion.path = vec![Vector3::new(1.2, 3.4, -5.6); 1_000_000];
+    s.motion.path = (vec![Vector3::new(1.2, 3.4, -5.6); 1_000_000])
+        .try_into()
+        .unwrap();
     s.grenade_memory.seen = (1..=100_000).collect();
     s.fight.visible_targets = (1..=100_000).rev().collect();
     s.idle.lines = (0..128)

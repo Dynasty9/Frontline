@@ -248,31 +248,34 @@ fn coastal_commanders_patrol_board_and_retain_their_raid_across_restore() {
 #[test]
 fn strategic_ai_builds_trains_attacks_and_replays_without_recording_its_decisions() {
     let content = Content::bundled().unwrap();
-    let mut a = battle(&content);
+    let a = battle(&content);
     let initial = a.checkpoint().unwrap();
     let mut b = Simulation::restore(&initial, &content).unwrap();
-    let mut recorder = Recorder::new(Vec::new(), &a, &content).unwrap();
+    let mut recorder = Recorder::new(Vec::new(), a, &content).unwrap();
     let mut commands = 0;
     let mut trained = false;
     let mut built = false;
     let mut attacked = false;
     let mut defended = false;
     for step in 0..900 {
-        let frame = recorder.step(&mut a, &content, &[]).unwrap();
+        let frame = recorder.step(&content, &[]).unwrap();
         assert_eq!(frame, b.step(&content, &[]).unwrap(), "step {step}");
         commands += frame.commands.len();
-        trained|=a.state.field.battle.sides.iter().any(|s|s[14]>0.) && a.state.field.actors.iter().any(|actor|matches!(actor,Actor::Structure(s) if s.kind=="barracks" && !s.queue.is_empty()));
-        built |= a
+        trained|=recorder.simulation().state.field.battle.sides.iter().any(|s|s[14]>0.) && recorder.simulation().state.field.actors.iter().any(|actor|matches!(actor,Actor::Structure(s) if s.kind=="barracks" && !s.queue.is_empty()));
+        built |= recorder
+            .simulation()
             .state
             .field
             .actors
             .iter()
             .any(|actor| matches!(actor,Actor::Structure(s) if s.kind=="medic_tent"));
-        attacked |= a
+        attacked |= recorder
+            .simulation()
             .commanders
             .iter()
             .any(|c| c.roles.values().any(|r| r.kind == "attack"));
-        defended |= a
+        defended |= recorder
+            .simulation()
             .commanders
             .iter()
             .any(|c| c.roles.values().any(|r| r.kind == "garrison"));
@@ -282,7 +285,9 @@ fn strategic_ai_builds_trains_attacks_and_replays_without_recording_its_decision
     }
     assert!(commands>0 && trained && built && attacked && defended,"commands={commands} trained={trained} built={built} attacked={attacked} defended={defended}");
     assert!(
-        a.state
+        recorder
+            .simulation()
+            .state
             .field
             .squads
             .iter()
@@ -290,9 +295,12 @@ fn strategic_ai_builds_trains_attacks_and_replays_without_recording_its_decision
             .all(|q| q.order_number == 0),
         "AI must leave human-owned forces alone"
     );
-    assert_eq!(a.checkpoint().unwrap(), b.checkpoint().unwrap());
-    golden("commander", &a);
-    let bytes = recorder.finish(&a).unwrap();
+    assert_eq!(
+        recorder.simulation().checkpoint().unwrap(),
+        b.checkpoint().unwrap()
+    );
+    golden("commander", &recorder.simulation());
+    let (bytes, a) = recorder.finish().unwrap();
     let verified = verify(bytes.as_slice(), &content).unwrap();
     assert_eq!(verified.frames, 900);
     assert_eq!(
@@ -324,10 +332,9 @@ fn disconnected_players_get_a_replayable_stand_in_that_returns_control_on_rejoin
     let content = Content::bundled().unwrap();
     let mut a = battle(&content);
     a.commanders.retain(|c| c.team == 1);
-    let mut recording = Recorder::new(Vec::new(), &a, &content).unwrap();
+    let mut recording = Recorder::new(Vec::new(), a, &content).unwrap();
     recording
         .step(
-            &mut a,
             &content,
             &[Input::Join {
                 peer: 7,
@@ -338,15 +345,18 @@ fn disconnected_players_get_a_replayable_stand_in_that_returns_control_on_rejoin
         )
         .unwrap();
     recording
-        .step(&mut a, &content, &[Input::Leave { peer: 7 }])
+        .step(&content, &[Input::Leave { peer: 7 }])
         .unwrap();
-    assert!(a.commanders.iter().any(|c| c.team == 0 && !c.permanent));
+    assert!(recording
+        .simulation()
+        .commanders
+        .iter()
+        .any(|c| c.team == 0 && !c.permanent));
     for _ in 0..300 {
-        recording.step(&mut a, &content, &[]).unwrap();
+        recording.step(&content, &[]).unwrap();
     }
     recording
         .step(
-            &mut a,
             &content,
             &[Input::Join {
                 peer: 11,
@@ -356,16 +366,25 @@ fn disconnected_players_get_a_replayable_stand_in_that_returns_control_on_rejoin
             }],
         )
         .unwrap();
-    assert!(!a.commanders.iter().any(|c| c.team == 0));
-    assert!(a.commanders.iter().any(|c| c.team == 1 && c.permanent));
-    assert!(a
+    assert!(!recording
+        .simulation()
+        .commanders
+        .iter()
+        .any(|c| c.team == 0));
+    assert!(recording
+        .simulation()
+        .commanders
+        .iter()
+        .any(|c| c.team == 1 && c.permanent));
+    assert!(recording
+        .simulation()
         .state
         .field
         .squads
         .iter()
         .filter(|q| q.team == 0)
         .all(|q| q.owner == 11));
-    let bytes = recording.finish(&a).unwrap();
+    let (bytes, a) = recording.finish().unwrap();
     let replay = verify(bytes.as_slice(), &content).unwrap();
     assert_eq!(
         a.checkpoint().unwrap(),

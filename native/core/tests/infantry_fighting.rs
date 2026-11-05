@@ -270,7 +270,7 @@ fn a_cover_route_under_heavy_fire_keeps_the_last_metres_prone() {
     let mut s = soldier(1);
     s.orders.purpose = Goal::Cover;
     s.orders.goal = Vector3::X;
-    s.motion.path = vec![Vector3::X];
+    s.motion.path = (vec![Vector3::X]).try_into().unwrap();
     s.vitals.suppression = 70.0;
     s.fight.target = 2;
     let mut a = actors(s);

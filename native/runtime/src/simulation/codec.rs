@@ -128,7 +128,8 @@ impl Simulation {
             commanders.push(crate::commander::Commander::restore(r.bytes(MAX_STATE)?)?);
         }
         if commanders.iter().any(|c| {
-            !c.next_vehicle.is_empty() && content.definitions["vehicles"][&c.next_vehicle].is_null()
+            !c.next_vehicle.is_empty()
+                && !content.definitions().vehicles.contains_key(&c.next_vehicle)
         }) {
             return Err("commander references unknown vehicle");
         }

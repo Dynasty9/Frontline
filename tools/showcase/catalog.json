@@ -3263,6 +3263,19 @@
         "detail": "Same controls with --focus=300,300 --zoom=100 --pitch=-28; camera height follows the changed terrain.",
         "compatibility": "Final wide view with --rendering-method gl_compatibility"
       }
+    },
+    {
+      "entry": "changelog/unreleased/simulation-boundaries.md",
+      "summary": "Large battles can spread long route searches across updates, and matches deliver the final battlefield state before showing the result.",
+      "medium": "text",
+      "stage": "text",
+      "rationale": "Deterministic budget, checkpoint, replay and publication-order tests demonstrate these internal fixes. No new frame-rate benchmark is claimed.",
+      "source_ref": "codex/rust-simulation",
+      "sources": [],
+      "output": null,
+      "title": "Steadier route planning and reliable battle endings",
+      "version": "unreleased",
+      "kind": "improved"
     }
   ],
   "layout_capture": {

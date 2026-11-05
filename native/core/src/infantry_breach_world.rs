@@ -15,13 +15,13 @@ use crate::supply_network::SupplyNetwork;
 use crate::vector::{normalized, turn_yaw, Vector3};
 use crate::vehicle::Vehicle;
 use crate::vehicle_damage::Armor;
-use crate::vehicle_loss_world::Context;
+use crate::world::WorldContext;
 use crate::world_combat;
 
 fn flat(p: Vector3) -> Vector3 {
     Vector3::new(p.x, 0.0, p.z)
 }
-impl Context<'_> {
+impl WorldContext<'_> {
     fn breach_enemy(&self, id: u32, house: u32) -> Result<Option<u32>, &'static str> {
         let s = self.actors.soldier(id).unwrap();
         let Some(q) = self.squads.iter().find(|q| q.id == s.identity.squad) else {

@@ -6,12 +6,12 @@ use frontline_runtime::{content::Content, replay::Recorder};
 #[test]
 fn independent_verifier_process_reruns_a_recording_and_rejects_a_bad_conclusion() {
     let c = Content::bundled().unwrap();
-    let mut s = battle(&c);
-    let mut rec = Recorder::new(Vec::new(), &s, &c).unwrap();
+    let s = battle(&c);
+    let mut rec = Recorder::new(Vec::new(), s, &c).unwrap();
     for tick in 0..125 {
-        rec.step(&mut s, &c, &inputs(tick)).unwrap();
+        rec.step(&c, &inputs(tick)).unwrap();
     }
-    let mut bytes = rec.finish(&s).unwrap();
+    let (mut bytes, _s) = rec.finish().unwrap();
     let path = std::env::temp_dir().join(format!(
         "frontline-replay-{}-{}.flr",
         std::process::id(),

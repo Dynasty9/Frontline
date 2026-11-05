@@ -1,7 +1,7 @@
 //! Shared obstacle ownership keeps geometry edits, fire costs and both route hierarchies together.
 use crate::cover::{rotation, transform};
 use crate::hierarchy::{self, Hierarchy};
-use crate::path_planner::PathPlanner;
+use crate::path_planner::{PathJob, PathPlanner};
 use crate::state_codec::{Reader, Writer};
 use crate::structure::Structure;
 use crate::terrain::Terrain;
@@ -11,12 +11,18 @@ use std::collections::{BTreeMap, HashSet};
 
 pub use crate::traversal::Obstacle;
 use crate::traversal::{Footprint, MAX_REFERENCES};
+pub(crate) struct PendingPath {
+    pub job: PathJob,
+    pub revision: u64,
+    pub position: Vector3,
+}
 pub struct NavigationScene {
     pub planner: PathPlanner,
     pub infantry: Hierarchy,
     pub vehicles: Hierarchy,
     pub tracked: Hierarchy,
     next_hierarchy: u8,
+    pub(crate) pending_path: Option<PendingPath>,
 }
 impl NavigationScene {
     pub fn new(terrain: &Terrain, deck: &[u8], cluster_side: usize) -> Result<Self, &'static str> {
@@ -31,6 +37,7 @@ impl NavigationScene {
             vehicles: Hierarchy::new(n, cluster_side).ok_or("invalid navigation size")?,
             tracked: Hierarchy::new(n, cluster_side).ok_or("invalid navigation size")?,
             next_hierarchy: 0,
+            pending_path: None,
         };
         for index in 0..n * n {
             out.recompute(index, terrain, deck);
@@ -318,6 +325,12 @@ impl NavigationScene {
         w.bytes(&self.vehicles.checkpoint());
         w.bytes(&self.tracked.checkpoint());
         w.byte(self.next_hierarchy);
+        if let Some(p) = &self.pending_path {
+            w.byte(1);
+            p.job.write(&mut w);
+            w.u64(p.revision);
+            w.point(p.position);
+        }
         w.0
     }
     pub fn restore(bytes: &[u8]) -> Result<Self, &'static str> {
@@ -339,6 +352,24 @@ impl NavigationScene {
         {
             return Err("invalid navigation checkpoint dimensions");
         }
+        let pending_path = if r.is_empty() {
+            None
+        } else {
+            if r.byte()? != 1 {
+                return Err("unsupported pending path version");
+            }
+            let job = PathJob::read(&mut r)?;
+            let revision = r.u64()?;
+            let position = r.point()?;
+            if position.abs().max_element() > n as f32 * 2. || revision > i64::MAX as u64 {
+                return Err("invalid pending path");
+            }
+            Some(PendingPath {
+                job,
+                revision,
+                position,
+            })
+        };
         r.finish()?;
         Ok(Self {
             planner,
@@ -346,6 +377,7 @@ impl NavigationScene {
             vehicles,
             tracked,
             next_hierarchy,
+            pending_path,
         })
     }
 }

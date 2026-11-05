@@ -25,7 +25,7 @@ fn natural_mission_reaches_and_verifies_its_conclusion() {
         .read_to_end(&mut bytes)
         .unwrap();
     let content = Content::bundled().unwrap();
-    let mut simulation = frontline_runtime::initial::load(&bytes, &content).unwrap();
+    let simulation = frontline_runtime::initial::load(&bytes, &content).unwrap();
     let mission = simulation
         .mission
         .as_ref()
@@ -40,14 +40,15 @@ fn natural_mission_reaches_and_verifies_its_conclusion() {
         .create_new(true)
         .open(&output)
         .unwrap();
-    let mut recording = Recorder::new(BufWriter::new(file), &simulation, &content).unwrap();
+    let mut recording = Recorder::new(BufWriter::new(file), simulation, &content).unwrap();
     for _ in 0..108_000 {
-        if simulation.state.victory.winner >= 0 {
+        if recording.simulation().state.victory.winner >= 0 {
             break;
         }
-        recording.step(&mut simulation, &content, &[]).unwrap();
-        if simulation.state.tick % 3600 == 0 {
-            let objectives: Vec<_> = simulation
+        recording.step(&content, &[]).unwrap();
+        if recording.simulation().state.tick % 3600 == 0 {
+            let objectives: Vec<_> = recording
+                .simulation()
                 .mission
                 .as_ref()
                 .unwrap()
@@ -57,11 +58,12 @@ fn natural_mission_reaches_and_verifies_its_conclusion() {
                 .collect();
             println!(
                 "MISSION_PROGRESS mission={key} seconds={} objectives={objectives:?}",
-                simulation.state.tick / 60
+                recording.simulation().state.tick / 60
             );
         }
     }
-    recording.finish(&simulation).unwrap().flush().unwrap();
+    let (mut recording_file, simulation) = recording.finish().unwrap();
+    recording_file.flush().unwrap();
     let verified = verify(BufReader::new(File::open(output).unwrap()), &content).unwrap();
     assert_eq!(
         verified.simulation.checkpoint().unwrap(),
@@ -139,7 +141,7 @@ fn mission_callbacks_reach_every_scripted_reinforcement_and_conclusion() {
                     .unwrap();
                 assert_eq!(
                     helicopter.passengers.len(),
-                    content.members["rifle_squad"].len()
+                    content.members()["rifle_squad"].len()
                 );
             }
             if a.mission.as_ref().unwrap().over == 0 {
@@ -192,11 +194,17 @@ fn checkpointed_final_objective_and_deadline_recompute_the_winner() {
         } else {
             mission.deadline = 0.01;
         }
-        let mut recorder = Recorder::new(Vec::new(), &a, &c).unwrap();
-        recorder.step(&mut a, &c, &[]).unwrap();
-        assert_eq!(a.mission.as_ref().unwrap().over, if win { 1 } else { 2 });
-        assert_eq!(a.state.victory.winner, if win { 0 } else { 1 });
-        let bytes = recorder.finish(&a).unwrap();
+        let mut recorder = Recorder::new(Vec::new(), a, &c).unwrap();
+        recorder.step(&c, &[]).unwrap();
+        assert_eq!(
+            recorder.simulation().mission.as_ref().unwrap().over,
+            if win { 1 } else { 2 }
+        );
+        assert_eq!(
+            recorder.simulation().state.victory.winner,
+            if win { 0 } else { 1 }
+        );
+        let (bytes, a) = recorder.finish().unwrap();
         let result = verify(bytes.as_slice(), &c).unwrap();
         assert_eq!(
             result.simulation.state.victory.winner,
@@ -232,12 +240,18 @@ fn all_five_missions_advance_scripted_events_and_resume_without_godot() {
         }
         let initial = a.checkpoint().unwrap();
         let mut b = Simulation::restore(&initial, &content).unwrap();
-        let mut recording = Recorder::new(Vec::new(), &a, &content).unwrap();
-        let before = a.state.field.actors.entities().next_id();
+        let mut recording = Recorder::new(Vec::new(), a, &content).unwrap();
+        let before = recording
+            .simulation()
+            .state
+            .field
+            .actors
+            .entities()
+            .next_id();
         let mut messages = 0;
         for tick in 0..180 {
             let frame = recording
-                .step(&mut a, &content, &[])
+                .step(&content, &[])
                 .unwrap_or_else(|e| panic!("{key}/{tick}: {e}"));
             messages += frame.commands.len();
             assert_eq!(frame, b.step(&content, &[]).unwrap(), "{key}/{tick}");
@@ -247,14 +261,25 @@ fn all_five_missions_advance_scripted_events_and_resume_without_godot() {
         }
         if matches!(key, "skyhook" | "ambush") {
             assert!(
-                a.state.field.actors.entities().next_id() > before,
+                recording
+                    .simulation()
+                    .state
+                    .field
+                    .actors
+                    .entities()
+                    .next_id()
+                    > before,
                 "{key} reinforcement did not spawn"
             );
         }
         assert!(messages > 0, "{key} autopilot did not give orders");
-        assert_eq!(a.checkpoint().unwrap(), b.checkpoint().unwrap(), "{key}");
-        numeric::golden(&format!("mission_{key}"), &a);
-        let bytes = recording.finish(&a).unwrap();
+        assert_eq!(
+            recording.simulation().checkpoint().unwrap(),
+            b.checkpoint().unwrap(),
+            "{key}"
+        );
+        numeric::golden(&format!("mission_{key}"), &recording.simulation());
+        let (bytes, a) = recording.finish().unwrap();
         let replay = verify(bytes.as_slice(), &content).unwrap();
         assert_eq!(
             a.checkpoint().unwrap(),
@@ -269,36 +294,39 @@ fn mission_join_departure_and_reclaim_keep_autopilot_and_force_ownership_consist
     let c = Content::bundled().unwrap();
     let mut a = fixture::map(&c);
     a.enable_mission("bridgehead", false, &c).unwrap();
-    let mut rec = Recorder::new(Vec::new(), &a, &c).unwrap();
+    let mut rec = Recorder::new(Vec::new(), a, &c).unwrap();
     let join = |peer, reclaim| Input::Join {
         peer,
         team: 0,
         name: format!("Player {peer}"),
         reclaim,
     };
-    rec.step(&mut a, &c, &[join(7, None)]).unwrap();
-    assert!(!a.mission.as_ref().unwrap().autopilot);
-    rec.step(&mut a, &c, &[join(8, None)]).unwrap();
-    assert!(a.state.field.squads.iter().any(|q| q.owner == 8));
-    rec.step(
-        &mut a,
-        &c,
-        &[Input::Leave { peer: 7 }, Input::Leave { peer: 8 }],
-    )
-    .unwrap();
-    assert!(a.mission.as_ref().unwrap().autopilot);
-    assert!(a.commanders.is_empty());
-    rec.step(&mut a, &c, &[join(11, Some(7))]).unwrap();
-    assert_eq!(a.mission.as_ref().unwrap().owners, vec![11]);
-    assert!(!a.mission.as_ref().unwrap().autopilot);
-    assert!(a
+    rec.step(&c, &[join(7, None)]).unwrap();
+    assert!(!rec.simulation().mission.as_ref().unwrap().autopilot);
+    rec.step(&c, &[join(8, None)]).unwrap();
+    assert!(rec
+        .simulation()
+        .state
+        .field
+        .squads
+        .iter()
+        .any(|q| q.owner == 8));
+    rec.step(&c, &[Input::Leave { peer: 7 }, Input::Leave { peer: 8 }])
+        .unwrap();
+    assert!(rec.simulation().mission.as_ref().unwrap().autopilot);
+    assert!(rec.simulation().commanders.is_empty());
+    rec.step(&c, &[join(11, Some(7))]).unwrap();
+    assert_eq!(rec.simulation().mission.as_ref().unwrap().owners, vec![11]);
+    assert!(!rec.simulation().mission.as_ref().unwrap().autopilot);
+    assert!(rec
+        .simulation()
         .state
         .field
         .squads
         .iter()
         .filter(|q| q.team == 0)
         .all(|q| q.owner == 11));
-    let bytes = rec.finish(&a).unwrap();
+    let (bytes, a) = rec.finish().unwrap();
     assert_eq!(
         a.checkpoint().unwrap(),
         verify(bytes.as_slice(), &c)

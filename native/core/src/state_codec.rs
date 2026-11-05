@@ -108,6 +108,9 @@ impl<'a> Reader<'a> {
             Err("nonfinite checkpoint point")
         }
     }
+    pub(crate) fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
     pub fn finish(self) -> Result<(), &'static str> {
         if self.0.is_empty() {
             Ok(())

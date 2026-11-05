@@ -17,6 +17,7 @@ pub mod profiling;
 pub mod protocol;
 pub mod render;
 pub mod replay;
+pub mod session;
 pub mod simulation;
 pub mod terrain_view;
 

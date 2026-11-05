@@ -45,7 +45,7 @@ fn vehicle(id: u32, x: f32) -> Vehicle {
 #[test]
 fn melee_skips_flinging_men_then_retains_the_first_enemy_and_cancels_the_route() {
     let mut a = soldier(1, 0.0, 0);
-    a.motion.path = vec![Vector3::X * 20.0];
+    a.motion.path = (vec![Vector3::X * 20.0]).try_into().unwrap();
     a.orders.pending_path = true;
     let mut flung = soldier(2, 1.0, 1);
     flung.shock.flinging = true;

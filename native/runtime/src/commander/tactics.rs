@@ -163,7 +163,7 @@ impl Commander {
         for &id in &c.vehicles {
             let v = w.state.field.actors.vehicle(id).unwrap();
             let d = w.content.vehicle(v);
-            match text(d, "base") {
+            match d.base.as_str() {
                 "boat" => {}
                 "uav" => {
                     let position = target.unwrap_or(front + self.forward() * 45.);
@@ -182,7 +182,7 @@ impl Commander {
                 }
                 "arty" => back.push(id),
                 "lift_heli" if v.passengers.is_empty() => {}
-                _ if !d["service"].is_null() => back.push(id),
+                _ if !d.service.is_empty() => back.push(id),
                 _ => vehicles.push(id),
             }
         }
@@ -192,7 +192,7 @@ impl Commander {
                 let v = w.state.field.actors.vehicle(id).unwrap();
                 let position = front
                     - self.forward()
-                        * if text(w.content.vehicle(v), "base") == "arty" {
+                        * if w.content.vehicle(v).base.as_str() == "arty" {
                             24.
                         } else {
                             10.

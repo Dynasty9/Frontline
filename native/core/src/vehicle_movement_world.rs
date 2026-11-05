@@ -7,9 +7,10 @@ use crate::structure::Structure;
 use crate::vector::Vector3;
 use crate::vehicle::{Route, Vehicle};
 use crate::vehicle_brain::{Contact, CrewEvent, CrewProfile, Perception, UnitKind};
-use crate::vehicle_loss_world::{Context, Event as Loss};
+use crate::vehicle_loss_world::Event as Loss;
 use crate::vehicle_motion::{GroundProfile, Traffic};
 use crate::vehicle_scan::{Scan, ScanProfile};
+use crate::world::WorldContext;
 use glam::Vec2;
 
 #[derive(Clone, Debug, PartialEq)]
@@ -51,7 +52,7 @@ pub fn overlaps(position: Vector3, half: Vec2, yaw: f64, st: &Structure, inset: 
         f64::from(d.dot(axis)).abs() <= p + q
     })
 }
-impl Context<'_> {
+impl WorldContext<'_> {
     pub(crate) fn vehicle_traffic(&self) -> Vec<Traffic> {
         // Vehicles use registration order for traffic ties, independently of infantry buckets.
         self.actors

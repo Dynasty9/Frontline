@@ -9,7 +9,7 @@ use crate::squad_movement;
 use crate::supply_network::SupplyNetwork;
 use crate::vector::Vector3;
 use crate::vehicle_birth;
-use crate::vehicle_loss_world::Context;
+use crate::world::WorldContext;
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Event {
@@ -31,7 +31,7 @@ pub struct TruckProfile<'a> {
     pub town_stock: [f64; 2],
     pub supply: [i32; 2],
 }
-impl Context<'_> {
+impl WorldContext<'_> {
     pub fn dispatch_supply(
         &mut self,
         dt: f64,

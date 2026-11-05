@@ -85,7 +85,7 @@ fn planning_halt_stops_routes_without_releasing_a_rescuers_patient() {
     s.change(3, |m| {
         m.duty.kind = Task::Rescue;
         m.duty.entity = 2;
-        m.motion.path = vec![Vector3::new(-10.0, 0.0, 2.0)];
+        m.motion.path = (vec![Vector3::new(-10.0, 0.0, 2.0)]).try_into().unwrap();
         m.orders.purpose = Goal::Task;
         m.orders.hold_position = Vector3::new(-15.0, 0.0, 3.0);
     });

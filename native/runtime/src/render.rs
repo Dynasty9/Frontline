@@ -16,6 +16,33 @@ pub trait Output {
     fn unreliable(&mut self, kind: u8, tick: u64, data: &[u8]) -> Result<(), String>;
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Publication {
+    Snapshot,
+    Effects,
+    Hud,
+    Report,
+    Over,
+}
+
+/// Final entity state and effects precede the result, including between normal snapshots.
+pub fn publications(
+    tick: u64,
+    concluded: bool,
+    finished: bool,
+) -> impl Iterator<Item = Publication> {
+    let flush = tick % 4 == 0 || concluded || finished;
+    [
+        flush.then_some(Publication::Snapshot),
+        flush.then_some(Publication::Effects),
+        (tick % 30 == 0 || concluded || finished).then_some(Publication::Hud),
+        (concluded || finished).then_some(Publication::Report),
+        concluded.then_some(Publication::Over),
+    ]
+    .into_iter()
+    .flatten()
+}
+
 fn point(p: Vector3) -> Value {
     json!(p.to_array())
 }

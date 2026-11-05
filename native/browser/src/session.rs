@@ -4,8 +4,9 @@ use frontline_runtime::{
     initial,
     observation::{self, events::Events, View},
     protocol as net,
+    render::Publication,
     render::{self, Output},
-    replay::{self, Playback, Recorder},
+    session::Session as MatchSession,
     simulation::{Input, Simulation, MAX_FRAME_BYTES, MAX_FRAME_INPUTS},
     terrain_view::Surface,
 };
@@ -54,14 +55,11 @@ impl Output for Packets {
 }
 
 pub struct Session {
-    pub simulation: Simulation,
+    timeline: MatchSession<Cursor<Vec<u8>>, Vec<u8>>,
     content: Content,
     view: View,
     peer: i32,
     team: i8,
-    recording: Option<Recorder<Vec<u8>>>,
-    playback: Option<Playback<Cursor<Vec<u8>>>>,
-    end: u64,
     packets: Packets,
     inputs: Vec<Input>,
     input_bytes: usize,
@@ -75,20 +73,12 @@ pub struct Session {
 impl Session {
     pub fn new(bytes: Vec<u8>, replay: bool) -> Result<Self, String> {
         let content = Content::bundled()?;
-        let (simulation, recording, playback, end) = if replay {
-            let mut source = Cursor::new(bytes);
-            let end = replay::declared_tick(&mut source)?;
-            source.set_position(0);
-            let (playback, simulation) = Playback::new(source, &content)?;
-            if end < simulation.state.tick {
-                return Err("Invalid replay duration".into());
-            }
-            (simulation, None, Some(playback), end)
+        let timeline = if replay {
+            MatchSession::play(Cursor::new(bytes), &content)?
         } else {
-            let simulation = initial::load(&bytes, &content)?;
-            let recording = Recorder::new(Vec::new(), &simulation, &content)?;
-            (simulation, Some(recording), None, 0)
+            MatchSession::record(Vec::new(), initial::load(&bytes, &content)?, &content)?
         };
+        let simulation = timeline.simulation();
         let peer = simulation.host_peer;
         let team = if replay {
             -1
@@ -104,14 +94,11 @@ impl Session {
         };
         let roads = simulation.state.rules.network.roads.clone();
         Ok(Self {
-            simulation,
+            timeline,
             content,
             view: View::new(team)?,
             peer,
             team,
-            recording,
-            playback,
-            end,
             packets: Packets::default(),
             inputs: Vec::new(),
             input_bytes: 0,
@@ -124,26 +111,24 @@ impl Session {
         })
     }
     pub fn metadata(&self) -> Value {
-        let presentation: Value = serde_json::from_slice(&self.simulation.presentation)
+        let presentation: Value = serde_json::from_slice(&self.timeline.simulation().presentation)
             .expect("validated simulation presentation");
         json!({"engine":frontline_runtime::ENGINE_ID,"peer":self.peer,"team":self.team,
-            "side":self.simulation.state.water.side,"mood":presentation.get("mood"),"replay":self.status()})
+            "side":self.timeline.simulation().state.water.side,"mood":presentation.get("mood"),"replay":self.status()})
+    }
+    pub fn simulation(&self) -> &Simulation {
+        self.timeline.simulation()
     }
     fn status(&self) -> Value {
-        self.playback.as_ref().map_or(Value::Null, |p| {
-            json!({
-            "position":(self.simulation.state.tick-p.initial_tick) as f64/60.,
-            "duration":(self.end-p.initial_tick) as f64/60.,"verified":p.verified(),
-            "concluded":p.verified() && self.simulation.state.victory.winner >= 0})
-        })
+        self.timeline.status()
     }
     fn hud(&mut self) -> Result<(), String> {
         render::json(
             &mut self.packets,
             net::HUD,
-            observation::hud(&self.simulation, &self.content, self.team)?,
+            observation::hud(self.timeline.simulation(), &self.content, self.team)?,
         )?;
-        if self.playback.is_some() {
+        if self.timeline.is_replay() {
             let status = self.status();
             render::json(&mut self.packets, net::PLAYBACK, status)?;
         }
@@ -154,26 +139,30 @@ impl Session {
             return Err("Worker client is already connected".into());
         }
         self.opened = true;
-        let update = self.view.update(&self.simulation, &self.content);
+        let update = self.view.update(self.timeline.simulation(), &self.content);
         render::json(
             &mut self.packets,
             net::WELCOME,
             json!({"engine":frontline_runtime::ENGINE_ID,
             "peer":self.peer,"team":self.team,"entities":update.births.len(),
-            "side":self.simulation.state.water.side,"tick":self.simulation.state.tick}),
+            "side":self.timeline.simulation().state.water.side,"tick":self.timeline.simulation().state.tick}),
         )?;
-        for data in render::chunks(&render::map(&self.simulation)?) {
+        for data in render::chunks(&render::map(self.timeline.simulation())?) {
             self.packets.reliable(net::MAP, data)?;
         }
-        render::update(&mut self.packets, &update, self.simulation.state.tick)?;
+        render::update(
+            &mut self.packets,
+            &update,
+            self.timeline.simulation().state.tick,
+        )?;
         self.packets.reliable(net::BASELINE_END, Arc::new(vec![]))?;
         self.hud()?;
-        if self.simulation.state.victory.winner >= 0 {
+        if self.timeline.simulation().state.victory.winner >= 0 {
             self.report()?;
             render::json(
                 &mut self.packets,
                 net::OVER,
-                json!(self.simulation.state.victory.winner),
+                json!(self.timeline.simulation().state.victory.winner),
             )?;
         }
         Ok(())
@@ -182,7 +171,7 @@ impl Session {
         render::json(
             &mut self.packets,
             net::REPORT,
-            observation::report(&self.simulation, &self.content, self.team)?,
+            observation::report(self.timeline.simulation(), &self.content, self.team)?,
         )
     }
     pub fn receive(&mut self, data: &[u8]) -> Result<(), String> {
@@ -193,12 +182,12 @@ impl Session {
                 render::json(
                     &mut self.packets,
                     net::FX,
-                    Events::persistent(&self.simulation),
+                    Events::persistent(self.timeline.simulation()),
                 )?;
                 self.loaded = true;
             }
             net::ACK if payload.is_empty() => {}
-            net::COMMAND if self.playback.is_none() && !self.finished => {
+            net::COMMAND if !self.timeline.is_replay() && !self.finished => {
                 let input = Input::Command {
                     peer: self.peer,
                     command: frontline_runtime::client_command::decode(payload)?,
@@ -214,10 +203,10 @@ impl Session {
             }
             net::REQUEST_REPORT if payload.is_empty() => self.report()?,
             net::SEND_PRESENCE if co_command::presence(payload) => {}
-            net::MARK if self.team >= 0 && self.playback.is_none() => {
+            net::MARK if self.team >= 0 && !self.timeline.is_replay() => {
                 let mark = co_command::mark(payload)?;
                 let (kind, data) =
-                    co_command::project(&self.simulation, self.peer, self.team, &mark);
+                    co_command::project(self.timeline.simulation(), self.peer, self.team, &mark);
                 render::json(&mut self.packets, kind, data)?;
             }
             _ => return Err("Invalid worker command".into()),
@@ -227,16 +216,19 @@ impl Session {
     fn project(&mut self) -> Result<(), String> {
         render::update(
             &mut self.packets,
-            &self.view.update(&self.simulation, &self.content),
-            self.simulation.state.tick,
+            &self.view.update(self.timeline.simulation(), &self.content),
+            self.timeline.simulation().state.tick,
         )?;
+        Ok(())
+    }
+    fn effects(&mut self) -> Result<(), String> {
         for events in self.effects.drain(..) {
             render::events(
                 &mut self.packets,
                 self.peer,
                 self.team,
                 &events,
-                self.simulation.state.tick,
+                self.timeline.simulation().state.tick,
             )?;
         }
         Ok(())
@@ -249,61 +241,50 @@ impl Session {
             return Ok(());
         }
         for _ in 0..count {
-            let winner = self.simulation.state.victory.winner;
-            let frame = if let Some(playback) = &mut self.playback {
-                let frame = playback.step(&mut self.simulation, &self.content)?;
-                if self.simulation.state.tick > self.end
-                    || (frame.is_none() && self.simulation.state.tick != self.end)
-                {
-                    return Err("Replay duration differs".into());
-                }
-                frame
-            } else {
-                Some(self.recording.as_mut().ok_or("Recording is closed")?.step(
-                    &mut self.simulation,
-                    &self.content,
-                    &self.inputs,
-                )?)
-            };
+            let winner = self.timeline.simulation().state.victory.winner;
+            let frame = self.timeline.step(&self.content, &self.inputs)?;
             self.inputs.clear();
             self.input_bytes = 0;
-            let Some(frame) = frame else {
-                self.finished = true;
-                self.project()?;
-                self.hud()?;
-                self.report()?;
+            self.finished = frame.is_none();
+            if let Some(frame) = frame {
+                let events = Events::collect(self.timeline.simulation(), &frame);
+                for data in self.surface.update(
+                    &self.timeline.simulation().state.field.geometry.terrain,
+                    &events.blasts,
+                )? {
+                    self.packets.reliable(net::SURFACE, data)?;
+                }
+                if self.roads != self.timeline.simulation().state.rules.network.roads {
+                    self.roads
+                        .clone_from(&self.timeline.simulation().state.rules.network.roads);
+                    render::json(
+                        &mut self.packets,
+                        net::ROADS,
+                        render::roads(self.timeline.simulation()),
+                    )?;
+                }
+                self.effects.push(events);
+            }
+            let concluded = self.timeline.simulation().state.victory.winner != winner;
+            for publication in render::publications(
+                self.timeline.simulation().state.tick,
+                concluded,
+                self.finished,
+            ) {
+                match publication {
+                    Publication::Snapshot => self.project()?,
+                    Publication::Effects => self.effects()?,
+                    Publication::Hud => self.hud()?,
+                    Publication::Report => self.report()?,
+                    Publication::Over => render::json(
+                        &mut self.packets,
+                        net::OVER,
+                        json!(self.timeline.simulation().state.victory.winner),
+                    )?,
+                }
+            }
+            if self.finished {
                 break;
-            };
-            let events = Events::collect(&self.simulation, &frame);
-            for data in self.surface.update(
-                &self.simulation.state.field.geometry.terrain,
-                &events.blasts,
-            )? {
-                self.packets.reliable(net::SURFACE, data)?;
-            }
-            if self.roads != self.simulation.state.rules.network.roads {
-                self.roads
-                    .clone_from(&self.simulation.state.rules.network.roads);
-                render::json(
-                    &mut self.packets,
-                    net::ROADS,
-                    render::roads(&self.simulation),
-                )?;
-            }
-            self.effects.push(events);
-            if self.simulation.state.tick % 4 == 0 {
-                self.project()?;
-            }
-            if self.simulation.state.tick % 30 == 0 {
-                self.hud()?;
-            }
-            if self.simulation.state.victory.winner != winner {
-                self.report()?;
-                render::json(
-                    &mut self.packets,
-                    net::OVER,
-                    json!(self.simulation.state.victory.winner),
-                )?;
             }
         }
         Ok(())
@@ -312,34 +293,22 @@ impl Session {
         if self.opened {
             return Err("Seeking requires a fresh observer".into());
         }
-        let playback = self.playback.as_mut().ok_or("Only recordings can seek")?;
-        let target = (playback.initial_tick + u64::from(offset)).min(self.end);
-        while self.simulation.state.tick < target {
-            if playback
-                .step(&mut self.simulation, &self.content)?
-                .is_none()
-            {
+        let target = self.timeline.seek_target(u64::from(offset))?;
+        while self.timeline.simulation().state.tick < target {
+            if self.timeline.step(&self.content, &[])?.is_none() {
                 return Err("Replay ended before its declared duration".into());
             }
         }
-        if target == self.end
-            && playback
-                .step(&mut self.simulation, &self.content)?
-                .is_some()
-        {
+        if self.timeline.at_end() && self.timeline.step(&self.content, &[])?.is_some() {
             return Err("Replay duration differs".into());
         }
-        self.finished = playback.verified();
+        self.finished = self.timeline.complete();
         Ok(())
     }
     pub fn take_packets(&mut self) -> Vec<u8> {
         self.packets.take()
     }
-    pub fn finish(&mut self) -> Result<Vec<u8>, String> {
-        self.finished = true;
-        self.recording
-            .take()
-            .ok_or("No live recording")?
-            .finish(&self.simulation)
+    pub fn finish(self) -> Result<Vec<u8>, String> {
+        self.timeline.finish()?.ok_or("No live recording".into())
     }
 }

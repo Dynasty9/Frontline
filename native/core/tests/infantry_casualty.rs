@@ -26,7 +26,7 @@ fn soldier() -> Infantry {
         round: Round::Frag,
         fuse: 1.0,
     });
-    s.motion.path = vec![Vector3::X * 10.0];
+    s.motion.path = (vec![Vector3::X * 10.0]).try_into().unwrap();
     s.weapon.magazine = 17;
     s.weapon.reserve = 94;
     s.fight.controlled_drone = 8;

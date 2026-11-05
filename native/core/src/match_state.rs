@@ -19,9 +19,10 @@ use crate::state_codec::{Reader, Writer};
 use crate::structure::Structure;
 use crate::structure_world::Victory;
 use crate::vehicle::Vehicle;
-use crate::vehicle_loss_world::{Context, Profile};
+use crate::vehicle_loss_world::Profile;
 use crate::visibility::Visibility;
 use crate::water::Water;
+use crate::world::WorldContext;
 use crate::world_geometry::WorldGeometry;
 use std::collections::HashSet;
 
@@ -83,7 +84,7 @@ impl Battlefield {
         &mut self,
         p: &Shared<'_>,
         upgrades: Upgrades,
-        f: impl FnOnce(&mut Context<'_>) -> T,
+        f: impl FnOnce(&mut WorldContext<'_>) -> T,
     ) -> T {
         let vehicle = |v: &Vehicle| {
             let mut profile = (p.vehicle)(v);
@@ -99,7 +100,7 @@ impl Battlefield {
                 .unwrap_or(false);
             profile
         };
-        f(&mut Context {
+        f(&mut WorldContext {
             actors: &mut self.actors,
             geometry: &mut self.geometry,
             units: &self.units,

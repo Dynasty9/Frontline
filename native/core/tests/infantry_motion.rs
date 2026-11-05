@@ -5,6 +5,30 @@ use frontline_core::random::SimulationRandom;
 use frontline_core::terrain::Terrain;
 use frontline_core::vector::Vector3;
 
+#[test]
+fn installed_routes_reject_invalid_points_before_they_enter_live_motion() {
+    use frontline_core::infantry_motion::RoutePoints;
+    for points in [
+        vec![Vector3::new(f32::NAN, 0., 0.)],
+        vec![Vector3::X * 1_000_001.],
+        vec![Vector3::ZERO; 1_000_001],
+    ] {
+        assert!(RoutePoints::try_from(points).is_err());
+    }
+    let motion = InfantryMotion {
+        path: vec![Vector3::X; 1000].try_into().unwrap(),
+        ..Default::default()
+    };
+    assert!(motion.valid());
+    assert_eq!(
+        InfantryMotion::restore(&motion.checkpoint()).unwrap(),
+        motion
+    );
+    let mut bad = motion.checkpoint();
+    bad[32..36].copy_from_slice(&f32::NAN.to_le_bytes());
+    assert!(InfantryMotion::restore(&bad).is_err());
+}
+
 fn input() -> MoveInput {
     MoveInput {
         dt: 1.0 / 30.0,
@@ -31,7 +55,9 @@ fn route_progress_waiting_stuck_replanning_and_duplicate_points_preserve_priorit
     let mut collision = CollisionWorld::default();
     let mut rng = SimulationRandom::new(7);
     let mut state = InfantryMotion {
-        path: vec![Vector3::ZERO, Vector3::ZERO, Vector3::X * 10.0],
+        path: (vec![Vector3::ZERO, Vector3::ZERO, Vector3::X * 10.0])
+            .try_into()
+            .unwrap(),
         ..Default::default()
     };
     let before = state.clone();
@@ -91,7 +117,7 @@ fn door_wait_kick_randomness_and_checkpoint_resume_keep_the_same_move() {
     let mut rng = SimulationRandom::new(7);
     let mut state = InfantryMotion {
         position: Vector3::new(0.0, 0.0, 0.6),
-        path: vec![-Vector3::Z * 10.0],
+        path: (vec![-Vector3::Z * 10.0]).try_into().unwrap(),
         ..Default::default()
     };
     let door = Door {
@@ -179,7 +205,7 @@ fn vaulting_slides_and_ground_caches_share_numeric_navigation_and_geometry() {
     );
     let mut rng = SimulationRandom::new(4);
     let mut state = InfantryMotion {
-        path: vec![Vector3::X * 2.0],
+        path: (vec![Vector3::X * 2.0]).try_into().unwrap(),
         ..Default::default()
     };
     let mut i = input();
@@ -229,7 +255,7 @@ fn stale_routes_replan_before_crossing_a_blocked_strip() {
     let nav = frontline_core::navigation_scene::NavigationScene::new(&terrain, &[], 16).unwrap();
     let mut state = InfantryMotion {
         position: Vector3::new(-2., 0., 0.5),
-        path: vec![Vector3::new(3., 0., 0.5)],
+        path: (vec![Vector3::new(3., 0., 0.5)]).try_into().unwrap(),
         ..Default::default()
     };
     let before = state.position;
@@ -260,7 +286,7 @@ fn elevated_ground_is_refreshed_while_moving_with_a_relative_mount_height() {
     let nav = PathPlanner::new(32).unwrap();
     let mut state = InfantryMotion {
         position: Vector3::new(0., 12., 0.),
-        path: vec![Vector3::new(10., 0., 0.)],
+        path: (vec![Vector3::new(10., 0., 0.)]).try_into().unwrap(),
         ground_until: 100.,
         ground: 0.,
         ..Default::default()

@@ -642,7 +642,7 @@ fn recorder_is_read_only_does_not_start_time_and_does_not_change_the_replay() {
 }
 
 #[test]
-fn recorder_receives_the_winning_tick_before_the_final_report_and_end() {
+fn players_and_recorder_receive_the_winning_tick_before_the_final_report_and_end() {
     let mut server = Server::start(|c| {
         let mut s = map(c);
         // No FOBs remain; the next rules tick ends the match between observation ticks.
@@ -657,13 +657,16 @@ fn recorder_receives_the_winning_tick_before_the_final_report_and_end() {
         thread::sleep(Duration::from_millis(1));
     }
     let mut player = Client::new(&server, '1');
-    while observer.over_tick.is_none() {
+    while observer.over_tick.is_none() || player.over_tick.is_none() {
         observer.poll();
         player.poll();
         assert!(Instant::now() < deadline);
         thread::sleep(Duration::from_millis(1));
     }
     assert_eq!(observer.over_tick, Some(601));
+    assert_eq!(player.over_tick, Some(601));
+    assert!(player.reliable_snapshots > 0);
+    assert!(!player.report.is_null());
     assert!(!observer.report.is_null());
     assert_eq!(server.finish().simulation.state.victory.winner, 1);
 }

@@ -1,22 +1,16 @@
 //! Destruction finishes passenger injuries, crew orders and wreck ignition before another hit.
 use crate::actors::{Actor, Actors};
 use crate::battle_stats::{BattleStats, Unit};
-use crate::deferred_effects::DeferredEffects;
-use crate::fires::{self, Fires};
+use crate::fires;
 use crate::infantry::Infantry;
 use crate::infantry_effects::InfantryHit;
-use crate::infantry_spawn::Loadout;
 use crate::infantry_vitals::{DamageResult, Life};
-use crate::random::SimulationRandom;
-use crate::spatial::SpatialIndex;
-use crate::squad::Squad;
 use crate::squad_movement;
 use crate::structure::Structure;
 use crate::vector::Vector3;
 use crate::vehicle::Vehicle;
 use crate::vehicle_loss::{Crew, Wreck};
-use crate::visibility::Visibility;
-use crate::world_geometry::WorldGeometry;
+use crate::world::WorldContext;
 
 #[derive(Clone, Copy)]
 pub struct Profile<'a> {
@@ -24,32 +18,6 @@ pub struct Profile<'a> {
     pub crew: Crew<'a>,
     pub weight: u8,
     pub hull: Vector3,
-}
-pub struct Context<'a> {
-    pub actors: &'a mut Actors,
-    pub geometry: &'a mut WorldGeometry,
-    pub units: &'a SpatialIndex,
-    pub squads: &'a mut Vec<Squad>,
-    pub next_squad: &'a mut u64,
-    pub fires: &'a mut Fires,
-    pub battle: &'a mut BattleStats,
-    pub deferred: &'a mut DeferredEffects,
-    pub visibility: &'a mut Visibility,
-    pub rng: &'a mut SimulationRandom,
-    pub now: f64,
-    pub town: [f32; 4],
-    pub names: &'a [Vec<String>; 2],
-    pub crew_loadouts: &'a [Loadout; 2],
-    pub crew_name: &'a str,
-    pub team_names: &'a [&'a str; 2],
-    /// Definition values and retained upgrades; these never call the engine.
-    pub vehicle: &'a dyn Fn(&Vehicle) -> Profile<'a>,
-    pub man: &'a dyn Fn(&Infantry, &[Squad]) -> fires::ManProfile,
-    pub movement: &'a dyn Fn(&Infantry) -> squad_movement::ManProfile,
-    pub building: &'a dyn Fn(&Structure) -> fires::BuildingProfile,
-    pub role: &'a dyn Fn(&Infantry) -> String,
-    pub automatic: &'a dyn Fn(&str) -> bool,
-    pub player_building: &'a dyn Fn(&str) -> bool,
 }
 #[derive(Clone, Debug, PartialEq)]
 pub struct Notice {
@@ -113,7 +81,7 @@ pub enum Event {
     Fire(fires::Event),
     Stat(&'static str),
 }
-impl Context<'_> {
+impl WorldContext<'_> {
     pub fn drop_vehicle_sling(&mut self, cargo: u32) -> Result<Vec<Event>, &'static str> {
         if !self.now.is_finite() || self.now.abs() > 1e12 - 100.0 {
             return Err("invalid sling drop time");

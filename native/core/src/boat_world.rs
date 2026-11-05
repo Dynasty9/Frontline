@@ -10,11 +10,11 @@ use crate::vehicle::Vehicle;
 use crate::vehicle_boat::BoatProfile;
 use crate::vehicle_combat_world::Profile as Weapons;
 use crate::vehicle_damage::Armor;
-use crate::vehicle_loss_world::Context;
 use crate::vehicle_movement_world::Event as Movement;
 use crate::vehicle_scan::ScanProfile;
 use crate::vehicle_world::Event;
 use crate::water::Water;
+use crate::world::WorldContext;
 
 #[derive(Clone, Copy, Debug)]
 pub struct Profile<'a> {
@@ -23,7 +23,7 @@ pub struct Profile<'a> {
     pub weapons: Weapons<'a>,
     pub traverse: [f64; 2],
 }
-impl Context<'_> {
+impl WorldContext<'_> {
     pub fn advance_boat<'a>(
         &mut self,
         id: u32,

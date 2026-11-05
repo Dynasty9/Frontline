@@ -24,7 +24,7 @@ use crate::structure::Structure;
 use crate::supply_network::SupplyNetwork;
 use crate::vehicle::Vehicle;
 use crate::vehicle_damage::Armor;
-use crate::vehicle_loss_world::Context;
+use crate::world::WorldContext;
 use crate::world_combat;
 use crate::world_geometry::WorldGeometry;
 
@@ -141,7 +141,7 @@ fn thought(cue: Thought) -> &'static str {
     }
 }
 
-impl Context<'_> {
+impl WorldContext<'_> {
     fn infantry_movements(
         &mut self,
         id: u32,
@@ -353,7 +353,7 @@ impl Context<'_> {
                         s.controller.dive_timer = 0.0;
                         s.posture = crate::infantry_pose::Posture::Stand;
                     }
-                    let stage = s.alive_stage(dt, self.rng)?;
+                    let stage = s.advance_alive_stage(dt, self.rng)?;
                     phase("infantry_status");
                     match stage {
                         Stage::Dazed => {
@@ -501,7 +501,7 @@ impl Context<'_> {
                 .squads
                 .iter()
                 .any(|q| q.id == s.identity.squad && q.leader == id);
-            s.finish_tick(dt, self.now, ammunition, leader)?;
+            s.advance_finish_tick(dt, self.now, ammunition, leader)?;
         }
         phase("infantry_finish");
         Ok(out)

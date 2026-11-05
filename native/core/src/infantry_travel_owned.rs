@@ -152,7 +152,7 @@ impl Actors {
             opened_door,
             speech,
             slid,
-        } = self.soldier_mut(id).unwrap().move_route(
+        } = self.soldier_mut(id).unwrap().advance_move_route(
             input,
             world.nav,
             world.terrain,

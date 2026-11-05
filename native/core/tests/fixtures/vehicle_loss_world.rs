@@ -9,7 +9,8 @@ use frontline_core::squad_movement;
 use frontline_core::vector::Vector3;
 use frontline_core::vehicle::{LastBlast, Vehicle};
 use frontline_core::vehicle_loss::Crew;
-use frontline_core::vehicle_loss_world::{Context, Event, Profile};
+use frontline_core::vehicle_loss_world::{Event, Profile};
+use frontline_core::world::WorldContext;
 
 pub struct Scene {
     pub world: shared::Battle,
@@ -94,8 +95,8 @@ impl Scene {
     ) -> Result<Vec<Event>, &'static str> {
         self.context().damage(id, amount, source)
     }
-    pub fn context(&mut self) -> Context<'_> {
-        Context {
+    pub fn context(&mut self) -> WorldContext<'_> {
+        WorldContext {
             actors: &mut self.world.actors,
             geometry: &mut self.world.geometry,
             units: &self.world.units,
