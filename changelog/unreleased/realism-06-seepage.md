@@ -27,3 +27,5 @@ Research: [primary reference](https://seblagarde.wordpress.com/2013/03/19/water-
 Compatibility retains damp colour and roughness but skips the extra direct-light sheen to avoid bright faceting.
 
 Seepage follows connected runoff channels with variable shelter, darkening narrow damp areas rather than tinting a whole cliff.
+
+Wet cliffs now show broad connected drainage stains and smaller vertical tributaries, with a darker, cooler surface response that remains visible at normal viewing distances.

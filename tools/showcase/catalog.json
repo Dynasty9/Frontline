@@ -3574,32 +3574,32 @@
       "sources": [
         {
           "file": "changelog/unreleased/realism-06-seepage/target-before.jpg",
-          "sha256": "f00bf5fe9a172fc02cfc9b91be9d38f8e67da1554da7b1c5972b14942123092f",
+          "sha256": "4de89d8b0fed535e4c3ef276ebffb714724069d15323faa754de688d081bc5fd",
           "caption": "target before"
         },
         {
           "file": "changelog/unreleased/realism-06-seepage/target-after.jpg",
-          "sha256": "182f8f9fc4389531ee925ce17fc3cc1ceb6989921c3c2c6d207cc7e11e541377",
+          "sha256": "d9a8aac0c3a1556bf084752e9caf4414901a1838fc6a5b2e21fb58de3248f9c2",
           "caption": "target after"
         },
         {
           "file": "changelog/unreleased/realism-06-seepage/wide-before.jpg",
-          "sha256": "bcb4cf1e3d7e105d870106ef63f6c4afff27b85c9705b291b3bf514a53540c14",
+          "sha256": "ed33dd41ff9d56f3c8a9cc098fb841befc710d17f1c6b3f0c4bdff836d64535d",
           "caption": "wide before"
         },
         {
           "file": "changelog/unreleased/realism-06-seepage/wide-after.jpg",
-          "sha256": "509b432fe594dab403e02010c93553fa7c430f9165104615e8bc0b30da860d9c",
+          "sha256": "750ca07196a8d76c386f60ba6587662566638f5986b6c0e93dbc9774dc6516f5",
           "caption": "wide after"
         },
         {
           "file": "changelog/unreleased/realism-06-seepage/target-compat.jpg",
-          "sha256": "a0318b5137f319aa68eb715c6523d4b704879acfff9620071346bc253b54cccb",
+          "sha256": "3a94430957afdba158f78fc0d52be3fef3dd2cd9b99c1f699b192ab0c63967c6",
           "caption": "target compat"
         },
         {
           "file": "changelog/unreleased/realism-06-seepage/compare.gif",
-          "sha256": "335ea15588aa219cc7c1759eda97fdc887b40a6092de3aa3a8159e1cffcb3721",
+          "sha256": "ca09247d795ca14936020a4479ffb10e4fad19bb27a5dcc398ca5eec97573de7",
           "caption": "Native frames, separate labels, shared palette, 2.5 seconds each."
         }
       ],
@@ -3608,10 +3608,10 @@
       "version": "unreleased",
       "kind": "improved",
       "capture": {
-        "before_ref": "4443a7be7617229081faee3b5d1458b04043b6ce",
+        "before_ref": "a3a630422c93a5c2d7abe491d30712480de42443",
         "after_ref": "codex/realism-06-seepage",
-        "before_pack": "iterate-06-before.pck",
-        "after_pack": "iterate-06-after.pck",
+        "before_pack": "review-06-before.pck",
+        "after_pack": "review-06-after.pck",
         "seed": 3,
         "preset": "high",
         "mood": "day",
