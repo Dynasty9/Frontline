@@ -3248,6 +3248,195 @@
         "detail": "Same controls with --focus=300,300 --zoom=100 --pitch=-28; camera height follows the changed terrain.",
         "compatibility": "Final wide view with --rendering-method gl_compatibility"
       }
+    },
+    {
+      "entry": "changelog/unreleased/realism-01-aerial.md",
+      "summary": "Distant mountain groups lose contrast into sky-coloured haze while nearby ground retains its detail.",
+      "medium": "still",
+      "stage": "native-media",
+      "rationale": "Isolate the revision from the previous proposal with identical upstream changes, seed and camera.",
+      "source_ref": "codex/realism-01-aerial",
+      "sources": [
+        {
+          "file": "changelog/unreleased/realism-01-aerial/target-before.jpg",
+          "sha256": "24703b23c8f2a842db5ad3a72c0a3b12f696cdb171c9ee65189ca63f531a0459",
+          "caption": "target before"
+        },
+        {
+          "file": "changelog/unreleased/realism-01-aerial/target-after.jpg",
+          "sha256": "3910c178b48bab353d3c2449b10a3479c26d7ad04221b7964157dc4aa6340ff0",
+          "caption": "target after"
+        },
+        {
+          "file": "changelog/unreleased/realism-01-aerial/wide-before.jpg",
+          "sha256": "24703b23c8f2a842db5ad3a72c0a3b12f696cdb171c9ee65189ca63f531a0459",
+          "caption": "wide before"
+        },
+        {
+          "file": "changelog/unreleased/realism-01-aerial/wide-after.jpg",
+          "sha256": "3910c178b48bab353d3c2449b10a3479c26d7ad04221b7964157dc4aa6340ff0",
+          "caption": "wide after"
+        },
+        {
+          "file": "changelog/unreleased/realism-01-aerial/target-compat.jpg",
+          "sha256": "29462b38fe814784bb21c2846f182a889c4655ce19e724b5348cbb38324b2c67",
+          "caption": "target compat"
+        },
+        {
+          "file": "changelog/unreleased/realism-01-aerial/compare.gif",
+          "sha256": "1002af6ed02f53fb03a86f43f3a2ffc8da302cc66c909cf298a61614926824c8",
+          "caption": "Native frames, separate labels, shared palette, 2.5 seconds each."
+        }
+      ],
+      "output": null,
+      "title": "Separate ranges with distance-based scattering",
+      "version": "unreleased",
+      "kind": "improved",
+      "capture": {
+        "before_ref": "79e9f6aa6fb9f60c26756a30f4045700a9edfe67",
+        "after_ref": "codex/realism-01-aerial",
+        "before_pack": "iterate-01-before.pck",
+        "after_pack": "iterate-01-after.pck",
+        "seed": 3,
+        "preset": "high",
+        "mood": "day",
+        "resolution": "1600x900",
+        "focus": "0,0",
+        "zoom": 900,
+        "pitch": -22,
+        "yaw": 0.7,
+        "shot_at": 2,
+        "quit_after": 3,
+        "wide": "focus 0,0; zoom 900; pitch -22; yaw 0.7",
+        "compatibility": "Target after with --rendering-method gl_compatibility",
+        "command": "godot --main-pack PACK --resolution 1600x900 -- --aivai --seed=3 --offscreen --nohud --set=perf:0 --preset=high --mood=MOOD --focus=FOCUS --zoom=ZOOM --pitch=PITCH --cam-yaw=0.7 --screenshot=OUTPUT --shot-at=2 --quit-after=3"
+      }
+    },
+    {
+      "entry": "changelog/unreleased/realism-02-strata.md",
+      "summary": "Rock beds catch light along their ledges instead of appearing only as painted colour bands.",
+      "medium": "still",
+      "stage": "native-media",
+      "rationale": "Isolate this refinement against its immediate parent, with a targeted view and a distant view.",
+      "source_ref": "codex/realism-02-strata",
+      "sources": [
+        {
+          "file": "changelog/unreleased/realism-02-strata/target-before.jpg",
+          "sha256": "c42904c2933caefc95b48640f75f65c789f9f0a087efefd07865f9e46ef9200a",
+          "caption": "target before"
+        },
+        {
+          "file": "changelog/unreleased/realism-02-strata/target-after.jpg",
+          "sha256": "dba716b988e154748776d7036c1833cc095fb078f57ccfea41f40ae30ecd73bd",
+          "caption": "target after"
+        },
+        {
+          "file": "changelog/unreleased/realism-02-strata/wide-before.jpg",
+          "sha256": "c60a5b4b3532b5e696ad516c2ef02774a1750bc60ce4108f2eccb7b4b7060218",
+          "caption": "wide before"
+        },
+        {
+          "file": "changelog/unreleased/realism-02-strata/wide-after.jpg",
+          "sha256": "cca202f8c493e945c43dcb5ec5d56bd9fe9586de586ead728d70973ceb61270a",
+          "caption": "wide after"
+        },
+        {
+          "file": "changelog/unreleased/realism-02-strata/target-compat.jpg",
+          "sha256": "e9ec103557048e2457996f923e33d5da540a4ee4d548b0aa95831f2bd164de56",
+          "caption": "target compat"
+        },
+        {
+          "file": "changelog/unreleased/realism-02-strata/compare.gif",
+          "sha256": "f8e64be173afd1a8b0ef7bd399335fbc2bc925a123f198b3719635b47d306a9c",
+          "caption": "Native frames, separate labels, shared palette, 2.5 seconds each."
+        }
+      ],
+      "output": null,
+      "title": "Give geological layers surface relief",
+      "version": "unreleased",
+      "kind": "improved",
+      "capture": {
+        "before_ref": "ab734fe61a6a37ec0089a4a1896756096ff1be4b",
+        "after_ref": "codex/realism-02-strata",
+        "before_pack": "realism-01.pck",
+        "after_pack": "realism-02.pck",
+        "seed": 3,
+        "preset": "high",
+        "mood": "day",
+        "resolution": "1600x900",
+        "focus": "300,300",
+        "zoom": 100,
+        "pitch": -28,
+        "yaw": 0.7,
+        "shot_at": 2,
+        "quit_after": 3,
+        "wide": "focus 0,0; zoom 900; pitch -22; yaw 0.7",
+        "compatibility": "Target after with --rendering-method gl_compatibility",
+        "command": "godot --main-pack PACK --resolution 1600x900 -- --aivai --seed=3 --offscreen --nohud --set=perf:0 --preset=high --mood=MOOD --focus=FOCUS --zoom=ZOOM --pitch=PITCH --cam-yaw=0.7 --screenshot=OUTPUT --shot-at=2 --quit-after=3"
+      }
+    },
+    {
+      "entry": "changelog/unreleased/realism-03-rock-scales.md",
+      "summary": "Broad cliff fractures and smaller joint patterns break up recognisable repeated rock tiles.",
+      "medium": "still",
+      "stage": "native-media",
+      "rationale": "Isolate this refinement against its immediate parent, with a targeted view and a distant view.",
+      "source_ref": "codex/realism-03-rock-scales",
+      "sources": [
+        {
+          "file": "changelog/unreleased/realism-03-rock-scales/target-before.jpg",
+          "sha256": "dba716b988e154748776d7036c1833cc095fb078f57ccfea41f40ae30ecd73bd",
+          "caption": "target before"
+        },
+        {
+          "file": "changelog/unreleased/realism-03-rock-scales/target-after.jpg",
+          "sha256": "74a739a0ea6df8ed386309acc118671558e30f5a7f994cdee39da198bcc9db7a",
+          "caption": "target after"
+        },
+        {
+          "file": "changelog/unreleased/realism-03-rock-scales/wide-before.jpg",
+          "sha256": "cca202f8c493e945c43dcb5ec5d56bd9fe9586de586ead728d70973ceb61270a",
+          "caption": "wide before"
+        },
+        {
+          "file": "changelog/unreleased/realism-03-rock-scales/wide-after.jpg",
+          "sha256": "1405db7e3626b7db01f623b293b89c9c4730979681fc9828f8f96da4bc799fcc",
+          "caption": "wide after"
+        },
+        {
+          "file": "changelog/unreleased/realism-03-rock-scales/target-compat.jpg",
+          "sha256": "1f9e43dfc315cc6a52b023947da1cf142675a128199b9b107de0d111d4fab708",
+          "caption": "target compat"
+        },
+        {
+          "file": "changelog/unreleased/realism-03-rock-scales/compare.gif",
+          "sha256": "8ec287ccecefc157a062facda535676ac93fcd02af98826bf139b171cd11b1a8",
+          "caption": "Native frames, separate labels, shared palette, 2.5 seconds each."
+        }
+      ],
+      "output": null,
+      "title": "Blend rock detail across different scales",
+      "version": "unreleased",
+      "kind": "improved",
+      "capture": {
+        "before_ref": "71bbd407bef4e71fc20c115551296f4223da37f8",
+        "after_ref": "codex/realism-03-rock-scales",
+        "before_pack": "realism-02.pck",
+        "after_pack": "realism-03.pck",
+        "seed": 3,
+        "preset": "high",
+        "mood": "day",
+        "resolution": "1600x900",
+        "focus": "300,300",
+        "zoom": 100,
+        "pitch": -28,
+        "yaw": 0.7,
+        "shot_at": 2,
+        "quit_after": 3,
+        "wide": "focus 0,0; zoom 900; pitch -22; yaw 0.7",
+        "compatibility": "Target after with --rendering-method gl_compatibility",
+        "command": "godot --main-pack PACK --resolution 1600x900 -- --aivai --seed=3 --offscreen --nohud --set=perf:0 --preset=high --mood=MOOD --focus=FOCUS --zoom=ZOOM --pitch=PITCH --cam-yaw=0.7 --screenshot=OUTPUT --shot-at=2 --quit-after=3"
+      }
     }
   ],
   "layout_capture": {
