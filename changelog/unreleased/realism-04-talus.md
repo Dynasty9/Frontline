@@ -25,3 +25,5 @@ Uses existing slope, elevation and baked shelter to weight the existing scree ph
 Research: [primary reference](https://wargaming.com/en/news/making_battle_arenas_in_wows/).
 
 Loose stone collects in broken sheltered pockets, with photographic height detail breaking the deposit edge instead of a pale blanket across every lower slope.
+
+Scree now forms irregular drainage fans instead of repeating yellow bands across distant mountains. Neutral stone coloration, coarse breakup and exposed bedrock interrupt the deposits.

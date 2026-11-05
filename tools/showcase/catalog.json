@@ -3448,32 +3448,32 @@
       "sources": [
         {
           "file": "changelog/unreleased/realism-04-talus/target-before.jpg",
-          "sha256": "93592fe7672b9e0ac07b84999eb758b91d8f2dfb318875eb6bf8dcd96084c807",
+          "sha256": "ebf6270399eced62c0eab5ab866bb0e883069e07388a84d9f97c4937baa95781",
           "caption": "target before"
         },
         {
           "file": "changelog/unreleased/realism-04-talus/target-after.jpg",
-          "sha256": "2f39c4f37b581794ec6419e6a2992e6708be2ff17c2b503417a75cd21f1967ad",
+          "sha256": "f1050334a2c9d88bc7c518a6f8d1aab59085e91f7b760b6b7819066823b3ba0d",
           "caption": "target after"
         },
         {
           "file": "changelog/unreleased/realism-04-talus/wide-before.jpg",
-          "sha256": "c62e7616aad5fea7bccc1d12e19ac97cc3a347519f5829d013971fd06f6c34f1",
+          "sha256": "d0da15779f5016f95c60259b2c2c3366c00f4af99d81e31705b9ea8d74b4e62a",
           "caption": "wide before"
         },
         {
           "file": "changelog/unreleased/realism-04-talus/wide-after.jpg",
-          "sha256": "89e55c72d23841cbb1e2cec9bfa5fe4b0127565a206bb4be80714444d755a593",
+          "sha256": "aca65724657dd901852ae6198540863eff7d4205c3320d24471ed943e611a93a",
           "caption": "wide after"
         },
         {
           "file": "changelog/unreleased/realism-04-talus/target-compat.jpg",
-          "sha256": "1d5817886d1b1e8d47c816ee93c9378b2f2b65ebfe634352c1f4222d3c811e09",
+          "sha256": "545711764c5067b0ccd32fc007f93d23d92d5b4a3edf6e7265275190fc4cde76",
           "caption": "target compat"
         },
         {
           "file": "changelog/unreleased/realism-04-talus/compare.gif",
-          "sha256": "d22ea60f6315f687b005574dfb7eca65c9575f7c901b5be5c64922155a89c1b2",
+          "sha256": "123795562bab286d446b2336f5fe45eea9e24d5ed7a5df3a9a496319ee952f0e",
           "caption": "Native frames, separate labels, shared palette, 2.5 seconds each."
         }
       ],
@@ -3482,10 +3482,10 @@
       "version": "unreleased",
       "kind": "improved",
       "capture": {
-        "before_ref": "4ca53c19e70b0c95b2758cee0e057882da3bd749",
+        "before_ref": "35f8ae05fa1fe12f9a1886bd3ac47c5fa5e388da",
         "after_ref": "codex/realism-04-talus",
-        "before_pack": "iterate-04-before.pck",
-        "after_pack": "iterate-04-after.pck",
+        "before_pack": "review-04-before.pck",
+        "after_pack": "review-04-after.pck",
         "seed": 3,
         "preset": "high",
         "mood": "day",

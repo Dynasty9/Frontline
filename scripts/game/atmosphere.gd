@@ -1179,6 +1179,8 @@ void fragment() {
 		rock_sample = mix(rock_sample, surface_color(rock_color, secondary_uv, weights), secondary_mix);
 	}
 	vec4 scree_sample = surface_color(cliff_color, scree_uv, weights);
+	float debris_luma = dot(scree_sample.rgb, vec3(0.2126, 0.7152, 0.0722));
+	scree_sample.rgb = mix(vec3(debris_luma), scree_sample.rgb, 0.18) * vec3(0.90, 0.97, 1.03);
 	vec4 moss_sample = surface_color(moss_color, moss_uv, weights);
 	float macro = texture(detail_tex, p / 190.0 + 0.19).r;
 	vec3 habitat_bake = texture(surface_bake, (p + __MAP_HALF__) / __MAP_SIZE__).rgb;
@@ -1193,6 +1195,8 @@ void fragment() {
 	float talus = smoothstep(0.12, 0.45, slope) * (1.0 - smoothstep(0.85, 1.5, slope));
 	talus *= smoothstep(4.0, 22.0, geology) * (1.0 - smoothstep(snow_line * 0.65, snow_line, geology));
 	talus *= smoothstep(0.25, 0.72, shelter * 0.55 + patch * 0.25 + macro * 0.2);
+	float drainage = texture(detail_tex, p / 310.0 + vec2(warp.y, warp.x) * 0.7).r;
+	talus *= smoothstep(0.40, 0.66, drainage + (macro - 0.5) * 0.32);
 	talus *= height_blend(rock_sample.a, scree_sample.a, 0.65);
 	scree = max(scree, talus);
 	float stone = dot(rock_sample.rgb, vec3(0.2126, 0.7152, 0.0722));
