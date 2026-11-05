@@ -27,3 +27,5 @@ Research: [primary reference](https://wargaming.com/en/news/creating_levels/).
 Natural stones also use a rough granular material instead of the masonry material with mortar joints.
 
 Decorative stones use the bundled rock photograph with triplanar projection, retaining their shared fractured meshes and avoiding flat grey surfaces.
+
+Alpine dressing combines slabs, angular cobbles and smaller fragments in denser, varied clusters. Fine fragments are batched separately and culled at distance; larger stones remain visible.

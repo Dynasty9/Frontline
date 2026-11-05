@@ -42,6 +42,17 @@ func _ready() -> void:
 	world.settings = {"seed": 3}
 	world.terrain = TerrainMap.new(world)
 	world.water = WaterMap.new(world)
+	var dressing := Decor.new()
+	dressing.build(world, [["alpine_stones", Vector3.ZERO, 0.0, 1.0]])
+	var chunk: Node3D = dressing._chunks[Vector2i.ZERO]
+	var fragments := chunk.get_node("FineStones")
+	assert(fragments.get_child_count() > 0, "Small fragments are batched separately")
+	for mesh: MeshInstance3D in fragments.get_children():
+		assert(mesh.visibility_range_end == 180.0 and mesh.visibility_range_end_margin == 20.0)
+	for child in chunk.get_children():
+		if child is MeshInstance3D:
+			assert(child.visibility_range_end == 0.0, "Large stones remain visible at distance")
+	dressing.free()
 	var previous_half := MapDims.HALF
 	MapDims.HALF = 32.0
 	world.terrain.landform.heights.resize(world.terrain.landform.n * world.terrain.landform.n)

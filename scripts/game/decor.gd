@@ -6,7 +6,7 @@ extends Node3D
 ## the square's fountain or statue and market stalls, playground kit, fences,
 ## vegetable patches, washing lines, hay bales, a water tower.
 ##
-## Parts are baked into merged meshes per 64 m chunk (so they still cull), the
+## Parts are baked into merged meshes per 32 m chunk (so they still cull), the
 ## wires are drawn as lines and the lamp lenses glow; at dusk and at night the
 ## street lights cast real light.
 
@@ -39,6 +39,7 @@ var _dirty := {}  # chunks to rebuild
 var _wire_items: Array = []  # [a pole pos, b pole pos (or a house), kind, args]
 var _wire_mi: MeshInstance3D
 var _wires := PackedVector3Array()  # line pairs
+var _fine_bake: Mats.Bake
 var _glow: SurfaceTool  # the chunk being built
 var _glow_n := 0
 var _lights: Array = []
@@ -107,6 +108,7 @@ func _build_chunk(key: Vector2i) -> void:
 	var keep := _wires
 	_wires = PackedVector3Array()  # clotheslines belong to the chunk
 	_bake = Mats.Bake.new()
+	_fine_bake = Mats.Bake.new()
 	for i in _chunk_items[key]:
 		var e: Array = _entries[i]
 		if e[5]:
@@ -119,6 +121,15 @@ func _build_chunk(key: Vector2i) -> void:
 		rng.seed = 90210 + i * 7919  # the same look every rebuild
 		_make(h, e[0], e[3])
 	_bake.commit(n)
+	var fine := Node3D.new()
+	fine.name = "FineStones"
+	n.add_child(fine)
+	_fine_bake.commit(fine)
+	for child in fine.get_children():
+		var mesh := child as MeshInstance3D
+		mesh.visibility_range_end = 180.0
+		mesh.visibility_range_end_margin = 20.0
+	_fine_bake = null
 	_bake = null
 	if not _wires.is_empty():
 		n.add_child(_lines_mi(_wires))
@@ -292,16 +303,27 @@ func _beam(a: Vector3, b: Vector3, t: float, kind: String, col = null, shadow :=
 
 func _make(h: Node3D, kind: String, ex) -> void:
 	match kind:
-		"alpine_scrub", "alpine_stones":
+		"alpine_stones":
+			var scale := float(ex)
+			var coarse := _bake
+			for i in 16:
+				var fine := i >= 6
+				_bake = _fine_bake if fine else coarse
+				var p := Vector3(rng.randf_range(-1.8, 1.8), 0, rng.randf_range(-1.8, 1.8)) * scale
+				var r := rng.randf_range(0.08, 0.20) if fine else rng.randf_range(0.28, 0.85)
+				r *= scale
+				var shape := Vector3(1.7, 0.35, 1.1) if i % 3 == 0 else Vector3(1.0, 0.8, 0.9)
+				p.y = world.ground_y(_at * p) - _at.origin.y + r * shape.y * 0.25
+				_m(Res.alpine_stone(i), "alpine_stone", Vector3.ZERO, Res.vary(Color(0.44, 0.43, 0.39), 0.20, rng), Vector3.ZERO, false, false,
+					Mats.place(p, Vector3(rng.randf_range(-0.3, 0.3), rng.randf() * TAU, 0.15), shape * r))
+			_bake = coarse
+		"alpine_scrub":
 			var scale := float(ex)
 			for i in rng.randi_range(3, 6):
 				var p := Vector3(rng.randf_range(-1.0, 1.0), 0.0, rng.randf_range(-1.0, 1.0)) * scale
 				p.y = world.ground_y(_at * p) - _at.origin.y - 0.08
 				var r := rng.randf_range(0.22, 0.55) * scale
-				if kind == "alpine_scrub":
-					_leaf(r, p + Vector3(0, r * 0.35, 0), Res.vary(Color(0.19, 0.25, 0.10), 0.1, rng), false)
-				else:
-					_m(Res.alpine_stone(i), "alpine_stone", Vector3.ZERO, Res.vary(Color(0.44, 0.43, 0.39), 0.12, rng), Vector3.ZERO, false, false, Mats.place(p, Vector3(0.1, rng.randf() * TAU, 0.2), Vector3(r * 1.5, r * 0.65, r)))
+				_leaf(r, p + Vector3(0, r * 0.35, 0), Res.vary(Color(0.19, 0.25, 0.10), 0.1, rng), false)
 		"walk":
 			var s: Vector3 = ex
 			_m(Res.box(s), "concrete", Vector3(0, s.y * 0.5, 0), Color(0.6, 0.58, 0.54), Vector3.ZERO, false, true)

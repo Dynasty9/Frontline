@@ -1275,3 +1275,5 @@ to an area recreates the same vegetation from its seed.
 
 See [SIMULATION_SCALING.md](SIMULATION_SCALING.md) for the native perception
 boundary, measurement results and remaining limits.
+
+Alpine stone clusters combine slabs, blocks and small fragments in shared batches. Fine fragments cull beyond 180 m with a 20 m hysteresis margin; larger rocks remain visible.

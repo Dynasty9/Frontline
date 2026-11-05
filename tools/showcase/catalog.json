@@ -3700,32 +3700,32 @@
       "sources": [
         {
           "file": "changelog/unreleased/realism-08-fractured-stones/target-before.jpg",
-          "sha256": "aee181676ff10ea6541460bd581783a72f67b80b6767a768bb35bcdf1da1b80e",
+          "sha256": "3e3f07f721da3f004978b4758d62b74a9e4ec42e90d780fd3af32b44b307bde8",
           "caption": "target before"
         },
         {
           "file": "changelog/unreleased/realism-08-fractured-stones/target-after.jpg",
-          "sha256": "8e3998f085c244f2c877fa3772fe5d198a5cb4956d3ac96ebbefc98e86d97298",
+          "sha256": "3bbc40c24730322f3d18310794a9650affc4d8caef9469c97bf4d58019495ba2",
           "caption": "target after"
         },
         {
           "file": "changelog/unreleased/realism-08-fractured-stones/wide-before.jpg",
-          "sha256": "61642036b7bd3a3f2b9dcc1edcf0a6cd3033cb8ea412ae9feb9305cb962937cb",
+          "sha256": "57ecc319811dd5ebade56a75117a16e31b4e7583322734d0b196fae99383db2f",
           "caption": "wide before"
         },
         {
           "file": "changelog/unreleased/realism-08-fractured-stones/wide-after.jpg",
-          "sha256": "836d0107f59af2ac45e6512e702d00cedbedf9a72eecfe9aff47f44c6a023aef",
+          "sha256": "ee8f93bdfde15ec83cfc8851b4226df4718b17d6c18092c991515217ca7d9533",
           "caption": "wide after"
         },
         {
           "file": "changelog/unreleased/realism-08-fractured-stones/target-compat.jpg",
-          "sha256": "9d4b24954b1962d10cafe09539a472da3d3be3ffa78eb93a0debb6cc470aa205",
+          "sha256": "91ac4ad69bde212b89e51f0bc7f952d402c9b0612176277abfbbca16ad0e7f48",
           "caption": "target compat"
         },
         {
           "file": "changelog/unreleased/realism-08-fractured-stones/compare.gif",
-          "sha256": "53779c95a21550aa0427883dba7b11c14901e8ce06fa45a13faffec2c5731f4c",
+          "sha256": "3cbc48dcc6a3dd7ef364151813c1bc70d5750a12e7f44b0c581d751de713019f",
           "caption": "Native frames, separate labels, shared palette, 2.5 seconds each."
         }
       ],
@@ -3734,10 +3734,10 @@
       "version": "unreleased",
       "kind": "improved",
       "capture": {
-        "before_ref": "f1bdd404ee20a10886bcec30f8e47afaf2d96085",
+        "before_ref": "3eb709f204d1a5fc77515ad5527a0fa27f59132d",
         "after_ref": "codex/realism-08-fractured-stones",
-        "before_pack": "iterate-08-before.pck",
-        "after_pack": "iterate-08-after.pck",
+        "before_pack": "review-08-before.pck",
+        "after_pack": "review-08-after.pck",
         "seed": 3,
         "preset": "high",
         "mood": "day",
