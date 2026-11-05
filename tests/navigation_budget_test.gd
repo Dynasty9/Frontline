@@ -18,8 +18,7 @@ func _ready() -> void:
 	HNav.C = 16
 	HNav.NC = 4
 	var nav := Nav.new()
-	nav.hnav_i.build()
-	nav.hnav_v.build()
+	nav.finalize()
 	var from := Vector3(-20, 0, -20)
 	var to := Vector3(20, 0, 20)
 	check(not nav.find_path(from, to).is_empty(), "Open clusters must connect")
@@ -45,6 +44,7 @@ func _ready() -> void:
 		var cell := Vector2i(32, z)
 		nav.inf.set_point_solid(cell, true)
 		nav.ikind[cell.y * Nav.N + cell.x] = Nav.SOLID
+		nav._sync_path_cell(cell.y * Nav.N + cell.x)
 		nav.hnav_i.mark_dirty(cell)
 	var steps := 0
 	while nav.hnav_i.has_work() and steps < 10000:
@@ -55,6 +55,7 @@ func _ready() -> void:
 	var gate := Vector2i(32, 32)
 	nav.inf.set_point_solid(gate, false)
 	nav.ikind[gate.y * Nav.N + gate.x] = Nav.FREE
+	nav._sync_path_cell(gate.y * Nav.N + gate.x)
 	nav.hnav_i.mark_dirty(gate)
 	var unit := Entity.new()
 	unit.eid = 1
@@ -65,10 +66,12 @@ func _ready() -> void:
 	delivered.clear()
 	var fire_cell := nav.cell_of(from + Vector3(1, 0, 0))
 	nav.heat[fire_cell.y * Nav.N + fire_cell.x] = 1
+	nav._sync_path_cell(fire_cell.y * Nav.N + fire_cell.x)
 	nav.request_path(unit, short_goal, false, -1, 0.0, func(_p): delivered.append("fire shortcut"))
 	check(delivered.is_empty(), "A short move must not bypass routing around fire")
 	nav.cancel_path(unit.eid)
 	nav.heat[fire_cell.y * Nav.N + fire_cell.x] = 0
+	nav._sync_path_cell(fire_cell.y * Nav.N + fire_cell.x)
 	nav.request_path(unit, to, false, -1, 0.0, func(_p): delivered.append("old"))
 	nav.request_path(unit, to, false, -1, 0.0, func(p): delivered.append(p))
 	nav.process_paths()
@@ -85,6 +88,7 @@ func _ready() -> void:
 	var world := World.new()
 	world.nav = nav
 	var soldier := Soldier.new()
+	soldier.eid = 2
 	soldier.world = world
 	soldier._path_pending = true
 	check(soldier._move_tick(1.0 / 30.0, 2.0), "A queued route must not finish movement-dependent tasks")

@@ -43,8 +43,9 @@ p.add_argument("--output", required=True)
 p.add_argument("--exported", action="store_true")
 p.add_argument("--details", action="store_true", help="Time individual soldier methods; adds profiling overhead")
 p.add_argument("--rendered", action="store_true")
+p.add_argument("--visible", action="store_true", help="Use a normal game window to measure foreground play; leave it focused during capture")
 p.add_argument("--nohud", action="store_true", help="Hide the HUD to isolate its rendering cost")
-p.add_argument("--require-target", action="store_true", help="Fail if any measured rendered frame exceeds 16.67 ms or simulation tick exceeds 33.33 ms")
+p.add_argument("--require-target", action="store_true", help="Fail if a measured frame or tick exceeds its runtime budget (Rust runs at 60 Hz)")
 p.add_argument("--local-server", action="store_true")
 p.add_argument("--generated", action="store_true")
 p.add_argument("--commanders", action="store_true")
@@ -53,6 +54,7 @@ p.add_argument("--units", type=int, default=500)
 p.add_argument("--vehicles", type=int, default=0)
 p.add_argument("--mode", choices=["idle", "march", "combat"], default="combat")
 p.add_argument("--seed", type=int, default=3)
+p.add_argument("--team", type=int, choices=[-1, 0, 1], default=-1, help="Observer (-1) or a player's filtered view")
 p.add_argument("--warmup", type=float, default=15)
 p.add_argument("--duration", type=float, default=10)
 p.add_argument("--zoom", type=float, default=130)
@@ -61,6 +63,8 @@ p.add_argument("--height", type=int, default=720)
 p.add_argument("--preset", choices=["low", "medium", "high", "ultra"], default="high")
 p.add_argument("--timeout", type=float, default=300)
 a = p.parse_args()
+if a.visible and not a.rendered:
+    p.error("--visible requires --rendered")
 out = Path(a.output).resolve()
 out.mkdir(parents=True, exist_ok=True)
 report_path = out / "client.json"
@@ -70,19 +74,21 @@ cmd = [str(Path(a.godot).resolve()), "--log-file", str(out / "engine.log")]
 if not a.exported:
     cmd += ["--path", str(ROOT)]
 if a.rendered:
-    cmd += ["--resolution", f"{a.width}x{a.height}", "--position", "-12000,-12000"]
+    cmd += ["--resolution", f"{a.width}x{a.height}", "--position", "100,100" if a.visible else "-12000,-12000"]
 else:
     cmd += ["--headless"]
 cmd += ["--", "--novsync", "--set=fps_cap:0", "--scenario=stress", f"--units={a.units}", f"--map-size={a.map_size}",
         f"--preset={a.preset}",
         f"--vehicles={a.vehicles}",
-        f"--stress-mode={a.mode}", f"--seed={a.seed}", "--team=-1", f"--perf-at={a.warmup}",
+        f"--stress-mode={a.mode}", f"--seed={a.seed}", f"--team={a.team}", f"--perf-at={a.warmup}",
         f"--perf-json={report_path}", f"--perf-duration={a.duration}", f"--quit-after={a.warmup+a.duration+15}", "--focus=0,0", f"--zoom={a.zoom}"]
 with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as port_socket:
     port_socket.bind(("127.0.0.1", 0))
     cmd.append(f"--port={port_socket.getsockname()[1]}")
 if a.rendered:
-    cmd += ["--offscreen", f"--screenshot={out / 'battle.png'}", f"--shot-at={a.warmup+a.duration+2}"]
+    if not a.visible:
+        cmd += ["--offscreen"]
+    cmd += [f"--screenshot={out / 'battle.png'}", f"--shot-at={a.warmup+a.duration+2}"]
 if a.details:
     cmd += ["--perf-details"]
 if a.nohud:
@@ -97,6 +103,7 @@ sessions = Path(os.environ.get("APPDATA", str(Path.home() / ".local/share"))) / 
 server_report = None
 server_log = None
 server_pid = None
+server_stop = None
 client_pid = None
 memory = []
 started = time.monotonic()
@@ -109,10 +116,11 @@ with (out / "stdout.log").open("w", encoding="utf-8") as log:
             for config in sessions.glob("*.json"):
                 try:
                     data = json.loads(config.read_text())
-                    if data.get("parent_pid") == proc.pid or data.get("benchmark_output") == str(report_path):
+                    if data.get("child_pid") and (data.get("parent_pid") == proc.pid or data.get("benchmark_output") == str(report_path)):
                         server_report = config.with_suffix(".perf.json")
                         server_log = config.with_suffix(".log")
                         server_pid = data.get("child_pid")
+                        server_stop = config.with_suffix(".stop")
                         client_pid = data.get("parent_pid", proc.pid)
                         break
                 except (OSError, ValueError):
@@ -123,20 +131,20 @@ with (out / "stdout.log").open("w", encoding="utf-8") as log:
     if timed_out:
         proc.terminate()
         proc.wait(timeout=20)
-    # A broken development build may exit before its normal child cleanup.
-    # Only the PIDs recorded by this benchmark's private launch are ours.
-    for owned_pid in ({client_pid, server_pid} if timed_out else {server_pid}) - {None, proc.pid}:
-        try:
-            os.kill(owned_pid, 15)
-        except OSError:
-            pass
+    # The Rust process may still be flushing a large replay after the window exits.
+    if server_pid and rss(server_pid) is not None:
+        server_stop.write_text("{}", encoding="utf-8")
+        deadline = time.monotonic() + 30
+        while rss(server_pid) is not None and time.monotonic() < deadline:
+            time.sleep(0.2)
+    server_stop_timed_out = bool(server_pid and rss(server_pid) is not None)
 if server_report and server_report.exists():
     shutil.copy2(server_report, out / "server.json")
 if server_log and server_log.exists():
     shutil.copy2(server_log, out / "server.log")
 result = {"arguments": vars(a), "wall_seconds": time.monotonic()-started,
           "memory": memory,
-          "exit_code": proc.returncode, "timed_out": timed_out,
+          "exit_code": proc.returncode, "timed_out": timed_out, "server_stop_timed_out": server_stop_timed_out,
           "client": json.loads(report_path.read_text()) if report_path.exists() else None,
           "server": json.loads((out / "server.json").read_text()) if (out / "server.json").exists() else None}
 result["errors"] = [f"{path.name}: {line}" for path in [out / "stdout.log", out / "server.log"] if path.exists()
@@ -144,13 +152,15 @@ result["errors"] = [f"{path.name}: {line}" for path in [out / "stdout.log", out 
                     if "ERROR:" in line and "resources still in use at exit" not in line]
 frames = (result["client"] or {}).get("frames", {})
 ticks = (result["server"] or result["client"] or {}).get("ticks", {})
+tick_hz = (result["server"] or {}).get("tick_hz", 30)
 result["budgets"] = {
     "render_60_fps_every_sample": frames.get("count", 0) > 0 and frames.get("max_ms", float("inf")) <= 1000/60 if a.rendered else None,
     "render_60_fps_p99": frames.get("count", 0) > 0 and frames.get("p99_ms", float("inf")) <= 1000/60 if a.rendered else None,
-    "simulation_30hz_every_sample": ticks.get("count", 0) > 0 and ticks.get("max_ms", float("inf")) <= 1000/30,
-    "simulation_30hz_p95": ticks.get("count", 0) > 0 and ticks.get("p95_ms", float("inf")) <= 1000/30,
+    "simulation_hz": tick_hz,
+    "simulation_every_sample": ticks.get("count", 0) > 0 and ticks.get("max_ms", float("inf")) <= 1000/tick_hz,
+    "simulation_p95": ticks.get("count", 0) > 0 and ticks.get("p95_ms", float("inf")) <= 1000/tick_hz,
 }
-target_failed = result["budgets"]["render_60_fps_every_sample"] is False or not result["budgets"]["simulation_30hz_every_sample"]
+target_failed = result["budgets"]["render_60_fps_every_sample"] is False or not result["budgets"]["simulation_every_sample"]
 (out / "result.json").write_text(json.dumps(result, indent=2), encoding="utf-8")
 print(json.dumps(result, indent=2))
-raise SystemExit(1 if timed_out or proc.returncode != 0 or not result["client"] or (a.local_server and not result["server"]) or result["errors"] or (a.require_target and target_failed) else 0)
+raise SystemExit(1 if timed_out or server_stop_timed_out or proc.returncode != 0 or not result["client"] or (a.local_server and not result["server"]) or result["errors"] or (a.require_target and target_failed) else 0)

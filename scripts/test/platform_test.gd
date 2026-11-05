@@ -136,6 +136,17 @@ static func _single_file(dir: String) -> void:
 	_check("a damaged download isn't installed", Updater.install(zip, "sha256:" + "0".repeat(64), exe).contains("damaged") and _read(exe) == _bytes("old"))
 	var problem := Updater.install(zip, "sha256:" + FileAccess.get_sha256(zip), exe)
 	_check("one executable: the new one takes its place", problem == "" and _read(exe) == _bytes("new") and _read(exe + ".old") == _bytes("old"), problem)
+	var server := dir.path_join("frontline-server.exe")
+	var library := dir.path_join("frontline_sim.dll")
+	_write(server, _bytes("old server"))
+	_write(library, _bytes("old library"))
+	_zip(zip, {"Frontline.exe": _bytes("newer"), "frontline-server.exe": _bytes("new server"), "frontline_sim.dll": _bytes("new library")})
+	problem = Updater.install(zip, "", exe)
+	_check("game, server and extension update together", problem == "" and _read(exe) == _bytes("newer") and _read(server) == _bytes("new server") and _read(library) == _bytes("new library"), problem)
+	_check("previous simulation binaries remain available for rollback", _read(server + ".old") == _bytes("old server") and _read(library + ".old") == _bytes("old library"))
+	_zip(zip, {"Frontline.exe": _bytes("bad"), "frontline-server.exe": _bytes("bad server"), "frontline_sim.dll": PackedByteArray()})
+	problem = Updater.install(zip, "", exe)
+	_check("a failed sidecar update restores the previous installation", problem != "" and _read(exe) == _bytes("newer") and _read(server) == _bytes("new server") and _read(library) == _bytes("new library"), problem)
 
 
 ## A Mac: Frontline.app is swapped whole for the one in the zip.
@@ -151,6 +162,7 @@ static func _mac_app(dir: String) -> void:
 		"Frontline.app/Contents/": PackedByteArray(),
 		"Frontline.app/Contents/Info.plist": "<plist/>".to_utf8_buffer(),
 		"Frontline.app/Contents/MacOS/Frontline": _bytes("new program"),
+		"Frontline.app/Contents/Helpers/frontline-server": _bytes("new server"),
 		"Frontline.app/Contents/Resources/Frontline.pck": _bytes("new game"),
 		"Frontline.app/Contents/_CodeSignature/CodeResources": "<plist/>".to_utf8_buffer(),
 		"LICENSE": "licence".to_utf8_buffer(),
@@ -167,6 +179,7 @@ static func _mac_app(dir: String) -> void:
 	if OS.get_name() != "Windows":
 		var mode := FileAccess.get_unix_permissions(exe)
 		_check("the program can be run", mode & FileAccess.UNIX_EXECUTE_OWNER != 0, "mode %o" % mode)
+		_check("the simulation helper can be run", FileAccess.get_unix_permissions(app.path_join("Contents/Helpers/frontline-server")) & FileAccess.UNIX_EXECUTE_OWNER != 0)
 	# the next launch clears the old app away
 	var target: String = Updater._target
 	Updater._target = exe

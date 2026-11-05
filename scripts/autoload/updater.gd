@@ -89,7 +89,7 @@ func check() -> void:
 		rel = parse_release(await _get_json(String(url)))
 		if not rel.is_empty():
 			break
-	var missing_native := OS.has_feature("template") and not ClassDB.class_exists("PerceptionSearch")
+	var missing_native := OS.has_feature("template") and (not ClassDB.class_exists("PerceptionSearch") or LocalServer.executable().is_empty())
 	if rel.is_empty() or (not newer(String(rel.version), version) and not (missing_native and String(rel.version) == version)):
 		return
 	latest = String(rel.version)
@@ -214,14 +214,14 @@ static func install(zip: String, digest: String, target: String) -> String:
 	return problem
 
 
-## Windows and Linux: the game is one file, the executable with the game packed inside.
+## Windows and Linux: replace the game and simulation sidecars as one installation.
 static func _install_file(z: ZIPReader, target: String) -> String:
 	var entry := ""
 	var libraries := {}
 	for f in z.get_files():
 		if f.get_file() == "Frontline.exe" or f.get_file() == "Frontline.x86_64":
 			entry = f
-		if f.get_file() in ["frontline_sim.dll", "libfrontline_sim.so"]:
+		if f.get_file() in ["frontline_sim.dll", "libfrontline_sim.so", "frontline-server.exe", "frontline-server"]:
 			libraries[target.get_base_dir().path_join(f.get_file())] = z.read_file(f)
 	var data := z.read_file(entry) if entry != "" else PackedByteArray()
 	if data.size() < 1024:
@@ -238,6 +238,8 @@ static func _install_file(z: ZIPReader, target: String) -> String:
 			return "The simulation library couldn't be staged."
 		file.store_buffer(library)
 		file.close()
+		if path.get_file() == "frontline-server":
+			_make_executable(path + ".new")
 		var existed := FileAccess.file_exists(path)
 		if FileAccess.file_exists(path + ".old"):
 			DirAccess.remove_absolute(path + ".old")
@@ -312,7 +314,7 @@ static func _install_app(z: ZIPReader, bundle: String, exe_name: String) -> Stri
 		w.store_buffer(z.read_file(f))
 		w.close()
 		# a zip reader leaves the executable bit behind: the programs need it back
-		if rel.begins_with("Contents/MacOS/") or rel.begins_with("Contents/Frameworks/"):
+		if rel.begins_with("Contents/MacOS/") or rel.begins_with("Contents/Frameworks/") or rel.begins_with("Contents/Helpers/"):
 			_make_executable(path)
 	var check := FileAccess.open(fresh.path_join(exe), FileAccess.READ)
 	if check == null or check.get_length() < 1024:
@@ -390,7 +392,7 @@ func _clean_up() -> void:
 	elif _target != "" and FileAccess.file_exists(_target + ".old"):
 		DirAccess.remove_absolute(_target + ".old")
 	if _target != "":
-		for library in ["frontline_sim.dll", "libfrontline_sim.so"]:
+		for library in ["frontline_sim.dll", "libfrontline_sim.so", "frontline-server.exe", "frontline-server"]:
 			var old := _target.get_base_dir().path_join(library + ".old")
 			if FileAccess.file_exists(old):
 				DirAccess.remove_absolute(old)

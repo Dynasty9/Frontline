@@ -176,6 +176,8 @@ func tick(dt: float) -> void:
 	for pt in patches:
 		var pr := float(pt[1]) * 0.9 * clampf(float(pt[2]) / 4.0, 0.3, 1.0)
 		smokes.append([(pt[0] as Vector3) + WIND * pr + Vector3(0, 1.2, 0), pr])
+	if world.combat:
+		world.combat.update_fire_smoke(smokes)
 
 
 func _burn(st: Structure, dt: float, beat: bool) -> void:

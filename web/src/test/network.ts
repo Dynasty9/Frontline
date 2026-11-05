@@ -10,6 +10,7 @@ import type { Battle, BattleHead, Board, Career, Period, PublicPlayer } from "@/
 export type Answers = {
   replays?: import("@/lib/replays").Replay[]
   viewer?: boolean
+  viewerFormats?: number[]
   manual?: boolean
   lobbies?: Lobby[]
   health?: Health
@@ -72,9 +73,14 @@ export function mockMatchmaker(answers: Answers) {
         return Response.json(replay ?? { error: "Not found" }, { status: replay ? 200 : 404 })
       }
       if (url.pathname === "/game/viewer.json")
-        return Response.json(answers.viewer ? { format: 1, protocol: 9, manual: answers.manual ? 3 : undefined } : {}, {
-          status: answers.viewer ? 200 : 404,
-        })
+        return Response.json(
+          answers.viewer
+            ? { format: 1, formats: answers.viewerFormats, protocol: 9, manual: answers.manual ? 3 : undefined }
+            : {},
+          {
+            status: answers.viewer ? 200 : 404,
+          }
+        )
       const pub = method === "GET" ? publicAnswer(answers, url) : undefined
       if (pub) return pub
       if (route === "POST /auth/exchange" && answers.exchange) {

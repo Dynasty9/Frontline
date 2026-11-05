@@ -25,6 +25,8 @@ const HEAVY_KINDS := ["tall_wall", "house_wall", "concrete_wall", "sandbags", "h
 	"at_post", "bunker", "wreck", "fob", "barracks", "factory", "research", "depot", "medic_tent"]
 
 var world
+var _native: RefCounted
+var _ground_core: RefCounted
 var base := PackedByteArray()  # GROUND / ROAD / MUD / WOODS
 var crater := PackedByteArray()  # >0 inside a crater
 var rubble := PackedByteArray()
@@ -68,14 +70,130 @@ func _init(w) -> void:
 	if w.has_view:
 		deform_img = Image.create(DN, DN, false, Image.FORMAT_RGH)  # surface height and undisturbed geology
 	_make_biome()
+	if ClassDB.class_exists("TerrainCore") and not w.settings.get("gdscript_terrain", false):
+		_native = ClassDB.instantiate("TerrainCore")
+		var valid: bool = _native.configure(N, [base, crater, rubble, woods, cov, cdir, solid, trench, netted], dh)
+		assert(valid, "Invalid initial terrain state")
 
 
-func install_landform(samples: PackedFloat32Array) -> void:
+func _native_changes(cells: PackedInt32Array, notify_nav := true) -> void:
+	var rows: PackedByteArray = _native.rows(cells)
+	assert(rows.size() == cells.size() * 9)
+	for q in cells.size():
+		var i := cells[q]
+		var k := q * 9
+		base[i] = rows[k]
+		crater[i] = rows[k + 1]
+		rubble[i] = rows[k + 2]
+		woods[i] = rows[k + 3]
+		cov[i] = rows[k + 4]
+		cdir[i] = rows[k + 5]
+		solid[i] = rows[k + 6]
+		trench[i] = rows[k + 7]
+		netted[i] = rows[k + 8]
+		if notify_nav:
+			_nav_refresh(i)
+
+
+## Map generation imports water/biome cells; ordinary mutations run in the core.
+func _native_import(cells: PackedInt32Array, refresh := false) -> void:
+	var rows := PackedByteArray()
+	rows.resize(cells.size() * 9)
+	for q in cells.size():
+		var i := cells[q]
+		var k := q * 9
+		rows[k] = base[i]
+		rows[k + 1] = crater[i]
+		rows[k + 2] = rubble[i]
+		rows[k + 3] = woods[i]
+		rows[k + 4] = cov[i]
+		rows[k + 5] = cdir[i]
+		rows[k + 6] = solid[i]
+		rows[k + 7] = trench[i]
+		rows[k + 8] = netted[i]
+	var valid: bool = _native.import_rows(cells, rows, refresh)
+	assert(valid, "Invalid terrain cell import")
+
+
+func sync_deformation() -> void:
+	if _native:
+		var valid: bool = _native.replace_heights(dh)
+		assert(valid, "Invalid water deformation")
+
+
+## Socket clients receive absolute ground state, independently of cosmetic effects.
+func import_surface(rect: Rect2i, kinds: PackedByteArray, craters: PackedByteArray, heights: PackedFloat32Array) -> bool:
+	if not _native:
+		return false
+	var output: Array = _native.import_surface(rect, kinds, craters, heights, deform_img != null)
+	if output.size() != 2:
+		return false
+	if rect == Rect2i(0, 0, N, N):
+		base = kinds
+		crater = craters
+		dh = heights
+	else:
+		for z in rect.size.y:
+			for x in rect.size.x:
+				var i := (rect.position.y + z) * N + rect.position.x + x
+				base[i] = kinds[z * rect.size.x + x]
+				crater[i] = craters[z * rect.size.x + x]
+		for z in rect.size.y * DRES:
+			for x in rect.size.x * DRES:
+				dh[(rect.position.y * DRES + z) * DN + rect.position.x * DRES + x] = heights[z * rect.size.x * DRES + x]
+	var samples := Rect2i(rect.position * DRES, rect.size * DRES)
+	if deform_img:
+		var image := Image.create_from_data(samples.size.x, samples.size.y, false, Image.FORMAT_RGF, output[0])
+		image.convert(Image.FORMAT_RGH)
+		deform_img.blit_rect(image, Rect2i(Vector2i.ZERO, samples.size), samples.position)
+		deform_dirty.append(samples)
+	_native_changes(output[1], false)
+	version += 1
+	return true
+
+
+## The loading worker edits plain arrays; native bindings stay on the main thread.
+func begin_ground_import() -> void:
+	assert(_ground_core == null)
+	_ground_core = _native
+	_native = null
+
+
+func end_ground_import() -> void:
+	_native = _ground_core
+	_ground_core = null
+	if _native:
+		var valid: bool = _native.replace_ground([base, crater, rubble, woods, cov, cdir, solid, trench, netted], dh)
+		assert(valid, "Invalid loaded terrain state")
+		var geology_valid: bool = _native.set_landform(landform.heights)
+		assert(geology_valid, "Invalid loaded geology")
+
+
+func pending_count() -> int:
+	return int(_native.pending_count()) if _native else _queue.size() - _qhead
+
+
+func queue_cells(cells: PackedInt32Array) -> void:
+	if _native:
+		var valid: bool = _native.queue_cells(cells)
+		assert(valid, "Invalid terrain cover request")
+	else:
+		for i in cells:
+			if _dirty[i] == 0:
+				_dirty[i] = 1
+				_queue.append(i)
+
+
+func install_landform(samples: PackedFloat32Array, surface_follows := false) -> void:
+	if _native:
+		var valid: bool = _native.set_landform(samples)
+		assert(valid, "Invalid geology samples")
 	landform.heights = samples
 	landform.peak = 0.0
 	for h in samples:
 		landform.peak = maxf(landform.peak, h)
-	if samples.is_empty():
+	# Socket baselines already contain the finished surface; the native core derives slopes on import.
+	if samples.is_empty() or surface_follows:
 		return
 	slopes.resize(N * N)
 	for z in N:
@@ -108,15 +226,22 @@ func install_landform(samples: PackedFloat32Array) -> void:
 				deform_img.set_pixel(x, z, Color(dh[i], h, 0))
 	if deform_img:
 		deform_dirty.append(Rect2i(0, 0, DN, DN))
+	sync_deformation()
 	version += 1
 
 
 func slope_at(p: Vector3) -> float:
+	if _native:
+		return float(_native.query(p, Vector3.ZERO, 12, false, false))
 	return slopes[idx_of(p)] if not slopes.is_empty() else 0.0
 
 
 ## Server sight and ballistics use the same ground even without a renderer.
 func ray_ground(a: Vector3, b: Vector3) -> Dictionary:
+	if _native:
+		var deck: PackedByteArray = world.water.deck if world.water else PackedByteArray()
+		var hit: PackedVector3Array = _native.ray_ground(a, b, deck)
+		return {} if hit.is_empty() else {"position": hit[0], "normal": hit[1], "collider": null, "shape": -1}
 	if landform.heights.is_empty() or minf(a.y, b.y) > landform.peak + 0.6:
 		return {}
 	var count := maxi(1, ceili(Defs.flat(b - a).length() / 1.0))
@@ -148,7 +273,7 @@ func _ray_height(p: Vector3) -> float:
 
 ## The last seed's biome and the mud it lays (a test loads battle after battle,
 ## mostly on one seed): the noise takes a good part of a second to make, and
-## it comes out the same every time for the same seed. Nothing writes to the
+## it comes out the same for the same seed and map dimensions. Nothing writes to the
 ## image; the mud is copied in and out.
 static var _biome_seed := -1
 static var _biome_last: Image = null
@@ -158,7 +283,7 @@ static var _mud_last := PackedByteArray()
 ## Same noise the ground shader paints with, so mud is where the mud looks like it is.
 func _make_biome() -> void:
 	var s := int(world.settings.get("seed", 1)) % 100000
-	if s == _biome_seed and _biome_last != null:
+	if s == _biome_seed and _biome_last != null and _biome_last.get_size() == Vector2i(MapDims.BIOME, MapDims.BIOME) and _mud_last.size() == N * N:
 		biome_img = _biome_last
 		base = _mud_last.duplicate()
 		return
@@ -191,6 +316,8 @@ func center(idx: int) -> Vector3:
 # --- queries -------------------------------------------------------------------------
 
 func kind_at(p: Vector3) -> int:
+	if _native:
+		return int(_native.query(p, Vector3.ZERO, 0, false, false))
 	var i := idx_of(p)
 	if base[i] >= WATER:
 		return base[i]
@@ -207,12 +334,16 @@ func kind_at(p: Vector3) -> int:
 
 ## Cover level at a spot, ignoring direction.
 func cover_at(p: Vector3) -> int:
+	if _native:
+		return int(_native.query(p, Vector3.ZERO, 1, false, false))
 	return cov[idx_of(p)] - 1
 
 
 ## Cover level at `p` against a threat at `from` (directional cover only counts
 ## when the threat is on the far side of it).
 func cover_vs(p: Vector3, from: Vector3) -> int:
+	if _native:
+		return int(_native.query(p, from, 2, false, false))
 	var i := idx_of(p)
 	var lvl: int = cov[i] - 1
 	if lvl <= NONE:
@@ -241,6 +372,8 @@ static func ground_cover(cr: int, ru: int, wo: int, ba: int) -> int:
 
 
 func speed_mul(p: Vector3, vehicle: bool, tracked := true) -> float:
+	if _native:
+		return float(_native.query(p, Vector3.ZERO, 3, vehicle, tracked))
 	return _surface_speed(p, vehicle, tracked) / (1.0 + slope_at(p) * (2.4 if vehicle else 1.3))
 
 
@@ -268,6 +401,8 @@ func _surface_speed(p: Vector3, vehicle: bool, tracked: bool) -> float:
 ## like walls is handled by line of fire; this covers what bullets can't see:
 ## dips, undergrowth, rubble heaps, and being caught out on a road or in mud).
 func hit_mul(target: Vector3, shooter: Vector3) -> float:
+	if _native:
+		return float(_native.query(target, shooter, 4, false, false))
 	var k := kind_at(target)
 	match k:
 		CRATER:
@@ -286,15 +421,21 @@ func hit_mul(target: Vector3, shooter: Vector3) -> float:
 
 
 func blast_mul(p: Vector3) -> float:
+	if _native:
+		return float(_native.query(p, Vector3.ZERO, 5, false, false))
 	return 0.6 if crater[idx_of(p)] > 0 else 1.0
 
 
 ## Woods hide you: spotting range against someone in them is shorter.
 func in_trench(p: Vector3) -> bool:
+	if _native:
+		return float(_native.query(p, Vector3.ZERO, 6, false, false)) != 0.0
 	return trench[idx_of(p)] > 0
 
 
 func concealment(p: Vector3) -> float:
+	if _native:
+		return float(_native.query(p, Vector3.ZERO, 7, false, false))
 	var i := idx_of(p)
 	var c := 0.5 if netted[i] > 0 else 1.0
 	if trench[i] > 0:
@@ -310,10 +451,14 @@ func concealment(p: Vector3) -> float:
 
 ## Under a camouflage net: whatever's there is seen at half the range.
 func net_cover(p: Vector3) -> float:
+	if _native:
+		return float(_native.query(p, Vector3.ZERO, 8, false, false))
 	return 0.5 if netted[idx_of(p)] > 0 else 1.0
 
 
 func nav_weight(idx: int, vehicle: bool) -> float:
+	if _native:
+		return float(_native.nav_weight(idx, vehicle))
 	var slope := slopes[idx] if not slopes.is_empty() else 0.0
 	return _surface_weight(idx, vehicle) * (1.0 + slope * (3.0 if vehicle else 1.5))
 
@@ -343,6 +488,10 @@ func _surface_weight(idx: int, vehicle: bool) -> float:
 func paint_roads(polys: Array, half_w := 2.2) -> void:
 	# (a cell that's road already is passed over while the ground is fresh: see _fresh)
 	var keep: bool = _fresh and not (world.nav and world.nav.hnav_i and world.nav.hnav_i.built)
+	if _native:
+		_native_changes(_native.paint_roads(polys, half_w, keep))
+		version += 1
+		return
 	for poly in polys:
 		var pts: PackedVector3Array = poly
 		for k in range(pts.size() - 1):
@@ -383,6 +532,10 @@ func paint_roads(polys: Array, half_w := 2.2) -> void:
 
 ## Sets the ground kind over a rectangle (sidewalks and squares are road).
 func paint_box(c: Vector3, half: Vector2, yaw: float, kind: int) -> void:
+	if _native:
+		_native_changes(_native.paint_box(c, half, yaw, kind))
+		version += 1
+		return
 	var r := half.length() + 1.0
 	# (Defs.point_in_obb, worked through here for every cell)
 	var ax := Vector2(cos(yaw), -sin(yaw))
@@ -414,6 +567,8 @@ var _fresh := true
 ## A structure appeared, finished building, or was destroyed: queue the cells
 ## around it for a cover recompute (a few thousand cells per frame).
 func structure_changed(st, added := true) -> void:
+	if added:
+		sync_structure(st)
 	if st.skind == "tree":
 		_tree_woods(st.position, 1 if added else -1)
 		return
@@ -438,6 +593,10 @@ func structure_changed(st, added := true) -> void:
 		var half := _rotated_extent(Vector2(part.s.x, part.s.z) * 0.5, st.yaw + part.r)
 		bounds = bounds.merge(Rect2(Vector2(pos.x, pos.z) - half, half * 2.0))
 	bounds = bounds.grow(2.1)
+	if _native:
+		var valid: bool = _native.queue_rect(PackedFloat64Array([bounds.position.x, bounds.position.y, bounds.end.x, bounds.end.y]))
+		assert(valid, "Invalid terrain cover bounds")
+		return
 	var x0 := maxi(0, floori(bounds.position.x + H))
 	var x1 := mini(N - 1, floori(bounds.end.x + H))
 	var z0 := maxi(0, floori(bounds.position.y + H))
@@ -457,6 +616,10 @@ func _rotated_extent(half: Vector2, yaw: float) -> Vector2:
 
 
 func _tree_woods(p: Vector3, delta: int) -> void:
+	if _native:
+		_native_changes(_native.tree(p, delta))
+		version += 1
+		return
 	var c := idx_of(p)
 	var cx := c % N
 	var cz := c / N
@@ -480,6 +643,15 @@ func _nets_changed(st, added: bool) -> void:
 			nets.append(o)
 	if added and st.built and not st in nets:
 		nets.append(st)
+	if _native:
+		var footprints := PackedVector2Array()
+		for net in nets:
+			footprints.append(Vector2(net.position.x, net.position.z))
+			footprints.append(net.foot - Vector2(0.3, 0.3))
+			footprints.append(Vector2(cos(net.yaw), -sin(net.yaw)))
+			footprints.append(Vector2(sin(net.yaw), cos(net.yaw)))
+		_native_changes(_native.nets(st.position, r, footprints), false)
+		return
 	for z in range(maxi(0, floori(st.position.z - r + H)), mini(N - 1, floori(st.position.z + r + H)) + 1):
 		for x in range(maxi(0, floori(st.position.x - r + H)), mini(N - 1, floori(st.position.x + r + H)) + 1):
 			var c := Vector2(x - H + 0.5, z - H + 0.5)
@@ -498,6 +670,14 @@ func _nets_changed(st, added: bool) -> void:
 ## worker threads, a slice of the queue each; nothing a cell's working-out
 ## reads is written until they're all done.
 func tick(budget := 2500) -> void:
+	if _native:
+		var changed: PackedInt32Array = _native.tick_cover(budget)
+		if changed.is_empty():
+			return
+		_native_changes(changed)
+		_fresh = false
+		version += 1
+		return
 	if _queue.is_empty():
 		return
 	var end := mini(_qhead + budget, _queue.size())
@@ -813,6 +993,30 @@ func _lay_out(cells: PackedInt32Array) -> CoverLay:
 ## cells round it in cover - its cover parts (high enough to hide behind) with
 ## each one's centre, turn, half size and level, a rubble heap's or a
 ## bunker's footprint, a trench's ends.
+func sync_structure(st, reindex := false) -> void:
+	if not _native or st.hash_cells.is_empty():
+		return
+	if st.gone:
+		_native.remove_structure(st.eid)
+		return
+	var lay := CoverLay.new()
+	_add_slot(lay, st)
+	var data := {"pos": lay.pos, "rad": lay.rad, "kind": lay.kind, "rub": lay.rub, "dug": lay.dug,
+		"p0": lay.p0, "p1": lay.p1, "wc": lay.wc, "pf": lay.pf, "obb": lay.obb, "seg": lay.seg}
+	var cells := PackedInt32Array()
+	if reindex:
+		for cell in st.hash_cells:
+			cells.append(cell.x)
+			cells.append(cell.y)
+	var valid: bool = _native.set_structure(st.eid, data, cells, reindex)
+	assert(valid, "Invalid terrain structure geometry")
+
+
+func remove_structure(id: int) -> void:
+	if _native:
+		_native.remove_structure(id)
+
+
 func _add_slot(lay: CoverLay, st) -> void:
 	lay.slots += 1
 	lay.pos.append(st.position)
@@ -864,6 +1068,11 @@ func _add_slot(lay: CoverLay, st) -> void:
 
 
 func _refresh_cell(i: int) -> void:
+	if _native:
+		var cells := PackedInt32Array([i])
+		_native_import(cells, true)
+		_native_changes(cells)
+		return
 	var lvl: int = cov[i] - 1
 	var d: int = cdir[i]
 	if lvl <= LIGHT and (d == 255 or d == OMNI):
@@ -875,6 +1084,10 @@ func _refresh_cell(i: int) -> void:
 
 ## _refresh_cell for each of `cells`, in turn (the same, without two calls a cell).
 func refresh_cells(cells: PackedInt32Array) -> void:
+	if _native:
+		_native_import(cells, true)
+		_native_changes(cells)
+		return
 	var nav = world.nav
 	for i in cells:
 		var lvl: int = cov[i] - 1
@@ -935,12 +1148,31 @@ func release_nav() -> void:
 
 ## Explosions dig craters: light cover for infantry, rough going for vehicles.
 func add_crater(p: Vector3, size: float) -> void:
+	if _native:
+		var result: Dictionary = _native.crater(p, size)
+		assert(not result.is_empty(), "Invalid crater request")
+		_native_changes(result.cells)
+		var rect: Rect2i = result.rect
+		if rect.has_area():
+			var samples: PackedFloat32Array = _native.heights(rect)
+			for z in range(rect.position.y, rect.end.y):
+				for x in range(rect.position.x, rect.end.x):
+					var height := samples[(z - rect.position.y) * rect.size.x + x - rect.position.x]
+					dh[z * DN + x] = height
+					if deform_img:
+						deform_img.set_pixel(x, z, Color(height, landform.height(Vector3((x + 0.5) / DRES - H, 0, (z + 0.5) / DRES - H)), 0))
+			if deform_img:
+				deform_dirty.append(rect)
+		if size >= 0.9 and base[idx_of(p)] < WATER and p.y <= landform.height(p) + 1.6:
+			version += 1
+		return
 	if base[idx_of(p)] >= WATER:
 		return  # a fountain of water, not a hole
 	if p.y > landform.height(p) + 1.6:
 		return
 	if size >= 0.55:
 		_stamp_crater(p, size)
+		sync_deformation()
 	if size < 0.9:
 		return
 	var r := 0.7 + 0.75 * size
@@ -959,6 +1191,8 @@ func add_crater(p: Vector3, size: float) -> void:
 
 ## Total ground height at p, bilinear between samples, including geology and craters.
 func deform_at(p: Vector3) -> float:
+	if _native:
+		return float(_native.query(p, Vector3.ZERO, 10, false, false))
 	var fx := (p.x + H) * DRES - 0.5
 	var fz := (p.z + H) * DRES - 0.5
 	var x0 := clampi(floori(fx), 0, DN - 2)

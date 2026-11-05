@@ -1,0 +1,12 @@
+[package]
+name = "frontline_core"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+
+[lib]
+path = "src/lib.rs"
+
+[dependencies]
+glam = { version = "=0.32.1", features = ["libm"] }
+libm = { version = "=0.2.16", default-features = false, features = ["force-soft-floats"] }

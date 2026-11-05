@@ -40,7 +40,9 @@ var _shot_done := false
 var _shot_i := 0
 var _perf_t0 := 0
 var _perf_frames := 0
+var _perf_focused_frames := 0
 var _perf_started := false
+var _perf_started_unix := 0.0
 var _perf_ready_ms := -1
 var _perf_frame_us := 0
 var _perf_frame_samples: Array[float] = []
@@ -48,6 +50,15 @@ var _perf_physics: Array[float] = []
 var _perf_render_cpu: Array[float] = []
 var _perf_render_gpu: Array[float] = []
 var _perf_process: Array[float] = []
+var _perf_cpu_clock: RefCounted
+var _perf_cpu_last := PackedInt64Array()
+var _perf_cpu_samples: Array[float] = []
+var _perf_cycles: Array[int] = []
+var _perf_compiles: Array[int] = []
+var _perf_nodes: Array[int] = []
+var _perf_compiles_last := 0
+var _perf_view_samples := {}
+var _perf_worst_frame := {}
 var _battle_pending := false  # the rank's battle clock starts once the world is running
 var _curtains := false  # intro and loading screens (normal launches; tests skip them)
 var _curtain_layer: CanvasLayer
@@ -125,12 +136,14 @@ func _ready() -> void:
 		# a test run: script errors fail it (its exit code; see TestRun)
 		TestRun.watch()
 	if args.has("perf-at"):
+		# Collect the previous frame before any early packet or effect callbacks run.
+		process_priority = -1000
 		Engine.max_fps = 0
 		if DisplayServer.get_name() != "headless":
 			DisplayServer.window_set_vsync_mode(DisplayServer.VSYNC_DISABLED)
 	if args.has("managed-server"):
-		Net.game_start.connect(_on_game_start)
 		LocalServer.start_child(String(args["managed-server"]))
+		Net.game_start.connect(_on_game_start)
 		return
 	if args.has("offscreen") and DisplayServer.get_name() != "headless":
 		# renders for tooling (model sheets): the window starts minimized (the
@@ -266,7 +279,21 @@ func _ready() -> void:
 		var replay_url = JavaScriptBridge.eval("new URLSearchParams(location.search).get('replay') || ''")
 		if replay_url is String and not replay_url.is_empty():
 			args["replay"] = replay_url
-	if args.has("replay-test"):
+	if args.has("browser-simulation-test"):
+		var test: Node = GameScripts.load_script("res://scripts/test/browser_server_test.gd").new()
+		test.main = self
+		add_child(test)
+	elif args.has("simulation-client"):
+		var connection = JSON.parse_string(FileAccess.get_file_as_string(String(args["simulation-client"])))
+		if not connection is Dictionary or not ["address", "port", "token", "engine", "peer", "team", "map_size"].all(func(key): return connection.has(key)):
+			push_error("Invalid simulation connection file")
+			get_tree().quit(1)
+			return
+		Net.host_offline(int(connection.team))
+		Net.players = {int(connection.peer): {"team": int(connection.team), "name": Net.my_name, "col": 0}}
+		Net.in_game = true
+		_on_game_start.call_deferred({"simulation_connection": connection, "map_size": int(connection.map_size), "players": Net.players, "seed": 1})
+	elif args.has("replay-test") or args.has("native-replay-test"):
 		var replay_test: Node = GameScripts.load_script("res://scripts/test/replay_test.gd").new()
 		replay_test.main = self
 		add_child(replay_test)
@@ -357,9 +384,14 @@ func start_local(a: Dictionary) -> void:
 	Net.configure({"map_size": int(a.get("map-size", 1024)), "stress_units": int(a.get("units", 500)),
 		"stress_vehicles": int(a.get("vehicles", 0)), "stress_generated": a.has("stress-generated"),
 		"stress_mode": String(a.get("stress-mode", "combat")), "stress_scenery": int(a.get("scenery", 200)),
-		"gdscript_perception": a.has("gdscript-perception")})
+		"gdscript_perception": a.has("gdscript-perception"),
+		"gdscript_cover_search": a.has("gdscript-cover-search"),
+		"gdscript_entity_registry": args.has("test-port") and a.has("gdscript-entity-registry"),
+		"rust_infantry": args.has("test-port") and a.has("rust-infantry")})
 	Net.set_setting("verbose", a.has("verbose"))
 	Net.set_setting("debug_trucks", a.has("debug-trucks"))
+	if a.has("export-simulation"):
+		Net.set_setting("simulation_export", String(a["export-simulation"]))
 	if a.has("scenario"):
 		# --play: command the Coalition side yourself instead of watching
 		Net.set_setting("scenario", String(a.scenario))
@@ -503,6 +535,14 @@ func _on_game_start(s: Dictionary) -> void:
 		world.visible = false
 	# (with a window, a frame of the loading screen between its stages: World._breathe)
 	await world.build()
+	if s.has("simulation_export"):
+		if OS.has_feature("web"):
+			var bytes: PackedByteArray = GameScripts.load_script("res://scripts/game/simulation_initial.gd").capture(world)
+			world.free()
+			world = null
+			await get_tree().process_frame
+			LocalServer.generated(bytes, s)
+		return
 	if not is_instance_valid(world):
 		return
 	if OS.has_feature("web"):
@@ -992,11 +1032,39 @@ func _process(_dt: float) -> void:
 		if _perf_t0 > 0:
 			var frame_now := Time.get_ticks_usec()
 			if _perf_frame_us > 0:
-				_perf_frame_samples.append((frame_now - _perf_frame_us) / 1000.0)
+				var frame_ms := (frame_now - _perf_frame_us) / 1000.0
+				_perf_frame_samples.append(frame_ms)
+				if OS.has_environment("FL_DEBUG_FRAME_TRACE"):
+					var compiles := PerfProbe._compiles()
+					_perf_compiles.append(maxi(0, compiles - _perf_compiles_last))
+					_perf_compiles_last = compiles
+					_perf_nodes.append(int(Performance.get_monitor(Performance.OBJECT_NODE_COUNT)))
+				if _perf_cpu_clock:
+					var counters: PackedInt64Array = _perf_cpu_clock.sample()
+					if counters.size() == 2 and counters[0] >= _perf_cpu_last[0] and counters[1] >= _perf_cpu_last[1]:
+						_perf_cpu_samples.append((counters[0] - _perf_cpu_last[0]) / 10000.0)
+						_perf_cycles.append(counters[1] - _perf_cpu_last[1])
+						_perf_cpu_last = counters
+					else:
+						_perf_cpu_clock = null
+						_perf_cpu_samples.clear()
+						_perf_cycles.clear()
+				if frame_ms > float(_perf_worst_frame.get("total_ms", 0.0)):
+					_perf_worst_frame = {"total_ms": frame_ms, "views_ms": world.measured_view_frame.duplicate()}
+				for key: String in world.measured_view_frame:
+					if not _perf_view_samples.has(key):
+						var samples: Array[float] = []
+						samples.resize(_perf_frame_samples.size() - 1)
+						samples.fill(0.0)
+						_perf_view_samples[key] = samples
+					(_perf_view_samples[key] as Array[float]).append(float(world.measured_view_frame[key]))
+					world.measured_view_frame[key] = 0.0
 				if world.has_view:
+					_perf_focused_frames += int(get_tree().root.has_focus())
 					var viewport := get_viewport().get_viewport_rid()
 					_perf_render_cpu.append(RenderingServer.viewport_get_measured_render_time_cpu(viewport) + RenderingServer.get_frame_setup_time_cpu())
 					_perf_render_gpu.append(RenderingServer.viewport_get_measured_render_time_gpu(viewport))
+					# Godot exposes the previous second's maxima through these two monitors.
 					_perf_process.append(Performance.get_monitor(Performance.TIME_PROCESS) * 1000.0)
 					_perf_physics.append(Performance.get_monitor(Performance.TIME_PHYSICS_PROCESS) * 1000.0)
 			_perf_frame_us = frame_now
@@ -1006,12 +1074,28 @@ func _process(_dt: float) -> void:
 			Engine.time_scale = 1.0
 			_perf_t0 = Time.get_ticks_msec()
 			_perf_frames = Engine.get_frames_drawn()
+			_perf_focused_frames = 0
 			_perf_frame_us = Time.get_ticks_usec()
+			_perf_started_unix = Time.get_unix_time_from_system()
+			if OS.has_environment("FL_DEBUG_FRAME_TRACE"):
+				print("FRAME_TRACE_BEGIN ", JSON.stringify(_perf_started_unix))
+				if ClassDB.class_exists("FrameThreadClock"):
+					_perf_cpu_clock = ClassDB.instantiate("FrameThreadClock")
+					_perf_cpu_last = _perf_cpu_clock.sample()
+					if _perf_cpu_last.size() != 2:
+						_perf_cpu_clock = null
+			_perf_cpu_samples.clear()
+			_perf_cycles.clear()
+			_perf_compiles.clear()
+			_perf_nodes.clear()
+			_perf_compiles_last = PerfProbe._compiles()
 			_perf_frame_samples.clear()
 			_perf_render_cpu.clear()
 			_perf_render_gpu.clear()
 			_perf_process.clear()
 			_perf_physics.clear()
+			_perf_view_samples.clear()
+			_perf_worst_frame.clear()
 			if world.has_view:
 				RenderingServer.viewport_set_measure_render_time(get_viewport().get_viewport_rid(), true)
 			world.measured_ticks.clear()
@@ -1020,6 +1104,7 @@ func _process(_dt: float) -> void:
 			world.measured_details.clear()
 			world.measured_detail_max.clear()
 			world.measured_views.clear()
+			world.measured_view_frame.clear()
 			world.measure_ticks = true
 			world.measure_details = args.has("perf-details")
 			if world.nav:
@@ -1036,6 +1121,9 @@ func _process(_dt: float) -> void:
 			print("PERF fps=%.1f server_tick_ms=%.2f entities=%d soldiers_alive=%d total_soldiers=%d vehicles=%d" % [fps, world.tick_ms, world.entities.size(), alive, world.soldiers.size(), world.vehicles.size()])
 			print("PERF systems_ms=", JSON.stringify(world.prof))
 			print("PERF nested_total_ms=", JSON.stringify(world.measured_details))
+			var view_samples := {}
+			for key: String in _perf_view_samples:
+				view_samples[key] = _sample_report(_perf_view_samples[key])
 			var report := {"rendered": DisplayServer.get_name() != "headless", "fps": fps,
 				"worker_threads": ProjectSettings.get_setting("threading/worker_pool/max_threads"),
 				"render_thread_mode": ProjectSettings.get_setting("rendering/driver/threads/thread_model"),
@@ -1053,9 +1141,25 @@ func _process(_dt: float) -> void:
 				"render_primitives": Performance.get_monitor(Performance.RENDER_TOTAL_PRIMITIVES_IN_FRAME),
 				"soldiers_alive": alive, "systems_total_ms": world.measured_systems.duplicate(), "worst_tick": world.measured_worst_tick.duplicate(true),
 				"nested_total_ms": world.measured_details.duplicate(), "nested_max_ms": world.measured_detail_max.duplicate(), "views_total_ms": world.measured_views.duplicate(),
+				"views": view_samples, "worst_frame": _perf_worst_frame.duplicate(true),
 				"events_since_start": world.stats.duplicate()}
+			if world.has_view:
+				report["focused_frames"] = _perf_focused_frames
+				report["window_pixels"] = [get_tree().root.size.x, get_tree().root.size.y]
+				report["render_scale"] = get_viewport().scaling_3d_scale
+				if world.atmo and world.atmo.sun:
+					report["shadow_distance_m"] = world.atmo.sun.directional_shadow_max_distance
 			print("BENCHMARK ", JSON.stringify(report))
 			if args.has("perf-json"):
+				if OS.has_environment("FL_DEBUG_FRAME_TRACE"):
+					report["frame_samples_ms"] = {"started_unix_s": _perf_started_unix,
+						"total": _perf_frame_samples, "views": _perf_view_samples,
+						"render_cpu": _perf_render_cpu, "render_gpu": _perf_render_gpu,
+						"process_monitor": _perf_process, "physics_monitor": _perf_physics}
+					report["frame_engine_counters"] = {"pipeline_compilations": _perf_compiles, "nodes": _perf_nodes}
+					if not _perf_cpu_samples.is_empty():
+						# OS accounting can be coarser than a frame; cycles are not elapsed time.
+						report["thread_accounting"] = {"cpu_ms": _perf_cpu_samples, "cycles": _perf_cycles}
 				var report_file := FileAccess.open(String(args["perf-json"]), FileAccess.WRITE)
 				if report_file:
 					report_file.store_string(JSON.stringify(report, "\t"))

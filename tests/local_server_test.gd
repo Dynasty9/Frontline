@@ -17,7 +17,9 @@ func _ready() -> void:
 	var menu := load("res://scripts/ui/menu.gd").new() as Control
 	add_child(menu)
 	Net.game_start.connect(_started)
-	Net.net_error.connect(func(_message): error_seen = true)
+	Net.net_error.connect(func(message):
+		error_seen = true
+		print("LOCAL_SERVER notice: ", message))
 	check(LocalServer.launch({"scenario": "stress", "stress_units": 20, "stress_scenery": 0, "stress_mode": "idle", "scenario_player": true, "ai_fill": false, "fixed_seed": 3}, 0) == OK, "Private server must launch")
 	var deadline := Time.get_ticks_msec() + 120000
 	while (world == null or world.client_loading() or world.soldiers.size() < 10) and Time.get_ticks_msec() < deadline and not error_seen:
@@ -50,7 +52,7 @@ func _ready() -> void:
 		check(own.net_pos.distance_to(paused) > 0.1, "Paused server must accept resume while its clock is stopped")
 	var before := world.soldiers.size()
 	var old_pid := LocalServer.pid
-	multiplayer.multiplayer_peer.close()
+	world.simulation_client.close()
 	Net._on_server_disconnected()
 	deadline = Time.get_ticks_msec() + 30000
 	while (starts < 2 or world.client_loading() or world.soldiers.size() < before) and Time.get_ticks_msec() < deadline and not error_seen:
@@ -61,8 +63,14 @@ func _ready() -> void:
 		if soldier.owner_peer == world.local_peer:
 			mine += 1
 	check(mine > 0, "Reconnect must restore command ownership")
+	var recording := LocalServer.recording
 	LocalServer.stop()
+	deadline = Time.get_ticks_msec() + 30000
+	while OS.is_process_running(old_pid) and Time.get_ticks_msec() < deadline:
+		await get_tree().process_frame
 	check(not OS.is_process_running(old_pid), "Leaving must stop the owned child")
+	var verified := []
+	check(OS.execute(LocalServer.executable(), PackedStringArray(["verify", recording]), verified, true) == 0 and "REPLAY_VERIFIED" in "".join(verified), "A normal local game must finish a recording that independently verifies")
 	check(not error_seen, "The healthy session must not report a network error")
 	check(LocalServer.launch({"scenario": "stress", "stress_units": 2, "stress_scenery": 0, "stress_mode": "idle", "ai_fill": false}, -1) == OK, "A new session must launch after leaving")
 	deadline = Time.get_ticks_msec() + 120000

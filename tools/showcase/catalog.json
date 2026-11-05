@@ -3437,6 +3437,34 @@
         "compatibility": "Target after with --rendering-method gl_compatibility",
         "command": "godot --main-pack PACK --resolution 1600x900 -- --aivai --seed=3 --offscreen --nohud --set=perf:0 --preset=high --mood=MOOD --focus=FOCUS --zoom=ZOOM --pitch=PITCH --cam-yaw=0.7 --screenshot=OUTPUT --shot-at=2 --quit-after=3"
       }
+    },
+    {
+      "entry": "changelog/unreleased/simulation-core-boundary.md",
+      "medium": "still",
+      "stage": "native-media",
+      "rationale": "Actual rendered command-replay viewer after independent final-state verification. The unfinished battle is labeled explicitly. This screenshot demonstrates playback and verification status, not performance.",
+      "source_ref": "codex/rust-simulation",
+      "sources": [
+        {
+          "file": "changelog/unreleased/simulation-core-boundary/verified-replay.jpg",
+          "sha256": "a4e0ea3c7b6ca0e4a14f2f5ccfca879c4156da360f92ce35281fda96d782d336",
+          "caption": "Verified command replay of a short unfinished battle."
+        }
+      ],
+      "output": "changelog/unreleased/simulation-core-boundary/verified-replay.jpg"
+    },
+    {
+      "entry": "changelog/unreleased/simulation-boundaries.md",
+      "summary": "Large battles can spread long route searches across updates, and matches deliver the final battlefield state before showing the result.",
+      "medium": "text",
+      "stage": "text",
+      "rationale": "Deterministic budget, checkpoint, replay and publication-order tests demonstrate these internal fixes. No new frame-rate benchmark is claimed.",
+      "source_ref": "codex/rust-simulation",
+      "sources": [],
+      "output": null,
+      "title": "Steadier route planning and reliable battle endings",
+      "version": "unreleased",
+      "kind": "improved"
     }
   ],
   "layout_capture": {

@@ -6,7 +6,7 @@ extends Node3D
 ## the square's fountain or statue and market stalls, playground kit, fences,
 ## vegetable patches, washing lines, hay bales, a water tower.
 ##
-## Parts are baked into merged meshes per 64 m chunk (so they still cull), the
+## Parts are baked into merged meshes per 32 m chunk (so they still cull), the
 ## wires are drawn as lines and the lamp lenses glow; at dusk and at night the
 ## street lights cast real light.
 
@@ -35,12 +35,14 @@ var _entries: Array = []  # [kind, pos, yaw, extra, chunk key, broken]
 var _chunks := {}  # key -> Node3D
 var _chunk_items := {}  # key -> [entry index]
 var _hash := {}  # 8 m cell -> [entry index] of breakable pieces
-var _dirty := {}  # chunks to rebuild
+var _entry_draw := {}  # entry -> {spans: [[mesh, first vertex, count]], lights: [positions]}
+var _wire_spans: Array = []
 var _wire_items: Array = []  # [a pole pos, b pole pos (or a house), kind, args]
 var _wire_mi: MeshInstance3D
 var _wires := PackedVector3Array()  # line pairs
 var _glow: SurfaceTool  # the chunk being built
 var _glow_n := 0
+var _glow_vertices := 0
 var _lights: Array = []
 var _chunk_lights := {}  # key -> [positions]
 var _veh_t := 0.0
@@ -93,7 +95,7 @@ func build(w, entries: Array) -> void:
 		print("DECOR chunks=%d mis=%d surfaces=%d entries=%d %s" % [_chunks.size(), mis, surfs, _entries.size(), counts])
 
 
-## (Re)builds one chunk: every piece still standing, merged per material.
+## Build once; damage removes only the fallen piece's vertices from its shared meshes.
 func _build_chunk(key: Vector2i) -> void:
 	if _chunks.has(key):
 		(_chunks[key] as Node3D).queue_free()
@@ -103,10 +105,12 @@ func _build_chunk(key: Vector2i) -> void:
 	_glow = SurfaceTool.new()
 	_glow.begin(Mesh.PRIMITIVE_TRIANGLES)
 	_glow_n = 0
+	_glow_vertices = 0
 	_lights = []
 	var keep := _wires
 	_wires = PackedVector3Array()  # clotheslines belong to the chunk
 	_bake = Mats.Bake.new()
+	var records := {}
 	for i in _chunk_items[key]:
 		var e: Array = _entries[i]
 		if e[5]:
@@ -116,26 +120,58 @@ func _build_chunk(key: Vector2i) -> void:
 		h.rotation.y = e[2]
 		n.add_child(h)
 		_at = Transform3D.IDENTITY * h.transform
+		var offsets := {}
+		if BREAKABLE.has(e[0]):
+			for material in _bake.groups:
+				offsets[material] = (_bake.groups[material].v as PackedVector3Array).size()
+		var first_wire := _wires.size()
+		var first_glow := _glow_vertices
+		var first_light := _lights.size()
 		rng.seed = 90210 + i * 7919  # the same look every rebuild
 		_make(h, e[0], e[3])
-	_bake.commit(n)
+		if BREAKABLE.has(e[0]):
+			var spans := []
+			for material in _bake.groups:
+				var first := int(offsets.get(material, 0))
+				var count := (_bake.groups[material].v as PackedVector3Array).size() - first
+				if count > 0:
+					spans.append([material, first, count])
+			records[i] = {"spans": spans, "wire": Vector2i(first_wire, _wires.size() - first_wire),
+				"glow": Vector2i(first_glow, _glow_vertices - first_glow), "lights": _lights.slice(first_light)}
+	var surfaces := _bake.commit(n, not records.is_empty())
 	_bake = null
+	var wire_mesh: ArrayMesh
 	if not _wires.is_empty():
-		n.add_child(_lines_mi(_wires))
+		var lines := _lines_mi(_wires)
+		wire_mesh = lines.mesh
+		n.add_child(lines)
 	_wires = keep
+	var glow_mesh: ArrayMesh
 	if _glow_n > 0:
 		var gm := MeshInstance3D.new()
-		gm.mesh = _glow.commit()
+		glow_mesh = _glow.commit(null, Mesh.ARRAY_FLAG_USE_DYNAMIC_UPDATE)
+		gm.mesh = glow_mesh
 		gm.material_override = _glow_mat
 		gm.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		n.add_child(gm)
 	_chunk_lights[key] = _lights
+	for i in records:
+		var record: Dictionary = records[i]
+		for span: Array in record.spans:
+			span[0] = surfaces[span[0]]
+		if record.wire.y > 0:
+			record.spans.append([wire_mesh, record.wire.x, record.wire.y])
+		if record.glow.y > 0:
+			record.spans.append([glow_mesh, record.glow.x, record.glow.y])
+		_entry_draw[i] = {"spans": record.spans, "lights": record.lights}
 
 
 func _lens(h: Node3D, size: Vector3, p: Vector3) -> void:
 	var xf: Transform3D = h.transform * Transform3D(Basis.IDENTITY, p)
-	_glow.append_from(Res.box(size), 0, xf)
+	var lens := Res.box(size)
+	_glow.append_from(lens, 0, xf)
 	_glow_n += 1
+	_glow_vertices += lens.surface_get_array_len(0)
 	_lights.append(xf.origin + Vector3(0, -0.25, 0))
 
 
@@ -174,7 +210,17 @@ func _knock(i: int, vel: Vector3, dir: Vector3) -> void:
 	if e[5]:
 		return
 	e[5] = true
-	_dirty[e[4]] = true
+	var drawing: Dictionary = _entry_draw.get(i, {})
+	for span: Array in drawing.get("spans", []):
+		_erase_span(span)
+	for p: Vector3 in drawing.get("lights", []):
+		(_chunk_lights[e[4]] as Array).erase(p)
+		for light: OmniLight3D in _light_nodes.get(e[4], []).duplicate():
+			if light.position == p:
+				light.visible = false
+				light.queue_free()
+				(_light_nodes[e[4]] as Array).erase(light)
+	_entry_draw.erase(i)
 	var kind: String = e[0]
 	world.stat("decor_down")
 	# the piece itself falls under physics
@@ -209,32 +255,34 @@ func _knock(i: int, vel: Vector3, dir: Vector3) -> void:
 	# poles take their wires with them
 	if kind == "pole":
 		var pp: Vector3 = e[1]
-		var changed := false
-		for wi in _wire_items:
+		for index in _wire_items.size():
+			var wi: Array = _wire_items[index]
 			if wi.size() > 4:
 				continue
 			if Defs.flat((wi[0] as Vector3) - pp).length() < 0.6 or Defs.flat((wi[1] as Vector3) - pp).length() < 0.6:
 				wi.append(true)
-				changed = true
-		if changed:
-			_build_wires()
+				_erase_span(_wire_spans[index])
+
+
+func _erase_span(span: Array) -> void:
+	if span.is_empty():
+		return
+	Mats.hide_vertices(span[0], span[1], span[2])
 
 
 func _process(dt: float) -> void:
+	var started := Time.get_ticks_usec()
+	_view_process(dt)
+	if world:
+		world.vp("decor", started)
+
+
+func _view_process(dt: float) -> void:
 	_mood_t -= dt
 	if _mood_t <= 0.0:
 		_mood_t = 1.0
 		if world and world.atmo and world.atmo.mood != _mood:
 			_apply_mood()
-	# rebuild a couple of damaged chunks a frame
-	var n := 0
-	for key in _dirty.keys():
-		if n >= 2:
-			break
-		_dirty.erase(key)
-		_build_chunk(key)
-		_apply_mood_chunk(key)
-		n += 1
 	# vehicles flatten what they drive over
 	_veh_t -= dt
 	if _veh_t <= 0.0 and world:
@@ -601,14 +649,18 @@ func _fence(ex) -> void:
 
 func _build_wires() -> void:
 	_wires = PackedVector3Array()
+	_wire_spans.clear()
 	for wi in _wire_items:
+		_wire_spans.append([])
 		if wi.size() > 4:
 			continue  # its pole is down
+		var first := _wires.size()
 		var args: Array = wi[3]
 		if wi[2] == "wire":
 			_wire(args[0], args[1], args[2])
 		else:
 			_sag(args[0], args[1], 0.35)
+		_wire_spans[-1] = [null, first, _wires.size() - first]
 	if _wire_mi:
 		_wire_mi.queue_free()
 		_wire_mi = null
@@ -616,6 +668,9 @@ func _build_wires() -> void:
 		return
 	_wire_mi = _lines_mi(_wires)
 	add_child(_wire_mi)
+	for span: Array in _wire_spans:
+		if not span.is_empty():
+			span[0] = _wire_mi.mesh
 
 
 var _line_mat: StandardMaterial3D
@@ -626,7 +681,7 @@ func _lines_mi(v: PackedVector3Array) -> MeshInstance3D:
 	arrays.resize(Mesh.ARRAY_MAX)
 	arrays[Mesh.ARRAY_VERTEX] = v
 	var am := ArrayMesh.new()
-	am.add_surface_from_arrays(Mesh.PRIMITIVE_LINES, arrays)
+	am.add_surface_from_arrays(Mesh.PRIMITIVE_LINES, arrays, [], {}, Mesh.ARRAY_FLAG_USE_DYNAMIC_UPDATE)
 	var mi := MeshInstance3D.new()
 	mi.mesh = am
 	if not _line_mat:

@@ -76,6 +76,8 @@ var tactical := false
 var orders := {}
 var orbat: HudOrbat
 var _slow_t := 0.0
+var _roster_pending := false
+var overview_frame := -1
 var layers_ui: HudLayers
 var tint: ColorRect
 var root: Control
@@ -140,6 +142,7 @@ var _stats_t := 0.0
 var support_box: VBoxContainer
 var _support_btns := {}  # kind -> Button
 var _support_key := ""
+var _orders_info: Array = []
 var demo_panel: PanelContainer
 var _inspect: Entity = null
 var _inspect_t := 0.0
@@ -189,6 +192,7 @@ func _ready() -> void:
 	overlay.raster = overlay_view
 	overlay.theme = root.theme
 	overlay_view.add_child(overlay)
+	overlay.prepare_layers()
 	var overlay_image := TextureRect.new()
 	overlay_image.texture = overlay_view.get_texture()
 	overlay_image.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
@@ -838,6 +842,10 @@ func toggle_orbat() -> void:
 ## Tracks every squad's orders from the team summary; a new order number means
 ## the commander (you or the AI) has just sent that squad something.
 func _track_orders() -> void:
+	# Host summaries, socket updates and replay seeks replace the whole array.
+	if is_same(_orders_info, world.team_info):
+		return
+	_orders_info = world.team_info
 	var now := Time.get_ticks_msec()
 	var seen := {}
 	for t in mini(2, world.team_info.size()):
@@ -1483,7 +1491,6 @@ func _view_process(dt: float) -> void:
 		bs.queue_redraw()
 	if slow:
 		top.queue_redraw()
-		orbat.queue_redraw()
 		layers_ui.queue_redraw()
 		coop_roster.queue_redraw()
 	# keep notifications clear of the performance overlay
@@ -1526,10 +1533,24 @@ func _view_process(dt: float) -> void:
 			toasts.offset_bottom = tb
 	toasts.tick(rdt)
 	minimap.refresh_layers()
+	var overlay_changed := false
 	if world.cam:
-		overlay.refresh_for_view(rdt, world.cam.cam)
+		overlay_changed = overlay.refresh_for_view(rdt, world.cam.cam)
+	if world.input:
+		overlay.prepare_groups(world.input, overlay_changed)
+	_refresh_roster(slow, overview_frame == Engine.get_process_frames())
 	pointer_overlay.queue_redraw()
 	coop.queue_redraw()
+
+
+func _refresh_roster(due: bool, overlay_changed: bool) -> void:
+	# Split routine HUD work across frames, with at most one frame of delay.
+	if _roster_pending or (due and not overlay_changed):
+		orbat.queue_redraw()
+		overview_frame = Engine.get_process_frames()
+		_roster_pending = false
+	else:
+		_roster_pending = due
 
 
 ## A fire mission's name, short: its designation and what it does
@@ -1591,15 +1612,18 @@ func _update_support() -> void:
 		if left <= 0.0:
 			var zk := Keys.label("support")
 			state.text = ("[%s] RDY · %d" % [zk.to_upper(), int(sd.cost)]) if first and zk != "" else ("RDY · %d" % int(sd.cost))
-			state.add_theme_color_override("font_color", UiKit.GOOD)
-			nm.add_theme_color_override("font_color", UiKit.TEXT)
 			first = false
 			b.visible = true
 		else:
 			state.text = "%dS" % int(ceil(left))
-			state.add_theme_color_override("font_color", UiKit.FAINT)
-			nm.add_theme_color_override("font_color", UiKit.DIM)
 			cooling.append([left, b])
+		# Theme changes invalidate layout, even when the colour stays the same.
+		var state_col: Color = UiKit.GOOD if left <= 0.0 else UiKit.FAINT
+		var name_col: Color = UiKit.TEXT if left <= 0.0 else UiKit.DIM
+		if state.get_theme_color("font_color") != state_col:
+			state.add_theme_color_override("font_color", state_col)
+		if nm.get_theme_color("font_color") != name_col:
+			nm.add_theme_color_override("font_color", name_col)
 	# the ones cooling down: shown when opened, or a couple when few are ready
 	cooling.sort_custom(func(a, c): return float(a[0]) < float(c[0]))
 	var show_n := cooling.size() if _fires_open else maxi(0, 2 - (kinds.size() - cooling.size()))

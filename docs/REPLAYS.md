@@ -2,7 +2,9 @@
 
 The browser viewer is the Godot client renderer, running without simulation,
 player commands, networking presence, rank progress, or result submission.
-The same observer reads local recordings and public broadcasts.
+The same observer reads local recordings and public broadcasts. Desktop battles
+also save `.flrp` command recordings; those rerun the Rust simulation and verify
+the exact final state and outcome. Observer archives below remain unverified.
 
 ## Players
 
@@ -52,6 +54,14 @@ samples per simulated second between them (static entities update once per secon
 The first chunk includes the ground, water, scenery, and initial match settings.
 Checkpoints contain entity properties and their existing network state; following
 frames contain spawns, removals, property changes, effects, and state updates.
+New Rust-hosted broadcasts use format 2: the same seekable observation structure
+with compressed absolute terrain baselines, changed ground tiles and current
+roads. A trusted read-only observer receives reliable render updates and caches
+records without instantiating another World or any entities. It cannot send
+orders, join the player roster or start a loading battle. Only public presentation
+data enters the archive; server admission and lobby tickets never do. The
+matchmaker accepts both formats, and `/game/viewer.json` advertises `[1, 2]` so
+an older renderer is not asked to play the newer stream.
 Unchanged scenery records and observer packets are cached in small entity-ID blocks; dirty scenery, active buildings, spawns and removals refresh those blocks. Snapshot timestamps are refreshed for each sample. Completed immutable chunks are serialized and compressed by one worker; only finished files enter the manifest. The next chunk and shutdown join any pending worker, bounding memory without dropping samples.
 
 Each chunk is a bounded, zstd-compressed Godot Variant encoded as base64 in JSON.
@@ -84,6 +94,9 @@ simulation tick, plus the initial settings and checkpoint RNG states. They do
 `verified: false`. State checkpoints are observer checkpoints, not full simulation
 saves. A future verifier still needs full deterministic simulation coverage,
 version-pinned headless builds, a trusted command source, and state-hash comparison.
+The Rust migration and its full-state replay requirements are tracked in
+[RUST_SIMULATION.md](RUST_SIMULATION.md). Extracted Rust kernel tests do not
+constitute battle verification.
 
 ## Checks and local use
 

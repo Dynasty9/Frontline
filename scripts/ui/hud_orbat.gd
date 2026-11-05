@@ -19,6 +19,38 @@ var _content_h := 0.0
 var _rows: Array = []  # [Rect2, kind ("sq"/"veh"), id, commandable]
 var _head := Rect2()
 var _hover := -1
+var _squad_lines := {}
+var _row_epoch := 0
+
+class SquadLine extends Node2D:
+	var state := {}
+	var epoch := 0
+	var world: World
+
+	func update(value: Dictionary) -> void:
+		if state != value:
+			state = value
+			queue_redraw()
+
+	func _draw() -> void:
+		var started := Time.get_ticks_usec()
+		var y: float = state.offset
+		MapSymbols.nato(self, Vector2(11, y + ROW_H * 0.5), 17.0, state.friendly, state.team, state.symbol[0], "", 1.0)
+		if state.owner.a > 0.0:
+			draw_rect(Rect2(0, y + 3, 2, ROW_H - 6), state.owner)
+		var x := 26.0 + UiKit.caps_at(self, Vector2(26, y + 17), state.callsign, 13, UiKit.ACCENT if state.selected else UiKit.TEXT)
+		var tag := String(state.symbol[1])
+		if tag != "":
+			x += 5.0 + UiKit.caps_at(self, Vector2(x + 5.0, y + 17), tag, 10, UiKit.FAINT)
+		var pw: float = state.total * 5.0 - 2.0
+		UiKit.pips(self, Vector2(W - pw - 2.0, y + 8), state.alive, state.hurt, state.total - state.alive - state.hurt)
+		var cx := maxf(x + 12.0, 128.0)
+		var code := String(state.code)
+		var maxw := W - pw - 12.0 - cx
+		while code.length() > 3 and UiKit.mono_w(code, 12) > maxw:
+			code = code.substr(0, code.length() - 2)
+		UiKit.mono_at(self, Vector2(cx, y + 17), code, 12, state.color)
+		world.vp("roster drawing", started)
 
 
 func _ready() -> void:
@@ -119,7 +151,10 @@ func _pick(kind: String, id: int, mine: bool, add: bool, dbl: bool) -> void:
 
 func _draw() -> void:
 	var started := Time.get_ticks_usec()
+	_row_epoch += 1
 	_draw_content()
+	for line: SquadLine in _squad_lines.values():
+		line.visible = line.epoch == _row_epoch
 	if hud and hud.world:
 		hud.world.vp("roster drawing", started)
 
@@ -133,17 +168,21 @@ func _draw_content() -> void:
 	var teams: Array = [lt] if lt >= 0 else [0, 1]
 	# gather: squads by sid, vehicles
 	var by_sid := {}
-	for s in w.soldiers:
+	for s: Soldier in w.soldiers:
 		if s.sid == 0 or s.team < 0 or not s.team in teams:
 			continue
 		if not by_sid.has(s.sid):
 			by_sid[s.sid] = []
 		by_sid[s.sid].append(s)
+	for sid in _squad_lines.keys():
+		if not by_sid.has(sid):
+			(_squad_lines[sid] as SquadLine).queue_free()
+			_squad_lines.erase(sid)
 	var sqs := []
 	for sid in by_sid:
 		var mem: Array = by_sid[sid]
 		var alive := 0
-		for s in mem:
+		for s: Soldier in mem:
 			if s.life == Soldier.Life.ALIVE or s.life == Soldier.Life.HIDDEN or s.life == Soldier.Life.DOWNED:
 				alive += 1
 		if alive > 0:
@@ -259,16 +298,7 @@ func _squad_row(y: float, sid: int, mem: Array, top: float, bottom: float) -> fl
 	_row_bg(r, sel, idx)
 	var st: Dictionary = hud.squad_state(sid, mem)
 	var sym: Array = MapSymbols.squad_symbol(mem)
-	MapSymbols.nato(self, Vector2(11, y + ROW_H * 0.5), 17.0, team == w.local_team or w.local_team < 0, team, sym[0], "", 1.0)
 	var by := int(w.coop.sel_sq.get(sid, 0)) if w.coop else 0
-	if by != 0:
-		# a co-commander has it selected: his colour down the row's edge
-		draw_rect(Rect2(0, y + 3, 2, ROW_H - 6), Net.player_color(by))
-	var x := 26.0 + UiKit.caps_at(self, Vector2(26, y + 17), Squad.callsign_of(team, sid), 13, UiKit.ACCENT if sel else UiKit.TEXT)
-	var tag := String(sym[1])
-	if tag != "":
-		x += 5.0 + UiKit.caps_at(self, Vector2(x + 5.0, y + 17), tag, 10, UiKit.FAINT)
-	# strength: a pip per man, at the end
 	var alive := 0
 	var hurt := 0
 	for s in mem:
@@ -276,17 +306,24 @@ func _squad_row(y: float, sid: int, mem: Array, top: float, bottom: float) -> fl
 			hurt += 1
 		elif s.life != Soldier.Life.DEAD:
 			alive += 1
-	var pw := mem.size() * 5.0 - 2.0
-	UiKit.pips(self, Vector2(W - pw - 2.0, y + 8), alive, hurt, mem.size() - alive - hurt)
-	# what it's doing, as a code, cut to fit
-	var cx := maxf(x + 12.0, 128.0)
 	var code := String(st.code)
 	if st.low_ammo:
 		code += " · LOW AMMO"
-	var maxw := W - pw - 12.0 - cx
-	while code.length() > 3 and UiKit.mono_w(code, 12) > maxw:
-		code = code.substr(0, code.length() - 2)
-	UiKit.mono_at(self, Vector2(cx, y + 17), code, 12, _code_col(st, sel))
+	# Keep native drawing commands until this row's visible information changes.
+	var line: SquadLine = _squad_lines.get(sid)
+	if line == null:
+		line = SquadLine.new()
+		line.world = w
+		add_child(line)
+		_squad_lines[sid] = line
+	line.update({"team": team, "friendly": team == w.local_team or w.local_team < 0,
+		"symbol": sym, "owner": Net.player_color(by) if by else Color.TRANSPARENT,
+		"callsign": Squad.callsign_of(team, sid), "selected": sel,
+		"alive": alive, "hurt": hurt, "total": mem.size(), "code": code, "color": _code_col(st, sel),
+		"offset": y - floorf(y), "atlas": MapSymbols.atlas})
+	# Fractional scrolling stays in the draw coordinates so font snapping is unchanged.
+	line.position.y = floorf(y)
+	line.epoch = _row_epoch
 	return y + ROW_H
 
 

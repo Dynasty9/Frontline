@@ -10,7 +10,9 @@ signal report_updated
 signal build_stage(text: String, frac: float)
 
 var settings: Dictionary = {}
+var _breach_queries: RefCounted
 var recording: BattleRecording
+var simulation_client: SimulationClient
 var srv := false
 var has_view := true
 var local_peer := 1
@@ -19,6 +21,7 @@ var time := 0.0
 var _snapshot_time := 0.0
 var entities := {}
 var next_eid := 1
+var _entity_core: RefCounted
 var ready_peers: Array = []
 ## (server) What each player who has left commanded, by the peer id they had:
 ## {"squads": {sid: true}, "vehicles": {eid: true}}. Teammates or the AI
@@ -75,7 +78,9 @@ var _painted_roads: Array = [[], [], []]
 var _road_meshes: Array = [null, null, null]
 var pings: Array = []  # [pos, expire, kind]
 var winner := -1
-var rng := RandomNumberGenerator.new()
+var rng := SimulationRandom.new()
+var _deferred_effects: DeferredEffects
+var last_chat := [-99.0, -99.0]  # side-wide conversation cooldowns belong to this battle
 var focused := false
 var director: Director
 var structure_view: StructureView
@@ -129,13 +134,15 @@ func _ready() -> void:
 	HNav.NC = MapDims.N / HNav.C
 	TrenchNet.N = MapDims.N * TrenchNet.RES
 	Defs.MAP_HALF = MapDims.HALF
-	srv = multiplayer.is_server() and not settings.get("replay", false)
+	srv = multiplayer.is_server() and not settings.get("replay", false) and not settings.has("simulation_connection")
 	# The loading curtain covers the scene; drawing partially built scenery
 	# only delays construction on large maps. Processing and RPCs stay active.
 	visible = srv
 	_local_loading = srv and LocalServer.child
-	has_view = DisplayServer.get_name() != "headless"
+	has_view = DisplayServer.get_name() != "headless" and not settings.has("simulation_export")
 	local_peer = multiplayer.get_unique_id()
+	if settings.has("simulation_connection"):
+		local_peer = int(settings.simulation_connection.peer)
 	var pl: Dictionary = settings.get("players", {})
 	local_team = int(pl[local_peer].team) if pl.has(local_peer) else -1
 	view_team = local_team
@@ -196,6 +203,7 @@ func build() -> void:
 		_load_mark("navigation grids ready")
 		nav.terrain = terrain
 		combat = Combat.new(self)
+		combat.enable_native_collision()
 		rules = Rules.new(self)
 		battle = BattleStats.new(self)
 		fires = Fires.new(self)
@@ -212,9 +220,10 @@ func build() -> void:
 		elif String(settings.get("mission", "")) != "":
 			var mgen := MapGen.new(self)
 			await mgen.generate()
-			mission = MissionDirector.new(self, String(settings.mission), mgen)
-			mission.setup()
-			set_mission_info(mission.info())
+			if not settings.has("simulation_export"):
+				mission = MissionDirector.new(self, String(settings.mission), mgen)
+				mission.setup()
+				set_mission_info(mission.info())
 		else:
 			await MapGen.new(self).generate()
 		_load_mark("map generated")
@@ -227,6 +236,20 @@ func build() -> void:
 		nav.finalize()
 		_load_mark("navigation ready")
 		print("Hierarchical nav: %s infantry, %s vehicles (%d ms)" % [nav.hnav_i.stats(), nav.hnav_v.stats(), Time.get_ticks_msec() - tn])
+		if settings.has("simulation_export"):
+			if OS.has_feature("web"):
+				get_tree().multiplayer_poll = polled
+				process_mode = Node.PROCESS_MODE_DISABLED
+				building = false
+				return
+			var error := SimulationInitial.save(self, String(settings.simulation_export))
+			if error == OK:
+				print("SIMULATION_INITIAL exported entities=%d squads=%d" % [entities.size(), squads.size()])
+			else:
+				push_error("Simulation initial export failed: %s" % error_string(error))
+			process_mode = Node.PROCESS_MODE_DISABLED
+			get_tree().quit(0 if error == OK else 1)
+			return
 		if OS.has_environment("FL_DEBUG_HPA"):
 			nav.benchmark(rng)
 		for t in settings.get("ai_teams", []):
@@ -266,7 +289,26 @@ func build() -> void:
 		hud.world = self
 		add_child(hud)
 		_try_focus()
-	if not srv and not settings.get("replay", false):
+	if settings.has("simulation_connection"):
+		var connection: Dictionary = settings.simulation_connection
+		simulation_client = SimulationClient.new()
+		simulation_client.world = self
+		add_child(simulation_client)
+		if LocalServer.connected:
+			LocalServer.client = simulation_client
+		simulation_client.failed.connect(func(message: String):
+			if not LocalServer.reconnect():
+				Net.net_error.emit(message))
+		var error: Error
+		if connection.get("worker", false):
+			error = simulation_client.connect_worker(LocalServer.worker, String(connection.engine))
+		elif connection.get("relay", false):
+			error = simulation_client.connect_relay(String(connection.engine))
+		else:
+			error = simulation_client.connect_to(String(connection.address), int(connection.port), String(connection.token), String(connection.engine))
+		if error != OK:
+			Net.net_error.emit("Could not connect to the simulation: " + error_string(error))
+	elif not srv and not settings.get("replay", false):
 		_client_ready.rpc_id(1)
 	if _staged:
 		get_tree().multiplayer_poll = polled
@@ -354,11 +396,41 @@ func _make(kind: String) -> Entity:
 	return Entity.new()
 
 
+func _start_entity_registry() -> bool:
+	if _entity_core != null or settings.get("gdscript_entity_registry", false) or not ClassDB.class_exists("EntityRegistryCore"):
+		return true
+	var core: RefCounted = ClassDB.instantiate("EntityRegistryCore")
+	var ids := PackedInt64Array()
+	var kinds := PackedStringArray()
+	for existing: Entity in entities.values():
+		ids.append(existing.eid)
+		kinds.append(existing.ekind())
+	if not core.initialize(next_eid, ids, kinds):
+		push_error("Invalid initial entity registry")
+		return false
+	_entity_core = core
+	return true
+
+
 func spawn(kind: String, props: Dictionary) -> Entity:
+	if not _start_entity_registry():
+		return null
 	var e := _make(kind)
 	e.world = self
-	e.eid = next_eid
-	next_eid += 1
+	if _entity_core:
+		if next_eid != _entity_core.next_id():
+			push_error("Entity allocation cursor changed outside the simulation")
+			e.free()
+			return null
+		e.eid = _entity_core.spawn(kind)
+		if e.eid == 0:
+			push_error("Entity registry rejected spawn: " + kind)
+			e.free()
+			return null
+		next_eid = _entity_core.next_id()
+	else:
+		e.eid = next_eid
+		next_eid += 1
 	e.srv = true
 	e.apply_props(props)
 	if e is Structure and is_zero_approx(e.position.y) and e.skind != "bridge":
@@ -369,6 +441,8 @@ func spawn(kind: String, props: Dictionary) -> Entity:
 	_register(e)
 	add_child(e)
 	e.on_spawned()
+	if combat and (e is Structure or e is Vehicle):
+		combat.dirty_collision(e.eid)
 	if e is Vehicle and battle:
 		battle.vehicle_fielded(e)
 	if e is Structure:
@@ -399,6 +473,7 @@ func _register(e: Entity) -> void:
 		soldiers.append(e)
 		if soldier_view:
 			soldier_view.prepare(e.utype, e.team)
+			soldier_view.invalidate()
 	elif e is Vehicle:
 		vehicles.append(e)
 	elif e is Structure:
@@ -422,17 +497,27 @@ func refresh_smoke_projectile(e: Projectile) -> void:
 			smoke_projectiles.append(e)
 	else:
 		smoke_projectiles.erase(e)
+	if combat:
+		combat.update_smoke(e)
 
 
 func despawn(e: Entity) -> void:
 	if e == null or e.gone:
 		return
+	if _entity_core and not _entity_core.remove(e.eid):
+		push_error("Entity registry rejected removal: %d" % e.eid)
+		return
+	if combat and (e is Structure or e is Vehicle):
+		combat.retire_collision(e.eid)
 	e.gone = true
 	entities.erase(e.eid)
 	for pending: Dictionary in _unrevealed.values():
 		pending.erase(e.eid)
 	if e is Soldier:
 		soldiers.erase(e)
+		if soldier_view:
+			soldier_view.motion.remove(e)
+			soldier_view.invalidate()
 		# out of his squad now: nothing may touch him once he's freed
 		if e.squad and is_instance_valid(e.squad):
 			e.squad.members.erase(e)
@@ -454,6 +539,8 @@ func despawn(e: Entity) -> void:
 	elif e is Projectile:
 		projectiles.erase(e)
 		smoke_projectiles.erase(e)
+		if combat:
+			combat.update_smoke(e)
 	elif e is Drone:
 		drones.erase(e)
 	e.on_despawn()
@@ -493,6 +580,7 @@ func _sweep_graveyard() -> void:
 
 
 func _exit_tree() -> void:
+	_ground_native = null
 	if _ground_task >= 0:
 		# (left while the ground was still being laid out: it works on this world's maps)
 		WorkerThreadPool.wait_for_task_completion(_ground_task)
@@ -509,6 +597,8 @@ func entity(id: int) -> Entity:
 
 ## Ground height at p: the duckboards, a metre down, inside a finished trench.
 func ground_y(p: Vector3) -> float:
+	if terrain and terrain._native:
+		return float(terrain._native.ground_y(p, water != null and not water.deck.is_empty() and water.on_deck(p)))
 	if water and not water.deck.is_empty() and water.on_deck(p):
 		return 0.06  # on a bridge deck, over the water
 	for st: Structure in _trenches_at(p):
@@ -546,6 +636,8 @@ func trench_mount_spot(pos: Vector3, yaw: float) -> Dictionary:
 
 
 func in_trench(p: Vector3) -> bool:
+	if terrain and terrain._native:
+		return bool(terrain._native.in_trench(p))
 	for st: Structure in _trenches_at(p):
 		if is_instance_valid(st) and not st.gone and st.built and TrenchNet.inside(st, p, 0.05):
 			return true
@@ -555,6 +647,8 @@ func in_trench(p: Vector3) -> bool:
 ## True when a shooter at `from` is looking along the trench bay that `p` is in
 ## (enfilade): the zig-zag keeps that to one short bay at a time.
 func trench_enfiladed(p: Vector3, from: Vector3) -> bool:
+	if terrain and terrain._native:
+		return bool(terrain._native.trench_enfiladed(p, from))
 	var to := Defs.flat(p - from)
 	if to.length() < 1.0:
 		return true
@@ -692,6 +786,7 @@ func _physics_process(dt: float) -> void:
 			net_in_bps = _net_in / _net_in_t
 			_net_in = 0.0
 			_net_in_t = 0.0
+		vp("client terrain + cleanup", t0)
 		return
 	# A private battle begins once its renderer has built the initial world.
 	# Network flushing continues, so loading never advances combat unseen.
@@ -740,6 +835,8 @@ func _physics_process(dt: float) -> void:
 	if mission:
 		mission.tick(dt)
 	tp = _p("AI commanders", tp)
+	_run_deferred_effects()
+	tp = _p("deferred effects", tp)
 	if recording:
 		recording.after_tick()
 	tp = _p("replay recording", tp)
@@ -764,6 +861,7 @@ func _physics_process(dt: float) -> void:
 	if _reveal_t <= 0.0:
 		_reveal_t = 0.4
 		_reveal_pass()
+	combat.finish_tick()
 	tp = _p("team + reveal", tp)
 	tick_ms = lerpf(tick_ms, (Time.get_ticks_usec() - t0) / 1000.0, 0.05)
 	prof["TOTAL"] = tick_ms
@@ -775,6 +873,27 @@ func _physics_process(dt: float) -> void:
 			measured_worst_tick = {"time": time, "total_ms": elapsed, "systems_ms": _measured_tick_systems.duplicate()}
 	net_out_bps = lerpf(net_out_bps, _net_out / maxf(dt, 0.001), 0.05)
 	_net_out = 0.0
+
+
+func schedule_cache_cook_off(pos: Vector3, stock: float) -> void:
+	if _deferred_effects == null:
+		_deferred_effects = DeferredEffects.new()
+	_deferred_effects.cook_off(time, pos, stock, rng)
+
+
+func defer_rubble(pos: Vector3, yaw: float, size: Vector3) -> void:
+	if _deferred_effects == null:
+		_deferred_effects = DeferredEffects.new()
+	_deferred_effects.defer_rubble(pos, yaw, size)
+
+
+func _run_deferred_effects() -> void:
+	if _deferred_effects == null or combat == null:
+		return
+	for event: Array in _deferred_effects.advance_to(time):
+		combat.explode(event[0], event[1])
+	for rubble: Array in _deferred_effects.take_rubble():
+		spawn("structure", {"skind": "rubble", "pos": rubble[0], "yaw": rubble[1], "size": rubble[2]})
 
 
 ## Profiling helper: accumulates a smoothed per-tick cost for a named system.
@@ -791,6 +910,7 @@ var _measured_tick_systems := {}
 var measured_details := {}
 var measured_detail_max := {}
 var measured_views := {}
+var measured_view_frame := {}
 
 
 func detail(key: String, since: int) -> int:
@@ -813,6 +933,7 @@ func vp(key: String, since: int) -> void:
 	vp_usec += elapsed
 	if measure_ticks:
 		measured_views[key] = float(measured_views.get(key, 0.0)) + elapsed / 1000.0
+		measured_view_frame[key] = float(measured_view_frame.get(key, 0.0)) + elapsed / 1000.0
 
 
 func _p(key: String, since: int) -> int:
@@ -1127,6 +1248,8 @@ func _rpc_props(d: Dictionary) -> void:
 	for id in d:
 		var e: Entity = entities.get(id)
 		if e:
+			if e is Soldier and soldier_view:
+				soldier_view.invalidate()
 			var moved: bool = e is Structure and structure_view != null and (d[id] as Dictionary).has("pos")
 			if moved:
 				structure_view.remove(e)
@@ -1154,6 +1277,8 @@ func _rpc_snap(data: PackedByteArray) -> void:
 		return
 	_snapshot_time = snapshot_time
 	time = _snapshot_time
+	if soldier_view:
+		soldier_view.motion_changed()
 	while b.get_position() + 5 <= n:
 		var id := b.get_u32()
 		var ln := b.get_u8()
@@ -1166,6 +1291,8 @@ func _rpc_snap(data: PackedByteArray) -> void:
 				e.read_state(b)
 			elif local_team >= 0:
 				e.vis_mask &= ~(1 << local_team)
+				if e is Soldier:
+					e._view_dirty = true
 		elif _load_rec.has(id):
 			_spawn_states[id] = data.slice(st, st + ln)
 		b.seek(st + ln)
@@ -1276,6 +1403,8 @@ var _join_ground := false  # the ground has come
 var _join_end := false  # and everything else
 var _join_landform := PackedFloat32Array()
 var _join_kinds := PackedByteArray()  # the host's ground kinds, until laid
+var _join_surface := PackedFloat32Array()
+var _join_craters := PackedByteArray()
 var _load_q: Array = []  # [eid, kind ("" once gone), props], to build in the order they came
 var _load_i := 0
 var _load_rec := {}  # eid -> its record in _load_q, while it waits
@@ -1288,6 +1417,7 @@ var _load_t0 := 0
 var _load_marks: Array = []  # (FL_DEBUG_NET) when each stage was done
 var _ground_task := -1
 var _ground_water: WaterMap  # the water laid out off the main thread, then handed over
+var _ground_native: RefCounted
 
 
 ## One entity as the join stream carries it: [eid, its kind (ENT_KINDS), props].
@@ -1335,6 +1465,9 @@ func _rpc_join_map(pk: Array) -> void:
 	if not d is Dictionary:
 		push_error("The host's map didn't unpack.")
 		return
+	install_join_map(d)
+
+func install_join_map(d: Dictionary) -> void:
 	var relief = d.get("landform", PackedFloat32Array())
 	if not Landform.valid(relief, MapDims.N):
 		push_error("The host terrain is invalid.")
@@ -1435,7 +1568,7 @@ func _load_tick() -> void:
 			_load_step = 2
 			_load_stage("Charting the water", 0.1)
 		2:
-			if _ground_task >= 0 and not WorkerThreadPool.is_task_completed(_ground_task):
+			if (_ground_native and not _ground_native.loading_ready()) or (_ground_task >= 0 and not WorkerThreadPool.is_task_completed(_ground_task)):
 				_load_stage("Charting the water", 0.1 + 0.08 * minf(1.0, (t0 - _load_t0) / 4000000.0))
 				return
 			_ground_done()
@@ -1456,7 +1589,7 @@ func _load_tick() -> void:
 				if _join_end:
 					if _load_cells == 0:
 						_load_mark("entities")
-					_load_cells = maxi(1, terrain._queue.size() - terrain._qhead)
+					_load_cells = maxi(1, terrain.pending_count())
 					_load_step = 4
 			_load_stage("Moving in", 0.2 + 0.7 * minf(1.0, float(_load_built) / maxf(1.0, _join_n)))
 		4:
@@ -1468,14 +1601,14 @@ func _load_tick() -> void:
 			# big batch may be shared out over the worker threads)
 			if _cover_min < 0:
 				_cover_min = int(terrain.get_script().get_script_constant_map().get("THREAD_CELLS", 0))
-			while terrain._qhead < terrain._queue.size() and Time.get_ticks_usec() - t0 < LOAD_SLICE_US:
+			while terrain.pending_count() > 0 and Time.get_ticks_usec() - t0 < LOAD_SLICE_US:
 				var c0 := Time.get_ticks_usec()
 				terrain.tick(maxi(_cover_batch, _cover_min))
 				var took := maxi(1, Time.get_ticks_usec() - c0)
 				_cover_batch = clampi(int(_cover_batch * (LOAD_SLICE_US / 3.0) / took), 128, 1 << 16)
-			var left: int = terrain._queue.size() - terrain._qhead
+			var left: int = terrain.pending_count()
 			_load_stage("Taking cover", 0.9 + 0.1 * (1.0 - float(left) / _load_cells))
-			if terrain._queue.is_empty():
+			if terrain.pending_count() == 0:
 				_load_done()
 
 
@@ -1509,11 +1642,18 @@ func _load_mark(what: String) -> void:
 func _lay_ground() -> void:
 	_ground_water = WaterMap.new(self)
 	_ground_water.from_dict(water.to_dict())
+	terrain.begin_ground_import()
+	if simulation_client:
+		terrain.install_landform(_join_landform, true)
+	_ground_native = _ground_water.begin_loading(_join_kinds) if simulation_client or _join_landform.is_empty() else null
+	if _ground_native:
+		return
 	_ground_task = WorkerThreadPool.add_task(_ground_job, false, "Laying out the ground")
 
 
 func _ground_job() -> void:
-	terrain.install_landform(_join_landform)
+	if not simulation_client:
+		terrain.install_landform(_join_landform)
 	var w := _ground_water
 	if not w.is_empty():
 		w.paint_kinds()
@@ -1529,9 +1669,20 @@ func _ground_job() -> void:
 
 
 func _ground_done() -> void:
+	if _ground_native:
+		_ground_water.finish_loading(_ground_native)
+		_ground_native = null
 	if _ground_task >= 0:
 		WorkerThreadPool.wait_for_task_completion(_ground_task)
 		_ground_task = -1
+	terrain.end_ground_import()
+	if simulation_client:
+		if not terrain.import_surface(Rect2i(0, 0, MapDims.N, MapDims.N), _join_kinds, _join_craters, _join_surface):
+			simulation_client._error("Invalid simulation ground.")
+			return
+		_join_surface = PackedFloat32Array()
+		_join_craters = PackedByteArray()
+		simulation_client.surface_ready = true
 	var w := _ground_water
 	_ground_water = null
 	_join_kinds = PackedByteArray()
@@ -1547,6 +1698,8 @@ func _ground_done() -> void:
 
 
 func _load_done() -> void:
+	if simulation_client and not simulation_client._surface_tiles.is_empty():
+		return
 	_try_focus()
 	if soldier_view != null and soldier_view.warming():
 		return
@@ -1554,7 +1707,10 @@ func _load_done() -> void:
 		return
 	loaded = true
 	_load_mark("client ready")
-	if is_inside_tree() and multiplayer.get_unique_id() != 1:
+	if simulation_client:
+		simulation_client.loaded()
+		LocalServer.client_loaded()
+	elif is_inside_tree() and multiplayer.get_unique_id() != 1:
 		_client_loaded.rpc_id(1)
 		Net._long_timeout(1, false)
 	set_process(false)
@@ -1684,6 +1840,8 @@ func request_report() -> void:
 	if srv:
 		report = battle.report(local_team)
 		report_updated.emit()
+	elif simulation_client:
+		simulation_client.request_report()
 	else:
 		_rpc_report_req.rpc_id(1)
 
@@ -1864,9 +2022,13 @@ func _shash_add(e: Structure) -> void:
 			if not _trench_hash.has(k):
 				_trench_hash[k] = []
 			(_trench_hash[k] as Array).append(e)
+	if terrain:
+		terrain.sync_structure(e, true)
 
 
 func _shash_remove(e: Structure) -> void:
+	if terrain:
+		terrain.remove_structure(e.eid)
 	for k in e.hash_cells:
 		var a = _shash.get(k)
 		if a:
@@ -1966,6 +2128,8 @@ func send_cmd(d: Dictionary) -> void:
 		return
 	if srv:
 		execute_cmd(local_peer, d)
+	elif simulation_client:
+		simulation_client.send_command(d)
 	else:
 		_rpc_cmd.rpc_id(1, d)
 
@@ -2033,6 +2197,8 @@ func execute_cmd(peer: int, d: Dictionary) -> void:
 	if not team in [0, 1] or winner >= 0:
 		return
 	var t: String = d.get("t", "")
+	if (t == "throw" or (t == "unit" and String(d.get("o", "move")) == "throw")) and not String(d.get("kind", "frag")) in ["frag", "smoke"]:
+		return
 	var sqs := _command_squads(peer, d.get("squads", []))
 	var vehs := _command_vehicles(peer, d.get("vehicles", []))
 	# a routed squad runs whatever it's told, until it has rallied

@@ -1,5 +1,6 @@
 class_name BattleRecording
 extends Node
+signal broadcast_started
 ## The observer's state, plus tick-ordered inputs kept for future validation.
 ## Watching never re-simulates combat and never awards progress.
 
@@ -62,8 +63,20 @@ func _static_state() -> Dictionary:
 
 
 func _ready() -> void:
-	var main := get_tree().root.get_node("Main")
-	folder = String(main.args.get("record-replay", "user://replays/%d-%d" % [Time.get_unix_time_from_system(), Time.get_ticks_usec()]))
+	_open_recording(String(world.settings.get("name", "")))
+	if stopped:
+		return
+	for e in world.structures:
+		dirty_static(e.eid)
+	checkpoint = capture()
+	initial_map = {"map_size": MapDims.N, "n": checkpoint.entities.size(), "water": world.water.to_dict().duplicate(true), "roads": world.roads.duplicate(true),
+		"decor": world.decor.duplicate(true), "town": world.town_rect, "kinds": world.terrain.base.duplicate(), "landform": world.terrain.landform.heights.duplicate()}
+	_save_manifest()
+
+func _open_recording(title: String) -> void:
+	if folder.is_empty():
+		var main := get_tree().root.get_node("Main")
+		folder = String(main.args.get("record-replay", "user://replays/%d-%d" % [Time.get_unix_time_from_system(), Time.get_ticks_usec()]))
 	if folder == "1":
 		folder = "user://replays/%d-%d" % [Time.get_unix_time_from_system(), Time.get_ticks_usec()]
 	if DirAccess.make_dir_recursive_absolute(folder) != OK:
@@ -71,13 +84,7 @@ func _ready() -> void:
 		push_warning("Could not create the replay folder.")
 		return
 	manifest = {"format": FORMAT, "protocol": Net.NET_VERSION, "version": Updater.version,
-		"name": String(world.settings.get("name", "")).strip_edges() if not String(world.settings.get("name", "")).is_empty() else "Frontline battle", "verified": false, "chunks": [], "duration": 0.0, "status": "live"}
-	for e in world.structures:
-		dirty_static(e.eid)
-	checkpoint = capture()
-	initial_map = {"map_size": MapDims.N, "n": checkpoint.entities.size(), "water": world.water.to_dict().duplicate(true), "roads": world.roads.duplicate(true),
-		"decor": world.decor.duplicate(true), "town": world.town_rect, "kinds": world.terrain.base.duplicate(), "landform": world.terrain.landform.heights.duplicate()}
-	_save_manifest()
+		"name": title.strip_edges() if not title.strip_edges().is_empty() else "Frontline battle", "verified": false, "chunks": [], "duration": 0.0, "status": "live"}
 
 func capture() -> Dictionary:
 	var stamp := Time.get_ticks_usec() if world.measure_details else 0
@@ -147,9 +154,14 @@ func flush(final := false) -> void:
 	if sequence == 0:
 		content["settings"] = world.settings.duplicate(true)
 		content["map"] = initial_map
+	_encode_chunk(content, world.time, final)
+	if not stopped:
+		checkpoint = capture()
+
+func _encode_chunk(content: Dictionary, time: float, final: bool) -> void:
 	# A single detached chunk bounds memory; shutdown joins it before publishing.
 	encoder = Thread.new()
-	var task := _encode.bind(content, sequence, float(checkpoint.time), world.time, final)
+	var task := _encode.bind(content, sequence, float(checkpoint.time), time, final)
 	var error := encoder.start(task)
 	frames = []; commands = []
 	stopped = final
@@ -158,8 +170,6 @@ func flush(final := false) -> void:
 		_publish(task.call())
 	elif final:
 		_finish_encoding(true)
-	if not stopped:
-		checkpoint = capture()
 
 static func _encode(content: Dictionary, seq: int, start: float, end: float, final: bool) -> Dictionary:
 	var raw := var_to_bytes(content)
@@ -223,12 +233,14 @@ func _upload() -> void:
 	var previous_uploaded := uploaded
 	if replay_id.is_empty():
 		var r: Dictionary = await Online._request(HTTPClient.METHOD_POST, "/replays",
-			{"lobby": Online.lobby_id, "format": FORMAT, "protocol": Net.NET_VERSION, "version": Updater.version},
+			{"lobby": Online.lobby_id, "format": manifest.format, "protocol": Net.NET_VERSION, "version": Updater.version},
 			PackedStringArray(["X-Lobby-Token: " + Online._lobby_token]), 15.0, false)
 		if r.get("ok", false):
 			var data: Dictionary = r.get("data", {})
 			replay_id = String(data.get("id", ""))
 			replay_token = String(data.get("token", ""))
+			if not replay_id.is_empty():
+				broadcast_started.emit()
 	if not replay_id.is_empty():
 		var body = JSON.parse_string(FileAccess.get_file_as_string(folder.path_join("%d.json" % uploaded)))
 		var r: Dictionary = await Online._request(HTTPClient.METHOD_POST, "/replays/%s/chunks" % replay_id, body,
@@ -243,6 +255,8 @@ func _exit_tree() -> void:
 
 
 func finish() -> void:
+	if detached:
+		return
 	flush(true)
 	stopped = true
 	detached = true

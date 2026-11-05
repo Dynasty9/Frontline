@@ -39,6 +39,7 @@ done
 hdiutil attach -readonly -nobrowse -mountpoint "$mnt" "$dmg" > /dev/null
 trap 'hdiutil detach -quiet "$mnt" || hdiutil detach -force -quiet "$mnt" || true' EXIT
 test -x "$mnt/Frontline.app/Contents/MacOS/Frontline"
+test -x "$mnt/Frontline.app/Contents/Helpers/frontline-server"
 test -s "$mnt/Frontline.app/Contents/Resources/Frontline.pck"
 test "$(readlink "$mnt/Applications")" = /Applications
 codesign --verify --deep --strict "$mnt/Frontline.app"

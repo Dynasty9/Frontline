@@ -3,6 +3,29 @@ extends Control
 
 var hud: Hud
 var raster: SubViewport
+var _ink: CanvasItem = self
+var _layers: Array[DrawLayer] = []
+var _next_phase := -1
+var _refresh_all := true
+var _refresh_projection := Projection()
+
+class DrawLayer extends Control:
+	var overlay: HudOverlay
+	var phase := 0
+	func _draw() -> void:
+		overlay._draw_layer(phase, self)
+
+
+func prepare_layers() -> void:
+	for phase in [1, 2]:
+		var layer := DrawLayer.new()
+		layer.overlay = self
+		layer.phase = phase
+		layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		add_child(layer)
+		layer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		_layers.append(layer)
+
 var _placed: Array = []
 var _groups := {}  # sid -> {"mem": [...], "c": centroid of the living, "n": living, "team": t, "lead": squad leader}
 var _sel_sids := {}
@@ -13,41 +36,77 @@ var _map_labels := {}
 var _marker_offsets := {}
 var _label_epoch := 0
 var _groups_at := -1000
+var _groups_pending := false
 const CLOSE_Z := 22.0
 const FAR_Z := 42.0
 var _refresh_left := 0.0
 var _refresh_view := Transform3D.IDENTITY
+var _bubble_layouts := {}
 static var _contact_mesh: ArrayMesh
 
 
 func _input(event: InputEvent) -> void:
 	if not event is InputEventMouseMotion:
 		_refresh_left = 0.0
+		_refresh_all = true
 
 
-func refresh_for_view(dt: float, camera: Camera3D) -> void:
-	# Blast shake should not rebuild every counter between status refreshes.
+func refresh_for_view(dt: float, camera: Camera3D) -> bool:
+	# Prepare drawing commands over three frames, then rasterize once at 15 Hz.
 	var view := camera.global_transform
+	var projection := camera.get_camera_projection()
 	if raster:
 		if not hud.root.is_visible_in_tree():
 			raster.render_target_update_mode = SubViewport.UPDATE_DISABLED
 			_refresh_left = 0.0
-			return
+			_refresh_all = true
+			_next_phase = -1
+			return false
 		var pixels := Vector2i(hud.get_viewport().get_visible_rect().size)
 		if raster.size != pixels:
 			raster.size = pixels
-			_refresh_left = 0.0
+			_refresh_all = true
 	_refresh_left -= dt
-	if _refresh_left > 0.0 and view == _refresh_view:
-		return
+	var full := _refresh_all or view != _refresh_view or projection != _refresh_projection
+	if not full and _next_phase >= 0:
+		_layers[_next_phase - 1].queue_redraw()
+		_next_phase = _next_phase + 1 if _next_phase < 2 else -1
+		if _next_phase < 0 and raster:
+			raster.render_target_update_mode = SubViewport.UPDATE_ONCE
+		hud.overview_frame = Engine.get_process_frames()
+		return true
+	if not full and _refresh_left > 0.0:
+		return false
 	_refresh_left = maxf(0.0, _refresh_left + 1.0 / 15.0) if _refresh_left <= 0.0 else 1.0 / 15.0
 	_refresh_view = view
+	_refresh_projection = projection
+	_refresh_all = false
+	hud.overview_frame = Engine.get_process_frames()
 	queue_redraw()
+	_next_phase = -1
+	if full:
+		for layer in _layers:
+			layer.queue_redraw()
+	elif not _layers.is_empty():
+		_next_phase = 1
 	if raster:
-		raster.render_target_update_mode = SubViewport.UPDATE_ONCE
+		raster.render_target_update_mode = SubViewport.UPDATE_ONCE if _next_phase < 0 else SubViewport.UPDATE_DISABLED
+	return true
+
 
 func _draw() -> void:
-	_label_epoch += 1
+	_draw_content(-1 if _layers.is_empty() else 0)
+
+
+func _draw_layer(phase: int, canvas: CanvasItem) -> void:
+	_ink = canvas
+	_draw_content(phase)
+	_ink = self
+
+
+func _draw_content(phase: int) -> void:
+	if phase < 0 or phase == 2:
+		_label_epoch += 1
 	var w := hud.world
 	var inp := w.input
 	if inp == null or w.cam == null:
@@ -76,138 +135,142 @@ func _draw() -> void:
 		a_close = 0.0
 		a_mid = 0.0
 		labels_on = false
-		_map_grid(cam, vs)
+		if phase < 0 or phase == 0:
+			_map_grid(cam, vs)
 	elif not hud.map_layer("units"):
 		a_units = 0.0
 	_pt = Time.get_ticks_usec()
-	# the few structures that carry a name or a progress bar (HQs, FOBs, anything
-	# being built): picked out of the hundreds of walls and trees twice a second
-	_ts_t -= 1
-	if _ts_t <= 0:
-		_ts_t = 30
-		_team_structs.assign(w.owned_structures)
-		for st2 in w.sim_structures:
-			if st2.team < 0 and st2.label_h > 0.0:
-				_team_structs.append(st2)
-	_clear_placed()
-	_build_groups(inp)
-	_mark("groups")
-	_town_marks()
-	_structure_labels(cam, vs, zoom)
-	_mark("structure labels")
-	if hud.map_layer("intel"):
-		_intel(cam, vs, lt)
-	if hud.map_layer("ranges"):
-		_ranges(cam)
-	_sight_rings()
-	_order_graphics(lt, maxf(a_far, a_units * 0.9))
-	_mark("orders")
-	if not w.mission_info.is_empty() and int(w.mission_info.get("over", 0)) == 0:
-		_mission_marks(cam, vs)
-	var men := _men_on_screen(cam, vs) if a_close + a_mid > 0.0 else []
-	_mark("men on screen")
-	if a_close > 0.0:
-		_interactions(cam, men, a_close)
-	if a_close + a_mid > 0.0:
-		_leader_marks(men, maxf(a_close, a_mid))
-		_sectors(cam, maxf(a_close, a_mid))
-	_mark("interactions")
-	if Settings.get_v("bubbles"):
-		_speech(cam, vs, a_close, a_mid)
-	_mark("speech")
-	if labels_on and a_close > 0.0:
-		_name_tags(men, a_close, zoom, lt)
-	if labels_on and a_mid > 0.0:
-		_status_icons(men, a_mid)
-	_mark("labels")
-	_nato_markers(cam, lt, a_units)
-	_finish_map_labels()
-	_mark("symbols")
-	_command_links(cam, a_units)
-	_mark("command links")
-	# health bars: selected, wounded or downed friendlies
-	for s in w.soldiers:
-		if not s.visible or s.life == Soldier.Life.HIDDEN or s.life == Soldier.Life.DEAD:
-			continue
-		var own: bool = s.team == lt
-		var want: bool = s.selected or (own and s.life == Soldier.Life.DOWNED) or (own and s.health_frac() < 0.98 and s.life == Soldier.Life.ALIVE)
-		# At squad-symbol distance the strength pips already say how the
-		# squad is doing; per-man bars would cover the tiny soldier models.
-		if not want or (zoom >= FAR_Z and s.life != Soldier.Life.DOWNED):
-			continue
-		var p: Vector3 = s.position + Vector3(0, 2.1, 0)
-		if cam.is_position_behind(p) or cpos.distance_to(p) > 160.0:
-			continue
-		var sp := cam.unproject_position(p)
-		if s.life == Soldier.Life.DOWNED:
-			var a2 := 0.6 + 0.4 * sin(Time.get_ticks_msec() / 150.0)
-			draw_rect(Rect2(sp + Vector2(-2, -7), Vector2(4, 14)), Color(1, 0.15, 0.1, a2))
-			draw_rect(Rect2(sp + Vector2(-7, -2), Vector2(14, 4)), Color(1, 0.15, 0.1, a2))
-			_bar(sp + Vector2(-12, 9), Vector2(24, 3), s.health_frac(), Color(1, 0.3, 0.3))
-			continue
-		var hf: float = s.health_frac()
-		_bar(sp + Vector2(-11, 2), Vector2(22, 3), hf, Color(1.0, 0.25, 0.2).lerp(Color(0.4, 0.95, 0.4), hf))
-		if s.selected:
-			_bar(sp + Vector2(-11, 6), Vector2(22, 2), s.ammo_fraction(), Color(0.45, 0.7, 1.0))
-	for v in w.vehicles:
-		if not v.visible or not (v.selected or (v.team == lt and v.health_frac() < 0.99)):
-			continue
-		var p2: Vector3 = v.position + Vector3(0, 3.6, 0)
-		if cam.is_position_behind(p2):
-			continue
-		var sp2 := cam.unproject_position(p2)
-		_bar(sp2 + Vector2(-24, 0), Vector2(48, 4), v.health_frac(), UiKit.GOOD)
-		if (v.flags & Vehicle.F_TRACK) != 0:
-			UiKit.caps_at(self, sp2 + Vector2(-24, -5), "Track hit", 11, UiKit.BAD)
-	for st in _team_structs:
-		if st.gone or (st.team < 0 and st.skind != "town") or not st.visible:
-			continue
-		var capturable: bool = st.skind == "fob" or st.skind == "town"
-		var need: bool = (not st.built) or (capturable and st.cap_prog > 0.0) or (st.team == lt and st.hp < st.max_hp * 0.98 and st.is_player_building())
-		if not need:
-			continue
-		var p3: Vector3 = st.position + Vector3(0, 4.5 if st.skind != "town" else st.label_h - 2.4, 0)
-		if cam.is_position_behind(p3) or cpos.distance_to(p3) > (170.0 if st.skind != "town" else 320.0):
-			continue
-		var sp3 := cam.unproject_position(p3)
-		if not st.built:
-			_bar(sp3 + Vector2(-30, 0), Vector2(60, 4), st.progress, UiKit.WARN)
-		elif capturable and st.cap_prog > 0.0 and st.cap_team >= 0:
-			_bar(sp3 + Vector2(-40, 0), Vector2(80, 6), st.cap_prog / 100.0, Defs.TEAM_COLORS[st.cap_team])
-			UiKit.caps_at(self, sp3 + Vector2(-40, -5), "Capturing", 11, UiKit.TEXT)
-		else:
-			_bar(sp3 + Vector2(-30, 0), Vector2(60, 3), st.hp / maxf(1.0, st.max_hp), UiKit.GOOD)
-	var now := w.time
-	for i in range(w.pings.size() - 1, -1, -1):
-		var pg: Array = w.pings[i]
-		if pg[1] < now:
-			w.pings.remove_at(i)
-			continue
-		var pp: Vector3 = pg[0] + Vector3(0, 2, 0)
-		if cam.is_position_behind(pp):
-			continue
-		var spp := cam.unproject_position(pp)
-		spp = spp.clamp(Vector2(24, 60), vs - Vector2(24, 240))
-		var col2 := Color(0.5, 0.9, 1.0) if pg[2] == "intel" else Color(1, 0.55, 0.3)
-		var rr := 8.0 + fmod(now * 1.5, 1.0) * 10.0
-		draw_arc(spp, rr, 0, TAU, 24, Color(col2.r, col2.g, col2.b, 1.0 - fmod(now * 1.5, 1.0) * 0.7), 2.0)
-		draw_circle(spp, 3.0, col2)
-	# follow caption (observer director)
-	var d := w.director
-	if d and d.active and d._subject and not d._subject.gone and d._subject is Soldier:
-		var sj: Soldier = d._subject
-		var cap: String = sj.display_name()
-		var side: String = Defs.TEAM_NAMES[sj.team] if sj.team >= 0 else ""
-		var act := sj.doing_text()
-		var cw := maxf(UiKit.caps_w(cap, 15) + UiKit.caps_w(side, 11) + 14.0, UiKit.caps_w(act, 12)) + 36.0
-		var cr := Rect2(vs.x * 0.5 - cw * 0.5, vs.y - 92 - float(w.settings.get("replay_controls_height", 0.0)), cw, 50.0 if act != "" else 32.0)
-		draw_rect(cr, UiKit.fa(UiKit.INK, 0.82))
-		UiKit.ticks(self, cr, UiKit.RULE2, UiKit.TICK_ARM, 0.0)
-		var cx := cr.position.x + 18.0 + UiKit.caps_at(self, Vector2(cr.position.x + 18, cr.position.y + 22), cap, 15, UiKit.TEXT)
-		if sj.team >= 0:
-			UiKit.caps_at(self, Vector2(cx + 14, cr.position.y + 22), side, 11, Defs.TEAM_COLORS[sj.team].lightened(0.35))
-		if act != "":
-			UiKit.caps_at(self, Vector2(cr.position.x + 18, cr.position.y + 40), act, 12, Hud.CAT_COLORS.get(sj.doing_cat(), UiKit.DIM))
+	if phase < 0 or phase == 0:
+		# the few structures that carry a name or a progress bar (HQs, FOBs, anything
+		# being built): picked out of the hundreds of walls and trees twice a second
+		_ts_t -= 1
+		if _ts_t <= 0:
+			_ts_t = 30
+			_team_structs.assign(w.owned_structures)
+			for st2 in w.sim_structures:
+				if st2.team < 0 and st2.label_h > 0.0:
+					_team_structs.append(st2)
+		_clear_placed()
+		_build_groups(inp, false)
+		_mark("groups")
+		_town_marks()
+		_structure_labels(cam, vs, zoom)
+		_mark("structure labels")
+		if hud.map_layer("intel"):
+			_intel(cam, vs, lt)
+		if hud.map_layer("ranges"):
+			_ranges(cam)
+		_sight_rings()
+		_order_graphics(lt, maxf(a_far, a_units * 0.9))
+		_mark("orders")
+		if not w.mission_info.is_empty() and int(w.mission_info.get("over", 0)) == 0:
+			_mission_marks(cam, vs)
+	if phase < 0 or phase == 1:
+		var men := _men_on_screen(cam, vs) if a_close + a_mid > 0.0 else []
+		_mark("men on screen")
+		if a_close > 0.0:
+			_interactions(cam, men, a_close)
+		if a_close + a_mid > 0.0:
+			_leader_marks(men, maxf(a_close, a_mid))
+			_sectors(cam, maxf(a_close, a_mid))
+		_mark("interactions")
+		if Settings.get_v("bubbles"):
+			_speech(cam, vs, a_close, a_mid)
+		_mark("speech")
+		if labels_on and a_close > 0.0:
+			_name_tags(men, a_close, zoom, lt)
+		if labels_on and a_mid > 0.0:
+			_status_icons(men, a_mid)
+		_mark("labels")
+	if phase < 0 or phase == 2:
+		_nato_markers(cam, lt, a_units)
+		_finish_map_labels()
+		_mark("symbols")
+		_command_links(cam, a_units)
+		_mark("command links")
+		# health bars: selected, wounded or downed friendlies
+		for s: Soldier in w.soldiers:
+			if not s.visible or s.life == Soldier.Life.HIDDEN or s.life == Soldier.Life.DEAD:
+				continue
+			var own: bool = s.team == lt
+			var want: bool = s.selected or (own and s.life == Soldier.Life.DOWNED) or (own and s.health_frac() < 0.98 and s.life == Soldier.Life.ALIVE)
+			# At squad-symbol distance the strength pips already say how the
+			# squad is doing; per-man bars would cover the tiny soldier models.
+			if not want or (zoom >= FAR_Z and s.life != Soldier.Life.DOWNED):
+				continue
+			var p: Vector3 = s.position + Vector3(0, 2.1, 0)
+			if cam.is_position_behind(p) or cpos.distance_to(p) > 160.0:
+				continue
+			var sp := cam.unproject_position(p)
+			if s.life == Soldier.Life.DOWNED:
+				var a2 := 0.6 + 0.4 * sin(Time.get_ticks_msec() / 150.0)
+				_ink.draw_rect(Rect2(sp + Vector2(-2, -7), Vector2(4, 14)), Color(1, 0.15, 0.1, a2))
+				_ink.draw_rect(Rect2(sp + Vector2(-7, -2), Vector2(14, 4)), Color(1, 0.15, 0.1, a2))
+				_bar(sp + Vector2(-12, 9), Vector2(24, 3), s.health_frac(), Color(1, 0.3, 0.3))
+				continue
+			var hf: float = s.health_frac()
+			_bar(sp + Vector2(-11, 2), Vector2(22, 3), hf, Color(1.0, 0.25, 0.2).lerp(Color(0.4, 0.95, 0.4), hf))
+			if s.selected:
+				_bar(sp + Vector2(-11, 6), Vector2(22, 2), s.ammo_fraction(), Color(0.45, 0.7, 1.0))
+		for v in w.vehicles:
+			if not v.visible or not (v.selected or (v.team == lt and v.health_frac() < 0.99)):
+				continue
+			var p2: Vector3 = v.position + Vector3(0, 3.6, 0)
+			if cam.is_position_behind(p2):
+				continue
+			var sp2 := cam.unproject_position(p2)
+			_bar(sp2 + Vector2(-24, 0), Vector2(48, 4), v.health_frac(), UiKit.GOOD)
+			if (v.flags & Vehicle.F_TRACK) != 0:
+				UiKit.caps_at(_ink, sp2 + Vector2(-24, -5), "Track hit", 11, UiKit.BAD)
+		for st in _team_structs:
+			if st.gone or (st.team < 0 and st.skind != "town") or not st.visible:
+				continue
+			var capturable: bool = st.skind == "fob" or st.skind == "town"
+			var need: bool = (not st.built) or (capturable and st.cap_prog > 0.0) or (st.team == lt and st.hp < st.max_hp * 0.98 and st.is_player_building())
+			if not need:
+				continue
+			var p3: Vector3 = st.position + Vector3(0, 4.5 if st.skind != "town" else st.label_h - 2.4, 0)
+			if cam.is_position_behind(p3) or cpos.distance_to(p3) > (170.0 if st.skind != "town" else 320.0):
+				continue
+			var sp3 := cam.unproject_position(p3)
+			if not st.built:
+				_bar(sp3 + Vector2(-30, 0), Vector2(60, 4), st.progress, UiKit.WARN)
+			elif capturable and st.cap_prog > 0.0 and st.cap_team >= 0:
+				_bar(sp3 + Vector2(-40, 0), Vector2(80, 6), st.cap_prog / 100.0, Defs.TEAM_COLORS[st.cap_team])
+				UiKit.caps_at(_ink, sp3 + Vector2(-40, -5), "Capturing", 11, UiKit.TEXT)
+			else:
+				_bar(sp3 + Vector2(-30, 0), Vector2(60, 3), st.hp / maxf(1.0, st.max_hp), UiKit.GOOD)
+		var now := w.time
+		for i in range(w.pings.size() - 1, -1, -1):
+			var pg: Array = w.pings[i]
+			if pg[1] < now:
+				w.pings.remove_at(i)
+				continue
+			var pp: Vector3 = pg[0] + Vector3(0, 2, 0)
+			if cam.is_position_behind(pp):
+				continue
+			var spp := cam.unproject_position(pp)
+			spp = spp.clamp(Vector2(24, 60), vs - Vector2(24, 240))
+			var col2 := Color(0.5, 0.9, 1.0) if pg[2] == "intel" else Color(1, 0.55, 0.3)
+			var rr := 8.0 + fmod(now * 1.5, 1.0) * 10.0
+			_ink.draw_arc(spp, rr, 0, TAU, 24, Color(col2.r, col2.g, col2.b, 1.0 - fmod(now * 1.5, 1.0) * 0.7), 2.0)
+			_ink.draw_circle(spp, 3.0, col2)
+		# follow caption (observer director)
+		var d := w.director
+		if d and d.active and d._subject and not d._subject.gone and d._subject is Soldier:
+			var sj: Soldier = d._subject
+			var cap: String = sj.display_name()
+			var side: String = Defs.TEAM_NAMES[sj.team] if sj.team >= 0 else ""
+			var act := sj.doing_text()
+			var cw := maxf(UiKit.caps_w(cap, 15) + UiKit.caps_w(side, 11) + 14.0, UiKit.caps_w(act, 12)) + 36.0
+			var cr := Rect2(vs.x * 0.5 - cw * 0.5, vs.y - 92 - float(w.settings.get("replay_controls_height", 0.0)), cw, 50.0 if act != "" else 32.0)
+			_ink.draw_rect(cr, UiKit.fa(UiKit.INK, 0.82))
+			UiKit.ticks(_ink, cr, UiKit.RULE2, UiKit.TICK_ARM, 0.0)
+			var cx := cr.position.x + 18.0 + UiKit.caps_at(_ink, Vector2(cr.position.x + 18, cr.position.y + 22), cap, 15, UiKit.TEXT)
+			if sj.team >= 0:
+				UiKit.caps_at(_ink, Vector2(cx + 14, cr.position.y + 22), side, 11, Defs.TEAM_COLORS[sj.team].lightened(0.35))
+			if act != "":
+				UiKit.caps_at(_ink, Vector2(cr.position.x + 18, cr.position.y + 40), act, 12, Hud.CAT_COLORS.get(sj.doing_cat(), UiKit.DIM))
 
 
 const RECON_COL := Color(0.5, 0.88, 1.0, 0.9)  # what recon will see (sight rings, recon calls)
@@ -222,8 +285,8 @@ func _ground_poly(pts: Array, col: Color) -> void:
 			return
 		out.append(cam.unproject_position(q))
 	out.append(out[0])
-	draw_polyline(out, col, 2.0, true)
-	MapSymbols.poly(self, out, Color(col.r, col.g, col.b, 0.12))
+	_ink.draw_polyline(out, col, 2.0, true)
+	MapSymbols.poly(_ink, out, Color(col.r, col.g, col.b, 0.12))
 
 func _ground_arrow(a: Vector3, b: Vector3, col: Color) -> void:
 	var cam := hud.world.cam.cam
@@ -231,57 +294,79 @@ func _ground_arrow(a: Vector3, b: Vector3, col: Color) -> void:
 		return
 	var sa := cam.unproject_position(a + Vector3(0, 0.1, 0))
 	var sb := cam.unproject_position(b + Vector3(0, 0.1, 0))
-	draw_line(sa, sb, col, 3.0, true)
+	_ink.draw_line(sa, sb, col, 3.0, true)
 	var dv := (sb - sa).normalized()
 	var nv := Vector2(-dv.y, dv.x)
-	MapSymbols.poly(self, PackedVector2Array([sb + dv * 10.0, sb - dv * 4.0 + nv * 8.0, sb - dv * 4.0 - nv * 8.0]), col)
+	MapSymbols.poly(_ink, PackedVector2Array([sb + dv * 10.0, sb - dv * 4.0 + nv * 8.0, sb - dv * 4.0 - nv * 8.0]), col)
 
 # --- levels of detail -------------------------------------------------------
 
-func _build_groups(inp) -> void:
+func prepare_groups(inp, drawing: bool) -> void:
+	# Keep the next squad overview off a redraw frame, without starving it during a camera pan.
+	_groups_pending = drawing and not _groups_pending and not _groups.is_empty() and Time.get_ticks_msec() - _groups_at >= 100
+	var started := Time.get_ticks_usec()
+	_build_groups(inp, not _groups_pending)
+	hud.world.vp("ovl groups", started)
+
+
+func _build_groups(inp, rebuild := true) -> void:
 	_sel_sids.clear()
 	for sid in inp.sel_squads:
 		_sel_sids[sid] = true
 	# Membership and squad markers are an overview; selection stays immediate.
 	var now := Time.get_ticks_msec()
-	if now - _groups_at < 100:
+	if not rebuild or now - _groups_at < 100:
 		return
 	_groups_at = now
-	_groups.clear()
-	for s in hud.world.soldiers:
+	hud.overview_frame = Engine.get_process_frames()
+	var previous := _groups
+	_groups = {}
+	for s: Soldier in hud.world.soldiers:
 		if s.sid == 0 or not s.visible or s.life == Soldier.Life.HIDDEN:
 			continue
-		var g: Dictionary = _groups.get(s.sid, {})
-		if g.is_empty():
-			g = {"mem": [], "c": Vector3.ZERO, "n": 0, "team": s.team, "lead": null, "firing": 0, "supp": 0, "pips": []}
-			_groups[s.sid] = g
-		(g["mem"] as Array).append(s)
-		var pc := Color(0.92, 0.95, 0.9)
-		if s.life == Soldier.Life.DOWNED:
-			pc = Color(1, 0.32, 0.26)
-		elif s.life != Soldier.Life.ALIVE:
-			pc = Color(0.32, 0.32, 0.3)
-		g.pips.append(pc)
-		if s.life == Soldier.Life.ALIVE:
-			g["c"] = (g["c"] as Vector3) + s.position
-			g["n"] = int(g["n"]) + 1
-			if (s.flags & Soldier.F_SHOOTING) != 0:
-				g.firing += 1
-			if (s.flags & (Soldier.F_SUPP | Soldier.F_PINNED)) != 0:
-				g.supp += 1
-			if (s.flags & Soldier.F_LEADER) != 0:
-				g["lead"] = s
+		if not _groups.has(s.sid):
+			_groups[s.sid] = {"mem": [], "team": s.team}
+		(_groups[s.sid].mem as Array).append(s)
+	# Calculate each summary once; repeated dictionary arithmetic costs more for large armies.
 	for sid in _groups:
 		var g: Dictionary = _groups[sid]
+		var center := Vector3.ZERO
+		var alive := 0
+		var firing := 0
+		var suppressed := 0
+		var leader: Soldier = null
+		var pips := []
+		for s: Soldier in g.mem:
+			var pc := Color(0.92, 0.95, 0.9)
+			if s.life == Soldier.Life.DOWNED:
+				pc = Color(1, 0.32, 0.26)
+			elif s.life != Soldier.Life.ALIVE:
+				pc = Color(0.32, 0.32, 0.3)
+			pips.append(pc)
+			if s.life == Soldier.Life.ALIVE:
+				center += s.position
+				alive += 1
+				if (s.flags & Soldier.F_SHOOTING) != 0:
+					firing += 1
+				if (s.flags & (Soldier.F_SUPP | Soldier.F_PINNED)) != 0:
+					suppressed += 1
+				if (s.flags & Soldier.F_LEADER) != 0:
+					leader = s
+		g.c = center / float(alive) if alive > 0 else center
+		g.n = alive
+		g.firing = firing
+		g.supp = suppressed
+		g.lead = leader
+		g.pips = pips
+		var old: Dictionary = previous.get(sid, {})
+		g.pip_mesh = old.pip_mesh if old.get("pips", []) == g.pips else _strength_mesh(g.pips)
 		g.symbol = MapSymbols.squad_symbol(g.mem)
 		g.callsign = Squad.callsign_of(g.team, int(sid)).to_upper()
-		if int(g["n"]) > 0:
-			g["c"] = (g["c"] as Vector3) / float(g["n"])
 
 func _men_on_screen(cam: Camera3D, vs: Vector2) -> Array:
 	var out := []
 	var center := vs * 0.5
-	for s in hud.world.soldiers:
+	for s: Soldier in hud.world.soldiers:
 		if not s.visible or s.life == Soldier.Life.DEAD or s.life == Soldier.Life.HIDDEN:
 			continue
 		var p0: Vector3 = s.position + Vector3(0, _head_h(s), 0)
@@ -337,10 +422,10 @@ func _structure_labels(cam: Camera3D, vs: Vector2, zoom: float) -> void:
 			mc = Defs.TEAM_COLORS[st.team]
 		elif st.skind == "town":
 			mc = Structure.C_TOWN_FLAG
-		draw_rect(Rect2(r.position.x, sp.y - fs * 0.5 - 3.0, 6, 6), mc)
-		UiKit.caps_at(self, Vector2(r.position.x + 12, sp.y), txt, fs, UiKit.TEXT)
+		_ink.draw_rect(Rect2(r.position.x, sp.y - fs * 0.5 - 3.0, 6, 6), mc)
+		UiKit.caps_at(_ink, Vector2(r.position.x + 12, sp.y), txt, fs, UiKit.TEXT)
 		if code != "":
-			UiKit.mono_at(self, Vector2(r.position.x + 20 + tw, sp.y), code, fs - 2, UiKit.BAD if st.wrecked else UiKit.DIM)
+			UiKit.mono_at(_ink, Vector2(r.position.x + 20 + tw, sp.y), code, fs - 2, UiKit.BAD if st.wrecked else UiKit.DIM)
 		_place_rect(r)
 
 ## Each squad's orders drawn on the ground: dashed arrows for moves, a bold
@@ -416,41 +501,68 @@ func _ground_path(a: Vector3, b: Vector3, col: Color, alpha: float, grow: float,
 	var end := start + dir * l
 	if cam.is_position_behind(start) or cam.is_position_behind(end):
 		return
-	var bounds := Rect2(cam.unproject_position(start), Vector2.ZERO).expand(cam.unproject_position(end))
+	var back := cam.unproject_position(start)
+	var tip := cam.unproject_position(end)
+	var bounds := Rect2(back, Vector2.ZERO).expand(tip)
 	if not bounds.grow(20.0).intersects(get_viewport_rect()):
 		return
-	# Solid orders are straight on the flat ground; only dashes need samples.
-	var n := maxi(2, int(l / 2.5)) if dashed else 1
-	var pts := PackedVector2Array()
-	for i in n + 1:
-		var p := a + dir * (l * i / n)
-		p.y = 0.3
-		if cam.is_position_behind(p):
-			return
-		pts.append(cam.unproject_position(p))
 	var c := Color(col.r, col.g, col.b, alpha)
 	var sh := Color(0, 0, 0, alpha * 0.45)
 	if dashed:
-		var segments := PackedVector2Array()
-		for i in range(0, pts.size() - 1, 2):
-			segments.append(pts[i])
-			segments.append(pts[i + 1])
-		draw_multiline(segments, sh, width + 2.0, true)
-		draw_multiline(segments, c, width, true)
+		var segments := _ground_dashes(cam, start, end, maxi(2, int(l / 2.5)), get_viewport_rect().grow(20.0))
+		if not segments.is_empty():
+			_ink.draw_multiline(segments, sh, width + 2.0, true)
+			_ink.draw_multiline(segments, c, width, true)
 	else:
-		draw_polyline(pts, sh, width + 2.0, true)
-		draw_polyline(pts, c, width, true)
+		_ink.draw_line(back, tip, sh, width + 2.0, true)
+		_ink.draw_line(back, tip, c, width, true)
 	if not arrow:
 		return
-	var tip := pts[pts.size() - 1]
-	var back := pts[0]
 	if (tip - back).length() < 4.0:
 		return
 	var dv := (tip - back).normalized()
 	var nv := Vector2(-dv.y, dv.x)
 	var hs := 5.0 + width * 1.8
 	var head := PackedVector2Array([tip + dv * hs, tip - dv * hs * 0.5 + nv * hs * 0.8, tip - dv * hs * 0.5 - nv * hs * 0.8])
-	MapSymbols.poly(self, head, c)
+	MapSymbols.poly(_ink, head, c)
+
+
+static func _screen_span(a: Vector2, b: Vector2, rect: Rect2) -> Vector2:
+	var span := Vector2(0, 1)
+	for axis in 2:
+		var delta := b[axis] - a[axis]
+		if is_zero_approx(delta):
+			if a[axis] < rect.position[axis] or a[axis] > rect.end[axis]:
+				return Vector2(1, 0)
+			continue
+		var lo := (rect.position[axis] - a[axis]) / delta
+		var hi := (rect.end[axis] - a[axis]) / delta
+		span.x = maxf(span.x, minf(lo, hi))
+		span.y = minf(span.y, maxf(lo, hi))
+	return span
+
+
+static func _ground_dashes(cam: Camera3D, a: Vector3, b: Vector3, n: int, rect: Rect2) -> PackedVector2Array:
+	var first := 0
+	var last := n
+	if n > 32:
+		var span := _screen_span(cam.unproject_position(a), cam.unproject_position(b), rect)
+		if span.x > span.y:
+			return PackedVector2Array()
+		# Perspective screen fractions need their endpoint depths before selecting
+		# world-space dashes. Keep the original dash phase at the screen edge.
+		if cam.projection != Camera3D.PROJECTION_ORTHOGONAL:
+			var z0 := -cam.global_basis.z.dot(a - cam.global_position)
+			var z1 := -cam.global_basis.z.dot(b - cam.global_position)
+			span = Vector2(span.x * z0 / lerpf(z1, z0, span.x), span.y * z0 / lerpf(z1, z0, span.y))
+		first = maxi(0, floori(span.x * n * 0.5) * 2)
+		last = mini(n, ceili(span.y * n) + 1)
+	var points := PackedVector2Array()
+	for i in range(first, last, 2):
+		points.append(cam.unproject_position(a.lerp(b, float(i) / n)))
+		points.append(cam.unproject_position(a.lerp(b, float(i + 1) / n)))
+	return points
+
 
 func _dashed_ring(c3: Vector3, r: float, col: Color, alpha: float) -> void:
 	if alpha <= 0.02:
@@ -469,8 +581,8 @@ func _dashed_ring(c3: Vector3, r: float, col: Color, alpha: float) -> void:
 	for i in range(0, pts.size() - 1, 2):
 		segments.append(pts[i])
 		segments.append(pts[i + 1])
-	draw_multiline(segments, Color(0, 0, 0, alpha * 0.4), 4.0, true)
-	draw_multiline(segments, c, 2.0, true)
+	_ink.draw_multiline(segments, Color(0, 0, 0, alpha * 0.4), 4.0, true)
+	_ink.draw_multiline(segments, c, 2.0, true)
 
 ## Each town's ground as a ring in its holder's colours (the town's own while
 ## nobody holds it) when the camera is over it, and whenever someone is
@@ -514,7 +626,7 @@ func _mission_marks(cam: Camera3D, vs: Vector2) -> void:
 		if inside:
 			var bob := sin(t * 2.4) * 2.0
 			var c := sp + Vector2(0, bob)
-			draw_line(c + Vector2(0, 13), cam.unproject_position(p + Vector3(0, 0.3, 0)), Color(col.r, col.g, col.b, 0.35), 1.0, true)
+			_ink.draw_line(c + Vector2(0, 13), cam.unproject_position(p + Vector3(0, 0.3, 0)), Color(col.r, col.g, col.b, 0.35), 1.0, true)
 			HudObjectives.diamond(self, c, 15.0, String(o[0]), col, 1.0)
 			if dist > 25.0:
 				HudObjectives._at(self, c - Vector2(0, 22), "%d m" % int(dist), 12, Color(col.r, col.g, col.b, 0.95), 700, 0.5)
@@ -531,7 +643,7 @@ func _mission_marks(cam: Camera3D, vs: Vector2) -> void:
 			var dn := d.normalized()
 			HudObjectives.diamond(self, e, 13.0, String(o[0]), col, 0.95)
 			var tip := e + dn * 23.0
-			draw_colored_polygon(PackedVector2Array([tip, e + dn * 15.0 + dn.orthogonal() * 6.0, e + dn * 15.0 - dn.orthogonal() * 6.0]), Color(col.r, col.g, col.b, 0.95))
+			_ink.draw_colored_polygon(PackedVector2Array([tip, e + dn * 15.0 + dn.orthogonal() * 6.0, e + dn * 15.0 - dn.orthogonal() * 6.0]), Color(col.r, col.g, col.b, 0.95))
 			HudObjectives._at(self, e - dn * 30.0 + Vector2(0, 4), "%d m" % int(dist), 11, Color(col.r, col.g, col.b, 0.9), 700, 0.5)
 
 
@@ -556,9 +668,9 @@ func _defend_arc(c3: Vector3, face: Vector3, col: Color, alpha: float) -> void:
 			ticks.append(pts[pts.size() - 1])
 			ticks.append(cam.unproject_position(p + dv * 1.4))
 	var c := Color(col.r, col.g, col.b, alpha)
-	draw_polyline(pts, Color(0, 0, 0, alpha * 0.45), 5.0, true)
-	draw_polyline(pts, c, 3.0, true)
-	draw_multiline(ticks, c, 2.0, true)
+	_ink.draw_polyline(pts, Color(0, 0, 0, alpha * 0.45), 5.0, true)
+	_ink.draw_polyline(pts, c, 3.0, true)
+	_ink.draw_multiline(ticks, c, 2.0, true)
 
 ## Who's dealing with whom, close up: chat partners, a medic and his patient,
 ## a guard and his prisoner.
@@ -596,12 +708,12 @@ func _link(cam: Camera3D, s: Soldier, o: Soldier, col: Color, alpha: float, dash
 		pts.append(a2.lerp(mid, t).lerp(mid.lerp(b2, t), t))
 	if dashed:
 		for i in range(0, pts.size() - 1, 2):
-			draw_line(pts[i], pts[i + 1], c, 1.6, true)
+			_ink.draw_line(pts[i], pts[i + 1], c, 1.6, true)
 	else:
-		draw_polyline(pts, Color(0, 0, 0, alpha * 0.4), 3.4, true)
-		draw_polyline(pts, c, 1.8, true)
+		_ink.draw_polyline(pts, Color(0, 0, 0, alpha * 0.4), 3.4, true)
+		_ink.draw_polyline(pts, c, 1.8, true)
 	if gk != "":
-		MapSymbols.glyph(self, gk, pts[6], 6.0, col, alpha)
+		MapSymbols.glyph(_ink, gk, pts[6], 6.0, col, alpha)
 
 ## Squad leaders wear sergeant's chevrons; when an order comes in over the
 ## radio, the set lights up next to them.
@@ -613,15 +725,11 @@ func _leader_marks(men: Array, a: float) -> void:
 			continue
 		var sp: Vector2 = m[2] + Vector2(0, -6)
 		var tc: Color = (Defs.TEAM_COLORS[s.team] if s.team >= 0 else Color.WHITE).lightened(0.3)
-		for i in 2:
-			var y := sp.y - i * 4.0
-			var pts := PackedVector2Array([Vector2(sp.x - 5, y + 2.5), Vector2(sp.x, y - 1.0), Vector2(sp.x + 5, y + 2.5)])
-			draw_polyline(pts, Color(0, 0, 0, 0.6 * a), 3.4, true)
-			draw_polyline(pts, Color(tc.r, tc.g, tc.b, a), 1.8, true)
+		MapSymbols.glyph(_ink, "leader", sp, 6.0, tc, a, false)
 		var o: Array = hud.orders.get(s.sid, [])
 		if not o.is_empty() and int(o[5]) >= 0 and now - int(o[5]) < 3500:
 			var blink := 0.6 + 0.4 * sin(now / 90.0)
-			MapSymbols.glyph(self, "radio", sp + Vector2(13, -2), 6.5, Color(0.6, 1.0, 0.7), a * blink)
+			MapSymbols.glyph(_ink, "radio", sp + Vector2(13, -2), 6.5, Color(0.6, 1.0, 0.7), a * blink)
 
 static func _talk_kind(e: Entity, t: String) -> String:
 	var lo := t.to_lower()
@@ -730,17 +838,32 @@ func _command_fan(cam: Camera3D, lead: Soldier, a: float) -> void:
 		if cam.is_position_behind(p1) or Defs.flat(p1 - p0).length() > 35.0:
 			continue
 		var s1 := cam.unproject_position(p1)
-		draw_line(s0, s1, Color(1.0, 0.86, 0.55, 0.3 * a), 1.2, true)
-		draw_circle(s0.lerp(s1, k), 2.4, Color(1.0, 0.86, 0.55, 0.9 * a))
+		_ink.draw_line(s0, s1, Color(1.0, 0.86, 0.55, 0.3 * a), 1.2, true)
+		_ink.draw_circle(s0.lerp(s1, k), 2.4, Color(1.0, 0.86, 0.55, 0.9 * a))
+
+func _bubble_layout(text: String, fs: int, weight: int, wmax: float) -> Array:
+	var key := [text, fs, weight, wmax]
+	var layout: Array = _bubble_layouts.get(key, [])
+	if layout.is_empty():
+		var lines := MapSymbols.wrap(text, fs, weight, wmax)
+		var width := 0.0
+		for line: String in lines:
+			width = maxf(width, UiKit.text_width(line, fs, weight))
+		layout = [lines, width]
+		# Orders include changing map references; keep only a bounded set of phrases.
+		if _bubble_layouts.size() >= 256:
+			_bubble_layouts.clear()
+		_bubble_layouts[key] = layout
+	return layout
+
 
 func _bubble(anchor: Vector2, text: String, kind: String, a: float, fs: int, wmax: float) -> void:
 	if a <= 0.01:
 		return
 	var weight := 600 if kind != "chat" else 400
-	var lines := MapSymbols.wrap(text, fs, weight, wmax)
-	var lw := 0.0
-	for l in lines:
-		lw = maxf(lw, UiKit.text_width(l, fs, weight))
+	var layout := _bubble_layout(text, fs, weight, wmax)
+	var lines: Array = layout[0]
+	var lw: float = layout[1]
 	var icon := 15.0 if kind == "radio" else 0.0
 	var lh := fs + 3.0
 	var sz := Vector2(lw + 16.0 + icon, lines.size() * lh + 8.0)
@@ -772,18 +895,21 @@ func _bubble(anchor: Vector2, text: String, kind: String, a: float, fs: int, wma
 	# the tail points at whoever's talking
 	var tx := clampf(anchor.x, r.position.x + 9.0, r.end.x - 9.0)
 	if anchor.y > r.end.y + 1.0:
-		MapSymbols.poly(self, PackedVector2Array([Vector2(tx - 5, r.end.y - 1), Vector2(tx + 5, r.end.y - 1), anchor]), bg)
-	draw_style_box(UiKit.boxc(bg, 0, edge, 1, 0.0), r)
+		MapSymbols.poly(_ink, PackedVector2Array([Vector2(tx - 5, r.end.y - 1), Vector2(tx + 5, r.end.y - 1), anchor]), bg)
+	# Match the shared style's color quantization without rebuilding its border mesh.
+	bg = Color(int(bg.r * 63.0) / 63.0, int(bg.g * 63.0) / 63.0, int(bg.b * 63.0) / 63.0, int(bg.a * 63.0) / 63.0)
+	_ink.draw_rect(r.grow(-1.0), bg)
+	_ink.draw_rect(r.grow(-0.5), edge, false, 1.0)
 	var x0 := r.position.x + 8.0
 	if kind == "radio":
-		MapSymbols.glyph(self, "radio", Vector2(x0 + 5, r.position.y + r.size.y * 0.5), 6.0, fg, a, false)
+		MapSymbols.glyph(_ink, "radio", Vector2(x0 + 5, r.position.y + r.size.y * 0.5), 6.0, fg, a, false)
 		x0 += icon
 	var y := r.position.y + 3.0 + fs
 	for l in lines:
 		if kind == "chat":
-			draw_string(UiKit.font(weight), Vector2(x0, y), l, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, fg)
+			_ink.draw_string(UiKit.font(weight), Vector2(x0, y), l, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, fg)
 		else:
-			UiKit.text(self, Vector2(x0, y), l, fs, fg, weight)
+			UiKit.text(_ink, Vector2(x0, y), l, fs, fg, weight)
 		y += lh
 
 ## Close up: name, an icon and what he's doing, over each man near the
@@ -815,14 +941,14 @@ func _name_tags(men: Array, a: float, zoom: float, lt: int) -> void:
 		var al := a * (1.0 if s.team == lt or lt < 0 else 0.85)
 		if s.team >= 0:
 			var tc: Color = Defs.TEAM_COLORS[s.team]
-			draw_rect(Rect2(rect.position + Vector2(0, 3), Vector2(2, 10)), Color(tc.r, tc.g, tc.b, al))
+			_ink.draw_rect(Rect2(rect.position + Vector2(0, 3), Vector2(2, 10)), Color(tc.r, tc.g, tc.b, al))
 		var x := rect.position.x + 6.0
 		if gk != "":
-			MapSymbols.glyph(self, gk, Vector2(x + 5, rect.position.y + 8), 6.0, col, al, false)
+			MapSymbols.glyph(_ink, gk, Vector2(x + 5, rect.position.y + 8), 6.0, col, al, false)
 			x += 15.0
-		UiKit.caps_at(self, Vector2(x, rect.position.y + 12), s.sname, fs, UiKit.fa(UiKit.TEXT, al))
+		UiKit.caps_at(_ink, Vector2(x, rect.position.y + 12), s.sname, fs, UiKit.fa(UiKit.TEXT, al))
 		if txt != "":
-			UiKit.caps_at(self, Vector2(x + nw + 8.0, rect.position.y + 12), txt, fs, Color(col.r, col.g, col.b, al))
+			UiKit.caps_at(_ink, Vector2(x + nw + 8.0, rect.position.y + 12), txt, fs, Color(col.r, col.g, col.b, al))
 
 ## Mid zoom: no names, just an icon over each man doing something worth
 ## knowing about.
@@ -842,7 +968,7 @@ func _status_icons(men: Array, a: float) -> void:
 		if _overlaps(r):
 			continue
 		_place_rect(r)
-		MapSymbols.glyph(self, gk, sp, 6.5, col, a * (0.55 if gk == "chat" else 0.78), false)
+		MapSymbols.glyph(_ink, gk, sp, 6.5, col, a * (0.55 if gk == "chat" else 0.78), false)
 
 ## Zoomed out: one unit symbol per squad, with what it's been told to do, a
 ## pip per man, a burst when it's in contact and its callsign; a new order
@@ -871,8 +997,8 @@ func _nato_markers(cam: Camera3D, lt: int, a: float) -> void:
 		_place_rect(Rect2(foot.position + nudged, foot.size))
 		if nudged != Vector2.ZERO:
 			var ground := cam.unproject_position(g["c"] as Vector3)
-			draw_line(ground, sp + nudged + Vector2(0, 10), Color(1, 1, 1, 0.45 * a), 1.0, true)
-			draw_circle(ground, 2.5, Color(1, 1, 1, 0.7 * a))
+			_ink.draw_line(ground, sp + nudged + Vector2(0, 10), Color(1, 1, 1, 0.45 * a), 1.0, true)
+			_ink.draw_circle(ground, 2.5, Color(1, 1, 1, 0.7 * a))
 			sp += nudged
 		var tm: int = g["team"]
 		var mine := tm == lt or lt < 0
@@ -885,34 +1011,30 @@ func _nato_markers(cam: Camera3D, lt: int, a: float) -> void:
 		var age := 1e9 if o.is_empty() or int(o[5]) < 0 else (now - int(o[5])) / 1000.0
 		if age < 1.6:
 			var k := age / 1.6
-			draw_arc(sp, 16.0 + k * 28.0, 0.0, TAU, 32, Color(1, 1, 1, (1.0 - k) * 0.85 * a), 2.0, true)
+			_ink.draw_arc(sp, 16.0 + k * 28.0, 0.0, TAU, 32, Color(1, 1, 1, (1.0 - k) * 0.85 * a), 2.0, true)
 		var firing: int = g.firing
 		var supp: int = g.supp
 		var alive: int = g.n
-		MapSymbols.nato(self, sp, sz, mine, tm, sym[0], sym[1], a, not hud.tactical)
+		MapSymbols.nato(_ink, sp, sz, mine, tm, sym[0], sym[1], a, not hud.tactical)
 		if sel:
-			draw_arc(sp, hw + 7.0, 0.0, TAU, 28, Color(1, 1, 1, 0.55 * a), 1.5, true)
+			_ink.draw_arc(sp, hw + 7.0, 0.0, TAU, 28, Color(1, 1, 1, 0.55 * a), 1.5, true)
 		# Shared troops have no exclusive controller. Only mark a teammate
 		# who is actively selecting them, not the commander who recruited them.
 		var by := int(w.coop.sel_sq.get(sid, 0)) if w.coop else 0
 		if by != 0:
-			draw_arc(sp, hw + 7.0, 0.0, TAU, 28, HudCoop._a(Net.player_color(by), 0.55 * a), 1.3, true)
+			_ink.draw_arc(sp, hw + 7.0, 0.0, TAU, 28, HudCoop._a(Net.player_color(by), 0.55 * a), 1.3, true)
 			_owner_tab(sp + Vector2(hw + 1.0, -sz * 0.34 - 12.0), by, a)
 		if firing > 0:
 			_contact_burst(sp + Vector2(-hw - 3.0, -hw * 0.62), a)
 		if supp * 2 >= maxi(1, alive) and alive > 0:
-			MapSymbols.glyph(self, "supp", sp + Vector2(-hw - 5.0, hw * 0.5), 6.5, UiKit.WARN, a)
+			MapSymbols.glyph(_ink, "supp", sp + Vector2(-hw - 5.0, hw * 0.5), 6.5, UiKit.WARN, a)
 		if not o.is_empty():
 			var og: String = MapSymbols.ORDER_GLYPH.get(String(o[0]), "")
 			if og != "":
-				MapSymbols.glyph(self, og, sp + Vector2(hw + 10.0, -1.0), 7.5, MapSymbols.ORDER_COLORS.get(String(o[0]), UiKit.TEXT), a)
+				MapSymbols.glyph(_ink, og, sp + Vector2(hw + 10.0, -1.0), 7.5, MapSymbols.ORDER_COLORS.get(String(o[0]), UiKit.TEXT), a)
 		# strength: a pip per man (white standing, red down, grey lost)
 		var py := sp.y + hw * 0.68 + 4.0
-		var px := sp.x - mem.size() * 2.5
-		for pc: Color in g.pips:
-			draw_rect(Rect2(px - 0.5, py - 0.5, 5, 4), Color(0, 0, 0, 0.6 * a))
-			draw_rect(Rect2(px, py, 4, 3), Color(pc.r, pc.g, pc.b, a))
-			px += 5.0
+		_ink.draw_mesh(g.pip_mesh, null, Transform2D(0.0, Vector2(sp.x - mem.size() * 2.5, py)), Color(1, 1, 1, a))
 		var ty := py + 15.0
 		if mine:
 			_map_text(Vector2i(int(sid), 0), Vector2(sp.x, ty), g.callsign, UiKit.cond(600, 1), 10, UiKit.fa(UiKit.TEXT, 0.85 * a))
@@ -937,18 +1059,43 @@ func _nato_markers(cam: Camera3D, lt: int, a: float) -> void:
 		for off in [Vector2.ZERO, Vector2(0, -32), Vector2(40, -16), Vector2(-40, -16)]:
 			if not _overlaps(Rect2(vr.position + off, vr.size)):
 				if off != Vector2.ZERO:
-					draw_line(cam.unproject_position(v.position), vp + off + Vector2(0, 10), Color(1, 1, 1, 0.45 * a), 1.0, true)
+					_ink.draw_line(cam.unproject_position(v.position), vp + off + Vector2(0, 10), Color(1, 1, 1, 0.45 * a), 1.0, true)
 				vp += off
 				vr.position += off
 				break
 		_place_rect(vr)
-		MapSymbols.nato(self, vp, 28.0 if hud.tactical else 24.0, v.team == lt or lt < 0, v.team, vs3[0], vs3[1], a, not hud.tactical)
+		MapSymbols.nato(_ink, vp, 28.0 if hud.tactical else 24.0, v.team == lt or lt < 0, v.team, vs3[0], vs3[1], a, not hud.tactical)
 		if v.selected:
-			UiKit.ticks(self, Rect2(vp - Vector2(17, 13), Vector2(34, 26)), UiKit.fa(UiKit.ACCENT, a), 5.0, 2.0, 1.5)
+			UiKit.ticks(_ink, Rect2(vp - Vector2(17, 13), Vector2(34, 26)), UiKit.fa(UiKit.ACCENT, a), 5.0, 2.0, 1.5)
 		var vby := int(w.coop.sel_veh.get(v.eid, 0)) if w.coop else 0
 		if vby != 0:
-			draw_arc(vp, 21.0, 0.0, TAU, 28, HudCoop._a(Net.player_color(vby), 0.55 * a), 1.3, true)
+			_ink.draw_arc(vp, 21.0, 0.0, TAU, 28, HudCoop._a(Net.player_color(vby), 0.55 * a), 1.3, true)
 			_owner_tab(vp + Vector2(6.0, -22.5), vby, a)
+
+# Strength changes infrequently; keep the same colored quads in one drawing call.
+static func _strength_mesh(pips: Array) -> ArrayMesh:
+	var vertices := PackedVector2Array()
+	var colors := PackedColorArray()
+	var indices := PackedInt32Array()
+	for i in pips.size():
+		for part in 2:
+			var r := Rect2(i * 5.0 - 0.5, -0.5, 5, 4) if part == 0 else Rect2(i * 5.0, 0, 4, 3)
+			var color: Color = Color(0, 0, 0, 0.6) if part == 0 else pips[i]
+			var start := vertices.size()
+			vertices.append_array(PackedVector2Array([r.position, Vector2(r.end.x, r.position.y), r.end, Vector2(r.position.x, r.end.y)]))
+			for corner in 4:
+				colors.append(color)
+			indices.append_array(PackedInt32Array([start, start + 1, start + 2, start, start + 2, start + 3]))
+	var arrays := []
+	arrays.resize(Mesh.ARRAY_MAX)
+	arrays[Mesh.ARRAY_VERTEX] = vertices
+	arrays[Mesh.ARRAY_COLOR] = colors
+	arrays[Mesh.ARRAY_INDEX] = indices
+	var mesh := ArrayMesh.new()
+	if not pips.is_empty():
+		mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays, [], {}, Mesh.ARRAY_FLAG_USE_2D_VERTICES)
+	return mesh
+
 
 func _marker_offset(sid: int, foot: Rect2) -> Vector2:
 	# Keep a clear placement as units move, avoiding jitter and repeated searches.
@@ -1020,8 +1167,8 @@ func _owner_tab(at: Vector2, peer: int, a: float) -> void:
 	var ini := hud.world.coop.initials(peer) if hud.world.coop else "?"
 	var tw := UiKit.mono_w(ini, 8)
 	var r := Rect2(at, Vector2(tw + 6.0, 11.0))
-	draw_rect(r, UiKit.fa(UiKit.INK, 0.3 * a))
-	draw_string(UiKit.mono(500), r.position + Vector2(3.0, 8.8), ini, HORIZONTAL_ALIGNMENT_LEFT, -1, 8, HudCoop._a(Net.player_color(peer).lightened(0.4), 0.8 * a))
+	_ink.draw_rect(r, UiKit.fa(UiKit.INK, 0.3 * a))
+	_ink.draw_string(UiKit.mono(500), r.position + Vector2(3.0, 8.8), ini, HORIZONTAL_ALIGNMENT_LEFT, -1, 8, HudCoop._a(Net.player_color(peer).lightened(0.4), 0.8 * a))
 
 
 ## Zoomed out: each order is seen leaving HQ - a link from the commander's
@@ -1059,12 +1206,12 @@ func _command_links(cam: Camera3D, a: float) -> void:
 			var t := i / 24.0
 			pts.append(s0.lerp(mid, t).lerp(mid.lerp(s1, t), t))
 		for i in range(0, pts.size() - 1, 2):
-			draw_line(pts[i], pts[i + 1], Color(tc.r, tc.g, tc.b, 0.55 * fade), 1.5, true)
+			_ink.draw_line(pts[i], pts[i + 1], Color(tc.r, tc.g, tc.b, 0.55 * fade), 1.5, true)
 		var k := clampf(age / 0.9, 0.0, 1.0)
 		var idx := int(k * 23.99)
 		var dot := pts[idx].lerp(pts[idx + 1], k * 24.0 - idx)
-		draw_circle(dot, 3.5, Color(1, 1, 1, 0.95 * fade))
-		draw_circle(dot, 7.0, Color(tc.r, tc.g, tc.b, 0.3 * fade))
+		_ink.draw_circle(dot, 3.5, Color(1, 1, 1, 0.95 * fade))
+		_ink.draw_circle(dot, 7.0, Color(tc.r, tc.g, tc.b, 0.3 * fade))
 
 func _contact_burst(c: Vector2, a: float) -> void:
 	if not c.is_finite() or absf(c.x) > 19990.0 or absf(c.y) > 19990.0:
@@ -1084,7 +1231,7 @@ func _contact_burst(c: Vector2, a: float) -> void:
 	var r := 6.5 + sin(t * 11.0) * 1.3
 	# Triangulate once; every firing squad shares the same pulsing star.
 	var transform := Transform2D(t, Vector2(r, r), 0.0, c)
-	draw_mesh(_contact_mesh, null, transform, Color(1.0, 0.55, 0.2, 0.95 * a))
+	_ink.draw_mesh(_contact_mesh, null, transform, Color(1.0, 0.55, 0.2, 0.95 * a))
 
 
 func _ground_ring(c: Vector3, r: float, col: Color) -> void:
@@ -1096,7 +1243,7 @@ func _ground_ring(c: Vector3, r: float, col: Color) -> void:
 		if cam.is_position_behind(p):
 			return
 		pts.append(cam.unproject_position(p))
-	draw_polyline(pts, col, 2.0, true)
+	_ink.draw_polyline(pts, col, 2.0, true)
 
 
 const PGRID := 64.0
@@ -1106,6 +1253,7 @@ var _pgrid := {}  # Vector2i cell -> [Rect2]
 func _clear_placed() -> void:
 	_placed.clear()
 	_pgrid.clear()
+	_plans_drawn.clear()
 
 
 func _place_rect(r: Rect2) -> void:
@@ -1132,8 +1280,8 @@ func _overlaps(r: Rect2) -> bool:
 	return false
 
 func _bar(p: Vector2, sz: Vector2, f: float, col: Color) -> void:
-	draw_rect(Rect2(p - Vector2(1, 1), sz + Vector2(2, 2)), Color(0, 0, 0, 0.6))
-	draw_rect(Rect2(p, Vector2(sz.x * clampf(f, 0.0, 1.0), sz.y)), col)
+	_ink.draw_rect(Rect2(p - Vector2(1, 1), sz + Vector2(2, 2)), Color(0, 0, 0, 0.6))
+	_ink.draw_rect(Rect2(p, Vector2(sz.x * clampf(f, 0.0, 1.0), sz.y)), col)
 
 
 # --- attack plans, intelligence, ranges, the map grid ---------------------------------
@@ -1149,7 +1297,7 @@ func _plan_graphics(pl: Array, team: int, a: float, sel: bool) -> void:
 	var obj: Vector3 = pl[1]
 	var sbf: Vector3 = pl[2]
 	var ap: Vector3 = pl[3]
-	var key := "%d|%d|%d" % [int(obj.x), int(obj.z), Engine.get_frames_drawn()]
+	var key := Vector2i(int(obj.x), int(obj.z))
 	if _plans_drawn.has(key):
 		return
 	_plans_drawn[key] = true
@@ -1173,8 +1321,8 @@ func _plan_graphics(pl: Array, team: int, a: float, sel: bool) -> void:
 				var ang := -PI * 0.5 + (i - 4) * 0.2
 				var pp := sbf + (d.rotated(Vector3.UP, ang + PI * 0.5) * 3.2)
 				bl.append(cam.unproject_position(pp + Vector3(0, 0.3, 0)))
-			draw_polyline(bl, Color(0, 0, 0, 0.5 * a), 5.0, true)
-			draw_polyline(bl, Color(fire.r, fire.g, fire.b, a), 3.0, true)
+			_ink.draw_polyline(bl, Color(0, 0, 0, 0.5 * a), 5.0, true)
+			_ink.draw_polyline(bl, Color(fire.r, fire.g, fire.b, a), 3.0, true)
 			_tag(sp + Vector2(0, 16), "SBF", fire, a)
 	# assault route: out to the flank, then in
 	var g := Vector3.INF
@@ -1208,15 +1356,15 @@ func _plan_graphics(pl: Array, team: int, a: float, sel: bool) -> void:
 		var so := cam.unproject_position(po)
 		_tag(so + Vector2(0, -2), "OBJ " + Defs.grid_ref(obj), tc, a)
 		var pn: String = String(Hud.PHASE_NAMES.get(phase, phase)).to_upper()
-		UiKit.caps_at(self, so + Vector2(-UiKit.caps_w(pn, 10) * 0.5, 18), pn, 10, UiKit.fa(UiKit.TEXT, 0.85 * a))
+		UiKit.caps_at(_ink, so + Vector2(-UiKit.caps_w(pn, 10) * 0.5, 18), pn, 10, UiKit.fa(UiKit.TEXT, 0.85 * a))
 
 
 func _tag(at: Vector2, text: String, col: Color, a: float) -> void:
 	var tw := UiKit.mono_w(text, 10)
 	var r := Rect2(at.x - tw * 0.5 - 6, at.y - 12, tw + 12, 16)
-	draw_rect(r, UiKit.fa(UiKit.INK, 0.8 * a))
-	UiKit.ticks(self, r, Color(col.r, col.g, col.b, 0.9 * a), 4.0, 0.0)
-	UiKit.mono_at(self, Vector2(r.position.x + 6, r.position.y + 12), text, 10, Color(col.r, col.g, col.b, a), false)
+	_ink.draw_rect(r, UiKit.fa(UiKit.INK, 0.8 * a))
+	UiKit.ticks(_ink, r, Color(col.r, col.g, col.b, 0.9 * a), 4.0, 0.0)
+	UiKit.mono_at(_ink, Vector2(r.position.x + 6, r.position.y + 12), text, 10, Color(col.r, col.g, col.b, a), false)
 
 
 ## Where the enemy was last seen: hollow diamonds that fade with age, with
@@ -1243,12 +1391,10 @@ func _intel(cam: Camera3D, vs: Vector2, lt: int) -> void:
 			var a := clampf(1.0 - age / 90.0, 0.25, 0.9)
 			var red := Color(1.0, 0.42, 0.36, a)
 			var hs := 8.0 if String(it[1]) == "inf" else 10.0
-			var d := PackedVector2Array([sp + Vector2(0, -hs), sp + Vector2(hs, 0), sp + Vector2(0, hs), sp + Vector2(-hs, 0), sp + Vector2(0, -hs)])
-			draw_polyline(d, Color(0, 0, 0, 0.5 * a), 4.0, true)
-			draw_polyline(d, red, 2.0, true)
-			UiKit.mono_at(self, sp + Vector2(-3, 4), "?", 10, red)
+			MapSymbols.glyph(_ink, "contact_inf" if String(it[1]) == "inf" else "contact_vehicle", sp, 12.0, red, a, false)
+			UiKit.mono_at(_ink, sp + Vector2(-3, 4), "?", 10, red)
 			if age > 10.0:
-				UiKit.mono_at(self, sp + Vector2(hs + 3, 4), "%dS" % int(age), 9, UiKit.fa(UiKit.TEXT, 0.6 * a))
+				UiKit.mono_at(_ink, sp + Vector2(hs + 3, 4), "%dS" % int(age), 9, UiKit.fa(UiKit.TEXT, 0.6 * a))
 
 
 ## What each man of a selected squad is watching while it holds: a faint
@@ -1277,9 +1423,9 @@ func _sectors(cam: Camera3D, a: float) -> void:
 			if not ok:
 				continue
 			var col: Color = Defs.TEAM_COLORS[s.team].lightened(0.35) if s.team >= 0 else UiKit.ACCENT
-			MapSymbols.poly(self, pts, Color(col.r, col.g, col.b, 0.07 * a))
+			MapSymbols.poly(_ink, pts, Color(col.r, col.g, col.b, 0.07 * a))
 			pts.append(pts[0])
-			draw_polyline(pts, Color(col.r, col.g, col.b, 0.28 * a), 1.0, true)
+			_ink.draw_polyline(pts, Color(col.r, col.g, col.b, 0.28 * a), 1.0, true)
 
 
 ## How far the selected units can reach.
@@ -1346,8 +1492,8 @@ func _map_grid(cam: Camera3D, vs: Vector2) -> void:
 			pts.append(cam.unproject_position(p1))
 			pts2.append(cam.unproject_position(p2))
 		if pts.size() > 1:
-			draw_polyline(pts, col, 1.0, true)
-			draw_polyline(pts2, col, 1.0, true)
+			_ink.draw_polyline(pts, col, 1.0, true)
+			_ink.draw_polyline(pts2, col, 1.0, true)
 	for cx in MapDims.GRID:
 		for cz in MapDims.GRID:
 			var c := Vector3(-MapDims.HALF + cx * cell + 3.0, 0.2, -MapDims.HALF + cz * cell + 5.0)
@@ -1356,7 +1502,7 @@ func _map_grid(cam: Camera3D, vs: Vector2) -> void:
 			var sp := cam.unproject_position(c)
 			if sp.x < 0 or sp.y < 0 or sp.x > vs.x or sp.y > vs.y:
 				continue
-			UiKit.mono_at(self, sp, "%s%d" % ["ABCDEFGHIJKLMNOP"[cx], cz + 1], 10, Color(0.75, 0.9, 1.0, 0.45))
+			UiKit.mono_at(_ink, sp, "%s%d" % ["ABCDEFGHIJKLMNOP"[cx], cz + 1], 10, Color(0.75, 0.9, 1.0, 0.45))
 
 
 func _mark(name: String) -> void:

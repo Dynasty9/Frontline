@@ -271,10 +271,11 @@ Every release also comes as a browser build (WebAssembly and WebGL 2), the same 
 plays alone: **Play vs AI**, **Missions** and **Watch AI Battle**, the Field Manual and Settings, and signing in for
 a service record. Multiplayer needs the desktop game, since a browser can't make the direct connections a battle
 between players runs over; the menu links to the downloads instead. It looks a little different (no screen-space
-lighting, volumetric fog or particle trails, which the browser's renderer doesn't have) and, with no threads to
-spread the work over, the map takes about 30 seconds to lay out, a stage at a time behind the loading screen. The
-simulation runs about as fast as on the desktop. The first battle also waits while the browser compiles the game's
-shaders (it keeps them, so only the first time); to keep that short, lighting is worked out per vertex, particles
+lighting, volumetric fog or particle trails, which the browser's renderer doesn't have). Godot builds the initial
+map in stages behind the loading screen, then a separate Rust Web Worker runs the simulation. Loading time and
+battle performance depend on the browser, hardware and map; desktop-sized 500-unit browser performance has not
+been established. The first battle also waits while the browser compiles the game's shaders (it keeps them, so
+only the first time); to keep that short, lighting is worked out per vertex, particles
 run on the processor, and explosions, muzzle flashes and fires don't cast light.
 
 ## The console: finding out why it's slow
@@ -361,10 +362,13 @@ The code: `scripts/game/mission_director.gd` (the machinery), `scripts/game/miss
 catalogue entry in `MissionList.LIST`, a setup function and an autopilot function.
 
 Ambush Alley autoplay can call its existing mortar support against spotted, stopped convoy vehicles before extracting; player resources and mission objectives are unchanged.
+Sky Hook prepares reachable vehicle approaches for its convoy before the battle starts, keeping reinforcements off disconnected mountain slopes and at least 60 metres from their assault destinations.
 
 ## The systems
 
 **Soldier AI** (`scripts/game/soldier.gd`, `soldier_brain.gd`, `bt.gd`, `combat.gd`)
+- Rust projectile actors retain grenade handlers, missile targets and player credit through checkpoint resumes, preserving impact, smoke and support-aircraft effects. The Rust world dispatcher owns their shared effects.
+- The Rust migration also retains action interruptions and casualty transitions, including rescue/stretcher claims, pending throws, blast recovery, loot and revival. The Rust world dispatcher owns shared gameplay effects; Godot presents them.
 - **Priority decisions govern each man** (`soldier_brain.gd`): reflexes come first, most urgent first;
   then, if he's free, the fight. Direct checks avoid dispatching a tree of callbacks for every soldier.
   The action that won is kept on the soldier (`bt_path`) for debugging and the stats.
@@ -398,6 +402,8 @@ Ambush Alley autoplay can call its existing mortar support against spotted, stop
   overflow soldiers shelter there when the front row is occupied. Physical wall blocking still applies,
   but their effective cover rating is one tier lower (less shelter from near misses), and they
   cannot lean around an edge from that row. The wall itself retains its normal bullet resistance.
+  Anchor generation and protection/firing-lane evaluation use the shared Rust core;
+  protection still considers every threat, while firing-lane checks stop once a clear shot is found.
 - **What it's made of matters.** Hedges, tents and single crates are *soft*: they hide you, but rounds go
   through (a burst into a hedge finds whoever is behind it). Cars, house walls and stacked crates are *medium*:
   they stop a rifle, not a machine gun. Stone, brick, concrete, sandbags, earth and wrecks are *hard*: only a
@@ -505,9 +511,10 @@ Ambush Alley autoplay can call its existing mortar support against spotted, stop
   110 m, drones 70-75 m), a FOB or HQ its perimeter, other positions their sentries, an FPV drone its camera. The
   host works out the fog from them two and a half times a second; enemies outside every circle aren't sent.
 - **You see the fog.** Ground your side can't see right now is drawn darker and cooler, on the battlefield and on the
-  minimap, so the edge of what you know is plain. Every eye is drawn as a soft disc into a small map of the
-  battlefield (about 5 m to the pixel, fifteen times a second); a full-screen pass finds where each pixel lies on the
-  ground from the depth buffer and darkens it there. Aircraft high overhead aren't darkened; at night the fog is
+  minimap, so the edge of what you know is plain. On hills, cached horizon sweeps produce a 256-pixel sight map
+  four times a second. Rust calculates the mask in one call and Godot draws one texture; flat scenarios retain
+  soft discs at fifteen updates per second. Observers are gathered once per refresh. A full-screen pass finds
+  the ground from the depth buffer and darkens it there. Aircraft high overhead aren't darkened; at night the fog is
   lighter, because everything is dark already. The "Fog of war" map layer (the eye) turns it off.
 - **Watchtowers** see over the hedges and roofs: 85 m, and 115 m with a lookout up it (any idle soldier beside it
   climbs up). Placing one shows both rings; selecting one shows what it sees now.
@@ -534,6 +541,7 @@ Ambush Alley autoplay can call its existing mortar support against spotted, stop
   neighbouring clusters connect (and wherever a road crosses), true costs inside each cluster precomputed. Long
   trips plan on the abstract graph, then refine cluster by cluster. When walls go up or are blown down only the
   touched clusters are rebuilt, and of those only the borders and links the change can reach.
+- Rust finishes at most four queued routes per tick. With at least 256 combatants, it pauses route search at 3,000 hierarchical graph expansions, including a search already in progress; smaller armies retain their original schedule. Expensive requests carry over in order with their frontier saved in checkpoints. Orders and terrain or danger changes invalidate stale work. This deterministic budget can delay path completion; local cluster searches and refinement remain separate work.
 - **Danger maps:** every second each side marks the clusters its spotted enemies cover (MG nests, bunkers and
   armour count for more). Ordinary moves skirt them, retreats keep well clear.
 - **Cover map:** every 1 m cell knows its cover level (heavy, light, none, exposed) and which way it faces, updated
@@ -598,7 +606,8 @@ Ambush Alley autoplay can call its existing mortar support against spotted, stop
   living men stay upright while wading. Movement checks the whole step, so old routes, dives, separation
   and knockback cannot carry a man through deep water. Spawns and disembarking find safe ground;
   a living man stranded by a removed crossing is repositioned to the nearest safe bank. Bridges and the harbour are key points the AI fights over. The water is laid
-  out on the server as a few shapes and rasterized identically on every client.
+  out on the server as a few shapes and rasterized identically on every client by the shared Rust core.
+  Socket clients import the completed surface on a Rust worker, including elevated terrain and existing craters.
 - **How the water looks** (`water_view.gd`). The surface is drawn in tiles only where there's water. The sea
   runs two wave systems that cross: a swell from weather far out at sea, long and regular and coming in sets
   (its heading a little different on each map), and the wind's own shorter, steeper sea running offshore with
@@ -632,7 +641,8 @@ Ambush Alley autoplay can call its existing mortar support against spotted, stop
 - Walls, hedges, trees, cars and crates are all real cover. Street furniture is set dressing generated on the
   server and built on each client, and it breaks: a blast or a vehicle driving through knocks lamps, utility poles
   (their wires come down with them), signs, benches, bins, fences and playground kit over, and the pieces fall and
-  lie where they land. Broken street lights stay dark at night.
+  lie where they land. Broken street lights stay dark at night. Damage removes only the fallen item's
+  vertices, glow and attached wires from the shared scenery meshes, avoiding whole-block rebuilds during combat.
 - Trees are broadleaves (a flared trunk forking into limbs that carry clumps of leaves, darker underneath),
   spruces (many overlapping tiers of boughs) and small orchard trees; foliage has ragged, leafy edges and throws
   dappled shadows. A tree that is shelled or run over falls away from what hit it and stays down.
@@ -745,6 +755,8 @@ Ambush Alley autoplay can call its existing mortar support against spotted, stop
   with its symbol, callsign, a pip per man, what it has been told to do and where an attack has got to ("Base of
   fire on D3", "Assaulting D3"), and alerts for contact, pinned, casualties and low ammunition. Click to select
   and look at it, Shift+click to add, double-click to zoom in. Observers see both sides.
+  Unchanged squad rows retain their drawing commands; status, strength, selection,
+  theme and symbol-atlas changes refresh them without changing scrolling or hit targets.
 - **Map layers** (the column beside the minimap): unit symbols at any zoom, orders and attack plans for all your
   units, intelligence (where the enemy was last seen and how long ago), the fog of war, weapon ranges of the
   selection, soldier labels. **Tactical map** (Tab): the battlefield dims under the symbols, every order, plan and contact, and the
@@ -1220,16 +1232,18 @@ but balance needs real playtesting. With the base defenses, most games last 10â€
 
 ## Battle recordings and browser spectators
 
-Hosts save seekable observer recordings. Unchanged scenery is cached and completed chunks are encoded on a worker so recording does less work on the simulation thread. Listed public battles can broadcast only a few seconds behind play; the website lists broadcasts and seven days of replays when persistent recording storage is enabled. The browser uses the game renderer, with camera controls, pause, speed and a timeline. Private battles stay local. Recordings are not independently verified. See [REPLAYS.md](REPLAYS.md) for the format, deployment and limitations.
+Hosts save seekable observer recordings from a read-only connection to the Rust server. The recorder caches data without creating another battlefield or running gameplay. Listed public battles can broadcast only a few seconds behind play; the website lists broadcasts and seven days of replays when persistent recording storage is enabled. The browser uses the game renderer, with camera controls, pause, speed and a timeline, including roads and terrain changes. Private battles stay local. Observer archives remain unverified; separate command recordings rerun and verify the simulation. See [REPLAYS.md](REPLAYS.md) for the formats, deployment and limitations.
 
 ## Large battles and shared AI work
 
 Desktop skirmishes and observer games can select 1,024, 2,048 or 3,072 metre maps.
-Solo games and missions launch a private headless simulation with the same game
-executable. The visible game sends commands and draws interpolated snapshots;
+Desktop solo games, missions and multiplayer launch a private Rust simulation
+process. The visible game sends commands and draws interpolated snapshots;
 the simulation remains authoritative for every soldier, including off-screen units.
 Pause, resume and returning to the menu control the owned simulation process.
-Web retains the in-process host path.
+Browser solo play runs the same Rust simulation in a Web Worker. Godot prepares
+the initial map once, then receives the worker's state through the same packet
+decoder as desktop clients. Browser multiplayer still needs the desktop build.
 
 Squads stagger their planning and share nearby threat assessments (up to 0.25 s)
 and building contacts (up to 0.75 s, invalidated by new contacts). Men separated
@@ -1244,19 +1258,54 @@ moving, resizing, disabling or removing a blocker invalidates the result;
 smoke and positive visibility are checked afresh. Detection timing is unchanged.
 
 Distant soldiers use shared baked poses of their procedural models, including
-standing, crouching, prone and walking poses. Nearby soldiers retain articulated
-animation. Distant batches outside the camera frustum and its shadow margin do
-not upload transforms; panning restores them immediately. Distant palette variation and subtle gestures are simplified.
+standing, crouching, prone and walking poses. A vertex-animation texture retains
+the same 15 poses per appearance and selects the 8 Hz walking phase on the GPU.
+Stances share one spatial batch, and walking alone does not rebuild instance buffers.
+The animation follows battle time, including pause and replay speed. Four nearby soldiers retain
+articulated animation at command zoom, rising to 16 below 22 m for close inspection,
+prioritizing selected troops and then proximity. Other
+soldiers remain visible through the shared poses; the simulation and selection
+still include everyone. Distant batches outside the camera frustum and its shadow margin do
+not upload transforms; panning restores them immediately. Socket clients interpolate distant
+transforms on the GPU between updates, keeping the same exponential smoothing used
+for CPU selection and nearby models. A native client batch advances those CPU positions
+once per frame, retaining motion state between snapshots. Shared-model presentation checks
+wake for new snapshots, selection, viewing-team changes and promotion to a detailed model.
+Property corrections reset the retained transform, and despawns remove it. Routine motion uploads wait one frame after
+packet processing and may yield two further frames to HUD drawing or preparation; visibility
+changes, teleports, camera movement and despawns remain immediate. New articulated
+models copy a prepared rig at most one per frame, keeping independent joints,
+breathing and death animations. Each unit type and team shares its appearance;
+distant subtle gestures are simplified. Hidden articulated rigs stop inheriting their
+soldier's movement until needed again, restoring their local offsets before posing
+or starting a ragdoll. Active ragdolls continue to move normally.
+Burned-out structures reuse eight prepared spark-and-ash emitters. Footprints,
+particle counts, velocities and scorch marks follow each collapse; a ninth
+simultaneous effect replaces the oldest fading sparks and ash. These cosmetic
+limits do not change building damage or the authoritative battlefield.
+
 Distant vehicles use a single material surface per moving part beyond 100 m;
 turrets, wheels and rotors keep their pivots. Near vehicles retain their original
 materials. Wrecks retain their original materials to avoid baking meshes during
-combat. Squad overview status refreshes at 10 Hz; selection remains immediate.
-The battlefield status overlay retains a rasterized image between 15 Hz refreshes when the camera
-is still. Panning, zooming and command input refresh it immediately; blast shake does not
+combat. Squad overview status refreshes at 10 Hz, preparing its data away from an
+overlay redraw where possible, with at most one frame of delay. Selection remains immediate.
+The battlefield status overlay prepares orders, men/speech and markers over three frames,
+then displays the complete image at 15 Hz when the camera is still. Panning, zooming and
+command input cancel partial preparation and refresh it immediately; blast shake does not
 invalidate this cache. Cursor hints, selection boxes and placement previews draw in a separate
-layer each frame, so moving the pointer does not rebuild all squad counters. Hiding the HUD
-also stops its raster updates. Smoke sight checks visit smoke grenades directly rather than every
+layer each frame, so moving the pointer does not rebuild all squad counters. Leader chevrons reuse
+the symbol atlas; speech bubbles retain bounded wrapped layouts and draw their flat backgrounds
+directly. Hiding the HUD also stops its raster updates. Smoke sight checks visit smoke grenades directly rather than every
 projectile; cloud growth, movement and dissipation still take effect immediately.
+
+The player HUD retains squad-order labels between incoming team summaries and
+only changes support-label themes when their colors change. Cooldowns and new
+commands still update immediately. Last-seen minimap diamonds use the shared
+symbol atlas, including the larger vehicle markers and fading with age. Battlefield
+contact diamonds share the atlas while retaining normal font rendering for their
+question marks and ages. The minimap camera layer retains its drawing until the
+camera, focus, projection, ground or pointer changes; resize and rotation redraw
+all layers together.
 
 Clients build scenery in and around the camera's view first and cache visited models; distant models and
 cosmetic collision bodies remain inactive. The server still simulates the complete
@@ -1267,5 +1316,46 @@ Grass, bushes and stones are generated around the camera, beyond their visible
 fade distance. Panning reuses nearby chunks and evicts distant ones; returning
 to an area recreates the same vegetation from its seed.
 
-See [SIMULATION_SCALING.md](SIMULATION_SCALING.md) for the native perception
-boundary, measurement results and remaining limits.
+The authoritative Rust runtime owns the complete battlefield: infantry, vehicles,
+buildings, fire, rounds, drones, squads, economy, visibility and victory. Tactical
+plans, strategic commanders and all five mission programs advance on fixed ticks.
+Orders contain player intent; authenticated connections supply their commander
+identity. Gameplay uses retained numeric state and deterministic random streams;
+Godot objects and render callbacks do not advance it. The server records the tick
+and order of admitted inputs, so a replay repeats the same input schedule.
+
+The headless Godot generator authors the initial map before the first tick, then
+exits. It exports terrain, collision geometry, formations, queues and random state.
+Rust checkpoints retain those systems, entity allocation and pending work. Bounded,
+lossless compression keeps large-map handoffs and recordings practical without
+quantizing positions, terrain or timers. Windows, Linux and ARM tests compare
+committed state transcripts; separate Godot fixtures check gameplay compatibility.
+
+Desktop solo and hosted multiplayer start that Rust process and connect the Godot
+renderer over an authenticated ENet socket. The server sends team-filtered entity
+state, effects, messages, HUD data and reports. The multiplayer lobby forwards
+opaque packets through its existing port; Rust admits each player, handles drop-in
+reinforcements and restores ownership after reconnecting. Teammate cursors, pings,
+sketches and committed actions use the same server's team filtering. These
+presentation messages do not enter the gameplay recording.
+
+Current terrain deformation and crater cover arrive in the map baseline, followed
+by reliable absolute tiles. Missed cosmetic explosions cannot change the ground,
+and late joins and replay seeks restore the server's current surface and roads.
+Clients import the finished elevated surface without rebuilding its heights and
+slopes in GDScript. Rust movement and combat use the same terrain: slopes, water
+depth, bridge decks, wall clearance, sight, ballistic collisions and flight heights
+remain independent of how the models animate.
+
+Pausing changes server pacing. Leaving finishes the deterministic command recording.
+The replay viewer re-executes admitted commands for playback and seeking, and labels
+a result verified only after checking its input stream, final state and winner.
+An unfinished battle can verify as unfinished; it is never presented as a victory.
+Existing observer archives keep their separate unverified status. Browser command
+recordings use the same verifier and replay controls. Leaving through the menu
+saves them in browser storage; closing the tab can interrupt the final write.
+See [RUST_SIMULATION.md](RUST_SIMULATION.md) for the process
+boundary, replay contract, validation and remaining release gates.
+
+See [SIMULATION_SCALING.md](SIMULATION_SCALING.md) for the earlier profiling
+experiments and the process boundary before the full Rust migration.

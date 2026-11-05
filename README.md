@@ -14,7 +14,7 @@ Frontline is a real-time strategy game about modern infantry combat. You command
 
 Your soldiers take cover behind real walls and wrecks, keep their heads down under fire, drag their wounded to safety and throw enemy grenades back. Squads leapfrog forward one team at a time, clear houses room by room, set ambushes on the roads, and break and run when a fight goes badly. Tanks pop smoke when a missile is fired at them. Shellfire sets woods, hedgerows, roofs and cars alight, and the fire spreads with the wind and drives men out of their cover. Life goes on round the fighting: birds feed in the fields until the shooting sends them up, rats run along the walls in town, ducks paddle on the ponds and dolphins roll through the swell offshore. Boats land raiding parties on the beach, and helicopters carry vehicles to the front on a cable. Helicopters bank into turns, carry momentum through new orders and flare into a hover before putting down.
 
-You can play alone against the computer, team up with friends against it, or fight each other online. Desktop skirmishes offer 1,024, 2,048 and 3,072 metre square battlefields. Single-player simulation runs in its own local process so combat does not block drawing the battlefield. Seeded mountain belts, snowy peaks and mossy valleys surround towns, forests, roads and river crossings. Slopes shape movement and construction, and ridges screen troops from observation and fire. Larger maps need more memory; see the measured workloads in [simulation scaling](docs/SIMULATION_SCALING.md).
+You can play alone against the computer, team up with friends against it, or fight each other online. Desktop skirmishes offer 1,024, 2,048 and 3,072 metre square battlefields. Desktop solo and hosted multiplayer simulation run in a separate Rust process while Godot draws the battlefield and handles your orders. Command recordings can replay and independently verify a battle's final state. Seeded mountain belts, snowy peaks and mossy valleys surround towns, forests, roads and river crossings. Slopes shape movement and construction, and ridges screen troops from observation and fire. Larger maps need more memory; see the measured workloads in [Rust simulation and scaling](docs/RUST_SIMULATION.md).
 
 The landscape, models, effects and sound are generated in code, the music included. Moss and rock surfaces use bundled CC0 photographs from Poly Haven ([credits](assets/terrain/LICENSE.md)). Even the menus sit on a living topographic map, in your choice of five themes (Settings > Interface): Field Brass, Night Vision, Thermal, Arctic or Dusk.
 
@@ -38,7 +38,12 @@ To run it from source instead:
 1. Download **Godot 4.7** (the standard version, not .NET) from [godotengine.org](https://godotengine.org/download).
 2. Download this project: click **Code > Download ZIP** above, or run
    `git clone https://github.com/Dynasty9/Frontline.git`
-3. Open Godot, click **Import**, choose the `project.godot` file in this folder, then press **F5** to play.
+3. Install Rust 1.94.0 and Python 3, then run `python tools/build_native.py` from the project folder to build the native simulation binaries.
+4. Open Godot, click **Import**, choose the `project.godot` file in this folder, then press **F5** to play.
+
+Desktop solo and multiplayer battles use a separate Rust server; browser solo play
+runs the same simulation in a Web Worker. Release checks and large-map frame-time
+work remain in progress; see the current [simulation boundary and checks](docs/RUST_SIMULATION.md).
 
 ## Your first battle
 

@@ -11,9 +11,46 @@ on:
   pull_request:
 
 jobs:
+  browser-simulation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+      - name: Verify native and WebAssembly worker recordings
+        env:
+          FL_BROWSER_CONTRACT: ${{ github.workspace }}/build/browser-contract.flrp
+        run: |
+          mkdir -p build
+          rustup toolchain install 1.94.0 --profile minimal --target wasm32-unknown-unknown
+          cargo +1.94.0 test --locked --release --manifest-path native/Cargo.toml -p frontline_browser
+          cargo +1.94.0 build --locked --release --target wasm32-unknown-unknown --manifest-path native/Cargo.toml -p frontline_browser
+          node --test tests/browser-worker.test.mjs
+
+  numeric-contract:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, ubuntu-24.04-arm, macos-latest]
+    runs-on: ${{ matrix.os }}
+    # Cold builds of both profiles and the simulation crates can exhaust 40 minutes.
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check identical simulation bytes in debug and release
+        run: |
+          rustup toolchain install 1.94.0 --profile minimal
+          cargo +1.94.0 test --locked --manifest-path native/Cargo.toml -p frontline_core
+          cargo +1.94.0 test --locked --release --manifest-path native/Cargo.toml -p frontline_core
+          cargo +1.94.0 test --locked --manifest-path native/Cargo.toml -p frontline_runtime -p frontline_server
+          cargo +1.94.0 test --locked --release --manifest-path native/Cargo.toml -p frontline_runtime -p frontline_server
+
   check:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    # The complete Godot comparisons plus a cold native build exceed 40 minutes.
+    timeout-minutes: 60
     env:
       GODOT_VERSION: 4.7.2
     steps:
@@ -51,6 +88,19 @@ jobs:
             timeout 120 ~/godot/godot --headless --path . res://tests/${test}_test.tscn 2>&1 | tee ${test}.log
             if grep -E "SCRIPT ERROR|Parse Error|failures=[1-9]" ${test}.log; then exit 1; fi
           done
+
+      - name: Rust socket and local launcher
+        env:
+          FRONTLINE_SERVER: ${{ github.workspace }}/bin/native/frontline-server
+        run: |
+          set -o pipefail
+          FRONTLINE_GODOT=~/godot/godot cargo +1.94.0 test --locked --release --manifest-path native/Cargo.toml -p frontline_server --test network godot_connects -- --ignored --nocapture
+          timeout 240 ~/godot/godot --headless --path . res://tests/local_server_test.tscn 2>&1 | tee local_server.log
+          if grep -E "SCRIPT ERROR|Parse Error|failures=[1-9]" local_server.log || ! grep -q "LOCAL_SERVER_TEST failures=0" local_server.log; then exit 1; fi
+          timeout 300 ~/godot/godot --headless --path . res://tests/native_lobby_test.tscn -- --port=7985 2>&1 | tee native_lobby.log
+          if grep -E "SCRIPT ERROR|Parse Error|failures=[1-9]" native_lobby.log || ! grep -q "NATIVE_LOBBY_TEST role=host failures=0" native_lobby.log; then exit 1; fi
+          timeout 240 ~/godot/godot --headless --path . -- --native-replay-test --port=7966 2>&1 | tee native_replay.log
+          if grep -E "SCRIPT ERROR|Parse Error" native_replay.log || ! grep -q "RUST_REPLAY_TEST failures=0 scripts=0" native_replay.log; then exit 1; fi
 
       # Installing an update (one executable, or a Mac's app, which is a folder)
       # and reading frontline:// links the way each system hands them over, in
@@ -103,4 +153,4 @@ jobs:
       # (scripts/test/test_port.gd): orders, exact steps, questions, fingerprints
       - name: Tests (through the test port)
         working-directory: tests
-        run: GODOT=~/godot/godot node --test
+        run: GODOT=~/godot/godot node --test --test-reporter=tap

@@ -190,6 +190,31 @@ func _walk(d: MissionDirector, p: Vector3) -> Vector3:
 	return d.world.nav.nearest_walkable(p)
 
 
+func _vehicle_approach(d: MissionDirector, from: Vector3, to: Vector3) -> Vector3:
+	# Reinforcements need a road to the fight, not an isolated patch on a mountain.
+	var length := Defs.flat(to - from).length()
+	var candidates: Array[Vector3] = [from]
+	var roads: Array[Vector3] = []
+	for road: PackedVector3Array in d.world.roads[2]:
+		for p: Vector3 in road:
+			var distance := Defs.flat(p - to).length()
+			if distance >= 60.0 and distance <= length * 1.5:
+				roads.append(p)
+	roads.sort_custom(func(a: Vector3, b: Vector3): return Defs.flat(a - from).length_squared() < Defs.flat(b - from).length_squared())
+	candidates.append_array(roads.slice(0, 64))
+	for step in range(1, 33):
+		var advance := step * 10.0
+		if length - advance < 60.0:
+			break
+		candidates.append(from.lerp(to, advance / length))
+	var nav := d.world.nav
+	for requested: Vector3 in candidates:
+		var p := nav.nearest_walkable(requested, true)
+		if not nav.veh.is_point_solid(nav.cell_of(p)) and Defs.flat(p - to).length() >= 60.0 and not nav.find_path(p, to, true).is_empty():
+			return p
+	return Vector3.INF
+
+
 ## Squads of the players' force that can take an order (not all riding).
 func _my_squads(d: MissionDirector) -> Array:
 	var out := []
@@ -454,9 +479,8 @@ func _beachhead_air(d: MissionDirector) -> void:
 	var gs := d.vehicle("blackfoot", Vector3(hx, 0, h.z + 60.0), PI * 0.5, d.side, d.ai_owner(d.side))
 	gs.order_move(h + Vector3(-30, 0, 0))
 	var gh := d.vehicle("ghosthawk", Vector3(hx, 0, beach.z + 30.0), PI * 0.5, d.side, d.next_owner())
-	var sq := d.squad("rifle_squad", _walk(d, beach))
-	for m in sq.members:
-		gh.board(m)
+	# The reinforcement starts aboard; troops cannot board a helicopter over open water.
+	gh.embark_new_squad()
 	gh.order_move(beach + Vector3(-30, 0, -10))
 	d.start("harbour", func():
 		d.radio("Overlord: Harbour's clear. Landing craft are ninety seconds out: hold the quay till they're in.", h)
@@ -577,6 +601,14 @@ func _skyhook(d: MissionDirector) -> void:
 	var col := []
 	ctx.col = col
 	_support(d, ["artillery"], 320.0)
+	d.world.nav.finalize()
+	ctx.column_spawns = []
+	for entry in [[Vector3.ZERO, 20.0], [Vector3(-8, 0, -10), 24.0], [Vector3(10, 0, -24), 30.0]]:
+		var p := _vehicle_approach(d, c0 + entry[0], op + north * entry[1])
+		if p == Vector3.INF:
+			d.fail("This battlefield has no vehicle approach to Outpost Kilo.")
+			return
+		ctx.column_spawns.append(p)
 
 	d.add("deliver", "Sling the Nyx to Outpost Kilo", "deliver", {"eids": [nyx.eid], "pos": op, "r": 34.0,
 		"fail_text": "The Nyx has been lost."})
@@ -598,18 +630,18 @@ func _skyhook_column(d: MissionDirector, wave: int) -> void:
 	var north := Vector3(0, 0, -1)
 	var o := d.obj("column")
 	if wave == 1:
-		var t := d.vehicle("technical", _walk(d, c0), Defs.yaw_of(-north), d.foe, d.ai_owner(d.foe))
+		var t := d.vehicle("technical", ctx.column_spawns[0], Defs.yaw_of(-north), d.foe, d.ai_owner(d.foe))
 		t.order_assault(op + north * 20.0)
 		o.eids.append(t.eid)
-		var q := d.enemy("fighter_cell", c0 + Vector3(0, 0, -16))
+		var q := d.enemy("fighter_cell", ctx.column_spawns[0] + north * 6.0)
 		q.order_assault(op + north * 14.0, -north)
 		d.radio("Kilo: Contact north! A technical and infantry coming down the road. Armour behind them.", c0)
 		d.start("column", func():
 			d.win("The column is burning on the road north of Kilo. The outpost holds."))
 	else:
-		var btr := d.vehicle("btr", _walk(d, c0 + Vector3(-8, 0, -10)), Defs.yaw_of(-north), d.foe, d.ai_owner(d.foe))
+		var btr := d.vehicle("btr", ctx.column_spawns[1], Defs.yaw_of(-north), d.foe, d.ai_owner(d.foe))
 		btr.order_assault(op + north * 24.0)
-		var tk := d.vehicle("btr", _walk(d, c0 + Vector3(10, 0, -24)), Defs.yaw_of(-north), d.foe, d.ai_owner(d.foe))
+		var tk := d.vehicle("btr", ctx.column_spawns[2], Defs.yaw_of(-north), d.foe, d.ai_owner(d.foe))
 		tk.order_assault(op + north * 30.0)
 		o.eids.append(btr.eid)
 		o.eids.append(tk.eid)

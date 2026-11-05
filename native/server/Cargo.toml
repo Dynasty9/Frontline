@@ -1,0 +1,16 @@
+[package]
+name = "frontline_server"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+
+[[bin]]
+name = "frontline-server"
+path = "src/main.rs"
+
+[dependencies]
+frontline_core.workspace = true
+frontline_runtime.workspace = true
+serde_json.workspace = true
+blake3.workspace = true
+rusty_enet = "=0.4.0"

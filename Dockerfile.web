@@ -2,17 +2,24 @@
 # context and this Dockerfile for the Railway web service.
 FROM debian:bookworm-slim AS viewer
 ARG GODOT_VERSION=4.7.2
-RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates curl unzip python3 && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates curl unzip python3 git build-essential libfontconfig1 && rm -rf /var/lib/apt/lists/*
+ENV PATH="/root/.cargo/bin:/opt/emsdk/upstream/emscripten:${PATH}"
+ENV EMSDK=/opt/emsdk EM_CONFIG=/opt/emsdk/.emscripten
+RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal --default-toolchain 1.94.0 \
+ && rustup target add wasm32-unknown-unknown --toolchain 1.94.0 \
+ && rustup toolchain install nightly-2026-01-15 --profile minimal --component rust-src --target wasm32-unknown-emscripten \
+ && git clone --depth 1 --branch 3.1.74 https://github.com/emscripten-core/emsdk.git /opt/emsdk \
+ && /opt/emsdk/emsdk install 3.1.74 && /opt/emsdk/emsdk activate 3.1.74
 RUN curl -fSL "https://github.com/godotengine/godot-builds/releases/download/${GODOT_VERSION}-stable/Godot_v${GODOT_VERSION}-stable_linux.x86_64.zip" -o /tmp/godot.zip \
  && unzip -j /tmp/godot.zip -d /usr/local/bin && mv /usr/local/bin/Godot* /usr/local/bin/godot \
  && curl -fSL "https://github.com/godotengine/godot-builds/releases/download/${GODOT_VERSION}-stable/Godot_v${GODOT_VERSION}-stable_export_templates.tpz" -o /tmp/templates.tpz \
  && mkdir -p /root/.local/share/godot/export_templates/${GODOT_VERSION}.stable \
- && unzip -j /tmp/templates.tpz templates/web_nothreads_release.zip templates/version.txt -d /root/.local/share/godot/export_templates/${GODOT_VERSION}.stable \
+ && unzip -j /tmp/templates.tpz templates/web_dlink_nothreads_release.zip templates/version.txt -d /root/.local/share/godot/export_templates/${GODOT_VERSION}.stable \
  && rm /tmp/godot.zip /tmp/templates.tpz
 WORKDIR /src
 COPY . .
-RUN mkdir -p /viewer && godot --headless --path . --import \
- && godot --headless --path . --export-release Web /viewer/index.html \
+RUN python3 tools/build_native.py \
+ && python3 tools/build_web.py --godot /usr/local/bin/godot --output /viewer \
  && python3 .github/scripts/viewer_manifest.py /viewer
 
 FROM node:24-bookworm-slim AS site

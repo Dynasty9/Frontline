@@ -41,7 +41,14 @@ func _ready() -> void:
 		if DisplayServer.get_name() != "headless":
 			for i in 20:
 				check(mm.get_instance_transform(i).origin == Vector3(i, 0, 0), "Resizing and cell offsets must preserve every transform")
+				check(mm.get_instance_color(i) == Color.WHITE, "Growing custom-data buffers must preserve baked model colours")
+	world.soldiers[0].position.y = 180.0
+	world.soldiers[1].position.y = -8.0
+	batch._process(0.016)
 	for s: Soldier in world.soldiers:
+		var group: SoldierViewBatch.DrawGroup = batch.groups[Vector3i(0, floori(s.position.z / SoldierViewBatch.CELL), pose)]
+		check(group.mm.custom_aabb.has_point(s.position - group.origin + Vector3.UP * 2.0), "Batch bounds must include soldiers above flat ground and below the waterline")
+		s.position.y = 0.0
 		s.gone = true
 	world.time = 6.0
 	batch._process(0.016)

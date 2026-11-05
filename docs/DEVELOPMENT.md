@@ -2,27 +2,67 @@
 
 How the code is laid out, and the command-line modes used to test it. See also [CONTRIBUTING](../CONTRIBUTING.md).
 
-## Scaling and the optional native extension
+## Rust simulation and native builds
 
-Gameplay remains GDScript. A Rust GDExtension accelerates nearest-enemy candidate
-selection using numeric snapshots and contracts degree-two navigation search states.
-Individual visibility and combat stay in Godot. Native graph assembly runs on the
-main thread; local-grid costing still uses workers.
-Install Rust 1.94.0 (`rustup toolchain install 1.94.0 --profile minimal`), then run
-`python tools/build_native.py` from the root. Re-import Godot afterward. A checkout
-without the generated extension uses GDScript perception and Godot AStar3D routes. Release CI builds
-and includes native Windows/Linux libraries. Do not commit generated binaries.
+Desktop solo and hosted multiplayer run the authoritative simulation in `frontline-server` while
+Godot handles visuals and interaction. `native/core` contains gameplay state and
+algorithms; `native/runtime` connects the fixed tick, commanders, missions, protocol
+and command recordings. `native/server` owns native sockets and process controls. `native/src` supplies map-generation bindings
+and parity tests. Browser solo games run the same Rust simulation in a Web Worker;
+see [RUST_SIMULATION.md](RUST_SIMULATION.md) for the current boundary and checks.
+Its [code map](RUST_SIMULATION.md#code-organization) separates tick orchestration,
+input/checkpoint codecs and commander responsibilities. Historical benchmark results
+are in [the measurement log](performance/rust-simulation.md).
 
-`--local-server` launches a private headless child using the current executable.
-Desktop solo menu actions do this automatically; `--host` retains the public host
-path. Local sessions bind loopback, require a random session token and protocol
-version, and stop when the owner exits. Logs are under `user://local_servers/`.
+Install Rust 1.94.0, run `python tools/build_native.py`, then re-import Godot.
+Windows MSVC builds link the C runtime statically through `.cargo/config.toml`.
+The build checks both PE import tables before staging a release, rejecting external
+C/C++ runtime DLL dependencies that a clean Windows installation might lack.
+The builder stages both the extension and server; release builds include them on
+Windows, Linux and macOS. Do not commit generated binaries. Native solo play needs
+both binaries; a missing server is reported instead of silently changing simulation.
+
+For web exports, also install Rust's `wasm32-unknown-unknown` target for 1.94.0,
+`nightly-2026-01-15` with `rust-src` and `wasm32-unknown-emscripten`, and Emscripten
+3.1.74. Activate its environment, then run `python tools/build_web.py --godot PATH
+--output build/web`. Godot needs its `web_dlink_nothreads_release.zip` export
+template. The script stages the extension, worker and game data together; serve
+the entire output directory. `Dockerfile.web` and release CI perform these steps.
+The worker uses the desktop packet and recording formats. Browser multiplayer
+remains unavailable because the existing ENet lobby requires UDP.
+
+After `npm ci` in `web`, `FRONTLINE_WEB_URL=http://localhost:8080/game/index.html
+node tools/browser_smoke.mjs` exercises an exported battle, movement, pause, saved
+recording verification and the website's model viewer. Run it from the repository
+root. Browser recordings are saved when leaving the match through the menu;
+closing or crashing the browser tab can interrupt the final write.
+
+`--local-server` prepares a map in a short-lived headless Godot child and then
+starts the Rust server. Desktop solo menu actions use this automatically. Local
+sessions bind loopback and require a random ticket and matching simulation build.
+Logs are under `user://local_servers/`; command recordings are written to
+`user://replays/`. Closing the session flushes the recording. Open a `.flrp` through the Replays menu or `--replay=PATH.flrp`.
+Verify it without Godot with `frontline-server verify PATH.flrp`. `FRONTLINE_SERVER` can select a binary in a
+source checkout. The public `--host` path keeps the existing ENet lobby and forwards
+remote players' simulation packets through that port. The host's renderer connects
+directly to the same Rust server over loopback. Lobby credentials authorize late
+joins and reclaim ownership after reconnects; gameplay never runs in the relay.
+`res://tests/native_lobby_test.tscn` exercises this complete connection path,
+including team-only map marks and independent verification of its recording.
 
 Run a measured 500-unit case with:
 
 ```powershell
 python tools/benchmark_scaling.py --godot "C:/path/to/Godot_console.exe" --rendered --local-server --map-size 3072 --duration 90 --output build/my-benchmark
 ```
+
+Rendered captures normally run offscreen without focus. Add `--visible` for a
+normal game window and leave it focused during capture. Reports include
+`focused_frames`, `window_pixels`, `render_scale` and the current shadow distance;
+compare focused and background runs separately, with other apps left running.
+The default `--team=-1` shows both armies as an observer. Use `--team=0` or
+`--team=1` to measure the corresponding player's filtered view, and report that
+choice alongside the result rather than comparing it to an observer capture.
 
 Use `--exported` with an exported executable. Use a fresh output folder. The runner
 saves frame/tick percentiles, process RSS samples, logs and a screenshot. `--mode`
@@ -33,6 +73,8 @@ AI, and `--units=480 --vehicles=20` for a mixed force. `--width=1920 --height=10
 sets the render resolution; `--preset=high` is the runner's non-persistent default.
 For direct runs use `--scenario=stress --units=500 --map-size=2048 --seed=3`,
 `--perf-at=15 --perf-duration=10 --perf-json=ABSOLUTE_PATH`, and a unique `--port`.
+Add `--gdscript-cover-search` to a direct scenario run to measure the reference
+cover search against the native default with the same scene and seed.
 
 Regression scenes: `tests/structure_index_test.tscn`,
 `tests/perception_index_test.tscn`, `tests/navigation_budget_test.tscn`, and
@@ -43,6 +85,12 @@ pause/resume, ownership after reconnect, and process cleanup.
 `tests/snapshot_index_test.tscn` verifies bounded scenery refresh and initial-state privacy.
 `tests/terrain_cover_test.tscn` compares bounded cover changes with exhaustive recomputation.
 `tests/soldier_batch_test.tscn` checks spatial batching and generated mesh LOD; run it rendered as well to verify GPU transform buffers.
+`tests/fixtures/soldier-poses.tscn` checks every soldier appearance, loading-time
+batch replacement, pose encoding, pause and animation without fresh instance uploads.
+Run `tests/fixtures/soldier-poses-render.tscn` with both `--rendering-method forward_plus`
+and `--rendering-method gl_compatibility` to compare all poses against their original
+meshes while translating and turning at large map coordinates. It writes comparison
+sheets to `build/soldier-poses-<renderer>.png`.
 `tests/terrain_updates_test.tscn` checks texture/collision seams and mesh boundaries;
 `tests/squad_assessment_test.tscn` checks shared assessment expiry and immediate
 new-contact handling. `tests/update_sidecars_test.tscn` checks executable/native
@@ -189,18 +237,38 @@ for ten seconds and more).
 
 ## Automated test modes
 
-`--perf-at=N` measures ten wall-clock seconds at normal speed after reaching N simulation
-seconds (use `--timescale=5` to fast-forward). It also works without fast-forwarding. The
+`--perf-at=N` warms up for N wall-clock seconds after loading, then measures at normal
+speed for `--perf-duration` seconds (ten by default). The
 report includes per-tick median, p95 and maximum, mean system costs, and land-path query
 counts, total time, maximum time and full-grid search count. Path time is nested inside
 the calling system's time; do not add it to the total. Headless FPS is zero because no
 frames are rendered. The overlay's game-logic bar is time per rendered frame, which can
 contain several simulation ticks; its system table is time per tick.
 
+With `--perf-json=ABSOLUTE_PATH`, `FL_DEBUG_FRAME_TRACE=1` also exports the samples
+already collected in `frame_samples_ms`: chronological frame, renderer, process,
+physics monitor and per-view component times, all in milliseconds. On Windows it also
+samples the calling thread's cumulative CPU accounting and cycle counter, exporting
+their per-frame differences in `thread_accounting`. CPU accounting can have coarser
+resolution than a frame: compare aggregates, and do not convert cycles to elapsed
+time. These extra calls run only with the trace enabled. The collector runs before early network and
+effect callbacks so each view sample belongs to the preceding complete frame.
+`frame_engine_counters` records pipeline compilations during each frame and the
+node count at its end. These aligned counts help distinguish shader stalls and
+scene churn from script work; they are not durations.
+Component timings can overlap; do not sum nested phases as independent costs.
+The trace includes `started_unix_s` and prints `FRAME_TRACE_BEGIN` once, allowing
+its frame intervals to be aligned with an external CPU/scheduling trace. Client
+terrain updates and graveyard cleanup have their own measured view category.
+
+The `process_monitor` and `physics_monitor` samples (and summary fields `process_cpu`
+and `physics_cpu`) are Godot's cached maxima from the previous second, not individual
+frame durations; see [Godot's monitor update](https://github.com/godotengine/godot/blob/4.7.2-stable/main/main.cpp#L4756-L4762).
+
 Run `godot --headless --path . res://tests/structure_index_test.tscn` for building-index
 lifecycle checks and a same-process FOB lookup comparison with 1,000 scenery objects.
-See [simulation scaling](SIMULATION_SCALING.md) for the performance investigation and
-the proposed route to larger maps and a separate simulation process.
+See [Rust simulation](RUST_SIMULATION.md) for the current separate simulation process,
+performance measurements and remaining large-map gates.
 
 Pass these after `--` on the command line. Every run given switches is a test run: it exits with code 1 if a
 script error happened anywhere in it (or one of its own checks failed: `--cam-test`, `--keys-test`,
@@ -246,7 +314,7 @@ Scenarios, AI-vs-AI battles and missions run offline: they take no port, so any 
                                                       next tab after each of --shots
 --report-at=SECONDS                                   (client) ask the host for the statistics then; a headless client
                                                       prints a CLIENT report line for each it gets
---perf-at=480 [--perf-shot=path.png]                  fast-forward, then measure real FPS and server tick cost
+--perf-at=15 --perf-duration=20 [--perf-shot=path.png] warm up after loading, then measure real FPS and frame times
 --screenshot=out.png --shot-at=30 --focus=X,Z --zoom=40 [--shots=N --shot-every=0.5]
 --mood=golden --perf=3 --preset=ultra                 lighting, overlay level and graphics preset for screenshots
 --fx-demo=1.4 --fx-every=3                            set off explosions near the camera (visual test, no damage)

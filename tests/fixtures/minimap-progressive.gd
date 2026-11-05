@@ -8,6 +8,12 @@ class TrackedMap extends HudMinimap:
 			draws[frame] = []
 		draws[frame].append(phase)
 
+class TrackedCamera extends RtsCamera:
+	var casts := 0
+	func ground_point(screen: Vector2) -> Vector3:
+		casts += 1
+		return Vector3(screen.x, 0, screen.y) + cam.position
+
 func _ready() -> void:
 	var world := World.new()
 	var hud := Hud.new()
@@ -35,7 +41,13 @@ func _ready() -> void:
 		assert(expensive <= 1, "Expensive minimap layers must not refresh together")
 	for i in 4:
 		assert(totals[i] == 3, "Every layer must get an equal share of frames")
-	assert(totals[4] == 12, "Camera and pointer indicators must update every frame")
+	assert(totals[4] == 0, "Unchanged camera and pointer drawing must be retained")
+	map.draws.clear()
+	map._hover = Vector2(35, 40)
+	map.refresh_layers()
+	await get_tree().process_frame
+	await get_tree().process_frame
+	assert(drew_camera(map), "Moving the pointer updates its indicator on the next draw")
 	map.hide()
 	var phase := map._phase
 	map.refresh_layers()
@@ -59,8 +71,55 @@ func _ready() -> void:
 	assert(rotated == [0, 1, 2, 3, 4], "Rotation must update all layers in the same coordinate system")
 	world.cam.free()
 	world.cam = null
+	var tracked := TrackedCamera.new()
+	tracked.cam = Camera3D.new()
+	add_child(tracked.cam)
+	world.cam = tracked
+	var corners := map._view_corners(world, Vector2(1280, 720)).duplicate()
+	for i in 8:
+		assert(map._view_corners(world, Vector2(1280, 720)) == corners)
+	assert(tracked.casts == 4, "Stationary minimap views must reuse terrain intersections")
+	tracked.cam.position.x += 10
+	assert(map._view_corners(world, Vector2(1280, 720))[0].x == corners[0].x + 10)
+	assert(tracked.casts == 8, "Moving the camera must immediately update its minimap wedge")
+	tracked.cam.fov += 5
+	map._view_corners(world, Vector2(1280, 720))
+	assert(tracked.casts == 12, "Projection changes invalidate ground intersections")
+	map._view_corners(world, Vector2(1600, 900))
+	assert(tracked.casts == 16, "Resizing the viewport invalidates ground intersections")
+	world.has_view = false
+	world.terrain = TerrainMap.new(world)
+	map._view_corners(world, Vector2(1600, 900))
+	world.terrain.version += 1
+	map._view_corners(world, Vector2(1600, 900))
+	assert(tracked.casts == 24, "Changing the ground invalidates the minimap wedge")
+	map.refresh_layers()
+	await get_tree().process_frame
+	await get_tree().process_frame
+	for change in 5:
+		map.draws.clear()
+		match change:
+			0: tracked.cam.position.y += 1.0
+			1: tracked.cam.fov += 1.0
+			2: tracked.focus_pos.x += 1.0
+			3: world.terrain.version += 1
+			4: map._hover = Vector2(-1, -1)
+		map.refresh_layers()
+		await get_tree().process_frame
+		await get_tree().process_frame
+		assert(drew_camera(map), "Camera, projection, focus, ground and pointer exit remain immediate")
+	tracked.cam.free()
+	tracked.free()
+	world.cam = null
 	map.free()
 	hud.free()
 	world.free()
 	print("MINIMAP_PROGRESSIVE passed")
 	get_tree().quit()
+
+
+func drew_camera(map: TrackedMap) -> bool:
+	for phases: Array in map.draws.values():
+		if 4 in phases:
+			return true
+	return false

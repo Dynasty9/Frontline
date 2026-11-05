@@ -76,6 +76,8 @@ func _water() -> void:
 	for z in 128:
 		for x in range(60, 68):
 			w.terrain.dh[z * 128 + x] = -2.0
+	w.terrain.begin_ground_import()
+	w.terrain.end_ground_import()
 	for z in 64:
 		for x in range(30, 34):
 			w.nav.terrain_changed(z * 64 + x)
@@ -101,6 +103,7 @@ func _water() -> void:
 	for z in range(60, 68):
 		for x in range(60, 68):
 			w.terrain.dh[z * 128 + x] = -0.85
+	w.terrain.sync_deformation()
 	for z in range(31, 33):
 		for x in range(30, 34):
 			w.nav.terrain_changed(z * 64 + x)

@@ -28,6 +28,7 @@ const C_WRECK := Color(0.28, 0.26, 0.24)
 const C_FIGHT := Color(1.0, 0.6, 0.24)
 const C_INTEL := Color(1.0, 0.42, 0.36)
 const C_RECON := Color(0.5, 0.88, 1.0)
+const PHASE_NAMES := ["minimap ground", "minimap fighting", "minimap units", "minimap co-command", "minimap camera"]
 
 class DrawLayer extends Control:
 	var map: HudMinimap
@@ -36,9 +37,12 @@ class DrawLayer extends Control:
 		map._draw_layer(self, phase)
 
 var _layers: Array[DrawLayer] = []
+var _dots: RefCounted
+var _dot_batch: MultiMesh
 var _phase := 0
 var _layer_xf := Transform2D.IDENTITY
 var _layer_size := Vector2.ZERO
+var _camera_layer_state: Array = []
 var _ink: CanvasItem = self
 var hud: Hud
 var _drag := false
@@ -57,6 +61,11 @@ var _xf := Transform2D.IDENTITY  # map pixels -> the control (turning with the c
 var _fight := {}  # grid cell -> where men are firing in it, rebuilt each redraw
 var sketch := PackedVector3Array()  # a line being drawn on the minimap (Alt+right-drag)
 var _sk_last := Vector2.ZERO
+var _view_points := PackedVector3Array()
+var _view_camera_transform := Transform3D.IDENTITY
+var _view_projection := Projection.IDENTITY
+var _view_viewport := Vector2.ZERO
+var _view_ground_version := -2
 
 
 func _ready() -> void:
@@ -80,6 +89,14 @@ func refresh_layers() -> void:
 	if not is_visible_in_tree():
 		return
 	_update_xf()
+	var world := hud.world
+	var camera := world.cam.cam if world.cam else null
+	var camera_state := [_hover, world.cam.focus_pos if world.cam else Vector3.ZERO,
+		world.cam.yaw if world.cam else 0.0, camera.global_transform if camera else Transform3D.IDENTITY,
+		camera.get_camera_projection() if camera else Projection.IDENTITY,
+		get_viewport().get_visible_rect().size, world.terrain.version if world.terrain else -1]
+	var camera_changed := camera_state != _camera_layer_state
+	_camera_layer_state = camera_state
 	if _xf != _layer_xf or size != _layer_size:
 		# Rotating or resizing changes every layer's coordinate system together.
 		_layer_xf = _xf
@@ -92,7 +109,8 @@ func refresh_layers() -> void:
 		queue_redraw()
 	else:
 		_layers[_phase - 1].queue_redraw()
-	_layers[3].queue_redraw()
+	if camera_changed:
+		_layers[3].queue_redraw()
 	_phase = (_phase + 1) % 4
 
 
@@ -468,7 +486,7 @@ func _draw_layer(canvas: CanvasItem, phase: int) -> void:
 	_draw_content(phase)
 	_ink = self
 	if hud and hud.world:
-		hud.world.vp("minimap drawing", started)
+		hud.world.vp(PHASE_NAMES[phase], started)
 
 
 func _draw_content(phase := -1) -> void:
@@ -590,25 +608,39 @@ func _draw_town(st: Structure, sc: float) -> void:
 ## glance at the map shows where the battle is.
 func _draw_fighting(w: World, sc: float) -> void:
 	_fight.clear()
-	for s in w.soldiers:
+	for s: Soldier in w.soldiers:
 		if not s.visible or s.life != Soldier.Life.ALIVE or (s.flags & Soldier.F_SHOOTING) == 0:
 			continue
-		var key := Vector2i(floori((s.position.x + MapDims.HALF) / 24.0), floori((s.position.z + MapDims.HALF) / 24.0))
+		var position_3d := s.position
+		var key := Vector2i(floori((position_3d.x + MapDims.HALF) / 24.0), floori((position_3d.z + MapDims.HALF) / 24.0))
 		if not _fight.has(key):
-			_fight[key] = s.position
+			_fight[key] = position_3d
 	var ph := fmod(Time.get_ticks_msec() / 1000.0 * 1.4, 1.0)
+	var to_canvas := _xf * Transform2D(Vector2(size.x / MapDims.SIZE, 0), Vector2(0, size.y / MapDims.SIZE), size * 0.5)
+	var radius := (3.5 + ph * 5.0) * sc
+	var ring := Color(C_FIGHT.r, C_FIGHT.g, C_FIGHT.b, 0.85 * (1.0 - ph))
+	var dot := Color(C_FIGHT.r, C_FIGHT.g, C_FIGHT.b, 0.5)
 	for key in _fight:
-		var p := _pt(_fight[key])
-		_ink.draw_arc(p, (3.5 + ph * 5.0) * sc, 0, TAU, 14, Color(C_FIGHT.r, C_FIGHT.g, C_FIGHT.b, 0.85 * (1.0 - ph)), 1.6, true)
-		_ink.draw_circle(p, 1.6 * sc, Color(C_FIGHT.r, C_FIGHT.g, C_FIGHT.b, 0.5))
+		var position_3d: Vector3 = _fight[key]
+		var p := to_canvas * Vector2(position_3d.x, position_3d.z)
+		_ink.draw_arc(p, radius, 0, TAU, 14, ring, 1.6, true)
+		_ink.draw_circle(p, 1.6 * sc, dot)
 
 
 ## Every man you can see as a dot with a dark edge (allies brightest, the
 ## selected white), vehicles by their map symbols, drones as yellow points.
 func _draw_units(w: World, sc: float) -> void:
 	var r := 1.3 * sc
-	var edge := Color(0, 0, 0, 0.65)
-	for s in w.soldiers:
+	var to_canvas := _xf * Transform2D(Vector2(size.x / MapDims.SIZE, 0), Vector2(0, size.y / MapDims.SIZE), size * 0.5)
+	var team_colors: Array[Color] = []
+	for team in 2:
+		team_colors.append(Defs.TEAM_COLORS[team].lightened(0.4 if team == w.local_team else 0.12))
+	var points := PackedVector3Array()
+	var colors := PackedColorArray()
+	points.resize(w.soldiers.size())
+	colors.resize(w.soldiers.size())
+	var count := 0
+	for s: Soldier in w.soldiers:
 		if not s.visible or s.life == Soldier.Life.HIDDEN or s.life == Soldier.Life.DEAD:
 			continue
 		var c: Color
@@ -618,15 +650,31 @@ func _draw_units(w: World, sc: float) -> void:
 			rr = r * 1.3
 		elif s.team < 0:
 			c = Color(0.9, 0.9, 0.85)
-		elif s.team == w.local_team:
-			c = Defs.TEAM_COLORS[s.team].lightened(0.4)
 		else:
-			c = Defs.TEAM_COLORS[s.team].lightened(0.12)
+			c = team_colors[s.team]
 		if s.life == Soldier.Life.DOWNED:
 			c.a = 0.55
-		var p := _pt(s.position)
-		_ink.draw_rect(Rect2(p - Vector2(rr + 0.9, rr + 0.9), Vector2(rr * 2.0 + 1.8, rr * 2.0 + 1.8)), edge)
-		_ink.draw_rect(Rect2(p - Vector2(rr, rr), Vector2(rr * 2.0, rr * 2.0)), c)
+		var position_3d := s.position
+		var p := to_canvas * Vector2(position_3d.x, position_3d.z)
+		points[count] = Vector3(p.x, p.y, rr)
+		colors[count] = c
+		count += 1
+	points.resize(count)
+	colors.resize(count)
+	if _dots == null:
+		_dots = ClassDB.instantiate("MinimapDots")
+		_dot_batch = MultiMesh.new()
+		_dot_batch.transform_format = MultiMesh.TRANSFORM_2D
+		_dot_batch.use_colors = true
+		var quad := QuadMesh.new()
+		quad.size = Vector2(2, 2)
+		_dot_batch.mesh = quad
+	if count * 2 > _dot_batch.instance_count:
+		_dot_batch.instance_count = nearest_po2(count * 2)
+	_dot_batch.visible_instance_count = count * 2
+	if count > 0:
+		_dot_batch.buffer = _dots.encode(points, colors, _dot_batch.instance_count)
+		_ink.draw_multimesh(_dot_batch, null)
 	for v in w.vehicles:
 		if not v.visible or v.team < 0:
 			continue
@@ -652,10 +700,8 @@ func _draw_intel(w: World, sc: float) -> void:
 			continue  # in sight: drawn as a unit
 		var a := clampf(1.0 - age / 90.0, 0.25, 0.85)
 		var p := _pt(it[0])
-		var hs := (2.6 if String(it[1]) == "inf" else 3.6) * sc
-		var d := PackedVector2Array([p + Vector2(0, -hs), p + Vector2(hs, 0), p + Vector2(0, hs), p + Vector2(-hs, 0), p + Vector2(0, -hs)])
-		_ink.draw_polyline(d, Color(0, 0, 0, 0.55 * a), 2.6, true)
-		_ink.draw_polyline(d, Color(C_INTEL.r, C_INTEL.g, C_INTEL.b, a), 1.2, true)
+		var infantry := String(it[1]) == "inf"
+		MapSymbols.glyph(_ink, "intel_inf" if infantry else "intel_vehicle", p, (4.0 if infantry else 5.0) * sc, C_INTEL, a, false)
 
 
 ## Aircraft over the battlefield (you hear and see them, whoever's they are): a
@@ -778,14 +824,31 @@ func _sketch_line(pts: PackedVector3Array, col: Color, a: float, grow: float) ->
 
 ## What the camera sees: the patch of ground on screen, lit, and faint lines
 ## back to where the camera stands, so you can tell which way it looks.
+func _view_corners(w: World, viewport_size: Vector2) -> PackedVector3Array:
+	var camera := w.cam.cam
+	var camera_transform := camera.global_transform
+	var projection := camera.get_camera_projection()
+	var ground_version := w.terrain.version if w.terrain else -1
+	if _view_points.size() != 4 or camera_transform != _view_camera_transform or projection != _view_projection or viewport_size != _view_viewport or ground_version != _view_ground_version:
+		_view_camera_transform = camera_transform
+		_view_projection = projection
+		_view_viewport = viewport_size
+		_view_ground_version = ground_version
+		_view_points.clear()
+		for screen in [Vector2.ZERO, Vector2(viewport_size.x, 0), viewport_size, Vector2(0, viewport_size.y)]:
+			_view_points.append(w.cam.ground_point(screen))
+	return _view_points
+
+
 func _draw_view(w: World) -> void:
 	var cam := w.cam
 	if cam == null:
 		return
 	var vs := get_viewport().get_visible_rect().size
 	var pts := PackedVector2Array()
-	for sp in [Vector2(0, 0), Vector2(vs.x, 0), vs, Vector2(0, vs.y)]:
-		pts.append(_pt(cam.ground_point(sp)))
+	# The camera wedge stays live; unchanged ground intersections need no new raycasts.
+	for point in _view_corners(w, vs):
+		pts.append(_pt(point))
 	var eye := _pt(cam.cam.global_position)
 	_ink.draw_line(eye, pts[3], Color(1, 1, 1, 0.3), 1.0, true)
 	_ink.draw_line(eye, pts[2], Color(1, 1, 1, 0.3), 1.0, true)

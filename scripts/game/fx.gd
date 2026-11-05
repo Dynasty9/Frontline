@@ -22,6 +22,7 @@ const DIE := 15
 const FIRE := 16  # a grass fire: [FIRE, pos, radius, seconds]
 const BURNT_OUT := 17  # something burnt through falls in: [BURNT_OUT, pos, half extents, yaw]
 const SINK := 18  # a boat founders: [SINK, eid, pos]
+const RECOIL := 19  # artillery kicks back without a direct-fire cannon flash
 
 ## What a round struck, as a SHOT event carries it: it decides what flies off.
 const HIT_DIRT := 1
@@ -136,6 +137,10 @@ func play(ev: Array) -> void:
 			_debris(ev[1], ev[2], int(ev[3]))
 		CANNON:
 			_cannon(_muzzle_of(ev, 3, ev[1], true), ev[2], world.entity(int(ev[3])) if ev.size() > 3 else null)
+		RECOIL:
+			var vehicle = world.entity(int(ev[1]))
+			if vehicle is Vehicle:
+				vehicle.recoil(ev[2])
 		RICOCHET:
 			_ricochet(ev[1], ev[2])
 		SOUND:
@@ -292,7 +297,7 @@ func _light(p: Vector3, energy: float, rng_m: float) -> void:
 
 
 func _explode(p: Vector3, size: float) -> void:
-	if not world.srv and world.terrain:
+	if not world.srv and not world.simulation_client and world.terrain:
 		world.terrain.add_crater(p, size)
 	var wet: bool = world.water and not world.water.is_empty() and p.y < 3.0 and world.water.wet_at(p)
 	if wet and p.y < 1.2 and not _on_boat(p):
@@ -439,13 +444,13 @@ func _debris(p: Vector3, col: Color, n: int) -> void:
 		return
 	for i in n:
 		var b := MeshInstance3D.new()
-		var s := world.rng.randf_range(0.12, 0.4)
+		var s := randf_range(0.12, 0.4)
 		b.mesh = Res.box(Vector3(s, s * 0.6, s * 0.8))
-		b.material_override = Res.mat(col.darkened(world.rng.randf_range(0.0, 0.3)))
+		b.material_override = Res.mat(col.darkened(randf_range(0.0, 0.3)))
 		add_child(b)
-		b.global_position = p + Vector3(world.rng.randf_range(-0.5, 0.5), world.rng.randf_range(0, 0.8), world.rng.randf_range(-0.5, 0.5))
-		var v := Vector3(world.rng.randf_range(-5, 5), world.rng.randf_range(3, 9), world.rng.randf_range(-5, 5))
-		_movers.append([b, v, Vector3(world.rng.randf_range(-8, 8), world.rng.randf_range(-8, 8), 0), 0.0, world.rng.randf_range(4.0, 9.0), true])
+		b.global_position = p + Vector3(randf_range(-0.5, 0.5), randf_range(0, 0.8), randf_range(-0.5, 0.5))
+		var v := Vector3(randf_range(-5, 5), randf_range(3, 9), randf_range(-5, 5))
+		_movers.append([b, v, Vector3(randf_range(-8, 8), randf_range(-8, 8), 0), 0.0, randf_range(4.0, 9.0), true])
 	_puff("dust", p)
 
 

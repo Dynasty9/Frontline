@@ -21,7 +21,7 @@ const LOT_D := 14.5  # lot depth
 
 var mg  # MapGen
 var world
-var rng: RandomNumberGenerator
+var rng: SimulationRandom
 var decor: Array = []  # [kind, pos, yaw, extra]
 var center := Vector3.ZERO
 var pieces: Array = []  # straight street pieces [a, b, main?]

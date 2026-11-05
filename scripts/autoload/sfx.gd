@@ -67,6 +67,10 @@ func _process(_dt: float) -> void:
 		_ensure()
 
 
+func _exit_tree() -> void:
+	_ensure()
+
+
 ## The sounds, once they're all made (waiting for them if they aren't yet).
 func _ensure() -> void:
 	if _synth < 0:

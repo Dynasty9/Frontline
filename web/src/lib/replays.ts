@@ -1,6 +1,7 @@
 import { MATCHMAKER_URL } from "@/lib/config"
 
 export type Replay = {
+  format?: number
   id: string
   lobby: string
   name: string

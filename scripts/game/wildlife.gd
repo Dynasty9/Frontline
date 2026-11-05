@@ -92,6 +92,9 @@ var _schools: Array = []
 var _pods: Array = []
 var _threats := PackedVector3Array()  # men and vehicles round the camera the player can see (and fires)
 var _big := PackedByteArray()  # 1: a vehicle or a fire (heard and seen from further off), 2: an aircraft
+const THREAT_CELL := 32.0
+var _threat_cells := {}
+var _aircraft := PackedVector3Array()
 var _fires: Array = []  # [where, until]: grass fires burning
 var _dead: Array = []  # Carcass
 var _scan_t := 0.0
@@ -178,7 +181,7 @@ func apply_settings() -> void:
 
 
 func _process(dt: float) -> void:
-	if level <= 0 or world.cam == null or world.building:
+	if level <= 0 or world.cam == null or world.building or not world.loaded:
 		return
 	var t0 := Time.get_ticks_usec()
 	_tick(dt)
@@ -332,39 +335,53 @@ func _plan() -> void:
 func _scan() -> void:
 	_threats.clear()
 	_big.clear()
+	_threat_cells.clear()
+	_aircraft.clear()
 	var r := reach + 60.0
 	var r2 := r * r
-	for s in world.soldiers:
+	for s: Soldier in world.soldiers:
 		if s.gone or s.life == Soldier.Life.DEAD or s.life == Soldier.Life.HIDDEN:
 			continue
 		if _d2(s.position, focus) < r2 and s.seen_by_local():
-			_threats.append(s.position)
-			_big.append(0)
-	for v in world.vehicles:
+			_add_threat(s.position, 0)
+	for v: Vehicle in world.vehicles:
 		if v.gone:
 			continue
 		if _d2(v.position, focus) < r2 and v.seen_by_local():
-			_threats.append(v.position)
-			_big.append(2 if v.is_air() else 1)
+			_add_threat(v.position, 2 if v.is_air() else 1)
 	# a grass fire keeps everything off like a vehicle would
 	for i in range(_fires.size() - 1, -1, -1):
 		if t > float(_fires[i][1]):
 			_fires.remove_at(i)
 		elif _d2(_fires[i][0], focus) < r2:
-			_threats.append(_fires[i][0])
-			_big.append(1)
+			_add_threat(_fires[i][0], 1)
+
+
+func _add_threat(point: Vector3, kind: int) -> void:
+	var cell := Vector2i(floori(point.x / THREAT_CELL), floori(point.z / THREAT_CELL))
+	var ids: Array = _threat_cells.get(cell, [])
+	ids.append(_threats.size())
+	_threat_cells[cell] = ids
+	_threats.append(point)
+	_big.append(kind)
+	if kind == 2:
+		_aircraft.append(point)
 
 
 ## The nearest man within `man` metres of p, or vehicle within `veh`; -1 if none.
 func _threat(p: Vector3, man: float, veh: float) -> int:
 	var best := -1
 	var bd := INF
-	for i in _threats.size():
-		var r := veh if _big[i] >= 1 else man
-		var d := _d2(p, _threats[i])
-		if d < r * r and d < bd:
-			bd = d
-			best = i
+	var radius := maxf(man, veh)
+	for z in range(floori((p.z - radius) / THREAT_CELL), floori((p.z + radius) / THREAT_CELL) + 1):
+		for x in range(floori((p.x - radius) / THREAT_CELL), floori((p.x + radius) / THREAT_CELL) + 1):
+			for i: int in _threat_cells.get(Vector2i(x, z), []):
+				var r := veh if _big[i] >= 1 else man
+				var d := _d2(p, _threats[i])
+				# Preserve scan-order ties even when adjacent cells are visited first.
+				if d < r * r and (d < bd or (d == bd and i < best)):
+					bd = d
+					best = i
 	return best
 
 
@@ -850,10 +867,10 @@ func _soar(s: Soarer, dt: float) -> void:
 			s.drift = s.drift.normalized() * 1.2
 	elif _scanned:
 		# a helicopter coming close
-		for i in _threats.size():
-			if _big[i] == 2 and _threats[i].distance_squared_to(s.p) < 45.0 * 45.0:
+		for aircraft: Vector3 in _aircraft:
+			if aircraft.distance_squared_to(s.p) < 45.0 * 45.0:
 				_fright("soarer", "aircraft")
-				_scare(s, _threats[i])
+				_scare(s, aircraft)
 				break
 	s.c += s.drift * dt
 	var spin := 1.0 + (0.7 * sin(t * 2.7 + s.k) if bat else 0.0)

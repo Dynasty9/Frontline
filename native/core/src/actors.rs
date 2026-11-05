@@ -1,0 +1,545 @@
+//! Owned actors share stable identities. Lookup order never determines simulation order.
+use crate::drone_actor::Drone;
+use crate::entities::{Entities, Identity, Kind, MAX_ENTITIES};
+use crate::infantry::Infantry;
+use crate::infantry_casualty::Released;
+use crate::infantry_vitals::Life;
+use crate::projectile_actor::{Explosion, Projectile};
+use crate::random::SimulationRandom;
+use crate::state_codec::{Reader, Writer};
+use crate::structure::Structure;
+use crate::vector::Vector3;
+use crate::vehicle::Vehicle;
+use std::collections::HashMap;
+use std::sync::atomic::{AtomicU64, Ordering};
+
+// Render invalidation stays outside checkpoints; clones and restored worlds
+// need distinct stamps after a change even when their gameplay clocks agree.
+static NEXT_STRUCTURE_REVISION: AtomicU64 = AtomicU64::new(1);
+
+fn structure_revisions(entities: &Entities) -> HashMap<u32, u64> {
+    let revision = NEXT_STRUCTURE_REVISION.fetch_add(1, Ordering::Relaxed);
+    entities
+        .iter()
+        .filter(|e| e.kind == Kind::Structure)
+        .map(|e| (e.id, revision))
+        .collect()
+}
+
+#[cfg(test)]
+mod ownership_tests {
+    use super::*;
+
+    #[test]
+    fn owned_buildings_follow_registration_capture_spawn_removal_and_restore() {
+        let structure = |id, team| {
+            Actor::Structure(Box::new(Structure {
+                id,
+                team,
+                kind: "tree".into(),
+                ..Default::default()
+            }))
+        };
+        let mut a = Actors::from_entries(
+            30,
+            vec![structure(20, 0), structure(10, -1), structure(4, 1)],
+        )
+        .unwrap();
+        assert_eq!(a.owned_structures(), [20, 4]);
+        let original = a.clone();
+        a.set_structure_team(10, 1).unwrap();
+        assert_eq!(a.owned_structures(), [20, 10, 4]);
+        a.set_structure_team(20, 1).unwrap();
+        assert_eq!(a.owned_structures(), [20, 10, 4]);
+        a.set_structure_team(20, -1).unwrap();
+        assert_eq!(a.owned_structures(), [10, 4]);
+        assert_eq!(original.owned_structures(), [20, 4]);
+        let before = a.checkpoint().unwrap();
+        assert!(a.set_structure_team(10, 2).is_err());
+        assert!(a.set_structure_team(99, 0).is_err());
+        assert_eq!(a.checkpoint().unwrap(), before);
+        assert_eq!(a.owned_structures(), [10, 4]);
+        a.remove(10).unwrap();
+        let owned = a.spawn(structure(1, 0)).unwrap();
+        a.spawn(structure(1, -1)).unwrap();
+        assert_eq!(a.owned_structures(), [4, owned]);
+        let saved = a.checkpoint().unwrap();
+        let restored = Actors::restore(&saved).unwrap();
+        assert_eq!(restored.owned_structures(), [4, owned]);
+        assert_eq!(restored.checkpoint().unwrap(), saved);
+    }
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub enum Actor {
+    Soldier(Box<Infantry>),
+    Projectile(Projectile),
+    Drone(Drone),
+    Structure(Box<Structure>),
+    Vehicle(Box<Vehicle>),
+}
+
+impl Actor {
+    pub fn identity(&self) -> Identity {
+        match self {
+            Self::Soldier(s) => Identity {
+                id: s.identity.id,
+                kind: Kind::Soldier,
+            },
+            Self::Projectile(p) => Identity {
+                id: p.id,
+                kind: Kind::Projectile,
+            },
+            Self::Drone(d) => Identity {
+                id: d.id,
+                kind: Kind::Drone,
+            },
+            Self::Structure(s) => Identity {
+                id: s.id,
+                kind: Kind::Structure,
+            },
+            Self::Vehicle(v) => Identity {
+                id: v.id,
+                kind: Kind::Vehicle,
+            },
+        }
+    }
+    fn set_id(&mut self, id: u32) {
+        match self {
+            Self::Soldier(s) => s.identity.id = id,
+            Self::Projectile(p) => p.id = id,
+            Self::Drone(d) => d.id = id,
+            Self::Structure(s) => s.id = id,
+            Self::Vehicle(v) => v.id = id,
+        }
+    }
+    fn valid(&self) -> bool {
+        match self {
+            Self::Soldier(s) => !s.identity.gone && s.valid(),
+            Self::Projectile(p) => p.valid(),
+            Self::Drone(d) => d.valid(),
+            Self::Structure(s) => !s.gone && s.valid(),
+            Self::Vehicle(v) => !v.gone && v.valid(),
+        }
+    }
+    pub fn checkpoint(&self) -> Result<Vec<u8>, &'static str> {
+        match self {
+            Self::Soldier(s) => s.checkpoint(),
+            Self::Projectile(p) => p.checkpoint(),
+            Self::Drone(d) => d.checkpoint(),
+            Self::Structure(s) => s.checkpoint(),
+            Self::Vehicle(v) => v.checkpoint(),
+        }
+    }
+    pub fn restore(kind: Kind, bytes: &[u8]) -> Result<Self, &'static str> {
+        match kind {
+            Kind::Soldier => Ok(Self::Soldier(Box::new(Infantry::restore(bytes)?))),
+            Kind::Projectile => Ok(Self::Projectile(Projectile::restore(bytes)?)),
+            Kind::Drone => Ok(Self::Drone(Drone::restore(bytes)?)),
+            Kind::Structure => Ok(Self::Structure(Box::new(Structure::restore(bytes)?))),
+            Kind::Vehicle => Ok(Self::Vehicle(Box::new(Vehicle::restore(bytes)?))),
+        }
+    }
+}
+
+#[derive(Clone, Debug, Default)]
+pub struct Actors {
+    entities: Entities,
+    values: HashMap<u32, Actor>,
+    // Scenery must not enlarge every unit, vehicle or projectile scan.
+    by_kind: [Vec<u32>; 5],
+    combatants: Vec<u32>,
+    simulated_structures: Vec<u32>,
+    owned_structures: Vec<u32>,
+    structure_revisions: HashMap<u32, u64>,
+}
+
+fn kind_order(entities: &Entities) -> [Vec<u32>; 5] {
+    let mut order: [Vec<u32>; 5] = Default::default();
+    for identity in entities.iter() {
+        order[identity.kind as usize].push(identity.id);
+    }
+    order
+}
+fn combatant(a: &Actor) -> Option<u32> {
+    matches!(a, Actor::Soldier(_) | Actor::Vehicle(_)).then(|| a.identity().id)
+}
+fn owned_structure(a: &Actor) -> Option<u32> {
+    match a {
+        Actor::Structure(s) if s.team >= 0 => Some(s.id),
+        _ => None,
+    }
+}
+fn simulated_structure(a: &Actor) -> Option<u32> {
+    match a {
+        Actor::Structure(s)
+            if matches!(
+                s.kind.as_str(),
+                "fob"
+                    | "town"
+                    | "barracks"
+                    | "factory"
+                    | "research"
+                    | "helipad"
+                    | "dock"
+                    | "medic_tent"
+                    | "mg_nest"
+                    | "watchtower"
+                    | "hmg_nest"
+                    | "mortar_pit"
+                    | "at_post"
+                    | "mines"
+                    | "ammo_cache"
+            ) =>
+        {
+            Some(s.id)
+        }
+        _ => None,
+    }
+}
+
+impl Actors {
+    pub fn from_entries(next_id: u64, actors: Vec<Actor>) -> Result<Self, &'static str> {
+        if actors.len() > MAX_ENTITIES || actors.iter().any(|a| !a.valid()) {
+            return Err("invalid actor collection");
+        }
+        let identities: Vec<_> = actors.iter().map(Actor::identity).collect();
+        let entities = Entities::from_entries(next_id, &identities)?;
+        Ok(Self {
+            by_kind: kind_order(&entities),
+            combatants: actors.iter().filter_map(combatant).collect(),
+            simulated_structures: actors.iter().filter_map(simulated_structure).collect(),
+            owned_structures: actors.iter().filter_map(owned_structure).collect(),
+            structure_revisions: structure_revisions(&entities),
+            entities,
+            values: actors.into_iter().map(|a| (a.identity().id, a)).collect(),
+        })
+    }
+    pub fn entities(&self) -> &Entities {
+        &self.entities
+    }
+    pub fn get(&self, id: u32) -> Option<&Actor> {
+        self.values.get(&id)
+    }
+    pub(crate) fn get_mut(&mut self, id: u32) -> Option<&mut Actor> {
+        let actor = self.values.get_mut(&id)?;
+        if matches!(actor, Actor::Structure(_)) {
+            self.structure_revisions
+                .insert(id, NEXT_STRUCTURE_REVISION.fetch_add(1, Ordering::Relaxed));
+        }
+        Some(actor)
+    }
+    pub fn structure_revision(&self, id: u32) -> Option<u64> {
+        self.structure_revisions.get(&id).copied()
+    }
+    pub fn soldier(&self, id: u32) -> Option<&Infantry> {
+        match self.get(id)? {
+            Actor::Soldier(s) => Some(s),
+            _ => None,
+        }
+    }
+    pub(crate) fn soldier_mut(&mut self, id: u32) -> Option<&mut Infantry> {
+        match self.values.get_mut(&id)? {
+            Actor::Soldier(s) => Some(s),
+            _ => None,
+        }
+    }
+    pub fn structure(&self, id: u32) -> Option<&Structure> {
+        match self.get(id)? {
+            Actor::Structure(s) => Some(s),
+            _ => None,
+        }
+    }
+    pub(crate) fn set_structure_team(&mut self, id: u32, team: i8) -> Result<(), &'static str> {
+        if !(-1..=1).contains(&team) {
+            return Err("invalid structure team");
+        }
+        let Some(Actor::Structure(s)) = self.get_mut(id) else {
+            return Err("missing structure");
+        };
+        let membership_changed = (s.team >= 0) != (team >= 0);
+        s.team = team;
+        if membership_changed {
+            // A capture is rare; preserve registration order without scanning scenery each tick.
+            self.owned_structures = self
+                .iter_kind(Kind::Structure)
+                .filter_map(owned_structure)
+                .collect();
+        }
+        Ok(())
+    }
+    pub fn set_structure_supply(&mut self, id: u32, supply: f64) -> Result<(), &'static str> {
+        if !supply.is_finite() || !(0. ..=1e12).contains(&supply) {
+            return Err("invalid structure supply");
+        }
+        let Some(Actor::Structure(s)) = self.get_mut(id) else {
+            return Err("missing supply structure");
+        };
+        s.supply = supply;
+        Ok(())
+    }
+    pub fn iter(&self) -> impl Iterator<Item = &Actor> {
+        self.entities.iter().map(|entry| &self.values[&entry.id])
+    }
+    pub fn iter_kind(&self, kind: Kind) -> impl Iterator<Item = &Actor> {
+        self.by_kind[kind as usize]
+            .iter()
+            .map(|id| &self.values[id])
+    }
+    pub fn simulated_structures(&self) -> &[u32] {
+        &self.simulated_structures
+    }
+    pub fn owned_structures(&self) -> &[u32] {
+        &self.owned_structures
+    }
+    pub fn iter_combatants(&self) -> impl Iterator<Item = &Actor> {
+        self.combatants.iter().map(|id| &self.values[id])
+    }
+    pub fn vehicle(&self, id: u32) -> Option<&Vehicle> {
+        match self.get(id)? {
+            Actor::Vehicle(v) => Some(v),
+            _ => None,
+        }
+    }
+    pub(crate) fn vehicle_mut(&mut self, id: u32) -> Option<&mut Vehicle> {
+        match self.values.get_mut(&id) {
+            Some(Actor::Vehicle(v)) => Some(v),
+            _ => None,
+        }
+    }
+    pub fn board(
+        &mut self,
+        vehicle: u32,
+        soldier: u32,
+        seats: u32,
+        helicopter: bool,
+        ground_height: f64,
+    ) -> Result<bool, &'static str> {
+        if seats > 100_000 || !ground_height.is_finite() || ground_height.abs() > 1_000_000. {
+            return Err("invalid vehicle capacity");
+        }
+        let v = self.vehicle(vehicle).ok_or("missing transport")?;
+        if v.passengers.len() >= 100_000 {
+            return Err("vehicle passenger limit exceeded");
+        }
+        let occupied = v
+            .passengers
+            .iter()
+            .filter(|&&id| self.get(id).is_some())
+            .count();
+        if occupied >= seats as usize
+            || (helicopter && f64::from(v.position.y) - ground_height > 1.0)
+        {
+            return Ok(false);
+        }
+        let s = self.soldier_mut(soldier).ok_or("missing passenger")?;
+        s.hide_in(crate::infantry_control::HiddenReason::Vehicle, 9999.0, None)?;
+        s.links.vehicle = u64::from(vehicle);
+        let Some(Actor::Vehicle(v)) = self.values.get_mut(&vehicle) else {
+            unreachable!()
+        };
+        v.passengers.push(soldier);
+        Ok(true)
+    }
+    pub fn spawn(&mut self, mut actor: Actor) -> Result<u32, &'static str> {
+        let id = u32::try_from(self.entities.next_id()).map_err(|_| "entity registry exhausted")?;
+        actor.set_id(id);
+        if !actor.valid() {
+            return Err("invalid actor spawn");
+        }
+        let id = self.entities.spawn(actor.identity().kind)?;
+        self.by_kind[actor.identity().kind as usize].push(id);
+        if combatant(&actor).is_some() {
+            self.combatants.push(id);
+        }
+        if simulated_structure(&actor).is_some() {
+            self.simulated_structures.push(id);
+        }
+        if owned_structure(&actor).is_some() {
+            self.owned_structures.push(id);
+        }
+        if matches!(actor, Actor::Structure(_)) {
+            self.structure_revisions
+                .insert(id, NEXT_STRUCTURE_REVISION.fetch_add(1, Ordering::Relaxed));
+        }
+        self.values.insert(id, actor);
+        Ok(id)
+    }
+    pub fn remove(&mut self, id: u32) -> Option<Actor> {
+        if !self.entities.remove(id) {
+            return None;
+        }
+        let actor = self.values.remove(&id)?;
+        self.structure_revisions.remove(&id);
+        self.by_kind[actor.identity().kind as usize].retain(|&entry| entry != id);
+        if combatant(&actor).is_some() {
+            self.combatants.retain(|&entry| entry != id);
+        }
+        if simulated_structure(&actor).is_some() {
+            self.simulated_structures.retain(|&entry| entry != id);
+        }
+        if owned_structure(&actor).is_some() {
+            self.owned_structures.retain(|&entry| entry != id);
+        }
+        Some(actor)
+    }
+
+    pub fn release_all(&mut self, id: u32) -> Result<Released, &'static str> {
+        let released = self
+            .soldier_mut(id)
+            .ok_or("missing infantry")?
+            .release_all()?;
+        self.release_links(id, released);
+        Ok(released)
+    }
+    pub fn go_down(&mut self, id: u32, now: f64) -> Result<Released, &'static str> {
+        let released = self
+            .soldier_mut(id)
+            .ok_or("missing infantry")?
+            .go_down(now)?;
+        self.release_links(id, released);
+        Ok(released)
+    }
+    pub fn die(
+        &mut self,
+        id: u32,
+        now: f64,
+        ammunition: Option<i32>,
+    ) -> Result<Option<Released>, &'static str> {
+        let released = self
+            .soldier_mut(id)
+            .ok_or("missing infantry")?
+            .die(now, ammunition)?;
+        if let Some(released) = released {
+            self.release_links(id, released);
+        }
+        Ok(released)
+    }
+    pub fn fling_from(
+        &mut self,
+        id: u32,
+        center: Vector3,
+        power: f64,
+        rng: &mut SimulationRandom,
+    ) -> Result<Option<Released>, &'static str> {
+        let released = self
+            .soldier_mut(id)
+            .ok_or("missing infantry")?
+            .fling_from(center, power, rng)?;
+        if let Some(released) = released {
+            self.release_links(id, released);
+        }
+        Ok(released)
+    }
+    pub(crate) fn release_links(&mut self, id: u32, released: Released) {
+        if let Some(patient) = self.soldier_mut(released.patient) {
+            if patient.links.dragged_by == u64::from(id) {
+                patient.links.dragged_by = 0;
+            }
+            if patient.links.rescue_claimed == u64::from(id) {
+                patient.links.rescue_claimed = 0;
+            }
+        }
+        if let Some(patient) = self.soldier_mut(released.stretcher) {
+            if let Some(index) = patient
+                .links
+                .carried_by
+                .iter()
+                .position(|&s| s == u64::from(id))
+            {
+                patient.links.carried_by.remove(index);
+            }
+        }
+        if let Some(Actor::Drone(drone)) = self.values.get_mut(&released.drone) {
+            drone.lose_control();
+        }
+        // Squad breach claims are applied by the squad owner, using the returned squad ID.
+    }
+
+    pub fn step_drone(
+        &mut self,
+        id: u32,
+        dt: f64,
+        collision: &mut dyn crate::collision::Raycast,
+        map_half: f32,
+    ) -> Result<Option<Explosion>, &'static str> {
+        let Some(Actor::Drone(drone)) = self.get(id) else {
+            return Err("missing drone");
+        };
+        let alive = self
+            .soldier(drone.operator)
+            .is_some_and(|s| s.vitals.life == Life::Alive);
+        let target = match self.get(drone.target) {
+            Some(Actor::Soldier(s)) if s.vitals.life == Life::Alive => Some(
+                crate::infantry_pose::center(s.motion.position, s.posture, s.vitals.life),
+            ),
+            Some(Actor::Vehicle(v)) => Some(v.position + Vector3::Y * 2.0),
+            _ => None,
+        };
+        let Some(Actor::Drone(drone)) = self.values.get_mut(&id) else {
+            unreachable!()
+        };
+        drone.advance(dt, alive, target, collision, map_half)
+    }
+
+    pub fn detonate_drone(&mut self, id: u32) -> Result<Option<Explosion>, &'static str> {
+        let Some(Actor::Drone(drone)) = self.values.get_mut(&id) else {
+            return Err("missing drone");
+        };
+        Ok(drone.detonate())
+    }
+    pub fn shoot_drone(&mut self, id: u32) -> Result<bool, &'static str> {
+        let Some(Actor::Drone(drone)) = self.values.get_mut(&id) else {
+            return Err("missing drone");
+        };
+        Ok(drone.shot_down())
+    }
+
+    pub fn checkpoint(&self) -> Result<Vec<u8>, &'static str> {
+        let mut out = Writer::new(b"FLAS\x01\0\0\0");
+        out.bytes(&self.entities.checkpoint());
+        for actor in self.iter() {
+            let bytes = actor.checkpoint()?;
+            if bytes.len() > 16 * 1024 * 1024 || out.0.len() + 4 + bytes.len() > 256 * 1024 * 1024 {
+                return Err("actor collection exceeds limit");
+            }
+            out.bytes(&bytes);
+        }
+        Ok(out.0)
+    }
+    pub fn restore(bytes: &[u8]) -> Result<Self, &'static str> {
+        // A single actor may contain a million route points. Bound the aggregate before allocating.
+        if bytes.len() > 256 * 1024 * 1024 {
+            return Err("actor collection exceeds limit");
+        }
+        let mut input = Reader::new(bytes, b"FLAS\x01\0\0\0")?;
+        let entities = Entities::restore(input.bytes(20 + MAX_ENTITIES * 5)?)?;
+        let mut values = HashMap::new();
+        for identity in entities.iter() {
+            let actor = Actor::restore(identity.kind, input.bytes(16 * 1024 * 1024)?)?;
+            if actor.identity() != identity || !actor.valid() {
+                return Err("actor identity mismatch");
+            }
+            values.insert(identity.id, actor);
+        }
+        input.finish()?;
+        Ok(Self {
+            by_kind: kind_order(&entities),
+            structure_revisions: structure_revisions(&entities),
+            combatants: entities
+                .iter()
+                .filter_map(|entry| combatant(&values[&entry.id]))
+                .collect(),
+            simulated_structures: entities
+                .iter()
+                .filter_map(|e| simulated_structure(&values[&e.id]))
+                .collect(),
+            owned_structures: entities
+                .iter()
+                .filter_map(|e| owned_structure(&values[&e.id]))
+                .collect(),
+            entities,
+            values,
+        })
+    }
+}

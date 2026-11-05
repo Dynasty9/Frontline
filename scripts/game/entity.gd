@@ -31,9 +31,21 @@ var hit_by: Array = []  # (server) the last enemy to hurt it: [owner, team, unit
 
 
 func _ready() -> void:
+	if srv and (self is Structure or self is Vehicle or (self is Projectile and (self as Projectile).ptype == "smoke")):
+		set_notify_transform(true)
+		set_notify_local_transform(true)
 	# Entity frame callbacks only draw; authority advances them through sim().
 	if world != null and not world.has_view:
 		set_process(false)
+
+
+func _notification(what: int) -> void:
+	if (what == NOTIFICATION_TRANSFORM_CHANGED or what == NOTIFICATION_LOCAL_TRANSFORM_CHANGED) and srv and world != null and world.combat:
+		if self is Projectile:
+			if world.entities.get(eid) == self:
+				world.combat.update_smoke(self)
+		else:
+			world.combat.dirty_collision(eid)
 
 
 func ekind() -> String:
@@ -140,13 +152,15 @@ func net_smooth(dt: float, blend := -1.0) -> void:
 		return
 	if blend < 0.0:
 		blend = 1.0 - exp(-dt * 14.0)
-	var next_pos := net_pos if position.distance_to(net_pos) > 8.0 else position.lerp(net_pos, blend)
-	var next_rotation := rotation
-	next_rotation.y = lerp_angle(rotation.y, net_yaw, blend)
+	var current_pos := position
+	var current_rotation := rotation
+	var next_pos := net_pos if current_pos.distance_to(net_pos) > 8.0 else current_pos.lerp(net_pos, blend)
+	var next_rotation := current_rotation
+	next_rotation.y = lerp_angle(current_rotation.y, net_yaw, blend)
 	# Unchanged transforms still dirty every child model in the scene tree.
-	if next_pos != position:
+	if next_pos != current_pos:
 		position = next_pos
-	if next_rotation != rotation:
+	if next_rotation != current_rotation:
 		rotation = next_rotation
 
 

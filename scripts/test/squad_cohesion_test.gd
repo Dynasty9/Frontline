@@ -27,6 +27,8 @@ func _ready() -> void:
 				var cell := w.nav.cell_of(Vector3(x, 0, 0))
 				w.nav.ikind[cell.y * Nav.N + cell.x] = Nav.LOW
 				w.terrain.solid[w.terrain.idx_of(Vector3(x, 0, 0))] = 1
+				if w.terrain._native:
+					w.terrain._native_import(PackedInt32Array([w.terrain.idx_of(Vector3(x, 0, 0))]))
 			var wall := Structure.new()
 			wall.skind = "low_wall"
 			for x in range(-8, 9):
@@ -59,6 +61,8 @@ func _ready() -> void:
 		var cell := w.nav.cell_of(Vector3(-1, 0, z))
 		w.nav.ikind[cell.y * Nav.N + cell.x] = Nav.SOLID
 		w.terrain.solid[w.terrain.idx_of(Vector3(-1, 0, z))] = 1
+		if w.terrain._native:
+			w.terrain._native_import(PackedInt32Array([w.terrain.idx_of(Vector3(-1, 0, z))]))
 	for sl in w.terrain.slots(c, Vector3.FORWARD, 8, true):
 		check(sl[0].x >= 0 and sl[0].z > 0.9, "an L-shaped corner keeps the squad in the same pocket")
 	for wall in w.walls:

@@ -104,11 +104,13 @@ class Presence:
 
 	## False for a packet that doesn't parse (it's then ignored).
 	func decode(data: PackedByteArray) -> bool:
-		if data.size() < 90 or data.size() > CoCommand.MAX_PACKET:
+		if data.size() < 97 or data.size() > CoCommand.MAX_PACKET:
 			return false
 		var buf := StreamPeerBuffer.new()
 		buf.data_array = data
 		var fl := buf.get_u8()
+		if fl > 31:
+			return false
 		cur_on = (fl & 1) != 0
 		on_map = (fl & 2) != 0
 		tactical = (fl & 4) != 0
@@ -116,15 +118,19 @@ class Presence:
 		drag = (fl & 16) != 0
 		focus = CoCommand._get_xz(buf)
 		yaw = buf.get_float()
-		dist = clampf(buf.get_float(), RtsCamera.MIN_DIST, RtsCamera.MAX_DIST)
-		tilt = clampf(buf.get_float(), RtsCamera.TILT_MIN, RtsCamera.TILT_MAX)
+		dist = buf.get_float()
+		tilt = buf.get_float()
+		if not is_finite(dist) or not is_finite(tilt):
+			return false
+		dist = clampf(dist, RtsCamera.MIN_DIST, RtsCamera.MAX_DIST)
+		tilt = clampf(tilt, RtsCamera.TILT_MIN, RtsCamera.TILT_MAX)
 		quad.resize(4)
 		for i in 4:
 			quad[i] = CoCommand._get_xz(buf)
 		cur = CoCommand._get_xz(buf)
 		mode = buf.get_u8()
 		var kl := buf.get_u32()
-		if kl > 64 or buf.get_position() + kl > data.size():
+		if mode > CoCommand.Mode.ABILITY or kl > 64 or buf.get_position() + kl + 31 > data.size():
 			return false
 		buf.seek(buf.get_position() - 4)
 		kind = buf.get_utf8_string()
@@ -135,13 +141,13 @@ class Presence:
 		unit = buf.get_u32()
 		sq.clear()
 		var nsq := buf.get_u8()
-		if buf.get_position() + nsq * 4 + 1 > data.size():
+		if nsq > 40 or buf.get_position() + nsq * 4 + 2 > data.size():
 			return false
 		for i in nsq:
 			sq.append(buf.get_u32())
 		veh.clear()
 		var nv := buf.get_u8()
-		if buf.get_position() + nv * 4 + 1 > data.size():
+		if nv > 40 or buf.get_position() + nv * 4 + 1 != data.size():
 			return false
 		for i in nv:
 			veh.append(buf.get_u32())
@@ -218,7 +224,7 @@ static func _get_xz(buf: StreamPeerBuffer) -> Vector3:
 func _ready() -> void:
 	_input_ms = Time.get_ticks_msec()
 	_last_ms = _input_ms
-	if world.srv:
+	if world.srv or world.settings.has("simulation_connection"):
 		Net.player_left.connect(_on_player_left)
 
 
@@ -314,7 +320,7 @@ func _process(_dt: float) -> void:
 
 
 func _send_tick() -> void:
-	if not world.srv and (not multiplayer.has_multiplayer_peer() or multiplayer.get_unique_id() == 1):
+	if not world.srv and not world.simulation_client and (not multiplayer.has_multiplayer_peer() or multiplayer.get_unique_id() == 1):
 		return
 	# a client waits until the host's world is up and talking to it
 	if not world.srv and world.entities.is_empty():
@@ -334,7 +340,9 @@ func _send_tick() -> void:
 	_beat_t = BEAT_EVERY
 	_last_data = data
 	_count("sent")
-	if world.srv:
+	if world.simulation_client:
+		world.simulation_client.send_presence(data)
+	elif world.srv:
 		_relay(world.local_peer, data)
 	else:
 		_rpc_presence.rpc_id(1, data)
@@ -558,7 +566,9 @@ func ping(kind: String, pos: Vector3, eid := 0) -> void:
 		return
 	pos = Defs.flat(pos)
 	_add_ping(world.local_peer, kind, pos, eid)
-	if world.srv:
+	if world.simulation_client:
+		world.simulation_client.send_mark({"t": "ping", "kind": kind, "position": pos, "entity": eid})
+	elif world.srv:
 		_ping_from(world.local_peer, kind, pos, eid)
 	else:
 		_rpc_ping_req.rpc_id(1, kind, pos, eid)
@@ -670,7 +680,12 @@ func sketch(pts: PackedVector3Array) -> void:
 		return
 	var flat := _flat2(pts)
 	_add_sketch(world.local_peer, flat)
-	if world.srv:
+	if world.simulation_client:
+		var points := []
+		for p: Vector2 in flat:
+			points.append([p.x, p.y])
+		world.simulation_client.send_mark({"t": "sketch", "points": points})
+	elif world.srv:
 		_sketch_from(world.local_peer, flat)
 	else:
 		_rpc_sketch_req.rpc_id(1, flat)

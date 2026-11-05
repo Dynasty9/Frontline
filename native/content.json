@@ -1,0 +1,7829 @@
+{
+	"base_cap": 6,
+	"boat_hulls": {
+		"gun_trawler": [
+			0.35,
+			0.7,
+			3.2,
+			4.0,
+			3.0,
+			0.65,
+			1.8,
+			0.18,
+			0.35
+		],
+		"motorboat": [
+			2.1,
+			2.2,
+			0.55,
+			0.8,
+			0.7,
+			3.6,
+			0.95,
+			0.25,
+			0.4
+		],
+		"patrol_ship": [
+			0.95,
+			1.1,
+			1.6,
+			2.4,
+			1.7,
+			2.0,
+			1.06,
+			0.3,
+			0.55
+		],
+		"rhib": [
+			2.5,
+			2.6,
+			0.45,
+			0.65,
+			0.6,
+			4.2,
+			0.85,
+			0.28,
+			0.45
+		],
+		"speedboat_hmg": [
+			1.6,
+			1.8,
+			0.85,
+			1.2,
+			1.0,
+			3.0,
+			1.1,
+			0.3,
+			0.5
+		],
+		"speedboat_minigun": [
+			1.6,
+			1.8,
+			0.85,
+			1.2,
+			1.0,
+			3.0,
+			1.1,
+			0.3,
+			0.5
+		]
+	},
+	"build_radius": 70.0,
+	"buildings": {
+		"ammo_cache": {
+			"cost": 50,
+			"desc": "Forward stores: men within 7 m top up their rounds, grenades and rockets till it runs dry, and men out of ammunition fall back to it. Cooks off if it's hit hard.",
+			"hp": 400.0,
+			"key": "ammo_cache",
+			"name": "Ammo Cache",
+			"size": [
+				3.200000047683716,
+				2.4000000953674316
+			],
+			"teams": [
+				0,
+				1
+			],
+			"time": 10.0
+		},
+		"at_post": {
+			"cost": 150,
+			"desc": "Crewed anti-tank launcher (guided missile / recoilless rifle). Kills vehicles out to 130 m.",
+			"hp": 900.0,
+			"key": "at_post",
+			"name": "AT Post",
+			"size": [
+				4.0,
+				4.0
+			],
+			"teams": [
+				0,
+				1
+			],
+			"time": 24.0
+		},
+		"barracks": {
+			"cost": 150,
+			"desc": "Trains infantry squads.",
+			"hp": 1500.0,
+			"key": "barracks",
+			"name": "Barracks",
+			"produces": [
+				[
+					"rifle_squad",
+					"engineer_team",
+					"mg_team",
+					"at_team",
+					"mortar_team"
+				],
+				[
+					"fighter_cell",
+					"digger_team",
+					"pkm_team",
+					"rpg_team",
+					"fpv_team",
+					"r_mortar_team"
+				]
+			],
+			"size": [
+				9.0,
+				6.0
+			],
+			"teams": [
+				0,
+				1
+			],
+			"time": 35.0
+		},
+		"barricade": {
+			"cost": 15,
+			"desc": "Oil drums, tyres, rubble and scrap, chest high: stand and fire over it. Tanks shove it aside, and the tyres burn.",
+			"hp": 700.0,
+			"key": "barricade",
+			"name": "Barricade",
+			"size": [
+				4.0,
+				1.0
+			],
+			"teams": [
+				1
+			],
+			"time": 6.0
+		},
+		"bunker": {
+			"cost": 160,
+			"desc": "Pillbox with firing slits and a roof that stops shrapnel. Right-click it with a squad to garrison.",
+			"hp": 2600.0,
+			"key": "bunker",
+			"name": "Bunker",
+			"size": [
+				5.599999904632568,
+				5.599999904632568
+			],
+			"teams": [
+				0,
+				1
+			],
+			"time": 30.0
+		},
+		"camo_net": {
+			"cost": 20,
+			"desc": "Pitch it over a gun pit, a mortar or a parked vehicle: anything under it is spotted at half the range, from the ground or the air. It stops nothing.",
+			"hp": 120.0,
+			"key": "camo_net",
+			"name": "Camouflage Net",
+			"size": [
+				7.0,
+				7.0
+			],
+			"teams": [
+				0,
+				1
+			],
+			"time": 6.0
+		},
+		"concrete_wall": {
+			"cost": 40,
+			"desc": "Precast concrete slabs, too tall to see over: complete protection behind them. Soldiers lean around the ends. Light vehicles can't push through.",
+			"hp": 1600.0,
+			"key": "concrete_wall",
+			"name": "T-Wall",
+			"size": [
+				4.0,
+				0.6000000238418579
+			],
+			"teams": [
+				0
+			],
+			"time": 10.0
+		},
+		"dock": {
+			"cost": 170,
+			"desc": "Builds boats. On the shore of the sea or the river, facing open water, on your own half of the map.",
+			"hp": 1300.0,
+			"key": "dock",
+			"name": "Boat Dock",
+			"produces": [
+				[
+					"rhib",
+					"speedboat_minigun",
+					"patrol_ship"
+				],
+				[
+					"motorboat",
+					"speedboat_hmg",
+					"gun_trawler"
+				]
+			],
+			"size": [
+				14.0,
+				12.0
+			],
+			"teams": [
+				0,
+				1
+			],
+			"time": 32.0
+		},
+		"factory": {
+			"cost": 250,
+			"desc": "Builds vehicles.",
+			"hp": 2200.0,
+			"key": "factory",
+			"name": "Factory",
+			"produces": [
+				[
+					"tank",
+					"ifv",
+					"humvee",
+					"hunter",
+					"hunter_hmg",
+					"hunter_gmg",
+					"prowler",
+					"prowler_hmg",
+					"prowler_at",
+					"marshall",
+					"rhino",
+					"rhino_up",
+					"hemtt",
+					"hemtt_ammo",
+					"hemtt_repair",
+					"hemtt_medical",
+					"stomper",
+					"slammer",
+					"slammer_up",
+					"panther",
+					"bobcat",
+					"cheetah",
+					"scorcher",
+					"sandstorm",
+					"strider",
+					"strider_hmg",
+					"strider_gmg",
+					"gorgon",
+					"mora",
+					"kuma",
+					"nyx_ac",
+					"nyx_at",
+					"nyx_aa",
+					"nyx_recon",
+					"zamak_ammo",
+					"zamak_medical"
+				],
+				[
+					"technical",
+					"btr",
+					"old_tank",
+					"aa_tech",
+					"offroad",
+					"offroad_at",
+					"offroad_repair",
+					"mb4wd_lmg",
+					"mb4wd_at",
+					"quadbike",
+					"fia_truck",
+					"van_ambulance",
+					"van_transport",
+					"zamak_mrl",
+					"zamak_repair",
+					"ifrit",
+					"ifrit_hmg",
+					"ifrit_gmg",
+					"qilin",
+					"qilin_mg",
+					"qilin_at",
+					"marid",
+					"kamysh",
+					"varsuk",
+					"futura",
+					"angara",
+					"angara_k",
+					"tigris",
+					"sochor",
+					"tempest",
+					"tempest_ammo",
+					"tempest_medical",
+					"offroad_hmg",
+					"zamak",
+					"tempest_repair"
+				]
+			],
+			"size": [
+				11.0,
+				10.0
+			],
+			"teams": [
+				0,
+				1
+			],
+			"time": 45.0
+		},
+		"fob": {
+			"cost": 250,
+			"desc": "Forward base: +20 unit cap, ammo, lays a supply road.",
+			"hp": 2500.0,
+			"key": "fob",
+			"name": "FOB",
+			"size": [
+				14.0,
+				14.0
+			],
+			"teams": [
+				0,
+				1
+			],
+			"time": 70.0
+		},
+		"helipad": {
+			"cost": 180,
+			"desc": "Builds helicopters and drones. Supply helicopters fly over cut roads straight to your FOBs.",
+			"hp": 1000.0,
+			"key": "helipad",
+			"name": "Helipad",
+			"produces": [
+				[
+					"heli",
+					"gunship",
+					"pawnee",
+					"hummingbird",
+					"ghosthawk",
+					"huron",
+					"blackfoot",
+					"falcon",
+					"darter",
+					"mohawk",
+					"hellcat",
+					"ghosthawk_stub"
+				],
+				[
+					"kajman",
+					"orca",
+					"orca_armed",
+					"taru",
+					"taru_lift",
+					"m900",
+					"tayran",
+					"fenghuang_uav"
+				]
+			],
+			"size": [
+				10.0,
+				10.0
+			],
+			"teams": [
+				0,
+				1
+			],
+			"time": 30.0
+		},
+		"hesco": {
+			"cost": 30,
+			"desc": "Earth-filled cells, chest high and a metre thick: stand and fire over it. Stops even a .50 cal, and blocks vehicles.",
+			"hp": 2400.0,
+			"key": "hesco",
+			"name": "HESCO Barrier",
+			"size": [
+				4.400000095367432,
+				1.100000023841858
+			],
+			"teams": [
+				0
+			],
+			"time": 8.0
+		},
+		"hmg_nest": {
+			"cost": 110,
+			"desc": "Heavy machine gun: 100 m range, crushing suppression, shreds trucks, technicals, helicopters and drones.",
+			"hp": 1100.0,
+			"key": "hmg_nest",
+			"name": ".50 Cal Nest",
+			"size": [
+				4.599999904632568,
+				4.599999904632568
+			],
+			"teams": [
+				0,
+				1
+			],
+			"time": 18.0
+		},
+		"medic_tent": {
+			"cost": 120,
+			"desc": "Stretcher bearers bring back the wounded and the dead.",
+			"hp": 900.0,
+			"key": "medic_tent",
+			"name": "Medic Tent",
+			"size": [
+				7.0,
+				5.0
+			],
+			"teams": [
+				0,
+				1
+			],
+			"time": 25.0
+		},
+		"mg_nest": {
+			"cost": 70,
+			"desc": "Sandbagged GPMG. A nearby soldier crews it and pins down infantry.",
+			"hp": 900.0,
+			"key": "mg_nest",
+			"name": "MG Nest",
+			"size": [
+				4.199999809265137,
+				4.199999809265137
+			],
+			"teams": [
+				0,
+				1
+			],
+			"time": 15.0
+		},
+		"mines": {
+			"cost": 30,
+			"desc": "Hidden. Blows up vehicles and infantry.",
+			"hp": 60.0,
+			"key": "mines",
+			"name": "Minefield",
+			"size": [
+				3.0,
+				3.0
+			],
+			"teams": [
+				0,
+				1
+			],
+			"time": 6.0
+		},
+		"mortar_pit": {
+			"cost": 130,
+			"desc": "Crewed mortar. Shells enemies your side can see, even behind cover (30-160 m). Select it for fire missions.",
+			"hp": 900.0,
+			"key": "mortar_pit",
+			"name": "Mortar Pit",
+			"size": [
+				5.0,
+				5.0
+			],
+			"teams": [
+				0,
+				1
+			],
+			"time": 22.0
+		},
+		"research": {
+			"cost": 200,
+			"desc": "Unlocks upgrades.",
+			"hp": 1200.0,
+			"key": "research",
+			"name": "Research Post",
+			"size": [
+				7.0,
+				7.0
+			],
+			"teams": [
+				0,
+				1
+			],
+			"time": 40.0
+		},
+		"sandbags": {
+			"cost": 15,
+			"desc": "Low cover. Crouch and pop up to shoot.",
+			"hp": 450.0,
+			"key": "sandbags",
+			"name": "Sandbags",
+			"size": [
+				4.0,
+				0.8999999761581421
+			],
+			"teams": [
+				0,
+				1
+			],
+			"time": 5.0
+		},
+		"tank_trap": {
+			"cost": 20,
+			"desc": "A Czech hedgehog of welded steel. Blocks vehicles (and supply trucks).",
+			"hp": 900.0,
+			"key": "tank_trap",
+			"name": "Tank Trap",
+			"size": [
+				2.0,
+				2.0
+			],
+			"teams": [
+				0,
+				1
+			],
+			"time": 5.0
+		},
+		"trench": {
+			"cost": 20,
+			"desc": "Soldiers stand half a metre below ground: only their heads show when they fire. Drag to dig a line.",
+			"hp": 3000.0,
+			"key": "trench",
+			"name": "Trench",
+			"size": [
+				6.0,
+				3.200000047683716
+			],
+			"teams": [
+				0,
+				1
+			],
+			"time": 9.0
+		},
+		"tunnel": {
+			"cost": 60,
+			"desc": "Move squads through the tunnel network. Prisoners are interrogated here.",
+			"hp": 700.0,
+			"key": "tunnel",
+			"name": "Tunnel Entrance",
+			"size": [
+				3.0,
+				3.0
+			],
+			"teams": [
+				1
+			],
+			"time": 18.0
+		},
+		"watchtower": {
+			"cost": 50,
+			"desc": "Sees 85 m over the hedges and roofs, 115 m with a lookout up it (any idle soldier beside it climbs up). Shoots over walls.",
+			"hp": 500.0,
+			"key": "watchtower",
+			"name": "Watchtower",
+			"size": [
+				3.0,
+				3.0
+			],
+			"teams": [
+				0,
+				1
+			],
+			"time": 14.0
+		},
+		"wire": {
+			"cost": 10,
+			"desc": "Slows infantry to a crawl.",
+			"hp": 160.0,
+			"key": "wire",
+			"name": "Barbed Wire",
+			"size": [
+				5.0,
+				1.2000000476837158
+			],
+			"teams": [
+				0,
+				1
+			],
+			"time": 4.0
+		}
+	},
+	"cap_per_fob": 20,
+	"fob_expand_radius": 130.0,
+	"fob_min_spacing": 45.0,
+	"fob_names": [
+		[
+			"Alpha",
+			"Bravo",
+			"Charlie",
+			"Delta",
+			"Echo",
+			"Foxtrot",
+			"Golf",
+			"Hotel",
+			"India",
+			"Juliet",
+			"Kilo",
+			"Lima"
+		],
+		[
+			"Viper",
+			"Cobra",
+			"Jackal",
+			"Falcon",
+			"Wolf",
+			"Hyena",
+			"Scorpion",
+			"Raven",
+			"Mamba",
+			"Lynx",
+			"Kestrel",
+			"Adder"
+		]
+	],
+	"fob_radius": 16.0,
+	"missions": [
+		{
+			"area": "A farming village on the river, and its bridge",
+			"blurb": "Clear a riverside village, seize its bridge and hold it against the counterattack.",
+			"brief": "Dawn. Rebel fighters hold the village on our bank of the river, and the bridge beyond it. Clear the village house by house and take the bridge before they can blow it. Then hold it: they will come back across hard, with armour, before our tanks can get up the lane. 155 mm artillery is on call.",
+			"force": "Two rifle squads, an MG team, an AT team and an AMV-7 Marshall",
+			"key": "bridgehead",
+			"mins": 5,
+			"mood": "dawn",
+			"op": "Operation Broken Crossing",
+			"seed": 1,
+			"side": 0,
+			"title": "Bridgehead"
+		},
+		{
+			"area": "The coast and the fishing harbour",
+			"blurb": "Land from the sea, knock out the harbour's anti-aircraft guns and take the harbour.",
+			"brief": "Two anti-aircraft trucks guard the harbour, and until they are gone no helicopter can get near the coast. Their twin 23 mm guns will cut infantry to pieces in the open. Run the RHIBs onto the beach south of the harbour, then destroy the guns: with the patrol ship's guns from the water, the AT team, or the one artillery fire mission you have. Then clear the harbour for the battalion landing behind you. Expect boats.",
+			"force": "Three RHIBs (two rifle squads, an MG team and an AT team) and a Mk VI patrol ship",
+			"key": "beachhead",
+			"mins": 5,
+			"mood": "golden",
+			"op": "Operation Iron Tide",
+			"seed": 2,
+			"side": 0,
+			"title": "Beachhead"
+		},
+		{
+			"area": "The river, and Outpost Kilo on the far bank",
+			"blurb": "Fly a tank destroyer to a cut-off outpost on a helicopter's sling, then stop the armour coming for it.",
+			"brief": "Outpost Kilo, across the river, reports an armoured column forming to the north, and it has nothing that can stop a BTR. The bridge is wired with charges. Hook the Nyx under the Mohawk (select the helicopter, right-click the Nyx), fly it over the river and set it down at Kilo (right-click the ground there), then hold the outpost until the column is broken.",
+			"force": "A CH-49 Mohawk, an AWC Nyx anti-tank vehicle and the outpost's garrison",
+			"key": "skyhook",
+			"mins": 5,
+			"mood": "overcast",
+			"op": "Operation Long Lantern",
+			"seed": 4,
+			"side": 0,
+			"title": "Sky Hook"
+		},
+		{
+			"area": "A country lane between a village and the main road",
+			"blurb": "As the Rebels: ambush a Coalition convoy on a country lane, then vanish before their reaction force arrives.",
+			"brief": "At dusk a Coalition convoy will leave the village and run down the lane to the main road. There is an IED dug into the lane. Get into the woods above it before the convoy moves, let the IED open the ambush, and destroy the convoy. Then break contact and get back to the rally point: their quick reaction force, helicopters and all, will be on the spot within minutes.",
+			"force": "A fighter cell, two RPG teams, a PKM team, and an IED in the lane",
+			"key": "ambush",
+			"mins": 5,
+			"mood": "dusk",
+			"op": "Operation Black Harvest",
+			"seed": 3,
+			"side": 1,
+			"title": "Ambush Alley"
+		},
+		{
+			"area": "The town, at night",
+			"blurb": "A night raid into the town: break through a checkpoint, take down a Rebel commander and get out.",
+			"brief": "A Rebel commander is spending the night in a house in the town, behind a checkpoint on the main street. Go in on foot, clear the checkpoint (it has RPGs: keep the Hunters back until it's down), breach the house and kill or capture him. Once he is down every Rebel in town will come for you: get back to the Hunters before they cut the road. A Greyhawk drone comes on station two minutes in.",
+			"force": "Two rifle squads, an MG team and two Hunter HMGs",
+			"key": "kingpin",
+			"mins": 5,
+			"mood": "night",
+			"op": "Operation Silent Gate",
+			"seed": 5,
+			"side": 0,
+			"title": "Kingpin"
+		}
+	],
+	"motion": {
+		"aa_tech": {
+			"handling": [
+				2.6,
+				6.0,
+				3.5,
+				0.35
+			],
+			"hull_accel": 1.3089969389957472,
+			"hull_turn": 0.8726646259971648,
+			"traverse": 0.6108652381980153,
+			"traverse_accel": 1.1344640137963142
+		},
+		"angara": {
+			"handling": [
+				1.2,
+				4.0,
+				2.2,
+				0.32
+			],
+			"hull_accel": 0.6108652381980153,
+			"hull_turn": 0.5235987755982988,
+			"traverse": 0.6632251157578453,
+			"traverse_accel": 0.9075712110370514
+		},
+		"angara_k": {
+			"handling": [
+				1.2,
+				4.0,
+				2.2,
+				0.32
+			],
+			"hull_accel": 0.6108652381980153,
+			"hull_turn": 0.5235987755982988,
+			"traverse": 0.6283185307179586,
+			"traverse_accel": 0.8377580409572782
+		},
+		"blackfoot": {
+			"handling": [
+				5.0,
+				6.0,
+				3.0,
+				0.3
+			],
+			"hull_accel": 0.9599310885968813,
+			"hull_turn": 0.6981317007977318,
+			"traverse": 1.0471975511965976,
+			"traverse_accel": 1.7453292519943295
+		},
+		"bobcat": {
+			"handling": [
+				1.1,
+				4.0,
+				2.2,
+				0.25
+			],
+			"hull_accel": 0.7853981633974483,
+			"hull_turn": 0.6108652381980153,
+			"traverse": 0.7853981633974483,
+			"traverse_accel": 1.2217304763960306
+		},
+		"btr": {
+			"handling": [
+				1.9,
+				5.0,
+				3.0,
+				0.35
+			],
+			"hull_accel": 0.9599310885968813,
+			"hull_turn": 0.6632251157578453,
+			"traverse": 0.5235987755982988,
+			"traverse_accel": 0.8726646259971648
+		},
+		"cheetah": {
+			"handling": [
+				1.9,
+				5.0,
+				3.0,
+				0.35
+			],
+			"hull_accel": 0.9599310885968813,
+			"hull_turn": 0.6632251157578453,
+			"traverse": 1.3089969389957472,
+			"traverse_accel": 2.0943951023931953
+		},
+		"darter": {
+			"handling": [
+				4.0,
+				5.0,
+				3.0,
+				0.3
+			],
+			"hull_accel": 1.1344640137963142,
+			"hull_turn": 0.7853981633974483,
+			"traverse": 0.8726646259971648,
+			"traverse_accel": 1.3962634015954636
+		},
+		"falcon": {
+			"handling": [
+				4.0,
+				5.0,
+				3.0,
+				0.3
+			],
+			"hull_accel": 1.1344640137963142,
+			"hull_turn": 0.7853981633974483,
+			"traverse": 0.8726646259971648,
+			"traverse_accel": 1.3962634015954636
+		},
+		"fenghuang_uav": {
+			"handling": [
+				4.0,
+				5.0,
+				3.0,
+				0.3
+			],
+			"hull_accel": 1.1344640137963142,
+			"hull_turn": 0.7853981633974483,
+			"traverse": 0.8726646259971648,
+			"traverse_accel": 1.3962634015954636
+		},
+		"fia_truck": {
+			"handling": [
+				1.1,
+				4.0,
+				2.2,
+				0.25
+			],
+			"hull_accel": 0.7853981633974483,
+			"hull_turn": 0.6108652381980153,
+			"traverse": 0.7853981633974483,
+			"traverse_accel": 1.2217304763960306
+		},
+		"futura": {
+			"handling": [
+				1.2,
+				4.0,
+				2.2,
+				0.32
+			],
+			"hull_accel": 0.6108652381980153,
+			"hull_turn": 0.5235987755982988,
+			"traverse": 0.7330382858376184,
+			"traverse_accel": 1.0471975511965976
+		},
+		"ghosthawk": {
+			"handling": [
+				2.8,
+				4.0,
+				3.0,
+				0.3
+			],
+			"hull_accel": 0.4363323129985824,
+			"hull_turn": 0.3490658503988659,
+			"traverse": 0.6108652381980153,
+			"traverse_accel": 0.9599310885968813
+		},
+		"ghosthawk_stub": {
+			"handling": [
+				5.0,
+				6.0,
+				3.0,
+				0.3
+			],
+			"hull_accel": 0.9599310885968813,
+			"hull_turn": 0.6981317007977318,
+			"traverse": 1.0471975511965976,
+			"traverse_accel": 1.7453292519943295
+		},
+		"gorgon": {
+			"handling": [
+				1.9,
+				5.0,
+				3.0,
+				0.35
+			],
+			"hull_accel": 0.9599310885968813,
+			"hull_turn": 0.6632251157578453,
+			"traverse": 0.7853981633974483,
+			"traverse_accel": 1.3089969389957472
+		},
+		"gun_trawler": {
+			"handling": [
+				2.6,
+				6.0,
+				3.5,
+				0.35
+			],
+			"hull_accel": 1.3089969389957472,
+			"hull_turn": 0.8726646259971648,
+			"traverse": 0.6108652381980153,
+			"traverse_accel": 1.1344640137963142
+		},
+		"gunship": {
+			"handling": [
+				5.0,
+				6.0,
+				3.0,
+				0.3
+			],
+			"hull_accel": 0.9599310885968813,
+			"hull_turn": 0.6981317007977318,
+			"traverse": 1.0471975511965976,
+			"traverse_accel": 1.7453292519943295
+		},
+		"heli": {
+			"handling": [
+				3.8,
+				5.0,
+				3.0,
+				0.3
+			],
+			"hull_accel": 0.6108652381980153,
+			"hull_turn": 0.4886921905584123,
+			"traverse": 0.6981317007977318,
+			"traverse_accel": 1.1344640137963142
+		},
+		"hellcat": {
+			"handling": [
+				5.0,
+				6.0,
+				3.0,
+				0.3
+			],
+			"hull_accel": 0.9599310885968813,
+			"hull_turn": 0.6981317007977318,
+			"traverse": 1.0471975511965976,
+			"traverse_accel": 1.7453292519943295
+		},
+		"hemtt": {
+			"handling": [
+				1.1,
+				4.0,
+				2.2,
+				0.25
+			],
+			"hull_accel": 0.7853981633974483,
+			"hull_turn": 0.6108652381980153,
+			"traverse": 0.7853981633974483,
+			"traverse_accel": 1.2217304763960306
+		},
+		"hemtt_ammo": {
+			"handling": [
+				1.1,
+				4.0,
+				2.2,
+				0.25
+			],
+			"hull_accel": 0.7853981633974483,
+			"hull_turn": 0.6108652381980153,
+			"traverse": 0.7853981633974483,
+			"traverse_accel": 1.2217304763960306
+		},
+		"hemtt_medical": {
+			"handling": [
+				1.1,
+				4.0,
+				2.2,
+				0.25
+			],
+			"hull_accel": 0.7853981633974483,
+			"hull_turn": 0.6108652381980153,
+			"traverse": 0.7853981633974483,
+			"traverse_accel": 1.2217304763960306
+		},
+		"hemtt_repair": {
+			"handling": [
+				1.1,
+				4.0,
+				2.2,
+				0.25
+			],
+			"hull_accel": 0.7853981633974483,
+			"hull_turn": 0.6108652381980153,
+			"traverse": 0.7853981633974483,
+			"traverse_accel": 1.2217304763960306
+		},
+		"hummingbird": {
+			"handling": [
+				3.8,
+				5.0,
+				3.0,
+				0.3
+			],
+			"hull_accel": 0.6108652381980153,
+			"hull_turn": 0.4886921905584123,
+			"traverse": 0.6981317007977318,
+			"traverse_accel": 1.1344640137963142
+		},
+		"humvee": {
+			"handling": [
+				3.0,
+				6.5,
+				4.0,
+				0.4
+			],
+			"hull_accel": 1.5707963267948966,
+			"hull_turn": 0.9599310885968813,
+			"traverse": 0.9599310885968813,
+			"traverse_accel": 1.5707963267948966
+		},
+		"hunter": {
+			"handling": [
+				3.0,
+				6.5,
+				4.0,
+				0.4
+			],
+			"hull_accel": 1.5707963267948966,
+			"hull_turn": 0.9599310885968813,
+			"traverse": 0.9599310885968813,
+			"traverse_accel": 1.5707963267948966
+		},
+		"hunter_gmg": {
+			"handling": [
+				3.0,
+				6.5,
+				4.0,
+				0.4
+			],
+			"hull_accel": 1.5707963267948966,
+			"hull_turn": 0.9599310885968813,
+			"traverse": 0.9599310885968813,
+			"traverse_accel": 1.5707963267948966
+		},
+		"hunter_hmg": {
+			"handling": [
+				3.0,
+				6.5,
+				4.0,
+				0.4
+			],
+			"hull_accel": 1.5707963267948966,
+			"hull_turn": 0.9599310885968813,
+			"traverse": 0.9599310885968813,
+			"traverse_accel": 1.5707963267948966
+		},
+		"huron": {
+			"handling": [
+				2.8,
+				4.0,
+				3.0,
+				0.3
+			],
+			"hull_accel": 0.4363323129985824,
+			"hull_turn": 0.3490658503988659,
+			"traverse": 0.6108652381980153,
+			"traverse_accel": 0.9599310885968813
+		},
+		"ifrit": {
+			"handling": [
+				3.0,
+				6.5,
+				4.0,
+				0.4
+			],
+			"hull_accel": 1.5707963267948966,
+			"hull_turn": 0.9599310885968813,
+			"traverse": 0.9599310885968813,
+			"traverse_accel": 1.5707963267948966
+		},
+		"ifrit_gmg": {
+			"handling": [
+				3.0,
+				6.5,
+				4.0,
+				0.4
+			],
+			"hull_accel": 1.5707963267948966,
+			"hull_turn": 0.9599310885968813,
+			"traverse": 0.9599310885968813,
+			"traverse_accel": 1.5707963267948966
+		},
+		"ifrit_hmg": {
+			"handling": [
+				3.0,
+				6.5,
+				4.0,
+				0.4
+			],
+			"hull_accel": 1.5707963267948966,
+			"hull_turn": 0.9599310885968813,
+			"traverse": 0.9599310885968813,
+			"traverse_accel": 1.5707963267948966
+		},
+		"ifv": {
+			"handling": [
+				1.9,
+				5.0,
+				3.0,
+				0.35
+			],
+			"hull_accel": 0.9599310885968813,
+			"hull_turn": 0.6632251157578453,
+			"traverse": 0.7853981633974483,
+			"traverse_accel": 1.3089969389957472
+		},
+		"kajman": {
+			"handling": [
+				5.0,
+				6.0,
+				3.0,
+				0.3
+			],
+			"hull_accel": 0.9599310885968813,
+			"hull_turn": 0.6981317007977318,
+			"traverse": 1.0471975511965976,
+			"traverse_accel": 1.7453292519943295
+		},
+		"kamysh": {
+			"handling": [
+				1.9,
+				5.0,
+				3.0,
+				0.35
+			],
+			"hull_accel": 0.9599310885968813,
+			"hull_turn": 0.6632251157578453,
+			"traverse": 0.7853981633974483,
+			"traverse_accel": 1.2217304763960306
+		},
+		"kuma": {
+			"handling": [
+				1.2,
+				4.0,
+				2.2,
+				0.32
+			],
+			"hull_accel": 0.6108652381980153,
+			"hull_turn": 0.5235987755982988,
+			"traverse": 0.6981317007977318,
+			"traverse_accel": 0.9599310885968813
+		},
+		"m900": {
+			"handling": [
+				3.8,
+				5.0,
+				3.0,
+				0.3
+			],
+			"hull_accel": 0.6108652381980153,
+			"hull_turn": 0.4886921905584123,
+			"traverse": 0.6981317007977318,
+			"traverse_accel": 1.1344640137963142
+		},
+		"marid": {
+			"handling": [
+				1.9,
+				5.0,
+				3.0,
+				0.35
+			],
+			"hull_accel": 0.9599310885968813,
+			"hull_turn": 0.6632251157578453,
+			"traverse": 0.7853981633974483,
+			"traverse_accel": 1.3089969389957472
+		},
+		"marshall": {
+			"handling": [
+				1.9,
+				5.0,
+				3.0,
+				0.35
+			],
+			"hull_accel": 0.9599310885968813,
+			"hull_turn": 0.6632251157578453,
+			"traverse": 0.7853981633974483,
+			"traverse_accel": 1.3089969389957472
+		},
+		"mb4wd_at": {
+			"handling": [
+				2.6,
+				6.0,
+				3.5,
+				0.35
+			],
+			"hull_accel": 1.3089969389957472,
+			"hull_turn": 0.8726646259971648,
+			"traverse": 0.6108652381980153,
+			"traverse_accel": 1.1344640137963142
+		},
+		"mb4wd_lmg": {
+			"handling": [
+				2.6,
+				6.0,
+				3.5,
+				0.35
+			],
+			"hull_accel": 1.3089969389957472,
+			"hull_turn": 0.8726646259971648,
+			"traverse": 0.6108652381980153,
+			"traverse_accel": 1.1344640137963142
+		},
+		"mohawk": {
+			"handling": [
+				2.8,
+				4.0,
+				3.0,
+				0.3
+			],
+			"hull_accel": 0.4363323129985824,
+			"hull_turn": 0.3490658503988659,
+			"traverse": 0.6108652381980153,
+			"traverse_accel": 0.9599310885968813
+		},
+		"mora": {
+			"handling": [
+				1.9,
+				5.0,
+				3.0,
+				0.35
+			],
+			"hull_accel": 0.9599310885968813,
+			"hull_turn": 0.6632251157578453,
+			"traverse": 0.5585053606381855,
+			"traverse_accel": 0.8377580409572782
+		},
+		"motorboat": {
+			"handling": [
+				1.2,
+				3.0,
+				2.0,
+				0.3
+			],
+			"hull_accel": 0.5235987755982988,
+			"hull_turn": 0.4363323129985824,
+			"traverse": 0.7853981633974483,
+			"traverse_accel": 1.1344640137963142
+		},
+		"nyx_aa": {
+			"handling": [
+				2.2,
+				5.0,
+				3.0,
+				0.35
+			],
+			"hull_accel": 1.3089969389957472,
+			"hull_turn": 0.8377580409572782,
+			"traverse": 0.6981317007977318,
+			"traverse_accel": 1.1344640137963142
+		},
+		"nyx_ac": {
+			"handling": [
+				2.2,
+				5.0,
+				3.0,
+				0.35
+			],
+			"hull_accel": 1.3089969389957472,
+			"hull_turn": 0.8377580409572782,
+			"traverse": 0.6981317007977318,
+			"traverse_accel": 1.1344640137963142
+		},
+		"nyx_at": {
+			"handling": [
+				2.2,
+				5.0,
+				3.0,
+				0.35
+			],
+			"hull_accel": 1.3089969389957472,
+			"hull_turn": 0.8377580409572782,
+			"traverse": 0.6981317007977318,
+			"traverse_accel": 1.1344640137963142
+		},
+		"nyx_recon": {
+			"handling": [
+				2.2,
+				5.0,
+				3.0,
+				0.35
+			],
+			"hull_accel": 1.3089969389957472,
+			"hull_turn": 0.8377580409572782,
+			"traverse": 0.6981317007977318,
+			"traverse_accel": 1.1344640137963142
+		},
+		"offroad": {
+			"handling": [
+				3.0,
+				6.5,
+				4.0,
+				0.4
+			],
+			"hull_accel": 1.5707963267948966,
+			"hull_turn": 0.9599310885968813,
+			"traverse": 0.9599310885968813,
+			"traverse_accel": 1.5707963267948966
+		},
+		"offroad_at": {
+			"handling": [
+				2.6,
+				6.0,
+				3.5,
+				0.35
+			],
+			"hull_accel": 1.3089969389957472,
+			"hull_turn": 0.8726646259971648,
+			"traverse": 0.6108652381980153,
+			"traverse_accel": 1.1344640137963142
+		},
+		"offroad_hmg": {
+			"handling": [
+				2.6,
+				6.0,
+				3.5,
+				0.35
+			],
+			"hull_accel": 1.3089969389957472,
+			"hull_turn": 0.8726646259971648,
+			"traverse": 0.6108652381980153,
+			"traverse_accel": 1.1344640137963142
+		},
+		"offroad_repair": {
+			"handling": [
+				1.1,
+				4.0,
+				2.2,
+				0.25
+			],
+			"hull_accel": 0.7853981633974483,
+			"hull_turn": 0.6108652381980153,
+			"traverse": 0.7853981633974483,
+			"traverse_accel": 1.2217304763960306
+		},
+		"old_tank": {
+			"handling": [
+				0.85,
+				3.4,
+				1.9,
+				0.22
+			],
+			"hull_accel": 0.4188790204786391,
+			"hull_turn": 0.3839724354387525,
+			"traverse": 0.2792526803190927,
+			"traverse_accel": 0.4188790204786391
+		},
+		"orca": {
+			"handling": [
+				3.8,
+				5.0,
+				3.0,
+				0.3
+			],
+			"hull_accel": 0.6108652381980153,
+			"hull_turn": 0.4886921905584123,
+			"traverse": 0.6981317007977318,
+			"traverse_accel": 1.1344640137963142
+		},
+		"orca_armed": {
+			"handling": [
+				5.0,
+				6.0,
+				3.0,
+				0.3
+			],
+			"hull_accel": 0.9599310885968813,
+			"hull_turn": 0.6981317007977318,
+			"traverse": 1.0471975511965976,
+			"traverse_accel": 1.7453292519943295
+		},
+		"panther": {
+			"handling": [
+				1.9,
+				5.0,
+				3.0,
+				0.35
+			],
+			"hull_accel": 0.9599310885968813,
+			"hull_turn": 0.6632251157578453,
+			"traverse": 0.7853981633974483,
+			"traverse_accel": 1.3089969389957472
+		},
+		"patrol_ship": {
+			"handling": [
+				1.2,
+				3.0,
+				2.0,
+				0.3
+			],
+			"hull_accel": 0.5235987755982988,
+			"hull_turn": 0.4363323129985824,
+			"traverse": 0.7853981633974483,
+			"traverse_accel": 1.1344640137963142
+		},
+		"pawnee": {
+			"handling": [
+				5.0,
+				6.0,
+				3.0,
+				0.3
+			],
+			"hull_accel": 0.9599310885968813,
+			"hull_turn": 0.6981317007977318,
+			"traverse": 1.0471975511965976,
+			"traverse_accel": 1.7453292519943295
+		},
+		"prowler": {
+			"handling": [
+				3.0,
+				6.5,
+				4.0,
+				0.4
+			],
+			"hull_accel": 1.5707963267948966,
+			"hull_turn": 0.9599310885968813,
+			"traverse": 0.9599310885968813,
+			"traverse_accel": 1.5707963267948966
+		},
+		"prowler_at": {
+			"handling": [
+				3.0,
+				6.5,
+				4.0,
+				0.4
+			],
+			"hull_accel": 1.5707963267948966,
+			"hull_turn": 0.9599310885968813,
+			"traverse": 0.9599310885968813,
+			"traverse_accel": 1.5707963267948966
+		},
+		"prowler_hmg": {
+			"handling": [
+				2.6,
+				6.0,
+				3.5,
+				0.35
+			],
+			"hull_accel": 1.3089969389957472,
+			"hull_turn": 0.8726646259971648,
+			"traverse": 0.6108652381980153,
+			"traverse_accel": 1.1344640137963142
+		},
+		"qilin": {
+			"handling": [
+				3.0,
+				6.5,
+				4.0,
+				0.4
+			],
+			"hull_accel": 1.5707963267948966,
+			"hull_turn": 0.9599310885968813,
+			"traverse": 0.9599310885968813,
+			"traverse_accel": 1.5707963267948966
+		},
+		"qilin_at": {
+			"handling": [
+				3.0,
+				6.5,
+				4.0,
+				0.4
+			],
+			"hull_accel": 1.5707963267948966,
+			"hull_turn": 0.9599310885968813,
+			"traverse": 0.9599310885968813,
+			"traverse_accel": 1.5707963267948966
+		},
+		"qilin_mg": {
+			"handling": [
+				2.6,
+				6.0,
+				3.5,
+				0.35
+			],
+			"hull_accel": 1.3089969389957472,
+			"hull_turn": 0.8726646259971648,
+			"traverse": 0.6108652381980153,
+			"traverse_accel": 1.1344640137963142
+		},
+		"quadbike": {
+			"handling": [
+				3.0,
+				6.5,
+				4.0,
+				0.4
+			],
+			"hull_accel": 1.5707963267948966,
+			"hull_turn": 0.9599310885968813,
+			"traverse": 0.9599310885968813,
+			"traverse_accel": 1.5707963267948966
+		},
+		"rhib": {
+			"handling": [
+				1.2,
+				3.0,
+				2.0,
+				0.3
+			],
+			"hull_accel": 0.5235987755982988,
+			"hull_turn": 0.4363323129985824,
+			"traverse": 0.7853981633974483,
+			"traverse_accel": 1.1344640137963142
+		},
+		"rhino": {
+			"handling": [
+				1.2,
+				4.0,
+				2.2,
+				0.32
+			],
+			"hull_accel": 0.6108652381980153,
+			"hull_turn": 0.5235987755982988,
+			"traverse": 0.4886921905584123,
+			"traverse_accel": 0.6981317007977318
+		},
+		"rhino_up": {
+			"handling": [
+				1.2,
+				4.0,
+				2.2,
+				0.32
+			],
+			"hull_accel": 0.6108652381980153,
+			"hull_turn": 0.5235987755982988,
+			"traverse": 0.4537856055185257,
+			"traverse_accel": 0.6632251157578453
+		},
+		"sandstorm": {
+			"handling": [
+				1.1,
+				3.8,
+				2.0,
+				0.28
+			],
+			"hull_accel": 0.5235987755982988,
+			"hull_turn": 0.4537856055185257,
+			"traverse": 0.17453292519943295,
+			"traverse_accel": 0.2617993877991494
+		},
+		"scorcher": {
+			"handling": [
+				1.1,
+				3.8,
+				2.0,
+				0.28
+			],
+			"hull_accel": 0.5235987755982988,
+			"hull_turn": 0.4537856055185257,
+			"traverse": 0.17453292519943295,
+			"traverse_accel": 0.2617993877991494
+		},
+		"slammer": {
+			"handling": [
+				1.2,
+				4.0,
+				2.2,
+				0.32
+			],
+			"hull_accel": 0.6108652381980153,
+			"hull_turn": 0.5235987755982988,
+			"traverse": 0.6283185307179586,
+			"traverse_accel": 0.8377580409572782
+		},
+		"slammer_up": {
+			"handling": [
+				1.2,
+				4.0,
+				2.2,
+				0.32
+			],
+			"hull_accel": 0.6108652381980153,
+			"hull_turn": 0.5235987755982988,
+			"traverse": 0.5934119456780721,
+			"traverse_accel": 0.7853981633974483
+		},
+		"sochor": {
+			"handling": [
+				1.1,
+				3.8,
+				2.0,
+				0.28
+			],
+			"hull_accel": 0.5235987755982988,
+			"hull_turn": 0.4537856055185257,
+			"traverse": 0.17453292519943295,
+			"traverse_accel": 0.2617993877991494
+		},
+		"speedboat_hmg": {
+			"handling": [
+				1.2,
+				3.0,
+				2.0,
+				0.3
+			],
+			"hull_accel": 0.5235987755982988,
+			"hull_turn": 0.4363323129985824,
+			"traverse": 0.7853981633974483,
+			"traverse_accel": 1.1344640137963142
+		},
+		"speedboat_minigun": {
+			"handling": [
+				1.2,
+				3.0,
+				2.0,
+				0.3
+			],
+			"hull_accel": 0.5235987755982988,
+			"hull_turn": 0.4363323129985824,
+			"traverse": 0.7853981633974483,
+			"traverse_accel": 1.1344640137963142
+		},
+		"stomper": {
+			"handling": [
+				3.0,
+				6.5,
+				4.0,
+				0.4
+			],
+			"hull_accel": 1.5707963267948966,
+			"hull_turn": 0.9599310885968813,
+			"traverse": 0.9599310885968813,
+			"traverse_accel": 1.5707963267948966
+		},
+		"strider": {
+			"handling": [
+				3.0,
+				6.5,
+				4.0,
+				0.4
+			],
+			"hull_accel": 1.5707963267948966,
+			"hull_turn": 0.9599310885968813,
+			"traverse": 0.9599310885968813,
+			"traverse_accel": 1.5707963267948966
+		},
+		"strider_gmg": {
+			"handling": [
+				3.0,
+				6.5,
+				4.0,
+				0.4
+			],
+			"hull_accel": 1.5707963267948966,
+			"hull_turn": 0.9599310885968813,
+			"traverse": 0.9599310885968813,
+			"traverse_accel": 1.5707963267948966
+		},
+		"strider_hmg": {
+			"handling": [
+				3.0,
+				6.5,
+				4.0,
+				0.4
+			],
+			"hull_accel": 1.5707963267948966,
+			"hull_turn": 0.9599310885968813,
+			"traverse": 0.9599310885968813,
+			"traverse_accel": 1.5707963267948966
+		},
+		"tank": {
+			"handling": [
+				1.2,
+				4.0,
+				2.2,
+				0.32
+			],
+			"hull_accel": 0.6108652381980153,
+			"hull_turn": 0.5235987755982988,
+			"traverse": 0.6981317007977318,
+			"traverse_accel": 0.9599310885968813
+		},
+		"taru": {
+			"handling": [
+				2.8,
+				4.0,
+				3.0,
+				0.3
+			],
+			"hull_accel": 0.4363323129985824,
+			"hull_turn": 0.3490658503988659,
+			"traverse": 0.6108652381980153,
+			"traverse_accel": 0.9599310885968813
+		},
+		"taru_lift": {
+			"handling": [
+				2.8,
+				4.0,
+				3.0,
+				0.3
+			],
+			"hull_accel": 0.4363323129985824,
+			"hull_turn": 0.3490658503988659,
+			"traverse": 0.6108652381980153,
+			"traverse_accel": 0.9599310885968813
+		},
+		"tayran": {
+			"handling": [
+				4.0,
+				5.0,
+				3.0,
+				0.3
+			],
+			"hull_accel": 1.1344640137963142,
+			"hull_turn": 0.7853981633974483,
+			"traverse": 0.8726646259971648,
+			"traverse_accel": 1.3962634015954636
+		},
+		"technical": {
+			"handling": [
+				2.6,
+				6.0,
+				3.5,
+				0.35
+			],
+			"hull_accel": 1.3089969389957472,
+			"hull_turn": 0.8726646259971648,
+			"traverse": 0.6108652381980153,
+			"traverse_accel": 1.1344640137963142
+		},
+		"tempest": {
+			"handling": [
+				1.1,
+				4.0,
+				2.2,
+				0.25
+			],
+			"hull_accel": 0.7853981633974483,
+			"hull_turn": 0.6108652381980153,
+			"traverse": 0.7853981633974483,
+			"traverse_accel": 1.2217304763960306
+		},
+		"tempest_ammo": {
+			"handling": [
+				1.1,
+				4.0,
+				2.2,
+				0.25
+			],
+			"hull_accel": 0.7853981633974483,
+			"hull_turn": 0.6108652381980153,
+			"traverse": 0.7853981633974483,
+			"traverse_accel": 1.2217304763960306
+		},
+		"tempest_medical": {
+			"handling": [
+				1.1,
+				4.0,
+				2.2,
+				0.25
+			],
+			"hull_accel": 0.7853981633974483,
+			"hull_turn": 0.6108652381980153,
+			"traverse": 0.7853981633974483,
+			"traverse_accel": 1.2217304763960306
+		},
+		"tempest_repair": {
+			"handling": [
+				1.1,
+				4.0,
+				2.2,
+				0.25
+			],
+			"hull_accel": 0.7853981633974483,
+			"hull_turn": 0.6108652381980153,
+			"traverse": 0.7853981633974483,
+			"traverse_accel": 1.2217304763960306
+		},
+		"tigris": {
+			"handling": [
+				1.9,
+				5.0,
+				3.0,
+				0.35
+			],
+			"hull_accel": 0.9599310885968813,
+			"hull_turn": 0.6632251157578453,
+			"traverse": 1.3089969389957472,
+			"traverse_accel": 2.0943951023931953
+		},
+		"truck": {
+			"handling": [
+				1.1,
+				4.0,
+				2.2,
+				0.25
+			],
+			"hull_accel": 0.7853981633974483,
+			"hull_turn": 0.6108652381980153,
+			"traverse": 0.7853981633974483,
+			"traverse_accel": 1.2217304763960306
+		},
+		"van_ambulance": {
+			"handling": [
+				1.1,
+				4.0,
+				2.2,
+				0.25
+			],
+			"hull_accel": 0.7853981633974483,
+			"hull_turn": 0.6108652381980153,
+			"traverse": 0.7853981633974483,
+			"traverse_accel": 1.2217304763960306
+		},
+		"van_transport": {
+			"handling": [
+				1.1,
+				4.0,
+				2.2,
+				0.25
+			],
+			"hull_accel": 0.7853981633974483,
+			"hull_turn": 0.6108652381980153,
+			"traverse": 0.7853981633974483,
+			"traverse_accel": 1.2217304763960306
+		},
+		"varsuk": {
+			"handling": [
+				1.2,
+				4.0,
+				2.2,
+				0.32
+			],
+			"hull_accel": 0.6108652381980153,
+			"hull_turn": 0.5235987755982988,
+			"traverse": 0.5235987755982988,
+			"traverse_accel": 0.7330382858376184
+		},
+		"zamak": {
+			"handling": [
+				1.1,
+				4.0,
+				2.2,
+				0.25
+			],
+			"hull_accel": 0.7853981633974483,
+			"hull_turn": 0.6108652381980153,
+			"traverse": 0.7853981633974483,
+			"traverse_accel": 1.2217304763960306
+		},
+		"zamak_ammo": {
+			"handling": [
+				1.1,
+				4.0,
+				2.2,
+				0.25
+			],
+			"hull_accel": 0.7853981633974483,
+			"hull_turn": 0.6108652381980153,
+			"traverse": 0.7853981633974483,
+			"traverse_accel": 1.2217304763960306
+		},
+		"zamak_medical": {
+			"handling": [
+				1.1,
+				4.0,
+				2.2,
+				0.25
+			],
+			"hull_accel": 0.7853981633974483,
+			"hull_turn": 0.6108652381980153,
+			"traverse": 0.7853981633974483,
+			"traverse_accel": 1.2217304763960306
+		},
+		"zamak_mrl": {
+			"handling": [
+				1.1,
+				3.8,
+				2.0,
+				0.28
+			],
+			"hull_accel": 0.5235987755982988,
+			"hull_turn": 0.4537856055185257,
+			"traverse": 0.17453292519943295,
+			"traverse_accel": 0.2617993877991494
+		},
+		"zamak_repair": {
+			"handling": [
+				1.1,
+				4.0,
+				2.2,
+				0.25
+			],
+			"hull_accel": 0.7853981633974483,
+			"hull_turn": 0.6108652381980153,
+			"traverse": 0.7853981633974483,
+			"traverse_accel": 1.2217304763960306
+		}
+	},
+	"mounted_guns": {
+		"dshk": {
+			"bore": 0.1,
+			"grip_l": [
+				-0.08500000089406967,
+				0.07999999821186066,
+				0.5
+			],
+			"grip_r": [
+				0.08500000089406967,
+				0.07999999821186066,
+				0.5
+			],
+			"muzzle": 1.32,
+			"nest_h": 0.42,
+			"trench_h": 0.38
+		},
+		"m2": {
+			"bore": 0.1,
+			"grip_l": [
+				-0.08500000089406967,
+				0.07999999821186066,
+				0.5
+			],
+			"grip_r": [
+				0.08500000089406967,
+				0.07999999821186066,
+				0.5
+			],
+			"muzzle": 1.42,
+			"nest_h": 0.42,
+			"trench_h": 0.38
+		},
+		"m240": {
+			"bore": 0.07,
+			"grip_l": [
+				-0.014999999664723873,
+				0.05999999865889549,
+				0.41999998688697815
+			],
+			"grip_r": [
+				0.0,
+				-0.05000000074505806,
+				0.20999999344348907
+			],
+			"muzzle": 0.78,
+			"nest_h": 0.38,
+			"trench_h": 0.3
+		},
+		"pkm": {
+			"bore": 0.07,
+			"grip_l": [
+				-0.014999999664723873,
+				0.05000000074505806,
+				0.3799999952316284
+			],
+			"grip_r": [
+				0.0,
+				-0.05000000074505806,
+				0.1899999976158142
+			],
+			"muzzle": 0.76,
+			"nest_h": 0.36,
+			"trench_h": 0.3
+		}
+	},
+	"names": [
+		[
+			"Miller",
+			"Garcia",
+			"Novak",
+			"Reyes",
+			"Hughes",
+			"Brooks",
+			"Turner",
+			"Price",
+			"Walsh",
+			"Hayes",
+			"Ortiz",
+			"Fischer",
+			"Larsen",
+			"Duval",
+			"Okafor",
+			"Silva",
+			"Park",
+			"Murphy",
+			"Cohen",
+			"Patel",
+			"Becker",
+			"Rossi",
+			"Dubois",
+			"Nakamura",
+			"Kowalski",
+			"Byrne",
+			"Lindqvist",
+			"Moreau",
+			"Haddad",
+			"Santos",
+			"Kim",
+			"Wright",
+			"Foster",
+			"Grant",
+			"Doyle",
+			"Vance"
+		],
+		[
+			"Karim",
+			"Yusuf",
+			"Tariq",
+			"Omar",
+			"Dmitri",
+			"Bogdan",
+			"Rami",
+			"Sami",
+			"Farid",
+			"Hakim",
+			"Nikolai",
+			"Zoran",
+			"Jamal",
+			"Idris",
+			"Malik",
+			"Anton",
+			"Viktor",
+			"Emir",
+			"Rustam",
+			"Kadir",
+			"Ilya",
+			"Goran",
+			"Nabil",
+			"Aziz",
+			"Faisal",
+			"Lev",
+			"Marek",
+			"Hamza",
+			"Bilal",
+			"Ruslan",
+			"Selim",
+			"Taras",
+			"Yaro",
+			"Zaid",
+			"Oleg",
+			"Darius"
+		]
+	],
+	"sockets": {
+		"a10": {
+			"gun": {
+				"point": [
+					-0.10000000149011612,
+					0.8799999952316284,
+					-8.199999809265137
+				]
+			},
+			"mg": {
+				"point": [
+					-0.10000000149011612,
+					0.8799999952316284,
+					-8.199999809265137
+				]
+			}
+		},
+		"aa_tech": {
+			"mg": {
+				"pivot": [
+					0.0,
+					1.2100000381469729,
+					1.6200000047683716
+				],
+				"point": [
+					0.0,
+					2.332101583480835,
+					-0.9736016988754272
+				]
+			}
+		},
+		"ac130": {
+			"ac105": {
+				"point": [
+					-5.372832775115967,
+					1.5935447216033936,
+					3.0
+				]
+			},
+			"ac25": {
+				"point": [
+					-3.2760114669799805,
+					1.6001999378204346,
+					-7.849999904632568
+				]
+			},
+			"ac40": {
+				"point": [
+					-4.519207954406738,
+					1.4139106273651123,
+					1.8799999952316284
+				]
+			},
+			"gun": {
+				"point": [
+					-5.372832775115967,
+					1.5935447216033936,
+					3.0
+				]
+			},
+			"mg": {
+				"point": [
+					-3.2760114669799805,
+					1.6001999378204346,
+					-7.849999904632568
+				]
+			}
+		},
+		"angara": {
+			"gun": {
+				"pivot": [
+					0.0,
+					1.850000023841858,
+					0.550000011920929
+				],
+				"point": [
+					0.0,
+					2.2699999809265137,
+					-6.579999923706055
+				]
+			},
+			"mg": {
+				"pivot": [
+					0.0,
+					1.850000023841858,
+					0.550000011920929
+				],
+				"point": [
+					-0.10000000149011612,
+					3.2100000381469727,
+					-0.20000004768371585
+				]
+			}
+		},
+		"angara_k": {
+			"gun": {
+				"pivot": [
+					0.0,
+					1.850000023841858,
+					0.550000011920929
+				],
+				"point": [
+					0.0,
+					2.2699999809265137,
+					-6.579999923706055
+				]
+			},
+			"mg": {
+				"pivot": [
+					0.0,
+					1.850000023841858,
+					0.550000011920929
+				],
+				"point": [
+					-0.10000000149011612,
+					2.9700000286102295,
+					-1.1500000953674316
+				]
+			}
+		},
+		"blackfish_armed": {
+			"ac105": {
+				"point": [
+					-5.841765403747559,
+					2.365093469619751,
+					3.75
+				]
+			},
+			"ac25": {
+				"point": [
+					-3.627586126327514,
+					2.0284605026245117,
+					3.75
+				]
+			},
+			"ac40": {
+				"point": [
+					-4.593915939331055,
+					2.681565523147583,
+					-5.300000190734863
+				]
+			},
+			"gun": {
+				"point": [
+					-5.841765403747559,
+					2.365093469619751,
+					3.75
+				]
+			},
+			"mg": {
+				"point": [
+					-3.627586126327514,
+					2.0284605026245117,
+					3.75
+				]
+			}
+		},
+		"blackfoot": {
+			"mg": {
+				"pivot": [
+					0.0,
+					0.6800000071525574,
+					-4.75
+				],
+				"point": [
+					0.0,
+					0.5,
+					-6.470000267028809
+				]
+			}
+		},
+		"bobcat": {
+			"mg": {
+				"pivot": [
+					-0.5,
+					2.319999933242798,
+					-0.05000000074505806
+				],
+				"point": [
+					-0.5,
+					2.8399999141693115,
+					-1.7400000095367432
+				]
+			}
+		},
+		"btr": {
+			"mg": {
+				"pivot": [
+					0.0,
+					2.049999952316284,
+					-1.149999976158142
+				],
+				"point": [
+					0.0,
+					2.369999885559082,
+					-4.070000171661377
+				]
+			}
+		},
+		"cheetah": {
+			"mg": {
+				"pivot": [
+					0.0,
+					2.319999933242798,
+					0.949999988079071
+				],
+				"point": [
+					1.4199999570846558,
+					2.8399999141693115,
+					-3.2699997425079346
+				]
+			}
+		},
+		"darter": {},
+		"falcon": {},
+		"fenghuang_uav": {
+			"gun": {
+				"point": [
+					0.0,
+					0.3700000047683716,
+					-1.4800000190734863
+				]
+			}
+		},
+		"fia_truck": {},
+		"futura": {
+			"gun": {
+				"pivot": [
+					0.0,
+					1.5,
+					-0.20000000298023224
+				],
+				"point": [
+					0.0,
+					1.919999957084656,
+					-8.0
+				]
+			},
+			"mg": {
+				"pivot": [
+					0.0,
+					1.5,
+					-0.20000000298023224
+				],
+				"point": [
+					-0.30000001192092896,
+					2.8600001335144043,
+					-0.9000000357627869
+				]
+			}
+		},
+		"ghosthawk": {
+			"mg": {
+				"point": [
+					1.340000033378601,
+					1.6200000047683716,
+					-3.869999885559082
+				]
+			}
+		},
+		"ghosthawk_stub": {
+			"mg": {
+				"point": [
+					1.340000033378601,
+					1.6200000047683716,
+					-3.869999885559082
+				]
+			}
+		},
+		"gorgon": {
+			"gun": {
+				"pivot": [
+					0.0,
+					2.0799999237060547,
+					0.30000001192092896
+				],
+				"point": [
+					-1.100000023841858,
+					2.5199999809265137,
+					-0.5999999642372131
+				]
+			},
+			"mg": {
+				"pivot": [
+					0.0,
+					2.0799999237060547,
+					0.30000001192092896
+				],
+				"point": [
+					0.0,
+					2.3999998569488525,
+					-4.119999885559082
+				]
+			}
+		},
+		"greyhawk": {
+			"gun": {
+				"point": [
+					0.0,
+					0.30000001192092896,
+					-4.599999904632568
+				]
+			}
+		},
+		"gun_trawler": {
+			"mg": {
+				"pivot": [
+					0.0,
+					4.484875679016113,
+					-5.150000095367432
+				],
+				"point": [
+					0.0,
+					5.617710113525391,
+					-7.848885536193848
+				]
+			}
+		},
+		"gunship": {
+			"mg": {
+				"pivot": [
+					0.0,
+					0.5979999899864197,
+					-2.50249981880188
+				],
+				"point": [
+					0.0,
+					0.45499998331069946,
+					-3.80899977684021
+				]
+			}
+		},
+		"heli": {},
+		"hellcat": {
+			"mg": {
+				"pivot": [
+					1.2999999523162842,
+					0.800000011920929,
+					-1.399999976158142
+				],
+				"point": [
+					1.2999999523162842,
+					0.800000011920929,
+					-2.240000009536743
+				]
+			}
+		},
+		"hemtt": {},
+		"hemtt_ammo": {},
+		"hemtt_medical": {},
+		"hemtt_repair": {},
+		"hummingbird": {},
+		"humvee": {
+			"mg": {
+				"pivot": [
+					0.0,
+					1.919999957084656,
+					0.25
+				],
+				"point": [
+					0.0,
+					2.4200000762939453,
+					-1.3700000047683716
+				]
+			}
+		},
+		"hunter": {},
+		"hunter_gmg": {
+			"mg": {
+				"pivot": [
+					0.0,
+					2.5999999046325684,
+					0.3499999940395355
+				],
+				"point": [
+					0.0,
+					3.197999954223633,
+					-0.7424999475479126
+				]
+			}
+		},
+		"hunter_hmg": {
+			"mg": {
+				"pivot": [
+					0.0,
+					2.5999999046325684,
+					0.3499999940395355
+				],
+				"point": [
+					0.0,
+					3.197999954223633,
+					-1.593500018119812
+				]
+			}
+		},
+		"huron": {},
+		"ifrit": {},
+		"ifrit_gmg": {
+			"mg": {
+				"pivot": [
+					0.0,
+					2.5,
+					0.05000000074505806
+				],
+				"point": [
+					0.0,
+					3.0,
+					-0.7699999809265137
+				]
+			}
+		},
+		"ifrit_hmg": {
+			"mg": {
+				"pivot": [
+					0.0,
+					2.5,
+					0.05000000074505806
+				],
+				"point": [
+					0.0,
+					3.0,
+					-1.6500000953674316
+				]
+			}
+		},
+		"ifv": {
+			"mg": {
+				"pivot": [
+					0.119999997317791,
+					1.7999999523162842,
+					-0.550000011920929
+				],
+				"point": [
+					0.06999999284744263,
+					2.200000047683716,
+					-4.110000133514404
+				]
+			}
+		},
+		"kajman": {
+			"mg": {
+				"pivot": [
+					0.0,
+					0.8999999761581421,
+					-6.75
+				],
+				"point": [
+					0.0,
+					0.5399999618530273,
+					-9.199999809265137
+				]
+			}
+		},
+		"kamysh": {
+			"mg": {
+				"pivot": [
+					0.0,
+					1.7200000286102295,
+					-0.3499999940395355
+				],
+				"point": [
+					0.07999999821186066,
+					2.0799999237060547,
+					-4.150000095367432
+				]
+			}
+		},
+		"kuma": {
+			"gun": {
+				"pivot": [
+					0.0,
+					1.6799999475479126,
+					0.15000000596046448
+				],
+				"point": [
+					0.0,
+					2.0999999046325684,
+					-5.849999904632568
+				]
+			},
+			"mg": {
+				"pivot": [
+					0.0,
+					1.6799999475479126,
+					0.15000000596046448
+				],
+				"point": [
+					-0.3449999988079071,
+					1.9800000190734863,
+					-2.309999942779541
+				]
+			}
+		},
+		"m900": {},
+		"marid": {
+			"gun": {
+				"pivot": [
+					0.0,
+					2.200000047683716,
+					-0.44999998807907104
+				],
+				"point": [
+					-0.30000001192092896,
+					2.7200000286102295,
+					-2.109999895095825
+				]
+			},
+			"mg": {
+				"pivot": [
+					0.0,
+					2.200000047683716,
+					-0.44999998807907104
+				],
+				"point": [
+					0.30000001192092896,
+					2.7200000286102295,
+					-1.2000000476837158
+				]
+			}
+		},
+		"marshall": {
+			"mg": {
+				"pivot": [
+					0.0,
+					2.140000104904175,
+					0.20000000298023224
+				],
+				"point": [
+					0.0,
+					2.4800000190734863,
+					-4.400000095367432
+				]
+			}
+		},
+		"mb4wd_at": {
+			"gun": {
+				"pivot": [
+					0.0,
+					1.940000057220459,
+					1.149999976158142
+				],
+				"point": [
+					0.0,
+					2.2100000381469727,
+					-0.12000000476837158
+				]
+			},
+			"mg": {
+				"pivot": [
+					0.0,
+					1.940000057220459,
+					1.149999976158142
+				],
+				"point": [
+					0.0,
+					2.2100000381469727,
+					-0.12000000476837158
+				]
+			}
+		},
+		"mb4wd_lmg": {
+			"mg": {
+				"pivot": [
+					0.0,
+					1.940000057220459,
+					1.149999976158142
+				],
+				"point": [
+					0.0,
+					2.1100001335144043,
+					0.32999998331069946
+				]
+			}
+		},
+		"mohawk": {},
+		"mora": {
+			"mg": {
+				"pivot": [
+					0.0,
+					1.9299999475479128,
+					-0.25
+				],
+				"point": [
+					0.0,
+					2.3299999237060547,
+					-4.389999866485596
+				]
+			}
+		},
+		"motorboat": {},
+		"nyx_aa": {
+			"gun": {
+				"pivot": [
+					0.0,
+					1.2000000476837158,
+					0.44999998807907104
+				],
+				"point": [
+					0.5199999809265137,
+					1.8200000524520872,
+					-0.4100000262260437
+				]
+			},
+			"mg": {
+				"pivot": [
+					0.0,
+					1.2000000476837158,
+					0.44999998807907104
+				],
+				"point": [
+					-0.5199999809265137,
+					1.5600000619888306,
+					-0.9200000166893004
+				]
+			}
+		},
+		"nyx_ac": {
+			"mg": {
+				"pivot": [
+					0.0,
+					1.2000000476837158,
+					0.44999998807907104
+				],
+				"point": [
+					-0.03999999910593033,
+					1.7799999713897705,
+					-1.930000066757202
+				]
+			}
+		},
+		"nyx_at": {
+			"gun": {
+				"pivot": [
+					0.0,
+					1.2000000476837158,
+					0.44999998807907104
+				],
+				"point": [
+					-0.5400000214576721,
+					1.7799999713897705,
+					-0.27000004053115845
+				]
+			},
+			"mg": {
+				"pivot": [
+					0.0,
+					1.2000000476837158,
+					0.44999998807907104
+				],
+				"point": [
+					0.36000001430511475,
+					1.7200000286102295,
+					-0.8700000643730164
+				]
+			}
+		},
+		"nyx_recon": {},
+		"offroad": {},
+		"offroad_at": {
+			"gun": {
+				"pivot": [
+					0.0,
+					1.7000000476837158,
+					1.4500000476837158
+				],
+				"point": [
+					0.0,
+					2.0299999713897705,
+					0.18000006675720215
+				]
+			},
+			"mg": {
+				"pivot": [
+					0.0,
+					1.7000000476837158,
+					1.4500000476837158
+				],
+				"point": [
+					0.0,
+					2.0299999713897705,
+					0.18000006675720215
+				]
+			}
+		},
+		"offroad_hmg": {
+			"mg": {
+				"pivot": [
+					0.0,
+					1.6200000047683716,
+					1.5
+				],
+				"point": [
+					0.0,
+					1.9800000190734863,
+					0.04999995231628418
+				]
+			}
+		},
+		"offroad_repair": {},
+		"old_tank": {
+			"gun": {
+				"pivot": [
+					0.0,
+					1.5,
+					-0.949999988079071
+				],
+				"point": [
+					0.0,
+					1.899999976158142,
+					-6.049999713897705
+				]
+			},
+			"mg": {
+				"pivot": [
+					0.0,
+					1.5,
+					-0.949999988079071
+				],
+				"point": [
+					0.27000001072883606,
+					1.8799999952316284,
+					-2.2899999618530273
+				]
+			}
+		},
+		"orca": {},
+		"orca_armed": {
+			"mg": {
+				"pivot": [
+					-1.5,
+					0.8199999928474426,
+					-0.10000000149011612
+				],
+				"point": [
+					-1.5,
+					0.8199999928474426,
+					-1.0199999809265137
+				]
+			}
+		},
+		"panther": {
+			"mg": {
+				"pivot": [
+					-0.5,
+					2.319999933242798,
+					-0.05000000074505806
+				],
+				"point": [
+					-0.9829999804496764,
+					2.802999973297119,
+					-2.050999879837036
+				]
+			}
+		},
+		"patrol_ship": {
+			"mg": {
+				"pivot": [
+					0.0,
+					3.602907657623291,
+					-7.900000095367432
+				],
+				"point": [
+					0.0,
+					4.182907581329346,
+					-10.5600004196167
+				]
+			}
+		},
+		"pawnee": {
+			"mg": {
+				"pivot": [
+					1.0,
+					0.6600000262260437,
+					-0.25
+				],
+				"point": [
+					1.0,
+					0.6600000262260437,
+					-1.0899999141693115
+				]
+			}
+		},
+		"prowler": {},
+		"prowler_at": {
+			"gun": {
+				"pivot": [
+					0.0,
+					1.8200000524520872,
+					0.5799999833106995
+				],
+				"point": [
+					0.0,
+					2.299999952316284,
+					-0.3400000333786011
+				]
+			},
+			"mg": {
+				"point": [
+					0.6000000238418579,
+					1.4600000381469729,
+					-1.899999976158142
+				]
+			}
+		},
+		"prowler_hmg": {
+			"mg": {
+				"pivot": [
+					0.0,
+					1.8200000524520872,
+					0.5799999833106995
+				],
+				"point": [
+					0.0,
+					2.240000009536743,
+					-1.2300000190734863
+				]
+			}
+		},
+		"qilin": {},
+		"qilin_at": {
+			"gun": {
+				"pivot": [
+					0.0,
+					1.7400000095367432,
+					0.119999997317791
+				],
+				"point": [
+					0.0,
+					2.259999990463257,
+					-0.7300000190734863
+				]
+			},
+			"mg": {
+				"pivot": [
+					0.0,
+					1.7400000095367432,
+					0.119999997317791
+				],
+				"point": [
+					0.0,
+					2.259999990463257,
+					-0.7300000190734863
+				]
+			}
+		},
+		"qilin_mg": {
+			"mg": {
+				"pivot": [
+					0.0,
+					1.7400000095367432,
+					0.119999997317791
+				],
+				"point": [
+					0.0,
+					2.1600000858306885,
+					-0.7799999713897705
+				]
+			}
+		},
+		"quadbike": {},
+		"rhib": {},
+		"rhino": {
+			"gun": {
+				"pivot": [
+					0.0,
+					1.9600000381469729,
+					0.5
+				],
+				"point": [
+					0.0,
+					2.380000114440918,
+					-6.019999980926514
+				]
+			},
+			"mg": {
+				"pivot": [
+					0.0,
+					1.9600000381469729,
+					0.5
+				],
+				"point": [
+					0.41999998688697815,
+					2.299999952316284,
+					-1.3600000143051147
+				]
+			}
+		},
+		"rhino_up": {
+			"gun": {
+				"pivot": [
+					0.0,
+					1.9600000381469729,
+					0.5
+				],
+				"point": [
+					0.0,
+					2.380000114440918,
+					-6.019999980926514
+				]
+			},
+			"mg": {
+				"pivot": [
+					0.0,
+					1.9600000381469729,
+					0.5
+				],
+				"point": [
+					-0.3499999940395355,
+					3.2279999256134033,
+					0.32899999618530273
+				]
+			}
+		},
+		"sandstorm": {
+			"gun": {
+				"pivot": [
+					0.0,
+					1.899999976158142,
+					2.200000047683716
+				],
+				"point": [
+					0.0,
+					2.6700000762939453,
+					-0.4000000953674317
+				]
+			}
+		},
+		"scorcher": {
+			"gun": {
+				"pivot": [
+					0.0,
+					1.899999976158142,
+					1.0
+				],
+				"point": [
+					0.0,
+					2.619999885559082,
+					-7.200000286102295
+				]
+			},
+			"mg": {
+				"pivot": [
+					0.0,
+					1.899999976158142,
+					1.0
+				],
+				"point": [
+					0.6200000047683716,
+					3.621999740600586,
+					0.16349995136260986
+				]
+			}
+		},
+		"slammer": {
+			"gun": {
+				"pivot": [
+					0.0,
+					1.899999976158142,
+					0.75
+				],
+				"point": [
+					0.0,
+					2.2200000286102295,
+					-5.25
+				]
+			},
+			"mg": {
+				"pivot": [
+					0.0,
+					1.899999976158142,
+					0.75
+				],
+				"point": [
+					0.36000001430511475,
+					2.2799999713897705,
+					-1.9700000286102295
+				]
+			}
+		},
+		"slammer_up": {
+			"gun": {
+				"pivot": [
+					0.0,
+					1.899999976158142,
+					0.75
+				],
+				"point": [
+					0.0,
+					2.2200000286102295,
+					-5.25
+				]
+			},
+			"mg": {
+				"pivot": [
+					0.0,
+					1.899999976158142,
+					0.75
+				],
+				"point": [
+					-0.15000000596046448,
+					3.1679999828338623,
+					0.778999924659729
+				]
+			}
+		},
+		"sochor": {
+			"gun": {
+				"pivot": [
+					0.0,
+					1.5,
+					0.30000001192092896
+				],
+				"point": [
+					0.0,
+					2.2200000286102295,
+					-8.399999618530273
+				]
+			},
+			"mg": {
+				"pivot": [
+					0.0,
+					1.5,
+					0.30000001192092896
+				],
+				"point": [
+					-0.6499999761581421,
+					3.2799999713897705,
+					-0.800000011920929
+				]
+			}
+		},
+		"speedboat_hmg": {
+			"mg": {
+				"pivot": [
+					0.0,
+					1.8303849697113037,
+					-4.099999904632568
+				],
+				"point": [
+					0.0,
+					2.380384922027588,
+					-5.199999809265137
+				]
+			}
+		},
+		"speedboat_minigun": {
+			"mg": {
+				"pivot": [
+					0.0,
+					1.8303849697113037,
+					-4.099999904632568
+				],
+				"point": [
+					0.0,
+					2.380384922027588,
+					-5.199999809265137
+				]
+			}
+		},
+		"stomper": {
+			"mg": {
+				"pivot": [
+					0.0,
+					1.6699999570846558,
+					0.3499999940395355
+				],
+				"point": [
+					-0.3779999911785126,
+					2.047999858856201,
+					-1.215999960899353
+				]
+			}
+		},
+		"strider": {},
+		"strider_gmg": {
+			"mg": {
+				"pivot": [
+					0.0,
+					1.7899999618530271,
+					0.10000000149011612
+				],
+				"point": [
+					0.0,
+					2.2039999961853027,
+					-0.6019999384880066
+				]
+			}
+		},
+		"strider_hmg": {
+			"mg": {
+				"pivot": [
+					0.0,
+					1.7899999618530271,
+					0.10000000149011612
+				],
+				"point": [
+					0.0,
+					2.2039999961853027,
+					-1.2859998941421509
+				]
+			}
+		},
+		"tank": {
+			"gun": {
+				"pivot": [
+					0.0,
+					1.4199999570846558,
+					-0.30000001192092896
+				],
+				"point": [
+					0.0,
+					1.819999933242798,
+					-5.640000343322754
+				]
+			},
+			"mg": {
+				"pivot": [
+					0.0,
+					1.4199999570846558,
+					-0.30000001192092896
+				],
+				"point": [
+					0.30000001192092896,
+					1.7200000286102295,
+					-2.5899999141693115
+				]
+			}
+		},
+		"taru": {},
+		"taru_lift": {},
+		"tayran": {},
+		"technical": {
+			"mg": {
+				"pivot": [
+					0.0,
+					1.579999923706055,
+					1.5
+				],
+				"point": [
+					0.0,
+					1.8799998760223389,
+					0.15999996662139893
+				]
+			}
+		},
+		"tempest": {},
+		"tempest_ammo": {},
+		"tempest_medical": {},
+		"tempest_repair": {},
+		"tigris": {
+			"gun": {
+				"pivot": [
+					0.0,
+					1.7200000286102295,
+					-0.3499999940395355
+				],
+				"point": [
+					-1.4199999570846558,
+					2.34000015258789,
+					-4.349999904632568
+				]
+			},
+			"mg": {
+				"pivot": [
+					0.0,
+					1.7200000286102295,
+					-0.3499999940395355
+				],
+				"point": [
+					1.4199999570846558,
+					2.34000015258789,
+					-4.349999904632568
+				]
+			}
+		},
+		"truck": {},
+		"van_ambulance": {},
+		"van_transport": {},
+		"varsuk": {
+			"gun": {
+				"pivot": [
+					0.0,
+					1.5,
+					-0.20000000298023224
+				],
+				"point": [
+					0.0,
+					1.919999957084656,
+					-7.549999713897705
+				]
+			},
+			"mg": {
+				"pivot": [
+					0.0,
+					1.5,
+					-0.20000000298023224
+				],
+				"point": [
+					0.30000001192092896,
+					1.830000042915344,
+					-2.200000047683716
+				]
+			}
+		},
+		"wipeout": {
+			"gun": {
+				"point": [
+					0.0,
+					0.7400000095367432,
+					-8.600000381469727
+				]
+			},
+			"mg": {
+				"point": [
+					0.0,
+					0.7400000095367432,
+					-8.600000381469727
+				]
+			}
+		},
+		"xian": {
+			"gun": {
+				"pivot": [
+					0.0,
+					1.0499999523162842,
+					-7.199999809265137
+				],
+				"point": [
+					0.0,
+					0.8999999761581421,
+					-9.0
+				]
+			},
+			"mg": {
+				"pivot": [
+					0.0,
+					1.0499999523162842,
+					-7.199999809265137
+				],
+				"point": [
+					0.0,
+					0.8999999761581421,
+					-9.0
+				]
+			}
+		},
+		"zamak": {},
+		"zamak_ammo": {},
+		"zamak_medical": {},
+		"zamak_mrl": {
+			"gun": {
+				"pivot": [
+					0.0,
+					1.440000057220459,
+					2.450000047683716
+				],
+				"point": [
+					0.0,
+					2.580000162124634,
+					0.07000017166137695
+				]
+			}
+		},
+		"zamak_repair": {}
+	},
+	"squads": {
+		"at_team": {
+			"cost": 90,
+			"desc": "Rocket launchers against vehicles.",
+			"key": "at_team",
+			"members": [
+				"at_soldier",
+				"at_soldier"
+			],
+			"name": "AT Team",
+			"team": 0,
+			"time": 11.0
+		},
+		"crew": {
+			"cost": 0,
+			"desc": "Bailed out of a knocked-out vehicle: they make for the nearest FOB, to crew another.",
+			"key": "crew",
+			"members": [
+				"crewman",
+				"crewman",
+				"crewman"
+			],
+			"name": "Tank Crew",
+			"team": 0,
+			"time": 0.0
+		},
+		"digger_team": {
+			"cost": 60,
+			"desc": "Build fast and dig tunnels.",
+			"key": "digger_team",
+			"members": [
+				"digger",
+				"digger",
+				"digger"
+			],
+			"name": "Diggers",
+			"team": 1,
+			"time": 8.0
+		},
+		"engineer_team": {
+			"cost": 70,
+			"desc": "Build twice as fast, repair tracks and buildings.",
+			"key": "engineer_team",
+			"members": [
+				"engineer",
+				"engineer",
+				"engineer"
+			],
+			"name": "Engineers",
+			"team": 0,
+			"time": 9.0
+		},
+		"fighter_cell": {
+			"cost": 85,
+			"desc": "Five fighters and a medic.",
+			"key": "fighter_cell",
+			"members": [
+				"fighter",
+				"fighter",
+				"fighter",
+				"fighter",
+				"fighter",
+				"r_medic"
+			],
+			"name": "Fighter Cell",
+			"team": 1,
+			"time": 10.0
+		},
+		"fpv_team": {
+			"cost": 100,
+			"desc": "Flies kamikaze drones into soldiers and tanks.",
+			"key": "fpv_team",
+			"members": [
+				"fpv_op",
+				"fighter"
+			],
+			"name": "FPV Team",
+			"team": 1,
+			"time": 12.0
+		},
+		"mech_cell": {
+			"cost": 0,
+			"desc": "Rides in a BTR.",
+			"key": "mech_cell",
+			"members": [
+				"fighter",
+				"fighter",
+				"pkm",
+				"rpg"
+			],
+			"name": "Mech Cell",
+			"team": 1,
+			"time": 0.0
+		},
+		"mech_team": {
+			"cost": 0,
+			"desc": "Rides in an IFV.",
+			"key": "mech_team",
+			"members": [
+				"rifleman",
+				"rifleman",
+				"mg_gunner",
+				"at_soldier"
+			],
+			"name": "Mech Infantry",
+			"team": 0,
+			"time": 0.0
+		},
+		"mg_team": {
+			"cost": 80,
+			"desc": "Machine gun that pins enemies down.",
+			"key": "mg_team",
+			"members": [
+				"mg_gunner",
+				"rifleman"
+			],
+			"name": "MG Team",
+			"team": 0,
+			"time": 10.0
+		},
+		"mortar_team": {
+			"cost": 100,
+			"desc": "Mobile mortar. Shells enemies your side has spotted, even behind cover. F = fire mission.",
+			"key": "mortar_team",
+			"members": [
+				"mortar_gunner",
+				"rifleman"
+			],
+			"name": "Mortar Team",
+			"team": 0,
+			"time": 12.0
+		},
+		"pkm_team": {
+			"cost": 70,
+			"desc": "Machine gun that pins enemies down.",
+			"key": "pkm_team",
+			"members": [
+				"pkm",
+				"fighter"
+			],
+			"name": "PKM Team",
+			"team": 1,
+			"time": 9.0
+		},
+		"r_crew": {
+			"cost": 0,
+			"desc": "Bailed out of a knocked-out vehicle: they make for the nearest FOB, to crew another.",
+			"key": "r_crew",
+			"members": [
+				"r_crewman",
+				"r_crewman",
+				"r_crewman"
+			],
+			"name": "Tank Crew",
+			"team": 1,
+			"time": 0.0
+		},
+		"r_mortar_team": {
+			"cost": 90,
+			"desc": "Mobile mortar. Shells enemies your side has spotted, even behind cover. F = fire mission.",
+			"key": "r_mortar_team",
+			"members": [
+				"r_mortar",
+				"fighter"
+			],
+			"name": "Mortar Team",
+			"team": 1,
+			"time": 11.0
+		},
+		"rifle_squad": {
+			"cost": 100,
+			"desc": "Four riflemen and a medic.",
+			"key": "rifle_squad",
+			"members": [
+				"rifleman",
+				"rifleman",
+				"rifleman",
+				"rifleman",
+				"medic"
+			],
+			"name": "Rifle Squad",
+			"team": 0,
+			"time": 12.0
+		},
+		"rpg_team": {
+			"cost": 80,
+			"desc": "RPGs against vehicles.",
+			"key": "rpg_team",
+			"members": [
+				"rpg",
+				"rpg"
+			],
+			"name": "RPG Team",
+			"team": 1,
+			"time": 10.0
+		}
+	},
+	"start_supply": 500,
+	"supply_per_truck": [
+		115,
+		130
+	],
+	"support": {
+		"a10": {
+			"cooldown": 150.0,
+			"cost": 260,
+			"desc": "The Warthog comes in low and walks a burst of 30 mm through the spot: the impacts first, then the BRRRT. Drag to set the strafing line.",
+			"fly": "a10",
+			"key": "a10",
+			"model": "a10",
+			"muzzles": [
+				[
+					0.0,
+					0.0,
+					0.0
+				],
+				[
+					0.0,
+					0.0,
+					0.0
+				],
+				[
+					0.0,
+					0.0,
+					0.0
+				]
+			],
+			"name": "A-10C Thunderbolt II Gun Run",
+			"pattern": "Fairchild Republic A-10C Thunderbolt II, 30 mm GAU-8/A Avenger",
+			"r": 20.0,
+			"shape": "strafe",
+			"team": 0
+		},
+		"ac130": {
+			"cooldown": 240.0,
+			"cost": 420,
+			"desc": "Spooky orbits overhead for 25 seconds, port wing down, hunting anything in the circle with its side-firing 105, 40 and 25 mm. You hear the guns, then the rounds arrive.",
+			"fly": "orbit",
+			"guns": "ac130",
+			"key": "ac130",
+			"model": "ac130",
+			"muzzles": [
+				[
+					-5.372832775115967,
+					1.5935447216033936,
+					3.0
+				],
+				[
+					-4.519207954406738,
+					1.4139106273651123,
+					1.8799999952316284
+				],
+				[
+					-3.2760114669799805,
+					1.6001999378204346,
+					-7.849999904632568
+				]
+			],
+			"name": "AC-130U Spooky Gunship",
+			"pattern": "Lockheed AC-130U Spooky II: 105 mm M102 howitzer, 40 mm Bofors, 25 mm GAU-12 Equalizer",
+			"r": 38.0,
+			"shape": "orbit",
+			"team": 0
+		},
+		"airstrike": {
+			"bombs": 4,
+			"cooldown": 120.0,
+			"cost": 220,
+			"desc": "A stealth fighter runs in and drops a stick of four bombs across the spot. Devastating in the open. Drag to set the run-in direction.",
+			"fly": "jet",
+			"key": "airstrike",
+			"model": "blackwasp",
+			"muzzles": [
+				[
+					0.0,
+					0.0,
+					0.0
+				],
+				[
+					0.0,
+					0.0,
+					0.0
+				],
+				[
+					0.0,
+					0.0,
+					0.0
+				]
+			],
+			"name": "F/A-181 Black Wasp II Strike",
+			"pattern": "F/A-181 Black Wasp II (Super Hornet / F-22 hybrid), four 500 lb bombs",
+			"r": 4.0,
+			"shape": "line",
+			"team": 0
+		},
+		"artillery": {
+			"cooldown": 180.0,
+			"cost": 300,
+			"desc": "Eight heavy howitzer shells. Brings down buildings and digs out trenches.",
+			"key": "artillery",
+			"muzzles": [
+				[
+					0.0,
+					0.0,
+					0.0
+				],
+				[
+					0.0,
+					0.0,
+					0.0
+				],
+				[
+					0.0,
+					0.0,
+					0.0
+				]
+			],
+			"name": "155 mm Artillery",
+			"r": 22.0,
+			"shape": "circle",
+			"team": 0
+		},
+		"barrage": {
+			"cooldown": 90.0,
+			"cost": 180,
+			"desc": "Off-map launchers saturate the area with sixteen rockets. Inaccurate, but nobody likes being under it.",
+			"key": "barrage",
+			"muzzles": [
+				[
+					0.0,
+					0.0,
+					0.0
+				],
+				[
+					0.0,
+					0.0,
+					0.0
+				],
+				[
+					0.0,
+					0.0,
+					0.0
+				]
+			],
+			"name": "Rocket Barrage",
+			"r": 20.0,
+			"shape": "circle",
+			"team": 1
+		},
+		"blackfish": {
+			"cooldown": 220.0,
+			"cost": 380,
+			"desc": "The tiltrotor gunship orbits overhead for 25 seconds hunting anything in the circle with 105 mm, 40 mm and 20 mm - fewer heavy rounds than Spooky, and cheaper.",
+			"fly": "orbit",
+			"guns": "blackfish",
+			"key": "blackfish",
+			"model": "blackfish_armed",
+			"muzzles": [
+				[
+					-5.841765403747559,
+					2.365093469619751,
+					3.75
+				],
+				[
+					-4.593915939331055,
+					2.681565523147583,
+					-5.300000190734863
+				],
+				[
+					-3.6275861263275146,
+					2.0284605026245117,
+					3.75
+				]
+			],
+			"name": "V-44X Blackfish Gunship",
+			"pattern": "V-44X Blackfish (enlarged V-22 / V-280 tiltrotor), 105 mm howitzer, 40 mm and 20 mm cannon",
+			"r": 34.0,
+			"shape": "orbit",
+			"team": 0
+		},
+		"buzzard": {
+			"cooldown": 110.0,
+			"cost": 170,
+			"desc": "The allied light attack jet strafes the line with its 20 mm gun pod. Cheaper and lighter than the Wipeout. Drag to set the strafing line.",
+			"fly": "a10",
+			"key": "buzzard",
+			"model": "buzzard",
+			"muzzles": [
+				[
+					0.0,
+					0.0,
+					0.0
+				],
+				[
+					0.0,
+					0.0,
+					0.0
+				],
+				[
+					0.0,
+					0.0,
+					0.0
+				]
+			],
+			"name": "A-143 Buzzard Strafe",
+			"pattern": "A-143 Buzzard (Aero L-159 ALCA), twin 20 mm gun pod",
+			"r": 16.0,
+			"shape": "strafe",
+			"team": 0
+		},
+		"caesar_spotter": {
+			"alt": 45.0,
+			"cooldown": 70.0,
+			"cost": 50,
+			"desc": "A smuggler's light plane droning low along the line, a man with binoculars at the window: slow, so what's under it shows for longer, everything within 80 m either side of its track. Cheap. Drag to set the line.",
+			"fly": "recon",
+			"from": 120.0,
+			"key": "caesar_spotter",
+			"leg": 400.0,
+			"model": "caesar",
+			"muzzles": [
+				[
+					0.0,
+					0.0,
+					0.0
+				],
+				[
+					0.0,
+					0.0,
+					0.0
+				],
+				[
+					0.0,
+					0.0,
+					0.0
+				]
+			],
+			"name": "Caesar BTT Spotter Flight",
+			"pattern": "Caesar BTT (Cessna TTx), a smuggler's light plane, a spotter with binoculars in the right seat",
+			"r": 80.0,
+			"recon": true,
+			"shape": "sweep",
+			"sight": 80.0,
+			"speed": 48.0,
+			"team": 1
+		},
+		"fenghuang_watch": {
+			"cooldown": 150.0,
+			"cost": 120,
+			"desc": "CSAT lends a Fenghuang: it circles the spot for most of a minute and shows your side everything within 80 m of it.",
+			"fly": "watch",
+			"from": 240.0,
+			"key": "fenghuang_watch",
+			"model": "fenghuang",
+			"muzzles": [
+				[
+					0.0,
+					0.0,
+					0.0
+				],
+				[
+					0.0,
+					0.0,
+					0.0
+				],
+				[
+					0.0,
+					0.0,
+					0.0
+				]
+			],
+			"name": "KH-3A Fenghuang Overwatch",
+			"pattern": "KH-3A Fenghuang (CASC CH-3A Rainbow), its missiles left off for fuel",
+			"r": 80.0,
+			"recon": true,
+			"shape": "watch",
+			"sight": 80.0,
+			"stay": 55.0,
+			"team": 1
+		},
+		"greyhawk": {
+			"cooldown": 160.0,
+			"cost": 240,
+			"desc": "An armed drone circles the spot for 25 seconds firing guided missiles at whatever it finds there.",
+			"fly": "orbit",
+			"guns": "greyhawk",
+			"key": "greyhawk",
+			"model": "greyhawk",
+			"muzzles": [
+				[
+					0.0,
+					0.30000001192092896,
+					-4.599999904632568
+				],
+				[
+					0.0,
+					0.0,
+					0.0
+				],
+				[
+					0.0,
+					0.0,
+					0.0
+				]
+			],
+			"name": "MQ-4A Greyhawk Drone",
+			"pattern": "MQ-4A Greyhawk (MQ-9 Reaper layout), six Skalpel missiles",
+			"r": 30.0,
+			"shape": "orbit",
+			"team": 0
+		},
+		"greyhawk_watch": {
+			"cooldown": 150.0,
+			"cost": 130,
+			"desc": "An unarmed Greyhawk circles high over the spot for a minute, its camera turret on it: your side sees everything within 85 m of it until it goes home.",
+			"fly": "watch",
+			"from": 240.0,
+			"key": "greyhawk_watch",
+			"model": "greyhawk",
+			"muzzles": [
+				[
+					0.0,
+					0.0,
+					0.0
+				],
+				[
+					0.0,
+					0.0,
+					0.0
+				],
+				[
+					0.0,
+					0.0,
+					0.0
+				]
+			],
+			"name": "MQ-4A Greyhawk Overwatch",
+			"pattern": "MQ-4A Greyhawk (MQ-9 Reaper layout), unarmed, sensor turret",
+			"r": 85.0,
+			"recon": true,
+			"shape": "watch",
+			"sight": 85.0,
+			"stay": 60.0,
+			"team": 0
+		},
+		"gryphon": {
+			"bombs": 2,
+			"cooldown": 130.0,
+			"cost": 200,
+			"desc": "Two guided bombs, close together, exactly on the spot. Drag to set the run-in direction.",
+			"fly": "jet",
+			"key": "gryphon",
+			"model": "gryphon",
+			"muzzles": [
+				[
+					0.0,
+					0.0,
+					0.0
+				],
+				[
+					0.0,
+					0.0,
+					0.0
+				],
+				[
+					0.0,
+					0.0,
+					0.0
+				]
+			],
+			"name": "A-149 Gryphon Precision Strike",
+			"pattern": "A-149 Gryphon (Saab JAS 39 Gripen), two laser-guided bombs",
+			"r": 4.0,
+			"shape": "line",
+			"team": 0
+		},
+		"gryphon_recon": {
+			"alt": 70.0,
+			"cooldown": 80.0,
+			"cost": 70,
+			"desc": "A Gripen with a recce pod runs along the line at height: everything within 100 m either side of its track shows up for your side as it goes over, the strip stays lit a few seconds while the pictures are read, and what it saw stays on the map as intelligence. Drag to set the line.",
+			"fly": "recon",
+			"from": 120.0,
+			"key": "gryphon_recon",
+			"leg": 480.0,
+			"model": "gryphon",
+			"muzzles": [
+				[
+					0.0,
+					0.0,
+					0.0
+				],
+				[
+					0.0,
+					0.0,
+					0.0
+				],
+				[
+					0.0,
+					0.0,
+					0.0
+				]
+			],
+			"name": "A-149 Gryphon Recon Pass",
+			"pattern": "A-149 Gryphon (Saab JAS 39 Gripen) carrying a reconnaissance pod",
+			"r": 100.0,
+			"recon": true,
+			"shape": "sweep",
+			"sight": 100.0,
+			"speed": 100.0,
+			"team": 0
+		},
+		"mortars": {
+			"cooldown": 60.0,
+			"cost": 110,
+			"desc": "Off-map mortars drop twelve rounds on the spot.",
+			"key": "mortars",
+			"muzzles": [
+				[
+					0.0,
+					0.0,
+					0.0
+				],
+				[
+					0.0,
+					0.0,
+					0.0
+				],
+				[
+					0.0,
+					0.0,
+					0.0
+				]
+			],
+			"name": "Mortar Barrage",
+			"r": 15.0,
+			"shape": "circle",
+			"team": 1
+		},
+		"neophron": {
+			"cooldown": 120.0,
+			"cost": 190,
+			"desc": "CSAT's light attack jet walks its 30 mm cannon along the line. Drag to set the strafing line.",
+			"fly": "a10",
+			"key": "neophron",
+			"model": "neophron",
+			"muzzles": [
+				[
+					0.0,
+					0.0,
+					0.0
+				],
+				[
+					0.0,
+					0.0,
+					0.0
+				],
+				[
+					0.0,
+					0.0,
+					0.0
+				]
+			],
+			"name": "To-199 Neophron Strafe",
+			"pattern": "To-199 Neophron (Yakovlev Yak-130), 30 mm cannon",
+			"r": 18.0,
+			"shape": "strafe",
+			"team": 1
+		},
+		"sentinel": {
+			"bombs": 2,
+			"cooldown": 170.0,
+			"cost": 260,
+			"desc": "A stealth drone drops two bombs on the spot. The enemy gets no warning. Drag to set the run-in direction.",
+			"fly": "jet",
+			"key": "sentinel",
+			"model": "sentinel",
+			"muzzles": [
+				[
+					0.0,
+					0.0,
+					0.0
+				],
+				[
+					0.0,
+					0.0,
+					0.0
+				],
+				[
+					0.0,
+					0.0,
+					0.0
+				]
+			],
+			"name": "UCAV Sentinel Strike",
+			"pattern": "UCAV Sentinel (Northrop Grumman X-47B), two GBU-12",
+			"quiet": true,
+			"r": 4.0,
+			"shape": "line",
+			"team": 0
+		},
+		"shikra": {
+			"bombs": 3,
+			"cooldown": 150.0,
+			"cost": 250,
+			"desc": "A CSAT stealth fighter drops three bombs across the spot. Drag to set the run-in direction.",
+			"fly": "jet",
+			"key": "shikra",
+			"model": "shikra",
+			"muzzles": [
+				[
+					0.0,
+					0.0,
+					0.0
+				],
+				[
+					0.0,
+					0.0,
+					0.0
+				],
+				[
+					0.0,
+					0.0,
+					0.0
+				]
+			],
+			"name": "To-201 Shikra Bomb Run",
+			"pattern": "To-201 Shikra (Sukhoi Su-57 / Su-35), three KAB-250 bombs",
+			"r": 4.0,
+			"shape": "line",
+			"team": 1
+		},
+		"smoke": {
+			"cooldown": 0.0,
+			"cost": 0,
+			"desc": "Mortar smoke rounds screen the area (observer demo).",
+			"key": "smoke",
+			"muzzles": [
+				[
+					0.0,
+					0.0,
+					0.0
+				],
+				[
+					0.0,
+					0.0,
+					0.0
+				],
+				[
+					0.0,
+					0.0,
+					0.0
+				]
+			],
+			"name": "Smoke Screen",
+			"r": 14.0,
+			"shape": "circle",
+			"team": -1
+		},
+		"wipeout": {
+			"cooldown": 140.0,
+			"cost": 250,
+			"desc": "The Wipeout walks a burst of 30 mm through the spot. You'll see it, and the impacts, before you hear it. Drag to set the strafing line.",
+			"fly": "a10",
+			"key": "wipeout",
+			"model": "wipeout",
+			"muzzles": [
+				[
+					0.0,
+					0.0,
+					0.0
+				],
+				[
+					0.0,
+					0.0,
+					0.0
+				],
+				[
+					0.0,
+					0.0,
+					0.0
+				]
+			],
+			"name": "A-164 Wipeout Gun Run",
+			"pattern": "A-164 Wipeout (Arma's A-10 successor), 30 mm GAU-8 Avenger",
+			"r": 20.0,
+			"shape": "strafe",
+			"team": 0
+		},
+		"xian": {
+			"cooldown": 220.0,
+			"cost": 360,
+			"desc": "A CSAT VTOL gunship circles the spot for 25 seconds raking it with 30 mm and rockets.",
+			"fly": "orbit",
+			"guns": "xian",
+			"key": "xian",
+			"model": "xian",
+			"muzzles": [
+				[
+					0.0,
+					0.8999999761581421,
+					-9.0
+				],
+				[
+					0.0,
+					0.8999999761581421,
+					-9.0
+				],
+				[
+					0.0,
+					0.0,
+					0.0
+				]
+			],
+			"name": "Y-32 Xi'an Gunship",
+			"pattern": "Y-32 Xi'an VTOL gunship, 30 mm cannon and Skyfire rockets",
+			"r": 32.0,
+			"shape": "orbit",
+			"team": 1
+		}
+	},
+	"team_names": [
+		"Coalition",
+		"Rebels"
+	],
+	"town_load": [
+		60,
+		120
+	],
+	"town_pace": [
+		1.0,
+		0.6
+	],
+	"town_radius": [
+		30.0,
+		42.0
+	],
+	"town_stock": [
+		180,
+		420
+	],
+	"town_yield": [
+		24.0,
+		60.0
+	],
+	"units": {
+		"at_soldier": {
+			"build": 1.0,
+			"frags": 1,
+			"heal": 1.0,
+			"hp": 100.0,
+			"key": "at_soldier",
+			"name": "AT Specialist",
+			"rockets": 4,
+			"smokes": 0,
+			"team": 0,
+			"weapon": "rifle"
+		},
+		"bearer": {
+			"bearer": true,
+			"build": 0.0,
+			"frags": 0,
+			"heal": 1.5,
+			"hp": 100.0,
+			"key": "bearer",
+			"name": "Stretcher Bearer",
+			"smokes": 0,
+			"team": -1,
+			"weapon": ""
+		},
+		"crewman": {
+			"build": 1.0,
+			"crew": true,
+			"frags": 0,
+			"heal": 1.0,
+			"hp": 90.0,
+			"key": "crewman",
+			"name": "Crewman",
+			"smokes": 1,
+			"team": 0,
+			"weapon": "smg"
+		},
+		"digger": {
+			"build": 2.0,
+			"engineer": true,
+			"frags": 1,
+			"heal": 1.0,
+			"hp": 95.0,
+			"key": "digger",
+			"name": "Digger",
+			"smokes": 0,
+			"team": 1,
+			"weapon": "ak"
+		},
+		"engineer": {
+			"build": 2.0,
+			"engineer": true,
+			"frags": 1,
+			"heal": 1.0,
+			"hp": 100.0,
+			"key": "engineer",
+			"name": "Engineer",
+			"smokes": 1,
+			"team": 0,
+			"weapon": "smg"
+		},
+		"fighter": {
+			"build": 1.0,
+			"frags": 1,
+			"heal": 1.0,
+			"hp": 100.0,
+			"key": "fighter",
+			"name": "Fighter",
+			"smokes": 1,
+			"team": 1,
+			"weapon": "ak"
+		},
+		"fpv_op": {
+			"build": 1.0,
+			"drones": 4,
+			"frags": 0,
+			"heal": 1.0,
+			"hp": 90.0,
+			"key": "fpv_op",
+			"name": "FPV Operator",
+			"smokes": 1,
+			"team": 1,
+			"weapon": "pistol"
+		},
+		"medic": {
+			"build": 1.0,
+			"frags": 0,
+			"heal": 2.0,
+			"hp": 100.0,
+			"key": "medic",
+			"medic": true,
+			"name": "Medic",
+			"smokes": 2,
+			"team": 0,
+			"weapon": "smg"
+		},
+		"mg_gunner": {
+			"build": 1.0,
+			"frags": 0,
+			"heal": 1.0,
+			"hp": 110.0,
+			"key": "mg_gunner",
+			"name": "MG Gunner",
+			"smokes": 1,
+			"team": 0,
+			"weapon": "lmg"
+		},
+		"mortar_gunner": {
+			"build": 1.0,
+			"frags": 1,
+			"heal": 1.0,
+			"hp": 100.0,
+			"key": "mortar_gunner",
+			"mortar": 16,
+			"name": "Mortarman",
+			"smokes": 1,
+			"team": 0,
+			"weapon": "rifle"
+		},
+		"pkm": {
+			"build": 1.0,
+			"frags": 0,
+			"heal": 1.0,
+			"hp": 105.0,
+			"key": "pkm",
+			"name": "PKM Gunner",
+			"smokes": 1,
+			"team": 1,
+			"weapon": "lmg"
+		},
+		"r_crewman": {
+			"build": 1.0,
+			"crew": true,
+			"frags": 0,
+			"heal": 1.0,
+			"hp": 90.0,
+			"key": "r_crewman",
+			"name": "Crewman",
+			"smokes": 0,
+			"team": 1,
+			"weapon": "smg"
+		},
+		"r_medic": {
+			"build": 1.0,
+			"frags": 0,
+			"heal": 2.0,
+			"hp": 95.0,
+			"key": "r_medic",
+			"medic": true,
+			"name": "Medic",
+			"smokes": 2,
+			"team": 1,
+			"weapon": "ak"
+		},
+		"r_mortar": {
+			"build": 1.0,
+			"frags": 1,
+			"heal": 1.0,
+			"hp": 100.0,
+			"key": "r_mortar",
+			"mortar": 16,
+			"name": "Mortarman",
+			"smokes": 1,
+			"team": 1,
+			"weapon": "ak"
+		},
+		"rifleman": {
+			"build": 1.0,
+			"frags": 2,
+			"heal": 1.0,
+			"hp": 100.0,
+			"key": "rifleman",
+			"name": "Rifleman",
+			"smokes": 1,
+			"team": 0,
+			"weapon": "rifle"
+		},
+		"rpg": {
+			"build": 1.0,
+			"frags": 1,
+			"heal": 1.0,
+			"hp": 95.0,
+			"key": "rpg",
+			"name": "RPG Gunner",
+			"rockets": 4,
+			"smokes": 0,
+			"team": 1,
+			"weapon": "ak"
+		}
+	},
+	"upgrades": {
+		"armor": {
+			"cost": 150,
+			"desc": "+20% soldier health.",
+			"key": "armor",
+			"name": "Body Armor",
+			"teams": [
+				0,
+				1
+			],
+			"time": 40.0
+		},
+		"armour_doctrine": {
+			"cost": 220,
+			"desc": "Unlocks tier 2: main battle tanks, infantry fighting vehicles, anti-aircraft vehicles and attack helicopters.",
+			"key": "armour_doctrine",
+			"name": "Armoured Warfare",
+			"teams": [
+				0
+			],
+			"tier": 2,
+			"time": 50.0
+		},
+		"combined_arms": {
+			"cost": 320,
+			"desc": "Unlocks tier 3: self-propelled artillery, the heaviest tanks, drones and the UGV.",
+			"key": "combined_arms",
+			"name": "Combined Arms",
+			"requires": "armour_doctrine",
+			"teams": [
+				0
+			],
+			"tier": 3,
+			"time": 70.0
+		},
+		"csat_advisers": {
+			"cost": 200,
+			"desc": "CSAT advisers bring tier 2: tanks, IFVs, anti-aircraft vehicles and attack helicopters.",
+			"key": "csat_advisers",
+			"name": "Foreign Advisers",
+			"teams": [
+				1
+			],
+			"tier": 2,
+			"time": 50.0
+		},
+		"csat_corps": {
+			"cost": 300,
+			"desc": "A CSAT expeditionary corps brings tier 3: artillery, the T-140 and the Futura, drones.",
+			"key": "csat_corps",
+			"name": "Expeditionary Corps",
+			"requires": "csat_advisers",
+			"teams": [
+				1
+			],
+			"tier": 3,
+			"time": 70.0
+		},
+		"deep_tunnels": {
+			"cost": 100,
+			"desc": "Tunnel travel twice as fast.",
+			"key": "deep_tunnels",
+			"name": "Deep Tunnels",
+			"teams": [
+				1
+			],
+			"time": 30.0
+		},
+		"grenades": {
+			"cost": 100,
+			"desc": "+1 frag grenade for every soldier.",
+			"key": "grenades",
+			"name": "Grenade Pouches",
+			"teams": [
+				0,
+				1
+			],
+			"time": 30.0
+		},
+		"medicine": {
+			"cost": 120,
+			"desc": "Patch up and bleed out 50% slower.",
+			"key": "medicine",
+			"name": "Field Medicine",
+			"teams": [
+				0,
+				1
+			],
+			"time": 30.0
+		},
+		"optics": {
+			"cost": 150,
+			"desc": "+15% accuracy.",
+			"key": "optics",
+			"name": "Optics",
+			"teams": [
+				0,
+				1
+			],
+			"time": 40.0
+		},
+		"warheads": {
+			"cost": 150,
+			"desc": "+50% drone damage.",
+			"key": "warheads",
+			"name": "FPV Warheads",
+			"teams": [
+				1
+			],
+			"time": 35.0
+		}
+	},
+	"vehicles": {
+		"aa_tech": {
+			"aa": true,
+			"armor": 0,
+			"base": "spaa",
+			"cannon": false,
+			"cap": 2,
+			"cost": 150,
+			"desc": "Twin 23 mm cannon on a pickup. Tears helicopters, drones and anything soft apart.",
+			"gun_h": 2.0,
+			"hp": 380.0,
+			"key": "aa_tech",
+			"mg": "zu23",
+			"name": "AA Technical",
+			"size": [
+				2.0,
+				1.899999976158142,
+				4.599999904632568
+			],
+			"speed": 10.5,
+			"team": 1,
+			"time": 18.0,
+			"turn": 1.8,
+			"weight": 0
+		},
+		"angara": {
+			"armor": 2,
+			"base": "tank",
+			"cannon": true,
+			"cap": 4,
+			"cat": "armour",
+			"cost": 400,
+			"desc": "Unmanned turret, crew capsule in the hull, reactive armour everywhere: the heaviest thing CSAT sends.",
+			"faction": "CSAT",
+			"gun": {
+				"at": 350.0,
+				"cd": 5.5,
+				"dmg": 175.0,
+				"radius": 5.5
+			},
+			"gun_h": 2.2,
+			"hp": 1750.0,
+			"key": "angara",
+			"mg": "m2",
+			"name": "T-140 Angara",
+			"pattern": "T-14 Armata",
+			"role": "Main battle tank",
+			"size": [
+				3.5,
+				3.299999952316284,
+				8.699999809265137
+			],
+			"speed": 7.0,
+			"team": 1,
+			"tier": 3,
+			"time": 36.0,
+			"tracked": true,
+			"turn": 1.1,
+			"weight": 2
+		},
+		"angara_k": {
+			"armor": 2,
+			"base": "tank",
+			"cannon": true,
+			"cap": 4,
+			"cat": "armour",
+			"cost": 430,
+			"desc": "Command variant: a remote 30 mm on the roof and a passive radar that spots for the whole force.",
+			"faction": "CSAT",
+			"gun": {
+				"at": 350.0,
+				"cd": 5.5,
+				"dmg": 175.0,
+				"radius": 5.5
+			},
+			"gun_h": 2.2,
+			"hp": 1750.0,
+			"key": "angara_k",
+			"mg": "ac30",
+			"name": "T-140K Angara",
+			"pattern": "T-14 Armata with a remote 30 mm turret",
+			"role": "Command tank",
+			"sight": 85.0,
+			"size": [
+				3.5,
+				3.4000000953674316,
+				8.699999809265137
+			],
+			"speed": 7.0,
+			"team": 1,
+			"tier": 3,
+			"time": 38.0,
+			"tracked": true,
+			"turn": 1.1,
+			"weight": 2
+		},
+		"blackfoot": {
+			"air": true,
+			"armor": 1,
+			"atgm": [
+				4,
+				10.0
+			],
+			"base": "attack_heli",
+			"cannon": false,
+			"cap": 4,
+			"cat": "air",
+			"cost": 400,
+			"desc": "Stealthy attack helicopter: chin 20 mm, rockets and anti-tank missiles.",
+			"faction": "NATO",
+			"gun_h": 0.7,
+			"hp": 1000.0,
+			"key": "blackfoot",
+			"mg": "m197",
+			"name": "AH-99 Blackfoot",
+			"pattern": "RAH-66 Comanche",
+			"rockets": 4,
+			"role": "Attack helicopter",
+			"size": [
+				2.0,
+				3.4000000953674316,
+				14.300000190734863
+			],
+			"speed": 23.0,
+			"team": 0,
+			"tier": 2,
+			"time": 36.0,
+			"turn": 2.3,
+			"weight": 0
+		},
+		"bobcat": {
+			"armor": 2,
+			"base": "util",
+			"cannon": false,
+			"cap": 3,
+			"cat": "logistics",
+			"cost": 230,
+			"desc": "Dozer blade, crane and a remote .50: repairs and recovers vehicles under fire, pushes through wrecks.",
+			"faction": "NATO",
+			"gun_h": 2.9,
+			"hp": 1250.0,
+			"key": "bobcat",
+			"mg": "m2",
+			"name": "CRV-6e Bobcat",
+			"pattern": "Namer recovery vehicle (Achzaka)",
+			"role": "Armoured recovery / engineering vehicle",
+			"service": "repair",
+			"size": [
+				3.700000047683716,
+				2.799999952316284,
+				7.800000190734863
+			],
+			"speed": 6.0,
+			"team": 0,
+			"tier": 2,
+			"time": 26.0,
+			"tracked": true,
+			"turn": 1.1,
+			"weight": 2
+		},
+		"btr": {
+			"armor": 1,
+			"base": "afv",
+			"cannon": false,
+			"cap": 3,
+			"carry": "mech_cell",
+			"cost": 170,
+			"desc": "Eight-wheeled APC with a 14.5 mm gun. Carries a fighter cell.",
+			"gun_h": 2.2,
+			"hp": 620.0,
+			"key": "btr",
+			"mg": "kpvt",
+			"name": "BTR",
+			"size": [
+				2.299999952316284,
+				2.5999999046325684,
+				6.0
+			],
+			"speed": 10.5,
+			"team": 1,
+			"time": 20.0,
+			"turn": 1.6,
+			"weight": 1
+		},
+		"cheetah": {
+			"aa": true,
+			"armor": 2,
+			"base": "spaa",
+			"cannon": false,
+			"cap": 3,
+			"cat": "support",
+			"cost": 280,
+			"desc": "Twin 35 mm guns and eight missiles under a search radar: no helicopter or drone lives long near it.",
+			"faction": "NATO",
+			"gun_h": 2.2,
+			"hp": 1150.0,
+			"key": "cheetah",
+			"mg": "twin35",
+			"name": "IFV-6a Cheetah",
+			"pattern": "Namer hull with a Marksman twin 35 mm turret",
+			"role": "Self-propelled anti-aircraft gun",
+			"sam": [
+				8,
+				6.0
+			],
+			"sight": 80.0,
+			"size": [
+				3.5999999046325684,
+				3.0999999046325684,
+				7.599999904632568
+			],
+			"speed": 6.5,
+			"team": 0,
+			"tier": 2,
+			"time": 28.0,
+			"tracked": true,
+			"turn": 1.2,
+			"weight": 2
+		},
+		"darter": {
+			"air": true,
+			"alt": 18.0,
+			"armor": 0,
+			"base": "uav",
+			"cannon": false,
+			"cap": 1,
+			"cat": "air",
+			"cost": 70,
+			"desc": "Quadcopter: circles a spot and shows everything within 70 m to your side. Cheap, quiet, easy to shoot down.",
+			"faction": "NATO",
+			"gun_h": 2.2,
+			"hit": 0.15,
+			"hp": 60.0,
+			"key": "darter",
+			"mg": "",
+			"name": "AR-2 Darter",
+			"orbit": 12.0,
+			"pattern": "Parrot-style quadcopter",
+			"role": "Small reconnaissance drone",
+			"sight": 70.0,
+			"size": [
+				0.8999999761581421,
+				0.4000000059604645,
+				0.8999999761581421
+			],
+			"speed": 11.0,
+			"symbol": [
+				"air",
+				"UAV"
+			],
+			"team": 0,
+			"tier": 1,
+			"time": 10.0,
+			"turn": 3.0,
+			"weight": 0
+		},
+		"falcon": {
+			"air": true,
+			"alt": 24.0,
+			"armor": 0,
+			"atgm": [
+				6,
+				9.0
+			],
+			"base": "uav",
+			"cannon": false,
+			"cap": 1,
+			"cat": "air",
+			"cost": 230,
+			"desc": "Unmanned helicopter: circles where you send it, spotting, and puts anti-tank missiles into armour.",
+			"faction": "NATO",
+			"gun_h": 2.2,
+			"hit": 0.7,
+			"hp": 300.0,
+			"key": "falcon",
+			"mg": "",
+			"name": "MQ-12 Falcon",
+			"orbit": 22.0,
+			"pattern": "MQ-8 Fire Scout",
+			"role": "Armed rotary drone",
+			"sight": 75.0,
+			"size": [
+				1.600000023841858,
+				1.7999999523162842,
+				7.0
+			],
+			"speed": 16.0,
+			"symbol": [
+				"air",
+				"UAV"
+			],
+			"team": 0,
+			"tier": 3,
+			"time": 22.0,
+			"turn": 2.0,
+			"weight": 0
+		},
+		"fenghuang_uav": {
+			"air": true,
+			"alt": 26.0,
+			"armor": 0,
+			"atgm": [
+				4,
+				10.0
+			],
+			"base": "uav",
+			"cannon": false,
+			"cap": 1,
+			"cat": "air",
+			"cost": 220,
+			"desc": "Canard-winged drone: circles where it's sent, spotting, and fires small anti-tank missiles.",
+			"faction": "CSAT",
+			"gun_h": 2.2,
+			"hit": 0.6,
+			"hp": 260.0,
+			"key": "fenghuang_uav",
+			"mg": "",
+			"model": "fenghuang",
+			"name": "KH-3A Fenghuang",
+			"orbit": 26.0,
+			"pattern": "CASC CH-3A Rainbow",
+			"role": "Armed drone",
+			"sight": 75.0,
+			"size": [
+				5.5,
+				1.2000000476837158,
+				8.0
+			],
+			"speed": 18.0,
+			"symbol": [
+				"air",
+				"UAV"
+			],
+			"team": 1,
+			"tier": 3,
+			"time": 22.0,
+			"turn": 2.0,
+			"weight": 0
+		},
+		"fia_truck": {
+			"armor": 0,
+			"base": "util",
+			"cannon": false,
+			"cap": 2,
+			"carry": "fighter_cell",
+			"cat": "logistics",
+			"cost": 160,
+			"desc": "Dropside truck: brings a whole fighter cell up the road.",
+			"faction": "FIA",
+			"gun_h": 2.2,
+			"hp": 300.0,
+			"key": "fia_truck",
+			"mg": "",
+			"name": "Truck",
+			"pattern": "Iveco Daily 4x4",
+			"role": "Light truck",
+			"size": [
+				2.0999999046325684,
+				2.700000047683716,
+				5.599999904632568
+			],
+			"speed": 9.5,
+			"team": 1,
+			"tier": 1,
+			"time": 12.0,
+			"turn": 1.8,
+			"weight": 1
+		},
+		"futura": {
+			"armor": 2,
+			"base": "tank",
+			"cannon": true,
+			"cap": 4,
+			"cat": "armour",
+			"cost": 460,
+			"desc": "A 75 mm railgun: a round that goes through anything, every six seconds.",
+			"faction": "CSAT",
+			"gun": {
+				"at": 520.0,
+				"cd": 6.0,
+				"dmg": 120.0,
+				"radius": 3.0,
+				"size": 1.0
+			},
+			"gun_h": 2.2,
+			"hp": 1450.0,
+			"key": "futura",
+			"mg": "m2",
+			"name": "T-100X Futura",
+			"pattern": "T-100 hull with an experimental railgun turret",
+			"role": "Railgun tank",
+			"size": [
+				3.5999999046325684,
+				2.5999999046325684,
+				7.5
+			],
+			"speed": 7.0,
+			"team": 1,
+			"tier": 3,
+			"time": 40.0,
+			"tracked": true,
+			"turn": 1.1,
+			"weight": 2
+		},
+		"ghosthawk": {
+			"air": true,
+			"armor": 1,
+			"base": "lift_heli",
+			"cannon": false,
+			"cap": 3,
+			"carry": "rifle_squad",
+			"cat": "air",
+			"cost": 300,
+			"desc": "Air assault: flies a rifle squad in, door gunners firing, lands, they pile out, it flies home.",
+			"faction": "NATO",
+			"gun_h": 2.2,
+			"hp": 620.0,
+			"key": "ghosthawk",
+			"mg": "minigun",
+			"name": "UH-80 Ghost Hawk",
+			"pattern": "Stealth UH-60 Black Hawk",
+			"role": "Utility helicopter",
+			"size": [
+				2.4000000953674316,
+				3.200000047683716,
+				15.300000190734863
+			],
+			"sling": 0,
+			"speed": 21.0,
+			"team": 0,
+			"tier": 2,
+			"time": 30.0,
+			"turn": 2.3,
+			"weight": 0
+		},
+		"ghosthawk_stub": {
+			"air": true,
+			"armor": 1,
+			"base": "attack_heli",
+			"cannon": false,
+			"cap": 3,
+			"cat": "air",
+			"cost": 330,
+			"desc": "Ghost Hawk with stub wings and rocket pods: a gunship that can still take a door gunner's view.",
+			"faction": "NATO",
+			"gun_h": 0.9,
+			"hp": 640.0,
+			"key": "ghosthawk_stub",
+			"mg": "minigun",
+			"name": "UH-80 Ghost Hawk (Stub Wings)",
+			"pattern": "Black Hawk with ESSS stub wings",
+			"rockets": 6,
+			"role": "Armed utility helicopter",
+			"size": [
+				2.4000000953674316,
+				3.200000047683716,
+				15.300000190734863
+			],
+			"speed": 21.0,
+			"team": 0,
+			"tier": 2,
+			"time": 32.0,
+			"turn": 2.3,
+			"weight": 0
+		},
+		"gorgon": {
+			"armor": 1,
+			"atgm": [
+				4,
+				12.0
+			],
+			"base": "afv",
+			"cannon": false,
+			"cap": 3,
+			"carry": "mech_team",
+			"cat": "armour",
+			"cost": 260,
+			"desc": "Eight-wheeled IFV: 30 mm cannon, four anti-tank missiles, a fire team in the back.",
+			"faction": "AAF",
+			"gun_h": 2.2,
+			"hp": 860.0,
+			"key": "gorgon",
+			"mg": "ac30",
+			"name": "AFV-4 Gorgon",
+			"pattern": "Pandur II 8x8",
+			"role": "8x8 infantry fighting vehicle",
+			"size": [
+				2.700000047683716,
+				2.9000000953674316,
+				7.400000095367432
+			],
+			"speed": 10.5,
+			"team": 0,
+			"tier": 2,
+			"time": 26.0,
+			"turn": 1.5,
+			"weight": 1
+		},
+		"gun_trawler": {
+			"aa": true,
+			"armor": 0,
+			"base": "boat",
+			"cannon": false,
+			"cap": 3,
+			"cat": "naval",
+			"cost": 260,
+			"desc": "A steel fishing boat with a twin 23 mm cannon welded on the foredeck: shreds helicopters, light boats and anything on the beach.",
+			"displacement": true,
+			"draft": 1.85,
+			"faction": "FIA",
+			"gun_h": 4.6,
+			"hp": 1350.0,
+			"key": "gun_trawler",
+			"mg": "zu23",
+			"name": "Gun Trawler",
+			"pattern": "Converted fishing trawler, ZU-23-2",
+			"role": "Armed trawler",
+			"sight": 85.0,
+			"size": [
+				5.5,
+				6.5,
+				18.0
+			],
+			"speed": 5.0,
+			"team": 1,
+			"tier": 2,
+			"time": 30.0,
+			"turn": 0.75,
+			"weight": 2
+		},
+		"gunship": {
+			"air": true,
+			"armor": 1,
+			"base": "attack_heli",
+			"cannon": false,
+			"cap": 4,
+			"cost": 380,
+			"desc": "Circles its target firing a 30 mm chain gun and rocket salvos. Dreads .50 cals and AA technicals.",
+			"gun_h": 0.8,
+			"hp": 1100.0,
+			"key": "gunship",
+			"mg": "chaingun",
+			"name": "Attack Helicopter",
+			"size": [
+				2.0,
+				2.200000047683716,
+				6.5
+			],
+			"speed": 22.0,
+			"team": 0,
+			"time": 35.0,
+			"turn": 2.2,
+			"weight": 0
+		},
+		"heli": {
+			"air": true,
+			"armor": 1,
+			"auto": true,
+			"base": "lift_heli",
+			"cannon": false,
+			"cap": 0,
+			"cost": 150,
+			"desc": "Keeps flying supply straight to your neediest FOB, ignoring roads. Can be shot down.",
+			"gun_h": 1.0,
+			"hp": 320.0,
+			"key": "heli",
+			"mg": "",
+			"name": "Supply Helicopter",
+			"size": [
+				2.200000047683716,
+				2.0,
+				6.0
+			],
+			"speed": 20.0,
+			"supply": true,
+			"team": 0,
+			"time": 20.0,
+			"turn": 2.5,
+			"weight": 0
+		},
+		"hellcat": {
+			"air": true,
+			"armor": 1,
+			"base": "attack_heli",
+			"cannon": false,
+			"cap": 3,
+			"cat": "air",
+			"cost": 320,
+			"desc": "Wildcat with miniguns and rocket pods: a light gunship for the allied army.",
+			"faction": "AAF",
+			"gun_h": 0.9,
+			"hp": 620.0,
+			"key": "hellcat",
+			"mg": "minigun",
+			"name": "WY-55 Hellcat",
+			"pattern": "AgustaWestland AW159 Wildcat",
+			"rockets": 4,
+			"role": "Armed utility helicopter",
+			"size": [
+				2.0,
+				3.0,
+				13.0
+			],
+			"speed": 22.0,
+			"team": 0,
+			"tier": 2,
+			"time": 30.0,
+			"turn": 2.3,
+			"weight": 0
+		},
+		"hemtt": {
+			"armor": 0,
+			"base": "util",
+			"cannon": false,
+			"cap": 3,
+			"carry": "rifle_squad",
+			"cat": "logistics",
+			"cost": 200,
+			"desc": "Eight-wheeled truck with benches for a full rifle squad.",
+			"faction": "NATO",
+			"gun_h": 2.2,
+			"hp": 420.0,
+			"key": "hemtt",
+			"mg": "",
+			"name": "HEMTT Transport",
+			"pattern": "Oshkosh M977 HEMTT",
+			"role": "Heavy tactical truck",
+			"size": [
+				2.5,
+				3.0,
+				10.0
+			],
+			"speed": 9.0,
+			"team": 0,
+			"tier": 1,
+			"time": 14.0,
+			"turn": 1.6,
+			"weight": 1
+		},
+		"hemtt_ammo": {
+			"armor": 0,
+			"base": "util",
+			"cannon": false,
+			"cap": 2,
+			"cat": "logistics",
+			"cost": 140,
+			"desc": "Rearms troops and vehicles parked within 13 m: magazines, grenades, missiles.",
+			"faction": "NATO",
+			"gun_h": 2.2,
+			"hp": 380.0,
+			"key": "hemtt_ammo",
+			"mg": "",
+			"name": "HEMTT Ammo",
+			"pattern": "Oshkosh M977 HEMTT with crane",
+			"role": "Ammunition truck",
+			"service": "ammo",
+			"size": [
+				2.5,
+				3.0,
+				10.0
+			],
+			"speed": 9.0,
+			"team": 0,
+			"tier": 1,
+			"time": 15.0,
+			"turn": 1.6,
+			"weight": 1
+		},
+		"hemtt_medical": {
+			"armor": 0,
+			"base": "util",
+			"cannon": false,
+			"cap": 2,
+			"cat": "logistics",
+			"cost": 140,
+			"desc": "Treats the wounded within 11 m: patches men up and gets the downed back on their feet.",
+			"faction": "NATO",
+			"gun_h": 2.2,
+			"hp": 400.0,
+			"key": "hemtt_medical",
+			"mg": "",
+			"name": "HEMTT Medical",
+			"pattern": "Oshkosh M977 HEMTT, medical body",
+			"role": "Field ambulance",
+			"service": "medical",
+			"size": [
+				2.5,
+				3.0,
+				10.0
+			],
+			"speed": 9.0,
+			"team": 0,
+			"tier": 1,
+			"time": 15.0,
+			"turn": 1.6,
+			"weight": 1
+		},
+		"hemtt_repair": {
+			"armor": 0,
+			"base": "util",
+			"cannon": false,
+			"cap": 2,
+			"cat": "logistics",
+			"cost": 140,
+			"desc": "Mobile workshop: repairs vehicles within 13 m and fixes thrown tracks.",
+			"faction": "NATO",
+			"gun_h": 2.2,
+			"hp": 420.0,
+			"key": "hemtt_repair",
+			"mg": "",
+			"name": "HEMTT Repair",
+			"pattern": "Oshkosh M977 HEMTT, workshop body",
+			"role": "Repair truck",
+			"service": "repair",
+			"size": [
+				2.5,
+				3.0,
+				10.0
+			],
+			"speed": 9.0,
+			"team": 0,
+			"tier": 1,
+			"time": 15.0,
+			"turn": 1.6,
+			"weight": 1
+		},
+		"hummingbird": {
+			"air": true,
+			"armor": 0,
+			"base": "lift_heli",
+			"cannon": false,
+			"cap": 2,
+			"carry": "mech_team",
+			"cat": "air",
+			"cost": 200,
+			"desc": "Little Bird with outboard benches: drops a fire team anywhere on the map in seconds, then flies home.",
+			"faction": "NATO",
+			"gun_h": 2.2,
+			"hit": 1.3,
+			"hp": 380.0,
+			"key": "hummingbird",
+			"mg": "",
+			"name": "MH-9 Hummingbird",
+			"pattern": "MD 500 / MH-6 Little Bird",
+			"role": "Light transport helicopter",
+			"size": [
+				1.899999976158142,
+				2.4000000953674316,
+				7.0
+			],
+			"speed": 24.0,
+			"team": 0,
+			"tier": 1,
+			"time": 22.0,
+			"turn": 2.8,
+			"weight": 0
+		},
+		"humvee": {
+			"armor": 1,
+			"base": "car",
+			"cannon": false,
+			"cap": 2,
+			"cost": 120,
+			"desc": "Fast armoured car with a roof .50 cal. Scouts, hunts technicals, shreds soft targets.",
+			"gun_h": 2.0,
+			"hp": 460.0,
+			"key": "humvee",
+			"mg": "m2",
+			"name": "Humvee",
+			"size": [
+				2.200000047683716,
+				2.0,
+				4.800000190734863
+			],
+			"speed": 12.0,
+			"team": 0,
+			"time": 15.0,
+			"turn": 1.9,
+			"weight": 0
+		},
+		"hunter": {
+			"armor": 1,
+			"base": "car",
+			"cannon": false,
+			"cap": 2,
+			"carry": "mech_team",
+			"cat": "light",
+			"cost": 165,
+			"desc": "Mine-resistant, ambush-protected. Carries a fire team through small-arms fire and roadside bombs.",
+			"faction": "NATO",
+			"gun_h": 2.2,
+			"hp": 520.0,
+			"key": "hunter",
+			"mg": "",
+			"name": "Hunter",
+			"pattern": "Oshkosh M-ATV",
+			"role": "MRAP",
+			"size": [
+				2.5,
+				2.700000047683716,
+				6.300000190734863
+			],
+			"speed": 11.0,
+			"team": 0,
+			"tier": 1,
+			"time": 15.0,
+			"turn": 1.9,
+			"weight": 0
+		},
+		"hunter_gmg": {
+			"armor": 1,
+			"base": "car",
+			"cannon": false,
+			"cap": 2,
+			"cat": "light",
+			"cost": 150,
+			"desc": "M-ATV with a 40 mm grenade machine gun: lobs high explosive into trenches and behind walls.",
+			"faction": "NATO",
+			"gun_h": 2.9,
+			"hp": 520.0,
+			"key": "hunter_gmg",
+			"mg": "gmg",
+			"name": "Hunter GMG",
+			"pattern": "Oshkosh M-ATV, RCWS 40 mm GMG",
+			"role": "MRAP",
+			"size": [
+				2.5,
+				2.700000047683716,
+				6.300000190734863
+			],
+			"speed": 11.0,
+			"team": 0,
+			"tier": 1,
+			"time": 16.0,
+			"turn": 1.9,
+			"weight": 0
+		},
+		"hunter_hmg": {
+			"armor": 1,
+			"base": "car",
+			"cannon": false,
+			"cap": 2,
+			"cat": "light",
+			"cost": 140,
+			"desc": "M-ATV with a remote .50 cal: scouts, escorts convoys, shreds technicals.",
+			"faction": "NATO",
+			"gun_h": 2.9,
+			"hp": 520.0,
+			"key": "hunter_hmg",
+			"mg": "m2",
+			"name": "Hunter HMG",
+			"pattern": "Oshkosh M-ATV, RCWS .50",
+			"role": "MRAP",
+			"size": [
+				2.5,
+				2.700000047683716,
+				6.300000190734863
+			],
+			"speed": 11.0,
+			"team": 0,
+			"tier": 1,
+			"time": 16.0,
+			"turn": 1.9,
+			"weight": 0
+		},
+		"huron": {
+			"air": true,
+			"armor": 1,
+			"auto": true,
+			"base": "lift_heli",
+			"cannon": false,
+			"cap": 0,
+			"cat": "air",
+			"cost": 220,
+			"desc": "Twin-rotor heavy lifter: flies twice the supply of the light helicopter to your neediest FOB, ignoring roads.",
+			"faction": "NATO",
+			"gun_h": 2.2,
+			"hp": 700.0,
+			"key": "huron",
+			"load": 160,
+			"mg": "",
+			"name": "CH-67 Huron",
+			"pattern": "Stealth CH-47 Chinook",
+			"role": "Heavy transport helicopter",
+			"size": [
+				3.799999952316284,
+				3.5999999046325684,
+				15.899999618530273
+			],
+			"sling": 1,
+			"speed": 18.0,
+			"supply": true,
+			"team": 0,
+			"tier": 1,
+			"time": 26.0,
+			"turn": 1.8,
+			"weight": 0
+		},
+		"ifrit": {
+			"armor": 1,
+			"base": "car",
+			"cannon": false,
+			"cap": 2,
+			"carry": "mech_cell",
+			"cat": "light",
+			"cost": 155,
+			"desc": "Angular armoured car: carries a fighter team through rifle fire.",
+			"faction": "CSAT",
+			"gun_h": 2.2,
+			"hp": 500.0,
+			"key": "ifrit",
+			"mg": "",
+			"name": "Ifrit",
+			"pattern": "ZiL Karatel",
+			"role": "MRAP",
+			"size": [
+				2.4000000953674316,
+				2.5999999046325684,
+				6.300000190734863
+			],
+			"speed": 12.0,
+			"team": 1,
+			"tier": 1,
+			"time": 14.0,
+			"turn": 1.9,
+			"weight": 0
+		},
+		"ifrit_gmg": {
+			"armor": 1,
+			"base": "car",
+			"cannon": false,
+			"cap": 2,
+			"cat": "light",
+			"cost": 145,
+			"desc": "Karatel with a remote grenade machine gun.",
+			"faction": "CSAT",
+			"gun_h": 2.8,
+			"hp": 500.0,
+			"key": "ifrit_gmg",
+			"mg": "gmg",
+			"name": "Ifrit GMG",
+			"pattern": "ZiL Karatel, RCWS 40 mm GMG",
+			"role": "MRAP",
+			"size": [
+				2.4000000953674316,
+				2.799999952316284,
+				6.300000190734863
+			],
+			"speed": 12.0,
+			"team": 1,
+			"tier": 1,
+			"time": 16.0,
+			"turn": 1.9,
+			"weight": 0
+		},
+		"ifrit_hmg": {
+			"armor": 1,
+			"base": "car",
+			"cannon": false,
+			"cap": 2,
+			"cat": "light",
+			"cost": 135,
+			"desc": "Karatel with a remote 12.7 mm.",
+			"faction": "CSAT",
+			"gun_h": 2.8,
+			"hp": 500.0,
+			"key": "ifrit_hmg",
+			"mg": "m2",
+			"name": "Ifrit HMG",
+			"pattern": "ZiL Karatel, RCWS 12.7 mm",
+			"role": "MRAP",
+			"size": [
+				2.4000000953674316,
+				2.799999952316284,
+				6.300000190734863
+			],
+			"speed": 12.0,
+			"team": 1,
+			"tier": 1,
+			"time": 16.0,
+			"turn": 1.9,
+			"weight": 0
+		},
+		"ifv": {
+			"armor": 1,
+			"base": "afv",
+			"cannon": false,
+			"cap": 3,
+			"carry": "mech_team",
+			"cost": 230,
+			"desc": "Tracked infantry fighting vehicle. Carries a fire team into the fight; its 25 mm airburst rounds burst right over trenches.",
+			"gun_h": 2.2,
+			"hp": 820.0,
+			"key": "ifv",
+			"mg": "bushmaster",
+			"name": "IFV",
+			"size": [
+				2.299999952316284,
+				2.5999999046325684,
+				6.0
+			],
+			"speed": 8.5,
+			"team": 0,
+			"time": 26.0,
+			"tracked": true,
+			"turn": 1.4,
+			"weight": 1
+		},
+		"kajman": {
+			"air": true,
+			"armor": 1,
+			"atgm": [
+				8,
+				9.0
+			],
+			"base": "attack_heli",
+			"cannon": false,
+			"cap": 4,
+			"cat": "air",
+			"cost": 420,
+			"desc": "Flying tank: coaxial rotors, a 30 mm chin gun, rocket pods and anti-tank missiles.",
+			"faction": "CSAT",
+			"gun_h": 0.8,
+			"hp": 1250.0,
+			"key": "kajman",
+			"mg": "chaingun",
+			"name": "Mi-48 Kajman",
+			"pattern": "Mi-28 cockpit, Ka-52 rotors, Mi-24 cabin",
+			"rockets": 6,
+			"role": "Heavy attack helicopter",
+			"size": [
+				2.4000000953674316,
+				4.0,
+				16.0
+			],
+			"speed": 21.0,
+			"team": 1,
+			"tier": 2,
+			"time": 38.0,
+			"turn": 2.0,
+			"weight": 0
+		},
+		"kamysh": {
+			"armor": 1,
+			"atgm": [
+				4,
+				11.0
+			],
+			"base": "afv",
+			"cannon": false,
+			"cap": 3,
+			"carry": "mech_cell",
+			"cat": "armour",
+			"cost": 290,
+			"desc": "Tracked heavy IFV: 30 mm cannon, four anti-tank missiles and a fighter team. Fast for its weight.",
+			"faction": "CSAT",
+			"gun_h": 2.2,
+			"hp": 1050.0,
+			"key": "kamysh",
+			"mg": "ac30",
+			"name": "BTR-K Kamysh",
+			"pattern": "BM-2T Stalker with a Samson 30 mm turret",
+			"role": "Heavy infantry fighting vehicle",
+			"size": [
+				3.4000000953674316,
+				2.5,
+				7.800000190734863
+			],
+			"speed": 8.5,
+			"team": 1,
+			"tier": 2,
+			"time": 30.0,
+			"tracked": true,
+			"turn": 1.3,
+			"weight": 1
+		},
+		"kuma": {
+			"armor": 2,
+			"base": "tank",
+			"cannon": true,
+			"cap": 4,
+			"cat": "armour",
+			"cost": 330,
+			"desc": "Leopard 2 with slat and appliqué armour: the fastest tank on the field and a long 120 mm.",
+			"faction": "AAF",
+			"gun": {
+				"at": 335.0,
+				"cd": 5.5,
+				"dmg": 165.0,
+				"radius": 5.5
+			},
+			"gun_h": 2.2,
+			"hp": 1500.0,
+			"key": "kuma",
+			"mg": "coax",
+			"name": "MBT-52 Kuma",
+			"pattern": "Leopard 2 (Revolution urban upgrade)",
+			"role": "Main battle tank",
+			"size": [
+				3.75,
+				2.5999999046325684,
+				7.699999809265137
+			],
+			"speed": 7.0,
+			"team": 0,
+			"tier": 2,
+			"time": 32.0,
+			"tracked": true,
+			"turn": 1.1,
+			"weight": 2
+		},
+		"m900": {
+			"air": true,
+			"armor": 0,
+			"base": "lift_heli",
+			"cannon": false,
+			"cap": 1,
+			"carry": "mech_cell",
+			"cat": "air",
+			"cost": 150,
+			"desc": "A stolen civilian helicopter: four fighters, anywhere, once.",
+			"faction": "Syndikat",
+			"gun_h": 2.2,
+			"hit": 1.3,
+			"hp": 300.0,
+			"key": "m900",
+			"mg": "",
+			"name": "M900",
+			"pattern": "MD 500D",
+			"role": "Light civilian helicopter",
+			"size": [
+				1.899999976158142,
+				2.4000000953674316,
+				7.0
+			],
+			"speed": 23.0,
+			"team": 1,
+			"tier": 1,
+			"time": 18.0,
+			"turn": 2.8,
+			"weight": 0
+		},
+		"marid": {
+			"armor": 1,
+			"base": "afv",
+			"cannon": false,
+			"cap": 3,
+			"carry": "mech_cell",
+			"cat": "armour",
+			"cost": 220,
+			"desc": "Six-wheeled APC with twin remote guns (HMG and GMG): carries a fighter team.",
+			"faction": "CSAT",
+			"gun_h": 2.2,
+			"hp": 760.0,
+			"key": "marid",
+			"mg": "gmg",
+			"name": "MSE-3 Marid",
+			"pattern": "Otokar Arma 6x6",
+			"role": "6x6 APC",
+			"size": [
+				2.700000047683716,
+				2.5999999046325684,
+				6.800000190734863
+			],
+			"speed": 10.5,
+			"team": 1,
+			"tier": 2,
+			"time": 22.0,
+			"turn": 1.6,
+			"weight": 1
+		},
+		"marshall": {
+			"armor": 1,
+			"base": "afv",
+			"cannon": false,
+			"cap": 3,
+			"carry": "mech_team",
+			"cat": "armour",
+			"cost": 270,
+			"desc": "Fast eight-wheeled IFV with a 40 mm cannon. Carries a fire team.",
+			"faction": "NATO",
+			"gun_h": 2.2,
+			"hp": 900.0,
+			"key": "marshall",
+			"mg": "ac40",
+			"name": "AMV-7 Marshall",
+			"pattern": "Patria AMV with a 40 mm turret (Denel Badger)",
+			"role": "8x8 infantry fighting vehicle",
+			"size": [
+				2.799999952316284,
+				3.0,
+				7.699999809265137
+			],
+			"speed": 10.5,
+			"team": 0,
+			"tier": 2,
+			"time": 28.0,
+			"turn": 1.5,
+			"weight": 1
+		},
+		"mb4wd_at": {
+			"armor": 0,
+			"base": "car",
+			"cannon": true,
+			"cap": 1,
+			"cat": "light",
+			"cost": 130,
+			"desc": "Open jeep with a recoilless rifle: shoot and scoot.",
+			"faction": "Syndikat",
+			"gun": {
+				"at": 270.0,
+				"cd": 7.5,
+				"dmg": 110.0,
+				"radius": 4.0,
+				"size": 1.0
+			},
+			"gun_h": 2.2,
+			"hp": 260.0,
+			"key": "mb4wd_at",
+			"mg": "",
+			"name": "MB 4WD AT",
+			"pattern": "Jeep Wrangler with an SPG-9",
+			"role": "Technical",
+			"size": [
+				1.899999976158142,
+				1.899999976158142,
+				4.199999809265137
+			],
+			"speed": 12.5,
+			"team": 1,
+			"tier": 1,
+			"time": 14.0,
+			"turn": 2.2,
+			"weight": 0
+		},
+		"mb4wd_lmg": {
+			"armor": 0,
+			"base": "car",
+			"cannon": false,
+			"cap": 1,
+			"cat": "light",
+			"cost": 90,
+			"desc": "Open jeep with an LMG on the roll bar: a fast raider.",
+			"faction": "Syndikat",
+			"gun_h": 2.2,
+			"hp": 260.0,
+			"key": "mb4wd_lmg",
+			"mg": "lmg",
+			"name": "MB 4WD LMG",
+			"pattern": "Jeep Wrangler with a light machine gun",
+			"role": "Technical",
+			"size": [
+				1.899999976158142,
+				1.899999976158142,
+				4.199999809265137
+			],
+			"speed": 12.5,
+			"team": 1,
+			"tier": 1,
+			"time": 11.0,
+			"turn": 2.2,
+			"weight": 0
+		},
+		"mohawk": {
+			"air": true,
+			"armor": 1,
+			"base": "lift_heli",
+			"cannon": false,
+			"cap": 3,
+			"carry": "rifle_squad",
+			"cat": "air",
+			"cost": 280,
+			"desc": "Three-engined transport: flies a rifle squad in, lands, drops them, flies home - or carries a Humvee, a technical or an APC on its sling.",
+			"faction": "AAF",
+			"gun_h": 2.2,
+			"hp": 680.0,
+			"key": "mohawk",
+			"mg": "",
+			"name": "CH-49 Mohawk",
+			"pattern": "AgustaWestland AW101 Merlin",
+			"role": "Medium transport helicopter",
+			"size": [
+				3.0,
+				3.5999999046325684,
+				19.5
+			],
+			"sling": 1,
+			"speed": 19.0,
+			"team": 0,
+			"tier": 1,
+			"time": 30.0,
+			"turn": 1.9,
+			"weight": 0
+		},
+		"mora": {
+			"armor": 1,
+			"base": "afv",
+			"cannon": false,
+			"cap": 3,
+			"carry": "mech_team",
+			"cat": "armour",
+			"cost": 250,
+			"desc": "Warrior-pattern tracked IFV: 30 mm cannon and a fire team, tougher than the wheeled ones.",
+			"faction": "AAF",
+			"gun_h": 2.2,
+			"hp": 980.0,
+			"key": "mora",
+			"mg": "ac30",
+			"name": "FV-720 Mora",
+			"pattern": "BAE FV510 Warrior",
+			"role": "Tracked infantry fighting vehicle",
+			"size": [
+				3.0,
+				2.799999952316284,
+				6.300000190734863
+			],
+			"speed": 7.5,
+			"team": 0,
+			"tier": 2,
+			"time": 26.0,
+			"tracked": true,
+			"turn": 1.3,
+			"weight": 1
+		},
+		"motorboat": {
+			"armor": 0,
+			"base": "boat",
+			"cannon": false,
+			"cap": 1,
+			"cat": "naval",
+			"cost": 70,
+			"desc": "A stolen pleasure boat with a PKM on the bow rail: four fighters across the river or along the coast.",
+			"draft": 0.35,
+			"faction": "FIA",
+			"gun_h": 1.3,
+			"hp": 200.0,
+			"key": "motorboat",
+			"mg": "lmg",
+			"name": "Armed Motorboat",
+			"pattern": "Open runabout with a PKM",
+			"role": "Speedboat",
+			"seats": 4,
+			"size": [
+				2.299999952316284,
+				1.5,
+				6.0
+			],
+			"speed": 16.0,
+			"team": 1,
+			"tier": 1,
+			"time": 9.0,
+			"turn": 1.8,
+			"weight": 0
+		},
+		"nyx_aa": {
+			"aa": true,
+			"armor": 1,
+			"base": "spaa",
+			"cannon": false,
+			"cap": 2,
+			"cat": "support",
+			"cost": 200,
+			"desc": "Two four-round missile pods: a cheap, quick answer to enemy helicopters.",
+			"faction": "AAF",
+			"gun_h": 2.2,
+			"hit": 1.4,
+			"hp": 520.0,
+			"key": "nyx_aa",
+			"mg": "m2",
+			"name": "AWC 302 Nyx (AA)",
+			"pattern": "Rheinmetall Wiesel AWC with Stinger-class missiles",
+			"role": "Light anti-aircraft vehicle",
+			"sam": [
+				8,
+				5.0
+			],
+			"sight": 70.0,
+			"size": [
+				1.850000023841858,
+				1.899999976158142,
+				3.5999999046325684
+			],
+			"speed": 9.5,
+			"team": 0,
+			"tier": 2,
+			"time": 20.0,
+			"tracked": true,
+			"turn": 2.0,
+			"weight": 0
+		},
+		"nyx_ac": {
+			"armor": 1,
+			"base": "afv",
+			"cannon": false,
+			"cap": 2,
+			"cat": "armour",
+			"cost": 170,
+			"desc": "Tiny tracked carrier with a 20 mm cannon: quick, hard to spot, hits light vehicles hard.",
+			"faction": "AAF",
+			"gun_h": 2.2,
+			"hit": 1.4,
+			"hp": 520.0,
+			"key": "nyx_ac",
+			"mg": "ac20",
+			"name": "AWC 304 Nyx (Autocannon)",
+			"pattern": "Rheinmetall Wiesel AWC, 20 mm",
+			"role": "Light tank / tankette",
+			"size": [
+				1.850000023841858,
+				1.899999976158142,
+				3.5999999046325684
+			],
+			"speed": 9.5,
+			"team": 0,
+			"tier": 2,
+			"time": 18.0,
+			"tracked": true,
+			"turn": 2.0,
+			"weight": 0
+		},
+		"nyx_at": {
+			"armor": 1,
+			"atgm": [
+				6,
+				8.0
+			],
+			"base": "afv",
+			"cannon": false,
+			"cap": 2,
+			"cat": "armour",
+			"cost": 210,
+			"desc": "Wiesel with six fire-and-forget anti-tank missiles and a .50 cal.",
+			"faction": "AAF",
+			"gun_h": 2.2,
+			"hit": 1.4,
+			"hp": 520.0,
+			"key": "nyx_at",
+			"mg": "m2",
+			"name": "AWC 301 Nyx (AT)",
+			"pattern": "Rheinmetall Wiesel AWC with missiles",
+			"role": "Light tank / tankette",
+			"size": [
+				1.850000023841858,
+				1.899999976158142,
+				3.5999999046325684
+			],
+			"speed": 9.5,
+			"team": 0,
+			"tier": 2,
+			"time": 20.0,
+			"tracked": true,
+			"turn": 2.0,
+			"weight": 0
+		},
+		"nyx_recon": {
+			"armor": 1,
+			"base": "car",
+			"cannon": false,
+			"cap": 1,
+			"cat": "light",
+			"cost": 150,
+			"desc": "Unarmed: a compact radar and an extending periscope see 110 m, for your artillery and your tanks.",
+			"faction": "AAF",
+			"gun_h": 2.2,
+			"hit": 1.4,
+			"hp": 500.0,
+			"key": "nyx_recon",
+			"mg": "",
+			"name": "AWC 303 Nyx (Recon)",
+			"pattern": "Rheinmetall Wiesel AWC with radar and periscope",
+			"role": "Reconnaissance vehicle",
+			"sight": 110.0,
+			"size": [
+				1.850000023841858,
+				2.4000000953674316,
+				3.5999999046325684
+			],
+			"speed": 9.5,
+			"symbol": [
+				"armor",
+				"RECCE"
+			],
+			"team": 0,
+			"tier": 2,
+			"time": 16.0,
+			"tracked": true,
+			"turn": 2.0,
+			"weight": 0
+		},
+		"offroad": {
+			"armor": 0,
+			"base": "car",
+			"cannon": false,
+			"cap": 2,
+			"carry": "mech_cell",
+			"cat": "light",
+			"cost": 115,
+			"desc": "A pickup with four fighters in the bed. Fast, cheap, unprotected.",
+			"faction": "FIA",
+			"gun_h": 2.2,
+			"hp": 260.0,
+			"key": "offroad",
+			"mg": "",
+			"name": "Offroad",
+			"pattern": "Mitsubishi L200-style pickup",
+			"role": "Pickup",
+			"size": [
+				1.899999976158142,
+				1.7999999523162842,
+				5.099999904632568
+			],
+			"speed": 12.0,
+			"team": 1,
+			"tier": 1,
+			"time": 9.0,
+			"turn": 2.0,
+			"weight": 0
+		},
+		"offroad_at": {
+			"armor": 0,
+			"base": "car",
+			"cannon": true,
+			"cap": 2,
+			"cat": "light",
+			"cost": 140,
+			"desc": "SPG-9 recoilless rifle in the bed: a cheap tank killer that can't take a hit.",
+			"faction": "FIA",
+			"gun": {
+				"at": 270.0,
+				"cd": 7.5,
+				"dmg": 110.0,
+				"radius": 4.0,
+				"size": 1.0
+			},
+			"gun_h": 2.1,
+			"hp": 300.0,
+			"key": "offroad_at",
+			"mg": "",
+			"name": "Offroad AT",
+			"pattern": "Pickup with an SPG-9 recoilless rifle",
+			"role": "Technical",
+			"size": [
+				1.899999976158142,
+				1.899999976158142,
+				5.099999904632568
+			],
+			"speed": 11.0,
+			"team": 1,
+			"tier": 1,
+			"time": 15.0,
+			"turn": 1.8,
+			"weight": 0
+		},
+		"offroad_hmg": {
+			"armor": 0,
+			"base": "car",
+			"cannon": false,
+			"cap": 2,
+			"cat": "light",
+			"cost": 125,
+			"desc": "The guerrilla's workhorse: a .50 cal on a pedestal in a pickup bed.",
+			"faction": "FIA",
+			"gun_h": 2.1,
+			"hp": 340.0,
+			"key": "offroad_hmg",
+			"mg": "m2",
+			"name": "Offroad HMG",
+			"pattern": "Pickup with an M2 .50 in the bed",
+			"role": "Technical",
+			"size": [
+				1.899999976158142,
+				1.899999976158142,
+				5.099999904632568
+			],
+			"speed": 11.5,
+			"team": 1,
+			"tier": 1,
+			"time": 15.0,
+			"turn": 1.8,
+			"weight": 0
+		},
+		"offroad_repair": {
+			"armor": 0,
+			"base": "util",
+			"cannon": false,
+			"cap": 1,
+			"cat": "logistics",
+			"cost": 90,
+			"desc": "Tools and spares: repairs vehicles within 13 m.",
+			"faction": "FIA",
+			"gun_h": 2.2,
+			"hp": 260.0,
+			"key": "offroad_repair",
+			"mg": "",
+			"name": "Offroad Repair",
+			"pattern": "Pickup with a workshop",
+			"role": "Repair pickup",
+			"service": "repair",
+			"size": [
+				1.899999976158142,
+				1.899999976158142,
+				5.099999904632568
+			],
+			"speed": 12.0,
+			"team": 1,
+			"tier": 1,
+			"time": 12.0,
+			"turn": 2.0,
+			"weight": 0
+		},
+		"old_tank": {
+			"armor": 2,
+			"base": "tank",
+			"cannon": true,
+			"cap": 4,
+			"cost": 240,
+			"desc": "Smashes walls. Small arms bounce off.",
+			"gun_h": 2.2,
+			"hp": 1000.0,
+			"key": "old_tank",
+			"mg": "coax",
+			"name": "Old Tank",
+			"size": [
+				3.4000000953674316,
+				2.200000047683716,
+				6.400000095367432
+			],
+			"speed": 5.5,
+			"team": 1,
+			"time": 28.0,
+			"tracked": true,
+			"turn": 0.9,
+			"weight": 2
+		},
+		"orca": {
+			"air": true,
+			"armor": 0,
+			"base": "lift_heli",
+			"cannon": false,
+			"cap": 2,
+			"carry": "fighter_cell",
+			"cat": "air",
+			"cost": 260,
+			"desc": "Fast utility helicopter: flies a fighter cell anywhere on the map and drops them.",
+			"faction": "CSAT",
+			"gun_h": 2.2,
+			"hp": 520.0,
+			"key": "orca",
+			"mg": "",
+			"name": "PO-30 Orca",
+			"pattern": "Kamov Ka-60 Kasatka",
+			"role": "Light utility helicopter",
+			"size": [
+				2.200000047683716,
+				3.4000000953674316,
+				13.5
+			],
+			"sling": 0,
+			"speed": 22.0,
+			"team": 1,
+			"tier": 1,
+			"time": 26.0,
+			"turn": 2.4,
+			"weight": 0
+		},
+		"orca_armed": {
+			"air": true,
+			"armor": 0,
+			"base": "attack_heli",
+			"cannon": false,
+			"cap": 3,
+			"cat": "air",
+			"cost": 320,
+			"desc": "Ka-60 with a minigun and rocket pods: a light gunship.",
+			"faction": "CSAT",
+			"gun_h": 0.9,
+			"hp": 560.0,
+			"key": "orca_armed",
+			"mg": "minigun",
+			"name": "PO-30 Orca (Armed)",
+			"pattern": "Kamov Ka-60 with a minigun and rockets",
+			"rockets": 4,
+			"role": "Armed utility helicopter",
+			"size": [
+				2.200000047683716,
+				3.4000000953674316,
+				13.5
+			],
+			"speed": 22.0,
+			"team": 1,
+			"tier": 2,
+			"time": 30.0,
+			"turn": 2.4,
+			"weight": 0
+		},
+		"panther": {
+			"armor": 2,
+			"base": "afv",
+			"cannon": false,
+			"cap": 3,
+			"carry": "rifle_squad",
+			"cat": "armour",
+			"cost": 260,
+			"desc": "Tank-hull APC with tank armour: a whole rifle squad and a remote GMG/HMG. The safest ride on the field.",
+			"faction": "NATO",
+			"gun_h": 2.2,
+			"hp": 1250.0,
+			"key": "panther",
+			"mg": "gmg",
+			"name": "IFV-6c Panther",
+			"pattern": "IMI Namer",
+			"role": "Heavy APC",
+			"size": [
+				3.5999999046325684,
+				2.700000047683716,
+				7.599999904632568
+			],
+			"speed": 6.5,
+			"team": 0,
+			"tier": 2,
+			"time": 26.0,
+			"tracked": true,
+			"turn": 1.2,
+			"weight": 2
+		},
+		"patrol_ship": {
+			"armor": 1,
+			"base": "boat",
+			"cannon": false,
+			"cap": 4,
+			"cat": "naval",
+			"cost": 340,
+			"desc": "Twenty-five metres of aluminium hull and a stabilised 25 mm cannon: owns the coast, shoots up anything on the shore.",
+			"draft": 1.1,
+			"faction": "US Navy",
+			"gun_h": 3.0,
+			"hp": 1700.0,
+			"key": "patrol_ship",
+			"mg": "bushmaster",
+			"name": "Patrol Ship",
+			"pattern": "Mk VI Patrol Boat",
+			"role": "Patrol boat",
+			"sight": 95.0,
+			"size": [
+				6.0,
+				6.5,
+				25.0
+			],
+			"speed": 13.5,
+			"team": 0,
+			"tier": 2,
+			"time": 32.0,
+			"turn": 0.9,
+			"weight": 2
+		},
+		"pawnee": {
+			"air": true,
+			"armor": 0,
+			"base": "attack_heli",
+			"cannon": false,
+			"cap": 3,
+			"cat": "air",
+			"cost": 260,
+			"desc": "Little Bird with two miniguns and rocket pods: fast, nimble and fragile.",
+			"faction": "NATO",
+			"gun_h": 0.9,
+			"hit": 1.3,
+			"hp": 420.0,
+			"key": "pawnee",
+			"mg": "minigun",
+			"name": "AH-9 Pawnee",
+			"pattern": "MD 500 / AH-6 Little Bird",
+			"rockets": 2,
+			"role": "Light attack helicopter",
+			"size": [
+				1.899999976158142,
+				2.4000000953674316,
+				7.0
+			],
+			"speed": 24.0,
+			"team": 0,
+			"tier": 2,
+			"time": 26.0,
+			"turn": 2.8,
+			"weight": 0
+		},
+		"prowler": {
+			"armor": 0,
+			"base": "car",
+			"cannon": false,
+			"cap": 2,
+			"carry": "mech_team",
+			"cat": "light",
+			"cost": 140,
+			"desc": "Open-topped and very fast: gets a fire team somewhere in a hurry. Nothing stops a bullet.",
+			"faction": "NATO",
+			"gun_h": 2.2,
+			"hp": 300.0,
+			"key": "prowler",
+			"mg": "",
+			"name": "Prowler",
+			"pattern": "Polaris DAGOR",
+			"role": "Light strike vehicle",
+			"sight": 60.0,
+			"size": [
+				1.899999976158142,
+				1.850000023841858,
+				4.5
+			],
+			"speed": 13.5,
+			"team": 0,
+			"tier": 1,
+			"time": 11.0,
+			"turn": 2.3,
+			"weight": 0
+		},
+		"prowler_at": {
+			"armor": 0,
+			"atgm": [
+				6,
+				9.0
+			],
+			"base": "car",
+			"cannon": false,
+			"cap": 2,
+			"cat": "light",
+			"cost": 160,
+			"desc": "Tank hunter: a Titan launcher on the roll cage, six missiles.",
+			"faction": "NATO",
+			"gun_h": 2.4,
+			"hp": 300.0,
+			"key": "prowler_at",
+			"mg": "mmg",
+			"name": "Prowler AT",
+			"pattern": "Polaris DAGOR with Titan launcher",
+			"role": "Light strike vehicle",
+			"size": [
+				1.899999976158142,
+				1.850000023841858,
+				4.5
+			],
+			"speed": 13.5,
+			"team": 0,
+			"tier": 2,
+			"time": 15.0,
+			"turn": 2.3,
+			"weight": 0
+		},
+		"prowler_hmg": {
+			"armor": 0,
+			"base": "car",
+			"cannon": false,
+			"cap": 2,
+			"cat": "light",
+			"cost": 110,
+			"desc": "Fast raider with a .50 cal on the roll cage.",
+			"faction": "NATO",
+			"gun_h": 2.4,
+			"hp": 300.0,
+			"key": "prowler_hmg",
+			"mg": "m2",
+			"name": "Prowler HMG",
+			"pattern": "Polaris DAGOR with Mk30 .50",
+			"role": "Light strike vehicle",
+			"sight": 60.0,
+			"size": [
+				1.899999976158142,
+				1.850000023841858,
+				4.5
+			],
+			"speed": 13.5,
+			"team": 0,
+			"tier": 1,
+			"time": 12.0,
+			"turn": 2.3,
+			"weight": 0
+		},
+		"qilin": {
+			"armor": 0,
+			"base": "car",
+			"cannon": false,
+			"cap": 2,
+			"carry": "mech_cell",
+			"cat": "light",
+			"cost": 130,
+			"desc": "Open light strike vehicle: a fighter team, fast.",
+			"faction": "CSAT",
+			"gun_h": 2.2,
+			"hp": 290.0,
+			"key": "qilin",
+			"mg": "",
+			"name": "Qilin",
+			"pattern": "ST Kinetics LSV Mk II",
+			"role": "Light strike vehicle",
+			"size": [
+				2.0999999046325684,
+				1.7999999523162842,
+				4.900000095367432
+			],
+			"speed": 13.0,
+			"team": 1,
+			"tier": 1,
+			"time": 11.0,
+			"turn": 2.3,
+			"weight": 0
+		},
+		"qilin_at": {
+			"armor": 0,
+			"atgm": [
+				6,
+				9.0
+			],
+			"base": "car",
+			"cannon": false,
+			"cap": 2,
+			"cat": "light",
+			"cost": 160,
+			"desc": "LSV with a Vorona missile launcher: hit-and-run against armour.",
+			"faction": "CSAT",
+			"gun_h": 2.3,
+			"hp": 290.0,
+			"key": "qilin_at",
+			"mg": "",
+			"name": "Qilin AT",
+			"pattern": "ST Kinetics LSV Mk II with Vorona missiles",
+			"role": "Light strike vehicle",
+			"size": [
+				2.0999999046325684,
+				1.899999976158142,
+				4.900000095367432
+			],
+			"speed": 13.0,
+			"team": 1,
+			"tier": 2,
+			"time": 15.0,
+			"turn": 2.3,
+			"weight": 0
+		},
+		"qilin_mg": {
+			"armor": 0,
+			"base": "car",
+			"cannon": false,
+			"cap": 2,
+			"cat": "light",
+			"cost": 115,
+			"desc": "LSV with a 6.5 mm minigun on the cage: a wall of bullets.",
+			"faction": "CSAT",
+			"gun_h": 2.3,
+			"hp": 290.0,
+			"key": "qilin_mg",
+			"mg": "minigun",
+			"name": "Qilin Minigun",
+			"pattern": "ST Kinetics LSV Mk II with a minigun",
+			"role": "Light strike vehicle",
+			"size": [
+				2.0999999046325684,
+				1.899999976158142,
+				4.900000095367432
+			],
+			"speed": 13.0,
+			"team": 1,
+			"tier": 1,
+			"time": 12.0,
+			"turn": 2.3,
+			"weight": 0
+		},
+		"quadbike": {
+			"armor": 0,
+			"base": "car",
+			"cannon": false,
+			"cap": 1,
+			"cat": "light",
+			"cost": 35,
+			"desc": "A scout on a quad: quick and quiet, gone at the first burst.",
+			"faction": "FIA",
+			"gun_h": 2.2,
+			"hit": 1.0,
+			"hp": 140.0,
+			"key": "quadbike",
+			"mg": "",
+			"name": "Quadbike",
+			"pattern": "Yamaha Grizzly ATV",
+			"role": "All-terrain vehicle",
+			"sight": 65.0,
+			"size": [
+				1.2000000476837158,
+				1.2000000476837158,
+				2.0
+			],
+			"speed": 10.0,
+			"team": 1,
+			"tier": 1,
+			"time": 6.0,
+			"turn": 2.6,
+			"weight": 0
+		},
+		"rhib": {
+			"armor": 0,
+			"base": "boat",
+			"cannon": false,
+			"cap": 1,
+			"cat": "naval",
+			"cost": 90,
+			"desc": "Fast, open and unarmed: six men up the river or along the coast, landed on any beach or bank.",
+			"draft": 0.35,
+			"faction": "NATO",
+			"gun_h": 2.2,
+			"hp": 260.0,
+			"key": "rhib",
+			"mg": "",
+			"name": "RHIB",
+			"pattern": "Centre-console RHIB",
+			"role": "Rigid-hulled inflatable",
+			"seats": 6,
+			"size": [
+				2.5999999046325684,
+				1.600000023841858,
+				7.800000190734863
+			],
+			"speed": 18.0,
+			"team": 0,
+			"tier": 1,
+			"time": 10.0,
+			"turn": 1.7,
+			"weight": 0
+		},
+		"rhino": {
+			"armor": 1,
+			"base": "tank",
+			"cannon": true,
+			"cap": 3,
+			"cat": "armour",
+			"cost": 290,
+			"desc": "A tank's gun on eight wheels: hits like an MBT, moves like an APC, armoured like one too.",
+			"faction": "NATO",
+			"gun": {
+				"at": 300.0,
+				"cd": 6.0,
+				"dmg": 150.0,
+				"radius": 5.0
+			},
+			"gun_h": 2.2,
+			"hp": 950.0,
+			"key": "rhino",
+			"mg": "coax",
+			"name": "Rhino MGS",
+			"pattern": "Rooikat 8x8 with the 120 mm MTTD turret",
+			"role": "Wheeled tank destroyer",
+			"size": [
+				2.9000000953674316,
+				2.799999952316284,
+				7.400000095367432
+			],
+			"speed": 11.0,
+			"team": 0,
+			"tier": 2,
+			"time": 28.0,
+			"turn": 1.4,
+			"weight": 1
+		},
+		"rhino_up": {
+			"armor": 1,
+			"base": "tank",
+			"cannon": true,
+			"cap": 3,
+			"cat": "armour",
+			"cost": 330,
+			"desc": "Urban package: reactive armour and slat cages against RPGs, a remote .50 cal against the men carrying them.",
+			"faction": "NATO",
+			"gun": {
+				"at": 300.0,
+				"cd": 6.0,
+				"dmg": 150.0,
+				"radius": 5.0
+			},
+			"gun_h": 2.2,
+			"hp": 1100.0,
+			"key": "rhino_up",
+			"mg": "m2",
+			"name": "Rhino MGS UP",
+			"pattern": "Rooikat MTTD with ERA, slat cages and an RCWS",
+			"role": "Wheeled tank destroyer, urban",
+			"size": [
+				3.0999999046325684,
+				2.9000000953674316,
+				7.5
+			],
+			"speed": 10.0,
+			"team": 0,
+			"tier": 3,
+			"time": 32.0,
+			"turn": 1.3,
+			"weight": 1
+		},
+		"sandstorm": {
+			"armor": 2,
+			"art": {
+				"cd": 45.0,
+				"gap": 0.45,
+				"lay": 3.5,
+				"max": 250.0,
+				"min": 60.0,
+				"muzzle": 1.0,
+				"salvo": 8,
+				"scatter": 9.0,
+				"shell": "grad"
+			},
+			"base": "arty",
+			"cannon": false,
+			"cap": 4,
+			"cat": "support",
+			"cost": 360,
+			"desc": "Twelve-tube rocket launcher: saturates an area with a ripple of rockets, then a long reload. Select it for fire missions.",
+			"elev": 0.7,
+			"faction": "NATO",
+			"gun_h": 2.2,
+			"hp": 1100.0,
+			"key": "sandstorm",
+			"mg": "",
+			"name": "M5 Sandstorm",
+			"pattern": "Merkava IV hull with an M270 launcher",
+			"role": "Multiple rocket launcher",
+			"size": [
+				3.700000047683716,
+				3.0,
+				7.599999904632568
+			],
+			"speed": 6.0,
+			"team": 0,
+			"tier": 3,
+			"time": 34.0,
+			"tracked": true,
+			"turn": 1.0,
+			"weight": 2
+		},
+		"scorcher": {
+			"armor": 2,
+			"art": {
+				"cd": 22.0,
+				"gap": 2.2,
+				"lay": 3.0,
+				"max": 240.0,
+				"min": 45.0,
+				"muzzle": 6.5,
+				"salvo": 3,
+				"scatter": 3.0,
+				"shell": "arty"
+			},
+			"base": "arty",
+			"cannon": false,
+			"cap": 4,
+			"cat": "support",
+			"cost": 340,
+			"desc": "155 mm self-propelled gun: halts, lays its barrel and drops three heavy shells on anything spotted 45-240 m away. Select it for fire missions.",
+			"elev": 0.75,
+			"faction": "NATO",
+			"gun_h": 2.6,
+			"hp": 1200.0,
+			"key": "scorcher",
+			"mg": "m2",
+			"name": "M4 Scorcher",
+			"pattern": "Merkava IV hull with an M109A7-style 155 mm turret",
+			"role": "Self-propelled howitzer",
+			"size": [
+				3.700000047683716,
+				3.0999999046325684,
+				7.599999904632568
+			],
+			"speed": 6.0,
+			"team": 0,
+			"tier": 3,
+			"time": 34.0,
+			"tracked": true,
+			"turn": 1.0,
+			"weight": 2
+		},
+		"slammer": {
+			"armor": 2,
+			"base": "tank",
+			"cannon": true,
+			"cap": 4,
+			"carry": "mech_team",
+			"cat": "armour",
+			"cost": 340,
+			"desc": "Front-engined MBT with a troop compartment: carries a fire team behind the engine and the 120 mm.",
+			"faction": "NATO",
+			"gun": {
+				"at": 330.0,
+				"cd": 5.5,
+				"dmg": 165.0,
+				"radius": 5.5
+			},
+			"gun_h": 2.2,
+			"hp": 1550.0,
+			"key": "slammer",
+			"mg": "coax",
+			"name": "M2A1 Slammer",
+			"pattern": "Merkava Mk IV",
+			"role": "Main battle tank",
+			"size": [
+				3.700000047683716,
+				2.700000047683716,
+				7.599999904632568
+			],
+			"speed": 6.5,
+			"team": 0,
+			"tier": 2,
+			"time": 32.0,
+			"tracked": true,
+			"turn": 1.1,
+			"weight": 2
+		},
+		"slammer_up": {
+			"armor": 2,
+			"base": "tank",
+			"cannon": true,
+			"cap": 4,
+			"carry": "mech_team",
+			"cat": "armour",
+			"cost": 400,
+			"desc": "Urban package: reactive armour all round and a remote .50 cal.",
+			"faction": "NATO",
+			"gun": {
+				"at": 330.0,
+				"cd": 5.5,
+				"dmg": 165.0,
+				"radius": 5.5
+			},
+			"gun_h": 2.2,
+			"hp": 1750.0,
+			"key": "slammer_up",
+			"mg": "m2",
+			"name": "M2A4 Slammer UP",
+			"pattern": "Merkava Mk IV with reactive armour and an RCWS",
+			"role": "Main battle tank, urban",
+			"size": [
+				3.9000000953674316,
+				2.799999952316284,
+				7.599999904632568
+			],
+			"speed": 6.0,
+			"team": 0,
+			"tier": 3,
+			"time": 36.0,
+			"tracked": true,
+			"turn": 1.0,
+			"weight": 2
+		},
+		"sochor": {
+			"armor": 2,
+			"art": {
+				"cd": 22.0,
+				"gap": 2.2,
+				"lay": 3.0,
+				"max": 240.0,
+				"min": 45.0,
+				"muzzle": 6.5,
+				"salvo": 3,
+				"scatter": 3.5,
+				"shell": "arty"
+			},
+			"base": "arty",
+			"cannon": false,
+			"cap": 4,
+			"cat": "support",
+			"cost": 330,
+			"desc": "Self-propelled howitzer: three heavy shells on anything spotted 45-240 m away. Select it for fire missions.",
+			"elev": 0.75,
+			"faction": "CSAT",
+			"gun_h": 2.6,
+			"hp": 1150.0,
+			"key": "sochor",
+			"mg": "m2",
+			"name": "2S9 Sochor",
+			"pattern": "T-100 hull with a 152 mm turret (2S35-like)",
+			"role": "Self-propelled howitzer",
+			"size": [
+				3.5999999046325684,
+				3.0999999046325684,
+				7.5
+			],
+			"speed": 7.0,
+			"team": 1,
+			"tier": 3,
+			"time": 34.0,
+			"tracked": true,
+			"turn": 1.0,
+			"weight": 2
+		},
+		"speedboat_hmg": {
+			"armor": 1,
+			"base": "boat",
+			"cannon": false,
+			"cap": 2,
+			"cat": "naval",
+			"cost": 200,
+			"desc": "CSAT's riverine craft: 40 mm grenade launcher and a heavy machine gun, room for a squad.",
+			"draft": 0.5,
+			"faction": "CSAT",
+			"gun_h": 1.9,
+			"hp": 560.0,
+			"key": "speedboat_hmg",
+			"mg": "gmg",
+			"name": "Speedboat HMG",
+			"pattern": "Small Unit Riverine Craft (SURC)",
+			"role": "Armed patrol boat",
+			"seats": 6,
+			"size": [
+				3.0,
+				2.4000000953674316,
+				11.800000190734863
+			],
+			"speed": 15.0,
+			"team": 1,
+			"tier": 2,
+			"time": 20.0,
+			"turn": 1.5,
+			"weight": 1
+		},
+		"speedboat_minigun": {
+			"armor": 1,
+			"base": "boat",
+			"cannon": false,
+			"cap": 2,
+			"cat": "naval",
+			"cost": 210,
+			"desc": "Armoured riverine craft: a 40 mm grenade machine gun in the bow and room for a squad - puts men ashore under its own fire.",
+			"draft": 0.5,
+			"faction": "NATO",
+			"gun_h": 1.9,
+			"hp": 560.0,
+			"key": "speedboat_minigun",
+			"mg": "gmg",
+			"name": "Speedboat Minigun",
+			"pattern": "Small Unit Riverine Craft (SURC)",
+			"role": "Armed patrol boat",
+			"seats": 6,
+			"size": [
+				3.0,
+				2.4000000953674316,
+				11.800000190734863
+			],
+			"speed": 15.0,
+			"team": 0,
+			"tier": 2,
+			"time": 20.0,
+			"turn": 1.5,
+			"weight": 1
+		},
+		"stomper": {
+			"armor": 1,
+			"base": "car",
+			"cannon": false,
+			"cap": 1,
+			"cat": "logistics",
+			"cost": 170,
+			"desc": "Six-wheeled robot with a .50 cal and a grenade launcher. Slow, tough, nobody inside to lose.",
+			"faction": "NATO",
+			"gun_h": 1.9,
+			"hit": 1.4,
+			"hp": 420.0,
+			"key": "stomper",
+			"mg": "m2",
+			"name": "UGV Stomper RCWS",
+			"pattern": "NREC Crusher UGCV",
+			"role": "Unmanned ground combat vehicle",
+			"size": [
+				2.5999999046325684,
+				1.600000023841858,
+				5.099999904632568
+			],
+			"speed": 4.5,
+			"symbol": [
+				"motor",
+				"UGV"
+			],
+			"team": 0,
+			"tier": 3,
+			"time": 18.0,
+			"turn": 1.6,
+			"weight": 0
+		},
+		"strider": {
+			"armor": 1,
+			"base": "car",
+			"cannon": false,
+			"cap": 2,
+			"cat": "light",
+			"cost": 110,
+			"desc": "Low, quiet reconnaissance car with a sensor mast: sees far, hard to see.",
+			"faction": "AAF",
+			"gun_h": 2.2,
+			"hp": 460.0,
+			"key": "strider",
+			"mg": "",
+			"name": "Strider",
+			"pattern": "KMW Fennek",
+			"role": "Scout car",
+			"sight": 85.0,
+			"size": [
+				2.549999952316284,
+				2.0,
+				5.599999904632568
+			],
+			"speed": 11.5,
+			"team": 0,
+			"tier": 1,
+			"time": 14.0,
+			"turn": 2.0,
+			"weight": 0
+		},
+		"strider_gmg": {
+			"armor": 1,
+			"base": "car",
+			"cannon": false,
+			"cap": 2,
+			"cat": "light",
+			"cost": 140,
+			"desc": "Fennek scout car with a grenade machine gun.",
+			"faction": "AAF",
+			"gun_h": 2.2,
+			"hp": 460.0,
+			"key": "strider_gmg",
+			"mg": "gmg",
+			"name": "Strider GMG",
+			"pattern": "KMW Fennek, RCWS 40 mm GMG",
+			"role": "Scout car",
+			"sight": 75.0,
+			"size": [
+				2.549999952316284,
+				2.299999952316284,
+				5.599999904632568
+			],
+			"speed": 11.5,
+			"team": 0,
+			"tier": 1,
+			"time": 15.0,
+			"turn": 2.0,
+			"weight": 0
+		},
+		"strider_hmg": {
+			"armor": 1,
+			"base": "car",
+			"cannon": false,
+			"cap": 2,
+			"cat": "light",
+			"cost": 130,
+			"desc": "Fennek scout car with a remote .50 cal.",
+			"faction": "AAF",
+			"gun_h": 2.2,
+			"hp": 460.0,
+			"key": "strider_hmg",
+			"mg": "m2",
+			"name": "Strider HMG",
+			"pattern": "KMW Fennek, RCWS .50",
+			"role": "Scout car",
+			"sight": 75.0,
+			"size": [
+				2.549999952316284,
+				2.299999952316284,
+				5.599999904632568
+			],
+			"speed": 11.5,
+			"team": 0,
+			"tier": 1,
+			"time": 15.0,
+			"turn": 2.0,
+			"weight": 0
+		},
+		"tank": {
+			"armor": 2,
+			"base": "tank",
+			"cannon": true,
+			"cap": 4,
+			"cost": 300,
+			"desc": "Smashes walls. Small arms bounce off.",
+			"gun_h": 2.2,
+			"hp": 1400.0,
+			"key": "tank",
+			"mg": "coax",
+			"name": "Battle Tank",
+			"size": [
+				3.4000000953674316,
+				2.200000047683716,
+				6.400000095367432
+			],
+			"speed": 6.5,
+			"team": 0,
+			"time": 30.0,
+			"tracked": true,
+			"turn": 1.1,
+			"weight": 2
+		},
+		"taru": {
+			"air": true,
+			"armor": 0,
+			"auto": true,
+			"base": "lift_heli",
+			"cannon": false,
+			"cap": 0,
+			"cat": "air",
+			"cost": 200,
+			"desc": "Sky-crane with a cargo pod: flies supply straight to your neediest FOB over cut roads.",
+			"faction": "CSAT",
+			"gun_h": 2.2,
+			"hp": 620.0,
+			"key": "taru",
+			"load": 140,
+			"mg": "",
+			"name": "Mi-290 Taru",
+			"pattern": "CH-54 Tarhe sky-crane with Ka-226 rotors",
+			"role": "Heavy-lift helicopter",
+			"size": [
+				3.0,
+				4.199999809265137,
+				18.0
+			],
+			"sling": 1,
+			"speed": 18.0,
+			"supply": true,
+			"team": 1,
+			"tier": 1,
+			"time": 24.0,
+			"turn": 1.8,
+			"weight": 0
+		},
+		"taru_lift": {
+			"air": true,
+			"armor": 0,
+			"base": "lift_heli",
+			"cannon": false,
+			"cap": 1,
+			"cat": "air",
+			"cost": 230,
+			"desc": "The sky-crane without its pod: picks up a technical, a BTR or an AA truck on its sling and sets it down across the river or behind the enemy's line.",
+			"faction": "CSAT",
+			"gun_h": 2.2,
+			"hp": 620.0,
+			"key": "taru_lift",
+			"mg": "",
+			"model": "taru",
+			"name": "Mi-290 Taru (Lift)",
+			"pattern": "CH-54 Tarhe sky-crane with Ka-226 rotors",
+			"role": "Heavy-lift helicopter",
+			"size": [
+				3.0,
+				4.199999809265137,
+				18.0
+			],
+			"sling": 1,
+			"speed": 18.0,
+			"team": 1,
+			"tier": 1,
+			"time": 26.0,
+			"turn": 1.8,
+			"weight": 0
+		},
+		"tayran": {
+			"air": true,
+			"alt": 18.0,
+			"armor": 0,
+			"base": "uav",
+			"cannon": false,
+			"cap": 1,
+			"cat": "air",
+			"cost": 60,
+			"desc": "CSAT's quadcopter: circles a spot and shows everything within 70 m to your side. Cheap, quiet, easy to shoot down.",
+			"faction": "CSAT",
+			"gun_h": 2.2,
+			"hit": 0.15,
+			"hp": 60.0,
+			"key": "tayran",
+			"mg": "",
+			"model": "darter",
+			"name": "AR-2 Tayran",
+			"orbit": 12.0,
+			"pattern": "Parrot-style quadcopter",
+			"role": "Small reconnaissance drone",
+			"sight": 70.0,
+			"size": [
+				0.8999999761581421,
+				0.4000000059604645,
+				0.8999999761581421
+			],
+			"speed": 11.0,
+			"symbol": [
+				"air",
+				"UAV"
+			],
+			"team": 1,
+			"tier": 1,
+			"time": 9.0,
+			"turn": 3.0,
+			"weight": 0
+		},
+		"technical": {
+			"armor": 0,
+			"base": "car",
+			"cannon": false,
+			"cap": 2,
+			"cost": 130,
+			"desc": "Fast pickup with a heavy machine gun.",
+			"gun_h": 2.0,
+			"hp": 360.0,
+			"key": "technical",
+			"mg": "m2",
+			"name": "Technical",
+			"size": [
+				2.0,
+				1.7999999523162842,
+				4.599999904632568
+			],
+			"speed": 11.0,
+			"team": 1,
+			"time": 16.0,
+			"turn": 1.8,
+			"weight": 0
+		},
+		"tempest": {
+			"armor": 1,
+			"base": "util",
+			"cannon": false,
+			"cap": 3,
+			"carry": "fighter_cell",
+			"cat": "logistics",
+			"cost": 195,
+			"desc": "Armoured six-wheeler: a fighter cell safe from rifle fire on the way in.",
+			"faction": "CSAT",
+			"gun_h": 2.2,
+			"hp": 520.0,
+			"key": "tempest",
+			"mg": "",
+			"name": "Tempest Transport",
+			"pattern": "KamAZ-63968 Typhoon-K",
+			"role": "Armoured truck",
+			"size": [
+				2.549999952316284,
+				3.299999952316284,
+				9.0
+			],
+			"speed": 9.0,
+			"team": 1,
+			"tier": 1,
+			"time": 14.0,
+			"turn": 1.6,
+			"weight": 1
+		},
+		"tempest_ammo": {
+			"armor": 1,
+			"base": "util",
+			"cannon": false,
+			"cap": 2,
+			"cat": "logistics",
+			"cost": 140,
+			"desc": "Armoured ammunition truck: rearms troops and vehicles within 13 m.",
+			"faction": "CSAT",
+			"gun_h": 2.2,
+			"hp": 480.0,
+			"key": "tempest_ammo",
+			"mg": "",
+			"name": "Tempest Ammo",
+			"pattern": "KamAZ-63968 Typhoon-K",
+			"role": "Ammunition truck",
+			"service": "ammo",
+			"size": [
+				2.549999952316284,
+				3.299999952316284,
+				9.0
+			],
+			"speed": 9.0,
+			"team": 1,
+			"tier": 1,
+			"time": 15.0,
+			"turn": 1.6,
+			"weight": 1
+		},
+		"tempest_medical": {
+			"armor": 1,
+			"base": "util",
+			"cannon": false,
+			"cap": 2,
+			"cat": "logistics",
+			"cost": 140,
+			"desc": "Armoured ambulance: treats the wounded within 11 m.",
+			"faction": "CSAT",
+			"gun_h": 2.2,
+			"hp": 480.0,
+			"key": "tempest_medical",
+			"mg": "",
+			"name": "Tempest Medical",
+			"pattern": "KamAZ-63968 Typhoon-K",
+			"role": "Armoured ambulance",
+			"service": "medical",
+			"size": [
+				2.549999952316284,
+				3.299999952316284,
+				9.0
+			],
+			"speed": 9.0,
+			"team": 1,
+			"tier": 1,
+			"time": 15.0,
+			"turn": 1.6,
+			"weight": 1
+		},
+		"tempest_repair": {
+			"armor": 1,
+			"base": "util",
+			"cannon": false,
+			"cap": 2,
+			"cat": "logistics",
+			"cost": 140,
+			"desc": "Armoured workshop: repairs vehicles within 13 m.",
+			"faction": "CSAT",
+			"gun_h": 2.2,
+			"hp": 480.0,
+			"key": "tempest_repair",
+			"mg": "",
+			"name": "Tempest Repair",
+			"pattern": "KamAZ-63968 Typhoon-K",
+			"role": "Armoured repair truck",
+			"service": "repair",
+			"size": [
+				2.549999952316284,
+				3.299999952316284,
+				9.0
+			],
+			"speed": 9.0,
+			"team": 1,
+			"tier": 1,
+			"time": 15.0,
+			"turn": 1.6,
+			"weight": 1
+		},
+		"tigris": {
+			"aa": true,
+			"armor": 1,
+			"base": "spaa",
+			"cannon": false,
+			"cap": 3,
+			"cat": "support",
+			"cost": 270,
+			"desc": "Twin 35 mm and eight missiles under a radar: the end of any helicopter that comes near.",
+			"faction": "CSAT",
+			"gun_h": 2.2,
+			"hp": 900.0,
+			"key": "tigris",
+			"mg": "twin35",
+			"name": "ZSU-39 Tigris",
+			"pattern": "BM-2T Stalker hull with a Marksman twin 35 mm turret",
+			"role": "Self-propelled anti-aircraft gun",
+			"sam": [
+				8,
+				6.0
+			],
+			"sight": 80.0,
+			"size": [
+				3.4000000953674316,
+				3.0999999046325684,
+				7.800000190734863
+			],
+			"speed": 8.5,
+			"team": 1,
+			"tier": 2,
+			"time": 28.0,
+			"tracked": true,
+			"turn": 1.3,
+			"weight": 1
+		},
+		"truck": {
+			"armor": 0,
+			"auto": true,
+			"base": "supply",
+			"cannon": false,
+			"cap": 0,
+			"cost": 0,
+			"desc": "Drives supply down the road.",
+			"gun_h": 2.2,
+			"hp": 240.0,
+			"key": "truck",
+			"mg": "",
+			"name": "Supply Truck",
+			"size": [
+				2.299999952316284,
+				2.5999999046325684,
+				6.0
+			],
+			"speed": 9.0,
+			"team": -1,
+			"time": 0.0,
+			"turn": 2.0,
+			"weight": 1
+		},
+		"van_ambulance": {
+			"armor": 0,
+			"base": "util",
+			"cannon": false,
+			"cap": 1,
+			"cat": "logistics",
+			"cost": 100,
+			"desc": "A van turned ambulance: treats the wounded within 11 m.",
+			"faction": "FIA",
+			"gun_h": 2.2,
+			"hp": 260.0,
+			"key": "van_ambulance",
+			"mg": "",
+			"name": "Van Ambulance",
+			"pattern": "Mercedes-Benz Sprinter",
+			"role": "Ambulance",
+			"service": "medical",
+			"size": [
+				2.0,
+				2.5999999046325684,
+				5.900000095367432
+			],
+			"speed": 10.5,
+			"team": 1,
+			"tier": 1,
+			"time": 13.0,
+			"turn": 1.9,
+			"weight": 1
+		},
+		"van_transport": {
+			"armor": 0,
+			"base": "util",
+			"cannon": false,
+			"cap": 2,
+			"carry": "fighter_cell",
+			"cat": "logistics",
+			"cost": 145,
+			"desc": "Minibus: a fighter cell arrives looking like anybody else's traffic.",
+			"faction": "FIA",
+			"gun_h": 2.2,
+			"hp": 260.0,
+			"key": "van_transport",
+			"mg": "",
+			"name": "Van Transport",
+			"pattern": "Mercedes-Benz Sprinter",
+			"role": "Minibus",
+			"size": [
+				2.0,
+				2.5999999046325684,
+				5.900000095367432
+			],
+			"speed": 10.5,
+			"team": 1,
+			"tier": 1,
+			"time": 11.0,
+			"turn": 1.9,
+			"weight": 1
+		},
+		"varsuk": {
+			"armor": 2,
+			"base": "tank",
+			"cannon": true,
+			"cap": 4,
+			"cat": "armour",
+			"cost": 330,
+			"desc": "125 mm, reactive armour, a big bustle: CSAT's workhorse tank.",
+			"faction": "CSAT",
+			"gun": {
+				"at": 340.0,
+				"cd": 6.0,
+				"dmg": 170.0,
+				"radius": 5.5
+			},
+			"gun_h": 2.2,
+			"hp": 1450.0,
+			"key": "varsuk",
+			"mg": "coax",
+			"name": "T-100 Varsuk",
+			"pattern": "Object 640 'Black Eagle' / T-95 concept",
+			"role": "Main battle tank",
+			"size": [
+				3.5999999046325684,
+				2.5,
+				7.5
+			],
+			"speed": 7.0,
+			"team": 1,
+			"tier": 2,
+			"time": 32.0,
+			"tracked": true,
+			"turn": 1.1,
+			"weight": 2
+		},
+		"zamak": {
+			"armor": 0,
+			"base": "util",
+			"cannon": false,
+			"cap": 3,
+			"carry": "fighter_cell",
+			"cat": "logistics",
+			"cost": 170,
+			"desc": "Six-wheeled army truck under a canvas tilt: a whole fighter cell rides in the back.",
+			"faction": "FIA",
+			"gun_h": 2.2,
+			"hp": 340.0,
+			"key": "zamak",
+			"mg": "",
+			"name": "Zamak Transport",
+			"pattern": "KamAZ-4310 6x6",
+			"role": "Utility truck",
+			"size": [
+				2.5,
+				2.9000000953674316,
+				7.699999809265137
+			],
+			"speed": 8.5,
+			"team": 1,
+			"tier": 1,
+			"time": 14.0,
+			"turn": 1.6,
+			"weight": 1
+		},
+		"zamak_ammo": {
+			"armor": 0,
+			"base": "util",
+			"cannon": false,
+			"cap": 2,
+			"cat": "logistics",
+			"cost": 120,
+			"desc": "Allied ammunition truck: rearms troops and vehicles within 13 m.",
+			"faction": "AAF",
+			"gun_h": 2.2,
+			"hp": 340.0,
+			"key": "zamak_ammo",
+			"mg": "",
+			"name": "Zamak Ammo",
+			"pattern": "KamAZ-4310",
+			"role": "Ammunition truck",
+			"service": "ammo",
+			"size": [
+				2.5,
+				2.9000000953674316,
+				7.699999809265137
+			],
+			"speed": 8.5,
+			"team": 0,
+			"tier": 1,
+			"time": 14.0,
+			"turn": 1.6,
+			"weight": 1
+		},
+		"zamak_medical": {
+			"armor": 0,
+			"base": "util",
+			"cannon": false,
+			"cap": 2,
+			"cat": "logistics",
+			"cost": 130,
+			"desc": "Allied ambulance truck: treats the wounded within 11 m.",
+			"faction": "AAF",
+			"gun_h": 2.2,
+			"hp": 340.0,
+			"key": "zamak_medical",
+			"mg": "",
+			"name": "Zamak Medical",
+			"pattern": "KamAZ-4310 6x6",
+			"role": "Field ambulance",
+			"service": "medical",
+			"size": [
+				2.5,
+				2.9000000953674316,
+				7.699999809265137
+			],
+			"speed": 8.5,
+			"team": 0,
+			"tier": 1,
+			"time": 14.0,
+			"turn": 1.6,
+			"weight": 1
+		},
+		"zamak_mrl": {
+			"armor": 0,
+			"art": {
+				"cd": 42.0,
+				"gap": 0.4,
+				"lay": 3.0,
+				"max": 250.0,
+				"min": 60.0,
+				"muzzle": 1.0,
+				"salvo": 8,
+				"scatter": 10.0,
+				"shell": "grad"
+			},
+			"base": "arty",
+			"cannon": false,
+			"cap": 3,
+			"cat": "support",
+			"cost": 300,
+			"desc": "Captured rocket truck: a ripple of rockets on anything spotted 60-250 m away, then a long reload. Select it for fire missions.",
+			"elev": 0.75,
+			"faction": "FIA",
+			"gun_h": 2.2,
+			"hp": 420.0,
+			"key": "zamak_mrl",
+			"mg": "",
+			"name": "Zamak MRL",
+			"pattern": "KamAZ-4310 with a Thunderbolt-2000 launcher",
+			"role": "Truck-mounted rocket launcher",
+			"size": [
+				2.5,
+				3.0,
+				7.699999809265137
+			],
+			"speed": 8.0,
+			"team": 1,
+			"tier": 3,
+			"time": 30.0,
+			"turn": 1.5,
+			"weight": 1
+		},
+		"zamak_repair": {
+			"armor": 0,
+			"base": "util",
+			"cannon": false,
+			"cap": 2,
+			"cat": "logistics",
+			"cost": 110,
+			"desc": "Workshop truck: repairs vehicles within 13 m.",
+			"faction": "FIA",
+			"gun_h": 2.2,
+			"hp": 340.0,
+			"key": "zamak_repair",
+			"mg": "",
+			"name": "Zamak Repair",
+			"pattern": "KamAZ-4310",
+			"role": "Repair truck",
+			"service": "repair",
+			"size": [
+				2.5,
+				2.9000000953674316,
+				7.699999809265137
+			],
+			"speed": 8.5,
+			"team": 1,
+			"tier": 1,
+			"time": 13.0,
+			"turn": 1.6,
+			"weight": 1
+		}
+	},
+	"version": 1,
+	"weapons": {
+		"ac20": {
+			"acc": 0.55,
+			"ammo": 99999,
+			"ap": true,
+			"burst": [
+				3,
+				6
+			],
+			"dmg": 24.0,
+			"he": 1.2,
+			"interval": 0.12,
+			"key": "ac20",
+			"mag": 160,
+			"name": "20 mm autocannon",
+			"range": 105.0,
+			"reload": 4.0,
+			"snd": "ac",
+			"supp": 34.0
+		},
+		"ac30": {
+			"acc": 0.58,
+			"ammo": 99999,
+			"ap": true,
+			"burst": [
+				3,
+				5
+			],
+			"dmg": 30.0,
+			"he": 2.0,
+			"interval": 0.22,
+			"key": "ac30",
+			"mag": 140,
+			"name": "30 mm CTWS",
+			"range": 115.0,
+			"reload": 4.0,
+			"snd": "ac",
+			"supp": 42.0
+		},
+		"ac40": {
+			"acc": 0.6,
+			"ammo": 99999,
+			"ap": true,
+			"burst": [
+				2,
+				4
+			],
+			"dmg": 38.0,
+			"he": 2.4,
+			"interval": 0.3,
+			"key": "ac40",
+			"mag": 100,
+			"name": "40 mm cannon",
+			"range": 120.0,
+			"reload": 4.0,
+			"snd": "ac",
+			"supp": 46.0
+		},
+		"ak": {
+			"acc": 0.535,
+			"ammo": 210,
+			"burst": [
+				2,
+				5
+			],
+			"dmg": 32.0,
+			"interval": 0.11,
+			"key": "ak",
+			"mag": 30,
+			"name": "AK",
+			"range": 55.0,
+			"reload": 2.4,
+			"snd": "rifle",
+			"supp": 12.0
+		},
+		"bushmaster": {
+			"acc": 0.6,
+			"airburst": true,
+			"ammo": 99999,
+			"ap": true,
+			"burst": [
+				3,
+				6
+			],
+			"dmg": 32.0,
+			"he": 1.9,
+			"interval": 0.28,
+			"key": "bushmaster",
+			"mag": 300,
+			"name": "25 mm Bushmaster",
+			"range": 115.0,
+			"reload": 4.0,
+			"snd": "hmg",
+			"supp": 42.0
+		},
+		"chaingun": {
+			"acc": 0.55,
+			"ammo": 99999,
+			"ap": true,
+			"burst": [
+				5,
+				9
+			],
+			"dmg": 30.0,
+			"he": 2.2,
+			"interval": 0.16,
+			"key": "chaingun",
+			"mag": 300,
+			"name": "30 mm chain gun",
+			"range": 115.0,
+			"reload": 4.0,
+			"snd": "hmg",
+			"supp": 45.0
+		},
+		"coax": {
+			"acc": 0.45,
+			"ammo": 99999,
+			"burst": [
+				5,
+				10
+			],
+			"dmg": 26.0,
+			"interval": 0.08,
+			"key": "coax",
+			"mag": 200,
+			"name": "Coax MG",
+			"range": 70.0,
+			"reload": 3.0,
+			"snd": "mg",
+			"supp": 22.0
+		},
+		"gmg": {
+			"acc": 0.42,
+			"ammo": 99999,
+			"burst": [
+				3,
+				6
+			],
+			"dmg": 20.0,
+			"he": 1.7,
+			"interval": 0.17,
+			"key": "gmg",
+			"mag": 96,
+			"name": "40 mm GMG",
+			"range": 95.0,
+			"reload": 4.0,
+			"snd": "gmg",
+			"supp": 34.0
+		},
+		"hmg": {
+			"acc": 0.45,
+			"ammo": 99999,
+			"burst": [
+				6,
+				14
+			],
+			"dmg": 38.0,
+			"interval": 0.09,
+			"key": "hmg",
+			"mag": 150,
+			"name": "HMG",
+			"range": 82.0,
+			"reload": 4.0,
+			"snd": "mg",
+			"supp": 30.0
+		},
+		"kpvt": {
+			"acc": 0.5,
+			"ammo": 99999,
+			"ap": true,
+			"burst": [
+				4,
+				8
+			],
+			"dmg": 62.0,
+			"interval": 0.14,
+			"key": "kpvt",
+			"mag": 100,
+			"name": "14.5 mm KPVT",
+			"range": 105.0,
+			"reload": 4.0,
+			"snd": "hmg",
+			"supp": 40.0
+		},
+		"lmg": {
+			"acc": 0.42,
+			"ammo": 500,
+			"burst": [
+				6,
+				12
+			],
+			"dmg": 26.0,
+			"interval": 0.075,
+			"key": "lmg",
+			"mag": 100,
+			"name": "LMG",
+			"range": 72.0,
+			"reload": 4.5,
+			"snd": "mg",
+			"supp": 22.0
+		},
+		"m197": {
+			"acc": 0.52,
+			"ammo": 99999,
+			"ap": true,
+			"burst": [
+				5,
+				9
+			],
+			"dmg": 26.0,
+			"he": 1.3,
+			"interval": 0.1,
+			"key": "m197",
+			"mag": 400,
+			"name": "20 mm chin gun",
+			"range": 110.0,
+			"reload": 4.0,
+			"snd": "ac",
+			"supp": 40.0
+		},
+		"m2": {
+			"acc": 0.5,
+			"ammo": 99999,
+			"ap": true,
+			"burst": [
+				4,
+				9
+			],
+			"dmg": 55.0,
+			"interval": 0.12,
+			"key": "m2",
+			"mag": 100,
+			"name": ".50 cal",
+			"range": 100.0,
+			"reload": 4.0,
+			"snd": "hmg",
+			"supp": 38.0
+		},
+		"minigun": {
+			"acc": 0.3,
+			"ammo": 99999,
+			"burst": [
+				14,
+				26
+			],
+			"dmg": 19.0,
+			"interval": 0.035,
+			"key": "minigun",
+			"mag": 2000,
+			"name": "Minigun",
+			"range": 85.0,
+			"reload": 3.0,
+			"snd": "minigun",
+			"supp": 30.0
+		},
+		"mmg": {
+			"acc": 0.45,
+			"ammo": 99999,
+			"burst": [
+				6,
+				12
+			],
+			"dmg": 30.0,
+			"interval": 0.08,
+			"key": "mmg",
+			"mag": 200,
+			"name": "GPMG",
+			"range": 80.0,
+			"reload": 3.5,
+			"snd": "mg",
+			"supp": 26.0
+		},
+		"pistol": {
+			"acc": 0.35,
+			"ammo": 9999,
+			"burst": [
+				1,
+				2
+			],
+			"dmg": 16.0,
+			"interval": 0.45,
+			"key": "pistol",
+			"mag": 12,
+			"name": "Pistol",
+			"range": 25.0,
+			"reload": 1.6,
+			"snd": "pistol",
+			"supp": 4.0
+		},
+		"rifle": {
+			"acc": 0.6,
+			"ammo": 210,
+			"burst": [
+				2,
+				4
+			],
+			"dmg": 30.0,
+			"interval": 0.12,
+			"key": "rifle",
+			"mag": 30,
+			"name": "Rifle",
+			"range": 60.0,
+			"reload": 2.2,
+			"snd": "rifle",
+			"supp": 11.0
+		},
+		"smg": {
+			"acc": 0.55,
+			"ammo": 180,
+			"burst": [
+				3,
+				6
+			],
+			"dmg": 21.0,
+			"interval": 0.08,
+			"key": "smg",
+			"mag": 30,
+			"name": "SMG",
+			"range": 38.0,
+			"reload": 2.0,
+			"snd": "smg",
+			"supp": 8.0
+		},
+		"twin35": {
+			"aa": true,
+			"acc": 0.5,
+			"ammo": 99999,
+			"ap": true,
+			"burst": [
+				8,
+				14
+			],
+			"dmg": 20.0,
+			"he": 1.2,
+			"interval": 0.06,
+			"key": "twin35",
+			"mag": 300,
+			"name": "Twin 35 mm",
+			"range": 130.0,
+			"reload": 4.0,
+			"snd": "ac",
+			"supp": 40.0
+		},
+		"zu23": {
+			"aa": true,
+			"acc": 0.5,
+			"ammo": 99999,
+			"ap": true,
+			"burst": [
+				8,
+				14
+			],
+			"dmg": 15.0,
+			"he": 1.2,
+			"interval": 0.08,
+			"key": "zu23",
+			"mag": 200,
+			"name": "Twin 23 mm",
+			"range": 110.0,
+			"reload": 4.0,
+			"snd": "hmg",
+			"supp": 40.0
+		}
+	}
+}

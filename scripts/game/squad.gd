@@ -765,6 +765,7 @@ func tick(dt: float) -> void:
 			world.stat("plan_squad_lost")
 		for m in members:
 			m.squad = null
+			m.sid = 0
 		members = []
 		plan = null
 		if ambush_plan != null:

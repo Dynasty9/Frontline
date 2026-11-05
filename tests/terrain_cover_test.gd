@@ -26,7 +26,7 @@ func _ready() -> void:
 			world._shash_add(st)
 			terrain.structure_changed(st, true)
 			if kind == "tall_wall" and yaw == 0.0:
-				check(terrain._queue.size() < 600, "A long wall must queue a strip, not its circumscribed square")
+				check(terrain.pending_count() < 600, "A long wall must queue a strip, not its circumscribed square")
 			terrain.tick(1 << 30)
 			verify_reference(terrain, st)
 			world._shash_remove(st)
@@ -53,8 +53,7 @@ func verify_reference(terrain: TerrainMap, st: Structure) -> void:
 			before.append([terrain.cov[i], terrain.cdir[i], terrain.solid[i], terrain.rubble[i], terrain.trench[i]])
 	# Independently queue the whole surrounding square, including every cell
 	# the optimized structure bounds chose not to visit.
-	terrain._queue = cells
-	terrain._qhead = 0
+	terrain.queue_cells(cells)
 	terrain.tick(1 << 30)
 	var mismatches := 0
 	for n in cells.size():

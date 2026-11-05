@@ -24,6 +24,8 @@ func _ready() -> void:
 		var idx := w.terrain.idx_of(s.position)
 		w.terrain.netted[idx] = 1 if i % 9 == 0 else 0
 		w.terrain.trench[idx] = 1 if i % 11 == 0 else 0
+		if w.terrain._native:
+			w.terrain._native_import(PackedInt32Array([idx]))
 	for i in 24:
 		var vehicle := Vehicle.new()
 		vehicle.world = w
@@ -36,6 +38,8 @@ func _ready() -> void:
 		w.entities[vehicle.eid] = vehicle
 		w.add_child(vehicle)
 		w.terrain.netted[w.terrain.idx_of(vehicle.position)] = i % 2
+		if w.terrain._native:
+			w.terrain._native_import(PackedInt32Array([w.terrain.idx_of(vehicle.position)]))
 	var native_search: RefCounted
 	if ClassDB.class_exists("PerceptionSearch"):
 		native_search = ClassDB.instantiate("PerceptionSearch")

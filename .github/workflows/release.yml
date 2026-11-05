@@ -60,7 +60,11 @@ on:
       - export_presets.cfg
       - installer/**
       - native/**
+      - .cargo/**
       - tools/build_native.py
+      - tools/check_windows_imports.py
+      - tools/build_web.py
+      - tools/web/**
       - .github/workflows/release.yml
       - .github/scripts/**
 
@@ -147,7 +151,7 @@ jobs:
     needs: plan
     strategy:
       matrix:
-        os: [ubuntu-latest, windows-latest]
+        os: [ubuntu-latest, windows-latest, macos-latest]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
@@ -159,7 +163,8 @@ jobs:
         with:
           name: native-${{ matrix.os }}
           path: |
-            bin/native/*
+            bin/native/**
+            bin/content.json
             frontline_sim.gdextension
 
   build:
@@ -167,7 +172,7 @@ jobs:
     # after the database, or without it for a pull request's trial export
     if: ${{ !cancelled() && needs.plan.result == 'success' && needs.native.result == 'success' && contains(fromJSON('["success", "skipped"]'), needs.database.result) }}
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 60
     env:
       GODOT_VERSION: 4.7.2
       VERSION: ${{ needs.plan.outputs.version }}
@@ -189,7 +194,7 @@ jobs:
           path: |
             ~/godot
             ~/.local/share/godot/export_templates
-          key: godot-export-${{ env.GODOT_VERSION }}-web-macos
+          key: godot-export-${{ env.GODOT_VERSION }}-web-dlink-macos
 
       - name: Download Godot and export templates
         if: steps.cache-godot.outputs.cache-hit != 'true'
@@ -206,7 +211,7 @@ jobs:
           # browser build is the one without threads, which needs no special
           # headers from whatever serves it; macos.zip holds the Mac app for
           # Apple silicon and Intel alike)
-          unzip -q -j templates.tpz templates/version.txt templates/windows_release_x86_64.exe templates/linux_release.x86_64 templates/macos.zip templates/web_nothreads_release.zip -d "$dest"
+          unzip -q -j templates.tpz templates/version.txt templates/windows_release_x86_64.exe templates/linux_release.x86_64 templates/macos.zip templates/web_dlink_nothreads_release.zip -d "$dest"
           rm godot.zip templates.tpz
           ls -la "$dest"
 
@@ -214,6 +219,16 @@ jobs:
         run: |
           sed -i "s/^config\/version=.*/config\/version=\"$VERSION\"/" project.godot
           grep -n '^config/version=' project.godot
+
+      - name: Build browser simulation and map extension
+        run: |
+          rustup toolchain install 1.94.0 --profile minimal --target wasm32-unknown-unknown
+          rustup toolchain install nightly-2026-01-15 --profile minimal --component rust-src --target wasm32-unknown-emscripten
+          git clone --depth 1 --branch 3.1.74 https://github.com/emscripten-core/emsdk.git "$RUNNER_TEMP/emsdk"
+          "$RUNNER_TEMP/emsdk/emsdk" install 3.1.74
+          "$RUNNER_TEMP/emsdk/emsdk" activate 3.1.74
+          source "$RUNNER_TEMP/emsdk/emsdk_env.sh"
+          python3 tools/build_web.py --godot ~/godot/godot --output build/web
 
       - name: Import and compile every script
         run: |
@@ -229,14 +244,18 @@ jobs:
           mkdir -p build/windows build/linux build/web
           ~/godot/godot --headless --path . --export-release "Windows" build/windows/Frontline.exe 2>&1 | tee export.log
           ~/godot/godot --headless --path . --export-release "Linux" build/linux/Frontline.x86_64 2>&1 | tee -a export.log
-          ~/godot/godot --headless --path . --export-release "Web" build/web/index.html 2>&1 | tee -a export.log
           ~/godot/godot --headless --path . --export-release "macOS" build/Frontline-macos.zip 2>&1 | tee -a export.log
           test -s build/windows/Frontline.exe && test -s build/linux/Frontline.x86_64
           test -s build/web/index.html && test -s build/web/index.wasm && test -s build/web/index.pck
           unzip -l build/Frontline-macos.zip | grep -E ' Frontline\.app/Contents/MacOS/Frontline$'
           unzip -l build/Frontline-macos.zip | grep -E ' Frontline\.app/Contents/Resources/Frontline\.pck$'
+          unzip -l build/Frontline-macos.zip | grep -E ' Frontline\.app/Contents/Helpers/frontline-server$'
           zipinfo build/Frontline-macos.zip Frontline.app/Contents/MacOS/Frontline | grep -E '^-rwx'
+          zipinfo build/Frontline-macos.zip Frontline.app/Contents/Helpers/frontline-server | grep -E '^-rwx'
           test -s build/windows/frontline_sim.dll && test -s build/linux/libfrontline_sim.so
+          cp bin/native/frontline-server.exe build/windows/
+          cp bin/native/frontline-server build/linux/
+          chmod +x build/linux/frontline-server
           chmod +x build/linux/Frontline.x86_64
           for d in windows linux web; do cp LICENSE build/$d/; (cd build/$d && zip -q -9 -r ../Frontline-$d.zip .); done
           zip -q -j build/Frontline-macos.zip LICENSE
@@ -250,6 +269,7 @@ jobs:
           # the licence page shows Windows line endings
           sed 's/$/\r/' LICENSE > "$RUNNER_TEMP/LICENSE.txt"
           makensis -NOCD -V2 -DVERSION="$VERSION" -DVERSION4="${VERSION%%-*}.0" -DNATIVE=build/windows/frontline_sim.dll \
+            -DSERVER=build/windows/frontline-server.exe \
             -DEXE=build/windows/Frontline.exe -DLICENSE="$RUNNER_TEMP/LICENSE.txt" \
             -DOUT=build/Frontline-windows-setup.exe installer/windows.nsi
           ls -la build/Frontline-windows-setup.exe

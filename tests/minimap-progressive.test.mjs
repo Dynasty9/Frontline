@@ -11,3 +11,11 @@ test("minimap staggers expensive layers and keeps camera feedback live", async (
   assert.doesNotMatch(stdout + stderr, /SCRIPT ERROR|Parse Error/);
   assert.match(stdout, /MINIMAP_PROGRESSIVE passed/);
 });
+
+test("minimap dots reuse geometry while preserving selection, visibility and size", async () => {
+  const { stdout, stderr } = await promisify(execFile)(process.env.GODOT || "godot", [
+    "--headless", "--path", ROOT, "res://tests/fixtures/minimap-dots.tscn",
+  ], { timeout: 120_000 });
+  assert.doesNotMatch(stdout + stderr, /SCRIPT ERROR|Parse Error/);
+  assert.match(stdout, /MINIMAP_DOTS passed/);
+});

@@ -124,10 +124,13 @@ func _rebuild_ground_tile(key: Vector2i) -> void:
 		tile = {"body": body, "shape": shape}
 		_ground_tiles[key] = tile
 	var data := PackedFloat32Array()
-	data.resize((GROUND_TILE + 1) * (GROUND_TILE + 1))
-	for z in GROUND_TILE + 1:
-		for x in GROUND_TILE + 1:
-			data[z * (GROUND_TILE + 1) + x] = _height(key.x * GROUND_TILE + x, key.y * GROUND_TILE + z)
+	if world.terrain and world.terrain._native:
+		data = world.terrain._native.collision_heights(Rect2i(key * GROUND_TILE, Vector2i.ONE * (GROUND_TILE + 1)), _mask, TrenchNet.RES, TrenchNet.FLOOR_Y)
+	else:
+		data.resize((GROUND_TILE + 1) * (GROUND_TILE + 1))
+		for z in GROUND_TILE + 1:
+			for x in GROUND_TILE + 1:
+				data[z * (GROUND_TILE + 1) + x] = _height(key.x * GROUND_TILE + x, key.y * GROUND_TILE + z)
 	(tile.shape as HeightMapShape3D).map_data = data
 
 
@@ -158,6 +161,7 @@ func ragdoll(s: Soldier, impulse: Vector3, kind: int) -> void:
 			old.finish()
 	var r := Ragdoll.new()
 	add_child(r)
+	s.model.set_dormant(false)
 	r.setup(s.model, impulse, kind, _mat, L_RAGDOLL, _mask_all())
 	ragdolls.append(r)
 

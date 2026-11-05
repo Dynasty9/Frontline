@@ -1,0 +1,13 @@
+[package]
+name = "frontline_browser"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+frontline_runtime.workspace = true
+frontline_core.workspace = true
+serde_json.workspace = true

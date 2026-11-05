@@ -1,5 +1,14 @@
 extends Node
 
+class PlanProbe extends HudOverlay:
+	var paths := 0
+	func _ground_path(_a: Vector3, _b: Vector3, _col: Color, _alpha: float, _grow: float, _dashed: bool, _width: float, _arrow := true) -> void:
+		paths += 1
+	func _dashed_ring(_c: Vector3, _r: float, _col: Color, _alpha: float) -> void:
+		pass
+	func _tag(_at: Vector2, _text: String, _col: Color, _a: float) -> void:
+		pass
+
 class Overlay extends HudOverlay:
 	var draws := 0
 	func _draw() -> void:
@@ -30,6 +39,11 @@ class HudStub extends Hud:
 		pass
 	func _process(_dt: float) -> void:
 		pass
+
+class Roster extends HudOrbat:
+	var draws := 0
+	func _draw() -> void:
+		draws += 1
 
 func _ready() -> void:
 	var overlay := HudOverlay.new()
@@ -74,6 +88,7 @@ func _ready() -> void:
 	var camera := Camera3D.new()
 	add_child(camera)
 	var refreshed := Overlay.new()
+	refreshed.hud = HudStub.new()
 	add_child(refreshed)
 	refreshed.refresh_for_view(0.0, camera)
 	await get_tree().process_frame
@@ -115,6 +130,7 @@ func _ready() -> void:
 		await get_tree().process_frame
 		await get_tree().process_frame
 	assert(refreshed.draws - before >= 14 and refreshed.draws - before <= 16, "Blast shake must keep the status cadence instead of redrawing every frame")
+	refreshed.hud.free()
 	refreshed.free()
 	var hud := HudStub.new()
 	add_child(hud)
@@ -159,6 +175,17 @@ func _ready() -> void:
 	hud.world = world
 	world.cam = RtsCamera.new()
 	world.cam.cam = camera
+	var plans := PlanProbe.new()
+	plans.hud = hud
+	for frame in 200:
+		plans._clear_placed()
+		var objective := Vector3(frame, 0, 10)
+		var plan := ["assault", objective, objective, objective + Vector3(10, 0, 0)]
+		plans._plan_graphics(plan, 0, 1.0, false)
+		plans._plan_graphics(plan, 0, 1.0, false)
+		assert(plans.paths == frame + 1, "Shared plans draw once per refresh and return on the next refresh")
+		assert(plans._plans_drawn.size() == 1, "Old frame and objective keys must not accumulate during long battles")
+	plans.free()
 	var input := PointerInput.new()
 	input.world = world
 	input.ability = "smoke"
@@ -178,6 +205,27 @@ func _ready() -> void:
 		await get_tree().process_frame
 		assert(pointer.hint_point == input.point, "Ability feedback must follow the pointer each frame")
 	assert(pointer.draws == pointer_before + 8 and cached.draws == before, "Pointer movement must not rebuild the cached army display")
+	var roster := Roster.new()
+	hud.orbat = roster
+	hud.root.add_child(roster)
+	await get_tree().process_frame
+	await get_tree().process_frame
+	before = roster.draws
+	hud.overview_frame = -1
+	hud._refresh_roster(true, true)
+	assert(hud.overview_frame == -1, "A deferred roster does not reserve a drawing frame")
+	await get_tree().process_frame
+	await get_tree().process_frame
+	assert(roster.draws == before and hud._roster_pending, "A routine roster refresh must avoid the overlay's frame")
+	hud._refresh_roster(false, true)
+	assert(hud.overview_frame == Engine.get_process_frames(), "A queued roster redraw reserves its frame")
+	await get_tree().process_frame
+	await get_tree().process_frame
+	assert(roster.draws == before + 1 and not hud._roster_pending, "Camera movement must not delay roster updates beyond one frame")
+	hud._refresh_roster(true, false)
+	await get_tree().process_frame
+	await get_tree().process_frame
+	assert(roster.draws == before + 2, "A free frame should refresh the roster immediately")
 	world.cam.free()
 	input.free()
 	world.free()

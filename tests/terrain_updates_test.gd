@@ -36,7 +36,7 @@ func _ready() -> void:
 	var fx := PhysicsFx.new(world)
 	# Build only the two tiles under test, without starting the game or camera.
 	var crater := Vector3(-MapDims.HALF + 32, 0, -MapDims.HALF + 16)
-	world.terrain._stamp_crater(crater, 2.0)
+	world.terrain.add_crater(crater, 2.0)
 	fx._rebuild_ground_tile(Vector2i.ZERO)
 	fx._rebuild_ground_tile(Vector2i(1, 0))
 	var a: PackedFloat32Array = fx._ground_tiles[Vector2i.ZERO].shape.map_data

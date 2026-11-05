@@ -73,6 +73,14 @@ export const ViewerUnavailable: Story = {
     await expect(canvas.getByRole("button", { name: "Open battlefield" })).toBeDisabled()
   },
 }
+export const SocketRecording: Story = {
+  beforeEach: mockMatchmaker({ health, replays: [{ ...replay, format: 2 }], viewer: true, viewerFormats: [1, 2] }),
+  play: Ready.play,
+}
+export const OutdatedViewer: Story = {
+  beforeEach: mockMatchmaker({ health, replays: [{ ...replay, format: 2 }], viewer: true }),
+  play: ViewerUnavailable.play,
+}
 export const Expired: Story = {
   beforeEach: mockMatchmaker({ health }),
   play: async ({ canvasElement }) => {

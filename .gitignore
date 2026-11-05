@@ -14,5 +14,7 @@ desktop.ini
 .claude/worktrees/
 native/target/
 bin/native/
+bin/web/
+bin/content.json
 frontline_sim.gdextension
 __pycache__/

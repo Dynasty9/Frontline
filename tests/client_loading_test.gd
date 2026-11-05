@@ -2,6 +2,11 @@ extends Node
 
 var failures := 0
 
+class TrackedWildlife extends Wildlife:
+	var ticks := 0
+	func _tick(_dt: float) -> void:
+		ticks += 1
+
 
 func check(ok: bool, message: String) -> void:
 	if not ok:
@@ -10,9 +15,23 @@ func check(ok: bool, message: String) -> void:
 
 
 func _ready() -> void:
+	check_wildlife_threats()
 	var world := World.new()
 	world.srv = false
 	world.has_view = false
+	world.cam = RtsCamera.new()
+	var wildlife := TrackedWildlife.new()
+	wildlife.world = world
+	wildlife.level = 1
+	wildlife._process(0.016)
+	check(wildlife.ticks == 0, "Wildlife must not read terrain while the loading worker replaces it")
+	world.loaded = true
+	wildlife._process(0.016)
+	check(wildlife.ticks == 1, "Wildlife resumes on the completed battlefield")
+	world.loaded = false
+	world.cam.free()
+	world.cam = null
+	wildlife.free()
 	world.terrain = TerrainMap.new(world)
 	var batch := []
 	for id in range(1, 19):
@@ -52,3 +71,50 @@ func _ready() -> void:
 	world.free()
 	print("CLIENT_LOADING_TEST failures=%d" % failures)
 	get_tree().quit(1 if failures else 0)
+
+
+func check_wildlife_threats() -> void:
+	var wildlife := Wildlife.new()
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 92
+	for i in 500:
+		wildlife._add_threat(Vector3(rng.randf_range(-180, 180), rng.randf_range(0, 60), rng.randf_range(-180, 180)), i % 3)
+	check(wildlife._aircraft.size() == 166, "Only aircraft enter the soaring birds' threat list")
+	for query in 300:
+		var point := Vector3(rng.randf_range(-220, 220), 0, rng.randf_range(-220, 220))
+		var man: float = [0.0, 4.5, 16.0, 22.0, 30.0][query % 5]
+		var vehicle: float = [9.0, 12.0, 28.0, 45.0, 60.0][query % 5]
+		var expected := -1
+		var distance := INF
+		for i in wildlife._threats.size():
+			var other: Vector3 = wildlife._threats[i]
+			var d := Vector2(point.x - other.x, point.z - other.z).length_squared()
+			var radius := man if wildlife._big[i] == 0 else vehicle
+			if d < radius * radius and d < distance:
+				expected = i
+				distance = d
+		check(wildlife._threat(point, man, vehicle) == expected, "Indexed wildlife queries must match the nearest visible threat")
+	wildlife.free()
+	wildlife = Wildlife.new()
+	wildlife._add_threat(Vector3(32, 0, -32), 0)
+	wildlife._add_threat(Vector3(-32, 0, -32), 1)
+	check(wildlife._threat(Vector3(0, 0, -32), 33, 33) == 0, "Equal-distance threats retain their scan order across cell boundaries")
+	check(wildlife._threat(Vector3(0, 0, -32), 32, 32) == -1, "The fright radius stays exclusive")
+	check(wildlife._threat(Vector3(0, 0, -32), 0, 33) == 1, "Fish ignore men while still noticing vehicles")
+	var world := World.new()
+	world.view_team = 0
+	wildlife.world = world
+	var soldier := Soldier.new()
+	soldier.world = world
+	soldier.team = 1
+	soldier.vis_mask = 0
+	world.soldiers.append(soldier)
+	wildlife._scan()
+	check(wildlife._threat(Vector3.ZERO, 10, 10) == -1 and wildlife._aircraft.is_empty(), "A fresh scan clears old threats and never reveals a hidden enemy")
+	soldier.vis_mask = 1
+	wildlife._scan()
+	check(wildlife._threat(Vector3.ZERO, 10, 10) == 0, "Visible enemies can frighten wildlife")
+	world.soldiers.clear()
+	soldier.free()
+	wildlife.free()
+	world.free()

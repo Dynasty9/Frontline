@@ -116,6 +116,25 @@ static func glyph_vec(ci: CanvasItem, kind: String, c: Vector2, r: float, col: C
 	var s := r * (0.62 if badge else 0.92)
 	var lw := maxf(1.3, r * 0.17)
 	match kind:
+		"contact_inf", "contact_vehicle":
+			var scale := r / 12.0
+			var hs := (8.0 if kind == "contact_inf" else 10.0) * scale
+			var diamond := PackedVector2Array([c + Vector2(0, -hs), c + Vector2(hs, 0), c + Vector2(0, hs), c + Vector2(-hs, 0), c + Vector2(0, -hs)])
+			ci.draw_polyline(diamond, Color(0, 0, 0, 0.5 * a), 4.0 * scale, true)
+			ci.draw_polyline(diamond, k, 2.0 * scale, true)
+		"intel_inf", "intel_vehicle":
+			var scale := r / (4.0 if kind == "intel_inf" else 5.0)
+			var hs := (2.6 if kind == "intel_inf" else 3.6) * scale
+			var diamond := PackedVector2Array([c + Vector2(0, -hs), c + Vector2(hs, 0), c + Vector2(0, hs), c + Vector2(-hs, 0), c + Vector2(0, -hs)])
+			ci.draw_polyline(diamond, Color(0, 0, 0, 0.55 * a), 2.6 * scale, true)
+			ci.draw_polyline(diamond, k, 1.2 * scale, true)
+		"leader":
+			var scale := r / 6.0
+			for i in 2:
+				var y := -i * 4.0
+				var points := PackedVector2Array([c + Vector2(-5, y + 2.5) * scale, c + Vector2(0, y - 1.0) * scale, c + Vector2(5, y + 2.5) * scale])
+				ci.draw_polyline(points, Color(0, 0, 0, 0.6 * a), 3.4 * scale, true)
+				ci.draw_polyline(points, k, 1.8 * scale, true)
 		"fire":
 			ci.draw_arc(c, s * 0.55, 0.0, TAU, 16, k, lw, true)
 			for d in [Vector2.RIGHT, Vector2.LEFT, Vector2.UP, Vector2.DOWN]:
@@ -271,7 +290,7 @@ const GLYPH_R := 24.0  # badge radius inside its cell
 const NATO_GLYPHS := ["inf", "armor", "mech", "motor", "air"]
 const GLYPH_KINDS := ["fire", "supp", "pinned", "reload", "noammo", "ammo", "grenade", "medic", "wounded", "drag",
 	"build", "gun", "retreat", "move", "assault", "defend", "cover", "hold", "flag", "drone", "melee", "chat",
-	"radio", "eye", "smoke", "tunnel"]
+	"radio", "eye", "smoke", "tunnel", "leader", "intel_inf", "intel_vehicle", "contact_inf", "contact_vehicle"]
 const COLS := 16
 
 static var atlas: Texture2D

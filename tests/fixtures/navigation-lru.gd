@@ -2,7 +2,7 @@ extends Node
 
 class ReferenceNav extends HNav:
 	var _uses := 0
-	func local_grid(ci: int) -> AStarGrid2D:
+	func local_grid(ci: int) -> Object:
 		_uses += 1
 		var e: Variant = _local.get(ci)
 		if e != null:

@@ -1,0 +1,104 @@
+# Numeric contract 4
+
+Version 4 derives the hierarchy's midpoint cost bound from each graph's actual
+minimum weight. Version 3's fixed 0.5 estimate weakened infantry's existing 0.7
+road estimate on the generated map. Averaging the minimum midpoint weight with
+the entrance's minimum weight of 1 preserves shortest costs and never weakens the
+existing estimate. Equally priced routes can change, so older checkpoints must
+not continue under the new tie order. Independent Dijkstra tests check shortest
+costs, and restored graphs reject weights or links that invalidate the bound.
+The previous corpora remain in Git history at `fa99fe8` and `2fec788`.
+
+These are exact byte transcripts, not observer recordings or verified battles.
+`numeric_contract.rs` compares them without tolerances on Windows x64, Linux x64,
+Linux ARM64 and macOS ARM64, in debug and release builds. Failure reports the first
+different byte rather than dumping the fixture.
+
+- `flight.bin`: projectile, drone, guided and support-aircraft checkpoints, support
+  events and RNG cursors over fixed ticks.
+- `fires.bin`: connected ignition, spread, casualties, escape paths, smoke, building
+  destruction and geometry checkpoints with random cursors across resumed updates.
+- `bullet_world.bin`: connected penetration, injuries, vehicle loss, explosive
+  rounds, suppression, sound-report deadlines and shared checkpoints after shots.
+- `infantry_wounded_world.bin`: bleeding, carrier cleanup, cries, connected pistol
+  damage, death credit and crawl routes against resumed world state.
+- `infantry_fight_world.bin`: movement, cover cycles, connected bullet damage,
+  burst recovery, escort fire and downtime through resumed world updates.
+- `infantry_breach_world.bin`: approach movement, door kicks, grenade preparation,
+  retreat, room entry and buddy orders through resumed shared world updates.
+- `infantry_build_world.bin`: construction, repairs, cover/collision completion,
+  battle credit, squad orders and work sounds through resumed shared updates.
+- `infantry_mount_world.bin`: gun claims, tower climbing, mortar orders, anti-tank
+  launches and defensive smoke through resumed shared updates.
+- `infantry_world.bin`: complete soldier ticks, including recovery, interruptions,
+  perception, decisions, combat, treatment and custody through resumed world state.
+- `vehicle_combat_world.bin`: connected vehicle weapons, defensive smoke,
+  artillery missions, resupply and treatment through resumed shared world state.
+- `vehicle_movement_world.bin`: shared target scans, crew withdrawal, driving,
+  infantry shoving and obstacle destruction through resumed world state.
+- `ordnance_world.bin`: shared grenade casualties, smothering, smoke expiry,
+  missile lock loss, support spawns, recon marks and FPV impacts through resumes.
+- `attack_plan_world.bin`: deliberate attacks, reinforcement, smoke and grenade
+  rushes, fallback and consolidation, including exact changes to plan, actor,
+  squad and navigation checkpoints through resumes.
+- `world_routes.bin`: shared soldier/vehicle route completions, queued repairs,
+  cancelled orders and retained navigation/actor state across resumed batches.
+- `structure_collision.bin`: structure collision boxes, rotated parts, construction,
+  movement, door removal and ray results from retained structure state.
+- `structure_birth.bin`: all structure kinds, initialized parts and actor state,
+  connected navigation/cover/collision registration, repairs and destruction.
+- `structure_toss.bin`: blast-driven car/crate movement, landing rejection, spin,
+  actor/random state and shared geometry across resumed tosses and cover repairs.
+- `world_formation.bin`: compact/wide group placement, terrain/anchor cover choices,
+  first-choice ties and occupancy against retained, resumed world geometry.
+- `transport_world.bin`: connected passenger exits, leader replacement and defense
+  or deliberate attacks, including shore landings and resumed routes.
+- `aircraft_world.bin`: connected rotorcraft and UAV updates, sling transitions,
+  troop exits, rocket warnings and supply income across resumed shared state.
+- `boat_world.bin`: connected boat steering, shared combat, recovery and shore
+  unloading, including navigation and shared state through resumed ticks.
+- `truck_world.bin`: deliveries, battle credit, income, captured destinations,
+  blocked roads and replacement timers through resumed shared updates.
+- `vehicle_world.bin`: complete ground-vehicle ticks, shared fire, service, artillery
+  and orphaned sling cargo, with exact resumed world state and random cursors.
+- `squad_movement.bin`: shared movement orders, travel, leader succession, fire-team
+  bounds, recon fire, squad/member state and queued route continuations.
+- `crew_return.bin`: crew order ownership, return routes, survivor removal and FOB
+  supply refunds, including retained wounded and checkpoint continuation.
+- `geometry.bin`: water/carved terrain, craters, rotated geometry and ray hits,
+  spherical interpolation, cover anchors and infantry movement checkpoints.
+- `infantry_weapon.bin`: cover-fire decisions, postures, ammunition and burst
+  recovery, checkpoint state and RNG cursors, including draws between shots and recovery.
+- `infantry_vitals.bin`: suppression, recovery, fatigue, damage outcomes and
+  repeated wounds/revivals, checkpoint state and RNG cursors.
+- `infantry_blast.bin`: shared victim order, shelter, casualties, carrier links,
+  squad reactions, knockback and flinching, including complete component resumes.
+- `structure_damage.bin`: damage and destruction events, remaining and removed
+  actors, shared occupants, mount cleanup, ignition and deferred explosions/rubble.
+- `infantry_spawn.bin`: unit loadouts, upgrades, initial cooldowns, names, squad
+  recruitment and allocation order through resumed births.
+- `vehicle_loss.bin`: ordered passenger injuries, shared squad responses, crew
+  survival/births and wreck placement, with resumed actor state and random draws.
+- `vehicle_loss_world.bin`: connected damage, passenger credit, crew return, truck
+  loss, burning wreck creation and shared world state across resumed fatal hits.
+- `supply_network.bin`: FOB chains, town routes, obstacle clearing, painted roads
+  and shared geometry before and after collision retirement across resumed rebuilds.
+- `world_combat.bin`: connected explosions, damage credit, vehicle and structure
+  losses, supply reroutes, ignition, craters and delayed rubble through restored state.
+
+- `navigation_scene.bin`: overlapping obstacle ownership, terrain and bridge edits,
+  fire costs, pending hierarchy repairs and route continuation across resumes.
+- `world_geometry.bin`: shared structure retirement, cover geometry, tree and net
+  changes, pending cover repairs and collision removal at the tick boundary.
+
+Rust 1.94.0, glam 0.32.1 with `libm`, and libm 0.2.16 with `force-soft-floats`
+define this contract. No fast-math is enabled. Existing component resume tests
+check continuation, and Godot fixtures separately check gameplay compatibility.
+This corpus is a regression gate, not proof for every floating-point input.
+
+To establish a deliberately changed numeric contract, bump `NUMERIC_VERSION`,
+rename this directory and the test's path, review changed gameplay, then generate
+the replacement files with `FL_WRITE_NUMERIC_GOLDENS=1 cargo +1.94.0 test --locked
+--manifest-path native/Cargo.toml -p frontline_core --test numeric_contract`.
+The update mode is forbidden in CI. Never refresh a failed platform's fixture to
+accept a discrepancy: all platforms must compare against the same committed bytes.

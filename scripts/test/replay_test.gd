@@ -2,7 +2,103 @@ extends Node
 var main: Node
 
 func _ready() -> void:
-	_run.call_deferred()
+	if main.args.has("native-replay-test"):
+		_native_run.call_deferred()
+	else:
+		_run.call_deferred()
+
+func _native_wait(condition: Callable, message: String, seconds := 60.0) -> bool:
+	var deadline := Time.get_ticks_msec() + int(seconds * 1000)
+	while not condition.call() and Time.get_ticks_msec() < deadline:
+		await get_tree().process_frame
+	var ok: bool = condition.call()
+	check(ok, message)
+	return ok
+
+func _native_run() -> void:
+	var errors: Array[String] = []
+	Net.net_error.connect(func(message: String): errors.append(message))
+	main.args["record-replay"] = "user://socket-replay-test-%d" % Time.get_ticks_usec()
+	check(LocalServer.launch({"scenario": "stress", "stress_units": 20, "stress_scenery": 0, "stress_mode": "idle", "scenario_player": true, "ai_fill": false, "fixed_seed": 3}, 0) == OK, "starts a recorded local battle")
+	if not await _native_wait(func(): return is_instance_valid(main.world) and main.world.loaded and main.world.time > 1, "local battle loads", 120):
+		TestRun.quit(get_tree())
+		return
+	var live: World = main.world
+	if main.args.has("replay-upload-test"):
+		var listing: Dictionary = await Online._request(HTTPClient.METHOD_POST, "/lobbies", {"port": 7917, "host": "Socket replay test", "name": "Socket broadcast", "in_game": true}, PackedStringArray(), 10, false)
+		check(listing.get("ok", false), "creates the local test broadcast lobby")
+		if listing.get("ok", false):
+			Online.lobby_id = listing.data.id
+			Online._lobby_token = listing.data.token
+	live.send_cmd({"t": "move", "squads": [live.soldiers[0].sid], "pos": live.soldiers[0].position + Vector3(20, 0, 0), "mode": 1})
+	await _native_wait(func(): return live.time >= 4, "the recorded order advances")
+	await _native_wait(func(): return is_instance_valid(LocalServer.broadcast) and LocalServer.broadcast.sequence > 0, "the socket observer publishes a checkpoint")
+	var archive: String = main.args["record-replay"]
+	var path := LocalServer.recording
+	var child := LocalServer.pid
+	var broadcast_ref: WeakRef = weakref(LocalServer.broadcast)
+	LocalServer.stop()
+	await _native_wait(func(): return not OS.is_process_running(child), "recording finishes")
+	if main.args.has("replay-upload-test"):
+		await _native_wait(func():
+			var broadcast: Node = broadcast_ref.get_ref()
+			return broadcast == null or broadcast.uploaded == broadcast.sequence, "the public socket archive uploads completely", 45)
+	var player: Node = main.open_replay(path)
+	if not await _native_wait(func(): return is_instance_valid(player) and player.native_status.get("verified", false), "playback verifies its conclusion", 120):
+		TestRun.quit(get_tree())
+		return
+	check(player.native and not player.native_status.concluded, "an unfinished verified battle is not labeled a victory")
+	check(main.world.settings.replay and not main.world.srv and main.world.local_team == -1, "replay is an observer and cannot award player results")
+	if main.args.has("replay-shot") and DisplayServer.get_name() != "headless":
+		await RenderingServer.frame_post_draw
+		check(get_viewport().get_texture().get_image().save_png(String(main.args["replay-shot"])) == OK, "saves the verified replay view")
+	var final_positions := {}
+	for soldier: Soldier in main.world.soldiers:
+		final_positions[soldier.eid] = soldier.net_pos
+	var duration: float = player.manifest.duration
+	player.seek(0.5)
+	await _native_wait(func(): return is_instance_valid(player) and not player.busy, "rewind rebuilds its battlefield")
+	check(not player.native_status.get("verified", false) and absf(player.position - 0.5) < 0.02, "rewind restores the requested tick without claiming verification")
+	var paused: float = main.world.time
+	var resumed_at := Time.get_ticks_msec() + 400
+	await _native_wait(func(): return Time.get_ticks_msec() >= resumed_at, "pause wait")
+	check(is_equal_approx(main.world.time, paused), "replay remains paused after seeking")
+	player.seek(duration)
+	await _native_wait(func(): return is_instance_valid(player) and not player.busy and player.native_status.get("verified", false), "forward seek independently reaches the same verified end")
+	for soldier: Soldier in main.world.soldiers:
+		check(final_positions.get(soldier.eid) == soldier.net_pos, "seek reproduces soldier %d" % soldier.eid)
+	check(errors.is_empty(), "healthy replay has no network errors")
+	var observer: Node = main.open_replay(archive)
+	if await _native_wait(func(): return is_instance_valid(observer) and not observer.busy, "the socket archive opens", 120):
+		check(not observer.failed and not observer.native and not observer.manifest.get("verified", true), "observer archives remain unverified")
+		if observer.failed or observer.manifest.is_empty():
+			TestRun.quit(get_tree())
+			return
+		observer.speed = 0
+		for target in [float(observer.manifest.duration), 0.0]:
+			await observer.seek(target)
+			check(not observer.failed and not main.world.srv and main.world.local_team == -1, "socket archives seek without simulation authority")
+			var packets: Dictionary = _packet_records(observer.chunk.checkpoint.snapshots)
+			for state: Dictionary in observer.chunk.frames:
+				if float(state.time) <= target:
+					packets.merge(_packet_records(state.snapshots), true)
+			for soldier: Soldier in main.world.soldiers:
+				var buffer := StreamPeerBuffer.new()
+				buffer.data_array = packets[soldier.eid]
+				check(soldier.net_pos.is_equal_approx(Entity.get_v3(buffer)), "observer seek restores the saved soldier position")
+	var tampered := path.trim_suffix(".flrp") + ".tampered.flrp"
+	var data := FileAccess.get_file_as_bytes(path)
+	data[data.size() - 1] ^= 1
+	var file := FileAccess.open(tampered, FileAccess.WRITE)
+	file.store_buffer(data)
+	file.close()
+	main.open_replay(tampered)
+	await _native_wait(func(): return not errors.is_empty(), "tampered recording is rejected in the viewer", 120)
+	check(not errors.is_empty() and "replay input digest differs" in errors.back(), "verification failure names the changed input digest")
+	LocalServer.stop()
+	Engine.time_scale = 1.0
+	print("RUST_REPLAY_TEST failures=%d scripts=%d" % [TestRun.failures, TestRun.script_errors])
+	TestRun.quit(get_tree())
 
 func check(ok: bool, message: String) -> void:
 	if not ok:

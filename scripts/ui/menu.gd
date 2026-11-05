@@ -156,8 +156,7 @@ func _ready() -> void:
 		main_box.add_child(_big("Host a Battle", "Co-op against the AI, versus, or a mission with friends", func(): _open_host({}),
 			func() -> bool: return host_panel.visible))
 		main_box.add_child(_big("Find Match", "Straight into the best open battle, or host one to be found", _find_match))
-	if not OS.has_feature("web"):
-		main_box.add_child(_big("Replays", "Watch a battle saved on this computer", _open_replay))
+	main_box.add_child(_big("Replays", "Watch a battle saved in this browser" if OS.has_feature("web") else "Watch a battle saved on this computer", _open_replay))
 	main_box.add_child(_section("Reference"))
 	main_box.add_child(_big("Field Manual", "Every soldier, weapon, vehicle and work, with its numbers", func(): open_manual(),
 		func() -> bool: return manual != null and manual.visible))
@@ -649,21 +648,8 @@ func _pick_mission(key: String) -> void:
 func _mission_solo() -> void:
 	var m := MissionList.find(_ms_key)
 	ms_panel.visible = false
-	if not OS.has_feature("web"):
-		var local_err := LocalServer.launch({"mission": _ms_key, "ai_fill": true}, int(m.side))
-		status.text = "Starting simulation..." if local_err == OK else "Could not start the mission (error %d)." % local_err
-		return
-	var port := Net.DEFAULT_PORT
-	var err := ERR_CANT_CREATE
-	for i in 5:
-		err = Net.host_game(port + i, int(m.side))
-		if err == OK:
-			break
-	if err != OK:
-		status.text = "Could not start the mission (error %d)." % err
-		return
-	Net.set_setting("mission", _ms_key)
-	Net.start_game()
+	var error := LocalServer.launch({"mission": _ms_key, "ai_fill": true}, int(m.side))
+	status.text = "Starting simulation..." if error == OK else "Could not start the mission (error %d)." % error
 
 
 ## Host the chosen mission for friends: the host setup, on that mission.
@@ -781,39 +767,13 @@ func _on_lobby_updated() -> void:
 
 
 func _single_player(side := 0) -> void:
-	if not OS.has_feature("web"):
-		var local_err := LocalServer.launch({"ai_fill": true, "map_size": _map_size}, side)
-		status.text = "Starting simulation..." if local_err == OK else "Could not start a local game (error %d)." % local_err
-		return
-	var port := Net.DEFAULT_PORT
-	var err := ERR_CANT_CREATE
-	for i in 5:
-		err = Net.host_game(port + i, side)
-		if err == OK:
-			break
-	if err != OK:
-		status.text = "Could not start a local game (error %d)." % err
-		return
-	Net.set_setting("ai_fill", true)
-	Net.start_game()
+	var error := LocalServer.launch({"ai_fill": true, "map_size": _map_size}, side)
+	status.text = "Starting simulation..." if error == OK else "Could not start a local game (error %d)." % error
 
 
 func _observe() -> void:
-	if not OS.has_feature("web"):
-		var local_err := LocalServer.launch({"ai_fill": true, "map_size": _map_size}, -1)
-		status.text = "Starting simulation..." if local_err == OK else "Could not start (error %d)." % local_err
-		return
-	var port := Net.DEFAULT_PORT
-	var err := ERR_CANT_CREATE
-	for i in 5:
-		err = Net.host_game(port + i, -1)
-		if err == OK:
-			break
-	if err != OK:
-		status.text = "Could not start (error %d)." % err
-		return
-	Net.set_setting("ai_fill", true)
-	Net.start_game()
+	var error := LocalServer.launch({"ai_fill": true, "map_size": _map_size}, -1)
+	status.text = "Starting simulation..." if error == OK else "Could not start (error %d)." % error
 
 
 # --- multiplayer -----------------------------------------------------------------------
@@ -2061,11 +2021,15 @@ class StepBar extends Range:
 func _open_replay() -> void:
 	var dialog := FileDialog.new()
 	dialog.title = "Open battle recording"
-	dialog.file_mode = FileDialog.FILE_MODE_OPEN_DIR
+	dialog.file_mode = FileDialog.FILE_MODE_OPEN_ANY
+	dialog.filters = PackedStringArray(["*.flrp; Command recordings", "index.json; Observer recordings"])
 	dialog.access = FileDialog.ACCESS_FILESYSTEM
 	dialog.current_dir = ProjectSettings.globalize_path("user://replays")
 	dialog.dir_selected.connect(func(path: String):
 		get_tree().root.get_node("Main").open_replay(path)
+		dialog.queue_free())
+	dialog.file_selected.connect(func(path: String):
+		get_tree().root.get_node("Main").open_replay(path.get_base_dir() if path.get_file() == "index.json" else path)
 		dialog.queue_free())
 	dialog.canceled.connect(dialog.queue_free)
 	add_child(dialog)

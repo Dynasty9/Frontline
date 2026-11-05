@@ -26,8 +26,12 @@ var download_progress: ProgressBar
 var playback_buttons: Array[BaseButton] = []
 var panel: PanelContainer
 var loading_backdrop: TopoBackdrop
+var native := false
+var native_status := {}
+var _native_speed := -1.0
 
 func _ready() -> void:
+	native = source.to_lower().ends_with(".flrp")
 	layer = 30
 	loading_backdrop = TopoBackdrop.new()
 	add_child(loading_backdrop)
@@ -67,6 +71,8 @@ func _ready() -> void:
 	playing.text = "PAUSE"
 	playing.pressed.connect(func():
 		speed = 1.0 if speed == 0 else 0.0
+		if native and speed > 0 and native_status.get("verified", false):
+			seek(0.0)
 		if speed == 0:
 			follow_live = false
 		playing.text = "PLAY" if speed == 0 else "PAUSE")
@@ -81,8 +87,8 @@ func _ready() -> void:
 		playing.text = "PAUSE")
 	row.add_child(rate)
 	var live := Button.new()
-	live.text = "LATEST"
-	live.pressed.connect(func(): seek(maxf(0.0, float(manifest.get("duration", 0)) - 1.0)))
+	live.text = "END" if native else "LATEST"
+	live.pressed.connect(func(): seek(maxf(0.0, float(manifest.get("duration", 0)) - (0.0 if native else 1.0))))
 	live.pressed.connect(func(): follow_live = true)
 	row.add_child(live)
 	var follow := Button.new()
@@ -117,25 +123,29 @@ func _ready() -> void:
 func fetch_json(path: String) -> Dictionary:
 	if downloaded.has(path):
 		return downloaded[path]
+	var body: PackedByteArray
 	if not source.begins_with("http://") and not source.begins_with("https://"):
 		var file := source.path_join("index.json" if path.is_empty() else path.trim_prefix("/chunks/") + ".json")
 		if not FileAccess.file_exists(file) or FileAccess.get_file_as_bytes(file).size() > 12 * 1024 * 1024:
 			return {}
-		var value = JSON.parse_string(FileAccess.get_file_as_string(file))
-		return value if value is Dictionary else {}
-	var request := HTTPRequest.new()
-	request.timeout = 20
-	request.body_size_limit = 12 * 1024 * 1024
-	add_child(request)
-	if request.request(source + path) != OK:
+		body = FileAccess.get_file_as_bytes(file)
+	else:
+		var request := HTTPRequest.new()
+		request.timeout = 20
+		request.body_size_limit = 12 * 1024 * 1024
+		add_child(request)
+		if request.request(source + path) != OK:
+			request.queue_free()
+			return {}
+		var result: Array = await request.request_completed
 		request.queue_free()
+		if result[0] != HTTPRequest.RESULT_SUCCESS or result[1] != 200:
+			return {}
+		body = result[3]
+	var json := JSON.new()
+	if json.parse(body.get_string_from_utf8()) != OK:
 		return {}
-	var result: Array = await request.request_completed
-	request.queue_free()
-	if result[0] != HTTPRequest.RESULT_SUCCESS or result[1] != 200:
-		return {}
-	var value = JSON.parse_string((result[3] as PackedByteArray).get_string_from_utf8())
-	return value if value is Dictionary else {}
+	return json.data if json.data is Dictionary else {}
 
 func decode(body: Dictionary) -> Dictionary:
 	var size := int(body.get("size", 0))
@@ -147,7 +157,7 @@ func decode(body: Dictionary) -> Dictionary:
 		return {}
 	# Objects are never deserialized: recordings contain only data, not scripts.
 	var value = bytes_to_var(raw)
-	if not value is Dictionary or value.get("format") != 1 or value.get("protocol") != Net.NET_VERSION:
+	if not value is Dictionary or not value.get("format") in [1, 2] or value.get("protocol") != Net.NET_VERSION:
 		return {}
 	if not value.get("checkpoint") is Dictionary or not value.get("frames") is Array or value.frames.size() > 200:
 		return {}
@@ -171,6 +181,23 @@ func _valid_state(state: Dictionary, full: bool) -> bool:
 		return false
 	if full and not _valid_roads(state.get("roads")):
 		return false
+	if state.has("roads") and not _valid_roads(state.roads):
+		return false
+	state["_terrain"] = []
+	if state.has("terrain"):
+		var terrain: Variant = state.terrain
+		if not terrain is Dictionary or not terrain.get("side") in [1024, 2048, 3072] or not terrain.get("tiles") is Array or terrain.tiles.size() > terrain.side * terrain.side / 1024:
+			return false
+		for tile: Variant in terrain.tiles:
+			if not tile is Array or tile.size() != 2 or not tile[0] is int or tile[0] < 36 or tile[0] > 18468 or not tile[1] is PackedByteArray:
+				return false
+			var raw: PackedByteArray = tile[1].decompress(tile[0], FileAccess.COMPRESSION_ZSTD)
+			if raw.size() != tile[0]:
+				return false
+			var decoded := SimulationClient.decode_surface(raw, terrain.side)
+			if decoded.is_empty():
+				return false
+			state._terrain.append(decoded)
 	var records = state.get("entities" if full else "spawn")
 	if not records is Array or records.size() > 100000:
 		return false
@@ -223,6 +250,9 @@ func _valid_state(state: Dictionary, full: bool) -> bool:
 	return true
 
 func _refresh() -> void:
+	if native:
+		seek(0.0)
+		return
 	refreshing = true
 	var next := await fetch_json("")
 	refreshing = false
@@ -230,7 +260,7 @@ func _refresh() -> void:
 	if next.is_empty():
 		label.text = "Recording unavailable. Retrying…"
 		return
-	if next.get("format") != 1 or next.get("protocol") != Net.NET_VERSION or not next.get("chunks") is Array:
+	if (next.get("format") != 1 and next.get("format") != 2) or next.get("protocol") != Net.NET_VERSION or not next.get("chunks") is Array:
 		failed = true
 		label.text = "This recording needs a different version of Frontline."
 		return
@@ -278,6 +308,21 @@ func _download_recording() -> bool:
 	return true
 
 func seek(target: float) -> void:
+	if native:
+		if busy or failed:
+			return
+		busy = true
+		native_status.clear()
+		_native_speed = -1.0
+		label.text = "Replaying to %02d:%02d…" % [int(target) / 60, int(target) % 60]
+		loading_backdrop.show()
+		slider.editable = false
+		var error := LocalServer.play_replay(source, target)
+		if error != OK:
+			busy = false
+			failed = true
+			label.text = "Could not open command recording: " + error_string(error)
+		return
 	if busy or failed or manifest.get("chunks", []).is_empty():
 		return
 	if sequence >= 0:
@@ -303,7 +348,9 @@ func seek(target: float) -> void:
 	# A fresh observer resets transient effects, fog, and entities when rewinding.
 	await main._on_game_start({"replay": true, "map_size": int(map.get("map_size", 1024)), "players": {1: {"team": -1, "name": "Observer"}}})
 	var world: World = main.world
-	world._rpc_join_map(World._pack(map))
+	world.install_join_map(map)
+	world._join_surface = map.get("_surface", PackedFloat32Array())
+	world._join_craters = map.get("_craters", PackedByteArray())
 	world._rpc_spawn(chunk.checkpoint.entities)
 	world._rpc_join_end()
 	while is_instance_valid(world) and not world.loaded:
@@ -323,7 +370,7 @@ func seek(target: float) -> void:
 		if e.net_init:
 			e.position = e.net_pos
 			e.rotation.y = e.net_yaw
-	if world.cam and not world.soldiers.is_empty():
+	if world.cam and not world.soldiers.is_empty() and not main.args.has("focus"):
 		world.cam.focus(world.soldiers[0].position)
 		world.cam.user_moved = false
 		world.director.active = true
@@ -344,9 +391,12 @@ func _apply(state: Dictionary, full: bool, effects: bool) -> void:
 	world.mission_info = state.mission
 	world.winner = int(state.get("winner", -1))
 	world.report = state.get("report", world.report)
+	for tile: Array in state.get("_terrain", []):
+		world.terrain.import_surface(tile[0], tile[1], tile[2], tile[3])
+	if state.has("roads"):
+		world._rpc_roads(state.roads)
 	if full:
 		world.report = state.get("report", {})
-		world._rpc_roads(state.get("roads", map.roads))
 	elif effects:
 		world._rpc_fx(state.fx)
 
@@ -360,6 +410,9 @@ func _layout_controls() -> void:
 
 func _process(dt: float) -> void:
 	_layout_controls()
+	if native:
+		_process_native()
+		return
 	Engine.time_scale = 0.0 if busy or failed else speed
 	if failed or busy:
 		return
@@ -377,6 +430,44 @@ func _process(dt: float) -> void:
 	if not seeking:
 		slider.set_value_no_signal(position)
 	_update_label()
+
+func _process_native() -> void:
+	Engine.time_scale = 1.0 if busy or failed else speed
+	if failed or not LocalServer.connected or not is_instance_valid(main.world):
+		return
+	var world: World = main.world
+	if not world.settings.get("replay", false) or not world.simulation_client:
+		return
+	if speed != _native_speed:
+		LocalServer.set_speed(speed)
+		_native_speed = speed
+	if not world.loaded:
+		return
+	if busy:
+		busy = false
+		loading_backdrop.hide()
+		slider.editable = true
+		if world.cam and world.director and not main.args.has("focus"):
+			world.cam.user_moved = false
+			world.director.active = true
+			world.director._pick_shot()
+	var status: Dictionary = world.simulation_client.playback_info
+	if status.is_empty():
+		status = LocalServer.replay_status
+	if status.is_empty():
+		return
+	native_status = status
+	manifest["duration"] = float(status.duration)
+	position = float(status.position)
+	slider.max_value = maxf(0.1, float(status.duration))
+	if not seeking:
+		slider.set_value_no_signal(position)
+	if status.verified:
+		speed = 0.0
+		playing.text = "PLAY"
+	label.text = "%02d:%02d / %02d:%02d · %s" % [int(position) / 60, int(position) % 60,
+		int(status.duration) / 60, int(status.duration) % 60,
+		("VERIFIED CONCLUSION" if status.concluded else "VERIFIED · battle unfinished") if status.verified else "COMMAND REPLAY · verification pending"]
 
 func _next_chunk() -> void:
 	busy = true
@@ -411,6 +502,10 @@ func _valid_props(kind: String, values: Dictionary, full: bool) -> bool:
 			if toss != null and (not toss is Array or toss.size() != 4 or not toss[0] is Vector3 or not toss[1] is float or not toss[2] is Vector3 or not toss[3] is Vector3):
 				return false
 			continue
+		if schema.has(key) and schema[key] is int and values[key] is float:
+			if not is_finite(values[key]) or absf(values[key]) > 9007199254740991 or values[key] != int(values[key]):
+				return false
+			values[key] = int(values[key])
 		if not schema.has(key) or typeof(values[key]) != typeof(schema[key]):
 			return false
 		if values[key] is Vector3 and (not values[key].is_finite() or values[key].length() > 100000):
@@ -445,7 +540,9 @@ func _valid_fx(event: Variant) -> bool:
 		8: [TYPE_VECTOR3, TYPE_VECTOR3], 9: [TYPE_VECTOR3], 10: [TYPE_VECTOR3, TYPE_FLOAT],
 		11: [TYPE_VECTOR3, TYPE_INT, TYPE_INT], 12: [TYPE_VECTOR3], 13: [TYPE_VECTOR3, TYPE_FLOAT],
 		14: [TYPE_STRING, TYPE_FLOAT], 15: [TYPE_INT, TYPE_VECTOR3, TYPE_INT],
-		16: [TYPE_VECTOR3, TYPE_FLOAT, TYPE_FLOAT], 17: [TYPE_VECTOR3, TYPE_VECTOR3], 18: [TYPE_INT, TYPE_VECTOR3]}
+		16: [TYPE_VECTOR3, TYPE_FLOAT, TYPE_FLOAT], 17: [TYPE_VECTOR3, TYPE_VECTOR3], 18: [TYPE_INT, TYPE_VECTOR3], 19: [TYPE_INT, TYPE_VECTOR3]}
+	if event is Array and not event.is_empty() and event[0] is float and is_finite(event[0]) and event[0] >= 0 and event[0] < 20 and event[0] == int(event[0]):
+		event[0] = int(event[0])
 	if not event is Array or event.is_empty() or not event[0] is int or not FIELDS.has(event[0]):
 		return false
 	var fields: Array = FIELDS[event[0]]
@@ -453,9 +550,15 @@ func _valid_fx(event: Variant) -> bool:
 		return false
 	for i in fields.size():
 		var value = event[i + 1]
+		if fields[i] == TYPE_INT and value is float and is_finite(value) and absf(value) <= 9007199254740991 and value == int(value):
+			value = int(value)
+			event[i + 1] = value
 		if typeof(value) != fields[i] and not (fields[i] == TYPE_FLOAT and value is int):
 			return false
 		if value is Vector3 and (not value.is_finite() or value.length() > 100000):
+			return false
+	for value: Variant in event:
+		if value is float and not is_finite(value):
 			return false
 	return true
 
@@ -493,6 +596,20 @@ func _valid_map(value: Dictionary) -> bool:
 		return false
 	if not value.get("kinds") is PackedByteArray or value.kinds.size() != metres * metres or not _valid_roads(value.get("roads")):
 		return false
+	value["_surface"] = PackedFloat32Array()
+	value["_craters"] = PackedByteArray()
+	if value.has("surface") or value.has("craters"):
+		if not value.get("surface") is PackedByteArray or not value.get("craters") is PackedByteArray:
+			return false
+		var raw: PackedByteArray = value.surface.decompress(metres * metres * 16, FileAccess.COMPRESSION_ZSTD)
+		var craters: PackedByteArray = value.craters.decompress(metres * metres, FileAccess.COMPRESSION_ZSTD)
+		if raw.size() != metres * metres * 16:
+			return false
+		var surface := raw.to_float32_array()
+		if not SimulationClient._valid_surface(value.kinds, craters, surface, metres * metres):
+			return false
+		value._surface = surface
+		value._craters = craters
 	if not value.get("town") is Rect2 or not value.get("decor") is Array or value.decor.size() > 100000 or not value.get("water") is Dictionary:
 		return false
 	for item in value.decor:
