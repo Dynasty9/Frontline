@@ -3563,6 +3563,132 @@
         "compatibility": "Target after with --rendering-method gl_compatibility",
         "command": "godot --main-pack PACK --resolution 1600x900 -- --aivai --seed=3 --offscreen --nohud --set=perf:0 --preset=high --mood=MOOD --focus=FOCUS --zoom=ZOOM --pitch=PITCH --cam-yaw=0.7 --screenshot=OUTPUT --shot-at=2 --quit-after=3"
       }
+    },
+    {
+      "entry": "changelog/unreleased/realism-06-seepage.md",
+      "summary": "Sheltered runoff channels darken and develop a restrained sheen while exposed rock remains dry.",
+      "medium": "still",
+      "stage": "native-media",
+      "rationale": "Isolate the revision from the previous proposal with identical upstream changes, seed and camera.",
+      "source_ref": "codex/realism-06-seepage",
+      "sources": [
+        {
+          "file": "changelog/unreleased/realism-06-seepage/target-before.jpg",
+          "sha256": "4de89d8b0fed535e4c3ef276ebffb714724069d15323faa754de688d081bc5fd",
+          "caption": "target before"
+        },
+        {
+          "file": "changelog/unreleased/realism-06-seepage/target-after.jpg",
+          "sha256": "d9a8aac0c3a1556bf084752e9caf4414901a1838fc6a5b2e21fb58de3248f9c2",
+          "caption": "target after"
+        },
+        {
+          "file": "changelog/unreleased/realism-06-seepage/wide-before.jpg",
+          "sha256": "ed33dd41ff9d56f3c8a9cc098fb841befc710d17f1c6b3f0c4bdff836d64535d",
+          "caption": "wide before"
+        },
+        {
+          "file": "changelog/unreleased/realism-06-seepage/wide-after.jpg",
+          "sha256": "750ca07196a8d76c386f60ba6587662566638f5986b6c0e93dbc9774dc6516f5",
+          "caption": "wide after"
+        },
+        {
+          "file": "changelog/unreleased/realism-06-seepage/target-compat.jpg",
+          "sha256": "3a94430957afdba158f78fc0d52be3fef3dd2cd9b99c1f699b192ab0c63967c6",
+          "caption": "target compat"
+        },
+        {
+          "file": "changelog/unreleased/realism-06-seepage/compare.gif",
+          "sha256": "ca09247d795ca14936020a4479ffb10e4fad19bb27a5dcc398ca5eec97573de7",
+          "caption": "Native frames, separate labels, shared palette, 2.5 seconds each."
+        }
+      ],
+      "output": null,
+      "title": "Give damp cliff streaks a wet surface response",
+      "version": "unreleased",
+      "kind": "improved",
+      "capture": {
+        "before_ref": "a3a630422c93a5c2d7abe491d30712480de42443",
+        "after_ref": "codex/realism-06-seepage",
+        "before_pack": "review-06-before.pck",
+        "after_pack": "review-06-after.pck",
+        "seed": 3,
+        "preset": "high",
+        "mood": "day",
+        "resolution": "1600x900",
+        "focus": "300,300",
+        "zoom": 100,
+        "pitch": -28,
+        "yaw": 0.7,
+        "shot_at": 2,
+        "quit_after": 3,
+        "wide": "focus 0,0; zoom 900; pitch -22; yaw 0.7",
+        "compatibility": "Target after with --rendering-method gl_compatibility",
+        "command": "godot --main-pack PACK --resolution 1600x900 -- --aivai --seed=3 --offscreen --nohud --set=perf:0 --preset=high --mood=MOOD --focus=FOCUS --zoom=ZOOM --pitch=PITCH --cam-yaw=0.7 --screenshot=OUTPUT --shot-at=2 --quit-after=3"
+      }
+    },
+    {
+      "entry": "changelog/unreleased/realism-07-spruce-boughs.md",
+      "summary": "Conifers have broken, asymmetric branch silhouettes that read as trees against rock and snow.",
+      "medium": "still",
+      "stage": "native-media",
+      "rationale": "Isolate the revision from the previous proposal with identical upstream changes, seed and camera.",
+      "source_ref": "codex/realism-07-spruce-boughs",
+      "sources": [
+        {
+          "file": "changelog/unreleased/realism-07-spruce-boughs/target-before.jpg",
+          "sha256": "383f8e4cde0ec32a00011b18cd1a12455b6a99a62e0ebf1912a9df2780262c85",
+          "caption": "target before"
+        },
+        {
+          "file": "changelog/unreleased/realism-07-spruce-boughs/target-after.jpg",
+          "sha256": "fbfb2fc7143b58c281b9c5e12eaaf892ddcc168a4bd10f8b6219897b44a49dd0",
+          "caption": "target after"
+        },
+        {
+          "file": "changelog/unreleased/realism-07-spruce-boughs/wide-before.jpg",
+          "sha256": "0798f6524dd430483865f5456edab1cd912226672ec3ff9352f4de46ff3276ee",
+          "caption": "wide before"
+        },
+        {
+          "file": "changelog/unreleased/realism-07-spruce-boughs/wide-after.jpg",
+          "sha256": "d85f502c6f04ab7a6138c677683ff1689fb2646d204ebe4678fc343c27ffec0d",
+          "caption": "wide after"
+        },
+        {
+          "file": "changelog/unreleased/realism-07-spruce-boughs/target-compat.jpg",
+          "sha256": "9554e0d3488577f17c94b189bf9b2cd3dbb54f3fc897ce23ef7685bcfb52c22c",
+          "caption": "target compat"
+        },
+        {
+          "file": "changelog/unreleased/realism-07-spruce-boughs/compare.gif",
+          "sha256": "cc0076aa01df816da96449a71553a61709c6b67d0ea470e5142d0d22ab887478",
+          "caption": "Native frames, separate labels, shared palette, 2.5 seconds each."
+        }
+      ],
+      "output": null,
+      "title": "Replace cone-like spruce tiers with ragged boughs",
+      "version": "unreleased",
+      "kind": "improved",
+      "capture": {
+        "before_ref": "9192ce6b39842e0dbd0cbd94f191e4e986aecbc6",
+        "after_ref": "codex/realism-07-spruce-boughs",
+        "before_pack": "iterate-07-before.pck",
+        "after_pack": "iterate-07-after.pck",
+        "seed": 3,
+        "preset": "high",
+        "mood": "day",
+        "resolution": "1600x900",
+        "focus": "220,300",
+        "zoom": 80,
+        "pitch": -28,
+        "yaw": 0.7,
+        "shot_at": 2,
+        "quit_after": 3,
+        "wide": "focus 0,0; zoom 900; pitch -22; yaw 0.7",
+        "compatibility": "Target after with --rendering-method gl_compatibility",
+        "command": "godot --main-pack PACK --resolution 1600x900 -- --aivai --seed=3 --offscreen --nohud --set=perf:0 --preset=high --mood=MOOD --focus=FOCUS --zoom=ZOOM --pitch=PITCH --cam-yaw=0.7 --screenshot=OUTPUT --shot-at=2 --quit-after=3"
+      }
     }
   ],
   "layout_capture": {

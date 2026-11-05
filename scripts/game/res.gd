@@ -196,6 +196,32 @@ static func cyl(top: float, bottom: float, h: float, segs := 10) -> CylinderMesh
 	return m
 
 
+## A whorl of drooping spruce boughs; gaps break the silhouette without alpha cards.
+static func spruce_boughs() -> ArrayMesh:
+	if _meshes.has("spruce_boughs"):
+		return _meshes["spruce_boughs"]
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	for i in 9:
+		var a := TAU * i / 9.0
+		var out := Vector3(cos(a), 0, sin(a))
+		var side := Vector3(-out.z, 0, out.x)
+		var reach := 0.76 + 0.24 * sin(i * 2.4 + 0.7)
+		var top := out * 0.12 + Vector3(0, 0.42, 0)
+		var left := out * 0.36 - side * 0.30 + Vector3(0, -0.08, 0)
+		var right := out * 0.36 + side * 0.30 + Vector3(0, -0.08, 0)
+		var tip_l := out * reach - side * 0.12 + Vector3(0, -0.43, 0)
+		var tip_r := out * (reach * 0.84) + side * 0.15 + Vector3(0, -0.34, 0)
+		var notch := out * (reach * 0.64) + Vector3(0, -0.29, 0)
+		for point in [top, left, tip_l, top, tip_l, notch, top, notch, tip_r, top, tip_r, right,
+			left, notch, tip_l, right, tip_r, notch, top, right, left, left, right, notch]:
+			st.add_vertex(point)
+	st.generate_normals()
+	var mesh := st.commit()
+	_meshes["spruce_boughs"] = mesh
+	return mesh
+
+
 static func prism(s: Vector3) -> PrismMesh:
 	var key := "p%.3f,%.3f,%.3f" % [s.x, s.y, s.z]
 	if _meshes.has(key):
