@@ -17,6 +17,16 @@ func _ready() -> void:
 	var boughs := Res.spruce_boughs()
 	assert(boughs == Res.spruce_boughs(), "Trees share their bough mesh")
 	assert(boughs.surface_get_array_len(0) == 216 and boughs.get_aabb().size.y > 0.8, "Boughs retain a bounded tree silhouette and triangle budget")
+	assert(Res.alpine_stone(0) == Res.alpine_stone(4), "Scree variants reuse four cached meshes")
+	assert(Res.alpine_stone(0).surface_get_array_len(0) == 60)
+	for variant in 4:
+		var arrays := Res.alpine_stone(variant).surface_get_arrays(0)
+		var vertices: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
+		var normals: PackedVector3Array = arrays[Mesh.ARRAY_NORMAL]
+		for j in vertices.size():
+			assert(normals[j].dot(vertices[j]) > 0.0, "Stone faces point outward")
+	assert(Res.alpine_stone(0).get_aabb() != Res.alpine_stone(1).get_aabb(), "Stone variants have distinct fractured profiles")
+	assert(Mats.get_mat("alpine_stone").get_shader_parameter("stone_texture") is Texture2D, "Natural stones bind their photographic surface in merged batches")
 	var horizon := Atmosphere.backdrop_image(3)
 	assert(horizon.get_size() == Vector2i(512, 512) and horizon.has_mipmaps() and horizon.get_format() == Image.FORMAT_RF)
 	assert(horizon.get_data() == Atmosphere.backdrop_image(3).get_data(), "Scenery is deterministic for every peer")
@@ -32,6 +42,17 @@ func _ready() -> void:
 	world.settings = {"seed": 3}
 	world.terrain = TerrainMap.new(world)
 	world.water = WaterMap.new(world)
+	var dressing := Decor.new()
+	dressing.build(world, [["alpine_stones", Vector3.ZERO, 0.0, 1.0]])
+	var chunk: Node3D = dressing._chunks[Vector2i.ZERO]
+	var fragments := chunk.get_node("FineStones")
+	assert(fragments.get_child_count() > 0, "Small fragments are batched separately")
+	for mesh: MeshInstance3D in fragments.get_children():
+		assert(mesh.visibility_range_end == 180.0 and mesh.visibility_range_end_margin == 20.0)
+	for child in chunk.get_children():
+		if child is MeshInstance3D:
+			assert(child.visibility_range_end == 0.0, "Large stones remain visible at distance")
+	dressing.free()
 	var previous_half := MapDims.HALF
 	MapDims.HALF = 32.0
 	world.terrain.landform.heights.resize(world.terrain.landform.n * world.terrain.landform.n)

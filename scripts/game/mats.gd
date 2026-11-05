@@ -23,6 +23,7 @@ const TRACK := 13
 const SKIN := 14
 const TILES := 15
 const HESCO := 16
+const NATURAL_ROCK := 17
 
 static var _shader: Shader
 static var _cache := {}
@@ -680,6 +681,9 @@ static func _preset(kind: String) -> Dictionary:
 			return {"pattern": EARTH, "col_a": Color(0.3, 0.28, 0.18), "col_b": Color(0.2, 0.19, 0.12), "rough": 0.97, "bump": 0.45, "grime": 0.0, "scale": 0.6}
 		"earth":
 			return {"pattern": EARTH, "col_a": Color(0.33, 0.26, 0.17), "col_b": Color(0.22, 0.17, 0.11), "rough": 0.97, "bump": 1.6, "grime": 0.0}
+		"alpine_stone":
+			# Broken natural stone has grain, without the mortar joints used by masonry.
+			return {"pattern": NATURAL_ROCK, "col_a": Color(0.44, 0.43, 0.39), "rough": 0.95, "bump": 2.5, "grime": 0.0, "scale": 0.75, "stone_texture": preload("res://assets/terrain/rock_face_03_color_height.png")}
 		"stone":
 			return {"pattern": STONE, "col_a": Color(0.58, 0.55, 0.5), "col_b": Color(0.42, 0.4, 0.36), "col_c": Color(0.5, 0.46, 0.4), "rough": 0.9, "bump": 2.0, "grime": 0.7}
 		"rubble":
@@ -767,6 +771,7 @@ shader_type spatial;
 render_mode specular_schlick_ggx;
 
 uniform int pattern = 0;
+uniform sampler2D stone_texture : source_color, filter_linear_mipmap_anisotropic, repeat_enable;
 uniform vec3 col_a : source_color = vec3(0.6);
 uniform vec3 col_b : source_color = vec3(0.4);
 uniform vec3 col_c : source_color = vec3(0.5);
@@ -992,6 +997,14 @@ void fragment() {
 		col = mix(fab, col_c, max(wire * 0.55, seam * 0.8));
 		h = bulge * 0.8 - wire * 0.1 - seam * 0.5;
 		m = mix(0.0, 0.6, wire * 0.6);
+	} else if (pattern == 17) {
+		vec3 weights = pow(abs(normalize(tn)), vec3(4.0));
+		weights /= weights.x + weights.y + weights.z;
+		vec4 stone = texture(stone_texture, tp.zy * scale) * weights.x
+			+ texture(stone_texture, tp.xz * scale) * weights.y
+			+ texture(stone_texture, tp.xy * scale) * weights.z;
+		col = stone.rgb * vec3(1.02, 1.06, 1.10);
+		h = stone.a;
 	} else if (pattern == 14) {
 		col = col_a * (0.95 + 0.08 * tnoise(uv * 30.0));
 		h = 0.5;
