@@ -25,6 +25,21 @@ func _ready() -> void:
 	grass._clear()
 	grass._stream(Vector3.ZERO)
 	check(grass._queue.size() == 225, "Settings rebuilds must repopulate the current camera area")
+	var world := World.new()
+	world.decor = [["yard", Vector3.ZERO, 0.0, Vector3(10, 0.015, 8)]]
+	var atmosphere := Atmosphere.new()
+	atmosphere.world = world
+	grass.atmo = atmosphere
+	var blocked := grass._blocked_job()
+	check(blocked.boxes.size() == 1 and blocked.boxes[0][1] == Vector2(5.2, 4.2), "Maintained yards exclude wild grass and shrubs")
+	var street := Grass.BlockedJob.new()
+	street.roads = [PackedVector3Array([Vector3(-8, 0, 0), Vector3(8, 0, 0)])]
+	street.run()
+	var centre := MapDims.N >> 1
+	check(street.blocked[(centre + 3) * MapDims.N + centre] == 1, "Road shoulders exclude overhanging grass clumps")
+	check(street.blocked[(centre + 6) * MapDims.N + centre] == 0, "Road exclusion preserves the surrounding meadow")
 	grass.free()
+	atmosphere.free()
+	world.free()
 	print("GRASS_STREAM_TEST failures=%d" % failures)
 	get_tree().quit(1 if failures else 0)

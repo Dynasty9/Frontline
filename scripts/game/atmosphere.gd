@@ -63,6 +63,7 @@ var detail_tex: ImageTexture
 var backdrop_tex: ImageTexture
 var road_mat: ShaderMaterial
 var grass: Grass
+var forest: DistantForest
 var wildlife: Wildlife
 var _d := {}
 var _mood_asked := ""  # the Time of day setting as the battle began: changing it mid-battle switches the mood live
@@ -309,7 +310,7 @@ func _build_ground() -> void:
 	ground.mesh = _ground_ring(GROUND_HALF, MapDims.HALF + 1800.0)
 	ground_mat = ShaderMaterial.new()
 	var sh := Shader.new()
-	sh.code = MapDims.shader(GROUND_SHADER)
+	sh.code = MapDims.shader(GROUND_SHADER.replace("// BACKDROP_HEIGHT", BACKDROP_HEIGHT))
 	ground_mat.shader = sh
 	ground_mat.set_shader_parameter("biome_tex", biome_tex)
 	ground_mat.set_shader_parameter("detail_tex", detail_tex)
@@ -318,6 +319,7 @@ func _build_ground() -> void:
 	ground_mat.set_shader_parameter("cliff_normal", preload("res://assets/terrain/aerial_rocks_02_surface.png"))
 	ground_mat.set_shader_parameter("rock_color", preload("res://assets/terrain/rock_face_03_color_height.png"))
 	ground_mat.set_shader_parameter("rock_normal", preload("res://assets/terrain/rock_face_03_surface.png"))
+	ground_mat.set_shader_parameter("town_grass", preload("res://assets/town/leafy_grass_color.jpg"))
 	ground_mat.set_shader_parameter("moss_color", preload("res://assets/terrain/aerial_grass_rock_color_height.png"))
 	ground_mat.set_shader_parameter("moss_normal", preload("res://assets/terrain/aerial_grass_rock_surface.png"))
 	ground_mat.set_shader_parameter("cloud_strength", float(_d.clouds))
@@ -365,9 +367,15 @@ func _build_ground() -> void:
 	trench_net.set_detail(detail_tex)
 	road_mat = ShaderMaterial.new()
 	var rs := Shader.new()
-	rs.code = Mats.code(MapDims.shader(ROAD_SHADER))
+	rs.code = Mats.code(MapDims.shader(ROAD_SHADER.replace("// STREET_SURFACE", Mats.ASPHALT_SHADER)))
 	road_mat.shader = rs
 	road_mat.set_shader_parameter("detail_tex", detail_tex)
+	road_mat.set_shader_parameter("paving_noise", preload("res://assets/town/aerial_asphalt_01_color.jpg"))
+	road_mat.set_shader_parameter("street_repairs", preload("res://assets/town/asphalt_02_color.jpg"))
+	road_mat.set_shader_parameter("street_noise", Mats.noise_tex())
+	road_mat.set_shader_parameter("gravel_color", preload("res://assets/town/gravelly_sand_color.jpg"))
+	road_mat.set_shader_parameter("gravel_surface", preload("res://assets/town/gravelly_sand_surface.png"))
+	road_mat.set_shader_parameter("paving_surface", preload("res://assets/town/aerial_asphalt_01_surface.png"))
 	# see-through (its edges fade into the verges), so it draws with the smoke
 	# and fire: before them, or it paints over every blast on a road
 	road_mat.render_priority = -1
@@ -623,6 +631,8 @@ func apply_mood(m: String) -> void:
 func apply_settings() -> void:
 	var s := Settings
 	ground_mat.set_shader_parameter("terrain_detail", int(s.get_v("lod")) >= 1)
+	if forest:
+		forest.visible = int(s.get_v("lod")) >= 1
 	# the battle's own mood stands (the host's choice, or a mission's) until
 	# the player changes the setting while it's on
 	var want := String(s.get_v("mood"))
@@ -793,6 +803,7 @@ func _apply_haze(distance: float) -> void:
 ## Builds the road strip mesh for a team (called by World when roads change).
 func set_town(r: Rect2) -> void:
 	Mats.set_shared(road_mat, &"town", Vector4(r.position.x, r.position.y, r.end.x, r.end.y))
+	Mats.set_shared(ground_mat, &"town_bounds", Vector4(r.position.x, r.position.y, r.end.x, r.end.y))
 
 
 ## A square of ground `size` across in quads of `step` metres, centred on its origin.
@@ -897,6 +908,9 @@ func _update_deform(dt: float) -> void:
 		ground_mat.set_shader_parameter("surface_bake", ImageTexture.create_from_image(tm.landform.bake_surface(sun.basis.z)))
 		ground_mat.set_shader_parameter("sun_direction", sun.basis.z)
 		_surface_baked = true
+		forest = DistantForest.new()
+		add_child(forest)
+		forest.setup(self)
 		_update_terrain_probe(true)
 		var post := post_rect.material as ShaderMaterial
 		post.set_shader_parameter("fringe", 0.00015)
@@ -1021,6 +1035,20 @@ void sky() {
 }
 """
 
+const BACKDROP_HEIGHT := """
+float backdrop(vec2 p) {
+	float edge = max(abs(p.x), abs(p.y)) - __MAP_HALF__;
+	float coast = 1.0 - smoothstep(sea_x - 90.0, sea_x, p.x);
+	vec2 uv = (p + __MAP_HALF__ + 1800.0) / (__MAP_SIZE__ + 3600.0);
+	float mountain = textureLod(backdrop_tex, uv, 0.0).r;
+	float hills = pow(smoothstep(0.18, 0.88, mountain), 2.2) * 440.0;
+	return hills * smoothstep(8.0, 380.0, edge) * coast * (1.0 - step(9999.0, snow_line))
+		* (1.0 - smoothstep(1450.0, 1800.0, edge))
+		- 3.2 * smoothstep(sea_x, sea_x + 30.0, p.x);
+}
+
+"""
+
 const GROUND_SHADER := """
 shader_type spatial;
 render_mode specular_schlick_ggx;
@@ -1033,6 +1061,8 @@ uniform sampler2D surface_bake : hint_default_white, filter_linear_mipmap, repea
 uniform sampler2D cliff_color : source_color, filter_linear_mipmap_anisotropic, repeat_enable;
 uniform sampler2D cliff_normal : filter_linear_mipmap_anisotropic, repeat_enable;
 uniform sampler2D rock_color : source_color, filter_linear_mipmap_anisotropic, repeat_enable;
+uniform vec4 town_bounds = vec4(0.0);
+uniform sampler2D town_grass : source_color, filter_linear_mipmap_anisotropic, repeat_enable;
 uniform sampler2D moss_color : source_color, filter_linear_mipmap_anisotropic, repeat_enable;
 uniform sampler2D rock_normal : filter_linear_mipmap_anisotropic, repeat_enable;
 uniform sampler2D moss_normal : filter_linear_mipmap_anisotropic, repeat_enable;
@@ -1060,16 +1090,7 @@ varying float puddle;
 varying float terrain_sun;
 varying float rock_damp;
 
-float backdrop(vec2 p) {
-	float edge = max(abs(p.x), abs(p.y)) - __MAP_HALF__;
-	float coast = 1.0 - smoothstep(sea_x - 90.0, sea_x, p.x);
-	vec2 uv = (p + __MAP_HALF__ + 1800.0) / (__MAP_SIZE__ + 3600.0);
-	float mountain = textureLod(backdrop_tex, uv, 0.0).r;
-	float hills = pow(smoothstep(0.18, 0.88, mountain), 2.2) * 440.0;
-	return hills * smoothstep(8.0, 380.0, edge) * coast * (1.0 - step(9999.0, snow_line))
-		* (1.0 - smoothstep(1450.0, 1800.0, edge))
-		- 3.2 * smoothstep(sea_x, sea_x + 30.0, p.x);
-}
+// BACKDROP_HEIGHT
 
 float dfm(vec2 p) {
 	if (max(abs(p.x), abs(p.y)) >= __MAP_HALF__) { return backdrop(p); }
@@ -1265,6 +1286,14 @@ void fragment() {
 	vec3 rich_turf = moss * vec3(0.88, 1.0, 0.91);
 	moss = mix(moss, mix(dry_turf, rich_turf, meadow), turf * 0.72);
 	moss *= mix(0.93, 1.07, patch);
+	vec2 town_distance = max(max(town_bounds.xy - p, p - town_bounds.zw), vec2(0.0));
+	float town_turf = (1.0 - smoothstep(0.0, 35.0, length(town_distance))) * step(1.0, town_bounds.z - town_bounds.x) * turf;
+	if (town_turf > 0.001) {
+		vec3 blades = texture(town_grass, p * 0.5).rgb;
+		float town_dry = smoothstep(0.25, 0.75, texture(detail_tex, p / 180.0).r);
+		blades *= mix(vec3(0.23, 0.39, 0.16), vec3(0.36, 0.37, 0.21), town_dry);
+		moss = mix(moss, blades, town_turf * 0.85);
+	}
 	vec3 rock_n; vec3 scree_n; vec3 moss_n;
 	vec2 rock_data = surface_data(rock_normal, rock_uv, weights, geometric, rock_n);
 	if (terrain_detail) {
@@ -1399,6 +1428,12 @@ uniform vec4 town = vec4(0.0);  // min x, min z, max x, max z: streets here are 
 uniform sampler2DArray deform_tex : filter_linear, repeat_disable;
 // TERRAIN_TEXTURE_HELPER
 instance uniform float country = 0.0;
+uniform sampler2D paving_noise : source_color, filter_linear_mipmap_anisotropic, repeat_enable;
+uniform sampler2D street_noise : filter_linear_mipmap_anisotropic, repeat_enable;
+uniform sampler2D gravel_color : source_color, filter_linear_mipmap_anisotropic, repeat_enable;
+uniform sampler2D gravel_surface : filter_linear_mipmap_anisotropic, repeat_enable;
+uniform sampler2D paving_surface : filter_linear_mipmap_anisotropic, repeat_enable;
+// STREET_SURFACE
 varying vec3 wpos;
 void vertex() {
 	wpos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
@@ -1418,7 +1453,7 @@ void fragment() {
 	float n2 = texture(detail_tex, wpos.xz / 11.0 + 0.5).r;
 	float n3 = texture(detail_tex, wpos.xz / 0.6 + 0.2).r;
 	float ruts = smoothstep(0.075, 0.0, abs(x - 0.3)) + smoothstep(0.075, 0.0, abs(x - 0.7));
-	vec3 gravel = mix(vec3(0.15, 0.135, 0.11), vec3(0.1, 0.09, 0.072), n);
+	vec3 gravel = texture(gravel_color, wpos.xz * 0.5).rgb * (0.48 + n * 0.24);
 	vec3 dirt = mix(vec3(0.14, 0.11, 0.075), vec3(0.09, 0.07, 0.048), n);
 	vec3 col = mix(dirt, gravel, country);
 	float peb = smoothstep(0.6, 0.72, n3);
@@ -1438,25 +1473,31 @@ void fragment() {
 	SPECULAR = mix(0.12, 0.45, pud);
 	float edge = smoothstep(0.0, 0.14 + 0.1 * n, x) * smoothstep(1.0, 0.86 - 0.1 * n, x);
 	ALPHA = edge;
+	vec4 gravel_data = texture(gravel_surface, wpos.xz * 0.5);
+	vec3 gravel_n = gravel_data.rgb * 2.0 - 1.0;
+	gravel_n.xy *= 0.24;
+	NORMAL = normalize((VIEW_MATRIX * vec4(gravel_n.x, gravel_n.z, -gravel_n.y, 0.0)).xyz);
 	// in town: patched asphalt between the curbs, a dashed centre line
-	float paved = step(town.x, wpos.x) * step(wpos.x, town.z) * step(town.y, wpos.z) * step(wpos.z, town.w) * country;
-	if (paved > 0.5) {
-		vec3 asph = vec3(0.085, 0.085, 0.082) * (0.82 + 0.36 * n) * (0.9 + 0.2 * n2);
-		float rpx = max(length(fwidth(wpos.xz)), 1e-4);
-		float crack = smoothstep(0.018, 0.0, abs(n3 - 0.5)) * smoothstep(0.45, 0.6, n2) * smoothstep(1.5, 5.0, 0.3 / rpx);
-		asph = mix(asph, asph * 0.5, crack);
-		float patch = smoothstep(0.64, 0.67, texture(detail_tex, wpos.xz / 7.0 + 0.3).r);
-		asph = mix(asph, asph * 0.72 + vec3(0.004), patch * 0.7);
+	vec2 inside = min(wpos.xz - town.xy, town.zw - wpos.xz);
+	float distance = min(inside.x, inside.y);
+	float broken_edge = (texture(street_noise, wpos.xz * 0.12).r - 0.5) * 3.0;
+	float paved = smoothstep(-5.0, 2.0, distance + broken_edge) * country * step(1.0, town.z - town.x);
+	if (paved > 0.001) {
+		vec3 asph = street_surface(paving_noise, street_noise, wpos.xz);
 		float dash = step(abs(x - 0.5), 0.011) * step(fract(UV.y / 7.0), 0.5);
-		asph = mix(asph, vec3(0.78, 0.74, 0.6) * (0.75 + 0.25 * n), dash * 0.8);
+		asph = mix(asph, vec3(0.78, 0.74, 0.6) * (0.75 + 0.25 * n), dash * 0.8 * smoothstep(0.6, 0.95, paved));
 		float wear = smoothstep(0.08, 0.0, abs(x - 0.27)) + smoothstep(0.08, 0.0, abs(x - 0.73));
 		asph = mix(asph, asph * 0.85, wear * 0.4);
-		float pud2 = wet * smoothstep(0.55, 0.75, n2 * 0.8 + crack);
+		float pud2 = wet * smoothstep(0.55, 0.75, n2 * 0.8);
 		asph *= 1.0 - wet * 0.3;
-		ALBEDO = mix(asph, asph * 0.4, pud2);
-		ROUGHNESS = mix(0.82 - wet * 0.3, 0.06, pud2);
-		SPECULAR = mix(0.3, 0.55, pud2);
-		ALPHA = 1.0;
+		ALBEDO = mix(col, mix(asph, asph * 0.4, pud2), paved);
+		vec4 surface = texture(paving_surface, wpos.xz / 30.0);
+		vec3 normal = surface.rgb * 2.0 - 1.0;
+		normal.xy *= 0.18;
+		NORMAL = normalize(mix(NORMAL, (VIEW_MATRIX * vec4(normal.x, normal.z, -normal.y, 0.0)).xyz, paved));
+		ROUGHNESS = mix(ROUGHNESS, mix(clamp(surface.a, 0.65, 1.0) - wet * 0.3, 0.06, pud2), paved);
+		SPECULAR = mix(SPECULAR, mix(0.3, 0.55, pud2), paved);
+		ALPHA = mix(edge, 1.0, paved);
 	}
 }
 """

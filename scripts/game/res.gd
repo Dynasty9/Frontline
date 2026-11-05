@@ -196,29 +196,37 @@ static func cyl(top: float, bottom: float, h: float, segs := 10) -> CylinderMesh
 	return m
 
 
-## A whorl of drooping spruce boughs; gaps break the silhouette without alpha cards.
-static func spruce_boughs() -> ArrayMesh:
-	if _meshes.has("spruce_boughs"):
-		return _meshes["spruce_boughs"]
+## Branch photographs keep open silhouettes with a few crossed leaf cards.
+static func foliage_cards(conifer: bool) -> ArrayMesh:
+	var key := "fir_cards" if conifer else "leaf_cards"
+	if _meshes.has(key):
+		return _meshes[key]
 	var st := SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
-	for i in 9:
-		var a := TAU * i / 9.0
-		var out := Vector3(cos(a), 0, sin(a))
+	var count := 18 if conifer else 32
+	for i in count:
+		var angle := i * 2.399963
+		var out := Vector3(cos(angle), 0, sin(angle))
 		var side := Vector3(-out.z, 0, out.x)
-		var reach := 0.76 + 0.24 * sin(i * 2.4 + 0.7)
-		var top := out * 0.12 + Vector3(0, 0.42, 0)
-		var left := out * 0.36 - side * 0.30 + Vector3(0, -0.08, 0)
-		var right := out * 0.36 + side * 0.30 + Vector3(0, -0.08, 0)
-		var tip_l := out * reach - side * 0.12 + Vector3(0, -0.43, 0)
-		var tip_r := out * (reach * 0.84) + side * 0.15 + Vector3(0, -0.34, 0)
-		var notch := out * (reach * 0.64) + Vector3(0, -0.29, 0)
-		for point in [top, left, tip_l, top, tip_l, notch, top, notch, tip_r, top, tip_r, right,
-			left, notch, tip_l, right, tip_r, notch, top, right, left, left, right, notch]:
-			st.add_vertex(point)
-	st.generate_normals()
-	var mesh := st.commit()
-	_meshes["spruce_boughs"] = mesh
+		var center := out * (0.38 if conifer else 0.65)
+		center.y = sin(i * 1.7) * (0.12 if conifer else 0.55)
+		var along := (out + Vector3(0, -0.5, 0)).normalized() if conifer else Vector3(sin(angle), 0.65, cos(angle)).normalized()
+		var width := 0.45 if conifer else 0.32
+		var length := 0.65 if conifer else 0.55
+		if i % 2 == 0:
+			side = side.rotated(along, 0.8)
+		var normal := side.cross(along).normalized()
+		var quad := [center - side * width - along * length, center + side * width - along * length, center + side * width + along * length, center - side * width + along * length]
+		var coords := [Vector2(0, 1), Vector2(1, 1), Vector2(1, 0), Vector2(0, 0)]
+		for j in [0, 2, 1, 0, 3, 2]:
+			st.set_normal(normal)
+			st.set_uv(coords[j])
+			st.add_vertex(quad[j])
+	var arrays := st.commit_to_arrays()
+	var mesh := ArrayMesh.new()
+	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+	Mats.keep_arrays(mesh, arrays)
+	_meshes[key] = mesh
 	return mesh
 
 

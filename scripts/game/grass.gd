@@ -28,7 +28,7 @@ const REACH := 7  # beyond the bushes' 170 m fade, including a chunk and pan mar
 
 func _ready() -> void:
 	clump = _make_clump()
-	bush = _make_bush()
+	bush = Res.foliage_cards(false)
 	stone = _make_stone()
 	scar_img = Image.create(MapDims.N, MapDims.N, false, Image.FORMAT_L8)
 	scar_tex = ImageTexture.create_from_image(scar_img)
@@ -41,6 +41,7 @@ func _ready() -> void:
 	var bs := Shader.new()
 	bs.code = MapDims.shader(BUSH_SHADER)
 	bush_mat.shader = bs
+	bush_mat.set_shader_parameter("leaf_texture", preload("res://assets/foliage/broadleaf.png"))
 	stone_mat = StandardMaterial3D.new()
 	stone_mat.albedo_color = Color(0.42, 0.4, 0.37)
 	stone_mat.roughness = 0.9
@@ -195,7 +196,7 @@ func _blocked_job() -> BlockedJob:
 			j.boxes.append([Vector2(st.position.x, st.position.z), st.foot + Vector2(0.4, 0.4), float(st.yaw)])
 	# sidewalks, squares, gardens and the like
 	for e in w.decor:
-		if not String(e[0]) in ["walk", "pave", "junction", "soft", "lot_pave", "drive", "path", "garden"]:
+		if not String(e[0]) in ["walk", "pave", "junction", "soft", "lot_pave", "drive", "path", "garden", "yard"]:
 			continue
 		var s3: Vector3 = e[3]
 		var c3: Vector3 = e[1]
@@ -242,9 +243,10 @@ class BlockedJob:
 				var steps := int(a.distance_to(b) / 0.8) + 1
 				for k in steps + 1:
 					var p := a.lerp(b, float(k) / steps)
-					for dx in range(-3, 4):
-						for dz in range(-3, 4):
-							if dx * dx + dz * dz <= 8:
+					for dx in range(-4, 5):
+						for dz in range(-4, 5):
+							# Include the grass clump radius beyond the 2.9 m carriageway.
+							if dx * dx + dz * dz <= 16:
 								_mark(floori(p.x) + dx, floori(p.z) + dz)
 
 	func _mark(x: int, z: int) -> void:
@@ -274,6 +276,7 @@ func _build_chunk(c: Vector2i) -> void:
 	var origin := Vector3(c.x * CHUNK, 0, c.y * CHUNK)
 	var density := 0.45 if level == 1 else 1.0
 	var count := int(CHUNK * CHUNK * density)
+	var town := atmo.world.town_rect.grow(12.0)
 	var xf := []
 	var cd := []
 	var bushes := []
@@ -290,7 +293,9 @@ func _build_chunk(c: Vector2i) -> void:
 				stones.append(p)
 			continue
 		var s := rng.randf_range(0.75, 1.3) * (0.65 + 0.5 * g)
-		var basis := Basis(Vector3.UP, rng.randf() * TAU).scaled(Vector3(s, s * rng.randf_range(0.8, 1.35), s))
+		# Shorter urban grass exposes the soil and blade texture between clumps.
+		var height := 0.45 if atmo.world.town_rect.has_area() and town.has_point(Vector2(p.x, p.z)) else 1.0
+		var basis := Basis(Vector3.UP, rng.randf() * TAU).scaled(Vector3(s, s * rng.randf_range(0.8, 1.35) * height, s))
 		xf.append(Transform3D(basis, p))
 		cd.append(Color(g, rng.randf(), 0, 0))
 		if rng.randf() < 0.012 and g > 0.6:
@@ -373,27 +378,6 @@ func _make_clump() -> ArrayMesh:
 	return st.commit()
 
 
-func _make_bush() -> ArrayMesh:
-	var st := SurfaceTool.new()
-	var rng := RandomNumberGenerator.new()
-	rng.seed = 777
-	var sph := SphereMesh.new()
-	sph.radial_segments = 10
-	sph.rings = 6
-	var arrays := sph.get_mesh_arrays()
-	st.begin(Mesh.PRIMITIVE_TRIANGLES)
-	for i in 5:
-		var off := Vector3(rng.randf_range(-0.45, 0.45), rng.randf_range(0.25, 0.55), rng.randf_range(-0.45, 0.45))
-		var sc := rng.randf_range(0.45, 0.75)
-		var verts: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
-		var norms: PackedVector3Array = arrays[Mesh.ARRAY_NORMAL]
-		var idx: PackedInt32Array = arrays[Mesh.ARRAY_INDEX]
-		for j in idx:
-			st.set_normal(norms[j])
-			st.add_vertex(verts[j] * sc + off)
-	return st.commit()
-
-
 func _make_stone() -> ArrayMesh:
 	var sph := SphereMesh.new()
 	sph.radial_segments = 7
@@ -473,6 +457,7 @@ void fragment() {
 
 const BUSH_SHADER := """
 shader_type spatial;
+uniform sampler2D leaf_texture : source_color, filter_linear_mipmap, repeat_disable;
 render_mode specular_disabled, cull_disabled;
 varying vec3 lp;
 varying float rnd;
@@ -481,6 +466,7 @@ uniform sampler2D trench_mask : hint_default_black, filter_linear, repeat_disabl
 uniform sampler2DArray deform_tex : filter_linear, repeat_disable;
 // TERRAIN_TEXTURE_HELPER
 void vertex() {
+	VERTEX.y += 0.65;
 	if (textureLod(trench_mask, (MODEL_MATRIX[3].xz + __MAP_HALF__) / __MAP_SIZE__, 0.0).r > 0.3) {
 		VERTEX *= 0.0;
 	}
@@ -499,6 +485,8 @@ void vertex() {
 	lp = VERTEX;
 }
 void fragment() {
+	vec4 photograph = texture(leaf_texture, UV);
+	if (photograph.a < 0.22) { discard; }
 	// leafy, ragged edges where the surface turns away (inside shows dark through the gaps)
 	float rim = 1.0 - abs(dot(NORMAL, VIEW));
 	float bpx = max(length(fwidth(lp)), 1e-4);
@@ -512,7 +500,7 @@ void fragment() {
 	col = mix(col, col * vec3(1.25, 1.05, 0.7), step(0.6, rnd) * 0.6);
 	float up = smoothstep(-0.2, 0.9, lp.y);
 	col *= 0.55 + 0.55 * up;
-	ALBEDO = col;
+	ALBEDO = mix(col, photograph.rgb * 0.7, 0.8);
 	ROUGHNESS = 0.9;
 	AO = 0.5 + 0.5 * up;
 	AO_LIGHT_AFFECT = 0.5;

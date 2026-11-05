@@ -1280,3 +1280,9 @@ boundary, measurement results and remaining limits.
 Alpine stone clusters combine slabs, blocks and small fragments in shared batches. Fine fragments cull beyond 180 m with a 20 m hysteresis margin; larger rocks remain visible.
 
 Daylight uses a bundled CC0 photographic cloud panorama, aligned with the sun and cached for sky lighting and reflections. Other lighting moods retain their procedural skies.
+
+Generated towns have distinct garden plots, narrow foundation aprons and paths leading to their generated front or side doors. Front fences leave pedestrian and driveway openings. Paving follows immutable terrain elevation and retains crater cutouts; street furniture and both wire endpoints carry authoritative ground heights. Long fences are broken into short, independently destructible sections. Streets and junctions share scanned asphalt; sidewalks, drives and door paths use scanned paving slabs. CC0 photographs include mipmapped normal and roughness maps, with source credits in assets/town/LICENSE.md. Garden and town grass combines photographic soil/blade detail with broad moisture variation and shorter clumps; grass stays outside the carriageway.
+
+Town entrances blend gravel into asphalt through irregular edges. Local repair patches, staining, aged tile roofs, concrete roof slabs and weathered timber fences use bundled CC0 scans with mipmapped relief; metal fences retain rust and worn paint.
+
+Trees, hedges and shrubs use photographed needle/leaf cards, preserving batched rendering, burning and destruction. Beyond the playable boundary, patchy hillside forests use a four-view prebaked fir atlas and two triangles per tree; slope, height and coast masks keep cliffs and water clear. These scenery-only trees add no combat cover. Setting View distance / detail to Near disables distant forests.

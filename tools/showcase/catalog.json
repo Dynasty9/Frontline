@@ -3941,6 +3941,91 @@
         "compatibility": "Target after with --rendering-method gl_compatibility",
         "command": "godot --main-pack PACK --resolution 1600x900 -- --aivai --seed=3 --offscreen --nohud --set=perf:0 --preset=high --mood=day --focus=FOCUS --zoom=ZOOM --pitch=PITCH --cam-yaw=0.7 --screenshot=OUTPUT --shot-at=2 --quit-after=3"
       }
+    },
+    {
+      "entry": "changelog/unreleased/town-ground-and-frontages.md",
+      "summary": "Town houses gain distinct plots, foundation aprons and paths to their doors, with open gates and driveways.",
+      "title": "Connect houses and streets with gardens, paths and grounded furniture",
+      "version": "unreleased",
+      "kind": "improved",
+      "medium": "still",
+      "stage": "native-media",
+      "rationale": "Isolate the revision from the previous proposal with identical upstream changes, seed and camera.",
+      "source_ref": "codex/town-ground-and-frontages",
+      "sources": [
+        {
+          "file": "changelog/unreleased/town-ground-and-frontages/target-before.jpg",
+          "sha256": "51c5ba8328ac41981eee70e851fb7e8713dac9b38c750474d84d99bff45dec99",
+          "caption": "target before"
+        },
+        {
+          "file": "changelog/unreleased/town-ground-and-frontages/target-after.jpg",
+          "sha256": "2f529aab330a5b92f629e7511ba74d8a375cc63d49840a11350f6891c4279fdc",
+          "caption": "target after"
+        },
+        {
+          "file": "changelog/unreleased/town-ground-and-frontages/wide-before.jpg",
+          "sha256": "c44ce54e72643fcf733bf36575aa70d9e47f6465a6bfe36d146a0caffad7deef",
+          "caption": "wide before"
+        },
+        {
+          "file": "changelog/unreleased/town-ground-and-frontages/wide-after.jpg",
+          "sha256": "de760373f1448684d5833cf330c528a6f3e7cae118ecc0365697faf8516252c8",
+          "caption": "wide after"
+        },
+        {
+          "file": "changelog/unreleased/town-ground-and-frontages/target-compat.jpg",
+          "sha256": "d8a6d64359127e87f0b1323f8778b3a46720de9d34a33eb55a2ba7093475253d",
+          "caption": "target compat"
+        },
+        {
+          "file": "changelog/unreleased/town-ground-and-frontages/detail-before.jpg",
+          "sha256": "605df19242e613cbcca4c79a5183038b738cdb9c60e51f1aa67902c79a16cbb3",
+          "caption": "detail before"
+        },
+        {
+          "file": "changelog/unreleased/town-ground-and-frontages/detail-after.jpg",
+          "sha256": "ee3af83a560ac59139a2d1666f01878ebeafce68da3e8aa5dc74dd9de807a526",
+          "caption": "detail after"
+        },
+        {
+          "file": "changelog/unreleased/town-ground-and-frontages/forest-before.jpg",
+          "sha256": "1c41c1fa0f8ae01c27e8679b679ff979b8fe491247b17175fdcbe1878902e1d9",
+          "caption": "forest before"
+        },
+        {
+          "file": "changelog/unreleased/town-ground-and-frontages/forest-after.jpg",
+          "sha256": "347fd33cd7c8f49a841f9abece9a2a7cf87d55e7e575db46d9b6de2fdb44c1f4",
+          "caption": "forest after"
+        },
+        {
+          "file": "changelog/unreleased/town-ground-and-frontages/compare.gif",
+          "sha256": "fa8edd1b84b68731c15cde1567e3bb83ff0ecad82b1df24eae51c20eeb49eb7e",
+          "caption": "Native frames, separate labels, shared palette, 2.5 seconds each."
+        }
+      ],
+      "output": null,
+      "capture": {
+        "before_ref": "113a39fbcb50e707d689eb1f00b494d2b1414531",
+        "after_ref": "codex/town-ground-and-frontages",
+        "before_pack": "review-12-before.pck",
+        "after_pack": "review-12-after.pck",
+        "seed": 3,
+        "preset": "high",
+        "mood": "day",
+        "resolution": "1600x900",
+        "focus": "-30,-12",
+        "zoom": 35,
+        "pitch": -50,
+        "yaw": 0.7,
+        "shot_at": 2,
+        "quit_after": 3,
+        "wide": "focus 0,0; zoom 220; pitch -40; yaw 0.7",
+        "compatibility": "Target after with --rendering-method gl_compatibility",
+        "command": "godot --main-pack PACK --resolution 1600x900 -- --aivai --seed=3 --offscreen --nohud --set=perf:0 --preset=high --mood=day --focus=FOCUS --zoom=ZOOM --pitch=PITCH --cam-yaw=0.7 --screenshot=OUTPUT --shot-at=2 --quit-after=3",
+        "detail": "focus -55,-4; zoom 15; pitch -55; yaw 0.7; shot 2s",
+        "forest": "focus 0,0; zoom 900; pitch -22; yaw 0.7; shot 2s; same seed, resolution, High/day"
+      }
     }
   ],
   "layout_capture": {
