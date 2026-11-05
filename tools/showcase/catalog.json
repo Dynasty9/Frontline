@@ -3955,38 +3955,38 @@
       "sources": [
         {
           "file": "changelog/unreleased/town-ground-and-frontages/target-before.jpg",
-          "sha256": "d25d19e0e031dd27ba770d56823f51a8b37e3c5bb1a466536b4dba42c1915fa2",
+          "sha256": "0dcb0ec669b34fef0b335c8870f1f4f9c48b80bebdce01bcb6014e465ecd4a6e",
           "caption": "target before"
         },
         {
           "file": "changelog/unreleased/town-ground-and-frontages/target-after.jpg",
-          "sha256": "0dcb0ec669b34fef0b335c8870f1f4f9c48b80bebdce01bcb6014e465ecd4a6e",
+          "sha256": "709d3866f673a05f01964eb3481fba0073db8938ab8ab390f271ff85e19fe2d5",
           "caption": "target after"
         },
         {
           "file": "changelog/unreleased/town-ground-and-frontages/wide-before.jpg",
-          "sha256": "59d65803004d69d73aef8e8111fa24fc27983197b413759662cc48975d232b59",
+          "sha256": "3081b2ec3dae30adae0915e0dcb478a6d17658412fe6db9eff4b3eb81e6b9426",
           "caption": "wide before"
         },
         {
           "file": "changelog/unreleased/town-ground-and-frontages/wide-after.jpg",
-          "sha256": "3081b2ec3dae30adae0915e0dcb478a6d17658412fe6db9eff4b3eb81e6b9426",
+          "sha256": "f4d38e4321c54050aba9725fd71d7e12fd116b1d8226f5a0239826a36dbe878f",
           "caption": "wide after"
         },
         {
           "file": "changelog/unreleased/town-ground-and-frontages/target-compat.jpg",
-          "sha256": "c0131201520e3dd571ac191e72efc2bc69f20a632bec734995c93961a3fa71de",
+          "sha256": "542920d618a5ac61e70c785268e37131a64e1679aa587c15f3a1f95fecac3a3b",
           "caption": "target compat"
         },
         {
           "file": "changelog/unreleased/town-ground-and-frontages/compare.gif",
-          "sha256": "18b53fdf76f901e7550cef21a4757b46afb0ceaf4e6f50d611dd007e8486178b",
+          "sha256": "7c74415ce53c7ffb243640063d2ebe18ece7ff819554d0a23eff08bf50e04160",
           "caption": "Native frames, separate labels, shared palette, 2.5 seconds each."
         }
       ],
       "output": null,
       "capture": {
-        "before_ref": "41377aa161f1223a5792860c92950c7e918f92f2",
+        "before_ref": "15d60c74ab91b9db4479b55a14d833a646eda943",
         "after_ref": "codex/town-ground-and-frontages",
         "before_pack": "review-12-before.pck",
         "after_pack": "review-12-after.pck",

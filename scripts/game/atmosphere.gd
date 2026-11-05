@@ -365,9 +365,10 @@ func _build_ground() -> void:
 	trench_net.set_detail(detail_tex)
 	road_mat = ShaderMaterial.new()
 	var rs := Shader.new()
-	rs.code = Mats.code(MapDims.shader(ROAD_SHADER))
+	rs.code = Mats.code(MapDims.shader(ROAD_SHADER.replace("// STREET_SURFACE", Mats.ASPHALT_SHADER)))
 	road_mat.shader = rs
 	road_mat.set_shader_parameter("detail_tex", detail_tex)
+	road_mat.set_shader_parameter("paving_noise", Mats.noise_tex())
 	# see-through (its edges fade into the verges), so it draws with the smoke
 	# and fire: before them, or it paints over every blast on a road
 	road_mat.render_priority = -1
@@ -1399,6 +1400,8 @@ uniform vec4 town = vec4(0.0);  // min x, min z, max x, max z: streets here are 
 uniform sampler2DArray deform_tex : filter_linear, repeat_disable;
 // TERRAIN_TEXTURE_HELPER
 instance uniform float country = 0.0;
+uniform sampler2D paving_noise : filter_linear_mipmap_anisotropic, repeat_enable;
+// STREET_SURFACE
 varying vec3 wpos;
 void vertex() {
 	wpos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
@@ -1441,17 +1444,12 @@ void fragment() {
 	// in town: patched asphalt between the curbs, a dashed centre line
 	float paved = step(town.x, wpos.x) * step(wpos.x, town.z) * step(town.y, wpos.z) * step(wpos.z, town.w) * country;
 	if (paved > 0.5) {
-		vec3 asph = vec3(0.085, 0.085, 0.082) * (0.82 + 0.36 * n) * (0.9 + 0.2 * n2);
-		float rpx = max(length(fwidth(wpos.xz)), 1e-4);
-		float crack = smoothstep(0.018, 0.0, abs(n3 - 0.5)) * smoothstep(0.45, 0.6, n2) * smoothstep(1.5, 5.0, 0.3 / rpx);
-		asph = mix(asph, asph * 0.5, crack);
-		float patch = smoothstep(0.64, 0.67, texture(detail_tex, wpos.xz / 7.0 + 0.3).r);
-		asph = mix(asph, asph * 0.72 + vec3(0.004), patch * 0.7);
+		vec3 asph = street_surface(paving_noise, wpos.xz);
 		float dash = step(abs(x - 0.5), 0.011) * step(fract(UV.y / 7.0), 0.5);
 		asph = mix(asph, vec3(0.78, 0.74, 0.6) * (0.75 + 0.25 * n), dash * 0.8);
 		float wear = smoothstep(0.08, 0.0, abs(x - 0.27)) + smoothstep(0.08, 0.0, abs(x - 0.73));
 		asph = mix(asph, asph * 0.85, wear * 0.4);
-		float pud2 = wet * smoothstep(0.55, 0.75, n2 * 0.8 + crack);
+		float pud2 = wet * smoothstep(0.55, 0.75, n2 * 0.8);
 		asph *= 1.0 - wet * 0.3;
 		ALBEDO = mix(asph, asph * 0.4, pud2);
 		ROUGHNESS = mix(0.82 - wet * 0.3, 0.06, pud2);

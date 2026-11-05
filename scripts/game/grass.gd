@@ -242,9 +242,10 @@ class BlockedJob:
 				var steps := int(a.distance_to(b) / 0.8) + 1
 				for k in steps + 1:
 					var p := a.lerp(b, float(k) / steps)
-					for dx in range(-3, 4):
-						for dz in range(-3, 4):
-							if dx * dx + dz * dz <= 8:
+					for dx in range(-4, 5):
+						for dz in range(-4, 5):
+							# Include the grass clump radius beyond the 2.9 m carriageway.
+							if dx * dx + dz * dz <= 16:
 								_mark(floori(p.x) + dx, floori(p.z) + dz)
 
 	func _mark(x: int, z: int) -> void:

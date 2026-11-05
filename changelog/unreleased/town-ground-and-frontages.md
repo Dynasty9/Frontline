@@ -22,3 +22,5 @@ caption = "Revised: wide view, matching seed and camera."
 +++
 
 Paving follows the terrain instead of sitting at flat-map height. Street furniture and wire endpoints carry their authoritative elevation into multiplayer and replays. House plots have maintained ground, narrow foundation aprons and routes to actual front or side doors; fences leave pedestrian and driveway gaps and break into short sections. Wild grass and shrubs stay outside maintained plots.
+
+Streets and intersections share a restrained fine-grained asphalt surface. Sidewalks, drives and door paths use quieter paving with shallow joints, and roadside grass stays outside the carriageway.

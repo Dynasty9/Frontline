@@ -24,6 +24,17 @@ const SKIN := 14
 const TILES := 15
 const HESCO := 16
 const NATURAL_ROCK := 17
+const ASPHALT := 18
+
+# One world-space surface keeps junction overlays continuous with street ribbons.
+const ASPHALT_SHADER := """
+vec3 street_surface(sampler2D tex, vec2 p) {
+	float grain = texture(tex, p * 1.5).r;
+	float age = texture(tex, p * 0.0125).r;
+	float repair = smoothstep(0.63, 0.72, texture(tex, p * 0.035 + 0.31).r);
+	return vec3(0.052, 0.054, 0.055) * (0.94 + grain * 0.12 + (age - 0.5) * 0.16 - repair * 0.09);
+}
+"""
 
 static var _shader: Shader
 static var _cache := {}
@@ -32,7 +43,7 @@ static var _cache := {}
 static func shader() -> Shader:
 	if _shader == null:
 		_shader = Shader.new()
-		_shader.code = code(TerrainTexture.shader(SURFACE_SHADER))
+		_shader.code = code(TerrainTexture.shader(SURFACE_SHADER.replace("// STREET_SURFACE", ASPHALT_SHADER)))
 	return _shader
 
 
@@ -183,6 +194,12 @@ static func paving(kind: String) -> ShaderMaterial:
 	if _paving.has(kind):
 		return _paving[kind]
 	var m := get_mat(kind).duplicate() as ShaderMaterial
+	if kind == "asphalt":
+		# Match the road ribbons' transparent lighting pass at junctions.
+		var sh := Shader.new()
+		sh.code = m.shader.code.replace("ALBEDO = col;", "ALBEDO = col; ALPHA = 1.0;")
+		m.shader = sh
+		m.render_priority = -1
 	m.set_shader_parameter("crater_cut", true)
 	m.set_shader_parameter("crater_half", MapDims.HALF)
 	if _crater_tex:
@@ -667,6 +684,12 @@ static func _preset(kind: String) -> Dictionary:
 			return {"pattern": BRICK, "col_a": Color(0.56, 0.3, 0.21), "col_b": Color(0.62, 0.58, 0.52), "col_c": Color(0.42, 0.24, 0.17), "rough": 0.9, "bump": 1.4, "grime": 0.6}
 		"concrete":
 			return {"pattern": CONCRETE, "col_a": Color(0.52, 0.51, 0.48), "col_b": Color(0.36, 0.35, 0.32), "rough": 0.9, "bump": 0.9, "grime": 0.8}
+		"asphalt":
+			return {"pattern": ASPHALT, "col_a": Color(1, 1, 1), "rough": 0.88, "bump": 0.12, "grime": 0.0}
+		"pavement":
+			return {"pattern": CONCRETE, "col_a": Color(0.52, 0.51, 0.48), "col_b": Color(0.47, 0.46, 0.43), "rough": 0.93, "bump": 0.22, "grime": 0.0, "pitting": 0.1, "seams": 0.3}
+		"curbstone":
+			return {"pattern": CONCRETE, "col_a": Color(0.57, 0.56, 0.53), "col_b": Color(0.52, 0.51, 0.48), "rough": 0.94, "bump": 0.15, "grime": 0.0, "pitting": 0.1, "seams": 0.0}
 		"concrete_floor":
 			return {"pattern": CONCRETE, "col_a": Color(0.42, 0.41, 0.38), "col_b": Color(0.3, 0.28, 0.25), "rough": 0.9, "bump": 0.6, "grime": 0.0}
 		"sandbag":
@@ -803,6 +826,7 @@ varying vec3 tn;
 varying vec3 wpos;
 varying vec3 seed;
 
+// STREET_SURFACE
 float h12(vec2 p) { vec3 p3 = fract(vec3(p.xyx) * 0.1031); p3 += dot(p3, p3.yzx + 33.33); return fract((p3.x + p3.y) * p3.z); }
 // Value noise with one feature per unit, read from a mipmapped tileable
 // texture: the GPU filters it, so fine detail averages out with distance
@@ -877,6 +901,9 @@ void fragment() {
 			h = mix(0.9 + tnoise(uv * 18.0) * 0.1, bh * 0.6, chip);
 			r = mix(rough, 0.95, chip);
 		}
+	} else if (pattern == 18) {
+		col = street_surface(noise_tex, wpos.xz);
+		h = texture(noise_tex, wpos.xz * 1.5).r * 0.04;
 	} else if (pattern == 3) {
 		col = col_a * (0.86 + 0.22 * tfbm(uv * 2.1 + off));
 		float st = tfbm(uv * 0.6 + off * 0.3);
@@ -1017,7 +1044,7 @@ void fragment() {
 	// broad, soft variation across a surface (sun-bleached, weathered, damp
 	// patches): large enough never to alias, it keeps big walls from looking flat
 	float macro = tfbm(wpos.xz * 0.11 + wpos.y * 0.07 + off * 0.2);
-	col *= 0.88 + 0.24 * macro;
+	if (pattern != 18) { col *= 0.88 + 0.24 * macro; }
 	// grime and dust toward the ground
 	float low = 1.0 - smoothstep(0.0, 0.9, wpos.y);
 	float gn = tnoise(uv * 2.0 + off);

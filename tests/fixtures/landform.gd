@@ -329,5 +329,8 @@ func _ready() -> void:
 	var restored: PackedFloat32Array = World._unpack(World._pack(heights))
 	assert(restored == heights)
 	world.free()
+	assert(Mats.paving("asphalt").get_shader_parameter("pattern") == Mats.ASPHALT, "Junction shader preserves its asphalt pattern")
+	assert(Mats.paving("asphalt").get_shader_parameter("crater_cut") == true, "Asphalt junctions retain crater cutouts")
+	assert(Mats.paving("pavement").get_shader_parameter("grime") == 0.0, "Horizontal paving must not inherit ground-height wall grime")
 	print("LANDFORM passed: generation, determinism, validation, grounding, sight, slope navigation, craters, replication")
 	get_tree().quit()
