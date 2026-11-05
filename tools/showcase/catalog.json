@@ -3831,7 +3831,7 @@
         },
         {
           "file": "changelog/unreleased/realism-10-shore-gravel/target-after.jpg",
-          "sha256": "b772b866e090088f5c16ffb94526e320b8def9c171a046321e9ab8d642f226d5",
+          "sha256": "73deb61a50f6ce872145ebcea2957af39cad7959614b2c8ccdc228cd9f0ef936",
           "caption": "target after"
         },
         {
@@ -3841,17 +3841,17 @@
         },
         {
           "file": "changelog/unreleased/realism-10-shore-gravel/wide-after.jpg",
-          "sha256": "6d08a5447ade7a907d4f2c4d8e32d85822a88396a66508fab34ce7590420ff91",
+          "sha256": "03376269c8a0302a1c8c8ee50cea5ca12bd7481de4fc2edbc676472b701920e2",
           "caption": "wide after"
         },
         {
           "file": "changelog/unreleased/realism-10-shore-gravel/target-compat.jpg",
-          "sha256": "9218825c532699ffbeedbd918e461beee9874370926279202d6e0c9ea9d3b400",
+          "sha256": "ed8ded1b141ebfe78763ec3c42609507a8b7b1bdfa10e796814d11687bc87e67",
           "caption": "target compat"
         },
         {
           "file": "changelog/unreleased/realism-10-shore-gravel/compare.gif",
-          "sha256": "0d8723adf28cea047fc1cd8e6da3da3e9e48f4df91482ae0090e3e12c4243838",
+          "sha256": "0290e21e8e14beb5657ecc76c07f16b08f515274da6e42f2b4320c6287825e37",
           "caption": "Native frames, separate labels, shared palette, 2.5 seconds each."
         }
       ],
@@ -3868,8 +3868,8 @@
         "preset": "high",
         "mood": "day",
         "resolution": "1600x900",
-        "focus": "400,0",
-        "zoom": 150,
+        "focus": "330,0",
+        "zoom": 90,
         "pitch": -45,
         "yaw": 0.7,
         "shot_at": 2,

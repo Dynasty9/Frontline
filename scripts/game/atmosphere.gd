@@ -1264,10 +1264,11 @@ void fragment() {
 	float shore_stone = smoothstep(0.08, 0.55, wm.g) * wm.b * (1.0 - wm.a)
 		* smoothstep(0.35, 0.75, patch * 0.65 + macro * 0.2 + slope * 0.6);
 	shore_stone *= 1.0 - step(9999.0, snow_line);
+	shore_stone *= smoothstep(0.32, 0.65, d1 * 0.4 + d2 * 0.6);
 	vec4 shore_sample = texture(cliff_color, p / 4.0 + 0.37);
 	float shore_luma = dot(shore_sample.rgb, vec3(0.2126, 0.7152, 0.0722));
 	vec3 gravel = mix(vec3(shore_luma), shore_sample.rgb, 0.12) * mix(vec3(0.78, 0.86, 0.92), vec3(0.24, 0.29, 0.33), wet_sand);
-	float shingle = height_blend(0.5, shore_sample.a, shore_stone);
+	float shingle = mix(shore_stone, height_blend(0.5, shore_sample.a, shore_stone), 0.35);
 	col = mix(col, gravel, shingle * 0.95);
 	// Connected snowfields collect in sheltered bowls, leaving dark ribs and cliff faces.
 	float local_snow_line = max(abs(p.x), abs(p.y)) >= __MAP_HALF__ ? max(150.0, snow_line * 1.5) : snow_line;
