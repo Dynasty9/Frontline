@@ -555,6 +555,7 @@ Ambush Alley autoplay can call its existing mortar support against spotted, stop
 - Conifers have broken, asymmetric branch silhouettes that read as trees against rock and snow.
 - Stones at the mountain foot have irregular broken faces instead of flattened round primitives.
 - Connected dry grass and richer moss patches replace evenly green valley floors.
+- Coastal margins transition through exposed gravel and darker wet stone instead of a uniformly sandy strip.
 - Moss and soil blend into exposed stone on slopes, with baked slab fractures, broken mineral beds, sheltered weathering, loose-stone pockets and snow on high sheltered ground.
 - Optional alpine haze takes on the sky colour and settles lightly into lower valleys.
 - Narrow mineral stains run down exposed cliffs, interrupted by ledges and changes in rock type.
@@ -1277,3 +1278,5 @@ See [SIMULATION_SCALING.md](SIMULATION_SCALING.md) for the native perception
 boundary, measurement results and remaining limits.
 
 Alpine stone clusters combine slabs, blocks and small fragments in shared batches. Fine fragments cull beyond 180 m with a 20 m hysteresis margin; larger rocks remain visible.
+
+Daylight uses a bundled CC0 photographic cloud panorama, aligned with the sun and cached for sky lighting and reflections. Other lighting moods retain their procedural skies.

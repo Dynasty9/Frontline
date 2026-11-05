@@ -51,6 +51,7 @@ var we: WorldEnvironment
 var sun: DirectionalLight3D
 var rim: DirectionalLight3D
 var sky_mat: ShaderMaterial
+var _photo_sky: ShaderMaterial
 var ground: MeshInstance3D
 var ground_mat: ShaderMaterial
 var post_layer: CanvasLayer
@@ -159,6 +160,25 @@ func grass_amount(p: Vector3) -> float:
 
 # --- environment ---------------------------------------------------------------------
 
+func _apply_sky() -> void:
+	if mood != "day":
+		env.sky.sky_material = sky_mat
+		return
+	if _photo_sky == null:
+		_photo_sky = ShaderMaterial.new()
+		var shader := Shader.new()
+		shader.code = PHOTO_SKY_SHADER
+		_photo_sky.shader = shader
+		_photo_sky.set_shader_parameter("panorama", preload("res://assets/sky/kloofendal_partly_cloudy_2k.hdr"))
+	# The HDR's brightest pixel is the sun, at (1218, 239) in its 2048 x 1024 panorama.
+	var longitude := (1218.5 / 2048.0) * TAU
+	var latitude := (239.5 / 1024.0) * PI
+	var photographed := Vector3(sin(longitude) * sin(latitude), cos(latitude), -cos(longitude) * sin(latitude))
+	var lit := Basis.from_euler(Vector3(deg_to_rad(-float(_d.elev)), deg_to_rad(float(_d.azim)), 0)).z
+	_photo_sky.set_shader_parameter("rotation", Basis(Quaternion(lit, photographed)))
+	env.sky.sky_material = _photo_sky
+
+
 func _build_env() -> void:
 	env = Environment.new()
 	env.background_mode = Environment.BG_SKY
@@ -176,6 +196,7 @@ func _build_env() -> void:
 	sky.sky_material = sky_mat
 	sky.radiance_size = Sky.RADIANCE_SIZE_128
 	env.sky = sky
+	_apply_sky()
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_SKY
 	env.ambient_light_energy = float(_d.ambient)
 	env.ambient_light_sky_contribution = 0.85
@@ -575,6 +596,7 @@ func apply_mood(m: String) -> void:
 	sky_mat.set_shader_parameter("sun_col", _d.sun)
 	sky_mat.set_shader_parameter("cloudiness", 1.0 if mood in ["overcast", "rain"] else (0.3 if mood == "day" else 0.55))
 	sky_mat.set_shader_parameter("stars", 1.0 if mood == "night" else 0.0)
+	_apply_sky()
 	env.ambient_light_energy = float(_d.ambient)
 	ground_mat.set_shader_parameter("wet", 1.0 if mood == "rain" else 0.0)
 	Mats.set_shared(road_mat, &"wet", 1.0 if mood == "rain" else 0.0)
@@ -938,6 +960,18 @@ func make_road_mesh(polys: Array, team: int) -> MeshInstance3D:
 	return mi
 
 
+const PHOTO_SKY_SHADER := """
+shader_type sky;
+uniform sampler2D panorama : source_color, filter_linear_mipmap, repeat_enable;
+uniform mat3 rotation;
+void sky() {
+	vec3 d = rotation * EYEDIR;
+	vec2 uv = vec2(atan(d.x, -d.z) / TAU, acos(clamp(d.y, -1.0, 1.0)) / PI);
+	vec3 sky = min(texture(panorama, vec2(fract(uv.x), uv.y)).rgb, vec3(16.0));
+	COLOR = mix(sky, vec3(0.14, 0.16, 0.12), 1.0 - smoothstep(-0.20, -0.02, EYEDIR.y));
+}
+"""
+
 const SKY_SHADER := """
 shader_type sky;
 uniform vec3 zenith : source_color;
@@ -1260,6 +1294,16 @@ void fragment() {
 	vec3 alpine = mix(moss, rock, exposed);
 	float clean = (1.0 - wm.g) * (1.0 - wm.a) * (1.0 - clamp(bowl, 0.0, 1.0));
 	col = mix(col, alpine, clean);
+	// Wave-washed rocky margins retain gravel above the wet line instead of uniform sand.
+	float shore_stone = smoothstep(0.08, 0.55, wm.g) * wm.b * (1.0 - wm.a)
+		* smoothstep(0.35, 0.75, patch * 0.65 + macro * 0.2 + slope * 0.6);
+	shore_stone *= 1.0 - step(9999.0, snow_line);
+	shore_stone *= smoothstep(0.32, 0.65, d1 * 0.4 + d2 * 0.6);
+	vec4 shore_sample = texture(cliff_color, p / 4.0 + 0.37);
+	float shore_luma = dot(shore_sample.rgb, vec3(0.2126, 0.7152, 0.0722));
+	vec3 gravel = mix(vec3(shore_luma), shore_sample.rgb, 0.12) * mix(vec3(0.78, 0.86, 0.92), vec3(0.24, 0.29, 0.33), wet_sand);
+	float shingle = mix(shore_stone, height_blend(0.5, shore_sample.a, shore_stone), 0.35);
+	col = mix(col, gravel, shingle * 0.95);
 	// Connected snowfields collect in sheltered bowls, leaving dark ribs and cliff faces.
 	float local_snow_line = max(abs(p.x), abs(p.y)) >= __MAP_HALF__ ? max(150.0, snow_line * 1.5) : snow_line;
 	float snow_field = (geology - local_snow_line) / 35.0 + cavity * 0.8 - geometric.x * 0.25 + (d1 - 0.5) * 0.3;
@@ -1299,6 +1343,7 @@ void fragment() {
 	rock_damp *= exposed * clean * (1.0 - snow);
 	ROUGHNESS = mix(ROUGHNESS, 0.28, rock_damp);
 	ROUGHNESS = mix(ROUGHNESS, 0.55, wet * 0.5);
+	ROUGHNESS = mix(ROUGHNESS, mix(0.92, 0.3, wet_sand), shore_stone);
 	ROUGHNESS = mix(ROUGHNESS, 0.45, max(wm.a * 0.8, wet_sand * 0.6));
 	ROUGHNESS = mix(ROUGHNESS, 0.16, puddle);
 	SPECULAR = mix(0.25, 0.38, wet);
@@ -1318,6 +1363,7 @@ void fragment() {
 	n = surface_relief(n, mineral * 0.28, exposed * clean * (1.0 - snow) * smoothstep(0.3, 1.0, slope));
 	n = normalize(mix(n, geometric, snow * 0.9));
 	n = surface_relief(n, snow_ripple * 0.065 + scree_sample.a * 0.025, snow);
+	n = surface_relief(n, shore_sample.a * 0.045, shingle);
 	n = normalize(mix(n, vec3(0.0, 1.0, 0.0), puddle * 0.9));
 	NORMAL = normalize((VIEW_MATRIX * vec4(n, 0.0)).xyz);
 }

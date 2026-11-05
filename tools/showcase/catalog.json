@@ -3815,6 +3815,132 @@
         "compatibility": "Target after with --rendering-method gl_compatibility",
         "command": "godot --main-pack PACK --resolution 1600x900 -- --aivai --seed=3 --offscreen --nohud --set=perf:0 --preset=high --mood=MOOD --focus=FOCUS --zoom=ZOOM --pitch=PITCH --cam-yaw=0.7 --screenshot=OUTPUT --shot-at=2 --quit-after=3"
       }
+    },
+    {
+      "entry": "changelog/unreleased/realism-10-shore-gravel.md",
+      "summary": "Coastal margins transition through exposed gravel and darker wet stone instead of a uniformly sandy strip.",
+      "medium": "still",
+      "stage": "native-media",
+      "rationale": "Isolate the revision from the previous proposal with identical upstream changes, seed and camera.",
+      "source_ref": "codex/realism-10-shore-gravel",
+      "sources": [
+        {
+          "file": "changelog/unreleased/realism-10-shore-gravel/target-before.jpg",
+          "sha256": "d353cdb3671a9db00cf4b19a487a7ba55672751e98f4f33948e21060ba5bfafe",
+          "caption": "target before"
+        },
+        {
+          "file": "changelog/unreleased/realism-10-shore-gravel/target-after.jpg",
+          "sha256": "73deb61a50f6ce872145ebcea2957af39cad7959614b2c8ccdc228cd9f0ef936",
+          "caption": "target after"
+        },
+        {
+          "file": "changelog/unreleased/realism-10-shore-gravel/wide-before.jpg",
+          "sha256": "146c72a448e194764b69e5a4f9076825c99dd9a1611dd1a6f764c0b2d46e6153",
+          "caption": "wide before"
+        },
+        {
+          "file": "changelog/unreleased/realism-10-shore-gravel/wide-after.jpg",
+          "sha256": "03376269c8a0302a1c8c8ee50cea5ca12bd7481de4fc2edbc676472b701920e2",
+          "caption": "wide after"
+        },
+        {
+          "file": "changelog/unreleased/realism-10-shore-gravel/target-compat.jpg",
+          "sha256": "ed8ded1b141ebfe78763ec3c42609507a8b7b1bdfa10e796814d11687bc87e67",
+          "caption": "target compat"
+        },
+        {
+          "file": "changelog/unreleased/realism-10-shore-gravel/compare.gif",
+          "sha256": "0290e21e8e14beb5657ecc76c07f16b08f515274da6e42f2b4320c6287825e37",
+          "caption": "Native frames, separate labels, shared palette, 2.5 seconds each."
+        }
+      ],
+      "output": null,
+      "title": "Blend gravel into alpine shorelines",
+      "version": "unreleased",
+      "kind": "improved",
+      "capture": {
+        "before_ref": "cce80defda71e6cdcf8abffe5bed64671cddaa4a",
+        "after_ref": "codex/realism-10-shore-gravel",
+        "before_pack": "review-10-before.pck",
+        "after_pack": "review-10-after.pck",
+        "seed": 3,
+        "preset": "high",
+        "mood": "day",
+        "resolution": "1600x900",
+        "focus": "330,0",
+        "zoom": 90,
+        "pitch": -45,
+        "yaw": 0.7,
+        "shot_at": 2,
+        "quit_after": 3,
+        "wide": "focus 0,0; zoom 900; pitch -22; yaw 0.7",
+        "compatibility": "Target after with --rendering-method gl_compatibility",
+        "command": "godot --main-pack PACK --resolution 1600x900 -- --aivai --seed=3 --offscreen --nohud --set=perf:0 --preset=high --mood=MOOD --focus=FOCUS --zoom=ZOOM --pitch=PITCH --cam-yaw=0.7 --screenshot=OUTPUT --shot-at=2 --quit-after=3"
+      }
+    },
+    {
+      "entry": "changelog/unreleased/photographic-daylight-sky.md",
+      "summary": "Natural cloud forms and a sun-aligned photographic sky replace the plain daylight backdrop.",
+      "title": "Frame the alpine battlefield with a photographic daylight sky",
+      "version": "unreleased",
+      "kind": "improved",
+      "medium": "still",
+      "stage": "native-media",
+      "rationale": "Isolate the revision from the previous proposal with identical upstream changes, seed and camera.",
+      "source_ref": "codex/photographic-daylight-sky",
+      "sources": [
+        {
+          "file": "changelog/unreleased/photographic-daylight-sky/target-before.jpg",
+          "sha256": "3a228dec3d3eb0b02e288c561031bde5103eb755b31d7c9243fcc38252addf74",
+          "caption": "target before"
+        },
+        {
+          "file": "changelog/unreleased/photographic-daylight-sky/target-after.jpg",
+          "sha256": "cb22dec4f73b3b7aecf9bbff95247dcce6109c241b4887755f792d51fbffbba4",
+          "caption": "target after"
+        },
+        {
+          "file": "changelog/unreleased/photographic-daylight-sky/wide-before.jpg",
+          "sha256": "8079baddb5e76e7aefa8622ff03b3a60667e3c8b71038e42787ee3f48f3435b1",
+          "caption": "wide before"
+        },
+        {
+          "file": "changelog/unreleased/photographic-daylight-sky/wide-after.jpg",
+          "sha256": "e9a34f8c26bd090ef5e421ee8634ee43767b20391bc8d7ad4b54eebc4829a776",
+          "caption": "wide after"
+        },
+        {
+          "file": "changelog/unreleased/photographic-daylight-sky/target-compat.jpg",
+          "sha256": "92d68a1f3524ad8bde28526d7b55d0e20fcb00c4f0e52781e499be4914162b3f",
+          "caption": "target compat"
+        },
+        {
+          "file": "changelog/unreleased/photographic-daylight-sky/compare.gif",
+          "sha256": "e96c6422d73f1f91c09918b22b87e7884e3f826ee39c2daf0321137dc77ee380",
+          "caption": "Native frames, separate labels, shared palette, 2.5 seconds each."
+        }
+      ],
+      "output": null,
+      "capture": {
+        "before_ref": "cb2c4ad347cd58719e6f0df708f5018484058f09",
+        "after_ref": "codex/photographic-daylight-sky",
+        "before_pack": "review-11-before.pck",
+        "after_pack": "review-11-after.pck",
+        "seed": 3,
+        "preset": "high",
+        "mood": "day",
+        "resolution": "1600x900",
+        "focus": "0,0",
+        "zoom": 900,
+        "pitch": -10,
+        "yaw": 0.7,
+        "shot_at": 2,
+        "quit_after": 3,
+        "wide": "focus 0,0; zoom 900; pitch -22; yaw 0.7",
+        "compatibility": "Target after with --rendering-method gl_compatibility",
+        "command": "godot --main-pack PACK --resolution 1600x900 -- --aivai --seed=3 --offscreen --nohud --set=perf:0 --preset=high --mood=day --focus=FOCUS --zoom=ZOOM --pitch=PITCH --cam-yaw=0.7 --screenshot=OUTPUT --shot-at=2 --quit-after=3"
+      }
     }
   ],
   "layout_capture": {
