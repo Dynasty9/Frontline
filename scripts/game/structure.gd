@@ -1217,7 +1217,7 @@ func _roof_model(rng: RandomNumberGenerator) -> void:
 		slab.mesh = Res.box(Vector3(L + 0.1, 0.2, W + 0.1))
 		slab.position = Vector3(0, h + 0.1, 0)
 		holder.add_child(slab)
-		Mats.apply(slab, "concrete", Mats.tint_for("concrete", Color(0.52, 0.5, 0.47)))
+		Mats.apply(slab, "roof_concrete")
 		for e in [-1.0, 1.0]:
 			for side in [0, 1]:
 				var p := MeshInstance3D.new()

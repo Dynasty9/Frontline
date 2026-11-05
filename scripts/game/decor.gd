@@ -593,7 +593,7 @@ func _make(h: Node3D, kind: String, ex) -> void:
 				_m(Res.cyl(0.65, 0.65, 1.2, 14), "fabric", Vector3(0, 1.85, 0), Color(0.72, 0.62, 0.3), Vector3(0, 0, PI * 0.5))
 		"drive":
 			var d2: Vector3 = ex
-			_m(Res.box(Vector3(d2.x, 0.03, d2.z)), "pavement", Vector3(0, 0.015, 0), Color(0.46, 0.45, 0.42), Vector3.ZERO, false, true)
+			_m(Res.box(Vector3(d2.x, 0.03, d2.z)), "concrete_floor", Vector3(0, 0.015, 0), Color(0.46, 0.45, 0.42), Vector3.ZERO, false, true)
 		"path":
 			var p2: Vector3 = ex
 			_m(Res.box(Vector3(p2.x, 0.03, p2.z)), "pavement", Vector3(0, 0.02, 0), Color(0.56, 0.53, 0.47), Vector3.ZERO, false, true)
@@ -628,28 +628,29 @@ func _fence(ex) -> void:
 	var posts := maxi(1, int(ceil(L / 2.2)))
 	match style:
 		0:
-			var white := Color(0.86, 0.85, 0.8)
+			var white := Res.vary(Color(0.69, 0.68, 0.63), 0.18, rng)
 			for i in posts + 1:
-				_m(Res.box(Vector3(0.08, ht, 0.08)), "paint", Vector3(-L * 0.5 + i * L / posts, ht * 0.5, 0), white)
+				_m(Res.box(Vector3(0.08, ht, 0.08)), "fence_metal", Vector3(-L * 0.5 + i * L / posts, ht * 0.5, 0), white)
 			for y in [ht * 0.3, ht * 0.75]:
-				_m(Res.box(Vector3(L, 0.05, 0.03)), "paint", Vector3(0, y, 0.02), white, Vector3.ZERO, false)
+				_m(Res.box(Vector3(L, 0.05, 0.03)), "fence_metal", Vector3(0, y, 0.02), white, Vector3.ZERO, false)
 			var n := int(L / 0.24)
 			for i in n:
-				_m(Res.box(Vector3(0.07, ht * 0.92, 0.02)), "paint", Vector3(-L * 0.5 + (i + 0.5) * L / n, ht * 0.46, -0.03), white, Vector3.ZERO, false)
+				_m(Res.box(Vector3(0.07, ht * 0.92, 0.02)), "fence_metal", Vector3(-L * 0.5 + (i + 0.5) * L / n, ht * 0.46, -0.03), white, Vector3.ZERO, false)
 		1:
+			var timber := Res.vary(Color(0.5, 0.43, 0.33), 0.24, rng)
 			for i in posts + 1:
-				_m(Res.box(Vector3(0.1, ht + 0.05, 0.1)), "wood_dark", Vector3(-L * 0.5 + i * L / posts, (ht + 0.05) * 0.5, 0))
+				_m(Res.box(Vector3(0.1, ht + 0.05, 0.1)), "fence_wood", Vector3(-L * 0.5 + i * L / posts, (ht + 0.05) * 0.5, 0), timber)
 			for y in [0.25, 0.55, 0.85]:
-				_m(Res.box(Vector3(L, 0.12, 0.025)), "wood", Vector3(0, ht * y, -0.06))
+				_m(Res.box(Vector3(L, 0.12, 0.025)), "fence_rail", Vector3(0, ht * y, -0.06), timber.darkened(0.2 if y < 0.3 else 0.0))
 		_:
-			var green := Color(0.2, 0.42, 0.26)
+			var green := Res.vary(Color(0.22, 0.30, 0.23), 0.25, rng)
 			for i in posts + 1:
-				_m(Res.box(Vector3(0.06, ht, 0.06)), "paint", Vector3(-L * 0.5 + i * L / posts, ht * 0.5, 0), green)
+				_m(Res.box(Vector3(0.06, ht, 0.06)), "fence_metal", Vector3(-L * 0.5 + i * L / posts, ht * 0.5, 0), green)
 			for y in [0.12, ht - 0.03]:
-				_m(Res.box(Vector3(L, 0.045, 0.045)), "paint", Vector3(0, y, 0), green, Vector3.ZERO, false)
+				_m(Res.box(Vector3(L, 0.045, 0.045)), "fence_metal", Vector3(0, y, 0), green, Vector3.ZERO, false)
 			var n2 := int(L / 0.3)
 			for i in n2:
-				_m(Res.box(Vector3(0.022, ht - 0.15, 0.022)), "paint", Vector3(-L * 0.5 + (i + 0.5) * L / n2, ht * 0.5, 0), green, Vector3.ZERO, false)
+				_m(Res.box(Vector3(0.022, ht - 0.15, 0.022)), "fence_metal", Vector3(-L * 0.5 + (i + 0.5) * L / n2, ht * 0.5, 0), green, Vector3.ZERO, false)
 
 
 # --- wires ----------------------------------------------------------------------------

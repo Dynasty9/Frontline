@@ -27,11 +27,26 @@ const NATURAL_ROCK := 17
 const ASPHALT := 18
 const PAVEMENT := 19
 const TURF := 20
+const WEATHERED_PHOTO := 21
 
 # One world-space surface keeps junction overlays continuous with street ribbons.
 const ASPHALT_SHADER := """
-vec3 street_surface(sampler2D tex, vec2 p) {
-	return texture(tex, p / 30.0).rgb * 0.35;
+uniform sampler2D street_repairs : source_color, filter_linear_mipmap_anisotropic, repeat_enable;
+vec3 street_surface(sampler2D tex, sampler2D noise, vec2 p) {
+	vec3 base = texture(tex, p / 30.0).rgb * 0.35;
+	float weather = texture(noise, p * 0.006 + 0.17).r;
+	float stains = smoothstep(0.56, 0.74, texture(noise, p * 0.035 + 0.63).r);
+	vec2 cell = floor(p / vec2(11.0, 7.0));
+	vec2 f = fract(p / vec2(11.0, 7.0));
+	vec2 variation = vec2(fract(sin(dot(cell, vec2(12.9898,78.233))) * 43758.5453), fract(sin(dot(cell, vec2(39.346,11.135))) * 23421.631));
+	float chosen = step(0.57, texture(noise, cell * 0.17).r);
+	vec2 center = vec2(0.35) + variation * 0.3;
+	vec2 half_size = vec2(0.07, 0.10) + variation.yx * vec2(0.15, 0.17);
+	float shape = max(abs(f.x - center.x) / half_size.x, abs(f.y - center.y) / half_size.y);
+	float repair = chosen * (1.0 - smoothstep(0.92, 1.02, shape + texture(noise, p * 0.3).r * 0.10));
+	base = mix(base * (0.75 + weather * 0.65), texture(street_repairs, p / 3.0).rgb * 0.25, repair);
+	base *= 1.0 - stains * 0.48;
+	return base;
 }
 """
 
@@ -678,27 +693,27 @@ static func _preset(kind: String) -> Dictionary:
 		"gunmetal_w":
 			return {"pattern": PAINT, "col_a": Color(0.14, 0.14, 0.135), "col_b": Color(0.34, 0.33, 0.31), "rough": 0.52, "metal": 0.55, "bump": 0.35, "grime": 0.2}
 		"plaster":
-			return {"pattern": PLASTER, "col_a": Color(0.74, 0.69, 0.6), "col_b": Color(0.6, 0.57, 0.5), "col_c": Color(0.5, 0.33, 0.26), "col_d": Color(0.45, 0.42, 0.37), "rough": 0.92, "bump": 1.2, "grime": 0.7}
+			return {"photo_color": preload("res://assets/town/plastered_wall_color.jpg"), "photo_surface": preload("res://assets/town/plastered_wall_surface.png"), "pattern": PLASTER, "col_a": Color(0.74, 0.69, 0.6), "col_b": Color(0.6, 0.57, 0.5), "col_c": Color(0.5, 0.33, 0.26), "col_d": Color(0.45, 0.42, 0.37), "rough": 0.92, "bump": 1.2, "grime": 0.7}
 		"brick":
-			return {"pattern": BRICK, "col_a": Color(0.56, 0.3, 0.21), "col_b": Color(0.62, 0.58, 0.52), "col_c": Color(0.42, 0.24, 0.17), "rough": 0.9, "bump": 1.4, "grime": 0.6}
+			return {"pattern": WEATHERED_PHOTO, "col_a": Color(0.56, 0.3, 0.21), "col_b": Color(0.62, 0.58, 0.52), "col_c": Color(0.42, 0.24, 0.17), "rough": 0.9, "bump": 0.0, "grime": 0.6, "scale": 1.0, "weathering": 0.5, "photo_color": preload("res://assets/town/brick_wall_001_color.jpg"), "photo_surface": preload("res://assets/town/brick_wall_001_surface.png")}
 		"concrete":
-			return {"pattern": CONCRETE, "col_a": Color(0.52, 0.51, 0.48), "col_b": Color(0.36, 0.35, 0.32), "rough": 0.9, "bump": 0.9, "grime": 0.8}
+			return {"pattern": WEATHERED_PHOTO, "col_a": Color(0.52, 0.51, 0.48), "col_b": Color(0.36, 0.35, 0.32), "rough": 0.9, "bump": 0.0, "grime": 0.8, "scale": 0.5, "weathering": 0.5, "photo_color": preload("res://assets/town/concrete_floor_01_color.jpg"), "photo_surface": preload("res://assets/town/concrete_floor_01_surface.png")}
 		"asphalt":
-			return {"pattern": ASPHALT, "col_a": Color(1, 1, 1), "rough": 0.88, "bump": 0.0, "grime": 0.0, "photo_color": preload("res://assets/town/aerial_asphalt_01_color.jpg"), "photo_surface": preload("res://assets/town/aerial_asphalt_01_surface.png")}
+			return {"street_repairs": preload("res://assets/town/asphalt_02_color.jpg"), "pattern": ASPHALT, "col_a": Color(1, 1, 1), "rough": 0.88, "bump": 0.0, "grime": 0.0, "photo_color": preload("res://assets/town/aerial_asphalt_01_color.jpg"), "photo_surface": preload("res://assets/town/aerial_asphalt_01_surface.png")}
 		"turf":
 			return {"pattern": TURF, "col_a": Color(1, 1, 1), "rough": 0.98, "bump": 0.0, "grime": 0.0, "scale": 0.5, "photo_color": preload("res://assets/town/leafy_grass_color.jpg"), "photo_surface": preload("res://assets/town/leafy_grass_surface.png")}
 		"pavement":
 			return {"pattern": PAVEMENT, "col_a": Color(0.52, 0.51, 0.48), "rough": 0.93, "bump": 0.0, "grime": 0.0, "scale": 0.555556, "photo_color": preload("res://assets/town/concrete_pavement_color.jpg"), "photo_surface": preload("res://assets/town/concrete_pavement_surface.png")}
 		"curbstone":
-			return {"pattern": CONCRETE, "col_a": Color(0.57, 0.56, 0.53), "col_b": Color(0.52, 0.51, 0.48), "rough": 0.94, "bump": 0.15, "grime": 0.0, "pitting": 0.1, "seams": 0.0}
+			return {"pattern": WEATHERED_PHOTO, "col_a": Color(0.57, 0.56, 0.53), "col_b": Color(0.52, 0.51, 0.48), "rough": 0.94, "bump": 0.0, "grime": 0.0, "pitting": 0.1, "seams": 0.0, "scale": 0.5, "weathering": 0.5, "photo_color": preload("res://assets/town/concrete_floor_01_color.jpg"), "photo_surface": preload("res://assets/town/concrete_floor_01_surface.png")}
 		"concrete_floor":
-			return {"pattern": CONCRETE, "col_a": Color(0.42, 0.41, 0.38), "col_b": Color(0.3, 0.28, 0.25), "rough": 0.9, "bump": 0.6, "grime": 0.0}
+			return {"pattern": WEATHERED_PHOTO, "col_a": Color(0.42, 0.41, 0.38), "col_b": Color(0.3, 0.28, 0.25), "rough": 0.9, "bump": 0.0, "grime": 0.0, "scale": 0.5, "weathering": 0.5, "photo_color": preload("res://assets/town/concrete_floor_01_color.jpg"), "photo_surface": preload("res://assets/town/concrete_floor_01_surface.png")}
 		"sandbag":
 			return {"pattern": SANDBAG, "col_a": Color(0.62, 0.55, 0.39), "col_b": Color(0.45, 0.39, 0.26), "rough": 0.95, "bump": 2.2, "grime": 0.6}
 		"wood":
-			return {"pattern": WOOD, "col_a": Color(0.5, 0.37, 0.23), "col_b": Color(0.34, 0.24, 0.14), "rough": 0.85, "bump": 1.2, "grime": 0.5}
+			return {"pattern": WEATHERED_PHOTO, "col_a": Color(0.5, 0.37, 0.23), "col_b": Color(0.34, 0.24, 0.14), "rough": 0.85, "bump": 0.0, "grime": 0.5, "scale": 0.5, "weathering": 0.5, "photo_color": preload("res://assets/town/weathered_planks_color.jpg"), "photo_surface": preload("res://assets/town/weathered_planks_surface.png")}
 		"wood_dark":
-			return {"pattern": WOOD, "col_a": Color(0.33, 0.25, 0.17), "col_b": Color(0.22, 0.16, 0.1), "rough": 0.88, "bump": 1.2, "grime": 0.5}
+			return {"pattern": WEATHERED_PHOTO, "col_a": Color(0.33, 0.25, 0.17), "col_b": Color(0.22, 0.16, 0.1), "rough": 0.88, "bump": 0.0, "grime": 0.5, "scale": 0.5, "weathering": 0.5, "photo_color": preload("res://assets/town/weathered_planks_color.jpg"), "photo_surface": preload("res://assets/town/weathered_planks_surface.png")}
 		"bank":
 			# earth thrown up and left a season: settled smooth, gone over with
 			# moss and thin grass (berms, the mound over a dugout)
@@ -713,7 +728,13 @@ static func _preset(kind: String) -> Dictionary:
 		"rubble":
 			return {"pattern": STONE, "col_a": Color(0.55, 0.52, 0.47), "col_b": Color(0.36, 0.34, 0.3), "col_c": Color(0.5, 0.33, 0.25), "rough": 0.95, "bump": 2.4, "grime": 0.5, "scale": 2.0}
 		"roof_tile":
-			return {"pattern": BRICK, "col_a": Color(0.5, 0.22, 0.14), "col_b": Color(0.36, 0.17, 0.11), "col_c": Color(0.44, 0.2, 0.13), "rough": 0.82, "bump": 1.8, "grime": 0.55, "scale": 0.7}
+			return {"pattern": WEATHERED_PHOTO, "col_a": Color(0.5, 0.22, 0.14), "rough": 0.9, "bump": 0.0, "grime": 0.0, "scale": 0.5, "local_space": true, "weathering": 0.7, "photo_color": preload("res://assets/town/roof_tiles_color.jpg"), "photo_surface": preload("res://assets/town/roof_tiles_surface.png")}
+		"roof_concrete":
+			return {"pattern": WEATHERED_PHOTO, "col_a": Color(0.52, 0.5, 0.47), "rough": 0.95, "bump": 0.0, "grime": 0.0, "scale": 0.5, "local_space": true, "weathering": 1.0, "photo_color": preload("res://assets/town/concrete_floor_01_color.jpg"), "photo_surface": preload("res://assets/town/concrete_floor_01_surface.png")}
+		"fence_wood", "fence_rail":
+			return {"pattern": WEATHERED_PHOTO, "col_a": Color(0.5, 0.43, 0.33), "rough": 0.94, "bump": 0.0, "grime": 0.0, "scale": 0.5, "grain_horizontal": kind == "fence_rail", "weathering": 0.5, "photo_color": preload("res://assets/town/weathered_planks_color.jpg"), "photo_surface": preload("res://assets/town/weathered_planks_surface.png")}
+		"fence_metal":
+			return {"pattern": PAINT, "col_a": Color(0.6, 0.6, 0.6), "col_b": Color(0.28, 0.25, 0.21), "rough": 0.82, "metal": 0.35, "bump": 0.3, "grime": 0.65, "rust": 0.7, "scale": 1.7}
 		"corrugated":
 			return {"pattern": CORRUGATED, "col_a": Color(0.5, 0.51, 0.49), "col_b": Color(0.42, 0.24, 0.12), "rough": 0.55, "metal": 0.5, "bump": 1.0, "grime": 0.6}
 		"canvas":
@@ -721,7 +742,7 @@ static func _preset(kind: String) -> Dictionary:
 		"canvas_white":
 			return {"pattern": CANVAS, "col_a": Color(0.85, 0.84, 0.79), "col_b": Color(0.7, 0.68, 0.62), "rough": 0.95, "bump": 0.8, "grime": 0.5}
 		"bark":
-			return {"pattern": BARK, "col_a": Color(0.32, 0.25, 0.18), "col_b": Color(0.18, 0.14, 0.1), "rough": 0.95, "bump": 2.0, "grime": 0.2}
+			return {"pattern": WEATHERED_PHOTO, "col_a": Color(0.32, 0.25, 0.18), "col_b": Color(0.18, 0.14, 0.1), "rough": 0.95, "bump": 0.0, "grime": 0.2, "scale": 0.65, "weathering": 0.5, "photo_color": preload("res://assets/town/tree_bark_03_color.jpg"), "photo_surface": preload("res://assets/town/tree_bark_03_surface.png")}
 		"paint":
 			return {"pattern": PAINT, "col_a": Color(0.6, 0.6, 0.6), "col_b": Color(0.38, 0.37, 0.35), "rough": 0.45, "metal": 0.15, "bump": 0.6, "grime": 0.7}
 		"aircraft":
@@ -807,6 +828,8 @@ uniform float rough = 0.85;
 uniform float metal = 0.0;
 uniform float bump = 1.0;
 uniform float grime = 0.5;
+uniform float weathering = 0.0;
+uniform bool grain_horizontal = false;
 uniform float rust = 0.0;
 uniform float pitting = 1.0;  // concrete: how much of the old pitting shows
 uniform float seams = 1.0;  // concrete: the formwork joints
@@ -866,6 +889,7 @@ void fragment() {
 	else { uv = vec2(tp.x, tp.y); }
 	vec2 off = vec2(h12(seed.xz * 0.37), h12(seed.zx * 0.71)) * 37.0;
 	uv *= scale;
+	if (grain_horizontal) { uv = uv.yx; }
 	// pattern units per pixel here (how fine a detail can still be drawn)
 	vec2 fw = fwidth(uv);
 	float px = max(fw.x, fw.y);
@@ -897,7 +921,7 @@ void fragment() {
 		} else {
 			float n = tfbm(uv * 0.9 + off);
 			float chip = smoothstep(0.69 - sw, 0.72 + sw, n + (1.0 - smoothstep(0.0, 1.2, wpos.y)) * 0.06);
-			vec3 pl = col_a * (0.88 + 0.18 * tfbm(uv * 2.3 + off));
+			vec3 pl = texture(photo_color, uv * 0.5).rgb * col_a * 1.8;
 			float streak = tfbm(vec2(uv.x * 3.0, uv.y * 0.35) + off);
 			pl = mix(pl, col_d, smoothstep(0.5, 0.8, streak) * 0.45);
 			col = mix(pl, brick, chip);
@@ -905,7 +929,14 @@ void fragment() {
 			r = mix(rough, 0.95, chip);
 		}
 	} else if (pattern == 18) {
-		col = street_surface(photo_color, wpos.xz);
+		col = street_surface(photo_color, noise_tex, wpos.xz);
+		h = 0.5;
+	} else if (pattern == 21) {
+		col = texture(photo_color, uv + off * 0.03).rgb;
+		float damp = smoothstep(0.38, 0.68, tfbm(wpos.xz * 0.15 + off));
+		float streak = smoothstep(0.45, 0.72, tfbm(vec2(uv.x * 1.8, uv.y * 0.3) + off));
+		col *= 0.85 + 0.3 * tnoise(uv * 0.7 + off);
+		col = mix(col, col * vec3(0.32, 0.38, 0.29), (damp * 0.5 + streak * 0.25) * weathering);
 		h = 0.5;
 	} else if (pattern == 19 || pattern == 20) {
 		col = texture(photo_color, uv).rgb;
@@ -914,7 +945,9 @@ void fragment() {
 			col *= mix(vec3(0.23, 0.39, 0.16), vec3(0.36, 0.37, 0.21), dry);
 		} else {
 			vec2 slab = floor(uv * vec2(3.0, 6.0));
-			col *= 0.89 + 0.22 * h12(slab);
+			col *= 0.82 + 0.30 * h12(slab);
+			float staining = smoothstep(0.53, 0.72, tfbm(wpos.xz * 0.21 + 13.0));
+			col *= mix(vec3(1.0), vec3(0.62, 0.60, 0.54), staining * 0.65);
 		}
 		h = 0.5;
 	} else if (pattern == 3) {
@@ -1064,7 +1097,7 @@ void fragment() {
 	col = mix(col, col * 0.62 + vec3(0.05, 0.04, 0.02), low * grime * (0.6 + 0.4 * gn));
 	ALBEDO = col;
 	ROUGHNESS = clamp(r + (macro - 0.5) * 0.12, 0.05, 1.0);
-	if (pattern >= 18 && an.y > 0.5) {
+	if (pattern >= 18 && pattern <= 20 && an.y > 0.5) {
 		vec2 puv = wpos.xz / 30.0;
 		if (pattern != 18) { puv = uv; }
 		vec4 surface = texture(photo_surface, puv);
@@ -1072,6 +1105,20 @@ void fragment() {
 		normal.xy *= 0.18;
 		NORMAL = normalize((VIEW_MATRIX * vec4(normal.x, normal.z, -normal.y, 0.0)).xyz);
 		ROUGHNESS = clamp(surface.a, 0.65, 1.0);
+	}
+	if (pattern == 21) {
+		vec4 photo = texture(photo_surface, uv + off * 0.03);
+		vec3 n = photo.rgb * 2.0 - 1.0;
+		n.xy *= 0.45;
+		vec3 dx = dFdx(VERTEX); vec3 dy = dFdy(VERTEX);
+		vec2 tx = dFdx(uv); vec2 ty = dFdy(uv);
+		float handed = sign(tx.x * ty.y - tx.y * ty.x);
+		vec3 tangent = (dx * ty.y - dy * tx.y) * handed;
+		vec3 bitangent = (dy * tx.x - dx * ty.x) * handed;
+		if (dot(tangent, tangent) > 0.000001 && dot(bitangent, bitangent) > 0.000001) {
+			NORMAL = normalize(normalize(tangent) * n.x + normalize(bitangent) * n.y + NORMAL * n.z);
+		}
+		ROUGHNESS = clamp(photo.a, 0.7, 1.0);
 	}
 	METALLIC = m;
 	SPECULAR = 0.4;

@@ -370,6 +370,10 @@ func _build_ground() -> void:
 	road_mat.shader = rs
 	road_mat.set_shader_parameter("detail_tex", detail_tex)
 	road_mat.set_shader_parameter("paving_noise", preload("res://assets/town/aerial_asphalt_01_color.jpg"))
+	road_mat.set_shader_parameter("street_repairs", preload("res://assets/town/asphalt_02_color.jpg"))
+	road_mat.set_shader_parameter("street_noise", Mats.noise_tex())
+	road_mat.set_shader_parameter("gravel_color", preload("res://assets/town/gravelly_sand_color.jpg"))
+	road_mat.set_shader_parameter("gravel_surface", preload("res://assets/town/gravelly_sand_surface.png"))
 	road_mat.set_shader_parameter("paving_surface", preload("res://assets/town/aerial_asphalt_01_surface.png"))
 	# see-through (its edges fade into the verges), so it draws with the smoke
 	# and fire: before them, or it paints over every blast on a road
@@ -1414,6 +1418,9 @@ uniform sampler2DArray deform_tex : filter_linear, repeat_disable;
 // TERRAIN_TEXTURE_HELPER
 instance uniform float country = 0.0;
 uniform sampler2D paving_noise : source_color, filter_linear_mipmap_anisotropic, repeat_enable;
+uniform sampler2D street_noise : filter_linear_mipmap_anisotropic, repeat_enable;
+uniform sampler2D gravel_color : source_color, filter_linear_mipmap_anisotropic, repeat_enable;
+uniform sampler2D gravel_surface : filter_linear_mipmap_anisotropic, repeat_enable;
 uniform sampler2D paving_surface : filter_linear_mipmap_anisotropic, repeat_enable;
 // STREET_SURFACE
 varying vec3 wpos;
@@ -1435,7 +1442,7 @@ void fragment() {
 	float n2 = texture(detail_tex, wpos.xz / 11.0 + 0.5).r;
 	float n3 = texture(detail_tex, wpos.xz / 0.6 + 0.2).r;
 	float ruts = smoothstep(0.075, 0.0, abs(x - 0.3)) + smoothstep(0.075, 0.0, abs(x - 0.7));
-	vec3 gravel = mix(vec3(0.15, 0.135, 0.11), vec3(0.1, 0.09, 0.072), n);
+	vec3 gravel = texture(gravel_color, wpos.xz * 0.5).rgb * (0.48 + n * 0.24);
 	vec3 dirt = mix(vec3(0.14, 0.11, 0.075), vec3(0.09, 0.07, 0.048), n);
 	vec3 col = mix(dirt, gravel, country);
 	float peb = smoothstep(0.6, 0.72, n3);
@@ -1455,24 +1462,31 @@ void fragment() {
 	SPECULAR = mix(0.12, 0.45, pud);
 	float edge = smoothstep(0.0, 0.14 + 0.1 * n, x) * smoothstep(1.0, 0.86 - 0.1 * n, x);
 	ALPHA = edge;
+	vec4 gravel_data = texture(gravel_surface, wpos.xz * 0.5);
+	vec3 gravel_n = gravel_data.rgb * 2.0 - 1.0;
+	gravel_n.xy *= 0.24;
+	NORMAL = normalize((VIEW_MATRIX * vec4(gravel_n.x, gravel_n.z, -gravel_n.y, 0.0)).xyz);
 	// in town: patched asphalt between the curbs, a dashed centre line
-	float paved = step(town.x, wpos.x) * step(wpos.x, town.z) * step(town.y, wpos.z) * step(wpos.z, town.w) * country;
-	if (paved > 0.5) {
-		vec3 asph = street_surface(paving_noise, wpos.xz);
+	vec2 inside = min(wpos.xz - town.xy, town.zw - wpos.xz);
+	float distance = min(inside.x, inside.y);
+	float broken_edge = (texture(street_noise, wpos.xz * 0.12).r - 0.5) * 3.0;
+	float paved = smoothstep(-5.0, 2.0, distance + broken_edge) * country * step(1.0, town.z - town.x);
+	if (paved > 0.001) {
+		vec3 asph = street_surface(paving_noise, street_noise, wpos.xz);
 		float dash = step(abs(x - 0.5), 0.011) * step(fract(UV.y / 7.0), 0.5);
-		asph = mix(asph, vec3(0.78, 0.74, 0.6) * (0.75 + 0.25 * n), dash * 0.8);
+		asph = mix(asph, vec3(0.78, 0.74, 0.6) * (0.75 + 0.25 * n), dash * 0.8 * smoothstep(0.6, 0.95, paved));
 		float wear = smoothstep(0.08, 0.0, abs(x - 0.27)) + smoothstep(0.08, 0.0, abs(x - 0.73));
 		asph = mix(asph, asph * 0.85, wear * 0.4);
 		float pud2 = wet * smoothstep(0.55, 0.75, n2 * 0.8);
 		asph *= 1.0 - wet * 0.3;
-		ALBEDO = mix(asph, asph * 0.4, pud2);
+		ALBEDO = mix(col, mix(asph, asph * 0.4, pud2), paved);
 		vec4 surface = texture(paving_surface, wpos.xz / 30.0);
 		vec3 normal = surface.rgb * 2.0 - 1.0;
 		normal.xy *= 0.18;
-		NORMAL = normalize((VIEW_MATRIX * vec4(normal.x, normal.z, -normal.y, 0.0)).xyz);
-		ROUGHNESS = mix(clamp(surface.a, 0.65, 1.0) - wet * 0.3, 0.06, pud2);
-		SPECULAR = mix(0.3, 0.55, pud2);
-		ALPHA = 1.0;
+		NORMAL = normalize(mix(NORMAL, (VIEW_MATRIX * vec4(normal.x, normal.z, -normal.y, 0.0)).xyz, paved));
+		ROUGHNESS = mix(ROUGHNESS, mix(clamp(surface.a, 0.65, 1.0) - wet * 0.3, 0.06, pud2), paved);
+		SPECULAR = mix(SPECULAR, mix(0.3, 0.55, pud2), paved);
+		ALPHA = mix(edge, 1.0, paved);
 	}
 }
 """

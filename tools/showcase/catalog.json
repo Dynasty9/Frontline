@@ -3955,48 +3955,48 @@
       "sources": [
         {
           "file": "changelog/unreleased/town-ground-and-frontages/target-before.jpg",
-          "sha256": "709d3866f673a05f01964eb3481fba0073db8938ab8ab390f271ff85e19fe2d5",
+          "sha256": "51c5ba8328ac41981eee70e851fb7e8713dac9b38c750474d84d99bff45dec99",
           "caption": "target before"
         },
         {
           "file": "changelog/unreleased/town-ground-and-frontages/target-after.jpg",
-          "sha256": "51c5ba8328ac41981eee70e851fb7e8713dac9b38c750474d84d99bff45dec99",
+          "sha256": "ce05f9868ef622f1ab17d62a69f65250a65a62b2cd47f46d353ff654e7d6bac1",
           "caption": "target after"
         },
         {
           "file": "changelog/unreleased/town-ground-and-frontages/wide-before.jpg",
-          "sha256": "f4d38e4321c54050aba9725fd71d7e12fd116b1d8226f5a0239826a36dbe878f",
+          "sha256": "c44ce54e72643fcf733bf36575aa70d9e47f6465a6bfe36d146a0caffad7deef",
           "caption": "wide before"
         },
         {
           "file": "changelog/unreleased/town-ground-and-frontages/wide-after.jpg",
-          "sha256": "c44ce54e72643fcf733bf36575aa70d9e47f6465a6bfe36d146a0caffad7deef",
+          "sha256": "fee50838bf1c69c382a60a047ca65fb0d3a7013ea93588434b4c5ae3fae85123",
           "caption": "wide after"
         },
         {
           "file": "changelog/unreleased/town-ground-and-frontages/target-compat.jpg",
-          "sha256": "c6e2771ecc25ed28e1f02e0c318dcafcbd14df60b3505a3d280b6b3e226a87bd",
+          "sha256": "d383a52122b0d31f64b22a8838f45c0477d51b24da96d8b6a162afa54557f72f",
           "caption": "target compat"
         },
         {
           "file": "changelog/unreleased/town-ground-and-frontages/detail-before.jpg",
-          "sha256": "5b28835d5d6811338152ad14321f22821b80690b62c4aad9920349e7106b8069",
+          "sha256": "605df19242e613cbcca4c79a5183038b738cdb9c60e51f1aa67902c79a16cbb3",
           "caption": "detail before"
         },
         {
           "file": "changelog/unreleased/town-ground-and-frontages/detail-after.jpg",
-          "sha256": "605df19242e613cbcca4c79a5183038b738cdb9c60e51f1aa67902c79a16cbb3",
+          "sha256": "a5e03b7cd01df6e0fe9369d15f0305ced6852aa65049cdfc8090fbfc240a0fe4",
           "caption": "detail after"
         },
         {
           "file": "changelog/unreleased/town-ground-and-frontages/compare.gif",
-          "sha256": "e4f1d18967a744e11cdea6456dddf59f472cd7cf1ddf240083ef09c9cf3a8835",
+          "sha256": "ca0661936d634c34a7bc5ddea930a7d55968a39a59afb3ef1ecf961263ce5639",
           "caption": "Native frames, separate labels, shared palette, 2.5 seconds each."
         }
       ],
       "output": null,
       "capture": {
-        "before_ref": "e5ff35923fe6d2ade0479786f217dc9813244d46",
+        "before_ref": "113a39fbcb50e707d689eb1f00b494d2b1414531",
         "after_ref": "codex/town-ground-and-frontages",
         "before_pack": "review-12-before.pck",
         "after_pack": "review-12-after.pck",

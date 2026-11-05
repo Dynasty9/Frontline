@@ -335,9 +335,9 @@ func _ready() -> void:
 	var restored: PackedFloat32Array = World._unpack(World._pack(heights))
 	assert(restored == heights)
 	world.free()
-	for kind in ["asphalt", "pavement", "turf"]:
-		var photo: Texture2D = Mats.paving(kind).get_shader_parameter("photo_color")
-		var surface: Texture2D = Mats.paving(kind).get_shader_parameter("photo_surface")
+	for kind in ["asphalt", "pavement", "turf", "roof_tile", "roof_concrete", "fence_wood", "fence_rail", "brick", "plaster", "bark", "concrete", "concrete_floor", "wood", "wood_dark", "curbstone"]:
+		var photo: Texture2D = Mats.get_mat(kind).get_shader_parameter("photo_color")
+		var surface: Texture2D = Mats.get_mat(kind).get_shader_parameter("photo_surface")
 		assert(photo != null and surface != null, "Town scans ship with colour and normal/roughness maps")
 		assert(photo.get_image().has_mipmaps() and surface.get_image().has_mipmaps(), "Town scans filter with distance")
 	assert(Mats.paving("asphalt").get_shader_parameter("pattern") == Mats.ASPHALT, "Junction shader preserves its asphalt pattern")
