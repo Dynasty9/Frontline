@@ -294,6 +294,7 @@ static func leaf_cards(conifer: bool) -> ShaderMaterial:
 	if not _leaf_cards.has(conifer):
 		var material := foliage().duplicate() as ShaderMaterial
 		material.set_shader_parameter("leaf_cards", true)
+		material.set_shader_parameter("leaf_tone", 0.65 if conifer else 0.85)
 		material.set_shader_parameter("leaf_texture", preload("res://assets/foliage/fir.png") if conifer else preload("res://assets/foliage/broadleaf.png"))
 		_leaf_cards[conifer] = material
 	return _leaf_cards[conifer]
@@ -1172,6 +1173,7 @@ render_mode cull_disabled;
 instance uniform vec4 tint : source_color = vec4(0.2, 0.32, 0.14, 1.0);
 uniform float wind = 1.0;
 uniform bool leaf_cards = false;
+uniform float leaf_tone = 1.0;
 uniform sampler2D leaf_texture : source_color, filter_linear_mipmap_anisotropic, repeat_disable;
 uniform bool use_vcolor = false;
 // on fire (a burning tree's own copy, see Structure._apply_char): the leaves
@@ -1224,7 +1226,7 @@ void fragment() {
 	if (leaf_cards) {
 		vec4 photo = texture(leaf_texture, UV);
 		if (photo.a < 0.22) { discard; }
-		c = photo.rgb * mix(vec3(0.75), vec3(1.15), clamp(c * 12.0, vec3(0.0), vec3(1.0)));
+		c = photo.rgb * leaf_tone * mix(vec3(0.75), vec3(1.15), clamp(c * 12.0, vec3(0.0), vec3(1.0)));
 	}
 	c = mix(c, c * vec3(1.15, 1.1, 0.7), smoothstep(0.55, 0.8, gaps) * 0.5);
 	if (scorch > 0.0) {

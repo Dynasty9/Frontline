@@ -3960,7 +3960,7 @@
         },
         {
           "file": "changelog/unreleased/town-ground-and-frontages/target-after.jpg",
-          "sha256": "02d11f41d98ec462a4c5aee86fd918f48ddcd490f13db9bace82cb8e9ecb2a01",
+          "sha256": "2f529aab330a5b92f629e7511ba74d8a375cc63d49840a11350f6891c4279fdc",
           "caption": "target after"
         },
         {
@@ -3970,12 +3970,12 @@
         },
         {
           "file": "changelog/unreleased/town-ground-and-frontages/wide-after.jpg",
-          "sha256": "8a56af1f8e75b74e83c3f889895096e107d4bc647068368fcddd1222f9f2d549",
+          "sha256": "de760373f1448684d5833cf330c528a6f3e7cae118ecc0365697faf8516252c8",
           "caption": "wide after"
         },
         {
           "file": "changelog/unreleased/town-ground-and-frontages/target-compat.jpg",
-          "sha256": "7ce021ea336a43de5b6c3f855a5547f8bf96bb24c448ed4206ece482621a27aa",
+          "sha256": "d8a6d64359127e87f0b1323f8778b3a46720de9d34a33eb55a2ba7093475253d",
           "caption": "target compat"
         },
         {
@@ -3985,7 +3985,7 @@
         },
         {
           "file": "changelog/unreleased/town-ground-and-frontages/detail-after.jpg",
-          "sha256": "4cf89bdda8934ca3be070f1d9e39fe7b7d8e1bac59fc4d8f7876c942e1419cda",
+          "sha256": "ee3af83a560ac59139a2d1666f01878ebeafce68da3e8aa5dc74dd9de807a526",
           "caption": "detail after"
         },
         {
@@ -3995,12 +3995,12 @@
         },
         {
           "file": "changelog/unreleased/town-ground-and-frontages/forest-after.jpg",
-          "sha256": "a8a57b7e286fce06dc59b83602478dcb75e65ce51ef9aa74de92252dc81ea158",
+          "sha256": "347fd33cd7c8f49a841f9abece9a2a7cf87d55e7e575db46d9b6de2fdb44c1f4",
           "caption": "forest after"
         },
         {
           "file": "changelog/unreleased/town-ground-and-frontages/compare.gif",
-          "sha256": "eca37891e7a5f729e6324c6def4fcf504c71bc078ec652ee71735a142ce02eca",
+          "sha256": "fa8edd1b84b68731c15cde1567e3bb83ff0ecad82b1df24eae51c20eeb49eb7e",
           "caption": "Native frames, separate labels, shared palette, 2.5 seconds each."
         }
       ],
