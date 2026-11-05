@@ -51,6 +51,7 @@ var we: WorldEnvironment
 var sun: DirectionalLight3D
 var rim: DirectionalLight3D
 var sky_mat: ShaderMaterial
+var _photo_sky: ShaderMaterial
 var ground: MeshInstance3D
 var ground_mat: ShaderMaterial
 var post_layer: CanvasLayer
@@ -159,6 +160,25 @@ func grass_amount(p: Vector3) -> float:
 
 # --- environment ---------------------------------------------------------------------
 
+func _apply_sky() -> void:
+	if mood != "day":
+		env.sky.sky_material = sky_mat
+		return
+	if _photo_sky == null:
+		_photo_sky = ShaderMaterial.new()
+		var shader := Shader.new()
+		shader.code = PHOTO_SKY_SHADER
+		_photo_sky.shader = shader
+		_photo_sky.set_shader_parameter("panorama", preload("res://assets/sky/kloofendal_partly_cloudy_2k.hdr"))
+	# The HDR's brightest pixel is the sun, at (1218, 239) in its 2048 x 1024 panorama.
+	var longitude := (1218.5 / 2048.0) * TAU
+	var latitude := (239.5 / 1024.0) * PI
+	var photographed := Vector3(sin(longitude) * sin(latitude), cos(latitude), -cos(longitude) * sin(latitude))
+	var lit := Basis.from_euler(Vector3(deg_to_rad(-float(_d.elev)), deg_to_rad(float(_d.azim)), 0)).z
+	_photo_sky.set_shader_parameter("rotation", Basis(Quaternion(lit, photographed)))
+	env.sky.sky_material = _photo_sky
+
+
 func _build_env() -> void:
 	env = Environment.new()
 	env.background_mode = Environment.BG_SKY
@@ -176,6 +196,7 @@ func _build_env() -> void:
 	sky.sky_material = sky_mat
 	sky.radiance_size = Sky.RADIANCE_SIZE_128
 	env.sky = sky
+	_apply_sky()
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_SKY
 	env.ambient_light_energy = float(_d.ambient)
 	env.ambient_light_sky_contribution = 0.85
@@ -575,6 +596,7 @@ func apply_mood(m: String) -> void:
 	sky_mat.set_shader_parameter("sun_col", _d.sun)
 	sky_mat.set_shader_parameter("cloudiness", 1.0 if mood in ["overcast", "rain"] else (0.3 if mood == "day" else 0.55))
 	sky_mat.set_shader_parameter("stars", 1.0 if mood == "night" else 0.0)
+	_apply_sky()
 	env.ambient_light_energy = float(_d.ambient)
 	ground_mat.set_shader_parameter("wet", 1.0 if mood == "rain" else 0.0)
 	Mats.set_shared(road_mat, &"wet", 1.0 if mood == "rain" else 0.0)
@@ -937,6 +959,18 @@ func make_road_mesh(polys: Array, team: int) -> MeshInstance3D:
 	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	return mi
 
+
+const PHOTO_SKY_SHADER := """
+shader_type sky;
+uniform sampler2D panorama : source_color, filter_linear_mipmap, repeat_enable;
+uniform mat3 rotation;
+void sky() {
+	vec3 d = rotation * EYEDIR;
+	vec2 uv = vec2(atan(d.x, -d.z) / TAU, acos(clamp(d.y, -1.0, 1.0)) / PI);
+	vec3 sky = min(texture(panorama, vec2(fract(uv.x), uv.y)).rgb, vec3(16.0));
+	COLOR = mix(sky, vec3(0.14, 0.16, 0.12), 1.0 - smoothstep(-0.20, -0.02, EYEDIR.y));
+}
+"""
 
 const SKY_SHADER := """
 shader_type sky;
