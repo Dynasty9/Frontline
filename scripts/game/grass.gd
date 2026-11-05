@@ -275,6 +275,7 @@ func _build_chunk(c: Vector2i) -> void:
 	var origin := Vector3(c.x * CHUNK, 0, c.y * CHUNK)
 	var density := 0.45 if level == 1 else 1.0
 	var count := int(CHUNK * CHUNK * density)
+	var town := atmo.world.town_rect.grow(12.0)
 	var xf := []
 	var cd := []
 	var bushes := []
@@ -291,7 +292,9 @@ func _build_chunk(c: Vector2i) -> void:
 				stones.append(p)
 			continue
 		var s := rng.randf_range(0.75, 1.3) * (0.65 + 0.5 * g)
-		var basis := Basis(Vector3.UP, rng.randf() * TAU).scaled(Vector3(s, s * rng.randf_range(0.8, 1.35), s))
+		# Shorter urban grass exposes the soil and blade texture between clumps.
+		var height := 0.45 if atmo.world.town_rect.has_area() and town.has_point(Vector2(p.x, p.z)) else 1.0
+		var basis := Basis(Vector3.UP, rng.randf() * TAU).scaled(Vector3(s, s * rng.randf_range(0.8, 1.35) * height, s))
 		xf.append(Transform3D(basis, p))
 		cd.append(Color(g, rng.randf(), 0, 0))
 		if rng.randf() < 0.012 and g > 0.6:

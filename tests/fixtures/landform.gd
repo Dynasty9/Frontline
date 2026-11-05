@@ -103,6 +103,12 @@ func _ready() -> void:
 	for vertex in paved_vertices:
 		var point := paving._at * vertex
 		assert(absf(absf(point.y - world.terrain.landform.height(point)) - 0.05) < 0.001, "Paving follows the local geology without a floating centre")
+	world.terrain.landform.heights.fill(12.0)
+	paving._at.origin.y = 12.0
+	var flat_paving := paving._paving_mesh(Res.box(Vector3(2, 0.1, 2)), Transform3D.IDENTITY)
+	var flat_normals: PackedVector3Array = flat_paving.surface_get_arrays(0)[Mesh.ARRAY_NORMAL]
+	for normal in flat_normals:
+		assert(is_equal_approx(normal.length(), 1.0) and (absf(normal.x) > 0.999 or absf(normal.y) > 0.999 or absf(normal.z) > 0.999), "Flat paving keeps face normals distinct at slab corners")
 	paving.free()
 	MapDims.HALF = previous_half
 	world.terrain.landform.heights = PackedFloat32Array()
@@ -329,6 +335,11 @@ func _ready() -> void:
 	var restored: PackedFloat32Array = World._unpack(World._pack(heights))
 	assert(restored == heights)
 	world.free()
+	for kind in ["asphalt", "pavement", "turf"]:
+		var photo: Texture2D = Mats.paving(kind).get_shader_parameter("photo_color")
+		var surface: Texture2D = Mats.paving(kind).get_shader_parameter("photo_surface")
+		assert(photo != null and surface != null, "Town scans ship with colour and normal/roughness maps")
+		assert(photo.get_image().has_mipmaps() and surface.get_image().has_mipmaps(), "Town scans filter with distance")
 	assert(Mats.paving("asphalt").get_shader_parameter("pattern") == Mats.ASPHALT, "Junction shader preserves its asphalt pattern")
 	assert(Mats.paving("asphalt").get_shader_parameter("crater_cut") == true, "Asphalt junctions retain crater cutouts")
 	assert(Mats.paving("pavement").get_shader_parameter("grime") == 0.0, "Horizontal paving must not inherit ground-height wall grime")

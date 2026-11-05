@@ -25,14 +25,13 @@ const TILES := 15
 const HESCO := 16
 const NATURAL_ROCK := 17
 const ASPHALT := 18
+const PAVEMENT := 19
+const TURF := 20
 
 # One world-space surface keeps junction overlays continuous with street ribbons.
 const ASPHALT_SHADER := """
 vec3 street_surface(sampler2D tex, vec2 p) {
-	float grain = texture(tex, p * 1.5).r;
-	float age = texture(tex, p * 0.0125).r;
-	float repair = smoothstep(0.63, 0.72, texture(tex, p * 0.035 + 0.31).r);
-	return vec3(0.052, 0.054, 0.055) * (0.94 + grain * 0.12 + (age - 0.5) * 0.16 - repair * 0.09);
+	return texture(tex, p / 30.0).rgb * 0.35;
 }
 """
 
@@ -685,9 +684,11 @@ static func _preset(kind: String) -> Dictionary:
 		"concrete":
 			return {"pattern": CONCRETE, "col_a": Color(0.52, 0.51, 0.48), "col_b": Color(0.36, 0.35, 0.32), "rough": 0.9, "bump": 0.9, "grime": 0.8}
 		"asphalt":
-			return {"pattern": ASPHALT, "col_a": Color(1, 1, 1), "rough": 0.88, "bump": 0.12, "grime": 0.0}
+			return {"pattern": ASPHALT, "col_a": Color(1, 1, 1), "rough": 0.88, "bump": 0.0, "grime": 0.0, "photo_color": preload("res://assets/town/aerial_asphalt_01_color.jpg"), "photo_surface": preload("res://assets/town/aerial_asphalt_01_surface.png")}
+		"turf":
+			return {"pattern": TURF, "col_a": Color(1, 1, 1), "rough": 0.98, "bump": 0.0, "grime": 0.0, "scale": 0.5, "photo_color": preload("res://assets/town/leafy_grass_color.jpg"), "photo_surface": preload("res://assets/town/leafy_grass_surface.png")}
 		"pavement":
-			return {"pattern": CONCRETE, "col_a": Color(0.52, 0.51, 0.48), "col_b": Color(0.47, 0.46, 0.43), "rough": 0.93, "bump": 0.22, "grime": 0.0, "pitting": 0.1, "seams": 0.3}
+			return {"pattern": PAVEMENT, "col_a": Color(0.52, 0.51, 0.48), "rough": 0.93, "bump": 0.0, "grime": 0.0, "scale": 0.555556, "photo_color": preload("res://assets/town/concrete_pavement_color.jpg"), "photo_surface": preload("res://assets/town/concrete_pavement_surface.png")}
 		"curbstone":
 			return {"pattern": CONCRETE, "col_a": Color(0.57, 0.56, 0.53), "col_b": Color(0.52, 0.51, 0.48), "rough": 0.94, "bump": 0.15, "grime": 0.0, "pitting": 0.1, "seams": 0.0}
 		"concrete_floor":
@@ -794,6 +795,8 @@ shader_type spatial;
 render_mode specular_schlick_ggx;
 
 uniform int pattern = 0;
+uniform sampler2D photo_color : source_color, filter_linear_mipmap_anisotropic, repeat_enable;
+uniform sampler2D photo_surface : filter_linear_mipmap_anisotropic, repeat_enable;
 uniform sampler2D stone_texture : source_color, filter_linear_mipmap_anisotropic, repeat_enable;
 uniform vec3 col_a : source_color = vec3(0.6);
 uniform vec3 col_b : source_color = vec3(0.4);
@@ -902,8 +905,18 @@ void fragment() {
 			r = mix(rough, 0.95, chip);
 		}
 	} else if (pattern == 18) {
-		col = street_surface(noise_tex, wpos.xz);
-		h = texture(noise_tex, wpos.xz * 1.5).r * 0.04;
+		col = street_surface(photo_color, wpos.xz);
+		h = 0.5;
+	} else if (pattern == 19 || pattern == 20) {
+		col = texture(photo_color, uv).rgb;
+		if (pattern == 20) {
+			float dry = smoothstep(0.35, 0.7, tfbm(wpos.xz * 0.08));
+			col *= mix(vec3(0.23, 0.39, 0.16), vec3(0.36, 0.37, 0.21), dry);
+		} else {
+			vec2 slab = floor(uv * vec2(3.0, 6.0));
+			col *= 0.89 + 0.22 * h12(slab);
+		}
+		h = 0.5;
 	} else if (pattern == 3) {
 		col = col_a * (0.86 + 0.22 * tfbm(uv * 2.1 + off));
 		float st = tfbm(uv * 0.6 + off * 0.3);
@@ -1051,6 +1064,15 @@ void fragment() {
 	col = mix(col, col * 0.62 + vec3(0.05, 0.04, 0.02), low * grime * (0.6 + 0.4 * gn));
 	ALBEDO = col;
 	ROUGHNESS = clamp(r + (macro - 0.5) * 0.12, 0.05, 1.0);
+	if (pattern >= 18 && an.y > 0.5) {
+		vec2 puv = wpos.xz / 30.0;
+		if (pattern != 18) { puv = uv; }
+		vec4 surface = texture(photo_surface, puv);
+		vec3 normal = surface.rgb * 2.0 - 1.0;
+		normal.xy *= 0.18;
+		NORMAL = normalize((VIEW_MATRIX * vec4(normal.x, normal.z, -normal.y, 0.0)).xyz);
+		ROUGHNESS = clamp(surface.a, 0.65, 1.0);
+	}
 	METALLIC = m;
 	SPECULAR = 0.4;
 	// bump mapping from the pattern height (surface gradient); the height is

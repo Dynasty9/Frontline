@@ -295,17 +295,24 @@ func _paving_mesh(box: Mesh, local: Transform3D) -> ArrayMesh:
 	grid.subdivide_depth = maxi(0, ceili(grid.size.z / 2.0) - 1)
 	var arrays := grid.get_mesh_arrays()
 	var vertices: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
+	var normals: PackedVector3Array = arrays[Mesh.ARRAY_NORMAL]
 	var xf := _at * local
+	var inverse_basis := xf.basis.inverse()
 	for i in vertices.size():
 		var point := xf * vertices[i]
 		vertices[i].y += world.terrain.landform.height(point) - _at.origin.y
+		# Keep slab edges hard; smoothing box corners produces dark triangular patches.
+		if absf(normals[i].y) > 0.5:
+			var geology: Landform = world.terrain.landform
+			var dx: float = geology.height(point - Vector3(0.2, 0, 0)) - geology.height(point + Vector3(0.2, 0, 0))
+			var dz: float = geology.height(point - Vector3(0, 0, 0.2)) - geology.height(point + Vector3(0, 0, 0.2))
+			normals[i] = inverse_basis * Vector3(dx, 0.4, dz).normalized() * signf(normals[i].y)
 	arrays[Mesh.ARRAY_VERTEX] = vertices
+	arrays[Mesh.ARRAY_NORMAL] = normals
 	var mesh := ArrayMesh.new()
 	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
-	var surface := SurfaceTool.new()
-	surface.create_from(mesh, 0)
-	surface.generate_normals()
-	return surface.commit()
+	Mats.keep_arrays(mesh, arrays)
+	return mesh
 
 
 func _leaf(r: float, p: Vector3, col: Color, shadow := true) -> void:
@@ -349,7 +356,7 @@ func _make(h: Node3D, kind: String, ex) -> void:
 				_leaf(r, p + Vector3(0, r * 0.35, 0), Res.vary(Color(0.19, 0.25, 0.10), 0.1, rng), false)
 		"yard":
 			var size: Vector3 = ex
-			_m(Res.box(size), "bank", Vector3(0, size.y * 0.5, 0), Res.vary(Color(0.28, 0.34, 0.19), 0.12, rng), Vector3.ZERO, false, true)
+			_m(Res.box(size), "turf", Vector3(0, size.y * 0.5, 0), null, Vector3.ZERO, false, true)
 		"walk":
 			var s: Vector3 = ex
 			_m(Res.box(s), "pavement", Vector3(0, s.y * 0.5, 0), null, Vector3.ZERO, false, true)
