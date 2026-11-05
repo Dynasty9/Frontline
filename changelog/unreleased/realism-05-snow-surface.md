@@ -25,3 +25,5 @@ Adds derivative-filtered snow surface relief and changes its roughness coherentl
 Research: [primary reference](https://download.nvidia.com/developer/SDK/Individual_Samples/DEMOS/Direct3D9/src/SnowAccumulation/Docs/SnowAccumulation.pdf).
 
 Wind grooves now bend and break at two scales, with subdued granular shading, rather than forming evenly spaced parallel stripes.
+
+Snow collects in connected sheltered shelves with irregular wind-scoured rock windows, broken edges and softer two-scale surface relief.

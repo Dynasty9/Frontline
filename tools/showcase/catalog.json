@@ -3511,32 +3511,32 @@
       "sources": [
         {
           "file": "changelog/unreleased/realism-05-snow-surface/target-before.jpg",
-          "sha256": "3aa4df11495c259a1250a566693ce153e7964b6c0866ca501c3540fcf2b529a6",
+          "sha256": "b35191eeb41ac1439b0a6bc0eff7f2a9e133e23895c5d53f10335b83c76a90dc",
           "caption": "target before"
         },
         {
           "file": "changelog/unreleased/realism-05-snow-surface/target-after.jpg",
-          "sha256": "017a58f4685b71eaf1fb2b74fbd5eb470291c2b4d0da58ff98527aa7a795a799",
+          "sha256": "76d394db07eddacf6d14c764a6a3de95654ebce10cf0a0f7a58a77f5a4344ea3",
           "caption": "target after"
         },
         {
           "file": "changelog/unreleased/realism-05-snow-surface/wide-before.jpg",
-          "sha256": "a871cd6e15ebd2a2ed9b61b76705cb1648714e8265c3badf08cd7d850a55b983",
+          "sha256": "fb09c3d2ee5c6907ba463cd80d417d832a176f6a3888bd828153efca602eab46",
           "caption": "wide before"
         },
         {
           "file": "changelog/unreleased/realism-05-snow-surface/wide-after.jpg",
-          "sha256": "7be687b40c16bea37fe08c2ace7513bf941c9863e722c6a9f0d3708e302efe6a",
+          "sha256": "27e98ae3f08ab5d6b951a1403e00e1f7ac88b1cc4035712084871cc826431342",
           "caption": "wide after"
         },
         {
           "file": "changelog/unreleased/realism-05-snow-surface/target-compat.jpg",
-          "sha256": "0d63eae20cf99df068d1eaf28274328d7d58c9d3e75f1e25c0426bf216367997",
+          "sha256": "ae040f87abb85d6b53157de3135ef4bc47e0876d4acab4e80a83880d270709ba",
           "caption": "target compat"
         },
         {
           "file": "changelog/unreleased/realism-05-snow-surface/compare.gif",
-          "sha256": "1666ac2a2b4a19cad545ed8fb68017e918a926c7f8f1f6042f9e08793001750a",
+          "sha256": "0b9cfe8e87421903f7434c001969db7f5993c98dc75344ebac23d5249cc77514",
           "caption": "Native frames, separate labels, shared palette, 2.5 seconds each."
         }
       ],
@@ -3545,10 +3545,10 @@
       "version": "unreleased",
       "kind": "improved",
       "capture": {
-        "before_ref": "d006571fca84b56157fab5bdd24a42435d952b70",
+        "before_ref": "edc4b235c25eac674075d3c9641ce76ae9871c95",
         "after_ref": "codex/realism-05-snow-surface",
-        "before_pack": "iterate-05-before.pck",
-        "after_pack": "iterate-05-after.pck",
+        "before_pack": "review-05-before.pck",
+        "after_pack": "review-05-after.pck",
         "seed": 3,
         "preset": "high",
         "mood": "day",

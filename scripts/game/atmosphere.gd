@@ -1256,6 +1256,9 @@ void fragment() {
 	snow_field += (macro - 0.5) * 0.45 + lee * 0.18 + (0.5 - rock_height) * 0.22;
 	float snow = height_blend(rock_height, 0.6, smoothstep(-0.16, 0.20, snow_field));
 	snow *= 1.0 - smoothstep(0.85, 2.1, slope);
+	float scoured = smoothstep(0.46, 0.72, rock_sample.a * 0.38 + macro * 0.38 + patch * 0.24);
+	snow *= 1.0 - scoured * smoothstep(0.22, 0.95, slope) * 0.88;
+	snow = height_blend(rock_sample.a, scree_sample.a, snow);
 	snow *= clean;
 	// Wind ripples are resolved only while they cover several pixels.
 	float snow_phase = dot(p, vec2(0.8, 0.6)) * 1.3 + (macro - 0.5) * 7.0 + patch * 9.0;
@@ -1299,7 +1302,7 @@ void fragment() {
 	n = normalize(mix(n, mapped, 0.85 * clean * (1.0 - snow)));
 	n = surface_relief(n, mineral * 0.28, exposed * clean * (1.0 - snow) * smoothstep(0.3, 1.0, slope));
 	n = normalize(mix(n, geometric, snow * 0.9));
-	n = surface_relief(n, snow_ripple * 0.10 + scree_sample.a * 0.045, snow);
+	n = surface_relief(n, snow_ripple * 0.065 + scree_sample.a * 0.025, snow);
 	n = normalize(mix(n, vec3(0.0, 1.0, 0.0), puddle * 0.9));
 	NORMAL = normalize((VIEW_MATRIX * vec4(n, 0.0)).xyz);
 }
