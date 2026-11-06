@@ -266,6 +266,33 @@ func _check_shared_presentation_changes() -> void:
 		view.motion.advance(0.2)
 		man._view_process(1.0 / 60.0, 0.2, true)
 	assert(man.sight_checks == 1, "Unchanged shared presentation does not repeat visibility and model checks")
+	# Routine movement, animation, ammunition and squad updates keep the shared view.
+	var moving := StreamPeerBuffer.new()
+	man.write_state(moving)
+	moving.seek(0)
+	Entity.put_v3(moving, Vector3(1, 0, -20))
+	Entity.put_ang(moving, 0.4)
+	moving.seek(0)
+	man.read_state(moving)
+	man._view_process(1.0 / 60.0, 0.2, true)
+	assert(man.sight_checks == 1, "Position-only packets must not rebuild shared presentation")
+	for change in [["life", Soldier.Life.DOWNED], ["vis_mask", 0], ["team", 0]]:
+		var field: String = change[0]
+		var previous = man.get(field)
+		man.set(field, change[1])
+		var changed := StreamPeerBuffer.new()
+		man.write_state(changed)
+		man.set(field, previous)
+		changed.seek(0)
+		man.read_state(changed)
+		assert(man._view_dirty, "Life, visibility and side changes invalidate shared presentation")
+		man.set(field, previous)
+		man._view_dirty = false
+	man._view_dirty = true
+	moving.seek(0)
+	man.read_state(moving)
+	assert(man._view_dirty, "A routine packet must not discard pending property changes")
+	man._view_dirty = false
 	man.selected = true
 	man._view_process(1.0 / 60.0, 0.2, true)
 	assert(man.sight_checks == 2 and man.ring.visible, "Selection remains immediate")
@@ -276,6 +303,10 @@ func _check_shared_presentation_changes() -> void:
 	world._rpc_snap(packet.data_array)
 	man._view_process(1.0 / 60.0, 0.2, true)
 	assert(not man.visible, "A zero-length hidden snapshot immediately invalidates presentation")
+	var hidden_checks := man.sight_checks
+	for frame in 10:
+		man._view_process(1.0 / 60.0, 0.2, true)
+	assert(man.sight_checks == hidden_checks, "Hidden soldiers retain presentation until visibility or observer changes")
 	world.view_team = 1
 	man._view_process(1.0 / 60.0, 0.2, true)
 	assert(man.visible, "Changing observer team immediately updates visibility")

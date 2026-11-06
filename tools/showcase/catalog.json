@@ -3497,6 +3497,19 @@
         "after_ref": "3776532",
         "command": "python tools/benchmark_scaling.py --godot <export>/Frontline.exe --exported --rendered --local-server --units 500 --map-size 1024 --mode combat --seed 3 --team -1 --warmup 30 --duration 30 --zoom 35 --preset high --width 1280 --height 720 --output <fresh directory>"
       }
+    },
+    {
+      "entry": "changelog/unreleased/snapshot-presentation.md",
+      "title": "Less repeated work when units move",
+      "summary": "Movement updates reuse shared soldier presentation while selection, visibility and casualties still update immediately.",
+      "version": "unreleased",
+      "kind": "improved",
+      "medium": "text",
+      "stage": "text",
+      "rationale": "Packet-driven presentation regression tests verify unchanged visibility, selection, motion and detail promotion. Timing evidence is documented separately; no visual redesign.",
+      "source_ref": "codex/soldier-presentation-work",
+      "sources": [],
+      "output": null
     }
   ],
   "layout_capture": {
