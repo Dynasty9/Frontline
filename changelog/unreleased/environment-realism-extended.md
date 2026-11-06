@@ -102,3 +102,5 @@ Town asphalt now separates fine aggregate from broad cracks, repairs and stains.
 Photographic building materials now respect their intended colours. Calibrated roof tiles, concrete, wood and bark retain the scan detail without turning grey roofs cyan or all tiled roofs pale beige.
 
 Driveways now connect to the street through lowered sidewalk crossings with sloping shoulders. Curbs meet the asphalt, and grass stays out of the paved entrance.
+
+Meadow grass and shrubs remain visible on elevated ground, and small decorative stones rest on the actual hillside. Grass thins below the snow line and stops on bare steep faces instead of leaving stray clumps in unsuitable terrain.

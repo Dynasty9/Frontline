@@ -191,11 +191,15 @@ func biome_at(p: Vector3) -> float:
 
 
 func grass_amount(p: Vector3) -> float:
+	var habitat := 1.0
 	if world.terrain.landform.peak > 1.0:
-		if world.terrain.landform.height(p) > world.terrain.landform.peak * 0.58 or world.terrain.slope_at(p) > 0.5:
-			return 0.0
+		var height := world.terrain.landform.height(p)
+		var peak := world.terrain.landform.peak
+		habitat *= 1.0 - smoothstep(peak * 0.36, peak * 0.52, height)
+		habitat *= 1.0 - smoothstep(0.25, 0.5, world.terrain.slope_at(p))
 	var b := biome_at(p)
-	return 1.0 - smoothstep(0.62, 0.74, b)
+	return (1.0 - smoothstep(0.62, 0.74, b)) * habitat
+
 
 
 # --- environment ---------------------------------------------------------------------

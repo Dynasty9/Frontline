@@ -288,7 +288,7 @@ func _build_chunk(c: Vector2i) -> void:
 		if p.x > HALF - 1.0 and atmo.world.water and not atmo.world.water.coast.is_empty():
 			continue  # the sea, past the edge
 		var g := atmo.grass_amount(p)
-		if rng.randf() > g * 0.92 + 0.04:
+		if g <= 0.001 or rng.randf() > g * 0.92 + 0.04:
 			if rng.randf() < 0.004:
 				stones.append(p)
 			continue
@@ -320,7 +320,7 @@ func _build_chunk(c: Vector2i) -> void:
 		var sc := []
 		for p in stones:
 			var s3 := rng.randf_range(0.25, 0.8)
-			sx.append(Transform3D(Basis.from_euler(Vector3(rng.randf() * TAU, rng.randf() * TAU, 0)).scaled(Vector3(s3, s3 * 0.6, s3)), p + Vector3(0, s3 * 0.15, 0)))
+			sx.append(Transform3D(Basis.from_euler(Vector3(rng.randf() * TAU, rng.randf() * TAU, 0)).scaled(Vector3(s3, s3 * 0.6, s3)), Vector3(p.x, atmo.world.ground_y(p) + s3 * 0.15, p.z)))
 			sc.append(Color(0, 0, 0, 0))
 		var sn := _mm(stone, stone_mat, sx, sc, 140.0)
 		sn.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
@@ -337,6 +337,12 @@ func _mm(mesh: Mesh, m: Material, xf: Array, cd: Array, vis: float) -> MultiMesh
 	for i in xf.size():
 		mm.set_instance_transform(i, xf[i])
 		mm.set_instance_custom_data(i, cd[i])
+	if m is ShaderMaterial:
+		# Grass and shrubs rise in the vertex shader; culling must include that height.
+		var bounds := mm.get_aabb()
+		bounds.position.y -= 5.0
+		bounds.size.y += maxf(0.0, atmo.world.terrain.landform.peak) + 10.0
+		mm.custom_aabb = bounds
 	var mi := MultiMeshInstance3D.new()
 	mi.multimesh = mm
 	mi.material_override = m
