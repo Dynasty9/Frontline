@@ -271,6 +271,7 @@ func _check_presentation_queue() -> void:
 	view._warmup.clear()
 	view._process(1.0 / 60.0)
 	assert(man.view_calls == 1 and view._presentations.is_empty())
+	assert(_batch_count(view) == 1)
 	man.net_pos += Vector3(1, 0, 0)
 	view.motion.target(man, man.net_pos, 0.0, false)
 	for frame in 10:
@@ -286,26 +287,31 @@ func _check_presentation_queue() -> void:
 	world._rpc_snap(packet.data_array)
 	view._process(1.0 / 60.0)
 	assert(not man.visible and view._presentations.is_empty())
+	assert(_batch_count(view) == 0, "Hidden soldiers leave native buffers immediately")
 	var calls := man.view_calls
 	view._process(1.0 / 60.0)
 	assert(man.view_calls == calls, "Hidden presentation sleeps too")
 	world.view_team = 1
 	view._process(1.0 / 60.0)
 	assert(man.visible and man.view_calls == calls + 1, "Observer changes wake the whole view")
+	assert(_batch_count(view) == 1)
 	world.cam.cam.position = man.position + Vector3(0, 10, 20)
 	world.cam.cam.look_at(man.position)
 	view._process(1.0 / 60.0)
 	assert(not man.view_lod and man.model != null and view._presentations.has(man.eid), "Camera-driven detail promotion wakes a dormant model")
+	assert(_batch_count(view) == 0, "Detailed models must not also appear in shared buffers")
 	calls = man.view_calls
 	view._process(1.0 / 60.0)
 	assert(man.view_calls == calls + 1, "Detailed animation keeps running each frame")
 	world.cam.cam.position.z += 200
 	view._process(1.0 / 60.0)
 	assert(man.view_lod and view._presentations.is_empty(), "Demotion retires detailed frame work")
+	assert(_batch_count(view) == 1)
 	man.apply_props({"pos": Vector3(0, 0, -190)})
 	assert(view._presentations.has(man.eid))
 	world.despawn(man)
 	assert(view._presentations.is_empty())
+	assert(_batch_count(view) == 0)
 	man.free()
 	view._process(1.0 / 60.0)
 	view.free()
@@ -341,7 +347,7 @@ func _check_shared_presentation_changes() -> void:
 		view.motion.advance(0.2)
 		man._view_process(1.0 / 60.0, 0.2, true)
 	assert(man.sight_checks == 1, "Unchanged shared presentation does not repeat visibility and model checks")
-	# Routine movement, animation, ammunition and squad updates keep the shared view.
+	# Routine movement, ammunition and squad updates keep the shared view.
 	var moving := StreamPeerBuffer.new()
 	man.write_state(moving)
 	moving.seek(0)
@@ -351,7 +357,7 @@ func _check_shared_presentation_changes() -> void:
 	man.read_state(moving)
 	man._view_process(1.0 / 60.0, 0.2, true)
 	assert(man.sight_checks == 1, "Position-only packets must not rebuild shared presentation")
-	for change in [["life", Soldier.Life.DOWNED], ["vis_mask", 0], ["team", 0]]:
+	for change in [["life", Soldier.Life.DOWNED], ["vis_mask", 0], ["team", 0], ["posture", Soldier.Post.PRONE], ["act", Soldier.Act.RUN]]:
 		var field: String = change[0]
 		var previous = man.get(field)
 		man.set(field, change[1])
@@ -360,7 +366,7 @@ func _check_shared_presentation_changes() -> void:
 		man.set(field, previous)
 		changed.seek(0)
 		man.read_state(changed)
-		assert(man._view_dirty, "Life, visibility and side changes invalidate shared presentation")
+		assert(man._view_dirty, "Life, visibility, side and pose changes invalidate shared presentation")
 		man.set(field, previous)
 		man._view_dirty = false
 	man._view_dirty = true
@@ -393,3 +399,13 @@ func _check_shared_presentation_changes() -> void:
 	world.cam.cam.free()
 	world.cam.free()
 	world.free()
+
+
+func _batch_count(view: SoldierViewBatch) -> int:
+	var radii := PackedFloat32Array()
+	radii.resize(view._next_pose)
+	radii.fill(1.0)
+	var count := 0
+	for batch: Dictionary in view.motion.batches([], radii):
+		count += int(batch.count)
+	return count

@@ -5,6 +5,7 @@ extends Node3D
 
 class DrawGroup:
 	var mm: MultiMesh
+	var buffer := SoldierBatchBuffer.new()
 	var node: MultiMeshInstance3D
 	var origin: Vector3
 	var count := 0
@@ -42,6 +43,8 @@ var _atlases := {}
 var _presentations := {}
 var _presentation_team := -2
 var _presentation_camera := false
+var _batch_radii := PackedFloat32Array()
+var _native_batches := false
 
 
 func request_view(soldier: Soldier) -> void:
@@ -170,6 +173,7 @@ func _process(dt: float) -> void:
 				soldier._view_process(dt, blend, soldier._native_view_motion)
 				if soldier.view_lod != was_lod or soldier.visible != was_visible:
 					_dirty = true
+				_update_batch(soldier)
 				if soldier.retains_view():
 					_presentations.erase(soldier.eid)
 		world.vp("soldiers", started)
@@ -206,9 +210,74 @@ func _process(dt: float) -> void:
 	_active = []
 	for group: DrawGroup in previous_groups:
 		group.count = 0
+		group.buffer.clear()
 	var planes: Array[Plane] = []
 	if world.cam:
 		planes = world.cam.cam.get_frustum()
+	var native_ready := interpolate and _warmup.is_empty() and _atlases.size() * 15 == _next_pose
+	if native_ready and not _native_batches:
+		for soldier: Soldier in world.soldiers:
+			_update_batch(soldier)
+	_native_batches = native_ready
+	if _native_batches:
+		for batch: Dictionary in motion.batches(planes, _batch_radii):
+			var key: Vector3i = batch.key
+			var group := _group_for(key.z, Vector2i(key.x, key.y))
+			group.count = batch.count
+			group.last_used = world.time
+			if group.count > group.mm.instance_count:
+				group.mm.instance_count = maxi(group.count, group.mm.instance_count * 2)
+			var data: PackedFloat32Array = batch.data
+			data.resize(group.mm.instance_count * 20)
+			group.mm.buffer = data
+			group.bounds = batch.bounds
+			_active.append(group)
+	else:
+		_fill_batches(planes, interpolate)
+	_dirty = false
+	for group: DrawGroup in previous_groups:
+		if group.count == 0:
+			group.mm.visible_instance_count = 0
+	for group: DrawGroup in _active:
+		if not _native_batches:
+			if group.count > group.mm.instance_count:
+				group.mm.instance_count = maxi(group.count, group.mm.instance_count * 2)
+			group.mm.buffer = group.buffer.encode(group.mm.instance_count)
+			group.bounds = group.buffer.bounds()
+		if group.mm.custom_aabb != group.bounds:
+			group.mm.custom_aabb = group.bounds
+		group.mm.visible_instance_count = group.count
+	# Old walking poses stay cached briefly, but need no per-frame visits.
+	if world.time >= _expires_at:
+		_expires_at = world.time + 1.0
+		for key in groups.keys():
+			var group: DrawGroup = groups[key]
+			if group.count == 0 and world.time - group.last_used > 5.0:
+				group.node.queue_free()
+				groups.erase(key)
+	world.vp("distant soldiers", started)
+
+
+func _update_batch(s: Soldier) -> void:
+	if not s._native_view_motion:
+		return
+	if not s.view_lod or not s.visible or s.gone:
+		if motion.set_batch(s, -1, 0):
+			_dirty = true
+		return
+	prepare(s.utype, s.team)
+	var base: int = _types[s.utype][s.team]
+	var posture := s.posture
+	if s.life in [Soldier.Life.DEAD, Soldier.Life.DOWNED]:
+		posture = Soldier.Post.PRONE
+	if posture > Soldier.Post.PRONE:
+		posture = Soldier.Post.STAND
+	var walking := s.act in [Soldier.Act.WALK, Soldier.Act.RUN, Soldier.Act.LIMP, Soldier.Act.CRAWL]
+	if motion.set_batch(s, base, posture * 8 + (posmod(s.eid, 4) + 1 if walking else 0)):
+		_dirty = true
+
+
+func _fill_batches(planes: Array[Plane], interpolate: bool) -> void:
 	var visible_cells := {}
 	for s: Soldier in world.soldiers:
 		if not s.view_lod or not s.visible or s.gone:
@@ -235,56 +304,21 @@ func _process(dt: float) -> void:
 			if not poses.has(key):
 				continue
 		var group := _group_for(key, cell)
-		var mm: MultiMesh = group.mm
 		var slot: int = group.count
-		if slot == 0:
-			_active.append(group)
-		if slot >= mm.instance_count:
-			# Resizing clears transforms; copy only when this cell first grows.
-			var previous := mm.buffer
-			var old_count := mm.instance_count
-			mm.instance_count = maxi(16, mm.instance_count * 2)
-			var expanded := mm.buffer
-			for i in previous.size():
-				expanded[i] = previous[i]
-			if not previous.is_empty():
-				mm.buffer = expanded
-			for i in range(old_count, mm.instance_count):
-				mm.set_instance_color(i, Color.WHITE)
 		var transform := s.transform
 		if s.srv:
 			transform *= s.ip_offset()
 		transform.origin -= group.origin
 		var offset := s.net_pos - s.position if interpolate else Vector3.ZERO
 		var turn := angle_difference(s.rotation.y, s.net_yaw) if interpolate else 0.0
-		# Bound the complete swept pose, so sparse cells and settled blasts can use mesh LOD.
-		var scale := transform.basis.get_scale().abs()
-		var radius := group.model_radius * maxf(scale.x, maxf(scale.y, scale.z))
-		var swept := AABB(transform.origin, Vector3.ZERO).expand(transform.origin + offset).grow(radius)
-		group.bounds = swept if slot == 0 else group.bounds.merge(swept)
 		# Pose selection rides in the unused tint alpha; motion retains all four custom values.
 		var pose_code := posture * 8 + (posmod(s.eid, 4) + 1 if walking else 0)
-		mm.set_instance_color(slot, Color(1, 1, 1, float(pose_code) / 255.0) if _atlases.has(base) else Color.WHITE)
-		mm.set_instance_transform(slot, transform)
-		mm.set_instance_custom_data(slot, Color(offset.x, offset.y, offset.z, turn))
+		if not group.buffer.append(transform, offset, turn, pose_code if _atlases.has(base) else 255, group.model_radius):
+			continue
+		if slot == 0:
+			_active.append(group)
 		group.count = slot + 1
 		group.last_used = world.time
-	for group: DrawGroup in previous_groups:
-		if group.count == 0:
-			group.mm.visible_instance_count = 0
-	for group: DrawGroup in _active:
-		if group.mm.custom_aabb != group.bounds:
-			group.mm.custom_aabb = group.bounds
-		group.mm.visible_instance_count = group.count
-	# Old walking poses stay cached briefly, but need no per-frame visits.
-	if world.time >= _expires_at:
-		_expires_at = world.time + 1.0
-		for key in groups.keys():
-			var group: DrawGroup = groups[key]
-			if group.count == 0 and world.time - group.last_used > 5.0:
-				group.node.queue_free()
-				groups.erase(key)
-	world.vp("distant soldiers", started)
 
 
 static func _cell_visible(cell: Vector2i, planes: Array[Plane]) -> bool:
@@ -334,9 +368,6 @@ func _group_for(pose: int, cell: Vector2i) -> DrawGroup:
 	mm.use_custom_data = true
 	mm.mesh = poses[pose]
 	mm.instance_count = 16
-	# Keep the instance tint neutral when custom-data buffers are allocated.
-	for i in mm.instance_count:
-		mm.set_instance_color(i, Color.WHITE)
 	mm.visible_instance_count = 0
 	var node := MultiMeshInstance3D.new()
 	node.multimesh = mm
@@ -409,6 +440,8 @@ func _make_atlas(base: int) -> void:
 	material.set_shader_parameter("poses", ImageTexture.create_from_image(image))
 	material.set_shader_parameter("rows", rows)
 	_atlases[base] = material
+	_batch_radii.resize(_next_pose)
+	_batch_radii[base] = _mesh_radius(poses[base])
 	# Loading can already have displayed the first standing pose.
 	for key: Vector3i in groups:
 		if key.z == base:

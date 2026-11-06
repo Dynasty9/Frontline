@@ -8,6 +8,7 @@ struct Motion {
     rotation: Vector3,
     target: Vector3,
     yaw: f64,
+    batch: Option<(i32, i32)>,
 }
 
 #[derive(GodotClass)]
@@ -29,6 +30,7 @@ impl SoldierViewMotion {
                 return;
             }
         }
+        let batch = self.targets.get(&id).and_then(|motion| motion.batch);
         // Only the view loop and property corrections move client soldier roots.
         self.targets.insert(
             id,
@@ -38,8 +40,79 @@ impl SoldierViewMotion {
                 node,
                 target,
                 yaw,
+                batch,
             },
         );
+    }
+
+    #[func]
+    fn set_batch(&mut self, node: Gd<Node3D>, mesh: i32, pose: i32) -> bool {
+        if let Some(motion) = self.targets.get_mut(&node.instance_id()) {
+            let batch = (mesh >= 0 && (0..=255).contains(&pose)).then_some((mesh, pose));
+            let changed = motion.batch != batch;
+            motion.batch = batch;
+            return changed;
+        }
+        false
+    }
+
+    #[func]
+    fn batches(&self, planes: Array<Plane>, radii: PackedFloat32Array) -> Array<VarDictionary> {
+        use crate::soldier_batch_buffer::SoldierBatchBuffer;
+        const CELL: f32 = 64.0;
+        let mut groups: HashMap<Vector3i, (Gd<SoldierBatchBuffer>, i32)> = HashMap::new();
+        let mut visible = HashMap::new();
+        for motion in self.targets.values() {
+            let Some((mesh, pose)) = motion.batch else {
+                continue;
+            };
+            if !motion.node.is_instance_valid() || mesh as usize >= radii.len() {
+                continue;
+            }
+            let mut transform = motion.node.get_transform();
+            let position = transform.origin;
+            if !position.is_finite() {
+                continue;
+            }
+            let cell = Vector2i::new(
+                (position.x / CELL).floor() as i32,
+                (position.z / CELL).floor() as i32,
+            );
+            if position.y.abs() < 60.0
+                && !*visible.entry(cell).or_insert_with(|| {
+                    let center = Vector3::new(
+                        (cell.x as f32 + 0.5) * CELL,
+                        0.0,
+                        (cell.y as f32 + 0.5) * CELL,
+                    );
+                    let extent = Vector3::new(CELL * 1.5, 64.0, CELL * 1.5);
+                    planes
+                        .iter_shared()
+                        .all(|plane| plane.distance_to(center) <= plane.normal.abs().dot(extent))
+                })
+            {
+                continue;
+            }
+            let key = Vector3i::new(cell.x, cell.y, mesh);
+            let (buffer, count) = groups
+                .entry(key)
+                .or_insert_with(|| (SoldierBatchBuffer::new_gd(), 0));
+            transform.origin -= Vector3::new(cell.x as f32 * CELL, 0.0, cell.y as f32 * CELL);
+            let turn = godot::global::angle_difference(motion.rotation.y as f64, motion.yaw);
+            if buffer.bind_mut().append(
+                transform,
+                motion.target - position,
+                turn,
+                pose,
+                radii[mesh as usize] as f64,
+            ) {
+                *count += 1;
+            }
+        }
+        groups.into_iter().filter(|(_, (_, count))| *count > 0).map(|(key, (buffer, count))| {
+            let buffer = buffer.bind();
+            vdict! { "key" => key, "count" => count, "data" => &buffer.encode(count), "bounds" => buffer.bounds() }
+        }).collect()
     }
 
     #[func]
