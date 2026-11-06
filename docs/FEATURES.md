@@ -1294,8 +1294,10 @@ then displays the complete image at 15 Hz when the camera is still. Panning, zoo
 command input cancel partial preparation and refresh it immediately; blast shake does not
 invalidate this cache. Cursor hints, selection boxes and placement previews draw in a separate
 layer each frame, so moving the pointer does not rebuild all squad counters. Leader chevrons reuse
-the symbol atlas; speech bubbles retain bounded wrapped layouts and draw their flat backgrounds
-directly. Hiding the HUD also stops its raster updates. Smoke sight checks visit smoke grenades directly rather than every
+the symbol atlas. At command zoom, speech coalesces identical shouts from a squad and shows at most
+32 on-screen phrases, prioritizing selected units, radio orders and casualty calls, then newer messages.
+Close inspection keeps individual speech. Audio and authoritative gameplay events are unchanged.
+Hiding the HUD also stops its raster updates. Smoke sight checks visit smoke grenades directly rather than every
 projectile; cloud growth, movement and dissipation still take effect immediately.
 
 The player HUD retains squad-order labels between incoming team summaries and

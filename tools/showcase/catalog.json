@@ -3465,6 +3465,19 @@
       "title": "Steadier route planning and reliable battle endings",
       "version": "unreleased",
       "kind": "improved"
+    },
+    {
+      "entry": "changelog/unreleased/command-speech.md",
+      "summary": "At command zoom, repeated squad shouts share one bubble and urgent calls take priority over overlapping chatter.",
+      "medium": "text",
+      "stage": "text",
+      "rationale": "Rendered battlefield comparison and selection-priority regressions demonstrate bounded speech work; matched benchmarks are recorded separately.",
+      "source_ref": "codex/render-overlay-budget",
+      "sources": [],
+      "output": null,
+      "title": "Readable warnings in crowded battles",
+      "version": "unreleased",
+      "kind": "improved"
     }
   ],
   "layout_capture": {
