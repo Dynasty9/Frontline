@@ -118,6 +118,30 @@ caption = "Before: oversized branch cards and evenly scattered bushes across the
 file = "shrub-after.jpg"
 caption = "After: smaller photographed branches form patches with open gaps. Same meadow, seed, lighting and camera."
 
+[[screenshots]]
+file = "leaves-before.jpg"
+caption = "Before: oversized leaf groups close the broadleaf crown."
+
+[[screenshots]]
+file = "leaves-after.jpg"
+caption = "After: smaller branches leave natural gaps, with consistent photographed colour and two-sided lighting. Same tree and camera."
+
+[[screenshots]]
+file = "leaves-wide-before.jpg"
+caption = "Before: broadleaf stands form dense, rounded masses."
+
+[[screenshots]]
+file = "leaves-wide-after.jpg"
+caption = "After: finer open crowns remain readable at stand distance, at the same triangle count. Same seed and camera."
+
+[[screenshots]]
+file = "lane-join-before.jpg"
+caption = "Before: the dirt lane fades through a broad blurred band at the town street."
+
+[[screenshots]]
+file = "lane-join-after.jpg"
+caption = "After: a shorter broken asphalt edge separates the surfaces, with patchier wear along the dirt lane. Same seed and camera."
+
 +++
 
 The ocean keeps detailed waves near the battlefield and uses a coarser surface beyond it.
@@ -147,3 +171,7 @@ Low shrubs use smaller photographed branches and grow in seeded patches with ope
 Local games share the scenery batching used by network clients. Returning to already-built scenery reveals it promptly while off-screen buildings retain their combat collision. Batched roofs and other tinted surfaces keep their colours in both renderers, including grey roofs in the browser.
 
 World-space wood, plaster and weathering stay in place when scenery enters a batch. Shrub leaves receive light from both sides without reversing their back-face normals.
+
+Broadleaf crowns have smaller branches and more open gaps at the same triangle count. Photographed foliage uses its own surface detail, with consistent colour and two-sided lighting instead of an extra layer of procedural leaf noise.
+
+Country tracks have varied rut widths, intermittent centre grass and broader worn patches. Their joins to town asphalt use a short broken edge instead of a wide blurred band.

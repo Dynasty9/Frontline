@@ -1630,8 +1630,13 @@ void fragment() {
 	float n = texture(detail_tex, wpos.xz / 3.0).r;
 	float n2 = texture(detail_tex, wpos.xz / 11.0 + 0.5).r;
 	float n3 = texture(detail_tex, wpos.xz / 0.6 + 0.2).r;
-	float ruts = smoothstep(0.075, 0.0, abs(x - 0.3)) + smoothstep(0.075, 0.0, abs(x - 0.7));
-	vec3 gravel = texture(gravel_color, wpos.xz * 0.5).rgb * (0.48 + n * 0.24);
+	float road_wear = texture(street_noise, wpos.xz * 0.009 + 0.21).r;
+	float wander = (road_wear - 0.5) * 0.10;
+	float rut_width = mix(0.045, 0.095, n);
+	float ruts = (smoothstep(rut_width, 0.0, abs(x - 0.3 - wander)) + smoothstep(rut_width, 0.0, abs(x - 0.7 - wander))) * mix(0.35, 1.0, smoothstep(0.2, 0.7, n2));
+	vec3 gravel = texture(gravel_color, wpos.xz * 0.5).rgb;
+	if (OUTPUT_IS_SRGB) { gravel = mix(gravel / 12.92, pow((gravel + 0.055) / 1.055, vec3(2.4)), step(vec3(0.04045), gravel)); }
+	gravel *= 0.48 + n * 0.24;
 	vec3 dirt = mix(vec3(0.14, 0.11, 0.075), vec3(0.09, 0.07, 0.048), n);
 	vec3 col = mix(dirt, gravel, country);
 	float peb = smoothstep(0.6, 0.72, n3);
@@ -1640,9 +1645,9 @@ void fragment() {
 	// grass down the middle and at the verges
 	float mid = smoothstep(0.11, 0.0, abs(x - 0.5)) * country;
 	float verge = 1.0 - smoothstep(0.06, 0.2, min(x, 1.0 - x));
-	float grass = clamp(mid * (0.55 + 0.6 * n2) + verge * (0.45 + 0.9 * (n2 - 0.5)), 0.0, 1.0);
+	float grass = clamp(mid * smoothstep(0.28, 0.62, road_wear) + verge * (0.45 + 0.9 * (n2 - 0.5)), 0.0, 1.0);
 	col = mix(col, vec3(0.085, 0.11, 0.04) * (0.8 + 0.4 * n), grass * 0.85);
-	col *= 0.88 + 0.24 * n2;
+	col *= mix(0.65, 1.20, smoothstep(0.25, 0.70, road_wear));
 	float pud = wet * smoothstep(0.5, 0.7, ruts * 0.7 + n2 * 0.55);
 	col *= 1.0 - wet * 0.22;
 	col = mix(col, col * 0.4, pud);
@@ -1659,10 +1664,11 @@ void fragment() {
 	// in town: patched asphalt between the curbs, a dashed centre line
 	vec2 inside = min(wpos.xz - town.xy, town.zw - wpos.xz);
 	float distance = min(inside.x, inside.y);
-	float broken_edge = (texture(street_noise, wpos.xz * 0.12).r - 0.5) * 3.0;
-	float paved = smoothstep(-5.0, 2.0, distance + broken_edge) * country * step(1.0, town.z - town.x);
+	float broken_edge = (texture(street_noise, wpos.xz * 0.65).r - 0.5) * 0.6;
+	float paved = smoothstep(-0.3, 0.35, distance + broken_edge) * country * step(1.0, town.z - town.x);
 	if (paved > 0.001) {
 		vec3 asph = street_surface(paving_noise, street_noise, wpos.xz);
+		if (OUTPUT_IS_SRGB) { asph = mix(asph / 12.92, pow((asph + 0.055) / 1.055, vec3(2.4)), step(vec3(0.04045), asph)); }
 		float dash = step(abs(x - 0.5), 0.011) * step(fract(UV.y / 7.0), 0.5);
 		asph = mix(asph, vec3(0.78, 0.74, 0.6) * (0.75 + 0.25 * n), dash * 0.8 * smoothstep(0.6, 0.95, paved));
 		float wear = smoothstep(0.08, 0.0, abs(x - 0.27)) + smoothstep(0.08, 0.0, abs(x - 0.73));
@@ -1678,6 +1684,7 @@ void fragment() {
 		SPECULAR = mix(SPECULAR, mix(0.3, 0.55, pud2), paved);
 		ALPHA = mix(edge, 1.0, paved);
 	}
+	if (OUTPUT_IS_SRGB) { ALBEDO = mix(ALBEDO * 12.92, 1.055 * pow(max(ALBEDO, vec3(0.0)), vec3(1.0 / 2.4)) - 0.055, step(vec3(0.0031308), ALBEDO)); }
 }
 """
 

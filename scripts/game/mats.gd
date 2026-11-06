@@ -1235,8 +1235,10 @@ float n3(vec3 p) {
 
 void vertex() {
 	vec3 wp = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
-	float lump = n3(wp * 1.3) * 0.55 + n3(wp * 3.1) * 0.25;
-	if (!leaf_cards) { VERTEX += NORMAL * (lump - 0.4) * 0.5; }
+	if (!leaf_cards) {
+		float lump = n3(wp * 1.3) * 0.55 + n3(wp * 3.1) * 0.25;
+		VERTEX += NORMAL * (lump - 0.4) * 0.5;
+	}
 	float t = TIME * 1.3 + wp.x * 0.11 + wp.z * 0.07;
 	float sway = (sin(t) * 0.6 + sin(t * 2.3 + 1.7) * 0.3) * wind * 0.06 * clamp(VERTEX.y + 1.0, 0.0, 2.0);
 	VERTEX.x += sway;
@@ -1254,7 +1256,8 @@ void fragment() {
 	float px = max(length(fwidth(lpos)), 1e-4);
 	float k6 = smoothstep(1.5, 5.0, (1.0 / 6.0) / px);
 	float k15 = smoothstep(1.5, 5.0, (1.0 / 15.0) / px);
-	float holes = mix(0.5, n3(lpos * 6.0 + 11.0), k6) * 0.6 + mix(0.5, n3(lpos * 15.0), k15) * 0.4;
+	float holes = 0.5;
+	if (!leaf_cards || scorch > 0.0) { holes = mix(0.5, n3(lpos * 6.0 + 11.0), k6) * 0.6 + mix(0.5, n3(lpos * 15.0), k15) * 0.4; }
 	if (!leaf_cards && rim > 0.12 && holes < (rim - 0.12) * 1.25) {
 		discard;
 	}
@@ -1262,12 +1265,19 @@ void fragment() {
 	if (scorch > 0.0 && burnt < 0.0) {
 		discard;
 	}
-	float leaves = mix(0.5, n3(lpos * 9.0), smoothstep(1.5, 5.0, (1.0 / 9.0) / px));
-	float gaps = mix(0.5, n3(lpos * 4.2 + 7.0), smoothstep(1.5, 5.0, (1.0 / 4.2) / px));
-	vec3 c = (use_vcolor ? COLOR.rgb : tint.rgb) * (0.7 + 0.5 * leaves);
+	float leaves = 0.5;
+	float gaps = 0.5;
+	if (!leaf_cards || scorch > 0.0) {
+		leaves = mix(0.5, n3(lpos * 9.0), smoothstep(1.5, 5.0, (1.0 / 9.0) / px));
+		gaps = mix(0.5, n3(lpos * 4.2 + 7.0), smoothstep(1.5, 5.0, (1.0 / 4.2) / px));
+	}
+	vec3 c = use_vcolor ? COLOR.rgb : tint.rgb;
+	if (OUTPUT_IS_SRGB) { c = mix(c / 12.92, pow((c + 0.055) / 1.055, vec3(2.4)), step(vec3(0.04045), c)); }
+	c *= 0.7 + 0.5 * leaves;
 	if (leaf_cards) {
 		vec4 photo = texture(leaf_texture, UV);
 		if (photo.a < 0.22) { discard; }
+		if (OUTPUT_IS_SRGB) { photo.rgb = mix(photo.rgb / 12.92, pow((photo.rgb + 0.055) / 1.055, vec3(2.4)), step(vec3(0.04045), photo.rgb)); }
 		c = photo.rgb * leaf_tone * mix(vec3(0.75), vec3(1.15), clamp(c * 12.0, vec3(0.0), vec3(1.0)));
 	}
 	c = mix(c, c * vec3(1.15, 1.1, 0.7), smoothstep(0.55, 0.8, gaps) * 0.5);
@@ -1280,18 +1290,25 @@ void fragment() {
 		EMISSION = vec3(1.0, 0.32, 0.05) * embers * edge * (0.9 + 0.6 * sin(TIME * 7.0 + lpos.x * 3.0 + lpos.y * 5.0));
 	}
 	ALBEDO = c * (0.55 + 0.45 * shade);
+	if (OUTPUT_IS_SRGB) { ALBEDO = mix(ALBEDO * 12.92, 1.055 * pow(max(ALBEDO, vec3(0.0)), vec3(1.0 / 2.4)) - 0.055, step(vec3(0.0031308), ALBEDO)); }
 	ROUGHNESS = 0.85;
 	SPECULAR = 0.25;
 	BACKLIGHT = vec3(0.35, 0.42, 0.18) * (1.0 - scorch);
 	AO = 0.55 + 0.45 * shade;
 	AO_LIGHT_AFFECT = 0.6;
-	float bh = leaves * 0.6 + gaps * 0.4;
-	vec3 dpdx = dFdx(VERTEX); vec3 dpdy = dFdy(VERTEX);
-	float dhx = dFdx(bh); float dhy = dFdy(bh);
-	vec3 r1 = cross(dpdy, NORMAL); vec3 r2 = cross(NORMAL, dpdx);
-	float det = dot(dpdx, r1);
-	vec3 grad = sign(det) * (dhx * r1 + dhy * r2);
-	NORMAL = normalize(abs(det) * NORMAL - grad * 0.06);
+	if (leaf_cards) {
+		vec3 canopy_normal = (INV_VIEW_MATRIX * vec4(NORMAL, 0.0)).xyz;
+		canopy_normal.y = abs(canopy_normal.y);
+		NORMAL = normalize((VIEW_MATRIX * vec4(mix(canopy_normal, vec3(0.0, 1.0, 0.0), 0.35), 0.0)).xyz);
+	} else {
+		float bh = leaves * 0.6 + gaps * 0.4;
+		vec3 dpdx = dFdx(VERTEX); vec3 dpdy = dFdy(VERTEX);
+		float dhx = dFdx(bh); float dhy = dFdy(bh);
+		vec3 r1 = cross(dpdy, NORMAL); vec3 r2 = cross(NORMAL, dpdx);
+		float det = dot(dpdx, r1);
+		vec3 grad = sign(det) * (dhx * r1 + dhy * r2);
+		NORMAL = normalize(abs(det) * NORMAL - grad * 0.06);
+	}
 }
 """
 

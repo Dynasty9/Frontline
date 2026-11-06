@@ -4184,6 +4184,36 @@
           "file": "changelog/unreleased/environment-realism-extended/shrub-after.jpg",
           "sha256": "bea3e0b0442f03ac56ffaef3539a21ff311e1f6e3677e6d6bc31f438bfeaeca9",
           "caption": "shrub-after"
+        },
+        {
+          "file": "changelog/unreleased/environment-realism-extended/leaves-before.jpg",
+          "sha256": "8aff5b7be42ca26a56a9bd04c1e9f3fbe2be7735b654d4a6c04236a2ede90e15",
+          "caption": "leaves-before"
+        },
+        {
+          "file": "changelog/unreleased/environment-realism-extended/leaves-after.jpg",
+          "sha256": "62b1396ab4ca446f1c96951087f80b16b3691ce2d11b2cf921dc7c03569075dc",
+          "caption": "leaves-after"
+        },
+        {
+          "file": "changelog/unreleased/environment-realism-extended/leaves-wide-before.jpg",
+          "sha256": "43c1606921824aac4986fd745bb7814c8a25dc90fe54de73df3f2766432b806b",
+          "caption": "leaves-wide-before"
+        },
+        {
+          "file": "changelog/unreleased/environment-realism-extended/leaves-wide-after.jpg",
+          "sha256": "26db28444f60738940a220e6a00ab263205a0d6417135199658a8249e7a64541",
+          "caption": "leaves-wide-after"
+        },
+        {
+          "file": "changelog/unreleased/environment-realism-extended/lane-join-before.jpg",
+          "sha256": "1939cd95d2db6251e1d87819272cd1f1dee149e9202e36b121dfb12acd86a09b",
+          "caption": "lane-join-before"
+        },
+        {
+          "file": "changelog/unreleased/environment-realism-extended/lane-join-after.jpg",
+          "sha256": "e109179d200bbde040a0c976d8517a9e018eb3a0634427da7e52b71d21a145c7",
+          "caption": "lane-join-after"
         }
       ],
       "output": null,
@@ -4203,7 +4233,9 @@
         "canopy": "Matched native Forward+, High/day seed3 1600x900, focus-400,-450 zoom350 pitch-65 yaw-0.2, held2s/45settlingframes. Before1919acc forest and atlas captured before replacement; after twenty-view atlas with High shadows. Same generated terrain and camera. No retouching.",
         "precision": "Matched native Forward+, High/day seed3 1600x900, focus232,296 zoom60 pitch-35 yaw0.7, held2s/45settlingframes. Controlled height-precision comparison: before uses the same terrain samples converted to the previous half-float texture; after uses full floats. Only the ground height texture changes between frames. Full frames, no retouching.",
         "meadow": "Matched native Forward+, High/day seed3 1600x900, focus-110,-130 yaw0.7, held2s/225settlingframes with grass wind disabled. Close zoom18 pitch-45; low view zoom18 pitch-15. Before exact66b3c54 atmosphere/grass scripts overlaid through PCK before main; after meadow/grass and local-culling-bounds checkpoint. Both use environment-views --capture-set=meadow. Full frames, no retouching.",
-        "shrubs": "Matched native Forward+, High/day seed3 1600x900, focus -110,-130 zoom45 pitch-35 yaw0.7. Before exact0510a8d grass.gd PCK; after smaller leaf cards, linear photograph/root shading and seeded patch placement. Same simulation held at2s, 225 settling frames. No retouching; full frames encoded JPEG92."
+        "shrubs": "Matched native Forward+, High/day seed3 1600x900, focus -110,-130 zoom45 pitch-35 yaw0.7. Before exact0510a8d grass.gd PCK; after smaller leaf cards, linear photograph/root shading and seeded patch placement. Same simulation held at2s, 225 settling frames. No retouching; full frames encoded JPEG92.",
+        "leaves": "Matched native Forward+, High/day seed3 1600x900, focus -128.6383,-95.47071. Close zoom18 pitch-15 yaw-2.4; stand zoom65 pitch-30 yaw0.7. Both held at2s,90settlingframes plus complete scenery residency, foliage and grass wind disabled. Before exact b1e4704 mats/res scripts PCK; after smaller broadleaf cards and photographed foliage lighting. Full frames, JPEG92, no retouching.",
+        "lane_join": "Matched native Forward+, High/day seed3 1600x900, environment-views --capture-set=town transition view, zoom25 pitch-55 yaw0.7. Held2s/90settlingframes plus complete scenery residency. Before exact b1e4704 mats/res/atmosphere scripts loaded through PCK; after varied tracks and short broken asphalt edge. Full frames, JPEG92, no retouching."
       }
     }
   ],

@@ -32,6 +32,7 @@ func _ready() -> void:
 		await check_road_surfaces()
 		await check_ground_grime()
 		await check_shrub_leaves()
+		await check_tree_leaves()
 		await check_batched_tints()
 	print("TERRAIN_MATERIALS passed")
 	Sfx._ensure()
@@ -142,6 +143,23 @@ void fragment() { ALBEDO = street_surface(scan, noise, vec2(0.0)); }
 		await RenderingServer.frame_post_draw
 	var road := view.get_texture().get_image().get_pixel(32, 32)
 	assert(absf(road.r - 0.314) < 0.008, "Street blending must use linear scan values in both renderers: %s" % road)
+	var track_shader := Shader.new()
+	track_shader.code = Mats.code(MapDims.shader(Atmosphere.ROAD_SHADER.replace("// STREET_SURFACE", Mats.ASPHALT_SHADER))).replace("render_mode blend_mix, depth_draw_opaque, specular_schlick_ggx;", "render_mode unshaded;")
+	var track_material := ShaderMaterial.new()
+	track_material.shader = track_shader
+	var flat_noise := Image.create(4, 4, false, Image.FORMAT_RF)
+	flat_noise.fill(Color(0.5, 0, 0))
+	var noise_texture := ImageTexture.create_from_image(flat_noise)
+	track_material.set_shader_parameter("detail_tex", noise_texture)
+	track_material.set_shader_parameter("street_noise", noise_texture)
+	var flat_ground := TerrainTexture.new(Image.create(MapDims.N, MapDims.N, false, Image.FORMAT_RGF))
+	track_material.set_shader_parameter("deform_tex", flat_ground.texture)
+	mesh.material_override = track_material
+	for frame in 3:
+		await RenderingServer.frame_post_draw
+	var track := view.get_texture().get_image().get_pixel(32, 32).srgb_to_linear()
+	var track_expected := Color(0.115, 0.09, 0.0615) * lerpf(0.65, 1.2, smoothstep(0.25, 0.70, 0.5))
+	assert(Vector3(track.r, track.g, track.b).distance_to(Vector3(track_expected.r, track_expected.g, track_expected.b)) < 0.008, "Country tracks must blend dirt and wear in linear light in both renderers: %s" % track)
 	for kind in ["roof_tile", "roof_concrete", "wood_dark", "bark"]:
 		var photographed := Mats.get_mat(kind).duplicate() as ShaderMaterial
 		assert(photographed.get_shader_parameter("pattern") == Mats.WEATHERED_PHOTO)
@@ -314,6 +332,55 @@ func check_shrub_leaves() -> void:
 		assert(normal.b > 0.8 and normal.g > 0.65, "Both sides of a leaf must face the camera-facing hemisphere and bend toward the sky: %s" % normal)
 	view.queue_free()
 	print("TERRAIN_MATERIALS native shrub colour and elevated roots passed")
+
+
+func check_tree_leaves() -> void:
+	var view := SubViewport.new()
+	view.size = Vector2i(32, 32)
+	view.own_world_3d = true
+	view.transparent_bg = true
+	view.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	add_child(view)
+	var camera := Camera3D.new()
+	view.add_child(camera)
+	camera.position = Vector3(0, 0, 5)
+	camera.look_at(Vector3.ZERO)
+	camera.projection = Camera3D.PROJECTION_ORTHOGONAL
+	camera.size = 1.0
+	var material := Mats.leaf_cards(false)
+	var shader := material.shader
+	var original_code := shader.code
+	var original_texture: Texture2D = material.get_shader_parameter("leaf_texture")
+	shader.code = original_code.replace("render_mode cull_disabled;", "render_mode unshaded, cull_disabled;")
+	var photo := Image.create(2, 2, false, Image.FORMAT_RGBA8)
+	photo.fill(Color(0.5, 0.6, 0.3, 1.0))
+	var texture := ImageTexture.create_from_image(photo)
+	material.set_shader_parameter("leaf_texture", texture)
+	material.set_shader_parameter("wind", 0.0)
+	var holder := Node3D.new()
+	view.add_child(holder)
+	var tint := Color(0.2, 0.32, 0.14)
+	var bake := Mats.Bake.new()
+	bake.part(QuadMesh.new(), material, Transform3D.IDENTITY, tint)
+	bake.commit(holder)
+	for frame in 3:
+		await RenderingServer.frame_post_draw
+	var pixel := view.get_texture().get_image().get_pixel(16, 16).srgb_to_linear()
+	var expected := photo.get_pixel(0, 0).srgb_to_linear()
+	var linear_tint := tint.srgb_to_linear() * 0.95
+	for channel in 3:
+		expected[channel] *= 0.85 * 0.8425 * lerpf(0.75, 1.15, clampf(linear_tint[channel] * 12.0, 0.0, 1.0))
+	assert(Vector3(pixel.r, pixel.g, pixel.b).distance_to(Vector3(expected.r, expected.g, expected.b)) < 0.012, "Baked tree cards must blend photographed leaves and tint in linear light: %s expected=%s" % [pixel, expected])
+	photo.fill(Color(0.5, 0.6, 0.3, 0.1))
+	texture.update(photo)
+	for frame in 3:
+		await RenderingServer.frame_post_draw
+	assert(view.get_texture().get_image().get_pixel(16, 16).a < 0.01, "Tree photographs must keep transparent edges after batching")
+	material.set_shader_parameter("leaf_texture", original_texture)
+	material.set_shader_parameter("wind", 1.0)
+	shader.code = original_code
+	view.free()
+	print("TERRAIN_MATERIALS photographed tree colour and alpha passed")
 
 
 func check_release_forest_atlas() -> void:

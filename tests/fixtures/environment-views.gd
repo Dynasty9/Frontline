@@ -63,6 +63,23 @@ func capture() -> void:
 		settle_frames = 225
 		world.atmo.grass.mat.set_shader_parameter("wind", 0.0)
 		world.atmo.grass.bush_mat.set_shader_parameter("wind", 0.0)
+	if "--capture-set=foliage" in OS.get_cmdline_user_args():
+		var target := Vector3(-110, 0, -130)
+		var nearest := INF
+		for structure in world.structures:
+			if structure.skind != "tree" or structure.variant == 2 or (structure.variant != 1 and (structure.eid * 2654435761) % 100 < 34):
+				continue
+			var distance: float = structure.position.distance_squared_to(Vector3(-110, 0, -130))
+			if distance < nearest:
+				nearest = distance
+				target = structure.position
+		views = [["tree", target, 18.0, -15.0, 0.7], ["reverse", target, 18.0, -15.0, -2.4],
+			["stand", target, 65.0, -30.0, 0.7]]
+		settle_frames = 90
+		var materials = load("res://scripts/game/mats.gd")
+		materials.foliage().shader.code = materials.foliage().shader.code.replace("uniform float wind = 1.0;", "uniform float wind = 0.0;")
+		world.atmo.grass.mat.set_shader_parameter("wind", 0.0)
+		world.atmo.grass.bush_mat.set_shader_parameter("wind", 0.0)
 	var records := []
 	for view in views:
 		world.cam.dist = view[2]
