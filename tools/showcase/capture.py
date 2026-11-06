@@ -15,6 +15,8 @@ def main():
     parser.add_argument('stage', choices=stages)
     parser.add_argument('--output', type=Path, required=True)
     parser.add_argument('--label', default='CURRENT BUILD')
+    parser.add_argument('--renderer', choices=['gl_compatibility', 'forward_plus'], default='gl_compatibility')
+    parser.add_argument('--legacy-effects', action='store_true', help='Use the historical two-argument explosion API')
     args = parser.parse_args()
     stage = stages[args.stage]
     out = args.output.resolve()
@@ -26,28 +28,36 @@ def main():
         parser.error('Set GODOT and FFMPEG, or put both on PATH.')
     out.mkdir(parents=True, exist_ok=True)
     frames = out / 'frames'
-    command = [godot, '--path', str(ROOT), '--rendering-method', 'gl_compatibility',
-               '--position', '-10000,-10000', '--resolution', '1280x720',
+    command = [godot, '--path', str(ROOT), '--rendering-method', args.renderer,
+               '--audio-driver', 'Dummy', '--position', '-10000,-10000', '--resolution', '1280x720',
                'res://' + stage['scene'], '--', '--clip=' + args.stage,
                '--label=' + args.label, '--frames=' + str(frames)]
+    if args.legacy_effects:
+        command.append('--legacy-effects')
+    if stage.get('engine_fixed_fps'):
+        command[1:1] = ['--fixed-fps', str(stage['engine_fixed_fps'])]
     with (out / 'capture.log').open('w') as log:
-        subprocess.run(command, stdout=log, stderr=log, check=True, timeout=300)
+        subprocess.run(command, stdout=log, stderr=log, check=True, timeout=stage.get("timeout", 300))
     log = (out / 'capture.log').read_text()
-    if 'SCRIPT ERROR' in log or 'TESTRUN failed' in log:
-        raise SystemExit('Capture has script errors; inspect capture.log.')
+    if any(error in log for error in ['SCRIPT ERROR', 'SHADER ERROR', 'Shader compilation failed', 'TESTRUN failed']):
+        raise SystemExit('Capture has script or shader errors; inspect capture.log.')
     expected = stage['seconds'] * stage['fps']
     if len(list(frames.glob('*.png'))) != expected:
         raise SystemExit('Incomplete capture.')
     subprocess.run([ffmpeg, '-y', '-loglevel', 'error', '-framerate', str(stage['fps']),
-                    '-i', str(frames / '%04d.png'), '-c:v', 'libvpx-vp9', '-crf', '30',
+                    '-i', str(frames / '%04d.png'), '-c:v', 'libvpx-vp9', '-crf', str(stage.get('crf', 30)),
                     '-b:v', '0', '-pix_fmt', 'yuv420p', '-an', str(out / 'clip.webm')], check=True)
     subprocess.run([ffmpeg, '-y', '-loglevel', 'error', '-ss', '3', '-i', str(out / 'clip.webm'),
-                    '-frames:v', '1', str(out / 'poster.jpg')], check=True)
+                    '-frames:v', '1', '-q:v', '2', str(out / 'poster.jpg')], check=True)
+    changes = subprocess.check_output(['git', 'status', '--porcelain'], cwd=ROOT, text=True).splitlines()
     provenance = {
         'stage': args.stage,
         'source_ref': subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=ROOT, text=True).strip(),
-        'working_tree_dirty': bool(subprocess.check_output(['git', 'status', '--porcelain'], cwd=ROOT, text=True)),
+        'working_tree_dirty': bool(changes),
+        'working_tree_changes': changes,
+        'engine': subprocess.check_output([godot, '--version'], text=True).strip(),
         'command': command, 'parameters': stage,
+        'legacy_pool_clock': 'Hold shown rig timestamps so wall-clock cleanup cannot truncate fixed-step particle lifetimes during offline readback.' if args.legacy_effects else None,
         'attribution': 'Current-build controlled demonstration; not original release footage.',
     }
     (out / 'capture.json').write_text(json.dumps(provenance, indent=2) + '\n')

@@ -497,8 +497,9 @@ void fragment() {
 
 # --- night: illumination flares drifting down over the fighting ----------------
 
+static var _flare_canopy_mesh: ArrayMesh
 var _flare_t := 3.0
-var _flares: Array = []  # [root, light, age, life]
+var _flares: Array = []  # [root, light, age, life, glow, trail, canopy]
 
 
 func _flares_tick(dt: float) -> void:
@@ -521,13 +522,18 @@ func _flares_tick(dt: float) -> void:
 		var root: Node3D = f[0]
 		var age: float = f[2]
 		var life: float = f[3]
-		root.position.y = maxf(world.ground_y(root.position) + 6.0, root.position.y - dt * 1.3)
-		root.position.x += sin(age * 0.7) * dt * 0.8
+		root.position.y = maxf(world.ground_y(root.position) + 0.15, root.position.y - dt * 1.3)
+		root.position += Fires.WIND * dt * 0.6
+		# The canopy and its lines sway together about the suspended charge.
+		root.rotation.z = sin(age * 1.4) * 0.08
 		var fade := clampf((life - age) / 3.0, 0.0, 1.0) * clampf(age * 2.0, 0.0, 1.0)
 		var l: OmniLight3D = f[1]
 		l.light_energy = fade * (7.0 + 1.0 * sin(age * 23.0) + 0.6 * sin(age * 37.0))
-		(f[4] as MeshInstance3D).scale = Vector3.ONE * (1.6 + 0.2 * sin(age * 31.0)) * fade
-		if age > life:
+		(f[4] as MeshInstance3D).scale = Vector3.ONE * (0.65 + 0.06 * sin(age * 31.0)) * fade
+		if age >= life and is_instance_valid(f[5]):
+			for emitter: GeometryInstance3D in (f[5] as Node3D).get_children():
+				Vfx.set_emitting(emitter, false)
+		if age > life + 4.0:
 			root.queue_free()
 			_flares.remove_at(i)
 
@@ -551,16 +557,52 @@ func _spawn_flare(p: Vector3) -> void:
 	glow.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	root.add_child(glow)
 	var chute := MeshInstance3D.new()
-	chute.mesh = Res.sphere(0.9, 10)
-	chute.material_override = Mats.get_mat("canvas_white")
-	chute.scale = Vector3(1, 0.45, 1)
+	chute.mesh = _flare_canopy()
+	var cloth := StandardMaterial3D.new()
+	cloth.albedo_color = Color(0.70, 0.68, 0.61)
+	cloth.roughness = 0.95
+	cloth.cull_mode = BaseMaterial3D.CULL_DISABLED
+	cloth.vertex_color_use_as_albedo = true
+	chute.material_override = cloth
 	chute.position = Vector3(0, 2.4, 0)
 	root.add_child(chute)
+	# Suspension lines meet the cloth rim and stay attached as it sways.
+	for i in 8:
+		var a := i * TAU / 8.0
+		var seam := pow(absf(sin(a * 6.0)), 2.0)
+		var radius := 0.9 * (1.0 - 0.035 * seam)
+		var end := Vector3(cos(a) * radius, 2.4 + 0.045 * seam, sin(a) * radius)
+		var line := Res.mi(root, Res.cyl(0.003, 0.003, end.length(), 4), Mats.get_mat("canvas_white"), end * 0.5)
+		line.quaternion = Quaternion(Vector3.UP, end.normalized())
+	var tr: Node3D
 	if world.fx and world.fx.vfx:
-		var tr := world.fx.vfx.make_trail()
-		Vfx.set_ratio(tr, 0.5)
+		tr = world.fx.vfx.make_flare_trail()
 		root.add_child(tr)
-	_flares.append([root, l, 0.0, randf_range(20.0, 26.0), glow])
+	_flares.append([root, l, 0.0, randf_range(20.0, 26.0), glow, tr, chute])
+
+
+## A sewn canopy has a rounded crown and scalloped gores, open underneath.
+## One shared mesh replaces a flattened sphere, including when seen from below.
+static func _flare_canopy() -> ArrayMesh:
+	if _flare_canopy_mesh:
+		return _flare_canopy_mesh
+	var surface := SurfaceTool.new()
+	surface.begin(Mesh.PRIMITIVE_TRIANGLES)
+	for ring in 8:
+		for segment in 48:
+			for corner in [Vector2i(0, 0), Vector2i(1, 1), Vector2i(1, 0), Vector2i(0, 0), Vector2i(0, 1), Vector2i(1, 1)]:
+				var theta := float(ring + corner.x) / 8.0 * PI * 0.5
+				var phi := float(segment + corner.y) / 48.0 * TAU
+				var seam := pow(absf(sin(phi * 6.0)), 2.0)
+				var radius := 0.9 * sin(theta) * (1.0 - 0.035 * seam)
+				var y := 0.48 * cos(theta) + 0.045 * pow(sin(theta), 6.0) * seam
+				var tint := 0.92 + 0.08 * seam
+				surface.set_color(Color(tint, tint, tint))
+				surface.set_uv(Vector2(phi / TAU, theta / (PI * 0.5)))
+				surface.add_vertex(Vector3(cos(phi) * radius, y, sin(phi) * radius))
+	surface.generate_normals()
+	_flare_canopy_mesh = surface.commit()
+	return _flare_canopy_mesh
 
 
 ## Switches the lighting mood live (Settings > Time of day).

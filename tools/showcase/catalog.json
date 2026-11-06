@@ -3437,6 +3437,83 @@
         "compatibility": "Target after with --rendering-method gl_compatibility",
         "command": "godot --main-pack PACK --resolution 1600x900 -- --aivai --seed=3 --offscreen --nohud --set=perf:0 --preset=high --mood=MOOD --focus=FOCUS --zoom=ZOOM --pitch=PITCH --cam-yaw=0.7 --screenshot=OUTPUT --shot-at=2 --quit-after=3"
       }
+    },
+    {
+      "entry": "changelog/unreleased/realistic-armament-effects.md",
+      "summary": "Rolling, scene-lit explosion clouds with ballistic earth, material impacts and drifting flare trails.",
+      "medium": "motion",
+      "stage": "blast-close / blast-rts / armaments / flares",
+      "rationale": "Matched baseline/current battlefield and range recordings show flash duration, connected cloud motion, falling earth and impacts. The flare clip shows canopy, descent and trail. Encoded clips reviewed at 640×360; measured barrage tradeoffs and full provenance are retained in capture.json.",
+      "source_ref": "b3ec8594ef59488cdfa36e5b12fcdf40b9cac791 (baseline game); 2252c93a87a54cc6a6b7498017d6f3cf5b2f6835 (implementation and capture fixtures)",
+      "sources": [
+        {
+          "file": "changelog/unreleased/realistic-armament-effects/after.jpg",
+          "sha256": "8ce1bf15c6a35104388bd2c94c46574fe57418c89071920f36f19c640af2ed66",
+          "caption": "after.jpg"
+        },
+        {
+          "file": "changelog/unreleased/realistic-armament-effects/armaments.jpg",
+          "sha256": "91710cb7d05be67a1bcfa61731354cc493f915822aa893eb40fb141f4eb5f16d",
+          "caption": "armaments.jpg"
+        },
+        {
+          "file": "changelog/unreleased/realistic-armament-effects/armaments.webm",
+          "sha256": "430b5036ac1fbb221c8a2e9949393c6a28d0ceef944d0af15463274b7f7479cd",
+          "caption": "armaments.webm"
+        },
+        {
+          "file": "changelog/unreleased/realistic-armament-effects/before-range.jpg",
+          "sha256": "3eb0242f28a1c0f879055181ceb5b343a612cda8f22b483577943522b1f0b278",
+          "caption": "before-range.jpg"
+        },
+        {
+          "file": "changelog/unreleased/realistic-armament-effects/before.jpg",
+          "sha256": "a2c39a63b9929dfa445d6e20fa6e881da923b2b3003cd2b1cca3b2e1c9b1f19d",
+          "caption": "before.jpg"
+        },
+        {
+          "file": "changelog/unreleased/realistic-armament-effects/before.webm",
+          "sha256": "b84f6d949d0596733b72b0481367e5bbc75203896ea8e7576a16e185ac8fa03e",
+          "caption": "before.webm"
+        },
+        {
+          "file": "changelog/unreleased/realistic-armament-effects/capture.json",
+          "sha256": "8b714e1cceba86e52b54542f9aeb02796161c975d6349a341c03f6a9793e8cbb",
+          "caption": "capture.json"
+        },
+        {
+          "file": "changelog/unreleased/realistic-armament-effects/flares.jpg",
+          "sha256": "b0bba241e5b4186b8f63a1c5db492f5032608b2429ff0eb4d46523e85c9cd5f8",
+          "caption": "flares.jpg"
+        },
+        {
+          "file": "changelog/unreleased/realistic-armament-effects/flares.webm",
+          "sha256": "aaa1fe56c4c3b070822d6b22861a8c13ba74027e54f7fe64d4851d92372ce9f7",
+          "caption": "flares.webm"
+        },
+        {
+          "file": "changelog/unreleased/realistic-armament-effects/rts.jpg",
+          "sha256": "47a042eb5915f0e357ae216f29e4a97e3fc4ce8ee7b7fe182865f6e6545a7c5b",
+          "caption": "rts.jpg"
+        },
+        {
+          "file": "changelog/unreleased/realistic-armament-effects/rts.webm",
+          "sha256": "d71b25a49737eb48255ee0639856837464f91a0d4bb338b3f36d0f0249443084",
+          "caption": "rts.webm"
+        },
+        {
+          "file": "changelog/unreleased/realistic-armament-effects/world-before.webm",
+          "sha256": "a9a3eb65a88ce665532d15a79598a741335ec28b8efad5ecb8c899301d65abe4",
+          "caption": "world-before.webm"
+        },
+        {
+          "file": "changelog/unreleased/realistic-armament-effects/world.webm",
+          "sha256": "bf891c7b78bac1039d30fcd0ff680fca7cd53581ce8b412d1b50a7117dafa84e",
+          "caption": "world.webm"
+        }
+      ],
+      "output": null,
+      "attribution": "Actual Godot 4.7.2 output: fixed 24 Hz battlefield and 30 Hz range/flare, silent and normal simulation speed. Compatibility except the Forward+ flare. Baseline capture holds legacy pool timestamps to preserve particle lifetimes during offline readback; game code is unchanged. CC0 JangaFX animation source credits: assets/vfx/LICENSE.md."
     }
   ],
   "layout_capture": {

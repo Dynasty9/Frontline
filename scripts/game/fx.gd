@@ -123,7 +123,7 @@ func play(ev: Array) -> void:
 		SHOT:
 			_shot(_muzzle_of(ev, 5, ev[1], false), ev[2], int(ev[3]), String(ev[4]), world.entity(int(ev[5])) if ev.size() > 5 else null)
 		EXPLODE:
-			_explode(ev[1], float(ev[2]))
+			_explode(ev[1], float(ev[2]), String(ev[3]) if ev.size() > 3 else "he")
 		SAY:
 			_say(int(ev[1]), String(ev[2]))
 		DIE:
@@ -291,7 +291,8 @@ func _light(p: Vector3, energy: float, rng_m: float) -> void:
 	l.omni_range = rng_m
 
 
-func _explode(p: Vector3, size: float) -> void:
+func _explode(p: Vector3, size: float, kind := "he") -> void:
+	var above_ground := p.y - world.ground_y(p)
 	if not world.srv and world.terrain:
 		world.terrain.add_crater(p, size)
 	var wet: bool = world.water and not world.water.is_empty() and p.y < 3.0 and world.water.wet_at(p)
@@ -305,12 +306,12 @@ func _explode(p: Vector3, size: float) -> void:
 	Sfx.play("big_boom" if size >= 2.2 else ("explosion" if size >= 0.8 else "small_boom"), p, 4.0 if size >= 2.2 else (2.0 if size >= 1.3 else 0.0))
 	_light(p, 4.5 * size, 12.0 + 9.0 * size)
 	if _visible_at(p):
-		vfx.explode(p, size)
+		vfx.explode(p, size, kind)
 		if wet:
 			vfx.splash(Vector3(p.x, WaterMap.LEVEL, p.z), size * 0.45)  # (against a hull: spray round her)
-		elif world.phys and p.y < 1.6 and size >= 1.2:
+		elif world.phys and above_ground < 1.6 and size >= 1.2:
 			world.phys.blast_chunks(p, size)
-	if world._decor_node and p.y < 3.0 and size >= 0.8:
+	if world._decor_node and above_ground < 3.0 and size >= 0.8:
 		world._decor_node.blast(p, size)
 	# the blast rocks vehicles on their suspension
 	for v in world.vehicles:
@@ -318,9 +319,9 @@ func _explode(p: Vector3, size: float) -> void:
 			v.blast_jolt(p, size)
 	if wet:
 		pass  # (no hole in the water)
-	elif p.y < 1.6 and size >= 0.9:
+	elif above_ground < 1.6 and size >= 0.9 and kind != "frag":
 		vfx.crater(p, size)  # permanent, wherever it lands: the ground remembers
-	elif p.y < 1.6 and size >= 0.35 and world.atmo and world.atmo.grass:
+	elif above_ground < 1.6 and size >= 0.35 and world.atmo and world.atmo.grass:
 		world.atmo.grass.scar(p, 0.8 + size * 1.5, 0.5)
 	if world.cam:
 		var d := world.cam.focus_pos.distance_to(p)

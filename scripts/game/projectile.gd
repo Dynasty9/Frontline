@@ -211,7 +211,7 @@ func _ballistic(dt: float) -> void:
 		fuse -= dt
 		if fuse <= 0.0:
 			if not SoldierBrain.smothered(self):
-				world.combat.explode(position, {"dmg": 150.0, "radius": 6.0, "fling": 9.0, "at": 0.0, "src": world.entity(thrower_id), "team": team, "by": by, "size": 1.0})
+				world.combat.explode(position, {"dmg": 150.0, "radius": 6.0, "fling": 9.0, "at": 0.0, "src": world.entity(thrower_id), "team": team, "by": by, "size": 1.0, "vfx": "frag"})
 			world.despawn(self)
 	else:
 		if not flying or life_t > 1.6:
