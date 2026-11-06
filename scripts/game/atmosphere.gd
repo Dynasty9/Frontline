@@ -428,11 +428,11 @@ func _build_ground() -> void:
 	road_mat.shader = rs
 	road_mat.set_shader_parameter("detail_tex", detail_tex)
 	road_mat.set_shader_parameter("paving_noise", preload("res://assets/town/aerial_asphalt_01_color.jpg"))
-	road_mat.set_shader_parameter("street_repairs", preload("res://assets/town/asphalt_02_color.jpg"))
+	road_mat.set_shader_parameter("street_detail", preload("res://assets/town/road_damaged_clean_color.jpg"))
 	road_mat.set_shader_parameter("street_noise", Mats.noise_tex())
 	road_mat.set_shader_parameter("gravel_color", preload("res://assets/town/gravelly_sand_color.jpg"))
 	road_mat.set_shader_parameter("gravel_surface", preload("res://assets/town/gravelly_sand_surface.png"))
-	road_mat.set_shader_parameter("paving_surface", preload("res://assets/town/aerial_asphalt_01_surface.png"))
+	road_mat.set_shader_parameter("paving_surface", preload("res://assets/town/road_damaged_clean_surface.png"))
 	# see-through (its edges fade into the verges), so it draws with the smoke
 	# and fire: before them, or it paints over every blast on a road
 	road_mat.render_priority = -1
@@ -1644,9 +1644,10 @@ void fragment() {
 	float edge = smoothstep(0.0, 0.14 + 0.1 * n, x) * smoothstep(1.0, 0.86 - 0.1 * n, x);
 	ALPHA = edge;
 	vec4 gravel_data = texture(gravel_surface, wpos.xz * 0.5);
+	mat3 ground_basis = ground_surface_basis(wpos);
 	vec3 gravel_n = gravel_data.rgb * 2.0 - 1.0;
 	gravel_n.xy *= 0.24;
-	NORMAL = normalize((VIEW_MATRIX * vec4(gravel_n.x, gravel_n.z, -gravel_n.y, 0.0)).xyz);
+	NORMAL = normalize((VIEW_MATRIX * vec4(ground_basis * gravel_n, 0.0)).xyz);
 	// in town: patched asphalt between the curbs, a dashed centre line
 	vec2 inside = min(wpos.xz - town.xy, town.zw - wpos.xz);
 	float distance = min(inside.x, inside.y);
@@ -1661,10 +1662,10 @@ void fragment() {
 		float pud2 = wet * smoothstep(0.55, 0.75, n2 * 0.8);
 		asph *= 1.0 - wet * 0.3;
 		ALBEDO = mix(col, mix(asph, asph * 0.4, pud2), paved);
-		vec4 surface = texture(paving_surface, wpos.xz / 30.0);
+		vec4 surface = texture(paving_surface, wpos.xz / 2.2);
 		vec3 normal = surface.rgb * 2.0 - 1.0;
 		normal.xy *= 0.18;
-		NORMAL = normalize(mix(NORMAL, (VIEW_MATRIX * vec4(normal.x, normal.z, -normal.y, 0.0)).xyz, paved));
+		NORMAL = normalize(mix(NORMAL, (VIEW_MATRIX * vec4(ground_basis * normal, 0.0)).xyz, paved));
 		ROUGHNESS = mix(ROUGHNESS, mix(clamp(surface.a, 0.65, 1.0) - wet * 0.3, 0.06, pud2), paved);
 		SPECULAR = mix(SPECULAR, mix(0.3, 0.55, pud2), paved);
 		ALPHA = mix(edge, 1.0, paved);

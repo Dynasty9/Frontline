@@ -60,6 +60,9 @@ before and after revisions; differences in source revision must be recorded in t
 godot --path . --resolution 1600x900 --script tests/fixtures/environment-views.gd -- --aivai --seed=3 --offscreen --nohud --set=perf:0 --preset=high --mood=day --focus=0,0 --capture-prefix=build/terrain/review
 ```
 
+Add `--capture-set=town` for street detail, the town entrance, an overview and a
+residential driveway. Both revisions must use the same capture fixture.
+
 The camera uses the normal terrain clearance, so a low requested zoom may raise the lens
 above a neighbouring ridge. This is a visual review stage, not a performance benchmark.
 

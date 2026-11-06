@@ -36,6 +36,23 @@ func capture() -> void:
 		["forest", Vector3(-400,0,-450), 350.0, -30.0, -0.2],
 		["panorama", Vector3.ZERO, 900.0, -22.0, 0.7],
 	]
+	if "--capture-set=town" in OS.get_cmdline_user_args():
+		var town: Rect2 = world.town_rect
+		var center := Vector3(town.get_center().x, 0, town.get_center().y)
+		views = [
+			["street", Vector3(-55,0,-4), 15.0, -55.0, 0.7],
+			["transition", Vector3(town.position.x,0,center.z), 25.0, -55.0, 0.7],
+			["town", center, 130.0, -50.0, 0.7],
+		]
+		for piece: Array in world.decor:
+			if piece[0] != "drive" or not piece[3] is Vector3:
+				continue
+			var size: Vector3 = piece[3]
+			var position: Vector3 = piece[1]
+			if size.x > 2.5 and size.z > 3.0 and town.grow(20.0).has_point(Vector2(position.x, position.z)):
+				views.append(["driveway", position, 18.0, -50.0, float(piece[2]) + PI + 0.4])
+				break
+		print("CAPTURE town bounds=", town)
 	var records := []
 	for view in views:
 		world.cam.dist = view[2]

@@ -47,6 +47,13 @@ caption = "Before: repeated procedural peaks surround the valley."
 [[screenshots]]
 file = "ranges-after.jpg"
 caption = "After: surveyed Alpine ridges form separate mountain groups and lower passes. Same seed, camera and lighting."
+[[screenshots]]
+file = "street-before.jpg"
+caption = "Before: oversized aggregate makes the asphalt look like coarse gravel."
+
+[[screenshots]]
+file = "street-after.jpg"
+caption = "After: finer photographed aggregate keeps larger cracks and repairs. Same street, seed, lighting and camera."
 +++
 
 The ocean keeps detailed waves near the battlefield and uses a coarser surface beyond it.
@@ -58,3 +65,5 @@ Snow uses photographed powder at its original two-metre scale, with darker melt 
 Distant ridges now shade their valleys and forests with cached terrain lighting. Changing the time of day refreshes that lighting without rebuilding the forest. Standing rainwater stays on gentle ground instead of making cliff faces reflect like puddles.
 
 Surrounding ranges now use real Alpine elevation shapes, composed into varied fictional mountain groups. Lower ridges close the horizon between the peaks. The source data is bundled and processed during map creation; no terrain downloads or extra per-frame material samples are needed.
+
+Town asphalt now separates fine aggregate from broad cracks, repairs and stains. Streets and junctions share the same world-space material. Normal maps follow sloping roads and paving instead of lighting every surface as if it were flat.

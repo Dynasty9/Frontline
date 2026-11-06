@@ -542,6 +542,7 @@ Ambush Alley autoplay can call its existing mortar support against spotted, stop
 - Stuck watchdogs: infantry re-plan if they stop making progress; vehicles back off, turn and re-plan.
 
 **The map** (`mapgen.gd`, `landform.gd`, `towngen.gd`, `decor.gd`)
+- Town asphalt combines fine photographed aggregate with larger cracks and repairs, continuous across street junctions. Road and pavement normal maps follow their actual slopes.
 - Standard battlefields have seeded mountain belts, hills, valleys and rivers. Domain-warped ridged noise,
   jointed bedrock shelves, thermal weathering and seeded rainfall erosion shape the relief. Roads, bridges, starting bases and settlements
   occupy graded valley corridors; forests stay below the snow line and off steep faces.

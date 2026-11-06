@@ -31,9 +31,22 @@ const WEATHERED_PHOTO := 21
 
 # One world-space surface keeps junction overlays continuous with street ribbons.
 const ASPHALT_SHADER := """
-uniform sampler2D street_repairs : source_color, filter_linear_mipmap_anisotropic, repeat_enable;
+uniform sampler2D street_detail : source_color, filter_linear_mipmap_anisotropic, repeat_enable;
+mat3 ground_surface_basis(vec3 position) {
+	vec3 up = cross(dFdx(position), dFdy(position));
+	up = length(up) > 0.00000001 ? normalize(up) : vec3(0.0, 1.0, 0.0);
+	if (up.y < 0.0) { up = -up; }
+	vec3 across = normalize(vec3(1.0, 0.0, 0.0) - up * up.x);
+	return mat3(across, -normalize(cross(across, up)), up);
+}
+
 vec3 street_surface(sampler2D tex, sampler2D noise, vec2 p) {
-	vec3 base = texture(tex, p / 30.0).rgb * 0.35;
+	vec3 aggregate = texture(street_detail, p / 2.2).rgb;
+	float gray = dot(aggregate, vec3(0.2126, 0.7152, 0.0722));
+	aggregate = mix(aggregate, vec3(gray), 0.9);
+	// The aerial scan supplies cracks and weathering; fine aggregate stays at its surveyed scale.
+	vec3 wear = texture(tex, p / 30.0).rgb;
+	vec3 base = aggregate * mix(1.0, clamp(dot(wear, vec3(0.2126, 0.7152, 0.0722)) / 0.126, 0.5, 1.4), 0.35);
 	float weather = texture(noise, p * 0.006 + 0.17).r;
 	float stains = smoothstep(0.56, 0.74, texture(noise, p * 0.035 + 0.63).r);
 	vec2 cell = floor(p / vec2(11.0, 7.0));
@@ -44,8 +57,8 @@ vec3 street_surface(sampler2D tex, sampler2D noise, vec2 p) {
 	vec2 half_size = vec2(0.07, 0.10) + variation.yx * vec2(0.15, 0.17);
 	float shape = max(abs(f.x - center.x) / half_size.x, abs(f.y - center.y) / half_size.y);
 	float repair = chosen * (1.0 - smoothstep(0.92, 1.02, shape + texture(noise, p * 0.3).r * 0.10));
-	base = mix(base * (0.75 + weather * 0.65), texture(street_repairs, p / 3.0).rgb * 0.25, repair);
-	base *= 1.0 - stains * 0.48;
+	base = mix(base * (0.75 + weather * 0.65), aggregate * 0.52, repair);
+	base *= 1.0 - stains * 0.28;
 	return base;
 }
 """
@@ -726,7 +739,7 @@ static func _preset(kind: String) -> Dictionary:
 		"concrete":
 			return {"pattern": WEATHERED_PHOTO, "col_a": Color(0.52, 0.51, 0.48), "col_b": Color(0.36, 0.35, 0.32), "rough": 0.9, "bump": 0.0, "grime": 0.8, "scale": 0.5, "weathering": 0.5, "photo_color": preload("res://assets/town/concrete_floor_01_color.jpg"), "photo_surface": preload("res://assets/town/concrete_floor_01_surface.png")}
 		"asphalt":
-			return {"street_repairs": preload("res://assets/town/asphalt_02_color.jpg"), "pattern": ASPHALT, "col_a": Color(1, 1, 1), "rough": 0.88, "bump": 0.0, "grime": 0.0, "photo_color": preload("res://assets/town/aerial_asphalt_01_color.jpg"), "photo_surface": preload("res://assets/town/aerial_asphalt_01_surface.png")}
+			return {"street_detail": preload("res://assets/town/road_damaged_clean_color.jpg"), "pattern": ASPHALT, "col_a": Color(1, 1, 1), "rough": 0.88, "bump": 0.0, "grime": 0.0, "photo_color": preload("res://assets/town/aerial_asphalt_01_color.jpg"), "photo_surface": preload("res://assets/town/road_damaged_clean_surface.png")}
 		"turf":
 			return {"pattern": TURF, "col_a": Color(1, 1, 1), "rough": 0.98, "bump": 0.0, "grime": 0.0, "scale": 0.5, "photo_color": preload("res://assets/town/leafy_grass_color.jpg"), "photo_surface": preload("res://assets/town/leafy_grass_surface.png")}
 		"pavement":
@@ -1125,12 +1138,12 @@ void fragment() {
 	ALBEDO = col;
 	ROUGHNESS = clamp(r + (macro - 0.5) * 0.12, 0.05, 1.0);
 	if (pattern >= 18 && pattern <= 20 && an.y > 0.5) {
-		vec2 puv = wpos.xz / 30.0;
+		vec2 puv = wpos.xz / 2.2;
 		if (pattern != 18) { puv = uv; }
 		vec4 surface = texture(photo_surface, puv);
 		vec3 normal = surface.rgb * 2.0 - 1.0;
 		normal.xy *= 0.18;
-		NORMAL = normalize((VIEW_MATRIX * vec4(normal.x, normal.z, -normal.y, 0.0)).xyz);
+		NORMAL = normalize((VIEW_MATRIX * vec4(ground_surface_basis(wpos) * normal, 0.0)).xyz);
 		ROUGHNESS = clamp(surface.a, 0.65, 1.0);
 	}
 	if (pattern == 21 || pattern == 2) {

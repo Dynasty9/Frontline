@@ -20,8 +20,56 @@ func _ready() -> void:
 				assert(original.get_pixelv(p) == imported.get_pixelv(p), "Import must not repair alpha: it contains height or roughness")
 			if DisplayServer.get_name() != "headless":
 				assert(array.get_layer_data(layer).get_data() == imported.get_data(), "Array layers must preserve the packed channels and mip levels")
+	var asphalt: Texture2D = preload("res://assets/town/road_damaged_clean_surface.png")
+	var original := Image.new()
+	assert(original.load_png_from_buffer(FileAccess.get_file_as_bytes("res://assets/town/road_damaged_clean_surface.png")) == OK)
+	var imported := asphalt.get_image()
+	assert(imported.has_mipmaps() and imported.get_size() == Vector2i(1024, 1024))
+	for p in [Vector2i(9, 23), Vector2i(511, 800), Vector2i(901, 107)]:
+		assert(original.get_pixelv(p) == imported.get_pixelv(p), "Asphalt roughness in alpha must survive import")
+	if DisplayServer.get_name() != "headless":
+		await check_road_normals()
 	print("TERRAIN_MATERIALS passed")
 	Sfx._ensure()
 	while Music._task >= 0:
 		await get_tree().process_frame
 	get_tree().quit()
+
+func check_road_normals() -> void:
+	var view := SubViewport.new()
+	view.size = Vector2i(64, 64)
+	view.own_world_3d = true
+	view.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	add_child(view)
+	var camera := Camera3D.new()
+	view.add_child(camera)
+	camera.position = Vector3(0, 5, 0)
+	camera.look_at(Vector3.ZERO, Vector3.FORWARD)
+	camera.projection = Camera3D.PROJECTION_ORTHOGONAL
+	camera.size = 2.0
+	var mesh := MeshInstance3D.new()
+	mesh.mesh = PlaneMesh.new()
+	var material := ShaderMaterial.new()
+	var shader := Shader.new()
+	shader.code = "shader_type spatial; render_mode unshaded;\n" + Mats.ASPHALT_SHADER + """
+varying vec3 position;
+void vertex() { position = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz; }
+void fragment() {
+	vec3 color = normalize(ground_surface_basis(position) * vec3(0.0, 0.0, 1.0)) * 0.5 + 0.5;
+	if (!OUTPUT_IS_SRGB) { color = mix(color / 12.92, pow((color + 0.055) / 1.055, vec3(2.4)), step(vec3(0.04045), color)); }
+	ALBEDO = color;
+}
+"""
+	material.shader = shader
+	mesh.material_override = material
+	view.add_child(mesh)
+	for angle in [-0.35, 0.0, 0.35]:
+		mesh.rotation.x = angle
+		for frame in 3:
+			await RenderingServer.frame_post_draw
+		var pixel := view.get_texture().get_image().get_pixel(32, 32)
+		var actual := Vector3(pixel.r, pixel.g, pixel.b) * 2.0 - Vector3.ONE
+		var expected := Vector3(0, cos(angle), sin(angle))
+		assert(actual.distance_to(expected) < 0.025, "Road and pavement normal maps must follow the underlying slope: actual=%s expected=%s" % [actual, expected])
+	view.queue_free()
+	print("TERRAIN_MATERIALS native sloped-road normals passed")

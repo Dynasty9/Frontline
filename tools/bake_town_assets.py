@@ -19,7 +19,7 @@ def main():
         if not path.exists():
             urllib.request.urlretrieve(source["url"], path)
         assert hashlib.sha256(path.read_bytes()).hexdigest() == source["sha256"], path
-    for name in ["aerial_asphalt_01", "concrete_pavement", "leafy_grass", "roof_tiles", "weathered_planks", "concrete_floor_01", "asphalt_02", "brick_wall_001", "plastered_wall", "tree_bark_03", "gravelly_sand"]:
+    for name in ["aerial_asphalt_01", "concrete_pavement", "leafy_grass", "roof_tiles", "weathered_planks", "concrete_floor_01", "asphalt_02", "brick_wall_001", "plastered_wall", "tree_bark_03", "gravelly_sand", "road_damaged_clean"]:
         size = (2048, 2048) if name == "aerial_asphalt_01" else (1024, 1024)
         def read(channel):
             return Image.open(CACHE / f"{name}_{channel}_2k.jpg").resize(size, Image.Resampling.LANCZOS)
