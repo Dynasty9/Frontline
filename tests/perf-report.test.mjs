@@ -35,3 +35,11 @@ test("performance reports attribute the worst measured tick including terrain wo
     assert.ok(peak <= data.nested_total_ms[key] + 0.001);
   }
 });
+
+test("performance updates consume cached renderer timings at the draw boundary", async () => {
+  const { stdout, stderr } = await promisify(execFile)(process.env.GODOT || "godot", [
+    "--headless", "--path", ROOT, "res://tests/fixtures/render-timing.tscn",
+  ], { timeout: 120_000 });
+  assert.doesNotMatch(stdout + stderr, /SCRIPT ERROR|Parse Error|^ERROR:/m);
+  assert.match(stdout, /RENDER_TIMING passed/);
+});

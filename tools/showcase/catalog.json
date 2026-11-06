@@ -3603,6 +3603,19 @@
         }
       ],
       "output": null
+    },
+    {
+      "entry": "changelog/unreleased/render-timing-boundary.md",
+      "title": "Performance measurements interrupt rendering less",
+      "summary": "The performance overlay and benchmark reuse renderer timings collected at the draw boundary.",
+      "version": "unreleased",
+      "kind": "fixed",
+      "medium": "text",
+      "stage": "text",
+      "rationale": "Invisible profiling correction. Methodology and limits are in docs/performance/render-timing.md; avoid presenting a profiler effect as an ordinary gameplay speedup.",
+      "source_ref": "codex/render-timing-boundary",
+      "sources": [],
+      "output": null
     }
   ],
   "layout_capture": {

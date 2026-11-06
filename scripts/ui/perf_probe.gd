@@ -59,6 +59,10 @@ var errors := ErrorCount.new()
 
 var main: Node  # main.gd, for its world
 var measuring := false
+## Cached at the renderer's synchronization boundary, read during the next update.
+var render_cpu_ms := 0.0
+var render_gpu_ms := 0.0
+var render_setup_ms := 0.0
 ## Each system frame by frame (their worst frames, and which of them a stutter
 ## was in), not just their sums every half second. It costs a little every
 ## frame, so it starts when someone looks: the console opening, the graph.
@@ -149,9 +153,18 @@ func _ready() -> void:
 	if DisplayServer.get_name() != "headless":
 		RenderingServer.viewport_set_measure_render_time(get_viewport().get_viewport_rid(), true)
 		measuring = true
+		RenderingServer.frame_pre_draw.connect(_sample_render_time)
 	_phys0 = Engine.get_physics_frames()
 	_compiles0 = _compiles()
 	_nodes0 = int(Performance.get_monitor(Performance.OBJECT_NODE_COUNT))
+
+
+func _sample_render_time() -> void:
+	# Godot has already synchronized here; these getters otherwise stall a separate render thread mid-update.
+	var viewport := get_viewport().get_viewport_rid()
+	render_cpu_ms = RenderingServer.viewport_get_measured_render_time_cpu(viewport)
+	render_gpu_ms = RenderingServer.viewport_get_measured_render_time_gpu(viewport)
+	render_setup_ms = RenderingServer.get_frame_setup_time_cpu()
 
 
 ## The battle (World), if one's running. Untyped: this is up from the first frame,
@@ -204,9 +217,8 @@ func _process(_dt: float) -> void:
 	var rcpu := 0.0
 	var gpu := 0.0
 	if measuring:
-		var rid := get_viewport().get_viewport_rid()
-		rcpu = RenderingServer.viewport_get_measured_render_time_cpu(rid)
-		gpu = RenderingServer.viewport_get_measured_render_time_gpu(rid)
+		rcpu = render_cpu_ms
+		gpu = render_gpu_ms
 	f_ms[_fi] = ms
 	f_sim[_fi] = sim
 	f_view[_fi] = view
