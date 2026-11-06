@@ -3566,6 +3566,19 @@
       "source_ref": "codex/ground-cover-lod",
       "sources": [],
       "output": null
+    },
+    {
+      "entry": "changelog/unreleased/native-soldier-batches.md",
+      "version": "unreleased",
+      "kind": "improved",
+      "medium": "text",
+      "stage": "text",
+      "rationale": "Measured batch CPU cost and rendered pose comparisons; see docs/performance/native-soldier-batches.md. No sustained FPS claim.",
+      "source_ref": "codex/soldier-buffer-upload",
+      "sources": [],
+      "output": null,
+      "title": "Faster shared soldier rendering",
+      "summary": "Large armies spend less CPU time preparing their distant models."
     }
   ],
   "layout_capture": {

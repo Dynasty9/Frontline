@@ -1270,7 +1270,9 @@ still include everyone. Distant batches outside the camera frustum and its shado
 not upload transforms; panning restores them immediately. Socket clients interpolate distant
 transforms on the GPU between updates, keeping the same exponential smoothing used
 for CPU selection and nearby models. A native client batch advances those CPU positions
-once per frame, retaining motion state between snapshots. Shared-model presentation checks
+once per frame, retaining motion state between snapshots. Once pose atlases are ready,
+the native view also culls and groups distant soldiers and assembles their complete
+instance buffers; Godot retains pose and visibility policy. Shared-model presentation checks
 wake for changed presentation, selection, viewing-team changes and promotion to a detailed model.
 Property corrections reset the retained transform, and despawns remove it. Routine motion uploads wait one frame after
 packet processing and may yield two further frames to HUD drawing or preparation; visibility
