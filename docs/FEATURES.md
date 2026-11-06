@@ -1086,7 +1086,9 @@ Sky Hook prepares reachable vehicle approaches for its convoy before the battle 
 - Eight lighting moods (midday, golden hour, dawn, dusk, overcast, hazy, **night**, **rain & thunder**) with a
   procedural sky, AgX tonemapping, cloud shadows drifting over the ground, volumetric haze and a subtle film look.
   At night the sky fills with stars and illumination flares drift down on parachutes over the fighting, throwing
-  moving shadows. In the rain, streaks fall around the camera, splashes hit the ground, puddles reflect the sky and
+  moving shadows. Downward command views fit the directional shadow range to visible ground,
+  retaining the configured quality and restoring the full range for horizon views or reflection captures.
+  In the rain, streaks fall around the camera, splashes hit the ground, puddles reflect the sky and
   lightning flashes are followed by thunder.
 - **Wildlife** (`wildlife.gd`), drawn only on each player's own screen and never simulated or sent by the server,
   so it can't change a battle or its seed. Flocks of sparrows and starlings (pigeons about the town) feed on bare
