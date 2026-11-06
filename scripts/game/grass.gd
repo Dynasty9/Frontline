@@ -370,6 +370,7 @@ func _make_clump() -> ArrayMesh:
 				st.set_normal(Vector3(0, 1, 0))
 				st.set_uv(Vector2(0.5, q[1]))
 				st.add_vertex(q[0])
+	st.index()
 	return st.commit()
 
 
@@ -391,7 +392,8 @@ func _make_bush() -> ArrayMesh:
 		for j in idx:
 			st.set_normal(norms[j])
 			st.add_vertex(verts[j] * sc + off)
-	return st.commit()
+	st.index()
+	return _with_lods(st.commit_to_arrays())
 
 
 func _make_stone() -> ArrayMesh:
@@ -405,9 +407,15 @@ func _make_stone() -> ArrayMesh:
 	for i in verts.size():
 		verts[i] *= rng.randf_range(0.8, 1.15)
 	arrays[Mesh.ARRAY_VERTEX] = verts
-	var m := ArrayMesh.new()
-	m.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
-	return m
+	return _with_lods(arrays)
+
+
+func _with_lods(arrays: Array) -> ArrayMesh:
+	# All chunks share these meshes; distant shrubs and stones need fewer triangles.
+	var importer := ImporterMesh.new()
+	importer.add_surface(Mesh.PRIMITIVE_TRIANGLES, arrays)
+	importer.generate_lods(25.0, 60.0, [])
+	return importer.get_mesh()
 
 
 const GRASS_SHADER := """
