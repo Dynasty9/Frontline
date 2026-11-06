@@ -532,8 +532,10 @@ void fragment() {
 	ROUGHNESS = 0.95;
 	AO = 0.6 + 0.4 * up;
 	AO_LIGHT_AFFECT = 0.5;
-	if (!FRONT_FACING) { NORMAL = -NORMAL; }
-	NORMAL = normalize(mix(NORMAL, (VIEW_MATRIX * vec4(0.0, 1.0, 0.0, 0.0)).xyz, 0.45));
+	// Keep the engine's two-sided normal, with both leaf faces receiving skylight.
+	vec3 leaf_normal = (INV_VIEW_MATRIX * vec4(NORMAL, 0.0)).xyz;
+	leaf_normal.y = abs(leaf_normal.y);
+	NORMAL = normalize((VIEW_MATRIX * vec4(mix(leaf_normal, vec3(0.0, 1.0, 0.0), 0.45), 0.0)).xyz);
 	BACKLIGHT = vec3(0.08, 0.1, 0.035);
 }
 """

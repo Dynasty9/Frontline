@@ -953,7 +953,8 @@ void fragment() {
 	if (an.y > an.x && an.y > an.z) { uv = tp.xz; }
 	else if (an.x > an.z) { uv = vec2(tp.z, tp.y); }
 	else { uv = vec2(tp.x, tp.y); }
-	vec2 off = vec2(h12(seed.xz * 0.37), h12(seed.zx * 0.71)) * 37.0;
+	// World-space patterns must stay fixed when scenery moves into a spatial batch.
+	vec2 off = local_space ? vec2(h12(seed.xz * 0.37), h12(seed.zx * 0.71)) * 37.0 : vec2(0.0);
 	uv *= scale;
 	if (grain_horizontal) { uv = uv.yx; }
 	// pattern units per pixel here (how fine a detail can still be drawn)

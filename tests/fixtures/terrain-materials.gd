@@ -54,17 +54,30 @@ func check_batched_tints() -> void:
 	var shader := Mats.shader()
 	var original_code := shader.code
 	shader.code = original_code.replace("render_mode specular_schlick_ggx;", "render_mode unshaded;")
-	for tint in [Color(0.65, 1.2, 1.4), Mats.tint_for("roof_tile", Color(0.36, 0.34, 0.32))]:
+	for sample in [["roof_tile", Color(0.65, 1.2, 1.4), Vector3.ZERO],
+		["roof_tile", Mats.tint_for("roof_tile", Color(0.36, 0.34, 0.32)), Vector3.ZERO],
+		["wood_dark", Color.WHITE, Vector3(17, 0, 23)]]:
+		var tint: Color = sample[1]
+		var offset: Vector3 = sample[2]
+		camera.position = offset + Vector3(0, 5, 0)
+		camera.look_at(offset, Vector3.FORWARD)
 		var holder := Node3D.new()
 		view.add_child(holder)
+		holder.position = offset
 		var mesh := MeshInstance3D.new()
 		mesh.mesh = PlaneMesh.new()
 		holder.add_child(mesh)
-		Mats.apply(mesh, "roof_tile", tint)
+		Mats.apply(mesh, sample[0], tint)
 		for frame in 3:
 			await RenderingServer.frame_post_draw
 		var before := view.get_texture().get_image()
-		Mats.merge_static(holder)
+		var groups := {}
+		var parts := []
+		Mats._collect(holder, holder.transform, groups, parts, [], true, true)
+		holder.free()
+		holder = Node3D.new()
+		view.add_child(holder)
+		Mats._emit(holder, groups, false)
 		for frame in 3:
 			await RenderingServer.frame_post_draw
 		var after := view.get_texture().get_image()
@@ -74,7 +87,7 @@ func check_batched_tints() -> void:
 				var a := before.get_pixel(x, y)
 				var b := after.get_pixel(x, y)
 				error += Vector3(a.r - b.r, a.g - b.g, a.b - b.b).length() / 4096.0
-		assert(error < 0.018, "Batching must preserve tinted roof colours in both renderers, including grey over red: error=%f tint=%s" % [error, tint])
+		assert(error < 0.018, "Batching must preserve colours and world-space texture placement in both renderers: error=%f material=%s tint=%s" % [error, sample[0], tint])
 		holder.free()
 	shader.code = original_code
 	view.free()
@@ -282,6 +295,23 @@ func check_shrub_leaves() -> void:
 	for frame in 3:
 		await RenderingServer.frame_post_draw
 	assert(view.get_texture().get_image().get_pixel(16, 16).a < 0.01, "Transparent photographed leaf edges must not turn into opaque cards")
+	leaf.fill(Color.WHITE)
+	material.set_shader_parameter("leaf_texture", ImageTexture.create_from_image(leaf))
+	mesh.mesh = QuadMesh.new()
+	mesh.custom_aabb = AABB(Vector3(-2, 0, -2), Vector3(4, 100, 4))
+	# Read the actual leaf normal from each side, independently of scene lighting.
+	shader.code = shader.code.replace("BACKLIGHT = vec3(0.08, 0.1, 0.035);", """
+	vec3 encoded = NORMAL * 0.5 + 0.5;
+	if (!OUTPUT_IS_SRGB) { encoded = mix(encoded / 12.92, pow((encoded + 0.055) / 1.055, vec3(2.4)), step(vec3(0.04045), encoded)); }
+	ALBEDO = encoded;
+""")
+	for side in [-1.0, 1.0]:
+		camera.position = Vector3(0, 81.3, side * 5.0)
+		camera.look_at(Vector3(0, 81.3, 0))
+		for frame in 3:
+			await RenderingServer.frame_post_draw
+		var normal := view.get_texture().get_image().get_pixel(16, 16)
+		assert(normal.b > 0.8 and normal.g > 0.65, "Both sides of a leaf must face the camera-facing hemisphere and bend toward the sky: %s" % normal)
 	view.queue_free()
 	print("TERRAIN_MATERIALS native shrub colour and elevated roots passed")
 

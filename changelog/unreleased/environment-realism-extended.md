@@ -145,3 +145,5 @@ Meadows use fine pointed blades over photographed turf, with wetter sheltered so
 Low shrubs use smaller photographed branches and grow in seeded patches with open gaps. Their root shading follows each plant rather than its elevation. Distant forest atlases also load correctly in exported builds.
 
 Local games share the scenery batching used by network clients. Returning to already-built scenery reveals it promptly while off-screen buildings retain their combat collision. Batched roofs and other tinted surfaces keep their colours in both renderers, including grey roofs in the browser.
+
+World-space wood, plaster and weathering stay in place when scenery enters a batch. Shrub leaves receive light from both sides without reversing their back-face normals.

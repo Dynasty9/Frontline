@@ -72,6 +72,8 @@ func capture() -> void:
 		world.cam.focus(view[1])
 		for frame in settle_frames:
 			await process_frame
+		while world.structure_view != null and world.structure_view.warming():
+			await process_frame
 		await RenderingServer.frame_post_draw
 		var filename: String = prefix + "-" + view[0] + ".png"
 		assert(root.get_texture().get_image().save_png(filename) == OK)
