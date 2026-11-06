@@ -3465,6 +3465,38 @@
       "title": "Steadier route planning and reliable battle endings",
       "version": "unreleased",
       "kind": "improved"
+    },
+    {
+      "entry": "changelog/unreleased/command-speech.md",
+      "summary": "At command zoom, repeated squad shouts share one bubble and urgent calls take priority over overlapping chatter.",
+      "medium": "still",
+      "stage": "native-media",
+      "rationale": "Matched rendered command views demonstrate reduced warning clutter. FPS numbers in the screenshots are instantaneous and are not performance evidence; controlled timing is documented separately.",
+      "source_ref": "codex/render-overlay-budget",
+      "sources": [
+        {
+          "file": "changelog/unreleased/command-speech/before.png",
+          "sha256": "a38c6231ea6459f7dccf6d47fb9531f597686d8dd20ad75b8b6d774a3cf2eae7",
+          "caption": "PR #112 command view before speech coalescing."
+        },
+        {
+          "file": "changelog/unreleased/command-speech/after.png",
+          "sha256": "2252994dfa168cab6a5be468079c44df97ee7b7df8c619069fcbc3f64529b293",
+          "caption": "Bounded speech command view."
+        }
+      ],
+      "output": "changelog/unreleased/command-speech/after.png",
+      "title": "Readable warnings in crowded battles",
+      "version": "unreleased",
+      "kind": "improved",
+      "capture": {
+        "scenario": "stress, combat, 500 initial soldiers, seed 3, 1024 m",
+        "camera": "observer, focus 0,0, zoom 35, 1280x720 High",
+        "timing": "62 seconds after loading",
+        "before_ref": "ecd6a29e377c4c8840cd7e73f9017d6e7c17d415",
+        "after_ref": "3776532",
+        "command": "python tools/benchmark_scaling.py --godot <export>/Frontline.exe --exported --rendered --local-server --units 500 --map-size 1024 --mode combat --seed 3 --team -1 --warmup 30 --duration 30 --zoom 35 --preset high --width 1280 --height 720 --output <fresh directory>"
+      }
     }
   ],
   "layout_capture": {

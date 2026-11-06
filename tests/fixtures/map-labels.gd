@@ -218,10 +218,12 @@ func _ready() -> void:
 	await get_tree().process_frame
 	assert(roster.draws == before and hud._roster_pending, "A routine roster refresh must avoid the overlay's frame")
 	hud._refresh_roster(false, true)
+	assert(hud._roster_pending and hud.overview_frame == -1, "A pending roster cannot interrupt staged overlay preparation")
+	hud._refresh_roster(false, false)
 	assert(hud.overview_frame == Engine.get_process_frames(), "A queued roster redraw reserves its frame")
 	await get_tree().process_frame
 	await get_tree().process_frame
-	assert(roster.draws == before + 1 and not hud._roster_pending, "Camera movement must not delay roster updates beyond one frame")
+	assert(roster.draws == before + 1 and not hud._roster_pending, "A queued roster refresh runs on the next reserved frame")
 	hud._refresh_roster(true, false)
 	await get_tree().process_frame
 	await get_tree().process_frame
