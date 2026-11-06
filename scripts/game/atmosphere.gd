@@ -298,6 +298,8 @@ var deform_tex: Texture2DArray
 var _deform_tiles: TerrainTexture
 var _deform_t := 0.0
 var _surface_baked := false
+var _scenery_bake: SubViewport
+var _scenery_material: ShaderMaterial
 var _terrain_probe: ReflectionProbe
 var GROUND_HALF := MapDims.HALF + 8.0
 var GROUND_CHUNKS := ceili(GROUND_HALF * 2.0 / 64.0)
@@ -914,6 +916,31 @@ func build_water(w: WaterMap) -> void:
 		grass.request_rebuild(0.5)
 
 
+## A cached horizon map lets distant cliffs shade their valleys without shadow-map draw calls.
+func _bake_scenery() -> void:
+	if _scenery_bake == null:
+		_scenery_bake = SubViewport.new()
+		_scenery_bake.name = "SceneryLighting"
+		_scenery_bake.size = Vector2i(512, 512)
+		_scenery_bake.disable_3d = true
+		add_child(_scenery_bake)
+		_scenery_material = ShaderMaterial.new()
+		var shader := Shader.new()
+		shader.code = MapDims.shader(SCENERY_BAKE_SHADER.replace("// BACKDROP_HEIGHT", BACKDROP_HEIGHT))
+		_scenery_material.shader = shader
+		var rect := ColorRect.new()
+		rect.size = Vector2(512, 512)
+		rect.material = _scenery_material
+		_scenery_bake.add_child(rect)
+		ground_mat.set_shader_parameter("scenery_bake", _scenery_bake.get_texture())
+	_scenery_material.set_shader_parameter("backdrop_tex", backdrop_tex)
+	_scenery_material.set_shader_parameter("deform_tex", deform_tex)
+	_scenery_material.set_shader_parameter("sea_x", ground_mat.get_shader_parameter("sea_x"))
+	_scenery_material.set_shader_parameter("snow_line", maxf(25.0, world.terrain.landform.peak * 0.55) if world.terrain.landform.peak > 1.0 else 10000.0)
+	_scenery_material.set_shader_parameter("sun_direction", sun.basis.z)
+	_scenery_bake.render_target_update_mode = SubViewport.UPDATE_ONCE
+
+
 ## New shell holes go up to the GPU (a few times a second at most).
 func _update_deform(dt: float) -> void:
 	_deform_t -= dt
@@ -924,9 +951,12 @@ func _update_deform(dt: float) -> void:
 		ground_mat.set_shader_parameter("surface_bake", ImageTexture.create_from_image(tm.landform.bake_surface(sun.basis.z)))
 		ground_mat.set_shader_parameter("sun_direction", sun.basis.z)
 		_surface_baked = true
-		forest = DistantForest.new()
-		add_child(forest)
-		forest.setup(self)
+		_bake_scenery()
+		if forest == null:
+			forest = DistantForest.new()
+			add_child(forest)
+			forest.setup(self)
+		forest.set_lighting(_scenery_bake.get_texture(), sun.basis.z)
 		_update_terrain_probe(true)
 		var post := post_rect.material as ShaderMaterial
 		post.set_shader_parameter("fringe", 0.00015)
@@ -1072,6 +1102,54 @@ float forest_habitat(vec2 p, float height, float gradient) {
 
 """
 
+const SCENERY_BAKE_SHADER := """
+shader_type canvas_item;
+render_mode unshaded, blend_disabled;
+uniform sampler2D backdrop_tex : filter_linear, repeat_disable;
+uniform sampler2DArray deform_tex : filter_linear, repeat_disable;
+uniform float sea_x = 1e9;
+uniform float snow_line = 100.0;
+uniform vec3 sun_direction = vec3(0.0, 1.0, 0.0);
+// TERRAIN_TEXTURE_HELPER
+// BACKDROP_HEIGHT
+float height_at(vec2 p) {
+	if (max(abs(p.x), abs(p.y)) < __MAP_HALF__) {
+		return terrain_height(deform_tex, (p + __MAP_HALF__) / __MAP_SIZE__);
+	}
+	return backdrop(p);
+}
+void fragment() {
+	vec2 p = UV * (__MAP_SIZE__ + 3600.0) - (__MAP_HALF__ + 1800.0);
+	float h = height_at(p);
+	float occlusion = 0.0;
+	float basin = 0.0;
+	for (int i = 0; i < 8; i++) {
+		float angle = float(i) * 0.78539816;
+		vec2 direction = vec2(cos(angle), sin(angle));
+		float horizon = 0.0;
+		float distance = 16.0;
+		for (int j = 0; j < 6; j++) {
+			float rise = height_at(p + direction * distance) - h;
+			horizon = max(horizon, rise / distance);
+			if (j == 0) { basin += rise; }
+			distance *= 2.0;
+		}
+		occlusion += horizon / sqrt(1.0 + horizon * horizon);
+	}
+	float horizontal = length(sun_direction.xz);
+	vec2 toward_sun = sun_direction.xz / max(horizontal, 0.001);
+	float sun_slope = sun_direction.y / max(horizontal, 0.001);
+	float sun_horizon = 0.0;
+	float distance = 12.0;
+	for (int i = 0; i < 18; i++) {
+		sun_horizon = max(sun_horizon, (height_at(p + toward_sun * distance) - h - 1.5) / distance);
+		distance *= 1.38;
+	}
+	float sunlight = 1.0 - smoothstep(sun_slope - 0.035, sun_slope + 0.035, sun_horizon);
+	COLOR = vec4(1.0 - occlusion / 8.0 * 0.75, clamp(0.5 + basin / 128.0, 0.0, 1.0), sunlight, 1.0);
+}
+"""
+
 const GROUND_SHADER := """
 shader_type spatial;
 render_mode specular_schlick_ggx;
@@ -1081,6 +1159,7 @@ uniform vec3 air_color : source_color = vec3(0.5, 0.6, 0.7);
 uniform float terrain_air = 0.0;
 uniform bool terrain_detail = true;
 uniform sampler2D surface_bake : hint_default_white, filter_linear_mipmap, repeat_disable;
+uniform sampler2D scenery_bake : hint_default_white, filter_linear, repeat_disable;
 uniform sampler2DArray material_colors : source_color, filter_linear_mipmap_anisotropic, repeat_enable;
 uniform sampler2DArray material_surfaces : filter_linear_mipmap_anisotropic, repeat_enable;
 uniform vec4 town_bounds = vec4(0.0);
@@ -1232,6 +1311,8 @@ void fragment() {
 	float rx = (dfm(p + vec2(normal_step, 0.0)) - dfm(p - vec2(normal_step, 0.0))) / (2.0 * normal_step);
 	float rz = (dfm(p + vec2(0.0, normal_step)) - dfm(p - vec2(0.0, normal_step))) / (2.0 * normal_step);
 	float slope = length(vec2(rx, rz));
+	// Standing water cannot flatten the normals of a steep cliff.
+	puddle *= 1.0 - smoothstep(0.08, 0.25, slope);
 	vec3 geometric = normalize(vec3(-rx, 1.0, -rz));
 	vec3 weights = pow(abs(geometric), vec3(4.0));
 	weights /= weights.x + weights.y + weights.z;
@@ -1260,6 +1341,8 @@ void fragment() {
 	vec4 moss_sample = surface_color(2.0, moss_uv, weights);
 	float macro = texture(detail_tex, p / 190.0 + 0.19).r;
 	vec3 habitat_bake = texture(surface_bake, (p + __MAP_HALF__) / __MAP_SIZE__).rgb;
+	vec3 scenery = texture(scenery_bake, (p + __MAP_HALF__ + 1800.0) / (__MAP_SIZE__ + 3600.0)).rgb;
+	if (edge >= __MAP_HALF__) { habitat_bake = scenery; }
 	// Tilted beds break across the face; sheltered seams weather darker than exposed ribs.
 	float bedding = sin(wpos.y * 0.32 + p.x * 0.045 + p.y * 0.025 + (seams - 0.5) * 12.0);
 	float mineral = smoothstep(0.2, 0.85, bedding) * smoothstep(0.28, 0.65, patch);
@@ -1328,14 +1411,9 @@ void fragment() {
 	rock_n = normalize(mix(rock_n, scree_n, scree * 0.7));
 	float elevation = smoothstep(0.0, snow_line, geology);
 	vec3 baked = habitat_bake;
-	terrain_sun = baked.b;
+	terrain_sun = min(baked.b, scenery.b);
 	float cavity = (baked.g - 0.5) * 2.0;
 	float sky = baked.r;
-	if (max(abs(p.x), abs(p.y)) >= __MAP_HALF__) {
-		cavity = clamp((dfm(p + vec2(16, 0)) + dfm(p - vec2(16, 0)) + dfm(p + vec2(0, 16)) + dfm(p - vec2(0, 16)) - 4.0 * geology) / 32.0, -1.0, 1.0);
-		sky = 1.0 - max(cavity, 0.0) * 0.45;
-		terrain_sun = 1.0;
-	}
 	float cover = smoothstep(0.18, 1.05, slope + elevation * 0.32 + (0.5 - alpine_soil) * 0.32
 		+ (patch - 0.5) * 0.24 + (rock_height - 0.5) * 0.35);
 	cover = max(cover, talus * 0.95);

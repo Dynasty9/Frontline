@@ -4074,6 +4074,16 @@
           "file": "changelog/unreleased/environment-realism-extended/snow-after.jpg",
           "sha256": "f49c641d0fa861da42f4935349e669217672751baf6cecad4b7cacd6a6cece26",
           "caption": "snow-after"
+        },
+        {
+          "file": "changelog/unreleased/environment-realism-extended/lighting-before.jpg",
+          "sha256": "96a15a9bc75137d572b02ca765f32a62aefc7cc5a9887442da4d8c0e11e35614",
+          "caption": "lighting-before"
+        },
+        {
+          "file": "changelog/unreleased/environment-realism-extended/lighting-after.jpg",
+          "sha256": "2579292bd68fc9d2b122e4c228168f7ce5f9497aa90f826dda8414847300bfb7",
+          "caption": "lighting-after"
         }
       ],
       "output": null,
@@ -4084,7 +4094,8 @@
         "note": "Before preserved from the parent branch capture. After rendered natively with the same controls.",
         "forest": "Native Forward+, seed3 High/day, 1600x900, focus -400,-450, zoom350, pitch-30, yaw-0.2, shot2s. Before b38e42e; after this branch.",
         "compatibility": "Same close controls except pitch-55 and gl_compatibility. Before: this branch before material-output correction; after: corrected output, both with forest iteration. Not a historical parent comparison.",
-        "snow": "Matched native Forward+, High/day seed3 1600x900, focus236,464 zoom45 pitch-42 yaw-0.2. Simulation held at2s after map construction, 45 settling frames per view. Before b38e42e PCK; after this branch. Same camera controls and unchanged geology. No retouching."
+        "snow": "Matched native Forward+, High/day seed3 1600x900, focus236,464 zoom45 pitch-42 yaw-0.2. Simulation held at2s after map construction, 45 settling frames per view. Before b38e42e PCK; after this branch. Same camera controls and unchanged geology. No retouching.",
+        "lighting": "Matched native Forward+, seed3 High/golden, 1600x900, focus-400,-450 zoom350 pitch-30 yaw-0.2. Both hold simulation at2s and settle45frames. Before uses exact7ba202a atmosphere/distant_forest scripts overlaid through a PCK before main loads; unchanged assets. After is current branch. No retouching."
       }
     }
   ],

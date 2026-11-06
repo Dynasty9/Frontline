@@ -6,6 +6,7 @@ const CELL := 256.0
 const SPACING := 5.0
 var tree_count := 0
 var coverage: Image
+var material: ShaderMaterial
 
 static func coverage_image(seed_value: int, reach: float) -> Image:
 	var noise := FastNoiseLite.new()
@@ -27,7 +28,7 @@ func setup(atmo: Atmosphere) -> void:
 	visible = int(Settings.get_v("lod")) >= 1
 	var shader := Shader.new()
 	shader.code = MapDims.shader(SHADER.replace("// BACKDROP_HEIGHT", Atmosphere.BACKDROP_HEIGHT))
-	var material := ShaderMaterial.new()
+	material = ShaderMaterial.new()
 	material.shader = shader
 	material.set_shader_parameter("backdrop_tex", atmo.backdrop_tex)
 	material.set_shader_parameter("sea_x", atmo.ground_mat.get_shader_parameter("sea_x"))
@@ -74,14 +75,22 @@ func setup(atmo: Atmosphere) -> void:
 		add_child(mesh)
 		tree_count += entries.size()
 
+func set_lighting(bake: Texture2D, toward_sun: Vector3) -> void:
+	if material:
+		material.set_shader_parameter("scenery_bake", bake)
+		material.set_shader_parameter("sun_direction", toward_sun)
+
 const SHADER := """
 shader_type spatial;
 render_mode cull_disabled;
 uniform sampler2D atlas : source_color, filter_linear_mipmap, repeat_disable;
 uniform sampler2D backdrop_tex : filter_linear_mipmap, repeat_disable;
+uniform sampler2D scenery_bake : hint_default_white, filter_linear, repeat_disable;
+uniform vec3 sun_direction = vec3(0.0, 1.0, 0.0);
 uniform float sea_x = 1000000000.0;
 uniform float snow_line = 100.0;
 varying float shade;
+varying vec2 lighting;
 // BACKDROP_HEIGHT
 void vertex() {
 	vec3 center = MODEL_MATRIX[3].xyz;
@@ -93,6 +102,7 @@ void vertex() {
 	if (habitat < INSTANCE_CUSTOM.b) { size = 0.0; }
 	size *= mix(0.65, 1.0, habitat);
 	center.y = h;
+	lighting = textureLod(scenery_bake, (center.xz + __MAP_HALF__ + 1800.0) / (__MAP_SIZE__ + 3600.0), 0.0).rb;
 	vec3 right = INV_VIEW_MATRIX[0].xyz;
 	vec3 up = INV_VIEW_MATRIX[1].xyz;
 	// Rotate around the trunk base so tilting the camera cannot lift trees off the slope.
@@ -111,5 +121,13 @@ void fragment() {
 	ALPHA_SCISSOR_THRESHOLD = 0.26;
 	ROUGHNESS = 1.0;
 	SPECULAR = 0.0;
+	AO = lighting.r;
+}
+void light() {
+	float shadow = 1.0;
+	if (LIGHT_IS_DIRECTIONAL && dot(LIGHT, normalize((VIEW_MATRIX * vec4(sun_direction, 0.0)).xyz)) > 0.95) {
+		shadow = lighting.g;
+	}
+	DIFFUSE_LIGHT += max(dot(NORMAL, LIGHT), 0.0) * ATTENUATION * LIGHT_COLOR / PI * shadow;
 }
 """

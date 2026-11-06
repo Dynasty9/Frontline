@@ -94,6 +94,12 @@ func _ready() -> void:
 	assert(forest.coverage.get_pixel(128, 128).r == 0.0, "Scenery understory must not paint the playable map")
 	assert(forest.coverage.get_data() != DistantForest.coverage_image(7919 * 2, MapDims.HALF + 1400.0).get_data(), "Different seeds grow different stands")
 	assert(forest.tree_count > 10000 and forest.get_child_count() < 300, "Dense forests share bounded spatial draw batches")
+	var original_tree_count := forest.tree_count
+	var original_material := forest.material
+	for direction in [Vector3.UP, Vector3.RIGHT, Vector3.LEFT]:
+		forest.set_lighting(atmosphere.backdrop_tex, direction)
+		assert(forest.material == original_material and forest.tree_count == original_tree_count, "Lighting changes reuse forest geometry")
+		assert(forest.material.get_shader_parameter("sun_direction") == direction)
 	if DisplayServer.get_name() != "headless":
 		for chunk: MultiMeshInstance3D in forest.get_children():
 			for i in chunk.multimesh.instance_count:
