@@ -43,6 +43,7 @@ var _pf: Ring  # smoke, dust, spray, mist
 var _sp: Ring  # sparks
 var _gr: Ring  # grit: earth, stone, sand and splinters flung out fast, smeared by their speed
 var _ch: Ring  # clods, chips, splinters, leaves
+var _ej: Ring  # curved curtains of earth, animated entirely on the GPU
 var _br: Ring  # brass, which lies where it falls a good while
 var _lights: Array = []  # [light, energy]
 var _light_i := 0
@@ -79,6 +80,13 @@ func _ready() -> void:
 	_gr = _ring(quad, SPARK_SHADER.replace("blend_add", "blend_mix"), int(1400 * maxf(fx, 0.5)), true, 0.1)
 	(_gr.mi.material_override as ShaderMaterial).set_shader_parameter("grit", true)
 	_ch = _ring(box, CHUNK_SHADER, int(1100 * maxf(fx, 0.5)), false, 0.0)
+	var curtain := PlaneMesh.new()
+	curtain.orientation = PlaneMesh.FACE_Z
+	curtain.size = Vector2.ONE
+	curtain.subdivide_depth = 8
+	var ejecta_shader: Shader = load("res://scripts/shaders/blast_ejecta.gdshader")
+	_ej = _ring(curtain, ejecta_shader.code, int(180 * maxf(fx, 0.5)), true, 0.15)
+	(_ej.mi.material_override as ShaderMaterial).set_shader_parameter("noise_tex", vfx.noise_tex)
 	_br = _ring(box, "", 700, false, 0.0, _ch.mm.mesh, (_ch.mi.material_override as ShaderMaterial))
 	for m in [_fl, _pf]:
 		(m.mi.material_override as ShaderMaterial).set_shader_parameter("noise_tex", vfx.noise_tex)
@@ -140,9 +148,8 @@ func copy_lighting() -> void:
 		if v != null:
 			pm.set_shader_parameter(k, v)
 	pm.set_shader_parameter("wind", Fires.WIND)
-	var gl = vfx.ejecta_mat.get_shader_parameter("light")
-	if gl != null:
-		(_gr.mi.material_override as ShaderMaterial).set_shader_parameter("light", gl)
+	(_gr.mi.material_override as ShaderMaterial).set_shader_parameter("light", vfx.fragment_light)
+	(_ej.mi.material_override as ShaderMaterial).set_shader_parameter("light", vfx.fragment_light)
 
 
 func stats_text() -> String:
@@ -243,7 +250,7 @@ func chunk(p: Vector3, v: Vector3, ext: Vector3, life: float, col: Color, floor_
 func blast_fragments(p: Vector3, size: float, kind: String, ground: bool, detail: float) -> void:
 	var q := Settings.fx_mult() * detail
 	var k := sqrt(maxf(size, 0.1))
-	var n := int((18.0 if kind == "frag" else 28.0 * k) * q)
+	var n := int((28.0 if kind == "frag" else 54.0 * k) * q)
 	var gy := ground_y(p)
 	for i in n:
 		var a := randf() * TAU
@@ -254,11 +261,27 @@ func blast_fragments(p: Vector3, size: float, kind: String, ground: bool, detail
 		grit(p + Vector3(0, 0.08, 0), dir * speed, randf_range(0.16, 0.38), Color(0.22, 0.21, 0.19, 0.85), 0.012 * k, 0.007, 1.4, gy)
 	if not ground or detail < 0.5:
 		return
+	# A burning vehicle throws fragments, but its fuel cloud does not drive
+	# the same dense fountain of soil as a shell detonating in the ground.
+	var earth := 0.5 if kind == "fuel" else 1.0
+	var earth_color := Color(0.16, 0.13, 0.09, 0.9)
+	# Custom MultiMesh colors have no source_color conversion. Match the
+	# authored dark soil in Forward+'s linear output and Compatibility's sRGB.
+	if not Vfx.gl:
+		earth_color = earth_color.srgb_to_linear()
+	var jets := int((5.0 if kind == "frag" else 9.0) * q * earth)
+	for i in jets:
+		var azimuth := (float(i) / maxf(float(jets), 1.0) + randf_range(-0.045, 0.045)) * TAU
+		var up := 0.97 if i == 0 else randf_range(0.42, 0.92)
+		var radial := sqrt(1.0 - up * up)
+		var velocity := Vector3(cos(azimuth) * radial, up, sin(azimuth) * radial) * randf_range(12.0, 25.0) * (0.55 if kind == "frag" else k) * sqrt(earth)
+		var width := randf_range(0.7, 1.4) * k * (0.55 if kind == "frag" else 1.0) * sqrt(earth)
+		_ej.put(Transform3D(Basis(velocity, Vector3(width, randf_range(1.3, 2.3), gy), Vector3.ZERO), p), earth_color, Color(_t0(), randf_range(0.55, 0.85), randf(), 0.0))
 	# Resolve slower clods' landing positions at spawn; scheduling dust on
 	# the same clock keeps it after the landing without a per-frame update.
-	for i in int((3.0 if kind == "frag" else 8.0 * k) * q):
+	for i in int((7.0 if kind == "frag" else 18.0 * k) * q * earth):
 		var a := randf() * TAU
-		var v := Vector3(cos(a) * randf_range(3.0, 7.0), randf_range(4.0, 9.0), sin(a) * randf_range(3.0, 7.0)) * k
+		var v := Vector3(cos(a) * randf_range(3.0, 7.0), randf_range(4.0, 9.0), sin(a) * randf_range(3.0, 7.0)) * k * sqrt(earth)
 		var s := randf_range(0.035, 0.1) * k
 		var floor_y := gy
 		var t := 0.0
@@ -581,6 +604,7 @@ func prewarm(at: Vector3) -> void:
 	puff(p, Vector3.ZERO, 0.2, 0.5, 0.2, Color(0.5, 0.5, 0.5, 0.5), 2.0, 0.0, 0.0, 1.0, 0.0, 0.1)
 	spark(p, Vector3.UP, 0.2, HOT)
 	grit(p, Vector3.UP, 0.2, Color(0.2, 0.2, 0.2, 1.0))
+	_ej.put(Transform3D(Basis(Vector3(1, 3, 0), Vector3(0.2, 2.0, p.y - 1.0), Vector3.ZERO), p), Color(0.2, 0.16, 0.1, 0.1), Color(_t0(), 0.2, 0.0, 0.0))
 	chunk(p, Vector3.UP, Vector3(0.05, 0.05, 0.05), 0.2, Color(0.2, 0.2, 0.2), p.y - 1.0)
 	chunk(p, Vector3.UP, Vector3(0.01, 0.01, 0.04), 0.2, BRASS, p.y - 1.0, 10.0, 0.4, 0.0, true)
 
@@ -620,7 +644,8 @@ void vertex() {
 		float sl = length(side);
 		side = sl > 1e-5 ? side / sl : INV_VIEW_MATRIX[0].xyz;
 		// never thinner than a pixel or two, however far off: it dims instead
-		float px = length(to_p) * 2.0 / (PROJECTION_MATRIX[1][1] * VIEWPORT_SIZE.y);
+		float depth = PROJECTION_MATRIX[3][3] > 0.5 ? 1.0 : max(-(VIEW_MATRIX * vec4(p, 1.0)).z, 0.1);
+		float px = depth * 2.0 / (PROJECTION_MATRIX[1][1] * VIEWPORT_SIZE.y);
 		float w = max(prm.y, px * 1.6);
 		v_k = clamp(prm.y / w, 0.08, 1.0);
 		wp = p + side * (UV.x - 0.5) * w * 2.4;
@@ -882,7 +907,8 @@ void vertex() {
 			vec3 side = cross(dir, a - cam);
 			float sl = length(side);
 			side = sl > 1e-5 ? side / sl : INV_VIEW_MATRIX[0].xyz;
-			float px = length(a - cam) * 2.0 / (PROJECTION_MATRIX[1][1] * VIEWPORT_SIZE.y);
+			float depth = PROJECTION_MATRIX[3][3] > 0.5 ? 1.0 : max(-(VIEW_MATRIX * vec4(a, 1.0)).z, 0.1);
+			float px = depth * 2.0 / (PROJECTION_MATRIX[1][1] * VIEWPORT_SIZE.y);
 			float w = max(prm.y, px * 1.2);
 			float u = age / life;
 			v_k = clamp(prm.y / w, 0.3, 1.0) * (grit ? 1.0 - smoothstep(0.7, 1.0, u) : 1.0 - u * u);

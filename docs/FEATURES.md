@@ -274,8 +274,8 @@ between players runs over; the menu links to the downloads instead. It looks a l
 lighting, volumetric fog or particle trails, which the browser's renderer doesn't have) and, with no threads to
 spread the work over, the map takes about 30 seconds to lay out, a stage at a time behind the loading screen. The
 simulation runs about as fast as on the desktop. The first battle also waits while the browser compiles the game's
-shaders (it keeps them, so only the first time); to keep that short, lighting is worked out per vertex, particles
-run on the processor, and explosions, muzzle flashes and fires don't cast light.
+shaders (it keeps them, so only the first time); to keep that short, surface lighting is worked out per vertex and emitter particles run on the processor. Animated blast clouds and
+batched debris still run in shaders; explosions, muzzle flashes and fires don't cast light.
 
 ## The console: finding out why it's slow
 
@@ -1134,13 +1134,22 @@ Ambush Alley autoplay can call its existing mortar support against spotted, stop
   roughly 110 mm round, throw a fountain of earth, falling clods and a ground dust cloud; sustained flames
   and burning fragments belong to vehicle fuel explosions. Calibre is an artistic scale reference, not a
   physical blast calculator. Airbursts omit ground layers, and impacts use height above the local terrain.
-  Procedural smoke billows shade from the sun and sky, erode as they disperse and soften against geometry.
-  Reusable particle rigs have quality-dependent limits and reduce detail with camera distance. Fast fragments,
-  tumbling clods and delayed landing dust use the shared GPU instance rings without per-fragment nodes.
-  The Compatibility renderer uses CPU particle rigs and retains the batched fragment effects through WebGL.
-- **Illumination flares** descend under a small parachute with suspension lines, drift with the wind, shed fine
-  sparks and leave pale smoke behind in world space. The charge lights its freshest smoke, fades as it burns
-  out and stops emitting before its remaining smoke disperses. Each flare uses two bounded particle emitters.
+  Connected smoke and dust billows come from CC0 JangaFX fluid simulations baked into animated textures.
+  Six directional lighting channels let them respond to the battlefield's sun and sky. Two elevation views and
+  motion-assisted frame blending preserve detail as the cloud rolls and expands. Depth fading softens its
+  contact with scenery. Road and rubble bursts are greyer; mud and rain suppress the fine dust.
+  Each blast uses one pooled surface. Per-frame bounds trim empty pixels before drawing; quality sets the pool
+  budget, and quality and distance limit interpolation. Low and medium settings leave optical-flow maps unloaded
+  until a higher-quality burst needs them.
+  Fast fragments, curved fans of earth, tumbling clods and delayed landing dust use shared GPU instance rings
+  without per-fragment nodes. The fluid simulation runs offline, and expired surfaces stop drawing.
+  The same animated volumes and batched fragments work through WebGL; the remaining flash and flame emitters
+  use CPU particles on the Compatibility renderer. Source licenses and reproducible baking tools are in
+  `assets/vfx/LICENSE.md` and `tools/vfx/`.
+- **Illumination flares** descend under a rounded, open cloth canopy with suspension lines, drift with the wind,
+  shed fine sparks and leave animated smoke behind in world space. The charge lights its freshest smoke,
+  fades as it burns out and stops emitting before its remaining smoke disperses. Each flare uses two bounded
+  particle emitters, and the canopy mesh is shared.
 - **Gunfire** (`gunfx.gd`), sized to life: a rifle's muzzle flash is a hand's breadth of flame gone in a frame,
   a .50's a forearm's, an autocannon's a man's height - a hot core and a short jet split into petals by the flash
   hider (thrown out sideways by a heavy gun's muzzle brake), with a moment's light on everything round it

@@ -4,7 +4,7 @@ Notes for AI coding agents (Claude Code, Codex, Copilot and the like) working on
 
 ## The project in one paragraph
 
-Frontline is a squad-level military RTS written entirely in **GDScript for Godot 4.7** (standard build, not .NET). Models, effects and sounds are generated in code at runtime. Ground materials use bundled CC0 photographs (credits in `assets/terrain/LICENSE.md`). Multiplayer is server-authoritative. The host simulates everything, including the AI, and clients only draw what they're sent.
+Frontline is a squad-level military RTS written entirely in **GDScript for Godot 4.7** (standard build, not .NET). Models and sounds are generated in code at runtime. Explosion clouds use baked CC0 fluid simulations (credits in `assets/vfx/LICENSE.md`, offline tools in `tools/vfx/`); ground materials use bundled CC0 photographs (credits in `assets/terrain/LICENSE.md`). Multiplayer is server-authoritative. The host simulates everything, including the AI, and clients only draw what they're sent.
 
 ## Where things are
 

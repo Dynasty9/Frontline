@@ -23,17 +23,63 @@
   "armaments": {
     "scene": "tests/fixtures/armament-effects-clips.tscn",
     "seconds": 12,
-    "fps": 12,
-    "simulation_hz": 12,
-    "engine_fixed_fps": 12,
-    "cue": "Compare a fragmentation grenade, roughly 110 mm HE scale ground burst and a fuel explosion, followed by dirt, stone and metal impacts."
+    "fps": 30,
+    "simulation_hz": 30,
+    "engine_fixed_fps": 30,
+    "cue": "Compare a fragmentation grenade, roughly 110 mm HE scale ground burst and a fuel explosion, followed by dirt, stone and metal impacts.",
+    "timeout": 600,
+    "crf": 24,
+    "render_settings": {
+      "effects": 2,
+      "decals": true,
+      "projection": "perspective"
+    }
   },
   "flares": {
     "scene": "tests/fixtures/armament-effects-clips.tscn",
     "seconds": 12,
-    "fps": 12,
-    "simulation_hz": 12,
-    "engine_fixed_fps": 12,
-    "cue": "Watch the actual illumination flare descend under its parachute, drift, shed sparks and leave smoke behind."
+    "fps": 30,
+    "simulation_hz": 30,
+    "engine_fixed_fps": 30,
+    "cue": "Watch the actual illumination flare descend under its parachute, drift, shed sparks and leave smoke behind.",
+    "timeout": 600,
+    "crf": 24,
+    "render_settings": {
+      "effects": 2,
+      "decals": true,
+      "projection": "perspective"
+    }
+  },
+  "blast-close": {
+    "scene": "tests/fixtures/blast-world-clips.tscn",
+    "seconds": 8,
+    "fps": 24,
+    "simulation_hz": 24,
+    "engine_fixed_fps": 24,
+    "cue": "Inspect the fast dirt ejection, connected dust volume and falling clods from a nearby camera.",
+    "timeout": 1200,
+    "render_settings": {
+      "grass": 1,
+      "effects": 2,
+      "post": false,
+      "mood": "day"
+    },
+    "crf": 24
+  },
+  "blast-rts": {
+    "scene": "tests/fixtures/blast-world-clips.tscn",
+    "seconds": 8,
+    "fps": 24,
+    "simulation_hz": 24,
+    "engine_fixed_fps": 24,
+    "cue": "Check the same HE burst at ordinary RTS camera distance against the actual game terrain and scenery.",
+    "timeout": 1200,
+    "render_settings": {
+      "grass": 1,
+      "effects": 2,
+      "post": false,
+      "mood": "day"
+    },
+    "crf": 24
   }
 }

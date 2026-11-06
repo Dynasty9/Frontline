@@ -15,8 +15,9 @@ lead artifact; original notes and supporting media remain under **Explore this c
 | Archive pair | A genuine, matched before/after view | Explicitly reviewed pair, same subject and conditions |
 | Controlled motion | Traverse, propulsion and muzzle geometry | `tests/fixtures/vehicle-motion-clips.tscn`; matched main/PR recordings |
 | Controlled capture presets | Tanks, boats and aircraft | `stages.json`: fixture, duration, simulation rate and cue |
-| Armament effects | Grenade, HE, fuel, tracer and impact timing | `armaments`: real effect pools, seed 712, 10 m ground marks, fixed 12 Hz |
-| Illumination flares | Parachute descent, wind, sparks and smoke | `flares`: same effect code at night, following camera, fixed 12 Hz |
+| Armament effects | Grenade, HE, fuel, tracer and impact timing | `armaments`: real effect pools, seed 712, 10 m ground marks, fixed 30 Hz |
+| Illumination flares | Parachute descent, wind, sparks and smoke | `flares`: same effect code at night, following camera, fixed 30 Hz |
+| Battlefield blast | Earth and dust against real terrain and cover | `blast-close` / `blast-rts`: showroom seed 712, day, fixed 24 Hz |
 | Text | Reliability, compatibility, unrecorded sound or unmeasured performance | Short player outcome and original detail |
 
 The website uses the main site’s Signal tokens and shadcn/Radix components.
@@ -80,8 +81,18 @@ Normal feature work adds an unreleased entry; it does not edit release versions,
 dates or historical claims. Preview the website at desktop and phone widths,
 check keyboard disclosure, media controls, reduced motion and source-image zoom.
 
-The armament stages run their engine clock at 12 Hz as well as recording at 12 fps.
+The armament stages run their engine clock at 30 Hz as well as recording at 30 fps.
 They are controlled visual demonstrations, not performance benchmarks or a blast
 physics reference. To render a matched historical comparison, use the same fixture
 and `--legacy-effects` against the source revision; record that revision and the
 fixture revision separately. Capture both sides with the same renderer.
+`capture.py --renderer forward_plus` checks the desktop path; Compatibility is
+the default. `--legacy-effects` selects the historical two-argument explosion API.
+In the armament and battlefield fixtures it also holds shown legacy rig timestamps:
+slow offline image readback must not let the old wall-clock pool cleanup truncate
+particle programs advancing at fixed simulation Hz. The original particle
+lifetimes remain intact. This capture-only timing control is recorded explicitly
+in `capture.json`; it is not a change to the baseline game's effect code.
+The range fixture also accepts `--night`, `--elevation=75` and `--quality=0` for
+lighting, steep-camera and reduced-effects checks. Record those arguments with
+any retained evidence.
