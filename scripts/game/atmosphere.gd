@@ -965,6 +965,7 @@ func build_water(w: WaterMap) -> void:
 		water_view = WaterView.new(world)
 		add_child(water_view)
 	water_view.build(w, detail_tex)
+	ground_mat.set_shader_parameter("river_tips", water_view.river_tips)
 	if world.terrain.landform.peak > 1.0:
 		water_view.mat.set_shader_parameter("fresh_tint", Color(0.1, 0.32, 0.30))
 		water_view.mat.set_shader_parameter("fresh_absorb", Vector3(0.85, 0.32, 0.28))
@@ -991,6 +992,8 @@ func _bake_scenery() -> void:
 		_scenery_bake.add_child(rect)
 		ground_mat.set_shader_parameter("scenery_bake", _scenery_bake.get_texture())
 	_scenery_material.set_shader_parameter("backdrop_tex", backdrop_tex)
+	if water_view:
+		_scenery_material.set_shader_parameter("river_tips", water_view.river_tips)
 	_scenery_material.set_shader_parameter("deform_tex", deform_tex)
 	_scenery_material.set_shader_parameter("sea_x", ground_mat.get_shader_parameter("sea_x"))
 	_scenery_material.set_shader_parameter("snow_line", maxf(25.0, world.terrain.landform.peak * 0.55) if world.terrain.landform.peak > 1.0 else 10000.0)
@@ -1138,7 +1141,7 @@ void sky() {
 }
 """
 
-const BACKDROP_HEIGHT := WaterView.SCENERY_COAST + """
+const BACKDROP_HEIGHT := WaterView.SCENERY_COAST + WaterView.SCENERY_RIVERS + """
 float backdrop(vec2 p) {
 	float edge = max(abs(p.x), abs(p.y)) - __MAP_HALF__;
 	float shore = scenery_shore(p, sea_x);
@@ -1146,9 +1149,11 @@ float backdrop(vec2 p) {
 	vec2 uv = (p + __MAP_HALF__ + 1800.0) / (__MAP_SIZE__ + 3600.0);
 	float mountain = textureLod(backdrop_tex, uv, 0.0).r;
 	float hills = pow(smoothstep(0.18, 0.88, mountain), 2.2) * 440.0;
-	return hills * smoothstep(8.0, 380.0, edge) * coast * (1.0 - step(9999.0, snow_line))
+	float land = hills * smoothstep(8.0, 380.0, edge) * coast * (1.0 - step(9999.0, snow_line))
 		* (1.0 - smoothstep(1450.0, 1800.0, edge))
 		- 3.2 * smoothstep(shore, shore + 30.0, p.x);
+	float into = scenery_river_into(p);
+	return mix(land, min(land, scenery_river_bed(into)), smoothstep(-5.0, 0.0, into));
 }
 float forest_habitat(vec2 p, float height, float gradient) {
 	float treeline = max(150.0, snow_line * 1.5);
@@ -1348,7 +1353,7 @@ void fragment() {
 	// bed darker and wet under the water
 	vec4 wm = texture(water_mask, (p + __MAP_HALF__) / __MAP_SIZE__);
 	if (abs(p.x) >= __MAP_HALF__ || abs(p.y) >= __MAP_HALF__) {
-		wm = p.x > scenery_shore(p, sea_x) ? vec4(1.0, 1.0, 1.0, 1.0) : vec4(0.0);
+		wm = p.x > scenery_shore(p, sea_x) ? vec4(1.0, 1.0, 1.0, 1.0) : scenery_river_mask(p);
 	}
 	// (linear colours, like the rest: pale sand, dark wet mud)
 	vec3 sand = vec3(0.38, 0.31, 0.19) * (0.88 + 0.24 * d2) * (0.92 + 0.16 * d3);

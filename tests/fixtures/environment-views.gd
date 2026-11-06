@@ -54,6 +54,9 @@ func capture() -> void:
 				break
 		print("CAPTURE town bounds=", town)
 	var settle_frames := 45
+	if "--capture-set=river-boundary" in OS.get_cmdline_user_args():
+		views = [["close", Vector3(-232.6883, 0, -world.terrain.landform.half), 130.0, -40.0, 0.7],
+			["forest", Vector3(-400, 0, -450), 350.0, -30.0, -0.2], ["panorama", Vector3.ZERO, 900.0, -22.0, 0.7]]
 	if "--capture-set=meadow" in OS.get_cmdline_user_args():
 		views = [
 			["close", Vector3(-110, 0, -130), 18.0, -45.0, 0.7],

@@ -6,6 +6,15 @@ class ClearCombat extends Combat:
 
 
 func _ready() -> void:
+	var river_shapes := [{"pts": PackedVector3Array([Vector3(-80, 0, -80), Vector3.ZERO, Vector3(80, 0, 80)]), "w": 20.0}]
+	var river_bytes := var_to_bytes(river_shapes)
+	var tips := WaterView.scenery_river_tips(river_shapes, 32.0)
+	assert(tips.size() == 8 and tips[0].z == 10.0 and tips[1].z == 10.0 and tips[2] == Vector4.ZERO, "Corner crossings are deduplicated and unused shader slots are empty")
+	assert(Vector2(tips[0].x, tips[0].y) == Vector2(-32, -32) and Vector2(cos(tips[0].w), sin(tips[0].w)).dot(Vector2(-1, -1).normalized()) > 0.999)
+	assert(Vector2(tips[1].x, tips[1].y) == Vector2(32, 32) and Vector2(cos(tips[1].w), sin(tips[1].w)).dot(Vector2(1, 1).normalized()) > 0.999)
+	assert(var_to_bytes(river_shapes) == river_bytes, "Scenery continuations never alter replicated water shapes")
+	var inland := [{"pts": PackedVector3Array([Vector3(-10, 0, 0), Vector3(10, 0, 0)]), "w": 20.0}]
+	assert(WaterView.scenery_river_tips(inland, 32.0) == WaterView.scenery_river_tips([], 32.0), "Inland rivers need no boundary extension")
 	assert(MapGen.habitat(0.4, 6.0, 0.2) > MapGen.habitat(0.4, -6.0, 0.2), "Sheltered bowls support more growth than exposed ribs")
 	assert(MapGen.habitat(0.3, 0.0, 0.8) > MapGen.habitat(0.3, 0.0, -0.8), "Aspect affects habitat")
 	assert(MapGen.habitat(0.2, 0.0, 0.0) > MapGen.habitat(0.9, 0.0, 0.0), "Gentler ledges retain more vegetation")

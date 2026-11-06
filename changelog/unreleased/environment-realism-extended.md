@@ -158,6 +158,22 @@ caption = "Before: noise-based weathering and elevation-led snow."
 file = "snow-channels-after.jpg"
 caption = "After: downhill catchments place weathering and retained snow along connected gullies. Same terrain and camera."
 
+[[screenshots]]
+file = "river-end-before.jpg"
+caption = "Before: the river ends at a straight battlefield boundary."
+
+[[screenshots]]
+file = "river-end-after.jpg"
+caption = "After: the channel continues into an irregular scenery pool. Same seed, camera and lighting."
+
+[[screenshots]]
+file = "river-valley-before.jpg"
+caption = "Before: the river ends at a straight battlefield boundary."
+
+[[screenshots]]
+file = "river-valley-after.jpg"
+caption = "After: the channel continues into an irregular scenery pool. Same seed, camera and lighting."
+
 +++
 
 The ocean keeps detailed waves near the battlefield and uses a coarser surface beyond it.
@@ -193,3 +209,5 @@ Broadleaf crowns have smaller branches and more open gaps at the same triangle c
 Country tracks have varied rut widths, intermittent centre grass and broader worn patches. Their joins to town asphalt use a short broken edge instead of a wide blurred band.
 
 Mountain weathering follows baked downhill catchments. Snow persists in sheltered drainage channels while exposed ribs remain visible; changing the sunlight reuses the same drainage mask.
+
+Rivers continue beyond the battlefield into irregular scenery pools, with matching banks and riverbeds. These distant extensions do not change playable water or navigation.

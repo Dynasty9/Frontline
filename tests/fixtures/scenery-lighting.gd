@@ -9,11 +9,39 @@ func _ready() -> void:
 		if DisplayServer.get_name() != "headless":
 			await check_bake(shader)
 	MapDims.configure(1024)
+	if DisplayServer.get_name() != "headless":
+		await check_river_continuation()
 	print("SCENERY_LIGHTING passed")
 	Sfx._ensure()
 	while Music._task >= 0:
 		await get_tree().process_frame
 	get_tree().quit()
+
+func check_river_continuation() -> void:
+	var view := SubViewport.new()
+	view.size = Vector2i(16, 16)
+	view.disable_3d = true
+	add_child(view)
+	var material := ShaderMaterial.new()
+	material.shader = Shader.new()
+	material.shader.code = MapDims.shader("shader_type canvas_item; render_mode unshaded, blend_disabled; uniform vec2 sample_position;\n" + WaterView.SCENERY_RIVERS + "\nvoid fragment() { vec4 mask = scenery_river_mask(sample_position); COLOR = vec4(mask.r, mask.a, 0.0, 1.0); }")
+	var tips := WaterView.scenery_river_tips([{"pts": PackedVector3Array([Vector3(0, 0, -600), Vector3(0, 0, 600)]), "w": 24.0}], MapDims.HALF)
+	material.set_shader_parameter("river_tips", tips)
+	var rect := ColorRect.new()
+	rect.size = Vector2(16, 16)
+	rect.material = material
+	view.add_child(rect)
+	for sample in [[Vector2(0, -MapDims.HALF + 1), false], [Vector2(8, -MapDims.HALF - 20), true],
+			[Vector2(70, -MapDims.HALF - 20), false], [Vector2(0, -MapDims.HALF - 160), false]]:
+		material.set_shader_parameter("sample_position", sample[0])
+		var output := await bake(view)
+		var pixel := output.get_pixel(8, 8)
+		if sample[1]:
+			assert(pixel.r > 0.35 and pixel.g > 0.99, "The scenery river has a visible submerged bed: " + str(pixel))
+		else:
+			assert(pixel.r < 0.01 and pixel.g < 0.01, "Scenery water stays outside the battlefield and within its bounded continuation")
+	view.queue_free()
+
 
 func check_bake(shader: Shader) -> void:
 	var view := SubViewport.new()

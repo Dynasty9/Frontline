@@ -63,7 +63,9 @@ godot --path . --resolution 1600x900 --script tests/fixtures/environment-views.g
 Add `--capture-set=town` for street detail, the town entrance, an overview and a
 residential driveway. `--capture-set=foliage` frames the same broadleaf tree from
 both sides and at stand distance, with wind held still. Captures wait for scenery
-residency and batching to settle. Both revisions must use the same capture fixture.
+residency and batching to settle. `--capture-set=river-boundary` frames seed 3's
+northern river crossing close up and across the valley. Both revisions must use
+the same capture fixture.
 
 The camera uses the normal terrain clearance, so a low requested zoom may raise the lens
 above a neighbouring ridge. This is a visual review stage, not a performance benchmark.

@@ -4234,6 +4234,26 @@
           "file": "changelog/unreleased/environment-realism-extended/snow-channels-after.jpg",
           "sha256": "51d9dba214db4fb51003842b44ad52e9b930bda5134213bd657b9bada82e2a37",
           "caption": "snow-channels-after"
+        },
+        {
+          "file": "changelog/unreleased/environment-realism-extended/river-end-before.jpg",
+          "sha256": "996e678d133eb78ebe384480dad7b7cfe40da0311890d5bb849bb9dfff98745b",
+          "caption": "river-end-before"
+        },
+        {
+          "file": "changelog/unreleased/environment-realism-extended/river-end-after.jpg",
+          "sha256": "50d06dc5c4259d043857571008ca9aed8ce4bd9ac8dd3873d81c778bd2619cbf",
+          "caption": "river-end-after"
+        },
+        {
+          "file": "changelog/unreleased/environment-realism-extended/river-valley-before.jpg",
+          "sha256": "6a5e56e24b65d11f67f3cc24e81a047c75305dc9c3e891b080085f7d94d12ea2",
+          "caption": "river-valley-before"
+        },
+        {
+          "file": "changelog/unreleased/environment-realism-extended/river-valley-after.jpg",
+          "sha256": "f165f2e751fb6ae16cc0d3695dff24b02dd929b2a8b5bf47b8f6ad83d283fc7e",
+          "caption": "river-valley-after"
         }
       ],
       "output": null,
@@ -4255,8 +4275,9 @@
         "meadow": "Matched native Forward+, High/day seed3 1600x900, focus-110,-130 yaw0.7, held2s/225settlingframes with grass wind disabled. Close zoom18 pitch-45; low view zoom18 pitch-15. Before exact66b3c54 atmosphere/grass scripts overlaid through PCK before main; after meadow/grass and local-culling-bounds checkpoint. Both use environment-views --capture-set=meadow. Full frames, no retouching.",
         "shrubs": "Matched native Forward+, High/day seed3 1600x900, focus -110,-130 zoom45 pitch-35 yaw0.7. Before exact0510a8d grass.gd PCK; after smaller leaf cards, linear photograph/root shading and seeded patch placement. Same simulation held at2s, 225 settling frames. No retouching; full frames encoded JPEG92.",
         "leaves": "Matched native Forward+, High/day seed3 1600x900, focus -128.6383,-95.47071. Close zoom18 pitch-15 yaw-2.4; stand zoom65 pitch-30 yaw0.7. Both held at2s,90settlingframes plus complete scenery residency, foliage and grass wind disabled. Before exact b1e4704 mats/res scripts PCK; after smaller broadleaf cards and photographed foliage lighting. Full frames, JPEG92, no retouching.",
-        "lane_join": "Matched native Forward+, High/day seed3 1600x900, environment-views --capture-set=town transition view, zoom25 pitch-55 yaw0.7. Held2s/90settlingframes plus complete scenery residency. Before exact b1e4704 mats/res/atmosphere scripts loaded through PCK; after varied tracks and short broken asphalt edge. Full frames, JPEG92, no retouching.",
-        "drainage": "Matched native Forward+, High/day seed3 1600x900, simulation held2s/45settlingframes plus full scenery residency. Forest focus-400,-450 zoom350 pitch-30 yaw-0.2; panorama focus0,0 zoom900 pitch-22 yaw0.7. Before exact4aec471 atmosphere/landform/terrain scripts PCK; after catchment weathering and retained snow. Heights unchanged byte-for-byte (backdrop red SHA256 a781fcd66353803fd51186905b31850f2c80d41742d1fbca43f90bce040e9761). Full frames, JPEG92, no retouching."
+        "lane_join": "Matched native Forward+, High/day seed3 1600x900, environment-views --capture-set=town transition view, zoom25 pitch-55 yaw0.7. Held2s/45settlingframes plus complete scenery residency. Before exact b1e4704 mats/res/atmosphere scripts loaded through PCK; after varied tracks and short broken asphalt edge. Full frames, JPEG92, no retouching.",
+        "drainage": "Matched native Forward+, High/day seed3 1600x900, simulation held2s/45settlingframes plus full scenery residency. Forest focus-400,-450 zoom350 pitch-30 yaw-0.2; panorama focus0,0 zoom900 pitch-22 yaw0.7. Before exact4aec471 atmosphere/landform/terrain scripts PCK; after catchment weathering and retained snow. Heights unchanged byte-for-byte (backdrop red SHA256 a781fcd66353803fd51186905b31850f2c80d41742d1fbca43f90bce040e9761). Full frames, JPEG92, no retouching.",
+        "river": "Matched native Forward+, High/day seed3 1600x900, environment-views --capture-set=river-boundary, held2s/45settlingframes plus full scenery residency. Close focus-232.6883,-512 zoom130 pitch-40 yaw0.7; panorama focus0,0 zoom900 pitch-22 yaw0.7. Before exact6fa546e atmosphere/water_view/distant_forest scripts PCK; after scenery river pools. Authoritative water shapes and terrain unchanged. Full frames, JPEG92, no retouching."
       }
     }
   ],

@@ -546,7 +546,7 @@ Ambush Alley autoplay can call its existing mortar support against spotted, stop
 - Standard battlefields have seeded mountain belts, hills, valleys and rivers. Domain-warped ridged noise,
   jointed bedrock shelves, thermal weathering and seeded rainfall erosion shape the relief. Roads, bridges, starting bases and settlements
   occupy graded valley corridors; forests stay below the snow line and off steep faces.
-- Distant scenery composes surveyed Mont Blanc, Matterhorn and Jungfrau ridge shapes into seeded fictional mountain groups and low passes, with floating-point heights and a finer indexed mesh at Medium/Far detail. Coastal scenery continues into an irregular shoreline and a coarse ocean surface beyond the detailed battlefield water. Reusable cliff forms have uneven shoulders and irregular drainage cuts before erosion.
+- Distant scenery composes surveyed Mont Blanc, Matterhorn and Jungfrau ridge shapes into seeded fictional mountain groups and low passes, with floating-point heights and a finer indexed mesh at Medium/Far detail. Coastal scenery continues into an irregular shoreline and a coarse ocean surface beyond the detailed battlefield water. Boundary rivers extend into curved scenery pools with matching beds and banks; these extensions leave authoritative water shapes and navigation unchanged. Reusable cliff forms have uneven shoulders and irregular drainage cuts before erosion.
 - Distant mountain groups lose contrast into sky-coloured haze while nearby ground retains its detail.
 - Rock beds catch light along their ledges instead of appearing only as painted colour bands.
 - Broad cliff fractures and smaller joint patterns break up recognisable repeated rock tiles.

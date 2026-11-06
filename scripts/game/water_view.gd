@@ -22,6 +22,36 @@ float scenery_shore(vec2 p, float shore_mean) {
 }
 """
 
+const SCENERY_RIVERS := """
+uniform vec4 river_tips[8]; // boundary position, half-width, outward heading
+float scenery_river_into(vec2 p) {
+	float edge = max(abs(p.x), abs(p.y)) - __MAP_HALF__;
+	if (edge < 0.0 || edge > 150.0 || river_tips[0].z <= 0.0) { return -10000.0; }
+	float into = -10000.0;
+	for (int i = 0; i < 8; i++) {
+		vec4 tip = river_tips[i];
+		if (tip.z <= 0.0) { break; }
+		vec2 q = p - tip.xy;
+		vec2 d = vec2(cos(tip.w), sin(tip.w));
+		float t = clamp(dot(q, d), 0.0, 110.0);
+		vec2 bend = vec2(-d.y, d.x) * sin(t * 0.035) * 12.0 * smoothstep(0.0, 20.0, t);
+		float width = mix(tip.z, 18.0, smoothstep(25.0, 110.0, t));
+		into = max(into, width - length(q - d * t - bend));
+	}
+	return into + (sin(p.x * 0.19 + p.y * 0.13) * 1.3 + sin(p.x * 0.07 - p.y * 0.17) * 1.5) * smoothstep(4.0, 24.0, edge);
+}
+// Match WaterMap.Raster's bank, wading shelf and riverbed at the boundary.
+float scenery_river_bed(float into) {
+	if (into <= 0.0) { return mix(-0.38, 0.0, clamp(-into / 5.0, 0.0, 1.0)); }
+	if (into < 3.0) { return mix(-0.5, -1.05, into / 3.0); }
+	return mix(-1.05, -2.3, clamp((into - 3.0) / 8.0, 0.0, 1.0));
+}
+vec4 scenery_river_mask(vec2 p) {
+	float into = scenery_river_into(p);
+	return vec4(clamp((-0.45 - scenery_river_bed(into)) / 3.0, 0.0, 1.0), clamp(1.0 + into / 5.0, 0.0, 1.0), 0.0, step(0.0, into));
+}
+"""
+
 const TILE := 64.0  # the surface is drawn in tiles this big, only where there's water
 const TILE_SUB := [15, 31, 31, 47]  # quads a tile side, by quality (4 m, 2 m, 2 m, 1.4 m)
 
@@ -81,6 +111,7 @@ var mask_tex: ImageTexture
 var chop_tex: NoiseTexture2D
 var foam_tex: NoiseTexture2D
 var _tiles: Array = []
+var river_tips := PackedVector4Array()
 var _mask: Image
 var _sea_x := 1e9
 var _terrain_reflections := false
@@ -135,6 +166,7 @@ func _pack() -> void:
 ## Lays the surface over the water (and again whenever the water changes).
 func build(w: WaterMap, detail: Texture2D) -> void:
 	water = w
+	river_tips = scenery_river_tips(w.rivers, MapDims.HALF)
 	_mask = w.mask
 	_detail = detail
 	_sea_x = (float(w.coast.x) + 30.0) if not w.coast.is_empty() else 1e9
@@ -162,6 +194,7 @@ func build(w: WaterMap, detail: Texture2D) -> void:
 	for m in [mat, wake_mat, patch_mat]:
 		Mats.set_shared(m, "water_mask", mask_tex)
 		Mats.set_shared(m, "sea_x", _sea_x)
+		Mats.set_shared(m, "river_tips", river_tips)
 	var c := Vector3.ZERO
 	if not w.coast.is_empty():
 		c = Vector3(float(w.coast.x), float(w.coast.s), 1.0)
@@ -192,7 +225,7 @@ func _settings_changed() -> void:
 
 
 func _code(src: String, moving: int) -> String:
-	return Mats.code(MapDims.shader(src.replace("__WAVES__", SCENERY_COAST + waves_glsl(moving)).replace("__LEVEL__", "%.3f" % WaterMap.LEVEL)))
+	return Mats.code(MapDims.shader(src.replace("__WAVES__", SCENERY_COAST + SCENERY_RIVERS + waves_glsl(moving)).replace("__LEVEL__", "%.3f" % WaterMap.LEVEL)))
 
 
 func _material(src: String, detail: Texture2D) -> ShaderMaterial:
@@ -270,10 +303,22 @@ func _lay_tiles() -> void:
 	pm.size = Vector2(TILE, TILE)
 	pm.subdivide_width = int(TILE_SUB[maxi(quality, 0)])
 	pm.subdivide_depth = int(TILE_SUB[maxi(quality, 0)])
+	var extensions: Array[Rect2] = []
+	for tip in river_tips:
+		if tip.z <= 0.0:
+			break
+		var start := Vector2(tip.x, tip.y)
+		var end := start + Vector2(cos(tip.w), sin(tip.w)) * 110.0
+		extensions.append(Rect2(start, Vector2.ZERO).expand(end).grow(maxf(tip.z, 18.0) + 20.0))
 	for tz in n:
 		for tx in n:
 			var r := Rect2(x0 + tx * TILE, x0 + tz * TILE, TILE, TILE)
 			var wet := r.end.x > _sea_x
+			if not wet and (r.position.x < -MapDims.HALF or r.position.y < -MapDims.HALF or r.end.x > MapDims.HALF or r.end.y > MapDims.HALF):
+				for extension in extensions:
+					if extension.intersects(r):
+						wet = true
+						break
 			if not wet:
 				var cx0 := floori((r.position.x + MapDims.HALF) / cell)
 				var cz0 := floori((r.position.y + MapDims.HALF) / cell)
@@ -323,6 +368,41 @@ static func sea_surround_rects(inner: float, outer: float, shore: float) -> Arra
 		if r.has_area():
 			rects.append(r)
 	return rects
+
+
+## Continue the generated river into scenery pools instead of cutting it off square.
+static func scenery_river_tips(rivers: Array, half: float) -> PackedVector4Array:
+	var tips := PackedVector4Array()
+	for river: Dictionary in rivers:
+		var points: PackedVector3Array = river.pts
+		for i in points.size() - 1:
+			var a := Vector2(points[i].x, points[i].z)
+			var b := Vector2(points[i + 1].x, points[i + 1].z)
+			for axis in 2:
+				for side in [-1.0, 1.0]:
+					if absf(b[axis] - a[axis]) < 0.001:
+						continue
+					var t: float = (half * side - a[axis]) / (b[axis] - a[axis])
+					if t < 0.0 or t > 1.0:
+						continue
+					var p := a.lerp(b, t)
+					if absf(p[1 - axis]) > half:
+						continue
+					var duplicate := false
+					for tip in tips:
+						if Vector2(tip.x, tip.y).distance_squared_to(p) < 0.01:
+							duplicate = true
+					if duplicate:
+						continue
+					var direction := (b - a).normalized()
+					if direction[axis] * side < 0.0:
+						direction = -direction
+					tips.append(Vector4(p.x, p.y, float(river.w) * 0.5, direction.angle()))
+					# shortcut: eight boundary crossings; expand the shader array if generated maps gain more rivers.
+					if tips.size() == 8:
+						return tips
+	tips.resize(8)
+	return tips
 
 
 ## Lighting follows the time of day (Atmosphere's moods).
@@ -665,7 +745,7 @@ __WAVES__
 
 vec4 wmask(vec2 p) {
 	if (abs(p.x) >= __MAP_HALF__ || abs(p.y) >= __MAP_HALF__) {
-		return p.x > scenery_shore(p, sea_x) ? vec4(1.0, 0.0, 1.0, 1.0) : vec4(0.0);
+		return p.x > scenery_shore(p, sea_x) ? vec4(1.0, 0.0, 1.0, 1.0) : scenery_river_mask(p);
 	}
 	return textureLod(water_mask, (p + __MAP_HALF__) / __MAP_SIZE__, 0.0);
 }
