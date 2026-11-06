@@ -39,6 +39,24 @@ var _batch_deferred := 0
 var _age := 0.0
 var _material: ShaderMaterial
 var _atlases := {}
+var _presentations := {}
+var _presentation_team := -2
+var _presentation_camera := false
+
+
+func request_view(soldier: Soldier) -> void:
+	if soldier.gone:
+		return
+	if not _presentations.has(soldier.eid):
+		# Resume detail from this frame's movement, not all motion since it went dormant.
+		soldier._last_view_pos = soldier.position
+	_presentations[soldier.eid] = soldier
+
+
+func remove(soldier: Soldier) -> void:
+	_presentations.erase(soldier.eid)
+	motion.remove(soldier)
+	invalidate()
 
 
 func invalidate() -> void:
@@ -108,11 +126,17 @@ func _choose_detail(dt: float) -> void:
 			priority += 10000.0
 		candidates.append([priority, soldier.eid])
 	candidates.sort_custom(func(a: Array, b: Array) -> bool: return a[0] < b[0] if a[0] != b[0] else a[1] < b[1])
-	detail_ids.clear()
+	var previous := detail_ids
+	detail_ids = {}
 	# At command zoom shared poses retain the army; close inspection keeps more articulated men.
 	var budget := MAX_DETAILED if world.cam.dist < 22.0 else COMMAND_DETAILED
 	for i in mini(budget, candidates.size()):
 		detail_ids[candidates[i][1]] = true
+	for ids in [previous, detail_ids]:
+		for id in ids:
+			var soldier: Soldier = world.entity(id) as Soldier
+			if soldier:
+				request_view(soldier)
 
 
 func _ready() -> void:
@@ -125,11 +149,19 @@ func _process(dt: float) -> void:
 	var started := Time.get_ticks_usec()
 	# Keep individual smoothing and poses, but pay frame bookkeeping once per army.
 	if world.has_view and world.soldier_view == self:
+		if _presentation_team != world.view_team or _presentation_camera != (world.cam != null):
+			_presentation_team = world.view_team
+			_presentation_camera = world.cam != null
+			for soldier: Soldier in world.soldiers:
+				request_view(soldier)
 		_choose_detail(dt)
 		var blend := 1.0 - exp(-dt * 14.0)
 		if motion.advance(blend):
 			_dirty = true
-		for soldier: Soldier in world.soldiers:
+		var presentations: Array = _presentations.values() if world.simulation_client else world.soldiers
+		for soldier: Soldier in presentations:
+			if not is_instance_valid(soldier):
+				continue
 			if not soldier.gone:
 				if not soldier._native_view_motion and _motion_frame >= 0 and soldier.position.distance_squared_to(soldier.net_pos) > 64.0:
 					_dirty = true
@@ -138,6 +170,8 @@ func _process(dt: float) -> void:
 				soldier._view_process(dt, blend, soldier._native_view_motion)
 				if soldier.view_lod != was_lod or soldier.visible != was_visible:
 					_dirty = true
+				if soldier.retains_view():
+					_presentations.erase(soldier.eid)
 		world.vp("soldiers", started)
 		started = Time.get_ticks_usec()
 	# Bake one pose per frame while loading, rather than baking a whole new

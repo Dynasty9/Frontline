@@ -473,6 +473,7 @@ func _register(e: Entity) -> void:
 		soldiers.append(e)
 		if soldier_view:
 			soldier_view.prepare(e.utype, e.team)
+			soldier_view.request_view(e)
 			soldier_view.invalidate()
 	elif e is Vehicle:
 		vehicles.append(e)
@@ -516,8 +517,7 @@ func despawn(e: Entity) -> void:
 	if e is Soldier:
 		soldiers.erase(e)
 		if soldier_view:
-			soldier_view.motion.remove(e)
-			soldier_view.invalidate()
+			soldier_view.remove(e)
 		# out of his squad now: nothing may touch him once he's freed
 		if e.squad and is_instance_valid(e.squad):
 			e.squad.members.erase(e)

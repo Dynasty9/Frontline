@@ -17,6 +17,10 @@ class Man extends Soldier:
 
 class DisplayedMan extends Soldier:
 	var sight_checks := 0
+	var view_calls := 0
+	func _view_process(dt: float, blend := -1.0, motion_done := false) -> void:
+		view_calls += 1
+		super._view_process(dt, blend, motion_done)
 	func seen_by_local() -> bool:
 		sight_checks += 1
 		return super.seen_by_local()
@@ -35,6 +39,7 @@ func _ready() -> void:
 	_check_native_soldier_motion()
 	_check_native_soldier_lifecycle()
 	_check_shared_presentation_changes()
+	_check_presentation_queue()
 	var unit := Unit.new()
 	add_child(unit)
 	unit.set_notify_local_transform(true)
@@ -231,11 +236,81 @@ func _check_native_soldier_lifecycle() -> void:
 	view._process(1.0 / 60.0)
 	assert(man.position == Vector3(30, 10, 2), "Property corrections replace the native target")
 	world.despawn(man)
+	assert(not view._presentations.has(man.eid), "Despawn removes pending presentation before freeing the node")
 	man.position = Vector3.ZERO
 	view.motion.advance(0.5)
 	assert(man.position == Vector3.ZERO, "Despawn removes the native target before the node is freed")
 	man.free()
 	view.free()
+	world.free()
+
+
+func _check_presentation_queue() -> void:
+	var world := World.new()
+	world.local_team = 0
+	world.view_team = 0
+	world.simulation_client = SimulationClient.new()
+	world.add_child(world.simulation_client)
+	world.cam = RtsCamera.new()
+	world.cam.cam = Camera3D.new()
+	add_child(world.cam.cam)
+	var view := SoldierViewBatch.new()
+	view.world = world
+	world.soldier_view = view
+	add_child(view)
+	view.set_process(false)
+	var man := DisplayedMan.new()
+	man.world = world
+	man.eid = 19
+	man.team = 1
+	man.vis_mask = 1
+	man.position = Vector3(0, 0, -200)
+	world._register(man)
+	add_child(man)
+	man.on_spawned()
+	view._warmup.clear()
+	view._process(1.0 / 60.0)
+	assert(man.view_calls == 1 and view._presentations.is_empty())
+	man.net_pos += Vector3(1, 0, 0)
+	view.motion.target(man, man.net_pos, 0.0, false)
+	for frame in 10:
+		view._process(1.0 / 60.0)
+	assert(man.view_calls == 1 and man.position.x > 0.5, "Dormant presentation still moves natively without per-soldier frame calls")
+	man.selected = true
+	view._process(1.0 / 60.0)
+	assert(man.view_calls == 2 and man.ring.visible)
+	var packet := StreamPeerBuffer.new()
+	packet.put_float(1.0)
+	packet.put_u32(man.eid)
+	packet.put_u8(0)
+	world._rpc_snap(packet.data_array)
+	view._process(1.0 / 60.0)
+	assert(not man.visible and view._presentations.is_empty())
+	var calls := man.view_calls
+	view._process(1.0 / 60.0)
+	assert(man.view_calls == calls, "Hidden presentation sleeps too")
+	world.view_team = 1
+	view._process(1.0 / 60.0)
+	assert(man.visible and man.view_calls == calls + 1, "Observer changes wake the whole view")
+	world.cam.cam.position = man.position + Vector3(0, 10, 20)
+	world.cam.cam.look_at(man.position)
+	view._process(1.0 / 60.0)
+	assert(not man.view_lod and man.model != null and view._presentations.has(man.eid), "Camera-driven detail promotion wakes a dormant model")
+	calls = man.view_calls
+	view._process(1.0 / 60.0)
+	assert(man.view_calls == calls + 1, "Detailed animation keeps running each frame")
+	world.cam.cam.position.z += 200
+	view._process(1.0 / 60.0)
+	assert(man.view_lod and view._presentations.is_empty(), "Demotion retires detailed frame work")
+	man.apply_props({"pos": Vector3(0, 0, -190)})
+	assert(view._presentations.has(man.eid))
+	world.despawn(man)
+	assert(view._presentations.is_empty())
+	man.free()
+	view._process(1.0 / 60.0)
+	view.free()
+	world.cam.cam.free()
+	world.cam.free()
 	world.free()
 
 

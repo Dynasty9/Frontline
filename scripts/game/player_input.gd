@@ -1179,17 +1179,21 @@ func _update_selection() -> void:
 		var su = world.entity(sel_unit)
 		if not (su is Soldier) or su.life != Soldier.Life.ALIVE or not is_mine(su):
 			sel_unit = 0
-	# Clearing an empty selection need only visit the men marked last frame.
-	for s in _marked_soldiers:
-		if is_instance_valid(s):
-			s.selected = false
-	_marked_soldiers.clear()
+	# Only changed membership should wake a soldier's retained presentation.
+	var previous := _marked_soldiers
+	_marked_soldiers = []
+	var marked := {}
 	if not sel_squads.is_empty():
 		for s in world.soldiers:
 			if (s.sid != 0 and s.sid in sel_squads and is_mine(s)) or (sel_unit != 0 and s.eid == sel_unit):
 				s.selected = true
 				_marked_soldiers.append(s)
+				marked[s.eid] = true
 	elif sel_unit != 0:
 		var s: Soldier = world.entity(sel_unit)
 		s.selected = true
 		_marked_soldiers.append(s)
+		marked[s.eid] = true
+	for s in previous:
+		if is_instance_valid(s) and not marked.has(s.eid):
+			s.selected = false
