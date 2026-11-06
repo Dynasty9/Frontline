@@ -4064,6 +4064,16 @@
           "file": "changelog/unreleased/environment-realism-extended/compat-after.jpg",
           "sha256": "2ed411bf4ab14eec37cf3af0baeb68cad6f287c345a14fd23265656a74ff3271",
           "caption": "compat-after"
+        },
+        {
+          "file": "changelog/unreleased/environment-realism-extended/snow-before.jpg",
+          "sha256": "ee55b1002b295be386207f5729f5f1b5b9df789a0b1ed22c659d50364b183646",
+          "caption": "snow-before"
+        },
+        {
+          "file": "changelog/unreleased/environment-realism-extended/snow-after.jpg",
+          "sha256": "f49c641d0fa861da42f4935349e669217672751baf6cecad4b7cacd6a6cece26",
+          "caption": "snow-after"
         }
       ],
       "output": null,
@@ -4073,7 +4083,8 @@
         "command": "godot --path . --resolution 1600x900 -- --aivai --seed=3 --offscreen --nohud --set=perf:0 --preset=high --mood=day --focus=0,0 --zoom=900 --pitch=-22 --cam-yaw=0.7 --screenshot=OUTPUT --shot-at=2 --quit-after=3",
         "note": "Before preserved from the parent branch capture. After rendered natively with the same controls.",
         "forest": "Native Forward+, seed3 High/day, 1600x900, focus -400,-450, zoom350, pitch-30, yaw-0.2, shot2s. Before b38e42e; after this branch.",
-        "compatibility": "Same close controls except pitch-55 and gl_compatibility. Before: this branch before material-output correction; after: corrected output, both with forest iteration. Not a historical parent comparison."
+        "compatibility": "Same close controls except pitch-55 and gl_compatibility. Before: this branch before material-output correction; after: corrected output, both with forest iteration. Not a historical parent comparison.",
+        "snow": "Matched native Forward+, High/day seed3 1600x900, focus236,464 zoom45 pitch-42 yaw-0.2. Simulation held at2s after map construction, 45 settling frames per view. Before b38e42e PCK; after this branch. Same camera controls and unchanged geology. No retouching."
       }
     }
   ],

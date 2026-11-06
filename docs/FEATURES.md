@@ -562,7 +562,10 @@ Ambush Alley autoplay can call its existing mortar support against spotted, stop
 - Wind exposure and rock relief break up snow edges, with cooler compacted snow in sheltered pockets.
 - Sheltered rock crevices receive stronger ambient occlusion while exposed rock stays open to sky light.
 - World-space texture warping breaks up repeated slab patterns without adding material samples.
-  Photograph-derived height, normals, crevice shading and roughness give each material distinct relief;
+  Photograph-derived height, normals, crevice shading and roughness give each material distinct relief.
+  Snow uses a two-metre powder scan with dirtier melt edges; wooded foothills use three-metre moss
+  and leaf litter. Five material layers share two texture arrays with independent mipmaps, preserving
+  the browser sampler budget. Detailed snow and litter follow the existing terrain-detail setting;
   height-based transitions let rock emerge through moss and snow. Reusable buttress, bowl and saddle
   forms shape standard mountains before erosion, with small conifer stands along suitable foothills.
   Warped mineral bands, dry grass patches and broken scree vary the surfaces at several scales. Mixed

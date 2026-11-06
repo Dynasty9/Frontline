@@ -304,6 +304,25 @@ var GROUND_CHUNKS := ceili(GROUND_HALF * 2.0 / 64.0)
 const GROUND_LOD := 170.0  # beyond this from the camera a chunk is drawn on a coarser grid
 
 
+const TERRAIN_MATERIALS := ["rock_face_03", "aerial_rocks_02", "aerial_grass_rock", "snow_02", "forest_leaves_02"]
+static var _material_arrays: Array[Texture2DArray] = []
+
+
+static func terrain_materials() -> Array[Texture2DArray]:
+	if _material_arrays.is_empty():
+		# One sampler per channel set leaves room for water and deformation on WebGL 2.
+		for suffix in ["color_height", "surface"]:
+			var images: Array[Image] = []
+			for name in TERRAIN_MATERIALS:
+				var texture: Texture2D = load("res://assets/terrain/%s_%s.png" % [name, suffix])
+				images.append(texture.get_image())
+			var array := Texture2DArray.new()
+			var error := array.create_from_images(images)
+			assert(error == OK, "Terrain material layers must share size, format and mipmaps")
+			_material_arrays.append(array)
+	return _material_arrays
+
+
 func _build_ground() -> void:
 	_blank_mask = ImageTexture.create_from_image(Image.create(4, 4, false, Image.FORMAT_R8))
 	ground = MeshInstance3D.new()
@@ -315,13 +334,10 @@ func _build_ground() -> void:
 	ground_mat.set_shader_parameter("biome_tex", biome_tex)
 	ground_mat.set_shader_parameter("detail_tex", detail_tex)
 	ground_mat.set_shader_parameter("backdrop_tex", backdrop_tex)
-	ground_mat.set_shader_parameter("cliff_color", preload("res://assets/terrain/aerial_rocks_02_color_height.png"))
-	ground_mat.set_shader_parameter("cliff_normal", preload("res://assets/terrain/aerial_rocks_02_surface.png"))
-	ground_mat.set_shader_parameter("rock_color", preload("res://assets/terrain/rock_face_03_color_height.png"))
-	ground_mat.set_shader_parameter("rock_normal", preload("res://assets/terrain/rock_face_03_surface.png"))
+	var materials := terrain_materials()
+	ground_mat.set_shader_parameter("material_colors", materials[0])
+	ground_mat.set_shader_parameter("material_surfaces", materials[1])
 	ground_mat.set_shader_parameter("town_grass", preload("res://assets/town/leafy_grass_color.jpg"))
-	ground_mat.set_shader_parameter("moss_color", preload("res://assets/terrain/aerial_grass_rock_color_height.png"))
-	ground_mat.set_shader_parameter("moss_normal", preload("res://assets/terrain/aerial_grass_rock_surface.png"))
 	ground_mat.set_shader_parameter("cloud_strength", float(_d.clouds))
 	ground_mat.set_shader_parameter("sun_tint", _d.sun)
 	ground_mat.set_shader_parameter("air_color", _d.fog)
@@ -1065,14 +1081,10 @@ uniform vec3 air_color : source_color = vec3(0.5, 0.6, 0.7);
 uniform float terrain_air = 0.0;
 uniform bool terrain_detail = true;
 uniform sampler2D surface_bake : hint_default_white, filter_linear_mipmap, repeat_disable;
-uniform sampler2D cliff_color : source_color, filter_linear_mipmap_anisotropic, repeat_enable;
-uniform sampler2D cliff_normal : filter_linear_mipmap_anisotropic, repeat_enable;
-uniform sampler2D rock_color : source_color, filter_linear_mipmap_anisotropic, repeat_enable;
+uniform sampler2DArray material_colors : source_color, filter_linear_mipmap_anisotropic, repeat_enable;
+uniform sampler2DArray material_surfaces : filter_linear_mipmap_anisotropic, repeat_enable;
 uniform vec4 town_bounds = vec4(0.0);
 uniform sampler2D town_grass : source_color, filter_linear_mipmap_anisotropic, repeat_enable;
-uniform sampler2D moss_color : source_color, filter_linear_mipmap_anisotropic, repeat_enable;
-uniform sampler2D rock_normal : filter_linear_mipmap_anisotropic, repeat_enable;
-uniform sampler2D moss_normal : filter_linear_mipmap_anisotropic, repeat_enable;
 uniform sampler2D biome_tex : filter_linear, repeat_enable;
 uniform sampler2D detail_tex : filter_linear_mipmap, repeat_enable;
 uniform sampler2D backdrop_tex : filter_linear_mipmap, repeat_disable;
@@ -1122,10 +1134,10 @@ float hgt(vec2 p) {
 	return texture(detail_tex, p / 9.0).r * 0.6 + texture(detail_tex, p / 2.3 + 0.31).r * 0.4;
 }
 
-vec4 surface_color(sampler2D tex, vec3 p, vec3 weights) {
-	vec4 x = texture(tex, p.zy);
-	vec4 y = texture(tex, p.xz);
-	vec4 z = texture(tex, p.xy);
+vec4 surface_color(float layer, vec3 p, vec3 weights) {
+	vec4 x = texture(material_colors, vec3(p.zy, layer));
+	vec4 y = texture(material_colors, vec3(p.xz, layer));
+	vec4 z = texture(material_colors, vec3(p.xy, layer));
 	if (OUTPUT_IS_SRGB) {
 		x.rgb = mix(x.rgb / 12.92, pow((x.rgb + 0.055) / 1.055, vec3(2.4)), step(vec3(0.04045), x.rgb));
 		y.rgb = mix(y.rgb / 12.92, pow((y.rgb + 0.055) / 1.055, vec3(2.4)), step(vec3(0.04045), y.rgb));
@@ -1135,10 +1147,10 @@ vec4 surface_color(sampler2D tex, vec3 p, vec3 weights) {
 }
 
 // Normal XY, baked crevice visibility and roughness share one linear-data texture.
-vec2 surface_data(sampler2D tex, vec3 p, vec3 weights, vec3 geometric, out vec3 mapped) {
-	vec4 x = texture(tex, p.zy);
-	vec4 y = texture(tex, p.xz);
-	vec4 z = texture(tex, p.xy);
+vec2 surface_data(float layer, vec3 p, vec3 weights, vec3 geometric, out vec3 mapped) {
+	vec4 x = texture(material_surfaces, vec3(p.zy, layer));
+	vec4 y = texture(material_surfaces, vec3(p.xz, layer));
+	vec4 z = texture(material_surfaces, vec3(p.xy, layer));
 	vec2 nx = x.rg * 2.0 - 1.0;
 	vec2 ny = y.rg * 2.0 - 1.0;
 	vec2 nz = z.rg * 2.0 - 1.0;
@@ -1236,16 +1248,16 @@ void fragment() {
 	vec3 rock_uv = (wpos + fracture_warp * 22.0) / 48.0;
 	vec3 scree_uv = wpos / 16.0 + 0.37;
 	vec3 moss_uv = wpos / 18.0;
-	vec4 rock_sample = surface_color(rock_color, rock_uv, weights);
+	vec4 rock_sample = surface_color(0.0, rock_uv, weights);
 	vec3 secondary_uv = rock_uv * 2.31 + vec3(0.37, 0.61, 0.23);
 	float secondary_mix = smoothstep(0.25, 0.72, patch) * 0.55;
 	if (terrain_detail) {
-		rock_sample = mix(rock_sample, surface_color(rock_color, secondary_uv, weights), secondary_mix);
+		rock_sample = mix(rock_sample, surface_color(0.0, secondary_uv, weights), secondary_mix);
 	}
-	vec4 scree_sample = surface_color(cliff_color, scree_uv, weights);
+	vec4 scree_sample = surface_color(1.0, scree_uv, weights);
 	float debris_luma = dot(scree_sample.rgb, vec3(0.2126, 0.7152, 0.0722));
 	scree_sample.rgb = mix(vec3(debris_luma), scree_sample.rgb, 0.18) * vec3(0.90, 0.97, 1.03);
-	vec4 moss_sample = surface_color(moss_color, moss_uv, weights);
+	vec4 moss_sample = surface_color(2.0, moss_uv, weights);
 	float macro = texture(detail_tex, p / 190.0 + 0.19).r;
 	vec3 habitat_bake = texture(surface_bake, (p + __MAP_HALF__) / __MAP_SIZE__).rgb;
 	// Tilted beds break across the face; sheltered seams weather darker than exposed ribs.
@@ -1303,15 +1315,15 @@ void fragment() {
 		moss = mix(moss, blades, town_turf * 0.85);
 	}
 	vec3 rock_n; vec3 scree_n; vec3 moss_n;
-	vec2 rock_data = surface_data(rock_normal, rock_uv, weights, geometric, rock_n);
+	vec2 rock_data = surface_data(0.0, rock_uv, weights, geometric, rock_n);
 	if (terrain_detail) {
 		vec3 secondary_n;
-		vec2 secondary_data = surface_data(rock_normal, secondary_uv, weights, geometric, secondary_n);
+		vec2 secondary_data = surface_data(0.0, secondary_uv, weights, geometric, secondary_n);
 		rock_data = mix(rock_data, secondary_data, secondary_mix);
 		rock_n = normalize(mix(rock_n, secondary_n, secondary_mix));
 	}
-	vec2 scree_data = surface_data(cliff_normal, scree_uv, weights, geometric, scree_n);
-	vec2 moss_data = surface_data(moss_normal, moss_uv, weights, geometric, moss_n);
+	vec2 scree_data = surface_data(1.0, scree_uv, weights, geometric, scree_n);
+	vec2 moss_data = surface_data(2.0, moss_uv, weights, geometric, moss_n);
 	rock_data = mix(rock_data, scree_data, scree * 0.7);
 	rock_n = normalize(mix(rock_n, scree_n, scree * 0.7));
 	float elevation = smoothstep(0.0, snow_line, geology);
@@ -1332,7 +1344,18 @@ void fragment() {
 	if (terrain_detail && max(abs(p.x), abs(p.y)) >= __MAP_HALF__) {
 		float woodland = texture(forest_cover, (p + __MAP_HALF__ + 1400.0) / (__MAP_SIZE__ + 2800.0)).r;
 		woodland *= forest_habitat(p, geology, slope);
-		moss = mix(moss, moss * vec3(0.55, 0.66, 0.49), woodland * 0.85);
+		if (woodland > 0.001) {
+			vec3 litter_uv = wpos / 3.0;
+			vec4 litter = surface_color(4.0, litter_uv, weights);
+			vec3 litter_n;
+			vec2 litter_data = surface_data(4.0, litter_uv, weights, geometric, litter_n);
+			float litter_blend = height_blend(moss_sample.a, litter.a, woodland * 0.9);
+			float litter_luma = dot(litter.rgb, vec3(0.2126, 0.7152, 0.0722));
+			vec3 floor_color = mix(vec3(litter_luma), litter.rgb, 0.25) * vec3(0.26, 0.30, 0.19);
+			moss = mix(moss, floor_color, litter_blend);
+			moss_data = mix(moss_data, litter_data, litter_blend);
+			moss_n = normalize(mix(moss_n, litter_n, litter_blend));
+		}
 		exposed *= 1.0 - woodland * 0.85;
 	}
 	vec3 alpine = mix(moss, rock, exposed);
@@ -1343,7 +1366,7 @@ void fragment() {
 		* smoothstep(0.35, 0.75, patch * 0.65 + macro * 0.2 + slope * 0.6);
 	shore_stone *= 1.0 - step(9999.0, snow_line);
 	shore_stone *= smoothstep(0.32, 0.65, d1 * 0.4 + d2 * 0.6);
-	vec4 shore_sample = texture(cliff_color, p / 4.0 + 0.37);
+	vec4 shore_sample = surface_color(1.0, vec3(p.x, 0.0, p.y) / 4.0 + 0.37, vec3(0.0, 1.0, 0.0));
 	float shore_luma = dot(shore_sample.rgb, vec3(0.2126, 0.7152, 0.0722));
 	vec3 gravel = mix(vec3(shore_luma), shore_sample.rgb, 0.12) * mix(vec3(0.78, 0.86, 0.92), vec3(0.24, 0.29, 0.33), wet_sand);
 	float shingle = mix(shore_stone, height_blend(0.5, shore_sample.a, shore_stone), 0.35);
@@ -1367,12 +1390,23 @@ void fragment() {
 	float snow_ripple = sin(snow_phase) * snow_resolved * smoothstep(0.18, 0.65, macro) * 0.65;
 	snow_ripple += sin(snow_phase * 0.47 + macro * 6.0) * (1.0 - smoothstep(0.5, 2.5, fwidth(snow_phase * 0.47))) * 0.35;
 	vec3 snow_color = mix(vec3(0.65, 0.75, 0.84), vec3(0.88, 0.90, 0.92), smoothstep(-0.3, 0.6, lee + macro));
+	vec3 snow_n = geometric;
+	vec2 snow_data = vec2(1.0, mix(0.68, 0.94, macro));
+	if (terrain_detail && snow > 0.001) {
+		// Metre-scale powder and dirty melt edges stay separate from broad wind drifts.
+		vec3 snow_uv = wpos / 2.0;
+		vec4 powder = surface_color(3.0, snow_uv, weights);
+		snow_data = surface_data(3.0, snow_uv, weights, geometric, snow_n);
+		snow_color = min(powder.rgb * 1.8, vec3(0.9)) * mix(vec3(0.82, 0.90, 1.0), vec3(1.0), smoothstep(-0.3, 0.6, lee + macro));
+		float melt = (1.0 - smoothstep(0.0, 0.7, snow_field)) * smoothstep(0.2, 0.8, rock_height);
+		snow_color *= mix(vec3(1.0), vec3(0.64, 0.62, 0.59), melt * 0.55);
+	}
 	col = mix(col, snow_color * (0.94 + d3 * 0.06 + snow_ripple * 0.018), snow);
 	vec2 material_data = mix(moss_data, rock_data, exposed);
 	// Combine photographic crevices with broad shelter; do not bake a second direct-light shadow.
 	float crevice = clamp(rock_data.x * mix(1.0, 0.72, shelter), 0.25, 1.0);
 	float material_ao = mix(moss_data.x, crevice, exposed);
-	AO = sky * mix(1.0, max(0.25, material_ao), clean * (1.0 - snow));
+	AO = sky * mix(1.0, max(0.25, mix(material_ao, snow_data.x, snow)), clean);
 	AO_LIGHT_AFFECT = 0.25;
 	col *= mix(vec3(0.72, 0.80, 0.90), vec3(1.0), sky);
 
@@ -1387,7 +1421,7 @@ void fragment() {
 		ALBEDO = mix(ALBEDO * 12.92, 1.055 * pow(max(ALBEDO, vec3(0.0)), vec3(1.0 / 2.4)) - 0.055, step(vec3(0.0031308), ALBEDO));
 	}
 	ROUGHNESS = mix(mix(0.96, 0.82, dirt_m), clamp(material_data.y, 0.55, 1.0), clean);
-	ROUGHNESS = mix(ROUGHNESS, clamp(mix(0.68, 0.94, macro) + snow_ripple * 0.06, 0.6, 1.0), snow);
+	ROUGHNESS = mix(ROUGHNESS, clamp(snow_data.y + snow_ripple * 0.06, 0.6, 1.0), snow);
 	rock_damp *= exposed * clean * (1.0 - snow);
 	ROUGHNESS = mix(ROUGHNESS, 0.28, rock_damp);
 	ROUGHNESS = mix(ROUGHNESS, 0.55, wet * 0.5);
@@ -1409,7 +1443,7 @@ void fragment() {
 	vec3 mapped = normalize(mix(moss_n, rock_n, exposed));
 	n = normalize(mix(n, mapped, 0.85 * clean * (1.0 - snow)));
 	n = surface_relief(n, mineral * 0.28, exposed * clean * (1.0 - snow) * smoothstep(0.3, 1.0, slope));
-	n = normalize(mix(n, geometric, snow * 0.9));
+	n = normalize(mix(n, normalize(mix(geometric, snow_n, 0.6)), snow * 0.9));
 	n = surface_relief(n, snow_ripple * 0.065 + scree_sample.a * 0.025, snow);
 	n = surface_relief(n, shore_sample.a * 0.045, shingle);
 	n = normalize(mix(n, vec3(0.0, 1.0, 0.0), puddle * 0.9));

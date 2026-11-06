@@ -49,6 +49,20 @@ cannot turn an advertised real-time comparison into a time-lapse. New gameplay s
 A current-build demonstration is not automatically a historical comparison.
 The controlled-motion fixture has its own fixed 60 Hz integration and 12 fps output.
 
+## Generated environment views
+
+`tests/fixtures/environment-views.gd` loads the real battlefield once, holds its simulation at
+two seconds, then captures the highest playable ridge close and wide, the hillside forest,
+and the whole valley. It records each camera in a JSON sidecar. Use the same fixture on the
+before and after revisions; differences in source revision must be recorded in the catalog.
+
+```sh
+godot --path . --resolution 1600x900 --script tests/fixtures/environment-views.gd -- --aivai --seed=3 --offscreen --nohud --set=perf:0 --preset=high --mood=day --focus=0,0 --capture-prefix=build/terrain/review
+```
+
+The camera uses the normal terrain clearance, so a low requested zoom may raise the lens
+above a neighbouring ridge. This is a visual review stage, not a performance benchmark.
+
 ## Inventory and release process
 
 `catalog.json` records every entry's medium, stage, rationale and evidence source.
