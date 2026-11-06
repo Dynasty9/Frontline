@@ -66,4 +66,4 @@ Distant ridges now shade their valleys and forests with cached terrain lighting.
 
 Surrounding ranges now use real Alpine elevation shapes, composed into varied fictional mountain groups. Lower ridges close the horizon between the peaks. The source data is bundled and processed during map creation; no terrain downloads or extra per-frame material samples are needed.
 
-Town asphalt now separates fine aggregate from broad cracks, repairs and stains. Streets and junctions share the same world-space material. Normal maps follow sloping roads and paving instead of lighting every surface as if it were flat.
+Town asphalt now separates fine aggregate from broad cracks, repairs and stains. Streets and junctions share the same world-space material, blended in linear light in both renderers. Normal maps follow sloping roads and paving instead of lighting every surface as if it were flat.

@@ -28,14 +28,14 @@ func _ready() -> void:
 	for p in [Vector2i(9, 23), Vector2i(511, 800), Vector2i(901, 107)]:
 		assert(original.get_pixelv(p) == imported.get_pixelv(p), "Asphalt roughness in alpha must survive import")
 	if DisplayServer.get_name() != "headless":
-		await check_road_normals()
+		await check_road_surfaces()
 	print("TERRAIN_MATERIALS passed")
 	Sfx._ensure()
 	while Music._task >= 0:
 		await get_tree().process_frame
 	get_tree().quit()
 
-func check_road_normals() -> void:
+func check_road_surfaces() -> void:
 	var view := SubViewport.new()
 	view.size = Vector2i(64, 64)
 	view.own_world_3d = true
@@ -71,5 +71,19 @@ void fragment() {
 		var actual := Vector3(pixel.r, pixel.g, pixel.b) * 2.0 - Vector3.ONE
 		var expected := Vector3(0, cos(angle), sin(angle))
 		assert(actual.distance_to(expected) < 0.025, "Road and pavement normal maps must follow the underlying slope: actual=%s expected=%s" % [actual, expected])
+	mesh.rotation = Vector3.ZERO
+	shader.code = "shader_type spatial; render_mode unshaded;\n" + Mats.ASPHALT_SHADER + """
+uniform sampler2D scan : source_color;
+uniform sampler2D noise;
+void fragment() { ALBEDO = street_surface(scan, noise, vec2(0.0)); }
+"""
+	for pair in [["scan", 0.4], ["street_detail", 0.3], ["noise", 0.5]]:
+		var flat := Image.create(4, 4, false, Image.FORMAT_RGB8)
+		flat.fill(Color(pair[1], pair[1], pair[1]))
+		material.set_shader_parameter(pair[0], ImageTexture.create_from_image(flat))
+	for frame in 3:
+		await RenderingServer.frame_post_draw
+	var road := view.get_texture().get_image().get_pixel(32, 32)
+	assert(absf(road.r - 0.314) < 0.008, "Street blending must use linear scan values in both renderers: %s" % road)
 	view.queue_free()
-	print("TERRAIN_MATERIALS native sloped-road normals passed")
+	print("TERRAIN_MATERIALS native sloped-road normals and colour checks passed")

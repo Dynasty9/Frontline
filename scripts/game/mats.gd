@@ -42,10 +42,16 @@ mat3 ground_surface_basis(vec3 position) {
 
 vec3 street_surface(sampler2D tex, sampler2D noise, vec2 p) {
 	vec3 aggregate = texture(street_detail, p / 2.2).rgb;
+	if (OUTPUT_IS_SRGB) {
+		aggregate = mix(aggregate / 12.92, pow((aggregate + 0.055) / 1.055, vec3(2.4)), step(vec3(0.04045), aggregate));
+	}
 	float gray = dot(aggregate, vec3(0.2126, 0.7152, 0.0722));
 	aggregate = mix(aggregate, vec3(gray), 0.9);
 	// The aerial scan supplies cracks and weathering; fine aggregate stays at its surveyed scale.
 	vec3 wear = texture(tex, p / 30.0).rgb;
+	if (OUTPUT_IS_SRGB) {
+		wear = mix(wear / 12.92, pow((wear + 0.055) / 1.055, vec3(2.4)), step(vec3(0.04045), wear));
+	}
 	vec3 base = aggregate * mix(1.0, clamp(dot(wear, vec3(0.2126, 0.7152, 0.0722)) / 0.126, 0.5, 1.4), 0.35);
 	float weather = texture(noise, p * 0.006 + 0.17).r;
 	float stains = smoothstep(0.56, 0.74, texture(noise, p * 0.035 + 0.63).r);
@@ -59,6 +65,10 @@ vec3 street_surface(sampler2D tex, sampler2D noise, vec2 p) {
 	float repair = chosen * (1.0 - smoothstep(0.92, 1.02, shape + texture(noise, p * 0.3).r * 0.10));
 	base = mix(base * (0.75 + weather * 0.65), aggregate * 0.52, repair);
 	base *= 1.0 - stains * 0.28;
+	// Compatibility reads sRGB samples; blend in linear light, then return its expected output.
+	if (OUTPUT_IS_SRGB) {
+		base = mix(base * 12.92, 1.055 * pow(max(base, vec3(0.0)), vec3(1.0 / 2.4)) - 0.055, step(vec3(0.0031308), base));
+	}
 	return base;
 }
 """
