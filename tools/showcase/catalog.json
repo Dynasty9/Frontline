@@ -3510,6 +3510,36 @@
       "source_ref": "codex/soldier-presentation-work",
       "sources": [],
       "output": null
+    },
+    {
+      "entry": "changelog/unreleased/soldier-bounds.md",
+      "title": "More accurate detail for distant soldiers",
+      "summary": "Distant soldier detail now follows the occupied part of each group, including movement and animation.",
+      "version": "unreleased",
+      "kind": "improved",
+      "medium": "still",
+      "stage": "native-media",
+      "rationale": "Matched rendered battlefield views check appearance. The measured frame results and their limitations are recorded in docs/performance/soldier-bounds.md; instantaneous screenshot FPS is not performance evidence.",
+      "source_ref": "codex/soldier-batch-bounds",
+      "sources": [
+        {
+          "file": "changelog/unreleased/soldier-bounds/before.png",
+          "sha256": "414de8de37ca59c571811694a2fd0c657f8cba1d727d2f9cb516b3063958d558",
+          "caption": "Before: parent PR #135 at e15a71f."
+        },
+        {
+          "file": "changelog/unreleased/soldier-bounds/after.png",
+          "sha256": "357b1b961e78bf397af26bfe90d7972fe407913a79c479a604dccca6c3ff2340",
+          "caption": "After: tighter swept bounds, same camera and scenario."
+        }
+      ],
+      "output": "changelog/unreleased/soldier-bounds/after.png",
+      "capture": {
+        "scenario": "stress combat, seed 3, 500 initial soldiers, 1024 m",
+        "camera": "observer, focus 0,0, 35 m zoom, 1280x720 High",
+        "time_s": 62,
+        "command": "python tools/benchmark_scaling.py --godot <export>/Frontline.exe --exported --rendered --local-server --units 500 --map-size 1024 --mode combat --seed 3 --team -1 --warmup 30 --duration 30 --zoom 35 --preset high --width 1280 --height 720 --output <fresh-directory>"
+      }
     }
   ],
   "layout_capture": {

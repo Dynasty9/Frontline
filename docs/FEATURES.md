@@ -1372,3 +1372,7 @@ Movement-only snapshots retain shared soldier presentation. Life, visibility-mas
 and side changes invalidate it; property changes, selection and observer-side
 changes still refresh immediately. The native motion batch alone detects its
 teleports, avoiding a second distance test per soldier.
+
+Soldier batches bound their current and target positions with the complete animated
+model envelope. Bounds shrink after movement and blasts settle, so empty cell
+space does not keep distant models detailed. Close articulated models are unchanged.

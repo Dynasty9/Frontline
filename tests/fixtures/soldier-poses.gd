@@ -1,10 +1,22 @@
 extends Node
 
+class PoseBounds extends SoldierViewBatch:
+	func _make_atlas(base: int) -> void:
+		var bounds := []
+		for frame in 15:
+			bounds.append((poses[base + frame] as ArrayMesh).get_aabb())
+		super._make_atlas(base)
+		var actual: AABB = (poses[base] as ArrayMesh).custom_aabb.grow(0.001)
+		for pose: AABB in bounds:
+			assert(actual.encloses(pose), "Atlas bounds must include every posture and walking frame")
+		var early: DrawGroup = groups[Vector3i.ZERO]
+		assert(is_equal_approx(early.model_radius, _mesh_radius(poses[base])), "An existing group must receive the full animation envelope")
+
 func _ready() -> void:
 	DisplayServer.window_set_flag(DisplayServer.WINDOW_FLAG_NO_FOCUS, true)
 	for unit: String in Defs.UNITS:
 		var world := World.new()
-		var view := SoldierViewBatch.new()
+		var view := PoseBounds.new()
 		view.world = world
 		add_child(view)
 		view.set_process(false)

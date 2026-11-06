@@ -1,0 +1,40 @@
+{
+  "rows": [
+    {
+      "run": "bounds-control-1",
+      "fps": 72.8205469869083,
+      "frame_p99_ms": 25.966,
+      "frame_change_p99_ms": 10.992,
+      "primitives": 6747016.0,
+      "gpu_p99_ms": 7.55499982833862,
+      "alive": 462
+    },
+    {
+      "run": "bounds-1",
+      "fps": 76.7462010130632,
+      "frame_p99_ms": 23.702,
+      "frame_change_p99_ms": 8.659,
+      "primitives": 6657998.0,
+      "gpu_p99_ms": 6.75400018692017,
+      "alive": 462
+    },
+    {
+      "run": "bounds-2",
+      "fps": 73.3040117286419,
+      "frame_p99_ms": 24.759,
+      "frame_change_p99_ms": 10.536,
+      "primitives": 6644286.0,
+      "gpu_p99_ms": 9.85400009155273,
+      "alive": 465
+    },
+    {
+      "run": "bounds-control-2",
+      "fps": 71.4214297617064,
+      "frame_p99_ms": 29.137,
+      "frame_change_p99_ms": 11.32,
+      "primitives": 6751888.0,
+      "gpu_p99_ms": 7.47100019454956,
+      "alive": 462
+    }
+  ]
+}
