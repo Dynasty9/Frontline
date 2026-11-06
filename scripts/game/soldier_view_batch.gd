@@ -131,7 +131,7 @@ func _process(dt: float) -> void:
 			_dirty = true
 		for soldier: Soldier in world.soldiers:
 			if not soldier.gone:
-				if _motion_frame >= 0 and soldier.position.distance_squared_to(soldier.net_pos) > 64.0:
+				if not soldier._native_view_motion and _motion_frame >= 0 and soldier.position.distance_squared_to(soldier.net_pos) > 64.0:
 					_dirty = true
 				var was_lod := soldier.view_lod
 				var was_visible := soldier.visible

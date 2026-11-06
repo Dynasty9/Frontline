@@ -5323,7 +5323,9 @@ func write_state(b: StreamPeerBuffer) -> void:
 
 
 func read_state(b: StreamPeerBuffer) -> void:
-	_view_dirty = true
+	var previous_life := life
+	var previous_mask := vis_mask
+	var previous_team := team
 	net_pos = get_v3(b)
 	net_yaw = get_ang(b)
 	life = b.get_u8()
@@ -5339,6 +5341,8 @@ func read_state(b: StreamPeerBuffer) -> void:
 	doing = b.get_u8()
 	doing_ent = b.get_u32()
 	cov_net = b.get_u8()
+	# Shared poses read action/posture directly; motion packets need no visibility rebuild.
+	_view_dirty = _view_dirty or life != previous_life or vis_mask != previous_mask or team != previous_team
 	if _native_view_motion:
 		world.soldier_view.motion.target(self, net_pos, net_yaw, false)
 
