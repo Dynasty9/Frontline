@@ -1367,3 +1367,8 @@ roster and the three overlay drawing layers. Camera, projection and input change
 bypass this scheduling; on a stationary view the next overlay starts after pending
 summaries, with a 200 ms starvation guard at very low frame rates. Queued roster
 work takes the next available slot so slower machines do not starve it.
+
+Movement-only snapshots retain shared soldier presentation. Life, visibility-mask
+and side changes invalidate it; property changes, selection and observer-side
+changes still refresh immediately. The native motion batch alone detects its
+teleports, avoiding a second distance test per soldier.
