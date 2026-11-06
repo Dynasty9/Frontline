@@ -65,6 +65,9 @@ func _ready() -> void:
 	check(not actual.model.visible and actual.body.collision_layer == 0, "Inactive scenery must leave rendering and cosmetic collision")
 	world.free()
 	check_camera_residency()
+	Sfx._ensure()
+	while Music._task >= 0:
+		await get_tree().process_frame
 	print("STRUCTURE_VIEW_TEST failures=%d" % failures)
 	get_tree().quit(1 if failures else 0)
 
@@ -105,6 +108,23 @@ func check_camera_residency() -> void:
 									if camera.is_position_in_frustum(point):
 										var cell := Vector2i(floori(x / StructureView.CELL), floori(z / StructureView.CELL))
 										check(view.active.has(cell), "Visible scenery must remain resident through tilt, rotation, zoom and resize")
+	world.has_view = false
+	world.terrain = TerrainMap.new(world)
+	var elevated := ViewStub.new()
+	elevated.eid = 3
+	elevated.position = Vector3(0, 220, 0)
+	elevated.view_active = false
+	view.add(elevated)
+	viewport.size = Vector2i(1280, 720)
+	camera.fov = 20.0
+	camera.position = Vector3(0, 220, 30)
+	camera.look_at(elevated.position)
+	view.focus_at(elevated.position, camera)
+	world.terrain.landform.peak = 240.0
+	view.focus_at(elevated.position, camera)
+	check(camera.is_position_in_frustum(elevated.position) and view.resident.has(3), "Visible trees on high terrain must survive cell frustum culling")
+	view.remove(elevated)
+	elevated.free()
 	view.free()
 	world.free()
 	viewport.free()

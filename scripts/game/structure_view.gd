@@ -17,6 +17,7 @@ var center := Vector2i(-999, -999)
 var _camera_transform := Transform3D()
 var _camera_projection := Projection()
 var _camera_id := 0
+var _terrain_rise := -1.0
 const DRAW_CELL := 64.0
 var _draw_waiting := {}
 var _draw_batches := {}
@@ -62,9 +63,11 @@ func warming() -> bool:
 func focus_at(pos: Vector3, camera: Camera3D = null) -> void:
 	var next := Vector2i(floori(pos.x / CELL), floori(pos.z / CELL))
 	var camera_id := camera.get_instance_id() if camera else 0
-	if next == center and camera_id == _camera_id and (camera == null or (camera.global_transform == _camera_transform and camera.get_camera_projection() == _camera_projection)):
+	var terrain_rise: float = maxf(0.0, world.terrain.landform.peak) if world.terrain else 0.0
+	if next == center and terrain_rise == _terrain_rise and camera_id == _camera_id and (camera == null or (camera.global_transform == _camera_transform and camera.get_camera_projection() == _camera_projection)):
 		return
 	_camera_id = camera_id
+	_terrain_rise = terrain_rise
 	center = next
 	var visible_cells := {}
 	var low := next - Vector2i(REACH, REACH)
@@ -86,9 +89,9 @@ func focus_at(pos: Vector3, camera: Camera3D = null) -> void:
 	for z in range(low.y, high.y + 1):
 		for x in range(low.x, high.x + 1):
 			var key := Vector2i(x, z)
-			# Preload beyond the screen edges, including roofs and shadows.
-			var midpoint := Vector3((x + 0.5) * CELL, 48.0, (z + 0.5) * CELL)
-			var extent := Vector3(CELL, 80.0, CELL)
+			# Preload roofs and shadows from valley floors through the highest hillside.
+			var midpoint := Vector3((x + 0.5) * CELL, 48.0 + terrain_rise * 0.5, (z + 0.5) * CELL)
+			var extent := Vector3(CELL, 80.0 + terrain_rise * 0.5, CELL)
 			var visible_cell := true
 			for plane: Plane in planes:
 				if plane.distance_to(midpoint) > plane.normal.abs().dot(extent):
