@@ -303,6 +303,10 @@ func _check_shared_presentation_changes() -> void:
 	world._rpc_snap(packet.data_array)
 	man._view_process(1.0 / 60.0, 0.2, true)
 	assert(not man.visible, "A zero-length hidden snapshot immediately invalidates presentation")
+	var hidden_checks := man.sight_checks
+	for frame in 10:
+		man._view_process(1.0 / 60.0, 0.2, true)
+	assert(man.sight_checks == hidden_checks, "Hidden soldiers retain presentation until visibility or observer changes")
 	world.view_team = 1
 	man._view_process(1.0 / 60.0, 0.2, true)
 	assert(man.visible, "Changing observer team immediately updates visibility")

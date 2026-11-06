@@ -5418,7 +5418,7 @@ func _view_process(dt: float, blend := -1.0, motion_done := false) -> void:
 	if not world.has_view:
 		return
 	# Native motion keeps selection positions current; shared models only need changed presentation.
-	if motion_done and view_lod and not _view_dirty and selected == _view_selected \
+	if motion_done and (view_lod or not _vis) and not _view_dirty and selected == _view_selected \
 			and world.view_team == _view_team and world.cam and debug_pose.is_empty() \
 			and (model == null or (not model._baked and model.ragdoll == null)) and not world.soldier_view.detail_ids.has(eid):
 		_last_view_pos = position
