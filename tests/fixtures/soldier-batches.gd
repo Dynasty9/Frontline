@@ -54,6 +54,18 @@ func _ready() -> void:
 	var original := Vector3i(0, 0, first)
 	assert(view.groups.size() == 1 and view.groups[original].count == 2)
 	assert(view.groups[original].mm.visible_instance_count == 2)
+	var packed: SoldierViewBatch.DrawGroup = view.groups[original]
+	assert(packed.mm.custom_aabb.size.x < 4.0, "A sparse cell must not inherit an empty 86-metre bound")
+	b.position.y = 180.0
+	view._process(0.0)
+	assert(packed.mm.custom_aabb.has_point(b.position + Vector3.UP * 0.4))
+	b.position.y = 0.0
+	view._process(0.0)
+	assert(packed.mm.custom_aabb.size.y < 2.0, "A settled soldier must release obsolete elevated bounds")
+	b.scale = Vector3(3, 2, 4)
+	view._process(0.0)
+	assert(packed.mm.custom_aabb.has_point(b.position + Vector3(0, 0, 2)), "Scaled models stay inside the culling bounds")
+	b.scale = Vector3.ONE
 	b.position.x = SoldierViewBatch.CELL + 1
 	view._process(0.0)
 	assert(view.groups[original].count == 1 and view.groups[Vector3i(1, 0, first)].count == 1)

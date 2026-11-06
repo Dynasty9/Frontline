@@ -9,8 +9,8 @@ class DrawGroup:
 	var origin: Vector3
 	var count := 0
 	var last_used := 0.0
-	var min_y := -4.0
-	var max_y := 12.0
+	var bounds := AABB()
+	var model_radius := 0.0
 
 var motion := SoldierViewMotion.new()
 var world: World
@@ -223,13 +223,11 @@ func _process(dt: float) -> void:
 		transform.origin -= group.origin
 		var offset := s.net_pos - s.position if interpolate else Vector3.ZERO
 		var turn := angle_difference(s.rotation.y, s.net_yaw) if interpolate else 0.0
-		# A flat-map bound would cull soldiers on hills or lifted by a blast.
-		var low := minf(transform.origin.y, transform.origin.y + offset.y)
-		var high := maxf(transform.origin.y, transform.origin.y + offset.y)
-		if low < group.min_y + 3.0 or high > group.max_y - 3.0:
-			group.min_y = minf(group.min_y, low - 4.0)
-			group.max_y = maxf(group.max_y, high + 4.0)
-			mm.custom_aabb = AABB(Vector3(-11, group.min_y, -11), Vector3(CELL + 22, group.max_y - group.min_y, CELL + 22))
+		# Bound the complete swept pose, so sparse cells and settled blasts can use mesh LOD.
+		var scale := transform.basis.get_scale().abs()
+		var radius := group.model_radius * maxf(scale.x, maxf(scale.y, scale.z))
+		var swept := AABB(transform.origin, Vector3.ZERO).expand(transform.origin + offset).grow(radius)
+		group.bounds = swept if slot == 0 else group.bounds.merge(swept)
 		# Pose selection rides in the unused tint alpha; motion retains all four custom values.
 		var pose_code := posture * 8 + (posmod(s.eid, 4) + 1 if walking else 0)
 		mm.set_instance_color(slot, Color(1, 1, 1, float(pose_code) / 255.0) if _atlases.has(base) else Color.WHITE)
@@ -241,6 +239,8 @@ func _process(dt: float) -> void:
 		if group.count == 0:
 			group.mm.visible_instance_count = 0
 	for group: DrawGroup in _active:
+		if group.mm.custom_aabb != group.bounds:
+			group.mm.custom_aabb = group.bounds
 		group.mm.visible_instance_count = group.count
 	# Old walking poses stay cached briefly, but need no per-frame visits.
 	if world.time >= _expires_at:
@@ -304,9 +304,6 @@ func _group_for(pose: int, cell: Vector2i) -> DrawGroup:
 	for i in mm.instance_count:
 		mm.set_instance_color(i, Color.WHITE)
 	mm.visible_instance_count = 0
-	# Separate spatial batches let culling and mesh LOD consider nearby men,
-	# rather than the bounding box of every soldier of this type on the map.
-	mm.custom_aabb = AABB(Vector3(-11, -4, -11), Vector3(CELL + 22, 16, CELL + 22))
 	var node := MultiMeshInstance3D.new()
 	node.multimesh = mm
 	# Shared models are small on screen; keep fine geometry for the articulated rigs.
@@ -316,11 +313,17 @@ func _group_for(pose: int, cell: Vector2i) -> DrawGroup:
 	add_child(node)
 	var group := DrawGroup.new()
 	group.mm = mm
+	group.model_radius = _mesh_radius(mm.mesh)
 	group.node = node
 	group.origin = node.position
 	group.last_used = world.time
 	groups[key] = group
 	return group
+
+
+static func _mesh_radius(mesh: Mesh) -> float:
+	var bounds := mesh.get_aabb()
+	return bounds.position.abs().max(bounds.end.abs()).length()
 
 
 func _set_animation(age: float) -> void:
@@ -333,8 +336,11 @@ func _set_animation(age: float) -> void:
 func _make_atlas(base: int) -> void:
 	# Keep the same sampled poses while letting every stance share one spatial batch.
 	var samples := []
+	var bounds := AABB()
 	for frame in 15:
-		samples.append((poses[base + frame] as ArrayMesh).surface_get_arrays(0))
+		var mesh: ArrayMesh = poses[base + frame]
+		bounds = bounds.merge(mesh.get_aabb())
+		samples.append(mesh.surface_get_arrays(0))
 	var arrays: Array = samples[0].duplicate()
 	var count: int = (arrays[Mesh.ARRAY_VERTEX] as PackedVector3Array).size()
 	for sample: Array in samples:
@@ -360,6 +366,7 @@ func _make_atlas(base: int) -> void:
 	importer.add_surface(Mesh.PRIMITIVE_TRIANGLES, arrays)
 	importer.generate_lods(25.0, 60.0, [])
 	poses[base] = importer.get_mesh()
+	(poses[base] as ArrayMesh).custom_aabb = bounds
 	for frame in range(1, 15):
 		poses.erase(base + frame)
 	var material := ShaderMaterial.new()
@@ -373,4 +380,5 @@ func _make_atlas(base: int) -> void:
 		if key.z == base:
 			var group: DrawGroup = groups[key]
 			group.mm.mesh = poses[base]
+			group.model_radius = _mesh_radius(poses[base])
 			group.node.material_override = material
