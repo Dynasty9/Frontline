@@ -27,6 +27,9 @@ func _ready() -> void:
 	var c := wall(w, 3, Vector3(70, 0, 3))
 	for st in [a, b, c]:
 		view._queue_draw_batch(st)
+	view.request(a)
+	view.request(a)
+	assert((view._draw_waiting[Vector2i.ZERO] as Dictionary).size() == 2, "Moving the camera must not enqueue duplicate geometry")
 	view._build_draw_batch(Vector2i.ZERO)
 	assert(view._draw_batches.size() == 1 and view._draw_members.size() == 2)
 	assert(not a.model.get_child(0).visible and not b.model.get_child(0).visible)
@@ -78,6 +81,13 @@ func _ready() -> void:
 	assert(view._draw_members.has(11) and not view._draw_members.has(10), "Felling or burning one tree preserves its neighbour")
 	for part in trees[0].model.get_children():
 		assert(part.visible, "Changed trees regain individual foliage and bark")
+	w.srv = true
+	w.push_props(trees[1], {"variant": 16})
+	assert(not view._draw_members.has(11), "Host property changes restore individual geometry before rebuilding or tossing it")
+	view.add(trees[1])
+	trees[1].position.x = 1400.0
+	w.push_props(trees[1], {"pos": trees[1].position})
+	assert(view.memberships[11].has(Vector2i(10, 0)), "Host movement updates scenery residency even without connected peers")
 	# Background forests cannot masquerade as cover inside the combat map.
 	var atmosphere := Atmosphere.new()
 	atmosphere.world = w

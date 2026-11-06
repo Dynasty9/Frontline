@@ -143,3 +143,5 @@ Elevated surfaces retain full height precision, removing the fine stepping that 
 Meadows use fine pointed blades over photographed turf, with wetter sheltered soil and drier exposed patches. The clumps retain their previous triangle count. Local height bounds keep distance fading centred on each patch of vegetation, even when much taller mountains surround it.
 
 Low shrubs use smaller photographed branches and grow in seeded patches with open gaps. Their root shading follows each plant rather than its elevation. Distant forest atlases also load correctly in exported builds.
+
+Local games share the scenery batching used by network clients. Returning to already-built scenery reveals it promptly while off-screen buildings retain their combat collision. Batched roofs and other tinted surfaces keep their colours in both renderers, including grey roofs in the browser.

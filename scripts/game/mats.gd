@@ -332,9 +332,9 @@ static func leaf_cards(conifer: bool) -> ShaderMaterial:
 static var _vc_cache := {}
 ## Merged parts carry their tint as vertex colour, which is stored 8 bits per
 ## channel and clamps at 1: a tint brighter than the material's base (a sand
-## paint over an olive preset) would be lost. So it's stored at a quarter and
-## the shader multiplies it back up.
-const VC_K := 4.0
+## paint over an olive preset) would be lost. A 2.5 sRGB tint reaches 8.35 in
+## linear light, so the packed range must cover that before the shader restores it.
+const VC_K := 9.0
 
 
 ## Same material, but reading the part colour from vertex colours (for merged meshes).
@@ -463,7 +463,8 @@ static func _bake_groups(groups: Dictionary) -> ArrayMesh:
 		var base: Color = material.get_shader_parameter("col_a")
 		if int(material.get_shader_parameter("pattern")) == CAMO:
 			base = base.lerp(material.get_shader_parameter("col_b"), 0.35)
-		base = base.srgb_to_linear()
+		if not per_material:
+			base = base.srgb_to_linear()
 		var scale := VC_K
 		if material.get_shader_parameter("use_vcolor") == true:
 			scale = float(material.get_shader_parameter("vcolor_k"))
@@ -635,8 +636,10 @@ static func _collect(node: Node, xf: Transform3D, groups: Dictionary, victims: A
 ## in `mats`) placed by `cx` in the root's space, its tint (an sRGB colour, or
 ## null for none) as vertex colour.
 static func _append(groups: Dictionary, mesh: Mesh, mats: Array, shadow: int, tint: Variant, cx: Transform3D, single: bool) -> void:
-	# the tint uniform is sRGB (source_color); vertex colours are read as linear
-	var col: Color = (tint as Color).srgb_to_linear() if tint is Color else Color(1, 1, 1)
+	# Match source_color uniforms: Compatibility shades in sRGB, Forward+ in linear light.
+	var col: Color = tint if tint is Color else Color(1, 1, 1)
+	if not per_material:
+		col = col.srgb_to_linear()
 	var nb := Transform3D(cx.basis.inverse().transposed(), Vector3.ZERO)
 	for si in mesh.get_surface_count():
 		var sm: ShaderMaterial = mats[si]

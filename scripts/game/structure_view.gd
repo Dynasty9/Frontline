@@ -1,6 +1,6 @@
 class_name StructureView
 extends Node
-## The client builds nearby scenery first. Authority, cover and fog keep the
+## Each view builds nearby scenery first. Authority, cover and fog keep the
 ## complete world; distant cosmetic bodies and models need not exist yet.
 
 const CELL := 128.0
@@ -25,7 +25,11 @@ var _draw_members := {}
 var _draw_broken := {}
 
 func add(st: Structure) -> void:
+	# Hosts already built these models while generating the authoritative map.
+	if st.view_active:
+		resident[st.eid] = st
 	var keys := []
+	var wanted := false
 	var r := st.radius
 	for z in range(floori((st.position.z - r) / CELL), floori((st.position.z + r) / CELL) + 1):
 		for x in range(floori((st.position.x - r) / CELL), floori((st.position.x + r) / CELL) + 1):
@@ -35,8 +39,12 @@ func add(st: Structure) -> void:
 				cells[key] = {}
 			(cells[key] as Dictionary)[st.eid] = st
 			if active.has(key):
+				wanted = true
 				request(st)
 	memberships[st.eid] = keys
+	if not wanted and center != Vector2i(-999, -999):
+		st.set_view_active(false)
+		resident.erase(st.eid)
 
 func remove(st: Structure) -> void:
 	unbatch(st, true)
@@ -52,6 +60,7 @@ func remove(st: Structure) -> void:
 func request(st: Structure) -> void:
 	resident[st.eid] = st
 	if st.view_active:
+		_queue_draw_batch(st)
 		return
 	if not pending.has(st.eid):
 		order.append(st.eid)
@@ -129,9 +138,11 @@ func _process(_dt: float) -> void:
 		var st: Structure = pending.get(id)
 		pending.erase(id)
 		if is_instance_valid(st) and not st.gone and resident.has(id):
+			var needs_model := st.model == null
 			st.set_view_active(true)
 			_queue_draw_batch(st)
-			count += 1
+			if needs_model:
+				count += 1
 	if head == order.size():
 		order.clear()
 		head = 0
@@ -155,12 +166,12 @@ func _queue_draw_batch(st: Structure) -> void:
 	if _draw_broken.has(st.eid) or _draw_batches.has(cell):
 		return
 	if not _draw_waiting.has(cell):
-		_draw_waiting[cell] = []
-	(_draw_waiting[cell] as Array).append(st)
+		_draw_waiting[cell] = {}
+	(_draw_waiting[cell] as Dictionary)[st.eid] = st
 
 
 func _build_draw_batch(cell: Vector2i) -> void:
-	var candidates: Array = _draw_waiting[cell]
+	var candidates: Array = (_draw_waiting[cell] as Dictionary).values()
 	_draw_waiting.erase(cell)
 	var origin := Vector3(cell.x * DRAW_CELL, 0, cell.y * DRAW_CELL)
 	var groups := {}

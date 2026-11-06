@@ -42,6 +42,20 @@ func _ready() -> void:
 	view.remove(far)
 	check(view.cells.is_empty() and view.memberships.is_empty(), "Removing a moved structure must clear its original spatial membership")
 	far.free()
+	var cached: Array[ViewStub] = []
+	for i in 6:
+		var st := ViewStub.new()
+		st.eid = i + 10
+		st.view_active = false
+		st.model = Node3D.new()
+		st.add_child(st.model)
+		cached.append(st)
+		view.add(st)
+	view._process(0.016)
+	for st in cached:
+		check(st.view_active, "Showing cached scenery must not consume the new-model construction limit")
+		view.remove(st)
+		st.free()
 	view.free()
 	world.has_view = true
 	var actual := Structure.new()
@@ -63,6 +77,25 @@ func _ready() -> void:
 	check(actual.is_processing(), "Capturing neutral scenery must resume ownership and fog updates")
 	actual.set_view_active(false)
 	check(not actual.model.visible and actual.body.collision_layer == 0, "Inactive scenery must leave rendering and cosmetic collision")
+	actual.srv = true
+	actual.body.collision_layer = Defs.L_COVER
+	actual.set_view_active(true)
+	actual.set_view_active(false)
+	check(actual.body.collision_layer == Defs.L_COVER, "Hiding host scenery must retain authoritative projectile collision")
+	var host_view := StructureView.new()
+	host_view.world = world
+	actual.eid = 3
+	actual.position = Vector3(1400, 0, 0)
+	actual.set_view_active(true)
+	host_view.add(actual)
+	host_view.focus_at(Vector3.ZERO)
+	check(not actual.view_active and actual.body.collision_layer == Defs.L_COVER, "Initial host residency hides distant models without changing combat")
+	actual.position = Vector3(1500, 0, 0)
+	actual.set_view_active(true)
+	host_view.remove(actual)
+	host_view.add(actual)
+	check(not actual.view_active, "A moved off-screen host structure must not bypass residency")
+	host_view.free()
 	world.free()
 	check_camera_residency()
 	Sfx._ensure()

@@ -32,11 +32,52 @@ func _ready() -> void:
 		await check_road_surfaces()
 		await check_ground_grime()
 		await check_shrub_leaves()
+		await check_batched_tints()
 	print("TERRAIN_MATERIALS passed")
 	Sfx._ensure()
 	while Music._task >= 0:
 		await get_tree().process_frame
 	get_tree().quit()
+
+func check_batched_tints() -> void:
+	var view := SubViewport.new()
+	view.size = Vector2i(64, 64)
+	view.own_world_3d = true
+	view.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	add_child(view)
+	var camera := Camera3D.new()
+	view.add_child(camera)
+	camera.position = Vector3(0, 5, 0)
+	camera.look_at(Vector3.ZERO, Vector3.FORWARD)
+	camera.projection = Camera3D.PROJECTION_ORTHOGONAL
+	camera.size = 2.0
+	var shader := Mats.shader()
+	var original_code := shader.code
+	shader.code = original_code.replace("render_mode specular_schlick_ggx;", "render_mode unshaded;")
+	for tint in [Color(0.65, 1.2, 1.4), Mats.tint_for("roof_tile", Color(0.36, 0.34, 0.32))]:
+		var holder := Node3D.new()
+		view.add_child(holder)
+		var mesh := MeshInstance3D.new()
+		mesh.mesh = PlaneMesh.new()
+		holder.add_child(mesh)
+		Mats.apply(mesh, "roof_tile", tint)
+		for frame in 3:
+			await RenderingServer.frame_post_draw
+		var before := view.get_texture().get_image()
+		Mats.merge_static(holder)
+		for frame in 3:
+			await RenderingServer.frame_post_draw
+		var after := view.get_texture().get_image()
+		var error := 0.0
+		for y in 64:
+			for x in 64:
+				var a := before.get_pixel(x, y)
+				var b := after.get_pixel(x, y)
+				error += Vector3(a.r - b.r, a.g - b.g, a.b - b.b).length() / 4096.0
+		assert(error < 0.018, "Batching must preserve tinted roof colours in both renderers, including grey over red: error=%f tint=%s" % [error, tint])
+		holder.free()
+	shader.code = original_code
+	view.free()
 
 func check_road_surfaces() -> void:
 	var view := SubViewport.new()

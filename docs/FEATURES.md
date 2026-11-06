@@ -1270,9 +1270,10 @@ layer each frame, so moving the pointer does not rebuild all squad counters. Hid
 also stops its raster updates. Smoke sight checks visit smoke grenades directly rather than every
 projectile; cloud growth, movement and dissipation still take effect immediately.
 
-Clients build scenery in and around the camera's view first and cache visited models; distant models and
-cosmetic collision bodies remain inactive. The server still simulates the complete
-map. Nearby movement orders can reuse a checked route corridor, with separate
+Views build scenery in and around the camera first and cache visited models; local games and hosts
+share the clients' spatial draw batches. Distant models and client cosmetic collision bodies remain
+inactive, while host collision and the complete simulation stay active. Returning to cached scenery
+does not consume the new-model construction limit. Nearby movement orders can reuse a checked route corridor, with separate
 destinations and invalidation when terrain or danger changes.
 
 Grass, bushes and stones are generated around the camera, beyond their visible
