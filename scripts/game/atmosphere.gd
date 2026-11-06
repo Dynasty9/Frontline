@@ -391,6 +391,7 @@ func _build_ground() -> void:
 	var sh := Shader.new()
 	sh.code = MapDims.shader(GROUND_SHADER.replace("// BACKDROP_HEIGHT", BACKDROP_HEIGHT))
 	ground_mat.shader = sh
+	ground_mat.set_shader_parameter("vertex_lit", ProjectSettings.get_setting_with_override("rendering/shading/overrides/force_vertex_shading"))
 	ground_mat.set_shader_parameter("biome_tex", biome_tex)
 	ground_mat.set_shader_parameter("detail_tex", detail_tex)
 	ground_mat.set_shader_parameter("backdrop_tex", backdrop_tex)
@@ -509,12 +510,12 @@ func _setup_rain() -> void:
 	pm.gravity = Vector3.ZERO
 	pm.collision_mode = ParticleProcessMaterial.COLLISION_HIDE_ON_CONTACT
 	var rain := GPUParticles3D.new()
-	rain.amount = int(14000 * Settings.fx_mult())
+	rain.amount = int(4500 * Settings.fx_mult())
 	rain.lifetime = 1.6
 	rain.preprocess = 1.6
 	rain.process_material = pm
 	var q := QuadMesh.new()
-	q.size = Vector2(0.06, 1.2)
+	q.size = Vector2(0.025, 0.65)
 	rain.draw_pass_1 = q
 	var rm := ShaderMaterial.new()
 	var sh := Shader.new()
@@ -546,15 +547,16 @@ func _setup_rain() -> void:
 	var sq := QuadMesh.new()
 	sq.size = Vector2(0.08, 0.08)
 	splash.draw_pass_1 = sq
-	var smat := StandardMaterial3D.new()
-	smat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	smat.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED
-	smat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	smat.albedo_color = Color(0.8, 0.85, 0.9, 0.45)
+	var smat := ShaderMaterial.new()
+	var splash_shader := Shader.new()
+	splash_shader.code = MapDims.shader(SPLASH_SHADER)
+	smat.shader = splash_shader
+	smat.set_shader_parameter("deform_tex", deform_tex)
+	smat.set_shader_parameter("water_level", WaterMap.LEVEL)
 	splash.material_override = smat
 	splash.local_coords = false
 	splash.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	splash.visibility_aabb = AABB(Vector3(-50, -2, -50), Vector3(100, 6, 100))
+	splash.visibility_aabb = AABB(Vector3(-50, -5, -50), Vector3(100, 517, 100))
 	if Vfx.gl:
 		splash.amount = int(splash.amount * 0.35)
 	_splash = Vfx.part(splash)
@@ -566,8 +568,12 @@ func _setup_rain() -> void:
 
 func _rain_tick(dt: float) -> void:
 	var f := world.cam.focus_pos
-	_rain.global_position = Vector3(f.x, world.ground_y(f) + 34.0, f.z)
-	_splash.global_position = Vector3(f.x, world.ground_y(f) + 0.05, f.z)
+	_rain.global_position = world.cam.cam.global_position + Vector3(0, 15, 0)
+	_splash.global_position = Vector3(f.x, 0, f.z)
+	# Individual splash vertices find the ground; distant droplets are subpixel.
+	var nearby := world.cam.cam.global_position.distance_to(Vector3(f.x, world.ground_y(f), f.z)) < 140.0
+	Vfx.set_emitting(_splash, nearby)
+	_splash.visible = nearby
 	# lightning: a double flash lighting the clouds, thunder a moment later
 	_bolt_t -= dt
 	if _bolt_t <= 0.0:
@@ -590,12 +596,37 @@ func _rain_tick(dt: float) -> void:
 
 const RAIN_SHADER := """
 shader_type spatial;
-render_mode unshaded, blend_add, depth_draw_never, cull_disabled, shadows_disabled;
+render_mode unshaded, blend_mix, depth_draw_never, cull_disabled, shadows_disabled;
 void fragment() {
 	float x = abs(UV.x * 2.0 - 1.0);
 	float a = (1.0 - x) * smoothstep(0.0, 0.3, UV.y) * smoothstep(1.0, 0.6, UV.y);
 	ALBEDO = vec3(0.7, 0.75, 0.82) * a * 0.9;
-	ALPHA = a * 0.7;
+	ALPHA = a * 0.18;
+}
+"""
+
+
+const SPLASH_SHADER := """
+shader_type spatial;
+render_mode unshaded, blend_mix, depth_draw_never, cull_disabled, shadows_disabled;
+uniform sampler2DArray deform_tex : filter_linear, repeat_disable;
+uniform float water_level = -0.45;
+// TERRAIN_TEXTURE_HELPER
+varying float visibility;
+void vertex() {
+	vec3 center = MODEL_MATRIX[3].xyz;
+	float height = terrain_height(deform_tex, (center.xz + __MAP_HALF__) / __MAP_SIZE__);
+	center.y += max(water_level, height) + 0.05;
+	visibility = (1.0 - smoothstep(40.0, 120.0, distance(CAMERA_POSITION_WORLD, center)))
+		* (1.0 - step(__MAP_HALF__, max(abs(center.x), abs(center.z))));
+	vec3 scale = vec3(length(MODEL_MATRIX[0].xyz), length(MODEL_MATRIX[1].xyz), length(MODEL_MATRIX[2].xyz));
+	MODELVIEW_MATRIX = VIEW_MATRIX * mat4(INV_VIEW_MATRIX[0], INV_VIEW_MATRIX[1], INV_VIEW_MATRIX[2], vec4(center, 1.0));
+	VERTEX *= scale;
+}
+void fragment() {
+	float radius = length(UV * 2.0 - 1.0);
+	ALBEDO = vec3(0.65, 0.72, 0.78);
+	ALPHA = (1.0 - smoothstep(0.1, 1.0, radius)) * 0.26 * visibility;
 }
 """
 
@@ -1216,6 +1247,7 @@ const GROUND_SHADER := """
 shader_type spatial;
 render_mode specular_schlick_ggx;
 
+uniform bool vertex_lit = false;
 uniform vec3 sun_direction = vec3(0.0, 1.0, 0.0);
 uniform vec3 air_color : source_color = vec3(0.5, 0.6, 0.7);
 uniform float terrain_air = 0.0;
@@ -1259,6 +1291,13 @@ float dfm(vec2 p) {
 
 void vertex() {
 	wpos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
+	// The browser lights vertices, so displaced mountains need their slope here too.
+	if (vertex_lit) {
+		float spacing = max(abs(wpos.x), abs(wpos.z)) >= __MAP_HALF__ ? 16.0 : 1.0;
+		float dx = dfm(wpos.xz + vec2(spacing, 0.0)) - dfm(wpos.xz - vec2(spacing, 0.0));
+		float dz = dfm(wpos.xz + vec2(0.0, spacing)) - dfm(wpos.xz - vec2(0.0, spacing));
+		NORMAL = normalize(vec3(-dx, 2.0 * spacing, -dz));
+	}
 	if (abs(wpos.x) < __MAP_HALF__ && abs(wpos.z) < __MAP_HALF__) {
 		float d = dfm(wpos.xz);
 		VERTEX.y += d;

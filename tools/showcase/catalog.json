@@ -4029,7 +4029,7 @@
     },
     {
       "entry": "changelog/unreleased/environment-realism-extended.md",
-      "summary": "Continuous coastal scenery and connected hillside forests with cleaner canopy edges.",
+      "summary": "Surveyed Alpine ranges, fuller forests and photographed town surfaces give the generated battlefield more natural detail.",
       "medium": "still",
       "stage": "native-media",
       "rationale": "Matched panorama and closer forest views expose shoreline and vegetation changes; a separate matched Compatibility pair demonstrates the colour correction.",
@@ -4254,6 +4254,46 @@
           "file": "changelog/unreleased/environment-realism-extended/river-valley-after.jpg",
           "sha256": "f165f2e751fb6ae16cc0d3695dff24b02dd929b2a8b5bf47b8f6ad83d283fc7e",
           "caption": "river-valley-after"
+        },
+        {
+          "file": "changelog/unreleased/environment-realism-extended/comparison-panorama-after.jpg",
+          "sha256": "8f88c5f4405b9302898629d00f4a0b0d3a4855475b681eaae12754dee6e88f21",
+          "caption": "After the extended environment pass: panorama. Matched parent-branch and current cameras, seed and lighting."
+        },
+        {
+          "file": "changelog/unreleased/environment-realism-extended/comparison-panorama-before.jpg",
+          "sha256": "3bf2a02a1f5360efbaab860c9ffdad5c1ede5529422e18164e5e37007d4a1765",
+          "caption": "Before the extended environment pass: panorama. Matched parent-branch and current cameras, seed and lighting."
+        },
+        {
+          "file": "changelog/unreleased/environment-realism-extended/comparison-town-before.jpg",
+          "sha256": "9ec7282938ff43d0e2eef84347d57dba63bf8bf8af1f8ea1f4cba18870faad83",
+          "caption": "Before the extended environment pass: town. Matched parent-branch and current cameras, seed and lighting."
+        },
+        {
+          "file": "changelog/unreleased/environment-realism-extended/comparison-town-after.jpg",
+          "sha256": "39c5fa925f940def2aeb00197ebc92b399ad6240c8279cbeffc908c016b151dd",
+          "caption": "After the extended environment pass: town. Matched parent-branch and current cameras, seed and lighting."
+        },
+        {
+          "file": "changelog/unreleased/environment-realism-extended/comparison-meadow-before.jpg",
+          "sha256": "4414a4745cb81ba61669d525dc78db9cd2036dc9cf891d834bc96e8feac62222",
+          "caption": "Before the extended environment pass: meadow. Matched parent-branch and current cameras, seed and lighting."
+        },
+        {
+          "file": "changelog/unreleased/environment-realism-extended/comparison-meadow-after.jpg",
+          "sha256": "6e2bb1f57cb564ed34e64d56e6fad4442e87fa6cc308e0f9060fc496e1d5d6a3",
+          "caption": "After the extended environment pass: meadow. Matched parent-branch and current cameras, seed and lighting."
+        },
+        {
+          "file": "changelog/unreleased/environment-realism-extended/comparison-forest-before.jpg",
+          "sha256": "668602f6380d8b94c4ead721af3e029acdb13d6cd230ca06efe0edade520f440",
+          "caption": "Before the extended environment pass: forest. Matched parent-branch and current cameras, seed and lighting."
+        },
+        {
+          "file": "changelog/unreleased/environment-realism-extended/comparison-forest-after.jpg",
+          "sha256": "87124fabf29b41656cd1040ba3d04cf671f61ad88dedd3b9eb4c6e39b6b80d48",
+          "caption": "After the extended environment pass: forest. Matched parent-branch and current cameras, seed and lighting."
         }
       ],
       "output": null,
@@ -4277,7 +4317,8 @@
         "leaves": "Matched native Forward+, High/day seed3 1600x900, focus -128.6383,-95.47071. Close zoom18 pitch-15 yaw-2.4; stand zoom65 pitch-30 yaw0.7. Both held at2s,90settlingframes plus complete scenery residency, foliage and grass wind disabled. Before exact b1e4704 mats/res scripts PCK; after smaller broadleaf cards and photographed foliage lighting. Full frames, JPEG92, no retouching.",
         "lane_join": "Matched native Forward+, High/day seed3 1600x900, environment-views --capture-set=town transition view, zoom25 pitch-55 yaw0.7. Held2s/45settlingframes plus complete scenery residency. Before exact b1e4704 mats/res/atmosphere scripts loaded through PCK; after varied tracks and short broken asphalt edge. Full frames, JPEG92, no retouching.",
         "drainage": "Matched native Forward+, High/day seed3 1600x900, simulation held2s/45settlingframes plus full scenery residency. Forest focus-400,-450 zoom350 pitch-30 yaw-0.2; panorama focus0,0 zoom900 pitch-22 yaw0.7. Before exact4aec471 atmosphere/landform/terrain scripts PCK; after catchment weathering and retained snow. Heights unchanged byte-for-byte (backdrop red SHA256 a781fcd66353803fd51186905b31850f2c80d41742d1fbca43f90bce040e9761). Full frames, JPEG92, no retouching.",
-        "river": "Matched native Forward+, High/day seed3 1600x900, environment-views --capture-set=river-boundary, held2s/45settlingframes plus full scenery residency. Close focus-232.6883,-512 zoom130 pitch-40 yaw0.7; panorama focus0,0 zoom900 pitch-22 yaw0.7. Before exact6fa546e atmosphere/water_view/distant_forest scripts PCK; after scenery river pools. Authoritative water shapes and terrain unchanged. Full frames, JPEG92, no retouching."
+        "river": "Matched native Forward+, High/day seed3 1600x900, environment-views --capture-set=river-boundary, held2s/45settlingframes plus full scenery residency. Close focus-232.6883,-512 zoom130 pitch-40 yaw0.7; panorama focus0,0 zoom900 pitch-22 yaw0.7. Before exact6fa546e atmosphere/water_view/distant_forest scripts PCK; after scenery river pools. Authoritative water shapes and terrain unchanged. Full frames, JPEG92, no retouching.",
+        "complete_pass": "Native Forward+, High/day seed3 1600x900. Before exact parent b38e42e full PCK (SHA256 a78a1eacaff5e712878addff90d1f1cee8381f4def88659eaf584d6ffbe5e708); after1ab49b0. Same camera transforms, simulation held at2s, five-second warmup/full scenery residency followed by20s measurement before capture. Animated water and foliage continue normally. Camera parameters and measured results in performance.json beside these images. Full frames, JPEG92, no retouching. Earlier pairs below isolate individual checkpoints as documented separately."
       }
     }
   ],

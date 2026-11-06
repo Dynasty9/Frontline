@@ -1,0 +1,1160 @@
+{
+  "date_utc": "2026-11-06",
+  "before_ref": "b38e42e92d8236f13c2ef41a8da8610bd1771741",
+  "after_ref": "1ab49b0495ae0aa38d2dfda06d338743dd991a39",
+  "hardware": {
+    "os": "Windows-10-10.0.26200-SP0",
+    "cpu": "Intel Core i9-11900K, 8 cores / 16 threads",
+    "gpu": "NVIDIA GeForce RTX 3090",
+    "ram_gib": 63.9
+  },
+  "settings": {
+    "godot": "4.7.2 standard",
+    "renderer": "Forward+",
+    "resolution": [
+      1600,
+      900
+    ],
+    "preset": "high",
+    "mood": "day",
+    "seed": 3,
+    "map_m": 1024,
+    "vsync": false,
+    "fps_cap": 0
+  },
+  "scope": "Two ABBA comparisons on one desktop. No competing Godot, Frontline or Call of Duty process detected. Not low-end hardware coverage. Frozen runs hold authoritative simulation at 2 s; animated scenery still runs. Live runs keep AI and simulation active. Full-game p99 remains above 16.7 ms.",
+  "frozen_method": {
+    "warmup_seconds": 5,
+    "measure_seconds": 20,
+    "wait_for_scenery_residency": true,
+    "views": {
+      "meadow": {
+        "focus": [
+          -110,
+          -130
+        ],
+        "zoom": 45,
+        "pitch": -35,
+        "yaw": 0.7
+      },
+      "town": {
+        "focus": [
+          0,
+          0
+        ],
+        "zoom": 130,
+        "pitch": -50,
+        "yaw": 0.7
+      },
+      "forest": {
+        "focus": [
+          -400,
+          -450
+        ],
+        "zoom": 350,
+        "pitch": -30,
+        "yaw": -0.2
+      },
+      "panorama": {
+        "focus": [
+          0,
+          0
+        ],
+        "zoom": 900,
+        "pitch": -22,
+        "yaw": 0.7
+      }
+    }
+  },
+  "live_method": {
+    "warmup_seconds": 10,
+    "measure_seconds": 30,
+    "command": "godot [--main-pack BEFORE.pck | --path .] --resolution 1600x900 -- --aivai --seed=3 --offscreen --nohud --set=perf:0,edge_pan:false,fps_cap:0 --novsync --mood=day --preset=high --focus=0,0 --zoom=900 --pitch=-22 --cam-yaw=0.7 --perf-at=10 --perf-duration=30 --perf-json=OUTPUT.json --perf-shot=OUTPUT.png"
+  },
+  "frozen_runs": [
+    {
+      "index": 0,
+      "mode": "before",
+      "clean": true,
+      "valid": true,
+      "head": "1ab49b0495ae0aa38d2dfda06d338743dd991a39",
+      "source_sha256": "19ddb52855ce42cebae125ed9d81f2e22f24721f9d9c0fb11912c4bebb23de3f",
+      "baseline_pack_sha256": "a78a1eacaff5e712878addff90d1f1cee8381f4def88659eaf584d6ffbe5e708",
+      "start_epoch": 1793957733.2363334,
+      "end_epoch": 1793957904.3946652,
+      "views": [
+        {
+          "camera": "(-86.25295, 31.74529, -101.8065)",
+          "draw_calls": 3567.0,
+          "fps": 119.800946427477,
+          "frames": {
+            "count": 2396,
+            "max_ms": 17.508,
+            "p50_ms": 8.095,
+            "p95_ms": 10.494,
+            "p99_ms": 12.538
+          },
+          "gpu": {
+            "count": 2396,
+            "max_ms": 8.73200035095215,
+            "p50_ms": 7.2189998626709,
+            "p95_ms": 8.07400035858154,
+            "p99_ms": 8.32400035858154
+          },
+          "objects": 3851.0,
+          "preset": "high",
+          "seed": 3,
+          "static_bytes": 1260335982.0,
+          "texture_bytes": 620640768.0,
+          "time": 2.0,
+          "triangles": 3705116.0,
+          "video_bytes": 1121880800.0,
+          "view": "meadow"
+        },
+        {
+          "camera": "(53.83237, 99.58578, 63.91204)",
+          "draw_calls": 9456.0,
+          "fps": 60.4522004451081,
+          "frames": {
+            "count": 1210,
+            "max_ms": 28.577,
+            "p50_ms": 16.131,
+            "p95_ms": 21.101,
+            "p99_ms": 24.406
+          },
+          "gpu": {
+            "count": 1210,
+            "max_ms": 9.1560001373291,
+            "p50_ms": 7.71700000762939,
+            "p95_ms": 8.55399990081787,
+            "p99_ms": 8.82199954986572
+          },
+          "objects": 10089.0,
+          "preset": "high",
+          "seed": 3,
+          "static_bytes": 1264563108.0,
+          "texture_bytes": 620640768.0,
+          "time": 2.0,
+          "triangles": 6107762.0,
+          "video_bytes": 1132664256.0,
+          "view": "town"
+        },
+        {
+          "camera": "(-460.2184, 269.7886, -152.9331)",
+          "draw_calls": 1820.0,
+          "fps": 117.391383472453,
+          "frames": {
+            "count": 2348,
+            "max_ms": 14.557,
+            "p50_ms": 8.445,
+            "p95_ms": 9.664,
+            "p99_ms": 11.599
+          },
+          "gpu": {
+            "count": 2348,
+            "max_ms": 9.38700008392334,
+            "p50_ms": 7.7039999961853,
+            "p95_ms": 8.56799983978271,
+            "p99_ms": 8.88000011444092
+          },
+          "objects": 2063.0,
+          "preset": "high",
+          "seed": 3,
+          "static_bytes": 1246775346.0,
+          "texture_bytes": 620640768.0,
+          "time": 2.0,
+          "triangles": 4265654.0,
+          "video_bytes": 1128860160.0,
+          "view": "forest"
+        },
+        {
+          "camera": "(537.5774, 337.1459, 638.2344)",
+          "draw_calls": 9519.0,
+          "fps": 41.2472550725759,
+          "frames": {
+            "count": 826,
+            "max_ms": 41.444,
+            "p50_ms": 23.674,
+            "p95_ms": 29.813,
+            "p99_ms": 35.336
+          },
+          "gpu": {
+            "count": 826,
+            "max_ms": 11.9899997711182,
+            "p50_ms": 10.6409997940063,
+            "p95_ms": 11.3870000839233,
+            "p99_ms": 11.753999710083
+          },
+          "objects": 11199.0,
+          "preset": "high",
+          "seed": 3,
+          "static_bytes": 1232398270.0,
+          "texture_bytes": 620640768.0,
+          "time": 2.0,
+          "triangles": 5898920.0,
+          "video_bytes": 1144415136.0,
+          "view": "panorama"
+        }
+      ],
+      "peak_process_rss_bytes": 3105218560
+    },
+    {
+      "index": 1,
+      "mode": "after",
+      "clean": true,
+      "valid": true,
+      "head": "1ab49b0495ae0aa38d2dfda06d338743dd991a39",
+      "source_sha256": "19ddb52855ce42cebae125ed9d81f2e22f24721f9d9c0fb11912c4bebb23de3f",
+      "baseline_pack_sha256": "a78a1eacaff5e712878addff90d1f1cee8381f4def88659eaf584d6ffbe5e708",
+      "start_epoch": 1793957904.3966665,
+      "end_epoch": 1793958081.4180202,
+      "views": [
+        {
+          "camera": "(-86.25295, 31.74529, -101.8065)",
+          "draw_calls": 1149.0,
+          "fps": 125.234583622756,
+          "frames": {
+            "count": 2505,
+            "max_ms": 11.655,
+            "p50_ms": 7.91,
+            "p95_ms": 8.891,
+            "p99_ms": 9.373
+          },
+          "gpu": {
+            "count": 2505,
+            "max_ms": 9.23499965667725,
+            "p50_ms": 7.3270001411438,
+            "p95_ms": 8.1899995803833,
+            "p99_ms": 8.57800006866455
+          },
+          "objects": 1383.0,
+          "preset": "high",
+          "seed": 3,
+          "static_bytes": 1499616506.0,
+          "texture_bytes": 663902720.0,
+          "time": 2.0,
+          "triangles": 4074454.0,
+          "video_bytes": 1272430160.0,
+          "view": "meadow"
+        },
+        {
+          "camera": "(53.83237, 99.58578, 63.91204)",
+          "draw_calls": 3250.0,
+          "fps": 112.474676326625,
+          "frames": {
+            "count": 2250,
+            "max_ms": 16.814,
+            "p50_ms": 8.761,
+            "p95_ms": 10.467,
+            "p99_ms": 12.454
+          },
+          "gpu": {
+            "count": 2250,
+            "max_ms": 10.673999786377,
+            "p50_ms": 7.95900011062622,
+            "p95_ms": 8.80599975585938,
+            "p99_ms": 9.18099975585938
+          },
+          "objects": 3579.0,
+          "preset": "high",
+          "seed": 3,
+          "static_bytes": 1535227224.0,
+          "texture_bytes": 663902720.0,
+          "time": 2.0,
+          "triangles": 6524656.0,
+          "video_bytes": 1290456768.0,
+          "view": "town"
+        },
+        {
+          "camera": "(-460.2184, 269.7886, -152.9331)",
+          "draw_calls": 1008.0,
+          "fps": 112.299786630405,
+          "frames": {
+            "count": 2246,
+            "max_ms": 12.939,
+            "p50_ms": 8.916,
+            "p95_ms": 9.752,
+            "p99_ms": 10.238
+          },
+          "gpu": {
+            "count": 2246,
+            "max_ms": 10.0679998397827,
+            "p50_ms": 8.34700012207031,
+            "p95_ms": 9.08699989318848,
+            "p99_ms": 9.48600006103516
+          },
+          "objects": 1255.0,
+          "preset": "high",
+          "seed": 3,
+          "static_bytes": 1517974833.0,
+          "texture_bytes": 663902720.0,
+          "time": 2.0,
+          "triangles": 4675612.0,
+          "video_bytes": 1237062688.0,
+          "view": "forest"
+        },
+        {
+          "camera": "(537.5774, 337.1459, 638.2344)",
+          "draw_calls": 4037.0,
+          "fps": 72.2740897388286,
+          "frames": {
+            "count": 1446,
+            "max_ms": 25.868,
+            "p50_ms": 13.26,
+            "p95_ms": 17.847,
+            "p99_ms": 20.733
+          },
+          "gpu": {
+            "count": 1446,
+            "max_ms": 12.5979995727539,
+            "p50_ms": 10.7740001678467,
+            "p95_ms": 11.8489999771118,
+            "p99_ms": 12.2519998550415
+          },
+          "objects": 4759.0,
+          "preset": "high",
+          "seed": 3,
+          "static_bytes": 1583480481.0,
+          "texture_bytes": 663902720.0,
+          "time": 2.0,
+          "triangles": 6339758.0,
+          "video_bytes": 1356291536.0,
+          "view": "panorama"
+        }
+      ],
+      "peak_process_rss_bytes": 3483037696
+    },
+    {
+      "index": 2,
+      "mode": "after",
+      "clean": true,
+      "valid": true,
+      "head": "1ab49b0495ae0aa38d2dfda06d338743dd991a39",
+      "source_sha256": "19ddb52855ce42cebae125ed9d81f2e22f24721f9d9c0fb11912c4bebb23de3f",
+      "baseline_pack_sha256": "a78a1eacaff5e712878addff90d1f1cee8381f4def88659eaf584d6ffbe5e708",
+      "start_epoch": 1793958081.420506,
+      "end_epoch": 1793958256.8023553,
+      "views": [
+        {
+          "camera": "(-86.25295, 31.74529, -101.8065)",
+          "draw_calls": 1149.0,
+          "fps": 125.021157618937,
+          "frames": {
+            "count": 2501,
+            "max_ms": 11.604,
+            "p50_ms": 7.928,
+            "p95_ms": 8.869,
+            "p99_ms": 9.325
+          },
+          "gpu": {
+            "count": 2501,
+            "max_ms": 11.2229995727539,
+            "p50_ms": 7.33199977874756,
+            "p95_ms": 8.23700046539307,
+            "p99_ms": 8.56099987030029
+          },
+          "objects": 1383.0,
+          "preset": "high",
+          "seed": 3,
+          "static_bytes": 1500082974.0,
+          "texture_bytes": 663902720.0,
+          "time": 2.0,
+          "triangles": 4077940.0,
+          "video_bytes": 1272670160.0,
+          "view": "meadow"
+        },
+        {
+          "camera": "(53.83237, 99.58578, 63.91204)",
+          "draw_calls": 3254.0,
+          "fps": 109.341624431569,
+          "frames": {
+            "count": 2187,
+            "max_ms": 18.649,
+            "p50_ms": 8.925,
+            "p95_ms": 11.271,
+            "p99_ms": 12.954
+          },
+          "gpu": {
+            "count": 2187,
+            "max_ms": 9.94099998474121,
+            "p50_ms": 7.94299983978271,
+            "p95_ms": 8.89599990844727,
+            "p99_ms": 9.22599983215332
+          },
+          "objects": 3583.0,
+          "preset": "high",
+          "seed": 3,
+          "static_bytes": 1535540777.0,
+          "texture_bytes": 663902720.0,
+          "time": 2.0,
+          "triangles": 6534456.0,
+          "video_bytes": 1290689264.0,
+          "view": "town"
+        },
+        {
+          "camera": "(-460.2184, 269.7886, -152.9331)",
+          "draw_calls": 1008.0,
+          "fps": 112.44726785374,
+          "frames": {
+            "count": 2250,
+            "max_ms": 12.871,
+            "p50_ms": 8.916,
+            "p95_ms": 9.837,
+            "p99_ms": 10.253
+          },
+          "gpu": {
+            "count": 2250,
+            "max_ms": 9.92800045013428,
+            "p50_ms": 8.30200004577637,
+            "p95_ms": 9.13899993896484,
+            "p99_ms": 9.51200008392334
+          },
+          "objects": 1255.0,
+          "preset": "high",
+          "seed": 3,
+          "static_bytes": 1518288985.0,
+          "texture_bytes": 663902720.0,
+          "time": 2.0,
+          "triangles": 4677266.0,
+          "video_bytes": 1237295184.0,
+          "view": "forest"
+        },
+        {
+          "camera": "(537.5774, 337.1459, 638.2344)",
+          "draw_calls": 4038.0,
+          "fps": 70.9843408544075,
+          "frames": {
+            "count": 1420,
+            "max_ms": 26.914,
+            "p50_ms": 13.441,
+            "p95_ms": 18.356,
+            "p99_ms": 21.558
+          },
+          "gpu": {
+            "count": 1420,
+            "max_ms": 12.6059999465942,
+            "p50_ms": 10.8959999084473,
+            "p95_ms": 11.9180002212524,
+            "p99_ms": 12.2320003509521
+          },
+          "objects": 4760.0,
+          "preset": "high",
+          "seed": 3,
+          "static_bytes": 1583790652.0,
+          "texture_bytes": 663902720.0,
+          "time": 2.0,
+          "triangles": 6343804.0,
+          "video_bytes": 1356521952.0,
+          "view": "panorama"
+        }
+      ],
+      "peak_process_rss_bytes": 3492446208
+    },
+    {
+      "index": 3,
+      "mode": "before",
+      "clean": true,
+      "valid": true,
+      "head": "1ab49b0495ae0aa38d2dfda06d338743dd991a39",
+      "source_sha256": "19ddb52855ce42cebae125ed9d81f2e22f24721f9d9c0fb11912c4bebb23de3f",
+      "baseline_pack_sha256": "a78a1eacaff5e712878addff90d1f1cee8381f4def88659eaf584d6ffbe5e708",
+      "start_epoch": 1793958256.8053427,
+      "end_epoch": 1793958426.413111,
+      "views": [
+        {
+          "camera": "(-86.25295, 31.74529, -101.8065)",
+          "draw_calls": 3567.0,
+          "fps": 118.785229056767,
+          "frames": {
+            "count": 2376,
+            "max_ms": 16.479,
+            "p50_ms": 8.186,
+            "p95_ms": 10.395,
+            "p99_ms": 12.285
+          },
+          "gpu": {
+            "count": 2376,
+            "max_ms": 9.21399974822998,
+            "p50_ms": 7.25099992752075,
+            "p95_ms": 8.17000007629395,
+            "p99_ms": 8.51200008392334
+          },
+          "objects": 3851.0,
+          "preset": "high",
+          "seed": 3,
+          "static_bytes": 1260684199.0,
+          "texture_bytes": 620640768.0,
+          "time": 2.0,
+          "triangles": 3702128.0,
+          "video_bytes": 1121959968.0,
+          "view": "meadow"
+        },
+        {
+          "camera": "(53.83237, 99.58578, 63.91204)",
+          "draw_calls": 9456.0,
+          "fps": 61.4480244460142,
+          "frames": {
+            "count": 1229,
+            "max_ms": 29.261,
+            "p50_ms": 16.073,
+            "p95_ms": 19.949,
+            "p99_ms": 25.087
+          },
+          "gpu": {
+            "count": 1229,
+            "max_ms": 9.83699989318848,
+            "p50_ms": 7.90899991989136,
+            "p95_ms": 8.81099987030029,
+            "p99_ms": 9.22000026702881
+          },
+          "objects": 10089.0,
+          "preset": "high",
+          "seed": 3,
+          "static_bytes": 1264561025.0,
+          "texture_bytes": 620640768.0,
+          "time": 2.0,
+          "triangles": 6110916.0,
+          "video_bytes": 1132656640.0,
+          "view": "town"
+        },
+        {
+          "camera": "(-460.2184, 269.7886, -152.9331)",
+          "draw_calls": 1820.0,
+          "fps": 116.445225745744,
+          "frames": {
+            "count": 2329,
+            "max_ms": 17.495,
+            "p50_ms": 8.53,
+            "p95_ms": 9.62,
+            "p99_ms": 11.077
+          },
+          "gpu": {
+            "count": 2329,
+            "max_ms": 9.89099979400635,
+            "p50_ms": 7.80299997329712,
+            "p95_ms": 8.69099998474121,
+            "p99_ms": 9.04300022125244
+          },
+          "objects": 2063.0,
+          "preset": "high",
+          "seed": 3,
+          "static_bytes": 1246773663.0,
+          "texture_bytes": 620640768.0,
+          "time": 2.0,
+          "triangles": 4265504.0,
+          "video_bytes": 1128852544.0,
+          "view": "forest"
+        },
+        {
+          "camera": "(537.5774, 337.1459, 638.2344)",
+          "draw_calls": 9519.0,
+          "fps": 40.3677300366087,
+          "frames": {
+            "count": 808,
+            "max_ms": 39.959,
+            "p50_ms": 24.1,
+            "p95_ms": 31.128,
+            "p99_ms": 34.61
+          },
+          "gpu": {
+            "count": 808,
+            "max_ms": 12.1379995346069,
+            "p50_ms": 10.7279996871948,
+            "p95_ms": 11.5839996337891,
+            "p99_ms": 11.9079999923706
+          },
+          "objects": 11199.0,
+          "preset": "high",
+          "seed": 3,
+          "static_bytes": 1232393865.0,
+          "texture_bytes": 620640768.0,
+          "time": 2.0,
+          "triangles": 5899480.0,
+          "video_bytes": 1144405424.0,
+          "view": "panorama"
+        }
+      ],
+      "peak_process_rss_bytes": 3115474944
+    }
+  ],
+  "live_runs": [
+    {
+      "label": "base-1",
+      "valid_comparison": true,
+      "external_renderers": [],
+      "source_stable": true,
+      "source_diff_sha256": "19ddb52855ce42cebae125ed9d81f2e22f24721f9d9c0fb11912c4bebb23de3f",
+      "data": {
+        "detailed_timing": false,
+        "draw_calls": 9591.0,
+        "events_since_start": {
+          "ai_town_take": 3,
+          "banter": 1,
+          "built": 2,
+          "built_barracks": 2
+        },
+        "fps": 38.6063089170914,
+        "frame_changes": {
+          "count": 1158,
+          "max_ms": 56.715,
+          "p50_ms": 2.421,
+          "p95_ms": 7.937,
+          "p99_ms": 13.949
+        },
+        "frames": {
+          "count": 1159,
+          "max_ms": 81.281,
+          "p50_ms": 24.936,
+          "p95_ms": 34.633,
+          "p99_ms": 51.166
+        },
+        "loading_ms": {
+          "allocating terrain": 0,
+          "map generated": 44782,
+          "navigation grids ready": 1989,
+          "navigation ready": 49981,
+          "terrain ready": 305
+        },
+        "map_m": 1024,
+        "nested_max_ms": {},
+        "nested_total_ms": {},
+        "nodes": 34858.0,
+        "path_cache_hits": 17,
+        "path_queue_peak": 6,
+        "path_wait_max_ms": 6750.0,
+        "physics_cpu": {
+          "count": 1159,
+          "max_ms": 10.736,
+          "p50_ms": 3.587,
+          "p95_ms": 8.876,
+          "p99_ms": 10.736
+        },
+        "process_cpu": {
+          "count": 1159,
+          "max_ms": 77.636,
+          "p50_ms": 33.611,
+          "p95_ms": 64.266,
+          "p99_ms": 77.636
+        },
+        "render_cpu": {
+          "count": 1159,
+          "max_ms": 27.4050001220703,
+          "p50_ms": 14.28799974823,
+          "p95_ms": 18.3990004272461,
+          "p99_ms": 20.5790004425049
+        },
+        "render_gpu": {
+          "count": 1159,
+          "max_ms": 12.548999786377,
+          "p50_ms": 10.6059999465942,
+          "p95_ms": 11.3649997711182,
+          "p99_ms": 11.7919998168945
+        },
+        "render_objects": 11271.0,
+        "render_primitives": 5906752.0,
+        "render_thread_mode": 1,
+        "rendered": true,
+        "soldiers_alive": 27,
+        "static_memory_bytes": 1237365924.0,
+        "systems_total_ms": {
+          "AI commanders": 36.4060000000001,
+          "fire": 5.20699999999996,
+          "navigation rebuild": 14.058,
+          "network": 12.985,
+          "pathing": 28.787,
+          "replay recording": 1.64599999999998,
+          "rules + fog": 112.864,
+          "snapshots": 2.30299999999997,
+          "soldiers": 1029.769,
+          "spatial hash": 143.967,
+          "squads": 75.369,
+          "structures": 107.187,
+          "team + reveal": 7.15699999999999,
+          "terrain + cleanup": 23.57,
+          "vehicles+projectiles": 3.65699999999998
+        },
+        "ticks": {
+          "count": 900,
+          "max_ms": 10.548,
+          "p50_ms": 1.607,
+          "p95_ms": 3.076,
+          "p99_ms": 5.261
+        },
+        "views_total_ms": {
+          "atmosphere": 64.8129999999998,
+          "camera": 123.17,
+          "co-command": 896.906999999994,
+          "cosmetic bodies": 3.26199999999995,
+          "cosmetic terrain collision": 7.49899999999992,
+          "director": 4.47699999999997,
+          "distant soldiers": 855.253,
+          "fx": 14.6009999999999,
+          "grass": 9.47799999999996,
+          "gunfx": 50.995,
+          "hud": 198.546,
+          "input": 37.8090000000001,
+          "soldiers": 124.99699999999,
+          "structures": 151.789000000113,
+          "vfx": 45.9309999999999,
+          "wildlife": 267.221
+        },
+        "worker_threads": -1,
+        "worst_tick": {
+          "systems_ms": {
+            "AI commanders": 0.005,
+            "fire": 0.006,
+            "navigation rebuild": 0.015,
+            "network": 0.012,
+            "pathing": 8.204,
+            "replay recording": 0.003,
+            "rules + fog": 0.02,
+            "snapshots": 0.001,
+            "soldiers": 1.659,
+            "spatial hash": 0.238,
+            "squads": 0.252,
+            "structures": 0.114,
+            "team + reveal": 0.001,
+            "terrain + cleanup": 0.01,
+            "vehicles+projectiles": 0.005
+          },
+          "time": 38.0666666666671,
+          "total_ms": 10.548
+        }
+      }
+    },
+    {
+      "label": "current-1",
+      "valid_comparison": true,
+      "external_renderers": [],
+      "source_stable": true,
+      "source_diff_sha256": "19ddb52855ce42cebae125ed9d81f2e22f24721f9d9c0fb11912c4bebb23de3f",
+      "data": {
+        "detailed_timing": false,
+        "draw_calls": 3309.0,
+        "events_since_start": {
+          "ai_town_take": 2,
+          "banter": 1,
+          "built": 2,
+          "built_barracks": 2
+        },
+        "fps": 72.4830872796347,
+        "frame_changes": {
+          "count": 2174,
+          "max_ms": 63.621,
+          "p50_ms": 2.099,
+          "p95_ms": 6.832,
+          "p99_ms": 16.963
+        },
+        "frames": {
+          "count": 2175,
+          "max_ms": 92.503,
+          "p50_ms": 12.592,
+          "p95_ms": 20.489,
+          "p99_ms": 42.505
+        },
+        "loading_ms": {
+          "allocating terrain": 0,
+          "map generated": 45598,
+          "navigation grids ready": 2849,
+          "navigation ready": 50893,
+          "terrain ready": 306
+        },
+        "map_m": 1024,
+        "nested_max_ms": {},
+        "nested_total_ms": {},
+        "nodes": 35703.0,
+        "path_cache_hits": 12,
+        "path_queue_peak": 6,
+        "path_wait_max_ms": 7903.0,
+        "physics_cpu": {
+          "count": 2175,
+          "max_ms": 10.618,
+          "p50_ms": 3.798,
+          "p95_ms": 9.548,
+          "p99_ms": 10.618
+        },
+        "process_cpu": {
+          "count": 2175,
+          "max_ms": 116.174,
+          "p50_ms": 19.902,
+          "p95_ms": 81.586,
+          "p99_ms": 100.954
+        },
+        "render_cpu": {
+          "count": 2175,
+          "max_ms": 16.7180000762939,
+          "p50_ms": 6.18200017547607,
+          "p95_ms": 8.84299974060059,
+          "p99_ms": 10.5070000228882
+        },
+        "render_gpu": {
+          "count": 2175,
+          "max_ms": 13.0120000839233,
+          "p50_ms": 10.8509998321533,
+          "p95_ms": 11.8629999160767,
+          "p99_ms": 12.2340002059937
+        },
+        "render_objects": 3955.0,
+        "render_primitives": 6229070.0,
+        "render_thread_mode": 1,
+        "rendered": true,
+        "soldiers_alive": 27,
+        "static_memory_bytes": 1618087796.0,
+        "systems_total_ms": {
+          "AI commanders": 32.0120000000001,
+          "fire": 5.43199999999994,
+          "navigation rebuild": 14.128,
+          "network": 12.965,
+          "pathing": 21.268,
+          "replay recording": 1.73299999999998,
+          "rules + fog": 118.515,
+          "snapshots": 2.21499999999997,
+          "soldiers": 1043.399,
+          "spatial hash": 146.388,
+          "squads": 75.8700000000001,
+          "structures": 111.333,
+          "team + reveal": 7.54299999999997,
+          "terrain + cleanup": 24.134,
+          "vehicles+projectiles": 3.68999999999999
+        },
+        "ticks": {
+          "count": 901,
+          "max_ms": 9.816,
+          "p50_ms": 1.634,
+          "p95_ms": 3.16,
+          "p99_ms": 5.717
+        },
+        "views_total_ms": {
+          "atmosphere": 135.264,
+          "camera": 235.027,
+          "co-command": 925.958999999984,
+          "cosmetic bodies": 6.52899999999986,
+          "cosmetic terrain collision": 12.6099999999999,
+          "director": 8.57399999999988,
+          "distant soldiers": 1044.975,
+          "fx": 27.716,
+          "grass": 19.592,
+          "gunfx": 113.589,
+          "hud": 378.417,
+          "input": 49.5840000000002,
+          "scenery construction": 1131.8639999999,
+          "soldiers": 244.014999999988,
+          "structures": 284.130000000189,
+          "vfx": 89.6330000000007,
+          "wildlife": 533.546000000001
+        },
+        "worker_threads": -1,
+        "worst_tick": {
+          "systems_ms": {
+            "AI commanders": 0.014,
+            "fire": 0.008,
+            "navigation rebuild": 0.012,
+            "network": 0.017,
+            "pathing": 0.009,
+            "replay recording": 0.002,
+            "rules + fog": 1.725,
+            "snapshots": 0.004,
+            "soldiers": 1.136,
+            "spatial hash": 0.141,
+            "squads": 0.009,
+            "structures": 6.565,
+            "team + reveal": 0.156,
+            "terrain + cleanup": 0.012,
+            "vehicles+projectiles": 0.004
+          },
+          "time": 33.1000000000007,
+          "total_ms": 9.816
+        }
+      }
+    },
+    {
+      "label": "current-2",
+      "valid_comparison": true,
+      "external_renderers": [],
+      "source_stable": true,
+      "source_diff_sha256": "19ddb52855ce42cebae125ed9d81f2e22f24721f9d9c0fb11912c4bebb23de3f",
+      "data": {
+        "detailed_timing": false,
+        "draw_calls": 3309.0,
+        "events_since_start": {
+          "ai_town_take": 2,
+          "banter": 1,
+          "built": 2,
+          "built_barracks": 2
+        },
+        "fps": 72.2807251399627,
+        "frame_changes": {
+          "count": 2168,
+          "max_ms": 53.628,
+          "p50_ms": 2.117,
+          "p95_ms": 6.998,
+          "p99_ms": 18.841
+        },
+        "frames": {
+          "count": 2169,
+          "max_ms": 94.511,
+          "p50_ms": 12.611,
+          "p95_ms": 19.73,
+          "p99_ms": 42.115
+        },
+        "loading_ms": {
+          "allocating terrain": 0,
+          "map generated": 45227,
+          "navigation grids ready": 2869,
+          "navigation ready": 50563,
+          "terrain ready": 301
+        },
+        "map_m": 1024,
+        "nested_max_ms": {},
+        "nested_total_ms": {},
+        "nodes": 35703.0,
+        "path_cache_hits": 12,
+        "path_queue_peak": 6,
+        "path_wait_max_ms": 7945.0,
+        "physics_cpu": {
+          "count": 2169,
+          "max_ms": 11.859,
+          "p50_ms": 4.148,
+          "p95_ms": 9.267,
+          "p99_ms": 11.859
+        },
+        "process_cpu": {
+          "count": 2169,
+          "max_ms": 102.511,
+          "p50_ms": 20.453,
+          "p95_ms": 72.355,
+          "p99_ms": 91.181
+        },
+        "render_cpu": {
+          "count": 2169,
+          "max_ms": 18.4349995269775,
+          "p50_ms": 6.35399988937378,
+          "p95_ms": 8.86499959564209,
+          "p99_ms": 10.6659996185303
+        },
+        "render_gpu": {
+          "count": 2169,
+          "max_ms": 12.496000289917,
+          "p50_ms": 10.7159996032715,
+          "p95_ms": 11.6350002288818,
+          "p99_ms": 11.9729995727539
+        },
+        "render_objects": 3955.0,
+        "render_primitives": 6230060.0,
+        "render_thread_mode": 1,
+        "rendered": true,
+        "soldiers_alive": 27,
+        "static_memory_bytes": 1618086268.0,
+        "systems_total_ms": {
+          "AI commanders": 33.2700000000001,
+          "fire": 5.18399999999995,
+          "navigation rebuild": 14.725,
+          "network": 13.419,
+          "pathing": 19.4809999999999,
+          "replay recording": 1.60399999999998,
+          "rules + fog": 119.043,
+          "snapshots": 2.40599999999997,
+          "soldiers": 1042.692,
+          "spatial hash": 148.684,
+          "squads": 78.0230000000001,
+          "structures": 112.909,
+          "team + reveal": 7.305,
+          "terrain + cleanup": 21.486,
+          "vehicles+projectiles": 3.70999999999998
+        },
+        "ticks": {
+          "count": 899,
+          "max_ms": 11.032,
+          "p50_ms": 1.625,
+          "p95_ms": 3.197,
+          "p99_ms": 5.303
+        },
+        "views_total_ms": {
+          "atmosphere": 135.168,
+          "camera": 241.937,
+          "co-command": 939.686999999986,
+          "cosmetic bodies": 6.32699999999986,
+          "cosmetic terrain collision": 13.3049999999999,
+          "director": 9.03399999999991,
+          "distant soldiers": 1033.545,
+          "fx": 29.2859999999999,
+          "grass": 20.149,
+          "gunfx": 115.084000000001,
+          "hud": 382.220999999999,
+          "input": 50.5330000000004,
+          "scenery construction": 1099.32699999991,
+          "soldiers": 250.342999999987,
+          "structures": 288.733000000094,
+          "vfx": 89.7090000000003,
+          "wildlife": 544.159000000001
+        },
+        "worker_threads": -1,
+        "worst_tick": {
+          "systems_ms": {
+            "AI commanders": 0.018,
+            "fire": 0.006,
+            "navigation rebuild": 0.019,
+            "network": 0.02,
+            "pathing": 0.012,
+            "replay recording": 0.002,
+            "rules + fog": 1.73,
+            "snapshots": 0.004,
+            "soldiers": 1.799,
+            "spatial hash": 0.254,
+            "squads": 0.01,
+            "structures": 6.951,
+            "team + reveal": 0.18,
+            "terrain + cleanup": 0.019,
+            "vehicles+projectiles": 0.005
+          },
+          "time": 33.1000000000007,
+          "total_ms": 11.032
+        }
+      }
+    },
+    {
+      "label": "base-2",
+      "valid_comparison": true,
+      "external_renderers": [],
+      "source_stable": true,
+      "source_diff_sha256": "19ddb52855ce42cebae125ed9d81f2e22f24721f9d9c0fb11912c4bebb23de3f",
+      "data": {
+        "detailed_timing": false,
+        "draw_calls": 9591.0,
+        "events_since_start": {
+          "ai_town_take": 3,
+          "banter": 1,
+          "built": 2,
+          "built_barracks": 2
+        },
+        "fps": 38.7550401546203,
+        "frame_changes": {
+          "count": 1162,
+          "max_ms": 44.27,
+          "p50_ms": 2.553,
+          "p95_ms": 7.707,
+          "p99_ms": 12.353
+        },
+        "frames": {
+          "count": 1163,
+          "max_ms": 69.315,
+          "p50_ms": 24.927,
+          "p95_ms": 33.834,
+          "p99_ms": 48.603
+        },
+        "loading_ms": {
+          "allocating terrain": 0,
+          "map generated": 44333,
+          "navigation grids ready": 1937,
+          "navigation ready": 49830,
+          "terrain ready": 298
+        },
+        "map_m": 1024,
+        "nested_max_ms": {},
+        "nested_total_ms": {},
+        "nodes": 34858.0,
+        "path_cache_hits": 17,
+        "path_queue_peak": 6,
+        "path_wait_max_ms": 7067.0,
+        "physics_cpu": {
+          "count": 1163,
+          "max_ms": 13.008,
+          "p50_ms": 3.537,
+          "p95_ms": 10.7,
+          "p99_ms": 13.008
+        },
+        "process_cpu": {
+          "count": 1163,
+          "max_ms": 66.718,
+          "p50_ms": 32.717,
+          "p95_ms": 53.327,
+          "p99_ms": 66.718
+        },
+        "render_cpu": {
+          "count": 1163,
+          "max_ms": 26.3490009460449,
+          "p50_ms": 14.3290004425049,
+          "p95_ms": 18.7340003814697,
+          "p99_ms": 20.9880003814697
+        },
+        "render_gpu": {
+          "count": 1163,
+          "max_ms": 12.3159999847412,
+          "p50_ms": 10.585000038147,
+          "p95_ms": 11.2959995269775,
+          "p99_ms": 11.7440004348755
+        },
+        "render_objects": 11271.0,
+        "render_primitives": 5908550.0,
+        "render_thread_mode": 1,
+        "rendered": true,
+        "soldiers_alive": 27,
+        "static_memory_bytes": 1237359210.0,
+        "systems_total_ms": {
+          "AI commanders": 38.8440000000001,
+          "fire": 5.34699999999995,
+          "navigation rebuild": 14.297,
+          "network": 13.4,
+          "pathing": 30.056,
+          "replay recording": 1.72399999999998,
+          "rules + fog": 116.433,
+          "snapshots": 2.21899999999997,
+          "soldiers": 1024.683,
+          "spatial hash": 143.063,
+          "squads": 76.3310000000002,
+          "structures": 105.701,
+          "team + reveal": 6.94499999999999,
+          "terrain + cleanup": 21.957,
+          "vehicles+projectiles": 3.41099999999999
+        },
+        "ticks": {
+          "count": 899,
+          "max_ms": 12.829,
+          "p50_ms": 1.627,
+          "p95_ms": 3.114,
+          "p99_ms": 5.647
+        },
+        "views_total_ms": {
+          "atmosphere": 63.3859999999998,
+          "camera": 122.263,
+          "co-command": 902.060999999994,
+          "cosmetic bodies": 3.06799999999995,
+          "cosmetic terrain collision": 7.31399999999993,
+          "director": 4.56299999999998,
+          "distant soldiers": 835.216999999999,
+          "fx": 14.0289999999999,
+          "grass": 9.58199999999995,
+          "gunfx": 51.1479999999998,
+          "hud": 199.162,
+          "input": 36.3040000000001,
+          "soldiers": 123.695999999991,
+          "structures": 151.297000000115,
+          "vfx": 46.0219999999999,
+          "wildlife": 264.626
+        },
+        "worker_threads": -1,
+        "worst_tick": {
+          "systems_ms": {
+            "AI commanders": 0.009,
+            "fire": 0.006,
+            "navigation rebuild": 0.023,
+            "network": 0.02,
+            "pathing": 9.841,
+            "replay recording": 0.002,
+            "rules + fog": 0.045,
+            "snapshots": 0.003,
+            "soldiers": 2.107,
+            "spatial hash": 0.141,
+            "squads": 0.425,
+            "structures": 0.175,
+            "team + reveal": 0.002,
+            "terrain + cleanup": 0.021,
+            "vehicles+projectiles": 0.006
+          },
+          "time": 38.0666666666671,
+          "total_ms": 12.829
+        }
+      }
+    }
+  ]
+}

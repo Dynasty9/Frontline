@@ -314,6 +314,7 @@ static func foliage() -> ShaderMaterial:
 		sh.code = code(FOLIAGE_SHADER)
 		_foliage = ShaderMaterial.new()
 		_foliage.shader = sh
+		_foliage.set_shader_parameter("vertex_lit", ProjectSettings.get_setting_with_override("rendering/shading/overrides/force_vertex_shading"))
 	return _foliage
 
 
@@ -1215,6 +1216,7 @@ render_mode cull_disabled;
 instance uniform vec4 tint : source_color = vec4(0.2, 0.32, 0.14, 1.0);
 uniform float wind = 1.0;
 uniform bool leaf_cards = false;
+uniform bool vertex_lit = false;
 uniform float leaf_tone = 1.0;
 uniform sampler2D leaf_texture : source_color, filter_linear_mipmap_anisotropic, repeat_disable;
 uniform bool use_vcolor = false;
@@ -1245,6 +1247,12 @@ void vertex() {
 	VERTEX.z += sway * 0.6;
 	lpos = wp;
 	shade = clamp(NORMAL.y * 0.35 + 0.65, 0.0, 1.0);
+	// Leaf cards keep soft canopy lighting when the browser skips fragment normals.
+	if (leaf_cards && vertex_lit) {
+		vec3 canopy_normal = MODEL_NORMAL_MATRIX * NORMAL;
+		canopy_normal.y = abs(canopy_normal.y);
+		NORMAL = normalize(inverse(MODEL_NORMAL_MATRIX) * mix(canopy_normal, vec3(0.0, 1.0, 0.0), 0.35));
+	}
 }
 
 void fragment() {

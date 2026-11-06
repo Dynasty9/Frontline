@@ -1,7 +1,39 @@
 +++
 title = "Natural coasts, fuller forests and alpine surfaces"
-summary = "Irregular bays, fuller forests, textured snow and woodland ground cover give the battlefield more natural variation."
+summary = "Surveyed Alpine ranges, fuller forests and photographed town surfaces give the generated battlefield more natural detail."
 kind = "improved"
+
+[[screenshots]]
+file = "comparison-panorama-after.jpg"
+caption = "After the extended environment pass: panorama. Matched parent-branch and current cameras, seed and lighting."
+
+[[screenshots]]
+file = "comparison-panorama-before.jpg"
+caption = "Before the extended environment pass: panorama. Matched parent-branch and current cameras, seed and lighting."
+
+[[screenshots]]
+file = "comparison-town-before.jpg"
+caption = "Before the extended environment pass: town. Matched parent-branch and current cameras, seed and lighting."
+
+[[screenshots]]
+file = "comparison-town-after.jpg"
+caption = "After the extended environment pass: town. Matched parent-branch and current cameras, seed and lighting."
+
+[[screenshots]]
+file = "comparison-meadow-before.jpg"
+caption = "Before the extended environment pass: meadow. Matched parent-branch and current cameras, seed and lighting."
+
+[[screenshots]]
+file = "comparison-meadow-after.jpg"
+caption = "After the extended environment pass: meadow. Matched parent-branch and current cameras, seed and lighting."
+
+[[screenshots]]
+file = "comparison-forest-before.jpg"
+caption = "Before the extended environment pass: forest. Matched parent-branch and current cameras, seed and lighting."
+
+[[screenshots]]
+file = "comparison-forest-after.jpg"
+caption = "After the extended environment pass: forest. Matched parent-branch and current cameras, seed and lighting."
 
 [[screenshots]]
 file = "coast-before.jpg"
@@ -211,3 +243,5 @@ Country tracks have varied rut widths, intermittent centre grass and broader wor
 Mountain weathering follows baked downhill catchments. Snow persists in sheltered drainage channels while exposed ribs remain visible; changing the sunlight reuses the same drainage mask.
 
 Rivers continue beyond the battlefield into irregular scenery pools, with matching banks and riverbeds. These distant extensions do not change playable water or navigation.
+
+Browser lighting follows the displaced mountain slopes and softly lights photographed tree canopies while keeping the cheaper vertex-lighting renderer. Rain surrounds the camera with finer streaks; soft splashes follow ground and water height and disappear at distance.

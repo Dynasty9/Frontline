@@ -29,6 +29,8 @@ func _ready() -> void:
 	for p in [Vector2i(9, 23), Vector2i(511, 800), Vector2i(901, 107)]:
 		assert(original.get_pixelv(p) == imported.get_pixelv(p), "Asphalt roughness in alpha must survive import")
 	if DisplayServer.get_name() != "headless":
+		await check_vertex_ground_normals()
+		await check_rain_splashes()
 		await check_road_surfaces()
 		await check_ground_grime()
 		await check_shrub_leaves()
@@ -376,6 +378,26 @@ func check_tree_leaves() -> void:
 	for frame in 3:
 		await RenderingServer.frame_post_draw
 	assert(view.get_texture().get_image().get_pixel(16, 16).a < 0.01, "Tree photographs must keep transparent edges after batching")
+	photo.fill(Color.WHITE)
+	texture.update(photo)
+	var baked_material: ShaderMaterial = holder.get_child(0).material_override
+	baked_material.set_shader_parameter("vertex_lit", true)
+	var normal_source := original_code.substr(0, original_code.find("void fragment()"))
+	shader.code = normal_source.replace("render_mode cull_disabled;", "render_mode unshaded, cull_disabled;") + """
+void fragment() {
+	vec3 color = (INV_VIEW_MATRIX * vec4(NORMAL, 0.0)).xyz * 0.5 + 0.5;
+	if (!OUTPUT_IS_SRGB) { color = mix(color / 12.92, pow((color + 0.055) / 1.055, vec3(2.4)), step(vec3(0.04045), color)); }
+	ALBEDO = color;
+}
+"""
+	for angle in [-0.6, 0.6]:
+		holder.rotation.x = angle
+		holder.scale = Vector3(1.3, 0.8, 1.7)
+		for frame in 3:
+			await RenderingServer.frame_post_draw
+		var normal_pixel := view.get_texture().get_image().get_pixel(16, 16)
+		assert(normal_pixel.g > 0.68 and normal_pixel.b > 0.7, "Vertex-lit leaves must retain soft sky-facing canopy normals: %s" % normal_pixel)
+	baked_material.set_shader_parameter("vertex_lit", false)
 	material.set_shader_parameter("leaf_texture", original_texture)
 	material.set_shader_parameter("wind", 1.0)
 	shader.code = original_code
@@ -396,3 +418,98 @@ func check_release_forest_atlas() -> void:
 	assert(error == OK)
 	var atlas: Texture2DArray = release_script.atlas_texture()
 	assert(atlas.get_layers() == 20 and atlas.get_width() == 256 and atlas.has_mipmaps(), "Release tree cards must allocate their complete atlas without assertions")
+
+
+func check_vertex_ground_normals() -> void:
+	var view := SubViewport.new()
+	view.size = Vector2i(32, 32)
+	view.own_world_3d = true
+	view.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	add_child(view)
+	var camera := Camera3D.new()
+	view.add_child(camera)
+	camera.position = Vector3(0, 20, 0)
+	camera.look_at(Vector3.ZERO, Vector3.FORWARD)
+	camera.projection = Camera3D.PROJECTION_ORTHOGONAL
+	camera.size = 2.0
+	var mesh := MeshInstance3D.new()
+	var plane := PlaneMesh.new()
+	plane.size = Vector2(4, 4)
+	plane.subdivide_width = 4
+	plane.subdivide_depth = 4
+	mesh.mesh = plane
+	view.add_child(mesh)
+	var shader := Shader.new()
+	var source := Atmosphere.GROUND_SHADER
+	# Read the production vertex normal before fragment bump mapping can hide it.
+	source = source.substr(0, source.find("float hgt(")) + """
+void fragment() {
+	vec3 color = (INV_VIEW_MATRIX * vec4(NORMAL, 0.0)).xyz * 0.5 + 0.5;
+	if (!OUTPUT_IS_SRGB) { color = mix(color / 12.92, pow((color + 0.055) / 1.055, vec3(2.4)), step(vec3(0.04045), color)); }
+	ALBEDO = color;
+}
+"""
+	source = source.replace("render_mode specular_schlick_ggx;", "render_mode unshaded;")
+	source = source.replace("// BACKDROP_HEIGHT", "float backdrop(vec2 p) { return 0.0; }")
+	shader.code = MapDims.shader(source)
+	var material := ShaderMaterial.new()
+	material.shader = shader
+	material.set_shader_parameter("vertex_lit", true)
+	mesh.material_override = material
+	for slope in [Vector2.ZERO, Vector2(0.4, 0.2), Vector2(-0.3, -0.5)]:
+		var heights := Image.create(MapDims.N, MapDims.N, false, Image.FORMAT_RF)
+		for y in MapDims.N:
+			for x in MapDims.N:
+				heights.set_pixel(x, y, Color((float(x) - MapDims.HALF) * slope.x + (float(y) - MapDims.HALF) * slope.y, 0, 0))
+		var tiled := TerrainTexture.new(heights)
+		material.set_shader_parameter("deform_tex", tiled.texture)
+		for frame in 3:
+			await RenderingServer.frame_post_draw
+		var pixel := view.get_texture().get_image().get_pixel(16, 16)
+		var actual := Vector3(pixel.r, pixel.g, pixel.b) * 2.0 - Vector3.ONE
+		var expected := Vector3(-slope.x, 1.0, -slope.y).normalized()
+		assert(actual.distance_to(expected) < 0.025, "Vertex lighting must follow displaced terrain across tile seams: actual=%s expected=%s" % [actual, expected])
+	view.free()
+	print("TERRAIN_MATERIALS native displaced vertex normals passed")
+
+
+func check_rain_splashes() -> void:
+	var view := SubViewport.new()
+	view.size = Vector2i(32, 32)
+	view.own_world_3d = true
+	view.transparent_bg = true
+	view.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	add_child(view)
+	var camera := Camera3D.new()
+	camera.projection = Camera3D.PROJECTION_ORTHOGONAL
+	camera.size = 1.0
+	view.add_child(camera)
+	var mesh := MeshInstance3D.new()
+	mesh.mesh = QuadMesh.new()
+	mesh.custom_aabb = AABB(Vector3(-1, -1, -1), Vector3(2, 100, 2))
+	view.add_child(mesh)
+	var shader := Shader.new()
+	shader.code = MapDims.shader(Atmosphere.SPLASH_SHADER)
+	var material := ShaderMaterial.new()
+	material.shader = shader
+	material.set_shader_parameter("water_level", WaterMap.LEVEL)
+	mesh.material_override = material
+	for height in [-2.0, 0.0, 80.0]:
+		var ground := Image.create(MapDims.N, MapDims.N, false, Image.FORMAT_RF)
+		ground.fill(Color(height, 0, 0))
+		var tiled := TerrainTexture.new(ground)
+		material.set_shader_parameter("deform_tex", tiled.texture)
+		var target := Vector3(0, maxf(height, WaterMap.LEVEL) + 0.05, 0)
+		camera.position = target + Vector3(0, 0, 5)
+		camera.look_at(target)
+		for frame in 3:
+			await RenderingServer.frame_post_draw
+		var pixels := view.get_texture().get_image()
+		assert(pixels.get_pixel(16, 16).a > 0.2, "Rain splashes must land on elevated ground or the water surface")
+		assert(pixels.get_pixel(0, 0).a < 0.01, "Splash edges must fade rather than draw white squares")
+	camera.position.z = 150.0
+	for frame in 3:
+		await RenderingServer.frame_post_draw
+	assert(view.get_texture().get_image().get_pixel(16, 16).a < 0.01, "Distant splashes must fade before they form a bright patch")
+	view.free()
+	print("TERRAIN_MATERIALS native rain splash height, shape and distance passed")

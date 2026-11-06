@@ -65,7 +65,7 @@ residential driveway. `--capture-set=foliage` frames the same broadleaf tree fro
 both sides and at stand distance, with wind held still. Captures wait for scenery
 residency and batching to settle. `--capture-set=river-boundary` frames seed 3's
 northern river crossing close up and across the valley. Both revisions must use
-the same capture fixture.
+the same capture fixture. Add `--capture-set=rain --mood=rain` to check distant rain, town splashes and elevated ground. With `--fixed-fps 30`, `--capture-clip=close` also saves six seconds of full-frame PNGs beside the close still; encode them at 30 fps.
 
 The camera uses the normal terrain clearance, so a low requested zoom may raise the lens
 above a neighbouring ridge. This is a visual review stage, not a performance benchmark.

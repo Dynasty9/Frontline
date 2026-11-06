@@ -17,7 +17,10 @@ func capture() -> void:
 	if world.director:
 		world.director.active = false
 	var prefix := "build/terrain/environment-views"
+	var clip := ""
 	for arg in OS.get_cmdline_user_args():
+		if arg.begins_with("--capture-clip="):
+			clip = arg.get_slice("=", 1)
 		if arg.begins_with("--capture-prefix="):
 			prefix = arg.get_slice("=", 1)
 	assert(DirAccess.make_dir_recursive_absolute(prefix.get_base_dir()) == OK)
@@ -54,6 +57,12 @@ func capture() -> void:
 				break
 		print("CAPTURE town bounds=", town)
 	var settle_frames := 45
+	if "--capture-set=rain" in OS.get_cmdline_user_args():
+		views = [["valley", Vector3.ZERO, 900.0, -22.0, 0.7],
+			["town", Vector3.ZERO, 80.0, -45.0, 0.7],
+			["close", Vector3(-110, 0, -130), 18.0, -25.0, 0.7],
+			["slope", Vector3(-400, 0, -450), 35.0, -25.0, -0.2]]
+		settle_frames = 150
 	if "--capture-set=river-boundary" in OS.get_cmdline_user_args():
 		views = [["close", Vector3(-232.6883, 0, -world.terrain.landform.half), 130.0, -40.0, 0.7],
 			["forest", Vector3(-400, 0, -450), 350.0, -30.0, -0.2], ["panorama", Vector3.ZERO, 900.0, -22.0, 0.7]]
@@ -90,6 +99,9 @@ func capture() -> void:
 		world.cam.pitch_deg = view[3]
 		world.cam.yaw = view[4]
 		world.cam.focus(view[1])
+		if world.atmo.mood == "rain":
+			world.atmo._bolt_t = 100.0
+			world.atmo._flash = 0.0
 		for frame in settle_frames:
 			await process_frame
 		while world.structure_view != null and world.structure_view.warming():
@@ -97,6 +109,14 @@ func capture() -> void:
 		await RenderingServer.frame_post_draw
 		var filename: String = prefix + "-" + view[0] + ".png"
 		assert(root.get_texture().get_image().save_png(filename) == OK)
+		if clip == view[0]:
+			assert("--fixed-fps" in OS.get_cmdline_args(), "Clip capture needs --fixed-fps 30 to preserve particle timing")
+			var frames := prefix + "-" + clip + "-frames"
+			assert(DirAccess.make_dir_recursive_absolute(frames) == OK)
+			for frame in 180:
+				await process_frame
+				await RenderingServer.frame_post_draw
+				assert(root.get_texture().get_image().save_png(frames + "/%04d.png" % frame) == OK)
 		records.append({"file": filename, "focus": str(view[1]), "zoom": view[2], "pitch": view[3], "yaw": view[4], "time": world.time})
 		print("CAPTURE ", filename)
 	var output := FileAccess.open(prefix + ".json", FileAccess.WRITE)
