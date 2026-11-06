@@ -3553,6 +3553,19 @@
       "source_ref": "codex/soldier-presentation-queue",
       "sources": [],
       "output": null
+    },
+    {
+      "entry": "changelog/unreleased/route-connectivity.md",
+      "title": "Faster route checks on large battlefields",
+      "summary": "The server spends less time checking whether a destination is reachable, while retaining the same routes and battle results.",
+      "version": "unreleased",
+      "kind": "improved",
+      "medium": "text",
+      "stage": "text",
+      "rationale": "Alternating release microbenchmarks, exact connectivity labels and a 3600-tick state/event comparison are documented in docs/performance/route-connectivity.md. No whole-game FPS claim.",
+      "source_ref": "codex/route-connectivity",
+      "sources": [],
+      "output": null
     }
   ],
   "layout_capture": {
