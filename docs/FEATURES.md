@@ -557,7 +557,7 @@ Ambush Alley autoplay can call its existing mortar support against spotted, stop
 - Stones at the mountain foot have irregular broken faces instead of flattened round primitives.
 - Connected dry grass and richer moss patches replace evenly green valley floors.
 - Coastal margins transition through exposed gravel and darker wet stone instead of a uniformly sandy strip.
-- Moss and soil blend into exposed stone on slopes, with baked slab fractures, broken mineral beds, sheltered weathering, loose-stone pockets and snow on high sheltered ground.
+- Moss and soil blend into exposed stone on slopes, with baked slab fractures, broken mineral beds, sheltered weathering, loose-stone pockets and snow on high sheltered ground. A cached downhill catchment mask places runoff stains and retained snow in connected gullies; it shares the existing surface textures and leaves gameplay elevations unchanged.
 - Optional alpine haze takes on the sky colour and settles lightly into lower valleys.
 - Narrow mineral stains run down exposed cliffs, interrupted by ledges and changes in rock type.
 - Wind exposure and rock relief break up snow edges, with cooler compacted snow in sheltered pockets.

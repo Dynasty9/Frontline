@@ -38,9 +38,22 @@ func _ready() -> void:
 			assert(heights[edge] == 0.0 and heights[511 * 512 + edge] == 0.0)
 			assert(heights[edge * 512] == 0.0 and heights[edge * 512 + 511] == 0.0, "Surveyed stamps must join without a vertical cut")
 	var horizon := Atmosphere.backdrop_image(3)
-	assert(horizon.get_size() == Vector2i(512, 512) and horizon.has_mipmaps() and horizon.get_format() == Image.FORMAT_RF)
+	assert(horizon.get_size() == Vector2i(512, 512) and horizon.has_mipmaps() and horizon.get_format() == Image.FORMAT_RGF)
 	assert(horizon.get_data() == Atmosphere.backdrop_image(3).get_data(), "Scenery is deterministic for every peer")
 	assert(horizon.get_data() != Atmosphere.backdrop_image(4).get_data(), "Different maps have different mountain silhouettes")
+	var runoff := PackedFloat32Array()
+	runoff.resize(33 * 33)
+	for z in 33:
+		for x in 33:
+			runoff[z * 33 + x] = absf(x - 16.0) + (32 - z) * 0.5
+	var catchment := Landform.bake_drainage(runoff, 33)
+	assert(catchment == Landform.bake_drainage(runoff, 33), "Catchment weathering is deterministic")
+	assert(catchment[30 * 33 + 16] > catchment[4 * 33 + 16] + 0.2, "Gully weathering grows downstream")
+	assert(catchment[24 * 33 + 16] > catchment[24 * 33 + 4] + 0.2, "Flow converges in the valley instead of crossing its walls")
+	assert(runoff[0] == 32.0 and runoff[32 * 33 + 16] == 0.0, "Drainage baking preserves gameplay heights")
+	runoff.fill(0.0)
+	for value in Landform.bake_drainage(runoff, 33):
+		assert(value == 0.0, "Flat ground has no arbitrary downhill streaks or wrapped edges")
 	TerrainMap.N = 64
 	TerrainMap.H = 32.0
 	TerrainMap.DN = 128
@@ -189,7 +202,9 @@ func _ready() -> void:
 	var repeat := Landform.new(64)
 	repeat.generate(3, [[], [], []], world.water, [])
 	assert(geology.heights == repeat.heights, "Seeded terrain must reproduce exactly")
+	repeat.drainage = PackedFloat32Array([1.0])
 	repeat.generate(9, [[], [], []], world.water, [])
+	assert(repeat.drainage.is_empty(), "Regenerating a map invalidates its drainage")
 	assert(geology.heights != repeat.heights, "Seeds must produce different terrain")
 	assert(Landform.valid(geology.heights, 64))
 	var campaign := Landform.new(64)
@@ -233,12 +248,18 @@ func _ready() -> void:
 			heights[z * 17 + x] = 12.0 * maxf(0.0, 1.0 - absf(wx) / 12.0)
 	var flat := Landform.new(64).bake_surface()
 	assert(flat.get_pixel(3, 3).r > 0.99 and absf(flat.get_pixel(3, 3).g - 0.5) < 0.01, "Flat terrain has open sky and no concavity")
+	assert(flat.get_format() == Image.FORMAT_RGBA8 and flat.get_pixel(3, 3).a == 0.0, "Flat terrain has no drainage weathering")
+	world.terrain.landform.drainage = PackedFloat32Array([1.0])
 	world.terrain.install_landform(heights)
+	assert(world.terrain.landform.drainage.is_empty(), "Installing a map invalidates the old catchment cache")
 	var baked := world.terrain.landform.bake_surface()
 	assert(baked.get_data() == world.terrain.landform.bake_surface().get_data(), "Surface baking is deterministic")
 	assert(world.terrain.landform.heights == heights, "Baking must not change gameplay geography")
 	assert(baked.get_pixel(2, 4).r < 0.97, "A nearby ridge reduces valley sky light")
 	var low_sun := world.terrain.landform.bake_surface(Vector3(1, 0.3, 0).normalized())
+	for z in baked.get_height():
+		for x in baked.get_width():
+			assert(baked.get_pixel(x, z).a == low_sun.get_pixel(x, z).a, "Changing sunlight preserves drainage")
 	assert(low_sun.get_pixel(2, 4).b < 0.1 and low_sun.get_pixel(6, 4).b > 0.9, "Baked sunlight casts a ridge shadow on its sheltered side")
 	assert(is_equal_approx(world.ground_y(Vector3.ZERO), 11.75))
 	var hit := world.terrain.ray_ground(Vector3(-20, 1.5, 0), Vector3(20, 1.5, 0))

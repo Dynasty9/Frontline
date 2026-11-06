@@ -4214,6 +4214,26 @@
           "file": "changelog/unreleased/environment-realism-extended/lane-join-after.jpg",
           "sha256": "e109179d200bbde040a0c976d8517a9e018eb3a0634427da7e52b71d21a145c7",
           "caption": "lane-join-after"
+        },
+        {
+          "file": "changelog/unreleased/environment-realism-extended/drainage-before.jpg",
+          "sha256": "2fb2a05d25fda7d6a56bafb9f41d0c0a1b1e87b766c8e0a863edc03b85cab98f",
+          "caption": "drainage-before"
+        },
+        {
+          "file": "changelog/unreleased/environment-realism-extended/drainage-after.jpg",
+          "sha256": "c4fe536c840bda20b7b80eebc49125872ba8d7f1b147a07a1cb6da8a1a5babc8",
+          "caption": "drainage-after"
+        },
+        {
+          "file": "changelog/unreleased/environment-realism-extended/snow-channels-before.jpg",
+          "sha256": "a053b4dda3758b4264eae8c60b601ed52f1eae4b14812595fb0e55daabdfeb73",
+          "caption": "snow-channels-before"
+        },
+        {
+          "file": "changelog/unreleased/environment-realism-extended/snow-channels-after.jpg",
+          "sha256": "51d9dba214db4fb51003842b44ad52e9b930bda5134213bd657b9bada82e2a37",
+          "caption": "snow-channels-after"
         }
       ],
       "output": null,
@@ -4235,7 +4255,8 @@
         "meadow": "Matched native Forward+, High/day seed3 1600x900, focus-110,-130 yaw0.7, held2s/225settlingframes with grass wind disabled. Close zoom18 pitch-45; low view zoom18 pitch-15. Before exact66b3c54 atmosphere/grass scripts overlaid through PCK before main; after meadow/grass and local-culling-bounds checkpoint. Both use environment-views --capture-set=meadow. Full frames, no retouching.",
         "shrubs": "Matched native Forward+, High/day seed3 1600x900, focus -110,-130 zoom45 pitch-35 yaw0.7. Before exact0510a8d grass.gd PCK; after smaller leaf cards, linear photograph/root shading and seeded patch placement. Same simulation held at2s, 225 settling frames. No retouching; full frames encoded JPEG92.",
         "leaves": "Matched native Forward+, High/day seed3 1600x900, focus -128.6383,-95.47071. Close zoom18 pitch-15 yaw-2.4; stand zoom65 pitch-30 yaw0.7. Both held at2s,90settlingframes plus complete scenery residency, foliage and grass wind disabled. Before exact b1e4704 mats/res scripts PCK; after smaller broadleaf cards and photographed foliage lighting. Full frames, JPEG92, no retouching.",
-        "lane_join": "Matched native Forward+, High/day seed3 1600x900, environment-views --capture-set=town transition view, zoom25 pitch-55 yaw0.7. Held2s/90settlingframes plus complete scenery residency. Before exact b1e4704 mats/res/atmosphere scripts loaded through PCK; after varied tracks and short broken asphalt edge. Full frames, JPEG92, no retouching."
+        "lane_join": "Matched native Forward+, High/day seed3 1600x900, environment-views --capture-set=town transition view, zoom25 pitch-55 yaw0.7. Held2s/90settlingframes plus complete scenery residency. Before exact b1e4704 mats/res/atmosphere scripts loaded through PCK; after varied tracks and short broken asphalt edge. Full frames, JPEG92, no retouching.",
+        "drainage": "Matched native Forward+, High/day seed3 1600x900, simulation held2s/45settlingframes plus full scenery residency. Forest focus-400,-450 zoom350 pitch-30 yaw-0.2; panorama focus0,0 zoom900 pitch-22 yaw0.7. Before exact4aec471 atmosphere/landform/terrain scripts PCK; after catchment weathering and retained snow. Heights unchanged byte-for-byte (backdrop red SHA256 a781fcd66353803fd51186905b31850f2c80d41742d1fbca43f90bce040e9761). Full frames, JPEG92, no retouching."
       }
     }
   ],

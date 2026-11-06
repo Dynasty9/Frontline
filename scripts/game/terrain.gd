@@ -73,6 +73,7 @@ func _init(w) -> void:
 
 func install_landform(samples: PackedFloat32Array) -> void:
 	landform.heights = samples
+	landform.drainage.clear()
 	landform.peak = 0.0
 	for h in samples:
 		landform.peak = maxf(landform.peak, h)

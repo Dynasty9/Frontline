@@ -179,6 +179,21 @@ static func backdrop_image(seed_value: int) -> Image:
 			var curved := pow(h, 1.0 / 2.2)
 			values[z * 512 + x] = 0.18 + 0.70 * (0.5 - sin(asin(1.0 - 2.0 * curved) / 3.0))
 	var img := Image.create_from_data(512, 512, false, Image.FORMAT_RF, values.to_byte_array())
+	var catchment: Image = img.duplicate()
+	catchment.resize(256, 256, Image.INTERPOLATE_BILINEAR)
+	var elevations := catchment.get_data().to_float32_array()
+	for i in elevations.size():
+		elevations[i] = pow(smoothstep(0.18, 0.88, elevations[i]), 2.2) * 440.0
+	var drainage := Landform.bake_drainage(elevations, 256, 4.0)
+	catchment = Image.create_from_data(256, 256, false, Image.FORMAT_RF, drainage.to_byte_array())
+	catchment.resize(512, 512, Image.INTERPOLATE_BILINEAR)
+	drainage = catchment.get_data().to_float32_array()
+	var packed := PackedFloat32Array()
+	packed.resize(values.size() * 2)
+	for i in values.size():
+		packed[i * 2] = values[i]
+		packed[i * 2 + 1] = drainage[i]
+	img = Image.create_from_data(512, 512, false, Image.FORMAT_RGF, packed.to_byte_array())
 	img.generate_mipmaps()
 	return img
 
@@ -1390,9 +1405,14 @@ void fragment() {
 	scree_sample.rgb = mix(vec3(debris_luma), scree_sample.rgb, 0.18) * vec3(0.90, 0.97, 1.03);
 	vec4 moss_sample = surface_color(2.0, moss_uv, weights);
 	float macro = texture(detail_tex, p / 190.0 + 0.19).r;
-	vec3 habitat_bake = texture(surface_bake, (p + __MAP_HALF__) / __MAP_SIZE__).rgb;
+	vec4 surface = texture(surface_bake, (p + __MAP_HALF__) / __MAP_SIZE__);
+	vec3 habitat_bake = surface.rgb;
+	float flow = surface.a;
 	vec3 scenery = texture(scenery_bake, (p + __MAP_HALF__ + 1800.0) / (__MAP_SIZE__ + 3600.0)).rgb;
-	if (edge >= __MAP_HALF__) { habitat_bake = scenery; }
+	if (edge >= __MAP_HALF__) {
+		habitat_bake = scenery;
+		flow = texture(backdrop_tex, (p + __MAP_HALF__ + 1800.0) / (__MAP_SIZE__ + 3600.0)).g;
+	}
 	// Tilted beds break across the face; sheltered seams weather darker than exposed ribs.
 	float bedding = sin(wpos.y * 0.32 + p.x * 0.045 + p.y * 0.025 + (seams - 0.5) * 12.0);
 	float mineral = smoothstep(0.2, 0.85, bedding) * smoothstep(0.28, 0.65, patch);
@@ -1416,14 +1436,11 @@ void fragment() {
 	rock = mix(rock, scree_sample.rgb * vec3(1.01, 1.04, 1.07), talus * 0.8);
 	rock = mix(rock, rock * vec3(1.45, 1.40, 1.29), mineral * 0.65);
 	rock *= mix(0.86, 1.14, smoothstep(0.25, 0.75, macro));
-	// Stretch the stain field vertically; ledges and material patches interrupt each streak.
-	vec2 runoff_uv = vec2((p.x + p.y * 0.73) / 135.0, wpos.y / 2100.0 + seams * 0.035);
-	float runoff = smoothstep(0.50, 0.68, texture(detail_tex, runoff_uv).r);
+	// Weathering follows the baked downhill catchments rather than arbitrary stripes.
+	float runoff = smoothstep(0.1, 0.65, flow);
 	runoff *= smoothstep(0.55, 1.2, slope) * mix(0.25, 0.85, patch);
 	rock *= mix(vec3(1.0), vec3(0.56, 0.61, 0.63), runoff);
-	float wet_drainage = texture(detail_tex, runoff_uv * vec2(0.55, 1.4) + 0.37).r;
-	float tributaries = texture(detail_tex, runoff_uv * vec2(3.4, 0.7) + 0.11).r;
-	rock_damp = smoothstep(0.30, 0.50, wet_drainage * 0.75 + tributaries * 0.25);
+	rock_damp = smoothstep(0.12, 0.7, flow) * 0.7;
 	rock_damp *= mix(0.42, 1.0, shelter) * smoothstep(0.35, 1.0, slope);
 	rock_damp *= 1.0 - smoothstep(snow_line * 0.75, snow_line * 1.1, geology);
 	rock *= mix(vec3(1.0), vec3(0.27, 0.34, 0.38), rock_damp);
@@ -1502,11 +1519,11 @@ void fragment() {
 	snow_field -= min(3.0, max(0.0, slope - 0.75)) * 0.18;
 	// Snow catches behind ribs and in surface depressions; exposed faces retain bare rock.
 	float lee = clamp(dot(geometric.xz, normalize(vec2(0.8, 0.6))) + cavity, -1.0, 1.0);
-	snow_field += (macro - 0.5) * 0.45 + lee * 0.18 + (0.5 - rock_height) * 0.22;
+	snow_field += smoothstep(0.08, 0.6, flow) * 0.65 + (macro - 0.5) * 0.45 + lee * 0.18 + (0.5 - rock_height) * 0.22;
 	float snow = height_blend(rock_height, 0.6, smoothstep(-0.16, 0.20, snow_field));
 	snow *= 1.0 - smoothstep(0.85, 2.1, slope);
 	float scoured = smoothstep(0.46, 0.72, rock_sample.a * 0.38 + macro * 0.38 + patch * 0.24);
-	snow *= 1.0 - scoured * smoothstep(0.22, 0.95, slope) * 0.88;
+	snow *= 1.0 - scoured * smoothstep(0.22, 0.95, slope) * mix(0.88, 0.25, flow);
 	snow = height_blend(rock_sample.a, scree_sample.a, snow);
 	snow *= clean;
 	// Wind ripples are resolved only while they cover several pixels.

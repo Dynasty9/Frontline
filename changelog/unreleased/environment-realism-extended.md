@@ -142,6 +142,22 @@ caption = "Before: the dirt lane fades through a broad blurred band at the town 
 file = "lane-join-after.jpg"
 caption = "After: a shorter broken asphalt edge separates the surfaces, with patchier wear along the dirt lane. Same seed and camera."
 
+[[screenshots]]
+file = "drainage-before.jpg"
+caption = "Before: noise-based weathering and elevation-led snow."
+
+[[screenshots]]
+file = "drainage-after.jpg"
+caption = "After: downhill catchments place weathering and retained snow along connected gullies. Same terrain and camera."
+
+[[screenshots]]
+file = "snow-channels-before.jpg"
+caption = "Before: noise-based weathering and elevation-led snow."
+
+[[screenshots]]
+file = "snow-channels-after.jpg"
+caption = "After: downhill catchments place weathering and retained snow along connected gullies. Same terrain and camera."
+
 +++
 
 The ocean keeps detailed waves near the battlefield and uses a coarser surface beyond it.
@@ -175,3 +191,5 @@ World-space wood, plaster and weathering stay in place when scenery enters a bat
 Broadleaf crowns have smaller branches and more open gaps at the same triangle count. Photographed foliage uses its own surface detail, with consistent colour and two-sided lighting instead of an extra layer of procedural leaf noise.
 
 Country tracks have varied rut widths, intermittent centre grass and broader worn patches. Their joins to town asphalt use a short broken edge instead of a wide blurred band.
+
+Mountain weathering follows baked downhill catchments. Snow persists in sheltered drainage channels while exposed ribs remain visible; changing the sunlight reuses the same drainage mask.
