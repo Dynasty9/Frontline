@@ -49,6 +49,28 @@ cannot turn an advertised real-time comparison into a time-lapse. New gameplay s
 A current-build demonstration is not automatically a historical comparison.
 The controlled-motion fixture has its own fixed 60 Hz integration and 12 fps output.
 
+## Generated environment views
+
+`tests/fixtures/environment-views.gd` loads the real battlefield once, holds its simulation at
+two seconds, then captures the highest playable ridge close and wide, the hillside forest,
+and the whole valley. It records each camera in a JSON sidecar. Use the same fixture on the
+before and after revisions; differences in source revision must be recorded in the catalog.
+
+```sh
+godot --path . --resolution 1600x900 --script tests/fixtures/environment-views.gd -- --aivai --seed=3 --offscreen --nohud --set=perf:0 --preset=high --mood=day --focus=0,0 --capture-prefix=build/terrain/review
+```
+
+Add `--capture-set=town` for street detail, the town entrance, an overview and a
+residential driveway. `--capture-set=foliage` frames the same broadleaf tree from
+both sides and at stand distance, with wind held still. Captures wait for scenery
+residency and batching to settle. `--capture-set=river-boundary` frames seed 3's
+northern river crossing close up and across the valley. Both revisions must use
+the same capture fixture. `--capture-set=coast --mood=night` checks the sky and reflected cloud lighting over the sea.
+Add `--capture-set=rain --mood=rain` to check distant rain, town splashes and elevated ground. With `--fixed-fps 30`, `--capture-clip=close` also saves six seconds of full-frame PNGs beside the close still; encode them at 30 fps.
+
+The camera uses the normal terrain clearance, so a low requested zoom may raise the lens
+above a neighbouring ridge. This is a visual review stage, not a performance benchmark.
+
 ## Inventory and release process
 
 `catalog.json` records every entry's medium, stage, rationale and evidence source.

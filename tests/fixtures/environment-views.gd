@@ -1,0 +1,130 @@
+extends SceneTree
+## Native generated-world review: four matched views, one map build, simulation held at two seconds.
+
+func _initialize() -> void:
+	call_deferred("capture")
+
+func capture() -> void:
+	var game = load("res://main.tscn").instantiate()
+	root.add_child(game)
+	current_scene = game
+	while game.world == null or game.world.time < 2.0:
+		await process_frame
+	var world = game.world
+	world.set_physics_process(false)
+	world.cam.set_process(false)
+	world.cam.edge_pan = false
+	if world.director:
+		world.director.active = false
+	var prefix := "build/terrain/environment-views"
+	var clip := ""
+	for arg in OS.get_cmdline_user_args():
+		if arg.begins_with("--capture-clip="):
+			clip = arg.get_slice("=", 1)
+		if arg.begins_with("--capture-prefix="):
+			prefix = arg.get_slice("=", 1)
+	assert(DirAccess.make_dir_recursive_absolute(prefix.get_base_dir()) == OK)
+	var heights: PackedFloat32Array = world.terrain.landform.heights
+	assert(not heights.is_empty(), "The environment stage needs a generated alpine map")
+	var peak_index := 0
+	for i in heights.size():
+		if heights[i] > heights[peak_index]:
+			peak_index = i
+	var n: int = world.terrain.landform.n
+	var half: float = world.terrain.landform.half
+	var peak := Vector3((peak_index % n) * 4.0 - half, 0, floori(float(peak_index) / float(n)) * 4.0 - half)
+	var views := [
+		["snow-close", peak, 45.0, -42.0, -0.2],
+		["snow-ridge", peak, 120.0, -30.0, -0.7],
+		["forest", Vector3(-400,0,-450), 350.0, -30.0, -0.2],
+		["panorama", Vector3.ZERO, 900.0, -22.0, 0.7],
+	]
+	if "--capture-set=town" in OS.get_cmdline_user_args():
+		var town: Rect2 = world.town_rect
+		var center := Vector3(town.get_center().x, 0, town.get_center().y)
+		views = [
+			["street", Vector3(-55,0,-4), 15.0, -55.0, 0.7],
+			["transition", Vector3(town.position.x,0,center.z), 25.0, -55.0, 0.7],
+			["town", center, 130.0, -50.0, 0.7],
+		]
+		for piece: Array in world.decor:
+			if piece[0] != "drive" or not piece[3] is Vector3:
+				continue
+			var size: Vector3 = piece[3]
+			var position: Vector3 = piece[1]
+			if size.x > 2.5 and size.z > 3.0 and town.grow(20.0).has_point(Vector2(position.x, position.z)):
+				views.append(["driveway", position, 18.0, -50.0, float(piece[2]) + PI + 0.4])
+				break
+		print("CAPTURE town bounds=", town)
+	var settle_frames := 45
+	if "--capture-set=coast" in OS.get_cmdline_user_args():
+		var shore: float = world.atmo.ground_mat.get_shader_parameter("sea_x")
+		assert(shore < half, "The coast stage needs a map with a sea")
+		views = [["coast", Vector3(shore + 100.0, 0, 0), 280.0, -14.0, PI * 0.5]]
+		settle_frames = 90
+	if "--capture-set=rain" in OS.get_cmdline_user_args():
+		views = [["valley", Vector3.ZERO, 900.0, -22.0, 0.7],
+			["town", Vector3.ZERO, 80.0, -45.0, 0.7],
+			["close", Vector3(-110, 0, -130), 18.0, -25.0, 0.7],
+			["slope", Vector3(-400, 0, -450), 35.0, -25.0, -0.2]]
+		settle_frames = 150
+	if "--capture-set=river-boundary" in OS.get_cmdline_user_args():
+		views = [["close", Vector3(-232.6883, 0, -world.terrain.landform.half), 130.0, -40.0, 0.7],
+			["forest", Vector3(-400, 0, -450), 350.0, -30.0, -0.2], ["panorama", Vector3.ZERO, 900.0, -22.0, 0.7]]
+	if "--capture-set=meadow" in OS.get_cmdline_user_args():
+		views = [
+			["close", Vector3(-110, 0, -130), 18.0, -45.0, 0.7],
+			["wide", Vector3(-110, 0, -130), 45.0, -35.0, 0.7],
+			["low", Vector3(-110, 0, -130), 18.0, -15.0, 0.7],
+		]
+		settle_frames = 225
+		world.atmo.grass.mat.set_shader_parameter("wind", 0.0)
+		world.atmo.grass.bush_mat.set_shader_parameter("wind", 0.0)
+	if "--capture-set=foliage" in OS.get_cmdline_user_args():
+		var target := Vector3(-110, 0, -130)
+		var nearest := INF
+		for structure in world.structures:
+			if structure.skind != "tree" or structure.variant == 2 or (structure.variant != 1 and (structure.eid * 2654435761) % 100 < 34):
+				continue
+			var distance: float = structure.position.distance_squared_to(Vector3(-110, 0, -130))
+			if distance < nearest:
+				nearest = distance
+				target = structure.position
+		views = [["tree", target, 18.0, -15.0, 0.7], ["reverse", target, 18.0, -15.0, -2.4],
+			["stand", target, 65.0, -30.0, 0.7]]
+		settle_frames = 90
+		var materials = load("res://scripts/game/mats.gd")
+		materials.foliage().shader.code = materials.foliage().shader.code.replace("uniform float wind = 1.0;", "uniform float wind = 0.0;")
+		world.atmo.grass.mat.set_shader_parameter("wind", 0.0)
+		world.atmo.grass.bush_mat.set_shader_parameter("wind", 0.0)
+	var records := []
+	for view in views:
+		world.cam.dist = view[2]
+		world.cam.target_dist = view[2]
+		world.cam.pitch_deg = view[3]
+		world.cam.yaw = view[4]
+		world.cam.focus(view[1])
+		if world.atmo.mood == "rain":
+			world.atmo._bolt_t = 100.0
+			world.atmo._flash = 0.0
+		for frame in settle_frames:
+			await process_frame
+		while world.structure_view != null and world.structure_view.warming():
+			await process_frame
+		await RenderingServer.frame_post_draw
+		var filename: String = prefix + "-" + view[0] + ".png"
+		assert(root.get_texture().get_image().save_png(filename) == OK)
+		if clip == view[0]:
+			# Launch with --fixed-fps 30; Godot consumes that switch before exposing arguments.
+			var frames := prefix + "-" + clip + "-frames"
+			assert(DirAccess.make_dir_recursive_absolute(frames) == OK)
+			for frame in 180:
+				await process_frame
+				await RenderingServer.frame_post_draw
+				assert(root.get_texture().get_image().save_png(frames + "/%04d.png" % frame) == OK)
+		records.append({"file": filename, "focus": str(view[1]), "zoom": view[2], "pitch": view[3], "yaw": view[4], "time": world.time})
+		print("CAPTURE ", filename)
+	var output := FileAccess.open(prefix + ".json", FileAccess.WRITE)
+	assert(output != null)
+	output.store_string(JSON.stringify({"seed": world.settings.get("seed", 1), "mood": world.atmo.mood, "renderer": RenderingServer.get_current_rendering_method(), "resolution": root.size, "views": records}, "\t"))
+	quit()

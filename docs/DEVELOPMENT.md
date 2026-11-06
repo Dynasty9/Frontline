@@ -778,7 +778,9 @@ Use `--record-replay=FOLDER` to save a test battle, and `--replay=FOLDER` to wat
 ## Additional scaling diagnostics
 
 `tests/structure_view_test.tscn` checks deferred scenery construction, camera-cell
-changes, removal, and construction finishing outside the visible region.
+changes, removal, cached-model activation, host collision retention, and construction finishing outside the visible region.
+The rendered `tests/fixtures/terrain-materials.tscn` also compares tinted roofs before and after
+batching in both renderers; packed tints retain the renderer's colour space and their full bright range.
 The scaling runner includes this scene alongside the navigation and AI regressions.
 Benchmark JSON includes loading-stage timings, route-cache hits and path queue
 waiting time. `--require-target` makes the benchmark fail when any measured rendered

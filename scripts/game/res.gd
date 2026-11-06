@@ -211,8 +211,8 @@ static func foliage_cards(conifer: bool) -> ArrayMesh:
 		var center := out * (0.38 if conifer else 0.65)
 		center.y = sin(i * 1.7) * (0.12 if conifer else 0.55)
 		var along := (out + Vector3(0, -0.5, 0)).normalized() if conifer else Vector3(sin(angle), 0.65, cos(angle)).normalized()
-		var width := 0.45 if conifer else 0.32
-		var length := 0.65 if conifer else 0.55
+		var width := 0.45 if conifer else 0.20
+		var length := 0.65 if conifer else 0.32
 		if i % 2 == 0:
 			side = side.rotated(along, 0.8)
 		var normal := side.cross(along).normalized()

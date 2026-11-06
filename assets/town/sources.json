@@ -153,5 +153,20 @@
     "file": "gravelly_sand_rough_2k.jpg",
     "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/gravelly_sand/gravelly_sand_rough_2k.jpg",
     "sha256": "da39087ed3beced52f7ca68f77610ecaa048113c33e49a47cb6e7d930733fcaa"
+  },
+  {
+    "file": "road_damaged_clean_diff_2k.jpg",
+    "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/road_damaged_clean/road_damaged_clean_diff_2k.jpg",
+    "sha256": "752e227a57359a86f4499f70bc4685e7e8fd453170c95f1c012c5e1210bca739"
+  },
+  {
+    "file": "road_damaged_clean_nor_gl_2k.jpg",
+    "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/road_damaged_clean/road_damaged_clean_nor_gl_2k.jpg",
+    "sha256": "d57cbe2aecb39d1d2ec035f923cdbde9ccf1fe61e40b729cb18b558d446b2d62"
+  },
+  {
+    "file": "road_damaged_clean_rough_2k.jpg",
+    "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/road_damaged_clean/road_damaged_clean_rough_2k.jpg",
+    "sha256": "9c0e6ca41fb0846a5e7144c8af11ce607333ba1e0bbc6b13e9383ece4be8bc18"
   }
 ]
