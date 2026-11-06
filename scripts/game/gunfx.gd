@@ -182,7 +182,7 @@ func _process(dt: float) -> void:
 
 
 func ground_y(p: Vector3) -> float:
-	return world.terrain.deform_at(p) if world.terrain else 0.0
+	return world.ground_y(p)
 
 
 static func _jit(r: float) -> Vector3:
@@ -193,8 +193,10 @@ static func _jit(r: float) -> Vector3:
 
 ## A glowing streak flying from `from` to `to`: `length` of it lit at once,
 ## `speed` metres a second. col.a is its brightness.
-func tracer(from: Vector3, to: Vector3, col: Color, length := 6.0, width := 0.04, speed := 520.0, delay := 0.0) -> void:
-	_tr.put(Transform3D(Basis(to - from, Vector3(length, width, speed), Vector3.ZERO), from), col, Color(_t0() + delay, 9.0, randf(), 0.0))
+func tracer(from: Vector3, to: Vector3, col: Color, length := 6.0, width := 0.04, speed := 520.0, delay := 0.0, ignition := 0.0) -> void:
+	if from.distance_squared_to(to) < 0.0025 or speed <= 0.0:
+		return
+	_tr.put(Transform3D(Basis(to - from, Vector3(length, width, speed), Vector3.ZERO), from), col, Color(_t0() + delay, ignition, randf(), 0.0))
 
 
 ## A burst of light facing the camera (a muzzle seen end-on, a glint).
@@ -233,6 +235,51 @@ func grit(p: Vector3, v: Vector3, life: float, col: Color, width := 0.02, streak
 ## metal and lies about longer (its own ring); the rest is earth, stone, wood.
 func chunk(p: Vector3, v: Vector3, ext: Vector3, life: float, col: Color, floor_y: float, spin := 12.0, drag := 0.3, delay := 0.0, brass := false) -> void:
 	(_br if brass else _ch).put(Transform3D(Basis(v, Vector3(1.0, spin, drag), ext), p), Color(col.r, col.g, col.b, 1.0 if brass else 0.0), Color(_t0() + delay, life, randf(), floor_y))
+
+
+## Fragments are mostly dark, fast flecks, not a spray of burning stars.
+## Shared instance rings animate the flight and delayed landing puffs entirely
+## on the GPU, including on WebGL; a barrage creates no per-fragment nodes.
+func blast_fragments(p: Vector3, size: float, kind: String, ground: bool, detail: float) -> void:
+	var q := Settings.fx_mult() * detail
+	var k := sqrt(maxf(size, 0.1))
+	var n := int((18.0 if kind == "frag" else 28.0 * k) * q)
+	var gy := ground_y(p)
+	for i in n:
+		var a := randf() * TAU
+		var y := randf_range(0.08 if ground else -0.75, 0.9)
+		var h := sqrt(1.0 - y * y)
+		var dir := Vector3(cos(a) * h, y, sin(a) * h)
+		var speed := randf_range(24.0, 65.0) * k
+		grit(p + Vector3(0, 0.08, 0), dir * speed, randf_range(0.16, 0.38), Color(0.22, 0.21, 0.19, 0.85), 0.012 * k, 0.007, 1.4, gy)
+	if not ground or detail < 0.5:
+		return
+	# Resolve slower clods' landing positions at spawn; scheduling dust on
+	# the same clock keeps it after the landing without a per-frame update.
+	for i in int((3.0 if kind == "frag" else 8.0 * k) * q):
+		var a := randf() * TAU
+		var v := Vector3(cos(a) * randf_range(3.0, 7.0), randf_range(4.0, 9.0), sin(a) * randf_range(3.0, 7.0)) * k
+		var s := randf_range(0.035, 0.1) * k
+		var floor_y := gy
+		var t := 0.0
+		var at := p
+		# Match CHUNK_SHADER's exponential drag, then refine for the height
+		# where this clod will land rather than assuming a flat map.
+		for refine in 2:
+			var lo := log(1.0 + 0.3 * v.y / 9.8) / 0.3
+			var hi := 8.0
+			for step in 12:
+				t = (lo + hi) * 0.5
+				var reach := (1.0 - exp(-0.3 * t)) / 0.3
+				var y := p.y + 0.08 - 9.8 / 0.3 * t + (v.y + 9.8 / 0.3) * reach
+				if y > floor_y + s * 0.35:
+					lo = t
+				else:
+					hi = t
+			at = p + Vector3(v.x, 0.0, v.z) * ((1.0 - exp(-0.3 * t)) / 0.3)
+			floor_y = ground_y(at)
+		chunk(p + Vector3(0, 0.08, 0), v, Vector3(s, s * 0.7, s * 1.3), t + 3.0, SOIL_GRIT, floor_y, 18.0, 0.3)
+		puff(Vector3(at.x, floor_y + 0.06, at.z), Vector3.UP * 0.35, 0.06 * k, 0.35 * k, 0.9, Color(SOIL.r, SOIL.g, SOIL.b, 0.22), 2.0, 0.0, 0.0, 0.6, t)
 
 
 ## A flash lighting up what's round it for a moment (the same gun firing
@@ -336,7 +383,7 @@ func round_flight(from: Vector3, to: Vector3, kind: String, team: int, _cam_d: f
 		var dark := darkness()
 		col.a *= lerpf(0.4, 1.0, dark)
 		# (lit for the length it covers while the eye holds it, a sixtieth or so)
-		tracer(from, to, col, speed * 0.011 * lerpf(0.65, 1.0, dark) * randf_range(0.85, 1.15), float(m[10]), speed)
+		tracer(from, to, col, speed * 0.011 * lerpf(0.65, 1.0, dark) * randf_range(0.85, 1.15), float(m[10]), speed, 0.0, 6.0 if kind in ["rifle", "mg", "hmg", "minigun"] else 0.0)
 	return minf(dist / speed, 0.45)
 
 
@@ -415,6 +462,10 @@ func impact(kind: int, p: Vector3, back: Vector3, cal: float, cam_d: float, dela
 			for i in maxi(3, int(8.0 * q * sc + 0.5)):
 				spark(p + back * 0.03, (rd + _jit(0.85)).normalized() * randf_range(4.0, 12.0) * sc, randf_range(0.12, 0.4), HOT, 0.009, 0.02, 1.6, 9.8, gy, delay)
 			puff(p + back * 0.08, back * 0.5 + _jit(0.25), 0.03, randf_range(0.18, 0.28) * cal, randf_range(0.8, 1.2), Color(0.42, 0.41, 0.4, 0.22), 3.5, 0.25, 0.0, 0.8, delay)
+			if cam_d < 100.0:
+				for i in int(2.0 * q * sc):
+					var chip := randf_range(0.008, 0.02) * sc
+					chunk(p + back * 0.04, (rd + _jit(0.6)).normalized() * randf_range(3.0, 7.0) * sc, Vector3(chip, chip * 0.3, chip * 1.6), 2.0, Color(0.25, 0.26, 0.27), gy, 25.0, 0.7, delay)
 		Fx.HIT_FLESH:
 			# a quick dark mist, most of it out the far side
 			puff(p, (-back * randf_range(1.5, 3.0) + _jit(0.3)) * sc, 0.03, randf_range(0.16, 0.24) * sc, randf_range(0.25, 0.35), Color(0.3, 0.03, 0.02, 0.65), 8.0, 0.0, 2.0, 0.2, delay)
@@ -555,12 +606,13 @@ void vertex() {
 	float age = now - INSTANCE_CUSTOM.x;
 	float run = prm.z * age;
 	float head = min(total, run);
-	float tail = clamp(run - prm.x, 0.0, total);
+	float ignition = INSTANCE_CUSTOM.y;
+	float tail = clamp(run - prm.x, min(ignition, total), total);
 	vec3 cam = INV_VIEW_MATRIX[3].xyz;
 	vec3 wp = cam + INV_VIEW_MATRIX[2].xyz;
 	v_col = COLOR;
 	v_k = 0.0;
-	if (age >= 0.0 && tail < total - 0.01 && total > 0.05) {
+	if (age >= 0.0 && run > ignition && tail < total - 0.01 && total > 0.05) {
 		vec3 dir = span / total;
 		vec3 p = from + dir * mix(head, tail, UV.y);
 		vec3 to_p = p - cam;
@@ -570,7 +622,7 @@ void vertex() {
 		// never thinner than a pixel or two, however far off: it dims instead
 		float px = length(to_p) * 2.0 / (PROJECTION_MATRIX[1][1] * VIEWPORT_SIZE.y);
 		float w = max(prm.y, px * 1.6);
-		v_k = clamp(prm.y / w, 0.45, 1.0);
+		v_k = clamp(prm.y / w, 0.08, 1.0);
 		wp = p + side * (UV.x - 0.5) * w * 2.4;
 	}
 	VERTEX = (VIEW_MATRIX * vec4(wp, 1.0)).xyz;

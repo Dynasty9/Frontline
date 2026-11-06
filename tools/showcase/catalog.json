@@ -3437,6 +3437,53 @@
         "compatibility": "Target after with --rendering-method gl_compatibility",
         "command": "godot --main-pack PACK --resolution 1600x900 -- --aivai --seed=3 --offscreen --nohud --set=perf:0 --preset=high --mood=MOOD --focus=FOCUS --zoom=ZOOM --pitch=PITCH --cam-yaw=0.7 --screenshot=OUTPUT --shot-at=2 --quit-after=3"
       }
+    },
+    {
+      "entry": "changelog/unreleased/realistic-armament-effects.md",
+      "summary": "Distinct grenade, shell and fuel explosions with terrain-aware debris, flares and restrained tracers.",
+      "medium": "motion",
+      "stage": "armaments / flares",
+      "rationale": "Matched real engine recordings show flash duration, earth and fragment motion, lingering smoke and flare descent; stills document the same HE moment. No frame-rate claim.",
+      "source_ref": "b3ec8594ef59488cdfa36e5b12fcdf40b9cac791 (before); codex/realistic-armament-effects working tree (after)",
+      "sources": [
+        {
+          "file": "changelog/unreleased/realistic-armament-effects/armaments.webm",
+          "sha256": "ca1b22b8944e181a8579508f508bb4d91032e8e01b08377a7524de936585ba09",
+          "caption": "armaments.webm"
+        },
+        {
+          "file": "changelog/unreleased/realistic-armament-effects/before.webm",
+          "sha256": "7916c11818d9a973e4ae14e94758ae15a71d3ead68b4e056bc193f1183b80daf",
+          "caption": "before.webm"
+        },
+        {
+          "file": "changelog/unreleased/realistic-armament-effects/flares.webm",
+          "sha256": "ab88948e9e40c9d41f9631f9f56c2c28f750e49f11f66e5de36ed9d6e80dbcff",
+          "caption": "flares.webm"
+        },
+        {
+          "file": "changelog/unreleased/realistic-armament-effects/after.jpg",
+          "sha256": "6e35fcc3f9bd1a313a6eb08c6e1f397d014e988be010f2e66dcaf33009173090",
+          "caption": "after.jpg"
+        },
+        {
+          "file": "changelog/unreleased/realistic-armament-effects/before.jpg",
+          "sha256": "42f17a818f8dcbad76c03988edaab569cd08ce7250161d2900d2a1c0dc3648fe",
+          "caption": "before.jpg"
+        },
+        {
+          "file": "changelog/unreleased/realistic-armament-effects/flares.jpg",
+          "sha256": "474647ca86f33c14cadf33dff92ed69623a10eeb1ee75d78fe063b422030e336",
+          "caption": "flares.jpg"
+        },
+        {
+          "file": "changelog/unreleased/realistic-armament-effects/capture.json",
+          "sha256": "10e014cea590096559d1cddf2c43ec01b227e32aef74f531d2fcd21f2dbba018",
+          "caption": "capture.json"
+        }
+      ],
+      "output": null,
+      "attribution": "Controlled engine recordings at fixed 12 Hz; baseline b3ec859, current working tree for revised effects."
     }
   ],
   "layout_capture": {

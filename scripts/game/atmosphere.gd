@@ -522,12 +522,17 @@ func _flares_tick(dt: float) -> void:
 		var age: float = f[2]
 		var life: float = f[3]
 		root.position.y = maxf(world.ground_y(root.position) + 6.0, root.position.y - dt * 1.3)
-		root.position.x += sin(age * 0.7) * dt * 0.8
+		root.position += Fires.WIND * dt * 0.6
+		var chute: Node3D = f[6]
+		chute.rotation.z = sin(age * 1.4) * 0.12
 		var fade := clampf((life - age) / 3.0, 0.0, 1.0) * clampf(age * 2.0, 0.0, 1.0)
 		var l: OmniLight3D = f[1]
 		l.light_energy = fade * (7.0 + 1.0 * sin(age * 23.0) + 0.6 * sin(age * 37.0))
-		(f[4] as MeshInstance3D).scale = Vector3.ONE * (1.6 + 0.2 * sin(age * 31.0)) * fade
-		if age > life:
+		(f[4] as MeshInstance3D).scale = Vector3.ONE * (0.65 + 0.06 * sin(age * 31.0)) * fade
+		if age >= life and is_instance_valid(f[5]):
+			for emitter: GeometryInstance3D in (f[5] as Node3D).get_children():
+				Vfx.set_emitting(emitter, false)
+		if age > life + 4.0:
 			root.queue_free()
 			_flares.remove_at(i)
 
@@ -556,11 +561,17 @@ func _spawn_flare(p: Vector3) -> void:
 	chute.scale = Vector3(1, 0.45, 1)
 	chute.position = Vector3(0, 2.4, 0)
 	root.add_child(chute)
+	# Four suspension lines make the small canopy read as a parachute.
+	for i in 4:
+		var a := i * TAU / 4.0
+		var end := Vector3(cos(a) * 0.65, 2.35, sin(a) * 0.65)
+		var line := Res.mi(root, Res.cyl(0.008, 0.008, end.length(), 4), Mats.get_mat("canvas_white"), end * 0.5)
+		line.quaternion = Quaternion(Vector3.UP, end.normalized())
+	var tr: Node3D
 	if world.fx and world.fx.vfx:
-		var tr := world.fx.vfx.make_trail()
-		Vfx.set_ratio(tr, 0.5)
+		tr = world.fx.vfx.make_flare_trail()
 		root.add_child(tr)
-	_flares.append([root, l, 0.0, randf_range(20.0, 26.0), glow])
+	_flares.append([root, l, 0.0, randf_range(20.0, 26.0), glow, tr, chute])
 
 
 ## Switches the lighting mood live (Settings > Time of day).

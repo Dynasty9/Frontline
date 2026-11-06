@@ -1129,12 +1129,18 @@ Ambush Alley autoplay can call its existing mortar support against spotted, stop
   Defences sit in the ground: trodden earth round the nests and pits, earth banked against the bunkers up to their
   slits.
 - Vehicles are built from sloped, lofted armour: road wheels that turn, tracks, mantlets, cupolas, stowage, rotor blur.
-- Explosions are layered GPU particles: a flash and light burst, a rolling fireball that cools from the edges in
-  until it's dark smoke, a lit smoke column that drifts with the wind, a dirt plume, sparks and debris that
-  bounce on the ground, a rolling dust ring, a faint heat-shimmer shockwave and a scorch mark. Heavy rounds
-  throw a fountain of earth high into the air that rains back down, fling burning fragments out in arcs that
-  burn on where they land, leave flames licking about the crater for a moment, and clods land around the
-  crater once the debris has fallen.
+- **Explosions** distinguish fragmentation grenades, high explosive shells and fuel explosions. Grenades
+  give a short flash, fast dark fragments and a small dirt burst. HE shells, including the visual scale of a
+  roughly 110 mm round, throw a fountain of earth, falling clods and a ground dust cloud; sustained flames
+  and burning fragments belong to vehicle fuel explosions. Calibre is an artistic scale reference, not a
+  physical blast calculator. Airbursts omit ground layers, and impacts use height above the local terrain.
+  Procedural smoke billows shade from the sun and sky, erode as they disperse and soften against geometry.
+  Reusable particle rigs have quality-dependent limits and reduce detail with camera distance. Fast fragments,
+  tumbling clods and delayed landing dust use the shared GPU instance rings without per-fragment nodes.
+  The Compatibility renderer uses CPU particle rigs and retains the batched fragment effects through WebGL.
+- **Illumination flares** descend under a small parachute with suspension lines, drift with the wind, shed fine
+  sparks and leave pale smoke behind in world space. The charge lights its freshest smoke, fades as it burns
+  out and stops emitting before its remaining smoke disperses. Each flare uses two bounded particle emitters.
 - **Gunfire** (`gunfx.gd`), sized to life: a rifle's muzzle flash is a hand's breadth of flame gone in a frame,
   a .50's a forearm's, an autocannon's a man's height - a hot core and a short jet split into petals by the flash
   hider (thrown out sideways by a heavy gun's muzzle brake), with a moment's light on everything round it
@@ -1144,7 +1150,7 @@ Ambush Alley autoplay can call its existing mortar support against spotted, stop
   kicks with each shot: the rifle back into the shoulder and the muzzle up, the mounted gun on its pintle, the
   turret back on its ring when the main gun fires. One round in so many is a tracer, red for the Coalition and
   green for the Rebels (Soviet-pattern ammunition): a thin bright thread at night, fainter and shorter by day,
-  never thinner than a pixel or two. What a round hits decides what flies, small and quick as in real footage: a
+  with distance-dependent dimming and a short ignition delay for small-arms tracers. What a round hits decides what flies, small and quick as in real footage: a
   crown of dust and soil thrown up out of the ground, a puff of stone dust and chips off a wall, a dry burst of
   sand off sandbags, splinters, leaves fluttering down, sparks and a glint off steel, a dark mist off a man, a
   spout off water - shown when the round gets there, not when it's fired. Now and then one skips off steel, stone

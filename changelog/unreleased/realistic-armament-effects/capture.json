@@ -1,0 +1,60 @@
+{
+  "base_ref": "b3ec8594ef59488cdfa36e5b12fcdf40b9cac791",
+  "branch": "codex/realistic-armament-effects",
+  "working_tree_dirty": true,
+  "engine": "4.6.3.stable.official.7d41c59c4",
+  "renderer": "gl_compatibility (Mesa llvmpipe)",
+  "seed": 712,
+  "fps": 12,
+  "seconds": 12,
+  "fixture": "tests/fixtures/armament-effects-clips.gd",
+  "fixture_sha256": "b2590fda58c94d33a4ed02095f0cc60b3ea3de968d8bed436b542a9130984bb9",
+  "captures": [
+    {
+      "file": "armaments.webm",
+      "frames": "/tmp/frontline-after2-frames",
+      "source": "current working tree",
+      "args": [
+        "--clip=armaments"
+      ]
+    },
+    {
+      "file": "before.webm",
+      "frames": "/tmp/frontline-before-frames",
+      "source": "b3ec8594ef59488cdfa36e5b12fcdf40b9cac791",
+      "args": [
+        "--clip=armaments",
+        "--legacy-effects",
+        "--label=BEFORE"
+      ]
+    },
+    {
+      "file": "flares.webm",
+      "source": "current working tree",
+      "command": [
+        "python3",
+        "tools/showcase/capture.py",
+        "flares",
+        "--output",
+        "/tmp/frontline-flares-release"
+      ]
+    }
+  ],
+  "capture_command": [
+    "godot",
+    "--audio-driver",
+    "Dummy",
+    "--path",
+    "<worktree>",
+    "--rendering-method",
+    "gl_compatibility",
+    "--fixed-fps",
+    "12",
+    "--resolution",
+    "1280x720",
+    "res://tests/fixtures/armament-effects-clips.tscn",
+    "--",
+    "--frames=<frames>"
+  ],
+  "limitations": "Controlled visual demonstration, no audio or performance claim. Engine available here is 4.6.3; project targets 4.7. Armaments and before use identical camera and renderer. No downloaded art assets."
+}

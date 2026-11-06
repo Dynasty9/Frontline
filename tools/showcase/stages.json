@@ -19,5 +19,21 @@
     "fps": 12,
     "simulation_hz": 60,
     "cue": "Coloured pulses identify the three actual gunship launch sockets; they do not represent firing cadence."
+  },
+  "armaments": {
+    "scene": "tests/fixtures/armament-effects-clips.tscn",
+    "seconds": 12,
+    "fps": 12,
+    "simulation_hz": 12,
+    "engine_fixed_fps": 12,
+    "cue": "Compare a fragmentation grenade, roughly 110 mm HE scale ground burst and a fuel explosion, followed by dirt, stone and metal impacts."
+  },
+  "flares": {
+    "scene": "tests/fixtures/armament-effects-clips.tscn",
+    "seconds": 12,
+    "fps": 12,
+    "simulation_hz": 12,
+    "engine_fixed_fps": 12,
+    "cue": "Watch the actual illumination flare descend under its parachute, drift, shed sparks and leave smoke behind."
   }
 }

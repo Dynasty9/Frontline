@@ -14,6 +14,13 @@ const CLASSES := {
 	"l": {"k": 1.9, "fb": 34, "fbl": 2.3, "sm": 32, "sml": 8.0, "dirt": 36, "sp": 50, "deb": 56, "ring": 22, "ej": 30, "col": 26, "fl": 16, "ab": 14},
 }
 const MAX_RIGS := {"s": 22, "m": 16, "l": 10}
+## HE burns in milliseconds; a sustained orange fireball needs fuel. These
+## are visual signatures, not damage or fragmentation simulations.
+const BLAST_PROFILES := {
+	"frag": {"fire": 0.12, "heat": 0.35, "cool": 0.035, "smoke": 0.35, "earth": 0.4, "sparks": 0.12},
+	"he": {"fire": 0.4, "heat": 0.85, "cool": 0.065, "smoke": 0.65, "earth": 1.0, "sparks": 0.25},
+	"fuel": {"fire": 1.0, "heat": 1.85, "cool": 0.3, "smoke": 1.0, "earth": 0.55, "sparks": 1.0},
+}
 ## Lingering plumes: [scale, column particles, column life, haze particles, haze life, seconds of emission]
 const PLUMES := {"M": [1.0, 30, 13.0, 6, 16.0, 7.0], "L": [1.7, 52, 20.0, 10, 24.0, 16.0]}
 const MAX_PLUMES := {"M": 8, "L": 6}
@@ -97,6 +104,9 @@ func prewarm(at: Vector3) -> void:
 	var tr := make_trail()
 	add_child(tr)
 	tr.global_position = p
+	var flare := make_flare_trail()
+	add_child(flare)
+	flare.global_position = p
 	_shockwave(p, 1.0)
 	scorch(p, 1.0)
 	# hide everything again once compiled: the prewarm smoke would otherwise
@@ -120,6 +130,7 @@ func prewarm(at: Vector3) -> void:
 		ss.queue_free()
 		cm.queue_free()
 		tr.queue_free())
+	get_tree().create_timer(0.6).timeout.connect(flare.queue_free)
 
 
 # --- textures & materials ------------------------------------------------------
@@ -489,6 +500,37 @@ func _pm(dir: Vector3, spread: float, v0: float, v1: float, grav: Vector3, s0: f
 
 # --- explosion rigs ----------------------------------------------------------------
 
+## A magnesium illumination flare sheds fine sparks and pale smoke. The
+## smoke stays in world space after the parachute has carried the flare on.
+func make_flare_trail() -> Node3D:
+	var root := Node3D.new()
+	var q := Settings.fx_mult()
+	var pm := _pm(Vector3.UP, 20.0, 0.3, 0.8, WIND * 0.4 + Vector3(0, 0.3, 0), 0.12, 0.28)
+	pm.damping_min = 0.8
+	pm.damping_max = 1.2
+	pm.scale_curve = _curve([Vector2(0, 0.4), Vector2(0.4, 1.4), Vector2(1, 2.8)])
+	pm.color_ramp = _ramp([0.0, 0.12, 0.65, 1.0], [Color(0.65, 0.63, 0.58, 0), Color(0.65, 0.63, 0.58, 0.4), Color(0.65, 0.63, 0.58, 0.2), Color(0.65, 0.63, 0.58, 0)])
+	var smoke := _sys(maxi(4, int(22 * q)), 4.0, pm, smoke_mat)
+	smoke.one_shot = false
+	smoke.explosiveness = 0.0
+	smoke.emitting = true
+	Mats.set_inst(smoke, &"local_light", Vector3(3.0, 2.8, 2.3))
+	root.add_child(part(smoke))
+	pm = _pm(Vector3.DOWN, 18.0, 0.3, 1.2, Vector3(0, -2.0, 0), 0.5, 1.0)
+	pm.particle_flag_align_y = true
+	pm.angle_min = 0.0
+	pm.angle_max = 0.0
+	pm.color_ramp = _ramp([0.0, 1.0], [Color(1.0, 0.88, 0.65, 0.7), Color(1.0, 0.5, 0.15, 0)])
+	var mesh := QuadMesh.new()
+	mesh.size = Vector2(0.025, 0.13)
+	var sparks := _sys(maxi(3, int(12 * q)), 0.7, pm, spark_mat, mesh)
+	sparks.one_shot = false
+	sparks.explosiveness = 0.0
+	sparks.emitting = true
+	sparks.transform_align = GPUParticles3D.TRANSFORM_ALIGN_Z_BILLBOARD_Y_TO_VELOCITY
+	root.add_child(part(sparks))
+	return root
+
 func _build_rig(cls: String) -> Node3D:
 	var c: Dictionary = CLASSES[cls]
 	var k: float = c.k
@@ -589,7 +631,7 @@ func _build_rig(cls: String) -> Node3D:
 	layers["dirt"] = dt
 	# 4b. heavy rounds: a fountain of earth thrown high that falls back to the ground
 	if int(c.col) > 0:
-		pm = _pm(Vector3.UP, 10.0, 11.0 * sqrt(k), 22.0 * sqrt(k), Vector3(0, -9.8, 0), 0.9 * k, 2.3 * k)
+		pm = _pm(Vector3.UP, 22.0, 8.0 * sqrt(k), 17.0 * sqrt(k), Vector3(0, -9.8, 0), 1.3 * k, 2.8 * k)
 		pm.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_SPHERE
 		pm.emission_sphere_radius = 0.6 * k
 		pm.damping_min = 0.4
@@ -707,7 +749,7 @@ func _get_rig(cls: String) -> Node3D:
 			return r
 		if oldest == null or float(r.get_meta("t")) < float(oldest.get_meta("t")):
 			oldest = r
-	if arr.size() < MAX_RIGS[cls]:
+	if arr.size() < maxi(2, int(MAX_RIGS[cls] * Settings.fx_mult())):
 		var nr := _build_rig(cls)
 		arr.append(nr)
 		return nr
@@ -715,6 +757,10 @@ func _get_rig(cls: String) -> Node3D:
 
 
 func _fire_layer(p: GeometryInstance3D, ratio: float, seed_v: float) -> void:
+	if ratio <= 0.0:
+		set_emitting(p, false)
+		p.visible = false
+		return
 	p.visible = true
 	set_ratio(p, clampf(ratio, 0.05, 1.0))
 	Mats.set_inst(p, &"seed", seed_v)
@@ -722,41 +768,68 @@ func _fire_layer(p: GeometryInstance3D, ratio: float, seed_v: float) -> void:
 	set_emitting(p, true)
 
 
-## Full explosion at `p`. size: ~0.4 drone pop, 1 grenade/rocket, 1.4 tank shell, 2+ vehicle / bomb.
-func explode(p: Vector3, size: float) -> void:
+## Full explosion at `p`. A size of 1.4 represents the visual scale of a
+## roughly 110 mm HE shell; calibre alone doesn't determine blast appearance.
+func explode(p: Vector3, size: float, kind := "he") -> void:
+	var profile: Dictionary = BLAST_PROFILES.get(kind, BLAST_PROFILES.he)
 	var cls := "s" if size < 0.75 else ("m" if size < 1.6 else "l")
+	if kind == "frag":
+		cls = "s"
 	var rig := _get_rig(cls)
 	rig.global_position = p
 	rig.set_meta("t", Time.get_ticks_msec() / 1000.0)
 	rig.set_meta("shown", true)
 	var layers: Dictionary = rig.get_meta("layers")
-	var fx := Settings.fx_mult()
-	var ground := p.y < 1.6
+	# A recycled rig must not bring a previous fuel fire into an airburst.
+	for layer: GeometryInstance3D in layers.values():
+		set_emitting(layer, false)
+		layer.visible = false
+	var distance := world.cam.cam.global_position.distance_to(p) if world and world.cam else 0.0
+	var detail := clampf(100.0 / maxf(distance, 100.0), 0.2, 1.0)
+	var fx := Settings.fx_mult() * detail
+	var gy := world.ground_y(p) if world else 0.0
+	var ground := p.y - gy < 1.6
 	var sv := randf() * 100.0
 	(layers.flash as Node3D).position = Vector3(0, 0.9 * float(CLASSES[cls].k), 0)
+	var flash_scale := float(CLASSES[cls].k) * (0.22 if kind == "frag" else (0.55 if kind == "he" else 1.0))
+	pm_set(layers.flash, &"scale_min", 6.5 * flash_scale)
+	pm_set(layers.flash, &"scale_max", 8.0 * flash_scale)
+	(layers.flash as Node).set(&"lifetime", 0.035 if kind == "frag" else (0.055 if kind == "he" else 0.09))
+	(layers.dirt as Node).set(&"lifetime", 1.8 if kind == "frag" else 3.4)
 	_fire_layer(layers.flash, 1.0, sv)
-	_fire_layer(layers.fireball, fx, sv)
-	_fire_layer(layers.smoke, fx, sv + 1.0)
-	_fire_layer(layers.sparks, fx, sv)
-	if layers.has("flaming") and size >= 1.15:
+	Mats.set_inst(layers.fireball, &"heat", float(profile.heat))
+	Mats.set_inst(layers.fireball, &"heat_fade", float(profile.cool))
+	var gas_tint := Vector3.ONE if kind == "fuel" else Vector3(2.2, 2.25, 2.3)
+	Mats.set_inst(layers.fireball, &"albedo_tint", gas_tint)
+	Mats.set_inst(layers.smoke, &"albedo_tint", gas_tint)
+	_fire_layer(layers.fireball, fx * float(profile.fire), sv)
+	Mats.set_inst(layers.smoke, &"heat", 0.35 if kind == "fuel" else 0.0)
+	_fire_layer(layers.smoke, fx * float(profile.smoke), sv + 1.0)
+	_fire_layer(layers.sparks, fx * float(profile.sparks), sv)
+	if world and world.fx and world.fx.gunfx:
+		world.fx.gunfx.blast_fragments(p, size, kind, ground, detail)
+	if layers.has("flaming") and kind == "fuel" and size >= 1.15:
 		_fire_layer(layers.flaming, fx * clampf((size - 0.9) / 1.2, 0.2, 1.0), sv + 6.0)
 	if ground:
-		_fire_layer(layers.dirt, fx, sv + 2.0)
-		_fire_layer(layers.debris, fx, sv)
-		if layers.has("ejecta"):
-			_fire_layer(layers.ejecta, fx, sv)
-		if layers.has("column"):
-			_fire_layer(layers.column, fx * clampf(size / 2.0, 0.5, 1.0), sv + 4.0)
-		if layers.has("afterburn") and size >= 1.3:
+		var earth := fx * float(profile.earth)
+		Mats.set_inst(layers.dirt, &"albedo_tint", Vector3(1.8, 1.7, 1.5))
+		_fire_layer(layers.dirt, earth, sv + 2.0)
+		_fire_layer(layers.debris, earth if detail > 0.35 else 0.0, sv)
+		if layers.has("ejecta") and detail > 0.5:
+			_fire_layer(layers.ejecta, earth, sv)
+		if layers.has("column") and kind != "frag":
+			Mats.set_inst(layers.column, &"albedo_tint", Vector3(1.8, 1.7, 1.5))
+			_fire_layer(layers.column, earth * clampf(size / 2.0, 0.5, 1.0), sv + 4.0)
+		if layers.has("afterburn") and kind == "fuel" and size >= 1.3:
 			_fire_layer(layers.afterburn, fx, sv + 5.0)
-		if size >= 0.9 and not OS.has_environment("FL_NO_PLUMES"):
+		if kind == "fuel" and size >= 0.9 and detail > 0.35 and not OS.has_environment("FL_NO_PLUMES"):
 			plume(p, size)
 		if fx > 0.5 or size >= 1.0:
-			_fire_layer(layers.ring, fx, sv + 3.0)
+			_fire_layer(layers.ring, earth, sv + 3.0)
 		if Settings.get_v("decals"):
-			scorch(Vector3(p.x, 0.0, p.z), 2.4 * size + 1.0)
+			scorch(Vector3(p.x, gy, p.z), 2.4 * size + 1.0)
 
-	if fx >= 0.6:
+	if fx >= 0.6 and kind != "frag":
 		_shockwave(p + Vector3(0, 0.3, 0), size)
 
 
@@ -1601,6 +1674,8 @@ instance uniform float heat_fade = 0.3;
 instance uniform float density = 1.0;
 instance uniform float seed = 0.0;
 instance uniform float erode = 1.0;
+instance uniform vec3 albedo_tint = vec3(1.0);
+instance uniform vec3 local_light = vec3(0.0);
 
 varying float age;
 varying float rnd;
@@ -1643,7 +1718,9 @@ void fragment() {
 	vec3 nv = vec3(rcs.x * ns.x + rcs.y * ns.y, -rcs.y * ns.x + rcs.x * ns.y, ns.z);
 	float diff = clamp(dot(nv, lv) * 0.62 + 0.38, 0.0, 1.0);
 	float occl = mix(0.38, 1.0, smoothstep(0.2, 0.8, n));
-	vec3 col = COLOR.rgb * (sun_col * sun_energy * diff * occl + amb_col * amb_energy * (0.55 + 0.45 * n));
+	vec3 col = COLOR.rgb * albedo_tint * (sun_col * sun_energy * diff * occl + amb_col * amb_energy * (0.55 + 0.45 * n));
+	// The burning flare lights its freshest smoke, even under a dark sky.
+	col += COLOR.rgb * local_light * pow(1.0 - clamp(age, 0.0, 1.0), 1.5);
 	float back = pow(clamp(-lv.z, 0.0, 1.0), 3.0) * (1.0 - shape) * shape * 2.0;
 	col += sun_col * sun_energy * back * 0.35 * COLOR.rgb;
 	float h = heat * pow(clamp(1.0 - age / max(heat_fade * (0.55 + 0.9 * rnd), 0.01), 0.0, 1.0), 1.4);

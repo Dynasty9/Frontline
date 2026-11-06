@@ -27,9 +27,11 @@ def main():
     out.mkdir(parents=True, exist_ok=True)
     frames = out / 'frames'
     command = [godot, '--path', str(ROOT), '--rendering-method', 'gl_compatibility',
-               '--position', '-10000,-10000', '--resolution', '1280x720',
+               '--audio-driver', 'Dummy', '--position', '-10000,-10000', '--resolution', '1280x720',
                'res://' + stage['scene'], '--', '--clip=' + args.stage,
                '--label=' + args.label, '--frames=' + str(frames)]
+    if stage.get('engine_fixed_fps'):
+        command[1:1] = ['--fixed-fps', str(stage['engine_fixed_fps'])]
     with (out / 'capture.log').open('w') as log:
         subprocess.run(command, stdout=log, stderr=log, check=True, timeout=300)
     log = (out / 'capture.log').read_text()
