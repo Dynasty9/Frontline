@@ -62,6 +62,7 @@ func capture() -> void:
 		]
 		settle_frames = 225
 		world.atmo.grass.mat.set_shader_parameter("wind", 0.0)
+		world.atmo.grass.bush_mat.set_shader_parameter("wind", 0.0)
 	var records := []
 	for view in views:
 		world.cam.dist = view[2]

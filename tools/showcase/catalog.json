@@ -4174,6 +4174,16 @@
           "file": "changelog/unreleased/environment-realism-extended/meadow-wide-after.jpg",
           "sha256": "7705c1e7c709a5df22a229ebe79cf555f86d17f1e6a986e3656d49f13e5cc2f0",
           "caption": "meadow-wide-after"
+        },
+        {
+          "file": "changelog/unreleased/environment-realism-extended/shrub-before.jpg",
+          "sha256": "080e37f519f7802a267fb71ae450f3c9f8c922409087a53a2b7dafe3fbe44b50",
+          "caption": "shrub-before"
+        },
+        {
+          "file": "changelog/unreleased/environment-realism-extended/shrub-after.jpg",
+          "sha256": "bea3e0b0442f03ac56ffaef3539a21ff311e1f6e3677e6d6bc31f438bfeaeca9",
+          "caption": "shrub-after"
         }
       ],
       "output": null,
@@ -4192,7 +4202,8 @@
         "driveway": "Matched native Forward+, High/day seed3 1600x900, focus-15.6,-8.9 zoom10 pitch-25 yaw0.4, held2s/45settlingframes. Before exact e5a3687 towngen/decor/grass scripts overlaid through PCK before main; after lowered crossings. Same fixed camera, no retouching.",
         "canopy": "Matched native Forward+, High/day seed3 1600x900, focus-400,-450 zoom350 pitch-65 yaw-0.2, held2s/45settlingframes. Before1919acc forest and atlas captured before replacement; after twenty-view atlas with High shadows. Same generated terrain and camera. No retouching.",
         "precision": "Matched native Forward+, High/day seed3 1600x900, focus232,296 zoom60 pitch-35 yaw0.7, held2s/45settlingframes. Controlled height-precision comparison: before uses the same terrain samples converted to the previous half-float texture; after uses full floats. Only the ground height texture changes between frames. Full frames, no retouching.",
-        "meadow": "Matched native Forward+, High/day seed3 1600x900, focus-110,-130 yaw0.7, held2s/225settlingframes with grass wind disabled. Close zoom18 pitch-45; low view zoom18 pitch-15. Before exact66b3c54 atmosphere/grass scripts overlaid through PCK before main; after meadow/grass and local-culling-bounds checkpoint. Both use environment-views --capture-set=meadow. Full frames, no retouching."
+        "meadow": "Matched native Forward+, High/day seed3 1600x900, focus-110,-130 yaw0.7, held2s/225settlingframes with grass wind disabled. Close zoom18 pitch-45; low view zoom18 pitch-15. Before exact66b3c54 atmosphere/grass scripts overlaid through PCK before main; after meadow/grass and local-culling-bounds checkpoint. Both use environment-views --capture-set=meadow. Full frames, no retouching.",
+        "shrubs": "Matched native Forward+, High/day seed3 1600x900, focus -110,-130 zoom45 pitch-35 yaw0.7. Before exact0510a8d grass.gd PCK; after smaller leaf cards, linear photograph/root shading and seeded patch placement. Same simulation held at2s, 225 settling frames. No retouching; full frames encoded JPEG92."
       }
     }
   ],

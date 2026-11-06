@@ -1,6 +1,7 @@
 extends Node
 
 func _ready() -> void:
+	check_release_forest_atlas()
 	var arrays := Atmosphere.terrain_materials()
 	assert(arrays.size() == 2)
 	assert(arrays[0] == Atmosphere.terrain_materials()[0], "Map reloads must reuse the material allocation")
@@ -30,6 +31,7 @@ func _ready() -> void:
 	if DisplayServer.get_name() != "headless":
 		await check_road_surfaces()
 		await check_ground_grime()
+		await check_shrub_leaves()
 	print("TERRAIN_MATERIALS passed")
 	Sfx._ensure()
 	while Music._task >= 0:
@@ -195,3 +197,64 @@ func check_ground_grime() -> void:
 			assert(absf(pixel.r - expected) < 0.025, "Grime follows height above terrain, not sea level: elevation=%s above=%s actual=%s" % [elevation, above, pixel.r])
 	view.queue_free()
 	print("TERRAIN_MATERIALS elevated-ground weathering passed")
+
+
+func check_shrub_leaves() -> void:
+	var view := SubViewport.new()
+	view.size = Vector2i(32, 32)
+	view.own_world_3d = true
+	view.transparent_bg = true
+	view.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	add_child(view)
+	var camera := Camera3D.new()
+	camera.projection = Camera3D.PROJECTION_ORTHOGONAL
+	camera.size = 2.0
+	view.add_child(camera)
+	var mesh := MeshInstance3D.new()
+	var plane := PlaneMesh.new()
+	plane.center_offset.y = -0.1
+	mesh.mesh = plane
+	mesh.scale = Vector3.ONE * 2.0
+	view.add_child(mesh)
+	var material := ShaderMaterial.new()
+	var shader := Shader.new()
+	shader.code = MapDims.shader(Grass.BUSH_SHADER.replace("render_mode specular_disabled, cull_disabled;", "render_mode unshaded, cull_disabled;"))
+	material.shader = shader
+	mesh.material_override = material
+	var leaf := Image.create(2, 2, false, Image.FORMAT_RGBA8)
+	leaf.fill(Color(0.5, 0.6, 0.3, 1.0))
+	material.set_shader_parameter("leaf_texture", ImageTexture.create_from_image(leaf))
+	var expected := leaf.get_pixel(0, 0).srgb_to_linear() * Color(0.7, 0.85, 0.7) * 0.825
+	for height in [0.0, 40.0, 80.0]:
+		var ground := Image.create(MapDims.N, MapDims.N, false, Image.FORMAT_RGF)
+		ground.fill(Color(height, height, 0.0))
+		var tiled := TerrainTexture.new(ground)
+		material.set_shader_parameter("deform_tex", tiled.texture)
+		camera.position = Vector3(0, height + 5.0, 0)
+		camera.look_at(Vector3(0, height, 0), Vector3.FORWARD)
+		for frame in 3:
+			await RenderingServer.frame_post_draw
+		var pixel := view.get_texture().get_image().get_pixel(16, 16).srgb_to_linear()
+		assert(Vector3(pixel.r, pixel.g, pixel.b).distance_to(Vector3(expected.r, expected.g, expected.b)) < 0.008, "Leaf photographs and root shade stay consistent on elevated terrain: %s" % pixel)
+	leaf.fill(Color(0.5, 0.6, 0.3, 0.1))
+	material.set_shader_parameter("leaf_texture", ImageTexture.create_from_image(leaf))
+	for frame in 3:
+		await RenderingServer.frame_post_draw
+	assert(view.get_texture().get_image().get_pixel(16, 16).a < 0.01, "Transparent photographed leaf edges must not turn into opaque cards")
+	view.queue_free()
+	print("TERRAIN_MATERIALS native shrub colour and elevated roots passed")
+
+
+func check_release_forest_atlas() -> void:
+	# Release builds omit assertion expressions, including any allocation inside them.
+	var lines := PackedStringArray()
+	var forest_source: GDScript = load("res://scripts/game/distant_forest.gd")
+	for line in forest_source.source_code.split("\n"):
+		if not line.strip_edges().begins_with("assert(") and not line.begins_with("class_name "):
+			lines.append(line)
+	var release_script := GDScript.new()
+	release_script.source_code = "\n".join(lines)
+	var error := release_script.reload()
+	assert(error == OK)
+	var atlas: Texture2DArray = release_script.atlas_texture()
+	assert(atlas.get_layers() == 20 and atlas.get_width() == 256 and atlas.has_mipmaps(), "Release tree cards must allocate their complete atlas without assertions")

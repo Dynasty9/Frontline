@@ -22,7 +22,8 @@ static func atlas_texture() -> Texture2DArray:
 				tile.generate_mipmaps()
 				images.append(tile)
 		_atlas = Texture2DArray.new()
-		assert(_atlas.create_from_images(images) == OK)
+		var error := _atlas.create_from_images(images)
+		assert(error == OK, "Distant tree atlas layers must share size and mipmaps")
 	return _atlas
 
 static func coverage_image(seed_value: int, reach: float) -> Image:

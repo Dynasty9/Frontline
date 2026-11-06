@@ -1282,7 +1282,7 @@ to an area recreates the same vegetation from its seed.
 See [SIMULATION_SCALING.md](SIMULATION_SCALING.md) for the native perception
 boundary, measurement results and remaining limits.
 
-Grass and shrub culling bounds follow their local ground heights, keeping distance fading correct beside taller mountains; small cosmetic stones use the ground height at placement. Meadow density fades towards the snow line and on steep slopes, with zero-density habitats kept empty.
+Grass and shrub culling bounds follow their local ground heights, keeping distance fading correct beside taller mountains; small cosmetic stones use the ground height at placement. Meadow density fades towards the snow line and on steep slopes, with zero-density habitats kept empty. Smaller photographed shrub branches form seeded patches with open gaps, independently of gameplay randomness.
 
 Alpine stone clusters combine slabs, blocks and small fragments in shared batches. Fine fragments cull beyond 180 m with a 20 m hysteresis margin; larger rocks remain visible.
 

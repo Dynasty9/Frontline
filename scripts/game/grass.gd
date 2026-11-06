@@ -17,6 +17,7 @@ var scar_tex: ImageTexture
 var _scar_dirty := false
 var bush: ArrayMesh
 var stone: ArrayMesh
+var _shrub_noise := FastNoiseLite.new()
 var level := -1
 var _queue: Array = []
 var _rebuild_t := -1.0
@@ -28,7 +29,7 @@ const REACH := 7  # beyond the bushes' 170 m fade, including a chunk and pan mar
 
 func _ready() -> void:
 	clump = _make_clump()
-	bush = Res.foliage_cards(false)
+	bush = _make_bush()
 	stone = _make_stone()
 	scar_img = Image.create(MapDims.N, MapDims.N, false, Image.FORMAT_L8)
 	scar_tex = ImageTexture.create_from_image(scar_img)
@@ -125,6 +126,8 @@ func _exit_tree() -> void:
 
 func _start_rebuild() -> void:
 	level = int(Settings.get_v("grass"))
+	_shrub_noise.seed = int(atmo.world.settings.get("seed", 1)) + 219
+	_shrub_noise.frequency = 0.035
 	if _task >= 0:
 		WorkerThreadPool.wait_for_task_completion(_task)  # (a rebuild already on its way: redone from now)
 		_task = -1
@@ -298,7 +301,7 @@ func _build_chunk(c: Vector2i) -> void:
 		var basis := Basis(Vector3.UP, rng.randf() * TAU).scaled(Vector3(s, s * rng.randf_range(0.8, 1.35) * height, s))
 		xf.append(Transform3D(basis, p))
 		cd.append(Color(g, rng.randf(), 0, 0))
-		if rng.randf() < 0.012 and g > 0.6:
+		if rng.randf() < 0.035 and g > 0.6 and _shrub_noise.get_noise_2d(p.x, p.z) > 0.08:
 			bushes.append(p)
 		elif rng.randf() < 0.003:
 			stones.append(p)
@@ -384,6 +387,31 @@ func _make_clump() -> ArrayMesh:
 	return st.commit()
 
 
+func _make_bush() -> ArrayMesh:
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 55127
+	for i in 80:
+		var angle := rng.randf() * TAU
+		var up := rng.randf_range(0.12, 1.15)
+		var radius := sqrt(rng.randf()) * 0.62 * sqrt(maxf(0.1, 1.0 - pow((up - 0.65) / 0.75, 2.0)))
+		var center := Vector3(cos(angle) * radius, up - 0.65, sin(angle) * radius)
+		var along := Vector3(cos(angle) * 0.6, rng.randf_range(0.4, 0.9), sin(angle) * 0.6).normalized()
+		var side := Vector3(-sin(angle), 0, cos(angle)).rotated(along, rng.randf_range(-0.7, 0.7))
+		var width := rng.randf_range(0.08, 0.15)
+		var length := rng.randf_range(0.15, 0.25)
+		var normal := side.cross(along).normalized()
+		var points := [center - side * width - along * length, center + side * width - along * length,
+			center + side * width + along * length, center - side * width + along * length]
+		var uv := [Vector2(0, 1), Vector2(1, 1), Vector2(1, 0), Vector2(0, 0)]
+		for j in [0, 2, 1, 0, 3, 2]:
+			st.set_normal(normal)
+			st.set_uv(uv[j])
+			st.add_vertex(points[j])
+	return st.commit()
+
+
 func _make_stone() -> ArrayMesh:
 	var sph := SphereMesh.new()
 	sph.radial_segments = 7
@@ -464,10 +492,10 @@ void fragment() {
 const BUSH_SHADER := """
 shader_type spatial;
 uniform sampler2D leaf_texture : source_color, filter_linear_mipmap, repeat_disable;
+uniform float wind = 0.03;
 render_mode specular_disabled, cull_disabled;
-varying vec3 lp;
+varying float plant_height;
 varying float rnd;
-float hash(vec3 p) { return fract(sin(dot(p, vec3(127.1, 311.7, 74.7))) * 43758.5453); }
 uniform sampler2D trench_mask : hint_default_black, filter_linear, repeat_disable;
 uniform sampler2DArray deform_tex : filter_linear, repeat_disable;
 // TERRAIN_TEXTURE_HELPER
@@ -484,35 +512,28 @@ void vertex() {
 	VERTEX.y += gd / max(0.05, length(MODEL_MATRIX[1].xyz));
 	rnd = INSTANCE_CUSTOM.r;
 	vec3 o = MODEL_MATRIX[3].xyz;
-	float n = sin(VERTEX.x * 9.0 + rnd * 7.0) * sin(VERTEX.y * 8.0) * sin(VERTEX.z * 10.0);
-	VERTEX += NORMAL * n * 0.08;
 	float t = TIME * 1.3 + o.x * 0.3;
-	VERTEX.x += sin(t) * 0.03 * plant_y;
-	lp = VERTEX;
+	VERTEX.x += sin(t) * wind * plant_y;
+	plant_height = plant_y;
 }
 void fragment() {
 	vec4 photograph = texture(leaf_texture, UV);
-	if (photograph.a < 0.22) { discard; }
-	// leafy, ragged edges where the surface turns away (inside shows dark through the gaps)
-	float rim = 1.0 - abs(dot(NORMAL, VIEW));
-	float bpx = max(length(fwidth(lp)), 1e-4);
-	float hn = mix(0.5, hash(floor(lp * 15.0 + rnd * 5.0)), smoothstep(1.5, 5.0, (1.0 / 15.0) / bpx)) * 0.6
-		+ mix(0.5, hash(floor(lp * 31.0)), smoothstep(1.5, 5.0, (1.0 / 31.0) / bpx)) * 0.4;
-	if (rim > 0.2 && hn < (rim - 0.2) * 1.25) {
-		discard;
+	ALPHA = photograph.a;
+	ALPHA_SCISSOR_THRESHOLD = 0.25;
+	if (OUTPUT_IS_SRGB) {
+		photograph.rgb = mix(photograph.rgb / 12.92, pow((photograph.rgb + 0.055) / 1.055, vec3(2.4)), step(vec3(0.04045), photograph.rgb));
 	}
-	float leaf = 0.5 + 0.5 * sin(lp.x * 23.0 + sin(lp.y * 19.0) * 2.0) * sin(lp.z * 21.0 + sin(lp.x * 17.0) * 2.0);
-	vec3 col = mix(vec3(0.04, 0.078, 0.024), vec3(0.11, 0.17, 0.045), leaf * 0.7 + rnd * 0.3);
-	col = mix(col, col * vec3(1.25, 1.05, 0.7), step(0.6, rnd) * 0.6);
-	float up = smoothstep(-0.2, 0.9, lp.y);
-	col *= 0.55 + 0.55 * up;
-	ALBEDO = mix(col, photograph.rgb * 0.7, 0.8);
-	ROUGHNESS = 0.9;
-	AO = 0.5 + 0.5 * up;
+	float up = smoothstep(0.0, 1.1, plant_height);
+	vec3 col = photograph.rgb * mix(vec3(0.7, 0.85, 0.7), vec3(1.0, 0.9, 0.65), rnd) * mix(0.65, 1.0, up);
+	if (OUTPUT_IS_SRGB) {
+		col = mix(col * 12.92, 1.055 * pow(max(col, vec3(0.0)), vec3(1.0 / 2.4)) - 0.055, step(vec3(0.0031308), col));
+	}
+	ALBEDO = col;
+	ROUGHNESS = 0.95;
+	AO = 0.6 + 0.4 * up;
 	AO_LIGHT_AFFECT = 0.5;
+	if (!FRONT_FACING) { NORMAL = -NORMAL; }
+	NORMAL = normalize(mix(NORMAL, (VIEW_MATRIX * vec4(0.0, 1.0, 0.0, 0.0)).xyz, 0.45));
 	BACKLIGHT = vec3(0.08, 0.1, 0.035);
-	vec3 q = lp * 9.0 + rnd * 13.0;
-	vec3 wob = vec3(sin(q.y * 1.7 + q.z * 2.3), sin(q.z * 1.9 + q.x * 2.1), sin(q.x * 2.2 + q.y * 1.6));
-	NORMAL = normalize(NORMAL + wob * 0.35);
 }
 """

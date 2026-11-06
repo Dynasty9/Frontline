@@ -17,6 +17,10 @@ func _ready() -> void:
 		check(vertices[i].y == 0.0 and vertices[i + 1].y == 0.0 and uv[i].y == 0.0, "Grass roots stay on the terrain with zero wind weight")
 		check(vertices[i + 8].y > 0.17 and vertices[i + 8].y < 0.56 and uv[i + 8].y == 1.0, "Pointed tips retain full wind weight and varied heights")
 		check(vertices[i].distance_to(vertices[i + 1]) < 0.033, "Grass blades keep a natural centimetre scale")
+	var leaves: PackedVector3Array = grass._make_bush().surface_get_arrays(0)[Mesh.ARRAY_VERTEX]
+	check(leaves.size() == 480, "Shrubs use a bounded 160-triangle small-leaf canopy")
+	for i in range(0, leaves.size(), 6):
+		check(leaves[i].distance_to(leaves[i + 2]) <= 0.301, "Shrub branches keep their leaves at a natural scale")
 	grass.HALF = 1536.0
 	grass._stream(Vector3.ZERO)
 	check(grass._queue.size() == 225, "Large maps must queue only nearby cosmetic chunks")
@@ -110,6 +114,45 @@ func _ready() -> void:
 						check(point.y > 40.0 and point.y < 40.2, "Cosmetic stones rest on elevated ground instead of sea level")
 						stones += 1
 		check(stones > 0, "The seeded fixture includes cosmetic stones")
+	world.settings = {"seed": 3}
+	world.terrain.landform.heights.fill(0.0)
+	world.terrain.dh.fill(0.0)
+	grass._clear()
+	grass.level = 2
+	grass.HALF = MapDims.HALF
+	grass._blocked.resize(MapDims.N * MapDims.N)
+	grass._blocked.fill(0)
+	grass.clump = grass._make_clump()
+	grass.bush = grass._make_bush()
+	grass.stone = grass._make_stone()
+	grass.mat = material
+	grass.bush_mat = ShaderMaterial.new()
+	grass.bush_mat.shader = material.shader
+	grass.stone_mat = StandardMaterial3D.new()
+	grass._shrub_noise.seed = 222
+	grass._shrub_noise.frequency = 0.035
+	var rng_before := world.rng.state
+	var snapshots: Array[PackedByteArray] = []
+	var sparse := 1024
+	var dense := 0
+	for repeat in 2:
+		var placements := []
+		for x in 4:
+			for z in 4:
+				var key := Vector2i(x, z)
+				grass._build_chunk(key)
+				var count := 0
+				for node: MultiMeshInstance3D in grass._built[key]:
+					if node.material_override == grass.bush_mat:
+						count += node.multimesh.instance_count
+						for i in node.multimesh.instance_count:
+							placements.append(node.multimesh.get_instance_transform(i))
+				sparse = mini(sparse, count)
+				dense = maxi(dense, count)
+		snapshots.append(var_to_bytes(placements))
+		grass._clear()
+	check(dense > 12 and sparse < dense / 3, "Shrub habitat produces connected patches and open ground instead of even scatter")
+	check(snapshots[0] == snapshots[1] and world.rng.state == rng_before, "Cosmetic habitat rebuilds reproduce the same shrubs without advancing gameplay RNG")
 	grass.free()
 	atmosphere.free()
 	world.free()

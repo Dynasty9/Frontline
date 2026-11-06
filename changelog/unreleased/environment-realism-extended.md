@@ -110,6 +110,14 @@ caption = "Low meadow view before: broad ribbon blades and plain ground. Same se
 file = "meadow-wide-after.jpg"
 caption = "Low meadow view after: fine pointed blades over photographed turf, with variation from soil moisture. Same seed and camera."
 
+[[screenshots]]
+file = "shrub-before.jpg"
+caption = "Before: oversized branch cards and evenly scattered bushes across the meadow."
+
+[[screenshots]]
+file = "shrub-after.jpg"
+caption = "After: smaller photographed branches form patches with open gaps. Same meadow, seed, lighting and camera."
+
 +++
 
 The ocean keeps detailed waves near the battlefield and uses a coarser surface beyond it.
@@ -133,3 +141,5 @@ Meadow grass and shrubs remain visible on elevated ground, and small decorative 
 Elevated surfaces retain full height precision, removing the fine stepping that showed through snow and slope shading. Ground-level staining on walls follows the hillside instead of sea level.
 
 Meadows use fine pointed blades over photographed turf, with wetter sheltered soil and drier exposed patches. The clumps retain their previous triangle count. Local height bounds keep distance fading centred on each patch of vegetation, even when much taller mountains surround it.
+
+Low shrubs use smaller photographed branches and grow in seeded patches with open gaps. Their root shading follows each plant rather than its elevation. Distant forest atlases also load correctly in exported builds.
