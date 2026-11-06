@@ -1061,9 +1061,8 @@ func _process(_dt: float) -> void:
 					world.measured_view_frame[key] = 0.0
 				if world.has_view:
 					_perf_focused_frames += int(get_tree().root.has_focus())
-					var viewport := get_viewport().get_viewport_rid()
-					_perf_render_cpu.append(RenderingServer.viewport_get_measured_render_time_cpu(viewport) + RenderingServer.get_frame_setup_time_cpu())
-					_perf_render_gpu.append(RenderingServer.viewport_get_measured_render_time_gpu(viewport))
+					_perf_render_cpu.append(probe.render_cpu_ms + probe.render_setup_ms)
+					_perf_render_gpu.append(probe.render_gpu_ms)
 					# Godot exposes the previous second's maxima through these two monitors.
 					_perf_process.append(Performance.get_monitor(Performance.TIME_PROCESS) * 1000.0)
 					_perf_physics.append(Performance.get_monitor(Performance.TIME_PHYSICS_PROCESS) * 1000.0)
