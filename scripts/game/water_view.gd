@@ -415,6 +415,7 @@ func apply_mood(d: Dictionary, mood: String) -> void:
 		m.set_shader_parameter("horizon", d.horizon)
 		m.set_shader_parameter("ambient", float(d.ambient))
 	mat.set_shader_parameter("clouds", cloudy)
+	mat.set_shader_parameter("cloud_color", Color(0.06, 0.06, 0.06).linear_to_srgb() if mood == "night" else Color.WHITE)
 	# (under cloud there's no glitter, only a sheen)
 	mat.set_shader_parameter("sun_k", {"overcast": 0.1, "rain": 0.06, "hazy": 0.55}.get(mood, 1.0))
 	mat.set_shader_parameter("rain", 1.0 if mood == "rain" else 0.0)
@@ -719,6 +720,7 @@ uniform vec2 sea = vec2(0.85, 0.6);  // how big the swell and the wind sea run (
 uniform vec3 zenith : source_color = vec3(0.22, 0.42, 0.74);
 uniform vec3 horizon : source_color = vec3(0.68, 0.76, 0.84);
 uniform float clouds = 0.55;
+uniform vec3 cloud_color : source_color = vec3(1.0);
 uniform float ambient = 0.55;
 uniform float sun_k = 1.0;  // how sharp the sun is on the water (a blur under cloud)
 uniform float rain = 0.0;
@@ -953,7 +955,7 @@ void fragment() {
 	vec3 sky = mix(horizon, zenith, pow(r.y, 0.5));
 	vec2 cuv = r.xz / (r.y + 0.18) * 0.09 + vec2(water_time * 0.0015, water_time * 0.0007);
 	float cl = smoothstep(1.0 - clouds - 0.15, 1.0 - clouds + 0.35, texture(detail_tex, cuv).r) * smoothstep(0.0, 0.2, r.y);
-	sky = mix(sky, mix(horizon * 0.95, vec3(1.0), 0.55), cl * 0.8);
+	sky = mix(sky, mix(horizon * 0.95, cloud_color, 0.55), cl * 0.8);
 	if (terrain_reflections) { sky = vec3(0.0); }
 	SPECULAR = terrain_reflections ? 0.25 : 0.0;
 	vec3 amb = terrain_reflections ? vec3(0.0) : mix(horizon, zenith, 0.5) * ambient;

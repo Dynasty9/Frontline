@@ -57,6 +57,11 @@ func capture() -> void:
 				break
 		print("CAPTURE town bounds=", town)
 	var settle_frames := 45
+	if "--capture-set=coast" in OS.get_cmdline_user_args():
+		var shore: float = world.atmo.ground_mat.get_shader_parameter("sea_x")
+		assert(shore < half, "The coast stage needs a map with a sea")
+		views = [["coast", Vector3(shore + 100.0, 0, 0), 280.0, -14.0, PI * 0.5]]
+		settle_frames = 90
 	if "--capture-set=rain" in OS.get_cmdline_user_args():
 		views = [["valley", Vector3.ZERO, 900.0, -22.0, 0.7],
 			["town", Vector3.ZERO, 80.0, -45.0, 0.7],

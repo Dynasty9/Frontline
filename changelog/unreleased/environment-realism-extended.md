@@ -242,6 +242,14 @@ caption = "After: rain surrounds the camera and distant splashes fade away."
 file = "night-clouds-before.jpg"
 caption = "Before: block-shaped cloud edges and bright nighttime cloud cover."
 
+[[screenshots]]
+file = "night-water-before.jpg"
+caption = "Before: pale cloud reflections cover the sea beneath a dark night sky."
+
+[[screenshots]]
+file = "night-water-after.jpg"
+caption = "After: reflected clouds follow the moonlit sky while direct moon highlights remain. Same seed, camera and mood."
+
 [[videos]]
 file = "rain-before.webm"
 poster = "rain-motion-before.jpg"
@@ -296,4 +304,4 @@ Rivers continue beyond the battlefield into irregular scenery pools, with matchi
 
 Browser lighting follows the displaced mountain slopes and softly lights photographed tree canopies while keeping the cheaper vertex-lighting renderer. Rain surrounds the camera with finer streaks; soft splashes follow ground and water height and disappear at distance.
 
-Procedural clouds have smooth edges in both renderers, with subdued moonlit shading at night.
+Procedural clouds have smooth edges in both renderers, with subdued moonlit shading at night. Reflected clouds on the sea follow that night lighting instead of retaining their daytime brightness.

@@ -249,6 +249,7 @@ func _build_env() -> void:
 	sky_mat.set_shader_parameter("zenith", _d.zenith)
 	sky_mat.set_shader_parameter("horizon", _d.horizon)
 	sky_mat.set_shader_parameter("ground_col", Color(0.24, 0.23, 0.2))
+	sky_mat.set_shader_parameter("night_cloud", Color(0.06, 0.06, 0.06).linear_to_srgb())
 	sky_mat.set_shader_parameter("sun_col", _d.sun)
 	sky_mat.set_shader_parameter("cloudiness", 1.0 if mood in ["overcast", "rain"] else (0.3 if mood == "day" else 0.55))
 	sky_mat.set_shader_parameter("stars", 1.0 if mood == "night" else 0.0)
@@ -1129,6 +1130,7 @@ uniform vec3 zenith : source_color;
 uniform vec3 horizon : source_color;
 uniform vec3 ground_col : source_color;
 uniform vec3 sun_col : source_color;
+uniform vec3 night_cloud : source_color;
 uniform float cloudiness = 0.5;
 uniform float stars = 0.0;
 
@@ -1169,7 +1171,7 @@ void sky() {
 		vec2 uv = d.xz / (h + 0.18) * 1.2;
 		float c = fbm(uv * 1.6);
 		c = smoothstep(1.0 - cloudiness - 0.15, 1.0 - cloudiness + 0.35, c) * smoothstep(0.0, 0.2, h);
-		vec3 cl = mix(horizon * 0.95, mix(vec3(1.0), vec3(0.06), stars), 0.55) * (0.75 + 0.5 * sd);
+		vec3 cl = mix(horizon * 0.95, mix(vec3(1.0), night_cloud, stars), 0.55) * (0.75 + 0.5 * sd);
 		cl = mix(cl, sun_col, 0.18 * sd);
 		col = mix(col, cl, c * 0.85);
 	}
