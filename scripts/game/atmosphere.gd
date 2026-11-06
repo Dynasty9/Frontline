@@ -1132,7 +1132,12 @@ uniform vec3 sun_col : source_color;
 uniform float cloudiness = 0.5;
 uniform float stars = 0.0;
 
-float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+// Bounded arithmetic keeps neighboring cloud cells continuous on both renderers.
+float hash(vec2 p) {
+	vec3 q = fract(vec3(p.xyx) * 0.1031);
+	q += dot(q, q.yzx + 33.33);
+	return fract((q.x + q.y) * q.z);
+}
 float noise(vec2 p) {
 	vec2 i = floor(p); vec2 f = fract(p); f = f * f * (3.0 - 2.0 * f);
 	return mix(mix(hash(i), hash(i + vec2(1, 0)), f.x), mix(hash(i + vec2(0, 1)), hash(i + vec2(1, 1)), f.x), f.y);
@@ -1164,7 +1169,7 @@ void sky() {
 		vec2 uv = d.xz / (h + 0.18) * 1.2;
 		float c = fbm(uv * 1.6);
 		c = smoothstep(1.0 - cloudiness - 0.15, 1.0 - cloudiness + 0.35, c) * smoothstep(0.0, 0.2, h);
-		vec3 cl = mix(horizon * 0.95, vec3(1.0), 0.55) * (0.75 + 0.5 * sd);
+		vec3 cl = mix(horizon * 0.95, mix(vec3(1.0), vec3(0.06), stars), 0.55) * (0.75 + 0.5 * sd);
 		cl = mix(cl, sun_col, 0.18 * sd);
 		col = mix(col, cl, c * 0.85);
 	}

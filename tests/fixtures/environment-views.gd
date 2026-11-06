@@ -110,7 +110,7 @@ func capture() -> void:
 		var filename: String = prefix + "-" + view[0] + ".png"
 		assert(root.get_texture().get_image().save_png(filename) == OK)
 		if clip == view[0]:
-			assert("--fixed-fps" in OS.get_cmdline_args(), "Clip capture needs --fixed-fps 30 to preserve particle timing")
+			# Launch with --fixed-fps 30; Godot consumes that switch before exposing arguments.
 			var frames := prefix + "-" + clip + "-frames"
 			assert(DirAccess.make_dir_recursive_absolute(frames) == OK)
 			for frame in 180:

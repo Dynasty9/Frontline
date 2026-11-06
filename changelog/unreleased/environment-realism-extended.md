@@ -206,6 +206,56 @@ caption = "Before: the river ends at a straight battlefield boundary."
 file = "river-valley-after.jpg"
 caption = "After: the channel continues into an irregular scenery pool. Same seed, camera and lighting."
 
+[[screenshots]]
+file = "browser-forest-before.jpg"
+caption = "Before: flat vertex lighting on displaced ridges and dark leaf cards in the browser."
+
+[[screenshots]]
+file = "browser-forest-after.jpg"
+caption = "After: browser lighting follows mountain slopes and softly lights tree canopies."
+
+[[screenshots]]
+file = "browser-panorama-before.jpg"
+caption = "Before: the browser lights displaced mountain vertices as flat ground."
+
+[[screenshots]]
+file = "browser-panorama-after.jpg"
+caption = "After: mountain vertex normals follow the displaced terrain. Same browser settings."
+
+[[screenshots]]
+file = "rain-close-before.jpg"
+caption = "Before: bright rain streaks and white square splashes."
+
+[[screenshots]]
+file = "rain-close-after.jpg"
+caption = "After: finer streaks and soft splashes that follow the terrain height."
+
+[[screenshots]]
+file = "rain-valley-before.jpg"
+caption = "Before: the rain emitter forms a bright patch at the camera target."
+
+[[screenshots]]
+file = "rain-valley-after.jpg"
+caption = "After: rain surrounds the camera and distant splashes fade away."
+
+[[screenshots]]
+file = "night-clouds-before.jpg"
+caption = "Before: block-shaped cloud edges and bright nighttime cloud cover."
+
+[[videos]]
+file = "rain-before.webm"
+poster = "rain-motion-before.jpg"
+caption = "Before: broad bright streaks and square splashes. Six seconds at fixed 30 fps; silent."
+
+[[screenshots]]
+file = "night-clouds-after.jpg"
+caption = "After: continuous cloud edges and subdued moonlit cover. Same seed and camera."
+
+[[videos]]
+file = "rain-after.webm"
+poster = "rain-motion-after.jpg"
+caption = "After: finer streaks and soft splashes on terrain and water. Six seconds at fixed 30 fps; silent."
+
 +++
 
 The ocean keeps detailed waves near the battlefield and uses a coarser surface beyond it.
@@ -245,3 +295,5 @@ Mountain weathering follows baked downhill catchments. Snow persists in sheltere
 Rivers continue beyond the battlefield into irregular scenery pools, with matching banks and riverbeds. These distant extensions do not change playable water or navigation.
 
 Browser lighting follows the displaced mountain slopes and softly lights photographed tree canopies while keeping the cheaper vertex-lighting renderer. Rain surrounds the camera with finer streaks; soft splashes follow ground and water height and disappear at distance.
+
+Procedural clouds have smooth edges in both renderers, with subdued moonlit shading at night.

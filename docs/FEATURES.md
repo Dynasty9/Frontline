@@ -555,7 +555,7 @@ Ambush Alley autoplay can call its existing mortar support against spotted, stop
 - Sheltered runoff channels darken and develop a restrained sheen while exposed rock remains dry.
 - Conifers have broken, asymmetric branch silhouettes that read as trees against rock and snow.
 - Browser vertex lighting follows displaced mountain slopes and softly lights leaf cards without enabling global per-pixel lighting.
-- Rain streaks surround the camera; soft splashes follow ground or water height and fade before becoming distant speckles.
+- Rain streaks surround the camera; soft splashes follow ground or water height and fade before becoming distant speckles. Procedural clouds remain smooth across their noise cells and use subdued moonlit shading at night.
 - Stones at the mountain foot have irregular broken faces instead of flattened round primitives.
 - Connected dry grass and richer moss patches replace evenly green valley floors.
 - Coastal margins transition through exposed gravel and darker wet stone instead of a uniformly sandy strip.

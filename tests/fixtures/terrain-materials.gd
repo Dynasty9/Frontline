@@ -29,6 +29,7 @@ func _ready() -> void:
 	for p in [Vector2i(9, 23), Vector2i(511, 800), Vector2i(901, 107)]:
 		assert(original.get_pixelv(p) == imported.get_pixelv(p), "Asphalt roughness in alpha must survive import")
 	if DisplayServer.get_name() != "headless":
+		await check_cloud_continuity()
 		await check_vertex_ground_normals()
 		await check_rain_splashes()
 		await check_road_surfaces()
@@ -513,3 +514,37 @@ func check_rain_splashes() -> void:
 	assert(view.get_texture().get_image().get_pixel(16, 16).a < 0.01, "Distant splashes must fade before they form a bright patch")
 	view.free()
 	print("TERRAIN_MATERIALS native rain splash height, shape and distance passed")
+
+
+func check_cloud_continuity() -> void:
+	var view := SubViewport.new()
+	view.size = Vector2i(64, 64)
+	view.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	add_child(view)
+	var rect := ColorRect.new()
+	rect.size = Vector2(64, 64)
+	view.add_child(rect)
+	var source := Atmosphere.SKY_SHADER
+	var start := source.find("float hash(")
+	var helpers := source.substr(start, source.find("void sky()") - start)
+	var shader := Shader.new()
+	shader.code = "shader_type canvas_item;\n" + helpers + """
+void fragment() {
+	vec2 p = floor(UV * 64.0) - 32.0;
+	float x = abs(noise(p + vec2(-0.001, 0.37)) - noise(p + vec2(0.001, 0.37)));
+	float y = abs(noise(p + vec2(0.37, -0.001)) - noise(p + vec2(0.37, 0.001)));
+	COLOR = vec4(x, y, 0.0, 1.0);
+}
+"""
+	var material := ShaderMaterial.new()
+	material.shader = shader
+	rect.material = material
+	for frame in 4:
+		await RenderingServer.frame_post_draw
+	var pixels := view.get_texture().get_image()
+	for y in 64:
+		for x in 64:
+			var pixel := pixels.get_pixel(x, y)
+			assert(maxf(pixel.r, pixel.g) < 0.01, "Cloud noise must remain continuous across neighboring grid cells: %s" % pixel)
+	view.free()
+	print("TERRAIN_MATERIALS native cloud continuity passed")

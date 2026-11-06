@@ -4294,6 +4294,76 @@
           "file": "changelog/unreleased/environment-realism-extended/comparison-forest-after.jpg",
           "sha256": "87124fabf29b41656cd1040ba3d04cf671f61ad88dedd3b9eb4c6e39b6b80d48",
           "caption": "After the extended environment pass: forest. Matched parent-branch and current cameras, seed and lighting."
+        },
+        {
+          "file": "changelog/unreleased/environment-realism-extended/browser-forest-before.jpg",
+          "sha256": "e199d7909049d27cd8c2b7c7ceca41a7f10365ff40da6d89a2a384730bd62fe5",
+          "caption": "Before: flat vertex lighting on displaced ridges and dark leaf cards in the browser."
+        },
+        {
+          "file": "changelog/unreleased/environment-realism-extended/browser-forest-after.jpg",
+          "sha256": "ec31405770d33a1e3afe0aed7f15f1851b4f3c3c9e4eb18445b30b368fbd3bd9",
+          "caption": "After: browser lighting follows mountain slopes and softly lights tree canopies."
+        },
+        {
+          "file": "changelog/unreleased/environment-realism-extended/browser-panorama-before.jpg",
+          "sha256": "020367c837da48226c07500f3276f7b8275ced3f09db367ef1a49bd77dafe476",
+          "caption": "Before: the browser lights displaced mountain vertices as flat ground."
+        },
+        {
+          "file": "changelog/unreleased/environment-realism-extended/browser-panorama-after.jpg",
+          "sha256": "8f754afe67ed67eea8df2d34597744179bfceec6ba89153819f896ea68e756e5",
+          "caption": "After: mountain vertex normals follow the displaced terrain. Same browser settings."
+        },
+        {
+          "file": "changelog/unreleased/environment-realism-extended/rain-close-before.jpg",
+          "sha256": "1eaba4fd8b3d3139d3785163be9aa2a1a75f76f0b12e76e016936ebcaff3b469",
+          "caption": "Before: bright rain streaks and white square splashes."
+        },
+        {
+          "file": "changelog/unreleased/environment-realism-extended/rain-close-after.jpg",
+          "sha256": "2ea37d3d04530b5acf7dcedfb4a1f601c0a5e52433dd54f65fda6f5c7121a501",
+          "caption": "After: finer streaks and soft splashes that follow the terrain height."
+        },
+        {
+          "file": "changelog/unreleased/environment-realism-extended/rain-valley-before.jpg",
+          "sha256": "9c22ef07091d215072647302a3b0e794567b8c486c15ca021623c9c5ac63296b",
+          "caption": "Before: the rain emitter forms a bright patch at the camera target."
+        },
+        {
+          "file": "changelog/unreleased/environment-realism-extended/rain-valley-after.jpg",
+          "sha256": "157d5c1c4e4fde0ae09c50c2f9fba384228f841aa382f4f1b69973eaf78e81ba",
+          "caption": "After: rain surrounds the camera and distant splashes fade away."
+        },
+        {
+          "file": "changelog/unreleased/environment-realism-extended/night-clouds-before.jpg",
+          "sha256": "7d2cdaab9d78cda721f263eaa6b2ef19b08476e16601f5a69a8c9b8d1395753e",
+          "caption": "Before: block-shaped cloud edges and bright nighttime cloud cover."
+        },
+        {
+          "file": "changelog/unreleased/environment-realism-extended/rain-motion-before.jpg",
+          "sha256": "a46dbbf1a3a1855b7ae12c89b7815e4089c2ba3eea54ea37fc6c36e1e63961bb",
+          "caption": "Before: camera-local rain and soft ground-height splashes. Six seconds at fixed 30 fps; silent."
+        },
+        {
+          "file": "changelog/unreleased/environment-realism-extended/rain-before.webm",
+          "sha256": "44cdace7422d65cebe0724e5f5c57e1f70533851c2d9e4d5b967c909feeedcdc",
+          "caption": "Before: broad bright streaks and square splashes. Six seconds at fixed 30 fps; silent."
+        },
+        {
+          "file": "changelog/unreleased/environment-realism-extended/night-clouds-after.jpg",
+          "sha256": "b7bef7adf78e4fe7ff49fa8bbdac80cb756d03116229f8c794789a4cf61158fe",
+          "caption": "After: continuous cloud edges and subdued moonlit cover. Same seed and camera."
+        },
+        {
+          "file": "changelog/unreleased/environment-realism-extended/rain-motion-after.jpg",
+          "sha256": "a03767dd154ff5831fe8ff3254bc5cd921329c74510aa079c57a934ba7a8c13a",
+          "caption": "After: camera-local rain and soft ground-height splashes. Six seconds at fixed 30 fps; silent."
+        },
+        {
+          "file": "changelog/unreleased/environment-realism-extended/rain-after.webm",
+          "sha256": "d95455dabd1ef0169e4fe10d6be4cb90f79caa21e62b4f7863cfb78182e0bcce",
+          "caption": "After: finer streaks and soft splashes on terrain and water. Six seconds at fixed 30 fps; silent."
         }
       ],
       "output": null,
@@ -4318,7 +4388,11 @@
         "lane_join": "Matched native Forward+, High/day seed3 1600x900, environment-views --capture-set=town transition view, zoom25 pitch-55 yaw0.7. Held2s/45settlingframes plus complete scenery residency. Before exact b1e4704 mats/res/atmosphere scripts loaded through PCK; after varied tracks and short broken asphalt edge. Full frames, JPEG92, no retouching.",
         "drainage": "Matched native Forward+, High/day seed3 1600x900, simulation held2s/45settlingframes plus full scenery residency. Forest focus-400,-450 zoom350 pitch-30 yaw-0.2; panorama focus0,0 zoom900 pitch-22 yaw0.7. Before exact4aec471 atmosphere/landform/terrain scripts PCK; after catchment weathering and retained snow. Heights unchanged byte-for-byte (backdrop red SHA256 a781fcd66353803fd51186905b31850f2c80d41742d1fbca43f90bce040e9761). Full frames, JPEG92, no retouching.",
         "river": "Matched native Forward+, High/day seed3 1600x900, environment-views --capture-set=river-boundary, held2s/45settlingframes plus full scenery residency. Close focus-232.6883,-512 zoom130 pitch-40 yaw0.7; panorama focus0,0 zoom900 pitch-22 yaw0.7. Before exact6fa546e atmosphere/water_view/distant_forest scripts PCK; after scenery river pools. Authoritative water shapes and terrain unchanged. Full frames, JPEG92, no retouching.",
-        "complete_pass": "Native Forward+, High/day seed3 1600x900. Before exact parent b38e42e full PCK (SHA256 a78a1eacaff5e712878addff90d1f1cee8381f4def88659eaf584d6ffbe5e708); after1ab49b0. Same camera transforms, simulation held at2s, five-second warmup/full scenery residency followed by20s measurement before capture. Animated water and foliage continue normally. Camera parameters and measured results in performance.json beside these images. Full frames, JPEG92, no retouching. Earlier pairs below isolate individual checkpoints as documented separately."
+        "complete_pass": "Native Forward+, High/day seed3 1600x900. Before exact parent b38e42e full PCK (SHA256 a78a1eacaff5e712878addff90d1f1cee8381f4def88659eaf584d6ffbe5e708); after1ab49b0. Same camera transforms, simulation held at2s, five-second warmup/full scenery residency followed by20s measurement before capture. Animated water and foliage continue normally. Camera parameters and measured results in performance.json beside these images. Full frames, JPEG92, no retouching. Earlier pairs below isolate individual checkpoints as documented separately.",
+        "browser_normals": "Actual release WebGL exports in Chrome157/ANGLE D3D11 RTX3090,1600x900, High/day seed3. Before1ab49b0; aftera921536 vertex-normal correction (exported before rain-only edits). Same held2s/full-residency views as complete_pass. Default force_vertex_shading.web=true remains enabled. Full frames,JPEG92,no retouching. Concurrent other checks invalidate these runs as performance measurements.",
+        "rain": "Native Forward+,High/rain seed3,1600x900. environment-views --capture-set=rain, held2s/150settlingframes/full residency, lightning suppressed. Before exact1ab49b0 atmosphere/mats scripts PCK; aftera921536. Close focus-110,-130 zoom18 pitch-25 yaw0.7; valleyfocus0,0 zoom900 pitch-22 yaw0.7. Particle positions vary between runs; camera/geology/materials match. Fullframes,JPEG92,no retouching.",
+        "clouds": "Native Forward+,High/night seed3,1600x900. Same live world held2s, coast focus(sea_x+100,0),zoom280,pitch-14,yawPI/2,90settlingframes/full-residency. Before exacta921536 sky shader; after revised bounded hash and moonlit cloud shading, production code identical to the prototype. Other materials, geometry and camera unchanged; animated water and stars continue normally. Fullframes,JPEG92,no retouching. GPU continuity regression reproduces old discontinuities in Forward+ and passes after in both renderers.",
+        "rain_motion": "Native Forward+,High/rain seed3,1600x900. Same environment-views fixture with --fixed-fps 30 --capture-set=rain --capture-clip=close. Before exact1ab49b0 atmosphere/mats PCK; aftera921536. Simulation held2s,150settlingframes/full residency,lightning suppressed;180 consecutive full-frame PNGs encodedVP9/30fps/CRF28/noaudio. Closefocus-110,-130 zoom18 pitch-25 yaw0.7. Posters are frame90. Particle positions are not deterministic; camera,geology and materials match. Gameplay timing is held; particle animation advances at fixed30Hz."
       }
     }
   ],
