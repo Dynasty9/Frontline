@@ -7,6 +7,23 @@ const SPACING := 5.0
 var tree_count := 0
 var coverage: Image
 var material: ShaderMaterial
+static var _atlas: Texture2DArray
+
+static func atlas_texture() -> Texture2DArray:
+	if _atlas == null:
+		var source := preload("res://assets/foliage/fir_impostor.png").get_image()
+		if source.is_compressed():
+			source.decompress()
+		var images: Array[Image] = []
+		for row in 5:
+			for column in 4:
+				var tile := source.get_region(Rect2i(column * 256, row * 256, 256, 256))
+				tile.fix_alpha_edges()
+				tile.generate_mipmaps()
+				images.append(tile)
+		_atlas = Texture2DArray.new()
+		assert(_atlas.create_from_images(images) == OK)
+	return _atlas
 
 static func coverage_image(seed_value: int, reach: float) -> Image:
 	var noise := FastNoiseLite.new()
@@ -25,7 +42,6 @@ static func coverage_image(seed_value: int, reach: float) -> Image:
 func setup(atmo: Atmosphere) -> void:
 	if atmo.world.terrain.landform.peak <= 1.0:
 		return
-	visible = int(Settings.get_v("lod")) >= 1
 	var shader := Shader.new()
 	shader.code = MapDims.shader(SHADER.replace("// BACKDROP_HEIGHT", Atmosphere.BACKDROP_HEIGHT))
 	material = ShaderMaterial.new()
@@ -33,7 +49,7 @@ func setup(atmo: Atmosphere) -> void:
 	material.set_shader_parameter("backdrop_tex", atmo.backdrop_tex)
 	material.set_shader_parameter("sea_x", atmo.ground_mat.get_shader_parameter("sea_x"))
 	material.set_shader_parameter("snow_line", maxf(25.0, atmo.world.terrain.landform.peak * 0.55))
-	material.set_shader_parameter("atlas", preload("res://assets/foliage/fir_impostor.png"))
+	material.set_shader_parameter("atlas", atlas_texture())
 	var rng := RandomNumberGenerator.new()
 	rng.seed = int(atmo.world.settings.get("seed", 1)) * 7919
 	var cells := {}
@@ -74,6 +90,13 @@ func setup(atmo: Atmosphere) -> void:
 		mesh.position = origin
 		add_child(mesh)
 		tree_count += entries.size()
+	apply_settings()
+
+func apply_settings() -> void:
+	visible = int(Settings.get_v("lod")) >= 1
+	var shadows := GeometryInstance3D.SHADOW_CASTING_SETTING_ON if int(Settings.get_v("shadows")) >= 2 else GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	for chunk: MultiMeshInstance3D in get_children():
+		chunk.cast_shadow = shadows
 
 func set_lighting(bake: Texture2D, toward_sun: Vector3) -> void:
 	if material:
@@ -83,13 +106,14 @@ func set_lighting(bake: Texture2D, toward_sun: Vector3) -> void:
 const SHADER := """
 shader_type spatial;
 render_mode cull_disabled;
-uniform sampler2D atlas : source_color, filter_linear_mipmap, repeat_disable;
+uniform sampler2DArray atlas : source_color, filter_linear_mipmap, repeat_disable;
 uniform sampler2D backdrop_tex : filter_linear_mipmap, repeat_disable;
 uniform sampler2D scenery_bake : hint_default_white, filter_linear, repeat_disable;
 uniform vec3 sun_direction = vec3(0.0, 1.0, 0.0);
 uniform float sea_x = 1000000000.0;
 uniform float snow_line = 100.0;
 varying float shade;
+varying vec3 frames;
 varying vec2 lighting;
 // BACKDROP_HEIGHT
 void vertex() {
@@ -105,18 +129,31 @@ void vertex() {
 	lighting = textureLod(scenery_bake, (center.xz + __MAP_HALF__ + 1800.0) / (__MAP_SIZE__ + 3600.0), 0.0).rb;
 	vec3 right = INV_VIEW_MATRIX[0].xyz;
 	vec3 up = INV_VIEW_MATRIX[1].xyz;
-	// Rotate around the trunk base so tilting the camera cannot lift trees off the slope.
-	vec3 point = center + right * VERTEX.x * size + up * (VERTEX.y + 7.2) * size;
+	// The image is captured around the physical crown centre at every elevation.
+	center.y += 7.2 * size;
+	vec3 point = center + right * VERTEX.x * size + up * VERTEX.y * size;
+	vec3 toward_camera = normalize(INV_VIEW_MATRIX[3].xyz - center);
+	float elevation = clamp(atan(toward_camera.y, length(toward_camera.xz)) / (PI * 0.125), 0.0, 4.0);
 	MODELVIEW_MATRIX = VIEW_MATRIX;
 	VERTEX = point;
 	NORMAL = vec3(0.0, 1.0, 0.0);
 	float tile = floor(INSTANCE_CUSTOM.g * 3.99);
-	UV = (UV + vec2(mod(tile, 2.0), floor(tile / 2.0))) * 0.5;
+	frames = vec3(floor(elevation) * 4.0 + tile, min(floor(elevation) + 1.0, 4.0) * 4.0 + tile, fract(elevation));
 	shade = 0.65 + INSTANCE_CUSTOM.a * 0.30;
 }
 void fragment() {
-	vec4 leaf = texture(atlas, UV);
+	vec4 low = texture(atlas, vec3(UV, frames.x));
+	vec4 high = texture(atlas, vec3(UV, frames.y));
+	if (OUTPUT_IS_SRGB) {
+		low.rgb = mix(low.rgb / 12.92, pow((low.rgb + 0.055) / 1.055, vec3(2.4)), step(vec3(0.04045), low.rgb));
+		high.rgb = mix(high.rgb / 12.92, pow((high.rgb + 0.055) / 1.055, vec3(2.4)), step(vec3(0.04045), high.rgb));
+	}
+	float alpha = mix(low.a, high.a, frames.z);
+	vec4 leaf = vec4(mix(low.rgb * low.a, high.rgb * high.a, frames.z) / max(alpha, 0.001), alpha);
 	ALBEDO = leaf.rgb * shade * 0.65;
+	if (OUTPUT_IS_SRGB) {
+		ALBEDO = mix(ALBEDO * 12.92, 1.055 * pow(max(ALBEDO, vec3(0.0)), vec3(1.0 / 2.4)) - 0.055, step(vec3(0.0031308), ALBEDO));
+	}
 	ALPHA = leaf.a;
 	ALPHA_SCISSOR_THRESHOLD = 0.26;
 	ROUGHNESS = 1.0;

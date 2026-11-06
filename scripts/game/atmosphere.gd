@@ -689,7 +689,7 @@ func apply_settings() -> void:
 	var s := Settings
 	ground_mat.set_shader_parameter("terrain_detail", int(s.get_v("lod")) >= 1)
 	if forest:
-		forest.visible = int(s.get_v("lod")) >= 1
+		forest.apply_settings()
 	# the battle's own mood stands (the host's choice, or a mission's) until
 	# the player changes the setting while it's on
 	var want := String(s.get_v("mood"))

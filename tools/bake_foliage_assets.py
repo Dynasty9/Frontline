@@ -1,4 +1,4 @@
-"""Bake CC0 branch cards and a four-variant distant-tree atlas (Pillow + NumPy + Godot)."""
+"""Bake CC0 branch cards and a multi-elevation distant-tree atlas (Pillow + NumPy + Godot)."""
 from pathlib import Path
 import argparse
 import hashlib
@@ -36,9 +36,9 @@ def main():
     model.with_name("fir-variants.gltf").write_text(json.dumps(scene))
     subprocess.run([args.godot, "--path", str(ROOT), "--script", "tools/bake_forest_atlas.gd"], cwd=ROOT, check=True)
     with Image.open(ASSETS / "fir_impostor.png") as atlas:
-        assert atlas.size == (1024, 1024)
-        for x, y in [(0, 0), (512, 0), (0, 512), (512, 512)]:
-            assert atlas.crop((x, y, x + 512, y + 512)).getchannel("A").getbbox(), "Every view must contain a tree"
+        assert atlas.size == (1024, 1280)
+        for x, y in [(x * 256, y * 256) for y in range(5) for x in range(4)]:
+            assert atlas.crop((x, y, x + 256, y + 256)).getchannel("A").getbbox(), "Every view must contain a tree"
         pixels = np.asarray(atlas.convert("RGBA")).copy()
     # MSAA resolves colour against transparent black; cutouts need straight-alpha colour.
     alpha = pixels[..., 3:4].astype(np.float32) / 255.0

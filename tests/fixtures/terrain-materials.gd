@@ -106,5 +106,26 @@ void fragment() { ALBEDO = street_surface(scan, noise, vec2(0.0)); }
 		base = base.srgb_to_linear()
 		var target := Vector3(base.r, base.g, base.b)
 		assert(mean.distance_to(target) < 0.04, "Photographed %s must retain its preset colour: actual=%s expected=%s" % [kind, mean, target])
+	var leaves := Texture2DArray.new()
+	var leaf_images: Array[Image] = []
+	for value in [0.4, 0.8]:
+		var leaf := Image.create(2, 2, false, Image.FORMAT_RGBA8)
+		leaf.fill(Color(value, value, value, 1))
+		leaf_images.append(leaf)
+	assert(leaves.create_from_images(leaf_images) == OK)
+	var forest_code := MapDims.shader(DistantForest.SHADER.replace("// BACKDROP_HEIGHT", Atmosphere.BACKDROP_HEIGHT))
+	forest_code = forest_code.replace("render_mode cull_disabled;", "render_mode unshaded, cull_disabled;")
+	forest_code = forest_code.substr(0, forest_code.find("void vertex()")) + "void vertex() { frames = vec3(0.0, 1.0, 0.25); shade = 0.8; lighting = vec2(1.0); }\n" + forest_code.substr(forest_code.find("void fragment()"))
+	var leaf_shader := Shader.new()
+	leaf_shader.code = forest_code
+	var leaf_material := ShaderMaterial.new()
+	leaf_material.shader = leaf_shader
+	leaf_material.set_shader_parameter("atlas", leaves)
+	mesh.material_override = leaf_material
+	for frame in 3:
+		await RenderingServer.frame_post_draw
+	var leaf_pixel := view.get_texture().get_image().get_pixel(32, 32)
+	var blended := Color(0.4, 0.4, 0.4).srgb_to_linear().lerp(Color(0.8, 0.8, 0.8).srgb_to_linear(), 0.25) * 0.52
+	assert(absf(leaf_pixel.r - blended.linear_to_srgb().r) < 0.008, "Tree elevation frames blend and shade in linear light: %s" % leaf_pixel)
 	view.queue_free()
 	print("TERRAIN_MATERIALS native sloped-road normals and colour checks passed")

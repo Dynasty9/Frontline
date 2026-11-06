@@ -77,11 +77,19 @@ caption = "Before: the parking pad stops at grass and a full-height curb."
 file = "driveway-after.jpg"
 caption = "After: a continuous entrance crosses the sidewalk through a lowered curb. Same seed and camera."
 
+[[screenshots]]
+file = "canopy-before.jpg"
+caption = "Before: upright tree silhouettes remain flat when seen from above."
+
+[[screenshots]]
+file = "canopy-after.jpg"
+caption = "After: elevation-aware crowns and hillside shadows give the forest volume. Same seed, lighting and steep camera."
+
 +++
 
 The ocean keeps detailed waves near the battlefield and uses a coarser surface beyond it.
 
-Hillside woods use varied photographed tree silhouettes and a shared placement/ground-cover mask. Trees rotate around their bases as the camera tilts. Offline edge correction removes the dark fringe from their canopies.
+Hillside woods use varied photographed tree silhouettes and a shared placement/ground-cover mask. Five baked elevations blend as the camera tilts, showing crowns from above and full silhouettes near the horizon. High/Ultra shadows also ground these trees against the hillside. Offline edge correction removes the dark fringe from their canopies.
 
 Snow uses photographed powder at its original two-metre scale, with darker melt edges. Forest floors blend moss and leaf litter beneath the same hillside stands. Detailed surfaces follow the terrain-detail setting; texture arrays keep these layers within the browser renderer's sampler budget.
 

@@ -89,6 +89,30 @@ func _ready() -> void:
 	atmosphere.backdrop_tex = ImageTexture.create_from_image(Image.create(2, 2, false, Image.FORMAT_RF))
 	var forest := DistantForest.new()
 	forest.setup(atmosphere)
+	var atlas := DistantForest.atlas_texture()
+	assert(atlas == DistantForest.atlas_texture() and atlas.get_layers() == 20, "Tree views share one cached array")
+	assert(atlas.get_width() == 256 and atlas.get_height() == 256 and atlas.has_mipmaps(), "Every elevation has an isolated mip chain")
+	if DisplayServer.get_name() != "headless":
+		var side := atlas.get_layer_data(0).get_used_rect()
+		var overhead := atlas.get_layer_data(16).get_used_rect()
+		assert(side.size.y > overhead.size.y * 2 and overhead.size.x > 30, "Looking down selects a crown rather than an upright silhouette")
+	var old_lod: int = Settings.get_v("lod")
+	var old_shadows: int = Settings.get_v("shadows")
+	Settings.v.lod = 0
+	Settings.v.shadows = 1
+	forest.apply_settings()
+	assert(not forest.visible)
+	for chunk: MultiMeshInstance3D in forest.get_children():
+		assert(chunk.cast_shadow == GeometryInstance3D.SHADOW_CASTING_SETTING_OFF, "Low shadows avoid scenery shadow rendering")
+	Settings.v.lod = 1
+	Settings.v.shadows = 2
+	forest.apply_settings()
+	assert(forest.visible)
+	for chunk: MultiMeshInstance3D in forest.get_children():
+		assert(chunk.cast_shadow == GeometryInstance3D.SHADOW_CASTING_SETTING_ON, "High shadows ground distant trees")
+	Settings.v.lod = old_lod
+	Settings.v.shadows = old_shadows
+	forest.apply_settings()
 	var repeat_cover := DistantForest.coverage_image(7919, MapDims.HALF + 1400.0)
 	assert(forest.coverage.get_data() == repeat_cover.get_data(), "Forest floors and placement reproduce the map seed")
 	assert(forest.coverage.get_pixel(128, 128).r == 0.0, "Scenery understory must not paint the playable map")
