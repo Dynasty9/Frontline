@@ -63,6 +63,10 @@ var backdrop_tex: ImageTexture
 var road_mat: ShaderMaterial
 var grass: Grass
 var wildlife: Wildlife
+var _shadow_limit := 800.0
+var _shadow_fit_dirty := true
+var _shadow_view := Transform3D.IDENTITY
+var _shadow_projection := Projection()
 var _d := {}
 var _mood_asked := ""  # the Time of day setting as the battle began: changing it mid-battle switches the mood live
 
@@ -640,6 +644,9 @@ func apply_settings() -> void:
 			sun.directional_shadow_mode = DirectionalLight3D.SHADOW_PARALLEL_4_SPLITS
 			sun.directional_shadow_max_distance = 1200.0
 			sun.light_angular_distance = float(_d.soft)
+	_shadow_limit = sun.directional_shadow_max_distance
+	_shadow_fit_dirty = true
+	_fit_shadows()
 	RenderingServer.directional_soft_shadow_filter_set_quality(
 		[RenderingServer.SHADOW_QUALITY_HARD, RenderingServer.SHADOW_QUALITY_SOFT_LOW, RenderingServer.SHADOW_QUALITY_SOFT_MEDIUM, RenderingServer.SHADOW_QUALITY_SOFT_HIGH][sh])
 	RenderingServer.environment_set_volumetric_fog_volume_size(128 if sh >= 3 else 96, 96 if sh >= 3 else 64)
@@ -689,6 +696,7 @@ func _view_process(_dt: float) -> void:
 	_update_deform(_dt)
 	if world.cam == null:
 		return
+	_fit_shadows()
 	if _wind:
 		var z := clampf((world.cam.dist - 15.0) / 60.0, 0.0, 1.0)
 		_wind.volume_db = lerpf(WIND_DB.x, WIND_DB.y, z)
@@ -715,6 +723,44 @@ func _view_process(_dt: float) -> void:
 	cam_attr.dof_blur_far_transition = d * 0.9
 	cam_attr.dof_blur_near_distance = d * 0.55
 	cam_attr.dof_blur_near_transition = d * 0.3
+
+
+## Downward views need shadows only up to their furthest visible ground receiver.
+static func fitted_shadow_distance(camera: Camera3D, limit: float, fade: float) -> float:
+	# Built-in geology is nonnegative; this also leaves room below water and shell holes.
+	const FLOOR_Y := -8.0
+	var size := camera.get_viewport().get_visible_rect().size
+	var required := 0.0
+	for corner in [Vector2.ZERO, Vector2(size.x, 0), size, Vector2(0, size.y)]:
+		var origin := camera.project_ray_origin(corner)
+		var direction := camera.project_ray_normal(corner)
+		if direction.y >= -0.001 or origin.y <= FLOOR_Y:
+			return limit
+		var receiver := origin + direction * ((FLOOR_Y - origin.y) / direction.y)
+		required = maxf(required, camera.global_position.distance_to(receiver))
+	# Keep the fade beyond the receivers and avoid tiny cascade changes during zoom.
+	return minf(limit, ceilf((required + 16.0) / maxf(0.01, fade) / 32.0) * 32.0)
+
+
+func _fit_shadows() -> void:
+	if sun == null or not sun.shadow_enabled or world == null or world.cam == null or world.cam.cam == null:
+		return
+	if _terrain_probe != null:
+		# Cached reflections see a different view of the battlefield.
+		sun.directional_shadow_max_distance = _shadow_limit
+		_shadow_fit_dirty = true
+		return
+	var camera := world.cam.cam
+	var projection := camera.get_camera_projection()
+	if not _shadow_fit_dirty and camera.global_transform == _shadow_view and projection == _shadow_projection:
+		return
+	_shadow_view = camera.global_transform
+	_shadow_projection = projection
+	_shadow_fit_dirty = false
+	var distance := fitted_shadow_distance(camera, _shadow_limit, sun.directional_shadow_fade_start)
+	var current := sun.directional_shadow_max_distance
+	if distance > current or distance <= current - 64.0:
+		sun.directional_shadow_max_distance = distance
 
 
 ## No lower clamp: distant command cameras otherwise look through an ever

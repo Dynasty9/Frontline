@@ -3579,6 +3579,30 @@
       "output": null,
       "title": "Faster shared soldier rendering",
       "summary": "Large armies spend less CPU time preparing their distant models."
+    },
+    {
+      "entry": "changelog/unreleased/camera-shadow-range.md",
+      "title": "Less shadow work beyond the command view",
+      "summary": "Downward camera views keep their shadows while drawing less distant shadow geometry.",
+      "version": "unreleased",
+      "kind": "improved",
+      "medium": "measurement",
+      "stage": "text",
+      "rationale": "Measured in-battle range alternation with original/fitted rendered shadow fixtures on Forward+ and Compatibility. See docs/performance/shadow-range.md for exclusions and limits; no sustained FPS claim.",
+      "source_ref": "codex/camera-shadow-range",
+      "sources": [
+        {
+          "file": "changelog/unreleased/camera-shadow-range/forward-plus.png",
+          "sha256": "a93eb0054714da40a7776bb6d9fc91ef14283b046536208a7c6fd64018ec9082",
+          "caption": "Controlled fixture: original left, fitted right."
+        },
+        {
+          "file": "changelog/unreleased/camera-shadow-range/compatibility.png",
+          "sha256": "ba2853549e164d1a6eeb7a24a2f736fccf25621a108c162058cf942f101c875a",
+          "caption": "Controlled fixture: original left, fitted right."
+        }
+      ],
+      "output": null
     }
   ],
   "layout_capture": {
