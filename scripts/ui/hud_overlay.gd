@@ -51,7 +51,7 @@ func _input(event: InputEvent) -> void:
 		_refresh_all = true
 
 
-func refresh_for_view(dt: float, camera: Camera3D) -> bool:
+func refresh_for_view(dt: float, camera: Camera3D, defer_start := false) -> bool:
 	# Prepare drawing commands over three frames, then rasterize once at 15 Hz.
 	var view := camera.global_transform
 	var projection := camera.get_camera_projection()
@@ -75,6 +75,9 @@ func refresh_for_view(dt: float, camera: Camera3D) -> bool:
 			raster.render_target_update_mode = SubViewport.UPDATE_ONCE
 		hud.overview_frame = Engine.get_process_frames()
 		return true
+	# Finish staged work first; routine summaries can reserve the next free frame.
+	if not full and defer_start and _refresh_left > -0.2:
+		return false
 	if not full and _refresh_left > 0.0:
 		return false
 	_refresh_left = maxf(0.0, _refresh_left + 1.0 / 15.0) if _refresh_left <= 0.0 else 1.0 / 15.0

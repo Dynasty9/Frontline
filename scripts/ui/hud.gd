@@ -1533,24 +1533,27 @@ func _view_process(dt: float) -> void:
 			toasts.offset_bottom = tb
 	toasts.tick(rdt)
 	minimap.refresh_layers()
-	var overlay_changed := false
-	if world.cam:
-		overlay_changed = overlay.refresh_for_view(rdt, world.cam.cam)
-	if world.input:
-		overlay.prepare_groups(world.input, overlay_changed)
-	_refresh_roster(slow, overview_frame == Engine.get_process_frames())
+	_refresh_overview(rdt, slow)
 	pointer_overlay.queue_redraw()
 	coop.queue_redraw()
 
 
+func _refresh_overview(dt: float, roster_due: bool) -> void:
+	# Finish a staged overlay, then give summaries and the roster their own frames.
+	var preparing := overlay._next_phase >= 0
+	if world.input and not preparing:
+		overlay.prepare_groups(world.input, false)
+	_refresh_roster(roster_due, preparing or overview_frame == Engine.get_process_frames())
+	if world.cam:
+		overlay.refresh_for_view(dt, world.cam.cam, overview_frame == Engine.get_process_frames())
+
+
 func _refresh_roster(due: bool, overlay_changed: bool) -> void:
-	# Split routine HUD work across frames, with at most one frame of delay.
-	if _roster_pending or (due and not overlay_changed):
+	_roster_pending = _roster_pending or due
+	if _roster_pending and not overlay_changed:
 		orbat.queue_redraw()
 		overview_frame = Engine.get_process_frames()
 		_roster_pending = false
-	else:
-		_roster_pending = due
 
 
 ## A fire mission's name, short: its designation and what it does

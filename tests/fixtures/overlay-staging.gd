@@ -1,12 +1,30 @@
 extends Node
 
 class HudStub extends Hud:
+	var roster_frames := []
+	func _refresh_roster(due: bool, busy: bool) -> void:
+		var requested := due or _roster_pending
+		super._refresh_roster(due, busy)
+		if requested and not _roster_pending:
+			roster_frames.append(Engine.get_process_frames())
 	func _ready() -> void:
 		pass
 	func _process(_dt: float) -> void:
 		pass
 
 class Overlay extends HudOverlay:
+	var overlay_frames := []
+	var group_frames := []
+	func refresh_for_view(dt: float, camera: Camera3D, defer_start := false) -> bool:
+		var changed := super.refresh_for_view(dt, camera, defer_start)
+		if changed:
+			overlay_frames.append(Engine.get_process_frames())
+		return changed
+	func _build_groups(inp, rebuild := true) -> void:
+		var previous := _groups_at
+		super._build_groups(inp, rebuild)
+		if previous != _groups_at:
+			group_frames.append(Engine.get_process_frames())
 	var phases := []
 	var strength := 1.0
 	func _draw_content(phase: int) -> void:
@@ -37,8 +55,11 @@ func _ready() -> void:
 	check_pixels(raster, 1.0)
 	overlay.phases.clear()
 	overlay.strength = 0.5
+	assert(not overlay.refresh_for_view(0.067, camera, true), "Routine summaries can defer starting an overlay")
+	await settled()
+	assert(overlay.phases.is_empty())
 	for phase in 3:
-		overlay.refresh_for_view(0.067 if phase == 0 else 0.016, camera)
+		overlay.refresh_for_view(0.0 if phase == 0 else 0.016, camera, phase > 0)
 		assert(raster.render_target_update_mode == (SubViewport.UPDATE_ONCE if phase == 2 else SubViewport.UPDATE_DISABLED))
 		await settled()
 		assert(overlay.phases == [phase], "Only one layer should prepare each stationary frame")
@@ -54,7 +75,7 @@ func _ready() -> void:
 			1: camera.fov += 1
 			2: overlay._input(InputEventKey.new())
 			3: raster.size = Vector2i(20, 20)
-		overlay.refresh_for_view(0.0, camera)
+		overlay.refresh_for_view(0.0, camera, true)
 		assert(overlay._next_phase == -1 and raster.render_target_update_mode == SubViewport.UPDATE_ONCE)
 		await settled()
 		assert(overlay.phases == [0, 1, 2], "Camera, projection, input and resize must cancel partial preparation")
@@ -69,6 +90,29 @@ func _ready() -> void:
 	overlay.refresh_for_view(0.0, camera)
 	await settled()
 	assert(overlay.phases == [0, 1, 2], "Showing the interface must restore all layers immediately")
+	# Run the actual HUD coordinator: routine work never overlaps staged layers.
+	var world := World.new()
+	world.input = PlayerInput.new()
+	world.cam = RtsCamera.new()
+	world.cam.cam = camera
+	hud.world = world
+	hud.overlay = overlay
+	hud.orbat = HudOrbat.new()
+	overlay.overlay_frames.clear()
+	for frame in 30:
+		if frame % 6 == 0:
+			overlay._groups_at = -1000
+		hud._refresh_overview(1.0 / 60.0, frame % 6 == 0)
+		await settled()
+	assert(overlay.overlay_frames.size() >= 9 and overlay.group_frames.size() >= 4 and hud.roster_frames.size() >= 4, "All three workloads must keep making progress")
+	for frame in overlay.group_frames:
+		assert(not frame in overlay.overlay_frames and not frame in hud.roster_frames)
+	for frame in hud.roster_frames:
+		assert(not frame in overlay.overlay_frames, "Queued roster work must not pile onto staged drawing")
+	hud.orbat.free()
+	world.input.free()
+	world.cam.free()
+	world.free()
 	hud.free()
 	camera.free()
 	print("OVERLAY_STAGING passed")
