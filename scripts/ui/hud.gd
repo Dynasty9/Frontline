@@ -1541,9 +1541,13 @@ func _view_process(dt: float) -> void:
 func _refresh_overview(dt: float, roster_due: bool) -> void:
 	# Finish a staged overlay, then give summaries and the roster their own frames.
 	var preparing := overlay._next_phase >= 0
-	if world.input and not preparing:
+	var roster_first := _roster_pending and not preparing
+	if roster_first:
+		_refresh_roster(roster_due, false)
+	if world.input and not preparing and overview_frame != Engine.get_process_frames():
 		overlay.prepare_groups(world.input, false)
-	_refresh_roster(roster_due, preparing or overview_frame == Engine.get_process_frames())
+	if not roster_first:
+		_refresh_roster(roster_due, preparing or overview_frame == Engine.get_process_frames())
 	if world.cam:
 		overlay.refresh_for_view(dt, world.cam.cam, overview_frame == Engine.get_process_frames())
 

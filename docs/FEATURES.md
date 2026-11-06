@@ -1362,4 +1362,8 @@ boundary, replay contract, validation and remaining release gates.
 See [SIMULATION_SCALING.md](SIMULATION_SCALING.md) for the earlier profiling
 experiments and the process boundary before the full Rust migration.
 
-Routine client overview work reserves separate frames for squad summaries, the roster and the three overlay drawing layers. Camera, projection and input changes bypass this scheduling; on a stationary view the next overlay starts after pending summaries, with a 200 ms starvation guard at very low frame rates.
+Routine client overview work reserves separate frames for squad summaries, the
+roster and the three overlay drawing layers. Camera, projection and input changes
+bypass this scheduling; on a stationary view the next overlay starts after pending
+summaries, with a 200 ms starvation guard at very low frame rates. Queued roster
+work takes the next available slot so slower machines do not starve it.

@@ -109,6 +109,14 @@ func _ready() -> void:
 		assert(not frame in overlay.overlay_frames and not frame in hud.roster_frames)
 	for frame in hud.roster_frames:
 		assert(not frame in overlay.overlay_frames, "Queued roster work must not pile onto staged drawing")
+	var groups_before := overlay.group_frames.size()
+	var roster_before := hud.roster_frames.size()
+	var layers_before := overlay.overlay_frames.size()
+	for frame in 16:
+		overlay._groups_at = -1000
+		hud._refresh_overview(0.3, true)
+		await settled()
+	assert(overlay.group_frames.size() > groups_before and hud.roster_frames.size() > roster_before and overlay.overlay_frames.size() > layers_before, "Very slow frames must not starve summaries, roster or overlay")
 	hud.orbat.free()
 	world.input.free()
 	world.cam.free()
