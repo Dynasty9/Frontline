@@ -1270,7 +1270,7 @@ not upload transforms; panning restores them immediately. Socket clients interpo
 transforms on the GPU between updates, keeping the same exponential smoothing used
 for CPU selection and nearby models. A native client batch advances those CPU positions
 once per frame, retaining motion state between snapshots. Shared-model presentation checks
-wake for new snapshots, selection, viewing-team changes and promotion to a detailed model.
+wake for changed presentation, selection, viewing-team changes and promotion to a detailed model.
 Property corrections reset the retained transform, and despawns remove it. Routine motion uploads wait one frame after
 packet processing and may yield two further frames to HUD drawing or preparation; visibility
 changes, teleports, camera movement and despawns remain immediate. New articulated
@@ -1371,7 +1371,10 @@ work takes the next available slot so slower machines do not starve it.
 Movement-only snapshots retain shared soldier presentation. Life, visibility-mask
 and side changes invalidate it; property changes, selection and observer-side
 changes still refresh immediately. The native motion batch alone detects its
-teleports, avoiding a second distance test per soldier.
+teleports, avoiding a second distance test per soldier. Dormant shared models no longer
+receive a GDScript frame callback: a presentation queue wakes them for these changes,
+camera-driven detail promotion and ragdolls. Detailed animation continues each frame;
+unchanged selection membership does not wake the queue.
 
 Soldier batches bound their current and target positions with the complete animated
 model envelope. Bounds shrink after movement and blasts settle, so empty cell

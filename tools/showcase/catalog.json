@@ -3540,6 +3540,19 @@
         "time_s": 62,
         "command": "python tools/benchmark_scaling.py --godot <export>/Frontline.exe --exported --rendered --local-server --units 500 --map-size 1024 --mode combat --seed 3 --team -1 --warmup 30 --duration 30 --zoom 35 --preset high --width 1280 --height 720 --output <fresh-directory>"
       }
+    },
+    {
+      "entry": "changelog/unreleased/soldier-frame-work.md",
+      "title": "Less repeated work for large armies",
+      "summary": "Shared soldier models now update their presentation when something changes, while movement stays smooth.",
+      "version": "unreleased",
+      "kind": "improved",
+      "medium": "text",
+      "stage": "text",
+      "rationale": "Lifecycle regressions verify smooth motion, immediate selection and fog, observer switching, detail promotion and safe despawn. This changes scheduling, not appearance; benchmark results are recorded separately.",
+      "source_ref": "codex/soldier-presentation-queue",
+      "sources": [],
+      "output": null
     }
   ],
   "layout_capture": {

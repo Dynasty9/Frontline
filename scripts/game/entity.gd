@@ -26,7 +26,13 @@ var resend_t := 0.0
 var net_pos := Vector3.ZERO
 var net_yaw := 0.0
 var net_init := false
-var selected := false
+var selected := false:
+	set(value):
+		if selected == value:
+			return
+		selected = value
+		if self is Soldier:
+			(self as Soldier)._view_dirty = true
 var hit_by: Array = []  # (server) the last enemy to hurt it: [owner, team, unit, soldier eid] (see BattleStats)
 
 

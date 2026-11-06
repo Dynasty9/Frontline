@@ -147,7 +147,10 @@ var _stuck_t := 0.0
 var _pose_dt := 0.0
 var _pose_skip := 0
 var view_lod := false
-var debug_pose: Array = []  # test gallery: [posture, act, life, view speed] frozen
+var debug_pose: Array = []:  # test gallery: [posture, act, life, view speed] frozen
+	set(value):
+		debug_pose = value
+		_view_dirty = true
 var riding = null  # the vehicle he's sitting in (untyped: may be freed)
 var detached := false  # under a direct order of his own until the squad is given one
 # downtime
@@ -5402,7 +5405,11 @@ func supp_value() -> float:
 
 var _corpse_t := 0.0
 var _native_view_motion := false
-var _view_dirty := true
+var _view_dirty := true:
+	set(value):
+		_view_dirty = value
+		if value and world and world.soldier_view:
+			world.soldier_view.request_view(self)
 var _view_selected := false
 var _view_team := -1
 
@@ -5414,13 +5421,17 @@ func _process(dt: float) -> void:
 		world.vp("soldiers", _t0)
 
 
+func retains_view() -> bool:
+	# Native motion keeps selection positions current; shared models only need changed presentation.
+	return _native_view_motion and (view_lod or not _vis) and not _view_dirty and selected == _view_selected \
+			and world.view_team == _view_team and world.cam and debug_pose.is_empty() \
+			and (model == null or (not model._baked and model.ragdoll == null)) and not world.soldier_view.detail_ids.has(eid)
+
+
 func _view_process(dt: float, blend := -1.0, motion_done := false) -> void:
 	if not world.has_view:
 		return
-	# Native motion keeps selection positions current; shared models only need changed presentation.
-	if motion_done and (view_lod or not _vis) and not _view_dirty and selected == _view_selected \
-			and world.view_team == _view_team and world.cam and debug_pose.is_empty() \
-			and (model == null or (not model._baked and model.ragdoll == null)) and not world.soldier_view.detail_ids.has(eid):
+	if motion_done and retains_view():
 		_last_view_pos = position
 		return
 	_view_dirty = false

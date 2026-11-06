@@ -15,6 +15,11 @@ func _ready() -> void:
 	input._update_selection()
 	assert(input.sel_squads == [7])
 	assert(world.soldiers[0].selected and world.soldiers[1].selected and not world.soldiers[2].selected)
+	for s in world.soldiers:
+		s._view_dirty = false
+	input._update_selection()
+	for s in world.soldiers:
+		assert(not s._view_dirty, "Unchanged selection must not wake retained presentation")
 	world.soldiers[2].sid = 7
 	input._update_selection()
 	assert(world.soldiers[2].selected)
