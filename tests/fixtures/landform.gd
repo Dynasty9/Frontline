@@ -52,6 +52,18 @@ func _ready() -> void:
 	world.settings = {"seed": 3}
 	world.terrain = TerrainMap.new(world)
 	world.water = WaterMap.new(world)
+	var precise := TerrainMap.new(world)
+	var slope := PackedFloat32Array()
+	slope.resize(17 * 17)
+	for z in 17:
+		for x in 17:
+			slope[z * 17 + x] = 100.001 + x * 0.011 + z * 0.017
+	precise.install_landform(slope)
+	for z in range(30, 36):
+		for x in range(30, 36):
+			var height := precise.dh[z * TerrainMap.DN + x]
+			var drawn := precise.deform_img.get_pixel(x, z)
+			assert(absf(drawn.r - height) < 0.00002 and absf(drawn.g - height) < 0.00002, "Elevated height textures must not quantize slopes into visible terraces")
 	var dressing := Decor.new()
 	dressing.build(world, [["alpine_stones", Vector3.ZERO, 0.0, 1.0]])
 	var chunk: Node3D = dressing._chunks[Vector2i.ZERO]
@@ -154,7 +166,7 @@ func _ready() -> void:
 	atmosphere.env = Environment.new()
 	atmosphere.ground_mat = ShaderMaterial.new()
 	var ground_shader := Shader.new()
-	ground_shader.code = MapDims.shader(Atmosphere.GROUND_SHADER)
+	ground_shader.code = MapDims.shader(Atmosphere.GROUND_SHADER.replace("// BACKDROP_HEIGHT", Atmosphere.BACKDROP_HEIGHT))
 	atmosphere.ground_mat.shader = ground_shader
 	atmosphere._d = {"fog_d": 0.002}
 	world.terrain.landform.peak = 80.0

@@ -29,6 +29,7 @@ func _ready() -> void:
 		assert(original.get_pixelv(p) == imported.get_pixelv(p), "Asphalt roughness in alpha must survive import")
 	if DisplayServer.get_name() != "headless":
 		await check_road_surfaces()
+		await check_ground_grime()
 	print("TERRAIN_MATERIALS passed")
 	Sfx._ensure()
 	while Music._task >= 0:
@@ -129,3 +130,47 @@ void fragment() { ALBEDO = street_surface(scan, noise, vec2(0.0)); }
 	assert(absf(leaf_pixel.r - blended.linear_to_srgb().r) < 0.008, "Tree elevation frames blend and shade in linear light: %s" % leaf_pixel)
 	view.queue_free()
 	print("TERRAIN_MATERIALS native sloped-road normals and colour checks passed")
+
+
+func check_ground_grime() -> void:
+	var view := SubViewport.new()
+	view.size = Vector2i(32, 32)
+	view.own_world_3d = true
+	view.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	add_child(view)
+	var camera := Camera3D.new()
+	camera.projection = Camera3D.PROJECTION_ORTHOGONAL
+	camera.size = 1.0
+	view.add_child(camera)
+	var mesh := MeshInstance3D.new()
+	mesh.mesh = PlaneMesh.new()
+	view.add_child(mesh)
+	var material := Mats.get_mat("wood_dark")
+	var merged := Mats.vc_variant(material)
+	Mats.set_material(mesh, material)
+	Mats.set_inst(mesh, &"tint", Color(0.8, 0.7, 0.6))
+	var carried := mesh.material_override as ShaderMaterial
+	for elevation in [0.0, 40.0, 80.0]:
+		var field := Image.create(514, 514, false, Image.FORMAT_RGBAF)
+		field.fill(Color(elevation, elevation, 0.0, 1.0))
+		var heights := Texture2DArray.new()
+		assert(heights.create_from_images([field]) == OK)
+		Mats.set_ground_maps(heights, null)
+		for shared in [material, merged, carried, Mats.get_mat("plaster")]:
+			assert(shared.get_shader_parameter("crater_tex") == heights, "Ground weathering must follow new maps in shared, batched and Compatibility materials")
+		var debug := material.duplicate() as ShaderMaterial
+		var shader := Shader.new()
+		shader.code = material.shader.code.replace("render_mode specular_schlick_ggx;", "render_mode unshaded;").replace("ALBEDO = col;", "ALBEDO = vec3(low); if (OUTPUT_IS_SRGB) { ALBEDO = mix(ALBEDO * 12.92, 1.055 * pow(ALBEDO, vec3(1.0 / 2.4)) - 0.055, step(vec3(0.0031308), ALBEDO)); }")
+		debug.shader = shader
+		mesh.material_override = debug
+		for above in [0.1, 0.45, 1.2]:
+			mesh.position.y = elevation + above
+			camera.position = mesh.position + Vector3(0, 4, 0)
+			camera.look_at(mesh.position, Vector3.FORWARD)
+			for frame in 3:
+				await RenderingServer.frame_post_draw
+			var pixel := view.get_texture().get_image().get_pixel(16, 16).srgb_to_linear()
+			var expected := 1.0 - smoothstep(0.0, 0.9, above)
+			assert(absf(pixel.r - expected) < 0.025, "Grime follows height above terrain, not sea level: elevation=%s above=%s actual=%s" % [elevation, above, pixel.r])
+	view.queue_free()
+	print("TERRAIN_MATERIALS elevated-ground weathering passed")

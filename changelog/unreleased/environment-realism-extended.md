@@ -85,6 +85,15 @@ caption = "Before: upright tree silhouettes remain flat when seen from above."
 file = "canopy-after.jpg"
 caption = "After: elevation-aware crowns and hillside shadows give the forest volume. Same seed, lighting and steep camera."
 
+
+[[screenshots]]
+file = "precision-before.jpg"
+caption = "Before: rounded height samples leave fine stripes across snow edges."
+
+[[screenshots]]
+file = "precision-after.jpg"
+caption = "After: full-precision slopes keep snow edges smooth. Same terrain, seed and camera."
+
 +++
 
 The ocean keeps detailed waves near the battlefield and uses a coarser surface beyond it.
@@ -104,3 +113,5 @@ Photographic building materials now respect their intended colours. Calibrated r
 Driveways now connect to the street through lowered sidewalk crossings with sloping shoulders. Curbs meet the asphalt, and grass stays out of the paved entrance.
 
 Meadow grass and shrubs remain visible on elevated ground, and small decorative stones rest on the actual hillside. Grass thins below the snow line and stops on bare steep faces instead of leaving stray clumps in unsuitable terrain.
+
+Elevated surfaces retain full height precision, removing the fine stepping that showed through snow and slope shading. Ground-level staining on walls follows the hillside instead of sea level.

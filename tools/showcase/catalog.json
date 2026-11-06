@@ -4144,6 +4144,16 @@
           "file": "changelog/unreleased/environment-realism-extended/canopy-after.jpg",
           "sha256": "fb2aad732e5d2d310a8b93353c41c40c429afc90771dd1d8270ec13c13ed0efd",
           "caption": "canopy-after"
+        },
+        {
+          "file": "changelog/unreleased/environment-realism-extended/precision-before.jpg",
+          "sha256": "bf5cbb9c8577858000cdc6b46727f7c5a967b55109f077e784e50dbd4314b876",
+          "caption": "precision-before"
+        },
+        {
+          "file": "changelog/unreleased/environment-realism-extended/precision-after.jpg",
+          "sha256": "a66b09804dce723192e78c7c5ce9b61d2d5abe22e1cc2e38d9a96b012e642fb1",
+          "caption": "precision-after"
         }
       ],
       "output": null,
@@ -4160,7 +4170,8 @@
         "street": "Matched native Forward+, seed3 High/day 1600x900, focus-55,-4 zoom15 pitch-55 yaw0.7, held2s/45settlingframes. Before 9c84373 runtime scripts, after fine-asphalt checkpoint. Both use environment-views.gd --capture-set=town. No retouching.",
         "photo_calibration": "Matched native Forward+, High/day seed3 1600x900. Before76d6374 (identical Forward+ material output to5407b62); after calibrated photographic materials. Both environment-views --capture-set=town, held2s/45settlingframes. Close uses first town driveway zoom18 pitch-50 yawpiece+PI+0.4; wide towncentrezoom130 pitch-50 yaw0.7. No retouching.",
         "driveway": "Matched native Forward+, High/day seed3 1600x900, focus-15.6,-8.9 zoom10 pitch-25 yaw0.4, held2s/45settlingframes. Before exact e5a3687 towngen/decor/grass scripts overlaid through PCK before main; after lowered crossings. Same fixed camera, no retouching.",
-        "canopy": "Matched native Forward+, High/day seed3 1600x900, focus-400,-450 zoom350 pitch-65 yaw-0.2, held2s/45settlingframes. Before1919acc forest and atlas captured before replacement; after twenty-view atlas with High shadows. Same generated terrain and camera. No retouching."
+        "canopy": "Matched native Forward+, High/day seed3 1600x900, focus-400,-450 zoom350 pitch-65 yaw-0.2, held2s/45settlingframes. Before1919acc forest and atlas captured before replacement; after twenty-view atlas with High shadows. Same generated terrain and camera. No retouching.",
+        "precision": "Matched native Forward+, High/day seed3 1600x900, focus232,296 zoom60 pitch-35 yaw0.7, held2s/45settlingframes. Controlled height-precision comparison: before uses the same terrain samples converted to the previous half-float texture; after uses full floats. Only the ground height texture changes between frames. Full frames, no retouching."
       }
     }
   ],

@@ -564,6 +564,7 @@ Ambush Alley autoplay can call its existing mortar support against spotted, stop
 - Sheltered rock crevices receive stronger ambient occlusion while exposed rock stays open to sky light.
 - World-space texture warping breaks up repeated slab patterns without adding material samples.
   Photograph-derived height, normals, crevice shading and roughness give each material distinct relief.
+  Full-precision surface/geology textures keep elevated slopes and snow edges smooth; wall grime follows height above ground.
   Snow uses a two-metre powder scan with dirtier melt edges; wooded foothills use three-metre moss
   and leaf litter. Five material layers share two texture arrays with independent mipmaps, preserving
   the browser sampler budget. Detailed snow and litter follow the existing terrain-detail setting;

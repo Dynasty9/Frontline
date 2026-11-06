@@ -216,6 +216,10 @@ static func get_mat(kind: String) -> ShaderMaterial:
 	var p := _preset(kind)
 	for k in p:
 		m.set_shader_parameter(k, p[k])
+	if _crater_tex:
+		m.set_shader_parameter("crater_tex", _crater_tex)
+		m.set_shader_parameter("crater_half", MapDims.HALF)
+		m.set_shader_parameter("terrain_bound", true)
 	_cache[kind] = m
 	return m
 
@@ -249,21 +253,22 @@ static func paving(kind: String) -> ShaderMaterial:
 
 
 ## The ground's deformation and trench masks (the atmosphere hands them over
-## as they're made and remade); paving materials, and merged copies of them,
-## cut their holes from these.
+## as they're made and remade); paving cuts holes and wall weathering follows
+## the ground, including in merged meshes and Compatibility material copies.
 static func set_ground_maps(crater: Texture2DArray, trench: Texture2D) -> void:
 	if crater:
 		_crater_tex = crater
 	if trench:
 		_trench_tex = trench
-	var mats: Array = _paving.values()
+	var mats: Array = _cache.values() + _paving.values()
 	for v in _vc_cache.values():
-		if v.get_shader_parameter("crater_cut") == true:
+		if v.shader == shader() or v.get_shader_parameter("crater_cut") == true:
 			mats.append(v)
 	for m in mats:
-		m.set_shader_parameter("crater_half", MapDims.HALF)
+		set_shared(m, &"crater_half", MapDims.HALF)
 		if crater:
 			set_shared(m, &"crater_tex", crater)
+			set_shared(m, &"terrain_bound", true)
 		if trench:
 			set_shared(m, &"trench_tex", trench)
 
@@ -891,6 +896,7 @@ uniform bool use_vcolor = false;
 uniform float vcolor_k = 1.0;  // merged parts: the vertex colour is stored scaled down (Mats.VC_K)
 // paving (Mats.paving): a shell hole or a trench punches through it, as through the roads
 uniform bool crater_cut = false;
+uniform bool terrain_bound = false;
 uniform sampler2DArray crater_tex : filter_linear, repeat_disable;
 // TERRAIN_TEXTURE_HELPER
 uniform sampler2D trench_tex : hint_default_black, filter_linear, repeat_disable;
@@ -903,6 +909,7 @@ varying vec3 tp;
 varying vec3 tn;
 varying vec3 wpos;
 varying vec3 seed;
+varying float ground_y;
 
 // STREET_SURFACE
 float h12(vec2 p) { vec3 p3 = fract(vec3(p.xyx) * 0.1031); p3 += dot(p3, p3.yzx + 33.33); return fract((p3.x + p3.y) * p3.z); }
@@ -917,6 +924,10 @@ float keep(float period, float px) { return smoothstep(1.5, 5.0, period / max(px
 
 void vertex() {
 	wpos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
+	ground_y = 0.0;
+	if (terrain_bound && !local_space && grime > 0.0) {
+		ground_y = terrain_height(crater_tex, (wpos.xz + crater_half) / (crater_half * 2.0));
+	}
 	seed = MODEL_MATRIX[3].xyz;
 	if (local_space) {
 		tp = VERTEX + pofs;
@@ -972,7 +983,7 @@ void fragment() {
 			col = brick; h = bh;
 		} else {
 			float n = tfbm(uv * 0.9 + off);
-			float chip = smoothstep(0.69 - sw, 0.72 + sw, n + (1.0 - smoothstep(0.0, 1.2, wpos.y)) * 0.06);
+			float chip = smoothstep(0.69 - sw, 0.72 + sw, n + (1.0 - smoothstep(0.0, 1.2, wpos.y - ground_y)) * 0.06);
 			vec3 pl = texture(photo_color, uv * 0.5).rgb * col_a * 1.8;
 			float streak = tfbm(vec2(uv.x * 3.0, uv.y * 0.35) + off);
 			pl = mix(pl, col_d, smoothstep(0.5, 0.8, streak) * 0.45);
@@ -1146,7 +1157,7 @@ void fragment() {
 	if (pattern == 21) { col *= mix(1.0, 0.88 + 0.24 * macro, weathering); }
 	else if (pattern != 18) { col *= 0.88 + 0.24 * macro; }
 	// grime and dust toward the ground
-	float low = 1.0 - smoothstep(0.0, 0.9, wpos.y);
+	float low = 1.0 - smoothstep(0.0, 0.9, wpos.y - ground_y);
 	float gn = tnoise(uv * 2.0 + off);
 	col = mix(col, col * 0.62 + vec3(0.05, 0.04, 0.02), low * grime * (0.6 + 0.4 * gn));
 	ALBEDO = col;
