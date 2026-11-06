@@ -53,6 +53,15 @@ func capture() -> void:
 				views.append(["driveway", position, 18.0, -50.0, float(piece[2]) + PI + 0.4])
 				break
 		print("CAPTURE town bounds=", town)
+	var settle_frames := 45
+	if "--capture-set=meadow" in OS.get_cmdline_user_args():
+		views = [
+			["close", Vector3(-110, 0, -130), 18.0, -45.0, 0.7],
+			["wide", Vector3(-110, 0, -130), 45.0, -35.0, 0.7],
+			["low", Vector3(-110, 0, -130), 18.0, -15.0, 0.7],
+		]
+		settle_frames = 225
+		world.atmo.grass.mat.set_shader_parameter("wind", 0.0)
 	var records := []
 	for view in views:
 		world.cam.dist = view[2]
@@ -60,7 +69,7 @@ func capture() -> void:
 		world.cam.pitch_deg = view[3]
 		world.cam.yaw = view[4]
 		world.cam.focus(view[1])
-		for frame in 45:
+		for frame in settle_frames:
 			await process_frame
 		await RenderingServer.frame_post_draw
 		var filename: String = prefix + "-" + view[0] + ".png"

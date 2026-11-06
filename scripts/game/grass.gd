@@ -334,14 +334,20 @@ func _mm(mesh: Mesh, m: Material, xf: Array, cd: Array, vis: float) -> MultiMesh
 	mm.use_custom_data = true
 	mm.mesh = mesh
 	mm.instance_count = xf.size()
+	var low := INF
+	var high := -INF
 	for i in xf.size():
 		mm.set_instance_transform(i, xf[i])
 		mm.set_instance_custom_data(i, cd[i])
+		if m is ShaderMaterial:
+			var height: float = atmo.world.terrain.deform_at(xf[i].origin)
+			low = minf(low, height)
+			high = maxf(high, height)
 	if m is ShaderMaterial:
-		# Grass and shrubs rise in the vertex shader; culling must include that height.
+		# Local height bounds preserve distance fading even beside much taller mountains.
 		var bounds := mm.get_aabb()
-		bounds.position.y -= 5.0
-		bounds.size.y += maxf(0.0, atmo.world.terrain.landform.peak) + 10.0
+		bounds.position.y += low - 5.0
+		bounds.size.y += high - low + 10.0
 		mm.custom_aabb = bounds
 	var mi := MultiMeshInstance3D.new()
 	mi.multimesh = mm
@@ -359,28 +365,22 @@ func _make_clump() -> ArrayMesh:
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 4242
-	for b in 15:
-		var a := rng.randf() * TAU
-		var r := sqrt(rng.randf()) * 0.32
-		var base := Vector3(cos(a) * r, 0, sin(a) * r)
+	# More narrow, pointed blades keep the previous clump's 90-triangle budget.
+	for blade in 30:
+		var angle := rng.randf() * TAU
+		var radius := sqrt(rng.randf()) * 0.32
+		var base := Vector3(cos(angle) * radius, 0, sin(angle) * radius)
 		var yaw := rng.randf() * TAU
-		var side := Vector3(cos(yaw), 0, sin(yaw)) * rng.randf_range(0.03, 0.05)
-		var lean := Vector3(cos(a), 0, sin(a)) * rng.randf_range(0.05, 0.22)
-		var h := rng.randf_range(0.22, 0.55)
-		var pts := []
-		for k in 4:
-			var t := float(k) / 3.0
-			var w := 1.0 - t * 0.92
-			var c := base + lean * t * t + Vector3(0, h * t, 0)
-			pts.append([c - side * w, c + side * w, t])
-		for k in 3:
-			var p0: Array = pts[k]
-			var p1: Array = pts[k + 1]
-			var quad := [[p0[0], p0[2]], [p0[1], p0[2]], [p1[1], p1[2]], [p0[0], p0[2]], [p1[1], p1[2]], [p1[0], p1[2]]]
-			for q in quad:
-				st.set_normal(Vector3(0, 1, 0))
-				st.set_uv(Vector2(0.5, q[1]))
-				st.add_vertex(q[0])
+		var side := Vector3(cos(yaw), 0, sin(yaw)) * rng.randf_range(0.008, 0.016)
+		var lean := Vector3(cos(angle), 0, sin(angle)) * rng.randf_range(0.06, 0.22)
+		var height := rng.randf_range(0.18, 0.55)
+		var middle := base + lean * 0.25 + Vector3(0, height * 0.5, 0)
+		var points := [base - side, base + side, middle - side * 0.65, middle + side * 0.65, base + lean + Vector3(0, height, 0)]
+		var heights := [0.0, 0.0, 0.5, 0.5, 1.0]
+		for index in [0, 1, 2, 1, 3, 2, 2, 3, 4]:
+			st.set_normal(Vector3.UP)
+			st.set_uv(Vector2(0.5, heights[index]))
+			st.add_vertex(points[index])
 	return st.commit()
 
 
@@ -405,9 +405,9 @@ shader_type spatial;
 render_mode cull_disabled, specular_disabled;
 
 uniform vec3 base_col : source_color = vec3(0.14, 0.19, 0.07);
-uniform vec3 mid_col : source_color = vec3(0.24, 0.31, 0.1);
-uniform vec3 tip_col : source_color = vec3(0.47, 0.5, 0.2);
-uniform vec3 dry_col : source_color = vec3(0.5, 0.45, 0.24);
+uniform vec3 mid_col : source_color = vec3(0.24, 0.32, 0.14);
+uniform vec3 tip_col : source_color = vec3(0.38, 0.45, 0.23);
+uniform vec3 dry_col : source_color = vec3(0.55, 0.49, 0.3);
 uniform float wind = 0.11;
 uniform sampler2D scar : hint_default_black, filter_linear, repeat_disable;
 uniform sampler2D trench_mask : hint_default_black, filter_linear, repeat_disable;

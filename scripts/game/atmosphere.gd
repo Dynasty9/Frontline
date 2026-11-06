@@ -382,7 +382,7 @@ func _build_ground() -> void:
 	var materials := terrain_materials()
 	ground_mat.set_shader_parameter("material_colors", materials[0])
 	ground_mat.set_shader_parameter("material_surfaces", materials[1])
-	ground_mat.set_shader_parameter("town_grass", preload("res://assets/town/leafy_grass_color.jpg"))
+	ground_mat.set_shader_parameter("meadow_grass", preload("res://assets/town/leafy_grass_color.jpg"))
 	ground_mat.set_shader_parameter("cloud_strength", float(_d.clouds))
 	ground_mat.set_shader_parameter("sun_tint", _d.sun)
 	ground_mat.set_shader_parameter("air_color", _d.fog)
@@ -864,7 +864,6 @@ func _apply_haze(distance: float) -> void:
 ## Builds the road strip mesh for a team (called by World when roads change).
 func set_town(r: Rect2) -> void:
 	Mats.set_shared(road_mat, &"town", Vector4(r.position.x, r.position.y, r.end.x, r.end.y))
-	Mats.set_shared(ground_mat, &"town_bounds", Vector4(r.position.x, r.position.y, r.end.x, r.end.y))
 
 
 ## A square of ground `size` across in quads of `step` metres, centred on its origin.
@@ -1205,8 +1204,7 @@ uniform sampler2D surface_bake : hint_default_white, filter_linear_mipmap, repea
 uniform sampler2D scenery_bake : hint_default_white, filter_linear, repeat_disable;
 uniform sampler2DArray material_colors : source_color, filter_linear_mipmap_anisotropic, repeat_enable;
 uniform sampler2DArray material_surfaces : filter_linear_mipmap_anisotropic, repeat_enable;
-uniform vec4 town_bounds = vec4(0.0);
-uniform sampler2D town_grass : source_color, filter_linear_mipmap_anisotropic, repeat_enable;
+uniform sampler2D meadow_grass : source_color, filter_linear_mipmap_anisotropic, repeat_enable;
 uniform sampler2D biome_tex : filter_linear, repeat_enable;
 uniform sampler2D detail_tex : filter_linear_mipmap, repeat_enable;
 uniform sampler2D backdrop_tex : filter_linear_mipmap, repeat_disable;
@@ -1292,6 +1290,15 @@ vec3 surface_relief(vec3 normal, float height, float strength) {
 	float det = dot(dx, r1);
 	vec3 gradient = sign(det) * (dFdx(height) * r1 + dFdy(height) * r2);
 	return normalize(normal - gradient * strength / max(abs(det), 0.000001));
+}
+
+// Photographed grass follows sheltered soil and exposed dry patches beyond the town too.
+vec3 meadow_color(vec2 p, float dryness) {
+	vec3 blades = texture(meadow_grass, p * 0.5).rgb;
+	if (OUTPUT_IS_SRGB) {
+		blades = mix(blades / 12.92, pow((blades + 0.055) / 1.055, vec3(2.4)), step(vec3(0.04045), blades));
+	}
+	return blades * mix(vec3(0.18, 0.35, 0.25), vec3(0.36, 0.48, 0.50), dryness);
 }
 
 float height_blend(float bed, float deposit, float coverage) {
@@ -1432,13 +1439,10 @@ void fragment() {
 	vec3 rich_turf = moss * vec3(0.88, 1.0, 0.91);
 	moss = mix(moss, mix(dry_turf, rich_turf, meadow), turf * 0.72);
 	moss *= mix(0.93, 1.07, patch);
-	vec2 town_distance = max(max(town_bounds.xy - p, p - town_bounds.zw), vec2(0.0));
-	float town_turf = (1.0 - smoothstep(0.0, 35.0, length(town_distance))) * step(1.0, town_bounds.z - town_bounds.x) * turf;
-	if (town_turf > 0.001) {
-		vec3 blades = texture(town_grass, p * 0.5).rgb;
-		float town_dry = smoothstep(0.25, 0.75, texture(detail_tex, p / 180.0).r);
-		blades *= mix(vec3(0.23, 0.39, 0.16), vec3(0.36, 0.37, 0.21), town_dry);
-		moss = mix(moss, blades, town_turf * 0.85);
+	float meadow_turf = turf * (1.0 - dirt_m);
+	if (meadow_turf > 0.001) {
+		float meadow_dry = alpine_dry * 0.75 + texture(detail_tex, p / 180.0).r * 0.25;
+		moss = mix(moss, meadow_color(p, meadow_dry), meadow_turf * 0.85);
 	}
 	vec3 rock_n; vec3 scree_n; vec3 moss_n;
 	vec2 rock_data = surface_data(0.0, rock_uv, weights, geometric, rock_n);

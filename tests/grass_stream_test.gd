@@ -9,6 +9,14 @@ func check(ok: bool, message: String) -> void:
 
 func _ready() -> void:
 	var grass := Grass.new()
+	var blades := grass._make_clump().surface_get_arrays(0)
+	var vertices: PackedVector3Array = blades[Mesh.ARRAY_VERTEX]
+	var uv: PackedVector2Array = blades[Mesh.ARRAY_TEX_UV]
+	check(vertices.size() == 270, "Fine grass retains the 90-triangle clump budget")
+	for i in range(0, vertices.size(), 9):
+		check(vertices[i].y == 0.0 and vertices[i + 1].y == 0.0 and uv[i].y == 0.0, "Grass roots stay on the terrain with zero wind weight")
+		check(vertices[i + 8].y > 0.17 and vertices[i + 8].y < 0.56 and uv[i + 8].y == 1.0, "Pointed tips retain full wind weight and varied heights")
+		check(vertices[i].distance_to(vertices[i + 1]) < 0.033, "Grass blades keep a natural centimetre scale")
 	grass.HALF = 1536.0
 	grass._stream(Vector3.ZERO)
 	check(grass._queue.size() == 225, "Large maps must queue only nearby cosmetic chunks")
@@ -48,12 +56,15 @@ func _ready() -> void:
 	check(atmosphere.grass_amount(Vector3.ZERO) > 0.5, "Sheltered lower slopes retain meadow cover")
 	world.terrain.landform.heights.fill(54.0)
 	check(atmosphere.grass_amount(Vector3.ZERO) == 0.0, "Meadow grass stops below the snow line")
+	world.terrain.landform.heights.fill(40.0)
+	world.terrain.landform.peak = 500.0
 	var box := BoxMesh.new()
 	var material := ShaderMaterial.new()
 	material.shader = Shader.new()
 	material.shader.code = "shader_type spatial; render_mode unshaded; void vertex() { VERTEX.y += 40.0; } void fragment() { ALBEDO = vec3(1.0, 0.0, 0.0); }"
 	var elevated := grass._mm(box, material, [Transform3D.IDENTITY], [Color.WHITE], 105.0)
 	check(elevated.multimesh.custom_aabb.end.y >= 40.5, "Grass culling bounds include the shader's terrain displacement")
+	check(absf(elevated.multimesh.custom_aabb.get_center().y - 40.0) < 1.0, "A distant mountain must not shift this meadow's visibility distance")
 	if DisplayServer.get_name() != "headless":
 		var view := SubViewport.new()
 		view.size = Vector2i(64, 64)
@@ -75,6 +86,8 @@ func _ready() -> void:
 		view.queue_free()
 	if DisplayServer.get_name() != "headless":
 		world.terrain.dh.fill(40.0)
+		world.terrain.landform.peak = 100.0
+		world.terrain.landform.heights.fill(54.0)
 		world.settings = {"seed": 3}
 		atmosphere.biome_img = Image.create(1, 1, false, Image.FORMAT_RF)
 		grass.level = 2

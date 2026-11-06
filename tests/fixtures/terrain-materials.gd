@@ -128,6 +128,27 @@ void fragment() { ALBEDO = street_surface(scan, noise, vec2(0.0)); }
 	var leaf_pixel := view.get_texture().get_image().get_pixel(32, 32)
 	var blended := Color(0.4, 0.4, 0.4).srgb_to_linear().lerp(Color(0.8, 0.8, 0.8).srgb_to_linear(), 0.25) * 0.52
 	assert(absf(leaf_pixel.r - blended.linear_to_srgb().r) < 0.008, "Tree elevation frames blend and shade in linear light: %s" % leaf_pixel)
+	var meadow_code := MapDims.shader(Atmosphere.GROUND_SHADER.replace("// BACKDROP_HEIGHT", Atmosphere.BACKDROP_HEIGHT))
+	meadow_code = meadow_code.replace("render_mode specular_schlick_ggx;", "render_mode unshaded;")
+	meadow_code = meadow_code.substr(0, meadow_code.find("void fragment()")) + """
+void fragment() {
+	ALBEDO = meadow_color(vec2(0.5), 0.5);
+	if (OUTPUT_IS_SRGB) { ALBEDO = mix(ALBEDO * 12.92, 1.055 * pow(ALBEDO, vec3(1.0 / 2.4)) - 0.055, step(vec3(0.0031308), ALBEDO)); }
+}
+"""
+	var meadow_image := Image.create(2, 2, false, Image.FORMAT_RGB8)
+	meadow_image.fill(Color(0.5, 0.6, 0.3))
+	var meadow_material := ShaderMaterial.new()
+	var meadow_shader := Shader.new()
+	meadow_shader.code = meadow_code
+	meadow_material.shader = meadow_shader
+	meadow_material.set_shader_parameter("meadow_grass", ImageTexture.create_from_image(meadow_image))
+	mesh.material_override = meadow_material
+	for frame in 3:
+		await RenderingServer.frame_post_draw
+	var meadow_pixel := view.get_texture().get_image().get_pixel(32, 32).srgb_to_linear()
+	var meadow_expected := meadow_image.get_pixel(0, 0).srgb_to_linear() * Color(0.27, 0.415, 0.375)
+	assert(Vector3(meadow_pixel.r, meadow_pixel.g, meadow_pixel.b).distance_to(Vector3(meadow_expected.r, meadow_expected.g, meadow_expected.b)) < 0.008, "Meadow photographs shade in linear light in both renderers: %s" % meadow_pixel)
 	view.queue_free()
 	print("TERRAIN_MATERIALS native sloped-road normals and colour checks passed")
 

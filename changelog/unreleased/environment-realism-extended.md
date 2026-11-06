@@ -94,6 +94,22 @@ caption = "Before: rounded height samples leave fine stripes across snow edges."
 file = "precision-after.jpg"
 caption = "After: full-precision slopes keep snow edges smooth. Same terrain, seed and camera."
 
+[[screenshots]]
+file = "meadow-before.jpg"
+caption = "Close meadow before: broad ribbon blades and plain ground. Same seed and camera."
+
+[[screenshots]]
+file = "meadow-after.jpg"
+caption = "Close meadow after: fine pointed blades over photographed turf, with variation from soil moisture. Same seed and camera."
+
+[[screenshots]]
+file = "meadow-wide-before.jpg"
+caption = "Low meadow view before: broad ribbon blades and plain ground. Same seed and camera."
+
+[[screenshots]]
+file = "meadow-wide-after.jpg"
+caption = "Low meadow view after: fine pointed blades over photographed turf, with variation from soil moisture. Same seed and camera."
+
 +++
 
 The ocean keeps detailed waves near the battlefield and uses a coarser surface beyond it.
@@ -115,3 +131,5 @@ Driveways now connect to the street through lowered sidewalk crossings with slop
 Meadow grass and shrubs remain visible on elevated ground, and small decorative stones rest on the actual hillside. Trees and buildings also stay resident when a low camera looks up a high slope. Grass thins below the snow line and stops on bare steep faces instead of leaving stray clumps in unsuitable terrain.
 
 Elevated surfaces retain full height precision, removing the fine stepping that showed through snow and slope shading. Ground-level staining on walls follows the hillside instead of sea level.
+
+Meadows use fine pointed blades over photographed turf, with wetter sheltered soil and drier exposed patches. The clumps retain their previous triangle count. Local height bounds keep distance fading centred on each patch of vegetation, even when much taller mountains surround it.
