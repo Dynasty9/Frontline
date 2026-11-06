@@ -4084,6 +4084,16 @@
           "file": "changelog/unreleased/environment-realism-extended/lighting-after.jpg",
           "sha256": "2579292bd68fc9d2b122e4c228168f7ce5f9497aa90f826dda8414847300bfb7",
           "caption": "lighting-after"
+        },
+        {
+          "file": "changelog/unreleased/environment-realism-extended/ranges-before.jpg",
+          "sha256": "761aee3def83871867cc86beebc5c2948a6ba1fb8cf0fcbe6e73f8599ee80ef3",
+          "caption": "ranges-before"
+        },
+        {
+          "file": "changelog/unreleased/environment-realism-extended/ranges-after.jpg",
+          "sha256": "1870ddccdd28f3ad5e86562ff1bd88cfab73f43993dc0c689cacfafb03d7dbe3",
+          "caption": "ranges-after"
         }
       ],
       "output": null,
@@ -4095,7 +4105,8 @@
         "forest": "Native Forward+, seed3 High/day, 1600x900, focus -400,-450, zoom350, pitch-30, yaw-0.2, shot2s. Before b38e42e; after this branch.",
         "compatibility": "Same close controls except pitch-55 and gl_compatibility. Before: this branch before material-output correction; after: corrected output, both with forest iteration. Not a historical parent comparison.",
         "snow": "Matched native Forward+, High/day seed3 1600x900, focus236,464 zoom45 pitch-42 yaw-0.2. Simulation held at2s after map construction, 45 settling frames per view. Before b38e42e PCK; after this branch. Same camera controls and unchanged geology. No retouching.",
-        "lighting": "Matched native Forward+, seed3 High/golden, 1600x900, focus-400,-450 zoom350 pitch-30 yaw-0.2. Both hold simulation at2s and settle45frames. Before uses exact7ba202a atmosphere/distant_forest scripts overlaid through a PCK before main loads; unchanged assets. After is current branch. No retouching."
+        "lighting": "Matched native Forward+, seed3 High/golden, 1600x900, focus-400,-450 zoom350 pitch-30 yaw-0.2. Both hold simulation at2s and settle45frames. Before uses exact7ba202a atmosphere/distant_forest scripts overlaid through a PCK before main loads; unchanged assets. After is current branch. No retouching.",
+        "ranges": "Matched native Forward+, seed3 High/day 1600x900, focus0,0 zoom900 pitch-22 yaw0.7, simulation held at2s with45 settling frames. Before exact f45dada atmosphere script loaded through PCK before main; after surveyed terrain checkpoint. Other scripts and assets unchanged. No retouching."
       }
     }
   ],

@@ -27,6 +27,16 @@ func _ready() -> void:
 			assert(normals[j].dot(vertices[j]) > 0.0, "Stone faces point outward")
 	assert(Res.alpine_stone(0).get_aabb() != Res.alpine_stone(1).get_aabb(), "Stone variants have distinct fractured profiles")
 	assert(Mats.get_mat("alpine_stone").get_shader_parameter("stone_texture") is Texture2D, "Natural stones bind their photographic surface in merged batches")
+	var surveyed: Resource = preload("res://assets/terrain/surveyed_alps.res")
+	assert(int(surveyed.get_meta("width")) == 512)
+	for name in ["mont_blanc", "matterhorn", "jungfrau"]:
+		var heights: PackedFloat32Array = surveyed.get_meta(name)
+		assert(heights.size() == 512 * 512)
+		for value in heights:
+			assert(is_finite(value) and value >= 0.0 and value <= 1.0)
+		for edge in 512:
+			assert(heights[edge] == 0.0 and heights[511 * 512 + edge] == 0.0)
+			assert(heights[edge * 512] == 0.0 and heights[edge * 512 + 511] == 0.0, "Surveyed stamps must join without a vertical cut")
 	var horizon := Atmosphere.backdrop_image(3)
 	assert(horizon.get_size() == Vector2i(512, 512) and horizon.has_mipmaps() and horizon.get_format() == Image.FORMAT_RF)
 	assert(horizon.get_data() == Atmosphere.backdrop_image(3).get_data(), "Scenery is deterministic for every peer")

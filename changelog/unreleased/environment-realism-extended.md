@@ -40,6 +40,13 @@ caption = "Before: distant forest stays sunlit below a mountain ridge."
 [[screenshots]]
 file = "lighting-after.jpg"
 caption = "After: the ridge shades its valley and forest. Same golden-hour lighting, seed and camera."
+[[screenshots]]
+file = "ranges-before.jpg"
+caption = "Before: repeated procedural peaks surround the valley."
+
+[[screenshots]]
+file = "ranges-after.jpg"
+caption = "After: surveyed Alpine ridges form separate mountain groups and lower passes. Same seed, camera and lighting."
 +++
 
 The ocean keeps detailed waves near the battlefield and uses a coarser surface beyond it.
@@ -49,3 +56,5 @@ Hillside woods use varied photographed tree silhouettes and a shared placement/g
 Snow uses photographed powder at its original two-metre scale, with darker melt edges. Forest floors blend moss and leaf litter beneath the same hillside stands. Detailed surfaces follow the terrain-detail setting; texture arrays keep these layers within the browser renderer's sampler budget.
 
 Distant ridges now shade their valleys and forests with cached terrain lighting. Changing the time of day refreshes that lighting without rebuilding the forest. Standing rainwater stays on gentle ground instead of making cliff faces reflect like puddles.
+
+Surrounding ranges now use real Alpine elevation shapes, composed into varied fictional mountain groups. Lower ridges close the horizon between the peaks. The source data is bundled and processed during map creation; no terrain downloads or extra per-frame material samples are needed.

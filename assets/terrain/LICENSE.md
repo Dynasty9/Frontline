@@ -35,3 +35,23 @@ scanned cliff meshes or overhangs. Standard maps place them deterministically
 before grading and erosion, so rendering and authoritative terrain agree.
 
 All runtime assets are bundled; the game makes no texture downloads.
+
+## Surveyed Alpine ridge shapes
+
+`surveyed_alps.res` contains modified elevation stamps around Mont Blanc,
+Matterhorn and Jungfrau. SRTM terrain data courtesy of the U.S. Geological Survey;
+Terrain Tiles processed by Mapzen and hosted by the AWS Open Data program.
+The zoom-12 tiles use the public-domain SRTM dataset in these regions.
+
+- [Terrain Tiles dataset](https://registry.opendata.aws/terrain-tiles/)
+- [Source datasets and zoom levels](https://github.com/tilezen/joerd/blob/master/docs/data-sources.md)
+- [Source attribution and terms](https://github.com/tilezen/joerd/blob/master/docs/attribution.md)
+
+`surveyed_sources.json` pins the 27 source tile URLs and SHA-256 checksums.
+`tools/bake_surveyed_terrain.py` decodes the Terrarium elevations, crops each
+512-pixel mountain group, subtracts its lower foothills, normalizes its relief
+and smoothly lowers its border to zero. The game rotates and scales these
+stamps into fictional surrounding ranges; they are not geographic replicas.
+The bundled resource preserves 32-bit float heights. Source tiles and temporary
+baking files are not needed at runtime. USGS and Mapzen do not endorse these
+modifications or this game.

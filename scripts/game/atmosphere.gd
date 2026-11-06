@@ -121,24 +121,63 @@ func _make_noise() -> void:
 	backdrop_tex = ImageTexture.create_from_image(backdrop_image(n.seed))
 
 
-## A separate low-frequency field gives the horizon massifs instead of equal-height noise walls.
+## Surveyed ridge groups are composed around the battle with gaps between their massifs.
 static func backdrop_image(seed_value: int) -> Image:
+	var forms: Resource = preload("res://assets/terrain/surveyed_alps.res")
+	var names := ["mont_blanc", "matterhorn", "jungfrau"]
+	var rng := RandomNumberGenerator.new()
+	rng.seed = seed_value + 1907
+	var massifs: Array[Dictionary] = []
+	var count := rng.randi_range(5, 7)
+	var phase := rng.randf() * TAU
+	for i in count:
+		var angle := phase + float(i) * TAU / count + rng.randf_range(-0.15, 0.15)
+		var radius := rng.randf_range(700.0, 1100.0)
+		var direction := Vector2(cos(angle), sin(angle))
+		var reach := (MapDims.HALF + rng.randf_range(650.0, 1050.0)) / maxf(absf(direction.x), absf(direction.y))
+		massifs.append({"center": direction * reach, "radius": radius, "angle": rng.randf() * TAU,
+			"height": rng.randf_range(240.0, 370.0), "data": forms.get_meta(names[rng.randi_range(0, 2)])})
+	# Lower overlapping ranges close the horizon without joining the main peaks into a wall.
+	for i in 10:
+		var angle := phase + (float(i) + 0.5) * TAU / 10.0
+		var direction := Vector2(cos(angle), sin(angle))
+		var reach := (MapDims.HALF + 1450.0) / maxf(absf(direction.x), absf(direction.y))
+		massifs.append({"center": direction * reach, "radius": rng.randf_range(600.0, 950.0), "angle": rng.randf() * TAU,
+			"height": rng.randf_range(100.0, 190.0), "data": forms.get_meta(names[rng.randi_range(0, 2)])})
 	var noise := FastNoiseLite.new()
 	noise.seed = seed_value + 1907
-	noise.noise_type = FastNoiseLite.TYPE_SIMPLEX_SMOOTH
-	noise.frequency = 0.008
-	noise.fractal_type = FastNoiseLite.FRACTAL_FBM
-	noise.fractal_octaves = 5
-	noise.fractal_gain = 0.42
-	noise.domain_warp_enabled = true
-	noise.domain_warp_amplitude = 38.0
-	noise.domain_warp_frequency = 0.012
-	# Eight-bit noise makes metre-high terraces when expanded to mountain heights.
+	noise.frequency = 0.025
 	var values := PackedFloat32Array()
 	values.resize(512 * 512)
+	var span := MapDims.SIZE + 3600.0
+	var origin := Vector2.ONE * (MapDims.HALF + 1800.0)
+	# Touch only each stamp's footprint, rather than testing every mountain at every pixel.
+	for massif: Dictionary in massifs:
+		var center: Vector2 = massif.center
+		var radius: float = massif.radius
+		var angle: float = massif.angle
+		var amplitude: float = massif.height
+		var data: PackedFloat32Array = massif.data
+		var lo := Vector2i(((center - Vector2.ONE * radius + origin) / span * 512.0).floor()).clamp(Vector2i.ZERO, Vector2i(511, 511))
+		var hi := Vector2i(((center + Vector2.ONE * radius + origin) / span * 512.0).ceil()).clamp(Vector2i.ZERO, Vector2i(511, 511))
+		for z in range(lo.y, hi.y + 1):
+			for x in range(lo.x, hi.x + 1):
+				var p := (Vector2(x, z) + Vector2.ONE * 0.5) / 512.0 * span - origin
+				var q := ((p - center) / radius).rotated(angle)
+				if q.length_squared() >= 1.0:
+					continue
+				var uv := (q * 0.5 + Vector2.ONE * 0.5) * 511.0
+				var sx := int(uv.x)
+				var sz := int(uv.y)
+				var h := lerpf(lerpf(data[sz * 512 + sx], data[sz * 512 + sx + 1], uv.x - sx),
+					lerpf(data[(sz + 1) * 512 + sx], data[(sz + 1) * 512 + sx + 1], uv.x - sx), uv.y - sz) * amplitude
+				values[z * 512 + x] += h * h * h * h
 	for z in 512:
 		for x in 512:
-			values[z * 512 + x] = noise.get_noise_2d(x, z) * 0.5 + 0.5
+			var h := clampf((pow(values[z * 512 + x], 0.25) + (noise.get_noise_2d(x, z) * 0.5 + 0.5) * 18.0) / 440.0, 0.0, 1.0)
+			# Invert the shader's elevation curve to preserve the surveyed ridge profiles.
+			var curved := pow(h, 1.0 / 2.2)
+			values[z * 512 + x] = 0.18 + 0.70 * (0.5 - sin(asin(1.0 - 2.0 * curved) / 3.0))
 	var img := Image.create_from_data(512, 512, false, Image.FORMAT_RF, values.to_byte_array())
 	img.generate_mipmaps()
 	return img
