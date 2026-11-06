@@ -69,6 +69,14 @@ caption = "Before: beige and cyan roofs dominate the town overview."
 [[screenshots]]
 file = "town-colour-after.jpg"
 caption = "After: terracotta and weathered grey roofs remain distinct at command-camera distance. Same town and lighting."
+[[screenshots]]
+file = "driveway-before.jpg"
+caption = "Before: the parking pad stops at grass and a full-height curb."
+
+[[screenshots]]
+file = "driveway-after.jpg"
+caption = "After: a continuous entrance crosses the sidewalk through a lowered curb. Same seed and camera."
+
 +++
 
 The ocean keeps detailed waves near the battlefield and uses a coarser surface beyond it.
@@ -84,3 +92,5 @@ Surrounding ranges now use real Alpine elevation shapes, composed into varied fi
 Town asphalt now separates fine aggregate from broad cracks, repairs and stains. Streets and junctions share the same world-space material, blended in linear light in both renderers. Normal maps follow sloping roads and paving instead of lighting every surface as if it were flat.
 
 Photographic building materials now respect their intended colours. Calibrated roof tiles, concrete, wood and bark retain the scan detail without turning grey roofs cyan or all tiled roofs pale beige.
+
+Driveways now connect to the street through lowered sidewalk crossings with sloping shoulders. Curbs meet the asphalt, and grass stays out of the paved entrance.

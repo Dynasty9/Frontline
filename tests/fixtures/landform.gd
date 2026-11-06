@@ -84,6 +84,7 @@ func _ready() -> void:
 	assert(gen._is_free(Vector3.ZERO, Vector2(0.6, 0.6), 0.0, 0.6, true, 0.7), "Tree roots can occupy a moderate slope")
 	assert(absf(gen._contour(Vector3.ZERO).x) < 0.01, "Woodland follows the contour rather than running straight uphill")
 	var town := TownGen.new(gen)
+	check_driveway_crossings(world, gen)
 	town._d("lamp", Vector3(0, 2, 0))
 	assert(is_equal_approx(town.decor[0][1].y, world.terrain.landform.height(Vector3.ZERO) + 2.0))
 	var wire := [Vector3(4, 0, 0), 0.0]
@@ -355,3 +356,74 @@ func _ready() -> void:
 	assert(Mats.paving("pavement").get_shader_parameter("grime") == 0.0, "Horizontal paving must not inherit ground-height wall grime")
 	print("LANDFORM passed: generation, determinism, validation, grounding, sight, slope navigation, craters, replication")
 	get_tree().quit()
+
+
+func check_driveway_crossings(world, gen: MapGen) -> void:
+	for yaw: float in [0.0, 0.7, PI]:
+		var along := Basis(Vector3.UP, yaw).x
+		var away := Basis(Vector3.UP, yaw).z
+		var town := TownGen.new(gen)
+		town._d("walk", away * ((TownGen.CURB + TownGen.WALK) * 0.5), yaw, Vector3(16, 0.12, 1.8))
+		town._d("curb", away * (TownGen.CURB + 0.09), yaw, Vector3(16, 0.17, 0.18))
+		town._d("walk", -away * ((TownGen.CURB + TownGen.WALK) * 0.5), yaw, Vector3(16, 0.12, 1.8))
+		town._d("walk", away * ((TownGen.CURB + TownGen.WALK) * 0.5), yaw + PI * 0.5, Vector3(16, 0.12, 1.8))
+		var untouched := town.decor.slice(2).duplicate(true)
+		var rng_before := gen.rng.state
+		assert(town._curb_crossing(away * TownGen.FRONT + along, away, along, 2.6))
+		assert(town.decor[2] == untouched[0] and town.decor[3] == untouched[1], "Crossings preserve the opposite and perpendicular sidewalks")
+		assert(gen.rng.state == rng_before, "Driveway presentation must not change the generated battle")
+		for kind in ["walk", "curb"]:
+			var length := 0.0
+			var spans: Array[Vector2] = []
+			for entry: Array in town.decor:
+				if entry == town.decor[2] or entry == town.decor[3]:
+					continue
+				if entry[0] != kind and entry[0] != kind + "_crossing":
+					continue
+				var size: Vector3 = entry[3] if entry[3] is Vector3 else entry[3][0]
+				var center: float = entry[1].dot(along)
+				length += size.x
+				spans.append(Vector2(center - size.x * 0.5, center + size.x * 0.5))
+				assert(is_equal_approx(entry[1].y, world.terrain.landform.height(entry[1])), "Split paving is grounded exactly once")
+			spans.sort_custom(func(a: Vector2, b: Vector2) -> bool: return a.x < b.x)
+			assert(is_equal_approx(length, 16.0) and spans.size() == 3)
+			for i in 2:
+				assert(is_equal_approx(spans[i].y, spans[i + 1].x), "A driveway must leave no gap or overlap in the sidewalk")
+		assert(town._curb_crossing(away * TownGen.FRONT + along * 7.4, away, along, 2.6), "Crossings can end at a sidewalk boundary")
+		assert(World._unpack(World._pack(town.decor)) == town.decor, "Lowered crossings survive map transfer")
+		world.decor = town.decor
+		var atmosphere := Atmosphere.new()
+		atmosphere.world = world
+		var grass := Grass.new()
+		grass.atmo = atmosphere
+		var blocked := grass._blocked_job()
+		for entry: Array in town.decor:
+			if entry[0] == "walk_crossing":
+				var point: Vector3 = entry[1]
+				assert(blocked.boxes.any(func(box: Array) -> bool: return box[0] == Vector2(point.x, point.z)), "Grass must not grow through a lowered sidewalk")
+		grass.free()
+		atmosphere.free()
+		var paving := Decor.new()
+		paving.world = world
+		for entry: Array in town.decor:
+			if entry[0] != "walk_crossing" and entry[0] != "curb_crossing":
+				continue
+			var size: Vector3 = entry[3][0]
+			var lowered: Vector2 = entry[3][1]
+			paving._at = Transform3D(Basis(Vector3.UP, yaw), entry[1])
+			var local := Transform3D(Basis.IDENTITY, Vector3(0, size.y * 0.5, 0))
+			var mesh := paving._paving_mesh(Res.box(size), local, lowered)
+			var arrays := mesh.surface_get_arrays(0)
+			var vertices: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
+			var normals: PackedVector3Array = arrays[Mesh.ARRAY_NORMAL]
+			for i in vertices.size():
+				assert(vertices[i].is_finite() and is_equal_approx(normals[i].length(), 1.0))
+				if normals[i].y < 0.5:
+					continue
+				var point := paving._at * local * vertices[i]
+				var shoulder := maxf(lowered.x - vertices[i].x, vertices[i].x - lowered.y)
+				var expected := lerpf(0.03, size.y, clampf(shoulder / 0.6, 0.0, 1.0))
+				assert(absf(point.y - world.terrain.landform.height(point) - expected) < 0.001, "Lowered paving joins the driveway with sloping shoulders")
+		paving.free()
+	var country := TownGen.new(gen)
+	assert(not country._curb_crossing(Vector3.ZERO, Vector3.BACK, Vector3.RIGHT, 2.6), "Country drives do not invent urban sidewalks")

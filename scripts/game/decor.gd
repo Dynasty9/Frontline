@@ -288,10 +288,12 @@ func _m(mesh: Mesh, kind: String, p: Vector3, col = null, rot := Vector3.ZERO, s
 		tn if tn != Color(1, 1, 1) else null, shadow, _at)
 
 
-func _paving_mesh(box: Mesh, local: Transform3D) -> ArrayMesh:
+func _paving_mesh(box: Mesh, local: Transform3D, lowered := Vector2.INF) -> ArrayMesh:
 	var grid := BoxMesh.new()
 	grid.size = Res.box_size(box)
 	grid.subdivide_width = maxi(0, ceili(grid.size.x / 2.0) - 1)
+	if lowered.is_finite():
+		grid.subdivide_width = 2
 	grid.subdivide_depth = maxi(0, ceili(grid.size.z / 2.0) - 1)
 	var arrays := grid.get_mesh_arrays()
 	var vertices: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
@@ -299,6 +301,15 @@ func _paving_mesh(box: Mesh, local: Transform3D) -> ArrayMesh:
 	var xf := _at * local
 	var inverse_basis := xf.basis.inverse()
 	for i in vertices.size():
+		var grade := 0.0
+		if lowered.is_finite():
+			var column := roundi((vertices[i].x / grid.size.x + 0.5) * 3.0)
+			if column == 1 or column == 2:
+				vertices[i].x = clampf(lowered[column - 1], -grid.size.x * 0.5, grid.size.x * 0.5)
+			var shoulder := maxf(lowered.x - vertices[i].x, vertices[i].x - lowered.y)
+			vertices[i].y -= (grid.size.y - 0.03) * clampf(1.0 - shoulder / 0.6, 0.0, 1.0)
+			if shoulder > 0.001 and shoulder < 0.601:
+				grade = signf(vertices[i].x - (lowered.x + lowered.y) * 0.5) * (grid.size.y - 0.03) / 0.6
 		var point := xf * vertices[i]
 		vertices[i].y += world.terrain.landform.height(point) - _at.origin.y
 		# Keep slab edges hard; smoothing box corners produces dark triangular patches.
@@ -306,7 +317,7 @@ func _paving_mesh(box: Mesh, local: Transform3D) -> ArrayMesh:
 			var geology: Landform = world.terrain.landform
 			var dx: float = geology.height(point - Vector3(0.2, 0, 0)) - geology.height(point + Vector3(0.2, 0, 0))
 			var dz: float = geology.height(point - Vector3(0, 0, 0.2)) - geology.height(point + Vector3(0, 0, 0.2))
-			normals[i] = inverse_basis * Vector3(dx, 0.4, dz).normalized() * signf(normals[i].y)
+			normals[i] = inverse_basis * (Vector3(dx, 0.4, dz) - xf.basis.x * grade * 0.4).normalized() * signf(normals[i].y)
 	arrays[Mesh.ARRAY_VERTEX] = vertices
 	arrays[Mesh.ARRAY_NORMAL] = normals
 	var mesh := ArrayMesh.new()
@@ -363,6 +374,11 @@ func _make(h: Node3D, kind: String, ex) -> void:
 		"curb":
 			var s: Vector3 = ex
 			_m(Res.box(s), "curbstone", Vector3(0, s.y * 0.5, 0), null, Vector3.ZERO, false, true)
+		"walk_crossing", "curb_crossing":
+			var s: Vector3 = ex[0]
+			var local := Transform3D(Basis.IDENTITY, Vector3(0, s.y * 0.5, 0))
+			var mesh := _paving_mesh(Res.box(s), local, ex[1])
+			_m(mesh, "pavement" if kind == "walk_crossing" else "curbstone", local.origin, null, Vector3.ZERO, false, true)
 		"junction":
 			var s: Vector3 = ex
 			_m(Res.box(Vector3(s.x, 0.02, s.z)), "asphalt", Vector3(0, 0.032, 0), null, Vector3.ZERO, false, true)

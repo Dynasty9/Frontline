@@ -4124,6 +4124,16 @@
           "file": "changelog/unreleased/environment-realism-extended/town-colour-after.jpg",
           "sha256": "c82478a1b68383fac6a5d89ae4b272a387620ce736712bb79deacc38fb71a1f2",
           "caption": "town-colour-after"
+        },
+        {
+          "file": "changelog/unreleased/environment-realism-extended/driveway-before.jpg",
+          "sha256": "55b4d1c42bf4eb705aa496155eda1feef7cdbcfcc94744b6bdd3e247380221c5",
+          "caption": "driveway-before"
+        },
+        {
+          "file": "changelog/unreleased/environment-realism-extended/driveway-after.jpg",
+          "sha256": "f16b7dff312c49322d3fe91df656f115d416c1d88b73c1fd7c5e4dd3aeef2ce6",
+          "caption": "driveway-after"
         }
       ],
       "output": null,
@@ -4138,7 +4148,8 @@
         "lighting": "Matched native Forward+, seed3 High/golden, 1600x900, focus-400,-450 zoom350 pitch-30 yaw-0.2. Both hold simulation at2s and settle45frames. Before uses exact7ba202a atmosphere/distant_forest scripts overlaid through a PCK before main loads; unchanged assets. After is current branch. No retouching.",
         "ranges": "Matched native Forward+, seed3 High/day 1600x900, focus0,0 zoom900 pitch-22 yaw0.7, simulation held at2s with45 settling frames. Before exact f45dada atmosphere script loaded through PCK before main; after surveyed terrain checkpoint. Other scripts and assets unchanged. No retouching.",
         "street": "Matched native Forward+, seed3 High/day 1600x900, focus-55,-4 zoom15 pitch-55 yaw0.7, held2s/45settlingframes. Before 9c84373 runtime scripts, after fine-asphalt checkpoint. Both use environment-views.gd --capture-set=town. No retouching.",
-        "photo_calibration": "Matched native Forward+, High/day seed3 1600x900. Before76d6374 (identical Forward+ material output to5407b62); after calibrated photographic materials. Both environment-views --capture-set=town, held2s/45settlingframes. Close uses first town driveway zoom18 pitch-50 yawpiece+PI+0.4; wide towncentrezoom130 pitch-50 yaw0.7. No retouching."
+        "photo_calibration": "Matched native Forward+, High/day seed3 1600x900. Before76d6374 (identical Forward+ material output to5407b62); after calibrated photographic materials. Both environment-views --capture-set=town, held2s/45settlingframes. Close uses first town driveway zoom18 pitch-50 yawpiece+PI+0.4; wide towncentrezoom130 pitch-50 yaw0.7. No retouching.",
+        "driveway": "Matched native Forward+, High/day seed3 1600x900, focus-15.6,-8.9 zoom10 pitch-25 yaw0.4, held2s/45settlingframes. Before exact e5a3687 towngen/decor/grass scripts overlaid through PCK before main; after lowered crossings. Same fixed camera, no retouching."
       }
     }
   ],
