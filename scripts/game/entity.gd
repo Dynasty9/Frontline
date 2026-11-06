@@ -7,6 +7,8 @@ var world: World
 var eid := 0
 var team := -1:
 	set(value):
+		if team == value:
+			return
 		team = value
 		if world != null and self is Structure:
 			world.refresh_owned_structure(self)

@@ -830,6 +830,8 @@ Sky Hook prepares reachable vehicle approaches for its convoy before the battle 
   ring pulsing wherever men are firing. The camera's view is a lit wedge with a line back to where the camera stands, and a compass needle
   shows where north lies in the view (click it to square up). Hovering gives the grid square under the cursor.
   Three sizes, and it can turn with the camera so the way you face is always up (Settings > Interface).
+  Building births, removals and ownership changes invalidate the baked layer through world events,
+  without periodically scanning every structure. Changes are coalesced at the existing two-second interval.
   Building destruction is painted across several frames, keeping the previous map visible while it updates;
   moving units, selection and minimap controls continue to update normally. Its map, fighting,
   unit and co-op layers take turns refreshing across four frames, while the camera wedge and pointer
