@@ -1035,16 +1035,17 @@ void sky() {
 }
 """
 
-const BACKDROP_HEIGHT := """
+const BACKDROP_HEIGHT := WaterView.SCENERY_COAST + """
 float backdrop(vec2 p) {
 	float edge = max(abs(p.x), abs(p.y)) - __MAP_HALF__;
-	float coast = 1.0 - smoothstep(sea_x - 90.0, sea_x, p.x);
+	float shore = scenery_shore(p, sea_x);
+	float coast = 1.0 - smoothstep(shore - 90.0, shore, p.x);
 	vec2 uv = (p + __MAP_HALF__ + 1800.0) / (__MAP_SIZE__ + 3600.0);
 	float mountain = textureLod(backdrop_tex, uv, 0.0).r;
 	float hills = pow(smoothstep(0.18, 0.88, mountain), 2.2) * 440.0;
 	return hills * smoothstep(8.0, 380.0, edge) * coast * (1.0 - step(9999.0, snow_line))
 		* (1.0 - smoothstep(1450.0, 1800.0, edge))
-		- 3.2 * smoothstep(sea_x, sea_x + 30.0, p.x);
+		- 3.2 * smoothstep(shore, shore + 30.0, p.x);
 }
 
 """
@@ -1184,7 +1185,7 @@ void fragment() {
 	// bed darker and wet under the water
 	vec4 wm = texture(water_mask, (p + __MAP_HALF__) / __MAP_SIZE__);
 	if (abs(p.x) >= __MAP_HALF__ || abs(p.y) >= __MAP_HALF__) {
-		wm = p.x > sea_x ? vec4(1.0, 1.0, 1.0, 1.0) : vec4(0.0);
+		wm = p.x > scenery_shore(p, sea_x) ? vec4(1.0, 1.0, 1.0, 1.0) : vec4(0.0);
 	}
 	// (linear colours, like the rest: pale sand, dark wet mud)
 	vec3 sand = vec3(0.38, 0.31, 0.19) * (0.88 + 0.24 * d2) * (0.92 + 0.16 * d3);

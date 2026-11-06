@@ -4026,6 +4026,33 @@
         "detail": "focus -55,-4; zoom 15; pitch -55; yaw 0.7; shot 2s",
         "forest": "focus 0,0; zoom 900; pitch -22; yaw 0.7; shot 2s; same seed, resolution, High/day"
       }
+    },
+    {
+      "entry": "changelog/unreleased/environment-realism-extended.md",
+      "summary": "Distant water follows the scenery coast without a square cutoff.",
+      "medium": "still",
+      "stage": "native-media",
+      "rationale": "Matched panorama exposes the water boundary and shoreline change.",
+      "source_ref": "b38e42e92d8236f13c2ef41a8da8610bd1771741",
+      "sources": [
+        {
+          "file": "changelog/unreleased/environment-realism-extended/coast-before.jpg",
+          "sha256": "347fd33cd7c8f49a841f9abece9a2a7cf87d55e7e575db46d9b6de2fdb44c1f4",
+          "caption": "coast-before"
+        },
+        {
+          "file": "changelog/unreleased/environment-realism-extended/coast-after.jpg",
+          "sha256": "46ddea33837e51980a9d246fc43f1388c16e8aeacd029aac258834f671b62e9f",
+          "caption": "coast-after"
+        }
+      ],
+      "output": null,
+      "capture": {
+        "before_ref": "b38e42e92d8236f13c2ef41a8da8610bd1771741",
+        "after_ref": "codex/environment-realism-extended",
+        "command": "godot --path . --resolution 1600x900 -- --aivai --seed=3 --offscreen --nohud --set=perf:0 --preset=high --mood=day --focus=0,0 --zoom=900 --pitch=-22 --cam-yaw=0.7 --screenshot=OUTPUT --shot-at=2 --quit-after=3",
+        "note": "Before preserved from the parent branch capture. After rendered natively with the same controls."
+      }
     }
   ],
   "layout_capture": {

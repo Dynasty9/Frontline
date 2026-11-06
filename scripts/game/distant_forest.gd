@@ -73,7 +73,7 @@ void vertex() {
 	float slope = length(vec2(backdrop(center.xz + vec2(4,0)) - backdrop(center.xz - vec2(4,0)), backdrop(center.xz + vec2(0,4)) - backdrop(center.xz - vec2(0,4)))) / 8.0;
 	float size = INSTANCE_CUSTOM.r;
 	// Bare cliff faces and the alpine treeline stay open.
-	if (h < 2.0 || h > max(150.0, snow_line * 1.5) - 30.0 + INSTANCE_CUSTOM.b * 18.0 || slope > 0.75 || center.x > sea_x - 40.0) { size = 0.0; }
+	if (h < 2.0 || h > max(150.0, snow_line * 1.5) - 30.0 + INSTANCE_CUSTOM.b * 18.0 || slope > 0.75 || center.x > scenery_shore(center.xz, sea_x) - 40.0) { size = 0.0; }
 	center.y = h + 7.2 * size;
 	vec3 right = INV_VIEW_MATRIX[0].xyz;
 	vec3 up = INV_VIEW_MATRIX[1].xyz;

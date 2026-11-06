@@ -13,6 +13,15 @@ extends Node3D
 ## keeps time by the `water_time` global shader uniform (project.godot). How
 ## much of it is drawn is the Water quality setting (Settings "water").
 
+# Shared by scenery ground and water so their distant shoreline cannot separate.
+const SCENERY_COAST := """
+float scenery_shore(vec2 p, float shore_mean) {
+	float edge = max(abs(p.x), abs(p.y)) - __MAP_HALF__;
+	float bays = 85.0 * sin(p.y * 0.0043 + shore_mean * 0.003) + 32.0 * sin(p.y * 0.0127);
+	return shore_mean + bays * smoothstep(20.0, 260.0, edge);
+}
+"""
+
 const TILE := 64.0  # the surface is drawn in tiles this big, only where there's water
 const TILE_SUB := [15, 31, 31, 47]  # quads a tile side, by quality (4 m, 2 m, 2 m, 1.4 m)
 
@@ -183,7 +192,7 @@ func _settings_changed() -> void:
 
 
 func _code(src: String, moving: int) -> String:
-	return Mats.code(MapDims.shader(src.replace("__WAVES__", waves_glsl(moving)).replace("__LEVEL__", "%.3f" % WaterMap.LEVEL)))
+	return Mats.code(MapDims.shader(src.replace("__WAVES__", SCENERY_COAST + waves_glsl(moving)).replace("__LEVEL__", "%.3f" % WaterMap.LEVEL)))
 
 
 func _material(src: String, detail: Texture2D) -> ShaderMaterial:
@@ -287,6 +296,33 @@ func _lay_tiles() -> void:
 			mi.position = Vector3(r.get_center().x, WaterMap.LEVEL, r.get_center().y)
 			add_child(mi)
 			_tiles.append(mi)
+	# The detailed battlefield water must not expose a square cut through the scenery.
+	for r: Rect2 in sea_surround_rects(-x0, MapDims.HALF + 2400.0, _sea_x):
+		var distant := PlaneMesh.new()
+		distant.size = r.size
+		distant.subdivide_width = maxi(0, ceili(r.size.x / 16.0) - 1)
+		distant.subdivide_depth = maxi(0, ceili(r.size.y / 16.0) - 1)
+		var mi := MeshInstance3D.new()
+		mi.mesh = distant
+		mi.material_override = mat
+		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		mi.extra_cull_margin = 2.0
+		mi.position = Vector3(r.get_center().x, WaterMap.LEVEL, r.get_center().y)
+		add_child(mi)
+		_tiles.append(mi)
+
+
+static func sea_surround_rects(inner: float, outer: float, shore: float) -> Array[Rect2]:
+	var rects: Array[Rect2] = []
+	if shore >= outer:
+		return rects
+	var left := maxf(-outer, shore - 192.0)
+	for r: Rect2 in [Rect2(left, -outer, outer - left, outer - inner),
+			Rect2(left, inner, outer - left, outer - inner),
+			Rect2(maxf(inner, left), -inner, outer - maxf(inner, left), inner * 2.0)]:
+		if r.has_area():
+			rects.append(r)
+	return rects
 
 
 ## Lighting follows the time of day (Atmosphere's moods).
@@ -629,7 +665,7 @@ __WAVES__
 
 vec4 wmask(vec2 p) {
 	if (abs(p.x) >= __MAP_HALF__ || abs(p.y) >= __MAP_HALF__) {
-		return p.x > sea_x ? vec4(1.0, 0.0, 1.0, 1.0) : vec4(0.0);
+		return p.x > scenery_shore(p, sea_x) ? vec4(1.0, 0.0, 1.0, 1.0) : vec4(0.0);
 	}
 	return textureLod(water_mask, (p + __MAP_HALF__) / __MAP_SIZE__, 0.0);
 }
@@ -905,7 +941,7 @@ __WAVES__
 
 vec4 wmask(vec2 p) {
 	if (abs(p.x) >= __MAP_HALF__ || abs(p.y) >= __MAP_HALF__) {
-		return p.x > sea_x ? vec4(1.0, 0.0, 1.0, 1.0) : vec4(0.0);
+		return p.x > scenery_shore(p, sea_x) ? vec4(1.0, 0.0, 1.0, 1.0) : vec4(0.0);
 	}
 	return textureLod(water_mask, (p + __MAP_HALF__) / __MAP_SIZE__, 0.0);
 }
@@ -987,7 +1023,7 @@ __WAVES__
 
 vec4 wmask(vec2 p) {
 	if (abs(p.x) >= __MAP_HALF__ || abs(p.y) >= __MAP_HALF__) {
-		return p.x > sea_x ? vec4(1.0, 0.0, 1.0, 1.0) : vec4(0.0);
+		return p.x > scenery_shore(p, sea_x) ? vec4(1.0, 0.0, 1.0, 1.0) : vec4(0.0);
 	}
 	return textureLod(water_mask, (p + __MAP_HALF__) / __MAP_SIZE__, 0.0);
 }
