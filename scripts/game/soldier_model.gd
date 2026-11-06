@@ -1368,6 +1368,10 @@ func pose(dt: float, life: int, posture: int, act: int, speed: float, backwards:
 			if posture == Soldier.Post.STAND:
 				if act == Soldier.Act.LIMP: activity = "mixamo_injured__injured_walk" if speed > 0.1 else "mixamo_injured__injured_idle"
 				elif act == Soldier.Act.DAZED: activity = "mixamo_injured__injured_stumble_idle"
+				elif act == Soldier.Act.IDLE_CHAT: activity = "mixamo_activities__Talking"
+				elif act == Soldier.Act.IDLE_LAUGH: activity = "mixamo_activities__Laughing"
+				elif act == Soldier.Act.IDLE_STRETCH: activity = "mixamo_activities__Arm_Stretching"
+				elif act == Soldier.Act.IDLE_LOOK: activity = "mixamo_activities__Rifle_Idle"
 			if act == Soldier.Act.THROW and posture == Soldier.Post.PRONE and skinned.native_player != null and skinned.native_player.has_animation("mixamo_prone__Throw_Grenade"):
 				activity = "mixamo_prone__Throw_Grenade"
 			if act == Soldier.Act.THROW and posture == Soldier.Post.CROUCH and skinned.native_player != null and skinned.native_player.has_animation("mixamo_activities__Crouch_Throw_Grenade"):
@@ -1385,7 +1389,8 @@ func pose(dt: float, life: int, posture: int, act: int, speed: float, backwards:
 						rifle_driver._legacy_prone(dt)
 					else:
 						rifle_driver.advance(dt, Vector3.FORWARD.rotated(Vector3.UP, move_yaw) * speed, posture == Soldier.Post.CROUCH, true)
-				skinned.pose_activity(dt, activity, act_time if act == Soldier.Act.THROW else -1.0, posture == Soldier.Post.PRONE, speed)
+				skinned.pose_activity(dt, activity, act_time if act == Soldier.Act.THROW else -1.0, posture == Soldier.Post.PRONE, speed, act == Soldier.Act.IDLE_LOOK)
+				if act == Soldier.Act.IDLE_LOOK and rifle_driver != null: rifle_driver._hold_rifle(1.0)
 			elif captured_prone:
 				if not _native_prone:
 					rifle_driver.prone_time = 0.0

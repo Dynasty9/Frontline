@@ -11,6 +11,7 @@ var prone_moving := false
 var prone_backwards := false
 var prone_recovery := 0.0
 const PACK := "mixamo_basic_shooter__"
+const JUMP_CLIP := "mixamo_activities__Rifle_Jump_In_Place"
 const CROUCH_PACK := "mixamo_rifle_locomotion__walk_crouching_"
 const CROUCH_DIRECTIONS := ["forward", "forward_right", "right", "backward_right", "backward", "backward_left", "left", "forward_left"]
 var has_crouch_pack := false
@@ -375,32 +376,38 @@ func advance(dt: float, velocity: Vector3, crouching: bool, grounded: bool, relo
 	var target_socket := actor.native_socket
 	if action != "":
 		if reload_progress < 0.0: action_time += dt
-		var animation := actor.native_player.get_animation(PACK + action)
+		var action_clip := JUMP_CLIP if action == "rifle_jump" and actor.native_player.has_animation(JUMP_CLIP) else PACK + action
+		var animation := actor.native_player.get_animation(action_clip)
 		var length := animation.length
 		var t := minf(action_time, length)
 		if action == "rifle_jump":
 			jump_launch_speed = maxf(jump_launch_speed, velocity.y)
 			# The captured clip is one flight; keep its apex and landing tied to the collision body.
-			t = length * clampf(0.5 - velocity.y / maxf(jump_launch_speed * 2.0, 0.01), 0.0, 1.0)
+			var flight := clampf(0.5 - velocity.y / maxf(jump_launch_speed * 2.0, 0.01), 0.0, 1.0)
+			t = lerpf(16.0 / 30.0, 1.0, flight) if action_clip == JUMP_CLIP else length * flight
 			if grounded:
 				jump_landing_time = maxf(jump_landing_time, 0.0) + dt
-				t = length
-		_sample(action, t)
+				t = lerpf(1.0, length, clampf(jump_landing_time / 0.18, 0.0, 1.0)) if action_clip == JUMP_CLIP else length
+		actor.native_player.play(action_clip, 0.0)
+		actor.native_player.seek(t, true)
 		var action_hips := actor.skeleton.get_bone_pose(int(actor.bones["Hips"])).basis
 		action_weight = minf(smoothstep(0.0, 0.18, t), 1.0 - smoothstep(length - 0.22, length, t))
 		if action == "rifle_jump":
-			action_weight = smoothstep(0.0, 0.08, action_time) * (1.0 - smoothstep(0.0, 0.14, maxf(jump_landing_time, 0.0)))
+			action_weight = smoothstep(0.0, 0.08, action_time) * (1.0 - smoothstep(0.0, 0.18, maxf(jump_landing_time, 0.0)))
 		for i in poses.size():
 			if action == "reloading" and not upper[i]: continue
 			var sample := actor.skeleton.get_bone_pose(i)
 			if action == "reloading" and i == int(actor.bones["Spine"]):
 				sample.basis = poses[int(actor.bones["Hips"])].basis.inverse() * action_hips * sample.basis
 			# The collision body supplies jump height, avoiding double root lift.
-			if action == "rifle_jump" and i == int(actor.bones["Hips"]): sample.origin = poses[i].origin
+			if action == "rifle_jump" and i == int(actor.bones["Hips"]):
+				var landing_height := sample.origin.y
+				sample.origin = poses[i].origin
+				if grounded and action_clip == JUMP_CLIP: sample.origin.y = landing_height
 			poses[i] = poses[i].interpolate_with(sample, action_weight)
 		target_socket = actor.native_socket.interpolate_with(actor.native_sockets.get(PACK + action, actor.native_socket), action_weight)
 		state = "Reload" if action == "reloading" else "Jump"
-		if (action == "rifle_jump" and jump_landing_time >= 0.14) or (action != "rifle_jump" and action_time >= length):
+		if (action == "rifle_jump" and jump_landing_time >= 0.18) or (action != "rifle_jump" and action_time >= length):
 			action = ""
 			action_weight = 0.0
 	for i in poses.size(): actor.skeleton.set_bone_pose(i, poses[i])
@@ -432,7 +439,7 @@ func advance(dt: float, velocity: Vector3, crouching: bool, grounded: bool, relo
 		actor.set_world(int(actor.bones["RightHand"]), right_hand)
 	actor.apply_native_recoil(dt, socket)
 	actor.weapon.global_transform = actor.joint("RightHand") * socket
-	var grip_weight := 1.0 - action_weight
+	var grip_weight := 1.0 if action == "rifle_jump" else 1.0 - action_weight
 	# Rising from prone needs the supporting hand to leave the ground before regripping.
 	if actor._transition_from_prone: grip_weight *= smoothstep(0.0, actor._transition_duration, actor._transition_time)
 	_hold_rifle(grip_weight)
@@ -630,17 +637,18 @@ func _contacts(speed: float, dt: float) -> void:
 			foot.locked = false
 			plant_ready[side] = true
 		elif idle > 0.0:
-			if not foot.locked: foot.point = support
+			if not foot.locked: foot.point = support + Vector3(contact_offsets[side].x, 0, contact_offsets[side].z)
 			foot.locked = true
 		elif support_lift > 0.065:
 			foot.locked = false
 			plant_ready[side] = true
 		# A low swing foot is not planted until its world motion slows near landing.
 		elif plant_ready[side] and ((support_lift < 0.025 and support_speed < maxf(0.8, speed * 0.75)) or (diagonal_weight > 0.99 and toe_lift < 0.005)):
-			foot.point = support
+			# Plant the corrected foot where it is, not the raw clip underneath its release offset.
+			foot.point = support + Vector3(contact_offsets[side].x, 0, contact_offsets[side].z)
 			foot.locked = true
 			plant_ready[side] = false
-			# The new anchor has zero error, so acquiring it needs no correction fade.
+			# The retained correction already reaches this anchor.
 			plant_weights[side] = 1.0
 		# Earlier diagonal toe contact needs more travel before stretch release.
 		var separation := Vector2(support.x - foot.point.x, support.z - foot.point.z).length()

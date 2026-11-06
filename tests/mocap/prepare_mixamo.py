@@ -6,7 +6,7 @@ import zipfile
 root = Path(__file__).resolve().parents[2] / 'assets/local_mocap/mixamo'
 downloads = Path.home() / 'Downloads'
 root.mkdir(parents=True, exist_ok=True)
-for filename, folder in [('Shooter Pack.zip', 'shooter'), ('Basic Shooter Pack.zip', 'basic_shooter'), ('Rifle 8-Way Locomotion Pack.zip', 'rifle_locomotion'), ('Pro Rifle Pack.zip', 'pro_rifle'), ('Male Injured Pack.zip', 'injured')]:
+for filename, folder in [('Shooter Pack.zip', 'shooter'), ('Basic Shooter Pack.zip', 'basic_shooter'), ('Rifle 8-Way Locomotion Pack.zip', 'rifle_locomotion'), ('Pro Rifle Pack.zip', 'pro_rifle'), ('Male Injured Pack.zip', 'injured'), ('Gestures Pack Basic.zip', 'gestures')]:
     if not (downloads / filename).exists():
         continue
     with zipfile.ZipFile(downloads / filename) as archive:
@@ -25,4 +25,8 @@ shutil.copy2(downloads / 'Rifle Kneel To Prone.fbx', root / 'Rifle Kneel To Pron
 for filename in ['Rifle Crouch Walk.fbx', 'Rifle Prone To Kneel.fbx', 'Rifle Put Away.fbx', 'Grab Rifle From Back.fbx', 'Put Back Rifle.fbx']:
     if (downloads / filename).exists():
         shutil.copy2(downloads / filename, root / filename)
+for filename in ['Rifle Jump In Place.fbx', 'Talking.fbx', 'Laughing.fbx', 'Arm Stretching.fbx', 'Rifle Idle.fbx', 'Picking Up Object.fbx']:
+    if (downloads / filename).exists():
+        (root / 'activities').mkdir(parents=True, exist_ok=True)
+        shutil.copy2(downloads / filename, root / 'activities' / filename)
 print('Installed Mixamo files under', root)

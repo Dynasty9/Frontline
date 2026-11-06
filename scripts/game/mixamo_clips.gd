@@ -5,7 +5,7 @@ const ROOT := "res://assets/local_mocap/mixamo/"
 
 static func files() -> Dictionary:
 	var result := {}
-	for folder in ["shooter", "basic_shooter", "activities", "rifle_locomotion", "pro_rifle", "prone", "pistol", "injured"]:
+	for folder in ["shooter", "basic_shooter", "activities", "rifle_locomotion", "pro_rifle", "prone", "pistol", "injured", "gestures"]:
 		for file in DirAccess.get_files_at(ROOT + folder):
 			file = file.trim_suffix(".remap")
 			if file.to_lower().ends_with(".fbx"):
@@ -19,7 +19,7 @@ static func install(actor: SkinnedRifleman, gameplay := false) -> Dictionary:
 	var paths := files()
 	if gameplay:
 		for key in paths.keys():
-			if not key.begins_with("mixamo_injured__") and not key.begins_with("mixamo_prone__") and not key.begins_with("mixamo_basic_shooter__") and not key.begins_with("mixamo_activities__") and not key.begins_with("mixamo_transition__") and not key.begins_with("mixamo_rifle_locomotion__walk_crouching_"): paths.erase(key)
+			if not key.begins_with("mixamo_gestures__") and not key.begins_with("mixamo_injured__") and not key.begins_with("mixamo_prone__") and not key.begins_with("mixamo_basic_shooter__") and not key.begins_with("mixamo_activities__") and not key.begins_with("mixamo_transition__") and not key.begins_with("mixamo_rifle_locomotion__walk_crouching_"): paths.erase(key)
 	actor.native_player = AnimationPlayer.new()
 	actor.native_player.name = "MixamoClips"
 	actor.add_child(actor.native_player)
@@ -75,7 +75,7 @@ static func install(actor: SkinnedRifleman, gameplay := false) -> Dictionary:
 					animation.position_track_insert_key(track, 0.0, rest.origin)
 			_retarget(animation, source, actor)
 			animation.loop_mode = Animation.LOOP_LINEAR
-			for action in ["Smash", "Dive_Roll", "Jumping_Over", "Stop", "Start", "Turn", "Throw", "Reloading", "Death", "Reaction", "Transition", "To_Prone", "To_Kneel", "To_Stand", "To_Down", "To_Aim", "to_kneel", "to_stand", "Getting_Up", "transition", "reloading", "hit_reaction", "dying", "toss", "jump", "start", "stop", "turn", "Entering", "Exiting"]:
+			for action in ["Smash", "Dive_Roll", "Jump", "Stop", "Start", "Turn", "Throw", "Reloading", "Death", "Reaction", "Transition", "To_Prone", "To_Kneel", "To_Stand", "To_Down", "To_Aim", "to_kneel", "to_stand", "Getting_Up", "transition", "reloading", "hit_reaction", "dying", "toss", "jump", "start", "stop", "turn", "Entering", "Exiting"]:
 				if action in key: animation.loop_mode = Animation.LOOP_NONE
 			library.add_animation(key, animation)
 			scene.free()

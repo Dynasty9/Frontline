@@ -132,7 +132,7 @@ func _physics_process(dt: float) -> void:
 		body.velocity.z = 0.0
 	if requested_jump:
 		if body.is_on_floor() and not crouching and driver.request_action("rifle_jump"):
-			body.velocity.y = 4.2
+			body.velocity.y = 3.4
 		requested_jump = false
 	if not body.is_on_floor(): body.velocity.y -= dt * 12.0
 	var collision: CollisionShape3D = body.get_child(0)

@@ -694,7 +694,7 @@ func pose_native(dt: float, clip: String) -> void:
 	last_velocity = Vector3.ZERO
 
 
-func pose_activity(dt: float, clip: String, throw_time := -1.0, prone_throw := false, move_speed := 0.0) -> void:
+func pose_activity(dt: float, clip: String, throw_time := -1.0, prone_throw := false, move_speed := 0.0, keep_rifle := false) -> void:
 	if _activity_clip != clip or _pose_mode not in [20, 21, 24]:
 		_activity_clock = 0.0
 		_pose_mode = -1
@@ -733,7 +733,7 @@ func pose_activity(dt: float, clip: String, throw_time := -1.0, prone_throw := f
 	_blend_pose(0.0 if throw_time >= 0.0 and not full_body_throw else dt)
 	if throw_time < 0.0: _ground_feet(move_speed, dt)
 	# The sling follows the captured torso, leaving both hands free.
-	weapon.global_transform = joint("Spine2") * _sling_socket
+	weapon.global_transform = joint("RightHand") * native_socket if keep_rifle else joint("Spine2") * _sling_socket
 	weapon.visible = true
 	if clip.ends_with("Digging"):
 		if shovel == null:
