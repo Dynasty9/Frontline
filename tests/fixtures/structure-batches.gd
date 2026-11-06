@@ -85,10 +85,14 @@ func _ready() -> void:
 	w.terrain.landform.peak = 100.0
 	atmosphere.ground_mat = ShaderMaterial.new()
 	atmosphere.ground_mat.shader = Shader.new()
-	atmosphere.ground_mat.shader.code = "shader_type spatial; uniform float sea_x = 1000000000.0;"
+	atmosphere.ground_mat.shader.code = "shader_type spatial; uniform float sea_x = 1000000000.0; uniform sampler2D forest_cover;"
 	atmosphere.backdrop_tex = ImageTexture.create_from_image(Image.create(2, 2, false, Image.FORMAT_RF))
 	var forest := DistantForest.new()
 	forest.setup(atmosphere)
+	var repeat_cover := DistantForest.coverage_image(7919, MapDims.HALF + 1400.0)
+	assert(forest.coverage.get_data() == repeat_cover.get_data(), "Forest floors and placement reproduce the map seed")
+	assert(forest.coverage.get_pixel(128, 128).r == 0.0, "Scenery understory must not paint the playable map")
+	assert(forest.coverage.get_data() != DistantForest.coverage_image(7919 * 2, MapDims.HALF + 1400.0).get_data(), "Different seeds grow different stands")
 	assert(forest.tree_count > 10000 and forest.get_child_count() < 300, "Dense forests share bounded spatial draw batches")
 	if DisplayServer.get_name() != "headless":
 		for chunk: MultiMeshInstance3D in forest.get_children():

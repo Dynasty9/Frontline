@@ -3,8 +3,23 @@ extends Node3D
 ## Only scenery beyond the playable boundary: two triangles per distant tree.
 
 const CELL := 256.0
-const SPACING := 8.0
+const SPACING := 5.0
 var tree_count := 0
+var coverage: Image
+
+static func coverage_image(seed_value: int, reach: float) -> Image:
+	var noise := FastNoiseLite.new()
+	noise.seed = seed_value
+	noise.frequency = 0.006
+	var img := Image.create(256, 256, false, Image.FORMAT_R8)
+	for z in 256:
+		for x in 256:
+			var p := (Vector2(x, z) + Vector2.ONE * 0.5) / 256.0 * reach * 2.0 - Vector2.ONE * reach
+			var edge := maxf(absf(p.x), absf(p.y)) - MapDims.HALF
+			var density := smoothstep(-0.06, 0.18, noise.get_noise_2d(p.x, p.y))
+			density *= smoothstep(48.0, 80.0, edge) * (1.0 - smoothstep(1300.0, 1370.0, edge))
+			img.set_pixel(x, z, Color(density, 0, 0))
+	return img
 
 func setup(atmo: Atmosphere) -> void:
 	if atmo.world.terrain.landform.peak <= 1.0:
@@ -20,17 +35,18 @@ func setup(atmo: Atmosphere) -> void:
 	material.set_shader_parameter("atlas", preload("res://assets/foliage/fir_impostor.png"))
 	var rng := RandomNumberGenerator.new()
 	rng.seed = int(atmo.world.settings.get("seed", 1)) * 7919
-	var noise := FastNoiseLite.new()
-	noise.seed = int(rng.seed)
-	noise.frequency = 0.006
 	var cells := {}
 	var reach := MapDims.HALF + 1400.0
+	coverage = coverage_image(int(rng.seed), reach)
+	atmo.ground_mat.set_shader_parameter("forest_cover", ImageTexture.create_from_image(coverage))
 	var n := ceili(reach * 2.0 / SPACING)
 	for z in n:
 		for x in n:
 			var p := Vector3(-reach + (x + rng.randf()) * SPACING, 0, -reach + (z + rng.randf()) * SPACING)
 			var edge := maxf(absf(p.x), absf(p.z)) - MapDims.HALF
-			if edge < 48.0 or edge > 1370.0 or noise.get_noise_2d(p.x, p.z) < -0.06:
+			var uv := (Vector2(p.x, p.z) + Vector2.ONE * reach) / (reach * 2.0)
+			var density := coverage.get_pixel(clampi(int(uv.x * 256.0), 0, 255), clampi(int(uv.y * 256.0), 0, 255)).r
+			if edge < 48.0 or edge > 1370.0 or rng.randf() >= density:
 				continue
 			var cell := Vector2i(floori(p.x / CELL), floori(p.z / CELL))
 			if not cells.has(cell):
@@ -70,14 +86,17 @@ varying float shade;
 void vertex() {
 	vec3 center = MODEL_MATRIX[3].xyz;
 	float h = backdrop(center.xz);
-	float slope = length(vec2(backdrop(center.xz + vec2(4,0)) - backdrop(center.xz - vec2(4,0)), backdrop(center.xz + vec2(0,4)) - backdrop(center.xz - vec2(0,4)))) / 8.0;
+	float slope = length(vec2(backdrop(center.xz + vec2(16,0)) - backdrop(center.xz - vec2(16,0)), backdrop(center.xz + vec2(0,16)) - backdrop(center.xz - vec2(0,16)))) / 32.0;
 	float size = INSTANCE_CUSTOM.r;
 	// Bare cliff faces and the alpine treeline stay open.
-	if (h < 2.0 || h > max(150.0, snow_line * 1.5) - 30.0 + INSTANCE_CUSTOM.b * 18.0 || slope > 0.75 || center.x > scenery_shore(center.xz, sea_x) - 40.0) { size = 0.0; }
-	center.y = h + 7.2 * size;
+	float habitat = forest_habitat(center.xz, h, slope);
+	if (habitat < INSTANCE_CUSTOM.b) { size = 0.0; }
+	size *= mix(0.65, 1.0, habitat);
+	center.y = h;
 	vec3 right = INV_VIEW_MATRIX[0].xyz;
 	vec3 up = INV_VIEW_MATRIX[1].xyz;
-	vec3 point = center + right * VERTEX.x * size + up * VERTEX.y * size;
+	// Rotate around the trunk base so tilting the camera cannot lift trees off the slope.
+	vec3 point = center + right * VERTEX.x * size + up * (VERTEX.y + 7.2) * size;
 	MODELVIEW_MATRIX = VIEW_MATRIX;
 	VERTEX = point;
 	NORMAL = vec3(0.0, 1.0, 0.0);

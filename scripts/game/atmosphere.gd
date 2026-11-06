@@ -1047,6 +1047,12 @@ float backdrop(vec2 p) {
 		* (1.0 - smoothstep(1450.0, 1800.0, edge))
 		- 3.2 * smoothstep(shore, shore + 30.0, p.x);
 }
+float forest_habitat(vec2 p, float height, float gradient) {
+	float treeline = max(150.0, snow_line * 1.5);
+	return smoothstep(2.0, 8.0, height) * (1.0 - smoothstep(treeline - 35.0, treeline - 12.0, height))
+		* (1.0 - smoothstep(0.50, 0.75, gradient))
+		* (1.0 - smoothstep(scenery_shore(p, sea_x) - 60.0, scenery_shore(p, sea_x) - 40.0, p.x));
+}
 
 """
 
@@ -1070,6 +1076,7 @@ uniform sampler2D moss_normal : filter_linear_mipmap_anisotropic, repeat_enable;
 uniform sampler2D biome_tex : filter_linear, repeat_enable;
 uniform sampler2D detail_tex : filter_linear_mipmap, repeat_enable;
 uniform sampler2D backdrop_tex : filter_linear_mipmap, repeat_disable;
+uniform sampler2D forest_cover : hint_default_black, filter_linear, repeat_disable;
 uniform vec3 grass_a : source_color = vec3(0.24, 0.29, 0.19);
 uniform vec3 grass_b : source_color = vec3(0.32, 0.36, 0.24);
 uniform vec3 dry : source_color = vec3(0.36, 0.33, 0.19);
@@ -1321,6 +1328,13 @@ void fragment() {
 		+ (patch - 0.5) * 0.24 + (rock_height - 0.5) * 0.35);
 	cover = max(cover, talus * 0.95);
 	float exposed = height_blend(moss_sample.a, rock_height, cover);
+	// Needle litter and sheltered undergrowth connect the same stands as the tree cards.
+	if (terrain_detail && max(abs(p.x), abs(p.y)) >= __MAP_HALF__) {
+		float woodland = texture(forest_cover, (p + __MAP_HALF__ + 1400.0) / (__MAP_SIZE__ + 2800.0)).r;
+		woodland *= forest_habitat(p, geology, slope);
+		moss = mix(moss, moss * vec3(0.55, 0.66, 0.49), woodland * 0.85);
+		exposed *= 1.0 - woodland * 0.85;
+	}
 	vec3 alpine = mix(moss, rock, exposed);
 	float clean = (1.0 - wm.g) * (1.0 - wm.a) * (1.0 - clamp(bowl, 0.0, 1.0));
 	col = mix(col, alpine, clean);
@@ -1368,6 +1382,10 @@ void fragment() {
 	aerial *= smoothstep(__MAP_HALF__, __MAP_HALF__ + 200.0, edge);
 	ALBEDO = col * (1.0 - aerial);
 	EMISSION = air_color * aerial * 0.65;
+	// Surface blends above are linear; Compatibility expects sRGB material output.
+	if (OUTPUT_IS_SRGB) {
+		ALBEDO = mix(ALBEDO * 12.92, 1.055 * pow(max(ALBEDO, vec3(0.0)), vec3(1.0 / 2.4)) - 0.055, step(vec3(0.0031308), ALBEDO));
+	}
 	ROUGHNESS = mix(mix(0.96, 0.82, dirt_m), clamp(material_data.y, 0.55, 1.0), clean);
 	ROUGHNESS = mix(ROUGHNESS, clamp(mix(0.68, 0.94, macro) + snow_ripple * 0.06, 0.6, 1.0), snow);
 	rock_damp *= exposed * clean * (1.0 - snow);

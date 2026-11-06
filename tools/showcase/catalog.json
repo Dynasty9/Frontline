@@ -4029,10 +4029,10 @@
     },
     {
       "entry": "changelog/unreleased/environment-realism-extended.md",
-      "summary": "Distant water follows the scenery coast without a square cutoff.",
+      "summary": "Continuous coastal scenery and connected hillside forests with cleaner canopy edges.",
       "medium": "still",
       "stage": "native-media",
-      "rationale": "Matched panorama exposes the water boundary and shoreline change.",
+      "rationale": "Matched panorama and closer forest views expose shoreline and vegetation changes; a separate matched Compatibility pair demonstrates the colour correction.",
       "source_ref": "b38e42e92d8236f13c2ef41a8da8610bd1771741",
       "sources": [
         {
@@ -4044,6 +4044,26 @@
           "file": "changelog/unreleased/environment-realism-extended/coast-after.jpg",
           "sha256": "46ddea33837e51980a9d246fc43f1388c16e8aeacd029aac258834f671b62e9f",
           "caption": "coast-after"
+        },
+        {
+          "file": "changelog/unreleased/environment-realism-extended/forest-before.jpg",
+          "sha256": "01cb76692a4ace20910d2b90c2fd61380f0d7d811300854d4c88ef835712c8d0",
+          "caption": "forest-before"
+        },
+        {
+          "file": "changelog/unreleased/environment-realism-extended/forest-after.jpg",
+          "sha256": "d760685e1ab9a5f7d86cce20069b7b6ebd031b930aa1b415c9292e5c59e130cc",
+          "caption": "forest-after"
+        },
+        {
+          "file": "changelog/unreleased/environment-realism-extended/compat-before.jpg",
+          "sha256": "956784e8e1c89a6b4193355889d68e524dc44a4c45e8705b366ec53c534341c9",
+          "caption": "compat-before"
+        },
+        {
+          "file": "changelog/unreleased/environment-realism-extended/compat-after.jpg",
+          "sha256": "2ed411bf4ab14eec37cf3af0baeb68cad6f287c345a14fd23265656a74ff3271",
+          "caption": "compat-after"
         }
       ],
       "output": null,
@@ -4051,7 +4071,9 @@
         "before_ref": "b38e42e92d8236f13c2ef41a8da8610bd1771741",
         "after_ref": "codex/environment-realism-extended",
         "command": "godot --path . --resolution 1600x900 -- --aivai --seed=3 --offscreen --nohud --set=perf:0 --preset=high --mood=day --focus=0,0 --zoom=900 --pitch=-22 --cam-yaw=0.7 --screenshot=OUTPUT --shot-at=2 --quit-after=3",
-        "note": "Before preserved from the parent branch capture. After rendered natively with the same controls."
+        "note": "Before preserved from the parent branch capture. After rendered natively with the same controls.",
+        "forest": "Native Forward+, seed3 High/day, 1600x900, focus -400,-450, zoom350, pitch-30, yaw-0.2, shot2s. Before b38e42e; after this branch.",
+        "compatibility": "Same close controls except pitch-55 and gl_compatibility. Before: this branch before material-output correction; after: corrected output, both with forest iteration. Not a historical parent comparison."
       }
     }
   ],

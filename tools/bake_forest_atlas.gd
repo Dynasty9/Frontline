@@ -6,7 +6,7 @@ func _initialize() -> void:
 func bake() -> void:
 	var doc := GLTFDocument.new()
 	var state := GLTFState.new()
-	assert(doc.append_from_file("res://build/terrain/foliage-source/models/fir-c.gltf", state) == OK)
+	assert(doc.append_from_file("res://build/terrain/foliage-source/models/fir-variants.gltf", state) == OK)
 	var scene := doc.generate_scene(state)
 	for child in scene.get_children():
 		if child is Node3D:
@@ -36,6 +36,12 @@ func bake() -> void:
 	viewport.add_child(camera)
 	var atlas := Image.create(1024, 1024, false, Image.FORMAT_RGBA8)
 	for i in 4:
+		var kinds := [0, 1, 2, 0]
+		var heights := [18.85, 13.97, 14.43]
+		for k in scene.get_child_count():
+			var tree: Node3D = scene.get_child(k)
+			tree.visible = k == kinds[i]
+			tree.scale = Vector3.ONE * (14.4 / heights[k])
 		var angle := i * PI * 0.5
 		camera.position = Vector3(sin(angle) * 25, 9, cos(angle) * 25)
 		camera.look_at(Vector3(0, 7.2, 0))
