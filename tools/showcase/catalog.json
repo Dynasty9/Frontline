@@ -3553,6 +3553,19 @@
       "source_ref": "codex/soldier-presentation-queue",
       "sources": [],
       "output": null
+    },
+    {
+      "entry": "changelog/unreleased/ground-cover-geometry.md",
+      "title": "Less geometry for distant ground cover",
+      "summary": "Distant bushes and stones use simpler meshes, while nearby ground cover retains its original shapes.",
+      "version": "unreleased",
+      "kind": "improved",
+      "medium": "text",
+      "stage": "text",
+      "rationale": "Measured triangle counts and matching rendered fixtures demonstrate the change. Timing conditions, excluded runs and before/after images are in docs/performance/ground-cover.md; no sustained FPS claim.",
+      "source_ref": "codex/ground-cover-lod",
+      "sources": [],
+      "output": null
     }
   ],
   "layout_capture": {

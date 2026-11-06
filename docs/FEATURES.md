@@ -1082,6 +1082,7 @@ Sky Hook prepares reachable vehicle approaches for its convoy before the battle 
 - Fog of war, drawn on the ground and the minimap, with intel pings and last-known enemy positions.
 
 **Look and feel** (`atmosphere.gd`, `mats.gd`, `vehicle_models.gd`, `vfx.gd`, `gunfx.gd`, `grass.gd`, `wildlife.gd`, `ui/`)
+- Ground cover shares indexed meshes. Distant bushes and stones use automatic mesh levels of detail; nearby shapes, grass blades, wind and placement stay unchanged.
 - Eight lighting moods (midday, golden hour, dawn, dusk, overcast, hazy, **night**, **rain & thunder**) with a
   procedural sky, AgX tonemapping, cloud shadows drifting over the ground, volumetric haze and a subtle film look.
   At night the sky fills with stars and illumination flares drift down on parachutes over the fighting, throwing
