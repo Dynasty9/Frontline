@@ -3579,6 +3579,19 @@
       "output": null,
       "title": "Faster shared soldier rendering",
       "summary": "Large armies spend less CPU time preparing their distant models."
+    },
+    {
+      "entry": "changelog/unreleased/minimap-change-events.md",
+      "title": "A minimap that responds to building changes",
+      "summary": "Large maps no longer scan every structure just to discover that a building changed.",
+      "version": "unreleased",
+      "kind": "improved",
+      "medium": "text",
+      "stage": "text",
+      "rationale": "Lifecycle and pixel assertions cover births, equal-count replacement, destruction, ownership, roads and coalescing. Existing incremental-bake and progressive-layer tests retain their coverage. No overall FPS claim.",
+      "source_ref": "codex/minimap-change-events",
+      "sources": [],
+      "output": null
     }
   ],
   "layout_capture": {

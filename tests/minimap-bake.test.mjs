@@ -11,3 +11,11 @@ test("minimap bakes yield, retain the previous image and catch up with destructi
   assert.doesNotMatch(stdout + stderr, /SCRIPT ERROR|Parse Error/);
   assert.match(stdout, /MINIMAP_BAKE passed/);
 });
+
+test("minimap invalidation follows registry changes without polling scenery", async () => {
+  const { stdout, stderr } = await promisify(execFile)(process.env.GODOT || "godot", [
+    "--headless", "--path", ROOT, "res://tests/fixtures/minimap-events.tscn",
+  ], { timeout: 120_000 });
+  assert.doesNotMatch(stdout + stderr, /SCRIPT ERROR|Parse Error|^ERROR:/m);
+  assert.match(stdout, /MINIMAP_EVENTS passed/);
+});
