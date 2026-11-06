@@ -4104,6 +4104,26 @@
           "file": "changelog/unreleased/environment-realism-extended/street-after.jpg",
           "sha256": "8e0f961c73704371e64b3309e26e22f0943f4ebfe0adf0ea8e2acf2c32742ab9",
           "caption": "street-after"
+        },
+        {
+          "file": "changelog/unreleased/environment-realism-extended/roof-before.jpg",
+          "sha256": "763fe4a0dac8a2b9ded96c6a54f0a56acd1e858847af2e098745c905ce2859e2",
+          "caption": "roof-before"
+        },
+        {
+          "file": "changelog/unreleased/environment-realism-extended/roof-after.jpg",
+          "sha256": "f2b9a594cb47c417257423be00e8f13d1c06a4a89b463eda7303b0b8d0e6a28f",
+          "caption": "roof-after"
+        },
+        {
+          "file": "changelog/unreleased/environment-realism-extended/town-colour-before.jpg",
+          "sha256": "85a99e571360fe07b669c285cb788a9bb3335fd4897b20d399010aef2a78192f",
+          "caption": "town-colour-before"
+        },
+        {
+          "file": "changelog/unreleased/environment-realism-extended/town-colour-after.jpg",
+          "sha256": "c82478a1b68383fac6a5d89ae4b272a387620ce736712bb79deacc38fb71a1f2",
+          "caption": "town-colour-after"
         }
       ],
       "output": null,
@@ -4117,7 +4137,8 @@
         "snow": "Matched native Forward+, High/day seed3 1600x900, focus236,464 zoom45 pitch-42 yaw-0.2. Simulation held at2s after map construction, 45 settling frames per view. Before b38e42e PCK; after this branch. Same camera controls and unchanged geology. No retouching.",
         "lighting": "Matched native Forward+, seed3 High/golden, 1600x900, focus-400,-450 zoom350 pitch-30 yaw-0.2. Both hold simulation at2s and settle45frames. Before uses exact7ba202a atmosphere/distant_forest scripts overlaid through a PCK before main loads; unchanged assets. After is current branch. No retouching.",
         "ranges": "Matched native Forward+, seed3 High/day 1600x900, focus0,0 zoom900 pitch-22 yaw0.7, simulation held at2s with45 settling frames. Before exact f45dada atmosphere script loaded through PCK before main; after surveyed terrain checkpoint. Other scripts and assets unchanged. No retouching.",
-        "street": "Matched native Forward+, seed3 High/day 1600x900, focus-55,-4 zoom15 pitch-55 yaw0.7, held2s/45settlingframes. Before 9c84373 runtime scripts, after fine-asphalt checkpoint. Both use environment-views.gd --capture-set=town. No retouching."
+        "street": "Matched native Forward+, seed3 High/day 1600x900, focus-55,-4 zoom15 pitch-55 yaw0.7, held2s/45settlingframes. Before 9c84373 runtime scripts, after fine-asphalt checkpoint. Both use environment-views.gd --capture-set=town. No retouching.",
+        "photo_calibration": "Matched native Forward+, High/day seed3 1600x900. Before76d6374 (identical Forward+ material output to5407b62); after calibrated photographic materials. Both environment-views --capture-set=town, held2s/45settlingframes. Close uses first town driveway zoom18 pitch-50 yawpiece+PI+0.4; wide towncentrezoom130 pitch-50 yaw0.7. No retouching."
       }
     }
   ],

@@ -54,6 +54,21 @@ caption = "Before: oversized aggregate makes the asphalt look like coarse gravel
 [[screenshots]]
 file = "street-after.jpg"
 caption = "After: finer photographed aggregate keeps larger cracks and repairs. Same street, seed, lighting and camera."
+[[screenshots]]
+file = "roof-before.jpg"
+caption = "Before: the photograph overrides the roof colour and leaves concrete yellow."
+
+[[screenshots]]
+file = "roof-after.jpg"
+caption = "After: calibrated terracotta, concrete and wood retain photographed surface detail. Same house and camera."
+
+[[screenshots]]
+file = "town-colour-before.jpg"
+caption = "Before: beige and cyan roofs dominate the town overview."
+
+[[screenshots]]
+file = "town-colour-after.jpg"
+caption = "After: terracotta and weathered grey roofs remain distinct at command-camera distance. Same town and lighting."
 +++
 
 The ocean keeps detailed waves near the battlefield and uses a coarser surface beyond it.
@@ -67,3 +82,5 @@ Distant ridges now shade their valleys and forests with cached terrain lighting.
 Surrounding ranges now use real Alpine elevation shapes, composed into varied fictional mountain groups. Lower ridges close the horizon between the peaks. The source data is bundled and processed during map creation; no terrain downloads or extra per-frame material samples are needed.
 
 Town asphalt now separates fine aggregate from broad cracks, repairs and stains. Streets and junctions share the same world-space material, blended in linear light in both renderers. Normal maps follow sloping roads and paving instead of lighting every surface as if it were flat.
+
+Photographic building materials now respect their intended colours. Calibrated roof tiles, concrete, wood and bark retain the scan detail without turning grey roofs cyan or all tiled roofs pale beige.

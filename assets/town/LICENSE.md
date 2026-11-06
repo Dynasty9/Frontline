@@ -29,3 +29,7 @@ Street surfaces combine the aerial scan at 30 m for broad cracks and weathering
 with Road Damaged Clean at 2.2 m for fine aggregate and normal/roughness detail.
 The fine scan is desaturated toward charcoal in the shader; repaired patches
 retain the same aggregate scale. The normal maps follow the actual road slope.
+
+The baker also measures each packed photograph's average linear albedo in
+`material_means.tres`. Building materials use those values to preserve their
+preset and per-object colours while retaining photographed variation.

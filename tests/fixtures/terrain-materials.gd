@@ -85,5 +85,26 @@ void fragment() { ALBEDO = street_surface(scan, noise, vec2(0.0)); }
 		await RenderingServer.frame_post_draw
 	var road := view.get_texture().get_image().get_pixel(32, 32)
 	assert(absf(road.r - 0.314) < 0.008, "Street blending must use linear scan values in both renderers: %s" % road)
+	for kind in ["roof_tile", "roof_concrete", "wood_dark", "bark"]:
+		var photographed := Mats.get_mat(kind).duplicate() as ShaderMaterial
+		assert(photographed.get_shader_parameter("pattern") == Mats.WEATHERED_PHOTO)
+		var unlit := Shader.new()
+		unlit.code = photographed.shader.code.replace("render_mode specular_schlick_ggx;", "render_mode unshaded;")
+		photographed.shader = unlit
+		photographed.set_shader_parameter("weathering", 0.0)
+		photographed.set_shader_parameter("grime", 0.0)
+		mesh.material_override = photographed
+		for frame in 3:
+			await RenderingServer.frame_post_draw
+		var pixels := view.get_texture().get_image()
+		var mean := Vector3.ZERO
+		for y in 64:
+			for x in 64:
+				var sample := pixels.get_pixel(x, y).srgb_to_linear()
+				mean += Vector3(sample.r, sample.g, sample.b) / 4096.0
+		var base: Color = photographed.get_shader_parameter("col_a")
+		base = base.srgb_to_linear()
+		var target := Vector3(base.r, base.g, base.b)
+		assert(mean.distance_to(target) < 0.04, "Photographed %s must retain its preset colour: actual=%s expected=%s" % [kind, mean, target])
 	view.queue_free()
 	print("TERRAIN_MATERIALS native sloped-road normals and colour checks passed")
