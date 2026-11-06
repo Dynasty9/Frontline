@@ -1,36 +1,52 @@
 +++
-title = "Distinct grenade, shell and fuel explosions"
-summary = "Grenades throw fast fragments, shells lift earth and falling clods, and vehicle fuel burns. Flares drift under parachutes, tracers dim with distance, and metal impacts shed chips."
+title = "Explosions with rolling dust and lit smoke"
+summary = "Explosion clouds roll and disperse, with sunlight catching their billows. HE throws dark earth; fuel burns through rising smoke. Flares descend under cloth parachutes and leave drifting trails."
 kind = "improved"
 
 [[videos]]
-file = "armaments.webm"
+file = "world.webm"
 poster = "after.jpg"
-caption = "Current build, controlled range: grenade, roughly 110 mm HE visual scale and vehicle fuel, followed by dirt, stone and metal impacts. Ground marks are 10 m apart."
+caption = "After: a roughly 110 mm HE ground burst in the battlefield, with earth fans, falling clods and a rolling dust cloud. Fixed 24 fps, normal simulation speed."
+
+[[videos]]
+file = "world-before.webm"
+poster = "before.jpg"
+caption = "Before: the same battlefield, seed, camera, lighting and explosion size at revision b3ec859. The former effect starts with a sustained fireball."
+
+[[videos]]
+file = "armaments.webm"
+poster = "armaments.jpg"
+caption = "Current build, left to right: grenade, HE and fuel. The second half shows machine-gun rounds striking dirt, stone and metal. Ground marks are 10 m apart. Fixed 30 fps."
 
 [[videos]]
 file = "before.webm"
-poster = "before.jpg"
-caption = "Before this change: the same range, seed, camera, renderer and explosion sizes at source revision b3ec859. All three blasts use the former fireball effect."
+poster = "before-range.jpg"
+caption = "Before: the same controlled range at revision b3ec859, using the former shared explosion effect. Fixed 30 fps."
 
 [[videos]]
 file = "flares.webm"
 poster = "flares.jpg"
-caption = "Current build: a following camera shows the illumination flare's parachute, suspension lines, sparks and smoke at night."
+caption = "Current build, Forward+: a following camera shows the flare's open cloth canopy, suspension lines, sparks and lingering smoke at night."
+
+[[videos]]
+file = "rts.webm"
+poster = "rts.jpg"
+caption = "Current build: the same HE burst from a higher RTS camera, with the cloud following the scene's lighting and depth."
 
 [[screenshots]]
 file = "before.jpg"
-caption = "Before: the HE shell uses the common fiery explosion profile."
+caption = "Before: the shell uses a fiery explosion profile."
 
 [[screenshots]]
 file = "after.jpg"
-caption = "After: the same shell lifts brown earth above a short-lived cloud of detonation gas."
+caption = "After: the same shell throws earth and a turbulent dust cloud."
 +++
 
-- Fragmentation grenades have a smaller, shorter flash and fast dark fragments. HE shells throw dirt, a dust cloud and clods; sustained fire and burning fragments belong to fuel explosions.
-- Ground effects follow the terrain height, including hills. Airbursts keep their flash and smoke without throwing dirt from midair.
-- Illumination flares descend and drift with the wind, leave smoke behind, and stop shedding particles when their charge burns out. Their remaining smoke disperses before the flare is removed.
-- Small-arms tracers light a short distance beyond the muzzle and dim further as they recede. Nearby metal impacts shed small chips alongside sparks.
-- Effects reuse bounded pools and reduce detail with distance and the effects setting. Fragments and landing dust animate in shared batches, including in the browser.
+- Grenades have a small, brief flash and fast dark fragments. HE shells throw widening fans of earth, falling clods and dust. Fuel burns through a rising cloud of darker smoke.
+- Animated clouds retain their billows as they roll and disperse. Sunlight and sky light shape them, roads produce greyer dust, and wet ground produces a darker, thinner cloud.
+- Dust, landing debris and crater marks follow the ground height. Airbursts retain their flash and smoke without throwing earth from midair.
+- Illumination flares sway beneath open cloth parachutes, descend with the wind, and leave smoke behind. Their trails stop emitting when the charge burns out and then disperse.
+- Tracers light beyond the muzzle and dim with distance. Metal impacts shed small chips alongside sparks; dirt and stone produce their own debris.
+- Effects reuse bounded pools and shared debris batches. Transparent areas are trimmed before drawing, and lower effects settings reduce animation work and particle counts.
 
-These are procedural visual effects. The 110 mm label indicates approximate visual scale, not a validated blast simulation. The clips are silent, run at fixed simulation timing, and demonstrate appearance rather than frame-rate improvements.
+The cloud animations come from licensed CC0 fluid simulations, with credits and rebuild instructions in the repository. The roughly 110 mm scale is an artistic reference, not a calibrated blast prediction. These silent clips show actual engine output at fixed simulation timing.

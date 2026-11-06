@@ -1,60 +1,660 @@
 {
-  "base_ref": "b3ec8594ef59488cdfa36e5b12fcdf40b9cac791",
-  "branch": "codex/realistic-armament-effects",
-  "working_tree_dirty": true,
-  "engine": "4.6.3.stable.official.7d41c59c4",
-  "renderer": "gl_compatibility (Mesa llvmpipe)",
-  "seed": 712,
-  "fps": 12,
-  "seconds": 12,
-  "fixture": "tests/fixtures/armament-effects-clips.gd",
-  "fixture_sha256": "b2590fda58c94d33a4ed02095f0cc60b3ea3de968d8bed436b542a9130984bb9",
-  "captures": [
+  "implementation_ref": "2252c93a87a54cc6a6b7498017d6f3cf5b2f6835",
+  "before_ref": "b3ec8594ef59488cdfa36e5b12fcdf40b9cac791",
+  "fixture_ref": "2252c93a87a54cc6a6b7498017d6f3cf5b2f6835",
+  "clips": [
     {
-      "file": "armaments.webm",
-      "frames": "/tmp/frontline-after2-frames",
-      "source": "current working tree",
-      "args": [
-        "--clip=armaments"
-      ]
-    },
-    {
-      "file": "before.webm",
-      "frames": "/tmp/frontline-before-frames",
-      "source": "b3ec8594ef59488cdfa36e5b12fcdf40b9cac791",
-      "args": [
-        "--clip=armaments",
-        "--legacy-effects",
-        "--label=BEFORE"
-      ]
-    },
-    {
-      "file": "flares.webm",
-      "source": "current working tree",
+      "stage": "blast-close",
+      "source_ref": "2252c93a87a54cc6a6b7498017d6f3cf5b2f6835",
+      "working_tree_dirty": true,
+      "working_tree_changes": [
+        " M changelog/unreleased/realistic-armament-effects.md"
+      ],
+      "engine": "4.7.2.stable.official.ed1daf0bf",
       "command": [
-        "python3",
-        "tools/showcase/capture.py",
-        "flares",
-        "--output",
-        "/tmp/frontline-flares-release"
-      ]
+        "/workspace/scratch/explosion-rebuild/godot-4.7.2/Godot_v4.7.2-stable_linux.x86_64",
+        "--fixed-fps",
+        "24",
+        "--path",
+        "/workspace/Frontline-effects",
+        "--rendering-method",
+        "gl_compatibility",
+        "--audio-driver",
+        "Dummy",
+        "--position",
+        "-10000,-10000",
+        "--resolution",
+        "1280x720",
+        "res://tests/fixtures/blast-world-clips.tscn",
+        "--",
+        "--clip=blast-close",
+        "--label=AFTER",
+        "--frames=/workspace/scratch/explosion-rebuild/release-world-after/frames"
+      ],
+      "parameters": {
+        "scene": "tests/fixtures/blast-world-clips.tscn",
+        "seconds": 8,
+        "fps": 24,
+        "simulation_hz": 24,
+        "engine_fixed_fps": 24,
+        "cue": "Inspect the fast dirt ejection, connected dust volume and falling clods from a nearby camera.",
+        "timeout": 1200,
+        "render_settings": {
+          "grass": 1,
+          "effects": 2,
+          "post": false,
+          "mood": "day"
+        },
+        "crf": 24
+      },
+      "legacy_pool_clock": null,
+      "attribution": "Controlled recording of the implementation revision.",
+      "file": "world.webm",
+      "poster": "after.jpg",
+      "poster_frame": 30,
+      "fixture_ref": "2252c93a87a54cc6a6b7498017d6f3cf5b2f6835"
+    },
+    {
+      "stage": "blast-close",
+      "source_ref": "b3ec8594ef59488cdfa36e5b12fcdf40b9cac791",
+      "working_tree_dirty": true,
+      "working_tree_changes": [
+        " M tools/showcase/capture.py",
+        " M tools/showcase/stages.json",
+        "?? tests/fixtures/armament-effects-clips.gd",
+        "?? tests/fixtures/armament-effects-clips.tscn",
+        "?? tests/fixtures/blast-benchmark.gd",
+        "?? tests/fixtures/blast-benchmark.tscn",
+        "?? tests/fixtures/blast-world-clips.gd",
+        "?? tests/fixtures/blast-world-clips.tscn",
+        "?? tests/fixtures/effects-field.gd"
+      ],
+      "engine": "4.7.2.stable.official.ed1daf0bf",
+      "command": [
+        "/workspace/scratch/explosion-rebuild/godot-4.7.2/Godot_v4.7.2-stable_linux.x86_64",
+        "--fixed-fps",
+        "24",
+        "--path",
+        "/workspace/scratch/explosion-rebuild/baseline",
+        "--rendering-method",
+        "gl_compatibility",
+        "--audio-driver",
+        "Dummy",
+        "--position",
+        "-10000,-10000",
+        "--resolution",
+        "1280x720",
+        "res://tests/fixtures/blast-world-clips.tscn",
+        "--",
+        "--clip=blast-close",
+        "--label=BEFORE",
+        "--frames=/workspace/scratch/explosion-rebuild/world-before-timed/frames",
+        "--legacy-effects"
+      ],
+      "parameters": {
+        "scene": "tests/fixtures/blast-world-clips.tscn",
+        "seconds": 8,
+        "fps": 24,
+        "simulation_hz": 24,
+        "engine_fixed_fps": 24,
+        "cue": "Inspect the fast dirt ejection, connected dust volume and falling clods from a nearby camera.",
+        "timeout": 1200,
+        "render_settings": {
+          "grass": 1,
+          "effects": 2,
+          "post": false,
+          "mood": "day"
+        },
+        "crf": 24
+      },
+      "legacy_pool_clock": "Hold shown rig timestamps so wall-clock cleanup cannot truncate fixed-step particle lifetimes during offline readback.",
+      "attribution": "Controlled recording of baseline game code with current capture fixture.",
+      "file": "world-before.webm",
+      "poster": "before.jpg",
+      "poster_frame": 30,
+      "fixture_ref": "2252c93a87a54cc6a6b7498017d6f3cf5b2f6835"
+    },
+    {
+      "stage": "armaments",
+      "source_ref": "2252c93a87a54cc6a6b7498017d6f3cf5b2f6835",
+      "working_tree_dirty": true,
+      "working_tree_changes": [
+        " M changelog/unreleased/realistic-armament-effects.md"
+      ],
+      "engine": "4.7.2.stable.official.ed1daf0bf",
+      "command": [
+        "/workspace/scratch/explosion-rebuild/godot-4.7.2/Godot_v4.7.2-stable_linux.x86_64",
+        "--fixed-fps",
+        "30",
+        "--path",
+        "/workspace/Frontline-effects",
+        "--rendering-method",
+        "gl_compatibility",
+        "--audio-driver",
+        "Dummy",
+        "--position",
+        "-10000,-10000",
+        "--resolution",
+        "1280x720",
+        "res://tests/fixtures/armament-effects-clips.tscn",
+        "--",
+        "--clip=armaments",
+        "--label=AFTER",
+        "--frames=/workspace/scratch/explosion-rebuild/release-armaments/frames"
+      ],
+      "parameters": {
+        "scene": "tests/fixtures/armament-effects-clips.tscn",
+        "seconds": 12,
+        "fps": 30,
+        "simulation_hz": 30,
+        "engine_fixed_fps": 30,
+        "cue": "Compare a fragmentation grenade, roughly 110 mm HE scale ground burst and a fuel explosion, followed by dirt, stone and metal impacts.",
+        "timeout": 600,
+        "crf": 24,
+        "render_settings": {
+          "effects": 2,
+          "decals": true,
+          "projection": "perspective"
+        }
+      },
+      "legacy_pool_clock": null,
+      "attribution": "Controlled recording of the implementation revision.",
+      "file": "armaments.webm",
+      "poster": "armaments.jpg",
+      "poster_frame": 90,
+      "fixture_ref": "2252c93a87a54cc6a6b7498017d6f3cf5b2f6835"
+    },
+    {
+      "stage": "armaments",
+      "source_ref": "b3ec8594ef59488cdfa36e5b12fcdf40b9cac791",
+      "working_tree_dirty": true,
+      "working_tree_changes": [
+        " M tools/showcase/capture.py",
+        " M tools/showcase/stages.json",
+        "?? tests/fixtures/armament-effects-clips.gd",
+        "?? tests/fixtures/armament-effects-clips.tscn",
+        "?? tests/fixtures/blast-benchmark.gd",
+        "?? tests/fixtures/blast-benchmark.tscn",
+        "?? tests/fixtures/blast-world-clips.gd",
+        "?? tests/fixtures/blast-world-clips.tscn",
+        "?? tests/fixtures/effects-field.gd"
+      ],
+      "engine": "4.7.2.stable.official.ed1daf0bf",
+      "command": [
+        "/workspace/scratch/explosion-rebuild/godot-4.7.2/Godot_v4.7.2-stable_linux.x86_64",
+        "--fixed-fps",
+        "30",
+        "--path",
+        "/workspace/scratch/explosion-rebuild/baseline",
+        "--rendering-method",
+        "gl_compatibility",
+        "--audio-driver",
+        "Dummy",
+        "--position",
+        "-10000,-10000",
+        "--resolution",
+        "1280x720",
+        "res://tests/fixtures/armament-effects-clips.tscn",
+        "--",
+        "--clip=armaments",
+        "--label=BEFORE",
+        "--frames=/workspace/scratch/explosion-rebuild/range-before-timed/frames",
+        "--legacy-effects"
+      ],
+      "parameters": {
+        "scene": "tests/fixtures/armament-effects-clips.tscn",
+        "seconds": 12,
+        "fps": 30,
+        "simulation_hz": 30,
+        "engine_fixed_fps": 30,
+        "cue": "Compare a fragmentation grenade, roughly 110 mm HE scale ground burst and a fuel explosion, followed by dirt, stone and metal impacts.",
+        "timeout": 600,
+        "crf": 24,
+        "render_settings": {
+          "effects": 2,
+          "decals": true,
+          "projection": "perspective"
+        }
+      },
+      "legacy_pool_clock": "Hold shown rig timestamps so wall-clock cleanup cannot truncate fixed-step particle lifetimes during offline readback.",
+      "attribution": "Controlled recording of baseline game code with current capture fixture.",
+      "file": "before.webm",
+      "poster": "before-range.jpg",
+      "poster_frame": 90,
+      "fixture_ref": "2252c93a87a54cc6a6b7498017d6f3cf5b2f6835"
+    },
+    {
+      "stage": "flares",
+      "source_ref": "2252c93a87a54cc6a6b7498017d6f3cf5b2f6835",
+      "working_tree_dirty": true,
+      "working_tree_changes": [
+        " M changelog/unreleased/realistic-armament-effects.md"
+      ],
+      "engine": "4.7.2.stable.official.ed1daf0bf",
+      "command": [
+        "/workspace/scratch/explosion-rebuild/godot-4.7.2/Godot_v4.7.2-stable_linux.x86_64",
+        "--fixed-fps",
+        "30",
+        "--path",
+        "/workspace/Frontline-effects",
+        "--rendering-method",
+        "forward_plus",
+        "--audio-driver",
+        "Dummy",
+        "--position",
+        "-10000,-10000",
+        "--resolution",
+        "1280x720",
+        "res://tests/fixtures/armament-effects-clips.tscn",
+        "--",
+        "--clip=flares",
+        "--label=AFTER",
+        "--frames=/workspace/scratch/explosion-rebuild/release-flares/frames"
+      ],
+      "parameters": {
+        "scene": "tests/fixtures/armament-effects-clips.tscn",
+        "seconds": 12,
+        "fps": 30,
+        "simulation_hz": 30,
+        "engine_fixed_fps": 30,
+        "cue": "Watch the actual illumination flare descend under its parachute, drift, shed sparks and leave smoke behind.",
+        "timeout": 600,
+        "crf": 24,
+        "render_settings": {
+          "effects": 2,
+          "decals": true,
+          "projection": "perspective"
+        }
+      },
+      "legacy_pool_clock": null,
+      "attribution": "Controlled recording of the implementation revision.",
+      "file": "flares.webm",
+      "poster": "flares.jpg",
+      "poster_frame": 200,
+      "fixture_ref": "2252c93a87a54cc6a6b7498017d6f3cf5b2f6835"
+    },
+    {
+      "stage": "blast-rts",
+      "source_ref": "2252c93a87a54cc6a6b7498017d6f3cf5b2f6835",
+      "working_tree_dirty": true,
+      "working_tree_changes": [
+        " M changelog/unreleased/realistic-armament-effects.md"
+      ],
+      "engine": "4.7.2.stable.official.ed1daf0bf",
+      "command": [
+        "/workspace/scratch/explosion-rebuild/godot-4.7.2/Godot_v4.7.2-stable_linux.x86_64",
+        "--fixed-fps",
+        "24",
+        "--path",
+        "/workspace/Frontline-effects",
+        "--rendering-method",
+        "gl_compatibility",
+        "--audio-driver",
+        "Dummy",
+        "--position",
+        "-10000,-10000",
+        "--resolution",
+        "1280x720",
+        "res://tests/fixtures/blast-world-clips.tscn",
+        "--",
+        "--clip=blast-rts",
+        "--label=AFTER",
+        "--frames=/workspace/scratch/explosion-rebuild/release-rts/frames"
+      ],
+      "parameters": {
+        "scene": "tests/fixtures/blast-world-clips.tscn",
+        "seconds": 8,
+        "fps": 24,
+        "simulation_hz": 24,
+        "engine_fixed_fps": 24,
+        "cue": "Check the same HE burst at ordinary RTS camera distance against the actual game terrain and scenery.",
+        "timeout": 1200,
+        "render_settings": {
+          "grass": 1,
+          "effects": 2,
+          "post": false,
+          "mood": "day"
+        },
+        "crf": 24
+      },
+      "legacy_pool_clock": null,
+      "attribution": "Controlled recording of the implementation revision.",
+      "file": "rts.webm",
+      "poster": "rts.jpg",
+      "poster_frame": 30,
+      "fixture_ref": "2252c93a87a54cc6a6b7498017d6f3cf5b2f6835"
     }
   ],
-  "capture_command": [
-    "godot",
-    "--audio-driver",
-    "Dummy",
-    "--path",
-    "<worktree>",
-    "--rendering-method",
-    "gl_compatibility",
-    "--fixed-fps",
-    "12",
-    "--resolution",
-    "1280x720",
-    "res://tests/fixtures/armament-effects-clips.tscn",
-    "--",
-    "--frames=<frames>"
+  "animation_assets": {
+    "tile": 256,
+    "frames": 64,
+    "views": [
+      35,
+      65
+    ],
+    "samples_max": 512,
+    "adaptive_threshold": 0.025,
+    "adaptive_min_samples": 64,
+    "denoiser": "Open Image Denoise 2.5.1",
+    "preview": false,
+    "assets": [
+      {
+        "file": "dust_bounds.png",
+        "bytes": 345,
+        "dimensions": [
+          128,
+          1
+        ],
+        "sha256": "fcc979057de3649bb9a82ed47cdcee3c03bba219f3434f14d948c5df769e123b"
+      },
+      {
+        "file": "dust_motion.png",
+        "bytes": 1168345,
+        "dimensions": [
+          4096,
+          2048
+        ],
+        "sha256": "b3f472b84522aab103d6b04106bf0bc0c6e520b806a4eb4033ce3fb4cf20abac"
+      },
+      {
+        "file": "dust_negative.png",
+        "bytes": 2179196,
+        "dimensions": [
+          4096,
+          2048
+        ],
+        "sha256": "08386c46fb97a6192032919be89dcdf2e5e7a314cc664ca557620820f39f4967"
+      },
+      {
+        "file": "dust_positive.png",
+        "bytes": 3108893,
+        "dimensions": [
+          4096,
+          2048
+        ],
+        "sha256": "ce10f840ee507ea793a0d7c35647136b474e3aa5ac8c774334f32ad4b96f18e6"
+      },
+      {
+        "file": "fuel_bounds.png",
+        "bytes": 327,
+        "dimensions": [
+          128,
+          1
+        ],
+        "sha256": "e4665221a268eae2749187cf6b750b179293b795d9e1b1133ffd43fd350f9a96"
+      },
+      {
+        "file": "fuel_motion.png",
+        "bytes": 1048398,
+        "dimensions": [
+          4096,
+          2048
+        ],
+        "sha256": "d1bfa1ce4e99082374487d0747f449905fd5fff722ad787728aa54624cb1107e"
+      },
+      {
+        "file": "fuel_negative.png",
+        "bytes": 2437380,
+        "dimensions": [
+          4096,
+          2048
+        ],
+        "sha256": "a42ba5b41bb201fd2966a6fa3357f260dece2f4dd23ca778ef81dbbde3f04016"
+      },
+      {
+        "file": "fuel_positive.png",
+        "bytes": 2847565,
+        "dimensions": [
+          4096,
+          2048
+        ],
+        "sha256": "a3286f924a2a22711a729efdff929737daa23e570017adf42f0756048e5756b6"
+      }
+    ]
+  },
+  "benchmark": {
+    "conditions": "Three isolated runs per revision; 60 warmup and 240 test frames, last 180 measured. Fixed 60 Hz simulation; CPU wall time through frame_post_draw, not GPU timestamps or full-battle FPS.",
+    "before": {
+      "command": [
+        "/workspace/scratch/explosion-rebuild/godot-4.7.2/Godot_v4.7.2-stable_linux.x86_64",
+        "--path",
+        "/workspace/scratch/explosion-rebuild/baseline",
+        "--rendering-method",
+        "gl_compatibility",
+        "--audio-driver",
+        "Dummy",
+        "--fixed-fps",
+        "60",
+        "--resolution",
+        "1280x720",
+        "res://tests/fixtures/blast-benchmark.tscn"
+      ],
+      "environment": {
+        "DISPLAY": ":91",
+        "LP_NUM_THREADS": "3"
+      },
+      "source_ref": "b3ec8594ef59488cdfa36e5b12fcdf40b9cac791",
+      "runs": [
+        {
+          "burst_count": 69,
+          "device": "llvmpipe (LLVM 19.1.7, 256 bits)",
+          "effect_nodes": 318,
+          "effects_quality": 2,
+          "engine": "4.7.2-stable (official)",
+          "frames": 180,
+          "height": 720,
+          "mean_ms": 42.0874055555556,
+          "msaa_samples": 2,
+          "p95_ms": 46.292,
+          "peak_draw_calls": 179,
+          "peak_objects": 192,
+          "render_scale": 1.0,
+          "renderer": "gl_compatibility",
+          "seed": 712,
+          "texture_mib": 60.7984323501587,
+          "width": 1280
+        },
+        {
+          "burst_count": 69,
+          "device": "llvmpipe (LLVM 19.1.7, 256 bits)",
+          "effect_nodes": 318,
+          "effects_quality": 2,
+          "engine": "4.7.2-stable (official)",
+          "frames": 180,
+          "height": 720,
+          "mean_ms": 41.6152333333333,
+          "msaa_samples": 2,
+          "p95_ms": 45.379,
+          "peak_draw_calls": 179,
+          "peak_objects": 192,
+          "render_scale": 1.0,
+          "renderer": "gl_compatibility",
+          "seed": 712,
+          "texture_mib": 60.7984323501587,
+          "width": 1280
+        },
+        {
+          "burst_count": 69,
+          "device": "llvmpipe (LLVM 19.1.7, 256 bits)",
+          "effect_nodes": 318,
+          "effects_quality": 2,
+          "engine": "4.7.2-stable (official)",
+          "frames": 180,
+          "height": 720,
+          "mean_ms": 42.2017166666667,
+          "msaa_samples": 2,
+          "p95_ms": 47.799,
+          "peak_draw_calls": 179,
+          "peak_objects": 192,
+          "render_scale": 1.0,
+          "renderer": "gl_compatibility",
+          "seed": 712,
+          "texture_mib": 60.7984323501587,
+          "width": 1280
+        }
+      ]
+    },
+    "after": {
+      "command": [
+        "/workspace/scratch/explosion-rebuild/godot-4.7.2/Godot_v4.7.2-stable_linux.x86_64",
+        "--path",
+        "/workspace/Frontline-effects",
+        "--rendering-method",
+        "gl_compatibility",
+        "--audio-driver",
+        "Dummy",
+        "--fixed-fps",
+        "60",
+        "--resolution",
+        "1280x720",
+        "res://tests/fixtures/blast-benchmark.tscn"
+      ],
+      "environment": {
+        "DISPLAY": ":91",
+        "LP_NUM_THREADS": "3"
+      },
+      "source_ref": "2252c93a87a54cc6a6b7498017d6f3cf5b2f6835",
+      "runs": [
+        {
+          "burst_count": 69,
+          "device": "llvmpipe (LLVM 19.1.7, 256 bits)",
+          "effect_nodes": 221,
+          "effects_quality": 2,
+          "engine": "4.7.2-stable (official)",
+          "frames": 180,
+          "height": 720,
+          "mean_ms": 41.1338888888889,
+          "msaa_samples": 2,
+          "p95_ms": 46.495,
+          "peak_draw_calls": 64,
+          "peak_objects": 77,
+          "render_scale": 1.0,
+          "renderer": "gl_compatibility",
+          "seed": 712,
+          "texture_mib": 119.467240333557,
+          "width": 1280
+        },
+        {
+          "burst_count": 69,
+          "device": "llvmpipe (LLVM 19.1.7, 256 bits)",
+          "effect_nodes": 221,
+          "effects_quality": 2,
+          "engine": "4.7.2-stable (official)",
+          "frames": 180,
+          "height": 720,
+          "mean_ms": 42.8559,
+          "msaa_samples": 2,
+          "p95_ms": 51.138,
+          "peak_draw_calls": 64,
+          "peak_objects": 77,
+          "render_scale": 1.0,
+          "renderer": "gl_compatibility",
+          "seed": 712,
+          "texture_mib": 119.467240333557,
+          "width": 1280
+        },
+        {
+          "burst_count": 69,
+          "device": "llvmpipe (LLVM 19.1.7, 256 bits)",
+          "effect_nodes": 221,
+          "effects_quality": 2,
+          "engine": "4.7.2-stable (official)",
+          "frames": 180,
+          "height": 720,
+          "mean_ms": 42.4885555555555,
+          "msaa_samples": 2,
+          "p95_ms": 49.944,
+          "peak_draw_calls": 64,
+          "peak_objects": 77,
+          "render_scale": 1.0,
+          "renderer": "gl_compatibility",
+          "seed": 712,
+          "texture_mib": 119.467240333557,
+          "width": 1280
+        }
+      ]
+    }
+  },
+  "media_validation": [
+    {
+      "file": "/workspace/scratch/explosion-rebuild/world-before-timed/clip.webm",
+      "sha256": "a9a3eb65a88ce665532d15a79598a741335ec28b8efad5ecb8c899301d65abe4",
+      "bytes": 10635427,
+      "width": 1280,
+      "height": 720,
+      "fps": "24/1",
+      "seconds": 8.0,
+      "audio": false,
+      "decode": "passed"
+    },
+    {
+      "file": "/workspace/scratch/explosion-rebuild/range-before-timed/clip.webm",
+      "sha256": "b84f6d949d0596733b72b0481367e5bbc75203896ea8e7576a16e185ac8fa03e",
+      "bytes": 786904,
+      "width": 1280,
+      "height": 720,
+      "fps": "30/1",
+      "seconds": 12.0,
+      "audio": false,
+      "decode": "passed"
+    },
+    {
+      "file": "/workspace/scratch/explosion-rebuild/release-world-after/clip.webm",
+      "sha256": "bf891c7b78bac1039d30fcd0ff680fca7cd53581ce8b412d1b50a7117dafa84e",
+      "bytes": 10560690,
+      "width": 1280,
+      "height": 720,
+      "fps": "24/1",
+      "seconds": 8.0,
+      "audio": false,
+      "decode": "passed"
+    },
+    {
+      "file": "/workspace/scratch/explosion-rebuild/release-rts/clip.webm",
+      "sha256": "d71b25a49737eb48255ee0639856837464f91a0d4bb338b3f36d0f0249443084",
+      "bytes": 6831132,
+      "width": 1280,
+      "height": 720,
+      "fps": "24/1",
+      "seconds": 8.0,
+      "audio": false,
+      "decode": "passed"
+    },
+    {
+      "file": "/workspace/scratch/explosion-rebuild/release-armaments/clip.webm",
+      "sha256": "430b5036ac1fbb221c8a2e9949393c6a28d0ceef944d0af15463274b7f7479cd",
+      "bytes": 327522,
+      "width": 1280,
+      "height": 720,
+      "fps": "30/1",
+      "seconds": 12.0,
+      "audio": false,
+      "decode": "passed"
+    },
+    {
+      "file": "/workspace/scratch/explosion-rebuild/release-flares/clip.webm",
+      "sha256": "aaa1fe56c4c3b070822d6b22861a8c13ba74027e54f7fe64d4851d92372ce9f7",
+      "bytes": 534627,
+      "width": 1280,
+      "height": 720,
+      "fps": "30/1",
+      "seconds": 12.0,
+      "audio": false,
+      "decode": "passed"
+    }
   ],
-  "limitations": "Controlled visual demonstration, no audio or performance claim. Engine available here is 4.6.3; project targets 4.7. Armaments and before use identical camera and renderer. No downloaded art assets."
+  "validation": {
+    "engine": "4.7.2.stable.official.ed1daf0bf",
+    "effects_regressions": "\u2714 armament effects: GPU pools, elevated ground, airbursts and flares (3411.47724ms)\n\u2714 armament effects: CPU pools, elevated ground, airbursts and flares (3687.020234ms)\n\u2139 tests 2\n\u2139 suites 0\n\u2139 pass 2\n\u2139 fail 0\n\u2139 cancelled 0\n\u2139 skipped 0\n\u2139 todo 0\n\u2139 duration_ms 7136.431259\n",
+    "desktop": "Compatibility and Forward+ range/camera checks; full Compatibility world clips and partial Forward+ actual-world diagnostic inspected.",
+    "webgl": {
+      "conditions": "Release export, Chromium headless/SwiftShader, WebGL 2 Compatibility, 960x540, fixed 30 Hz. Both 360-frame clips completed.",
+      "armaments_log": "log: Godot Engine v4.7.2.stable.official.ed1daf0bf - https://godotengine.org\nlog: OpenGL API OpenGL ES 3.0 (WebGL 2.0 (OpenGL ES 3.0 Chromium)) - Compatibility - Using Device: WebKit - WebKit WebGL\nlog: Build configuration: Emscripten 4.0.20, single-threaded, no GDExtension support.\nlog: EFFECTS_CLIP WEBGL armaments frames=360\nerror: ERROR: Pages in use exist at exit in PagedAllocator: N16WorkerThreadPool5GroupE\nerror:    at: ~PagedAllocator (./core/templates/paged_allocator.h:170)",
+      "flares_log": "log: Godot Engine v4.7.2.stable.official.ed1daf0bf - https://godotengine.org\nlog: OpenGL API OpenGL ES 3.0 (WebGL 2.0 (OpenGL ES 3.0 Chromium)) - Compatibility - Using Device: WebKit - WebKit WebGL\nlog: Build configuration: Emscripten 4.0.20, single-threaded, no GDExtension support.\nlog: EFFECTS_CLIP WEBGL flares frames=360\nerror: ERROR: Pages in use exist at exit in PagedAllocator: N16WorkerThreadPool5GroupE\nerror:    at: ~PagedAllocator (./core/templates/paged_allocator.h:170)",
+      "result": "No script, shader, GL or page errors during either sequence. Both report WorkerThreadPool Group PagedAllocator pages in use during engine shutdown after completion.",
+      "limits": "Controlled effects scenes only. Full battlefield software WebGL was too slow for useful visual validation; not a hardware performance claim."
+    },
+    "media": "All six encoded videos fully decoded, silent VP9 1280x720. Beginning/action/result frames inspected at 640x360; world before/after posters use matching frame 30.",
+    "website": "Five changelog unit tests and twelve Storybook media/disclosure/reduced-motion tests passed."
+  }
 }
