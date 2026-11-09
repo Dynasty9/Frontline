@@ -4,6 +4,11 @@ summary = "A cleaner battle interface with compact unit details, illustrated ord
 kind = "improved"
 
 [[videos]]
+file = "interaction-detail.webm"
+poster = "interaction-detail.jpg"
+caption = "Readable interaction review: the full recording on the left and an enlarged crop of the same frame on the right. Real Units, search, focus, Base, Layers and Support callbacks, normal speed. Original full-frame video follows."
+
+[[videos]]
 file = "interaction.webm"
 poster = "interaction.jpg"
 caption = "Open Units, search Charlie, focus the squad, and switch through Base, Layers and Support. The tactical map stays fixed. Actual HUD callbacks at normal speed, 24 fps."

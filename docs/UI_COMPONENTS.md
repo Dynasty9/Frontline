@@ -100,3 +100,8 @@ Units, callsign search, focus, Base, Layers and Support. Run it with fixed 24 fp
 and `--frames=OUTPUT`. The adjacent changelog capture record retains the full
 command, frame count and validation. It is a scripted demonstration at normal
 simulation speed, not a human input recording.
+
+`python tools/showcase/compose-hud-review.py SOURCE.webm OUTPUT.webm` creates an
+offline review edit with synchronized enlarged UI details beside the full capture.
+Set `FFMPEG` and use `--font` for a local TrueType font. The labels distinguish the
+enlargement from the original full-frame recording; all 360 frames keep their timing.

@@ -12,5 +12,20 @@
     "Native Compatibility command-key tests: 38/38 passed",
     "Seeded 40-second attack smoke: FINAL, no script errors",
     "Capture and native key test retain two-resource shutdown diagnostic documented in prior PR validation"
-  ]
+  ],
+  "detail_edit": {
+    "source": "interaction.webm",
+    "source_sha256": "4e362a1f058b2a44d99574208722f33ff1eee8e2b10a07fc4d8a6130c2891621",
+    "recipe": "tools/showcase/compose-hud-review.py",
+    "output": "interaction-detail.webm",
+    "resolution": [
+      1280,
+      720
+    ],
+    "fps": 24,
+    "seconds": 15,
+    "editing": "Offline crops and scale only. Full original frame and enlarged active UI region remain synchronized. Labels explain each phase. No speed change or synthetic gameplay. Original full-frame video preserved.",
+    "limitation": "Enlarged native pixels retain source softness; this is an annotated detail view, not a higher-resolution recapture.",
+    "review": "Independent review passed Search, Base, Layers, Support and return-to-battle encoded frames at embedded scale. Full decode passed. Residual enlargement softness remains, but the interaction is readable. Original full recording retained."
+  }
 }

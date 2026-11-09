@@ -6,7 +6,7 @@
       "summary": "A cleaner battle interface with compact unit details, illustrated orders, a fixed tactical map and focused tools for managing large battles.",
       "medium": "motion",
       "stage": "native-media",
-      "rationale": "Rendered battle states show fixed military grid navigation, aligned tools and contextual orders. The construction capture demonstrates separate shortcuts and supply costs; commander, observer and task states show their hierarchy in play. A 15-second native interaction demonstrates the fixed map across Units, search, focus, Base, Layers and Support. The archived previous-deck still is the matched historical comparison; the original before still is explicitly labelled as a different state.",
+      "rationale": "Rendered battle states show fixed military grid navigation, aligned tools and contextual orders. The construction capture demonstrates separate shortcuts and supply costs; commander, observer and task states show their hierarchy in play. A 15-second native interaction demonstrates the fixed map across Units, search, focus, Base, Layers and Support. The archived previous-deck still is the matched historical comparison; the original before still is explicitly labelled as a different state. For embedded-size readability, an offline review clip places synchronized enlarged native UI details beside the full recording, explicitly labelled. Original full-frame source remains available.",
       "source_ref": "56fe0ae0617f209ceb493457b5978cba21c48a2d; original HUD archived in 9212dee; previous framed HUD at 4bcd477",
       "sources": [
         {
@@ -68,6 +68,16 @@
           "file": "changelog/unreleased/commander-workspaces/interaction.jpg",
           "sha256": "075ed1927b6785412ed7f4c9258dd1e81d901b3aa09e968eb7a9c64fad95669a",
           "caption": "interaction.jpg"
+        },
+        {
+          "file": "changelog/unreleased/commander-workspaces/interaction-detail.webm",
+          "sha256": "4cbb03c85e7c3407c34d84d9533e14809a813328b20024629a7921404d9e9b95",
+          "caption": "interaction-detail.webm"
+        },
+        {
+          "file": "changelog/unreleased/commander-workspaces/interaction-detail.jpg",
+          "sha256": "c566b71678b106a9e1457248c97a1d6f85a09a35839d683337e83830ab8fa486",
+          "caption": "interaction-detail.jpg"
         }
       ],
       "output": null,
