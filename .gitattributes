@@ -5,3 +5,4 @@
 *.ogg binary
 *.wav binary
 *.mp4 binary
+changelog/**/native-tour.json text eol=lf

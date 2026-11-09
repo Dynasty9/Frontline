@@ -77,3 +77,23 @@ python3 -m unittest discover -s .github/scripts -p 'test_changelog.py'
 Normal feature work adds an unreleased entry; it does not edit release versions,
 dates or historical claims. Preview the website at desktop and phone widths,
 check keyboard disclosure, media controls, reduced motion and source-image zoom.
+
+## Native environment motion
+
+Use `environment-motion.gd` for a reproducible, current-PR camera demonstration.
+It records two four-second views for `stones`, `shore` and `town`, or three views
+for `environment`. The simulation is held at two seconds; camera, wind and water
+remain animated. This is not a combat demonstration or a performance benchmark.
+The normal camera clearance remains active. Inspect each view before publishing.
+
+```sh
+godot --path . --fixed-fps 30 --resolution 1280x720 --script tools/showcase/environment-motion.gd -- --aivai --seed=3 --offscreen --nohud --set=perf:0 --preset=high --mood=day --motion-stage=stones --motion-output=build/media-review
+# Set FFMPEG if it is not on PATH; SHOWCASE_FONT can select a local TrueType font.
+python tools/showcase/encode-environment-motion.py --entry realism-08-fractured-stones --source-ref <rendering-commit>
+```
+
+The encoder adds a 48-pixel label above the untouched native frame, writes a
+seekable silent VP9 WebM, a JPEG poster, and a capture/provenance JSON sidecar.
+Keep matched historical stills as comparisons; do not call the current-PR tour
+before/after footage. Inspect the encoded opening, middle and closing frames and
+run the changelog and presentation checks before committing media.

@@ -3,6 +3,11 @@ title = "Blend gravel into alpine shorelines"
 summary = "Coastal margins transition through exposed gravel and darker wet stone instead of a uniformly sandy strip."
 kind = "improved"
 
+[[videos]]
+file = "native-tour.webm"
+poster = "native-tour.jpg"
+caption = "A close orbit over gravel, wet margins and exposed sand, followed by coastal context. Native current-PR recording; camera and water animated. Compare the matched stills below."
+
 [[screenshots]]
 file = "target-before.jpg"
 caption = "Previous proposal: target view, matching seed and camera."
