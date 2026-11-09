@@ -271,6 +271,9 @@ Scenarios, AI-vs-AI battles and missions run offline: they take no port, so any 
                                                       page (rebind, move a key off another action, Undo, a modifier alone,
                                                       search, reset); prints KEYTEST ok / FAIL; needs a window
                                                       (e.g. --host --team=0 --keys-test --offscreen)
+--keys-test=orders                                    command-card keys only: Base, build slots, paging, disabled actions,
+                                                      input guards and rebinding; use --scenario=attack --play --offscreen
+--hud-orders=base|def                                 open construction through its actual command action for UI captures
 --bind=ACTION:KEY[,ACTION:KEY]                        rebind keys for this run only (ids in keys.gd, e.g. --bind=attack_move:K)
 --console="why;graph" [--console-at=SECONDS]          open the console and type those lines (; between them) once the
                                                       battle has run that long (5 s unless set); screenshots of it

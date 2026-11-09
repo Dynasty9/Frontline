@@ -112,6 +112,15 @@ func _run() -> void:
 	_press(KEY_R)
 	_check("placing, R turns the building", absf(inp.place_yaw - y0 - PI * 0.5) < 0.001 and inp.place_kind == "sandbags")
 	inp.cancel_modes()
+	# --- every command card action uses the same callback as its shortcut
+	_command_shortcuts()
+	if OS.get_cmdline_user_args().has("--keys-test=orders"):
+		# Let replaced card controls finish their deferred deletion before shutdown.
+		for frame in 2:
+			await get_tree().process_frame
+		print("KEYTEST %d/%d passed" % [_n - _fails, _n])
+		TestRun.quit(get_tree())
+		return
 	# --- a mouse side button on the tactical map: a tap switches to the map when
 	# it's let go, held it shows the statistics. The release of a side button is
 	# noticed through Input's state, so the presses go through the engine
@@ -310,3 +319,66 @@ func _run() -> void:
 	sp.visible = false
 	print("KEYTEST %d/%d passed" % [_n - _fails, _n])
 	TestRun.quit(get_tree())
+
+
+func _command_shortcuts() -> void:
+	var hud := world.hud
+	var inp := world.input
+	hud._update_card()
+	var primary := hud.card.get_child(0) as UiDeckAction
+	_check("Base is the primary first order with a visible C", primary.action_id == "Base" and primary.primary and primary.keycap.visible and primary.shortcut_id == "build_base")
+	_press(KEY_C)
+	_check("C opens base construction", hud._card_page == "base")
+	var all_bound := true
+	for button: UiDeckAction in hud.card.get_children():
+		all_bound = all_bound and not button.shortcut_id.is_empty() and button.keycap.visible
+	_check("every construction order has a shortcut", all_bound)
+	var build := hud.card.get_child(1) as UiDeckAction
+	_check("construction keeps both supply cost and key visible", build.value_label.visible and build.keycap.visible)
+	inp.groups[9] = {"s": [], "v": []}
+	_press(KEY_9 | KEY_MASK_ALT)
+	_check("an empty command slot does not recall a control group", inp.has_units() and inp.place_kind.is_empty())
+	inp.groups.erase(9)
+	build.disabled = true
+	_press(KEY_2 | KEY_MASK_ALT)
+	_check("shortcuts cannot activate disabled orders", inp.place_kind.is_empty())
+	build.disabled = false
+	_press(KEY_2 | KEY_MASK_ALT)
+	_check("Alt+2 activates the first building without recalling group 2", inp.place_kind == "fob" and inp.has_units())
+	_press(KEY_ESCAPE)
+	_check("Escape first cancels placement", inp.place_kind.is_empty() and hud._card_page == "base")
+	_press(KEY_ESCAPE)
+	_check("Escape returns to orders without losing the squad", hud._card_page == "main" and inp.has_units())
+	Keys.set_bind("build_base", 0, KEY_I)
+	_press(KEY_C)
+	_check("rebinding Base removes its old key", hud._card_page == "main")
+	_press(KEY_I)
+	_check("rebinding Base activates its new key", hud._card_page == "base")
+	_press(KEY_BACKSLASH)
+	Keys.reset("build_base")
+	hud.typing = true
+	_press(KEY_C)
+	_check("typing does not open base construction", hud._card_page == "main")
+	hud.typing = false
+	Keys.capturing = true
+	_press(KEY_C)
+	_check("rebinding capture does not issue orders", hud._card_page == "main")
+	Keys.capturing = false
+	var team := world.local_team
+	world.local_team = -1
+	_check("observers cannot activate a command callback", not hud.activate_card_action("build_base"))
+	world.local_team = team
+	_press(KEY_Y)
+	_check("Y opens defenses", hud._card_page == "def")
+	if hud.command_grid.page_count() > 1:
+		_press(KEY_BRACKETRIGHT)
+		_check("right bracket reveals the next nine orders", hud.command_grid.page == 1 and not hud.card.get_child(0).visible and hud.card.get_child(9).visible)
+		var next_order := hud.card.get_child(9) as UiDeckAction
+		_press(KEY_1 | KEY_MASK_ALT)
+		_check("page shortcuts activate the currently visible order", not inp.place_kind.is_empty() and String(Defs.BUILDINGS[inp.place_kind].name) == next_order.action_id)
+		_check("activating an order preserves the current page", hud.command_grid.page == 1)
+		inp.cancel_modes()
+		_press(KEY_BRACKETLEFT)
+		_check("left bracket returns to the first page", hud.command_grid.page == 0)
+	_press(KEY_BACKSLASH)
+	_check("Back returns to main orders", hud._card_page == "main")
