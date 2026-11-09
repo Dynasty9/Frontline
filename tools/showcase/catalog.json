@@ -3740,7 +3740,7 @@
         },
         {
           "file": "changelog/unreleased/realism-08-fractured-stones/native-tour.json",
-          "sha256": "72cdfe93a9c579c0a2f08a2a51deeb0ea06585b6eee7c00e91ab967e6e41ac13",
+          "sha256": "e1ae0614c68e9e8f406da78c8b3d931916c8ef02159de74afeacc07e4602f12a",
           "caption": "Native motion poster and reproducible capture provenance."
         }
       ],
