@@ -41,7 +41,7 @@
     "fps": 30,
     "simulation_hz": 30,
     "engine_fixed_fps": 30,
-    "cue": "Watch the actual illumination flare descend under its parachute, drift, shed sparks and leave smoke behind.",
+    "cue": "Moonlit close-up of the real flare canopy, suspension lines and smoke at normal simulation speed.",
     "timeout": 600,
     "crf": 24,
     "render_settings": {
@@ -81,5 +81,20 @@
       "mood": "day"
     },
     "crf": 24
+  },
+  "impacts": {
+    "scene": "tests/fixtures/armament-effects-clips.tscn",
+    "seconds": 12,
+    "fps": 30,
+    "simulation_hz": 30,
+    "engine_fixed_fps": 30,
+    "cue": "Dedicated close-ups of dirt, stone and metal impacts, four seconds per material with no fuel plume in the shot.",
+    "timeout": 600,
+    "crf": 24,
+    "render_settings": {
+      "effects": 2,
+      "decals": true,
+      "projection": "perspective"
+    }
   }
 }

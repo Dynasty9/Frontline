@@ -3442,8 +3442,8 @@
       "entry": "changelog/unreleased/realistic-armament-effects.md",
       "summary": "Rolling, scene-lit explosion clouds with ballistic earth, material impacts and drifting flare trails.",
       "medium": "motion",
-      "stage": "blast-close / blast-rts / armaments / flares",
-      "rationale": "Matched baseline/current battlefield and range recordings show flash duration, connected cloud motion, falling earth and impacts. The flare clip shows canopy, descent and trail. Encoded clips reviewed at 640\u00d7360; measured barrage tradeoffs and full provenance are retained in capture.json.",
+      "stage": "blast-close / blast-rts / armaments / flares / impacts",
+      "rationale": "Matched baseline/current battlefield and range recordings show flash duration, connected cloud motion, falling earth and impacts. The flare clip shows canopy, descent and trail. Encoded clips reviewed at 640\u00d7360; measured barrage tradeoffs and full provenance are retained in capture.json. Follow-up review adds unobscured close-up impacts and a moonlit flare view with readable canopy and suspension lines, retaining all original evidence.",
       "source_ref": "b3ec8594ef59488cdfa36e5b12fcdf40b9cac791 (baseline game); 2252c93a87a54cc6a6b7498017d6f3cf5b2f6835 (implementation and capture fixtures)",
       "sources": [
         {
@@ -3510,6 +3510,31 @@
           "file": "changelog/unreleased/realistic-armament-effects/world.webm",
           "sha256": "bf891c7b78bac1039d30fcd0ff680fca7cd53581ce8b412d1b50a7117dafa84e",
           "caption": "world.webm"
+        },
+        {
+          "file": "changelog/unreleased/realistic-armament-effects/impacts-close.webm",
+          "sha256": "fb1a465c8f67d4db8c35c39dac7dda8b28971743c665fcfb238a068976452ec7",
+          "caption": "impacts-close.webm"
+        },
+        {
+          "file": "changelog/unreleased/realistic-armament-effects/impacts-close.jpg",
+          "sha256": "c157ce4f332714aa23060858264cc46e0055f2535b354b18b2860b1ba4b00941",
+          "caption": "impacts-close.jpg"
+        },
+        {
+          "file": "changelog/unreleased/realistic-armament-effects/flares-close.webm",
+          "sha256": "f05bd23d4d2fa3e1d8e103e0297b3b6803fcf538f11bfa252d3d14c86d037b77",
+          "caption": "flares-close.webm"
+        },
+        {
+          "file": "changelog/unreleased/realistic-armament-effects/flares-close.jpg",
+          "sha256": "f124cc31d160168b49c148e6f6781526c29a505e80a163523a9b3bcefe87c167",
+          "caption": "flares-close.jpg"
+        },
+        {
+          "file": "changelog/unreleased/realistic-armament-effects/presentation-review.json",
+          "sha256": "e1eb68a2c7d26f9e5d3ca96c58453ce22661d58eae3a16f453ca6f53112f9c93",
+          "caption": "presentation-review.json"
         }
       ],
       "output": null,

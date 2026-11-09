@@ -1,0 +1,113 @@
+{
+  "review_date": "2026-11-09",
+  "game_ref": "c907278d",
+  "fixture": "tests/fixtures/armament-effects-clips.gd",
+  "fixture_sha256": "b15a146e25da54ef64740ff54601fe140615ca357fa6fb97cacffa3431e40bc2",
+  "clips": [
+    {
+      "stage": "impacts",
+      "source_ref": "c907278da2518bda5b3e22ae56c114ce5f47412d",
+      "working_tree_dirty": true,
+      "working_tree_changes": [
+        " M tests/fixtures/armament-effects-clips.gd",
+        " M tools/showcase/stages.json"
+      ],
+      "engine": "4.7.2.stable.official.ed1daf0bf",
+      "command": [
+        "C:\\Users\\dines\\source\\repos\\Frontline\\build\\tools\\godot\\Godot_v4.7.2-stable_win64_console.exe",
+        "--fixed-fps",
+        "30",
+        "--path",
+        "C:\\Users\\dines\\Documents\\Codex\\pr-effects-media-132",
+        "--rendering-method",
+        "forward_plus",
+        "--audio-driver",
+        "Dummy",
+        "--position",
+        "-10000,-10000",
+        "--resolution",
+        "1280x720",
+        "res://tests/fixtures/armament-effects-clips.tscn",
+        "--",
+        "--clip=impacts",
+        "--label=AFTER",
+        "--frames=C:\\Users\\dines\\Documents\\Codex\\pr-effects-media-132\\build\\impacts-review\\frames"
+      ],
+      "parameters": {
+        "scene": "tests/fixtures/armament-effects-clips.tscn",
+        "seconds": 12,
+        "fps": 30,
+        "simulation_hz": 30,
+        "engine_fixed_fps": 30,
+        "cue": "Dedicated close-ups of dirt, stone and metal impacts, four seconds per material with no fuel plume in the shot.",
+        "timeout": 600,
+        "crf": 24,
+        "render_settings": {
+          "effects": 2,
+          "decals": true,
+          "projection": "perspective"
+        }
+      },
+      "legacy_pool_clock": null,
+      "attribution": "Current-build controlled demonstration; not original release footage."
+    },
+    {
+      "stage": "flares",
+      "source_ref": "c907278da2518bda5b3e22ae56c114ce5f47412d",
+      "working_tree_dirty": true,
+      "working_tree_changes": [
+        " M changelog/unreleased/realistic-armament-effects.md",
+        " M tests/fixtures/armament-effects-clips.gd",
+        " M tools/showcase/README.md",
+        " M tools/showcase/stages.json",
+        "?? changelog/unreleased/realistic-armament-effects/impacts-close.jpg",
+        "?? changelog/unreleased/realistic-armament-effects/impacts-close.webm"
+      ],
+      "engine": "4.7.2.stable.official.ed1daf0bf",
+      "command": [
+        "C:\\Users\\dines\\source\\repos\\Frontline\\build\\tools\\godot\\Godot_v4.7.2-stable_win64_console.exe",
+        "--fixed-fps",
+        "30",
+        "--path",
+        "C:\\Users\\dines\\Documents\\Codex\\pr-effects-media-132",
+        "--rendering-method",
+        "forward_plus",
+        "--audio-driver",
+        "Dummy",
+        "--position",
+        "-10000,-10000",
+        "--resolution",
+        "1280x720",
+        "res://tests/fixtures/armament-effects-clips.tscn",
+        "--",
+        "--clip=flares",
+        "--label=AFTER",
+        "--frames=C:\\Users\\dines\\Documents\\Codex\\pr-effects-media-132\\build\\flares-final\\frames"
+      ],
+      "parameters": {
+        "scene": "tests/fixtures/armament-effects-clips.tscn",
+        "seconds": 12,
+        "fps": 30,
+        "simulation_hz": 30,
+        "engine_fixed_fps": 30,
+        "cue": "Moonlit close-up of the real flare canopy, suspension lines and smoke at normal simulation speed.",
+        "timeout": 600,
+        "crf": 24,
+        "render_settings": {
+          "effects": 2,
+          "decals": true,
+          "projection": "perspective"
+        }
+      },
+      "legacy_pool_clock": null,
+      "attribution": "Current-build controlled demonstration; not original release footage."
+    }
+  ],
+  "review": "Reviewed beginning, active and late frames. Dedicated impacts omit the fuel plume; flare camera and controlled moonlight expose canopy and lines. Game effect sizes and speed unchanged. Original matched battlefield before/after retained. VP9 decode checked. Not a performance benchmark.",
+  "validation": [
+    "Godot 4.7.2 import: no script or parse errors; Windows safe-save warning at editor exit",
+    "CPU and GPU effects regressions: failures=0",
+    "Node focused effects and determinism tests: 4 passed",
+    "Changelog unit tests: 9 passed"
+  ]
+}

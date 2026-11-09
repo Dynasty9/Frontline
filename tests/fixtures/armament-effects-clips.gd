@@ -28,20 +28,21 @@ func _ready() -> void:
 	field = load("res://tests/fixtures/effects-field.gd").new()
 	add_child(field)
 	var night := mode == "flares"
+	var impacts := mode == "impacts"
 	var dark := night or night_lighting
 	var env := Environment.new()
 	env.tonemap_mode = Environment.TONE_MAPPER_AGX
 	env.background_mode = Environment.BG_COLOR
-	env.background_color = Color(0.015, 0.025, 0.045) if dark else Color(0.36, 0.47, 0.57)
+	env.background_color = Color(0.075, 0.105, 0.16) if dark else Color(0.36, 0.47, 0.57)
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
 	env.ambient_light_color = Color(0.42, 0.51, 0.7) if dark else Color(0.7, 0.78, 0.85)
-	env.ambient_light_energy = 0.2 if dark else 0.65
+	env.ambient_light_energy = 0.65 if dark else 0.65
 	var we := WorldEnvironment.new()
 	we.environment = env
 	add_child(we)
 	var sun := DirectionalLight3D.new()
 	sun.rotation_degrees = Vector3(-48, -35, 0)
-	sun.light_energy = 0.22 if dark else 1.8
+	sun.light_energy = 0.65 if dark else 1.8
 	sun.shadow_enabled = true
 	add_child(sun)
 	var atmo := Atmosphere.new()
@@ -52,9 +53,11 @@ func _ready() -> void:
 	add_child(atmo)
 	atmo.set_process(false)
 	field.fx.vfx.apply_lighting()
-	Res.mi(self, Res.box(Vector3(180, 0.4, 180)), Res.mat(Color(0.24, 0.21, 0.16)), Vector3(0, -0.21, 0))
+	# Keep the airborne close-up free of the finite range platform edge.
+	if not night:
+		Res.mi(self, Res.box(Vector3(180, 0.4, 180)), Res.mat(Color(0.24, 0.21, 0.16)), Vector3(0, -0.21, 0))
 	# Ten-metre marks show the plume's scale without a staged combat scene.
-	for x in range(-30, 31, 10):
+	for x in ([] if night else range(-30, 31, 10)):
 		Res.mi(self, Res.box(Vector3(0.04, 0.01, 50)), Res.mat(Color(0.4, 0.37, 0.3)), Vector3(x, 0.01, 0))
 	camera = Camera3D.new()
 	camera.fov = 32.0 if night else 38.0
@@ -76,7 +79,7 @@ func _ready() -> void:
 	caption.add_theme_constant_override("shadow_offset_y", 2)
 	canvas.add_child(caption)
 	var target_labels: Array[Label3D] = []
-	if not night:
+	if not night and not impacts:
 		for i in 3:
 			var text := Label3D.new()
 			text.text = ["GRENADE", "~110 mm HE", "FUEL"][i]
@@ -87,8 +90,8 @@ func _ready() -> void:
 			add_child(text)
 			target_labels.append(text)
 	for frame in 12 * CAPTURE_FPS:
-		caption.text = label + (" / ILLUMINATION FLARE\nParachute descent, wind drift, sparks and lingering smoke" if night else " / ARMAMENT EFFECTS\nGrenade / HE ground burst / fuel explosion · ground marks: 10 m")
-		if not night and frame >= 180:
+		caption.text = label + (" / ILLUMINATION FLARE\nMoonlit close-up: cloth canopy, suspension lines and drifting smoke" if night else " / ARMAMENT EFFECTS\nGrenade / HE ground burst / fuel explosion · ground marks: 10 m")
+		if not night and not impacts and frame >= 180:
 			caption.text = label + " / TRACERS AND IMPACTS\nMachine-gun rounds · dirt / stone / metal · normal simulation speed"
 			if frame == 180:
 				for i in 3:
@@ -100,8 +103,19 @@ func _ready() -> void:
 			atmo._flares_tick(1.0 / CAPTURE_FPS)
 			if not atmo._flares.is_empty():
 				var charge: Node3D = atmo._flares[0][0]
-				camera.position = charge.position + Vector3(10, 4, 16)
-				camera.look_at(charge.position + Vector3.UP)
+				camera.position = charge.position + Vector3(5, 3, 8)
+				camera.look_at(charge.position + Vector3.UP * 2.1)
+		elif impacts:
+			var material_index := mini(frame / 120, 2)
+			var p := Vector3(material_index * 12.0 - 12.0, 0.12, 15.0)
+			camera.position = p + Vector3(2.6, 1.8, 4.2)
+			camera.look_at(p + Vector3.UP * 0.35)
+			caption.text = label + " / " + ["DIRT", "STONE", "METAL"][material_index] + " IMPACTS\nControlled close-up / normal simulation speed"
+			if frame % 18 == 6:
+				var from := p + Vector3(-9, 1.4, 10)
+				seed(712 + frame)
+				var delay := field.fx.gunfx.round_flight(from, p, "mg", 0, 40.0)
+				field.fx.gunfx.impact([Fx.HIT_DIRT, Fx.HIT_STONE, Fx.HIT_METAL][material_index], p, (from - p).normalized(), 1.0, 40.0, delay)
 		elif frame in [20, 50, 80]:
 			var i := int((frame - 20) / CAPTURE_FPS)
 			var p := Vector3((i - 1) * 16, 0.1, 0)

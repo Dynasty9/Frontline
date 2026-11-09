@@ -14,6 +14,16 @@ poster = "before.jpg"
 caption = "Before: the same battlefield, seed, camera, lighting and explosion size at revision b3ec859. The former effect starts with a sustained fireball."
 
 [[videos]]
+file = "impacts-close.webm"
+poster = "impacts-close.jpg"
+caption = "Close-up: dirt, stone and metal impacts, four seconds each. Real machine-gun flight and impact code at normal speed, without fuel smoke hiding the debris."
+
+[[videos]]
+file = "flares-close.webm"
+poster = "flares-close.jpg"
+caption = "Moonlit controlled close-up: the actual cloth canopy, suspension lines, descent and drifting trail. Fixed 30 fps, Forward+, normal simulation speed."
+
+[[videos]]
 file = "armaments.webm"
 poster = "armaments.jpg"
 caption = "Current build, left to right: grenade, HE and fuel. The second half shows machine-gun rounds striking dirt, stone and metal. Ground marks are 10 m apart. Fixed 30 fps."

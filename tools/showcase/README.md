@@ -16,6 +16,7 @@ lead artifact; original notes and supporting media remain under **Explore this c
 | Controlled motion | Traverse, propulsion and muzzle geometry | `tests/fixtures/vehicle-motion-clips.tscn`; matched main/PR recordings |
 | Controlled capture presets | Tanks, boats and aircraft | `stages.json`: fixture, duration, simulation rate and cue |
 | Armament effects | Grenade, HE, fuel, tracer and impact timing | `armaments`: real effect pools, seed 712, 10 m ground marks, fixed 30 Hz |
+| Material impact close-ups | Dirt, stone and metal debris without obscuring fuel smoke | `impacts`: four seconds per material, fixed 30 Hz, normal speed |
 | Illumination flares | Parachute descent, wind, sparks and smoke | `flares`: same effect code at night, following camera, fixed 30 Hz |
 | Battlefield blast | Earth and dust against real terrain and cover | `blast-close` / `blast-rts`: showroom seed 712, day, fixed 24 Hz |
 | Text | Reliability, compatibility, unrecorded sound or unmeasured performance | Short player outcome and original detail |
@@ -96,3 +97,8 @@ in `capture.json`; it is not a change to the baseline game's effect code.
 The range fixture also accepts `--night`, `--elevation=75` and `--quality=0` for
 lighting, steep-camera and reduced-effects checks. Record those arguments with
 any retained evidence.
+
+The `impacts` stage uses a dedicated close camera and visits three separated target points.
+The refreshed `flares` stage uses controlled moonlight and a closer following camera so
+cloth and suspension lines remain legible. These are presentation-only settings; they
+do not brighten the in-game night or enlarge the effect geometry.
