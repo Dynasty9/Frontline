@@ -38,8 +38,8 @@ def audit():
             errors.append(f'Still entry has no image: {key}')
         def asset_path(value):
             # Filing a release moves the entry and its adjacent asset directory.
-            old_folder = str(Path(item['entry']).with_suffix('')) + '/'
-            new_folder = str(Path(key).with_suffix('')) + '/'
+            old_folder = Path(item['entry']).with_suffix('').as_posix() + '/'
+            new_folder = Path(key).with_suffix('').as_posix() + '/'
             if value.startswith(old_folder):
                 value = new_folder + value[len(old_folder):]
             return (ROOT / value).resolve()
