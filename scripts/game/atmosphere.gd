@@ -1221,6 +1221,8 @@ void fragment() {
 		rock_sample = mix(rock_sample, surface_color(rock_color, secondary_uv, weights), secondary_mix);
 	}
 	vec4 scree_sample = surface_color(cliff_color, scree_uv, weights);
+	float debris_luma = dot(scree_sample.rgb, vec3(0.2126, 0.7152, 0.0722));
+	scree_sample.rgb = mix(vec3(debris_luma), scree_sample.rgb, 0.18) * vec3(0.90, 0.97, 1.03);
 	vec4 moss_sample = surface_color(moss_color, moss_uv, weights);
 	float macro = texture(detail_tex, p / 190.0 + 0.19).r;
 	vec3 habitat_bake = texture(surface_bake, (p + __MAP_HALF__) / __MAP_SIZE__).rgb;
@@ -1231,11 +1233,20 @@ void fragment() {
 	float weathered = smoothstep(0.32, 0.72, seams * 0.55 + patch * 0.25 + shelter * 0.20);
 	float scree = clamp((1.0 - smoothstep(0.3, 1.15, slope)) * mix(0.15, 0.95, patch)
 		+ shelter * patch * 0.35, 0.0, 1.0);
+	// Loose debris persists below rock walls, especially in concave sheltered ground.
+	float talus = smoothstep(0.12, 0.45, slope) * (1.0 - smoothstep(0.85, 1.5, slope));
+	talus *= smoothstep(4.0, 22.0, geology) * (1.0 - smoothstep(snow_line * 0.65, snow_line, geology));
+	talus *= smoothstep(0.25, 0.72, shelter * 0.55 + patch * 0.25 + macro * 0.2);
+	float drainage = texture(detail_tex, p / 310.0 + vec2(warp.y, warp.x) * 0.7).r;
+	talus *= smoothstep(0.40, 0.66, drainage + (macro - 0.5) * 0.32);
+	talus *= height_blend(rock_sample.a, scree_sample.a, 0.65);
+	scree = max(scree, talus);
 	float stone = dot(rock_sample.rgb, vec3(0.2126, 0.7152, 0.0722));
 	vec3 rock = mix(vec3(stone), rock_sample.rgb, 0.45) * vec3(1.04, 1.10, 1.18);
 	rock = mix(rock, scree_sample.rgb * vec3(1.04, 1.06, 1.07), scree * 0.7);
 	rock *= mix(vec3(0.58, 0.67, 0.78), vec3(1.28, 1.17, 0.98), region);
 	rock *= mix(1.12, 0.65, weathered);
+	rock = mix(rock, scree_sample.rgb * vec3(1.01, 1.04, 1.07), talus * 0.8);
 	rock = mix(rock, rock * vec3(1.45, 1.40, 1.29), mineral * 0.65);
 	rock *= mix(0.86, 1.14, smoothstep(0.25, 0.75, macro));
 	// Stretch the stain field vertically; ledges and material patches interrupt each streak.
@@ -1273,6 +1284,7 @@ void fragment() {
 	}
 	float cover = smoothstep(0.18, 1.05, slope + elevation * 0.32 + (0.5 - alpine_soil) * 0.32
 		+ (patch - 0.5) * 0.24 + (rock_height - 0.5) * 0.35);
+	cover = max(cover, talus * 0.95);
 	float exposed = height_blend(moss_sample.a, rock_height, cover);
 	vec3 alpine = mix(moss, rock, exposed);
 	float clean = (1.0 - wm.g) * (1.0 - wm.a) * (1.0 - clamp(bowl, 0.0, 1.0));

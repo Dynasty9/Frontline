@@ -549,6 +549,7 @@ Ambush Alley autoplay can call its existing mortar support against spotted, stop
 - Distant mountain groups lose contrast into sky-coloured haze while nearby ground retains its detail.
 - Rock beds catch light along their ledges instead of appearing only as painted colour bands.
 - Broad cliff fractures and smaller joint patterns break up recognisable repeated rock tiles.
+- Sheltered lower slopes collect pale loose stone while exposed walls retain darker bedrock.
 - Moss and soil blend into exposed stone on slopes, with baked slab fractures, broken mineral beds, sheltered weathering, loose-stone pockets and snow on high sheltered ground.
 - Optional alpine haze takes on the sky colour and settles lightly into lower valleys.
 - Narrow mineral stains run down exposed cliffs, interrupted by ledges and changes in rock type.
