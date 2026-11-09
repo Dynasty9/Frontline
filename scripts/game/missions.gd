@@ -801,6 +801,12 @@ func _convoy_tick(d: MissionDirector) -> void:
 
 
 func _drive_ambush(d: MissionDirector) -> void:
+	# Use the cell's available mortars against a spotted convoy pinned on the road.
+	if _active(d, "convoy"):
+		for v in ctx.convoy:
+			if _live(v) and ((v.vis_mask >> d.side) & 1) != 0 and absf(v.speed) < 2.0 and Defs.flat(v.position - ctx.ap).length() > 35.0:
+				_call(d, "mortars", v.position)
+				break
 	var ap: Vector3 = ctx.ap
 	var n: Vector3 = ctx.n
 	var t: Vector3 = ctx.t

@@ -480,6 +480,9 @@ func on_spawned() -> void:
 	udef = Defs.UNITS[utype]
 	wdef = Defs.WEAPONS.get(udef.weapon, {})
 	if srv:
+		if world.water and world.water.too_deep(position):
+			position = world.nav.nearest_walkable(position)
+			position.y = world.ground_y(position)
 		var armor := world.rules.has_upgrade(team, "armor")
 		base_hp = float(udef.hp) * (1.2 if armor else 1.0)
 		max_hp = base_hp
@@ -988,6 +991,14 @@ func _fatigue_tick(dt: float) -> void:
 
 
 func _alive(dt: float) -> void:
+	# A removed crossing must not leave a living man walking along the riverbed.
+	if world.water and world.water.too_deep(position):
+		position = world.nav.nearest_walkable(position)
+		position.y = world.ground_y(position)
+		_gy_t = -1.0
+	if world.water and world.water.depth_at(position) > 0.15:
+		dive_t = 0.0
+		posture = Post.STAND
 	_fatigue_tick(dt)
 	if dazed_t > 0.0:
 		_dazed_tick(dt)
@@ -996,9 +1007,9 @@ func _alive(dt: float) -> void:
 		dive_t -= dt
 		act = Act.DIVE
 		var np := position + dive_dir * 5.5 * dt
-		if world.nav.walkable(np):
+		if world.nav.can_step(position, np) and (not world.water or world.water.depth_at(np) <= 0.15):
 			position = np
-		position.y = maxf(base_y, position.y - dt * 3.0)
+		position.y = maxf(base_y + _ground(), position.y - dt * 3.0)
 		if dive_t <= 0.0:
 			posture = Post.PRONE
 			act = Act.IDLE
@@ -1504,8 +1515,12 @@ func _move_tick_work(dt: float, speed: float) -> bool:
 	if (door_wait > 0.0 or (not world.door_cells.is_empty() and world.time > _door_t)) and _door_tick(dt, dir):
 		return true
 	_last_dir = dir
-	position += dir * step
-	var ty := base_y + (0.5 if vaulting else 0.0) + (_ground() if base_y == 0.0 else 0.0)
+	var next := position + dir * step
+	if not world.nav.can_step(position, next):
+		go_to(path[path.size() - 1], goal_kind, move_mode)
+		return true
+	position = next
+	var ty := base_y + (0.5 if vaulting else 0.0) + _ground()
 	position.y = lerpf(position.y, ty, 1.0 - exp(-dt * 12.0))
 	if not backwards:
 		_face(dir, dt, 10.0)
@@ -1588,14 +1603,14 @@ func _apply_sep(dt: float) -> void:
 	if v.length() > 1.4:
 		v = v.normalized() * 1.4
 	var np := position + v * dt
-	if world.nav.walkable(np):
+	if world.nav.can_step(position, np):
 		position = np
 		_shuffle = v.length() > 0.3
 
 
 ## Ground level under the soldier: about half a metre down inside a finished trench.
 func _ground() -> float:
-	if world.time > _gy_t:
+	if not world.terrain.landform.heights.is_empty() or world.time > _gy_t:
 		_gy_t = world.time + 0.3
 		_gy = world.ground_y(position)
 	return _gy
@@ -1631,7 +1646,9 @@ func _fight_tick_work(dt: float) -> void:
 			# tight to the barrier on his spot, watching across it
 			var off := Defs.flat(cover_pos - position)
 			if off.length() > 0.02 and off.length() < 0.9:
-				position += off.limit_length(dt * 1.4)
+				var next := position + off.limit_length(dt * 1.4)
+				if world.nav.can_step(position, next):
+					position = next
 			if world.time - last_shot_t > 1.0 and not (peek_up and _target_valid(target)) and cover_type != Cov.LEAN:
 				_face(cover_n, dt, 5.0)
 		elif _sector != Vector3.ZERO and world.time - last_shot_t > 1.2 and not (at_cover and cover_type != Cov.NONE) and not _target_valid(target):
@@ -1945,6 +1962,8 @@ func _weapon_tick_work(dt: float, moving: bool, mode: String) -> void:
 	if hit_dirt_t > 0.0 and mode != "escort" and not moving:
 		want = Post.PRONE
 		shoot_ok = false
+	if world.water and world.water.depth_at(position) > 0.15:
+		want = Post.STAND
 	# A brief duck should not abandon a useful firing position.
 	if want == Post.PRONE and not moving and mode == "normal" and (not at_cover or pinned):
 		if not _prepare_prone(dt):
@@ -2370,7 +2389,7 @@ func _gpick_tick(dt: float) -> void:
 		_begin_action("pickup", 0.2, {"g": g})
 		return
 	var np := position + to.normalized() * minf(to.length(), 5.0 * dt)
-	if world.nav.walkable(np):
+	if world.nav.can_step(position, np):
 		position = np
 	_face(to, dt, 14.0)
 
@@ -2903,8 +2922,8 @@ func revive(full := false) -> void:
 	stretcher_claimed = false
 	at_cover = false
 	next_cover_eval = 0.0
-	if position.y < 0.0:
-		position.y = 0.0
+	if position.y < world.ground_y(position):
+		position.y = world.ground_y(position)
 	if wdef.is_empty() and Defs.WEAPONS.has(udef.weapon):
 		wdef = Defs.WEAPONS[udef.weapon]
 		mag = int(wdef.mag)
@@ -2932,14 +2951,14 @@ func fling_from(c: Vector3, power: float) -> void:
 func _fling_tick(dt: float) -> void:
 	act = Act.FLUNG
 	var np := position + fling_v * dt
-	if not world.nav.walkable(np) and np.y < 1.5:
+	if (world.water and world.water.too_deep(np)) or (not world.nav.can_step(position, np) and np.y < world.ground_y(np) + 1.5):
 		fling_v.x = -fling_v.x * 0.2
 		fling_v.z = -fling_v.z * 0.2
 		np = position + Vector3(0, fling_v.y * dt, 0)
 	position = np
 	fling_v.y -= 20.0 * dt
-	if position.y <= 0.0 and fling_v.y < 0.0:
-		position.y = 0.0
+	if position.y <= world.ground_y(position) and fling_v.y < 0.0:
+		position.y = world.ground_y(position)
 		flinging = false
 		act = Act.IDLE
 		if life == Life.ALIVE:
@@ -2969,7 +2988,7 @@ func _dazed_tick(dt: float) -> void:
 		task_t = world.rng.randf_range(0.6, 1.3)
 		dive_dir = Defs.dir_of(world.rng.randf() * TAU)
 	var np := position + dive_dir * 0.8 * dt
-	if world.nav.walkable(np):
+	if world.nav.can_step(position, np):
 		position = np
 	_face(dive_dir, dt, 2.0)
 	if dazed_t <= 0.0:
@@ -3112,7 +3131,7 @@ func unhide(p: Vector3) -> void:
 	hidden_reason = ""
 	hidden_in = null
 	position = world.nav.nearest_walkable(p)
-	position.y = 0.0
+	position.y = world.ground_y(position)
 	act = Act.IDLE
 	at_cover = false
 	next_cover_eval = 0.0
@@ -3218,7 +3237,7 @@ func _rescue_tick(dt: float) -> void:
 			var f := -_last_dir
 			_face(f, dt, 12.0)
 			w.position = position + Defs.dir_of(rotation.y) * 1.05
-			w.position.y = 0.0
+			w.position.y = world.ground_y(w.position)
 			w.rotation.y = rotation.y
 			act = Act.DRAG
 			if not moved:
@@ -3298,7 +3317,7 @@ func _escort_tick(dt: float) -> void:
 	var to := Defs.flat(want - position)
 	var spd := 4.4 if to.length() > 3.0 else 1.3
 	var np := position + to.normalized() * minf(to.length(), spd * dt)
-	if to.length() > 0.2 and world.nav.walkable(np):
+	if to.length() > 0.2 and world.nav.can_step(position, np):
 		position = np
 	backwards = to.length() > 0.2 and to.normalized().dot(thr) < 0.0
 	_face(thr, dt, 8.0)
@@ -3482,7 +3501,7 @@ func _stretcher_tick(dt: float) -> void:
 				backwards = false
 				act = Act.CARRY
 				cas.position = position - _last_dir * 1.15
-				cas.position.y = 0.0
+				cas.position.y = world.ground_y(cas.position)
 				cas.rotation.y = Defs.yaw_of(-_last_dir)
 			if not moved:
 				var c := cas
@@ -3498,8 +3517,10 @@ func _stretcher_tick(dt: float) -> void:
 				return
 			var md := Defs.dir_of(partner.rotation.y)
 			var want := partner.position - md * 2.3
-			position = position.lerp(want, 1.0 - exp(-dt * 10.0))
-			position.y = 0.0
+			var next := position.lerp(want, 1.0 - exp(-dt * 10.0))
+			if world.nav.can_step(position, next):
+				position = next
+			position.y = world.ground_y(position)
 			rotation.y = partner.rotation.y
 			act = Act.CARRY
 
@@ -3510,7 +3531,7 @@ func _end_stretcher(delivered: bool) -> void:
 		cas.carried_by.erase(self)
 		if cas.carried_by.is_empty() and not delivered:
 			cas.stretcher_claimed = false
-			cas.position.y = 0.0
+			cas.position.y = world.ground_y(cas.position)
 	task = ""
 	task_ent = null
 	task_ent2 = null
@@ -3549,10 +3570,12 @@ func _captor_tick(dt: float) -> void:
 			var d := Defs.flat(p.position - position)
 			if d.length() > 2.3:
 				var np := position + d.normalized() * minf(d.length() - 2.0, 1.9 * dt)
-				if world.nav.walkable(np):
+				if world.nav.can_step(position, np):
 					position = np
 				else:
-					position = position.lerp(p.position, 0.02)
+					var next := position.lerp(p.position, 0.02)
+					if world.nav.can_step(position, next):
+						position = next
 				act = Act.WALK
 			else:
 				act = Act.SHOOT if world.rng.randf() < 0.0 else Act.IDLE
@@ -3579,7 +3602,7 @@ func release_mount() -> void:
 	if base_y > 0.0 and st:
 		position = world.nav.nearest_walkable(st.position + Vector3(2.0, 0, 0))
 	base_y = 0.0
-	position.y = 0.0
+	position.y = world.ground_y(position)
 	task = ""
 	task_ent = null
 	at_cover = false
@@ -3602,7 +3625,7 @@ func _man_tick(dt: float) -> void:
 			if st.skind == "watchtower":
 				task_phase = 1
 				task_t = 1.6
-				position = Vector3(st.position.x, 0, st.position.z)
+				position = st.position
 			else:
 				task_phase = 2
 				position = st.mount_pos()
@@ -3617,7 +3640,7 @@ func _man_tick(dt: float) -> void:
 		1:
 			task_t -= dt
 			act = Act.CLIMB
-			position.y = lerpf(0.0, 4.25, clampf(1.0 - task_t / 1.6, 0.0, 1.0))
+			position.y = st.position.y + lerpf(0.0, 4.25, clampf(1.0 - task_t / 1.6, 0.0, 1.0))
 			if task_t <= 0.0:
 				task_phase = 2
 				base_y = 4.25
@@ -3773,7 +3796,7 @@ func order_board(v: Vehicle) -> void:
 
 func _board_tick(dt: float) -> void:
 	var v := task_ent as Vehicle
-	if v == null or v.gone or v.seats_free() <= 0 or (v.is_heli() and v.position.y > 1.0):
+	if v == null or v.gone or v.seats_free() <= 0 or (v.is_heli() and v.position.y - world.ground_y(v.position) > 1.0):
 		task = ""
 		return
 	var d := Defs.flat(v.position - position).length()

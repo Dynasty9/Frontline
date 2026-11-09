@@ -2991,6 +2991,860 @@
         }
       ],
       "output": null
+    },
+    {
+      "entry": "changelog/unreleased/mountain-battlefields.md",
+      "summary": "Seeded snowy mountains, mossy hills and river valleys now surround the towns and roads of standard battles.",
+      "medium": "still",
+      "stage": "native-media",
+      "rationale": "Matched in-game captures show the generated geography and material refinement; screenshots do not claim traversal or frame-rate proof.",
+      "source_ref": "86448fa",
+      "sources": [
+        {
+          "file": "changelog/unreleased/mountain-battlefields/before.jpg",
+          "sha256": "72fe3e888174f88bfaffe6a6ff7c76b7bdfe0bd5b63f3cd93093116144e823e4",
+          "caption": "Before: the flat battlefield with the same seed and camera."
+        },
+        {
+          "file": "changelog/unreleased/mountain-battlefields/after.jpg",
+          "sha256": "ccc37b0106c6b928d682469022b3867b18799041fa2fba4b96d8b479d9eb3425",
+          "caption": "After: fractured mountain belts and denser woods around the town and river valley."
+        },
+        {
+          "file": "changelog/unreleased/mountain-battlefields/valley.jpg",
+          "sha256": "ccc81be693fd8784bd036d6bbb5608f5027275c1f3d01b0553d47e39005cf3ab",
+          "caption": "Looking inland through the coastal valley with Mountain reflections enabled."
+        }
+      ],
+      "output": null,
+      "title": "Mountain battlefields",
+      "version": "unreleased",
+      "kind": "new"
+    },
+    {
+      "entry": "changelog/unreleased/terrain-traversal.md",
+      "summary": "Tracks and wheels choose suitable slopes, and infantry wade through shallows instead of walking underwater.",
+      "medium": "text",
+      "stage": "text",
+      "rationale": "Traversal correctness is supported by deterministic route, depth and movement assertions plus campaign regressions. Text describes the safety rules without implying a recorded movement comparison.",
+      "source_ref": "fe07e0e",
+      "sources": [],
+      "output": null,
+      "title": "Safer routes across hills and water",
+      "version": "unreleased",
+      "kind": "improved"
+    },
+    {
+      "entry": "changelog/unreleased/alpine-surface-detail.md",
+      "summary": "Mountain faces gain distinct rock masses, relief-aware moss and snow, and small conifer stands at their feet.",
+      "medium": "still",
+      "stage": "native-media",
+      "rationale": "Matched native screenshots show surface and terrain-form changes; they do not demonstrate movement or performance.",
+      "source_ref": "codex/alpine-battlefields",
+      "sources": [
+        {
+          "file": "changelog/unreleased/alpine-surface-detail/before.jpg",
+          "sha256": "d5542d97dd01903186f3b3ce1bfebd783cd457b2e997c40517cdf5bfdc8e5fa2",
+          "caption": "Before: immutable 915042f resource pack."
+        },
+        {
+          "file": "changelog/unreleased/alpine-surface-detail/after.jpg",
+          "sha256": "c2d2327aec64f09f41989c3545c5bdb155176005111c36b05e377765aabb4957",
+          "caption": "After: alpine material/form refinement on codex/alpine-battlefields."
+        }
+      ],
+      "output": null,
+      "title": "Rock faces with depth and greener foothills",
+      "version": "unreleased",
+      "kind": "improved",
+      "capture": {
+        "before_ref": "915042f",
+        "after_ref": "codex/alpine-battlefields",
+        "renderer": "Godot 4.7.2 Forward+, RTX 3090, 1600x900",
+        "command": "godot --main-pack PACK --resolution 1600x900 -- --aivai --seed=3 --offscreen --nohud --set=perf:0 --mood=golden --preset=high --focus=-100,0 --zoom=600 --pitch=-38 --cam-yaw=0.7 --perf-at=5 --perf-duration=10 --perf-shot=OUTPUT.png"
+      }
+    },
+    {
+      "entry": "changelog/unreleased/alpine-variation.md",
+      "summary": "Mineral bands, dry grass, scrub and scattered stones break up the alpine landscape, with vegetation changing as the ground rises.",
+      "medium": "still",
+      "stage": "native-media",
+      "rationale": "Matched in-game command views show broad surface variation and vegetation distribution. Small passable dressing is most visible at closer zoom.",
+      "source_ref": "codex/alpine-battlefields",
+      "sources": [
+        {
+          "file": "changelog/unreleased/alpine-variation/before.jpg",
+          "sha256": "c2d2327aec64f09f41989c3545c5bdb155176005111c36b05e377765aabb4957",
+          "caption": "Before: 306b762, previous material refinement."
+        },
+        {
+          "file": "changelog/unreleased/alpine-variation/after.jpg",
+          "sha256": "a75e4c3a7d4c2a198a0c8ee7a92f5d6bfb4d7f4b2f43f442345614be2e093c02",
+          "caption": "After: elevation-dependent vegetation and varied ground surfaces."
+        },
+        {
+          "file": "changelog/unreleased/alpine-variation/detail.jpg",
+          "sha256": "f15e34216c8bfb28ed9ed72e0fd714aade07e467929e7600fe8ca525b4d3691c",
+          "caption": "Closer daylight view of passable scrub and stones."
+        }
+      ],
+      "output": null,
+      "title": "More varied mountain surfaces and vegetation",
+      "version": "unreleased",
+      "kind": "improved",
+      "capture": {
+        "before_ref": "306b762",
+        "after_ref": "codex/alpine-battlefields",
+        "command": "godot --main-pack PACK --resolution 1600x900 -- --aivai --seed=3 --offscreen --nohud --set=perf:0 --mood=golden --preset=high --focus=-100,0 --zoom=600 --pitch=-38 --cam-yaw=0.7 --perf-at=5 --perf-duration=10 --perf-shot=OUTPUT.png",
+        "detail": "Same seed and pack; --mood=day --focus=-160,70 --zoom=140 --pitch=-35 --cam-yaw=0.7 --screenshot=OUTPUT --shot-at=2 --quit-after=3"
+      }
+    },
+    {
+      "entry": "changelog/unreleased/alpine-habitats.md",
+      "summary": "Greener gullies, contour-following woods and vegetation on mountain ledges replace randomly scattered greenery.",
+      "medium": "still",
+      "stage": "native-media",
+      "rationale": "Matched native command-camera images show habitat-driven ground cover and woodland distribution; a closer view shows species and ledge placement.",
+      "source_ref": "codex/alpine-battlefields",
+      "sources": [
+        {
+          "file": "changelog/unreleased/alpine-habitats/before.jpg",
+          "sha256": "a75e4c3a7d4c2a198a0c8ee7a92f5d6bfb4d7f4b2f43f442345614be2e093c02",
+          "caption": "Before: 1e740f8 terrain variation."
+        },
+        {
+          "file": "changelog/unreleased/alpine-habitats/after.jpg",
+          "sha256": "a432630eddf5cd16fa1d7e62806d42fee31c74b4017bf182628705e7f4742dec",
+          "caption": "After: woodland and soil following mountain habitats."
+        },
+        {
+          "file": "changelog/unreleased/alpine-habitats/detail.jpg",
+          "sha256": "f04d80fb1d29def591a83ebe2de37a7d87c39468efd3564ee827ccf036306778",
+          "caption": "Closer daylight view of conifers on ledges."
+        }
+      ],
+      "output": null,
+      "title": "Woodland follows the mountain slopes",
+      "version": "unreleased",
+      "kind": "improved",
+      "capture": {
+        "before_ref": "1e740f8",
+        "after_ref": "codex/alpine-battlefields",
+        "overview": "godot --main-pack PACK --resolution 1600x900 -- --aivai --seed=3 --offscreen --nohud --set=perf:0 --mood=golden --preset=high --focus=-100,0 --zoom=600 --pitch=-38 --cam-yaw=0.7 --perf-at=5 --perf-duration=10 --perf-shot=OUTPUT.png",
+        "detail": "Same seed and pack; --mood=day --focus=-160,70 --zoom=140 --pitch=-35 --cam-yaw=0.7 --screenshot=OUTPUT --shot-at=2 --quit-after=3"
+      }
+    },
+    {
+      "entry": "changelog/unreleased/alpine-rock-relief.md",
+      "summary": "Mountain faces gain broken mineral layers, darker weathered seams and uneven pockets of loose stone.",
+      "medium": "still",
+      "stage": "native-media",
+      "rationale": "Matched golden-hour command views show larger weathering patterns; a daylight detail shows the surface at closer range.",
+      "source_ref": "codex/alpine-battlefields",
+      "sources": [
+        {
+          "file": "changelog/unreleased/alpine-rock-relief/before.jpg",
+          "sha256": "4ea2e7e1d9da096e9e12148ee3520df1ec1b2b074e2fcd3c0fb0488b4e8c50eb",
+          "caption": "before"
+        },
+        {
+          "file": "changelog/unreleased/alpine-rock-relief/after.jpg",
+          "sha256": "aab245fa3246a62c6cd5f881c708db3d77ac4eb78ad05dfa7f1238563cd47108",
+          "caption": "after"
+        },
+        {
+          "file": "changelog/unreleased/alpine-rock-relief/detail.jpg",
+          "sha256": "94e68f65b6ef56cd394edcb9ecba4748c9eefd1b1e3b8cf9ae11be024ef84019",
+          "caption": "detail"
+        }
+      ],
+      "output": null,
+      "title": "Broken stone across mountain faces",
+      "version": "unreleased",
+      "kind": "improved",
+      "capture": {
+        "before_ref": "f58f857",
+        "after_ref": "codex/alpine-battlefields",
+        "detail": "godot --main-pack PACK --resolution 1600x900 -- --aivai --seed=3 --offscreen --nohud --set=perf:0 --mood=day --preset=high --focus=-160,70 --zoom=140 --pitch=-35 --cam-yaw=0.7 --screenshot=OUTPUT --shot-at=2 --quit-after=3",
+        "overview": "godot --main-pack PACK --resolution 1600x900 -- --aivai --seed=3 --offscreen --nohud --set=perf:0 --mood=golden --preset=high --focus=-100,0 --zoom=600 --pitch=-38 --cam-yaw=0.7 --perf-at=5 --perf-duration=10 --perf-shot=OUTPUT.png"
+      }
+    },
+    {
+      "entry": "changelog/unreleased/alpine-perspective.md",
+      "summary": "Optional alpine haze takes on the sky colour and settles lightly into lower valleys.",
+      "medium": "still",
+      "stage": "native-media",
+      "rationale": "Matched wide and closer native renders; PR places the unaltered before and after images side by side. Subtle differences are explicitly identified.",
+      "source_ref": "codex/alpine-perspective",
+      "sources": [
+        {
+          "file": "changelog/unreleased/alpine-perspective/before.jpg",
+          "sha256": "f329ad746630d6675d333cc9915804de68180026896cd6bc86985841887fa1a3",
+          "caption": "before"
+        },
+        {
+          "file": "changelog/unreleased/alpine-perspective/after.jpg",
+          "sha256": "bfe4017f26fd27ac5cd980ae4f97ff5c0cd1e309d92e3c40b5f7787c78de80f9",
+          "caption": "after"
+        },
+        {
+          "file": "changelog/unreleased/alpine-perspective/close-before.jpg",
+          "sha256": "aef5c10c118f85a5407e6689a3fae6e48f69b7d9c72f07f6e9c35ffddd2611a6",
+          "caption": "Matching closer camera: before"
+        },
+        {
+          "file": "changelog/unreleased/alpine-perspective/close-after.jpg",
+          "sha256": "b7d67da34ae9649a9879d38b33d257a434ff2bec78316ee37fb8919364d5baa7",
+          "caption": "Matching closer camera: after"
+        },
+        {
+          "file": "changelog/unreleased/alpine-perspective/target-before.jpg",
+          "sha256": "25e91f2dfaa8c61194181c5fbfb54fe1e2c0a8d2d8993751773e21b6fce7be84",
+          "caption": "before - Watch the tone and separation of the distant ridges in hazy weather."
+        },
+        {
+          "file": "changelog/unreleased/alpine-perspective/target-after.jpg",
+          "sha256": "97c4429f0b5388f0d19e06c77bdc7e60c590d1da86d8442cea4abffdaa381d88",
+          "caption": "after - Watch the tone and separation of the distant ridges in hazy weather."
+        },
+        {
+          "file": "changelog/unreleased/alpine-perspective/compare.gif",
+          "sha256": "8c84b4ab7fca63f1e122bec0799b91787f243ef3fc3933603ab72812138e8317",
+          "caption": "Two-second BEFORE/AFTER toggle; original rendered scene unchanged, label bar added above it."
+        }
+      ],
+      "output": null,
+      "title": "Separate distant mountain ranges with sky haze",
+      "version": "unreleased",
+      "kind": "improved",
+      "capture": {
+        "before_ref": "322c5a4",
+        "after_ref": "codex/alpine-perspective",
+        "command": "godot --main-pack PACK --resolution 1600x900 -- --aivai --seed=3 --offscreen --nohud --set=perf:0 --mood=day --preset=high --focus=0,0 --zoom=900 --pitch=-22 --cam-yaw=0.7 --screenshot=OUTPUT --shot-at=2 --quit-after=3",
+        "close": "godot --main-pack PACK --resolution 1600x900 -- --aivai --seed=3 --offscreen --nohud --set=perf:0 --mood=day --preset=high --focus=250,250 --zoom=350 --pitch=-28 --cam-yaw=0.7 --screenshot=OUTPUT --shot-at=2 --quit-after=3",
+        "targeted": {
+          "focus": "-200,-200",
+          "zoom": 450,
+          "pitch": -20,
+          "yaw": 0.7,
+          "mood": "hazy",
+          "cue": "Watch the tone and separation of the distant ridges in hazy weather.",
+          "seed": 3,
+          "resolution": "1600x900",
+          "preset": "high",
+          "shot_at": 2,
+          "quit_after": 3,
+          "before_pack": "weathered.pck",
+          "after_pack": "alpine-perspective.pck",
+          "renderer": "Forward+",
+          "gif": "Same full native frames with separate label bar; common 256-colour palette; no resizing or contrast adjustment; two seconds per frame."
+        }
+      }
+    },
+    {
+      "entry": "changelog/unreleased/cliff-runoff.md",
+      "summary": "Narrow mineral stains run down exposed cliffs, interrupted by ledges and changes in rock type.",
+      "medium": "still",
+      "stage": "native-media",
+      "rationale": "Matched wide and closer native renders; PR places the unaltered before and after images side by side. Subtle differences are explicitly identified.",
+      "source_ref": "codex/cliff-runoff",
+      "sources": [
+        {
+          "file": "changelog/unreleased/cliff-runoff/before.jpg",
+          "sha256": "f329ad746630d6675d333cc9915804de68180026896cd6bc86985841887fa1a3",
+          "caption": "before"
+        },
+        {
+          "file": "changelog/unreleased/cliff-runoff/after.jpg",
+          "sha256": "47e53c55493ca9361fd51822a60d168d0eb29d3e79cfa5211ae8e6f5b40df2a5",
+          "caption": "after"
+        },
+        {
+          "file": "changelog/unreleased/cliff-runoff/close-before.jpg",
+          "sha256": "aef5c10c118f85a5407e6689a3fae6e48f69b7d9c72f07f6e9c35ffddd2611a6",
+          "caption": "Matching closer camera: before"
+        },
+        {
+          "file": "changelog/unreleased/cliff-runoff/close-after.jpg",
+          "sha256": "4c653eac1a9a169df948366952fa07f7826d02be9df181f2b623f70555ea3028",
+          "caption": "Matching closer camera: after"
+        },
+        {
+          "file": "changelog/unreleased/cliff-runoff/target-before.jpg",
+          "sha256": "05110d1a4bc3075c37b837c4c772d3c9b1147c5fdd0de13fa292170f0c84d5d7",
+          "caption": "before - Watch for narrow dark vertical stains across the lit central face."
+        },
+        {
+          "file": "changelog/unreleased/cliff-runoff/target-after.jpg",
+          "sha256": "c0a7ba7c134d82e7a944cf8865a1532f5a71af5598603912957aab6d4be628bf",
+          "caption": "after - Watch for narrow dark vertical stains across the lit central face."
+        },
+        {
+          "file": "changelog/unreleased/cliff-runoff/compare.gif",
+          "sha256": "256d15420f8fe90f06c94fa51d3cb63bf921de2c7e20d58944c6bb34d3bca9de",
+          "caption": "Two-second BEFORE/AFTER toggle; original rendered scene unchanged, label bar added above it."
+        }
+      ],
+      "output": null,
+      "title": "Add directional weathering to cliffs",
+      "version": "unreleased",
+      "kind": "improved",
+      "capture": {
+        "before_ref": "322c5a4",
+        "after_ref": "codex/cliff-runoff",
+        "command": "godot --main-pack PACK --resolution 1600x900 -- --aivai --seed=3 --offscreen --nohud --set=perf:0 --mood=day --preset=high --focus=0,0 --zoom=900 --pitch=-22 --cam-yaw=0.7 --screenshot=OUTPUT --shot-at=2 --quit-after=3",
+        "close": "godot --main-pack PACK --resolution 1600x900 -- --aivai --seed=3 --offscreen --nohud --set=perf:0 --mood=day --preset=high --focus=250,250 --zoom=350 --pitch=-28 --cam-yaw=0.7 --screenshot=OUTPUT --shot-at=2 --quit-after=3",
+        "targeted": {
+          "focus": "300,300",
+          "zoom": 100,
+          "pitch": -28,
+          "yaw": 0.7,
+          "mood": "day",
+          "cue": "Watch for narrow dark vertical stains across the lit central face.",
+          "seed": 3,
+          "resolution": "1600x900",
+          "preset": "high",
+          "shot_at": 2,
+          "quit_after": 3,
+          "before_pack": "weathered.pck",
+          "after_pack": "cliff-runoff.pck",
+          "renderer": "Forward+",
+          "gif": "Same full native frames with separate label bar; common 256-colour palette; no resizing or contrast adjustment; two seconds per frame."
+        }
+      }
+    },
+    {
+      "entry": "changelog/unreleased/snow-deposition.md",
+      "summary": "Wind exposure and rock relief break up snow edges, with cooler compacted snow in sheltered pockets.",
+      "medium": "still",
+      "stage": "native-media",
+      "rationale": "Matched wide and closer native renders; PR places the unaltered before and after images side by side. Subtle differences are explicitly identified.",
+      "source_ref": "codex/snow-deposition",
+      "sources": [
+        {
+          "file": "changelog/unreleased/snow-deposition/before.jpg",
+          "sha256": "f329ad746630d6675d333cc9915804de68180026896cd6bc86985841887fa1a3",
+          "caption": "before"
+        },
+        {
+          "file": "changelog/unreleased/snow-deposition/after.jpg",
+          "sha256": "407c871116230abe94d7bcea0f1afa9d6f05dd2bd1e24263a736eed52a4b1f31",
+          "caption": "after"
+        },
+        {
+          "file": "changelog/unreleased/snow-deposition/close-before.jpg",
+          "sha256": "aef5c10c118f85a5407e6689a3fae6e48f69b7d9c72f07f6e9c35ffddd2611a6",
+          "caption": "Matching closer camera: before"
+        },
+        {
+          "file": "changelog/unreleased/snow-deposition/close-after.jpg",
+          "sha256": "e7905b1b70b6da9d3951f6e75b8f4bc80fefdb0f8e91dfb5ed34d17b4ca925ec",
+          "caption": "Matching closer camera: after"
+        },
+        {
+          "file": "changelog/unreleased/snow-deposition/target-before.jpg",
+          "sha256": "d8c7f10f8d255034193104429edb8b78fbad60b04dc575de04ceeb26eae08eff",
+          "caption": "before - Watch the boundary between snow and bare rock on the foreground peak."
+        },
+        {
+          "file": "changelog/unreleased/snow-deposition/target-after.jpg",
+          "sha256": "df948d756ce6eba3e0d1d1915d64e1558e7b26df06e3ade42e78744da12f9cfc",
+          "caption": "after - Watch the boundary between snow and bare rock on the foreground peak."
+        },
+        {
+          "file": "changelog/unreleased/snow-deposition/compare.gif",
+          "sha256": "58f70ab5ba3ac42c0527e0f847a60532b1e6120c385181749083cdcae2d3dcb2",
+          "caption": "Two-second BEFORE/AFTER toggle; original rendered scene unchanged, label bar added above it."
+        }
+      ],
+      "output": null,
+      "title": "Break up alpine snowfields",
+      "version": "unreleased",
+      "kind": "improved",
+      "capture": {
+        "before_ref": "322c5a4",
+        "after_ref": "codex/snow-deposition",
+        "command": "godot --main-pack PACK --resolution 1600x900 -- --aivai --seed=3 --offscreen --nohud --set=perf:0 --mood=day --preset=high --focus=0,0 --zoom=900 --pitch=-22 --cam-yaw=0.7 --screenshot=OUTPUT --shot-at=2 --quit-after=3",
+        "close": "godot --main-pack PACK --resolution 1600x900 -- --aivai --seed=3 --offscreen --nohud --set=perf:0 --mood=day --preset=high --focus=250,250 --zoom=350 --pitch=-28 --cam-yaw=0.7 --screenshot=OUTPUT --shot-at=2 --quit-after=3",
+        "targeted": {
+          "focus": "220,300",
+          "zoom": 180,
+          "pitch": -50,
+          "yaw": 0.7,
+          "mood": "day",
+          "cue": "Watch the boundary between snow and bare rock on the foreground peak.",
+          "seed": 3,
+          "resolution": "1600x900",
+          "preset": "high",
+          "shot_at": 2,
+          "quit_after": 3,
+          "before_pack": "weathered.pck",
+          "after_pack": "snow-deposition.pck",
+          "renderer": "Forward+",
+          "gif": "Same full native frames with separate label bar; common 256-colour palette; no resizing or contrast adjustment; two seconds per frame."
+        }
+      }
+    },
+    {
+      "entry": "changelog/unreleased/rock-occlusion.md",
+      "summary": "Sheltered rock crevices receive stronger ambient occlusion while exposed rock stays open to sky light.",
+      "medium": "still",
+      "stage": "native-media",
+      "rationale": "Matched wide and closer native renders; PR places the unaltered before and after images side by side. Subtle differences are explicitly identified.",
+      "source_ref": "codex/rock-occlusion",
+      "sources": [
+        {
+          "file": "changelog/unreleased/rock-occlusion/before.jpg",
+          "sha256": "f329ad746630d6675d333cc9915804de68180026896cd6bc86985841887fa1a3",
+          "caption": "before"
+        },
+        {
+          "file": "changelog/unreleased/rock-occlusion/after.jpg",
+          "sha256": "3a5a4c638e96cff490b83bcdfb29e5beecf9fe3411efe468c9afce4977d4d887",
+          "caption": "after"
+        },
+        {
+          "file": "changelog/unreleased/rock-occlusion/close-before.jpg",
+          "sha256": "aef5c10c118f85a5407e6689a3fae6e48f69b7d9c72f07f6e9c35ffddd2611a6",
+          "caption": "Matching closer camera: before"
+        },
+        {
+          "file": "changelog/unreleased/rock-occlusion/close-after.jpg",
+          "sha256": "414cb05025cce458dad1a1ffacabfe6af4b1fdca694de977a062ce108a55aef3",
+          "caption": "Matching closer camera: after"
+        },
+        {
+          "file": "changelog/unreleased/rock-occlusion/target-before.jpg",
+          "sha256": "31d465eda7f52a0015cc559843da8d5b80d4e213384d8cc45b64e49e28e11e0a",
+          "caption": "before - Watch the shaded recess beside the central rib under diffuse light."
+        },
+        {
+          "file": "changelog/unreleased/rock-occlusion/target-after.jpg",
+          "sha256": "144045e691872f0e5fcc1460864592f277aeb4cea3dc8e61761090a2f61ec8a3",
+          "caption": "after - Watch the shaded recess beside the central rib under diffuse light."
+        },
+        {
+          "file": "changelog/unreleased/rock-occlusion/compare.gif",
+          "sha256": "739cc9c034ddcc7e466d0f4bfafd28f70db925e4611107c3441c3c6199731a75",
+          "caption": "Two-second BEFORE/AFTER toggle; original rendered scene unchanged, label bar added above it."
+        }
+      ],
+      "output": null,
+      "title": "Give rock crevices more depth",
+      "version": "unreleased",
+      "kind": "improved",
+      "capture": {
+        "before_ref": "322c5a4",
+        "after_ref": "codex/rock-occlusion",
+        "command": "godot --main-pack PACK --resolution 1600x900 -- --aivai --seed=3 --offscreen --nohud --set=perf:0 --mood=day --preset=high --focus=0,0 --zoom=900 --pitch=-22 --cam-yaw=0.7 --screenshot=OUTPUT --shot-at=2 --quit-after=3",
+        "close": "godot --main-pack PACK --resolution 1600x900 -- --aivai --seed=3 --offscreen --nohud --set=perf:0 --mood=day --preset=high --focus=250,250 --zoom=350 --pitch=-28 --cam-yaw=0.7 --screenshot=OUTPUT --shot-at=2 --quit-after=3",
+        "targeted": {
+          "focus": "300,300",
+          "zoom": 100,
+          "pitch": -28,
+          "yaw": 0.7,
+          "mood": "overcast",
+          "cue": "Watch the shaded recess beside the central rib under diffuse light.",
+          "seed": 3,
+          "resolution": "1600x900",
+          "preset": "high",
+          "shot_at": 2,
+          "quit_after": 3,
+          "before_pack": "weathered.pck",
+          "after_pack": "rock-occlusion.pck",
+          "renderer": "Forward+",
+          "gif": "Same full native frames with separate label bar; common 256-colour palette; no resizing or contrast adjustment; two seconds per frame."
+        }
+      }
+    },
+    {
+      "entry": "changelog/unreleased/rock-warp.md",
+      "summary": "World-space texture warping breaks up repeated slab patterns without adding material samples.",
+      "medium": "still",
+      "stage": "native-media",
+      "rationale": "Matched wide and closer native renders; PR places the unaltered before and after images side by side. Subtle differences are explicitly identified.",
+      "source_ref": "codex/rock-warp",
+      "sources": [
+        {
+          "file": "changelog/unreleased/rock-warp/before.jpg",
+          "sha256": "f329ad746630d6675d333cc9915804de68180026896cd6bc86985841887fa1a3",
+          "caption": "before"
+        },
+        {
+          "file": "changelog/unreleased/rock-warp/after.jpg",
+          "sha256": "8b74290723444b4b43a97ec4bab295bbcc3e26273111889520853bba22303085",
+          "caption": "after"
+        },
+        {
+          "file": "changelog/unreleased/rock-warp/close-before.jpg",
+          "sha256": "aef5c10c118f85a5407e6689a3fae6e48f69b7d9c72f07f6e9c35ffddd2611a6",
+          "caption": "Matching closer camera: before"
+        },
+        {
+          "file": "changelog/unreleased/rock-warp/close-after.jpg",
+          "sha256": "ac6f823611e0ba8f3d73496bccbb4bb6c3a2e3ce74c1c3ba1f635eecb02957f4",
+          "caption": "Matching closer camera: after"
+        },
+        {
+          "file": "changelog/unreleased/rock-warp/target-before.jpg",
+          "sha256": "05110d1a4bc3075c37b837c4c772d3c9b1147c5fdd0de13fa292170f0c84d5d7",
+          "caption": "before - Watch the large fracture patterns on the bright central rock rib."
+        },
+        {
+          "file": "changelog/unreleased/rock-warp/target-after.jpg",
+          "sha256": "12619830bc2b8ab9fb35520aaac3c7f38c436bc0512af2dc3074cbdee85e9a9b",
+          "caption": "after - Watch the large fracture patterns on the bright central rock rib."
+        },
+        {
+          "file": "changelog/unreleased/rock-warp/compare.gif",
+          "sha256": "231fb46e61abaa886ddbe53b79830cbfe583071732e01a71a7c8275392cca83e",
+          "caption": "Two-second BEFORE/AFTER toggle; original rendered scene unchanged, label bar added above it."
+        }
+      ],
+      "output": null,
+      "title": "Break up repeating cliff textures",
+      "version": "unreleased",
+      "kind": "improved",
+      "capture": {
+        "before_ref": "322c5a4",
+        "after_ref": "codex/rock-warp",
+        "command": "godot --main-pack PACK --resolution 1600x900 -- --aivai --seed=3 --offscreen --nohud --set=perf:0 --mood=day --preset=high --focus=0,0 --zoom=900 --pitch=-22 --cam-yaw=0.7 --screenshot=OUTPUT --shot-at=2 --quit-after=3",
+        "close": "godot --main-pack PACK --resolution 1600x900 -- --aivai --seed=3 --offscreen --nohud --set=perf:0 --mood=day --preset=high --focus=250,250 --zoom=350 --pitch=-28 --cam-yaw=0.7 --screenshot=OUTPUT --shot-at=2 --quit-after=3",
+        "targeted": {
+          "focus": "300,300",
+          "zoom": 100,
+          "pitch": -28,
+          "yaw": 0.7,
+          "mood": "day",
+          "cue": "Watch the large fracture patterns on the bright central rock rib.",
+          "seed": 3,
+          "resolution": "1600x900",
+          "preset": "high",
+          "shot_at": 2,
+          "quit_after": 3,
+          "before_pack": "weathered.pck",
+          "after_pack": "rock-warp.pck",
+          "renderer": "Forward+",
+          "gif": "Same full native frames with separate label bar; common 256-colour palette; no resizing or contrast adjustment; two seconds per frame."
+        }
+      }
+    },
+    {
+      "entry": "changelog/unreleased/alpine-massifs.md",
+      "summary": "Uneven mountain groups, lower passes and reshaped cliff shoulders replace repetitive ridges, with more varied moss-to-rock transitions.",
+      "medium": "still",
+      "stage": "native-media",
+      "rationale": "Matched distant and closer native renders expose silhouette changes rather than relying on subtle texture differences.",
+      "source_ref": "codex/alpine-massifs",
+      "sources": [
+        {
+          "file": "changelog/unreleased/alpine-massifs/wide-before.jpg",
+          "sha256": "91c7a64ae24589f0fbc49f11122fa1883a91421e2b8eed0f575010f12e931e4f",
+          "caption": "wide before"
+        },
+        {
+          "file": "changelog/unreleased/alpine-massifs/wide-after.jpg",
+          "sha256": "554ee96f90ac717ebd3cf6437b0386dc7ccac8f701603ce9376470d89af6d265",
+          "caption": "wide after"
+        },
+        {
+          "file": "changelog/unreleased/alpine-massifs/close-before.jpg",
+          "sha256": "99adc873656618e8ed48457008ae48ed38c71b151b7e57a77b2ea088dffead74",
+          "caption": "close before"
+        },
+        {
+          "file": "changelog/unreleased/alpine-massifs/close-after.jpg",
+          "sha256": "d8741e8e32dcee01971d80c6626610c6c2bdbef6c380793922a1826d414cfda7",
+          "caption": "close after"
+        },
+        {
+          "file": "changelog/unreleased/alpine-massifs/detail-before.jpg",
+          "sha256": "ae0b97d7676469dc0d26653bd51968535c4f3ecd2db9a2be9ac01c6edddf5769",
+          "caption": "before native render"
+        },
+        {
+          "file": "changelog/unreleased/alpine-massifs/detail-after.jpg",
+          "sha256": "d8a71c0ea32b184110173492c1cb943c344da0b95cf98db2853b0a73111249f3",
+          "caption": "after native render"
+        },
+        {
+          "file": "changelog/unreleased/alpine-massifs/detail-compatibility.jpg",
+          "sha256": "eac954235bfb2c0f6a420d79c5a03ea9ef4c98a1f91566101e395fca48ff55b6",
+          "caption": "compatibility native render"
+        },
+        {
+          "file": "changelog/unreleased/alpine-massifs/wide-compare.gif",
+          "sha256": "8be7d525416714147bac4cbeb07098fcf0fb18994c70cd856558432f524fac22",
+          "caption": "Native wide frames with a separate label bar; no scene retouching. Common palette, 2.5 seconds each."
+        }
+      ],
+      "output": null,
+      "title": "Break up mountain silhouettes",
+      "version": "unreleased",
+      "kind": "improved",
+      "capture": {
+        "before_ref": "d48bb0323232353f4a5caa4bba520670374930aa",
+        "after_ref": "codex/alpine-massifs",
+        "before_pack": "integrated-before.pck",
+        "after_pack": "massifs-v5.pck",
+        "command": "godot --main-pack PACK --resolution 1600x900 -- --aivai --seed=3 --offscreen --nohud --set=perf:0 --mood=day --preset=high --focus=0,0 --zoom=900 --pitch=-22 --cam-yaw=0.7 --screenshot=OUTPUT --shot-at=2 --quit-after=3",
+        "close": "Same controls with --focus=250,250 --zoom=350 --pitch=-28",
+        "camera_note": "Ground-following camera; matching control inputs, absolute Y may change with the terrain.",
+        "detail": "Same controls with --focus=300,300 --zoom=100 --pitch=-28; camera height follows the changed terrain.",
+        "compatibility": "Final wide view with --rendering-method gl_compatibility"
+      }
+    },
+    {
+      "entry": "changelog/unreleased/realism-01-aerial.md",
+      "summary": "Distant mountain groups lose contrast into sky-coloured haze while nearby ground retains its detail.",
+      "medium": "still",
+      "stage": "native-media",
+      "rationale": "Isolate the revision from the previous proposal with identical upstream changes, seed and camera.",
+      "source_ref": "codex/realism-01-aerial",
+      "sources": [
+        {
+          "file": "changelog/unreleased/realism-01-aerial/target-before.jpg",
+          "sha256": "24703b23c8f2a842db5ad3a72c0a3b12f696cdb171c9ee65189ca63f531a0459",
+          "caption": "target before"
+        },
+        {
+          "file": "changelog/unreleased/realism-01-aerial/target-after.jpg",
+          "sha256": "3910c178b48bab353d3c2449b10a3479c26d7ad04221b7964157dc4aa6340ff0",
+          "caption": "target after"
+        },
+        {
+          "file": "changelog/unreleased/realism-01-aerial/wide-before.jpg",
+          "sha256": "24703b23c8f2a842db5ad3a72c0a3b12f696cdb171c9ee65189ca63f531a0459",
+          "caption": "wide before"
+        },
+        {
+          "file": "changelog/unreleased/realism-01-aerial/wide-after.jpg",
+          "sha256": "3910c178b48bab353d3c2449b10a3479c26d7ad04221b7964157dc4aa6340ff0",
+          "caption": "wide after"
+        },
+        {
+          "file": "changelog/unreleased/realism-01-aerial/target-compat.jpg",
+          "sha256": "29462b38fe814784bb21c2846f182a889c4655ce19e724b5348cbb38324b2c67",
+          "caption": "target compat"
+        },
+        {
+          "file": "changelog/unreleased/realism-01-aerial/compare.gif",
+          "sha256": "1002af6ed02f53fb03a86f43f3a2ffc8da302cc66c909cf298a61614926824c8",
+          "caption": "Native frames, separate labels, shared palette, 2.5 seconds each."
+        }
+      ],
+      "output": null,
+      "title": "Separate ranges with distance-based scattering",
+      "version": "unreleased",
+      "kind": "improved",
+      "capture": {
+        "before_ref": "79e9f6aa6fb9f60c26756a30f4045700a9edfe67",
+        "after_ref": "codex/realism-01-aerial",
+        "before_pack": "iterate-01-before.pck",
+        "after_pack": "iterate-01-after.pck",
+        "seed": 3,
+        "preset": "high",
+        "mood": "day",
+        "resolution": "1600x900",
+        "focus": "0,0",
+        "zoom": 900,
+        "pitch": -22,
+        "yaw": 0.7,
+        "shot_at": 2,
+        "quit_after": 3,
+        "wide": "focus 0,0; zoom 900; pitch -22; yaw 0.7",
+        "compatibility": "Target after with --rendering-method gl_compatibility",
+        "command": "godot --main-pack PACK --resolution 1600x900 -- --aivai --seed=3 --offscreen --nohud --set=perf:0 --preset=high --mood=MOOD --focus=FOCUS --zoom=ZOOM --pitch=PITCH --cam-yaw=0.7 --screenshot=OUTPUT --shot-at=2 --quit-after=3"
+      }
+    },
+    {
+      "entry": "changelog/unreleased/realism-02-strata.md",
+      "summary": "Rock beds catch light along their ledges instead of appearing only as painted colour bands.",
+      "medium": "still",
+      "stage": "native-media",
+      "rationale": "Isolate this refinement against its immediate parent, with a targeted view and a distant view.",
+      "source_ref": "codex/realism-02-strata",
+      "sources": [
+        {
+          "file": "changelog/unreleased/realism-02-strata/target-before.jpg",
+          "sha256": "c42904c2933caefc95b48640f75f65c789f9f0a087efefd07865f9e46ef9200a",
+          "caption": "target before"
+        },
+        {
+          "file": "changelog/unreleased/realism-02-strata/target-after.jpg",
+          "sha256": "dba716b988e154748776d7036c1833cc095fb078f57ccfea41f40ae30ecd73bd",
+          "caption": "target after"
+        },
+        {
+          "file": "changelog/unreleased/realism-02-strata/wide-before.jpg",
+          "sha256": "c60a5b4b3532b5e696ad516c2ef02774a1750bc60ce4108f2eccb7b4b7060218",
+          "caption": "wide before"
+        },
+        {
+          "file": "changelog/unreleased/realism-02-strata/wide-after.jpg",
+          "sha256": "cca202f8c493e945c43dcb5ec5d56bd9fe9586de586ead728d70973ceb61270a",
+          "caption": "wide after"
+        },
+        {
+          "file": "changelog/unreleased/realism-02-strata/target-compat.jpg",
+          "sha256": "e9ec103557048e2457996f923e33d5da540a4ee4d548b0aa95831f2bd164de56",
+          "caption": "target compat"
+        },
+        {
+          "file": "changelog/unreleased/realism-02-strata/compare.gif",
+          "sha256": "f8e64be173afd1a8b0ef7bd399335fbc2bc925a123f198b3719635b47d306a9c",
+          "caption": "Native frames, separate labels, shared palette, 2.5 seconds each."
+        }
+      ],
+      "output": null,
+      "title": "Give geological layers surface relief",
+      "version": "unreleased",
+      "kind": "improved",
+      "capture": {
+        "before_ref": "ab734fe61a6a37ec0089a4a1896756096ff1be4b",
+        "after_ref": "codex/realism-02-strata",
+        "before_pack": "realism-01.pck",
+        "after_pack": "realism-02.pck",
+        "seed": 3,
+        "preset": "high",
+        "mood": "day",
+        "resolution": "1600x900",
+        "focus": "300,300",
+        "zoom": 100,
+        "pitch": -28,
+        "yaw": 0.7,
+        "shot_at": 2,
+        "quit_after": 3,
+        "wide": "focus 0,0; zoom 900; pitch -22; yaw 0.7",
+        "compatibility": "Target after with --rendering-method gl_compatibility",
+        "command": "godot --main-pack PACK --resolution 1600x900 -- --aivai --seed=3 --offscreen --nohud --set=perf:0 --preset=high --mood=MOOD --focus=FOCUS --zoom=ZOOM --pitch=PITCH --cam-yaw=0.7 --screenshot=OUTPUT --shot-at=2 --quit-after=3"
+      }
+    },
+    {
+      "entry": "changelog/unreleased/realism-03-rock-scales.md",
+      "summary": "Broad cliff fractures and smaller joint patterns break up recognisable repeated rock tiles.",
+      "medium": "still",
+      "stage": "native-media",
+      "rationale": "Isolate this refinement against its immediate parent, with a targeted view and a distant view.",
+      "source_ref": "codex/realism-03-rock-scales",
+      "sources": [
+        {
+          "file": "changelog/unreleased/realism-03-rock-scales/target-before.jpg",
+          "sha256": "dba716b988e154748776d7036c1833cc095fb078f57ccfea41f40ae30ecd73bd",
+          "caption": "target before"
+        },
+        {
+          "file": "changelog/unreleased/realism-03-rock-scales/target-after.jpg",
+          "sha256": "74a739a0ea6df8ed386309acc118671558e30f5a7f994cdee39da198bcc9db7a",
+          "caption": "target after"
+        },
+        {
+          "file": "changelog/unreleased/realism-03-rock-scales/wide-before.jpg",
+          "sha256": "cca202f8c493e945c43dcb5ec5d56bd9fe9586de586ead728d70973ceb61270a",
+          "caption": "wide before"
+        },
+        {
+          "file": "changelog/unreleased/realism-03-rock-scales/wide-after.jpg",
+          "sha256": "1405db7e3626b7db01f623b293b89c9c4730979681fc9828f8f96da4bc799fcc",
+          "caption": "wide after"
+        },
+        {
+          "file": "changelog/unreleased/realism-03-rock-scales/target-compat.jpg",
+          "sha256": "1f9e43dfc315cc6a52b023947da1cf142675a128199b9b107de0d111d4fab708",
+          "caption": "target compat"
+        },
+        {
+          "file": "changelog/unreleased/realism-03-rock-scales/compare.gif",
+          "sha256": "8ec287ccecefc157a062facda535676ac93fcd02af98826bf139b171cd11b1a8",
+          "caption": "Native frames, separate labels, shared palette, 2.5 seconds each."
+        }
+      ],
+      "output": null,
+      "title": "Blend rock detail across different scales",
+      "version": "unreleased",
+      "kind": "improved",
+      "capture": {
+        "before_ref": "71bbd407bef4e71fc20c115551296f4223da37f8",
+        "after_ref": "codex/realism-03-rock-scales",
+        "before_pack": "realism-02.pck",
+        "after_pack": "realism-03.pck",
+        "seed": 3,
+        "preset": "high",
+        "mood": "day",
+        "resolution": "1600x900",
+        "focus": "300,300",
+        "zoom": 100,
+        "pitch": -28,
+        "yaw": 0.7,
+        "shot_at": 2,
+        "quit_after": 3,
+        "wide": "focus 0,0; zoom 900; pitch -22; yaw 0.7",
+        "compatibility": "Target after with --rendering-method gl_compatibility",
+        "command": "godot --main-pack PACK --resolution 1600x900 -- --aivai --seed=3 --offscreen --nohud --set=perf:0 --preset=high --mood=MOOD --focus=FOCUS --zoom=ZOOM --pitch=PITCH --cam-yaw=0.7 --screenshot=OUTPUT --shot-at=2 --quit-after=3"
+      }
+    },
+    {
+      "entry": "changelog/unreleased/realism-04-talus.md",
+      "summary": "Sheltered lower slopes collect pale loose stone while exposed walls retain darker bedrock.",
+      "medium": "still",
+      "stage": "native-media",
+      "rationale": "Isolate the revision from the previous proposal with identical upstream changes, seed and camera.",
+      "source_ref": "codex/realism-04-talus",
+      "sources": [
+        {
+          "file": "changelog/unreleased/realism-04-talus/target-before.jpg",
+          "sha256": "ebf6270399eced62c0eab5ab866bb0e883069e07388a84d9f97c4937baa95781",
+          "caption": "target before"
+        },
+        {
+          "file": "changelog/unreleased/realism-04-talus/target-after.jpg",
+          "sha256": "f1050334a2c9d88bc7c518a6f8d1aab59085e91f7b760b6b7819066823b3ba0d",
+          "caption": "target after"
+        },
+        {
+          "file": "changelog/unreleased/realism-04-talus/wide-before.jpg",
+          "sha256": "d0da15779f5016f95c60259b2c2c3366c00f4af99d81e31705b9ea8d74b4e62a",
+          "caption": "wide before"
+        },
+        {
+          "file": "changelog/unreleased/realism-04-talus/wide-after.jpg",
+          "sha256": "aca65724657dd901852ae6198540863eff7d4205c3320d24471ed943e611a93a",
+          "caption": "wide after"
+        },
+        {
+          "file": "changelog/unreleased/realism-04-talus/target-compat.jpg",
+          "sha256": "545711764c5067b0ccd32fc007f93d23d92d5b4a3edf6e7265275190fc4cde76",
+          "caption": "target compat"
+        },
+        {
+          "file": "changelog/unreleased/realism-04-talus/compare.gif",
+          "sha256": "123795562bab286d446b2336f5fe45eea9e24d5ed7a5df3a9a496319ee952f0e",
+          "caption": "Native frames, separate labels, shared palette, 2.5 seconds each."
+        }
+      ],
+      "output": null,
+      "title": "Distinguish loose scree from solid cliffs",
+      "version": "unreleased",
+      "kind": "improved",
+      "capture": {
+        "before_ref": "35f8ae05fa1fe12f9a1886bd3ac47c5fa5e388da",
+        "after_ref": "codex/realism-04-talus",
+        "before_pack": "review-04-before.pck",
+        "after_pack": "review-04-after.pck",
+        "seed": 3,
+        "preset": "high",
+        "mood": "day",
+        "resolution": "1600x900",
+        "focus": "250,250",
+        "zoom": 350,
+        "pitch": -28,
+        "yaw": 0.7,
+        "shot_at": 2,
+        "quit_after": 3,
+        "wide": "focus 0,0; zoom 900; pitch -22; yaw 0.7",
+        "compatibility": "Target after with --rendering-method gl_compatibility",
+        "command": "godot --main-pack PACK --resolution 1600x900 -- --aivai --seed=3 --offscreen --nohud --set=perf:0 --preset=high --mood=MOOD --focus=FOCUS --zoom=ZOOM --pitch=PITCH --cam-yaw=0.7 --screenshot=OUTPUT --shot-at=2 --quit-after=3"
+      }
     }
   ],
   "layout_capture": {

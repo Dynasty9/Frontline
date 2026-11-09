@@ -802,3 +802,125 @@ Benchmark JSON includes loading-stage timings, route-cache hits and path queue
 waiting time. `--require-target` makes the benchmark fail when any measured rendered
 frame exceeds 16.67 ms or any simulation tick exceeds 33.33 ms; ordinary runs retain
 these budget results without treating an unfinished optimization as a harness error.
+
+## Generated elevation
+
+`Landform` produces immutable 4 m geology samples using seeded, domain-warped ridged simplex noise,
+thermal material transfer and seeded hydraulic droplet erosion. Rain cuts gullies and deposits sediment downhill. Planned roads, rivers, towns and bases
+reserve level corridors before the final erosion pass. This keeps existing bridge, supply and town layouts
+connected. The river network is planned for gameplay before erosion, rather than derived from the erosion simulation.
+
+Ground materials blend bundled CC0 aerial rock, fractured stone and moss photographs with triplanar normal
+maps and connected snowfields. Cliff slabs use a larger scale than loose scree; steep faces shed snow.
+Photographic samples are converted from sRGB in Compatibility before computing the shared linear mineral masks.
+`Landform.bake_surface()` samples eight horizon bearings out to 128 m
+on an 8 m grid, baking sky visibility and broad concavity. A third channel traces toward the sun out to
+512 m, extending ridge shadows beyond the live shadow cascades. The bake rebuilds when the lighting
+mood changes and never changes geology or simulation data. Moving-object shadows, weather and crater
+normals remain live. Keep mipmaps enabled in their import settings. Credits and hashes
+are in `assets/terrain/`. Outside the playable boundary a 16 m, non-interactive mountain backdrop blends
+into the map edge; it is scenery only and does not enter navigation, replication or combat.
+
+`TerrainMap.dh` stores total height on the existing 50 cm deformation grid. The rendering texture carries
+surface height in R and immutable geology in G; crater shading subtracts the latter. Use `world.ground_y`
+for a soldier or touchdown (including trench floors and bridge decks), `landform.height` for foundations,
+and `ray_ground` for terrain occlusion. Do not treat world Y as altitude above ground.
+
+Navigation blocks slopes over 0.85 rise/run for infantry, 0.48 for wheels and 0.65 for tracks. Remaining slopes increase
+travel costs and reduce speed. Building and landing footprints sample their corners and edges for levelness.
+Enemy visibility uses sampled terrain rays; the visual fog uses a cached pixel-resolution horizon sweep.
+
+The host transmits elevation samples with the static map and recordings save them. Protocol 12 prevents
+older builds from joining elevated maps. Empty samples preserve flat scenarios and older recordings.
+`tests/landform.test.mjs` checks deterministic generation, malformed samples, sight, navigation, craters,
+infantry grounding, truck slope limits, helicopter crossings/landings and serialization. Replay tests exercise
+both flat scenarios and generated mountains. Run the full scenario suite and the long mission suite too.
+
+### Alpine rendering options
+
+`python tools/bake_alpine_assets.py` rebuilds the bundled material pack (Pillow and
+NumPy). Downloads are checksum-verified against `assets/terrain/sources.json`.
+Colour/height stores sRGB diffuse in RGB and linear displacement in alpha; surface
+stores linear normal XY, ambient occlusion and roughness in RGBA. Keep lossless RGBA,
+mipmaps enabled and alpha-border correction disabled. The shader reconstructs normal Z,
+blends layers using displacement, and reuses the same 18 triplanar texture reads.
+
+Rock-face materials include deterministic, periodic elongated slab joints. Their
+normal derivatives use the 48-metre material scale, and all packed channels share
+the same relief. This changes shading only, not collision or the terrain silhouette.
+The baker checks finite unit normals and non-flat relief. Rock shading reuses the
+existing seam, patch and shelter masks for interrupted tilted mineral beds, darker
+weathering and uneven scree pockets; these add arithmetic but no texture reads. NVIDIA GPU Gems 3
+[terrain texturing](https://developer.nvidia.com/gpugems/gpugems3/part-i-geometry/chapter-1-generating-complex-procedural-terrains-using-gpu)
+describes the triplanar projection and layered detail used as the basis here.
+
+The offline kit also bakes three 33-square heightfield forms: buttress, cirque and
+saddle. Standard generation rotates and scales them before erosion and road grading;
+collision, navigation and replication use the resulting terrain. These are analytic
+heightfield forms, not scanned meshes or overhangs. Foothill conifer stands have a
+fixed cap of 32 trees per stand and six stands per map; campaigns retain their layout.
+
+This adapts the reusable rock forms and baked detail described in Wargaming's
+[environment workflow](https://wargaming.com/en/news/creating_levels/) and the
+[height-based material layering](https://worldofwarships.eu/en/news/general-news/graphics-update-review/)
+notes. Existing sky visibility, sun occlusion and optional haze supply range separation.
+It does not reproduce their proprietary renderer or hand-authored cliff meshes.
+
+`alpine_haze` retains distant atmospheric depth on elevated maps (High/Ultra defaults),
+fading the extra haze as the camera tilts down to preserve command-view readability;
+Low/Medium keep the thinner command-camera haze. `terrain_reflections` is opt-in on all
+presets. A single UPDATE_ONCE ReflectionProbe captures only terrain on layer 3 (mask 4),
+with shadows disabled, after surface baking. A lighting mood change rebuilds the capture;
+turning the setting off releases it. Water uses environment specular instead of its synthetic
+sky reflection while enabled. It approximates distant mountains, not nearby shoreline parallax
+or moving boats. Ground remains visible on layer 1 as well. No capture includes hidden troops.
+
+Campaigns retain their previous geology recipe and woodland density to preserve authored routes and cover.
+Standard battles add bedrock fractures and denser woods.
+
+Terrain beyond 170 m uses a 4 m grid matching the immutable geology samples; nearby
+terrain retains the fine deformation grid. Woodland bark and foliage can join the existing
+64 m scenery batches, with destruction and fire restoring only the affected tree.
+
+
+### Alpine surface variation
+
+The ground shader combines broad warped mineral regions, smaller vegetation patches and
+height-oriented weathering bands. Green soil follows baked concavity and slope aspect,
+with only subtle noise variation. MapGen samples a 24 m neighbourhood for the corresponding
+habitat preference: sheltered bowls favour growth, convex ribs favour exposed stone. Woodland
+patches follow local contours rather than fixed world axes. Isolated standard-map trees
+require elevated sheltered pockets; open valley ground retains grouped woodland and meadows. Tree root tolerances are separate
+from building foundation tolerances; only successfully planted stands become woodland objectives.
+Albedo and layer coverage vary independently of the
+fine photographic relief, avoiding uniform rock and grass across the entire map.
+Standard-map trees switch toward conifers above 18% of peak elevation and stop at an
+habitat-dependent 43-57% tree line. `MapGen.alpine_dressing` selects scrub or stones from relative
+height and slope; summits above 70% and cliff slopes above 1.1 receive neither.
+A separate seeded generator caps scatter at 1,200 clumps per map and keeps them off
+reserved roads, towns, water and structure footprints. Entries travel through existing
+decor replication and replay. Each low piece is grounded separately and merged into
+normal scenery chunks. These are passable cosmetic scrub/stones, not large cover boulders
+or simulated burnable vegetation. Campaign scatter and tree selection remain unchanged.
+
+### Terrain traversal
+
+`Nav` keeps infantry, wheeled and tracked rasters and HPA graphs. The public vehicle flag defaults to
+wheels; vehicle requests select tracks from `Vehicle.is_tracked()`. Both vehicle classes retain structure
+clearance. `TerrainMap.vehicle_slopes` caches the maximum geology slope over a conservative eight-metre
+envelope. Limits apply in every direction, including cross-slope turns; this is not an oriented vehicle
+rollover simulation. Terrain weights continue to prefer roads and discourage mud, craters and slopes.
+
+`NavRaster.build_regions()` labels connectivity during finalization. Opening cells merges labels immediately;
+closing a passage may leave a false positive, which the current HPA graph resolves. It never causes a false
+unreachable result. Rebuild work rotates between the three movement classes with a deterministic quota.
+Existing solid structure nav parts supply no-go footprints for rock geometry; their visual and combat
+geometry must still agree. No disconnected decorative collision layer is introduced.
+
+`WaterMap.depth_at` compares the actual deformed bed to the water surface and exempts bridge decks.
+Shallow-labelled cells deeper than 55 cm are blocked too, with corner samples for shoreline cells.
+`Nav.can_step` sweeps movement at half-metre intervals, checks the endpoint and prevents diagonal corner
+cutting. Infantry use it for walking, diving, separation and other ground movement; vehicles use it for
+movement and recovery. Living men cannot go prone while wading. Invalid water spawns/disembarks and men
+stranded by a removed deck recover to safe ground rather than starting an underwater walking state.
+`tests/traversal.test.mjs` covers class-specific routes, footprints, water depth, fords, decks and connectivity.

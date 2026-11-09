@@ -360,6 +360,8 @@ The code: `scripts/game/mission_director.gd` (the machinery), `scripts/game/miss
 `scripts/game/mission_list.gd` (the catalogue), `scripts/ui/hud_objectives.gd` (the panel). Adding a mission is a
 catalogue entry in `MissionList.LIST`, a setup function and an autopilot function.
 
+Ambush Alley autoplay can call its existing mortar support against spotted, stopped convoy vehicles before extracting; player resources and mission objectives are unchanged.
+
 ## The systems
 
 **Soldier AI** (`scripts/game/soldier.gd`, `soldier_brain.gd`, `bt.gd`, `combat.gd`)
@@ -540,7 +542,41 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   style) and soldiers look for craters, rubble and woods when there's no wall to hide behind.
 - Stuck watchdogs: infantry re-plan if they stop making progress; vehicles back off, turn and re-plan.
 
-**The map** (`mapgen.gd`, `towngen.gd`, `decor.gd`)
+**The map** (`mapgen.gd`, `landform.gd`, `towngen.gd`, `decor.gd`)
+- Standard battlefields have seeded mountain belts, hills, valleys and rivers. Domain-warped ridged noise,
+  jointed bedrock shelves, thermal weathering and seeded rainfall erosion shape the relief. Roads, bridges, starting bases and settlements
+  occupy graded valley corridors; forests stay below the snow line and off steep faces.
+- Distant scenery has seeded mountain groups and low passes, with floating-point heights and a finer indexed mesh at Medium/Far detail. Reusable cliff forms have uneven shoulders and irregular drainage cuts before erosion.
+- Distant mountain groups lose contrast into sky-coloured haze while nearby ground retains its detail.
+- Rock beds catch light along their ledges instead of appearing only as painted colour bands.
+- Broad cliff fractures and smaller joint patterns break up recognisable repeated rock tiles.
+- Sheltered lower slopes collect pale loose stone while exposed walls retain darker bedrock.
+- Moss and soil blend into exposed stone on slopes, with baked slab fractures, broken mineral beds, sheltered weathering, loose-stone pockets and snow on high sheltered ground.
+- Optional alpine haze takes on the sky colour and settles lightly into lower valleys.
+- Narrow mineral stains run down exposed cliffs, interrupted by ledges and changes in rock type.
+- Wind exposure and rock relief break up snow edges, with cooler compacted snow in sheltered pockets.
+- Sheltered rock crevices receive stronger ambient occlusion while exposed rock stays open to sky light.
+- World-space texture warping breaks up repeated slab patterns without adding material samples.
+  Photograph-derived height, normals, crevice shading and roughness give each material distinct relief;
+  height-based transitions let rock emerge through moss and snow. Reusable buttress, bowl and saddle
+  forms shape standard mountains before erosion, with small conifer stands along suitable foothills.
+  Warped mineral bands, dry grass patches and broken scree vary the surfaces at several scales. Mixed
+  lowland trees give way to conifers and an irregular tree line; passable scrub and small stones
+  cluster by altitude and slope below the snowy summits. Sheltered bowls retain greener soil and scrub;
+  exposed ribs stay stony. Woodland stretches along contours, and tree roots can occupy steeper
+  mountain ledges without relaxing the level-ground requirement for buildings.
+  Baked sky visibility and distant sun shadows deepen the gullies, rebuilding when the lighting mood changes.
+  Optional alpine haze adds atmospheric depth; cached terrain reflections exclude moving units and refresh with lighting.
+  Standard-battle woods are denser and share spatial bark and foliage batches; changed trees recover their individual models.
+  Campaign missions retain their previous geology and woodland layout to preserve authored routes and cover.
+  Infantry and vehicles follow the ground, slow on slopes, and route around faces too steep to cross.
+  Infantry, wheels and tracks have separate traversal limits (about 40, 26 and 33 degrees). Vehicle slopes
+  use an eight-metre envelope so a flat centre cannot conceal a cliff under the hull. Routes favour roads;
+  blocked rock/structure footprints retain clearance, and precomputed connectivity rejects separated regions.
+  Ridges block shots and enemy detection. Helicopters anticipate rising ground and land relative to the surface.
+- Construction requires a sufficiently level footprint. Trenches, shell holes, fires, selection and targeting
+  use local ground height. The host sends the exact elevation samples to joiners and recordings retain them,
+  including backward seeks; older recordings and dedicated flat test scenarios remain supported.
 - A town in the middle, laid out on a street grid: two main streets crossing at the centre, side streets closing
   some of the blocks, asphalt with a dashed centre line, curbs and sidewalks, zebra crossings at the crossroads.
   Houses stand on lots facing the street with their door to it; behind them, gardens closed off by hedges or
@@ -560,7 +596,10 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   flank from edge to edge: a concrete road bridge where the cross road crosses it, a ford in each half, muddy
   banks. A pond lies in each half. Deep water is impassable on foot or in a vehicle; men and vehicles can wade
   the shallows (fords, the edge of the beach) - slowly, and exposed. The beds are carved into the ground, so a
-  man wading sinks to his knees. Bridges and the harbour are key points the AI fights over. The water is laid
+  man wading sinks to his knees. Actual depth is limited to 55 cm, including shore-cell edges;
+  living men stay upright while wading. Movement checks the whole step, so old routes, dives, separation
+  and knockback cannot carry a man through deep water. Spawns and disembarking find safe ground;
+  a living man stranded by a removed crossing is repositioned to the nearest safe bank. Bridges and the harbour are key points the AI fights over. The water is laid
   out on the server as a few shapes and rasterized identically on every client.
 - **How the water looks** (`water_view.gd`). The surface is drawn in tiles only where there's water. The sea
   runs two wave systems that cross: a swell from weather far out at sea, long and regular and coming in sets

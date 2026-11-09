@@ -485,16 +485,17 @@ void vertex() {
 		VERTEX *= 0.0;
 	}
 	float gd = terrain_height(deform_tex, (MODEL_MATRIX[3].xz + __MAP_HALF__) / __MAP_SIZE__);
-	if (gd < -0.12) {
+	if (gd - terrain_geology(deform_tex, (MODEL_MATRIX[3].xz + __MAP_HALF__) / __MAP_SIZE__) < -0.12) {
 		VERTEX *= 0.0;  // blown away
 	}
+	float plant_y = VERTEX.y;
 	VERTEX.y += gd / max(0.05, length(MODEL_MATRIX[1].xyz));
 	rnd = INSTANCE_CUSTOM.r;
 	vec3 o = MODEL_MATRIX[3].xyz;
 	float n = sin(VERTEX.x * 9.0 + rnd * 7.0) * sin(VERTEX.y * 8.0) * sin(VERTEX.z * 10.0);
 	VERTEX += NORMAL * n * 0.08;
 	float t = TIME * 1.3 + o.x * 0.3;
-	VERTEX.x += sin(t) * 0.03 * VERTEX.y;
+	VERTEX.x += sin(t) * 0.03 * plant_y;
 	lp = VERTEX;
 }
 void fragment() {

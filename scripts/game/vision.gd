@@ -1,9 +1,8 @@
 class_name Vision
 extends RefCounted
 ## What a side can see: every pair of eyes it has on the battlefield, as a
-## circle of sight. The host works the fog of war out from them (Rules), and
-## each player's game draws the same circles as the fog over the ground and
-## the minimap (FogView) from its own side's units, which it always knows.
+## height and range. Rules tests terrain occlusion for each contact; FogView
+## draws a cached horizon sweep from the same observers.
 ##
 ## Men see 56 m (a man up a watchtower further), vehicles what their optics
 ## give them (Defs "sight"; recon cars and drones far more), a FOB its
@@ -35,35 +34,45 @@ static func structure_sight(st: Structure) -> float:
 	return POST
 
 
-## Every eye a side has, as (x, z, radius). A recon flight's pictures (the
+## Every eye a side has, as (x, y, z, radius). A recon flight's pictures (the
 ## strip it photographed a moment ago) come in as `marks`: (x, z, radius, until).
 ## `structures`: the side's own buildings, if the caller keeps a list of them
 ## (null: every structure on the map is looked through).
-static func eyes(w: World, team: int, marks: Array = [], structures = null) -> PackedVector3Array:
-	var out := PackedVector3Array()
+static func observers(w: World, team: int, marks: Array = [], structures = null) -> PackedVector4Array:
+	var out := PackedVector4Array()
 	for s in w.soldiers:
 		if s.team != team or s.gone:
 			continue
 		if s.life == Soldier.Life.ALIVE:
-			out.append(Vector3(s.position.x, s.position.z, s.sight_range()))
+			out.append(Vector4(s.position.x, s.position.y + 1.5, s.position.z, s.sight_range()))
 		elif s.life == Soldier.Life.DOWNED:
-			out.append(Vector3(s.position.x, s.position.z, DOWNED))
+			out.append(Vector4(s.position.x, s.position.y + 1.5, s.position.z, DOWNED))
 	for v in w.vehicles:
 		if v.team == team and not v.gone:
-			out.append(Vector3(v.position.x, v.position.z, float(v.vdef.get("sight", VEHICLE))))
+			out.append(Vector4(v.position.x, v.position.y + 2.0, v.position.z, float(v.vdef.get("sight", VEHICLE))))
 	for st in (w.owned_structures if structures == null else structures):
 		if st.team != team or st.gone or not st.built:
 			continue
 		var r := structure_sight(st)
 		if r > 0.0:
 			var c: Vector3 = st.zone_c if st.skind == "town" else st.position  # (a town: from the middle of its ground)
-			out.append(Vector3(c.x, c.z, r))
+			out.append(Vector4(c.x, c.y + (5.5 if st.skind == "watchtower" else 2.0), c.z, r))
 	for d in w.drones:
 		if d.team == team and not d.gone:
-			out.append(Vector3(d.position.x, d.position.z, FPV))
+			out.append(Vector4(d.position.x, d.position.y, d.position.z, FPV))
 	for p in w.projectiles:
 		if p.team == team and not p.gone:
-			p.add_eyes(out)
+			var air := PackedVector3Array()
+			p.add_eyes(air)
+			for eye in air:
+				out.append(Vector4(eye.x, p.position.y, eye.y, eye.z))
 	for m in marks:
-		out.append(Vector3(m.x, m.y, m.z))
+		out.append(Vector4(m.x, w.terrain.landform.peak + 100.0, m.y, m.z))
+	return out
+
+
+static func eyes(w: World, team: int, marks: Array = [], structures = null) -> PackedVector3Array:
+	var out := PackedVector3Array()
+	for eye in observers(w, team, marks, structures):
+		out.append(Vector3(eye.x, eye.z, eye.w))
 	return out
