@@ -1256,9 +1256,17 @@ void fragment() {
 	snow_field += (macro - 0.5) * 0.45 + lee * 0.18 + (0.5 - rock_height) * 0.22;
 	float snow = height_blend(rock_height, 0.6, smoothstep(-0.16, 0.20, snow_field));
 	snow *= 1.0 - smoothstep(0.85, 2.1, slope);
+	float scoured = smoothstep(0.46, 0.72, rock_sample.a * 0.38 + macro * 0.38 + patch * 0.24);
+	snow *= 1.0 - scoured * smoothstep(0.22, 0.95, slope) * 0.88;
+	snow = height_blend(rock_sample.a, scree_sample.a, snow);
 	snow *= clean;
+	// Wind ripples are resolved only while they cover several pixels.
+	float snow_phase = dot(p, vec2(0.8, 0.6)) * 1.3 + (macro - 0.5) * 7.0 + patch * 9.0;
+	float snow_resolved = 1.0 - smoothstep(0.5, 2.5, fwidth(snow_phase));
+	float snow_ripple = sin(snow_phase) * snow_resolved * smoothstep(0.18, 0.65, macro) * 0.65;
+	snow_ripple += sin(snow_phase * 0.47 + macro * 6.0) * (1.0 - smoothstep(0.5, 2.5, fwidth(snow_phase * 0.47))) * 0.35;
 	vec3 snow_color = mix(vec3(0.65, 0.75, 0.84), vec3(0.88, 0.90, 0.92), smoothstep(-0.3, 0.6, lee + macro));
-	col = mix(col, snow_color * (0.95 + d3 * 0.05), snow);
+	col = mix(col, snow_color * (0.94 + d3 * 0.06 + snow_ripple * 0.018), snow);
 	vec2 material_data = mix(moss_data, rock_data, exposed);
 	// Combine photographic crevices with broad shelter; do not bake a second direct-light shadow.
 	float crevice = clamp(rock_data.x * mix(1.0, 0.72, shelter), 0.25, 1.0);
@@ -1274,7 +1282,7 @@ void fragment() {
 	ALBEDO = col * (1.0 - aerial);
 	EMISSION = air_color * aerial * 0.65;
 	ROUGHNESS = mix(mix(0.96, 0.82, dirt_m), clamp(material_data.y, 0.55, 1.0), clean);
-	ROUGHNESS = mix(ROUGHNESS, mix(0.74, 0.94, macro), snow);
+	ROUGHNESS = mix(ROUGHNESS, clamp(mix(0.68, 0.94, macro) + snow_ripple * 0.06, 0.6, 1.0), snow);
 	ROUGHNESS = mix(ROUGHNESS, 0.55, wet * 0.5);
 	ROUGHNESS = mix(ROUGHNESS, 0.45, max(wm.a * 0.8, wet_sand * 0.6));
 	ROUGHNESS = mix(ROUGHNESS, 0.16, puddle);
@@ -1294,6 +1302,7 @@ void fragment() {
 	n = normalize(mix(n, mapped, 0.85 * clean * (1.0 - snow)));
 	n = surface_relief(n, mineral * 0.28, exposed * clean * (1.0 - snow) * smoothstep(0.3, 1.0, slope));
 	n = normalize(mix(n, geometric, snow * 0.9));
+	n = surface_relief(n, snow_ripple * 0.065 + scree_sample.a * 0.025, snow);
 	n = normalize(mix(n, vec3(0.0, 1.0, 0.0), puddle * 0.9));
 	NORMAL = normalize((VIEW_MATRIX * vec4(n, 0.0)).xyz);
 }
