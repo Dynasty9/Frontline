@@ -3,6 +3,11 @@ title = "Infantry animation and impact preview"
 summary = "An optional skinned rifleman preview adds captured movement, grounded feet, rifle grips and physical hit reactions. Soldiers make room before going prone beside walls."
 kind = "improved"
 
+[[videos]]
+file = "wall-to-prone.webm"
+poster = "after.jpg"
+caption = "Archived battle fixture: a server-controlled soldier backs clear of the wall, settles, then lowers into prone. Local imported assets; recorded before the later foot-plant correction."
+
 [[screenshots]]
 file = "before.jpg"
 caption = "The earlier procedural rifleman"

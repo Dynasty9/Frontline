@@ -4,12 +4,12 @@ summary = "The optional infantry preview uses captured limping and dazed motion,
 kind = "improved"
 
 [[videos]]
-file = "injured.mp4"
+file = "injured.webm"
 poster = "injured.jpg"
 caption = "SWAT limping, dazed recovery and return to armed idle in the shared animation test scene."
 
 [[videos]]
-file = "prone-wall.mp4"
+file = "prone-wall.webm"
 poster = "prone-wall.jpg"
 caption = "The playground backs away from a wall, settles, then lowers into prone."
 +++
@@ -18,3 +18,5 @@ caption = "The playground backs away from a wall, settles, then lowers into pron
 - Activity animations keep progressing while the rifle moves to its sling.
 - The playground checks the space needed to go prone and takes a short backward step when a wall is too close. Movement cancels the pending adjustment.
 - Imported animation assets remain a local preview requirement.
+
+These archived fixture recordings predate the later foot-plant correction. The separate steadier-foot-plants entry shows that correction. They demonstrate motion and recovery, not multiplayer or frame-rate performance.

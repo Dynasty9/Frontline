@@ -2750,10 +2750,10 @@
     {
       "entry": "changelog/unreleased/infantry-animation.md",
       "summary": "An optional skinned rifleman preview adds captured movement, grounded feet, rifle grips and physical hit reactions. Soldiers make room before going prone beside walls.",
-      "medium": "still",
+      "medium": "motion",
       "stage": "gameplay-and-controlled-preview",
-      "rationale": "Stills document the UI or sampled pose/hand placement; continuity is checked by focused tests, not certified by stills alone.",
-      "source_ref": "PR #98; 969ba00",
+      "rationale": "The archived battle fixture shows the wall-clearance step and prone transition; preserved stills show appearance and activities. Local imported assets only, not a fresh current-main capture.",
+      "source_ref": "PR #98; 969ba00; WebM source revision and encoding in tools/showcase/pr98-webm-review.json",
       "sources": [
         {
           "file": "changelog/unreleased/infantry-animation/before.jpg",
@@ -2789,6 +2789,11 @@
           "file": "changelog/unreleased/infantry-animation/mixamo-crouch.png",
           "sha256": "68115c72efd5ca142c706dc0362cecd2aa90893f087f0d05b6bc69190ca170ca",
           "caption": "The SWAT rifleman settles into cover using the Mixamo crouch cycle and baked rifle"
+        },
+        {
+          "file": "changelog/unreleased/infantry-animation/wall-to-prone.webm",
+          "sha256": "d9ec68250c944232237f57f216340629a493ad06b0d5e19023c0187c4ee9f037",
+          "caption": "Archived battle fixture: a server-controlled soldier backs clear of the wall, settles, then lowers into prone. Local imported assets; recorded before the later foot-plant correction."
         }
       ],
       "output": null
@@ -2909,6 +2914,83 @@
       "version": "unreleased",
       "kind": "fixed",
       "attribution": "Native fixed-step capture; optional assets remain local."
+    },
+    {
+      "entry": "changelog/unreleased/foot-plants-and-rifle-hop.md",
+      "summary": "The optional SWAT character keeps its planted boots steady, uses a lower rifle hop, and gains captured relaxed idles.",
+      "medium": "motion",
+      "stage": "controlled-character-preview",
+      "rationale": "Real fixed-step character fixtures show the action and armed recovery at an inspectable scale. Local imported assets only; no broad gameplay or performance certification.",
+      "source_ref": "PR #98; committed MP4 source revisions and encoding in tools/showcase/pr98-webm-review.json",
+      "sources": [
+        {
+          "file": "changelog/unreleased/foot-plants-and-rifle-hop/backstep.webm",
+          "sha256": "cceffcc0ba1bc9019baea249e4d7b6f2a941fd9bcfdd1f073d3f335a0ae7cb18",
+          "caption": "Controlled wall fixture: back away at 1 s, plant both boots, then lower into prone. Local SWAT assets; captured at 36b6f0b."
+        },
+        {
+          "file": "changelog/unreleased/foot-plants-and-rifle-hop/jump.webm",
+          "sha256": "f898b964570934cc68d93ca8e402b3ca9c13cffb425ec479576b972825b7075a",
+          "caption": "Three-second playground hop: watch the rifle grips through takeoff and landing. This is not a new battlefield ability."
+        },
+        {
+          "file": "changelog/unreleased/foot-plants-and-rifle-hop/idles.webm",
+          "sha256": "34f6524ca0b21c7b2e51b7e657f69c7a6c5d06fc78249f2728f357ba9f779957",
+          "caption": "Chat 0-7 s, laugh 7-14 s, stretch 14-21 s and armed lookout 21-28 s; each returns to rifle idle."
+        },
+        {
+          "file": "changelog/unreleased/foot-plants-and-rifle-hop/after.jpg",
+          "sha256": "6ddc5fb41d256147224cf3fa4142b607cb585997426df4932ef0df0968166263",
+          "caption": "Poster: Controlled wall fixture: back away at 1 s, plant both boots, then lower into prone. Local SWAT assets; captured at 36b6f0b."
+        },
+        {
+          "file": "changelog/unreleased/foot-plants-and-rifle-hop/jump.jpg",
+          "sha256": "7ef088472183da64394f1c9c1fd0ea71c9b41f99931e4dbd2953717410ebab6e",
+          "caption": "Poster: Three-second playground hop: watch the rifle grips through takeoff and landing. This is not a new battlefield ability."
+        },
+        {
+          "file": "changelog/unreleased/foot-plants-and-rifle-hop/idles.jpg",
+          "sha256": "2a2d46b8e64e6a0c874f2c80f3696facd992189ecb7303e1b531687e632830f1",
+          "caption": "Poster: Chat 0-7 s, laugh 7-14 s, stretch 14-21 s and armed lookout 21-28 s; each returns to rifle idle."
+        },
+        {
+          "file": "changelog/unreleased/foot-plants-and-rifle-hop/before.jpg",
+          "sha256": "16661b4fd9e8c027117f9add9a598770a3375f96cd8ff81e17230594872007e9",
+          "caption": "Before: acquiring foot contact pulls the corrected boot toward the source animation."
+        }
+      ],
+      "output": null
+    },
+    {
+      "entry": "changelog/unreleased/captured-injury-motion.md",
+      "summary": "The optional infantry preview uses captured limping and dazed motion, and the playground makes room before lying down near a wall.",
+      "medium": "motion",
+      "stage": "controlled-character-preview",
+      "rationale": "Real fixed-step character fixtures show the action and armed recovery at an inspectable scale. Local imported assets only; no broad gameplay or performance certification.",
+      "source_ref": "PR #98; committed MP4 source revisions and encoding in tools/showcase/pr98-webm-review.json",
+      "sources": [
+        {
+          "file": "changelog/unreleased/captured-injury-motion/injured.webm",
+          "sha256": "93d219ac2cd546e090d7960435d0a0f4698842d33bfb70c954050d590ea17f94",
+          "caption": "SWAT limping, dazed recovery and return to armed idle in the shared animation test scene."
+        },
+        {
+          "file": "changelog/unreleased/captured-injury-motion/prone-wall.webm",
+          "sha256": "e5f47e2cd5b45a0189ccb69f8b34126e457f0040771c621677e989c94f5de4df",
+          "caption": "The playground backs away from a wall, settles, then lowers into prone."
+        },
+        {
+          "file": "changelog/unreleased/captured-injury-motion/injured.jpg",
+          "sha256": "c2edd92d270ea0bef957d72043017f9849b61cfb277bb40d8ab7c249a752c38c",
+          "caption": "Poster: SWAT limping, dazed recovery and return to armed idle in the shared animation test scene."
+        },
+        {
+          "file": "changelog/unreleased/captured-injury-motion/prone-wall.jpg",
+          "sha256": "4c911cc329efcdbaedb0dc694ede6237b29d0a636713b24de3c77339f4950c39",
+          "caption": "Poster: The playground backs away from a wall, settles, then lowers into prone."
+        }
+      ],
+      "output": null
     }
   ],
   "layout_capture": {

@@ -3,17 +3,17 @@ title = "Steadier foot plants and a restrained rifle hop"
 summary = "The optional SWAT character keeps its planted boots steady, uses a lower rifle hop, and gains captured relaxed idles."
 kind = "improved"
 [[videos]]
-file = "backstep.mp4"
+file = "backstep.webm"
 poster = "after.jpg"
-caption = "Shared gameplay backstep, foot plant and prone entry beside a wall."
+caption = "Controlled wall fixture: back away at 1 s, plant both boots, then lower into prone. Local SWAT assets; captured at 36b6f0b."
 [[videos]]
-file = "jump.mp4"
+file = "jump.webm"
 poster = "jump.jpg"
-caption = "Lower rifle hop with both grips retained and landing tied to ground contact."
+caption = "Three-second playground hop: watch the rifle grips through takeoff and landing. This is not a new battlefield ability."
 [[videos]]
-file = "idles.mp4"
+file = "idles.webm"
 poster = "idles.jpg"
-caption = "Captured chat, laugh, stretch and armed lookout, each returning to rifle idle."
+caption = "Chat 0-7 s, laugh 7-14 s, stretch 14-21 s and armed lookout 21-28 s; each returns to rifle idle."
 [[screenshots]]
 file = "before.jpg"
 caption = "Before: acquiring foot contact pulls the corrected boot toward the source animation."
