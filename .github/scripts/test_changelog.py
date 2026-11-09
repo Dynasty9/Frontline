@@ -46,6 +46,27 @@ class Videos(unittest.TestCase):
         for text in [changelog.notes("9.9.9"), changelog.CHANGELOG_MD.read_text(encoding="utf-8")]:
             self.assertIn(f"[Watch: Flames spread.]({changelog.WEBSITE}/changelog/#v9.9.9)", text)
 
+    def test_all_clip_formats_have_direct_links_after_release_filing(self):
+        media = ""
+        for extension in ["webm", "mp4", "gif"]:
+            name = f"clip.{extension}"
+            (self.folder / name).write_bytes(b"media fixture")
+            media += self.media.replace("clip.mp4", name)
+        self.write(media)
+        with patch.object(changelog, "pr_of", return_value=None), patch.dict(
+            "os.environ", {"CHANGELOG_IMAGE_REF": "review/media"}
+        ):
+            changelog.release("9.9.9")
+            publications = [changelog.notes("9.9.9"), changelog.CHANGELOG_MD.read_text(encoding="utf-8")]
+        for text in publications:
+            before, details = text.split("<details>", 1)
+            for extension in ["webm", "mp4", "gif"]:
+                expected = (f"[Direct {extension.upper()}](https://raw.githubusercontent.com/"
+                            f"{changelog.REPO}/review/media/changelog/v9.9.9/fire/clip.{extension})")
+                self.assertIn(expected, before if extension == "webm" else details)
+            self.assertIn(f"[Watch: Flames spread.]({changelog.WEBSITE}/changelog/#v9.9.9)", before)
+            self.assertNotIn("/unreleased/", text)
+
     def test_overview_precedes_expandable_detail_in_both_publications(self):
         self.write(self.media + '\n[[screenshots]]\nfile = "poster.jpg"\ncaption = "Source still."\n')
         with patch.object(changelog, "pr_of", return_value=None):

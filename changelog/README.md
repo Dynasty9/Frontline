@@ -68,7 +68,8 @@ caption = "Fire spreads from the shell hole into the surrounding grass."
 
 The poster follows the screenshot format and size limits above. Both names must refer to files directly in
 the entry's folder. Multiple `[[videos]]` blocks appear in order below the screenshots. The website plays
-them inline; GitHub release notes and `CHANGELOG.md` link to the release on the website.
+them inline; GitHub release notes and `CHANGELOG.md` include both the website player link and a
+direct link to each MP4, WebM or GIF file.
 
 ## What happens at release
 
