@@ -3,6 +3,11 @@ title = "Connect houses and streets with gardens, paths and grounded furniture"
 summary = "Scanned materials, weathered roads and leafy canopies give towns and their surrounding hills more natural detail."
 kind = "improved"
 
+[[videos]]
+file = "native-tour.webm"
+poster = "native-tour.jpg"
+caption = "Native camera tour of photographed town surfaces, door paths and connected plots. Current PR with simulation held; the original stills below provide before/after evidence."
+
 [[screenshots]]
 file = "detail-before.jpg"
 caption = "Previous photographic surfaces: matching close camera."

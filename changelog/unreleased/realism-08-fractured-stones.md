@@ -3,6 +3,11 @@ title = "Give alpine stones angular fractured shapes"
 summary = "Stones at the mountain foot have irregular broken faces instead of flattened round primitives."
 kind = "improved"
 
+[[videos]]
+file = "native-tour.webm"
+poster = "native-tour.jpg"
+caption = "Fractured stones at close range, then the surrounding slope. Native current-PR camera recording; simulation held, wind animated. The matched stills below show before and after."
+
 [[screenshots]]
 file = "target-before.jpg"
 caption = "Previous proposal: target view, matching seed and camera."

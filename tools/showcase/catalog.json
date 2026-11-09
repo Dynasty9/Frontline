@@ -3693,9 +3693,9 @@
     {
       "entry": "changelog/unreleased/realism-08-fractured-stones.md",
       "summary": "Stones at the mountain foot have irregular broken faces instead of flattened round primitives.",
-      "medium": "still",
+      "medium": "motion",
       "stage": "native-media",
-      "rationale": "Isolate the revision from the previous proposal with identical upstream changes, seed and camera.",
+      "rationale": "A native current-PR camera tour establishes readable detail and battlefield context; preserved matched stills remain the historical before/after evidence.",
       "source_ref": "codex/realism-08-fractured-stones",
       "sources": [
         {
@@ -3727,6 +3727,21 @@
           "file": "changelog/unreleased/realism-08-fractured-stones/compare.gif",
           "sha256": "3cbc48dcc6a3dd7ef364151813c1bc70d5750a12e7f44b0c581d751de713019f",
           "caption": "Native frames, separate labels, shared palette, 2.5 seconds each."
+        },
+        {
+          "file": "changelog/unreleased/realism-08-fractured-stones/native-tour.webm",
+          "sha256": "117bc9d2cb9cccfef0db57c65af333f15ea9e84227b2a9bd8218bdd344cb1be1",
+          "caption": "Fractured stones at close range, then the surrounding slope. Native current-PR camera recording; simulation held, wind animated. The matched stills below show before and after."
+        },
+        {
+          "file": "changelog/unreleased/realism-08-fractured-stones/native-tour.jpg",
+          "sha256": "3b5e66edc5e73dce1555fe2d3a2c6445cc09fd27e89d9cdd3be42ab3d7a3ba9e",
+          "caption": "Native motion poster and reproducible capture provenance."
+        },
+        {
+          "file": "changelog/unreleased/realism-08-fractured-stones/native-tour.json",
+          "sha256": "e1ae0614c68e9e8f406da78c8b3d931916c8ef02159de74afeacc07e4602f12a",
+          "caption": "Native motion poster and reproducible capture provenance."
         }
       ],
       "output": null,
@@ -3750,7 +3765,65 @@
         "quit_after": 3,
         "wide": "focus 0,0; zoom 900; pitch -22; yaw 0.7",
         "compatibility": "Target after with --rendering-method gl_compatibility",
-        "command": "godot --main-pack PACK --resolution 1600x900 -- --aivai --seed=3 --offscreen --nohud --set=perf:0 --preset=high --mood=MOOD --focus=FOCUS --zoom=ZOOM --pitch=PITCH --cam-yaw=0.7 --screenshot=OUTPUT --shot-at=2 --quit-after=3"
+        "command": "godot --main-pack PACK --resolution 1600x900 -- --aivai --seed=3 --offscreen --nohud --set=perf:0 --preset=high --mood=MOOD --focus=FOCUS --zoom=ZOOM --pitch=PITCH --cam-yaw=0.7 --screenshot=OUTPUT --shot-at=2 --quit-after=3",
+        "native_motion": {
+          "arguments": [
+            "--script",
+            "tools/showcase/environment-motion.gd"
+          ],
+          "fps": 30,
+          "mood": "day",
+          "preset": "high",
+          "renderer": "forward_plus",
+          "resolution": "1280x768 (48-pixel label above uncropped 1280x720 source)",
+          "seed": 3,
+          "simulation": "Held at two seconds; native camera, wind and water remain animated. Not a combat or performance benchmark.",
+          "stage": "stones",
+          "user_arguments": [
+            "--aivai",
+            "--seed=3",
+            "--offscreen",
+            "--nohud",
+            "--set=perf:0",
+            "--preset=high",
+            "--mood=day",
+            "--port=8271",
+            "--motion-stage=stones",
+            "--motion-output=build/media-review"
+          ],
+          "views": [
+            {
+              "focus": "(311.6891, 0.0, 433.3651)",
+              "fov": 35.0,
+              "frames": 120,
+              "label": "Fractured stone detail",
+              "orbit_radians": 0.065,
+              "pitch": -50.0,
+              "seconds": 4,
+              "yaw": 0.7,
+              "zoom": 12.0
+            },
+            {
+              "focus": "(311.6891, 0.0, 433.3651)",
+              "fov": 35.0,
+              "frames": 120,
+              "label": "Stones within the alpine slope",
+              "orbit_radians": 0.065,
+              "pitch": -42.0,
+              "seconds": 4,
+              "yaw": 0.7,
+              "zoom": 42.0
+            }
+          ],
+          "source_ref": "8b57b5a1",
+          "clip": "native-tour.webm",
+          "poster": "native-tour.jpg",
+          "clip_sha256": "117bc9d2cb9cccfef0db57c65af333f15ea9e84227b2a9bd8218bdd344cb1be1",
+          "seconds": 8,
+          "audio": false,
+          "codec": "VP9",
+          "command": "godot --path . --fixed-fps 30 --resolution 1280x720 --script tools/showcase/environment-motion.gd -- --aivai --seed=3 --offscreen --nohud --set=perf:0 --preset=high --mood=day --motion-stage=stones --motion-output=build/media-review"
+        }
       }
     },
     {
@@ -3819,9 +3892,9 @@
     {
       "entry": "changelog/unreleased/realism-10-shore-gravel.md",
       "summary": "Coastal margins transition through exposed gravel and darker wet stone instead of a uniformly sandy strip.",
-      "medium": "still",
+      "medium": "motion",
       "stage": "native-media",
-      "rationale": "Isolate the revision from the previous proposal with identical upstream changes, seed and camera.",
+      "rationale": "A native current-PR camera tour establishes readable detail and battlefield context; preserved matched stills remain the historical before/after evidence.",
       "source_ref": "codex/realism-10-shore-gravel",
       "sources": [
         {
@@ -3853,6 +3926,21 @@
           "file": "changelog/unreleased/realism-10-shore-gravel/compare.gif",
           "sha256": "0290e21e8e14beb5657ecc76c07f16b08f515274da6e42f2b4320c6287825e37",
           "caption": "Native frames, separate labels, shared palette, 2.5 seconds each."
+        },
+        {
+          "file": "changelog/unreleased/realism-10-shore-gravel/native-tour.webm",
+          "sha256": "62e36928d106e8b35f57b06694aae791285dc46f62f4acac387afb42fd57cae9",
+          "caption": "A close orbit over gravel, wet margins and exposed sand, followed by coastal context. Native current-PR recording; camera and water animated. Compare the matched stills below."
+        },
+        {
+          "file": "changelog/unreleased/realism-10-shore-gravel/native-tour.jpg",
+          "sha256": "e0376546ff1a9336538afac6746f746497152580802a6f191c33914d804b09fe",
+          "caption": "Native motion poster and reproducible capture provenance."
+        },
+        {
+          "file": "changelog/unreleased/realism-10-shore-gravel/native-tour.json",
+          "sha256": "6993257240c600624c37b12ad20dc858c4f29094d491e4f4580c62b4eff4a8c9",
+          "caption": "Native motion poster and reproducible capture provenance."
         }
       ],
       "output": null,
@@ -3876,7 +3964,65 @@
         "quit_after": 3,
         "wide": "focus 0,0; zoom 900; pitch -22; yaw 0.7",
         "compatibility": "Target after with --rendering-method gl_compatibility",
-        "command": "godot --main-pack PACK --resolution 1600x900 -- --aivai --seed=3 --offscreen --nohud --set=perf:0 --preset=high --mood=MOOD --focus=FOCUS --zoom=ZOOM --pitch=PITCH --cam-yaw=0.7 --screenshot=OUTPUT --shot-at=2 --quit-after=3"
+        "command": "godot --main-pack PACK --resolution 1600x900 -- --aivai --seed=3 --offscreen --nohud --set=perf:0 --preset=high --mood=MOOD --focus=FOCUS --zoom=ZOOM --pitch=PITCH --cam-yaw=0.7 --screenshot=OUTPUT --shot-at=2 --quit-after=3",
+        "native_motion": {
+          "arguments": [
+            "--script",
+            "./tools/showcase/environment-motion.gd"
+          ],
+          "fps": 30,
+          "mood": "day",
+          "preset": "high",
+          "renderer": "forward_plus",
+          "resolution": "1280x768 (48-pixel label above uncropped 1280x720 source)",
+          "seed": 3,
+          "simulation": "Held at two seconds; native camera, wind and water remain animated. Not a combat or performance benchmark.",
+          "stage": "shore",
+          "user_arguments": [
+            "--aivai",
+            "--seed=3",
+            "--offscreen",
+            "--nohud",
+            "--set=perf:0",
+            "--preset=high",
+            "--mood=day",
+            "--port=8279",
+            "--motion-stage=shore",
+            "--motion-output=./build/media-review"
+          ],
+          "views": [
+            {
+              "focus": "(330.0, 0.0, 0.0)",
+              "fov": 35.0,
+              "frames": 120,
+              "label": "Gravel, wet margins and exposed sand",
+              "orbit_radians": 0.065,
+              "pitch": -45.0,
+              "seconds": 4,
+              "yaw": 0.7,
+              "zoom": 48.0
+            },
+            {
+              "focus": "(330.0, 0.0, 0.0)",
+              "fov": 35.0,
+              "frames": 120,
+              "label": "Coastal town context",
+              "orbit_radians": 0.065,
+              "pitch": -45.0,
+              "seconds": 4,
+              "yaw": 0.7,
+              "zoom": 100.0
+            }
+          ],
+          "source_ref": "bb4892f605b88159898db1eef0c0e18505baa52b",
+          "clip": "native-tour.webm",
+          "poster": "native-tour.jpg",
+          "clip_sha256": "62e36928d106e8b35f57b06694aae791285dc46f62f4acac387afb42fd57cae9",
+          "seconds": 8,
+          "audio": false,
+          "codec": "VP9",
+          "command": "godot --path . --fixed-fps 30 --resolution 1280x720 --script tools/showcase/environment-motion.gd -- --aivai --seed=3 --offscreen --nohud --set=perf:0 --preset=high --mood=day --motion-stage=shore --motion-output=build/media-review"
+        }
       }
     },
     {
@@ -3948,9 +4094,9 @@
       "title": "Connect houses and streets with gardens, paths and grounded furniture",
       "version": "unreleased",
       "kind": "improved",
-      "medium": "still",
+      "medium": "motion",
       "stage": "native-media",
-      "rationale": "Isolate the revision from the previous proposal with identical upstream changes, seed and camera.",
+      "rationale": "A native current-PR camera tour establishes readable detail and battlefield context; preserved matched stills remain the historical before/after evidence.",
       "source_ref": "codex/town-ground-and-frontages",
       "sources": [
         {
@@ -4002,6 +4148,21 @@
           "file": "changelog/unreleased/town-ground-and-frontages/compare.gif",
           "sha256": "fa8edd1b84b68731c15cde1567e3bb83ff0ecad82b1df24eae51c20eeb49eb7e",
           "caption": "Native frames, separate labels, shared palette, 2.5 seconds each."
+        },
+        {
+          "file": "changelog/unreleased/town-ground-and-frontages/native-tour.webm",
+          "sha256": "c11f5b078e632634a46674a60394d341bda32eea937975488cf76a9c3ca0e541",
+          "caption": "Native camera tour of photographed town surfaces, door paths and connected plots. Current PR with simulation held; the original stills below provide before/after evidence."
+        },
+        {
+          "file": "changelog/unreleased/town-ground-and-frontages/native-tour.jpg",
+          "sha256": "3292bc51b64d2814c4bb570cd91e6561514ddc239c673d169c624e27264acedc",
+          "caption": "Native motion poster and reproducible capture provenance."
+        },
+        {
+          "file": "changelog/unreleased/town-ground-and-frontages/native-tour.json",
+          "sha256": "0915f46010f12381fb6575c33bf4ae0c3030b133f71e695085efb72061d0be58",
+          "caption": "Native motion poster and reproducible capture provenance."
         }
       ],
       "output": null,
@@ -4024,7 +4185,65 @@
         "compatibility": "Target after with --rendering-method gl_compatibility",
         "command": "godot --main-pack PACK --resolution 1600x900 -- --aivai --seed=3 --offscreen --nohud --set=perf:0 --preset=high --mood=day --focus=FOCUS --zoom=ZOOM --pitch=PITCH --cam-yaw=0.7 --screenshot=OUTPUT --shot-at=2 --quit-after=3",
         "detail": "focus -55,-4; zoom 15; pitch -55; yaw 0.7; shot 2s",
-        "forest": "focus 0,0; zoom 900; pitch -22; yaw 0.7; shot 2s; same seed, resolution, High/day"
+        "forest": "focus 0,0; zoom 900; pitch -22; yaw 0.7; shot 2s; same seed, resolution, High/day",
+        "native_motion": {
+          "arguments": [
+            "--script",
+            "./tools/showcase/environment-motion.gd"
+          ],
+          "fps": 30,
+          "mood": "day",
+          "preset": "high",
+          "renderer": "forward_plus",
+          "resolution": "1280x768 (48-pixel label above uncropped 1280x720 source)",
+          "seed": 3,
+          "simulation": "Held at two seconds; native camera, wind and water remain animated. Not a combat or performance benchmark.",
+          "stage": "town",
+          "user_arguments": [
+            "--aivai",
+            "--seed=3",
+            "--offscreen",
+            "--nohud",
+            "--set=perf:0",
+            "--preset=high",
+            "--mood=day",
+            "--port=8281",
+            "--motion-stage=town",
+            "--motion-output=./build/media-review"
+          ],
+          "views": [
+            {
+              "focus": "(-30.0, 0.0, -12.0)",
+              "fov": 35.0,
+              "frames": 120,
+              "label": "Photographed surfaces and door paths",
+              "orbit_radians": 0.065,
+              "pitch": -50.0,
+              "seconds": 4,
+              "yaw": 0.7,
+              "zoom": 35.0
+            },
+            {
+              "focus": "(0.0, 0.0, 0.0)",
+              "fov": 35.0,
+              "frames": 120,
+              "label": "Town plots and connected streets",
+              "orbit_radians": 0.065,
+              "pitch": -40.0,
+              "seconds": 4,
+              "yaw": 0.7,
+              "zoom": 190.0
+            }
+          ],
+          "source_ref": "b38e42e92d8236f13c2ef41a8da8610bd1771741",
+          "clip": "native-tour.webm",
+          "poster": "native-tour.jpg",
+          "clip_sha256": "c11f5b078e632634a46674a60394d341bda32eea937975488cf76a9c3ca0e541",
+          "seconds": 8,
+          "audio": false,
+          "codec": "VP9",
+          "command": "godot --path . --fixed-fps 30 --resolution 1280x720 --script tools/showcase/environment-motion.gd -- --aivai --seed=3 --offscreen --nohud --set=perf:0 --preset=high --mood=day --motion-stage=town --motion-output=build/media-review"
+        }
       }
     },
     {
