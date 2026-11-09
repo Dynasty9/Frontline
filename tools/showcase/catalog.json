@@ -4249,9 +4249,9 @@
     {
       "entry": "changelog/unreleased/environment-realism-extended.md",
       "summary": "Surveyed Alpine ranges, fuller forests and photographed town surfaces give the generated battlefield more natural detail.",
-      "medium": "still",
+      "medium": "motion",
       "stage": "native-media",
-      "rationale": "Matched panorama and closer forest views expose shoreline and vegetation changes; a separate matched Compatibility pair demonstrates the colour correction.",
+      "rationale": "A native current-PR camera tour establishes readable detail and battlefield context; preserved matched stills remain the historical before/after evidence.",
       "source_ref": "b38e42e92d8236f13c2ef41a8da8610bd1771741",
       "sources": [
         {
@@ -4593,6 +4593,21 @@
           "file": "changelog/unreleased/environment-realism-extended/night-water-after.jpg",
           "sha256": "23c8d44dd4b132dcf70941d85f1f0e036bc9fe400b248a4593634c82210736d2",
           "caption": "night-water-after"
+        },
+        {
+          "file": "changelog/unreleased/environment-realism-extended/native-tour.webm",
+          "sha256": "943f17df930a66ad7eff872a065c5506d14a1ef2ae7532cb98691c26d0b687ca",
+          "caption": "Native tour of Alpine ranges, coastal forest cover, town surfaces and finer meadow detail. Current PR with animated camera, wind and water; matched before/after stills remain below."
+        },
+        {
+          "file": "changelog/unreleased/environment-realism-extended/native-tour.jpg",
+          "sha256": "2d14a0e896641a825695c090436a430e634fc1464c447bd0a5a76528b9859789",
+          "caption": "Native motion poster and reproducible capture provenance."
+        },
+        {
+          "file": "changelog/unreleased/environment-realism-extended/native-tour.json",
+          "sha256": "8c5c73df7922a0212481e50b967111f6f3facacae2be1fdd239b43c1007e251d",
+          "caption": "Native motion poster and reproducible capture provenance."
         }
       ],
       "output": null,
@@ -4622,7 +4637,76 @@
         "rain": "Native Forward+,High/rain seed3,1600x900. environment-views --capture-set=rain, held2s/150settlingframes/full residency, lightning suppressed. Before exact1ab49b0 atmosphere/mats scripts PCK; aftera921536. Close focus-110,-130 zoom18 pitch-25 yaw0.7; valleyfocus0,0 zoom900 pitch-22 yaw0.7. Particle positions vary between runs; camera/geology/materials match. Fullframes,JPEG92,no retouching.",
         "clouds": "Native Forward+,High/night seed3,1600x900. Same live world held2s, coast focus(sea_x+100,0),zoom280,pitch-14,yawPI/2,90settlingframes/full-residency. Before exacta921536 sky shader; after revised bounded hash and moonlit cloud shading, production code identical to the prototype. Other materials, geometry and camera unchanged; animated water and stars continue normally. Fullframes,JPEG92,no retouching. GPU continuity regression reproduces old discontinuities in Forward+ and passes after in both renderers.",
         "rain_motion": "Native Forward+,High/rain seed3,1600x900. Same environment-views fixture with --fixed-fps 30 --capture-set=rain --capture-clip=close. Before exact1ab49b0 atmosphere/mats PCK; aftera921536. Simulation held2s,150settlingframes/full residency,lightning suppressed;180 consecutive full-frame PNGs encodedVP9/30fps/CRF28/noaudio. Closefocus-110,-130 zoom18 pitch-25 yaw0.7. Posters are frame90. Particle positions are not deterministic; camera,geology and materials match. Gameplay timing is held; particle animation advances at fixed30Hz.",
-        "night_water": "Native Forward+,High/night seed3,1600x900,environment-views --capture-set=coast. Focus(sea_x+100,0),zoom280,pitch-14,yawPI/2,simulationheld2s,90settlingframes/fullresidency. Before exact9657166 water_view.gd loaded through PCK; after0119d6c moonlit reflected clouds and colour-aware night tint in sky/water. Native sky brightness is unchanged by the colour-space correction. Animated waves/stars continue between captures. Fullframes,JPEG92,no retouching. Final scene also inspected in Compatibility; standalone GPU colour calibration gives0.2706 in both renderers."
+        "night_water": "Native Forward+,High/night seed3,1600x900,environment-views --capture-set=coast. Focus(sea_x+100,0),zoom280,pitch-14,yawPI/2,simulationheld2s,90settlingframes/fullresidency. Before exact9657166 water_view.gd loaded through PCK; after0119d6c moonlit reflected clouds and colour-aware night tint in sky/water. Native sky brightness is unchanged by the colour-space correction. Animated waves/stars continue between captures. Fullframes,JPEG92,no retouching. Final scene also inspected in Compatibility; standalone GPU colour calibration gives0.2706 in both renderers.",
+        "native_motion": {
+          "arguments": [
+            "--script",
+            "./tools/showcase/environment-motion.gd"
+          ],
+          "fps": 30,
+          "mood": "day",
+          "preset": "high",
+          "renderer": "forward_plus",
+          "resolution": "1280x768 (48-pixel label above uncropped 1280x720 source)",
+          "seed": 3,
+          "simulation": "Held at two seconds; native camera, wind and water remain animated. Not a combat or performance benchmark.",
+          "stage": "environment",
+          "user_arguments": [
+            "--aivai",
+            "--seed=3",
+            "--offscreen",
+            "--nohud",
+            "--set=perf:0",
+            "--preset=high",
+            "--mood=day",
+            "--port=8283",
+            "--motion-stage=environment",
+            "--motion-output=./build/media-review"
+          ],
+          "views": [
+            {
+              "focus": "(0.0, 0.0, 0.0)",
+              "fov": 55.0,
+              "frames": 120,
+              "label": "Alpine ranges, ocean and forest coverage",
+              "orbit_radians": 0.065,
+              "pitch": -22.0,
+              "seconds": 4,
+              "yaw": 0.7,
+              "zoom": 900.0
+            },
+            {
+              "focus": "(-30.0, 0.0, -12.0)",
+              "fov": 55.0,
+              "frames": 120,
+              "label": "Calibrated roofs, asphalt and frontages",
+              "orbit_radians": 0.065,
+              "pitch": -45.0,
+              "seconds": 4,
+              "yaw": 0.7,
+              "zoom": 55.0
+            },
+            {
+              "focus": "(-110.0, 0.0, -130.0)",
+              "fov": 55.0,
+              "frames": 120,
+              "label": "Finer meadow and clustered shrubs",
+              "orbit_radians": 0.065,
+              "pitch": -35.0,
+              "seconds": 4,
+              "yaw": 0.7,
+              "zoom": 22.0
+            }
+          ],
+          "source_ref": "f95bbc43cb29767b9b2c3c0c881aa32f649698c8",
+          "clip": "native-tour.webm",
+          "poster": "native-tour.jpg",
+          "clip_sha256": "943f17df930a66ad7eff872a065c5506d14a1ef2ae7532cb98691c26d0b687ca",
+          "seconds": 12,
+          "audio": false,
+          "codec": "VP9",
+          "command": "godot --path . --fixed-fps 30 --resolution 1280x720 --script tools/showcase/environment-motion.gd -- --aivai --seed=3 --offscreen --nohud --set=perf:0 --preset=high --mood=day --motion-stage=environment --motion-output=build/media-review"
+        }
       }
     }
   ],

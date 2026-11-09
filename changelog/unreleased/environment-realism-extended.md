@@ -3,6 +3,11 @@ title = "Natural coasts, fuller forests and alpine surfaces"
 summary = "Surveyed Alpine ranges, fuller forests and photographed town surfaces give the generated battlefield more natural detail."
 kind = "improved"
 
+[[videos]]
+file = "native-tour.webm"
+poster = "native-tour.jpg"
+caption = "Native tour of Alpine ranges, coastal forest cover, town surfaces and finer meadow detail. Current PR with animated camera, wind and water; matched before/after stills remain below."
+
 [[screenshots]]
 file = "comparison-panorama-after.jpg"
 caption = "After the extended environment pass: panorama. Matched parent-branch and current cameras, seed and lighting."
