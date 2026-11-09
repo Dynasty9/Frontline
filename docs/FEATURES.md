@@ -551,6 +551,8 @@ Ambush Alley autoplay can call its existing mortar support against spotted, stop
 - Broad cliff fractures and smaller joint patterns break up recognisable repeated rock tiles.
 - Sheltered lower slopes collect pale loose stone while exposed walls retain darker bedrock.
 - Snow shelves gain shallow wind grooves and granular highlights instead of perfectly smooth white surfaces.
+- Sheltered runoff channels darken and develop a restrained sheen while exposed rock remains dry.
+- Conifers have broken, asymmetric branch silhouettes that read as trees against rock and snow.
 - Moss and soil blend into exposed stone on slopes, with baked slab fractures, broken mineral beds, sheltered weathering, loose-stone pockets and snow on high sheltered ground.
 - Optional alpine haze takes on the sky colour and settles lightly into lower valleys.
 - Narrow mineral stains run down exposed cliffs, interrupted by ledges and changes in rock type.
