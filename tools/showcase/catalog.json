@@ -3530,15 +3530,11 @@
           "file": "changelog/unreleased/realistic-armament-effects/flares-close.jpg",
           "sha256": "f124cc31d160168b49c148e6f6781526c29a505e80a163523a9b3bcefe87c167",
           "caption": "flares-close.jpg"
-        },
-        {
-          "file": "changelog/unreleased/realistic-armament-effects/presentation-review.json",
-          "sha256": "e1eb68a2c7d26f9e5d3ca96c58453ce22661d58eae3a16f453ca6f53112f9c93",
-          "caption": "presentation-review.json"
         }
       ],
       "output": null,
-      "attribution": "Actual Godot 4.7.2 output: fixed 24 Hz battlefield and 30 Hz range/flare, silent and normal simulation speed. Compatibility except the Forward+ flare. Baseline capture holds legacy pool timestamps to preserve particle lifetimes during offline readback; game code is unchanged. CC0 JangaFX animation source credits: assets/vfx/LICENSE.md."
+      "attribution": "Actual Godot 4.7.2 output: fixed 24 Hz battlefield and 30 Hz range/flare, silent and normal simulation speed. Compatibility except the Forward+ flare. Baseline capture holds legacy pool timestamps to preserve particle lifetimes during offline readback; game code is unchanged. CC0 JangaFX animation source credits: assets/vfx/LICENSE.md.",
+      "capture_review": "changelog/unreleased/realistic-armament-effects/presentation-review.json"
     },
     {
       "entry": "changelog/unreleased/realism-04-talus.md",
