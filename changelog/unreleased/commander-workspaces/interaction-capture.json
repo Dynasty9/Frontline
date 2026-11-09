@@ -1,0 +1,16 @@
+{
+  "game_ref": "557b9d12",
+  "source": "tests/fixtures/hud-workspace-clips.gd",
+  "fixture_sha256": "a80466e16c9d21cdb0f79a8259474bfa3cd38706262aaceab20dec0a11b4ceec",
+  "command": "godot --fixed-fps 24 --path . --rendering-method forward_plus --audio-driver Dummy --position -12000,-12000 --resolution 1600x900 res://tests/fixtures/hud-workspace-clips.tscn -- --scenario=attack --play --seed=3 --offscreen --events-collapsed --set=perf:0 --matchmaker=http://127.0.0.1:1 --no-stun --frames=OUTPUT",
+  "timing": "360 frames at fixed 24 Hz, 15 seconds, normal simulation speed; recording starts after battle time 1 second",
+  "interaction": "Production workspace, search, focus and command callbacks; scripted demonstration, not a recording of a human play session",
+  "review": "Beginning, Units, search, focus, Base and Support frames inspected. Full VP9 decode checked. Existing previous-deck.jpg is the matched historical still; original before.jpg uses a different state.",
+  "validation": [
+    "Godot 4.7.2 import: no script or parse errors; Windows editor safe-save warning at exit",
+    "HUD component and layout Node tests: 2 passed",
+    "Native Compatibility command-key tests: 38/38 passed",
+    "Seeded 40-second attack smoke: FINAL, no script errors",
+    "Capture and native key test retain two-resource shutdown diagnostic documented in prior PR validation"
+  ]
+}

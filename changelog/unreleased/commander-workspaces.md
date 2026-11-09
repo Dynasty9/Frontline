@@ -3,13 +3,22 @@ title = "A new command deck"
 summary = "A cleaner battle interface with compact unit details, illustrated orders, a fixed tactical map and focused tools for managing large battles."
 kind = "improved"
 
+[[videos]]
+file = "interaction.webm"
+poster = "interaction.jpg"
+caption = "Open Units, search Charlie, focus the squad, and switch through Base, Layers and Support. The tactical map stays fixed. Actual HUD callbacks at normal speed, 24 fps."
+
 [[screenshots]]
 file = "after.jpg"
 caption = "Find a squad, press Enter, and return to the battle focused and ready to command."
 
 [[screenshots]]
+file = "previous-deck.jpg"
+caption = "Previous framed deck at 4bcd477: matched attack scenario, seed and focus sequence with the new commander still. Live simulation timing can vary slightly."
+
+[[screenshots]]
 file = "before.jpg"
-caption = "Before: the roster and minimap share the battlefield edge."
+caption = "Earlier original HUD archive: a different camera and observer state, not the matched comparison."
 
 [[screenshots]]
 file = "base.jpg"

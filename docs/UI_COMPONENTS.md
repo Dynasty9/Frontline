@@ -91,3 +91,12 @@ Run `godot --path . -- --scenario=attack --play --keys-test=orders --offscreen` 
 composed controls with fixed-map geometry, long command lists, task workspaces and narrow viewports.
 Also render commander and observer states after changing components; a passing isolated test does not prove
 the whole battle composition remains readable.
+
+### Interaction release capture
+
+`tests/fixtures/hud-workspace-clips.tscn` records the real HUD callbacks through
+Units, callsign search, focus, Base, Layers and Support. Run it with fixed 24 fps,
+`--scenario=attack --play --seed=3 --offscreen --events-collapsed --set=perf:0`
+and `--frames=OUTPUT`. The adjacent changelog capture record retains the full
+command, frame count and validation. It is a scripted demonstration at normal
+simulation speed, not a human input recording.
