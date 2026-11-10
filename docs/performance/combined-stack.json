@@ -1,0 +1,46 @@
+[
+  {
+    "run": "stack-before-1",
+    "fps": 40.8448827292111,
+    "p99_frame_ms": 40.203,
+    "p99_frame_difference_ms": 16.221,
+    "rendered_primitives": 7283312.0,
+    "server_ticks": 1800,
+    "final_tick": 3602,
+    "server_p99_ms": 28.4324,
+    "comparison_valid": true
+  },
+  {
+    "run": "stack-after-1",
+    "fps": 36.544739822773,
+    "p99_frame_ms": 45.735,
+    "p99_frame_difference_ms": 17.32,
+    "rendered_primitives": 5441244.0,
+    "server_ticks": 1783,
+    "final_tick": 3584,
+    "server_p99_ms": 36.998400000000004,
+    "comparison_valid": false
+  },
+  {
+    "run": "stack-after-2",
+    "fps": 48.7691128951664,
+    "p99_frame_ms": 36.57,
+    "p99_frame_difference_ms": 13.438,
+    "rendered_primitives": 5461523.0,
+    "server_ticks": 1801,
+    "final_tick": 3602,
+    "server_p99_ms": 27.2656,
+    "comparison_valid": true
+  },
+  {
+    "run": "stack-before-2",
+    "fps": 30.9563478840387,
+    "p99_frame_ms": 58.584,
+    "p99_frame_difference_ms": 20.588,
+    "rendered_primitives": 7177877.0,
+    "server_ticks": 1699,
+    "final_tick": 3441,
+    "server_p99_ms": 41.202299999999994,
+    "comparison_valid": false
+  }
+]
