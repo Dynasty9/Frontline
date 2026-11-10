@@ -1,0 +1,51 @@
+{
+  "before_ref": "de7dfbda2ad933b9c7014b1f186c4aa42ef9bea0",
+  "after_sources": {
+    "scripts/game/atmosphere.gd": "0dad2f60bd30ccdd27acef5e37c698518ce69c29aac4febb553065ca5789d7cf",
+    "scripts/game/water_view.gd": "baa5ea67dbf9e105fef8a9c5ef32aead1060a1172cef80de68cee21a192e7935",
+    "tests/fixtures/environment-views.gd": "1c569902f61b7e39c0b96481ea0d04b2d608b808b09194af7c720b8ed00c3647"
+  },
+  "capture": {
+    "mood": "day",
+    "renderer": "forward_plus",
+    "resolution": "(1600, 900)",
+    "seed": 3,
+    "views": [
+      {
+        "file": "build/shore-review/after-town.png",
+        "focus": "(330.0, 0.0, 0.0)",
+        "pitch": -45.0,
+        "time": 2.0,
+        "yaw": 0.7,
+        "zoom": 90.0
+      },
+      {
+        "file": "build/shore-review/after-grains.png",
+        "focus": "(313.9077, 0.0, -35.0)",
+        "pitch": -50.0,
+        "time": 2.0,
+        "yaw": 0.7,
+        "zoom": 18.0
+      },
+      {
+        "file": "build/shore-review/after-waterline.png",
+        "focus": "(321.9077, 0.0, -35.0)",
+        "pitch": -25.0,
+        "time": 2.0,
+        "yaw": 0.7,
+        "zoom": 38.0
+      }
+    ]
+  },
+  "command": "godot --path . --fixed-fps 30 --position -12000,-12000 --resolution 1600x900 --script tests/fixtures/environment-views.gd -- --aivai --seed=3 --offscreen --nohud --set=perf:0 --preset=high --mood=day --capture-set=shoreline --capture-clip=waterline --capture-prefix=build/shore-review/after",
+  "baseline_method": "Same fixture and game revision, with exact de7dfbda atmosphere.gd and water_view.gd loaded through a two-file resource pack before loading main.tscn. Camera and animation timing match. No scene retouching.",
+  "clip": {
+    "file": "comparison.mp4",
+    "frames": 180,
+    "fps": 30,
+    "seconds": 6,
+    "audio": false,
+    "layout": "Before left, after right. Entire 1600x900 frames scaled to 960x540, labels above."
+  },
+  "limitations": "Visual stage holds world simulation at two seconds. Not a gameplay or FPS benchmark. Native Forward+ and Compatibility reviewed; browser WebGL and low-end GPUs not tested."
+}

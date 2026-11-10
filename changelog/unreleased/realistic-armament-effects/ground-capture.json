@@ -438,6 +438,29 @@
       }
     ],
     "inspection": "Decoded beginning, flash, peak dust and aftermath frames inspected for both clips. The after camera approaches the visible bowl, then checks scorch against the wall. Poster and full video retain actual engine framing.",
-    "performance": "No new FPS benchmark. Restores intended nearby terrain detail; distant ground retains the coarse grid. Height bounds are calculated at map setup, not per explosion. Cloud and flash pools remain bounded."
+    "performance": "No new FPS benchmark. Restores intended nearby terrain detail; distant ground retains the coarse grid. Height bounds are calculated at map setup, not per explosion. Cloud and flash pools remain bounded.",
+    "main_integration": {
+      "previous_head": "a23267167b0eae7f45eff9ae4f8b50ef4d60f469",
+      "main_ref": "14c0d6851a4b0dddb49fdc229099afe7c850f45e",
+      "conflict_resolution": "Combined documentation and the presentation catalog; runtime files merged without textual conflicts. Historical source refs and media remain unchanged.",
+      "tests": {
+        "command": "FL_TEST_RENDER=1 node --test tests/armament-effects.test.mjs tests/landform.test.mjs tests/determinism.test.mjs",
+        "passed": 12,
+        "failed": 0,
+        "skipped": 0
+      },
+      "import": "No script or parse errors",
+      "changelog_unit_tests": 10,
+      "presentation_audit_entries": 138,
+      "visual_review": {
+        "scenario": "showroom",
+        "seed": 712,
+        "renderer": "Forward+",
+        "viewport": "640x360",
+        "subject": "Production crater and scorch on the merged environment, close camera, grass disabled; bowl and rim remain visible. This isolated still check does not replace the matched video pair.",
+        "result": "No script/shader errors; 13 ObjectDB instances reported at shutdown."
+      },
+      "release_card": "Desktop/mobile controls, seek/play/pause, disclosure and reduced motion passed again after merge."
+    }
   }
 }

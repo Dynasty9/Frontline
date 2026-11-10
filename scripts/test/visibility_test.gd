@@ -31,6 +31,21 @@ func _ready() -> void:
 	atmo._d = Atmosphere.MOODS.day
 	atmo._apply_haze(45.0)
 	check(is_equal_approx(atmo.env.volumetric_fog_density, 0.0011 * Atmosphere.VOLUME_STRENGTH * Atmosphere.haze_distance_factor(45.0)), "day volume density resets after another mood")
+	atmo.env.sky = Sky.new()
+	atmo.sky_mat = ShaderMaterial.new()
+	atmo._apply_sky()
+	var daylight := atmo.env.sky.sky_material as ShaderMaterial
+	check(daylight.get_shader_parameter("panorama") is Texture2D, "day sky binds a bundled panorama")
+	check(not Atmosphere.PHOTO_SKY_SHADER.contains("TIME"), "static daylight does not invalidate the reflection cache each frame")
+	var rotation: Basis = daylight.get_shader_parameter("rotation")
+	var light := Basis.from_euler(Vector3(deg_to_rad(-52.0), deg_to_rad(-35.0), 0)).z
+	var photo := rotation * light
+	check(absf(acos(photo.y) / PI - 239.5 / 1024.0) < 0.001, "photographed sun aligns with the directional light elevation")
+	for other in ["night", "rain", "golden", "day"]:
+		atmo.mood = other
+		atmo._d = Atmosphere.MOODS[other]
+		atmo._apply_sky()
+		check(atmo.env.sky.sky_material == (daylight if other == "day" else atmo.sky_mat), "sky switches with the lighting mood")
 	var w := World.new()
 	w.terrain = TerrainMap.new(w)
 	w.terrain.landform.peak = 100.0

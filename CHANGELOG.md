@@ -4,6 +4,1064 @@ Every release of Frontline, newest first. The game updates itself; downloads, an
 are on [the website](https://web-production-5a4c1.up.railway.app/changelog/). Each change is written up in [`changelog/`](changelog/) as part of
 the pull request that makes it.
 
+## v1.0.12: Mountain battlefields
+
+*10 November 2026* · [Release on GitHub](https://github.com/Dynasty9/Frontline/releases/tag/v1.0.12)
+
+### New
+
+#### Mountain battlefields
+
+Seeded snowy mountains, mossy hills and river valleys now surround the towns and roads of standard battles.
+
+![Before: the flat battlefield with the same seed and camera.](changelog/v1.0.12/mountain-battlefields/before.jpg)
+
+<details>
+<summary>Explore this change</summary>
+
+- Mountains, hills and valleys generate from the battle seed. Towns, starting bases, roads and river crossings retain usable valley corridors, with forests on lower ground.
+- Layered photographic rock, cool shaded gullies and connected snowfields give the mountains an Alpine appearance. Sky visibility and distant ridge shadows are baked into the terrain, updating when the lighting mood changes.
+- Fractured bedrock, tilted shelves and weathered ledges break up the mountain faces. Larger photographic slabs catch the light above smaller scree, while snow settles on gentler shelves and leaves steep cliffs exposed. Finer distant silhouettes keep the horizon from looking angular.
+- Standard-battle woods grow in denser clusters. Tree bark and foliage share spatial drawing batches while individual trees still burn and fall.
+- Alpine rivers have blue-green water. Optional Alpine distance haze separates the mountain ranges, and optional Mountain reflections capture distant terrain in the water without rendering the whole battle twice.
+- Troops and vehicles follow the terrain and avoid slopes they cannot climb. Ridges obstruct shots and observation; helicopters clear rising ground and land at the correct elevation.
+- Construction checks the whole footprint. Trenches, craters, fires, targeting and the minimap follow the landscape.
+- Multiplayer joiners receive the same terrain as the host, and battle recordings preserve it when seeking forward or backward.
+
+Campaign missions retain their existing terrain layout and woodland density so their authored routes and cover remain intact.
+
+![After: fractured mountain belts and denser woods around the town and river valley.](changelog/v1.0.12/mountain-battlefields/after.jpg)
+
+![Looking inland through the coastal valley with Mountain reflections enabled.](changelog/v1.0.12/mountain-battlefields/valley.jpg)
+
+</details>
+
+### Improved
+
+#### Woodland follows the mountain slopes
+
+Greener gullies, contour-following woods and vegetation on mountain ledges replace randomly scattered greenery.
+
+![Before: noise-driven green patches and compact, scattered woods.](changelog/v1.0.12/alpine-habitats/before.jpg)
+
+<details>
+<summary>Explore this change</summary>
+
+- Soil cover responds to shelter, slope and aspect, with less arbitrary colour variation across the valleys.
+- Open valley ground has fewer isolated random trees; planting favours groves and sheltered mountain pockets.
+- Woods spread along contours, and conifers can root on suitable mountain ledges. Exposed ribs and high peaks remain largely bare.
+- Scrub favours sheltered bowls, while stones occupy drier and steeper ground. Tree limits do not relax building foundation checks.
+
+![After: greener sheltered ground and woodland following the terrain, with the same seed and camera.](changelog/v1.0.12/alpine-habitats/after.jpg)
+
+![Closer daylight view of conifers on suitable ledges and woodland following the lower slopes.](changelog/v1.0.12/alpine-habitats/detail.jpg)
+
+</details>
+
+#### Break up mountain silhouettes
+
+Uneven mountain groups, lower passes and reshaped cliff shoulders replace repetitive ridges, with more varied moss-to-rock transitions.
+
+![Before: distant mountain groups and passes.](changelog/v1.0.12/alpine-massifs/wide-before.jpg)
+
+<details>
+<summary>Explore this change</summary>
+
+Distant scenery uses its own seeded height field instead of an equal-height ridge pattern. Floating-point heights and wider slope sampling avoid stepped snow shading. Medium/Far detail uses a finer indexed scenery mesh; Near retains the lighter grid.
+
+Reusable rock forms now have uneven shoulders and irregular drainage cuts before the existing terrain erosion and road grading. These enter the authoritative terrain used by movement, construction and replay. Material coverage also varies with photographic rock relief.
+
+The comparisons use the same seed, lighting and camera controls. The camera follows local ground height, so changed geology can shift its absolute height. Procedural trees and some smooth rock forms still limit realism; these are native game captures, not photographic composites.
+
+Approach informed by [Wargaming's environment workflow](https://wargaming.com/en/news/making_battle_arenas_in_wows/): establish large landforms before surface detail.
+
+![After: distant mountain groups and passes.](changelog/v1.0.12/alpine-massifs/wide-after.jpg)
+
+![Before: cliff shoulders and the valley floor.](changelog/v1.0.12/alpine-massifs/close-before.jpg)
+
+![After: cliff shoulders and the valley floor.](changelog/v1.0.12/alpine-massifs/close-after.jpg)
+
+![Before: close cliff profile.](changelog/v1.0.12/alpine-massifs/detail-before.jpg)
+
+![After: reshaped shoulder and snow shelf; camera follows local terrain.](changelog/v1.0.12/alpine-massifs/detail-after.jpg)
+
+</details>
+
+#### Separate distant mountain ranges with sky haze
+
+Optional alpine haze takes on the sky colour and settles lightly into lower valleys.
+
+![Before: shared terrain baseline, identical seed and camera.](changelog/v1.0.12/alpine-perspective/before.jpg)
+
+<details>
+<summary>Explore this change</summary>
+
+Uses existing alpine_haze option and engine fog; no new volumetric pass. Disabled/flat-map paths reset both additions. Compatibility may approximate aerial perspective differently.
+
+Technique reference: [research source](https://docs.godotengine.org/en/stable/tutorials/3d/environment_and_post_processing.html).
+
+![After: Optional alpine haze takes on the sky colour and settles lightly into lower valleys.](changelog/v1.0.12/alpine-perspective/after.jpg)
+
+![Before: matching closer camera, shared baseline.](changelog/v1.0.12/alpine-perspective/close-before.jpg)
+
+![After: the same closer camera; surface changes remain subtle.](changelog/v1.0.12/alpine-perspective/close-after.jpg)
+
+![Before: focused comparison under matched lighting.](changelog/v1.0.12/alpine-perspective/target-before.jpg)
+
+![After: Watch the tone and separation of the distant ridges in hazy weather.](changelog/v1.0.12/alpine-perspective/target-after.jpg)
+
+</details>
+
+#### Broken stone across mountain faces
+
+Mountain faces gain broken mineral layers, darker weathered seams and uneven pockets of loose stone.
+
+![Before: the previous rock material, with the same seed, golden-hour lighting and camera.](changelog/v1.0.12/alpine-rock-relief/before.jpg)
+
+<details>
+<summary>Explore this change</summary>
+
+Cliff materials combine larger elongated fractures with smaller photographic grain.
+The detail is baked into the existing material textures, including normals and
+occlusion, so it uses no additional terrain texture samples. Tilted mineral beds
+break across the faces rather than forming continuous stripes.
+Sheltered seams weather darker, while loose stone collects unevenly on gentler
+ground and in pockets. These masks reuse existing texture reads.
+
+This improves surface shading; mountain silhouettes and movement limits are unchanged.
+
+![After: interrupted mineral layers and darker weathering break up broad rock faces.](changelog/v1.0.12/alpine-rock-relief/after.jpg)
+
+![Closer daylight view of varied rock surfaces and sheltered stone pockets.](changelog/v1.0.12/alpine-rock-relief/detail.jpg)
+
+</details>
+
+#### Rock faces with depth and greener foothills
+
+Mountain faces gain distinct rock masses, relief-aware moss and snow, and small conifer stands at their feet.
+
+![Previous terrain, seed 3, golden-hour command camera.](changelog/v1.0.12/alpine-surface-detail/before.jpg)
+
+<details>
+<summary>Explore this change</summary>
+
+- Rock breaks through moss and snow according to the photographed surface relief. Crevices retain shade and each surface has its own roughness.
+- Generated buttresses, bowls and saddles become part of the terrain before weathering and road grading, keeping movement and shots aligned with the landscape.
+- Small conifer stands give the foothills a clearer sense of scale while retaining normal tree collision, fire and destruction.
+- Offline-packed material maps retain the same texture-sample count; mip filtering reduces distant grain.
+
+![The same seed and camera with shaped rock masses, relief-aware surfaces and foothill conifers.](changelog/v1.0.12/alpine-surface-detail/after.jpg)
+
+</details>
+
+#### More varied mountain surfaces and vegetation
+
+Mineral bands, dry grass, scrub and scattered stones break up the alpine landscape, with vegetation changing as the ground rises.
+
+![Before: the preceding material pass, seed 3 and golden-hour command camera.](changelog/v1.0.12/alpine-variation/before.jpg)
+
+<details>
+<summary>Explore this change</summary>
+
+- Rock faces mix broad mineral colours, weathering bands and broken scree. Moss and dry grass vary in smaller patches instead of covering entire slopes evenly.
+- Mixed lower woods transition toward conifers and an uneven tree line. Low scrub gives way to scattered stones higher up; snowy summits remain bare.
+- Small scrub and stones are passable scenery, grounded individually and batched for rendering. Their seeded placement is shared by multiplayer and recordings.
+
+![After: varied mineral and ground patches with elevation-dependent vegetation.](changelog/v1.0.12/alpine-variation/after.jpg)
+
+![A closer daylight view: low scrub and small stone clusters sit on the terrain beneath mixed woods and conifers.](changelog/v1.0.12/alpine-variation/detail.jpg)
+
+</details>
+
+#### Release notes you can scan, then explore
+
+See what changed at a glance, with a focused visual and expandable detail. The full release history now uses the same clearer presentation.
+
+![After: a short outcome and one lead visual, with original notes and captures under Explore this change.](changelog/v1.0.12/clearer-release-history/overview.jpg)
+
+<details>
+<summary>Explore this change</summary>
+
+All 87 published entries now begin with a concise player-facing summary. Archived
+images appear directly in the site’s brass-and-ink layout; existing motion clips keep their
+playback controls and attribution. Expand **Explore this change** for the original
+notes, screenshots and supporting clips. Original release dates and feature claims
+are preserved.
+
+Motion is shown with video when recorded evidence exists. Interface changes use
+stills; invisible fixes and unrecorded sound or performance changes use text.
+Historical screenshots remain historical evidence, and current-build demonstrations
+are labelled as such.
+
+The same overview/detail structure is used in the generated repository changelog
+and future release notes. Reusable capture stages, media-selection guidance and
+an evidence audit make this part of preparing each new change.
+
+The page shares the main site’s condensed headings, thin rules and shadcn/Radix
+components. Desktop entries place an explanation beside uncropped media; narrow
+screens stack the same content. Supporting notes expand beneath each entry.
+
+Every existing entry includes **Compare changelog layouts**: a separate, collapsed
+old/new presentation review. Both views use the same viewport and can be enlarged.
+These compare the release-note layout itself, independently of the feature media.
+
+![Before: the same release opens with all supporting screenshots and full notes.](changelog/v1.0.12/clearer-release-history/before.jpg)
+
+![The overview and detail control remain readable on a narrow phone screen. Images open at full size.](changelog/v1.0.12/clearer-release-history/phone.jpg)
+
+![Expand the original notes and supporting gallery without leaving the release.](changelog/v1.0.12/clearer-release-history/details.jpg)
+
+![On phones, the same explanation and uncropped image stack into one readable column.](changelog/v1.0.12/clearer-release-history/phone-entry.jpg)
+
+![Compare changelog layouts opens an entry-specific old/new presentation review, with both captures available at full size.](changelog/v1.0.12/clearer-release-history/layout-review-ui.jpg)
+
+</details>
+
+<details>
+<summary>Compare changelog layouts</summary>
+
+Changelog presentation comparison, not gameplay: the top 1,000 pixels of this entry at the same 900-pixel viewport width. Open either image to inspect it. This entry is new; its content is rendered through both layouts for comparison.
+
+![Before: old changelog layout](changelog/v1.0.12/clearer-release-history/layout-before.jpg)
+
+![After: new changelog layout](changelog/v1.0.12/clearer-release-history/layout-after.jpg)
+
+</details>
+
+#### Add directional weathering to cliffs
+
+Narrow mineral stains run down exposed cliffs, interrupted by ledges and changes in rock type.
+
+![Before: shared terrain baseline, identical seed and camera.](changelog/v1.0.12/cliff-runoff/before.jpg)
+
+<details>
+<summary>Explore this change</summary>
+
+One extra scalar noise read per terrain fragment. This is directional material weathering rather than a hydrology simulation; geometry and traversal do not change.
+
+Technique reference: [research source](https://developer.nvidia.com/gpugems/gpugems3/part-i-geometry/chapter-1-generating-complex-procedural-terrains-using-gpu).
+
+![After: Narrow mineral stains run down exposed cliffs, interrupted by ledges and changes in rock type.](changelog/v1.0.12/cliff-runoff/after.jpg)
+
+![Before: matching closer camera, shared baseline.](changelog/v1.0.12/cliff-runoff/close-before.jpg)
+
+![After: the same closer camera; surface changes remain subtle.](changelog/v1.0.12/cliff-runoff/close-after.jpg)
+
+![Before: focused comparison under matched lighting.](changelog/v1.0.12/cliff-runoff/target-before.jpg)
+
+![After: Watch for narrow dark vertical stains across the lit central face.](changelog/v1.0.12/cliff-runoff/target-after.jpg)
+
+</details>
+
+#### Smoother large battles
+
+Large formation orders take less work, and pointer feedback updates independently of squad counters.
+
+![Cover previews stay aligned at enlarged interface scale while updating independently of squad counters.](changelog/v1.0.12/combat-overlay-refresh/after.jpg)
+
+<details>
+<summary>Explore this change</summary>
+
+- Selection boxes, tooltips and order previews update immediately in their own drawing layer, without rebuilding every squad counter as the pointer moves.
+- Camera shake keeps the existing status refresh rate. Panning, zooming, selection and commands still refresh the counters immediately.
+- Combat and camera shake are unchanged.
+
+- Large formation orders spend less time choosing ground while keeping the same cover choices, spacing and placement order.
+- Soldiers spend less time checking ground and trench heights in built-up areas. Distant squads draw more efficiently with the same poses.
+- Moving soldiers check visibility more efficiently, preserving the effects of smoke, doors and cover.
+
+</details>
+
+<details>
+<summary>Compare changelog layouts</summary>
+
+Changelog presentation comparison, not gameplay: the top 1,000 pixels of this entry at the same 900-pixel viewport width. Open either image to inspect it.
+
+![Before: old changelog layout](changelog/v1.0.12/combat-overlay-refresh/layout-before.jpg)
+
+![After: new changelog layout](changelog/v1.0.12/combat-overlay-refresh/layout-after.jpg)
+
+</details>
+
+#### Natural coasts, fuller forests and alpine surfaces
+
+Surveyed Alpine ranges, fuller forests and photographed town surfaces give the generated battlefield more natural detail.
+
+[Watch: Native tour of Alpine ranges, coastal forest cover, town surfaces and finer meadow detail. Current PR with animated camera, wind and water; matched before/after stills remain below.](https://web-production-5a4c1.up.railway.app/changelog/#v1.0.12) ([Direct WEBM](https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/environment-realism-extended/native-tour.webm))
+
+<details>
+<summary>Explore this change</summary>
+
+The ocean keeps detailed waves near the battlefield and uses a coarser surface beyond it.
+
+Hillside woods use varied photographed tree silhouettes and a shared placement/ground-cover mask. Five baked elevations blend as the camera tilts, showing crowns from above and full silhouettes near the horizon. High/Ultra shadows also ground these trees against the hillside. Offline edge correction removes the dark fringe from their canopies.
+
+Snow uses photographed powder at its original two-metre scale, with darker melt edges. Forest floors blend moss and leaf litter beneath the same hillside stands. Detailed surfaces follow the terrain-detail setting; texture arrays keep these layers within the browser renderer's sampler budget.
+
+Distant ridges now shade their valleys and forests with cached terrain lighting. Changing the time of day refreshes that lighting without rebuilding the forest. Standing rainwater stays on gentle ground instead of making cliff faces reflect like puddles.
+
+Surrounding ranges now use real Alpine elevation shapes, composed into varied fictional mountain groups. Lower ridges close the horizon between the peaks. The source data is bundled and processed during map creation; no terrain downloads or extra per-frame material samples are needed.
+
+Town asphalt now separates fine aggregate from broad cracks, repairs and stains. Streets and junctions share the same world-space material, blended in linear light in both renderers. Normal maps follow sloping roads and paving instead of lighting every surface as if it were flat.
+
+Photographic building materials now respect their intended colours. Calibrated roof tiles, concrete, wood and bark retain the scan detail without turning grey roofs cyan or all tiled roofs pale beige.
+
+Driveways now connect to the street through lowered sidewalk crossings with sloping shoulders. Curbs meet the asphalt, and grass stays out of the paved entrance.
+
+Meadow grass and shrubs remain visible on elevated ground, and small decorative stones rest on the actual hillside. Trees and buildings also stay resident when a low camera looks up a high slope. Grass thins below the snow line and stops on bare steep faces instead of leaving stray clumps in unsuitable terrain.
+
+Elevated surfaces retain full height precision, removing the fine stepping that showed through snow and slope shading. Ground-level staining on walls follows the hillside instead of sea level.
+
+Meadows use fine pointed blades over photographed turf, with wetter sheltered soil and drier exposed patches. The clumps retain their previous triangle count. Local height bounds keep distance fading centred on each patch of vegetation, even when much taller mountains surround it.
+
+Low shrubs use smaller photographed branches and grow in seeded patches with open gaps. Their root shading follows each plant rather than its elevation. Distant forest atlases also load correctly in exported builds.
+
+Local games share the scenery batching used by network clients. Returning to already-built scenery reveals it promptly while off-screen buildings retain their combat collision. Batched roofs and other tinted surfaces keep their colours in both renderers, including grey roofs in the browser.
+
+World-space wood, plaster and weathering stay in place when scenery enters a batch. Shrub leaves receive light from both sides without reversing their back-face normals.
+
+Broadleaf crowns have smaller branches and more open gaps at the same triangle count. Photographed foliage uses its own surface detail, with consistent colour and two-sided lighting instead of an extra layer of procedural leaf noise.
+
+Country tracks have varied rut widths, intermittent centre grass and broader worn patches. Their joins to town asphalt use a short broken edge instead of a wide blurred band.
+
+Mountain weathering follows baked downhill catchments. Snow persists in sheltered drainage channels while exposed ribs remain visible; changing the sunlight reuses the same drainage mask.
+
+Rivers continue beyond the battlefield into irregular scenery pools, with matching banks and riverbeds. These distant extensions do not change playable water or navigation.
+
+Browser lighting follows the displaced mountain slopes and softly lights photographed tree canopies while keeping the cheaper vertex-lighting renderer. Rain surrounds the camera with finer streaks; soft splashes follow ground and water height and disappear at distance.
+
+Procedural clouds have smooth edges in both renderers, with subdued moonlit shading at night. Reflected clouds on the sea follow that night lighting instead of retaining their daytime brightness.
+
+![After the extended environment pass: panorama. Matched parent-branch and current cameras, seed and lighting.](changelog/v1.0.12/environment-realism-extended/comparison-panorama-after.jpg)
+
+![Before the extended environment pass: panorama. Matched parent-branch and current cameras, seed and lighting.](changelog/v1.0.12/environment-realism-extended/comparison-panorama-before.jpg)
+
+![Before the extended environment pass: town. Matched parent-branch and current cameras, seed and lighting.](changelog/v1.0.12/environment-realism-extended/comparison-town-before.jpg)
+
+![After the extended environment pass: town. Matched parent-branch and current cameras, seed and lighting.](changelog/v1.0.12/environment-realism-extended/comparison-town-after.jpg)
+
+![Before the extended environment pass: meadow. Matched parent-branch and current cameras, seed and lighting.](changelog/v1.0.12/environment-realism-extended/comparison-meadow-before.jpg)
+
+![After the extended environment pass: meadow. Matched parent-branch and current cameras, seed and lighting.](changelog/v1.0.12/environment-realism-extended/comparison-meadow-after.jpg)
+
+![Before the extended environment pass: forest. Matched parent-branch and current cameras, seed and lighting.](changelog/v1.0.12/environment-realism-extended/comparison-forest-before.jpg)
+
+![After the extended environment pass: forest. Matched parent-branch and current cameras, seed and lighting.](changelog/v1.0.12/environment-realism-extended/comparison-forest-after.jpg)
+
+![Before: the ocean ends in a square beside the scenery.](changelog/v1.0.12/environment-realism-extended/coast-before.jpg)
+
+![After: distant water follows bays around the mountains. Same seed and camera.](changelog/v1.0.12/environment-realism-extended/coast-after.jpg)
+
+![Before: sparse hillside trees and bare ground, matching close camera.](changelog/v1.0.12/environment-realism-extended/forest-before.jpg)
+
+![After: fuller canopies, connected stands and woodland ground cover, matching close camera.](changelog/v1.0.12/environment-realism-extended/forest-after.jpg)
+
+![Compatibility before: linear ground colours were displayed too dark.](changelog/v1.0.12/environment-realism-extended/compat-before.jpg)
+
+![Compatibility after: corrected material output brings ground and foliage into the same palette.](changelog/v1.0.12/environment-realism-extended/compat-after.jpg)
+
+![Before: smooth white snow on the coastal ridge.](changelog/v1.0.12/environment-realism-extended/snow-before.jpg)
+
+![After: photographed powder, granular relief and dirtier melt edges. Same ridge, seed and camera.](changelog/v1.0.12/environment-realism-extended/snow-after.jpg)
+
+![Before: distant forest stays sunlit below a mountain ridge.](changelog/v1.0.12/environment-realism-extended/lighting-before.jpg)
+
+![After: the ridge shades its valley and forest. Same golden-hour lighting, seed and camera.](changelog/v1.0.12/environment-realism-extended/lighting-after.jpg)
+
+![Before: repeated procedural peaks surround the valley.](changelog/v1.0.12/environment-realism-extended/ranges-before.jpg)
+
+![After: surveyed Alpine ridges form separate mountain groups and lower passes. Same seed, camera and lighting.](changelog/v1.0.12/environment-realism-extended/ranges-after.jpg)
+
+![Before: oversized aggregate makes the asphalt look like coarse gravel.](changelog/v1.0.12/environment-realism-extended/street-before.jpg)
+
+![After: finer photographed aggregate keeps larger cracks and repairs. Same street, seed, lighting and camera.](changelog/v1.0.12/environment-realism-extended/street-after.jpg)
+
+![Before: the photograph overrides the roof colour and leaves concrete yellow.](changelog/v1.0.12/environment-realism-extended/roof-before.jpg)
+
+![After: calibrated terracotta, concrete and wood retain photographed surface detail. Same house and camera.](changelog/v1.0.12/environment-realism-extended/roof-after.jpg)
+
+![Before: beige and cyan roofs dominate the town overview.](changelog/v1.0.12/environment-realism-extended/town-colour-before.jpg)
+
+![After: terracotta and weathered grey roofs remain distinct at command-camera distance. Same town and lighting.](changelog/v1.0.12/environment-realism-extended/town-colour-after.jpg)
+
+![Before: the parking pad stops at grass and a full-height curb.](changelog/v1.0.12/environment-realism-extended/driveway-before.jpg)
+
+![After: a continuous entrance crosses the sidewalk through a lowered curb. Same seed and camera.](changelog/v1.0.12/environment-realism-extended/driveway-after.jpg)
+
+![Before: upright tree silhouettes remain flat when seen from above.](changelog/v1.0.12/environment-realism-extended/canopy-before.jpg)
+
+![After: elevation-aware crowns and hillside shadows give the forest volume. Same seed, lighting and steep camera.](changelog/v1.0.12/environment-realism-extended/canopy-after.jpg)
+
+![Before: rounded height samples leave fine stripes across snow edges.](changelog/v1.0.12/environment-realism-extended/precision-before.jpg)
+
+![After: full-precision slopes keep snow edges smooth. Same terrain, seed and camera.](changelog/v1.0.12/environment-realism-extended/precision-after.jpg)
+
+![Close meadow before: broad ribbon blades and plain ground. Same seed and camera.](changelog/v1.0.12/environment-realism-extended/meadow-before.jpg)
+
+![Close meadow after: fine pointed blades over photographed turf, with variation from soil moisture. Same seed and camera.](changelog/v1.0.12/environment-realism-extended/meadow-after.jpg)
+
+![Low meadow view before: broad ribbon blades and plain ground. Same seed and camera.](changelog/v1.0.12/environment-realism-extended/meadow-wide-before.jpg)
+
+![Low meadow view after: fine pointed blades over photographed turf, with variation from soil moisture. Same seed and camera.](changelog/v1.0.12/environment-realism-extended/meadow-wide-after.jpg)
+
+![Before: oversized branch cards and evenly scattered bushes across the meadow.](changelog/v1.0.12/environment-realism-extended/shrub-before.jpg)
+
+![After: smaller photographed branches form patches with open gaps. Same meadow, seed, lighting and camera.](changelog/v1.0.12/environment-realism-extended/shrub-after.jpg)
+
+![Before: oversized leaf groups close the broadleaf crown.](changelog/v1.0.12/environment-realism-extended/leaves-before.jpg)
+
+![After: smaller branches leave natural gaps, with consistent photographed colour and two-sided lighting. Same tree and camera.](changelog/v1.0.12/environment-realism-extended/leaves-after.jpg)
+
+![Before: broadleaf stands form dense, rounded masses.](changelog/v1.0.12/environment-realism-extended/leaves-wide-before.jpg)
+
+![After: finer open crowns remain readable at stand distance, at the same triangle count. Same seed and camera.](changelog/v1.0.12/environment-realism-extended/leaves-wide-after.jpg)
+
+![Before: the dirt lane fades through a broad blurred band at the town street.](changelog/v1.0.12/environment-realism-extended/lane-join-before.jpg)
+
+![After: a shorter broken asphalt edge separates the surfaces, with patchier wear along the dirt lane. Same seed and camera.](changelog/v1.0.12/environment-realism-extended/lane-join-after.jpg)
+
+![Before: noise-based weathering and elevation-led snow.](changelog/v1.0.12/environment-realism-extended/drainage-before.jpg)
+
+![After: downhill catchments place weathering and retained snow along connected gullies. Same terrain and camera.](changelog/v1.0.12/environment-realism-extended/drainage-after.jpg)
+
+![Before: noise-based weathering and elevation-led snow.](changelog/v1.0.12/environment-realism-extended/snow-channels-before.jpg)
+
+![After: downhill catchments place weathering and retained snow along connected gullies. Same terrain and camera.](changelog/v1.0.12/environment-realism-extended/snow-channels-after.jpg)
+
+![Before: the river ends at a straight battlefield boundary.](changelog/v1.0.12/environment-realism-extended/river-end-before.jpg)
+
+![After: the channel continues into an irregular scenery pool. Same seed, camera and lighting.](changelog/v1.0.12/environment-realism-extended/river-end-after.jpg)
+
+![Before: the river ends at a straight battlefield boundary.](changelog/v1.0.12/environment-realism-extended/river-valley-before.jpg)
+
+![After: the channel continues into an irregular scenery pool. Same seed, camera and lighting.](changelog/v1.0.12/environment-realism-extended/river-valley-after.jpg)
+
+![Before: flat vertex lighting on displaced ridges and dark leaf cards in the browser.](changelog/v1.0.12/environment-realism-extended/browser-forest-before.jpg)
+
+![After: browser lighting follows mountain slopes and softly lights tree canopies.](changelog/v1.0.12/environment-realism-extended/browser-forest-after.jpg)
+
+![Before: the browser lights displaced mountain vertices as flat ground.](changelog/v1.0.12/environment-realism-extended/browser-panorama-before.jpg)
+
+![After: mountain vertex normals follow the displaced terrain. Same browser settings.](changelog/v1.0.12/environment-realism-extended/browser-panorama-after.jpg)
+
+![Before: bright rain streaks and white square splashes.](changelog/v1.0.12/environment-realism-extended/rain-close-before.jpg)
+
+![After: finer streaks and soft splashes that follow the terrain height.](changelog/v1.0.12/environment-realism-extended/rain-close-after.jpg)
+
+![Before: the rain emitter forms a bright patch at the camera target.](changelog/v1.0.12/environment-realism-extended/rain-valley-before.jpg)
+
+![After: rain surrounds the camera and distant splashes fade away.](changelog/v1.0.12/environment-realism-extended/rain-valley-after.jpg)
+
+![Before: block-shaped cloud edges and bright nighttime cloud cover.](changelog/v1.0.12/environment-realism-extended/night-clouds-before.jpg)
+
+![Before: pale cloud reflections cover the sea beneath a dark night sky.](changelog/v1.0.12/environment-realism-extended/night-water-before.jpg)
+
+![After: reflected clouds follow the moonlit sky while direct moon highlights remain. Same seed, camera and mood.](changelog/v1.0.12/environment-realism-extended/night-water-after.jpg)
+
+![After: continuous cloud edges and subdued moonlit cover. Same seed and camera.](changelog/v1.0.12/environment-realism-extended/night-clouds-after.jpg)
+
+[Watch: Before: broad bright streaks and square splashes. Six seconds at fixed 30 fps; silent.](https://web-production-5a4c1.up.railway.app/changelog/#v1.0.12) ([Direct WEBM](https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/environment-realism-extended/rain-before.webm))
+
+[Watch: After: finer streaks and soft splashes on terrain and water. Six seconds at fixed 30 fps; silent.](https://web-production-5a4c1.up.railway.app/changelog/#v1.0.12) ([Direct WEBM](https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/environment-realism-extended/rain-after.webm))
+
+</details>
+
+#### Cab depth and rounded tyres for the cargo truck
+
+The HEMTT cargo truck now has visible cab interiors, transparent glass, rounded tyre shoulders and draped canvas loads.
+
+![After: seats and dashboard behind glass, rounded tyre shoulders and shaped cloth covers.](changelog/v1.0.12/hemtt-cab-depth/after.jpg)
+
+<details>
+<summary>Explore this change</summary>
+
+- The upper cab is open behind its windows, with seats, headrests, dashboard and steering wheel. Transparent panes switch to opaque glass at long distances; wrecks lose the intact panes.
+- Rounded rubber sidewalls surround recessed wheel rims. Smaller staggered tread blocks replace the previous broad bars and rotate with the wheels.
+- Canvas loads have curved, folded shells and restraints that follow their shape. Painted bumpers and fuel tanks retain a nonmetallic coating.
+
+![Before: the previous detail pass, with identical ground, shadows, camera and lighting.](changelog/v1.0.12/hemtt-cab-depth/before.jpg)
+
+![The rebuilt supply truck in the game's terrain and daylight lighting.](changelog/v1.0.12/hemtt-cab-depth/in-game.jpg)
+
+</details>
+
+#### More readable detail on the HEMTT cargo truck
+
+The cargo truck gains framed windows, wipers, tyre tread and distinct load hardware.
+
+![Cargo truck after: window frames, tyre tread, bed latches and strapped cargo.](changelog/v1.0.12/hemtt-cargo-detail/close-after.jpg)
+
+<details>
+<summary>Explore this change</summary>
+
+- Window gaskets, wipers and raised door panels give the cab more definition.
+- Tyre lugs change the wheel silhouette; drum hoops, filler caps and load straps distinguish the cargo.
+- Step lips and bed hinges carry localized rub marks. The other HEMTT variants retain their existing models while this art direction is evaluated.
+
+![Before: the same truck with the CC0 material pass, under identical lighting.](changelog/v1.0.12/hemtt-cargo-detail/close-before.jpg)
+
+![After at a wider, gameplay-scale studio view.](changelog/v1.0.12/hemtt-cargo-detail/wide-after.jpg)
+
+![Before at the identical wider camera scale.](changelog/v1.0.12/hemtt-cargo-detail/wide-before.jpg)
+
+</details>
+
+#### Frame the alpine battlefield with a photographic daylight sky
+
+Natural cloud forms and a sun-aligned photographic sky replace the plain daylight backdrop.
+
+![Previous proposal: target view, matching seed and camera.](changelog/v1.0.12/photographic-daylight-sky/target-before.jpg)
+
+<details>
+<summary>Explore this change</summary>
+
+Daylight uses a bundled 2K CC0 HDR panorama from Poly Haven, rotated to match the sunlight. Its static shader lets Godot cache sky lighting and reflections. Other weather and night moods retain their existing skies. No network download is needed.
+
+[Asset and authors](https://polyhaven.com/a/kloofendal_48d_partly_cloudy_puresky) | [CC0 license](https://polyhaven.com/license).
+
+![Revised: target view, matching seed and camera.](changelog/v1.0.12/photographic-daylight-sky/target-after.jpg)
+
+![Previous proposal: wide view, matching seed and camera.](changelog/v1.0.12/photographic-daylight-sky/wide-before.jpg)
+
+![Revised: wide view, matching seed and camera.](changelog/v1.0.12/photographic-daylight-sky/wide-after.jpg)
+
+</details>
+
+#### Steadier minimap updates
+
+Minimap drawing is spread across frames while camera and pointer feedback stays responsive.
+
+![The minimap keeps its detail while its layers take turns updating.](changelog/v1.0.12/progressive-minimap/after.jpg)
+
+<details>
+<summary>Explore this change</summary>
+
+- Map details, combat markers, units and co-op markers take turns updating, reducing the work that lands on any one frame.
+- The camera wedge and pointer update every frame. Rotating or resizing the minimap keeps all its layers aligned.
+- Large-map building checks run in small slices, and soldiers share repeated smoothing calculations without changing their movement.
+
+![Map layers remain aligned when the minimap turns with the camera.](changelog/v1.0.12/progressive-minimap/rotated.jpg)
+
+</details>
+
+<details>
+<summary>Compare changelog layouts</summary>
+
+Changelog presentation comparison, not gameplay: the top 1,000 pixels of this entry at the same 900-pixel viewport width. Open either image to inspect it.
+
+![Before: old changelog layout](changelog/v1.0.12/progressive-minimap/layout-before.jpg)
+
+![After: new changelog layout](changelog/v1.0.12/progressive-minimap/layout-after.jpg)
+
+</details>
+
+#### Separate ranges with distance-based scattering
+
+Distant mountain groups lose contrast into sky-coloured haze while nearby ground retains its detail.
+
+![Previous proposal: target view, matching seed and camera.](changelog/v1.0.12/realism-01-aerial/target-before.jpg)
+
+<details>
+<summary>Explore this change</summary>
+
+Exponential extinction with sky-coloured in-scattering; a deliberately simplified approximation, not a full atmospheric solver. Uses the existing Alpine haze option.
+
+Research: [primary reference](https://developer.nvidia.com/gpugems/gpugems2/part-ii-shading-lighting-and-shadows/chapter-16-accurate-atmospheric-scattering).
+
+The revision reduces the broad pale wash, delays scattering until beyond nearby terrain, and lets high ridges retain contrast. Approved layer relief and texture-scale changes are retained in this parent branch.
+
+![Revised: target view, matching seed and camera.](changelog/v1.0.12/realism-01-aerial/target-after.jpg)
+
+![Previous proposal: wide view, matching seed and camera.](changelog/v1.0.12/realism-01-aerial/wide-before.jpg)
+
+![Revised: wide view, matching seed and camera.](changelog/v1.0.12/realism-01-aerial/wide-after.jpg)
+
+</details>
+
+#### Give geological layers surface relief
+
+Rock beds catch light along their ledges instead of appearing only as painted colour bands.
+
+![Before: target view, matching seed and camera.](changelog/v1.0.12/realism-02-strata/target-before.jpg)
+
+<details>
+<summary>Explore this change</summary>
+
+Screen-space derivatives perturb normals from the existing tilted bedding field. No displaced collision surface or new texture reads.
+
+Research: [primary reference](https://developer.nvidia.com/gpugems/gpugems3/part-i-geometry/chapter-1-generating-complex-procedural-terrains-using-gpu).
+
+![After: target view, matching seed and camera.](changelog/v1.0.12/realism-02-strata/target-after.jpg)
+
+![Before: wide view, matching seed and camera.](changelog/v1.0.12/realism-02-strata/wide-before.jpg)
+
+![After: wide view, matching seed and camera.](changelog/v1.0.12/realism-02-strata/wide-after.jpg)
+
+</details>
+
+#### Blend rock detail across different scales
+
+Broad cliff fractures and smaller joint patterns break up recognisable repeated rock tiles.
+
+![Before: target view, matching seed and camera.](changelog/v1.0.12/realism-03-rock-scales/target-before.jpg)
+
+<details>
+<summary>Explore this change</summary>
+
+A second triplanar colour/normal scale is blended coherently. Six extra material reads at Medium/Far detail; Near keeps the cheaper original material.
+
+Research: [primary reference](https://developer.nvidia.com/gpugems/gpugems3/part-i-geometry/chapter-1-generating-complex-procedural-terrains-using-gpu).
+
+![After: target view, matching seed and camera.](changelog/v1.0.12/realism-03-rock-scales/target-after.jpg)
+
+![Before: wide view, matching seed and camera.](changelog/v1.0.12/realism-03-rock-scales/wide-before.jpg)
+
+![After: wide view, matching seed and camera.](changelog/v1.0.12/realism-03-rock-scales/wide-after.jpg)
+
+</details>
+
+#### Distinguish loose scree from solid cliffs
+
+Sheltered lower slopes collect pale loose stone while exposed walls retain darker bedrock.
+
+![Previous proposal: target view, matching seed and camera.](changelog/v1.0.12/realism-04-talus/target-before.jpg)
+
+<details>
+<summary>Explore this change</summary>
+
+Uses existing slope, elevation and baked shelter to weight the existing scree photographs. A deposition-inspired material mask, not new sediment simulation.
+
+Research: [primary reference](https://wargaming.com/en/news/making_battle_arenas_in_wows/).
+
+Loose stone collects in broken sheltered pockets, with photographic height detail breaking the deposit edge instead of a pale blanket across every lower slope.
+
+Scree now forms irregular drainage fans instead of repeating yellow bands across distant mountains. Neutral stone coloration, coarse breakup and exposed bedrock interrupt the deposits.
+
+![Revised: target view, matching seed and camera.](changelog/v1.0.12/realism-04-talus/target-after.jpg)
+
+![Previous proposal: wide view, matching seed and camera.](changelog/v1.0.12/realism-04-talus/wide-before.jpg)
+
+![Revised: wide view, matching seed and camera.](changelog/v1.0.12/realism-04-talus/wide-after.jpg)
+
+</details>
+
+#### Break up smooth snow with wind-shaped surface detail
+
+Snow shelves gain shallow wind grooves and granular highlights instead of perfectly smooth white surfaces.
+
+![Previous proposal: target view, matching seed and camera.](changelog/v1.0.12/realism-05-snow-surface/target-before.jpg)
+
+<details>
+<summary>Explore this change</summary>
+
+Adds derivative-filtered snow surface relief and changes its roughness coherently. The wind-groove approximation extends the existing slope/exposure snow coverage; it does not implement the reference occlusion map.
+
+Research: [primary reference](https://download.nvidia.com/developer/SDK/Individual_Samples/DEMOS/Direct3D9/src/SnowAccumulation/Docs/SnowAccumulation.pdf).
+
+Wind grooves now bend and break at two scales, with subdued granular shading, rather than forming evenly spaced parallel stripes.
+
+Snow collects in connected sheltered shelves with irregular wind-scoured rock windows, broken edges and softer two-scale surface relief.
+
+![Revised: target view, matching seed and camera.](changelog/v1.0.12/realism-05-snow-surface/target-after.jpg)
+
+![Previous proposal: wide view, matching seed and camera.](changelog/v1.0.12/realism-05-snow-surface/wide-before.jpg)
+
+![Revised: wide view, matching seed and camera.](changelog/v1.0.12/realism-05-snow-surface/wide-after.jpg)
+
+</details>
+
+#### Give damp cliff streaks a wet surface response
+
+Sheltered runoff channels darken and develop a restrained sheen while exposed rock remains dry.
+
+![Previous proposal: target view, matching seed and camera.](changelog/v1.0.12/realism-06-seepage/target-before.jpg)
+
+<details>
+<summary>Explore this change</summary>
+
+Existing runoff/shelter fields drive darkening, roughness and a bounded direct-light lobe. This is persistent seepage styling, not a hydrology simulation.
+
+Research: [primary reference](https://seblagarde.wordpress.com/2013/03/19/water-drop-3a-physically-based-wet-surfaces/).
+
+Compatibility retains damp colour and roughness but skips the extra direct-light sheen to avoid bright faceting.
+
+Seepage follows connected runoff channels with variable shelter, darkening narrow damp areas rather than tinting a whole cliff.
+
+Wet cliffs now show broad connected drainage stains and smaller vertical tributaries, with a darker, cooler surface response that remains visible at normal viewing distances.
+
+![Revised: target view, matching seed and camera.](changelog/v1.0.12/realism-06-seepage/target-after.jpg)
+
+![Previous proposal: wide view, matching seed and camera.](changelog/v1.0.12/realism-06-seepage/wide-before.jpg)
+
+![Revised: wide view, matching seed and camera.](changelog/v1.0.12/realism-06-seepage/wide-after.jpg)
+
+</details>
+
+#### Replace cone-like spruce tiers with ragged boughs
+
+Conifers have broken, asymmetric branch silhouettes that read as trees against rock and snow.
+
+![Previous proposal: target view, matching seed and camera.](changelog/v1.0.12/realism-07-spruce-boughs/target-before.jpg)
+
+<details>
+<summary>Explore this change</summary>
+
+A shared low-polygon bough mesh replaces each solid cone tier, preserving the existing tree batching, burn state and placement.
+
+Research: [primary reference](https://wargaming.com/en/news/creating_levels/).
+
+Spruce sprays have divided tips and irregular branch lengths, producing fuller foliage with broken edges rather than flat triangular tiers.
+
+![Revised: target view, matching seed and camera.](changelog/v1.0.12/realism-07-spruce-boughs/target-after.jpg)
+
+![Previous proposal: wide view, matching seed and camera.](changelog/v1.0.12/realism-07-spruce-boughs/wide-before.jpg)
+
+![Revised: wide view, matching seed and camera.](changelog/v1.0.12/realism-07-spruce-boughs/wide-after.jpg)
+
+</details>
+
+#### Give alpine stones angular fractured shapes
+
+Stones at the mountain foot have irregular broken faces instead of flattened round primitives.
+
+[Watch: Fractured stones at close range, then the surrounding slope. Native current-PR camera recording; simulation held, wind animated. The matched stills below show before and after.](https://web-production-5a4c1.up.railway.app/changelog/#v1.0.12) ([Direct WEBM](https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/realism-08-fractured-stones/native-tour.webm))
+
+<details>
+<summary>Explore this change</summary>
+
+A small set of cached seeded faceted meshes replaces decorative pebble spheres. Placement, passability and replicated dressing data stay unchanged.
+
+Research: [primary reference](https://wargaming.com/en/news/creating_levels/).
+
+Natural stones also use a rough granular material instead of the masonry material with mortar joints.
+
+Decorative stones use the bundled rock photograph with triplanar projection, retaining their shared fractured meshes and avoiding flat grey surfaces.
+
+Alpine dressing combines slabs, angular cobbles and smaller fragments in denser, varied clusters. Fine fragments are batched separately and culled at distance; larger stones remain visible.
+
+![Previous proposal: target view, matching seed and camera.](changelog/v1.0.12/realism-08-fractured-stones/target-before.jpg)
+
+![Revised: target view, matching seed and camera.](changelog/v1.0.12/realism-08-fractured-stones/target-after.jpg)
+
+![Previous proposal: wide view, matching seed and camera.](changelog/v1.0.12/realism-08-fractured-stones/wide-before.jpg)
+
+![Revised: wide view, matching seed and camera.](changelog/v1.0.12/realism-08-fractured-stones/wide-after.jpg)
+
+</details>
+
+#### Make meadow colour follow broad soil pockets
+
+Connected dry grass and richer moss patches replace evenly green valley floors.
+
+![Previous proposal: target view, matching seed and camera.](changelog/v1.0.12/realism-09-meadow-mosaic/target-before.jpg)
+
+<details>
+<summary>Explore this change</summary>
+
+Broad moisture and exposure masks reuse existing world-space noise and shelter, with fine photographic detail retained. No extra scatter or draw calls.
+
+Research: [primary reference](https://wargaming.com/en/news/making_battle_arenas_in_wows/).
+
+Meadow colour follows shelter and aspect more strongly, with quieter dry-grass colour that avoids broad camouflage-like brown blobs.
+
+![Revised: target view, matching seed and camera.](changelog/v1.0.12/realism-09-meadow-mosaic/target-after.jpg)
+
+![Previous proposal: wide view, matching seed and camera.](changelog/v1.0.12/realism-09-meadow-mosaic/wide-before.jpg)
+
+![Revised: wide view, matching seed and camera.](changelog/v1.0.12/realism-09-meadow-mosaic/wide-after.jpg)
+
+</details>
+
+#### Blend gravel into alpine shorelines
+
+Coastal margins transition through exposed gravel and darker wet stone instead of a uniformly sandy strip.
+
+[Watch: A close orbit over gravel, wet margins and exposed sand, followed by coastal context. Native current-PR recording; camera and water animated. Compare the matched stills below.](https://web-production-5a4c1.up.railway.app/changelog/#v1.0.12) ([Direct WEBM](https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/realism-10-shore-gravel/native-tour.webm))
+
+<details>
+<summary>Explore this change</summary>
+
+The existing shoreline and slope masks select photographic gravel and damp roughness. Water depth, wading and boat navigation remain authoritative and unchanged.
+
+Research: [primary reference](https://seblagarde.wordpress.com/2013/03/19/water-drop-3a-physically-based-wet-surfaces/).
+
+Gravel collects in broken coves and steeper banks, preserving sandy openings instead of tracing a continuous band around the whole coast.
+
+Shorelines now blend neutral gravel, darker washed margins and exposed sand through irregular deposits, with photographic breakup at their edges.
+
+![Previous proposal: target view, matching seed and camera.](changelog/v1.0.12/realism-10-shore-gravel/target-before.jpg)
+
+![Revised: target view, matching seed and camera.](changelog/v1.0.12/realism-10-shore-gravel/target-after.jpg)
+
+![Previous proposal: wide view, matching seed and camera.](changelog/v1.0.12/realism-10-shore-gravel/wide-before.jpg)
+
+![Revised: wide view, matching seed and camera.](changelog/v1.0.12/realism-10-shore-gravel/wide-after.jpg)
+
+</details>
+
+#### Give rock crevices more depth
+
+Sheltered rock crevices receive stronger ambient occlusion while exposed rock stays open to sky light.
+
+![Before: shared terrain baseline, identical seed and camera.](changelog/v1.0.12/rock-occlusion/before.jpg)
+
+<details>
+<summary>Explore this change</summary>
+
+No new texture reads. Occlusion affects ambient lighting, with the existing direct-light contribution retained. This is a material approximation, not new ray tracing.
+
+Technique reference: [research source](https://developer.nvidia.com/gpugems/gpugems/part-iii-materials/chapter-17-ambient-occlusion).
+
+![After: Sheltered rock crevices receive stronger ambient occlusion while exposed rock stays open to sky light.](changelog/v1.0.12/rock-occlusion/after.jpg)
+
+![Before: matching closer camera, shared baseline.](changelog/v1.0.12/rock-occlusion/close-before.jpg)
+
+![After: the same closer camera; surface changes remain subtle.](changelog/v1.0.12/rock-occlusion/close-after.jpg)
+
+![Before: focused comparison under matched lighting.](changelog/v1.0.12/rock-occlusion/target-before.jpg)
+
+![After: Watch the shaded recess beside the central rib under diffuse light.](changelog/v1.0.12/rock-occlusion/target-after.jpg)
+
+</details>
+
+#### Break up repeating cliff textures
+
+World-space texture warping breaks up repeated slab patterns without adding material samples.
+
+![Before: shared terrain baseline, identical seed and camera.](changelog/v1.0.12/rock-warp/before.jpg)
+
+<details>
+<summary>Explore this change</summary>
+
+Three additional scalar noise reads per terrain fragment; material reads stay at eighteen. Warping is fixed in world space and shared by colour and normal coordinates.
+
+Technique reference: [research source](https://developer.nvidia.com/gpugems/gpugems3/part-i-geometry/chapter-1-generating-complex-procedural-terrains-using-gpu).
+
+![After: World-space texture warping breaks up repeated slab patterns without adding material samples.](changelog/v1.0.12/rock-warp/after.jpg)
+
+![Before: matching closer camera, shared baseline.](changelog/v1.0.12/rock-warp/close-before.jpg)
+
+![After: the same closer camera; surface changes remain subtle.](changelog/v1.0.12/rock-warp/close-after.jpg)
+
+![Before: focused comparison under matched lighting.](changelog/v1.0.12/rock-warp/target-before.jpg)
+
+![After: Watch the large fracture patterns on the bright central rock rib.](changelog/v1.0.12/rock-warp/target-after.jpg)
+
+</details>
+
+#### Break up alpine snowfields
+
+Wind exposure and rock relief break up snow edges, with cooler compacted snow in sheltered pockets.
+
+![Before: shared terrain baseline, identical seed and camera.](changelog/v1.0.12/snow-deposition/before.jpg)
+
+<details>
+<summary>Explore this change</summary>
+
+No new texture reads. Fixed prevailing wind is a visual deposition heuristic, not weather simulation. Authoritative terrain and snowline settings are unchanged.
+
+Technique reference: [research source](https://download.nvidia.com/developer/SDK/Individual_Samples/DEMOS/Direct3D9/src/SnowAccumulation/Docs/SnowAccumulation.pdf).
+
+![After: Wind exposure and rock relief break up snow edges, with cooler compacted snow in sheltered pockets.](changelog/v1.0.12/snow-deposition/after.jpg)
+
+![Before: matching closer camera, shared baseline.](changelog/v1.0.12/snow-deposition/close-before.jpg)
+
+![After: the same closer camera; surface changes remain subtle.](changelog/v1.0.12/snow-deposition/close-after.jpg)
+
+![Before: focused comparison under matched lighting.](changelog/v1.0.12/snow-deposition/target-before.jpg)
+
+![After: Watch the boundary between snow and bare rock on the foreground peak.](changelog/v1.0.12/snow-deposition/target-after.jpg)
+
+</details>
+
+#### More deliberate tank handling
+
+Tank turrets accelerate and settle onto targets, hold their bearing through hull turns, and acquire a steady aim before firing.
+
+[Watch: The tank turns, traverses its turret and advances past the wall. Recorded in the current build, October 2026.](https://web-production-5a4c1.up.railway.app/changelog/#v1.0.12) ([Direct MP4](https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/tank-operation/tank-motion.mp4))
+
+<details>
+<summary>Explore this change</summary>
+
+- Tank drivers build into turns rather than instantly changing their turning speed.
+- Turrets traverse with acceleration and braking, and return forward by the shortest arc.
+- Gunners hold a steady aim briefly before firing, including when switching targets.
+
+![Before: the tank engaging the RPG team.](changelog/v1.0.12/tank-operation/before.jpg)
+
+![After: the same encounter with gradual traverse and deliberate gun laying.](changelog/v1.0.12/tank-operation/after.jpg)
+
+</details>
+
+<details>
+<summary>Compare changelog layouts</summary>
+
+Changelog presentation comparison, not gameplay: the top 1,000 pixels of this entry at the same 900-pixel viewport width. Open either image to inspect it.
+
+![Before: old changelog layout](changelog/v1.0.12/tank-operation/layout-before.jpg)
+
+![After: new changelog layout](changelog/v1.0.12/tank-operation/layout-after.jpg)
+
+</details>
+
+#### Safer routes across hills and water
+
+Tracks and wheels choose suitable slopes, and infantry wade through shallows instead of walking underwater.
+
+<details>
+<summary>Explore this change</summary>
+
+- Infantry, wheeled vehicles and tracked vehicles use separate terrain limits. Vehicles account for nearby steep ground across their footprint, and supply trucks no longer bypass blocked terrain.
+- Routes favour easier ground and roads. Connected areas are calculated when the map loads, and newly opened passages become available without treating separated shores as reachable.
+- Soldiers can wade through water up to 55 cm deep. Deeper water is blocked even if an old terrain label calls it shallow; bridge decks remain usable.
+- Movement checks the whole step, including dives, separation and vehicle recovery. Old routes cannot carry units through newly blocked ground or deep water.
+- Living soldiers stay upright while wading. Spawning and disembarking use safe ground; soldiers stranded by a removed crossing recover to a safe bank.
+- Ambush Alley autoplay uses its available mortars against spotted convoy vehicles stopped on the road, so it can finish the ambush under the updated movement rules.
+
+</details>
+
+#### Connect houses and streets with gardens, paths and grounded furniture
+
+Scanned materials, weathered roads and leafy canopies give towns and their surrounding hills more natural detail.
+
+[Watch: Native camera tour of photographed town surfaces, door paths and connected plots. Current PR with simulation held; the original stills below provide before/after evidence.](https://web-production-5a4c1.up.railway.app/changelog/#v1.0.12) ([Direct WEBM](https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/town-ground-and-frontages/native-tour.webm))
+
+<details>
+<summary>Explore this change</summary>
+
+Paving follows the terrain instead of sitting at flat-map height. Street furniture and wire endpoints carry their authoritative elevation into multiplayer and replays. House plots have maintained ground, narrow foundation aprons and routes to actual front or side doors; fences leave pedestrian and driveway gaps and break into short sections. Wild grass and shrubs stay outside maintained plots.
+
+Photographic CC0 asphalt, paving slabs and grass/soil replace the flat procedural surfaces. Real-world texture scale, normal and roughness maps, per-slab wear and broad dry/green patches keep detail readable near houses and across the town. Urban grass clumps are shorter.
+
+Road entrances blend through broken gravel edges; repaired asphalt patches and dark stains interrupt the carriageway. Roofs use aged tile and rough concrete scans, while timber fences have photographed grain and section-to-section weathering. Metal fences show dull paint and rust.
+
+Brick, plaster, bark and country-road gravel also use scanned detail. Concrete driveways differ from paving-slab footpaths, with broad staining across sidewalks and roofs.
+
+Trees, hedges and shrubs have open, photographed leaf and needle silhouettes. Patchy distant forests follow hills outside the battlefield using a small prebaked tree atlas: two triangles per tree, with cliffs, high peaks and coasts kept clear. Set View distance / detail to Near for the lighter view.
+
+![Previous photographic surfaces: matching close camera.](changelog/v1.0.12/town-ground-and-frontages/detail-before.jpg)
+
+![Broken road transitions, stained asphalt and weathered surfaces: matching close camera.](changelog/v1.0.12/town-ground-and-frontages/detail-after.jpg)
+
+![Previous proposal: target view, matching seed and camera.](changelog/v1.0.12/town-ground-and-frontages/target-before.jpg)
+
+![Revised: target view, matching seed and camera.](changelog/v1.0.12/town-ground-and-frontages/target-after.jpg)
+
+![Previous proposal: wide view, matching seed and camera.](changelog/v1.0.12/town-ground-and-frontages/wide-before.jpg)
+
+![Revised: wide view, matching seed and camera.](changelog/v1.0.12/town-ground-and-frontages/wide-after.jpg)
+
+![Previous canopy and bare background slopes: matching panorama.](changelog/v1.0.12/town-ground-and-frontages/forest-before.jpg)
+
+![Photographed canopy and dense background forest patches: matching panorama.](changelog/v1.0.12/town-ground-and-frontages/forest-after.jpg)
+
+</details>
+
+#### Deeper cabs and rounded tyres across more vehicles
+
+Military truck variants and civilian cars gain visible interiors, while shared wheels gain rounded tyres, recessed rims and fitted tread.
+
+![After: the Zamak has an open cab, rounded tyres and a draped cargo cover with fitted restraints.](changelog/v1.0.12/vehicle-detail-rollout/zamak-after.jpg)
+
+<details>
+<summary>Explore this change</summary>
+
+- The cab treatment now covers every HEMTT, Zamak and Tempest mission body, plus the Offroad pickup, hatchback and SUV families.
+- Rounded tyres and inset rims extend across the shared wheel builders. Road vehicles use finer tread; aircraft tyres stay smooth, and specialised tracked road wheels keep their own construction.
+- The Zamak cargo and ammunition loads use the same draped cloth system as the HEMTT. Restraints follow the cover instead of floating over it.
+- Glass switches to an opaque fallback at long distances and is removed from wrecks. Wheel detail rotates with the existing wheel pivots.
+
+![Before: the same Zamak, camera, ground and lighting before the detail rollout.](changelog/v1.0.12/vehicle-detail-rollout/zamak-before.jpg)
+
+![The Offroad pickup now has a visible cab interior and rounded road tyres.](changelog/v1.0.12/vehicle-detail-rollout/offroad-after.jpg)
+
+</details>
+
+#### Weight behind the gun
+
+Older tanks, modern armour, aircraft and mounted weapons turn and acquire targets at distinct, deliberate rates. Vehicle and gunship rounds begin at their own barrels.
+
+[Watch: Before / after, real time: the old tank, modern tank and IFV acquire the same target 90 degrees to their right. Older drives take longer to settle.](https://web-production-5a4c1.up.railway.app/changelog/#v1.0.12) ([Direct WEBM](https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/vehicle-motion-and-muzzles/tanks-comparison.webm))
+
+<details>
+<summary>Explore this change</summary>
+
+- Tank, IFV, anti-aircraft, artillery, light vehicle and helicopter weapons have different traverse rates, with acceleration and braking onto the target.
+- Older tank drives take longer to acquire; modern tanks keep a steady firing solution as the hull turns, within the turret motor's available speed.
+- Mounted machine guns, mortars and anti-tank posts must lay onto their bearing before firing.
+- Tracked hulls build into pivots, wheeled vehicles cannot spin in place while reversing, and heavy-lift helicopters answer more slowly than lighter airframes.
+- Vehicle and gunship rounds leave the correct model barrels, including scaled helicopter mounts and each of the gunship's separately positioned guns.
+
+- Boats now have hull-specific cruise speeds, acceleration, engine and helm response, turning circles and astern thrust: quick RHIBs, heavier riverine craft, a deliberate jet patrol ship and a slow steel trawler.
+
+[Watch: Before / after, real time: RHIB, patrol ship and trawler receive six seconds of full ahead, four seconds hard right, then a stop order. Course dots show the different turns.](https://web-production-5a4c1.up.railway.app/changelog/#v1.0.12) ([Direct WEBM](https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/vehicle-motion-and-muzzles/boats-comparison.webm))
+
+[Watch: Before / after launch-origin visualization: coloured pulses mark the actual 25, 40 and 105 mm launch points. Each gun now starts at its own barrel instead of below the fuselage.](https://web-production-5a4c1.up.railway.app/changelog/#v1.0.12) ([Direct WEBM](https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/vehicle-motion-and-muzzles/aircraft-comparison.webm))
+
+</details>
+
+<details>
+<summary>Compare changelog layouts</summary>
+
+Changelog presentation comparison, not gameplay: the top 1,000 pixels of this entry at the same 900-pixel viewport width. Open either image to inspect it.
+
+![Before: old changelog layout](changelog/v1.0.12/vehicle-motion-and-muzzles/layout-before.jpg)
+
+![After: new changelog layout](changelog/v1.0.12/vehicle-motion-and-muzzles/layout-after.jpg)
+
+</details>
+
+#### Distinct surfaces across the vehicle roster
+
+Armor, aircraft, civilian vehicles and boats now have distinct finishes, finer texture detail and wear that stays attached as they move.
+
+![Civilian paint after: fine surface detail replaces the oversized wear patches.](changelog/v1.0.12/vehicle-surface-library/hatchback-after.jpg)
+
+<details>
+<summary>Explore this change</summary>
+
+- Matte armor paint, smoother aircraft coatings, civilian clearcoat, rubber tyres, canvas covers and exposed metal now respond differently to light.
+- Large blotches on civilian bodywork give way to fine surface texture and restrained wear. Boat walking decks have a rough nonslip finish.
+- Camouflage, wear and lower-body dirt stay on the vehicle when it moves or climbs. Faction colors are preserved.
+- The water scooter’s curved hood no longer produces invalid surface normals.
+
+- CC0 coating, rubber, fabric and metal textures now feed the shared finishes. Painted cargo drums lose their bare-metal sparkle, the RHIB has a treaded deck, and worn trawler fittings have localized corrosion.
+
+![Before: the same hatchback, camera, seed and lighting.](changelog/v1.0.12/vehicle-surface-library/hatchback-before.jpg)
+
+![Armor after: matte coatings, finer relief and distinct rubber and metal.](changelog/v1.0.12/vehicle-surface-library/tank-after.jpg)
+
+![Before: the same tank, camera, seed and lighting.](changelog/v1.0.12/vehicle-surface-library/tank-before.jpg)
+
+![Shared finishes under the same lighting: coatings, rubber, canvas, metal, glass and nonslip.](changelog/v1.0.12/vehicle-surface-library/surface-swatches.jpg)
+
+</details>
+
+### Fixed
+
+#### Softer beaches and rolling surf
+
+Fine gravel fades into beach sand, and breakers roll toward shore without a sharp ribbon across the water.
+
+[Watch: Six seconds of matched native motion: before on the left, after on the right. Watch the offshore crease disappear.](https://web-production-5a4c1.up.railway.app/changelog/#v1.0.12) ([Direct MP4](https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/shoreline-blending/comparison.mp4))
+
+<details>
+<summary>Explore this change</summary>
+
+Beach gravel now uses fine photographed grains in broad, feathered deposits instead of large mountain-rock chips. Coastal foam breaks into patches and shallow water fades more gently over the sand.
+
+The surf's repeating shape now joins smoothly between waves, removing the hard crease across the water. These are surface changes; water depths and routes remain the same.
+
+![Before: oversized gray chips and a sharp offshore wave crease.](changelog/v1.0.12/shoreline-blending/waterline-before.jpg)
+
+![After: fine warm grains, softer water contact and a continuous breaker.](changelog/v1.0.12/shoreline-blending/waterline-after.jpg)
+
+![Before, at town viewing distance.](changelog/v1.0.12/shoreline-blending/town-before.jpg)
+
+![After, with the same town, camera and lighting.](changelog/v1.0.12/shoreline-blending/town-after.jpg)
+
+</details>
+
 ## v1.0.11: Watch battles and revisit the action
 
 *28 October 2026* · [Release on GitHub](https://github.com/Dynasty9/Frontline/releases/tag/v1.0.11)
@@ -194,7 +1252,7 @@ Changelog presentation comparison, not gameplay: the top 1,000 pixels of this en
 
 Helicopters carry momentum, bank through turns and flare into a hover before landing.
 
-[Watch: A Mohawk banks and settles over its sling pickup. Recorded in the current build, October 2026.](https://web-production-5a4c1.up.railway.app/changelog/#v1.0.11)
+[Watch: A Mohawk banks and settles over its sling pickup. Recorded in the current build, October 2026.](https://web-production-5a4c1.up.railway.app/changelog/#v1.0.11) ([Direct MP4](https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.11/helicopter-flight/helicopter-turn.mp4))
 
 <details>
 <summary>Explore this change</summary>
@@ -1017,7 +2075,7 @@ Changelog presentation comparison, not gameplay: the top 1,000 pixels of this en
 
 Boats carry momentum, slide through turns and use reverse thrust to stop instead of braking like cars.
 
-[Watch: An RHIB turns toward the beach, trailing a curved wake as it comes ashore. Recorded in the current build, October 2026.](https://web-production-5a4c1.up.railway.app/changelog/#v1.0.5)
+[Watch: An RHIB turns toward the beach, trailing a curved wake as it comes ashore. Recorded in the current build, October 2026.](https://web-production-5a4c1.up.railway.app/changelog/#v1.0.5) ([Direct MP4](https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.5/boats-handle-like-boats/boat-turn.mp4))
 
 <details>
 <summary>Explore this change</summary>
@@ -1338,7 +2396,7 @@ Changelog presentation comparison, not gameplay: the top 1,000 pixels of this en
 
 Birds, land animals and marine life inhabit the battlefield and react to nearby fighting.
 
-[Watch: Fish swim together beneath the river surface. Recorded in the current build, October 2026.](https://web-production-5a4c1.up.railway.app/changelog/#v1.0.3)
+[Watch: Fish swim together beneath the river surface. Recorded in the current build, October 2026.](https://web-production-5a4c1.up.railway.app/changelog/#v1.0.3) ([Direct WEBM](https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.3/wildlife/fish-swimming.webm))
 
 <details>
 <summary>Explore this change</summary>
@@ -1366,7 +2424,7 @@ The battlefield has life of its own now. Birds feed in the fields and burst up a
 
 ![Mallards on a pond, one upending to feed](changelog/v1.0.3/wildlife/ducks.jpg)
 
-[Watch: Dolphins surface and leap through the ocean swell. Recorded in the current build, October 2026.](https://web-production-5a4c1.up.railway.app/changelog/#v1.0.3)
+[Watch: Dolphins surface and leap through the ocean swell. Recorded in the current build, October 2026.](https://web-production-5a4c1.up.railway.app/changelog/#v1.0.3) ([Direct WEBM](https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.3/wildlife/dolphin-leap.webm))
 
 </details>
 
@@ -1584,7 +2642,7 @@ Changelog presentation comparison, not gameplay: the top 1,000 pixels of this en
 
 Boats ride waves shaped by the weather, with water quality options for less powerful hardware.
 
-[Watch: A patrol ship pitches and rolls as waves pass beneath it. Recorded in the current build, October 2026.](https://web-production-5a4c1.up.railway.app/changelog/#v1.0.2)
+[Watch: A patrol ship pitches and rolls as waves pass beneath it. Recorded in the current build, October 2026.](https://web-production-5a4c1.up.railway.app/changelog/#v1.0.2) ([Direct MP4](https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.2/ocean-swell/ocean-swell.mp4))
 
 <details>
 <summary>Explore this change</summary>
@@ -2237,7 +3295,7 @@ Changelog presentation comparison, not gameplay: the top 1,000 pixels of this en
 
 Fight across rolling water with breaking surf, boat wakes and vessels that visibly sink when destroyed.
 
-[Watch: A burning boat settles into the sea as foam spreads around its hull. Recorded in the current build, October 2026.](https://web-production-5a4c1.up.railway.app/changelog/#v1.0.0)
+[Watch: A burning boat settles into the sea as foam spreads around its hull. Recorded in the current build, October 2026.](https://web-production-5a4c1.up.railway.app/changelog/#v1.0.0) ([Direct MP4](https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.0/water-and-sea-battles/boat-sinking.mp4))
 
 <details>
 <summary>Explore this change</summary>

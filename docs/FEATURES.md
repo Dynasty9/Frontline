@@ -12,7 +12,7 @@ The long version: how each system works and why. For the short version, see the 
 
 ## Full controls reference
 
-These are the default keys. **Settings → Controls** (`scripts/autoload/keys.gd`, `scripts/ui/controls_page.gd`)
+These are the default keys. **Settings â†’ Controls** (`scripts/autoload/keys.gd`, `scripts/ui/controls_page.gd`)
 changes any of them:
 
 - **By category:** camera, saved views, orders, abilities and fire support, building, control groups,
@@ -529,7 +529,8 @@ Ambush Alley autoplay can call its existing mortar support against spotted, stop
 - **The AI** sends a recon flight over when the picture's thin: before an attack on ground it can't see, or when it
   has next to nothing of the enemy in sight. It builds a watchtower at each FOB and an early recon drone.
 
-**Pathfinding and tactics** (`nav.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
+**Pathfinding and tactics** (
+av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
 - **Hierarchical A\* (HPA\*)** over both grids: the map is cut into 16 x 16 m clusters with entrances wherever
   neighbouring clusters connect (and wherever a road crosses), true costs inside each cluster precomputed. Long
   trips plan on the abstract graph, then refine cluster by cluster. When walls go up or are blown down only the
@@ -542,21 +543,34 @@ Ambush Alley autoplay can call its existing mortar support against spotted, stop
 - Stuck watchdogs: infantry re-plan if they stop making progress; vehicles back off, turn and re-plan.
 
 **The map** (`mapgen.gd`, `landform.gd`, `towngen.gd`, `decor.gd`)
+- Town asphalt combines fine photographed aggregate with larger cracks and repairs, continuous across street junctions. Road and pavement normal maps follow their actual slopes. Photographic roof, concrete, wood and bark materials are calibrated to their intended colours, so grey roofs remain grey and terracotta stays distinct at distance.
 - Standard battlefields have seeded mountain belts, hills, valleys and rivers. Domain-warped ridged noise,
   jointed bedrock shelves, thermal weathering and seeded rainfall erosion shape the relief. Roads, bridges, starting bases and settlements
   occupy graded valley corridors; forests stay below the snow line and off steep faces.
-- Distant scenery has seeded mountain groups and low passes, with floating-point heights and a finer indexed mesh at Medium/Far detail. Reusable cliff forms have uneven shoulders and irregular drainage cuts before erosion.
+- Distant scenery composes surveyed Mont Blanc, Matterhorn and Jungfrau ridge shapes into seeded fictional mountain groups and low passes, with floating-point heights and a finer indexed mesh at Medium/Far detail. Coastal scenery continues into an irregular shoreline and a coarse ocean surface beyond the detailed battlefield water. Boundary rivers extend into curved scenery pools with matching beds and banks; these extensions leave authoritative water shapes and navigation unchanged. Reusable cliff forms have uneven shoulders and irregular drainage cuts before erosion.
 - Distant mountain groups lose contrast into sky-coloured haze while nearby ground retains its detail.
 - Rock beds catch light along their ledges instead of appearing only as painted colour bands.
 - Broad cliff fractures and smaller joint patterns break up recognisable repeated rock tiles.
 - Sheltered lower slopes collect pale loose stone while exposed walls retain darker bedrock.
-- Moss and soil blend into exposed stone on slopes, with baked slab fractures, broken mineral beds, sheltered weathering, loose-stone pockets and snow on high sheltered ground.
+- Snow shelves gain shallow wind grooves and granular highlights instead of perfectly smooth white surfaces.
+- Sheltered runoff channels darken and develop a restrained sheen while exposed rock remains dry.
+- Conifers have broken, asymmetric branch silhouettes that read as trees against rock and snow.
+- Browser vertex lighting follows displaced mountain slopes and softly lights leaf cards without enabling global per-pixel lighting.
+- Rain streaks surround the camera; soft splashes follow ground or water height and fade before becoming distant speckles. Procedural clouds remain smooth across their noise cells and use subdued moonlit shading at night, including the clouds reflected on the sea.
+- Stones at the mountain foot have irregular broken faces instead of flattened round primitives.
+- Connected dry grass and richer moss patches replace evenly green valley floors.
+- Coastal margins transition through exposed gravel and darker wet stone instead of a uniformly sandy strip.
+- Moss and soil blend into exposed stone on slopes, with baked slab fractures, broken mineral beds, sheltered weathering, loose-stone pockets and snow on high sheltered ground. A cached downhill catchment mask places runoff stains and retained snow in connected gullies; it shares the existing surface textures and leaves gameplay elevations unchanged.
 - Optional alpine haze takes on the sky colour and settles lightly into lower valleys.
 - Narrow mineral stains run down exposed cliffs, interrupted by ledges and changes in rock type.
 - Wind exposure and rock relief break up snow edges, with cooler compacted snow in sheltered pockets.
 - Sheltered rock crevices receive stronger ambient occlusion while exposed rock stays open to sky light.
 - World-space texture warping breaks up repeated slab patterns without adding material samples.
-  Photograph-derived height, normals, crevice shading and roughness give each material distinct relief;
+  Photograph-derived height, normals, crevice shading and roughness give each material distinct relief.
+  Full-precision surface/geology textures keep elevated slopes and snow edges smooth; wall grime follows height above ground.
+  Snow uses a two-metre powder scan with dirtier melt edges; wooded foothills use three-metre moss
+  and leaf litter. Five material layers share two texture arrays with independent mipmaps, preserving
+  the browser sampler budget. Detailed snow and litter follow the existing terrain-detail setting;
   height-based transitions let rock emerge through moss and snow. Reusable buttress, bowl and saddle
   forms shape standard mountains before erosion, with small conifer stands along suitable foothills.
   Warped mineral bands, dry grass patches and broken scree vary the surfaces at several scales. Mixed
@@ -1130,6 +1144,18 @@ Ambush Alley autoplay can call its existing mortar support against spotted, stop
   Defences sit in the ground: trodden earth round the nests and pits, earth banked against the bunkers up to their
   slits.
 - Vehicles are built from sloped, lofted armour: road wheels that turn, tracks, mantlets, cupolas, stowage, rotor blur.
+- **Shared vehicle finishes** (`vehicle_materials.gd`, `assets/vehicles/surfaces/`): armor paint, aircraft
+  coatings, civilian clearcoat, marine paint, rubber, canvas, exposed metal, glass, nonslip decks and charred
+  wrecks use distinct roughness and reflection settings. Eight shared, mipmapped detail maps (six derived
+  from ambientCG CC0 sources) add fine relief without requiring UV unwraps. RHIB decks have raised tread;
+  selected trawler fittings use nonmetallic rust over exposed steel. Paint is nonmetallic; texture and lower-body dust
+  stay attached to the model as it moves or climbs. Faction palettes and distant merged meshes are retained.
+- All HEMTT, Zamak and Tempest bodies share open cabs with seats, dashboards and steering wheels
+  behind separate transparent panes. Offroad pickups, hatchbacks and SUVs have open glasshouses with
+  their original window outlines and painted pillars. Glass switches to opaque panes beyond 100 m;
+  wrecks lose intact glazing. Rounded tyres, recessed rims and rotating tread extend across shared
+  wheeled models, with finer road tread and smooth aircraft tyres. Tracked road wheels retain their
+  specialised builders. HEMTT and Zamak cargo covers share draped cloth and fitted restraints.
 - **Explosions** distinguish fragmentation grenades, high explosive shells and fuel explosions. Grenades
   give a short flash, fast dark fragments and a small dirt burst. HE shells, including the visual scale of a
   roughly 110 mm round, throw a fountain of earth, falling clods and a ground dust cloud; sustained flames
@@ -1221,7 +1247,8 @@ point back from the road, then into an L - the assault line 20-odd metres off th
 firing down the killing zone, a man watching the flank - and holds its fire until they're in it. A short,
 violent burst, then smoke and away (the Rebels, more often ambushers, simply melt away); an ambush nobody
 walks into is given up after a few minutes, and one bumped on the way is called off. Its **navy**
-(`naval_ai.gd`): once it has a factory it builds a dock on its stretch of coast and keeps a gunboat or two -
+(
+aval_ai.gd`): once it has a factory it builds a dock on its stretch of coast and keeps a gunboat or two -
 going after whatever of the enemy it can see near the water, else patrolling off the front - and a ferry that
 runs raids, picking up a reserve squad at the shore and landing it on a beach near an enemy FOB or whatever's
 being attacked. Spending draws on all of a side's FOBs (nearest first), so a big purchase - a tank, a dock -
@@ -1236,6 +1263,20 @@ garrisons, answers attacks on its bases, sends waves at your FOBs and ambushes y
 digs forward tunnel entrances and moves its attack waves through them. AI-vs-AI results swing a lot between
 batches of six games (from 5–1 one way to 5–1 the other with small parameter changes), so the sides are close
 but balance needs real playtesting. With the base defenses, most games last 10–23 minutes.
+
+### Imported rifleman and shared impacts
+
+The optional skinned rifleman uses imported rifle locomotion, a captured kneel-to-prone transition, contact IK, hand-attached weapons, moving reloads with a separate magazine, directional hit recovery, and a thirteen-body constrained ragdoll. Locally installed Male Injured Pack clips supply standing limping and dazed recovery with the rifle slung. Installed Talking, Laughing and Arm Stretching clips also replace the standing relaxed idles and recover to the armed pose; Rifle Idle supplies the armed lookout. Foot plants retain the visible boot position when acquiring contact. The shared motion and impact helpers also serve the procedural soldiers and tank. Damage and movement remain server-authoritative; the skin is presentation.
+
+When the local Mixamo prone family is installed, forward/backward crawling, stops, idle, firing, reload and grenade throw use captured clips. The installed crouch-to-prone and prone-to-crouch transitions supply entry and recovery; the kneeling pair remains the fallback. A prone-specific captured flinch supplies frontal hit reactions while keeping the weapon grips. The shared controller preserves hand contacts during prone idle/fire and releases the hands for crawling, reloading and throwing. These local evaluation assets are not bundled automatically; missing clips retain the procedural fallback.
+
+With the separately installed local evaluation assets, `--skinned-units --swat-units` enables the military character for Coalition riflemen in ordinary battles. Other units and missing-asset installations retain their procedural models. The viewer supports clip selection, scrubbing, bones, wireframes and projectile impacts; the playable controller exercises terrain, walking, crouching, jumping and reloads. Setup and exact limitations are in [the evaluation guide](../tests/mocap/SKINNED.md). Imported models, textures and animation sources are excluded from Git and releases.
+
+Soldiers check space for the whole kneel-to-prone transition. If a wall blocks it, a stationary soldier can take a short backward step into clear space, settle the feet, and then lower into prone. The retreat is collision-swept, navigation-checked and bounded to 1.8 metres. New movement orders or a new obstruction cancel it. If no safe space exists, the soldier remains crouched. This authoritative movement is replicated normally.
+
+Captured contact IK anchors low supporting feet in world space, blends the ankle/forefoot support for running, and releases overstretched contacts. Ragdolls retain bounded limb and root momentum, anatomical joint limits and dropped-weapon collision cleanup. The optional skinned mode runs physics contacts at 120 Hz; the battle simulation retains the current 30 Hz cadence, including when physics runs faster.
+
+This is an opt-in evaluation, not a complete production animation library. Authored directional crouch, precise finger wrapping, mounted reloads, vehicle boarding/seating, prone get-up, final art quality and large-crowd performance still need work. The M2 fixture passes; mounted M240 and original-model DShK reach/clearance are known remaining issues.
 
 
 ## Battle recordings and browser spectators
@@ -1278,9 +1319,10 @@ layer each frame, so moving the pointer does not rebuild all squad counters. Hid
 also stops its raster updates. Smoke sight checks visit smoke grenades directly rather than every
 projectile; cloud growth, movement and dissipation still take effect immediately.
 
-Clients build scenery in and around the camera's view first and cache visited models; distant models and
-cosmetic collision bodies remain inactive. The server still simulates the complete
-map. Nearby movement orders can reuse a checked route corridor, with separate
+Views build scenery in and around the camera first and cache visited models; local games and hosts
+share the clients' spatial draw batches. Distant models and client cosmetic collision bodies remain
+inactive, while host collision and the complete simulation stay active. Returning to cached scenery
+does not consume the new-model construction limit. Nearby movement orders can reuse a checked route corridor, with separate
 destinations and invalidation when terrain or danger changes.
 
 Grass, bushes and stones are generated around the camera, beyond their visible
@@ -1289,3 +1331,33 @@ to an area recreates the same vegetation from its seed.
 
 See [SIMULATION_SCALING.md](SIMULATION_SCALING.md) for the native perception
 boundary, measurement results and remaining limits.
+
+Captured digging and smoking play when the optional rifleman's local activity clips are installed. The rifle follows a torso sling anchor, digging uses a hand-aligned shovel, and a lethal hit releases both rifle and shovel into physics. Sling transitions still blend between poses rather than use an authored handoff.
+
+The optional SWAT preview uses locally installed Mixamo source and movement clips, including crouch locomotion. Its M4 mesh/textures are baked with `tests/mocap/bake_rifle.gd` into a binary resource; the legacy MoCap FBX sources are excluded from exports. Local rifle locomotion packs and prone/stow clips appear in the animation inspector; catalog availability does not automatically add new gameplay actions.
+
+The SWAT action transitions keep the rifle slung during free-hand work, blend the existing back-reach clip into stow/draw, and preserve prone/leaning body poses during magazine handling. A visual-only low-wall continuation holds the tucked-knee pose until the model clears the barrier; simulation speed and vault timing are unchanged. `tests/mocap/action_transitions.tscn` checks equipment continuity, magazine replacement and dive clearance; `tests/mocap/vault_traversal.tscn` checks the actual soldier crossing in the motion scenario.
+
+The local **Character Playground.cmd** launcher opens a controllable terrain lab using the shared soldier renderer. WASD/Shift/Space/C/Z move, run, jump, crouch and go prone; left mouse fires, R reloads, F toggles work, G throws and H tests the selected impact. Movement cancels work. Every gameplay action is available in a pose dropdown; the linked review screen contains all installed source clips and retains comment/approval storage. This lab requires the local SWAT assets and is not an exported game mode.
+
+The Character Playground also supports Alt + mouse free look, preserving the character heading and movement axes while orbiting; Home resets the view. Installed Rifle 8-Way Locomotion clips supply matching crouch directions. The full catalog contains multiple Mixamo packs: owning the eight-way movement set does not provide authored vehicle, partner or every activity interaction. Those remain preview/procedural actions where no clip is routed.
+
+The imported preview routes grenade throws through the installed Mixamo toss while retaining stance legs and grenade release timing. The installed prone family supplies armed crawling; missing clips retain the procedural alternating reach. The installed stand/kneel pair supplies stationary crouch transitions, blending from the current pose to avoid a snap on rising. The crouched grenade clip uses its throwing section with the existing visual release timing. Crouch stops settle toes; posture changes release previous foot anchors before planting again.
+
+The optional SWAT infantry presentation ships in a compiled runtime bundle (assets/infantry/infantry.zip), shared by the game and animation playground. Original authoring files are not required. See assets/infantry/README.md for rebuilding and the separate asset licenses.
+
+Standing rifle melee uses the captured rifle punch, trimmed to meet the existing 0.55-second hit. Watchtower climbing uses a captured ladder cycle with server-controlled elevation: soldiers approach the rear ladder, climb for four seconds, then transfer onto the deck before walking through the platform's railing opening. The cycle follows elevation, with hand and boot contacts constrained to the rungs and upper side handholds. Hands-free actions blend into and out of their poses without abruptly pulling the support hand back to the rifle. The additional carrying family and turn-and-door-kick remain inspector clips: gameplay uses a two-person stretcher, and its KICK action also serves ground-level grenade kicks, so those motions are not interchangeable.
+
+Grass and shrub culling bounds follow their local ground heights, keeping distance fading correct beside taller mountains; small cosmetic stones use the ground height at placement. Meadow density fades towards the snow line and on steep slopes, with zero-density habitats kept empty. Smaller photographed shrub branches form seeded patches with open gaps, independently of gameplay randomness.
+
+Alpine stone clusters combine slabs, blocks and small fragments in shared batches. Fine fragments cull beyond 180 m with a 20 m hysteresis margin; larger rocks remain visible.
+
+Daylight uses a bundled CC0 photographic cloud panorama, aligned with the sun and cached for sky lighting and reflections. Other lighting moods retain their procedural skies.
+
+Generated towns have distinct garden plots, narrow foundation aprons and paths leading to their generated front or side doors. Front fences leave pedestrian and driveway openings. Driveway aprons continue across sidewalks through lowered kerbs with sloping shoulders; grass stays out of the crossing. Paving follows immutable terrain elevation and retains crater cutouts; street furniture and both wire endpoints carry authoritative ground heights. Long fences are broken into short, independently destructible sections. Streets and junctions share scanned asphalt; sidewalks, drives and door paths use scanned paving slabs. CC0 photographs include mipmapped normal and roughness maps, with source credits in assets/town/LICENSE.md. Meadow and garden turf combines photographic soil/blade detail with moisture variation from sheltered soil and exposed patches. Grass uses thirty narrow pointed blades at the previous ninety-triangle clump cost, with shorter clumps in towns; grass stays outside the carriageway.
+
+Town entrances blend gravel into asphalt through irregular edges. Local repair patches, staining, aged tile roofs, concrete roof slabs and weathered timber fences use bundled CC0 scans with mipmapped relief; metal fences retain rust and worn paint.
+
+Trees, hedges and shrubs use photographed needle/leaf cards, preserving batched rendering, burning and destruction. Broadleaf crowns use smaller cards with open gaps at the same triangle count; photographs blend in linear light and both sides receive skylight. Beyond the playable boundary, patchy hillside forests use a four-variant, five-elevation prebaked fir atlas and two triangles per tree; slope, height and coast masks keep cliffs and water clear. The two nearest elevation views blend around the physical crown centre as the camera tilts; isolated texture-array mipmaps keep neighbouring views from bleeding together. Shared seeded density masks connect trees with woodland ground cover. High/Ultra shadows also ground those trees with cast shadows; Low/Off avoids that pass. These scenery-only trees add no combat cover. Setting View distance / detail to Near disables distant forests.
+
+Scenery terrain and forests share a cached sky-visibility and sun-shadow map generated from the same height field as their geometry. It renders once when the map or lighting mood changes; switching moods reuses the forest batches. Ridge shadows continue across the playable boundary, while gameplay heights and visibility rules remain authoritative. Rain puddles are limited to gentle slopes.

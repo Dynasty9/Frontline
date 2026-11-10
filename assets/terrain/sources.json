@@ -97,5 +97,75 @@
     "md5": "8d181000237d420a73f99dfc260dab17",
     "sha256": "fc0fff40e3378f2f54d225db6e3e566a8563bb2c143eef0f09b543c9d4698776",
     "usage": "Offline material packing; original cached under build/terrain."
+  },
+  {
+    "file": "snow_02_diff_2k.jpg",
+    "source": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/snow_02/snow_02_diff_2k.jpg",
+    "md5": "5541e5601951b071691238ddc70632c0",
+    "sha256": "d185c2853c7e674161789db4eed1c5708d85e4f6e3dcb5698209568adf02aa98",
+    "usage": "Offline material packing; original cached under build/terrain."
+  },
+  {
+    "file": "snow_02_disp_2k.jpg",
+    "source": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/snow_02/snow_02_disp_2k.jpg",
+    "md5": "c7c8e7848b76819012cbac660a90a61c",
+    "sha256": "c3fe9fe26907138e23e685c53c43152858f27042b802931e0f71bc0c62286fdd",
+    "usage": "Offline material packing; original cached under build/terrain."
+  },
+  {
+    "file": "snow_02_nor_gl_2k.jpg",
+    "source": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/snow_02/snow_02_nor_gl_2k.jpg",
+    "md5": "ef128fbdf1b31932c792eb6472c84574",
+    "sha256": "288539ee33387e91035be4dc8d10da574bf6a95c8374d33b6b1dc465c6949e8f",
+    "usage": "Offline material packing; original cached under build/terrain."
+  },
+  {
+    "file": "snow_02_ao_2k.jpg",
+    "source": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/snow_02/snow_02_ao_2k.jpg",
+    "md5": "7d41f091dd46e66d6023804d030e682c",
+    "sha256": "3bb1a13af0ce8d5b8a0cc80e1d5b4f36a36b0d612b65b3dc16ebc4b7ea36f4cb",
+    "usage": "Offline material packing; original cached under build/terrain."
+  },
+  {
+    "file": "snow_02_rough_2k.jpg",
+    "source": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/snow_02/snow_02_rough_2k.jpg",
+    "md5": "8b9787b4c7b1d7390a4b4a1ae67728b1",
+    "sha256": "9cfa994318ef190d4540875a166c7c745184c1a166e82271bca7c0a628f8820f",
+    "usage": "Offline material packing; original cached under build/terrain."
+  },
+  {
+    "file": "forest_leaves_02_diff_2k.jpg",
+    "source": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/forest_leaves_02/forest_leaves_02_diffuse_2k.jpg",
+    "md5": "b7837ba1c51fb0e11af36d6b4e225c20",
+    "sha256": "9c38b2b151a0415457a6914966422cfca5a546c94674442e5395e0b1e908a196",
+    "usage": "Offline material packing; original cached under build/terrain."
+  },
+  {
+    "file": "forest_leaves_02_disp_2k.jpg",
+    "source": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/forest_leaves_02/forest_leaves_02_disp_2k.jpg",
+    "md5": "13830bbe7693f4cf7f0e3c0958d3f211",
+    "sha256": "0e3e244b3e3cfd4910762515e7d723b50abe1c7b72b456b3e39e9029eeb5defe",
+    "usage": "Offline material packing; original cached under build/terrain."
+  },
+  {
+    "file": "forest_leaves_02_nor_gl_2k.jpg",
+    "source": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/forest_leaves_02/forest_leaves_02_nor_gl_2k.jpg",
+    "md5": "f974000a2ddc7dcd22bc84c37aa5d7ce",
+    "sha256": "af0346114834c347a8d6a138f6ea16a97b0bec8d6e4db32c24f1c7e482163235",
+    "usage": "Offline material packing; original cached under build/terrain."
+  },
+  {
+    "file": "forest_leaves_02_ao_2k.jpg",
+    "source": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/forest_leaves_02/forest_leaves_02_ao_2k.jpg",
+    "md5": "637a544691a376a40924d39830b9885c",
+    "sha256": "515e0e6dfc4ebf34d90def7455531cf99dfddef52870d45b8d2c08886b0f0312",
+    "usage": "Offline material packing; original cached under build/terrain."
+  },
+  {
+    "file": "forest_leaves_02_rough_2k.jpg",
+    "source": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/forest_leaves_02/forest_leaves_02_rough_2k.jpg",
+    "md5": "76e0435a0a0a0db7e591641b0a918e9e",
+    "sha256": "ed2dd60a10242640b1738760015cfae85c8526a79dbf5da563fdffdf30828eae",
+    "usage": "Offline material packing; original cached under build/terrain."
   }
 ]

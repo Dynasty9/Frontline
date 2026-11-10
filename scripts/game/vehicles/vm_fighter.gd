@@ -26,7 +26,6 @@ const STEEL := Color(0.62, 0.63, 0.64)  # oleo struts
 
 static var _mc := {}
 static var _glass := {}
-static var _skin_mat: ShaderMaterial
 
 
 ## Builds the model for `key` into k; false if this file doesn't (yet) know it.
@@ -38,7 +37,6 @@ static func build(k: VehicleModels, key: String, team: int, seed: int) -> bool:
 			_f16(k, team)
 		_:
 			return false
-	_repaint(k)
 	return true
 
 
@@ -184,29 +182,6 @@ static func _put(k: VehicleModels, p: Node3D, mesh: Mesh, mat: String, col, pos 
 	return k._add(p, mesh, mat, col, pos, rot, Vector3.ONE, shadow)
 
 
-## The airframe's paint: the shared aircraft surface without its worn,
-## bare-metal patches (fine on a truck, dirty-looking on a jet's fresh
-## low-visibility grey); the broad tonal variation stays. Every part built
-## with "aircraft" (here or by VmPlane's helpers) is switched to it.
-static func _repaint(k: VehicleModels) -> void:
-	if k.burnt:
-		return
-	var src := Mats.get_mat("aircraft")
-	if _skin_mat == null:
-		_skin_mat = src.duplicate() as ShaderMaterial
-		_skin_mat.set_shader_parameter("pattern", Mats.PLAIN)
-		_skin_mat.set_shader_parameter("bump", 0.15)
-	_swap_mat(k.root, src, _skin_mat)
-	k._swap_noted(src, _skin_mat)
-
-
-static func _swap_mat(n: Node, from: Material, to: Material) -> void:
-	for c in n.get_children():
-		if c is MeshInstance3D and Mats.base_of((c as MeshInstance3D).material_override) == from:
-			Mats.set_material(c as MeshInstance3D, to)
-		_swap_mat(c, from, to)
-
-
 ## Canopy glass with a coloured coating (a stealth jet's gold): the shared
 ## glass surface, more metallic, tinted. One material per colour.
 static func _glaze(k: VehicleModels, mi: Variant, col: Color, metal := 0.7) -> void:
@@ -214,7 +189,7 @@ static func _glaze(k: VehicleModels, mi: Variant, col: Color, metal := 0.7) -> v
 		return
 	var key := "%s_%.2f" % [col.to_html(), metal]
 	if not _glass.has(key):
-		var g := Mats.get_mat("glass").duplicate() as ShaderMaterial
+		var g := Mats.get_mat(VehicleMaterials.key("glass", k.surface_family)).duplicate() as ShaderMaterial
 		g.set_shader_parameter("col_a", col)
 		g.set_shader_parameter("metal", metal)
 		g.set_shader_parameter("rough", 0.07)

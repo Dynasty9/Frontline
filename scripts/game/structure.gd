@@ -478,7 +478,9 @@ func _define_parts() -> void:
 					parts.append(_part(Vector3(x, 2.1, z), Vector3(0.25, 4.2, 0.25), Nav.SOLID, Nav.LOW, false, false, C_WOOD))
 			parts.append(_part(Vector3(0, 4.1, 0), Vector3(3.0, 0.25, 3.0), Nav.FREE, Nav.FREE, false, true, C_WOOD))
 			parts.append(_part(Vector3(0, 4.7, -1.45), Vector3(3.0, 0.95, 0.15), Nav.FREE, Nav.FREE, false, true, C_WOOD))
-			parts.append(_part(Vector3(0, 4.7, 1.45), Vector3(3.0, 0.95, 0.15), Nav.FREE, Nav.FREE, false, true, C_WOOD))
+			# Leave the ladder opening clear so a climber can step onto the platform.
+			for x in [-0.95, 0.95]:
+				parts.append(_part(Vector3(x, 4.7, 1.45), Vector3(1.1, 0.95, 0.15), Nav.FREE, Nav.FREE, false, true, C_WOOD))
 			parts.append(_part(Vector3(-1.45, 4.7, 0), Vector3(0.15, 0.95, 3.0), Nav.FREE, Nav.FREE, false, true, C_WOOD))
 			parts.append(_part(Vector3(1.45, 4.7, 0), Vector3(0.15, 0.95, 3.0), Nav.FREE, Nav.FREE, false, true, C_WOOD))
 		"hmg_nest":
@@ -587,6 +589,12 @@ func _make_body() -> void:
 
 func is_mount() -> bool:
 	return skind in ["mg_nest", "hmg_nest", "watchtower", "mortar_pit", "at_post"]
+
+
+func ladder_pos(progress: float) -> Vector3:
+	var t := clampf(progress, 0.0, 1.0)
+	# WorksModels.tower places the inclined ladder at z=1.95..1.42.
+	return position + Basis(Vector3.UP, yaw) * Vector3(0, t * 3.3, lerpf(1.95, 1.42, t * 3.3 / 4.2) + 0.10)
 
 
 func mount_pos() -> Vector3:
@@ -1141,7 +1149,7 @@ static func _conifer(bake: Mats.Bake, rng: RandomNumberGenerator) -> void:
 		var pos := Vector3(rng.randf_range(-0.06, 0.06), y + h * 0.5, rng.randf_range(-0.06, 0.06))
 		var rot := Vector3(rng.randf_range(-0.07, 0.07), rng.randf() * TAU, rng.randf_range(-0.07, 0.07))
 		var scl := Vector3(r * rng.randf_range(0.9, 1.1), h, r * rng.randf_range(0.9, 1.1))
-		bake.part(Res.cyl(0.04, 1.0, 1.0, 9), Mats.foliage(), Mats.place(pos, rot, scl), Res.vary(needles, 0.05, rng).darkened(0.12 * (1.0 - t)))
+		bake.part(Res.foliage_cards(true), Mats.leaf_cards(true), Mats.place(pos, rot, scl), Res.vary(needles, 0.05, rng).darkened(0.12 * (1.0 - t)))
 
 
 static func _bark(bake: Mats.Bake, a: Vector3, b: Vector3, r0: float, r1: float, col: Color) -> void:
@@ -1164,7 +1172,7 @@ static func _bark_part(bake: Mats.Bake, mesh: Mesh, xf: Transform3D, col: Color)
 static func _leaves(bake: Mats.Bake, p: Vector3, r: float, squash: float, col: Color) -> void:
 	if _snag:
 		return
-	bake.part(Res.sphere(1.0, 10), Mats.foliage(), Mats.place(p, Vector3.ZERO, Vector3(r, r * squash, r)), col)
+	bake.part(Res.foliage_cards(false), Mats.leaf_cards(false), Mats.place(p, Vector3.ZERO, Vector3(r, r * squash, r)), col)
 
 
 ## A house roof: tiled and pitched (ridge along the long side, gable ends in
@@ -1217,7 +1225,7 @@ func _roof_model(rng: RandomNumberGenerator) -> void:
 		slab.mesh = Res.box(Vector3(L + 0.1, 0.2, W + 0.1))
 		slab.position = Vector3(0, h + 0.1, 0)
 		holder.add_child(slab)
-		Mats.apply(slab, "concrete", Mats.tint_for("concrete", Color(0.52, 0.5, 0.47)))
+		Mats.apply(slab, "roof_concrete")
 		for e in [-1.0, 1.0]:
 			for side in [0, 1]:
 				var p := MeshInstance3D.new()
@@ -2304,7 +2312,7 @@ func _skinned(mesh: Mesh, sm: StandardMaterial3D, p: Vector3, rot: Vector3, scl:
 	var xf := Mats.place(p, rot, scl)
 	var kind := _surf_kind(col, mesh)
 	if kind == "foliage":
-		_bake.part(mesh, Mats.foliage(), xf, col, shadow)
+		_bake.part(Res.foliage_cards(false), Mats.leaf_cards(false), xf * Transform3D(Basis.from_scale(mesh.get_aabb().size * 0.5), Vector3.ZERO), col, shadow)
 	else:
 		var t := Mats.tint_for(kind, col)
 		_bake.part(mesh, Mats.get_mat(kind), xf, t if t != Color(1, 1, 1) else null, shadow)

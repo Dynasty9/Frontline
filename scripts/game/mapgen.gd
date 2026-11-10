@@ -403,6 +403,54 @@ func scenario(sname: String) -> void:
 	var a := 1 if world.settings.get("scenario_player", false) else -1
 	var b := -2
 	match sname:
+		"motion":
+			# Repeatable combat close enough to inspect skins, rifle sockets and hits.
+			_spawn("tall_wall", Vector3(-4, 0, -3), 0.0, -1, {"size": Vector3(3, 2.4, 0.45)})
+			_spawn("low_wall", Vector3(3, 0, -7), 0.0, -1, {"size": Vector3(4, 0.8, 0.5)})
+			_spawn("crates", Vector3(-7, 0, -6), 0.25, -1)
+			_house(Vector3(11, 0, -15), 7.0, 6.0, 0.0, 1.0, false, 0.0)
+			var friendly := r.spawn_squad("rifle_squad", 0, a, Vector3(0, 0, 5), Vector3(0, 0, -3))
+			var enemy := r.spawn_squad("fighter_cell", 1, b, Vector3(0, 0, -22), Vector3(0, 0, -10))
+			var armour: Vehicle = world.spawn("vehicle", {"vkind": "tank", "team": 0, "owner": a, "pos": Vector3(8, 0, 5), "yaw": 0.0})
+			armour.order_stop()
+			var motion_camera: Node3D = null
+			if "--motion-camera" in OS.get_cmdline_user_args():
+				motion_camera = load("res://tests/mocap/combat_camera.gd").new()
+				world.add_child(motion_camera)
+				motion_camera.setup(friendly, armour)
+			world.get_tree().create_timer(10.0, true, true).timeout.connect(func():
+				if is_instance_valid(armour) and is_instance_valid(enemy) and not enemy.members.is_empty():
+					armour.take_damage(140.0, enemy.members[0])
+					world.fx_event([Fx.EXPLODE, armour.position + Vector3(0,1,-2), 0.35]))
+			world.get_tree().create_timer(22.0, true, true).timeout.connect(func():
+				if is_instance_valid(armour):
+					armour.take_damage(2000.0, null))
+			world.get_tree().create_timer(2.0, true, true).timeout.connect(func():
+				if not is_instance_valid(friendly): return
+				for man in friendly.alive_members():
+					if man.utype == "rifleman":
+						if is_instance_valid(motion_camera): motion_camera.subject = man
+						man.mag = 0
+						man._start_reload()
+						world.stat("motion_demo_reload")
+						break)
+			world.get_tree().create_timer(8.0, true, true).timeout.connect(func():
+				if not is_instance_valid(friendly): return
+				for man in friendly.alive_members():
+					if man.utype == "rifleman":
+						if is_instance_valid(motion_camera): motion_camera.subject = man
+						man.take_damage(18.0, null, Vector3.RIGHT, "bullet")
+						world.stat("motion_demo_hit")
+						break)
+			world.get_tree().create_timer(17.0, true, true).timeout.connect(func():
+				if not is_instance_valid(friendly): return
+				for man in friendly.alive_members():
+					if man.utype == "rifleman":
+						if is_instance_valid(motion_camera): motion_camera.subject = man
+						world.fx_event([Fx.EXPLODE, man.position + Vector3(0,0,-1), 1.0])
+						man.take_damage(300.0, null, Vector3.BACK, "explosion")
+						world.stat("motion_demo_blast")
+						break)
 		"stress": StressBattle.populate(world)
 		"air":
 			var hp2 := _spawn("helipad", Vector3(0, 0, 60), 0.0, 0)
@@ -1049,7 +1097,7 @@ func _smooth(pts: Array) -> PackedVector3Array:
 
 ## A roofless house of wall sections, its front (door) towards the street.
 ## Returns false if there's no room.
-func _house(c: Vector3, w: float, d: float, axis: float, street_side: float, yard := true, ruin_p := 0.35) -> bool:
+func _house(c: Vector3, w: float, d: float, axis: float, street_side: float, yard := true, ruin_p := 0.35, entrances: Array[Vector3] = []) -> bool:
 	var half := Vector2(w * 0.5 + 0.3, d * 0.5 + 0.3)
 	if not _is_free(c, half, axis, 1.0):
 		return false
@@ -1089,6 +1137,7 @@ func _house(c: Vector3, w: float, d: float, axis: float, street_side: float, yar
 			var variant := 0
 			if k == door_i:
 				variant = 2
+				entrances.append(wp)
 			elif seg_len > 2.0 and rng.randf() < 0.5:
 				variant = 1
 			# most front doors are shut (decided from where it stands: the map's

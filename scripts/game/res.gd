@@ -199,6 +199,69 @@ static func cyl(top: float, bottom: float, h: float, segs := 10) -> CylinderMesh
 	return m
 
 
+## Branch photographs keep open silhouettes with a few crossed leaf cards.
+static func foliage_cards(conifer: bool) -> ArrayMesh:
+	var key := "fir_cards" if conifer else "leaf_cards"
+	if _meshes.has(key):
+		return _meshes[key]
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var count := 18 if conifer else 32
+	for i in count:
+		var angle := i * 2.399963
+		var out := Vector3(cos(angle), 0, sin(angle))
+		var side := Vector3(-out.z, 0, out.x)
+		var center := out * (0.38 if conifer else 0.65)
+		center.y = sin(i * 1.7) * (0.12 if conifer else 0.55)
+		var along := (out + Vector3(0, -0.5, 0)).normalized() if conifer else Vector3(sin(angle), 0.65, cos(angle)).normalized()
+		var width := 0.45 if conifer else 0.20
+		var length := 0.65 if conifer else 0.32
+		if i % 2 == 0:
+			side = side.rotated(along, 0.8)
+		var normal := side.cross(along).normalized()
+		var quad := [center - side * width - along * length, center + side * width - along * length, center + side * width + along * length, center - side * width + along * length]
+		var coords := [Vector2(0, 1), Vector2(1, 1), Vector2(1, 0), Vector2(0, 0)]
+		for j in [0, 2, 1, 0, 3, 2]:
+			st.set_normal(normal)
+			st.set_uv(coords[j])
+			st.add_vertex(quad[j])
+	var arrays := st.commit_to_arrays()
+	var mesh := ArrayMesh.new()
+	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+	Mats.keep_arrays(mesh, arrays)
+	_meshes[key] = mesh
+	return mesh
+
+
+## A handful of fractured blocks share meshes across the decorative scree batches.
+static func alpine_stone(variant: int) -> ArrayMesh:
+	var key := "alpine_stone_%d" % posmod(variant, 4)
+	if _meshes.has(key):
+		return _meshes[key]
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 3187 + posmod(variant, 4)
+	var phi := (1.0 + sqrt(5.0)) * 0.5
+	var corners := PackedVector3Array([
+		Vector3(-1, phi, 0), Vector3(1, phi, 0), Vector3(-1, -phi, 0), Vector3(1, -phi, 0),
+		Vector3(0, -1, phi), Vector3(0, 1, phi), Vector3(0, -1, -phi), Vector3(0, 1, -phi),
+		Vector3(phi, 0, -1), Vector3(phi, 0, 1), Vector3(-phi, 0, -1), Vector3(-phi, 0, 1)])
+	for i in corners.size():
+		corners[i] = corners[i].normalized() * rng.randf_range(0.65, 1.1)
+	var faces := [0, 11, 5, 0, 5, 1, 0, 1, 7, 0, 7, 10, 0, 10, 11,
+		1, 5, 9, 5, 11, 4, 11, 10, 2, 10, 7, 6, 7, 1, 8,
+		3, 9, 4, 3, 4, 2, 3, 2, 6, 3, 6, 8, 3, 8, 9,
+		4, 9, 5, 2, 4, 11, 6, 2, 10, 8, 6, 7, 9, 8, 1]
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	for i in range(0, faces.size(), 3):
+		for j in [0, 2, 1]:
+			st.add_vertex(corners[faces[i + j]])
+	st.generate_normals()
+	var mesh := st.commit()
+	_meshes[key] = mesh
+	return mesh
+
+
 static func prism(s: Vector3) -> PrismMesh:
 	var key := "p%.3f,%.3f,%.3f" % [s.x, s.y, s.z]
 	if _meshes.has(key):

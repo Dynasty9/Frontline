@@ -18,7 +18,7 @@ Grenades burst into dust and fast fragments, shells throw dense fans of earth an
 
 You can play alone against the computer, team up with friends against it, or fight each other online. Desktop skirmishes offer 1,024, 2,048 and 3,072 metre square battlefields. Single-player simulation runs in its own local process so combat does not block drawing the battlefield. Seeded mountain belts, snowy peaks and mossy valleys surround towns, forests, roads and river crossings. Slopes shape movement and construction, and ridges screen troops from observation and fire. Larger maps need more memory; see the measured workloads in [simulation scaling](docs/SIMULATION_SCALING.md).
 
-The landscape, models and sound are generated in code, the music included. Explosion clouds use baked CC0 fluid simulations from JangaFX ([credits](assets/vfx/LICENSE.md)); moss and rock surfaces use bundled CC0 photographs from Poly Haven ([credits](assets/terrain/LICENSE.md)). Even the menus sit on a living topographic map, in your choice of five themes (Settings > Interface): Field Brass, Night Vision, Thermal, Arctic or Dusk.
+The landscape, models and sound are generated in code, the music included. Explosion clouds use baked CC0 fluid simulations from JangaFX ([credits](assets/vfx/LICENSE.md)); moss, rock and town surfaces use bundled CC0 photographs from Poly Haven ([terrain credits](assets/terrain/LICENSE.md), [town material credits](assets/town/LICENSE.md), [foliage credits](assets/foliage/LICENSE.md)). Even the menus sit on a living topographic map, in your choice of five themes (Settings > Interface): Field Brass, Night Vision, Thermal, Arctic or Dusk.
 
 ## Screenshots
 
@@ -193,6 +193,7 @@ Signed in, every battle you fight earns XP (a win more), and you climb 50 ranks 
 
 - **[How it all works](docs/FEATURES.md)**: the soldier and squad AI, vehicles, the map, water, supply, the interface and the AI commander, in depth.
 - **[Developer guide](docs/DEVELOPMENT.md)**: how the code is organised, and how to run the automated tests.
+- **[Skinned rifleman evaluation](tests/mocap/SKINNED.md)**: local sample setup, animation/impact showcase and optional battlefield integration.
 - **[Contributing](CONTRIBUTING.md)**: how to report bugs and send changes.
 - **[AGENTS.md](AGENTS.md)**: notes for AI coding assistants working on the project.
 
