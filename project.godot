@@ -22,6 +22,7 @@ boot_splash/use_filter=true
 
 [autoload]
 
+InfantryAssets="*res://scripts/autoload/infantry_assets.gd"
 Errors="*res://scripts/autoload/errors.gd"
 Links="*res://scripts/autoload/links.gd"
 Defs="*res://scripts/autoload/defs.gd"

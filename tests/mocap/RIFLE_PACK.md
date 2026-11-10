@@ -1,8 +1,8 @@
 # Local rifle package
 
 The M4 mesh and textures are licensed MoCap Online content. They are separate
-from the character and animation provider. Neither the source files nor the
-generated package belongs in the public Git repository.
+from the character and animation provider. Raw source files remain local. The baked rifle is included in the Frontline
+runtime bundle described in [assets/infantry/README.md](../../assets/infantry/README.md).
 
 After importing the local M4 source assets, bake them from the repository root:
 
@@ -18,8 +18,7 @@ Export presets exclude the legacy MoCap FBX folder, including the original rifle
 The runtime loader no longer imports the source FBX or
 loads its JPG textures. It preserves the geometry used by the magazine splitter.
 
-This is packaging, not DRM or a change of license. Keep the package private as a
-build input and distribute it only as part of the licensed game. Release license
+This is packaging, not DRM or a change of license. Distribute the package only as part of Frontline, under the asset provider terms. Release license
 and extraction requirements still need to be satisfied before publishing.
 
 With `--swat-units`, the character source and crouch leg cycle come from Mixamo.
