@@ -49,6 +49,7 @@ var over_wall := false  # up over the barrier he's behind, weapon on the top
 var cover_h := 0.0  # height of the barrier he's at (0: none)
 var blind := false  # holding the weapon up over the top, head down
 var muzzle_local := Vector3(0, 0.01, -0.8)  # the weapon's muzzle in gun space
+var ladder: Structure
 var crew := false  # working a mounted gun: his own slung, hands on its grips
 var move_yaw := 0.0  # which way he's moving, relative to where he faces (+ to his left)
 var gait_amp := 0.3  # how far the thighs swing at this speed (see pose())
@@ -1391,6 +1392,7 @@ func pose(dt: float, life: int, posture: int, act: int, speed: float, backwards:
 						rifle_driver._legacy_prone(dt)
 					else:
 						rifle_driver.advance(dt, Vector3.FORWARD.rotated(Vector3.UP, move_yaw) * speed, posture == Soldier.Post.CROUCH, true)
+				skinned.ladder = ladder
 				skinned.pose_activity(dt, activity, act_time if act == Soldier.Act.THROW else -1.0, posture == Soldier.Post.PRONE, speed, act in [Soldier.Act.IDLE_LOOK, Soldier.Act.MELEE], act_time)
 				if act in [Soldier.Act.IDLE_LOOK, Soldier.Act.MELEE] and rifle_driver != null: rifle_driver._hold_rifle(1.0)
 			elif captured_prone:
@@ -1441,6 +1443,7 @@ func pose(dt: float, life: int, posture: int, act: int, speed: float, backwards:
 			skinned.pose_procedural(self, dt, posture)
 		if life == Soldier.Life.ALIVE:
 			skinned.finish_equipment(dt, weapon_slung, act in [Soldier.Act.THROW, Soldier.Act.COOK])
+			if act == Soldier.Act.CLIMB and is_instance_valid(ladder): skinned._ladder_contacts(dt)
 			skinned.sync_grenade(self)
 			skinned.capture_motion(dt)
 

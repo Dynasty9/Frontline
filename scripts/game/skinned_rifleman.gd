@@ -64,10 +64,14 @@ var grenade_prop: Node3D
 var _sling_socket := Transform3D.IDENTITY
 var weapon_stowed := false
 var equip_time := 1.0
+var equip_fraction := 1.0
+var _ladder_draw := false
 var equip_previous := Transform3D.IDENTITY
 var equip_start := Transform3D.IDENTITY
 var equip_poses: Array[Transform3D] = []
 var shovel: Node3D
+var ladder: Structure
+var ladder_contacts := {}
 
 
 func build(clips: Dictionary = MocapCharacter.CLIPS) -> bool:
@@ -543,13 +547,16 @@ func finish_equipment(dt: float, stow: bool, urgent := false) -> void:
 		weapon_stowed = stow
 		equip_time = 0.0
 		equip_start = equip_previous
-	var duration := (0.12 if urgent else 0.65) if stow else 0.45
+	var duration := (0.12 if urgent else 0.65) if stow else (0.9 if _ladder_draw else 0.45)
 	if equip_time >= duration:
+		equip_fraction = 1.0
+		if not stow: _ladder_draw = false
 		equip_previous = global_transform.affine_inverse() * weapon.global_transform
 		return
 	if shovel != null: shovel.visible = false
 	equip_time = minf(equip_time + dt, duration)
 	var fraction := equip_time / duration
+	equip_fraction = fraction
 	var clip := "mixamo_transition__Grab_Rifle_From_Back"
 	if not native_player.has_animation(clip): return
 	equip_poses.resize(skeleton.get_bone_count())
@@ -596,6 +603,8 @@ func revive() -> void:
 func reset_motion() -> void:
 	weapon_stowed = false
 	equip_time = 1.0
+	equip_fraction = 1.0
+	_ladder_draw = false
 	if weapon != null: equip_previous = global_transform.affine_inverse() * weapon.global_transform
 	foot_offsets = [Vector2.ZERO, Vector2.ZERO]
 	for foot in feet: foot.locked = false
@@ -697,6 +706,7 @@ func pose_native(dt: float, clip: String) -> void:
 func pose_activity(dt: float, clip: String, throw_time := -1.0, prone_throw := false, move_speed := 0.0, keep_rifle := false, action_time := -1.0) -> void:
 	if _activity_clip != clip or _pose_mode not in [20, 21, 24]:
 		_activity_clock = 0.0
+		ladder_contacts.clear()
 		# Preserve the outgoing pose when changing activities, including two clips in mode 20.
 		if _pose_mode in [20, 21, 24]: _pose_mode = 19
 	_begin_pose(24 if throw_time >= 0.0 else (21 if clip.ends_with("Digging") else 20))
@@ -719,9 +729,11 @@ func pose_activity(dt: float, clip: String, throw_time := -1.0, prone_throw := f
 		var travel: Vector3 = animation.get_meta("root_travel", Vector3.ZERO)
 		var rate := move_speed * animation.length / travel.length() if move_speed > 0.0 and travel.length() > 0.05 else 1.0
 		if clip.ends_with("Climbing_Ladder"):
-			# Match the authoritative watchtower ascent instead of sliding between rungs.
+			# A detached preview has no ladder elevation to drive its cycle.
 			rate = (4.25 / Soldier.LADDER_SECONDS) * animation.length / maxf(0.1, animation.get_meta("climb_distance", 0.5))
 		_activity_clock += dt * rate
+		if clip.ends_with("Climbing_Ladder") and is_instance_valid(ladder):
+			_activity_clock = clampf(global_position.y - ladder.position.y, 0.0, 3.3) * animation.length / (2.0 * 4.2 / 13.6)
 		var sample_time := fmod(_activity_clock, animation.length) if animation.loop_mode != Animation.LOOP_NONE else minf(_activity_clock, animation.length)
 		if clip.ends_with("Rifle_Punch") and action_time >= 0.0:
 			# Omit the long walk-up so the strike meets the authoritative melee hit.
@@ -804,3 +816,52 @@ func sync_grenade(model: SoldierModel) -> void:
 	if grenade_prop.visible:
 		var hand := joint("RightHand")
 		grenade_prop.global_transform = Transform3D(hand.basis, hand.origin.lerp(joint("RightHandMiddle1").origin, 0.8))
+
+
+func _ladder_contacts(dt: float) -> void:
+	if native_player == null or not _activity_clip.ends_with("Climbing_Ladder") or not native_player.has_animation(_activity_clip): return
+	_ladder_draw = true
+	var frame := Transform3D(Basis(Vector3.UP, ladder.yaw), ladder.position)
+	var root := frame.affine_inverse() * global_position
+	var transfer := clampf((root.y - 3.3) / 0.95, 0.0, 1.0)
+	var phase := fmod(_activity_clock / native_player.get_animation(_activity_clip).length, 1.0)
+	for name in ["LeftHand", "RightHand", "LeftFoot", "RightFoot"]:
+		var hand: bool = name.ends_with("Hand")
+		var left: bool = name.begins_with("Left")
+		var side := "Left" if left else "Right"
+		var end := joint(name)
+		var contact := end.origin.lerp(joint(side + "HandMiddle1").origin, 0.65) if hand else end.origin.lerp(joint(side + "ToeBase").origin, 0.65) - Vector3.UP * 0.045
+		var local := frame.affine_inverse() * contact
+		var start := (0.9 if left else 0.4) if hand else (0.8 if left else 0.3)
+		var planted_phase := fposmod(phase - start, 1.0)
+		var planted := planted_phase < (0.65 if hand else 0.5)
+		var entry := smoothstep(0.0, 0.18, planted_phase)
+		var release := 1.0 - smoothstep(0.45 if hand else 0.32, 0.65 if hand else 0.5, planted_phase)
+		var weight := entry * release if planted else 0.0
+		if not ladder_contacts.has(name) or (planted and not ladder_contacts[name].planted):
+			var rung := clampf(roundf(local.y / (4.2 / 13.6) - 0.6), 0.0, 12.0)
+			var height := (rung + 0.6) * 4.2 / 13.6
+			var previous_goal: Vector3 = ladder_contacts[name].get("goal", end.origin) if ladder_contacts.has(name) else end.origin
+			ladder_contacts[name] = {"goal": previous_goal, "point": Vector3(clampf(local.x, -0.19, 0.19), height + (0.0 if hand else 0.025), lerpf(1.95, 1.42, height / 4.2)), "planted": planted}
+			if hand and local.y > 4.0:
+				ladder_contacts[name].point = Vector3(-0.24 if left else 0.24, clampf(local.y, 4.2, 5.2), 1.42)
+		ladder_contacts[name].planted = planted
+		var target: Vector3 = ladder_contacts[name].point
+		if transfer > 0.0:
+			if not ladder_contacts[name].has("exit_start"): ladder_contacts[name].exit_start = local
+			var exit_start: Vector3 = ladder_contacts[name].exit_start
+			# Keep a support on the ladder while the other boot steps over the platform lip.
+			var step := smoothstep(0.0 if left else 0.35, 0.65 if left else 1.0, transfer)
+			if hand:
+				target = exit_start.lerp(Vector3(-0.24 if left else 0.24, 4.7, 1.42), smoothstep(0.0, 0.3, transfer))
+				target = target.lerp(root + Vector3(-0.24 if left else 0.24, 0.88, -0.12), smoothstep(0.35, 1.0, transfer))
+				weight = 1.0
+			else:
+				target = exit_start.lerp(Vector3(-0.12 if left else 0.12, 4.29, 1.0), step)
+				target.y += sin(step * PI) * 0.16
+				weight = 1.0
+		var goal := contact.lerp(frame * target, weight) + end.origin - contact
+		# Ease onto a new contact instead of snapping a released limb to the next rung.
+		if ladder_contacts[name].has("goal"): goal = (ladder_contacts[name].goal as Vector3).move_toward(goal, dt * 2.5)
+		ladder_contacts[name].goal = goal
+		solve_limb(side + ("Arm" if hand else "UpLeg"), side + ("ForeArm" if hand else "Leg"), name, goal, frame.basis * (Vector3(-1 if left else 1, -0.1, 0.2) if hand else Vector3(0, 0.1, -1)))

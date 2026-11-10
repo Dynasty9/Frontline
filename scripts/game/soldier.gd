@@ -107,7 +107,8 @@ var bt_clear := false  # (breach) clearing a house nobody's known to be in
 var bt_nofrag := false  # (breach) going in without a grenade first
 var door_kick := false
 const LADDER_SECONDS := 4.0
-const LADDER_EXIT_SECONDS := 0.8
+const LADDER_EXIT_SECONDS := 1.4
+const LADDER_TRANSFER_SECONDS := 0.8
 var door_st: Structure = null
 var _door_t := 0.0
 var goal := Vector3.ZERO
@@ -3644,10 +3645,15 @@ func _man_tick(dt: float) -> void:
 		1:
 			task_t -= dt
 			var elapsed := LADDER_SECONDS + LADDER_EXIT_SECONDS - task_t
-			act = Act.CLIMB if elapsed < LADDER_SECONDS else Act.WALK
+			act = Act.CLIMB if elapsed < LADDER_SECONDS + LADDER_TRANSFER_SECONDS else Act.WALK
 			position = st.ladder_pos(elapsed / LADDER_SECONDS)
 			if elapsed >= LADDER_SECONDS:
-				position = position.lerp(st.mount_pos(), clampf((elapsed - LADDER_SECONDS) / LADDER_EXIT_SECONDS, 0.0, 1.0))
+				var exit_time := elapsed - LADDER_SECONDS
+				var landing := st.position + Basis(Vector3.UP, st.yaw) * Vector3(0, 4.25, 1.0)
+				if exit_time < LADDER_TRANSFER_SECONDS:
+					position = position.lerp(landing, smoothstep(0.0, LADDER_TRANSFER_SECONDS, exit_time))
+				else:
+					position = landing.lerp(st.mount_pos(), clampf((exit_time - LADDER_TRANSFER_SECONDS) / (LADDER_EXIT_SECONDS - LADDER_TRANSFER_SECONDS), 0.0, 1.0))
 			if task_t <= 0.0:
 				task_phase = 2
 				base_y = 4.25
@@ -4072,5 +4078,7 @@ func _view_process(dt: float, blend := -1.0) -> void:
 		_view_vault_lift = move_toward(_view_vault_lift, lift, pdt * 4.0)
 		model.position.y += _view_vault_lift
 		if _view_vault: view_act = Act.VAULT
+	var ladder_target = task_ent if srv else world.entity(doing_ent)
+	model.ladder = ladder_target if is_instance_valid(ladder_target) and ladder_target is Structure and ladder_target.skind == "watchtower" and view_act == Act.CLIMB else null
 	model.pose(pdt, life, posture, view_act, _view_speed, back, (flags & F_SHOOTING) != 0)
 	ring.visible = selected

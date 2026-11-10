@@ -54,6 +54,12 @@ jobs:
             if grep -E "SCRIPT ERROR|ERROR:" ${scene}.log || ! grep -q "PASS" ${scene}.log; then exit 1; fi
           done
 
+      - name: Watchtower ladder approach and exit
+        run: |
+          set -o pipefail
+          timeout 180 ~/godot/godot --headless --path . --fixed-fps 30 tests/mocap/ladder_traversal.tscn -- --scenario=motion --seed=3 --skinned-units --swat-units --port=7981 2>&1 | tee ladder.log
+          if grep -E "SCRIPT ERROR|Parse Error|ERROR:" ladder.log || ! grep -q "LIVE LADDER PASS" ladder.log; then exit 1; fi
+
       - name: Animation movement regressions
         run: |
           set -o pipefail

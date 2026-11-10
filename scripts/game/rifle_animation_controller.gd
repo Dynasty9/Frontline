@@ -442,7 +442,7 @@ func advance(dt: float, velocity: Vector3, crouching: bool, grounded: bool, relo
 	var grip_weight := 1.0 if action == "rifle_jump" else 1.0 - action_weight
 	# After a hands-free action the support hand meets the rifle as it leaves the sling.
 	if actor.weapon_stowed: grip_weight = 0.0
-	elif actor.equip_time < 0.45: grip_weight *= smoothstep(0.0, 0.45, actor.equip_time)
+	elif actor.equip_fraction < 1.0: grip_weight *= smoothstep(0.0, 1.0, actor.equip_fraction)
 	# Rising from prone needs the supporting hand to leave the ground before regripping.
 	if actor._transition_from_prone: grip_weight *= smoothstep(0.0, actor._transition_duration, actor._transition_time)
 	_hold_rifle(grip_weight)

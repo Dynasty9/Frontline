@@ -594,7 +594,7 @@ func is_mount() -> bool:
 func ladder_pos(progress: float) -> Vector3:
 	var t := clampf(progress, 0.0, 1.0)
 	# WorksModels.tower places the inclined ladder at z=1.95..1.42.
-	return position + Basis(Vector3.UP, yaw) * Vector3(0, t * 4.25, lerpf(1.95, 1.42, t) + 0.28)
+	return position + Basis(Vector3.UP, yaw) * Vector3(0, t * 3.3, lerpf(1.95, 1.42, t * 3.3 / 4.2) + 0.10)
 
 
 func mount_pos() -> Vector3:
