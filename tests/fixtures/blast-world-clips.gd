@@ -9,6 +9,7 @@ var legacy := false
 var field: World
 var capture_fps := 24
 var resume_frame := 0
+var cloud_shader := ""
 
 func _ready() -> void:
 	TestRun.watch()
@@ -19,6 +20,7 @@ func _ready() -> void:
 		if arg == "--legacy-effects": legacy = true
 		if arg == "--preview": capture_fps = 12
 		if arg.begins_with("--resume-frame="): resume_frame = maxi(0, int(arg.get_slice("=", 1)))
+		if arg.begins_with("--cloud-shader="): cloud_shader = arg.get_slice("=", 1)
 	if resume_frame > 0 and (mode != "battlefield-effects" or resume_frame != 16 * capture_fps):
 		push_error("Resume is supported only at the fresh stone shot, 16 seconds into battlefield-effects.")
 		get_tree().quit(1)
@@ -41,6 +43,15 @@ func _ready() -> void:
 	field.cam.set_process(false)
 	field.input.set_process(false)
 	field.hud.visible = false
+	# Matched shader-only comparisons use an explicitly recorded historical
+	# source file while retaining the same stage, assets and particle schedule.
+	if not cloud_shader.is_empty():
+		var comparison := Shader.new()
+		comparison.code = FileAccess.get_file_as_string(cloud_shader)
+		field.fx.vfx.blasts._shader = comparison
+		for pool: Array in field.fx.vfx.blasts._pools.values():
+			for blast: BlastFlipbooks.Blast in pool:
+				blast.material.shader = comparison
 	var camera := field.cam.cam
 	camera.fov = 48.0
 	var target := Vector3(4, field.ground_y(Vector3(4, 0, 12)), 12)
@@ -62,6 +73,10 @@ func _ready() -> void:
 		await RenderingServer.frame_post_draw
 	seed(712)
 	print("BLAST_WORLD_RECORDING")
+	if mode == "blast-cover":
+		await _cover(camera, caption)
+		_finish()
+		return
 	if mode == "battlefield-effects":
 		await _showcase(camera, caption)
 		_finish()
@@ -90,6 +105,22 @@ func _finish() -> void:
 		Music._task = -1
 	print("BLAST_WORLD_CLIP %s complete" % mode)
 	get_tree().quit()
+
+
+func _cover(camera: Camera3D, caption: Label) -> void:
+	var tank := _ground(30, -2)
+	var wall := _ground(-30, 24)
+	for frame in 8 * capture_fps:
+		var at_tank := frame < 4 * capture_fps
+		var target := tank if at_tank else wall
+		_frame_subject(camera, target, Vector3(8, 5, 11) if at_tank else Vector3(4, 3, 7), 1.2)
+		caption.text = label + " / " + ("TANK ARMOR" if at_tank else "STONE COVER")
+		caption.text += "\nActual battlefield · matched camera and effects · normal speed"
+		if frame == capture_fps / 2 or frame == int(4.5 * capture_fps):
+			seed(712)
+			field.fx.call("_explode", target + Vector3(0, 0.1, 0 if at_tank else -0.35), 2.0 if at_tank else 1.4, "fuel" if at_tank else "he")
+		await RenderingServer.frame_post_draw
+		get_viewport().get_texture().get_image().save_png(output.path_join("%04d.png" % frame))
 
 
 func _ground(x: float, z: float) -> Vector3:

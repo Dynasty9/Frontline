@@ -1,5 +1,5 @@
 shader_type spatial;
-render_mode unshaded, blend_mix, depth_draw_never, cull_disabled, shadows_disabled;
+render_mode unshaded, blend_mix, depth_draw_never, depth_test_disabled, cull_disabled, shadows_disabled;
 
 // RGB stores lighting from camera right/up/front and left/down/back.
 // Both elevation views share each atlas; coefficients are premultiplied by opacity.
@@ -107,6 +107,11 @@ void sample_frame(vec2 uv, float frame, float view, float blend, out vec4 positi
 }
 
 void fragment() {
+	float depth = texture(depth_tex, SCREEN_UV).r;
+	vec4 scene = INV_PROJECTION_MATRIX * vec4(SCREEN_UV * 2.0 - 1.0, NDC_Z(depth), 1.0);
+	float separation = -scene.z / scene.w + VERTEX.z;
+	// Reject foreground cover before fetching the animated lighting maps.
+	if (separation <= -world_scale * 1.8) discard;
 	float frame = animation.x;
 	vec2 uv = vec2(mirror < 0.0 ? 1.0 - UV.x : UV.x, UV.y);
 	vec4 p; vec4 n;
@@ -135,13 +140,16 @@ void fragment() {
 		fire_color = mix(fire_color, vec3(1.0, 0.82, 0.42), smoothstep(0.35, 0.95, heat));
 		color = mix(color, fire_color * (1.0 + 3.0 * heat), smoothstep(0.01, 0.2, heat));
 	}
-	float depth = texture(depth_tex, SCREEN_UV).r;
-	vec4 scene = INV_PROJECTION_MATRIX * vec4(SCREEN_UV * 2.0 - 1.0, NDC_Z(depth), 1.0);
-	// Approximate cloud thickness so a tilted billboard doesn't slice its own
-	// ground skirt in half. Opaque scenery still occludes the near surface.
-	float thickness = world_scale * (0.4 + 1.4 * sqrt(alpha));
-	float contact = clamp((-scene.z / scene.w + VERTEX.z + thickness) / max(world_scale * 0.45, 0.15), 0.0, 1.0);
+	// The quad is the cloud's middle, not its front surface. Hardware depth
+	// testing here cuts a straight line through smoke intersecting armor or
+	// cover. Instead integrate a bounded, soft density profile up to the
+	// opaque surface. Cover in front of the entire profile still hides it.
+	float half_depth = world_scale * (0.4 + 1.4 * sqrt(alpha));
+	float visible_density = smoothstep(-half_depth, half_depth, separation);
+	if (visible_density <= 0.0) discard;
 	ALBEDO = color;
-	float dense_alpha = 1.0 - pow(max(1.0 - alpha, 0.0), animation.w);
-	ALPHA = dense_alpha * opacity * contact * animation.y;
+	// Opacity represents integrated density: reduce optical depth, not the
+	// final alpha. Clamp opaque texels so their front edge can fade as well.
+	float dense_alpha = 1.0 - pow(max(1.0 - alpha, 0.0001), animation.w * visible_density);
+	ALPHA = dense_alpha * opacity * animation.y;
 }

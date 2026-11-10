@@ -222,5 +222,36 @@
       "tracer_share": 0.25,
       "timing": "Normal simulation speed. Range lets the short tracer flight cross a 24 Hz capture frame."
     }
+  },
+  "blast-cover": {
+    "scene": "tests/fixtures/blast-world-clips.tscn",
+    "seconds": 8,
+    "fps": 24,
+    "engine_fixed_fps": 24,
+    "timeout": 1200,
+    "seed": 712,
+    "camera": {
+      "fov_degrees": 48,
+      "tank_xz": [
+        30,
+        -2
+      ],
+      "tank_offset": [
+        8,
+        5,
+        11
+      ],
+      "wall_xz": [
+        -30,
+        24
+      ],
+      "wall_offset": [
+        4,
+        3,
+        7
+      ],
+      "look_lift": 1.2
+    },
+    "events": "Fuel size 2 at 0.5 s inside the tank wreck; HE size 1.4 at 4.5 s, 0.35 m behind stone cover. Actual showroom terrain; normal speed."
   }
 }

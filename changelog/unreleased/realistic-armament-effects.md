@@ -62,6 +62,7 @@ The showcase moves from grenade (0:00) to HE (0:04), fuel (0:09), dirt/stone/met
 - Grenades have a small, brief flash and fast dark fragments. HE shells throw widening fans of earth, falling clods and dust. Fuel burns through a rising cloud of darker smoke.
 - Animated clouds retain their billows as they roll and disperse. Sunlight and sky light shape them, roads produce greyer dust, and wet ground produces a darker, thinner cloud.
 - Dust, landing debris and crater marks follow the ground height. Airbursts retain their flash and smoke without throwing earth from midair.
+- Explosion clouds meet tank armor and nearby cover with soft intersections instead of revealing a flat, sharply cut sheet. Solid cover in front of the cloud still hides it.
 - Illumination flares sway beneath open cloth parachutes, descend with the wind, and leave smoke behind. Their trails stop emitting when the charge burns out and then disperse.
 - Tracers light beyond the muzzle and dim with distance. Metal impacts shed small chips alongside sparks; dirt and stone produce their own debris.
 - Effects reuse bounded pools and shared debris batches. Transparent areas are trimmed before drawing, and lower effects settings reduce animation work and particle counts.

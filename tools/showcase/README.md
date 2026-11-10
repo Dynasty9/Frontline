@@ -20,6 +20,7 @@ lead artifact; original notes and supporting media remain under **Explore this c
 | Illumination flares | Parachute descent, wind, sparks and smoke | `flares`: same effect code at night, following camera, fixed 30 Hz |
 | Battlefield effects reel | All armaments over real terrain, followed by a night flare | `battlefield-effects`: 28 seconds, showroom seed 712, fixed 24 Hz, Forward+ |
 | Battlefield blast | Earth and dust against real terrain and cover | `blast-close` / `blast-rts`: showroom seed 712, day, fixed 24 Hz |
+| Cloud intersections | Fuel inside tank armor and HE against stone cover | `blast-cover`: two four-second shots, showroom seed 712, fixed 24 Hz |
 | Text | Reliability, compatibility, unrecorded sound or unmeasured performance | Short player outcome and original detail |
 
 The website uses the main site’s Signal tokens and shadcn/Radix components.
@@ -113,6 +114,11 @@ its camera/event script revision and uses constrained-quality VP9 to keep the
 complete reel inside the changelog media limit. For composition checks only, the
 fixture accepts `--preview` with engine `--fixed-fps 12` at a smaller viewport;
 release evidence uses the registered 24 Hz preset.
+
+`blast-cover` uses the same battlefield fixture for closer intersection checks.
+For a matched shader-only comparison, the fixture accepts `--cloud-shader=/absolute/path/to/historical.gdshader`.
+Record the historical shader's revision and hash, and the current fixture revision;
+this is a controlled shader comparison, not a full historical build.
 
 If a battlefield reel is interrupted, the fixture can replay its fixed-step
 schedule without rasterization using `--resume-frame=384` (or 192 with the 12 Hz

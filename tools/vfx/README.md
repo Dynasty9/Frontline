@@ -43,6 +43,12 @@ transparent bursts by depth. The high setting caps these at 28 dust and 12 fuel
 surfaces; fragments and earth fans use shared instance rings. Bounds trimming
 reduces transparent overdraw without sacrificing that cloud ordering. Low and
 medium settings also avoid loading the optical-flow maps.
+Opaque scenery clips a bounded density profile through each cloud instead of
+depth-testing its flat middle. The shader integrates only the density ahead of
+the sampled surface, so armor and walls intersect softly and foreground cover
+still occludes the cloud. Thickness is an opacity-based approximation, not
+collision-aware fluid flow. It uses the existing depth sample and no new atlas;
+fully covered pixels are rejected before the animation-map reads.
 With S3TC compression and mipmaps, the six animation atlases occupy about
 58.7 MiB; omitting the two motion maps reduces that to 37.3 MiB. The two lossless
 bounds maps add only 1 KiB. These figures describe the animation textures, not
@@ -78,9 +84,16 @@ With Godot 4.7.x imported into the project:
 
 ```sh
 GODOT=/path/to/godot node --test tests/armament-effects.test.mjs
+FL_TEST_RENDER=1 GODOT=/path/to/godot node --test tests/armament-effects.test.mjs
 godot --path . --rendering-method gl_compatibility --audio-driver Dummy \
   --fixed-fps 60 --resolution 1280x720 res://tests/fixtures/blast-benchmark.tscn
 ```
+
+The opt-in rendering checks need a display (Xvfb works). They sweep opaque cover
+through the production cloud shader with perspective and orthographic cameras,
+partly transparent and opaque texels, both renderers, and MSAA off/4x. Pixel
+readback checks full foreground occlusion, continuity across the billboard
+plane, and increasing visible density. Renderers warm up before sampling.
 
 The benchmark emits `BLAST_BENCH` JSON for 69 seeded HE bursts over four
 simulated seconds. It fixes High effects, 2x MSAA and full render scale, warms
