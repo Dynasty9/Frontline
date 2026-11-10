@@ -10,6 +10,7 @@ Family builders own the silhouette, dimensions, wheel positions, payload and wea
 | `VehicleTracks.shoes` | Evenly spaced shoes, hinge pins, optional rubber pads and guide teeth | Outline, width, pitch and steel/padded construction |
 | `VehicleFrames.tube`, `.beam`, `.path` | Struts, frame rails, roll cages, bars and rounded tube joints | Endpoint layout, section dimensions and taper |
 | `VehicleGlazing.rectangle`, `.quad` | Rectangular or fitted quadrilateral pane with rubber seals | Actual opening outline and whether an interior exists |
+| `VehicleRotors.main`, `.tail`, `.blade` | Airfoil sections, shaped tips, matte blade coating and hub hardware | Radius, chord, blade count, phase, sweep/paddle style and aircraft-specific caps |
 | `VehicleCab` / `VehicleCloth` | Open cabs, furniture, near/far glass and draped cargo covers | Family proportions and load |
 
 All positions are local to the supplied parent. Forward is -Z; wheel axles are X. Track outlines are **(Z, Y)**, and `wheel_envelope` takes circles as **(Z, Y, radius)**. A shoe outline normally describes its centre line; use `inset=thickness/2` when an existing outline describes the outside edge. Pitch controls link length in metres. ED-1 uses a 0.035 m pitch; full-size armour uses 0.20 m. Pads and hinge pins scale down with thickness. Tracks remain static geometry, as before this change.
@@ -31,3 +32,7 @@ Glazing defaults to opaque. Set `clear=true` only after modelling a real opening
 Surface finishes still come from `VehicleMaterials`: the existing eight maps and CC0 credits are unchanged. These improvements are geometry and reuse, not another texture download. Unique aircraft canopies, inflatable tubes, agricultural tread and optimised open ship rail meshes remain specialised.
 
 Validate with `node --test tests/vehicle-components.test.mjs tests/vehicle-materials.test.mjs tests/vehicle-lod.test.mjs tests/vehicle-motion.test.mjs`, then render `tools/showcase/vehicle-surfaces.tscn`. Add `--surface-rear` for rear-quarter views; use `--surface-single --surface-kinds=... --surface-ground` for closer inspection.
+
+Helicopter builders call `VehicleRotors.main` through the existing `VmHeli._rotor` adapter. `tip=0` is tapered square, `tip=1` swept and `tip=2` a broad paddle tip. The assembly shares cached airfoil meshes by dimensions and tip type. Blade roots and tips follow the same section geometry; erosion protection follows its leading edge. `.tail` reorients the same airfoil along an X-axis rotor. `VehicleMaterials` supplies the matte `rotor` finish without adding texture downloads.
+
+Hub fittings stay on the rotor parent, while explicit blades stay under the existing blade visibility node. Additional rotors retain `Blades` and `Blur` children. This preserves current speed-driven blur behaviour; detailed blade shapes are principally visible at rest or low speed. Enclosed fans and drone propellers are deliberately separate. Use `--surface-rotor --surface-size=3 --surface-single` to inspect a main hub with the shared capture stage.

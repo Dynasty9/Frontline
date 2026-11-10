@@ -1155,6 +1155,12 @@ Ambush Alley autoplay can call its existing mortar support against spotted, stop
   wrecks lose intact glazing. Rounded tyres, recessed rims and rotating tread extend across shared
   wheeled models, with finer road tread and smooth aircraft tyres. Tracked road wheels share twin tyres, recessed discs and hub bolts while retaining
   family-specific spoke patterns and sprockets. HEMTT and Zamak cargo covers share draped cloth and fitted restraints.
+- **Shared helicopter rotors** (`vehicle_rotors.gd`): main and exposed tail rotors use tapered airfoil
+  sections with spanwise twist, gentle droop, shaped swept or paddle tips, erosion strips and muted tip
+  markings. Forked grips, hinge pins, pitch links and a stepped swashplate add depth to rotor heads.
+  A dedicated matte nonmetallic finish separates composite blades from painted fuselages and metal hubs.
+  Conventional, tandem and coaxial assemblies keep their existing blade counts, pivots and blur switching;
+  enclosed ducted fans remain specialised. Detail is most visible while stopped or turning slowly.
 - **Reusable vehicle components** (`vehicle_wheels.gd`, `vehicle_tracks.gd`, `vehicle_frames.gd`,
   `vehicle_glazing.gd`): running and spare tyres share profiles; tank and ED-1 track shoes follow each
   vehicle's own outline. Frames, struts, rails and window seals use common builders. Clear panes require

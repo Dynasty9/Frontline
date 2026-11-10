@@ -5,6 +5,7 @@ extends RefCounted
 ## Packed linear maps: R height, G roughness variation, B corrosion, A luminance variation.
 
 const PROFILES := {
+	"rotor": {"map": "coating", "rough": 0.78, "metal": 0.0, "bump": 0.004, "grime": 0.0, "surface_scale": 3.0, "surface_tone": 0.035, "surface_specular": 0.25},
 	"armor": {"map": "coating", "rough": 0.73, "metal": 0.0, "bump": 0.018, "grime": 0.32, "surface_scale": 1.5, "surface_tone": 0.08},
 	"aircraft": {"map": "coating", "rough": 0.48, "metal": 0.0, "bump": 0.006, "grime": 0.025, "surface_scale": 2.0, "surface_tone": 0.025},
 	"automotive": {"map": "coating", "rough": 0.28, "metal": 0.0, "bump": 0.006, "grime": 0.23, "surface_scale": 2.0, "surface_tone": 0.025, "surface_coat": 0.65},
@@ -40,7 +41,7 @@ static func key(kind: String, vehicle_family: String) -> String:
 
 static func profile(kind: String, vehicle_family: String) -> String:
 	match kind:
-		"rubber", "glass", "track", "burnt", "steel", "gunmetal", "nonslip", "tread":
+		"rubber", "glass", "track", "burnt", "steel", "gunmetal", "nonslip", "tread", "rotor":
 			return kind
 		"rust_steel":
 			return "oxidized"
@@ -67,7 +68,7 @@ static func preset(material_key: String) -> Dictionary:
 	var p := Mats._preset(kind).duplicate()
 	# Nonslip is explicitly assigned to walking surfaces, with the same tint
 	# basis as the plain painted parts it replaces.
-	if kind in ["nonslip", "tread"]:
+	if kind in ["nonslip", "tread", "rotor"]:
 		p = Mats._preset("plain").duplicate()
 	if finish == "wood":
 		p["pattern"] = Mats.WOOD
