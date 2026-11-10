@@ -85,3 +85,11 @@ Six tests passed across materials, components, rotors, distance meshes, motion a
 New assertions check normal-map mipmaps and body smoothing without vertex/bounds changes.
 Roster and sling scenarios completed with no script errors; roster reported shutdown resource warnings.
 No performance improvement is claimed; the shader adds three normal texture samples per detailed surface.
+
+### Validation after merging main
+
+At `54d8537`, all six vehicle tests pass on the repository's target **Godot 4.7.2**.
+Import, the roster scenario and a fresh Compatibility render of helicopter, Zamak, HEMTT,
+Tempest, tank and RHIB also pass. The earlier matched comparisons remain on 4.6.3 for
+consistent before/after evidence. A post-merge run on 4.6.3 passed five tests but could not
+compile main's new four-argument animation blend API; using 4.7.2 resolves that mismatch.
