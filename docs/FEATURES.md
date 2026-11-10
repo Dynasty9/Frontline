@@ -1129,6 +1129,11 @@ Ambush Alley autoplay can call its existing mortar support against spotted, stop
   Defences sit in the ground: trodden earth round the nests and pits, earth banked against the bunkers up to their
   slits.
 - Vehicles are built from sloped, lofted armour: road wheels that turn, tracks, mantlets, cupolas, stowage, rotor blur.
+- **Shared vehicle finishes** (`vehicle_materials.gd`, `assets/vehicles/surfaces/`): armor paint, aircraft
+  coatings, civilian clearcoat, marine paint, rubber, canvas, exposed metal, glass, nonslip decks and charred
+  wrecks use distinct roughness and reflection settings. Six shared, mipmapped detail maps add fine relief
+  without requiring UV unwraps. Paint is nonmetallic apart from exposed wear; texture and lower-body dust
+  stay attached to the model as it moves or climbs. Faction palettes and distant merged meshes are retained.
 - Explosions are layered GPU particles: a flash and light burst, a rolling fireball that cools from the edges in
   until it's dark smoke, a lit smoke column that drifts with the wind, a dirt plume, sparks and debris that
   bounce on the ground, a rolling dust ring, a faint heat-shimmer shockwave and a scorch mark. Heavy rounds

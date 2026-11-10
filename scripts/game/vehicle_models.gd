@@ -9,6 +9,7 @@ static var _cache := {}
 
 var root: Node3D
 var burnt := false
+var surface_family := "armor"
 var turret: Node3D
 var mg_tip: Node3D  # the machine gun's muzzle (shots start here)
 var gun_tip: Node3D  # the main gun's muzzle
@@ -30,7 +31,11 @@ static func build_car(variant: int, col: Color, is_burnt := false) -> VehicleMod
 	var k := VehicleModels.new()
 	k.root = Node3D.new()
 	k.burnt = is_burnt
+	k.surface_family = "automotive"
+	k._baking = true
 	k._car(variant % 5, col)
+	k._merge_parts(k.root, Vector3.ZERO)
+	k._baked()
 	return k
 
 
@@ -43,6 +48,7 @@ static func build(kind: String, team: int, seed: int, is_burnt := false) -> Vehi
 	var mk := kind
 	if Defs.VEHICLES.has(kind):
 		mk = String(Defs.VEHICLES[kind].get("model", kind))
+	k.surface_family = VehicleMaterials.family(mk)
 	# the aircraft builders in scripts/game/vehicles/ come first: until one of
 	# them builds a key, the older model below stands
 	if VmCore.build(k, mk, team, seed) or VmGunship.build(k, mk, team, seed) or VmAttack.build(k, mk, team, seed) or VmFighter.build(k, mk, team, seed):
@@ -239,7 +245,8 @@ static func _capsule(r: float, h: float) -> CapsuleMesh:
 func _add(parent: Node3D, mesh: Mesh, kind: String, col, pos: Vector3, rot := Vector3.ZERO, scl := Vector3.ONE, shadow := true) -> Variant:
 	var k := kind
 	if burnt:
-		k = "burnt" if kind != "glass" else "burnt"
+		k = "burnt"
+	k = VehicleMaterials.key(k, surface_family)
 	var t := Mats.tint_for(k, col) if col is Color and not burnt else Color(1, 1, 1)
 	var pt := [mesh, Mats.get_mat(k), t, shadow, pos, rot, scl, null, null]
 	if not _baking:
@@ -333,7 +340,7 @@ func _fold(pv: Node3D) -> void:
 	pv.free()
 
 
-## Every part on surface `from` put on `to` (VmFighter._repaint), noted down or not.
+## Every noted part on surface `from` put on `to`.
 func _swap_noted(from: Material, to: Material) -> void:
 	for parent: Node3D in _parts:
 		for pt: Array in _parts[parent]:

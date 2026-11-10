@@ -161,6 +161,7 @@ static func get_mat(kind: String) -> ShaderMaterial:
 	if _cache.has(kind):
 		return _cache[kind]
 	var m := ShaderMaterial.new()
+	m.resource_name = kind
 	m.shader = shader()
 	m.set_shader_parameter("noise_tex", noise_tex())
 	var p := _preset(kind)
@@ -649,6 +650,8 @@ static func netting_tent() -> ShaderMaterial:
 
 
 static func _preset(kind: String) -> Dictionary:
+	if kind.begins_with("vehicle/"):
+		return VehicleMaterials.preset(kind)
 	match kind:
 		"steel":
 			return {"pattern": PAINT, "col_a": Color(0.25, 0.26, 0.27), "col_b": Color(0.4, 0.38, 0.35), "rough": 0.6, "metal": 0.6, "bump": 0.8, "grime": 0.4, "rust": 0.3}
@@ -781,6 +784,14 @@ uniform float pitting = 1.0;  // concrete: how much of the old pitting shows
 uniform float seams = 1.0;  // concrete: the formwork joints
 uniform float cell_w = 1.05;  // HESCO: the width of a cell
 uniform bool local_space = false;
+// Shared vehicle maps are linear data, projected in metres without mesh UVs.
+uniform bool vehicle_surface = false;
+uniform bool surface_detail = false;
+uniform sampler2D surface_map : filter_linear_mipmap_anisotropic, repeat_enable;
+uniform float surface_scale = 3.0;
+uniform float surface_wear = 0.0;
+uniform float surface_coat = 0.0;
+uniform float surface_specular = 0.4;
 uniform bool use_vcolor = false;
 uniform float vcolor_k = 1.0;  // merged parts: the vertex colour is stored scaled down (Mats.VC_K)
 // paving (Mats.paving): a shell hole or a trench punches through it, as through the roads
@@ -810,7 +821,8 @@ float keep(float period, float px) { return smoothstep(1.5, 5.0, period / max(px
 
 void vertex() {
 	wpos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
-	seed = MODEL_MATRIX[3].xyz;
+	// Moving through the world must not change camouflage or wear.
+	seed = vehicle_surface ? vec3(0.0) : MODEL_MATRIX[3].xyz;
 	if (local_space) {
 		tp = VERTEX + pofs;
 		tn = NORMAL;
@@ -999,20 +1011,44 @@ void fragment() {
 		col = col_a * (0.92 + 0.12 * tnoise(uv * 5.0 + off));
 		h = 0.5 + tnoise(uv * 20.0) * 0.1;
 	}
+	if (vehicle_surface) {
+		// Paint is a dielectric coating. Only the sparse exposed chips become
+		// metallic; rubber, fabric and glass retain their own response.
+		if (pattern == 0) { col = col_a; h = 0.5; }
+		if (surface_detail) {
+			vec3 weights = pow(abs(normalize(tn)), vec3(4.0));
+			weights /= max(dot(weights, vec3(1.0)), 0.0001);
+			vec3 q = tp * surface_scale;
+			vec3 detail = texture(surface_map, q.yz).rgb * weights.x
+				+ texture(surface_map, q.xz).rgb * weights.y
+				+ texture(surface_map, q.xy).rgb * weights.z;
+			h = (pattern == 13 || pattern == 5) ? h + (detail.r - 0.5) * 0.15 : detail.r;
+			r = clamp(rough + (detail.g - 0.5) * 0.22, 0.06, 1.0);
+			col *= 0.96 + detail.g * 0.08;
+			float worn = detail.b * surface_wear;
+			col = mix(col, vec3(0.12, 0.13, 0.14), worn);
+			m = mix(metal, 0.85, worn);
+			r = mix(r, 0.4, worn);
+		}
+	}
 	col *= tint.rgb;
 	if (use_vcolor) { col *= COLOR.rgb * vcolor_k; }
 	// broad, soft variation across a surface (sun-bleached, weathered, damp
 	// patches): large enough never to alias, it keeps big walls from looking flat
-	float macro = tfbm(wpos.xz * 0.11 + wpos.y * 0.07 + off * 0.2);
-	col *= 0.88 + 0.24 * macro;
+	vec3 weather_pos = vehicle_surface ? tp : wpos;
+	float macro = tfbm(weather_pos.xz * 0.11 + weather_pos.y * 0.07 + off * 0.2);
+	col *= vehicle_surface ? 0.96 + 0.08 * macro : 0.88 + 0.24 * macro;
 	// grime and dust toward the ground
-	float low = 1.0 - smoothstep(0.0, 0.9, wpos.y);
+	float low = 1.0 - smoothstep(0.0, 0.9, weather_pos.y);
 	float gn = tnoise(uv * 2.0 + off);
-	col = mix(col, col * 0.62 + vec3(0.05, 0.04, 0.02), low * grime * (0.6 + 0.4 * gn));
+	float dirt = low * grime * (0.6 + 0.4 * gn);
+	col = mix(col, vehicle_surface ? vec3(0.12, 0.095, 0.065) : col * 0.62 + vec3(0.05, 0.04, 0.02), dirt);
 	ALBEDO = col;
-	ROUGHNESS = clamp(r + (macro - 0.5) * 0.12, 0.05, 1.0);
-	METALLIC = m;
-	SPECULAR = 0.4;
+	ROUGHNESS = clamp(r + (macro - 0.5) * (vehicle_surface ? 0.04 : 0.12) + (vehicle_surface ? dirt * 0.15 : 0.0), 0.05, 1.0);
+	METALLIC = vehicle_surface ? m * (1.0 - dirt) : m;
+	SPECULAR = vehicle_surface ? surface_specular : 0.4;
+	CLEARCOAT = vehicle_surface ? surface_coat : 0.0;
+	CLEARCOAT_ROUGHNESS = 0.22;
 	// bump mapping from the pattern height (surface gradient); the height is
 	// band-limited above, so its screen-space slope is stable under motion
 	if (bump > 0.0) {

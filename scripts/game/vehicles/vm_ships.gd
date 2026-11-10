@@ -629,7 +629,7 @@ static func _patrol_ship(k: VehicleModels, team: int, seed: int) -> void:
 	var zs: float = zt - float(p["len"])
 	_hull_bands(k, m, p, "ship_pb", ["plain", Color(0.3, 0.13, 0.11), "plain", blk, "plain", grey], "plain", grey, 0.07, 0.56)
 	var all := _hull(p)
-	k._add(m, _deck_mesh("ship_pb_deck", all, 0.09, 0.012), "plain", dkc, Vector3.ZERO)
+	k._add(m, _deck_mesh("ship_pb_deck", all, 0.09, 0.012), "nonslip", dkc, Vector3.ZERO)
 	# spray rails and chine flats on the bottom, the rubbing strake under the
 	# deck edge, a toe rail round the open decks, a capping on the bulwark
 	for s in [-1.0, 1.0]:
@@ -922,7 +922,7 @@ static func _gun_trawler(k: VehicleModels, team: int, seed: int) -> void:
 	var zs: float = zt - float(p["len"])
 	_hull_bands(k, m, p, "ship_tr", ["paint", Color(0.42, 0.17, 0.11), "paint", Color(0.14, 0.13, 0.12), "steel", blue], "plain", white, 0.06)
 	var all := _hull(p)
-	k._add(m, _deck_mesh("ship_tr_deck", all, 0.07, 0.012), "steel", deckc, Vector3.ZERO)
+	k._add(m, _deck_mesh("ship_tr_deck", all, 0.07, 0.012), "nonslip", deckc, Vector3.ZERO)
 	# the transom's bulwark across the stern
 	var tst := _station(p, 0.0)
 	var tw := VmBoat._hw(tst[1], tst[2])
