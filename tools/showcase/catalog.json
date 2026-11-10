@@ -4708,6 +4708,51 @@
           "command": "godot --path . --fixed-fps 30 --resolution 1280x720 --script tools/showcase/environment-motion.gd -- --aivai --seed=3 --offscreen --nohud --set=perf:0 --preset=high --mood=day --motion-stage=environment --motion-output=build/media-review"
         }
       }
+    },
+    {
+      "entry": "changelog/unreleased/shoreline-blending.md",
+      "medium": "motion",
+      "stage": "environment-views shoreline",
+      "rationale": "Matched stills show gravel scale and beach transition; simultaneous native motion reveals the eliminated wave phase discontinuity.",
+      "source_ref": "de7dfbda baseline; after shader SHA-256 and camera provenance in shoreline-blending/capture.json",
+      "sources": [
+        {
+          "file": "changelog/unreleased/shoreline-blending/capture.json",
+          "sha256": "fde3fa5fe12bbf874adf25a4222bf9ecc5e65f28d9797654a1c55cd00b009782",
+          "caption": "capture"
+        },
+        {
+          "file": "changelog/unreleased/shoreline-blending/comparison.jpg",
+          "sha256": "ecc01a4f0f680e94395be85ff46dce14085ffed85b8ab14ec47e90ebd829608b",
+          "caption": "comparison"
+        },
+        {
+          "file": "changelog/unreleased/shoreline-blending/comparison.mp4",
+          "sha256": "9834e8e64b66ec75939ebc7513e7ff0e13b2088ed9790ff7215406e93d5b77a1",
+          "caption": "comparison"
+        },
+        {
+          "file": "changelog/unreleased/shoreline-blending/town-after.jpg",
+          "sha256": "0c056923e65a6fda8976c46bdecce6a523b869ed6204df2e96c96e4621b58464",
+          "caption": "town-after"
+        },
+        {
+          "file": "changelog/unreleased/shoreline-blending/town-before.jpg",
+          "sha256": "912aeaf40cb0d9215d5bbee6f5123b2cd27b023622a05203e9b2f0df3406aadc",
+          "caption": "town-before"
+        },
+        {
+          "file": "changelog/unreleased/shoreline-blending/waterline-after.jpg",
+          "sha256": "2b6f3ac7b1506070ff1d27ca9d10ed6fa7d5f8bf70cfb20d671c77d0acb8e239",
+          "caption": "waterline-after"
+        },
+        {
+          "file": "changelog/unreleased/shoreline-blending/waterline-before.jpg",
+          "sha256": "be46d358edd2f1e9cd0ea9ce0b632a47367539ffa8b7dc12fafd432ece376a00",
+          "caption": "waterline-before"
+        }
+      ],
+      "output": null
     }
   ],
   "layout_capture": {

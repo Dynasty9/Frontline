@@ -30,6 +30,7 @@ func _ready() -> void:
 		assert(original.get_pixelv(p) == imported.get_pixelv(p), "Asphalt roughness in alpha must survive import")
 	if DisplayServer.get_name() != "headless":
 		await check_cloud_continuity()
+		await check_surf_continuity()
 		await check_vertex_ground_normals()
 		await check_rain_splashes()
 		await check_road_surfaces()
@@ -42,6 +43,45 @@ func _ready() -> void:
 	while Music._task >= 0:
 		await get_tree().process_frame
 	get_tree().quit()
+
+
+func check_surf_continuity() -> void:
+	var view := SubViewport.new()
+	view.size = Vector2i(32, 32)
+	view.own_world_3d = true
+	view.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	add_child(view)
+	var camera := Camera3D.new()
+	view.add_child(camera)
+	camera.position = Vector3(0, 2, 0)
+	camera.look_at(Vector3.ZERO, Vector3.FORWARD)
+	var mesh := MeshInstance3D.new()
+	mesh.mesh = PlaneMesh.new()
+	view.add_child(mesh)
+	var source := WaterView.WATER_SHADER
+	var start := source.find("float surf_run(")
+	var finish := source.find("void vertex()", start)
+	assert(start >= 0 and finish > start)
+	var shader := Shader.new()
+	shader.code = "shader_type spatial; render_mode unshaded; uniform float water_time; uniform vec3 coast = vec3(0.0); const float SURF_L = 15.0; const float SURF_C = 2.1;\n" + source.substr(start, finish - start) + """
+void fragment() {
+	ALBEDO = vec3(surf_hump(vec2(0.0), 5.0));
+	if (OUTPUT_IS_SRGB) { ALBEDO = mix(ALBEDO * 12.92, 1.055 * pow(ALBEDO, vec3(1.0 / 2.4)) - 0.055, step(vec3(0.0031308), ALBEDO)); }
+}
+"""
+	var material := ShaderMaterial.new()
+	material.shader = shader
+	mesh.material_override = material
+	var heights: Array[float] = []
+	for offset in [-0.001, 0.001]:
+		material.set_shader_parameter("water_time", (15.0 - 5.0 + offset) / 2.1)
+		for frame in 3:
+			await RenderingServer.frame_post_draw
+		heights.append(view.get_texture().get_image().get_pixel(16, 16).srgb_to_linear().r)
+	assert(heights[0] > 0.01, "The continuity fixture must draw the crest")
+	assert(absf(heights[0] - heights[1]) < 0.005, "A breaker must not jump at its phase wrap: %s" % [heights])
+	view.free()
+	print("TERRAIN_MATERIALS native surf phase continuity passed")
 
 func check_batched_tints() -> void:
 	var view := SubViewport.new()
@@ -226,6 +266,15 @@ void fragment() {
 	var meadow_pixel := view.get_texture().get_image().get_pixel(32, 32).srgb_to_linear()
 	var meadow_expected := meadow_image.get_pixel(0, 0).srgb_to_linear() * Color(0.27, 0.415, 0.375)
 	assert(Vector3(meadow_pixel.r, meadow_pixel.g, meadow_pixel.b).distance_to(Vector3(meadow_expected.r, meadow_expected.g, meadow_expected.b)) < 0.008, "Meadow photographs shade in linear light in both renderers: %s" % meadow_pixel)
+	meadow_shader.code = meadow_code.replace("meadow_color(vec2(0.5), 0.5)", "shore_gravel_color(vec2(0.5))")
+	meadow_material.set_shader_parameter("shore_gravel_texture", ImageTexture.create_from_image(meadow_image))
+	for frame in 3:
+		await RenderingServer.frame_post_draw
+	var shore_pixel := view.get_texture().get_image().get_pixel(32, 32).srgb_to_linear()
+	var scan := meadow_image.get_pixel(0, 0).srgb_to_linear()
+	var luma := scan.r * 0.2126 + scan.g * 0.7152 + scan.b * 0.0722
+	var shore_expected := Color(luma, luma, luma).lerp(scan, 0.4) * Color(1.12, 1.09, 1.02)
+	assert(Vector3(shore_pixel.r, shore_pixel.g, shore_pixel.b).distance_to(Vector3(shore_expected.r, shore_expected.g, shore_expected.b)) < 0.008, "Shore gravel must retain its warm linear palette on both renderers: %s" % shore_pixel)
 	view.queue_free()
 	print("TERRAIN_MATERIALS native sloped-road normals and colour checks passed")
 

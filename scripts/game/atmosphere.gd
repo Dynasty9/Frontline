@@ -400,6 +400,8 @@ func _build_ground() -> void:
 	ground_mat.set_shader_parameter("material_colors", materials[0])
 	ground_mat.set_shader_parameter("material_surfaces", materials[1])
 	ground_mat.set_shader_parameter("meadow_grass", preload("res://assets/town/leafy_grass_color.jpg"))
+	ground_mat.set_shader_parameter("shore_gravel_texture", preload("res://assets/town/gravelly_sand_color.jpg"))
+	ground_mat.set_shader_parameter("shore_gravel_surface", preload("res://assets/town/gravelly_sand_surface.png"))
 	ground_mat.set_shader_parameter("cloud_strength", float(_d.clouds))
 	ground_mat.set_shader_parameter("sun_tint", _d.sun)
 	ground_mat.set_shader_parameter("air_color", _d.fog)
@@ -1367,6 +1369,18 @@ vec3 meadow_color(vec2 p, float dryness) {
 	return blades * mix(vec3(0.18, 0.35, 0.25), vec3(0.36, 0.48, 0.50), dryness);
 }
 
+// Fine rounded grains share the sand's warm palette; mountain scree reads as giant chips here.
+uniform sampler2D shore_gravel_texture : source_color, filter_linear_mipmap_anisotropic, repeat_enable;
+uniform sampler2D shore_gravel_surface : filter_linear_mipmap_anisotropic, repeat_enable;
+vec3 shore_gravel_color(vec2 p) {
+	vec3 scan = texture(shore_gravel_texture, p * 0.65).rgb;
+	if (OUTPUT_IS_SRGB) {
+		scan = mix(scan / 12.92, pow((scan + 0.055) / 1.055, vec3(2.4)), step(vec3(0.04045), scan));
+	}
+	float luma = dot(scan, vec3(0.2126, 0.7152, 0.0722));
+	return mix(vec3(luma), scan, 0.4) * vec3(1.12, 1.09, 1.02);
+}
+
 float height_blend(float bed, float deposit, float coverage) {
 	vec2 relief = vec2(bed * 0.36 + 1.0 - coverage, deposit * 0.36 + coverage);
 	vec2 weight = max(relief - max(relief.x, relief.y) + 0.18, vec2(0.0));
@@ -1554,16 +1568,19 @@ void fragment() {
 	vec3 alpine = mix(moss, rock, exposed);
 	float clean = (1.0 - wm.g) * (1.0 - wm.a) * (1.0 - clamp(bowl, 0.0, 1.0));
 	col = mix(col, alpine, clean);
-	// Wave-washed rocky margins retain gravel above the wet line instead of uniform sand.
-	float shore_stone = smoothstep(0.08, 0.55, wm.g) * wm.b * (1.0 - wm.a)
-		* smoothstep(0.35, 0.75, patch * 0.65 + macro * 0.2 + slope * 0.6);
-	shore_stone *= 1.0 - step(9999.0, snow_line);
-	shore_stone *= smoothstep(0.32, 0.65, d1 * 0.4 + d2 * 0.6);
-	vec4 shore_sample = surface_color(1.0, vec3(p.x, 0.0, p.y) / 4.0 + 0.37, vec3(0.0, 1.0, 0.0));
-	float shore_luma = dot(shore_sample.rgb, vec3(0.2126, 0.7152, 0.0722));
-	vec3 gravel = mix(vec3(shore_luma), shore_sample.rgb, 0.12) * mix(vec3(0.78, 0.86, 0.92), vec3(0.24, 0.29, 0.33), wet_sand);
-	float shingle = mix(shore_stone, height_blend(0.5, shore_sample.a, shore_stone), 0.35);
-	col = mix(col, gravel, shingle * 0.95);
+	// Broad deposits feather into sand before the wash line, rather than tracing a rocky stripe.
+	float shore_stone = smoothstep(0.05, 0.6, wm.g) * (1.0 - smoothstep(0.65, 1.0, wm.g));
+	shore_stone *= wm.b * (1.0 - wm.a) * (1.0 - step(9999.0, snow_line));
+	shore_stone *= mix(0.18, 0.7, smoothstep(0.25, 0.75, patch * 0.6 + d1 * 0.4));
+	vec3 shore_normal = geometric;
+	float shore_roughness = 0.9;
+	if (shore_stone > 0.001) {
+		col = mix(col, shore_gravel_color(p) * (1.0 - wet_sand * 0.25), shore_stone);
+		vec4 grain = texture(shore_gravel_surface, p * 0.65);
+		vec3 grain_n = grain.rgb * 2.0 - 1.0;
+		shore_normal = normalize(geometric + vec3(grain_n.x, 0.0, grain_n.y) * 0.18);
+		shore_roughness = clamp(grain.a, 0.65, 1.0);
+	}
 	// Connected snowfields collect in sheltered bowls, leaving dark ribs and cliff faces.
 	float local_snow_line = max(abs(p.x), abs(p.y)) >= __MAP_HALF__ ? max(150.0, snow_line * 1.5) : snow_line;
 	float snow_field = (geology - local_snow_line) / 35.0 + cavity * 0.8 - geometric.x * 0.25 + (d1 - 0.5) * 0.3;
@@ -1618,7 +1635,7 @@ void fragment() {
 	rock_damp *= exposed * clean * (1.0 - snow);
 	ROUGHNESS = mix(ROUGHNESS, 0.28, rock_damp);
 	ROUGHNESS = mix(ROUGHNESS, 0.55, wet * 0.5);
-	ROUGHNESS = mix(ROUGHNESS, mix(0.92, 0.3, wet_sand), shore_stone);
+	ROUGHNESS = mix(ROUGHNESS, mix(shore_roughness, 0.45, wet_sand), shore_stone);
 	ROUGHNESS = mix(ROUGHNESS, 0.45, max(wm.a * 0.8, wet_sand * 0.6));
 	ROUGHNESS = mix(ROUGHNESS, 0.16, puddle);
 	SPECULAR = mix(0.25, 0.38, wet);
@@ -1638,7 +1655,7 @@ void fragment() {
 	n = surface_relief(n, mineral * 0.28, exposed * clean * (1.0 - snow) * smoothstep(0.3, 1.0, slope));
 	n = normalize(mix(n, normalize(mix(geometric, snow_n, 0.6)), snow * 0.9));
 	n = surface_relief(n, snow_ripple * 0.065 + scree_sample.a * 0.025, snow);
-	n = surface_relief(n, shore_sample.a * 0.045, shingle);
+	n = normalize(mix(n, shore_normal, shore_stone));
 	n = normalize(mix(n, vec3(0.0, 1.0, 0.0), puddle * 0.9));
 	NORMAL = normalize((VIEW_MATRIX * vec4(n, 0.0)).xyz);
 }

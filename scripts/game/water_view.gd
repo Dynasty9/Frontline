@@ -777,7 +777,10 @@ float surge_at(vec2 p, float into) {
 // a breaker rising as the water shoals under it, steepest just before it spills
 float surf_hump(vec2 p, float into) {
 	float s = surf_phase(p, into);
-	return pow(smoothstep(0.55, 1.0, s), 2.5) * smoothstep(20.0, 7.0, into) * smoothstep(-1.0, 3.0, into);
+	// A periodic crest has no height jump at the phase wrap, which drew a hard offshore ribbon.
+	float crest = pow(0.5 + 0.5 * cos((s - 0.82) * 6.2831853), 4.0);
+	float broken = 0.45 + 0.2 * sin(p.y * 0.11 + coast.y);
+	return crest * broken * smoothstep(20.0, 7.0, into) * smoothstep(-1.0, 3.0, into);
 }
 
 void vertex() {
@@ -933,6 +936,8 @@ void fragment() {
 #else
 	float contact = (1.0 - smoothstep(0.0, 0.05, m.r)) * 0.7;
 #endif
+	// Beach wash breaks into patches; a continuous contact line outlines the rasterized bank.
+	contact *= mix(1.0, mix(0.12, 0.5, smoothstep(0.3, 0.75, l)), salt);
 	// (whitecaps: flecks the wind tears off the tops of the waves, more in the gusts)
 	float fleck = smoothstep(0.5, 0.75, texture(foam_tex, p / 9.0 + WIND * water_time * 0.08).r);
 	float caps = smoothstep(0.3, 0.58, bunch) * mix(0.45, 1.0, smoothstep(0.4, 0.8, gust)) * fleck;
@@ -964,7 +969,7 @@ void fragment() {
 	ALBEDO = mix(scatter * (1.0 - fres), foam_col, foam);
 	EMISSION = ((bed * tr + scatter * amb) * (1.0 - fres) + sky * fres) * (1.0 - foam) + foam_col * amb * foam * 0.6;
 	// (soft where it laps the bank)
-	ALPHA = clamp(smoothstep(0.0, 0.05, thick) + foam, 0.0, 1.0);
+	ALPHA = clamp(smoothstep(0.0, mix(0.05, 0.22, salt), thick) + foam, 0.0, 1.0);
 #else
 	// (laid over the bed: the deeper, the less of it shows through)
 	ALBEDO = mix(tint * (1.0 - fres), foam_col, foam);

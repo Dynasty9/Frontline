@@ -67,6 +67,10 @@ residency and batching to settle. `--capture-set=river-boundary` frames seed 3's
 northern river crossing close up and across the valley. Both revisions must use
 the same capture fixture. `--capture-set=coast --mood=night` checks the sky and reflected cloud lighting over the sea.
 Add `--capture-set=rain --mood=rain` to check distant rain, town splashes and elevated ground. With `--fixed-fps 30`, `--capture-clip=close` also saves six seconds of full-frame PNGs beside the close still; encode them at 30 fps.
+Use `--capture-set=shoreline` for the beach beside seed 3's coastal town, with
+near-ground and waterline views. `--fixed-fps 30 --capture-clip=waterline` saves
+six seconds of rolling surf. Keep the same fixture on both shader revisions so
+wave phase, camera and scenery warmup match; record any resource-pack overrides.
 
 The camera uses the normal terrain clearance, so a low requested zoom may raise the lens
 above a neighbouring ridge. This is a visual review stage, not a performance benchmark.
