@@ -23,6 +23,7 @@ def source(name):
         path = CACHE / name
         if not path.exists():
             subprocess.run(["curl", "-sS", "-L", "--fail", "--max-time", "90",
+                            "-A", "FrontlineAssetBaker/1.0",
                             "-o", str(path), SOURCES[name]["source"]], check=True)
     assert hashlib.sha256(path.read_bytes()).hexdigest() == SOURCES[name]["sha256"], name
     return Image.open(path).resize((1024, 1024), Image.Resampling.LANCZOS)
@@ -69,7 +70,7 @@ def fractured_rock(color, height, normal, ao, rough):
 
 
 def materials():
-    for name in ["rock_face_03", "aerial_rocks_02", "aerial_grass_rock"]:
+    for name in ["rock_face_03", "aerial_rocks_02", "aerial_grass_rock", "snow_02", "forest_leaves_02"]:
         color = source(name + "_diff_2k.jpg").convert("RGB")
         height = source(name + "_disp_2k.jpg").convert("L")
         normal = source(name + "_nor_gl_2k.jpg").convert("RGB")
@@ -128,4 +129,4 @@ if __name__ == "__main__":
     CACHE.mkdir(parents=True, exist_ok=True)
     materials()
     forms()
-    print("Packed three height/normal/AO/roughness materials and three alpine forms.")
+    print("Packed five height/normal/AO/roughness materials and three alpine forms.")

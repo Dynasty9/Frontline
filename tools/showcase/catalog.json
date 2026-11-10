@@ -4087,6 +4087,672 @@
         "compatibility": "Target after with --rendering-method gl_compatibility",
         "command": "godot --main-pack PACK --resolution 1600x900 -- --aivai --seed=3 --offscreen --nohud --set=perf:0 --preset=high --mood=day --focus=FOCUS --zoom=ZOOM --pitch=PITCH --cam-yaw=0.7 --screenshot=OUTPUT --shot-at=2 --quit-after=3"
       }
+    },
+    {
+      "entry": "changelog/unreleased/town-ground-and-frontages.md",
+      "summary": "Town houses gain distinct plots, foundation aprons and paths to their doors, with open gates and driveways.",
+      "title": "Connect houses and streets with gardens, paths and grounded furniture",
+      "version": "unreleased",
+      "kind": "improved",
+      "medium": "motion",
+      "stage": "native-media",
+      "rationale": "A native current-PR camera tour establishes readable detail and battlefield context; preserved matched stills remain the historical before/after evidence.",
+      "source_ref": "codex/town-ground-and-frontages",
+      "sources": [
+        {
+          "file": "changelog/unreleased/town-ground-and-frontages/target-before.jpg",
+          "sha256": "51c5ba8328ac41981eee70e851fb7e8713dac9b38c750474d84d99bff45dec99",
+          "caption": "target before"
+        },
+        {
+          "file": "changelog/unreleased/town-ground-and-frontages/target-after.jpg",
+          "sha256": "2f529aab330a5b92f629e7511ba74d8a375cc63d49840a11350f6891c4279fdc",
+          "caption": "target after"
+        },
+        {
+          "file": "changelog/unreleased/town-ground-and-frontages/wide-before.jpg",
+          "sha256": "c44ce54e72643fcf733bf36575aa70d9e47f6465a6bfe36d146a0caffad7deef",
+          "caption": "wide before"
+        },
+        {
+          "file": "changelog/unreleased/town-ground-and-frontages/wide-after.jpg",
+          "sha256": "de760373f1448684d5833cf330c528a6f3e7cae118ecc0365697faf8516252c8",
+          "caption": "wide after"
+        },
+        {
+          "file": "changelog/unreleased/town-ground-and-frontages/target-compat.jpg",
+          "sha256": "d8a6d64359127e87f0b1323f8778b3a46720de9d34a33eb55a2ba7093475253d",
+          "caption": "target compat"
+        },
+        {
+          "file": "changelog/unreleased/town-ground-and-frontages/detail-before.jpg",
+          "sha256": "605df19242e613cbcca4c79a5183038b738cdb9c60e51f1aa67902c79a16cbb3",
+          "caption": "detail before"
+        },
+        {
+          "file": "changelog/unreleased/town-ground-and-frontages/detail-after.jpg",
+          "sha256": "ee3af83a560ac59139a2d1666f01878ebeafce68da3e8aa5dc74dd9de807a526",
+          "caption": "detail after"
+        },
+        {
+          "file": "changelog/unreleased/town-ground-and-frontages/forest-before.jpg",
+          "sha256": "1c41c1fa0f8ae01c27e8679b679ff979b8fe491247b17175fdcbe1878902e1d9",
+          "caption": "forest before"
+        },
+        {
+          "file": "changelog/unreleased/town-ground-and-frontages/forest-after.jpg",
+          "sha256": "347fd33cd7c8f49a841f9abece9a2a7cf87d55e7e575db46d9b6de2fdb44c1f4",
+          "caption": "forest after"
+        },
+        {
+          "file": "changelog/unreleased/town-ground-and-frontages/compare.gif",
+          "sha256": "fa8edd1b84b68731c15cde1567e3bb83ff0ecad82b1df24eae51c20eeb49eb7e",
+          "caption": "Native frames, separate labels, shared palette, 2.5 seconds each."
+        },
+        {
+          "file": "changelog/unreleased/town-ground-and-frontages/native-tour.webm",
+          "sha256": "c11f5b078e632634a46674a60394d341bda32eea937975488cf76a9c3ca0e541",
+          "caption": "Native camera tour of photographed town surfaces, door paths and connected plots. Current PR with simulation held; the original stills below provide before/after evidence."
+        },
+        {
+          "file": "changelog/unreleased/town-ground-and-frontages/native-tour.jpg",
+          "sha256": "3292bc51b64d2814c4bb570cd91e6561514ddc239c673d169c624e27264acedc",
+          "caption": "Native motion poster and reproducible capture provenance."
+        },
+        {
+          "file": "changelog/unreleased/town-ground-and-frontages/native-tour.json",
+          "sha256": "0915f46010f12381fb6575c33bf4ae0c3030b133f71e695085efb72061d0be58",
+          "caption": "Native motion poster and reproducible capture provenance."
+        }
+      ],
+      "output": null,
+      "capture": {
+        "before_ref": "113a39fbcb50e707d689eb1f00b494d2b1414531",
+        "after_ref": "codex/town-ground-and-frontages",
+        "before_pack": "review-12-before.pck",
+        "after_pack": "review-12-after.pck",
+        "seed": 3,
+        "preset": "high",
+        "mood": "day",
+        "resolution": "1600x900",
+        "focus": "-30,-12",
+        "zoom": 35,
+        "pitch": -50,
+        "yaw": 0.7,
+        "shot_at": 2,
+        "quit_after": 3,
+        "wide": "focus 0,0; zoom 220; pitch -40; yaw 0.7",
+        "compatibility": "Target after with --rendering-method gl_compatibility",
+        "command": "godot --main-pack PACK --resolution 1600x900 -- --aivai --seed=3 --offscreen --nohud --set=perf:0 --preset=high --mood=day --focus=FOCUS --zoom=ZOOM --pitch=PITCH --cam-yaw=0.7 --screenshot=OUTPUT --shot-at=2 --quit-after=3",
+        "detail": "focus -55,-4; zoom 15; pitch -55; yaw 0.7; shot 2s",
+        "forest": "focus 0,0; zoom 900; pitch -22; yaw 0.7; shot 2s; same seed, resolution, High/day",
+        "native_motion": {
+          "arguments": [
+            "--script",
+            "./tools/showcase/environment-motion.gd"
+          ],
+          "fps": 30,
+          "mood": "day",
+          "preset": "high",
+          "renderer": "forward_plus",
+          "resolution": "1280x768 (48-pixel label above uncropped 1280x720 source)",
+          "seed": 3,
+          "simulation": "Held at two seconds; native camera, wind and water remain animated. Not a combat or performance benchmark.",
+          "stage": "town",
+          "user_arguments": [
+            "--aivai",
+            "--seed=3",
+            "--offscreen",
+            "--nohud",
+            "--set=perf:0",
+            "--preset=high",
+            "--mood=day",
+            "--port=8281",
+            "--motion-stage=town",
+            "--motion-output=./build/media-review"
+          ],
+          "views": [
+            {
+              "focus": "(-30.0, 0.0, -12.0)",
+              "fov": 35.0,
+              "frames": 120,
+              "label": "Photographed surfaces and door paths",
+              "orbit_radians": 0.065,
+              "pitch": -50.0,
+              "seconds": 4,
+              "yaw": 0.7,
+              "zoom": 35.0
+            },
+            {
+              "focus": "(0.0, 0.0, 0.0)",
+              "fov": 35.0,
+              "frames": 120,
+              "label": "Town plots and connected streets",
+              "orbit_radians": 0.065,
+              "pitch": -40.0,
+              "seconds": 4,
+              "yaw": 0.7,
+              "zoom": 190.0
+            }
+          ],
+          "source_ref": "b38e42e92d8236f13c2ef41a8da8610bd1771741",
+          "clip": "native-tour.webm",
+          "poster": "native-tour.jpg",
+          "clip_sha256": "c11f5b078e632634a46674a60394d341bda32eea937975488cf76a9c3ca0e541",
+          "seconds": 8,
+          "audio": false,
+          "codec": "VP9",
+          "command": "godot --path . --fixed-fps 30 --resolution 1280x720 --script tools/showcase/environment-motion.gd -- --aivai --seed=3 --offscreen --nohud --set=perf:0 --preset=high --mood=day --motion-stage=town --motion-output=build/media-review"
+        }
+      }
+    },
+    {
+      "entry": "changelog/unreleased/environment-realism-extended.md",
+      "summary": "Surveyed Alpine ranges, fuller forests and photographed town surfaces give the generated battlefield more natural detail.",
+      "medium": "motion",
+      "stage": "native-media",
+      "rationale": "A native current-PR camera tour establishes readable detail and battlefield context; preserved matched stills remain the historical before/after evidence.",
+      "source_ref": "b38e42e92d8236f13c2ef41a8da8610bd1771741",
+      "sources": [
+        {
+          "file": "changelog/unreleased/environment-realism-extended/coast-before.jpg",
+          "sha256": "347fd33cd7c8f49a841f9abece9a2a7cf87d55e7e575db46d9b6de2fdb44c1f4",
+          "caption": "coast-before"
+        },
+        {
+          "file": "changelog/unreleased/environment-realism-extended/coast-after.jpg",
+          "sha256": "46ddea33837e51980a9d246fc43f1388c16e8aeacd029aac258834f671b62e9f",
+          "caption": "coast-after"
+        },
+        {
+          "file": "changelog/unreleased/environment-realism-extended/forest-before.jpg",
+          "sha256": "01cb76692a4ace20910d2b90c2fd61380f0d7d811300854d4c88ef835712c8d0",
+          "caption": "forest-before"
+        },
+        {
+          "file": "changelog/unreleased/environment-realism-extended/forest-after.jpg",
+          "sha256": "d760685e1ab9a5f7d86cce20069b7b6ebd031b930aa1b415c9292e5c59e130cc",
+          "caption": "forest-after"
+        },
+        {
+          "file": "changelog/unreleased/environment-realism-extended/compat-before.jpg",
+          "sha256": "956784e8e1c89a6b4193355889d68e524dc44a4c45e8705b366ec53c534341c9",
+          "caption": "compat-before"
+        },
+        {
+          "file": "changelog/unreleased/environment-realism-extended/compat-after.jpg",
+          "sha256": "2ed411bf4ab14eec37cf3af0baeb68cad6f287c345a14fd23265656a74ff3271",
+          "caption": "compat-after"
+        },
+        {
+          "file": "changelog/unreleased/environment-realism-extended/snow-before.jpg",
+          "sha256": "ee55b1002b295be386207f5729f5f1b5b9df789a0b1ed22c659d50364b183646",
+          "caption": "snow-before"
+        },
+        {
+          "file": "changelog/unreleased/environment-realism-extended/snow-after.jpg",
+          "sha256": "f49c641d0fa861da42f4935349e669217672751baf6cecad4b7cacd6a6cece26",
+          "caption": "snow-after"
+        },
+        {
+          "file": "changelog/unreleased/environment-realism-extended/lighting-before.jpg",
+          "sha256": "96a15a9bc75137d572b02ca765f32a62aefc7cc5a9887442da4d8c0e11e35614",
+          "caption": "lighting-before"
+        },
+        {
+          "file": "changelog/unreleased/environment-realism-extended/lighting-after.jpg",
+          "sha256": "2579292bd68fc9d2b122e4c228168f7ce5f9497aa90f826dda8414847300bfb7",
+          "caption": "lighting-after"
+        },
+        {
+          "file": "changelog/unreleased/environment-realism-extended/ranges-before.jpg",
+          "sha256": "761aee3def83871867cc86beebc5c2948a6ba1fb8cf0fcbe6e73f8599ee80ef3",
+          "caption": "ranges-before"
+        },
+        {
+          "file": "changelog/unreleased/environment-realism-extended/ranges-after.jpg",
+          "sha256": "1870ddccdd28f3ad5e86562ff1bd88cfab73f43993dc0c689cacfafb03d7dbe3",
+          "caption": "ranges-after"
+        },
+        {
+          "file": "changelog/unreleased/environment-realism-extended/street-before.jpg",
+          "sha256": "b33e9606c82994a9e6d84969a550949defe5d591a6a68747a0bce5261d06c239",
+          "caption": "street-before"
+        },
+        {
+          "file": "changelog/unreleased/environment-realism-extended/street-after.jpg",
+          "sha256": "8e0f961c73704371e64b3309e26e22f0943f4ebfe0adf0ea8e2acf2c32742ab9",
+          "caption": "street-after"
+        },
+        {
+          "file": "changelog/unreleased/environment-realism-extended/roof-before.jpg",
+          "sha256": "763fe4a0dac8a2b9ded96c6a54f0a56acd1e858847af2e098745c905ce2859e2",
+          "caption": "roof-before"
+        },
+        {
+          "file": "changelog/unreleased/environment-realism-extended/roof-after.jpg",
+          "sha256": "f2b9a594cb47c417257423be00e8f13d1c06a4a89b463eda7303b0b8d0e6a28f",
+          "caption": "roof-after"
+        },
+        {
+          "file": "changelog/unreleased/environment-realism-extended/town-colour-before.jpg",
+          "sha256": "85a99e571360fe07b669c285cb788a9bb3335fd4897b20d399010aef2a78192f",
+          "caption": "town-colour-before"
+        },
+        {
+          "file": "changelog/unreleased/environment-realism-extended/town-colour-after.jpg",
+          "sha256": "c82478a1b68383fac6a5d89ae4b272a387620ce736712bb79deacc38fb71a1f2",
+          "caption": "town-colour-after"
+        },
+        {
+          "file": "changelog/unreleased/environment-realism-extended/driveway-before.jpg",
+          "sha256": "55b4d1c42bf4eb705aa496155eda1feef7cdbcfcc94744b6bdd3e247380221c5",
+          "caption": "driveway-before"
+        },
+        {
+          "file": "changelog/unreleased/environment-realism-extended/driveway-after.jpg",
+          "sha256": "f16b7dff312c49322d3fe91df656f115d416c1d88b73c1fd7c5e4dd3aeef2ce6",
+          "caption": "driveway-after"
+        },
+        {
+          "file": "changelog/unreleased/environment-realism-extended/canopy-before.jpg",
+          "sha256": "66cdf83be88ec9cb28503a6cfcd7bb6bc2f4783f846bc2152ee7350f3053c6bd",
+          "caption": "canopy-before"
+        },
+        {
+          "file": "changelog/unreleased/environment-realism-extended/canopy-after.jpg",
+          "sha256": "fb2aad732e5d2d310a8b93353c41c40c429afc90771dd1d8270ec13c13ed0efd",
+          "caption": "canopy-after"
+        },
+        {
+          "file": "changelog/unreleased/environment-realism-extended/precision-before.jpg",
+          "sha256": "bf5cbb9c8577858000cdc6b46727f7c5a967b55109f077e784e50dbd4314b876",
+          "caption": "precision-before"
+        },
+        {
+          "file": "changelog/unreleased/environment-realism-extended/precision-after.jpg",
+          "sha256": "a66b09804dce723192e78c7c5ce9b61d2d5abe22e1cc2e38d9a96b012e642fb1",
+          "caption": "precision-after"
+        },
+        {
+          "file": "changelog/unreleased/environment-realism-extended/meadow-before.jpg",
+          "sha256": "068f97ad4468aa868e479df1d154c00c50ee42cd7e0904749016b34476efa382",
+          "caption": "meadow-before"
+        },
+        {
+          "file": "changelog/unreleased/environment-realism-extended/meadow-after.jpg",
+          "sha256": "fa397eb5fd005da572b35f51a88b9d0f4c2e5de3861fa1671859d4e403e2144c",
+          "caption": "meadow-after"
+        },
+        {
+          "file": "changelog/unreleased/environment-realism-extended/meadow-wide-before.jpg",
+          "sha256": "e06e691aa4dbbebfdfde4769d1fa751a9d6796727ad6c0b6be55663e42afd74e",
+          "caption": "meadow-wide-before"
+        },
+        {
+          "file": "changelog/unreleased/environment-realism-extended/meadow-wide-after.jpg",
+          "sha256": "7705c1e7c709a5df22a229ebe79cf555f86d17f1e6a986e3656d49f13e5cc2f0",
+          "caption": "meadow-wide-after"
+        },
+        {
+          "file": "changelog/unreleased/environment-realism-extended/shrub-before.jpg",
+          "sha256": "080e37f519f7802a267fb71ae450f3c9f8c922409087a53a2b7dafe3fbe44b50",
+          "caption": "shrub-before"
+        },
+        {
+          "file": "changelog/unreleased/environment-realism-extended/shrub-after.jpg",
+          "sha256": "bea3e0b0442f03ac56ffaef3539a21ff311e1f6e3677e6d6bc31f438bfeaeca9",
+          "caption": "shrub-after"
+        },
+        {
+          "file": "changelog/unreleased/environment-realism-extended/leaves-before.jpg",
+          "sha256": "8aff5b7be42ca26a56a9bd04c1e9f3fbe2be7735b654d4a6c04236a2ede90e15",
+          "caption": "leaves-before"
+        },
+        {
+          "file": "changelog/unreleased/environment-realism-extended/leaves-after.jpg",
+          "sha256": "62b1396ab4ca446f1c96951087f80b16b3691ce2d11b2cf921dc7c03569075dc",
+          "caption": "leaves-after"
+        },
+        {
+          "file": "changelog/unreleased/environment-realism-extended/leaves-wide-before.jpg",
+          "sha256": "43c1606921824aac4986fd745bb7814c8a25dc90fe54de73df3f2766432b806b",
+          "caption": "leaves-wide-before"
+        },
+        {
+          "file": "changelog/unreleased/environment-realism-extended/leaves-wide-after.jpg",
+          "sha256": "26db28444f60738940a220e6a00ab263205a0d6417135199658a8249e7a64541",
+          "caption": "leaves-wide-after"
+        },
+        {
+          "file": "changelog/unreleased/environment-realism-extended/lane-join-before.jpg",
+          "sha256": "1939cd95d2db6251e1d87819272cd1f1dee149e9202e36b121dfb12acd86a09b",
+          "caption": "lane-join-before"
+        },
+        {
+          "file": "changelog/unreleased/environment-realism-extended/lane-join-after.jpg",
+          "sha256": "e109179d200bbde040a0c976d8517a9e018eb3a0634427da7e52b71d21a145c7",
+          "caption": "lane-join-after"
+        },
+        {
+          "file": "changelog/unreleased/environment-realism-extended/drainage-before.jpg",
+          "sha256": "2fb2a05d25fda7d6a56bafb9f41d0c0a1b1e87b766c8e0a863edc03b85cab98f",
+          "caption": "drainage-before"
+        },
+        {
+          "file": "changelog/unreleased/environment-realism-extended/drainage-after.jpg",
+          "sha256": "c4fe536c840bda20b7b80eebc49125872ba8d7f1b147a07a1cb6da8a1a5babc8",
+          "caption": "drainage-after"
+        },
+        {
+          "file": "changelog/unreleased/environment-realism-extended/snow-channels-before.jpg",
+          "sha256": "a053b4dda3758b4264eae8c60b601ed52f1eae4b14812595fb0e55daabdfeb73",
+          "caption": "snow-channels-before"
+        },
+        {
+          "file": "changelog/unreleased/environment-realism-extended/snow-channels-after.jpg",
+          "sha256": "51d9dba214db4fb51003842b44ad52e9b930bda5134213bd657b9bada82e2a37",
+          "caption": "snow-channels-after"
+        },
+        {
+          "file": "changelog/unreleased/environment-realism-extended/river-end-before.jpg",
+          "sha256": "996e678d133eb78ebe384480dad7b7cfe40da0311890d5bb849bb9dfff98745b",
+          "caption": "river-end-before"
+        },
+        {
+          "file": "changelog/unreleased/environment-realism-extended/river-end-after.jpg",
+          "sha256": "50d06dc5c4259d043857571008ca9aed8ce4bd9ac8dd3873d81c778bd2619cbf",
+          "caption": "river-end-after"
+        },
+        {
+          "file": "changelog/unreleased/environment-realism-extended/river-valley-before.jpg",
+          "sha256": "6a5e56e24b65d11f67f3cc24e81a047c75305dc9c3e891b080085f7d94d12ea2",
+          "caption": "river-valley-before"
+        },
+        {
+          "file": "changelog/unreleased/environment-realism-extended/river-valley-after.jpg",
+          "sha256": "f165f2e751fb6ae16cc0d3695dff24b02dd929b2a8b5bf47b8f6ad83d283fc7e",
+          "caption": "river-valley-after"
+        },
+        {
+          "file": "changelog/unreleased/environment-realism-extended/comparison-panorama-after.jpg",
+          "sha256": "2c6a2bcec5b2013968f1a31b610b972452bea982e98218ec1a6358ce107b8b10",
+          "caption": "After the extended environment pass: panorama. Matched parent-branch and current cameras, seed and lighting."
+        },
+        {
+          "file": "changelog/unreleased/environment-realism-extended/comparison-panorama-before.jpg",
+          "sha256": "f97d02618b043519369e401a9c52254452d6a94774f46081773f3082005dfe0f",
+          "caption": "Before the extended environment pass: panorama. Matched parent-branch and current cameras, seed and lighting."
+        },
+        {
+          "file": "changelog/unreleased/environment-realism-extended/comparison-town-before.jpg",
+          "sha256": "782c2ca06450edcbbc45ad5b5fd40734a96accfc035dcaee65df1a46ce28a400",
+          "caption": "Before the extended environment pass: town. Matched parent-branch and current cameras, seed and lighting."
+        },
+        {
+          "file": "changelog/unreleased/environment-realism-extended/comparison-town-after.jpg",
+          "sha256": "5ab42e012fe451921d788d6db6b7543884950ce6f0339e0e9391a9eef4ed304c",
+          "caption": "After the extended environment pass: town. Matched parent-branch and current cameras, seed and lighting."
+        },
+        {
+          "file": "changelog/unreleased/environment-realism-extended/comparison-meadow-before.jpg",
+          "sha256": "a099ab138f9927857e9ad8d5b44e0f7e9cedfda2e773a3e9c266d2bbe26665bf",
+          "caption": "Before the extended environment pass: meadow. Matched parent-branch and current cameras, seed and lighting."
+        },
+        {
+          "file": "changelog/unreleased/environment-realism-extended/comparison-meadow-after.jpg",
+          "sha256": "ae182529f09928533bd9b9466c31cdb5003949129d73e44f06dd4dd4fec30fbd",
+          "caption": "After the extended environment pass: meadow. Matched parent-branch and current cameras, seed and lighting."
+        },
+        {
+          "file": "changelog/unreleased/environment-realism-extended/comparison-forest-before.jpg",
+          "sha256": "ea7bdd0a7842df2804fdabb0639d1565eab8dec163de6e46c76a509156e55dcb",
+          "caption": "Before the extended environment pass: forest. Matched parent-branch and current cameras, seed and lighting."
+        },
+        {
+          "file": "changelog/unreleased/environment-realism-extended/comparison-forest-after.jpg",
+          "sha256": "64f7de7e38bbeb11c97cbb251853ad4122671d31710edc496695985ffb6989c2",
+          "caption": "After the extended environment pass: forest. Matched parent-branch and current cameras, seed and lighting."
+        },
+        {
+          "file": "changelog/unreleased/environment-realism-extended/browser-forest-before.jpg",
+          "sha256": "e199d7909049d27cd8c2b7c7ceca41a7f10365ff40da6d89a2a384730bd62fe5",
+          "caption": "Before: flat vertex lighting on displaced ridges and dark leaf cards in the browser."
+        },
+        {
+          "file": "changelog/unreleased/environment-realism-extended/browser-forest-after.jpg",
+          "sha256": "ec31405770d33a1e3afe0aed7f15f1851b4f3c3c9e4eb18445b30b368fbd3bd9",
+          "caption": "After: browser lighting follows mountain slopes and softly lights tree canopies."
+        },
+        {
+          "file": "changelog/unreleased/environment-realism-extended/browser-panorama-before.jpg",
+          "sha256": "020367c837da48226c07500f3276f7b8275ced3f09db367ef1a49bd77dafe476",
+          "caption": "Before: the browser lights displaced mountain vertices as flat ground."
+        },
+        {
+          "file": "changelog/unreleased/environment-realism-extended/browser-panorama-after.jpg",
+          "sha256": "8f754afe67ed67eea8df2d34597744179bfceec6ba89153819f896ea68e756e5",
+          "caption": "After: mountain vertex normals follow the displaced terrain. Same browser settings."
+        },
+        {
+          "file": "changelog/unreleased/environment-realism-extended/rain-close-before.jpg",
+          "sha256": "1eaba4fd8b3d3139d3785163be9aa2a1a75f76f0b12e76e016936ebcaff3b469",
+          "caption": "Before: bright rain streaks and white square splashes."
+        },
+        {
+          "file": "changelog/unreleased/environment-realism-extended/rain-close-after.jpg",
+          "sha256": "2ea37d3d04530b5acf7dcedfb4a1f601c0a5e52433dd54f65fda6f5c7121a501",
+          "caption": "After: finer streaks and soft splashes that follow the terrain height."
+        },
+        {
+          "file": "changelog/unreleased/environment-realism-extended/rain-valley-before.jpg",
+          "sha256": "9c22ef07091d215072647302a3b0e794567b8c486c15ca021623c9c5ac63296b",
+          "caption": "Before: the rain emitter forms a bright patch at the camera target."
+        },
+        {
+          "file": "changelog/unreleased/environment-realism-extended/rain-valley-after.jpg",
+          "sha256": "157d5c1c4e4fde0ae09c50c2f9fba384228f841aa382f4f1b69973eaf78e81ba",
+          "caption": "After: rain surrounds the camera and distant splashes fade away."
+        },
+        {
+          "file": "changelog/unreleased/environment-realism-extended/night-clouds-before.jpg",
+          "sha256": "7d2cdaab9d78cda721f263eaa6b2ef19b08476e16601f5a69a8c9b8d1395753e",
+          "caption": "Before: block-shaped cloud edges and bright nighttime cloud cover."
+        },
+        {
+          "file": "changelog/unreleased/environment-realism-extended/rain-motion-before.jpg",
+          "sha256": "a46dbbf1a3a1855b7ae12c89b7815e4089c2ba3eea54ea37fc6c36e1e63961bb",
+          "caption": "Before: camera-local rain and soft ground-height splashes. Six seconds at fixed 30 fps; silent."
+        },
+        {
+          "file": "changelog/unreleased/environment-realism-extended/rain-before.webm",
+          "sha256": "44cdace7422d65cebe0724e5f5c57e1f70533851c2d9e4d5b967c909feeedcdc",
+          "caption": "Before: broad bright streaks and square splashes. Six seconds at fixed 30 fps; silent."
+        },
+        {
+          "file": "changelog/unreleased/environment-realism-extended/night-clouds-after.jpg",
+          "sha256": "b7bef7adf78e4fe7ff49fa8bbdac80cb756d03116229f8c794789a4cf61158fe",
+          "caption": "After: continuous cloud edges and subdued moonlit cover. Same seed and camera."
+        },
+        {
+          "file": "changelog/unreleased/environment-realism-extended/rain-motion-after.jpg",
+          "sha256": "a03767dd154ff5831fe8ff3254bc5cd921329c74510aa079c57a934ba7a8c13a",
+          "caption": "After: camera-local rain and soft ground-height splashes. Six seconds at fixed 30 fps; silent."
+        },
+        {
+          "file": "changelog/unreleased/environment-realism-extended/rain-after.webm",
+          "sha256": "d95455dabd1ef0169e4fe10d6be4cb90f79caa21e62b4f7863cfb78182e0bcce",
+          "caption": "After: finer streaks and soft splashes on terrain and water. Six seconds at fixed 30 fps; silent."
+        },
+        {
+          "file": "changelog/unreleased/environment-realism-extended/night-water-before.jpg",
+          "sha256": "4ce910f01d72ad120a4f271ac6f14ad5f22a7deebf431a752e2a18d1b97c581c",
+          "caption": "night-water-before"
+        },
+        {
+          "file": "changelog/unreleased/environment-realism-extended/night-water-after.jpg",
+          "sha256": "23c8d44dd4b132dcf70941d85f1f0e036bc9fe400b248a4593634c82210736d2",
+          "caption": "night-water-after"
+        },
+        {
+          "file": "changelog/unreleased/environment-realism-extended/native-tour.webm",
+          "sha256": "943f17df930a66ad7eff872a065c5506d14a1ef2ae7532cb98691c26d0b687ca",
+          "caption": "Native tour of Alpine ranges, coastal forest cover, town surfaces and finer meadow detail. Current PR with animated camera, wind and water; matched before/after stills remain below."
+        },
+        {
+          "file": "changelog/unreleased/environment-realism-extended/native-tour.jpg",
+          "sha256": "2d14a0e896641a825695c090436a430e634fc1464c447bd0a5a76528b9859789",
+          "caption": "Native motion poster and reproducible capture provenance."
+        },
+        {
+          "file": "changelog/unreleased/environment-realism-extended/native-tour.json",
+          "sha256": "8c5c73df7922a0212481e50b967111f6f3facacae2be1fdd239b43c1007e251d",
+          "caption": "Native motion poster and reproducible capture provenance."
+        }
+      ],
+      "output": null,
+      "capture": {
+        "before_ref": "b38e42e92d8236f13c2ef41a8da8610bd1771741",
+        "after_ref": "codex/environment-realism-extended",
+        "command": "godot --path . --resolution 1600x900 -- --aivai --seed=3 --offscreen --nohud --set=perf:0 --preset=high --mood=day --focus=0,0 --zoom=900 --pitch=-22 --cam-yaw=0.7 --screenshot=OUTPUT --shot-at=2 --quit-after=3",
+        "note": "Before preserved from the parent branch capture. After rendered natively with the same controls.",
+        "forest": "Native Forward+, seed3 High/day, 1600x900, focus -400,-450, zoom350, pitch-30, yaw-0.2, shot2s. Before b38e42e; after this branch.",
+        "compatibility": "Same close controls except pitch-55 and gl_compatibility. Before: this branch before material-output correction; after: corrected output, both with forest iteration. Not a historical parent comparison.",
+        "snow": "Matched native Forward+, High/day seed3 1600x900, focus236,464 zoom45 pitch-42 yaw-0.2. Simulation held at2s after map construction, 45 settling frames per view. Before b38e42e PCK; after this branch. Same camera controls and unchanged geology. No retouching.",
+        "lighting": "Matched native Forward+, seed3 High/golden, 1600x900, focus-400,-450 zoom350 pitch-30 yaw-0.2. Both hold simulation at2s and settle45frames. Before uses exact7ba202a atmosphere/distant_forest scripts overlaid through a PCK before main loads; unchanged assets. After is current branch. No retouching.",
+        "ranges": "Matched native Forward+, seed3 High/day 1600x900, focus0,0 zoom900 pitch-22 yaw0.7, simulation held at2s with45 settling frames. Before exact f45dada atmosphere script loaded through PCK before main; after surveyed terrain checkpoint. Other scripts and assets unchanged. No retouching.",
+        "street": "Matched native Forward+, seed3 High/day 1600x900, focus-55,-4 zoom15 pitch-55 yaw0.7, held2s/45settlingframes. Before 9c84373 runtime scripts, after fine-asphalt checkpoint. Both use environment-views.gd --capture-set=town. No retouching.",
+        "photo_calibration": "Matched native Forward+, High/day seed3 1600x900. Before76d6374 (identical Forward+ material output to5407b62); after calibrated photographic materials. Both environment-views --capture-set=town, held2s/45settlingframes. Close uses first town driveway zoom18 pitch-50 yawpiece+PI+0.4; wide towncentrezoom130 pitch-50 yaw0.7. No retouching.",
+        "driveway": "Matched native Forward+, High/day seed3 1600x900, focus-15.6,-8.9 zoom10 pitch-25 yaw0.4, held2s/45settlingframes. Before exact e5a3687 towngen/decor/grass scripts overlaid through PCK before main; after lowered crossings. Same fixed camera, no retouching.",
+        "canopy": "Matched native Forward+, High/day seed3 1600x900, focus-400,-450 zoom350 pitch-65 yaw-0.2, held2s/45settlingframes. Before1919acc forest and atlas captured before replacement; after twenty-view atlas with High shadows. Same generated terrain and camera. No retouching.",
+        "precision": "Matched native Forward+, High/day seed3 1600x900, focus232,296 zoom60 pitch-35 yaw0.7, held2s/45settlingframes. Controlled height-precision comparison: before uses the same terrain samples converted to the previous half-float texture; after uses full floats. Only the ground height texture changes between frames. Full frames, no retouching.",
+        "meadow": "Matched native Forward+, High/day seed3 1600x900, focus-110,-130 yaw0.7, held2s/225settlingframes with grass wind disabled. Close zoom18 pitch-45; low view zoom18 pitch-15. Before exact66b3c54 atmosphere/grass scripts overlaid through PCK before main; after meadow/grass and local-culling-bounds checkpoint. Both use environment-views --capture-set=meadow. Full frames, no retouching.",
+        "shrubs": "Matched native Forward+, High/day seed3 1600x900, focus -110,-130 zoom45 pitch-35 yaw0.7. Before exact0510a8d grass.gd PCK; after smaller leaf cards, linear photograph/root shading and seeded patch placement. Same simulation held at2s, 225 settling frames. No retouching; full frames encoded JPEG92.",
+        "leaves": "Matched native Forward+, High/day seed3 1600x900, focus -128.6383,-95.47071. Close zoom18 pitch-15 yaw-2.4; stand zoom65 pitch-30 yaw0.7. Both held at2s,90settlingframes plus complete scenery residency, foliage and grass wind disabled. Before exact b1e4704 mats/res scripts PCK; after smaller broadleaf cards and photographed foliage lighting. Full frames, JPEG92, no retouching.",
+        "lane_join": "Matched native Forward+, High/day seed3 1600x900, environment-views --capture-set=town transition view, zoom25 pitch-55 yaw0.7. Held2s/45settlingframes plus complete scenery residency. Before exact b1e4704 mats/res/atmosphere scripts loaded through PCK; after varied tracks and short broken asphalt edge. Full frames, JPEG92, no retouching.",
+        "drainage": "Matched native Forward+, High/day seed3 1600x900, simulation held2s/45settlingframes plus full scenery residency. Forest focus-400,-450 zoom350 pitch-30 yaw-0.2; panorama focus0,0 zoom900 pitch-22 yaw0.7. Before exact4aec471 atmosphere/landform/terrain scripts PCK; after catchment weathering and retained snow. Heights unchanged byte-for-byte (backdrop red SHA256 a781fcd66353803fd51186905b31850f2c80d41742d1fbca43f90bce040e9761). Full frames, JPEG92, no retouching.",
+        "river": "Matched native Forward+, High/day seed3 1600x900, environment-views --capture-set=river-boundary, held2s/45settlingframes plus full scenery residency. Close focus-232.6883,-512 zoom130 pitch-40 yaw0.7; panorama focus0,0 zoom900 pitch-22 yaw0.7. Before exact6fa546e atmosphere/water_view/distant_forest scripts PCK; after scenery river pools. Authoritative water shapes and terrain unchanged. Full frames, JPEG92, no retouching.",
+        "complete_pass": "Native Forward+, High/day seed3 1600x900. Before exact parent b38e42e full PCK (SHA256 a78a1eacaff5e712878addff90d1f1cee8381f4def88659eaf584d6ffbe5e708); after0119d6c. Same camera transforms, simulation held at2s, five-second warmup/full scenery residency followed by20s measurement before capture. Animated water and foliage continue normally. Camera parameters and measured results in performance.json beside these images. Full frames, JPEG92, no retouching. Earlier pairs below isolate individual checkpoints as documented separately.",
+        "browser_normals": "Actual release WebGL exports in Chrome157/ANGLE D3D11 RTX3090,1600x900, High/day seed3. Before1ab49b0; aftera921536 vertex-normal correction (exported before rain-only edits). Same held2s/full-residency views as complete_pass. Default force_vertex_shading.web=true remains enabled. Full frames,JPEG92,no retouching. Concurrent other checks invalidate these runs as performance measurements.",
+        "rain": "Native Forward+,High/rain seed3,1600x900. environment-views --capture-set=rain, held2s/150settlingframes/full residency, lightning suppressed. Before exact1ab49b0 atmosphere/mats scripts PCK; aftera921536. Close focus-110,-130 zoom18 pitch-25 yaw0.7; valleyfocus0,0 zoom900 pitch-22 yaw0.7. Particle positions vary between runs; camera/geology/materials match. Fullframes,JPEG92,no retouching.",
+        "clouds": "Native Forward+,High/night seed3,1600x900. Same live world held2s, coast focus(sea_x+100,0),zoom280,pitch-14,yawPI/2,90settlingframes/full-residency. Before exacta921536 sky shader; after revised bounded hash and moonlit cloud shading, production code identical to the prototype. Other materials, geometry and camera unchanged; animated water and stars continue normally. Fullframes,JPEG92,no retouching. GPU continuity regression reproduces old discontinuities in Forward+ and passes after in both renderers.",
+        "rain_motion": "Native Forward+,High/rain seed3,1600x900. Same environment-views fixture with --fixed-fps 30 --capture-set=rain --capture-clip=close. Before exact1ab49b0 atmosphere/mats PCK; aftera921536. Simulation held2s,150settlingframes/full residency,lightning suppressed;180 consecutive full-frame PNGs encodedVP9/30fps/CRF28/noaudio. Closefocus-110,-130 zoom18 pitch-25 yaw0.7. Posters are frame90. Particle positions are not deterministic; camera,geology and materials match. Gameplay timing is held; particle animation advances at fixed30Hz.",
+        "night_water": "Native Forward+,High/night seed3,1600x900,environment-views --capture-set=coast. Focus(sea_x+100,0),zoom280,pitch-14,yawPI/2,simulationheld2s,90settlingframes/fullresidency. Before exact9657166 water_view.gd loaded through PCK; after0119d6c moonlit reflected clouds and colour-aware night tint in sky/water. Native sky brightness is unchanged by the colour-space correction. Animated waves/stars continue between captures. Fullframes,JPEG92,no retouching. Final scene also inspected in Compatibility; standalone GPU colour calibration gives0.2706 in both renderers.",
+        "native_motion": {
+          "arguments": [
+            "--script",
+            "./tools/showcase/environment-motion.gd"
+          ],
+          "fps": 30,
+          "mood": "day",
+          "preset": "high",
+          "renderer": "forward_plus",
+          "resolution": "1280x768 (48-pixel label above uncropped 1280x720 source)",
+          "seed": 3,
+          "simulation": "Held at two seconds; native camera, wind and water remain animated. Not a combat or performance benchmark.",
+          "stage": "environment",
+          "user_arguments": [
+            "--aivai",
+            "--seed=3",
+            "--offscreen",
+            "--nohud",
+            "--set=perf:0",
+            "--preset=high",
+            "--mood=day",
+            "--port=8283",
+            "--motion-stage=environment",
+            "--motion-output=./build/media-review"
+          ],
+          "views": [
+            {
+              "focus": "(0.0, 0.0, 0.0)",
+              "fov": 55.0,
+              "frames": 120,
+              "label": "Alpine ranges, ocean and forest coverage",
+              "orbit_radians": 0.065,
+              "pitch": -22.0,
+              "seconds": 4,
+              "yaw": 0.7,
+              "zoom": 900.0
+            },
+            {
+              "focus": "(-30.0, 0.0, -12.0)",
+              "fov": 55.0,
+              "frames": 120,
+              "label": "Calibrated roofs, asphalt and frontages",
+              "orbit_radians": 0.065,
+              "pitch": -45.0,
+              "seconds": 4,
+              "yaw": 0.7,
+              "zoom": 55.0
+            },
+            {
+              "focus": "(-110.0, 0.0, -130.0)",
+              "fov": 55.0,
+              "frames": 120,
+              "label": "Finer meadow and clustered shrubs",
+              "orbit_radians": 0.065,
+              "pitch": -35.0,
+              "seconds": 4,
+              "yaw": 0.7,
+              "zoom": 22.0
+            }
+          ],
+          "source_ref": "f95bbc43cb29767b9b2c3c0c881aa32f649698c8",
+          "clip": "native-tour.webm",
+          "poster": "native-tour.jpg",
+          "clip_sha256": "943f17df930a66ad7eff872a065c5506d14a1ef2ae7532cb98691c26d0b687ca",
+          "seconds": 12,
+          "audio": false,
+          "codec": "VP9",
+          "command": "godot --path . --fixed-fps 30 --resolution 1280x720 --script tools/showcase/environment-motion.gd -- --aivai --seed=3 --offscreen --nohud --set=perf:0 --preset=high --mood=day --motion-stage=environment --motion-output=build/media-review"
+        }
+      }
+    },
+    {
+      "entry": "changelog/unreleased/shoreline-blending.md",
+      "medium": "motion",
+      "stage": "environment-views shoreline",
+      "rationale": "Matched stills show gravel scale and beach transition; simultaneous native motion reveals the eliminated wave phase discontinuity.",
+      "source_ref": "de7dfbda baseline; after shader SHA-256 and camera provenance in shoreline-blending/capture.json",
+      "sources": [
+        {
+          "file": "changelog/unreleased/shoreline-blending/capture.json",
+          "sha256": "e50f57aa5aa08e3aa79806e97e2570998dba1d957d15f53440e37e2b295e8f65",
+          "caption": "capture"
+        },
+        {
+          "file": "changelog/unreleased/shoreline-blending/comparison.jpg",
+          "sha256": "ecc01a4f0f680e94395be85ff46dce14085ffed85b8ab14ec47e90ebd829608b",
+          "caption": "comparison"
+        },
+        {
+          "file": "changelog/unreleased/shoreline-blending/comparison.mp4",
+          "sha256": "9834e8e64b66ec75939ebc7513e7ff0e13b2088ed9790ff7215406e93d5b77a1",
+          "caption": "comparison"
+        },
+        {
+          "file": "changelog/unreleased/shoreline-blending/town-after.jpg",
+          "sha256": "0c056923e65a6fda8976c46bdecce6a523b869ed6204df2e96c96e4621b58464",
+          "caption": "town-after"
+        },
+        {
+          "file": "changelog/unreleased/shoreline-blending/town-before.jpg",
+          "sha256": "912aeaf40cb0d9215d5bbee6f5123b2cd27b023622a05203e9b2f0df3406aadc",
+          "caption": "town-before"
+        },
+        {
+          "file": "changelog/unreleased/shoreline-blending/waterline-after.jpg",
+          "sha256": "2b6f3ac7b1506070ff1d27ca9d10ed6fa7d5f8bf70cfb20d671c77d0acb8e239",
+          "caption": "waterline-after"
+        },
+        {
+          "file": "changelog/unreleased/shoreline-blending/waterline-before.jpg",
+          "sha256": "be46d358edd2f1e9cd0ea9ce0b632a47367539ffa8b7dc12fafd432ece376a00",
+          "caption": "waterline-before"
+        }
+      ],
+      "output": null
     }
   ],
   "layout_capture": {

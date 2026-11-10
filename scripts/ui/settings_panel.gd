@@ -90,7 +90,7 @@ func _ready() -> void:
 		["head", "", "Detail"],
 		["option", "shadows", "Shadow quality", Settings.LABELS.shadows, "Sun shadow resolution, cascades and softness."],
 		["option", "aniso", "Texture filtering", Settings.LABELS.aniso, "Anisotropic filtering keeps ground textures crisp at a glancing angle."],
-		["option", "lod", "View distance / detail", Settings.LABELS.lod, "How far away models keep their full detail."],
+		["option", "lod", "View distance / detail", Settings.LABELS.lod, "How far away models keep their full detail. Near also hides distant scenery forests."],
 		["option", "grass", "Vegetation", Settings.LABELS.grass, "Swaying grass blades across the battlefield."],
 		["option", "wildlife", "Wildlife", Settings.LABELS.wildlife, "Birds feeding in the fields and wheeling overhead, rats in town, hares, fish, ducks and dolphins, all taking fright at the fighting. Only round the camera; turn it down or off if it costs you frames."],
 		["option", "effects", "Effects quality", Settings.LABELS.effects, "Particles per explosion, smoke density, debris."],
