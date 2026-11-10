@@ -1,6 +1,1279 @@
 {
   "releases": [
     {
+      "version": "1.0.12",
+      "tag": "v1.0.12",
+      "name": "Mountain battlefields",
+      "date": "2026-11-10",
+      "summary": "Seeded snowy mountains, mossy hills and river valleys now surround the towns and roads of standard battles.",
+      "url": "https://github.com/Dynasty9/Frontline/releases/tag/v1.0.12",
+      "pull_requests": [
+        104,
+        106,
+        107,
+        108,
+        111,
+        118,
+        119,
+        120,
+        123,
+        127,
+        145,
+        146
+      ],
+      "entries": [
+        {
+          "slug": "mountain-battlefields",
+          "title": "Mountain battlefields",
+          "kind": "new",
+          "summary": "Seeded snowy mountains, mossy hills and river valleys now surround the towns and roads of standard battles.",
+          "body": "- Mountains, hills and valleys generate from the battle seed. Towns, starting bases, roads and river crossings retain usable valley corridors, with forests on lower ground.\n- Layered photographic rock, cool shaded gullies and connected snowfields give the mountains an Alpine appearance. Sky visibility and distant ridge shadows are baked into the terrain, updating when the lighting mood changes.\n- Fractured bedrock, tilted shelves and weathered ledges break up the mountain faces. Larger photographic slabs catch the light above smaller scree, while snow settles on gentler shelves and leaves steep cliffs exposed. Finer distant silhouettes keep the horizon from looking angular.\n- Standard-battle woods grow in denser clusters. Tree bark and foliage share spatial drawing batches while individual trees still burn and fall.\n- Alpine rivers have blue-green water. Optional Alpine distance haze separates the mountain ranges, and optional Mountain reflections capture distant terrain in the water without rendering the whole battle twice.\n- Troops and vehicles follow the terrain and avoid slopes they cannot climb. Ridges obstruct shots and observation; helicopters clear rising ground and land at the correct elevation.\n- Construction checks the whole footprint. Trenches, craters, fires, targeting and the minimap follow the landscape.\n- Multiplayer joiners receive the same terrain as the host, and battle recordings preserve it when seeking forward or backward.\n\nCampaign missions retain their existing terrain layout and woodland density so their authored routes and cover remain intact.",
+          "layoutComparison": null,
+          "screenshots": [
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/mountain-battlefields/before.jpg",
+              "caption": "Before: the flat battlefield with the same seed and camera."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/mountain-battlefields/after.jpg",
+              "caption": "After: fractured mountain belts and denser woods around the town and river valley."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/mountain-battlefields/valley.jpg",
+              "caption": "Looking inland through the coastal valley with Mountain reflections enabled."
+            }
+          ],
+          "videos": []
+        },
+        {
+          "slug": "alpine-habitats",
+          "title": "Woodland follows the mountain slopes",
+          "kind": "improved",
+          "summary": "Greener gullies, contour-following woods and vegetation on mountain ledges replace randomly scattered greenery.",
+          "body": "- Soil cover responds to shelter, slope and aspect, with less arbitrary colour variation across the valleys.\n- Open valley ground has fewer isolated random trees; planting favours groves and sheltered mountain pockets.\n- Woods spread along contours, and conifers can root on suitable mountain ledges. Exposed ribs and high peaks remain largely bare.\n- Scrub favours sheltered bowls, while stones occupy drier and steeper ground. Tree limits do not relax building foundation checks.",
+          "layoutComparison": null,
+          "screenshots": [
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/alpine-habitats/before.jpg",
+              "caption": "Before: noise-driven green patches and compact, scattered woods."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/alpine-habitats/after.jpg",
+              "caption": "After: greener sheltered ground and woodland following the terrain, with the same seed and camera."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/alpine-habitats/detail.jpg",
+              "caption": "Closer daylight view of conifers on suitable ledges and woodland following the lower slopes."
+            }
+          ],
+          "videos": []
+        },
+        {
+          "slug": "alpine-massifs",
+          "title": "Break up mountain silhouettes",
+          "kind": "improved",
+          "summary": "Uneven mountain groups, lower passes and reshaped cliff shoulders replace repetitive ridges, with more varied moss-to-rock transitions.",
+          "body": "Distant scenery uses its own seeded height field instead of an equal-height ridge pattern. Floating-point heights and wider slope sampling avoid stepped snow shading. Medium/Far detail uses a finer indexed scenery mesh; Near retains the lighter grid.\n\nReusable rock forms now have uneven shoulders and irregular drainage cuts before the existing terrain erosion and road grading. These enter the authoritative terrain used by movement, construction and replay. Material coverage also varies with photographic rock relief.\n\nThe comparisons use the same seed, lighting and camera controls. The camera follows local ground height, so changed geology can shift its absolute height. Procedural trees and some smooth rock forms still limit realism; these are native game captures, not photographic composites.\n\nApproach informed by [Wargaming's environment workflow](https://wargaming.com/en/news/making_battle_arenas_in_wows/): establish large landforms before surface detail.",
+          "layoutComparison": null,
+          "screenshots": [
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/alpine-massifs/wide-before.jpg",
+              "caption": "Before: distant mountain groups and passes."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/alpine-massifs/wide-after.jpg",
+              "caption": "After: distant mountain groups and passes."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/alpine-massifs/close-before.jpg",
+              "caption": "Before: cliff shoulders and the valley floor."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/alpine-massifs/close-after.jpg",
+              "caption": "After: cliff shoulders and the valley floor."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/alpine-massifs/detail-before.jpg",
+              "caption": "Before: close cliff profile."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/alpine-massifs/detail-after.jpg",
+              "caption": "After: reshaped shoulder and snow shelf; camera follows local terrain."
+            }
+          ],
+          "videos": []
+        },
+        {
+          "slug": "alpine-perspective",
+          "title": "Separate distant mountain ranges with sky haze",
+          "kind": "improved",
+          "summary": "Optional alpine haze takes on the sky colour and settles lightly into lower valleys.",
+          "body": "Uses existing alpine_haze option and engine fog; no new volumetric pass. Disabled/flat-map paths reset both additions. Compatibility may approximate aerial perspective differently.\n\nTechnique reference: [research source](https://docs.godotengine.org/en/stable/tutorials/3d/environment_and_post_processing.html).",
+          "layoutComparison": null,
+          "screenshots": [
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/alpine-perspective/before.jpg",
+              "caption": "Before: shared terrain baseline, identical seed and camera."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/alpine-perspective/after.jpg",
+              "caption": "After: Optional alpine haze takes on the sky colour and settles lightly into lower valleys."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/alpine-perspective/close-before.jpg",
+              "caption": "Before: matching closer camera, shared baseline."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/alpine-perspective/close-after.jpg",
+              "caption": "After: the same closer camera; surface changes remain subtle."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/alpine-perspective/target-before.jpg",
+              "caption": "Before: focused comparison under matched lighting."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/alpine-perspective/target-after.jpg",
+              "caption": "After: Watch the tone and separation of the distant ridges in hazy weather."
+            }
+          ],
+          "videos": []
+        },
+        {
+          "slug": "alpine-rock-relief",
+          "title": "Broken stone across mountain faces",
+          "kind": "improved",
+          "summary": "Mountain faces gain broken mineral layers, darker weathered seams and uneven pockets of loose stone.",
+          "body": "Cliff materials combine larger elongated fractures with smaller photographic grain.\nThe detail is baked into the existing material textures, including normals and\nocclusion, so it uses no additional terrain texture samples. Tilted mineral beds\nbreak across the faces rather than forming continuous stripes.\nSheltered seams weather darker, while loose stone collects unevenly on gentler\nground and in pockets. These masks reuse existing texture reads.\n\nThis improves surface shading; mountain silhouettes and movement limits are unchanged.",
+          "layoutComparison": null,
+          "screenshots": [
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/alpine-rock-relief/before.jpg",
+              "caption": "Before: the previous rock material, with the same seed, golden-hour lighting and camera."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/alpine-rock-relief/after.jpg",
+              "caption": "After: interrupted mineral layers and darker weathering break up broad rock faces."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/alpine-rock-relief/detail.jpg",
+              "caption": "Closer daylight view of varied rock surfaces and sheltered stone pockets."
+            }
+          ],
+          "videos": []
+        },
+        {
+          "slug": "alpine-surface-detail",
+          "title": "Rock faces with depth and greener foothills",
+          "kind": "improved",
+          "summary": "Mountain faces gain distinct rock masses, relief-aware moss and snow, and small conifer stands at their feet.",
+          "body": "- Rock breaks through moss and snow according to the photographed surface relief. Crevices retain shade and each surface has its own roughness.\n- Generated buttresses, bowls and saddles become part of the terrain before weathering and road grading, keeping movement and shots aligned with the landscape.\n- Small conifer stands give the foothills a clearer sense of scale while retaining normal tree collision, fire and destruction.\n- Offline-packed material maps retain the same texture-sample count; mip filtering reduces distant grain.",
+          "layoutComparison": null,
+          "screenshots": [
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/alpine-surface-detail/before.jpg",
+              "caption": "Previous terrain, seed 3, golden-hour command camera."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/alpine-surface-detail/after.jpg",
+              "caption": "The same seed and camera with shaped rock masses, relief-aware surfaces and foothill conifers."
+            }
+          ],
+          "videos": []
+        },
+        {
+          "slug": "alpine-variation",
+          "title": "More varied mountain surfaces and vegetation",
+          "kind": "improved",
+          "summary": "Mineral bands, dry grass, scrub and scattered stones break up the alpine landscape, with vegetation changing as the ground rises.",
+          "body": "- Rock faces mix broad mineral colours, weathering bands and broken scree. Moss and dry grass vary in smaller patches instead of covering entire slopes evenly.\n- Mixed lower woods transition toward conifers and an uneven tree line. Low scrub gives way to scattered stones higher up; snowy summits remain bare.\n- Small scrub and stones are passable scenery, grounded individually and batched for rendering. Their seeded placement is shared by multiplayer and recordings.",
+          "layoutComparison": null,
+          "screenshots": [
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/alpine-variation/before.jpg",
+              "caption": "Before: the preceding material pass, seed 3 and golden-hour command camera."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/alpine-variation/after.jpg",
+              "caption": "After: varied mineral and ground patches with elevation-dependent vegetation."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/alpine-variation/detail.jpg",
+              "caption": "A closer daylight view: low scrub and small stone clusters sit on the terrain beneath mixed woods and conifers."
+            }
+          ],
+          "videos": []
+        },
+        {
+          "slug": "clearer-release-history",
+          "title": "Release notes you can scan, then explore",
+          "kind": "improved",
+          "summary": "See what changed at a glance, with a focused visual and expandable detail. The full release history now uses the same clearer presentation.",
+          "body": "All 87 published entries now begin with a concise player-facing summary. Archived\nimages appear directly in the site’s brass-and-ink layout; existing motion clips keep their\nplayback controls and attribution. Expand **Explore this change** for the original\nnotes, screenshots and supporting clips. Original release dates and feature claims\nare preserved.\n\nMotion is shown with video when recorded evidence exists. Interface changes use\nstills; invisible fixes and unrecorded sound or performance changes use text.\nHistorical screenshots remain historical evidence, and current-build demonstrations\nare labelled as such.\n\nThe same overview/detail structure is used in the generated repository changelog\nand future release notes. Reusable capture stages, media-selection guidance and\nan evidence audit make this part of preparing each new change.\n\nThe page shares the main site’s condensed headings, thin rules and shadcn/Radix\ncomponents. Desktop entries place an explanation beside uncropped media; narrow\nscreens stack the same content. Supporting notes expand beneath each entry.\n\nEvery existing entry includes **Compare changelog layouts**: a separate, collapsed\nold/new presentation review. Both views use the same viewport and can be enlarged.\nThese compare the release-note layout itself, independently of the feature media.",
+          "layoutComparison": {
+            "before": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/clearer-release-history/layout-before.jpg",
+            "after": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/clearer-release-history/layout-after.jpg",
+            "caption": "Changelog presentation comparison, not gameplay: the top 1,000 pixels of this entry at the same 900-pixel viewport width. Open either image to inspect it. This entry is new; its content is rendered through both layouts for comparison."
+          },
+          "screenshots": [
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/clearer-release-history/overview.jpg",
+              "caption": "After: a short outcome and one lead visual, with original notes and captures under Explore this change."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/clearer-release-history/before.jpg",
+              "caption": "Before: the same release opens with all supporting screenshots and full notes."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/clearer-release-history/phone.jpg",
+              "caption": "The overview and detail control remain readable on a narrow phone screen. Images open at full size."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/clearer-release-history/details.jpg",
+              "caption": "Expand the original notes and supporting gallery without leaving the release."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/clearer-release-history/phone-entry.jpg",
+              "caption": "On phones, the same explanation and uncropped image stack into one readable column."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/clearer-release-history/layout-review-ui.jpg",
+              "caption": "Compare changelog layouts opens an entry-specific old/new presentation review, with both captures available at full size."
+            }
+          ],
+          "videos": []
+        },
+        {
+          "slug": "cliff-runoff",
+          "title": "Add directional weathering to cliffs",
+          "kind": "improved",
+          "summary": "Narrow mineral stains run down exposed cliffs, interrupted by ledges and changes in rock type.",
+          "body": "One extra scalar noise read per terrain fragment. This is directional material weathering rather than a hydrology simulation; geometry and traversal do not change.\n\nTechnique reference: [research source](https://developer.nvidia.com/gpugems/gpugems3/part-i-geometry/chapter-1-generating-complex-procedural-terrains-using-gpu).",
+          "layoutComparison": null,
+          "screenshots": [
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/cliff-runoff/before.jpg",
+              "caption": "Before: shared terrain baseline, identical seed and camera."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/cliff-runoff/after.jpg",
+              "caption": "After: Narrow mineral stains run down exposed cliffs, interrupted by ledges and changes in rock type."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/cliff-runoff/close-before.jpg",
+              "caption": "Before: matching closer camera, shared baseline."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/cliff-runoff/close-after.jpg",
+              "caption": "After: the same closer camera; surface changes remain subtle."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/cliff-runoff/target-before.jpg",
+              "caption": "Before: focused comparison under matched lighting."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/cliff-runoff/target-after.jpg",
+              "caption": "After: Watch for narrow dark vertical stains across the lit central face."
+            }
+          ],
+          "videos": []
+        },
+        {
+          "slug": "combat-overlay-refresh",
+          "title": "Smoother large battles",
+          "kind": "improved",
+          "summary": "Large formation orders take less work, and pointer feedback updates independently of squad counters.",
+          "body": "- Selection boxes, tooltips and order previews update immediately in their own drawing layer, without rebuilding every squad counter as the pointer moves.\n- Camera shake keeps the existing status refresh rate. Panning, zooming, selection and commands still refresh the counters immediately.\n- Combat and camera shake are unchanged.\n\n- Large formation orders spend less time choosing ground while keeping the same cover choices, spacing and placement order.\n- Soldiers spend less time checking ground and trench heights in built-up areas. Distant squads draw more efficiently with the same poses.\n- Moving soldiers check visibility more efficiently, preserving the effects of smoke, doors and cover.",
+          "layoutComparison": {
+            "before": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/combat-overlay-refresh/layout-before.jpg",
+            "after": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/combat-overlay-refresh/layout-after.jpg",
+            "caption": "Changelog presentation comparison, not gameplay: the top 1,000 pixels of this entry at the same 900-pixel viewport width. Open either image to inspect it."
+          },
+          "screenshots": [
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/combat-overlay-refresh/after.jpg",
+              "caption": "Cover previews stay aligned at enlarged interface scale while updating independently of squad counters."
+            }
+          ],
+          "videos": []
+        },
+        {
+          "slug": "environment-realism-extended",
+          "title": "Natural coasts, fuller forests and alpine surfaces",
+          "kind": "improved",
+          "summary": "Surveyed Alpine ranges, fuller forests and photographed town surfaces give the generated battlefield more natural detail.",
+          "body": "The ocean keeps detailed waves near the battlefield and uses a coarser surface beyond it.\n\nHillside woods use varied photographed tree silhouettes and a shared placement/ground-cover mask. Five baked elevations blend as the camera tilts, showing crowns from above and full silhouettes near the horizon. High/Ultra shadows also ground these trees against the hillside. Offline edge correction removes the dark fringe from their canopies.\n\nSnow uses photographed powder at its original two-metre scale, with darker melt edges. Forest floors blend moss and leaf litter beneath the same hillside stands. Detailed surfaces follow the terrain-detail setting; texture arrays keep these layers within the browser renderer's sampler budget.\n\nDistant ridges now shade their valleys and forests with cached terrain lighting. Changing the time of day refreshes that lighting without rebuilding the forest. Standing rainwater stays on gentle ground instead of making cliff faces reflect like puddles.\n\nSurrounding ranges now use real Alpine elevation shapes, composed into varied fictional mountain groups. Lower ridges close the horizon between the peaks. The source data is bundled and processed during map creation; no terrain downloads or extra per-frame material samples are needed.\n\nTown asphalt now separates fine aggregate from broad cracks, repairs and stains. Streets and junctions share the same world-space material, blended in linear light in both renderers. Normal maps follow sloping roads and paving instead of lighting every surface as if it were flat.\n\nPhotographic building materials now respect their intended colours. Calibrated roof tiles, concrete, wood and bark retain the scan detail without turning grey roofs cyan or all tiled roofs pale beige.\n\nDriveways now connect to the street through lowered sidewalk crossings with sloping shoulders. Curbs meet the asphalt, and grass stays out of the paved entrance.\n\nMeadow grass and shrubs remain visible on elevated ground, and small decorative stones rest on the actual hillside. Trees and buildings also stay resident when a low camera looks up a high slope. Grass thins below the snow line and stops on bare steep faces instead of leaving stray clumps in unsuitable terrain.\n\nElevated surfaces retain full height precision, removing the fine stepping that showed through snow and slope shading. Ground-level staining on walls follows the hillside instead of sea level.\n\nMeadows use fine pointed blades over photographed turf, with wetter sheltered soil and drier exposed patches. The clumps retain their previous triangle count. Local height bounds keep distance fading centred on each patch of vegetation, even when much taller mountains surround it.\n\nLow shrubs use smaller photographed branches and grow in seeded patches with open gaps. Their root shading follows each plant rather than its elevation. Distant forest atlases also load correctly in exported builds.\n\nLocal games share the scenery batching used by network clients. Returning to already-built scenery reveals it promptly while off-screen buildings retain their combat collision. Batched roofs and other tinted surfaces keep their colours in both renderers, including grey roofs in the browser.\n\nWorld-space wood, plaster and weathering stay in place when scenery enters a batch. Shrub leaves receive light from both sides without reversing their back-face normals.\n\nBroadleaf crowns have smaller branches and more open gaps at the same triangle count. Photographed foliage uses its own surface detail, with consistent colour and two-sided lighting instead of an extra layer of procedural leaf noise.\n\nCountry tracks have varied rut widths, intermittent centre grass and broader worn patches. Their joins to town asphalt use a short broken edge instead of a wide blurred band.\n\nMountain weathering follows baked downhill catchments. Snow persists in sheltered drainage channels while exposed ribs remain visible; changing the sunlight reuses the same drainage mask.\n\nRivers continue beyond the battlefield into irregular scenery pools, with matching banks and riverbeds. These distant extensions do not change playable water or navigation.\n\nBrowser lighting follows the displaced mountain slopes and softly lights photographed tree canopies while keeping the cheaper vertex-lighting renderer. Rain surrounds the camera with finer streaks; soft splashes follow ground and water height and disappear at distance.\n\nProcedural clouds have smooth edges in both renderers, with subdued moonlit shading at night. Reflected clouds on the sea follow that night lighting instead of retaining their daytime brightness.",
+          "layoutComparison": null,
+          "screenshots": [
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/environment-realism-extended/comparison-panorama-after.jpg",
+              "caption": "After the extended environment pass: panorama. Matched parent-branch and current cameras, seed and lighting."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/environment-realism-extended/comparison-panorama-before.jpg",
+              "caption": "Before the extended environment pass: panorama. Matched parent-branch and current cameras, seed and lighting."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/environment-realism-extended/comparison-town-before.jpg",
+              "caption": "Before the extended environment pass: town. Matched parent-branch and current cameras, seed and lighting."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/environment-realism-extended/comparison-town-after.jpg",
+              "caption": "After the extended environment pass: town. Matched parent-branch and current cameras, seed and lighting."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/environment-realism-extended/comparison-meadow-before.jpg",
+              "caption": "Before the extended environment pass: meadow. Matched parent-branch and current cameras, seed and lighting."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/environment-realism-extended/comparison-meadow-after.jpg",
+              "caption": "After the extended environment pass: meadow. Matched parent-branch and current cameras, seed and lighting."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/environment-realism-extended/comparison-forest-before.jpg",
+              "caption": "Before the extended environment pass: forest. Matched parent-branch and current cameras, seed and lighting."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/environment-realism-extended/comparison-forest-after.jpg",
+              "caption": "After the extended environment pass: forest. Matched parent-branch and current cameras, seed and lighting."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/environment-realism-extended/coast-before.jpg",
+              "caption": "Before: the ocean ends in a square beside the scenery."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/environment-realism-extended/coast-after.jpg",
+              "caption": "After: distant water follows bays around the mountains. Same seed and camera."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/environment-realism-extended/forest-before.jpg",
+              "caption": "Before: sparse hillside trees and bare ground, matching close camera."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/environment-realism-extended/forest-after.jpg",
+              "caption": "After: fuller canopies, connected stands and woodland ground cover, matching close camera."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/environment-realism-extended/compat-before.jpg",
+              "caption": "Compatibility before: linear ground colours were displayed too dark."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/environment-realism-extended/compat-after.jpg",
+              "caption": "Compatibility after: corrected material output brings ground and foliage into the same palette."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/environment-realism-extended/snow-before.jpg",
+              "caption": "Before: smooth white snow on the coastal ridge."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/environment-realism-extended/snow-after.jpg",
+              "caption": "After: photographed powder, granular relief and dirtier melt edges. Same ridge, seed and camera."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/environment-realism-extended/lighting-before.jpg",
+              "caption": "Before: distant forest stays sunlit below a mountain ridge."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/environment-realism-extended/lighting-after.jpg",
+              "caption": "After: the ridge shades its valley and forest. Same golden-hour lighting, seed and camera."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/environment-realism-extended/ranges-before.jpg",
+              "caption": "Before: repeated procedural peaks surround the valley."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/environment-realism-extended/ranges-after.jpg",
+              "caption": "After: surveyed Alpine ridges form separate mountain groups and lower passes. Same seed, camera and lighting."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/environment-realism-extended/street-before.jpg",
+              "caption": "Before: oversized aggregate makes the asphalt look like coarse gravel."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/environment-realism-extended/street-after.jpg",
+              "caption": "After: finer photographed aggregate keeps larger cracks and repairs. Same street, seed, lighting and camera."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/environment-realism-extended/roof-before.jpg",
+              "caption": "Before: the photograph overrides the roof colour and leaves concrete yellow."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/environment-realism-extended/roof-after.jpg",
+              "caption": "After: calibrated terracotta, concrete and wood retain photographed surface detail. Same house and camera."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/environment-realism-extended/town-colour-before.jpg",
+              "caption": "Before: beige and cyan roofs dominate the town overview."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/environment-realism-extended/town-colour-after.jpg",
+              "caption": "After: terracotta and weathered grey roofs remain distinct at command-camera distance. Same town and lighting."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/environment-realism-extended/driveway-before.jpg",
+              "caption": "Before: the parking pad stops at grass and a full-height curb."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/environment-realism-extended/driveway-after.jpg",
+              "caption": "After: a continuous entrance crosses the sidewalk through a lowered curb. Same seed and camera."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/environment-realism-extended/canopy-before.jpg",
+              "caption": "Before: upright tree silhouettes remain flat when seen from above."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/environment-realism-extended/canopy-after.jpg",
+              "caption": "After: elevation-aware crowns and hillside shadows give the forest volume. Same seed, lighting and steep camera."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/environment-realism-extended/precision-before.jpg",
+              "caption": "Before: rounded height samples leave fine stripes across snow edges."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/environment-realism-extended/precision-after.jpg",
+              "caption": "After: full-precision slopes keep snow edges smooth. Same terrain, seed and camera."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/environment-realism-extended/meadow-before.jpg",
+              "caption": "Close meadow before: broad ribbon blades and plain ground. Same seed and camera."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/environment-realism-extended/meadow-after.jpg",
+              "caption": "Close meadow after: fine pointed blades over photographed turf, with variation from soil moisture. Same seed and camera."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/environment-realism-extended/meadow-wide-before.jpg",
+              "caption": "Low meadow view before: broad ribbon blades and plain ground. Same seed and camera."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/environment-realism-extended/meadow-wide-after.jpg",
+              "caption": "Low meadow view after: fine pointed blades over photographed turf, with variation from soil moisture. Same seed and camera."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/environment-realism-extended/shrub-before.jpg",
+              "caption": "Before: oversized branch cards and evenly scattered bushes across the meadow."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/environment-realism-extended/shrub-after.jpg",
+              "caption": "After: smaller photographed branches form patches with open gaps. Same meadow, seed, lighting and camera."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/environment-realism-extended/leaves-before.jpg",
+              "caption": "Before: oversized leaf groups close the broadleaf crown."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/environment-realism-extended/leaves-after.jpg",
+              "caption": "After: smaller branches leave natural gaps, with consistent photographed colour and two-sided lighting. Same tree and camera."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/environment-realism-extended/leaves-wide-before.jpg",
+              "caption": "Before: broadleaf stands form dense, rounded masses."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/environment-realism-extended/leaves-wide-after.jpg",
+              "caption": "After: finer open crowns remain readable at stand distance, at the same triangle count. Same seed and camera."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/environment-realism-extended/lane-join-before.jpg",
+              "caption": "Before: the dirt lane fades through a broad blurred band at the town street."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/environment-realism-extended/lane-join-after.jpg",
+              "caption": "After: a shorter broken asphalt edge separates the surfaces, with patchier wear along the dirt lane. Same seed and camera."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/environment-realism-extended/drainage-before.jpg",
+              "caption": "Before: noise-based weathering and elevation-led snow."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/environment-realism-extended/drainage-after.jpg",
+              "caption": "After: downhill catchments place weathering and retained snow along connected gullies. Same terrain and camera."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/environment-realism-extended/snow-channels-before.jpg",
+              "caption": "Before: noise-based weathering and elevation-led snow."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/environment-realism-extended/snow-channels-after.jpg",
+              "caption": "After: downhill catchments place weathering and retained snow along connected gullies. Same terrain and camera."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/environment-realism-extended/river-end-before.jpg",
+              "caption": "Before: the river ends at a straight battlefield boundary."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/environment-realism-extended/river-end-after.jpg",
+              "caption": "After: the channel continues into an irregular scenery pool. Same seed, camera and lighting."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/environment-realism-extended/river-valley-before.jpg",
+              "caption": "Before: the river ends at a straight battlefield boundary."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/environment-realism-extended/river-valley-after.jpg",
+              "caption": "After: the channel continues into an irregular scenery pool. Same seed, camera and lighting."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/environment-realism-extended/browser-forest-before.jpg",
+              "caption": "Before: flat vertex lighting on displaced ridges and dark leaf cards in the browser."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/environment-realism-extended/browser-forest-after.jpg",
+              "caption": "After: browser lighting follows mountain slopes and softly lights tree canopies."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/environment-realism-extended/browser-panorama-before.jpg",
+              "caption": "Before: the browser lights displaced mountain vertices as flat ground."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/environment-realism-extended/browser-panorama-after.jpg",
+              "caption": "After: mountain vertex normals follow the displaced terrain. Same browser settings."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/environment-realism-extended/rain-close-before.jpg",
+              "caption": "Before: bright rain streaks and white square splashes."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/environment-realism-extended/rain-close-after.jpg",
+              "caption": "After: finer streaks and soft splashes that follow the terrain height."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/environment-realism-extended/rain-valley-before.jpg",
+              "caption": "Before: the rain emitter forms a bright patch at the camera target."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/environment-realism-extended/rain-valley-after.jpg",
+              "caption": "After: rain surrounds the camera and distant splashes fade away."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/environment-realism-extended/night-clouds-before.jpg",
+              "caption": "Before: block-shaped cloud edges and bright nighttime cloud cover."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/environment-realism-extended/night-water-before.jpg",
+              "caption": "Before: pale cloud reflections cover the sea beneath a dark night sky."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/environment-realism-extended/night-water-after.jpg",
+              "caption": "After: reflected clouds follow the moonlit sky while direct moon highlights remain. Same seed, camera and mood."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/environment-realism-extended/night-clouds-after.jpg",
+              "caption": "After: continuous cloud edges and subdued moonlit cover. Same seed and camera."
+            }
+          ],
+          "videos": [
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/environment-realism-extended/native-tour.webm",
+              "poster": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/environment-realism-extended/native-tour.jpg",
+              "caption": "Native tour of Alpine ranges, coastal forest cover, town surfaces and finer meadow detail. Current PR with animated camera, wind and water; matched before/after stills remain below."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/environment-realism-extended/rain-before.webm",
+              "poster": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/environment-realism-extended/rain-motion-before.jpg",
+              "caption": "Before: broad bright streaks and square splashes. Six seconds at fixed 30 fps; silent."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/environment-realism-extended/rain-after.webm",
+              "poster": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/environment-realism-extended/rain-motion-after.jpg",
+              "caption": "After: finer streaks and soft splashes on terrain and water. Six seconds at fixed 30 fps; silent."
+            }
+          ]
+        },
+        {
+          "slug": "hemtt-cab-depth",
+          "title": "Cab depth and rounded tyres for the cargo truck",
+          "kind": "improved",
+          "summary": "The HEMTT cargo truck now has visible cab interiors, transparent glass, rounded tyre shoulders and draped canvas loads.",
+          "body": "- The upper cab is open behind its windows, with seats, headrests, dashboard and steering wheel. Transparent panes switch to opaque glass at long distances; wrecks lose the intact panes.\n- Rounded rubber sidewalls surround recessed wheel rims. Smaller staggered tread blocks replace the previous broad bars and rotate with the wheels.\n- Canvas loads have curved, folded shells and restraints that follow their shape. Painted bumpers and fuel tanks retain a nonmetallic coating.",
+          "layoutComparison": null,
+          "screenshots": [
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/hemtt-cab-depth/after.jpg",
+              "caption": "After: seats and dashboard behind glass, rounded tyre shoulders and shaped cloth covers."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/hemtt-cab-depth/before.jpg",
+              "caption": "Before: the previous detail pass, with identical ground, shadows, camera and lighting."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/hemtt-cab-depth/in-game.jpg",
+              "caption": "The rebuilt supply truck in the game's terrain and daylight lighting."
+            }
+          ],
+          "videos": []
+        },
+        {
+          "slug": "hemtt-cargo-detail",
+          "title": "More readable detail on the HEMTT cargo truck",
+          "kind": "improved",
+          "summary": "The cargo truck gains framed windows, wipers, tyre tread and distinct load hardware.",
+          "body": "- Window gaskets, wipers and raised door panels give the cab more definition.\n- Tyre lugs change the wheel silhouette; drum hoops, filler caps and load straps distinguish the cargo.\n- Step lips and bed hinges carry localized rub marks. The other HEMTT variants retain their existing models while this art direction is evaluated.",
+          "layoutComparison": null,
+          "screenshots": [
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/hemtt-cargo-detail/close-after.jpg",
+              "caption": "Cargo truck after: window frames, tyre tread, bed latches and strapped cargo."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/hemtt-cargo-detail/close-before.jpg",
+              "caption": "Before: the same truck with the CC0 material pass, under identical lighting."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/hemtt-cargo-detail/wide-after.jpg",
+              "caption": "After at a wider, gameplay-scale studio view."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/hemtt-cargo-detail/wide-before.jpg",
+              "caption": "Before at the identical wider camera scale."
+            }
+          ],
+          "videos": []
+        },
+        {
+          "slug": "photographic-daylight-sky",
+          "title": "Frame the alpine battlefield with a photographic daylight sky",
+          "kind": "improved",
+          "summary": "Natural cloud forms and a sun-aligned photographic sky replace the plain daylight backdrop.",
+          "body": "Daylight uses a bundled 2K CC0 HDR panorama from Poly Haven, rotated to match the sunlight. Its static shader lets Godot cache sky lighting and reflections. Other weather and night moods retain their existing skies. No network download is needed.\n\n[Asset and authors](https://polyhaven.com/a/kloofendal_48d_partly_cloudy_puresky) | [CC0 license](https://polyhaven.com/license).",
+          "layoutComparison": null,
+          "screenshots": [
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/photographic-daylight-sky/target-before.jpg",
+              "caption": "Previous proposal: target view, matching seed and camera."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/photographic-daylight-sky/target-after.jpg",
+              "caption": "Revised: target view, matching seed and camera."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/photographic-daylight-sky/wide-before.jpg",
+              "caption": "Previous proposal: wide view, matching seed and camera."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/photographic-daylight-sky/wide-after.jpg",
+              "caption": "Revised: wide view, matching seed and camera."
+            }
+          ],
+          "videos": []
+        },
+        {
+          "slug": "progressive-minimap",
+          "title": "Steadier minimap updates",
+          "kind": "improved",
+          "summary": "Minimap drawing is spread across frames while camera and pointer feedback stays responsive.",
+          "body": "- Map details, combat markers, units and co-op markers take turns updating, reducing the work that lands on any one frame.\n- The camera wedge and pointer update every frame. Rotating or resizing the minimap keeps all its layers aligned.\n- Large-map building checks run in small slices, and soldiers share repeated smoothing calculations without changing their movement.",
+          "layoutComparison": {
+            "before": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/progressive-minimap/layout-before.jpg",
+            "after": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/progressive-minimap/layout-after.jpg",
+            "caption": "Changelog presentation comparison, not gameplay: the top 1,000 pixels of this entry at the same 900-pixel viewport width. Open either image to inspect it."
+          },
+          "screenshots": [
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/progressive-minimap/after.jpg",
+              "caption": "The minimap keeps its detail while its layers take turns updating."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/progressive-minimap/rotated.jpg",
+              "caption": "Map layers remain aligned when the minimap turns with the camera."
+            }
+          ],
+          "videos": []
+        },
+        {
+          "slug": "realism-01-aerial",
+          "title": "Separate ranges with distance-based scattering",
+          "kind": "improved",
+          "summary": "Distant mountain groups lose contrast into sky-coloured haze while nearby ground retains its detail.",
+          "body": "Exponential extinction with sky-coloured in-scattering; a deliberately simplified approximation, not a full atmospheric solver. Uses the existing Alpine haze option.\n\nResearch: [primary reference](https://developer.nvidia.com/gpugems/gpugems2/part-ii-shading-lighting-and-shadows/chapter-16-accurate-atmospheric-scattering).\n\nThe revision reduces the broad pale wash, delays scattering until beyond nearby terrain, and lets high ridges retain contrast. Approved layer relief and texture-scale changes are retained in this parent branch.",
+          "layoutComparison": null,
+          "screenshots": [
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/realism-01-aerial/target-before.jpg",
+              "caption": "Previous proposal: target view, matching seed and camera."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/realism-01-aerial/target-after.jpg",
+              "caption": "Revised: target view, matching seed and camera."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/realism-01-aerial/wide-before.jpg",
+              "caption": "Previous proposal: wide view, matching seed and camera."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/realism-01-aerial/wide-after.jpg",
+              "caption": "Revised: wide view, matching seed and camera."
+            }
+          ],
+          "videos": []
+        },
+        {
+          "slug": "realism-02-strata",
+          "title": "Give geological layers surface relief",
+          "kind": "improved",
+          "summary": "Rock beds catch light along their ledges instead of appearing only as painted colour bands.",
+          "body": "Screen-space derivatives perturb normals from the existing tilted bedding field. No displaced collision surface or new texture reads.\n\nResearch: [primary reference](https://developer.nvidia.com/gpugems/gpugems3/part-i-geometry/chapter-1-generating-complex-procedural-terrains-using-gpu).",
+          "layoutComparison": null,
+          "screenshots": [
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/realism-02-strata/target-before.jpg",
+              "caption": "Before: target view, matching seed and camera."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/realism-02-strata/target-after.jpg",
+              "caption": "After: target view, matching seed and camera."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/realism-02-strata/wide-before.jpg",
+              "caption": "Before: wide view, matching seed and camera."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/realism-02-strata/wide-after.jpg",
+              "caption": "After: wide view, matching seed and camera."
+            }
+          ],
+          "videos": []
+        },
+        {
+          "slug": "realism-03-rock-scales",
+          "title": "Blend rock detail across different scales",
+          "kind": "improved",
+          "summary": "Broad cliff fractures and smaller joint patterns break up recognisable repeated rock tiles.",
+          "body": "A second triplanar colour/normal scale is blended coherently. Six extra material reads at Medium/Far detail; Near keeps the cheaper original material.\n\nResearch: [primary reference](https://developer.nvidia.com/gpugems/gpugems3/part-i-geometry/chapter-1-generating-complex-procedural-terrains-using-gpu).",
+          "layoutComparison": null,
+          "screenshots": [
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/realism-03-rock-scales/target-before.jpg",
+              "caption": "Before: target view, matching seed and camera."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/realism-03-rock-scales/target-after.jpg",
+              "caption": "After: target view, matching seed and camera."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/realism-03-rock-scales/wide-before.jpg",
+              "caption": "Before: wide view, matching seed and camera."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/realism-03-rock-scales/wide-after.jpg",
+              "caption": "After: wide view, matching seed and camera."
+            }
+          ],
+          "videos": []
+        },
+        {
+          "slug": "realism-04-talus",
+          "title": "Distinguish loose scree from solid cliffs",
+          "kind": "improved",
+          "summary": "Sheltered lower slopes collect pale loose stone while exposed walls retain darker bedrock.",
+          "body": "Uses existing slope, elevation and baked shelter to weight the existing scree photographs. A deposition-inspired material mask, not new sediment simulation.\n\nResearch: [primary reference](https://wargaming.com/en/news/making_battle_arenas_in_wows/).\n\nLoose stone collects in broken sheltered pockets, with photographic height detail breaking the deposit edge instead of a pale blanket across every lower slope.\n\nScree now forms irregular drainage fans instead of repeating yellow bands across distant mountains. Neutral stone coloration, coarse breakup and exposed bedrock interrupt the deposits.",
+          "layoutComparison": null,
+          "screenshots": [
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/realism-04-talus/target-before.jpg",
+              "caption": "Previous proposal: target view, matching seed and camera."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/realism-04-talus/target-after.jpg",
+              "caption": "Revised: target view, matching seed and camera."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/realism-04-talus/wide-before.jpg",
+              "caption": "Previous proposal: wide view, matching seed and camera."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/realism-04-talus/wide-after.jpg",
+              "caption": "Revised: wide view, matching seed and camera."
+            }
+          ],
+          "videos": []
+        },
+        {
+          "slug": "realism-05-snow-surface",
+          "title": "Break up smooth snow with wind-shaped surface detail",
+          "kind": "improved",
+          "summary": "Snow shelves gain shallow wind grooves and granular highlights instead of perfectly smooth white surfaces.",
+          "body": "Adds derivative-filtered snow surface relief and changes its roughness coherently. The wind-groove approximation extends the existing slope/exposure snow coverage; it does not implement the reference occlusion map.\n\nResearch: [primary reference](https://download.nvidia.com/developer/SDK/Individual_Samples/DEMOS/Direct3D9/src/SnowAccumulation/Docs/SnowAccumulation.pdf).\n\nWind grooves now bend and break at two scales, with subdued granular shading, rather than forming evenly spaced parallel stripes.\n\nSnow collects in connected sheltered shelves with irregular wind-scoured rock windows, broken edges and softer two-scale surface relief.",
+          "layoutComparison": null,
+          "screenshots": [
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/realism-05-snow-surface/target-before.jpg",
+              "caption": "Previous proposal: target view, matching seed and camera."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/realism-05-snow-surface/target-after.jpg",
+              "caption": "Revised: target view, matching seed and camera."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/realism-05-snow-surface/wide-before.jpg",
+              "caption": "Previous proposal: wide view, matching seed and camera."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/realism-05-snow-surface/wide-after.jpg",
+              "caption": "Revised: wide view, matching seed and camera."
+            }
+          ],
+          "videos": []
+        },
+        {
+          "slug": "realism-06-seepage",
+          "title": "Give damp cliff streaks a wet surface response",
+          "kind": "improved",
+          "summary": "Sheltered runoff channels darken and develop a restrained sheen while exposed rock remains dry.",
+          "body": "Existing runoff/shelter fields drive darkening, roughness and a bounded direct-light lobe. This is persistent seepage styling, not a hydrology simulation.\n\nResearch: [primary reference](https://seblagarde.wordpress.com/2013/03/19/water-drop-3a-physically-based-wet-surfaces/).\n\nCompatibility retains damp colour and roughness but skips the extra direct-light sheen to avoid bright faceting.\n\nSeepage follows connected runoff channels with variable shelter, darkening narrow damp areas rather than tinting a whole cliff.\n\nWet cliffs now show broad connected drainage stains and smaller vertical tributaries, with a darker, cooler surface response that remains visible at normal viewing distances.",
+          "layoutComparison": null,
+          "screenshots": [
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/realism-06-seepage/target-before.jpg",
+              "caption": "Previous proposal: target view, matching seed and camera."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/realism-06-seepage/target-after.jpg",
+              "caption": "Revised: target view, matching seed and camera."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/realism-06-seepage/wide-before.jpg",
+              "caption": "Previous proposal: wide view, matching seed and camera."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/realism-06-seepage/wide-after.jpg",
+              "caption": "Revised: wide view, matching seed and camera."
+            }
+          ],
+          "videos": []
+        },
+        {
+          "slug": "realism-07-spruce-boughs",
+          "title": "Replace cone-like spruce tiers with ragged boughs",
+          "kind": "improved",
+          "summary": "Conifers have broken, asymmetric branch silhouettes that read as trees against rock and snow.",
+          "body": "A shared low-polygon bough mesh replaces each solid cone tier, preserving the existing tree batching, burn state and placement.\n\nResearch: [primary reference](https://wargaming.com/en/news/creating_levels/).\n\nSpruce sprays have divided tips and irregular branch lengths, producing fuller foliage with broken edges rather than flat triangular tiers.",
+          "layoutComparison": null,
+          "screenshots": [
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/realism-07-spruce-boughs/target-before.jpg",
+              "caption": "Previous proposal: target view, matching seed and camera."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/realism-07-spruce-boughs/target-after.jpg",
+              "caption": "Revised: target view, matching seed and camera."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/realism-07-spruce-boughs/wide-before.jpg",
+              "caption": "Previous proposal: wide view, matching seed and camera."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/realism-07-spruce-boughs/wide-after.jpg",
+              "caption": "Revised: wide view, matching seed and camera."
+            }
+          ],
+          "videos": []
+        },
+        {
+          "slug": "realism-08-fractured-stones",
+          "title": "Give alpine stones angular fractured shapes",
+          "kind": "improved",
+          "summary": "Stones at the mountain foot have irregular broken faces instead of flattened round primitives.",
+          "body": "A small set of cached seeded faceted meshes replaces decorative pebble spheres. Placement, passability and replicated dressing data stay unchanged.\n\nResearch: [primary reference](https://wargaming.com/en/news/creating_levels/).\n\nNatural stones also use a rough granular material instead of the masonry material with mortar joints.\n\nDecorative stones use the bundled rock photograph with triplanar projection, retaining their shared fractured meshes and avoiding flat grey surfaces.\n\nAlpine dressing combines slabs, angular cobbles and smaller fragments in denser, varied clusters. Fine fragments are batched separately and culled at distance; larger stones remain visible.",
+          "layoutComparison": null,
+          "screenshots": [
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/realism-08-fractured-stones/target-before.jpg",
+              "caption": "Previous proposal: target view, matching seed and camera."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/realism-08-fractured-stones/target-after.jpg",
+              "caption": "Revised: target view, matching seed and camera."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/realism-08-fractured-stones/wide-before.jpg",
+              "caption": "Previous proposal: wide view, matching seed and camera."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/realism-08-fractured-stones/wide-after.jpg",
+              "caption": "Revised: wide view, matching seed and camera."
+            }
+          ],
+          "videos": [
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/realism-08-fractured-stones/native-tour.webm",
+              "poster": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/realism-08-fractured-stones/native-tour.jpg",
+              "caption": "Fractured stones at close range, then the surrounding slope. Native current-PR camera recording; simulation held, wind animated. The matched stills below show before and after."
+            }
+          ]
+        },
+        {
+          "slug": "realism-09-meadow-mosaic",
+          "title": "Make meadow colour follow broad soil pockets",
+          "kind": "improved",
+          "summary": "Connected dry grass and richer moss patches replace evenly green valley floors.",
+          "body": "Broad moisture and exposure masks reuse existing world-space noise and shelter, with fine photographic detail retained. No extra scatter or draw calls.\n\nResearch: [primary reference](https://wargaming.com/en/news/making_battle_arenas_in_wows/).\n\nMeadow colour follows shelter and aspect more strongly, with quieter dry-grass colour that avoids broad camouflage-like brown blobs.",
+          "layoutComparison": null,
+          "screenshots": [
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/realism-09-meadow-mosaic/target-before.jpg",
+              "caption": "Previous proposal: target view, matching seed and camera."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/realism-09-meadow-mosaic/target-after.jpg",
+              "caption": "Revised: target view, matching seed and camera."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/realism-09-meadow-mosaic/wide-before.jpg",
+              "caption": "Previous proposal: wide view, matching seed and camera."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/realism-09-meadow-mosaic/wide-after.jpg",
+              "caption": "Revised: wide view, matching seed and camera."
+            }
+          ],
+          "videos": []
+        },
+        {
+          "slug": "realism-10-shore-gravel",
+          "title": "Blend gravel into alpine shorelines",
+          "kind": "improved",
+          "summary": "Coastal margins transition through exposed gravel and darker wet stone instead of a uniformly sandy strip.",
+          "body": "The existing shoreline and slope masks select photographic gravel and damp roughness. Water depth, wading and boat navigation remain authoritative and unchanged.\n\nResearch: [primary reference](https://seblagarde.wordpress.com/2013/03/19/water-drop-3a-physically-based-wet-surfaces/).\n\nGravel collects in broken coves and steeper banks, preserving sandy openings instead of tracing a continuous band around the whole coast.\n\nShorelines now blend neutral gravel, darker washed margins and exposed sand through irregular deposits, with photographic breakup at their edges.",
+          "layoutComparison": null,
+          "screenshots": [
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/realism-10-shore-gravel/target-before.jpg",
+              "caption": "Previous proposal: target view, matching seed and camera."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/realism-10-shore-gravel/target-after.jpg",
+              "caption": "Revised: target view, matching seed and camera."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/realism-10-shore-gravel/wide-before.jpg",
+              "caption": "Previous proposal: wide view, matching seed and camera."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/realism-10-shore-gravel/wide-after.jpg",
+              "caption": "Revised: wide view, matching seed and camera."
+            }
+          ],
+          "videos": [
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/realism-10-shore-gravel/native-tour.webm",
+              "poster": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/realism-10-shore-gravel/native-tour.jpg",
+              "caption": "A close orbit over gravel, wet margins and exposed sand, followed by coastal context. Native current-PR recording; camera and water animated. Compare the matched stills below."
+            }
+          ]
+        },
+        {
+          "slug": "rock-occlusion",
+          "title": "Give rock crevices more depth",
+          "kind": "improved",
+          "summary": "Sheltered rock crevices receive stronger ambient occlusion while exposed rock stays open to sky light.",
+          "body": "No new texture reads. Occlusion affects ambient lighting, with the existing direct-light contribution retained. This is a material approximation, not new ray tracing.\n\nTechnique reference: [research source](https://developer.nvidia.com/gpugems/gpugems/part-iii-materials/chapter-17-ambient-occlusion).",
+          "layoutComparison": null,
+          "screenshots": [
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/rock-occlusion/before.jpg",
+              "caption": "Before: shared terrain baseline, identical seed and camera."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/rock-occlusion/after.jpg",
+              "caption": "After: Sheltered rock crevices receive stronger ambient occlusion while exposed rock stays open to sky light."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/rock-occlusion/close-before.jpg",
+              "caption": "Before: matching closer camera, shared baseline."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/rock-occlusion/close-after.jpg",
+              "caption": "After: the same closer camera; surface changes remain subtle."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/rock-occlusion/target-before.jpg",
+              "caption": "Before: focused comparison under matched lighting."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/rock-occlusion/target-after.jpg",
+              "caption": "After: Watch the shaded recess beside the central rib under diffuse light."
+            }
+          ],
+          "videos": []
+        },
+        {
+          "slug": "rock-warp",
+          "title": "Break up repeating cliff textures",
+          "kind": "improved",
+          "summary": "World-space texture warping breaks up repeated slab patterns without adding material samples.",
+          "body": "Three additional scalar noise reads per terrain fragment; material reads stay at eighteen. Warping is fixed in world space and shared by colour and normal coordinates.\n\nTechnique reference: [research source](https://developer.nvidia.com/gpugems/gpugems3/part-i-geometry/chapter-1-generating-complex-procedural-terrains-using-gpu).",
+          "layoutComparison": null,
+          "screenshots": [
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/rock-warp/before.jpg",
+              "caption": "Before: shared terrain baseline, identical seed and camera."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/rock-warp/after.jpg",
+              "caption": "After: World-space texture warping breaks up repeated slab patterns without adding material samples."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/rock-warp/close-before.jpg",
+              "caption": "Before: matching closer camera, shared baseline."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/rock-warp/close-after.jpg",
+              "caption": "After: the same closer camera; surface changes remain subtle."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/rock-warp/target-before.jpg",
+              "caption": "Before: focused comparison under matched lighting."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/rock-warp/target-after.jpg",
+              "caption": "After: Watch the large fracture patterns on the bright central rock rib."
+            }
+          ],
+          "videos": []
+        },
+        {
+          "slug": "snow-deposition",
+          "title": "Break up alpine snowfields",
+          "kind": "improved",
+          "summary": "Wind exposure and rock relief break up snow edges, with cooler compacted snow in sheltered pockets.",
+          "body": "No new texture reads. Fixed prevailing wind is a visual deposition heuristic, not weather simulation. Authoritative terrain and snowline settings are unchanged.\n\nTechnique reference: [research source](https://download.nvidia.com/developer/SDK/Individual_Samples/DEMOS/Direct3D9/src/SnowAccumulation/Docs/SnowAccumulation.pdf).",
+          "layoutComparison": null,
+          "screenshots": [
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/snow-deposition/before.jpg",
+              "caption": "Before: shared terrain baseline, identical seed and camera."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/snow-deposition/after.jpg",
+              "caption": "After: Wind exposure and rock relief break up snow edges, with cooler compacted snow in sheltered pockets."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/snow-deposition/close-before.jpg",
+              "caption": "Before: matching closer camera, shared baseline."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/snow-deposition/close-after.jpg",
+              "caption": "After: the same closer camera; surface changes remain subtle."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/snow-deposition/target-before.jpg",
+              "caption": "Before: focused comparison under matched lighting."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/snow-deposition/target-after.jpg",
+              "caption": "After: Watch the boundary between snow and bare rock on the foreground peak."
+            }
+          ],
+          "videos": []
+        },
+        {
+          "slug": "tank-operation",
+          "title": "More deliberate tank handling",
+          "kind": "improved",
+          "summary": "Tank turrets accelerate and settle onto targets, hold their bearing through hull turns, and acquire a steady aim before firing.",
+          "body": "- Tank drivers build into turns rather than instantly changing their turning speed.\n- Turrets traverse with acceleration and braking, and return forward by the shortest arc.\n- Gunners hold a steady aim briefly before firing, including when switching targets.",
+          "layoutComparison": {
+            "before": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/tank-operation/layout-before.jpg",
+            "after": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/tank-operation/layout-after.jpg",
+            "caption": "Changelog presentation comparison, not gameplay: the top 1,000 pixels of this entry at the same 900-pixel viewport width. Open either image to inspect it."
+          },
+          "screenshots": [
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/tank-operation/before.jpg",
+              "caption": "Before: the tank engaging the RPG team."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/tank-operation/after.jpg",
+              "caption": "After: the same encounter with gradual traverse and deliberate gun laying."
+            }
+          ],
+          "videos": [
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/tank-operation/tank-motion.mp4",
+              "poster": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/tank-operation/tank-motion-poster.jpg",
+              "caption": "The tank turns, traverses its turret and advances past the wall. Recorded in the current build, October 2026."
+            }
+          ]
+        },
+        {
+          "slug": "terrain-traversal",
+          "title": "Safer routes across hills and water",
+          "kind": "improved",
+          "summary": "Tracks and wheels choose suitable slopes, and infantry wade through shallows instead of walking underwater.",
+          "body": "- Infantry, wheeled vehicles and tracked vehicles use separate terrain limits. Vehicles account for nearby steep ground across their footprint, and supply trucks no longer bypass blocked terrain.\n- Routes favour easier ground and roads. Connected areas are calculated when the map loads, and newly opened passages become available without treating separated shores as reachable.\n- Soldiers can wade through water up to 55 cm deep. Deeper water is blocked even if an old terrain label calls it shallow; bridge decks remain usable.\n- Movement checks the whole step, including dives, separation and vehicle recovery. Old routes cannot carry units through newly blocked ground or deep water.\n- Living soldiers stay upright while wading. Spawning and disembarking use safe ground; soldiers stranded by a removed crossing recover to a safe bank.\n- Ambush Alley autoplay uses its available mortars against spotted convoy vehicles stopped on the road, so it can finish the ambush under the updated movement rules.",
+          "layoutComparison": null,
+          "screenshots": [],
+          "videos": []
+        },
+        {
+          "slug": "town-ground-and-frontages",
+          "title": "Connect houses and streets with gardens, paths and grounded furniture",
+          "kind": "improved",
+          "summary": "Scanned materials, weathered roads and leafy canopies give towns and their surrounding hills more natural detail.",
+          "body": "Paving follows the terrain instead of sitting at flat-map height. Street furniture and wire endpoints carry their authoritative elevation into multiplayer and replays. House plots have maintained ground, narrow foundation aprons and routes to actual front or side doors; fences leave pedestrian and driveway gaps and break into short sections. Wild grass and shrubs stay outside maintained plots.\n\nPhotographic CC0 asphalt, paving slabs and grass/soil replace the flat procedural surfaces. Real-world texture scale, normal and roughness maps, per-slab wear and broad dry/green patches keep detail readable near houses and across the town. Urban grass clumps are shorter.\n\nRoad entrances blend through broken gravel edges; repaired asphalt patches and dark stains interrupt the carriageway. Roofs use aged tile and rough concrete scans, while timber fences have photographed grain and section-to-section weathering. Metal fences show dull paint and rust.\n\nBrick, plaster, bark and country-road gravel also use scanned detail. Concrete driveways differ from paving-slab footpaths, with broad staining across sidewalks and roofs.\n\nTrees, hedges and shrubs have open, photographed leaf and needle silhouettes. Patchy distant forests follow hills outside the battlefield using a small prebaked tree atlas: two triangles per tree, with cliffs, high peaks and coasts kept clear. Set View distance / detail to Near for the lighter view.",
+          "layoutComparison": null,
+          "screenshots": [
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/town-ground-and-frontages/detail-before.jpg",
+              "caption": "Previous photographic surfaces: matching close camera."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/town-ground-and-frontages/detail-after.jpg",
+              "caption": "Broken road transitions, stained asphalt and weathered surfaces: matching close camera."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/town-ground-and-frontages/target-before.jpg",
+              "caption": "Previous proposal: target view, matching seed and camera."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/town-ground-and-frontages/target-after.jpg",
+              "caption": "Revised: target view, matching seed and camera."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/town-ground-and-frontages/wide-before.jpg",
+              "caption": "Previous proposal: wide view, matching seed and camera."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/town-ground-and-frontages/wide-after.jpg",
+              "caption": "Revised: wide view, matching seed and camera."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/town-ground-and-frontages/forest-before.jpg",
+              "caption": "Previous canopy and bare background slopes: matching panorama."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/town-ground-and-frontages/forest-after.jpg",
+              "caption": "Photographed canopy and dense background forest patches: matching panorama."
+            }
+          ],
+          "videos": [
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/town-ground-and-frontages/native-tour.webm",
+              "poster": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/town-ground-and-frontages/native-tour.jpg",
+              "caption": "Native camera tour of photographed town surfaces, door paths and connected plots. Current PR with simulation held; the original stills below provide before/after evidence."
+            }
+          ]
+        },
+        {
+          "slug": "vehicle-detail-rollout",
+          "title": "Deeper cabs and rounded tyres across more vehicles",
+          "kind": "improved",
+          "summary": "Military truck variants and civilian cars gain visible interiors, while shared wheels gain rounded tyres, recessed rims and fitted tread.",
+          "body": "- The cab treatment now covers every HEMTT, Zamak and Tempest mission body, plus the Offroad pickup, hatchback and SUV families.\n- Rounded tyres and inset rims extend across the shared wheel builders. Road vehicles use finer tread; aircraft tyres stay smooth, and specialised tracked road wheels keep their own construction.\n- The Zamak cargo and ammunition loads use the same draped cloth system as the HEMTT. Restraints follow the cover instead of floating over it.\n- Glass switches to an opaque fallback at long distances and is removed from wrecks. Wheel detail rotates with the existing wheel pivots.",
+          "layoutComparison": null,
+          "screenshots": [
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/vehicle-detail-rollout/zamak-after.jpg",
+              "caption": "After: the Zamak has an open cab, rounded tyres and a draped cargo cover with fitted restraints."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/vehicle-detail-rollout/zamak-before.jpg",
+              "caption": "Before: the same Zamak, camera, ground and lighting before the detail rollout."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/vehicle-detail-rollout/offroad-after.jpg",
+              "caption": "The Offroad pickup now has a visible cab interior and rounded road tyres."
+            }
+          ],
+          "videos": []
+        },
+        {
+          "slug": "vehicle-motion-and-muzzles",
+          "title": "Weight behind the gun",
+          "kind": "improved",
+          "summary": "Older tanks, modern armour, aircraft and mounted weapons turn and acquire targets at distinct, deliberate rates. Vehicle and gunship rounds begin at their own barrels.",
+          "body": "- Tank, IFV, anti-aircraft, artillery, light vehicle and helicopter weapons have different traverse rates, with acceleration and braking onto the target.\n- Older tank drives take longer to acquire; modern tanks keep a steady firing solution as the hull turns, within the turret motor's available speed.\n- Mounted machine guns, mortars and anti-tank posts must lay onto their bearing before firing.\n- Tracked hulls build into pivots, wheeled vehicles cannot spin in place while reversing, and heavy-lift helicopters answer more slowly than lighter airframes.\n- Vehicle and gunship rounds leave the correct model barrels, including scaled helicopter mounts and each of the gunship's separately positioned guns.\n\n- Boats now have hull-specific cruise speeds, acceleration, engine and helm response, turning circles and astern thrust: quick RHIBs, heavier riverine craft, a deliberate jet patrol ship and a slow steel trawler.",
+          "layoutComparison": {
+            "before": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/vehicle-motion-and-muzzles/layout-before.jpg",
+            "after": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/vehicle-motion-and-muzzles/layout-after.jpg",
+            "caption": "Changelog presentation comparison, not gameplay: the top 1,000 pixels of this entry at the same 900-pixel viewport width. Open either image to inspect it."
+          },
+          "screenshots": [],
+          "videos": [
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/vehicle-motion-and-muzzles/tanks-comparison.webm",
+              "poster": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/vehicle-motion-and-muzzles/tanks-comparison.jpg",
+              "caption": "Before / after, real time: the old tank, modern tank and IFV acquire the same target 90 degrees to their right. Older drives take longer to settle."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/vehicle-motion-and-muzzles/boats-comparison.webm",
+              "poster": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/vehicle-motion-and-muzzles/boats-comparison.jpg",
+              "caption": "Before / after, real time: RHIB, patrol ship and trawler receive six seconds of full ahead, four seconds hard right, then a stop order. Course dots show the different turns."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/vehicle-motion-and-muzzles/aircraft-comparison.webm",
+              "poster": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/vehicle-motion-and-muzzles/aircraft-comparison.jpg",
+              "caption": "Before / after launch-origin visualization: coloured pulses mark the actual 25, 40 and 105 mm launch points. Each gun now starts at its own barrel instead of below the fuselage."
+            }
+          ]
+        },
+        {
+          "slug": "vehicle-surface-library",
+          "title": "Distinct surfaces across the vehicle roster",
+          "kind": "improved",
+          "summary": "Armor, aircraft, civilian vehicles and boats now have distinct finishes, finer texture detail and wear that stays attached as they move.",
+          "body": "- Matte armor paint, smoother aircraft coatings, civilian clearcoat, rubber tyres, canvas covers and exposed metal now respond differently to light.\n- Large blotches on civilian bodywork give way to fine surface texture and restrained wear. Boat walking decks have a rough nonslip finish.\n- Camouflage, wear and lower-body dirt stay on the vehicle when it moves or climbs. Faction colors are preserved.\n- The water scooter’s curved hood no longer produces invalid surface normals.\n\n- CC0 coating, rubber, fabric and metal textures now feed the shared finishes. Painted cargo drums lose their bare-metal sparkle, the RHIB has a treaded deck, and worn trawler fittings have localized corrosion.",
+          "layoutComparison": null,
+          "screenshots": [
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/vehicle-surface-library/hatchback-after.jpg",
+              "caption": "Civilian paint after: fine surface detail replaces the oversized wear patches."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/vehicle-surface-library/hatchback-before.jpg",
+              "caption": "Before: the same hatchback, camera, seed and lighting."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/vehicle-surface-library/tank-after.jpg",
+              "caption": "Armor after: matte coatings, finer relief and distinct rubber and metal."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/vehicle-surface-library/tank-before.jpg",
+              "caption": "Before: the same tank, camera, seed and lighting."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/vehicle-surface-library/surface-swatches.jpg",
+              "caption": "Shared finishes under the same lighting: coatings, rubber, canvas, metal, glass and nonslip."
+            }
+          ],
+          "videos": []
+        },
+        {
+          "slug": "shoreline-blending",
+          "title": "Softer beaches and rolling surf",
+          "kind": "fixed",
+          "summary": "Fine gravel fades into beach sand, and breakers roll toward shore without a sharp ribbon across the water.",
+          "body": "Beach gravel now uses fine photographed grains in broad, feathered deposits instead of large mountain-rock chips. Coastal foam breaks into patches and shallow water fades more gently over the sand.\n\nThe surf's repeating shape now joins smoothly between waves, removing the hard crease across the water. These are surface changes; water depths and routes remain the same.",
+          "layoutComparison": null,
+          "screenshots": [
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/shoreline-blending/waterline-before.jpg",
+              "caption": "Before: oversized gray chips and a sharp offshore wave crease."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/shoreline-blending/waterline-after.jpg",
+              "caption": "After: fine warm grains, softer water contact and a continuous breaker."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/shoreline-blending/town-before.jpg",
+              "caption": "Before, at town viewing distance."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/shoreline-blending/town-after.jpg",
+              "caption": "After, with the same town, camera and lighting."
+            }
+          ],
+          "videos": [
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/shoreline-blending/comparison.mp4",
+              "poster": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v1.0.12/shoreline-blending/comparison.jpg",
+              "caption": "Six seconds of matched native motion: before on the left, after on the right. Watch the offshore crease disappear."
+            }
+          ]
+        }
+      ]
+    },
+    {
       "version": "1.0.11",
       "tag": "v1.0.11",
       "name": "Watch battles and revisit the action",

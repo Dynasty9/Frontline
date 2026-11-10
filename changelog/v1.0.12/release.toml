@@ -1,0 +1,4 @@
+version = "1.0.12"
+name = "Mountain battlefields"
+date = "2026-11-10"
+pull_requests = [104, 106, 107, 108, 111, 118, 119, 120, 123, 127, 145, 146]
