@@ -1,5 +1,7 @@
 # Vehicle component review
 
+A subsequent [shared rotor upgrade](../vehicle-rotor-review/README.md) adds visible blade and hub improvements to the helicopter families reviewed here.
+
 Reviewed all **143 rendered subjects** from front and rear: 135 model/alias keys, five parked civilian bodies and three wrecks. The table records what was changed or deliberately retained for every subject. Shared construction does not mean every vehicle received a new silhouette.
 
 The most visible changes are individual track shoes, detailed spares and correctly fitted parked-car windows. Many running tyres were already rounded in the baseline; extracting those into the library is primarily a maintenance improvement. Aircraft canopies, ship hulls and vehicle-specific armour still have their own builders. These remain stylised procedural RTS models, not photorealistic assets.
