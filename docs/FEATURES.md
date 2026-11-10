@@ -1386,3 +1386,10 @@ unchanged selection membership does not wake the queue.
 Soldier batches bound their current and target positions with the complete animated
 model envelope. Bounds shrink after movement and blasts settle, so empty cell
 space does not keep distant models detailed. Close articulated models are unchanged.
+
+
+Desktop starting battlefields can be prebaked or reused from a bounded on-disk
+cache. The cache requires the exact seed, deployment, player setup, generator
+code and native/content versions; it retains initial RNG state and passes the
+unchanged Rust importer and replay checks. New random seeds still generate fresh
+maps. See [Precomputed maps](PRECOMPUTED_MAPS.md) for baking and validation.

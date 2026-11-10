@@ -1,0 +1,167 @@
+{
+  "machine": "Windows, i9-11900K, RTX 3090, Godot 4.7.2",
+  "conditions": "Other applications remained running. Owned generation, simulation and renderer measurements ran serially.",
+  "large_generation": {
+    "config": {
+      "fixed_seed": 3,
+      "map_size": 3072,
+      "scenario": "stress",
+      "stress_generated": true,
+      "stress_units": 500,
+      "stress_scenery": 0,
+      "stress_mode": "combat",
+      "stress_vehicles": 0,
+      "scenario_player": false,
+      "ai_fill": false,
+      "team": -1,
+      "name": "Commander",
+      "version": 14
+    },
+    "ticks": 600,
+    "runs": [
+      {
+        "mode": "uncached",
+        "generation_seconds": 314.535,
+        "cache_hit": false,
+        "initial_bytes": 282878860,
+        "initial_sha256": "f5885b02c29c93b5cee631056e074092b32f68388a3df5cb2b1a377f190e2205",
+        "simulation_seconds": 19.093,
+        "verification": "REPLAY_VERIFIED tick=600 frames=600 winner=-1 concluded=false initial=ce538a10eafbe8aa8fe7d28a76585ac088ba712d2c28cbed33dccf613125df25 state=c66e65d38ebeedd481fba9f42440d37245fe3a8a942fcea3884da529992017b7 engine=cb70290d45c96a9a1234b1ba361d58d617e2eb00c1e0da79e2af48f1aaee7fab"
+      },
+      {
+        "mode": "populate",
+        "generation_seconds": 307.749,
+        "cache_hit": false,
+        "initial_bytes": 282878860,
+        "initial_sha256": "f5885b02c29c93b5cee631056e074092b32f68388a3df5cb2b1a377f190e2205",
+        "simulation_seconds": 18.907,
+        "verification": "REPLAY_VERIFIED tick=600 frames=600 winner=-1 concluded=false initial=ce538a10eafbe8aa8fe7d28a76585ac088ba712d2c28cbed33dccf613125df25 state=c66e65d38ebeedd481fba9f42440d37245fe3a8a942fcea3884da529992017b7 engine=cb70290d45c96a9a1234b1ba361d58d617e2eb00c1e0da79e2af48f1aaee7fab"
+      },
+      {
+        "mode": "cached-1",
+        "generation_seconds": 4.857,
+        "cache_hit": true,
+        "initial_bytes": 282878860,
+        "initial_sha256": "f5885b02c29c93b5cee631056e074092b32f68388a3df5cb2b1a377f190e2205",
+        "simulation_seconds": 18.249,
+        "verification": "REPLAY_VERIFIED tick=600 frames=600 winner=-1 concluded=false initial=ce538a10eafbe8aa8fe7d28a76585ac088ba712d2c28cbed33dccf613125df25 state=c66e65d38ebeedd481fba9f42440d37245fe3a8a942fcea3884da529992017b7 engine=cb70290d45c96a9a1234b1ba361d58d617e2eb00c1e0da79e2af48f1aaee7fab"
+      },
+      {
+        "mode": "cached-2",
+        "generation_seconds": 3.663,
+        "cache_hit": true,
+        "initial_bytes": 282878860,
+        "initial_sha256": "f5885b02c29c93b5cee631056e074092b32f68388a3df5cb2b1a377f190e2205",
+        "simulation_seconds": 19.204,
+        "verification": "REPLAY_VERIFIED tick=600 frames=600 winner=-1 concluded=false initial=ce538a10eafbe8aa8fe7d28a76585ac088ba712d2c28cbed33dccf613125df25 state=c66e65d38ebeedd481fba9f42440d37245fe3a8a942fcea3884da529992017b7 engine=cb70290d45c96a9a1234b1ba361d58d617e2eb00c1e0da79e2af48f1aaee7fab"
+      }
+    ],
+    "scope": "Generator process wall time; excludes Rust initialization and client visual loading. Other apps remain running."
+  },
+  "rendered_startup": {
+    "config": {
+      "map_size": 1024,
+      "seed": 3,
+      "stress_generated": true,
+      "soldiers": 500,
+      "vehicles": 0,
+      "scenery": 0,
+      "mode": "combat",
+      "team": -1,
+      "preset": "high",
+      "renderer": "Forward+",
+      "window": [
+        1280,
+        720
+      ],
+      "focus": [
+        0,
+        0
+      ],
+      "zoom": 130
+    },
+    "scope": "Cumulative milliseconds from generator launch to client-ready; excludes title/menu and curtain fade. Final graphics preparation can continue afterward.",
+    "runs": [
+      {
+        "mode": "uncached",
+        "startup_ms": {
+          "client_ready": 77627,
+          "generated": 50153,
+          "server_ready": 53164
+        },
+        "client_loading_ms": {
+          "allocating terrain": 0,
+          "client ready": 24443,
+          "cover": 24462,
+          "decor": 4417,
+          "entities": 6519,
+          "ground": 4698,
+          "map": 3219,
+          "stream": 6482,
+          "terrain ready": 303
+        },
+        "process_wall_seconds": 89.094
+      },
+      {
+        "mode": "populate",
+        "startup_ms": {
+          "client_ready": 83384,
+          "generated": 50761,
+          "server_ready": 54371
+        },
+        "client_loading_ms": {
+          "allocating terrain": 0,
+          "client ready": 28997,
+          "cover": 29010,
+          "decor": 5039,
+          "entities": 7030,
+          "ground": 5332,
+          "map": 3648,
+          "stream": 6992,
+          "terrain ready": 327
+        },
+        "process_wall_seconds": 95.006
+      },
+      {
+        "mode": "cached-1",
+        "startup_ms": {
+          "client_ready": 35835,
+          "generated": 3228,
+          "server_ready": 7444
+        },
+        "client_loading_ms": {
+          "allocating terrain": 0,
+          "client ready": 26181,
+          "cover": 26194,
+          "decor": 4554,
+          "entities": 6664,
+          "ground": 4855,
+          "map": 3304,
+          "stream": 6620,
+          "terrain ready": 299
+        },
+        "process_wall_seconds": 47.33
+      },
+      {
+        "mode": "cached-2",
+        "startup_ms": {
+          "client_ready": 32995,
+          "generated": 2017,
+          "server_ready": 5023
+        },
+        "client_loading_ms": {
+          "allocating terrain": 0,
+          "client ready": 25562,
+          "cover": 25577,
+          "decor": 4515,
+          "entities": 6802,
+          "ground": 4799,
+          "map": 3356,
+          "stream": 6707,
+          "terrain ready": 335
+        },
+        "process_wall_seconds": 44.772
+      }
+    ]
+  }
+}

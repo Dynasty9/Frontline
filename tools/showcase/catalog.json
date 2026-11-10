@@ -3666,6 +3666,19 @@
         }
       ],
       "output": null
+    },
+    {
+      "entry": "changelog/unreleased/precomputed-battlefields.md",
+      "title": "Reuse prepared battlefields",
+      "summary": "Repeated desktop battles can load a validated starting battlefield instead of generating it again.",
+      "version": "unreleased",
+      "kind": "improved",
+      "medium": "text",
+      "stage": "text",
+      "rationale": "Loading measurements and exact initial-state/replay verification document the outcome; a still image cannot demonstrate generation savings. New random seeds and client graphics preparation remain uncached.",
+      "source_ref": "codex/combined-performance",
+      "sources": [],
+      "output": null
     }
   ],
   "layout_capture": {

@@ -302,6 +302,9 @@ func _ready() -> void:
 	elif args.has("local-server"):
 		var options := {"ai_fill": not args.has("scenario"), "fixed_seed": int(args.get("seed", 3)), "stress_units": int(args.get("units", 500)), "stress_mode": String(args.get("stress-mode", "combat")), "stress_scenery": int(args.get("scenery", 200))}
 		options["map_size"] = int(args.get("map-size", 1024))
+		options["map_cache"] = not args.has("no-map-cache")
+		if args.has("map-cache-dir"):
+			options["map_cache_dir"] = String(args["map-cache-dir"])
 		options["benchmark_output"] = String(args.get("perf-json", ""))
 		options["stress_generated"] = args.has("stress-generated")
 		options["stress_vehicles"] = int(args.get("vehicles", 0))
@@ -392,6 +395,9 @@ func start_local(a: Dictionary) -> void:
 	Net.set_setting("debug_trucks", a.has("debug-trucks"))
 	if a.has("export-simulation"):
 		Net.set_setting("simulation_export", String(a["export-simulation"]))
+		Net.set_setting("map_cache", not a.has("no-map-cache"))
+		if a.has("map-cache-dir"):
+			Net.set_setting("map_cache_dir", String(a["map-cache-dir"]))
 	if a.has("scenario"):
 		# --play: command the Coalition side yourself instead of watching
 		Net.set_setting("scenario", String(a.scenario))
@@ -504,6 +510,11 @@ func _mission_text(s: Dictionary) -> Array:
 
 
 func _on_game_start(s: Dictionary) -> void:
+	if s.has("simulation_export") and not OS.has_feature("web"):
+		var cache: Script = load("res://scripts/game/battlefield_cache.gd")
+		if cache.restore(s, String(s.simulation_export)):
+			get_tree().quit()
+			return
 	var cur: Curtain = null
 	if _curtains:
 		cur = _curtain("loading")
@@ -1131,7 +1142,7 @@ func _process(_dt: float) -> void:
 				"render_cpu": _sample_report(_perf_render_cpu), "render_gpu": _sample_report(_perf_render_gpu), "process_cpu": _sample_report(_perf_process), "physics_cpu": _sample_report(_perf_physics),
 				"static_memory_bytes": Performance.get_monitor(Performance.MEMORY_STATIC),
 				"nodes": Performance.get_monitor(Performance.OBJECT_NODE_COUNT), "map_m": int(world.settings.get("map_size", 1024)),
-				"loading_ms": world.loading_ms.duplicate(),
+				"loading_ms": world.loading_ms.duplicate(), "startup_ms": LocalServer.startup_ms.duplicate(),
 				"path_queue_peak": world.nav.path_queue_peak if world.nav else 0,
 				"path_cache_hits": world.nav.path_cache_hits if world.nav else 0,
 				"path_wait_max_ms": world.nav.path_wait_max_ms if world.nav else 0,
