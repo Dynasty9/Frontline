@@ -30,7 +30,7 @@ func _wait(t: float) -> void:
 ## the camera steps by real time, capped per frame, so a slow window takes longer.
 func _settle(cam: RtsCamera) -> void:
 	var t := 0.0
-	while t < 6.0 and (absf(cam.dist - cam.target_dist) > 0.02 or cam._gliding):
+	while t < 6.0 and (absf(cam.dist - cam.target_dist) > 0.02 or cam._gliding or cam._pan_offset.length_squared() > 0.0001):
 		await _wait(0.1)
 		t += 0.1
 	await _wait(0.1)
@@ -127,12 +127,14 @@ func _run() -> void:
 	var b := mid + Vector2(-260, 120)
 	var held := cam.ground_point(mid)
 	_drag(cam, mid, b, true)
+	await _settle(cam)
 	_check("Alt + middle drag grabs the map", held.distance_to(cam.ground_point(b)) < 0.5 and f0.distance_to(cam.focus_pos) > 1.0, "drift %.2f m" % held.distance_to(cam.ground_point(b)))
 	# the setting swaps them
 	Settings.v["mmb_mode"] = 1
 	held = cam.ground_point(mid)
 	y0 = cam.yaw
 	_drag(cam, mid, b)
+	await _settle(cam)
 	_check("set to pan, a plain drag grabs the map", held.distance_to(cam.ground_point(b)) < 0.5 and absf(cam.yaw - y0) < 0.001, "drift %.2f m" % held.distance_to(cam.ground_point(b)))
 	# grabbed up by the horizon, a short drag moves the map a short way, not hundreds of metres
 	cam.tilt = RtsCamera.TILT_MAX
@@ -141,6 +143,7 @@ func _run() -> void:
 	cam._apply()
 	f0 = cam.focus_pos
 	_drag(cam, Vector2(mid.x, 4), Vector2(mid.x, 34))
+	await _settle(cam)
 	_check("a grab out by the horizon doesn't lurch", f0.distance_to(cam.focus_pos) < 4.0 and f0.distance_to(cam.focus_pos) > 0.1, "%.2f m for 30 px" % f0.distance_to(cam.focus_pos))
 	cam.tilt = 0.0
 	Settings.v["mmb_mode"] = 0
@@ -155,6 +158,7 @@ func _run() -> void:
 	held = cam.ground_point(mid)
 	y0 = cam.yaw
 	cam._unhandled_input(_pan(mid, Vector2(3, -2)))
+	await _settle(cam)
 	var under := mid - Vector2(3, -2) * px
 	_check("two fingers grab the map", held.distance_to(cam.ground_point(under)) < 0.5 and absf(cam.yaw - y0) < 0.001, "drift %.2f m" % held.distance_to(cam.ground_point(under)))
 	# ... with Option they turn and tilt, as a middle drag does

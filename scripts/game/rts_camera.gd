@@ -13,6 +13,7 @@ extends Node3D
 ## How far the camera pulls back (a bigger map wants a wider view).
 const MAX_DIST := 210.0
 const MIN_DIST := 12.0
+const MAX_PAN_SPEED := 120.0  # metres per second, including drag and Shift-pan
 ## The player's tilt is added to the pitch that comes with the zoom (low and
 ## level close in, steep from high up), within these bounds.
 const TILT_MIN := -26.0  # degrees: down towards a plan view
@@ -43,6 +44,7 @@ var _shake := 0.0
 var edge_pan := true
 var user_moved := false
 var _last_ms := 0
+var _pan_offset := Vector3.ZERO
 var _vel := Vector2.ZERO  # eased keyboard / edge pan, -1..1 on each screen axis
 
 # the middle-mouse drag: turning the view, or holding a spot on the ground under the cursor
@@ -90,6 +92,7 @@ func _ready() -> void:
 ## Jumps straight there (the minimap, test framing).
 func focus(p: Vector3) -> void:
 	focus_pos = _clamp_map(p)
+	_pan_offset = Vector3.ZERO
 	_gliding = false
 	_zoom_anchor = Vector3.INF
 	_apply()
@@ -104,6 +107,7 @@ func set_heading(y: float) -> void:
 ## Slides the view there instead of cutting, so you can see which way you went.
 ## Optionally to a zoom, a heading and a tilt as well.
 func glide_to(p: Vector3, zoom := -1.0, heading := NAN, to_tilt := NAN) -> void:
+	_pan_offset = Vector3.ZERO
 	_g_pos = [focus_pos, _clamp_map(p)]
 	_g_yaw = [yaw, yaw if is_nan(heading) else yaw + wrapf(heading - yaw, -PI, PI)]
 	_g_tilt = [tilt, tilt if is_nan(to_tilt) else to_tilt]
@@ -171,7 +175,7 @@ func two_finger(delta: Vector2, at: Vector2, turn := false) -> void:
 		# the middle rather than under the cursor, so a cursor up by the
 		# horizon doesn't send the map hundreds of metres)
 		var mid := get_viewport().get_visible_rect().size * 0.5
-		focus_pos = _clamp_map(focus_pos + Defs.flat(ground_point(mid) - ground_point(mid + fingers)))
+		_pan_offset += Defs.flat(ground_point(mid) - ground_point(mid + fingers))
 		stop_follow()
 	_apply()
 
@@ -286,6 +290,10 @@ func _view_process(_scaled_dt: float) -> void:
 	var now := Time.get_ticks_msec()
 	var dt := clampf((now - _last_ms) / 1000.0, 0.0, 0.1) if _last_ms > 0 else 0.016
 	_last_ms = now
+	var previous_focus := focus_pos
+	var pan_step := _pan_offset.limit_length(MAX_PAN_SPEED * dt)
+	focus_pos += pan_step
+	_pan_offset -= pan_step
 	var move := Vector2.ZERO
 	var turn := 0.0
 	var lift := 0.0
@@ -339,7 +347,7 @@ func _view_process(_scaled_dt: float) -> void:
 	_vel = _vel.lerp(move, 1.0 - exp(-dt * 14.0))
 	if move == Vector2.ZERO and _vel.length_squared() < 0.0001:
 		_vel = Vector2.ZERO
-	var spd := (12.0 + dist * 1.1) * float(Settings.get_v("cam_speed")) * (2.5 if fast else 1.0)
+	var spd := minf(MAX_PAN_SPEED, (12.0 + dist * 1.1) * float(Settings.get_v("cam_speed")) * (2.5 if fast else 1.0))
 	var fwd := Vector3(-sin(yaw), 0, -cos(yaw))
 	var right := Vector3(cos(yaw), 0, -sin(yaw))
 	focus_pos += (right * _vel.x - fwd * _vel.y) * spd * dt
@@ -348,6 +356,7 @@ func _view_process(_scaled_dt: float) -> void:
 	if zoom != 0.0:
 		target_dist = clampf(target_dist * exp(zoom * dt * 1.8), MIN_DIST, MAX_DIST)
 		_zoom_anchor = Vector3.INF
+	var was_gliding := _gliding
 	if _gliding:
 		_g_t = minf(1.0, _g_t + dt / _g_len)
 		var e := 1.0 - pow(1.0 - _g_t, 3.0)
@@ -388,6 +397,12 @@ func _view_process(_scaled_dt: float) -> void:
 		_apply()
 		if absf(dist - target_dist) < 0.02:
 			_zoom_anchor = Vector3.INF
+	var limited_focus := previous_focus.move_toward(focus_pos, MAX_PAN_SPEED * dt)
+	if focus_pos != limited_focus:
+		focus_pos = limited_focus
+		_apply()
+	if was_gliding and _g_moves:
+		_gliding = _g_t < 1.0 or focus_pos.distance_to(_g_pos[1]) > 0.01
 
 
 ## The pitch in degrees: the zoom's own, plus the player's tilt.
@@ -445,14 +460,14 @@ func _unhandled_input(ev: InputEvent) -> void:
 		if _mmb_pan and not _grab_far:
 			# the spot grabbed stays under the cursor, like dragging a paper map
 			var g := ground_point(mm.position)
-			focus_pos = _clamp_map(focus_pos + Defs.flat(_grab - g))
+			_pan_offset = Defs.flat(_grab - g)
 		elif _mmb_pan:
 			# grabbed out by the horizon, where a pixel is many metres: pan at the
 			# scale of the middle of the screen instead, so the map doesn't lurch
 			var mpp := dist * 2.0 * tan(deg_to_rad(cam.fov * 0.5)) / maxf(1.0, get_viewport().get_visible_rect().size.y)
 			var fwd := Vector3(-sin(yaw), 0, -cos(yaw))
 			var right := Vector3(cos(yaw), 0, -sin(yaw))
-			focus_pos = _clamp_map(focus_pos + (fwd * mm.relative.y - right * mm.relative.x) * mpp)
+			_pan_offset += (fwd * mm.relative.y - right * mm.relative.x) * mpp
 		else:
 			yaw -= mm.relative.x * 0.006
 			tilt = clampf(tilt - mm.relative.y * 0.15, TILT_MIN, TILT_MAX)

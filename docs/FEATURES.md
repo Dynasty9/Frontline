@@ -1316,13 +1316,13 @@ question marks and ages. The minimap camera layer retains its drawing until the
 camera, focus, projection, ground or pointer changes; resize and rotation redraw
 all layers together.
 
-Clients build scenery in and around the camera's view first and cache visited models; distant models and
+Continuous camera movement (keys, edge pan, drag, follow and glides) is capped at 120 m/s; explicit minimap jumps remain immediate. Clients prepare scenery beyond the camera edges and retain already-built objects through a wider band when panning back. They cache visited models; distant models and
 cosmetic collision bodies remain inactive. The server still simulates the complete
 map. Nearby movement orders can reuse a checked route corridor, with separate
 destinations and invalidation when terrain or danger changes.
 
 Grass, bushes and stones are generated around the camera, beyond their visible
-fade distance. Panning reuses nearby chunks and evicts distant ones; returning
+fade distance. Chunks share meshes through MultiMesh instancing and upload their transforms and colors in one buffer. A preload area reaching 288 m in each direction and wider retention band give panning time to prepare vegetation before its 170 m fade range. Panning reuses nearby chunks and evicts distant ones; returning
 to an area recreates the same vegetation from its seed.
 
 The authoritative Rust runtime owns the complete battlefield: infantry, vehicles,

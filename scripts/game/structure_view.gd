@@ -82,6 +82,7 @@ func focus_at(pos: Vector3, camera: Camera3D = null) -> void:
 	_camera_id = camera_id
 	center = next
 	var visible_cells := {}
+	var retained_cells := {}
 	var low := next - Vector2i(REACH, REACH)
 	var high := next + Vector2i(REACH, REACH)
 	var planes: Array[Plane] = []
@@ -95,7 +96,7 @@ func focus_at(pos: Vector3, camera: Camera3D = null) -> void:
 		for corner in [Vector2.ZERO, Vector2(screen.x, 0), screen, Vector2(0, screen.y)]:
 			var point := camera.project_position(corner, camera.far)
 			bounds = bounds.expand(Vector2(point.x, point.z))
-		bounds = bounds.grow(CELL)
+		bounds = bounds.grow(CELL * 3.0)
 		low = Vector2i(floori(bounds.position.x / CELL), floori(bounds.position.y / CELL))
 		high = Vector2i(floori(bounds.end.x / CELL), floori(bounds.end.y / CELL))
 	for z in range(low.y, high.y + 1):
@@ -103,12 +104,17 @@ func focus_at(pos: Vector3, camera: Camera3D = null) -> void:
 			var key := Vector2i(x, z)
 			# Preload beyond the screen edges, including roofs and shadows.
 			var midpoint := Vector3((x + 0.5) * CELL, 48.0, (z + 0.5) * CELL)
-			var extent := Vector3(CELL, 80.0, CELL)
+			var extent := Vector3(CELL * 2.0, 80.0, CELL * 2.0)
 			var visible_cell := true
+			var retained_cell := true
 			for plane: Plane in planes:
 				if plane.distance_to(midpoint) > plane.normal.abs().dot(extent):
 					visible_cell = false
+				if plane.distance_to(midpoint) > plane.normal.abs().dot(extent + Vector3(CELL, 0, CELL)):
+					retained_cell = false
 					break
+			if retained_cell:
+				retained_cells[key] = true
 			if visible_cell:
 				visible_cells[key] = true
 	if visible_cells == active and not resident.is_empty():
@@ -119,6 +125,11 @@ func focus_at(pos: Vector3, camera: Camera3D = null) -> void:
 		for st: Structure in (cells.get(key, {}) as Dictionary).values():
 			wanted[st.eid] = st
 	for st: Structure in resident.values():
+		if is_instance_valid(st) and not st.gone and st.view_active:
+			for key: Vector2i in memberships.get(st.eid, []):
+				if retained_cells.has(key):
+					wanted[st.eid] = st
+					break
 		if not wanted.has(st.eid) and is_instance_valid(st) and not st.gone:
 			st.set_view_active(false)
 	resident = wanted

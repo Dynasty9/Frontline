@@ -3642,6 +3642,30 @@
       "source_ref": "codex/minimap-change-events",
       "sources": [],
       "output": null
+    },
+    {
+      "entry": "changelog/unreleased/camera-streaming.md",
+      "title": "Smoother camera movement through scenery",
+      "summary": "Prepare scenery before it enters view, reuse nearby vegetation, and keep camera panning at a manageable speed.",
+      "version": "unreleased",
+      "kind": "improved",
+      "medium": "text",
+      "stage": "text",
+      "rationale": "Scheduling and instance upload diagnostics are documented with limits. Matched rendered bush arrays validate unchanged geometry and placement; they do not depict live camera motion.",
+      "source_ref": "codex/combined-performance",
+      "sources": [
+        {
+          "file": "changelog/unreleased/camera-streaming/vegetation-before.png",
+          "sha256": "e81a2e41983f7dfe8a331217952761213f0918c71a40e56e9760db2a6c59db9b",
+          "caption": "before: same 1024-instance bush array, 2560x1440, Forward+, tests/fixtures/vegetation-buffer.tscn, FL_BUFFER_CAPTURE=1; pixel-identical uploads."
+        },
+        {
+          "file": "changelog/unreleased/camera-streaming/vegetation-after.png",
+          "sha256": "e81a2e41983f7dfe8a331217952761213f0918c71a40e56e9760db2a6c59db9b",
+          "caption": "after: same 1024-instance bush array, 2560x1440, Forward+, tests/fixtures/vegetation-buffer.tscn, FL_BUFFER_CAPTURE=1; pixel-identical uploads."
+        }
+      ],
+      "output": null
     }
   ],
   "layout_capture": {

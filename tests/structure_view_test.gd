@@ -65,6 +65,7 @@ func _ready() -> void:
 	check(not actual.model.visible and actual.body.collision_layer == 0, "Inactive scenery must leave rendering and cosmetic collision")
 	world.free()
 	check_camera_residency()
+	check_retention()
 	print("STRUCTURE_VIEW_TEST failures=%d" % failures)
 	get_tree().quit(1 if failures else 0)
 
@@ -105,6 +106,46 @@ func check_camera_residency() -> void:
 									if camera.is_position_in_frustum(point):
 										var cell := Vector2i(floori(x / StructureView.CELL), floori(z / StructureView.CELL))
 										check(view.active.has(cell), "Visible scenery must remain resident through tilt, rotation, zoom and resize")
+	view.free()
+	world.free()
+	viewport.free()
+
+
+func check_retention() -> void:
+	var viewport := SubViewport.new()
+	viewport.size = Vector2i(1280, 720)
+	add_child(viewport)
+	var camera := Camera3D.new()
+	camera.far = 700.0
+	viewport.add_child(camera)
+	var world := World.new()
+	var view := StructureView.new()
+	view.world = world
+	camera.position = Vector3(0, 100, 100)
+	camera.look_at(Vector3.ZERO)
+	view.focus_at(Vector3.ZERO, camera)
+	var items := []
+	for key: Vector2i in view.active:
+		var st := ViewStub.new()
+		st.eid = items.size() + 1
+		st.position = Vector3((key.x + 0.5) * view.CELL, 0, (key.y + 0.5) * view.CELL)
+		st.view_active = true
+		items.append(st)
+		view.add(st)
+	camera.position.x += 256.0
+	view.focus_at(Vector3(256, 0, 0), camera)
+	var retained := 0
+	for st in items:
+		var key := Vector2i(floori(st.position.x / view.CELL), floori(st.position.z / view.CELL))
+		if st.view_active and not view.active.has(key):
+			retained += 1
+	check(retained > 0, "A wider retention band must keep already-built scenery after it leaves the preload band")
+	camera.position.x += 10000.0
+	view.focus_at(Vector3(10256, 0, 0), camera)
+	for st in items:
+		check(not st.view_active, "Retention must not keep distant scenery active forever")
+		view.remove(st)
+		st.free()
 	view.free()
 	world.free()
 	viewport.free()
