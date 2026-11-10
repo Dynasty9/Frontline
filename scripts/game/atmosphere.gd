@@ -325,15 +325,16 @@ func _build_ground() -> void:
 	var cm_far := _grid_mesh(cs, maxf(step, 4.0))
 	for cx in GROUND_CHUNKS:
 		for cz in GROUND_CHUNKS:
+			var center := Vector3(-GROUND_HALF + (cx + 0.5) * cs, 0, -GROUND_HALF + (cz + 0.5) * cs)
+			var bounds := _ground_chunk_bounds(center, cs)
 			for far in [false, true]:
 				var mi := MeshInstance3D.new()
 				mi.mesh = cm_far if far else cm
 				mi.material_override = ground_mat
 				mi.layers = 5 | Res.GROUND_DECAL_LAYER
 				mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
-				mi.position = Vector3(-GROUND_HALF + (cx + 0.5) * cs, 0, -GROUND_HALF + (cz + 0.5) * cs)
-				# room for the displacement in the culling box
-				mi.custom_aabb = AABB(Vector3(-cs * 0.5, -5.0, -cs * 0.5), Vector3(cs, 517.0, cs))
+				mi.position = center
+				mi.custom_aabb = bounds
 				if far:
 					mi.visibility_range_begin = GROUND_LOD
 				else:
@@ -815,6 +816,31 @@ func set_town(r: Rect2) -> void:
 	Mats.set_shared(road_mat, &"town", Vector4(r.position.x, r.position.y, r.end.x, r.end.y))
 
 
+## Bound a chunk by its own geology and the allowed deformation.
+func _ground_chunk_bounds(center: Vector3, size: float) -> AABB:
+	# Godot measures visibility ranges from the AABB centre. A map-wide
+	# 512 m height allowance put that centre above even the near-detail range,
+	# so small craters disappeared into the coarse grid at ground level.
+	var low := 0.0
+	var high := 0.0
+	var form: Landform = world.terrain.landform
+	if not form.heights.is_empty():
+		low = INF
+		var start := Vector2(center.x - size * 0.5 + form.half, center.z - size * 0.5 + form.half) / Landform.STEP
+		var end := Vector2(center.x + size * 0.5 + form.half, center.z + size * 0.5 + form.half) / Landform.STEP
+		# Include neighbouring geology samples: bilinear heights cannot exceed
+		# their extrema. This runs at map setup, not every frame or explosion.
+		for z in range(maxi(0, floori(start.y) - 1), mini(form.n, ceili(end.y) + 2)):
+			for x in range(maxi(0, floori(start.x) - 1), mini(form.n, ceili(end.x) + 2)):
+				var h := form.heights[z * form.n + x]
+				low = minf(low, h)
+				high = maxf(high, h)
+		if maxf(absf(center.x), absf(center.z)) + size * 0.5 >= MapDims.HALF:
+			low = minf(low, 0.0)
+	# Craters clamp to -1.4/+0.55 m; the outer 8 m apron can reach sea floor.
+	return AABB(Vector3(-size * 0.5, low - 4.0, -size * 0.5), Vector3(size, high - low + 5.0, size))
+
+
 ## A square of ground `size` across in quads of `step` metres, centred on its origin.
 func _grid_mesh(size: float, step: float) -> ArrayMesh:
 	var n := int(round(size / step))
@@ -914,6 +940,10 @@ func _update_deform(dt: float) -> void:
 	if tm == null or tm.deform_img == null:
 		return
 	if not _surface_baked and not tm.landform.heights.is_empty():
+		# Joining clients install their geology after the view is constructed.
+		for child in get_children():
+			if child is MeshInstance3D and child != ground and child.material_override == ground_mat:
+				child.custom_aabb = _ground_chunk_bounds(child.position, GROUND_HALF * 2.0 / GROUND_CHUNKS)
 		ground_mat.set_shader_parameter("surface_bake", ImageTexture.create_from_image(tm.landform.bake_surface(sun.basis.z)))
 		ground_mat.set_shader_parameter("sun_direction", sun.basis.z)
 		_surface_baked = true
