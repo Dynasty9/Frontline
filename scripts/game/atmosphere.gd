@@ -1024,6 +1024,7 @@ uniform float sea_x = 1e9;
 varying vec3 wpos;
 varying float puddle;
 varying float terrain_sun;
+varying float rock_damp;
 
 float backdrop(vec2 p) {
 	float edge = max(abs(p.x), abs(p.y)) - __MAP_HALF__;
@@ -1212,11 +1213,23 @@ void fragment() {
 	float runoff = smoothstep(0.50, 0.68, texture(detail_tex, runoff_uv).r);
 	runoff *= smoothstep(0.55, 1.2, slope) * mix(0.25, 0.85, patch);
 	rock *= mix(vec3(1.0), vec3(0.56, 0.61, 0.63), runoff);
+	float wet_drainage = texture(detail_tex, runoff_uv * vec2(0.55, 1.4) + 0.37).r;
+	float tributaries = texture(detail_tex, runoff_uv * vec2(3.4, 0.7) + 0.11).r;
+	rock_damp = smoothstep(0.30, 0.50, wet_drainage * 0.75 + tributaries * 0.25);
+	rock_damp *= mix(0.42, 1.0, shelter) * smoothstep(0.35, 1.0, slope);
+	rock_damp *= 1.0 - smoothstep(snow_line * 0.75, snow_line * 1.1, geology);
+	rock *= mix(vec3(1.0), vec3(0.27, 0.34, 0.38), rock_damp);
 	float rock_height = mix(rock_sample.a, scree_sample.a, scree * 0.7);
 	float grass_detail = dot(moss_sample.rgb, vec3(0.2126, 0.7152, 0.0722));
 	float alpine_soil = clamp(0.52 + (habitat_bake.g - 0.5) * 1.3 + geometric.z * 0.18 - slope * 0.14, 0.0, 1.0);
 	float alpine_dry = smoothstep(0.25, 0.85, 1.0 - alpine_soil + (patch - 0.5) * 0.12);
 	vec3 moss = mix(vec3(0.05, 0.078, 0.025), vec3(0.115, 0.12, 0.06), alpine_dry) * (0.60 + grass_detail * 1.6);
+	// Broad soil pockets connect the meadow colours; fine noise only supplies texture.
+	float meadow = smoothstep(0.25, 0.72, region * 0.15 + patch * 0.2 + alpine_soil * 0.65);
+	float turf = (1.0 - smoothstep(0.35, 0.9, slope)) * (1.0 - smoothstep(0.65, 1.0, geology / max(snow_line, 1.0)));
+	vec3 dry_turf = vec3(0.135, 0.132, 0.065) * (0.65 + grass_detail * 1.3);
+	vec3 rich_turf = moss * vec3(0.88, 1.0, 0.91);
+	moss = mix(moss, mix(dry_turf, rich_turf, meadow), turf * 0.72);
 	moss *= mix(0.93, 1.07, patch);
 	vec3 rock_n; vec3 scree_n; vec3 moss_n;
 	vec2 rock_data = surface_data(rock_normal, rock_uv, weights, geometric, rock_n);
@@ -1256,9 +1269,17 @@ void fragment() {
 	snow_field += (macro - 0.5) * 0.45 + lee * 0.18 + (0.5 - rock_height) * 0.22;
 	float snow = height_blend(rock_height, 0.6, smoothstep(-0.16, 0.20, snow_field));
 	snow *= 1.0 - smoothstep(0.85, 2.1, slope);
+	float scoured = smoothstep(0.46, 0.72, rock_sample.a * 0.38 + macro * 0.38 + patch * 0.24);
+	snow *= 1.0 - scoured * smoothstep(0.22, 0.95, slope) * 0.88;
+	snow = height_blend(rock_sample.a, scree_sample.a, snow);
 	snow *= clean;
+	// Wind ripples are resolved only while they cover several pixels.
+	float snow_phase = dot(p, vec2(0.8, 0.6)) * 1.3 + (macro - 0.5) * 7.0 + patch * 9.0;
+	float snow_resolved = 1.0 - smoothstep(0.5, 2.5, fwidth(snow_phase));
+	float snow_ripple = sin(snow_phase) * snow_resolved * smoothstep(0.18, 0.65, macro) * 0.65;
+	snow_ripple += sin(snow_phase * 0.47 + macro * 6.0) * (1.0 - smoothstep(0.5, 2.5, fwidth(snow_phase * 0.47))) * 0.35;
 	vec3 snow_color = mix(vec3(0.65, 0.75, 0.84), vec3(0.88, 0.90, 0.92), smoothstep(-0.3, 0.6, lee + macro));
-	col = mix(col, snow_color * (0.95 + d3 * 0.05), snow);
+	col = mix(col, snow_color * (0.94 + d3 * 0.06 + snow_ripple * 0.018), snow);
 	vec2 material_data = mix(moss_data, rock_data, exposed);
 	// Combine photographic crevices with broad shelter; do not bake a second direct-light shadow.
 	float crevice = clamp(rock_data.x * mix(1.0, 0.72, shelter), 0.25, 1.0);
@@ -1274,7 +1295,9 @@ void fragment() {
 	ALBEDO = col * (1.0 - aerial);
 	EMISSION = air_color * aerial * 0.65;
 	ROUGHNESS = mix(mix(0.96, 0.82, dirt_m), clamp(material_data.y, 0.55, 1.0), clean);
-	ROUGHNESS = mix(ROUGHNESS, mix(0.74, 0.94, macro), snow);
+	ROUGHNESS = mix(ROUGHNESS, clamp(mix(0.68, 0.94, macro) + snow_ripple * 0.06, 0.6, 1.0), snow);
+	rock_damp *= exposed * clean * (1.0 - snow);
+	ROUGHNESS = mix(ROUGHNESS, 0.28, rock_damp);
 	ROUGHNESS = mix(ROUGHNESS, 0.55, wet * 0.5);
 	ROUGHNESS = mix(ROUGHNESS, 0.45, max(wm.a * 0.8, wet_sand * 0.6));
 	ROUGHNESS = mix(ROUGHNESS, 0.16, puddle);
@@ -1294,6 +1317,7 @@ void fragment() {
 	n = normalize(mix(n, mapped, 0.85 * clean * (1.0 - snow)));
 	n = surface_relief(n, mineral * 0.28, exposed * clean * (1.0 - snow) * smoothstep(0.3, 1.0, slope));
 	n = normalize(mix(n, geometric, snow * 0.9));
+	n = surface_relief(n, snow_ripple * 0.065 + scree_sample.a * 0.025, snow);
 	n = normalize(mix(n, vec3(0.0, 1.0, 0.0), puddle * 0.9));
 	NORMAL = normalize((VIEW_MATRIX * vec4(n, 0.0)).xyz);
 }
@@ -1310,10 +1334,11 @@ void light() {
 	}
 	float ndl = clamp(dot(NORMAL, LIGHT), 0.0, 1.0);
 	DIFFUSE_LIGHT += ndl * ATTENUATION * LIGHT_COLOR / PI * cloud;
-	if (wet > 0.0) {
+	// shortcut: Compatibility produces bright facets with this seepage lobe; retain colour and roughness until its lighting path is fixed.
+	if (wet > 0.0 || (!OUTPUT_IS_SRGB && rock_damp > 0.0)) {
 		vec3 hv = normalize(LIGHT + VIEW);
 		float sp = pow(clamp(dot(NORMAL, hv), 0.0, 1.0), mix(16.0, 60.0, puddle));
-		SPECULAR_LIGHT += sp * ATTENUATION * LIGHT_COLOR * wet * (0.03 + puddle * 0.2) * cloud;
+		SPECULAR_LIGHT += sp * ATTENUATION * LIGHT_COLOR * (wet * (0.03 + puddle * 0.2) + (OUTPUT_IS_SRGB ? 0.0 : rock_damp * 0.045)) * cloud;
 	}
 }
 """

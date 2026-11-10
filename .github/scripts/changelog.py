@@ -204,6 +204,12 @@ def image_url(r: dict, e: dict, s: dict) -> str:
     return f"https://raw.githubusercontent.com/{REPO}/{ref}/changelog/{r['tag']}/{e['slug']}/{s['file']}"
 
 
+def video_links(r: dict, e: dict, video: dict) -> str:
+    format_name = Path(video["file"]).suffix[1:].upper()
+    return (f"[Watch: {video['caption']}]({WEBSITE}/changelog/#{r['tag']}) "
+            f"([Direct {format_name}]({image_url(r, e, video)}))")
+
+
 def release_url(r: dict) -> str:
     return f"https://github.com/{REPO}/releases/tag/{r['tag']}"
 
@@ -273,14 +279,14 @@ def build() -> None:
                 for shot in lead_shots:
                     md += [f"![{shot['caption']}](changelog/{r['tag']}/{e['slug']}/{shot['file']})", ""]
                 for video in e["videos"][:1]:
-                    md += [f"[Watch: {video['caption']}]({WEBSITE}/changelog/#{r['tag']})", ""]
+                    md += [video_links(r, e, video), ""]
                 extra_shots = e["screenshots"] if e["videos"] else e["screenshots"][1:]
                 if e["body"] or extra_shots or len(e["videos"]) > 1:
                     md += ["<details>", "<summary>Explore this change</summary>", "", e["body"], ""]
                     for shot in extra_shots:
                         md += [f"![{shot['caption']}](changelog/{r['tag']}/{e['slug']}/{shot['file']})", ""]
                     for video in e["videos"][1:]:
-                        md += [f"[Watch: {video['caption']}]({WEBSITE}/changelog/#{r['tag']})", ""]
+                        md += [video_links(r, e, video), ""]
                     md += ["</details>", ""]
                 if e["layout_comparison"]:
                     layout = e["layout_comparison"]
@@ -307,14 +313,14 @@ def notes(version: str) -> str:
             for shot in ([] if e["videos"] else e["screenshots"][:1]):
                 out += [f"![{shot['caption']}]({image_url(r, e, shot)})", ""]
             for video in e["videos"][:1]:
-                out += [f"[Watch: {video['caption']}]({WEBSITE}/changelog/#{r['tag']})", ""]
+                out += [video_links(r, e, video), ""]
             extra_shots = e["screenshots"] if e["videos"] else e["screenshots"][1:]
             if e["body"] or extra_shots or len(e["videos"]) > 1:
                 out += ["<details>", "<summary>Explore this change</summary>", "", e["body"], ""]
                 for shot in extra_shots:
                     out += [f"![{shot['caption']}]({image_url(r, e, shot)})", ""]
                 for video in e["videos"][1:]:
-                    out += [f"[Watch: {video['caption']}]({WEBSITE}/changelog/#{r['tag']})", ""]
+                    out += [video_links(r, e, video), ""]
                 out += ["</details>", ""]
             if e["layout_comparison"]:
                 layout = e["layout_comparison"]
