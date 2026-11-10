@@ -307,6 +307,9 @@ static func _pane(k: VehicleModels, parent: Node3D, key: String, c: Array, insid
 		var q := a.lerp(b, uv.y)
 		ra.append(q + nrm * out)
 		rb.append(q + nrm * (out + thick))
+	if mat == "glass" and (key.begins_with("civ_off_") or key.begins_with("civ_hb") or key.begins_with("civ_suv")) and not key.ends_with("_roof"):
+		VehicleCab.mesh_glass(k, parent, VehicleModels.solid([ra, rb], key))
+		return null
 	return k._add(parent, VehicleModels.solid([ra, rb], key), mat, col, Vector3.ZERO, Vector3.ZERO, Vector3.ONE, mat != "glass")
 
 
@@ -532,12 +535,12 @@ static func _offroad(k: VehicleModels, team: int, seed: int, v: String) -> void:
 	# glasshouse: windscreen raked hard back, a short cab with its back window
 	var lo := _ring([-0.86, -0.92, 0.86, -0.92, 0.86, 0.32, -0.86, 0.32], 1.21)
 	var hi := _ring([-0.71, -0.3, 0.71, -0.3, 0.73, 0.26, -0.73, 0.26], 1.79)
-	_yloft(k, m, "civ_off_gh", [[-0.86, -0.92, 0.86, -0.92, 0.86, 0.32, -0.86, 0.32], [-0.71, -0.3, 0.71, -0.3, 0.73, 0.26, -0.73, 0.26]], [1.21, 1.79], 0.05, "car_paint", col)
+	_glasshouse(k, m, "civ_off", lo, hi, 0.04, col)
 	var inside := Vector3(0, 1.5, -0.2)
 	_pane(k, m, "civ_off_ws", _face(lo, hi, 0), inside, 0.03, 0.97, 0.04, 0.95, 0.0, 0.012, "glass")
 	_pane(k, m, "civ_off_bw", _face(lo, hi, 2), inside, 0.12, 0.88, 0.22, 0.86, 0.0, 0.012, "glass")
-	_pane(k, m, "civ_off_swr", _face(lo, hi, 1), inside, 0.66, 0.97, 0.08, 0.9, 0.0, 0.012, "glass")
-	_pane(k, m, "civ_off_swl", _face(lo, hi, 3), inside, 0.03, 0.34, 0.08, 0.9, 0.0, 0.012, "glass")
+	_pane(k, m, "civ_off_swr", _face(lo, hi, 1), inside, 0.06, 0.94, 0.08, 0.9, 0.0, 0.012, "glass")
+	_pane(k, m, "civ_off_swl", _face(lo, hi, 3), inside, 0.06, 0.94, 0.08, 0.9, 0.0, 0.012, "glass")
 	# doors: shut lines, handles, mirrors; side steps under them
 	for s in [-1.0, 1.0]:
 		for z in [-0.88, 0.22]:
@@ -1344,7 +1347,39 @@ static func _glasshouse(k: VehicleModels, parent: Node3D, key: String, lo: Packe
 		mid.append(hi[i].lerp(lo[i], t))
 		var flat := Vector3(c.x, hi[i].y, c.z)
 		top.append(hi[i] + (flat - hi[i]).normalized() * ch)
-	k._add(parent, VehicleModels.solid([lo, mid, top], key + "_gh"), "car_paint", col, Vector3.ZERO)
+	k._add(parent, VehicleModels.solid([mid, top], key + "_open_roof"), "car_paint", col, Vector3.ZERO)
+	var inside := VehicleModels._centroid(lo).lerp(c, 0.5)
+	for face in 4:
+		var corners := _face(lo, hi, face)
+		var openings: Array = [[0.03, 0.97]]
+		var v0 := 0.04
+		var v1 := 0.95
+		if face == 2:
+			openings = [[0.12, 0.88]] if key == "civ_off" else ([[0.1, 0.9]] if key == "civ_suv" else [[0.08, 0.92]])
+			v0 = 0.22 if key == "civ_off" else (0.16 if key == "civ_suv" else 0.12)
+			v1 = 0.86 if key == "civ_off" else (0.88 if key == "civ_suv" else 0.9)
+		elif face in [1, 3]:
+			openings = [[0.06, 0.94]] if key == "civ_off" else ([[0.03, 0.43], [0.47, 0.8]] if key == "civ_suv" else [[0.04, 0.42], [0.47, 0.75], [0.79, 0.9]])
+			v0 = 0.08 if key == "civ_off" else (0.1 if key == "civ_suv" else 0.07)
+			v1 = 0.88 if key == "civ_suv" else 0.9
+			if face == 3:
+				openings.reverse()
+				for i in openings.size():
+					openings[i] = [1.0 - openings[i][1], 1.0 - openings[i][0]]
+		# Fill the complement of the actual window apertures, including the
+		# wide C-pillars. This preserves the coupe and pickup silhouettes.
+		_pane(k, parent, "%s_sill_%d" % [key, face], corners, inside, 0, 1, 0, v0, 0, 0.03, "car_paint", col)
+		_pane(k, parent, "%s_header_%d" % [key, face], corners, inside, 0, 1, v1, 1, 0, 0.03, "car_paint", col)
+		var last := 0.0
+		for i in openings.size() + 1:
+			var finish: float = openings[i][0] if i < openings.size() else 1.0
+			_pane(k, parent, "%s_pillar_%d_%d" % [key, face, i], corners, inside, last, finish, v0, v1, 0, 0.035, "car_paint", col)
+			if i < openings.size():
+				last = openings[i][1]
+	var height := hi[0].y - lo[0].y
+	var sc := Vector3(absf(lo[0].x) / 1.17, height / 0.91, (hi[2].z - hi[0].z) / 1.51)
+	VehicleCab.interior(k, Vector3(0, lo[0].y - 1.95 * sc.y, hi[2].z + 2.91 * sc.z), sc)
+
 
 
 ## The bits every car has: the chassis under it, wipers, a tow eye.

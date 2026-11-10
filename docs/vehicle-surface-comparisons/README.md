@@ -1,5 +1,7 @@
 # Vehicle surface comparisons
 
+Latest: [roster detail rollout with both palettes and matched close-ups](roster-detail.md).
+
 The roster images below record the CC0 pass at `f0b8191`. The subsequent focused
 [HEMTT cargo rebuild](hemtt-rebuild.md) has its own matched close and wide comparisons.
 

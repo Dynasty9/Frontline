@@ -1259,17 +1259,16 @@ static func _typhoon(k: VehicleModels, team: int) -> void:
 	k._box(m, Vector3(0.95, 0.28, 8.4), Vector3(0, 0.96, 0.05), "gunmetal_w")
 	var cab := [
 		_sec(-4.45, 0.86, 1.32, 1.04, 1.38, 1.08, 2.0, 1.03, 2.05),
-		_sec(-4.15, 1.04, 1.3, 1.24, 1.36, 1.27, 2.1, 1.13, 3.12),
-		_sec(-2.32, 1.04, 1.3, 1.24, 1.36, 1.27, 2.1, 1.15, 3.14),
-		_sec(-2.24, 1.0, 1.34, 1.2, 1.4, 1.23, 2.1, 1.1, 3.08)]
-	k._add(m, VehicleModels.solid(cab, "csat_typh_cab"), c, null, Vector3.ZERO)
+		_sec(-4.15, 1.04, 1.3, 1.24, 1.36, 1.27, 2.1, 1.27, 2.1),
+		_sec(-2.32, 1.04, 1.3, 1.24, 1.36, 1.27, 2.1, 1.27, 2.1),
+		_sec(-2.24, 1.0, 1.34, 1.2, 1.4, 1.23, 2.1, 1.23, 2.1)]
+	k._add(m, VehicleModels.solid(cab, "csat_typh_open_cab"), c, null, Vector3.ZERO)
+	VehicleCab.upper(k, Vector2(1.27, 1.14), Vector2(2.1, 3.12), Vector2(-4.44, -4.15), -2.27, c)
 	# the bumper block under the cab's nose
 	k._add(m, VehicleModels.loft("csat_typh_bump", [-1.18, -4.6, 1.18, -4.6, 1.18, -3.75, -1.18, -3.75], [-1.22, -4.66, 1.22, -4.66, 1.22, -3.72, -1.22, -3.72], 0.72, 1.34), c, null, Vector3.ZERO)
 	# the windscreen: two big flat panes, a pillar between them
 	var wu := Vector3(0, 1.07, 0.3).normalized()
 	var wn := Vector3(0, 0.3, -1.07).normalized()
-	for s in [-1.0, 1.0]:
-		_onface(k, m, Vector3(s * 0.52, 2.6, -4.3), wn, wu, Vector3(0.9, 0.84, 0.03), "glass", null, 0.0, false)
 	_onface(k, m, Vector3(0, 2.6, -4.3), wn, wu, Vector3(0.12, 1.0, 0.04), c)
 	_onface(k, m, Vector3(0, 3.06, -4.18), wn, wu, Vector3(2.1, 0.1, 0.06), c)
 	# the grille on the cab front, headlights and tow hooks in the bumper
@@ -1282,8 +1281,6 @@ static func _typhoon(k: VehicleModels, team: int) -> void:
 		var sn := Vector3(s * 0.99, 0.136, 0)
 		var sup := Vector3(s * -0.14, 1.02, 0)
 		# door window and the small one behind it, the door seam and handle
-		_onface(k, m, Vector3(s * 1.2, 2.62, -3.55), sn, sup, Vector3(0.72, 0.62, 0.03), "glass", null, 0.0, false)
-		_onface(k, m, Vector3(s * 1.2, 2.66, -2.7), sn, sup, Vector3(0.4, 0.5, 0.03), "glass", null, 0.0, false)
 		for dz in [-4.0, -3.0]:
 			_onface(k, m, Vector3(s * 1.25, 1.9, dz), sn, sup, Vector3(0.025, 1.12, 0.02), "gunmetal_w", null, 0.0, false)
 		k._box(m, Vector3(0.05, 0.05, 0.18), Vector3(s * 1.29, 2.05, -3.15), "gunmetal_w", null, Vector3.ZERO, false)
@@ -1304,12 +1301,12 @@ static func _typhoon(k: VehicleModels, team: int) -> void:
 		k._box(m, Vector3(0.56, 0.05, 2.4), Vector3(s * 1.0, 1.35, 2.28), "gunmetal_w")
 		_taillight(k, m, Vector3(s * 0.95, 0.98, 4.48))
 	# fuel tank and battery box on the frame, the exhaust stack behind the cab
-	k._box(m, Vector3(0.5, 0.52, 1.4), Vector3(0.95, 0.95, -1.2), "steel", Color(0.32, 0.31, 0.25))
+	k._box(m, Vector3(0.5, 0.52, 1.4), Vector3(0.95, 0.95, -1.2), "paint", Color(0.32, 0.31, 0.25))
 	k._box(m, Vector3(0.5, 0.45, 0.8), Vector3(-0.95, 0.95, -1.5), "gunmetal_w")
 	_tube(k, m, Vector3(1.05, 1.3, -2.18), Vector3(1.05, 3.25, -2.18), 0.06, "gunmetal_w", null, 8)
 	k._box(m, Vector3(0.18, 0.7, 0.12), Vector3(1.05, 2.4, -2.1), "gunmetal_w")
 	# the rear underrun bar
-	k._box(m, Vector3(2.2, 0.14, 0.14), Vector3(0, 0.75, 4.45), "steel", Color(0.3, 0.29, 0.25))
+	k._box(m, Vector3(2.2, 0.14, 0.14), Vector3(0, 0.75, 4.45), "paint", Color(0.3, 0.29, 0.25))
 	# roof: hatch, antennas, a light
 	_hatch(k, m, Vector3(0.3, 3.13, -3.0), 0.3)
 	_antenna(k, m, Vector3(-0.85, 3.12, -2.5), 2.0)

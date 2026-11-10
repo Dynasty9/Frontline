@@ -28,9 +28,12 @@ terrain materials keep their existing presets.
 These are base values; the shader adds small roughness variation and dust.
 Paint stays nonmetallic. Rust coverage reduces exposed metal’s reflectivity. Automotive and marine
 finishes have a clearcoat. Fighter canopy coatings retain their explicit tinted
-metal response; ordinary glass is dielectric. Most glazing stays opaque because those models lack interiors. The HEMTT cargo
-cab now has a modeled interior and four separate transparent panes, with opaque
-window fallbacks at 100 m; these bypass the shared opaque-material bake.
+metal response; ordinary glass is dielectric. Glazing over solid bodies stays opaque. `VehicleCab` supplies separate transparent panes and
+100 m opaque fallbacks for the hollow HEMTT, Zamak and Tempest cabs and the Offroad,
+hatchback and SUV glasshouses. These bypass the shared opaque-material bake; wrecks
+omit the intact panes. `VehicleCloth` shares draped cargo shells and fitted restraints.
+The shared wheel builder uses cached rounded tyre/rim meshes, road or offroad tread,
+and smooth aircraft tyres. All rubber and rim detail remains on the wheel pivot.
 
 ## Using a surface
 
