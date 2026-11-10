@@ -478,7 +478,9 @@ func _define_parts() -> void:
 					parts.append(_part(Vector3(x, 2.1, z), Vector3(0.25, 4.2, 0.25), Nav.SOLID, Nav.LOW, false, false, C_WOOD))
 			parts.append(_part(Vector3(0, 4.1, 0), Vector3(3.0, 0.25, 3.0), Nav.FREE, Nav.FREE, false, true, C_WOOD))
 			parts.append(_part(Vector3(0, 4.7, -1.45), Vector3(3.0, 0.95, 0.15), Nav.FREE, Nav.FREE, false, true, C_WOOD))
-			parts.append(_part(Vector3(0, 4.7, 1.45), Vector3(3.0, 0.95, 0.15), Nav.FREE, Nav.FREE, false, true, C_WOOD))
+			# Leave the ladder opening clear so a climber can step onto the platform.
+			for x in [-0.95, 0.95]:
+				parts.append(_part(Vector3(x, 4.7, 1.45), Vector3(1.1, 0.95, 0.15), Nav.FREE, Nav.FREE, false, true, C_WOOD))
 			parts.append(_part(Vector3(-1.45, 4.7, 0), Vector3(0.15, 0.95, 3.0), Nav.FREE, Nav.FREE, false, true, C_WOOD))
 			parts.append(_part(Vector3(1.45, 4.7, 0), Vector3(0.15, 0.95, 3.0), Nav.FREE, Nav.FREE, false, true, C_WOOD))
 		"hmg_nest":
@@ -587,6 +589,12 @@ func _make_body() -> void:
 
 func is_mount() -> bool:
 	return skind in ["mg_nest", "hmg_nest", "watchtower", "mortar_pit", "at_post"]
+
+
+func ladder_pos(progress: float) -> Vector3:
+	var t := clampf(progress, 0.0, 1.0)
+	# WorksModels.tower places the inclined ladder at z=1.95..1.42.
+	return position + Basis(Vector3.UP, yaw) * Vector3(0, t * 4.25, lerpf(1.95, 1.42, t) + 0.28)
 
 
 func mount_pos() -> Vector3:

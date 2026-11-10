@@ -1372,11 +1372,13 @@ func pose(dt: float, life: int, posture: int, act: int, speed: float, backwards:
 				elif act == Soldier.Act.IDLE_LAUGH: activity = "mixamo_activities__Laughing"
 				elif act == Soldier.Act.IDLE_STRETCH: activity = "mixamo_activities__Arm_Stretching"
 				elif act == Soldier.Act.IDLE_LOOK: activity = "mixamo_activities__Rifle_Idle"
+				elif act == Soldier.Act.MELEE: activity = "mixamo_activities__Rifle_Punch"
+				elif act == Soldier.Act.CLIMB: activity = "mixamo_activities__Climbing_Ladder"
 			if act == Soldier.Act.THROW and posture == Soldier.Post.PRONE and skinned.native_player != null and skinned.native_player.has_animation("mixamo_prone__Throw_Grenade"):
 				activity = "mixamo_prone__Throw_Grenade"
 			if act == Soldier.Act.THROW and posture == Soldier.Post.CROUCH and skinned.native_player != null and skinned.native_player.has_animation("mixamo_activities__Crouch_Throw_Grenade"):
 				activity = "mixamo_activities__Crouch_Throw_Grenade"
-			var captured_activity := (speed < 0.1 or act in [Soldier.Act.THROW, Soldier.Act.LIMP]) and not crew and skinned.native_player != null and not activity.is_empty() and skinned.native_player.has_animation(activity)
+			var captured_activity := (speed < 0.1 or act in [Soldier.Act.THROW, Soldier.Act.LIMP, Soldier.Act.CLIMB]) and not crew and skinned.native_player != null and not activity.is_empty() and skinned.native_player.has_animation(activity)
 			var captured_prone := rifle_driver != null and posture == Soldier.Post.PRONE and (speed < 0.1 or skinned.native_player.has_animation(rifle_driver.PRONE_PACK + "Prone_Forward")) and act in [Soldier.Act.IDLE, Soldier.Act.SHOOT, Soldier.Act.RELOAD, Soldier.Act.CRAWL] and not crew and not over_wall and skinned.native_player.has_animation(rifle_driver.PRONE_CLIP)
 			if not captured_prone and not (posture == Soldier.Post.PRONE and captured_activity): _native_prone = false
 			if captured_activity:
@@ -1389,8 +1391,8 @@ func pose(dt: float, life: int, posture: int, act: int, speed: float, backwards:
 						rifle_driver._legacy_prone(dt)
 					else:
 						rifle_driver.advance(dt, Vector3.FORWARD.rotated(Vector3.UP, move_yaw) * speed, posture == Soldier.Post.CROUCH, true)
-				skinned.pose_activity(dt, activity, act_time if act == Soldier.Act.THROW else -1.0, posture == Soldier.Post.PRONE, speed, act == Soldier.Act.IDLE_LOOK)
-				if act == Soldier.Act.IDLE_LOOK and rifle_driver != null: rifle_driver._hold_rifle(1.0)
+				skinned.pose_activity(dt, activity, act_time if act == Soldier.Act.THROW else -1.0, posture == Soldier.Post.PRONE, speed, act in [Soldier.Act.IDLE_LOOK, Soldier.Act.MELEE], act_time)
+				if act in [Soldier.Act.IDLE_LOOK, Soldier.Act.MELEE] and rifle_driver != null: rifle_driver._hold_rifle(1.0)
 			elif captured_prone:
 				if not _native_prone:
 					rifle_driver.prone_time = 0.0

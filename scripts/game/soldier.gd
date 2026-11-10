@@ -106,6 +106,8 @@ var door_wait := 0.0  # stopped at a shut door: kicking it in, or opening it
 var bt_clear := false  # (breach) clearing a house nobody's known to be in
 var bt_nofrag := false  # (breach) going in without a grenade first
 var door_kick := false
+const LADDER_SECONDS := 4.0
+const LADDER_EXIT_SECONDS := 0.8
 var door_st: Structure = null
 var _door_t := 0.0
 var goal := Vector3.ZERO
@@ -3589,7 +3591,7 @@ func start_man(st: Structure) -> void:
 	task_ent = st
 	mounted = st
 	task_phase = 0
-	go_to(Vector3(st.mount_pos().x, 0, st.mount_pos().z) + (Defs.flat(position - st.position).normalized() * 1.8 if st.skind == "watchtower" else Vector3.ZERO), "task", 1)
+	go_to(st.ladder_pos(0.0) if st.skind == "watchtower" else Vector3(st.mount_pos().x, 0, st.mount_pos().z), "task", 1)
 
 
 func release_mount() -> void:
@@ -3616,6 +3618,7 @@ func _man_tick(dt: float) -> void:
 	if st == null or st.gone or not st.built:
 		release_mount()
 		return
+	if st.skind == "watchtower" and task_phase < 2: posture = Post.STAND
 	match task_phase:
 		0:
 			if is_moving():
@@ -3624,8 +3627,9 @@ func _man_tick(dt: float) -> void:
 				return
 			if st.skind == "watchtower":
 				task_phase = 1
-				task_t = 1.6
-				position = st.position
+				task_t = LADDER_SECONDS + LADDER_EXIT_SECONDS
+				position = st.ladder_pos(0.0)
+				rotation.y = st.yaw
 			else:
 				task_phase = 2
 				position = st.mount_pos()
@@ -3639,8 +3643,11 @@ func _man_tick(dt: float) -> void:
 						say("Manning the gun!", true)
 		1:
 			task_t -= dt
-			act = Act.CLIMB
-			position.y = st.position.y + lerpf(0.0, 4.25, clampf(1.0 - task_t / 1.6, 0.0, 1.0))
+			var elapsed := LADDER_SECONDS + LADDER_EXIT_SECONDS - task_t
+			act = Act.CLIMB if elapsed < LADDER_SECONDS else Act.WALK
+			position = st.ladder_pos(elapsed / LADDER_SECONDS)
+			if elapsed >= LADDER_SECONDS:
+				position = position.lerp(st.mount_pos(), clampf((elapsed - LADDER_SECONDS) / LADDER_EXIT_SECONDS, 0.0, 1.0))
 			if task_t <= 0.0:
 				task_phase = 2
 				base_y = 4.25

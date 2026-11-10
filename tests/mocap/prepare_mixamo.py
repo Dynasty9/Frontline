@@ -2,6 +2,8 @@
 from pathlib import Path
 import shutil
 import zipfile
+import hashlib
+import json
 
 root = Path(__file__).resolve().parents[2] / 'assets/local_mocap/mixamo'
 downloads = Path.home() / 'Downloads'
@@ -29,4 +31,13 @@ for filename in ['Rifle Jump In Place.fbx', 'Talking.fbx', 'Laughing.fbx', 'Arm 
     if (downloads / filename).exists():
         (root / 'activities').mkdir(parents=True, exist_ok=True)
         shutil.copy2(downloads / filename, root / 'activities' / filename)
+manifest = Path(__file__).resolve().parents[2] / 'assets/infantry/additional-clips.json'
+for clip in json.loads(manifest.read_text())['clips']:
+    source = downloads / clip['download']
+    if not source.exists():
+        continue
+    # Generic Mixamo names such as Walking can refer to unrelated downloads.
+    if hashlib.sha256(source.read_bytes()).hexdigest() != clip['sha256']:
+        raise ValueError(f"Different download at {source}; preserve the installed clip")
+    shutil.copy2(source, root / 'activities' / clip['installed'])
 print('Installed Mixamo files under', root)

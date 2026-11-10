@@ -74,7 +74,19 @@ static func install(actor: SkinnedRifleman, gameplay := false) -> Dictionary:
 					animation.track_set_path(track, path)
 					animation.position_track_insert_key(track, 0.0, rest.origin)
 			_retarget(animation, source, actor)
+			if key == "mixamo_activities__Climbing_Ladder":
+				# The server supplies ladder elevation; retain only the captured body's bob.
+				var path := NodePath(String(actor.get_path_to(actor.skeleton)) + ":" + String(actor.skeleton.get_bone_name(int(actor.bones["Hips"]))))
+				var track := animation.find_track(path, Animation.TYPE_POSITION_3D)
+				var first: Vector3 = animation.track_get_key_value(track, 0)
+				var last: Vector3 = animation.track_get_key_value(track, animation.track_get_key_count(track) - 1)
+				animation.set_meta("climb_distance", absf(last.y - first.y))
+				for frame in animation.track_get_key_count(track):
+					var position: Vector3 = animation.track_get_key_value(track, frame)
+					position.y += actor.target_rest[int(actor.bones["Hips"])].origin.y - lerpf(first.y, last.y, animation.track_get_key_time(track, frame) / animation.length)
+					animation.track_set_key_value(track, frame, position)
 			animation.loop_mode = Animation.LOOP_LINEAR
+			if key.ends_with("Rifle_Punch"): animation.loop_mode = Animation.LOOP_NONE
 			for action in ["Smash", "Dive_Roll", "Jump", "Stop", "Start", "Turn", "Throw", "Reloading", "Death", "Reaction", "Transition", "To_Prone", "To_Kneel", "To_Stand", "To_Down", "To_Aim", "to_kneel", "to_stand", "Getting_Up", "transition", "reloading", "hit_reaction", "dying", "toss", "jump", "start", "stop", "turn", "Entering", "Exiting"]:
 				if action in key: animation.loop_mode = Animation.LOOP_NONE
 			library.add_animation(key, animation)

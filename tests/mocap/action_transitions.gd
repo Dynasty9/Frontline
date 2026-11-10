@@ -12,8 +12,11 @@ func _ready() -> void:
 			assert(soldier.weapon.visible, "Rifle disappeared during an unarmed activity")
 			largest = maxf(largest, previous.distance_to(soldier.weapon.global_position))
 			previous = soldier.weapon.global_position
-		assert(soldier.weapon_stowed, "Activity left the rifle in the working hand")
-		assert(soldier.joint("RightHand").origin.distance_to(soldier.weapon.global_position) > 0.15)
+		if action == Soldier.Act.CRAWL:
+			assert(proxy._native_prone and not soldier.weapon_stowed, "Captured rifle crawl lost its held weapon")
+		else:
+			assert(soldier.weapon_stowed, "Activity left the rifle in the working hand")
+			assert(soldier.joint("RightHand").origin.distance_to(soldier.weapon.global_position) > 0.15)
 		for frame in 90:
 			proxy.pose(dt, Soldier.Life.ALIVE, Soldier.Post.STAND, Soldier.Act.SHOOT, 0.0, false, true)
 			largest = maxf(largest, previous.distance_to(soldier.weapon.global_position))

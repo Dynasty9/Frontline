@@ -694,11 +694,13 @@ func pose_native(dt: float, clip: String) -> void:
 	last_velocity = Vector3.ZERO
 
 
-func pose_activity(dt: float, clip: String, throw_time := -1.0, prone_throw := false, move_speed := 0.0, keep_rifle := false) -> void:
+func pose_activity(dt: float, clip: String, throw_time := -1.0, prone_throw := false, move_speed := 0.0, keep_rifle := false, action_time := -1.0) -> void:
 	if _activity_clip != clip or _pose_mode not in [20, 21, 24]:
 		_activity_clock = 0.0
-		_pose_mode = -1
+		# Preserve the outgoing pose when changing activities, including two clips in mode 20.
+		if _pose_mode in [20, 21, 24]: _pose_mode = 19
 	_begin_pose(24 if throw_time >= 0.0 else (21 if clip.ends_with("Digging") else 20))
+	if clip.ends_with("Rifle_Punch"): _transition_duration = 0.16
 	var full_body_throw := clip == "mixamo_prone__Throw_Grenade"
 	var lower: Array[Transform3D] = []
 	if throw_time >= 0.0:
@@ -716,8 +718,19 @@ func pose_activity(dt: float, clip: String, throw_time := -1.0, prone_throw := f
 		var animation := native_player.get_animation(clip)
 		var travel: Vector3 = animation.get_meta("root_travel", Vector3.ZERO)
 		var rate := move_speed * animation.length / travel.length() if move_speed > 0.0 and travel.length() > 0.05 else 1.0
+		if clip.ends_with("Climbing_Ladder"):
+			# Match the authoritative watchtower ascent instead of sliding between rungs.
+			rate = (4.25 / Soldier.LADDER_SECONDS) * animation.length / maxf(0.1, animation.get_meta("climb_distance", 0.5))
 		_activity_clock += dt * rate
-		native_player.seek(fmod(_activity_clock, animation.length) if animation.loop_mode != Animation.LOOP_NONE else minf(_activity_clock, animation.length), true)
+		var sample_time := fmod(_activity_clock, animation.length) if animation.loop_mode != Animation.LOOP_NONE else minf(_activity_clock, animation.length)
+		if clip.ends_with("Rifle_Punch") and action_time >= 0.0:
+			# Omit the long walk-up so the strike meets the authoritative melee hit.
+			sample_time = lerpf(0.45, 1.1, clampf(action_time / 0.55, 0.0, 1.0))
+		native_player.seek(sample_time, true)
+		if clip.ends_with("Climbing_Ladder"):
+			var hips := joint("Hips")
+			hips.basis = Basis(global_basis.y, PI) * hips.basis
+			set_world(int(bones["Hips"]), hips)
 	if throw_time >= 0.0 and not full_body_throw:
 		var native_hips := skeleton.get_bone_pose(int(bones["Hips"])).basis
 		for name in bones:
@@ -731,7 +744,7 @@ func pose_activity(dt: float, clip: String, throw_time := -1.0, prone_throw := f
 			skeleton.set_bone_pose(spine_index, spine)
 	_apply_hit(dt)
 	_blend_pose(0.0 if throw_time >= 0.0 and not full_body_throw else dt)
-	if throw_time < 0.0: _ground_feet(move_speed, dt)
+	if throw_time < 0.0 and not clip.ends_with("Climbing_Ladder") and not clip.ends_with("Rifle_Punch"): _ground_feet(move_speed, dt)
 	# The sling follows the captured torso, leaving both hands free.
 	weapon.global_transform = joint("RightHand") * native_socket if keep_rifle else joint("Spine2") * _sling_socket
 	weapon.visible = true

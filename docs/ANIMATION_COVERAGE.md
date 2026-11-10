@@ -1,11 +1,10 @@
 # Imported infantry animation coverage
 
-Audited 2026-11-05 against the shared SoldierModel routing and local Mixamo files.
+Audited 2026-11-09 against the shared SoldierModel routing and local Mixamo files.
 This is routing coverage, not visual approval. A clip appearing in the viewer does not mean gameplay uses it.
 
-## Procedural action routes (22)
+## Actions without a dedicated captured gameplay route (20)
 
-- `MELEE`
 - `HEAL`
 - `DRAG`
 - `CARRY`
@@ -20,7 +19,6 @@ This is routing coverage, not visual approval. A clip appearing in the viewer do
 - `PICKUP`
 - `PISTOL`
 - `LAUNCH`
-- `CLIMB`
 - `IDLE_SIT`
 - `IDLE_CHECK`
 - `KICK`
@@ -103,3 +101,9 @@ Focused captured-prone, stance interruption, native grip/hit recovery and crouch
 - Catalog searches for surrender returned no matches; hands up and healing returned unrelated fantasy/combat results. No suitable medical or surrender clip was established by those searches.
 
 Downloads were completed through the native Save dialogs. Source FBXs remain ignored local evaluation assets. This pass does not claim that all remaining actions, mounted guns, paired casualties or vehicle interactions are finished.
+
+## Bundled actions (2026-11-09)
+
+All eleven additional SWAT-targeted downloads are in the runtime package (262 animation scenes plus SWAT). Rifle Punch now drives standing MELEE with a trimmed 0.55-second strike; Climbing Ladder drives CLIMB with vertical root travel removed. Watchtower approach/ascent follows the rear ladder and exits through a railing opening. Activity entry and sling recovery are blended.
+
+Carrying Idle/Walk/Run/Turn/Stop and Being Carried Start/Loop/Stop remain inspection clips: they depict a single-person carry, not the two-bearer stretcher used in gameplay. Rifle Turn And Kick also remains inspection-only because gameplay KICK includes low grenade kicks and the downloaded motion turns away before a high door kick. These are explicit fit limitations, not completed gameplay replacements.

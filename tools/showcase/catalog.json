@@ -3859,6 +3859,32 @@
         }
       ],
       "output": "changelog/unreleased/bundled-infantry/runtime.jpg"
+    },
+    {
+      "entry": "changelog/unreleased/captured-infantry-actions.md",
+      "medium": "motion",
+      "rationale": "Rendered shared gameplay action entry and recovery plus actual watchtower traversal; before shows the prior centre ascent.",
+      "stage": "captured_actions.tscn SWAT; ladder_traversal.tscn motion seed 3, yaw 0.7; Compatibility 1280x900. Before climb sampled at 0.9 s, after at 2.2 s due slower ascent. Baseline fixture has no terrain textures.",
+      "source_ref": "c89c8754",
+      "sources": [
+        {
+          "file": "changelog/unreleased/captured-infantry-actions/ladder.jpg",
+          "sha256": "7b7293de56cb66dafd4a3b07a519ff0a941de776afa5d7a298a9fcb82be050a5"
+        },
+        {
+          "file": "changelog/unreleased/captured-infantry-actions/ladder-before.jpg",
+          "sha256": "2f2367412b27e7ed33fd2cc4b8a1e41aa2811c10656f983b46cf57b229115c08"
+        },
+        {
+          "file": "changelog/unreleased/captured-infantry-actions/melee.jpg",
+          "sha256": "cb77b52b8721c5bc20b5adc72752e3f27a1e21d813c29162768315cb034f955a"
+        },
+        {
+          "file": "changelog/unreleased/captured-infantry-actions/actions.mp4",
+          "sha256": "bc6c29b585d47efb10ddbe9ffb60e617777b3a64595325b69a1b6e1293379a43"
+        }
+      ],
+      "output": "changelog/unreleased/captured-infantry-actions/melee.jpg"
     }
   ],
   "layout_capture": {

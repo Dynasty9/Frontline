@@ -17,7 +17,7 @@ func _initialize() -> void:
 			assert(not instance.find_children("*", "AnimationPlayer", true, false).is_empty())
 		instance.free()
 		scenes += 1
-	assert(scenes == 252)
+	assert(scenes == 263)
 	assert(ResourceLoader.exists("res://assets/local_mocap/runtime/m4.scn"))
-	print("INFANTRY PACK CHECK PASS 252 scenes, no raw sources or animation meshes")
+	print("INFANTRY PACK CHECK PASS 263 scenes, no raw sources or animation meshes")
 	quit()
