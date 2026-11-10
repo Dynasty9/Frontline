@@ -198,21 +198,12 @@ static func _rz(pts: Array, z: float) -> PackedVector3Array:
 
 ## A cylinder from a to b (radius ra at a, rb at b).
 static func _tube(k: VehicleModels, p: Node3D, a: Vector3, b: Vector3, ra: float, mat: String, col = null, segs := 8, rb := -1.0, shadow := true) -> Variant:
-	var d := b - a
-	var l := d.length()
-	if l < 1e-4:
-		return null
-	var dn := d / l
-	var q := Quaternion(Vector3.UP, dn) if dn.dot(Vector3.UP) > -0.9999 else Quaternion(Vector3.RIGHT, PI)
-	return k._cyl(p, rb if rb >= 0.0 else ra, ra, l, (a + b) * 0.5, Basis(q).get_euler(), mat, col, segs, shadow)
+	return VehicleFrames.tube(k, p, a, b, ra, mat, col, segs, shadow, rb)
 
 
 ## A tube along a polyline.
 static func _path(k: VehicleModels, p: Node3D, pts: Array, r: float, mat: String, col = null, segs := 8) -> void:
-	for i in pts.size() - 1:
-		_tube(k, p, pts[i], pts[i + 1], r, mat, col, segs)
-		if i > 0:
-			k._add(p, Res.sphere(r, segs), mat, col, pts[i])
+	VehicleFrames.path(k, p, pts, r, mat, col, segs)
 
 
 ## A box in a rotated frame (base, about origin) without a pivot node of its

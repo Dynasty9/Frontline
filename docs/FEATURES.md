@@ -1145,8 +1145,13 @@ Ambush Alley autoplay can call its existing mortar support against spotted, stop
   behind separate transparent panes. Offroad pickups, hatchbacks and SUVs have open glasshouses with
   their original window outlines and painted pillars. Glass switches to opaque panes beyond 100 m;
   wrecks lose intact glazing. Rounded tyres, recessed rims and rotating tread extend across shared
-  wheeled models, with finer road tread and smooth aircraft tyres. Tracked road wheels retain their
-  specialised builders. HEMTT and Zamak cargo covers share draped cloth and fitted restraints.
+  wheeled models, with finer road tread and smooth aircraft tyres. Tracked road wheels share twin tyres, recessed discs and hub bolts while retaining
+  family-specific spoke patterns and sprockets. HEMTT and Zamak cargo covers share draped cloth and fitted restraints.
+- **Reusable vehicle components** (`vehicle_wheels.gd`, `vehicle_tracks.gd`, `vehicle_frames.gd`,
+  `vehicle_glazing.gd`): running and spare tyres share profiles; tank and ED-1 track shoes follow each
+  vehicle's own outline. Frames, struts, rails and window seals use common builders. Clear panes require
+  an open cab; armoured panes stay opaque. Parked civilian cars have fitted windscreens, divided side
+  windows and mirrors. See [the component guide](vehicle-components.md) and [roster review](vehicle-component-review/README.md).
 - Explosions are layered GPU particles: a flash and light burst, a rolling fireball that cools from the edges in
   until it's dark smoke, a lit smoke column that drifts with the wind, a dirt plume, sparks and debris that
   bounce on the ground, a rolling dust ring, a faint heat-shimmer shockwave and a scorch mark. Heavy rounds

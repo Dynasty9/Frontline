@@ -383,43 +383,8 @@ func _pivot(parent: Node3D, pos: Vector3) -> Node3D:
 
 ## Wheel with tyre and hub on a spinning pivot (axis X).
 func _wheel(parent: Node3D, pos: Vector3, r: float, w: float, hub_kind := "gunmetal_w", hub_col = null) -> Node3D:
-	var pv := _pivot(parent, pos)
-	# Rounded shoulders and recessed rims share meshes at every wheel size.
-	# Tiny trolley wheels and broad tracked road wheels retain their solid discs.
-	if r < 0.18 or w > r * 1.2:
-		_cyl(pv, r, r, w, Vector3.ZERO, Vector3(0, 0, PI / 2), "rubber", null, 24)
-	else:
-		_add(pv, tyre_ring(0.50, 1.0), "rubber", Color(0.17, 0.18, 0.17), Vector3.ZERO, Vector3(0, 0, PI / 2), Vector3(r, w / 0.50, r))
-		if surface_family != "aircraft":
-			var offroad := surface_family == "armor" and r >= 0.4
-			var count := 36 if offroad else 48
-			for i in count:
-				for row in [-1.0, 1.0]:
-					var a := TAU * (float(i) + (0.45 if row > 0 else 0.0)) / float(count)
-					var depth := r * (0.055 if offroad else 0.018)
-					_box(pv, Vector3(w * 0.43, depth, r * (0.13 if offroad else 0.095)), Vector3(row * w * 0.24, cos(a) * r * 0.975, sin(a) * r * 0.975), "rubber", Color(0.20, 0.21, 0.19), Vector3(a, row * 0.20, 0))
-	_cyl(pv, r * 0.54, r * 0.54, w * 0.67, Vector3.ZERO, Vector3(0, 0, PI / 2), hub_kind, hub_col, 32, false)
-	for side in [-1.0, 1.0]:
-		_add(pv, tyre_ring(0.49, 0.55), hub_kind, hub_col, Vector3(side * w * 0.37, 0, 0), Vector3(0, 0, PI / 2), Vector3.ONE * r, false)
-		for i in 8:
-			var a := TAU * i / 8.0
-			_cyl(pv, r * 0.03, r * 0.03, w * 0.08, Vector3(side * w * 0.38, sin(a) * r * 0.31, cos(a) * r * 0.31), Vector3(0, 0, PI / 2), "steel", Color(0.35, 0.36, 0.33), 6, false)
-	_cyl(pv, r * 0.23, r * 0.26, w * 0.89, Vector3.ZERO, Vector3(0, 0, PI / 2), hub_kind, hub_col, 20, false)
-	wheels.append(pv)
-	return pv
-
-
-## Cached unit rings keep rounded tyres and rim lips affordable across the roster.
-static func tyre_ring(inner: float, outer: float) -> TorusMesh:
-	var key := "tyre_ring_%s_%s" % [inner, outer]
-	if not _cache.has(key):
-		var mesh := TorusMesh.new()
-		mesh.inner_radius = inner
-		mesh.outer_radius = outer
-		mesh.rings = 40
-		mesh.ring_segments = 12
-		_cache[key] = mesh
-	return _cache[key]
+	var profile := "aircraft" if surface_family == "aircraft" else ("offroad" if surface_family == "armor" and r >= 0.4 else "road")
+	return VehicleWheels.pneumatic(self, parent, pos, r, w, hub_kind, hub_col, profile)
 
 
 func _team_mark(parent: Node3D, team: int, pos: Vector3, s: Vector3) -> void:
@@ -660,13 +625,19 @@ func _car(v: int, col: Color) -> void:
 	var bz: float = hz[2]
 	var by: float = hz[3]
 	if not burnt:
-		var wl := Vector2(tz - fz, ty - fy).length()
-		_box(m, Vector3(hw * 2.0 - 0.12, wl - 0.08, 0.03), Vector3(0, (fy + ty) * 0.5, (fz + tz) * 0.5 - 0.015), "glass", null, Vector3(-atan2(tz - fz, ty - fy), 0, 0), false)
-		if v != 2:
-			var rl := Vector2(bz - rz, by - ry).length()
-			_box(m, Vector3(hw * 2.0 - 0.14, rl - 0.1, 0.03), Vector3(0, (ry + by) * 0.5, (rz + bz) * 0.5 + 0.015), "glass", null, Vector3(atan2(bz - rz, ry - by) if absf(by - ry) > 0.01 else 0.0, 0, 0), false)
-		for s in [-1.0, 1.0]:
-			_box(m, Vector3(0.02, (ty - fy) * 0.62, (rz - tz) + 0.25), Vector3(s * (hw + 0.005), fy + (ty - fy) * 0.5, (tz + rz) * 0.5), "glass", null, Vector3.ZERO, false)
+		var inside := Vector3(0, (fy + ty) * 0.5, (fz + bz) * 0.5)
+		var front_face := [Vector3(-hw, fy, fz), Vector3(hw, fy, fz), Vector3(hw, ty, tz), Vector3(-hw, ty, tz)]
+		var rear_face := [Vector3(hw, by, bz), Vector3(-hw, by, bz), Vector3(-hw, ry, rz), Vector3(hw, ry, rz)]
+		VehicleGlazing.quad(self, m, key + "front_glass", front_face, inside, Rect2(0.06, 0.08, 0.88, 0.84), 0.012, 0.012, "glass")
+		VehicleGlazing.quad(self, m, key + "rear_glass", rear_face, inside, Rect2(0.08, 0.12, 0.84, 0.76), 0.012, 0.012, "glass")
+		for side in [-1.0, 1.0]:
+			var face := [Vector3(side * hw, fy, fz), Vector3(side * hw, by, bz), Vector3(side * hw, ry, rz), Vector3(side * hw, ty, tz)]
+			var panes := 1 if v == 2 else 2
+			for pane in panes:
+				VehicleGlazing.quad(self, m, key + "side_%s_%d" % [side, pane], face, inside, Rect2(0.06 + pane * 0.46, 0.13, 0.88 if panes == 1 else 0.42, 0.74), 0.012, 0.012, "glass")
+			VehicleFrames.tube(self, m, Vector3(side * hw, fy + 0.10, fz + 0.25), Vector3(side * (w + 0.14), fy + 0.13, fz + 0.22), 0.025, "rubber")
+			_box(m, Vector3(0.09, 0.13, 0.21), Vector3(side * (w + 0.14), fy + 0.16, fz + 0.22), "rubber")
+			_box(m, Vector3(0.025, 0.035, 0.15), Vector3(side * (w + 0.01), fy - 0.07, (fz + bz) * 0.5), "steel")
 	# bumpers, lights, plate
 	var front: float = body[0] if v != 2 else body[0]
 	var bf: float = minf(body[0], body[body.size() - 2])

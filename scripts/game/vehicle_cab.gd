@@ -42,7 +42,7 @@ static func interior(k: VehicleModels, origin := Vector3.ZERO, scale := Vector3.
 	rim.rings = 32
 	rim.ring_segments = 8
 	k._add(m, rim, "rubber", null, Vector3(-0.60, 2.26, -3.97), Vector3(0.65, 0, 0))
-	VmNato._tube(k, m, Vector3(-0.60, 1.97, -4.14), Vector3(-0.60, 2.26, -3.97), 0.035, "gunmetal_w")
+	VehicleFrames.tube(k, m, Vector3(-0.60, 1.97, -4.14), Vector3(-0.60, 2.26, -3.97), 0.035, "gunmetal_w")
 	k._box(m, Vector3(0.45, 0.13, 0.10), Vector3(-0.60, 2.17, -4.15), "rubber")
 	for x in [-0.73, -0.59, -0.47]:
 		k._cyl(m, 0.04, 0.04, 0.012, Vector3(x, 2.18, -4.09), Vector3(PI / 2, 0, 0), "glass", Color(0.30, 0.32, 0.24), 12, false)
@@ -83,11 +83,8 @@ static func upper(k: VehicleModels, widths: Vector2, heights: Vector2, front: Ve
 
 
 static func window(k: VehicleModels, size: Vector2, pos: Vector3, rot: Vector3) -> void:
-	var basis := Basis.from_euler(rot)
-	for side in [-1.0, 1.0]:
-		k._box(k.root, Vector3(0.035, size.y + 0.04, 0.035), pos + basis * Vector3(side * size.x * 0.5, 0, 0), "rubber", null, rot, false)
-		k._box(k.root, Vector3(size.x, 0.035, 0.035), pos + basis * Vector3(0, side * size.y * 0.5, 0), "rubber", null, rot, false)
-	glass(k, size, pos, rot)
+	VehicleGlazing.rectangle(k, k.root, size, pos, rot, true)
+
 
 
 static func _materials() -> void:

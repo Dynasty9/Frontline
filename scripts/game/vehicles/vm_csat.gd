@@ -105,7 +105,7 @@ static func _aim_y(d: Vector3, xh := Vector3.RIGHT) -> Vector3:
 
 ## A round bar from a to b.
 static func _tube(k: VehicleModels, p: Node3D, a: Vector3, b: Vector3, r: float, mat: String, col = null, segs := 8, shadow := true) -> Variant:
-	return k._add(p, Res.cyl(r, r, (b - a).length(), segs), mat, col, (a + b) * 0.5, _aim_y(b - a), Vector3.ONE, shadow)
+	return VehicleFrames.tube(k, p, a, b, r, mat, col, segs, shadow)
 
 
 ## A flat plate whose length runs from a to b, `w` wide (along x unless the
@@ -117,6 +117,8 @@ static func _plate(k: VehicleModels, p: Node3D, a: Vector3, b: Vector3, w: float
 ## A pane (glass, a hatch, a grille) lying on a sloped face: centre c, `up`
 ## the in-face direction its height runs along, size (width along x, height).
 static func _pane(k: VehicleModels, p: Node3D, c: Vector3, up: Vector3, s: Vector2, mat: String, col = null, t := 0.03, xh := Vector3.RIGHT) -> Variant:
+	if mat == "glass":
+		return VehicleGlazing.rectangle(k, p, s, c, _aim_y(up, xh), false, col, t)
 	var u := up.normalized() * s.y * 0.5
 	return _plate(k, p, c - u, c + u, s.x, t, mat, col, xh, false)
 
@@ -323,14 +325,11 @@ static func _ifrit(k: VehicleModels, team: int, arm: String) -> void:
 	# the rear: the door with its window and hinges, the spare wheel, the step
 	k._box(m, Vector3(0.8, 1.2, 0.04), Vector3(0.38, 1.66, 3.17), c)
 	if not k.burnt:
-		k._box(m, Vector3(0.36, 0.26, 0.02), Vector3(0.38, 1.98, 3.195), "glass", null, Vector3.ZERO, false)
+		VehicleGlazing.rectangle(k, m, Vector2(0.36, 0.26), Vector3(0.38, 1.98, 3.195), Vector3.ZERO)
 	for hy in [1.25, 2.05]:
 		k._box(m, Vector3(0.06, 0.12, 0.06), Vector3(0.78, hy, 3.19), "gunmetal_w", null, Vector3.ZERO, false)
 	k._box(m, Vector3(0.05, 0.16, 0.05), Vector3(0.05, 1.6, 3.21), "gunmetal_w", null, Vector3.ZERO, false)
-	var sp := k._pivot(m, Vector3(-0.5, 1.62, 3.38))
-	k._cyl(sp, 0.52, 0.52, 0.36, Vector3.ZERO, Vector3(PI / 2, 0, 0), "rubber", null, 18)
-	k._cyl(sp, 0.3, 0.3, 0.38, Vector3.ZERO, Vector3(PI / 2, 0, 0), "gunmetal_w", null, 12)
-	k._cyl(sp, 0.12, 0.12, 0.42, Vector3.ZERO, Vector3(PI / 2, 0, 0), "gunmetal_w", null, 8)
+	VehicleWheels.spare(k, m, Vector3(-0.5, 1.62, 3.38), 0.52, 0.36, Vector3(PI / 2, 0, 0))
 	k._box(m, Vector3(0.5, 0.08, 0.12), Vector3(-0.5, 1.62, 3.2), "gunmetal_w")
 	k._box(m, Vector3(1.7, 0.08, 0.3), Vector3(0, 0.66, 3.2), "steel", Color(0.3, 0.29, 0.25))
 	_tow(k, m, Vector3(0, 0.75, 3.18), 1.0)
@@ -419,9 +418,7 @@ static func _qilin(k: VehicleModels, team: int, arm: String) -> void:
 		_tow(k, m, Vector3(s * 0.4, 0.45, -2.42), -1.0)
 	_tube(k, m, Vector3(-0.32, 0.86, -2.6), Vector3(0.32, 0.86, -2.6), 0.03, "gunmetal_w", null, 6)
 	# the spare wheel upright on the tail, jerrycans beside it
-	var sp := k._pivot(m, Vector3(0, 0.98, 2.56))
-	k._cyl(sp, 0.4, 0.4, 0.28, Vector3.ZERO, Vector3(PI / 2, 0, 0), "rubber", null, 18)
-	k._cyl(sp, 0.23, 0.23, 0.3, Vector3.ZERO, Vector3(PI / 2, 0, 0), "gunmetal_w", null, 12)
+	VehicleWheels.spare(k, m, Vector3(0, 0.98, 2.56), 0.4, 0.28, Vector3(PI / 2, 0, 0))
 	for s in [-1.0, 1.0]:
 		_jerrycan(k, m, Vector3(s * 0.56, 1.2, 2.3), OLIVE, Vector3(0, PI / 2, 0))
 	# the roll cage
@@ -511,13 +508,7 @@ static func _onface(k: VehicleModels, p: Node3D, c: Vector3, n: Vector3, ay: Vec
 
 ## A road wheel spinning about x: rubber tyre, painted disc, hub.
 static func _rwheel(k: VehicleModels, p: Node3D, pos: Vector3, r: float, w: float, col := WHEEL_PAINT) -> Node3D:
-	var pv := k._pivot(p, pos)
-	var rx := Vector3(0, 0, PI / 2)
-	k._cyl(pv, r, r, w, Vector3.ZERO, rx, "rubber", null, 18)
-	k._cyl(pv, r * 0.84, r * 0.84, w + 0.03, Vector3.ZERO, rx, "paint", col, 18)
-	k._cyl(pv, r * 0.22, r * 0.26, w + 0.1, Vector3.ZERO, rx, "gunmetal_w", null, 8, false)
-	k.wheels.append(pv)
-	return pv
+	return VehicleWheels.road(k, p, pos, r, w, "paint", col)
 
 
 ## A toothed drive sprocket spinning about x.
@@ -550,22 +541,9 @@ static func _running_gear(k: VehicleModels, p: Node3D, x: float, w: float, f: Ve
 	for i in 5:
 		var a := deg_to_rad(-60.0 + i * 37.5)
 		pts.append(Vector2(r.x + cos(a) * (r.z + t), r.y + sin(a) * (r.z + t)))
-	var cen := Vector2.ZERO
-	for q in pts:
-		cen += q
-	cen /= pts.size()
 	var top_y := maxf(f.y + f.z, r.y + r.z)
 	for s in [-1.0, 1.0]:
-		for i in pts.size():
-			var a2: Vector2 = pts[i]
-			var b2: Vector2 = pts[(i + 1) % pts.size()]
-			var d := b2 - a2
-			var mid := (a2 + b2) * 0.5
-			var nn := Vector2(d.y, -d.x).normalized()
-			if nn.dot(mid - cen) < 0.0:
-				nn = -nn
-			var cc := mid - nn * t * 0.5
-			k._box(p, Vector3(w, t, d.length() + t * 0.7), Vector3(s * x, cc.y, cc.x), "track", null, Vector3(atan2(-d.y, d.x), 0, 0))
+		VehicleTracks.shoes(k, p, s * x, w, PackedVector2Array(pts), t, 0.20, false, false, t * 0.5)
 		for z in road:
 			_rwheel(k, p, Vector3(s * x, rr + t, z), rr, w * 0.72)
 		for z in rollers:
@@ -1371,9 +1349,7 @@ static func _tempest(k: VehicleModels, team: int, kind: String) -> void:
 			k._box(m, Vector3(0.1, 0.12, 0.1), Vector3(0.6, 3.1, 0.6), "gunmetal_w")
 			k._box(m, Vector3(0.12, 0.2, 0.12), Vector3(0.6, 3.3, 0.18), "gunmetal_w")
 			# a spare wheel standing on the platform, a welding bottle rack
-			var sp := k._pivot(m, Vector3(-0.55, 2.14, 3.6))
-			k._cyl(sp, 0.6, 0.6, 0.45, Vector3.ZERO, Vector3(PI / 2, 0, 0), "rubber", null, 18)
-			k._cyl(sp, 0.36, 0.36, 0.47, Vector3.ZERO, Vector3(PI / 2, 0, 0), "gunmetal_w", null, 12)
+			VehicleWheels.spare(k, m, Vector3(-0.55, 2.14, 3.6), 0.6, 0.45, Vector3(PI / 2, 0, 0))
 			for i in 2:
 				k._cyl(m, 0.1, 0.1, 0.9, Vector3(-0.95, 1.95, 2.55 + i * 0.25), Vector3.ZERO, "paint", Color(0.25, 0.32, 0.3) if i == 0 else Color(0.5, 0.42, 0.2), 10)
 		"medical":

@@ -378,16 +378,8 @@ static func _gear_nodes(k: VehicleModels, with_up := true) -> Array:
 
 ## A wheel turning about x at pos: the tyre's rounded section, the hub and its
 ## bolt circle. Not spun by the game (aircraft wheels in flight stay put).
-static func _wheel(k: VehicleModels, p: Node3D, key: String, pos: Vector3, r: float, w: float) -> void:
-	var prof := [Vector2(r * 0.6, -w * 0.47), Vector2(r * 0.8, -w * 0.5), Vector2(r * 0.94, -w * 0.43), Vector2(r, -w * 0.25),
-		Vector2(r, w * 0.25), Vector2(r * 0.94, w * 0.43), Vector2(r * 0.8, w * 0.5), Vector2(r * 0.6, w * 0.47)]
-	k._add(p, _lathe(key + "_tyre", prof, 22, 40.0), "rubber", null, pos, Vector3(0, PI / 2, 0))
-	k._cyl(p, r * 0.6, r * 0.6, w * 0.92, pos, Vector3(0, 0, PI / 2), "steel", Color(0.55, 0.56, 0.55), 16, false)
-	k._cyl(p, r * 0.3, r * 0.34, w * 1.02, pos, Vector3(0, 0, PI / 2), "gunmetal_w", null, 12, false)
-	for sd in [-1.0, 1.0]:
-		for i in 6:
-			var a := TAU * i / 6.0
-			k._cyl(p, 0.018, 0.018, 0.03, pos + Vector3(sd * w * 0.5, sin(a) * r * 0.42, cos(a) * r * 0.42), Vector3(0, 0, PI / 2), "gunmetal_w", null, 6, false)
+static func _wheel(k: VehicleModels, p: Node3D, _key: String, pos: Vector3, r: float, w: float) -> void:
+	VehicleWheels.pneumatic(k, p, pos, r, w, "steel", Color(0.55, 0.56, 0.55), "aircraft", false)
 
 
 # --- A-10C Thunderbolt II -----------------------------------------------------------
