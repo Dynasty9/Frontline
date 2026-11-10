@@ -2,6 +2,9 @@ class_name Res
 extends RefCounted
 ## Cached primitive meshes and materials so thousands of parts share resources.
 
+## Ground decals must not project onto walls, vehicles or transparent effects.
+const GROUND_DECAL_LAYER := 1 << 3
+
 static var _mats := {}
 static var _meshes := {}
 

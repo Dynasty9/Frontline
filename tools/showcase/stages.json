@@ -253,5 +253,46 @@
       "look_lift": 1.2
     },
     "events": "Fuel size 2 at 0.5 s inside the tank wreck; HE size 1.4 at 4.5 s, 0.35 m behind stone cover. Actual showroom terrain; normal speed."
+  },
+  "blast-ground": {
+    "scene": "tests/fixtures/blast-world-clips.tscn",
+    "seconds": 12,
+    "fps": 24,
+    "engine_fixed_fps": 24,
+    "timeout": 1800,
+    "crf": 30,
+    "seed": 712,
+    "camera": {
+      "fov_degrees": 48,
+      "soil_xz": [
+        4,
+        6
+      ],
+      "soil_offset": [
+        6,
+        5,
+        9
+      ],
+      "soil_close_offset": [
+        3,
+        2.2,
+        4.5
+      ],
+      "push_in_seconds": [
+        3.7,
+        4.8
+      ],
+      "wall_xz": [
+        -30,
+        25.4
+      ],
+      "wall_offset": [
+        4,
+        3.5,
+        8
+      ],
+      "look_lift": 0.3
+    },
+    "events": "HE size 1.4 at 0.5 and 6.5 seconds. Two six-second shots. Stamps the same terrain deformation as Combat after each visual event, without entity damage. Holds each crater after dust clears; ground.json records measured depth."
   }
 }

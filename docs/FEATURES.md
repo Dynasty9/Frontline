@@ -1139,6 +1139,9 @@ Ambush Alley autoplay can call its existing mortar support against spotted, stop
   Six directional lighting channels let them respond to the battlefield's sun and sky. Two elevation views and
   motion-assisted frame blending preserve detail as the cloud rolls and expands. Depth fading softens its
   contact with scenery. Road and rubble bursts are greyer; mud and rain suppress the fine dust.
+  The initial flash uses the immediate shared batch, followed by thinner soil dust that clears sooner than
+  fuel smoke. Ground-only decals keep scorch off walls and smoke. HE leaves lighter char, while crater
+  shading follows the fine height field so the bowl and raised rim remain legible.
   Each blast uses one pooled surface. Per-frame bounds trim empty pixels before drawing; quality sets the pool
   budget, and quality and distance limit interpolation. Low and medium settings leave optical-flow maps unloaded
   until a higher-quality burst needs them.

@@ -21,6 +21,7 @@ lead artifact; original notes and supporting media remain under **Explore this c
 | Battlefield effects reel | All armaments over real terrain, followed by a night flare | `battlefield-effects`: 28 seconds, showroom seed 712, fixed 24 Hz, Forward+ |
 | Battlefield blast | Earth and dust against real terrain and cover | `blast-close` / `blast-rts`: showroom seed 712, day, fixed 24 Hz |
 | Cloud intersections | Fuel inside tank armor and HE against stone cover | `blast-cover`: two four-second shots, showroom seed 712, fixed 24 Hz |
+| Ground damage and blast timing | Immediate flash, lighter dust and actual crater aftermath | `blast-ground`: two six-second HE shots, open ground and stone cover, fixed 24 Hz |
 | Text | Reliability, compatibility, unrecorded sound or unmeasured performance | Short player outcome and original detail |
 
 The website uses the main site’s Signal tokens and shadcn/Radix components.
@@ -119,6 +120,13 @@ release evidence uses the registered 24 Hz preset.
 For a matched shader-only comparison, the fixture accepts `--cloud-shader=/absolute/path/to/historical.gdshader`.
 Record the historical shader's revision and hash, and the current fixture revision;
 this is a controlled shader comparison, not a full historical build.
+
+Battlefield blast stages now perform the terrain stamp normally called by Combat,
+in addition to the visual event. They still do not damage entities. The full reel
+also uploads terrain updates while its atmosphere clock is paused. `blast-ground`
+holds the crater after the dust clears and moves closer to the open-ground bowl;
+its `ground.json` records the resulting depths and fails if deformation is missing.
+Historical captures made before this fixture correction contain only visual events.
 
 If a battlefield reel is interrupted, the fixture can replay its fixed-step
 schedule without rasterization using `--resume-frame=384` (or 192 with the 12 Hz

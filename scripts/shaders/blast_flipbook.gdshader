@@ -49,9 +49,9 @@ void vertex() {
 	elevation = smoothstep(0.574, 0.906, abs(INV_VIEW_MATRIX[2].y));
 	float progress = clamp(age / duration, 0.0, 1.0);
 	animation = vec4(pow(progress, 0.6666667) * 63.0,
-		1.0 - smoothstep(0.84, 1.0, progress),
+		1.0 - smoothstep(mix(0.84, 0.65, ground_dust), 1.0, progress),
 		1.0 - ground_dust * 0.55 * exp(-age * 4.0),
-		1.0 + ground_dust * 1.5 * exp(-age * 2.8));
+		mix(1.0, 0.25 + 0.75 * smoothstep(0.015, 0.14, age), ground_dust));
 	float frame = floor(animation.x);
 	vec4 bounds = frame_bounds(frame, step(0.5, elevation));
 	if (elevation > 0.0 && elevation < 1.0) {
@@ -150,6 +150,10 @@ void fragment() {
 	ALBEDO = color;
 	// Opacity represents integrated density: reduce optical depth, not the
 	// final alpha. Clamp opaque texels so their front edge can fade as well.
-	float dense_alpha = 1.0 - pow(max(1.0 - alpha, 0.0001), animation.w * visible_density);
-	ALPHA = dense_alpha * opacity * animation.y;
+	// Quantized opaque dust texels otherwise stay solid even after reducing
+	// density. Preserve a little transmission through soil, while fuel smoke
+	// keeps its denser core. Density scales extinction, not final coverage.
+	float transmission_floor = mix(0.0001, 0.008, ground_dust);
+	float dense_alpha = 1.0 - pow(max(1.0 - alpha, transmission_floor), opacity * animation.w * visible_density);
+	ALPHA = dense_alpha * animation.y;
 }

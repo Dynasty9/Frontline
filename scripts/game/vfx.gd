@@ -36,7 +36,7 @@ var _rigs := {"s": [], "m": [], "l": []}
 var _small := {}  # kind -> [array, index]
 var _waves: Array = []  # [mi, t, size]
 var _wave_pool: Array = []
-var _decals: Array = []  # [decal, t, life]
+var _decals: Array = []  # [decal, t, life, initial strength]
 var _burners: Array = []  # [node, target, t, life]
 var _smokes: Array = []
 var _plumes := {"M": [], "L": []}  # [node, t, emit seconds, life] - smoke that hangs over a strike
@@ -251,7 +251,7 @@ func crater(p: Vector3, size: float) -> void:
 	dc.distance_fade_enabled = true
 	dc.distance_fade_begin = 190.0
 	dc.distance_fade_length = 40.0
-	dc.cull_mask = 1
+	dc.cull_mask = Res.GROUND_DECAL_LAYER
 	add_child(dc)
 	dc.global_position = Vector3(p.x, world.ground_y(p) if world else p.y, p.z)
 	dc.rotation.y = randf() * TAU
@@ -662,8 +662,16 @@ func explode(p: Vector3, size: float, kind := "he") -> void:
 	var flash_scale := float(CLASSES[cls].k) * (0.22 if kind == "frag" else (0.55 if kind == "he" else 1.0))
 	pm_set(layers.flash, &"scale_min", 6.5 * flash_scale)
 	pm_set(layers.flash, &"scale_max", 8.0 * flash_scale)
-	(layers.flash as Node).set(&"lifetime", 0.035 if kind == "frag" else (0.055 if kind == "he" else 0.09))
-	_fire_layer(layers.flash, 1.0, sv)
+	var flash_life := 0.055 if kind == "frag" else (0.08 if kind == "he" else 0.09)
+	(layers.flash as Node).set(&"lifetime", flash_life)
+	if world and world.fx and world.fx.gunfx:
+		# The shared analytic flash starts immediately. A very short GPU emitter
+		# can finish between simulation steps before its first visible particle.
+		var k := sqrt(maxf(size, 0.1))
+		var radius := (0.6 if kind == "frag" else (1.4 if kind == "he" else 1.9)) * k
+		world.fx.gunfx.flash(p + Vector3.UP * (0.35 if kind == "frag" else 0.65) * k, radius, flash_life, GunFx.HOT)
+	else:
+		_fire_layer(layers.flash, 1.0, sv)
 	blasts.burst(Vector3(p.x, gy + 0.04, p.z) if ground else p, size, kind, detail, ground)
 	_fire_layer(layers.sparks, fx * (1.0 if kind == "fuel" else 0.08), sv)
 	if world and world.fx and world.fx.gunfx:
@@ -676,7 +684,11 @@ func explode(p: Vector3, size: float, kind := "he") -> void:
 		if kind == "fuel" and size >= 0.9 and detail > 0.35 and not OS.has_environment("FL_NO_PLUMES"):
 			plume(p, size)
 		if Settings.get_v("decals"):
-			scorch(Vector3(p.x, gy, p.z), 0.6 + 0.25 * size if kind == "frag" else 2.4 * size + 1.0)
+			# HE exposes soil; it does not leave the broad black soot of a fuel
+			# fire. A smaller, lighter mark keeps the crater's bowl and rim legible.
+			var mark_size := 0.6 + 0.25 * size if kind == "frag" else (2.4 * size + 1.0 if kind == "fuel" else 1.5 * size + 0.5)
+			var mark_strength := 1.0 if kind == "fuel" else (0.22 if kind == "frag" else 0.35)
+			scorch(Vector3(p.x, gy, p.z), mark_size, mark_strength)
 
 	if fx >= 0.6 and kind != "frag":
 		_shockwave(p + Vector3(0, 0.3, 0), size)
@@ -692,7 +704,7 @@ func _shockwave(p: Vector3, size: float) -> void:
 	_waves.append([w, 0.0, size])
 
 
-func scorch(p: Vector3, d: float) -> void:
+func scorch(p: Vector3, d: float, strength := 1.0) -> void:
 	var dc: Decal
 	if _decals.size() >= 70:
 		var old: Array = _decals.pop_front()
@@ -700,6 +712,7 @@ func scorch(p: Vector3, d: float) -> void:
 	else:
 		dc = Decal.new()
 		dc.texture_albedo = scorch_tex
+		dc.cull_mask = Res.GROUND_DECAL_LAYER
 		dc.upper_fade = 0.4
 		dc.lower_fade = 0.4
 		dc.distance_fade_enabled = true
@@ -709,8 +722,8 @@ func scorch(p: Vector3, d: float) -> void:
 	dc.size = Vector3(d, 1.0, d)
 	dc.global_position = p
 	dc.rotation.y = randf() * TAU
-	dc.modulate = Color(1, 1, 1, 1)
-	_decals.append([dc, 0.0, 150.0])
+	dc.modulate = Color(1, 1, 1, clampf(strength, 0.0, 1.0))
+	_decals.append([dc, 0.0, 150.0, dc.modulate.a])
 
 
 # --- small pooled emitters (impacts, launch smoke, muzzle smoke) ---------------
@@ -1418,7 +1431,7 @@ func _view_process(dt: float) -> void:
 		d[1] += dt
 		var a := clampf((float(d[2]) - d[1]) / 30.0, 0.0, 1.0)
 		var dc: Decal = d[0]
-		dc.modulate.a = a
+		dc.modulate.a = a * float(d[3])
 		if a <= 0.0:
 			dc.queue_free()
 			_decals.remove_at(i)

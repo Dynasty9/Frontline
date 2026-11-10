@@ -306,7 +306,7 @@ func _build_ground() -> void:
 	ground_mat.set_shader_parameter("trench_mask", _blank_mask)
 	ground.material_override = ground_mat
 	ground.custom_aabb = AABB(Vector3(-MapDims.HALF - 1800.0, -5.0, -MapDims.HALF - 1800.0), Vector3(MapDims.SIZE + 3600.0, 517.0, MapDims.SIZE + 3600.0))
-	ground.layers = 5  # terrain-only capture layer for cached water reflections
+	ground.layers = 5 | Res.GROUND_DECAL_LAYER  # terrain capture plus ground-only decals
 	ground.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	add_child(ground)
 	# the battlefield itself: chunks of fine grid (culled one by one), all
@@ -329,7 +329,7 @@ func _build_ground() -> void:
 				var mi := MeshInstance3D.new()
 				mi.mesh = cm_far if far else cm
 				mi.material_override = ground_mat
-				mi.layers = 5
+				mi.layers = 5 | Res.GROUND_DECAL_LAYER
 				mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
 				mi.position = Vector3(-GROUND_HALF + (cx + 0.5) * cs, 0, -GROUND_HALF + (cz + 0.5) * cs)
 				# room for the displacement in the culling box
@@ -975,6 +975,7 @@ func make_road_mesh(polys: Array, team: int) -> MeshInstance3D:
 	var mi := MeshInstance3D.new()
 	mi.mesh = st.commit()
 	mi.material_override = road_mat
+	mi.layers = 1 | Res.GROUND_DECAL_LAYER
 	Mats.set_inst(mi, &"country", 1.0 if team == 2 else 0.0)
 	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	return mi
@@ -1327,8 +1328,9 @@ void fragment() {
 	float hz = hgt(p + vec2(0.0, e));
 	float bm = bump * mix(0.6, 1.4, dirt_m) * (1.0 + bowl * 1.5);
 	vec3 n = normalize(vec3((hc - hx) * bm / e * 0.1, 1.0, (hc - hz) * bm / e * 0.1));
-	// the crater's own slopes
-	float de = max(2.0, normal_step);
+	// Small craters need the height field's quarter-metre spacing. Sampling
+	// two metres either side can skip their walls and shade a dug bowl flat.
+	float de = mix(max(2.0, normal_step), 0.25, smoothstep(0.002, 0.03, abs(hd)));
 	float gx = (dfm(p + vec2(de, 0.0)) - dfm(p - vec2(de, 0.0))) / (2.0 * de);
 	float gz = (dfm(p + vec2(0.0, de)) - dfm(p - vec2(0.0, de))) / (2.0 * de);
 	n = normalize(n + vec3(-gx, 0.0, -gz));

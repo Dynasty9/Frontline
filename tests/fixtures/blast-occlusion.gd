@@ -86,6 +86,25 @@ func _ready() -> void:
 			for i in range(1, pixels.size()):
 				check(pixels[i] >= pixels[i - 1] - 0.005, "Visible density increases as cover moves behind the cloud")
 			results.append({"projection": projection, "alpha": alpha, "pixels": pixels})
+	# A fully opaque atlas texel must still respond to lower dust density;
+	# otherwise reducing the setting leaves a solid wall at the cloud's core.
+	cover.position.z = -3.1
+	material.set_shader_parameter("ground_dust", 1.0)
+	material.set_shader_parameter("opacity", 0.4)
+	material.set_shader_parameter("duration", 3.8)
+	material.set_shader_parameter("age", 0.02)
+	var opening := await sample()
+	material.set_shader_parameter("age", 0.3)
+	var peak := await sample()
+	material.set_shader_parameter("age", 3.4)
+	var clearing := await sample()
+	material.set_shader_parameter("ground_dust", 0.0)
+	material.set_shader_parameter("opacity", 1.0)
+	material.set_shader_parameter("age", 0.3)
+	var dense := await sample()
+	check(peak > opening + 0.05, "Dust develops after the opening impulse")
+	check(peak < dense - 0.04, "Lower dust density opens even saturated atlas texels")
+	check(clearing < peak - 0.1, "Dust clears while the impact aftermath remains visible")
 	if not output.is_empty():
 		var file := FileAccess.open(output, FileAccess.WRITE)
 		file.store_string(JSON.stringify({"renderer": RenderingServer.get_current_rendering_method(), "msaa": get_viewport().msaa_3d, "samples": results, "failures": failures}, "\t"))

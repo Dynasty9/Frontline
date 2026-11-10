@@ -85,7 +85,7 @@ func burst(p: Vector3, size: float, kind: String, detail: float, ground := true)
 		scale_k *= 0.65
 	b.start = _clock
 	b.generation += 1
-	b.life = (3.2 if kind == "frag" else (6.4 if kind == "fuel" else 5.0)) * randf_range(0.94, 1.06)
+	b.life = (2.8 if kind == "frag" else (6.4 if kind == "fuel" else 3.8)) * randf_range(0.94, 1.06)
 	if not ground:
 		b.life *= 0.7
 	b.mesh.global_position = p
@@ -104,7 +104,9 @@ func burst(p: Vector3, size: float, kind: String, detail: float, ground := true)
 		b.material.set_shader_parameter("motion_map", _textures[key][2])
 	b.material.set_shader_parameter("motion_enabled", use_motion)
 	var tint := Color(0.19, 0.18, 0.17) if kind == "fuel" else Color(0.55, 0.49, 0.40)
-	var density := 1.0
+	# The soil cloud follows the flash and fast ejecta. Lower optical density
+	# keeps billows distinct without hiding the entire blast behind opaque dust.
+	var density := (0.50 if kind == "frag" else 0.42) if ground and kind != "fuel" else 1.0
 	if not ground:
 		tint = Color(0.62, 0.61, 0.59)
 	elif kind != "fuel" and vfx.world:
@@ -115,7 +117,7 @@ func burst(p: Vector3, size: float, kind: String, detail: float, ground := true)
 				tint = Color(0.55, 0.54, 0.51)
 			elif terrain.base[index] == TerrainMap.MUD:
 				tint = Color(0.34, 0.29, 0.23)
-				density = 0.65
+				density *= 0.65
 		if vfx.world.atmo and vfx.world.atmo.mood == "rain":
 			tint = tint.darkened(0.18)
 			density *= 0.65

@@ -73,6 +73,8 @@ The first two clips compare cloud intersections at the tank and stone wall. The 
 - Animated clouds retain their billows as they roll and disperse. Sunlight and sky light shape them, roads produce greyer dust, and wet ground produces a darker, thinner cloud.
 - Dust, landing debris and crater marks follow the ground height. Airbursts retain their flash and smoke without throwing earth from midair.
 - Explosion clouds meet tank armor and nearby cover with soft intersections instead of revealing a flat, sharply cut sheet. Solid cover in front of the cloud still hides it.
+- Scorch and crater marks stay on the ground instead of projecting onto walls or smoke. HE leaves a smaller, lighter stain so the dug bowl and thrown-up rim remain visible.
+- The opening flash appears immediately, followed by thinner dust that disperses sooner. The ground showcase now stamps real craters and holds the aftermath after the cloud clears.
 - Illumination flares sway beneath open cloth parachutes, descend with the wind, and leave smoke behind. Their trails stop emitting when the charge burns out and then disperse.
 - Tracers light beyond the muzzle and dim with distance. Metal impacts shed small chips alongside sparks; dirt and stone produce their own debris.
 - Effects reuse bounded pools and shared debris batches. Transparent areas are trimmed before drawing, and lower effects settings reduce animation work and particle counts.

@@ -47,6 +47,9 @@ func _ready() -> void:
 	var p := Vector3(0, 40.1, 0)
 	v.crater(p, 1.4)
 	check(is_equal_approx((v._craters[-1] as Decal).global_position.y, 40.0), "Fallback crater decals follow elevated ground")
+	check((v._craters[-1] as Decal).cull_mask == Res.GROUND_DECAL_LAYER, "Crater marks project only onto terrain receivers")
+	v.scorch(p, 3.0)
+	check((v._decals[-1][0] as Decal).cull_mask == Res.GROUND_DECAL_LAYER, "Scorch marks cannot project onto default-layer walls or effects")
 	v.explode(p, 1.0, "frag")
 	var frag: Node3D = v._rigs.s[0]
 	var fl: Dictionary = frag.get_meta("layers")
@@ -64,9 +67,11 @@ func _ready() -> void:
 	check(v.blasts._pools.dust.size() == 2, "Shells use a separate baked ground burst")
 	check(not layers.flaming.visible and not layers.afterburn.visible, "HE must clear recycled fuel flames")
 	shell.set_meta("t", -1000.0)
+	var flash_index: int = field.fx.gunfx._fl.i
 	v.explode(p + Vector3.UP * 8.0, 1.4, "he")
 	check(not layers.afterburn.visible and not layers.flaming.visible, "Airbursts clear recycled ground flames")
-	check(layers.flash.visible, "Airbursts retain their brief flash")
+	check(field.fx.gunfx._fl.i == (flash_index + 1) % field.fx.gunfx._fl.mm.instance_count, "Airbursts immediately queue their brief flash in the shared batch")
+	check(not layers.flash.visible, "A batched flash does not double up with a delayed particle flash")
 	var air: BlastFlipbooks.Blast = v.blasts._pools.fuel[-1]
 	check(is_equal_approx(float(air.material.get_shader_parameter("fuel")), 0.0), "HE airbursts never inherit fuel emission")
 	check(is_equal_approx(air.mesh.global_position.y, p.y + 8.0), "Airbursts stay at their altitude")
@@ -158,6 +163,17 @@ func _ready() -> void:
 		check(not Vfx.is_emitting(emitter), "Flare emitters stop when the charge burns out")
 	atmo._flares_tick(5.0)
 	check(atmo._flares.is_empty(), "Spent flares drain their smoke and are removed")
+	# A light HE scorch must stay light while fading and after a pool reuse.
+	while v._decals.size() < 70:
+		v.scorch(p, 1.0)
+	var recycled: Decal = v._decals[0][0]
+	v.scorch(p, 1.0, 0.25)
+	check(v._decals[-1][0] == recycled, "Ground marks reuse the bounded pool")
+	v._view_process(0.1)
+	check(is_equal_approx(recycled.modulate.a, 0.25), "Weak scorch strength survives its first update")
+	v._decals[-1][1] = 135.0
+	v._view_process(0.1)
+	check(recycled.modulate.a > 0.0 and recycled.modulate.a < 0.125, "Scorch fade retains its original strength")
 	field.free()
 	trail.queue_free()
 	if Music._task >= 0:

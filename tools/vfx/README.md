@@ -49,6 +49,15 @@ the sampled surface, so armor and walls intersect softly and foreground cover
 still occludes the cloud. Thickness is an opacity-based approximation, not
 collision-aware fluid flow. It uses the existing depth sample and no new atlas;
 fully covered pixels are rejected before the animation-map reads.
+Soil clouds ramp up behind the flash, use lower optical density and clear sooner
+than fuel smoke. A small transmission floor prevents saturated dust texels from
+remaining opaque when density is reduced. The existing GunFx flash batch presents
+the initial impulse immediately, avoiding startup latency in a short GPU emitter.
+
+Ground marks use `Res.GROUND_DECAL_LAYER`; terrain and roads receive them, while
+walls, vehicles and effects keep their ordinary layers. HE uses lighter scorch
+than fuel, with strength preserved through pool reuse and fading. Local crater
+normals sample the height field at quarter-metre spacing to retain the bowl slopes.
 With S3TC compression and mipmaps, the six animation atlases occupy about
 58.7 MiB; omitting the two motion maps reduces that to 37.3 MiB. The two lossless
 bounds maps add only 1 KiB. These figures describe the animation textures, not
@@ -94,6 +103,8 @@ through the production cloud shader with perspective and orthographic cameras,
 partly transparent and opaque texels, both renderers, and MSAA off/4x. Pixel
 readback checks full foreground occlusion, continuity across the billboard
 plane, and increasing visible density. Renderers warm up before sampling.
+They also check dust onset/clearing and run a Forward+ decal test that compares
+ground, cover and opaque-smoke pixels with each real ground mark enabled/disabled.
 
 The benchmark emits `BLAST_BENCH` JSON for 69 seeded HE bursts over four
 simulated seconds. It fixes High effects, 2x MSAA and full render scale, warms

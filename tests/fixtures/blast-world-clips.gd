@@ -10,6 +10,7 @@ var field: World
 var capture_fps := 24
 var resume_frame := 0
 var cloud_shader := ""
+var capture_failed := false
 
 func _ready() -> void:
 	TestRun.watch()
@@ -73,6 +74,10 @@ func _ready() -> void:
 		await RenderingServer.frame_post_draw
 	seed(712)
 	print("BLAST_WORLD_RECORDING")
+	if mode == "blast-ground":
+		await _ground_demo(camera, caption)
+		_finish()
+		return
 	if mode == "blast-cover":
 		await _cover(camera, caption)
 		_finish()
@@ -83,10 +88,7 @@ func _ready() -> void:
 		return
 	for frame in 192:
 		if frame == 24:
-			if legacy:
-				field.fx.call("_explode", target + Vector3.UP * 0.1, 1.4)
-			else:
-				field.fx.call("_explode", target + Vector3.UP * 0.1, 1.4, "he")
+			_emit_blast(target + Vector3.UP * 0.1, 1.4, "he")
 		if legacy:
 			# Preserve the baseline particle lifetimes during slow offline
 			# rendering; its pool's wall clock otherwise hides them too soon.
@@ -104,7 +106,7 @@ func _finish() -> void:
 		WorkerThreadPool.wait_for_task_completion(Music._task)
 		Music._task = -1
 	print("BLAST_WORLD_CLIP %s complete" % mode)
-	get_tree().quit()
+	get_tree().quit(1 if capture_failed else 0)
 
 
 func _cover(camera: Camera3D, caption: Label) -> void:
@@ -118,9 +120,48 @@ func _cover(camera: Camera3D, caption: Label) -> void:
 		caption.text += "\nActual battlefield · matched camera and effects · normal speed"
 		if frame == capture_fps / 2 or frame == int(4.5 * capture_fps):
 			seed(712)
-			field.fx.call("_explode", target + Vector3(0, 0.1, 0 if at_tank else -0.35), 2.0 if at_tank else 1.4, "fuel" if at_tank else "he")
+			_emit_blast(target + Vector3(0, 0.1, 0 if at_tank else -0.35), 2.0 if at_tank else 1.4, "fuel" if at_tank else "he")
 		await RenderingServer.frame_post_draw
 		get_viewport().get_texture().get_image().save_png(output.path_join("%04d.png" % frame))
+
+
+func _emit_blast(p: Vector3, size: float, kind: String) -> void:
+	if legacy:
+		field.fx.call("_explode", p, size)
+	else:
+		field.fx.call("_explode", p, size, kind)
+	# Combat stamps the authoritative terrain after emitting its visual event.
+	# This controlled scene bypasses combat damage, so it must do that step too.
+	# Clients already stamp the replicated event inside Fx._explode.
+	if field.srv:
+		field.terrain.add_crater(p, size)
+
+
+func _ground_demo(camera: Camera3D, caption: Label) -> void:
+	var soil := _ground(4, 6)
+	var wall := _ground(-30, 25.4)
+	for frame in 12 * capture_fps:
+		var at_wall := frame >= 6 * capture_fps
+		var target := wall if at_wall else soil
+		var phase_time := float(frame % (6 * capture_fps)) / capture_fps
+		var offset := Vector3(4, 3.5, 8) if at_wall else Vector3(6, 5, 9)
+		# Once the cloud clears, move closer to expose the actual bowl and rim.
+		if not at_wall:
+			offset = offset.lerp(Vector3(3, 2.2, 4.5), smoothstep(3.7, 4.8, phase_time))
+		_frame_subject(camera, target, offset, 0.3)
+		caption.text = label + " / " + ("GROUND MARKS BESIDE COVER" if at_wall else "HE / FLASH, EARTH AND CRATER")
+		caption.text += "\nActual terrain deformation · normal speed · crater held after dust clears"
+		if frame == capture_fps / 2 or frame == int(6.5 * capture_fps):
+			seed(712)
+			_emit_blast(target + Vector3.UP * 0.1, 1.4, "he")
+		await RenderingServer.frame_post_draw
+		get_viewport().get_texture().get_image().save_png(output.path_join("%04d.png" % frame))
+	var changes := {"soil_depth": soil.y - field.terrain.deform_at(soil), "wall_depth": wall.y - field.terrain.deform_at(wall)}
+	var record := FileAccess.open(output.path_join("ground.json"), FileAccess.WRITE)
+	record.store_string(JSON.stringify(changes, "\t"))
+	if changes.soil_depth < 0.2 or changes.wall_depth < 0.2:
+		push_error("Showcase did not produce actual crater deformation")
+		capture_failed = true
 
 
 func _ground(x: float, z: float) -> Vector3:
@@ -179,7 +220,8 @@ func _showcase(camera: Camera3D, caption: Label) -> void:
 					field.atmo._spawn_flare(soil)
 		if frame in [int(0.75 * capture_fps), int(4.5 * capture_fps), int(9.5 * capture_fps)]:
 			seed(712 + phase)
-			field.fx.call("_explode", (fuel if phase == 2 else soil) + Vector3.UP * 0.1, [1.0, 1.4, 2.0][phase], ["frag", "he", "fuel"][phase])
+			_emit_blast((fuel if phase == 2 else soil) + Vector3.UP * 0.1, [1.0, 1.4, 2.0][phase], ["frag", "he", "fuel"][phase])
+		field.atmo._update_deform(1.0 / capture_fps)
 		if phase in [3, 4, 5] and frame % (capture_fps / 4) == 0:
 			seed(712 + frame)
 			var p: Vector3 = [dirt + Vector3.UP * 0.08, stone, metal][phase - 3]
