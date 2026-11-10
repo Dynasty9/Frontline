@@ -61,4 +61,8 @@ func _ready() -> void:
 func height_pixel() -> float:
 	await RenderingServer.frame_post_draw
 	var image := get_viewport().get_texture().get_image()
-	return image.get_pixel(image.get_width() / 2, image.get_height() / 2).srgb_to_linear().r - 1.0
+	var pixel := image.get_pixel(image.get_width() / 2, image.get_height() / 2)
+	# Compatibility writes unshaded ALBEDO directly into its sRGB framebuffer.
+	if RenderingServer.get_current_rendering_method() != "gl_compatibility":
+		pixel = pixel.srgb_to_linear()
+	return pixel.r - 1.0
