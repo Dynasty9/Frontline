@@ -244,10 +244,11 @@ func build() -> void:
 		if settings.get("replay", false):
 			cam.edge_pan = false
 		add_child(cam)
-		if not srv:
-			structure_view = StructureView.new()
-			structure_view.world = self
-			add_child(structure_view)
+		structure_view = StructureView.new()
+		structure_view.world = self
+		add_child(structure_view)
+		for st: Structure in structures:
+			structure_view.add(st)
 		soldier_view = SoldierViewBatch.new()
 		soldier_view.world = self
 		add_child(soldier_view)
@@ -376,6 +377,8 @@ func spawn(kind: String, props: Dictionary) -> Entity:
 	if e is Structure:
 		_shash_add(e)
 		terrain.structure_changed(e, true)
+		if structure_view:
+			structure_view.add(e)
 	if recording and not recording.stopped:
 		recording.births.append([e.eid, kind, e.get_props().duplicate(true)])
 	if not ready_peers.is_empty():
@@ -652,6 +655,11 @@ func placement_error(team: int, kind: String, pos: Vector3, yaw: float) -> Strin
 
 
 func push_props(e: Entity, d: Dictionary) -> void:
+	if e is Structure and structure_view:
+		structure_view.unbatch(e)
+		if d.has("pos"):
+			structure_view.remove(e)
+			structure_view.add(e)
 	if recording:
 		recording.changed(e.eid, d)
 	if not srv or ready_peers.is_empty():

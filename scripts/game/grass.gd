@@ -17,6 +17,7 @@ var scar_tex: ImageTexture
 var _scar_dirty := false
 var bush: ArrayMesh
 var stone: ArrayMesh
+var _shrub_noise := FastNoiseLite.new()
 var level := -1
 var _queue: Array = []
 var _rebuild_t := -1.0
@@ -41,6 +42,7 @@ func _ready() -> void:
 	var bs := Shader.new()
 	bs.code = MapDims.shader(BUSH_SHADER)
 	bush_mat.shader = bs
+	bush_mat.set_shader_parameter("leaf_texture", preload("res://assets/foliage/broadleaf.png"))
 	stone_mat = StandardMaterial3D.new()
 	stone_mat.albedo_color = Color(0.42, 0.4, 0.37)
 	stone_mat.roughness = 0.9
@@ -124,6 +126,8 @@ func _exit_tree() -> void:
 
 func _start_rebuild() -> void:
 	level = int(Settings.get_v("grass"))
+	_shrub_noise.seed = int(atmo.world.settings.get("seed", 1)) + 219
+	_shrub_noise.frequency = 0.035
 	if _task >= 0:
 		WorkerThreadPool.wait_for_task_completion(_task)  # (a rebuild already on its way: redone from now)
 		_task = -1
@@ -195,9 +199,9 @@ func _blocked_job() -> BlockedJob:
 			j.boxes.append([Vector2(st.position.x, st.position.z), st.foot + Vector2(0.4, 0.4), float(st.yaw)])
 	# sidewalks, squares, gardens and the like
 	for e in w.decor:
-		if not String(e[0]) in ["walk", "pave", "junction", "soft", "lot_pave", "drive", "path", "garden"]:
+		if not String(e[0]) in ["walk", "walk_crossing", "pave", "junction", "soft", "lot_pave", "drive", "path", "garden", "yard"]:
 			continue
-		var s3: Vector3 = e[3]
+		var s3: Vector3 = e[3][0] if e[0] == "walk_crossing" else e[3]
 		var c3: Vector3 = e[1]
 		j.boxes.append([Vector2(c3.x, c3.z), Vector2(s3.x * 0.5 + 0.2, s3.z * 0.5 + 0.2), float(e[2])])
 	# the water, and the sand and mud along its shores
@@ -242,9 +246,10 @@ class BlockedJob:
 				var steps := int(a.distance_to(b) / 0.8) + 1
 				for k in steps + 1:
 					var p := a.lerp(b, float(k) / steps)
-					for dx in range(-3, 4):
-						for dz in range(-3, 4):
-							if dx * dx + dz * dz <= 8:
+					for dx in range(-4, 5):
+						for dz in range(-4, 5):
+							# Include the grass clump radius beyond the 2.9 m carriageway.
+							if dx * dx + dz * dz <= 16:
 								_mark(floori(p.x) + dx, floori(p.z) + dz)
 
 	func _mark(x: int, z: int) -> void:
@@ -274,6 +279,7 @@ func _build_chunk(c: Vector2i) -> void:
 	var origin := Vector3(c.x * CHUNK, 0, c.y * CHUNK)
 	var density := 0.45 if level == 1 else 1.0
 	var count := int(CHUNK * CHUNK * density)
+	var town := atmo.world.town_rect.grow(12.0)
 	var xf := []
 	var cd := []
 	var bushes := []
@@ -285,15 +291,17 @@ func _build_chunk(c: Vector2i) -> void:
 		if p.x > HALF - 1.0 and atmo.world.water and not atmo.world.water.coast.is_empty():
 			continue  # the sea, past the edge
 		var g := atmo.grass_amount(p)
-		if rng.randf() > g * 0.92 + 0.04:
+		if g <= 0.001 or rng.randf() > g * 0.92 + 0.04:
 			if rng.randf() < 0.004:
 				stones.append(p)
 			continue
 		var s := rng.randf_range(0.75, 1.3) * (0.65 + 0.5 * g)
-		var basis := Basis(Vector3.UP, rng.randf() * TAU).scaled(Vector3(s, s * rng.randf_range(0.8, 1.35), s))
+		# Shorter urban grass exposes the soil and blade texture between clumps.
+		var height := 0.45 if atmo.world.town_rect.has_area() and town.has_point(Vector2(p.x, p.z)) else 1.0
+		var basis := Basis(Vector3.UP, rng.randf() * TAU).scaled(Vector3(s, s * rng.randf_range(0.8, 1.35) * height, s))
 		xf.append(Transform3D(basis, p))
 		cd.append(Color(g, rng.randf(), 0, 0))
-		if rng.randf() < 0.012 and g > 0.6:
+		if rng.randf() < 0.035 and g > 0.6 and _shrub_noise.get_noise_2d(p.x, p.z) > 0.08:
 			bushes.append(p)
 		elif rng.randf() < 0.003:
 			stones.append(p)
@@ -315,7 +323,7 @@ func _build_chunk(c: Vector2i) -> void:
 		var sc := []
 		for p in stones:
 			var s3 := rng.randf_range(0.25, 0.8)
-			sx.append(Transform3D(Basis.from_euler(Vector3(rng.randf() * TAU, rng.randf() * TAU, 0)).scaled(Vector3(s3, s3 * 0.6, s3)), p + Vector3(0, s3 * 0.15, 0)))
+			sx.append(Transform3D(Basis.from_euler(Vector3(rng.randf() * TAU, rng.randf() * TAU, 0)).scaled(Vector3(s3, s3 * 0.6, s3)), Vector3(p.x, atmo.world.ground_y(p) + s3 * 0.15, p.z)))
 			sc.append(Color(0, 0, 0, 0))
 		var sn := _mm(stone, stone_mat, sx, sc, 140.0)
 		sn.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
@@ -329,9 +337,21 @@ func _mm(mesh: Mesh, m: Material, xf: Array, cd: Array, vis: float) -> MultiMesh
 	mm.use_custom_data = true
 	mm.mesh = mesh
 	mm.instance_count = xf.size()
+	var low := INF
+	var high := -INF
 	for i in xf.size():
 		mm.set_instance_transform(i, xf[i])
 		mm.set_instance_custom_data(i, cd[i])
+		if m is ShaderMaterial:
+			var height: float = atmo.world.terrain.deform_at(xf[i].origin)
+			low = minf(low, height)
+			high = maxf(high, height)
+	if m is ShaderMaterial:
+		# Local height bounds preserve distance fading even beside much taller mountains.
+		var bounds := mm.get_aabb()
+		bounds.position.y += low - 5.0
+		bounds.size.y += high - low + 10.0
+		mm.custom_aabb = bounds
 	var mi := MultiMeshInstance3D.new()
 	mi.multimesh = mm
 	mi.material_override = m
@@ -348,49 +368,47 @@ func _make_clump() -> ArrayMesh:
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 4242
-	for b in 15:
-		var a := rng.randf() * TAU
-		var r := sqrt(rng.randf()) * 0.32
-		var base := Vector3(cos(a) * r, 0, sin(a) * r)
+	# More narrow, pointed blades keep the previous clump's 90-triangle budget.
+	for blade in 30:
+		var angle := rng.randf() * TAU
+		var radius := sqrt(rng.randf()) * 0.32
+		var base := Vector3(cos(angle) * radius, 0, sin(angle) * radius)
 		var yaw := rng.randf() * TAU
-		var side := Vector3(cos(yaw), 0, sin(yaw)) * rng.randf_range(0.03, 0.05)
-		var lean := Vector3(cos(a), 0, sin(a)) * rng.randf_range(0.05, 0.22)
-		var h := rng.randf_range(0.22, 0.55)
-		var pts := []
-		for k in 4:
-			var t := float(k) / 3.0
-			var w := 1.0 - t * 0.92
-			var c := base + lean * t * t + Vector3(0, h * t, 0)
-			pts.append([c - side * w, c + side * w, t])
-		for k in 3:
-			var p0: Array = pts[k]
-			var p1: Array = pts[k + 1]
-			var quad := [[p0[0], p0[2]], [p0[1], p0[2]], [p1[1], p1[2]], [p0[0], p0[2]], [p1[1], p1[2]], [p1[0], p1[2]]]
-			for q in quad:
-				st.set_normal(Vector3(0, 1, 0))
-				st.set_uv(Vector2(0.5, q[1]))
-				st.add_vertex(q[0])
+		var side := Vector3(cos(yaw), 0, sin(yaw)) * rng.randf_range(0.008, 0.016)
+		var lean := Vector3(cos(angle), 0, sin(angle)) * rng.randf_range(0.06, 0.22)
+		var height := rng.randf_range(0.18, 0.55)
+		var middle := base + lean * 0.25 + Vector3(0, height * 0.5, 0)
+		var points := [base - side, base + side, middle - side * 0.65, middle + side * 0.65, base + lean + Vector3(0, height, 0)]
+		var heights := [0.0, 0.0, 0.5, 0.5, 1.0]
+		for index in [0, 1, 2, 1, 3, 2, 2, 3, 4]:
+			st.set_normal(Vector3.UP)
+			st.set_uv(Vector2(0.5, heights[index]))
+			st.add_vertex(points[index])
 	return st.commit()
 
 
 func _make_bush() -> ArrayMesh:
 	var st := SurfaceTool.new()
-	var rng := RandomNumberGenerator.new()
-	rng.seed = 777
-	var sph := SphereMesh.new()
-	sph.radial_segments = 10
-	sph.rings = 6
-	var arrays := sph.get_mesh_arrays()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
-	for i in 5:
-		var off := Vector3(rng.randf_range(-0.45, 0.45), rng.randf_range(0.25, 0.55), rng.randf_range(-0.45, 0.45))
-		var sc := rng.randf_range(0.45, 0.75)
-		var verts: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
-		var norms: PackedVector3Array = arrays[Mesh.ARRAY_NORMAL]
-		var idx: PackedInt32Array = arrays[Mesh.ARRAY_INDEX]
-		for j in idx:
-			st.set_normal(norms[j])
-			st.add_vertex(verts[j] * sc + off)
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 55127
+	for i in 80:
+		var angle := rng.randf() * TAU
+		var up := rng.randf_range(0.12, 1.15)
+		var radius := sqrt(rng.randf()) * 0.62 * sqrt(maxf(0.1, 1.0 - pow((up - 0.65) / 0.75, 2.0)))
+		var center := Vector3(cos(angle) * radius, up - 0.65, sin(angle) * radius)
+		var along := Vector3(cos(angle) * 0.6, rng.randf_range(0.4, 0.9), sin(angle) * 0.6).normalized()
+		var side := Vector3(-sin(angle), 0, cos(angle)).rotated(along, rng.randf_range(-0.7, 0.7))
+		var width := rng.randf_range(0.08, 0.15)
+		var length := rng.randf_range(0.15, 0.25)
+		var normal := side.cross(along).normalized()
+		var points := [center - side * width - along * length, center + side * width - along * length,
+			center + side * width + along * length, center - side * width + along * length]
+		var uv := [Vector2(0, 1), Vector2(1, 1), Vector2(1, 0), Vector2(0, 0)]
+		for j in [0, 2, 1, 0, 3, 2]:
+			st.set_normal(normal)
+			st.set_uv(uv[j])
+			st.add_vertex(points[j])
 	return st.commit()
 
 
@@ -415,9 +433,9 @@ shader_type spatial;
 render_mode cull_disabled, specular_disabled;
 
 uniform vec3 base_col : source_color = vec3(0.14, 0.19, 0.07);
-uniform vec3 mid_col : source_color = vec3(0.24, 0.31, 0.1);
-uniform vec3 tip_col : source_color = vec3(0.47, 0.5, 0.2);
-uniform vec3 dry_col : source_color = vec3(0.5, 0.45, 0.24);
+uniform vec3 mid_col : source_color = vec3(0.24, 0.32, 0.14);
+uniform vec3 tip_col : source_color = vec3(0.38, 0.45, 0.23);
+uniform vec3 dry_col : source_color = vec3(0.55, 0.49, 0.3);
 uniform float wind = 0.11;
 uniform sampler2D scar : hint_default_black, filter_linear, repeat_disable;
 uniform sampler2D trench_mask : hint_default_black, filter_linear, repeat_disable;
@@ -473,14 +491,16 @@ void fragment() {
 
 const BUSH_SHADER := """
 shader_type spatial;
+uniform sampler2D leaf_texture : source_color, filter_linear_mipmap, repeat_disable;
+uniform float wind = 0.03;
 render_mode specular_disabled, cull_disabled;
-varying vec3 lp;
+varying float plant_height;
 varying float rnd;
-float hash(vec3 p) { return fract(sin(dot(p, vec3(127.1, 311.7, 74.7))) * 43758.5453); }
 uniform sampler2D trench_mask : hint_default_black, filter_linear, repeat_disable;
 uniform sampler2DArray deform_tex : filter_linear, repeat_disable;
 // TERRAIN_TEXTURE_HELPER
 void vertex() {
+	VERTEX.y += 0.65;
 	if (textureLod(trench_mask, (MODEL_MATRIX[3].xz + __MAP_HALF__) / __MAP_SIZE__, 0.0).r > 0.3) {
 		VERTEX *= 0.0;
 	}
@@ -492,33 +512,30 @@ void vertex() {
 	VERTEX.y += gd / max(0.05, length(MODEL_MATRIX[1].xyz));
 	rnd = INSTANCE_CUSTOM.r;
 	vec3 o = MODEL_MATRIX[3].xyz;
-	float n = sin(VERTEX.x * 9.0 + rnd * 7.0) * sin(VERTEX.y * 8.0) * sin(VERTEX.z * 10.0);
-	VERTEX += NORMAL * n * 0.08;
 	float t = TIME * 1.3 + o.x * 0.3;
-	VERTEX.x += sin(t) * 0.03 * plant_y;
-	lp = VERTEX;
+	VERTEX.x += sin(t) * wind * plant_y;
+	plant_height = plant_y;
 }
 void fragment() {
-	// leafy, ragged edges where the surface turns away (inside shows dark through the gaps)
-	float rim = 1.0 - abs(dot(NORMAL, VIEW));
-	float bpx = max(length(fwidth(lp)), 1e-4);
-	float hn = mix(0.5, hash(floor(lp * 15.0 + rnd * 5.0)), smoothstep(1.5, 5.0, (1.0 / 15.0) / bpx)) * 0.6
-		+ mix(0.5, hash(floor(lp * 31.0)), smoothstep(1.5, 5.0, (1.0 / 31.0) / bpx)) * 0.4;
-	if (rim > 0.2 && hn < (rim - 0.2) * 1.25) {
-		discard;
+	vec4 photograph = texture(leaf_texture, UV);
+	ALPHA = photograph.a;
+	ALPHA_SCISSOR_THRESHOLD = 0.25;
+	if (OUTPUT_IS_SRGB) {
+		photograph.rgb = mix(photograph.rgb / 12.92, pow((photograph.rgb + 0.055) / 1.055, vec3(2.4)), step(vec3(0.04045), photograph.rgb));
 	}
-	float leaf = 0.5 + 0.5 * sin(lp.x * 23.0 + sin(lp.y * 19.0) * 2.0) * sin(lp.z * 21.0 + sin(lp.x * 17.0) * 2.0);
-	vec3 col = mix(vec3(0.04, 0.078, 0.024), vec3(0.11, 0.17, 0.045), leaf * 0.7 + rnd * 0.3);
-	col = mix(col, col * vec3(1.25, 1.05, 0.7), step(0.6, rnd) * 0.6);
-	float up = smoothstep(-0.2, 0.9, lp.y);
-	col *= 0.55 + 0.55 * up;
+	float up = smoothstep(0.0, 1.1, plant_height);
+	vec3 col = photograph.rgb * mix(vec3(0.7, 0.85, 0.7), vec3(1.0, 0.9, 0.65), rnd) * mix(0.65, 1.0, up);
+	if (OUTPUT_IS_SRGB) {
+		col = mix(col * 12.92, 1.055 * pow(max(col, vec3(0.0)), vec3(1.0 / 2.4)) - 0.055, step(vec3(0.0031308), col));
+	}
 	ALBEDO = col;
-	ROUGHNESS = 0.9;
-	AO = 0.5 + 0.5 * up;
+	ROUGHNESS = 0.95;
+	AO = 0.6 + 0.4 * up;
 	AO_LIGHT_AFFECT = 0.5;
+	// Keep the engine's two-sided normal, with both leaf faces receiving skylight.
+	vec3 leaf_normal = (INV_VIEW_MATRIX * vec4(NORMAL, 0.0)).xyz;
+	leaf_normal.y = abs(leaf_normal.y);
+	NORMAL = normalize((VIEW_MATRIX * vec4(mix(leaf_normal, vec3(0.0, 1.0, 0.0), 0.45), 0.0)).xyz);
 	BACKLIGHT = vec3(0.08, 0.1, 0.035);
-	vec3 q = lp * 9.0 + rnd * 13.0;
-	vec3 wob = vec3(sin(q.y * 1.7 + q.z * 2.3), sin(q.z * 1.9 + q.x * 2.1), sin(q.x * 2.2 + q.y * 1.6));
-	NORMAL = normalize(NORMAL + wob * 0.35);
 }
 """

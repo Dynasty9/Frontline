@@ -1840,13 +1840,13 @@ static func _truck(k: VehicleModels, team: int) -> void:
 		_taillight(k, m, Vector3(s * 0.9, 1.1, 3.08))
 	_bx(k, m, Vector3(2.3, 0.5, 0.06), Vector3(0, 1.6, 3.05), "paint", col)
 	var tarp := col.lightened(0.08)
-	_bx(k, m, Vector3(2.32, 0.9, 3.36), Vector3(0, 2.25, 1.35), "canvas", tarp)
-	k._add(m, Res.cyl(1.16, 1.16, 3.36, 16), "canvas", tarp, Vector3(0, 2.7, 1.35), X90, Vector3(1.0, 1.0, 0.42))
+	_bx(k, m, Vector3(2.32, 0.9, 3.36), Vector3(0, 2.25, 1.35), "canvas_white", tarp)
+	k._add(m, Res.cyl(1.16, 1.16, 3.36, 16), "canvas_white", tarp, Vector3(0, 2.7, 1.35), X90, Vector3(1.0, 1.0, 0.42))
 	for i in 4:
 		var z := -0.28 + i * 1.1
-		_bx(k, m, Vector3(2.36, 0.9, 0.05), Vector3(0, 2.25, z), "canvas", tarp.darkened(0.15))
+		_bx(k, m, Vector3(2.36, 0.9, 0.05), Vector3(0, 2.25, z), "canvas_white", tarp.darkened(0.15))
 	for x: float in [-0.7, 0.0, 0.7]:
-		_bx(k, m, Vector3(0.025, 1.0, 0.02), Vector3(x, 2.25, 3.04), "canvas", tarp.darkened(0.25), Vector3.ZERO, false)
+		_bx(k, m, Vector3(0.025, 1.0, 0.02), Vector3(x, 2.25, 3.04), "canvas_white", tarp.darkened(0.25), Vector3.ZERO, false)
 	_bx(k, m, Vector3(0.18, 0.16, 0.2), Vector3(0, 0.84, 3.15), "gunmetal_w")
 	_antenna(k, m, Vector3(-1.0, 2.55, -0.8), 1.8)
 

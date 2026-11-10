@@ -16,6 +16,7 @@ lead artifact; original notes and supporting media remain under **Explore this c
 | Controlled motion | Traverse, propulsion and muzzle geometry | `tests/fixtures/vehicle-motion-clips.tscn`; matched main/PR recordings |
 | Controlled capture presets | Tanks, boats and aircraft | `stages.json`: fixture, duration, simulation rate and cue |
 | Text | Reliability, compatibility, unrecorded sound or unmeasured performance | Short player outcome and original detail |
+| Vehicle surfaces | Fixed-light roster sheets, close-ups and material swatches | `vehicle-surfaces.tscn`; `--surface-out`, `--surface-kinds`, `--surface-team`, `--surface-single`, `--surface-swatches`, `--surface-offset` |
 
 The website uses the main site’s Signal tokens and shadcn/Radix components.
 Do not embed a branded presentation frame inside the changelog layout: it duplicates
@@ -49,6 +50,32 @@ cannot turn an advertised real-time comparison into a time-lapse. New gameplay s
 A current-build demonstration is not automatically a historical comparison.
 The controlled-motion fixture has its own fixed 60 Hz integration and 12 fps output.
 
+## Generated environment views
+
+`tests/fixtures/environment-views.gd` loads the real battlefield once, holds its simulation at
+two seconds, then captures the highest playable ridge close and wide, the hillside forest,
+and the whole valley. It records each camera in a JSON sidecar. Use the same fixture on the
+before and after revisions; differences in source revision must be recorded in the catalog.
+
+```sh
+godot --path . --resolution 1600x900 --script tests/fixtures/environment-views.gd -- --aivai --seed=3 --offscreen --nohud --set=perf:0 --preset=high --mood=day --focus=0,0 --capture-prefix=build/terrain/review
+```
+
+Add `--capture-set=town` for street detail, the town entrance, an overview and a
+residential driveway. `--capture-set=foliage` frames the same broadleaf tree from
+both sides and at stand distance, with wind held still. Captures wait for scenery
+residency and batching to settle. `--capture-set=river-boundary` frames seed 3's
+northern river crossing close up and across the valley. Both revisions must use
+the same capture fixture. `--capture-set=coast --mood=night` checks the sky and reflected cloud lighting over the sea.
+Add `--capture-set=rain --mood=rain` to check distant rain, town splashes and elevated ground. With `--fixed-fps 30`, `--capture-clip=close` also saves six seconds of full-frame PNGs beside the close still; encode them at 30 fps.
+Use `--capture-set=shoreline` for the beach beside seed 3's coastal town, with
+near-ground and waterline views. `--fixed-fps 30 --capture-clip=waterline` saves
+six seconds of rolling surf. Keep the same fixture on both shader revisions so
+wave phase, camera and scenery warmup match; record any resource-pack overrides.
+
+The camera uses the normal terrain clearance, so a low requested zoom may raise the lens
+above a neighbouring ridge. This is a visual review stage, not a performance benchmark.
+
 ## Inventory and release process
 
 `catalog.json` records every entry's medium, stage, rationale and evidence source.
@@ -77,3 +104,23 @@ python3 -m unittest discover -s .github/scripts -p 'test_changelog.py'
 Normal feature work adds an unreleased entry; it does not edit release versions,
 dates or historical claims. Preview the website at desktop and phone widths,
 check keyboard disclosure, media controls, reduced motion and source-image zoom.
+
+## Native environment motion
+
+Use `environment-motion.gd` for a reproducible, current-PR camera demonstration.
+It records two four-second views for `stones`, `shore` and `town`, or three views
+for `environment`. The simulation is held at two seconds; camera, wind and water
+remain animated. This is not a combat demonstration or a performance benchmark.
+The normal camera clearance remains active. Inspect each view before publishing.
+
+```sh
+godot --path . --fixed-fps 30 --resolution 1280x720 --script tools/showcase/environment-motion.gd -- --aivai --seed=3 --offscreen --nohud --set=perf:0 --preset=high --mood=day --motion-stage=stones --motion-output=build/media-review
+# Set FFMPEG if it is not on PATH; SHOWCASE_FONT can select a local TrueType font.
+python tools/showcase/encode-environment-motion.py --entry realism-08-fractured-stones --source-ref <rendering-commit>
+```
+
+The encoder adds a 48-pixel label above the untouched native frame, writes a
+seekable silent VP9 WebM, a JPEG poster, and a capture/provenance JSON sidecar.
+Keep matched historical stills as comparisons; do not call the current-PR tour
+before/after footage. Inspect the encoded opening, middle and closing frames and
+run the changelog and presentation checks before committing media.

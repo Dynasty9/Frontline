@@ -23,6 +23,56 @@ const TRACK := 13
 const SKIN := 14
 const TILES := 15
 const HESCO := 16
+const NATURAL_ROCK := 17
+const ASPHALT := 18
+const PAVEMENT := 19
+const TURF := 20
+const WEATHERED_PHOTO := 21
+const PHOTO_MEAN := preload("res://assets/town/material_means.tres")
+
+# One world-space surface keeps junction overlays continuous with street ribbons.
+const ASPHALT_SHADER := """
+uniform sampler2D street_detail : source_color, filter_linear_mipmap_anisotropic, repeat_enable;
+mat3 ground_surface_basis(vec3 position) {
+	vec3 up = cross(dFdx(position), dFdy(position));
+	up = length(up) > 0.00000001 ? normalize(up) : vec3(0.0, 1.0, 0.0);
+	if (up.y < 0.0) { up = -up; }
+	vec3 across = normalize(vec3(1.0, 0.0, 0.0) - up * up.x);
+	return mat3(across, -normalize(cross(across, up)), up);
+}
+
+vec3 street_surface(sampler2D tex, sampler2D noise, vec2 p) {
+	vec3 aggregate = texture(street_detail, p / 2.2).rgb;
+	if (OUTPUT_IS_SRGB) {
+		aggregate = mix(aggregate / 12.92, pow((aggregate + 0.055) / 1.055, vec3(2.4)), step(vec3(0.04045), aggregate));
+	}
+	float gray = dot(aggregate, vec3(0.2126, 0.7152, 0.0722));
+	aggregate = mix(aggregate, vec3(gray), 0.9);
+	// The aerial scan supplies cracks and weathering; fine aggregate stays at its surveyed scale.
+	vec3 wear = texture(tex, p / 30.0).rgb;
+	if (OUTPUT_IS_SRGB) {
+		wear = mix(wear / 12.92, pow((wear + 0.055) / 1.055, vec3(2.4)), step(vec3(0.04045), wear));
+	}
+	vec3 base = aggregate * mix(1.0, clamp(dot(wear, vec3(0.2126, 0.7152, 0.0722)) / 0.126, 0.5, 1.4), 0.35);
+	float weather = texture(noise, p * 0.006 + 0.17).r;
+	float stains = smoothstep(0.56, 0.74, texture(noise, p * 0.035 + 0.63).r);
+	vec2 cell = floor(p / vec2(11.0, 7.0));
+	vec2 f = fract(p / vec2(11.0, 7.0));
+	vec2 variation = vec2(fract(sin(dot(cell, vec2(12.9898,78.233))) * 43758.5453), fract(sin(dot(cell, vec2(39.346,11.135))) * 23421.631));
+	float chosen = step(0.57, texture(noise, cell * 0.17).r);
+	vec2 center = vec2(0.35) + variation * 0.3;
+	vec2 half_size = vec2(0.07, 0.10) + variation.yx * vec2(0.15, 0.17);
+	float shape = max(abs(f.x - center.x) / half_size.x, abs(f.y - center.y) / half_size.y);
+	float repair = chosen * (1.0 - smoothstep(0.92, 1.02, shape + texture(noise, p * 0.3).r * 0.10));
+	base = mix(base * (0.75 + weather * 0.65), aggregate * 0.52, repair);
+	base *= 1.0 - stains * 0.28;
+	// Compatibility reads sRGB samples; blend in linear light, then return its expected output.
+	if (OUTPUT_IS_SRGB) {
+		base = mix(base * 12.92, 1.055 * pow(max(base, vec3(0.0)), vec3(1.0 / 2.4)) - 0.055, step(vec3(0.0031308), base));
+	}
+	return base;
+}
+"""
 
 static var _shader: Shader
 static var _cache := {}
@@ -31,7 +81,7 @@ static var _cache := {}
 static func shader() -> Shader:
 	if _shader == null:
 		_shader = Shader.new()
-		_shader.code = code(TerrainTexture.shader(SURFACE_SHADER))
+		_shader.code = code(TerrainTexture.shader(SURFACE_SHADER.replace("// STREET_SURFACE", ASPHALT_SHADER)))
 	return _shader
 
 
@@ -161,11 +211,16 @@ static func get_mat(kind: String) -> ShaderMaterial:
 	if _cache.has(kind):
 		return _cache[kind]
 	var m := ShaderMaterial.new()
+	m.resource_name = kind
 	m.shader = shader()
 	m.set_shader_parameter("noise_tex", noise_tex())
 	var p := _preset(kind)
 	for k in p:
 		m.set_shader_parameter(k, p[k])
+	if _crater_tex:
+		m.set_shader_parameter("crater_tex", _crater_tex)
+		m.set_shader_parameter("crater_half", MapDims.HALF)
+		m.set_shader_parameter("terrain_bound", true)
 	_cache[kind] = m
 	return m
 
@@ -182,6 +237,12 @@ static func paving(kind: String) -> ShaderMaterial:
 	if _paving.has(kind):
 		return _paving[kind]
 	var m := get_mat(kind).duplicate() as ShaderMaterial
+	if kind == "asphalt":
+		# Match the road ribbons' transparent lighting pass at junctions.
+		var sh := Shader.new()
+		sh.code = m.shader.code.replace("ALBEDO = col;", "ALBEDO = col; ALPHA = 1.0;")
+		m.shader = sh
+		m.render_priority = -1
 	m.set_shader_parameter("crater_cut", true)
 	m.set_shader_parameter("crater_half", MapDims.HALF)
 	if _crater_tex:
@@ -193,21 +254,22 @@ static func paving(kind: String) -> ShaderMaterial:
 
 
 ## The ground's deformation and trench masks (the atmosphere hands them over
-## as they're made and remade); paving materials, and merged copies of them,
-## cut their holes from these.
+## as they're made and remade); paving cuts holes and wall weathering follows
+## the ground, including in merged meshes and Compatibility material copies.
 static func set_ground_maps(crater: Texture2DArray, trench: Texture2D) -> void:
 	if crater:
 		_crater_tex = crater
 	if trench:
 		_trench_tex = trench
-	var mats: Array = _paving.values()
+	var mats: Array = _cache.values() + _paving.values()
 	for v in _vc_cache.values():
-		if v.get_shader_parameter("crater_cut") == true:
+		if v.shader == shader() or v.get_shader_parameter("crater_cut") == true:
 			mats.append(v)
 	for m in mats:
-		m.set_shader_parameter("crater_half", MapDims.HALF)
+		set_shared(m, &"crater_half", MapDims.HALF)
 		if crater:
 			set_shared(m, &"crater_tex", crater)
+			set_shared(m, &"terrain_bound", true)
 		if trench:
 			set_shared(m, &"trench_tex", trench)
 
@@ -253,15 +315,28 @@ static func foliage() -> ShaderMaterial:
 		sh.code = code(FOLIAGE_SHADER)
 		_foliage = ShaderMaterial.new()
 		_foliage.shader = sh
+		_foliage.set_shader_parameter("vertex_lit", ProjectSettings.get_setting_with_override("rendering/shading/overrides/force_vertex_shading"))
 	return _foliage
+
+
+static var _leaf_cards := {}
+
+static func leaf_cards(conifer: bool) -> ShaderMaterial:
+	if not _leaf_cards.has(conifer):
+		var material := foliage().duplicate() as ShaderMaterial
+		material.set_shader_parameter("leaf_cards", true)
+		material.set_shader_parameter("leaf_tone", 0.65 if conifer else 0.85)
+		material.set_shader_parameter("leaf_texture", preload("res://assets/foliage/fir.png") if conifer else preload("res://assets/foliage/broadleaf.png"))
+		_leaf_cards[conifer] = material
+	return _leaf_cards[conifer]
 
 
 static var _vc_cache := {}
 ## Merged parts carry their tint as vertex colour, which is stored 8 bits per
 ## channel and clamps at 1: a tint brighter than the material's base (a sand
-## paint over an olive preset) would be lost. So it's stored at a quarter and
-## the shader multiplies it back up.
-const VC_K := 4.0
+## paint over an olive preset) would be lost. A 2.5 sRGB tint reaches 8.35 in
+## linear light, so the packed range must cover that before the shader restores it.
+const VC_K := 9.0
 
 
 ## Same material, but reading the part colour from vertex colours (for merged meshes).
@@ -302,6 +377,8 @@ static func _emit(root: Node3D, groups: Dictionary, single: bool) -> void:
 			arrays2[Mesh.ARRAY_VERTEX] = g2.v
 			arrays2[Mesh.ARRAY_NORMAL] = g2.n
 			arrays2[Mesh.ARRAY_COLOR] = g2.c
+			if not g2.uv.is_empty():
+				arrays2[Mesh.ARRAY_TEX_UV] = g2.uv
 			am2.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays2)
 			am2.surface_set_material(am2.get_surface_count() - 1, g2.mat if g2.mat.get_shader_parameter("use_vcolor") == true else vc_variant(g2.mat))
 			if int(g2.shadow) != GeometryInstance3D.SHADOW_CASTING_SETTING_OFF:
@@ -318,6 +395,8 @@ static func _emit(root: Node3D, groups: Dictionary, single: bool) -> void:
 		arrays[Mesh.ARRAY_VERTEX] = g.v
 		arrays[Mesh.ARRAY_NORMAL] = g.n
 		arrays[Mesh.ARRAY_COLOR] = g.c
+		if not g.uv.is_empty():
+			arrays[Mesh.ARRAY_TEX_UV] = g.uv
 		var am := ArrayMesh.new()
 		am.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
 		var mi := MeshInstance3D.new()
@@ -386,7 +465,8 @@ static func _bake_groups(groups: Dictionary) -> ArrayMesh:
 		var base: Color = material.get_shader_parameter("col_a")
 		if int(material.get_shader_parameter("pattern")) == CAMO:
 			base = base.lerp(material.get_shader_parameter("col_b"), 0.35)
-		base = base.srgb_to_linear()
+		if not per_material:
+			base = base.srgb_to_linear()
 		var scale := VC_K
 		if material.get_shader_parameter("use_vcolor") == true:
 			scale = float(material.get_shader_parameter("vcolor_k"))
@@ -439,6 +519,8 @@ static func _flat(mesh: Mesh, si: int) -> Array:
 	var v: PackedVector3Array = arr[Mesh.ARRAY_VERTEX]
 	var n: PackedVector3Array = arr[Mesh.ARRAY_NORMAL]
 	var c = arr[Mesh.ARRAY_COLOR]
+	var uv = arr[Mesh.ARRAY_TEX_UV]
+	var hasuv: bool = uv != null and (uv as PackedVector2Array).size() == v.size()
 	var hasc: bool = c != null and (c as PackedColorArray).size() == v.size()
 	var idx = arr[Mesh.ARRAY_INDEX]
 	if idx != null and not (idx as PackedInt32Array).is_empty():
@@ -446,6 +528,9 @@ static func _flat(mesh: Mesh, si: int) -> Array:
 		var v2 := PackedVector3Array()
 		var n2 := PackedVector3Array()
 		var c2 := PackedColorArray()
+		var uv2 := PackedVector2Array()
+		if hasuv:
+			uv2.resize(ii.size())
 		v2.resize(ii.size())
 		n2.resize(ii.size())
 		if hasc:
@@ -454,12 +539,15 @@ static func _flat(mesh: Mesh, si: int) -> Array:
 			var j := ii[k]
 			v2[k] = v[j]
 			n2[k] = n[j]
+			if hasuv:
+				uv2[k] = (uv as PackedVector2Array)[j]
 			if hasc:
 				c2[k] = (c as PackedColorArray)[j]
 		v = v2
 		n = n2
 		c = c2
-	var out := [v, n, c if hasc else null]
+		uv = uv2
+	var out := [v, n, c if hasc else null, uv if hasuv else null]
 	if cacheable:
 		_flat_cache[key] = out
 	else:
@@ -550,15 +638,17 @@ static func _collect(node: Node, xf: Transform3D, groups: Dictionary, victims: A
 ## in `mats`) placed by `cx` in the root's space, its tint (an sRGB colour, or
 ## null for none) as vertex colour.
 static func _append(groups: Dictionary, mesh: Mesh, mats: Array, shadow: int, tint: Variant, cx: Transform3D, single: bool) -> void:
-	# the tint uniform is sRGB (source_color); vertex colours are read as linear
-	var col: Color = (tint as Color).srgb_to_linear() if tint is Color else Color(1, 1, 1)
+	# Match source_color uniforms: Compatibility shades in sRGB, Forward+ in linear light.
+	var col: Color = tint if tint is Color else Color(1, 1, 1)
+	if not per_material:
+		col = col.srgb_to_linear()
 	var nb := Transform3D(cx.basis.inverse().transposed(), Vector3.ZERO)
 	for si in mesh.get_surface_count():
 		var sm: ShaderMaterial = mats[si]
 		var vc: bool = sm.get_shader_parameter("use_vcolor") == true
 		var key := str(sm.get_instance_id()) if single else "%d|%d" % [sm.get_instance_id(), shadow]
 		if not groups.has(key):
-			groups[key] = {"mat": sm, "shadow": shadow, "v": PackedVector3Array(), "n": PackedVector3Array(), "c": PackedColorArray()}
+			groups[key] = {"mat": sm, "shadow": shadow, "v": PackedVector3Array(), "n": PackedVector3Array(), "c": PackedColorArray(), "uv": PackedVector2Array()}
 		var g: Dictionary = groups[key]
 		if shadow != GeometryInstance3D.SHADOW_CASTING_SETTING_OFF:
 			g.shadow = shadow
@@ -568,6 +658,9 @@ static func _append(groups: Dictionary, mesh: Mesh, mats: Array, shadow: int, ti
 		var verts: PackedVector3Array = fa[0]
 		g.v.append_array(cx * verts)
 		g.n.append_array(nb * (fa[1] as PackedVector3Array))
+		if sm.get_shader_parameter("leaf_cards") == true:
+			assert(fa[3] != null, "Photographed foliage keeps its card coordinates through batching")
+			g.uv.append_array(fa[3])
 		if vc and fa[2] != null and (fa[2] as PackedColorArray).size() == verts.size():
 			g.c.append_array(fa[2])
 		else:
@@ -649,6 +742,8 @@ static func netting_tent() -> ShaderMaterial:
 
 
 static func _preset(kind: String) -> Dictionary:
+	if kind.begins_with("vehicle/"):
+		return VehicleMaterials.preset(kind)
 	match kind:
 		"steel":
 			return {"pattern": PAINT, "col_a": Color(0.25, 0.26, 0.27), "col_b": Color(0.4, 0.38, 0.35), "rough": 0.6, "metal": 0.6, "bump": 0.8, "grime": 0.4, "rust": 0.3}
@@ -661,31 +756,48 @@ static func _preset(kind: String) -> Dictionary:
 		"gunmetal_w":
 			return {"pattern": PAINT, "col_a": Color(0.14, 0.14, 0.135), "col_b": Color(0.34, 0.33, 0.31), "rough": 0.52, "metal": 0.55, "bump": 0.35, "grime": 0.2}
 		"plaster":
-			return {"pattern": PLASTER, "col_a": Color(0.74, 0.69, 0.6), "col_b": Color(0.6, 0.57, 0.5), "col_c": Color(0.5, 0.33, 0.26), "col_d": Color(0.45, 0.42, 0.37), "rough": 0.92, "bump": 1.2, "grime": 0.7}
+			return {"photo_color": preload("res://assets/town/plastered_wall_color.jpg"), "photo_surface": preload("res://assets/town/plastered_wall_surface.png"), "pattern": PLASTER, "col_a": Color(0.74, 0.69, 0.6), "col_b": Color(0.6, 0.57, 0.5), "col_c": Color(0.5, 0.33, 0.26), "col_d": Color(0.45, 0.42, 0.37), "rough": 0.92, "bump": 1.2, "grime": 0.7}
 		"brick":
-			return {"pattern": BRICK, "col_a": Color(0.56, 0.3, 0.21), "col_b": Color(0.62, 0.58, 0.52), "col_c": Color(0.42, 0.24, 0.17), "rough": 0.9, "bump": 1.4, "grime": 0.6}
+			return {"pattern": WEATHERED_PHOTO, "photo_mean": PHOTO_MEAN.get_meta("brick_wall_001"), "col_a": Color(0.56, 0.3, 0.21), "col_b": Color(0.62, 0.58, 0.52), "col_c": Color(0.42, 0.24, 0.17), "rough": 0.9, "bump": 0.0, "grime": 0.6, "scale": 1.0, "weathering": 0.5, "photo_color": preload("res://assets/town/brick_wall_001_color.jpg"), "photo_surface": preload("res://assets/town/brick_wall_001_surface.png")}
 		"concrete":
-			return {"pattern": CONCRETE, "col_a": Color(0.52, 0.51, 0.48), "col_b": Color(0.36, 0.35, 0.32), "rough": 0.9, "bump": 0.9, "grime": 0.8}
+			return {"pattern": WEATHERED_PHOTO, "photo_mean": PHOTO_MEAN.get_meta("concrete_floor_01"), "col_a": Color(0.52, 0.51, 0.48), "col_b": Color(0.36, 0.35, 0.32), "rough": 0.9, "bump": 0.0, "grime": 0.8, "scale": 0.5, "weathering": 0.5, "photo_color": preload("res://assets/town/concrete_floor_01_color.jpg"), "photo_surface": preload("res://assets/town/concrete_floor_01_surface.png")}
+		"asphalt":
+			return {"street_detail": preload("res://assets/town/road_damaged_clean_color.jpg"), "pattern": ASPHALT, "col_a": Color(1, 1, 1), "rough": 0.88, "bump": 0.0, "grime": 0.0, "photo_color": preload("res://assets/town/aerial_asphalt_01_color.jpg"), "photo_surface": preload("res://assets/town/road_damaged_clean_surface.png")}
+		"turf":
+			return {"pattern": TURF, "col_a": Color(1, 1, 1), "rough": 0.98, "bump": 0.0, "grime": 0.0, "scale": 0.5, "photo_color": preload("res://assets/town/leafy_grass_color.jpg"), "photo_surface": preload("res://assets/town/leafy_grass_surface.png")}
+		"pavement":
+			return {"pattern": PAVEMENT, "col_a": Color(0.52, 0.51, 0.48), "rough": 0.93, "bump": 0.0, "grime": 0.0, "scale": 0.555556, "photo_color": preload("res://assets/town/concrete_pavement_color.jpg"), "photo_surface": preload("res://assets/town/concrete_pavement_surface.png")}
+		"curbstone":
+			return {"pattern": WEATHERED_PHOTO, "photo_mean": PHOTO_MEAN.get_meta("concrete_floor_01"), "col_a": Color(0.57, 0.56, 0.53), "col_b": Color(0.52, 0.51, 0.48), "rough": 0.94, "bump": 0.0, "grime": 0.0, "pitting": 0.1, "seams": 0.0, "scale": 0.5, "weathering": 0.5, "photo_color": preload("res://assets/town/concrete_floor_01_color.jpg"), "photo_surface": preload("res://assets/town/concrete_floor_01_surface.png")}
 		"concrete_floor":
-			return {"pattern": CONCRETE, "col_a": Color(0.42, 0.41, 0.38), "col_b": Color(0.3, 0.28, 0.25), "rough": 0.9, "bump": 0.6, "grime": 0.0}
+			return {"pattern": WEATHERED_PHOTO, "photo_mean": PHOTO_MEAN.get_meta("concrete_floor_01"), "col_a": Color(0.42, 0.41, 0.38), "col_b": Color(0.3, 0.28, 0.25), "rough": 0.9, "bump": 0.0, "grime": 0.0, "scale": 0.5, "weathering": 0.5, "photo_color": preload("res://assets/town/concrete_floor_01_color.jpg"), "photo_surface": preload("res://assets/town/concrete_floor_01_surface.png")}
 		"sandbag":
 			return {"pattern": SANDBAG, "col_a": Color(0.62, 0.55, 0.39), "col_b": Color(0.45, 0.39, 0.26), "rough": 0.95, "bump": 2.2, "grime": 0.6}
 		"wood":
-			return {"pattern": WOOD, "col_a": Color(0.5, 0.37, 0.23), "col_b": Color(0.34, 0.24, 0.14), "rough": 0.85, "bump": 1.2, "grime": 0.5}
+			return {"pattern": WEATHERED_PHOTO, "photo_mean": PHOTO_MEAN.get_meta("weathered_planks"), "col_a": Color(0.5, 0.37, 0.23), "col_b": Color(0.34, 0.24, 0.14), "rough": 0.85, "bump": 0.0, "grime": 0.5, "scale": 0.5, "weathering": 0.5, "photo_color": preload("res://assets/town/weathered_planks_color.jpg"), "photo_surface": preload("res://assets/town/weathered_planks_surface.png")}
 		"wood_dark":
-			return {"pattern": WOOD, "col_a": Color(0.33, 0.25, 0.17), "col_b": Color(0.22, 0.16, 0.1), "rough": 0.88, "bump": 1.2, "grime": 0.5}
+			return {"pattern": WEATHERED_PHOTO, "photo_mean": PHOTO_MEAN.get_meta("weathered_planks"), "col_a": Color(0.33, 0.25, 0.17), "col_b": Color(0.22, 0.16, 0.1), "rough": 0.88, "bump": 0.0, "grime": 0.5, "scale": 0.5, "weathering": 0.5, "photo_color": preload("res://assets/town/weathered_planks_color.jpg"), "photo_surface": preload("res://assets/town/weathered_planks_surface.png")}
 		"bank":
 			# earth thrown up and left a season: settled smooth, gone over with
 			# moss and thin grass (berms, the mound over a dugout)
 			return {"pattern": EARTH, "col_a": Color(0.3, 0.28, 0.18), "col_b": Color(0.2, 0.19, 0.12), "rough": 0.97, "bump": 0.45, "grime": 0.0, "scale": 0.6}
 		"earth":
 			return {"pattern": EARTH, "col_a": Color(0.33, 0.26, 0.17), "col_b": Color(0.22, 0.17, 0.11), "rough": 0.97, "bump": 1.6, "grime": 0.0}
+		"alpine_stone":
+			# Broken natural stone has grain, without the mortar joints used by masonry.
+			return {"pattern": NATURAL_ROCK, "col_a": Color(0.44, 0.43, 0.39), "rough": 0.95, "bump": 2.5, "grime": 0.0, "scale": 0.75, "stone_texture": preload("res://assets/terrain/rock_face_03_color_height.png")}
 		"stone":
 			return {"pattern": STONE, "col_a": Color(0.58, 0.55, 0.5), "col_b": Color(0.42, 0.4, 0.36), "col_c": Color(0.5, 0.46, 0.4), "rough": 0.9, "bump": 2.0, "grime": 0.7}
 		"rubble":
 			return {"pattern": STONE, "col_a": Color(0.55, 0.52, 0.47), "col_b": Color(0.36, 0.34, 0.3), "col_c": Color(0.5, 0.33, 0.25), "rough": 0.95, "bump": 2.4, "grime": 0.5, "scale": 2.0}
 		"roof_tile":
-			return {"pattern": BRICK, "col_a": Color(0.5, 0.22, 0.14), "col_b": Color(0.36, 0.17, 0.11), "col_c": Color(0.44, 0.2, 0.13), "rough": 0.82, "bump": 1.8, "grime": 0.55, "scale": 0.7}
+			return {"pattern": WEATHERED_PHOTO, "photo_mean": PHOTO_MEAN.get_meta("roof_tiles"), "col_a": Color(0.5, 0.22, 0.14), "rough": 0.9, "bump": 0.0, "grime": 0.0, "scale": 0.5, "local_space": true, "weathering": 0.7, "photo_color": preload("res://assets/town/roof_tiles_color.jpg"), "photo_surface": preload("res://assets/town/roof_tiles_surface.png")}
+		"roof_concrete":
+			return {"pattern": WEATHERED_PHOTO, "photo_mean": PHOTO_MEAN.get_meta("concrete_floor_01"), "col_a": Color(0.52, 0.5, 0.47), "rough": 0.95, "bump": 0.0, "grime": 0.0, "scale": 0.5, "local_space": true, "weathering": 1.0, "photo_color": preload("res://assets/town/concrete_floor_01_color.jpg"), "photo_surface": preload("res://assets/town/concrete_floor_01_surface.png")}
+		"fence_wood", "fence_rail":
+			return {"pattern": WEATHERED_PHOTO, "photo_mean": PHOTO_MEAN.get_meta("weathered_planks"), "col_a": Color(0.5, 0.43, 0.33), "rough": 0.94, "bump": 0.0, "grime": 0.0, "scale": 0.5, "grain_horizontal": kind == "fence_rail", "weathering": 0.5, "photo_color": preload("res://assets/town/weathered_planks_color.jpg"), "photo_surface": preload("res://assets/town/weathered_planks_surface.png")}
+		"fence_metal":
+			return {"pattern": PAINT, "col_a": Color(0.6, 0.6, 0.6), "col_b": Color(0.28, 0.25, 0.21), "rough": 0.82, "metal": 0.35, "bump": 0.3, "grime": 0.65, "rust": 0.7, "scale": 1.7}
 		"corrugated":
 			return {"pattern": CORRUGATED, "col_a": Color(0.5, 0.51, 0.49), "col_b": Color(0.42, 0.24, 0.12), "rough": 0.55, "metal": 0.5, "bump": 1.0, "grime": 0.6}
 		"canvas":
@@ -693,7 +805,7 @@ static func _preset(kind: String) -> Dictionary:
 		"canvas_white":
 			return {"pattern": CANVAS, "col_a": Color(0.85, 0.84, 0.79), "col_b": Color(0.7, 0.68, 0.62), "rough": 0.95, "bump": 0.8, "grime": 0.5}
 		"bark":
-			return {"pattern": BARK, "col_a": Color(0.32, 0.25, 0.18), "col_b": Color(0.18, 0.14, 0.1), "rough": 0.95, "bump": 2.0, "grime": 0.2}
+			return {"pattern": WEATHERED_PHOTO, "photo_mean": PHOTO_MEAN.get_meta("tree_bark_03"), "col_a": Color(0.32, 0.25, 0.18), "col_b": Color(0.18, 0.14, 0.1), "rough": 0.95, "bump": 0.0, "grime": 0.2, "scale": 0.65, "weathering": 0.5, "photo_color": preload("res://assets/town/tree_bark_03_color.jpg"), "photo_surface": preload("res://assets/town/tree_bark_03_surface.png")}
 		"paint":
 			return {"pattern": PAINT, "col_a": Color(0.6, 0.6, 0.6), "col_b": Color(0.38, 0.37, 0.35), "rough": 0.45, "metal": 0.15, "bump": 0.6, "grime": 0.7}
 		"aircraft":
@@ -767,6 +879,10 @@ shader_type spatial;
 render_mode specular_schlick_ggx;
 
 uniform int pattern = 0;
+uniform sampler2D photo_color : source_color, filter_linear_mipmap_anisotropic, repeat_enable;
+uniform sampler2D photo_surface : filter_linear_mipmap_anisotropic, repeat_enable;
+uniform vec3 photo_mean : source_color = vec3(0.5);
+uniform sampler2D stone_texture : source_color, filter_linear_mipmap_anisotropic, repeat_enable;
 uniform vec3 col_a : source_color = vec3(0.6);
 uniform vec3 col_b : source_color = vec3(0.4);
 uniform vec3 col_c : source_color = vec3(0.5);
@@ -776,15 +892,29 @@ uniform float rough = 0.85;
 uniform float metal = 0.0;
 uniform float bump = 1.0;
 uniform float grime = 0.5;
+uniform float weathering = 0.0;
+uniform bool grain_horizontal = false;
 uniform float rust = 0.0;
 uniform float pitting = 1.0;  // concrete: how much of the old pitting shows
 uniform float seams = 1.0;  // concrete: the formwork joints
 uniform float cell_w = 1.05;  // HESCO: the width of a cell
 uniform bool local_space = false;
+// Shared vehicle maps are linear data, projected in metres without mesh UVs.
+uniform bool vehicle_surface = false;
+uniform bool surface_detail = false;
+uniform sampler2D surface_map : filter_linear_mipmap_anisotropic, repeat_enable;
+uniform float surface_scale = 3.0;
+uniform float surface_wear = 0.0;
+uniform float surface_tone = 0.0;
+uniform float surface_roughness = 0.22;
+uniform float surface_corrosion = 0.0;
+uniform float surface_coat = 0.0;
+uniform float surface_specular = 0.4;
 uniform bool use_vcolor = false;
 uniform float vcolor_k = 1.0;  // merged parts: the vertex colour is stored scaled down (Mats.VC_K)
 // paving (Mats.paving): a shell hole or a trench punches through it, as through the roads
 uniform bool crater_cut = false;
+uniform bool terrain_bound = false;
 uniform sampler2DArray crater_tex : filter_linear, repeat_disable;
 // TERRAIN_TEXTURE_HELPER
 uniform sampler2D trench_tex : hint_default_black, filter_linear, repeat_disable;
@@ -797,7 +927,9 @@ varying vec3 tp;
 varying vec3 tn;
 varying vec3 wpos;
 varying vec3 seed;
+varying float ground_y;
 
+// STREET_SURFACE
 float h12(vec2 p) { vec3 p3 = fract(vec3(p.xyx) * 0.1031); p3 += dot(p3, p3.yzx + 33.33); return fract((p3.x + p3.y) * p3.z); }
 // Value noise with one feature per unit, read from a mipmapped tileable
 // texture: the GPU filters it, so fine detail averages out with distance
@@ -810,7 +942,12 @@ float keep(float period, float px) { return smoothstep(1.5, 5.0, period / max(px
 
 void vertex() {
 	wpos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
-	seed = MODEL_MATRIX[3].xyz;
+	ground_y = 0.0;
+	if (terrain_bound && !local_space && grime > 0.0) {
+		ground_y = terrain_height(crater_tex, (wpos.xz + crater_half) / (crater_half * 2.0));
+	}
+	// Moving through the world must not change camouflage or wear.
+	seed = vehicle_surface ? vec3(0.0) : MODEL_MATRIX[3].xyz;
 	if (local_space) {
 		tp = VERTEX + pofs;
 		tn = NORMAL;
@@ -832,8 +969,10 @@ void fragment() {
 	if (an.y > an.x && an.y > an.z) { uv = tp.xz; }
 	else if (an.x > an.z) { uv = vec2(tp.z, tp.y); }
 	else { uv = vec2(tp.x, tp.y); }
-	vec2 off = vec2(h12(seed.xz * 0.37), h12(seed.zx * 0.71)) * 37.0;
+	// World-space patterns must stay fixed when scenery moves into a spatial batch.
+	vec2 off = local_space ? vec2(h12(seed.xz * 0.37), h12(seed.zx * 0.71)) * 37.0 : vec2(0.0);
 	uv *= scale;
+	if (grain_horizontal) { uv = uv.yx; }
 	// pattern units per pixel here (how fine a detail can still be drawn)
 	vec2 fw = fwidth(uv);
 	float px = max(fw.x, fw.y);
@@ -864,14 +1003,37 @@ void fragment() {
 			col = brick; h = bh;
 		} else {
 			float n = tfbm(uv * 0.9 + off);
-			float chip = smoothstep(0.69 - sw, 0.72 + sw, n + (1.0 - smoothstep(0.0, 1.2, wpos.y)) * 0.06);
-			vec3 pl = col_a * (0.88 + 0.18 * tfbm(uv * 2.3 + off));
+			float chip = smoothstep(0.69 - sw, 0.72 + sw, n + (1.0 - smoothstep(0.0, 1.2, wpos.y - ground_y)) * 0.06);
+			vec3 pl = texture(photo_color, uv * 0.5).rgb * col_a * 1.8;
 			float streak = tfbm(vec2(uv.x * 3.0, uv.y * 0.35) + off);
 			pl = mix(pl, col_d, smoothstep(0.5, 0.8, streak) * 0.45);
 			col = mix(pl, brick, chip);
 			h = mix(0.9 + tnoise(uv * 18.0) * 0.1, bh * 0.6, chip);
 			r = mix(rough, 0.95, chip);
 		}
+	} else if (pattern == 18) {
+		col = street_surface(photo_color, noise_tex, wpos.xz);
+		h = 0.5;
+	} else if (pattern == 21) {
+		// Keep the photographed variation while honoring the material and instance colours.
+		col = texture(photo_color, uv + off * 0.03).rgb * col_a / max(photo_mean, vec3(0.01));
+		float damp = smoothstep(0.38, 0.68, tfbm(wpos.xz * 0.15 + off));
+		float streak = smoothstep(0.45, 0.72, tfbm(vec2(uv.x * 1.8, uv.y * 0.3) + off));
+		col *= mix(1.0, 0.85 + 0.3 * tnoise(uv * 0.7 + off), weathering);
+		col = mix(col, col * vec3(0.32, 0.38, 0.29), (damp * 0.5 + streak * 0.25) * weathering);
+		h = 0.5;
+	} else if (pattern == 19 || pattern == 20) {
+		col = texture(photo_color, uv).rgb;
+		if (pattern == 20) {
+			float dry = smoothstep(0.35, 0.7, tfbm(wpos.xz * 0.08));
+			col *= mix(vec3(0.23, 0.39, 0.16), vec3(0.36, 0.37, 0.21), dry);
+		} else {
+			vec2 slab = floor(uv * vec2(3.0, 6.0));
+			col *= 0.82 + 0.30 * h12(slab);
+			float staining = smoothstep(0.53, 0.72, tfbm(wpos.xz * 0.21 + 13.0));
+			col *= mix(vec3(1.0), vec3(0.62, 0.60, 0.54), staining * 0.65);
+		}
+		h = 0.5;
 	} else if (pattern == 3) {
 		col = col_a * (0.86 + 0.22 * tfbm(uv * 2.1 + off));
 		float st = tfbm(uv * 0.6 + off * 0.3);
@@ -992,6 +1154,14 @@ void fragment() {
 		col = mix(fab, col_c, max(wire * 0.55, seam * 0.8));
 		h = bulge * 0.8 - wire * 0.1 - seam * 0.5;
 		m = mix(0.0, 0.6, wire * 0.6);
+	} else if (pattern == 17) {
+		vec3 weights = pow(abs(normalize(tn)), vec3(4.0));
+		weights /= weights.x + weights.y + weights.z;
+		vec4 stone = texture(stone_texture, tp.zy * scale) * weights.x
+			+ texture(stone_texture, tp.xz * scale) * weights.y
+			+ texture(stone_texture, tp.xy * scale) * weights.z;
+		col = stone.rgb * vec3(1.02, 1.06, 1.10);
+		h = stone.a;
 	} else if (pattern == 14) {
 		col = col_a * (0.95 + 0.08 * tnoise(uv * 30.0));
 		h = 0.5;
@@ -999,20 +1169,76 @@ void fragment() {
 		col = col_a * (0.92 + 0.12 * tnoise(uv * 5.0 + off));
 		h = 0.5 + tnoise(uv * 20.0) * 0.1;
 	}
+	float corrosion = 0.0;
+	if (vehicle_surface) {
+		// Paint is a dielectric coating. Only the sparse exposed chips become
+		// metallic; rubber, fabric and glass retain their own response.
+		if (pattern == 0) { col = col_a; h = 0.5; }
+		if (surface_detail) {
+			vec3 weights = pow(abs(normalize(tn)), vec3(4.0));
+			weights /= max(dot(weights, vec3(1.0)), 0.0001);
+			vec3 q = tp * surface_scale;
+			vec4 detail = texture(surface_map, q.yz) * weights.x
+				+ texture(surface_map, q.xz) * weights.y
+				+ texture(surface_map, q.xy) * weights.z;
+			h = (pattern == 13 || pattern == 5) ? h + (detail.r - 0.5) * 0.15 : detail.r;
+			r = clamp(rough + (detail.g - 0.5) * surface_roughness, 0.06, 1.0);
+			col *= 1.0 + (detail.a - 0.5) * surface_tone;
+			corrosion = detail.b * surface_corrosion;
+			float worn = detail.b * surface_wear;
+			col = mix(col, vec3(0.12, 0.13, 0.14), worn);
+			m = mix(metal, 0.85, worn);
+			r = mix(r, 0.4, worn);
+		}
+	}
 	col *= tint.rgb;
 	if (use_vcolor) { col *= COLOR.rgb * vcolor_k; }
+	// Rust is an oxide, not reflective steel tinted orange. Apply after the
+	// part tint so corroded fittings retain their mineral color.
+	col = mix(col, vec3(0.14, 0.055, 0.018), corrosion);
+	m = mix(m, 0.0, corrosion);
+	r = mix(r, 0.94, corrosion);
 	// broad, soft variation across a surface (sun-bleached, weathered, damp
 	// patches): large enough never to alias, it keeps big walls from looking flat
-	float macro = tfbm(wpos.xz * 0.11 + wpos.y * 0.07 + off * 0.2);
-	col *= 0.88 + 0.24 * macro;
+	vec3 weather_pos = vehicle_surface ? tp : wpos;
+	float macro = tfbm(weather_pos.xz * 0.11 + weather_pos.y * 0.07 + off * 0.2);
+	if (vehicle_surface) { col *= 0.96 + 0.08 * macro; }
+	else if (pattern == 21) { col *= mix(1.0, 0.88 + 0.24 * macro, weathering); }
+	else if (pattern != 18) { col *= 0.88 + 0.24 * macro; }
 	// grime and dust toward the ground
-	float low = 1.0 - smoothstep(0.0, 0.9, wpos.y);
+	float low = 1.0 - smoothstep(0.0, 0.9, weather_pos.y - ground_y);
 	float gn = tnoise(uv * 2.0 + off);
-	col = mix(col, col * 0.62 + vec3(0.05, 0.04, 0.02), low * grime * (0.6 + 0.4 * gn));
+	float dirt = low * grime * (0.6 + 0.4 * gn);
+	col = mix(col, vehicle_surface ? vec3(0.12, 0.095, 0.065) : col * 0.62 + vec3(0.05, 0.04, 0.02), dirt);
 	ALBEDO = col;
-	ROUGHNESS = clamp(r + (macro - 0.5) * 0.12, 0.05, 1.0);
-	METALLIC = m;
-	SPECULAR = 0.4;
+	ROUGHNESS = clamp(r + (macro - 0.5) * (vehicle_surface ? 0.04 : 0.12) + (vehicle_surface ? dirt * 0.15 : 0.0), 0.05, 1.0);
+	if (pattern >= 18 && pattern <= 20 && an.y > 0.5) {
+		vec2 puv = wpos.xz / 2.2;
+		if (pattern != 18) { puv = uv; }
+		vec4 surface = texture(photo_surface, puv);
+		vec3 normal = surface.rgb * 2.0 - 1.0;
+		normal.xy *= 0.18;
+		NORMAL = normalize((VIEW_MATRIX * vec4(ground_surface_basis(wpos) * normal, 0.0)).xyz);
+		ROUGHNESS = clamp(surface.a, 0.65, 1.0);
+	}
+	if (pattern == 21 || pattern == 2) {
+		vec4 photo = texture(photo_surface, pattern == 2 ? uv * 0.5 : uv + off * 0.03);
+		vec3 n = photo.rgb * 2.0 - 1.0;
+		n.xy *= 0.45;
+		vec3 dx = dFdx(VERTEX); vec3 dy = dFdy(VERTEX);
+		vec2 tx = dFdx(uv); vec2 ty = dFdy(uv);
+		float handed = sign(tx.x * ty.y - tx.y * ty.x);
+		vec3 tangent = (dx * ty.y - dy * tx.y) * handed;
+		vec3 bitangent = (dy * tx.x - dx * ty.x) * handed;
+		if (dot(tangent, tangent) > 0.000001 && dot(bitangent, bitangent) > 0.000001) {
+			NORMAL = normalize(normalize(tangent) * n.x + normalize(bitangent) * n.y + NORMAL * n.z);
+		}
+		ROUGHNESS = clamp(photo.a, 0.7, 1.0);
+	}
+	METALLIC = vehicle_surface ? m * (1.0 - dirt) : m;
+	SPECULAR = vehicle_surface ? surface_specular : 0.4;
+	CLEARCOAT = vehicle_surface ? surface_coat : 0.0;
+	CLEARCOAT_ROUGHNESS = 0.22;
 	// bump mapping from the pattern height (surface gradient); the height is
 	// band-limited above, so its screen-space slope is stable under motion
 	if (bump > 0.0) {
@@ -1036,6 +1262,10 @@ render_mode cull_disabled;
 
 instance uniform vec4 tint : source_color = vec4(0.2, 0.32, 0.14, 1.0);
 uniform float wind = 1.0;
+uniform bool leaf_cards = false;
+uniform bool vertex_lit = false;
+uniform float leaf_tone = 1.0;
+uniform sampler2D leaf_texture : source_color, filter_linear_mipmap_anisotropic, repeat_disable;
 uniform bool use_vcolor = false;
 // on fire (a burning tree's own copy, see Structure._apply_char): the leaves
 // shrivel brown, blacken and burn away, glowing at the edges while it burns
@@ -1054,14 +1284,22 @@ float n3(vec3 p) {
 
 void vertex() {
 	vec3 wp = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
-	float lump = n3(wp * 1.3) * 0.55 + n3(wp * 3.1) * 0.25;
-	VERTEX += NORMAL * (lump - 0.4) * 0.5;
+	if (!leaf_cards) {
+		float lump = n3(wp * 1.3) * 0.55 + n3(wp * 3.1) * 0.25;
+		VERTEX += NORMAL * (lump - 0.4) * 0.5;
+	}
 	float t = TIME * 1.3 + wp.x * 0.11 + wp.z * 0.07;
 	float sway = (sin(t) * 0.6 + sin(t * 2.3 + 1.7) * 0.3) * wind * 0.06 * clamp(VERTEX.y + 1.0, 0.0, 2.0);
 	VERTEX.x += sway;
 	VERTEX.z += sway * 0.6;
 	lpos = wp;
 	shade = clamp(NORMAL.y * 0.35 + 0.65, 0.0, 1.0);
+	// Leaf cards keep soft canopy lighting when the browser skips fragment normals.
+	if (leaf_cards && vertex_lit) {
+		vec3 canopy_normal = MODEL_NORMAL_MATRIX * NORMAL;
+		canopy_normal.y = abs(canopy_normal.y);
+		NORMAL = normalize(inverse(MODEL_NORMAL_MATRIX) * mix(canopy_normal, vec3(0.0, 1.0, 0.0), 0.35));
+	}
 }
 
 void fragment() {
@@ -1073,17 +1311,30 @@ void fragment() {
 	float px = max(length(fwidth(lpos)), 1e-4);
 	float k6 = smoothstep(1.5, 5.0, (1.0 / 6.0) / px);
 	float k15 = smoothstep(1.5, 5.0, (1.0 / 15.0) / px);
-	float holes = mix(0.5, n3(lpos * 6.0 + 11.0), k6) * 0.6 + mix(0.5, n3(lpos * 15.0), k15) * 0.4;
-	if (rim > 0.12 && holes < (rim - 0.12) * 1.25) {
+	float holes = 0.5;
+	if (!leaf_cards || scorch > 0.0) { holes = mix(0.5, n3(lpos * 6.0 + 11.0), k6) * 0.6 + mix(0.5, n3(lpos * 15.0), k15) * 0.4; }
+	if (!leaf_cards && rim > 0.12 && holes < (rim - 0.12) * 1.25) {
 		discard;
 	}
 	float burnt = holes - scorch * 1.15 + 0.3;
 	if (scorch > 0.0 && burnt < 0.0) {
 		discard;
 	}
-	float leaves = mix(0.5, n3(lpos * 9.0), smoothstep(1.5, 5.0, (1.0 / 9.0) / px));
-	float gaps = mix(0.5, n3(lpos * 4.2 + 7.0), smoothstep(1.5, 5.0, (1.0 / 4.2) / px));
-	vec3 c = (use_vcolor ? COLOR.rgb : tint.rgb) * (0.7 + 0.5 * leaves);
+	float leaves = 0.5;
+	float gaps = 0.5;
+	if (!leaf_cards || scorch > 0.0) {
+		leaves = mix(0.5, n3(lpos * 9.0), smoothstep(1.5, 5.0, (1.0 / 9.0) / px));
+		gaps = mix(0.5, n3(lpos * 4.2 + 7.0), smoothstep(1.5, 5.0, (1.0 / 4.2) / px));
+	}
+	vec3 c = use_vcolor ? COLOR.rgb : tint.rgb;
+	if (OUTPUT_IS_SRGB) { c = mix(c / 12.92, pow((c + 0.055) / 1.055, vec3(2.4)), step(vec3(0.04045), c)); }
+	c *= 0.7 + 0.5 * leaves;
+	if (leaf_cards) {
+		vec4 photo = texture(leaf_texture, UV);
+		if (photo.a < 0.22) { discard; }
+		if (OUTPUT_IS_SRGB) { photo.rgb = mix(photo.rgb / 12.92, pow((photo.rgb + 0.055) / 1.055, vec3(2.4)), step(vec3(0.04045), photo.rgb)); }
+		c = photo.rgb * leaf_tone * mix(vec3(0.75), vec3(1.15), clamp(c * 12.0, vec3(0.0), vec3(1.0)));
+	}
 	c = mix(c, c * vec3(1.15, 1.1, 0.7), smoothstep(0.55, 0.8, gaps) * 0.5);
 	if (scorch > 0.0) {
 		// (linear colours: a withered brown, then soot)
@@ -1094,18 +1345,25 @@ void fragment() {
 		EMISSION = vec3(1.0, 0.32, 0.05) * embers * edge * (0.9 + 0.6 * sin(TIME * 7.0 + lpos.x * 3.0 + lpos.y * 5.0));
 	}
 	ALBEDO = c * (0.55 + 0.45 * shade);
+	if (OUTPUT_IS_SRGB) { ALBEDO = mix(ALBEDO * 12.92, 1.055 * pow(max(ALBEDO, vec3(0.0)), vec3(1.0 / 2.4)) - 0.055, step(vec3(0.0031308), ALBEDO)); }
 	ROUGHNESS = 0.85;
 	SPECULAR = 0.25;
 	BACKLIGHT = vec3(0.35, 0.42, 0.18) * (1.0 - scorch);
 	AO = 0.55 + 0.45 * shade;
 	AO_LIGHT_AFFECT = 0.6;
-	float bh = leaves * 0.6 + gaps * 0.4;
-	vec3 dpdx = dFdx(VERTEX); vec3 dpdy = dFdy(VERTEX);
-	float dhx = dFdx(bh); float dhy = dFdy(bh);
-	vec3 r1 = cross(dpdy, NORMAL); vec3 r2 = cross(NORMAL, dpdx);
-	float det = dot(dpdx, r1);
-	vec3 grad = sign(det) * (dhx * r1 + dhy * r2);
-	NORMAL = normalize(abs(det) * NORMAL - grad * 0.06);
+	if (leaf_cards) {
+		vec3 canopy_normal = (INV_VIEW_MATRIX * vec4(NORMAL, 0.0)).xyz;
+		canopy_normal.y = abs(canopy_normal.y);
+		NORMAL = normalize((VIEW_MATRIX * vec4(mix(canopy_normal, vec3(0.0, 1.0, 0.0), 0.35), 0.0)).xyz);
+	} else {
+		float bh = leaves * 0.6 + gaps * 0.4;
+		vec3 dpdx = dFdx(VERTEX); vec3 dpdy = dFdy(VERTEX);
+		float dhx = dFdx(bh); float dhy = dFdy(bh);
+		vec3 r1 = cross(dpdy, NORMAL); vec3 r2 = cross(NORMAL, dpdx);
+		float det = dot(dpdx, r1);
+		vec3 grad = sign(det) * (dhx * r1 + dhy * r2);
+		NORMAL = normalize(abs(det) * NORMAL - grad * 0.06);
+	}
 }
 """
 

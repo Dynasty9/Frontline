@@ -9,6 +9,7 @@ static var _cache := {}
 
 var root: Node3D
 var burnt := false
+var surface_family := "armor"
 var turret: Node3D
 var mg_tip: Node3D  # the machine gun's muzzle (shots start here)
 var gun_tip: Node3D  # the main gun's muzzle
@@ -30,7 +31,11 @@ static func build_car(variant: int, col: Color, is_burnt := false) -> VehicleMod
 	var k := VehicleModels.new()
 	k.root = Node3D.new()
 	k.burnt = is_burnt
+	k.surface_family = "automotive"
+	k._baking = true
 	k._car(variant % 5, col)
+	k._merge_parts(k.root, Vector3.ZERO)
+	k._baked()
 	return k
 
 
@@ -43,6 +48,7 @@ static func build(kind: String, team: int, seed: int, is_burnt := false) -> Vehi
 	var mk := kind
 	if Defs.VEHICLES.has(kind):
 		mk = String(Defs.VEHICLES[kind].get("model", kind))
+	k.surface_family = VehicleMaterials.family(mk)
 	# the aircraft builders in scripts/game/vehicles/ come first: until one of
 	# them builds a key, the older model below stands
 	if VmCore.build(k, mk, team, seed) or VmGunship.build(k, mk, team, seed) or VmAttack.build(k, mk, team, seed) or VmFighter.build(k, mk, team, seed):
@@ -239,7 +245,8 @@ static func _capsule(r: float, h: float) -> CapsuleMesh:
 func _add(parent: Node3D, mesh: Mesh, kind: String, col, pos: Vector3, rot := Vector3.ZERO, scl := Vector3.ONE, shadow := true) -> Variant:
 	var k := kind
 	if burnt:
-		k = "burnt" if kind != "glass" else "burnt"
+		k = "burnt"
+	k = VehicleMaterials.key(k, surface_family)
 	var t := Mats.tint_for(k, col) if col is Color and not burnt else Color(1, 1, 1)
 	var pt := [mesh, Mats.get_mat(k), t, shadow, pos, rot, scl, null, null]
 	if not _baking:
@@ -333,7 +340,7 @@ func _fold(pv: Node3D) -> void:
 	pv.free()
 
 
-## Every part on surface `from` put on `to` (VmFighter._repaint), noted down or not.
+## Every noted part on surface `from` put on `to`.
 func _swap_noted(from: Material, to: Material) -> void:
 	for parent: Node3D in _parts:
 		for pt: Array in _parts[parent]:
@@ -377,18 +384,42 @@ func _pivot(parent: Node3D, pos: Vector3) -> Node3D:
 ## Wheel with tyre and hub on a spinning pivot (axis X).
 func _wheel(parent: Node3D, pos: Vector3, r: float, w: float, hub_kind := "gunmetal_w", hub_col = null) -> Node3D:
 	var pv := _pivot(parent, pos)
-	# the tyre: a tread band with rounded shoulders, the sidewalls set in a little
-	_cyl(pv, r * 0.93, r * 0.93, w, Vector3.ZERO, Vector3(0, 0, PI / 2), "rubber", null, 20)
-	_cyl(pv, r, r, w * 0.8, Vector3.ZERO, Vector3(0, 0, PI / 2), "rubber", null, 20)
-	# the rim set into it, a ring of wheel nuts and the hub
-	_cyl(pv, r * 0.58, r * 0.58, w + 0.02, Vector3.ZERO, Vector3(0, 0, PI / 2), hub_kind, hub_col, 14, false)
-	_cyl(pv, r * 0.3, r * 0.34, w + 0.07, Vector3.ZERO, Vector3(0, 0, PI / 2), hub_kind, hub_col, 10, false)
-	_cyl(pv, r * 0.13, r * 0.13, w + 0.11, Vector3.ZERO, Vector3(0, 0, PI / 2), "gunmetal_w", null, 8, false)
-	for i in 8:
-		var a := TAU * i / 8.0
-		_cyl(pv, r * 0.035, r * 0.035, w + 0.09, Vector3(0, sin(a) * r * 0.42, cos(a) * r * 0.42), Vector3(0, 0, PI / 2), "gunmetal_w", null, 6, false)
+	# Rounded shoulders and recessed rims share meshes at every wheel size.
+	# Tiny trolley wheels and broad tracked road wheels retain their solid discs.
+	if r < 0.18 or w > r * 1.2:
+		_cyl(pv, r, r, w, Vector3.ZERO, Vector3(0, 0, PI / 2), "rubber", null, 24)
+	else:
+		_add(pv, tyre_ring(0.50, 1.0), "rubber", Color(0.17, 0.18, 0.17), Vector3.ZERO, Vector3(0, 0, PI / 2), Vector3(r, w / 0.50, r))
+		if surface_family != "aircraft":
+			var offroad := surface_family == "armor" and r >= 0.4
+			var count := 36 if offroad else 48
+			for i in count:
+				for row in [-1.0, 1.0]:
+					var a := TAU * (float(i) + (0.45 if row > 0 else 0.0)) / float(count)
+					var depth := r * (0.055 if offroad else 0.018)
+					_box(pv, Vector3(w * 0.43, depth, r * (0.13 if offroad else 0.095)), Vector3(row * w * 0.24, cos(a) * r * 0.975, sin(a) * r * 0.975), "rubber", Color(0.20, 0.21, 0.19), Vector3(a, row * 0.20, 0))
+	_cyl(pv, r * 0.54, r * 0.54, w * 0.67, Vector3.ZERO, Vector3(0, 0, PI / 2), hub_kind, hub_col, 32, false)
+	for side in [-1.0, 1.0]:
+		_add(pv, tyre_ring(0.49, 0.55), hub_kind, hub_col, Vector3(side * w * 0.37, 0, 0), Vector3(0, 0, PI / 2), Vector3.ONE * r, false)
+		for i in 8:
+			var a := TAU * i / 8.0
+			_cyl(pv, r * 0.03, r * 0.03, w * 0.08, Vector3(side * w * 0.38, sin(a) * r * 0.31, cos(a) * r * 0.31), Vector3(0, 0, PI / 2), "steel", Color(0.35, 0.36, 0.33), 6, false)
+	_cyl(pv, r * 0.23, r * 0.26, w * 0.89, Vector3.ZERO, Vector3(0, 0, PI / 2), hub_kind, hub_col, 20, false)
 	wheels.append(pv)
 	return pv
+
+
+## Cached unit rings keep rounded tyres and rim lips affordable across the roster.
+static func tyre_ring(inner: float, outer: float) -> TorusMesh:
+	var key := "tyre_ring_%s_%s" % [inner, outer]
+	if not _cache.has(key):
+		var mesh := TorusMesh.new()
+		mesh.inner_radius = inner
+		mesh.outer_radius = outer
+		mesh.rings = 40
+		mesh.ring_segments = 12
+		_cache[key] = mesh
+	return _cache[key]
 
 
 func _team_mark(parent: Node3D, team: int, pos: Vector3, s: Vector3) -> void:

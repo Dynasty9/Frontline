@@ -6,7 +6,7 @@ extends Node3D
 ## the square's fountain or statue and market stalls, playground kit, fences,
 ## vegetable patches, washing lines, hay bales, a water tower.
 ##
-## Parts are baked into merged meshes per 64 m chunk (so they still cull), the
+## Parts are baked into merged meshes per 32 m chunk (so they still cull), the
 ## wires are drawn as lines and the lamp lenses glow; at dusk and at night the
 ## street lights cast real light.
 
@@ -39,6 +39,7 @@ var _dirty := {}  # chunks to rebuild
 var _wire_items: Array = []  # [a pole pos, b pole pos (or a house), kind, args]
 var _wire_mi: MeshInstance3D
 var _wires := PackedVector3Array()  # line pairs
+var _fine_bake: Mats.Bake
 var _glow: SurfaceTool  # the chunk being built
 var _glow_n := 0
 var _lights: Array = []
@@ -107,6 +108,7 @@ func _build_chunk(key: Vector2i) -> void:
 	var keep := _wires
 	_wires = PackedVector3Array()  # clotheslines belong to the chunk
 	_bake = Mats.Bake.new()
+	_fine_bake = Mats.Bake.new()
 	for i in _chunk_items[key]:
 		var e: Array = _entries[i]
 		if e[5]:
@@ -119,6 +121,15 @@ func _build_chunk(key: Vector2i) -> void:
 		rng.seed = 90210 + i * 7919  # the same look every rebuild
 		_make(h, e[0], e[3])
 	_bake.commit(n)
+	var fine := Node3D.new()
+	fine.name = "FineStones"
+	n.add_child(fine)
+	_fine_bake.commit(fine)
+	for child in fine.get_children():
+		var mesh := child as MeshInstance3D
+		mesh.visibility_range_end = 180.0
+		mesh.visibility_range_end_margin = 20.0
+	_fine_bake = null
 	_bake = null
 	if not _wires.is_empty():
 		n.add_child(_lines_mi(_wires))
@@ -269,13 +280,54 @@ var _at := Transform3D.IDENTITY
 ## in the piece (`xf`, else at p turned by rot).
 ## cut: paving, holed where the ground under it is cratered or dug out.
 func _m(mesh: Mesh, kind: String, p: Vector3, col = null, rot := Vector3.ZERO, shadow := true, cut := false, xf: Variant = null) -> void:
+	var local: Transform3D = xf if xf is Transform3D else Mats.place(p, rot)
+	if cut and (mesh is BoxMesh or mesh is BevelMesh):
+		mesh = _paving_mesh(mesh, local)
 	var tn: Color = Mats.tint_for(kind, col) if col is Color else Color(1, 1, 1)
-	_bake.part(mesh, Mats.paving(kind) if cut else Mats.get_mat(kind), xf if xf is Transform3D else Mats.place(p, rot),
+	_bake.part(mesh, Mats.paving(kind) if cut else Mats.get_mat(kind), local,
 		tn if tn != Color(1, 1, 1) else null, shadow, _at)
 
 
+func _paving_mesh(box: Mesh, local: Transform3D, lowered := Vector2.INF) -> ArrayMesh:
+	var grid := BoxMesh.new()
+	grid.size = Res.box_size(box)
+	grid.subdivide_width = maxi(0, ceili(grid.size.x / 2.0) - 1)
+	if lowered.is_finite():
+		grid.subdivide_width = 2
+	grid.subdivide_depth = maxi(0, ceili(grid.size.z / 2.0) - 1)
+	var arrays := grid.get_mesh_arrays()
+	var vertices: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
+	var normals: PackedVector3Array = arrays[Mesh.ARRAY_NORMAL]
+	var xf := _at * local
+	var inverse_basis := xf.basis.inverse()
+	for i in vertices.size():
+		var grade := 0.0
+		if lowered.is_finite():
+			var column := roundi((vertices[i].x / grid.size.x + 0.5) * 3.0)
+			if column == 1 or column == 2:
+				vertices[i].x = clampf(lowered[column - 1], -grid.size.x * 0.5, grid.size.x * 0.5)
+			var shoulder := maxf(lowered.x - vertices[i].x, vertices[i].x - lowered.y)
+			vertices[i].y -= (grid.size.y - 0.03) * clampf(1.0 - shoulder / 0.6, 0.0, 1.0)
+			if shoulder > 0.001 and shoulder < 0.601:
+				grade = signf(vertices[i].x - (lowered.x + lowered.y) * 0.5) * (grid.size.y - 0.03) / 0.6
+		var point := xf * vertices[i]
+		vertices[i].y += world.terrain.landform.height(point) - _at.origin.y
+		# Keep slab edges hard; smoothing box corners produces dark triangular patches.
+		if absf(normals[i].y) > 0.5:
+			var geology: Landform = world.terrain.landform
+			var dx: float = geology.height(point - Vector3(0.2, 0, 0)) - geology.height(point + Vector3(0.2, 0, 0))
+			var dz: float = geology.height(point - Vector3(0, 0, 0.2)) - geology.height(point + Vector3(0, 0, 0.2))
+			normals[i] = inverse_basis * (Vector3(dx, 0.4, dz) - xf.basis.x * grade * 0.4).normalized() * signf(normals[i].y)
+	arrays[Mesh.ARRAY_VERTEX] = vertices
+	arrays[Mesh.ARRAY_NORMAL] = normals
+	var mesh := ArrayMesh.new()
+	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+	Mats.keep_arrays(mesh, arrays)
+	return mesh
+
+
 func _leaf(r: float, p: Vector3, col: Color, shadow := true) -> void:
-	_bake.part(Res.sphere(r, 8), Mats.foliage(), Transform3D(Basis.IDENTITY, p), col, shadow, _at)
+	_bake.part(Res.foliage_cards(false), Mats.leaf_cards(false), Transform3D(Basis.IDENTITY.scaled(Vector3.ONE * r), p), col, shadow, _at)
 
 
 ## A straight member between two local points (legs, braces, chains, rails).
@@ -292,25 +344,44 @@ func _beam(a: Vector3, b: Vector3, t: float, kind: String, col = null, shadow :=
 
 func _make(h: Node3D, kind: String, ex) -> void:
 	match kind:
-		"alpine_scrub", "alpine_stones":
+		"alpine_stones":
+			var scale := float(ex)
+			var coarse := _bake
+			for i in 16:
+				var fine := i >= 6
+				_bake = _fine_bake if fine else coarse
+				var p := Vector3(rng.randf_range(-1.8, 1.8), 0, rng.randf_range(-1.8, 1.8)) * scale
+				var r := rng.randf_range(0.08, 0.20) if fine else rng.randf_range(0.28, 0.85)
+				r *= scale
+				var shape := Vector3(1.7, 0.35, 1.1) if i % 3 == 0 else Vector3(1.0, 0.8, 0.9)
+				p.y = world.ground_y(_at * p) - _at.origin.y + r * shape.y * 0.25
+				_m(Res.alpine_stone(i), "alpine_stone", Vector3.ZERO, Res.vary(Color(0.44, 0.43, 0.39), 0.20, rng), Vector3.ZERO, false, false,
+					Mats.place(p, Vector3(rng.randf_range(-0.3, 0.3), rng.randf() * TAU, 0.15), shape * r))
+			_bake = coarse
+		"alpine_scrub":
 			var scale := float(ex)
 			for i in rng.randi_range(3, 6):
 				var p := Vector3(rng.randf_range(-1.0, 1.0), 0.0, rng.randf_range(-1.0, 1.0)) * scale
 				p.y = world.ground_y(_at * p) - _at.origin.y - 0.08
 				var r := rng.randf_range(0.22, 0.55) * scale
-				if kind == "alpine_scrub":
-					_leaf(r, p + Vector3(0, r * 0.35, 0), Res.vary(Color(0.19, 0.25, 0.10), 0.1, rng), false)
-				else:
-					_m(Res.sphere(1.0, 5), "stone", Vector3.ZERO, Res.vary(Color(0.44, 0.43, 0.39), 0.12, rng), Vector3.ZERO, false, false, Mats.place(p, Vector3(0.1, rng.randf() * TAU, 0.2), Vector3(r * 1.5, r * 0.45, r)))
+				_leaf(r, p + Vector3(0, r * 0.35, 0), Res.vary(Color(0.19, 0.25, 0.10), 0.1, rng), false)
+		"yard":
+			var size: Vector3 = ex
+			_m(Res.box(size), "turf", Vector3(0, size.y * 0.5, 0), null, Vector3.ZERO, false, true)
 		"walk":
 			var s: Vector3 = ex
-			_m(Res.box(s), "concrete", Vector3(0, s.y * 0.5, 0), Color(0.6, 0.58, 0.54), Vector3.ZERO, false, true)
+			_m(Res.box(s), "pavement", Vector3(0, s.y * 0.5, 0), null, Vector3.ZERO, false, true)
 		"curb":
 			var s: Vector3 = ex
-			_m(Res.box(s), "concrete", Vector3(0, s.y * 0.5, 0), Color(0.72, 0.71, 0.67), Vector3.ZERO, false, true)
+			_m(Res.box(s), "curbstone", Vector3(0, s.y * 0.5, 0), null, Vector3.ZERO, false, true)
+		"walk_crossing", "curb_crossing":
+			var s: Vector3 = ex[0]
+			var local := Transform3D(Basis.IDENTITY, Vector3(0, s.y * 0.5, 0))
+			var mesh := _paving_mesh(Res.box(s), local, ex[1])
+			_m(mesh, "pavement" if kind == "walk_crossing" else "curbstone", local.origin, null, Vector3.ZERO, false, true)
 		"junction":
 			var s: Vector3 = ex
-			_m(Res.box(Vector3(s.x, 0.02, s.z)), "concrete_floor", Vector3(0, 0.032, 0), Color(0.31, 0.31, 0.3), Vector3.ZERO, false, true)
+			_m(Res.box(Vector3(s.x, 0.02, s.z)), "asphalt", Vector3(0, 0.032, 0), null, Vector3.ZERO, false, true)
 		"zebra":
 			var wd := float(ex)
 			var n := 6
@@ -538,16 +609,16 @@ func _make(h: Node3D, kind: String, ex) -> void:
 				_m(Res.cyl(0.65, 0.65, 1.2, 14), "fabric", Vector3(0, 1.85, 0), Color(0.72, 0.62, 0.3), Vector3(0, 0, PI * 0.5))
 		"drive":
 			var d2: Vector3 = ex
-			_m(Res.box(Vector3(d2.x, 0.03, d2.z)), "concrete_floor", Vector3(0, 0.015, 0), Color(0.36, 0.33, 0.29), Vector3.ZERO, false, true)
+			_m(Res.box(Vector3(d2.x, 0.03, d2.z)), "concrete_floor", Vector3(0, 0.015, 0), Color(0.46, 0.45, 0.42), Vector3.ZERO, false, true)
 		"path":
 			var p2: Vector3 = ex
-			_m(Res.box(Vector3(p2.x, 0.03, p2.z)), "earth", Vector3(0, 0.02, 0), Color(0.58, 0.52, 0.42), Vector3.ZERO, false, true)
+			_m(Res.box(Vector3(p2.x, 0.03, p2.z)), "pavement", Vector3(0, 0.02, 0), Color(0.56, 0.53, 0.47), Vector3.ZERO, false, true)
 		"pave":
 			var pv: Vector3 = ex
 			_m(Res.box(Vector3(pv.x, 0.1, pv.z)), "floor_tiles", Vector3(0, 0.05, 0), Color(0.62, 0.58, 0.52), Vector3.ZERO, false, true)
 		"lot_pave":
 			var lp: Vector3 = ex
-			_m(Res.box(Vector3(lp.x, 0.04, lp.z)), "concrete_floor", Vector3(0, 0.025, 0), Color(0.13, 0.13, 0.13), Vector3.ZERO, false, true)
+			_m(Res.box(Vector3(lp.x, 0.04, lp.z)), "asphalt", Vector3(0, 0.025, 0), null, Vector3.ZERO, false, true)
 			var slots := int(lp.x / 2.6)
 			for i in slots + 1:
 				var x := -lp.x * 0.5 + i * 2.6 + (lp.x - slots * 2.6) * 0.5
@@ -573,28 +644,29 @@ func _fence(ex) -> void:
 	var posts := maxi(1, int(ceil(L / 2.2)))
 	match style:
 		0:
-			var white := Color(0.86, 0.85, 0.8)
+			var white := Res.vary(Color(0.69, 0.68, 0.63), 0.18, rng)
 			for i in posts + 1:
-				_m(Res.box(Vector3(0.08, ht, 0.08)), "paint", Vector3(-L * 0.5 + i * L / posts, ht * 0.5, 0), white)
+				_m(Res.box(Vector3(0.08, ht, 0.08)), "fence_metal", Vector3(-L * 0.5 + i * L / posts, ht * 0.5, 0), white)
 			for y in [ht * 0.3, ht * 0.75]:
-				_m(Res.box(Vector3(L, 0.05, 0.03)), "paint", Vector3(0, y, 0.02), white, Vector3.ZERO, false)
+				_m(Res.box(Vector3(L, 0.05, 0.03)), "fence_metal", Vector3(0, y, 0.02), white, Vector3.ZERO, false)
 			var n := int(L / 0.24)
 			for i in n:
-				_m(Res.box(Vector3(0.07, ht * 0.92, 0.02)), "paint", Vector3(-L * 0.5 + (i + 0.5) * L / n, ht * 0.46, -0.03), white, Vector3.ZERO, false)
+				_m(Res.box(Vector3(0.07, ht * 0.92, 0.02)), "fence_metal", Vector3(-L * 0.5 + (i + 0.5) * L / n, ht * 0.46, -0.03), white, Vector3.ZERO, false)
 		1:
+			var timber := Res.vary(Color(0.5, 0.43, 0.33), 0.24, rng)
 			for i in posts + 1:
-				_m(Res.box(Vector3(0.1, ht + 0.05, 0.1)), "wood_dark", Vector3(-L * 0.5 + i * L / posts, (ht + 0.05) * 0.5, 0))
+				_m(Res.box(Vector3(0.1, ht + 0.05, 0.1)), "fence_wood", Vector3(-L * 0.5 + i * L / posts, (ht + 0.05) * 0.5, 0), timber)
 			for y in [0.25, 0.55, 0.85]:
-				_m(Res.box(Vector3(L, 0.12, 0.025)), "wood", Vector3(0, ht * y, -0.06))
+				_m(Res.box(Vector3(L, 0.12, 0.025)), "fence_rail", Vector3(0, ht * y, -0.06), timber.darkened(0.2 if y < 0.3 else 0.0))
 		_:
-			var green := Color(0.2, 0.42, 0.26)
+			var green := Res.vary(Color(0.22, 0.30, 0.23), 0.25, rng)
 			for i in posts + 1:
-				_m(Res.box(Vector3(0.06, ht, 0.06)), "paint", Vector3(-L * 0.5 + i * L / posts, ht * 0.5, 0), green)
+				_m(Res.box(Vector3(0.06, ht, 0.06)), "fence_metal", Vector3(-L * 0.5 + i * L / posts, ht * 0.5, 0), green)
 			for y in [0.12, ht - 0.03]:
-				_m(Res.box(Vector3(L, 0.045, 0.045)), "paint", Vector3(0, y, 0), green, Vector3.ZERO, false)
+				_m(Res.box(Vector3(L, 0.045, 0.045)), "fence_metal", Vector3(0, y, 0), green, Vector3.ZERO, false)
 			var n2 := int(L / 0.3)
 			for i in n2:
-				_m(Res.box(Vector3(0.022, ht - 0.15, 0.022)), "paint", Vector3(-L * 0.5 + (i + 0.5) * L / n2, ht * 0.5, 0), green, Vector3.ZERO, false)
+				_m(Res.box(Vector3(0.022, ht - 0.15, 0.022)), "fence_metal", Vector3(-L * 0.5 + (i + 0.5) * L / n2, ht * 0.5, 0), green, Vector3.ZERO, false)
 
 
 # --- wires ----------------------------------------------------------------------------

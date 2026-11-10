@@ -650,7 +650,7 @@ static func _motorboat(k: VehicleModels, seed: int) -> void:
 	for st in aft:
 		var x := maxf(_hw(st[1], sole) - t - 0.012, 0.02)
 		sr.append(_rz([x, sole - 0.01, x, sole + 0.01, -x, sole + 0.01, -x, sole - 0.01], st[0]))
-	k._add(m, VehicleModels.solid(sr, "boat_mb_sole"), "plain", Color(0.7, 0.7, 0.68), Vector3.ZERO)
+	k._add(m, VehicleModels.solid(sr, "boat_mb_sole"), "nonslip", Color(0.7, 0.7, 0.68), Vector3.ZERO)
 	# two fenders stowed on the sole, a VHF whip on the console
 	for f in [[-0.62, 1.45, 0.25], [-0.46, 1.5, 0.0]]:
 		var fz: float = f[1]
@@ -691,7 +691,7 @@ static func _rhib(k: VehicleModels, team: int) -> void:
 	var r := 0.28
 	var all := _hull(p)
 	k._add(m, _band_mesh("boat_rhib_hull", all, -9.0, 9.0, 0.0), hm, hc, Vector3.ZERO)
-	k._add(m, _deck_mesh("boat_rhib_deck", _hull(p, 0.0, 0.93), 0.09, 0.012), "plain", Color(0.22, 0.23, 0.24), Vector3.ZERO)
+	k._add(m, _deck_mesh("boat_rhib_deck", _hull(p, 0.0, 0.93), 0.09, 0.012), "tread", Color(0.22, 0.23, 0.24), Vector3.ZERO)
 	# spray rails along the bottom
 	for s in [-1.0, 1.0]:
 		var sp1 := []
@@ -927,8 +927,8 @@ static func _surc(k: VehicleModels, team: int, csat: bool) -> void:
 		k._add(m, _strip("boat_surc_sp2%d" % int(s), sp2, 0.03, 0.018), hm, hc, Vector3.ZERO)
 	# non-skid decks: the open troop deck aft and the foredeck
 	var uc := _u(p, 1.2)
-	k._add(m, _deck_mesh("boat_surc_deck_a", _hull(p, 0.005, uc), 0.17, 0.012), "plain", dc, Vector3.ZERO)
-	k._add(m, _deck_mesh("boat_surc_deck_f", _hull(p, _u(p, -2.3), 0.9), 0.14, 0.012), "plain", dc, Vector3.ZERO)
+	k._add(m, _deck_mesh("boat_surc_deck_a", _hull(p, 0.005, uc), 0.17, 0.012), "nonslip", dc, Vector3.ZERO)
+	k._add(m, _deck_mesh("boat_surc_deck_f", _hull(p, _u(p, -2.3), 0.9), 0.14, 0.012), "nonslip", dc, Vector3.ZERO)
 	# armoured bulwarks round the troop deck, capped
 	var aft := _hull(p, 0.0, uc)
 	for s in [-1.0, 1.0]:
@@ -1219,7 +1219,9 @@ static func _dome(w: float, y: float, h: float, z: float, e: float, n: int) -> P
 	for i in n:
 		var a := PI * i / (n - 1)
 		var c := cos(a)
-		r.append(Vector3(w * signf(c) * pow(absf(c), 2.0 / e), y + h * pow(sin(a), 2.0 / e), z))
+		# At the last station rounding can put sin(PI) just below zero;
+		# a fractional power would make the hood's vertices and normals NaN.
+		r.append(Vector3(w * signf(c) * pow(absf(c), 2.0 / e), y + h * pow(maxf(sin(a), 0.0), 2.0 / e), z))
 	return r
 
 

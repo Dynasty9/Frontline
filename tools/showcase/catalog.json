@@ -2648,351 +2648,6 @@
       "output": null
     },
     {
-      "entry": "changelog/unreleased/animation-review.md",
-      "summary": "Review every locally installed character clip and the infantry gameplay pose set, with saved approval decisions and notes.",
-      "medium": "still",
-      "stage": "local-character-preview",
-      "rationale": "Stills document the UI or sampled pose/hand placement; continuity is checked by focused tests, not certified by stills alone.",
-      "source_ref": "PR #98; 969ba00",
-      "sources": [
-        {
-          "file": "changelog/unreleased/animation-review/review.jpg",
-          "sha256": "95f0b0a4c59da2b82fa44d580837eb4d9d0fb88e9dbf8bcc5dc3e0697aafeefa",
-          "caption": "Source clips and gameplay cases have separate saved approval decisions."
-        }
-      ],
-      "output": null
-    },
-    {
-      "entry": "changelog/unreleased/character-motion-grips.md",
-      "summary": "Keep rifle grips through action changes, use matching directional crouch clips, and orbit the character with Alt.",
-      "medium": "still",
-      "stage": "local-character-preview",
-      "rationale": "Stills document the UI or sampled pose/hand placement; continuity is checked by focused tests, not certified by stills alone.",
-      "source_ref": "PR #98; de6420a",
-      "sources": [
-        {
-          "file": "changelog/unreleased/character-motion-grips/winded-before.png",
-          "sha256": "db5805cc93df8c9f6f22cd3a241b0669ffc89659f51ac1a5143dcaef620b9d95",
-          "caption": "Before: support-hand placement breaks during winded recovery"
-        },
-        {
-          "file": "changelog/unreleased/character-motion-grips/winded-after.jpg",
-          "sha256": "246f30f9f41234808f586a6b81ebe4ba51013e1fe07ba7b0db41d6956fdaedf1",
-          "caption": "Walking, winded recovery and return to firing with the support hand seated on the rifle"
-        }
-      ],
-      "output": null
-    },
-    {
-      "entry": "changelog/unreleased/character-playground.md",
-      "summary": "Walk the SWAT preview over varied terrain, work, reload and inspect every available animation.",
-      "medium": "still",
-      "stage": "local-character-preview",
-      "rationale": "Stills document the UI or sampled pose/hand placement; continuity is checked by focused tests, not certified by stills alone.",
-      "source_ref": "PR #98; 969ba00",
-      "sources": [
-        {
-          "file": "changelog/unreleased/character-playground/playground.png",
-          "sha256": "5fdcb97048b180f3786f2bd1e9913d61a124736553a71dc0ae350bf1fe884380",
-          "caption": "Work with the rifle slung on the playable terrain course"
-        }
-      ],
-      "output": null
-    },
-    {
-      "entry": "changelog/unreleased/cover-firing-animation.md",
-      "summary": "Skinned infantry use the correct firing pose over barriers, keeping their rifles above the wall and both hands on the weapon.",
-      "medium": "still",
-      "stage": "gameplay-and-controlled-preview",
-      "rationale": "Stills document the UI or sampled pose/hand placement; continuity is checked by focused tests, not certified by stills alone.",
-      "source_ref": "PR #98; 969ba00",
-      "sources": [
-        {
-          "file": "changelog/unreleased/cover-firing-animation/before.jpg",
-          "sha256": "01e1f13bbf2fe1ad410f9b7e53d81ae5bedfd15795d6d4fdc45327f1b06a56d2",
-          "caption": "Before: the standing animation put the barrel inside a 1.5 metre wall."
-        },
-        {
-          "file": "changelog/unreleased/cover-firing-animation/after.jpg",
-          "sha256": "7b2f80b6e511e159932c0dafb1de96d659fa3e245b2b7f68356c76117cd264de",
-          "caption": "After: the cover pose lifts the barrel above the wall while retaining both hand grips."
-        }
-      ],
-      "output": null
-    },
-    {
-      "entry": "changelog/unreleased/infantry-animation-transitions.md",
-      "summary": "The optional SWAT preview keeps its rifle through free-hand actions and improves reloads, cover aim and low-wall crossings.",
-      "medium": "still",
-      "stage": "local-character-preview",
-      "rationale": "Stills document the UI or sampled pose/hand placement; continuity is checked by focused tests, not certified by stills alone.",
-      "source_ref": "PR #98; 969ba00",
-      "sources": [
-        {
-          "file": "changelog/unreleased/infantry-animation-transitions/before.jpg",
-          "sha256": "0cec45aef7d99f2e6247f5ab3317163a4ea0146ee36a63515b56dd49698b7a3c",
-          "caption": "Before: grenade handling carried the rifle with the throwing hand"
-        },
-        {
-          "file": "changelog/unreleased/infantry-animation-transitions/after.jpg",
-          "sha256": "2b4c05a0f4e432305e404eabb9270b6ff47ebd31fc56259273bd14ecb4b24fdf",
-          "caption": "After: grenade handling frees the working hand and returns to rifle aim"
-        },
-        {
-          "file": "changelog/unreleased/infantry-animation-transitions/vault.jpg",
-          "sha256": "94ea5f1f91c6ebc1adefa4be77953ec42d963e69b897be9f758b4fd91449d196",
-          "caption": "The actual soldier renderer keeps the knees tucked across a low wall"
-        }
-      ],
-      "output": null
-    },
-    {
-      "entry": "changelog/unreleased/infantry-animation.md",
-      "summary": "An optional skinned rifleman preview adds captured movement, grounded feet, rifle grips and physical hit reactions. Soldiers make room before going prone beside walls.",
-      "medium": "motion",
-      "stage": "gameplay-and-controlled-preview",
-      "rationale": "The archived battle fixture shows the wall-clearance step and prone transition; preserved stills show appearance and activities. Local imported assets only, not a fresh current-main capture.",
-      "source_ref": "PR #98; 969ba00; WebM source revision and encoding in tools/showcase/pr98-webm-review.json",
-      "sources": [
-        {
-          "file": "changelog/unreleased/infantry-animation/before.jpg",
-          "sha256": "f68e86456c9a8192e8cbd097a968477f1f14c79a79e3aceae751c11f1f0b789e",
-          "caption": "The earlier procedural rifleman"
-        },
-        {
-          "file": "changelog/unreleased/infantry-animation/after.jpg",
-          "sha256": "f0a91c6cd3ec2d0c265578be0f2f238554bc9195a003013cbf143dc417671b4b",
-          "caption": "The optional imported rifleman after stepping back to clear the wall"
-        },
-        {
-          "file": "changelog/unreleased/infantry-animation/movement.jpg",
-          "sha256": "a90464f655c1e9c00198053b14342b3269099170aa198740b79a717b928ac7d8",
-          "caption": "The optional riflemen moving into cover in an actual battle"
-        },
-        {
-          "file": "changelog/unreleased/infantry-animation/digging-game.jpg",
-          "sha256": "6bfd5126d9e7984a53a56f9fcb3fea984211d818ce43eeba97b0fd291877e8b1",
-          "caption": "A rifleman digs during a sandbag construction order"
-        },
-        {
-          "file": "changelog/unreleased/infantry-animation/smoking-game.jpg",
-          "sha256": "c513f36ede81a87aa10ddbd3c0ee88c718ca9fdf001eb93ed00e18659839ace1",
-          "caption": "A quiet-sector smoking idle, with the rifle slung"
-        },
-        {
-          "file": "changelog/unreleased/infantry-animation/ragdoll.jpg",
-          "sha256": "affd1b40673eec8dd6f963716cb72a62ea4ae7d4aee4db2e6e56a64c51c0e54a",
-          "caption": "A staged blast demonstrates physical falls and dropped weapons"
-        },
-        {
-          "file": "changelog/unreleased/infantry-animation/mixamo-crouch.png",
-          "sha256": "68115c72efd5ca142c706dc0362cecd2aa90893f087f0d05b6bc69190ca170ca",
-          "caption": "The SWAT rifleman settles into cover using the Mixamo crouch cycle and baked rifle"
-        },
-        {
-          "file": "changelog/unreleased/infantry-animation/wall-to-prone.webm",
-          "sha256": "d9ec68250c944232237f57f216340629a493ad06b0d5e19023c0187c4ee9f037",
-          "caption": "Archived battle fixture: a server-controlled soldier backs clear of the wall, settles, then lowers into prone. Local imported assets; recorded before the later foot-plant correction."
-        }
-      ],
-      "output": null
-    },
-    {
-      "entry": "changelog/unreleased/crawl-throw-recovery.md",
-      "summary": "Reach forward while crawling, keep grenade throws grounded, and settle crouched feet without inverted toes.",
-      "medium": "motion",
-      "stage": "controlled-character-preview",
-      "rationale": "Fixed-step shared renderer capture with translation; focused regression checks cover stance recovery. Not a battle performance benchmark.",
-      "source_ref": "PR #98; recovery_states and controlled recovery sequence",
-      "sources": [
-        {
-          "file": "changelog/unreleased/crawl-throw-recovery/before.jpg",
-          "sha256": "6c7322b582d9126512ae79e5d58205922be62100536e3c11852c3d5fc40471b8",
-          "caption": "before"
-        },
-        {
-          "file": "changelog/unreleased/crawl-throw-recovery/after.jpg",
-          "sha256": "054eff20fad6921fec5da35979157ab44d6817e4a103ad626eb24c9d1361bd4d",
-          "caption": "after"
-        },
-        {
-          "file": "changelog/unreleased/crawl-throw-recovery/recovery.mp4",
-          "sha256": "63b238b1d24690b471caa3eeb54cc19956531e52a197ee3e8c5c7985d0e0f079",
-          "caption": "recovery"
-        }
-      ],
-      "output": null
-    },
-    {
-      "entry": "changelog/unreleased/captured-prone.md",
-      "summary": "The optional imported rifleman uses captured crawling, stops and prone actions.",
-      "medium": "motion",
-      "stage": "controlled-character-preview",
-      "rationale": "Fixed-step shared actor: crouch/prone transitions, forward/backward crawl, backward start and stops, prone hit, firing, reload, throw and recovery. Local assets only; magazine timing and varied terrain remain unvalidated.",
-      "source_ref": "PR #98; tests/mocap/prone_sequence.tscn, captured_prone and native_grip regressions",
-      "sources": [
-        {
-          "file": "changelog/unreleased/captured-prone/prone.mp4",
-          "sha256": "059697b1987d9846464f803dc543a97ecd1717adf6d98a747804086285041f1e",
-          "caption": "prone"
-        },
-        {
-          "file": "changelog/unreleased/captured-prone/prone.jpg",
-          "sha256": "89cb77b5b0be1a79c94f670bbe3e85160892ade31bbca7f13ecbefb740db1549",
-          "caption": "prone"
-        },
-        {
-          "file": "changelog/unreleased/captured-prone/actions.mp4",
-          "sha256": "fc3aa4417b08a9685fbbc2aca12d8b79b08b58068d525d5b08147c624fbbd8e9",
-          "caption": "actions"
-        },
-        {
-          "file": "changelog/unreleased/captured-prone/actions.jpg",
-          "sha256": "6d39b0329e34ccef00241b2c30eccbd858a907c89bc288cf410e46981e5bc639",
-          "caption": "actions"
-        }
-      ],
-      "output": null
-    },
-    {
-      "entry": "changelog/unreleased/captured-kneel.md",
-      "summary": "Captured stationary kneeling and crouched grenade throws for the optional rifleman.",
-      "medium": "motion",
-      "stage": "native-media",
-      "rationale": "Show stance changes, throw recovery and crouch movement through the shared game controller.",
-      "source_ref": "PR98 shared controller local Mixamo evaluation; crouch_sequence.tscn fixed 30 fps; baseline disables the three new stance/throw clips.",
-      "sources": [
-        {
-          "file": "changelog/unreleased/captured-kneel/actions.mp4",
-          "sha256": "db0704dadc998b73805d28c28e1a26cb373159faa9abeacb340f8dd0c4e94adf",
-          "caption": "Controlled shared-controller sequence, not battlefield performance."
-        },
-        {
-          "file": "changelog/unreleased/captured-kneel/before.jpg",
-          "sha256": "7370fc0dcc90ef78b58cf38a65317fc792159afa07432246c293d44d825f79b5",
-          "caption": "Prior crouch base pose without the new stance clips."
-        },
-        {
-          "file": "changelog/unreleased/captured-kneel/after.jpg",
-          "sha256": "5d3c38805dc8489a6c02f0f2738a10733485139c5bc4107e985ef6b13e51355b",
-          "caption": "Captured stationary kneeling with contacts."
-        }
-      ],
-      "output": null,
-      "title": "Captured kneeling and crouched grenade throws",
-      "version": "unreleased",
-      "kind": "improved",
-      "attribution": "Native fixed-step capture; optional assets remain local."
-    },
-    {
-      "entry": "changelog/unreleased/jump-landing.md",
-      "summary": "Captured jump flight follows vertical movement and recovers after ground contact.",
-      "medium": "motion",
-      "stage": "native-media",
-      "rationale": "Before and after frames expose the early return to locomotion; the recording shows the corrected level-ground jump.",
-      "source_ref": "PR98 shared controller jump-preview fixture; fixed 30 fps, level ground. Before: 78b36be; after: physical landing synchronization.",
-      "sources": [
-        {
-          "file": "changelog/unreleased/jump-landing/jump.mp4",
-          "sha256": "4e3160d5d381ec59c73b5a43d708c045fec31def05f47ef6a615a6fa43c24fd1",
-          "caption": "Controlled level-ground jump, not battlefield performance."
-        },
-        {
-          "file": "changelog/unreleased/jump-landing/before.jpg",
-          "sha256": "bc75417e69e8a33091023845e9146a6ce05aa20aae8a0e9e897726bb436ced00",
-          "caption": "Before: early fade to locomotion in flight."
-        },
-        {
-          "file": "changelog/unreleased/jump-landing/after.jpg",
-          "sha256": "d6181093507c7a3e5b3db3fe28d1088dca76b3458a98982cc4a5eb5e471b8dc4",
-          "caption": "After: flight pose persists until landing."
-        }
-      ],
-      "output": null,
-      "title": "Jump animation follows the landing",
-      "version": "unreleased",
-      "kind": "fixed",
-      "attribution": "Native fixed-step capture; optional assets remain local."
-    },
-    {
-      "entry": "changelog/unreleased/foot-plants-and-rifle-hop.md",
-      "summary": "The optional SWAT character keeps its planted boots steady, uses a lower rifle hop, and gains captured relaxed idles.",
-      "medium": "motion",
-      "stage": "controlled-character-preview",
-      "rationale": "Real fixed-step character fixtures show the action and armed recovery at an inspectable scale. Local imported assets only; no broad gameplay or performance certification.",
-      "source_ref": "PR #98; committed MP4 source revisions and encoding in tools/showcase/pr98-webm-review.json",
-      "sources": [
-        {
-          "file": "changelog/unreleased/foot-plants-and-rifle-hop/backstep.webm",
-          "sha256": "cceffcc0ba1bc9019baea249e4d7b6f2a941fd9bcfdd1f073d3f335a0ae7cb18",
-          "caption": "Controlled wall fixture: back away at 1 s, plant both boots, then lower into prone. Local SWAT assets; captured at 36b6f0b."
-        },
-        {
-          "file": "changelog/unreleased/foot-plants-and-rifle-hop/jump.webm",
-          "sha256": "f898b964570934cc68d93ca8e402b3ca9c13cffb425ec479576b972825b7075a",
-          "caption": "Three-second playground hop: watch the rifle grips through takeoff and landing. This is not a new battlefield ability."
-        },
-        {
-          "file": "changelog/unreleased/foot-plants-and-rifle-hop/idles.webm",
-          "sha256": "34f6524ca0b21c7b2e51b7e657f69c7a6c5d06fc78249f2728f357ba9f779957",
-          "caption": "Chat 0-7 s, laugh 7-14 s, stretch 14-21 s and armed lookout 21-28 s; each returns to rifle idle."
-        },
-        {
-          "file": "changelog/unreleased/foot-plants-and-rifle-hop/after.jpg",
-          "sha256": "6ddc5fb41d256147224cf3fa4142b607cb585997426df4932ef0df0968166263",
-          "caption": "Poster: Controlled wall fixture: back away at 1 s, plant both boots, then lower into prone. Local SWAT assets; captured at 36b6f0b."
-        },
-        {
-          "file": "changelog/unreleased/foot-plants-and-rifle-hop/jump.jpg",
-          "sha256": "7ef088472183da64394f1c9c1fd0ea71c9b41f99931e4dbd2953717410ebab6e",
-          "caption": "Poster: Three-second playground hop: watch the rifle grips through takeoff and landing. This is not a new battlefield ability."
-        },
-        {
-          "file": "changelog/unreleased/foot-plants-and-rifle-hop/idles.jpg",
-          "sha256": "2a2d46b8e64e6a0c874f2c80f3696facd992189ecb7303e1b531687e632830f1",
-          "caption": "Poster: Chat 0-7 s, laugh 7-14 s, stretch 14-21 s and armed lookout 21-28 s; each returns to rifle idle."
-        },
-        {
-          "file": "changelog/unreleased/foot-plants-and-rifle-hop/before.jpg",
-          "sha256": "16661b4fd9e8c027117f9add9a598770a3375f96cd8ff81e17230594872007e9",
-          "caption": "Before: acquiring foot contact pulls the corrected boot toward the source animation."
-        }
-      ],
-      "output": null
-    },
-    {
-      "entry": "changelog/unreleased/captured-injury-motion.md",
-      "summary": "The optional infantry preview uses captured limping and dazed motion, and the playground makes room before lying down near a wall.",
-      "medium": "motion",
-      "stage": "controlled-character-preview",
-      "rationale": "Real fixed-step character fixtures show the action and armed recovery at an inspectable scale. Local imported assets only; no broad gameplay or performance certification.",
-      "source_ref": "PR #98; committed MP4 source revisions and encoding in tools/showcase/pr98-webm-review.json",
-      "sources": [
-        {
-          "file": "changelog/unreleased/captured-injury-motion/injured.webm",
-          "sha256": "93d219ac2cd546e090d7960435d0a0f4698842d33bfb70c954050d590ea17f94",
-          "caption": "SWAT limping, dazed recovery and return to armed idle in the shared animation test scene."
-        },
-        {
-          "file": "changelog/unreleased/captured-injury-motion/prone-wall.webm",
-          "sha256": "e5f47e2cd5b45a0189ccb69f8b34126e457f0040771c621677e989c94f5de4df",
-          "caption": "The playground backs away from a wall, settles, then lowers into prone."
-        },
-        {
-          "file": "changelog/unreleased/captured-injury-motion/injured.jpg",
-          "sha256": "c2edd92d270ea0bef957d72043017f9849b61cfb277bb40d8ab7c249a752c38c",
-          "caption": "Poster: SWAT limping, dazed recovery and return to armed idle in the shared animation test scene."
-        },
-        {
-          "file": "changelog/unreleased/captured-injury-motion/prone-wall.jpg",
-          "sha256": "4c911cc329efcdbaedb0dc694ede6237b29d0a636713b24de3c77339f4950c39",
-          "caption": "Poster: The playground backs away from a wall, settles, then lowers into prone."
-        }
-      ],
-      "output": null
-    },
-    {
       "entry": "changelog/unreleased/mountain-battlefields.md",
       "summary": "Seeded snowy mountains, mossy hills and river valleys now surround the towns and roads of standard battles.",
       "medium": "still",
@@ -3784,6 +3439,576 @@
       }
     },
     {
+      "entry": "changelog/unreleased/vehicle-surface-library.md",
+      "summary": "Shared vehicle finishes with CC0 surface detail, painted cargo and selective corrosion.",
+      "medium": "still",
+      "stage": "vehicle-surfaces",
+      "rationale": "Matched studio stills expose paint relief and surface response; the swatches show the shared finishes without changing lighting.",
+      "source_ref": "b3ec859 baseline; e31ed14 pre-CC0; CC0 integration working tree",
+      "sources": [
+        {
+          "file": "changelog/unreleased/vehicle-surface-library/hatchback-after.jpg",
+          "sha256": "4ff19fbf5829c40dfbba794bc9b375c630fa1477e2f72a0759d71fb732e0da0e",
+          "caption": "Civilian paint after: fine surface detail replaces the oversized wear patches."
+        },
+        {
+          "file": "changelog/unreleased/vehicle-surface-library/hatchback-before.jpg",
+          "sha256": "8f4bb5d90765b6dd6eb9318b89f3dbaffb854292009e1616d3aa1f9212947d30",
+          "caption": "Before: the same hatchback, camera, seed and lighting."
+        },
+        {
+          "file": "changelog/unreleased/vehicle-surface-library/tank-after.jpg",
+          "sha256": "95fb3852b7708cec6c6786091300e541f075e7ca26788650875cfb80614919b1",
+          "caption": "Armor after: matte coatings, finer relief and distinct rubber and metal."
+        },
+        {
+          "file": "changelog/unreleased/vehicle-surface-library/tank-before.jpg",
+          "sha256": "08fe8af9f2dd85d5dd66a44637b7fe6f6b8e878e0720cf001d2aa5a4e8b415ae",
+          "caption": "Before: the same tank, camera, seed and lighting."
+        },
+        {
+          "file": "changelog/unreleased/vehicle-surface-library/surface-swatches.jpg",
+          "sha256": "8a70f1e9f8d923c4fec31a7097ce8cf2f240b51a3c9c29a844dd749addb4b374",
+          "caption": "Shared finishes under the same lighting: coatings, rubber, canvas, metal, glass and nonslip."
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/blackwasp-after.jpg",
+          "sha256": "57c75d13c614d668053c1a3a7dfb02aaa3aabc0bc89d53784d1f19467737ce0c",
+          "caption": "blackwasp-after"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/blackwasp-before.jpg",
+          "sha256": "1e86fc9704de0a0d10d1499be18dd571d16d5e54f6259cdc1ee3c5d73251586d",
+          "caption": "blackwasp-before"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/hatchback-after.jpg",
+          "sha256": "4ff19fbf5829c40dfbba794bc9b375c630fa1477e2f72a0759d71fb732e0da0e",
+          "caption": "hatchback-after"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/hatchback-before.jpg",
+          "sha256": "f1ccd24443b2d95d1c81a6bdbab765a3feafead48d0a5ffd48f2c67ee5388803",
+          "caption": "hatchback-before"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/heli-after.jpg",
+          "sha256": "bd436575065d87439b1a98d70440a0b326f5544d15e1f8ee7fbd51512e711d9e",
+          "caption": "heli-after"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/heli-before.jpg",
+          "sha256": "6d961a21d16440f07b49d2e94ae9d24ba1724ea0a54ee84aefc041a19772af4e",
+          "caption": "heli-before"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/hemtt_cargo-after.jpg",
+          "sha256": "94b83260b0f84ddcbbceb00e9cf63531ff370ed3384c9f61bccdf0d1409e8b65",
+          "caption": "hemtt_cargo-after"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/hemtt_cargo-before.jpg",
+          "sha256": "45b4d2bf0de62799a8ba4c8c503ad7d1522425cc4e4313efb759053060ca79da",
+          "caption": "hemtt_cargo-before"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/old_tank-after.jpg",
+          "sha256": "ebd045cf652601d5d41ef79be93a661438b62a20c356afc412cd2eb2eb7d3a54",
+          "caption": "old_tank-after"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/old_tank-before.jpg",
+          "sha256": "8c47e19815a619a48a8d7b9a826cd65b9ba22b00cc250ecd20b9822d91ccd94e",
+          "caption": "old_tank-before"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/palette-0-00-after.jpg",
+          "sha256": "a6bfe2172c0bdbe898715545aad04d37b2877234f3e9964d2097c412e06f28ea",
+          "caption": "palette-0-00-after"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/palette-0-00-before.jpg",
+          "sha256": "1197c762508a056a0dfdeb30c5ce8a998b48361c584aa9d6c2727509b1e04ce2",
+          "caption": "palette-0-00-before"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/palette-0-01-after.jpg",
+          "sha256": "56a89690fddc0e18959cbe762383daad070a6673c0c8b0b3a0a5373f7609b738",
+          "caption": "palette-0-01-after"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/palette-0-01-before.jpg",
+          "sha256": "93e4b3872b74939e1d8722b402aa562c57c6805be72716c887f159935500a412",
+          "caption": "palette-0-01-before"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/palette-0-02-after.jpg",
+          "sha256": "d51ebbc05033f314a8b273fc85b81f7c634ce398b38c4a2a2c4bcf22a5fa9ba5",
+          "caption": "palette-0-02-after"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/palette-0-02-before.jpg",
+          "sha256": "0f7975b95568495b941164362c431385e8ae9d5341de1ebd175404c171789d47",
+          "caption": "palette-0-02-before"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/palette-0-03-after.jpg",
+          "sha256": "b16322eac4d4c7a59afac56aaee19acd4e39ccaba38449f11c487d8b0cfa85e1",
+          "caption": "palette-0-03-after"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/palette-0-03-before.jpg",
+          "sha256": "9f8bbf66ead0aff468382a1b2f201d0f8e7166af5c01fb12bff8c900ccf679bb",
+          "caption": "palette-0-03-before"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/palette-0-04-after.jpg",
+          "sha256": "c08a30d1738a20afe6b7d0bd9e8d8ce5df57b97bade338002d925b51a03d6383",
+          "caption": "palette-0-04-after"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/palette-0-04-before.jpg",
+          "sha256": "52517be01ed28fcf3522a5e4c92f0f1b6c98de8029dbc5c989d72a96fddcb98c",
+          "caption": "palette-0-04-before"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/palette-0-05-after.jpg",
+          "sha256": "3edefe211dd3cffdecb656efbc4241be5d7c4da71c7566209067fc05b6b774d9",
+          "caption": "palette-0-05-after"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/palette-0-05-before.jpg",
+          "sha256": "5784eb8ac5765e0671c56acdba7812b713018de546c2712374e1a1c0dc5a4968",
+          "caption": "palette-0-05-before"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/palette-0-06-after.jpg",
+          "sha256": "d1ae859a9dd988178675e486559dc5d46c254ddd40de32aaa79cdf01a1abb41c",
+          "caption": "palette-0-06-after"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/palette-0-06-before.jpg",
+          "sha256": "77f8a29abe5ce15647342ea44e7c16b2c767c7acc375ba5c66efd1d69dae6ae5",
+          "caption": "palette-0-06-before"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/palette-0-07-after.jpg",
+          "sha256": "cd76afad6c3e23ff5844b18db3e64acbe0997a7ea8787c99a927360f8389d90e",
+          "caption": "palette-0-07-after"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/palette-0-07-before.jpg",
+          "sha256": "554ae0e3039223953806a0df3d9c9d1e6f18d14df1767e291e49892004821f0f",
+          "caption": "palette-0-07-before"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/palette-0-08-after.jpg",
+          "sha256": "163305956b2a6e93738aac145754e5ba489356ddff7d1fd6923fd9337c9c8d45",
+          "caption": "palette-0-08-after"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/palette-0-08-before.jpg",
+          "sha256": "4d2fac43699ecbe962ebeb90c980edf8e6ad4bfec70f488d5becabbc31642e11",
+          "caption": "palette-0-08-before"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/palette-0-09-after.jpg",
+          "sha256": "b9009b1e4192894ba018961004432f72386f9c2ce1ec37c7e2bb75f7e6c51bde",
+          "caption": "palette-0-09-after"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/palette-0-09-before.jpg",
+          "sha256": "b40d73b49ced5e286868f741acaa162d80e14cfe45edd876102015f3a1b84a05",
+          "caption": "palette-0-09-before"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/palette-0-10-after.jpg",
+          "sha256": "816247b0970e1881fc3268381cab41cb8b6fbc58bb303159bae08ea23e56d634",
+          "caption": "palette-0-10-after"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/palette-0-10-before.jpg",
+          "sha256": "09e235574719b69d32f4e94fe23d377858f9d93da549118614f3e455f26fd937",
+          "caption": "palette-0-10-before"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/palette-0-11-after.jpg",
+          "sha256": "fe6210b4ac355f5b7205ad11af15cff0935ce6e4e13bf5d97c59a21d3df78614",
+          "caption": "palette-0-11-after"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/palette-0-11-before.jpg",
+          "sha256": "e0e726b77a6f9118040ba8290a06bac764ba73b4f8925fcf9c8ec6423d152f88",
+          "caption": "palette-0-11-before"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/palette-1-00-after.jpg",
+          "sha256": "2577538fd65ea498a373ab7e7e9a3957bbcdbbc9237a74394151f2013557e433",
+          "caption": "palette-1-00-after"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/palette-1-00-before.jpg",
+          "sha256": "99b722eb528dbb67f6432cdbadf6c0f2b9d8c52554252b24d15081ba342c693f",
+          "caption": "palette-1-00-before"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/palette-1-01-after.jpg",
+          "sha256": "7fb3685f0292c2b5e34941ba218168bc9bada9c053fce1da2f16b624826c3cdb",
+          "caption": "palette-1-01-after"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/palette-1-01-before.jpg",
+          "sha256": "3966c85ba580a4c134e6562a59a5e295dd15c9fd55ee19527422d554b5e5d92c",
+          "caption": "palette-1-01-before"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/palette-1-02-after.jpg",
+          "sha256": "073cdc0d38905b54ec13ef485c1b0c12aa0e9ead8beb386337968ad76ac44ab7",
+          "caption": "palette-1-02-after"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/palette-1-02-before.jpg",
+          "sha256": "68190fd98033cf4afdd72ae9d8a846b1979f5ca73e0b54a8d392090eae23e907",
+          "caption": "palette-1-02-before"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/palette-1-03-after.jpg",
+          "sha256": "8043850bade74a20b00f0ba16989cea3addee28bf6bfdf8a902e8aaf2dc1a82a",
+          "caption": "palette-1-03-after"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/palette-1-03-before.jpg",
+          "sha256": "ff85ff5be1518334316e9e3d88f5cf9ad6f9d7cdb24bd96d1067ce91fbff2040",
+          "caption": "palette-1-03-before"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/palette-1-04-after.jpg",
+          "sha256": "9b1bd5ccea48d432c3d211982985f7278278c98a1395e867a6841435dc869a9b",
+          "caption": "palette-1-04-after"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/palette-1-04-before.jpg",
+          "sha256": "a18793a489f3eb40f2a4093159825f405e2e5d3699e637a32450fe77c7930ecd",
+          "caption": "palette-1-04-before"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/palette-1-05-after.jpg",
+          "sha256": "fd2981addb5dcd1f143183b59d605a8772045f0d070b00c980923da9a2b70cd4",
+          "caption": "palette-1-05-after"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/palette-1-05-before.jpg",
+          "sha256": "f8b9012ea8303778998b803eeba0c2a0f8e581d92429ec559e23b1440905d5bb",
+          "caption": "palette-1-05-before"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/palette-1-06-after.jpg",
+          "sha256": "401232a49151120542df018f530ac246db653ec23539c7d93ed563c214bb5174",
+          "caption": "palette-1-06-after"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/palette-1-06-before.jpg",
+          "sha256": "d26363e8e3acb1d3a9df6ca68997d2755b2f4d9ba59cab8087c2ef028edbde07",
+          "caption": "palette-1-06-before"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/palette-1-07-after.jpg",
+          "sha256": "6dffa85b5388b633afe44335794cf29ff2636e74d6e3cca15d03f75511c035dd",
+          "caption": "palette-1-07-after"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/palette-1-07-before.jpg",
+          "sha256": "f54fc80cd4e15203de196d0598b9417a688e9988ca3a8d3e4b38de20b5a8ac61",
+          "caption": "palette-1-07-before"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/palette-1-08-after.jpg",
+          "sha256": "4520a613c9417fe2d46a64c37deeffd41f0fe0ee0b1c92b4fdeb5fc2720f1007",
+          "caption": "palette-1-08-after"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/palette-1-08-before.jpg",
+          "sha256": "b9c3f284dd989ec0b0d54c2a903e4ed1f94c4005b7ce6e203df8f1acad4b87d7",
+          "caption": "palette-1-08-before"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/palette-1-09-after.jpg",
+          "sha256": "6a2a3d753f5d649cef1f7f95862a791f1bfe3cca9340b6157db34952a13494ed",
+          "caption": "palette-1-09-after"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/palette-1-09-before.jpg",
+          "sha256": "798821d50fd0b12b8c3f08f714951064f4ae368012695c34ff432d61bbdd42c4",
+          "caption": "palette-1-09-before"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/palette-1-10-after.jpg",
+          "sha256": "04dfb3f4b48ad2a94799ce467e3adf3ce0d2e802773c6d160cf7f3873c6d5a53",
+          "caption": "palette-1-10-after"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/palette-1-10-before.jpg",
+          "sha256": "2a73952b861b4170caa599849b5a0b83adb782c4086d73e0130cdb04ac17465c",
+          "caption": "palette-1-10-before"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/palette-1-11-after.jpg",
+          "sha256": "fdf43851299d846ce739407b0822bb37e052c30422f8e419154df017137009c4",
+          "caption": "palette-1-11-after"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/palette-1-11-before.jpg",
+          "sha256": "c7140f21003492aa01cd4a5994a4475cb137ca7c646f24a193a8ab6b94165415",
+          "caption": "palette-1-11-before"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/patrol_ship-after.jpg",
+          "sha256": "ca9a850cee19520b2c0f8e49459a9ca1fc23ede1ba5f9ff930f8367a6e44395f",
+          "caption": "patrol_ship-after"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/patrol_ship-before.jpg",
+          "sha256": "26fdee4cef8be4d31c55e32e7e1f55880040c689543f8ce0a47d7cb1c8fb4add",
+          "caption": "patrol_ship-before"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/rhib-after.jpg",
+          "sha256": "103d41c84a9c757007bde5c6788e571e955bb65447beaeae5540a932810344fa",
+          "caption": "rhib-after"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/rhib-before.jpg",
+          "sha256": "fbd77573ca3a45229143d4c1cd28b23bcde7ed77d7b0298be673d7fdd4d6030d",
+          "caption": "rhib-before"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/tank-after.jpg",
+          "sha256": "95fb3852b7708cec6c6786091300e541f075e7ca26788650875cfb80614919b1",
+          "caption": "tank-after"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/tank-before.jpg",
+          "sha256": "7cd69458f47d6f13456baca5eb2c072268054c18e473d4b9a621a084d4888054",
+          "caption": "tank-before"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/cc0-pass/palette-0-10-before.jpg",
+          "sha256": "81c3742d2c9a188870076fdf5b334d95bce7dd8e51a100c9ba93654746f8d76c",
+          "caption": "palette 0 10 before"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/cc0-pass/palette-0-05-before.jpg",
+          "sha256": "a1e86253e6a6a0c6792e47daba266bd19f0702a413f6f92d317ab526b235a795",
+          "caption": "palette 0 05 before"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/cc0-pass/palette-1-07-before.jpg",
+          "sha256": "0c30f9d2e4af685d9af45bcd331ec1f4d883262e5778eb3ccea94012a7c8cd89",
+          "caption": "palette 1 07 before"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/cc0-pass/palette-0-11-before.jpg",
+          "sha256": "6f429272f4a5c32c4edb5e54de8105bbccb5e5d267b81583b41d1265d22461ea",
+          "caption": "palette 0 11 before"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/cc0-pass/palette-1-11-before.jpg",
+          "sha256": "e63fb3a9ec2299ec6c979a5a2e49ee28d62d19358584cd4a464f62946d06db28",
+          "caption": "palette 1 11 before"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/cc0-pass/palette-1-05-before.jpg",
+          "sha256": "bbc10c7decffc11e544aed1b11d192510d76a5da6f7827ed0170994fa9e67ac5",
+          "caption": "palette 1 05 before"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/cc0-pass/palette-1-04-before.jpg",
+          "sha256": "0fe25ffedb8d196b832baa347f9c27fb84313bcbd83df44d3c795e65f31073d0",
+          "caption": "palette 1 04 before"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/cc0-pass/palette-0-07-before.jpg",
+          "sha256": "78fd5268896d3ba8de26073188c4f5cde06d3a224ac232554a4f407cd9e82c4c",
+          "caption": "palette 0 07 before"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/cc0-pass/palette-1-00-before.jpg",
+          "sha256": "ad1130d743a751818aa63aea4332d0c24ef9886e485cbe50c52aa8d955216c8d",
+          "caption": "palette 1 00 before"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/cc0-pass/old_tank-before.jpg",
+          "sha256": "142fc72b84d41ed6ff762466225102490f0e04db3c262d7148de2961a711091e",
+          "caption": "old_tank before"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/cc0-pass/patrol_ship-before.jpg",
+          "sha256": "0fffae3996c4e4968394de014088f9dddc127c54b52c0cb034fc12494d9b9da4",
+          "caption": "patrol_ship before"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/cc0-pass/palette-1-06-before.jpg",
+          "sha256": "eb12ca04ced9da99669572d8d13d27f08836cb0cc73c62dd5780e61c1c8d1fd3",
+          "caption": "palette 1 06 before"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/cc0-pass/rhib-before.jpg",
+          "sha256": "2e378dcc392dd8f231847e35ff689faccaa495a8d0c3a7f19695f65face8f5f0",
+          "caption": "rhib before"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/cc0-pass/heli-before.jpg",
+          "sha256": "e9fd2fe0967c7ece1f32e60dcdf4cd50c07d1a0fccc91361705b44d6bbf124d3",
+          "caption": "heli before"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/cc0-pass/palette-1-08-before.jpg",
+          "sha256": "6f63f5eb6d4ebfc7aa700bb7dc7714a291d11f10e4c0b7746516871d1c394721",
+          "caption": "palette 1 08 before"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/cc0-pass/hemtt_cargo-before.jpg",
+          "sha256": "ebaca154aea0ef3cbc35952d8add7429ad0e65862bf6011f5010e3d38321870b",
+          "caption": "hemtt_cargo before"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/cc0-pass/palette-1-10-before.jpg",
+          "sha256": "847b96f3d06e9ed1e3b4708e3689d53fcba765b41711392c8caee7a56ac689d8",
+          "caption": "palette 1 10 before"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/cc0-pass/palette-0-06-before.jpg",
+          "sha256": "8fef57205b354f5ee1c15bb34fabd16b2f4a4e7a493c6811c779846364713f9b",
+          "caption": "palette 0 06 before"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/cc0-pass/palette-0-00-before.jpg",
+          "sha256": "c220880115ebc1decfd93bd8913d211eb26a377bd31a82d54980ac53508c8f8e",
+          "caption": "palette 0 00 before"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/cc0-pass/palette-1-02-before.jpg",
+          "sha256": "bbf758d633bfd0800d1d10e7cdb4952482070ef61924bb51560fda756d6d7e88",
+          "caption": "palette 1 02 before"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/cc0-pass/palette-0-03-before.jpg",
+          "sha256": "b550f7d5d50dbc081e843b33f3be9970ee03734ba9ac8005746e73fac9e23707",
+          "caption": "palette 0 03 before"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/cc0-pass/palette-0-02-before.jpg",
+          "sha256": "28b767610f7fc8390a88919e8d180133c62a46a13a524cffda1159638f5215ec",
+          "caption": "palette 0 02 before"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/cc0-pass/palette-0-04-before.jpg",
+          "sha256": "d8180e0556686f7561feaf3fbc5138b6b36e1486b58f87ca0813be42a53d0467",
+          "caption": "palette 0 04 before"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/cc0-pass/gun_trawler-before.jpg",
+          "sha256": "7ec3da0ae054dc64946d66e0b5201378811f424d3347e57055ec0ed2cce26bc2",
+          "caption": "gun_trawler before"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/cc0-pass/palette-1-03-before.jpg",
+          "sha256": "5f4690abe7253776a5f4cb63b040de18ef0a37b51165676e4d836be69c4590c8",
+          "caption": "palette 1 03 before"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/cc0-pass/palette-0-01-before.jpg",
+          "sha256": "e857f864cce32aba3b3e4e9b30616f90f00c6ed26fad2a7a00359fa535d687a9",
+          "caption": "palette 0 01 before"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/cc0-pass/palette-1-01-before.jpg",
+          "sha256": "a2d2f2a0ec4b68366c8c695938bda720dbd688788827262965425d94ca67f9c0",
+          "caption": "palette 1 01 before"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/cc0-pass/tank-before.jpg",
+          "sha256": "617dec9c24e5b44eb708e5e05732c75acad2a973aee1f312a573a1a55b07cfff",
+          "caption": "tank before"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/cc0-pass/hatchback-before.jpg",
+          "sha256": "63223dede9f3696057951798886aecfffe442582e51b22dd4255e0796c97782f",
+          "caption": "hatchback before"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/cc0-pass/palette-0-09-before.jpg",
+          "sha256": "4a1f352474eba54bfd057ad886f1146ad22c7fcacc61e3af7d81c2896229c440",
+          "caption": "palette 0 09 before"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/cc0-pass/palette-1-09-before.jpg",
+          "sha256": "943180da10511a783466368cb54d9ff3e96d948c9deab1c0719826447d3ec3f4",
+          "caption": "palette 1 09 before"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/cc0-pass/blackwasp-before.jpg",
+          "sha256": "d32c7d55dc9a036464234ca447a571bec00db536169fdad4e9719c82666a1413",
+          "caption": "blackwasp before"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/cc0-pass/palette-0-08-before.jpg",
+          "sha256": "60bf81e8f2c194918d070e31552457d96d7eb14f7374b580a0bd2c4557d8a00d",
+          "caption": "palette 0 08 before"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/gun_trawler-after.jpg",
+          "sha256": "b6959918851dbd7b7662ebe612559a4105714066a454d33ee96c18ca446de95d",
+          "caption": "gun_trawler after"
+        }
+      ],
+      "output": null,
+      "capture": {
+        "before_ref": "b3ec859",
+        "after_ref": "CC0 integration working tree",
+        "engine": "Godot 4.6.3 Compatibility paired stills; current CC0 code checked with software Vulkan Forward+",
+        "command": "DISPLAY=:99 godot --path . --rendering-method gl_compatibility --audio-driver Dummy tools/showcase/vehicle-surfaces.tscn -- --surface-out=OUTPUT --surface-single --surface-kinds=tank,old_tank,heli,hemtt_cargo,hatchback,blackwasp,rhib,patrol_ship",
+        "seed": 3,
+        "team": 0,
+        "viewport": [
+          1600,
+          900
+        ],
+        "camera": "Orthographic, bounds-fit; direction (1, 0.65, -1.25), fixed studio sky and key light",
+        "timing": "Static pose, five frames then frame_post_draw",
+        "swatches": "Same fixture, --surface-swatches; sixteen 400x225 swatches in a 1600x900 image.",
+        "audit": "143 subjects rendered for each palette (135 roster/builder keys, five parked cars, three wrecks); 278 builds audited headlessly. Translation check at (117,35,-81) differs by less than 0.001 mean 8-bit channel value for tank and hatchback.",
+        "complete_comparisons": {
+          "report": "docs/vehicle-surface-comparisons/README.md",
+          "before_ref": "b3ec859",
+          "after_ref": "CC0 integration working tree",
+          "engine": "Godot 4.6.3 Compatibility",
+          "subjects_per_palette": 143,
+          "palettes": [
+            0,
+            1
+          ],
+          "command": "DISPLAY=:99 godot --path CHECKOUT --rendering-method gl_compatibility --audio-driver Dummy tools/showcase/vehicle-surfaces.tscn -- --surface-out=OUTPUT --surface-team=TEAM",
+          "note": "Original baseline before images retained; after images refreshed with CC0 integration using identical roster capture settings."
+        },
+        "cc0_pass": {
+          "report": "docs/vehicle-surface-comparisons/cc0-pass/README.md",
+          "before_closeups_ref": "e31ed14",
+          "before_roster_ref": "a43f427 (runtime unchanged at e31ed14)",
+          "after_ref": "CC0 integration working tree",
+          "engine": "Godot 4.6.3 Compatibility",
+          "seed": 3,
+          "subjects_per_palette": 143,
+          "palettes": [
+            0,
+            1
+          ],
+          "closeups": 9,
+          "renderer_validation": "Four close-ups rendered with Vulkan 1.4.305 Forward+, software llvmpipe. Initial fallback run discarded as Forward+ evidence."
+        }
+      }
+    },
+    {
       "entry": "changelog/unreleased/realism-04-talus.md",
       "summary": "Sheltered lower slopes collect pale loose stone while exposed walls retain darker bedrock.",
       "medium": "still",
@@ -3847,6 +4072,2071 @@
       }
     },
     {
+      "entry": "changelog/unreleased/hemtt-cargo-detail.md",
+      "summary": "Framed glazing, tyre tread and load hardware make the cargo truck more readable.",
+      "medium": "still",
+      "stage": "vehicle-surfaces",
+      "rationale": "Matched close and wider studio pairs isolate the modeled detail from lighting and texture changes.",
+      "source_ref": "f0b8191 baseline + HEMTT cargo art pass",
+      "sources": [
+        {
+          "file": "changelog/unreleased/hemtt-cargo-detail/close-after.jpg",
+          "sha256": "be8690a107203e6b9d66b7c7264b53bfb778561e265d429305da682a371641d2",
+          "caption": "close after"
+        },
+        {
+          "file": "changelog/unreleased/hemtt-cargo-detail/close-before.jpg",
+          "sha256": "601605e17d1ed2baaece64415314204f85903a054cc75528787f32b614bd4ea8",
+          "caption": "close before"
+        },
+        {
+          "file": "changelog/unreleased/hemtt-cargo-detail/wide-after.jpg",
+          "sha256": "23d06504ce1d1b5287bbe8542ceba244e3bdece77253239fe71c8e266e83edcf",
+          "caption": "wide after"
+        },
+        {
+          "file": "changelog/unreleased/hemtt-cargo-detail/wide-before.jpg",
+          "sha256": "d5b57f05b3d79d8545a1ef68372c41337e08146ff3b171707695e5c5fc9e1c14",
+          "caption": "wide before"
+        }
+      ],
+      "output": null,
+      "capture": {
+        "before_ref": "f0b8191 with capture-size option only",
+        "after_ref": "HEMTT cargo art pass working tree",
+        "engine": "Godot 4.6.3 Compatibility; palette 1 also inspected with Vulkan Forward+",
+        "command": "DISPLAY=:100 godot --path . --rendering-method gl_compatibility --audio-driver Dummy tools/showcase/vehicle-surfaces.tscn -- --surface-out=OUTPUT --surface-single --surface-kinds=hemtt_cargo --surface-size=SIZE",
+        "seed": 3,
+        "team": 0,
+        "viewport": [
+          1600,
+          900
+        ],
+        "camera": "Orthographic size 10 close / 28 wide, direction (1,0.65,-1.25); fixed studio sky and key light",
+        "timing": "Static pose, five frames then frame_post_draw",
+        "report": "docs/vehicle-surface-comparisons/hemtt-cargo.md",
+        "limitations": "Wide images are gameplay-scale studio views, not in-match footage. No photorealism or hardware-performance claim."
+      }
+    },
+    {
+      "entry": "changelog/unreleased/hemtt-cab-depth.md",
+      "summary": "Transparent cab glazing, rounded tyres and draped cloth loads on the HEMTT cargo truck.",
+      "medium": "still",
+      "stage": "vehicle-surfaces",
+      "rationale": "Matched grounded renders isolate the model rebuild from new lighting; a separate in-game screenshot verifies the actual world renderer.",
+      "source_ref": "e7fee16 baseline + HEMTT cab/tyre rebuild",
+      "sources": [
+        {
+          "file": "changelog/unreleased/hemtt-cab-depth/after.jpg",
+          "sha256": "0fdd02969ffe2ebb845a3a5dc7bf11d49eeb9c0e483c8a62a63dcf6fcce6d01c",
+          "caption": "after"
+        },
+        {
+          "file": "changelog/unreleased/hemtt-cab-depth/before.jpg",
+          "sha256": "27cfe94dda0b44f9f01411f817c5282cf3cd9cfefb08ed4d9788332ccf045fa1",
+          "caption": "before"
+        },
+        {
+          "file": "changelog/unreleased/hemtt-cab-depth/in-game.jpg",
+          "sha256": "3cfca29560a95804b1a4d1cba0de230d9a9165839593af92c116d1505278d3e7",
+          "caption": "in game"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/hemtt-rebuild/wide-after.jpg",
+          "sha256": "7edd1050c250defbd9867218156fb10d49b67bee9f5af35ce55b6942a1fb4bd0",
+          "caption": "wide after"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/hemtt-rebuild/wide-before.jpg",
+          "sha256": "c4a8b287ac0d83b3157aa6d6bc7b8c463d594542c57d7973005ada8cc3a1ff36",
+          "caption": "wide before"
+        }
+      ],
+      "output": null,
+      "capture": {
+        "before_ref": "e7fee16 with grounded harness copied in",
+        "after_ref": "HEMTT cab/tyre rebuild working tree",
+        "engine": "Godot 4.6.3, Vulkan Forward+ (close pair), Compatibility (wide pair and in-game)",
+        "command": "DISPLAY=:101 VK_DRIVER_FILES=/path/to/lvp_icd.json godot --path CHECKOUT --rendering-method forward_plus --audio-driver Dummy tools/showcase/vehicle-surfaces.tscn -- --surface-out=OUTPUT --surface-single --surface-kinds=hemtt_cargo --surface-size=8 --surface-ground",
+        "seed": 3,
+        "team": 0,
+        "viewport": [
+          1600,
+          900
+        ],
+        "camera": "Orthographic size 8 close / 28 wide, direction (1,0.65,-1.25). Ground and lighting identical within each pair.",
+        "timing": "Five frames then frame_post_draw",
+        "report": "docs/vehicle-surface-comparisons/hemtt-rebuild.md",
+        "in_game": "vehicle-in-world.tscn, attack scenario seed 3, daytime High preset, perf:0 aa:2 post:0, focus=-20,-10 zoom=16 pitch=-28 cam-yaw=2.45; fixed-fps 30, shot-at=1. Showcase truck parked by copying its definition and setting speed to zero.",
+        "validation": "Four focused tests pass, including transparent-pane distance ranges and wreck handling. Palette 1 inspected in Forward+. Software rendering; no hardware performance claim."
+      }
+    },
+    {
+      "entry": "changelog/unreleased/vehicle-detail-rollout.md",
+      "summary": "Open truck and civilian cabs, rounded shared wheels, draped Zamak loads and corrected painted coatings.",
+      "medium": "still",
+      "stage": "vehicle-surfaces",
+      "rationale": "Matched close views show cab depth and tyre shape; the complete two-palette roster reveals coverage and regressions.",
+      "source_ref": "1bdecfd baseline; 55033e2 roster detail rollout",
+      "sources": [
+        {
+          "file": "docs/vehicle-surface-comparisons/roster-detail/team-0-before-roster-00.jpg",
+          "sha256": "f531cad9bf3fa7f1f449d13ca901933548d9deb1382e88588a45cb66be1020b8",
+          "caption": "team 0 before roster 00"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/roster-detail/team-0-before-roster-01.jpg",
+          "sha256": "72b3ec137cea76b8b56f1fa07ea3f38edeea8665b6ff37dee3c7f11d546ae201",
+          "caption": "team 0 before roster 01"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/roster-detail/team-0-before-roster-02.jpg",
+          "sha256": "3a1ced4c602538f521aa8b7ddf22d9f8bd636eb0fb493df743410fda64988a4e",
+          "caption": "team 0 before roster 02"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/roster-detail/team-0-before-roster-03.jpg",
+          "sha256": "e8a71982519b86bce2f5112bd9a25ec7874cac1ddf1567e1f4d3a8c2929f3689",
+          "caption": "team 0 before roster 03"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/roster-detail/team-0-before-roster-04.jpg",
+          "sha256": "771b35aec34b5e319d546ef33db1120bc0be1c956ae82baadf5a957adfa0cf2e",
+          "caption": "team 0 before roster 04"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/roster-detail/team-0-before-roster-05.jpg",
+          "sha256": "882d07c3802907fe32ed21b576e937447455ae0cafdef7f7761715c5fd6a57e7",
+          "caption": "team 0 before roster 05"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/roster-detail/team-0-before-roster-06.jpg",
+          "sha256": "e99e1575fa9bd53195e4ee79efff9fc0c543890ba350ecdfe3113626876f8364",
+          "caption": "team 0 before roster 06"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/roster-detail/team-0-before-roster-07.jpg",
+          "sha256": "72a299f939cc3466ea0852f424780b84b8f17273575c03344794fc26a4d3002d",
+          "caption": "team 0 before roster 07"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/roster-detail/team-0-before-roster-08.jpg",
+          "sha256": "39a0e7de9abb8ba6ea32e119709d4ff7de15b2f5c9f3541608ccfe3d2812ddbe",
+          "caption": "team 0 before roster 08"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/roster-detail/team-0-before-roster-09.jpg",
+          "sha256": "301ddaf212344ecffdebf5ac5d4348cadb207f58c3ac4d3f84a169f17f4c1609",
+          "caption": "team 0 before roster 09"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/roster-detail/team-0-before-roster-10.jpg",
+          "sha256": "ed8b91c28069e50326dd4815e3bace63ec81a0d5a557980cc7b4621c7b369ad7",
+          "caption": "team 0 before roster 10"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/roster-detail/team-0-before-roster-11.jpg",
+          "sha256": "40e72b60afeffedc10868358f9a05779e5c25fc25a9f8ae4c6b8c0af6862f3df",
+          "caption": "team 0 before roster 11"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/roster-detail/team-0-after-roster-00.jpg",
+          "sha256": "a5cf9db232ee5b1f3d20c8bfc4c9e5baeba4ce91ed304aef4ea96840fd0711a0",
+          "caption": "team 0 after roster 00"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/roster-detail/team-0-after-roster-01.jpg",
+          "sha256": "8849540916fb4575ccef282a396ec1a5d9a561619a32aa9bb9e3b000718eef00",
+          "caption": "team 0 after roster 01"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/roster-detail/team-0-after-roster-02.jpg",
+          "sha256": "6b0651872c816bcfaa55bb12e7d3d964e51b9140de685b9e4e1d464d61a90d2f",
+          "caption": "team 0 after roster 02"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/roster-detail/team-0-after-roster-03.jpg",
+          "sha256": "d7de6710b8f86372c33c497039999ce275f63afe004e6e387075d70bba6c201e",
+          "caption": "team 0 after roster 03"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/roster-detail/team-0-after-roster-04.jpg",
+          "sha256": "8ded18577d6ab67f3cd61cbc4d33ba5e95bbb19c54b7d14c77adfccb5f3c142e",
+          "caption": "team 0 after roster 04"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/roster-detail/team-0-after-roster-05.jpg",
+          "sha256": "db008a0c71c9f0fac8565bf454ace3b4362e9624eeab26f1439467ffec4965dd",
+          "caption": "team 0 after roster 05"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/roster-detail/team-0-after-roster-06.jpg",
+          "sha256": "71c804379f5aa4cb293f10ad67220f0ec89d92de49e21220bbe7ab3e23304233",
+          "caption": "team 0 after roster 06"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/roster-detail/team-0-after-roster-07.jpg",
+          "sha256": "4479228269c341cabd6238be4cccdaa441b2dc74bd147c412366e70eee5dd218",
+          "caption": "team 0 after roster 07"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/roster-detail/team-0-after-roster-08.jpg",
+          "sha256": "549ae1e0d740704e62e8354de5c3e6d215658b09ea1fc93799f68fabeea7f24f",
+          "caption": "team 0 after roster 08"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/roster-detail/team-0-after-roster-09.jpg",
+          "sha256": "e8a06e9897706f8e3c0abc96bc28f50bcf5a740caf9e59b6f6b729fd30e9f364",
+          "caption": "team 0 after roster 09"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/roster-detail/team-0-after-roster-10.jpg",
+          "sha256": "89fd0d82e9e76370ab19b490737fc8326d10dea9a0f92f42356baf820b803879",
+          "caption": "team 0 after roster 10"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/roster-detail/team-0-after-roster-11.jpg",
+          "sha256": "3d6d6dce556aa85aabd04a2850377ca5dd9730c6b6ab3e2b9bf6f5886a1841f9",
+          "caption": "team 0 after roster 11"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/roster-detail/team-1-before-roster-00.jpg",
+          "sha256": "0a1705707a887c36121d79e24457679ec6dc3808ad90b7c2c102448f96700d88",
+          "caption": "team 1 before roster 00"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/roster-detail/team-1-before-roster-01.jpg",
+          "sha256": "a7761eab1df8e8ca960b0a59ad676c54de39090184f11cfcad90a0a1199a4262",
+          "caption": "team 1 before roster 01"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/roster-detail/team-1-before-roster-02.jpg",
+          "sha256": "2739abf7f97a0c753d0d8bf8fe460180e334e58de29fc70d5c77dc7c4a2455c6",
+          "caption": "team 1 before roster 02"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/roster-detail/team-1-before-roster-03.jpg",
+          "sha256": "1ce538570872a01b0315ec660711fea9662c9bece6dd848cdb71739fc08023b2",
+          "caption": "team 1 before roster 03"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/roster-detail/team-1-before-roster-04.jpg",
+          "sha256": "bd61dc290962ec50ee0414519350229d631652be451e65a13ff088155b945f84",
+          "caption": "team 1 before roster 04"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/roster-detail/team-1-before-roster-05.jpg",
+          "sha256": "3af82104ba618017bb2ff214cc7c5ccab1aed1aa53882a994b3db33e337829ec",
+          "caption": "team 1 before roster 05"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/roster-detail/team-1-before-roster-06.jpg",
+          "sha256": "639445c0238017947e4d177140dec5b35ce0869b1aa860b9fe9c648707273528",
+          "caption": "team 1 before roster 06"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/roster-detail/team-1-before-roster-07.jpg",
+          "sha256": "b2921f160071eb9dc7461a2251c54c39cd1781b695dbd82e9bcf1fd79f87b4df",
+          "caption": "team 1 before roster 07"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/roster-detail/team-1-before-roster-08.jpg",
+          "sha256": "f0e61d17ec1164562daaf7b4970a375d7f32f8d52af4582e3b69bab8f6f21728",
+          "caption": "team 1 before roster 08"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/roster-detail/team-1-before-roster-09.jpg",
+          "sha256": "653f24cd2cb779cb17facc32f8d70289dea346c0f40700750220155ad5b75399",
+          "caption": "team 1 before roster 09"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/roster-detail/team-1-before-roster-10.jpg",
+          "sha256": "7a21ee63832874ee26af5ab674951b5a5371cfd8792c0f38d919a1b51bc1d017",
+          "caption": "team 1 before roster 10"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/roster-detail/team-1-before-roster-11.jpg",
+          "sha256": "1715fd6ae83013c0b1c2dfc18a20c3ea60cea0f7f6bfdf666683467fefe42fe6",
+          "caption": "team 1 before roster 11"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/roster-detail/team-1-after-roster-00.jpg",
+          "sha256": "488882e5b17282d0bebf9454356926c466a0b30a4979f0701d185e3e790b66a3",
+          "caption": "team 1 after roster 00"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/roster-detail/team-1-after-roster-01.jpg",
+          "sha256": "9bae5c117f2e32f0d8eb6d32ddedc0ece17026e63a6fe1bde684f5f8dd21c4d6",
+          "caption": "team 1 after roster 01"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/roster-detail/team-1-after-roster-02.jpg",
+          "sha256": "db8ddaf534b793f0ec6ca5407123a7301dee2f57fe6e88b8cfc069ce749a7e2b",
+          "caption": "team 1 after roster 02"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/roster-detail/team-1-after-roster-03.jpg",
+          "sha256": "fef293f268087f53be5eabbd35dc3d774cd48a56b18393ddfbafed8b0029869d",
+          "caption": "team 1 after roster 03"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/roster-detail/team-1-after-roster-04.jpg",
+          "sha256": "beea73b9df62d639056783591208345aa5bc5262616a3d5ab9c8a18d7d980c5e",
+          "caption": "team 1 after roster 04"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/roster-detail/team-1-after-roster-05.jpg",
+          "sha256": "3fee7a238df2a7f628f1ddf5fbd2efe511573b7fb26df480ac3b78afe275592e",
+          "caption": "team 1 after roster 05"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/roster-detail/team-1-after-roster-06.jpg",
+          "sha256": "9c1ca37a198722f7aaa8eb54acfa17cc74ed48d9333791f7d5b1fc27840230f3",
+          "caption": "team 1 after roster 06"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/roster-detail/team-1-after-roster-07.jpg",
+          "sha256": "d551811f163221c09654be8b05f9657bddbaa9716ba8e1058230740941283718",
+          "caption": "team 1 after roster 07"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/roster-detail/team-1-after-roster-08.jpg",
+          "sha256": "76d8e776d9f5ed91961af26978e42cddf361c9df0bc3e5921b26a683050eb209",
+          "caption": "team 1 after roster 08"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/roster-detail/team-1-after-roster-09.jpg",
+          "sha256": "c990be3f7e161f1c701fdcf3139aa30c3727dbdf8ea4aea400966e919261f75c",
+          "caption": "team 1 after roster 09"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/roster-detail/team-1-after-roster-10.jpg",
+          "sha256": "693e928ed6f520d393d4ab28b143a17fe3db6eae370c7615f65a98e48e6b7f51",
+          "caption": "team 1 after roster 10"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/roster-detail/team-1-after-roster-11.jpg",
+          "sha256": "58ba2f703dd3076b3de357c0fced29fcf92c3e91464abe439449644c5de0b7ea",
+          "caption": "team 1 after roster 11"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/roster-detail/hemtt_fuel-before.jpg",
+          "sha256": "fb7107fb6bdba9d63adb2356cc281701087653c220c44ef60dc33340b551e6d6",
+          "caption": "hemtt_fuel before"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/roster-detail/hemtt_fuel-after.jpg",
+          "sha256": "890406a387d7d3c0ec7094068bdcdb4b3fd95eff07eea98ebc0f55ec6e940836",
+          "caption": "hemtt_fuel after"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/roster-detail/zamak_cargo-before.jpg",
+          "sha256": "c3ddfc3574d965c4705aee57b17a64ef3f6337fc8c7f2a8ce20828ff73a36d83",
+          "caption": "zamak_cargo before"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/roster-detail/zamak_cargo-after.jpg",
+          "sha256": "d8b208c915367a612fb5e142f376edf4b619644b7fa21514b218c2d52b371b1a",
+          "caption": "zamak_cargo after"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/roster-detail/tempest-before.jpg",
+          "sha256": "d4b656bb8d5c69bef48b1bca3ae2b87aa6055f41fd7db205e2304ae2945aa9f9",
+          "caption": "tempest before"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/roster-detail/tempest-after.jpg",
+          "sha256": "f41d5cf71a017569f56fb86ad9dd1d068bfb57c6db40494cf340c3fa80398ed0",
+          "caption": "tempest after"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/roster-detail/hunter-before.jpg",
+          "sha256": "2f4c68825f691838b8c97aa61a418cd91bd89b8cc6e5787cf648f0e3a38e1dbd",
+          "caption": "hunter before"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/roster-detail/hunter-after.jpg",
+          "sha256": "2e78f7c3b5361ad3c782a5a5173b9a7d93123bb1a2b7311e6ee40d4dee11e1a5",
+          "caption": "hunter after"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/roster-detail/offroad-before.jpg",
+          "sha256": "48c6d5e82303c5857f99d6c42c91442f2067798d0035441803fab7ed155fb246",
+          "caption": "offroad before"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/roster-detail/offroad-after.jpg",
+          "sha256": "c7e4c4d37adaf2bc12b408e030bec5e2db573027b65e0f34ebb6a648f9948f8c",
+          "caption": "offroad after"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/roster-detail/hatchback-before.jpg",
+          "sha256": "777151d58355dfb86ab595e1428646469b4fde6831de93fa163fe4ef8b4c067d",
+          "caption": "hatchback before"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/roster-detail/hatchback-after.jpg",
+          "sha256": "45c2602f4a5f5ac2d7eed5891cd1b5a5df7e8d9a88a5495cfb4525684a9d7110",
+          "caption": "hatchback after"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/roster-detail/suv-before.jpg",
+          "sha256": "bb0551da2fbcf11fea42ba7350b6792914d141e7cbfd7fb67a76cf861a8e6b91",
+          "caption": "suv before"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/roster-detail/suv-after.jpg",
+          "sha256": "1b0207713a09555dde3aad3c5f8be2898024d065f9986cc65cf84b480a9f46c5",
+          "caption": "suv after"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/roster-detail/heli-before.jpg",
+          "sha256": "d750914037e6d152201f211bd469652c800033fbf9dcdc1964663eb230bb1831",
+          "caption": "heli before"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/roster-detail/heli-after.jpg",
+          "sha256": "333c3850cd6da406ff489f6ea71949ac860e242d4a4420d7b97b28069c8f1b88",
+          "caption": "heli after"
+        },
+        {
+          "file": "changelog/unreleased/vehicle-detail-rollout/zamak-before.jpg",
+          "sha256": "285eb82c67982df1d12d4451a76175e3b8140f397af53b143061baf44ec24ab8",
+          "caption": "zamak before"
+        },
+        {
+          "file": "changelog/unreleased/vehicle-detail-rollout/zamak-after.jpg",
+          "sha256": "c43ba8470de5485b3247ef25404638cf246615125170ff0bb2dcc1936efa9d08",
+          "caption": "zamak after"
+        },
+        {
+          "file": "changelog/unreleased/vehicle-detail-rollout/offroad-after.jpg",
+          "sha256": "8408f1f04d26219e7d9c0af2d6f1777823265aead7886c7ac22900fe780cf1a4",
+          "caption": "offroad after"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/roster-detail/in-game.jpg",
+          "sha256": "b29ff6f42c9ed5b4c0dc7f57fc758f8293b7503d58975f83fb7ace0acac467d7",
+          "caption": "in game"
+        }
+      ],
+      "output": null,
+      "capture": {
+        "before_ref": "1bdecfd",
+        "after_ref": "55033e2",
+        "engine": "Godot 4.6.3, Forward+ close pairs, Compatibility roster and in-game",
+        "seed": 3,
+        "viewport": [
+          1600,
+          900
+        ],
+        "command": "godot --path CHECKOUT --rendering-method gl_compatibility --audio-driver Dummy tools/showcase/vehicle-surfaces.tscn -- --surface-out=OUTPUT --surface-team=0 (repeat team 1); Forward+ close views add --surface-single --surface-ground --surface-kinds=KIND",
+        "camera": "Studio direction (1,0.65,-1.25); automatic bounds-based orthographic framing. Identical settings within each pair.",
+        "timing": "Five process frames then frame_post_draw",
+        "report": "docs/vehicle-surface-comparisons/roster-detail.md",
+        "in_game": "vehicle-in-world.tscn, attack seed 3, showcase-vehicle=offroad, High daytime perf:0 aa:2 post:0, focus=-20,-10 zoom=12 pitch=-28 cam-yaw=2.45, fixed-fps 30 shot-at=1 quit-after=2",
+        "validation": "Four focused tests pass; full roster fixture includes glass LOD and wreck checks. Roster scenario 10 seconds. Both palettes reviewed; software rendering, no hardware performance claim."
+      }
+    },
+    {
+      "entry": "changelog/unreleased/realism-05-snow-surface.md",
+      "summary": "Snow shelves gain shallow wind grooves and granular highlights instead of perfectly smooth white surfaces.",
+      "medium": "still",
+      "stage": "native-media",
+      "rationale": "Isolate the revision from the previous proposal with identical upstream changes, seed and camera.",
+      "source_ref": "codex/realism-05-snow-surface",
+      "sources": [
+        {
+          "file": "changelog/unreleased/realism-05-snow-surface/target-before.jpg",
+          "sha256": "b35191eeb41ac1439b0a6bc0eff7f2a9e133e23895c5d53f10335b83c76a90dc",
+          "caption": "target before"
+        },
+        {
+          "file": "changelog/unreleased/realism-05-snow-surface/target-after.jpg",
+          "sha256": "76d394db07eddacf6d14c764a6a3de95654ebce10cf0a0f7a58a77f5a4344ea3",
+          "caption": "target after"
+        },
+        {
+          "file": "changelog/unreleased/realism-05-snow-surface/wide-before.jpg",
+          "sha256": "fb09c3d2ee5c6907ba463cd80d417d832a176f6a3888bd828153efca602eab46",
+          "caption": "wide before"
+        },
+        {
+          "file": "changelog/unreleased/realism-05-snow-surface/wide-after.jpg",
+          "sha256": "27e98ae3f08ab5d6b951a1403e00e1f7ac88b1cc4035712084871cc826431342",
+          "caption": "wide after"
+        },
+        {
+          "file": "changelog/unreleased/realism-05-snow-surface/target-compat.jpg",
+          "sha256": "ae040f87abb85d6b53157de3135ef4bc47e0876d4acab4e80a83880d270709ba",
+          "caption": "target compat"
+        },
+        {
+          "file": "changelog/unreleased/realism-05-snow-surface/compare.gif",
+          "sha256": "0b9cfe8e87421903f7434c001969db7f5993c98dc75344ebac23d5249cc77514",
+          "caption": "Native frames, separate labels, shared palette, 2.5 seconds each."
+        }
+      ],
+      "output": null,
+      "title": "Break up smooth snow with wind-shaped surface detail",
+      "version": "unreleased",
+      "kind": "improved",
+      "capture": {
+        "before_ref": "edc4b235c25eac674075d3c9641ce76ae9871c95",
+        "after_ref": "codex/realism-05-snow-surface",
+        "before_pack": "review-05-before.pck",
+        "after_pack": "review-05-after.pck",
+        "seed": 3,
+        "preset": "high",
+        "mood": "day",
+        "resolution": "1600x900",
+        "focus": "220,300",
+        "zoom": 180,
+        "pitch": -50,
+        "yaw": 0.7,
+        "shot_at": 2,
+        "quit_after": 3,
+        "wide": "focus 0,0; zoom 900; pitch -22; yaw 0.7",
+        "compatibility": "Target after with --rendering-method gl_compatibility",
+        "command": "godot --main-pack PACK --resolution 1600x900 -- --aivai --seed=3 --offscreen --nohud --set=perf:0 --preset=high --mood=MOOD --focus=FOCUS --zoom=ZOOM --pitch=PITCH --cam-yaw=0.7 --screenshot=OUTPUT --shot-at=2 --quit-after=3"
+      }
+    },
+    {
+      "entry": "changelog/unreleased/realism-06-seepage.md",
+      "summary": "Sheltered runoff channels darken and develop a restrained sheen while exposed rock remains dry.",
+      "medium": "still",
+      "stage": "native-media",
+      "rationale": "Isolate the revision from the previous proposal with identical upstream changes, seed and camera.",
+      "source_ref": "codex/realism-06-seepage",
+      "sources": [
+        {
+          "file": "changelog/unreleased/realism-06-seepage/target-before.jpg",
+          "sha256": "4de89d8b0fed535e4c3ef276ebffb714724069d15323faa754de688d081bc5fd",
+          "caption": "target before"
+        },
+        {
+          "file": "changelog/unreleased/realism-06-seepage/target-after.jpg",
+          "sha256": "d9a8aac0c3a1556bf084752e9caf4414901a1838fc6a5b2e21fb58de3248f9c2",
+          "caption": "target after"
+        },
+        {
+          "file": "changelog/unreleased/realism-06-seepage/wide-before.jpg",
+          "sha256": "ed33dd41ff9d56f3c8a9cc098fb841befc710d17f1c6b3f0c4bdff836d64535d",
+          "caption": "wide before"
+        },
+        {
+          "file": "changelog/unreleased/realism-06-seepage/wide-after.jpg",
+          "sha256": "750ca07196a8d76c386f60ba6587662566638f5986b6c0e93dbc9774dc6516f5",
+          "caption": "wide after"
+        },
+        {
+          "file": "changelog/unreleased/realism-06-seepage/target-compat.jpg",
+          "sha256": "3a94430957afdba158f78fc0d52be3fef3dd2cd9b99c1f699b192ab0c63967c6",
+          "caption": "target compat"
+        },
+        {
+          "file": "changelog/unreleased/realism-06-seepage/compare.gif",
+          "sha256": "ca09247d795ca14936020a4479ffb10e4fad19bb27a5dcc398ca5eec97573de7",
+          "caption": "Native frames, separate labels, shared palette, 2.5 seconds each."
+        }
+      ],
+      "output": null,
+      "title": "Give damp cliff streaks a wet surface response",
+      "version": "unreleased",
+      "kind": "improved",
+      "capture": {
+        "before_ref": "a3a630422c93a5c2d7abe491d30712480de42443",
+        "after_ref": "codex/realism-06-seepage",
+        "before_pack": "review-06-before.pck",
+        "after_pack": "review-06-after.pck",
+        "seed": 3,
+        "preset": "high",
+        "mood": "day",
+        "resolution": "1600x900",
+        "focus": "300,300",
+        "zoom": 100,
+        "pitch": -28,
+        "yaw": 0.7,
+        "shot_at": 2,
+        "quit_after": 3,
+        "wide": "focus 0,0; zoom 900; pitch -22; yaw 0.7",
+        "compatibility": "Target after with --rendering-method gl_compatibility",
+        "command": "godot --main-pack PACK --resolution 1600x900 -- --aivai --seed=3 --offscreen --nohud --set=perf:0 --preset=high --mood=MOOD --focus=FOCUS --zoom=ZOOM --pitch=PITCH --cam-yaw=0.7 --screenshot=OUTPUT --shot-at=2 --quit-after=3"
+      }
+    },
+    {
+      "entry": "changelog/unreleased/realism-07-spruce-boughs.md",
+      "summary": "Conifers have broken, asymmetric branch silhouettes that read as trees against rock and snow.",
+      "medium": "still",
+      "stage": "native-media",
+      "rationale": "Isolate the revision from the previous proposal with identical upstream changes, seed and camera.",
+      "source_ref": "codex/realism-07-spruce-boughs",
+      "sources": [
+        {
+          "file": "changelog/unreleased/realism-07-spruce-boughs/target-before.jpg",
+          "sha256": "383f8e4cde0ec32a00011b18cd1a12455b6a99a62e0ebf1912a9df2780262c85",
+          "caption": "target before"
+        },
+        {
+          "file": "changelog/unreleased/realism-07-spruce-boughs/target-after.jpg",
+          "sha256": "fbfb2fc7143b58c281b9c5e12eaaf892ddcc168a4bd10f8b6219897b44a49dd0",
+          "caption": "target after"
+        },
+        {
+          "file": "changelog/unreleased/realism-07-spruce-boughs/wide-before.jpg",
+          "sha256": "0798f6524dd430483865f5456edab1cd912226672ec3ff9352f4de46ff3276ee",
+          "caption": "wide before"
+        },
+        {
+          "file": "changelog/unreleased/realism-07-spruce-boughs/wide-after.jpg",
+          "sha256": "d85f502c6f04ab7a6138c677683ff1689fb2646d204ebe4678fc343c27ffec0d",
+          "caption": "wide after"
+        },
+        {
+          "file": "changelog/unreleased/realism-07-spruce-boughs/target-compat.jpg",
+          "sha256": "9554e0d3488577f17c94b189bf9b2cd3dbb54f3fc897ce23ef7685bcfb52c22c",
+          "caption": "target compat"
+        },
+        {
+          "file": "changelog/unreleased/realism-07-spruce-boughs/compare.gif",
+          "sha256": "cc0076aa01df816da96449a71553a61709c6b67d0ea470e5142d0d22ab887478",
+          "caption": "Native frames, separate labels, shared palette, 2.5 seconds each."
+        }
+      ],
+      "output": null,
+      "title": "Replace cone-like spruce tiers with ragged boughs",
+      "version": "unreleased",
+      "kind": "improved",
+      "capture": {
+        "before_ref": "9192ce6b39842e0dbd0cbd94f191e4e986aecbc6",
+        "after_ref": "codex/realism-07-spruce-boughs",
+        "before_pack": "iterate-07-before.pck",
+        "after_pack": "iterate-07-after.pck",
+        "seed": 3,
+        "preset": "high",
+        "mood": "day",
+        "resolution": "1600x900",
+        "focus": "220,300",
+        "zoom": 80,
+        "pitch": -28,
+        "yaw": 0.7,
+        "shot_at": 2,
+        "quit_after": 3,
+        "wide": "focus 0,0; zoom 900; pitch -22; yaw 0.7",
+        "compatibility": "Target after with --rendering-method gl_compatibility",
+        "command": "godot --main-pack PACK --resolution 1600x900 -- --aivai --seed=3 --offscreen --nohud --set=perf:0 --preset=high --mood=MOOD --focus=FOCUS --zoom=ZOOM --pitch=PITCH --cam-yaw=0.7 --screenshot=OUTPUT --shot-at=2 --quit-after=3"
+      }
+    },
+    {
+      "entry": "changelog/unreleased/realism-08-fractured-stones.md",
+      "summary": "Stones at the mountain foot have irregular broken faces instead of flattened round primitives.",
+      "medium": "motion",
+      "stage": "native-media",
+      "rationale": "A native current-PR camera tour establishes readable detail and battlefield context; preserved matched stills remain the historical before/after evidence.",
+      "source_ref": "codex/realism-08-fractured-stones",
+      "sources": [
+        {
+          "file": "changelog/unreleased/realism-08-fractured-stones/target-before.jpg",
+          "sha256": "3e3f07f721da3f004978b4758d62b74a9e4ec42e90d780fd3af32b44b307bde8",
+          "caption": "target before"
+        },
+        {
+          "file": "changelog/unreleased/realism-08-fractured-stones/target-after.jpg",
+          "sha256": "3bbc40c24730322f3d18310794a9650affc4d8caef9469c97bf4d58019495ba2",
+          "caption": "target after"
+        },
+        {
+          "file": "changelog/unreleased/realism-08-fractured-stones/wide-before.jpg",
+          "sha256": "57ecc319811dd5ebade56a75117a16e31b4e7583322734d0b196fae99383db2f",
+          "caption": "wide before"
+        },
+        {
+          "file": "changelog/unreleased/realism-08-fractured-stones/wide-after.jpg",
+          "sha256": "ee8f93bdfde15ec83cfc8851b4226df4718b17d6c18092c991515217ca7d9533",
+          "caption": "wide after"
+        },
+        {
+          "file": "changelog/unreleased/realism-08-fractured-stones/target-compat.jpg",
+          "sha256": "91ac4ad69bde212b89e51f0bc7f952d402c9b0612176277abfbbca16ad0e7f48",
+          "caption": "target compat"
+        },
+        {
+          "file": "changelog/unreleased/realism-08-fractured-stones/compare.gif",
+          "sha256": "3cbc48dcc6a3dd7ef364151813c1bc70d5750a12e7f44b0c581d751de713019f",
+          "caption": "Native frames, separate labels, shared palette, 2.5 seconds each."
+        },
+        {
+          "file": "changelog/unreleased/realism-08-fractured-stones/native-tour.webm",
+          "sha256": "117bc9d2cb9cccfef0db57c65af333f15ea9e84227b2a9bd8218bdd344cb1be1",
+          "caption": "Fractured stones at close range, then the surrounding slope. Native current-PR camera recording; simulation held, wind animated. The matched stills below show before and after."
+        },
+        {
+          "file": "changelog/unreleased/realism-08-fractured-stones/native-tour.jpg",
+          "sha256": "3b5e66edc5e73dce1555fe2d3a2c6445cc09fd27e89d9cdd3be42ab3d7a3ba9e",
+          "caption": "Native motion poster and reproducible capture provenance."
+        },
+        {
+          "file": "changelog/unreleased/realism-08-fractured-stones/native-tour.json",
+          "sha256": "e1ae0614c68e9e8f406da78c8b3d931916c8ef02159de74afeacc07e4602f12a",
+          "caption": "Native motion poster and reproducible capture provenance."
+        }
+      ],
+      "output": null,
+      "title": "Give alpine stones angular fractured shapes",
+      "version": "unreleased",
+      "kind": "improved",
+      "capture": {
+        "before_ref": "3eb709f204d1a5fc77515ad5527a0fa27f59132d",
+        "after_ref": "codex/realism-08-fractured-stones",
+        "before_pack": "review-08-before.pck",
+        "after_pack": "review-08-after.pck",
+        "seed": 3,
+        "preset": "high",
+        "mood": "day",
+        "resolution": "1600x900",
+        "focus": "311.6891,433.3651",
+        "zoom": 12,
+        "pitch": -50,
+        "yaw": 0.7,
+        "shot_at": 2,
+        "quit_after": 3,
+        "wide": "focus 0,0; zoom 900; pitch -22; yaw 0.7",
+        "compatibility": "Target after with --rendering-method gl_compatibility",
+        "command": "godot --main-pack PACK --resolution 1600x900 -- --aivai --seed=3 --offscreen --nohud --set=perf:0 --preset=high --mood=MOOD --focus=FOCUS --zoom=ZOOM --pitch=PITCH --cam-yaw=0.7 --screenshot=OUTPUT --shot-at=2 --quit-after=3",
+        "native_motion": {
+          "arguments": [
+            "--script",
+            "tools/showcase/environment-motion.gd"
+          ],
+          "fps": 30,
+          "mood": "day",
+          "preset": "high",
+          "renderer": "forward_plus",
+          "resolution": "1280x768 (48-pixel label above uncropped 1280x720 source)",
+          "seed": 3,
+          "simulation": "Held at two seconds; native camera, wind and water remain animated. Not a combat or performance benchmark.",
+          "stage": "stones",
+          "user_arguments": [
+            "--aivai",
+            "--seed=3",
+            "--offscreen",
+            "--nohud",
+            "--set=perf:0",
+            "--preset=high",
+            "--mood=day",
+            "--port=8271",
+            "--motion-stage=stones",
+            "--motion-output=build/media-review"
+          ],
+          "views": [
+            {
+              "focus": "(311.6891, 0.0, 433.3651)",
+              "fov": 35.0,
+              "frames": 120,
+              "label": "Fractured stone detail",
+              "orbit_radians": 0.065,
+              "pitch": -50.0,
+              "seconds": 4,
+              "yaw": 0.7,
+              "zoom": 12.0
+            },
+            {
+              "focus": "(311.6891, 0.0, 433.3651)",
+              "fov": 35.0,
+              "frames": 120,
+              "label": "Stones within the alpine slope",
+              "orbit_radians": 0.065,
+              "pitch": -42.0,
+              "seconds": 4,
+              "yaw": 0.7,
+              "zoom": 42.0
+            }
+          ],
+          "source_ref": "8b57b5a1",
+          "clip": "native-tour.webm",
+          "poster": "native-tour.jpg",
+          "clip_sha256": "117bc9d2cb9cccfef0db57c65af333f15ea9e84227b2a9bd8218bdd344cb1be1",
+          "seconds": 8,
+          "audio": false,
+          "codec": "VP9",
+          "command": "godot --path . --fixed-fps 30 --resolution 1280x720 --script tools/showcase/environment-motion.gd -- --aivai --seed=3 --offscreen --nohud --set=perf:0 --preset=high --mood=day --motion-stage=stones --motion-output=build/media-review"
+        }
+      }
+    },
+    {
+      "entry": "changelog/unreleased/realism-09-meadow-mosaic.md",
+      "summary": "Connected dry grass and richer moss patches replace evenly green valley floors.",
+      "medium": "still",
+      "stage": "native-media",
+      "rationale": "Isolate the revision from the previous proposal with identical upstream changes, seed and camera.",
+      "source_ref": "codex/realism-09-meadow-mosaic",
+      "sources": [
+        {
+          "file": "changelog/unreleased/realism-09-meadow-mosaic/target-before.jpg",
+          "sha256": "aedded0468437d84581cf5396cac823505ee861cbf627223306f24acb962fa25",
+          "caption": "target before"
+        },
+        {
+          "file": "changelog/unreleased/realism-09-meadow-mosaic/target-after.jpg",
+          "sha256": "13154c8b397cafd8bd8eb4e3ca103e7b70f063df37dee37648af67c6dd692099",
+          "caption": "target after"
+        },
+        {
+          "file": "changelog/unreleased/realism-09-meadow-mosaic/wide-before.jpg",
+          "sha256": "dad58819629d46e75f1b520b5d4cf24166905feb51dd589f11c767b96fe4a5ce",
+          "caption": "wide before"
+        },
+        {
+          "file": "changelog/unreleased/realism-09-meadow-mosaic/wide-after.jpg",
+          "sha256": "c3b67996d8f1af6a2f6cca85b2c4715a0d71dc644e905ab739b5aeca86790270",
+          "caption": "wide after"
+        },
+        {
+          "file": "changelog/unreleased/realism-09-meadow-mosaic/target-compat.jpg",
+          "sha256": "71366209a6ecd7aeffae8d66c8118d53468abe99dfb24ae5620120e856d2ead4",
+          "caption": "target compat"
+        },
+        {
+          "file": "changelog/unreleased/realism-09-meadow-mosaic/compare.gif",
+          "sha256": "9d7e367fa2c4bd54c9b91badb2f0ca8c39417783b5c3b81191b52fa301c2b322",
+          "caption": "Native frames, separate labels, shared palette, 2.5 seconds each."
+        }
+      ],
+      "output": null,
+      "title": "Make meadow colour follow broad soil pockets",
+      "version": "unreleased",
+      "kind": "improved",
+      "capture": {
+        "before_ref": "5878471092560aeab9f6f604c365e6cd28f20433",
+        "after_ref": "codex/realism-09-meadow-mosaic",
+        "before_pack": "iterate-09-before.pck",
+        "after_pack": "iterate-09-after.pck",
+        "seed": 3,
+        "preset": "high",
+        "mood": "day",
+        "resolution": "1600x900",
+        "focus": "0,0",
+        "zoom": 250,
+        "pitch": -45,
+        "yaw": 0.7,
+        "shot_at": 2,
+        "quit_after": 3,
+        "wide": "focus 0,0; zoom 900; pitch -22; yaw 0.7",
+        "compatibility": "Target after with --rendering-method gl_compatibility",
+        "command": "godot --main-pack PACK --resolution 1600x900 -- --aivai --seed=3 --offscreen --nohud --set=perf:0 --preset=high --mood=MOOD --focus=FOCUS --zoom=ZOOM --pitch=PITCH --cam-yaw=0.7 --screenshot=OUTPUT --shot-at=2 --quit-after=3"
+      }
+    },
+    {
+      "entry": "changelog/unreleased/realism-10-shore-gravel.md",
+      "summary": "Coastal margins transition through exposed gravel and darker wet stone instead of a uniformly sandy strip.",
+      "medium": "motion",
+      "stage": "native-media",
+      "rationale": "A native current-PR camera tour establishes readable detail and battlefield context; preserved matched stills remain the historical before/after evidence.",
+      "source_ref": "codex/realism-10-shore-gravel",
+      "sources": [
+        {
+          "file": "changelog/unreleased/realism-10-shore-gravel/target-before.jpg",
+          "sha256": "d353cdb3671a9db00cf4b19a487a7ba55672751e98f4f33948e21060ba5bfafe",
+          "caption": "target before"
+        },
+        {
+          "file": "changelog/unreleased/realism-10-shore-gravel/target-after.jpg",
+          "sha256": "73deb61a50f6ce872145ebcea2957af39cad7959614b2c8ccdc228cd9f0ef936",
+          "caption": "target after"
+        },
+        {
+          "file": "changelog/unreleased/realism-10-shore-gravel/wide-before.jpg",
+          "sha256": "146c72a448e194764b69e5a4f9076825c99dd9a1611dd1a6f764c0b2d46e6153",
+          "caption": "wide before"
+        },
+        {
+          "file": "changelog/unreleased/realism-10-shore-gravel/wide-after.jpg",
+          "sha256": "03376269c8a0302a1c8c8ee50cea5ca12bd7481de4fc2edbc676472b701920e2",
+          "caption": "wide after"
+        },
+        {
+          "file": "changelog/unreleased/realism-10-shore-gravel/target-compat.jpg",
+          "sha256": "ed8ded1b141ebfe78763ec3c42609507a8b7b1bdfa10e796814d11687bc87e67",
+          "caption": "target compat"
+        },
+        {
+          "file": "changelog/unreleased/realism-10-shore-gravel/compare.gif",
+          "sha256": "0290e21e8e14beb5657ecc76c07f16b08f515274da6e42f2b4320c6287825e37",
+          "caption": "Native frames, separate labels, shared palette, 2.5 seconds each."
+        },
+        {
+          "file": "changelog/unreleased/realism-10-shore-gravel/native-tour.webm",
+          "sha256": "62e36928d106e8b35f57b06694aae791285dc46f62f4acac387afb42fd57cae9",
+          "caption": "A close orbit over gravel, wet margins and exposed sand, followed by coastal context. Native current-PR recording; camera and water animated. Compare the matched stills below."
+        },
+        {
+          "file": "changelog/unreleased/realism-10-shore-gravel/native-tour.jpg",
+          "sha256": "e0376546ff1a9336538afac6746f746497152580802a6f191c33914d804b09fe",
+          "caption": "Native motion poster and reproducible capture provenance."
+        },
+        {
+          "file": "changelog/unreleased/realism-10-shore-gravel/native-tour.json",
+          "sha256": "6993257240c600624c37b12ad20dc858c4f29094d491e4f4580c62b4eff4a8c9",
+          "caption": "Native motion poster and reproducible capture provenance."
+        }
+      ],
+      "output": null,
+      "title": "Blend gravel into alpine shorelines",
+      "version": "unreleased",
+      "kind": "improved",
+      "capture": {
+        "before_ref": "cce80defda71e6cdcf8abffe5bed64671cddaa4a",
+        "after_ref": "codex/realism-10-shore-gravel",
+        "before_pack": "review-10-before.pck",
+        "after_pack": "review-10-after.pck",
+        "seed": 3,
+        "preset": "high",
+        "mood": "day",
+        "resolution": "1600x900",
+        "focus": "330,0",
+        "zoom": 90,
+        "pitch": -45,
+        "yaw": 0.7,
+        "shot_at": 2,
+        "quit_after": 3,
+        "wide": "focus 0,0; zoom 900; pitch -22; yaw 0.7",
+        "compatibility": "Target after with --rendering-method gl_compatibility",
+        "command": "godot --main-pack PACK --resolution 1600x900 -- --aivai --seed=3 --offscreen --nohud --set=perf:0 --preset=high --mood=MOOD --focus=FOCUS --zoom=ZOOM --pitch=PITCH --cam-yaw=0.7 --screenshot=OUTPUT --shot-at=2 --quit-after=3",
+        "native_motion": {
+          "arguments": [
+            "--script",
+            "./tools/showcase/environment-motion.gd"
+          ],
+          "fps": 30,
+          "mood": "day",
+          "preset": "high",
+          "renderer": "forward_plus",
+          "resolution": "1280x768 (48-pixel label above uncropped 1280x720 source)",
+          "seed": 3,
+          "simulation": "Held at two seconds; native camera, wind and water remain animated. Not a combat or performance benchmark.",
+          "stage": "shore",
+          "user_arguments": [
+            "--aivai",
+            "--seed=3",
+            "--offscreen",
+            "--nohud",
+            "--set=perf:0",
+            "--preset=high",
+            "--mood=day",
+            "--port=8279",
+            "--motion-stage=shore",
+            "--motion-output=./build/media-review"
+          ],
+          "views": [
+            {
+              "focus": "(330.0, 0.0, 0.0)",
+              "fov": 35.0,
+              "frames": 120,
+              "label": "Gravel, wet margins and exposed sand",
+              "orbit_radians": 0.065,
+              "pitch": -45.0,
+              "seconds": 4,
+              "yaw": 0.7,
+              "zoom": 48.0
+            },
+            {
+              "focus": "(330.0, 0.0, 0.0)",
+              "fov": 35.0,
+              "frames": 120,
+              "label": "Coastal town context",
+              "orbit_radians": 0.065,
+              "pitch": -45.0,
+              "seconds": 4,
+              "yaw": 0.7,
+              "zoom": 100.0
+            }
+          ],
+          "source_ref": "bb4892f605b88159898db1eef0c0e18505baa52b",
+          "clip": "native-tour.webm",
+          "poster": "native-tour.jpg",
+          "clip_sha256": "62e36928d106e8b35f57b06694aae791285dc46f62f4acac387afb42fd57cae9",
+          "seconds": 8,
+          "audio": false,
+          "codec": "VP9",
+          "command": "godot --path . --fixed-fps 30 --resolution 1280x720 --script tools/showcase/environment-motion.gd -- --aivai --seed=3 --offscreen --nohud --set=perf:0 --preset=high --mood=day --motion-stage=shore --motion-output=build/media-review"
+        }
+      }
+    },
+    {
+      "entry": "changelog/unreleased/photographic-daylight-sky.md",
+      "summary": "Natural cloud forms and a sun-aligned photographic sky replace the plain daylight backdrop.",
+      "title": "Frame the alpine battlefield with a photographic daylight sky",
+      "version": "unreleased",
+      "kind": "improved",
+      "medium": "still",
+      "stage": "native-media",
+      "rationale": "Isolate the revision from the previous proposal with identical upstream changes, seed and camera.",
+      "source_ref": "codex/photographic-daylight-sky",
+      "sources": [
+        {
+          "file": "changelog/unreleased/photographic-daylight-sky/target-before.jpg",
+          "sha256": "3a228dec3d3eb0b02e288c561031bde5103eb755b31d7c9243fcc38252addf74",
+          "caption": "target before"
+        },
+        {
+          "file": "changelog/unreleased/photographic-daylight-sky/target-after.jpg",
+          "sha256": "cb22dec4f73b3b7aecf9bbff95247dcce6109c241b4887755f792d51fbffbba4",
+          "caption": "target after"
+        },
+        {
+          "file": "changelog/unreleased/photographic-daylight-sky/wide-before.jpg",
+          "sha256": "8079baddb5e76e7aefa8622ff03b3a60667e3c8b71038e42787ee3f48f3435b1",
+          "caption": "wide before"
+        },
+        {
+          "file": "changelog/unreleased/photographic-daylight-sky/wide-after.jpg",
+          "sha256": "e9a34f8c26bd090ef5e421ee8634ee43767b20391bc8d7ad4b54eebc4829a776",
+          "caption": "wide after"
+        },
+        {
+          "file": "changelog/unreleased/photographic-daylight-sky/target-compat.jpg",
+          "sha256": "92d68a1f3524ad8bde28526d7b55d0e20fcb00c4f0e52781e499be4914162b3f",
+          "caption": "target compat"
+        },
+        {
+          "file": "changelog/unreleased/photographic-daylight-sky/compare.gif",
+          "sha256": "e96c6422d73f1f91c09918b22b87e7884e3f826ee39c2daf0321137dc77ee380",
+          "caption": "Native frames, separate labels, shared palette, 2.5 seconds each."
+        }
+      ],
+      "output": null,
+      "capture": {
+        "before_ref": "cb2c4ad347cd58719e6f0df708f5018484058f09",
+        "after_ref": "codex/photographic-daylight-sky",
+        "before_pack": "review-11-before.pck",
+        "after_pack": "review-11-after.pck",
+        "seed": 3,
+        "preset": "high",
+        "mood": "day",
+        "resolution": "1600x900",
+        "focus": "0,0",
+        "zoom": 900,
+        "pitch": -10,
+        "yaw": 0.7,
+        "shot_at": 2,
+        "quit_after": 3,
+        "wide": "focus 0,0; zoom 900; pitch -22; yaw 0.7",
+        "compatibility": "Target after with --rendering-method gl_compatibility",
+        "command": "godot --main-pack PACK --resolution 1600x900 -- --aivai --seed=3 --offscreen --nohud --set=perf:0 --preset=high --mood=day --focus=FOCUS --zoom=ZOOM --pitch=PITCH --cam-yaw=0.7 --screenshot=OUTPUT --shot-at=2 --quit-after=3"
+      }
+    },
+    {
+      "entry": "changelog/unreleased/town-ground-and-frontages.md",
+      "summary": "Town houses gain distinct plots, foundation aprons and paths to their doors, with open gates and driveways.",
+      "title": "Connect houses and streets with gardens, paths and grounded furniture",
+      "version": "unreleased",
+      "kind": "improved",
+      "medium": "motion",
+      "stage": "native-media",
+      "rationale": "A native current-PR camera tour establishes readable detail and battlefield context; preserved matched stills remain the historical before/after evidence.",
+      "source_ref": "codex/town-ground-and-frontages",
+      "sources": [
+        {
+          "file": "changelog/unreleased/town-ground-and-frontages/target-before.jpg",
+          "sha256": "51c5ba8328ac41981eee70e851fb7e8713dac9b38c750474d84d99bff45dec99",
+          "caption": "target before"
+        },
+        {
+          "file": "changelog/unreleased/town-ground-and-frontages/target-after.jpg",
+          "sha256": "2f529aab330a5b92f629e7511ba74d8a375cc63d49840a11350f6891c4279fdc",
+          "caption": "target after"
+        },
+        {
+          "file": "changelog/unreleased/town-ground-and-frontages/wide-before.jpg",
+          "sha256": "c44ce54e72643fcf733bf36575aa70d9e47f6465a6bfe36d146a0caffad7deef",
+          "caption": "wide before"
+        },
+        {
+          "file": "changelog/unreleased/town-ground-and-frontages/wide-after.jpg",
+          "sha256": "de760373f1448684d5833cf330c528a6f3e7cae118ecc0365697faf8516252c8",
+          "caption": "wide after"
+        },
+        {
+          "file": "changelog/unreleased/town-ground-and-frontages/target-compat.jpg",
+          "sha256": "d8a6d64359127e87f0b1323f8778b3a46720de9d34a33eb55a2ba7093475253d",
+          "caption": "target compat"
+        },
+        {
+          "file": "changelog/unreleased/town-ground-and-frontages/detail-before.jpg",
+          "sha256": "605df19242e613cbcca4c79a5183038b738cdb9c60e51f1aa67902c79a16cbb3",
+          "caption": "detail before"
+        },
+        {
+          "file": "changelog/unreleased/town-ground-and-frontages/detail-after.jpg",
+          "sha256": "ee3af83a560ac59139a2d1666f01878ebeafce68da3e8aa5dc74dd9de807a526",
+          "caption": "detail after"
+        },
+        {
+          "file": "changelog/unreleased/town-ground-and-frontages/forest-before.jpg",
+          "sha256": "1c41c1fa0f8ae01c27e8679b679ff979b8fe491247b17175fdcbe1878902e1d9",
+          "caption": "forest before"
+        },
+        {
+          "file": "changelog/unreleased/town-ground-and-frontages/forest-after.jpg",
+          "sha256": "347fd33cd7c8f49a841f9abece9a2a7cf87d55e7e575db46d9b6de2fdb44c1f4",
+          "caption": "forest after"
+        },
+        {
+          "file": "changelog/unreleased/town-ground-and-frontages/compare.gif",
+          "sha256": "fa8edd1b84b68731c15cde1567e3bb83ff0ecad82b1df24eae51c20eeb49eb7e",
+          "caption": "Native frames, separate labels, shared palette, 2.5 seconds each."
+        },
+        {
+          "file": "changelog/unreleased/town-ground-and-frontages/native-tour.webm",
+          "sha256": "c11f5b078e632634a46674a60394d341bda32eea937975488cf76a9c3ca0e541",
+          "caption": "Native camera tour of photographed town surfaces, door paths and connected plots. Current PR with simulation held; the original stills below provide before/after evidence."
+        },
+        {
+          "file": "changelog/unreleased/town-ground-and-frontages/native-tour.jpg",
+          "sha256": "3292bc51b64d2814c4bb570cd91e6561514ddc239c673d169c624e27264acedc",
+          "caption": "Native motion poster and reproducible capture provenance."
+        },
+        {
+          "file": "changelog/unreleased/town-ground-and-frontages/native-tour.json",
+          "sha256": "0915f46010f12381fb6575c33bf4ae0c3030b133f71e695085efb72061d0be58",
+          "caption": "Native motion poster and reproducible capture provenance."
+        }
+      ],
+      "output": null,
+      "capture": {
+        "before_ref": "113a39fbcb50e707d689eb1f00b494d2b1414531",
+        "after_ref": "codex/town-ground-and-frontages",
+        "before_pack": "review-12-before.pck",
+        "after_pack": "review-12-after.pck",
+        "seed": 3,
+        "preset": "high",
+        "mood": "day",
+        "resolution": "1600x900",
+        "focus": "-30,-12",
+        "zoom": 35,
+        "pitch": -50,
+        "yaw": 0.7,
+        "shot_at": 2,
+        "quit_after": 3,
+        "wide": "focus 0,0; zoom 220; pitch -40; yaw 0.7",
+        "compatibility": "Target after with --rendering-method gl_compatibility",
+        "command": "godot --main-pack PACK --resolution 1600x900 -- --aivai --seed=3 --offscreen --nohud --set=perf:0 --preset=high --mood=day --focus=FOCUS --zoom=ZOOM --pitch=PITCH --cam-yaw=0.7 --screenshot=OUTPUT --shot-at=2 --quit-after=3",
+        "detail": "focus -55,-4; zoom 15; pitch -55; yaw 0.7; shot 2s",
+        "forest": "focus 0,0; zoom 900; pitch -22; yaw 0.7; shot 2s; same seed, resolution, High/day",
+        "native_motion": {
+          "arguments": [
+            "--script",
+            "./tools/showcase/environment-motion.gd"
+          ],
+          "fps": 30,
+          "mood": "day",
+          "preset": "high",
+          "renderer": "forward_plus",
+          "resolution": "1280x768 (48-pixel label above uncropped 1280x720 source)",
+          "seed": 3,
+          "simulation": "Held at two seconds; native camera, wind and water remain animated. Not a combat or performance benchmark.",
+          "stage": "town",
+          "user_arguments": [
+            "--aivai",
+            "--seed=3",
+            "--offscreen",
+            "--nohud",
+            "--set=perf:0",
+            "--preset=high",
+            "--mood=day",
+            "--port=8281",
+            "--motion-stage=town",
+            "--motion-output=./build/media-review"
+          ],
+          "views": [
+            {
+              "focus": "(-30.0, 0.0, -12.0)",
+              "fov": 35.0,
+              "frames": 120,
+              "label": "Photographed surfaces and door paths",
+              "orbit_radians": 0.065,
+              "pitch": -50.0,
+              "seconds": 4,
+              "yaw": 0.7,
+              "zoom": 35.0
+            },
+            {
+              "focus": "(0.0, 0.0, 0.0)",
+              "fov": 35.0,
+              "frames": 120,
+              "label": "Town plots and connected streets",
+              "orbit_radians": 0.065,
+              "pitch": -40.0,
+              "seconds": 4,
+              "yaw": 0.7,
+              "zoom": 190.0
+            }
+          ],
+          "source_ref": "b38e42e92d8236f13c2ef41a8da8610bd1771741",
+          "clip": "native-tour.webm",
+          "poster": "native-tour.jpg",
+          "clip_sha256": "c11f5b078e632634a46674a60394d341bda32eea937975488cf76a9c3ca0e541",
+          "seconds": 8,
+          "audio": false,
+          "codec": "VP9",
+          "command": "godot --path . --fixed-fps 30 --resolution 1280x720 --script tools/showcase/environment-motion.gd -- --aivai --seed=3 --offscreen --nohud --set=perf:0 --preset=high --mood=day --motion-stage=town --motion-output=build/media-review"
+        }
+      }
+    },
+    {
+      "entry": "changelog/unreleased/environment-realism-extended.md",
+      "summary": "Surveyed Alpine ranges, fuller forests and photographed town surfaces give the generated battlefield more natural detail.",
+      "medium": "motion",
+      "stage": "native-media",
+      "rationale": "A native current-PR camera tour establishes readable detail and battlefield context; preserved matched stills remain the historical before/after evidence.",
+      "source_ref": "b38e42e92d8236f13c2ef41a8da8610bd1771741",
+      "sources": [
+        {
+          "file": "changelog/unreleased/environment-realism-extended/coast-before.jpg",
+          "sha256": "347fd33cd7c8f49a841f9abece9a2a7cf87d55e7e575db46d9b6de2fdb44c1f4",
+          "caption": "coast-before"
+        },
+        {
+          "file": "changelog/unreleased/environment-realism-extended/coast-after.jpg",
+          "sha256": "46ddea33837e51980a9d246fc43f1388c16e8aeacd029aac258834f671b62e9f",
+          "caption": "coast-after"
+        },
+        {
+          "file": "changelog/unreleased/environment-realism-extended/forest-before.jpg",
+          "sha256": "01cb76692a4ace20910d2b90c2fd61380f0d7d811300854d4c88ef835712c8d0",
+          "caption": "forest-before"
+        },
+        {
+          "file": "changelog/unreleased/environment-realism-extended/forest-after.jpg",
+          "sha256": "d760685e1ab9a5f7d86cce20069b7b6ebd031b930aa1b415c9292e5c59e130cc",
+          "caption": "forest-after"
+        },
+        {
+          "file": "changelog/unreleased/environment-realism-extended/compat-before.jpg",
+          "sha256": "956784e8e1c89a6b4193355889d68e524dc44a4c45e8705b366ec53c534341c9",
+          "caption": "compat-before"
+        },
+        {
+          "file": "changelog/unreleased/environment-realism-extended/compat-after.jpg",
+          "sha256": "2ed411bf4ab14eec37cf3af0baeb68cad6f287c345a14fd23265656a74ff3271",
+          "caption": "compat-after"
+        },
+        {
+          "file": "changelog/unreleased/environment-realism-extended/snow-before.jpg",
+          "sha256": "ee55b1002b295be386207f5729f5f1b5b9df789a0b1ed22c659d50364b183646",
+          "caption": "snow-before"
+        },
+        {
+          "file": "changelog/unreleased/environment-realism-extended/snow-after.jpg",
+          "sha256": "f49c641d0fa861da42f4935349e669217672751baf6cecad4b7cacd6a6cece26",
+          "caption": "snow-after"
+        },
+        {
+          "file": "changelog/unreleased/environment-realism-extended/lighting-before.jpg",
+          "sha256": "96a15a9bc75137d572b02ca765f32a62aefc7cc5a9887442da4d8c0e11e35614",
+          "caption": "lighting-before"
+        },
+        {
+          "file": "changelog/unreleased/environment-realism-extended/lighting-after.jpg",
+          "sha256": "2579292bd68fc9d2b122e4c228168f7ce5f9497aa90f826dda8414847300bfb7",
+          "caption": "lighting-after"
+        },
+        {
+          "file": "changelog/unreleased/environment-realism-extended/ranges-before.jpg",
+          "sha256": "761aee3def83871867cc86beebc5c2948a6ba1fb8cf0fcbe6e73f8599ee80ef3",
+          "caption": "ranges-before"
+        },
+        {
+          "file": "changelog/unreleased/environment-realism-extended/ranges-after.jpg",
+          "sha256": "1870ddccdd28f3ad5e86562ff1bd88cfab73f43993dc0c689cacfafb03d7dbe3",
+          "caption": "ranges-after"
+        },
+        {
+          "file": "changelog/unreleased/environment-realism-extended/street-before.jpg",
+          "sha256": "b33e9606c82994a9e6d84969a550949defe5d591a6a68747a0bce5261d06c239",
+          "caption": "street-before"
+        },
+        {
+          "file": "changelog/unreleased/environment-realism-extended/street-after.jpg",
+          "sha256": "8e0f961c73704371e64b3309e26e22f0943f4ebfe0adf0ea8e2acf2c32742ab9",
+          "caption": "street-after"
+        },
+        {
+          "file": "changelog/unreleased/environment-realism-extended/roof-before.jpg",
+          "sha256": "763fe4a0dac8a2b9ded96c6a54f0a56acd1e858847af2e098745c905ce2859e2",
+          "caption": "roof-before"
+        },
+        {
+          "file": "changelog/unreleased/environment-realism-extended/roof-after.jpg",
+          "sha256": "f2b9a594cb47c417257423be00e8f13d1c06a4a89b463eda7303b0b8d0e6a28f",
+          "caption": "roof-after"
+        },
+        {
+          "file": "changelog/unreleased/environment-realism-extended/town-colour-before.jpg",
+          "sha256": "85a99e571360fe07b669c285cb788a9bb3335fd4897b20d399010aef2a78192f",
+          "caption": "town-colour-before"
+        },
+        {
+          "file": "changelog/unreleased/environment-realism-extended/town-colour-after.jpg",
+          "sha256": "c82478a1b68383fac6a5d89ae4b272a387620ce736712bb79deacc38fb71a1f2",
+          "caption": "town-colour-after"
+        },
+        {
+          "file": "changelog/unreleased/environment-realism-extended/driveway-before.jpg",
+          "sha256": "55b4d1c42bf4eb705aa496155eda1feef7cdbcfcc94744b6bdd3e247380221c5",
+          "caption": "driveway-before"
+        },
+        {
+          "file": "changelog/unreleased/environment-realism-extended/driveway-after.jpg",
+          "sha256": "f16b7dff312c49322d3fe91df656f115d416c1d88b73c1fd7c5e4dd3aeef2ce6",
+          "caption": "driveway-after"
+        },
+        {
+          "file": "changelog/unreleased/environment-realism-extended/canopy-before.jpg",
+          "sha256": "66cdf83be88ec9cb28503a6cfcd7bb6bc2f4783f846bc2152ee7350f3053c6bd",
+          "caption": "canopy-before"
+        },
+        {
+          "file": "changelog/unreleased/environment-realism-extended/canopy-after.jpg",
+          "sha256": "fb2aad732e5d2d310a8b93353c41c40c429afc90771dd1d8270ec13c13ed0efd",
+          "caption": "canopy-after"
+        },
+        {
+          "file": "changelog/unreleased/environment-realism-extended/precision-before.jpg",
+          "sha256": "bf5cbb9c8577858000cdc6b46727f7c5a967b55109f077e784e50dbd4314b876",
+          "caption": "precision-before"
+        },
+        {
+          "file": "changelog/unreleased/environment-realism-extended/precision-after.jpg",
+          "sha256": "a66b09804dce723192e78c7c5ce9b61d2d5abe22e1cc2e38d9a96b012e642fb1",
+          "caption": "precision-after"
+        },
+        {
+          "file": "changelog/unreleased/environment-realism-extended/meadow-before.jpg",
+          "sha256": "068f97ad4468aa868e479df1d154c00c50ee42cd7e0904749016b34476efa382",
+          "caption": "meadow-before"
+        },
+        {
+          "file": "changelog/unreleased/environment-realism-extended/meadow-after.jpg",
+          "sha256": "fa397eb5fd005da572b35f51a88b9d0f4c2e5de3861fa1671859d4e403e2144c",
+          "caption": "meadow-after"
+        },
+        {
+          "file": "changelog/unreleased/environment-realism-extended/meadow-wide-before.jpg",
+          "sha256": "e06e691aa4dbbebfdfde4769d1fa751a9d6796727ad6c0b6be55663e42afd74e",
+          "caption": "meadow-wide-before"
+        },
+        {
+          "file": "changelog/unreleased/environment-realism-extended/meadow-wide-after.jpg",
+          "sha256": "7705c1e7c709a5df22a229ebe79cf555f86d17f1e6a986e3656d49f13e5cc2f0",
+          "caption": "meadow-wide-after"
+        },
+        {
+          "file": "changelog/unreleased/environment-realism-extended/shrub-before.jpg",
+          "sha256": "080e37f519f7802a267fb71ae450f3c9f8c922409087a53a2b7dafe3fbe44b50",
+          "caption": "shrub-before"
+        },
+        {
+          "file": "changelog/unreleased/environment-realism-extended/shrub-after.jpg",
+          "sha256": "bea3e0b0442f03ac56ffaef3539a21ff311e1f6e3677e6d6bc31f438bfeaeca9",
+          "caption": "shrub-after"
+        },
+        {
+          "file": "changelog/unreleased/environment-realism-extended/leaves-before.jpg",
+          "sha256": "8aff5b7be42ca26a56a9bd04c1e9f3fbe2be7735b654d4a6c04236a2ede90e15",
+          "caption": "leaves-before"
+        },
+        {
+          "file": "changelog/unreleased/environment-realism-extended/leaves-after.jpg",
+          "sha256": "62b1396ab4ca446f1c96951087f80b16b3691ce2d11b2cf921dc7c03569075dc",
+          "caption": "leaves-after"
+        },
+        {
+          "file": "changelog/unreleased/environment-realism-extended/leaves-wide-before.jpg",
+          "sha256": "43c1606921824aac4986fd745bb7814c8a25dc90fe54de73df3f2766432b806b",
+          "caption": "leaves-wide-before"
+        },
+        {
+          "file": "changelog/unreleased/environment-realism-extended/leaves-wide-after.jpg",
+          "sha256": "26db28444f60738940a220e6a00ab263205a0d6417135199658a8249e7a64541",
+          "caption": "leaves-wide-after"
+        },
+        {
+          "file": "changelog/unreleased/environment-realism-extended/lane-join-before.jpg",
+          "sha256": "1939cd95d2db6251e1d87819272cd1f1dee149e9202e36b121dfb12acd86a09b",
+          "caption": "lane-join-before"
+        },
+        {
+          "file": "changelog/unreleased/environment-realism-extended/lane-join-after.jpg",
+          "sha256": "e109179d200bbde040a0c976d8517a9e018eb3a0634427da7e52b71d21a145c7",
+          "caption": "lane-join-after"
+        },
+        {
+          "file": "changelog/unreleased/environment-realism-extended/drainage-before.jpg",
+          "sha256": "2fb2a05d25fda7d6a56bafb9f41d0c0a1b1e87b766c8e0a863edc03b85cab98f",
+          "caption": "drainage-before"
+        },
+        {
+          "file": "changelog/unreleased/environment-realism-extended/drainage-after.jpg",
+          "sha256": "c4fe536c840bda20b7b80eebc49125872ba8d7f1b147a07a1cb6da8a1a5babc8",
+          "caption": "drainage-after"
+        },
+        {
+          "file": "changelog/unreleased/environment-realism-extended/snow-channels-before.jpg",
+          "sha256": "a053b4dda3758b4264eae8c60b601ed52f1eae4b14812595fb0e55daabdfeb73",
+          "caption": "snow-channels-before"
+        },
+        {
+          "file": "changelog/unreleased/environment-realism-extended/snow-channels-after.jpg",
+          "sha256": "51d9dba214db4fb51003842b44ad52e9b930bda5134213bd657b9bada82e2a37",
+          "caption": "snow-channels-after"
+        },
+        {
+          "file": "changelog/unreleased/environment-realism-extended/river-end-before.jpg",
+          "sha256": "996e678d133eb78ebe384480dad7b7cfe40da0311890d5bb849bb9dfff98745b",
+          "caption": "river-end-before"
+        },
+        {
+          "file": "changelog/unreleased/environment-realism-extended/river-end-after.jpg",
+          "sha256": "50d06dc5c4259d043857571008ca9aed8ce4bd9ac8dd3873d81c778bd2619cbf",
+          "caption": "river-end-after"
+        },
+        {
+          "file": "changelog/unreleased/environment-realism-extended/river-valley-before.jpg",
+          "sha256": "6a5e56e24b65d11f67f3cc24e81a047c75305dc9c3e891b080085f7d94d12ea2",
+          "caption": "river-valley-before"
+        },
+        {
+          "file": "changelog/unreleased/environment-realism-extended/river-valley-after.jpg",
+          "sha256": "f165f2e751fb6ae16cc0d3695dff24b02dd929b2a8b5bf47b8f6ad83d283fc7e",
+          "caption": "river-valley-after"
+        },
+        {
+          "file": "changelog/unreleased/environment-realism-extended/comparison-panorama-after.jpg",
+          "sha256": "2c6a2bcec5b2013968f1a31b610b972452bea982e98218ec1a6358ce107b8b10",
+          "caption": "After the extended environment pass: panorama. Matched parent-branch and current cameras, seed and lighting."
+        },
+        {
+          "file": "changelog/unreleased/environment-realism-extended/comparison-panorama-before.jpg",
+          "sha256": "f97d02618b043519369e401a9c52254452d6a94774f46081773f3082005dfe0f",
+          "caption": "Before the extended environment pass: panorama. Matched parent-branch and current cameras, seed and lighting."
+        },
+        {
+          "file": "changelog/unreleased/environment-realism-extended/comparison-town-before.jpg",
+          "sha256": "782c2ca06450edcbbc45ad5b5fd40734a96accfc035dcaee65df1a46ce28a400",
+          "caption": "Before the extended environment pass: town. Matched parent-branch and current cameras, seed and lighting."
+        },
+        {
+          "file": "changelog/unreleased/environment-realism-extended/comparison-town-after.jpg",
+          "sha256": "5ab42e012fe451921d788d6db6b7543884950ce6f0339e0e9391a9eef4ed304c",
+          "caption": "After the extended environment pass: town. Matched parent-branch and current cameras, seed and lighting."
+        },
+        {
+          "file": "changelog/unreleased/environment-realism-extended/comparison-meadow-before.jpg",
+          "sha256": "a099ab138f9927857e9ad8d5b44e0f7e9cedfda2e773a3e9c266d2bbe26665bf",
+          "caption": "Before the extended environment pass: meadow. Matched parent-branch and current cameras, seed and lighting."
+        },
+        {
+          "file": "changelog/unreleased/environment-realism-extended/comparison-meadow-after.jpg",
+          "sha256": "ae182529f09928533bd9b9466c31cdb5003949129d73e44f06dd4dd4fec30fbd",
+          "caption": "After the extended environment pass: meadow. Matched parent-branch and current cameras, seed and lighting."
+        },
+        {
+          "file": "changelog/unreleased/environment-realism-extended/comparison-forest-before.jpg",
+          "sha256": "ea7bdd0a7842df2804fdabb0639d1565eab8dec163de6e46c76a509156e55dcb",
+          "caption": "Before the extended environment pass: forest. Matched parent-branch and current cameras, seed and lighting."
+        },
+        {
+          "file": "changelog/unreleased/environment-realism-extended/comparison-forest-after.jpg",
+          "sha256": "64f7de7e38bbeb11c97cbb251853ad4122671d31710edc496695985ffb6989c2",
+          "caption": "After the extended environment pass: forest. Matched parent-branch and current cameras, seed and lighting."
+        },
+        {
+          "file": "changelog/unreleased/environment-realism-extended/browser-forest-before.jpg",
+          "sha256": "e199d7909049d27cd8c2b7c7ceca41a7f10365ff40da6d89a2a384730bd62fe5",
+          "caption": "Before: flat vertex lighting on displaced ridges and dark leaf cards in the browser."
+        },
+        {
+          "file": "changelog/unreleased/environment-realism-extended/browser-forest-after.jpg",
+          "sha256": "ec31405770d33a1e3afe0aed7f15f1851b4f3c3c9e4eb18445b30b368fbd3bd9",
+          "caption": "After: browser lighting follows mountain slopes and softly lights tree canopies."
+        },
+        {
+          "file": "changelog/unreleased/environment-realism-extended/browser-panorama-before.jpg",
+          "sha256": "020367c837da48226c07500f3276f7b8275ced3f09db367ef1a49bd77dafe476",
+          "caption": "Before: the browser lights displaced mountain vertices as flat ground."
+        },
+        {
+          "file": "changelog/unreleased/environment-realism-extended/browser-panorama-after.jpg",
+          "sha256": "8f754afe67ed67eea8df2d34597744179bfceec6ba89153819f896ea68e756e5",
+          "caption": "After: mountain vertex normals follow the displaced terrain. Same browser settings."
+        },
+        {
+          "file": "changelog/unreleased/environment-realism-extended/rain-close-before.jpg",
+          "sha256": "1eaba4fd8b3d3139d3785163be9aa2a1a75f76f0b12e76e016936ebcaff3b469",
+          "caption": "Before: bright rain streaks and white square splashes."
+        },
+        {
+          "file": "changelog/unreleased/environment-realism-extended/rain-close-after.jpg",
+          "sha256": "2ea37d3d04530b5acf7dcedfb4a1f601c0a5e52433dd54f65fda6f5c7121a501",
+          "caption": "After: finer streaks and soft splashes that follow the terrain height."
+        },
+        {
+          "file": "changelog/unreleased/environment-realism-extended/rain-valley-before.jpg",
+          "sha256": "9c22ef07091d215072647302a3b0e794567b8c486c15ca021623c9c5ac63296b",
+          "caption": "Before: the rain emitter forms a bright patch at the camera target."
+        },
+        {
+          "file": "changelog/unreleased/environment-realism-extended/rain-valley-after.jpg",
+          "sha256": "157d5c1c4e4fde0ae09c50c2f9fba384228f841aa382f4f1b69973eaf78e81ba",
+          "caption": "After: rain surrounds the camera and distant splashes fade away."
+        },
+        {
+          "file": "changelog/unreleased/environment-realism-extended/night-clouds-before.jpg",
+          "sha256": "7d2cdaab9d78cda721f263eaa6b2ef19b08476e16601f5a69a8c9b8d1395753e",
+          "caption": "Before: block-shaped cloud edges and bright nighttime cloud cover."
+        },
+        {
+          "file": "changelog/unreleased/environment-realism-extended/rain-motion-before.jpg",
+          "sha256": "a46dbbf1a3a1855b7ae12c89b7815e4089c2ba3eea54ea37fc6c36e1e63961bb",
+          "caption": "Before: camera-local rain and soft ground-height splashes. Six seconds at fixed 30 fps; silent."
+        },
+        {
+          "file": "changelog/unreleased/environment-realism-extended/rain-before.webm",
+          "sha256": "44cdace7422d65cebe0724e5f5c57e1f70533851c2d9e4d5b967c909feeedcdc",
+          "caption": "Before: broad bright streaks and square splashes. Six seconds at fixed 30 fps; silent."
+        },
+        {
+          "file": "changelog/unreleased/environment-realism-extended/night-clouds-after.jpg",
+          "sha256": "b7bef7adf78e4fe7ff49fa8bbdac80cb756d03116229f8c794789a4cf61158fe",
+          "caption": "After: continuous cloud edges and subdued moonlit cover. Same seed and camera."
+        },
+        {
+          "file": "changelog/unreleased/environment-realism-extended/rain-motion-after.jpg",
+          "sha256": "a03767dd154ff5831fe8ff3254bc5cd921329c74510aa079c57a934ba7a8c13a",
+          "caption": "After: camera-local rain and soft ground-height splashes. Six seconds at fixed 30 fps; silent."
+        },
+        {
+          "file": "changelog/unreleased/environment-realism-extended/rain-after.webm",
+          "sha256": "d95455dabd1ef0169e4fe10d6be4cb90f79caa21e62b4f7863cfb78182e0bcce",
+          "caption": "After: finer streaks and soft splashes on terrain and water. Six seconds at fixed 30 fps; silent."
+        },
+        {
+          "file": "changelog/unreleased/environment-realism-extended/night-water-before.jpg",
+          "sha256": "4ce910f01d72ad120a4f271ac6f14ad5f22a7deebf431a752e2a18d1b97c581c",
+          "caption": "night-water-before"
+        },
+        {
+          "file": "changelog/unreleased/environment-realism-extended/night-water-after.jpg",
+          "sha256": "23c8d44dd4b132dcf70941d85f1f0e036bc9fe400b248a4593634c82210736d2",
+          "caption": "night-water-after"
+        },
+        {
+          "file": "changelog/unreleased/environment-realism-extended/native-tour.webm",
+          "sha256": "943f17df930a66ad7eff872a065c5506d14a1ef2ae7532cb98691c26d0b687ca",
+          "caption": "Native tour of Alpine ranges, coastal forest cover, town surfaces and finer meadow detail. Current PR with animated camera, wind and water; matched before/after stills remain below."
+        },
+        {
+          "file": "changelog/unreleased/environment-realism-extended/native-tour.jpg",
+          "sha256": "2d14a0e896641a825695c090436a430e634fc1464c447bd0a5a76528b9859789",
+          "caption": "Native motion poster and reproducible capture provenance."
+        },
+        {
+          "file": "changelog/unreleased/environment-realism-extended/native-tour.json",
+          "sha256": "8c5c73df7922a0212481e50b967111f6f3facacae2be1fdd239b43c1007e251d",
+          "caption": "Native motion poster and reproducible capture provenance."
+        }
+      ],
+      "output": null,
+      "capture": {
+        "before_ref": "b38e42e92d8236f13c2ef41a8da8610bd1771741",
+        "after_ref": "codex/environment-realism-extended",
+        "command": "godot --path . --resolution 1600x900 -- --aivai --seed=3 --offscreen --nohud --set=perf:0 --preset=high --mood=day --focus=0,0 --zoom=900 --pitch=-22 --cam-yaw=0.7 --screenshot=OUTPUT --shot-at=2 --quit-after=3",
+        "note": "Before preserved from the parent branch capture. After rendered natively with the same controls.",
+        "forest": "Native Forward+, seed3 High/day, 1600x900, focus -400,-450, zoom350, pitch-30, yaw-0.2, shot2s. Before b38e42e; after this branch.",
+        "compatibility": "Same close controls except pitch-55 and gl_compatibility. Before: this branch before material-output correction; after: corrected output, both with forest iteration. Not a historical parent comparison.",
+        "snow": "Matched native Forward+, High/day seed3 1600x900, focus236,464 zoom45 pitch-42 yaw-0.2. Simulation held at2s after map construction, 45 settling frames per view. Before b38e42e PCK; after this branch. Same camera controls and unchanged geology. No retouching.",
+        "lighting": "Matched native Forward+, seed3 High/golden, 1600x900, focus-400,-450 zoom350 pitch-30 yaw-0.2. Both hold simulation at2s and settle45frames. Before uses exact7ba202a atmosphere/distant_forest scripts overlaid through a PCK before main loads; unchanged assets. After is current branch. No retouching.",
+        "ranges": "Matched native Forward+, seed3 High/day 1600x900, focus0,0 zoom900 pitch-22 yaw0.7, simulation held at2s with45 settling frames. Before exact f45dada atmosphere script loaded through PCK before main; after surveyed terrain checkpoint. Other scripts and assets unchanged. No retouching.",
+        "street": "Matched native Forward+, seed3 High/day 1600x900, focus-55,-4 zoom15 pitch-55 yaw0.7, held2s/45settlingframes. Before 9c84373 runtime scripts, after fine-asphalt checkpoint. Both use environment-views.gd --capture-set=town. No retouching.",
+        "photo_calibration": "Matched native Forward+, High/day seed3 1600x900. Before76d6374 (identical Forward+ material output to5407b62); after calibrated photographic materials. Both environment-views --capture-set=town, held2s/45settlingframes. Close uses first town driveway zoom18 pitch-50 yawpiece+PI+0.4; wide towncentrezoom130 pitch-50 yaw0.7. No retouching.",
+        "driveway": "Matched native Forward+, High/day seed3 1600x900, focus-15.6,-8.9 zoom10 pitch-25 yaw0.4, held2s/45settlingframes. Before exact e5a3687 towngen/decor/grass scripts overlaid through PCK before main; after lowered crossings. Same fixed camera, no retouching.",
+        "canopy": "Matched native Forward+, High/day seed3 1600x900, focus-400,-450 zoom350 pitch-65 yaw-0.2, held2s/45settlingframes. Before1919acc forest and atlas captured before replacement; after twenty-view atlas with High shadows. Same generated terrain and camera. No retouching.",
+        "precision": "Matched native Forward+, High/day seed3 1600x900, focus232,296 zoom60 pitch-35 yaw0.7, held2s/45settlingframes. Controlled height-precision comparison: before uses the same terrain samples converted to the previous half-float texture; after uses full floats. Only the ground height texture changes between frames. Full frames, no retouching.",
+        "meadow": "Matched native Forward+, High/day seed3 1600x900, focus-110,-130 yaw0.7, held2s/225settlingframes with grass wind disabled. Close zoom18 pitch-45; low view zoom18 pitch-15. Before exact66b3c54 atmosphere/grass scripts overlaid through PCK before main; after meadow/grass and local-culling-bounds checkpoint. Both use environment-views --capture-set=meadow. Full frames, no retouching.",
+        "shrubs": "Matched native Forward+, High/day seed3 1600x900, focus -110,-130 zoom45 pitch-35 yaw0.7. Before exact0510a8d grass.gd PCK; after smaller leaf cards, linear photograph/root shading and seeded patch placement. Same simulation held at2s, 225 settling frames. No retouching; full frames encoded JPEG92.",
+        "leaves": "Matched native Forward+, High/day seed3 1600x900, focus -128.6383,-95.47071. Close zoom18 pitch-15 yaw-2.4; stand zoom65 pitch-30 yaw0.7. Both held at2s,90settlingframes plus complete scenery residency, foliage and grass wind disabled. Before exact b1e4704 mats/res scripts PCK; after smaller broadleaf cards and photographed foliage lighting. Full frames, JPEG92, no retouching.",
+        "lane_join": "Matched native Forward+, High/day seed3 1600x900, environment-views --capture-set=town transition view, zoom25 pitch-55 yaw0.7. Held2s/45settlingframes plus complete scenery residency. Before exact b1e4704 mats/res/atmosphere scripts loaded through PCK; after varied tracks and short broken asphalt edge. Full frames, JPEG92, no retouching.",
+        "drainage": "Matched native Forward+, High/day seed3 1600x900, simulation held2s/45settlingframes plus full scenery residency. Forest focus-400,-450 zoom350 pitch-30 yaw-0.2; panorama focus0,0 zoom900 pitch-22 yaw0.7. Before exact4aec471 atmosphere/landform/terrain scripts PCK; after catchment weathering and retained snow. Heights unchanged byte-for-byte (backdrop red SHA256 a781fcd66353803fd51186905b31850f2c80d41742d1fbca43f90bce040e9761). Full frames, JPEG92, no retouching.",
+        "river": "Matched native Forward+, High/day seed3 1600x900, environment-views --capture-set=river-boundary, held2s/45settlingframes plus full scenery residency. Close focus-232.6883,-512 zoom130 pitch-40 yaw0.7; panorama focus0,0 zoom900 pitch-22 yaw0.7. Before exact6fa546e atmosphere/water_view/distant_forest scripts PCK; after scenery river pools. Authoritative water shapes and terrain unchanged. Full frames, JPEG92, no retouching.",
+        "complete_pass": "Native Forward+, High/day seed3 1600x900. Before exact parent b38e42e full PCK (SHA256 a78a1eacaff5e712878addff90d1f1cee8381f4def88659eaf584d6ffbe5e708); after0119d6c. Same camera transforms, simulation held at2s, five-second warmup/full scenery residency followed by20s measurement before capture. Animated water and foliage continue normally. Camera parameters and measured results in performance.json beside these images. Full frames, JPEG92, no retouching. Earlier pairs below isolate individual checkpoints as documented separately.",
+        "browser_normals": "Actual release WebGL exports in Chrome157/ANGLE D3D11 RTX3090,1600x900, High/day seed3. Before1ab49b0; aftera921536 vertex-normal correction (exported before rain-only edits). Same held2s/full-residency views as complete_pass. Default force_vertex_shading.web=true remains enabled. Full frames,JPEG92,no retouching. Concurrent other checks invalidate these runs as performance measurements.",
+        "rain": "Native Forward+,High/rain seed3,1600x900. environment-views --capture-set=rain, held2s/150settlingframes/full residency, lightning suppressed. Before exact1ab49b0 atmosphere/mats scripts PCK; aftera921536. Close focus-110,-130 zoom18 pitch-25 yaw0.7; valleyfocus0,0 zoom900 pitch-22 yaw0.7. Particle positions vary between runs; camera/geology/materials match. Fullframes,JPEG92,no retouching.",
+        "clouds": "Native Forward+,High/night seed3,1600x900. Same live world held2s, coast focus(sea_x+100,0),zoom280,pitch-14,yawPI/2,90settlingframes/full-residency. Before exacta921536 sky shader; after revised bounded hash and moonlit cloud shading, production code identical to the prototype. Other materials, geometry and camera unchanged; animated water and stars continue normally. Fullframes,JPEG92,no retouching. GPU continuity regression reproduces old discontinuities in Forward+ and passes after in both renderers.",
+        "rain_motion": "Native Forward+,High/rain seed3,1600x900. Same environment-views fixture with --fixed-fps 30 --capture-set=rain --capture-clip=close. Before exact1ab49b0 atmosphere/mats PCK; aftera921536. Simulation held2s,150settlingframes/full residency,lightning suppressed;180 consecutive full-frame PNGs encodedVP9/30fps/CRF28/noaudio. Closefocus-110,-130 zoom18 pitch-25 yaw0.7. Posters are frame90. Particle positions are not deterministic; camera,geology and materials match. Gameplay timing is held; particle animation advances at fixed30Hz.",
+        "night_water": "Native Forward+,High/night seed3,1600x900,environment-views --capture-set=coast. Focus(sea_x+100,0),zoom280,pitch-14,yawPI/2,simulationheld2s,90settlingframes/fullresidency. Before exact9657166 water_view.gd loaded through PCK; after0119d6c moonlit reflected clouds and colour-aware night tint in sky/water. Native sky brightness is unchanged by the colour-space correction. Animated waves/stars continue between captures. Fullframes,JPEG92,no retouching. Final scene also inspected in Compatibility; standalone GPU colour calibration gives0.2706 in both renderers.",
+        "native_motion": {
+          "arguments": [
+            "--script",
+            "./tools/showcase/environment-motion.gd"
+          ],
+          "fps": 30,
+          "mood": "day",
+          "preset": "high",
+          "renderer": "forward_plus",
+          "resolution": "1280x768 (48-pixel label above uncropped 1280x720 source)",
+          "seed": 3,
+          "simulation": "Held at two seconds; native camera, wind and water remain animated. Not a combat or performance benchmark.",
+          "stage": "environment",
+          "user_arguments": [
+            "--aivai",
+            "--seed=3",
+            "--offscreen",
+            "--nohud",
+            "--set=perf:0",
+            "--preset=high",
+            "--mood=day",
+            "--port=8283",
+            "--motion-stage=environment",
+            "--motion-output=./build/media-review"
+          ],
+          "views": [
+            {
+              "focus": "(0.0, 0.0, 0.0)",
+              "fov": 55.0,
+              "frames": 120,
+              "label": "Alpine ranges, ocean and forest coverage",
+              "orbit_radians": 0.065,
+              "pitch": -22.0,
+              "seconds": 4,
+              "yaw": 0.7,
+              "zoom": 900.0
+            },
+            {
+              "focus": "(-30.0, 0.0, -12.0)",
+              "fov": 55.0,
+              "frames": 120,
+              "label": "Calibrated roofs, asphalt and frontages",
+              "orbit_radians": 0.065,
+              "pitch": -45.0,
+              "seconds": 4,
+              "yaw": 0.7,
+              "zoom": 55.0
+            },
+            {
+              "focus": "(-110.0, 0.0, -130.0)",
+              "fov": 55.0,
+              "frames": 120,
+              "label": "Finer meadow and clustered shrubs",
+              "orbit_radians": 0.065,
+              "pitch": -35.0,
+              "seconds": 4,
+              "yaw": 0.7,
+              "zoom": 22.0
+            }
+          ],
+          "source_ref": "f95bbc43cb29767b9b2c3c0c881aa32f649698c8",
+          "clip": "native-tour.webm",
+          "poster": "native-tour.jpg",
+          "clip_sha256": "943f17df930a66ad7eff872a065c5506d14a1ef2ae7532cb98691c26d0b687ca",
+          "seconds": 12,
+          "audio": false,
+          "codec": "VP9",
+          "command": "godot --path . --fixed-fps 30 --resolution 1280x720 --script tools/showcase/environment-motion.gd -- --aivai --seed=3 --offscreen --nohud --set=perf:0 --preset=high --mood=day --motion-stage=environment --motion-output=build/media-review"
+        }
+      }
+    },
+    {
+      "entry": "changelog/unreleased/shoreline-blending.md",
+      "medium": "motion",
+      "stage": "environment-views shoreline",
+      "rationale": "Matched stills show gravel scale and beach transition; simultaneous native motion reveals the eliminated wave phase discontinuity.",
+      "source_ref": "de7dfbda baseline; after shader SHA-256 and camera provenance in shoreline-blending/capture.json",
+      "sources": [
+        {
+          "file": "changelog/unreleased/shoreline-blending/capture.json",
+          "sha256": "e50f57aa5aa08e3aa79806e97e2570998dba1d957d15f53440e37e2b295e8f65",
+          "caption": "capture"
+        },
+        {
+          "file": "changelog/unreleased/shoreline-blending/comparison.jpg",
+          "sha256": "ecc01a4f0f680e94395be85ff46dce14085ffed85b8ab14ec47e90ebd829608b",
+          "caption": "comparison"
+        },
+        {
+          "file": "changelog/unreleased/shoreline-blending/comparison.mp4",
+          "sha256": "9834e8e64b66ec75939ebc7513e7ff0e13b2088ed9790ff7215406e93d5b77a1",
+          "caption": "comparison"
+        },
+        {
+          "file": "changelog/unreleased/shoreline-blending/town-after.jpg",
+          "sha256": "0c056923e65a6fda8976c46bdecce6a523b869ed6204df2e96c96e4621b58464",
+          "caption": "town-after"
+        },
+        {
+          "file": "changelog/unreleased/shoreline-blending/town-before.jpg",
+          "sha256": "912aeaf40cb0d9215d5bbee6f5123b2cd27b023622a05203e9b2f0df3406aadc",
+          "caption": "town-before"
+        },
+        {
+          "file": "changelog/unreleased/shoreline-blending/waterline-after.jpg",
+          "sha256": "2b6f3ac7b1506070ff1d27ca9d10ed6fa7d5f8bf70cfb20d671c77d0acb8e239",
+          "caption": "waterline-after"
+        },
+        {
+          "file": "changelog/unreleased/shoreline-blending/waterline-before.jpg",
+          "sha256": "be46d358edd2f1e9cd0ea9ce0b632a47367539ffa8b7dc12fafd432ece376a00",
+          "caption": "waterline-before"
+        }
+      ],
+      "output": null
+    },
+    {
+      "entry": "changelog/unreleased/animation-review.md",
+      "summary": "Review every locally installed character clip and the infantry gameplay pose set, with saved approval decisions and notes.",
+      "medium": "still",
+      "stage": "local-character-preview",
+      "rationale": "Stills document the UI or sampled pose/hand placement; continuity is checked by focused tests, not certified by stills alone.",
+      "source_ref": "PR #98; 969ba00",
+      "sources": [
+        {
+          "file": "changelog/unreleased/animation-review/review.jpg",
+          "sha256": "95f0b0a4c59da2b82fa44d580837eb4d9d0fb88e9dbf8bcc5dc3e0697aafeefa",
+          "caption": "Source clips and gameplay cases have separate saved approval decisions."
+        }
+      ],
+      "output": null
+    },
+    {
+      "entry": "changelog/unreleased/character-motion-grips.md",
+      "summary": "Keep rifle grips through action changes, use matching directional crouch clips, and orbit the character with Alt.",
+      "medium": "still",
+      "stage": "local-character-preview",
+      "rationale": "Stills document the UI or sampled pose/hand placement; continuity is checked by focused tests, not certified by stills alone.",
+      "source_ref": "PR #98; de6420a",
+      "sources": [
+        {
+          "file": "changelog/unreleased/character-motion-grips/winded-before.png",
+          "sha256": "db5805cc93df8c9f6f22cd3a241b0669ffc89659f51ac1a5143dcaef620b9d95",
+          "caption": "Before: support-hand placement breaks during winded recovery"
+        },
+        {
+          "file": "changelog/unreleased/character-motion-grips/winded-after.jpg",
+          "sha256": "246f30f9f41234808f586a6b81ebe4ba51013e1fe07ba7b0db41d6956fdaedf1",
+          "caption": "Walking, winded recovery and return to firing with the support hand seated on the rifle"
+        }
+      ],
+      "output": null
+    },
+    {
+      "entry": "changelog/unreleased/character-playground.md",
+      "summary": "Walk the SWAT preview over varied terrain, work, reload and inspect every available animation.",
+      "medium": "still",
+      "stage": "local-character-preview",
+      "rationale": "Stills document the UI or sampled pose/hand placement; continuity is checked by focused tests, not certified by stills alone.",
+      "source_ref": "PR #98; 969ba00",
+      "sources": [
+        {
+          "file": "changelog/unreleased/character-playground/playground.png",
+          "sha256": "5fdcb97048b180f3786f2bd1e9913d61a124736553a71dc0ae350bf1fe884380",
+          "caption": "Work with the rifle slung on the playable terrain course"
+        }
+      ],
+      "output": null
+    },
+    {
+      "entry": "changelog/unreleased/cover-firing-animation.md",
+      "summary": "Skinned infantry use the correct firing pose over barriers, keeping their rifles above the wall and both hands on the weapon.",
+      "medium": "still",
+      "stage": "gameplay-and-controlled-preview",
+      "rationale": "Stills document the UI or sampled pose/hand placement; continuity is checked by focused tests, not certified by stills alone.",
+      "source_ref": "PR #98; 969ba00",
+      "sources": [
+        {
+          "file": "changelog/unreleased/cover-firing-animation/before.jpg",
+          "sha256": "01e1f13bbf2fe1ad410f9b7e53d81ae5bedfd15795d6d4fdc45327f1b06a56d2",
+          "caption": "Before: the standing animation put the barrel inside a 1.5 metre wall."
+        },
+        {
+          "file": "changelog/unreleased/cover-firing-animation/after.jpg",
+          "sha256": "7b2f80b6e511e159932c0dafb1de96d659fa3e245b2b7f68356c76117cd264de",
+          "caption": "After: the cover pose lifts the barrel above the wall while retaining both hand grips."
+        }
+      ],
+      "output": null
+    },
+    {
+      "entry": "changelog/unreleased/infantry-animation-transitions.md",
+      "summary": "The optional SWAT preview keeps its rifle through free-hand actions and improves reloads, cover aim and low-wall crossings.",
+      "medium": "still",
+      "stage": "local-character-preview",
+      "rationale": "Stills document the UI or sampled pose/hand placement; continuity is checked by focused tests, not certified by stills alone.",
+      "source_ref": "PR #98; 969ba00",
+      "sources": [
+        {
+          "file": "changelog/unreleased/infantry-animation-transitions/before.jpg",
+          "sha256": "0cec45aef7d99f2e6247f5ab3317163a4ea0146ee36a63515b56dd49698b7a3c",
+          "caption": "Before: grenade handling carried the rifle with the throwing hand"
+        },
+        {
+          "file": "changelog/unreleased/infantry-animation-transitions/after.jpg",
+          "sha256": "2b4c05a0f4e432305e404eabb9270b6ff47ebd31fc56259273bd14ecb4b24fdf",
+          "caption": "After: grenade handling frees the working hand and returns to rifle aim"
+        },
+        {
+          "file": "changelog/unreleased/infantry-animation-transitions/vault.jpg",
+          "sha256": "94ea5f1f91c6ebc1adefa4be77953ec42d963e69b897be9f758b4fd91449d196",
+          "caption": "The actual soldier renderer keeps the knees tucked across a low wall"
+        }
+      ],
+      "output": null
+    },
+    {
+      "entry": "changelog/unreleased/infantry-animation.md",
+      "summary": "An optional skinned rifleman preview adds captured movement, grounded feet, rifle grips and physical hit reactions. Soldiers make room before going prone beside walls.",
+      "medium": "motion",
+      "stage": "gameplay-and-controlled-preview",
+      "rationale": "The archived battle fixture shows the wall-clearance step and prone transition; preserved stills show appearance and activities. Local imported assets only, not a fresh current-main capture.",
+      "source_ref": "PR #98; 969ba00; WebM source revision and encoding in tools/showcase/pr98-webm-review.json",
+      "sources": [
+        {
+          "file": "changelog/unreleased/infantry-animation/before.jpg",
+          "sha256": "f68e86456c9a8192e8cbd097a968477f1f14c79a79e3aceae751c11f1f0b789e",
+          "caption": "The earlier procedural rifleman"
+        },
+        {
+          "file": "changelog/unreleased/infantry-animation/after.jpg",
+          "sha256": "f0a91c6cd3ec2d0c265578be0f2f238554bc9195a003013cbf143dc417671b4b",
+          "caption": "The optional imported rifleman after stepping back to clear the wall"
+        },
+        {
+          "file": "changelog/unreleased/infantry-animation/movement.jpg",
+          "sha256": "a90464f655c1e9c00198053b14342b3269099170aa198740b79a717b928ac7d8",
+          "caption": "The optional riflemen moving into cover in an actual battle"
+        },
+        {
+          "file": "changelog/unreleased/infantry-animation/digging-game.jpg",
+          "sha256": "6bfd5126d9e7984a53a56f9fcb3fea984211d818ce43eeba97b0fd291877e8b1",
+          "caption": "A rifleman digs during a sandbag construction order"
+        },
+        {
+          "file": "changelog/unreleased/infantry-animation/smoking-game.jpg",
+          "sha256": "c513f36ede81a87aa10ddbd3c0ee88c718ca9fdf001eb93ed00e18659839ace1",
+          "caption": "A quiet-sector smoking idle, with the rifle slung"
+        },
+        {
+          "file": "changelog/unreleased/infantry-animation/ragdoll.jpg",
+          "sha256": "affd1b40673eec8dd6f963716cb72a62ea4ae7d4aee4db2e6e56a64c51c0e54a",
+          "caption": "A staged blast demonstrates physical falls and dropped weapons"
+        },
+        {
+          "file": "changelog/unreleased/infantry-animation/mixamo-crouch.png",
+          "sha256": "68115c72efd5ca142c706dc0362cecd2aa90893f087f0d05b6bc69190ca170ca",
+          "caption": "The SWAT rifleman settles into cover using the Mixamo crouch cycle and baked rifle"
+        },
+        {
+          "file": "changelog/unreleased/infantry-animation/wall-to-prone.webm",
+          "sha256": "d9ec68250c944232237f57f216340629a493ad06b0d5e19023c0187c4ee9f037",
+          "caption": "Archived battle fixture: a server-controlled soldier backs clear of the wall, settles, then lowers into prone. Local imported assets; recorded before the later foot-plant correction."
+        }
+      ],
+      "output": null
+    },
+    {
+      "entry": "changelog/unreleased/crawl-throw-recovery.md",
+      "summary": "Reach forward while crawling, keep grenade throws grounded, and settle crouched feet without inverted toes.",
+      "medium": "motion",
+      "stage": "controlled-character-preview",
+      "rationale": "Fixed-step shared renderer capture with translation; focused regression checks cover stance recovery. Not a battle performance benchmark.",
+      "source_ref": "PR #98; recovery_states and controlled recovery sequence",
+      "sources": [
+        {
+          "file": "changelog/unreleased/crawl-throw-recovery/before.jpg",
+          "sha256": "6c7322b582d9126512ae79e5d58205922be62100536e3c11852c3d5fc40471b8",
+          "caption": "before"
+        },
+        {
+          "file": "changelog/unreleased/crawl-throw-recovery/after.jpg",
+          "sha256": "054eff20fad6921fec5da35979157ab44d6817e4a103ad626eb24c9d1361bd4d",
+          "caption": "after"
+        },
+        {
+          "file": "changelog/unreleased/crawl-throw-recovery/recovery.mp4",
+          "sha256": "63b238b1d24690b471caa3eeb54cc19956531e52a197ee3e8c5c7985d0e0f079",
+          "caption": "recovery"
+        }
+      ],
+      "output": null
+    },
+    {
+      "entry": "changelog/unreleased/captured-prone.md",
+      "summary": "The optional imported rifleman uses captured crawling, stops and prone actions.",
+      "medium": "motion",
+      "stage": "controlled-character-preview",
+      "rationale": "Fixed-step shared actor: crouch/prone transitions, forward/backward crawl, backward start and stops, prone hit, firing, reload, throw and recovery. Local assets only; magazine timing and varied terrain remain unvalidated.",
+      "source_ref": "PR #98; tests/mocap/prone_sequence.tscn, captured_prone and native_grip regressions",
+      "sources": [
+        {
+          "file": "changelog/unreleased/captured-prone/prone.mp4",
+          "sha256": "059697b1987d9846464f803dc543a97ecd1717adf6d98a747804086285041f1e",
+          "caption": "prone"
+        },
+        {
+          "file": "changelog/unreleased/captured-prone/prone.jpg",
+          "sha256": "89cb77b5b0be1a79c94f670bbe3e85160892ade31bbca7f13ecbefb740db1549",
+          "caption": "prone"
+        },
+        {
+          "file": "changelog/unreleased/captured-prone/actions.mp4",
+          "sha256": "fc3aa4417b08a9685fbbc2aca12d8b79b08b58068d525d5b08147c624fbbd8e9",
+          "caption": "actions"
+        },
+        {
+          "file": "changelog/unreleased/captured-prone/actions.jpg",
+          "sha256": "6d39b0329e34ccef00241b2c30eccbd858a907c89bc288cf410e46981e5bc639",
+          "caption": "actions"
+        }
+      ],
+      "output": null
+    },
+    {
+      "entry": "changelog/unreleased/captured-kneel.md",
+      "summary": "Captured stationary kneeling and crouched grenade throws for the optional rifleman.",
+      "medium": "motion",
+      "stage": "native-media",
+      "rationale": "Show stance changes, throw recovery and crouch movement through the shared game controller.",
+      "source_ref": "PR98 shared controller local Mixamo evaluation; crouch_sequence.tscn fixed 30 fps; baseline disables the three new stance/throw clips.",
+      "sources": [
+        {
+          "file": "changelog/unreleased/captured-kneel/actions.mp4",
+          "sha256": "db0704dadc998b73805d28c28e1a26cb373159faa9abeacb340f8dd0c4e94adf",
+          "caption": "Controlled shared-controller sequence, not battlefield performance."
+        },
+        {
+          "file": "changelog/unreleased/captured-kneel/before.jpg",
+          "sha256": "7370fc0dcc90ef78b58cf38a65317fc792159afa07432246c293d44d825f79b5",
+          "caption": "Prior crouch base pose without the new stance clips."
+        },
+        {
+          "file": "changelog/unreleased/captured-kneel/after.jpg",
+          "sha256": "5d3c38805dc8489a6c02f0f2738a10733485139c5bc4107e985ef6b13e51355b",
+          "caption": "Captured stationary kneeling with contacts."
+        }
+      ],
+      "output": null,
+      "title": "Captured kneeling and crouched grenade throws",
+      "version": "unreleased",
+      "kind": "improved",
+      "attribution": "Native fixed-step capture; optional assets remain local."
+    },
+    {
+      "entry": "changelog/unreleased/jump-landing.md",
+      "summary": "Captured jump flight follows vertical movement and recovers after ground contact.",
+      "medium": "motion",
+      "stage": "native-media",
+      "rationale": "Before and after frames expose the early return to locomotion; the recording shows the corrected level-ground jump.",
+      "source_ref": "PR98 shared controller jump-preview fixture; fixed 30 fps, level ground. Before: 78b36be; after: physical landing synchronization.",
+      "sources": [
+        {
+          "file": "changelog/unreleased/jump-landing/jump.mp4",
+          "sha256": "4e3160d5d381ec59c73b5a43d708c045fec31def05f47ef6a615a6fa43c24fd1",
+          "caption": "Controlled level-ground jump, not battlefield performance."
+        },
+        {
+          "file": "changelog/unreleased/jump-landing/before.jpg",
+          "sha256": "bc75417e69e8a33091023845e9146a6ce05aa20aae8a0e9e897726bb436ced00",
+          "caption": "Before: early fade to locomotion in flight."
+        },
+        {
+          "file": "changelog/unreleased/jump-landing/after.jpg",
+          "sha256": "d6181093507c7a3e5b3db3fe28d1088dca76b3458a98982cc4a5eb5e471b8dc4",
+          "caption": "After: flight pose persists until landing."
+        }
+      ],
+      "output": null,
+      "title": "Jump animation follows the landing",
+      "version": "unreleased",
+      "kind": "fixed",
+      "attribution": "Native fixed-step capture; optional assets remain local."
+    },
+    {
+      "entry": "changelog/unreleased/foot-plants-and-rifle-hop.md",
+      "summary": "The optional SWAT character keeps its planted boots steady, uses a lower rifle hop, and gains captured relaxed idles.",
+      "medium": "motion",
+      "stage": "controlled-character-preview",
+      "rationale": "Real fixed-step character fixtures show the action and armed recovery at an inspectable scale. Local imported assets only; no broad gameplay or performance certification.",
+      "source_ref": "PR #98; committed MP4 source revisions and encoding in tools/showcase/pr98-webm-review.json",
+      "sources": [
+        {
+          "file": "changelog/unreleased/foot-plants-and-rifle-hop/backstep.webm",
+          "sha256": "cceffcc0ba1bc9019baea249e4d7b6f2a941fd9bcfdd1f073d3f335a0ae7cb18",
+          "caption": "Controlled wall fixture: back away at 1 s, plant both boots, then lower into prone. Local SWAT assets; captured at 36b6f0b."
+        },
+        {
+          "file": "changelog/unreleased/foot-plants-and-rifle-hop/jump.webm",
+          "sha256": "f898b964570934cc68d93ca8e402b3ca9c13cffb425ec479576b972825b7075a",
+          "caption": "Three-second playground hop: watch the rifle grips through takeoff and landing. This is not a new battlefield ability."
+        },
+        {
+          "file": "changelog/unreleased/foot-plants-and-rifle-hop/idles.webm",
+          "sha256": "34f6524ca0b21c7b2e51b7e657f69c7a6c5d06fc78249f2728f357ba9f779957",
+          "caption": "Chat 0-7 s, laugh 7-14 s, stretch 14-21 s and armed lookout 21-28 s; each returns to rifle idle."
+        },
+        {
+          "file": "changelog/unreleased/foot-plants-and-rifle-hop/after.jpg",
+          "sha256": "6ddc5fb41d256147224cf3fa4142b607cb585997426df4932ef0df0968166263",
+          "caption": "Poster: Controlled wall fixture: back away at 1 s, plant both boots, then lower into prone. Local SWAT assets; captured at 36b6f0b."
+        },
+        {
+          "file": "changelog/unreleased/foot-plants-and-rifle-hop/jump.jpg",
+          "sha256": "7ef088472183da64394f1c9c1fd0ea71c9b41f99931e4dbd2953717410ebab6e",
+          "caption": "Poster: Three-second playground hop: watch the rifle grips through takeoff and landing. This is not a new battlefield ability."
+        },
+        {
+          "file": "changelog/unreleased/foot-plants-and-rifle-hop/idles.jpg",
+          "sha256": "2a2d46b8e64e6a0c874f2c80f3696facd992189ecb7303e1b531687e632830f1",
+          "caption": "Poster: Chat 0-7 s, laugh 7-14 s, stretch 14-21 s and armed lookout 21-28 s; each returns to rifle idle."
+        },
+        {
+          "file": "changelog/unreleased/foot-plants-and-rifle-hop/before.jpg",
+          "sha256": "16661b4fd9e8c027117f9add9a598770a3375f96cd8ff81e17230594872007e9",
+          "caption": "Before: acquiring foot contact pulls the corrected boot toward the source animation."
+        }
+      ],
+      "output": null
+    },
+    {
+      "entry": "changelog/unreleased/captured-injury-motion.md",
+      "summary": "The optional infantry preview uses captured limping and dazed motion, and the playground makes room before lying down near a wall.",
+      "medium": "motion",
+      "stage": "controlled-character-preview",
+      "rationale": "Real fixed-step character fixtures show the action and armed recovery at an inspectable scale. Local imported assets only; no broad gameplay or performance certification.",
+      "source_ref": "PR #98; committed MP4 source revisions and encoding in tools/showcase/pr98-webm-review.json",
+      "sources": [
+        {
+          "file": "changelog/unreleased/captured-injury-motion/injured.webm",
+          "sha256": "93d219ac2cd546e090d7960435d0a0f4698842d33bfb70c954050d590ea17f94",
+          "caption": "SWAT limping, dazed recovery and return to armed idle in the shared animation test scene."
+        },
+        {
+          "file": "changelog/unreleased/captured-injury-motion/prone-wall.webm",
+          "sha256": "e5f47e2cd5b45a0189ccb69f8b34126e457f0040771c621677e989c94f5de4df",
+          "caption": "The playground backs away from a wall, settles, then lowers into prone."
+        },
+        {
+          "file": "changelog/unreleased/captured-injury-motion/injured.jpg",
+          "sha256": "c2edd92d270ea0bef957d72043017f9849b61cfb277bb40d8ab7c249a752c38c",
+          "caption": "Poster: SWAT limping, dazed recovery and return to armed idle in the shared animation test scene."
+        },
+        {
+          "file": "changelog/unreleased/captured-injury-motion/prone-wall.jpg",
+          "sha256": "4c911cc329efcdbaedb0dc694ede6237b29d0a636713b24de3c77339f4950c39",
+          "caption": "Poster: The playground backs away from a wall, settles, then lowers into prone."
+        }
+      ],
+      "output": null
+    },
+    {
       "entry": "changelog/unreleased/bundled-infantry.md",
       "medium": "still",
       "rationale": "A clean-checkout render verifies packaged character, textures and rifle; packaging does not change motion.",
@@ -3885,6 +6175,28 @@
         }
       ],
       "output": "changelog/unreleased/captured-infantry-actions/melee.jpg"
+    },
+    {
+      "entry": "changelog/unreleased/ladder-contacts.md",
+      "medium": "motion",
+      "rationale": "Actual tower ascent, rung contacts and platform transfer; the prior still provides appearance context, not a matched-camera comparison.",
+      "stage": "tests/mocap/ladder_traversal.tscn; motion scenario seed 3, tower yaw 0.7; Compatibility, 30 fps, follow camera; video encoded at 1280x720.",
+      "source_ref": "a27e9d28; before still from bbdec3bc",
+      "sources": [
+        {
+          "file": "changelog/unreleased/ladder-contacts/before.jpg",
+          "sha256": "7b7293de56cb66dafd4a3b07a519ff0a941de776afa5d7a298a9fcb82be050a5"
+        },
+        {
+          "file": "changelog/unreleased/ladder-contacts/ladder.mp4",
+          "sha256": "35a72540d4e5b2258d55d7fae4a0789e95227dc8ef594d2ac7b6c445ab629683"
+        },
+        {
+          "file": "changelog/unreleased/ladder-contacts/platform.jpg",
+          "sha256": "3b0e3059c6f6c13ce5b8e584118e7d763e5c13f808dd78e7f2aa4b81ed92c27c"
+        }
+      ],
+      "output": "changelog/unreleased/ladder-contacts/platform.jpg"
     }
   ],
   "layout_capture": {

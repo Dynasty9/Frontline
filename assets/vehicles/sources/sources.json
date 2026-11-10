@@ -1,0 +1,274 @@
+{
+  "assets": [
+    {
+      "id": "Metal027",
+      "provider": "ambientCG",
+      "author": "Lennart Demes / ambientCG",
+      "source": "https://ambientcg.com/a/Metal027",
+      "license": "CC0-1.0",
+      "license_url": "https://docs.ambientcg.com/license/",
+      "download": "https://ambientcg.com/get?file=Metal027_1K-JPG.zip",
+      "archive_sha256": "12b2d9996d532cf8a31820d24f2ea83e3217b89da060c4fb29c3c5177535ac72",
+      "resolution": "1K",
+      "creation_method": "PBRProcedural",
+      "suggested_use": "Powder-coated paint: armor and utility bodywork",
+      "files": [
+        {
+          "file": "Metal027/Metal027_1K-JPG_Color.jpg",
+          "sha256": "8e2e69e767b2692da211723ccb7def5f27b9c7712c6952bc45c526e2a5183ae0",
+          "bytes": 798155
+        },
+        {
+          "file": "Metal027/Metal027_1K-JPG_Displacement.jpg",
+          "sha256": "6b492371d8146f6552c0ed2ac834adec5f7d35962d9945cd6c67231afa158b8c",
+          "bytes": 859059
+        },
+        {
+          "file": "Metal027/Metal027_1K-JPG_Metalness.jpg",
+          "sha256": "843102638fa0a5bf897888868877efab8ccdc4cb84a48e57bdb52bfb30f5e714",
+          "bytes": 4257
+        },
+        {
+          "file": "Metal027/Metal027_1K-JPG_NormalGL.jpg",
+          "sha256": "afbf8ca3df45111ac5543174582b6b98cb1bf154f7c7ee8f198720042b92d7c8",
+          "bytes": 1367248
+        },
+        {
+          "file": "Metal027/Metal027_1K-JPG_Roughness.jpg",
+          "sha256": "8f01484981a8bf83199d4f4cb435a344294cd80cb4ee623cf8567a7726fb289e",
+          "bytes": 572513
+        },
+        {
+          "file": "Metal027/Metal027.png",
+          "sha256": "2b6b4dbda2219a99fc8e95ddf622640ea081839ab993c5182df7d6d7049b9eb8",
+          "bytes": 218651
+        }
+      ]
+    },
+    {
+      "id": "Rubber004",
+      "provider": "ambientCG",
+      "author": "Lennart Demes / ambientCG",
+      "source": "https://ambientcg.com/a/Rubber004",
+      "license": "CC0-1.0",
+      "license_url": "https://docs.ambientcg.com/license/",
+      "download": "https://ambientcg.com/get?file=Rubber004_1K-JPG.zip",
+      "archive_sha256": "d8933e73c3b983892209bb143ca4bc13a48e4d55720ab12f6e6a303c96c84a31",
+      "resolution": "1K",
+      "creation_method": "PBRProcedural",
+      "suggested_use": "Rubber grain reference: tyres, hoses and inflatable tubes; not a tread pattern",
+      "files": [
+        {
+          "file": "Rubber004/Rubber004_1K-JPG_Color.jpg",
+          "sha256": "95f9182e8564db9a8c6510cd0c9e0656beec0e5a0212cc177e2abf8eb03820b9",
+          "bytes": 1150755
+        },
+        {
+          "file": "Rubber004/Rubber004_1K-JPG_Displacement.jpg",
+          "sha256": "c8a1af10a95405387bd69c82d807967981f08d17103ce5eeb3cd947cc0578707",
+          "bytes": 762093
+        },
+        {
+          "file": "Rubber004/Rubber004_1K-JPG_NormalGL.jpg",
+          "sha256": "a22ee35f51fa7bd971f703e8309b533420f965337c989f5e2cdfe1c822892d47",
+          "bytes": 2145653
+        },
+        {
+          "file": "Rubber004/Rubber004_1K-JPG_Roughness.jpg",
+          "sha256": "fd8171577db5a593e981ebd3fe487515aea9d20be28e1a6d2cd1e5475eb13e69",
+          "bytes": 759617
+        },
+        {
+          "file": "Rubber004/Rubber004.png",
+          "sha256": "01d539e08d9d121a0c66694fb537e81ffe9697101016631f9778b6120b80cff7",
+          "bytes": 346228
+        }
+      ]
+    },
+    {
+      "id": "Fabric036",
+      "provider": "ambientCG",
+      "author": "Lennart Demes / ambientCG",
+      "source": "https://ambientcg.com/a/Fabric036",
+      "license": "CC0-1.0",
+      "license_url": "https://docs.ambientcg.com/license/",
+      "download": "https://ambientcg.com/get?file=Fabric036_1K-JPG.zip",
+      "archive_sha256": "a06c291bcbf46fc0167fac74345dfe6af5e3ed3d3595644fa1067d191b5595ec",
+      "resolution": "1K",
+      "creation_method": "PBRProcedural",
+      "suggested_use": "Woven cloth candidate: canvas covers and stowage",
+      "files": [
+        {
+          "file": "Fabric036/Fabric036_1K-JPG_AmbientOcclusion.jpg",
+          "sha256": "d3b79780076e44ba3ecc5b09de1adfd6dc8ebf50e87d4f1b655609fc79646a6e",
+          "bytes": 955031
+        },
+        {
+          "file": "Fabric036/Fabric036_1K-JPG_Color.jpg",
+          "sha256": "d786e4a1c229f96f781667d062817e14fdbf2ffaba81d38f4fcc04c39a0062d4",
+          "bytes": 628346
+        },
+        {
+          "file": "Fabric036/Fabric036_1K-JPG_Displacement.jpg",
+          "sha256": "feed81afc8ff127cfc9bc8520c7e8e200629ed97ad8eec8ce8edd581b8b27958",
+          "bytes": 921643
+        },
+        {
+          "file": "Fabric036/Fabric036_1K-JPG_NormalGL.jpg",
+          "sha256": "b9c2153b5f78b8d1ee0529b5d8e3174fa25accb4131e425aa18b808efede4feb",
+          "bytes": 2521262
+        },
+        {
+          "file": "Fabric036/Fabric036_1K-JPG_Roughness.jpg",
+          "sha256": "9ad01f95163602e6ae63c4ced864edc9b8347936b51e3f49f89e64e868f995fd",
+          "bytes": 710098
+        },
+        {
+          "file": "Fabric036/Fabric036.png",
+          "sha256": "dd4b7617ebd97d07b53391286b40e5f368044ab685028dff9d12b9101e45545b",
+          "bytes": 274621
+        }
+      ]
+    },
+    {
+      "id": "Metal009",
+      "provider": "ambientCG",
+      "author": "Lennart Demes / ambientCG",
+      "source": "https://ambientcg.com/a/Metal009",
+      "license": "CC0-1.0",
+      "license_url": "https://docs.ambientcg.com/license/",
+      "download": "https://ambientcg.com/get?file=Metal009_1K-JPG.zip",
+      "archive_sha256": "1b1970219b40fe707e7194b28702f1a65b0d227bbea56da69dfbc8d8b5cfcb5e",
+      "resolution": "1K",
+      "creation_method": "PBRProcedural",
+      "suggested_use": "Brushed steel: exposed fittings and hardware",
+      "files": [
+        {
+          "file": "Metal009/Metal009_1K-JPG_Color.jpg",
+          "sha256": "e066e240ad0eaab6a73fb0f40fa7caa94365160770331babc91de2e8ce6a986f",
+          "bytes": 616678
+        },
+        {
+          "file": "Metal009/Metal009_1K-JPG_Displacement.jpg",
+          "sha256": "73095592a8cf4bb983cb2bd2a3bf771492fa9d4697a547f4e3e430d4d871951f",
+          "bytes": 698868
+        },
+        {
+          "file": "Metal009/Metal009_1K-JPG_Metalness.jpg",
+          "sha256": "843102638fa0a5bf897888868877efab8ccdc4cb84a48e57bdb52bfb30f5e714",
+          "bytes": 4257
+        },
+        {
+          "file": "Metal009/Metal009_1K-JPG_NormalGL.jpg",
+          "sha256": "45c7c88685e6b44da7e8d25e2cf6d8645d42209793ccc4354e68c16cdae15d62",
+          "bytes": 814572
+        },
+        {
+          "file": "Metal009/Metal009_1K-JPG_Roughness.jpg",
+          "sha256": "6d06dfe8c240d3b6f33030740110284245bd8aefb2e10e8eb0c563444d9c0c5b",
+          "bytes": 486233
+        },
+        {
+          "file": "Metal009/Metal009.png",
+          "sha256": "b4ed201b866edd7d6da86e0410d57a4fc4c24167ad552a0adf3637b71a41b597",
+          "bytes": 213941
+        }
+      ]
+    },
+    {
+      "id": "DiamondPlate009",
+      "provider": "ambientCG",
+      "author": "Lennart Demes / ambientCG",
+      "source": "https://ambientcg.com/a/DiamondPlate009",
+      "license": "CC0-1.0",
+      "license_url": "https://docs.ambientcg.com/license/",
+      "download": "https://ambientcg.com/get?file=DiamondPlate009_1K-JPG.zip",
+      "archive_sha256": "86bd439bb12f00c96f1a12cd827165e85f39295f3d1ab8f915c4b5714bc618e0",
+      "resolution": "1K",
+      "creation_method": "PBRPhotogrammetry",
+      "suggested_use": "Raised steel tread: selected walking decks, not every nonslip coating",
+      "files": [
+        {
+          "file": "DiamondPlate009/DiamondPlate009_1K-JPG_AmbientOcclusion.jpg",
+          "sha256": "2f70342e2b192723c57968d89a25e5acb6e74c6fcdf560327fa56a349488ad16",
+          "bytes": 676961
+        },
+        {
+          "file": "DiamondPlate009/DiamondPlate009_1K-JPG_Color.jpg",
+          "sha256": "ded4f37bf243350df41130a0888dd35f893fbbc577b0161f653656b3cc9d00c3",
+          "bytes": 1433391
+        },
+        {
+          "file": "DiamondPlate009/DiamondPlate009_1K-JPG_Displacement.jpg",
+          "sha256": "99c2009a77dfa5f9664b0a8ee354cb85a31197d53ff532d142271ee81cd86b2c",
+          "bytes": 717719
+        },
+        {
+          "file": "DiamondPlate009/DiamondPlate009_1K-JPG_Metalness.jpg",
+          "sha256": "da145be62f32b3a3bbf542d951c4d4c723f8428d9d4dee1a7568b1f8913fb912",
+          "bytes": 656779
+        },
+        {
+          "file": "DiamondPlate009/DiamondPlate009_1K-JPG_NormalGL.jpg",
+          "sha256": "f4a554eaa50fc08d86813b323f17db7ef05320142db952710a2bab850e8c59a0",
+          "bytes": 1915901
+        },
+        {
+          "file": "DiamondPlate009/DiamondPlate009_1K-JPG_Roughness.jpg",
+          "sha256": "55d70f0b8a21983967b815de9ff5c9a9f4756cca3e9fb352b3ff2c2403b82f4f",
+          "bytes": 826640
+        },
+        {
+          "file": "DiamondPlate009/DiamondPlate009.png",
+          "sha256": "61776972b6463a17c1045977b524d4df2c000aee3e96b3a1cd84315ffa350215",
+          "bytes": 501761
+        }
+      ]
+    },
+    {
+      "id": "Metal053B",
+      "provider": "ambientCG",
+      "author": "Lennart Demes / ambientCG",
+      "source": "https://ambientcg.com/a/Metal053B",
+      "license": "CC0-1.0",
+      "license_url": "https://docs.ambientcg.com/license/",
+      "download": "https://ambientcg.com/get?file=Metal053B_1K-JPG.zip",
+      "archive_sha256": "7f992f1000ff2b0db8a574b24fa077e0d76a393d8d09385111965296c50db9f6",
+      "resolution": "1K",
+      "creation_method": "PBRProcedural",
+      "suggested_use": "Oxidized steel: localized wear and abandoned equipment",
+      "files": [
+        {
+          "file": "Metal053B/Metal053B_1K-JPG_Color.jpg",
+          "sha256": "836567960fc7d21c64d4e2cd0c0828fc66f0bb34069a38e9e9204dcad02e4abc",
+          "bytes": 1194852
+        },
+        {
+          "file": "Metal053B/Metal053B_1K-JPG_Displacement.jpg",
+          "sha256": "2ecd726fb76556b73f8ed1747d79a7e047b4d988a7a73f9fb9b9ba78d415a283",
+          "bytes": 237028
+        },
+        {
+          "file": "Metal053B/Metal053B_1K-JPG_Metalness.jpg",
+          "sha256": "ac2544fe6f24b9d35b379f0dac19e1354e7354c8fa9a3ed4e1e6ae3fdfe36fce",
+          "bytes": 440716
+        },
+        {
+          "file": "Metal053B/Metal053B_1K-JPG_NormalGL.jpg",
+          "sha256": "e15fdef8ed2b6a225d091b881406bf0ce2d05e7e9e9d555788e7e67245a535b3",
+          "bytes": 475518
+        },
+        {
+          "file": "Metal053B/Metal053B_1K-JPG_Roughness.jpg",
+          "sha256": "d0febdfbc9970dc5c136f19a1669a8caf769a2449670db9c5af4d6f911872cd5",
+          "bytes": 635691
+        },
+        {
+          "file": "Metal053B/Metal053B.png",
+          "sha256": "f77395f99d6c55210c51c2f67d15e2d82cba47de4a73e895a2394506a26bf63a",
+          "bytes": 345448
+        }
+      ]
+    }
+  ]
+}
