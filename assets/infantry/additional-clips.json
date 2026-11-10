@@ -1,0 +1,62 @@
+{
+  "provider": "Adobe Mixamo",
+  "character": "Ch15_nonPBR (SWAT)",
+  "settings": "FBX Binary, Without Skin, 30 fps, no keyframe reduction",
+  "clips": [
+    {
+      "download": "Climbing Ladder.fbx",
+      "installed": "Climbing Ladder.fbx",
+      "sha256": "f9cee2504c020b3f75b6a119077a15361ddbc41f87168169c9c6b2fc26231ca8"
+    },
+    {
+      "download": "Carrying.fbx",
+      "installed": "Carrying Idle.fbx",
+      "sha256": "510ea848a376464d588925626e7d832ff32c6fb710cd7d001d6c52109cdb8a77"
+    },
+    {
+      "download": "Carrying Turn.fbx",
+      "installed": "Carrying Turn.fbx",
+      "sha256": "23c144a1eab42ceea96a30e5ae6eea4d58c87683007293df773bd8b3a1206f19"
+    },
+    {
+      "download": "Walking.fbx",
+      "installed": "Carrying Walk.fbx",
+      "sha256": "17831e1751e9193930c2f9edb956f58603892e35ab15a36251c7c6a77271ba36"
+    },
+    {
+      "download": "Running (1).fbx",
+      "installed": "Carrying Run.fbx",
+      "sha256": "b0bcf3f1c79eaa8d24793c9a1e1343a6603365a69030021f523f304996e07451"
+    },
+    {
+      "download": "Walk To Stop.fbx",
+      "installed": "Carrying Stop.fbx",
+      "sha256": "6ebcb7b626e928885033aca5f1ea060a89158a964a0e46d4c6844c5ec973063f"
+    },
+    {
+      "download": "Being Carried.fbx",
+      "installed": "Being Carried Start.fbx",
+      "sha256": "c8ba3809efd924d923eeddc1c88edd0c19535892f9d895ab6c0008ca6018ceb8"
+    },
+    {
+      "download": "Being Carried (1).fbx",
+      "installed": "Being Carried Loop.fbx",
+      "sha256": "e8ad40c78b2ea93f204147f90c8bc6b664038bfddc855e9cb2cba358f5d17cf7"
+    },
+    {
+      "download": "Being Carried (2).fbx",
+      "installed": "Being Carried Stop.fbx",
+      "sha256": "0c036a934ec09ac5f5acf25ae770546e7ed37875df77aab5e30d63c65c3628f5"
+    },
+    {
+      "download": "Rifle Punch.fbx",
+      "installed": "Rifle Punch.fbx",
+      "sha256": "9fac4359881749409748d8e5943b5776a42014a9cabde988728b0e2fb793a711"
+    },
+    {
+      "download": "Rifle Turn And Kick.fbx",
+      "installed": "Rifle Turn And Kick.fbx",
+      "sha256": "99a66bfb2ed5a6c3af5b2c3916a647e95aafb651d8010188dcf91b1b54102ce6"
+    }
+  ]
+}

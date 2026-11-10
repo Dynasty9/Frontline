@@ -191,6 +191,7 @@ Signed in, every battle you fight earns XP (a win more), and you climb 50 ranks 
 
 - **[How it all works](docs/FEATURES.md)**: the soldier and squad AI, vehicles, the map, water, supply, the interface and the AI commander, in depth.
 - **[Developer guide](docs/DEVELOPMENT.md)**: how the code is organised, and how to run the automated tests.
+- **[Skinned rifleman evaluation](tests/mocap/SKINNED.md)**: local sample setup, animation/impact showcase and optional battlefield integration.
 - **[Contributing](CONTRIBUTING.md)**: how to report bugs and send changes.
 - **[AGENTS.md](AGENTS.md)**: notes for AI coding assistants working on the project.
 

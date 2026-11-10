@@ -44,6 +44,32 @@ jobs:
           ~/godot/godot --headless --path . --import 2>&1 | tee import.log
           if grep -E "SCRIPT ERROR|Parse Error" import.log; then exit 1; fi
 
+      - name: Bundled infantry assets and action transitions
+        run: |
+          set -o pipefail
+          timeout 120 ~/godot/godot --headless --path . --script tests/mocap/pack_check.gd 2>&1 | tee infantry-pack.log
+          if grep -E "SCRIPT ERROR|ERROR:" infantry-pack.log || ! grep -q "PACK CHECK PASS" infantry-pack.log; then exit 1; fi
+          for scene in captured_actions relaxed_actions injured_actions; do
+            timeout 120 ~/godot/godot --headless --fixed-fps 60 --path . tests/mocap/${scene}.tscn -- --swat-units 2>&1 | tee ${scene}.log
+            if grep -E "SCRIPT ERROR|ERROR:" ${scene}.log || ! grep -q "PASS" ${scene}.log; then exit 1; fi
+          done
+
+      - name: Watchtower ladder approach and exit
+        run: |
+          set -o pipefail
+          timeout 180 ~/godot/godot --headless --path . --fixed-fps 30 tests/mocap/ladder_traversal.tscn -- --scenario=motion --seed=3 --skinned-units --swat-units --port=7981 2>&1 | tee ladder.log
+          if grep -E "SCRIPT ERROR|Parse Error|ERROR:" ladder.log || ! grep -q "LIVE LADDER PASS" ladder.log; then exit 1; fi
+
+      - name: Animation movement regressions
+        run: |
+          set -o pipefail
+          for scene in backstep_safety simulation_clock; do
+            timeout 120 ~/godot/godot --headless --path . --quit-after 600 tests/mocap/${scene}.tscn 2>&1 | tee ${scene}.log
+            if grep -E "SCRIPT ERROR|Parse Error|ERROR:" ${scene}.log || ! grep -q "PASS" ${scene}.log; then exit 1; fi
+          done
+          timeout 180 ~/godot/godot --headless --path . --fixed-fps 30 tests/mocap/backstep_game.tscn -- --scenario=motion --seed=3 --no-stun --quit-after=20 2>&1 | tee backstep_game.log
+          if grep -E "SCRIPT ERROR|Parse Error|ERROR:" backstep_game.log || ! grep -q "GAME BACKSTEP.*pass=true" backstep_game.log; then exit 1; fi
+
       - name: Simulation scaling regressions
         run: |
           set -o pipefail

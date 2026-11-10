@@ -289,6 +289,7 @@ static func tower(model: Node3D, rng: RandomNumberGenerator, bags: Array) -> voi
 	# the ladder up the back
 	for sx in [-0.24, 0.24]:
 		_rod(model, Vector3(sx, 0.0, 1.95), Vector3(sx, 4.2, 1.42), 0.035, "wood", wc, 5)
+		_rod(model, Vector3(sx, 4.2, 1.42), Vector3(sx, 5.25, 1.42), 0.035, "wood", wc, 5)
 	for i in 13:
 		var t := (i + 0.6) / 13.6
 		var p := Vector3(0, t * 4.2, lerpf(1.95, 1.42, t))

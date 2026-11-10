@@ -10,36 +10,9 @@ extends Node3D
 ## interpolated between steps. Once it has settled the bodies go away and the
 ## model keeps the pose.
 
-const ORDER := ["hips", "torso", "head", "arm_l", "forearm_l", "arm_r", "forearm_r", "thigh_l", "shin_l", "thigh_r", "shin_r"]
-## part: [parent, shape, size, shape offset from the joint, mass]
-const SPEC := {
-	"hips": ["", "box", Vector3(0.34, 0.2, 0.22), Vector3(0, -0.02, 0), 12.0],
-	"torso": ["hips", "box", Vector3(0.4, 0.56, 0.25), Vector3(0, 0.3, 0), 22.0],
-	"head": ["torso", "sphere", Vector3(0.12, 0, 0), Vector3(0, 0.14, 0), 5.0],
-	"arm_l": ["torso", "capsule", Vector3(0.055, 0.3, 0), Vector3(0, -0.14, 0), 2.6],
-	"forearm_l": ["arm_l", "capsule", Vector3(0.05, 0.32, 0), Vector3(0, -0.15, 0), 1.8],
-	"arm_r": ["torso", "capsule", Vector3(0.055, 0.3, 0), Vector3(0, -0.14, 0), 2.6],
-	"forearm_r": ["arm_r", "capsule", Vector3(0.05, 0.32, 0), Vector3(0, -0.15, 0), 1.8],
-	"thigh_l": ["hips", "capsule", Vector3(0.075, 0.46, 0), Vector3(0, -0.23, 0), 8.0],
-	"shin_l": ["thigh_l", "capsule", Vector3(0.062, 0.5, 0), Vector3(0, -0.24, 0), 4.0],
-	"thigh_r": ["hips", "capsule", Vector3(0.075, 0.46, 0), Vector3(0, -0.23, 0), 8.0],
-	"shin_r": ["thigh_r", "capsule", Vector3(0.062, 0.5, 0), Vector3(0, -0.24, 0), 4.0],
-}
-## How far each joint turns from the rest pose, in the parent's frame (radians):
-## [x lo, x hi, y lo, y hi, z lo, z hi]. +x swings a limb forward; a knee bends
-## the other way.
-const LIMITS := {
-	"torso": [-0.9, 0.45, -0.5, 0.5, -0.4, 0.4],
-	"head": [-0.8, 0.7, -1.1, 1.1, -0.5, 0.5],
-	"arm_l": [-0.8, 3.0, -0.9, 0.9, -1.8, 0.35],
-	"arm_r": [-0.8, 3.0, -0.9, 0.9, -0.35, 1.8],
-	"forearm_l": [0.0, 2.5, -0.4, 0.4, -0.05, 0.05],
-	"forearm_r": [0.0, 2.5, -0.4, 0.4, -0.05, 0.05],
-	"thigh_l": [-0.55, 1.9, -0.5, 0.5, -0.8, 0.25],
-	"thigh_r": [-0.55, 1.9, -0.5, 0.5, -0.25, 0.8],
-	"shin_l": [-2.4, 0.0, -0.08, 0.08, -0.06, 0.06],
-	"shin_r": [-2.4, 0.0, -0.08, 0.08, -0.06, 0.06],
-}
+const ORDER = HumanoidRig.ORDER
+const SPEC = HumanoidRig.SPEC
+const LIMITS = HumanoidRig.LIMITS
 
 var model  # SoldierModel
 var bodies := {}
@@ -52,7 +25,7 @@ var done := false
 
 ## kind: 0 a bullet (impulse at the chest), 1 a blast (the whole body thrown),
 ## 2 he just slumps (bled out).
-func setup(m, impulse: Vector3, kind: int, mat: PhysicsMaterial, layer: int, mask: int) -> void:
+func setup(m, impulse: Vector3, kind: int, mat: PhysicsMaterial, layer: int, mask: int, travel := Vector3.ZERO) -> void:
 	model = m
 	m.ragdoll = self
 	if m.gun:
@@ -118,21 +91,15 @@ func setup(m, impulse: Vector3, kind: int, mat: PhysicsMaterial, layer: int, mas
 		j.node_a = j.get_path_to(bodies[spec2[0]])
 		j.node_b = j.get_path_to(bodies[n])
 	# 3. now into the pose he was actually in, moving the way he was hit
-	var rng := RandomNumberGenerator.new()
-	rng.randomize()
 	for n in ORDER:
 		var b2: RigidBody3D = bodies[n]
 		var node2: Node3D = m.get(n)
 		b2.global_transform = node2.global_transform
-		var k := 1.0
-		match kind:
-			0:
-				k = {"torso": 1.0, "head": 1.25, "hips": 0.45}.get(n, 0.25)
-			2:
-				k = 0.0
-		b2.linear_velocity = impulse * k * rng.randf_range(0.85, 1.15)
+		b2.linear_velocity = ImpactResponse.death_velocity(travel, impulse, kind, n)
 		if kind == 1:
-			b2.angular_velocity = Vector3(rng.randf_range(-6, 6), rng.randf_range(-3, 3), rng.randf_range(-6, 6))
+			# A blast turns the body around its centre; independent random limb
+			# spins fight the constraints and make it look like a pinwheel.
+			b2.angular_velocity = Vector3.UP.cross(impulse).limit_length(4.0)
 		_prev[n] = b2.global_transform
 		_curr[n] = b2.global_transform
 	if OS.has_environment("FL_DEBUG_RAG"):
@@ -149,6 +116,7 @@ func capture() -> void:
 		_prev[n] = _curr[n]
 		_curr[n] = b.global_transform
 		vmax = maxf(vmax, b.linear_velocity.length())
+		vmax = maxf(vmax, b.angular_velocity.length() * 0.25)
 	_calm = _calm + 1.0 / Engine.physics_ticks_per_second if vmax < 0.15 else 0.0
 
 
