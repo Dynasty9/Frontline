@@ -15,8 +15,6 @@ import sys
 import tempfile
 import time
 
-from map_cache_version import stamp
-
 ROOT = Path(__file__).resolve().parents[1]
 
 
@@ -47,7 +45,6 @@ def main():
         parser.error("--ticks must be positive")
     output = args.output.resolve()
     output.mkdir(parents=True, exist_ok=True)
-    stamp(ROOT)
     version = int(re.search(r"const NET_VERSION := (\d+)", (ROOT / "scripts/autoload/net.gd").read_text()).group(1))
     config = {**config, "team": config.get("team", -1), "name": config.get("name", "Commander"),
               "version": version, "parent_pid": os.getpid(), "map_cache_dir": str(output)}

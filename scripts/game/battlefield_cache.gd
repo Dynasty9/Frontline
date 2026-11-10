@@ -19,6 +19,15 @@ static func _sources(path: String, records: Array[String]) -> void:
 	for folder in DirAccess.get_directories_at(path):
 		_sources(path.path_join(folder), records)
 
+static func source_identity() -> String:
+	var records: Array[String] = []
+	_sources("res://scripts", records)
+	_sources("res://assets", records)
+	var project := FileAccess.get_file_as_string("res://project.godot").replace("\r\n", "\n")
+	records.append("project.godot\n" + project.sha256_text() + "\n")
+	records.sort()
+	return "".join(records).sha256_text()
+
 static func identity() -> String:
 	if not _identity.is_empty():
 		return _identity
@@ -28,13 +37,7 @@ static func identity() -> String:
 			return ""  # Unstamped exports generate normally rather than trust stale packages.
 		code = FileAccess.get_file_as_string("res://bin/map-cache-code.sha256").strip_edges()
 	else:
-		var records: Array[String] = []
-		_sources("res://scripts", records)
-		_sources("res://assets", records)
-		var project := FileAccess.get_file_as_string("res://project.godot").replace("\r\n", "\n")
-		records.append("project.godot\n" + project.sha256_text() + "\n")
-		records.sort()
-		code = "".join(records).sha256_text()
+		code = source_identity()
 	var library := "frontline_sim.dll" if OS.get_name() == "Windows" else ("libfrontline_sim.dylib" if OS.get_name() == "macOS" else "libfrontline_sim.so")
 	var path := "res://bin/native/" + library
 	if not FileAccess.file_exists(path):

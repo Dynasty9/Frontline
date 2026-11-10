@@ -62,7 +62,7 @@ on:
       - native/**
       - .cargo/**
       - tools/build_native.py
-      - tools/map_cache_version.py
+      - addons/map_cache_stamp/**
       - tools/bake_maps.py
       - tools/check_windows_imports.py
       - tools/build_web.py
@@ -167,7 +167,6 @@ jobs:
           path: |
             bin/native/**
             bin/content.json
-            bin/map-cache-code.sha256
             frontline_sim.gdextension
 
   build:

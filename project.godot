@@ -43,6 +43,10 @@ settings/gdscript/always_track_call_stacks=true
 window/size/viewport_width=1600
 window/size/viewport_height=900
 
+[editor_plugins]
+
+enabled=PackedStringArray("res://addons/map_cache_stamp/plugin.cfg")
+
 [physics]
 
 3d/physics_engine="Jolt Physics"

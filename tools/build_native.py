@@ -4,7 +4,6 @@ import argparse
 import shutil
 import subprocess
 import sys
-from map_cache_version import stamp
 
 ROOT = Path(__file__).resolve().parents[1]
 parser = argparse.ArgumentParser()
@@ -56,5 +55,4 @@ linux.x86_64 = "res://bin/native/libfrontline_sim.so"
 macos = "res://bin/native/libfrontline_sim.dylib"
 web.wasm32 = "res://bin/web/frontline_sim.wasm"
 ''', encoding="utf-8")
-stamp(ROOT)
 print(f"Staged simulation binaries in {destination}")

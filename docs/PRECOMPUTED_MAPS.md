@@ -31,7 +31,7 @@ third-party downloads. Do not install untrusted packages.
 Identity covers GDScript sources, scene/resource sources (including alpine
 landform data), project settings, the actual native extension and server
 binaries, bundled content and Godot version. Development builds hash source;
-exports use the source stamp made by `tools/build_native.py`. Unstamped exports
+exports use a source stamp injected by the editor export plugin. Unstamped exports
 skip caching. Rebuilds on another platform or with different native binaries
 require their own bake. No replay/build identity checks are relaxed.
 
@@ -58,10 +58,11 @@ verifies the recording. It fails on generation errors or verification failure.
 Use `--ticks=N` to change the validation duration. Packages are ignored by Git;
 they are build artifacts, potentially hundreds of MiB for large maps. Desktop
 export presets include `maps/precomputed/*.flmap`. Bake against the exact binaries
-being exported, after all source changes. Re-run `python tools/map_cache_version.py`
-before an export if scripts changed after the native build. The release pipeline
-carries the source stamp with the native artifacts; it does not replace random
-maps with a fixed catalog or automatically ship every possible player setup.
+being exported, after all source changes. The enabled `addons/map_cache_stamp` plugin computes the source stamp during
+every export, including headless CI exports, using the same function as the
+generator. There is no manually maintained or build-time stamp to go stale.
+The release pipeline does not replace random maps with a fixed catalog or
+automatically ship every possible player setup.
 
 Use a fixed seed and the same player setup to reuse a custom battlefield. A
 prebaked observer setup is not a substitute for a player-controlled setup. This
@@ -134,3 +135,12 @@ Windows release export passed. The exported executable loaded the bundled
 verified 60-tick replay as the editor-generated package. Cache corruption/repair,
 code/input invalidation, player order, disabled caching and eviction are covered.
 Changelog and presentation audits passed.
+
+The timing captures above were taken at d6f909bb. The export-stamping follow-up
+shares the same source hashing algorithm and cache/loading path, and only moves
+stamping into the export hook; it does not change generation or simulation.
+
+The final exported-package check deliberately left an all-zero stale stamp on
+disk. The export hook injected the current fingerprint, and the executable still
+loaded the correct bundled package with exact initial bytes. The two cache-specific
+regressions were rerun after moving the stamp into the export hook.
