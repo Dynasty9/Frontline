@@ -7,7 +7,7 @@ func _ready() -> void:
 	assert(arrays[0] == Atmosphere.terrain_materials()[0], "Map reloads must reuse the material allocation")
 	for channel in 2:
 		var array := arrays[channel]
-		assert(array.get_layers() == 5 and array.get_width() == 1024 and array.get_height() == 1024)
+		assert(array.get_layers() == 6 and array.get_width() == 1024 and array.get_height() == 1024)
 		assert(array.has_mipmaps() and array.get_format() == Image.FORMAT_RGBA8, "All packed channels and distant filtering must survive import")
 		for layer in Atmosphere.TERRAIN_MATERIALS.size():
 			var name: String = Atmosphere.TERRAIN_MATERIALS[layer]
@@ -21,6 +21,13 @@ func _ready() -> void:
 				assert(original.get_pixelv(p) == imported.get_pixelv(p), "Import must not repair alpha: it contains height or roughness")
 			if DisplayServer.get_name() != "headless":
 				assert(array.get_layer_data(layer).get_data() == imported.get_data(), "Array layers must preserve the packed channels and mip levels")
+		var gravel_path := "res://assets/town/gravelly_sand_color.jpg" if channel == 0 else "res://assets/town/gravelly_sand_surface.png"
+		var gravel: Texture2D = load(gravel_path)
+		var grains := gravel.get_image()
+		grains.convert(Image.FORMAT_RGBA8)
+		if DisplayServer.get_name() != "headless":
+			assert(array.get_layer_data(5).get_data() == grains.get_data(), "Gravel array layer must retain every imported texel and mip")
+	assert(Atmosphere.GROUND_SHADER.count("uniform sampler") == 12, "Beach detail must reuse the existing terrain sampler budget")
 	var asphalt: Texture2D = preload("res://assets/town/road_damaged_clean_surface.png")
 	var original := Image.new()
 	assert(original.load_png_from_buffer(FileAccess.get_file_as_bytes("res://assets/town/road_damaged_clean_surface.png")) == OK)
@@ -267,7 +274,12 @@ void fragment() {
 	var meadow_expected := meadow_image.get_pixel(0, 0).srgb_to_linear() * Color(0.27, 0.415, 0.375)
 	assert(Vector3(meadow_pixel.r, meadow_pixel.g, meadow_pixel.b).distance_to(Vector3(meadow_expected.r, meadow_expected.g, meadow_expected.b)) < 0.008, "Meadow photographs shade in linear light in both renderers: %s" % meadow_pixel)
 	meadow_shader.code = meadow_code.replace("meadow_color(vec2(0.5), 0.5)", "shore_gravel_color(vec2(0.5))")
-	meadow_material.set_shader_parameter("shore_gravel_texture", ImageTexture.create_from_image(meadow_image))
+	var grain_layers: Array[Image] = []
+	for layer in 6:
+		grain_layers.append(meadow_image)
+	var grain_array := Texture2DArray.new()
+	assert(grain_array.create_from_images(grain_layers) == OK)
+	meadow_material.set_shader_parameter("material_colors", grain_array)
 	for frame in 3:
 		await RenderingServer.frame_post_draw
 	var shore_pixel := view.get_texture().get_image().get_pixel(32, 32).srgb_to_linear()

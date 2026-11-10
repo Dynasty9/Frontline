@@ -377,6 +377,11 @@ static func terrain_materials() -> Array[Texture2DArray]:
 			for name in TERRAIN_MATERIALS:
 				var texture: Texture2D = load("res://assets/terrain/%s_%s.png" % [name, suffix])
 				images.append(texture.get_image())
+			var gravel_path := "res://assets/town/gravelly_sand_color.jpg" if suffix == "color_height" else "res://assets/town/gravelly_sand_surface.png"
+			var gravel: Texture2D = load(gravel_path)
+			var grains := gravel.get_image()
+			grains.convert(Image.FORMAT_RGBA8)
+			images.append(grains)
 			var array := Texture2DArray.new()
 			var error := array.create_from_images(images)
 			assert(error == OK, "Terrain material layers must share size, format and mipmaps")
@@ -400,8 +405,6 @@ func _build_ground() -> void:
 	ground_mat.set_shader_parameter("material_colors", materials[0])
 	ground_mat.set_shader_parameter("material_surfaces", materials[1])
 	ground_mat.set_shader_parameter("meadow_grass", preload("res://assets/town/leafy_grass_color.jpg"))
-	ground_mat.set_shader_parameter("shore_gravel_texture", preload("res://assets/town/gravelly_sand_color.jpg"))
-	ground_mat.set_shader_parameter("shore_gravel_surface", preload("res://assets/town/gravelly_sand_surface.png"))
 	ground_mat.set_shader_parameter("cloud_strength", float(_d.clouds))
 	ground_mat.set_shader_parameter("sun_tint", _d.sun)
 	ground_mat.set_shader_parameter("air_color", _d.fog)
@@ -1370,10 +1373,8 @@ vec3 meadow_color(vec2 p, float dryness) {
 }
 
 // Fine rounded grains share the sand's warm palette; mountain scree reads as giant chips here.
-uniform sampler2D shore_gravel_texture : source_color, filter_linear_mipmap_anisotropic, repeat_enable;
-uniform sampler2D shore_gravel_surface : filter_linear_mipmap_anisotropic, repeat_enable;
 vec3 shore_gravel_color(vec2 p) {
-	vec3 scan = texture(shore_gravel_texture, p * 0.65).rgb;
+	vec3 scan = texture(material_colors, vec3(p * 0.65, 5.0)).rgb;
 	if (OUTPUT_IS_SRGB) {
 		scan = mix(scan / 12.92, pow((scan + 0.055) / 1.055, vec3(2.4)), step(vec3(0.04045), scan));
 	}
@@ -1576,7 +1577,7 @@ void fragment() {
 	float shore_roughness = 0.9;
 	if (shore_stone > 0.001) {
 		col = mix(col, shore_gravel_color(p) * (1.0 - wet_sand * 0.25), shore_stone);
-		vec4 grain = texture(shore_gravel_surface, p * 0.65);
+		vec4 grain = texture(material_surfaces, vec3(p * 0.65, 5.0));
 		vec3 grain_n = grain.rgb * 2.0 - 1.0;
 		shore_normal = normalize(geometric + vec3(grain_n.x, 0.0, grain_n.y) * 0.18);
 		shore_roughness = clamp(grain.a, 0.65, 1.0);
