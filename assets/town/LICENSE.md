@@ -2,6 +2,7 @@
 
 CC0 1.0 assets from [Poly Haven](https://polyhaven.com/license):
 
+- [Road Damaged Clean](https://polyhaven.com/a/road_damaged_clean), Dimitrios Savva; 2.2 m scan.
 - [Aerial Asphalt 01](https://polyhaven.com/a/aerial_asphalt_01), Rob Tuytel; 30 m scan.
 - [Concrete Pavement](https://polyhaven.com/a/concrete_pavement), Charlotte Baglioni; 1.8 m scan.
 - [Leafy Grass](https://polyhaven.com/a/leafy_grass), Charlotte Baglioni; 2 m scan.
@@ -23,3 +24,12 @@ bundled runtime textures. Asphalt retains 2K; other surfaces use 1K. Repair asph
 and roughness in alpha. Alpha is data; imports preserve it and generate mipmaps.
 The game never downloads these assets. Shader tinting varies grass moisture and
 slab weathering; source photographs contain no new generated painted detail.
+
+Street surfaces combine the aerial scan at 30 m for broad cracks and weathering
+with Road Damaged Clean at 2.2 m for fine aggregate and normal/roughness detail.
+The fine scan is desaturated toward charcoal in the shader; repaired patches
+retain the same aggregate scale. The normal maps follow the actual road slope.
+
+The baker also measures each packed photograph's average linear albedo in
+`material_means.tres`. Building materials use those values to preserve their
+preset and per-object colours while retaining photographed variation.

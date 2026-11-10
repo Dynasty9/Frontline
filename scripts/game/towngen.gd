@@ -12,7 +12,7 @@ extends RefCounted
 ## Decor on each client.
 
 const ROAD_HW := 2.9
-const CURB := 3.0  # curb line, from the street's centre line
+const CURB := ROAD_HW  # the kerb meets the carriageway without a grass strip
 const WALK := 4.8  # back of the sidewalk
 const FRONT := 5.2  # lot frontage line
 const S := 40.0  # between parallel streets
@@ -505,9 +505,40 @@ func _lot_house(front: Vector3, n: Vector3, d: Vector3, W: float, shop: bool) ->
 				_d("clothesline", yc, yaw_d)
 	if drive:
 		var dc := front + n * (setback + 2.6) + d * (-signf(side) * (W * 0.5 - 1.8))
-		_d("drive", front + n * (setback + 2.6) * 0.5 + d * (-signf(side) * (W * 0.5 - 1.8)), axis, Vector3(2.6, 0, setback + 2.6))
+		var apron := FRONT - WALK if _curb_crossing(front + d * drive_x, n, d, 2.6) else 0.0
+		_d("drive", front + n * (setback + 2.6 - apron) * 0.5 + d * drive_x, axis, Vector3(2.6, 0, setback + 2.6 + apron))
 		if rng.randf() < 0.75:
 			mg._try("car", dc, axis + (PI if rng.randf() < 0.5 else 0.0), -1, {"variant": rng.randi() % 5})
+
+
+func _curb_crossing(front: Vector3, n: Vector3, d: Vector3, width: float) -> bool:
+	var cut := false
+	for i in decor.size():
+		var entry: Array = decor[i]
+		if entry[0] != "walk" and entry[0] != "curb":
+			continue
+		var along := Basis(Vector3.UP, float(entry[2])).x
+		var p: Vector3 = entry[1]
+		var depth := (p - front).dot(n)
+		if absf(along.dot(d)) < 0.999 or depth < CURB - FRONT - 0.1 or depth > WALK - FRONT + 0.1:
+			continue
+		var size: Vector3 = entry[3]
+		var center := (front - p).dot(along)
+		var low := Vector2(center - width * 0.5, center + width * 0.5)
+		var start := maxf(-size.x * 0.5, low.x - 0.6)
+		var end := minf(size.x * 0.5, low.y + 0.6)
+		if end - start < 0.01:
+			continue
+		# Keep existing furniture indices stable so their seeded appearance does not change.
+		var middle := (start + end) * 0.5
+		var crossing := Defs.flat(p + along * middle)
+		crossing.y = world.terrain.landform.height(crossing)
+		decor[i] = [entry[0] + "_crossing", crossing, entry[2], [Vector3(end - start, size.y, size.z), low - Vector2.ONE * middle]]
+		for interval in [Vector2(-size.x * 0.5, start), Vector2(end, size.x * 0.5)]:
+			if interval.y - interval.x > 0.01:
+				_d(entry[0], Defs.flat(p + along * (interval.x + interval.y) * 0.5), entry[2], Vector3(interval.y - interval.x, size.y, size.z))
+		cut = true
+	return cut
 
 
 func _approach(front: Vector3, n: Vector3, d: Vector3, door: Vector3, side: float, setback: float, width: float) -> float:

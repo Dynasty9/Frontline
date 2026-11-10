@@ -6,6 +6,15 @@ class ClearCombat extends Combat:
 
 
 func _ready() -> void:
+	var river_shapes := [{"pts": PackedVector3Array([Vector3(-80, 0, -80), Vector3.ZERO, Vector3(80, 0, 80)]), "w": 20.0}]
+	var river_bytes := var_to_bytes(river_shapes)
+	var tips := WaterView.scenery_river_tips(river_shapes, 32.0)
+	assert(tips.size() == 8 and tips[0].z == 10.0 and tips[1].z == 10.0 and tips[2] == Vector4.ZERO, "Corner crossings are deduplicated and unused shader slots are empty")
+	assert(Vector2(tips[0].x, tips[0].y) == Vector2(-32, -32) and Vector2(cos(tips[0].w), sin(tips[0].w)).dot(Vector2(-1, -1).normalized()) > 0.999)
+	assert(Vector2(tips[1].x, tips[1].y) == Vector2(32, 32) and Vector2(cos(tips[1].w), sin(tips[1].w)).dot(Vector2(1, 1).normalized()) > 0.999)
+	assert(var_to_bytes(river_shapes) == river_bytes, "Scenery continuations never alter replicated water shapes")
+	var inland := [{"pts": PackedVector3Array([Vector3(-10, 0, 0), Vector3(10, 0, 0)]), "w": 20.0}]
+	assert(WaterView.scenery_river_tips(inland, 32.0) == WaterView.scenery_river_tips([], 32.0), "Inland rivers need no boundary extension")
 	assert(MapGen.habitat(0.4, 6.0, 0.2) > MapGen.habitat(0.4, -6.0, 0.2), "Sheltered bowls support more growth than exposed ribs")
 	assert(MapGen.habitat(0.3, 0.0, 0.8) > MapGen.habitat(0.3, 0.0, -0.8), "Aspect affects habitat")
 	assert(MapGen.habitat(0.2, 0.0, 0.0) > MapGen.habitat(0.9, 0.0, 0.0), "Gentler ledges retain more vegetation")
@@ -27,10 +36,33 @@ func _ready() -> void:
 			assert(normals[j].dot(vertices[j]) > 0.0, "Stone faces point outward")
 	assert(Res.alpine_stone(0).get_aabb() != Res.alpine_stone(1).get_aabb(), "Stone variants have distinct fractured profiles")
 	assert(Mats.get_mat("alpine_stone").get_shader_parameter("stone_texture") is Texture2D, "Natural stones bind their photographic surface in merged batches")
+	var surveyed: Resource = preload("res://assets/terrain/surveyed_alps.res")
+	assert(int(surveyed.get_meta("width")) == 512)
+	for name in ["mont_blanc", "matterhorn", "jungfrau"]:
+		var heights: PackedFloat32Array = surveyed.get_meta(name)
+		assert(heights.size() == 512 * 512)
+		for value in heights:
+			assert(is_finite(value) and value >= 0.0 and value <= 1.0)
+		for edge in 512:
+			assert(heights[edge] == 0.0 and heights[511 * 512 + edge] == 0.0)
+			assert(heights[edge * 512] == 0.0 and heights[edge * 512 + 511] == 0.0, "Surveyed stamps must join without a vertical cut")
 	var horizon := Atmosphere.backdrop_image(3)
-	assert(horizon.get_size() == Vector2i(512, 512) and horizon.has_mipmaps() and horizon.get_format() == Image.FORMAT_RF)
+	assert(horizon.get_size() == Vector2i(512, 512) and horizon.has_mipmaps() and horizon.get_format() == Image.FORMAT_RGF)
 	assert(horizon.get_data() == Atmosphere.backdrop_image(3).get_data(), "Scenery is deterministic for every peer")
 	assert(horizon.get_data() != Atmosphere.backdrop_image(4).get_data(), "Different maps have different mountain silhouettes")
+	var runoff := PackedFloat32Array()
+	runoff.resize(33 * 33)
+	for z in 33:
+		for x in 33:
+			runoff[z * 33 + x] = absf(x - 16.0) + (32 - z) * 0.5
+	var catchment := Landform.bake_drainage(runoff, 33)
+	assert(catchment == Landform.bake_drainage(runoff, 33), "Catchment weathering is deterministic")
+	assert(catchment[30 * 33 + 16] > catchment[4 * 33 + 16] + 0.2, "Gully weathering grows downstream")
+	assert(catchment[24 * 33 + 16] > catchment[24 * 33 + 4] + 0.2, "Flow converges in the valley instead of crossing its walls")
+	assert(runoff[0] == 32.0 and runoff[32 * 33 + 16] == 0.0, "Drainage baking preserves gameplay heights")
+	runoff.fill(0.0)
+	for value in Landform.bake_drainage(runoff, 33):
+		assert(value == 0.0, "Flat ground has no arbitrary downhill streaks or wrapped edges")
 	TerrainMap.N = 64
 	TerrainMap.H = 32.0
 	TerrainMap.DN = 128
@@ -42,6 +74,18 @@ func _ready() -> void:
 	world.settings = {"seed": 3}
 	world.terrain = TerrainMap.new(world)
 	world.water = WaterMap.new(world)
+	var precise := TerrainMap.new(world)
+	var slope := PackedFloat32Array()
+	slope.resize(17 * 17)
+	for z in 17:
+		for x in 17:
+			slope[z * 17 + x] = 100.001 + x * 0.011 + z * 0.017
+	precise.install_landform(slope)
+	for z in range(30, 36):
+		for x in range(30, 36):
+			var height := precise.dh[z * TerrainMap.DN + x]
+			var drawn := precise.deform_img.get_pixel(x, z)
+			assert(absf(drawn.r - height) < 0.00002 and absf(drawn.g - height) < 0.00002, "Elevated height textures must not quantize slopes into visible terraces")
 	var dressing := Decor.new()
 	dressing.build(world, [["alpine_stones", Vector3.ZERO, 0.0, 1.0]])
 	var chunk: Node3D = dressing._chunks[Vector2i.ZERO]
@@ -74,6 +118,7 @@ func _ready() -> void:
 	assert(gen._is_free(Vector3.ZERO, Vector2(0.6, 0.6), 0.0, 0.6, true, 0.7), "Tree roots can occupy a moderate slope")
 	assert(absf(gen._contour(Vector3.ZERO).x) < 0.01, "Woodland follows the contour rather than running straight uphill")
 	var town := TownGen.new(gen)
+	check_driveway_crossings(world, gen)
 	town._d("lamp", Vector3(0, 2, 0))
 	assert(is_equal_approx(town.decor[0][1].y, world.terrain.landform.height(Vector3.ZERO) + 2.0))
 	var wire := [Vector3(4, 0, 0), 0.0]
@@ -143,7 +188,7 @@ func _ready() -> void:
 	atmosphere.env = Environment.new()
 	atmosphere.ground_mat = ShaderMaterial.new()
 	var ground_shader := Shader.new()
-	ground_shader.code = MapDims.shader(Atmosphere.GROUND_SHADER)
+	ground_shader.code = MapDims.shader(Atmosphere.GROUND_SHADER.replace("// BACKDROP_HEIGHT", Atmosphere.BACKDROP_HEIGHT))
 	atmosphere.ground_mat.shader = ground_shader
 	atmosphere._d = {"fog_d": 0.002}
 	world.terrain.landform.peak = 80.0
@@ -166,7 +211,9 @@ func _ready() -> void:
 	var repeat := Landform.new(64)
 	repeat.generate(3, [[], [], []], world.water, [])
 	assert(geology.heights == repeat.heights, "Seeded terrain must reproduce exactly")
+	repeat.drainage = PackedFloat32Array([1.0])
 	repeat.generate(9, [[], [], []], world.water, [])
+	assert(repeat.drainage.is_empty(), "Regenerating a map invalidates its drainage")
 	assert(geology.heights != repeat.heights, "Seeds must produce different terrain")
 	assert(Landform.valid(geology.heights, 64))
 	var campaign := Landform.new(64)
@@ -210,12 +257,18 @@ func _ready() -> void:
 			heights[z * 17 + x] = 12.0 * maxf(0.0, 1.0 - absf(wx) / 12.0)
 	var flat := Landform.new(64).bake_surface()
 	assert(flat.get_pixel(3, 3).r > 0.99 and absf(flat.get_pixel(3, 3).g - 0.5) < 0.01, "Flat terrain has open sky and no concavity")
+	assert(flat.get_format() == Image.FORMAT_RGBA8 and flat.get_pixel(3, 3).a == 0.0, "Flat terrain has no drainage weathering")
+	world.terrain.landform.drainage = PackedFloat32Array([1.0])
 	world.terrain.install_landform(heights)
+	assert(world.terrain.landform.drainage.is_empty(), "Installing a map invalidates the old catchment cache")
 	var baked := world.terrain.landform.bake_surface()
 	assert(baked.get_data() == world.terrain.landform.bake_surface().get_data(), "Surface baking is deterministic")
 	assert(world.terrain.landform.heights == heights, "Baking must not change gameplay geography")
 	assert(baked.get_pixel(2, 4).r < 0.97, "A nearby ridge reduces valley sky light")
 	var low_sun := world.terrain.landform.bake_surface(Vector3(1, 0.3, 0).normalized())
+	for z in baked.get_height():
+		for x in baked.get_width():
+			assert(baked.get_pixel(x, z).a == low_sun.get_pixel(x, z).a, "Changing sunlight preserves drainage")
 	assert(low_sun.get_pixel(2, 4).b < 0.1 and low_sun.get_pixel(6, 4).b > 0.9, "Baked sunlight casts a ridge shadow on its sheltered side")
 	assert(is_equal_approx(world.ground_y(Vector3.ZERO), 11.75))
 	var hit := world.terrain.ray_ground(Vector3(-20, 1.5, 0), Vector3(20, 1.5, 0))
@@ -345,3 +398,74 @@ func _ready() -> void:
 	assert(Mats.paving("pavement").get_shader_parameter("grime") == 0.0, "Horizontal paving must not inherit ground-height wall grime")
 	print("LANDFORM passed: generation, determinism, validation, grounding, sight, slope navigation, craters, replication")
 	get_tree().quit()
+
+
+func check_driveway_crossings(world, gen: MapGen) -> void:
+	for yaw: float in [0.0, 0.7, PI]:
+		var along := Basis(Vector3.UP, yaw).x
+		var away := Basis(Vector3.UP, yaw).z
+		var town := TownGen.new(gen)
+		town._d("walk", away * ((TownGen.CURB + TownGen.WALK) * 0.5), yaw, Vector3(16, 0.12, 1.8))
+		town._d("curb", away * (TownGen.CURB + 0.09), yaw, Vector3(16, 0.17, 0.18))
+		town._d("walk", -away * ((TownGen.CURB + TownGen.WALK) * 0.5), yaw, Vector3(16, 0.12, 1.8))
+		town._d("walk", away * ((TownGen.CURB + TownGen.WALK) * 0.5), yaw + PI * 0.5, Vector3(16, 0.12, 1.8))
+		var untouched := town.decor.slice(2).duplicate(true)
+		var rng_before := gen.rng.state
+		assert(town._curb_crossing(away * TownGen.FRONT + along, away, along, 2.6))
+		assert(town.decor[2] == untouched[0] and town.decor[3] == untouched[1], "Crossings preserve the opposite and perpendicular sidewalks")
+		assert(gen.rng.state == rng_before, "Driveway presentation must not change the generated battle")
+		for kind in ["walk", "curb"]:
+			var length := 0.0
+			var spans: Array[Vector2] = []
+			for entry: Array in town.decor:
+				if entry == town.decor[2] or entry == town.decor[3]:
+					continue
+				if entry[0] != kind and entry[0] != kind + "_crossing":
+					continue
+				var size: Vector3 = entry[3] if entry[3] is Vector3 else entry[3][0]
+				var center: float = entry[1].dot(along)
+				length += size.x
+				spans.append(Vector2(center - size.x * 0.5, center + size.x * 0.5))
+				assert(is_equal_approx(entry[1].y, world.terrain.landform.height(entry[1])), "Split paving is grounded exactly once")
+			spans.sort_custom(func(a: Vector2, b: Vector2) -> bool: return a.x < b.x)
+			assert(is_equal_approx(length, 16.0) and spans.size() == 3)
+			for i in 2:
+				assert(is_equal_approx(spans[i].y, spans[i + 1].x), "A driveway must leave no gap or overlap in the sidewalk")
+		assert(town._curb_crossing(away * TownGen.FRONT + along * 7.4, away, along, 2.6), "Crossings can end at a sidewalk boundary")
+		assert(World._unpack(World._pack(town.decor)) == town.decor, "Lowered crossings survive map transfer")
+		world.decor = town.decor
+		var atmosphere := Atmosphere.new()
+		atmosphere.world = world
+		var grass := Grass.new()
+		grass.atmo = atmosphere
+		var blocked := grass._blocked_job()
+		for entry: Array in town.decor:
+			if entry[0] == "walk_crossing":
+				var point: Vector3 = entry[1]
+				assert(blocked.boxes.any(func(box: Array) -> bool: return box[0] == Vector2(point.x, point.z)), "Grass must not grow through a lowered sidewalk")
+		grass.free()
+		atmosphere.free()
+		var paving := Decor.new()
+		paving.world = world
+		for entry: Array in town.decor:
+			if entry[0] != "walk_crossing" and entry[0] != "curb_crossing":
+				continue
+			var size: Vector3 = entry[3][0]
+			var lowered: Vector2 = entry[3][1]
+			paving._at = Transform3D(Basis(Vector3.UP, yaw), entry[1])
+			var local := Transform3D(Basis.IDENTITY, Vector3(0, size.y * 0.5, 0))
+			var mesh := paving._paving_mesh(Res.box(size), local, lowered)
+			var arrays := mesh.surface_get_arrays(0)
+			var vertices: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
+			var normals: PackedVector3Array = arrays[Mesh.ARRAY_NORMAL]
+			for i in vertices.size():
+				assert(vertices[i].is_finite() and is_equal_approx(normals[i].length(), 1.0))
+				if normals[i].y < 0.5:
+					continue
+				var point := paving._at * local * vertices[i]
+				var shoulder := maxf(lowered.x - vertices[i].x, vertices[i].x - lowered.y)
+				var expected := lerpf(0.03, size.y, clampf(shoulder / 0.6, 0.0, 1.0))
+				assert(absf(point.y - world.terrain.landform.height(point) - expected) < 0.001, "Lowered paving joins the driveway with sloping shoulders")
+		paving.free()
+	var country := TownGen.new(gen)
+	assert(not country._curb_crossing(Vector3.ZERO, Vector3.BACK, Vector3.RIGHT, 2.6), "Country drives do not invent urban sidewalks")

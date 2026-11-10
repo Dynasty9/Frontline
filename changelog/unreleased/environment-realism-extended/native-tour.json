@@ -1,0 +1,69 @@
+{
+  "arguments": [
+    "--script",
+    "./tools/showcase/environment-motion.gd"
+  ],
+  "fps": 30,
+  "mood": "day",
+  "preset": "high",
+  "renderer": "forward_plus",
+  "resolution": "1280x768 (48-pixel label above uncropped 1280x720 source)",
+  "seed": 3,
+  "simulation": "Held at two seconds; native camera, wind and water remain animated. Not a combat or performance benchmark.",
+  "stage": "environment",
+  "user_arguments": [
+    "--aivai",
+    "--seed=3",
+    "--offscreen",
+    "--nohud",
+    "--set=perf:0",
+    "--preset=high",
+    "--mood=day",
+    "--port=8283",
+    "--motion-stage=environment",
+    "--motion-output=./build/media-review"
+  ],
+  "views": [
+    {
+      "focus": "(0.0, 0.0, 0.0)",
+      "fov": 55.0,
+      "frames": 120,
+      "label": "Alpine ranges, ocean and forest coverage",
+      "orbit_radians": 0.065,
+      "pitch": -22.0,
+      "seconds": 4,
+      "yaw": 0.7,
+      "zoom": 900.0
+    },
+    {
+      "focus": "(-30.0, 0.0, -12.0)",
+      "fov": 55.0,
+      "frames": 120,
+      "label": "Calibrated roofs, asphalt and frontages",
+      "orbit_radians": 0.065,
+      "pitch": -45.0,
+      "seconds": 4,
+      "yaw": 0.7,
+      "zoom": 55.0
+    },
+    {
+      "focus": "(-110.0, 0.0, -130.0)",
+      "fov": 55.0,
+      "frames": 120,
+      "label": "Finer meadow and clustered shrubs",
+      "orbit_radians": 0.065,
+      "pitch": -35.0,
+      "seconds": 4,
+      "yaw": 0.7,
+      "zoom": 22.0
+    }
+  ],
+  "source_ref": "f95bbc43cb29767b9b2c3c0c881aa32f649698c8",
+  "clip": "native-tour.webm",
+  "poster": "native-tour.jpg",
+  "clip_sha256": "943f17df930a66ad7eff872a065c5506d14a1ef2ae7532cb98691c26d0b687ca",
+  "seconds": 12,
+  "audio": false,
+  "codec": "VP9",
+  "command": "godot --path . --fixed-fps 30 --resolution 1280x720 --script tools/showcase/environment-motion.gd -- --aivai --seed=3 --offscreen --nohud --set=perf:0 --preset=high --mood=day --motion-stage=environment --motion-output=build/media-review"
+}
