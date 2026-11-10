@@ -6,6 +6,8 @@ The most visible changes are individual track shoes, detailed spares and correct
 
 Before is main at `70519054f7bec00757c35744891eb663ee6ebc80`; after geometry is `1c66227dda12d09d88ee614792efa6288ffc830e`. Captures use Godot 4.6.3, seed 3, a fixed studio, the same per-model framing rule and Compatibility renderer. Rear direction is (-1, 0.65, 1.25), front (1, 0.65, -1.25). The project targets Godot 4.7; local validation used the available 4.6.3 executable. No lighting or material-map edits were made for these comparisons. Very small framing changes can follow changed geometry bounds.
 
+The subsequent merge of main (`953e6fa`) includes upstream environment and material-colour calibration. A [fresh 12-subject Compatibility check](merged-check.jpg) verifies the combined result; the paired images below deliberately retain their original revisions to isolate this component pass.
+
 ## Matched full-roster sheets
 
 Each sheet has twelve labelled subjects, left-to-right, top-to-bottom. Front and rear sheets were visually inspected; the alternate faction was also rendered, with selected sheets checked for palette regressions. All model keys were built and audited in both palettes by the material test.

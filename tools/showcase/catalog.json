@@ -6268,6 +6268,11 @@
           "file": "changelog/unreleased/shared-vehicle-components/civilian_0-after.jpg",
           "sha256": "3ce481d6a654f5979b3de0bd05ebde981086191dc92a540ee187a58e0de7ff89",
           "caption": "civilian_0 after"
+        },
+        {
+          "file": "docs/vehicle-component-review/merged-check.jpg",
+          "sha256": "7fcc7e127faf91a137462fe36a0d4bef89e96f830a1ac35096de093bced362ea",
+          "caption": "Post-merge Compatibility spot check at 953e6fa; includes upstream material-colour calibration."
         }
       ],
       "output": null,
@@ -6281,7 +6286,8 @@
         ],
         "command": "DISPLAY=:101 godot --path CHECKOUT --rendering-method RENDERER --audio-driver Dummy tools/showcase/vehicle-surfaces.tscn -- --surface-out=OUTPUT [--surface-rear] [--surface-team=1] [--surface-single --surface-ground --surface-kinds=tank,old_tank,nyx_ac,varsuk,hunter,ed1,civilian_0,offroad,patrol_ship,caesar]",
         "timing": "Five process frames, then frame_post_draw",
-        "camera": "Bounds-based orthographic framing; identical settings per pair. View direction in manifests."
+        "camera": "Bounds-based orthographic framing; identical settings per pair. View direction in manifests.",
+        "merged_check": "953e6fa, 12 subjects in Compatibility; upstream material calibration preserved"
       }
     }
   ],

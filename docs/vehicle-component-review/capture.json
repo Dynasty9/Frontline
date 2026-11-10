@@ -1306,6 +1306,36 @@
       "file": "changelog/unreleased/shared-vehicle-components/civilian_0-after.jpg",
       "sha256": "3ce481d6a654f5979b3de0bd05ebde981086191dc92a540ee187a58e0de7ff89",
       "caption": "civilian_0 after"
+    },
+    {
+      "file": "docs/vehicle-component-review/merged-check.jpg",
+      "sha256": "7fcc7e127faf91a137462fe36a0d4bef89e96f830a1ac35096de093bced362ea",
+      "caption": "Post-merge Compatibility spot check at 953e6fa; includes upstream material-colour calibration."
     }
-  ]
+  ],
+  "merged_check": {
+    "source_ref": "953e6fa",
+    "capture": {
+      "camera_size": 0.0,
+      "grounded": false,
+      "models": [
+        "tank",
+        "ifrit",
+        "qilin",
+        "ed1",
+        "offroad",
+        "civilian_0",
+        "tempest_repair",
+        "patrol_ship",
+        "caesar",
+        "old_tank",
+        "zamak",
+        "hunter"
+      ],
+      "renderer": "gl_compatibility",
+      "seed": 3,
+      "team": 0,
+      "view_direction": "(1.0, 0.65, -1.25)"
+    }
+  }
 }
