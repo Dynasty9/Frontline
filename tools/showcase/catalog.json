@@ -4537,6 +4537,394 @@
         "in_game": "vehicle-in-world.tscn, attack seed 3, showcase-vehicle=offroad, High daytime perf:0 aa:2 post:0, focus=-20,-10 zoom=12 pitch=-28 cam-yaw=2.45, fixed-fps 30 shot-at=1 quit-after=2",
         "validation": "Four focused tests pass; full roster fixture includes glass LOD and wreck checks. Roster scenario 10 seconds. Both palettes reviewed; software rendering, no hardware performance claim."
       }
+    },
+    {
+      "entry": "changelog/unreleased/realism-05-snow-surface.md",
+      "summary": "Snow shelves gain shallow wind grooves and granular highlights instead of perfectly smooth white surfaces.",
+      "medium": "still",
+      "stage": "native-media",
+      "rationale": "Isolate the revision from the previous proposal with identical upstream changes, seed and camera.",
+      "source_ref": "codex/realism-05-snow-surface",
+      "sources": [
+        {
+          "file": "changelog/unreleased/realism-05-snow-surface/target-before.jpg",
+          "sha256": "b35191eeb41ac1439b0a6bc0eff7f2a9e133e23895c5d53f10335b83c76a90dc",
+          "caption": "target before"
+        },
+        {
+          "file": "changelog/unreleased/realism-05-snow-surface/target-after.jpg",
+          "sha256": "76d394db07eddacf6d14c764a6a3de95654ebce10cf0a0f7a58a77f5a4344ea3",
+          "caption": "target after"
+        },
+        {
+          "file": "changelog/unreleased/realism-05-snow-surface/wide-before.jpg",
+          "sha256": "fb09c3d2ee5c6907ba463cd80d417d832a176f6a3888bd828153efca602eab46",
+          "caption": "wide before"
+        },
+        {
+          "file": "changelog/unreleased/realism-05-snow-surface/wide-after.jpg",
+          "sha256": "27e98ae3f08ab5d6b951a1403e00e1f7ac88b1cc4035712084871cc826431342",
+          "caption": "wide after"
+        },
+        {
+          "file": "changelog/unreleased/realism-05-snow-surface/target-compat.jpg",
+          "sha256": "ae040f87abb85d6b53157de3135ef4bc47e0876d4acab4e80a83880d270709ba",
+          "caption": "target compat"
+        },
+        {
+          "file": "changelog/unreleased/realism-05-snow-surface/compare.gif",
+          "sha256": "0b9cfe8e87421903f7434c001969db7f5993c98dc75344ebac23d5249cc77514",
+          "caption": "Native frames, separate labels, shared palette, 2.5 seconds each."
+        }
+      ],
+      "output": null,
+      "title": "Break up smooth snow with wind-shaped surface detail",
+      "version": "unreleased",
+      "kind": "improved",
+      "capture": {
+        "before_ref": "edc4b235c25eac674075d3c9641ce76ae9871c95",
+        "after_ref": "codex/realism-05-snow-surface",
+        "before_pack": "review-05-before.pck",
+        "after_pack": "review-05-after.pck",
+        "seed": 3,
+        "preset": "high",
+        "mood": "day",
+        "resolution": "1600x900",
+        "focus": "220,300",
+        "zoom": 180,
+        "pitch": -50,
+        "yaw": 0.7,
+        "shot_at": 2,
+        "quit_after": 3,
+        "wide": "focus 0,0; zoom 900; pitch -22; yaw 0.7",
+        "compatibility": "Target after with --rendering-method gl_compatibility",
+        "command": "godot --main-pack PACK --resolution 1600x900 -- --aivai --seed=3 --offscreen --nohud --set=perf:0 --preset=high --mood=MOOD --focus=FOCUS --zoom=ZOOM --pitch=PITCH --cam-yaw=0.7 --screenshot=OUTPUT --shot-at=2 --quit-after=3"
+      }
+    },
+    {
+      "entry": "changelog/unreleased/realism-06-seepage.md",
+      "summary": "Sheltered runoff channels darken and develop a restrained sheen while exposed rock remains dry.",
+      "medium": "still",
+      "stage": "native-media",
+      "rationale": "Isolate the revision from the previous proposal with identical upstream changes, seed and camera.",
+      "source_ref": "codex/realism-06-seepage",
+      "sources": [
+        {
+          "file": "changelog/unreleased/realism-06-seepage/target-before.jpg",
+          "sha256": "4de89d8b0fed535e4c3ef276ebffb714724069d15323faa754de688d081bc5fd",
+          "caption": "target before"
+        },
+        {
+          "file": "changelog/unreleased/realism-06-seepage/target-after.jpg",
+          "sha256": "d9a8aac0c3a1556bf084752e9caf4414901a1838fc6a5b2e21fb58de3248f9c2",
+          "caption": "target after"
+        },
+        {
+          "file": "changelog/unreleased/realism-06-seepage/wide-before.jpg",
+          "sha256": "ed33dd41ff9d56f3c8a9cc098fb841befc710d17f1c6b3f0c4bdff836d64535d",
+          "caption": "wide before"
+        },
+        {
+          "file": "changelog/unreleased/realism-06-seepage/wide-after.jpg",
+          "sha256": "750ca07196a8d76c386f60ba6587662566638f5986b6c0e93dbc9774dc6516f5",
+          "caption": "wide after"
+        },
+        {
+          "file": "changelog/unreleased/realism-06-seepage/target-compat.jpg",
+          "sha256": "3a94430957afdba158f78fc0d52be3fef3dd2cd9b99c1f699b192ab0c63967c6",
+          "caption": "target compat"
+        },
+        {
+          "file": "changelog/unreleased/realism-06-seepage/compare.gif",
+          "sha256": "ca09247d795ca14936020a4479ffb10e4fad19bb27a5dcc398ca5eec97573de7",
+          "caption": "Native frames, separate labels, shared palette, 2.5 seconds each."
+        }
+      ],
+      "output": null,
+      "title": "Give damp cliff streaks a wet surface response",
+      "version": "unreleased",
+      "kind": "improved",
+      "capture": {
+        "before_ref": "a3a630422c93a5c2d7abe491d30712480de42443",
+        "after_ref": "codex/realism-06-seepage",
+        "before_pack": "review-06-before.pck",
+        "after_pack": "review-06-after.pck",
+        "seed": 3,
+        "preset": "high",
+        "mood": "day",
+        "resolution": "1600x900",
+        "focus": "300,300",
+        "zoom": 100,
+        "pitch": -28,
+        "yaw": 0.7,
+        "shot_at": 2,
+        "quit_after": 3,
+        "wide": "focus 0,0; zoom 900; pitch -22; yaw 0.7",
+        "compatibility": "Target after with --rendering-method gl_compatibility",
+        "command": "godot --main-pack PACK --resolution 1600x900 -- --aivai --seed=3 --offscreen --nohud --set=perf:0 --preset=high --mood=MOOD --focus=FOCUS --zoom=ZOOM --pitch=PITCH --cam-yaw=0.7 --screenshot=OUTPUT --shot-at=2 --quit-after=3"
+      }
+    },
+    {
+      "entry": "changelog/unreleased/realism-07-spruce-boughs.md",
+      "summary": "Conifers have broken, asymmetric branch silhouettes that read as trees against rock and snow.",
+      "medium": "still",
+      "stage": "native-media",
+      "rationale": "Isolate the revision from the previous proposal with identical upstream changes, seed and camera.",
+      "source_ref": "codex/realism-07-spruce-boughs",
+      "sources": [
+        {
+          "file": "changelog/unreleased/realism-07-spruce-boughs/target-before.jpg",
+          "sha256": "383f8e4cde0ec32a00011b18cd1a12455b6a99a62e0ebf1912a9df2780262c85",
+          "caption": "target before"
+        },
+        {
+          "file": "changelog/unreleased/realism-07-spruce-boughs/target-after.jpg",
+          "sha256": "fbfb2fc7143b58c281b9c5e12eaaf892ddcc168a4bd10f8b6219897b44a49dd0",
+          "caption": "target after"
+        },
+        {
+          "file": "changelog/unreleased/realism-07-spruce-boughs/wide-before.jpg",
+          "sha256": "0798f6524dd430483865f5456edab1cd912226672ec3ff9352f4de46ff3276ee",
+          "caption": "wide before"
+        },
+        {
+          "file": "changelog/unreleased/realism-07-spruce-boughs/wide-after.jpg",
+          "sha256": "d85f502c6f04ab7a6138c677683ff1689fb2646d204ebe4678fc343c27ffec0d",
+          "caption": "wide after"
+        },
+        {
+          "file": "changelog/unreleased/realism-07-spruce-boughs/target-compat.jpg",
+          "sha256": "9554e0d3488577f17c94b189bf9b2cd3dbb54f3fc897ce23ef7685bcfb52c22c",
+          "caption": "target compat"
+        },
+        {
+          "file": "changelog/unreleased/realism-07-spruce-boughs/compare.gif",
+          "sha256": "cc0076aa01df816da96449a71553a61709c6b67d0ea470e5142d0d22ab887478",
+          "caption": "Native frames, separate labels, shared palette, 2.5 seconds each."
+        }
+      ],
+      "output": null,
+      "title": "Replace cone-like spruce tiers with ragged boughs",
+      "version": "unreleased",
+      "kind": "improved",
+      "capture": {
+        "before_ref": "9192ce6b39842e0dbd0cbd94f191e4e986aecbc6",
+        "after_ref": "codex/realism-07-spruce-boughs",
+        "before_pack": "iterate-07-before.pck",
+        "after_pack": "iterate-07-after.pck",
+        "seed": 3,
+        "preset": "high",
+        "mood": "day",
+        "resolution": "1600x900",
+        "focus": "220,300",
+        "zoom": 80,
+        "pitch": -28,
+        "yaw": 0.7,
+        "shot_at": 2,
+        "quit_after": 3,
+        "wide": "focus 0,0; zoom 900; pitch -22; yaw 0.7",
+        "compatibility": "Target after with --rendering-method gl_compatibility",
+        "command": "godot --main-pack PACK --resolution 1600x900 -- --aivai --seed=3 --offscreen --nohud --set=perf:0 --preset=high --mood=MOOD --focus=FOCUS --zoom=ZOOM --pitch=PITCH --cam-yaw=0.7 --screenshot=OUTPUT --shot-at=2 --quit-after=3"
+      }
+    },
+    {
+      "entry": "changelog/unreleased/realism-08-fractured-stones.md",
+      "summary": "Stones at the mountain foot have irregular broken faces instead of flattened round primitives.",
+      "medium": "motion",
+      "stage": "native-media",
+      "rationale": "A native current-PR camera tour establishes readable detail and battlefield context; preserved matched stills remain the historical before/after evidence.",
+      "source_ref": "codex/realism-08-fractured-stones",
+      "sources": [
+        {
+          "file": "changelog/unreleased/realism-08-fractured-stones/target-before.jpg",
+          "sha256": "3e3f07f721da3f004978b4758d62b74a9e4ec42e90d780fd3af32b44b307bde8",
+          "caption": "target before"
+        },
+        {
+          "file": "changelog/unreleased/realism-08-fractured-stones/target-after.jpg",
+          "sha256": "3bbc40c24730322f3d18310794a9650affc4d8caef9469c97bf4d58019495ba2",
+          "caption": "target after"
+        },
+        {
+          "file": "changelog/unreleased/realism-08-fractured-stones/wide-before.jpg",
+          "sha256": "57ecc319811dd5ebade56a75117a16e31b4e7583322734d0b196fae99383db2f",
+          "caption": "wide before"
+        },
+        {
+          "file": "changelog/unreleased/realism-08-fractured-stones/wide-after.jpg",
+          "sha256": "ee8f93bdfde15ec83cfc8851b4226df4718b17d6c18092c991515217ca7d9533",
+          "caption": "wide after"
+        },
+        {
+          "file": "changelog/unreleased/realism-08-fractured-stones/target-compat.jpg",
+          "sha256": "91ac4ad69bde212b89e51f0bc7f952d402c9b0612176277abfbbca16ad0e7f48",
+          "caption": "target compat"
+        },
+        {
+          "file": "changelog/unreleased/realism-08-fractured-stones/compare.gif",
+          "sha256": "3cbc48dcc6a3dd7ef364151813c1bc70d5750a12e7f44b0c581d751de713019f",
+          "caption": "Native frames, separate labels, shared palette, 2.5 seconds each."
+        },
+        {
+          "file": "changelog/unreleased/realism-08-fractured-stones/native-tour.webm",
+          "sha256": "117bc9d2cb9cccfef0db57c65af333f15ea9e84227b2a9bd8218bdd344cb1be1",
+          "caption": "Fractured stones at close range, then the surrounding slope. Native current-PR camera recording; simulation held, wind animated. The matched stills below show before and after."
+        },
+        {
+          "file": "changelog/unreleased/realism-08-fractured-stones/native-tour.jpg",
+          "sha256": "3b5e66edc5e73dce1555fe2d3a2c6445cc09fd27e89d9cdd3be42ab3d7a3ba9e",
+          "caption": "Native motion poster and reproducible capture provenance."
+        },
+        {
+          "file": "changelog/unreleased/realism-08-fractured-stones/native-tour.json",
+          "sha256": "e1ae0614c68e9e8f406da78c8b3d931916c8ef02159de74afeacc07e4602f12a",
+          "caption": "Native motion poster and reproducible capture provenance."
+        }
+      ],
+      "output": null,
+      "title": "Give alpine stones angular fractured shapes",
+      "version": "unreleased",
+      "kind": "improved",
+      "capture": {
+        "before_ref": "3eb709f204d1a5fc77515ad5527a0fa27f59132d",
+        "after_ref": "codex/realism-08-fractured-stones",
+        "before_pack": "review-08-before.pck",
+        "after_pack": "review-08-after.pck",
+        "seed": 3,
+        "preset": "high",
+        "mood": "day",
+        "resolution": "1600x900",
+        "focus": "311.6891,433.3651",
+        "zoom": 12,
+        "pitch": -50,
+        "yaw": 0.7,
+        "shot_at": 2,
+        "quit_after": 3,
+        "wide": "focus 0,0; zoom 900; pitch -22; yaw 0.7",
+        "compatibility": "Target after with --rendering-method gl_compatibility",
+        "command": "godot --main-pack PACK --resolution 1600x900 -- --aivai --seed=3 --offscreen --nohud --set=perf:0 --preset=high --mood=MOOD --focus=FOCUS --zoom=ZOOM --pitch=PITCH --cam-yaw=0.7 --screenshot=OUTPUT --shot-at=2 --quit-after=3",
+        "native_motion": {
+          "arguments": [
+            "--script",
+            "tools/showcase/environment-motion.gd"
+          ],
+          "fps": 30,
+          "mood": "day",
+          "preset": "high",
+          "renderer": "forward_plus",
+          "resolution": "1280x768 (48-pixel label above uncropped 1280x720 source)",
+          "seed": 3,
+          "simulation": "Held at two seconds; native camera, wind and water remain animated. Not a combat or performance benchmark.",
+          "stage": "stones",
+          "user_arguments": [
+            "--aivai",
+            "--seed=3",
+            "--offscreen",
+            "--nohud",
+            "--set=perf:0",
+            "--preset=high",
+            "--mood=day",
+            "--port=8271",
+            "--motion-stage=stones",
+            "--motion-output=build/media-review"
+          ],
+          "views": [
+            {
+              "focus": "(311.6891, 0.0, 433.3651)",
+              "fov": 35.0,
+              "frames": 120,
+              "label": "Fractured stone detail",
+              "orbit_radians": 0.065,
+              "pitch": -50.0,
+              "seconds": 4,
+              "yaw": 0.7,
+              "zoom": 12.0
+            },
+            {
+              "focus": "(311.6891, 0.0, 433.3651)",
+              "fov": 35.0,
+              "frames": 120,
+              "label": "Stones within the alpine slope",
+              "orbit_radians": 0.065,
+              "pitch": -42.0,
+              "seconds": 4,
+              "yaw": 0.7,
+              "zoom": 42.0
+            }
+          ],
+          "source_ref": "8b57b5a1",
+          "clip": "native-tour.webm",
+          "poster": "native-tour.jpg",
+          "clip_sha256": "117bc9d2cb9cccfef0db57c65af333f15ea9e84227b2a9bd8218bdd344cb1be1",
+          "seconds": 8,
+          "audio": false,
+          "codec": "VP9",
+          "command": "godot --path . --fixed-fps 30 --resolution 1280x720 --script tools/showcase/environment-motion.gd -- --aivai --seed=3 --offscreen --nohud --set=perf:0 --preset=high --mood=day --motion-stage=stones --motion-output=build/media-review"
+        }
+      }
+    },
+    {
+      "entry": "changelog/unreleased/realism-09-meadow-mosaic.md",
+      "summary": "Connected dry grass and richer moss patches replace evenly green valley floors.",
+      "medium": "still",
+      "stage": "native-media",
+      "rationale": "Isolate the revision from the previous proposal with identical upstream changes, seed and camera.",
+      "source_ref": "codex/realism-09-meadow-mosaic",
+      "sources": [
+        {
+          "file": "changelog/unreleased/realism-09-meadow-mosaic/target-before.jpg",
+          "sha256": "aedded0468437d84581cf5396cac823505ee861cbf627223306f24acb962fa25",
+          "caption": "target before"
+        },
+        {
+          "file": "changelog/unreleased/realism-09-meadow-mosaic/target-after.jpg",
+          "sha256": "13154c8b397cafd8bd8eb4e3ca103e7b70f063df37dee37648af67c6dd692099",
+          "caption": "target after"
+        },
+        {
+          "file": "changelog/unreleased/realism-09-meadow-mosaic/wide-before.jpg",
+          "sha256": "dad58819629d46e75f1b520b5d4cf24166905feb51dd589f11c767b96fe4a5ce",
+          "caption": "wide before"
+        },
+        {
+          "file": "changelog/unreleased/realism-09-meadow-mosaic/wide-after.jpg",
+          "sha256": "c3b67996d8f1af6a2f6cca85b2c4715a0d71dc644e905ab739b5aeca86790270",
+          "caption": "wide after"
+        },
+        {
+          "file": "changelog/unreleased/realism-09-meadow-mosaic/target-compat.jpg",
+          "sha256": "71366209a6ecd7aeffae8d66c8118d53468abe99dfb24ae5620120e856d2ead4",
+          "caption": "target compat"
+        },
+        {
+          "file": "changelog/unreleased/realism-09-meadow-mosaic/compare.gif",
+          "sha256": "9d7e367fa2c4bd54c9b91badb2f0ca8c39417783b5c3b81191b52fa301c2b322",
+          "caption": "Native frames, separate labels, shared palette, 2.5 seconds each."
+        }
+      ],
+      "output": null,
+      "title": "Make meadow colour follow broad soil pockets",
+      "version": "unreleased",
+      "kind": "improved",
+      "capture": {
+        "before_ref": "5878471092560aeab9f6f604c365e6cd28f20433",
+        "after_ref": "codex/realism-09-meadow-mosaic",
+        "before_pack": "iterate-09-before.pck",
+        "after_pack": "iterate-09-after.pck",
+        "seed": 3,
+        "preset": "high",
+        "mood": "day",
+        "resolution": "1600x900",
+        "focus": "0,0",
+        "zoom": 250,
+        "pitch": -45,
+        "yaw": 0.7,
+        "shot_at": 2,
+        "quit_after": 3,
+        "wide": "focus 0,0; zoom 900; pitch -22; yaw 0.7",
+        "compatibility": "Target after with --rendering-method gl_compatibility",
+        "command": "godot --main-pack PACK --resolution 1600x900 -- --aivai --seed=3 --offscreen --nohud --set=perf:0 --preset=high --mood=MOOD --focus=FOCUS --zoom=ZOOM --pitch=PITCH --cam-yaw=0.7 --screenshot=OUTPUT --shot-at=2 --quit-after=3"
+      }
     }
   ],
   "layout_capture": {
