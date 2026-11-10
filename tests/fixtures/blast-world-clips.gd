@@ -8,6 +8,7 @@ var label := "CURRENT BUILD"
 var legacy := false
 var field: World
 var capture_fps := 24
+var resume_frame := 0
 
 func _ready() -> void:
 	TestRun.watch()
@@ -17,6 +18,11 @@ func _ready() -> void:
 		if arg.begins_with("--label="): label = arg.get_slice("=", 1)
 		if arg == "--legacy-effects": legacy = true
 		if arg == "--preview": capture_fps = 12
+		if arg.begins_with("--resume-frame="): resume_frame = maxi(0, int(arg.get_slice("=", 1)))
+	if resume_frame > 0 and (mode != "battlefield-effects" or resume_frame != 16 * capture_fps):
+		push_error("Resume is supported only at the fresh stone shot, 16 seconds into battlefield-effects.")
+		get_tree().quit(1)
+		return
 	DirAccess.make_dir_recursive_absolute(output)
 	seed(712)
 	# Fixed, supported game settings keep the comparison legible and reproducible.
@@ -112,7 +118,14 @@ func _showcase(camera: Camera3D, caption: Label) -> void:
 	var car_basis := Basis(Vector3.UP, 0.5)
 	var metal := _ground(-30, 8) + car_basis * Vector3(0.99, 0.8, 0.1)
 	var previous_phase := -1
+	var viewport_rid := get_viewport().get_viewport_rid()
+	if resume_frame > 0:
+		RenderingServer.viewport_set_active(viewport_rid, false)
 	for frame in 28 * capture_fps:
+		if frame == resume_frame:
+			RenderingServer.viewport_set_active(viewport_rid, true)
+			if resume_frame > 0:
+				print("BATTLEFIELD_RESUME frame=", frame)
 		var t := float(frame) / capture_fps
 		var phase := 0
 		for cut in [4.0, 9.0, 14.0, 16.0, 18.0, 20.0]:
@@ -154,5 +167,12 @@ func _showcase(camera: Camera3D, caption: Label) -> void:
 			# view behind the canopy and trail, instead of a plain black sky.
 			var offset := Vector3(9, 6, 13) if t >= 23.0 else Vector3(24, 18, 32)
 			_frame_subject(camera, charge.global_position, offset, 0.8)
-		await RenderingServer.frame_post_draw
-		get_viewport().get_texture().get_image().save_png(output.path_join("%04d.png" % frame))
+		if frame < resume_frame:
+			# Replay the same fixed-step event schedule after an interrupted
+			# recording, without rasterizing frames already kept. Resume only
+			# at a shot cut whose effects start fresh; GPU particle history
+			# from an invisible shot is not reconstructed by this replay.
+			await get_tree().process_frame
+		else:
+			await RenderingServer.frame_post_draw
+			get_viewport().get_texture().get_image().save_png(output.path_join("%04d.png" % frame))

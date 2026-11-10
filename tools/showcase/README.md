@@ -113,3 +113,11 @@ its camera/event script revision and uses constrained-quality VP9 to keep the
 complete reel inside the changelog media limit. For composition checks only, the
 fixture accepts `--preview` with engine `--fixed-fps 12` at a smaller viewport;
 release evidence uses the registered 24 Hz preset.
+
+If a battlefield reel is interrupted, the fixture can replay its fixed-step
+schedule without rasterization using `--resume-frame=384` (or 192 with the 12 Hz
+preview). Only the cut to the fresh stone-impact shot at 16 seconds is supported:
+GPU particle history from skipped shots is not reconstructed. Preserve frames
+before the cut, record the resumed command/ref separately, and validate the
+assembled 672-frame reel. Never present a resumed segment as a separately matched
+historical capture.
