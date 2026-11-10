@@ -907,8 +907,7 @@ static func _zamak_cab(k: VehicleModels, team: int, cam: String, col) -> void:
 	k._box(m, Vector3(0.9, 0.03, 0.04), Vector3(0, 1.84, -2.2), "gunmetal_w", null, Vector3.ZERO, false)
 	k._box(m, Vector3(0.03, 0.02, 1.3), Vector3(0, 1.845, -2.85), "gunmetal_w", null, Vector3.ZERO, false)
 	for s: float in [-1.0, 1.0]:
-		for i in 4:
-			k._box(m, Vector3(0.02, 0.04, 0.42), Vector3(s * 0.57, 1.42 + i * 0.09, -2.75), "gunmetal_w", null, Vector3(0, 0, s * 0.14), false)
+		VehicleBody.panel(k, m, Vector3(s * 0.57, 1.54, -2.75), Vector2(0.62, 0.42), Vector3(0, s * PI / 2, s * 0.14), cam, col, true)
 		# the wing over the front wheel: flat top, raked front, a valance
 		var fx: float = s * 0.93
 		k._box(m, Vector3(0.68, 0.05, 1.12), Vector3(fx, 1.42, -2.56), cam, col)
@@ -926,6 +925,8 @@ static func _zamak_cab(k: VehicleModels, team: int, cam: String, col) -> void:
 	k._box(m, Vector3(0.5, 0.12, 0.02), Vector3(0, 0.96, -3.83), "paint", Color(0.82, 0.8, 0.72), Vector3.ZERO, false)
 	# the cab: vertical lower half, the glasshouse leaning in a little
 	k._add(m, VehicleModels.solid([_ring(_oct(-1.2, 1.2, -2.15, -0.72, 0.08), 1.22), _ring(_oct(-1.2, 1.2, -2.15, -0.72, 0.08), 2.0)], "indep_zk_open_cab"), cam, col, Vector3.ZERO)
+	for side in [-1.0, 1.0]:
+		VehicleBody.panel(k, m, Vector3(side * 1.21, 1.63, -1.59), Vector2(0.80, 0.48), Vector3(0, side * PI / 2, 0), cam, col)
 	VehicleCab.upper(k, Vector2(1.2, 1.12), Vector2(2.0, 2.72), Vector2(-2.15, -2.0), -0.76, cam, col)
 	var wa := Vector2(-2.15, 2.0)
 	var wb := Vector2(-2.0, 2.72)

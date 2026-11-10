@@ -1431,8 +1431,7 @@ static func _hemtt_cab_detail(k: VehicleModels, paint: Color) -> void:
 	k._box(m, Vector3(1.88, 0.035, 0.30), Vector3(0, 1.98, -4.67), "paint", paint.darkened(0.15), Vector3(0.12, 0, 0))
 	for s in [-1.0, 1.0]:
 		# Door recess, raised inner pressing, hinges and a grab handle.
-		k._box(m, Vector3(0.055, 0.51, 1.02), Vector3(s * 1.205, 1.65, -3.71), "rubber", null, Vector3.ZERO, false)
-		k._box(m, Vector3(0.065, 0.43, 0.94), Vector3(s * 1.23, 1.65, -3.71), "paint", paint)
+		VehicleBody.panel(k, m, Vector3(s * 1.25, 1.65, -3.71), Vector2(1.02, 0.51), Vector3(0, s * PI / 2, 0), "paint", paint)
 		for y in [1.47, 1.87]:
 			k._box(m, Vector3(0.07, 0.075, 0.16), Vector3(s * 1.25, y, -4.24), "paint", edge)
 		_tube(k, m, Vector3(s * 1.28, 1.50, -3.02), Vector3(s * 1.28, 1.87, -3.02), 0.022, "paint", paint.darkened(0.25))

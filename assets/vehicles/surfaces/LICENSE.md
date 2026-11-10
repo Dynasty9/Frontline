@@ -21,3 +21,9 @@ Source normals are not copied into these packed maps.
 `nonslip.png` and `char.png` are original algorithmically generated material
 data, created by `tools/generate_vehicle_surfaces.py` with seed 7319. These two
 outputs and the tooling are distributed under the repository's [MIT license](../../../LICENSE).
+
+`*_normal.png` are 512px linear OpenGL tangent normal maps. The six photographic
+normals use the corresponding ambientCG CC0 NormalGL source listed above;
+`nonslip_normal.png` and `char_normal.png` are periodic derivatives of the original
+MIT height maps. `tools/bake_vehicle_normals.py` verifies source checksums and
+records output hashes in `baked-normals.json`. Runtime imports retain mipmaps.

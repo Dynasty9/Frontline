@@ -1241,6 +1241,8 @@ static func _typhoon(k: VehicleModels, team: int) -> void:
 		_sec(-2.32, 1.04, 1.3, 1.24, 1.36, 1.27, 2.1, 1.27, 2.1),
 		_sec(-2.24, 1.0, 1.34, 1.2, 1.4, 1.23, 2.1, 1.23, 2.1)]
 	k._add(m, VehicleModels.solid(cab, "csat_typh_open_cab"), c, null, Vector3.ZERO)
+	for side in [-1.0, 1.0]:
+		VehicleBody.panel(k, m, Vector3(side * 1.275, 1.75, -3.24), Vector2(1.30, 0.44), Vector3(0, side * PI / 2, 0), c)
 	VehicleCab.upper(k, Vector2(1.27, 1.14), Vector2(2.1, 3.12), Vector2(-4.44, -4.15), -2.27, c)
 	# the bumper block under the cab's nose
 	k._add(m, VehicleModels.loft("csat_typh_bump", [-1.18, -4.6, 1.18, -4.6, 1.18, -3.75, -1.18, -3.75], [-1.22, -4.66, 1.22, -4.66, 1.22, -3.72, -1.22, -3.72], 0.72, 1.34), c, null, Vector3.ZERO)

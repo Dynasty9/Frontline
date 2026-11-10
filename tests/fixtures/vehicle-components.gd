@@ -39,6 +39,21 @@ func _ready() -> void:
 		var bounds2 := _bounds(parts)
 		assert(bounds2.size.z < 2.25 and bounds2.size.y < 1.25, "Shoes must follow the supplied envelope")
 		k.root.free()
+	# Smoothing changes shading only: window fits and collision envelopes stay put.
+	var hull := VmHeli.Hull.new([[-1, 0, 1, 1, 1, 1, 1], [1, 0, 1, 1, 1, 1, 1]], 16)
+	var original := hull.mesh("test_body_skin")
+	var smooth := VehicleBody.skin(original, "test_body_skin")
+	assert(VehicleBody.skin(original, "test_body_skin") == smooth)
+	var old_arrays := Mats._arrays(original, 0)
+	var new_arrays := Mats._arrays(smooth, 0)
+	assert(old_arrays[Mesh.ARRAY_VERTEX] == new_arrays[Mesh.ARRAY_VERTEX])
+	assert(original.get_aabb() == smooth.get_aabb())
+	var changed := false
+	for i in new_arrays[Mesh.ARRAY_NORMAL].size():
+		var normal: Vector3 = new_arrays[Mesh.ARRAY_NORMAL][i]
+		assert(normal.is_finite() and absf(normal.length() - 1.0) < 0.001)
+		changed = changed or not normal.is_equal_approx(old_arrays[Mesh.ARRAY_NORMAL][i])
+	assert(changed, "Curved skins need interpolated normals")
 	print("VEHICLE_COMPONENTS passed")
 	TestRun.quit(get_tree())
 

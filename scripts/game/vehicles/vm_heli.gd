@@ -178,7 +178,27 @@ class Hull:
 
 ## The hull as a solid.
 static func _hull(k: VehicleModels, p: Node3D, h: Hull, key: String, mat: String, col = null, grow := 0.0) -> Variant:
-	return k._add(p, h.mesh(key, grow), mat, col, Vector3.ZERO)
+	var mesh := h.mesh(key, grow)
+	if h.n >= 10:
+		mesh = VehicleBody.skin(mesh, key)
+	var part: Variant = k._add(p, mesh, mat, col, Vector3.ZERO)
+	if key.ends_with("_body") and h.n >= 10:
+		# Panel joins follow the authored skin; glazing sits above them, so
+		# seams cannot cut across a cockpit pane or change the hull outline.
+		for station in range(2, h.st.size() - 2, 2):
+			var z: float = h.st[station][0]
+			if float(h.at(z)[2]) < 0.35:
+				continue
+			var points: Array = []
+			for t in h.n + 1:
+				points.append(h.pt(z, float(t), grow + 0.006))
+			VehicleBody.seam(k, p, points)
+			for t: float in [0.15, 0.85, 1.15, 1.85]:
+				var slot := t * h.n * 0.5
+				var point := h.pt(z + 0.045, slot, grow + 0.012)
+				var normal := (h.pt(z + 0.045, slot, grow + 0.022) - point).normalized()
+				VehicleBody.fastener(k, p, point, normal)
+	return part
 
 
 ## A patch on the hull, on the right (sx 1), the left (-1) or both (0).

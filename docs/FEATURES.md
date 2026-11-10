@@ -1149,6 +1149,13 @@ Ambush Alley autoplay can call its existing mortar support against spotted, stop
   from ambientCG CC0 sources) add fine relief without requiring UV unwraps. RHIB decks have raised tread;
   selected trawler fittings use nonmetallic rust over exposed steel. Paint is nonmetallic; texture and lower-body dust
   stay attached to the model as it moves or climbs. Faction palettes and distant merged meshes are retained.
+  Eight companion normal maps retain the bundled CC0 surface relief; all 17 profiles tune weathering,
+  roughness and grain independently. Metal brushing, canvas weave, moulded rubber, timber fibres and
+  charred surfaces use separate treatments, filtered at distance.
+- **Shared vehicle bodywork** (`vehicle_body.gd`): curved helicopter skins share crease-aware normals
+  without moving the vertices beneath fitted glazing. Skin joins and flush fasteners follow the hull;
+  deliberately angular stealth sections remain faceted. HEMTT, Zamak and Tempest families share pressed
+  door panels, gaskets and fasteners, with shaped louvres on Zamak bonnets. Family builders retain silhouettes.
 - All HEMTT, Zamak and Tempest bodies share open cabs with seats, dashboards and steering wheels
   behind separate transparent panes. Offroad pickups, hatchbacks and SUVs have open glasshouses with
   their original window outlines and painted pillars. Glass switches to opaque panes beyond 100 m;

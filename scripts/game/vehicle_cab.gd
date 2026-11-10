@@ -91,11 +91,11 @@ static func _materials() -> void:
 	if glass_near == null:
 		glass_near = StandardMaterial3D.new()
 		glass_near.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-		glass_near.albedo_color = Color(0.18, 0.24, 0.23, 0.36)
-		glass_near.roughness = 0.08
+		glass_near.albedo_color = Color(0.16, 0.20, 0.21, 0.27)
+		glass_near.roughness = 0.045
 		glass_near.metallic_specular = 0.5
 		glass_near.cull_mode = BaseMaterial3D.CULL_DISABLED
 		glass_far = StandardMaterial3D.new()
-		glass_far.albedo_color = Color(0.09, 0.14, 0.15)
-		glass_far.roughness = 0.14
+		glass_far.albedo_color = Color(0.10, 0.14, 0.16)
+		glass_far.roughness = 0.09
 		glass_far.cull_mode = BaseMaterial3D.CULL_DISABLED

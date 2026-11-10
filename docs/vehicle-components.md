@@ -36,3 +36,18 @@ Validate with `node --test tests/vehicle-components.test.mjs tests/vehicle-mater
 Helicopter builders call `VehicleRotors.main` through the existing `VmHeli._rotor` adapter. `tip=0` is tapered square, `tip=1` swept and `tip=2` a broad paddle tip. The assembly shares cached airfoil meshes by dimensions and tip type. Blade roots and tips follow the same section geometry; erosion protection follows its leading edge. `.tail` reorients the same airfoil along an X-axis rotor. `VehicleMaterials` supplies the matte `rotor` finish without adding texture downloads.
 
 Hub fittings stay on the rotor parent, while explicit blades stay under the existing blade visibility node. Additional rotors retain `Blades` and `Blur` children. This preserves current speed-driven blur behaviour; detailed blade shapes are principally visible at rest or low speed. Enclosed fans and drone propellers are deliberately separate. Use `--surface-rotor --surface-size=3 --surface-single` to inspect a main hub with the shared capture stage.
+
+### Body skins and service panels
+
+`VehicleBody.skin(mesh, key, crease)` caches smoothed normals for curved skins without changing
+positions. Use unique mesh keys; sharp creases retain face normals. `seam` follows supplied points,
+`fastener` takes an outward normal, and `panel` builds a gasket, pressed sheet and flush screws,
+optionally with louvres. Panels occupy local XY with +Z outward and fold into the parent's bake.
+The helicopter hull wrapper uses skins on sections with at least ten points; low-sided stealth
+sections stay faceted. HEMTT, Zamak and Tempest builders place shared panels against their own cabs.
+
+All 17 `VehicleMaterials` profiles define their finish, weathering and grain. Eight shared linear
+normal maps are reproduced with `python tools/bake_vehicle_normals.py` from checksum-pinned bundled
+sources. Keep their mipmaps enabled. Paint relief is intentionally weaker than fabric or grip;
+adding noisy normal relief cannot replace an appropriate panel outline or a curved body normal.
+See [matched body and material comparisons](vehicle-surface-review/README.md).
