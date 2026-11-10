@@ -1,0 +1,215 @@
+{
+  "before_ref": "b1a20ef",
+  "after_ref": "a149298f0b99af0a2a3979b0417320446b2cc8bb",
+  "engine": "Godot 4.6.3; project targets 4.7",
+  "viewport": [
+    1600,
+    900
+  ],
+  "stage": "tools/showcase/vehicle-surfaces.tscn",
+  "command": "DISPLAY=:101 godot --path CHECKOUT --rendering-method gl_compatibility --audio-driver Dummy tools/showcase/vehicle-surfaces.tscn -- --surface-out=OUTPUT --surface-single --surface-kinds=heli,huron,mohawk,kajman,hummingbird --surface-ground",
+  "hub_command": "same stage, --surface-single --surface-kinds=heli,mohawk --surface-rotor --surface-size=3 (no ground); repeat after using forward_plus",
+  "camera": "Same studio direction (1,.65,-1.25), seed 3 and five process frames per pair. Whole-aircraft bounds framing; hub view centred on main rotor with fixed 3 m orthographic size. Baseline uses the same extended capture harness.",
+  "captures": {
+    "before": {
+      "camera_size": 0.0,
+      "grounded": true,
+      "models": [
+        "heli",
+        "huron",
+        "mohawk",
+        "kajman",
+        "hummingbird"
+      ],
+      "renderer": "gl_compatibility",
+      "seed": 3,
+      "team": 0,
+      "view_direction": "(1.0, 0.65, -1.25)"
+    },
+    "after": {
+      "camera_size": 0.0,
+      "grounded": true,
+      "models": [
+        "heli",
+        "huron",
+        "mohawk",
+        "kajman",
+        "hummingbird"
+      ],
+      "renderer": "gl_compatibility",
+      "rotor_focus": false,
+      "seed": 3,
+      "team": 0,
+      "view_direction": "(1.0, 0.65, -1.25)"
+    },
+    "hub-before": {
+      "camera_size": 3.0,
+      "grounded": false,
+      "models": [
+        "heli",
+        "mohawk"
+      ],
+      "renderer": "gl_compatibility",
+      "rotor_focus": true,
+      "seed": 3,
+      "team": 0,
+      "view_direction": "(1.0, 0.65, -1.25)"
+    },
+    "hub-after": {
+      "camera_size": 3.0,
+      "grounded": false,
+      "models": [
+        "heli",
+        "mohawk"
+      ],
+      "renderer": "gl_compatibility",
+      "rotor_focus": true,
+      "seed": 3,
+      "team": 0,
+      "view_direction": "(1.0, 0.65, -1.25)"
+    },
+    "family": {
+      "camera_size": 0.0,
+      "grounded": false,
+      "models": [
+        "heli",
+        "gunship",
+        "ghosthawk",
+        "ghosthawk_stub",
+        "huron",
+        "mohawk",
+        "kajman",
+        "taru",
+        "taru_lift",
+        "hummingbird",
+        "pawnee",
+        "m900",
+        "hellcat",
+        "blackfoot",
+        "orca",
+        "orca_armed",
+        "falcon"
+      ],
+      "renderer": "gl_compatibility",
+      "rotor_focus": false,
+      "seed": 3,
+      "team": 0,
+      "view_direction": "(1.0, 0.65, -1.25)"
+    },
+    "forward": {
+      "camera_size": 3.0,
+      "grounded": false,
+      "models": [
+        "heli",
+        "mohawk"
+      ],
+      "renderer": "forward_plus",
+      "rotor_focus": true,
+      "seed": 3,
+      "team": 0,
+      "view_direction": "(1.0, 0.65, -1.25)"
+    }
+  },
+  "sources": [
+    {
+      "file": "docs/vehicle-rotor-review/before-heli.jpg",
+      "sha256": "e8944b842c9eb6fc250119624c7dbbb7521d7701c1ce0b4df185c5144303507d",
+      "caption": "before heli"
+    },
+    {
+      "file": "docs/vehicle-rotor-review/before-hummingbird.jpg",
+      "sha256": "ffa21954d43aa5773b9476474a01f67b0f3818a8eb3e7458c13ab6310dc0f739",
+      "caption": "before hummingbird"
+    },
+    {
+      "file": "docs/vehicle-rotor-review/before-huron.jpg",
+      "sha256": "f8031554d7ecaa3cd9634733b77f5cf63bff5430355171f5f8cd274063617709",
+      "caption": "before huron"
+    },
+    {
+      "file": "docs/vehicle-rotor-review/before-kajman.jpg",
+      "sha256": "395c9b7f46221baeec6ee766ab5320f2ee99a3aa2a93349f78ae136136634de2",
+      "caption": "before kajman"
+    },
+    {
+      "file": "docs/vehicle-rotor-review/before-mohawk.jpg",
+      "sha256": "d99288e0bb642c35826b98a3066288398ec83ef50ebb1d9845665a10f6465d49",
+      "caption": "before mohawk"
+    },
+    {
+      "file": "docs/vehicle-rotor-review/after-heli.jpg",
+      "sha256": "d48938f2d53f17cd915b9ad8cca8c3599517f740f3e2d51f7fdf2b49676dc45a",
+      "caption": "after heli"
+    },
+    {
+      "file": "docs/vehicle-rotor-review/after-hummingbird.jpg",
+      "sha256": "0929eaa286f7baee42831f21bfede07e7bd2b5e085aae9719caf530c59b2087d",
+      "caption": "after hummingbird"
+    },
+    {
+      "file": "docs/vehicle-rotor-review/after-huron.jpg",
+      "sha256": "3fbe3ca9ea8fcca3ed438fbbaaf5ec0b820fef1f349baa0dc5396c6e32a87062",
+      "caption": "after huron"
+    },
+    {
+      "file": "docs/vehicle-rotor-review/after-kajman.jpg",
+      "sha256": "c32adf60a3731b3763092597a0e9daf261549e6c90be6fca4939f16cc2b66eef",
+      "caption": "after kajman"
+    },
+    {
+      "file": "docs/vehicle-rotor-review/after-mohawk.jpg",
+      "sha256": "b5cf18cc5e57072b1f9c8bf3fe5c4878a0b400cdbcdaea44cf7e3d389d8d28f5",
+      "caption": "after mohawk"
+    },
+    {
+      "file": "docs/vehicle-rotor-review/hub-before-heli.jpg",
+      "sha256": "aebc4443fc05a4a06dd818f241619caa2105bd69d739b25adc90f40c31dae2fe",
+      "caption": "hub-before heli"
+    },
+    {
+      "file": "docs/vehicle-rotor-review/hub-before-mohawk.jpg",
+      "sha256": "c191becf314dd64b26217747ac881678704b6d9400992100f0a773d6634ee033",
+      "caption": "hub-before mohawk"
+    },
+    {
+      "file": "docs/vehicle-rotor-review/hub-after-heli.jpg",
+      "sha256": "6ac428a8abdec5e8f281c08f4c261fdd2a60cd5932ccfc0a2cbc31890f3e0ccb",
+      "caption": "hub-after heli"
+    },
+    {
+      "file": "docs/vehicle-rotor-review/hub-after-mohawk.jpg",
+      "sha256": "5ed8b0647fd848226182f3b0dde2fe763854c210f99228342e81e985277b5875",
+      "caption": "hub-after mohawk"
+    },
+    {
+      "file": "docs/vehicle-rotor-review/family-roster-00.jpg",
+      "sha256": "a30fe4e34ff0d2bb43269130f90c3ade07758a25f21a364283a794dff15e39cf",
+      "caption": "family roster-00"
+    },
+    {
+      "file": "docs/vehicle-rotor-review/family-roster-01.jpg",
+      "sha256": "91bea88b62bc8e85887a2055f72c22de510b68ffac729cdd97e735ec60e3e953",
+      "caption": "family roster-01"
+    },
+    {
+      "file": "docs/vehicle-rotor-review/forward-heli.jpg",
+      "sha256": "bcea1d42a811ba64c784f11ba6c2f0e265746bbf01d094ea74710ab391a54632",
+      "caption": "forward heli"
+    },
+    {
+      "file": "docs/vehicle-rotor-review/forward-mohawk.jpg",
+      "sha256": "cbdc5a2ff38f5a05303f4e8e3583a8f3ed8151a15af6a0da60d646f3d5fcf045",
+      "caption": "forward mohawk"
+    },
+    {
+      "file": "changelog/unreleased/shared-helicopter-rotors/hub-before.jpg",
+      "sha256": "aebc4443fc05a4a06dd818f241619caa2105bd69d739b25adc90f40c31dae2fe",
+      "caption": "Rotor head before"
+    },
+    {
+      "file": "changelog/unreleased/shared-helicopter-rotors/hub-after.jpg",
+      "sha256": "6ac428a8abdec5e8f281c08f4c261fdd2a60cd5932ccfc0a2cbc31890f3e0ccb",
+      "caption": "Rotor head after"
+    }
+  ]
+}

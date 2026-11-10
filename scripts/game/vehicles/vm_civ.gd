@@ -292,25 +292,8 @@ static func _yloft(k: VehicleModels, parent: Node3D, key: String, outlines: Arra
 ## the part [u0, u1] x [v0, v1] of it (u along c0-c1, v from c0-c1 to c3-c2),
 ## `out` proud of the face and `thick` thick, along the normal away from `inside`.
 static func _pane(k: VehicleModels, parent: Node3D, key: String, c: Array, inside: Vector3, u0: float, u1: float, v0: float, v1: float, out: float, thick: float, mat: String, col = null) -> Variant:
-	var c0: Vector3 = c[0]
-	var c1: Vector3 = c[1]
-	var c2: Vector3 = c[2]
-	var c3: Vector3 = c[3]
-	var nrm := (c1 - c0).cross(c3 - c0).normalized()
-	if nrm.dot(c0 - inside) < 0.0:
-		nrm = -nrm
-	var ra := PackedVector3Array()
-	var rb := PackedVector3Array()
-	for uv in [Vector2(u0, v0), Vector2(u1, v0), Vector2(u1, v1), Vector2(u0, v1)]:
-		var a := c0.lerp(c1, uv.x)
-		var b := c3.lerp(c2, uv.x)
-		var q := a.lerp(b, uv.y)
-		ra.append(q + nrm * out)
-		rb.append(q + nrm * (out + thick))
-	if mat == "glass" and (key.begins_with("civ_off_") or key.begins_with("civ_hb") or key.begins_with("civ_suv")) and not key.ends_with("_roof"):
-		VehicleCab.mesh_glass(k, parent, VehicleModels.solid([ra, rb], key))
-		return null
-	return k._add(parent, VehicleModels.solid([ra, rb], key), mat, col, Vector3.ZERO, Vector3.ZERO, Vector3.ONE, mat != "glass")
+	var clear := mat == "glass" and (key.begins_with("civ_off_") or key.begins_with("civ_hb") or key.begins_with("civ_suv")) and not key.ends_with("_roof")
+	return VehicleGlazing.quad(k, parent, key, c, inside, Rect2(u0, v0, u1 - u0, v1 - v0), out, thick, mat, col, clear)
 
 
 ## The corners of face i of a loft between two rings (bottom i, i+1, top i+1, i).
@@ -334,9 +317,7 @@ static func _zring(p: PackedVector2Array, z0: float, slope: float, y0: float) ->
 
 ## A box from a to b (w across, t thick), its width kept as level as it goes.
 static func _strut(k: VehicleModels, parent: Node3D, a: Vector3, b: Vector3, w: float, t: float, mat: String, col = null, shadow := true) -> Variant:
-	var mi: Variant = k._add(parent, Res.box(Vector3(w, (b - a).length(), t)), mat, col, (a + b) * 0.5, Vector3.ZERO, Vector3.ONE, shadow)
-	k._turn(mi, _along(b - a))
-	return mi
+	return VehicleFrames.beam(k, parent, a, b, w, t, mat, col, shadow, true)
 
 
 ## A box from a to b (its length), h tall about `up`, t thick: lamps and
@@ -351,17 +332,12 @@ static func _slab(k: VehicleModels, parent: Node3D, a: Vector3, b: Vector3, h: f
 
 ## A tube from a to b.
 static func _rod(k: VehicleModels, parent: Node3D, a: Vector3, b: Vector3, r: float, mat: String, col = null, segs := 8, shadow := true) -> Variant:
-	var mi: Variant = k._add(parent, Res.cyl(r, r, (b - a).length(), segs), mat, col, (a + b) * 0.5, Vector3.ZERO, Vector3.ONE, shadow)
-	k._turn(mi, _along(b - a))
-	return mi
+	return VehicleFrames.tube(k, parent, a, b, r, mat, col, segs, shadow)
 
 
 ## A tube bent through the given points.
 static func _bent(k: VehicleModels, parent: Node3D, pts: Array, r: float, mat: String, col = null, segs := 8) -> void:
-	for i in pts.size() - 1:
-		_rod(k, parent, pts[i], pts[i + 1], r, mat, col, segs)
-		if i > 0:
-			k._add(parent, Res.sphere(r, segs), mat, col, pts[i])
+	VehicleFrames.path(k, parent, pts, r, mat, col, segs)
 
 
 ## A basis whose Y runs along d (X kept as near world X as it can be).
@@ -400,9 +376,7 @@ static func _jerrycan(k: VehicleModels, parent: Node3D, pos: Vector3, c: Color, 
 
 ## A loose tyre on its rim lying flat (spare), centre at pos.
 static func _spare(k: VehicleModels, parent: Node3D, pos: Vector3, r: float, w: float, rot := Vector3.ZERO, hub_mat := "steel", hub_col = null) -> void:
-	k._cyl(parent, r, r, w, pos, rot, "rubber", null, 18)
-	k._cyl(parent, r * 0.6, r * 0.6, w + 0.02, pos, rot, hub_mat, hub_col, 14)
-	k._cyl(parent, r * 0.2, r * 0.22, w + 0.05, pos, rot, "gunmetal_w", null, 8)
+	VehicleWheels.spare(k, parent, pos, r, w, rot, hub_mat, hub_col, "road")
 
 
 # --- weapons ----------------------------------------------------------------------
@@ -1381,7 +1355,6 @@ static func _glasshouse(k: VehicleModels, parent: Node3D, key: String, lo: Packe
 	VehicleCab.interior(k, Vector3(0, lo[0].y - 1.95 * sc.y, hi[2].z + 2.91 * sc.z), sc)
 
 
-
 ## The bits every car has: the chassis under it, wipers, a tow eye.
 static func _car_details(k: VehicleModels, m: Node3D, dy: float, zr: float, ywiper: float) -> void:
 	k._cyl(m, 0.05, 0.05, 1.3, Vector3(0, 0.31 + dy, zr), Vector3(0, 0, PI / 2), "gunmetal_w", null, 8)
@@ -1652,9 +1625,9 @@ static func _ed1(k: VehicleModels, team: int) -> void:
 	var dark := Color(0.12, 0.12, 0.12)
 	_xbody(k, m, "civ_ed1_hull", [-0.36, 0.06, 0.32, 0.06, 0.38, 0.12, 0.36, 0.23, -0.32, 0.23, -0.38, 0.15], -0.19, 0.19, 0.015, [], "paint", col)
 	k._box(m, Vector3(0.3, 0.012, 0.4), Vector3(0, 0.236, 0.02), "plain", dark, Vector3.ZERO, false)
-	var tp := [-0.43, 0.11, -0.37, 0.0, 0.37, 0.0, 0.43, 0.11, 0.38, 0.2, -0.38, 0.2]
+	var tp := PackedVector2Array([Vector2(-0.43, 0.11), Vector2(-0.37, 0.008), Vector2(0.37, 0.008), Vector2(0.43, 0.11), Vector2(0.38, 0.2), Vector2(-0.38, 0.2)])
 	for s in [-1.0, 1.0]:
-		k._add(m, VehicleModels.extrude_x("civ_ed1_trk", tp, -0.055, 0.055), "track", null, Vector3(s * 0.25, 0, 0))
+		VehicleTracks.shoes(k, m, s * 0.25, 0.11, tp, 0.012, 0.035)
 		for z in [-0.33, 0.33]:
 			k._wheel(m, Vector3(s * 0.31, 0.1, z), 0.085, 0.02, "paint", col.darkened(0.2))
 		for z in [-0.15, 0.0, 0.15]:
@@ -1662,7 +1635,7 @@ static func _ed1(k: VehicleModels, team: int) -> void:
 		# the flippers, swung forward and up off the front sprockets
 		var fp := k._pivot(m, Vector3(s * 0.34, 0.1, -0.33))
 		fp.rotation.x = 0.35
-		k._add(fp, VehicleModels.extrude_x("civ_ed1_flip", [0.0, -0.085, -0.2, -0.05, -0.24, 0.0, -0.2, 0.05, 0.0, 0.085, 0.07, 0.0], -0.03, 0.03), "track", null, Vector3.ZERO)
+		VehicleTracks.shoes(k, fp, 0.0, 0.06, PackedVector2Array([Vector2(0, -0.085), Vector2(-0.2, -0.05), Vector2(-0.24, 0), Vector2(-0.2, 0.05), Vector2(0, 0.085), Vector2(0.07, 0)]), 0.012, 0.035)
 		k._cyl(fp, 0.04, 0.04, 0.07, Vector3.ZERO, Vector3(0, 0, PI / 2), "paint", col.darkened(0.2), 10)
 		# carry handles on the hull sides
 		_bent(k, m, [Vector3(s * 0.19, 0.18, -0.1), Vector3(s * 0.2, 0.26, -0.08), Vector3(s * 0.2, 0.26, 0.08), Vector3(s * 0.19, 0.18, 0.1)], 0.01, "plain", dark, 6)

@@ -6197,6 +6197,917 @@
         }
       ],
       "output": "changelog/unreleased/ladder-contacts/platform.jpg"
+    },
+    {
+      "entry": "changelog/unreleased/shared-vehicle-components.md",
+      "summary": "Shared track links, wheel assemblies, structural members and fitted glazing across vehicle families.",
+      "medium": "still",
+      "stage": "vehicle-surfaces",
+      "rationale": "Matched ED-1 and parked-car close views show the clearest changes; front/rear roster comparisons and per-subject findings document coverage without claiming new silhouettes everywhere.",
+      "source_ref": "70519054f7bec00757c35744891eb663ee6ebc80 before; 1c66227dda12d09d88ee614792efa6288ffc830e after",
+      "sources": [
+        {
+          "file": "docs/vehicle-component-review/before-front-00.jpg",
+          "sha256": "4aa7777aef79df1e1ced01c27da6f562d2da9c28a75c4b70029cc289c14ce9ae",
+          "caption": "before-front roster-00"
+        },
+        {
+          "file": "docs/vehicle-component-review/before-front-01.jpg",
+          "sha256": "fa6599a256eb568d797689ac29d70f744ba22d3f1d4757e13d0856a86493e971",
+          "caption": "before-front roster-01"
+        },
+        {
+          "file": "docs/vehicle-component-review/before-front-02.jpg",
+          "sha256": "8b96da166d9fc6edccf33dcad1718d61024f418750ea181e4d2f2612aa67a819",
+          "caption": "before-front roster-02"
+        },
+        {
+          "file": "docs/vehicle-component-review/before-front-03.jpg",
+          "sha256": "fdc1594eb9b3424454d35b1df4ce3d1b15d291016976e1e02dd8b7324af160b0",
+          "caption": "before-front roster-03"
+        },
+        {
+          "file": "docs/vehicle-component-review/before-front-04.jpg",
+          "sha256": "6581d18b5c97d91a8dc453f9785723023392356d83eacab2ca0dbefeb949fcdb",
+          "caption": "before-front roster-04"
+        },
+        {
+          "file": "docs/vehicle-component-review/before-front-05.jpg",
+          "sha256": "01cbf22acc74db83ab6f8f9d24dfb941f3db76a966fd3c6b3c3763f178231265",
+          "caption": "before-front roster-05"
+        },
+        {
+          "file": "docs/vehicle-component-review/before-front-06.jpg",
+          "sha256": "dac9a4779845234e13f06685005f69c9f703c861df5504a048bda9270fecaecb",
+          "caption": "before-front roster-06"
+        },
+        {
+          "file": "docs/vehicle-component-review/before-front-07.jpg",
+          "sha256": "e4ed138aef91fbfa5a0fb0a61d7334b9b00e103159e9a9afd22f22d6bf3ca0c8",
+          "caption": "before-front roster-07"
+        },
+        {
+          "file": "docs/vehicle-component-review/before-front-08.jpg",
+          "sha256": "8b6bbb6ad35477848ff01980f1b3f4436881054cd2fe0af791842c14a678c1f2",
+          "caption": "before-front roster-08"
+        },
+        {
+          "file": "docs/vehicle-component-review/before-front-09.jpg",
+          "sha256": "2e91cf2bab548d8b9e8202c6993a49651eb873775a1762dbc4128b95d07518ef",
+          "caption": "before-front roster-09"
+        },
+        {
+          "file": "docs/vehicle-component-review/before-front-10.jpg",
+          "sha256": "54ffb5f3684cb1d304ad1b4d53e5dc50053ae6ab6545ed35583a57da7e3302c7",
+          "caption": "before-front roster-10"
+        },
+        {
+          "file": "docs/vehicle-component-review/before-front-11.jpg",
+          "sha256": "f41507971f30ef80f5e60562a1cb775335cc49ba42f543a5d07a0c6d68ad81e0",
+          "caption": "before-front roster-11"
+        },
+        {
+          "file": "docs/vehicle-component-review/before-rear-00.jpg",
+          "sha256": "1f19f9173da66df1f6869ebdfa31a86b97ce912d5cef87f13e5bb08785f7bb86",
+          "caption": "before-rear roster-00"
+        },
+        {
+          "file": "docs/vehicle-component-review/before-rear-01.jpg",
+          "sha256": "218d3f42a30c86577261ad29eecec647f481cd53ade69b78d8610528e1ea8ca5",
+          "caption": "before-rear roster-01"
+        },
+        {
+          "file": "docs/vehicle-component-review/before-rear-02.jpg",
+          "sha256": "9c434a5cdf0ee0322adf409f8c2c68744dc1b4f0c32c02e1130f01052894f1f8",
+          "caption": "before-rear roster-02"
+        },
+        {
+          "file": "docs/vehicle-component-review/before-rear-03.jpg",
+          "sha256": "54aa3b5c8bb57e5bf717a9ac448c0ed348ec7e2f2b19f346d1046acf4e9870ac",
+          "caption": "before-rear roster-03"
+        },
+        {
+          "file": "docs/vehicle-component-review/before-rear-04.jpg",
+          "sha256": "10bfb47c3284ac414d2dd014ee2134cd82806722caad9762546c49c2a9f8db0f",
+          "caption": "before-rear roster-04"
+        },
+        {
+          "file": "docs/vehicle-component-review/before-rear-05.jpg",
+          "sha256": "d2430906996b6340120d72081b62c1f61f0fc418a7443765bde16ed55ef8c7cf",
+          "caption": "before-rear roster-05"
+        },
+        {
+          "file": "docs/vehicle-component-review/before-rear-06.jpg",
+          "sha256": "b1b26c42504343aeb7e3d6ba465a58a5a19ef7badc2990a5deef7c71946e7e56",
+          "caption": "before-rear roster-06"
+        },
+        {
+          "file": "docs/vehicle-component-review/before-rear-07.jpg",
+          "sha256": "570db92156dd091597055e55f7a92edba61db5bd4c320c64b5954ebd2b56971e",
+          "caption": "before-rear roster-07"
+        },
+        {
+          "file": "docs/vehicle-component-review/before-rear-08.jpg",
+          "sha256": "afd8fd68a3af82930d707af1ed04a537aa41c5641658b433f0ac3512f1e89019",
+          "caption": "before-rear roster-08"
+        },
+        {
+          "file": "docs/vehicle-component-review/before-rear-09.jpg",
+          "sha256": "1ed7ea7185ceca582db6f7c97dfb67554d4ef56a1ce7772d4aecddd3d5c669d8",
+          "caption": "before-rear roster-09"
+        },
+        {
+          "file": "docs/vehicle-component-review/before-rear-10.jpg",
+          "sha256": "3a74f0e81ee2a28aaf926d04c4a7136e0153cedf4269d7c781088f7168f6b363",
+          "caption": "before-rear roster-10"
+        },
+        {
+          "file": "docs/vehicle-component-review/before-rear-11.jpg",
+          "sha256": "7cf740e942df717f778e2eb0808eab3d74b4e164049c6c558682244e14c589c1",
+          "caption": "before-rear roster-11"
+        },
+        {
+          "file": "docs/vehicle-component-review/after-front-00.jpg",
+          "sha256": "0d49330e296e467c9f2a3181132976340f20338d51a17b006fd2f24e41ae7376",
+          "caption": "after-front roster-00"
+        },
+        {
+          "file": "docs/vehicle-component-review/after-front-01.jpg",
+          "sha256": "a197dd3cead68ec59110453321cd6e2b6daa5411919938c5a27c8c8a37af509f",
+          "caption": "after-front roster-01"
+        },
+        {
+          "file": "docs/vehicle-component-review/after-front-02.jpg",
+          "sha256": "523f3cc554597488633061247ebb70ee746f32713cfa867f4f7d5cc36604b317",
+          "caption": "after-front roster-02"
+        },
+        {
+          "file": "docs/vehicle-component-review/after-front-03.jpg",
+          "sha256": "fd9d6f8869fd9d31e797a74ba48d1533e63b771185411804faec43f47aaed572",
+          "caption": "after-front roster-03"
+        },
+        {
+          "file": "docs/vehicle-component-review/after-front-04.jpg",
+          "sha256": "c1c896e141237290dc1bfd99acafad3ec81128e9c1a540ed38545759c75c89d9",
+          "caption": "after-front roster-04"
+        },
+        {
+          "file": "docs/vehicle-component-review/after-front-05.jpg",
+          "sha256": "347562d0e5347fef0b8c31a7d7b97a4706d7e288a4bd828176610c86dc45b31e",
+          "caption": "after-front roster-05"
+        },
+        {
+          "file": "docs/vehicle-component-review/after-front-06.jpg",
+          "sha256": "8688ef5635cd7aded98ba2d055327e13209abc086a4941cedf36d5c1daf858d2",
+          "caption": "after-front roster-06"
+        },
+        {
+          "file": "docs/vehicle-component-review/after-front-07.jpg",
+          "sha256": "fcd5f985cf53700bfeb7e145fa2e660c51848d7078a7705c38f24b2acfc1b20e",
+          "caption": "after-front roster-07"
+        },
+        {
+          "file": "docs/vehicle-component-review/after-front-08.jpg",
+          "sha256": "d5db21c22e6747f2d16abc612dfdfd94398673df4dea7f139b37da0f07be43ef",
+          "caption": "after-front roster-08"
+        },
+        {
+          "file": "docs/vehicle-component-review/after-front-09.jpg",
+          "sha256": "63e29c7b072aaf04f6bd8d1f4560be16649efc1d9f806629bfb6a93d636bcaba",
+          "caption": "after-front roster-09"
+        },
+        {
+          "file": "docs/vehicle-component-review/after-front-10.jpg",
+          "sha256": "d92b3b15b531feaf585df4027ed283a1ba8e15279af5a240a7711443283cea90",
+          "caption": "after-front roster-10"
+        },
+        {
+          "file": "docs/vehicle-component-review/after-front-11.jpg",
+          "sha256": "1520be886adbc1bdef591e894beb508138ed95994fad6e8cfd3a7e3f592205e6",
+          "caption": "after-front roster-11"
+        },
+        {
+          "file": "docs/vehicle-component-review/after-rear-00.jpg",
+          "sha256": "10f74cbbf940b6b8ca24ca7e28dd62f8a7636dde3f08f11924286ca61956ddf7",
+          "caption": "after-rear roster-00"
+        },
+        {
+          "file": "docs/vehicle-component-review/after-rear-01.jpg",
+          "sha256": "a8040bc6d62043e7258dec70a9f8c2be89fbdfd4fcea85d068f726e63246c83d",
+          "caption": "after-rear roster-01"
+        },
+        {
+          "file": "docs/vehicle-component-review/after-rear-02.jpg",
+          "sha256": "3321d1c5a33e270ee383038cb776b06ffdac673b70f4a299b2a3b0b9453708aa",
+          "caption": "after-rear roster-02"
+        },
+        {
+          "file": "docs/vehicle-component-review/after-rear-03.jpg",
+          "sha256": "77a716d0827d4586067950313eca362d5d1afc7eefb2c43d64ec07113f3a683d",
+          "caption": "after-rear roster-03"
+        },
+        {
+          "file": "docs/vehicle-component-review/after-rear-04.jpg",
+          "sha256": "1702bdfc46f4e8948ea2ef1d79574c41cf2c3b34f098be2f01ed4262c83bbbeb",
+          "caption": "after-rear roster-04"
+        },
+        {
+          "file": "docs/vehicle-component-review/after-rear-05.jpg",
+          "sha256": "279d3952c9f28b116a8a00c6edd74000daa3a95cff32e3df234637e493efa87d",
+          "caption": "after-rear roster-05"
+        },
+        {
+          "file": "docs/vehicle-component-review/after-rear-06.jpg",
+          "sha256": "0d190ac92ea2070abc26a5f760b835271600eaf34290b17637fda9a45a6adcfd",
+          "caption": "after-rear roster-06"
+        },
+        {
+          "file": "docs/vehicle-component-review/after-rear-07.jpg",
+          "sha256": "ef9af14f25b5bb517fd5a4f4013a90fb20ef435513275f225931133d894a5d69",
+          "caption": "after-rear roster-07"
+        },
+        {
+          "file": "docs/vehicle-component-review/after-rear-08.jpg",
+          "sha256": "7595371b01826ddf4c6a1e0ec4897debf594bb4208d66a78086aeb48718d2159",
+          "caption": "after-rear roster-08"
+        },
+        {
+          "file": "docs/vehicle-component-review/after-rear-09.jpg",
+          "sha256": "327477a8862819f9b20dd6bf48d25d2daa5dce169ca76f762bb04310f1d90724",
+          "caption": "after-rear roster-09"
+        },
+        {
+          "file": "docs/vehicle-component-review/after-rear-10.jpg",
+          "sha256": "f32cc9487c6ca648be9272e60b20068b963e466d4a84af3677ddb2372a127cf3",
+          "caption": "after-rear roster-10"
+        },
+        {
+          "file": "docs/vehicle-component-review/after-rear-11.jpg",
+          "sha256": "68b480905de0d80b88029bde8bf4e243eadda68fae334cf7bb929d6441380aa3",
+          "caption": "after-rear roster-11"
+        },
+        {
+          "file": "docs/vehicle-component-review/after-team1-00.jpg",
+          "sha256": "92b027e5ecd2307d2c23d078dd109c51a440603a870506f55c9c6df367a37584",
+          "caption": "after-team1 roster-00"
+        },
+        {
+          "file": "docs/vehicle-component-review/after-team1-01.jpg",
+          "sha256": "28783c23f741d1a6a1e49628217f027cc416ca5cde7bf69ce5724d63964331fc",
+          "caption": "after-team1 roster-01"
+        },
+        {
+          "file": "docs/vehicle-component-review/after-team1-02.jpg",
+          "sha256": "d77d63175508990d679395e2f6aa4d934f5ccf07ef7b78a4623e42b473525f1c",
+          "caption": "after-team1 roster-02"
+        },
+        {
+          "file": "docs/vehicle-component-review/after-team1-03.jpg",
+          "sha256": "5750b2cdaac0ca2d9429e018616e4d047335efe22481af1c3c30f16f649e163d",
+          "caption": "after-team1 roster-03"
+        },
+        {
+          "file": "docs/vehicle-component-review/after-team1-04.jpg",
+          "sha256": "1f2c92d881b08c7b444e6901c79dc25b132ebf6fcb04a8fff78d5b6323ea611b",
+          "caption": "after-team1 roster-04"
+        },
+        {
+          "file": "docs/vehicle-component-review/after-team1-05.jpg",
+          "sha256": "a9c1175891e224c039517dde577a38580250271a53485faca4276681e8778e4a",
+          "caption": "after-team1 roster-05"
+        },
+        {
+          "file": "docs/vehicle-component-review/after-team1-06.jpg",
+          "sha256": "17b0e94f1881f0796955af7eb665ceacca84f1f525098086378dbf8211c544bf",
+          "caption": "after-team1 roster-06"
+        },
+        {
+          "file": "docs/vehicle-component-review/after-team1-07.jpg",
+          "sha256": "4d0cae8cba9bcdfb20ecc276baf57f7194a536b4ea6b21430d77ef410a4daa2c",
+          "caption": "after-team1 roster-07"
+        },
+        {
+          "file": "docs/vehicle-component-review/after-team1-08.jpg",
+          "sha256": "b0bcea899dfb172d8532cb71c514487fe74fc76733c02a4ed2f3948fc5897f91",
+          "caption": "after-team1 roster-08"
+        },
+        {
+          "file": "docs/vehicle-component-review/after-team1-09.jpg",
+          "sha256": "8e7bebc91d78c8fe653495eaf18f5f60a8cb0b1b3c82e2ad26d72886c3f732c1",
+          "caption": "after-team1 roster-09"
+        },
+        {
+          "file": "docs/vehicle-component-review/after-team1-10.jpg",
+          "sha256": "1ed2bb4fcc1c004fd967fb5643b26c4dc24d44da7cbef40238dff481142df36a",
+          "caption": "after-team1 roster-10"
+        },
+        {
+          "file": "docs/vehicle-component-review/after-team1-11.jpg",
+          "sha256": "7c8cf7de255d64e51380cdb19c07e462845cf58388ad0ea3b84470f938496f1b",
+          "caption": "after-team1 roster-11"
+        },
+        {
+          "file": "docs/vehicle-component-review/before-close-caesar.jpg",
+          "sha256": "f1683cacb89228fc37efd6c1e3c7aa076975e6c1fadb55fb13adace993a62693",
+          "caption": "before-close caesar"
+        },
+        {
+          "file": "docs/vehicle-component-review/before-close-civilian_0.jpg",
+          "sha256": "fe3ccd1dc61ac8d3418cffb0b4327e8df9f550c28e04761b722635fd501a497c",
+          "caption": "before-close civilian_0"
+        },
+        {
+          "file": "docs/vehicle-component-review/before-close-ed1.jpg",
+          "sha256": "e14463950996261573f6dfbe9817f65b911d0bdadd55ee921b5b650062a0b1bb",
+          "caption": "before-close ed1"
+        },
+        {
+          "file": "docs/vehicle-component-review/before-close-hunter.jpg",
+          "sha256": "1c91af04706ccd77af093b0bfacdbc4a84c56018b0ab3a058b2758da0027f0ee",
+          "caption": "before-close hunter"
+        },
+        {
+          "file": "docs/vehicle-component-review/before-close-nyx_ac.jpg",
+          "sha256": "f8e21d1f0444f5a4dd941e8e978451687fc536b0d565cccbc8cd32169e78b29e",
+          "caption": "before-close nyx_ac"
+        },
+        {
+          "file": "docs/vehicle-component-review/before-close-offroad.jpg",
+          "sha256": "0dc54896a6c44f447b1e9bff8cdaf8b5e5b8e8eadac3c2959e8ad6cadbf5c2b0",
+          "caption": "before-close offroad"
+        },
+        {
+          "file": "docs/vehicle-component-review/before-close-old_tank.jpg",
+          "sha256": "597887fd28a65afbc73345406827ccb8a70ef286d292ef5cb19adb3ad3137758",
+          "caption": "before-close old_tank"
+        },
+        {
+          "file": "docs/vehicle-component-review/before-close-patrol_ship.jpg",
+          "sha256": "f4f43163695771375fe186eea75802204f9bddd10b5292b66d89ec292dc4aebd",
+          "caption": "before-close patrol_ship"
+        },
+        {
+          "file": "docs/vehicle-component-review/before-close-tank.jpg",
+          "sha256": "cb20d2832947c1564d98eb62560302e417b387ebd43abac8b3c34bae9973020c",
+          "caption": "before-close tank"
+        },
+        {
+          "file": "docs/vehicle-component-review/before-close-varsuk.jpg",
+          "sha256": "e54e62c2aef247ef29a032e747069db7aeeec20e3b846a46bc6113b22249c591",
+          "caption": "before-close varsuk"
+        },
+        {
+          "file": "docs/vehicle-component-review/after-close-caesar.jpg",
+          "sha256": "1d294c892c2cd8a4806dcf6c7809de2a514a63c9f6fd8b8ad693fee576068aa2",
+          "caption": "after-close caesar"
+        },
+        {
+          "file": "docs/vehicle-component-review/after-close-civilian_0.jpg",
+          "sha256": "3ce481d6a654f5979b3de0bd05ebde981086191dc92a540ee187a58e0de7ff89",
+          "caption": "after-close civilian_0"
+        },
+        {
+          "file": "docs/vehicle-component-review/after-close-ed1.jpg",
+          "sha256": "008d4526e0dae2d94c79ca6eb4e1d2178fce180e7bc85c65cab57cebac14c52f",
+          "caption": "after-close ed1"
+        },
+        {
+          "file": "docs/vehicle-component-review/after-close-hunter.jpg",
+          "sha256": "fda27df65d2b6f693c056d20e37115f68a6e66ca72337f316a678aebe385d1be",
+          "caption": "after-close hunter"
+        },
+        {
+          "file": "docs/vehicle-component-review/after-close-nyx_ac.jpg",
+          "sha256": "78797d5b0ec71428cbd7d2242ed83000dcff489c231e543e831c01477f94a1c6",
+          "caption": "after-close nyx_ac"
+        },
+        {
+          "file": "docs/vehicle-component-review/after-close-offroad.jpg",
+          "sha256": "590c7911595066abe8fb2e19f5d3b1c0010dcb226eef95710fe80ae06f7c5169",
+          "caption": "after-close offroad"
+        },
+        {
+          "file": "docs/vehicle-component-review/after-close-old_tank.jpg",
+          "sha256": "017c803693af0caa1242d31e9cbcc30875cbbf3e1b9d9b52a1895189edac19b3",
+          "caption": "after-close old_tank"
+        },
+        {
+          "file": "docs/vehicle-component-review/after-close-patrol_ship.jpg",
+          "sha256": "837ad394f1710bf13f40a74c095d57691f65d38b4e5cd34e0908224982f5f22d",
+          "caption": "after-close patrol_ship"
+        },
+        {
+          "file": "docs/vehicle-component-review/after-close-tank.jpg",
+          "sha256": "bf6f3c528d6830e71ee7df932a4147e1c30752f1ee25911c6a4af2af90def0af",
+          "caption": "after-close tank"
+        },
+        {
+          "file": "docs/vehicle-component-review/after-close-varsuk.jpg",
+          "sha256": "b5bd8c5b132ab556f692a48939e341d06740ccc09561792469bd1818b6e603da",
+          "caption": "after-close varsuk"
+        },
+        {
+          "file": "docs/vehicle-component-review/after-forward-caesar.jpg",
+          "sha256": "ef2784e16bfd48be1e35f40cd363ec4c31881fa6a2ced93082a9e62b03bd6e71",
+          "caption": "after-forward caesar"
+        },
+        {
+          "file": "docs/vehicle-component-review/after-forward-civilian_0.jpg",
+          "sha256": "f2b036eadecbc819f48c24498884fc8f3cb15f3e0a4f8b105a9b952d92e2907c",
+          "caption": "after-forward civilian_0"
+        },
+        {
+          "file": "docs/vehicle-component-review/after-forward-ed1.jpg",
+          "sha256": "0da97e253d35f2fd70e4cfdea61ab1538fb7f60784ad8c4b8a4d05cdeed08f57",
+          "caption": "after-forward ed1"
+        },
+        {
+          "file": "docs/vehicle-component-review/after-forward-hunter.jpg",
+          "sha256": "b66e67f388eb41d7c1ea634cfe9556db099446a930e05acf24b923926ad04373",
+          "caption": "after-forward hunter"
+        },
+        {
+          "file": "docs/vehicle-component-review/after-forward-nyx_ac.jpg",
+          "sha256": "65b703064661d2491fa3bde0fcbf17e5cdbf808eecfa1dcd4da86023f2a56c1d",
+          "caption": "after-forward nyx_ac"
+        },
+        {
+          "file": "docs/vehicle-component-review/after-forward-offroad.jpg",
+          "sha256": "470efd73da2fc9dede2d39e2877a7e00cc646470538fa7523de1684b2e2963d3",
+          "caption": "after-forward offroad"
+        },
+        {
+          "file": "docs/vehicle-component-review/after-forward-old_tank.jpg",
+          "sha256": "540166414268dc27a9f242077c595024f255487fbf38cb9988e684820e69de36",
+          "caption": "after-forward old_tank"
+        },
+        {
+          "file": "docs/vehicle-component-review/after-forward-patrol_ship.jpg",
+          "sha256": "e3edf72350b435b8d9adac88caee34b8e63b9c014485beedb42f1adb2bc3f1be",
+          "caption": "after-forward patrol_ship"
+        },
+        {
+          "file": "docs/vehicle-component-review/after-forward-tank.jpg",
+          "sha256": "b487fcbdb78b002cd2f547b21a4eab3bb8da00bfb51c47d13254b7509d6c223d",
+          "caption": "after-forward tank"
+        },
+        {
+          "file": "docs/vehicle-component-review/after-forward-varsuk.jpg",
+          "sha256": "706088e24302cd7494766a3139f00a6128137d7d7abbfc31de3f937392c2cafb",
+          "caption": "after-forward varsuk"
+        },
+        {
+          "file": "changelog/unreleased/shared-vehicle-components/ed1-before.jpg",
+          "sha256": "e14463950996261573f6dfbe9817f65b911d0bdadd55ee921b5b650062a0b1bb",
+          "caption": "ed1 before"
+        },
+        {
+          "file": "changelog/unreleased/shared-vehicle-components/ed1-after.jpg",
+          "sha256": "008d4526e0dae2d94c79ca6eb4e1d2178fce180e7bc85c65cab57cebac14c52f",
+          "caption": "ed1 after"
+        },
+        {
+          "file": "changelog/unreleased/shared-vehicle-components/civilian_0-before.jpg",
+          "sha256": "fe3ccd1dc61ac8d3418cffb0b4327e8df9f550c28e04761b722635fd501a497c",
+          "caption": "civilian_0 before"
+        },
+        {
+          "file": "changelog/unreleased/shared-vehicle-components/civilian_0-after.jpg",
+          "sha256": "3ce481d6a654f5979b3de0bd05ebde981086191dc92a540ee187a58e0de7ff89",
+          "caption": "civilian_0 after"
+        },
+        {
+          "file": "docs/vehicle-component-review/merged-check.jpg",
+          "sha256": "7fcc7e127faf91a137462fe36a0d4bef89e96f830a1ac35096de093bced362ea",
+          "caption": "Post-merge Compatibility spot check at 953e6fa; includes upstream material-colour calibration."
+        }
+      ],
+      "output": null,
+      "capture": {
+        "before_ref": "70519054f7bec00757c35744891eb663ee6ebc80",
+        "after_ref": "1c66227dda12d09d88ee614792efa6288ffc830e",
+        "engine": "Godot 4.6.3; project targets 4.7",
+        "viewport": [
+          1600,
+          900
+        ],
+        "command": "DISPLAY=:101 godot --path CHECKOUT --rendering-method RENDERER --audio-driver Dummy tools/showcase/vehicle-surfaces.tscn -- --surface-out=OUTPUT [--surface-rear] [--surface-team=1] [--surface-single --surface-ground --surface-kinds=tank,old_tank,nyx_ac,varsuk,hunter,ed1,civilian_0,offroad,patrol_ship,caesar]",
+        "timing": "Five process frames, then frame_post_draw",
+        "camera": "Bounds-based orthographic framing; identical settings per pair. View direction in manifests.",
+        "merged_check": "953e6fa, 12 subjects in Compatibility; upstream material calibration preserved"
+      }
+    },
+    {
+      "entry": "changelog/unreleased/shared-helicopter-rotors.md",
+      "summary": "Shaped matte rotor blades and mechanical hub fittings across helicopter families.",
+      "medium": "still",
+      "stage": "vehicle-surfaces",
+      "rationale": "Matched hub closeups show the new fittings clearly; full aircraft pairs show blade taper, sweep and matte coating without implying a whole-airframe rebuild.",
+      "source_ref": "b1a20ef before; a149298 after",
+      "sources": [
+        {
+          "file": "docs/vehicle-rotor-review/before-heli.jpg",
+          "sha256": "e8944b842c9eb6fc250119624c7dbbb7521d7701c1ce0b4df185c5144303507d",
+          "caption": "before heli"
+        },
+        {
+          "file": "docs/vehicle-rotor-review/before-hummingbird.jpg",
+          "sha256": "ffa21954d43aa5773b9476474a01f67b0f3818a8eb3e7458c13ab6310dc0f739",
+          "caption": "before hummingbird"
+        },
+        {
+          "file": "docs/vehicle-rotor-review/before-huron.jpg",
+          "sha256": "f8031554d7ecaa3cd9634733b77f5cf63bff5430355171f5f8cd274063617709",
+          "caption": "before huron"
+        },
+        {
+          "file": "docs/vehicle-rotor-review/before-kajman.jpg",
+          "sha256": "395c9b7f46221baeec6ee766ab5320f2ee99a3aa2a93349f78ae136136634de2",
+          "caption": "before kajman"
+        },
+        {
+          "file": "docs/vehicle-rotor-review/before-mohawk.jpg",
+          "sha256": "d99288e0bb642c35826b98a3066288398ec83ef50ebb1d9845665a10f6465d49",
+          "caption": "before mohawk"
+        },
+        {
+          "file": "docs/vehicle-rotor-review/after-heli.jpg",
+          "sha256": "d48938f2d53f17cd915b9ad8cca8c3599517f740f3e2d51f7fdf2b49676dc45a",
+          "caption": "after heli"
+        },
+        {
+          "file": "docs/vehicle-rotor-review/after-hummingbird.jpg",
+          "sha256": "0929eaa286f7baee42831f21bfede07e7bd2b5e085aae9719caf530c59b2087d",
+          "caption": "after hummingbird"
+        },
+        {
+          "file": "docs/vehicle-rotor-review/after-huron.jpg",
+          "sha256": "3fbe3ca9ea8fcca3ed438fbbaaf5ec0b820fef1f349baa0dc5396c6e32a87062",
+          "caption": "after huron"
+        },
+        {
+          "file": "docs/vehicle-rotor-review/after-kajman.jpg",
+          "sha256": "c32adf60a3731b3763092597a0e9daf261549e6c90be6fca4939f16cc2b66eef",
+          "caption": "after kajman"
+        },
+        {
+          "file": "docs/vehicle-rotor-review/after-mohawk.jpg",
+          "sha256": "b5cf18cc5e57072b1f9c8bf3fe5c4878a0b400cdbcdaea44cf7e3d389d8d28f5",
+          "caption": "after mohawk"
+        },
+        {
+          "file": "docs/vehicle-rotor-review/hub-before-heli.jpg",
+          "sha256": "aebc4443fc05a4a06dd818f241619caa2105bd69d739b25adc90f40c31dae2fe",
+          "caption": "hub-before heli"
+        },
+        {
+          "file": "docs/vehicle-rotor-review/hub-before-mohawk.jpg",
+          "sha256": "c191becf314dd64b26217747ac881678704b6d9400992100f0a773d6634ee033",
+          "caption": "hub-before mohawk"
+        },
+        {
+          "file": "docs/vehicle-rotor-review/hub-after-heli.jpg",
+          "sha256": "6ac428a8abdec5e8f281c08f4c261fdd2a60cd5932ccfc0a2cbc31890f3e0ccb",
+          "caption": "hub-after heli"
+        },
+        {
+          "file": "docs/vehicle-rotor-review/hub-after-mohawk.jpg",
+          "sha256": "5ed8b0647fd848226182f3b0dde2fe763854c210f99228342e81e985277b5875",
+          "caption": "hub-after mohawk"
+        },
+        {
+          "file": "docs/vehicle-rotor-review/family-roster-00.jpg",
+          "sha256": "a30fe4e34ff0d2bb43269130f90c3ade07758a25f21a364283a794dff15e39cf",
+          "caption": "family roster-00"
+        },
+        {
+          "file": "docs/vehicle-rotor-review/family-roster-01.jpg",
+          "sha256": "91bea88b62bc8e85887a2055f72c22de510b68ffac729cdd97e735ec60e3e953",
+          "caption": "family roster-01"
+        },
+        {
+          "file": "docs/vehicle-rotor-review/forward-heli.jpg",
+          "sha256": "bcea1d42a811ba64c784f11ba6c2f0e265746bbf01d094ea74710ab391a54632",
+          "caption": "forward heli"
+        },
+        {
+          "file": "docs/vehicle-rotor-review/forward-mohawk.jpg",
+          "sha256": "cbdc5a2ff38f5a05303f4e8e3583a8f3ed8151a15af6a0da60d646f3d5fcf045",
+          "caption": "forward mohawk"
+        },
+        {
+          "file": "changelog/unreleased/shared-helicopter-rotors/hub-before.jpg",
+          "sha256": "aebc4443fc05a4a06dd818f241619caa2105bd69d739b25adc90f40c31dae2fe",
+          "caption": "Rotor head before"
+        },
+        {
+          "file": "changelog/unreleased/shared-helicopter-rotors/hub-after.jpg",
+          "sha256": "6ac428a8abdec5e8f281c08f4c261fdd2a60cd5932ccfc0a2cbc31890f3e0ccb",
+          "caption": "Rotor head after"
+        }
+      ],
+      "output": null,
+      "capture": {
+        "before_ref": "b1a20ef",
+        "after_ref": "a149298f0b99af0a2a3979b0417320446b2cc8bb",
+        "engine": "Godot 4.6.3; project targets 4.7",
+        "viewport": [
+          1600,
+          900
+        ],
+        "stage": "tools/showcase/vehicle-surfaces.tscn",
+        "command": "DISPLAY=:101 godot --path CHECKOUT --rendering-method gl_compatibility --audio-driver Dummy tools/showcase/vehicle-surfaces.tscn -- --surface-out=OUTPUT --surface-single --surface-kinds=heli,huron,mohawk,kajman,hummingbird --surface-ground",
+        "hub_command": "same stage, --surface-single --surface-kinds=heli,mohawk --surface-rotor --surface-size=3 (no ground); repeat after using forward_plus",
+        "camera": "Same studio direction (1,.65,-1.25), seed 3 and five process frames per pair. Whole-aircraft bounds framing; hub view centred on main rotor with fixed 3 m orthographic size. Baseline uses the same extended capture harness."
+      }
+    },
+    {
+      "entry": "changelog/unreleased/shared-vehicle-exteriors.md",
+      "summary": "Smoother helicopter bodies, shared truck panels and differentiated surface finishes.",
+      "medium": "still",
+      "stage": "vehicle-surfaces",
+      "rationale": "Matched body closeups show skin shading and panel construction; paired finish sheets and whole vehicles show the limits of fine material changes at distance.",
+      "source_ref": "649e896 before; 7ca2504 after",
+      "sources": [
+        {
+          "file": "docs/vehicle-surface-review/after-gun_trawler.jpg",
+          "sha256": "bd0b86595e6963a29b2d1177520405f9294d08a018c7a68f212b45854922b551",
+          "caption": "after gun_trawler"
+        },
+        {
+          "file": "docs/vehicle-surface-review/after-heli.jpg",
+          "sha256": "1693403bb5e1f93927b408eb9c5d07740a45d4d4d41443ffe46286f7d6aace38",
+          "caption": "after heli"
+        },
+        {
+          "file": "docs/vehicle-surface-review/after-hunter.jpg",
+          "sha256": "cd445f23a930bc315bdc6367099bc9c7bf1e46dc7ae95826d18cb96b61c4b27a",
+          "caption": "after hunter"
+        },
+        {
+          "file": "docs/vehicle-surface-review/after-offroad.jpg",
+          "sha256": "523add29bc8907b75c6a1dde934486ac1d9ef572d8d0984a86389e43fc1849fa",
+          "caption": "after offroad"
+        },
+        {
+          "file": "docs/vehicle-surface-review/after-old_tank.jpg",
+          "sha256": "ab73a790d143d26e9ff67f4bc8b946f868e9199272e0af522bcd6c95cbe30378",
+          "caption": "after old_tank"
+        },
+        {
+          "file": "docs/vehicle-surface-review/after-patrol_ship.jpg",
+          "sha256": "d3acad24ec420c9d0539fd0e697d22c0356ea9f7d077eda4f6d57604ba0e9739",
+          "caption": "after patrol_ship"
+        },
+        {
+          "file": "docs/vehicle-surface-review/after-rhib.jpg",
+          "sha256": "473fe71e6bf2b17a2bcd55c565d19d18c4bf6836e9052740695d7fcd6eeb1ed6",
+          "caption": "after rhib"
+        },
+        {
+          "file": "docs/vehicle-surface-review/after-tank.jpg",
+          "sha256": "413d2f22dff48ee569f445330a26f63bd9a203f9eeae4b862eb80e4b33ee1388",
+          "caption": "after tank"
+        },
+        {
+          "file": "docs/vehicle-surface-review/after-wreck_tank.jpg",
+          "sha256": "5e7725de924ddae3ea76358f619ed9d9a0ba6175c92f46bdf5425c3f78135baf",
+          "caption": "after wreck_tank"
+        },
+        {
+          "file": "docs/vehicle-surface-review/after-zamak.jpg",
+          "sha256": "36db88dd86d56010c6dfdc0075c7e6df2b4df597de2aca0070cd2928dad49320",
+          "caption": "after zamak"
+        },
+        {
+          "file": "docs/vehicle-surface-review/before-gun_trawler.jpg",
+          "sha256": "2c8139f3e0ab4ff165691f2b3594af84d499785abd54c406f88084a518889446",
+          "caption": "before gun_trawler"
+        },
+        {
+          "file": "docs/vehicle-surface-review/before-heli.jpg",
+          "sha256": "a03311988a6c999683fc187c56fedea6d8e9fd6f9484f03488db9b29f04ca9d2",
+          "caption": "before heli"
+        },
+        {
+          "file": "docs/vehicle-surface-review/before-hunter.jpg",
+          "sha256": "1ca46f2be628a7b63a1cf38f4bdf7fef518027c46685eb033ffc6d13883b7811",
+          "caption": "before hunter"
+        },
+        {
+          "file": "docs/vehicle-surface-review/before-offroad.jpg",
+          "sha256": "4a64d35a498fc9854d39f46b719e43a59efc1d9695efcfa2575fdc72bebb58c5",
+          "caption": "before offroad"
+        },
+        {
+          "file": "docs/vehicle-surface-review/before-old_tank.jpg",
+          "sha256": "14af559bb2af67c41699e4ae0630818731106ea9779668f8876a0bd99ab49f34",
+          "caption": "before old_tank"
+        },
+        {
+          "file": "docs/vehicle-surface-review/before-patrol_ship.jpg",
+          "sha256": "08623d7133f875fe7f268ec19e24df10c3e174d8a296bb97b79f5e9d8cd881e8",
+          "caption": "before patrol_ship"
+        },
+        {
+          "file": "docs/vehicle-surface-review/before-rhib.jpg",
+          "sha256": "462543534519ed9fa77a3aa3ffc168347b40acc6a70332f8de90cfabf6d76591",
+          "caption": "before rhib"
+        },
+        {
+          "file": "docs/vehicle-surface-review/before-tank.jpg",
+          "sha256": "c752bea455c6ec3404acca3e725b6569ed5e09d6f069d41a798956e98b07d68e",
+          "caption": "before tank"
+        },
+        {
+          "file": "docs/vehicle-surface-review/before-wreck_tank.jpg",
+          "sha256": "f0275827b097c611334860dc97972a082d7168e2b3b50b8bf649eabadc98e928",
+          "caption": "before wreck_tank"
+        },
+        {
+          "file": "docs/vehicle-surface-review/before-zamak.jpg",
+          "sha256": "c6902cf6dfb21c2e696b888d8ae9fb290a1eddfbf3e992d95cf0a44cf8a764d1",
+          "caption": "before zamak"
+        },
+        {
+          "file": "docs/vehicle-surface-review/body-heli-after.jpg",
+          "sha256": "c5708b3bb47a7103a3db2d9f03208cf5a6a336cb7de58ec283ad435cdfedd9e2",
+          "caption": "body heli after"
+        },
+        {
+          "file": "docs/vehicle-surface-review/body-heli-before.jpg",
+          "sha256": "71ff1f3d092c89b89e914c2517e0ab001f3e89961460932988784b09dbddfcad",
+          "caption": "body heli before"
+        },
+        {
+          "file": "docs/vehicle-surface-review/body-hemtt-after.jpg",
+          "sha256": "f8f82bff7f6ce3a6551a95c32656bfb22232cf5b8a9eb479314060fb57ebf328",
+          "caption": "body hemtt after"
+        },
+        {
+          "file": "docs/vehicle-surface-review/body-hemtt-before.jpg",
+          "sha256": "4b36b88978b29f7f604cade42b290642bfb0eb34003a73e4f2193d8a2666505d",
+          "caption": "body hemtt before"
+        },
+        {
+          "file": "docs/vehicle-surface-review/body-tempest-after.jpg",
+          "sha256": "c7dae0bf5fc9a31763923b8c110f6e3771fe7a7bf6b88d5f7f5bf2c78d68b14e",
+          "caption": "body tempest after"
+        },
+        {
+          "file": "docs/vehicle-surface-review/body-tempest-before.jpg",
+          "sha256": "bc3af5cea1fa50815c1b5c0281b363203775785f2241e75aca0c44e4be5be020",
+          "caption": "body tempest before"
+        },
+        {
+          "file": "docs/vehicle-surface-review/body-zamak-after.jpg",
+          "sha256": "b4fef1fef48cd8a9b17c4b5f5588fe7228a4dea9faa274ff64af2da5fb1ff175",
+          "caption": "body zamak after"
+        },
+        {
+          "file": "docs/vehicle-surface-review/body-zamak-before.jpg",
+          "sha256": "3891a83d24f75daaa41d184561132fb7f7a011b60489296022475ee890ef029f",
+          "caption": "body zamak before"
+        },
+        {
+          "file": "docs/vehicle-surface-review/forward-heli.jpg",
+          "sha256": "d37898dc189c622b449a33a2237227f979102c49a566499d840aca25cd44f5b1",
+          "caption": "forward heli"
+        },
+        {
+          "file": "docs/vehicle-surface-review/forward-patrol_ship.jpg",
+          "sha256": "2351cd7006672d6f25b567d738649cdc505db1c402aba94cbd527f72a4dba61e",
+          "caption": "forward patrol_ship"
+        },
+        {
+          "file": "docs/vehicle-surface-review/forward-tank.jpg",
+          "sha256": "45a34b7ffaaf85af8f78119f35a9f3fd3212a79309dbcfb0545b0379d7cc5ae6",
+          "caption": "forward tank"
+        },
+        {
+          "file": "docs/vehicle-surface-review/forward-zamak.jpg",
+          "sha256": "5966c8fd99cd8df2785279db91e1884c0118cde5e1f13f6f5537dea1a9888231",
+          "caption": "forward zamak"
+        },
+        {
+          "file": "docs/vehicle-surface-review/rear-team1-roster-00.jpg",
+          "sha256": "8b0a642e0ea9c8d30e4edc816c3be095c5d70f48d847f3e2a9134bb60401bc4a",
+          "caption": "rear team1 roster 00"
+        },
+        {
+          "file": "docs/vehicle-surface-review/roster-after-roster-00.jpg",
+          "sha256": "8cc7e0aa30470cac1f3d169f71b875d78a409ee0300e6e481a2f2a999d4b6b2e",
+          "caption": "roster after roster 00"
+        },
+        {
+          "file": "docs/vehicle-surface-review/roster-after-roster-01.jpg",
+          "sha256": "ebbc1d7df01f07727be0342a9d1b96f76a23075e2e2d25b72350c5c30d055287",
+          "caption": "roster after roster 01"
+        },
+        {
+          "file": "docs/vehicle-surface-review/roster-after-roster-02.jpg",
+          "sha256": "94a3389ce68c8a88d43c0cf08a9370e2ebebd3e394d7e503f7bb90f28574d0b8",
+          "caption": "roster after roster 02"
+        },
+        {
+          "file": "docs/vehicle-surface-review/roster-after-roster-03.jpg",
+          "sha256": "eee5c8c612163ec08e61acff79b07e2e78447ced997c4801c4ba99f208f35ab1",
+          "caption": "roster after roster 03"
+        },
+        {
+          "file": "docs/vehicle-surface-review/roster-after-roster-04.jpg",
+          "sha256": "a67966ea55d954764ca721bf3897ff5bb869393d7e1124a453f4401308d135f0",
+          "caption": "roster after roster 04"
+        },
+        {
+          "file": "docs/vehicle-surface-review/roster-after-roster-05.jpg",
+          "sha256": "70cfa30ff3dc1cc45aabd539831d1fa4caf9e0bdfd13359f6565a9d5b0938be9",
+          "caption": "roster after roster 05"
+        },
+        {
+          "file": "docs/vehicle-surface-review/roster-after-roster-06.jpg",
+          "sha256": "1dfb807b3feebbc2d5c7eed084cbc7a0116a9824a88e267423dc9744b57469a8",
+          "caption": "roster after roster 06"
+        },
+        {
+          "file": "docs/vehicle-surface-review/roster-after-roster-07.jpg",
+          "sha256": "fa2d58f3f0da1aabe2d9b36b2dc9146750d952b1ece2791b506e7b36570fca69",
+          "caption": "roster after roster 07"
+        },
+        {
+          "file": "docs/vehicle-surface-review/roster-after-roster-08.jpg",
+          "sha256": "99c7ae4ee0a77b941da9bac08c13b61dcb091c5ca2a1fe312d6af607256e2f44",
+          "caption": "roster after roster 08"
+        },
+        {
+          "file": "docs/vehicle-surface-review/roster-after-roster-09.jpg",
+          "sha256": "ffbed973730597d61783cd3fa0af7bde7b25d1e85d6715834154609e0e435447",
+          "caption": "roster after roster 09"
+        },
+        {
+          "file": "docs/vehicle-surface-review/roster-after-roster-10.jpg",
+          "sha256": "4f433e5c7137a5c9087497149439c32ed0ee11a0cb6c7c6902ec94a6603e5373",
+          "caption": "roster after roster 10"
+        },
+        {
+          "file": "docs/vehicle-surface-review/roster-after-roster-11.jpg",
+          "sha256": "da542ad6666ad90d33be03d999014c097de58bf7246863fb878751babae58eab",
+          "caption": "roster after roster 11"
+        },
+        {
+          "file": "docs/vehicle-surface-review/swatches-after-roster-00.jpg",
+          "sha256": "d07876b10379b7a5f89afb1dea1cf9757eb17f1fd566cc9d35b414f26535b5dd",
+          "caption": "swatches after roster 00"
+        },
+        {
+          "file": "docs/vehicle-surface-review/swatches-after-roster-01.jpg",
+          "sha256": "e762678535d050f2aac9cadbdc6d73cae165d0560885cc3fa006176df9329dc0",
+          "caption": "swatches after roster 01"
+        },
+        {
+          "file": "docs/vehicle-surface-review/swatches-before-roster-00.jpg",
+          "sha256": "a141123703c871333ec58e0e0a21fefd68fbef0f9f27aee362632196a090c712",
+          "caption": "swatches before roster 00"
+        },
+        {
+          "file": "docs/vehicle-surface-review/swatches-before-roster-01.jpg",
+          "sha256": "a190cb631904d1751cb7f4c0dd73f9557fb934fdb2646246be9de4e060abe20e",
+          "caption": "swatches before roster 01"
+        },
+        {
+          "file": "changelog/unreleased/shared-vehicle-exteriors/heli-after.jpg",
+          "sha256": "c5708b3bb47a7103a3db2d9f03208cf5a6a336cb7de58ec283ad435cdfedd9e2",
+          "caption": "heli after"
+        },
+        {
+          "file": "changelog/unreleased/shared-vehicle-exteriors/heli-before.jpg",
+          "sha256": "71ff1f3d092c89b89e914c2517e0ab001f3e89961460932988784b09dbddfcad",
+          "caption": "heli before"
+        },
+        {
+          "file": "changelog/unreleased/shared-vehicle-exteriors/zamak-after.jpg",
+          "sha256": "b4fef1fef48cd8a9b17c4b5f5588fe7228a4dea9faa274ff64af2da5fb1ff175",
+          "caption": "zamak after"
+        },
+        {
+          "file": "changelog/unreleased/shared-vehicle-exteriors/zamak-before.jpg",
+          "sha256": "3891a83d24f75daaa41d184561132fb7f7a011b60489296022475ee890ef029f",
+          "caption": "zamak before"
+        }
+      ],
+      "output": null,
+      "capture": {
+        "before_ref": "649e896",
+        "after_ref": "7ca2504",
+        "engine": "Godot 4.6.3; project targets 4.7",
+        "viewport": [
+          1600,
+          900
+        ],
+        "stage": "tools/showcase/vehicle-surfaces.tscn",
+        "command": "DISPLAY=:101 godot --path CHECKOUT --rendering-method gl_compatibility --audio-driver Dummy tools/showcase/vehicle-surfaces.tscn -- --surface-out=OUTPUT --surface-single --surface-kinds=heli --surface-focus=0,1.4,-2 --surface-size=5 --surface-ground",
+        "camera": "Identical camera, light, seed 3 and frame count. Truck pairs use focus 0,2,-2.8 and size 5. Whole models use bounds framing. Baseline uses the extended harness. Full commands and coverage in docs/vehicle-surface-review/README.md."
+      }
     }
   ],
   "layout_capture": {

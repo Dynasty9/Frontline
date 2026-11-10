@@ -285,7 +285,7 @@ static func _aim(d: Vector3) -> Vector3:
 
 ## A rod from a to b (rails, ropes, struts).
 static func _rod(k: VehicleModels, parent: Node3D, a: Vector3, b: Vector3, r: float, mat: String, col = null, segs := 6, shadow := false) -> void:
-	k._cyl(parent, r, r, a.distance_to(b), (a + b) * 0.5, _aim(b - a), mat, col, segs, shadow)
+	VehicleFrames.tube(k, parent, a, b, r, mat, col, segs, shadow)
 
 
 ## An inflatable tube along a path: a capsule per leg, the joints rounding
@@ -370,7 +370,10 @@ static func _panel(k: VehicleModels, parent: Node3D, p0: Vector3, p1: Vector3, p
 	var x := u.normalized()
 	var y := n.cross(x).normalized()
 	var b := Basis(x, y, n)
-	k._box(parent, Vector3(maxf(u.length() - inset * 2.0, 0.02), maxf(v.length() - inset * 2.0, 0.02), t), c + n * lift, mat, col, b.get_euler(), false)
+	if mat == "glass":
+		VehicleGlazing.rectangle(k, parent, Vector2(maxf(u.length() - inset * 2.0, 0.02), maxf(v.length() - inset * 2.0, 0.02)), c + n * lift, b.get_euler(), false, col, t)
+	else:
+		k._box(parent, Vector3(maxf(u.length() - inset * 2.0, 0.02), maxf(v.length() - inset * 2.0, 0.02), t), c + n * lift, mat, col, b.get_euler(), false)
 
 
 ## A point of a flat [x, z, ...] outline at height y.

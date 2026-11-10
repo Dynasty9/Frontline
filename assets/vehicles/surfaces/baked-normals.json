@@ -1,0 +1,46 @@
+{
+  "size": 512,
+  "encoding": "linear OpenGL tangent normals",
+  "maps": [
+    {
+      "file": "coating_normal.png",
+      "source": "Metal027",
+      "sha256": "24043ab0ddd92396b20b06359e994da490413c8d050d028c7f1db50c4402dbb3"
+    },
+    {
+      "file": "rubber_normal.png",
+      "source": "Rubber004",
+      "sha256": "f0b88859077a04d2f7fa294286c41c359f81b6ef98c78835390cf79ed14e0d4c"
+    },
+    {
+      "file": "canvas_normal.png",
+      "source": "Fabric036",
+      "sha256": "e79477c39f6cf82ccac8ce592bcd7caa58d453366615c82daf4ad7db35587941"
+    },
+    {
+      "file": "metal_normal.png",
+      "source": "Metal009",
+      "sha256": "dbc05580938771b67adf09ca348315142a83f9b3ad7ffb0e1206182fdd1d7c67"
+    },
+    {
+      "file": "tread_normal.png",
+      "source": "DiamondPlate009",
+      "sha256": "c26aec3b428f453a2217da6288f9b8372c4f6f2c80997e8b68fdfc94b228e0f7"
+    },
+    {
+      "file": "oxidized_normal.png",
+      "source": "Metal053B",
+      "sha256": "b8a1e57946296ec7db975cb4cbf9670f2ee1ab2156140b5216bbfd7a3d54b79f"
+    },
+    {
+      "file": "nonslip_normal.png",
+      "source": "Original MIT material height",
+      "sha256": "9c0ede321942538546d74646bfbcdeaffda1aa5d131c52fe8bc347339f61aab7"
+    },
+    {
+      "file": "char_normal.png",
+      "source": "Original MIT material height",
+      "sha256": "9c811ee9a4f4488faeea0ef2866837a4ad0a72050a3acf78c9bdaca924e5cb10"
+    }
+  ]
+}

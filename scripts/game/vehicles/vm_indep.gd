@@ -133,24 +133,12 @@ static func _jerrycan(k: VehicleModels, p: Node3D, pos: Vector3, col: Color, yaw
 ## A rubber-tyred road wheel (twin discs with the guide gap between them) on
 ## a spinning pivot, the disc painted like the hull.
 static func _road_wheel(k: VehicleModels, p: Node3D, pos: Vector3, r: float, w: float, mat: String, col = null) -> Node3D:
-	var pv := k._pivot(p, pos)
-	for sx: float in [-1.0, 1.0]:
-		k._cyl(pv, r, r, w * 0.42, Vector3(sx * w * 0.29, 0, 0), Z90, "rubber", null, 18)
-	k._cyl(pv, r * 0.82, r * 0.82, w + 0.02, Vector3.ZERO, Z90, mat, col, 18)
-	k._cyl(pv, r * 0.26, r * 0.3, w + 0.06, Vector3.ZERO, Z90, "gunmetal_w", null, 10, false)
-	k.wheels.append(pv)
-	return pv
+	return VehicleWheels.road(k, p, pos, r, w, mat, col)
 
 
 ## A steel idler (no tyre) on a spinning pivot.
 static func _idler(k: VehicleModels, p: Node3D, pos: Vector3, r: float, w: float, mat: String, col = null) -> Node3D:
-	var pv := k._pivot(p, pos)
-	for sx: float in [-1.0, 1.0]:
-		k._cyl(pv, r, r, w * 0.36, Vector3(sx * w * 0.3, 0, 0), Z90, "gunmetal_w", null, 16)
-	k._cyl(pv, r * 0.78, r * 0.78, w * 0.9, Vector3.ZERO, Z90, mat, col, 16)
-	k._cyl(pv, r * 0.25, r * 0.28, w + 0.06, Vector3.ZERO, Z90, "gunmetal_w", null, 10, false)
-	k.wheels.append(pv)
-	return pv
+	return VehicleWheels.road(k, p, pos, r, w, mat, col, 0, false)
 
 
 ## A toothed drive sprocket on a spinning pivot.
@@ -170,23 +158,7 @@ static func _sprocket(k: VehicleModels, p: Node3D, pos: Vector3, r: float, w: fl
 ## A track: a belt of link plates round the convex hull of its wheels (each
 ## circle (z, y, r)), so the road wheels show between the runs.
 static func _track_belt(k: VehicleModels, p: Node3D, x: float, w: float, circles: Array, th := 0.08, segs := 16) -> void:
-	var pts := PackedVector2Array()
-	for c in circles:
-		var cv: Vector3 = c
-		var rr := cv.z + th * 0.5
-		for i in segs:
-			var a := TAU * (i + 0.5) / segs
-			pts.append(Vector2(cv.x + cos(a) * rr, cv.y + sin(a) * rr))
-	var hull := Geometry2D.convex_hull(pts)
-	for i in hull.size() - 1:
-		var a2 := hull[i]
-		var b2 := hull[i + 1]
-		var d := b2 - a2
-		var l := d.length()
-		if l < 0.015:
-			continue
-		var mid := (a2 + b2) * 0.5
-		k._box(p, Vector3(w, th, l + th * 0.7), Vector3(x, mid.y, mid.x), "track", null, Vector3(atan2(-d.y, d.x), 0, 0))
+	VehicleTracks.shoes(k, p, x, w, VehicleTracks.wheel_envelope(circles, th, segs), th)
 
 
 # --- Strider: KMW Fennek LGS scout car ---------------------------------------------
@@ -935,8 +907,7 @@ static func _zamak_cab(k: VehicleModels, team: int, cam: String, col) -> void:
 	k._box(m, Vector3(0.9, 0.03, 0.04), Vector3(0, 1.84, -2.2), "gunmetal_w", null, Vector3.ZERO, false)
 	k._box(m, Vector3(0.03, 0.02, 1.3), Vector3(0, 1.845, -2.85), "gunmetal_w", null, Vector3.ZERO, false)
 	for s: float in [-1.0, 1.0]:
-		for i in 4:
-			k._box(m, Vector3(0.02, 0.04, 0.42), Vector3(s * 0.57, 1.42 + i * 0.09, -2.75), "gunmetal_w", null, Vector3(0, 0, s * 0.14), false)
+		VehicleBody.panel(k, m, Vector3(s * 0.57, 1.54, -2.75), Vector2(0.62, 0.42), Vector3(0, s * PI / 2, s * 0.14), cam, col, true)
 		# the wing over the front wheel: flat top, raked front, a valance
 		var fx: float = s * 0.93
 		k._box(m, Vector3(0.68, 0.05, 1.12), Vector3(fx, 1.42, -2.56), cam, col)
@@ -954,6 +925,8 @@ static func _zamak_cab(k: VehicleModels, team: int, cam: String, col) -> void:
 	k._box(m, Vector3(0.5, 0.12, 0.02), Vector3(0, 0.96, -3.83), "paint", Color(0.82, 0.8, 0.72), Vector3.ZERO, false)
 	# the cab: vertical lower half, the glasshouse leaning in a little
 	k._add(m, VehicleModels.solid([_ring(_oct(-1.2, 1.2, -2.15, -0.72, 0.08), 1.22), _ring(_oct(-1.2, 1.2, -2.15, -0.72, 0.08), 2.0)], "indep_zk_open_cab"), cam, col, Vector3.ZERO)
+	for side in [-1.0, 1.0]:
+		VehicleBody.panel(k, m, Vector3(side * 1.21, 1.63, -1.59), Vector2(0.80, 0.48), Vector3(0, side * PI / 2, 0), cam, col)
 	VehicleCab.upper(k, Vector2(1.2, 1.12), Vector2(2.0, 2.72), Vector2(-2.15, -2.0), -0.76, cam, col)
 	var wa := Vector2(-2.15, 2.0)
 	var wb := Vector2(-2.0, 2.72)
@@ -980,9 +953,7 @@ static func _zamak_cab(k: VehicleModels, team: int, cam: String, col) -> void:
 	_antenna(k, m, Vector3(-1.0, 2.72, -0.86), 1.6)
 	# behind the cab: the spare wheel upright in its frame, the air intake,
 	# the fuel tank on the left and the battery box on the right
-	k._cyl(m, 0.6, 0.6, 0.4, Vector3(0, 1.74, -0.5), X90, "rubber", null, 20)
-	k._cyl(m, 0.36, 0.36, 0.42, Vector3(0, 1.74, -0.5), X90, cam, col, 14)
-	k._cyl(m, 0.14, 0.14, 0.46, Vector3(0, 1.74, -0.5), X90, "gunmetal_w", null, 10)
+	VehicleWheels.spare(k, m, Vector3(0, 1.74, -0.5), 0.6, 0.4, X90, cam, col)
 	k._box(m, Vector3(1.2, 0.08, 0.1), Vector3(0, 1.16, -0.5), "gunmetal_w")
 	k._cyl(m, 0.17, 0.17, 0.9, Vector3(0.95, 1.85, -0.52), Vector3.ZERO, cam, col, 12)
 	k._cyl(m, 0.2, 0.2, 0.08, Vector3(0.95, 2.34, -0.52), Vector3.ZERO, "gunmetal_w", null, 12)

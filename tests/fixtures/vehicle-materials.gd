@@ -5,6 +5,12 @@ var maps := {}
 
 func _ready() -> void:
 	TestRun.watch()
+	for profile: Dictionary in VehicleMaterials.PROFILES.values():
+		assert(profile.has("surface_finish"))
+		if profile.has("map"):
+			var normal := load("res://assets/vehicles/surfaces/%s_normal.png" % profile.map) as Texture2D
+			assert(normal != null and normal.get_size() == Vector2(512, 512))
+			assert(normal.get_image().has_mipmaps(), "Normal maps must filter at gameplay distance")
 	var keys: Array = Defs.VEHICLES.keys()
 	for list in [VehicleModels.family_keys(), VmCore.KEYS, VmGunship.KEYS, VmAttack.KEYS, VmFighter.KEYS]:
 		for key: String in list:
