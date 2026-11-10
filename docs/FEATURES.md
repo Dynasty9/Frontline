@@ -1136,6 +1136,8 @@ Ambush Alley autoplay can call its existing mortar support against spotted, stop
   from ambientCG CC0 sources) add fine relief without requiring UV unwraps. RHIB decks have raised tread;
   selected trawler fittings use nonmetallic rust over exposed steel. Paint is nonmetallic; texture and lower-body dust
   stay attached to the model as it moves or climbs. Faction palettes and distant merged meshes are retained.
+- The HEMTT cargo variant trials additional modeled tyre tread, framed glazing, door pressings, bed
+  hardware and load restraints; details merge into the chassis and rotating wheel surfaces.
 - Explosions are layered GPU particles: a flash and light burst, a rolling fireball that cools from the edges in
   until it's dark smoke, a lit smoke column that drifts with the wind, a dirt plume, sparks and debris that
   bounce on the ground, a rolling dust ring, a faint heat-shimmer shockwave and a scorch mark. Heavy rounds

@@ -4070,6 +4070,53 @@
         "compatibility": "Target after with --rendering-method gl_compatibility",
         "command": "godot --main-pack PACK --resolution 1600x900 -- --aivai --seed=3 --offscreen --nohud --set=perf:0 --preset=high --mood=MOOD --focus=FOCUS --zoom=ZOOM --pitch=PITCH --cam-yaw=0.7 --screenshot=OUTPUT --shot-at=2 --quit-after=3"
       }
+    },
+    {
+      "entry": "changelog/unreleased/hemtt-cargo-detail.md",
+      "summary": "Framed glazing, tyre tread and load hardware make the cargo truck more readable.",
+      "medium": "still",
+      "stage": "vehicle-surfaces",
+      "rationale": "Matched close and wider studio pairs isolate the modeled detail from lighting and texture changes.",
+      "source_ref": "f0b8191 baseline + HEMTT cargo art pass",
+      "sources": [
+        {
+          "file": "changelog/unreleased/hemtt-cargo-detail/close-after.jpg",
+          "sha256": "be8690a107203e6b9d66b7c7264b53bfb778561e265d429305da682a371641d2",
+          "caption": "close after"
+        },
+        {
+          "file": "changelog/unreleased/hemtt-cargo-detail/close-before.jpg",
+          "sha256": "601605e17d1ed2baaece64415314204f85903a054cc75528787f32b614bd4ea8",
+          "caption": "close before"
+        },
+        {
+          "file": "changelog/unreleased/hemtt-cargo-detail/wide-after.jpg",
+          "sha256": "23d06504ce1d1b5287bbe8542ceba244e3bdece77253239fe71c8e266e83edcf",
+          "caption": "wide after"
+        },
+        {
+          "file": "changelog/unreleased/hemtt-cargo-detail/wide-before.jpg",
+          "sha256": "d5b57f05b3d79d8545a1ef68372c41337e08146ff3b171707695e5c5fc9e1c14",
+          "caption": "wide before"
+        }
+      ],
+      "output": null,
+      "capture": {
+        "before_ref": "f0b8191 with capture-size option only",
+        "after_ref": "HEMTT cargo art pass working tree",
+        "engine": "Godot 4.6.3 Compatibility; palette 1 also inspected with Vulkan Forward+",
+        "command": "DISPLAY=:100 godot --path . --rendering-method gl_compatibility --audio-driver Dummy tools/showcase/vehicle-surfaces.tscn -- --surface-out=OUTPUT --surface-single --surface-kinds=hemtt_cargo --surface-size=SIZE",
+        "seed": 3,
+        "team": 0,
+        "viewport": [
+          1600,
+          900
+        ],
+        "camera": "Orthographic size 10 close / 28 wide, direction (1,0.65,-1.25); fixed studio sky and key light",
+        "timing": "Static pose, five frames then frame_post_draw",
+        "report": "docs/vehicle-surface-comparisons/hemtt-cargo.md",
+        "limitations": "Wide images are gameplay-scale studio views, not in-match footage. No photorealism or hardware-performance claim."
+      }
     }
   ],
   "layout_capture": {

@@ -9,6 +9,7 @@ var single := false
 var team := 0
 var offset := Vector3.ZERO
 var swatches := false
+var camera_size := 0.0
 
 func _ready() -> void:
 	TestRun.watch()
@@ -23,6 +24,8 @@ func _ready() -> void:
 			team = int(arg.trim_prefix("--surface-team="))
 		elif arg == "--surface-offset":
 			offset = Vector3(117, 35, -81)
+		elif arg.begins_with("--surface-size="):
+			camera_size = float(arg.trim_prefix("--surface-size="))
 		elif arg == "--surface-swatches":
 			swatches = true
 	if swatches:
@@ -37,7 +40,7 @@ func _ready() -> void:
 		kinds.append_array(["wreck_tank", "wreck_heli", "wreck_patrol_ship"])
 		kinds.sort()
 	DirAccess.make_dir_recursive_absolute(output)
-	var manifest := {"team": team, "seed": 3, "renderer": RenderingServer.get_current_rendering_method(), "models": kinds}
+	var manifest := {"team": team, "seed": 3, "renderer": RenderingServer.get_current_rendering_method(), "models": kinds, "camera_size": camera_size}
 	FileAccess.open(output.path_join("capture.json"), FileAccess.WRITE).store_string(JSON.stringify(manifest, "\t"))
 	var per_page := 1 if single else (16 if swatches else 12)
 	for start in range(0, kinds.size(), per_page):
@@ -118,7 +121,7 @@ func _cell(grid: GridContainer, kind: String, size: Vector2i) -> void:
 	var camera := Camera3D.new()
 	stage.add_child(camera)
 	camera.projection = Camera3D.PROJECTION_ORTHOGONAL
-	camera.size = maxf(bounds.size.length() * 0.78, 1.0)
+	camera.size = camera_size if camera_size > 0.0 else maxf(bounds.size.length() * 0.78, 1.0)
 	camera.far = 1000
 	camera.position = center + Vector3(1, 0.65, -1.25).normalized() * bounds.size.length() * 2.0
 	camera.look_at(center + offset)

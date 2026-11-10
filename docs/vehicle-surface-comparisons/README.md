@@ -1,5 +1,8 @@
 # Vehicle surface comparisons
 
+The roster images below record the CC0 pass at `f0b8191`. The subsequent focused
+[HEMTT cargo art pass](hemtt-cargo.md) has its own matched close and wide comparisons.
+
 The after images now include the CC0 texture integration. These compare the original game baseline with the final shared library. For the incremental change from the first procedural pass, see [CC0 integration before/after](cc0-pass/README.md), including every roster entry in both palettes.
 
 Civilian paint loses oversized blotches, painted cargo loses its bare-metal sparkle, and rubber, fabric and metal receive source-based detail. Changes on armor and aircraft remain subtle; these textures do not replace missing bevels, panel geometry or model detail.
