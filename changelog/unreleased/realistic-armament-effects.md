@@ -4,6 +4,11 @@ summary = "Explosion clouds roll and disperse, with sunlight catching their bill
 kind = "improved"
 
 [[videos]]
+file = "battlefield.webm"
+poster = "battlefield.jpg"
+caption = "Battlefield showcase: grenade, HE and fuel explosions, tracers striking dirt, stone and a vehicle, then a descending night flare. Real terrain, vegetation and cover throughout. Forward+, 28 seconds, fixed 24 fps, normal speed; silent."
+
+[[videos]]
 file = "world.webm"
 poster = "after.jpg"
 caption = "After: a roughly 110 mm HE ground burst in the battlefield, with earth fans, falling clods and a rolling dust cloud. Fixed 24 fps, normal simulation speed."
@@ -51,6 +56,8 @@ caption = "Before: the shell uses a fiery explosion profile."
 file = "after.jpg"
 caption = "After: the same shell throws earth and a turbulent dust cloud."
 +++
+
+The showcase moves from grenade (0:00) to HE (0:04), fuel (0:09), dirt/stone/metal impacts (0:14–0:20), then the night flare (0:20). These are controlled effect demonstrations in the actual battlefield; the matched before/after clips and focused close-ups remain below.
 
 - Grenades have a small, brief flash and fast dark fragments. HE shells throw widening fans of earth, falling clods and dust. Fuel burns through a rising cloud of darker smoke.
 - Animated clouds retain their billows as they roll and disperse. Sunlight and sky light shape them, roads produce greyer dust, and wet ground produces a darker, thinner cloud.

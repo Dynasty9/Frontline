@@ -1,0 +1,291 @@
+{
+  "stage": "battlefield-effects",
+  "engine": "4.7.2.stable.official.ed1daf0bf",
+  "parameters": {
+    "scene": "tests/fixtures/blast-world-clips.tscn",
+    "seconds": 28,
+    "fps": 24,
+    "simulation_hz": 24,
+    "engine_fixed_fps": 24,
+    "cue": "Grenade, HE, fuel, dirt/stone/metal impacts and a night flare, all against the actual battlefield terrain.",
+    "timeout": 2400,
+    "crf": 32,
+    "bitrate": "2800k",
+    "render_settings": {
+      "grass": 1,
+      "effects": 2,
+      "decals": true,
+      "post": false,
+      "mood": "day, then night at 20 seconds"
+    },
+    "shots": [
+      {
+        "start": 0,
+        "subject": "grenade"
+      },
+      {
+        "start": 4,
+        "subject": "HE"
+      },
+      {
+        "start": 9,
+        "subject": "fuel"
+      },
+      {
+        "start": 14,
+        "subject": "dirt impacts"
+      },
+      {
+        "start": 16,
+        "subject": "stone impacts"
+      },
+      {
+        "start": 18,
+        "subject": "metal impacts"
+      },
+      {
+        "start": 20,
+        "subject": "night flare over terrain"
+      },
+      {
+        "start": 23,
+        "subject": "flare close-up over terrain"
+      }
+    ],
+    "seed": 712,
+    "camera": {
+      "fov_degrees": 48,
+      "targets": "Ground height sampled from World.ground_y; coordinates are in metres.",
+      "soil_xz": [
+        4,
+        12
+      ],
+      "fuel_xz": [
+        30,
+        -2
+      ],
+      "stone_xz": [
+        -30,
+        24
+      ],
+      "car_xz": [
+        -30,
+        8
+      ],
+      "grenade_offset": [
+        5,
+        7,
+        9
+      ],
+      "he_offset": [
+        6,
+        10,
+        13
+      ],
+      "fuel_offset": [
+        11,
+        13,
+        17
+      ],
+      "dirt_offset": [
+        3,
+        2.4,
+        4.8
+      ],
+      "stone_offset": [
+        2.8,
+        1.8,
+        4.8
+      ],
+      "car_offset_local": [
+        5,
+        2,
+        3
+      ],
+      "car_yaw_radians": 0.5,
+      "flare_offset": [
+        24,
+        18,
+        32
+      ],
+      "flare_close_offset": [
+        9,
+        6,
+        13
+      ],
+      "dirt_xz": [
+        4,
+        6
+      ]
+    },
+    "gunfire": {
+      "weapon": "mg",
+      "speed_m_s": 780,
+      "distance_m": 35,
+      "shots_per_second": 4,
+      "tracer_share": 0.25,
+      "timing": "Normal simulation speed. Range lets the short tracer flight cross a 24 Hz capture frame."
+    }
+  },
+  "segments": [
+    {
+      "capture_folder": "release",
+      "first_frame": 0,
+      "last_frame": 383,
+      "source_ref": "3818d5049a95bbf902ad8a89d595dce39e02d6cc",
+      "frame_count": 384,
+      "sha256_of_concatenated_frame_sha256_bytes": "7a2a6ab4e1e50460133bd9437094abaca9b2e304f37382ca1b9fe7b75c834291"
+    },
+    {
+      "capture_folder": "resumed",
+      "first_frame": 384,
+      "last_frame": 671,
+      "source_ref": "84d242c0f08e98679e81adbfe9d25f903492b125",
+      "frame_count": 288,
+      "sha256_of_concatenated_frame_sha256_bytes": "cfc4a954fb6f33b756336b327d41d6734ef1171bf823ebe3836d6456d1451e68"
+    }
+  ],
+  "initial_command": [
+    "/workspace/scratch/explosion-rebuild/godot-4.7.2/Godot_v4.7.2-stable_linux.x86_64",
+    "--fixed-fps",
+    "24",
+    "--path",
+    "/workspace/Frontline-effects",
+    "--rendering-method",
+    "forward_plus",
+    "--audio-driver",
+    "Dummy",
+    "--position",
+    "-10000,-10000",
+    "--resolution",
+    "1280x720",
+    "res://tests/fixtures/blast-world-clips.tscn",
+    "--",
+    "--clip=battlefield-effects",
+    "--label=CURRENT BUILD",
+    "--frames=/workspace/scratch/ground-showcase/release/frames"
+  ],
+  "resume_command": [
+    "/workspace/scratch/explosion-rebuild/godot-4.7.2/Godot_v4.7.2-stable_linux.x86_64",
+    "--path",
+    "/workspace/Frontline-effects",
+    "--rendering-method",
+    "forward_plus",
+    "--audio-driver",
+    "Dummy",
+    "--fixed-fps",
+    "24",
+    "--position",
+    "-10000,-10000",
+    "--resolution",
+    "1280x720",
+    "res://tests/fixtures/blast-world-clips.tscn",
+    "--",
+    "--clip=battlefield-effects",
+    "--frames=/workspace/scratch/ground-showcase/resumed/frames",
+    "--resume-frame=384"
+  ],
+  "encode_command": [
+    "ffmpeg",
+    "-y",
+    "-loglevel",
+    "error",
+    "-framerate",
+    "24",
+    "-i",
+    "/workspace/scratch/ground-showcase/assembled/frames/%04d.png",
+    "-c:v",
+    "libvpx-vp9",
+    "-threads",
+    "4",
+    "-row-mt",
+    "1",
+    "-cpu-used",
+    "2",
+    "-crf",
+    "32",
+    "-b:v",
+    "2800k",
+    "-pix_fmt",
+    "yuv420p",
+    "-an",
+    "/workspace/scratch/ground-showcase/assembled/clip.webm"
+  ],
+  "environment": {
+    "LP_NUM_THREADS": "3",
+    "DISPLAY_initial": ":91",
+    "DISPLAY_resumed": ":92",
+    "renderer_device": "llvmpipe (LLVM 19.1.7, 256 bits)",
+    "LD_LIBRARY_PATH": "/workspace/scratch/ground-showcase/render/root/usr/lib/x86_64-linux-gnu",
+    "VK_ICD_FILENAMES": "/workspace/scratch/ground-showcase/render/root/usr/share/vulkan/icd.d/lvp_icd.json"
+  },
+  "capture_recovery": "Runtime restart interrupted the initial render. Frames 0–383 are retained. The resumed fixture replays the same fixed-step schedule with rasterization disabled, then records fresh stone/metal/flare shots from the planned cut at frame 384. Prior GPU particle history is not reconstructed; the resumed shots start new effects. No interpolation, speed changes or synthetic frames.",
+  "working_tree_changes": [
+    " M changelog/unreleased/realistic-armament-effects.md"
+  ],
+  "attribution": "Current-build controlled demonstration in actual battlefield geometry.",
+  "video": "battlefield.webm",
+  "poster": "battlefield.jpg",
+  "poster_time_seconds": 5.25,
+  "validation": {
+    "codec": "VP9",
+    "dimensions": [
+      1280,
+      720
+    ],
+    "fps": 24,
+    "seconds": 28,
+    "audio": false,
+    "full_decode": "passed",
+    "bytes": 7393765,
+    "sha256": "2802ab1d78a97ac6b0fea7b293d82aca5544a323a267f3d1d83dab76f22106b5",
+    "website": [
+      {
+        "viewport": {
+          "width": 1280,
+          "height": 960
+        },
+        "reducedMotion": true,
+        "lead": "battlefield.webm",
+        "duration": 28,
+        "controls": true,
+        "seek": true,
+        "playPause": true,
+        "disclosure": true,
+        "overflow": false,
+        "errors": []
+      },
+      {
+        "viewport": {
+          "width": 390,
+          "height": 844
+        },
+        "reducedMotion": true,
+        "lead": "battlefield.webm",
+        "duration": 28,
+        "controls": true,
+        "seek": true,
+        "playPause": true,
+        "disclosure": true,
+        "overflow": false,
+        "errors": []
+      }
+    ],
+    "visual_review": "Encoded beginning, action and result frames for every shot inspected at 640x360, plus actual ReleaseCard desktop/mobile screenshots.",
+    "overlap_check": {
+      "frame": 390,
+      "mean_rgb_difference_0_to_255": 0.63418,
+      "wall_patch_mean_rgb_difference_0_to_255": 0.17454,
+      "note": "Saved and resumed stone-shot frames visually agree; foliage animation has small differences."
+    },
+    "checks": [
+      "Godot 4.7.2 import without script/parse errors",
+      "Completed renderer-backed capture without script/shader errors",
+      "10 changelog publication unit tests",
+      "1 presentation audit unit test",
+      "5 web changelog unit tests",
+      "12 Storybook media/disclosure tests"
+    ]
+  },
+  "scope": "Controlled visual events in the real showroom battlefield, not a combat-outcome recording. Ground, grass, cover and vehicle meshes remain present; no effect speed or size is changed for capture. Original matched before/after evidence is preserved separately."
+}
