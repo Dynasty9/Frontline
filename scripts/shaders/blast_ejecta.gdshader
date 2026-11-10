@@ -36,7 +36,7 @@ void vertex() {
 		vec3 tangent = velocity * exp(-drag * t) - vec3(0.0, 9.8 * t, 0.0);
 		vec3 side = cross(tangent, point - cam);
 		side = length(side) > 0.0001 ? normalize(side) : INV_VIEW_MATRIX[0].xyz;
-		float width = params.x * (0.25 + age * 1.8) * mix(1.0, 0.24, along);
+		float width = params.x * (0.25 + age * 1.8) * mix(0.9, 0.50, along);
 		point += side * ((UV.x - 0.5) * width * 2.0);
 		point.y = max(point.y, params.z + 0.025);
 	}
@@ -46,11 +46,12 @@ void vertex() {
 void fragment() {
 	vec2 uv = vec2(UV.x * 1.8, UV.y * 5.0) + vec2(seed * 17.0, seed * 9.0 - progress * 0.4);
 	vec3 noise = texture(noise_tex, uv).rgb;
-	float edge = abs(UV.x * 2.0 - 1.0);
+	// Break the silhouette into uneven lobes as the ribbon opens.
+	float edge = abs(UV.x * 2.0 - 1.0 + (noise.b - 0.5) * 0.75);
 	float shape = 1.0 - smoothstep(0.15, 0.95, edge + (noise.g - 0.5) * 0.6);
 	shape *= smoothstep(0.0, 0.08, UV.y) * smoothstep(0.0, 0.22, 1.0 - UV.y);
 	float breakup = smoothstep(0.1 + progress * 0.45, 0.65, noise.r * 0.6 + noise.b * 0.4);
-	shape *= mix(0.85, breakup, smoothstep(0.05, 0.65, progress));
+	shape *= mix(0.55 + 0.45 * noise.r, breakup, smoothstep(0.02, 0.48, progress));
 	float opacity = shape * tint.a * smoothstep(0.0, 0.035, progress) * (1.0 - smoothstep(0.25, 1.0, progress));
 	vec4 scene = INV_PROJECTION_MATRIX * vec4(SCREEN_UV * 2.0 - 1.0, NDC_Z(texture(depth_tex, SCREEN_UV).r), 1.0);
 	opacity *= clamp((-scene.z / scene.w + VERTEX.z) / 0.15, 0.0, 1.0);

@@ -672,10 +672,10 @@ func explode(p: Vector3, size: float, kind := "he") -> void:
 		world.fx.gunfx.flash(p + Vector3.UP * (0.35 if kind == "frag" else 0.65) * k, radius, flash_life, GunFx.HOT)
 	else:
 		_fire_layer(layers.flash, 1.0, sv)
-	blasts.burst(Vector3(p.x, gy + 0.04, p.z) if ground else p, size, kind, detail, ground)
+	var cloud := blasts.burst(Vector3(p.x, gy + 0.04, p.z) if ground else p, size, kind, detail, ground)
 	_fire_layer(layers.sparks, fx * (1.0 if kind == "fuel" else 0.08), sv)
 	if world and world.fx and world.fx.gunfx:
-		world.fx.gunfx.blast_fragments(p, size, kind, ground, detail)
+		world.fx.gunfx.blast_fragments(p, size, kind, ground, detail, cloud)
 	if layers.has("flaming") and kind == "fuel" and size >= 1.15:
 		_fire_layer(layers.flaming, fx * clampf((size - 0.9) / 2.4, 0.12, 0.4), sv + 6.0)
 	if ground:
@@ -1339,7 +1339,7 @@ func make_dust(size: float) -> GeometryInstance3D:
 ## volumetric density when volumetric fog is on.
 func make_smoke_screen() -> Node3D:
 	var h := Node3D.new()
-	var pm := _pm(Vector3.UP, 70.0, 0.3, 1.2, Vector3(0.25, 0.25, 0.12), 2.6, 4.2)
+	var pm := _pm(Vector3.UP, 60.0, 0.35, 1.15, Fires.WIND * 0.68 + Vector3.UP * 0.22, 2.3, 4.8)
 	pm.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_SPHERE
 	pm.emission_sphere_radius = 1.0
 	pm.damping_min = 0.5
@@ -1352,7 +1352,7 @@ func make_smoke_screen() -> Node3D:
 	pm.turbulence_influence_min = 0.01
 	pm.turbulence_influence_max = 0.04
 	pm.scale_curve = _curve([Vector2(0, 0.3), Vector2(0.3, 0.9), Vector2(1, 1.0)])
-	pm.color_ramp = _ramp([0.0, 0.1, 0.7, 1.0], [Color(0.85, 0.85, 0.83, 0.0), Color(0.85, 0.85, 0.83, 0.85), Color(0.82, 0.82, 0.8, 0.6), Color(0.8, 0.8, 0.78, 0.0)])
+	pm.color_ramp = _ramp([0.0, 0.1, 0.7, 1.0], [Color(0.85, 0.85, 0.83, 0.0), Color(0.69, 0.69, 0.65, 0.72), Color(0.82, 0.82, 0.79, 0.52), Color(0.8, 0.8, 0.78, 0.0)])
 	var s := _sys(60, 6.0, pm, smoke_mat)
 	s.one_shot = false
 	s.explosiveness = 0.0

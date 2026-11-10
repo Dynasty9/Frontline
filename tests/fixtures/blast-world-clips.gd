@@ -58,6 +58,11 @@ func _ready() -> void:
 	var target := Vector3(4, field.ground_y(Vector3(4, 0, 12)), 12)
 	camera.global_position = target + (Vector3(25, 52, 30) if mode == "blast-rts" else Vector3(8, 15, 18))
 	camera.look_at(target + Vector3(0, 2.3, 0))
+	if mode == "blast-sandbag":
+		# The front face of the showroom nest is at z=13.70.
+		target = Vector3(5, field.ground_y(Vector3(5, 0, 13)), 13)
+		camera.global_position = target + Vector3(8, 1.65, 5)
+		camera.look_at(target + Vector3(0, 1.25, 0))
 	var canvas := CanvasLayer.new()
 	add_child(canvas)
 	var caption := Label.new()

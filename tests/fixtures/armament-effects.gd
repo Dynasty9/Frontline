@@ -9,10 +9,58 @@ func check(ok: bool, message: String) -> void:
 func _ready() -> void:
 	TestRun.watch()
 	Settings.v.effects = 2
+	for recipe: Array in Sfx._recipes():
+		if recipe[0] not in ["mortar", "cannon", "explosion", "small_boom", "big_boom", "ac40", "ac105"]:
+			continue
+		var rng := RandomNumberGenerator.new()
+		rng.seed = 712
+		var sound: AudioStreamWAV = recipe[1].call(rng)
+		var peak := 0
+		var early := 0.0
+		var late := 0.0
+		var count := sound.data.size() >> 1
+		for i in count:
+			var sample := sound.data.decode_s16(i * 2)
+			peak = maxi(peak, absi(sample))
+			if i < 2205: early += float(sample) * sample
+			if i >= count - 2205: late += float(sample) * sample
+		check(peak > 12000 and peak < 30000, "%s keeps a strong transient with unclipped headroom" % recipe[0])
+		check(sound.data.decode_s16(0) == 0 and sound.data.decode_s16(sound.data.size() - 2) == 0, "%s starts and ends without a discontinuity" % recipe[0])
+		check(early > late * 10.0, "%s decays after its report" % recipe[0])
+		rng.seed = 712
+		var repeated: AudioStreamWAV = recipe[1].call(rng)
+		check(sound.data == repeated.data, "%s synthesis repeats from its seed" % recipe[0])
 	Vfx.gl = "--cpu-effects" in OS.get_cmdline_user_args()
 	var field = load("res://tests/fixtures/effects-field.gd").new()
 	add_child(field)
 	var v: Vfx = field.fx.vfx
+	# A rotated finite wall on elevated ground. Call burst through the same
+	# spatial index the game uses, then recycle its surface in the open.
+	var wall := Structure.new()
+	wall.eid = 77
+	wall.radius = 3.0
+	wall.position = Vector3(4, 40, 4)
+	wall.yaw = PI * 0.25
+	wall.parts = [wall._part(Vector3.UP * 0.5, Vector3(4, 1, 0.6), Nav.LOW, Nav.LOW)]
+	field._shash_add(wall)
+	var across := Vector3.BACK.rotated(Vector3.UP, wall.yaw)
+	var normal := Vector2(across.x, across.z)
+	var near_wall := wall.position - across * 1.3
+	var probe := v.blasts.burst(near_wall, 1.4, "he", 1.0)
+	check(probe.face_count == 1, "A single rotated wall presents one face to the burst")
+	check(is_equal_approx(probe.faces[0].z, 1.0), "Cover starts at the near edge of the wall")
+	check(probe.skirt_face(normal * 2, 0.2, 0.2) != Vector4.ZERO, "Low dust reaches the wall")
+	check(probe.skirt_face(-normal * 2, 0.2, 0.2) == Vector4.ZERO, "Dust travelling away stays free")
+	check(probe.skirt_face(normal * 2, 0.2, 1.5) == Vector4.ZERO, "Smoke clears the wall top")
+	check(probe.skirt_face(normal * 2 + normal.orthogonal() * 8, 0.1, 0.2) == Vector4.ZERO, "Dust can pass the wall end")
+	field._shash_remove(wall)
+	wall.free()
+	v.blasts._process(20.0)
+	probe.material.set_shader_parameter("shape_bias", 2.0)
+	var reused := v.blasts.burst(near_wall, 1.4, "he", 1.0)
+	check(absf(float(reused.material.get_shader_parameter("shape_bias"))) <= 1.0, "A recycled blast receives a fresh bounded cloud shape")
+	check(reused == probe and reused.face_count == 0 and int(reused.material.get_shader_parameter("face_count")) == 0, "Reused open-ground surfaces clear their cover mask")
+	v.blasts._process(20.0)
 	# Check the imported data, not just the presence of source PNG files. A
 	# texture importer that discards transparent RGB silently breaks relighting.
 	for maps: Array in v.blasts._textures.values():
@@ -75,6 +123,11 @@ func _ready() -> void:
 	var air: BlastFlipbooks.Blast = v.blasts._pools.fuel[-1]
 	check(is_equal_approx(float(air.material.get_shader_parameter("fuel")), 0.0), "HE airbursts never inherit fuel emission")
 	check(is_equal_approx(air.mesh.global_position.y, p.y + 8.0), "Airbursts stay at their altitude")
+	var puff_index: int = field.fx.gunfx._pf.i
+	field.fx.gunfx.blast_fragments(p + Vector3.UP * 8.0, 1.4, "he", false, 1.0)
+	check(field.fx.gunfx._pf.i == puff_index, "Airbursts do not emit ground dust")
+	field.fx.gunfx.blast_fragments(p, 1.4, "he", true, 1.0)
+	check(field.fx.gunfx._pf.i != puff_index, "Ground bursts emit pooled dust")
 	v._fire_layer(layers.sparks, 0.0, 0.0)
 	check(not layers.sparks.visible and not Vfx.is_emitting(layers.sparks), "Zero-budget layers stop")
 	var child_count: int = field.fx.gunfx.get_child_count()

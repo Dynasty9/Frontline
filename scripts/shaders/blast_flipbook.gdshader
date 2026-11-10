@@ -12,6 +12,7 @@ uniform float age = 0.0;
 uniform float duration = 5.0;
 uniform float span = 18.0;
 uniform float center_height = 2.7;
+uniform float shape_bias = 0.0;
 uniform float mirror = 1.0;
 uniform float opacity = 1.0;
 uniform float fuel = 0.0;
@@ -25,6 +26,10 @@ uniform float sun_energy = 1.5;
 uniform vec3 amb_col : source_color = vec3(0.5, 0.55, 0.62);
 uniform float amb_energy = 0.6;
 uniform vec3 wind = vec3(0.6, 0.0, 0.25);
+uniform int face_count = 0;
+uniform vec4 faces[8]; // horizontal normal, distance and tangent midpoint
+uniform vec4 limits[8]; // half span, bottom and top relative to burst
+varying vec3 relative_pos;
 varying vec3 light_local;
 varying vec3 sky_positive;
 varying vec3 sky_negative;
@@ -60,15 +65,23 @@ void vertex() {
 	}
 	// Trim empty pixels before rasterization. Adjacent frame bounds plus a
 	// reconstruction margin retain wisps while avoiding a full empty square.
-	bounds = clamp(bounds + vec4(-0.02, -0.02, 0.02, 0.02), vec4(0.0), vec4(1.0));
+	bounds = clamp(bounds + vec4(-0.045, -0.02, 0.045, 0.02), vec4(0.0), vec4(1.0));
 	if (mirror < 0.0) bounds.xz = vec2(1.0 - bounds.z, 1.0 - bounds.x);
 	UV = mix(bounds.xy, bounds.zw, UV);
 	VERTEX.xy = vec2(UV.x - 0.5, 0.5 - UV.y);
-	vec3 center = MODEL_MATRIX[3].xyz + vec3(0.0, center_height * world_scale, 0.0);
-	center += wind * age * (0.10 + fuel * 0.12);
+	// Scale about the foot of the cloud so wide, low rolls and narrow,
+	// rising columns remain in contact with the same patch of ground.
+	float stretch = 1.0 + 0.19 * shape_bias;
+	VERTEX.xy *= vec2(1.0 - 0.15 * shape_bias, stretch);
+	vec3 center = MODEL_MATRIX[3].xyz + vec3(0.0, center_height * stretch * world_scale, 0.0);
+	// Looser dust aloft travels with the wind while the foot stays near the impact.
+	float height_above_base = max(0.0, center_height * stretch + VERTEX.y * span * INV_VIEW_MATRIX[1].y);
+	float entrained = smoothstep(0.0, span * 0.55, height_above_base);
+	center += wind * age * smoothstep(0.0, 0.65, age) * (0.12 + 0.85 * entrained);
 	mat4 billboard = mat4(INV_VIEW_MATRIX[0], INV_VIEW_MATRIX[1], INV_VIEW_MATRIX[2], vec4(center, 1.0));
 	MODELVIEW_MATRIX = VIEW_MATRIX * billboard;
 	VERTEX *= span * world_scale;
+	relative_pos = (billboard * vec4(VERTEX, 1.0)).xyz - MODEL_MATRIX[3].xyz;
 	MODELVIEW_NORMAL_MATRIX = mat3(MODELVIEW_MATRIX);
 	light_local = normalize((VIEW_MATRIX * vec4(sun_dir, 0.0)).xyz);
 	light_local.x *= mirror;
@@ -114,6 +127,8 @@ void fragment() {
 	if (separation <= -world_scale * 1.8) discard;
 	float frame = animation.x;
 	vec2 uv = vec2(mirror < 0.0 ? 1.0 - UV.x : UV.x, UV.y);
+	// Bend successive lobes differently without sliding the whole texture.
+	uv.x += 0.023 * shape_bias * sin(uv.y * 16.0 + shape_bias * 2.0);
 	vec4 p; vec4 n;
 	// Outside the transition, fetch only the view the camera can see. Every
 	// fragment of this surface takes the same branch, including on WebGL.
@@ -133,12 +148,13 @@ void fragment() {
 	float sunlight = dot(lobes, weights) / max(alpha, 0.003);
 	float sky = (dot(p.rgb, sky_positive) + dot(n.rgb, sky_negative)) / max(alpha, 0.003);
 	vec3 color = tint * (sun_col * sun_energy * sunlight + amb_col * amb_energy * (0.16 + sky * 0.55));
-	color *= animation.z;
+	// The dense earth core stays darker than dust at the sunlit perimeter.
+	color *= animation.z * (1.0 - 0.26 * ground_dust * alpha * (1.0 - clamp(sunlight, 0.0, 1.0)));
 	if (fuel > 0.0) {
 		float heat = clamp(n.a / max(alpha, 0.003), 0.0, 1.0) * fuel;
 		vec3 fire_color = mix(vec3(0.55, 0.045, 0.004), vec3(1.0, 0.3, 0.025), smoothstep(0.02, 0.35, heat));
 		fire_color = mix(fire_color, vec3(1.0, 0.82, 0.42), smoothstep(0.35, 0.95, heat));
-		color = mix(color, fire_color * (1.0 + 3.0 * heat), smoothstep(0.01, 0.2, heat));
+		color = mix(color, fire_color * (1.0 + 2.2 * heat), smoothstep(0.09, 0.57, heat));
 	}
 	// The quad is the cloud's middle, not its front surface. Hardware depth
 	// testing here cuts a straight line through smoke intersecting armor or
@@ -147,6 +163,18 @@ void fragment() {
 	float half_depth = world_scale * (0.4 + 1.4 * sqrt(alpha));
 	float visible_density = smoothstep(-half_depth, half_depth, separation);
 	if (visible_density <= 0.0) discard;
+	for (int i = 0; i < face_count; i++) {
+		vec4 face = faces[i];
+		float along = dot(relative_pos.xz, face.xy);
+		if (along <= face.z) continue;
+		float across = dot(relative_pos.xz, vec2(-face.y, face.x)) * face.z / max(along, 0.0001);
+		float edge = limits[i].x - abs(across - face.w);
+		float h = max(relative_pos.y, 0.05);
+		float blocked = smoothstep(-0.12, 0.12, edge) * smoothstep(0.0, 0.18, along - face.z)
+			* smoothstep(limits[i].y - 0.12, limits[i].y, h)
+			* (1.0 - smoothstep(limits[i].z - 0.12, limits[i].z + 0.22, h));
+		visible_density *= 1.0 - blocked;
+	}
 	ALBEDO = color;
 	// Opacity represents integrated density: reduce optical depth, not the
 	// final alpha. Clamp opaque texels so their front edge can fade as well.

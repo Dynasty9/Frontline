@@ -1,0 +1,146 @@
+{
+  "baseline_ref": "a986faddd3ce7513482bc964faccfe4ec84c6e2a",
+  "before_note": "The baseline is the preceding local PR revision. Both builds use the same capture fixture.",
+  "engine": "Godot 4.7.2, Forward+, Apple M5 Max",
+  "stage": "Actual support and projectile simulation in the manual demo with battlefield terrain, trees, three vehicles and cover.",
+  "seed": 712,
+  "fps": 24,
+  "dimensions": [
+    960,
+    540
+  ],
+  "audio": "Recorded game mix, Opus, continuous through both takes.",
+  "capture": "godot --path CHECKOUT --rendering-method forward_plus --fixed-fps 24 --resolution 960x540 --write-movie TAKE.avi res://tests/fixtures/support-clips.tscn -- KIND LABEL",
+  "encode": "Trim the native recording to the last 192, 240, 288 or 384 frames as printed by the fixture, scale to 960x540, encode VP9 CRF 33 and Opus. Concatenate before then after without changing playback speed.",
+  "source_sha256": {
+    "scripts/ui/support_demo.gd": "f3fc3815090752abc41413ae3de0739e3fd39eb6d6a0f81ac9b2bd825f249326",
+    "scripts/game/blast_flipbooks.gd": "13a5b78270da69c43ef5d9207f6451368a688f4839110aadb2ff4d4b415d0d14",
+    "scripts/game/gunfx.gd": "70a6cf93e75f4f2adf41bf7bbdfbe7f52984b9b9a59108355cb0b7498dc1c43c",
+    "scripts/shaders/blast_flipbook.gdshader": "a69f8c4a2b87f19dc47b87a5692b19838ee5315870d2ad59b63d6b145feecfc5",
+    "tests/fixtures/support-clips.gd": "0a8bc17010d1460352966c47aa6e3fe1188c0a62a4646c297bf3a60549c27504",
+    "scripts/game/vfx.gd": "e210fd318863892fca8cd03003cda6b0ff8e99bd9649e7c7edeec6797235d91c"
+  },
+  "clips": [
+    {
+      "id": "airstrike",
+      "name": "F/A-181 Black Wasp II Strike",
+      "group": "Bombing passes",
+      "after_starts_seconds": 10
+    },
+    {
+      "id": "gryphon",
+      "name": "A-149 Gryphon Precision Strike",
+      "group": "Bombing passes",
+      "after_starts_seconds": 10
+    },
+    {
+      "id": "sentinel",
+      "name": "UCAV Sentinel Strike",
+      "group": "Bombing passes",
+      "after_starts_seconds": 10
+    },
+    {
+      "id": "shikra",
+      "name": "To-201 Shikra Bomb Run",
+      "group": "Bombing passes",
+      "after_starts_seconds": 10
+    },
+    {
+      "id": "a10",
+      "name": "A-10C Thunderbolt II Gun Run",
+      "group": "Gun runs",
+      "after_starts_seconds": 12
+    },
+    {
+      "id": "wipeout",
+      "name": "A-164 Wipeout Gun Run",
+      "group": "Gun runs",
+      "after_starts_seconds": 12
+    },
+    {
+      "id": "buzzard",
+      "name": "A-143 Buzzard Strafe",
+      "group": "Gun runs",
+      "after_starts_seconds": 12
+    },
+    {
+      "id": "neophron",
+      "name": "To-199 Neophron Strafe",
+      "group": "Gun runs",
+      "after_starts_seconds": 12
+    },
+    {
+      "id": "ac130",
+      "name": "AC-130U Spooky Gunship",
+      "group": "Orbiting aircraft",
+      "after_starts_seconds": 10
+    },
+    {
+      "id": "blackfish",
+      "name": "V-44X Blackfish Gunship",
+      "group": "Orbiting aircraft",
+      "after_starts_seconds": 10
+    },
+    {
+      "id": "greyhawk",
+      "name": "MQ-4A Greyhawk Drone",
+      "group": "Orbiting aircraft",
+      "after_starts_seconds": 16
+    },
+    {
+      "id": "xian",
+      "name": "Y-32 Xi'an Gunship",
+      "group": "Orbiting aircraft",
+      "after_starts_seconds": 10
+    },
+    {
+      "id": "artillery",
+      "name": "155 mm artillery",
+      "group": "Off-map support",
+      "after_starts_seconds": 8
+    },
+    {
+      "id": "barrage",
+      "name": "Rocket Barrage",
+      "group": "Off-map support",
+      "after_starts_seconds": 10
+    },
+    {
+      "id": "mortars",
+      "name": "Mortar Barrage",
+      "group": "Off-map support",
+      "after_starts_seconds": 10
+    },
+    {
+      "id": "smoke",
+      "name": "Smoke Screen",
+      "group": "Off-map support",
+      "after_starts_seconds": 10
+    },
+    {
+      "id": "gryphon_recon",
+      "name": "A-149 Gryphon Recon Pass",
+      "group": "Reconnaissance",
+      "after_starts_seconds": 10
+    },
+    {
+      "id": "greyhawk_watch",
+      "name": "MQ-4A Greyhawk Overwatch",
+      "group": "Reconnaissance",
+      "after_starts_seconds": 10
+    },
+    {
+      "id": "caesar_spotter",
+      "name": "Caesar BTT Spotter Flight",
+      "group": "Reconnaissance",
+      "after_starts_seconds": 10
+    },
+    {
+      "id": "fenghuang_watch",
+      "name": "KH-3A Fenghuang Overwatch",
+      "group": "Reconnaissance",
+      "after_starts_seconds": 10
+    }
+  ],
+  "review": "Reviewed all 20 comparisons with Video Tool. Refreshed 15 explosive call-ins and the smoke screen. The longer armed Greyhawk pair includes a later impact. Reconnaissance footage is from the preceding revision."
+}

@@ -6365,6 +6365,291 @@
       "output": null,
       "attribution": "Lead ground pair: actual Godot 4.7.2 Forward+ output, 24 Hz, 12 seconds, silent and normal speed. Both builds stamp actual terrain; ground-capture.json records refs, commands, measurements and validation. Actual Godot 4.7.2 output, silent and normal speed. Earlier tank/cover pair: Forward+, 24 Hz, 8 seconds; cover-capture.json records the shader-only comparison and depth regression. Full terrain reel: Forward+, 24 Hz, 28 seconds; its interrupted/resumed capture provenance is in battlefield-capture.json. Original matched battlefield clips use Compatibility at 24 Hz; range/flare close-ups use 30 Hz with their recorded renderers. Baseline capture holds legacy pool timestamps to preserve particle lifetimes during offline readback; that timing control does not change the particle programs. CC0 JangaFX animation credits: assets/vfx/LICENSE.md.",
       "capture_review": "changelog/unreleased/realistic-armament-effects/ground-capture.json"
+    },
+    {
+      "entry": "changelog/unreleased/blast-impact-and-sound.md",
+      "summary": "Brief readable flashes, soft ground contact, pooled dust skirts and layered explosion reports.",
+      "medium": "audio",
+      "stage": "explosions",
+      "rationale": "Matched audible engine captures demonstrate the sound alongside its visual event; the original recordings remain unchanged.",
+      "source_ref": "3fced13071295fcbbf592f79cd94b1eb479ac3f5 baseline; after source hashes and review in capture.json",
+      "sources": [
+        {
+          "file": "changelog/unreleased/blast-impact-and-sound/after.jpg",
+          "sha256": "9ecb0a7681115d889911e1a75dadb05bc21e2879c07b30d8f44b3f1d8f8c2898",
+          "caption": "after.jpg"
+        },
+        {
+          "file": "changelog/unreleased/blast-impact-and-sound/after.webm",
+          "sha256": "3e963fad2c89c60f20ac8ec8d4c7ed0e534933f986f5f31b47c2bf5f83c98514",
+          "caption": "after.webm"
+        },
+        {
+          "file": "changelog/unreleased/blast-impact-and-sound/before.jpg",
+          "sha256": "e0768f971bae36c409be5aeede086321d4f03959581acfd89d349a171a57eed7",
+          "caption": "before.jpg"
+        },
+        {
+          "file": "changelog/unreleased/blast-impact-and-sound/before.webm",
+          "sha256": "071baf4791b62c4c85d67ff25b9689d982c61a94273be801a5d3dbbf2e9779fc",
+          "caption": "before.webm"
+        },
+        {
+          "file": "changelog/unreleased/blast-impact-and-sound/world.jpg",
+          "sha256": "e620049452bebf3e91f73b64839574bdceb4ac345910fce531303b7b04a72648",
+          "caption": "world.jpg"
+        },
+        {
+          "file": "changelog/unreleased/blast-impact-and-sound/world.webm",
+          "sha256": "c1065e79cfdcc16efac05be4d77fb80039c4f14a70b696197455e82ecf632f76",
+          "caption": "world.webm"
+        },
+        {
+          "file": "changelog/unreleased/blast-impact-and-sound/capture.json",
+          "sha256": "ae86ea3d7e03ad3ef8b038941fd994ec7e96e09f75b70f7296b25d56df3d56ff",
+          "caption": "capture.json"
+        },
+        {
+          "file": "changelog/unreleased/blast-impact-and-sound/cover.jpg",
+          "sha256": "ba822164eb307b9c62bebfcdf7569a130b2b4b883fa327a7a8bb86a2039c1673",
+          "caption": "cover.jpg"
+        },
+        {
+          "file": "changelog/unreleased/blast-impact-and-sound/cover.webm",
+          "sha256": "99a78dbfb2537155d3616dd8b816983343563239a0f279b22117349cf7ed664c",
+          "caption": "cover.webm"
+        },
+        {
+          "file": "changelog/unreleased/blast-impact-and-sound/impact-comparison.webm",
+          "caption": "impact-comparison.webm",
+          "sha256": "e287748396657594794ba8f908d30e0d8e1df030c9f759312b26adfe50852966"
+        },
+        {
+          "file": "changelog/unreleased/blast-impact-and-sound/impact-comparison.jpg",
+          "caption": "impact-comparison.jpg",
+          "sha256": "a9cad7827dda61e1a1c4c44278f624c7676518031922c603f10040cf93d1be43"
+        }
+      ],
+      "output": null,
+      "capture_review": "changelog/unreleased/blast-impact-and-sound/capture.json",
+      "attribution": "Godot 4.7.2 on Apple M5 Max. The battlefield capture uses Forward+ at 24 Hz. The matched range captures use Compatibility at 30 Hz. All include native game audio."
+    },
+    {
+      "entry": "changelog/unreleased/support-callin-previews.md",
+      "summary": "All 20 call-ins, each with matched before and after takes and native game audio.",
+      "medium": "motion",
+      "stage": "tests/fixtures/support-clips.tscn",
+      "rationale": "Each pair shows the same call-in on the same daylight range so aircraft framing, impact timing and dust can be compared.",
+      "source_ref": "a986faddd3ce7513482bc964faccfe4ec84c6e2a baseline; capture.json records the updated source and timing.",
+      "sources": [
+        {
+          "file": "changelog/unreleased/support-callin-previews/a10.jpg",
+          "sha256": "7f863a0ede7eb2d6b7f08803af7326afbeafd5c37ef4f1560a7408ba27f72159",
+          "caption": "a10.jpg"
+        },
+        {
+          "file": "changelog/unreleased/support-callin-previews/a10.webm",
+          "sha256": "1d9f6a0a4d6a76b660c2a7355cd768e3a133c826ad2a5a40f9334bb9fc949552",
+          "caption": "a10.webm"
+        },
+        {
+          "file": "changelog/unreleased/support-callin-previews/ac130.jpg",
+          "sha256": "e73ab42103c6c6d13427e2427b53d5c66eac5a8762d12a53822f28ee9cca6765",
+          "caption": "ac130.jpg"
+        },
+        {
+          "file": "changelog/unreleased/support-callin-previews/ac130.webm",
+          "sha256": "c5800edbe0add9b71835d465e484ae6c6f15ead3a6332deb0bc7dbe6afa75e78",
+          "caption": "ac130.webm"
+        },
+        {
+          "file": "changelog/unreleased/support-callin-previews/airstrike.jpg",
+          "sha256": "f49755e108672bbc678aed3199180ecf4a29919841c3fc61cf8e5113bd79e20c",
+          "caption": "airstrike.jpg"
+        },
+        {
+          "file": "changelog/unreleased/support-callin-previews/airstrike.webm",
+          "sha256": "c74c664439bb8cd44f6bce5a8fd42918bd39c43f9b9da203aad873dbe0635985",
+          "caption": "airstrike.webm"
+        },
+        {
+          "file": "changelog/unreleased/support-callin-previews/artillery.jpg",
+          "sha256": "26c13c228aaa3290799c26ac9c42b57a8db1a91d5cbb57f0402fb67faa5114ac",
+          "caption": "artillery.jpg"
+        },
+        {
+          "file": "changelog/unreleased/support-callin-previews/artillery.webm",
+          "sha256": "eab11ff2234f8e05d0a35e569967db58a643a7175cb325de8b4fef52a3507544",
+          "caption": "artillery.webm"
+        },
+        {
+          "file": "changelog/unreleased/support-callin-previews/barrage.jpg",
+          "sha256": "099fe79e5d3fbc54b848d4572df1cfe40830629f2ff6d17c02e09f67411f8d39",
+          "caption": "barrage.jpg"
+        },
+        {
+          "file": "changelog/unreleased/support-callin-previews/barrage.webm",
+          "sha256": "684641aae26079ab1fa437c14a58d848ff3b428bce694291be336ec3191c7207",
+          "caption": "barrage.webm"
+        },
+        {
+          "file": "changelog/unreleased/support-callin-previews/blackfish.jpg",
+          "sha256": "70d51b3d3cd23e6274e4b46eb5ebfc50bdcc01041be8e022f55d612067721951",
+          "caption": "blackfish.jpg"
+        },
+        {
+          "file": "changelog/unreleased/support-callin-previews/blackfish.webm",
+          "sha256": "34818a36e0218b2e6165dc73a46b202d6e6622dba4d24b926de2eb9a7bc289fb",
+          "caption": "blackfish.webm"
+        },
+        {
+          "file": "changelog/unreleased/support-callin-previews/buzzard.jpg",
+          "sha256": "251a75ce6523b9507e6cccf4e162c1024e1a496449312613c3f015d3ee07da78",
+          "caption": "buzzard.jpg"
+        },
+        {
+          "file": "changelog/unreleased/support-callin-previews/buzzard.webm",
+          "sha256": "52b8d3e5ec7a3ce6c535f3707b82c00d6648cc074ff0bfe1557f373625a7f8fa",
+          "caption": "buzzard.webm"
+        },
+        {
+          "file": "changelog/unreleased/support-callin-previews/caesar_spotter.jpg",
+          "sha256": "41b1b20f312ae2bc936e3135195b2b72dd3607a91406880531badca3eff879d3",
+          "caption": "caesar_spotter.jpg"
+        },
+        {
+          "file": "changelog/unreleased/support-callin-previews/caesar_spotter.webm",
+          "sha256": "5530ef408589359ad13d1c3fe8f5ab567af594fb4cecf9d4193d84c7fa64f323",
+          "caption": "caesar_spotter.webm"
+        },
+        {
+          "file": "changelog/unreleased/support-callin-previews/capture.json",
+          "sha256": "1a6b13840e5215c2b871d7c7edbdac7c9e947ff1e56cd49992d02baf2f58f8ab",
+          "caption": "capture.json"
+        },
+        {
+          "file": "changelog/unreleased/support-callin-previews/fenghuang_watch.jpg",
+          "sha256": "dcd0c70f9e4401adf83a28bf6a75c5e9f24bae1637dad8fa69e44720289f8a91",
+          "caption": "fenghuang_watch.jpg"
+        },
+        {
+          "file": "changelog/unreleased/support-callin-previews/fenghuang_watch.webm",
+          "sha256": "fa26990bcc1b10ceef3e6dd999d1ab0f6de47408581a6925d2ce23974c399ec8",
+          "caption": "fenghuang_watch.webm"
+        },
+        {
+          "file": "changelog/unreleased/support-callin-previews/greyhawk.jpg",
+          "sha256": "70a0e0014adfa27c1b08dd09aa9b280213b6b8502d4bd45e36a4066db29be1f2",
+          "caption": "greyhawk.jpg"
+        },
+        {
+          "file": "changelog/unreleased/support-callin-previews/greyhawk.webm",
+          "sha256": "8fe864d1c769fe5f39ed175a92e88bb27e98c83aafbb040acc4c756c78c02a7c",
+          "caption": "greyhawk.webm"
+        },
+        {
+          "file": "changelog/unreleased/support-callin-previews/greyhawk_watch.jpg",
+          "sha256": "06c9f8b542393346c7ea0a998821d66c781b9967e5031be29ef6fa9d601b766d",
+          "caption": "greyhawk_watch.jpg"
+        },
+        {
+          "file": "changelog/unreleased/support-callin-previews/greyhawk_watch.webm",
+          "sha256": "8840e2d49af0d6bbd2ce424017c0d464e6d257001477ef591e41b0c5a6031c5c",
+          "caption": "greyhawk_watch.webm"
+        },
+        {
+          "file": "changelog/unreleased/support-callin-previews/gryphon.jpg",
+          "sha256": "5ab664dd1c7ef590f042dccb5d5ad897e6e3b9561c8af971dc3f700740149e5c",
+          "caption": "gryphon.jpg"
+        },
+        {
+          "file": "changelog/unreleased/support-callin-previews/gryphon.webm",
+          "sha256": "2e8549a90cdd13f36b8a3893996eb08088c6161c519af7659a3cbe98632d96fa",
+          "caption": "gryphon.webm"
+        },
+        {
+          "file": "changelog/unreleased/support-callin-previews/gryphon_recon.jpg",
+          "sha256": "8675e01ecdbefe6218665a3233e30257bb3b2dec2e48f03f8e130cfa9e9edc56",
+          "caption": "gryphon_recon.jpg"
+        },
+        {
+          "file": "changelog/unreleased/support-callin-previews/gryphon_recon.webm",
+          "sha256": "bea05bd083988ba707249ca1ab674944f5d3e767466af7815eb53e39eefe6612",
+          "caption": "gryphon_recon.webm"
+        },
+        {
+          "file": "changelog/unreleased/support-callin-previews/mortars.jpg",
+          "sha256": "be4bec7b467c0e91ab2bde8967fe84b4e7bd84c3b8c29231eeea8318a6eb30d2",
+          "caption": "mortars.jpg"
+        },
+        {
+          "file": "changelog/unreleased/support-callin-previews/mortars.webm",
+          "sha256": "8ed0e35a14ea84efe6de5365b353485e4ba5365c77de0d35f61a2b1147c160ea",
+          "caption": "mortars.webm"
+        },
+        {
+          "file": "changelog/unreleased/support-callin-previews/neophron.jpg",
+          "sha256": "eb10bb6d584fb0e672c66cf64f5f89b41dbbdc11bfcbbb98bd65991bf7b13a4b",
+          "caption": "neophron.jpg"
+        },
+        {
+          "file": "changelog/unreleased/support-callin-previews/neophron.webm",
+          "sha256": "eb53e47091df1344616532b7d2bc974d21988e39f96e10d2ce6cb25ece72dcf0",
+          "caption": "neophron.webm"
+        },
+        {
+          "file": "changelog/unreleased/support-callin-previews/sentinel.jpg",
+          "sha256": "e82765566d738daaef00587062f0641ec128d885df37d578f180bf9ca0d77db8",
+          "caption": "sentinel.jpg"
+        },
+        {
+          "file": "changelog/unreleased/support-callin-previews/sentinel.webm",
+          "sha256": "2d17714e15ecf29d5eff1761e3b54fa270929b019d810feb2e71675d6c255e97",
+          "caption": "sentinel.webm"
+        },
+        {
+          "file": "changelog/unreleased/support-callin-previews/shikra.jpg",
+          "sha256": "935da8e53266958b61ba35cea3671de8731820c6ab227bb9fd6fe2e4935b1def",
+          "caption": "shikra.jpg"
+        },
+        {
+          "file": "changelog/unreleased/support-callin-previews/shikra.webm",
+          "sha256": "3501ed87483f5f0828f416a015cad932a226352b3a528fec153d8f799e7f0e5e",
+          "caption": "shikra.webm"
+        },
+        {
+          "file": "changelog/unreleased/support-callin-previews/smoke.jpg",
+          "sha256": "9fc663187d961f3b0afc592e89d07c9a18f628c4407a8f31727861e87ba006f5",
+          "caption": "smoke.jpg"
+        },
+        {
+          "file": "changelog/unreleased/support-callin-previews/smoke.webm",
+          "sha256": "21312c70e1ae5023a683dee41365b102401058d4fbf3dccd33a7d8b1b077cfa7",
+          "caption": "smoke.webm"
+        },
+        {
+          "file": "changelog/unreleased/support-callin-previews/wipeout.jpg",
+          "sha256": "6a4e43c91a1d2a907a24a48ae5038febb8bcbdfa76eeeade9c074b034628cc69",
+          "caption": "wipeout.jpg"
+        },
+        {
+          "file": "changelog/unreleased/support-callin-previews/wipeout.webm",
+          "sha256": "e9710f26e029cbf10af430b22c8b8639c0522ba3800b47d9dfef4fe03a5b45a7",
+          "caption": "wipeout.webm"
+        },
+        {
+          "file": "changelog/unreleased/support-callin-previews/xian.jpg",
+          "sha256": "b8f3612031daedd82aceb3b2394416c1d0a0b2dd1fd89c25c79ddb1244fb317c",
+          "caption": "xian.jpg"
+        },
+        {
+          "file": "changelog/unreleased/support-callin-previews/xian.webm",
+          "sha256": "01a918d93b603a3ecc64918a7b58fa1f3d484b190b0e0b50a54c146ed9a75e7c",
+          "caption": "xian.webm"
+        }
+      ],
+      "capture_review": "changelog/unreleased/support-callin-previews/capture.json",
+      "output": null
     }
   ],
   "layout_capture": {

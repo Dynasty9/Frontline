@@ -247,7 +247,7 @@ func chunk(p: Vector3, v: Vector3, ext: Vector3, life: float, col: Color, floor_
 ## Fragments are mostly dark, fast flecks, not a spray of burning stars.
 ## Shared instance rings animate the flight and delayed landing puffs entirely
 ## on the GPU, including on WebGL; a barrage creates no per-fragment nodes.
-func blast_fragments(p: Vector3, size: float, kind: String, ground: bool, detail: float) -> void:
+func blast_fragments(p: Vector3, size: float, kind: String, ground: bool, detail: float, cloud: BlastFlipbooks.Blast = null) -> void:
 	var q := Settings.fx_mult() * detail
 	var k := sqrt(maxf(size, 0.1))
 	var n := int((28.0 if kind == "frag" else 54.0 * k) * q)
@@ -264,6 +264,24 @@ func blast_fragments(p: Vector3, size: float, kind: String, ground: bool, detail
 	# A burning vehicle throws fragments, but its fuel cloud does not drive
 	# the same dense fountain of soil as a shell detonating in the ground.
 	var earth := 0.5 if kind == "fuel" else 1.0
+	# A low, fast skirt joins the rising cloud to the ground; drag quickly
+	# spends its initial impulse. Reuse the shared smoke ring, even in a barrage.
+	for i in int(10.0 * q * earth):
+		var angle := float(i) / maxf(floor(10.0 * q * earth), 1.0) * TAU + randf_range(-0.15, 0.15)
+		var outward := Vector3(cos(angle), 0.0, sin(angle))
+		var skirt_k := k * (0.45 if kind == "frag" else 1.0)
+		var at := p + outward * 0.4 * skirt_k
+		at.y = ground_y(at) + 0.18 * skirt_k
+		var velocity := outward * randf_range(7.0, 11.0) * skirt_k
+		var wall_angle := 0.0
+		var clearance := 0.0
+		if cloud and cloud.face_count:
+			var travel := at - p + velocity / 3.5 + Fires.WIND * 0.35 * 1.8
+			var face := cloud.skirt_face(Vector2(travel.x, travel.z), 1.4 * skirt_k, at.y - cloud.mesh.global_position.y)
+			if face != Vector4.ZERO:
+				wall_angle = -(atan2(face.y, face.x) + TAU)
+				clearance = face.z - (at.x - p.x) * face.x - (at.z - p.z) * face.y
+		puff(at, velocity, 0.22 * skirt_k, 1.4 * skirt_k, randf_range(1.2, 1.8), Color(SOIL.r, SOIL.g, SOIL.b, 0.26), 3.5, 0.12, clearance, 0.35, 0.0, wall_angle)
 	var earth_color := Color(0.16, 0.13, 0.09, 0.9)
 	# Custom MultiMesh colors have no source_color conversion. Match the
 	# authored dark soil in Forward+'s linear output and Compatibility's sRGB.
@@ -787,6 +805,7 @@ varying vec4 v_col;
 varying float v_u;
 varying float v_seed;
 varying float v_heat;
+varying float wall_clearance;
 varying vec3 v_ls;  // towards the sun in the sprite's own frame: across it, and (z) towards the camera
 
 void vertex() {
@@ -802,12 +821,19 @@ void vertex() {
 	v_seed = INSTANCE_CUSTOM.z;
 	v_u = 1.0;
 	v_heat = 0.0;
+	wall_clearance = 1.0;
 	v_ls = vec3(0.0, 0.0, 1.0);
 	if (age >= 0.0 && age < life) {
 		float u = age / life;
 		float k = max(sz.z, 0.05);
 		vec3 p = o + v0 * ((1.0 - exp(-k * age)) / k) + wind * (mo.y * age);
-		p.y += mo.x * age - 0.5 * INSTANCE_CUSTOM.w * age * age;
+		vec2 wall_normal = vec2(cos(-mo.z), sin(-mo.z));
+		if (mo.z < 0.0) {
+			// A skirt puff uses the heat slot for its wall angle, gravity for
+			// clearance. Lose wall-normal movement on contact, retain the slide.
+			p.xz -= wall_normal * max(0.0, dot(p.xz - o.xz, wall_normal) - INSTANCE_CUSTOM.w);
+		}
+		p.y += mo.x * age - (mo.z < 0.0 ? 0.0 : 0.5 * INSTANCE_CUSTOM.w * age * age);
 		// it opens out fast, then slows as the air takes it
 		float s = mix(sz.x, sz.y, 1.0 - pow(1.0 - u, 3.0));
 		p.y = max(p.y, o.y - 0.3 + s * 0.3);
@@ -816,6 +842,7 @@ void vertex() {
 		vec2 q = vec2(UV.x - 0.5, 0.5 - UV.y) * 2.0 * s;
 		q = vec2(q.x * rc.x - q.y * rc.y, q.x * rc.y + q.y * rc.x);
 		wp = p + INV_VIEW_MATRIX[0].xyz * q.x + INV_VIEW_MATRIX[1].xyz * q.y;
+		if (mo.z < 0.0) wall_clearance = INSTANCE_CUSTOM.w - dot(wp.xz - o.xz, wall_normal);
 		v_u = u;
 		v_heat = mo.z > 0.0 ? pow(clamp(1.0 - age / mo.z, 0.0, 1.0), 1.5) : 0.0;
 		vec3 lv = normalize((VIEW_MATRIX * vec4(sun_dir, 0.0)).xyz);
@@ -854,7 +881,7 @@ void fragment() {
 	// (the thick of it a little darker: it shades itself from the sky too)
 	vec3 col = v_col.rgb * (sun_col * sun_energy * (lit * 0.9 + rim) + amb_col * amb_energy) * (1.0 - 0.22 * d * d);
 	float fade = smoothstep(0.0, 0.03, v_u) * (1.0 - smoothstep(0.25, 1.0, v_u));
-	float a = smoothstep(0.0, 0.85, d) * v_col.a * fade;
+	float a = smoothstep(0.0, 0.85, d) * v_col.a * fade * smoothstep(0.0, 0.18, wall_clearance);
 	if (v_heat > 0.0) {
 		// burning gas: hottest in the thick of it, going sooty as it cools
 		float h = v_heat * smoothstep(0.04, 0.5, d);

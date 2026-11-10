@@ -23,6 +23,7 @@ func _ready() -> void:
 		if arg.begins_with("--elevation="): elevation = float(arg.get_slice("=", 1))
 		if arg.begins_with("--quality="): Settings.v.effects = clampi(int(arg.get_slice("=", 1)), 0, 2)
 	seed(712)
+	Sfx._ensure()
 	if not output.is_empty():
 		DirAccess.make_dir_recursive_absolute(output)
 	field = load("res://tests/fixtures/effects-field.gd").new()
@@ -91,7 +92,7 @@ func _ready() -> void:
 			target_labels.append(text)
 	for frame in 12 * CAPTURE_FPS:
 		caption.text = label + (" / ILLUMINATION FLARE\nMoonlit close-up: cloth canopy, suspension lines and drifting smoke" if night else " / ARMAMENT EFFECTS\nGrenade / HE ground burst / fuel explosion · ground marks: 10 m")
-		if not night and not impacts and frame >= 180:
+		if not night and not impacts and mode != "explosions" and frame >= 180:
 			caption.text = label + " / TRACERS AND IMPACTS\nMachine-gun rounds · dirt / stone / metal · normal simulation speed"
 			if frame == 180:
 				for i in 3:
@@ -116,13 +117,13 @@ func _ready() -> void:
 				seed(712 + frame)
 				var delay := field.fx.gunfx.round_flight(from, p, "mg", 0, 40.0)
 				field.fx.gunfx.impact([Fx.HIT_DIRT, Fx.HIT_STONE, Fx.HIT_METAL][material_index], p, (from - p).normalized(), 1.0, 40.0, delay)
-		elif frame in [20, 50, 80]:
-			var i := int((frame - 20) / CAPTURE_FPS)
+		elif frame in ([30, 150, 270] if mode == "explosions" else [20, 50, 80]):
+			var i := int((frame - 30) / 120) if mode == "explosions" else int((frame - 20) / CAPTURE_FPS)
 			var p := Vector3((i - 1) * 16, 0.1, 0)
 			var size: float = [1.0, 1.4, 2.0][i]
 			if legacy: field.fx.vfx.explode(p, size)
-			else: field.fx.vfx.call("explode", p, size, ["frag", "he", "fuel"][i])
-		elif frame >= 180 and frame % 8 == 0:
+			else: field.fx._explode(p, size, ["frag", "he", "fuel"][i])
+		elif mode != "explosions" and frame >= 180 and frame % 8 == 0:
 			var i := int(frame / 8) % 3
 			var p := Vector3((i - 1) * 16, 0.15, 15)
 			var from := p + Vector3(-25, 1.4, 30)

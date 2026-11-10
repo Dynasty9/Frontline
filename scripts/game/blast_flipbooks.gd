@@ -15,6 +15,74 @@ class Blast:
 	var start := -1000.0
 	var life := 0.0
 	var generation := 0
+	# Source-facing cover faces in metres relative to this burst. Each finite
+	# face clips only its own span and height, leaving gaps and wall ends open.
+	const MAX_FACES := 8
+	var faces := PackedVector4Array()
+	var limits := PackedVector4Array()
+	var face_count := 0
+
+	func set_cover(structures: Array, origin: Vector3, reach: float) -> void:
+		faces.resize(MAX_FACES)
+		limits.resize(MAX_FACES)
+		face_count = 0
+		for st: Structure in structures:
+			if not st.built:
+				continue
+			for part: Dictionary in st.parts:
+				if not part.col:
+					continue
+				var center: Vector3 = st.position + (part.p as Vector3).rotated(Vector3.UP, st.yaw) - origin
+				var half: Vector3 = part.s * 0.5
+				if center.y + half.y < 0.12 or center.y - half.y > reach:
+					continue
+				var yaw: float = st.yaw + part.r
+				var axes := [Vector2(cos(yaw), -sin(yaw)), Vector2(sin(yaw), cos(yaw))]
+				var pos := Vector2(center.x, center.z)
+				var inside := absf(pos.dot(axes[0])) < half.x and absf(pos.dot(axes[1])) < half.z
+				for axis in 2:
+					var normal: Vector2 = axes[axis]
+					var extent := half.x if axis == 0 else half.z
+					var width := half.z if axis == 0 else half.x
+					for sign_v: float in [-1.0, 1.0]:
+						var n := normal * sign_v
+						var dist := pos.dot(n) + (extent if inside else -extent)
+						var side := pos.dot(Vector2(-n.y, n.x))
+						var nearest := Vector2(dist, maxf(0.0, absf(side) - width)).length()
+						if dist < -0.001 or nearest > reach:
+							continue
+						var slot := face_count
+						while slot > 0 and limits[slot - 1].w > nearest:
+							slot -= 1
+						if slot >= MAX_FACES:
+							continue
+						face_count = mini(MAX_FACES, face_count + 1)
+						for i in range(face_count - 1, slot, -1):
+							faces[i] = faces[i - 1]
+							limits[i] = limits[i - 1]
+						faces[slot] = Vector4(n.x, n.y, maxf(dist, 0.0), side)
+						limits[slot] = Vector4(width, center.y - half.y, center.y + half.y, nearest)
+		material.set_shader_parameter("face_count", face_count)
+		if face_count:
+			material.set_shader_parameter("faces", faces)
+			material.set_shader_parameter("limits", limits)
+
+	# Choose the first wall in the puff's swept footprint, including its radius.
+	func skirt_face(travel: Vector2, radius: float, height: float) -> Vector4:
+		var first := Vector4.ZERO
+		var earliest := 2.0
+		for i in face_count:
+			var f := faces[i]
+			var band := limits[i]
+			var n := Vector2(f.x, f.y)
+			var approach := travel.dot(n)
+			if approach <= 0.0 or approach + radius < f.z or height < band.y or height > band.z:
+				continue
+			var t := clampf((f.z - radius) / approach, 0.0, 1.0)
+			if t < earliest and absf(travel.dot(Vector2(-n.y, n.x)) * t - f.w) <= band.x + radius:
+				earliest = t
+				first = f
+		return first
 
 func _ready() -> void:
 	_shader = load("res://scripts/shaders/blast_flipbook.gdshader")
@@ -43,6 +111,7 @@ func _new_blast(kind: String) -> Blast:
 	# this avoids rebuilding Mats' derived-material cache every animation tick.
 	b.material = ShaderMaterial.new()
 	b.material.shader = _shader
+	b.material.set_shader_parameter("wind", Fires.WIND)
 	b.material.set_shader_parameter("positive_map", _textures[kind][0])
 	b.material.set_shader_parameter("negative_map", _textures[kind][1])
 	b.material.set_shader_parameter("motion_map", _textures[kind][2])
@@ -88,6 +157,8 @@ func burst(p: Vector3, size: float, kind: String, detail: float, ground := true)
 	b.life = (2.8 if kind == "frag" else (6.4 if kind == "fuel" else 3.8)) * randf_range(0.94, 1.06)
 	if not ground:
 		b.life *= 0.7
+	var reach := (10.5 if key == "fuel" else 9.0) * scale_k + 2.0
+	b.set_cover(vfx.world.structures_near(p, reach) if ground and vfx.world else [], p, reach)
 	b.mesh.global_position = p
 	b.mesh.scale = Vector3.ONE * scale_k
 	b.mesh.visible = true
@@ -95,7 +166,11 @@ func burst(p: Vector3, size: float, kind: String, detail: float, ground := true)
 	b.material.set_shader_parameter("ground_dust", 1.0 if key == "dust" else 0.0)
 	b.material.set_shader_parameter("age", 0.0)
 	b.material.set_shader_parameter("duration", b.life)
-	b.material.set_shader_parameter("mirror", -1.0 if randf() < 0.5 else 1.0)
+	# Stable for this cloud, refreshed on pool reuse. One draw also picks
+	# the mirror, keeping the surrounding cosmetic RNG sequence intact.
+	var roll := randf()
+	b.material.set_shader_parameter("mirror", -1.0 if roll < 0.5 else 1.0)
+	b.material.set_shader_parameter("shape_bias", fposmod(roll * 2.0, 1.0) * 2.0 - 1.0)
 	b.material.set_shader_parameter("interpolate", detail * Settings.fx_mult() > 0.45)
 	var use_motion := detail * Settings.fx_mult() > 0.65
 	if use_motion:

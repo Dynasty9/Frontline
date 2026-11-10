@@ -288,21 +288,53 @@ func _gun(rng: RandomNumberGenerator, dur: float, vol: float, crack_hz: float, b
 	return _wav(s)
 
 
+## A pressure crack, turbulent body and scattered ground returns. Integrating
+## the falling pitch avoids the old sine sweep reversing into a synthetic hum.
 func _boom(rng: RandomNumberGenerator, dur: float, vol: float, base_hz: float) -> AudioStreamWAV:
 	var n := int(dur * RATE)
 	var s := PackedFloat32Array()
 	s.resize(n)
-	var lp := 0.0
-	var lp2 := 0.0
+	var body := 0.0
+	var rumble := 0.0
+	var crack := 0.0
+	var phase := 0.0
 	for i in n:
 		var t := float(i) / RATE
-		var noise := rng.randf() * 2.0 - 1.0
-		lp += (noise - lp) * 0.08
-		lp2 += (lp - lp2) * 0.1
-		var env := exp(-t * 3.2) * (1.0 - exp(-t * 400.0))
-		var sub := sin(TAU * base_hz * t * (1.0 - t * 0.3)) * exp(-t * 4.0)
-		var crack := noise * exp(-t * 30.0) * 0.5
-		s[i] = (lp2 * 5.0 * env + sub * 0.8 + crack) * vol
+		var noise := rng.randf_range(-1.0, 1.0)
+		crack += (noise - crack) * 0.62
+		body += (noise - body) * lerpf(0.025, 0.20, exp(-t * 12.0))
+		rumble += (body - rumble) * 0.025
+		phase += TAU * base_hz * (0.75 + 0.9 * exp(-t * 18.0)) / RATE
+		var attack := 1.0 - exp(-t * 1800.0)
+		var report := (crack - body) * exp(-t * 55.0)
+		var punch := (body * 3.2 + sin(phase) * 0.55) * exp(-t * 8.0)
+		var tail := rumble * 15.0 * exp(-t / (dur * 0.34)) * (1.0 - exp(-t * 35.0))
+		s[i] = (report + punch + tail) * attack
+	# Irregular, filtered ground returns keep the report broad without a
+	# regular delay train or an indoor reverb washing over the battlefield.
+	var direct := s.duplicate()
+	for delay: float in [0.071, 0.137, 0.223]:
+		var offset := int((delay + rng.randf_range(-0.012, 0.012)) * RATE)
+		var echo := 0.0
+		for i in range(offset, n):
+			echo += (direct[i - offset] - echo) * 0.12
+			s[i] += echo * 0.24
+	# Sparse grit follows the report, rather than a continuous white-noise hiss.
+	for hit in int(6.0 + dur * 4.0):
+		var at := rng.randf_range(0.12, dur * 0.8)
+		var start := int(at * RATE)
+		var level := rng.randf_range(0.035, 0.11) * exp(-at / dur * 2.5)
+		var grit := 0.0
+		for i in range(start, mini(n, start + int(0.055 * RATE))):
+			var t := float(i - start) / RATE
+			grit += (rng.randf_range(-1.0, 1.0) - grit) * 0.35
+			s[i] += grit * level * exp(-t * 85.0) * minf(t * 2000.0, 1.0)
+	var peak := 0.001
+	for i in n:
+		s[i] *= smoothstep(0.0, 0.08, float(n - 1 - i) / RATE)
+		peak = maxf(peak, absf(s[i]))
+	for i in n:
+		s[i] *= 0.92 * vol / peak
 	return _wav(s)
 
 
