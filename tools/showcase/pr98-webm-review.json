@@ -1,0 +1,100 @@
+{
+  "reviewed_on": "2026-11-09",
+  "source_head": "36b6f0bc51bcbbc5e1da0be2a846f9b7c0be4542",
+  "method": "Transcode the committed game-rendered MP4 recordings to silent VP9 WebM. Preserve full duration and composition, normalize output to 30 fps without changing playback speed; do not claim these are fresh captures.",
+  "encode_arguments": [
+    "-an",
+    "-vf",
+    "fps=30",
+    "-c:v",
+    "libvpx-vp9",
+    "-crf",
+    "30",
+    "-b:v",
+    "0",
+    "-row-mt",
+    "1",
+    "-threads",
+    "4",
+    "-pix_fmt",
+    "yuv420p"
+  ],
+  "clips": [
+    {
+      "source": "changelog/unreleased/foot-plants-and-rifle-hop/backstep.mp4",
+      "source_commit": "36b6f0bc51bcbbc5e1da0be2a846f9b7c0be4542",
+      "source_sha256": "17c7e1c0f33d1cedfbb53ef0faae53d1e4fb515c6f5bd2e793112d8ddc1c45f0",
+      "output": "changelog/unreleased/foot-plants-and-rifle-hop/backstep.webm",
+      "output_sha256": "cceffcc0ba1bc9019baea249e4d7b6f2a941fd9bcfdd1f073d3f335a0ae7cb18",
+      "output_bytes": 809008,
+      "full_decode": "pass",
+      "audio": "none"
+    },
+    {
+      "source": "changelog/unreleased/foot-plants-and-rifle-hop/jump.mp4",
+      "source_commit": "36b6f0bc51bcbbc5e1da0be2a846f9b7c0be4542",
+      "source_sha256": "84930b07240ef4d12c5763ce72e4d3f3b98f38da407b5bc0baafe8a761e66300",
+      "output": "changelog/unreleased/foot-plants-and-rifle-hop/jump.webm",
+      "output_sha256": "f898b964570934cc68d93ca8e402b3ca9c13cffb425ec479576b972825b7075a",
+      "output_bytes": 219336,
+      "full_decode": "pass",
+      "audio": "none"
+    },
+    {
+      "source": "changelog/unreleased/foot-plants-and-rifle-hop/idles.mp4",
+      "source_commit": "36b6f0bc51bcbbc5e1da0be2a846f9b7c0be4542",
+      "source_sha256": "b3cd230b3d21dda93d99553026d65a438537f7411cb7ebaba97c6bc1889e6d93",
+      "output": "changelog/unreleased/foot-plants-and-rifle-hop/idles.webm",
+      "output_sha256": "34f6524ca0b21c7b2e51b7e657f69c7a6c5d06fc78249f2728f357ba9f779957",
+      "output_bytes": 2840941,
+      "full_decode": "pass",
+      "audio": "none"
+    },
+    {
+      "source": "changelog/unreleased/infantry-animation/wall-to-prone.mp4",
+      "source_commit": "88b4106242f110d34dd0c2480682c52af937bac5",
+      "source_sha256": "a048e93f726bfe2b033c1e5c6baecc1a9fe83c0760a60d43979f6837ba1430a6",
+      "output": "changelog/unreleased/infantry-animation/wall-to-prone.webm",
+      "output_sha256": "d9ec68250c944232237f57f216340629a493ad06b0d5e19023c0187c4ee9f037",
+      "output_bytes": 1621426,
+      "full_decode": "pass",
+      "audio": "none"
+    },
+    {
+      "source": "changelog/unreleased/captured-injury-motion/injured.mp4",
+      "source_commit": "da9466934770aa15c02d6a66456560c6c108a021",
+      "source_sha256": "f5523acdcf54e08deaaa63e7c3b9bade6af8381f832801b8f70549a30309a722",
+      "output": "changelog/unreleased/captured-injury-motion/injured.webm",
+      "output_sha256": "93d219ac2cd546e090d7960435d0a0f4698842d33bfb70c954050d590ea17f94",
+      "output_bytes": 1162946,
+      "full_decode": "pass",
+      "audio": "none"
+    },
+    {
+      "source": "changelog/unreleased/captured-injury-motion/prone-wall.mp4",
+      "source_commit": "da9466934770aa15c02d6a66456560c6c108a021",
+      "source_sha256": "791677efad5b0b1d093ddf3929c0cec42b3f2b8134fb241a17ff9e6d98a5f02a",
+      "output": "changelog/unreleased/captured-injury-motion/prone-wall.webm",
+      "output_sha256": "e5f47e2cd5b45a0189ccb69f8b34126e457f0040771c621677e989c94f5de4df",
+      "output_bytes": 713769,
+      "full_decode": "pass",
+      "audio": "none"
+    }
+  ],
+  "review": {
+    "method": "Inspect decoded source and encoded-output contact sheets, including takeoff/landing, clearance/prone, injury/recovery and each relaxed-action interval. Full WebM decode was checked separately.",
+    "result": "Motion is legible at embedded size, and captions explain what to watch. These are technical inspection fixtures, not finished character-presentation approval. The small white overlay on the white-wall fixture has weak contrast; the HTML caption supplies its context without altering source footage.",
+    "limits": [
+      "No fresh game capture or multiplayer/whole-game certification in this media-only update.",
+      "The 28-second idle sequence retains four complete seven-second action/recovery cycles rather than speeding playback.",
+      "Latest main still conflicts with this draft in soldier.gd and the showcase catalog.",
+      "The optional character assets remain local; the coverage inventory still lists 22 procedural action routes."
+    ]
+  },
+  "validation": {
+    "changelog_check": "pass",
+    "presentation_audit": "104 entries pass",
+    "changelog_unit_tests": "9 pass",
+    "git_diff_check": "pass"
+  }
+}

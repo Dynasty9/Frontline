@@ -106,6 +106,9 @@ var door_wait := 0.0  # stopped at a shut door: kicking it in, or opening it
 var bt_clear := false  # (breach) clearing a house nobody's known to be in
 var bt_nofrag := false  # (breach) going in without a grenade first
 var door_kick := false
+const LADDER_SECONDS := 4.0
+const LADDER_EXIT_SECONDS := 1.4
+const LADDER_TRANSFER_SECONDS := 0.8
 var door_st: Structure = null
 var _door_t := 0.0
 var goal := Vector3.ZERO
@@ -117,6 +120,8 @@ var hold_pos := Vector3.ZERO
 var hold_face := Vector3.FORWARD
 var leash := 9.0
 var vaulting := false
+var _view_vault := false
+var _view_vault_lift := 0.0
 var slide_t := 0.0
 var slide_cd := 0.0
 var _sep := Vector3.ZERO
@@ -169,6 +174,19 @@ var cf_until := 0.0  # his own covering-fire task (his fire team is the base of 
 var cf_pos := Vector3.ZERO
 var fteam := 0  # which fire team he's in (0 Alpha, 1 Bravo)
 var _sim_prev := Vector3.ZERO
+static var _prone_shape: BoxShape3D
+var _prone_query: PhysicsShapeQueryParameters3D
+var _prone_check_t := 0.0
+var _prone_checked := Transform3D.IDENTITY
+var _prone_clear := false
+var _prone_back_goal := Vector3.INF
+var _prone_back_speed := 0.0
+var _prone_settle := 0.0
+var _prone_retry := 0.0
+static var _prone_step_shape: CapsuleShape3D
+var _prone_step_query: PhysicsShapeQueryParameters3D
+var motion_velocity := Vector3.ZERO
+var _death_velocity := Vector3.ZERO
 var _supp_t := -99.0  # last near miss: heads stay down a moment after the cracks stop
 var _shuffle := false  # stepping aside to make room this tick
 var vis_targets: Array = []
@@ -773,6 +791,7 @@ func _danger() -> bool:
 # --- main loop -------------------------------------------------------------------
 
 func sim(dt: float) -> void:
+	var motion_start := position
 	if not debug_pose.is_empty():
 		posture = int(debug_pose[0])
 		act = int(debug_pose[1])
@@ -808,6 +827,7 @@ func sim(dt: float) -> void:
 			Life.HIDDEN:
 				_hidden(dt)
 	_posture_sanity(dt)
+	motion_velocity = ((position - motion_start) / maxf(dt, 0.001)).limit_length(15.0)
 	_update_flags()
 
 
@@ -817,7 +837,12 @@ func _posture_sanity(dt: float) -> void:
 	if life != Life.ALIVE or dt <= 0.0:
 		_sim_prev = position
 		return
+	_prone_check_t -= dt
+	if posture == Post.PRONE and not _room_for_prone():
+		posture = Post.CROUCH
 	var sp := Defs.flat(position - _sim_prev).length() / dt
+	if posture == Post.CROUCH and act == Act.CRAWL:
+		act = Act.WALK if sp > 0.01 else Act.IDLE
 	_sim_prev = position
 	if sp < 0.3 or act in [Act.CRAWL, Act.DIVE, Act.FLUNG, Act.SLIDE, Act.DRAGGED, Act.CARRIED, Act.VAULT, Act.SMOTHER]:
 		return
@@ -830,6 +855,94 @@ func _posture_sanity(dt: float) -> void:
 		fixed += "idle"
 	if fixed != "" and OS.has_environment("FL_DEBUG_PRONE"):
 		world.stat("posture_fix_%s_%s_%s" % [fixed, task, goal_kind])
+
+
+func _room_for_prone() -> bool:
+	if _prone_query != null and _prone_check_t > 0.0 and global_transform.is_equal_approx(_prone_checked):
+		return _prone_clear
+	if _prone_shape == null:
+		_prone_shape = BoxShape3D.new()
+		# Reserve the whole kneel-to-prone sweep, including outstretched arms and boots.
+		_prone_shape.size = Vector3(1.6, 1.6, 2.6)
+	if _prone_query == null:
+		_prone_query = PhysicsShapeQueryParameters3D.new()
+		_prone_query.shape = _prone_shape
+		_prone_query.collision_mask = Defs.L_COVER
+	_prone_checked = global_transform
+	_prone_clear = _prone_clear_at(global_position)
+	_prone_check_t = 0.2
+	return _prone_clear
+
+
+func _prone_clear_at(at: Vector3) -> bool:
+	_prone_query.transform = global_transform * Transform3D(Basis.IDENTITY, Vector3(0, 0.88, -0.1))
+	_prone_query.transform.origin += at - global_position
+	return get_world_3d().direct_space_state.intersect_shape(_prone_query, 1).is_empty()
+
+
+func _cancel_prone_backstep() -> void:
+	_prone_back_goal = Vector3.INF
+	_prone_back_speed = 0.0
+	_prone_settle = 0.0
+
+
+func _prone_step_clear(to: Vector3) -> bool:
+	if world != null and (not world.nav.walkable(to) or absf(world.ground_y(to) - position.y) > 0.25):
+		return false
+	if _prone_step_query == null:
+		if _prone_step_shape == null:
+			_prone_step_shape = CapsuleShape3D.new()
+			_prone_step_shape.radius = 0.32
+			_prone_step_shape.height = 1.25
+		_prone_step_query = PhysicsShapeQueryParameters3D.new()
+		_prone_step_query.shape = _prone_step_shape
+		_prone_step_query.collision_mask = Defs.L_COVER
+	_prone_step_query.transform = Transform3D(Basis.IDENTITY, global_position + Vector3.UP * 0.7)
+	_prone_step_query.motion = to - global_position
+	var space := get_world_3d().direct_space_state
+	if not space.intersect_shape(_prone_step_query, 1).is_empty(): return false
+	return space.cast_motion(_prone_step_query)[0] >= 1.0
+
+
+## Take a short backward step before lying down; never teleport out of cover.
+func _prepare_prone(dt: float) -> bool:
+	_prone_retry = maxf(0.0, _prone_retry - dt)
+	if _prone_back_goal == Vector3.INF and _prone_settle <= 0.0:
+		if _room_for_prone(): return true
+		# Finish finding or reaching cover before adjusting the firing position.
+		if world != null and not at_cover and (_path_pending or goal_kind == "cover" or world.time > next_cover_eval): return false
+		if _prone_retry > 0.0: return false
+		_prone_retry = 0.5
+		for step in range(1, 19):
+			var candidate := global_position + global_basis.z * (float(step) * 0.1)
+			if not _prone_step_clear(candidate): break
+			if _prone_clear_at(candidate):
+				_prone_back_goal = global_position + global_basis.z * minf(float(step) * 0.1 + 0.08, 1.8)
+				if not _prone_step_clear(_prone_back_goal): _prone_back_goal = candidate
+				# Keep the barrier's protection while making room behind it.
+				if at_cover:
+					cover_pos = _prone_back_goal
+					cover_st = null
+					cover_ai = -1
+				if world != null:
+					world.stat("prone_backstep")
+				break
+		if _prone_back_goal == Vector3.INF: return false
+	if _prone_back_goal != Vector3.INF:
+		if not _prone_step_clear(_prone_back_goal):
+			_cancel_prone_backstep()
+			return false
+		var remaining := global_position.distance_to(_prone_back_goal)
+		var target_speed := minf(0.65, sqrt(2.0 * 1.5 * remaining))
+		_prone_back_speed = move_toward(_prone_back_speed, target_speed, dt * 1.5)
+		global_position = global_position.move_toward(_prone_back_goal, _prone_back_speed * dt)
+		if global_position.distance_to(_prone_back_goal) < 0.001:
+			_prone_back_goal = Vector3.INF
+			_prone_back_speed = 0.0
+			_prone_settle = 0.35
+		return false
+	_prone_settle = maxf(0.0, _prone_settle - dt)
+	return _prone_settle <= 0.0 and _room_for_prone()
 
 
 func _update_flags() -> void:
@@ -1192,6 +1305,7 @@ func _fight_think() -> void:
 
 
 func _fight_think_work() -> void:
+	if _prone_back_goal != Vector3.INF or _prone_settle > 0.0: return
 	var w := cur_weapon()
 	if w.is_empty():
 		return
@@ -1261,6 +1375,7 @@ func _seek_cover(anchor: Vector3, radius: float, threats: Array) -> void:
 
 
 func go_to(p: Vector3, kind: String, mode: int) -> void:
+	_cancel_prone_backstep()
 	# retreats keep well clear of known enemy fire; ordinary moves skirt it
 	var care := 0.0
 	if task == "retreat" or task == "limp":
@@ -1298,6 +1413,7 @@ func go_to(p: Vector3, kind: String, mode: int) -> void:
 
 
 func stop_moving() -> void:
+	_cancel_prone_backstep()
 	_path_revision += 1
 	_path_pending = false
 	if world.nav:
@@ -1526,7 +1642,7 @@ func _fight_tick(dt: float) -> void:
 
 func _fight_tick_work(dt: float) -> void:
 	var moving := _move_tick(dt, _speed())
-	if not moving:
+	if not moving and _prone_back_goal == Vector3.INF and _prone_settle <= 0.0:
 		_apply_sep(dt)
 		_settle_y(dt)
 		if at_cover and cover_n != Vector3.ZERO:
@@ -1544,6 +1660,8 @@ func _fight_tick_work(dt: float) -> void:
 		_shuffle = false
 	_weapon_tick(dt, moving, "normal")
 	_choose_act(moving or _shuffle)
+	if _prone_back_goal != Vector3.INF or _prone_settle > 0.0:
+		act = Act.WALK if _prone_back_speed > 0.0 else Act.IDLE
 	_idle_tick(dt, moving)
 
 
@@ -1849,6 +1967,14 @@ func _weapon_tick_work(dt: float, moving: bool, mode: String) -> void:
 		shoot_ok = false
 	if world.water and world.water.depth_at(position) > 0.15:
 		want = Post.STAND
+	# A brief duck should not abandon a useful firing position.
+	if want == Post.PRONE and not moving and mode == "normal" and (not at_cover or pinned):
+		if not _prepare_prone(dt):
+			want = Post.CROUCH
+			if _prone_back_goal != Vector3.INF or _prone_settle > 0.0: shoot_ok = false
+	else:
+		_cancel_prone_backstep()
+		if want == Post.PRONE and not _room_for_prone(): want = Post.CROUCH
 	posture = want
 	if not shoot_ok or reload_t > 0.0 or w.is_empty() or (fire_t > 0.0 and crew_mount() == null):
 		return
@@ -2545,6 +2671,7 @@ func cmd_stop() -> void:
 
 
 func _clear_task() -> void:
+	_cancel_prone_backstep()
 	match task:
 		"rescue":
 			if task_ent is Soldier:
@@ -2638,6 +2765,9 @@ func take_damage(amount: float, src, _dir: Vector3, kind := "bullet") -> void:
 		world.battle.soldier_hit(self, amount, src)
 	_hit_dir = _dir
 	_hit_kind = kind
+	if life == Life.ALIVE and amount > 0.0 and kind in ["bullet", "melee", "explosion"]:
+		world.fx_event([Fx.UNIT_HIT, eid, _dir, clampf(amount / 70.0, 0.12, 1.0)])
+		world.stat("soldier_hit_reaction")
 	if life == Life.DOWNED:
 		bleed -= amount * 0.3
 		if (kind == "explosion" and amount > 45.0) or bleed <= 0.0 or world.rng.randf() < amount / 300.0:
@@ -2706,6 +2836,7 @@ func _go_down() -> void:
 func _die() -> void:
 	if life == Life.DEAD:
 		return
+	_death_velocity = motion_velocity
 	if world.battle:
 		world.battle.soldier_died(self)
 	life = Life.DEAD
@@ -2745,8 +2876,9 @@ func _death_fx() -> void:
 		imp = d * 4.0 + Vector3.UP * 2.5
 	elif _hit_kind in ["bullet", "melee"]:
 		kind = 0
-		imp = d * 2.6 + Vector3.UP * 0.4
-	world.fx_event([Fx.DIE, eid, imp, kind])
+		imp = d * 0.8
+	# fling_v already contains the ballistic velocity; don't add running twice.
+	world.fx_event([Fx.DIE, eid, imp, kind, Vector3.ZERO if flinging else _death_velocity])
 
 
 func _release_all() -> void:
@@ -3460,7 +3592,7 @@ func start_man(st: Structure) -> void:
 	task_ent = st
 	mounted = st
 	task_phase = 0
-	go_to(Vector3(st.mount_pos().x, 0, st.mount_pos().z) + (Defs.flat(position - st.position).normalized() * 1.8 if st.skind == "watchtower" else Vector3.ZERO), "task", 1)
+	go_to(st.ladder_pos(0.0) if st.skind == "watchtower" else Vector3(st.mount_pos().x, 0, st.mount_pos().z), "task", 1)
 
 
 func release_mount() -> void:
@@ -3487,6 +3619,7 @@ func _man_tick(dt: float) -> void:
 	if st == null or st.gone or not st.built:
 		release_mount()
 		return
+	if st.skind == "watchtower" and task_phase < 2: posture = Post.STAND
 	match task_phase:
 		0:
 			if is_moving():
@@ -3495,8 +3628,9 @@ func _man_tick(dt: float) -> void:
 				return
 			if st.skind == "watchtower":
 				task_phase = 1
-				task_t = 1.6
-				position = st.position
+				task_t = LADDER_SECONDS + LADDER_EXIT_SECONDS
+				position = st.ladder_pos(0.0)
+				rotation.y = st.yaw
 			else:
 				task_phase = 2
 				position = st.mount_pos()
@@ -3510,8 +3644,16 @@ func _man_tick(dt: float) -> void:
 						say("Manning the gun!", true)
 		1:
 			task_t -= dt
-			act = Act.CLIMB
-			position.y = st.position.y + lerpf(0.0, 4.25, clampf(1.0 - task_t / 1.6, 0.0, 1.0))
+			var elapsed := LADDER_SECONDS + LADDER_EXIT_SECONDS - task_t
+			act = Act.CLIMB if elapsed < LADDER_SECONDS + LADDER_TRANSFER_SECONDS else Act.WALK
+			position = st.ladder_pos(elapsed / LADDER_SECONDS)
+			if elapsed >= LADDER_SECONDS:
+				var exit_time := elapsed - LADDER_SECONDS
+				var landing := st.position + Basis(Vector3.UP, st.yaw) * Vector3(0, 4.25, 1.0)
+				if exit_time < LADDER_TRANSFER_SECONDS:
+					position = position.lerp(landing, smoothstep(0.0, LADDER_TRANSFER_SECONDS, exit_time))
+				else:
+					position = landing.lerp(st.mount_pos(), clampf((exit_time - LADDER_TRANSFER_SECONDS) / (LADDER_EXIT_SECONDS - LADDER_TRANSFER_SECONDS), 0.0, 1.0))
 			if task_t <= 0.0:
 				task_phase = 2
 				base_y = 4.25
@@ -3853,9 +3995,10 @@ func _view_process(dt: float, blend := -1.0) -> void:
 		view_lod = false
 		_last_view_pos = position
 		return
-	if world.cam and world.soldier_view and debug_pose.is_empty():
-		var distance := world.cam.cam.global_position.distance_to(position)
-		view_lod = distance > (80.0 if view_lod else 90.0) or not world.cam.cam.is_position_in_frustum(position + Vector3(0, 1.0, 0))
+	var view_camera := get_viewport().get_camera_3d()
+	if view_camera != null and world.soldier_view and debug_pose.is_empty():
+		var distance := view_camera.global_position.distance_to(position)
+		view_lod = distance > (80.0 if view_lod else 90.0) or not view_camera.is_position_in_frustum(position + Vector3(0, 1.0, 0))
 		if not view_lod and model == null and not world.soldier_view.acquire_detail_slot():
 			view_lod = true  # keep the shared model visible while detail warms up
 	else:
@@ -3875,12 +4018,12 @@ func _view_process(dt: float, blend := -1.0) -> void:
 	# or third frame, close ones every frame
 	_pose_dt += dt
 	var cm := crew_mount() if life == Life.ALIVE else null
-	if world.cam and cm == null:
+	if view_camera != null and cm == null:
 		var every := 1
-		if not world.cam.cam.is_position_in_frustum(position + Vector3(0, 1.0, 0)):
+		if not view_camera.is_position_in_frustum(position + Vector3(0, 1.0, 0)):
 			every = 6
 		else:
-			var cd := world.cam.cam.global_position.distance_to(position)
+			var cd := view_camera.global_position.distance_to(position)
 			every = 3 if cd > 90.0 else (2 if cd > 50.0 else 1)
 		_pose_skip += 1
 		if _pose_skip < every:
@@ -3888,8 +4031,10 @@ func _view_process(dt: float, blend := -1.0) -> void:
 	_pose_skip = 0
 	var pdt := _pose_dt
 	_pose_dt = 0.0
-	var mv := Defs.flat(position - _last_view_pos)
-	_last_view_pos = position
+	var frame_offset := ip_offset() if srv else Transform3D.IDENTITY
+	var view_position := (transform * frame_offset).origin
+	var mv := Defs.flat(view_position - _last_view_pos)
+	_last_view_pos = view_position
 	var sp := mv.length() / maxf(pdt, 0.001)
 	_view_speed = lerpf(_view_speed, sp, 1.0 - exp(-pdt * 8.0))
 	if debug_pose.size() > 3:
@@ -3898,12 +4043,14 @@ func _view_process(dt: float, blend := -1.0) -> void:
 		model.move_yaw = float(debug_pose[6])  # test gallery: walking one way, facing another
 	var fwd := Defs.dir_of(rotation.y)
 	var back := sp > 0.3 and mv.normalized().dot(fwd) < -0.3
-	if sp > 0.3:
-		# which way he's going relative to where he faces: the legs follow it
-		model.move_yaw = lerp_angle(model.move_yaw, fwd.signed_angle_to(mv.normalized(), Vector3.UP), 1.0 - exp(-pdt * 10.0))
+	if sp > 0.02:
+		# Starting backward must not sweep the feet through a false sideways turn.
+		var direction := fwd.signed_angle_to(mv.normalized(), Vector3.UP)
+		model.move_yaw = direction if _view_speed < 0.15 else lerp_angle(model.move_yaw, direction, 1.0 - exp(-pdt * 10.0))
 	model.over_wall = (flags & F_OVERWALL) != 0
 	model.cover_h = cover_h_view() if life == Life.ALIVE else 0.0
 	model.blind = blind_view()
+	if model.skinned != null: model.position.y -= _view_vault_lift
 	var on_gun := false
 	if cm != null:
 		cm.crew_aim(rotation.y, (flags & F_SHOOTING) != 0, pdt)
@@ -3918,11 +4065,20 @@ func _view_process(dt: float, blend := -1.0) -> void:
 	if not on_gun:
 		if srv:
 			# between simulation steps (see Entity.ip_offset)
-			var off := ip_offset()
-			if _ip_moving or not model.transform.is_equal_approx(off):
-				model.transform = off
+			if _ip_moving or not model.transform.is_equal_approx(frame_offset):
+				model.transform = frame_offset
 		elif _was_on_gun:
 			model.transform = Transform3D.IDENTITY
 	_was_on_gun = on_gun
-	model.pose(pdt, life, posture, act, _view_speed, back, (flags & F_SHOOTING) != 0)
+	var view_act := act
+	if model.skinned != null:
+		# Keep the knees tucked until the body clears the wall, without changing combat timing.
+		_view_vault = life == Life.ALIVE and not on_gun and (act == Act.VAULT or (_view_vault and act in [Act.WALK, Act.RUN] and world.nav.kind_at(position) == Nav.LOW))
+		var lift := maxf(0.0, _ground() + base_y + 0.5 - position.y) if _view_vault else 0.0
+		_view_vault_lift = move_toward(_view_vault_lift, lift, pdt * 4.0)
+		model.position.y += _view_vault_lift
+		if _view_vault: view_act = Act.VAULT
+	var ladder_target = task_ent if srv else world.entity(doing_ent)
+	model.ladder = ladder_target if is_instance_valid(ladder_target) and ladder_target is Structure and ladder_target.skind == "watchtower" and view_act == Act.CLIMB else null
+	model.pose(pdt, life, posture, view_act, _view_speed, back, (flags & F_SHOOTING) != 0)
 	ring.visible = selected

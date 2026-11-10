@@ -114,8 +114,14 @@ func _water() -> void:
 	wader.position = Vector3(0.5, -0.85, 0.5)
 	wader.posture = Soldier.Post.PRONE
 	wader.suppression = 90.0
+	# Entering water cancels a pending clearance maneuver before it moves the soldier.
+	var before_wade := wader.position
+	wader._prone_back_goal = wader.position + Vector3(0, 0, 0.5)
+	wader._prone_back_speed = 0.4
+	wader._prone_settle = 0.2
 	wader._weapon_tick(0.03, false, "normal")
 	assert(wader.posture == Soldier.Post.STAND, "Suppression cannot make a wading soldier lie underwater")
+	assert(wader.position == before_wade and wader._prone_back_goal == Vector3.INF and wader._prone_back_speed == 0.0 and wader._prone_settle == 0.0, "Water must cancel the pending prone retreat before stepping")
 	wader.free()
 	w.water.deck.resize(4096)
 	var bridge := Vector3(0.5, 0, 5.5)
