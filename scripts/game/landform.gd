@@ -9,6 +9,7 @@ var n: int
 var half: float
 var heights := PackedFloat32Array()
 var reserve := PackedFloat32Array()
+var drainage := PackedFloat32Array()
 var peak := 0.0
 
 
@@ -32,6 +33,7 @@ func _init(size: int) -> void:
 
 
 func generate(seed_value: int, roads: Array, water, settlements: Array, fractured := true) -> void:
+	drainage.clear()
 	heights.resize(n * n)
 	reserve.resize(n * n)
 	reserve.fill(1.0)
@@ -271,10 +273,63 @@ func fits(p: Vector3, footprint: Vector2, yaw: float, tolerance := 0.35) -> bool
 	return true
 
 
-## Bake sky visibility, concavity and distant sun occlusion; crater normals stay live.
+## Rain follows every downhill neighbour; accumulated flow marks weathered gullies.
+static func bake_drainage(samples: PackedFloat32Array, width: int, rainfall := 1.0) -> PackedFloat32Array:
+	var order: Array[int] = []
+	order.resize(samples.size())
+	for i in order.size():
+		order[i] = i
+	order.sort_custom(func(a: int, b: int) -> bool: return samples[a] > samples[b])
+	var flow := PackedFloat32Array()
+	flow.resize(samples.size())
+	flow.fill(rainfall)
+	var directions: Array[Vector2i] = [Vector2i(-1, -1), Vector2i(0, -1), Vector2i(1, -1),
+		Vector2i(-1, 0), Vector2i(1, 0), Vector2i(-1, 1), Vector2i(0, 1), Vector2i(1, 1)]
+	var weights := PackedFloat32Array()
+	weights.resize(8)
+	var targets := PackedInt32Array()
+	targets.resize(8)
+	for i in order:
+		var z := int(float(i) / width)
+		var x := i - z * width
+		var total := 0.0
+		for k in 8:
+			var d := directions[k]
+			var nx := x + d.x
+			var nz := z + d.y
+			weights[k] = 0.0
+			if nx < 0 or nz < 0 or nx >= width or nz >= width:
+				continue
+			var j := nz * width + nx
+			targets[k] = j
+			var distance := 1.41421356237 if d.x != 0 and d.y != 0 else 1.0
+			weights[k] = pow(maxf(0.0, samples[i] - samples[j]) / distance, 1.1)
+			total += weights[k]
+		if total > 0.0:
+			for k in 8:
+				if weights[k] > 0.0:
+					flow[targets[k]] += flow[i] * weights[k] / total
+	for i in flow.size():
+		flow[i] = clampf((log(flow[i]) / log(2.0) - 3.0) / 7.0, 0.0, 1.0)
+	# A narrow blur hides grid steps without spreading stains across the watershed.
+	var smooth := flow.duplicate()
+	for z in width:
+		for x in width:
+			var i := z * width + x
+			smooth[i] = flow[z * width + maxi(0, x - 1)] * 0.209 + flow[i] * 0.582 + flow[z * width + mini(width - 1, x + 1)] * 0.209
+	for z in width:
+		for x in width:
+			var i := z * width + x
+			flow[i] = smooth[maxi(0, z - 1) * width + x] * 0.209 + smooth[i] * 0.582 + smooth[mini(width - 1, z + 1) * width + x] * 0.209
+	return flow
+
+
+## Bake sky visibility, concavity, sun occlusion and drainage; crater normals stay live.
 func bake_surface(sun_direction := Vector3.UP) -> Image:
 	var size := ceili(half * 2.0 / 8.0)
-	var img := Image.create(size, size, false, Image.FORMAT_RGB8)
+	var img := Image.create(size, size, false, Image.FORMAT_RGBA8)
+	if drainage.is_empty() and not heights.is_empty():
+		drainage = bake_drainage(heights, n)
 	var toward_sun := Vector3(sun_direction.x, 0, sun_direction.z)
 	var sun_slope := sun_direction.y / maxf(toward_sun.length(), 0.001)
 	toward_sun = toward_sun.normalized()
@@ -299,6 +354,7 @@ func bake_surface(sun_direction := Vector3.UP) -> Image:
 			for distance in [8.0, 16.0, 32.0, 48.0, 64.0, 96.0, 128.0, 192.0, 256.0, 384.0, 512.0]:
 				sun_horizon = maxf(sun_horizon, (height(p + toward_sun * distance) - h - 0.5) / distance)
 			var sunlight := 1.0 - smoothstep(sun_slope - 0.035, sun_slope + 0.035, sun_horizon)
-			img.set_pixel(x, z, Color(1.0 - occlusion / 8.0 * 0.75, clampf(0.5 + basin / 128.0, 0.0, 1.0), sunlight))
+			var flow := 0.0 if drainage.is_empty() else drainage[(z * 2 + 1) * n + x * 2 + 1]
+			img.set_pixel(x, z, Color(1.0 - occlusion / 8.0 * 0.75, clampf(0.5 + basin / 128.0, 0.0, 1.0), sunlight, flow))
 	img.generate_mipmaps()
 	return img

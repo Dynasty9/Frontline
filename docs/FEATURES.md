@@ -542,10 +542,11 @@ Ambush Alley autoplay can call its existing mortar support against spotted, stop
 - Stuck watchdogs: infantry re-plan if they stop making progress; vehicles back off, turn and re-plan.
 
 **The map** (`mapgen.gd`, `landform.gd`, `towngen.gd`, `decor.gd`)
+- Town asphalt combines fine photographed aggregate with larger cracks and repairs, continuous across street junctions. Road and pavement normal maps follow their actual slopes. Photographic roof, concrete, wood and bark materials are calibrated to their intended colours, so grey roofs remain grey and terracotta stays distinct at distance.
 - Standard battlefields have seeded mountain belts, hills, valleys and rivers. Domain-warped ridged noise,
   jointed bedrock shelves, thermal weathering and seeded rainfall erosion shape the relief. Roads, bridges, starting bases and settlements
   occupy graded valley corridors; forests stay below the snow line and off steep faces.
-- Distant scenery has seeded mountain groups and low passes, with floating-point heights and a finer indexed mesh at Medium/Far detail. Reusable cliff forms have uneven shoulders and irregular drainage cuts before erosion.
+- Distant scenery composes surveyed Mont Blanc, Matterhorn and Jungfrau ridge shapes into seeded fictional mountain groups and low passes, with floating-point heights and a finer indexed mesh at Medium/Far detail. Coastal scenery continues into an irregular shoreline and a coarse ocean surface beyond the detailed battlefield water. Boundary rivers extend into curved scenery pools with matching beds and banks; these extensions leave authoritative water shapes and navigation unchanged. Reusable cliff forms have uneven shoulders and irregular drainage cuts before erosion.
 - Distant mountain groups lose contrast into sky-coloured haze while nearby ground retains its detail.
 - Rock beds catch light along their ledges instead of appearing only as painted colour bands.
 - Broad cliff fractures and smaller joint patterns break up recognisable repeated rock tiles.
@@ -553,15 +554,22 @@ Ambush Alley autoplay can call its existing mortar support against spotted, stop
 - Snow shelves gain shallow wind grooves and granular highlights instead of perfectly smooth white surfaces.
 - Sheltered runoff channels darken and develop a restrained sheen while exposed rock remains dry.
 - Conifers have broken, asymmetric branch silhouettes that read as trees against rock and snow.
+- Browser vertex lighting follows displaced mountain slopes and softly lights leaf cards without enabling global per-pixel lighting.
+- Rain streaks surround the camera; soft splashes follow ground or water height and fade before becoming distant speckles. Procedural clouds remain smooth across their noise cells and use subdued moonlit shading at night, including the clouds reflected on the sea.
 - Stones at the mountain foot have irregular broken faces instead of flattened round primitives.
 - Connected dry grass and richer moss patches replace evenly green valley floors.
-- Moss and soil blend into exposed stone on slopes, with baked slab fractures, broken mineral beds, sheltered weathering, loose-stone pockets and snow on high sheltered ground.
+- Coastal margins transition through exposed gravel and darker wet stone instead of a uniformly sandy strip.
+- Moss and soil blend into exposed stone on slopes, with baked slab fractures, broken mineral beds, sheltered weathering, loose-stone pockets and snow on high sheltered ground. A cached downhill catchment mask places runoff stains and retained snow in connected gullies; it shares the existing surface textures and leaves gameplay elevations unchanged.
 - Optional alpine haze takes on the sky colour and settles lightly into lower valleys.
 - Narrow mineral stains run down exposed cliffs, interrupted by ledges and changes in rock type.
 - Wind exposure and rock relief break up snow edges, with cooler compacted snow in sheltered pockets.
 - Sheltered rock crevices receive stronger ambient occlusion while exposed rock stays open to sky light.
 - World-space texture warping breaks up repeated slab patterns without adding material samples.
-  Photograph-derived height, normals, crevice shading and roughness give each material distinct relief;
+  Photograph-derived height, normals, crevice shading and roughness give each material distinct relief.
+  Full-precision surface/geology textures keep elevated slopes and snow edges smooth; wall grime follows height above ground.
+  Snow uses a two-metre powder scan with dirtier melt edges; wooded foothills use three-metre moss
+  and leaf litter. Five material layers share two texture arrays with independent mipmaps, preserving
+  the browser sampler budget. Detailed snow and litter follow the existing terrain-detail setting;
   height-based transitions let rock emerge through moss and snow. Reusable buttress, bowl and saddle
   forms shape standard mountains before erosion, with small conifer stands along suitable foothills.
   Warped mineral bands, dry grass patches and broken scree vary the surfaces at several scales. Mixed
@@ -1276,9 +1284,10 @@ layer each frame, so moving the pointer does not rebuild all squad counters. Hid
 also stops its raster updates. Smoke sight checks visit smoke grenades directly rather than every
 projectile; cloud growth, movement and dissipation still take effect immediately.
 
-Clients build scenery in and around the camera's view first and cache visited models; distant models and
-cosmetic collision bodies remain inactive. The server still simulates the complete
-map. Nearby movement orders can reuse a checked route corridor, with separate
+Views build scenery in and around the camera first and cache visited models; local games and hosts
+share the clients' spatial draw batches. Distant models and client cosmetic collision bodies remain
+inactive, while host collision and the complete simulation stay active. Returning to cached scenery
+does not consume the new-model construction limit. Nearby movement orders can reuse a checked route corridor, with separate
 destinations and invalidation when terrain or danger changes.
 
 Grass, bushes and stones are generated around the camera, beyond their visible
@@ -1288,4 +1297,16 @@ to an area recreates the same vegetation from its seed.
 See [SIMULATION_SCALING.md](SIMULATION_SCALING.md) for the native perception
 boundary, measurement results and remaining limits.
 
+Grass and shrub culling bounds follow their local ground heights, keeping distance fading correct beside taller mountains; small cosmetic stones use the ground height at placement. Meadow density fades towards the snow line and on steep slopes, with zero-density habitats kept empty. Smaller photographed shrub branches form seeded patches with open gaps, independently of gameplay randomness.
+
 Alpine stone clusters combine slabs, blocks and small fragments in shared batches. Fine fragments cull beyond 180 m with a 20 m hysteresis margin; larger rocks remain visible.
+
+Daylight uses a bundled CC0 photographic cloud panorama, aligned with the sun and cached for sky lighting and reflections. Other lighting moods retain their procedural skies.
+
+Generated towns have distinct garden plots, narrow foundation aprons and paths leading to their generated front or side doors. Front fences leave pedestrian and driveway openings. Driveway aprons continue across sidewalks through lowered kerbs with sloping shoulders; grass stays out of the crossing. Paving follows immutable terrain elevation and retains crater cutouts; street furniture and both wire endpoints carry authoritative ground heights. Long fences are broken into short, independently destructible sections. Streets and junctions share scanned asphalt; sidewalks, drives and door paths use scanned paving slabs. CC0 photographs include mipmapped normal and roughness maps, with source credits in assets/town/LICENSE.md. Meadow and garden turf combines photographic soil/blade detail with moisture variation from sheltered soil and exposed patches. Grass uses thirty narrow pointed blades at the previous ninety-triangle clump cost, with shorter clumps in towns; grass stays outside the carriageway.
+
+Town entrances blend gravel into asphalt through irregular edges. Local repair patches, staining, aged tile roofs, concrete roof slabs and weathered timber fences use bundled CC0 scans with mipmapped relief; metal fences retain rust and worn paint.
+
+Trees, hedges and shrubs use photographed needle/leaf cards, preserving batched rendering, burning and destruction. Broadleaf crowns use smaller cards with open gaps at the same triangle count; photographs blend in linear light and both sides receive skylight. Beyond the playable boundary, patchy hillside forests use a four-variant, five-elevation prebaked fir atlas and two triangles per tree; slope, height and coast masks keep cliffs and water clear. The two nearest elevation views blend around the physical crown centre as the camera tilts; isolated texture-array mipmaps keep neighbouring views from bleeding together. Shared seeded density masks connect trees with woodland ground cover. High/Ultra shadows also ground those trees with cast shadows; Low/Off avoids that pass. These scenery-only trees add no combat cover. Setting View distance / detail to Near disables distant forests.
+
+Scenery terrain and forests share a cached sky-visibility and sun-shadow map generated from the same height field as their geometry. It renders once when the map or lighting mood changes; switching moods reuses the forest batches. Ridge shadows continue across the playable boundary, while gameplay heights and visibility rules remain authoritative. Rain puddles are limited to gentle slopes.
