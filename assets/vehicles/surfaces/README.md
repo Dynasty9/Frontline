@@ -86,3 +86,11 @@ the images should match apart from rasterization rounding. Also check
 `--rendering-method forward_plus` and verify the log actually says Forward+.
 The headless material fixture audits all model surfaces, mipmaps, wreck finishes,
 and both palettes. Screenshots remain the check for visual quality.
+
+## CC0 source candidates
+
+A separate [third-party source library](../sources/README.md) contains six
+ambientCG CC0 PBR sets for coatings, rubber, fabric, brushed steel, diamond plate
+and corrosion. These are authoring inputs with provenance and checksums, not yet
+integrated runtime textures. Their provider previews do not represent in-game
+results.
