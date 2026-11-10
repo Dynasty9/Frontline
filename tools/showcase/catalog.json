@@ -3489,6 +3489,69 @@
         "swatches": "Same fixture with --surface-swatches; 400x300 per swatch.",
         "audit": "143 subjects rendered for each palette (135 roster/builder keys, five parked cars, three wrecks); 278 builds audited headlessly. Translation check at (117,35,-81) differs by less than 0.001 mean 8-bit channel value for tank and hatchback."
       }
+    },
+    {
+      "entry": "changelog/unreleased/realism-04-talus.md",
+      "summary": "Sheltered lower slopes collect pale loose stone while exposed walls retain darker bedrock.",
+      "medium": "still",
+      "stage": "native-media",
+      "rationale": "Isolate the revision from the previous proposal with identical upstream changes, seed and camera.",
+      "source_ref": "codex/realism-04-talus",
+      "sources": [
+        {
+          "file": "changelog/unreleased/realism-04-talus/target-before.jpg",
+          "sha256": "ebf6270399eced62c0eab5ab866bb0e883069e07388a84d9f97c4937baa95781",
+          "caption": "target before"
+        },
+        {
+          "file": "changelog/unreleased/realism-04-talus/target-after.jpg",
+          "sha256": "f1050334a2c9d88bc7c518a6f8d1aab59085e91f7b760b6b7819066823b3ba0d",
+          "caption": "target after"
+        },
+        {
+          "file": "changelog/unreleased/realism-04-talus/wide-before.jpg",
+          "sha256": "d0da15779f5016f95c60259b2c2c3366c00f4af99d81e31705b9ea8d74b4e62a",
+          "caption": "wide before"
+        },
+        {
+          "file": "changelog/unreleased/realism-04-talus/wide-after.jpg",
+          "sha256": "aca65724657dd901852ae6198540863eff7d4205c3320d24471ed943e611a93a",
+          "caption": "wide after"
+        },
+        {
+          "file": "changelog/unreleased/realism-04-talus/target-compat.jpg",
+          "sha256": "545711764c5067b0ccd32fc007f93d23d92d5b4a3edf6e7265275190fc4cde76",
+          "caption": "target compat"
+        },
+        {
+          "file": "changelog/unreleased/realism-04-talus/compare.gif",
+          "sha256": "123795562bab286d446b2336f5fe45eea9e24d5ed7a5df3a9a496319ee952f0e",
+          "caption": "Native frames, separate labels, shared palette, 2.5 seconds each."
+        }
+      ],
+      "output": null,
+      "title": "Distinguish loose scree from solid cliffs",
+      "version": "unreleased",
+      "kind": "improved",
+      "capture": {
+        "before_ref": "35f8ae05fa1fe12f9a1886bd3ac47c5fa5e388da",
+        "after_ref": "codex/realism-04-talus",
+        "before_pack": "review-04-before.pck",
+        "after_pack": "review-04-after.pck",
+        "seed": 3,
+        "preset": "high",
+        "mood": "day",
+        "resolution": "1600x900",
+        "focus": "250,250",
+        "zoom": 350,
+        "pitch": -28,
+        "yaw": 0.7,
+        "shot_at": 2,
+        "quit_after": 3,
+        "wide": "focus 0,0; zoom 900; pitch -22; yaw 0.7",
+        "compatibility": "Target after with --rendering-method gl_compatibility",
+        "command": "godot --main-pack PACK --resolution 1600x900 -- --aivai --seed=3 --offscreen --nohud --set=perf:0 --preset=high --mood=MOOD --focus=FOCUS --zoom=ZOOM --pitch=PITCH --cam-yaw=0.7 --screenshot=OUTPUT --shot-at=2 --quit-after=3"
+      }
     }
   ],
   "layout_capture": {
