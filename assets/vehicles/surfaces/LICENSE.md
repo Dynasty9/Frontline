@@ -1,10 +1,23 @@
 # Texture provenance
 
-`coating.png`, `rubber.png`, `canvas.png`, `metal.png`, `nonslip.png` and `char.png`
-are original, algorithmically generated material data created for Frontline.
-They contain no downloaded photographs, scans or third-party texture content.
+`coating.png`, `rubber.png`, `canvas.png`, `metal.png`, `tread.png` and
+`oxidized.png` are modified derivatives of ambientCG assets by Lennart Demes,
+distributed under **CC0 1.0 Universal**. See [source licenses](../sources/LICENSE.md).
 
-Source: `tools/generate_vehicle_surfaces.py`, seed 7319, 512 × 512 RGB.
-Each channel has the meaning documented in the adjacent README. The generator
-and its outputs are distributed under the repository's MIT license; see
-[`LICENSE`](../../../LICENSE).
+| Runtime map | CC0 source |
+| --- | --- |
+| coating | Metal027 (grain only; paint remains dielectric) |
+| rubber | Rubber004 |
+| canvas | Fabric036 |
+| metal | Metal009 |
+| tread | DiamondPlate009 |
+| oxidized | Metal053B |
+
+`tools/bake_vehicle_sources.py` resizes and repacks the channels into linear
+512 × 512 RGBA data. `baked-sources.json` records output checksums; the
+[source manifest](../sources/sources.json) records input checksums and URLs.
+Source normals are not copied into these packed maps.
+
+`nonslip.png` and `char.png` are original algorithmically generated material
+data, created by `tools/generate_vehicle_surfaces.py` with seed 7319. These two
+outputs and the tooling are distributed under the repository's [MIT license](../../../LICENSE).

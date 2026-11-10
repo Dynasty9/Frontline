@@ -790,6 +790,9 @@ uniform bool surface_detail = false;
 uniform sampler2D surface_map : filter_linear_mipmap_anisotropic, repeat_enable;
 uniform float surface_scale = 3.0;
 uniform float surface_wear = 0.0;
+uniform float surface_tone = 0.0;
+uniform float surface_roughness = 0.22;
+uniform float surface_corrosion = 0.0;
 uniform float surface_coat = 0.0;
 uniform float surface_specular = 0.4;
 uniform bool use_vcolor = false;
@@ -1011,6 +1014,7 @@ void fragment() {
 		col = col_a * (0.92 + 0.12 * tnoise(uv * 5.0 + off));
 		h = 0.5 + tnoise(uv * 20.0) * 0.1;
 	}
+	float corrosion = 0.0;
 	if (vehicle_surface) {
 		// Paint is a dielectric coating. Only the sparse exposed chips become
 		// metallic; rubber, fabric and glass retain their own response.
@@ -1019,12 +1023,13 @@ void fragment() {
 			vec3 weights = pow(abs(normalize(tn)), vec3(4.0));
 			weights /= max(dot(weights, vec3(1.0)), 0.0001);
 			vec3 q = tp * surface_scale;
-			vec3 detail = texture(surface_map, q.yz).rgb * weights.x
-				+ texture(surface_map, q.xz).rgb * weights.y
-				+ texture(surface_map, q.xy).rgb * weights.z;
+			vec4 detail = texture(surface_map, q.yz) * weights.x
+				+ texture(surface_map, q.xz) * weights.y
+				+ texture(surface_map, q.xy) * weights.z;
 			h = (pattern == 13 || pattern == 5) ? h + (detail.r - 0.5) * 0.15 : detail.r;
-			r = clamp(rough + (detail.g - 0.5) * 0.22, 0.06, 1.0);
-			col *= 0.96 + detail.g * 0.08;
+			r = clamp(rough + (detail.g - 0.5) * surface_roughness, 0.06, 1.0);
+			col *= 1.0 + (detail.a - 0.5) * surface_tone;
+			corrosion = detail.b * surface_corrosion;
 			float worn = detail.b * surface_wear;
 			col = mix(col, vec3(0.12, 0.13, 0.14), worn);
 			m = mix(metal, 0.85, worn);
@@ -1033,6 +1038,11 @@ void fragment() {
 	}
 	col *= tint.rgb;
 	if (use_vcolor) { col *= COLOR.rgb * vcolor_k; }
+	// Rust is an oxide, not reflective steel tinted orange. Apply after the
+	// part tint so corroded fittings retain their mineral color.
+	col = mix(col, vec3(0.14, 0.055, 0.018), corrosion);
+	m = mix(m, 0.0, corrosion);
+	r = mix(r, 0.94, corrosion);
 	// broad, soft variation across a surface (sun-bleached, weathered, damp
 	// patches): large enough never to alias, it keeps big walls from looking flat
 	vec3 weather_pos = vehicle_surface ? tp : wpos;

@@ -1,6 +1,8 @@
 # Vehicle surface comparisons
 
-These are comparisons, not a claim that every new finish is better. The strongest visible change is removal of oversized blotches on civilian paint. Armor, aircraft and boats change more subtly; some painted cargo becomes too grainy. The library needs further art direction before it delivers a substantial realism improvement.
+The after images now include the CC0 texture integration. These compare the original game baseline with the final shared library. For the incremental change from the first procedural pass, see [CC0 integration before/after](cc0-pass/README.md), including every roster entry in both palettes.
+
+Civilian paint loses oversized blotches, painted cargo loses its bare-metal sparkle, and rubber, fabric and metal receive source-based detail. Changes on armor and aircraft remain subtle; these textures do not replace missing bevels, panel geometry or model detail.
 
 ## Close-ups
 
@@ -56,7 +58,7 @@ Same seed, camera, lighting and renderer. Click an image to inspect it at full s
 
 ## Every roster entry, both palettes
 
-Each palette includes 135 roster/builder keys, five parked-car variants and three wrecks. Names appear in each image. Both sides were freshly rendered with Godot 4.6.3 Compatibility, seed 3, the same studio and five settled frames. Before uses game source b3ec859; after uses a43f427. The baseline checkout includes the capture harness and the unused material class solely to compile the harness; its vehicle builders and shaders are unchanged.
+Each palette includes 135 roster/builder keys, five parked-car variants and three wrecks. Names appear in each image. Both sides were freshly rendered with Godot 4.6.3 Compatibility, seed 3, the same studio and five settled frames. Before uses game source b3ec859; after uses the CC0 integration working tree. The baseline checkout includes the capture harness and the unused material class solely to compile the harness; its vehicle builders and shaders are unchanged.
 
 <details><summary>Palette 0, sheet 1: a10, aa_tech, ac130, angara, angara_k, apc, assault_boat, blackfish, blackfish_armed, blackfoot, blackwasp, bobcat</summary>
 
@@ -250,10 +252,8 @@ Each palette includes 135 roster/builder keys, five parked-car variants and thre
 
 </details>
 
-## What textures would help?
+## Texture provenance and limits
 
-The existing six textures are generated height, roughness-variation and wear data, not photographed surface sets. They are useful for subtle relief, but fine noise does not supply convincing panel structure, localized dirt or wear history.
+Six ambientCG CC0 sets now feed the runtime library; [sources and licenses](../../assets/vehicles/sources/README.md) are bundled. Height, roughness, luminance and selective corrosion are baked into shared maps. Paint retains its faction tint and dielectric response. The RHIB uses diamond plate; other decks keep abrasive nonslip paint. Rust is confined to explicitly selected trawler parts.
 
-Next art pass: use licensed, reference-based coating, rubber, canvas and nonslip PBR sets; tune their physical scale; place wear on appropriate parts rather than uniformly across surfaces. Preserve clearcoat on painted metal instead of treating painted drums as bare steel. Keep large-scale variation restrained and judge it at gameplay distance as well as close up. More texture resolution alone will not fix faceted geometry, missing bevels or lighting.
-
-The movement-stability change is a correctness fix, not something a still can prove. The prior translated-studio check is documented in the presentation inventory. The water-scooter normal fix is included in the new roster captures.
+These are material improvements, not a full model remaster. Fine relief becomes subtle at gameplay distance. Panel seams, bevels and lighting still matter. Movement stability is a correctness fix that these stills do not demonstrate; the earlier translation check is recorded in the inventory.

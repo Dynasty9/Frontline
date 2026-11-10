@@ -2,23 +2,25 @@ class_name VehicleMaterials
 extends RefCounted
 ## Shared vehicle finishes. Keep the builders' colours; choose the coating by
 ## vehicle family and the physical surface by the part's existing material.
-## Packed linear maps: R height, G roughness variation, B exposed wear.
+## Packed linear maps: R height, G roughness variation, B corrosion, A luminance variation.
 
 const PROFILES := {
-	"armor": {"map": "coating", "rough": 0.73, "metal": 0.0, "bump": 0.035, "grime": 0.32, "surface_scale": 3.0, "surface_wear": 0.13},
-	"aircraft": {"map": "coating", "rough": 0.48, "metal": 0.0, "bump": 0.012, "grime": 0.025, "surface_scale": 5.0, "surface_wear": 0.015},
-	"automotive": {"map": "coating", "rough": 0.28, "metal": 0.0, "bump": 0.012, "grime": 0.23, "surface_scale": 5.0, "surface_wear": 0.04, "surface_coat": 0.65},
-	"marine": {"map": "coating", "rough": 0.42, "metal": 0.0, "bump": 0.022, "grime": 0.07, "surface_scale": 3.0, "surface_wear": 0.045, "surface_coat": 0.2},
-	"rubber": {"map": "rubber", "rough": 0.88, "metal": 0.0, "bump": 0.055, "grime": 0.27, "surface_scale": 4.0},
+	"armor": {"map": "coating", "rough": 0.73, "metal": 0.0, "bump": 0.018, "grime": 0.32, "surface_scale": 1.5, "surface_tone": 0.08},
+	"aircraft": {"map": "coating", "rough": 0.48, "metal": 0.0, "bump": 0.006, "grime": 0.025, "surface_scale": 2.0, "surface_tone": 0.025},
+	"automotive": {"map": "coating", "rough": 0.28, "metal": 0.0, "bump": 0.006, "grime": 0.23, "surface_scale": 2.0, "surface_tone": 0.025, "surface_coat": 0.65},
+	"marine": {"map": "coating", "rough": 0.42, "metal": 0.0, "bump": 0.012, "grime": 0.07, "surface_scale": 1.5, "surface_tone": 0.05, "surface_coat": 0.2},
+	"rubber": {"map": "rubber", "rough": 0.88, "metal": 0.0, "bump": 0.055, "grime": 0.27, "surface_scale": 2.0, "surface_tone": 0.18},
 	"plastic": {"map": "rubber", "rough": 0.63, "metal": 0.0, "bump": 0.025, "grime": 0.12, "surface_scale": 5.0},
-	"canvas": {"map": "canvas", "rough": 0.96, "metal": 0.0, "bump": 0.04, "grime": 0.18, "surface_scale": 2.0},
-	"steel": {"map": "metal", "rough": 0.36, "metal": 0.9, "bump": 0.025, "grime": 0.1, "surface_scale": 3.0},
-	"gunmetal": {"map": "metal", "rough": 0.43, "metal": 0.8, "bump": 0.025, "grime": 0.08, "surface_scale": 4.0},
+	"canvas": {"map": "canvas", "rough": 0.96, "metal": 0.0, "bump": 0.04, "grime": 0.18, "surface_scale": 3.0, "surface_tone": 0.28},
+	"steel": {"map": "metal", "rough": 0.36, "metal": 0.9, "bump": 0.012, "grime": 0.1, "surface_scale": 1.0, "surface_tone": 0.1},
+	"gunmetal": {"map": "metal", "rough": 0.43, "metal": 0.8, "bump": 0.025, "grime": 0.08, "surface_scale": 2.0, "surface_tone": 0.18},
 	"track": {"map": "metal", "rough": 0.69, "metal": 0.65, "bump": 0.16, "grime": 0.4, "surface_scale": 3.0},
 	"glass": {"rough": 0.075, "metal": 0.0, "bump": 0.0, "grime": 0.0, "surface_detail": false, "surface_specular": 0.5},
-	"nonslip": {"map": "nonslip", "rough": 0.92, "metal": 0.0, "bump": 0.07, "grime": 0.13, "surface_scale": 2.0},
-	"wood": {"map": "coating", "rough": 0.81, "metal": 0.0, "bump": 0.12, "grime": 0.12, "surface_scale": 2.0},
-	"burnt": {"map": "char", "rough": 0.95, "metal": 0.05, "bump": 0.14, "grime": 0.0, "surface_scale": 2.0},
+	"nonslip": {"surface_roughness": 0.22, "map": "nonslip", "rough": 0.92, "metal": 0.0, "bump": 0.07, "grime": 0.13, "surface_scale": 2.0},
+	"tread": {"map": "tread", "rough": 0.76, "metal": 0.0, "bump": 0.65, "grime": 0.13, "surface_scale": 0.65, "surface_tone": 0.18},
+	"oxidized": {"map": "oxidized", "rough": 0.43, "metal": 0.85, "bump": 0.08, "grime": 0.15, "surface_scale": 1.0, "surface_corrosion": 1.0, "surface_tone": 0.12},
+	"wood": {"surface_roughness": 0.22, "map": "coating", "rough": 0.81, "metal": 0.0, "bump": 0.12, "grime": 0.12, "surface_scale": 2.0},
+	"burnt": {"surface_roughness": 0.22, "map": "char", "rough": 0.95, "metal": 0.05, "bump": 0.14, "grime": 0.0, "surface_scale": 2.0},
 }
 
 static var _presets := {}
@@ -38,9 +40,11 @@ static func key(kind: String, vehicle_family: String) -> String:
 
 static func profile(kind: String, vehicle_family: String) -> String:
 	match kind:
-		"rubber", "glass", "track", "burnt", "steel", "gunmetal", "nonslip":
+		"rubber", "glass", "track", "burnt", "steel", "gunmetal", "nonslip", "tread":
 			return kind
-		"metal_dark", "gunmetal_w", "rust_steel", "wire":
+		"rust_steel":
+			return "oxidized"
+		"metal_dark", "gunmetal_w", "wire":
 			return "gunmetal"
 		"canvas", "canvas_white", "canvas_l", "fabric", "bag", "webbing", "boot":
 			return "canvas"
@@ -63,11 +67,11 @@ static func preset(material_key: String) -> Dictionary:
 	var p := Mats._preset(kind).duplicate()
 	# Nonslip is explicitly assigned to walking surfaces, with the same tint
 	# basis as the plain painted parts it replaces.
-	if kind == "nonslip":
+	if kind in ["nonslip", "tread"]:
 		p = Mats._preset("plain").duplicate()
 	if int(p.get("pattern", 0)) not in [Mats.CAMO, Mats.WOOD, Mats.TRACK]:
 		p["pattern"] = Mats.PLAIN
-	p.merge({"vehicle_surface": true, "local_space": true, "surface_detail": true, "surface_wear": 0.0, "surface_coat": 0.0, "surface_specular": 0.4, "rust": 0.0}, true)
+	p.merge({"vehicle_surface": true, "local_space": true, "surface_detail": true, "surface_wear": 0.0, "surface_tone": 0.0, "surface_roughness": 0.8, "surface_corrosion": 0.0, "surface_coat": 0.0, "surface_specular": 0.4, "rust": 0.0}, true)
 	var settings: Dictionary = PROFILES[finish]
 	for setting: String in settings:
 		if setting != "map":

@@ -1,8 +1,9 @@
 # CC0 vehicle texture sources
 
 Six ambientCG PBR sets, bundled for developing the shared vehicle materials.
-**These are source candidates, not yet applied to the vehicles.** The current
-in-game finishes still use the original maps in [../surfaces](../surfaces/README.md).
+Six source sets now feed the baked runtime maps in [../surfaces](../surfaces/README.md).
+Coating, rubber, canvas and metal detail is shared across the roster; diamond
+plate is used on the RHIB deck, and oxidation on selected gun-trawler parts.
 The provider previews below show the source materials, not Frontline renders.
 
 All texture maps are 1024 × 1024. Each set includes color, roughness,
@@ -26,9 +27,9 @@ data. Some sources are procedural PBR materials, not photographs; the manifest
 retains the provider's creation-method metadata. A permissive license alone does
 not establish visual suitability.
 
-The current shader consumes packed height/roughness/wear maps rather than these
-separate channels. Bake appropriately scaled source detail into that format, or
-add properly oriented normal-map sampling before using these normals. Preserve
+The shader consumes baked height/roughness/corrosion/luminance data rather than
+these separate channels. `tools/bake_vehicle_sources.py` performs that conversion.
+Normals remain authoring sources; runtime relief is derived from height. Preserve
 camouflage, compare at gameplay distance and close up, and check both renderers.
 Avoid amplifying grain to compensate for missing seams, panel edges or geometry.
 

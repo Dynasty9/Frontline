@@ -1,0 +1,35 @@
+{
+  "size": 512,
+  "maps": [
+    {
+      "file": "coating.png",
+      "source": "Metal027",
+      "sha256": "a5706d6b49b7655d4fb041cb56f4e49ecd5de634e6f7e37536df34300891f267"
+    },
+    {
+      "file": "rubber.png",
+      "source": "Rubber004",
+      "sha256": "f791b0c5a6ba6a7a8208a9ca774a106b33c2cf7b66f57e1953da7b14befb0b98"
+    },
+    {
+      "file": "canvas.png",
+      "source": "Fabric036",
+      "sha256": "e8de380e08aed44fbfe6321985a6c242b8f60403fed21a13f12dd60e81f6ba8a"
+    },
+    {
+      "file": "metal.png",
+      "source": "Metal009",
+      "sha256": "dd0ba476082fa5a184e1a9ee2c0cb95b63bf4fda8f710abeebd3933e4ebeff10"
+    },
+    {
+      "file": "tread.png",
+      "source": "DiamondPlate009",
+      "sha256": "960c082e5741eea600727b8c49a96f3c7e43376c12244ca6baa77699e865196c"
+    },
+    {
+      "file": "oxidized.png",
+      "source": "Metal053B",
+      "sha256": "5d1e39f8965a7e135458341f7ccf4289445561feac2d8505bcafcfa764a8ba2f"
+    }
+  ]
+}

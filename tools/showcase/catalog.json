@@ -3440,15 +3440,15 @@
     },
     {
       "entry": "changelog/unreleased/vehicle-surface-library.md",
-      "summary": "Distinct vehicle finishes with finer relief and stable wear.",
+      "summary": "Shared vehicle finishes with CC0 surface detail, painted cargo and selective corrosion.",
       "medium": "still",
       "stage": "vehicle-surfaces",
       "rationale": "Matched studio stills expose paint relief and surface response; the swatches show the shared finishes without changing lighting.",
-      "source_ref": "b3ec859 + vehicle surface library working tree",
+      "source_ref": "b3ec859 baseline; e31ed14 pre-CC0; CC0 integration working tree",
       "sources": [
         {
           "file": "changelog/unreleased/vehicle-surface-library/hatchback-after.jpg",
-          "sha256": "39c648d10c52accff9b26b79efe6d484fafe5641a3e22f0da6bf38d4b49f4f04",
+          "sha256": "4ff19fbf5829c40dfbba794bc9b375c630fa1477e2f72a0759d71fb732e0da0e",
           "caption": "Civilian paint after: fine surface detail replaces the oversized wear patches."
         },
         {
@@ -3458,7 +3458,7 @@
         },
         {
           "file": "changelog/unreleased/vehicle-surface-library/tank-after.jpg",
-          "sha256": "6d5864b4a56d11218ce97156fdc3ed858e2c8b5ec4ffa185a14be77efbefb4cb",
+          "sha256": "95fb3852b7708cec6c6786091300e541f075e7ca26788650875cfb80614919b1",
           "caption": "Armor after: matte coatings, finer relief and distinct rubber and metal."
         },
         {
@@ -3468,12 +3468,12 @@
         },
         {
           "file": "changelog/unreleased/vehicle-surface-library/surface-swatches.jpg",
-          "sha256": "5f3ad5b2398db5cd68ea3334450c2e19e92291d4aae512648ca2fdb5c8193630",
+          "sha256": "8a70f1e9f8d923c4fec31a7097ce8cf2f240b51a3c9c29a844dd749addb4b374",
           "caption": "Shared finishes under the same lighting: coatings, rubber, canvas, metal, glass and nonslip."
         },
         {
           "file": "docs/vehicle-surface-comparisons/blackwasp-after.jpg",
-          "sha256": "c26360e90400c20b69d54149fe896723e8bbed7254a8e4c88d7d9a9f4573e1be",
+          "sha256": "57c75d13c614d668053c1a3a7dfb02aaa3aabc0bc89d53784d1f19467737ce0c",
           "caption": "blackwasp-after"
         },
         {
@@ -3483,7 +3483,7 @@
         },
         {
           "file": "docs/vehicle-surface-comparisons/hatchback-after.jpg",
-          "sha256": "b818df136e94687c48bb519c0461150256f7c7288bebf311cd4d06e046150476",
+          "sha256": "4ff19fbf5829c40dfbba794bc9b375c630fa1477e2f72a0759d71fb732e0da0e",
           "caption": "hatchback-after"
         },
         {
@@ -3493,7 +3493,7 @@
         },
         {
           "file": "docs/vehicle-surface-comparisons/heli-after.jpg",
-          "sha256": "27ba1ec61857df2627d757d7b04e96fc62313854c405df329ddae1043dfee498",
+          "sha256": "bd436575065d87439b1a98d70440a0b326f5544d15e1f8ee7fbd51512e711d9e",
           "caption": "heli-after"
         },
         {
@@ -3503,7 +3503,7 @@
         },
         {
           "file": "docs/vehicle-surface-comparisons/hemtt_cargo-after.jpg",
-          "sha256": "b20df8961c8008a7a851764a4bfcb3730f87306bfb0d0bc3f2e957534d8bfb29",
+          "sha256": "94b83260b0f84ddcbbceb00e9cf63531ff370ed3384c9f61bccdf0d1409e8b65",
           "caption": "hemtt_cargo-after"
         },
         {
@@ -3513,7 +3513,7 @@
         },
         {
           "file": "docs/vehicle-surface-comparisons/old_tank-after.jpg",
-          "sha256": "fc3dfb64337d41c09960ad5a86c48c9283664fddf75c9485d56bc87f28157a7d",
+          "sha256": "ebd045cf652601d5d41ef79be93a661438b62a20c356afc412cd2eb2eb7d3a54",
           "caption": "old_tank-after"
         },
         {
@@ -3523,7 +3523,7 @@
         },
         {
           "file": "docs/vehicle-surface-comparisons/palette-0-00-after.jpg",
-          "sha256": "c220880115ebc1decfd93bd8913d211eb26a377bd31a82d54980ac53508c8f8e",
+          "sha256": "a6bfe2172c0bdbe898715545aad04d37b2877234f3e9964d2097c412e06f28ea",
           "caption": "palette-0-00-after"
         },
         {
@@ -3533,7 +3533,7 @@
         },
         {
           "file": "docs/vehicle-surface-comparisons/palette-0-01-after.jpg",
-          "sha256": "e857f864cce32aba3b3e4e9b30616f90f00c6ed26fad2a7a00359fa535d687a9",
+          "sha256": "56a89690fddc0e18959cbe762383daad070a6673c0c8b0b3a0a5373f7609b738",
           "caption": "palette-0-01-after"
         },
         {
@@ -3543,7 +3543,7 @@
         },
         {
           "file": "docs/vehicle-surface-comparisons/palette-0-02-after.jpg",
-          "sha256": "28b767610f7fc8390a88919e8d180133c62a46a13a524cffda1159638f5215ec",
+          "sha256": "d51ebbc05033f314a8b273fc85b81f7c634ce398b38c4a2a2c4bcf22a5fa9ba5",
           "caption": "palette-0-02-after"
         },
         {
@@ -3553,7 +3553,7 @@
         },
         {
           "file": "docs/vehicle-surface-comparisons/palette-0-03-after.jpg",
-          "sha256": "b550f7d5d50dbc081e843b33f3be9970ee03734ba9ac8005746e73fac9e23707",
+          "sha256": "b16322eac4d4c7a59afac56aaee19acd4e39ccaba38449f11c487d8b0cfa85e1",
           "caption": "palette-0-03-after"
         },
         {
@@ -3563,7 +3563,7 @@
         },
         {
           "file": "docs/vehicle-surface-comparisons/palette-0-04-after.jpg",
-          "sha256": "d8180e0556686f7561feaf3fbc5138b6b36e1486b58f87ca0813be42a53d0467",
+          "sha256": "c08a30d1738a20afe6b7d0bd9e8d8ce5df57b97bade338002d925b51a03d6383",
           "caption": "palette-0-04-after"
         },
         {
@@ -3573,7 +3573,7 @@
         },
         {
           "file": "docs/vehicle-surface-comparisons/palette-0-05-after.jpg",
-          "sha256": "a1e86253e6a6a0c6792e47daba266bd19f0702a413f6f92d317ab526b235a795",
+          "sha256": "3edefe211dd3cffdecb656efbc4241be5d7c4da71c7566209067fc05b6b774d9",
           "caption": "palette-0-05-after"
         },
         {
@@ -3583,7 +3583,7 @@
         },
         {
           "file": "docs/vehicle-surface-comparisons/palette-0-06-after.jpg",
-          "sha256": "8fef57205b354f5ee1c15bb34fabd16b2f4a4e7a493c6811c779846364713f9b",
+          "sha256": "d1ae859a9dd988178675e486559dc5d46c254ddd40de32aaa79cdf01a1abb41c",
           "caption": "palette-0-06-after"
         },
         {
@@ -3593,7 +3593,7 @@
         },
         {
           "file": "docs/vehicle-surface-comparisons/palette-0-07-after.jpg",
-          "sha256": "78fd5268896d3ba8de26073188c4f5cde06d3a224ac232554a4f407cd9e82c4c",
+          "sha256": "cd76afad6c3e23ff5844b18db3e64acbe0997a7ea8787c99a927360f8389d90e",
           "caption": "palette-0-07-after"
         },
         {
@@ -3603,7 +3603,7 @@
         },
         {
           "file": "docs/vehicle-surface-comparisons/palette-0-08-after.jpg",
-          "sha256": "60bf81e8f2c194918d070e31552457d96d7eb14f7374b580a0bd2c4557d8a00d",
+          "sha256": "163305956b2a6e93738aac145754e5ba489356ddff7d1fd6923fd9337c9c8d45",
           "caption": "palette-0-08-after"
         },
         {
@@ -3613,7 +3613,7 @@
         },
         {
           "file": "docs/vehicle-surface-comparisons/palette-0-09-after.jpg",
-          "sha256": "4a1f352474eba54bfd057ad886f1146ad22c7fcacc61e3af7d81c2896229c440",
+          "sha256": "b9009b1e4192894ba018961004432f72386f9c2ce1ec37c7e2bb75f7e6c51bde",
           "caption": "palette-0-09-after"
         },
         {
@@ -3623,7 +3623,7 @@
         },
         {
           "file": "docs/vehicle-surface-comparisons/palette-0-10-after.jpg",
-          "sha256": "81c3742d2c9a188870076fdf5b334d95bce7dd8e51a100c9ba93654746f8d76c",
+          "sha256": "816247b0970e1881fc3268381cab41cb8b6fbc58bb303159bae08ea23e56d634",
           "caption": "palette-0-10-after"
         },
         {
@@ -3633,7 +3633,7 @@
         },
         {
           "file": "docs/vehicle-surface-comparisons/palette-0-11-after.jpg",
-          "sha256": "6f429272f4a5c32c4edb5e54de8105bbccb5e5d267b81583b41d1265d22461ea",
+          "sha256": "fe6210b4ac355f5b7205ad11af15cff0935ce6e4e13bf5d97c59a21d3df78614",
           "caption": "palette-0-11-after"
         },
         {
@@ -3643,7 +3643,7 @@
         },
         {
           "file": "docs/vehicle-surface-comparisons/palette-1-00-after.jpg",
-          "sha256": "ad1130d743a751818aa63aea4332d0c24ef9886e485cbe50c52aa8d955216c8d",
+          "sha256": "2577538fd65ea498a373ab7e7e9a3957bbcdbbc9237a74394151f2013557e433",
           "caption": "palette-1-00-after"
         },
         {
@@ -3653,7 +3653,7 @@
         },
         {
           "file": "docs/vehicle-surface-comparisons/palette-1-01-after.jpg",
-          "sha256": "a2d2f2a0ec4b68366c8c695938bda720dbd688788827262965425d94ca67f9c0",
+          "sha256": "7fb3685f0292c2b5e34941ba218168bc9bada9c053fce1da2f16b624826c3cdb",
           "caption": "palette-1-01-after"
         },
         {
@@ -3663,7 +3663,7 @@
         },
         {
           "file": "docs/vehicle-surface-comparisons/palette-1-02-after.jpg",
-          "sha256": "bbf758d633bfd0800d1d10e7cdb4952482070ef61924bb51560fda756d6d7e88",
+          "sha256": "073cdc0d38905b54ec13ef485c1b0c12aa0e9ead8beb386337968ad76ac44ab7",
           "caption": "palette-1-02-after"
         },
         {
@@ -3673,7 +3673,7 @@
         },
         {
           "file": "docs/vehicle-surface-comparisons/palette-1-03-after.jpg",
-          "sha256": "5f4690abe7253776a5f4cb63b040de18ef0a37b51165676e4d836be69c4590c8",
+          "sha256": "8043850bade74a20b00f0ba16989cea3addee28bf6bfdf8a902e8aaf2dc1a82a",
           "caption": "palette-1-03-after"
         },
         {
@@ -3683,7 +3683,7 @@
         },
         {
           "file": "docs/vehicle-surface-comparisons/palette-1-04-after.jpg",
-          "sha256": "0fe25ffedb8d196b832baa347f9c27fb84313bcbd83df44d3c795e65f31073d0",
+          "sha256": "9b1bd5ccea48d432c3d211982985f7278278c98a1395e867a6841435dc869a9b",
           "caption": "palette-1-04-after"
         },
         {
@@ -3693,7 +3693,7 @@
         },
         {
           "file": "docs/vehicle-surface-comparisons/palette-1-05-after.jpg",
-          "sha256": "bbc10c7decffc11e544aed1b11d192510d76a5da6f7827ed0170994fa9e67ac5",
+          "sha256": "fd2981addb5dcd1f143183b59d605a8772045f0d070b00c980923da9a2b70cd4",
           "caption": "palette-1-05-after"
         },
         {
@@ -3703,7 +3703,7 @@
         },
         {
           "file": "docs/vehicle-surface-comparisons/palette-1-06-after.jpg",
-          "sha256": "eb12ca04ced9da99669572d8d13d27f08836cb0cc73c62dd5780e61c1c8d1fd3",
+          "sha256": "401232a49151120542df018f530ac246db653ec23539c7d93ed563c214bb5174",
           "caption": "palette-1-06-after"
         },
         {
@@ -3713,7 +3713,7 @@
         },
         {
           "file": "docs/vehicle-surface-comparisons/palette-1-07-after.jpg",
-          "sha256": "0c30f9d2e4af685d9af45bcd331ec1f4d883262e5778eb3ccea94012a7c8cd89",
+          "sha256": "6dffa85b5388b633afe44335794cf29ff2636e74d6e3cca15d03f75511c035dd",
           "caption": "palette-1-07-after"
         },
         {
@@ -3723,7 +3723,7 @@
         },
         {
           "file": "docs/vehicle-surface-comparisons/palette-1-08-after.jpg",
-          "sha256": "6f63f5eb6d4ebfc7aa700bb7dc7714a291d11f10e4c0b7746516871d1c394721",
+          "sha256": "4520a613c9417fe2d46a64c37deeffd41f0fe0ee0b1c92b4fdeb5fc2720f1007",
           "caption": "palette-1-08-after"
         },
         {
@@ -3733,7 +3733,7 @@
         },
         {
           "file": "docs/vehicle-surface-comparisons/palette-1-09-after.jpg",
-          "sha256": "943180da10511a783466368cb54d9ff3e96d948c9deab1c0719826447d3ec3f4",
+          "sha256": "6a2a3d753f5d649cef1f7f95862a791f1bfe3cca9340b6157db34952a13494ed",
           "caption": "palette-1-09-after"
         },
         {
@@ -3743,7 +3743,7 @@
         },
         {
           "file": "docs/vehicle-surface-comparisons/palette-1-10-after.jpg",
-          "sha256": "847b96f3d06e9ed1e3b4708e3689d53fcba765b41711392c8caee7a56ac689d8",
+          "sha256": "04dfb3f4b48ad2a94799ce467e3adf3ce0d2e802773c6d160cf7f3873c6d5a53",
           "caption": "palette-1-10-after"
         },
         {
@@ -3753,7 +3753,7 @@
         },
         {
           "file": "docs/vehicle-surface-comparisons/palette-1-11-after.jpg",
-          "sha256": "e63fb3a9ec2299ec6c979a5a2e49ee28d62d19358584cd4a464f62946d06db28",
+          "sha256": "fdf43851299d846ce739407b0822bb37e052c30422f8e419154df017137009c4",
           "caption": "palette-1-11-after"
         },
         {
@@ -3763,7 +3763,7 @@
         },
         {
           "file": "docs/vehicle-surface-comparisons/patrol_ship-after.jpg",
-          "sha256": "94b8134ba9e1dde0d4b397b72a06624d69adbafe19cb249eb098693eff54a272",
+          "sha256": "ca9a850cee19520b2c0f8e49459a9ca1fc23ede1ba5f9ff930f8367a6e44395f",
           "caption": "patrol_ship-after"
         },
         {
@@ -3773,7 +3773,7 @@
         },
         {
           "file": "docs/vehicle-surface-comparisons/rhib-after.jpg",
-          "sha256": "a080fd386eccf4148d7744a655ca773aca25446093507b12e70862a326a50520",
+          "sha256": "103d41c84a9c757007bde5c6788e571e955bb65447beaeae5540a932810344fa",
           "caption": "rhib-after"
         },
         {
@@ -3783,20 +3783,190 @@
         },
         {
           "file": "docs/vehicle-surface-comparisons/tank-after.jpg",
-          "sha256": "50230ef7dd6ffd941bfd889385729d34b964c677bf325ad6e312ba30df2e7083",
+          "sha256": "95fb3852b7708cec6c6786091300e541f075e7ca26788650875cfb80614919b1",
           "caption": "tank-after"
         },
         {
           "file": "docs/vehicle-surface-comparisons/tank-before.jpg",
           "sha256": "7cd69458f47d6f13456baca5eb2c072268054c18e473d4b9a621a084d4888054",
           "caption": "tank-before"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/cc0-pass/palette-0-10-before.jpg",
+          "sha256": "81c3742d2c9a188870076fdf5b334d95bce7dd8e51a100c9ba93654746f8d76c",
+          "caption": "palette 0 10 before"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/cc0-pass/palette-0-05-before.jpg",
+          "sha256": "a1e86253e6a6a0c6792e47daba266bd19f0702a413f6f92d317ab526b235a795",
+          "caption": "palette 0 05 before"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/cc0-pass/palette-1-07-before.jpg",
+          "sha256": "0c30f9d2e4af685d9af45bcd331ec1f4d883262e5778eb3ccea94012a7c8cd89",
+          "caption": "palette 1 07 before"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/cc0-pass/palette-0-11-before.jpg",
+          "sha256": "6f429272f4a5c32c4edb5e54de8105bbccb5e5d267b81583b41d1265d22461ea",
+          "caption": "palette 0 11 before"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/cc0-pass/palette-1-11-before.jpg",
+          "sha256": "e63fb3a9ec2299ec6c979a5a2e49ee28d62d19358584cd4a464f62946d06db28",
+          "caption": "palette 1 11 before"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/cc0-pass/palette-1-05-before.jpg",
+          "sha256": "bbc10c7decffc11e544aed1b11d192510d76a5da6f7827ed0170994fa9e67ac5",
+          "caption": "palette 1 05 before"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/cc0-pass/palette-1-04-before.jpg",
+          "sha256": "0fe25ffedb8d196b832baa347f9c27fb84313bcbd83df44d3c795e65f31073d0",
+          "caption": "palette 1 04 before"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/cc0-pass/palette-0-07-before.jpg",
+          "sha256": "78fd5268896d3ba8de26073188c4f5cde06d3a224ac232554a4f407cd9e82c4c",
+          "caption": "palette 0 07 before"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/cc0-pass/palette-1-00-before.jpg",
+          "sha256": "ad1130d743a751818aa63aea4332d0c24ef9886e485cbe50c52aa8d955216c8d",
+          "caption": "palette 1 00 before"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/cc0-pass/old_tank-before.jpg",
+          "sha256": "142fc72b84d41ed6ff762466225102490f0e04db3c262d7148de2961a711091e",
+          "caption": "old_tank before"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/cc0-pass/patrol_ship-before.jpg",
+          "sha256": "0fffae3996c4e4968394de014088f9dddc127c54b52c0cb034fc12494d9b9da4",
+          "caption": "patrol_ship before"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/cc0-pass/palette-1-06-before.jpg",
+          "sha256": "eb12ca04ced9da99669572d8d13d27f08836cb0cc73c62dd5780e61c1c8d1fd3",
+          "caption": "palette 1 06 before"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/cc0-pass/rhib-before.jpg",
+          "sha256": "2e378dcc392dd8f231847e35ff689faccaa495a8d0c3a7f19695f65face8f5f0",
+          "caption": "rhib before"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/cc0-pass/heli-before.jpg",
+          "sha256": "e9fd2fe0967c7ece1f32e60dcdf4cd50c07d1a0fccc91361705b44d6bbf124d3",
+          "caption": "heli before"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/cc0-pass/palette-1-08-before.jpg",
+          "sha256": "6f63f5eb6d4ebfc7aa700bb7dc7714a291d11f10e4c0b7746516871d1c394721",
+          "caption": "palette 1 08 before"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/cc0-pass/hemtt_cargo-before.jpg",
+          "sha256": "ebaca154aea0ef3cbc35952d8add7429ad0e65862bf6011f5010e3d38321870b",
+          "caption": "hemtt_cargo before"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/cc0-pass/palette-1-10-before.jpg",
+          "sha256": "847b96f3d06e9ed1e3b4708e3689d53fcba765b41711392c8caee7a56ac689d8",
+          "caption": "palette 1 10 before"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/cc0-pass/palette-0-06-before.jpg",
+          "sha256": "8fef57205b354f5ee1c15bb34fabd16b2f4a4e7a493c6811c779846364713f9b",
+          "caption": "palette 0 06 before"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/cc0-pass/palette-0-00-before.jpg",
+          "sha256": "c220880115ebc1decfd93bd8913d211eb26a377bd31a82d54980ac53508c8f8e",
+          "caption": "palette 0 00 before"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/cc0-pass/palette-1-02-before.jpg",
+          "sha256": "bbf758d633bfd0800d1d10e7cdb4952482070ef61924bb51560fda756d6d7e88",
+          "caption": "palette 1 02 before"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/cc0-pass/palette-0-03-before.jpg",
+          "sha256": "b550f7d5d50dbc081e843b33f3be9970ee03734ba9ac8005746e73fac9e23707",
+          "caption": "palette 0 03 before"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/cc0-pass/palette-0-02-before.jpg",
+          "sha256": "28b767610f7fc8390a88919e8d180133c62a46a13a524cffda1159638f5215ec",
+          "caption": "palette 0 02 before"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/cc0-pass/palette-0-04-before.jpg",
+          "sha256": "d8180e0556686f7561feaf3fbc5138b6b36e1486b58f87ca0813be42a53d0467",
+          "caption": "palette 0 04 before"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/cc0-pass/gun_trawler-before.jpg",
+          "sha256": "7ec3da0ae054dc64946d66e0b5201378811f424d3347e57055ec0ed2cce26bc2",
+          "caption": "gun_trawler before"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/cc0-pass/palette-1-03-before.jpg",
+          "sha256": "5f4690abe7253776a5f4cb63b040de18ef0a37b51165676e4d836be69c4590c8",
+          "caption": "palette 1 03 before"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/cc0-pass/palette-0-01-before.jpg",
+          "sha256": "e857f864cce32aba3b3e4e9b30616f90f00c6ed26fad2a7a00359fa535d687a9",
+          "caption": "palette 0 01 before"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/cc0-pass/palette-1-01-before.jpg",
+          "sha256": "a2d2f2a0ec4b68366c8c695938bda720dbd688788827262965425d94ca67f9c0",
+          "caption": "palette 1 01 before"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/cc0-pass/tank-before.jpg",
+          "sha256": "617dec9c24e5b44eb708e5e05732c75acad2a973aee1f312a573a1a55b07cfff",
+          "caption": "tank before"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/cc0-pass/hatchback-before.jpg",
+          "sha256": "63223dede9f3696057951798886aecfffe442582e51b22dd4255e0796c97782f",
+          "caption": "hatchback before"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/cc0-pass/palette-0-09-before.jpg",
+          "sha256": "4a1f352474eba54bfd057ad886f1146ad22c7fcacc61e3af7d81c2896229c440",
+          "caption": "palette 0 09 before"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/cc0-pass/palette-1-09-before.jpg",
+          "sha256": "943180da10511a783466368cb54d9ff3e96d948c9deab1c0719826447d3ec3f4",
+          "caption": "palette 1 09 before"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/cc0-pass/blackwasp-before.jpg",
+          "sha256": "d32c7d55dc9a036464234ca447a571bec00db536169fdad4e9719c82666a1413",
+          "caption": "blackwasp before"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/cc0-pass/palette-0-08-before.jpg",
+          "sha256": "60bf81e8f2c194918d070e31552457d96d7eb14f7374b580a0bd2c4557d8a00d",
+          "caption": "palette 0 08 before"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/gun_trawler-after.jpg",
+          "sha256": "b6959918851dbd7b7662ebe612559a4105714066a454d33ee96c18ca446de95d",
+          "caption": "gun_trawler after"
         }
       ],
       "output": null,
       "capture": {
         "before_ref": "b3ec859",
-        "after_ref": "vehicle surface library working tree",
-        "engine": "Godot 4.6.3, Compatibility (paired stills); validated on Godot 4.7.2, Compatibility and Forward+",
+        "after_ref": "CC0 integration working tree",
+        "engine": "Godot 4.6.3 Compatibility paired stills; current CC0 code checked with software Vulkan Forward+",
         "command": "DISPLAY=:99 godot --path . --rendering-method gl_compatibility --audio-driver Dummy tools/showcase/vehicle-surfaces.tscn -- --surface-out=OUTPUT --surface-single --surface-kinds=tank,old_tank,heli,hemtt_cargo,hatchback,blackwasp,rhib,patrol_ship",
         "seed": 3,
         "team": 0,
@@ -3806,12 +3976,12 @@
         ],
         "camera": "Orthographic, bounds-fit; direction (1, 0.65, -1.25), fixed studio sky and key light",
         "timing": "Static pose, five frames then frame_post_draw",
-        "swatches": "Same fixture with --surface-swatches; 400x300 per swatch.",
+        "swatches": "Same fixture, --surface-swatches; sixteen 400x225 swatches in a 1600x900 image.",
         "audit": "143 subjects rendered for each palette (135 roster/builder keys, five parked cars, three wrecks); 278 builds audited headlessly. Translation check at (117,35,-81) differs by less than 0.001 mean 8-bit channel value for tank and hatchback.",
         "complete_comparisons": {
           "report": "docs/vehicle-surface-comparisons/README.md",
           "before_ref": "b3ec859",
-          "after_ref": "a43f427",
+          "after_ref": "CC0 integration working tree",
           "engine": "Godot 4.6.3 Compatibility",
           "subjects_per_palette": 143,
           "palettes": [
@@ -3819,7 +3989,22 @@
             1
           ],
           "command": "DISPLAY=:99 godot --path CHECKOUT --rendering-method gl_compatibility --audio-driver Dummy tools/showcase/vehicle-surfaces.tscn -- --surface-out=OUTPUT --surface-team=TEAM",
-          "note": "Both sides freshly rendered with identical harness, lighting, camera, seed 3 and timing. Includes water-scooter normal repair. Existing eight close-up pairs retained."
+          "note": "Original baseline before images retained; after images refreshed with CC0 integration using identical roster capture settings."
+        },
+        "cc0_pass": {
+          "report": "docs/vehicle-surface-comparisons/cc0-pass/README.md",
+          "before_closeups_ref": "e31ed14",
+          "before_roster_ref": "a43f427 (runtime unchanged at e31ed14)",
+          "after_ref": "CC0 integration working tree",
+          "engine": "Godot 4.6.3 Compatibility",
+          "seed": 3,
+          "subjects_per_palette": 143,
+          "palettes": [
+            0,
+            1
+          ],
+          "closeups": 9,
+          "renderer_validation": "Four close-ups rendered with Vulkan 1.4.305 Forward+, software llvmpipe. Initial fallback run discarded as Forward+ evidence."
         }
       }
     },

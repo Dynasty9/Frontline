@@ -1584,7 +1584,7 @@ static func _cargo(k: VehicleModels, m: Node3D, base: Vector3, s: Vector3, kind:
 			k._box(m, Vector3(s.x - 0.06, 0.1, s.z - 0.06), base + Vector3(0, 0.05, 0), "wood")
 			for i in 2:
 				for j in 2:
-					k._cyl(m, 0.21, 0.21, s.y - 0.1, base + Vector3((i - 0.5) * 0.46, 0.1 + (s.y - 0.1) * 0.5, (j - 0.5) * 0.48), Vector3.ZERO, "steel", Color(0.28, 0.32, 0.22) if (i + j) % 2 == 0 else Color(0.36, 0.3, 0.2), 12)
+					k._cyl(m, 0.21, 0.21, s.y - 0.1, base + Vector3((i - 0.5) * 0.46, 0.1 + (s.y - 0.1) * 0.5, (j - 0.5) * 0.48), Vector3.ZERO, "paint", Color(0.28, 0.32, 0.22) if (i + j) % 2 == 0 else Color(0.36, 0.3, 0.2), 12)
 
 
 ## A red cross on a white square, facing along the panel's local +z.

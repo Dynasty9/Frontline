@@ -1132,8 +1132,9 @@ Ambush Alley autoplay can call its existing mortar support against spotted, stop
 - Vehicles are built from sloped, lofted armour: road wheels that turn, tracks, mantlets, cupolas, stowage, rotor blur.
 - **Shared vehicle finishes** (`vehicle_materials.gd`, `assets/vehicles/surfaces/`): armor paint, aircraft
   coatings, civilian clearcoat, marine paint, rubber, canvas, exposed metal, glass, nonslip decks and charred
-  wrecks use distinct roughness and reflection settings. Six shared, mipmapped detail maps add fine relief
-  without requiring UV unwraps. Paint is nonmetallic apart from exposed wear; texture and lower-body dust
+  wrecks use distinct roughness and reflection settings. Eight shared, mipmapped detail maps (six derived
+  from ambientCG CC0 sources) add fine relief without requiring UV unwraps. RHIB decks have raised tread;
+  selected trawler fittings use nonmetallic rust over exposed steel. Paint is nonmetallic; texture and lower-body dust
   stay attached to the model as it moves or climbs. Faction palettes and distant merged meshes are retained.
 - Explosions are layered GPU particles: a flash and light burst, a rolling fireball that cools from the edges in
   until it's dark smoke, a lit smoke column that drifts with the wind, a dirt plume, sparks and debris that

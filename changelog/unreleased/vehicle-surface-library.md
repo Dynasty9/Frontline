@@ -28,3 +28,5 @@ caption = "Shared finishes under the same lighting: coatings, rubber, canvas, me
 - Large blotches on civilian bodywork give way to fine surface texture and restrained wear. Boat walking decks have a rough nonslip finish.
 - Camouflage, wear and lower-body dirt stay on the vehicle when it moves or climbs. Faction colors are preserved.
 - The water scooter’s curved hood no longer produces invalid surface normals.
+
+- CC0 coating, rubber, fabric and metal textures now feed the shared finishes. Painted cargo drums lose their bare-metal sparkle, the RHIB has a treaded deck, and worn trawler fittings have localized corrosion.

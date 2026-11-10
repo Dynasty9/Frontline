@@ -35,7 +35,7 @@ func _ready() -> void:
 	var glass := Mats.get_mat(VehicleMaterials.key("glass", "armor"))
 	assert(glass.get_shader_parameter("metal") == 0.0)
 	assert(glass.get_shader_parameter("bump") == 0.0)
-	assert(maps.size() == 6, "All six shared maps should be used by the roster")
+	assert(maps.size() == 8, "All eight shared maps should be used by the roster")
 	print("VEHICLE_MATERIALS passed models=%d surfaces=%d maps=%d" % [keys.size() * 2 + 8, surfaces, maps.size()])
 	TestRun.quit(get_tree())
 

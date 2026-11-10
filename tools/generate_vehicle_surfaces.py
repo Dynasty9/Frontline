@@ -1,4 +1,4 @@
-"""Bake seamless linear material-data maps; no photographs or runtime generation.
+"""Regenerate original procedural maps, then bake the pinned CC0 sources.
 
 Requires numpy, scipy and Pillow. Run from any directory. R = height,
 G = roughness variation around 0.5, B = sparse wear mask. All filters wrap.
@@ -41,7 +41,9 @@ def main():
     save("nonslip", aggregate, 0.3 + aggregate * 0.4, chips)
     soot = noise(4)
     save("char", noise(1) * 0.4 + soot * 0.6, soot, np.clip((broad - 0.55) * 2, 0, 1))
-    print(f"Baked six {SIZE}x{SIZE} packed surface maps to {OUT}")
+    from bake_vehicle_sources import main as bake_sources
+    bake_sources()
+    print(f"Baked eight {SIZE}x{SIZE} packed surface maps to {OUT}")
 
 
 if __name__ == "__main__":

@@ -39,7 +39,7 @@ func _ready() -> void:
 	DirAccess.make_dir_recursive_absolute(output)
 	var manifest := {"team": team, "seed": 3, "renderer": RenderingServer.get_current_rendering_method(), "models": kinds}
 	FileAccess.open(output.path_join("capture.json"), FileAccess.WRITE).store_string(JSON.stringify(manifest, "\t"))
-	var per_page := 1 if single else 12
+	var per_page := 1 if single else (16 if swatches else 12)
 	for start in range(0, kinds.size(), per_page):
 		var grid := GridContainer.new()
 		grid.columns = 1 if single else 4
@@ -47,7 +47,7 @@ func _ready() -> void:
 		grid.add_theme_constant_override("v_separation", 0)
 		add_child(grid)
 		for i in range(start, mini(start + per_page, kinds.size())):
-			_cell(grid, kinds[i], Vector2i(1600, 900) if single else Vector2i(400, 300))
+			_cell(grid, kinds[i], Vector2i(1600, 900) if single else (Vector2i(400, 225) if swatches else Vector2i(400, 300)))
 		for frame in 5:
 			await get_tree().process_frame
 		await RenderingServer.frame_post_draw
@@ -103,6 +103,8 @@ func _cell(grid: GridContainer, kind: String, size: Vector2i) -> void:
 		k.root = Node3D.new()
 		var source := kind if kind not in ["armor", "automotive", "marine"] else "paint"
 		var family_name := kind if kind in ["armor", "automotive", "marine", "aircraft"] else "armor"
+		if kind == "oxidized":
+			source = "rust_steel"
 		if kind == "plastic":
 			source = "plain_dark"
 		Res.mi(k.root, Res.sphere(1.0, 48), Mats.get_mat(VehicleMaterials.key(source, family_name)), Vector3.ZERO)

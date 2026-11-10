@@ -691,7 +691,7 @@ static func _rhib(k: VehicleModels, team: int) -> void:
 	var r := 0.28
 	var all := _hull(p)
 	k._add(m, _band_mesh("boat_rhib_hull", all, -9.0, 9.0, 0.0), hm, hc, Vector3.ZERO)
-	k._add(m, _deck_mesh("boat_rhib_deck", _hull(p, 0.0, 0.93), 0.09, 0.012), "nonslip", Color(0.22, 0.23, 0.24), Vector3.ZERO)
+	k._add(m, _deck_mesh("boat_rhib_deck", _hull(p, 0.0, 0.93), 0.09, 0.012), "tread", Color(0.22, 0.23, 0.24), Vector3.ZERO)
 	# spray rails along the bottom
 	for s in [-1.0, 1.0]:
 		var sp1 := []
