@@ -1049,7 +1049,7 @@ func _smooth(pts: Array) -> PackedVector3Array:
 
 ## A roofless house of wall sections, its front (door) towards the street.
 ## Returns false if there's no room.
-func _house(c: Vector3, w: float, d: float, axis: float, street_side: float, yard := true, ruin_p := 0.35) -> bool:
+func _house(c: Vector3, w: float, d: float, axis: float, street_side: float, yard := true, ruin_p := 0.35, entrances: Array[Vector3] = []) -> bool:
 	var half := Vector2(w * 0.5 + 0.3, d * 0.5 + 0.3)
 	if not _is_free(c, half, axis, 1.0):
 		return false
@@ -1089,6 +1089,7 @@ func _house(c: Vector3, w: float, d: float, axis: float, street_side: float, yar
 			var variant := 0
 			if k == door_i:
 				variant = 2
+				entrances.append(wp)
 			elif seg_len > 2.0 and rng.randf() < 0.5:
 				variant = 1
 			# most front doors are shut (decided from where it stands: the map's

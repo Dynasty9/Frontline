@@ -35,6 +35,7 @@ func _ready() -> void:
 	var glass := Mats.get_mat(VehicleMaterials.key("glass", "armor"))
 	assert(glass.get_shader_parameter("metal") == 0.0)
 	assert(glass.get_shader_parameter("bump") == 0.0)
+	assert(Mats.get_mat(VehicleMaterials.key("wood", "armor")).get_shader_parameter("pattern") == Mats.WOOD, "Photographed town timber must not replace the vehicle's local wood grain")
 	assert(maps.size() == 8, "All eight shared maps should be used by the roster")
 	# Transparent cab glazing must not enter the opaque chassis bake. Each
 	# window has a matching distant fallback, and wrecks have no intact panes.

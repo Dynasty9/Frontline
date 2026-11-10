@@ -66,12 +66,14 @@ func _init(w) -> void:
 		_dirs.append(Vector2(cos(ang), sin(ang)))
 	dh.resize(DN * DN)
 	if w.has_view:
-		deform_img = Image.create(DN, DN, false, Image.FORMAT_RGH)  # surface height and undisturbed geology
+		# Half floats terrace elevated slopes; keep the same precision as ground contact.
+		deform_img = Image.create(DN, DN, false, Image.FORMAT_RGF)  # surface height and undisturbed geology
 	_make_biome()
 
 
 func install_landform(samples: PackedFloat32Array) -> void:
 	landform.heights = samples
+	landform.drainage.clear()
 	landform.peak = 0.0
 	for h in samples:
 		landform.peak = maxf(landform.peak, h)

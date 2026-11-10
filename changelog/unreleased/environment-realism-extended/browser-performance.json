@@ -1,0 +1,620 @@
+{
+  "before_ref": "1ab49b0495ae0aa38d2dfda06d338743dd991a39",
+  "after_ref": "9657166fecea411f7ae8b418feaaee99bb6063c7",
+  "scope": "Late browser lighting corrections only, not the full parent-branch comparison. Frozen simulation with animated scenery. Actual release WebGL exports, default vertex lighting enabled. No competing Godot, Frontline or Call of Duty processes detected. This is not low-end hardware coverage.",
+  "date_utc": "2026-11-06",
+  "settings": {
+    "resolution": [
+      1600,
+      900
+    ],
+    "preset": "High",
+    "mood": "day",
+    "seed": 3,
+    "map_m": 1024,
+    "warmup_seconds": 5,
+    "measure_seconds": 20,
+    "full_scenery_residency": true,
+    "simulation_held_at_seconds": 2
+  },
+  "hardware": {
+    "cpu": "Intel Core i9-11900K",
+    "gpu": "NVIDIA RTX 3090",
+    "ram_gib": 63.9
+  },
+  "pack_sha256": {
+    "final": "c1ae838d672e5301f8125037c0753bff74becf81578d93059959e6eed8ca95d2",
+    "final-v3": "99610496d165e22bd896964a7fdb199f62e767657b0da7edcbcb2dba45265317"
+  },
+  "runs": [
+    {
+      "index": 0,
+      "mode": "final",
+      "startEpoch": 1793961810008,
+      "endEpoch": 1793962029430,
+      "browser": "157.0.8103.38",
+      "gpu": {
+        "renderer": "ANGLE (NVIDIA, NVIDIA GeForce RTX 3090 (0x00002204) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+        "size": [
+          1600,
+          900
+        ],
+        "floatLinear": true
+      },
+      "data": {
+        "atlas_layers": 20,
+        "preset": "high",
+        "seed": 3,
+        "vertex_lighting": true,
+        "views": [
+          {
+            "camera": "(-86.25295, 31.74529, -101.8065)",
+            "draw_calls": 1379,
+            "fps": 38.424063756964,
+            "frames": 769,
+            "median_ms": 24.8,
+            "objects": 1383,
+            "p99_ms": 38.8,
+            "seconds": 20.0135,
+            "static_bytes": 0,
+            "view": "meadow"
+          },
+          {
+            "camera": "(53.83237, 99.58578, 63.91204)",
+            "draw_calls": 3566,
+            "fps": 28.0042131115626,
+            "frames": 561,
+            "median_ms": 34.5,
+            "objects": 3572,
+            "p99_ms": 67,
+            "seconds": 20.0327,
+            "static_bytes": 0,
+            "view": "town"
+          },
+          {
+            "camera": "(-460.2184, 269.7886, -152.9331)",
+            "draw_calls": 1247,
+            "fps": 44.8813742296947,
+            "frames": 898,
+            "median_ms": 21.8,
+            "objects": 1255,
+            "p99_ms": 31.7,
+            "seconds": 20.0083,
+            "static_bytes": 0,
+            "view": "forest"
+          },
+          {
+            "camera": "(537.5774, 337.1459, 638.2344)",
+            "draw_calls": 4744,
+            "fps": 19.043905950096,
+            "frames": 381,
+            "median_ms": 53,
+            "objects": 4764,
+            "p99_ms": 66.6,
+            "seconds": 20.0064,
+            "static_bytes": 0,
+            "view": "panorama"
+          }
+        ]
+      },
+      "errors": []
+    },
+    {
+      "index": 1,
+      "mode": "final-v3",
+      "startEpoch": 1793962030409,
+      "endEpoch": 1793962251689,
+      "browser": "157.0.8103.38",
+      "gpu": {
+        "renderer": "ANGLE (NVIDIA, NVIDIA GeForce RTX 3090 (0x00002204) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+        "size": [
+          1600,
+          900
+        ],
+        "floatLinear": true
+      },
+      "data": {
+        "atlas_layers": 20,
+        "preset": "high",
+        "seed": 3,
+        "vertex_lighting": true,
+        "views": [
+          {
+            "camera": "(-86.25295, 31.74529, -101.8065)",
+            "draw_calls": 1378,
+            "fps": 38.642657895,
+            "frames": 773,
+            "median_ms": 25,
+            "objects": 1383,
+            "p99_ms": 37.4,
+            "seconds": 20.0038,
+            "static_bytes": 0,
+            "view": "meadow"
+          },
+          {
+            "camera": "(53.83237, 99.58578, 63.91204)",
+            "draw_calls": 3567,
+            "fps": 27.6438829176771,
+            "frames": 554,
+            "median_ms": 34.7,
+            "objects": 3572,
+            "p99_ms": 70.2,
+            "seconds": 20.0406,
+            "static_bytes": 0,
+            "view": "town"
+          },
+          {
+            "camera": "(-460.2184, 269.7886, -152.9331)",
+            "draw_calls": 1247,
+            "fps": 44.9335992362788,
+            "frames": 899,
+            "median_ms": 21.8,
+            "objects": 1255,
+            "p99_ms": 30.2,
+            "seconds": 20.0073,
+            "static_bytes": 0,
+            "view": "forest"
+          },
+          {
+            "camera": "(537.5774, 337.1459, 638.2344)",
+            "draw_calls": 4744,
+            "fps": 19.0162461630606,
+            "frames": 381,
+            "median_ms": 52.8,
+            "objects": 4764,
+            "p99_ms": 68.7,
+            "seconds": 20.0355,
+            "static_bytes": 0,
+            "view": "panorama"
+          }
+        ]
+      },
+      "errors": []
+    },
+    {
+      "index": 2,
+      "mode": "final-v3",
+      "startEpoch": 1793962252717,
+      "endEpoch": 1793962476120,
+      "browser": "157.0.8103.38",
+      "gpu": {
+        "renderer": "ANGLE (NVIDIA, NVIDIA GeForce RTX 3090 (0x00002204) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+        "size": [
+          1600,
+          900
+        ],
+        "floatLinear": true
+      },
+      "data": {
+        "atlas_layers": 20,
+        "preset": "high",
+        "seed": 3,
+        "vertex_lighting": true,
+        "views": [
+          {
+            "camera": "(-86.25295, 31.74529, -101.8065)",
+            "draw_calls": 1379,
+            "fps": 37.9554024021774,
+            "frames": 760,
+            "median_ms": 25.1,
+            "objects": 1383,
+            "p99_ms": 40.9,
+            "seconds": 20.0235,
+            "static_bytes": 0,
+            "view": "meadow"
+          },
+          {
+            "camera": "(53.83237, 99.58578, 63.91204)",
+            "draw_calls": 3566,
+            "fps": 27.2316186574063,
+            "frames": 545,
+            "median_ms": 35.4,
+            "objects": 3572,
+            "p99_ms": 77.6,
+            "seconds": 20.0135,
+            "static_bytes": 0,
+            "view": "town"
+          },
+          {
+            "camera": "(-460.2184, 269.7886, -152.9331)",
+            "draw_calls": 1245,
+            "fps": 44.6238950214125,
+            "frames": 893,
+            "median_ms": 21.9,
+            "objects": 1253,
+            "p99_ms": 31.5,
+            "seconds": 20.0117,
+            "static_bytes": 0,
+            "view": "forest"
+          },
+          {
+            "camera": "(537.5774, 337.1459, 638.2344)",
+            "draw_calls": 4742,
+            "fps": 18.4084888576261,
+            "frames": 369,
+            "median_ms": 53.9,
+            "objects": 4760,
+            "p99_ms": 73.7,
+            "seconds": 20.0451,
+            "static_bytes": 0,
+            "view": "panorama"
+          }
+        ]
+      },
+      "errors": []
+    },
+    {
+      "index": 3,
+      "mode": "final",
+      "startEpoch": 1793962477192,
+      "endEpoch": 1793962698485,
+      "browser": "157.0.8103.38",
+      "gpu": {
+        "renderer": "ANGLE (NVIDIA, NVIDIA GeForce RTX 3090 (0x00002204) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+        "size": [
+          1600,
+          900
+        ],
+        "floatLinear": true
+      },
+      "data": {
+        "atlas_layers": 20,
+        "preset": "high",
+        "seed": 3,
+        "vertex_lighting": true,
+        "views": [
+          {
+            "camera": "(-86.25295, 31.74529, -101.8065)",
+            "draw_calls": 1379,
+            "fps": 38.7778965989386,
+            "frames": 776,
+            "median_ms": 24.9,
+            "objects": 1383,
+            "p99_ms": 38.3,
+            "seconds": 20.0114,
+            "static_bytes": 0,
+            "view": "meadow"
+          },
+          {
+            "camera": "(53.83237, 99.58578, 63.91204)",
+            "draw_calls": 3566,
+            "fps": 27.4050557086378,
+            "frames": 549,
+            "median_ms": 34.3,
+            "objects": 3572,
+            "p99_ms": 71.1,
+            "seconds": 20.0328,
+            "static_bytes": 0,
+            "view": "town"
+          },
+          {
+            "camera": "(-460.2184, 269.7886, -152.9331)",
+            "draw_calls": 1247,
+            "fps": 45.0583210530259,
+            "frames": 902,
+            "median_ms": 21.7,
+            "objects": 1255,
+            "p99_ms": 31.2,
+            "seconds": 20.0185,
+            "static_bytes": 0,
+            "view": "forest"
+          },
+          {
+            "camera": "(537.5774, 337.1459, 638.2344)",
+            "draw_calls": 4744,
+            "fps": 18.8010233342144,
+            "frames": 377,
+            "median_ms": 53.4,
+            "objects": 4764,
+            "p99_ms": 70.2,
+            "seconds": 20.0521,
+            "static_bytes": 0,
+            "view": "panorama"
+          }
+        ]
+      },
+      "errors": []
+    }
+  ],
+  "preset_comparison": {
+    "reference": "9657166fecea411f7ae8b418feaaee99bb6063c7",
+    "order": [
+      "medium",
+      "low",
+      "low",
+      "medium"
+    ],
+    "scope": "Same final-v3 release export and matched cameras. Presets change presentation only; all measurements retain the same seed and resolution. No competing game processes detected.",
+    "valid": true,
+    "runs": [
+      {
+        "index": 0,
+        "mode": "medium",
+        "startEpoch": 1793963082294,
+        "endEpoch": 1793963302541,
+        "browser": "157.0.8103.38",
+        "gpu": {
+          "renderer": "ANGLE (NVIDIA, NVIDIA GeForce RTX 3090 (0x00002204) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+          "size": [
+            1600,
+            900
+          ],
+          "floatLinear": true
+        },
+        "data": {
+          "atlas_layers": 20,
+          "preset": "medium",
+          "seed": 3,
+          "vertex_lighting": true,
+          "views": [
+            {
+              "camera": "(-86.25295, 31.74529, -101.8065)",
+              "draw_calls": 1343,
+              "fps": 41.2729662071343,
+              "frames": 826,
+              "median_ms": 24,
+              "objects": 1348,
+              "p99_ms": 33.3,
+              "seconds": 20.0131,
+              "static_bytes": 0,
+              "view": "meadow"
+            },
+            {
+              "camera": "(53.83237, 99.58578, 63.91204)",
+              "draw_calls": 3507,
+              "fps": 28.2888259137641,
+              "frames": 566,
+              "median_ms": 34.4,
+              "objects": 3513,
+              "p99_ms": 63.3,
+              "seconds": 20.0079,
+              "static_bytes": 0,
+              "view": "town"
+            },
+            {
+              "camera": "(-460.2184, 269.7886, -152.9331)",
+              "draw_calls": 1247,
+              "fps": 44.8932660100985,
+              "frames": 898,
+              "median_ms": 21.8,
+              "objects": 1255,
+              "p99_ms": 30.9,
+              "seconds": 20.003,
+              "static_bytes": 0,
+              "view": "forest"
+            },
+            {
+              "camera": "(537.5774, 337.1459, 638.2344)",
+              "draw_calls": 4744,
+              "fps": 18.8570060262601,
+              "frames": 378,
+              "median_ms": 53.7,
+              "objects": 4762,
+              "p99_ms": 74,
+              "seconds": 20.0456,
+              "static_bytes": 0,
+              "view": "panorama"
+            }
+          ]
+        },
+        "errors": []
+      },
+      {
+        "index": 1,
+        "mode": "low",
+        "startEpoch": 1793963303555,
+        "endEpoch": 1793963512906,
+        "browser": "157.0.8103.38",
+        "gpu": {
+          "renderer": "ANGLE (NVIDIA, NVIDIA GeForce RTX 3090 (0x00002204) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+          "size": [
+            1600,
+            900
+          ],
+          "floatLinear": true
+        },
+        "data": {
+          "atlas_layers": 20,
+          "preset": "low",
+          "seed": 3,
+          "vertex_lighting": true,
+          "views": [
+            {
+              "camera": "(-86.25295, 31.74529, -101.8065)",
+              "draw_calls": 296,
+              "fps": 71.0619818397158,
+              "frames": 1422,
+              "median_ms": 13.9,
+              "objects": 296,
+              "p99_ms": 19.3,
+              "seconds": 20.0107,
+              "static_bytes": 0,
+              "view": "meadow"
+            },
+            {
+              "camera": "(53.83237, 99.58578, 63.91204)",
+              "draw_calls": 781,
+              "fps": 53.7252863682706,
+              "frames": 1075,
+              "median_ms": 17.8,
+              "objects": 781,
+              "p99_ms": 40.5,
+              "seconds": 20.0092,
+              "static_bytes": 0,
+              "view": "town"
+            },
+            {
+              "camera": "(-460.2184, 269.7886, -152.9331)",
+              "draw_calls": 344,
+              "fps": 68.7783348245303,
+              "frames": 1376,
+              "median_ms": 14,
+              "objects": 344,
+              "p99_ms": 21.6,
+              "seconds": 20.0063,
+              "static_bytes": 0,
+              "view": "forest"
+            },
+            {
+              "camera": "(537.5774, 337.1459, 638.2344)",
+              "draw_calls": 3980,
+              "fps": 21.7510601147418,
+              "frames": 436,
+              "median_ms": 45.5,
+              "objects": 3988,
+              "p99_ms": 61.7,
+              "seconds": 20.045,
+              "static_bytes": 0,
+              "view": "panorama"
+            }
+          ]
+        },
+        "errors": []
+      },
+      {
+        "index": 2,
+        "mode": "low",
+        "startEpoch": 1793963513862,
+        "endEpoch": 1793963722332,
+        "browser": "157.0.8103.38",
+        "gpu": {
+          "renderer": "ANGLE (NVIDIA, NVIDIA GeForce RTX 3090 (0x00002204) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+          "size": [
+            1600,
+            900
+          ],
+          "floatLinear": true
+        },
+        "data": {
+          "atlas_layers": 20,
+          "preset": "low",
+          "seed": 3,
+          "vertex_lighting": true,
+          "views": [
+            {
+              "camera": "(-86.25295, 31.74529, -101.8065)",
+              "draw_calls": 296,
+              "fps": 71.1693971592215,
+              "frames": 1424,
+              "median_ms": 13.7,
+              "objects": 296,
+              "p99_ms": 19.5,
+              "seconds": 20.0086,
+              "static_bytes": 0,
+              "view": "meadow"
+            },
+            {
+              "camera": "(53.83237, 99.58578, 63.91204)",
+              "draw_calls": 781,
+              "fps": 54.05,
+              "frames": 1081,
+              "median_ms": 17.8,
+              "objects": 781,
+              "p99_ms": 36.2,
+              "seconds": 20,
+              "static_bytes": 0,
+              "view": "town"
+            },
+            {
+              "camera": "(-460.2184, 269.7886, -152.9331)",
+              "draw_calls": 344,
+              "fps": 70.6869229192599,
+              "frames": 1414,
+              "median_ms": 13.8,
+              "objects": 344,
+              "p99_ms": 19.8,
+              "seconds": 20.0037,
+              "static_bytes": 0,
+              "view": "forest"
+            },
+            {
+              "camera": "(537.5774, 337.1459, 638.2344)",
+              "draw_calls": 3980,
+              "fps": 21.9064062515594,
+              "frames": 439,
+              "median_ms": 44.7,
+              "objects": 3988,
+              "p99_ms": 62.9,
+              "seconds": 20.0398,
+              "static_bytes": 0,
+              "view": "panorama"
+            }
+          ]
+        },
+        "errors": []
+      },
+      {
+        "index": 3,
+        "mode": "medium",
+        "startEpoch": 1793963723290,
+        "endEpoch": 1793963945015,
+        "browser": "157.0.8103.38",
+        "gpu": {
+          "renderer": "ANGLE (NVIDIA, NVIDIA GeForce RTX 3090 (0x00002204) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+          "size": [
+            1600,
+            900
+          ],
+          "floatLinear": true
+        },
+        "data": {
+          "atlas_layers": 20,
+          "preset": "medium",
+          "seed": 3,
+          "vertex_lighting": true,
+          "views": [
+            {
+              "camera": "(-86.25295, 31.74529, -101.8065)",
+              "draw_calls": 1343,
+              "fps": 40.1863366455405,
+              "frames": 804,
+              "median_ms": 24.3,
+              "objects": 1348,
+              "p99_ms": 34.6,
+              "seconds": 20.0068,
+              "static_bytes": 0,
+              "view": "meadow"
+            },
+            {
+              "camera": "(53.83237, 99.58578, 63.91204)",
+              "draw_calls": 3507,
+              "fps": 28.3439060601971,
+              "frames": 567,
+              "median_ms": 33.8,
+              "objects": 3513,
+              "p99_ms": 63.5,
+              "seconds": 20.0043,
+              "static_bytes": 0,
+              "view": "town"
+            },
+            {
+              "camera": "(-460.2184, 269.7886, -152.9331)",
+              "draw_calls": 1247,
+              "fps": 44.3864621290506,
+              "frames": 888,
+              "median_ms": 22.1,
+              "objects": 1255,
+              "p99_ms": 31.5,
+              "seconds": 20.0061,
+              "static_bytes": 0,
+              "view": "forest"
+            },
+            {
+              "camera": "(537.5774, 337.1459, 638.2344)",
+              "draw_calls": 4744,
+              "fps": 18.6536456904592,
+              "frames": 374,
+              "median_ms": 53.6,
+              "objects": 4762,
+              "p99_ms": 70.2,
+              "seconds": 20.0497,
+              "static_bytes": 0,
+              "view": "panorama"
+            }
+          ]
+        },
+        "errors": []
+      }
+    ]
+  }
+}

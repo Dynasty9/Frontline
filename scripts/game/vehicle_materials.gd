@@ -69,6 +69,8 @@ static func preset(material_key: String) -> Dictionary:
 	# basis as the plain painted parts it replaces.
 	if kind in ["nonslip", "tread"]:
 		p = Mats._preset("plain").duplicate()
+	if finish == "wood":
+		p["pattern"] = Mats.WOOD
 	if int(p.get("pattern", 0)) not in [Mats.CAMO, Mats.WOOD, Mats.TRACK]:
 		p["pattern"] = Mats.PLAIN
 	p.merge({"vehicle_surface": true, "local_space": true, "surface_detail": true, "surface_wear": 0.0, "surface_tone": 0.0, "surface_roughness": 0.8, "surface_corrosion": 0.0, "surface_coat": 0.0, "surface_specular": 0.4, "rust": 0.0}, true)
