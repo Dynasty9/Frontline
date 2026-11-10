@@ -1,0 +1,24 @@
+{
+	"body_focus": "(inf, inf, inf)",
+	"camera_size": 0.0,
+	"grounded": true,
+	"models": [
+		"heli",
+		"huron",
+		"mohawk",
+		"kajman",
+		"zamak",
+		"hemtt",
+		"tempest",
+		"tank",
+		"offroad",
+		"rhib",
+		"gun_trawler",
+		"patrol_ship"
+	],
+	"renderer": "gl_compatibility",
+	"rotor_focus": false,
+	"seed": 3,
+	"team": 1,
+	"view_direction": "(-1.0, 0.65, 1.25)"
+}
