@@ -331,8 +331,30 @@ func check_ground_grime() -> void:
 			var pixel := view.get_texture().get_image().get_pixel(16, 16).srgb_to_linear()
 			var expected := 1.0 - smoothstep(0.0, 0.9, above)
 			assert(absf(pixel.r - expected) < 0.025, "Grime follows height above terrain, not sea level: elevation=%s above=%s actual=%s" % [elevation, above, pixel.r])
+	# Ground-aware walls and vehicle-local dirt share this shader after integration.
+	var plane := mesh.mesh as PlaneMesh
+	plane.center_offset.y = 0.45
+	for kind in ["car_paint", "steel", "rubber", "wood"]:
+		var vehicle := Mats.get_mat(VehicleMaterials.key(kind, "armor")).duplicate() as ShaderMaterial
+		var shader := Shader.new()
+		shader.code = vehicle.shader.code.replace("render_mode specular_schlick_ggx;", "render_mode unshaded;")
+		vehicle.shader = shader
+		mesh.material_override = vehicle
+		var baseline := Color.BLACK
+		for offset in [Vector3.ZERO, Vector3(117, 35, -81)]:
+			mesh.position = offset
+			camera.position = offset + Vector3(0, 4.45, 0)
+			camera.look_at(offset + Vector3(0, 0.45, 0), Vector3.FORWARD)
+			for frame in 3:
+				await RenderingServer.frame_post_draw
+			var pixel := view.get_texture().get_image().get_pixel(16, 16)
+			if offset == Vector3.ZERO:
+				baseline = pixel
+				assert(pixel.r + pixel.g + pixel.b > 0.02, "Vehicle material must actually draw")
+			else:
+				assert(Vector3(pixel.r, pixel.g, pixel.b).distance_to(Vector3(baseline.r, baseline.g, baseline.b)) < 0.008, "Vehicle %s colour and dirt must move with the model" % kind)
 	view.queue_free()
-	print("TERRAIN_MATERIALS elevated-ground weathering passed")
+	print("TERRAIN_MATERIALS elevated-ground and moving-vehicle weathering passed")
 
 
 func check_shrub_leaves() -> void:
