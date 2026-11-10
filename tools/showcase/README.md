@@ -18,6 +18,7 @@ lead artifact; original notes and supporting media remain under **Explore this c
 | Armament effects | Grenade, HE, fuel, tracer and impact timing | `armaments`: real effect pools, seed 712, 10 m ground marks, fixed 30 Hz |
 | Material impact close-ups | Dirt, stone and metal debris without obscuring fuel smoke | `impacts`: four seconds per material, fixed 30 Hz, normal speed |
 | Illumination flares | Parachute descent, wind, sparks and smoke | `flares`: same effect code at night, following camera, fixed 30 Hz |
+| Battlefield effects reel | All armaments over real terrain, followed by a night flare | `battlefield-effects`: 28 seconds, showroom seed 712, fixed 24 Hz, Forward+ |
 | Battlefield blast | Earth and dust against real terrain and cover | `blast-close` / `blast-rts`: showroom seed 712, day, fixed 24 Hz |
 | Text | Reliability, compatibility, unrecorded sound or unmeasured performance | Short player outcome and original detail |
 
@@ -102,3 +103,13 @@ The `impacts` stage uses a dedicated close camera and visits three separated tar
 The refreshed `flares` stage uses controlled moonlight and a closer following camera so
 cloth and suspension lines remain legible. These are presentation-only settings; they
 do not brighten the in-game night or enlarge the effect geometry.
+
+The `battlefield-effects` stage keeps the real ground, vegetation, cover and vehicles
+in view for every shot. It cuts between grenade (0 s), HE (4 s), fuel (9 s), dirt
+(14 s), stone (16 s), metal (18 s) and the night flare (20 s; closer at 23 s).
+It stages visual events without combat damage and uses ordinary effect sizes and
+simulation speed. Capture it with `--renderer forward_plus`; the stage records
+its camera/event script revision and uses constrained-quality VP9 to keep the
+complete reel inside the changelog media limit. For composition checks only, the
+fixture accepts `--preview` with engine `--fixed-fps 12` at a smaller viewport;
+release evidence uses the registered 24 Hz preset.

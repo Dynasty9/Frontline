@@ -46,7 +46,7 @@ def main():
         raise SystemExit('Incomplete capture.')
     subprocess.run([ffmpeg, '-y', '-loglevel', 'error', '-framerate', str(stage['fps']),
                     '-i', str(frames / '%04d.png'), '-c:v', 'libvpx-vp9', '-crf', str(stage.get('crf', 30)),
-                    '-b:v', '0', '-pix_fmt', 'yuv420p', '-an', str(out / 'clip.webm')], check=True)
+                    '-b:v', str(stage.get('bitrate', '0')), '-pix_fmt', 'yuv420p', '-an', str(out / 'clip.webm')], check=True)
     subprocess.run([ffmpeg, '-y', '-loglevel', 'error', '-ss', '3', '-i', str(out / 'clip.webm'),
                     '-frames:v', '1', '-q:v', '2', str(out / 'poster.jpg')], check=True)
     changes = subprocess.check_output(['git', 'status', '--porcelain'], cwd=ROOT, text=True).splitlines()

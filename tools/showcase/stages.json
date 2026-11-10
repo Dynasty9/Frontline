@@ -96,5 +96,131 @@
       "decals": true,
       "projection": "perspective"
     }
+  },
+  "battlefield-effects": {
+    "scene": "tests/fixtures/blast-world-clips.tscn",
+    "seconds": 28,
+    "fps": 24,
+    "simulation_hz": 24,
+    "engine_fixed_fps": 24,
+    "cue": "Grenade, HE, fuel, dirt/stone/metal impacts and a night flare, all against the actual battlefield terrain.",
+    "timeout": 2400,
+    "crf": 32,
+    "bitrate": "2800k",
+    "render_settings": {
+      "grass": 1,
+      "effects": 2,
+      "decals": true,
+      "post": false,
+      "mood": "day, then night at 20 seconds"
+    },
+    "shots": [
+      {
+        "start": 0,
+        "subject": "grenade"
+      },
+      {
+        "start": 4,
+        "subject": "HE"
+      },
+      {
+        "start": 9,
+        "subject": "fuel"
+      },
+      {
+        "start": 14,
+        "subject": "dirt impacts"
+      },
+      {
+        "start": 16,
+        "subject": "stone impacts"
+      },
+      {
+        "start": 18,
+        "subject": "metal impacts"
+      },
+      {
+        "start": 20,
+        "subject": "night flare over terrain"
+      },
+      {
+        "start": 23,
+        "subject": "flare close-up over terrain"
+      }
+    ],
+    "seed": 712,
+    "camera": {
+      "fov_degrees": 48,
+      "targets": "Ground height sampled from World.ground_y; coordinates are in metres.",
+      "soil_xz": [
+        4,
+        12
+      ],
+      "fuel_xz": [
+        30,
+        -2
+      ],
+      "stone_xz": [
+        -30,
+        24
+      ],
+      "car_xz": [
+        -30,
+        8
+      ],
+      "grenade_offset": [
+        5,
+        7,
+        9
+      ],
+      "he_offset": [
+        6,
+        10,
+        13
+      ],
+      "fuel_offset": [
+        11,
+        13,
+        17
+      ],
+      "dirt_offset": [
+        3,
+        2.4,
+        4.8
+      ],
+      "stone_offset": [
+        2.8,
+        1.8,
+        4.8
+      ],
+      "car_offset_local": [
+        5,
+        2,
+        3
+      ],
+      "car_yaw_radians": 0.5,
+      "flare_offset": [
+        24,
+        18,
+        32
+      ],
+      "flare_close_offset": [
+        9,
+        6,
+        13
+      ],
+      "dirt_xz": [
+        4,
+        6
+      ]
+    },
+    "gunfire": {
+      "weapon": "mg",
+      "speed_m_s": 780,
+      "distance_m": 35,
+      "shots_per_second": 4,
+      "tracer_share": 0.25,
+      "timing": "Normal simulation speed. Range lets the short tracer flight cross a 24 Hz capture frame."
+    }
   }
 }
