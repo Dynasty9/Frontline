@@ -11,12 +11,14 @@ Their meshes remain shared through instancing; transforms and colors now upload
 as one buffer per chunk instead of separate calls for every instance.
 
 Continuous camera movement is capped at 120 metres per second, including Shift,
-dragging, following and glides. Explicit minimap jumps remain immediate.
+dragging, following and glides. Minimap clicks and drags use the same capped glide. Another click changes the
+destination; manual panning cancels the trip.
 
 A dense scripted pan had zero missing visible-object samples, down from 4,479.
+The minimap follow-up also had zero missing samples along its route; an instant
+click into that test area exposed 193 unready objects.
 This is a scheduling diagnostic, not a live-battle FPS result. Wider preloading
-uses more resident memory and can add startup work. Teleporting into an unvisited
-area can still require loading. See the detailed measurement and test conditions
+uses more resident memory and can add startup work. Unusually dense or slow-to-build scenery can still require loading. See the detailed measurement and test conditions
 in `docs/performance/camera-streaming.md`.
 
 The matched instance-buffer diagnostic renders below are pixel-identical; they

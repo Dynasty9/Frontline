@@ -3651,7 +3651,7 @@
       "kind": "improved",
       "medium": "text",
       "stage": "text",
-      "rationale": "Scheduling and instance upload diagnostics are documented with limits. Matched rendered bush arrays validate unchanged geometry and placement; they do not depict live camera motion.",
+      "rationale": "Scheduling and instance upload diagnostics are documented with limits. The minimap route has zero missing object samples versus 193 unready objects after an instant click; 24 rendered camera checks pass. This is queue evidence, not a live frame-time benchmark. Matched rendered bush arrays validate unchanged geometry and placement; they do not depict live camera motion.",
       "source_ref": "codex/combined-performance",
       "sources": [
         {

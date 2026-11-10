@@ -210,7 +210,7 @@ func _look(p: Vector2) -> void:
 		return
 	w.cam.stop_follow()
 	w.cam.stop_shadow()
-	w.cam.focus(_to_world(p))
+	w.cam.glide_to(_to_world(p))
 	if w.director:
 		w.director.active = false
 

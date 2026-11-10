@@ -1316,7 +1316,7 @@ question marks and ages. The minimap camera layer retains its drawing until the
 camera, focus, projection, ground or pointer changes; resize and rotation redraw
 all layers together.
 
-Continuous camera movement (keys, edge pan, drag, follow and glides) is capped at 120 m/s; explicit minimap jumps remain immediate. Clients prepare scenery beyond the camera edges and retain already-built objects through a wider band when panning back. They cache visited models; distant models and
+Continuous camera movement (keys, edge pan, drag, follow and glides) is capped at 120 m/s; minimap clicks and drags use the same capped glide. Clients prepare scenery beyond the camera edges and retain already-built objects through a wider band when panning back. They cache visited models; distant models and
 cosmetic collision bodies remain inactive. The server still simulates the complete
 map. Nearby movement orders can reuse a checked route corridor, with separate
 destinations and invalidation when terrain or danger changes.

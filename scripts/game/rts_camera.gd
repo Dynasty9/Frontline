@@ -89,7 +89,7 @@ func _ready() -> void:
 	_apply()
 
 
-## Jumps straight there (the minimap, test framing).
+## Jumps straight there (initial placement and test framing).
 func focus(p: Vector3) -> void:
 	focus_pos = _clamp_map(p)
 	_pan_offset = Vector3.ZERO
