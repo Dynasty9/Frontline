@@ -28,8 +28,9 @@ terrain materials keep their existing presets.
 These are base values; the shader adds small roughness variation and dust.
 Paint stays nonmetallic. Rust coverage reduces exposed metal’s reflectivity. Automotive and marine
 finishes have a clearcoat. Fighter canopy coatings retain their explicit tinted
-metal response; ordinary glass is dielectric. Glazing stays opaque because the
-models do not have complete interiors.
+metal response; ordinary glass is dielectric. Most glazing stays opaque because those models lack interiors. The HEMTT cargo
+cab now has a modeled interior and four separate transparent panes, with opaque
+window fallbacks at 100 m; these bypass the shared opaque-material bake.
 
 ## Using a surface
 

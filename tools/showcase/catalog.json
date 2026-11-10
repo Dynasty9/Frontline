@@ -4117,6 +4117,59 @@
         "report": "docs/vehicle-surface-comparisons/hemtt-cargo.md",
         "limitations": "Wide images are gameplay-scale studio views, not in-match footage. No photorealism or hardware-performance claim."
       }
+    },
+    {
+      "entry": "changelog/unreleased/hemtt-cab-depth.md",
+      "summary": "Transparent cab glazing, rounded tyres and draped cloth loads on the HEMTT cargo truck.",
+      "medium": "still",
+      "stage": "vehicle-surfaces",
+      "rationale": "Matched grounded renders isolate the model rebuild from new lighting; a separate in-game screenshot verifies the actual world renderer.",
+      "source_ref": "e7fee16 baseline + HEMTT cab/tyre rebuild",
+      "sources": [
+        {
+          "file": "changelog/unreleased/hemtt-cab-depth/after.jpg",
+          "sha256": "0fdd02969ffe2ebb845a3a5dc7bf11d49eeb9c0e483c8a62a63dcf6fcce6d01c",
+          "caption": "after"
+        },
+        {
+          "file": "changelog/unreleased/hemtt-cab-depth/before.jpg",
+          "sha256": "27cfe94dda0b44f9f01411f817c5282cf3cd9cfefb08ed4d9788332ccf045fa1",
+          "caption": "before"
+        },
+        {
+          "file": "changelog/unreleased/hemtt-cab-depth/in-game.jpg",
+          "sha256": "3cfca29560a95804b1a4d1cba0de230d9a9165839593af92c116d1505278d3e7",
+          "caption": "in game"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/hemtt-rebuild/wide-after.jpg",
+          "sha256": "7edd1050c250defbd9867218156fb10d49b67bee9f5af35ce55b6942a1fb4bd0",
+          "caption": "wide after"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/hemtt-rebuild/wide-before.jpg",
+          "sha256": "c4a8b287ac0d83b3157aa6d6bc7b8c463d594542c57d7973005ada8cc3a1ff36",
+          "caption": "wide before"
+        }
+      ],
+      "output": null,
+      "capture": {
+        "before_ref": "e7fee16 with grounded harness copied in",
+        "after_ref": "HEMTT cab/tyre rebuild working tree",
+        "engine": "Godot 4.6.3, Vulkan Forward+ (close pair), Compatibility (wide pair and in-game)",
+        "command": "DISPLAY=:101 VK_DRIVER_FILES=/path/to/lvp_icd.json godot --path CHECKOUT --rendering-method forward_plus --audio-driver Dummy tools/showcase/vehicle-surfaces.tscn -- --surface-out=OUTPUT --surface-single --surface-kinds=hemtt_cargo --surface-size=8 --surface-ground",
+        "seed": 3,
+        "team": 0,
+        "viewport": [
+          1600,
+          900
+        ],
+        "camera": "Orthographic size 8 close / 28 wide, direction (1,0.65,-1.25). Ground and lighting identical within each pair.",
+        "timing": "Five frames then frame_post_draw",
+        "report": "docs/vehicle-surface-comparisons/hemtt-rebuild.md",
+        "in_game": "vehicle-in-world.tscn, attack scenario seed 3, daytime High preset, perf:0 aa:2 post:0, focus=-20,-10 zoom=16 pitch=-28 cam-yaw=2.45; fixed-fps 30, shot-at=1. Showcase truck parked by copying its definition and setting speed to zero.",
+        "validation": "Four focused tests pass, including transparent-pane distance ranges and wreck handling. Palette 1 inspected in Forward+. Software rendering; no hardware performance claim."
+      }
     }
   ],
   "layout_capture": {

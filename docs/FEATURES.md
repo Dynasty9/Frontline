@@ -1137,7 +1137,9 @@ Ambush Alley autoplay can call its existing mortar support against spotted, stop
   selected trawler fittings use nonmetallic rust over exposed steel. Paint is nonmetallic; texture and lower-body dust
   stay attached to the model as it moves or climbs. Faction palettes and distant merged meshes are retained.
 - The HEMTT cargo variant trials additional modeled tyre tread, framed glazing, door pressings, bed
-  hardware and load restraints; details merge into the chassis and rotating wheel surfaces.
+  hardware and load restraints; details merge into the chassis and rotating wheel surfaces. Its open cab
+  contains seats, a dashboard and steering wheel behind transparent glass, with opaque window fallbacks
+  beyond 100 m. Rounded tyres and shaped cloth covers replace simple cylinders and boxes.
 - Explosions are layered GPU particles: a flash and light burst, a rolling fireball that cools from the edges in
   until it's dark smoke, a lit smoke column that drifts with the wind, a dirt plume, sparks and debris that
   bounce on the ground, a rolling dust ring, a faint heat-shimmer shockwave and a scorch mark. Heavy rounds

@@ -1336,7 +1336,10 @@ static func _hemtt_chassis(k: VehicleModels, team: int, paint: Color, detailed :
 	var axles := [-3.8, -2.3, 2.15, 3.65]
 	for s in [-1.0, 1.0]:
 		for z in axles:
-			k._wheel(m, Vector3(s * 0.98, wr, z), wr, 0.46)
+			if detailed:
+				_hemtt_wheel(k, Vector3(s * 0.98, wr, z))
+			else:
+				k._wheel(m, Vector3(s * 0.98, wr, z), wr, 0.46)
 			k._box(m, Vector3(0.36, 0.14, 0.2), Vector3(s * 0.6, wr, z), "gunmetal_w")
 	# frame rails, the axles' beams and springs
 	for s in [-1.0, 1.0]:
@@ -1346,7 +1349,18 @@ static func _hemtt_chassis(k: VehicleModels, team: int, paint: Color, detailed :
 		k._box(m, Vector3(1.1, 0.1, 0.9), Vector3(0, 0.84, z), "gunmetal_w")
 	# the cab: a slightly raked windscreen, flat sides, the nose out in front
 	var cb := [-1.2, -4.5, 1.2, -4.5, 1.2, -2.85, -1.2, -2.85]
-	k._add(m, VehicleModels.solid([VehicleModels.ring_y(VehicleModels._v2(cb), 1.36), VehicleModels.ring_y(VehicleModels._v2(cb), 1.95), VehicleModels.ring_y(VehicleModels._v2([-1.14, -4.34, 1.14, -4.34, 1.14, -2.88, -1.14, -2.88]), 2.86)], "nato_hemtt_cab"), cab, null, Vector3.ZERO)
+	if detailed:
+		# Open upper cab: the windows must reveal seats, dash and the far side,
+		# not a solid painted box immediately behind transparent glass.
+		k._add(m, VehicleModels.solid([VehicleModels.ring_y(VehicleModels._v2(cb), 1.36), VehicleModels.ring_y(VehicleModels._v2(cb), 1.95)], "nato_hemtt_open_cab"), cab, null, Vector3.ZERO)
+		k._box(m, Vector3(2.30, 0.92, 0.08), Vector3(0, 2.40, -2.91), "paint", paint)
+		for side in [-1.0, 1.0]:
+			for z in [-4.32, -3.10]:
+				_xy(k, m, side, z, 0.12, Vector2(1.20, 1.95), Vector2(1.14, 2.84), 0.10, 0.0, "paint", paint)
+			_xy(k, m, side, -3.72, 1.32, Vector2(1.15, 2.70), Vector2(1.14, 2.84), 0.08, 0.0, "paint", paint)
+		_hemtt_interior(k)
+	else:
+		k._add(m, VehicleModels.solid([VehicleModels.ring_y(VehicleModels._v2(cb), 1.36), VehicleModels.ring_y(VehicleModels._v2(cb), 1.95), VehicleModels.ring_y(VehicleModels._v2([-1.14, -4.34, 1.14, -4.34, 1.14, -2.88, -1.14, -2.88]), 2.86)], "nato_hemtt_cab"), cab, null, Vector3.ZERO)
 	var nose := [-5.12, 0.96, -4.45, 0.96, -4.45, 1.98, -4.88, 1.92, -5.12, 1.74]
 	k._add(m, VehicleModels.extrude_x("nato_hemtt_nose", nose, -1.1, 1.1), cab, null, Vector3.ZERO)
 	# the big grille, the bumper with the headlights in its ends, tow eyes,
@@ -1355,7 +1369,7 @@ static func _hemtt_chassis(k: VehicleModels, team: int, paint: Color, detailed :
 	for i in 12:
 		k._box(m, Vector3(1.8, 0.024, 0.03), Vector3(0, 1.12 + i * 0.052, -5.15), cab, null, Vector3.ZERO, false)
 	k._box(m, Vector3(2.0, 0.06, 0.08), Vector3(0, 1.76, -5.13), cab)
-	k._box(m, Vector3(2.44, 0.32, 0.24), Vector3(0, 0.9, -5.14), "steel", paint.darkened(0.15))
+	k._box(m, Vector3(2.44, 0.32, 0.24), Vector3(0, 0.9, -5.14), "paint" if detailed else "steel", paint.darkened(0.15))
 	for s in [-1.0, 1.0]:
 		k._box(m, Vector3(0.3, 0.2, 0.06), Vector3(s * 0.96, 0.94, -5.27), "gunmetal_w")
 		if not k.burnt:
@@ -1371,13 +1385,19 @@ static func _hemtt_chassis(k: VehicleModels, team: int, paint: Color, detailed :
 	var wb := Vector2(-4.34, 2.86)
 	for s in [-1.0, 1.0]:
 		if detailed:
-			# Rubber gaskets sit behind the glazing; wipers sit above it.
-			_zy(k, m, s * 0.56, 1.04, wa.lerp(wb, 0.10), wa.lerp(wb, 0.86), 0.035, 0.025, "rubber", null, false)
-			_zy(k, m, s * 0.56, 0.94, wa.lerp(wb, 0.16), wa.lerp(wb, 0.80), 0.018, 0.05, "glass", Color(0.18, 0.27, 0.31), false)
-			_xy(k, m, s, -3.72, 0.94, Vector2(1.19, 1.99), Vector2(1.15, 2.64), 0.035, 0.04, "rubber", null, false)
-			_xy(k, m, s, -3.72, 0.82, Vector2(1.185, 2.05), Vector2(1.155, 2.58), 0.018, 0.065, "glass", Color(0.18, 0.27, 0.31), false)
-			_tube(k, m, Vector3(s * 0.57, 2.10, -4.54), Vector3(s * 0.33, 2.48, -4.48), 0.012, "gunmetal_w")
-			_tube(k, m, Vector3(s * 0.18, 2.43, -4.49), Vector3(s * 0.70, 2.55, -4.47), 0.014, "rubber")
+			# Open perimeter seals: no opaque plate behind the glass.
+			for dx in [-0.50, 0.50]:
+				_zy(k, m, s * 0.56 + dx, 0.055, wa.lerp(wb, 0.10), wa.lerp(wb, 0.86), 0.035, 0.035, "rubber", null, false)
+			for t in [0.12, 0.84]:
+				_zy(k, m, s * 0.56, 1.04, wa.lerp(wb, t - 0.025), wa.lerp(wb, t + 0.025), 0.035, 0.035, "rubber", null, false)
+			_hemtt_glass(k, Vector2(0.95, 0.62), Vector3(s * 0.56, 2.39, -4.46), Vector3(0.174, PI, 0))
+			for z in [-4.16, -3.28]:
+				_xy(k, m, s, z, 0.045, Vector2(1.19, 2.01), Vector2(1.15, 2.65), 0.04, 0.015, "rubber", null, false)
+			for y in [2.02, 2.64]:
+				k._box(m, Vector3(0.045, 0.04, 0.91), Vector3(s * (1.19 - (y - 2.01) * 0.064), y, -3.72), "rubber", null, Vector3.ZERO, false)
+			_hemtt_glass(k, Vector2(0.84, 0.59), Vector3(s * 1.18, 2.33, -3.72), Vector3(0, s * PI / 2, s * 0.064))
+			_tube(k, m, Vector3(s * 0.57, 2.10, -4.54), Vector3(s * 0.33, 2.48, -4.48), 0.009, "gunmetal_w")
+			_tube(k, m, Vector3(s * 0.18, 2.43, -4.49), Vector3(s * 0.70, 2.55, -4.47), 0.011, "rubber")
 		else:
 			_zy(k, m, s * 0.56, 0.98, wa.lerp(wb, 0.12), wa.lerp(wb, 0.82), 0.04, 0.0, "glass", null, false)
 			k._box(m, Vector3(0.04, 0.6, 0.85), Vector3(s * 1.2, 2.26, -3.72), "glass", null, Vector3(0, 0, s * 0.03), false)
@@ -1411,7 +1431,7 @@ static func _hemtt_chassis(k: VehicleModels, team: int, paint: Color, detailed :
 	k._cyl(m, 0.085, 0.07, 0.12, Vector3(0.92, 3.12, -2.7), Vector3(0.6, 0, 0), "gunmetal_w", null, 8)
 	_spare(k, m, Vector3(0.0, 2.0, -2.65), 0.6, 0.42, Vector3(PI / 2, 0, 0))
 	# fuel tank and battery box on the frame, air tanks
-	k._cyl(m, 0.3, 0.3, 1.1, Vector3(-0.95, 1.0, -1.0), Vector3(PI / 2, 0, 0), "steel", paint.darkened(0.2), 14)
+	k._cyl(m, 0.3, 0.3, 1.1, Vector3(-0.95, 1.0, -1.0), Vector3(PI / 2, 0, 0), "paint" if detailed else "steel", paint.darkened(0.2), 14)
 	k._box(m, Vector3(0.5, 0.5, 0.7), Vector3(0.95, 1.0, -1.1), cab)
 	for s in [-1.0, 1.0]:
 		k._cyl(m, 0.12, 0.12, 0.8, Vector3(s * 0.75, 0.72, 0.4), Vector3(PI / 2, 0, 0), "gunmetal_w", null, 10)
@@ -1448,20 +1468,114 @@ static func _hemtt_cargo_detail(k: VehicleModels, paint: Color) -> void:
 			for dz in [-0.5, 0.5]:
 				k._box(m, Vector3(0.085, 0.10, 0.14), Vector3(s * 1.25, 1.44, z + dz), "gunmetal_w")
 				k._box(m, Vector3(0.015, 0.018, 0.08), Vector3(s * 1.30, 1.49, z + dz), "steel", Color(0.32, 0.30, 0.25), Vector3.ZERO, false)
-	# Keep the tread and hub fittings on the wheel pivots so they steer and
-	# rotate with the existing wheels, including their distance meshes.
-	for wheel: Node3D in k.wheels:
-		var side := signf(wheel.position.x)
-		for i in 24:
-			var a := TAU * float(i) / 24.0
-			k._box(wheel, Vector3(0.44, 0.055, 0.12), Vector3(0, cos(a) * 0.625, sin(a) * 0.625), "rubber", Color(0.10, 0.105, 0.095), Vector3(a, 0, side * 0.12))
-		for i in 8:
-			var a := TAU * float(i) / 8.0
-			k._cyl(wheel, 0.025, 0.025, 0.025, Vector3(side * 0.245, cos(a) * 0.20, sin(a) * 0.20), Vector3(0, 0, PI / 2), "steel", Color(0.25, 0.26, 0.23), 6, false)
 
+
+
+static var _cab_glass: StandardMaterial3D
+static var _cab_glass_far: StandardMaterial3D
+
+## Separate transparent panes are intentionally outside the opaque material bake.
+## A cheap opaque pane takes over at the same distance as the chassis LOD.
+static func _hemtt_glass(k: VehicleModels, size: Vector2, pos: Vector3, rot: Vector3) -> void:
+	if k.burnt:
+		return
+	if _cab_glass == null:
+		_cab_glass = StandardMaterial3D.new()
+		_cab_glass.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		_cab_glass.albedo_color = Color(0.18, 0.24, 0.23, 0.36)
+		_cab_glass.roughness = 0.08
+		_cab_glass.metallic_specular = 0.5
+		_cab_glass.cull_mode = BaseMaterial3D.CULL_DISABLED
+		_cab_glass_far = StandardMaterial3D.new()
+		_cab_glass_far.albedo_color = Color(0.09, 0.14, 0.15)
+		_cab_glass_far.roughness = 0.14
+		_cab_glass_far.cull_mode = BaseMaterial3D.CULL_DISABLED
+	var mesh := QuadMesh.new()
+	mesh.size = size
+	var pane := Res.mi(k.root, mesh, _cab_glass, pos, rot, false)
+	pane.name = "CabGlass"
+	pane.visibility_range_end = 100.0
+	var distant := Res.mi(k.root, mesh, _cab_glass_far, pos, rot, false)
+	distant.name = "CabGlassDistant"
+	distant.visibility_range_begin = 100.0
+
+static func _hemtt_interior(k: VehicleModels) -> void:
+	var m := k.root
+	k._box(m, Vector3(2.10, 0.17, 0.34), Vector3(0, 2.03, -4.17), "plain_dark", Color(0.10, 0.12, 0.10))
+	for side in [-1.0, 1.0]:
+		k._box(m, Vector3(0.57, 0.13, 0.54), Vector3(side * 0.60, 1.99, -3.49), "canvas", Color(0.18, 0.20, 0.13))
+		k._box(m, Vector3(0.55, 0.58, 0.12), Vector3(side * 0.60, 2.24, -3.19), "canvas", Color(0.16, 0.18, 0.12), Vector3(-0.10, 0, 0))
+		k._box(m, Vector3(0.32, 0.20, 0.13), Vector3(side * 0.60, 2.61, -3.19), "canvas", Color(0.16, 0.18, 0.12))
+	# Steering wheel, spokes, column and an instrument binnacle.
+	var rim := TorusMesh.new()
+	rim.inner_radius = 0.16
+	rim.outer_radius = 0.18
+	rim.rings = 32
+	rim.ring_segments = 8
+	k._add(m, rim, "rubber", null, Vector3(-0.60, 2.26, -3.97), Vector3(0.65, 0, 0))
+	_tube(k, m, Vector3(-0.60, 1.97, -4.14), Vector3(-0.60, 2.26, -3.97), 0.035, "gunmetal_w")
+	k._box(m, Vector3(0.45, 0.13, 0.10), Vector3(-0.60, 2.17, -4.15), "rubber")
+	for x in [-0.73, -0.59, -0.47]:
+		k._cyl(m, 0.04, 0.04, 0.012, Vector3(x, 2.18, -4.09), Vector3(PI / 2, 0, 0), "glass", Color(0.30, 0.32, 0.24), 12, false)
+
+static func _hemtt_wheel(k: VehicleModels, pos: Vector3) -> void:
+	var wheel := k._pivot(k.root, pos)
+	k.wheels.append(wheel)
+	var side := signf(pos.x)
+	var tyre := TorusMesh.new()
+	tyre.inner_radius = 0.31
+	tyre.outer_radius = 0.625
+	tyre.rings = 48
+	tyre.ring_segments = 16
+	k._add(wheel, tyre, "rubber", Color(0.17, 0.18, 0.17), Vector3.ZERO, Vector3(0, 0, PI / 2), Vector3(1, 1.4, 1))
+	# Recessed pressed rim with a rolled lip, distinct from the rounded sidewall.
+	k._cyl(wheel, 0.33, 0.33, 0.30, Vector3.ZERO, Vector3(0, 0, PI / 2), "paint", Color(0.18, 0.20, 0.16), 40)
+	var lip := TorusMesh.new()
+	lip.inner_radius = 0.30
+	lip.outer_radius = 0.34
+	lip.rings = 40
+	lip.ring_segments = 8
+	k._add(wheel, lip, "steel", Color(0.28, 0.29, 0.26), Vector3(side * 0.18, 0, 0), Vector3(0, 0, PI / 2))
+	k._cyl(wheel, 0.14, 0.16, 0.39, Vector3.ZERO, Vector3(0, 0, PI / 2), "gunmetal_w", Color(0.21, 0.23, 0.20), 24)
+	for i in 10:
+		var a := TAU * float(i) / 10.0
+		k._cyl(wheel, 0.019, 0.019, 0.035, Vector3(side * 0.205, cos(a) * 0.18, sin(a) * 0.18), Vector3(0, 0, PI / 2), "steel", Color(0.40, 0.39, 0.34), 6, false)
+	# Small staggered blocks wrap across the shoulders, with open grooves.
+	for i in 36:
+		for row in [-1.0, 1.0]:
+			var a := TAU * (float(i) + (0.45 if row > 0 else 0.0)) / 36.0
+			k._box(wheel, Vector3(0.20, 0.045, 0.085), Vector3(row * 0.115, cos(a) * 0.613, sin(a) * 0.613), "rubber", Color(0.22, 0.23, 0.21), Vector3(a, row * 0.25, row * 0.12))
+
+## A cloth shell with a sloping crown and gathered side folds. The displacement
+## is deterministic and stays in model space; straps remain separate geometry.
+static func _hemtt_tarp(k: VehicleModels, base: Vector3, size: Vector3) -> void:
+	k._box(k.root, Vector3(size.x - 0.06, 0.12, size.z - 0.06), base + Vector3(0, 0.06, 0), "wood")
+	var rings: Array[PackedVector3Array] = []
+	for i in 25:
+		var z := (float(i) / 24.0 - 0.5) * (size.z - 0.08)
+		var ripple := sin(float(i) * 0.45) * 0.014 + sin(float(i) * 0.9) * 0.004
+		var w := size.x * 0.5 - 0.05
+		var h := size.y
+		rings.append(PackedVector3Array([Vector3(-w, 0.14, z), Vector3(-w + ripple, h * 0.72, z), Vector3(-w * 0.75, h - 0.035 + ripple, z), Vector3(0, h + ripple * 0.35, z), Vector3(w * 0.75, h - 0.035 - ripple, z), Vector3(w - ripple, h * 0.72, z), Vector3(w, 0.14, z)]))
+	var shell := VehicleModels.solid(rings, "hemtt_tarp_%s" % str(size))
+	var arrays := shell.surface_get_arrays(0)
+	var smooth := SurfaceTool.new()
+	smooth.begin(Mesh.PRIMITIVE_TRIANGLES)
+	smooth.set_smooth_group(0)
+	for vertex: Vector3 in arrays[Mesh.ARRAY_VERTEX]:
+		smooth.add_vertex(vertex)
+	smooth.index()
+	smooth.generate_normals()
+	k._add(k.root, smooth.commit(), "canvas", Color(0.30, 0.32, 0.23), base)
+	for index in [6, 18]:
+		var cross_section: PackedVector3Array = rings[index]
+		for j in 6:
+			_tube(k, k.root, base + cross_section[j] + Vector3(0, 0.012, 0), base + cross_section[j + 1] + Vector3(0, 0.012, 0), 0.012, "webbing", Color(0.18, 0.19, 0.13), 6, false)
 
 
 static func _hemtt_load_detail(k: VehicleModels, base: Vector3, size: Vector3, kind: int) -> void:
+	if kind == 2:
+		return  # The folded shell owns its conforming restraints.
 	var m := k.root
 	if kind == 3:
 		# Rolled rims, reinforcing hoops and filler bungs identify oil drums.
@@ -1537,7 +1651,10 @@ static func _hemtt(k: VehicleModels, team: int, body: String) -> void:
 						[-0.55, 0.65, 1.0, 0.75, 1.1, 1], [0.55, 0.65, 1.0, 1.05, 1.1, 3], [-0.55, 1.95, 1.0, 0.9, 1.2, 0], [0.55, 1.95, 1.0, 0.6, 1.2, 2],
 						[-0.55, 3.3, 1.0, 1.0, 1.2, 3], [0.55, 3.3, 1.0, 0.8, 1.2, 1], [0.0, 4.45, 2.0, 0.55, 0.8, 2]]
 				for l in loads:
-					_cargo(k, m, Vector3(l[0], 1.38, l[1]), Vector3(l[2], l[3], l[4]), int(l[5]))
+					if int(l[5]) == 2:
+						_hemtt_tarp(k, Vector3(l[0], 1.38, l[1]), Vector3(l[2], l[3], l[4]))
+					else:
+						_cargo(k, m, Vector3(l[0], 1.38, l[1]), Vector3(l[2], l[3], l[4]), int(l[5]))
 					_hemtt_load_detail(k, Vector3(l[0], 1.38, l[1]), Vector3(l[2], l[3], l[4]), int(l[5]))
 			else:
 				# ammunition: pallets of boxes, then the knuckle-boom crane at the

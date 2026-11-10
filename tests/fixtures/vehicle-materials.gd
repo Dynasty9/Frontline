@@ -36,6 +36,28 @@ func _ready() -> void:
 	assert(glass.get_shader_parameter("metal") == 0.0)
 	assert(glass.get_shader_parameter("bump") == 0.0)
 	assert(maps.size() == 8, "All eight shared maps should be used by the roster")
+	# Transparent cab glazing must not enter the opaque chassis bake. Each
+	# window has a matching distant fallback, and wrecks have no intact panes.
+	var cargo := VehicleModels.build("hemtt_cargo", 0, 3)
+	var near_panes := 0
+	var far_panes := 0
+	for child in cargo.root.get_children():
+		if child is MeshInstance3D and child.material_override in [VmNato._cab_glass, VmNato._cab_glass_far]:
+			var mat := child.material_override as StandardMaterial3D
+			if mat.transparency == BaseMaterial3D.TRANSPARENCY_ALPHA:
+				assert(child.visibility_range_end == 100.0)
+				near_panes += 1
+			else:
+				assert(child.visibility_range_begin == 100.0)
+				far_panes += 1
+	assert(near_panes == 4 and far_panes == 4)
+	assert(cargo.wheels.size() == 8)
+	cargo.root.free()
+	var burnt_cargo := VehicleModels.build("hemtt_cargo", 0, 3, true)
+	for child in burnt_cargo.root.get_children():
+		if child is MeshInstance3D:
+			assert(child.material_override not in [VmNato._cab_glass, VmNato._cab_glass_far])
+	burnt_cargo.root.free()
 	print("VEHICLE_MATERIALS passed models=%d surfaces=%d maps=%d" % [keys.size() * 2 + 8, surfaces, maps.size()])
 	TestRun.quit(get_tree())
 

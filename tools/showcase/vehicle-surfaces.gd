@@ -10,6 +10,7 @@ var team := 0
 var offset := Vector3.ZERO
 var swatches := false
 var camera_size := 0.0
+var grounded := false
 
 func _ready() -> void:
 	TestRun.watch()
@@ -24,6 +25,8 @@ func _ready() -> void:
 			team = int(arg.trim_prefix("--surface-team="))
 		elif arg == "--surface-offset":
 			offset = Vector3(117, 35, -81)
+		elif arg == "--surface-ground":
+			grounded = true
 		elif arg.begins_with("--surface-size="):
 			camera_size = float(arg.trim_prefix("--surface-size="))
 		elif arg == "--surface-swatches":
@@ -40,7 +43,7 @@ func _ready() -> void:
 		kinds.append_array(["wreck_tank", "wreck_heli", "wreck_patrol_ship"])
 		kinds.sort()
 	DirAccess.make_dir_recursive_absolute(output)
-	var manifest := {"team": team, "seed": 3, "renderer": RenderingServer.get_current_rendering_method(), "models": kinds, "camera_size": camera_size}
+	var manifest := {"team": team, "seed": 3, "renderer": RenderingServer.get_current_rendering_method(), "models": kinds, "camera_size": camera_size, "grounded": grounded}
 	FileAccess.open(output.path_join("capture.json"), FileAccess.WRITE).store_string(JSON.stringify(manifest, "\t"))
 	var per_page := 1 if single else (16 if swatches else 12)
 	for start in range(0, kinds.size(), per_page):
@@ -100,6 +103,18 @@ func _cell(grid: GridContainer, kind: String, size: Vector2i) -> void:
 	sun.rotation_degrees = Vector3(-48, -35, 0)
 	sun.light_energy = 1.2
 	stage.add_child(sun)
+	if grounded:
+		sun.shadow_enabled = true
+		sun.directional_shadow_max_distance = 80.0
+		env.ssao_enabled = true
+		env.ssao_radius = 0.7
+		env.ssao_intensity = 1.4
+		var floor_mat := StandardMaterial3D.new()
+		floor_mat.albedo_color = Color(0.32, 0.30, 0.27)
+		floor_mat.roughness = 0.95
+		var floor_mesh := PlaneMesh.new()
+		floor_mesh.size = Vector2(200, 200)
+		Res.mi(stage, floor_mesh, floor_mat, Vector3(0, -0.015, 0))
 	var k: VehicleModels
 	if swatches:
 		k = VehicleModels.new()

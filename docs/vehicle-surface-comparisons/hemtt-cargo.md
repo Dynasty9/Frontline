@@ -1,5 +1,7 @@
 # HEMTT cargo: focused art pass
 
+This records the earlier pass at `e7fee16`. See the [subsequent cab, tyre and cloth rebuild](hemtt-rebuild.md) for the current result.
+
 This comparison starts **after** the CC0 material integration (`f0b8191`). Only the HEMTT cargo variant receives the new modeled details. Both sides use the same seed, studio lighting, view direction, renderer and camera size. Images are full-frame captures, not retouched renders.
 
 ## Close view
