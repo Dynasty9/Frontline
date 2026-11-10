@@ -1,0 +1,718 @@
+[
+  {
+    "run": "shadow-alternating",
+    "fitted_distance_m": 352.0,
+    "summary": {
+      "control": {
+        "frame": 28.61467423853967,
+        "cpu": 7.292886752466256,
+        "gpu": 6.634948501039364,
+        "primitives": 6534825.55679793,
+        "calls": 3599.623241913609
+      },
+      "fitted": {
+        "frame": 25.59378628075088,
+        "cpu": 6.158478086600603,
+        "gpu": 6.393875344939122,
+        "primitives": 5396162.753307985,
+        "calls": 2896.117994810399
+      }
+    },
+    "blocks": [
+      {
+        "block": 0,
+        "fitted": false,
+        "valid_quartet": true,
+        "frames": 177,
+        "means": {
+          "frame": 16.011197740112994,
+          "cpu": 4.120192083735924,
+          "gpu": 6.629225997601525,
+          "primitives": 6002279.723163842,
+          "calls": 2848.2033898305085
+        },
+        "p99_frame_ms": 27.645
+      },
+      {
+        "block": 1,
+        "fitted": true,
+        "valid_quartet": true,
+        "frames": 143,
+        "means": {
+          "frame": 19.56339160839161,
+          "cpu": 4.382867137081973,
+          "gpu": 5.908874138251885,
+          "primitives": 5070991.524475524,
+          "calls": 2453.993006993007
+        },
+        "p99_frame_ms": 36.776
+      },
+      {
+        "block": 2,
+        "fitted": true,
+        "valid_quartet": true,
+        "frames": 123,
+        "means": {
+          "frame": 22.368634146341464,
+          "cpu": 5.1015365792716425,
+          "gpu": 5.825780492487962,
+          "primitives": 5176818.1626016265,
+          "calls": 2620.959349593496
+        },
+        "p99_frame_ms": 35.328
+      },
+      {
+        "block": 3,
+        "fitted": false,
+        "valid_quartet": true,
+        "frames": 112,
+        "means": {
+          "frame": 24.32486607142857,
+          "cpu": 5.9035089140789845,
+          "gpu": 6.3336160736424585,
+          "primitives": 6342178.285714285,
+          "calls": 3426.348214285714
+        },
+        "p99_frame_ms": 40.988
+      },
+      {
+        "block": 4,
+        "fitted": false,
+        "valid_quartet": true,
+        "frames": 101,
+        "means": {
+          "frame": 27.096861386138613,
+          "cpu": 6.436544554342138,
+          "gpu": 6.363980213014206,
+          "primitives": 6449190.811881188,
+          "calls": 3610.138613861386
+        },
+        "p99_frame_ms": 44.948
+      },
+      {
+        "block": 5,
+        "fitted": true,
+        "valid_quartet": true,
+        "frames": 106,
+        "means": {
+          "frame": 25.702207547169813,
+          "cpu": 6.080311307151363,
+          "gpu": 6.0173584605163,
+          "primitives": 5386088.028301887,
+          "calls": 2924.943396226415
+        },
+        "p99_frame_ms": 42.918
+      },
+      {
+        "block": 6,
+        "fitted": true,
+        "valid_quartet": true,
+        "frames": 107,
+        "means": {
+          "frame": 25.26300934579439,
+          "cpu": 6.188345801380192,
+          "gpu": 5.573467285833627,
+          "primitives": 5444081.523364486,
+          "calls": 2987.2897196261683
+        },
+        "p99_frame_ms": 42.914
+      },
+      {
+        "block": 7,
+        "fitted": false,
+        "valid_quartet": true,
+        "frames": 92,
+        "means": {
+          "frame": 28.70338043478261,
+          "cpu": 6.884413056518721,
+          "gpu": 6.377804372621619,
+          "primitives": 6665436.076086956,
+          "calls": 3722.6847826086955
+        },
+        "p99_frame_ms": 64.506
+      },
+      {
+        "block": 8,
+        "fitted": false,
+        "valid_quartet": true,
+        "frames": 65,
+        "means": {
+          "frame": 39.64618461538461,
+          "cpu": 10.71921536207933,
+          "gpu": 6.177692303290734,
+          "primitives": 6654118.353846154,
+          "calls": 3731.230769230769
+        },
+        "p99_frame_ms": 62.656
+      },
+      {
+        "block": 9,
+        "fitted": true,
+        "valid_quartet": true,
+        "frames": 73,
+        "means": {
+          "frame": 33.440164383561644,
+          "cpu": 7.920410940091904,
+          "gpu": 6.255315042521856,
+          "primitives": 5469653.150684931,
+          "calls": 2960.068493150685
+        },
+        "p99_frame_ms": 54.897
+      },
+      {
+        "block": 10,
+        "fitted": true,
+        "valid_quartet": true,
+        "frames": 77,
+        "means": {
+          "frame": 31.763428571428573,
+          "cpu": 7.624883135585041,
+          "gpu": 7.054792218394094,
+          "primitives": 5476220.025974026,
+          "calls": 2949.116883116883
+        },
+        "p99_frame_ms": 48.638
+      },
+      {
+        "block": 11,
+        "fitted": false,
+        "valid_quartet": true,
+        "frames": 49,
+        "means": {
+          "frame": 45.43932653061224,
+          "cpu": 10.89353063100698,
+          "gpu": 7.259836741856162,
+          "primitives": 6648843.693877551,
+          "calls": 3656.183673469388
+        },
+        "p99_frame_ms": 74.982
+      },
+      {
+        "block": 12,
+        "fitted": false,
+        "valid_quartet": false,
+        "frames": 32,
+        "means": {
+          "frame": 70.14540625,
+          "cpu": 18.158000013351437,
+          "gpu": 8.382218748331068,
+          "primitives": 6652641.75,
+          "calls": 3740.53125
+        },
+        "p99_frame_ms": 101.155
+      },
+      {
+        "block": 13,
+        "fitted": true,
+        "valid_quartet": false,
+        "frames": 51,
+        "means": {
+          "frame": 46.187745098039215,
+          "cpu": 11.517490242004397,
+          "gpu": 6.776921562120025,
+          "primitives": 5459750.980392157,
+          "calls": 2918.9803921568628
+        },
+        "p99_frame_ms": 90.9
+      },
+      {
+        "block": 14,
+        "fitted": true,
+        "valid_quartet": false,
+        "frames": 68,
+        "means": {
+          "frame": 37.34591176470588,
+          "cpu": 9.381426479844487,
+          "gpu": 8.385808818480546,
+          "primitives": 5447101.279411765,
+          "calls": 2887.6029411764707
+        },
+        "p99_frame_ms": 57.499
+      },
+      {
+        "block": 15,
+        "fitted": false,
+        "valid_quartet": false,
+        "frames": 56,
+        "means": {
+          "frame": 44.60653571428571,
+          "cpu": 10.636178627763474,
+          "gpu": 6.630821440901076,
+          "primitives": 5540029.196428572,
+          "calls": 3005.4821428571427
+        },
+        "p99_frame_ms": 85.151
+      },
+      {
+        "block": 16,
+        "fitted": false,
+        "valid_quartet": true,
+        "frames": 84,
+        "means": {
+          "frame": 31.55295238095238,
+          "cpu": 7.8539047689892,
+          "gpu": 8.034154750051952,
+          "primitives": 6654835.166666667,
+          "calls": 3672.3571428571427
+        },
+        "p99_frame_ms": 54.096
+      },
+      {
+        "block": 17,
+        "fitted": true,
+        "valid_quartet": true,
+        "frames": 99,
+        "means": {
+          "frame": 26.5130202020202,
+          "cpu": 6.377525274719855,
+          "gpu": 7.550959591913705,
+          "primitives": 5491028.454545454,
+          "calls": 2983.747474747475
+        },
+        "p99_frame_ms": 48.406
+      },
+      {
+        "block": 18,
+        "fitted": true,
+        "valid_quartet": true,
+        "frames": 98,
+        "means": {
+          "frame": 26.570357142857144,
+          "cpu": 6.635622449913803,
+          "gpu": 7.338520405243855,
+          "primitives": 5501149.326530612,
+          "calls": 3091.6428571428573
+        },
+        "p99_frame_ms": 47.185
+      },
+      {
+        "block": 19,
+        "fitted": false,
+        "valid_quartet": true,
+        "frames": 103,
+        "means": {
+          "frame": 26.182155339805824,
+          "cpu": 6.922592213899188,
+          "gpu": 6.230757287405069,
+          "primitives": 6655590.398058252,
+          "calls": 3809.4951456310678
+        },
+        "p99_frame_ms": 48.983
+      },
+      {
+        "block": 20,
+        "fitted": false,
+        "valid_quartet": true,
+        "frames": 110,
+        "means": {
+          "frame": 24.8552,
+          "cpu": 7.036754554765875,
+          "gpu": 6.389563616839322,
+          "primitives": 6640045.709090909,
+          "calls": 3790.1272727272726
+        },
+        "p99_frame_ms": 40.69
+      },
+      {
+        "block": 21,
+        "fitted": true,
+        "valid_quartet": true,
+        "frames": 119,
+        "means": {
+          "frame": 23.028411764705883,
+          "cpu": 5.796436952334492,
+          "gpu": 6.176344538937096,
+          "primitives": 5470411.05882353,
+          "calls": 2997.823529411765
+        },
+        "p99_frame_ms": 42.611
+      },
+      {
+        "block": 22,
+        "fitted": true,
+        "valid_quartet": true,
+        "frames": 126,
+        "means": {
+          "frame": 21.725238095238094,
+          "cpu": 5.476841288475764,
+          "gpu": 6.237341275290838,
+          "primitives": 5475186.277777778,
+          "calls": 2991.595238095238
+        },
+        "p99_frame_ms": 30.37
+      },
+      {
+        "block": 23,
+        "fitted": false,
+        "valid_quartet": true,
+        "frames": 123,
+        "means": {
+          "frame": 22.33461788617886,
+          "cpu": 6.158211385246214,
+          "gpu": 6.552853654070598,
+          "primitives": 6635737.349593496,
+          "calls": 3729.4634146341464
+        },
+        "p99_frame_ms": 33.832
+      }
+    ]
+  },
+  {
+    "run": "shadow-alternating-2",
+    "fitted_distance_m": 352.0,
+    "summary": {
+      "control": {
+        "frame": 23.218055269483813,
+        "cpu": 6.032929935835316,
+        "gpu": 6.389543525599591,
+        "primitives": 6392925.994074231,
+        "calls": 3842.4412446151155
+      },
+      "fitted": {
+        "frame": 22.315041816568666,
+        "cpu": 5.502271358296653,
+        "gpu": 6.098959918549191,
+        "primitives": 5284349.1848552255,
+        "calls": 3122.03992567466
+      }
+    },
+    "blocks": [
+      {
+        "block": 0,
+        "fitted": true,
+        "valid_quartet": true,
+        "frames": 256,
+        "means": {
+          "frame": 11.20187890625,
+          "cpu": 3.082429697297514,
+          "gpu": 5.675207033753395,
+          "primitives": 4845437.11328125,
+          "calls": 2393.9375
+        },
+        "p99_frame_ms": 17.899
+      },
+      {
+        "block": 1,
+        "fitted": false,
+        "valid_quartet": true,
+        "frames": 211,
+        "means": {
+          "frame": 13.439663507109005,
+          "cpu": 3.5908151759739737,
+          "gpu": 6.0900805753554215,
+          "primitives": 5846294.450236967,
+          "calls": 3025.8104265402844
+        },
+        "p99_frame_ms": 24.723
+      },
+      {
+        "block": 2,
+        "fitted": false,
+        "valid_quartet": true,
+        "frames": 160,
+        "means": {
+          "frame": 17.539225,
+          "cpu": 4.341487508702278,
+          "gpu": 6.0908562541008,
+          "primitives": 5957100.05,
+          "calls": 3219.875
+        },
+        "p99_frame_ms": 26.92
+      },
+      {
+        "block": 3,
+        "fitted": true,
+        "valid_quartet": true,
+        "frames": 150,
+        "means": {
+          "frame": 18.789486666666665,
+          "cpu": 4.360426663424175,
+          "gpu": 5.978480005264282,
+          "primitives": 5042941.553333334,
+          "calls": 2770.54
+        },
+        "p99_frame_ms": 28.558
+      },
+      {
+        "block": 4,
+        "fitted": true,
+        "valid_quartet": true,
+        "frames": 133,
+        "means": {
+          "frame": 20.857007518796994,
+          "cpu": 4.78886467107615,
+          "gpu": 6.02717295625156,
+          "primitives": 5132409.07518797,
+          "calls": 2930.842105263158
+        },
+        "p99_frame_ms": 33.775
+      },
+      {
+        "block": 5,
+        "fitted": false,
+        "valid_quartet": true,
+        "frames": 116,
+        "means": {
+          "frame": 23.73366379310345,
+          "cpu": 5.791594823228902,
+          "gpu": 6.439172411787099,
+          "primitives": 6290161.836206896,
+          "calls": 3813.353448275862
+        },
+        "p99_frame_ms": 37.288
+      },
+      {
+        "block": 6,
+        "fitted": false,
+        "valid_quartet": true,
+        "frames": 99,
+        "means": {
+          "frame": 27.51248484848485,
+          "cpu": 6.847121217689129,
+          "gpu": 6.324777771728208,
+          "primitives": 6415563.393939394,
+          "calls": 3912.0
+        },
+        "p99_frame_ms": 49.972
+      },
+      {
+        "block": 7,
+        "fitted": true,
+        "valid_quartet": true,
+        "frames": 118,
+        "means": {
+          "frame": 23.43571186440678,
+          "cpu": 5.546745758767855,
+          "gpu": 6.215050850884389,
+          "primitives": 5365587.161016949,
+          "calls": 3235.3898305084745
+        },
+        "p99_frame_ms": 44.795
+      },
+      {
+        "block": 8,
+        "fitted": true,
+        "valid_quartet": true,
+        "frames": 107,
+        "means": {
+          "frame": 25.2073738317757,
+          "cpu": 5.903925220774712,
+          "gpu": 6.106542074791739,
+          "primitives": 5370067.214953271,
+          "calls": 3222.429906542056
+        },
+        "p99_frame_ms": 38.689
+      },
+      {
+        "block": 9,
+        "fitted": false,
+        "valid_quartet": true,
+        "frames": 107,
+        "means": {
+          "frame": 24.80103738317757,
+          "cpu": 6.177448603193337,
+          "gpu": 6.268999964277321,
+          "primitives": 6511626.280373832,
+          "calls": 3947.7757009345796
+        },
+        "p99_frame_ms": 36.408
+      },
+      {
+        "block": 10,
+        "fitted": false,
+        "valid_quartet": true,
+        "frames": 101,
+        "means": {
+          "frame": 26.395069306930694,
+          "cpu": 6.268405931907126,
+          "gpu": 6.277821795775158,
+          "primitives": 6515201.623762377,
+          "calls": 3921.8217821782177
+        },
+        "p99_frame_ms": 37.105
+      },
+      {
+        "block": 11,
+        "fitted": true,
+        "valid_quartet": true,
+        "frames": 102,
+        "means": {
+          "frame": 26.141235294117646,
+          "cpu": 6.281490180352154,
+          "gpu": 6.05555882173426,
+          "primitives": 5371983.656862745,
+          "calls": 3199.4607843137255
+        },
+        "p99_frame_ms": 43.963
+      },
+      {
+        "block": 12,
+        "fitted": true,
+        "valid_quartet": true,
+        "frames": 103,
+        "means": {
+          "frame": 26.63547572815534,
+          "cpu": 6.473873793537177,
+          "gpu": 6.046349497674738,
+          "primitives": 5381520.009708738,
+          "calls": 3212.097087378641
+        },
+        "p99_frame_ms": 42.783
+      },
+      {
+        "block": 13,
+        "fitted": false,
+        "valid_quartet": true,
+        "frames": 106,
+        "means": {
+          "frame": 25.80898113207547,
+          "cpu": 6.601150954156552,
+          "gpu": 6.4493679235566335,
+          "primitives": 6528716.679245283,
+          "calls": 3946.0471698113206
+        },
+        "p99_frame_ms": 43.721
+      },
+      {
+        "block": 14,
+        "fitted": false,
+        "valid_quartet": true,
+        "frames": 105,
+        "means": {
+          "frame": 25.33352380952381,
+          "cpu": 6.647628571610224,
+          "gpu": 6.573428558167957,
+          "primitives": 6531732.2,
+          "calls": 3967.695238095238
+        },
+        "p99_frame_ms": 38.79
+      },
+      {
+        "block": 15,
+        "fitted": true,
+        "valid_quartet": true,
+        "frames": 111,
+        "means": {
+          "frame": 24.380018018018017,
+          "cpu": 5.842099112158423,
+          "gpu": 6.352864862562299,
+          "primitives": 5386064.738738739,
+          "calls": 3287.4954954954956
+        },
+        "p99_frame_ms": 33.815
+      },
+      {
+        "block": 16,
+        "fitted": true,
+        "valid_quartet": true,
+        "frames": 101,
+        "means": {
+          "frame": 26.485712871287127,
+          "cpu": 6.545702942838763,
+          "gpu": 6.233891095265303,
+          "primitives": 5393552.732673267,
+          "calls": 3334.7524752475247
+        },
+        "p99_frame_ms": 43.572
+      },
+      {
+        "block": 17,
+        "fitted": false,
+        "valid_quartet": true,
+        "frames": 109,
+        "means": {
+          "frame": 24.864660550458716,
+          "cpu": 6.700577984871121,
+          "gpu": 6.621532103337279,
+          "primitives": 6545206.1009174315,
+          "calls": 4142.339449541284
+        },
+        "p99_frame_ms": 34.446
+      },
+      {
+        "block": 18,
+        "fitted": false,
+        "valid_quartet": true,
+        "frames": 116,
+        "means": {
+          "frame": 23.496431034482757,
+          "cpu": 6.550310364887633,
+          "gpu": 6.613543103481161,
+          "primitives": 6522139.3965517245,
+          "calls": 4105.939655172414
+        },
+        "p99_frame_ms": 32.821
+      },
+      {
+        "block": 19,
+        "fitted": true,
+        "valid_quartet": true,
+        "frames": 126,
+        "means": {
+          "frame": 21.641380952380953,
+          "cpu": 5.698087314393786,
+          "gpu": 6.261706363587152,
+          "primitives": 5371431.825396826,
+          "calls": 3306.4206349206347
+        },
+        "p99_frame_ms": 32.161
+      },
+      {
+        "block": 20,
+        "fitted": true,
+        "valid_quartet": true,
+        "frames": 115,
+        "means": {
+          "frame": 23.524565217391306,
+          "cpu": 6.035139118211165,
+          "gpu": 6.134139110731042,
+          "primitives": 5382000.0173913045,
+          "calls": 3295.521739130435
+        },
+        "p99_frame_ms": 37.104
+      },
+      {
+        "block": 21,
+        "fitted": false,
+        "valid_quartet": true,
+        "frames": 117,
+        "means": {
+          "frame": 23.4234188034188,
+          "cpu": 6.618170931237376,
+          "gpu": 6.5793077069470005,
+          "primitives": 6531938.811965812,
+          "calls": 4052.7264957264956
+        },
+        "p99_frame_ms": 33.783
+      },
+      {
+        "block": 22,
+        "fitted": false,
+        "valid_quartet": true,
+        "frames": 123,
+        "means": {
+          "frame": 22.268504065040652,
+          "cpu": 6.260447162566146,
+          "gpu": 6.345634138681055,
+          "primitives": 6519431.105691057,
+          "calls": 4053.910569105691
+        },
+        "p99_frame_ms": 33.427
+      },
+      {
+        "block": 23,
+        "fitted": true,
+        "valid_quartet": true,
+        "frames": 142,
+        "means": {
+          "frame": 19.480654929577465,
+          "cpu": 5.468471826727962,
+          "gpu": 6.100556350090135,
+          "primitives": 5369195.1197183095,
+          "calls": 3275.5915492957747
+        },
+        "p99_frame_ms": 28.697
+      }
+    ]
+  }
+]

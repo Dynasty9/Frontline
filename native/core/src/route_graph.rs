@@ -14,6 +14,27 @@ struct Point {
 mod tests {
     use super::*;
 
+    #[test]
+    fn component_labels_match_depth_first_search_after_slot_reuse_and_restore() {
+        for variant in 0..12 {
+            let mut graph = road_grid(12, variant);
+            for id in (0..144).step_by(7) {
+                graph.remove_point(id);
+            }
+            for id in 20_000..20_020 {
+                graph.add_point(id, Vector3::ZERO, 1.0);
+                if id % 4 != 0 {
+                    graph.connect_points(id - 1, id);
+                }
+            }
+            for graph in [&graph, &RouteGraph::restore(&graph.checkpoint()).unwrap()] {
+                let checkpoint = graph.checkpoint();
+                assert_eq!(graph.components(), graph.depth_first_components());
+                assert_eq!(graph.checkpoint(), checkpoint);
+            }
+        }
+    }
+
     fn road_grid(side: i64, variant: i64) -> RouteGraph {
         let mut graph = RouteGraph::new();
         for id in 0..side * side {
@@ -151,6 +172,28 @@ pub struct RouteGraph {
 }
 
 impl RouteGraph {
+    #[cfg(test)]
+    pub(crate) fn depth_first_components(&self) -> Vec<usize> {
+        let mut groups = vec![usize::MAX; self.points.len()];
+        let mut pending = Vec::new();
+        for root in 0..self.points.len() {
+            if self.points[root].is_none() || groups[root] != usize::MAX {
+                continue;
+            }
+            groups[root] = root;
+            pending.push(root);
+            while let Some(index) = pending.pop() {
+                for &(next, _) in &self.points[index].as_ref().unwrap().edges {
+                    if groups[next] == usize::MAX {
+                        groups[next] = root;
+                        pending.push(next);
+                    }
+                }
+            }
+        }
+        groups
+    }
+
     /// Slot reuse and neighbor order break equal-cost ties, so both are authoritative.
     pub fn checkpoint(&self) -> Vec<u8> {
         let mut out = Writer::new(b"FLRG\x01\0\0\0");
@@ -391,22 +434,32 @@ impl RouteGraph {
     }
 
     pub(crate) fn components(&self) -> Vec<usize> {
-        let mut groups = vec![usize::MAX; self.points.len()];
-        let mut pending = Vec::new();
-        for root in 0..self.points.len() {
-            if self.points[root].is_none() || groups[root] != usize::MAX {
-                continue;
+        fn root(groups: &mut [usize], mut index: usize) -> usize {
+            while groups[index] != index {
+                groups[index] = groups[groups[index]];
+                index = groups[index];
             }
-            groups[root] = root;
-            pending.push(root);
-            while let Some(index) = pending.pop() {
-                for &(next, _) in &self.points[index].as_ref().unwrap().edges {
-                    if groups[next] == usize::MAX {
-                        groups[next] = root;
-                        pending.push(next);
-                    }
+            index
+        }
+
+        // Walk graph storage in order instead of chasing every weighted midpoint.
+        let mut groups: Vec<usize> = (0..self.points.len()).collect();
+        for (index, point) in self.points.iter().enumerate() {
+            let Some(point) = point else { continue };
+            for &(next, _) in &point.edges {
+                if next > index {
+                    let a = root(&mut groups, index);
+                    let b = root(&mut groups, next);
+                    groups[a.max(b)] = a.min(b);
                 }
             }
+        }
+        for (index, point) in self.points.iter().enumerate() {
+            groups[index] = if point.is_some() {
+                root(&mut groups, index)
+            } else {
+                usize::MAX
+            };
         }
         groups
     }

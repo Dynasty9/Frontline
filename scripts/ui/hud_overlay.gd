@@ -51,7 +51,7 @@ func _input(event: InputEvent) -> void:
 		_refresh_all = true
 
 
-func refresh_for_view(dt: float, camera: Camera3D) -> bool:
+func refresh_for_view(dt: float, camera: Camera3D, defer_start := false) -> bool:
 	# Prepare drawing commands over three frames, then rasterize once at 15 Hz.
 	var view := camera.global_transform
 	var projection := camera.get_camera_projection()
@@ -75,6 +75,9 @@ func refresh_for_view(dt: float, camera: Camera3D) -> bool:
 			raster.render_target_update_mode = SubViewport.UPDATE_ONCE
 		hud.overview_frame = Engine.get_process_frames()
 		return true
+	# Finish staged work first; routine summaries can reserve the next free frame.
+	if not full and defer_start and _refresh_left > -0.2:
+		return false
 	if not full and _refresh_left > 0.0:
 		return false
 	_refresh_left = maxf(0.0, _refresh_left + 1.0 / 15.0) if _refresh_left <= 0.0 else 1.0 / 15.0
@@ -802,25 +805,66 @@ func _speech(cam: Camera3D, vs: Vector2, a_close: float, a_mid: float) -> void:
 			continue
 		var hq := "Six" if int(o[4]) == 0 else "Command"
 		items.append([g["lead"], "%s: %s" % [hq, _order_words(o)], clampf((3.5 - age2) * 3.0, 0.0, 1.0) * clampf(age2 * 10.0, 0.0, 1.0), "radio", 9.0])
+	var visible_items := []
 	for it in items:
 		var e: Entity = it[0]
 		var kind: String = it[3]
-		# a squad leader shouting orders: you see the word go out to his men
-		if a_close > 0.0 and e is Soldier and ((e as Soldier).flags & Soldier.F_LEADER) != 0 and kind == "shout" and float(it[4]) < 1.5:
-			_command_fan(cam, e, (1.5 - float(it[4])) / 1.5 * a_close)
+		if float(it[2]) <= 0.01 or (a_close <= 0.0 and kind == "chat"):
+			continue
 		var p: Vector3 = e.position + Vector3(0, _head_h(e), 0)
 		if cam.is_position_behind(p):
 			continue
 		var sp := cam.unproject_position(p) + Vector2(0, -16)
 		if sp.x < -150 or sp.x > vs.x + 150 or sp.y < -60 or sp.y > vs.y + 40:
 			continue
+		it.append(sp)
+		visible_items.append(it)
+	if a_close <= 0.0:
+		visible_items = command_speech(visible_items)
+	for it in visible_items:
+		var e: Entity = it[0]
+		var kind: String = it[3]
+		if a_close > 0.0 and e is Soldier and ((e as Soldier).flags & Soldier.F_LEADER) != 0 and kind == "shout" and float(it[4]) < 1.5:
+			_command_fan(cam, e, (1.5 - float(it[4])) / 1.5 * a_close)
+		var sp: Vector2 = it[5]
 		if a_close > 0.0:
 			_bubble(sp, it[1], kind, float(it[2]) * a_close, 12, 220.0)
-		elif kind != "chat":
+		else:
 			var t: String = it[1]
 			if t.length() > 24:
 				t = t.substr(0, 22).strip_edges() + "..."
 			_bubble(sp, t, kind, float(it[2]) * a_mid, 11, 170.0)
+
+
+const COMMAND_SPEECH_LIMIT := 32
+
+## Commanders need readable warnings rather than a bubble over every shouting rifleman.
+static func command_speech(items: Array) -> Array:
+	items.sort_custom(func(a: Array, b: Array) -> bool:
+		var pa := _speech_priority(a)
+		var pb := _speech_priority(b)
+		if pa != pb:
+			return pa > pb
+		return float(a[4]) < float(b[4]) if a[4] != b[4] else (a[0] as Entity).eid < (b[0] as Entity).eid)
+	var seen := {}
+	var out := []
+	for item: Array in items:
+		var e: Entity = item[0]
+		var squad := (e as Soldier).sid if e is Soldier else 0
+		var key := [squad if squad != 0 else -e.eid, String(item[1])]
+		if item[3] == "shout":
+			if seen.has(key):
+				continue
+			seen[key] = true
+		out.append(item)
+		if out.size() == COMMAND_SPEECH_LIMIT:
+			break
+	return out
+
+
+static func _speech_priority(item: Array) -> int:
+	var e: Entity = item[0]
+	return (4 if e.selected else 0) + (3 if item[3] == "radio" else 2 if item[3] == "medic" else 1)
 
 func _command_fan(cam: Camera3D, lead: Soldier, a: float) -> void:
 	var g: Dictionary = _groups.get(lead.sid, {})

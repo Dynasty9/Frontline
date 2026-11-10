@@ -1,0 +1,42 @@
+[
+  {
+    "run": "native-control-1",
+    "fps": 45.0957535387177,
+    "p99_ms": 38.952,
+    "batch_mean_ms": 0.7362636632200872,
+    "batch_p99_ms": 4.354,
+    "main_cpu_mean_ms": 21.752677252584935,
+    "server_captured_ticks": 1800,
+    "server_final_tick": 3463
+  },
+  {
+    "run": "native-batch-1",
+    "fps": 47.3619304736193,
+    "p99_ms": 34.911,
+    "batch_mean_ms": 0.31512033779028853,
+    "batch_p99_ms": 0.899,
+    "main_cpu_mean_ms": 20.617083040112597,
+    "server_captured_ticks": 1800,
+    "server_final_tick": 3602
+  },
+  {
+    "run": "native-batch-2",
+    "fps": 42.2272545624084,
+    "p99_ms": 39.836,
+    "batch_mean_ms": 0.39235173501577286,
+    "batch_p99_ms": 1.101,
+    "main_cpu_mean_ms": 23.043178233438486,
+    "server_captured_ticks": 1800,
+    "server_final_tick": 3523
+  },
+  {
+    "run": "native-control-2",
+    "fps": 46.4674727690617,
+    "p99_ms": 34.722,
+    "batch_mean_ms": 0.6657333333333341,
+    "batch_p99_ms": 4.133,
+    "main_cpu_mean_ms": 21.068548387096776,
+    "server_captured_ticks": 1800,
+    "server_final_tick": 3580
+  }
+]

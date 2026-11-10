@@ -1,10 +1,22 @@
 extends Node
 
+class PoseBounds extends SoldierViewBatch:
+	func _make_atlas(base: int) -> void:
+		var bounds := []
+		for frame in 15:
+			bounds.append((poses[base + frame] as ArrayMesh).get_aabb())
+		super._make_atlas(base)
+		var actual: AABB = (poses[base] as ArrayMesh).custom_aabb.grow(0.001)
+		for pose: AABB in bounds:
+			assert(actual.encloses(pose), "Atlas bounds must include every posture and walking frame")
+		var early: DrawGroup = groups[Vector3i.ZERO]
+		assert(is_equal_approx(early.model_radius, _mesh_radius(poses[base])), "An existing group must receive the full animation envelope")
+
 func _ready() -> void:
 	DisplayServer.window_set_flag(DisplayServer.WINDOW_FLAG_NO_FOCUS, true)
 	for unit: String in Defs.UNITS:
 		var world := World.new()
-		var view := SoldierViewBatch.new()
+		var view := PoseBounds.new()
 		view.world = world
 		add_child(view)
 		view.set_process(false)
@@ -29,13 +41,18 @@ func _ready() -> void:
 			soldier.life = Soldier.Life.DEAD if i == 2 else Soldier.Life.ALIVE
 			soldier.view_lod = true
 			world.soldiers.append(soldier)
+			soldier._native_view_motion = true
+			view.motion.target(soldier, soldier.position, 0.0, true)
 		view._process(0.0)
 		assert(view._active.size() == 1 and view._active[0].count == 3)
 		var mm: MultiMesh = view._active[0].mm
 		# The headless dummy renderer does not retain instance colors.
 		if DisplayServer.get_name() != "headless":
+			var codes := []
 			for i in 3:
-				assert(roundi(mm.get_instance_color(i).a * 255.0) == i * 8 + i + 2)
+				codes.append(roundi(mm.get_instance_color(i).a * 255.0))
+			codes.sort()
+			assert(codes == [2, 11, 20])
 		var buffer := mm.buffer
 		for time in [0.125, 0.125, 2147483648.375]:
 			world.time = time

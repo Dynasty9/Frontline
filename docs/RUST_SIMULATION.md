@@ -276,3 +276,9 @@ Remaining release gates:
 - Complete current-head exports, installer checks, cross-platform CI and visible
   gameplay checks. Previous results remain in the measurement log with their
   tested build and workload.
+
+
+Desktop map generation supports [versioned precomputed starting battlefields](PRECOMPUTED_MAPS.md).
+The cached bytes are the original initial-state transfer, not a resumed match or
+a second simulation implementation. Exact input/build identity and payload
+integrity are checked before the existing Rust importer consumes them.

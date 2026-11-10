@@ -3465,6 +3465,220 @@
       "title": "Steadier route planning and reliable battle endings",
       "version": "unreleased",
       "kind": "improved"
+    },
+    {
+      "entry": "changelog/unreleased/command-speech.md",
+      "summary": "At command zoom, repeated squad shouts share one bubble and urgent calls take priority over overlapping chatter.",
+      "medium": "still",
+      "stage": "native-media",
+      "rationale": "Matched rendered command views demonstrate reduced warning clutter. FPS numbers in the screenshots are instantaneous and are not performance evidence; controlled timing is documented separately.",
+      "source_ref": "codex/render-overlay-budget",
+      "sources": [
+        {
+          "file": "changelog/unreleased/command-speech/before.png",
+          "sha256": "a38c6231ea6459f7dccf6d47fb9531f597686d8dd20ad75b8b6d774a3cf2eae7",
+          "caption": "PR #112 command view before speech coalescing."
+        },
+        {
+          "file": "changelog/unreleased/command-speech/after.png",
+          "sha256": "2252994dfa168cab6a5be468079c44df97ee7b7df8c619069fcbc3f64529b293",
+          "caption": "Bounded speech command view."
+        }
+      ],
+      "output": "changelog/unreleased/command-speech/after.png",
+      "title": "Readable warnings in crowded battles",
+      "version": "unreleased",
+      "kind": "improved",
+      "capture": {
+        "scenario": "stress, combat, 500 initial soldiers, seed 3, 1024 m",
+        "camera": "observer, focus 0,0, zoom 35, 1280x720 High",
+        "timing": "62 seconds after loading",
+        "before_ref": "ecd6a29e377c4c8840cd7e73f9017d6e7c17d415",
+        "after_ref": "3776532",
+        "command": "python tools/benchmark_scaling.py --godot <export>/Frontline.exe --exported --rendered --local-server --units 500 --map-size 1024 --mode combat --seed 3 --team -1 --warmup 30 --duration 30 --zoom 35 --preset high --width 1280 --height 720 --output <fresh directory>"
+      }
+    },
+    {
+      "entry": "changelog/unreleased/snapshot-presentation.md",
+      "title": "Less repeated work when units move",
+      "summary": "Movement updates reuse shared soldier presentation while selection, visibility and casualties still update immediately.",
+      "version": "unreleased",
+      "kind": "improved",
+      "medium": "text",
+      "stage": "text",
+      "rationale": "Packet-driven presentation regression tests verify unchanged visibility, selection, motion and detail promotion. Timing evidence is documented separately; no visual redesign.",
+      "source_ref": "codex/soldier-presentation-work",
+      "sources": [],
+      "output": null
+    },
+    {
+      "entry": "changelog/unreleased/soldier-bounds.md",
+      "title": "More accurate detail for distant soldiers",
+      "summary": "Distant soldier detail now follows the occupied part of each group, including movement and animation.",
+      "version": "unreleased",
+      "kind": "improved",
+      "medium": "still",
+      "stage": "native-media",
+      "rationale": "Matched rendered battlefield views check appearance. The measured frame results and their limitations are recorded in docs/performance/soldier-bounds.md; instantaneous screenshot FPS is not performance evidence.",
+      "source_ref": "codex/soldier-batch-bounds",
+      "sources": [
+        {
+          "file": "changelog/unreleased/soldier-bounds/before.png",
+          "sha256": "414de8de37ca59c571811694a2fd0c657f8cba1d727d2f9cb516b3063958d558",
+          "caption": "Before: parent PR #135 at e15a71f."
+        },
+        {
+          "file": "changelog/unreleased/soldier-bounds/after.png",
+          "sha256": "357b1b961e78bf397af26bfe90d7972fe407913a79c479a604dccca6c3ff2340",
+          "caption": "After: tighter swept bounds, same camera and scenario."
+        }
+      ],
+      "output": "changelog/unreleased/soldier-bounds/after.png",
+      "capture": {
+        "scenario": "stress combat, seed 3, 500 initial soldiers, 1024 m",
+        "camera": "observer, focus 0,0, 35 m zoom, 1280x720 High",
+        "time_s": 62,
+        "command": "python tools/benchmark_scaling.py --godot <export>/Frontline.exe --exported --rendered --local-server --units 500 --map-size 1024 --mode combat --seed 3 --team -1 --warmup 30 --duration 30 --zoom 35 --preset high --width 1280 --height 720 --output <fresh-directory>"
+      }
+    },
+    {
+      "entry": "changelog/unreleased/soldier-frame-work.md",
+      "title": "Less repeated work for large armies",
+      "summary": "Shared soldier models now update their presentation when something changes, while movement stays smooth.",
+      "version": "unreleased",
+      "kind": "improved",
+      "medium": "text",
+      "stage": "text",
+      "rationale": "Lifecycle regressions verify smooth motion, immediate selection and fog, observer switching, detail promotion and safe despawn. This changes scheduling, not appearance; benchmark results are recorded separately.",
+      "source_ref": "codex/soldier-presentation-queue",
+      "sources": [],
+      "output": null
+    },
+    {
+      "entry": "changelog/unreleased/ground-cover-geometry.md",
+      "title": "Less geometry for distant ground cover",
+      "summary": "Distant bushes and stones use simpler meshes, while nearby ground cover retains its original shapes.",
+      "version": "unreleased",
+      "kind": "improved",
+      "medium": "text",
+      "stage": "text",
+      "rationale": "Measured triangle counts and matching rendered fixtures demonstrate the change. Timing conditions, excluded runs and before/after images are in docs/performance/ground-cover.md; no sustained FPS claim.",
+      "source_ref": "codex/ground-cover-lod",
+      "sources": [],
+      "output": null
+    },
+    {
+      "entry": "changelog/unreleased/native-soldier-batches.md",
+      "version": "unreleased",
+      "kind": "improved",
+      "medium": "text",
+      "stage": "text",
+      "rationale": "Measured batch CPU cost and rendered pose comparisons; see docs/performance/native-soldier-batches.md. No sustained FPS claim.",
+      "source_ref": "codex/soldier-buffer-upload",
+      "sources": [],
+      "output": null,
+      "title": "Faster shared soldier rendering",
+      "summary": "Large armies spend less CPU time preparing their distant models."
+    },
+    {
+      "entry": "changelog/unreleased/camera-shadow-range.md",
+      "title": "Less shadow work beyond the command view",
+      "summary": "Downward camera views keep their shadows while drawing less distant shadow geometry.",
+      "version": "unreleased",
+      "kind": "improved",
+      "medium": "measurement",
+      "stage": "text",
+      "rationale": "Measured in-battle range alternation with original/fitted rendered shadow fixtures on Forward+ and Compatibility. See docs/performance/shadow-range.md for exclusions and limits; no sustained FPS claim.",
+      "source_ref": "codex/camera-shadow-range",
+      "sources": [
+        {
+          "file": "changelog/unreleased/camera-shadow-range/forward-plus.png",
+          "sha256": "a93eb0054714da40a7776bb6d9fc91ef14283b046536208a7c6fd64018ec9082",
+          "caption": "Controlled fixture: original left, fitted right."
+        },
+        {
+          "file": "changelog/unreleased/camera-shadow-range/compatibility.png",
+          "sha256": "ba2853549e164d1a6eeb7a24a2f736fccf25621a108c162058cf942f101c875a",
+          "caption": "Controlled fixture: original left, fitted right."
+        }
+      ],
+      "output": null
+    },
+    {
+      "entry": "changelog/unreleased/render-timing-boundary.md",
+      "title": "Performance measurements interrupt rendering less",
+      "summary": "The performance overlay and benchmark reuse renderer timings collected at the draw boundary.",
+      "version": "unreleased",
+      "kind": "fixed",
+      "medium": "text",
+      "stage": "text",
+      "rationale": "Invisible profiling correction. Methodology and limits are in docs/performance/render-timing.md; avoid presenting a profiler effect as an ordinary gameplay speedup.",
+      "source_ref": "codex/render-timing-boundary",
+      "sources": [],
+      "output": null
+    },
+    {
+      "entry": "changelog/unreleased/route-connectivity.md",
+      "title": "Faster route checks on large battlefields",
+      "summary": "The server spends less time checking whether a destination is reachable, while retaining the same routes and battle results.",
+      "version": "unreleased",
+      "kind": "improved",
+      "medium": "text",
+      "stage": "text",
+      "rationale": "Alternating release microbenchmarks, exact connectivity labels and a 3600-tick state/event comparison are documented in docs/performance/route-connectivity.md. No whole-game FPS claim.",
+      "source_ref": "codex/route-connectivity",
+      "sources": [],
+      "output": null
+    },
+    {
+      "entry": "changelog/unreleased/minimap-change-events.md",
+      "title": "A minimap that responds to building changes",
+      "summary": "Large maps no longer scan every structure just to discover that a building changed.",
+      "version": "unreleased",
+      "kind": "improved",
+      "medium": "text",
+      "stage": "text",
+      "rationale": "Lifecycle and pixel assertions cover births, equal-count replacement, destruction, ownership, roads and coalescing. Existing incremental-bake and progressive-layer tests retain their coverage. No overall FPS claim.",
+      "source_ref": "codex/minimap-change-events",
+      "sources": [],
+      "output": null
+    },
+    {
+      "entry": "changelog/unreleased/camera-streaming.md",
+      "title": "Smoother camera movement through scenery",
+      "summary": "Prepare scenery before it enters view, reuse nearby vegetation, and keep camera panning at a manageable speed.",
+      "version": "unreleased",
+      "kind": "improved",
+      "medium": "text",
+      "stage": "text",
+      "rationale": "Scheduling and instance upload diagnostics are documented with limits. The minimap route has zero missing object samples versus 193 unready objects after an instant click; 24 rendered camera checks pass. This is queue evidence, not a live frame-time benchmark. Matched rendered bush arrays validate unchanged geometry and placement; they do not depict live camera motion.",
+      "source_ref": "codex/combined-performance",
+      "sources": [
+        {
+          "file": "changelog/unreleased/camera-streaming/vegetation-before.png",
+          "sha256": "e81a2e41983f7dfe8a331217952761213f0918c71a40e56e9760db2a6c59db9b",
+          "caption": "before: same 1024-instance bush array, 2560x1440, Forward+, tests/fixtures/vegetation-buffer.tscn, FL_BUFFER_CAPTURE=1; pixel-identical uploads."
+        },
+        {
+          "file": "changelog/unreleased/camera-streaming/vegetation-after.png",
+          "sha256": "e81a2e41983f7dfe8a331217952761213f0918c71a40e56e9760db2a6c59db9b",
+          "caption": "after: same 1024-instance bush array, 2560x1440, Forward+, tests/fixtures/vegetation-buffer.tscn, FL_BUFFER_CAPTURE=1; pixel-identical uploads."
+        }
+      ],
+      "output": null
+    },
+    {
+      "entry": "changelog/unreleased/precomputed-battlefields.md",
+      "title": "Reuse prepared battlefields",
+      "summary": "Repeated desktop battles can load a validated starting battlefield instead of generating it again.",
+      "version": "unreleased",
+      "kind": "improved",
+      "medium": "text",
+      "stage": "text",
+      "rationale": "Loading measurements and exact initial-state/replay verification document the outcome; a still image cannot demonstrate generation savings. New random seeds and client graphics preparation remain uncached.",
+      "source_ref": "codex/combined-performance",
+      "sources": [],
+      "output": null
     }
   ],
   "layout_capture": {

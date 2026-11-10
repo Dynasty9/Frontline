@@ -163,6 +163,7 @@ func ragdoll(s: Soldier, impulse: Vector3, kind: int) -> void:
 	add_child(r)
 	s.model.set_dormant(false)
 	r.setup(s.model, impulse, kind, _mat, L_RAGDOLL, _mask_all())
+	s._view_dirty = true
 	ragdolls.append(r)
 
 

@@ -830,6 +830,8 @@ Sky Hook prepares reachable vehicle approaches for its convoy before the battle 
   ring pulsing wherever men are firing. The camera's view is a lit wedge with a line back to where the camera stands, and a compass needle
   shows where north lies in the view (click it to square up). Hovering gives the grid square under the cursor.
   Three sizes, and it can turn with the camera so the way you face is always up (Settings > Interface).
+  Building births, removals and ownership changes invalidate the baked layer through world events,
+  without periodically scanning every structure. Changes are coalesced at the existing two-second interval.
   Building destruction is painted across several frames, keeping the previous map visible while it updates;
   moving units, selection and minimap controls continue to update normally. Its map, fighting,
   unit and co-op layers take turns refreshing across four frames, while the camera wedge and pointer
@@ -1082,10 +1084,13 @@ Sky Hook prepares reachable vehicle approaches for its convoy before the battle 
 - Fog of war, drawn on the ground and the minimap, with intel pings and last-known enemy positions.
 
 **Look and feel** (`atmosphere.gd`, `mats.gd`, `vehicle_models.gd`, `vfx.gd`, `gunfx.gd`, `grass.gd`, `wildlife.gd`, `ui/`)
+- Ground cover shares indexed meshes. Distant bushes and stones use automatic mesh levels of detail; nearby shapes, grass blades, wind and placement stay unchanged.
 - Eight lighting moods (midday, golden hour, dawn, dusk, overcast, hazy, **night**, **rain & thunder**) with a
   procedural sky, AgX tonemapping, cloud shadows drifting over the ground, volumetric haze and a subtle film look.
   At night the sky fills with stars and illumination flares drift down on parachutes over the fighting, throwing
-  moving shadows. In the rain, streaks fall around the camera, splashes hit the ground, puddles reflect the sky and
+  moving shadows. Downward command views fit the directional shadow range to visible ground,
+  retaining the configured quality and restoring the full range for horizon views or reflection captures.
+  In the rain, streaks fall around the camera, splashes hit the ground, puddles reflect the sky and
   lightning flashes are followed by thunder.
 - **Wildlife** (`wildlife.gd`), drawn only on each player's own screen and never simulated or sent by the server,
   so it can't change a battle or its seed. Flocks of sparrows and starlings (pigeons about the town) feed on bare
@@ -1269,8 +1274,10 @@ still include everyone. Distant batches outside the camera frustum and its shado
 not upload transforms; panning restores them immediately. Socket clients interpolate distant
 transforms on the GPU between updates, keeping the same exponential smoothing used
 for CPU selection and nearby models. A native client batch advances those CPU positions
-once per frame, retaining motion state between snapshots. Shared-model presentation checks
-wake for new snapshots, selection, viewing-team changes and promotion to a detailed model.
+once per frame, retaining motion state between snapshots. Once pose atlases are ready,
+the native view also culls and groups distant soldiers and assembles their complete
+instance buffers; Godot retains pose and visibility policy. Shared-model presentation checks
+wake for changed presentation, selection, viewing-team changes and promotion to a detailed model.
 Property corrections reset the retained transform, and despawns remove it. Routine motion uploads wait one frame after
 packet processing and may yield two further frames to HUD drawing or preparation; visibility
 changes, teleports, camera movement and despawns remain immediate. New articulated
@@ -1294,8 +1301,10 @@ then displays the complete image at 15 Hz when the camera is still. Panning, zoo
 command input cancel partial preparation and refresh it immediately; blast shake does not
 invalidate this cache. Cursor hints, selection boxes and placement previews draw in a separate
 layer each frame, so moving the pointer does not rebuild all squad counters. Leader chevrons reuse
-the symbol atlas; speech bubbles retain bounded wrapped layouts and draw their flat backgrounds
-directly. Hiding the HUD also stops its raster updates. Smoke sight checks visit smoke grenades directly rather than every
+the symbol atlas. At command zoom, speech coalesces identical shouts from a squad and shows at most
+32 on-screen phrases, prioritizing selected units, radio orders and casualty calls, then newer messages.
+Close inspection keeps individual speech. Audio and authoritative gameplay events are unchanged.
+Hiding the HUD also stops its raster updates. Smoke sight checks visit smoke grenades directly rather than every
 projectile; cloud growth, movement and dissipation still take effect immediately.
 
 The player HUD retains squad-order labels between incoming team summaries and
@@ -1307,13 +1316,13 @@ question marks and ages. The minimap camera layer retains its drawing until the
 camera, focus, projection, ground or pointer changes; resize and rotation redraw
 all layers together.
 
-Clients build scenery in and around the camera's view first and cache visited models; distant models and
+Continuous camera movement (keys, edge pan, drag, follow and glides) is capped at 120 m/s; minimap clicks and drags use the same capped glide. Clients prepare scenery beyond the camera edges and retain already-built objects through a wider band when panning back. They cache visited models; distant models and
 cosmetic collision bodies remain inactive. The server still simulates the complete
 map. Nearby movement orders can reuse a checked route corridor, with separate
 destinations and invalidation when terrain or danger changes.
 
 Grass, bushes and stones are generated around the camera, beyond their visible
-fade distance. Panning reuses nearby chunks and evicts distant ones; returning
+fade distance. Chunks share meshes through MultiMesh instancing and upload their transforms and colors in one buffer. A preload area reaching 288 m in each direction and wider retention band give panning time to prepare vegetation before its 170 m fade range. Panning reuses nearby chunks and evicts distant ones; returning
 to an area recreates the same vegetation from its seed.
 
 The authoritative Rust runtime owns the complete battlefield: infantry, vehicles,
@@ -1359,3 +1368,28 @@ boundary, replay contract, validation and remaining release gates.
 
 See [SIMULATION_SCALING.md](SIMULATION_SCALING.md) for the earlier profiling
 experiments and the process boundary before the full Rust migration.
+
+Routine client overview work reserves separate frames for squad summaries, the
+roster and the three overlay drawing layers. Camera, projection and input changes
+bypass this scheduling; on a stationary view the next overlay starts after pending
+summaries, with a 200 ms starvation guard at very low frame rates. Queued roster
+work takes the next available slot so slower machines do not starve it.
+
+Movement-only snapshots retain shared soldier presentation. Life, visibility-mask
+and side changes invalidate it; property changes, selection and observer-side
+changes still refresh immediately. The native motion batch alone detects its
+teleports, avoiding a second distance test per soldier. Dormant shared models no longer
+receive a GDScript frame callback: a presentation queue wakes them for these changes,
+camera-driven detail promotion and ragdolls. Detailed animation continues each frame;
+unchanged selection membership does not wake the queue.
+
+Soldier batches bound their current and target positions with the complete animated
+model envelope. Bounds shrink after movement and blasts settle, so empty cell
+space does not keep distant models detailed. Close articulated models are unchanged.
+
+
+Desktop starting battlefields can be prebaked or reused from a bounded on-disk
+cache. The cache requires the exact seed, deployment, player setup, generator
+code and native/content versions; it retains initial RNG state and passes the
+unchanged Rust importer and replay checks. New random seeds still generate fresh
+maps. See [Precomputed maps](PRECOMPUTED_MAPS.md) for baking and validation.

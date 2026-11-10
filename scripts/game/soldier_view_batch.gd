@@ -5,12 +5,13 @@ extends Node3D
 
 class DrawGroup:
 	var mm: MultiMesh
+	var buffer := SoldierBatchBuffer.new()
 	var node: MultiMeshInstance3D
 	var origin: Vector3
 	var count := 0
 	var last_used := 0.0
-	var min_y := -4.0
-	var max_y := 12.0
+	var bounds := AABB()
+	var model_radius := 0.0
 
 var motion := SoldierViewMotion.new()
 var world: World
@@ -39,6 +40,26 @@ var _batch_deferred := 0
 var _age := 0.0
 var _material: ShaderMaterial
 var _atlases := {}
+var _presentations := {}
+var _presentation_team := -2
+var _presentation_camera := false
+var _batch_radii := PackedFloat32Array()
+var _native_batches := false
+
+
+func request_view(soldier: Soldier) -> void:
+	if soldier.gone:
+		return
+	if not _presentations.has(soldier.eid):
+		# Resume detail from this frame's movement, not all motion since it went dormant.
+		soldier._last_view_pos = soldier.position
+	_presentations[soldier.eid] = soldier
+
+
+func remove(soldier: Soldier) -> void:
+	_presentations.erase(soldier.eid)
+	motion.remove(soldier)
+	invalidate()
 
 
 func invalidate() -> void:
@@ -108,11 +129,17 @@ func _choose_detail(dt: float) -> void:
 			priority += 10000.0
 		candidates.append([priority, soldier.eid])
 	candidates.sort_custom(func(a: Array, b: Array) -> bool: return a[0] < b[0] if a[0] != b[0] else a[1] < b[1])
-	detail_ids.clear()
+	var previous := detail_ids
+	detail_ids = {}
 	# At command zoom shared poses retain the army; close inspection keeps more articulated men.
 	var budget := MAX_DETAILED if world.cam.dist < 22.0 else COMMAND_DETAILED
 	for i in mini(budget, candidates.size()):
 		detail_ids[candidates[i][1]] = true
+	for ids in [previous, detail_ids]:
+		for id in ids:
+			var soldier: Soldier = world.entity(id) as Soldier
+			if soldier:
+				request_view(soldier)
 
 
 func _ready() -> void:
@@ -125,19 +152,30 @@ func _process(dt: float) -> void:
 	var started := Time.get_ticks_usec()
 	# Keep individual smoothing and poses, but pay frame bookkeeping once per army.
 	if world.has_view and world.soldier_view == self:
+		if _presentation_team != world.view_team or _presentation_camera != (world.cam != null):
+			_presentation_team = world.view_team
+			_presentation_camera = world.cam != null
+			for soldier: Soldier in world.soldiers:
+				request_view(soldier)
 		_choose_detail(dt)
 		var blend := 1.0 - exp(-dt * 14.0)
 		if motion.advance(blend):
 			_dirty = true
-		for soldier: Soldier in world.soldiers:
+		var presentations: Array = _presentations.values() if world.simulation_client else world.soldiers
+		for soldier: Soldier in presentations:
+			if not is_instance_valid(soldier):
+				continue
 			if not soldier.gone:
-				if _motion_frame >= 0 and soldier.position.distance_squared_to(soldier.net_pos) > 64.0:
+				if not soldier._native_view_motion and _motion_frame >= 0 and soldier.position.distance_squared_to(soldier.net_pos) > 64.0:
 					_dirty = true
 				var was_lod := soldier.view_lod
 				var was_visible := soldier.visible
 				soldier._view_process(dt, blend, soldier._native_view_motion)
 				if soldier.view_lod != was_lod or soldier.visible != was_visible:
 					_dirty = true
+				_update_batch(soldier)
+				if soldier.retains_view():
+					_presentations.erase(soldier.eid)
 		world.vp("soldiers", started)
 		started = Time.get_ticks_usec()
 	# Bake one pose per frame while loading, rather than baking a whole new
@@ -172,9 +210,74 @@ func _process(dt: float) -> void:
 	_active = []
 	for group: DrawGroup in previous_groups:
 		group.count = 0
+		group.buffer.clear()
 	var planes: Array[Plane] = []
 	if world.cam:
 		planes = world.cam.cam.get_frustum()
+	var native_ready := interpolate and _warmup.is_empty() and _atlases.size() * 15 == _next_pose
+	if native_ready and not _native_batches:
+		for soldier: Soldier in world.soldiers:
+			_update_batch(soldier)
+	_native_batches = native_ready
+	if _native_batches:
+		for batch: Dictionary in motion.batches(planes, _batch_radii):
+			var key: Vector3i = batch.key
+			var group := _group_for(key.z, Vector2i(key.x, key.y))
+			group.count = batch.count
+			group.last_used = world.time
+			if group.count > group.mm.instance_count:
+				group.mm.instance_count = maxi(group.count, group.mm.instance_count * 2)
+			var data: PackedFloat32Array = batch.data
+			data.resize(group.mm.instance_count * 20)
+			group.mm.buffer = data
+			group.bounds = batch.bounds
+			_active.append(group)
+	else:
+		_fill_batches(planes, interpolate)
+	_dirty = false
+	for group: DrawGroup in previous_groups:
+		if group.count == 0:
+			group.mm.visible_instance_count = 0
+	for group: DrawGroup in _active:
+		if not _native_batches:
+			if group.count > group.mm.instance_count:
+				group.mm.instance_count = maxi(group.count, group.mm.instance_count * 2)
+			group.mm.buffer = group.buffer.encode(group.mm.instance_count)
+			group.bounds = group.buffer.bounds()
+		if group.mm.custom_aabb != group.bounds:
+			group.mm.custom_aabb = group.bounds
+		group.mm.visible_instance_count = group.count
+	# Old walking poses stay cached briefly, but need no per-frame visits.
+	if world.time >= _expires_at:
+		_expires_at = world.time + 1.0
+		for key in groups.keys():
+			var group: DrawGroup = groups[key]
+			if group.count == 0 and world.time - group.last_used > 5.0:
+				group.node.queue_free()
+				groups.erase(key)
+	world.vp("distant soldiers", started)
+
+
+func _update_batch(s: Soldier) -> void:
+	if not s._native_view_motion:
+		return
+	if not s.view_lod or not s.visible or s.gone:
+		if motion.set_batch(s, -1, 0):
+			_dirty = true
+		return
+	prepare(s.utype, s.team)
+	var base: int = _types[s.utype][s.team]
+	var posture := s.posture
+	if s.life in [Soldier.Life.DEAD, Soldier.Life.DOWNED]:
+		posture = Soldier.Post.PRONE
+	if posture > Soldier.Post.PRONE:
+		posture = Soldier.Post.STAND
+	var walking := s.act in [Soldier.Act.WALK, Soldier.Act.RUN, Soldier.Act.LIMP, Soldier.Act.CRAWL]
+	if motion.set_batch(s, base, posture * 8 + (posmod(s.eid, 4) + 1 if walking else 0)):
+		_dirty = true
+
+
+func _fill_batches(planes: Array[Plane], interpolate: bool) -> void:
 	var visible_cells := {}
 	for s: Soldier in world.soldiers:
 		if not s.view_lod or not s.visible or s.gone:
@@ -201,56 +304,21 @@ func _process(dt: float) -> void:
 			if not poses.has(key):
 				continue
 		var group := _group_for(key, cell)
-		var mm: MultiMesh = group.mm
 		var slot: int = group.count
-		if slot == 0:
-			_active.append(group)
-		if slot >= mm.instance_count:
-			# Resizing clears transforms; copy only when this cell first grows.
-			var previous := mm.buffer
-			var old_count := mm.instance_count
-			mm.instance_count = maxi(16, mm.instance_count * 2)
-			var expanded := mm.buffer
-			for i in previous.size():
-				expanded[i] = previous[i]
-			if not previous.is_empty():
-				mm.buffer = expanded
-			for i in range(old_count, mm.instance_count):
-				mm.set_instance_color(i, Color.WHITE)
 		var transform := s.transform
 		if s.srv:
 			transform *= s.ip_offset()
 		transform.origin -= group.origin
 		var offset := s.net_pos - s.position if interpolate else Vector3.ZERO
 		var turn := angle_difference(s.rotation.y, s.net_yaw) if interpolate else 0.0
-		# A flat-map bound would cull soldiers on hills or lifted by a blast.
-		var low := minf(transform.origin.y, transform.origin.y + offset.y)
-		var high := maxf(transform.origin.y, transform.origin.y + offset.y)
-		if low < group.min_y + 3.0 or high > group.max_y - 3.0:
-			group.min_y = minf(group.min_y, low - 4.0)
-			group.max_y = maxf(group.max_y, high + 4.0)
-			mm.custom_aabb = AABB(Vector3(-11, group.min_y, -11), Vector3(CELL + 22, group.max_y - group.min_y, CELL + 22))
 		# Pose selection rides in the unused tint alpha; motion retains all four custom values.
 		var pose_code := posture * 8 + (posmod(s.eid, 4) + 1 if walking else 0)
-		mm.set_instance_color(slot, Color(1, 1, 1, float(pose_code) / 255.0) if _atlases.has(base) else Color.WHITE)
-		mm.set_instance_transform(slot, transform)
-		mm.set_instance_custom_data(slot, Color(offset.x, offset.y, offset.z, turn))
+		if not group.buffer.append(transform, offset, turn, pose_code if _atlases.has(base) else 255, group.model_radius):
+			continue
+		if slot == 0:
+			_active.append(group)
 		group.count = slot + 1
 		group.last_used = world.time
-	for group: DrawGroup in previous_groups:
-		if group.count == 0:
-			group.mm.visible_instance_count = 0
-	for group: DrawGroup in _active:
-		group.mm.visible_instance_count = group.count
-	# Old walking poses stay cached briefly, but need no per-frame visits.
-	if world.time >= _expires_at:
-		_expires_at = world.time + 1.0
-		for key in groups.keys():
-			var group: DrawGroup = groups[key]
-			if group.count == 0 and world.time - group.last_used > 5.0:
-				group.node.queue_free()
-				groups.erase(key)
-	world.vp("distant soldiers", started)
 
 
 static func _cell_visible(cell: Vector2i, planes: Array[Plane]) -> bool:
@@ -300,13 +368,7 @@ func _group_for(pose: int, cell: Vector2i) -> DrawGroup:
 	mm.use_custom_data = true
 	mm.mesh = poses[pose]
 	mm.instance_count = 16
-	# Keep the instance tint neutral when custom-data buffers are allocated.
-	for i in mm.instance_count:
-		mm.set_instance_color(i, Color.WHITE)
 	mm.visible_instance_count = 0
-	# Separate spatial batches let culling and mesh LOD consider nearby men,
-	# rather than the bounding box of every soldier of this type on the map.
-	mm.custom_aabb = AABB(Vector3(-11, -4, -11), Vector3(CELL + 22, 16, CELL + 22))
 	var node := MultiMeshInstance3D.new()
 	node.multimesh = mm
 	# Shared models are small on screen; keep fine geometry for the articulated rigs.
@@ -316,11 +378,17 @@ func _group_for(pose: int, cell: Vector2i) -> DrawGroup:
 	add_child(node)
 	var group := DrawGroup.new()
 	group.mm = mm
+	group.model_radius = _mesh_radius(mm.mesh)
 	group.node = node
 	group.origin = node.position
 	group.last_used = world.time
 	groups[key] = group
 	return group
+
+
+static func _mesh_radius(mesh: Mesh) -> float:
+	var bounds := mesh.get_aabb()
+	return bounds.position.abs().max(bounds.end.abs()).length()
 
 
 func _set_animation(age: float) -> void:
@@ -333,8 +401,11 @@ func _set_animation(age: float) -> void:
 func _make_atlas(base: int) -> void:
 	# Keep the same sampled poses while letting every stance share one spatial batch.
 	var samples := []
+	var bounds := AABB()
 	for frame in 15:
-		samples.append((poses[base + frame] as ArrayMesh).surface_get_arrays(0))
+		var mesh: ArrayMesh = poses[base + frame]
+		bounds = bounds.merge(mesh.get_aabb())
+		samples.append(mesh.surface_get_arrays(0))
 	var arrays: Array = samples[0].duplicate()
 	var count: int = (arrays[Mesh.ARRAY_VERTEX] as PackedVector3Array).size()
 	for sample: Array in samples:
@@ -360,6 +431,7 @@ func _make_atlas(base: int) -> void:
 	importer.add_surface(Mesh.PRIMITIVE_TRIANGLES, arrays)
 	importer.generate_lods(25.0, 60.0, [])
 	poses[base] = importer.get_mesh()
+	(poses[base] as ArrayMesh).custom_aabb = bounds
 	for frame in range(1, 15):
 		poses.erase(base + frame)
 	var material := ShaderMaterial.new()
@@ -368,9 +440,12 @@ func _make_atlas(base: int) -> void:
 	material.set_shader_parameter("poses", ImageTexture.create_from_image(image))
 	material.set_shader_parameter("rows", rows)
 	_atlases[base] = material
+	_batch_radii.resize(_next_pose)
+	_batch_radii[base] = _mesh_radius(poses[base])
 	# Loading can already have displayed the first standing pose.
 	for key: Vector3i in groups:
 		if key.z == base:
 			var group: DrawGroup = groups[key]
 			group.mm.mesh = poses[base]
+			group.model_radius = _mesh_radius(poses[base])
 			group.node.material_override = material

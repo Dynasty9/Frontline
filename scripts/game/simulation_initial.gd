@@ -220,4 +220,9 @@ static func save(w: World, path: String) -> Error:
 	if file == null:
 		return FileAccess.get_open_error()
 	file.store_buffer(data)
-	return file.get_error()
+	file.flush()
+	var error := file.get_error()
+	file.close()
+	if error == OK:
+		BattlefieldCache.remember(w.settings, data)
+	return error

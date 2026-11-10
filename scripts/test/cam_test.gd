@@ -30,7 +30,7 @@ func _wait(t: float) -> void:
 ## the camera steps by real time, capped per frame, so a slow window takes longer.
 func _settle(cam: RtsCamera) -> void:
 	var t := 0.0
-	while t < 6.0 and (absf(cam.dist - cam.target_dist) > 0.02 or cam._gliding):
+	while t < 6.0 and (absf(cam.dist - cam.target_dist) > 0.02 or cam._gliding or cam._pan_offset.length_squared() > 0.0001):
 		await _wait(0.1)
 		t += 0.1
 	await _wait(0.1)
@@ -127,12 +127,14 @@ func _run() -> void:
 	var b := mid + Vector2(-260, 120)
 	var held := cam.ground_point(mid)
 	_drag(cam, mid, b, true)
+	await _settle(cam)
 	_check("Alt + middle drag grabs the map", held.distance_to(cam.ground_point(b)) < 0.5 and f0.distance_to(cam.focus_pos) > 1.0, "drift %.2f m" % held.distance_to(cam.ground_point(b)))
 	# the setting swaps them
 	Settings.v["mmb_mode"] = 1
 	held = cam.ground_point(mid)
 	y0 = cam.yaw
 	_drag(cam, mid, b)
+	await _settle(cam)
 	_check("set to pan, a plain drag grabs the map", held.distance_to(cam.ground_point(b)) < 0.5 and absf(cam.yaw - y0) < 0.001, "drift %.2f m" % held.distance_to(cam.ground_point(b)))
 	# grabbed up by the horizon, a short drag moves the map a short way, not hundreds of metres
 	cam.tilt = RtsCamera.TILT_MAX
@@ -141,6 +143,7 @@ func _run() -> void:
 	cam._apply()
 	f0 = cam.focus_pos
 	_drag(cam, Vector2(mid.x, 4), Vector2(mid.x, 34))
+	await _settle(cam)
 	_check("a grab out by the horizon doesn't lurch", f0.distance_to(cam.focus_pos) < 4.0 and f0.distance_to(cam.focus_pos) > 0.1, "%.2f m for 30 px" % f0.distance_to(cam.focus_pos))
 	cam.tilt = 0.0
 	Settings.v["mmb_mode"] = 0
@@ -155,6 +158,7 @@ func _run() -> void:
 	held = cam.ground_point(mid)
 	y0 = cam.yaw
 	cam._unhandled_input(_pan(mid, Vector2(3, -2)))
+	await _settle(cam)
 	var under := mid - Vector2(3, -2) * px
 	_check("two fingers grab the map", held.distance_to(cam.ground_point(under)) < 0.5 and absf(cam.yaw - y0) < 0.001, "drift %.2f m" % held.distance_to(cam.ground_point(under)))
 	# ... with Option they turn and tilt, as a middle drag does
@@ -232,6 +236,19 @@ func _run() -> void:
 	var up := mm._pt(cam.focus_pos + Vector3(-sin(cam.yaw), 0, -cos(cam.yaw)) * 50.0) - mm._pt(cam.focus_pos)
 	_check("the turned minimap puts the view's heading up", up.normalized().dot(Vector2(0, -1)) > 0.99, str(up.normalized()))
 	Settings.v["minimap_rotate"] = false
+	mm._update_xf()
+	cam.focus(Vector3.ZERO)
+	mm._gui_input(_mb(MOUSE_BUTTON_LEFT, true, mm._pt(Vector3(240, 0, 0))))
+	mm._gui_input(_mb(MOUSE_BUTTON_LEFT, false, mm._pt(Vector3(240, 0, 0))))
+	_check("minimap click starts a glide without teleporting", cam._gliding and cam.focus_pos == Vector3.ZERO)
+	await _wait(0.25)
+	_check("minimap pan respects the speed cap", cam.focus_pos.x > 0.0 and cam.focus_pos.x < 45.0, "%.2f m" % cam.focus_pos.x)
+	mm._look(mm._pt(Vector3(-50, 0, 0)))
+	await _settle(cam)
+	_check("another minimap click retargets and arrives", not cam._gliding and cam.focus_pos.distance_to(Vector3(-50, 0, 0)) < 0.5)
+	mm._look(mm._pt(Vector3(240, 0, 0)))
+	cam._unhandled_input(_pan(mid, Vector2(1, 0)))
+	_check("manual panning cancels the minimap glide", not cam._gliding)
 
 	print("CAMTEST %d/%d passed (%d fps)" % [_n - _fails, _n, Engine.get_frames_per_second()])
 	TestRun.quit(get_tree())

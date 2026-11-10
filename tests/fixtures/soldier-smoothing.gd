@@ -74,6 +74,9 @@ func _ready() -> void:
 	assert(view._active.size() == 1)
 	var start := s.transform
 	var initial_group: SoldierViewBatch.DrawGroup = view._active[0]
+	for blend in [0.0, 0.5, 1.0]:
+		var transform := Transform3D(Basis(Vector3.UP, lerp_angle(s.rotation.y, s.net_yaw, blend)), s.position.lerp(s.net_pos, blend))
+		check_bounds(initial_group, transform)
 	var cpu := viewport()
 	var reference := MeshInstance3D.new()
 	reference.mesh = mesh
@@ -151,7 +154,7 @@ func _ready() -> void:
 	view._process(0.016)
 	assert(s.position == s.net_pos and view._age == 0.0, "Teleports retain the immediate CPU and GPU snap")
 	var group: SoldierViewBatch.DrawGroup = view._active[0]
-	assert(group.mm.custom_aabb.has_point(s.position - group.origin + Vector3.UP * 2))
+	check_bounds(group, s.transform)
 	s.detailed = true
 	view._process(0.016)
 	assert(group.mm.visible_instance_count == 0)
@@ -172,3 +175,8 @@ func _ready() -> void:
 	while Music._task >= 0:
 		await get_tree().process_frame
 	get_tree().quit()
+
+
+func check_bounds(group: SoldierViewBatch.DrawGroup, transform: Transform3D) -> void:
+	for vertex: Vector3 in group.mm.mesh.surface_get_arrays(0)[Mesh.ARRAY_VERTEX]:
+		assert(group.mm.custom_aabb.grow(0.001).has_point(transform * vertex - group.origin), "Swept and teleported model vertices must stay inside their bounds")

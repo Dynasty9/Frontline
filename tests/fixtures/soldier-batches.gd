@@ -18,6 +18,10 @@ class TrackedSoldier extends Soldier:
 		elapsed += dt
 
 func _ready() -> void:
+	if DisplayServer.get_name() != "headless":
+		DisplayServer.window_set_flag(DisplayServer.WINDOW_FLAG_NO_FOCUS, true)
+	check_buffer()
+	check_native_batches()
 	check_detail_budget()
 	check_detail_templates()
 	await check_hidden_rigs()
@@ -54,6 +58,36 @@ func _ready() -> void:
 	var original := Vector3i(0, 0, first)
 	assert(view.groups.size() == 1 and view.groups[original].count == 2)
 	assert(view.groups[original].mm.visible_instance_count == 2)
+	var packed: SoldierViewBatch.DrawGroup = view.groups[original]
+	var extras: Array[Soldier] = []
+	for i in 40:
+		var soldier := Soldier.new()
+		soldier.utype = "rifleman"
+		soldier.team = 0
+		soldier.view_lod = true
+		soldier.position = a.position
+		extras.append(soldier)
+		world.soldiers.append(soldier)
+	view._process(0.0)
+	assert(packed.count == 42 and packed.mm.visible_instance_count == 42)
+	var grown := packed.mm.buffer
+	assert(Vector3(grown[41 * 20 + 3], grown[41 * 20 + 7], grown[41 * 20 + 11]) == a.position, "Growing a batch must retain every transform")
+	for soldier in extras:
+		world.soldiers.erase(soldier)
+		soldier.free()
+	view._process(0.0)
+	assert(packed.count == 2 and packed.mm.visible_instance_count == 2)
+	assert(packed.mm.custom_aabb.size.x < 4.0, "A sparse cell must not inherit an empty 86-metre bound")
+	b.position.y = 180.0
+	view._process(0.0)
+	assert(packed.mm.custom_aabb.has_point(b.position + Vector3.UP * 0.4))
+	b.position.y = 0.0
+	view._process(0.0)
+	assert(packed.mm.custom_aabb.size.y < 2.0, "A settled soldier must release obsolete elevated bounds")
+	b.scale = Vector3(3, 2, 4)
+	view._process(0.0)
+	assert(packed.mm.custom_aabb.has_point(b.position + Vector3(0, 0, 2)), "Scaled models stay inside the culling bounds")
+	b.scale = Vector3.ONE
 	b.position.x = SoldierViewBatch.CELL + 1
 	view._process(0.0)
 	assert(view.groups[original].count == 1 and view.groups[Vector3i(1, 0, first)].count == 1)
@@ -102,6 +136,94 @@ func _ready() -> void:
 	world.free()
 	print("SOLDIER_BATCHES passed")
 	get_tree().quit()
+
+
+func check_native_batches() -> void:
+	var motion := SoldierViewMotion.new()
+	var radii := PackedFloat32Array([1.25])
+	var nodes: Array[Node3D] = []
+	var expected := AABB()
+	for i in 33:
+		var node := Node3D.new()
+		node.transform = Transform3D(Basis.from_euler(Vector3(0.1, i * 0.1, 0.2)).scaled(Vector3(2, 3, 4)), Vector3(i, -2, 3))
+		var offset := Vector3(-3, i * 0.1, 5)
+		motion.target(node, node.position + offset, node.rotation.y + 0.4, true)
+		assert(motion.set_batch(node, 0, i))
+		assert(not motion.set_batch(node, 0, i), "Unchanged poses retain the upload schedule")
+		nodes.append(node)
+		var scale := node.transform.basis.get_scale().abs()
+		var swept := AABB(node.position, Vector3.ZERO).expand(node.position + offset).grow(1.25 * maxf(scale.x, maxf(scale.y, scale.z)))
+		expected = swept if i == 0 else expected.merge(swept)
+	var batches: Array[Dictionary] = motion.batches([], radii)
+	assert(batches.size() == 1 and batches[0].key == Vector3i.ZERO and batches[0].count == 33)
+	assert((batches[0].bounds as AABB).is_equal_approx(expected))
+	var data: PackedFloat32Array = batches[0].data
+	for slot in 33:
+		var i := roundi(data[slot * 20 + 3])
+		var reference := SoldierBatchBuffer.new()
+		assert(reference.append(nodes[i].transform, Vector3(-3, i * 0.1, 5), 0.4, i, 1.25))
+		var wanted: PackedFloat32Array = reference.encode(1)
+		for component in 20:
+			assert(is_equal_approx(data[slot * 20 + component], wanted[component]))
+	# Corrections retain presentation; cell moves and removal cannot leave ghost slots.
+	nodes[0].position = Vector3(-1, 180, -65)
+	motion.target(nodes[0], nodes[0].position, 0.0, true)
+	batches = motion.batches([Plane(Vector3.RIGHT, -1000)], radii)
+	assert(batches.size() == 1 and batches[0].key == Vector3i(-1, -2, 0) and batches[0].count == 1, "Elevated units bypass ground-cell culling")
+	assert(motion.set_batch(nodes[0], -1, 0))
+	assert(motion.batches([Plane(Vector3.RIGHT, -1000)], radii).is_empty())
+	assert(motion.batches([], PackedFloat32Array()).is_empty(), "Unbaked meshes have no upload")
+	motion.remove(nodes[1])
+	nodes[2].free()
+	batches = motion.batches([], radii)
+	assert(batches.size() == 1 and batches[0].count == 30, "Removed and freed nodes are excluded")
+	motion.advance(0.0)
+	for node in nodes:
+		if is_instance_valid(node):
+			node.free()
+
+
+func check_buffer() -> void:
+	var buffer := SoldierBatchBuffer.new()
+	var mesh := MultiMesh.new()
+	mesh.transform_format = MultiMesh.TRANSFORM_3D
+	mesh.use_colors = true
+	mesh.use_custom_data = true
+	mesh.mesh = BoxMesh.new()
+	mesh.instance_count = 40
+	var expected := AABB()
+	for i in 33:
+		var transform := Transform3D(Basis.from_euler(Vector3(0.1, i * 0.1, 0.2)).scaled(Vector3(2, 3, 4)), Vector3(i, -2, 3))
+		var offset := Vector3(-3, i * 0.1, 5)
+		assert(buffer.append(transform, offset, 0.4, i, 1.25))
+		var scale := transform.basis.get_scale().abs()
+		var swept := AABB(transform.origin, Vector3.ZERO).expand(transform.origin + offset).grow(1.25 * maxf(scale.x, maxf(scale.y, scale.z)))
+		expected = swept if i == 0 else expected.merge(swept)
+		mesh.set_instance_transform(i, transform)
+		mesh.set_instance_color(i, Color(1, 1, 1, float(i) / 255.0))
+		mesh.set_instance_custom_data(i, Color(offset.x, offset.y, offset.z, 0.4))
+	var encoded: PackedFloat32Array = buffer.encode(40)
+	var reference := mesh.buffer
+	assert(encoded.size() == 40 * 20)
+	# The headless dummy renderer does not retain MultiMesh buffers; rendered runs do.
+	if not reference.is_empty():
+		for i in 33 * 20:
+			# Compatibility stores instance colors and custom data in half precision.
+			var half_precision := RenderingServer.get_current_rendering_method() == "gl_compatibility" and i % 20 >= 12
+			var equal := absf(encoded[i] - reference[i]) <= maxf(1.0, absf(reference[i])) * 0.001 if half_precision else is_equal_approx(encoded[i], reference[i])
+			assert(equal, "Bulk upload component %d: %f != %f" % [i, encoded[i], reference[i]])
+	assert(buffer.bounds().is_equal_approx(expected), "Bounds contain the same swept and scaled poses")
+	assert(buffer.encode(32).is_empty())
+	assert(not buffer.append(Transform3D.IDENTITY, Vector3.INF, 0.0, 0, 1.0))
+	assert(not buffer.append(Transform3D.IDENTITY, Vector3.ZERO, 0.0, 256, 1.0))
+	assert(buffer.encode(40) == encoded, "Invalid values must not partially append a soldier")
+	mesh.buffer = encoded
+	if not reference.is_empty():
+		assert(mesh.get_instance_transform(32).is_equal_approx(Transform3D(Basis.from_euler(Vector3(0.1, 3.2, 0.2)).scaled(Vector3(2, 3, 4)), Vector3(32, -2, 3))))
+	buffer.clear()
+	assert(buffer.bounds() == AABB())
+	assert(buffer.append(Transform3D.IDENTITY, Vector3.ZERO, 0.0, 255, 1.0))
+	assert(buffer.encode(1).size() == 20, "A cleared batch can shrink without retaining old slots")
 
 
 func check_detail_budget() -> void:

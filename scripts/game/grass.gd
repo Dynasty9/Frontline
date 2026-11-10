@@ -23,7 +23,8 @@ var _rebuild_t := -1.0
 var _blocked := PackedByteArray()
 var _built := {}  # Vector2i -> Array of nodes
 var _center := Vector2i(999999, 999999)
-const REACH := 7  # beyond the bushes' 170 m fade, including a chunk and pan margin
+const REACH := 9  # prepare vegetation before it reaches the 170 m fade
+const RETAIN := REACH + 4  # reuse chunks when the player pans back
 
 
 func _ready() -> void:
@@ -154,7 +155,7 @@ func _stream(pos: Vector3) -> void:
 	_center = center
 	_queue.clear()
 	for key: Vector2i in _built.keys():
-		if absi(key.x - center.x) > REACH + 2 or absi(key.y - center.y) > REACH + 2:
+		if absi(key.x - center.x) > RETAIN or absi(key.y - center.y) > RETAIN:
 			for node in _built[key]:
 				node.queue_free()
 			_built.erase(key)
@@ -329,9 +330,30 @@ func _mm(mesh: Mesh, m: Material, xf: Array, cd: Array, vis: float) -> MultiMesh
 	mm.use_custom_data = true
 	mm.mesh = mesh
 	mm.instance_count = xf.size()
+	# One upload for a chunk; all instances still share the same mesh.
+	var buffer := PackedFloat32Array()
+	buffer.resize(xf.size() * 16)
 	for i in xf.size():
-		mm.set_instance_transform(i, xf[i])
-		mm.set_instance_custom_data(i, cd[i])
+		var t: Transform3D = xf[i]
+		var c: Color = cd[i]
+		var offset := i * 16
+		buffer[offset + 0] = t.basis.x.x
+		buffer[offset + 1] = t.basis.y.x
+		buffer[offset + 2] = t.basis.z.x
+		buffer[offset + 3] = t.origin.x
+		buffer[offset + 4] = t.basis.x.y
+		buffer[offset + 5] = t.basis.y.y
+		buffer[offset + 6] = t.basis.z.y
+		buffer[offset + 7] = t.origin.y
+		buffer[offset + 8] = t.basis.x.z
+		buffer[offset + 9] = t.basis.y.z
+		buffer[offset + 10] = t.basis.z.z
+		buffer[offset + 11] = t.origin.z
+		buffer[offset + 12] = c.r
+		buffer[offset + 13] = c.g
+		buffer[offset + 14] = c.b
+		buffer[offset + 15] = c.a
+	mm.buffer = buffer
 	var mi := MultiMeshInstance3D.new()
 	mi.multimesh = mm
 	mi.material_override = m
@@ -370,6 +392,7 @@ func _make_clump() -> ArrayMesh:
 				st.set_normal(Vector3(0, 1, 0))
 				st.set_uv(Vector2(0.5, q[1]))
 				st.add_vertex(q[0])
+	st.index()
 	return st.commit()
 
 
@@ -391,7 +414,8 @@ func _make_bush() -> ArrayMesh:
 		for j in idx:
 			st.set_normal(norms[j])
 			st.add_vertex(verts[j] * sc + off)
-	return st.commit()
+	st.index()
+	return _with_lods(st.commit_to_arrays())
 
 
 func _make_stone() -> ArrayMesh:
@@ -405,9 +429,15 @@ func _make_stone() -> ArrayMesh:
 	for i in verts.size():
 		verts[i] *= rng.randf_range(0.8, 1.15)
 	arrays[Mesh.ARRAY_VERTEX] = verts
-	var m := ArrayMesh.new()
-	m.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
-	return m
+	return _with_lods(arrays)
+
+
+func _with_lods(arrays: Array) -> ArrayMesh:
+	# All chunks share these meshes; distant shrubs and stones need fewer triangles.
+	var importer := ImporterMesh.new()
+	importer.add_surface(Mesh.PRIMITIVE_TRIANGLES, arrays)
+	importer.generate_lods(25.0, 60.0, [])
+	return importer.get_mesh()
 
 
 const GRASS_SHADER := """

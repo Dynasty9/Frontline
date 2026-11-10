@@ -7,6 +7,8 @@ var world: World
 var eid := 0
 var team := -1:
 	set(value):
+		if team == value:
+			return
 		team = value
 		if world != null and self is Structure:
 			world.refresh_owned_structure(self)
@@ -26,7 +28,13 @@ var resend_t := 0.0
 var net_pos := Vector3.ZERO
 var net_yaw := 0.0
 var net_init := false
-var selected := false
+var selected := false:
+	set(value):
+		if selected == value:
+			return
+		selected = value
+		if self is Soldier:
+			(self as Soldier)._view_dirty = true
 var hit_by: Array = []  # (server) the last enemy to hurt it: [owner, team, unit, soldier eid] (see BattleStats)
 
 

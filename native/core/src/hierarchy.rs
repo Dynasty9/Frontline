@@ -12,6 +12,37 @@ mod tests {
     use super::*;
 
     #[test]
+    #[ignore = "release-mode connectivity microbenchmark"]
+    fn benchmark_connectivity() {
+        let nav = if let Ok(path) = std::env::var("FL_NAV_BENCHMARK") {
+            Hierarchy::restore(&std::fs::read(path).unwrap()).unwrap()
+        } else {
+            let mut nav = Hierarchy::new(1024, 16).unwrap();
+            assert!(build_all(&mut [&mut nav], 2));
+            nav
+        };
+        let graph = &nav.graphs[0];
+        assert_eq!(graph.components(), graph.depth_first_components());
+        println!("entrances={} points={}", nav.counts()[0], nav.counts()[1]);
+        for pass in 0..4 {
+            for fast in [pass % 2 == 0, pass % 2 != 0] {
+                let start = std::time::Instant::now();
+                for _ in 0..20 {
+                    std::hint::black_box(if fast {
+                        graph.components()
+                    } else {
+                        graph.depth_first_components()
+                    });
+                }
+                println!(
+                    "linear={fast} mean_ms={:.3}",
+                    start.elapsed().as_secs_f64() * 50.0
+                );
+            }
+        }
+    }
+
+    #[test]
     fn bounded_queries_restart_after_terrain_and_selected_team_danger_changes() {
         let mut nav = Hierarchy::new(64, 16).unwrap();
         assert!(build_all(&mut [&mut nav], 1));

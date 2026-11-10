@@ -17,6 +17,10 @@ class Man extends Soldier:
 
 class DisplayedMan extends Soldier:
 	var sight_checks := 0
+	var view_calls := 0
+	func _view_process(dt: float, blend := -1.0, motion_done := false) -> void:
+		view_calls += 1
+		super._view_process(dt, blend, motion_done)
 	func seen_by_local() -> bool:
 		sight_checks += 1
 		return super.seen_by_local()
@@ -35,6 +39,7 @@ func _ready() -> void:
 	_check_native_soldier_motion()
 	_check_native_soldier_lifecycle()
 	_check_shared_presentation_changes()
+	_check_presentation_queue()
 	var unit := Unit.new()
 	add_child(unit)
 	unit.set_notify_local_transform(true)
@@ -231,11 +236,87 @@ func _check_native_soldier_lifecycle() -> void:
 	view._process(1.0 / 60.0)
 	assert(man.position == Vector3(30, 10, 2), "Property corrections replace the native target")
 	world.despawn(man)
+	assert(not view._presentations.has(man.eid), "Despawn removes pending presentation before freeing the node")
 	man.position = Vector3.ZERO
 	view.motion.advance(0.5)
 	assert(man.position == Vector3.ZERO, "Despawn removes the native target before the node is freed")
 	man.free()
 	view.free()
+	world.free()
+
+
+func _check_presentation_queue() -> void:
+	var world := World.new()
+	world.local_team = 0
+	world.view_team = 0
+	world.simulation_client = SimulationClient.new()
+	world.add_child(world.simulation_client)
+	world.cam = RtsCamera.new()
+	world.cam.cam = Camera3D.new()
+	add_child(world.cam.cam)
+	var view := SoldierViewBatch.new()
+	view.world = world
+	world.soldier_view = view
+	add_child(view)
+	view.set_process(false)
+	var man := DisplayedMan.new()
+	man.world = world
+	man.eid = 19
+	man.team = 1
+	man.vis_mask = 1
+	man.position = Vector3(0, 0, -200)
+	world._register(man)
+	add_child(man)
+	man.on_spawned()
+	view._warmup.clear()
+	view._process(1.0 / 60.0)
+	assert(man.view_calls == 1 and view._presentations.is_empty())
+	assert(_batch_count(view) == 1)
+	man.net_pos += Vector3(1, 0, 0)
+	view.motion.target(man, man.net_pos, 0.0, false)
+	for frame in 10:
+		view._process(1.0 / 60.0)
+	assert(man.view_calls == 1 and man.position.x > 0.5, "Dormant presentation still moves natively without per-soldier frame calls")
+	man.selected = true
+	view._process(1.0 / 60.0)
+	assert(man.view_calls == 2 and man.ring.visible)
+	var packet := StreamPeerBuffer.new()
+	packet.put_float(1.0)
+	packet.put_u32(man.eid)
+	packet.put_u8(0)
+	world._rpc_snap(packet.data_array)
+	view._process(1.0 / 60.0)
+	assert(not man.visible and view._presentations.is_empty())
+	assert(_batch_count(view) == 0, "Hidden soldiers leave native buffers immediately")
+	var calls := man.view_calls
+	view._process(1.0 / 60.0)
+	assert(man.view_calls == calls, "Hidden presentation sleeps too")
+	world.view_team = 1
+	view._process(1.0 / 60.0)
+	assert(man.visible and man.view_calls == calls + 1, "Observer changes wake the whole view")
+	assert(_batch_count(view) == 1)
+	world.cam.cam.position = man.position + Vector3(0, 10, 20)
+	world.cam.cam.look_at(man.position)
+	view._process(1.0 / 60.0)
+	assert(not man.view_lod and man.model != null and view._presentations.has(man.eid), "Camera-driven detail promotion wakes a dormant model")
+	assert(_batch_count(view) == 0, "Detailed models must not also appear in shared buffers")
+	calls = man.view_calls
+	view._process(1.0 / 60.0)
+	assert(man.view_calls == calls + 1, "Detailed animation keeps running each frame")
+	world.cam.cam.position.z += 200
+	view._process(1.0 / 60.0)
+	assert(man.view_lod and view._presentations.is_empty(), "Demotion retires detailed frame work")
+	assert(_batch_count(view) == 1)
+	man.apply_props({"pos": Vector3(0, 0, -190)})
+	assert(view._presentations.has(man.eid))
+	world.despawn(man)
+	assert(view._presentations.is_empty())
+	assert(_batch_count(view) == 0)
+	man.free()
+	view._process(1.0 / 60.0)
+	view.free()
+	world.cam.cam.free()
+	world.cam.free()
 	world.free()
 
 
@@ -266,6 +347,33 @@ func _check_shared_presentation_changes() -> void:
 		view.motion.advance(0.2)
 		man._view_process(1.0 / 60.0, 0.2, true)
 	assert(man.sight_checks == 1, "Unchanged shared presentation does not repeat visibility and model checks")
+	# Routine movement, ammunition and squad updates keep the shared view.
+	var moving := StreamPeerBuffer.new()
+	man.write_state(moving)
+	moving.seek(0)
+	Entity.put_v3(moving, Vector3(1, 0, -20))
+	Entity.put_ang(moving, 0.4)
+	moving.seek(0)
+	man.read_state(moving)
+	man._view_process(1.0 / 60.0, 0.2, true)
+	assert(man.sight_checks == 1, "Position-only packets must not rebuild shared presentation")
+	for change in [["life", Soldier.Life.DOWNED], ["vis_mask", 0], ["team", 0], ["posture", Soldier.Post.PRONE], ["act", Soldier.Act.RUN]]:
+		var field: String = change[0]
+		var previous = man.get(field)
+		man.set(field, change[1])
+		var changed := StreamPeerBuffer.new()
+		man.write_state(changed)
+		man.set(field, previous)
+		changed.seek(0)
+		man.read_state(changed)
+		assert(man._view_dirty, "Life, visibility, side and pose changes invalidate shared presentation")
+		man.set(field, previous)
+		man._view_dirty = false
+	man._view_dirty = true
+	moving.seek(0)
+	man.read_state(moving)
+	assert(man._view_dirty, "A routine packet must not discard pending property changes")
+	man._view_dirty = false
 	man.selected = true
 	man._view_process(1.0 / 60.0, 0.2, true)
 	assert(man.sight_checks == 2 and man.ring.visible, "Selection remains immediate")
@@ -276,6 +384,10 @@ func _check_shared_presentation_changes() -> void:
 	world._rpc_snap(packet.data_array)
 	man._view_process(1.0 / 60.0, 0.2, true)
 	assert(not man.visible, "A zero-length hidden snapshot immediately invalidates presentation")
+	var hidden_checks := man.sight_checks
+	for frame in 10:
+		man._view_process(1.0 / 60.0, 0.2, true)
+	assert(man.sight_checks == hidden_checks, "Hidden soldiers retain presentation until visibility or observer changes")
 	world.view_team = 1
 	man._view_process(1.0 / 60.0, 0.2, true)
 	assert(man.visible, "Changing observer team immediately updates visibility")
@@ -287,3 +399,13 @@ func _check_shared_presentation_changes() -> void:
 	world.cam.cam.free()
 	world.cam.free()
 	world.free()
+
+
+func _batch_count(view: SoldierViewBatch) -> int:
+	var radii := PackedFloat32Array()
+	radii.resize(view._next_pose)
+	radii.fill(1.0)
+	var count := 0
+	for batch: Dictionary in view.motion.batches([], radii):
+		count += int(batch.count)
+	return count

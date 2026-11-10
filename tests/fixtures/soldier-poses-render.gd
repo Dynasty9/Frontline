@@ -51,8 +51,6 @@ func _ready() -> void:
 	var group := view._group_for(0, Vector2i(15, -16))
 	group.mm.custom_aabb = AABB(Vector3(-11, -4, -11), Vector3(86, 40, 86))
 	var start := Transform3D(Basis(Vector3.UP, 0.7), Vector3(1000, 20, -1000) - group.origin)
-	group.mm.set_instance_transform(0, start)
-	group.mm.set_instance_custom_data(0, Color(2, 1, -1, 0.5))
 	group.mm.visible_instance_count = 1
 	var cpu := viewport()
 	var reference := MultiMeshInstance3D.new()
@@ -65,6 +63,9 @@ func _ready() -> void:
 	reference.multimesh.set_instance_transform(0, Transform3D(Basis(Vector3.UP, 0.7 + 0.5 * blend), start.origin + Vector3(2, 1, -1) * blend))
 	reference.lod_bias = 0.25
 	cpu.add_child(reference)
+	var soldier := Node3D.new()
+	soldier.transform = Transform3D(start.basis, start.origin + group.origin)
+	view.motion.target(soldier, soldier.position + Vector3(2, 1, -1), 1.2, true)
 	var pair := Image.create(512 * 5, 256 * 3, false, Image.FORMAT_RGB8)
 	for posture in 3:
 		for frame in 5:
@@ -72,7 +73,12 @@ func _ready() -> void:
 			reference.multimesh.mesh = view.originals[index]
 			world.time = float(frame - 1) / 8.0 if frame > 0 else 0.0
 			view._set_animation(0.03)
-			group.mm.set_instance_color(0, Color(1, 1, 1, float(posture * 8 + (1 if frame > 0 else 0)) / 255.0))
+			view.motion.set_batch(soldier, 0, posture * 8 + (1 if frame > 0 else 0))
+			var batches: Array[Dictionary] = view.motion.batches([], view._batch_radii)
+			assert(batches.size() == 1 and batches[0].key == Vector3i(15, -16, 0))
+			var data: PackedFloat32Array = batches[0].data
+			data.resize(group.mm.instance_count * 20)
+			group.mm.buffer = data
 			await RenderingServer.frame_post_draw
 			await RenderingServer.frame_post_draw
 			var wanted := cpu.get_texture().get_image()
@@ -95,6 +101,7 @@ func _ready() -> void:
 			assert(float(error) / a.size() < 1.275, "Animated poses must retain CPU geometry, yaw, translation and lighting")
 	pair.save_png("res://build/soldier-poses-" + RenderingServer.get_current_rendering_method() + ".png")
 	view.free()
+	soldier.free()
 	world.free()
 	Sfx._ensure()
 	while Music._task >= 0:

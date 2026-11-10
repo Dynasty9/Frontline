@@ -12,6 +12,7 @@ var recording := ""
 var replaying := false
 var networked := false
 var replay_status := {}
+var startup_ms := {}
 var client: Node
 var worker: Node
 var _generating := false
@@ -103,6 +104,7 @@ func launch(options: Dictionary, team: int, lobby := false) -> int:
 	_generating = true
 	starting = true
 	_started_ms = Time.get_ticks_msec()
+	startup_ms = {}
 	return OK
 
 func start_child(path: String) -> void:
@@ -235,6 +237,9 @@ func reconnect() -> bool:
 	return true
 
 func client_loaded() -> void:
+	if _config.has("perf_at") and not replaying and not session.is_empty() and _retries == 0:
+		startup_ms["client_ready"] = Time.get_ticks_msec() - _started_ms
+		_write(".startup", startup_ms)
 	_retries = 0
 
 func _process(_dt: float) -> void:
@@ -260,6 +265,7 @@ func _process(_dt: float) -> void:
 			if now - _started_ms > 600000:
 				_fail("The battlefield did not finish generating within ten minutes.")
 			return
+		startup_ms["generated"] = now - _started_ms
 		pid = -1
 		if not FileAccess.file_exists(session + ".initial") or not FileAccess.file_exists(session + ".settings"):
 			_fail("Could not prepare the battlefield. Log: " + session + ".log")
@@ -329,6 +335,7 @@ func _process(_dt: float) -> void:
 			if ready.get("mood") is String:
 				_settings.mood = ready.mood
 			replay_status = ready.replay
+		startup_ms["server_ready"] = now - _started_ms
 		_connection = {"address": address[0], "port": int(address[1]), "engine": ready.engine}
 		if _admissions.has(-1) and not is_instance_valid(broadcast):
 			broadcast = GameScripts.load_script("res://scripts/game/socket_recording.gd").new()

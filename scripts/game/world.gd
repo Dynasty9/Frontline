@@ -6,6 +6,8 @@ extends Node3D
 
 signal game_ended(winner: int)
 signal report_updated
+## Registry births, removals and ownership changes, including client observations.
+signal structure_changed(structure: Structure)
 ## How far build() has got: what the loading screen says, and its share of the way.
 signal build_stage(text: String, frac: float)
 
@@ -465,6 +467,7 @@ func refresh_owned_structure(e: Structure) -> void:
 			owned_structures.append(e)
 	else:
 		owned_structures.erase(e)
+	structure_changed.emit(e)
 
 
 func _register(e: Entity) -> void:
@@ -473,6 +476,7 @@ func _register(e: Entity) -> void:
 		soldiers.append(e)
 		if soldier_view:
 			soldier_view.prepare(e.utype, e.team)
+			soldier_view.request_view(e)
 			soldier_view.invalidate()
 	elif e is Vehicle:
 		vehicles.append(e)
@@ -516,8 +520,7 @@ func despawn(e: Entity) -> void:
 	if e is Soldier:
 		soldiers.erase(e)
 		if soldier_view:
-			soldier_view.motion.remove(e)
-			soldier_view.invalidate()
+			soldier_view.remove(e)
 		# out of his squad now: nothing may touch him once he's freed
 		if e.squad and is_instance_valid(e.squad):
 			e.squad.members.erase(e)
@@ -527,6 +530,7 @@ func despawn(e: Entity) -> void:
 		if structure_view:
 			structure_view.remove(e)
 		structures.erase(e)
+		structure_changed.emit(e)
 		if recording:
 			recording.dirty_static(e.eid)
 		owned_structures.erase(e)

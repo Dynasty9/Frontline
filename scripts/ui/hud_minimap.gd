@@ -50,9 +50,7 @@ var _base: Image  # the ground and the water: baked once (again when the water a
 var _ground: Image  # + the roads (FOBs lay new ones as the battle goes)
 var _static: ImageTexture  # + woods and buildings (they burn and fall)
 var _road_sig := -1
-var _static_sig := -1
 var _next_sig_ms := 0
-var _checking := false
 var _static_dirty := true
 var _baking := false
 var _bake_generation := 0
@@ -72,6 +70,7 @@ func _ready() -> void:
 	clip_contents = true
 	texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
 	mouse_filter = Control.MOUSE_FILTER_STOP
+	hud.world.structure_changed.connect(_structure_changed)
 
 
 func prepare_layers() -> void:
@@ -121,6 +120,12 @@ func rebake(all := false) -> void:
 		_ground = null
 	_static_dirty = true
 	_bake_generation += 1
+
+
+func _structure_changed(st: Structure) -> void:
+	# Trees and debris catch up with the next building change, as before.
+	if st.skind in ["roof", "floor", "bridge", "tall_wall"]:
+		rebake()
 
 
 # --- input --------------------------------------------------------------------------------
@@ -205,7 +210,7 @@ func _look(p: Vector2) -> void:
 		return
 	w.cam.stop_follow()
 	w.cam.stop_shadow()
-	w.cam.focus(_to_world(p))
+	w.cam.glide_to(_to_world(p))
 	if w.director:
 		w.director.active = false
 
@@ -432,39 +437,15 @@ func _check_bake() -> void:
 	var w := hud.world
 	if w.client_loading():
 		return  # Do not repeatedly paint partially received maps behind the loading screen.
-	if _checking or Time.get_ticks_msec() < _next_sig_ms:
-		if _static_dirty:
-			_bake_static()
+	if Time.get_ticks_msec() < _next_sig_ms:
 		return
 	_next_sig_ms = Time.get_ticks_msec() + 2000
-	_checking = true
 	var rs := 0
 	for t in 3:
 		rs = rs * 7919 + (w.roads[t] as Array).size()
 	if rs != _road_sig:
 		_road_sig = rs
 		_ground = null
-		rebake()
-	var drawn := 0
-	var roofs := 0
-	var slice := Time.get_ticks_usec()
-	var visited := 0
-	for st in w.structures.duplicate():
-		visited += 1
-		if visited % 128 == 0 and Time.get_ticks_usec() - slice >= 250:
-			await get_tree().process_frame
-			slice = Time.get_ticks_usec()
-		if not is_instance_valid(st) or st.gone or st.team >= 0:
-			continue
-		match st.skind:
-			"roof":
-				roofs += 1
-			"floor", "bridge", "tall_wall":
-				drawn += 1
-	_checking = false
-	var sig := drawn * 7919 + roofs
-	if sig != _static_sig:
-		_static_sig = sig
 		rebake()
 	# Keep the last complete image while destruction is painted in small slices.
 	if _static_dirty:
