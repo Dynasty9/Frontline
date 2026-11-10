@@ -3442,9 +3442,9 @@
       "entry": "changelog/unreleased/realistic-armament-effects.md",
       "summary": "Rolling, scene-lit explosion clouds with ballistic earth, material impacts and drifting flare trails.",
       "medium": "motion",
-      "stage": "battlefield-effects / blast-close / blast-rts / armaments / flares / impacts",
-      "rationale": "Lead reel shows grenade, HE, fuel, tracers, three impact materials and a night flare against actual terrain, vegetation and cover. Camera cuts isolate each effect at normal simulation speed. Original matched before/after clips and close-ups remain supporting evidence. All new encoded shots reviewed at 640×360; the actual ReleaseCard checked at desktop and phone sizes with reduced motion, seek/play/pause and disclosure.",
-      "source_ref": "b3ec8594ef59488cdfa36e5b12fcdf40b9cac791 (baseline game); 2252c93a87a54cc6a6b7498017d6f3cf5b2f6835 (implementation and capture fixtures); 3818d50 (terrain showcase); 84d242c (resumed stone/metal/flare capture)",
+      "stage": "blast-cover / battlefield-effects / blast-close / blast-rts / armaments / flares / impacts",
+      "rationale": "Lead matched tank/cover close-ups show the intersection correction. The complete terrain reel and original comparisons remain available below. New clips use identical camera, events and seed; only the cloud shader differs. Encoded beginning/action/end frames, decode and actual ReleaseCard controls are checked.",
+      "source_ref": "b3ec8594ef59488cdfa36e5b12fcdf40b9cac791 (baseline game); 2252c93a87a54cc6a6b7498017d6f3cf5b2f6835 (implementation and capture fixtures); 3818d50 (terrain showcase); 84d242c (resumed stone/metal/flare capture); a7f3fb3 (occlusion fix and matched close-up stage); ee782db (historical cloud shader only)",
       "sources": [
         {
           "file": "changelog/unreleased/realistic-armament-effects/after.jpg",
@@ -3545,10 +3545,35 @@
           "file": "changelog/unreleased/realistic-armament-effects/battlefield-capture.json",
           "sha256": "624f56a06d4843da7a561e4f7f6cd0803849f1b940af98565ecbfb16465cf765",
           "caption": "battlefield-capture.json"
+        },
+        {
+          "file": "changelog/unreleased/realistic-armament-effects/cover.webm",
+          "sha256": "51ca6e751a203b8eacfd3601379025b9505a07c9a23644d6164ba87702678b67",
+          "caption": "cover.webm"
+        },
+        {
+          "file": "changelog/unreleased/realistic-armament-effects/cover.jpg",
+          "sha256": "5219524271b31b1e4ca0f7f21cb5d8282c7856557a0a284e313b8c3c44ac91c2",
+          "caption": "cover.jpg"
+        },
+        {
+          "file": "changelog/unreleased/realistic-armament-effects/cover-before.webm",
+          "sha256": "4ba4b5e018c9ec153db3c7708e34316c34b9694d7a23eef43ce74e37cd041145",
+          "caption": "cover-before.webm"
+        },
+        {
+          "file": "changelog/unreleased/realistic-armament-effects/cover-before.jpg",
+          "sha256": "79041008442b682c75e80218d4ed8c6aaff2ebc908ababa98ee06de8b80edebe",
+          "caption": "cover-before.jpg"
+        },
+        {
+          "file": "changelog/unreleased/realistic-armament-effects/cover-capture.json",
+          "sha256": "b3ca1649c5cad65619540fa3d93fe3b969aeed3f836d86297abd7416ea52f406",
+          "caption": "cover-capture.json"
         }
       ],
       "output": null,
-      "attribution": "Actual Godot 4.7.2 output, silent and normal simulation speed. Lead terrain reel: Forward+, 24 Hz, 28 seconds; its interrupted/resumed capture provenance is in battlefield-capture.json. Original matched battlefield clips use Compatibility at 24 Hz; range/flare close-ups use 30 Hz with their recorded renderers. Baseline capture holds legacy pool timestamps to preserve particle lifetimes during offline readback; game code is unchanged. CC0 JangaFX animation credits: assets/vfx/LICENSE.md.",
+      "attribution": "Actual Godot 4.7.2 output, silent and normal speed. Lead tank/cover pair: Forward+, 24 Hz, 8 seconds; cover-capture.json records the shader-only comparison and depth regression. Full terrain reel: Forward+, 24 Hz, 28 seconds; its interrupted/resumed capture provenance is in battlefield-capture.json. Original matched battlefield clips use Compatibility at 24 Hz; range/flare close-ups use 30 Hz with their recorded renderers. Baseline capture holds legacy pool timestamps to preserve particle lifetimes during offline readback; that timing control does not change the particle programs. CC0 JangaFX animation credits: assets/vfx/LICENSE.md.",
       "capture_review": "changelog/unreleased/realistic-armament-effects/presentation-review.json"
     },
     {

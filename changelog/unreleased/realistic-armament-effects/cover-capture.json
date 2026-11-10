@@ -1,0 +1,627 @@
+{
+  "after": {
+    "fixture_ref": "a7f3fb3b5a0aaa492b43f0b97ecd6a540472220d",
+    "shader_ref": "a7f3fb3b5a0aaa492b43f0b97ecd6a540472220d",
+    "shader_sha256": "c22dc81fb8248281240ba471e8e568eb1eedef951184f502fd867a015bc74554",
+    "stage": "blast-cover",
+    "parameters": {
+      "scene": "tests/fixtures/blast-world-clips.tscn",
+      "seconds": 8,
+      "fps": 24,
+      "engine_fixed_fps": 24,
+      "timeout": 1200,
+      "seed": 712,
+      "camera": {
+        "fov_degrees": 48,
+        "tank_xz": [
+          30,
+          -2
+        ],
+        "tank_offset": [
+          8,
+          5,
+          11
+        ],
+        "wall_xz": [
+          -30,
+          24
+        ],
+        "wall_offset": [
+          4,
+          3,
+          7
+        ],
+        "look_lift": 1.2
+      },
+      "events": "Fuel size 2 at 0.5 s inside the tank wreck; HE size 1.4 at 4.5 s, 0.35 m behind stone cover. Actual showroom terrain; normal speed."
+    },
+    "command": [
+      "/workspace/scratch/explosion-rebuild/godot-4.7.2/Godot_v4.7.2-stable_linux.x86_64",
+      "--path",
+      "/workspace/Frontline-effects",
+      "--rendering-method",
+      "forward_plus",
+      "--audio-driver",
+      "Dummy",
+      "--fixed-fps",
+      "24",
+      "--resolution",
+      "1280x720",
+      "res://tests/fixtures/blast-world-clips.tscn",
+      "--",
+      "--clip=blast-cover",
+      "--label=AFTER",
+      "--frames=/workspace/scratch/blast-occlusion/after/frames"
+    ],
+    "encode_command": [
+      "ffmpeg",
+      "-y",
+      "-loglevel",
+      "error",
+      "-framerate",
+      "24",
+      "-i",
+      "/workspace/scratch/blast-occlusion/after/frames/%04d.png",
+      "-c:v",
+      "libvpx-vp9",
+      "-threads",
+      "3",
+      "-row-mt",
+      "1",
+      "-cpu-used",
+      "2",
+      "-crf",
+      "30",
+      "-b:v",
+      "0",
+      "-pix_fmt",
+      "yuv420p",
+      "-an",
+      "/workspace/scratch/blast-occlusion/after/clip.webm"
+    ],
+    "engine": "4.7.2.stable.official.ed1daf0bf",
+    "device": "llvmpipe LLVM 19.1.7 / Mesa 25.0.7",
+    "attribution": "Matched shader-only comparison. Same current battlefield fixture, source assets, seed and simulation timing; only the explosion-cloud shader differs. Before is the actual shader from ee782db, not a full historical build.",
+    "file": "cover.webm",
+    "sha256": "51ca6e751a203b8eacfd3601379025b9505a07c9a23644d6164ba87702678b67",
+    "bytes": 4336921,
+    "validation": {
+      "duration": 8,
+      "fps": 24,
+      "dimensions": [
+        1280,
+        720
+      ],
+      "codec": "vp9",
+      "silent": true,
+      "full_decode": true
+    }
+  },
+  "before": {
+    "fixture_ref": "a7f3fb3b5a0aaa492b43f0b97ecd6a540472220d",
+    "shader_ref": "ee782db894a8d6fd543145d2ad44e24550cfe652",
+    "shader_sha256": "cc2ead121fcc7aec614fafa0581a0749fcc0d3316df1ea16831db2acc014a34e",
+    "stage": "blast-cover",
+    "parameters": {
+      "scene": "tests/fixtures/blast-world-clips.tscn",
+      "seconds": 8,
+      "fps": 24,
+      "engine_fixed_fps": 24,
+      "timeout": 1200,
+      "seed": 712,
+      "camera": {
+        "fov_degrees": 48,
+        "tank_xz": [
+          30,
+          -2
+        ],
+        "tank_offset": [
+          8,
+          5,
+          11
+        ],
+        "wall_xz": [
+          -30,
+          24
+        ],
+        "wall_offset": [
+          4,
+          3,
+          7
+        ],
+        "look_lift": 1.2
+      },
+      "events": "Fuel size 2 at 0.5 s inside the tank wreck; HE size 1.4 at 4.5 s, 0.35 m behind stone cover. Actual showroom terrain; normal speed."
+    },
+    "command": [
+      "/workspace/scratch/explosion-rebuild/godot-4.7.2/Godot_v4.7.2-stable_linux.x86_64",
+      "--path",
+      "/workspace/Frontline-effects",
+      "--rendering-method",
+      "forward_plus",
+      "--audio-driver",
+      "Dummy",
+      "--fixed-fps",
+      "24",
+      "--resolution",
+      "1280x720",
+      "res://tests/fixtures/blast-world-clips.tscn",
+      "--",
+      "--clip=blast-cover",
+      "--label=BEFORE",
+      "--frames=/workspace/scratch/blast-occlusion/before/frames",
+      "--cloud-shader=/workspace/scratch/blast-occlusion/before.gdshader"
+    ],
+    "encode_command": [
+      "ffmpeg",
+      "-y",
+      "-loglevel",
+      "error",
+      "-framerate",
+      "24",
+      "-i",
+      "/workspace/scratch/blast-occlusion/before/frames/%04d.png",
+      "-c:v",
+      "libvpx-vp9",
+      "-threads",
+      "3",
+      "-row-mt",
+      "1",
+      "-cpu-used",
+      "2",
+      "-crf",
+      "30",
+      "-b:v",
+      "0",
+      "-pix_fmt",
+      "yuv420p",
+      "-an",
+      "/workspace/scratch/blast-occlusion/before/clip.webm"
+    ],
+    "engine": "4.7.2.stable.official.ed1daf0bf",
+    "device": "llvmpipe LLVM 19.1.7 / Mesa 25.0.7",
+    "attribution": "Matched shader-only comparison. Same current battlefield fixture, source assets, seed and simulation timing; only the explosion-cloud shader differs. Before is the actual shader from ee782db, not a full historical build.",
+    "file": "cover-before.webm",
+    "sha256": "4ba4b5e018c9ec153db3c7708e34316c34b9694d7a23eef43ce74e37cd041145",
+    "bytes": 4340956,
+    "validation": {
+      "duration": 8,
+      "fps": 24,
+      "dimensions": [
+        1280,
+        720
+      ],
+      "codec": "vp9",
+      "silent": true,
+      "full_decode": true
+    }
+  },
+  "regression": {
+    "command": "FL_TEST_RENDER=1 GODOT=/path/to/godot node --test tests/armament-effects.test.mjs",
+    "result": "6 passed: CPU/GPU pools and four renderer/MSAA combinations; perspective/orthographic and 0.8/1.0 atlas opacity in each pixel test. Historical shader fails 8 assertions in Forward+ with 4x MSAA.",
+    "before": {
+      "failures": 8,
+      "msaa": 2,
+      "renderer": "forward_plus",
+      "samples": [
+        {
+          "alpha": 0.8,
+          "pixels": [
+            0.0,
+            0.0,
+            0.0,
+            0.925490200519562,
+            0.925490200519562,
+            0.925490200519562
+          ],
+          "projection": 0
+        },
+        {
+          "alpha": 1.0,
+          "pixels": [
+            0.0,
+            0.0,
+            0.0,
+            0.941176474094391,
+            0.941176474094391,
+            0.941176474094391
+          ],
+          "projection": 0
+        },
+        {
+          "alpha": 0.8,
+          "pixels": [
+            0.0,
+            0.0,
+            0.0,
+            0.925490200519562,
+            0.925490200519562,
+            0.925490200519562
+          ],
+          "projection": 1
+        },
+        {
+          "alpha": 1.0,
+          "pixels": [
+            0.0,
+            0.0,
+            0.0,
+            0.941176474094391,
+            0.941176474094391,
+            0.941176474094391
+          ],
+          "projection": 1
+        }
+      ]
+    },
+    "after": {
+      "failures": 0,
+      "msaa": 2,
+      "renderer": "forward_plus",
+      "samples": [
+        {
+          "alpha": 0.8,
+          "pixels": [
+            0.0,
+            0.709803938865662,
+            0.780392169952393,
+            0.7843137383461,
+            0.835294127464294,
+            0.925490200519562
+          ],
+          "projection": 0
+        },
+        {
+          "alpha": 1.0,
+          "pixels": [
+            0.0,
+            0.925490200519562,
+            0.933333337306976,
+            0.937254905700684,
+            0.937254905700684,
+            0.941176474094391
+          ],
+          "projection": 0
+        },
+        {
+          "alpha": 0.8,
+          "pixels": [
+            0.0,
+            0.709803938865662,
+            0.780392169952393,
+            0.7843137383461,
+            0.835294127464294,
+            0.925490200519562
+          ],
+          "projection": 1
+        },
+        {
+          "alpha": 1.0,
+          "pixels": [
+            0.0,
+            0.925490200519562,
+            0.933333337306976,
+            0.937254905700684,
+            0.937254905700684,
+            0.941176474094391
+          ],
+          "projection": 1
+        }
+      ]
+    }
+  },
+  "performance": {
+    "description": "Three alternating runs per cloud shader, with capture/render jobs stopped. Same current 69-burst barrage fixture; baseline shader ee782db versus a7f3fb3. Software-renderer timing, not full-battle or hardware-GPU FPS.",
+    "harness_source": "extends SceneTree\nfunc _initialize() -> void:\n\t_start.call_deferred()\nfunc _start() -> void:\n\tvar bench = load(\"res://tests/fixtures/blast-benchmark.tscn\").instantiate()\n\troot.add_child(bench)\n\tfor arg in OS.get_cmdline_user_args():\n\t\tif arg.begins_with(\"--cloud-shader=\"):\n\t\t\tvar shader := Shader.new()\n\t\t\tshader.code = FileAccess.get_file_as_string(arg.get_slice(\"=\", 1))\n\t\t\tbench.field.fx.vfx.blasts._shader = shader\n\t\t\tfor pool: Array in bench.field.fx.vfx.blasts._pools.values():\n\t\t\t\tfor blast in pool:\n\t\t\t\t\tblast.material.shader = shader\n",
+    "runs": [
+      {
+        "variant": "before",
+        "run": 0,
+        "command": [
+          "/workspace/scratch/explosion-rebuild/godot-4.7.2/Godot_v4.7.2-stable_linux.x86_64",
+          "--path",
+          "/workspace/Frontline-effects",
+          "--rendering-method",
+          "gl_compatibility",
+          "--audio-driver",
+          "Dummy",
+          "--fixed-fps",
+          "60",
+          "--resolution",
+          "1280x720",
+          "--script",
+          "/workspace/scratch/blast-occlusion/benchmark.gd",
+          "--",
+          "--cloud-shader=/workspace/scratch/blast-occlusion/before.gdshader"
+        ],
+        "result": {
+          "burst_count": 69,
+          "device": "llvmpipe (LLVM 19.1.7, 256 bits)",
+          "effect_nodes": 221,
+          "effects_quality": 2,
+          "engine": "4.7.2-stable (official)",
+          "frames": 180,
+          "height": 720,
+          "mean_ms": 52.8879555555556,
+          "msaa_samples": 2,
+          "p95_ms": 64.19,
+          "peak_draw_calls": 64,
+          "peak_objects": 77,
+          "render_scale": 1.0,
+          "renderer": "gl_compatibility",
+          "seed": 712,
+          "texture_mib": 119.467240333557,
+          "width": 1280
+        }
+      },
+      {
+        "variant": "after",
+        "run": 0,
+        "command": [
+          "/workspace/scratch/explosion-rebuild/godot-4.7.2/Godot_v4.7.2-stable_linux.x86_64",
+          "--path",
+          "/workspace/Frontline-effects",
+          "--rendering-method",
+          "gl_compatibility",
+          "--audio-driver",
+          "Dummy",
+          "--fixed-fps",
+          "60",
+          "--resolution",
+          "1280x720",
+          "--script",
+          "/workspace/scratch/blast-occlusion/benchmark.gd",
+          "--"
+        ],
+        "result": {
+          "burst_count": 69,
+          "device": "llvmpipe (LLVM 19.1.7, 256 bits)",
+          "effect_nodes": 221,
+          "effects_quality": 2,
+          "engine": "4.7.2-stable (official)",
+          "frames": 180,
+          "height": 720,
+          "mean_ms": 49.6001666666667,
+          "msaa_samples": 2,
+          "p95_ms": 58.633,
+          "peak_draw_calls": 64,
+          "peak_objects": 77,
+          "render_scale": 1.0,
+          "renderer": "gl_compatibility",
+          "seed": 712,
+          "texture_mib": 119.467240333557,
+          "width": 1280
+        }
+      },
+      {
+        "variant": "before",
+        "run": 1,
+        "command": [
+          "/workspace/scratch/explosion-rebuild/godot-4.7.2/Godot_v4.7.2-stable_linux.x86_64",
+          "--path",
+          "/workspace/Frontline-effects",
+          "--rendering-method",
+          "gl_compatibility",
+          "--audio-driver",
+          "Dummy",
+          "--fixed-fps",
+          "60",
+          "--resolution",
+          "1280x720",
+          "--script",
+          "/workspace/scratch/blast-occlusion/benchmark.gd",
+          "--",
+          "--cloud-shader=/workspace/scratch/blast-occlusion/before.gdshader"
+        ],
+        "result": {
+          "burst_count": 69,
+          "device": "llvmpipe (LLVM 19.1.7, 256 bits)",
+          "effect_nodes": 221,
+          "effects_quality": 2,
+          "engine": "4.7.2-stable (official)",
+          "frames": 180,
+          "height": 720,
+          "mean_ms": 50.5901055555556,
+          "msaa_samples": 2,
+          "p95_ms": 65.316,
+          "peak_draw_calls": 64,
+          "peak_objects": 77,
+          "render_scale": 1.0,
+          "renderer": "gl_compatibility",
+          "seed": 712,
+          "texture_mib": 119.467240333557,
+          "width": 1280
+        }
+      },
+      {
+        "variant": "after",
+        "run": 1,
+        "command": [
+          "/workspace/scratch/explosion-rebuild/godot-4.7.2/Godot_v4.7.2-stable_linux.x86_64",
+          "--path",
+          "/workspace/Frontline-effects",
+          "--rendering-method",
+          "gl_compatibility",
+          "--audio-driver",
+          "Dummy",
+          "--fixed-fps",
+          "60",
+          "--resolution",
+          "1280x720",
+          "--script",
+          "/workspace/scratch/blast-occlusion/benchmark.gd",
+          "--"
+        ],
+        "result": {
+          "burst_count": 69,
+          "device": "llvmpipe (LLVM 19.1.7, 256 bits)",
+          "effect_nodes": 221,
+          "effects_quality": 2,
+          "engine": "4.7.2-stable (official)",
+          "frames": 180,
+          "height": 720,
+          "mean_ms": 49.9660333333333,
+          "msaa_samples": 2,
+          "p95_ms": 60.354,
+          "peak_draw_calls": 64,
+          "peak_objects": 77,
+          "render_scale": 1.0,
+          "renderer": "gl_compatibility",
+          "seed": 712,
+          "texture_mib": 119.467240333557,
+          "width": 1280
+        }
+      },
+      {
+        "variant": "before",
+        "run": 2,
+        "command": [
+          "/workspace/scratch/explosion-rebuild/godot-4.7.2/Godot_v4.7.2-stable_linux.x86_64",
+          "--path",
+          "/workspace/Frontline-effects",
+          "--rendering-method",
+          "gl_compatibility",
+          "--audio-driver",
+          "Dummy",
+          "--fixed-fps",
+          "60",
+          "--resolution",
+          "1280x720",
+          "--script",
+          "/workspace/scratch/blast-occlusion/benchmark.gd",
+          "--",
+          "--cloud-shader=/workspace/scratch/blast-occlusion/before.gdshader"
+        ],
+        "result": {
+          "burst_count": 69,
+          "device": "llvmpipe (LLVM 19.1.7, 256 bits)",
+          "effect_nodes": 221,
+          "effects_quality": 2,
+          "engine": "4.7.2-stable (official)",
+          "frames": 180,
+          "height": 720,
+          "mean_ms": 51.7563,
+          "msaa_samples": 2,
+          "p95_ms": 62.985,
+          "peak_draw_calls": 64,
+          "peak_objects": 77,
+          "render_scale": 1.0,
+          "renderer": "gl_compatibility",
+          "seed": 712,
+          "texture_mib": 119.467240333557,
+          "width": 1280
+        }
+      },
+      {
+        "variant": "after",
+        "run": 2,
+        "command": [
+          "/workspace/scratch/explosion-rebuild/godot-4.7.2/Godot_v4.7.2-stable_linux.x86_64",
+          "--path",
+          "/workspace/Frontline-effects",
+          "--rendering-method",
+          "gl_compatibility",
+          "--audio-driver",
+          "Dummy",
+          "--fixed-fps",
+          "60",
+          "--resolution",
+          "1280x720",
+          "--script",
+          "/workspace/scratch/blast-occlusion/benchmark.gd",
+          "--"
+        ],
+        "result": {
+          "burst_count": 69,
+          "device": "llvmpipe (LLVM 19.1.7, 256 bits)",
+          "effect_nodes": 221,
+          "effects_quality": 2,
+          "engine": "4.7.2-stable (official)",
+          "frames": 180,
+          "height": 720,
+          "mean_ms": 59.8984388888889,
+          "msaa_samples": 2,
+          "p95_ms": 78.492,
+          "peak_draw_calls": 64,
+          "peak_objects": 77,
+          "render_scale": 1.0,
+          "renderer": "gl_compatibility",
+          "seed": 712,
+          "texture_mib": 119.467240333557,
+          "width": 1280
+        }
+      }
+    ],
+    "median": {
+      "before": {
+        "mean_ms": 51.7563,
+        "p95_ms": 64.19,
+        "peak_draw_calls": 64,
+        "effect_nodes": 221,
+        "texture_mib": 119.467240333557
+      },
+      "after": {
+        "mean_ms": 49.9660333333333,
+        "p95_ms": 60.354,
+        "peak_draw_calls": 64,
+        "effect_nodes": 221,
+        "texture_mib": 119.467240333557
+      }
+    }
+  },
+  "review": {
+    "encoded_frames_inspected_seconds": [
+      0,
+      1.25,
+      2.5,
+      4,
+      5.3,
+      7.8
+    ],
+    "inspection_dimensions": [
+      640,
+      360
+    ],
+    "full_decode_passed": true,
+    "matched_opening_raw_frame_difference_rgb_mean": 0.0,
+    "ui": [
+      {
+        "viewport": {
+          "width": 1280,
+          "height": 960
+        },
+        "reducedMotion": true,
+        "lead": "cover.webm",
+        "duration": 8,
+        "controls": true,
+        "seek": true,
+        "playPause": true,
+        "disclosure": true,
+        "overflow": false,
+        "errors": []
+      },
+      {
+        "viewport": {
+          "width": 390,
+          "height": 844
+        },
+        "reducedMotion": true,
+        "lead": "cover.webm",
+        "duration": 8,
+        "controls": true,
+        "seek": true,
+        "playPause": true,
+        "disclosure": true,
+        "overflow": false,
+        "errors": []
+      }
+    ],
+    "validation": [
+      "Godot 4.7.2 headless import: no script/parse/shader errors.",
+      "6 local effects tests passed, including both renderers with MSAA off/4x.",
+      "Tank scenario seed 3 completed 60 simulated seconds, exit 0; shutdown warned of 7 ObjectDB instances.",
+      "Changelog validation, showcase unit test and 109-entry presentation audit passed."
+    ],
+    "limits": "Depth-aware appearance only: bounded opacity-based thickness, not fluid collision simulation. Benchmark is software-renderer timing; after runs ranged 49.6\u201359.9 ms, so do not infer a hardware GPU speedup."
+  }
+}

@@ -4,9 +4,19 @@ summary = "Explosion clouds roll and disperse, with sunlight catching their bill
 kind = "improved"
 
 [[videos]]
+file = "cover.webm"
+poster = "cover.jpg"
+caption = "After: fuel smoke meets tank armor and HE dust meets stone cover without a flat cut through the cloud. Actual battlefield, two matched four-second shots; Forward+, fixed 24 fps, normal speed, silent."
+
+[[videos]]
+file = "cover-before.webm"
+poster = "cover-before.jpg"
+caption = "Before the intersection fix: the cloud is sharply sliced by the tank hull and wall. Same terrain, camera, seed, effects and timing; only the cloud shader is from ee782db."
+
+[[videos]]
 file = "battlefield.webm"
 poster = "battlefield.jpg"
-caption = "Battlefield showcase: grenade, HE and fuel explosions, tracers striking dirt, stone and a vehicle, then a descending night flare. Real terrain, vegetation and cover throughout. Forward+, 28 seconds, fixed 24 fps, normal speed; silent."
+caption = "Full armament showcase, recorded before the cloud-intersection correction: grenade, HE and fuel explosions, tracers striking dirt, stone and a vehicle, then a descending night flare. Real terrain, vegetation and cover throughout. Forward+, 28 seconds, fixed 24 fps, normal speed; silent."
 
 [[videos]]
 file = "world.webm"
@@ -57,7 +67,7 @@ file = "after.jpg"
 caption = "After: the same shell throws earth and a turbulent dust cloud."
 +++
 
-The showcase moves from grenade (0:00) to HE (0:04), fuel (0:09), dirt/stone/metal impacts (0:14–0:20), then the night flare (0:20). These are controlled effect demonstrations in the actual battlefield; the matched before/after clips and focused close-ups remain below.
+The first two clips compare cloud intersections at the tank and stone wall. The full armament showcase below moves from grenade (0:00) to HE (0:04), fuel (0:09), dirt/stone/metal impacts (0:14–0:20), then the night flare (0:20). These are controlled effect demonstrations in the actual battlefield; the matched before/after clips and focused close-ups remain below.
 
 - Grenades have a small, brief flash and fast dark fragments. HE shells throw widening fans of earth, falling clods and dust. Fuel burns through a rising cloud of darker smoke.
 - Animated clouds retain their billows as they roll and disperse. Sunlight and sky light shape them, roads produce greyer dust, and wet ground produces a darker, thinner cloud.
