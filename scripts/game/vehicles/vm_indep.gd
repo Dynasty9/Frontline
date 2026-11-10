@@ -953,20 +953,16 @@ static func _zamak_cab(k: VehicleModels, team: int, cam: String, col) -> void:
 		k._cyl(m, 0.05, 0.05, 0.14, Vector3(s * 0.72, 0.82, -3.92), Z90, "gunmetal_w", null, 8, false)
 	k._box(m, Vector3(0.5, 0.12, 0.02), Vector3(0, 0.96, -3.83), "paint", Color(0.82, 0.8, 0.72), Vector3.ZERO, false)
 	# the cab: vertical lower half, the glasshouse leaning in a little
-	k._add(m, VehicleModels.solid([_ring(_oct(-1.2, 1.2, -2.15, -0.72, 0.08), 1.22), _ring(_oct(-1.2, 1.2, -2.15, -0.72, 0.08), 2.0), _ring(_oct(-1.12, 1.12, -2.0, -0.76, 0.1), 2.72)], "indep_zk_cab"), cam, col, Vector3.ZERO)
+	k._add(m, VehicleModels.solid([_ring(_oct(-1.2, 1.2, -2.15, -0.72, 0.08), 1.22), _ring(_oct(-1.2, 1.2, -2.15, -0.72, 0.08), 2.0)], "indep_zk_open_cab"), cam, col, Vector3.ZERO)
+	VehicleCab.upper(k, Vector2(1.2, 1.12), Vector2(2.0, 2.72), Vector2(-2.15, -2.0), -0.76, cam, col)
 	var wa := Vector2(-2.15, 2.0)
 	var wb := Vector2(-2.0, 2.72)
 	for s: float in [-1.0, 1.0]:
-		_plate(k, m, s * 0.52, 0.9, wa.lerp(wb, 0.08), wa.lerp(wb, 0.9), 0.03, "glass", null, -0.008, false)
 		_plate(k, m, s * 0.5, 0.025, wa.lerp(wb, 0.12), wa.lerp(wb, 0.55), 0.02, "gunmetal_w", null, 0.02, false)
 	_plate(k, m, 0.0, 0.1, wa.lerp(wb, 0.05), wa.lerp(wb, 0.95), 0.035, cam, col, 0.0)
-	k._box(m, Vector3(0.8, 0.34, 0.03), Vector3(0, 2.35, -0.73), "glass", null, Vector3.ZERO, false)
 	for s: float in [-1.0, 1.0]:
-		var sl: float = s * 0.11
 		# door window and rear quarter light, the door's seams and handle,
 		# the step and grab handle, the mirror on its arm
-		k._box(m, Vector3(0.03, 0.48, 0.64), Vector3(s * 1.175, 2.34, -1.6), "glass", null, Vector3(0, 0, sl), false)
-		k._box(m, Vector3(0.03, 0.4, 0.22), Vector3(s * 1.175, 2.34, -0.95), "glass", null, Vector3(0, 0, sl), false)
 		for dz: float in [-2.04, -1.13]:
 			k._box(m, Vector3(0.02, 1.3, 0.025), Vector3(s * 1.2, 1.88, dz), "gunmetal_w", null, Vector3.ZERO, false)
 		k._box(m, Vector3(0.04, 0.04, 0.14), Vector3(s * 1.22, 1.95, -1.3), "gunmetal_w", null, Vector3.ZERO, false)
@@ -1070,11 +1066,7 @@ static func _zamak_cargo(k: VehicleModels, tarp: Color, seed: int) -> void:
 	k._box(m, Vector3(0.7, 0.46, 0.6), Vector3(0.55, 2.29, 0.25), "wood", null, Vector3(0, rng.randf_range(-0.2, 0.2), 0))
 	k._box(m, Vector3(0.97, 0.04, 0.05), Vector3(0.62, 1.75, -0.15), "wood_dark", null, Vector3.ZERO, false)
 	# the middle: a pile under a tarpaulin, lashed down
-	k._add(m, VehicleModels.loft("indep_zk_pile", _oct(-1.17, 1.17, 1.1, 2.55, 0.1), _oct(-0.85, 0.85, 1.28, 2.38, 0.25), 1.44, 2.38), "canvas_white", tarp.lightened(0.05), Vector3.ZERO)
-	for z: float in [1.45, 2.2]:
-		k._box(m, Vector3(2.3, 0.03, 0.04), Vector3(0, 2.39, z), "plain_dark", null, Vector3.ZERO, false)
-		for s: float in [-1.0, 1.0]:
-			k._box(m, Vector3(0.03, 0.95, 0.04), Vector3(s * 1.03, 1.92, z), "plain_dark", null, Vector3(0, 0, s * 0.32), false)
+	VehicleCloth.load_cover(k, Vector3(0, 1.44, 1.825), Vector3(2.4, 0.94, 1.53), tarp)
 	# the back: crates, sacks and jerrycans
 	k._box(m, Vector3(0.82, 0.56, 0.58), Vector3(-0.62, 1.72, 3.1), "wood", null, Vector3(0, rng.randf_range(-0.12, 0.12), 0))
 	k._box(m, Vector3(0.6, 0.4, 0.5), Vector3(-0.6, 2.2, 3.05), "wood_dark", null, Vector3(0, rng.randf_range(-0.3, 0.3), 0))
@@ -1102,10 +1094,7 @@ static func _zamak_ammo(k: VehicleModels, tarp: Color) -> void:
 			k._box(m, Vector3(0.04, 0.74, 0.94), Vector3(x, 1.9, z), "plain_dark", null, Vector3.ZERO, false)
 			k._box(m, Vector3(0.012, 0.05, 0.4), Vector3(x + s * 0.505, 1.66, z), "paint", Color(0.6, 0.52, 0.2), Vector3.ZERO, false)
 	# the front stacks under a tarp, its rolled edge
-	k._add(m, VehicleModels.loft("indep_zk_ammotarp", _oct(-1.2, 1.2, -0.18, 0.92, 0.04), _oct(-1.02, 1.02, -0.12, 0.86, 0.12), 1.54, 2.32), "canvas_white", tarp, Vector3.ZERO)
-	k._cyl(m, 0.1, 0.1, 2.2, Vector3(0, 2.26, 0.95), Z90, "canvas_white", tarp.darkened(0.12), 10)
-	for z: float in [0.12, 0.6]:
-		k._box(m, Vector3(2.1, 0.03, 0.04), Vector3(0, 2.33, z), "plain_dark", null, Vector3.ZERO, false)
+	VehicleCloth.load_cover(k, Vector3(0, 1.54, 0.37), Vector3(2.46, 0.78, 1.18), tarp, false)
 	k._cyl(m, 0.08, 0.08, 0.5, Vector3(1.0, 1.7, 3.5), Vector3.ZERO, "paint", Color(0.5, 0.12, 0.08), 10)
 
 

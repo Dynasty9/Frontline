@@ -1135,6 +1135,18 @@ Ambush Alley autoplay can call its existing mortar support against spotted, stop
   Defences sit in the ground: trodden earth round the nests and pits, earth banked against the bunkers up to their
   slits.
 - Vehicles are built from sloped, lofted armour: road wheels that turn, tracks, mantlets, cupolas, stowage, rotor blur.
+- **Shared vehicle finishes** (`vehicle_materials.gd`, `assets/vehicles/surfaces/`): armor paint, aircraft
+  coatings, civilian clearcoat, marine paint, rubber, canvas, exposed metal, glass, nonslip decks and charred
+  wrecks use distinct roughness and reflection settings. Eight shared, mipmapped detail maps (six derived
+  from ambientCG CC0 sources) add fine relief without requiring UV unwraps. RHIB decks have raised tread;
+  selected trawler fittings use nonmetallic rust over exposed steel. Paint is nonmetallic; texture and lower-body dust
+  stay attached to the model as it moves or climbs. Faction palettes and distant merged meshes are retained.
+- All HEMTT, Zamak and Tempest bodies share open cabs with seats, dashboards and steering wheels
+  behind separate transparent panes. Offroad pickups, hatchbacks and SUVs have open glasshouses with
+  their original window outlines and painted pillars. Glass switches to opaque panes beyond 100 m;
+  wrecks lose intact glazing. Rounded tyres, recessed rims and rotating tread extend across shared
+  wheeled models, with finer road tread and smooth aircraft tyres. Tracked road wheels retain their
+  specialised builders. HEMTT and Zamak cargo covers share draped cloth and fitted restraints.
 - Explosions are layered GPU particles: a flash and light burst, a rolling fireball that cools from the edges in
   until it's dark smoke, a lit smoke column that drifts with the wind, a dirt plume, sparks and debris that
   bounce on the ground, a rolling dust ring, a faint heat-shimmer shockwave and a scorch mark. Heavy rounds

@@ -3439,6 +3439,576 @@
       }
     },
     {
+      "entry": "changelog/unreleased/vehicle-surface-library.md",
+      "summary": "Shared vehicle finishes with CC0 surface detail, painted cargo and selective corrosion.",
+      "medium": "still",
+      "stage": "vehicle-surfaces",
+      "rationale": "Matched studio stills expose paint relief and surface response; the swatches show the shared finishes without changing lighting.",
+      "source_ref": "b3ec859 baseline; e31ed14 pre-CC0; CC0 integration working tree",
+      "sources": [
+        {
+          "file": "changelog/unreleased/vehicle-surface-library/hatchback-after.jpg",
+          "sha256": "4ff19fbf5829c40dfbba794bc9b375c630fa1477e2f72a0759d71fb732e0da0e",
+          "caption": "Civilian paint after: fine surface detail replaces the oversized wear patches."
+        },
+        {
+          "file": "changelog/unreleased/vehicle-surface-library/hatchback-before.jpg",
+          "sha256": "8f4bb5d90765b6dd6eb9318b89f3dbaffb854292009e1616d3aa1f9212947d30",
+          "caption": "Before: the same hatchback, camera, seed and lighting."
+        },
+        {
+          "file": "changelog/unreleased/vehicle-surface-library/tank-after.jpg",
+          "sha256": "95fb3852b7708cec6c6786091300e541f075e7ca26788650875cfb80614919b1",
+          "caption": "Armor after: matte coatings, finer relief and distinct rubber and metal."
+        },
+        {
+          "file": "changelog/unreleased/vehicle-surface-library/tank-before.jpg",
+          "sha256": "08fe8af9f2dd85d5dd66a44637b7fe6f6b8e878e0720cf001d2aa5a4e8b415ae",
+          "caption": "Before: the same tank, camera, seed and lighting."
+        },
+        {
+          "file": "changelog/unreleased/vehicle-surface-library/surface-swatches.jpg",
+          "sha256": "8a70f1e9f8d923c4fec31a7097ce8cf2f240b51a3c9c29a844dd749addb4b374",
+          "caption": "Shared finishes under the same lighting: coatings, rubber, canvas, metal, glass and nonslip."
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/blackwasp-after.jpg",
+          "sha256": "57c75d13c614d668053c1a3a7dfb02aaa3aabc0bc89d53784d1f19467737ce0c",
+          "caption": "blackwasp-after"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/blackwasp-before.jpg",
+          "sha256": "1e86fc9704de0a0d10d1499be18dd571d16d5e54f6259cdc1ee3c5d73251586d",
+          "caption": "blackwasp-before"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/hatchback-after.jpg",
+          "sha256": "4ff19fbf5829c40dfbba794bc9b375c630fa1477e2f72a0759d71fb732e0da0e",
+          "caption": "hatchback-after"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/hatchback-before.jpg",
+          "sha256": "f1ccd24443b2d95d1c81a6bdbab765a3feafead48d0a5ffd48f2c67ee5388803",
+          "caption": "hatchback-before"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/heli-after.jpg",
+          "sha256": "bd436575065d87439b1a98d70440a0b326f5544d15e1f8ee7fbd51512e711d9e",
+          "caption": "heli-after"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/heli-before.jpg",
+          "sha256": "6d961a21d16440f07b49d2e94ae9d24ba1724ea0a54ee84aefc041a19772af4e",
+          "caption": "heli-before"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/hemtt_cargo-after.jpg",
+          "sha256": "94b83260b0f84ddcbbceb00e9cf63531ff370ed3384c9f61bccdf0d1409e8b65",
+          "caption": "hemtt_cargo-after"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/hemtt_cargo-before.jpg",
+          "sha256": "45b4d2bf0de62799a8ba4c8c503ad7d1522425cc4e4313efb759053060ca79da",
+          "caption": "hemtt_cargo-before"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/old_tank-after.jpg",
+          "sha256": "ebd045cf652601d5d41ef79be93a661438b62a20c356afc412cd2eb2eb7d3a54",
+          "caption": "old_tank-after"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/old_tank-before.jpg",
+          "sha256": "8c47e19815a619a48a8d7b9a826cd65b9ba22b00cc250ecd20b9822d91ccd94e",
+          "caption": "old_tank-before"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/palette-0-00-after.jpg",
+          "sha256": "a6bfe2172c0bdbe898715545aad04d37b2877234f3e9964d2097c412e06f28ea",
+          "caption": "palette-0-00-after"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/palette-0-00-before.jpg",
+          "sha256": "1197c762508a056a0dfdeb30c5ce8a998b48361c584aa9d6c2727509b1e04ce2",
+          "caption": "palette-0-00-before"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/palette-0-01-after.jpg",
+          "sha256": "56a89690fddc0e18959cbe762383daad070a6673c0c8b0b3a0a5373f7609b738",
+          "caption": "palette-0-01-after"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/palette-0-01-before.jpg",
+          "sha256": "93e4b3872b74939e1d8722b402aa562c57c6805be72716c887f159935500a412",
+          "caption": "palette-0-01-before"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/palette-0-02-after.jpg",
+          "sha256": "d51ebbc05033f314a8b273fc85b81f7c634ce398b38c4a2a2c4bcf22a5fa9ba5",
+          "caption": "palette-0-02-after"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/palette-0-02-before.jpg",
+          "sha256": "0f7975b95568495b941164362c431385e8ae9d5341de1ebd175404c171789d47",
+          "caption": "palette-0-02-before"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/palette-0-03-after.jpg",
+          "sha256": "b16322eac4d4c7a59afac56aaee19acd4e39ccaba38449f11c487d8b0cfa85e1",
+          "caption": "palette-0-03-after"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/palette-0-03-before.jpg",
+          "sha256": "9f8bbf66ead0aff468382a1b2f201d0f8e7166af5c01fb12bff8c900ccf679bb",
+          "caption": "palette-0-03-before"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/palette-0-04-after.jpg",
+          "sha256": "c08a30d1738a20afe6b7d0bd9e8d8ce5df57b97bade338002d925b51a03d6383",
+          "caption": "palette-0-04-after"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/palette-0-04-before.jpg",
+          "sha256": "52517be01ed28fcf3522a5e4c92f0f1b6c98de8029dbc5c989d72a96fddcb98c",
+          "caption": "palette-0-04-before"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/palette-0-05-after.jpg",
+          "sha256": "3edefe211dd3cffdecb656efbc4241be5d7c4da71c7566209067fc05b6b774d9",
+          "caption": "palette-0-05-after"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/palette-0-05-before.jpg",
+          "sha256": "5784eb8ac5765e0671c56acdba7812b713018de546c2712374e1a1c0dc5a4968",
+          "caption": "palette-0-05-before"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/palette-0-06-after.jpg",
+          "sha256": "d1ae859a9dd988178675e486559dc5d46c254ddd40de32aaa79cdf01a1abb41c",
+          "caption": "palette-0-06-after"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/palette-0-06-before.jpg",
+          "sha256": "77f8a29abe5ce15647342ea44e7c16b2c767c7acc375ba5c66efd1d69dae6ae5",
+          "caption": "palette-0-06-before"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/palette-0-07-after.jpg",
+          "sha256": "cd76afad6c3e23ff5844b18db3e64acbe0997a7ea8787c99a927360f8389d90e",
+          "caption": "palette-0-07-after"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/palette-0-07-before.jpg",
+          "sha256": "554ae0e3039223953806a0df3d9c9d1e6f18d14df1767e291e49892004821f0f",
+          "caption": "palette-0-07-before"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/palette-0-08-after.jpg",
+          "sha256": "163305956b2a6e93738aac145754e5ba489356ddff7d1fd6923fd9337c9c8d45",
+          "caption": "palette-0-08-after"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/palette-0-08-before.jpg",
+          "sha256": "4d2fac43699ecbe962ebeb90c980edf8e6ad4bfec70f488d5becabbc31642e11",
+          "caption": "palette-0-08-before"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/palette-0-09-after.jpg",
+          "sha256": "b9009b1e4192894ba018961004432f72386f9c2ce1ec37c7e2bb75f7e6c51bde",
+          "caption": "palette-0-09-after"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/palette-0-09-before.jpg",
+          "sha256": "b40d73b49ced5e286868f741acaa162d80e14cfe45edd876102015f3a1b84a05",
+          "caption": "palette-0-09-before"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/palette-0-10-after.jpg",
+          "sha256": "816247b0970e1881fc3268381cab41cb8b6fbc58bb303159bae08ea23e56d634",
+          "caption": "palette-0-10-after"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/palette-0-10-before.jpg",
+          "sha256": "09e235574719b69d32f4e94fe23d377858f9d93da549118614f3e455f26fd937",
+          "caption": "palette-0-10-before"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/palette-0-11-after.jpg",
+          "sha256": "fe6210b4ac355f5b7205ad11af15cff0935ce6e4e13bf5d97c59a21d3df78614",
+          "caption": "palette-0-11-after"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/palette-0-11-before.jpg",
+          "sha256": "e0e726b77a6f9118040ba8290a06bac764ba73b4f8925fcf9c8ec6423d152f88",
+          "caption": "palette-0-11-before"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/palette-1-00-after.jpg",
+          "sha256": "2577538fd65ea498a373ab7e7e9a3957bbcdbbc9237a74394151f2013557e433",
+          "caption": "palette-1-00-after"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/palette-1-00-before.jpg",
+          "sha256": "99b722eb528dbb67f6432cdbadf6c0f2b9d8c52554252b24d15081ba342c693f",
+          "caption": "palette-1-00-before"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/palette-1-01-after.jpg",
+          "sha256": "7fb3685f0292c2b5e34941ba218168bc9bada9c053fce1da2f16b624826c3cdb",
+          "caption": "palette-1-01-after"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/palette-1-01-before.jpg",
+          "sha256": "3966c85ba580a4c134e6562a59a5e295dd15c9fd55ee19527422d554b5e5d92c",
+          "caption": "palette-1-01-before"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/palette-1-02-after.jpg",
+          "sha256": "073cdc0d38905b54ec13ef485c1b0c12aa0e9ead8beb386337968ad76ac44ab7",
+          "caption": "palette-1-02-after"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/palette-1-02-before.jpg",
+          "sha256": "68190fd98033cf4afdd72ae9d8a846b1979f5ca73e0b54a8d392090eae23e907",
+          "caption": "palette-1-02-before"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/palette-1-03-after.jpg",
+          "sha256": "8043850bade74a20b00f0ba16989cea3addee28bf6bfdf8a902e8aaf2dc1a82a",
+          "caption": "palette-1-03-after"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/palette-1-03-before.jpg",
+          "sha256": "ff85ff5be1518334316e9e3d88f5cf9ad6f9d7cdb24bd96d1067ce91fbff2040",
+          "caption": "palette-1-03-before"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/palette-1-04-after.jpg",
+          "sha256": "9b1bd5ccea48d432c3d211982985f7278278c98a1395e867a6841435dc869a9b",
+          "caption": "palette-1-04-after"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/palette-1-04-before.jpg",
+          "sha256": "a18793a489f3eb40f2a4093159825f405e2e5d3699e637a32450fe77c7930ecd",
+          "caption": "palette-1-04-before"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/palette-1-05-after.jpg",
+          "sha256": "fd2981addb5dcd1f143183b59d605a8772045f0d070b00c980923da9a2b70cd4",
+          "caption": "palette-1-05-after"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/palette-1-05-before.jpg",
+          "sha256": "f8b9012ea8303778998b803eeba0c2a0f8e581d92429ec559e23b1440905d5bb",
+          "caption": "palette-1-05-before"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/palette-1-06-after.jpg",
+          "sha256": "401232a49151120542df018f530ac246db653ec23539c7d93ed563c214bb5174",
+          "caption": "palette-1-06-after"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/palette-1-06-before.jpg",
+          "sha256": "d26363e8e3acb1d3a9df6ca68997d2755b2f4d9ba59cab8087c2ef028edbde07",
+          "caption": "palette-1-06-before"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/palette-1-07-after.jpg",
+          "sha256": "6dffa85b5388b633afe44335794cf29ff2636e74d6e3cca15d03f75511c035dd",
+          "caption": "palette-1-07-after"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/palette-1-07-before.jpg",
+          "sha256": "f54fc80cd4e15203de196d0598b9417a688e9988ca3a8d3e4b38de20b5a8ac61",
+          "caption": "palette-1-07-before"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/palette-1-08-after.jpg",
+          "sha256": "4520a613c9417fe2d46a64c37deeffd41f0fe0ee0b1c92b4fdeb5fc2720f1007",
+          "caption": "palette-1-08-after"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/palette-1-08-before.jpg",
+          "sha256": "b9c3f284dd989ec0b0d54c2a903e4ed1f94c4005b7ce6e203df8f1acad4b87d7",
+          "caption": "palette-1-08-before"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/palette-1-09-after.jpg",
+          "sha256": "6a2a3d753f5d649cef1f7f95862a791f1bfe3cca9340b6157db34952a13494ed",
+          "caption": "palette-1-09-after"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/palette-1-09-before.jpg",
+          "sha256": "798821d50fd0b12b8c3f08f714951064f4ae368012695c34ff432d61bbdd42c4",
+          "caption": "palette-1-09-before"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/palette-1-10-after.jpg",
+          "sha256": "04dfb3f4b48ad2a94799ce467e3adf3ce0d2e802773c6d160cf7f3873c6d5a53",
+          "caption": "palette-1-10-after"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/palette-1-10-before.jpg",
+          "sha256": "2a73952b861b4170caa599849b5a0b83adb782c4086d73e0130cdb04ac17465c",
+          "caption": "palette-1-10-before"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/palette-1-11-after.jpg",
+          "sha256": "fdf43851299d846ce739407b0822bb37e052c30422f8e419154df017137009c4",
+          "caption": "palette-1-11-after"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/palette-1-11-before.jpg",
+          "sha256": "c7140f21003492aa01cd4a5994a4475cb137ca7c646f24a193a8ab6b94165415",
+          "caption": "palette-1-11-before"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/patrol_ship-after.jpg",
+          "sha256": "ca9a850cee19520b2c0f8e49459a9ca1fc23ede1ba5f9ff930f8367a6e44395f",
+          "caption": "patrol_ship-after"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/patrol_ship-before.jpg",
+          "sha256": "26fdee4cef8be4d31c55e32e7e1f55880040c689543f8ce0a47d7cb1c8fb4add",
+          "caption": "patrol_ship-before"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/rhib-after.jpg",
+          "sha256": "103d41c84a9c757007bde5c6788e571e955bb65447beaeae5540a932810344fa",
+          "caption": "rhib-after"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/rhib-before.jpg",
+          "sha256": "fbd77573ca3a45229143d4c1cd28b23bcde7ed77d7b0298be673d7fdd4d6030d",
+          "caption": "rhib-before"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/tank-after.jpg",
+          "sha256": "95fb3852b7708cec6c6786091300e541f075e7ca26788650875cfb80614919b1",
+          "caption": "tank-after"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/tank-before.jpg",
+          "sha256": "7cd69458f47d6f13456baca5eb2c072268054c18e473d4b9a621a084d4888054",
+          "caption": "tank-before"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/cc0-pass/palette-0-10-before.jpg",
+          "sha256": "81c3742d2c9a188870076fdf5b334d95bce7dd8e51a100c9ba93654746f8d76c",
+          "caption": "palette 0 10 before"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/cc0-pass/palette-0-05-before.jpg",
+          "sha256": "a1e86253e6a6a0c6792e47daba266bd19f0702a413f6f92d317ab526b235a795",
+          "caption": "palette 0 05 before"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/cc0-pass/palette-1-07-before.jpg",
+          "sha256": "0c30f9d2e4af685d9af45bcd331ec1f4d883262e5778eb3ccea94012a7c8cd89",
+          "caption": "palette 1 07 before"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/cc0-pass/palette-0-11-before.jpg",
+          "sha256": "6f429272f4a5c32c4edb5e54de8105bbccb5e5d267b81583b41d1265d22461ea",
+          "caption": "palette 0 11 before"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/cc0-pass/palette-1-11-before.jpg",
+          "sha256": "e63fb3a9ec2299ec6c979a5a2e49ee28d62d19358584cd4a464f62946d06db28",
+          "caption": "palette 1 11 before"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/cc0-pass/palette-1-05-before.jpg",
+          "sha256": "bbc10c7decffc11e544aed1b11d192510d76a5da6f7827ed0170994fa9e67ac5",
+          "caption": "palette 1 05 before"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/cc0-pass/palette-1-04-before.jpg",
+          "sha256": "0fe25ffedb8d196b832baa347f9c27fb84313bcbd83df44d3c795e65f31073d0",
+          "caption": "palette 1 04 before"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/cc0-pass/palette-0-07-before.jpg",
+          "sha256": "78fd5268896d3ba8de26073188c4f5cde06d3a224ac232554a4f407cd9e82c4c",
+          "caption": "palette 0 07 before"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/cc0-pass/palette-1-00-before.jpg",
+          "sha256": "ad1130d743a751818aa63aea4332d0c24ef9886e485cbe50c52aa8d955216c8d",
+          "caption": "palette 1 00 before"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/cc0-pass/old_tank-before.jpg",
+          "sha256": "142fc72b84d41ed6ff762466225102490f0e04db3c262d7148de2961a711091e",
+          "caption": "old_tank before"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/cc0-pass/patrol_ship-before.jpg",
+          "sha256": "0fffae3996c4e4968394de014088f9dddc127c54b52c0cb034fc12494d9b9da4",
+          "caption": "patrol_ship before"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/cc0-pass/palette-1-06-before.jpg",
+          "sha256": "eb12ca04ced9da99669572d8d13d27f08836cb0cc73c62dd5780e61c1c8d1fd3",
+          "caption": "palette 1 06 before"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/cc0-pass/rhib-before.jpg",
+          "sha256": "2e378dcc392dd8f231847e35ff689faccaa495a8d0c3a7f19695f65face8f5f0",
+          "caption": "rhib before"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/cc0-pass/heli-before.jpg",
+          "sha256": "e9fd2fe0967c7ece1f32e60dcdf4cd50c07d1a0fccc91361705b44d6bbf124d3",
+          "caption": "heli before"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/cc0-pass/palette-1-08-before.jpg",
+          "sha256": "6f63f5eb6d4ebfc7aa700bb7dc7714a291d11f10e4c0b7746516871d1c394721",
+          "caption": "palette 1 08 before"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/cc0-pass/hemtt_cargo-before.jpg",
+          "sha256": "ebaca154aea0ef3cbc35952d8add7429ad0e65862bf6011f5010e3d38321870b",
+          "caption": "hemtt_cargo before"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/cc0-pass/palette-1-10-before.jpg",
+          "sha256": "847b96f3d06e9ed1e3b4708e3689d53fcba765b41711392c8caee7a56ac689d8",
+          "caption": "palette 1 10 before"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/cc0-pass/palette-0-06-before.jpg",
+          "sha256": "8fef57205b354f5ee1c15bb34fabd16b2f4a4e7a493c6811c779846364713f9b",
+          "caption": "palette 0 06 before"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/cc0-pass/palette-0-00-before.jpg",
+          "sha256": "c220880115ebc1decfd93bd8913d211eb26a377bd31a82d54980ac53508c8f8e",
+          "caption": "palette 0 00 before"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/cc0-pass/palette-1-02-before.jpg",
+          "sha256": "bbf758d633bfd0800d1d10e7cdb4952482070ef61924bb51560fda756d6d7e88",
+          "caption": "palette 1 02 before"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/cc0-pass/palette-0-03-before.jpg",
+          "sha256": "b550f7d5d50dbc081e843b33f3be9970ee03734ba9ac8005746e73fac9e23707",
+          "caption": "palette 0 03 before"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/cc0-pass/palette-0-02-before.jpg",
+          "sha256": "28b767610f7fc8390a88919e8d180133c62a46a13a524cffda1159638f5215ec",
+          "caption": "palette 0 02 before"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/cc0-pass/palette-0-04-before.jpg",
+          "sha256": "d8180e0556686f7561feaf3fbc5138b6b36e1486b58f87ca0813be42a53d0467",
+          "caption": "palette 0 04 before"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/cc0-pass/gun_trawler-before.jpg",
+          "sha256": "7ec3da0ae054dc64946d66e0b5201378811f424d3347e57055ec0ed2cce26bc2",
+          "caption": "gun_trawler before"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/cc0-pass/palette-1-03-before.jpg",
+          "sha256": "5f4690abe7253776a5f4cb63b040de18ef0a37b51165676e4d836be69c4590c8",
+          "caption": "palette 1 03 before"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/cc0-pass/palette-0-01-before.jpg",
+          "sha256": "e857f864cce32aba3b3e4e9b30616f90f00c6ed26fad2a7a00359fa535d687a9",
+          "caption": "palette 0 01 before"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/cc0-pass/palette-1-01-before.jpg",
+          "sha256": "a2d2f2a0ec4b68366c8c695938bda720dbd688788827262965425d94ca67f9c0",
+          "caption": "palette 1 01 before"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/cc0-pass/tank-before.jpg",
+          "sha256": "617dec9c24e5b44eb708e5e05732c75acad2a973aee1f312a573a1a55b07cfff",
+          "caption": "tank before"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/cc0-pass/hatchback-before.jpg",
+          "sha256": "63223dede9f3696057951798886aecfffe442582e51b22dd4255e0796c97782f",
+          "caption": "hatchback before"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/cc0-pass/palette-0-09-before.jpg",
+          "sha256": "4a1f352474eba54bfd057ad886f1146ad22c7fcacc61e3af7d81c2896229c440",
+          "caption": "palette 0 09 before"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/cc0-pass/palette-1-09-before.jpg",
+          "sha256": "943180da10511a783466368cb54d9ff3e96d948c9deab1c0719826447d3ec3f4",
+          "caption": "palette 1 09 before"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/cc0-pass/blackwasp-before.jpg",
+          "sha256": "d32c7d55dc9a036464234ca447a571bec00db536169fdad4e9719c82666a1413",
+          "caption": "blackwasp before"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/cc0-pass/palette-0-08-before.jpg",
+          "sha256": "60bf81e8f2c194918d070e31552457d96d7eb14f7374b580a0bd2c4557d8a00d",
+          "caption": "palette 0 08 before"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/gun_trawler-after.jpg",
+          "sha256": "b6959918851dbd7b7662ebe612559a4105714066a454d33ee96c18ca446de95d",
+          "caption": "gun_trawler after"
+        }
+      ],
+      "output": null,
+      "capture": {
+        "before_ref": "b3ec859",
+        "after_ref": "CC0 integration working tree",
+        "engine": "Godot 4.6.3 Compatibility paired stills; current CC0 code checked with software Vulkan Forward+",
+        "command": "DISPLAY=:99 godot --path . --rendering-method gl_compatibility --audio-driver Dummy tools/showcase/vehicle-surfaces.tscn -- --surface-out=OUTPUT --surface-single --surface-kinds=tank,old_tank,heli,hemtt_cargo,hatchback,blackwasp,rhib,patrol_ship",
+        "seed": 3,
+        "team": 0,
+        "viewport": [
+          1600,
+          900
+        ],
+        "camera": "Orthographic, bounds-fit; direction (1, 0.65, -1.25), fixed studio sky and key light",
+        "timing": "Static pose, five frames then frame_post_draw",
+        "swatches": "Same fixture, --surface-swatches; sixteen 400x225 swatches in a 1600x900 image.",
+        "audit": "143 subjects rendered for each palette (135 roster/builder keys, five parked cars, three wrecks); 278 builds audited headlessly. Translation check at (117,35,-81) differs by less than 0.001 mean 8-bit channel value for tank and hatchback.",
+        "complete_comparisons": {
+          "report": "docs/vehicle-surface-comparisons/README.md",
+          "before_ref": "b3ec859",
+          "after_ref": "CC0 integration working tree",
+          "engine": "Godot 4.6.3 Compatibility",
+          "subjects_per_palette": 143,
+          "palettes": [
+            0,
+            1
+          ],
+          "command": "DISPLAY=:99 godot --path CHECKOUT --rendering-method gl_compatibility --audio-driver Dummy tools/showcase/vehicle-surfaces.tscn -- --surface-out=OUTPUT --surface-team=TEAM",
+          "note": "Original baseline before images retained; after images refreshed with CC0 integration using identical roster capture settings."
+        },
+        "cc0_pass": {
+          "report": "docs/vehicle-surface-comparisons/cc0-pass/README.md",
+          "before_closeups_ref": "e31ed14",
+          "before_roster_ref": "a43f427 (runtime unchanged at e31ed14)",
+          "after_ref": "CC0 integration working tree",
+          "engine": "Godot 4.6.3 Compatibility",
+          "seed": 3,
+          "subjects_per_palette": 143,
+          "palettes": [
+            0,
+            1
+          ],
+          "closeups": 9,
+          "renderer_validation": "Four close-ups rendered with Vulkan 1.4.305 Forward+, software llvmpipe. Initial fallback run discarded as Forward+ evidence."
+        }
+      }
+    },
+    {
       "entry": "changelog/unreleased/realism-04-talus.md",
       "summary": "Sheltered lower slopes collect pale loose stone while exposed walls retain darker bedrock.",
       "medium": "still",
@@ -3499,6 +4069,473 @@
         "wide": "focus 0,0; zoom 900; pitch -22; yaw 0.7",
         "compatibility": "Target after with --rendering-method gl_compatibility",
         "command": "godot --main-pack PACK --resolution 1600x900 -- --aivai --seed=3 --offscreen --nohud --set=perf:0 --preset=high --mood=MOOD --focus=FOCUS --zoom=ZOOM --pitch=PITCH --cam-yaw=0.7 --screenshot=OUTPUT --shot-at=2 --quit-after=3"
+      }
+    },
+    {
+      "entry": "changelog/unreleased/hemtt-cargo-detail.md",
+      "summary": "Framed glazing, tyre tread and load hardware make the cargo truck more readable.",
+      "medium": "still",
+      "stage": "vehicle-surfaces",
+      "rationale": "Matched close and wider studio pairs isolate the modeled detail from lighting and texture changes.",
+      "source_ref": "f0b8191 baseline + HEMTT cargo art pass",
+      "sources": [
+        {
+          "file": "changelog/unreleased/hemtt-cargo-detail/close-after.jpg",
+          "sha256": "be8690a107203e6b9d66b7c7264b53bfb778561e265d429305da682a371641d2",
+          "caption": "close after"
+        },
+        {
+          "file": "changelog/unreleased/hemtt-cargo-detail/close-before.jpg",
+          "sha256": "601605e17d1ed2baaece64415314204f85903a054cc75528787f32b614bd4ea8",
+          "caption": "close before"
+        },
+        {
+          "file": "changelog/unreleased/hemtt-cargo-detail/wide-after.jpg",
+          "sha256": "23d06504ce1d1b5287bbe8542ceba244e3bdece77253239fe71c8e266e83edcf",
+          "caption": "wide after"
+        },
+        {
+          "file": "changelog/unreleased/hemtt-cargo-detail/wide-before.jpg",
+          "sha256": "d5b57f05b3d79d8545a1ef68372c41337e08146ff3b171707695e5c5fc9e1c14",
+          "caption": "wide before"
+        }
+      ],
+      "output": null,
+      "capture": {
+        "before_ref": "f0b8191 with capture-size option only",
+        "after_ref": "HEMTT cargo art pass working tree",
+        "engine": "Godot 4.6.3 Compatibility; palette 1 also inspected with Vulkan Forward+",
+        "command": "DISPLAY=:100 godot --path . --rendering-method gl_compatibility --audio-driver Dummy tools/showcase/vehicle-surfaces.tscn -- --surface-out=OUTPUT --surface-single --surface-kinds=hemtt_cargo --surface-size=SIZE",
+        "seed": 3,
+        "team": 0,
+        "viewport": [
+          1600,
+          900
+        ],
+        "camera": "Orthographic size 10 close / 28 wide, direction (1,0.65,-1.25); fixed studio sky and key light",
+        "timing": "Static pose, five frames then frame_post_draw",
+        "report": "docs/vehicle-surface-comparisons/hemtt-cargo.md",
+        "limitations": "Wide images are gameplay-scale studio views, not in-match footage. No photorealism or hardware-performance claim."
+      }
+    },
+    {
+      "entry": "changelog/unreleased/hemtt-cab-depth.md",
+      "summary": "Transparent cab glazing, rounded tyres and draped cloth loads on the HEMTT cargo truck.",
+      "medium": "still",
+      "stage": "vehicle-surfaces",
+      "rationale": "Matched grounded renders isolate the model rebuild from new lighting; a separate in-game screenshot verifies the actual world renderer.",
+      "source_ref": "e7fee16 baseline + HEMTT cab/tyre rebuild",
+      "sources": [
+        {
+          "file": "changelog/unreleased/hemtt-cab-depth/after.jpg",
+          "sha256": "0fdd02969ffe2ebb845a3a5dc7bf11d49eeb9c0e483c8a62a63dcf6fcce6d01c",
+          "caption": "after"
+        },
+        {
+          "file": "changelog/unreleased/hemtt-cab-depth/before.jpg",
+          "sha256": "27cfe94dda0b44f9f01411f817c5282cf3cd9cfefb08ed4d9788332ccf045fa1",
+          "caption": "before"
+        },
+        {
+          "file": "changelog/unreleased/hemtt-cab-depth/in-game.jpg",
+          "sha256": "3cfca29560a95804b1a4d1cba0de230d9a9165839593af92c116d1505278d3e7",
+          "caption": "in game"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/hemtt-rebuild/wide-after.jpg",
+          "sha256": "7edd1050c250defbd9867218156fb10d49b67bee9f5af35ce55b6942a1fb4bd0",
+          "caption": "wide after"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/hemtt-rebuild/wide-before.jpg",
+          "sha256": "c4a8b287ac0d83b3157aa6d6bc7b8c463d594542c57d7973005ada8cc3a1ff36",
+          "caption": "wide before"
+        }
+      ],
+      "output": null,
+      "capture": {
+        "before_ref": "e7fee16 with grounded harness copied in",
+        "after_ref": "HEMTT cab/tyre rebuild working tree",
+        "engine": "Godot 4.6.3, Vulkan Forward+ (close pair), Compatibility (wide pair and in-game)",
+        "command": "DISPLAY=:101 VK_DRIVER_FILES=/path/to/lvp_icd.json godot --path CHECKOUT --rendering-method forward_plus --audio-driver Dummy tools/showcase/vehicle-surfaces.tscn -- --surface-out=OUTPUT --surface-single --surface-kinds=hemtt_cargo --surface-size=8 --surface-ground",
+        "seed": 3,
+        "team": 0,
+        "viewport": [
+          1600,
+          900
+        ],
+        "camera": "Orthographic size 8 close / 28 wide, direction (1,0.65,-1.25). Ground and lighting identical within each pair.",
+        "timing": "Five frames then frame_post_draw",
+        "report": "docs/vehicle-surface-comparisons/hemtt-rebuild.md",
+        "in_game": "vehicle-in-world.tscn, attack scenario seed 3, daytime High preset, perf:0 aa:2 post:0, focus=-20,-10 zoom=16 pitch=-28 cam-yaw=2.45; fixed-fps 30, shot-at=1. Showcase truck parked by copying its definition and setting speed to zero.",
+        "validation": "Four focused tests pass, including transparent-pane distance ranges and wreck handling. Palette 1 inspected in Forward+. Software rendering; no hardware performance claim."
+      }
+    },
+    {
+      "entry": "changelog/unreleased/vehicle-detail-rollout.md",
+      "summary": "Open truck and civilian cabs, rounded shared wheels, draped Zamak loads and corrected painted coatings.",
+      "medium": "still",
+      "stage": "vehicle-surfaces",
+      "rationale": "Matched close views show cab depth and tyre shape; the complete two-palette roster reveals coverage and regressions.",
+      "source_ref": "1bdecfd baseline; 55033e2 roster detail rollout",
+      "sources": [
+        {
+          "file": "docs/vehicle-surface-comparisons/roster-detail/team-0-before-roster-00.jpg",
+          "sha256": "f531cad9bf3fa7f1f449d13ca901933548d9deb1382e88588a45cb66be1020b8",
+          "caption": "team 0 before roster 00"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/roster-detail/team-0-before-roster-01.jpg",
+          "sha256": "72b3ec137cea76b8b56f1fa07ea3f38edeea8665b6ff37dee3c7f11d546ae201",
+          "caption": "team 0 before roster 01"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/roster-detail/team-0-before-roster-02.jpg",
+          "sha256": "3a1ced4c602538f521aa8b7ddf22d9f8bd636eb0fb493df743410fda64988a4e",
+          "caption": "team 0 before roster 02"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/roster-detail/team-0-before-roster-03.jpg",
+          "sha256": "e8a71982519b86bce2f5112bd9a25ec7874cac1ddf1567e1f4d3a8c2929f3689",
+          "caption": "team 0 before roster 03"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/roster-detail/team-0-before-roster-04.jpg",
+          "sha256": "771b35aec34b5e319d546ef33db1120bc0be1c956ae82baadf5a957adfa0cf2e",
+          "caption": "team 0 before roster 04"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/roster-detail/team-0-before-roster-05.jpg",
+          "sha256": "882d07c3802907fe32ed21b576e937447455ae0cafdef7f7761715c5fd6a57e7",
+          "caption": "team 0 before roster 05"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/roster-detail/team-0-before-roster-06.jpg",
+          "sha256": "e99e1575fa9bd53195e4ee79efff9fc0c543890ba350ecdfe3113626876f8364",
+          "caption": "team 0 before roster 06"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/roster-detail/team-0-before-roster-07.jpg",
+          "sha256": "72a299f939cc3466ea0852f424780b84b8f17273575c03344794fc26a4d3002d",
+          "caption": "team 0 before roster 07"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/roster-detail/team-0-before-roster-08.jpg",
+          "sha256": "39a0e7de9abb8ba6ea32e119709d4ff7de15b2f5c9f3541608ccfe3d2812ddbe",
+          "caption": "team 0 before roster 08"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/roster-detail/team-0-before-roster-09.jpg",
+          "sha256": "301ddaf212344ecffdebf5ac5d4348cadb207f58c3ac4d3f84a169f17f4c1609",
+          "caption": "team 0 before roster 09"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/roster-detail/team-0-before-roster-10.jpg",
+          "sha256": "ed8b91c28069e50326dd4815e3bace63ec81a0d5a557980cc7b4621c7b369ad7",
+          "caption": "team 0 before roster 10"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/roster-detail/team-0-before-roster-11.jpg",
+          "sha256": "40e72b60afeffedc10868358f9a05779e5c25fc25a9f8ae4c6b8c0af6862f3df",
+          "caption": "team 0 before roster 11"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/roster-detail/team-0-after-roster-00.jpg",
+          "sha256": "a5cf9db232ee5b1f3d20c8bfc4c9e5baeba4ce91ed304aef4ea96840fd0711a0",
+          "caption": "team 0 after roster 00"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/roster-detail/team-0-after-roster-01.jpg",
+          "sha256": "8849540916fb4575ccef282a396ec1a5d9a561619a32aa9bb9e3b000718eef00",
+          "caption": "team 0 after roster 01"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/roster-detail/team-0-after-roster-02.jpg",
+          "sha256": "6b0651872c816bcfaa55bb12e7d3d964e51b9140de685b9e4e1d464d61a90d2f",
+          "caption": "team 0 after roster 02"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/roster-detail/team-0-after-roster-03.jpg",
+          "sha256": "d7de6710b8f86372c33c497039999ce275f63afe004e6e387075d70bba6c201e",
+          "caption": "team 0 after roster 03"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/roster-detail/team-0-after-roster-04.jpg",
+          "sha256": "8ded18577d6ab67f3cd61cbc4d33ba5e95bbb19c54b7d14c77adfccb5f3c142e",
+          "caption": "team 0 after roster 04"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/roster-detail/team-0-after-roster-05.jpg",
+          "sha256": "db008a0c71c9f0fac8565bf454ace3b4362e9624eeab26f1439467ffec4965dd",
+          "caption": "team 0 after roster 05"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/roster-detail/team-0-after-roster-06.jpg",
+          "sha256": "71c804379f5aa4cb293f10ad67220f0ec89d92de49e21220bbe7ab3e23304233",
+          "caption": "team 0 after roster 06"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/roster-detail/team-0-after-roster-07.jpg",
+          "sha256": "4479228269c341cabd6238be4cccdaa441b2dc74bd147c412366e70eee5dd218",
+          "caption": "team 0 after roster 07"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/roster-detail/team-0-after-roster-08.jpg",
+          "sha256": "549ae1e0d740704e62e8354de5c3e6d215658b09ea1fc93799f68fabeea7f24f",
+          "caption": "team 0 after roster 08"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/roster-detail/team-0-after-roster-09.jpg",
+          "sha256": "e8a06e9897706f8e3c0abc96bc28f50bcf5a740caf9e59b6f6b729fd30e9f364",
+          "caption": "team 0 after roster 09"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/roster-detail/team-0-after-roster-10.jpg",
+          "sha256": "89fd0d82e9e76370ab19b490737fc8326d10dea9a0f92f42356baf820b803879",
+          "caption": "team 0 after roster 10"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/roster-detail/team-0-after-roster-11.jpg",
+          "sha256": "3d6d6dce556aa85aabd04a2850377ca5dd9730c6b6ab3e2b9bf6f5886a1841f9",
+          "caption": "team 0 after roster 11"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/roster-detail/team-1-before-roster-00.jpg",
+          "sha256": "0a1705707a887c36121d79e24457679ec6dc3808ad90b7c2c102448f96700d88",
+          "caption": "team 1 before roster 00"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/roster-detail/team-1-before-roster-01.jpg",
+          "sha256": "a7761eab1df8e8ca960b0a59ad676c54de39090184f11cfcad90a0a1199a4262",
+          "caption": "team 1 before roster 01"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/roster-detail/team-1-before-roster-02.jpg",
+          "sha256": "2739abf7f97a0c753d0d8bf8fe460180e334e58de29fc70d5c77dc7c4a2455c6",
+          "caption": "team 1 before roster 02"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/roster-detail/team-1-before-roster-03.jpg",
+          "sha256": "1ce538570872a01b0315ec660711fea9662c9bece6dd848cdb71739fc08023b2",
+          "caption": "team 1 before roster 03"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/roster-detail/team-1-before-roster-04.jpg",
+          "sha256": "bd61dc290962ec50ee0414519350229d631652be451e65a13ff088155b945f84",
+          "caption": "team 1 before roster 04"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/roster-detail/team-1-before-roster-05.jpg",
+          "sha256": "3af82104ba618017bb2ff214cc7c5ccab1aed1aa53882a994b3db33e337829ec",
+          "caption": "team 1 before roster 05"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/roster-detail/team-1-before-roster-06.jpg",
+          "sha256": "639445c0238017947e4d177140dec5b35ce0869b1aa860b9fe9c648707273528",
+          "caption": "team 1 before roster 06"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/roster-detail/team-1-before-roster-07.jpg",
+          "sha256": "b2921f160071eb9dc7461a2251c54c39cd1781b695dbd82e9bcf1fd79f87b4df",
+          "caption": "team 1 before roster 07"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/roster-detail/team-1-before-roster-08.jpg",
+          "sha256": "f0e61d17ec1164562daaf7b4970a375d7f32f8d52af4582e3b69bab8f6f21728",
+          "caption": "team 1 before roster 08"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/roster-detail/team-1-before-roster-09.jpg",
+          "sha256": "653f24cd2cb779cb17facc32f8d70289dea346c0f40700750220155ad5b75399",
+          "caption": "team 1 before roster 09"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/roster-detail/team-1-before-roster-10.jpg",
+          "sha256": "7a21ee63832874ee26af5ab674951b5a5371cfd8792c0f38d919a1b51bc1d017",
+          "caption": "team 1 before roster 10"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/roster-detail/team-1-before-roster-11.jpg",
+          "sha256": "1715fd6ae83013c0b1c2dfc18a20c3ea60cea0f7f6bfdf666683467fefe42fe6",
+          "caption": "team 1 before roster 11"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/roster-detail/team-1-after-roster-00.jpg",
+          "sha256": "488882e5b17282d0bebf9454356926c466a0b30a4979f0701d185e3e790b66a3",
+          "caption": "team 1 after roster 00"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/roster-detail/team-1-after-roster-01.jpg",
+          "sha256": "9bae5c117f2e32f0d8eb6d32ddedc0ece17026e63a6fe1bde684f5f8dd21c4d6",
+          "caption": "team 1 after roster 01"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/roster-detail/team-1-after-roster-02.jpg",
+          "sha256": "db8ddaf534b793f0ec6ca5407123a7301dee2f57fe6e88b8cfc069ce749a7e2b",
+          "caption": "team 1 after roster 02"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/roster-detail/team-1-after-roster-03.jpg",
+          "sha256": "fef293f268087f53be5eabbd35dc3d774cd48a56b18393ddfbafed8b0029869d",
+          "caption": "team 1 after roster 03"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/roster-detail/team-1-after-roster-04.jpg",
+          "sha256": "beea73b9df62d639056783591208345aa5bc5262616a3d5ab9c8a18d7d980c5e",
+          "caption": "team 1 after roster 04"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/roster-detail/team-1-after-roster-05.jpg",
+          "sha256": "3fee7a238df2a7f628f1ddf5fbd2efe511573b7fb26df480ac3b78afe275592e",
+          "caption": "team 1 after roster 05"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/roster-detail/team-1-after-roster-06.jpg",
+          "sha256": "9c1ca37a198722f7aaa8eb54acfa17cc74ed48d9333791f7d5b1fc27840230f3",
+          "caption": "team 1 after roster 06"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/roster-detail/team-1-after-roster-07.jpg",
+          "sha256": "d551811f163221c09654be8b05f9657bddbaa9716ba8e1058230740941283718",
+          "caption": "team 1 after roster 07"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/roster-detail/team-1-after-roster-08.jpg",
+          "sha256": "76d8e776d9f5ed91961af26978e42cddf361c9df0bc3e5921b26a683050eb209",
+          "caption": "team 1 after roster 08"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/roster-detail/team-1-after-roster-09.jpg",
+          "sha256": "c990be3f7e161f1c701fdcf3139aa30c3727dbdf8ea4aea400966e919261f75c",
+          "caption": "team 1 after roster 09"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/roster-detail/team-1-after-roster-10.jpg",
+          "sha256": "693e928ed6f520d393d4ab28b143a17fe3db6eae370c7615f65a98e48e6b7f51",
+          "caption": "team 1 after roster 10"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/roster-detail/team-1-after-roster-11.jpg",
+          "sha256": "58ba2f703dd3076b3de357c0fced29fcf92c3e91464abe439449644c5de0b7ea",
+          "caption": "team 1 after roster 11"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/roster-detail/hemtt_fuel-before.jpg",
+          "sha256": "fb7107fb6bdba9d63adb2356cc281701087653c220c44ef60dc33340b551e6d6",
+          "caption": "hemtt_fuel before"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/roster-detail/hemtt_fuel-after.jpg",
+          "sha256": "890406a387d7d3c0ec7094068bdcdb4b3fd95eff07eea98ebc0f55ec6e940836",
+          "caption": "hemtt_fuel after"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/roster-detail/zamak_cargo-before.jpg",
+          "sha256": "c3ddfc3574d965c4705aee57b17a64ef3f6337fc8c7f2a8ce20828ff73a36d83",
+          "caption": "zamak_cargo before"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/roster-detail/zamak_cargo-after.jpg",
+          "sha256": "d8b208c915367a612fb5e142f376edf4b619644b7fa21514b218c2d52b371b1a",
+          "caption": "zamak_cargo after"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/roster-detail/tempest-before.jpg",
+          "sha256": "d4b656bb8d5c69bef48b1bca3ae2b87aa6055f41fd7db205e2304ae2945aa9f9",
+          "caption": "tempest before"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/roster-detail/tempest-after.jpg",
+          "sha256": "f41d5cf71a017569f56fb86ad9dd1d068bfb57c6db40494cf340c3fa80398ed0",
+          "caption": "tempest after"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/roster-detail/hunter-before.jpg",
+          "sha256": "2f4c68825f691838b8c97aa61a418cd91bd89b8cc6e5787cf648f0e3a38e1dbd",
+          "caption": "hunter before"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/roster-detail/hunter-after.jpg",
+          "sha256": "2e78f7c3b5361ad3c782a5a5173b9a7d93123bb1a2b7311e6ee40d4dee11e1a5",
+          "caption": "hunter after"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/roster-detail/offroad-before.jpg",
+          "sha256": "48c6d5e82303c5857f99d6c42c91442f2067798d0035441803fab7ed155fb246",
+          "caption": "offroad before"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/roster-detail/offroad-after.jpg",
+          "sha256": "c7e4c4d37adaf2bc12b408e030bec5e2db573027b65e0f34ebb6a648f9948f8c",
+          "caption": "offroad after"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/roster-detail/hatchback-before.jpg",
+          "sha256": "777151d58355dfb86ab595e1428646469b4fde6831de93fa163fe4ef8b4c067d",
+          "caption": "hatchback before"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/roster-detail/hatchback-after.jpg",
+          "sha256": "45c2602f4a5f5ac2d7eed5891cd1b5a5df7e8d9a88a5495cfb4525684a9d7110",
+          "caption": "hatchback after"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/roster-detail/suv-before.jpg",
+          "sha256": "bb0551da2fbcf11fea42ba7350b6792914d141e7cbfd7fb67a76cf861a8e6b91",
+          "caption": "suv before"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/roster-detail/suv-after.jpg",
+          "sha256": "1b0207713a09555dde3aad3c5f8be2898024d065f9986cc65cf84b480a9f46c5",
+          "caption": "suv after"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/roster-detail/heli-before.jpg",
+          "sha256": "d750914037e6d152201f211bd469652c800033fbf9dcdc1964663eb230bb1831",
+          "caption": "heli before"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/roster-detail/heli-after.jpg",
+          "sha256": "333c3850cd6da406ff489f6ea71949ac860e242d4a4420d7b97b28069c8f1b88",
+          "caption": "heli after"
+        },
+        {
+          "file": "changelog/unreleased/vehicle-detail-rollout/zamak-before.jpg",
+          "sha256": "285eb82c67982df1d12d4451a76175e3b8140f397af53b143061baf44ec24ab8",
+          "caption": "zamak before"
+        },
+        {
+          "file": "changelog/unreleased/vehicle-detail-rollout/zamak-after.jpg",
+          "sha256": "c43ba8470de5485b3247ef25404638cf246615125170ff0bb2dcc1936efa9d08",
+          "caption": "zamak after"
+        },
+        {
+          "file": "changelog/unreleased/vehicle-detail-rollout/offroad-after.jpg",
+          "sha256": "8408f1f04d26219e7d9c0af2d6f1777823265aead7886c7ac22900fe780cf1a4",
+          "caption": "offroad after"
+        },
+        {
+          "file": "docs/vehicle-surface-comparisons/roster-detail/in-game.jpg",
+          "sha256": "b29ff6f42c9ed5b4c0dc7f57fc758f8293b7503d58975f83fb7ace0acac467d7",
+          "caption": "in game"
+        }
+      ],
+      "output": null,
+      "capture": {
+        "before_ref": "1bdecfd",
+        "after_ref": "55033e2",
+        "engine": "Godot 4.6.3, Forward+ close pairs, Compatibility roster and in-game",
+        "seed": 3,
+        "viewport": [
+          1600,
+          900
+        ],
+        "command": "godot --path CHECKOUT --rendering-method gl_compatibility --audio-driver Dummy tools/showcase/vehicle-surfaces.tscn -- --surface-out=OUTPUT --surface-team=0 (repeat team 1); Forward+ close views add --surface-single --surface-ground --surface-kinds=KIND",
+        "camera": "Studio direction (1,0.65,-1.25); automatic bounds-based orthographic framing. Identical settings within each pair.",
+        "timing": "Five process frames then frame_post_draw",
+        "report": "docs/vehicle-surface-comparisons/roster-detail.md",
+        "in_game": "vehicle-in-world.tscn, attack seed 3, showcase-vehicle=offroad, High daytime perf:0 aa:2 post:0, focus=-20,-10 zoom=12 pitch=-28 cam-yaw=2.45, fixed-fps 30 shot-at=1 quit-after=2",
+        "validation": "Four focused tests pass; full roster fixture includes glass LOD and wreck checks. Roster scenario 10 seconds. Both palettes reviewed; software rendering, no hardware performance claim."
       }
     },
     {
