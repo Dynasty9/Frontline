@@ -4,9 +4,19 @@ summary = "Explosion clouds roll and disperse, with sunlight catching their bill
 kind = "improved"
 
 [[videos]]
+file = "ground.webm"
+poster = "ground.jpg"
+caption = "After: a brief HE flash, thrown earth and thinner dust, followed by a closer view of the real crater. The second shot checks ground marks beside stone cover. Actual terrain, Forward+, 12 seconds, fixed 24 fps, normal speed; silent."
+
+[[videos]]
+file = "ground-before.webm"
+poster = "ground-before.jpg"
+caption = "Before: revision 5aad51e with the same current capture fixture, camera, seed and real terrain stamps. Dense dust obscures the flash, the coarse ground mesh flattens the crater, and dark ground marks project onto cover. This is a fresh capture of the previous build."
+
+[[videos]]
 file = "cover.webm"
 poster = "cover.jpg"
-caption = "After: fuel smoke meets tank armor and HE dust meets stone cover without a flat cut through the cloud. Actual battlefield, two matched four-second shots; Forward+, fixed 24 fps, normal speed, silent."
+caption = "Earlier intersection fix, before the dust and ground-mark correction: fuel smoke meets tank armor and HE dust meets stone cover without a flat cut through the cloud. Actual battlefield, two matched four-second shots; Forward+, fixed 24 fps, normal speed, silent."
 
 [[videos]]
 file = "cover-before.webm"
@@ -41,7 +51,7 @@ caption = "Moonlit controlled close-up: the actual cloth canopy, suspension line
 [[videos]]
 file = "armaments.webm"
 poster = "armaments.jpg"
-caption = "Current build, left to right: grenade, HE and fuel. The second half shows machine-gun rounds striking dirt, stone and metal. Ground marks are 10 m apart. Fixed 30 fps."
+caption = "Earlier effect demonstration, left to right: grenade, HE and fuel. The second half shows machine-gun rounds striking dirt, stone and metal. Ground marks are 10 m apart. Fixed 30 fps."
 
 [[videos]]
 file = "before.webm"
@@ -51,12 +61,16 @@ caption = "Before: the same controlled range at revision b3ec859, using the form
 [[videos]]
 file = "flares.webm"
 poster = "flares.jpg"
-caption = "Current build, Forward+: a following camera shows the flare's open cloth canopy, suspension lines, sparks and lingering smoke at night."
+caption = "Earlier effect demonstration, Forward+: a following camera shows the flare's open cloth canopy, suspension lines, sparks and lingering smoke at night."
 
 [[videos]]
 file = "rts.webm"
 poster = "rts.jpg"
-caption = "Current build: the same HE burst from a higher RTS camera, with the cloud following the scene's lighting and depth."
+caption = "Earlier effect demonstration: the same HE burst from a higher RTS camera, with the cloud following the scene's lighting and depth."
+
+[[screenshots]]
+file = "ground-crater.jpg"
+caption = "After the dust clears: the detailed terrain mesh shows the dug bowl and raised rim, with a restrained scorch stain."
 
 [[screenshots]]
 file = "before.jpg"
@@ -67,13 +81,16 @@ file = "after.jpg"
 caption = "After: the same shell throws earth and a turbulent dust cloud."
 +++
 
-The first two clips compare cloud intersections at the tank and stone wall. The full armament showcase below moves from grenade (0:00) to HE (0:04), fuel (0:09), dirt/stone/metal impacts (0:14–0:20), then the night flare (0:20). These are controlled effect demonstrations in the actual battlefield; the matched before/after clips and focused close-ups remain below.
+The first two clips compare the flash, dust and crater on open ground and beside a stone wall. The camera moves closer after the dust clears. Terrain data already contained craters, but the close-up mesh could stay too coarse to show them. The corrected terrain detail now reveals the bowl and rim. These recordings also perform the terrain-stamping step that earlier visual-only demonstrations omitted.
+
+The following pair shows the earlier cloud-intersection fix at a tank and wall. The full armament showcase below moves from grenade (0:00) to HE (0:04), fuel (0:09), dirt/stone/metal impacts (0:14–0:20), then the night flare (0:20). These are controlled effect demonstrations in the actual battlefield; the matched before/after clips and focused close-ups remain below.
 
 - Grenades have a small, brief flash and fast dark fragments. HE shells throw widening fans of earth, falling clods and dust. Fuel burns through a rising cloud of darker smoke.
 - Animated clouds retain their billows as they roll and disperse. Sunlight and sky light shape them, roads produce greyer dust, and wet ground produces a darker, thinner cloud.
 - Dust, landing debris and crater marks follow the ground height. Airbursts retain their flash and smoke without throwing earth from midair.
 - Explosion clouds meet tank armor and nearby cover with soft intersections instead of revealing a flat, sharply cut sheet. Solid cover in front of the cloud still hides it.
 - Scorch and crater marks stay on the ground instead of projecting onto walls or smoke. HE leaves a smaller, lighter stain so the dug bowl and thrown-up rim remain visible.
+- Nearby ground now keeps its detailed mesh, restoring visible crater bowls and rims instead of flattening them into distant terrain detail.
 - The opening flash appears immediately, followed by thinner dust that disperses sooner. The ground showcase now stamps real craters and holds the aftermath after the cloud clears.
 - Illumination flares sway beneath open cloth parachutes, descend with the wind, and leave smoke behind. Their trails stop emitting when the charge burns out and then disperse.
 - Tracers light beyond the muzzle and dim with distance. Metal impacts shed small chips alongside sparks; dirt and stone produce their own debris.

@@ -3442,9 +3442,9 @@
       "entry": "changelog/unreleased/realistic-armament-effects.md",
       "summary": "Rolling, scene-lit explosion clouds with ballistic earth, material impacts and drifting flare trails.",
       "medium": "motion",
-      "stage": "blast-cover / battlefield-effects / blast-close / blast-rts / armaments / flares / impacts",
-      "rationale": "Lead matched tank/cover close-ups show the intersection correction. The complete terrain reel and original comparisons remain available below. New clips use identical camera, events and seed; only the cloud shader differs. Encoded beginning/action/end frames, decode and actual ReleaseCard controls are checked.",
-      "source_ref": "b3ec8594ef59488cdfa36e5b12fcdf40b9cac791 (baseline game); 2252c93a87a54cc6a6b7498017d6f3cf5b2f6835 (implementation and capture fixtures); 3818d50 (terrain showcase); 84d242c (resumed stone/metal/flare capture); a7f3fb3 (occlusion fix and matched close-up stage); ee782db (historical cloud shader only)",
+      "stage": "blast-ground / blast-cover / battlefield-effects / blast-close / blast-rts / armaments / flares / impacts",
+      "rationale": "Lead matched open-ground/cover clips show a visible flash, thinner dust and real crater aftermath with corrected terrain detail. The previous build is freshly captured with the same current terrain-stamping fixture. Earlier intersection and armament demonstrations remain below. Actual ReleaseCard media controls and encoded beginning/action/result frames are checked.",
+      "source_ref": "b3ec8594ef59488cdfa36e5b12fcdf40b9cac791 (baseline game); 2252c93a87a54cc6a6b7498017d6f3cf5b2f6835 (implementation and capture fixtures); 3818d50 (terrain showcase); 84d242c (resumed stone/metal/flare capture); a7f3fb3 (occlusion fix and matched close-up stage); ee782db (historical cloud shader only); af36b0414fad1db50cf4a71fa15bc079a6a9965d (ground marks, flash/dust and current shared capture fixture); 5aad51e744b6b6ab4ec7879014b2f37d4646e5f4 (previous runtime with current capture fixture); 0e221360901dab0e48f020c0a2861a04f06fcbc4 (local ground bounds restore nearby crater geometry)",
       "sources": [
         {
           "file": "changelog/unreleased/realistic-armament-effects/after.jpg",
@@ -3570,11 +3570,41 @@
           "file": "changelog/unreleased/realistic-armament-effects/cover-capture.json",
           "sha256": "b3ca1649c5cad65619540fa3d93fe3b969aeed3f836d86297abd7416ea52f406",
           "caption": "cover-capture.json"
+        },
+        {
+          "file": "changelog/unreleased/realistic-armament-effects/ground.webm",
+          "sha256": "5de0f0b9b5d51f34f6070c423aa12e81b743d57facfd1c29d4278798f4799bb0",
+          "caption": "ground.webm"
+        },
+        {
+          "file": "changelog/unreleased/realistic-armament-effects/ground.jpg",
+          "sha256": "253a0fcf46ebc511bbfc0efa9d9afceaf6e9bcef145359106c9f3d74271c2922",
+          "caption": "ground.jpg"
+        },
+        {
+          "file": "changelog/unreleased/realistic-armament-effects/ground-before.webm",
+          "sha256": "5eec2a03c16891dfc9db2f3fc4e2ba46f24f8a72f0154d891938bcdb5aead683",
+          "caption": "ground-before.webm"
+        },
+        {
+          "file": "changelog/unreleased/realistic-armament-effects/ground-before.jpg",
+          "sha256": "69f60e28e6fe161a92882b322e3dc11c6f2a4260acbfba0440ef41306b0c5efd",
+          "caption": "ground-before.jpg"
+        },
+        {
+          "file": "changelog/unreleased/realistic-armament-effects/ground-capture.json",
+          "sha256": "61c4b19345b3b534302db5962a46c024521ec9efcfc74af10fb528fc5c8eff6a",
+          "caption": "ground-capture.json"
+        },
+        {
+          "file": "changelog/unreleased/realistic-armament-effects/ground-crater.jpg",
+          "caption": "Visible crater bowl after the dust clears",
+          "sha256": "2ffefea91272a3fe6640af88039a985db44b2271c77fb7b1a0eb395f5bd0bcaa"
         }
       ],
       "output": null,
-      "attribution": "Actual Godot 4.7.2 output, silent and normal speed. Lead tank/cover pair: Forward+, 24 Hz, 8 seconds; cover-capture.json records the shader-only comparison and depth regression. Full terrain reel: Forward+, 24 Hz, 28 seconds; its interrupted/resumed capture provenance is in battlefield-capture.json. Original matched battlefield clips use Compatibility at 24 Hz; range/flare close-ups use 30 Hz with their recorded renderers. Baseline capture holds legacy pool timestamps to preserve particle lifetimes during offline readback; that timing control does not change the particle programs. CC0 JangaFX animation credits: assets/vfx/LICENSE.md.",
-      "capture_review": "changelog/unreleased/realistic-armament-effects/presentation-review.json"
+      "attribution": "Lead ground pair: actual Godot 4.7.2 Forward+ output, 24 Hz, 12 seconds, silent and normal speed. Both builds stamp actual terrain; ground-capture.json records refs, commands, measurements and validation. Actual Godot 4.7.2 output, silent and normal speed. Earlier tank/cover pair: Forward+, 24 Hz, 8 seconds; cover-capture.json records the shader-only comparison and depth regression. Full terrain reel: Forward+, 24 Hz, 28 seconds; its interrupted/resumed capture provenance is in battlefield-capture.json. Original matched battlefield clips use Compatibility at 24 Hz; range/flare close-ups use 30 Hz with their recorded renderers. Baseline capture holds legacy pool timestamps to preserve particle lifetimes during offline readback; that timing control does not change the particle programs. CC0 JangaFX animation credits: assets/vfx/LICENSE.md.",
+      "capture_review": "changelog/unreleased/realistic-armament-effects/ground-capture.json"
     },
     {
       "entry": "changelog/unreleased/realism-04-talus.md",

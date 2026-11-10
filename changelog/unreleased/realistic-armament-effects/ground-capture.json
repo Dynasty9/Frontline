@@ -1,0 +1,443 @@
+{
+  "after": {
+    "source_ref": "0e221360901dab0e48f020c0a2861a04f06fcbc4",
+    "fixture_ref": "0e221360901dab0e48f020c0a2861a04f06fcbc4",
+    "fixture_sha256": "eeeba6d4222998815870da477e369e5263bec6456aaf8178c05f32fc80c4b6f1",
+    "stage": "blast-ground",
+    "parameters": {
+      "scene": "tests/fixtures/blast-world-clips.tscn",
+      "seconds": 12,
+      "fps": 24,
+      "engine_fixed_fps": 24,
+      "timeout": 1800,
+      "crf": 30,
+      "seed": 712,
+      "camera": {
+        "fov_degrees": 48,
+        "soil_xz": [
+          4,
+          6
+        ],
+        "soil_offset": [
+          6,
+          5,
+          9
+        ],
+        "soil_close_offset": [
+          3,
+          2.2,
+          4.5
+        ],
+        "push_in_seconds": [
+          3.7,
+          4.8
+        ],
+        "wall_xz": [
+          -30,
+          25.4
+        ],
+        "wall_offset": [
+          4,
+          3.5,
+          8
+        ],
+        "look_lift": 0.3
+      },
+      "events": "HE size 1.4 at 0.5 and 6.5 seconds. Two six-second shots. Stamps the same terrain deformation as Combat after each visual event, without entity damage. Holds each crater after dust clears; ground.json records measured depth."
+    },
+    "command": [
+      "/workspace/scratch/explosion-rebuild/godot-4.7.2/Godot_v4.7.2-stable_linux.x86_64",
+      "--path",
+      "/workspace/Frontline-effects",
+      "--rendering-method",
+      "forward_plus",
+      "--audio-driver",
+      "Dummy",
+      "--fixed-fps",
+      "24",
+      "--resolution",
+      "1280x720",
+      "res://tests/fixtures/blast-world-clips.tscn",
+      "--",
+      "--clip=blast-ground",
+      "--label=AFTER",
+      "--frames=/workspace/scratch/blast-ground-fix/after-final/frames"
+    ],
+    "encode_command": [
+      "ffmpeg",
+      "-y",
+      "-loglevel",
+      "error",
+      "-framerate",
+      "24",
+      "-i",
+      "/workspace/scratch/blast-ground-fix/after-final/frames/%04d.png",
+      "-c:v",
+      "libvpx-vp9",
+      "-threads",
+      "3",
+      "-row-mt",
+      "1",
+      "-cpu-used",
+      "2",
+      "-crf",
+      "30",
+      "-b:v",
+      "0",
+      "-pix_fmt",
+      "yuv420p",
+      "-an",
+      "/workspace/scratch/blast-ground-fix/after-final/clip.webm"
+    ],
+    "engine": "4.7.2.stable.official.ed1daf0bf",
+    "device": "llvmpipe LLVM 19.1.7 / Mesa 25.0.7",
+    "terrain_measurements_metres": {
+      "soil_depth": 0.529985174536705,
+      "wall_depth": 0.534919218522532
+    },
+    "attribution": "Actual engine output. Both source builds use the same current capture fixture and stamp real terrain after the visual event, matching Combat without entity damage. The old build is captured in a detached worktree with only the capture fixture replaced. Earlier released showcase clips omitted this terrain-stamping step.",
+    "encoded_output": {
+      "streams": [
+        {
+          "index": 0,
+          "codec_name": "vp9",
+          "codec_long_name": "Google VP9",
+          "profile": "Profile 0",
+          "codec_type": "video",
+          "codec_tag_string": "[0][0][0][0]",
+          "codec_tag": "0x0000",
+          "width": 1280,
+          "height": 720,
+          "coded_width": 1280,
+          "coded_height": 720,
+          "closed_captions": 0,
+          "film_grain": 0,
+          "has_b_frames": 0,
+          "sample_aspect_ratio": "1:1",
+          "display_aspect_ratio": "16:9",
+          "pix_fmt": "yuv420p",
+          "level": -99,
+          "color_range": "tv",
+          "color_transfer": "iec61966-2-1",
+          "color_primaries": "bt709",
+          "field_order": "progressive",
+          "refs": 1,
+          "r_frame_rate": "24/1",
+          "avg_frame_rate": "24/1",
+          "time_base": "1/1000",
+          "start_pts": 0,
+          "start_time": "0.000000",
+          "disposition": {
+            "default": 0,
+            "dub": 0,
+            "original": 0,
+            "comment": 0,
+            "lyrics": 0,
+            "karaoke": 0,
+            "forced": 0,
+            "hearing_impaired": 0,
+            "visual_impaired": 0,
+            "clean_effects": 0,
+            "attached_pic": 0,
+            "timed_thumbnails": 0,
+            "non_diegetic": 0,
+            "captions": 0,
+            "descriptions": 0,
+            "metadata": 0,
+            "dependent": 0,
+            "still_image": 0,
+            "multilayer": 0
+          },
+          "tags": {
+            "ENCODER": "Lavc61.19.101 libvpx-vp9",
+            "DURATION": "00:00:12.000000000"
+          }
+        }
+      ],
+      "format": {
+        "filename": "/workspace/Frontline-effects/changelog/unreleased/realistic-armament-effects/ground.webm",
+        "nb_streams": 1,
+        "nb_programs": 0,
+        "nb_stream_groups": 0,
+        "format_name": "matroska,webm",
+        "format_long_name": "Matroska / WebM",
+        "start_time": "0.000000",
+        "duration": "12.000000",
+        "size": "7248935",
+        "bit_rate": "4832623",
+        "probe_score": 100,
+        "tags": {
+          "ENCODER": "Lavf61.7.103"
+        }
+      }
+    }
+  },
+  "before": {
+    "source_ref": "5aad51e744b6b6ab4ec7879014b2f37d4646e5f4",
+    "fixture_ref": "af36b0414fad1db50cf4a71fa15bc079a6a9965d",
+    "fixture_sha256": "eeeba6d4222998815870da477e369e5263bec6456aaf8178c05f32fc80c4b6f1",
+    "stage": "blast-ground",
+    "parameters": {
+      "scene": "tests/fixtures/blast-world-clips.tscn",
+      "seconds": 12,
+      "fps": 24,
+      "engine_fixed_fps": 24,
+      "timeout": 1800,
+      "crf": 30,
+      "seed": 712,
+      "camera": {
+        "fov_degrees": 48,
+        "soil_xz": [
+          4,
+          6
+        ],
+        "soil_offset": [
+          6,
+          5,
+          9
+        ],
+        "soil_close_offset": [
+          3,
+          2.2,
+          4.5
+        ],
+        "push_in_seconds": [
+          3.7,
+          4.8
+        ],
+        "wall_xz": [
+          -30,
+          25.4
+        ],
+        "wall_offset": [
+          4,
+          3.5,
+          8
+        ],
+        "look_lift": 0.3
+      },
+      "events": "HE size 1.4 at 0.5 and 6.5 seconds. Two six-second shots. Stamps the same terrain deformation as Combat after each visual event, without entity damage. Holds each crater after dust clears; ground.json records measured depth."
+    },
+    "command": [
+      "/workspace/scratch/explosion-rebuild/godot-4.7.2/Godot_v4.7.2-stable_linux.x86_64",
+      "--path",
+      "/workspace/Frontline-ground-before",
+      "--rendering-method",
+      "forward_plus",
+      "--audio-driver",
+      "Dummy",
+      "--fixed-fps",
+      "24",
+      "--resolution",
+      "1280x720",
+      "res://tests/fixtures/blast-world-clips.tscn",
+      "--",
+      "--clip=blast-ground",
+      "--label=BEFORE",
+      "--frames=/workspace/scratch/blast-ground-fix/before/frames"
+    ],
+    "encode_command": [
+      "ffmpeg",
+      "-y",
+      "-loglevel",
+      "error",
+      "-framerate",
+      "24",
+      "-i",
+      "/workspace/scratch/blast-ground-fix/before/frames/%04d.png",
+      "-c:v",
+      "libvpx-vp9",
+      "-threads",
+      "3",
+      "-row-mt",
+      "1",
+      "-cpu-used",
+      "2",
+      "-crf",
+      "30",
+      "-b:v",
+      "0",
+      "-pix_fmt",
+      "yuv420p",
+      "-an",
+      "/workspace/scratch/blast-ground-fix/before/clip.webm"
+    ],
+    "engine": "4.7.2.stable.official.ed1daf0bf",
+    "device": "llvmpipe LLVM 19.1.7 / Mesa 25.0.7",
+    "terrain_measurements_metres": {
+      "soil_depth": 0.529985174536705,
+      "wall_depth": 0.534919218522532
+    },
+    "attribution": "Actual engine output. Both source builds use the same current capture fixture and stamp real terrain after the visual event, matching Combat without entity damage. The old build is captured in a detached worktree with only the capture fixture replaced. Earlier released showcase clips omitted this terrain-stamping step.",
+    "encoded_output": {
+      "streams": [
+        {
+          "index": 0,
+          "codec_name": "vp9",
+          "codec_long_name": "Google VP9",
+          "profile": "Profile 0",
+          "codec_type": "video",
+          "codec_tag_string": "[0][0][0][0]",
+          "codec_tag": "0x0000",
+          "width": 1280,
+          "height": 720,
+          "coded_width": 1280,
+          "coded_height": 720,
+          "closed_captions": 0,
+          "film_grain": 0,
+          "has_b_frames": 0,
+          "sample_aspect_ratio": "1:1",
+          "display_aspect_ratio": "16:9",
+          "pix_fmt": "yuv420p",
+          "level": -99,
+          "color_range": "tv",
+          "color_transfer": "iec61966-2-1",
+          "color_primaries": "bt709",
+          "field_order": "progressive",
+          "refs": 1,
+          "r_frame_rate": "24/1",
+          "avg_frame_rate": "24/1",
+          "time_base": "1/1000",
+          "start_pts": 0,
+          "start_time": "0.000000",
+          "disposition": {
+            "default": 0,
+            "dub": 0,
+            "original": 0,
+            "comment": 0,
+            "lyrics": 0,
+            "karaoke": 0,
+            "forced": 0,
+            "hearing_impaired": 0,
+            "visual_impaired": 0,
+            "clean_effects": 0,
+            "attached_pic": 0,
+            "timed_thumbnails": 0,
+            "non_diegetic": 0,
+            "captions": 0,
+            "descriptions": 0,
+            "metadata": 0,
+            "dependent": 0,
+            "still_image": 0,
+            "multilayer": 0
+          },
+          "tags": {
+            "ENCODER": "Lavc61.19.101 libvpx-vp9",
+            "DURATION": "00:00:12.000000000"
+          }
+        }
+      ],
+      "format": {
+        "filename": "/workspace/Frontline-effects/changelog/unreleased/realistic-armament-effects/ground-before.webm",
+        "nb_streams": 1,
+        "nb_programs": 0,
+        "nb_stream_groups": 0,
+        "format_name": "matroska,webm",
+        "format_long_name": "Matroska / WebM",
+        "start_time": "0.000000",
+        "duration": "12.000000",
+        "size": "6945200",
+        "bit_rate": "4630133",
+        "probe_score": 100,
+        "tags": {
+          "ENCODER": "Lavf61.7.103"
+        }
+      }
+    }
+  },
+  "review": {
+    "date": "2026-11-10",
+    "render_tests": {
+      "passed": 10,
+      "skipped": 0,
+      "coverage": [
+        "CPU/GPU effects",
+        "ground decal receivers",
+        "Forward+ and Compatibility occlusion with no MSAA and 4x MSAA",
+        "dust onset/clearing and saturated atlas pixels",
+        "terrain generation/combat/movement/map transfer",
+        "Production terrain vertex displacement with normal distance detail in Forward+ and Compatibility; rendered depth >0.3 m and agrees with CPU within 0.07 m"
+      ]
+    },
+    "scenarios": [
+      "gdrill, seed 3, 60 simulated seconds",
+      "tank, seed 3, 60 simulated seconds"
+    ],
+    "decal_pixels": {
+      "old_masks": [
+        {
+          "ground_delta": 0.385777784585953,
+          "kind": "scorch",
+          "smoke_delta": 0.0812548971176147,
+          "wall_delta": 0.158692810535431
+        },
+        {
+          "ground_delta": 0.592470603187879,
+          "kind": "crater",
+          "smoke_delta": 0.299607825279236,
+          "wall_delta": 0.0770718908309937
+        }
+      ],
+      "fixed_masks": [
+        {
+          "ground_delta": 0.386875823736191,
+          "kind": "scorch",
+          "smoke_delta": 0.0,
+          "wall_delta": 0.0
+        },
+        {
+          "ground_delta": 0.599058838983377,
+          "kind": "crater",
+          "smoke_delta": 0.0,
+          "wall_delta": 0.0
+        }
+      ]
+    },
+    "decode": "Both files fully decode; 12 seconds, 24 fps, 1280x720 VP9, silent.",
+    "terrain_regression_before": {
+      "source_ref": "5aad51e744b6b6ab4ec7879014b2f37d4646e5f4",
+      "fixture_ref": "0e22136",
+      "renderer": "Forward+",
+      "failures": 2,
+      "rendered_height_before": 0.0,
+      "rendered_height_after": 0.0,
+      "cpu_height_after": -0.52998517453671,
+      "result": "Expected failure: the same current terrain-render test reproduces the flattened crater in the previous build."
+    },
+    "terrain_detail": "Godot selects visibility ranges from transformed AABB centres. The old global 512 m height bound forced coarse detail even on nearby flat ground. Per-chunk geology bounds restore the close mesh, with margins for crater/rim displacement and a refresh when joining clients receive geology. The old runtime in the before clip retains its original bounds.",
+    "ui": [
+      {
+        "viewport": {
+          "width": 1280,
+          "height": 960
+        },
+        "reducedMotion": true,
+        "lead": "ground.webm",
+        "duration": 12,
+        "controls": true,
+        "seek": true,
+        "playPause": true,
+        "disclosure": true,
+        "overflow": false,
+        "errors": []
+      },
+      {
+        "viewport": {
+          "width": 390,
+          "height": 844
+        },
+        "reducedMotion": true,
+        "lead": "ground.webm",
+        "duration": 12,
+        "controls": true,
+        "seek": true,
+        "playPause": true,
+        "disclosure": true,
+        "overflow": false,
+        "errors": []
+      }
+    ],
+    "inspection": "Decoded beginning, flash, peak dust and aftermath frames inspected for both clips. The after camera approaches the visible bowl, then checks scorch against the wall. Poster and full video retain actual engine framing.",
+    "performance": "No new FPS benchmark. Restores intended nearby terrain detail; distant ground retains the coarse grid. Height bounds are calculated at map setup, not per explosion. Cloud and flash pools remain bounded."
+  }
+}
