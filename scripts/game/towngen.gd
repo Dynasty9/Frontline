@@ -12,7 +12,7 @@ extends RefCounted
 ## Decor on each client.
 
 const ROAD_HW := 2.9
-const CURB := 3.0  # curb line, from the street's centre line
+const CURB := ROAD_HW  # the kerb meets the carriageway without a grass strip
 const WALK := 4.8  # back of the sidewalk
 const FRONT := 5.2  # lot frontage line
 const S := 40.0  # between parallel streets
@@ -48,6 +48,24 @@ func _init(m) -> void:
 
 
 func _d(kind: String, p: Vector3, yaw := 0.0, extra = null) -> void:
+	if kind == "fence" and (extra as Vector3).x > 2.2:
+		var size: Vector3 = extra
+		var count := ceili(size.x / 2.2)
+		var length := size.x / count
+		for i in count:
+			_d(kind, p + Basis(Vector3.UP, yaw).x * ((i + 0.5) * length - size.x * 0.5), yaw, Vector3(length, size.y, size.z))
+		return
+	# Store world heights once so clients, replay and breakage agree on the same positions.
+	p.y += world.terrain.landform.height(p)
+	if kind == "wire":
+		extra = extra.duplicate()
+		var end: Vector3 = extra[0]
+		end.y += world.terrain.landform.height(end)
+		extra[0] = end
+	elif kind == "drop":
+		var end: Vector3 = extra
+		end.y += world.terrain.landform.height(end)
+		extra = end
 	decor.append([kind, p, yaw, extra])
 
 
@@ -432,9 +450,19 @@ func _lot_house(front: Vector3, n: Vector3, d: Vector3, W: float, shop: bool) ->
 		if rng.randf() < 0.5:
 			side = -side
 	var hc := front + n * (setback + dep * 0.5) + d * side
-	if not mg._house(hc, w, dep, axis, 1.0, false, 0.18 if shop else 0.25):
+	var entrances: Array[Vector3] = []
+	if not mg._house(hc, w, dep, axis, 1.0, false, 0.18 if shop else 0.25, entrances):
 		return
 	_fronts.append(hc - n * dep * 0.5 + Vector3(0, 2.85, 0))
+	_d("yard", front + n * (_depth * 0.5), axis, Vector3(W - 0.3, 0.015, _depth - 0.3))
+	# A narrow apron connects side doors without paving over the entire garden.
+	for edge: float in [-1.0, 1.0]:
+		_d("drive", hc + d * edge * (w * 0.5 + 0.3), axis, Vector3(0.6, 0, dep + 1.2))
+		_d("drive", hc + n * edge * (dep * 0.5 + 0.3), axis, Vector3(w, 0, 0.6))
+	var gate := side
+	if not entrances.is_empty():
+		gate = _approach(front, n, d, entrances[0], side, setback, W)
+	var drive_x := -signf(side) * (W * 0.5 - 1.8) if drive else INF
 	var yaw_d := yaw_along(d)
 	if shop:
 		_d("awning", hc - n * dep * 0.5, axis, Vector3(w - 0.6, 0, rng.randi() % 5))
@@ -462,13 +490,7 @@ func _lot_house(front: Vector3, n: Vector3, d: Vector3, W: float, shop: bool) ->
 	if not shop:
 		# a low front fence with a gate, a mailbox, a tree or a vegetable patch behind
 		if rng.randf() < 0.55:
-			var gate := clampf(side * -0.3, -W * 0.3, W * 0.3)
-			var lw := (W * 0.5 + gate) - 0.8
-			var rw := (W * 0.5 - gate) - 0.8
-			if lw > 0.8:
-				_d("fence", front + n * 0.35 + d * (-W * 0.5 + lw * 0.5), yaw_d, Vector3(lw, 0.85, style))
-			if rw > 0.8:
-				_d("fence", front + n * 0.35 + d * (W * 0.5 - rw * 0.5), yaw_d, Vector3(rw, 0.85, style))
+			_front_fence(front, n, d, W, gate, drive_x, style)
 		if rng.randf() < 0.4:
 			_d("mailbox", front + n * 0.5 + d * (W * 0.5 - 1.2), axis)
 		var yard := _depth - setback - dep
@@ -483,9 +505,67 @@ func _lot_house(front: Vector3, n: Vector3, d: Vector3, W: float, shop: bool) ->
 				_d("clothesline", yc, yaw_d)
 	if drive:
 		var dc := front + n * (setback + 2.6) + d * (-signf(side) * (W * 0.5 - 1.8))
-		_d("drive", front + n * (setback + 2.6) * 0.5 + d * (-signf(side) * (W * 0.5 - 1.8)), axis, Vector3(2.6, 0, setback + 2.6))
+		var apron := FRONT - WALK if _curb_crossing(front + d * drive_x, n, d, 2.6) else 0.0
+		_d("drive", front + n * (setback + 2.6 - apron) * 0.5 + d * drive_x, axis, Vector3(2.6, 0, setback + 2.6 + apron))
 		if rng.randf() < 0.75:
 			mg._try("car", dc, axis + (PI if rng.randf() < 0.5 else 0.0), -1, {"variant": rng.randi() % 5})
+
+
+func _curb_crossing(front: Vector3, n: Vector3, d: Vector3, width: float) -> bool:
+	var cut := false
+	for i in decor.size():
+		var entry: Array = decor[i]
+		if entry[0] != "walk" and entry[0] != "curb":
+			continue
+		var along := Basis(Vector3.UP, float(entry[2])).x
+		var p: Vector3 = entry[1]
+		var depth := (p - front).dot(n)
+		if absf(along.dot(d)) < 0.999 or depth < CURB - FRONT - 0.1 or depth > WALK - FRONT + 0.1:
+			continue
+		var size: Vector3 = entry[3]
+		var center := (front - p).dot(along)
+		var low := Vector2(center - width * 0.5, center + width * 0.5)
+		var start := maxf(-size.x * 0.5, low.x - 0.6)
+		var end := minf(size.x * 0.5, low.y + 0.6)
+		if end - start < 0.01:
+			continue
+		# Keep existing furniture indices stable so their seeded appearance does not change.
+		var middle := (start + end) * 0.5
+		var crossing := Defs.flat(p + along * middle)
+		crossing.y = world.terrain.landform.height(crossing)
+		decor[i] = [entry[0] + "_crossing", crossing, entry[2], [Vector3(end - start, size.y, size.z), low - Vector2.ONE * middle]]
+		for interval in [Vector2(-size.x * 0.5, start), Vector2(end, size.x * 0.5)]:
+			if interval.y - interval.x > 0.01:
+				_d(entry[0], Defs.flat(p + along * (interval.x + interval.y) * 0.5), entry[2], Vector3(interval.y - interval.x, size.y, size.z))
+		cut = true
+	return cut
+
+
+func _approach(front: Vector3, n: Vector3, d: Vector3, door: Vector3, side: float, setback: float, width: float) -> float:
+	var across := (door - front).dot(d)
+	var depth := (door - front).dot(n)
+	var gate := across
+	if depth > setback + 0.4:
+		gate += signf(across - side) * 0.65
+	gate = clampf(gate, -width * 0.5 + 0.6, width * 0.5 - 0.6)
+	_d("path", front + d * gate + n * (depth * 0.5 - 0.2), atan2(n.x, n.z), Vector3(1.15, 0, depth + 0.4))
+	if absf(gate - across) > 0.1:
+		_d("path", front + d * ((gate + across) * 0.5) + n * depth, yaw_along(d), Vector3(absf(gate - across) + 0.4, 0, 1.15))
+	return gate
+
+
+func _front_fence(front: Vector3, n: Vector3, d: Vector3, width: float, gate: float, drive: float, style: int) -> void:
+	var openings := [Vector2(gate - 0.8, gate + 0.8)]
+	if is_finite(drive):
+		openings.append(Vector2(drive - 1.4, drive + 1.4))
+	openings.sort_custom(func(a: Vector2, b: Vector2) -> bool: return a.x < b.x)
+	openings.append(Vector2(width * 0.5, width * 0.5))
+	var start := -width * 0.5
+	for gap: Vector2 in openings:
+		var end := clampf(gap.x, -width * 0.5, width * 0.5)
+		if end - start > 0.15:
+			_d("fence", front + n * 0.35 + d * ((start + end) * 0.5), yaw_along(d), Vector3(end - start, 0.85, style))
+		start = maxf(start, gap.y)
 
 
 func _square(c: Vector3, q: Vector3) -> void:
