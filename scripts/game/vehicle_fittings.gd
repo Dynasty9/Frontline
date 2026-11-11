@@ -3,28 +3,89 @@ extends RefCounted
 ## Repeating service fittings, folded into the parent's existing material bake.
 static var _pipes := {}
 
+## Round unlit optical insert; center is the old lens face, direction points out.
+## Families retain their mounting boxes and protective cages. The shallow cup
+## sits ahead of the old housing face so the solid housing cannot fill it in.
+static func headlamp(k: VehicleModels, parent: Node3D, center: Vector3, radius: float, direction := Vector3.FORWARD) -> void:
+	if radius <= 0.0 or direction.length_squared() < 0.000001:
+		return
+	var mount := k._pivot(parent, center)
+	mount.basis = VehicleFrames.aim(direction)
+	k._cyl(mount, radius * 1.08, radius * 1.08, radius * 0.16, Vector3.ZERO, Vector3.ZERO, "rubber", null, 20, false)
+	k._add(mount, _ring(radius * 0.96, radius * 1.09), "gunmetal_w", null, Vector3(0, radius * 0.19, 0), Vector3.ZERO, Vector3(1, 0.55, 1))
+	if not k.burnt:
+		k._add(mount, _headlamp_reflector(), "headlamp", Color(0.76, 0.78, 0.73), Vector3.ZERO, Vector3.ZERO, Vector3.ONE * radius, false)
+		# Sparse moulded ribs approximate a sealed-beam lens without transparent
+		# sorting or another light/shadow pass. All detail joins the hull bake.
+		for i in range(-3, 4):
+			var x := i * 0.23
+			var half_span := sqrt(0.88 * 0.88 - x * x)
+			for j in 4:
+				var z0 := lerpf(-half_span, half_span, j / 4.0)
+				var z1 := lerpf(-half_span, half_span, (j + 1) / 4.0)
+				var a := Vector3(x, 0.22 + 0.08 * (1.0 - x * x - z0 * z0), z0) * radius
+				var b := Vector3(x, 0.22 + 0.08 * (1.0 - x * x - z1 * z1), z1) * radius
+				VehicleFrames.tube(k, mount, a, b, radius * 0.018, "headlamp", Color(0.52, 0.58, 0.56), 5, false)
+		k._cyl(mount, radius * 0.14, radius * 0.18, radius * 0.08, Vector3(0, radius * 0.17, 0), Vector3.ZERO, "gunmetal", Color(0.28, 0.29, 0.27), 12, false)
+	k._fold(mount)
+
+
+static var _lamp_reflector: ArrayMesh
+
+## Unit dish shared by every lamp size, facing local +Y.
+static func _headlamp_reflector() -> ArrayMesh:
+	if _lamp_reflector:
+		return _lamp_reflector
+	var surface := SurfaceTool.new()
+	surface.begin(Mesh.PRIMITIVE_TRIANGLES)
+	for ring in 4:
+		for segment in 24:
+			for corner: Vector2i in [Vector2i(0, 0), Vector2i(1, 0), Vector2i(0, 1), Vector2i(1, 0), Vector2i(1, 1), Vector2i(0, 1)]:
+				var r := 0.12 + (ring + corner.x) * 0.21
+				var angle := TAU * (segment + corner.y) / 24.0
+				surface.add_vertex(Vector3(cos(angle) * r, 0.09 + 0.13 * r * r, sin(angle) * r))
+	surface.generate_normals()
+	_lamp_reflector = surface.commit()
+	return _lamp_reflector
+
+
 ## Local XY grille, +Z outward. Fins stand in front of a recessed radiator core.
 static func grille(k: VehicleModels, parent: Node3D, center: Vector3, size: Vector2, rotation: Vector3, material: String, col = null, count := 8, vertical := false) -> void:
-	var mount := k._pivot(parent, center)
-	mount.rotation = rotation
-	var rim := minf(0.035, minf(size.x, size.y) * 0.08)
-	k._box(mount, Vector3(size.x, size.y, 0.018), Vector3(0, 0, -0.035), "plain_dark", Color(0.025, 0.028, 0.026), Vector3.ZERO, false)
-	# Fine radiator channels behind the broad protective slats.
-	var channels := clampi(ceili(size.x / 0.055), 6, 40)
-	for i in channels:
-		k._box(mount, Vector3(0.008, size.y - rim * 2, 0.012), Vector3(lerpf(-size.x / 2 + rim, size.x / 2 - rim, float(i) / (channels - 1)), 0, -0.018), "gunmetal", Color(0.14, 0.15, 0.14), Vector3.ZERO, false)
-	for side in [-1.0, 1.0]:
-		k._box(mount, Vector3(size.x, rim, 0.06), Vector3(0, side * (size.y - rim) / 2, 0), material, col)
-		k._box(mount, Vector3(rim, size.y - rim * 2, 0.06), Vector3(side * (size.x - rim) / 2, 0, 0), material, col)
-		for y in [-1.0, 1.0]:
-			VehicleBody.fastener(k, mount, Vector3(side * (size.x / 2 - rim / 2), y * (size.y / 2 - rim / 2), 0.035), Vector3.BACK, rim * 0.24)
-	var span := (size.x if vertical else size.y) - rim * 2
-	var pitch := span / maxf(count, 1)
+	var basis := Basis.from_euler(rotation)
+	var surface := VehicleSurface.plane(center, basis.x, basis.y)
+	var x := size.x * 0.5
+	var y := size.y * 0.5
+	var cut := minf(0.035, minf(x, y) * 0.12)
+	var outline := PackedVector2Array([Vector2(-x + cut, -y), Vector2(x - cut, -y), Vector2(x, -y + cut), Vector2(x, y - cut), Vector2(x - cut, y), Vector2(-x + cut, y), Vector2(-x, y - cut), Vector2(-x, -y + cut)])
+	vent(k, parent, surface, outline, material, col, count, vertical)
+
+
+## Outline-aware grille in a metre-scaled surface domain. Fins and radiator
+## channels are clipped to the inset; tapered vents need no bespoke slat loops.
+static func vent(k: VehicleModels, parent: Node3D, surface: VehicleSurface, outline: PackedVector2Array, material: String, col = null, count := 8, vertical := false) -> void:
+	var bounds := Rect2(outline[0], Vector2.ZERO)
+	for q in outline:
+		bounds = bounds.expand(q)
+	var rim := minf(0.025, minf(bounds.size.x, bounds.size.y) * 0.065)
+	var inset := Geometry2D.offset_polygon(outline, -rim * 1.5)
+	assert(not inset.is_empty())
+	k._add(parent, surface.patch(outline, -0.025, 0.012), "plain_dark", Color(0.025, 0.028, 0.026), Vector3.ZERO)
+	VehicleBody.boundary(k, parent, surface, outline, 0.0, rim * 0.7, true, 0, material, col)
+	var axis := 0 if vertical else 1
+	var pitch := bounds.size[axis] / maxf(count, 1)
+	# Fine channels remain behind the protective slats, at a separate depth.
+	_slats(k, parent, surface, inset[0], bounds, 0, clampi(ceili(bounds.size.x / 0.055), 6, 40), 0.14, -0.012, 0.004, "gunmetal", Color(0.14, 0.15, 0.14))
+	_slats(k, parent, surface, inset[0], bounds, axis, count, 0.42, 0.012, minf(0.012, pitch * 0.15), material, col)
+
+static func _slats(k: VehicleModels, parent: Node3D, surface: VehicleSurface, inset: PackedVector2Array, bounds: Rect2, axis: int, count: int, coverage: float, lift: float, depth: float, material: String, col) -> void:
+	var pitch := bounds.size[axis] / maxf(count, 1)
 	for i in count:
-		var offset := -span / 2 + pitch * (i + 0.5)
-		var fin_size := Vector3(pitch * 0.36, size.y - rim * 2, 0.035) if vertical else Vector3(size.x - rim * 2, pitch * 0.36, 0.035)
-		k._box(mount, fin_size, Vector3(offset, 0, 0.008) if vertical else Vector3(0, offset, 0.008), material, col, Vector3(0, 0.22, 0) if vertical else Vector3(-0.28, 0, 0))
-	k._fold(mount)
+		var lo := bounds.position[axis] + pitch * (i + (1.0 - coverage) * 0.5)
+		var hi := lo + pitch * coverage
+		var strip := PackedVector2Array([Vector2(lo, bounds.position.y), Vector2(hi, bounds.position.y), Vector2(hi, bounds.end.y), Vector2(lo, bounds.end.y)]) if axis == 0 else PackedVector2Array([Vector2(bounds.position.x, lo), Vector2(bounds.end.x, lo), Vector2(bounds.end.x, hi), Vector2(bounds.position.x, hi)])
+		for clipped: PackedVector2Array in Geometry2D.intersect_polygons(inset, strip):
+			var angled := VehicleSurface.new(func(q: Vector2) -> Vector3: return surface.point(q, lift + (q[axis] - lo) * 0.25), surface.outward)
+			k._add(parent, angled.patch(clipped, 0.0, depth), material, col, Vector3.ZERO)
 
 
 ## A clamped rubber flap with a gently kicked lower edge and reinforcing ribs.
@@ -230,3 +291,175 @@ static func _mirror_glass(size: Vector2) -> ArrayMesh:
 	var mesh := surface.commit()
 	_mirror_faces[size] = mesh
 	return mesh
+
+
+## Pressed 20-litre fuel can. Center is the body center, broad faces along X.
+## Rotate the complete assembly so the cap, handle and ribs stay attached.
+static func jerrycan(k: VehicleModels, parent: Node3D, center: Vector3, col: Color, rotation := Vector3.ZERO, width := 0.17) -> void:
+	var mount := k._pivot(parent, center)
+	mount.rotation = rotation
+	k._box(mount, Vector3(width, 0.46, 0.34), Vector3.ZERO, "paint", col)
+	# The pressed seam and X ribs stiffen the broad walls of the can.
+	for side in [-1.0, 1.0]:
+		var x: float = side * (width / 2 + 0.003)
+		for z in [-1.0, 1.0]:
+			VehicleFrames.tube(k, mount, Vector3(x, -0.16, z * 0.11), Vector3(x, 0.16, -z * 0.11), 0.008, "paint", col, 6, false)
+		VehicleFrames.path(k, mount, [Vector3(x, -0.20, -0.14), Vector3(x, 0.20, -0.14), Vector3(x, 0.20, 0.14), Vector3(x, -0.20, 0.14), Vector3(x, -0.20, -0.14)], 0.005, "paint", col.darkened(0.12), 6)
+	# Three parallel carrying bars leave real finger openings above the shoulder.
+	for x in [-width * 0.27, 0.0, width * 0.27]:
+		VehicleFrames.path(k, mount, [Vector3(x, 0.225, -0.025), Vector3(x, 0.27, 0.005), Vector3(x, 0.27, 0.105), Vector3(x, 0.225, 0.135)], 0.010, "paint", col, 6)
+	k._cyl(mount, 0.035, 0.039, 0.018, Vector3(0, 0.24, -0.10), Vector3.ZERO, "gunmetal_w", null, 12, false)
+	k._box(mount, Vector3(0.018, 0.012, 0.07), Vector3(0, 0.255, -0.10), "gunmetal_w", null, Vector3.ZERO, false)
+	k._fold(mount)
+
+
+## Sealed ammunition can; feed boxes and wooden ammunition crates are separate.
+static func ammo_can(k: VehicleModels, parent: Node3D, center: Vector3, col: Color, rotation := Vector3.ZERO, size := Vector3(0.16, 0.2, 0.3)) -> void:
+	var mount := k._pivot(parent, center)
+	mount.rotation = rotation
+	mount.scale = size / Vector3(0.16, 0.2, 0.3)
+	k._box(mount, Vector3(0.16, 0.18, 0.3), Vector3(0, -0.01, 0), "paint", col)
+	k._box(mount, Vector3(0.162, 0.008, 0.302), Vector3(0, 0.078, 0), "rubber", null, Vector3.ZERO, false)
+	k._box(mount, Vector3(0.17, 0.025, 0.31), Vector3(0, 0.095, 0), "paint", col)
+	VehicleFrames.path(k, mount, [Vector3(0, 0.108, -0.065), Vector3(0, 0.133, -0.065), Vector3(0, 0.133, 0.065), Vector3(0, 0.108, 0.065)], 0.008, "gunmetal_w", null, 6)
+	for z in [-0.157, 0.157]:
+		k._box(mount, Vector3(0.04, 0.055, 0.012), Vector3(0, 0.065, z), "gunmetal_w", null, Vector3.ZERO, false)
+		VehicleFrames.tube(k, mount, Vector3(-0.028, 0.089, z), Vector3(0.028, 0.089, z), 0.007, "gunmetal_w", null, 6, false)
+	for side: float in [-1.0, 1.0]:
+		for z in [-0.09, 0.09]:
+			k._box(mount, Vector3(0.006, 0.115, 0.012), Vector3(side * 0.081, -0.015, z), "paint", col, Vector3.ZERO, false)
+	k._fold(mount)
+
+
+## Forged recovery shackle, with an open bow and a transverse removable pin.
+static func tow_shackle(k: VehicleModels, parent: Node3D, center: Vector3, facing := -1.0, size := Vector3(0.14, 0.14, 0.12), radius := 0.065) -> void:
+	var mount := k._pivot(parent, center)
+	mount.rotation.y = PI if facing < 0 else 0.0
+	k._box(mount, size, Vector3.ZERO, "gunmetal_w")
+	var z := size.z / 2 + radius * 0.85
+	k._box(mount, Vector3(radius * 0.8, radius * 0.7, radius * 1.15), Vector3(0, -0.02, size.z / 2 + radius * 0.42), "gunmetal_w")
+	var points: Array = []
+	for i in 13:
+		var a := PI + PI * i / 12.0
+		points.append(Vector3(cos(a) * radius, sin(a) * radius - 0.02, z))
+	VehicleFrames.path(k, mount, points, radius * 0.23, "gunmetal_w", null, 8)
+	VehicleFrames.tube(k, mount, Vector3(-radius * 1.35, -0.02, z), Vector3(radius * 1.35, -0.02, z), radius * 0.24, "steel", null, 10)
+	k._box(mount, Vector3(0.012, radius * 0.65, radius * 0.42), Vector3(radius * 1.4, -0.02, z), "gunmetal_w", null, Vector3.ZERO, false)
+	k._fold(mount)
+
+
+## One smoke discharger. Families own the bank's layout, pitch and count.
+static func smoke_tube(k: VehicleModels, parent: Node3D, center: Vector3, rotation: Vector3, radius: float, length: float) -> void:
+	var axis := Basis.from_euler(rotation).y
+	barrel(k, parent, center - axis * length / 2, center + axis * length / 2, radius, "gunmetal_w", null, false)
+	k._cyl(parent, radius * 1.15, radius * 1.15, length * 0.16, center - axis * length * 0.30, rotation, "gunmetal_w", null, 12, false)
+
+
+## Armoured periscope head, local -Z outward. Size describes its housing.
+static func periscope(k: VehicleModels, parent: Node3D, center: Vector3, size: Vector3, rotation := Vector3.ZERO) -> void:
+	var mount := k._pivot(parent, center)
+	mount.rotation = rotation
+	k._box(mount, size, Vector3.ZERO, "gunmetal_w")
+	var face := -size.z / 2
+	k._box(mount, Vector3(size.x * 0.86, size.y * 0.72, 0.008), Vector3(0, 0, face - 0.003), "rubber", null, Vector3.ZERO, false)
+	if not k.burnt:
+		k._box(mount, Vector3(size.x * 0.73, size.y * 0.52, 0.006), Vector3(0, 0, face - 0.008), "glass", Color(0.18, 0.30, 0.27), Vector3.ZERO, false)
+	# The overhanging lip shields the glass without becoming another window.
+	k._box(mount, Vector3(size.x * 1.04, size.y * 0.12, size.z * 0.65), Vector3(0, size.y * 0.48, face * 0.6), "gunmetal_w", null, Vector3.ZERO, false)
+	for side: float in [-1.0, 1.0]:
+		VehicleBody.fastener(k, mount, Vector3(side * size.x * 0.44, 0, face - 0.009), Vector3.FORWARD, minf(size.x, size.y) * 0.055)
+	k._fold(mount)
+
+
+## Closed round hatch; center is the lid center, not the deck surface.
+## Cupola pedestals, sights and open/rectangular lids stay with the family.
+static func hatch(k: VehicleModels, parent: Node3D, center: Vector3, radius: float, material: String, col = null, hinge_side := 1.0, thickness := 0.05) -> void:
+	var mount := k._pivot(parent, center)
+	k._cyl(mount, radius + 0.03, radius + 0.04, 0.035, Vector3(0, -thickness / 2 - 0.025, 0), Vector3.ZERO, material, col, 24)
+	k._cyl(mount, radius + 0.008, radius + 0.008, 0.012, Vector3(0, -thickness / 2 - 0.006, 0), Vector3.ZERO, "rubber", null, 24, false)
+	k._cyl(mount, radius - 0.02, radius, thickness, Vector3.ZERO, Vector3.ZERO, material, col, 24)
+	# Two hinge knuckles and their common pin, all attached to the lid's edge.
+	var hz := hinge_side * radius * 0.94
+	for x in [-0.07, 0.07]:
+		k._box(mount, Vector3(0.06, 0.045, 0.09), Vector3(x, 0, hz), material, col)
+	VehicleFrames.tube(k, mount, Vector3(-0.12, 0.018, hz), Vector3(0.12, 0.018, hz), 0.018, "gunmetal_w", null, 10, false)
+	var y := thickness / 2
+	VehicleFrames.path(k, mount, [Vector3(-0.065, y, -hinge_side * radius * 0.4), Vector3(-0.065, y + 0.035, -hinge_side * radius * 0.4), Vector3(0.065, y + 0.035, -hinge_side * radius * 0.4), Vector3(0.065, y, -hinge_side * radius * 0.4)], 0.009, "gunmetal_w", null, 6)
+	for side: float in [-1.0, 1.0]:
+		VehicleBody.fastener(k, mount, Vector3(side * radius * 0.7, y + 0.003, 0), Vector3.UP, 0.012)
+	k._fold(mount)
+
+
+## A ribbed coloured signal lens, local +Z outward, on a rubber seat.
+static func signal_lens(k: VehicleModels, parent: Node3D, center: Vector3, size: Vector2, col: Color, facing := 1.0) -> void:
+	var mount := k._pivot(parent, center)
+	mount.rotation.y = PI if facing < 0 else 0.0
+	k._box(mount, Vector3(size.x + 0.008, size.y + 0.008, 0.008), Vector3(0, 0, -0.004), "rubber", null, Vector3.ZERO, false)
+	if not k.burnt:
+		k._box(mount, Vector3(size.x, size.y, 0.012), Vector3(0, 0, 0.004), "signal_lens", col, Vector3.ZERO, false)
+		for i in 5:
+			k._box(mount, Vector3(size.x * 0.9, size.y * 0.045, 0.003), Vector3(0, size.y * (i - 2) * 0.17, 0.011), "signal_lens", col.lightened(0.05), Vector3.ZERO, false)
+	k._fold(mount)
+
+
+## Two-colour convoy tail cluster. The family supplies its original dimensions.
+static func tail_cluster(k: VehicleModels, parent: Node3D, center: Vector3, size := Vector3(0.22, 0.12, 0.06), lens := Vector2(0.08, 0.07), spacing := 0.05, facing := 1.0) -> void:
+	k._box(parent, size, center, "gunmetal_w")
+	for side: float in [-1.0, 1.0]:
+		var col := Color(0.45, 0.035, 0.025) if side < 0 else Color(0.62, 0.27, 0.025)
+		signal_lens(k, parent, center + Vector3(side * spacing, 0, facing * (size.z / 2 + 0.005)), lens, col, facing)
+
+
+## Welded lifting eye. Upright eyes have a clear transverse hole; deck rings
+## may lie flat. Base is the contact surface, and yaw turns the whole fitting.
+static func lifting_eye(k: VehicleModels, parent: Node3D, base: Vector3, yaw := 0.0, radius := 0.045, upright := true) -> void:
+	var mount := k._pivot(parent, base)
+	mount.rotation.y = yaw
+	k._box(mount, Vector3(radius * 2.65, 0.025, radius * 1.8), Vector3(0, 0.0125, 0), "gunmetal_w", null, Vector3.ZERO, false)
+	var height := radius + 0.015 if upright else 0.035
+	k._add(mount, _ring(radius * 0.52, radius), "gunmetal_w", null, Vector3(0, height, 0), Vector3(0, 0, PI / 2) if upright else Vector3.ZERO, Vector3.ONE, false)
+	for side: float in [-1.0, 1.0]:
+		VehicleFrames.tube(k, mount, Vector3(side * radius * 0.4, 0.027, -radius * 0.65), Vector3(side * radius * 0.4, 0.027, radius * 0.65), 0.005, "steel", null, 6, false)
+	k._fold(mount)
+
+
+## Rectangular unlit headlight insert, local -Z outward. The original housing
+## and guard remain authored by the vehicle; optics fit inside the old lens size.
+static func rectangular_headlamp(k: VehicleModels, parent: Node3D, center: Vector3, size: Vector2, rotation := Vector3.ZERO) -> void:
+	var mount := k._pivot(parent, center)
+	mount.rotation = rotation
+	k._box(mount, Vector3(size.x, size.y, 0.014), Vector3.ZERO, "rubber", null, Vector3.ZERO, false)
+	if not k.burnt:
+		k._box(mount, Vector3(size.x * 0.88, size.y * 0.82, 0.009), Vector3(0, 0, -0.009), "headlamp", Color(0.76, 0.78, 0.73), Vector3.ZERO, false)
+		for i in 7:
+			var x := (i - 3) * size.x * 0.115
+			k._box(mount, Vector3(size.x * 0.025, size.y * 0.74, 0.004), Vector3(x, 0, -0.015), "headlamp", Color(0.52, 0.58, 0.56), Vector3.ZERO, false)
+		k._box(mount, Vector3(size.x * 0.12, size.y * 0.14, 0.004), Vector3(0, 0, -0.017), "gunmetal", null, Vector3.ZERO, false)
+	k._fold(mount)
+
+
+## Static wiper, with a raised arm and a rubber blade seated on the pane.
+## Explicit plane directions keep both ends fitted to raked windscreens.
+static func wiper(k: VehicleModels, parent: Node3D, pivot: Vector3, blade_center: Vector3, along: Vector3, normal: Vector3, length := 0.48) -> void:
+	var n := normal.normalized()
+	var axis := along.normalized()
+	var blade_a := blade_center - axis * length * 0.5
+	var blade_b := blade_center + axis * length * 0.5
+	VehicleFrames.tube(k, parent, pivot, pivot + n * 0.018, 0.018, "metal_dark", null, 8, false)
+	VehicleFrames.beam(k, parent, pivot + n * 0.018, blade_center + n * 0.018, 0.014, 0.009, "metal_dark")
+	VehicleFrames.tube(k, parent, blade_a, blade_b, 0.007, "rubber", null, 6, false)
+	VehicleFrames.beam(k, parent, blade_a.lerp(blade_b, 0.15) + n * 0.012, blade_a.lerp(blade_b, 0.85) + n * 0.012, 0.012, 0.008, "metal_dark")
+
+static func parked_wiper(k: VehicleModels, parent: Node3D, center: Vector3, length: float, rotation: Vector3) -> void:
+	var basis := Basis.from_euler(rotation)
+	wiper(k, parent, center + basis * Vector3(-length * 0.35, -0.065, 0), center, basis.x, -basis.z, length)
+
+
+## Side marker housing, gasket and optical insert. No live light or new
+## animation is needed for the coloured navigation cue.
+static func marker(k: VehicleModels, parent: Node3D, center: Vector3, size: Vector3, facing: float, col: Color) -> void:
+	var mount := k._pivot(parent, center)
+	mount.rotation.y = facing * PI / 2
+	k._add(mount, BevelMesh.make(Vector3(size.z, size.y, size.x), minf(size.y, size.x) * 0.2), "metal_dark", null, Vector3.ZERO)
+	signal_lens(k, mount, Vector3(0, 0, size.x * 0.5 + 0.002), Vector2(size.z * 0.8, size.y * 0.78), col)
+	k._fold(mount)

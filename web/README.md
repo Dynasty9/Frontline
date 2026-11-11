@@ -119,6 +119,8 @@ python3 .agents/skills/website-footage/scripts/record.py --render reel
 
 Pass `--render vehicles` for the silent vehicle roll call in the footage dialog, or `--render hero infantry squads armour fires sea` for the homepage loops. Add `--install` to update `web/public/media`. Each capture directory holds the original takes and their launch arguments, plus the finished videos under `build/`. Re-run `build.py reel --work DIR` to recut those exact frames. For the separate one-minute ridge film, open [the Godot scene](../tests/fixtures/ridge-duel.tscn) or use the [native movie command](../tools/showcase/README.md#record-the-two-ridge-abrams-film). The [footage guide](../.agents/skills/website-footage/SKILL.md) covers recording, editing and checking the site’s game-derived copy.
 
+Run `check_intel.py` to check website copy against the game. Its `--fix` option updates counts. The [trailer comparison viewer](../tools/showcase/trailer-review/README.md) archives each reviewed cut, recipe and take manifest.
+
 ## Deploying
 
 The `web` service in Railway's `frontline` project builds **from the repository root**,

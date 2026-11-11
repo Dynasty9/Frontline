@@ -11,6 +11,17 @@ on:
   pull_request:
 
 jobs:
+  model-names:
+    name: No model names or unreviewed attribution
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Test the content guard
+        run: python3 -m unittest discover -s .github/scripts -p 'test_model_names.py'
+      - name: Check tracked project text
+        run: python3 .github/scripts/check_model_names.py
+
   check:
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -73,7 +84,7 @@ jobs:
       - name: Simulation scaling regressions
         run: |
           set -o pipefail
-          for test in structure_index perception_index navigation_budget client_loading update_sidecars terrain_updates squad_assessment map_placement snapshot_index terrain_cover soldier_batch structure_view grass_stream field_manual_entry support_demo; do
+          for test in structure_index perception_index navigation_budget client_loading update_sidecars terrain_updates squad_assessment map_placement snapshot_index terrain_cover soldier_batch structure_view grass_stream field_manual_entry support_demo support_input; do
             timeout 120 ~/godot/godot --headless --path . res://tests/${test}_test.tscn 2>&1 | tee ${test}.log
             if grep -E "SCRIPT ERROR|Parse Error|failures=[1-9]" ${test}.log; then exit 1; fi
           done

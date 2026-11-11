@@ -26,7 +26,6 @@ const BF_GREY := Color(0.27, 0.3, 0.33)
 const BF_BLUE := Color(0.31, 0.38, 0.47)
 const BF_OLIVE := Color(0.33, 0.35, 0.27)
 
-static var _discs := {}
 static var _dc := {}
 
 
@@ -100,12 +99,14 @@ static func _patch(k: VehicleModels, p: Node3D, key: String, st: Array, z0: floa
 
 
 ## The outline of a door or hatch on a body's side: four thin seams.
-static func _door(k: VehicleModels, p: Node3D, key: String, st: Array, z0: float, z1: float, y0: float, y1: float, left: bool, col: Color) -> void:
-	var w := 0.035
-	_patch(k, p, key + "f", st, z0 - w, z0 + w, y0, y1, left, AIR, col, 0.006)
-	_patch(k, p, key + "a", st, z1 - w, z1 + w, y0, y1, left, AIR, col, 0.006)
-	_patch(k, p, key + "t", st, z0, z1, y1 - w, y1 + w, left, AIR, col, 0.006)
-	_patch(k, p, key + "b", st, z0, z1, y0 - w, y0 + w, left, AIR, col, 0.006)
+static func _door(k: VehicleModels, p: Node3D, _key: String, st: Array, z0: float, z1: float, y0: float, y1: float, left: bool, col: Color) -> void:
+	var side := -1.0 if left else 1.0
+	var surface := VehicleSurface.new(func(q: Vector2) -> Vector3:
+		var z := lerpf(z0, z1, q.x)
+		var y := lerpf(y0, y1, q.y)
+		var station := VmPlane.st_at(st, z)
+		return Vector3(side * _half_w(station, y), y, z), Vector3(side, 0, 0))
+	VehicleDoors.closed(k, p, surface, PackedVector2Array([Vector2(0, 0), Vector2(1, 0), Vector2(1, 1), Vector2(0, 1)]), [Vector2(0.08, 0.2), Vector2(0.08, 0.8)], Vector2(0.85, 0.55), AIR, col.lightened(0.12), "light", 2)
 
 
 ## A landing-gear tyre and hub (not in k.wheels: those are the propellers).
@@ -119,97 +120,9 @@ static func _tyre(k: VehicleModels, p: Node3D, pos: Vector3, r: float, w: float)
 ## The soft disc a turning propeller sweeps: dark, densest inboard where the
 ## blades are broad, fading out to the tips without a hard rim, with faint
 ## ghost blades drifting round. One material per blade count and hub size.
-static func _disc_mat(nb: int, hub: float) -> ShaderMaterial:
-	var key := "%d_%.2f" % [nb, hub]
-	if _discs.has(key):
-		return _discs[key]
-	var sh := Shader.new()
-	sh.code = """
-shader_type spatial;
-render_mode unshaded, cull_disabled, depth_draw_never, shadows_disabled;
-uniform float nb = 4.0;
-uniform float hub = 0.2;
-void fragment() {
-	vec2 p = UV * 2.0 - 1.0;
-	float r = length(p);
-	float a = atan(p.y, p.x);
-	float disc = smoothstep(1.0, 0.86, r) * smoothstep(hub * 0.8, hub + 0.1, r);
-	float dens = mix(1.0, 0.45, smoothstep(0.3, 1.0, r));
-	float ghost = pow(0.5 + 0.5 * cos(a * nb - TIME * 9.0 + r * 1.5), 8.0);
-	ALBEDO = vec3(0.075, 0.075, 0.08);
-	ALPHA = disc * dens * (0.065 + 0.07 * ghost);
-}
-"""
-	var m := ShaderMaterial.new()
-	m.shader = sh
-	m.set_shader_parameter("nb", float(nb))
-	m.set_shader_parameter("hub", hub)
-	_discs[key] = m
-	return m
-
-
-## One propeller blade along d (unit, in the disc plane of a shaft along local
-## z), from radius r0 to r1: `prof` is [span fraction, chord] pairs, root to
-## tip; twisted from blade angle p0 at the root to p1 at the tip, `th` its
-## thickness as a fraction of chord. It pulls toward local z = fw and its
-## leading edge leads as the pivot turns about +z.
-static func _pblade(key: String, d: Vector3, r0: float, r1: float, prof: Array, p0: float, p1: float, th: float, fw := -1.0) -> ArrayMesh:
-	var f := Vector3(0, 0, fw)
-	var t := Vector3(0, 0, 1).cross(d).normalized()
-	var rings := []
-	for i in range(0, prof.size(), 2):
-		var u: float = prof[i]
-		var c: float = prof[i + 1]
-		var pa := lerpf(p0, p1, u)
-		var cdir := (-t * cos(pa) - f * sin(pa)).normalized()
-		var up := d.cross(cdir).normalized()
-		if up.dot(f) < 0.0:
-			up = -up
-		var le := d * lerpf(r0, r1, u) - cdir * c * 0.4
-		rings.append(VmPlane.foil(le, c, th * c * lerpf(1.5, 0.7, u), up, 0.0, 1.0, cdir))
-	return VmPlane.skin(rings, "gs_" + key, 40.0)
-
-
-## A spinner: an ogive from its back plate forward (toward z = fw * len) to a
-## blunt point, a short skirt behind the plate.
-static func _spinner(key: String, r: float, len: float, fw := -1.0, bluntness := 0.0) -> ArrayMesh:
-	var prof := [[0.0, 1.0], [0.2, 0.98], [0.42, 0.9], [0.62, 0.74], [0.8, 0.5], [0.92, 0.27 + bluntness * 0.2], [0.985, 0.08 + bluntness * 0.2], [1.0, 0.0]]
-	var rings := [VmPlane.sec([-fw * r * 0.25, 0, r * 0.98, r * 0.98, r * 0.98], 20)]
-	for q in prof:
-		var rr: float = r * float(q[1])
-		rings.append(VmPlane.sec([fw * len * float(q[0]), 0, rr, rr, rr], 20))
-	return VmPlane.skin(rings, "gs_" + key, 50.0)
-
-
-## A propeller at pos (its pivot turned by rot): a spinner, `nb` blades of
-## profile `prof` out to radius r in a "Blades" node (turned a0 round the
-## shaft), a "Blur" disc; the pivot goes in k.wheels and spins about its z.
-## fw = 1 builds it pulling toward its own +z (a mirror-image, counter-rotating
-## proprotor on a pivot turned round).
 static func _propeller(k: VehicleModels, p: Node3D, key: String, pos: Vector3, rot: Vector3, r: float, nb: int, prof: Array, p0: float, p1: float, th: float,
 		spin_r: float, spin_len: float, bcol: Color, scol: Color, a0 := 0.0, fw := -1.0, bluntness := 0.0) -> Node3D:
-	var pv := k._pivot(p, pos)
-	pv.rotation = rot
-	k._add(pv, _spinner(key + "_sp", spin_r, spin_len, fw, bluntness), "paint", scol, Vector3.ZERO)
-	var bl := k._pivot(pv, Vector3.ZERO)
-	bl.name = "Blades"
-	bl.rotation.z = a0
-	for i in nb:
-		var a := TAU * float(i) / float(nb)
-		var d := Vector3(sin(a), cos(a), 0)
-		k._add(bl, _pblade("%s_b%d" % [key, i], d, spin_r * 0.7, r, prof, p0, p1, th, fw), "paint", bcol, Vector3.ZERO)
-	if not k.burnt:
-		var disc := MeshInstance3D.new()
-		disc.name = "Blur"
-		var pm := PlaneMesh.new()
-		pm.size = Vector2(r, r) * 2.0
-		pm.orientation = PlaneMesh.FACE_Z
-		disc.mesh = pm
-		disc.material_override = _disc_mat(nb, spin_r / r)
-		disc.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-		pv.add_child(disc)
-	k.wheels.append(pv)
-	return pv
+	return VehiclePropellers.build(k, p, key, pos, rot, r, nb, prof, p0, p1, th, spin_r, spin_len, bcol, scol, a0, fw, bluntness)
 
 
 # --- markings ---------------------------------------------------------------------
@@ -701,8 +614,7 @@ static func _ac130_gear(k: VehicleModels) -> void:
 	if g == null:
 		return
 	# the nose gear: the strut, its torque links, the twin wheels, the doors
-	VmPlane.rod(k, g, Vector3(0, 1.0, -10.6), Vector3(0, 0.5, -10.6), 0.09, "steel", Color(0.6, 0.6, 0.58), 10)
-	VmPlane.rod(k, g, Vector3(0, 0.85, -10.7), Vector3(0, 0.6, -10.72), 0.04, "gunmetal_w", null, 6)
+	VehicleAircraft.gear_leg(k, g, Vector3(0, 1.0, -10.6), Vector3(0, 0.5, -10.6), 0.09)
 	k._cyl(g, 0.05, 0.05, 0.62, Vector3(0, 0.5, -10.6), Vector3(0, 0, PI / 2), "steel", null, 8)
 	for s: float in [-1.0, 1.0]:
 		_tyre(k, g, Vector3(s * 0.25, 0.5, -10.6), 0.5, 0.3)
@@ -712,7 +624,7 @@ static func _ac130_gear(k: VehicleModels) -> void:
 	for s: float in [-1.0, 1.0]:
 		k._box(g, Vector3(0.6, 0.02, 3.45), Vector3(s * 2.06, 0.632, -1.25), "plain_dark", null, Vector3.ZERO, false)
 		for z: float in [-2.05, -0.45]:
-			VmPlane.rod(k, g, Vector3(s * 1.78, 1.9, z), Vector3(s * 1.78, 0.71, z), 0.08, "steel", Color(0.6, 0.6, 0.58), 10)
+			VehicleAircraft.gear_leg(k, g, Vector3(s * 1.78, 1.9, z), Vector3(s * 1.78, 0.71, z), 0.08)
 			_tyre(k, g, Vector3(s * 2.12, 0.71, z), 0.71, 0.5)
 
 
@@ -961,7 +873,7 @@ static func _bf_guns(k: VehicleModels, m: Node3D, st: Array, c: Color) -> void:
 static func _bf_gear(k: VehicleModels, g: Node3D, c: Color) -> void:
 	if g == null:
 		return
-	VmPlane.rod(k, g, Vector3(0, 1.2, -9.4), Vector3(0, 0.45, -9.4), 0.09, "steel", Color(0.6, 0.6, 0.58), 10)
+	VehicleAircraft.gear_leg(k, g, Vector3(0, 1.2, -9.4), Vector3(0, 0.45, -9.4), 0.09)
 	k._cyl(g, 0.05, 0.05, 0.6, Vector3(0, 0.45, -9.4), Vector3(0, 0, PI / 2), "steel", null, 8)
 	for s: float in [-1.0, 1.0]:
 		_tyre(k, g, Vector3(s * 0.24, 0.45, -9.4), 0.45, 0.28)
@@ -969,7 +881,7 @@ static func _bf_gear(k: VehicleModels, g: Node3D, c: Color) -> void:
 	k._box(g, Vector3(0.9, 0.02, 1.3), Vector3(0, 0.67, -9.4), "plain_dark", null, Vector3.ZERO, false)
 	for s: float in [-1.0, 1.0]:
 		k._box(g, Vector3(0.62, 0.02, 2.55), Vector3(s * 1.95, 0.598, -0.55), "plain_dark", null, Vector3.ZERO, false)
-		VmPlane.rod(k, g, Vector3(s * 1.95, 1.9, -0.55), Vector3(s * 1.95, 0.6, -0.55), 0.1, "steel", Color(0.6, 0.6, 0.58), 10)
+		VehicleAircraft.gear_leg(k, g, Vector3(s * 1.95, 1.9, -0.55), Vector3(s * 1.95, 0.6, -0.55), 0.1)
 		k._cyl(g, 0.06, 0.06, 0.9, Vector3(s * 1.95, 0.6, -0.55), Vector3(0, 0, PI / 2), "steel", null, 8)
 		for o: float in [-0.25, 0.25]:
 			_tyre(k, g, Vector3(s * 1.95 + o, 0.6, -0.55), 0.6, 0.34)

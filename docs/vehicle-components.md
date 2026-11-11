@@ -1,5 +1,7 @@
 # Building vehicles from shared components
 
+See the [construction inventory](../tools/vehicles/README.md) to find existing shared methods before adding a helper. The [30-technique implementation review](vehicle-construction-review.md) lists adopters, supported shapes and deliberately specialized construction. The [roadmap](vehicle-construction-roadmap.md) records the original priorities.
+
 Family builders own the silhouette, dimensions, wheel positions, payload and weapon sockets. Reuse the parts below for ordinary wheels, belts, structural members and windows. Existing family helpers delegate to them, so variants inherit improvements together.
 
 | Component | Use | Keep specific to the vehicle |
@@ -101,3 +103,124 @@ Use `--surface-accessories` in the vehicle showcase for separate antenna, mirror
 `VehicleModels.update_antennas(travel, dt, active)` takes world-space travel velocity. One exact damped spring per vehicle combines drag and clamped acceleration, then transforms the resulting lean into each antenna parent’s coordinates, including traversing turrets. The view callback derives travel from displayed movement on both host and client. Motion resets outside 100 m, when hidden, after long frame gaps or after implausible position corrections. There are no rigid bodies, bones, mesh rebuilds or per-whip spring solvers. The base remains fixed while the spring/rod assembly tilts up to about 16 degrees.
 
 `--surface-antenna-motion` captures a combined rigid/animated comparison driven by controlled forward, lateral and reverse velocity inputs, followed by settling. This is an inspection rig, not recorded driving footage.
+
+### Round headlights: Hunter construction pass
+
+Start each construction pass with one vehicle and one visible feature. Extract a
+shared builder only after identifying that feature on at least two other vehicles;
+then migrate every matching construction, retaining family-specific mounts and
+silhouettes. Capture broadly for inspection, but commit a compact comparison sheet
+or short video under the presentation skill's media budget.
+
+The Hunter's round headlight insert now uses
+`VehicleFittings.headlamp(k, parent, center, radius, direction)`. `center` is the
+old lens face and `direction` points outward (default -Z). The helper supplies a
+rubber seating ring, metal rim, shallow reflector, bulb shield and moulded lens
+ribs. A cached unit reflector scales to each lamp; opaque geometry approximates
+sealed-beam optics without transparent sorting or a light/shadow pass. It is an
+unlit appearance detail, not functional headlight illumination. All pieces fold
+into the existing hull bake; wrecks omit the intact reflector and lens ribs.
+
+Coverage: Hunter, Prowler, Marshall, Rhino, Slammer, Scorcher, Sandstorm, Panther,
+Bobcat, Cheetah, Stomper, Abrams, T-55, Humvee, BTR-80, Bradley, M35, Zamak and Qilin,
+including variants sharing those builders. Rectangular lamps and infrared/search
+lights retain their own construction; the T-55's missing IR lens stays missing.
+Family builders retain lamp placement, housing dimensions, guards and indicators.
+
+### Ten-feature construction pass
+
+The headlights above count as feature 1. Each subsequent row started with one
+vehicle, verified at least two other users, and then migrated matching geometry.
+These are static appearance changes: no new gameplay state, lights, physics or
+per-frame updates. Construction mounts fold into their supplied hull/turret parent.
+
+| # | Feature / starting vehicle | Two other confirmed users | Shared construction and rollout |
+| --- | --- | --- | --- |
+| 1 | Round headlights / Hunter | Zamak, Qilin | `headlamp`; coverage above, plus MB4WD round lamps and matching civilian fog lamps found during the final roster audit |
+| 2 | Jerrycans / Hunter | Prowler, Marshall | `jerrycan`: pressed ribs, seam, three open handles, filler cap. All five ground-family jerrycan helpers delegate here, including civilian repair pickups. |
+| 3 | Sealed ammo cans / Prowler | Abrams, Humvee | `ammo_can`: gasket, lid, latches, open handle and wall ribs. NATO/core helpers and loose cans in offroad/MB4WD gun vehicles; wooden crates and gun-specific feed boxes keep their construction. |
+| 4 | Tow shackles / Hunter | Prowler, Marshall | `tow_shackle`: open forged bow, pin and attached mounting lug. Core/NATO/CSAT helpers plus the independent Strider, Mora, Kuma, Gorgon and Zamak fittings. |
+| 5 | Smoke tubes / Marshall | Rhino, Slammer | `smoke_tube`: reuses the hollow barrel mesh and adds a mounting collar. All four ground-family smoke banks retain their counts, spacing, pitch and yaw. |
+| 6 | Periscope heads / Abrams | T-55, Bradley | `periscope`: fitted glass, seal, protective lip and fasteners. Core/CSAT helpers plus the matching NATO and independent driver/crew heads. Panoramic sight towers and flush vision ports retain their shapes. |
+| 7 | Closed round hatches / Ifrit | Marid, Varsuk | `hatch`: lid seal, seat, hinge knuckles/pin and open handle. Core/CSAT helpers and matching NATO/independent closed lids. Cupola pedestals, open lids and rectangular hatches remain authored by their families. |
+| 8 | Tail-light clusters / Hunter | Prowler, Marshall | `tail_cluster` / `signal_lens`: sealed red/amber lenses with moulded ribs across core/NATO/CSAT/independent clusters. Civilian lights share the optical finish while retaining their distinct silhouettes. |
+| 9 | Lifting eyes / Abrams | T-55, Bradley | `lifting_eye`: actual open ring and welded foot. All core lifting eyes, Mora's deck eyes and the SDV's flat corner rings. |
+| 10 | Rectangular headlights / Ifrit | Marid, Tempest | `rectangular_headlamp`: rubber seat, fluted optics and bulb shield. CSAT/independent clusters, HEMTT, Hilux and matching forward-facing civilian rectangular lamps. Family housings, guards, indicators and nonrectangular lamps remain distinct. |
+
+Helpers are in `scripts/game/vehicle_fittings.gd`. Position contracts matter:
+`jerrycan` and `ammo_can` take body centres; independent/civilian jerrycan adapters
+convert their old bottom origin by 0.23 m. `hatch` takes the **lid centre**;
+core/CSAT adapters convert their old deck origin. `lifting_eye` takes the contact
+surface and supports upright or flat rings. Periscope and rectangular-headlamp
+local -Z faces out; signal lenses use +Z and accept a facing sign. Smoke tubes
+keep the original cylinder centre, local-Y axis and length. All rotations turn
+whole assemblies, including lids, handles and caps.
+
+The opaque optical surfaces approximate lamps and periscopes without transparency
+sorting. Wreck builds substitute burnt material and omit intact optical inserts.
+The component fixture checks can attachments under compound rotation, batching,
+finite bounds, construction budgets and wreck materials; existing vehicle tests
+cover animation pivots, sockets, model bounds and all-family material consistency.
+
+Use `--surface-construction --surface-single --surface-kinds=KIND` with the existing
+vehicle showcase for component inspection. Kinds: `jerrycan`, `ammo_can`,
+`tow_shackle`, `smoke_tubes`, `periscope`, `hatch`, `tail_lights`, `lifting_eye`,
+`rectangular_lights`. The [combined comparison sheets](../changelog/unreleased/vehicle-shared-equipment/)
+show genuine before/after component rigs, not gameplay footage. The presentation
+catalog records revisions, cameras and commands. Full-roster and individual raw
+captures are local review artifacts, not checked-in media.
+
+### Fitted construction and equipment
+
+`VehicleSurface` maps a two-dimensional domain to a vehicle's authored surface.
+Use `plane(origin, across, up)` for metre-scaled sheets, `quad(corners, inside)`
+for normalized cabin faces, or supply a sampler and outward direction for curved
+skins. Domain coordinates belong to that adapter: never assume normalized UVs
+are metres. Offsets and thickness are in model metres. Polygon outlines must be
+simple, ordered and nondegenerate; curved surfaces need explicit subdivisions.
+
+`VehicleBody.fitted` shares the outline with `boundary` seams and corner screws.
+Boundary seals form one low-section mesh, with no cylinder caps or hidden rings.
+`VehicleCab.framed_face` omits rectangular opening cells from the shell and adds
+reveals. It is not arbitrary CSG. `VehicleGlazing.polygon` accepts an optional
+authored mesh for faceted helicopter panes, preserving creases while sharing the
+seal. Never turn on clear glazing without a real opening and an interior.
+
+`VehicleDoors.closed` takes an outline, hinge anchors and handle anchor on the
+same surface. `rectangle` is the convenience adapter. `light`, `utility` and
+`armored` styles control sheet and hardware dimensions; exposed face screws are
+reserved for armored leaves. Hinges and pull handles also work independently
+on storage lids. Opening doors, sliders and vehicle-specific pivots stay local.
+
+`VehicleEquipment` builds closed storage bins, skirt segments, winches, optical
+housings and dished vessels. Dimensions are independent, rather than separate
+small/large/XL implementations. Storage hardware is clamped to the available lid;
+vessels accept independent width, height, length and strap stations; sensors
+support box and ball styles. Use the existing `VehicleFittings.jerrycan`,
+`VehicleCloth` and material library instead of adding duplicate container or
+fabric builders. Top-lid storage is not an ammunition-can or basket replacement.
+
+`VehicleRunningGear` owns ladder frames and solid axles, without registering
+wheels. `VehicleWheelArches` owns the civilian cut-body and flare kernel; its
+liners remain outside the supplied tyre radius. `VehicleCargo` supplies pallets
+and load-bound straps. `VehicleFrames` adds boarding treads, ladders, explicit
+stanchion runs and static sagging cables. These are construction, not suspension
+or rope simulation. Existing independent suspension and optimized ship rails
+remain distinct implementations.
+
+`VehicleProfiles` caches lofts/revolutions by their actual shape parameters.
+`VehicleAirfoils` shares section interpolation and metre-scaled control gaps.
+`VehicleAircraft` supplies ducts, landing struts, pylons and seven/nineteen-tube
+rocket pods. Families keep station data, planforms, nozzle petals and payload
+positions. `VehiclePropellers` shares blades, spinners and blur materials, while
+callers retain existing `k.wheels`/rotor registration and visibility parents.
+`VehicleMarkings` projects authored polygons onto surfaces and omits intact
+markings on wrecks by default. `VehicleMarine.mooring` supports cleats and bitts.
+
+All opaque assemblies use the existing bake and LOD path. Helpers that create a
+temporary construction pivot fold it back into the supplied parent. They must
+not register wheels, weapons or rotors unless that is the explicit API contract.
+Use the surface, index, material, component, LOD and motion tests together when
+changing these foundations; the index test requires three independent builder
+roots for each of the 30 registered techniques (conditional variants still need
+source inspection).

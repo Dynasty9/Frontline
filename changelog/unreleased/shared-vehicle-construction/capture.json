@@ -1,0 +1,84 @@
+{
+  "before_ref": "a6d3708",
+  "after_ref": "c00c9072084e7ac3c93bc82a29d3f7ecc3164477",
+  "engine": "Godot 4.7.2 stable",
+  "renderer": "gl_compatibility",
+  "team": 0,
+  "seed": 3,
+  "source_size": [
+    1600,
+    900
+  ],
+  "sheet_size": [
+    1400,
+    2568
+  ],
+  "sheet_bytes": 364411,
+  "composition": "Uncropped source images resized side by side; before left, after right. JPEG quality 86.",
+  "command": "DISPLAY=:105 godot --path <checkout> --rendering-method gl_compatibility --audio-driver Dummy tools/showcase/vehicle-surfaces.tscn -- --surface-single --surface-kinds=<model> --surface-focus=<focus> --surface-size=<size> --surface-out=<outside-repo-directory>",
+  "shots": [
+    {
+      "model": "hemtt",
+      "focus": "0,2,-3.8",
+      "size": 3.1
+    },
+    {
+      "model": "hemtt_fuel",
+      "focus": "0,2.2,1.6",
+      "size": 4.6
+    },
+    {
+      "model": "hunter",
+      "focus": "0,0.8,-2.5",
+      "size": 2.1
+    },
+    {
+      "model": "hellcat",
+      "focus": "1.4,1.4,-1.4",
+      "size": 3.8
+    },
+    {
+      "model": "blackwasp",
+      "focus": "0,1,1.5",
+      "size": 5.0
+    },
+    {
+      "model": "rhib",
+      "focus": "0,0.8,0",
+      "size": 3.0
+    }
+  ],
+  "review": {
+    "full_roster": 143,
+    "full_roster_engine": "Godot 4.6.3 Compatibility, matched baseline and implementation",
+    "final_compatibility": [
+      "ghosthawk",
+      "huron",
+      "kajman",
+      "heli",
+      "blackfish",
+      "blackfish_armed",
+      "hemtt",
+      "zamak",
+      "hellcat",
+      "mohawk",
+      "orca",
+      "taru",
+      "humvee",
+      "hunter",
+      "ac130",
+      "offroad",
+      "mb4wd",
+      "van_transport"
+    ],
+    "forward_plus": [
+      "hemtt_fuel",
+      "hellcat",
+      "blackfish",
+      "rhib",
+      "hunter",
+      "zamak"
+    ],
+    "raw_policy": "Individual captures and full-roster review sheets remain outside Git."
+  }
+}

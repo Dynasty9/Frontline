@@ -140,6 +140,7 @@ func is_player_building() -> bool:
 
 
 func apply_props(d: Dictionary) -> void:
+	var old_depth := trench_depth() if skind == "trench" else 0.0
 	if world and world.structure_view:
 		world.structure_view.unbatch(self)
 	if d.has("skind"):
@@ -198,6 +199,8 @@ func apply_props(d: Dictionary) -> void:
 			_start_toss()
 	if not srv and not parts.is_empty() and (d.has("toss") or d.has("built")):
 		_compute_cover_pts()  # thrown somewhere else, or finished: its fighting positions moved
+	if skind == "trench" and not parts.is_empty():
+		_trench_changed(old_depth)
 	if d.has("burnt"):
 		var was := burnt
 		burnt = d.burnt
@@ -244,6 +247,7 @@ func on_spawned() -> void:
 	foot = Vector2(size.x * 0.5, size.z * 0.5)
 	if skind == "trench":
 		foot.x += TrenchNet.HALF_W  # the hole runs on past the segment's ends
+		foot.y = maxf(foot.y, 2.0)
 	radius = foot.length() + 0.5
 	indestructible = skind in ["depot", "floor", "bridge", "town"]  # (a house's floor slab outlasts its walls)
 	smashable = skind in ["low_wall", "tall_wall", "house_wall", "crates", "car", "tree", "sandbags", "concrete_wall", "wire", "rubble", "fence", "barricade"]
@@ -252,7 +256,7 @@ func on_spawned() -> void:
 			max_hp = _default_hp()
 			hp = max_hp if built else max_hp * 0.1
 		world.nav.add_structure(self)
-		if built:
+		if built or (skind == "trench" and trench_depth() > 0.0):
 			_make_body()
 		if door_shut:
 			world.add_door(self)
@@ -274,7 +278,7 @@ func set_view_active(value: bool) -> void:
 	if world and world.structure_view:
 		world.structure_view.unbatch(self, not value)
 	view_active = value
-	if value and not srv and built and body == null:
+	if value and not srv and (built or (skind == "trench" and trench_depth() > 0.0)) and body == null:
 		_make_body()
 	if value and model == null:
 		_build_model()
@@ -473,10 +477,19 @@ func _define_parts() -> void:
 		"trench":
 			# the earth either side of the hole and the spoil heaped on its lips:
 			# from the duckboards up to the top of the parapet, that's what stops bullets
-			parts = [
-				_part(Vector3(0, -0.43, -1.2), Vector3(L, 1.54, 0.95), Nav.LOW, Nav.LOW, true, true, C_DIRT),
-				_part(Vector3(0, -0.43, 1.2), Vector3(L, 1.54, 0.95), Nav.LOW, Nav.LOW, true, true, C_DIRT),
-			]
+			var depth := trench_depth()
+			var h := depth * 1.28
+			var y := -depth + h * 0.5
+			var rear := -_enemy_side()
+			parts = [_part(Vector3(0, y, -rear * 1.2), Vector3(L, h, 0.95), Nav.LOW, Nav.LOW, true, true, C_DIRT)]
+			if TrenchNet.has_recess(self):
+				for side in [-1.0, 1.0]:
+					parts.append(_part(Vector3(side * (L + 1.5) * 0.25, y, rear * 1.2), Vector3((L - 1.5) * 0.5, h, 0.95), Nav.LOW, Nav.LOW, true, true, C_DIRT))
+				parts.append(_part(Vector3(0, y, rear * 2.4), Vector3(1.5, h, 0.85), Nav.LOW, Nav.LOW, true, true, C_DIRT))
+				if built and trench_depth() >= 0.85 and eid % 2 == 1:
+					parts.append(_part(Vector3(0, 0.3, rear * 1.4), Vector3(1.5, 0.12, 1.1), Nav.FREE, Nav.FREE, true, true, C_WOOD))
+			else:
+				parts.append(_part(Vector3(0, y, rear * 1.2), Vector3(L, h, 0.95), Nav.LOW, Nav.LOW, true, true, C_DIRT))
 		"wire":
 			parts = [_part(Vector3(0, 0.45, 0), Vector3(L, 0.9, 1.2), Nav.SLOW, Nav.FREE, false, false, Color(0.4, 0.4, 0.4))]
 		"mines":
@@ -560,7 +573,7 @@ func nav_parts() -> Array:
 
 
 func provides_cover() -> bool:
-	return built and not cover_pts.is_empty()
+	return (built or (skind == "trench" and trench_depth() >= 0.3)) and not cover_pts.is_empty()
 
 
 func _compute_cover_pts() -> void:
@@ -631,7 +644,7 @@ func mount_pos() -> Vector3:
 			var lp := mg_pivot_local() + Vector3(0, 0, (g.grip_r as Vector3).z + (0.34 if variant == 1 else 0.5))
 			var mp := position + b * Vector3(lp.x, 0, lp.z)
 			if variant == 1:
-				mp.y = world.terrain.landform.height(mp) + TrenchNet.FLOOR_Y + 0.15
+				mp.y = world.ground_y(mp)
 			return mp
 	return position + b * Vector3(0, 0, -0.5)
 
@@ -822,6 +835,32 @@ func exit_pos() -> Vector3:
 var hit_from := Vector3.INF  # the last blast that reached it (a tree falls away from it)
 
 
+## Excavation survives bombardment; collapsed earth reduces the usable depth.
+func trench_depth() -> float:
+	var dug := 1.0 if built else floorf(roundf(clampf(progress, 0.0, 1.0) * 255.0) / 32.0) / 8.0
+	var health := roundi(clampf(hp / maxf(max_hp, 1.0), 0.0, 1.0) * 65535.0)
+	var intact := floorf(float(health) * 5.0 / 65536.0) / 4.0 if built else 1.0
+	return 1.2 * dug * (0.45 + 0.55 * intact)
+
+
+func _trench_changed(old_depth: float) -> void:
+	if skind != "trench" or is_equal_approx(old_depth, trench_depth()):
+		return
+	world.nav.remove_structure(self)
+	_define_parts()
+	world.nav.add_structure(self)
+	if body:
+		remove_child(body)
+		body.queue_free()
+		body = null
+	if trench_depth() > 0.0:
+		_make_body()
+	world.terrain.structure_changed(self, true)
+	_compute_cover_pts()
+	if world.has_view:
+		_update_visual()
+
+
 func take_damage(amount: float, _source = null) -> void:
 	if indestructible or gone or not srv:
 		return
@@ -829,7 +868,11 @@ func take_damage(amount: float, _source = null) -> void:
 		return
 	if world.battle and team >= 0 and is_player_building():
 		world.battle.structure_hit(self, _source)
+	var old_depth := trench_depth() if skind == "trench" else 0.0
 	hp -= amount
+	if skind == "trench":
+		hp = maxf(1.0, hp)  # a shell can bury a section, never erase the excavation
+		_trench_changed(old_depth)
 	net_dirty = true
 	if door_shut and amount >= 20.0:
 		open_door(null, true)
@@ -1438,15 +1481,21 @@ func _destroyed(quiet := false) -> void:
 
 ## Builders and repairers call this. amount = work-seconds.
 func add_work(amount: float) -> bool:
-	if gone:
+	var old_depth := trench_depth() if skind == "trench" else 0.0
+	if gone or amount <= 0.0:
 		return false
 	if not built:
 		var t: float = Defs.BUILDINGS[skind].time if Defs.BUILDINGS.has(skind) else 10.0
+		if skind == "trench":
+			t *= maxf(0.25, size.x / 6.0)
+			if world.terrain.base[world.terrain.idx_of(position)] == TerrainMap.ROAD:
+				t *= 1.5  # compacted roadbeds take longer to break up
 		progress = minf(1.0, progress + amount / t)
 		hp = maxf(hp, max_hp * progress)
 		net_dirty = true
 		if progress >= 1.0:
 			_complete()
+		_trench_changed(old_depth)
 		return true
 	if burn > 0.0:
 		fuel -= amount * 4.0  # engineers beat the flames out before they patch anything up
@@ -1454,6 +1503,7 @@ func add_work(amount: float) -> bool:
 		var t2: float = Defs.BUILDINGS[skind].time if Defs.BUILDINGS.has(skind) else 20.0
 		hp = minf(max_hp, hp + amount * max_hp / (t2 * 0.8))
 		net_dirty = true
+		_trench_changed(old_depth)
 		if wrecked and hp >= max_hp * 0.5:
 			wrecked = false
 			world.send_msg(team, "info", "FOB %s is back in action." % sname, position)
@@ -1860,8 +1910,8 @@ func _cook_off() -> void:
 # --- replication ------------------------------------------------------------------
 
 func write_state(b: StreamPeerBuffer) -> void:
-	b.put_u16(int(clampf(hp / maxf(1.0, max_hp), 0.0, 1.0) * 65535.0))
-	b.put_u8(int(progress * 255.0))
+	b.put_u16(roundi(clampf(hp / maxf(1.0, max_hp), 0.0, 1.0) * 65535.0))
+	b.put_u8(roundi(progress * 255.0))
 	b.put_8(team)
 	b.put_u8(int(clampf(cap_prog, 0.0, 100.0)))
 	b.put_8(cap_team)
@@ -1878,6 +1928,7 @@ func write_state(b: StreamPeerBuffer) -> void:
 
 
 func read_state(b: StreamPeerBuffer) -> void:
+	var old_depth := trench_depth() if skind == "trench" else 0.0
 	hp = b.get_u16() / 65535.0 * max_hp
 	progress = b.get_u8() / 255.0
 	var t := b.get_8()
@@ -1911,6 +1962,7 @@ func read_state(b: StreamPeerBuffer) -> void:
 		_update_visual()
 	if built and not was_built and not srv and world.has_view and view_active:
 		_make_body()
+	_trench_changed(old_depth)
 	if built != was_built and world.terrain:
 		world.terrain.structure_changed(self, true)
 
@@ -2181,12 +2233,19 @@ func _update_visual() -> void:
 		var done := model.get_node_or_null("Done")
 		if site:
 			site.visible = not built
+			var scrape := site.get_node_or_null("Scrape")
+			if scrape:
+				scrape.visible = trench_depth() <= 0.0
 			for i in 3:
 				var pl := site.get_node_or_null("Pile%d" % i) as Node3D
 				if pl:
 					pl.scale = Vector3(1.4, 0.55, 0.9) * clampf(progress * 1.4, 0.15, 1.0)
 		if done:
-			done.visible = built
+			done.visible = built and trench_depth() >= 0.85
+		var damage := model.get_node_or_null("Damage") as Node3D
+		if damage:
+			damage.visible = built and trench_depth() < 0.85
+			damage.position.y = -trench_depth()
 		return
 	if built:
 		model.position.y = 0.0
@@ -2619,6 +2678,13 @@ func _build_model() -> void:
 				var pile := Res.mi(site, Res.sphere(0.55, 8), Res.mat(Res.vary(Color(0.24, 0.19, 0.13), 0.05, rng)), Vector3((i - 1) * size.x * 0.33, 0.0, 1.35 * (1.0 if i % 2 == 0 else -1.0)), Vector3.ZERO, false)
 				pile.scale = Vector3(1.4, 0.55, 0.9)
 				pile.name = "Pile%d" % i
+			var damage := Node3D.new()
+			damage.name = "Damage"
+			model.add_child(damage)
+			for i in 5:
+				var x := rng.randf_range(-size.x * 0.35, size.x * 0.35)
+				var z := rng.randf_range(-0.35, 0.35)
+				Res.mi(damage, Res.box(Vector3(0.12, 0.08, rng.randf_range(0.4, 0.9))), Res.mat(C_WOOD.darkened(0.3)), Vector3(x, 0.18, z), Vector3(0.15, rng.randf() * TAU, 0.2), false)
 			var done := Node3D.new()
 			done.name = "Done"
 			model.add_child(done)
@@ -2632,8 +2698,21 @@ func _build_model() -> void:
 				kit_bags.append({"p": Vector3(bx, 0.32, fsgn * 1.05), "s": Vector3(0.55 * rng.randi_range(1, 2), 0.19, 0.36), "r": rng.randf_range(-0.2, 0.2)})
 			if not kit_bags.is_empty():
 				_bag_walls(kit_bags, rng, done)
-			if kx > 0.8 and rng.randf() < 0.35:
-				Res.mi(done, Res.box(Vector3(0.5, 0.3, 0.3)), Res.mat(Color(0.25, 0.28, 0.2)), Vector3(rng.randf_range(-kx, kx), -0.9, -fsgn * 0.45), Vector3(0, snappedf(rng.randf_range(-0.2, 0.2), 0.1), 0), false)
+			if TrenchNet.has_recess(self):
+				var rear := -fsgn
+				var wood := Res.mat(C_WOOD.darkened(0.25))
+				# Alternating supply shelves and roofed resting bays share the same excavation.
+				Res.mi(done, Res.box(Vector3(1.2, 0.1, 0.48)), wood, Vector3(0, -0.7, rear * 1.55), Vector3.ZERO, false)
+				if eid % 2 == 0:
+					for x in [-0.33, 0.3]:
+						Res.mi(done, Res.box(Vector3(0.45, 0.26, 0.3)), Res.mat(Color(0.25, 0.28, 0.2)), Vector3(x, -0.52, rear * 1.55), Vector3.ZERO, false)
+				else:
+					for x in [-0.66, 0.66]:
+						Res.mi(done, Res.box(Vector3(0.09, 1.35, 0.09)), wood, Vector3(x, -0.42, rear * 1.7), Vector3.ZERO, false)
+					Res.mi(done, Res.box(Vector3(1.5, 0.12, 1.1)), wood, Vector3(0, 0.3, rear * 1.4), Vector3(0, 0, 0.04), false)
+					Res.mi(done, Res.box(Vector3(0.9, 0.12, 0.4)), Res.mat(Color(0.29, 0.31, 0.23)), Vector3(0, -0.59, rear * 1.55), Vector3.ZERO, false)
+				for i in 3:
+					Res.mi(done, Res.box(Vector3(0.13, 0.025, 0.18)), Res.mat(Color(0.31, 0.27, 0.19)), Vector3(rng.randf_range(-0.5, 0.5), -1.13, rear * rng.randf_range(1.0, 1.6)), Vector3(0, rng.randf() * TAU, 0), false)
 		"wire", "mines", "tank_trap":
 			works_keep = WorksModels.build(self, model, rng, bags)
 		"mg_nest", "hmg_nest":
@@ -2720,11 +2799,16 @@ func _build_model() -> void:
 		keep.append(_mg.root)
 		for n in [_mg.root, _mg.traverse, _mg.elev, _mg.body]:
 			Mats.merge_static(n, [], false, false, true)
-	for nm in ["Site", "Done"]:
+	for nm in ["Site", "Done", "Damage"]:
 		var sub := model.get_node_or_null(nm) as Node3D
 		if sub:
 			keep.append(sub)
-			Mats.merge_static(sub, [])
+			var moving: Array = []
+			if nm == "Site":
+				for child in sub.get_children():
+					if child.name == "Scrape" or String(child.name).begins_with("Pile"):
+						moving.append(child)
+			Mats.merge_static(sub, moving)
 	if _bake:
 		_bake.commit(model)
 		_bake = null

@@ -1,0 +1,21 @@
+{
+  "source_ref": "60719a52",
+  "scenario": "motion",
+  "seed": 3,
+  "renderer": "gl_compatibility",
+  "engine": "4.7.2",
+  "resolution": "1280x720",
+  "fps": 30,
+  "frames": 360,
+  "seconds": 12,
+  "audio": "silent",
+  "input": "Scripted mouse-button events through PlayerInput._unhandled_input; debug_mouse drives the live preview.",
+  "camera": {
+    "distance": 100,
+    "focus": "0,0,-10",
+    "yaw": 0,
+    "pitch": -55
+  },
+  "command": "godot --path . --rendering-method gl_compatibility --audio-driver Dummy --position=-12000,-12000 --resolution 1280x720 --fixed-fps 30 --script tests/fixtures/strike-direction-clip.gd -- --scenario=motion --seed=3 --offscreen --mood=day --set=perf:0",
+  "result": "STRIKE_DIRECTION_CLIP frames=360 direction=(-0.06413, 0.0, 0.997941)"
+}

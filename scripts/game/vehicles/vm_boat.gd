@@ -383,9 +383,7 @@ static func _pt(xz: Array, i: int, y: float) -> Vector3:
 
 ## A horn cleat at pos, its horns along `yaw` (0 = fore and aft).
 static func _cleat(k: VehicleModels, parent: Node3D, pos: Vector3, yaw := 0.0, sc := 1.0) -> void:
-	for dz in [-0.035, 0.035]:
-		k._box(parent, Vector3(0.03, 0.045, 0.025) * sc, pos + Basis(Vector3.UP, yaw) * Vector3(0, 0.022, dz) * sc, "steel", STAINLESS, Vector3(0, yaw, 0), false)
-	k._box(parent, Vector3(0.028, 0.024, 0.2) * sc, pos + Vector3(0, 0.05 * sc, 0), "steel", STAINLESS, Vector3(0, yaw, 0), false)
+	VehicleMarine.mooring(k, parent, pos, Vector3(0.2, 0.065, 0.045) * sc, yaw + PI / 2, "cleat", "steel", STAINLESS)
 
 
 ## A propeller on an axis along z: a hub with a tail cone and n twisted blades.
@@ -778,8 +776,7 @@ static func _rhib(k: VehicleModels, team: int) -> void:
 		for s in [-1.0, 1.0]:
 			var x: float = s * 0.38
 			k._box(m, Vector3(0.34, 0.5, 0.5), Vector3(x, sy + 0.24, zr), hm, hc)
-			k._box(m, Vector3(0.36, 0.12, 0.6), Vector3(x, sy + 0.55, zr + 0.02), "plain_dark", Color(0.12, 0.12, 0.12))
-			k._box(m, Vector3(0.34, 0.2, 0.1), Vector3(x, sy + 0.68, zr + 0.3), "plain_dark", Color(0.12, 0.12, 0.12), Vector3(0.2, 0, 0))
+			VehicleCab.seat(k, m, Vector3(x, sy + 0.55, zr + 0.02), Vector3(0.36, 0.2, 0.6), Vector3.ZERO, Color(0.12, 0.12, 0.12), "rubber")
 			for dx in [-0.13, 0.13]:
 				_rod(k, m, Vector3(x + dx, sy + 0.58, zr - 0.25), Vector3(x + dx, sy + 0.84, zr - 0.31), 0.015, "steel", STAINLESS)
 			_rod(k, m, Vector3(x - 0.13, sy + 0.84, zr - 0.31), Vector3(x + 0.13, sy + 0.84, zr - 0.31), 0.015, "steel", STAINLESS)
@@ -851,7 +848,7 @@ static func _sdv(k: VehicleModels, team: int) -> void:
 	# lifting eyes at the deck's corners
 	for s in [-1.0, 1.0]:
 		for z in [-2.05, 1.05]:
-			k._add(m, Res.torus(0.025, 0.05), "gunmetal_w", null, Vector3(s * 0.48, 1.42, z), Vector3(0, PI / 2, 0))
+			VehicleFittings.lifting_eye(k, m, Vector3(s * 0.48, 1.385, z), PI / 2, 0.05, false)
 	# the mast with the periscope head and a comms antenna beside it
 	k._add(m, VehicleModels.solid([_ry(_foil(0.22, 0.5, -2.55), 1.32), _ry(_foil(0.16, 0.36, -2.47), 1.62)], "boat_sdv_mast"), bm, bc, Vector3.ZERO)
 	k._cyl(m, 0.04, 0.04, 0.5, Vector3(0, 1.85, -2.38), Vector3.ZERO, "gunmetal_w", null, 10)
@@ -980,7 +977,7 @@ static func _surc(k: VehicleModels, team: int, csat: bool) -> void:
 	k._box(m, Vector3(0.04, 0.12, 0.04), Vector3(0.28, 1.65, 1.21), "gunmetal_w", null, Vector3.ZERO, false)
 	# wipers on the windscreen, armour seams on the lower walls
 	for s in [-1.0, 1.0]:
-		_rod(k, m, Vector3(s * 0.2, 2.06, -2.34), Vector3(s * 0.12, 2.42, -1.78), 0.01, "gunmetal_w", null, 4)
+		VehicleFittings.wiper(k, m, Vector3(s * 0.2, 2.06, -2.34), Vector3(s * 0.12, 2.42, -1.78), Vector3.RIGHT, Vector3(0, 0.56, -0.36), 0.44)
 		for z in [-0.9, 0.2]:
 			k._box(m, Vector3(0.012, 0.7, 0.02), Vector3(s * 1.205, 1.62, z), "gunmetal_w", null, Vector3(0, 0, s * 0.04), false)
 		# side lights on the cabin's shoulders, the team panel aft of them

@@ -250,7 +250,7 @@ func _surface_speed(p: Vector3, vehicle: bool, tracked: bool) -> float:
 	match kind_at(p):
 		TRENCH:
 			# tracks claw across a trench; wheels drop in and stick
-			return (0.42 if tracked else 0.12) if vehicle else 0.95
+			return (0.42 if tracked else 0.12) if vehicle else (0.55 if world.trench_depth(p) < 0.75 else 0.95)
 		ROAD:
 			return 1.35 if vehicle else 1.12
 		MUD:
@@ -293,7 +293,7 @@ func blast_mul(p: Vector3) -> float:
 
 ## Woods hide you: spotting range against someone in them is shorter.
 func in_trench(p: Vector3) -> bool:
-	return trench[idx_of(p)] > 0
+	return trench[idx_of(p)] > 0 and world.in_trench(p)
 
 
 func concealment(p: Vector3) -> float:
@@ -643,22 +643,24 @@ class CoverJob:
 						if not (Vector3(dv.x, 0.0, dv.z).length() <= 1.6 + rad[s]):
 							continue
 						var in_trench := false
-						if dug[s] == 1:
-							in_trench = TrenchNet.sd_seg(seg[s * 2], seg[s * 2 + 1], c) < -0.0  # (TrenchNet.inside)
+						if dug[s] > 0:
+							in_trench = TrenchNet.sd_seg(seg[s * 4], seg[s * 4 + 1], c) < -0.0  # (TrenchNet.inside)
+							if seg[s * 4 + 2] != seg[s * 4 + 3]:
+								in_trench = in_trench or TrenchNet.sd_seg(seg[s * 4 + 2], seg[s * 4 + 3], c) < 0.0
 							if in_trench:
-								tr = 1
+								tr = maxi(tr, dug[s])
 						if rub_of[s] == 1:
 							# (Defs.point_in_obb)
 							var d := Vector2(c.x, c.z) - obb[s * 5]
 							if absf(d.dot(obb[s * 5 + 3])) <= obb[s * 5 + 1].x and absf(d.dot(obb[s * 5 + 4])) <= obb[s * 5 + 1].y:
 								rub = 1
 						var k := kind[s]
-						if k == C_NONE or p0[s] == p1[s]:
+						if k == C_NONE or (k != C_TRENCH and p0[s] == p1[s]):
 							continue
 						if k == C_TRENCH:
 							# dug in: heavy cover from every side down in the trench
-							if in_trench and HEAVY > best:
-								best = HEAVY
+							if in_trench and int(dug[s]) > best:
+								best = int(dug[s])
 								bdir = OMNI
 							continue
 						if k == C_BUNKER:
@@ -820,16 +822,16 @@ func _add_slot(lay: CoverLay, st) -> void:
 	lay.pos.append(st.position)
 	lay.rad.append(st.radius)
 	var k := C_PARTS
-	if not st.built or st.skind in NO_COVER:
-		k = C_NONE
-	elif st.skind == "trench":
+	if st.skind == "trench":
 		k = C_TRENCH
+	elif not st.built or st.skind in NO_COVER:
+		k = C_NONE
 	elif st.skind == "bunker":
 		k = C_BUNKER
 	var rubble_st: bool = st.skind == "rubble"
 	lay.kind.append(k)
 	lay.rub.append(1 if rubble_st else 0)
-	lay.dug.append(1 if st.skind == "trench" and st.built else 0)
+	lay.dug.append((HEAVY if st.trench_depth() >= 0.9 else LIGHT if st.trench_depth() >= 0.3 else 0) if st.skind == "trench" else 0)
 	lay.p0.append(lay.wc.size())
 	if k != C_NONE:
 		var b := Basis(Vector3.UP, st.yaw)
@@ -860,9 +862,12 @@ func _add_slot(lay: CoverLay, st) -> void:
 		var sg := TrenchNet.seg_of(st)
 		lay.seg.append(sg[0])
 		lay.seg.append(sg[1])
+		var recess := TrenchNet.recess_of(st)
+		lay.seg.append(recess[0] if not recess.is_empty() else Vector3.ZERO)
+		lay.seg.append(recess[1] if not recess.is_empty() else Vector3.ZERO)
 	else:
-		lay.seg.append(Vector3.ZERO)
-		lay.seg.append(Vector3.ZERO)
+		for i in 4:
+			lay.seg.append(Vector3.ZERO)
 
 
 func _refresh_cell(i: int) -> void:

@@ -516,9 +516,19 @@ func entity(id: int) -> Entity:
 func ground_y(p: Vector3) -> float:
 	if water and not water.deck.is_empty() and water.on_deck(p):
 		return 0.06  # on a bridge deck, over the water
-	for st: Structure in _trenches_at(p):
-		if is_instance_valid(st) and not st.gone and st.built and TrenchNet.inside(st, p, 0.05):
-			return terrain.landform.height(p) + TrenchNet.FLOOR_Y + 0.15
+	var depth := trench_depth(p)
+	if depth > 0.0:
+		var inset := INF
+		for st: Structure in _trenches_at(p):
+			if st.gone or st.trench_depth() <= 0.0:
+				continue
+			var seg := TrenchNet.seg_of(st)
+			inset = minf(inset, TrenchNet.sd_seg(seg[0], seg[1], p))
+			var recess := TrenchNet.recess_of(st)
+			if not recess.is_empty():
+				inset = minf(inset, TrenchNet.sd_seg(recess[0], recess[1], p))
+		var step := 0.3 if depth >= 1.0 and inset > -0.4 else minf(0.15, depth * 0.125)
+		return terrain.landform.height(p) - depth + step
 	return terrain.deform_at(p) if terrain else 0.0
 
 
@@ -550,11 +560,16 @@ func trench_mount_spot(pos: Vector3, yaw: float) -> Dictionary:
 	return best
 
 
-func in_trench(p: Vector3) -> bool:
+func trench_depth(p: Vector3, margin := 0.05) -> float:
+	var depth := 0.0
 	for st: Structure in _trenches_at(p):
-		if is_instance_valid(st) and not st.gone and st.built and TrenchNet.inside(st, p, 0.05):
-			return true
-	return false
+		if is_instance_valid(st) and not st.gone:
+			depth = maxf(depth, TrenchNet.depth_at(st, p, self, margin))
+	return depth
+
+
+func in_trench(p: Vector3) -> bool:
+	return trench_depth(p) >= 0.6
 
 
 ## True when a shooter at `from` is looking along the trench bay that `p` is in
@@ -565,7 +580,7 @@ func trench_enfiladed(p: Vector3, from: Vector3) -> bool:
 		return true
 	to = to.normalized()
 	for st in structures_near(p, 4.0):
-		if st.skind == "trench" and st.built and TrenchNet.inside(st, p):
+		if st.skind == "trench" and st.trench_depth() >= 0.6 and TrenchNet.inside(st, p):
 			var sg := TrenchNet.seg_of(st)
 			var ax := Defs.flat(sg[1] - sg[0]).normalized()
 			return absf(ax.dot(to)) > 0.95
@@ -584,6 +599,7 @@ func placement_error(team: int, kind: String, pos: Vector3, yaw: float) -> Strin
 	var half: Vector2 = def.size * 0.5
 	if kind == "trench":
 		half.x += TrenchNet.HALF_W
+		half.y = maxf(half.y, 2.0)
 	if not terrain.landform.fits(pos, half, yaw):
 		return "The ground is too steep or uneven to build here."
 	var c := Vector2(pos.x, pos.z)

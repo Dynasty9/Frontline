@@ -24,8 +24,12 @@ func capture() -> void:
 		if arg.begins_with("--capture-prefix="):
 			prefix = arg.get_slice("=", 1)
 	assert(DirAccess.make_dir_recursive_absolute(prefix.get_base_dir()) == OK)
+	if "--capture-set=trench-build" in OS.get_cmdline_user_args():
+		await _trench_build(world, prefix)
+		quit()
+		return
 	var heights: PackedFloat32Array = world.terrain.landform.heights
-	assert(not heights.is_empty(), "The environment stage needs a generated alpine map")
+	assert(not heights.is_empty() or "--capture-set=trenches" in OS.get_cmdline_user_args(), "The environment stage needs a generated alpine map")
 	var peak_index := 0
 	for i in heights.size():
 		if heights[i] > heights[peak_index]:
@@ -56,7 +60,9 @@ func capture() -> void:
 				views.append(["driveway", position, 18.0, -50.0, float(piece[2]) + PI + 0.4])
 				break
 		print("CAPTURE town bounds=", town)
-	var settle_frames := 45
+	if "--capture-set=trenches" in OS.get_cmdline_user_args():
+		views = [["trenches", Vector3(0, 0, -28), 24.0, -48.0, 0.5]]
+	var settle_frames := 90
 	if "--capture-set=shoreline" in OS.get_cmdline_user_args():
 		var shore: float = world.water.coast_x(0.0)
 		views = [["town", Vector3(330, 0, 0), 90.0, -45.0, 0.7],
@@ -134,3 +140,37 @@ func capture() -> void:
 	assert(output != null)
 	output.store_string(JSON.stringify({"seed": world.settings.get("seed", 1), "mood": world.atmo.mood, "renderer": RenderingServer.get_current_rendering_method(), "resolution": root.size, "views": records}, "\t"))
 	quit()
+
+
+## Real builder orders at 30 Hz, sampled at 10 fps; no accelerated construction.
+func _trench_build(world, prefix: String) -> void:
+	var pos := Vector3(-90, 0, 80)
+	var st = world.spawn("structure", {"skind": "trench", "team": 0, "pos": pos, "built": false, "progress": 0.0})
+	var squad = world.rules.spawn_squad("engineer_team", 0, 1, pos + Vector3(0, 0, 3))
+	squad.order_work(st)
+	world.cam.dist = 13.0
+	world.cam.target_dist = 13.0
+	world.cam.pitch_deg = -38.0
+	world.cam.yaw = 0.35
+	world.cam.focus(pos)
+	for frame in 90:
+		await process_frame
+	var frames := prefix + "-frames"
+	assert(DirAccess.make_dir_recursive_absolute(frames) == OK)
+	var records := []
+	for frame in 300:
+		if frame == 180:
+			st.take_damage(st.max_hp * 0.9)
+			squad.order_work(st)
+		for tick in 3:
+			world._simulate(1.0 / 30.0)
+			await process_frame
+		await RenderingServer.frame_post_draw
+		var shot := root.get_texture().get_image()
+		assert(shot.save_png(frames + "/%04d.png" % frame) == OK)
+		if frame in [10, 60, 150, 190, 299]:
+			shot.save_png(prefix + "-%03d.png" % frame)
+			records.append({"frame": frame, "progress": st.progress, "hp": st.hp, "built": st.built})
+	print("TRENCH_CAPTURE ", JSON.stringify(records))
+	var output := FileAccess.open(prefix + ".json", FileAccess.WRITE)
+	output.store_string(JSON.stringify({"fps": 10, "simulation_hz": 30, "damage_at": 18, "records": records}, "\t"))
