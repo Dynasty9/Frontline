@@ -8098,6 +8098,57 @@
         "command": "godot --path CHECKOUT --rendering-method gl_compatibility --audio-driver Dummy tools/showcase/vehicle-surfaces.tscn -- --surface-out=OUTPUT --surface-single --surface-kinds=KINDS --surface-ground",
         "camera": "See docs/vehicle-fittings-review/README.md for exact close-up and rear flags; all pairs share light and camera settings. Construction has a separate inspection light."
       }
+    },
+    {
+      "entry": "changelog/unreleased/vehicle-antennas-mirrors-barrels.md",
+      "summary": "Shared vehicle accessories and cheap movement-responsive antenna whips.",
+      "medium": "motion",
+      "stage": "vehicle-surfaces",
+      "rationale": "Three combined stills replace individual vehicle screenshots; a paired controlled motion clip demonstrates travel response and settling.",
+      "source_ref": "37085ab static before; 21ed5c4 static after; 0206a22 motion rig",
+      "sources": [
+        {
+          "file": "changelog/unreleased/vehicle-antennas-mirrors-barrels/antenna-motion.jpg",
+          "sha256": "ed7ddb0c86f60a3ec2d4e7ed4b073793ff71d107c24c8f366fbeebdd974ef54d",
+          "caption": "antenna-motion"
+        },
+        {
+          "file": "changelog/unreleased/vehicle-antennas-mirrors-barrels/antenna-motion.webm",
+          "sha256": "e95b60dfd886352c8895f1878b623f90717cde2a10f0182f62192bdf144c9594",
+          "caption": "antenna-motion"
+        },
+        {
+          "file": "changelog/unreleased/vehicle-antennas-mirrors-barrels/components.jpg",
+          "sha256": "b8fd6a305cb7226d78efd1bd16625d156cd43990348840e5c592a06124190004",
+          "caption": "components"
+        },
+        {
+          "file": "changelog/unreleased/vehicle-antennas-mirrors-barrels/details.jpg",
+          "sha256": "b5972a6455df44f47a09be0fae298cabec49f27ca4d2779f66804b7ff86f3d2d",
+          "caption": "details"
+        },
+        {
+          "file": "changelog/unreleased/vehicle-antennas-mirrors-barrels/vehicles.jpg",
+          "sha256": "f2ea7db5f0b0189a888085029383428c1982d1ed84e0e20980fa85a69c900c41",
+          "caption": "vehicles"
+        }
+      ],
+      "output": null,
+      "capture": {
+        "before_ref": "37085ab",
+        "after_ref": "21ed5c4",
+        "engine": "Godot 4.7.2",
+        "viewport": [
+          1600,
+          900
+        ],
+        "seed": 3,
+        "team": 0,
+        "command": "godot --path CHECKOUT --rendering-method gl_compatibility --audio-driver Dummy tools/showcase/vehicle-surfaces.tscn -- --surface-out=OUTPUT --surface-single --surface-kinds=KINDS --surface-ground",
+        "camera": "Static source pairs retain original cameras; combined without cropping. Reproduction in docs/vehicle-accessories-review/README.md.",
+        "motion_ref": "0206a22",
+        "motion": "--surface-antenna-motion --surface-ground; 180 frames at 15 Hz; paired rigid/animated current-build inspection, not driving footage; silent 12-second WebM"
+      }
     }
   ],
   "layout_capture": {

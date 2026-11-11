@@ -82,3 +82,151 @@ static func exhaust(k: VehicleModels, parent: Node3D, base: Vector3, direction: 
 	for t in [0.28, 0.58]:
 		k._add(mount, VehicleWheels.ring(radius * 1.35, radius * 1.55), "gunmetal", Color(0.18, 0.19, 0.17), Vector3(0, length * t, 0), Vector3.ZERO, Vector3(1, 0.6, 1), false)
 	k._fold(mount)
+
+
+## A fixed whip with a rubber boot, spring base and tapered flexible rod.
+## The fixed boot stays baked into the hull; the spring and rod share one pivot.
+static func antenna(k: VehicleModels, parent: Node3D, base: Vector3, height: float) -> void:
+	var mount := k._pivot(parent, base)
+	k._box(mount, Vector3(0.13, 0.025, 0.13), Vector3(0, 0.0125, 0), "gunmetal_w")
+	for side in [-1.0, 1.0]:
+		VehicleBody.fastener(k, mount, Vector3(side * 0.045, 0.03, 0), Vector3.UP, 0.012)
+	k._cyl(mount, 0.034, 0.05, 0.09, Vector3(0, 0.065, 0), Vector3.ZERO, "rubber", null, 10, false)
+	var whip := k._pivot(mount, Vector3(0, 0.10, 0))
+	if not k.burnt:
+		k.antennas.append(whip)
+	k._cyl(whip, 0.019, 0.019, 0.16, Vector3(0, 0.08, 0), Vector3.ZERO, "gunmetal_w", null, 8, false)
+	k._add(whip, _antenna_spring(), "gunmetal_w", Color(0.24, 0.25, 0.23), Vector3(0, 0.008, 0), Vector3.ZERO, Vector3.ONE, false)
+	for i in 5:
+		var t0 := float(i) / 5
+		var t1 := float(i + 1) / 5
+		var a := Vector3(0, 0.16 + (height - 0.14) * t0, height * 0.035 * t0 * t0)
+		var b := Vector3(0, 0.16 + (height - 0.14) * t1, height * 0.035 * t1 * t1)
+		VehicleFrames.tube(k, whip, a, b, lerpf(0.013, 0.005, t0), "gunmetal_w", null, 6, false, lerpf(0.013, 0.005, t1))
+	if k.burnt:
+		k._fold(whip)
+	k._fold(mount)
+
+
+## Rear-facing mirror glass (+Z), in a moulded housing on jointed arms.
+## Anchors are parent-local; the family owns the door attachment positions.
+static func mirror(k: VehicleModels, parent: Node3D, center: Vector3, size: Vector2, yaw: float, anchors: Array) -> void:
+	var facing := Basis(Vector3.UP, yaw)
+	for i in anchors.size():
+		var y := (0.28 if i == 0 else -0.28) * size.y
+		var end := center + facing * Vector3(0, y, -0.06)
+		var local_anchor: Vector3 = facing.inverse() * (anchors[i] - center)
+		var side := 1.0 if local_anchor.x >= 0 else -1.0
+		# Route around the housing edge before turning onto its back. A straight
+		# diagonal from the door can otherwise pass through the reflective face.
+		var elbow := center + facing * Vector3(side * (size.x / 2 + 0.045), y, -0.06)
+		VehicleFrames.path(k, parent, [anchors[i], elbow, end], 0.018, "gunmetal_w", null, 8)
+		k._add(parent, Res.sphere(0.027, 8), "gunmetal_w", null, end)
+	var mount := k._pivot(parent, center)
+	mount.rotation.y = yaw
+	k._box(mount, Vector3(size.x, size.y, 0.06), Vector3.ZERO, "plain_dark", Color(0.11, 0.12, 0.11))
+	k._box(mount, Vector3(size.x - 0.018, size.y - 0.018, 0.009), Vector3(0, 0, 0.033), "rubber", Color(0.06, 0.065, 0.06), Vector3.ZERO, false)
+	k._add(mount, _mirror_glass(size - Vector2(0.033, 0.033)), "mirror", Color(0.78, 0.82, 0.84), Vector3(0, 0, 0.042), Vector3.ZERO, Vector3.ONE, false)
+	# A rib on the back stiffens the shell around the arm mounting points.
+	k._box(mount, Vector3(0.025, size.y * 0.7, 0.014), Vector3(0, 0, -0.035), "plain_dark", Color(0.13, 0.14, 0.13), Vector3.ZERO, false)
+	k._fold(mount)
+
+
+## Open gun tube aimed from breech to muzzle. The family keeps its recoil,
+## extractor, reference sensor and gun_tip; this helper owns the tube's finish.
+static func barrel(k: VehicleModels, parent: Node3D, breech: Vector3, muzzle: Vector3, radius: float, material: String, col = null, sleeved := true) -> void:
+	var length := breech.distance_to(muzzle)
+	if length < 0.001:
+		return
+	var mount := k._pivot(parent, breech)
+	mount.basis = VehicleFrames.aim(muzzle - breech)
+	var key := Vector2(radius, length)
+	if not _barrels.has(key):
+		var outer := CylinderMesh.new()
+		outer.top_radius = radius
+		outer.bottom_radius = radius * 1.12
+		outer.height = length
+		outer.radial_segments = 20
+		outer.cap_top = false
+		var inner := CylinderMesh.new()
+		inner.top_radius = radius * 0.62
+		inner.bottom_radius = radius * 0.62
+		inner.height = minf(length, radius * 6)
+		inner.radial_segments = 20
+		inner.cap_top = false
+		inner.cap_bottom = false
+		inner.flip_faces = true
+		_barrels[key] = [outer, inner]
+	var meshes: Array = _barrels[key]
+	k._add(mount, meshes[0], material, col, Vector3(0, length / 2, 0))
+	var depth := minf(length, radius * 6)
+	k._add(mount, meshes[1], "burnt", Color(0.018, 0.019, 0.018), Vector3(0, length - depth / 2, 0))
+	k._cyl(mount, radius * 0.62, radius * 0.62, 0.004, Vector3(0, length - depth, 0), Vector3.ZERO, "burnt", null, 16, false)
+	k._add(mount, _ring(radius * 0.62, radius * 1.02), "gunmetal", Color(0.29, 0.30, 0.28), Vector3(0, length, 0), Vector3.ZERO, Vector3(1, 0.3, 1))
+	if sleeved:
+		var span := length * 0.83
+		for i in 3:
+			var y := span * (i + 0.5) / 3
+			k._cyl(mount, radius * 1.13, radius * 1.13, span / 3 - 0.025, Vector3(0, y, 0), Vector3.ZERO, material, col, 16)
+			k._cyl(mount, radius * 1.19, radius * 1.19, 0.035, Vector3(0, span * (i + 1) / 3 - 0.035, 0), Vector3.ZERO, "gunmetal_w", null, 16, false)
+			# Longitudinal closure strip and clamp latch on the sleeve.
+			k._box(mount, Vector3(radius * 0.23, span / 3 - 0.035, 0.012), Vector3(0, y, radius * 1.13), material, col, Vector3.ZERO, false)
+			k._box(mount, Vector3(radius * 0.48, 0.045, 0.024), Vector3(0, span * (i + 1) / 3 - 0.035, radius * 1.18), "gunmetal_w", null, Vector3.ZERO, false)
+	k._fold(mount)
+
+
+static var _barrels := {}
+static var _fitting_rings := {}
+
+## Small fittings need fewer segments than road-wheel beads.
+static func _ring(inner: float, outer: float) -> TorusMesh:
+	var key := Vector2(inner, outer)
+	if not _fitting_rings.has(key):
+		var mesh := TorusMesh.new()
+		mesh.inner_radius = inner
+		mesh.outer_radius = outer
+		mesh.rings = 20
+		mesh.ring_segments = 6
+		_fitting_rings[key] = mesh
+	return _fitting_rings[key]
+
+
+static var _spring_mesh: ArrayMesh
+
+static func _antenna_spring() -> ArrayMesh:
+	if _spring_mesh:
+		return _spring_mesh
+	var rings: Array = []
+	for i in 73:
+		var angle := TAU * 6 * i / 72.0
+		var center := Vector3(cos(angle) * 0.023, 0.144 * i / 72.0, sin(angle) * 0.023)
+		var basis := VehicleFrames.aim(Vector3(-sin(angle) * 0.023, 0.144 / (TAU * 6), cos(angle) * 0.023))
+		var ring := PackedVector3Array()
+		for j in 6:
+			var around := TAU * j / 6.0
+			ring.append(center + basis * Vector3(cos(around) * 0.004, 0, sin(around) * 0.004))
+		rings.append(ring)
+	_spring_mesh = VehicleModels.solid(rings, "vehicle_antenna_spring")
+	return _spring_mesh
+
+
+static var _mirror_faces := {}
+
+## Slight convexity catches a range of environment reflections across the face.
+static func _mirror_glass(size: Vector2) -> ArrayMesh:
+	if _mirror_faces.has(size):
+		return _mirror_faces[size]
+	var surface := SurfaceTool.new()
+	surface.begin(Mesh.PRIMITIVE_TRIANGLES)
+	surface.set_smooth_group(0)
+	for y in 8:
+		for x in 6:
+			for offset: Vector2i in [Vector2i(0, 0), Vector2i(0, 1), Vector2i(1, 0), Vector2i(1, 0), Vector2i(0, 1), Vector2i(1, 1)]:
+				var uv := Vector2(float(x + offset.x) / 6, float(y + offset.y) / 8)
+				var xy := uv * 2 - Vector2.ONE
+				surface.set_uv(uv)
+				surface.add_vertex(Vector3(xy.x * size.x / 2, xy.y * size.y / 2, minf(size.x, size.y) * 0.035 * (1 - xy.x * xy.x) * (1 - xy.y * xy.y)))
+	surface.generate_normals()
+	var mesh := surface.commit()
+	_mirror_faces[size] = mesh
+	return mesh

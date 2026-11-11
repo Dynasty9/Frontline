@@ -46,7 +46,7 @@ optionally with louvres. Panels occupy local XY with +Z outward and fold into th
 The helicopter hull wrapper uses skins on sections with at least ten points; low-sided stealth
 sections stay faceted. HEMTT, Zamak and Tempest builders place shared panels against their own cabs.
 
-All 17 `VehicleMaterials` profiles define their finish, weathering and grain. Eight shared linear
+All 18 `VehicleMaterials` profiles define their finish, weathering and grain. Eight shared linear
 normal maps are reproduced with `python tools/bake_vehicle_normals.py` from checksum-pinned bundled
 sources. Keep their mipmaps enabled. Paint relief is intentionally weaker than fabric or grip;
 adding noisy normal relief cannot replace an appropriate panel outline or a curved body normal.
@@ -87,3 +87,17 @@ Use `--surface-panels` in the vehicle showcase to inspect all construction types
 - `VehicleCloth.bag` (or `k._bag`) keeps the box builder's size/position/material arguments, adding a softened shell, sewn welt, fitted strap and buckle. Use it explicitly for padded stowage; seats, tarps and canvas panels have their own builders.
 
 These helpers fold temporary construction mounts into the parent's bake and retain turret/wheel animation ownership. HEMTT, Tempest, Zamak and Hunter use the grille helper; HEMTT and Tempest use the exhaust helper. HEMTT, Tempest, Hunter, Ifrit and Strider use mudflaps. Existing bags across the NATO, CSAT and independent builders share the padded construction. Inspect the four parts with `--surface-fittings` in the showcase.
+
+### Antennas, mirrors and gun tubes
+
+- `VehicleFittings.antenna(k, parent, base, height)` builds a bolted foot, rubber boot, cached helical spring and tapered whip. Height is the rod height above the original 12 cm base; the tip retains that overall height, with a slight rearward bend. Use this for upright radio whips, not aircraft blades or ship radar arrays.
+- `VehicleFittings.mirror(k, parent, center, size, yaw, anchors)` builds a moulded shell, rear rib, rubber perimeter and reflective face. Local +Z faces the rearward view. Parent-local anchors connect to swivel joints on the back of the rotated housing. The dedicated `mirror` finish uses smooth metallic reflection; ordinary window glass stays dielectric. Reflections come from the renderer's environment, without an extra planar camera.
+- `VehicleFittings.barrel(k, parent, breech, muzzle, radius, material, color, sleeved)` aims a hollow tapered tube between authored endpoints. The inward-facing bore, annular crown and optional three sleeve sections share cached geometry. Family builders retain their extractors, muzzle sensors, brakes, recoil/elevation pivots and gameplay `gun_tip` markers. Pass `false` for an older unsleeved gun such as the T-55.
+
+The core, NATO, CSAT and independent whip helpers delegate to the same antenna builder. Mirrors cover HEMTT, Tempest, Zamak, Hunter, Ifrit, Strider, Qilin, Humvee, technicals and the core truck. Gun tubes cover Abrams, T-55, Slammer, Rhino, Kuma, Varsuk, Angara, Scorcher and Sochor, including variants that share those builders. Unique autocannons, machine guns, aircraft aerials and radar structures retain their authored construction.
+
+Use `--surface-accessories` in the vehicle showcase for separate antenna, mirror-face, mirror-back and barrel inspection views. Fixed fittings fold into their existing parent/material bake. Each live antenna keeps one whip pivot and one material batch; wreck antennas remain static.
+
+`VehicleModels.update_antennas(travel, dt, active)` takes world-space travel velocity. One exact damped spring per vehicle combines drag and clamped acceleration, then transforms the resulting lean into each antenna parent’s coordinates, including traversing turrets. The view callback derives travel from displayed movement on both host and client. Motion resets outside 100 m, when hidden, after long frame gaps or after implausible position corrections. There are no rigid bodies, bones, mesh rebuilds or per-whip spring solvers. The base remains fixed while the spring/rod assembly tilts up to about 16 degrees.
+
+`--surface-antenna-motion` captures a combined rigid/animated comparison driven by controlled forward, lateral and reverse velocity inputs, followed by settling. This is an inspection rig, not recorded driving footage.

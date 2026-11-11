@@ -19,6 +19,10 @@ var tail_rotor: Node3D
 var blur: MeshInstance3D
 var blades: Node3D
 var wheels: Array = []
+var antennas: Array[Node3D] = []
+var _antenna_response := ImpactResponse.new()
+var _antenna_velocity := Vector3.ZERO
+var _antenna_active := false
 var elev: Node3D  # an artillery barrel or rocket launcher that rises to fire (rotation.x)
 ## More rotors (a tandem's rear one, a coaxial's second, a drone's four or
 ## six): pivots spinning about Y. Each may hold a "Blades" node (shown slow)
@@ -1035,3 +1039,35 @@ void fragment() {
 		_blur = ShaderMaterial.new()
 		_blur.shader = sh
 	return _blur
+
+
+## Cosmetic motion in world space, shared by every whip on this vehicle.
+## One spring per vehicle and one transform per whip; no mesh or physics updates.
+func update_antennas(travel: Vector3, dt: float, active := true) -> void:
+	if antennas.is_empty() or dt <= 0.0:
+		return
+	if not active or dt > 0.25 or not travel.is_finite() or travel.length_squared() > 1600.0:
+		if _antenna_active:
+			for whip in antennas:
+				whip.rotation = Vector3.ZERO
+		_antenna_response.offset = Vector3.ZERO
+		_antenna_response.velocity = Vector3.ZERO
+		_antenna_velocity = Vector3.ZERO
+		_antenna_active = false
+		return
+	var acceleration := ((travel - _antenna_velocity) / dt).limit_length(15.0) if _antenna_active else Vector3.ZERO
+	_antenna_velocity = travel
+	_antenna_active = true
+	# Air drag trails travel; inertia also reacts to braking and lateral turns.
+	var target := (-travel * 0.009 - acceleration * 0.012).limit_length(0.28)
+	target.y = 0.0
+	_antenna_response.offset -= target
+	_antenna_response.step(dt, 7.0)
+	_antenna_response.offset += target
+	for whip in antennas:
+		# Turret-mounted whips must keep the same world-space response when traversing.
+		var parent := whip.get_parent() as Node3D
+		var lean := parent.global_basis.orthonormalized().inverse() * _antenna_response.offset
+		var angles := Vector3(lean.z, 0, -lean.x)
+		if not whip.rotation.is_equal_approx(angles):
+			whip.rotation = angles

@@ -118,8 +118,7 @@ static func _smoke(k: VehicleModels, p: Node3D, pos: Vector3, n: int, yaw: float
 
 ## A whip antenna on a small base.
 static func _antenna(k: VehicleModels, p: Node3D, pos: Vector3, h: float) -> void:
-	k._cyl(p, 0.035, 0.045, 0.1, pos + Vector3(0, 0.05, 0), Vector3.ZERO, "gunmetal_w", null, 8)
-	k._cyl(p, 0.008, 0.013, h, pos + Vector3(0, 0.1 + h * 0.5, 0), Vector3.ZERO, "gunmetal_w", null, 4, false)
+	VehicleFittings.antenna(k, p, pos, h)
 
 
 ## A 20 l jerrycan (standing, its face toward +X or -X when yaw = 0).
@@ -215,9 +214,7 @@ static func _strider(k: VehicleModels, team: int, variant: int) -> void:
 	k._box(m, Vector3(0.44, 0.12, 0.02), Vector3(0, 0.98, -2.8), "paint", Color(0.82, 0.8, 0.72), Vector3.ZERO, false)
 	for s: float in [-1.0, 1.0]:
 		# mirrors on their arms by the windscreen
-		k._cyl(m, 0.015, 0.015, 0.32, Vector3(s * 1.3, 1.48, -2.2), Z90, "gunmetal_w", null, 6, false)
-		k._box(m, Vector3(0.05, 0.24, 0.15), Vector3(s * 1.46, 1.52, -2.2), "gunmetal_w")
-		k._box(m, Vector3(0.012, 0.2, 0.12), Vector3(s * 1.46, 1.52, -2.13), "glass", null, Vector3.ZERO, false)
+		VehicleFittings.mirror(k, m, Vector3(s * 1.46, 1.52, -2.2), Vector2(0.15, 0.24), -s * 0.3, [Vector3(s * 1.14, 1.48, -2.2)])
 		# the side door: seams, an armoured window, the handle, a step below
 		var sl: float = s * 0.49
 		k._box(m, Vector3(0.03, 0.26, 0.58), Vector3(s * 1.15, 1.57, -0.52), "glass", null, Vector3(0, 0, sl), false)
@@ -565,12 +562,8 @@ static func _kuma(k: VehicleModels, team: int) -> void:
 	var gc := Color(0.31, 0.34, 0.25)
 	k._box(t, Vector3(0.62, 0.54, 0.36), Vector3(0, 0.42, -2.06), cam, col)
 	k._cyl(t, 0.2, 0.22, 0.2, Vector3(0, 0.42, -2.32), X90, cam, col, 14)
-	k._cyl(t, 0.12, 0.12, 1.1, Vector3(0, 0.42, -2.97), X90, "paint", gc, 14)
+	VehicleFittings.barrel(k, t, Vector3(0, 0.42, -2.42), Vector3(0, 0.42, -5.98), 0.105, "paint", gc)
 	k._cyl(t, 0.165, 0.165, 0.7, Vector3(0, 0.42, -3.87), X90, "paint", gc, 14)
-	k._cyl(t, 0.105, 0.105, 1.62, Vector3(0, 0.42, -5.03), X90, "paint", gc, 14)
-	for bz: float in [-3.52, -4.22, -5.03]:
-		k._cyl(t, 0.13, 0.13, 0.04, Vector3(0, 0.42, bz), X90, "gunmetal_w", null, 14, false)
-	k._cyl(t, 0.095, 0.1, 0.14, Vector3(0, 0.42, -5.91), X90, "gunmetal_w", null, 12)
 	k._box(t, Vector3(0.06, 0.07, 0.1), Vector3(0, 0.55, -5.78), "gunmetal_w", null, Vector3.ZERO, false)
 	k.gun_tip = k._tip(t, Vector3(0, 0.42, -6.0))
 	# the coaxial MG left of the gun
@@ -937,10 +930,7 @@ static func _zamak_cab(k: VehicleModels, team: int, cam: String, col) -> void:
 		k._box(m, Vector3(0.04, 0.04, 0.14), Vector3(s * 1.22, 1.95, -1.3), "gunmetal_w", null, Vector3.ZERO, false)
 		k._box(m, Vector3(0.32, 0.04, 0.44), Vector3(s * 1.12, 0.92, -1.58), "gunmetal_w")
 		k._box(m, Vector3(0.04, 0.34, 0.04), Vector3(s * 1.2, 1.1, -1.38), "gunmetal_w", null, Vector3.ZERO, false)
-		k._cyl(m, 0.018, 0.018, 0.6, Vector3(s * 1.23, 1.75, -2.1), Vector3.ZERO, "gunmetal_w", null, 6, false)
-		k._cyl(m, 0.018, 0.018, 0.36, Vector3(s * 1.37, 2.32, -2.1), Z90, "gunmetal_w", null, 6, false)
-		k._box(m, Vector3(0.05, 0.36, 0.22), Vector3(s * 1.56, 2.22, -2.1), "gunmetal_w")
-		k._box(m, Vector3(0.012, 0.3, 0.17), Vector3(s * 1.56, 2.22, -2.18), "glass", null, Vector3.ZERO, false)
+		VehicleFittings.mirror(k, m, Vector3(s * 1.56, 2.22, -2.1), Vector2(0.22, 0.36), -s * 0.3, [Vector3(s * 1.23, 2.32, -2.1), Vector3(s * 1.23, 1.75, -2.1)])
 		k._team_mark(m, team, Vector3(s * 1.205, 1.65, -1.6), Vector3(0.03, 0.24, 0.5))
 	# the roof hatch and marker lights, an antenna on the back corner
 	k._cyl(m, 0.3, 0.3, 0.05, Vector3(0.42, 2.745, -1.35), Vector3.ZERO, cam, col, 14)

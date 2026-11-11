@@ -2541,6 +2541,10 @@ func _view_process(dt: float) -> void:
 			for w in wheels:
 				w.rotation.x -= spd / 0.42
 		_steer_wheels(dt, spd)
+	if _vm and not _vm.antennas.is_empty() and dt > 0.0:
+		var camera := get_viewport().get_camera_3d()
+		var near := v and camera != null and camera.global_position.distance_squared_to(global_position) < 10000.0
+		_vm.update_antennas((position - _last_pos) / dt, dt, near)
 	_last_pos = position
 	if burner:
 		var hf := health_frac()

@@ -1150,9 +1150,10 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   from ambientCG CC0 sources) add fine relief without requiring UV unwraps. RHIB decks have raised tread;
   selected trawler fittings use nonmetallic rust over exposed steel. Paint is nonmetallic; texture and lower-body dust
   stay attached to the model as it moves or climbs. Faction palettes and distant merged meshes are retained.
-  Eight companion normal maps retain the bundled CC0 surface relief; all 17 profiles tune weathering,
+  Eight companion normal maps retain the bundled CC0 surface relief; all 18 profiles tune weathering,
   roughness and grain independently. Metal brushing, canvas weave, moulded rubber, timber fibres and
   charred surfaces use separate treatments, filtered at distance.
+- **Shared antennas, mirrors and gun tubes** (`VehicleFittings`): land-vehicle radio whips have bolted feet, rubber boots and spring mounts. Nearby visible whips lean with travel, braking and lateral acceleration, then settle; one visual spring per vehicle drives their pivots without physics bodies. Rear-view mirrors share jointed arms, moulded housings, seals and reflective faces. Major tank/artillery gun tubes use open bores, muzzle crowns and segmented thermal sleeves, while retaining family-specific extractors and gun pivots. The T-55 keeps its bare tube.
 - **Shared service fittings** (`VehicleFittings`, `VehicleCloth.bag`): truck and Hunter radiator grilles have recessed cores and angled slats; HEMTT and Tempest exhausts have open, soot-lined outlets and heat shields. Shared rubber mudflaps have curved lower edges, ribs and clamps. Padded vehicle stowage uses softened canvas shells, sewn welts and retaining straps. These parts join the existing opaque material bake.
 - **Material-aware panels** (`VehicleBody.panel`, `VehicleCloth.panel`): painted and metal panels
   include folded edges, gaskets and fasteners; fabric uses draped meshes, hems and filtered stitching;
