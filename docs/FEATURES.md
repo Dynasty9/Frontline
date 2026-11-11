@@ -98,7 +98,9 @@ they're doing). The observer bar at the top has pause, speed (0.25x to 4x), dire
   says so, and that host needs UDP port **7777** forwarded. If a joiner isn't through in 12 seconds, Find Match
   moves on to the next battle.
 - **The website** (`web/`) is pages, like any online game's site: a front page that shows the game off, Play,
-  the live battles, the ranks and insignia, your profile and the changelog. Sign in, in the header, opens a dialog
+  the Field Manual (how the game fights, and every soldier, squad, weapon, vehicle, building, fire mission and
+  upgrade with its figures and 3D model), the live battles, the ranks and insignia, your profile and the changelog.
+  Every page sits on the menu's living topographic map, quieter behind the text. Sign in, in the header, opens a dialog
   over whatever page you're on, and once you're in it takes you to your profile. It lists the battles being hosted,
   each with a **Join** link, `frontline://join/<id>` (and a Find Match one, `frontline://find-match`). Its Play page launches the game with `frontline://open`: any
   link the game doesn't know starts it (or brings a running copy to the front) and does nothing else, so older
@@ -1286,7 +1288,7 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
 **Field Manual** (`ui/field_manual.gd`; main menu, Esc menu or F4): every soldier, squad, weapon, vehicle, building,
 defence, fire mission and upgrade, with what it is modelled on (M4A1, PKM, M2HB, Bradley, BTR-80, AC-130J...), its
 numbers read live from the game's tables with counted bars against the rest of its kind, derived figures (rate of fire,
-sustained damage, squad firepower, km/h), what carries or trains it, and a 3D model to turn over and zoom. The Vehicles page on the website embeds this same model stage in a native web roster: the model, lighting, rotation and zoom come from the manual; the search, filters, details and accessible camera buttons use the site UI.
+sustained damage, squad firepower, km/h), what carries or trains it, and a 3D model to turn over and zoom. The website's Field Manual embeds this same model stage beside its own pages of every entry (vehicles, infantry, squads, weapons, buildings, fire support; upgrades have no model): the model, lighting, rotation and zoom come from the manual; the search, filters, figures and accessible camera buttons use the site UI.
 The shared survey grid has occasional subtle interference, disabled by reduced-motion settings. Armed support aircraft have a demonstration button: a stationary training range runs the real support command, aircraft flight, weapons and impacts inside the viewer. Replay retains the prepared range and resets its aircraft and targets; returning to inspection releases the simulation.
 A **Cover** chapter covers every kind of battlefield cover - stone and brick walls, hedges, sandbags, cars,
 crates, wrecks, rubble, tall walls, windows, trenches, craters and woods - with what it stops, how much blast

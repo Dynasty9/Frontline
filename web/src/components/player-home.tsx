@@ -1,5 +1,5 @@
+import { PlayIcon } from "@phosphor-icons/react"
 import { Link } from "react-router"
-import { SectionLabel } from "@/components/battles"
 import { PlayerAvatar } from "@/components/player-avatar"
 import { XpProgress } from "@/components/insignia"
 import { Button } from "@/components/ui/button"
@@ -7,63 +7,51 @@ import { type User, pictureOf } from "@/lib/account"
 import { rankName } from "@/lib/insignia"
 import { playerPath } from "@/lib/players"
 
-/** A returning player's front door. Discovery stays available below and in the navigation. */
+/** A returning player's line on the home page, under the footage: who they are, how far along, and back into a battle. */
 export function PlayerHome({ user, live }: { user: User; live?: number }) {
   return (
-    <section className="topo border-b">
-      <div className="mx-auto grid max-w-6xl gap-12 px-4 pt-16 pb-16 sm:px-6 lg:grid-cols-[1.4fr_1fr]">
-        <div>
-          <SectionLabel>Ready when you are</SectionLabel>
-          <h1 className="mt-4 font-display text-5xl leading-none font-extrabold uppercase sm:text-7xl">
-            Welcome back, <br />
-            <span className="break-words text-primary">{user.callsign}.</span>
-          </h1>
-          <p className="mt-5 max-w-lg leading-relaxed text-muted-foreground">
-            Pick up command. Play a mission, find an opponent, or bring your friends into the same fight.
-          </p>
-          <div className="mt-8 flex flex-wrap gap-3">
-            <Button size="lg" asChild className="h-11 px-5 text-sm">
-              <Link to="/play">Play Frontline</Link>
-            </Button>
-            <Button variant="outline" size="lg" asChild className="h-11 px-5 text-sm">
-              <Link to="/battles">Browse battles{live ? ` · ${live} live` : ""}</Link>
-            </Button>
+    <section aria-labelledby="welcome-back" className="border-y bg-background/70 backdrop-blur-sm">
+      <div className="mx-auto grid max-w-6xl items-center gap-x-10 gap-y-6 px-4 py-8 sm:px-6 lg:grid-cols-[auto_minmax(0,1fr)_auto]">
+        <div className="flex min-w-0 items-center gap-4">
+          <PlayerAvatar icon={user.icon} avatar={pictureOf(user)} className="size-14 shrink-0" />
+          <div className="min-w-0">
+            <p className="font-mono text-[10px] tracking-[0.18em] text-primary uppercase">Welcome back</p>
+            <h2 id="welcome-back" className="mt-1 truncate font-display text-3xl leading-none font-bold uppercase">
+              {user.callsign}
+            </h2>
+            <p className="mt-1 text-xs text-muted-foreground uppercase">{rankName(user.rank)}</p>
           </div>
-          <p className="mt-5 text-sm text-muted-foreground">
-            {live === undefined
-              ? "Open Battles to check who is hosting."
-              : live === 0
-                ? "No public battles right now. Play solo or host one in the game."
-                : "Join a public battle or host your own from the game."}
-          </p>
         </div>
-        <div className="self-center border-y py-6">
-          <div className="flex items-center gap-4">
-            <PlayerAvatar icon={user.icon} avatar={pictureOf(user)} className="size-16" />
-            <div>
-              <p className="font-mono text-xs tracking-wider text-muted-foreground uppercase">Your progress</p>
-              <h2 className="mt-1 font-display text-3xl font-bold uppercase">{rankName(user.rank)}</h2>
+        <div className="min-w-0">
+          <XpProgress {...user} />
+          <dl className="mt-3 flex gap-8 font-mono text-xs text-muted-foreground uppercase">
+            <div className="flex gap-2">
+              <dt>Battles</dt>
+              <dd className="text-foreground">{user.battles}</dd>
             </div>
-          </div>
-          <XpProgress {...user} className="mt-5" />
-          <dl className="mt-5 flex gap-10">
-            <div>
-              <dt className="text-xs text-muted-foreground">Battles</dt>
-              <dd className="font-mono text-2xl">{user.battles}</dd>
+            <div className="flex gap-2">
+              <dt>Wins</dt>
+              <dd className="text-foreground">{user.wins}</dd>
             </div>
-            <div>
-              <dt className="text-xs text-muted-foreground">Wins</dt>
-              <dd className="font-mono text-2xl">{user.wins}</dd>
+            <div className="flex gap-2">
+              <dt>Live</dt>
+              <dd className="text-foreground">{live ?? "—"}</dd>
             </div>
           </dl>
-          <div className="mt-6 flex flex-wrap gap-5 text-sm">
-            <Link className="underline underline-offset-4 hover:text-primary" to={playerPath(user.callsign)}>
-              Your public record
+        </div>
+        <div className="flex flex-wrap items-center gap-x-5 gap-y-3 text-sm">
+          <Button asChild className="h-11 px-5 text-sm font-bold">
+            <Link to="/play">
+              <PlayIcon weight="fill" />
+              Play Frontline
             </Link>
-            <Link className="underline underline-offset-4 hover:text-primary" to="/profile">
-              Profile & insignia
-            </Link>
-          </div>
+          </Button>
+          <Link className="underline underline-offset-4 hover:text-primary" to="/profile">
+            Profile & insignia
+          </Link>
+          <Link className="underline underline-offset-4 hover:text-primary" to={playerPath(user.callsign)}>
+            Your public record
+          </Link>
         </div>
       </div>
     </section>

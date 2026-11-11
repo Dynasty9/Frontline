@@ -14,7 +14,8 @@ export const Default: Story = {
     const canvas = within(canvasElement)
     const nav = within(canvas.getByRole("navigation", { name: "Site" }))
     await expect(nav.getAllByRole("link")).toHaveLength(5)
-    await expect(nav.getByRole("link", { name: "Vehicles" })).toHaveAttribute("href", "/vehicles")
+    await expect(nav.getByRole("link", { name: "Home" })).toHaveAttribute("href", "/")
+    await expect(nav.getByRole("link", { name: "Manual" })).toHaveAttribute("href", "/manual")
     await expect(nav.queryByRole("link", { name: "Ranks" })).toBeNull()
     await expect(canvas.getByRole("link", { name: "Play free" })).toHaveAttribute("href", "/play")
   },
