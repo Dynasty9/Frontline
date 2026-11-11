@@ -28,5 +28,5 @@ func _process(dt: float) -> void:
 	if formation_pass and is_instance_valid(subject):
 		# The camera aircraft keeps its course while the faster jet overtakes it.
 		var elapsed := clampf(world.time - 4.3, -0.5, 2.6)
-		camera.global_position = subject.global_position - right * 17.0 + forward * (9.0 - elapsed * 9.0) + Vector3.UP * 8.0
+		camera.global_position = subject.global_position - right * 13.5 + forward * (24.0 - elapsed * 21.0) + Vector3.UP * 7.3
 		camera.look_at(subject.global_position + forward * 1.2)

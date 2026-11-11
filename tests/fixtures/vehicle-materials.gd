@@ -1,6 +1,7 @@
 extends Node
 ## Audit the actual baked roster, including both palettes, wrecks and parked cars.
 var surfaces := 0
+var canopies := 0
 var maps := {}
 
 func _ready() -> void:
@@ -21,7 +22,7 @@ func _ready() -> void:
 			var model := VehicleModels.build(kind, team, 3)
 			_audit(model.root, false)
 			model.root.free()
-	for kind in ["tank", "heli", "patrol_ship"]:
+	for kind in ["tank", "heli", "patrol_ship", "blackwasp"]:
 		var wreck := VehicleModels.build(kind, 0, 3, true)
 		_audit(wreck.root, true)
 		wreck.root.free()
@@ -72,7 +73,8 @@ func _ready() -> void:
 				assert(near_panes == 0 if wreck else near_panes >= 4, kind + " has missing glazing or intact wreck windows")
 				assert(model.wheels.size() >= 4)
 				model.root.free()
-	print("VEHICLE_MATERIALS passed models=%d surfaces=%d maps=%d" % [keys.size() * 2 + 8, surfaces, maps.size()])
+	assert(canopies == 2, "Both Black Wasp paints keep their glass through the mesh bake")
+	print("VEHICLE_MATERIALS passed models=%d surfaces=%d maps=%d" % [keys.size() * 2 + 9, surfaces, maps.size()])
 	TestRun.quit(get_tree())
 
 func _audit(node: Node, wreck: bool) -> void:
@@ -81,6 +83,9 @@ func _audit(node: Node, wreck: bool) -> void:
 		if mi.mesh:
 			for i in mi.mesh.get_surface_count():
 				var material := mi.get_active_material(i) as ShaderMaterial
+				if material and material.shader == VmFighter.CANOPY_SHADER:
+					assert(not wreck, "A burnt cockpit must lose its transparent glass")
+					canopies += 1
 				# Rotor blur, lights and the one-surface distance LOD have their
 				# own shaders; all physical surfaces must use the shared library.
 				if material == null or material.shader != Mats.shader():

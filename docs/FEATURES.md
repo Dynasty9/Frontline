@@ -1206,7 +1206,7 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   while aircraft paint is matte. See [military exterior comparisons](military-exterior-review/README.md).
 - **Shared vehicle bodywork** (`vehicle_body.gd`): curved helicopter skins share crease-aware normals
   without moving the vertices beneath fitted glazing. Skin joins and flush fasteners follow the hull;
-  deliberately angular stealth sections remain faceted. HEMTT, Zamak and Tempest families share pressed
+  deliberately angular stealth sections remain faceted. On the Black Wasp, the curved canopy catches the light along its rim and reveals the pilot and seat beneath. HEMTT, Zamak and Tempest families share pressed
   door panels, gaskets and fasteners, with shaped louvres on Zamak bonnets. Family builders retain silhouettes.
 - All HEMTT, Zamak and Tempest bodies share open cabs with seats, dashboards and steering wheels
   behind separate transparent panes. Offroad pickups, hatchbacks and SUVs have open glasshouses with
