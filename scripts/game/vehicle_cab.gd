@@ -117,4 +117,7 @@ static func seat(k: VehicleModels, parent: Node3D, center: Vector3, size := Vect
 		for side: float in [-1.0, 1.0]:
 			VehicleFrames.tube(k, mount, back + Vector3(side * size.x * 0.2, size.y * 0.46, -0.04), back + Vector3(side * size.x * 0.2, size.y * 0.63, -0.04), 0.012, "steel", null, 6, false)
 		k._box(mount, Vector3(size.x * 0.58, size.y * 0.25, pad), back + Vector3(0, size.y * 0.66, -0.04), material, col)
+	for side: float in [-1.0, 1.0]:
+		k._add(mount, BevelMesh.make(Vector3(size.x * 0.11, pad * 0.62, size.z * 0.75), pad * 0.15), material, col, Vector3(side * size.x * 0.43, pad * 0.35, 0))
+	k._add(mount, BevelMesh.make(Vector3(size.x * 0.78, size.y * 0.82, pad * 0.22), pad * 0.07), "plain_dark", Color(0.12, 0.13, 0.12), back + Vector3(0, 0, pad * 0.5), Vector3(-0.12, 0, 0))
 	k._fold(mount)

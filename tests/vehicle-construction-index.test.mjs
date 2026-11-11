@@ -27,6 +27,14 @@ test('construction index follows active ownership and does not expand all dispat
       assert.ok(roots.size >= 3, `${feature.api}: only ${roots.size} independent construction roots`);
     }
     assert.ok(!models.hunter.shared_calls['VehicleRotors.main']);
+    const details = JSON.parse(readFileSync(join(ROOT, 'tools/vehicles/detail-improvements.json')));
+    assert.equal(details.flatMap(d => d.improvements).length, 40);
+    assert.equal(new Set(details.flatMap(d => d.improvements.map(i => i.id))).size, 40);
+    for (const detail of details) for (const api of detail.apis) {
+      const roots = new Set(Object.entries(models).filter(([key, model]) =>
+        key !== 'truck' && model.shared_calls[api]).flatMap(([, model]) => model.roots));
+      assert.ok(roots.size >= 3, `${api}: needs three distinct active builders`);
+    }
     assert.ok(models.hunter.candidate_evidence.doors.length > 0);
     assert.deepEqual(models.civilian_0.roots, ['VehicleModels._car']);
     assert.ok(limitations.some(s => s.includes('Conditional branches')));

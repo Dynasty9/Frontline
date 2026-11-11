@@ -6,11 +6,14 @@ static func mooring(k: VehicleModels, parent: Node3D, base: Vector3, size: Vecto
 	assert(style in ["cleat", "bitts"])
 	var mount := k._pivot(parent, base)
 	mount.rotation.y = yaw
+	k._box(mount, Vector3(size.x * 1.02, size.y * 0.03, size.z * 1.02), Vector3(0, size.y * 0.015, 0), "rubber")
 	var foot := minf(size.y * 0.15, 0.04)
 	k._box(mount, Vector3(size.x, foot, size.z), Vector3(0, foot * 0.5, 0), material, col)
 	for x in [-1.0, 1.0]:
 		for z in [-1.0, 1.0]:
 			VehicleBody.fastener(k, mount, Vector3(x * size.x * 0.38, foot, z * size.z * 0.32), Vector3.UP, minf(0.015, size.z * 0.09))
+	for side: float in [-1.0, 1.0]:
+		k._cyl(mount, size.z * (0.31 if style == "bitts" else 0.18), size.z * (0.40 if style == "bitts" else 0.27), foot * 1.8, Vector3(side * size.x * (0.32 if style == "bitts" else 0.18), foot * 1.3, 0), Vector3.ZERO, material, col, 10, false)
 	if style == "bitts":
 		for side: float in [-1.0, 1.0]:
 			var center := Vector3(side * size.x * 0.32, size.y * 0.5, 0)
