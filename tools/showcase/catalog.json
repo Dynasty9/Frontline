@@ -8845,6 +8845,30 @@
           "caption": "The smaller boat approaching the port rail."
         }
       ]
+    },
+    {
+      "entry": "changelog/unreleased/coalition-field-medic.md",
+      "title": "The field medic moves with the squad",
+      "version": "unreleased",
+      "kind": "improved",
+      "summary": "The Coalition medic carries his marked kit on the animated squad uniform.",
+      "medium": "motion",
+      "stage": "Sky Hook, seed 4. The trailer-roadside take from 3 seconds, cropped around the medic.",
+      "rationale": "Matching the movement and crop shows how the sleeve and pack follow the medic.",
+      "source_ref": "ee25c12 before and 5770b4a after. The trailer-roadside take is defined in .agents/skills/website-footage/shots.json.",
+      "sources": [
+        {
+          "file": "changelog/unreleased/coalition-field-medic/crossing.webm",
+          "sha256": "e86ec7637709524fbac1dec3055445e1ea19b5104954e35d58d3d808a6ab0857",
+          "caption": "The medic crossing the landing pad in both editions."
+        },
+        {
+          "file": "changelog/unreleased/coalition-field-medic/crossing.jpg",
+          "sha256": "ca4ceef20c78c9813558f9404ac2797edcbebb28083ebcb93a5af92db9951b94",
+          "caption": "The marked sleeve beside the squad leader."
+        }
+      ],
+      "output": null
     }
   ],
   "layout_capture": {
