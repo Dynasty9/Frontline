@@ -8299,6 +8299,75 @@
         },
         "composition": "Uncropped source images resized to 800x450; three rows, before left / after right; JPEG quality85. These are real before/after builder inspection rigs, not gameplay footage."
       }
+    },
+    {
+      "entry": "changelog/unreleased/trench-realism.md",
+      "summary": "Crews excavate usable trenches in stages, then clear local shell damage.",
+      "medium": "motion",
+      "stage": "tests/fixtures/environment-views.gd: trenches and trench-build",
+      "rationale": "A matched full-frame comparison shows the earthwork; real builder orders show excavation and repair at normal simulation speed.",
+      "source_ref": "codex/trench-realism working tree based on a89bd759bee003ee208f65ad4b8e418158994254; baseline comparison uses that exact origin/main commit",
+      "sources": [
+        {
+          "file": "changelog/unreleased/trench-realism/comparison.jpg",
+          "sha256": "35e17a4463f4a7708fbee7f6ef2ec7e461c138f75f00af737bfd56e587a573fa",
+          "caption": "Matched network at seed 3, time 2 s; complete frames scaled from 1600x900 to 1280x720."
+        },
+        {
+          "file": "changelog/unreleased/trench-realism/digging.webm",
+          "sha256": "cf115bbc6fe8bbcd994bdc71144c234919b486dec4ab5c17416bb155f0cc5e3b",
+          "caption": "30 seconds, 10 fps, simulation 30 Hz, silent; controlled damage at 18 seconds."
+        },
+        {
+          "file": "changelog/unreleased/trench-realism/digging.jpg",
+          "sha256": "1eb72f78d8707b3647053317df6d0d47aa70e900b6b40c5ea1a79dc251333b50",
+          "caption": "Construction at 6 seconds, frame 60."
+        }
+      ],
+      "output": null,
+      "capture": {
+        "documentation": "docs/trench-realism-review.md",
+        "comparison": {
+          "seed": 3,
+          "scenario": "trenches",
+          "focus": [
+            0,
+            -28
+          ],
+          "zoom": 24,
+          "pitch": -48,
+          "yaw": 0.5,
+          "resolution": [
+            1600,
+            900
+          ]
+        },
+        "construction": {
+          "seed": 3,
+          "scenario": "trenches",
+          "focus": [
+            -90,
+            80
+          ],
+          "zoom": 13,
+          "pitch": -38,
+          "yaw": 0.35,
+          "resolution": [
+            1600,
+            900
+          ],
+          "simulation_hz": 30,
+          "capture_fps": 10,
+          "duration_seconds": 30,
+          "damage_at_seconds": 18,
+          "damage_fraction": 0.9,
+          "workers": "engineer_team"
+        },
+        "webm": {
+          "source": "Reviewed digging.mp4 from commit 4c7d3604",
+          "command": "ffmpeg -i digging.mp4 -c:v libvpx-vp9 -crf 34 -b:v 0 -row-mt 1 -an digging.webm"
+        }
+      }
     }
   ],
   "layout_capture": {

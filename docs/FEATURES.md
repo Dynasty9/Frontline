@@ -1040,6 +1040,19 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   - The IFV's 25 mm airburst rounds burst right over the trench. Mortars, artillery and grenades that drop into it
     are deadly. That's how trenches are cleared.
   - Tracks claw across a trench slowly; wheels drop in and stick, so vehicles path around trench lines.
+  - **Excavation:** builders reserve separate reachable work stations, dig with their shovels, then move
+    down into the excavation. Spare workers wait for space. Eight depth stages provide light cover before
+    full protection; interrupted work stays put. A 6 m bay takes 60 work-seconds (engineers work faster),
+    scaled by length, with compacted roadbeds taking 50% longer. Repair orders clear collapsed earth.
+  - **Shape and materials:** floors and individual duckboard slats follow local terrain. Open ends ramp
+    to the surface; connected ends stay continuous. Earth fire steps run along the walls, leaving the
+    centre route clear. Soil layers, roots, uneven spoil, damp ground and boot marks break up the surfaces.
+  - **Rear bays:** occasional long sections include a recessed supply shelf or a timber-roofed resting
+    bay, with kit kept off the through route. The timber roof is physical cover, not a bombproof bunker.
+    Moving soldiers yield and sidestep inside narrow passages; crossing a high lip takes a slower climb.
+  - **Damage:** a trench remains excavated after bombardment. Damage affects one section's depth,
+    exposes earth and broken timber, removes its fitted kit and slows passage until repaired. Neighbouring
+    sections remain usable. Cover, ground contact and excavation stages agree on host and clients.
 - **MG nest**: a sandbagged GPMG for pinning infantry - an M240B on the M192 mount for the Coalition, a PKM on
   its tripod for the Rebels, on a platform of bags behind a front wall low enough to fire over. The gunner kneels
   behind it with both hands on it; it traverses to where he aims within its arc, bucks as it fires and the
