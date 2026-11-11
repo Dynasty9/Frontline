@@ -26,7 +26,7 @@ For a mix revision, keep the cut points fixed and compare editions with the audi
 
 | Beat | What the viewer can follow with the sound off |
 | --- | --- |
-| One order | The Sky Hook destination ring appears in the first second. Cut on the next simulation frame to the squad leader crossing the hedge. Track him at eye level as the Mohawk lifts behind his shoulder. The same aircraft crosses the river later. |
+| One order | The player sees the squad and the Mohawk together. The destination ring appears on open grass beside the hedge in the first second. Cut on the next simulation frame to the same squad passing the camera. Track him at eye level as the Mohawk lifts behind his shoulder. The same aircraft crosses the river later. |
 | Armour arrives | Ride behind the second Abrams as the pair heads down the village road in Bridgehead. On the next simulation frame, watch the lead tank cross the roadside lens beneath the mountain skyline. Its barrel leads into the closer gun shot. |
 | Into the trench | See riflemen cross the timber trench beside a tracked vehicle. Look over the sandbag wall as the crew fires. Cut to the same round dropping beside the wreck and let the dirt rise against the sky before the airlift. The two field-camera scenes store their positions and travel times in metres and simulation seconds. |
 | Off the ground | Track the Mohawk from the bridge rail. Hold its broadside and the suspended Nyx in frame together, then cut to the cargo door, where the camera follows the swinging hull as the same bridge sweeps beneath the tracked vehicle, then follow the water into the RHIB shot. |
