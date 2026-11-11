@@ -19,6 +19,10 @@ p{margin:0;color:#c5c4b8}
 @media(max-width:680px){main{grid-template-columns:1fr}}
 </style>
 <h1>Frontline trailer editions</h1>
+<nav class="controls" aria-label="Edition comparison">
+<button id="earlier" type="button">Previous edit</button>
+<button id="later" type="button">Next edit</button>
+</nav>
 <main>
 <section><label>Compare <select id="left"></select></label><video muted playsinline preload="auto"></video><p></p><button class="change" type="button" hidden></button></section>
 <section><label>With <select id="right"></select></label><video muted playsinline preload="auto"></video><p></p><button class="change" type="button" hidden></button></section>
@@ -37,6 +41,7 @@ const videos = [...document.querySelectorAll('video')];
 const pickers = [document.querySelector('#left'), document.querySelector('#right')];
 const play = document.querySelector('#play'), scrub = document.querySelector('#scrub');
 const listen = document.querySelector('#listen'), status = document.querySelector('#status');
+const earlier = document.querySelector('#earlier'), later = document.querySelector('#later');
 let position = 0, raf;
 function sharedFrames() {
   // Editions recorded before the 24-second brief ran 765 frames.
@@ -54,8 +59,8 @@ function pause() {
   play.textContent = 'Play both';
 }
 function seek(at) {
-  videos.forEach(v => { if (v.readyState >= 1) v.currentTime = at; });
   display(at);
+  videos.forEach(v => { if (v.readyState >= 1) v.currentTime = position; });
 }
 function tick() {
   const [a,b] = videos;
@@ -66,6 +71,8 @@ function tick() {
 }
 function switchCut(i) {
   pause();
+  earlier.disabled = pickers[1].selectedIndex <= 1;
+  later.disabled = pickers[1].selectedIndex >= cuts.length - 1;
   const cut = cuts[pickers[i].selectedIndex], video = videos[i];
   seek(Math.min(position, sharedFrames() / 30));
   video.onloadedmetadata = () => { video.currentTime = position; };
@@ -85,6 +92,16 @@ pickers.forEach((picker,i) => {
   picker.onchange = () => switchCut(i);
   switchCut(i);
 });
+function stepEdit(delta) {
+  const next = pickers[1].selectedIndex + delta;
+  pickers[0].selectedIndex = next - 1;
+  pickers[1].selectedIndex = next;
+  switchCut(0);
+  switchCut(1);
+  seek((cuts[next].change_frame ?? 0) / 30);
+}
+earlier.onclick = () => stepEdit(-1);
+later.onclick = () => stepEdit(1);
 function selectAudio() { videos.forEach((v,i) => v.muted = i !== Number(listen.value)); }
 selectAudio();
 listen.onchange = selectAudio;
