@@ -2,6 +2,39 @@
   "schema": 1,
   "entries": [
     {
+      "entry": "changelog/unreleased/readable-release-notes.md",
+      "summary": "Compact release overview, a media-first reader and sequential change navigation.",
+      "medium": "still",
+      "stage": "native-media",
+      "rationale": "Matched desktop viewport captures demonstrate layout density; a reader capture demonstrates progressive disclosure. Browser stories cover navigation, galleries and accessibility.",
+      "source_ref": "baccc6d8 + codex/installers-readable-changelog working tree; live website before captured 2026-11-11",
+      "sources": [
+        {
+          "file": "changelog/unreleased/readable-release-notes/before.jpg",
+          "sha256": "6192f20ff0540aa22bc092392c33029fe57a6dd9850280d6cd0a50a5e0695a1a"
+        },
+        {
+          "file": "changelog/unreleased/readable-release-notes/overview.jpg",
+          "sha256": "b1498b0e782071d89340ca7e866e7b4373c2dec4047fd05397e711be5e6eec81"
+        },
+        {
+          "file": "changelog/unreleased/readable-release-notes/reader.jpg",
+          "sha256": "eee65220e719bfd8e0a7d20220e52fef9c5c5c1042df7db4430595541a07d9c1"
+        }
+      ],
+      "output": null
+    },
+    {
+      "entry": "changelog/unreleased/mac-update-repair.md",
+      "summary": "Mac installs new releases without repeatedly downloading the current version.",
+      "medium": "text",
+      "stage": "text",
+      "rationale": "An invisible updater decision is demonstrated by platform regressions; no image would establish it. Windows fresh-install update separately verified against published v1.0.13 hashes. Physical Mac launch and Gatekeeper remain untested.",
+      "source_ref": "baccc6d8 + working tree",
+      "sources": [],
+      "output": null
+    },
+    {
       "entry": "changelog/unreleased/strike-direction.md",
       "summary": "Airstrikes follow the direction previewed while dragging.",
       "medium": "motion",

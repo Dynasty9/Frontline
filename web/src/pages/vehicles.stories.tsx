@@ -124,3 +124,29 @@ export const SearchAndFilter: Story = {
     await expect(canvas.getByText(/not a unit you can order/)).toBeVisible()
   },
 }
+
+/** A failed Godot boot must not be hidden behind an endless loading message. */
+export const ViewerStartupError: Story = {
+  beforeEach: mockMatchmaker({ health, viewer: true, manual: true }),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    const frame = (await canvas.findByTitle(/3D model of/)) as HTMLIFrameElement
+    await new Promise<void>((resolve) => {
+      frame.addEventListener("load", () => resolve(), { once: true })
+      frame.src = "about:blank"
+    })
+    const notice = frame.contentDocument!.createElement("div")
+    notice.id = "status-notice"
+    frame.contentDocument!.body.append(notice)
+    notice.textContent = "WebGL2 - Check web browser configuration and hardware support"
+    await expect(await canvas.findByText("3D preview couldn't start")).toBeVisible()
+    await expect(canvas.getByText(/Enable graphics acceleration/)).toBeVisible()
+    await expect(canvas.getByRole("button", { name: "Zoom in" })).toBeDisabled()
+    const search = canvas.getByRole("searchbox", { name: "Vehicle roster" })
+    await userEvent.type(search, "hunter hmg")
+    await expect(canvas.getByText("3D preview couldn't start")).toBeVisible()
+    await userEvent.click(canvas.getByRole("button", { name: "Retry preview" }))
+    await expect(canvas.queryByText("3D preview couldn't start")).toBeNull()
+    await expect(canvas.getByTitle(/3D model of/)).not.toBe(frame)
+  },
+}

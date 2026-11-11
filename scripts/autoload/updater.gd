@@ -90,7 +90,7 @@ func check() -> void:
 		if not rel.is_empty():
 			break
 	var missing_native := OS.has_feature("template") and not ClassDB.class_exists("PerceptionSearch")
-	if rel.is_empty() or (not newer(String(rel.version), version) and not (missing_native and String(rel.version) == version)):
+	if rel.is_empty() or not needs_update(String(rel.version), version, platform(), missing_native):
 		return
 	latest = String(rel.version)
 	_asset = rel.asset
@@ -99,6 +99,11 @@ func check() -> void:
 	changed.emit()
 	if can_install():
 		download()
+
+
+static func needs_update(released: String, current: String, plat: String, missing_native := false) -> bool:
+	# Mac builds use the script simulation; only Windows/Linux ship the native library.
+	return newer(released, current) or (released == current and missing_native and plat in ["windows", "linux"])
 
 
 ## Whether an update can replace the executable here, rather than sending the

@@ -1,4 +1,4 @@
-import { ArrowRightIcon, ArrowSquareOutIcon, CaretDownIcon } from "@phosphor-icons/react"
+import { ArrowLeftIcon, ArrowRightIcon, ArrowSquareOutIcon, CaretDownIcon } from "@phosphor-icons/react"
 import { marked } from "marked"
 import { useEffect, useMemo, useState } from "react"
 import { SectionLabel } from "@/components/battles"
@@ -151,88 +151,171 @@ function Clip({ video }: { video: MotionClip }) {
   return /\.gif(?:[?#]|$)/i.test(video.url) ? <Gif video={video} /> : <Video video={video} />
 }
 
-function EntryBlock({ entry, releaseTag, headline }: { entry: Entry; releaseTag: string; headline: boolean }) {
-  const leadClip = entry.videos?.[0]
-  const extraShots = leadClip ? entry.screenshots : entry.screenshots.slice(1)
-  const extraClips = entry.videos?.slice(1) ?? []
-  const hasMedia = !!leadClip || entry.screenshots.length > 0
-  const hasDetails = !!entry.body || extraShots.length > 0 || extraClips.length > 0
+/** Only the selected item mounts a player; thumbnails never download the other clips. */
+function EntryGallery({ entry }: { entry: Entry }) {
+  const media = [
+    ...(entry.videos ?? []).map((video) => ({ ...video, video: true, thumbnail: video.poster })),
+    ...entry.screenshots.map((shot) => ({ ...shot, video: false, thumbnail: shot.url, poster: "" })),
+  ]
+  const [selected, setSelected] = useState(0)
+  const item = media[selected]
+  if (!item) return null
   return (
-    <article className="scroll-mt-24 border-t py-8 first:border-t-0 first:pt-0" id={`${releaseTag}-${entry.slug}`}>
-      <div
-        className={cn(
-          "grid items-start gap-6",
-          hasMedia && "md:grid-cols-[minmax(0,0.85fr)_minmax(0,1.35fr)] md:gap-8"
-        )}
-      >
-        <div>
-          <KindBadge kind={entry.kind} />
-          <h3 className={cn("mt-3 font-display text-3xl leading-tight font-bold uppercase", headline && "sr-only")}>
-            {entry.title}
-          </h3>
-          <p className="mt-3 max-w-prose text-base leading-relaxed text-muted-foreground">{entry.summary}</p>
-        </div>
-        {hasMedia && (
-          <div className="min-w-0 [&>figure]:mt-0">
-            {leadClip ? <Clip video={leadClip} /> : <Screens shots={entry.screenshots.slice(0, 1)} large />}
-          </div>
-        )}
+    <div aria-label="Change gallery" className="min-w-0">
+      <div key={item.url} className="[&>figure]:mt-0">
+        {item.video ? <Clip video={item} /> : <Screens shots={[item]} large />}
       </div>
-      {hasDetails && (
-        <details className="group mt-5">
-          <summary
-            className={cn(
-              buttonVariants({ variant: "ghost", size: "sm" }),
-              "cursor-pointer list-none gap-2 px-0 text-primary hover:bg-transparent [&::-webkit-details-marker]:hidden"
-            )}
-          >
-            <CaretDownIcon className="group-open:rotate-180" />
-            Explore this change<span className="sr-only">: {entry.title}</span>
-          </summary>
-          <div className="mt-4 border-l border-primary/30 pl-5 sm:pl-6">
-            <Details body={entry.body} />
-            <Screens shots={extraShots} />
-            {extraClips.map((video) => (
-              <Clip key={video.url} video={video} />
-            ))}
-            <Button variant="link" size="sm" asChild className="mt-4 px-0 text-muted-foreground">
-              <a href={`#${releaseTag}-${entry.slug}`}>
-                Link to this change <ArrowRightIcon />
-              </a>
-            </Button>
-          </div>
-        </details>
-      )}
-      {entry.layoutComparison && (
-        <details className="group mt-3 border-t border-dashed pt-3">
-          <summary
-            className={cn(
-              buttonVariants({ variant: "ghost", size: "sm" }),
-              "cursor-pointer list-none gap-2 px-0 text-muted-foreground hover:bg-transparent [&::-webkit-details-marker]:hidden"
-            )}
-          >
-            <CaretDownIcon className="group-open:rotate-180" />
-            Compare changelog layouts<span className="sr-only">: {entry.title}</span>
-          </summary>
-          <p className="mt-3 max-w-prose text-xs leading-relaxed text-muted-foreground">
-            {entry.layoutComparison.caption}
+      {media.length > 1 && (
+        <div className="mt-4">
+          <p className="mb-2 font-mono text-xs text-muted-foreground" aria-live="polite">
+            {selected + 1} / {media.length} · {item.video ? "Video" : "Image"}
           </p>
-          <Screens
-            shots={[
-              { url: entry.layoutComparison.before, caption: `Before: old changelog layout — ${entry.title}` },
-              { url: entry.layoutComparison.after, caption: `After: new changelog layout — ${entry.title}` },
-            ]}
-            large
-          />
-        </details>
+          <div className="flex gap-2 overflow-x-auto pb-2" aria-label="Choose an image or video">
+            {media.map((m, i) => (
+              <button
+                key={m.url}
+                type="button"
+                aria-label={`${m.video ? "Video" : "Image"} ${i + 1}: ${m.caption}`}
+                aria-pressed={selected === i}
+                onClick={() => setSelected(i)}
+                className="relative w-24 shrink-0 border-2 border-transparent p-0.5 opacity-60 hover:opacity-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary aria-pressed:border-primary aria-pressed:opacity-100"
+              >
+                <img src={m.thumbnail} alt="" loading="lazy" className="aspect-video w-full object-cover" />
+                {m.video && (
+                  <span className="absolute right-1 bottom-1 bg-background/90 px-1 font-mono text-[10px] text-foreground">
+                    VIDEO
+                  </span>
+                )}
+              </button>
+            ))}
+          </div>
+        </div>
       )}
-    </article>
+    </div>
+  )
+}
+
+function EntryBlock({
+  entry,
+  releaseTag,
+  index,
+  total,
+  move,
+}: {
+  entry: Entry
+  releaseTag: string
+  index: number
+  total: number
+  move: (index: number) => void
+}) {
+  const [open, setOpen] = useState(false)
+  const preview = entry.videos?.[0]?.poster ?? entry.screenshots[0]?.url
+  return (
+    <details
+      id={`${releaseTag}-${entry.slug}`}
+      name={`changes-${releaseTag}`}
+      className="group/entry scroll-mt-24 border-t"
+      onToggle={(event) => setOpen(event.currentTarget.open)}
+    >
+      <summary className="flex cursor-pointer list-none items-center gap-3 py-4 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-primary sm:gap-4 [&::-webkit-details-marker]:hidden">
+        {preview && (
+          <img
+            src={preview}
+            alt=""
+            loading="lazy"
+            className="hidden aspect-video w-24 shrink-0 object-cover sm:block"
+          />
+        )}
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+            <h3 className="font-display text-xl leading-tight font-semibold sm:text-2xl">{entry.title}</h3>
+            <KindBadge kind={entry.kind} />
+          </div>
+          <p className="mt-1 line-clamp-1 text-sm leading-relaxed text-muted-foreground group-open/entry:line-clamp-none">
+            {entry.summary}
+          </p>
+        </div>
+        <CaretDownIcon
+          aria-hidden="true"
+          className="size-4 shrink-0 text-primary transition-transform group-open/entry:rotate-180 motion-reduce:transition-none"
+        />
+      </summary>
+      {open && (
+        <div className="pb-6">
+          <nav
+            aria-label="Browse changes"
+            className="mb-4 flex flex-wrap items-center justify-between gap-2 border-y py-2"
+          >
+            <span className="font-mono text-xs text-muted-foreground">
+              Change {index + 1} of {total}
+            </span>
+            <div className="flex gap-1">
+              <Button variant="ghost" size="sm" disabled={index === 0} onClick={() => move(index - 1)}>
+                <ArrowLeftIcon />
+                Previous change
+              </Button>
+              <Button variant="outline" size="sm" disabled={index === total - 1} onClick={() => move(index + 1)}>
+                Next change
+                <ArrowRightIcon />
+              </Button>
+            </div>
+          </nav>
+          <EntryGallery entry={entry} />
+          {entry.body && (
+            <details className="group mt-4 border-t pt-3">
+              <summary className="flex cursor-pointer list-none items-center gap-2 py-2 text-sm text-primary [&::-webkit-details-marker]:hidden">
+                <CaretDownIcon className="group-open:rotate-180" />
+                The full details
+              </summary>
+              <div className="max-w-prose">
+                <Details body={entry.body} />
+              </div>
+            </details>
+          )}
+          <Button variant="link" size="sm" asChild className="mt-3 px-0 text-muted-foreground">
+            <a href={`#${releaseTag}-${entry.slug}`}>
+              Link to this change <ArrowRightIcon />
+            </a>
+          </Button>
+          {entry.layoutComparison && (
+            <details className="group mt-3 border-t border-dashed pt-3">
+              <summary
+                className={cn(
+                  buttonVariants({ variant: "ghost", size: "sm" }),
+                  "cursor-pointer list-none gap-2 px-0 text-muted-foreground hover:bg-transparent [&::-webkit-details-marker]:hidden"
+                )}
+              >
+                <CaretDownIcon className="group-open:rotate-180" />
+                Compare changelog layouts<span className="sr-only">: {entry.title}</span>
+              </summary>
+              <p className="mt-3 max-w-prose text-xs leading-relaxed text-muted-foreground">
+                {entry.layoutComparison.caption}
+              </p>
+              <Screens
+                shots={[
+                  { url: entry.layoutComparison.before, caption: `Before: old changelog layout — ${entry.title}` },
+                  { url: entry.layoutComparison.after, caption: `After: new changelog layout — ${entry.title}` },
+                ]}
+                large
+              />
+            </details>
+          )}
+        </div>
+      )}
+    </details>
   )
 }
 
 /** The site's shared shadcn Card primitives, styled with Signal's rules instead of nested frames. */
 export function ReleaseCard({ release, latest = false }: { release: Release; latest?: boolean }) {
   const entries = KINDS.flatMap((k) => release.entries.filter((e) => e.kind === k))
+  const move = (index: number) => {
+    const target = document.getElementById(`${release.tag}-${entries[index].slug}`)
+    if (!(target instanceof HTMLDetailsElement)) return
+    target.open = true
+    target.querySelector("summary")?.focus({ preventScroll: true })
+    target.scrollIntoView({ behavior: "instant", block: "start" })
+  }
   return (
     <section id={release.tag} className="scroll-mt-24 border-t border-primary/30">
       <Card className="gap-0 overflow-visible bg-transparent py-0 ring-0">
@@ -259,8 +342,35 @@ export function ReleaseCard({ release, latest = false }: { release: Release; lat
           )}
         </CardHeader>
         <CardContent className="px-0">
-          {entries.map((e) => (
-            <EntryBlock key={e.slug} entry={e} releaseTag={release.tag} headline={e.title === release.name} />
+          <div
+            className="mb-4 flex flex-wrap items-center gap-x-5 gap-y-2 font-mono text-xs text-muted-foreground"
+            aria-label="Changes in this release"
+          >
+            {KINDS.map((kind) => {
+              const count = entries.filter((e) => e.kind === kind).length
+              return (
+                count > 0 && (
+                  <span key={kind}>
+                    {count} {KIND_LABELS[kind].toLowerCase()}
+                  </span>
+                )
+              )
+            })}
+            {entries.length > 0 && (
+              <Button variant="ghost" size="sm" onClick={() => move(0)} className="ml-auto text-primary">
+                Browse changes <ArrowRightIcon />
+              </Button>
+            )}
+          </div>
+          {entries.map((e, index) => (
+            <EntryBlock
+              key={e.slug}
+              entry={e}
+              releaseTag={release.tag}
+              index={index}
+              total={entries.length}
+              move={move}
+            />
           ))}
         </CardContent>
       </Card>
@@ -287,7 +397,7 @@ export function WhatsNew() {
           <p className="mt-1 text-sm text-muted-foreground">{formatDate(latest.date)}</p>
           <p className="mt-4 text-base leading-relaxed text-muted-foreground">{latest.summary}</p>
           <ul className="mt-5 space-y-2">
-            {latest.entries.map((e) => (
+            {latest.entries.slice(0, 3).map((e) => (
               <li key={e.slug} className="flex items-start gap-2 text-sm">
                 <KindBadge kind={e.kind} />
                 <a href={`/changelog/#${latest.tag}`} className="hover:text-primary">

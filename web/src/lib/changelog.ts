@@ -33,6 +33,17 @@ export const releases = data.releases as Release[]
 export const KIND_LABELS: Record<Kind, string> = { new: "New", improved: "Improved", fixed: "Fixed" }
 export const KINDS: Kind[] = ["new", "improved", "fixed"]
 
+/** Release and entry links also arrive from older game versions. Invalid hashes open the latest. */
+export function releaseForHash(hash: string): Release | undefined {
+  let id: string
+  try {
+    id = decodeURIComponent(hash.replace(/^#/, ""))
+  } catch {
+    return releases[0]
+  }
+  return releases.find((r) => id === r.tag || r.entries.some((e) => id === `${r.tag}-${e.slug}`)) ?? releases[0]
+}
+
 export function formatDate(iso: string) {
   const d = new Date(`${iso}T12:00:00Z`)
   return Number.isNaN(d.getTime())
