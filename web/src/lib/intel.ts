@@ -3,7 +3,7 @@
 // (scripts/game/missions.gd, rules.gd), the names are from the vehicle and
 // fire-support tables (vehicle_roster.gd, defs.gd), and the numbers are
 // counted from them. Keep them true when those change: the website-footage
-// skill's check_intel.py (.claude/skills/website-footage) compares all of it
+// skill's check_intel.py (.agents/skills/website-footage) compares all of it
 // with the game, and its --fix rewrites COUNTS.
 
 /** Counted from the game: Defs.VEHICLES plus the vehicle roster, Defs.SUPPORT, and the missions the menu lists. */
