@@ -112,9 +112,9 @@
     },
     "trailer-harbour-boats": {
       "frames": 540,
-      "args": ["--preset=high", "--seed=3", "--set=volume:0.8,vol_effects:0.85,vol_music:0,battle_music:false,vol_ambience:0.28,vol_ui:0,mute_bg:false,wildlife:0,edge_pan:false", "--mission=beachhead", "--focus-vehicle=rhib,1", "--vehicle-view=Starboard"],
+      "args": ["--preset=high", "--seed=3", "--set=volume:0.8,vol_effects:0.85,vol_music:0,battle_music:false,vol_ambience:0.28,vol_ui:0,mute_bg:false,wildlife:0,edge_pan:false", "--mission=beachhead", "--focus-vehicle=rhib,1", "--vehicle-view=Helm"],
       "shows": ["Mountain coastline and the landing party"],
-      "about": "From beside the console, a second launch crosses the bow and turns toward the beach."
+      "about": "From the playable Helm camera, look past the seated driver as a second launch crosses the bow and turns toward the beach."
     },
     "trailer-sling": {
       "frames": 570,

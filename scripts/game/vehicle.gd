@@ -231,6 +231,7 @@ func _build_camera_mounts() -> void:
 		if vkind == "rhib":
 			# Stand beside the RHIB console, looking over the starboard tube.
 			_camera_mount(&"Starboard", model, Vector3(0.72, 2.44, -0.44), Vector3(2.55, 2.0, -8.5))
+			_camera_mount(&"Helm", model, Vector3(1.12, 2.24, 1.58), Vector3(1.1, 1.4, -7.5))
 	if _vm.gun_mount and _vm.gun_tip:
 		# Look back along the moving tube so the turret stays in the picture.
 		_camera_mount(&"Barrel", _vm.gun_tip, Vector3(2.9, 0.92, -1.9), Vector3(-0.1, 0.0, 1.8))
@@ -2797,6 +2798,9 @@ func sink_view() -> void:
 	if model == null or world.fx == null or world.fx.vfx == null:
 		return
 	var m := model
+	var helm := m.get_node_or_null("Coxswain")
+	if helm:
+		helm.queue_free()
 	_camera_mounts.clear()
 	model = null
 	remove_child(m)
@@ -2892,6 +2896,12 @@ func _build_model() -> void:
 	var k := VehicleModels.build(vkind, team, eid)
 	model = k.root
 	add_child(model)
+	if k.helm_seat.is_finite() and team >= 0:
+		var crew_scene := load("res://assets/infantry/rhib-helm.scn") as PackedScene
+		if crew_scene:
+			var helm := crew_scene.instantiate() as Node3D
+			model.add_child(helm)
+			helm.position = k.helm_seat
 	turret = k.turret
 	_vm = k
 	if bent_skirts:
