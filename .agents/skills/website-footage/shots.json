@@ -728,8 +728,8 @@
       "use": "Mission card: Kingpin"
     },
     "reel": {
-      "take": "highlight-flyover",
-      "at": 6.8,
+      "take": "trailer-harbour-finale",
+      "at": 6.4,
       "use": "The reel's poster (overrides its first frame)"
     }
   }
