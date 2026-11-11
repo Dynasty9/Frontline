@@ -8810,6 +8810,30 @@
         }
       ],
       "output": null
+    },
+    {
+      "entry": "changelog/unreleased/airborne-soil.md",
+      "title": "Broken earth at ground impacts",
+      "version": "unreleased",
+      "kind": "improved",
+      "summary": "Larger clods tumble with uneven edges above the dust.",
+      "medium": "motion",
+      "stage": "Defense, seed 3. The trailer-pit-landing take at 38 seconds, cropped above the wreck.",
+      "rationale": "Matching field, camera, timing and crop show the shape of the larger physical clods against the sky.",
+      "source_ref": "46b38fa before and 6093a05 after. The trailer-pit-landing take is defined in .agents/skills/website-footage/shots.json.",
+      "sources": [
+        {
+          "file": "changelog/unreleased/airborne-soil/ground-impact.webm",
+          "sha256": "08f32fe68f5ddf6e3d422cf035018f6e3db34b91147a8b2f17a1c9e478d73b12",
+          "caption": "The same impact before and after the earth shapes changed."
+        },
+        {
+          "file": "changelog/unreleased/airborne-soil/ground-impact.jpg",
+          "sha256": "ca37b45209bccebf9185caa22123d4676dd5c68aa1a0cd7625c97c24b231ce34",
+          "caption": "Soil clods in the air above the dust."
+        }
+      ],
+      "output": null
     }
   ],
   "layout_capture": {
