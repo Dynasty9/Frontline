@@ -1,18 +1,18 @@
 +++
 title = "Clouds over the mountain ranges"
-summary = "Soft cloud banks gather around the distant ranges, with lighting that follows the weather and a separate graphics setting."
+summary = "Fuller cloud banks and trailing ridge mist give the distant mountains more depth, while the playable foreground stays clear."
 kind = "improved"
 
 [[screenshots]]
 file = "comparison.jpg"
-caption = "The same mountain view with cloud banks off (left) and High (right)."
+caption = "The original mountain view (left) and revised clouds with stronger distant haze on High (right)."
 
 [[screenshots]]
 file = "weather.jpg"
 caption = "Cloud banks follow the existing daylight, golden-hour, night and rain lighting."
 +++
 
-Cloud banks sit beyond the playable boundary, adding depth around the distant peaks without changing spotting or movement. Their shaded bases and soft edges follow the scene lighting, including rain and night.
+Cloud banks sit beyond the playable boundary, adding depth around the distant peaks without changing spotting or movement. Their three-dimensional billows, shaded bases and thin trailing mist follow the scene lighting, including rain and night. Mountain surfaces correctly hide clouds behind them. Stronger aerial haze separates the distant ranges without adding fog over the playable ground.
 
 Choose **Mountain clouds** in Graphics: Off, Low, Medium, High or Ultra. The standard presets select matching detail levels; browsers start at Low. Reduced motion stops the clouds drifting.
 

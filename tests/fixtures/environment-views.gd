@@ -111,6 +111,20 @@ func capture() -> void:
 		views = [["off", Vector3.ZERO, 900.0, -14.0, 0.7, 0, "day"]]
 		for mood in ["day", "golden", "night", "rain"]:
 			views.append([mood, Vector3.ZERO, 900.0, -14.0, 0.7, 3, mood])
+	if "--capture-set=cloud-distance" in OS.get_cmdline_user_args():
+		views = [
+			["close", Vector3(-110, 0, -130), 18.0, -18.0, 0.7, 3, "day"],
+			["tactical", Vector3.ZERO, 180.0, -42.0, 0.7, 3, "day"],
+			["panorama", Vector3.ZERO, 900.0, -14.0, 0.7, 3, "day"],
+			["reverse", Vector3.ZERO, 900.0, -14.0, -2.4, 3, "day"],
+			["low", Vector3.ZERO, 900.0, -14.0, 0.7, 1, "day"],
+			["ultra", Vector3.ZERO, 900.0, -14.0, 0.7, 4, "day"],
+		]
+	if "--capture-set=cloud-benchmark" in OS.get_cmdline_user_args():
+		views = []
+		for quality in [0, 3, 3, 0, 0, 1, 1, 0, 0, 4, 4, 0]:
+			views.append(["sample-%d-q%d" % [views.size(), quality], Vector3.ZERO, 900.0, -14.0, 0.7, quality, "day"])
+	RenderingServer.viewport_set_measure_render_time(root.get_viewport_rid(), true)
 	var records := []
 	for view in views:
 		if view.size() > 6:
@@ -131,10 +145,13 @@ func capture() -> void:
 		while world.structure_view != null and world.structure_view.warming():
 			await process_frame
 		var frame_ms := 0.0
+		var gpu_ms := 0.0
 		if view.size() > 5:
 			var started := Time.get_ticks_usec()
 			for sample in 120:
 				await process_frame
+				gpu_ms += RenderingServer.viewport_get_measured_render_time_gpu(root.get_viewport_rid())
+			gpu_ms /= 120.0
 			frame_ms = float(Time.get_ticks_usec() - started) / 120000.0
 		await RenderingServer.frame_post_draw
 		var filename: String = prefix + "-" + view[0] + ".png"
@@ -147,7 +164,7 @@ func capture() -> void:
 				await process_frame
 				await RenderingServer.frame_post_draw
 				assert(root.get_texture().get_image().save_png(frames + "/%04d.png" % frame) == OK)
-		records.append({"file": filename, "focus": str(view[1]), "zoom": view[2], "pitch": view[3], "yaw": view[4], "time": world.time, "frame_ms": frame_ms})
+		records.append({"file": filename, "focus": str(view[1]), "zoom": view[2], "pitch": view[3], "yaw": view[4], "time": world.time, "mood": world.atmo.mood, "cloud_quality": get_root().get_node("Settings").v.mountain_clouds, "frame_ms": frame_ms, "gpu_ms": gpu_ms})
 		print("CAPTURE ", filename)
 	var output := FileAccess.open(prefix + ".json", FileAccess.WRITE)
 	assert(output != null)

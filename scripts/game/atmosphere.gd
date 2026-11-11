@@ -955,7 +955,7 @@ func _apply_haze(distance: float) -> void:
 		k = maxf(k, 0.45 * pow(1.0 - downward, 2.0))
 		# Sky tint separates distant ranges; keep the low valley veil out of the overhead view.
 		env.fog_aerial_perspective = 0.38 * (1.0 - downward)
-		terrain_air = float(_d.fog_d) * 0.22 * pow(1.0 - downward, 2.0)
+		terrain_air = float(_d.fog_d) * 0.48 * pow(1.0 - downward, 2.0)
 		env.fog_height = 18.0
 		env.fog_height_density = 0.0012 * pow(1.0 - downward, 2.0)
 	if ground_mat:
@@ -1704,7 +1704,7 @@ void fragment() {
 
 	// Thin low-altitude air separates ranges without whitening their sunlit faces.
 	float optical_depth = max(0.0, distance(CAMERA_POSITION_WORLD, wpos) - 500.0) * terrain_air;
-	float aerial = min(0.24, 1.0 - exp(-optical_depth * exp(-max(wpos.y, 0.0) / 320.0)));
+	float aerial = min(0.48, 1.0 - exp(-optical_depth * exp(-max(wpos.y, 0.0) / 520.0)));
 	aerial *= smoothstep(__MAP_HALF__, __MAP_HALF__ + 200.0, edge);
 	ALBEDO = col * (1.0 - aerial);
 	EMISSION = air_color * aerial * 0.65;

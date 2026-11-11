@@ -1,0 +1,159 @@
+{
+  "hardware": "NVIDIA RTX 3090",
+  "godot": "4.7.2",
+  "conditions": "1280x720, Forward+, High preset, seed 3, day, fixed camera, simulation held near 2 seconds, reduced motion, VSync disabled; 45 warmup and 120 measured frames per view. Interleaved Off/High/High/Off, Off/Low/Low/Off, Off/Ultra/Ultra/Off.",
+  "accepted_for_overhead_claim": false,
+  "limitation": "Uncontrolled competing graphics load. High GPU delta was +0.113 ms, smaller than its 0.238 ms Off-control drift. Low delta was negative and Ultra controls drifted by 5.112 ms. These samples do not establish a reliable cloud overhead or low-end performance guarantee.",
+  "capture": {
+    "mood": "day",
+    "renderer": "forward_plus",
+    "resolution": "(1280, 720)",
+    "seed": 3,
+    "views": [
+      {
+        "cloud_quality": 0,
+        "file": "cloud-benchmark-v2-sample-0-q0.png",
+        "focus": "(0.0, 0.0, 0.0)",
+        "frame_ms": 11.2444416666667,
+        "gpu_ms": 6.69589167435964,
+        "mood": "day",
+        "pitch": -14.0,
+        "time": 2.0,
+        "yaw": 0.7,
+        "zoom": 900.0
+      },
+      {
+        "cloud_quality": 3,
+        "file": "cloud-benchmark-v2-sample-1-q3.png",
+        "focus": "(0.0, 0.0, 0.0)",
+        "frame_ms": 11.04445,
+        "gpu_ms": 6.66685833533605,
+        "mood": "day",
+        "pitch": -14.0,
+        "time": 2.0,
+        "yaw": 0.7,
+        "zoom": 900.0
+      },
+      {
+        "cloud_quality": 3,
+        "file": "cloud-benchmark-v2-sample-2-q3.png",
+        "focus": "(0.0, 0.0, 0.0)",
+        "frame_ms": 13.93445,
+        "gpu_ms": 6.71412500540415,
+        "mood": "day",
+        "pitch": -14.0,
+        "time": 2.0,
+        "yaw": 0.7,
+        "zoom": 900.0
+      },
+      {
+        "cloud_quality": 0,
+        "file": "cloud-benchmark-v2-sample-3-q0.png",
+        "focus": "(0.0, 0.0, 0.0)",
+        "frame_ms": 12.0982,
+        "gpu_ms": 6.45835832357407,
+        "mood": "day",
+        "pitch": -14.0,
+        "time": 2.0,
+        "yaw": 0.7,
+        "zoom": 900.0
+      },
+      {
+        "cloud_quality": 0,
+        "file": "cloud-benchmark-v2-sample-4-q0.png",
+        "focus": "(0.0, 0.0, 0.0)",
+        "frame_ms": 9.15810833333333,
+        "gpu_ms": 6.68669165372849,
+        "mood": "day",
+        "pitch": -14.0,
+        "time": 2.0,
+        "yaw": 0.7,
+        "zoom": 900.0
+      },
+      {
+        "cloud_quality": 1,
+        "file": "cloud-benchmark-v2-sample-5-q1.png",
+        "focus": "(0.0, 0.0, 0.0)",
+        "frame_ms": 13.851575,
+        "gpu_ms": 6.63948333263397,
+        "mood": "day",
+        "pitch": -14.0,
+        "time": 2.0,
+        "yaw": 0.7,
+        "zoom": 900.0
+      },
+      {
+        "cloud_quality": 1,
+        "file": "cloud-benchmark-v2-sample-6-q1.png",
+        "focus": "(0.0, 0.0, 0.0)",
+        "frame_ms": 13.9721916666667,
+        "gpu_ms": 8.06010834376017,
+        "mood": "day",
+        "pitch": -14.0,
+        "time": 2.0,
+        "yaw": 0.7,
+        "zoom": 900.0
+      },
+      {
+        "cloud_quality": 0,
+        "file": "cloud-benchmark-v2-sample-7-q0.png",
+        "focus": "(0.0, 0.0, 0.0)",
+        "frame_ms": 10.6391166666667,
+        "gpu_ms": 8.94225834210714,
+        "mood": "day",
+        "pitch": -14.0,
+        "time": 2.0,
+        "yaw": 0.7,
+        "zoom": 900.0
+      },
+      {
+        "cloud_quality": 0,
+        "file": "cloud-benchmark-v2-sample-8-q0.png",
+        "focus": "(0.0, 0.0, 0.0)",
+        "frame_ms": 13.046075,
+        "gpu_ms": 11.7330832997958,
+        "mood": "day",
+        "pitch": -14.0,
+        "time": 2.0,
+        "yaw": 0.7,
+        "zoom": 900.0
+      },
+      {
+        "cloud_quality": 4,
+        "file": "cloud-benchmark-v2-sample-9-q4.png",
+        "focus": "(0.0, 0.0, 0.0)",
+        "frame_ms": 17.940925,
+        "gpu_ms": 16.4330082496007,
+        "mood": "day",
+        "pitch": -14.0,
+        "time": 2.0,
+        "yaw": 0.7,
+        "zoom": 900.0
+      },
+      {
+        "cloud_quality": 4,
+        "file": "cloud-benchmark-v2-sample-10-q4.png",
+        "focus": "(0.0, 0.0, 0.0)",
+        "frame_ms": 17.233175,
+        "gpu_ms": 14.7974666595459,
+        "mood": "day",
+        "pitch": -14.0,
+        "time": 2.0,
+        "yaw": 0.7,
+        "zoom": 900.0
+      },
+      {
+        "cloud_quality": 0,
+        "file": "cloud-benchmark-v2-sample-11-q0.png",
+        "focus": "(0.0, 0.0, 0.0)",
+        "frame_ms": 18.5117666666667,
+        "gpu_ms": 16.8454333702723,
+        "mood": "day",
+        "pitch": -14.0,
+        "time": 2.0,
+        "yaw": 0.7,
+        "zoom": 900.0
+      }
+    ]
+  }
+}

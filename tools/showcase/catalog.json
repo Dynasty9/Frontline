@@ -8262,26 +8262,31 @@
     },
     {
       "entry": "changelog/unreleased/mountain-clouds.md",
-      "summary": "Cloud banks around distant mountains, with independent graphics tiers.",
+      "summary": "Fuller 3D clouds, trailing ridge mist and stronger distant haze preserve a clear playable foreground.",
       "medium": "still",
       "stage": "tests/fixtures/environment-views.gd --capture-set=cloud-weather",
-      "rationale": "Matched full-frame Off/High comparison establishes where the clouds sit without implying a performance result. Weather and renderer variants were inspected locally.",
-      "source_ref": "a89bd759bee003ee208f65ad4b8e418158994254 + mountain-clouds working tree",
+      "rationale": "Matched full-frame before/after comparison plus weather variants; close, tactical, reverse and Low/Ultra views inspected locally. Captures show stronger distant atmosphere, not a claimed performance result.",
+      "source_ref": "388e88ec + mountain atmosphere refinement; before uses the original cloud-off capture at a89bd759",
       "sources": [
         {
           "file": "changelog/unreleased/mountain-clouds/comparison.jpg",
-          "sha256": "ad8ef497a061028311af679021ddc2b1bce020393d0585c543f9ccda42b2d59a",
-          "caption": "Seed 3, day, 1280x720, High preset, simulation frozen at 2 seconds; cloud banks Off/High."
+          "sha256": "e9db9116774ae50b5fb44636d712d4d494737a57bec4b3e39e5ddaad9129b08b",
+          "caption": "Seed 3, daylight, 1280x720, High preset, simulation held near two seconds. Original cloud-off view versus revised clouds and distant haze."
         },
         {
           "file": "changelog/unreleased/mountain-clouds/weather.jpg",
-          "sha256": "967c7de6b968e03346b56ff8c97ebafc8a0b59f260a9f6ec27f5f1d6d5098ec8",
+          "sha256": "439125390e94920516fc6dec1836622bad2ee4211decadf3890fb11fabf3ae50",
           "caption": "Same seed and camera, High clouds; daylight, golden hour, night and rain. Full frames resized without cropping."
+        },
+        {
+          "file": "changelog/unreleased/mountain-clouds/performance.json",
+          "sha256": "852ef441e225485b9cf2e03364d330ba10f82ccc377ebc18f904ce64037e38b2",
+          "caption": "Interleaved timing samples retained as inconclusive under uncontrolled graphics load."
         }
       ],
       "output": "changelog/unreleased/mountain-clouds/comparison.jpg",
       "capture_command": "godot --path . --resolution 1280x720 --script tests/fixtures/environment-views.gd -- --aivai --seed=3 --offscreen --nohud --preset=high --mood=day --set=perf:0,reduce_motion:true,vsync:false --capture-set=cloud-weather --capture-prefix=<scratch>/cloud-weather",
-      "limitations": "Native Forward+ and Compatibility review, RTX 3090. No low-end GPU or browser validation. Tier timing samples were inconclusive under competing graphics load; no overhead claim. Motion is frozen for matched stills."
+      "limitations": "Native Forward+ and Compatibility reviewed on RTX 3090. No low-end GPU or browser validation. Motion frozen for matched stills. The clouds affect scenery only; no full weather simulation. Interleaved GPU timings remain inconclusive; raw observations and rejection rationale are retained in performance.json."
     }
   ],
   "layout_capture": {
