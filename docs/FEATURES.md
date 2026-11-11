@@ -866,7 +866,8 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   it (slower with a load on), lowers it until it touches and lets go. The CH-49 Mohawk and the Rebels' Mi-290
   Taru (Lift) carry anything up to an APC (Humvees, technicals, BTRs, AA trucks); the Ghost Hawk and the Orca
   light vehicles only; nothing lifts a tank. A helicopter shot down drops its load - from height, it's
-  wrecked. The AI uses its lift helicopters to ferry vehicles sitting idle far behind the lines up to its front.
+  wrecked. The Cargo door camera follows the suspended hull through turns and looks straight back down
+  its original sightline when the helicopter releases the vehicle. The AI uses its lift helicopters to ferry vehicles sitting idle far behind the lines up to its front.
 - **Boats and ships** (built at the **Boat Dock**, which goes on the shore of the sea or the river facing open
   water, on your own half of the map). Coalition: the RHIB (six men, fast, unarmed), the Speedboat Minigun
   (armoured riverine craft, 40 mm GMG, a squad aboard) and the **Patrol Ship** (`vehicles/vm_ships.gd`, a Mk VI

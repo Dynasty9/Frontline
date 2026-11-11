@@ -10,3 +10,5 @@ caption = "The same Sky Hook crossing, before on the left and after on the right
 +++
 
 The cable moves with the helicopter’s belly as it banks. The straps have width and catch the light on the way down to the vehicle body. The suspended vehicle keeps its wheels and tracks still, and its suspension settles as it crosses a bank or bridge.
+
+The cargo-door view follows the vehicle through the helicopter’s turns. When the straps come off, the camera looks back along its original sightline.

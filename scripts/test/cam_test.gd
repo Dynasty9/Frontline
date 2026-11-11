@@ -305,9 +305,22 @@ func _run() -> void:
 				var foot := load_vehicle.model.to_local(vehicle.to_global(strap * (Vector3.UP * 0.5)))
 				joined = joined and foot.y > 0.0 and foot.y < 1.2 and absf(foot.x) < 0.91 and absf(foot.z) < 1.77
 			_check("all four strap ends reach the Nyx body", joined)
+			world.input.sel_vehicles.append(vehicle.eid)
+			cam.cycle_mount(&"Cargo door")
+			for offset in [Vector3.ZERO, Vector3(-3, 0, 2)]:
+				load_vehicle.position += Vector3(offset)
+				cam._apply()
+				var center := load_vehicle.model.to_global(Vector3.UP * load_vehicle._hull_size().y * 0.55)
+				var toward_load := cam.cam.global_position.direction_to(center)
+				_check("the cargo door follows the suspended hull", toward_load.dot(-cam.cam.global_basis.z) > 0.999)
 			world.despawn(load_vehicle)
 			vehicle._sling_view()
 			_check("a released load clears the entire sling", not vehicle._cables.visible)
+			cam._apply()
+			var door: Marker3D = vehicle.camera_mounts()[&"Cargo door"]
+			_check("the empty door returns to its fixed view", cam.cam.global_basis.z.is_equal_approx(door.global_basis.orthonormalized().z))
+			cam.leave_mount()
+			world.input.clear_selection()
 
 		if fixture[1] == &"Periscope":
 			world.input.sel_vehicles.append(vehicle.eid)
