@@ -1519,8 +1519,7 @@ static func _hemtt(k: VehicleModels, team: int, body: String) -> void:
 			k._box(m, Vector3(2.4, sh, 0.06), Vector3(0, 1.38 + sh * 0.5, 5.02), cam)
 			if body == "troop":
 				# the canvas tilt over its bows, the back rolled up over the benches
-				var tsec := [-1.22, 1.98, 1.22, 1.98, 1.22, 2.55, 0.98, 2.86, -0.98, 2.86, -1.22, 2.55]
-				k._add(m, _extrude_z("nato_hemtt_tilt", tsec, -2.35, 4.95), "canvas_white", paint.lightened(0.08), Vector3.ZERO)
+				VehicleCloth.canopy(k, m, [Vector2(-1.22, 1.98), Vector2(-1.22, 2.55), Vector2(-0.98, 2.86), Vector2(0.98, 2.86), Vector2(1.22, 2.55), Vector2(1.22, 1.98)], [-2.35, -2.2, -0.78, 0.64, 2.06, 3.48, 4.9, 4.95], paint.lightened(0.08))
 				for i in 6:
 					var z := -2.2 + i * 1.42
 					k._add(m, _extrude_z("nato_hemtt_bow", [-1.24, 1.98, 1.24, 1.98, 1.24, 2.56, 0.99, 2.88, -0.99, 2.88, -1.24, 2.56], -0.04, 0.04), "canvas_white", paint.darkened(0.12), Vector3(0, 0, z))

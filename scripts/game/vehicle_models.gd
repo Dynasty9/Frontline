@@ -248,6 +248,8 @@ func _add(parent: Node3D, mesh: Mesh, kind: String, col, pos: Vector3, rot := Ve
 		k = "burnt"
 	k = VehicleMaterials.key(k, surface_family)
 	var t := Mats.tint_for(k, col) if col is Color and not burnt else Color(1, 1, 1)
+	if not burnt and VehicleMaterials.profile(kind, surface_family) in ["armor", "aircraft", "marine"]:
+		mesh = VehicleBody.paint_mesh(mesh)
 	var pt := [mesh, Mats.get_mat(k), t, shadow, pos, rot, scl, null, null]
 	if not _baking:
 		return _add_node(parent, pt)

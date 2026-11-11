@@ -1153,6 +1153,13 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   Eight companion normal maps retain the bundled CC0 surface relief; all 17 profiles tune weathering,
   roughness and grain independently. Metal brushing, canvas weave, moulded rubber, timber fibres and
   charred surfaces use separate treatments, filtered at distance.
+- **Material-aware panels** (`VehicleBody.panel`, `VehicleCloth.panel`): painted and metal panels
+  include folded edges, gaskets and fasteners; fabric uses draped meshes, hems and filtered stitching;
+  rubber/plastic use chamfered moulded sheets; wood keeps its grain and glass uses fitted seals.
+  HEMTT, Zamak and Tempest troop canopies share cloth bays fitted to their own support profiles.
+  Baked military body pieces retain edge coordinates for broken paint rubs and primer chips;
+  upright paint has restrained runoff streaks. Vehicle camouflage uses larger separated colours,
+  while aircraft paint is matte. See [military exterior comparisons](military-exterior-review/README.md).
 - **Shared vehicle bodywork** (`vehicle_body.gd`): curved helicopter skins share crease-aware normals
   without moving the vertices beneath fitted glazing. Skin joins and flush fasteners follow the hull;
   deliberately angular stealth sections remain faceted. HEMTT, Zamak and Tempest families share pressed

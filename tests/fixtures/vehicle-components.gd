@@ -54,6 +54,28 @@ func _ready() -> void:
 		assert(normal.is_finite() and absf(normal.length() - 1.0) < 0.001)
 		changed = changed or not normal.is_equal_approx(old_arrays[Mesh.ARRAY_NORMAL][i])
 	assert(changed, "Curved skins need interpolated normals")
+	# Each material builds the appropriate edge; fabric and moulded panels
+	# must not inherit the sheet-metal fasteners or animated part slots.
+	for material in ["paint", "canvas_white", "rubber", "plain_dark", "wood", "glass"]:
+		var kit := VehicleModels.new()
+		kit.root = Node3D.new()
+		kit._baking = true
+		VehicleBody.panel(kit, kit.root, Vector3.ZERO, Vector2(1.2, 0.8), Vector3.ZERO, material)
+		assert(kit.wheels.is_empty() and kit.root.get_child_count() == 0)
+		assert(kit._parts.has(kit.root))
+		var panel_bounds := _bounds(kit._parts[kit.root])
+		assert(panel_bounds.size.x <= 1.25 and panel_bounds.size.y <= 0.85)
+		for part: Array in kit._parts[kit.root]:
+			if material in ["canvas_white", "rubber", "plain_dark", "wood"]:
+				assert((part[1] as ShaderMaterial).get_shader_parameter("metal") == 0.0)
+		kit.root.free()
+	var box := Res.box(Vector3(2, 1, 0.2))
+	var painted := VehicleBody.paint_mesh(box)
+	assert(VehicleBody.paint_mesh(box) == painted)
+	var original_flat := Mats._flat(box, 0)
+	var paint_flat := Mats._flat(painted, 0)
+	assert(original_flat[0] == paint_flat[0] and original_flat[1] == paint_flat[1])
+	assert(paint_flat[3] != null)
 	print("VEHICLE_COMPONENTS passed")
 	TestRun.quit(get_tree())
 

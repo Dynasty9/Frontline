@@ -1,0 +1,21 @@
+{
+	"body_focus": "(inf, inf, inf)",
+	"camera_size": 0.0,
+	"grounded": false,
+	"models": [
+		"armor",
+		"aircraft",
+		"canvas",
+		"rubber",
+		"plastic",
+		"wood",
+		"glass",
+		"steel"
+	],
+	"panels": true,
+	"renderer": "gl_compatibility",
+	"rotor_focus": false,
+	"seed": 3,
+	"team": 0,
+	"view_direction": "(1.0, 0.65, -1.25)"
+}

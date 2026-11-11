@@ -6,10 +6,10 @@ extends RefCounted
 
 const PROFILES := {
 	"rotor": {"surface_normal_strength": 0.12, "surface_finish": 7, "surface_weather": 0.04, "surface_grain": 0.12, "surface_roughness": 0.24, "map": "coating", "rough": 0.78, "metal": 0.0, "bump": 0.004, "grime": 0.0, "surface_scale": 3.0, "surface_tone": 0.035, "surface_specular": 0.25},
-	"armor": {"surface_normal_strength": 0.08, "surface_finish": 0, "surface_weather": 0.32, "surface_grain": 0.12, "surface_wear": 0.10, "surface_roughness": 0.48, "map": "coating", "rough": 0.73, "metal": 0.0, "bump": 0.018, "grime": 0.32, "surface_scale": 1.5, "surface_tone": 0.08},
-	"aircraft": {"surface_normal_strength": 0.04, "surface_finish": 0, "surface_weather": 0.10, "surface_grain": 0.05, "surface_coat": 0.12, "surface_coat_roughness": 0.30, "surface_roughness": 0.30, "map": "coating", "rough": 0.48, "metal": 0.0, "bump": 0.006, "grime": 0.025, "surface_scale": 2.0, "surface_tone": 0.025},
+	"armor": {"surface_paint_wear": 0.85,"surface_normal_strength": 0.08, "surface_finish": 0, "surface_weather": 0.32, "surface_grain": 0.12, "surface_wear": 0.10, "surface_roughness": 0.48, "map": "coating", "rough": 0.73, "metal": 0.0, "bump": 0.018, "grime": 0.32, "surface_scale": 1.5, "surface_tone": 0.08},
+	"aircraft": {"surface_paint_wear": 0.40,"surface_normal_strength": 0.04, "surface_finish": 0, "surface_weather": 0.24, "surface_grain": 0.05, "surface_coat": 0.03, "surface_coat_roughness": 0.30, "surface_roughness": 0.30, "map": "coating", "rough": 0.68, "metal": 0.0, "bump": 0.006, "grime": 0.025, "surface_scale": 2.0, "surface_tone": 0.025},
 	"automotive": {"surface_normal_strength": 0.03, "surface_finish": 0, "surface_weather": 0.08, "surface_grain": 0.03, "surface_coat_roughness": 0.12, "surface_roughness": 0.24, "map": "coating", "rough": 0.28, "metal": 0.0, "bump": 0.006, "grime": 0.23, "surface_scale": 2.0, "surface_tone": 0.025, "surface_coat": 0.65},
-	"marine": {"surface_normal_strength": 0.06, "surface_finish": 0, "surface_weather": 0.23, "surface_grain": 0.08, "surface_coat_roughness": 0.24, "surface_roughness": 0.42, "map": "coating", "rough": 0.42, "metal": 0.0, "bump": 0.012, "grime": 0.07, "surface_scale": 1.5, "surface_tone": 0.05, "surface_coat": 0.2},
+	"marine": {"surface_paint_wear": 0.60,"surface_normal_strength": 0.06, "surface_finish": 0, "surface_weather": 0.23, "surface_grain": 0.08, "surface_coat_roughness": 0.24, "surface_roughness": 0.42, "map": "coating", "rough": 0.42, "metal": 0.0, "bump": 0.012, "grime": 0.07, "surface_scale": 1.5, "surface_tone": 0.05, "surface_coat": 0.2},
 	"rubber": {"surface_normal_strength": 0.65, "surface_finish": 1, "surface_weather": 0.22, "surface_grain": 0.65, "surface_roughness": 0.38, "surface_specular": 0.22, "map": "rubber", "rough": 0.88, "metal": 0.0, "bump": 0.09, "grime": 0.27, "surface_scale": 2.0, "surface_tone": 0.18},
 	"plastic": {"surface_normal_strength": 0.28, "surface_finish": 7, "surface_weather": 0.10, "surface_grain": 0.35, "surface_roughness": 0.30, "surface_specular": 0.30, "map": "rubber", "rough": 0.63, "metal": 0.0, "bump": 0.025, "grime": 0.12, "surface_scale": 5.0},
 	"canvas": {"surface_normal_strength": 0.75, "surface_finish": 2, "surface_weather": 0.30, "surface_grain": 0.70, "surface_roughness": 0.25, "surface_specular": 0.16, "map": "canvas", "rough": 0.96, "metal": 0.0, "bump": 0.10, "grime": 0.18, "surface_scale": 3.0, "surface_tone": 0.28},
@@ -87,6 +87,16 @@ static func preset(material_key: String) -> Dictionary:
 	if not _maps.has(normal_name):
 		_maps[normal_name] = load("res://assets/vehicles/surfaces/%s.png" % normal_name)
 	p["surface_normal_map"] = _maps[normal_name]
+	# Vehicle camouflage needs broad, legible paint colours rather than the
+	# close-value mottling used by small equipment and uniforms.
+	if kind == "camo_tank":
+		p["col_b"] = Color(0.17, 0.205, 0.135)
+		p["col_c"] = Color(0.34, 0.29, 0.20)
+		p["col_d"] = Color(0.105, 0.12, 0.095)
+	elif kind == "camo_tank_rebel":
+		p["col_b"] = Color(0.32, 0.285, 0.20)
+		p["col_c"] = Color(0.51, 0.46, 0.34)
+		p["col_d"] = Color(0.23, 0.225, 0.16)
 	# Aircraft tyres and metalwork don't acquire a land vehicle's mud skirt.
 	if vehicle_family == "aircraft":
 		p["grime"] = minf(float(p.grime), 0.04)

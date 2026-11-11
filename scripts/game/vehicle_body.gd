@@ -46,10 +46,26 @@ static func fastener(k: VehicleModels, parent: Node3D, position: Vector3, normal
 ## Local XY panel, +Z outward. Gasket, pressed sheet, flush screws and optional
 ## louvres share construction; callers choose the actual panel location.
 static func panel(k: VehicleModels, parent: Node3D, center: Vector3, size: Vector2, rotation: Vector3, mat: String, col = null, louvres := false) -> void:
+	var finish := VehicleMaterials.profile(mat, k.surface_family)
+	if finish == "canvas":
+		VehicleCloth.panel(k, parent, center, size, rotation, col if col is Color else Color(0.40, 0.42, 0.30), mat)
+		return
+	if finish == "glass":
+		VehicleGlazing.rectangle(k, parent, size, center, rotation, false, col)
+		return
 	var mount := k._pivot(parent, center)
+	if finish in ["rubber", "plastic", "wood"]:
+		mount.rotation = rotation
+		k._add(mount, BevelMesh.make(Vector3(size.x, size.y, 0.025), 0.008), mat, col, Vector3.ZERO)
+		k._fold(mount)
+		return
 	mount.rotation = rotation
 	k._box(mount, Vector3(size.x, size.y, 0.008), Vector3.ZERO, "rubber", null, Vector3.ZERO, false)
 	k._box(mount, Vector3(size.x - 0.024, size.y - 0.024, 0.018), Vector3(0, 0, 0.009), mat, col)
+	# Turned sheet edges catch light independently of the pressed centre.
+	for sign_side in [-1.0, 1.0]:
+		k._box(mount, Vector3(size.x - 0.04, 0.012, 0.022), Vector3(0, sign_side * (size.y / 2 - 0.02), 0.014), mat, col)
+		k._box(mount, Vector3(0.012, size.y - 0.04, 0.022), Vector3(sign_side * (size.x / 2 - 0.02), 0, 0.014), mat, col)
 	for x in [-1.0, 1.0]:
 		for y in [-1.0, 1.0]:
 			fastener(k, mount, Vector3(x * (size.x * 0.5 - 0.045), y * (size.y * 0.5 - 0.045), 0.022), Vector3.BACK)
@@ -61,3 +77,43 @@ static func panel(k: VehicleModels, parent: Node3D, center: Vector3, size: Vecto
 	else:
 		k._box(mount, Vector3(size.x * 0.72, size.y * 0.50, 0.012), Vector3(0, 0, 0.02), mat, col)
 	k._fold(mount)
+
+
+## Coordinates of each flat body piece, retained through the material bake.
+## Curved faces have no artificial bounding-box edge; their authored seams remain.
+static func paint_mesh(mesh: Mesh) -> Mesh:
+	if mesh.has_meta(&"paint_mesh"):
+		return mesh.get_meta(&"paint_mesh")
+	if mesh.get_surface_count() != 1:
+		return mesh
+	var flat := Mats._flat(mesh, 0)
+	var vertices: PackedVector3Array = flat[0]
+	var normals: PackedVector3Array = flat[1]
+	var uv := PackedVector2Array()
+	uv.resize(vertices.size())
+	uv.fill(Vector2(0.5, 0.5))
+	var bounds := mesh.get_aabb()
+	for start in range(0, vertices.size(), 3):
+		var normal := normals[start].normalized()
+		if normal.dot(normals[start + 1].normalized()) < 0.999 or normal.dot(normals[start + 2].normalized()) < 0.999:
+			continue
+		var axis := normal.abs().max_axis_index()
+		var a := (axis + 1) % 3
+		var b := (axis + 2) % 3
+		if minf(bounds.size[a], bounds.size[b]) < 0.08:
+			continue
+		for i in range(start, start + 3):
+			var q := vertices[i] - bounds.position
+			uv[i] = Vector2(q[a] / bounds.size[a], q[b] / bounds.size[b])
+	var arrays := []
+	arrays.resize(Mesh.ARRAY_MAX)
+	arrays[Mesh.ARRAY_VERTEX] = vertices
+	arrays[Mesh.ARRAY_NORMAL] = normals
+	arrays[Mesh.ARRAY_TEX_UV] = uv
+	if flat[2] != null:
+		arrays[Mesh.ARRAY_COLOR] = flat[2]
+	var result := ArrayMesh.new()
+	result.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+	Mats.keep_arrays(result, arrays)
+	mesh.set_meta(&"paint_mesh", result)
+	return result

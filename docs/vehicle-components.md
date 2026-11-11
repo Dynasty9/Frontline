@@ -51,3 +51,28 @@ normal maps are reproduced with `python tools/bake_vehicle_normals.py` from chec
 sources. Keep their mipmaps enabled. Paint relief is intentionally weaker than fabric or grip;
 adding noisy normal relief cannot replace an appropriate panel outline or a curved body normal.
 See [matched body and material comparisons](vehicle-surface-review/README.md).
+
+### Material-aware construction
+
+`VehicleBody.panel(k, parent, center, size, rotation, material, color, louvres)` now selects
+construction from `VehicleMaterials.profile`:
+
+| Material | Automatic construction |
+|---|---|
+| Paint / metal | Gasket, folded edges, pressed centre, fasteners; optional louvres |
+| Canvas / fabric / webbing | Draped cloth, sewn hems and filtered stitches |
+| Rubber / plastic | Chamfered moulded sheet, without metal screws |
+| Wood | Solid sheet with the wood finish, without sheet-metal details |
+| Glass | Fitted opaque pane and rubber seals; use VehicleGlazing directly for open clear cabs |
+
+`VehicleCloth.canopy(k, parent, profile, bows, color)` fits cloth between a left-to-right
+cross-section and longitudinal support stations. Its front is closed; the family builder owns
+the rear opening, rolled flap and boarding fittings. HEMTT, Zamak and Tempest troop bodies use it.
+`VehicleCloth.load_cover` also provides sewn perimeter hems on tied cargo covers.
+
+`VehicleBody.paint_mesh` caches per-piece face coordinates without changing positions or normals.
+Military paint uses these coordinates for edge rubs; curved triangles receive neutral coordinates,
+so they do not acquire an artificial box outline. `Mats` preserves these UVs through merging.
+This is an approximation of part-boundary wear, not a curvature or ambient-occlusion bake.
+UVs are reserved for this purpose on vehicle paint; photographic relief remains triplanar.
+Use `--surface-panels` in the vehicle showcase to inspect all construction types together.

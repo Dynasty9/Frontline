@@ -658,7 +658,15 @@ static func _append(groups: Dictionary, mesh: Mesh, mats: Array, shadow: int, ti
 		var verts: PackedVector3Array = fa[0]
 		g.v.append_array(cx * verts)
 		g.n.append_array(nb * (fa[1] as PackedVector3Array))
-		if sm.get_shader_parameter("leaf_cards") == true:
+		if sm.get_shader_parameter("vehicle_surface") == true:
+			if fa[3] != null:
+				g.uv.append_array(fa[3])
+			else:
+				var blank := PackedVector2Array()
+				blank.resize(verts.size())
+				blank.fill(Vector2(0.5, 0.5))
+				g.uv.append_array(blank)
+		elif sm.get_shader_parameter("leaf_cards") == true:
 			assert(fa[3] != null, "Photographed foliage keeps its card coordinates through batching")
 			g.uv.append_array(fa[3])
 		if vc and fa[2] != null and (fa[2] as PackedColorArray).size() == verts.size():
@@ -914,6 +922,7 @@ uniform sampler2D surface_normal_map : hint_normal, filter_linear_mipmap_anisotr
 uniform float surface_normal_strength = 0.0;
 uniform int surface_finish = 0; // coating, rubber, cloth, metal, grip, timber, char, moulded, glass
 uniform float surface_weather = 0.0;
+uniform float surface_paint_wear = 0.0;
 uniform float surface_grain = 0.0;
 uniform float surface_coat_roughness = 0.22;
 uniform bool use_vcolor = false;
@@ -1076,9 +1085,10 @@ void fragment() {
 		col *= 0.5 + 0.5 * gap;
 		h = gap * (0.8 + grain * 0.2);
 	} else if (pattern == 6) {
-		float c1 = tfbm(uv * 1.0 + off);
-		float c2 = tfbm(uv * 1.25 + off + 13.0);
-		float c3 = tfbm(uv * 1.6 + off + 29.0);
+		vec2 camo_uv = vehicle_surface ? uv * 2.4 : uv;
+		float c1 = tfbm(camo_uv * 1.0 + off);
+		float c2 = tfbm(camo_uv * 1.25 + off + 13.0);
+		float c3 = tfbm(camo_uv * 1.6 + off + 29.0);
 		col = col_a;
 		col = mix(col, col_b, smoothstep(0.5 - sw, 0.53 + sw, c1));
 		col = mix(col, col_c, smoothstep(0.56 - sw, 0.59 + sw, c2));
@@ -1180,6 +1190,9 @@ void fragment() {
 	float corrosion = 0.0;
 	float finish_film = 0.0;
 	float finish_fade = 0.0;
+	float paint_edge = 0.0;
+	float paint_chip = 0.0;
+	float paint_stain = 0.0;
 	if (vehicle_surface) {
 		// Paint is a dielectric coating. Only the sparse exposed chips become
 		// metallic; rubber, fabric and glass retain their own response.
@@ -1209,6 +1222,21 @@ void fragment() {
 			corrosion = detail.b * surface_corrosion;
 			// Broad weathering and fine relief have separate physical scales. Local
 			// coordinates keep both attached to moving and rotating assemblies.
+			if (surface_paint_wear > 0.0) {
+				// UV belongs to the original body piece, so a baked chassis retains
+				// panel edges without drawing a repeated grid across the vehicle.
+				vec2 border = min(UV, vec2(1.0) - UV);
+				float edge_distance = min(border.x, border.y);
+				float aa = max(fwidth(edge_distance), 0.0001);
+				float broken = tnoise(tp.xz * 430.0 + tp.y * 237.0);
+				paint_edge = (1.0 - smoothstep(0.004, 0.022 + aa, edge_distance)) * surface_paint_wear * min(1.0, 0.022 / aa);
+				paint_chip = paint_edge * smoothstep(0.51, 0.69, broken);
+				paint_edge *= 0.3 + 0.7 * tnoise(tp.xz * 85.0 + tp.y * 43.0);
+				// Narrow runoff, with irregular lengths, reads down upright skins.
+				float runs = tnoise(vec2((tp.x + tp.z) * 100.0, tp.y * 8.0));
+				paint_stain = smoothstep(0.60, 0.78, runs) * (1.0 - abs(normalize(tn).y)) * surface_paint_wear;
+				r += paint_stain * 0.18;
+			}
 			float broad = tnoise(tp.xz * 18.0 + tp.y * 3.7);
 			float streak = tnoise(vec2((tp.x + tp.z) * 130.0, tp.y * 9.0));
 			float upward = smoothstep(0.15, 0.8, normalize(tn).y);
@@ -1227,6 +1255,12 @@ void fragment() {
 				float weave = sin(grain_uv.x * 1256.637) * sin(grain_uv.y * 1256.637);
 				h += weave * 0.12 * surface_grain * keep(0.005, pixel);
 				col *= 1.0 + (detail.a - 0.5) * 0.32;
+				// Sewn panels supply UVs; ordinary cloth meshes keep their own weave.
+				vec2 hem = min(UV, vec2(1.0) - UV);
+				float hem_distance = min(hem.x, hem.y);
+				float stitch = (1.0 - smoothstep(0.006, 0.015, abs(hem_distance - 0.035)))
+					* step(0.45, fract((UV.x + UV.y) * 65.0)) * keep(0.018, pixel);
+				col *= 1.0 + stitch * 0.28;
 			} else if (surface_finish == 1 || surface_finish == 7 || surface_finish == 4) {
 				h += (grain - 0.5) * surface_grain * keep(0.025, pixel);
 				r += (grain - 0.5) * surface_grain * 0.15;
@@ -1255,6 +1289,12 @@ void fragment() {
 	r = mix(r, 0.94, corrosion);
 	if (vehicle_surface) {
 		col *= 1.0 + finish_fade;
+		col *= 1.0 - paint_stain * 0.08;
+		// Rubbed paint lightens first, with small dark primer chips rather than
+		// bright silver outlining every polygon. Paint stays nonmetallic.
+		col = mix(col, col * 1.35 + vec3(0.025), paint_edge * 0.65);
+		col = mix(col, vec3(0.075, 0.08, 0.07), paint_chip * 0.45);
+		r = mix(r, 0.84, paint_chip);
 		// A thin dry film softens reflections without repainting faction colours.
 		col = mix(col, col * 0.72 + vec3(0.10, 0.085, 0.06), finish_film);
 		r = mix(r, 0.92, finish_film);

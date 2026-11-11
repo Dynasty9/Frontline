@@ -7571,6 +7571,199 @@
         "command": "DISPLAY=:101 godot --path CHECKOUT --rendering-method gl_compatibility --audio-driver Dummy tools/showcase/vehicle-surfaces.tscn -- --surface-out=OUTPUT --surface-single --surface-kinds=heli --surface-focus=0,1.4,-2 --surface-size=5 --surface-ground",
         "camera": "Identical camera, light, seed 3 and frame count. Truck pairs use focus 0,2,-2.8 and size 5. Whole models use bounds framing. Baseline uses the extended harness. Full commands and coverage in docs/vehicle-surface-review/README.md."
       }
+    },
+    {
+      "entry": "changelog/unreleased/military-body-panels.md",
+      "summary": "Material-aware panels, draped canopies and worn military paint.",
+      "medium": "still",
+      "stage": "vehicle-surfaces",
+      "rationale": "Matched whole-vehicle pairs demonstrate camouflage and canopy changes; a separately lit construction sheet shows how material choice changes the panel builder.",
+      "source_ref": "b1db5f4 before; 25a2c2b final pairs; 00d74c5 roster and renderer checks",
+      "sources": [
+        {
+          "file": "docs/military-exterior-review/before-heli.jpg",
+          "sha256": "b01fe3827aad1009e4502a10289829e91dc73c3623af80829885a6ddfe735553",
+          "caption": "before heli (b1db5f4)"
+        },
+        {
+          "file": "docs/military-exterior-review/before-hemtt.jpg",
+          "sha256": "5d9da57117592e893a58141412da55075ee1742784dcb39b297925a9ddfd02ed",
+          "caption": "before hemtt (b1db5f4)"
+        },
+        {
+          "file": "docs/military-exterior-review/before-hunter.jpg",
+          "sha256": "cd445f23a930bc315bdc6367099bc9c7bf1e46dc7ae95826d18cb96b61c4b27a",
+          "caption": "before hunter (b1db5f4)"
+        },
+        {
+          "file": "docs/military-exterior-review/before-offroad.jpg",
+          "sha256": "be782da869d1cb1a0450d9991ca206244a65ecea4c6a01cf951c625fe383cd49",
+          "caption": "before offroad (b1db5f4)"
+        },
+        {
+          "file": "docs/military-exterior-review/before-patrol_ship.jpg",
+          "sha256": "ebbb12997623a0ff4aaff24586e5c1f2d31ad873f6114cd23256668b885bf6b6",
+          "caption": "before patrol_ship (b1db5f4)"
+        },
+        {
+          "file": "docs/military-exterior-review/before-tank.jpg",
+          "sha256": "413d2f22dff48ee569f445330a26f63bd9a203f9eeae4b862eb80e4b33ee1388",
+          "caption": "before tank (b1db5f4)"
+        },
+        {
+          "file": "docs/military-exterior-review/before-tempest.jpg",
+          "sha256": "353b8ab50cb8188f3f74da06896e0edff6e20ad8520719bfe4ab3719b0a334ac",
+          "caption": "before tempest (b1db5f4)"
+        },
+        {
+          "file": "docs/military-exterior-review/before-zamak.jpg",
+          "sha256": "36db88dd86d56010c6dfdc0075c7e6df2b4df597de2aca0070cd2928dad49320",
+          "caption": "before zamak (b1db5f4)"
+        },
+        {
+          "file": "docs/military-exterior-review/after-heli.jpg",
+          "sha256": "b4927b837b7b2da74c0523703f3ae4753e53aedf96b90d087b35c7b5bdcfb9af",
+          "caption": "after heli (25a2c2b)"
+        },
+        {
+          "file": "docs/military-exterior-review/after-hemtt.jpg",
+          "sha256": "c917277a00d62d21f44a0f2dea78e315350a858d2b211e92427d607d06942521",
+          "caption": "after hemtt (25a2c2b)"
+        },
+        {
+          "file": "docs/military-exterior-review/after-hunter.jpg",
+          "sha256": "4f77fa8995024868c1aec18c09be4edc34ee1ba386672dc1880543ab29262956",
+          "caption": "after hunter (25a2c2b)"
+        },
+        {
+          "file": "docs/military-exterior-review/after-offroad.jpg",
+          "sha256": "6a1b1dcf6e51dc6510ef933d98eadd2aff1f4e58bd8ced7a7cf4fd52d6dd0497",
+          "caption": "after offroad (25a2c2b)"
+        },
+        {
+          "file": "docs/military-exterior-review/after-patrol_ship.jpg",
+          "sha256": "85a3de6f9a02476a89b30e35baf095cbeb5ec423d37b48c7d44556d502a18de3",
+          "caption": "after patrol_ship (25a2c2b)"
+        },
+        {
+          "file": "docs/military-exterior-review/after-tank.jpg",
+          "sha256": "66c6c0b4ac7e312f4443bd92d5bf4d536219053a595a76e1e7c4286171667536",
+          "caption": "after tank (25a2c2b)"
+        },
+        {
+          "file": "docs/military-exterior-review/after-tempest.jpg",
+          "sha256": "11f608fd7cb6086d38d3ca7114b1358be0545a4baaa97c67bd0f5d2ca422709a",
+          "caption": "after tempest (25a2c2b)"
+        },
+        {
+          "file": "docs/military-exterior-review/after-zamak.jpg",
+          "sha256": "b92edf4180cced009accdb5774709b04ff40269c5eaf31fd2c6c51bb28f4a60b",
+          "caption": "after zamak (25a2c2b)"
+        },
+        {
+          "file": "docs/military-exterior-review/panels-roster-00.jpg",
+          "sha256": "b29d2abb9606945d90bde98ca21c7c0e6a9d8c9036fc3d71e1123cde68cf3bc2",
+          "caption": "panels roster-00 (25a2c2b)"
+        },
+        {
+          "file": "docs/military-exterior-review/roster-roster-00.jpg",
+          "sha256": "6717843b5cfd70286fa76c58958550b6483e53446f0a96ab84b47a6de03e5530",
+          "caption": "roster roster-00 (00d74c5)"
+        },
+        {
+          "file": "docs/military-exterior-review/roster-roster-01.jpg",
+          "sha256": "2577ca314e2067d81ca9f05483b8444017197b646cbf4c948559778eeff733ae",
+          "caption": "roster roster-01 (00d74c5)"
+        },
+        {
+          "file": "docs/military-exterior-review/roster-roster-02.jpg",
+          "sha256": "e07bc527f49e144d9e998ceec048cc547a33ec895bc6e6105f1379ae3250202a",
+          "caption": "roster roster-02 (00d74c5)"
+        },
+        {
+          "file": "docs/military-exterior-review/roster-roster-03.jpg",
+          "sha256": "c01ceb4c42137fc348b1654d6c5f2d5c99b970a11d6c87ce5707602bc2b766d9",
+          "caption": "roster roster-03 (00d74c5)"
+        },
+        {
+          "file": "docs/military-exterior-review/roster-roster-04.jpg",
+          "sha256": "e5643cd8a4e6f4c88140afcdfa8fd99191c2dedc1a3823c674e86f1398548f58",
+          "caption": "roster roster-04 (00d74c5)"
+        },
+        {
+          "file": "docs/military-exterior-review/roster-roster-05.jpg",
+          "sha256": "be2b0119595c7893e3432ddf90f996e268b59a0f292746a9993c9b29f6d4bdb2",
+          "caption": "roster roster-05 (00d74c5)"
+        },
+        {
+          "file": "docs/military-exterior-review/roster-roster-06.jpg",
+          "sha256": "90dc1210ee900834383e00584d2129c442042582fd6a4abc5d12135b92dab07c",
+          "caption": "roster roster-06 (00d74c5)"
+        },
+        {
+          "file": "docs/military-exterior-review/roster-roster-07.jpg",
+          "sha256": "b9e2747195ab875ec26671b87d1bf8136ea1af76c39189e378e8360d82e2bbaa",
+          "caption": "roster roster-07 (00d74c5)"
+        },
+        {
+          "file": "docs/military-exterior-review/roster-roster-08.jpg",
+          "sha256": "5bb06889cc2c9dab8aab3f25c0182c3c5954f11666ab2e769680e585b3e6302f",
+          "caption": "roster roster-08 (00d74c5)"
+        },
+        {
+          "file": "docs/military-exterior-review/roster-roster-09.jpg",
+          "sha256": "05961f8f1547db6cc007d51e153888d949b9ad8e55ddbff369b1e6005e30e573",
+          "caption": "roster roster-09 (00d74c5)"
+        },
+        {
+          "file": "docs/military-exterior-review/roster-roster-10.jpg",
+          "sha256": "46a56e544ada9a4afdf37e0df0a474e6d2a57276cd0638ea87da50311e02d1a8",
+          "caption": "roster roster-10 (00d74c5)"
+        },
+        {
+          "file": "docs/military-exterior-review/roster-roster-11.jpg",
+          "sha256": "25d0057167a3d5a3db5d8c643c1295065fc58c978570adfb6178eb1244583d00",
+          "caption": "roster roster-11 (00d74c5)"
+        },
+        {
+          "file": "docs/military-exterior-review/forward-roster-00.jpg",
+          "sha256": "0bde0a1ce213a4cacfd67d0982b0bad37fdab77125d38ba9cf8f1464559da6df",
+          "caption": "forward roster-00 (00d74c5)"
+        },
+        {
+          "file": "docs/military-exterior-review/team1-roster-00.jpg",
+          "sha256": "9cc9f942001b298632d1a450d05824d8c1b0a4eda77895f8afcf9eaca9a32e43",
+          "caption": "team1 roster-00 (00d74c5)"
+        },
+        {
+          "file": "changelog/unreleased/military-body-panels/zamak-before.jpg",
+          "sha256": "36db88dd86d56010c6dfdc0075c7e6df2b4df597de2aca0070cd2928dad49320",
+          "caption": "zamak-before"
+        },
+        {
+          "file": "changelog/unreleased/military-body-panels/zamak-after.jpg",
+          "sha256": "b92edf4180cced009accdb5774709b04ff40269c5eaf31fd2c6c51bb28f4a60b",
+          "caption": "zamak-after"
+        },
+        {
+          "file": "changelog/unreleased/military-body-panels/panels.jpg",
+          "sha256": "b29d2abb9606945d90bde98ca21c7c0e6a9d8c9036fc3d71e1123cde68cf3bc2",
+          "caption": "panels"
+        }
+      ],
+      "output": null,
+      "capture": {
+        "before_ref": "b1db5f4",
+        "after_ref": "25a2c2b",
+        "engine": "Godot 4.7.2",
+        "viewport": [
+          1600,
+          900
+        ],
+        "stage": "tools/showcase/vehicle-surfaces.tscn",
+        "command": "godot --path CHECKOUT --rendering-method gl_compatibility --audio-driver Dummy tools/showcase/vehicle-surfaces.tscn -- --surface-out=OUTPUT --surface-single --surface-kinds=tank,zamak,hemtt,tempest,heli,hunter,patrol_ship,offroad --surface-ground",
+        "camera": "Identical bounds framing, direction (1,.65,-1.25), studio light and five process frames per pair; seed 3. Panel stage uses --surface-panels and a front inspection light. Supplementary roster/Forward+/team1 captures use 00d74c5, before reducing two wear opacity constants; see review README."
+      }
     }
   ],
   "layout_capture": {
