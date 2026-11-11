@@ -100,7 +100,18 @@
       "tests/fixtures/support-clips.gd": "0a8bc17010d1460352966c47aa6e3fe1188c0a62a4646c297bf3a60549c27504",
       "scripts/game/vfx.gd": "c8d51f125754bd5925a71e8ce2da0314f4c8802aeecd4a567d34b6823009594d",
       "scripts/autoload/sfx.gd": "9e2e90fd3a3c2fcc5b8f4186432591a6849fb9014b076ccdee4258915a0f07ed",
-      "scripts/game/projectile.gd": "a2c9f6cfd90163c7a0f28cd0b02c23c6f5a141306f7677ec0d146f28f53f0eb6"
+      "scripts/game/projectile.gd": "a2c9f6cfd90163c7a0f28cd0b02c23c6f5a141306f7677ec0d146f28f53f0eb6",
+      "scripts/game/physics_fx.gd": "0e7247e14229d8b707c1bde1d21265183a0de6dae5f09fbd909197621de1a3c9"
     }
+  },
+  "wreck_landing": {
+    "previous_ref": "820353e9de8340c2aaa488eec308f73947036e82",
+    "file": "wreck-landing.webm",
+    "stage": "a10",
+    "recording": "Two native 24 fps Forward+ takes, seed 712, starting at movie time 7.0 s. Crop 480x300 at (850,345). Track the rightmost wreck model and its authoritative landing position after each frame draw.",
+    "previous_backtrack_m": 0.907,
+    "revised_backtrack_m": 0.0,
+    "revised_final_position_error_m": 0.0,
+    "source_sha256": "0e7247e14229d8b707c1bde1d21265183a0de6dae5f09fbd909197621de1a3c9"
   }
 }

@@ -229,6 +229,24 @@ func _ready() -> void:
 	v._decals[-1][1] = 135.0
 	v._view_process(0.1)
 	check(recycled.modulate.a > 0.0 and recycled.modulate.a < 0.125, "Scorch fade retains its original strength")
+	# A tossed wreck and its static cover share one landing point. Even if
+	# the cosmetic body stops short, the model must arrive during the hop.
+	var phys := PhysicsFx.new(field)
+	field.add_child(phys)
+	var wreck := Structure.new()
+	wreck.skind = "wreck"
+	wreck.world = field
+	wreck.position = Vector3(1, 40, 0)
+	field.add_child(wreck)
+	var hull := Node3D.new()
+	wreck.add_child(hull)
+	phys.toss(wreck, hull, Transform3D(Basis.IDENTITY, Vector3(0, 40, 0)), Vector3(2.5, 4, 0), Vector3.ZERO, Vector3(2, 1, 4), 2500)
+	var last_x := hull.global_position.x
+	for i in 12:
+		phys._process(1.0 / 24.0)
+		check(hull.global_position.x >= last_x and hull.global_position.x <= 1.001, "Wreck moves toward its landing spot without reversing")
+		last_x = hull.global_position.x
+	check(hull.transform.is_equal_approx(Transform3D.IDENTITY) and phys._tosses.is_empty(), "Wreck is at rest when the planned flight ends")
 	field.free()
 	trail.queue_free()
 	if Music._task >= 0:

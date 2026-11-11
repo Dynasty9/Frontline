@@ -49,7 +49,8 @@
       "id": "a10",
       "name": "A-10C Thunderbolt II Gun Run",
       "group": "Gun runs",
-      "after_starts_seconds": 12
+      "after_starts_seconds": 12,
+      "wreck_landing_source_sha256": "0e7247e14229d8b707c1bde1d21265183a0de6dae5f09fbd909197621de1a3c9"
     },
     {
       "id": "wipeout",

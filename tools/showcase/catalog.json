@@ -6406,7 +6406,7 @@
         },
         {
           "file": "changelog/unreleased/blast-impact-and-sound/capture.json",
-          "sha256": "112d1039a55b91d35b37876771b360c4489ad4e1458ba9123fda1b7c8bec3546",
+          "sha256": "a63aa21ed0178b702b916b7e54105ddf2305d9b632b7a2dff5df8a6a0a2e579f",
           "caption": "capture.json"
         },
         {
@@ -6422,12 +6422,22 @@
         {
           "file": "changelog/unreleased/blast-impact-and-sound/impact-comparison.webm",
           "caption": "impact-comparison.webm",
-          "sha256": "1d9f6786a2b058d5a07fdf99c33c55133ff7d3895e8b65077df385922b142900"
+          "sha256": "3f6e2c69e3b666c9249356179d764e9d43c99609ac475b7cf2e50466bf94dc36"
         },
         {
           "file": "changelog/unreleased/blast-impact-and-sound/impact-comparison.jpg",
           "caption": "impact-comparison.jpg",
-          "sha256": "db838a1b7031d4da91f326b4a4ab98dcdf7fb22661789c6e7be53e4f3fa2714f"
+          "sha256": "ef2fce9d33dab065d5391864b9e56b292fafabbb22df40c0479aec5593de45e4"
+        },
+        {
+          "file": "changelog/unreleased/blast-impact-and-sound/wreck-landing.webm",
+          "caption": "Rightmost wreck landing comparison",
+          "sha256": "a97670279fee1ab68116b3baec1d380a31d0cba7e4b8eb98ede87b7cdb850011"
+        },
+        {
+          "file": "changelog/unreleased/blast-impact-and-sound/wreck-landing.jpg",
+          "caption": "Rightmost wreck landing comparison",
+          "sha256": "d6522f8f7b81bc60d9bf79169bc3ad7ffe8c06ed0d8b7448a5f0f24c785d63c5"
         }
       ],
       "output": null,
@@ -6444,12 +6454,12 @@
       "sources": [
         {
           "file": "changelog/unreleased/support-callin-previews/a10.jpg",
-          "sha256": "8e47154530bedcfcd1efe72c2758f14225d1b5049c546d155b011499d80d702b",
+          "sha256": "41b2b54ee13b5524c639399ea5c391b1f421492a8ad11e9d0851890d3f246035",
           "caption": "a10.jpg"
         },
         {
           "file": "changelog/unreleased/support-callin-previews/a10.webm",
-          "sha256": "5e9abcac9bfdf1f3e2753eb3bfa39a7c43985c7d54503f48c9be9d0717bf18c9",
+          "sha256": "e849481ebcb34e4a8ae761c4117a7be1f575452616abfd4e319f844f9a102c7a",
           "caption": "a10.webm"
         },
         {
@@ -6524,7 +6534,7 @@
         },
         {
           "file": "changelog/unreleased/support-callin-previews/capture.json",
-          "sha256": "207fac66418fb32bb5b7fc71348549d4fd48a3a29eebbbe10c7ace14b443d2fe",
+          "sha256": "be9c4875b688a724461f60ad1d4c64078ed4869b4648047aebc28e7c070d6040",
           "caption": "capture.json"
         },
         {

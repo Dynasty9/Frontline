@@ -9,6 +9,11 @@ poster = "impact-comparison.jpg"
 caption = "Same gun run, camera and instant. The previous take is above and the revised take below. Listen to the gun report decay. At 2 seconds grass shows between the revised bursts. At 5 seconds the center wreck is burning low while smoke still rises from the outer vehicles."
 
 [[videos]]
+file = "wreck-landing.webm"
+poster = "wreck-landing.jpg"
+caption = "Rightmost A-10 target at the same game time. The lower wreck lands once and stays beside its impact mark."
+
+[[videos]]
 file = "cover.webm"
 poster = "cover.jpg"
 caption = "Sandbag-height view. Compare the low dust behind the middle of the wall at 2 s and 10 s. The upper cloud rises over the bags in both takes."
