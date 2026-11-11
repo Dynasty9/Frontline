@@ -283,6 +283,7 @@ Scenarios, AI-vs-AI battles and missions run offline: they take no port, so any 
 --focus-fob=0|1                                       keep the camera on that side's first FOB
 --focus-town[=dx,dz] / --focus-decor=kind[,n]         camera on the town, or on a piece of street furniture
 --focus-vehicle=kind[,n]                              camera on the nth vehicle of a kind (zero-based, first by default)
+--focus-vehicle-at=SECONDS                            switch to that vehicle at this simulation time (default 1 second)
 --blast-at=X,Z,SIZE,TIME                              a real explosion at that spot and time (physics tests);
                                                       X,Z of "f,DX" is DX metres beside the camera's focus (or "v:KIND,DX"
                                                       beside the first vehicle of that kind)
