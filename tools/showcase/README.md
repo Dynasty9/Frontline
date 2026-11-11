@@ -99,7 +99,7 @@ godot --embedded --debug --ignore-error-breaks --path . --fixed-fps 30 --write-m
 
 On other platforms omit the three macOS embedded-mode switches. For a live presentation on macOS, omit them as well. The showcase capture tool and opt-in renderer tests select embedded mode automatically on macOS. Set `FL_SHOW_WINDOW=1` to see those runs. For a manually launched standalone Compatibility fixture, pass the same size in `FL_CAPTURE_SIZE` and `--resolution` (for example, `1280x720`). Godot 4.7.2 can report an empty OpenGL drawable until an editor host sends a resize.
 
-Add `--ridge-seed=13` after the final `--` to see a different route and winner. Each crew chooses among supply posts, relay posts and a forward objective. The west ridge uses the game’s Abrams rig and the east ridge its T-55A. The opening overlook shows their separation. The optical insert uses a camera on the Abrams turret and filters the soundtrack while the eyepiece is on screen. The camera follows their decisions, and the capture ends after the winning shot. The published movie uses 60 samples per second, averaged in pairs for a 30 fps delivery. To capture that rate, set both frame-rate arguments to 60. Keep the pose export at 30 fps.
+Add `--ridge-seed=13` after the final `--` to see a different route and winner. Each crew chooses among supply posts, relay posts and a forward objective. The west ridge uses the game’s Abrams rig and the east ridge its T-55A. The opening overlook shows their separation. The optical insert uses a camera on the Abrams turret and filters the soundtrack while the eyepiece is on screen. The camera follows their decisions, and the capture ends after the winning shot. The one-minute movie uses the 30 fps capture above. Pass `--verify-ridge-duel` after the final `--` to log each camera cut in 60 Hz simulation ticks. Keep the pose export at 30 fps.
 
 The [1440p Godot recording](../../design/footage/abrams-ridge-duel-in-game.mp4) shows the live encounter for seed 712. The [earlier Cycles film](../../design/footage/abrams-ridge-duel-cinematic.mp4) preserves the original choreographed encounter. The exporter below records the current AI run for a fresh Cycles render. The eyepiece glass and the game’s relit explosion sprites are part of the native Godot recording.
 
@@ -132,11 +132,11 @@ blender -b --factory-startup --python-exit-code 1 --python tools/showcase/ridge_
 
 Run from frame zero for a changed take. For an interrupted render of the
 same take and settings, add `--resume`. Mux the numbered frames with the
-matching stereo recording. For the default seed this example uses the published game recording.
+matching stereo recording. Use the audio from the native recording of the same take.
 
 ```sh
 ffmpeg -framerate 30 -i /tmp/abrams-frames/%04d.png \
-  -i design/footage/abrams-ridge-duel-in-game.mp4 -map 0:v:0 -map 1:a:0 \
+  -i changelog/unreleased/abrams-on-the-ridge/abrams-ridge-duel.mp4 -map 0:v:0 -map 1:a:0 \
   -vf 'scale=out_color_matrix=bt709:out_range=tv,format=yuv420p' -c:v libx264 \
   -crf 17 -preset slow -colorspace bt709 -color_primaries bt709 -color_trc bt709 \
   -c:a copy -movflags +faststart /tmp/abrams-cinematic.mp4

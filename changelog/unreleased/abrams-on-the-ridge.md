@@ -1,12 +1,12 @@
 +++
 title = "The Abrams on the ridge"
-summary = "Watch the Abrams fire as the camera cuts out of its sight. Thin exhaust trails moving tanks, and a damaged engine sends darker smoke through the deck."
+summary = "Follow the Abrams and T-55A across two ridges in a one-minute film. Longer shots introduce each tank, and you can hear its tracks under the engine as it climbs."
 kind = "improved"
 
 [[videos]]
 file = "abrams-ridge-duel.mp4"
 poster = "survivor.jpg"
-caption = "An Abrams and a T-55A cross opposing crests. The eyepiece gives way to the firing Abrams. An overhead view catches the muzzle dust, a hillside camera follows falling dirt, and a rear view shows the engine fire."
+caption = "The sand Abrams points right and the green T-55A points left as they crest their ridges. Watch the zoom through the Abrams sight, then follow the ground strike and the engine fire."
 
 [[videos]]
 file = "grille-fire.mp4"
@@ -68,4 +68,4 @@ A hard hit in a match can bend the outer skirt. It stays bent on the wreck, or e
 
 Weathering stays attached to moving metal fittings and rubber tyres. The opening overlook shows the valley between the sand Abrams and the green T-55A. Its tread leaves two rows of paired pad prints that fade on stony ground. Both tanks keep their detailed paint in the long-lens shots. The T-55A carries four spare track links above the sloping nose. Its headlamp guards stand clear of the lenses. It has exposed road wheels, a rounded turret and a separate diesel note. In the film the turret turns while the hull climbs, and the barrel settles separately over the crest.
 
-Each crew in the ridge film chooses where to move next as the relay score changes. Either crew can reach the forward objective first. A trackside camera stays on the hill as the loaded wheels pass. The knockout shot begins while the Abrams is still moving and holds as the panel tears, the tracks stop and the barrel settles. A flash lights the hull, debris falls, and smoke rises into the wind. A glancing hit throws a short bright streak. The camera jolts on nearby shots and impacts when camera shake is enabled. After the knockout, the hottest parts of the engine fire show through the grille. The same folds cool and darken as they rise in the wind. Broken clods settle into the soil around the crater. In the final shot the camera comes around to the surviving tank’s flank, where grass lies pressed beneath the tracks.
+Each crew in the ridge film chooses where to move next as the relay score changes. Either crew can reach the forward objective first. A low camera follows the wheels and the impressions they leave in the hill. The knockout shot begins while the Abrams is still moving and holds as the panel tears, the tracks stop and the barrel settles. A flash lights the hull, debris falls, and smoke rises into the wind. A glancing hit throws a short bright streak with a brief metallic scrape. The camera jolts on nearby shots and impacts when camera shake is enabled. After the knockout, the hottest parts of the engine fire show through the grille. The same folds cool and darken as they rise in the wind. Broken clods settle into the soil around the crater. In the final shot the camera comes around to the surviving tank’s flank, where grass lies pressed beneath the tracks.

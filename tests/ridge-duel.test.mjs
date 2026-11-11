@@ -11,7 +11,9 @@ async function play(seed, fps) {
   ], { timeout: 150_000 });
   assert.doesNotMatch(stdout + stderr, /SCRIPT ERROR|Parse Error/);
   assert.match(stdout, /RIDGE_DUEL verified/);
-  return JSON.parse(stdout.match(/RIDGE_RESULT (.*)/)[1]);
+  const result = JSON.parse(stdout.match(/RIDGE_RESULT (.*)/)[1]);
+  result.cutTicks = Array.from(stdout.matchAll(/^RIDGE_CUT (\d+) /gm), match => Number(match[1]));
+  return result;
 }
 
 test("ridge drivers choose different routes and either crew can win", async () => {
@@ -27,6 +29,11 @@ test("ridge drivers choose different routes and either crew can win", async () =
     assert.ok(run.visits.every(([a, b]) => a + b >= 1));
     assert.equal(run.visits[run.winner][4], 1);
   }
+  assert.ok(original.ticks >= 55 * 60, "The feature cut should run at least 55 seconds");
+  const boundaries = [...original.cutTicks, original.ticks];
+  assert.equal(original.cutTicks.length, original.cuts);
+  assert.ok(boundaries.slice(1).every((tick, i) => tick - boundaries[i] >= 3 * 60),
+    "Each shot in the published seed should hold for at least three seconds");
   const optic = original.shots.indexOf("optic");
   assert.deepEqual(original.shots.slice(optic, optic + 3), ["optic", "firing", "overhead"]);
   assert.ok(original.dirt_hits > 0 && original.glances > 0 && original.shots.includes("ground"));

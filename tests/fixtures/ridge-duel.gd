@@ -81,8 +81,8 @@ var camera := Camera3D.new()
 var listener := AudioListener3D.new()
 var tanks: Array[StageTank] = []
 const MARKS_PER_METRE := 48.0
-const MARK_SPAN := Vector2(96, 32)
-var marks := Image.create(4608, 1536, false, Image.FORMAT_L8)
+const MARK_SPAN := Vector2(152, 32)
+var marks := Image.create(int(MARK_SPAN.x * MARKS_PER_METRE), int(MARK_SPAN.y * MARKS_PER_METRE), false, Image.FORMAT_L8)
 var mark_texture: ImageTexture
 var shoe_contacts := {}
 var marks_dirty := false
@@ -95,14 +95,13 @@ var contest: Contest
 var battle_seed := 712
 var sim_tick := 0
 var accumulated := 0.0
-var end_time := 85.0
+var end_time := 120.0
 var pending: Array[Dictionary] = []
 var glances := 0
 var dirt_hits := 0
 var last_was_dirt := false
 var camera_kick := 0.0
 var kick_time := -1.0
-var last_hit_side := -1
 var last_hit_time := -100.0
 var eyepiece := ColorRect.new()
 var shots_seen: Array[String] = []
@@ -184,7 +183,7 @@ func _ready() -> void:
 		tank.srv = true
 		tank.hp = 100
 		tank.max_hp = 100
-		tank.position = Contest.position_of(i, Vector2(-17.0 - contest.drivers[i].rng.randf_range(0.0, 2.0), 0))
+		tank.position = Contest.position_of(i, Vector2(-42.0 - contest.drivers[i].rng.randf_range(0.0, 2.0), 0))
 		tank.position.y = field.ground_y(tank.position)
 		tank.rotation.y = Defs.yaw_of(Defs.flat(contest.destination(i) - tank.position))
 		tank.speed = 1.35
@@ -223,7 +222,7 @@ func _ready() -> void:
 	tanks[1].target = tanks[0]
 	for tank in tanks:
 		tank.turret_yaw = Defs.yaw_of(Defs.flat(tank.target.position - tank.position)) - tank.rotation.y
-	wind = Sfx.make_ambience("wind", -18.0)
+	wind = Sfx.make_ambience("wind", -15.0)
 	add_child(wind)
 	add_child(camera)
 	camera.current = true
@@ -237,7 +236,7 @@ func _ready() -> void:
 	get_viewport().msaa_3d = Viewport.MSAA_4X
 	add_child(listener)
 	listener.make_current()
-	cabin_filter.cutoff_hz = 1900.0
+	cabin_filter.cutoff_hz = 1450.0
 	AudioServer.add_bus_effect(0, cabin_filter)
 	_mic_bus(REPORT_BUS, gun_delay)
 	_mic_bus(IMPACT_BUS, hit_delay)
@@ -279,7 +278,7 @@ func _drive(tank: StageTank, i: int, dt: float) -> void:
 		tank.rotation.y = steer.x
 		tank.yaw_rate = steer.y
 		var alignment := maxf(0.0, cos(wrapf(heading - steer.x, -PI, PI)))
-		var limit := 2.35 if reverse else 4.4
+		var limit := 2.1 if reverse else 3.2
 		driven_speed = minf(limit, sqrt(2.0 * 2.5 * maxf(0.0, distance - 0.8))) * alignment * (-1.0 if reverse else 1.0)
 	else:
 		tank.yaw_rate = move_toward(tank.yaw_rate, 0.0, dt)
@@ -394,7 +393,7 @@ func _volley(i: int, decisive: bool) -> void:
 		listener.global_transform = camera.global_transform
 		if verify:
 			assert(_in_picture(muzzle), "The exterior camera must see the firing muzzle on the shot tick")
-	elif ground and "overhead" in shots_seen and camera_mode not in ["knockout", "firing"]:
+	elif ground and "overhead" in shots_seen and camera_age >= 3.0 and camera_mode not in ["knockout", "push", "ground"]:
 		_cut("ground", 1 - i)
 		camera_anchor = at
 		_shot(float(sim_tick) / SIM_HZ)
@@ -409,7 +408,6 @@ func _impact(event: Dictionary) -> void:
 	var i: int = event.side
 	var struck := tanks[i]
 	var contact: Vector3 = event.at
-	last_hit_side = i
 	last_was_dirt = event.ground
 	_kick_camera(contact, 1.35 if event.decisive else 0.8)
 	last_hit_time = float(sim_tick) / SIM_HZ
@@ -439,12 +437,12 @@ func _impact(event: Dictionary) -> void:
 		if not struck.plate.exposed:
 			struck.plate.take_hit()
 		struck.disable()
-		end_time = ceilf(last_hit_time + 7.0)
+		end_time = ceilf(last_hit_time + 13.0)
 	else:
 		glances += 1
 		var skip := (normal * 0.45 + struck.model.global_basis.z + Vector3.UP * 0.28).normalized()
 		field.fx.gunfx.ricochet(contact, skip, true)
-		Sfx.play("ricochet", contact, -3.0, 1.0, IMPACT_BUS)
+		Sfx.play("ricochet", contact, -9.0, 0.90, IMPACT_BUS)
 
 func _process(dt: float) -> void:
 	if capture_fps > 0:
@@ -460,7 +458,9 @@ func _process(dt: float) -> void:
 		marks_dirty = false
 	camera_age += dt
 	_shot(elapsed)
-	listener.global_transform = listener.global_transform.interpolate_with(camera.global_transform, 1.0 - exp(-dt * 13.0))
+	# Cut the microphone with the picture. Sweeping it across the valley
+	# briefly pans and amplifies sources outside either shot.
+	listener.global_transform = camera.global_transform
 	var fade := smoothstep(end_time - 0.8, end_time - 0.25, elapsed)
 	AudioServer.set_bus_volume_db(AudioServer.get_bus_index(&"Master"), -42.0 * fade)
 	if elapsed >= end_time - 0.25 and Sfx.enabled:
@@ -508,14 +508,14 @@ func _cut(mode: String, i: int) -> void:
 		shots_seen.append(mode)
 	camera_side = i
 	camera_anchor = tanks[i].position
-	if mode == "tracks":
-		camera_anchor = tanks[i].to_global(Vector3(5.6, 1.25, 4.1))
-	elif mode == "knockout":
+	if mode == "knockout":
 		var tank := tanks[i]
 		var side := signf(tank.model.to_local(tank.plate.global_position).x)
 		camera_anchor = tank.to_global(Vector3(side * 12.4, 2.55, -7.5))
 	camera_age = 0.0
 	camera_cuts += 1
+	if verify:
+		print("RIDGE_CUT ", sim_tick, " ", mode, " ", i)
 
 func _shot(t: float) -> void:
 	if camera_mode.is_empty():
@@ -523,68 +523,57 @@ func _shot(t: float) -> void:
 	elif contest.winner >= 0:
 		var struck := 1 - contest.winner
 		var mode := "knockout"
-		if t > end_time - 2.0:
+		if t > end_time - 4.0:
 			mode = "wide"
-		elif tanks[struck].disabled and t - last_hit_time > 2.25:
+		elif tanks[struck].disabled and t - last_hit_time > 4.0:
 			mode = "engine"
 		if camera_mode != mode:
 			_cut(mode, contest.winner if mode == "wide" else struck)
-	elif camera_mode == "firing":
-		if camera_age >= 1.2:
-			_cut("overhead", camera_side)
-	elif camera_mode == "overhead":
-		if camera_age >= 2.1:
-			_cut("climb", camera_side)
-	elif camera_mode == "ground" and camera_age < 2.6:
-		pass
-	elif camera_mode in ["push", "knockout"]:
-		# A driver pausing at the final post gives the camera time to see
-		# the other tank intact before the panel breaks away.
-		if camera_mode == "push":
-			for i in 2:
-				if contest.drivers[i].advance and contest.drivers[i].hold > 0.0:
-					_cut("knockout", 1 - i)
-					break
-	else:
+	elif camera_mode == "overview" and camera_age >= 4.0:
+		_cut("wide", 0)
+	elif camera_mode == "wide" and camera_age >= 4.0:
+		_cut("distant", 1)
+	elif camera_mode == "distant" and "optic" not in shots_seen and camera_age >= 4.0:
+		_cut("optic", 0)
+	elif camera_mode == "firing" and camera_age >= 3.5:
+		_cut("overhead", camera_side)
+	elif camera_mode == "overhead" and camera_age >= 3.5:
+		_cut("tracks", camera_side)
+	elif camera_mode == "push":
+		for i in 2:
+			if contest.drivers[i].advance and contest.drivers[i].hold > 0.0 and camera_age >= 3.0:
+				_cut("knockout", 1 - i)
+				break
+	elif camera_mode in ["tracks", "ground", "climb", "distant"] and "overhead" in shots_seen and camera_age >= 4.0:
 		if contest.drivers[0].advance or contest.drivers[1].advance:
-			_cut("push", 0 if contest.drivers[0].advance else 1)
-		elif camera_mode == "overview" and camera_age > 2.0:
-			_cut("wide", 0)
-		elif camera_mode == "wide" and camera_age > 1.45:
-			_cut("optic", 0)
-		elif camera_mode == "optic":
-			pass  # The gun event makes the exterior cut.
-		elif camera_mode == "climb" and "tracks" not in shots_seen and camera_age > 2.4:
-			_cut("tracks", 0)
-		elif camera_mode == "tracks" and camera_age > 2.0:
-			_cut("distant", 1)
-		elif last_hit_side >= 0 and t - last_hit_time < 0.22 and camera_age > 1.4:
-			_cut("impact", last_hit_side)
-		elif camera_age > 4.1:
-			_cut("climb" if camera_mode == "distant" else "distant", 1 - camera_side)
+			var leader := 0 if contest.drivers[0].advance else 1
+			if Defs.flat(tanks[leader].position - contest.destination(leader)).length() < 9.0:
+				_cut("knockout", 1 - leader)
+			else:
+				_cut("push", leader)
+		elif camera_age >= 6.0:
+			_cut("climb" if camera_mode != "climb" else "distant", 1 - camera_side)
 	var own := tanks[camera_side].position
 	var facing := 1.0 if camera_side == 0 else -1.0
 	var aim := own + Vector3.UP * 1.25
 	match camera_mode:
 		"overview":
 			# Look along the valley so the foreground tank reads at this distance.
-			camera.position = Vector3(-239, 27, 38)
+			camera.position = Vector3(-263, 32, 46)
 			var near_ray := camera.position.direction_to(tanks[0].position + Vector3.UP)
 			var far_ray := camera.position.direction_to(tanks[1].position + Vector3.UP)
 			aim = camera.position + (near_ray + far_ray).normalized()
 			camera.fov = 36
 		"optic":
 			camera.position = tanks[0].turret.to_global(Vector3(0.72, 1.18, -1.12))
-			aim = Contest.position_of(1, Vector2.ZERO)
-			aim.z += 1.8
-			aim.y = field.ground_y(aim) + 1.15
+			aim = tanks[1].turret.global_position + Vector3.UP * 0.4
 			# Hold the landscape first. Changing focal length keeps the lens
 			# on the same part of the ridge as the vehicle crosses the frame.
 			var zoom := smoothstep(0.40, 1.65, camera_age)
 			camera.fov = rad_to_deg(2.0 * atan(tan(deg_to_rad(8.0) * 0.5) / lerpf(1.0, 4.8, zoom)))
 		"wide":
 			if contest.winner < 0:
-				camera.position = own + Vector3(7.8 * facing, 3.3, 9.5 * facing)
+				camera.position = own + Vector3(7.8 * facing, 3.3, 9.5)
 				camera.fov = 37
 				aim.x += facing * 0.95
 			else:
@@ -593,7 +582,7 @@ func _shot(t: float) -> void:
 				var tank := tanks[camera_side]
 				var barrel := Defs.flat(tank.muzzle_world(true) - tank._vm.gun_mount.global_position).normalized()
 				var flank := barrel.cross(Vector3.UP)
-				if flank.z > 0:
+				if flank.z < 0:
 					flank = -flank
 				camera.position = own + flank * 12.8 + barrel * 7.0 + Vector3.UP * 1.85
 				aim = own + Vector3.UP * 1.25 + barrel * 0.95
@@ -602,29 +591,28 @@ func _shot(t: float) -> void:
 			var tank := tanks[camera_side]
 			var axis := Defs.flat(tank.muzzle_world(true) - tank.position).normalized()
 			var flank := axis.cross(Vector3.UP)
-			if flank.dot(tank.plate.global_position - own) < 0.0:
+			if flank.z < 0.0:
 				flank = -flank
 			if camera_mode == "firing":
 				camera.position = own + flank * 14.5 + axis * 3.0 + Vector3.UP * 2.8
 				aim += axis * 1.65
 				camera.fov = 37
 			else:
-				camera.position = own + Vector3.UP * 21.0 + flank * 4.0 - axis * 3.0
+				camera.position = own + Vector3(0, 17, 14)
 				aim += axis * 1.5
 				camera.fov = 48
 		"ground":
-			camera.position = camera_anchor + Vector3(8 * facing, 3.5, 13 * facing)
-			aim = camera_anchor + Vector3.UP * 1.65
-			camera.fov = 34
+			aim = camera_anchor.lerp(own, 0.5) + Vector3.UP * 1.3
+			camera.position = aim + Vector3(8 * facing, 3.3, 18)
+			camera.fov = 40
 		"tracks":
-			var tank := tanks[camera_side]
-			camera.position = camera_anchor
-			aim = tank.model.to_global(Vector3(1.45, 0.18, 1.95))
+			camera.position = own + Vector3(-3 * facing, 1.15, 8.8)
+			aim = own + Vector3.UP * 0.7
 			camera.fov = 40
 		"distant":
-			# A lens on the valley side keeps the crest and intervening ground in view.
-			camera.position = Vector3(facing * -69, 3.4, 22 * facing)
-			camera.fov = 8.0
+			# Keep the opposite skyline visible while the rounded turret clears it.
+			camera.position = own + Vector3(19 * facing, 5.2, 33)
+			camera.fov = 18.0
 			aim.y += 0.4
 		"engine":
 			var tank := tanks[camera_side]
@@ -638,16 +626,12 @@ func _shot(t: float) -> void:
 			var barrel := Defs.flat(tank._vm.gun_mount.global_position.direction_to(tank.muzzle_world(true)))
 			aim = own + Vector3.UP * 1.25 + barrel * 0.85
 			camera.fov = 34.0
-		"impact":
-			camera.position = own + Vector3(14.0 * facing, 4.8, 6.4 * facing)
-			camera.fov = 40
-			aim.x += facing * 0.95
 		"push":
-			camera.position = camera_anchor + Vector3(9 * facing, 3.5, 18 * facing)
+			camera.position = camera_anchor + Vector3(9 * facing, 3.5, 18)
 			camera.fov = 35
 			aim.x += facing * 1.25
 		_:
-			camera.position = own + Vector3(-5.6 * facing, 2.8, 9.9 * facing)
+			camera.position = own + Vector3(-5.6 * facing, 2.8, 9.9)
 			camera.fov = 43
 			aim.x += facing * 0.85
 	camera.position.y = maxf(camera.position.y, field.ground_y(camera.position) + 0.7)

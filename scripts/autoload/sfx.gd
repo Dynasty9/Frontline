@@ -345,15 +345,18 @@ func _boom(rng: RandomNumberGenerator, dur: float, vol: float, base_hz: float) -
 
 
 func _ricochet(rng: RandomNumberGenerator) -> AudioStreamWAV:
-	var n := int(0.35 * RATE)
+	var n := int(0.19 * RATE)
 	var s := PackedFloat32Array()
 	s.resize(n)
-	var ph := 0.0
+	var previous := 0.0
 	for i in n:
 		var t := float(i) / RATE
-		var f := 3400.0 - t * 5000.0
-		ph += TAU * f / RATE
-		s[i] = (sin(ph) * 0.5 + (rng.randf() - 0.5) * 0.15) * exp(-t * 9.0)
+		var grit := rng.randf_range(-1.0, 1.0)
+		# A short scrape and two damped metal modes leave room for the strike.
+		var scrape := (grit - previous) * 0.16 * exp(-t * 46.0)
+		var ring := sin(TAU * 724.0 * t) * 0.14 + sin(TAU * 1183.0 * t) * 0.08
+		s[i] = (scrape + ring * exp(-t * 37.0)) * minf(t * 1800.0, 1.0)
+		previous = grit
 	return _wav(s)
 
 

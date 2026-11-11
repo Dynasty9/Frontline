@@ -37,7 +37,7 @@ class Driver:
 				best = utility
 				post = j
 		advance = post == Post.OBJECTIVE
-		patience = rng.randf_range(0.65, 1.25)
+		patience = rng.randf_range(3.65, 4.25)
 		hold = 0.0
 
 var drivers: Array[Driver] = []

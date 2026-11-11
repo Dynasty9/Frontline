@@ -8194,13 +8194,13 @@
       "medium": "motion",
       "stage": "tests/fixtures/ridge-duel.tscn",
       "rationale": "The firing cut shows recoil on discharge. The overhead view shows track marks beneath the hull, the hillside view holds on settling dirt, and the rear view shows where the smoke starts. A higher rear angle shows the hot base and cooling smoke at the exposed grille.",
-      "source_ref": "Native ridge capture on main 2dad9d2. Firing and engine-deck comparison against 6372fec. Nose and smoke comparison against 7e8c5bc. Track-clearance comparison uses 44ed4a6 and efc082f. Grille fire comparison against 6ed583d.",
+      "source_ref": "One-minute native Metal capture, seed 712 at 30 fps, from the ridge fixture on the Abrams film PR. The earlier 31-second edit is at 320865b. Firing and engine-deck comparison against 6372fec. Nose and smoke comparison against 7e8c5bc. Track-clearance comparison uses 44ed4a6 and efc082f. Grille fire comparison against 6ed583d.",
       "attribution": "Controlled Godot scene, seed 712. The game rig, audio recordings and environment credits are documented in assets/vehicles, assets/audio/tracked and tests/fixtures/ridge-light. The plate in the film is a breakaway prop.",
       "sources": [
         {
           "file": "changelog/unreleased/abrams-on-the-ridge/abrams-ridge-duel.mp4",
-          "sha256": "a0f87e84e18f7f8021b9c6f2380500bc2ce23c6f43146b97fba66cefc3ebca06",
-          "caption": "The in-game Abrams and T-55A on opposing ridges, with the turret optic, track insert and final wreck."
+          "sha256": "e7827714bf72c6e01588f4935834ae53f477d4892587b78d005f28fcc642ec2f",
+          "caption": "One minute across the ridges. Both tanks appear in profile before the scope zoom, and the final hit stays in frame through the first smoke."
         },
         {
           "file": "changelog/unreleased/abrams-on-the-ridge/before.jpg",
@@ -8249,7 +8249,7 @@
         },
         {
           "file": "changelog/unreleased/abrams-on-the-ridge/survivor.jpg",
-          "sha256": "db5410ea38084f74b968bdc11403481a27ef522d2db87a05d33e1d4753d2a8f5",
+          "sha256": "464f1eb8ad320d82cfe4b7ca0c02499822ee3ac4b7572312f24395d6190464ec",
           "caption": "The T-55A on the hillside in the final frame of the film."
         },
         {
