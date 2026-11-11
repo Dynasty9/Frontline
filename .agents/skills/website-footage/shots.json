@@ -57,11 +57,11 @@
       "about": "A chase camera joins the support jet on the same seeded pass over the harbour."
     },
     "trailer-harbour-finale": {
-      "scene": "res://tools/showcase/airstrike-camera.tscn",
+      "scene": "res://tools/showcase/trailer-review/formation-pass.tscn",
       "frames": 450,
       "args": ["--preset=high", "--seed=3", "--set=volume:0.8,vol_effects:0.85,vol_music:0,battle_music:false,vol_ambience:0.28,vol_ui:0,mute_bg:false,wildlife:0,edge_pan:false", "--mission=beachhead", "--focus=372,-10", "--zoom=58", "--pitch=-17", "--cam-yaw=1.2", "--demo-support=airstrike", "--demo-at=3"],
       "shows": ["airstrike", "harbour"],
-      "about": "Follow the jet to release, then hold the ship and the returning sheets of water in the same frame."
+      "about": "Fly alongside the jet as it overtakes the camera. Keep the coastline and patrol boat beneath its wing before the cut back to the water."
     },
     "trailer-harbour-quarter": {
       "frames": 450,
