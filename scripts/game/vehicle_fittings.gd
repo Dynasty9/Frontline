@@ -276,3 +276,23 @@ static func _mirror_glass(size: Vector2) -> ArrayMesh:
 	var mesh := surface.commit()
 	_mirror_faces[size] = mesh
 	return mesh
+
+
+## Pressed 20-litre fuel can. Center is the body center, broad faces along X.
+## Rotate the complete assembly so the cap, handle and ribs stay attached.
+static func jerrycan(k: VehicleModels, parent: Node3D, center: Vector3, col: Color, rotation := Vector3.ZERO, width := 0.17) -> void:
+	var mount := k._pivot(parent, center)
+	mount.rotation = rotation
+	k._box(mount, Vector3(width, 0.46, 0.34), Vector3.ZERO, "paint", col)
+	# The pressed seam and X ribs stiffen the broad walls of the can.
+	for side in [-1.0, 1.0]:
+		var x: float = side * (width / 2 + 0.003)
+		for z in [-1.0, 1.0]:
+			VehicleFrames.tube(k, mount, Vector3(x, -0.16, z * 0.11), Vector3(x, 0.16, -z * 0.11), 0.008, "paint", col, 6, false)
+		VehicleFrames.path(k, mount, [Vector3(x, -0.20, -0.14), Vector3(x, 0.20, -0.14), Vector3(x, 0.20, 0.14), Vector3(x, -0.20, 0.14), Vector3(x, -0.20, -0.14)], 0.005, "paint", col.darkened(0.12), 6)
+	# Three parallel carrying bars leave real finger openings above the shoulder.
+	for x in [-width * 0.27, 0.0, width * 0.27]:
+		VehicleFrames.path(k, mount, [Vector3(x, 0.225, -0.025), Vector3(x, 0.27, 0.005), Vector3(x, 0.27, 0.105), Vector3(x, 0.225, 0.135)], 0.010, "paint", col, 6)
+	k._cyl(mount, 0.035, 0.039, 0.018, Vector3(0, 0.24, -0.10), Vector3.ZERO, "gunmetal_w", null, 12, false)
+	k._box(mount, Vector3(0.018, 0.012, 0.07), Vector3(0, 0.255, -0.10), "gunmetal_w", null, Vector3.ZERO, false)
+	k._fold(mount)

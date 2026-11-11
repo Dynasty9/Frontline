@@ -261,9 +261,8 @@ static func _hatch(k: VehicleModels, p: Node3D, pos: Vector3, r: float, mat: Str
 
 ## A jerrycan standing upright, its broad face toward x (yaw turns it).
 static func _jerry(k: VehicleModels, p: Node3D, pos: Vector3, col := OD, yaw := 0.0) -> void:
-	_bx(k, p, Vector3(0.17, 0.46, 0.34), pos, "paint", col, Vector3(0, yaw, 0))
-	_bx(k, p, Vector3(0.18, 0.04, 0.2), pos + Vector3(0, 0.08, 0), "paint", col.darkened(0.15), Vector3(0, yaw, 0), false)
-	_bx(k, p, Vector3(0.06, 0.05, 0.14), pos + Vector3(0, 0.25, 0).rotated(Vector3.UP, yaw) + Vector3(0, 0, 0.04).rotated(Vector3.UP, yaw), "paint", col.darkened(0.2), Vector3(0, yaw, 0), false)
+	VehicleFittings.jerrycan(k, p, pos, col, Vector3(0, yaw, 0))
+
 
 
 ## An ammo can, its long side along z (yaw turns it).

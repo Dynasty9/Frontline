@@ -123,10 +123,8 @@ static func _antenna(k: VehicleModels, p: Node3D, pos: Vector3, h: float) -> voi
 
 ## A 20 l jerrycan (standing, its face toward +X or -X when yaw = 0).
 static func _jerrycan(k: VehicleModels, p: Node3D, pos: Vector3, col: Color, yaw := 0.0) -> void:
-	var t := Transform3D(Basis.from_euler(Vector3(0, yaw, 0)), pos)
-	_tb(k, p, t, Vector3(0.17, 0.46, 0.34), Vector3(0, 0.23, 0), "paint", col)
-	_tb(k, p, t, Vector3(0.18, 0.04, 0.2), Vector3(0, 0.3, 0), "paint", col.darkened(0.15), Vector3.ZERO, false)
-	_tb(k, p, t, Vector3(0.05, 0.06, 0.1), Vector3(0, 0.49, -0.06), "gunmetal_w", null, Vector3.ZERO, false)
+	VehicleFittings.jerrycan(k, p, pos + Vector3(0, 0.23, 0), col, Vector3(0, yaw, 0))
+
 
 
 ## A rubber-tyred road wheel (twin discs with the guide gap between them) on

@@ -164,8 +164,8 @@ static func _taillight(k: VehicleModels, p: Node3D, pos: Vector3) -> void:
 
 ## A jerrycan standing upright, its face toward x (s = side it faces).
 static func _jerry(k: VehicleModels, p: Node3D, pos: Vector3, col := Color(0.3, 0.33, 0.22), rot := Vector3.ZERO) -> void:
-	k._box(p, Vector3(0.17, 0.46, 0.34), pos, "paint", col, rot)
-	k._box(p, Vector3(0.06, 0.05, 0.16), pos + Vector3(0, 0.25, 0.04), "paint", col.darkened(0.2), rot, false)
+	VehicleFittings.jerrycan(k, p, pos, col, rot)
+
 
 
 ## An ammo can (olive), its long side along z.

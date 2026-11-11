@@ -369,9 +369,8 @@ static func _mirror(k: VehicleModels, parent: Node3D, s: float, base: Vector3, r
 
 ## A jerrycan standing at pos (turned by yaw).
 static func _jerrycan(k: VehicleModels, parent: Node3D, pos: Vector3, c: Color, yaw := 0.0) -> void:
-	k._box(parent, Vector3(0.17, 0.46, 0.34), pos + Vector3(0, 0.23, 0), "paint", c, Vector3(0, yaw, 0))
-	k._box(parent, Vector3(0.13, 0.05, 0.2), pos + Vector3(0, 0.48, 0.0), "paint", c.darkened(0.2), Vector3(0, yaw, 0))
-	k._cyl(parent, 0.025, 0.025, 0.05, pos + Vector3(0, 0.49, -0.12).rotated(Vector3.UP, yaw), Vector3.ZERO, "gunmetal_w", null, 6, false)
+	VehicleFittings.jerrycan(k, parent, pos + Vector3(0, 0.23, 0), c, Vector3(0, yaw, 0))
+
 
 
 ## A loose tyre on its rim lying flat (spare), centre at pos.

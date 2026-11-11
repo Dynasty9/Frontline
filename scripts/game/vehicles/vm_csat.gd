@@ -169,8 +169,8 @@ static func _tow(k: VehicleModels, p: Node3D, pos: Vector3, dir: float) -> void:
 
 ## A jerrycan standing upright, its face toward x.
 static func _jerrycan(k: VehicleModels, p: Node3D, pos: Vector3, col := OLIVE, rot := Vector3.ZERO) -> void:
-	k._box(p, Vector3(0.16, 0.46, 0.34), pos, "paint", col, rot)
-	k._box(p, Vector3(0.05, 0.05, 0.14), pos + Vector3(0, 0.25, 0.06), "paint", col.darkened(0.2), rot, false)
+	VehicleFittings.jerrycan(k, p, pos, col, rot, 0.16)
+
 
 
 ## A round hatch with its hinge (a cupola lid).
