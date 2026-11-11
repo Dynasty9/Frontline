@@ -40,6 +40,9 @@ ATTRIBUTION_ALLOWLIST = json.loads(
 
 
 def included(path):
+    record = Path(path)
+    if record.parent.as_posix() == "tools/showcase/entries" and record.suffix == ".json":
+        return False  # Same capture/branch metadata as the legacy catalog.
     return path not in EXCLUDED and not path.lower().startswith(AGENT_DIRS)
 
 

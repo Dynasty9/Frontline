@@ -1,0 +1,182 @@
+[
+  {
+    "id": 1,
+    "name": "Surface-following polygon panels",
+    "api": "VehicleBody.fitted",
+    "boundary": "Authored planar and curved surface adapters; family silhouettes remain local."
+  },
+  {
+    "id": 2,
+    "name": "Real body openings and reveals",
+    "api": "VehicleCab.framed_face",
+    "boundary": "Rectangular apertures in quad cabin faces; curved full-body cutouts remain specialized."
+  },
+  {
+    "id": 3,
+    "name": "Outline-aware glazing assemblies",
+    "api": "VehicleGlazing.polygon",
+    "boundary": "Opaque glass by default. Authored faceted pane meshes may be supplied to preserve creases."
+  },
+  {
+    "id": 4,
+    "name": "Door and access-panel assemblies",
+    "api": "VehicleDoors.closed",
+    "boundary": "Closed leaves and access panels; sliding rails and opening animation remain vehicle-specific."
+  },
+  {
+    "id": 5,
+    "name": "Surface boundary seams and fastener layouts",
+    "api": "VehicleBody.boundary",
+    "boundary": "Sampled seams and corner fasteners; no automatic arbitrary hole drilling."
+  },
+  {
+    "id": 6,
+    "name": "Fitted vent and louvre panels",
+    "api": "VehicleFittings.vent",
+    "boundary": "Polygon-clipped fins in metre-scaled domains; bespoke engine intake mouths use ducts."
+  },
+  {
+    "id": 7,
+    "name": "Projected markings and wear masks",
+    "api": "VehicleMarkings.polygons",
+    "boundary": "Projected polygons; national symbols and text layouts remain authored."
+  },
+  {
+    "id": 8,
+    "name": "Wheel arches, liners and fender lips",
+    "api": "VehicleWheelArches._flare",
+    "boundary": "Convex cut-body strips, arc flares and liners; faceted military arches retain their shape."
+  },
+  {
+    "id": 9,
+    "name": "Chassis, axles and suspension layouts",
+    "api": "VehicleRunningGear.frame",
+    "boundary": "Ladder frames and solid axles; independent wishbones retain their distinct suspension."
+  },
+  {
+    "id": 10,
+    "name": "Steps and boarding ladders",
+    "api": "VehicleFrames.step",
+    "boundary": "Treads and rung assemblies; unique retractable stairs remain specialized."
+  },
+  {
+    "id": 11,
+    "name": "Handrail and stanchion runs",
+    "api": "VehicleFrames.railing",
+    "boundary": "Explicit stanchion paths on tankers; optimized ship rail meshes remain specialized."
+  },
+  {
+    "id": 12,
+    "name": "Seating and cockpit furniture",
+    "api": "VehicleCab.seat",
+    "boundary": "Parameterized seat construction; cockpit instruments and benches retain their layouts."
+  },
+  {
+    "id": 13,
+    "name": "Hinge, latch and pull-handle sets",
+    "api": "VehicleDoors.hinge",
+    "boundary": "Independent hinge/pull fittings reused by doors and storage lids."
+  },
+  {
+    "id": 14,
+    "name": "Storage-bin and toolbox shells",
+    "api": "VehicleEquipment.storage",
+    "boundary": "Closed top-lid bins/toolboxes; ammunition cans and open baskets remain separate."
+  },
+  {
+    "id": 15,
+    "name": "Segmented armour skirts",
+    "api": "VehicleEquipment.skirt",
+    "boundary": "Segmented skirt attachments; reactive blocks and cage armour remain authored."
+  },
+  {
+    "id": 16,
+    "name": "Cargo support and restraint layouts",
+    "api": "VehicleCargo.restraints",
+    "boundary": "Pallet supports and bound-fitting straps; covers stay in VehicleCloth."
+  },
+  {
+    "id": 17,
+    "name": "Windshield wiper assemblies",
+    "api": "VehicleFittings.wiper",
+    "boundary": "Static parked blades and raised arms; no new animation."
+  },
+  {
+    "id": 18,
+    "name": "Routed hoses, ropes and cables",
+    "api": "VehicleFrames.cable",
+    "boundary": "Static supported routes with optional sag and collars; no rope simulation."
+  },
+  {
+    "id": 19,
+    "name": "Winch and fairlead assemblies",
+    "api": "VehicleEquipment.winch",
+    "boundary": "Compact recovery spool and fairlead; powered crane drums remain specialized."
+  },
+  {
+    "id": 20,
+    "name": "Mounted fuel and pressure vessels",
+    "api": "VehicleEquipment.vessel",
+    "boundary": "Oval/cylindrical tankers with dished ends; rectangular and aerodynamic fuel tanks differ."
+  },
+  {
+    "id": 21,
+    "name": "Aircraft landing-gear assemblies",
+    "api": "VehicleAircraft.gear_leg",
+    "boundary": "Oleo legs and torque links on existing parents; complex bogies and door pivots remain authored."
+  },
+  {
+    "id": 22,
+    "name": "Profiled intake and exhaust ducts",
+    "api": "VehicleAircraft.duct",
+    "boundary": "Double-wall loop ducts and recessed engine faces; distinctive nozzle petals remain authored."
+  },
+  {
+    "id": 23,
+    "name": "Station-loft and revolved-profile mesh kernel",
+    "api": "VehicleProfiles.loft",
+    "boundary": "Loft and revolution kernels; no universal silhouette generator."
+  },
+  {
+    "id": 24,
+    "name": "Airfoil and control-surface construction",
+    "api": "VehicleAirfoils.surface",
+    "boundary": "Spanwise airfoil sections and metre-scaled control gaps; planforms remain authored."
+  },
+  {
+    "id": 25,
+    "name": "Hardpoint, pylon and launcher mounts",
+    "api": "VehicleAircraft.hardpoint",
+    "boundary": "Pylons and sway-brace mounts; specialized missile rails retain their geometry."
+  },
+  {
+    "id": 26,
+    "name": "Rocket-pod housings and tube banks",
+    "api": "VehicleAircraft.rocket_pod",
+    "boundary": "Seven- and nineteen-tube pods; other tube patterns must be explicitly added."
+  },
+  {
+    "id": 27,
+    "name": "Optical sensor and gimbal housings",
+    "api": "VehicleEquipment.sensor",
+    "boundary": "Box and spherical optical housings; mast mechanisms remain vehicle-specific."
+  },
+  {
+    "id": 28,
+    "name": "Navigation and marker-light assemblies",
+    "api": "VehicleFittings.marker",
+    "boundary": "Side navigation housings and optics; beacon timing remains unchanged."
+  },
+  {
+    "id": 29,
+    "name": "Propeller, spinner and blur assembly",
+    "api": "VehiclePropellers.blade",
+    "boundary": "Profiled blades, spinners and blur; existing wheel/rotor registration remains intact."
+  },
+  {
+    "id": 30,
+    "name": "Mooring fitting assemblies",
+    "api": "VehicleMarine.mooring",
+    "boundary": "Cleat and bitts styles with independent dimensions; marine propellers remain separate."
+  }
+]

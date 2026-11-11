@@ -8,14 +8,75 @@ func _ready() -> void:
 		assert(not shader.code.contains("__MAP_"))
 		if DisplayServer.get_name() != "headless":
 			await check_bake(shader)
+			await check_coastal_buffer()
 	MapDims.configure(1024)
 	if DisplayServer.get_name() != "headless":
 		await check_river_continuation()
+		await check_height_edges()
 	print("SCENERY_LIGHTING passed")
 	Sfx._ensure()
 	while Music._task >= 0:
 		await get_tree().process_frame
 	get_tree().quit()
+
+func check_coastal_buffer() -> void:
+	var view := SubViewport.new()
+	view.size = Vector2i(16, 16)
+	view.disable_3d = true
+	add_child(view)
+	var material := ShaderMaterial.new()
+	material.shader = Shader.new()
+	material.shader.code = MapDims.shader("shader_type canvas_item; render_mode unshaded, blend_disabled; uniform vec2 sample_position; uniform float shore;\n" + WaterView.SCENERY_COAST + "\nvoid fragment() { COLOR = vec4(scenery_sea_mask(sample_position, shore).aaa, 1.0); }")
+	var rect := ColorRect.new()
+	rect.size = Vector2(16, 16)
+	rect.material = material
+	view.add_child(rect)
+	for shore in [MapDims.HALF - 100.0, 1e9]:
+		material.set_shader_parameter("shore", shore)
+		for distance in [-1.0, 30.0, 550.0, 1100.0, 1900.0]:
+			material.set_shader_parameter("sample_position", Vector2(-MapDims.HALF - distance, 0))
+			var output := await bake(view)
+			var wet: bool = shore < 10000.0 and distance in [550.0, 1900.0]
+			assert((output.get_pixel(8, 8).r > 0.99) == wet, "Water separates the coast and outer islands without flooding playable or inland ground")
+	var world := World.new()
+	var water := WaterMap.new(world)
+	material = ShaderMaterial.new()
+	material.shader = Shader.new()
+	material.shader.code = MapDims.shader("shader_type canvas_item; render_mode unshaded, blend_disabled; uniform vec2 sample_position; uniform float shore; uniform float expected_shore;\n" + WaterView.SCENERY_COAST + "\nvoid fragment() { float into = sample_position.x - expected_shore; COLOR = vec4(abs(scenery_shore(sample_position, shore) - expected_shore) / 10.0, -scenery_sea_bed(into) / 4.0, scenery_sea_mask(sample_position, shore).a, 1.0); }")
+	rect.material = material
+	await get_tree().process_frame
+	for phase in [0.0, 1.7, 4.2]:
+		water.coast = {"x": MapDims.HALF - 100.0, "s": phase}
+		material.set_shader_parameter("shore", water.coast.x)
+		material.set_shader_parameter("scenery_coast_phase", phase)
+		for z in [-MapDims.HALF - 0.5, MapDims.HALF + 0.5]:
+			var shore := water.coast_x(z)
+			material.set_shader_parameter("expected_shore", shore)
+			for sample in [[-10.0, -0.38 * 4.0 / 14.0], [4.0, -0.5 - 0.55 * 4.0 / 9.0], [12.0, -1.05 - 2.15 * 3.0 / 8.0], [30.0, -3.2]]:
+				material.set_shader_parameter("sample_position", Vector2(shore + sample[0], z))
+				var output := await bake(view)
+				var pixel := output.get_pixel(8, 8)
+				assert(pixel.r < 0.01, "Scenery meets the authoritative shoreline without an offset or phase jump")
+				assert(absf(-pixel.g * 4.0 - sample[1]) < 0.03, "Beach and seabed profiles join continuously")
+				assert((pixel.b > 0.99) == (sample[0] > 0.0), "Scenery water meets the playable waterline")
+	world.free()
+	material = ShaderMaterial.new()
+	material.shader = Shader.new()
+	material.shader.code = MapDims.shader("shader_type canvas_item; render_mode unshaded, blend_disabled; uniform vec2 sample_position; uniform sampler2D backdrop_tex : hint_default_white; uniform float sea_x = 1e9; uniform float snow_line = 100.0;\n" + Atmosphere.BACKDROP_HEIGHT + "\nvoid fragment() { COLOR = vec4(vec3(backdrop(sample_position) / 1024.0), 1.0); }")
+	var white := Image.create(2, 2, false, Image.FORMAT_RF)
+	white.fill(Color.WHITE)
+	material.set_shader_parameter("backdrop_tex", ImageTexture.create_from_image(white))
+	rect.material = material
+	await get_tree().process_frame
+	for distance in [200.0, 1200.0]:
+		material.set_shader_parameter("sample_position", Vector2(-MapDims.HALF - distance, 0))
+		var output := await bake(view)
+		var height := output.get_pixel(8, 8).r * 1024.0
+		if distance < 600.0:
+			assert(height < 100.0, "Near scenery remains low foothills: " + str(height))
+		else:
+			assert(height > 800.0 and height < 1024.0, "Far massifs rise above the valley within the terrain culling bounds: " + str(height))
+	view.queue_free()
 
 func check_river_continuation() -> void:
 	var view := SubViewport.new()
@@ -89,3 +150,27 @@ func bake(view: SubViewport) -> Image:
 	view.render_target_update_mode = SubViewport.UPDATE_ONCE
 	await RenderingServer.frame_post_draw
 	return view.get_texture().get_image()
+
+
+func check_height_edges() -> void:
+	var view := SubViewport.new()
+	view.size = Vector2i(16, 16)
+	view.disable_3d = true
+	add_child(view)
+	var bed := Image.create(512, 512, false, Image.FORMAT_RGF)
+	bed.fill(Color(-3.2, 0.4, 0))
+	var ground := TerrainTexture.new(bed)
+	var material := ShaderMaterial.new()
+	material.shader = Shader.new()
+	material.shader.code = "shader_type canvas_item; render_mode unshaded, blend_disabled; uniform sampler2DArray edge_tex : filter_linear, repeat_disable; uniform vec2 sample_uv;\n" + TerrainTexture.SHADER_HELPER + "\nvoid fragment() { COLOR = vec4(-terrain_height(edge_tex, sample_uv) / 4.0, terrain_geology(edge_tex, sample_uv), 0.0, 1.0); }"
+	material.set_shader_parameter("edge_tex", ground.texture)
+	var rect := ColorRect.new()
+	rect.size = Vector2(16, 16)
+	rect.material = material
+	view.add_child(rect)
+	for uv in [Vector2.ZERO, Vector2.ONE, Vector2(0, 0.5), Vector2(1, 0.5), Vector2(0.5, 0), Vector2(0.5, 1)]:
+		material.set_shader_parameter("sample_uv", uv)
+		var output := await bake(view)
+		var pixel := output.get_pixel(8, 8)
+		assert(absf(pixel.r - 0.8) < 0.01 and absf(pixel.g - 0.4) < 0.01, "Map-edge filtering must not blend the seabed with empty padding: " + str(pixel))
+	view.queue_free()

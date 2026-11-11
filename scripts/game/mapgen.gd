@@ -604,8 +604,9 @@ func scenario(sname: String) -> void:
 			r.spawn_squad("rpg_team", 1, b, Vector3(-30, 0, -50))
 			r.spawn_squad("fighter_cell", 1, b, Vector3(20, 0, -55))
 		"defense":
-			for i in 4:
-				_spawn("trench", Vector3(-12 + i * 6.0, 0, -10), 0.0, 0)
+			# Carry the protective line across both flank emplacements.
+			for i in 7:
+				_spawn("trench", Vector3(-18 + i * 6.0, 0, -10), 0.0, 0)
 			_spawn("hmg_nest", Vector3(-20, 0, -7), 0.0, 0)
 			_spawn("mortar_pit", Vector3(0, 0, 14), 0.0, 0)
 			var bk := _spawn("bunker", Vector3(18, 0, -7), 0.0, 0)

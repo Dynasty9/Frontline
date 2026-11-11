@@ -366,37 +366,8 @@ static func _inset(r: PackedVector3Array, d: float) -> PackedVector3Array:
 ## A hollow intake mouth or jet pipe: the outer skin from the lip loop back
 ## to the `back` loop, the lip's rim th thick, the inner wall and a dark face
 ## at the back. dir -1 opens forward (an intake), 1 aft (a jet pipe).
-static func _duct(k: VehicleModels, p: Node3D, key: String, lip: PackedVector3Array, back: PackedVector3Array, th: float, mat: String, col, inner_col, dir := -1.0, crease := 40.0, outer := true) -> void:
-	if outer:
-		_put(k, p, _skin([lip, back], key + "_o", crease, false), mat, col)
-	var li := _inset(lip, th)
-	var bi := _inset(back, th * 0.8)
-	_put(k, p, _skin([li, bi], key + "_i", crease, false, true), mat, inner_col, Vector3.ZERO, Vector3.ZERO, false)
-	var kr := "ft_" + key + "_r"
-	if not _mc.has(kr):
-		var vs := PackedVector3Array()
-		var ns := PackedVector3Array()
-		var n := lip.size()
-		for j in n:
-			var j1 := (j + 1) % n
-			var f := (li[j] - lip[j]).cross(lip[j1] - lip[j])
-			if f.length_squared() < 1e-12:
-				f = Vector3(0, 0, dir)
-			f = f.normalized()
-			if f.z * dir < 0.0:
-				f = -f
-			_tri(vs, ns, lip[j], lip[j1], li[j1], f, f, f, f)
-			_tri(vs, ns, lip[j], li[j1], li[j], f, f, f, f)
-		_mc[kr] = _mesh(vs, ns)
-	_put(k, p, _mc[kr], mat, col)
-	# the dark face deep inside (the engine face, the darkness of a jet pipe)
-	var kf := "ft_" + key + "_f"
-	if not _mc.has(kf):
-		var fr := PackedVector3Array()
-		for v in bi:
-			fr.append(v + Vector3(0, 0, dir * 0.01))
-		_mc[kf] = _poly_mesh(fr, Vector3(0, 0, dir))
-	_put(k, p, _mc[kf], "plain_dark", null, Vector3.ZERO, Vector3.ZERO, false)
+static func _duct(k: VehicleModels, p: Node3D, _key: String, lip: PackedVector3Array, back: PackedVector3Array, th: float, mat: String, col, inner_col, dir := -1.0, crease := 40.0, outer := true) -> void:
+	VehicleAircraft.duct(k, p, lip, back, th, mat, col, inner_col, dir, crease, outer)
 
 
 ## A ring of n nozzle petals (flaps) round the axis at c pointing aft: from
@@ -445,69 +416,13 @@ static func _burner(k: VehicleModels, p: Node3D, c: Vector3, r: float) -> void:
 
 ## Airfoil thickness factor at chord fraction f (VmPlane's section).
 static func _ft(f: float) -> float:
-	var fl: Array = VmPlane.FOIL
-	for i in range(0, fl.size() - 2, 2):
-		if f <= float(fl[i + 2]):
-			return lerpf(float(fl[i + 1]), float(fl[i + 3]), (f - float(fl[i])) / (float(fl[i + 2]) - float(fl[i])))
-	return float(fl[fl.size() - 1])
+	return VehicleAirfoils.thickness(f)
 
-
-## An airfoil ring with a fixed point count from chord fraction f0 to f1:
-## leading edge le, chord along +z, thickness th along up. A piece starting
-## behind the leading edge (a control surface) gets a blunt hinge nose.
 static func _af(le: Vector3, chord: float, th: float, up: Vector3, f0: float, f1: float, n := 8) -> PackedVector3Array:
-	var fr: Array[float] = []
-	for i in n:
-		var t := float(i) / float(n - 1)
-		fr.append(lerpf(f0, f1, t if f0 > 0.0 else 1.0 - cos(t * PI * 0.5)))
-	var r := PackedVector3Array()
-	for i in n:
-		var h := _ft(fr[i]) * th * 0.5 * (0.6 if i == 0 and f0 > 0.0 else 1.0)
-		r.append(le + Vector3(0, 0, fr[i] * chord) + up * h)
-	for i in range(n - 1, -1, -1):
-		if i == 0 and f0 <= 0.0:
-			continue
-		var h := _ft(fr[i]) * th * 0.5 * (0.6 if i == 0 and f0 > 0.0 else 1.0)
-		r.append(le + Vector3(0, 0, fr[i] * chord) - up * h)
-	return r
+	return VehicleAirfoils.section(le, chord, th, up, f0, f1, Vector3.BACK, n)
 
-
-## A lifting surface through spanwise sections [leading edge, chord,
-## thickness], root first. Panel i (section i to i+1) is cut chordwise at
-## cuts[i] = [[fractions at its root], [the same count at its tip]] (a
-## leading-edge flap, a flaperon, a rudder) behind a hairline gap, so the
-## hinge lines can run across the taper. Mirrored across x = 0 unless
-## `mirror` is false.
-static func _surf(k: VehicleModels, p: Node3D, key: String, secs: Array, mat: String, col, cuts := [], mirror := true, crease := 30.0) -> void:
-	for side in ([1.0, -1.0] if mirror else [1.0]):
-		var sd: float = side
-		for i in secs.size() - 1:
-			var a: Array = secs[i]
-			var b: Array = secs[i + 1]
-			var la: Vector3 = a[0]
-			var lb: Vector3 = b[0]
-			la.x *= sd
-			lb.x *= sd
-			var span := lb - la
-			span.z = 0.0
-			var up := Vector3(0, 0, 1).cross(span).normalized() if span.length() > 1e-3 else Vector3.UP
-			var cu: Array = cuts[i] if i < cuts.size() else []
-			var fa: Array = [0.0]
-			var fb: Array = [0.0]
-			if cu.size() == 2:
-				fa.append_array(cu[0])
-				fb.append_array(cu[1])
-			fa.append(1.0)
-			fb.append(1.0)
-			for q in fa.size() - 1:
-				var kk := "%s_%d_%d%s" % [key, i, q, "L" if sd < 0.0 else ""]
-				var rings := []
-				if not _mc.has("ft_" + kk):
-					var ga := 0.022 / float(a[1])
-					var gb := 0.022 / float(b[1])
-					rings = [_af(la, a[1], a[2], up, float(fa[q]) + (ga if q > 0 else 0.0), float(fa[q + 1])),
-						_af(lb, b[1], b[2], up, float(fb[q]) + (gb if q > 0 else 0.0), float(fb[q + 1]))]
-				_put(k, p, _skin(rings, kk, crease), mat, col)
+static func _surf(k: VehicleModels, p: Node3D, _key: String, secs: Array, mat: String, col, cuts := [], mirror := true, crease := 30.0) -> void:
+	VehicleAirfoils.surface(k, p, secs, mat, col, cuts, mirror, crease)
 
 
 # --- markings ----------------------------------------------------------------------
@@ -536,22 +451,11 @@ static func _star2(ro: float, ri: float) -> Array:
 ## A flat marking just proud of a surface: the 2D outline pts laid out at o,
 ## x along ax, y along n x ax, facing n. `proj` lays its corners onto a curved
 ## skin (see _project).
-static func _decal(k: VehicleModels, p: Node3D, key: String, pts: Array, o: Vector3, n: Vector3, ax: Vector3, col: Color, lift := 0.006, proj := []) -> void:
-	if k.burnt:
-		return
-	var kk := "ft_dc_" + key
-	if not _mc.has(kk):
-		var nn := n.normalized()
-		var x := (ax - nn * ax.dot(nn)).normalized()
-		var y := nn.cross(x)
-		var r := PackedVector3Array()
-		var c2 := Vector2.ZERO
-		for q in pts:
-			var v: Vector2 = q
-			r.append(_project(o + x * v.x + y * v.y, nn, lift, proj))
-			c2 += v / float(pts.size())
-		_mc[kk] = _poly_mesh(r, nn, _project(o + x * c2.x + y * c2.y, nn, lift, proj))
-	_put(k, p, _mc[kk], "aircraft", col, Vector3.ZERO, Vector3.ZERO, false)
+static func _decal(k: VehicleModels, p: Node3D, _key: String, pts: Array, o: Vector3, n: Vector3, ax: Vector3, col: Color, lift := 0.006, proj := []) -> void:
+	var nn := n.normalized()
+	var x := (ax - nn * ax.dot(nn)).normalized()
+	var y := nn.cross(x)
+	VehicleMarkings.polygons(k, p, [pts], func(q: Vector2) -> Vector3: return _project(o + x * q.x + y * q.y, nn, lift, proj), nn, col, "aircraft")
 
 
 ## A point laid onto a skin along n, `lift` proud: proj [] keeps it where it
@@ -757,17 +661,8 @@ static func _awheel(k: VehicleModels, p: Node3D, pos: Vector3, r: float, w: floa
 ## A gear leg from the trunnion `top` to the axle: the white strut, the bright
 ## oleo slide below it, a torque link.
 static func _leg(k: VehicleModels, p: Node3D, top: Vector3, axle: Vector3, r: float) -> void:
-	var mid := top.lerp(axle, 0.62)
-	VmPlane.rod(k, p, top, mid, r, "paint", WHITE, 10)
-	VmPlane.rod(k, p, mid + (top - mid).normalized() * 0.08, axle + (top - axle).normalized() * r, r * 0.68, "steel", STEEL, 10)
-	k._cyl(p, r * 1.15, r * 1.15, 0.06, mid, Vector3.ZERO, "paint", WHITE.darkened(0.1), 10, false)
-	# the torque link: two arms folded forward
-	var kn := mid.lerp(axle, 0.5) + Vector3(0, 0, -r * 2.6)
-	VmPlane.rod(k, p, mid + Vector3(0, -0.04, -r), kn, r * 0.28, "paint", WHITE, 6)
-	VmPlane.rod(k, p, kn, axle + Vector3(0, r * 1.4, -r * 0.6), r * 0.28, "paint", WHITE, 6)
+	VehicleAircraft.gear_leg(k, p, top, axle, r, WHITE)
 
-
-# --- F-16C Block 50/52 Fighting Falcon ----------------------------------------------
 
 ## The F-16's fuselage section (from its axis): a round tube (crown top, keel
 ## bot, half-width w) flaring at mid-height through the strake and the wing

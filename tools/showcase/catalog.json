@@ -2,36 +2,43 @@
   "schema": 1,
   "entries": [
     {
-      "entry": "changelog/unreleased/readable-release-notes.md",
-      "summary": "Compact release overview, a media-first reader and sequential change navigation.",
+      "entry": "changelog/unreleased/vehicle-detail-40.md",
+      "summary": "Forty construction refinements across twenty shared vehicle assemblies.",
       "medium": "still",
-      "stage": "native-media",
-      "rationale": "Matched desktop viewport captures demonstrate layout density; a reader capture demonstrates progressive disclosure. Browser stories cover navigation, galleries and accessibility.",
-      "source_ref": "baccc6d8 + codex/installers-readable-changelog working tree; live website before captured 2026-11-11",
+      "stage": "tools/showcase/vehicle-surfaces.tscn",
+      "rationale": "One compact matched component sheet shows the visible construction changes. All twenty assemblies and nineteen vehicle comparisons were reviewed outside Git.",
+      "source_ref": "28722899f676ab074f13998c1bc3da2edb1a6d0c",
+      "before_ref": "7a96dd4",
       "sources": [
         {
-          "file": "changelog/unreleased/readable-release-notes/before.jpg",
-          "sha256": "6192f20ff0540aa22bc092392c33029fe57a6dd9850280d6cd0a50a5e0695a1a"
+          "file": "changelog/unreleased/vehicle-detail-40/details.jpg",
+          "sha256": "b96a468f9fbc9cccb26876d3154cdaeedc7f7c3abeff5688a29c8b2562bf6219"
         },
         {
-          "file": "changelog/unreleased/readable-release-notes/overview.jpg",
-          "sha256": "b1498b0e782071d89340ca7e866e7b4373c2dec4047fd05397e711be5e6eec81"
-        },
-        {
-          "file": "changelog/unreleased/readable-release-notes/reader.jpg",
-          "sha256": "eee65220e719bfd8e0a7d20220e52fef9c5c5c1042df7db4430595541a07d9c1"
+          "file": "changelog/unreleased/vehicle-detail-40/capture.json",
+          "sha256": "104b117fb30d1b620fcca890a238dc98245c702ca0ec18a59438bdb2870ec119"
         }
       ],
       "output": null
     },
     {
-      "entry": "changelog/unreleased/mac-update-repair.md",
-      "summary": "Mac installs new releases without repeatedly downloading the current version.",
-      "medium": "text",
-      "stage": "text",
-      "rationale": "An invisible updater decision is demonstrated by platform regressions; no image would establish it. Windows fresh-install update separately verified against published v1.0.13 hashes. Physical Mac launch and Gatekeeper remain untested.",
-      "source_ref": "baccc6d8 + working tree",
-      "sources": [],
+      "entry": "changelog/unreleased/shared-vehicle-construction.md",
+      "summary": "Fitted cabins, tanker bodies and shared equipment construction across vehicle families.",
+      "medium": "still",
+      "stage": "tools/showcase/vehicle-surfaces.tscn",
+      "rationale": "One compact matched comparison of six representative details; broad raw roster review stays outside Git. Loft extraction is enabling work, not a new silhouette.",
+      "source_ref": "c00c9072084e7ac3c93bc82a29d3f7ecc3164477",
+      "before_ref": "a6d3708",
+      "sources": [
+        {
+          "file": "changelog/unreleased/shared-vehicle-construction/construction.jpg",
+          "sha256": "aa30af14a38461aa87284ff959d3e52d4a324ee7d07913c95a0c52cd786cc9c6"
+        },
+        {
+          "file": "changelog/unreleased/shared-vehicle-construction/capture.json",
+          "sha256": "436654847cb3484cd6fafddfa0a46f2c7730174cef0895c62ce485d5c1172ca2"
+        }
+      ],
       "output": null
     },
     {
@@ -8292,6 +8299,114 @@
         },
         "composition": "Uncropped source images resized to 800x450; three rows, before left / after right; JPEG quality85. These are real before/after builder inspection rigs, not gameplay footage."
       }
+    },
+    {
+      "entry": "changelog/unreleased/trench-realism.md",
+      "summary": "Crews excavate usable trenches in stages, then clear local shell damage.",
+      "medium": "motion",
+      "stage": "tests/fixtures/environment-views.gd: trenches and trench-build",
+      "rationale": "A matched full-frame comparison shows the earthwork; real builder orders show excavation and repair at normal simulation speed.",
+      "source_ref": "codex/trench-realism working tree based on a89bd759bee003ee208f65ad4b8e418158994254; baseline comparison uses that exact origin/main commit",
+      "sources": [
+        {
+          "file": "changelog/unreleased/trench-realism/comparison.jpg",
+          "sha256": "35e17a4463f4a7708fbee7f6ef2ec7e461c138f75f00af737bfd56e587a573fa",
+          "caption": "Matched network at seed 3, time 2 s; complete frames scaled from 1600x900 to 1280x720."
+        },
+        {
+          "file": "changelog/unreleased/trench-realism/digging.webm",
+          "sha256": "cf115bbc6fe8bbcd994bdc71144c234919b486dec4ab5c17416bb155f0cc5e3b",
+          "caption": "30 seconds, 10 fps, simulation 30 Hz, silent; controlled damage at 18 seconds."
+        },
+        {
+          "file": "changelog/unreleased/trench-realism/digging.jpg",
+          "sha256": "1eb72f78d8707b3647053317df6d0d47aa70e900b6b40c5ea1a79dc251333b50",
+          "caption": "Construction at 6 seconds, frame 60."
+        }
+      ],
+      "output": null,
+      "capture": {
+        "documentation": "docs/trench-realism-review.md",
+        "comparison": {
+          "seed": 3,
+          "scenario": "trenches",
+          "focus": [
+            0,
+            -28
+          ],
+          "zoom": 24,
+          "pitch": -48,
+          "yaw": 0.5,
+          "resolution": [
+            1600,
+            900
+          ]
+        },
+        "construction": {
+          "seed": 3,
+          "scenario": "trenches",
+          "focus": [
+            -90,
+            80
+          ],
+          "zoom": 13,
+          "pitch": -38,
+          "yaw": 0.35,
+          "resolution": [
+            1600,
+            900
+          ],
+          "simulation_hz": 30,
+          "capture_fps": 10,
+          "duration_seconds": 30,
+          "damage_at_seconds": 18,
+          "damage_fraction": 0.9,
+          "workers": "engineer_team"
+        },
+        "webm": {
+          "source": "Reviewed digging.mp4 from commit 4c7d3604",
+          "command": "ffmpeg -i digging.mp4 -c:v libvpx-vp9 -crf 34 -b:v 0 -row-mt 1 -an digging.webm"
+        }
+      }
+    },
+    {
+      "entry": "changelog/unreleased/mountain-clouds.md",
+      "summary": "Lower playable hills open the valley beneath towering distant ranges, coastal water and mountain clouds.",
+      "medium": "motion",
+      "stage": "tools/showcase/environment-motion.gd --motion-stage=clouds; tests/fixtures/environment-views.gd --capture-set=coast-join",
+      "rationale": "One fixed-camera native clip shows the open valley and distant range through four lighting moods. A matched wide still demonstrates removal of the projecting coastal shelf and map-edge colour seam.",
+      "source_ref": "a5933f2c game and fixed-camera capture; matched before b88b49d8",
+      "sources": [
+        {
+          "file": "changelog/unreleased/mountain-clouds/native-tour.webm",
+          "sha256": "074d670a3c2adaaa9c03175dec9dad09cb1e452a569706ec1ee4f2fc08e692b7",
+          "caption": "13.75-second silent VP9, fixed camera, four weather moods, 30 fps, 1280x768 including uncropped 1280x720 viewport; editorial dissolves and loop return."
+        },
+        {
+          "file": "changelog/unreleased/mountain-clouds/native-tour.jpg",
+          "sha256": "69b29314285d321ae26b5058f8bc150c84e9bb541ae5bc5d7e0a26ed6e0c0038",
+          "caption": "Daylight poster from the encoded clip."
+        },
+        {
+          "file": "changelog/unreleased/mountain-clouds/native-tour.json",
+          "sha256": "1c0ffeeadbab7aae0983ab117adf9da58aebf87122e26f3974ff4a375922feef",
+          "caption": "Capture camera, timing, settings, source revision and encoding provenance."
+        },
+        {
+          "file": "changelog/unreleased/mountain-clouds/comparison.jpg",
+          "sha256": "7df1d3b270fa6cac4787d62ecd79b79a0ece89ab71622ad44a188956c4ef41dc",
+          "caption": "Matched seed 3, daylight, Forward+, High, FOV 55, focus 0,80,0, distance 1250, pitch -10, yaw 0.7; opening native motion frames. Before b88b49d8 has a projecting shelf; after a5933f2c joins shoreline, seabed and shading. Uncropped 1280x720 frames resized side by side."
+        },
+        {
+          "file": "changelog/unreleased/mountain-clouds/performance.json",
+          "sha256": "2f919c6bd2a03a2b5387adfbd6edc2f134c8d3aaea2c996ce395e2d037b84d25",
+          "caption": "Earlier cloud-only interleaved measurements, before the coastal buffer and reframing; inconclusive under competing graphics load."
+        }
+      ],
+      "output": "changelog/unreleased/mountain-clouds/native-tour.jpg",
+      "capture_command": "godot --path . --fixed-fps 30 --resolution 1280x720 --script tools/showcase/environment-motion.gd -- --aivai --seed=3 --offscreen --nohud --set=perf:0,reduce_motion:false,vsync:false --preset=high --mood=day --motion-stage=clouds --motion-output=build/media-review",
+      "limitations": "Forward+ and Compatibility reviewed on RTX 3090. No low-end GPU or browser validation. Simulation held near two seconds; camera fixed while native wind and water animate. Editorial dissolves compare existing moods. Skirmish relief changes routes and sightlines; mission heights are unchanged. Earlier cloud timings do not establish current total scenery cost.",
+      "boundary_capture_command": "godot --path . --resolution 1280x720 --script tests/fixtures/environment-views.gd -- --aivai --seed=3 --offscreen --nohud --preset=high --mood=day --set=perf:0,reduce_motion:true,vsync:false --capture-set=coast-join --capture-prefix=<scratch>/coast-final-forward"
     }
   ],
   "layout_capture": {

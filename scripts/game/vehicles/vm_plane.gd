@@ -69,80 +69,9 @@ static func build(k: VehicleModels, key: String, team: int, seed: int) -> bool:
 ## (sharp chines, leading and trailing edges stay hard), both ends capped flat.
 ## Cached by key.
 static func skin(rings: Array, key: String, crease := 40.0) -> ArrayMesh:
-	if _mc.has(key):
-		return _mc[key]
-	var nr := rings.size()
-	var n := (rings[0] as PackedVector3Array).size()
-	var cen: Array[Vector3] = []
-	for r in rings:
-		cen.append(VehicleModels._centroid(r))
-	# the outward normal of every quad, for the smoothing
-	var fn := PackedVector3Array()
-	fn.resize((nr - 1) * n)
-	for i in nr - 1:
-		var r0: PackedVector3Array = rings[i]
-		var r1: PackedVector3Array = rings[i + 1]
-		var c := (cen[i] + cen[i + 1]) * 0.5
-		for j in n:
-			var j1 := (j + 1) % n
-			var mid := (r0[j] + r0[j1] + r1[j] + r1[j1]) * 0.25
-			var v := (r1[j1] - r0[j]).cross(r0[j1] - r1[j])
-			if v.length_squared() < 1e-14:
-				v = mid - c
-			v = v.normalized()
-			if v.dot(mid - c) < 0.0:
-				v = -v
-			fn[i * n + j] = v
-	var cs := cos(deg_to_rad(crease))
-	var vs := PackedVector3Array()
-	var ns := PackedVector3Array()
-	for i in nr - 1:
-		var r0: PackedVector3Array = rings[i]
-		var r1: PackedVector3Array = rings[i + 1]
-		for j in n:
-			var j1 := (j + 1) % n
-			var f := fn[i * n + j]
-			var na := _vn(fn, nr, n, i, j, f, cs)
-			var nb := _vn(fn, nr, n, i, j1, f, cs)
-			var nc := _vn(fn, nr, n, i + 1, j1, f, cs)
-			var nd := _vn(fn, nr, n, i + 1, j, f, cs)
-			_tri(vs, ns, r0[j], r0[j1], r1[j1], na, nb, nc, f)
-			_tri(vs, ns, r0[j], r1[j1], r1[j], na, nc, nd, f)
-	for e in [0, nr - 1]:
-		var r: PackedVector3Array = rings[e]
-		var out: Vector3 = cen[e] - cen[1 if e == 0 else nr - 2]
-		var pn := Vector3.ZERO
-		for i in range(1, n - 1):
-			pn += (r[i] - r[0]).cross(r[i + 1] - r[0])
-		if pn.length_squared() < 1e-10:
-			continue
-		pn = pn.normalized()
-		if pn.dot(out) < 0.0:
-			pn = -pn
-		for i in range(1, n - 1):
-			_tri(vs, ns, r[0], r[i], r[i + 1], pn, pn, pn, pn)
-	var arr := []
-	arr.resize(Mesh.ARRAY_MAX)
-	arr[Mesh.ARRAY_VERTEX] = vs
-	arr[Mesh.ARRAY_NORMAL] = ns
-	var am := ArrayMesh.new()
-	am.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arr)
-	Mats.keep_arrays(am, arr)
-	_mc[key] = am
-	return am
-
-
-## The smoothed normal at ring vi, point vj, as seen from the quad facing f.
-static func _vn(fn: PackedVector3Array, nr: int, n: int, vi: int, vj: int, f: Vector3, cs: float) -> Vector3:
-	var s := Vector3.ZERO
-	for qi in [vi - 1, vi]:
-		if qi < 0 or qi > nr - 2:
-			continue
-		for qj in [(vj - 1 + n) % n, vj]:
-			var g := fn[qi * n + qj]
-			if g.dot(f) >= cs:
-				s += g
-	return s.normalized() if s.length_squared() > 1e-12 else f
+	if not _mc.has(key):
+		_mc[key] = VehicleProfiles.loft(rings, crease)
+	return _mc[key]
 
 
 ## One triangle, wound the way Godot draws front faces (clockwise from outside).
@@ -297,74 +226,19 @@ static func mouth(k: VehicleModels, p: Node3D, key: String, s: Array, inset: flo
 	k._add(p, skin(rings, kk, 50.0), mat, null, Vector3.ZERO, Vector3.ZERO, Vector3.ONE, false)
 
 
-const FOIL := [0.0, 0.0, 0.03, 0.52, 0.1, 0.82, 0.25, 1.0, 0.45, 0.94, 0.7, 0.6, 1.0, 0.1]
+const FOIL := VehicleAirfoils.PROFILE
 
-
-## Thickness factor of the airfoil at chord fraction f.
 static func _foil_t(f: float) -> float:
-	for i in range(0, FOIL.size() - 2, 2):
-		if f <= float(FOIL[i + 2]):
-			return lerpf(float(FOIL[i + 1]), float(FOIL[i + 3]), (f - float(FOIL[i])) / (float(FOIL[i + 2]) - float(FOIL[i])))
-	return float(FOIL[FOIL.size() - 1])
+	return VehicleAirfoils.thickness(f)
 
+static func foil(le: Vector3, chord: float, th: float, up: Vector3, f0 := 0.0, f1 := 1.0, cdir := Vector3.BACK) -> PackedVector3Array:
+	return VehicleAirfoils.section(le, chord, th, up, f0, f1, cdir)
 
-## An airfoil ring from chord fraction f0 to f1: leading edge le, chord along
-## cdir, thickness th along up. A piece starting behind the leading edge (a
-## control surface) gets a rounded hinge nose.
-static func foil(le: Vector3, chord: float, th: float, up: Vector3, f0 := 0.0, f1 := 1.0, cdir := Vector3(0, 0, 1)) -> PackedVector3Array:
-	var pts: Array = []
-	if f0 <= 0.0:
-		for i in range(0, FOIL.size(), 2):
-			if float(FOIL[i]) < f1 - 0.01:
-				pts.append([float(FOIL[i]), float(FOIL[i + 1])])
-	else:
-		pts.append([f0, 0.0])
-		pts.append([f0 + 0.015, _foil_t(f0) * 0.85])
-		for i in range(0, FOIL.size(), 2):
-			if float(FOIL[i]) > f0 + 0.04 and float(FOIL[i]) < f1 - 0.01:
-				pts.append([float(FOIL[i]), float(FOIL[i + 1])])
-	pts.append([f1, _foil_t(f1)])
-	var r := PackedVector3Array()
-	for q in pts:
-		r.append(le + cdir * (float(q[0]) * chord) + up * (float(q[1]) * th * 0.5))
-	for i in range(pts.size() - 1, -1, -1):
-		if float(pts[i][1]) > 0.0:
-			r.append(le + cdir * (float(pts[i][0]) * chord) - up * (float(pts[i][1]) * th * 0.5))
-	return r
-
-
-## A lifting surface (wing, tailplane, fin, canard, strake) through spanwise
-## sections [leading edge: Vector3, chord, thickness], root first. hinge[i]
-## is the chord fraction where panel i (section i to i+1) hangs its control
-## surface (0 for none). Mirrored across x = 0 unless `mirror` is false.
-static func surf(k: VehicleModels, p: Node3D, key: String, secs: Array, mat: String, col, hinge := [], mirror := true, crease := 32.0) -> void:
-	for side in ([1.0, -1.0] if mirror else [1.0]):
-		var sd: float = side
-		for i in secs.size() - 1:
-			var a: Array = secs[i]
-			var b: Array = secs[i + 1]
-			var la: Vector3 = a[0]
-			var lb: Vector3 = b[0]
-			la.x *= sd
-			lb.x *= sd
-			var span := lb - la
-			span.z = 0.0
-			var up := Vector3(0, 0, 1).cross(span).normalized() if span.length() > 1e-3 else Vector3.UP
-			var h: float = hinge[i] if i < hinge.size() else 0.0
-			var kk := "pl_%s_%d%s" % [key, i, "L" if sd < 0.0 else ""]
-			if h <= 0.0:
-				var rings := []
-				if not _mc.has(kk):
-					rings = [foil(la, a[1], a[2], up), foil(lb, b[1], b[2], up)]
-				k._add(p, skin(rings, kk, crease), mat, col, Vector3.ZERO)
-			else:
-				var r1 := []
-				var r2 := []
-				if not _mc.has(kk + "m"):
-					r1 = [foil(la, a[1], a[2], up, 0.0, h), foil(lb, b[1], b[2], up, 0.0, h)]
-					r2 = [foil(la, a[1], a[2], up, h + 0.015, 1.0), foil(lb, b[1], b[2], up, h + 0.015, 1.0)]
-				k._add(p, skin(r1, kk + "m", crease), mat, col, Vector3.ZERO)
-				k._add(p, skin(r2, kk + "c", crease), mat, col, Vector3.ZERO)
+static func surf(k: VehicleModels, p: Node3D, _key: String, secs: Array, mat: String, col, hinge := [], mirror := true, crease := 32.0) -> void:
+	var cuts := []
+	for fraction: float in hinge:
+		cuts.append([[fraction], [fraction]] if fraction > 0.0 else [])
+	VehicleAirfoils.surface(k, p, secs, mat, col, cuts, mirror, crease)
 
 
 ## Where a surface is at span x: [leading edge, chord, thickness].
@@ -428,10 +302,13 @@ static func glow(k: VehicleModels, p: Node3D, pts: Array, size: float, col := Co
 ## A round jet nozzle at pos facing aft: the outer can, the darker petals ring,
 ## the black pipe inside.
 static func nozzle(k: VehicleModels, p: Node3D, pos: Vector3, r: float, len: float, col: Color, taper := 0.9) -> void:
-	k._cyl(p, r * taper, r, len, pos, Vector3(PI / 2, 0, 0), "gunmetal_w", col.darkened(0.45), 18)
-	k._cyl(p, r * taper * 0.97, r * taper, 0.06, pos + Vector3(0, 0, len * 0.5 + 0.02), Vector3(PI / 2, 0, 0), "metal_dark", null, 18, false)
-	k._cyl(p, r * taper * 0.8, r * taper * 0.8, 0.03, pos + Vector3(0, 0, len * 0.5 + 0.045), Vector3(PI / 2, 0, 0), "plain_dark", null, 16, false)
-	k._cyl(p, r * 0.45, r * 0.3, 0.2, pos + Vector3(0, 0, len * 0.5 - 0.1), Vector3(PI / 2, 0, 0), "metal_dark", null, 10, false)
+	var lip := PackedVector3Array()
+	var back := PackedVector3Array()
+	for i in 20:
+		var angle := TAU * float(i) / 20.0
+		lip.append(pos + Vector3(cos(angle) * r * taper, sin(angle) * r * taper, len * 0.5))
+		back.append(pos + Vector3(cos(angle) * r, sin(angle) * r, -len * 0.5))
+	VehicleAircraft.duct(k, p, lip, back, r * 0.07, "gunmetal_w", col.darkened(0.45), Color(0.09, 0.10, 0.10), 1.0)
 
 
 ## One propeller blade along `d` (unit, in the disc plane), twisted from
@@ -473,21 +350,20 @@ static func prop(k: VehicleModels, p: Node3D, key: String, pos: Vector3, r: floa
 		pv.rotation = rot
 	var dz := 1.0 if pusher else -1.0
 	# the axis the blades turn about, in the pivot's own space (aft is +z, or +y for a rotor)
-	var ax := Vector3(0, 1, 0) if as_rotor else Vector3(0, 0, 1)
 	var srot := Vector3(-PI / 2, 0, 0) if as_rotor else Vector3.ZERO
 	# the spinner: a pointed cone ahead of the hub
 	var sl := spin_r * 2.6
-	var sm := skin([sec([dz * sl, 0, 0, 0, 0], 16), sec([dz * sl * 0.7, 0, spin_r * 0.55, spin_r * 0.55, spin_r * 0.55], 16), sec([dz * sl * 0.3, 0, spin_r * 0.9, spin_r * 0.9, spin_r * 0.9], 16),
-		sec([0.0, 0, spin_r, spin_r, spin_r], 16), sec([-dz * spin_r * 0.4, 0, spin_r * 0.96, spin_r * 0.96, spin_r * 0.96], 16)], "pl_%s_spin" % key, 50.0)
+	var sm := VehiclePropellers.spinner(key, spin_r, sl, dz)
 	k._add(pv, sm, "paint", bcol.lightened(0.15) if tipcol == null else Color(0.62, 0.62, 0.6), Vector3.ZERO, srot)
 	var bl := k._pivot(pv, Vector3.ZERO)
 	bl.name = "Blades"
 	for i in nb:
 		var a := TAU * float(i) / float(nb) + 0.3
-		var d := Vector3(sin(a), 0, cos(a)) if as_rotor else Vector3(sin(a), cos(a), 0)
-		k._add(bl, _blade("%s_b%d" % [key, i], d, -ax * dz, spin_r * 0.6, r, chord, 0.9, 0.28, chord * 0.14), "paint", bcol, Vector3.ZERO)
+		var prof := [0.0, chord * 0.55, 0.25, chord, 0.55, chord * 0.95, 0.85, chord * 0.72, 1.0, chord * 0.45]
+		var direction := Vector3(sin(a), cos(a), 0)
+		k._add(bl, VehiclePropellers.blade("%s_b%d" % [key, i], direction, spin_r * 0.6, r, prof, 0.9, 0.28, 0.14, dz), "paint", bcol, Vector3.ZERO, srot)
 		if tipcol is Color:
-			k._add(bl, _blade("%s_t%d" % [key, i], d, -ax * dz, r * 0.9, r * 1.004, chord * 0.62, 0.32, 0.27, chord * 0.11), "paint", tipcol, Vector3.ZERO)
+			k._add(bl, VehiclePropellers.blade("%s_t%d" % [key, i], direction, r * 0.9, r * 1.004, [0.0, chord * 0.64, 1.0, chord * 0.45], 0.32, 0.28, 0.15, dz), "paint", tipcol, Vector3.ZERO, srot)
 	if not k.burnt:
 		var disc := MeshInstance3D.new()
 		disc.name = "Blur"
@@ -495,7 +371,7 @@ static func prop(k: VehicleModels, p: Node3D, key: String, pos: Vector3, r: floa
 		pm.size = Vector2(r, r) * 2.0
 		pm.orientation = PlaneMesh.FACE_Y if as_rotor else PlaneMesh.FACE_Z
 		disc.mesh = pm
-		disc.material_override = VehicleModels._blur_mat()
+		disc.material_override = VehiclePropellers.disc_material(nb, spin_r / r)
 		disc.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		disc.visible = not as_rotor
 		pv.add_child(disc)
@@ -511,13 +387,7 @@ static func prop(k: VehicleModels, p: Node3D, key: String, pos: Vector3, r: floa
 ## A pylon under a wing or fuselage: `at` is its top; returns where the store's
 ## axis hangs (r below the pylon's foot).
 static func pylon(k: VehicleModels, p: Node3D, at: Vector3, len: float, h: float, col: Color, r := 0.0) -> Vector3:
-	var key := "pl_pyl_%.2f_%.2f" % [len, h]
-	k._add(p, VehicleModels.extrude_x(key, [-len * 0.5, 0.08, len * 0.5, 0.08, len * 0.4, -h, -len * 0.3, -h], -0.045, 0.045), "aircraft", col, at)
-	# sway braces either side of the store
-	for s in [-1.0, 1.0]:
-		k._box(p, Vector3(0.05, 0.06, 0.05), at + Vector3(s * 0.07, -h + 0.02, -len * 0.25), "gunmetal_w", null, Vector3(0, 0, s * 0.5), false)
-		k._box(p, Vector3(0.05, 0.06, 0.05), at + Vector3(s * 0.07, -h + 0.02, len * 0.25), "gunmetal_w", null, Vector3(0, 0, s * 0.5), false)
-	return at + Vector3(0, -h - r, 0)
+	return VehicleAircraft.hardpoint(k, p, at, len, h, col, r)
 
 
 ## A general-purpose bomb (Mk 82 / 84 style) centred at c, or with `guided` a
@@ -543,15 +413,7 @@ static func bomb(k: VehicleModels, p: Node3D, c: Vector3, len: float, r: float, 
 ## A rocket pod (LAU-61 style) centred at c: the faired tube with the
 ## rockets' noses in a dark honeycomb front.
 static func rocket_pod(k: VehicleModels, p: Node3D, c: Vector3, len: float, r: float, col := OLIVE) -> void:
-	var st := [[-0.5 * len, 0, r * 0.86, r * 0.86, r * 0.86], [-0.46 * len, 0, r * 0.98, r * 0.98, r * 0.98], [-0.4 * len, 0, r, r, r],
-		[0.34 * len, 0, r, r, r], [0.44 * len, 0, r * 0.82, r * 0.82, r * 0.82], [0.5 * len, 0, r * 0.55, r * 0.55, r * 0.55]]
-	body(k, p, "rpod_%.2f_%.2f" % [len, r], st, "paint", col, 16, 50.0, c)
-	k._cyl(p, r * 0.8, r * 0.8, 0.02, c + Vector3(0, 0, -0.5 * len - 0.005), Vector3(PI / 2, 0, 0), "plain_dark", null, 14, false)
-	for i in 7:
-		var o := Vector2.ZERO if i == 0 else Vector2(cos(TAU * i / 6.0), sin(TAU * i / 6.0)) * r * 0.5
-		k._cyl(p, 0.0, r * 0.17, 0.08, c + Vector3(o.x, o.y, -0.5 * len - 0.02), Vector3(PI / 2, 0, 0), "gunmetal_w", null, 6, false)
-	for z in [-0.3, 0.25]:
-		k._cyl(p, r * 1.02, r * 1.02, 0.04, c + Vector3(0, 0, z * len), Vector3(PI / 2, 0, 0), "gunmetal_w", null, 14, false)
+	VehicleAircraft.rocket_pod(k, p, c, r, len, "paint", col)
 
 
 ## An air-to-air missile (AIM-9 style) on its launch rail, centred at c:
@@ -606,10 +468,8 @@ static func antenna(k: VehicleModels, p: Node3D, pos: Vector3, h: float, down :=
 
 
 static func nav_lights(k: VehicleModels, p: Node3D, right: Vector3, sz := 0.08) -> void:
-	if k.burnt:
-		return
-	k._box(p, Vector3(sz, sz * 0.6, sz * 1.6), right, "paint", Color(0.15, 0.5, 0.2), Vector3.ZERO, false)
-	k._box(p, Vector3(sz, sz * 0.6, sz * 1.6), right * Vector3(-1, 1, 1), "paint", Color(0.6, 0.12, 0.1), Vector3.ZERO, false)
+	VehicleFittings.marker(k, p, right, Vector3(sz, sz * 0.6, sz * 1.6), 1.0, Color(0.15, 0.5, 0.2))
+	VehicleFittings.marker(k, p, right * Vector3(-1, 1, 1), Vector3(sz, sz * 0.6, sz * 1.6), -1.0, Color(0.6, 0.12, 0.1))
 
 
 ## A team panel flat on a wing's upper surface at span x, both wings.
@@ -1554,7 +1414,7 @@ static func lift_fan(k: VehicleModels, p: Node3D, key: String, pos: Vector3, r: 
 		var pm := PlaneMesh.new()
 		pm.size = Vector2(r, r) * 2.0
 		disc.mesh = pm
-		disc.material_override = VehicleModels._blur_mat()
+		disc.material_override = VehiclePropellers.disc_material(12, 0.22)
 		disc.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		disc.position = Vector3(0, 0.02, 0)
 		disc.visible = false

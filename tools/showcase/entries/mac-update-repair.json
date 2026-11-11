@@ -1,0 +1,10 @@
+{
+  "entry": "changelog/unreleased/mac-update-repair.md",
+  "summary": "Mac installs new releases without repeatedly downloading the current version.",
+  "medium": "text",
+  "stage": "text",
+  "rationale": "An invisible updater decision is demonstrated by platform regressions; no image would establish it. Windows fresh-install update separately verified against published v1.0.13 hashes. Physical Mac launch and Gatekeeper remain untested.",
+  "source_ref": "baccc6d8 + working tree",
+  "sources": [],
+  "output": null
+}

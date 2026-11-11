@@ -91,7 +91,11 @@ above a neighbouring ridge. This is a visual review stage, not a performance ben
 
 ## Inventory and release process
 
-`catalog.json` records every entry's medium, stage, rationale and evidence source.
+New presentation records live in `entries/<entry-slug>.json`, one change per file.
+See [the record format](entries/README.md). The audit and renderer combine these
+with the legacy `catalog.json` in memory; do not regenerate or append to that file
+for new changes. Independent PRs can then add records without editing the same array.
+Existing PRs using the legacy array still work during the transition.
 Archived sources are hashed so an asset change prompts a presentation review.
 Register new entries as part of the PR; text-only entries still state why text is
 sufficient. `audit.py` runs in changelog CI and follows unreleased entries when the
@@ -188,3 +192,15 @@ seekable silent VP9 WebM, a JPEG poster, and a capture/provenance JSON sidecar.
 Keep matched historical stills as comparisons; do not call the current-PR tour
 before/after footage. Inspect the encoded opening, middle and closing frames and
 run the changelog and presentation checks before committing media.
+
+
+## Trench excavation and repair
+
+The existing `tests/fixtures/environment-views.gd` stage accepts
+`--capture-set=trenches` for a held network view and `--capture-set=trench-build`
+for actual engineer orders. Both use `--scenario=trenches --seed=3`.
+The construction stage simulates three 30 Hz ticks per saved frame (10 fps),
+records 30 seconds and applies controlled damage at 18 seconds before repair.
+Use engine `--fixed-fps 30` so animation and simulation advance together.
+See [the trench review](../../docs/trench-realism-review.md) for exact commands,
+matched baseline provenance and coverage limits. Raw frames belong outside Git.

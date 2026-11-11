@@ -70,6 +70,11 @@ var equip_previous := Transform3D.IDENTITY
 var equip_start := Transform3D.IDENTITY
 var equip_poses: Array[Transform3D] = []
 var shovel: Node3D
+var dig_soil: MeshInstance3D
+var _dig_last := Vector3.INF
+var _dig_loaded := false
+var _dig_flying := false
+var _dig_velocity := Vector3.ZERO
 var ladder: Structure
 var ladder_contacts := {}
 
@@ -626,6 +631,11 @@ func fire_kick(strength: float) -> void:
 
 func _begin_pose(mode: int) -> void:
 	if shovel != null: shovel.visible = mode == 21
+	if mode != 21 and dig_soil != null:
+		dig_soil.visible = false
+		_dig_loaded = false
+		_dig_flying = false
+		_dig_last = Vector3.INF
 	if mode == _pose_mode: return
 	_transition_from_prone = _pose_mode in [5, 10] or (_pose_mode >= 30 and _pose_mode <= 38)
 	foot_offsets = [Vector2.ZERO, Vector2.ZERO]
@@ -792,8 +802,38 @@ func pose_activity(dt: float, clip: String, throw_time := -1.0, prone_throw := f
 		var forward := global_basis.z.slide(up).normalized()
 		if forward.length_squared() < 0.01: forward = global_basis.x.slide(up).normalized()
 		shovel.global_transform = Transform3D(Basis(up.cross(forward).normalized(), up, forward), right - up * 0.22)
+		_dig_soil(dt)
 	magazine.update(0.0, false)
 	last_velocity = Vector3.ZERO
+
+
+## One reusable clod follows the blade, then flies free as the shovel lifts.
+func _dig_soil(dt: float) -> void:
+	var tip := shovel.to_global(Vector3(0, -0.64, 0))
+	var ground: float = ground_height.call(tip) if ground_height.is_valid() else ground_y
+	if dig_soil == null:
+		dig_soil = Res.mi(self, Res.sphere(0.09, 6), Res.mat(Color(0.18, 0.13, 0.08)), Vector3.ZERO, Vector3.ZERO, false)
+		dig_soil.scale = Vector3(1.3, 0.65, 1.0)
+		dig_soil.visible = false
+	var velocity := (tip - _dig_last) / maxf(0.001, dt) if _dig_last != Vector3.INF else Vector3.ZERO
+	_dig_last = tip
+	if _dig_flying:
+		_dig_velocity.y -= dt * 9.8
+		dig_soil.global_position += _dig_velocity * dt
+		var floor_y: float = ground_height.call(dig_soil.global_position) if ground_height.is_valid() else ground_y
+		if dig_soil.global_position.y <= floor_y + 0.05:
+			_dig_flying = false
+			dig_soil.visible = false
+	elif _dig_loaded:
+		dig_soil.global_position = tip
+		if tip.y > ground + 0.55 and velocity.y > 0.4:
+			_dig_loaded = false
+			_dig_flying = true
+			_dig_velocity = velocity.limit_length(2.5) + global_basis.x * 0.8
+	elif tip.y < ground + 0.18:
+		_dig_loaded = true
+		dig_soil.visible = true
+		dig_soil.global_position = tip
 
 
 func calibrate_native_weapon() -> void:

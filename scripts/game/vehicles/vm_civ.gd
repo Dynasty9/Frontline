@@ -75,192 +75,32 @@ static func _paint(seed: int, salt: int, irregular := false) -> Color:
 
 # --- geometry helpers -------------------------------------------------------------
 
-## Insets a convex polygon: edge i (p[i] to p[i+1]) moves in by d[i].
 static func _inset(p: PackedVector2Array, d: Array) -> PackedVector2Array:
-	var n := p.size()
-	var area := 0.0
-	for i in n:
-		var a := p[i]
-		var b := p[(i + 1) % n]
-		area += a.x * b.y - b.x * a.y
-	var sgn := 1.0 if area > 0.0 else -1.0
-	var out := PackedVector2Array()
-	for i in n:
-		var pa := p[(i - 1 + n) % n]
-		var pb := p[i]
-		var pc := p[(i + 1) % n]
-		var e1 := (pb - pa).normalized()
-		var e2 := (pc - pb).normalized()
-		var n1 := Vector2(-e1.y, e1.x) * sgn
-		var n2 := Vector2(-e2.y, e2.x) * sgn
-		var d1: float = d[(i - 1 + n) % n]
-		var d2: float = d[i]
-		var c1 := n1.dot(pb) + d1
-		var c2 := n2.dot(pb) + d2
-		var det := n1.x * n2.y - n1.y * n2.x
-		if absf(det) < 1e-4:
-			out.append(pb + n1 * maxf(d1, d2))
-		else:
-			out.append(Vector2((c1 * n2.y - c2 * n1.y) / det, (n1.x * c2 - n2.x * c1) / det))
-	return out
+	return VehicleWheelArches._inset(p, d)
 
 
-## Clips a convex polygon to the half-plane nrm.p >= c. f holds a flag per edge
-## (edge i runs p[i] to p[i+1]); the new edge along the cut gets `cut`.
-## Returns [points, flags].
 static func _clip(p: PackedVector2Array, f: Array, nrm: Vector2, c: float, cut: bool) -> Array:
-	var n := p.size()
-	var op := PackedVector2Array()
-	var arrive := []
-	for i in n:
-		var a := p[i]
-		var b := p[(i + 1) % n]
-		var ina := nrm.dot(a) >= c - 1e-6
-		var inb := nrm.dot(b) >= c - 1e-6
-		if ina and inb:
-			op.append(b)
-			arrive.append(f[i])
-		elif ina:
-			op.append(a.lerp(b, (c - nrm.dot(a)) / (nrm.dot(b) - nrm.dot(a))))
-			arrive.append(f[i])
-		elif inb:
-			op.append(a.lerp(b, (c - nrm.dot(a)) / (nrm.dot(b) - nrm.dot(a))))
-			arrive.append(cut)
-			op.append(b)
-			arrive.append(f[i])
-	var m := op.size()
-	var of := []
-	for i in m:
-		of.append(arrive[(i + 1) % m])
-	# drop doubled points (a zero-length edge hands its place to the next)
-	var dp := PackedVector2Array()
-	var df := []
-	for i in m:
-		if dp.size() > 0 and op[i].distance_to(dp[dp.size() - 1]) < 1e-4:
-			df[df.size() - 1] = of[i]
-			continue
-		dp.append(op[i])
-		df.append(of[i])
-	while dp.size() > 1 and dp[0].distance_to(dp[dp.size() - 1]) < 1e-4:
-		dp.remove_at(dp.size() - 1)
-		df.pop_back()
-	return [dp, df]
+	return VehicleWheelArches._clip(p, f, nrm, c, cut)
 
 
-## A convex side profile (z, y) extruded from x0 to x1, its outer edges (flag
-## true) chamfered by ch at both ends. rnd [zmin, zmax, front length, front
-## inset, rear length, rear inset] rounds the corners off in plan.
 static func _xprism(k: VehicleModels, parent: Node3D, key: String, p: PackedVector2Array, f: Array, x0: float, x1: float, ch: float, mat: String, col = null, rnd: Array = []) -> Variant:
-	var d := []
-	for fl in f:
-		d.append(ch if fl else 0.0)
-	var pin := _inset(p, d)
-	var mesh := VehicleModels.solid([_xring(pin, x0, 1.0, rnd), _xring(p, x0 + ch, 1.0, rnd),
-		_xring(p, x1 - ch, -1.0, rnd), _xring(pin, x1, -1.0, rnd)], key)
-	return k._add(parent, mesh, mat, col, Vector3.ZERO)
+	return VehicleWheelArches._xprism(k, parent, key, p, f, x0, x1, ch, mat, col, rnd)
 
 
-## A side-profile ring at x, pulled in (towards +x when s is 1) where the
-## plan rounding says.
 static func _xring(p: PackedVector2Array, x: float, s: float, rnd: Array) -> PackedVector3Array:
-	var r := PackedVector3Array()
-	for q in p:
-		r.append(Vector3(x + s * _taper(q.x, rnd), q.y, q.x))
-	return r
+	return VehicleWheelArches._xring(p, x, s, rnd)
 
 
 static func _taper(z: float, rnd: Array) -> float:
-	if rnd.is_empty():
-		return 0.0
-	var zmin: float = rnd[0]
-	var zmax: float = rnd[1]
-	var lf: float = rnd[2]
-	var lr: float = rnd[4]
-	if lf > 0.0 and z < zmin + lf:
-		var t := (zmin + lf - z) / lf
-		return float(rnd[3]) * t * t
-	if lr > 0.0 and z > zmax - lr:
-		var t := (z - (zmax - lr)) / lr
-		return float(rnd[5]) * t * t
-	return 0.0
+	return VehicleWheelArches._taper(z, rnd)
 
 
-## A body panel: a convex side profile (z, y pairs) from x0 to x1 with
-## chamfered edges and round wheel arches [zc, yc, r] cut out of its underside.
-## rnd [front length, front inset, rear length, rear inset] rounds the corners
-## off in plan.
 static func _xbody(k: VehicleModels, parent: Node3D, key: String, prof: Array, x0: float, x1: float, ch: float, arches: Array, mat: String, col = null, segs := 8, rnd: Array = []) -> void:
-	var p := VehicleModels._v2(prof)
-	var zmin := INF
-	var zmax := -INF
-	for v in p:
-		zmin = minf(zmin, v.x)
-		zmax = maxf(zmax, v.x)
-	# strips: plain between the arches, one per chord over them, and a few
-	# more where the corners round off
-	var cuts := []
-	for a in arches:
-		var zc: float = a[0]
-		var r: float = a[2]
-		for i in segs + 1:
-			var t := PI - PI * float(i) / segs
-			cuts.append(zc + r * cos(t))
-	var rr := []
-	if not rnd.is_empty():
-		rr = [zmin, zmax, rnd[0], rnd[1], rnd[2], rnd[3]]
-		for fr in [0.12, 0.3, 0.55, 1.0]:
-			if float(rnd[0]) > 0.0:
-				cuts.append(zmin + float(rnd[0]) * fr)
-			if float(rnd[2]) > 0.0:
-				cuts.append(zmax - float(rnd[2]) * fr)
-	cuts.sort()
-	var bounds := [zmin]
-	for z in cuts:
-		if z > float(bounds[bounds.size() - 1]) + 0.015 and z < zmax - 0.015:
-			bounds.append(z)
-	bounds.append(zmax)
-	var flags := []
-	for i in p.size():
-		flags.append(true)
-	for i in bounds.size() - 1:
-		var za: float = bounds[i]
-		var zb: float = bounds[i + 1]
-		var poly := p
-		var fl := flags
-		if i > 0:
-			var r0 := _clip(poly, fl, Vector2(1, 0), za, false)
-			poly = r0[0]
-			fl = r0[1]
-		if i < bounds.size() - 2 and poly.size() >= 3:
-			var r1 := _clip(poly, fl, Vector2(-1, 0), -zb, false)
-			poly = r1[0]
-			fl = r1[1]
-		# over an arch: keep what's above the chord
-		var zm := (za + zb) * 0.5
-		for a in arches:
-			var zc: float = a[0]
-			var yc: float = a[1]
-			var r: float = a[2]
-			if zm > zc - r and zm < zc + r and poly.size() >= 3:
-				var ya := yc + sqrt(maxf(0.0, r * r - (za - zc) * (za - zc)))
-				var yb := yc + sqrt(maxf(0.0, r * r - (zb - zc) * (zb - zc)))
-				var nrm := Vector2(-(yb - ya), zb - za).normalized()
-				var r2 := _clip(poly, fl, nrm, nrm.dot(Vector2(za, ya)), true)
-				poly = r2[0]
-				fl = r2[1]
-		if poly.size() >= 3:
-			_xprism(k, parent, "%s_%d" % [key, i], poly, fl, x0, x1, ch, mat, col, rr)
+	VehicleWheelArches._xbody(k, parent, key, prof, x0, x1, ch, arches, mat, col, segs, rnd)
 
 
-## A wheel-arch flare: a band round the arch from angle a0 to a1 (0 is the
-## rear, PI the front), r0 to r1 from the axle, x0 to x1 across.
 static func _flare(k: VehicleModels, parent: Node3D, key: String, zc: float, yc: float, r0: float, r1: float, x0: float, x1: float, a0: float, a1: float, mat: String, col = null, segs := 6) -> void:
-	for i in segs:
-		var t0 := lerpf(a0, a1, float(i) / segs)
-		var t1 := lerpf(a0, a1, float(i + 1) / segs)
-		var q := PackedVector2Array([Vector2(zc + r0 * cos(t0), yc + r0 * sin(t0)), Vector2(zc + r0 * cos(t1), yc + r0 * sin(t1)),
-			Vector2(zc + r1 * cos(t1), yc + r1 * sin(t1)), Vector2(zc + r1 * cos(t0), yc + r1 * sin(t0))])
-		_xprism(k, parent, "%s_%d" % [key, i], q, [true, i == segs - 1, true, i == 0], x0, x1, minf(0.012, (x1 - x0) * 0.3), mat, col)
+	VehicleWheelArches._flare(k, parent, key, zc, yc, r0, r1, x0, x1, a0, a1, mat, col, segs)
 
 
 ## A loft through plan outlines (x, z pairs, convex, same point count) at the
@@ -554,7 +394,7 @@ static func _offroad(k: VehicleModels, team: int, seed: int, v: String) -> void:
 		_lamp(k, m, Vector3(0.05, 0.04, 0.12), Vector3(s * 0.9, 0.98, -2.22), AMBER)
 	# wipers, aerial
 	for x in [-0.32, 0.22]:
-		k._box(m, Vector3(0.5, 0.012, 0.025), Vector3(x, 1.235, -0.86), "gunmetal_w", null, Vector3(-0.8, 0, 0.12), false)
+		VehicleFittings.parked_wiper(k, m, Vector3(x, 1.235, -0.86), 0.5, Vector3(-0.8, 0, 0.12))
 	_rod(k, m, Vector3(0.84, 1.25, -0.88), Vector3(0.84, 2.1, -0.75), 0.006, "gunmetal_w", null, 4, false)
 	# rear: step bumper, plate, tow ball
 	k._box(m, Vector3(1.76, 0.16, 0.16), Vector3(0, 0.55, 2.56), "steel", Color(0.5, 0.5, 0.5))
@@ -745,7 +585,7 @@ static func _mb4wd(k: VehicleModels, team: int, seed: int, v: String) -> void:
 	var wc := [wlo + Vector3(-0.7, 0.03, 0), wlo + Vector3(0.7, 0.03, 0), whi + Vector3(0.7, -0.03, 0), whi + Vector3(-0.7, -0.03, 0)]
 	_pane(k, m, "civ_mb_ws", wc, Vector3(0, 1.4, 0.0), 0.0, 1.0, 0.0, 1.0, -0.01, 0.012, "glass")
 	for x in [-0.36, 0.2]:
-		k._box(m, Vector3(0.45, 0.012, 0.025), Vector3(x, 1.24, -0.84), "gunmetal_w", null, Vector3(-0.6, 0, 0.1), false)
+		VehicleFittings.parked_wiper(k, m, Vector3(x, 1.24, -0.84), 0.45, Vector3(-0.6, 0, 0.1))
 	_rod(k, m, Vector3(0.8, 1.07, -1.0), Vector3(0.8, 1.95, -0.85), 0.006, "gunmetal_w", null, 4, false)
 	# inside: dash, the wheel (left-hand drive), two buckets and a bench
 	k._box(m, Vector3(1.5, 0.16, 0.24), Vector3(0, 1.2, -0.62), "plain", TRIM)
@@ -889,7 +729,7 @@ static func _truck(k: VehicleModels, team: int, seed: int, v: String) -> void:
 		k._box(m, Vector3(0.62, 0.04, 0.03), Vector3(0, y, -2.8 + (y - 1.3) * slope - 0.015), "plain", dark, Vector3(slope, 0, 0), false)
 	k._box(m, Vector3(0.7, 0.3, 0.02), Vector3(0, 1.47, -2.8 + 0.17 * slope - 0.002), "plain", Color(0.06, 0.06, 0.06), Vector3(slope, 0, 0), false)
 	k._box(m, Vector3(2.04, 0.3, 0.18), Vector3(0, 1.08, -2.86), "steel", Color(0.3, 0.3, 0.3))
-	k._box(m, Vector3(0.6, 0.24, 0.2), Vector3(0, 0.84, -2.82), "gunmetal_w")
+	VehicleEquipment.winch(k, m, Vector3(0, 0.84, -2.82), Vector3(0.6, 0.24, 0.2))
 	k._cyl(m, 0.08, 0.08, 0.5, Vector3(0, 0.84, -2.9), Vector3(0, 0, PI / 2), "gunmetal_w", null, 10)
 	k._box(m, Vector3(0.12, 0.08, 0.06), Vector3(0, 0.84, -3.0), "steel", Color(0.5, 0.5, 0.5))
 	for s in [-1.0, 1.0]:
@@ -1361,7 +1201,7 @@ static func _car_details(k: VehicleModels, m: Node3D, dy: float, zr: float, ywip
 	k._cyl(m, 0.05, 0.05, 1.3, Vector3(0, 0.31 + dy, zr), Vector3(0, 0, PI / 2), "gunmetal_w", null, 8)
 	k._cyl(m, 0.03, 0.03, 1.6, Vector3(-0.35, 0.22 + dy, 0.8), Vector3(PI / 2, 0, 0), "gunmetal_w", null, 6, false)
 	for x in [-0.3, 0.2]:
-		k._box(m, Vector3(0.48, 0.012, 0.025), Vector3(x, ywiper + 0.02, -0.73), "gunmetal_w", null, Vector3(-1.0, 0, 0.1), false)
+		VehicleFittings.parked_wiper(k, m, Vector3(x, ywiper + 0.02, -0.73), 0.48, Vector3(-1.0, 0, 0.1))
 
 
 # --- SUV --------------------------------------------------------------------------
@@ -1598,9 +1438,9 @@ static func _tractor(k: VehicleModels, seed: int) -> void:
 	k._add(m, Res.torus(0.17, 0.2), "plain", TRIM, Vector3(0, 1.95, -0.05), Vector3(0.5, 0, 0))
 	_rod(k, m, Vector3(0, 1.95, -0.05), Vector3(0, 1.62, -0.32), 0.03, "plain", TRIM, 6)
 	# exhaust stack with its silencer and rain cap, the air intake
-	k._cyl(m, 0.045, 0.045, 1.25, Vector3(0.22, 2.2, -0.62), Vector3.ZERO, "metal_dark", null, 8)
+	VehicleFittings.exhaust(k, m, Vector3(0.22, 1.575, -0.62), Vector3.UP, 1.25, 0.06)
 	k._cyl(m, 0.08, 0.08, 0.45, Vector3(0.22, 1.95, -0.62), Vector3.ZERO, "metal_dark", null, 10)
-	k._box(m, Vector3(0.1, 0.012, 0.12), Vector3(0.22, 2.84, -0.6), "metal_dark", null, Vector3(0.4, 0, 0))
+	k._box(m, Vector3(0.14, 0.012, 0.14), Vector3(0.22, 2.84, -0.6), "metal_dark", null, Vector3(0.4, 0, 0))
 	k._cyl(m, 0.05, 0.05, 0.5, Vector3(-0.22, 1.88, -0.62), Vector3.ZERO, "paint", grey, 8)
 	k._cyl(m, 0.08, 0.06, 0.1, Vector3(-0.22, 2.18, -0.62), Vector3.ZERO, "paint", grey, 10)
 	# steps on the left, the three-point hitch and the PTO at the back
