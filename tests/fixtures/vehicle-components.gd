@@ -76,6 +76,22 @@ func _ready() -> void:
 	var paint_flat := Mats._flat(painted, 0)
 	assert(original_flat[0] == paint_flat[0] and original_flat[1] == paint_flat[1])
 	assert(paint_flat[3] != null)
+	# Service fittings retain their authored parent and leave animation slots alone.
+	var fittings := VehicleModels.new()
+	fittings.root = Node3D.new()
+	fittings._baking = true
+	VehicleFittings.exhaust(fittings, fittings.root, Vector3.ZERO, Vector3.RIGHT, 1.5, 0.1)
+	var pipe_parts: Array = fittings._parts[fittings.root]
+	assert(pipe_parts[0][0] is CylinderMesh and not (pipe_parts[0][0] as CylinderMesh).cap_top)
+	assert((pipe_parts[1][0] as CylinderMesh).flip_faces)
+	var pipe_bounds := _bounds(pipe_parts)
+	assert(pipe_bounds.size.x > 1.49 and pipe_bounds.size.y < 0.4)
+	VehicleFittings.grille(fittings, fittings.root, Vector3(3, 0, 0), Vector2(1.5, 0.5), Vector3.ZERO, "paint")
+	VehicleFittings.mudflap(fittings, fittings.root, Vector3(5, 0, 0), Vector2(0.5, 0.4))
+	fittings._bag(fittings.root, Vector3(0.7, 0.3, 0.4), Vector3(7, 0, 0), "canvas", Color.OLIVE, Vector3(0, 0.4, 0))
+	assert(fittings.wheels.is_empty() and fittings.root.get_child_count() == 0)
+	_bounds(fittings._parts[fittings.root])
+	fittings.root.free()
 	print("VEHICLE_COMPONENTS passed")
 	TestRun.quit(get_tree())
 

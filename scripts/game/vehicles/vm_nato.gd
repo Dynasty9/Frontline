@@ -322,12 +322,10 @@ static func _hunter(k: VehicleModels, team: int, arm: String) -> void:
 		k._add(m, VehicleModels.extrude_x("nato_matv_fender", fen, -0.2, 0.2), cam, null, Vector3(s * 1.04, 0, 0))
 		# the wheel arch lip and mud flap behind the front wheel
 		k._box(m, Vector3(0.42, 0.05, 1.36), Vector3(s * 1.04, 1.22, fz), "gunmetal_w")
-		k._box(m, Vector3(0.36, 0.5, 0.03), Vector3(s * 1.0, 0.98, -1.22), "rubber")
+		VehicleFittings.mudflap(k, m, Vector3(s * 1.0, 0.98, -1.22), Vector2(0.36, 0.5))
 		_lamp(k, m, Vector3(s * 1.02, 1.4, -2.95), 0.078)
 		k._box(m, Vector3(0.1, 0.05, 0.03), Vector3(s * 1.15, 1.54, -2.93), "paint", Color(0.55, 0.36, 0.08), Vector3.ZERO, false)
-	k._box(m, Vector3(1.3, 0.38, 0.05), Vector3(0, 1.4, -2.97), "gunmetal_w")
-	for i in 9:
-		k._box(m, Vector3(0.055, 0.34, 0.03), Vector3(-0.54 + i * 0.135, 1.4, -3.0), cam, null, Vector3.ZERO, false)
+	VehicleFittings.grille(k, m, Vector3(0, 1.4, -3.04), Vector2(1.3, 0.38), Vector3(0, PI, 0), cam, null, 9, true)
 	k._box(m, Vector3(1.36, 0.05, 0.06), Vector3(0, 1.6, -2.97), cam)
 	# the hood's centre bulge and its latches
 	k._add(m, VehicleModels.loft("nato_matv_bulge", [-0.44, -2.4, 0.44, -2.4, 0.44, -1.0, -0.44, -1.0], [-0.34, -2.3, 0.34, -2.3, 0.34, -1.0, -0.34, -1.0], 0.0, 0.07), cam, null, Vector3(0, 1.73, 0), Vector3(-0.062, 0, 0))
@@ -389,7 +387,7 @@ static func _hunter(k: VehicleModels, team: int, arm: String) -> void:
 	_zy(k, m, -0.45, 0.5, Vector2(1.537, 2.32), Vector2(1.581, 1.98), 0.06, 0.0, cam)
 	_zy(k, m, -0.45, 0.4, Vector2(1.54, 2.29), Vector2(1.578, 2.01), 0.03, 0.035, "glass", null, false)
 	k._box(m, Vector3(0.5, 0.05, 0.2), Vector3(-0.6, 1.05, 2.86), "gunmetal_w")
-	k._box(m, Vector3(1.1, 0.36, 0.5), Vector3(-0.15, 1.64, 2.1), "canvas", BAG, Vector3(0, 0.1, 0))
+	k._bag(m, Vector3(1.1, 0.36, 0.5), Vector3(-0.15, 1.64, 2.1), "canvas", BAG, Vector3(0, 0.1, 0))
 	# the spare wheel on its swing-out carrier
 	_spare(k, m, Vector3(0.22, 1.66, 3.0), 0.56, 0.38, Vector3(PI / 2, 0, 0))
 	k._box(m, Vector3(0.12, 0.8, 0.1), Vector3(0.22, 1.66, 2.8), "gunmetal_w")
@@ -456,7 +454,7 @@ static func _prowler(k: VehicleModels, team: int, arm: String) -> void:
 		k._box(m, Vector3(0.4, 0.1, 0.9), Vector3(s * 0.45, 1.0, 1.62), "canvas", Color(0.2, 0.21, 0.17))
 		k._box(m, Vector3(0.08, 0.36, 0.88), Vector3(s * 0.22, 1.2, 1.62), "canvas", Color(0.2, 0.21, 0.17))
 		k._box(m, Vector3(0.34, 0.32, 0.28), Vector3(s * 0.62, 0.62, 1.95), "gunmetal_w")
-	k._box(m, Vector3(0.36, 0.3, 0.6), Vector3(0, 1.05, 1.4), "canvas", BAG)
+	k._bag(m, Vector3(0.36, 0.3, 0.6), Vector3(0, 1.05, 1.4), "canvas", BAG)
 	_ammo_can(k, m, Vector3(-0.08, 1.01, 2.0))
 	_ammo_can(k, m, Vector3(0.1, 1.01, 2.0))
 	_jerry(k, m, Vector3(0.82, 0.95, 0.4), Color(0.3, 0.33, 0.22))
@@ -649,7 +647,7 @@ static func _marshall(k: VehicleModels, team: int) -> void:
 		k._box(t, Vector3(0.06, 0.3, 0.9), Vector3(s * 1.0, 0.36, 0.55), cam, null, Vector3(0, 0, s * 0.18))
 	k._box(t, Vector3(1.5, 0.05, 0.4), Vector3(0, 0.22, 1.72), "gunmetal_w")
 	k._box(t, Vector3(1.5, 0.3, 0.04), Vector3(0, 0.38, 1.92), "gunmetal_w")
-	k._box(t, Vector3(0.7, 0.32, 0.36), Vector3(-0.35, 0.42, 1.72), "canvas", BAG, Vector3(0, 0.08, 0))
+	k._bag(t, Vector3(0.7, 0.32, 0.36), Vector3(-0.35, 0.42, 1.72), "canvas", BAG, Vector3(0, 0.08, 0))
 	_antenna(k, t, Vector3(-0.6, 0.66, 1.25), 1.5)
 
 
@@ -740,7 +738,7 @@ static func _rhino(k: VehicleModels, team: int, up: bool) -> void:
 		k._box(t, Vector3(0.24, 0.42, 1.0), Vector3(s * 1.18, 0.42, 1.35), cam, null, Vector3(0, 0, s * 0.1))
 	k._box(t, Vector3(2.0, 0.05, 0.42), Vector3(0, 0.3, 2.48), "gunmetal_w")
 	k._box(t, Vector3(2.0, 0.34, 0.04), Vector3(0, 0.48, 2.68), "gunmetal_w")
-	k._box(t, Vector3(0.8, 0.36, 0.38), Vector3(0.45, 0.52, 2.48), "canvas", BAG, Vector3(0, -0.1, 0))
+	k._bag(t, Vector3(0.8, 0.36, 0.38), Vector3(0.45, 0.52, 2.48), "canvas", BAG, Vector3(0, -0.1, 0))
 	k._cyl(t, 0.018, 0.018, 0.45, Vector3(0.1, 1.0, 1.9), Vector3.ZERO, "gunmetal_w", null, 6, false)
 	k._box(t, Vector3(0.14, 0.05, 0.05), Vector3(0.1, 1.24, 1.9), "gunmetal_w", null, Vector3.ZERO, false)
 	for s in [-1.0, 1.0]:
@@ -892,8 +890,8 @@ static func _mk_hull(k: VehicleModels, team: int, cam: String, era: bool) -> voi
 		k._box(m, Vector3(0.08, 0.16, 0.08), Vector3(-0.32, y, 3.86), "gunmetal_w", null, Vector3.ZERO, false)
 	k._box(m, Vector3(0.9, 0.06, 0.3), Vector3(0.2, 0.68, 3.9), "gunmetal_w")
 	for s in [-1.0, 1.0]:
-		k._box(m, Vector3(0.62, 0.6, 0.36), Vector3(s * 1.2, 1.5, 3.98), "gunmetal_w")
-		k._box(m, Vector3(0.5, 0.42, 0.3), Vector3(s * 1.2, 1.56, 3.98), "canvas", BAG)
+		k._box(m, Vector3(0.62, 0.06, 0.36), Vector3(s * 1.2, 1.32, 3.98), "gunmetal_w")
+		k._bag(m, Vector3(0.5, 0.42, 0.3), Vector3(s * 1.2, 1.56, 3.98), "canvas", BAG)
 		_jerry(k, m, Vector3(s * 1.62, 1.55, 3.92), Color(0.3, 0.33, 0.22), Vector3(0, PI / 2, 0))
 	var mx := 1.975 if era else 1.865
 	_team_mark(k, m, team, Vector3(mx, 0.95, 1.2), Vector3(0.02, 0.24, 0.8))
@@ -967,8 +965,8 @@ static func _mk_turret(k: VehicleModels, team: int, cam: String, up: bool) -> vo
 		_smoke(k, t, Vector3(s * 1.2, 0.62, -0.95), s, 5, s * -0.6)
 		_xy(k, t, s, 0.3, 1.5, Vector2(1.6, 0.04), Vector2(1.42, 0.78), 0.08, 0.04, cam)
 		_xy(k, t, s, 0.3, 1.52, Vector2(1.52, 0.38), Vector2(1.51, 0.44), 0.06, 0.09, "gunmetal_w", null, false)
-		k._box(t, Vector3(0.3, 0.42, 1.3), Vector3(s * 1.66, 0.6, 2.05), "gunmetal_w")
-		k._box(t, Vector3(0.24, 0.34, 1.2), Vector3(s * 1.64, 0.62, 2.05), "canvas", BAG if s < 0 else STOW)
+		k._box(t, Vector3(0.3, 0.05, 1.3), Vector3(s * 1.66, 0.425, 2.05), "gunmetal_w")
+		k._bag(t, Vector3(0.24, 0.34, 1.2), Vector3(s * 1.64, 0.62, 2.05), "canvas", BAG if s < 0 else STOW)
 	if up:
 		# reactive armour bricks over the wedge's faces and the turret sides
 		for s in [-1.0, 1.0]:
@@ -1015,14 +1013,14 @@ static func _scorcher(k: VehicleModels, team: int) -> void:
 		k._box(t, Vector3(0.04, 0.8, 0.7), Vector3(s * 1.6, 0.62, 0.9), cam)
 		k._box(t, Vector3(0.05, 0.05, 0.14), Vector3(s * 1.63, 0.62, 0.65), "gunmetal_w", null, Vector3.ZERO, false)
 		_smoke(k, t, Vector3(s * 1.45, 0.88, -1.3), s, 4, s * -0.4)
-		k._box(t, Vector3(0.3, 0.4, 1.2), Vector3(s * 1.74, 0.5, -0.15), "gunmetal_w")
-		k._box(t, Vector3(0.24, 0.32, 1.1), Vector3(s * 1.72, 0.52, -0.15), "canvas", BAG)
+		k._box(t, Vector3(0.3, 0.05, 1.2), Vector3(s * 1.74, 0.335, -0.15), "gunmetal_w")
+		k._bag(t, Vector3(0.24, 0.32, 1.1), Vector3(s * 1.72, 0.52, -0.15), "canvas", BAG)
 		_antenna(k, t, Vector3(s * 1.2, 1.28, 2.2), 1.4)
 	k._box(t, Vector3(0.7, 0.06, 0.6), Vector3(-0.6, 1.31, 0.9), cam)
 	k._box(t, Vector3(2.8, 0.05, 0.5), Vector3(0, 0.5, 2.75), "gunmetal_w")
 	k._box(t, Vector3(2.8, 0.42, 0.04), Vector3(0, 0.72, 2.98), "gunmetal_w")
 	for i in 3:
-		k._box(t, Vector3(0.7, 0.36, 0.4), Vector3(-0.9 + i * 0.9, 0.72, 2.75), "canvas", BAG if i != 1 else STOW)
+		k._bag(t, Vector3(0.7, 0.36, 0.4), Vector3(-0.9 + i * 0.9, 0.72, 2.75), "canvas", BAG if i != 1 else STOW)
 	_team_mark(k, t, team, Vector3(1.59, 0.42, 1.75), Vector3(0.02, 0.24, 0.6))
 	_team_mark(k, t, team, Vector3(-1.59, 0.42, 1.75), Vector3(0.02, 0.24, 0.6))
 	# the gun: trunnions at the turret front, the cradle, recoil cylinders, the
@@ -1169,7 +1167,7 @@ static func _namer_hull(k: VehicleModels, team: int, cam: String, cupola := true
 		k._box(m, Vector3(2.8, 0.05, 0.9), Vector3(0, roof + 0.02, 3.0), "gunmetal_w")
 		k._box(m, Vector3(2.8, 0.3, 0.04), Vector3(0, roof + 0.17, 3.44), "gunmetal_w")
 		for i in 3:
-			k._box(m, Vector3(0.7, 0.32, 0.6), Vector3(-0.85 + i * 0.85, roof + 0.2, 3.0), "canvas", BAG if i != 1 else STOW, Vector3(0, (i - 1) * 0.08, 0))
+			k._bag(m, Vector3(0.7, 0.32, 0.6), Vector3(-0.85 + i * 0.85, roof + 0.2, 3.0), "canvas", BAG if i != 1 else STOW, Vector3(0, (i - 1) * 0.08, 0))
 	# the rear: the big ramp with its door, hinges, steps
 	k._box(m, Vector3(2.0, 1.55, 0.1), Vector3(0, 1.35, 3.8), cam)
 	k._box(m, Vector3(0.62, 1.1, 0.04), Vector3(0.45, 1.4, 3.86), cam)
@@ -1346,9 +1344,7 @@ static func _hemtt_chassis(k: VehicleModels, team: int, paint: Color, detailed :
 	k._add(m, VehicleModels.extrude_x("nato_hemtt_nose", nose, -1.1, 1.1), cab, null, Vector3.ZERO)
 	# the big grille, the bumper with the headlights in its ends, tow eyes,
 	# the pintle
-	k._box(m, Vector3(1.86, 0.66, 0.04), Vector3(0, 1.4, -5.13), "gunmetal_w")
-	for i in 12:
-		k._box(m, Vector3(1.8, 0.024, 0.03), Vector3(0, 1.12 + i * 0.052, -5.15), cab, null, Vector3.ZERO, false)
+	VehicleFittings.grille(k, m, Vector3(0, 1.4, -5.19), Vector2(1.86, 0.66), Vector3(0, PI, 0), cab, null, 12)
 	k._box(m, Vector3(2.0, 0.06, 0.08), Vector3(0, 1.76, -5.13), cab)
 	k._box(m, Vector3(2.44, 0.32, 0.24), Vector3(0, 0.9, -5.14), "paint" if detailed else "paint", paint.darkened(0.15))
 	for s in [-1.0, 1.0]:
@@ -1397,7 +1393,7 @@ static func _hemtt_chassis(k: VehicleModels, team: int, paint: Color, detailed :
 		# the long black fender over both front axles, raked at its front
 		k._box(m, Vector3(0.54, 0.06, 2.55), Vector3(s * 0.98, 1.34, -3.08), "rubber")
 		k._box(m, Vector3(0.54, 0.06, 0.5), Vector3(s * 0.98, 1.24, -4.55), "rubber", null, Vector3(0.45, 0, 0))
-		k._box(m, Vector3(0.54, 0.45, 0.05), Vector3(s * 0.98, 1.12, -1.8), "rubber")
+		VehicleFittings.mudflap(k, m, Vector3(s * 0.98, 1.12, -1.8), Vector2(0.54, 0.45))
 	# the roof hatch, marker lights, antenna
 	k._box(m, Vector3(0.7, 0.06, 0.7), Vector3(0.35, 2.96 if detailed else 2.87, -3.5), cab)
 	for i in 3:
@@ -1407,9 +1403,7 @@ static func _hemtt_chassis(k: VehicleModels, team: int, paint: Color, detailed :
 	# (right), the spare wheel between
 	k._cyl(m, 0.24, 0.24, 1.3, Vector3(-0.85, 2.0, -2.68), Vector3.ZERO, cab, null, 12)
 	k._cyl(m, 0.2, 0.2, 0.1, Vector3(-0.85, 2.7, -2.68), Vector3.ZERO, "gunmetal_w", null, 12)
-	k._cyl(m, 0.08, 0.08, 1.9, Vector3(0.92, 2.15, -2.7), Vector3.ZERO, "gunmetal_w", null, 8)
-	k._cyl(m, 0.1, 0.1, 0.5, Vector3(0.92, 2.0, -2.7), Vector3.ZERO, "metal_dark", null, 8)
-	k._cyl(m, 0.085, 0.07, 0.12, Vector3(0.92, 3.12, -2.7), Vector3(0.6, 0, 0), "gunmetal_w", null, 8)
+	VehicleFittings.exhaust(k, m, Vector3(0.92, 1.20, -2.7), Vector3.UP, 1.98, 0.08)
 	_spare(k, m, Vector3(0.0, 2.0, -2.65), 0.6, 0.42, Vector3(PI / 2, 0, 0))
 	# fuel tank and battery box on the frame, air tanks
 	k._cyl(m, 0.3, 0.3, 1.1, Vector3(-0.95, 1.0, -1.0), Vector3(PI / 2, 0, 0), "paint" if detailed else "paint", paint.darkened(0.2), 14)
@@ -1487,7 +1481,7 @@ static func _hemtt_deck(k: VehicleModels, paint: Color, z0 := -2.4, z1 := 5.05) 
 	k._box(m, Vector3(2.4, 0.2, z1 - z0), Vector3(0, 1.14, (z0 + z1) * 0.5), "gunmetal_w")
 	for s in [-1.0, 1.0]:
 		k._box(m, Vector3(0.5, 0.05, 3.1), Vector3(s * 0.98, 1.36 - 0.06, 2.9), "rubber")
-		k._box(m, Vector3(0.46, 0.5, 0.03), Vector3(s * 0.98, 0.8, 4.4), "rubber")
+		VehicleFittings.mudflap(k, m, Vector3(s * 0.98, 0.8, 4.4), Vector2(0.46, 0.5))
 		_taillight(k, m, Vector3(s * 0.95, 1.12, z1 + 0.04))
 		_shackle(k, m, Vector3(s * 0.5, 0.95, z1 + 0.02), 1.0)
 	k._box(m, Vector3(2.3, 0.16, 0.16), Vector3(0, 0.9, z1 + 0.06), "paint", paint.darkened(0.15))

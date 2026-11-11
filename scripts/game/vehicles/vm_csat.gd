@@ -310,7 +310,7 @@ static func _ifrit(k: VehicleModels, team: int, arm: String) -> void:
 		for wz in [-1.85, 1.9]:
 			_arch(k, m, s * 1.14, wz, 0.56, 0.2, 1.16)
 			k._wheel(m, Vector3(s * 0.97, 0.55, wz), 0.55, 0.42)
-		k._box(m, Vector3(0.4, 0.36, 0.02), Vector3(s * 0.97, 0.42, 2.58), "rubber", null, Vector3.ZERO, false)
+		VehicleFittings.mudflap(k, m, Vector3(s * 0.97, 0.42, 2.58), Vector2(0.4, 0.36))
 		# headlight clusters in the wings, rear lights, tow hooks
 		_headlight(k, m, Vector3(s * 0.66, 1.0, -3.2))
 		_taillight(k, m, Vector3(s * 0.95, 1.22, 3.15))
@@ -338,7 +338,7 @@ static func _ifrit(k: VehicleModels, team: int, arm: String) -> void:
 		k._box(m, Vector3(0.04, 0.05, 1.6), Vector3(s * 0.68, 2.54, 1.95), "gunmetal_w")
 		for rz in [1.25, 2.65]:
 			k._box(m, Vector3(0.04, 0.05, 0.04), Vector3(s * 0.68, 2.515, rz), "gunmetal_w", null, Vector3.ZERO, false)
-	k._box(m, Vector3(0.6, 0.18, 0.4), Vector3(0.3, 2.59, 1.95), "canvas", Color(0.34, 0.33, 0.25), Vector3(0, 0.1, 0))
+	k._bag(m, Vector3(0.6, 0.18, 0.4), Vector3(0.3, 2.59, 1.95), "canvas", Color(0.34, 0.33, 0.25), Vector3(0, 0.1, 0))
 	_hatch(k, m, Vector3(0, 2.5, 1.1), 0.32)
 	if arm == "":
 		_hatch(k, m, Vector3(0, 2.5, -0.05), 0.36)
@@ -647,7 +647,7 @@ static func _marid(k: VehicleModels, team: int) -> void:
 		k._box(m, Vector3(0.62, 0.06, 0.8), Vector3(s * 0.48, 2.23, 1.9), c)
 		k._box(m, Vector3(0.1, 0.05, 0.14), Vector3(s * 0.48, 2.28, 1.55), "gunmetal_w", null, Vector3.ZERO, false)
 	k._box(m, Vector3(1.4, 0.05, 0.7), Vector3(0, 2.23, 2.95), "gunmetal_w")
-	k._box(m, Vector3(0.7, 0.26, 0.5), Vector3(-0.3, 2.37, 2.95), "canvas", Color(0.33, 0.33, 0.24), Vector3(0, 0.1, 0))
+	k._bag(m, Vector3(0.7, 0.26, 0.5), Vector3(-0.3, 2.37, 2.95), "canvas", Color(0.33, 0.33, 0.24), Vector3(0, 0.1, 0))
 	k._box(m, Vector3(0.45, 0.22, 0.4), Vector3(0.35, 2.35, 3.0), "paint", OLIVE)
 	k._team_mark(m, team, Vector3(0, 2.235, 0.85), Vector3(0.7, 0.02, 0.5))
 	# twin remote weapon stations on one ring: the 12.7 mm on the left, the
@@ -973,7 +973,7 @@ static func _varsuk(k: VehicleModels, team: int) -> void:
 		# antennas at the bustle's back corners
 		_antenna(k, t, Vector3(s * 0.8, 0.76, 2.6), 2.0 if s < 0 else 1.5)
 	# stowage on the bustle's back, a wind sensor mast
-	k._box(t, Vector3(1.6, 0.36, 0.3), Vector3(0, 0.5, 3.02), "canvas", Color(0.33, 0.33, 0.24))
+	k._bag(t, Vector3(1.6, 0.36, 0.3), Vector3(0, 0.5, 3.02), "canvas", Color(0.33, 0.33, 0.24))
 	k._cyl(t, 0.015, 0.015, 0.35, Vector3(0.2, 0.95, 1.2), Vector3.ZERO, "gunmetal_w", null, 4, false)
 	k._team_mark(t, team, Vector3(1.09, 0.45, 1.95), Vector3(0.03, 0.24, 0.7))
 	k._team_mark(t, team, Vector3(-1.09, 0.45, 1.95), Vector3(0.03, 0.24, 0.7))
@@ -1252,9 +1252,7 @@ static func _typhoon(k: VehicleModels, team: int) -> void:
 	_onface(k, m, Vector3(0, 2.6, -4.3), wn, wu, Vector3(0.12, 1.0, 0.04), c)
 	_onface(k, m, Vector3(0, 3.06, -4.18), wn, wu, Vector3(2.1, 0.1, 0.06), c)
 	# the grille on the cab front, headlights and tow hooks in the bumper
-	k._box(m, Vector3(1.5, 0.48, 0.04), Vector3(0, 1.7, -4.46), "gunmetal_w")
-	for i in 5:
-		k._box(m, Vector3(1.44, 0.03, 0.04), Vector3(0, 1.52 + i * 0.09, -4.48), c, null, Vector3.ZERO, false)
+	VehicleFittings.grille(k, m, Vector3(0, 1.7, -4.51), Vector2(1.5, 0.48), Vector3(0, PI, 0), c, null, 5)
 	for s in [-1.0, 1.0]:
 		_headlight(k, m, Vector3(s * 0.88, 1.18, -4.68))
 		_tow(k, m, Vector3(s * 0.45, 0.8, -4.65), -1.0)
@@ -1276,15 +1274,14 @@ static func _typhoon(k: VehicleModels, team: int) -> void:
 		k._wheel(m, Vector3(s * 1.0, 0.62, -3.05), 0.62, 0.48)
 		k._wheel(m, Vector3(s * 1.0, 0.62, 1.55), 0.62, 0.48)
 		k._wheel(m, Vector3(s * 1.0, 0.62, 3.0), 0.62, 0.48)
-		k._box(m, Vector3(0.5, 0.42, 0.02), Vector3(s * 1.0, 0.5, 3.75), "rubber", null, Vector3.ZERO, false)
+		VehicleFittings.mudflap(k, m, Vector3(s * 1.0, 0.5, 3.75), Vector2(0.5, 0.42))
 		# the rear tandem's mudguard
 		k._box(m, Vector3(0.56, 0.05, 2.4), Vector3(s * 1.0, 1.35, 2.28), "gunmetal_w")
 		_taillight(k, m, Vector3(s * 0.95, 0.98, 4.48))
 	# fuel tank and battery box on the frame, the exhaust stack behind the cab
 	k._box(m, Vector3(0.5, 0.52, 1.4), Vector3(0.95, 0.95, -1.2), "paint", Color(0.32, 0.31, 0.25))
 	k._box(m, Vector3(0.5, 0.45, 0.8), Vector3(-0.95, 0.95, -1.5), "gunmetal_w")
-	_tube(k, m, Vector3(1.05, 1.3, -2.18), Vector3(1.05, 3.25, -2.18), 0.06, "gunmetal_w", null, 8)
-	k._box(m, Vector3(0.18, 0.7, 0.12), Vector3(1.05, 2.4, -2.1), "gunmetal_w")
+	VehicleFittings.exhaust(k, m, Vector3(1.05, 1.3, -2.18), Vector3.UP, 1.95, 0.06)
 	# the rear underrun bar
 	k._box(m, Vector3(2.2, 0.14, 0.14), Vector3(0, 0.75, 4.45), "paint", Color(0.3, 0.29, 0.25))
 	# roof: hatch, antennas, a light

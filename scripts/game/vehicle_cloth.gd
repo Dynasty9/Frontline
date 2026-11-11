@@ -93,3 +93,29 @@ static func canopy(k: VehicleModels, parent: Node3D, profile: Array, bows: Array
 			var normal := x_axis.cross(y_axis)
 			var basis := Basis(x_axis, y_axis, normal)
 			panel(k, parent, Vector3((a.x + b.x) / 2, (a.y + b.y) / 2, (z0 + z1) / 2), Vector2(z1 - z0, across.length()), basis.get_euler(), col)
+
+
+## Padded stowage uses a softened shell, stitched welt and a retaining strap.
+## Thin canvas panels still go through the ordinary panel/canopy builders.
+static func bag(k: VehicleModels, parent: Node3D, size: Vector3, center: Vector3, material: String, col = null, rotation := Vector3.ZERO, shadow := true) -> Variant:
+	var mount := k._pivot(parent, center)
+	mount.rotation = rotation
+	var key := "cloth_bag_%s" % str(size)
+	if not _bags.has(size):
+		_bags[size] = VehicleBody.skin(BevelMesh.make(size, minf(size.x, minf(size.y, size.z)) * 0.20), key, 80.0)
+	var part: Variant = k._add(mount, _bags[size], material, col, Vector3.ZERO, Vector3.ZERO, Vector3.ONE, shadow)
+	var seam_col: Color = col.darkened(0.18) if col is Color else Color(0.23, 0.24, 0.17)
+	var inset := minf(size.y, minf(size.x, size.z)) * 0.20
+	var outline := [Vector3(-size.x / 2 + inset, 0, -size.z / 2), Vector3(size.x / 2 - inset, 0, -size.z / 2), Vector3(size.x / 2, 0, -size.z / 2 + inset), Vector3(size.x / 2, 0, size.z / 2 - inset), Vector3(size.x / 2 - inset, 0, size.z / 2), Vector3(-size.x / 2 + inset, 0, size.z / 2), Vector3(-size.x / 2, 0, size.z / 2 - inset), Vector3(-size.x / 2, 0, -size.z / 2 + inset)]
+	for i in outline.size():
+		VehicleFrames.tube(k, mount, outline[i], outline[(i + 1) % outline.size()], 0.006, material, seam_col, 5, false)
+	# The narrow strap follows the softened corners and never registers a pivot.
+	var strap := [Vector3(0, -size.y / 2 + inset, -size.z / 2 - 0.008), Vector3(0, size.y / 2 - inset, -size.z / 2 - 0.008), Vector3(0, size.y / 2 + 0.008, -size.z / 2 + inset), Vector3(0, size.y / 2 + 0.008, size.z / 2 - inset), Vector3(0, size.y / 2 - inset, size.z / 2 + 0.008)]
+	for i in strap.size() - 1:
+		VehicleFrames.beam(k, mount, strap[i], strap[i + 1], minf(0.045, size.x * 0.15), 0.012, "webbing", seam_col, false, true)
+	k._box(mount, Vector3(0.065, 0.018, 0.055), Vector3(0, size.y / 2 + 0.018, 0), "gunmetal", Color(0.22, 0.23, 0.21), Vector3.ZERO, false)
+	k._fold(mount)
+	return part
+
+
+static var _bags := {}
