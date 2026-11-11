@@ -26,6 +26,10 @@ func capture() -> void:
 		world.director.active = false
 	var views := []
 	match mode:
+		"clouds":
+			world.cam.cam.fov = 55.0
+			for mood in ["day", "golden", "rain", "night"]:
+				views.append([mood.capitalize(), Vector3(-1500, 120, -450), 900.0, -8.0, 0.7, mood])
 		"stones":
 			views = [["Fractured stone detail", Vector3(311.6891,0,433.3651), 12.0, -50.0, 0.7],
 				["Stones within the alpine slope", Vector3(311.6891,0,433.3651), 42.0, -42.0, 0.7]]
@@ -44,11 +48,16 @@ func capture() -> void:
 	var records := []
 	var index := 0
 	for view in views:
+		if mode == "clouds":
+			world.atmo.apply_mood(view[5])
+			world.atmo._bolt_t = 100.0
+			world.atmo._flash = 0.0
 		world.cam.dist = view[2]
 		world.cam.target_dist = view[2]
 		world.cam.pitch_deg = view[3]
 		world.cam.yaw = view[4]
-		world.cam.focus(view[1])
+		world.cam.focus_pos = view[1]
+		world.cam._apply()
 		for warmup in 90:
 			await process_frame
 		while world.structure_view != null and world.structure_view.warming():
@@ -59,13 +68,24 @@ func capture() -> void:
 			var phase := float(frame) / 119.0
 			# Gentle orbit returns to its start, leaving surfaces readable throughout.
 			world.cam.yaw = float(view[4]) + sin(phase * TAU) * 0.065
-			world.cam.focus(view[1])
+			world.cam.focus_pos = view[1]
+			world.cam._apply()
 			await process_frame
 			await RenderingServer.frame_post_draw
 			assert(root.get_texture().get_image().save_png(folder + "/%04d.png" % frame) == OK)
 		records.append({"label": view[0], "focus": str(view[1]), "zoom": view[2], "pitch": view[3], "yaw": view[4], "orbit_radians": 0.065, "fov": world.cam.cam.fov, "seconds": 4, "frames": 120})
 		print("MOTION_VIEW ", mode, " ", index)
 		index += 1
+	if mode == "clouds":
+		world.atmo.apply_mood("day")
+		world.cam.dist = 900.0
+		world.cam.pitch_deg = -14.0
+		world.cam.yaw = 0.7
+		world.cam.focus(Vector3.ZERO)
+		for warmup in 90:
+			await process_frame
+		await RenderingServer.frame_post_draw
+		assert(root.get_texture().get_image().save_png(output + "/boundary.png") == OK)
 	var metadata := {"arguments": OS.get_cmdline_args(), "user_arguments": OS.get_cmdline_user_args(), "stage": mode, "seed": 3, "preset": "high", "mood": "day", "renderer": RenderingServer.get_current_rendering_method(), "resolution": str(root.size), "fps": 30, "simulation": "Held at two seconds; native camera, wind and water remain animated. Not a combat or performance benchmark.", "views": records}
 	var file := FileAccess.open(output + "/capture.json", FileAccess.WRITE)
 	file.store_string(JSON.stringify(metadata, "\t"))

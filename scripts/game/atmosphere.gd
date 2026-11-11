@@ -1273,9 +1273,11 @@ float backdrop(vec2 p) {
 	vec2 uv = (p + __MAP_HALF__ + 1800.0) / (__MAP_SIZE__ + 3600.0);
 	float mountain = textureLod(backdrop_tex, uv, 0.0).r;
 	float hills = pow(smoothstep(0.18, 0.88, mountain), 2.2) * 440.0;
-	float land = hills * smoothstep(8.0, 380.0, edge) * coast * (1.0 - step(9999.0, snow_line))
+	float land = hills * smoothstep(8.0, 900.0, edge) * coast * (1.0 - step(9999.0, snow_line))
 		* (1.0 - smoothstep(1450.0, 1800.0, edge))
 		- 3.2 * smoothstep(shore, shore + 30.0, p.x);
+	float channel = scenery_buffer_into(p, sea_x);
+	land = mix(land, min(land, -4.0), smoothstep(-180.0, 180.0, channel) * smoothstep(0.0, 120.0, edge));
 	float into = scenery_river_into(p);
 	return mix(land, min(land, scenery_river_bed(into)), smoothstep(-5.0, 0.0, into));
 }
@@ -1495,7 +1497,10 @@ void fragment() {
 	// bed darker and wet under the water
 	vec4 wm = texture(water_mask, (p + __MAP_HALF__) / __MAP_SIZE__);
 	if (abs(p.x) >= __MAP_HALF__ || abs(p.y) >= __MAP_HALF__) {
-		wm = p.x > scenery_shore(p, sea_x) ? vec4(1.0, 1.0, 1.0, 1.0) : scenery_river_mask(p);
+		wm = scenery_sea_mask(p, sea_x);
+		if (wm.a < 0.5) { wm = scenery_river_mask(p); }
+		// The broad coastal slope can stand well above the water mask below it.
+		wm *= 1.0 - smoothstep(0.0, 6.0, wpos.y);
 	}
 	// (linear colours, like the rest: pale sand, dark wet mud)
 	vec3 sand = vec3(0.38, 0.31, 0.19) * (0.88 + 0.24 * d2) * (0.92 + 0.16 * d3);

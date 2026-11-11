@@ -20,6 +20,21 @@ float scenery_shore(vec2 p, float shore_mean) {
 	float bays = 85.0 * sin(p.y * 0.0043 + shore_mean * 0.003) + 32.0 * sin(p.y * 0.0127);
 	return shore_mean + bays * smoothstep(20.0, 260.0, edge);
 }
+// Coastal battlefields continue through a broken water channel into distant islands.
+float scenery_buffer_into(vec2 p, float shore_mean) {
+	float edge = max(abs(p.x), abs(p.y)) - __MAP_HALF__;
+	if (shore_mean > 10000.0 || edge <= 0.0) { return -10000.0; }
+	float rounded_edge = length(max(abs(p) - vec2(__MAP_HALF__ - 250.0), vec2(0.0))) - 250.0;
+	float bank = 220.0 + 110.0 * sin(p.x * 0.006 + p.y * 0.003) + 90.0 * sin(p.y * 0.009 - p.x * 0.002);
+	float islands = 780.0 + 90.0 * sin(p.x * 0.003 + 0.7) + 60.0 * sin(p.y * 0.004);
+	return max(min(rounded_edge - bank, islands - rounded_edge), edge - 1650.0);
+}
+vec4 scenery_sea_mask(vec2 p, float shore_mean) {
+	if (shore_mean > 10000.0) { return vec4(0.0); }
+	if (p.x > scenery_shore(p, shore_mean)) { return vec4(1.0, 0.0, 1.0, 1.0); }
+	float into = scenery_buffer_into(p, shore_mean);
+	return vec4(clamp((into + 15.0) / 55.0, 0.0, 1.0), 0.0, 1.0, step(-14.0, into));
+}
 """
 
 const SCENERY_RIVERS := """
@@ -314,6 +329,8 @@ func _lay_tiles() -> void:
 		for tx in n:
 			var r := Rect2(x0 + tx * TILE, x0 + tz * TILE, TILE, TILE)
 			var wet := r.end.x > _sea_x
+			if _sea_x < 10000.0 and (r.position.x < -MapDims.HALF or r.position.y < -MapDims.HALF or r.end.x > MapDims.HALF or r.end.y > MapDims.HALF):
+				wet = true
 			if not wet and (r.position.x < -MapDims.HALF or r.position.y < -MapDims.HALF or r.end.x > MapDims.HALF or r.end.y > MapDims.HALF):
 				for extension in extensions:
 					if extension.intersects(r):
@@ -342,29 +359,30 @@ func _lay_tiles() -> void:
 			add_child(mi)
 			_tiles.append(mi)
 	# The detailed battlefield water must not expose a square cut through the scenery.
-	for r: Rect2 in sea_surround_rects(-x0, MapDims.HALF + 2400.0, _sea_x):
-		var distant := PlaneMesh.new()
-		distant.size = r.size
-		distant.subdivide_width = maxi(0, ceili(r.size.x / 16.0) - 1)
-		distant.subdivide_depth = maxi(0, ceili(r.size.y / 16.0) - 1)
-		var mi := MeshInstance3D.new()
-		mi.mesh = distant
-		mi.material_override = mat
-		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-		mi.extra_cull_margin = 2.0
-		mi.position = Vector3(r.get_center().x, WaterMap.LEVEL, r.get_center().y)
-		add_child(mi)
-		_tiles.append(mi)
+	for ring in [[-x0, MapDims.HALF + 2400.0, 16.0], [MapDims.HALF + 2400.0, MapDims.HALF + 8000.0, 128.0]]:
+		for r: Rect2 in sea_surround_rects(ring[0], ring[1], _sea_x):
+			var distant := PlaneMesh.new()
+			distant.size = r.size
+			distant.subdivide_width = maxi(0, ceili(r.size.x / float(ring[2])) - 1)
+			distant.subdivide_depth = maxi(0, ceili(r.size.y / float(ring[2])) - 1)
+			var mi := MeshInstance3D.new()
+			mi.mesh = distant
+			mi.material_override = mat
+			mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+			mi.extra_cull_margin = 2.0
+			mi.position = Vector3(r.get_center().x, WaterMap.LEVEL, r.get_center().y)
+			add_child(mi)
+			_tiles.append(mi)
 
 
 static func sea_surround_rects(inner: float, outer: float, shore: float) -> Array[Rect2]:
 	var rects: Array[Rect2] = []
 	if shore >= outer:
 		return rects
-	var left := maxf(-outer, shore - 192.0)
-	for r: Rect2 in [Rect2(left, -outer, outer - left, outer - inner),
-			Rect2(left, inner, outer - left, outer - inner),
-			Rect2(maxf(inner, left), -inner, outer - maxf(inner, left), inner * 2.0)]:
+	for r: Rect2 in [Rect2(-outer, -outer, outer * 2.0, outer - inner),
+			Rect2(-outer, inner, outer * 2.0, outer - inner),
+			Rect2(-outer, -inner, outer - inner, inner * 2.0),
+			Rect2(inner, -inner, outer - inner, inner * 2.0)]:
 		if r.has_area():
 			rects.append(r)
 	return rects
@@ -474,7 +492,7 @@ func waves_glsl(moving: int) -> String:
 			f += ph + " r += vec2(%.6f, %.6f) * cos(a) * %s;" % [k * amp * d.x, k * amp * d.y, grp]
 	var h := "float gerst_h(vec2 x, float t) { vec3 n; vec3 d = gerst(x, t, n); return gerst(x - d.xz, t, n).y; }"
 	# (how far the waves have built up at p, out from the beach: see OFFSHORE)
-	h += " float offshore(vec2 p) { if (coast.z < 0.5) { return 1.0; } float s = coast.y;"
+	h += " float offshore(vec2 p) { if (coast.z < 0.5) { return 1.0; } if (scenery_buffer_into(p, coast.x) > 0.0) { return 1.0; } float s = coast.y;"
 	h += " float into = p.x - (coast.x + 22.0 * sin(p.y * 0.0105 + s) + 9.0 * sin(p.y * 0.031 + s * 2.3) + 4.0 * sin(p.y * 0.077 + s * 0.7));"
 	h += " return smoothstep(OFFSHORE.x, OFFSHORE.y, into); }"
 	var wind := Vector2(Fires.WIND.x, Fires.WIND.z).normalized()
@@ -747,13 +765,17 @@ __WAVES__
 
 vec4 wmask(vec2 p) {
 	if (abs(p.x) >= __MAP_HALF__ || abs(p.y) >= __MAP_HALF__) {
-		return p.x > scenery_shore(p, sea_x) ? vec4(1.0, 0.0, 1.0, 1.0) : scenery_river_mask(p);
+		vec4 sea_mask = scenery_sea_mask(p, sea_x);
+		return sea_mask.a > 0.5 ? sea_mask : scenery_river_mask(p);
 	}
 	return textureLod(water_mask, (p + __MAP_HALF__) / __MAP_SIZE__, 0.0);
 }
 
 // metres out to sea from the shoreline (WaterMap.coast_x); negative up the beach
 float coast_into(vec2 p) {
+	if (max(abs(p.x), abs(p.y)) > __MAP_HALF__) {
+		return max(p.x - scenery_shore(p, coast.x), scenery_buffer_into(p, coast.x));
+	}
 	float s = coast.y;
 	return p.x - (coast.x + 22.0 * sin(p.y * 0.0105 + s) + 9.0 * sin(p.y * 0.031 + s * 2.3) + 4.0 * sin(p.y * 0.077 + s * 0.7));
 }
@@ -1028,7 +1050,7 @@ __WAVES__
 
 vec4 wmask(vec2 p) {
 	if (abs(p.x) >= __MAP_HALF__ || abs(p.y) >= __MAP_HALF__) {
-		return p.x > scenery_shore(p, sea_x) ? vec4(1.0, 0.0, 1.0, 1.0) : vec4(0.0);
+		return scenery_sea_mask(p, sea_x);
 	}
 	return textureLod(water_mask, (p + __MAP_HALF__) / __MAP_SIZE__, 0.0);
 }
@@ -1110,7 +1132,7 @@ __WAVES__
 
 vec4 wmask(vec2 p) {
 	if (abs(p.x) >= __MAP_HALF__ || abs(p.y) >= __MAP_HALF__) {
-		return p.x > scenery_shore(p, sea_x) ? vec4(1.0, 0.0, 1.0, 1.0) : vec4(0.0);
+		return scenery_sea_mask(p, sea_x);
 	}
 	return textureLod(water_mask, (p + __MAP_HALF__) / __MAP_SIZE__, 0.0);
 }

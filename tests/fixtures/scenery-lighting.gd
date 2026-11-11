@@ -8,6 +8,7 @@ func _ready() -> void:
 		assert(not shader.code.contains("__MAP_"))
 		if DisplayServer.get_name() != "headless":
 			await check_bake(shader)
+			await check_coastal_buffer()
 	MapDims.configure(1024)
 	if DisplayServer.get_name() != "headless":
 		await check_river_continuation()
@@ -16,6 +17,27 @@ func _ready() -> void:
 	while Music._task >= 0:
 		await get_tree().process_frame
 	get_tree().quit()
+
+func check_coastal_buffer() -> void:
+	var view := SubViewport.new()
+	view.size = Vector2i(16, 16)
+	view.disable_3d = true
+	add_child(view)
+	var material := ShaderMaterial.new()
+	material.shader = Shader.new()
+	material.shader.code = MapDims.shader("shader_type canvas_item; render_mode unshaded, blend_disabled; uniform vec2 sample_position; uniform float shore;\n" + WaterView.SCENERY_COAST + "\nvoid fragment() { COLOR = vec4(scenery_sea_mask(sample_position, shore).aaa, 1.0); }")
+	var rect := ColorRect.new()
+	rect.size = Vector2(16, 16)
+	rect.material = material
+	view.add_child(rect)
+	for shore in [MapDims.HALF - 100.0, 1e9]:
+		material.set_shader_parameter("shore", shore)
+		for distance in [-1.0, 30.0, 400.0, 1100.0, 1900.0]:
+			material.set_shader_parameter("sample_position", Vector2(-MapDims.HALF - distance, 0))
+			var output := await bake(view)
+			var wet: bool = shore < 10000.0 and distance in [400.0, 1900.0]
+			assert((output.get_pixel(8, 8).r > 0.99) == wet, "Water separates the coast and outer islands without flooding playable or inland ground")
+	view.queue_free()
 
 func check_river_continuation() -> void:
 	var view := SubViewport.new()

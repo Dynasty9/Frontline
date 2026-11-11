@@ -106,24 +106,25 @@ func capture() -> void:
 	if "--capture-set=clouds" in OS.get_cmdline_user_args():
 		views = []
 		for quality in [0, 1, 2, 3, 4, 0]:
-			views.append(["clouds-%d-%d" % [quality, views.size()], Vector3.ZERO, 900.0, -14.0, 0.7, quality])
+			views.append(["clouds-%d-%d" % [quality, views.size()], Vector3(-1500, 120, -450), 900.0, -8.0, 0.7, quality])
 	if "--capture-set=cloud-weather" in OS.get_cmdline_user_args():
-		views = [["off", Vector3.ZERO, 900.0, -14.0, 0.7, 0, "day"]]
+		views = [["off", Vector3(-1500, 120, -450), 900.0, -8.0, 0.7, 0, "day"]]
 		for mood in ["day", "golden", "night", "rain"]:
-			views.append([mood, Vector3.ZERO, 900.0, -14.0, 0.7, 3, mood])
+			views.append([mood, Vector3(-1500, 120, -450), 900.0, -8.0, 0.7, 3, mood])
+		views.append(["boundary", Vector3.ZERO, 900.0, -14.0, 0.7, 3, "day"])
 	if "--capture-set=cloud-distance" in OS.get_cmdline_user_args():
 		views = [
 			["close", Vector3(-110, 0, -130), 18.0, -18.0, 0.7, 3, "day"],
 			["tactical", Vector3.ZERO, 180.0, -42.0, 0.7, 3, "day"],
-			["panorama", Vector3.ZERO, 900.0, -14.0, 0.7, 3, "day"],
+			["panorama", Vector3(-1500, 120, -450), 900.0, -8.0, 0.7, 3, "day"],
 			["reverse", Vector3.ZERO, 900.0, -14.0, -2.4, 3, "day"],
-			["low", Vector3.ZERO, 900.0, -14.0, 0.7, 1, "day"],
-			["ultra", Vector3.ZERO, 900.0, -14.0, 0.7, 4, "day"],
+			["low", Vector3(-1500, 120, -450), 900.0, -8.0, 0.7, 1, "day"],
+			["ultra", Vector3(-1500, 120, -450), 900.0, -8.0, 0.7, 4, "day"],
 		]
 	if "--capture-set=cloud-benchmark" in OS.get_cmdline_user_args():
 		views = []
 		for quality in [0, 3, 3, 0, 0, 1, 1, 0, 0, 4, 4, 0]:
-			views.append(["sample-%d-q%d" % [views.size(), quality], Vector3.ZERO, 900.0, -14.0, 0.7, quality, "day"])
+			views.append(["sample-%d-q%d" % [views.size(), quality], Vector3(-1500, 120, -450), 900.0, -8.0, 0.7, quality, "day"])
 	RenderingServer.viewport_set_measure_render_time(root.get_viewport_rid(), true)
 	var records := []
 	for view in views:
@@ -136,7 +137,8 @@ func capture() -> void:
 		world.cam.target_dist = view[2]
 		world.cam.pitch_deg = view[3]
 		world.cam.yaw = view[4]
-		world.cam.focus(view[1])
+		world.cam.focus_pos = view[1]
+		world.cam._apply()
 		if world.atmo.mood == "rain":
 			world.atmo._bolt_t = 100.0
 			world.atmo._flash = 0.0

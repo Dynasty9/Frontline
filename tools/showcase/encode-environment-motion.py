@@ -28,12 +28,25 @@ for i,view in enumerate(meta['views']):
     parts.append(part)
 concat=capture/'concat.txt'; concat.write_text(''.join("file '"+p.as_posix()+"'\n" for p in parts))
 clip=out/'native-tour.webm'
-subprocess.run([ff,'-y','-v','error','-f','concat','-safe','0','-i',str(concat),'-c','copy',str(clip)],check=True)
+seconds=len(parts)*4
+if meta['stage'] == 'clouds':
+    # Editorial dissolves compare existing moods; the game does not cycle weather.
+    inputs=[arg for part in parts for arg in ['-i',str(part)]]
+    filters=[]
+    previous='0:v'
+    for i in range(1,len(parts)):
+        filters.append(f'[{previous}][{i}:v]xfade=transition=fade:duration=0.75:offset={i*3.25}[v{i}]')
+        previous=f'v{i}'
+    subprocess.run([ff,'-y','-v','error',*inputs,'-filter_complex', ';'.join(filters),'-map',f'[{previous}]','-c:v','libvpx-vp9','-crf','29','-b:v','0','-cpu-used','4','-pix_fmt','yuv420p','-an',str(clip)],check=True)
+    seconds-=0.75*(len(parts)-1)
+    meta['editing']='0.75-second cross-dissolves between native captures of existing weather moods; not continuous weather simulation.'
+else:
+    subprocess.run([ff,'-y','-v','error','-f','concat','-safe','0','-i',str(concat),'-c','copy',str(clip)],check=True)
 subprocess.run([ff,'-y','-v','error','-ss','2','-i',str(clip),'-frames:v','1','-q:v','3',str(out/'native-tour.jpg')],check=True)
 subprocess.run([ff,'-v','error','-i',str(clip),'-f','null','-'],check=True)
-for time in [0,2,3.9,4.1,len(parts)*4-0.1]:
+for time in [0,2,3.9,4.1,seconds-0.1]:
     subprocess.run([ff,'-y','-v','error','-ss',str(time),'-i',str(clip),'-frames:v','1',str(capture/f'check-{time}.jpg')],check=True)
 meta = json.loads(json.dumps(meta).replace(root.as_posix(), '.').replace(str(root).replace('\\', '\\\\'), '.'))
-meta.update(source_ref=args.source_ref,clip='native-tour.webm',poster='native-tour.jpg',clip_sha256=hashlib.sha256(clip.read_bytes()).hexdigest(),seconds=len(parts)*4,audio=False,codec='VP9',resolution='1280x768 (48-pixel label above uncropped 1280x720 source)',command='godot --path . --fixed-fps 30 --resolution 1280x720 --script tools/showcase/environment-motion.gd -- --aivai --seed=3 --offscreen --nohud --set=perf:0 --preset=high --mood=day --motion-stage='+meta['stage']+' --motion-output=build/media-review')
+meta.update(source_ref=args.source_ref,clip='native-tour.webm',poster='native-tour.jpg',clip_sha256=hashlib.sha256(clip.read_bytes()).hexdigest(),seconds=seconds,audio=False,codec='VP9',resolution='1280x768 (48-pixel label above uncropped 1280x720 source)',command='godot --path . --fixed-fps 30 --resolution 1280x720 --script tools/showcase/environment-motion.gd -- --aivai --seed=3 --offscreen --nohud --set=perf:0,reduce_motion:false,vsync:false --preset=high --mood=day --motion-stage='+meta['stage']+' --motion-output=build/media-review')
 (out/'native-tour.json').write_bytes((json.dumps(meta,indent=2)+'\n').encode('utf-8'))
 print(json.dumps({'clip':str(clip),'bytes':clip.stat().st_size,'seconds':meta['seconds'],'sha256':meta['clip_sha256']}))
