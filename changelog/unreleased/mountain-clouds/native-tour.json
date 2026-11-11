@@ -16,9 +16,9 @@
     "--seed=3",
     "--offscreen",
     "--nohud",
+    "--set=perf:0,reduce_motion:false,vsync:false",
     "--preset=high",
     "--mood=day",
-    "--set=perf:0,reduce_motion:false,vsync:false",
     "--motion-stage=clouds",
     "--motion-output=build/media-review"
   ],
@@ -69,10 +69,10 @@
     }
   ],
   "editing": "0.75-second cross-dissolves between native captures of existing weather moods, returning to the opening frame for looping; not continuous weather simulation.",
-  "source_ref": "5da763d0",
+  "source_ref": "a5933f2c4badc789346ec0aae9fc0c44fe950f2e",
   "clip": "native-tour.webm",
   "poster": "native-tour.jpg",
-  "clip_sha256": "ba8c07c6b1d4c3fdd66e2bc42c53ce2eed182484c21fdd98f4c5d37f5a1b0ba1",
+  "clip_sha256": "074d670a3c2adaaa9c03175dec9dad09cb1e452a569706ec1ee4f2fc08e692b7",
   "seconds": 13.75,
   "audio": false,
   "codec": "VP9",
