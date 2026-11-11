@@ -24,7 +24,7 @@ def main():
     captures = {}
     if args.takes:
         edit = recipe["outputs"]["reel"]
-        sources = edit["cuts"] + ([edit["score"]] if "score" in edit else [])
+        sources = edit["cuts"] + [edit[key] for key in ("score", "end_title") if key in edit]
         for source in sources:
             name = source["take"]
             if name not in captures:

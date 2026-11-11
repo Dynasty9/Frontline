@@ -30,4 +30,6 @@ For a mix revision, keep the cut points fixed and compare editions with the audi
 | Armour arrives | Keep the squad's left-to-right movement through the cut. From field level, a tank crosses the foreground before the closer gun shot. |
 | Into the trench | See people beside the earthworks. Follow the mortar crew with the visible impacts along the trench line. |
 | Off the ground | Look across the cockpit and down the sling. Hold until daylight separates the Humvee's wheels from its shadow. |
-| Into the harbour | Follow the launch through its turn. From shore, see the squad run clear of the bow while the patrol ship crosses behind. Cut aboard the ship, then follow the jet until its load clears the wing. Hold the harbour wide through the rise and fall of the spray. |
+| Into the harbour | Follow the launch through its turn. From shore, see the squad run clear of the bow while the patrol ship crosses behind. Cut to the ship's bow as a second boat comes alongside. Follow the jet until its load clears the wing. Hold the harbour wide through the rise and fall of the spray. |
+
+The end title uses the menu emblem and type. The score scene draws them on black. The editor blends that frame over the water as the spray falls, leaving room below for captions. The final picture holds the game name and desktop invitation.

@@ -37,6 +37,12 @@
       "shows": ["sea assault", "patrol ship"],
       "about": "An exterior camera stays aboard the moving Mk VI as the Beachhead landing begins."
     },
+    "trailer-patrol-pass": {
+      "frames": 1140,
+      "args": ["--preset=high", "--seed=3", "--set=volume:0.8,vol_effects:0.85,vol_music:0,battle_music:false,vol_ambience:0.28,vol_ui:0,mute_bg:false,wildlife:0,edge_pan:false", "--mission=beachhead", "--focus-vehicle=patrol_ship", "--vehicle-view=Bow"],
+      "shows": ["sea assault", "patrol ship"],
+      "about": "Looking back from the bow, the whole patrol ship stays in frame while a second boat passes alongside."
+    },
     "highlight-flyover": {
       "scene": "res://tools/showcase/airstrike-camera.tscn",
       "frames": 510,
@@ -523,6 +529,7 @@
       "max_kb": 7500,
       "audio": true,
       "score": {"take": "trailer-score", "gain_db": -6},
+      "end_title": {"take": "trailer-score", "at": 1.0, "from": 22.4, "fade": 10},
       "audio_kbps": 128,
       "fade": 0,
       "fade_in": 0,
@@ -539,7 +546,7 @@
         {"take": "trailer-sling", "from": 16.66667, "to": 19.4, "gain_db": 0, "caption": "[Helicopter rotors over the suspended vehicle]"},
         {"take": "trailer-harbour-boats", "from": 13.13333, "to": 15.53333, "gain_db": 0, "caption": "[Boats approach the shore]"},
         {"take": "trailer-beach-landing", "from": 26.0, "to": 27.4, "gain_db": 0, "caption": "[Surf as the squad runs ashore]"},
-        {"take": "highlight-sea", "from": 34.0, "to": 35.93333, "gain_db": -1, "caption": "[Patrol ship fires across the harbour]"},
+        {"take": "trailer-patrol-pass", "from": 35.1, "to": 37.03333, "gain_db": -1, "caption": "[Patrol ship fires across the harbour]"},
         {"take": "trailer-harbour-finale", "from": 4.3, "to": 6.6, "gain_db": 0, "caption": "[Jet engines climb over the harbour]"},
         {"take": "trailer-harbour-finale", "from": 11.0, "to": 14.26667, "gain_db": 4, "caption": "[Impacts roll across the water]"}
       ]
