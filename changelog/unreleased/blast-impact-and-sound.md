@@ -6,7 +6,7 @@ kind = "improved"
 [[videos]]
 file = "impact-comparison.webm"
 poster = "impact-comparison.jpg"
-caption = "Same gun run, camera and instant. The previous take is above and the revised take below. Watch the three clouds rise to different heights and the bright fuel cores give way to soot."
+caption = "Same gun run, camera and instant. The previous take is above and the revised take below. Listen to the gun report decay. At 2 seconds grass shows between the revised bursts. At 5 seconds the center wreck is burning low while smoke still rises from the outer vehicles."
 
 [[videos]]
 file = "cover.webm"

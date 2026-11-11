@@ -668,8 +668,8 @@ func explode(p: Vector3, size: float, kind := "he") -> void:
 		# The shared analytic flash starts immediately. A very short GPU emitter
 		# can finish between simulation steps before its first visible particle.
 		var k := sqrt(maxf(size, 0.1))
-		var radius := (0.6 if kind == "frag" else (1.4 if kind == "he" else 1.9)) * k
-		world.fx.gunfx.flash(p + Vector3.UP * (0.35 if kind == "frag" else 0.65) * k, radius, flash_life, GunFx.HOT)
+		var radius := (0.6 if kind == "frag" else (1.4 if kind == "he" else 0.92)) * k
+		world.fx.gunfx.flash(p + Vector3.UP * (0.35 if kind == "frag" else (0.14 if kind == "fuel" else 0.65)) * k, radius, flash_life, GunFx.HOT)
 	else:
 		_fire_layer(layers.flash, 1.0, sv)
 	var cloud := blasts.burst(Vector3(p.x, gy + 0.04, p.z) if ground else p, size, kind, detail, ground)
@@ -916,7 +916,10 @@ func make_fire(ext: Vector3, smoke_kind := SMOKE_WOOD) -> Node3D:
 	var c1: Color = sc[1]
 	# (it hangs low and rolls off downwind before it climbs: that pall is what
 	# blocks sight, see Fires.smokes)
-	pm = _pm(Vector3.UP, 14.0, 0.8, 2.0, Vector3(WIND.x * 1.15, 0.38, WIND.z * 1.15), 1.5 * k, 2.6 * k)
+	# A fuel fire vents from one part of the hull. Keep its source narrow,
+	# then let the existing age curve spread the smoke downwind.
+	var source_width := randf_range(0.48, 0.85) if smoke_kind == SMOKE_FUEL else 1.0
+	pm = _pm(Vector3.UP, 14.0, 0.8, 2.0, Vector3(WIND.x * 1.15, 0.38, WIND.z * 1.15), 1.5 * k * source_width, 2.6 * k * source_width)
 	pm.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_SPHERE
 	pm.emission_sphere_radius = maxf(0.4, maxf(ext.x, ext.z) * 0.6)
 	pm.damping_min = 0.25
@@ -952,9 +955,10 @@ func make_fire(ext: Vector3, smoke_kind := SMOKE_WOOD) -> Node3D:
 	l.shadow_enabled = false
 	l.name = "Glow"
 	h.add_child(l)
-	var snd := Sfx.make_loop_player("fire", 3.0 + 2.0 * k, -40.0)
+	var audible_radius := (6.0 + 3.0 * k) if smoke_kind == SMOKE_FUEL else (3.0 + 2.0 * k)
+	var snd := Sfx.make_loop_player("fire", audible_radius, -40.0)
 	snd.autoplay = false  # (only while it burns: see set_burning)
-	snd.max_distance = 70.0
+	snd.max_distance = 115.0 if smoke_kind == SMOKE_FUEL else 70.0
 	snd.name = "Snd"
 	h.add_child(snd)
 	h.set_meta("fire", 0.0)
@@ -1848,7 +1852,7 @@ func plume(p: Vector3, size: float) -> void:
 	var spec: Array = PLUMES[cls]
 	var emit: float = spec[5] * clampf(size / (2.3 if cls == "L" else 1.3), 0.6, 1.3)
 	var life: float = spec[2]
-	var ground := Vector3(p.x, 0.4 if p.y > -5.0 else p.y, p.z)  # (prewarm happens under the map)
+	var ground := Vector3(p.x, world.ground_y(p) + 0.4 if world and p.y > -5.0 else p.y, p.z)
 	# another hit right next to a plume still going: feed that one
 	for e in _plumes.L + _plumes.M:
 		if float(e[1]) < float(e[2]) and (e[0] as Node3D).global_position.distance_to(ground) < 7.0:
@@ -1872,13 +1876,21 @@ func plume(p: Vector3, size: float) -> void:
 	var node: Node3D = pick[0]
 	node.global_position = ground
 	pick[1] = 0.0
-	pick[2] = emit
+	# Sample once per activation, including when this holder is recycled.
+	var strength := randf_range(0.42, 1.0)
+	node.set_meta("strength", strength)
+	pick[2] = emit * lerpf(0.65, 1.1, strength)
 	pick[3] = life
 	var fx := Settings.fx_mult()
 	for key in ["col", "haze"]:
 		var ps: GeometryInstance3D = node.get_meta(key)
 		ps.visible = true
-		set_ratio(ps, clampf(fx, 0.1, 1.0))
+		if key == "col":
+			var scale_k := float(spec[0]) * strength
+			pm_set(ps, &"scale_min", 2.0 * scale_k)
+			pm_set(ps, &"initial_velocity_max", 2.6 * scale_k)
+			pm_set(ps, &"scale_max", 3.4 * scale_k)
+		set_ratio(ps, clampf(fx * strength, 0.1, 1.0))
 		Mats.set_inst(ps, &"seed", randf() * 100.0)
 		set_emitting(ps, true)
 
@@ -1895,7 +1907,7 @@ func _tick_plumes(dt: float) -> void:
 			var hz: GeometryInstance3D = node.get_meta("haze")
 			if t < emit:
 				# thick at first, thinning to a wisp before it stops
-				set_ratio(col, clampf(fx * maxf(0.12, exp(-t / (emit * 0.45))), 0.05, 1.0))
+				set_ratio(col, clampf(fx * float(node.get_meta("strength")) * maxf(0.12, exp(-t / (emit * 0.45))), 0.05, 1.0))
 				set_emitting(hz, t < emit * 0.4)
 			elif is_emitting(col):
 				set_emitting(col, false)

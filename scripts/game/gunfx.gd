@@ -269,7 +269,7 @@ func blast_fragments(p: Vector3, size: float, kind: String, ground: bool, detail
 	for i in int(10.0 * q * earth):
 		var angle := float(i) / maxf(floor(10.0 * q * earth), 1.0) * TAU + randf_range(-0.15, 0.15)
 		var outward := Vector3(cos(angle), 0.0, sin(angle))
-		var skirt_k := k * (0.45 if kind == "frag" else 1.0)
+		var skirt_k := k * (0.45 if kind == "frag" else (0.52 if size < 0.75 else 1.0))
 		var at := p + outward * 0.4 * skirt_k
 		at.y = ground_y(at) + 0.18 * skirt_k
 		var velocity := outward * randf_range(7.0, 11.0) * skirt_k

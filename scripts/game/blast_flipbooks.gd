@@ -155,6 +155,17 @@ func burst(p: Vector3, size: float, kind: String, detail: float, ground := true)
 	b.start = _clock
 	b.generation += 1
 	b.life = (2.8 if kind == "frag" else (6.4 if kind == "fuel" else 3.8)) * randf_range(0.94, 1.06)
+	# Small hits lift loose patches of soil. Use the same cosmetic draw for
+	# footprint, density and settling time so a light puff stays light.
+	var roll := randf()
+	var loose_soil := smoothstep(0.25, 0.92, roll)
+	var small_soil := ground and kind == "he" and size < 0.75
+	if small_soil:
+		scale_k *= lerpf(0.34, 0.78, loose_soil)
+		b.life *= lerpf(0.35, 0.72, loose_soil)
+	elif kind == "fuel":
+		scale_k *= lerpf(0.62, 1.08, roll)
+		b.life *= lerpf(0.72, 1.08, roll)
 	if not ground:
 		b.life *= 0.7
 	var reach := (10.5 if key == "fuel" else 9.0) * scale_k + 2.0
@@ -168,7 +179,6 @@ func burst(p: Vector3, size: float, kind: String, detail: float, ground := true)
 	b.material.set_shader_parameter("duration", b.life)
 	# Stable for this cloud, refreshed on pool reuse. One draw also picks
 	# the mirror, keeping the surrounding cosmetic RNG sequence intact.
-	var roll := randf()
 	b.material.set_shader_parameter("mirror", -1.0 if roll < 0.5 else 1.0)
 	b.material.set_shader_parameter("shape_bias", fposmod(roll * 2.0, 1.0) * 2.0 - 1.0)
 	b.material.set_shader_parameter("interpolate", detail * Settings.fx_mult() > 0.45)
@@ -182,6 +192,8 @@ func burst(p: Vector3, size: float, kind: String, detail: float, ground := true)
 	# The soil cloud follows the flash and fast ejecta. Lower optical density
 	# keeps billows distinct without hiding the entire blast behind opaque dust.
 	var density := (0.50 if kind == "frag" else 0.42) if ground and kind != "fuel" else 1.0
+	if small_soil:
+		density *= lerpf(0.38, 0.86, loose_soil)
 	if not ground:
 		tint = Color(0.62, 0.61, 0.59)
 	elif kind != "fuel" and vfx.world:

@@ -88,9 +88,19 @@
   },
   "impact_comparison": {
     "file": "impact-comparison.webm",
-    "previous_ref": "8b7064cff14c7a4d3108cc62e55284a0094bd7c8",
+    "previous_ref": "f1908b4da2338ab74c2e574237aba4f4a233bb9c",
     "stage": "a10",
     "start_of_each_take_seconds": 6.25,
-    "edit": "Matched crops of the two range captures, stacked previous above revised, with one copy of the revised game mix."
+    "edit": "Two native A-10 recordings, seed 712, Forward+, 24 fps. From 6.25 s of each movie, crop 1280x552 at (160,113), stack the views and play only the revised in-game mix. Runtime is 131 frames.",
+    "revised_source_sha256": {
+      "scripts/ui/support_demo.gd": "f3fc3815090752abc41413ae3de0739e3fd39eb6d6a0f81ac9b2bd825f249326",
+      "scripts/game/blast_flipbooks.gd": "1b6871c672f780a8f9807ecde2a34beac82d93ca361fab380f92161c8d31bb33",
+      "scripts/game/gunfx.gd": "16e978f3fa847478340f587d8ab383913f4fd87cef321d64bf2b1d04c081e04f",
+      "scripts/shaders/blast_flipbook.gdshader": "dad3c87ab72c1f8a2a01904ab3aacd79543e401efebd468df4da2a27731bf63a",
+      "tests/fixtures/support-clips.gd": "0a8bc17010d1460352966c47aa6e3fe1188c0a62a4646c297bf3a60549c27504",
+      "scripts/game/vfx.gd": "c8d51f125754bd5925a71e8ce2da0314f4c8802aeecd4a567d34b6823009594d",
+      "scripts/autoload/sfx.gd": "9e2e90fd3a3c2fcc5b8f4186432591a6849fb9014b076ccdee4258915a0f07ed",
+      "scripts/game/projectile.gd": "a2c9f6cfd90163c7a0f28cd0b02c23c6f5a141306f7677ec0d146f28f53f0eb6"
+    }
   }
 }

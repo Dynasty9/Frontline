@@ -6406,7 +6406,7 @@
         },
         {
           "file": "changelog/unreleased/blast-impact-and-sound/capture.json",
-          "sha256": "ae86ea3d7e03ad3ef8b038941fd994ec7e96e09f75b70f7296b25d56df3d56ff",
+          "sha256": "112d1039a55b91d35b37876771b360c4489ad4e1458ba9123fda1b7c8bec3546",
           "caption": "capture.json"
         },
         {
@@ -6422,12 +6422,12 @@
         {
           "file": "changelog/unreleased/blast-impact-and-sound/impact-comparison.webm",
           "caption": "impact-comparison.webm",
-          "sha256": "e287748396657594794ba8f908d30e0d8e1df030c9f759312b26adfe50852966"
+          "sha256": "1d9f6786a2b058d5a07fdf99c33c55133ff7d3895e8b65077df385922b142900"
         },
         {
           "file": "changelog/unreleased/blast-impact-and-sound/impact-comparison.jpg",
           "caption": "impact-comparison.jpg",
-          "sha256": "a9cad7827dda61e1a1c4c44278f624c7676518031922c603f10040cf93d1be43"
+          "sha256": "db838a1b7031d4da91f326b4a4ab98dcdf7fb22661789c6e7be53e4f3fa2714f"
         }
       ],
       "output": null,
@@ -6444,72 +6444,72 @@
       "sources": [
         {
           "file": "changelog/unreleased/support-callin-previews/a10.jpg",
-          "sha256": "7f863a0ede7eb2d6b7f08803af7326afbeafd5c37ef4f1560a7408ba27f72159",
+          "sha256": "8e47154530bedcfcd1efe72c2758f14225d1b5049c546d155b011499d80d702b",
           "caption": "a10.jpg"
         },
         {
           "file": "changelog/unreleased/support-callin-previews/a10.webm",
-          "sha256": "1d9f6a0a4d6a76b660c2a7355cd768e3a133c826ad2a5a40f9334bb9fc949552",
+          "sha256": "5e9abcac9bfdf1f3e2753eb3bfa39a7c43985c7d54503f48c9be9d0717bf18c9",
           "caption": "a10.webm"
         },
         {
           "file": "changelog/unreleased/support-callin-previews/ac130.jpg",
-          "sha256": "e73ab42103c6c6d13427e2427b53d5c66eac5a8762d12a53822f28ee9cca6765",
+          "sha256": "4201d624ecc5643f3939eac635db62032834c40488c85e0bad96698a8b6a81d3",
           "caption": "ac130.jpg"
         },
         {
           "file": "changelog/unreleased/support-callin-previews/ac130.webm",
-          "sha256": "c5800edbe0add9b71835d465e484ae6c6f15ead3a6332deb0bc7dbe6afa75e78",
+          "sha256": "234dc69dc7f6377165e09d18ce71fbf10d42323732e298db54bfb2e9c4d98907",
           "caption": "ac130.webm"
         },
         {
           "file": "changelog/unreleased/support-callin-previews/airstrike.jpg",
-          "sha256": "f49755e108672bbc678aed3199180ecf4a29919841c3fc61cf8e5113bd79e20c",
+          "sha256": "16a8bcadf002f691aa64c5dffa79de9944b635a46e3c81b0ffc977539a9b9329",
           "caption": "airstrike.jpg"
         },
         {
           "file": "changelog/unreleased/support-callin-previews/airstrike.webm",
-          "sha256": "c74c664439bb8cd44f6bce5a8fd42918bd39c43f9b9da203aad873dbe0635985",
+          "sha256": "0065d49ab0603470d4f506807527c917ca7f78cf472b84d74ada9e6c32c93d30",
           "caption": "airstrike.webm"
         },
         {
           "file": "changelog/unreleased/support-callin-previews/artillery.jpg",
-          "sha256": "26c13c228aaa3290799c26ac9c42b57a8db1a91d5cbb57f0402fb67faa5114ac",
+          "sha256": "f598627a11a652a76559d22048e971c7ac8042cad1f7a7ce5d2b2a4f6e7993b6",
           "caption": "artillery.jpg"
         },
         {
           "file": "changelog/unreleased/support-callin-previews/artillery.webm",
-          "sha256": "eab11ff2234f8e05d0a35e569967db58a643a7175cb325de8b4fef52a3507544",
+          "sha256": "f802144ad88564d41754c5dd77ff7120708dbbf1e9b68f991e445fba3288964c",
           "caption": "artillery.webm"
         },
         {
           "file": "changelog/unreleased/support-callin-previews/barrage.jpg",
-          "sha256": "099fe79e5d3fbc54b848d4572df1cfe40830629f2ff6d17c02e09f67411f8d39",
+          "sha256": "2d185c2e0e1e36811bb68b8bbd83634f9f69e9bf5cd7448fd4b73ec211845436",
           "caption": "barrage.jpg"
         },
         {
           "file": "changelog/unreleased/support-callin-previews/barrage.webm",
-          "sha256": "684641aae26079ab1fa437c14a58d848ff3b428bce694291be336ec3191c7207",
+          "sha256": "98f87ef7255b0c444592723d8a755733082e77bc425118c409d970e3d98d7c6d",
           "caption": "barrage.webm"
         },
         {
           "file": "changelog/unreleased/support-callin-previews/blackfish.jpg",
-          "sha256": "70d51b3d3cd23e6274e4b46eb5ebfc50bdcc01041be8e022f55d612067721951",
+          "sha256": "0a19a55dc0921e33ea45d8e95a82bdce6aea756161544b4d7b4a0c7ae784a906",
           "caption": "blackfish.jpg"
         },
         {
           "file": "changelog/unreleased/support-callin-previews/blackfish.webm",
-          "sha256": "34818a36e0218b2e6165dc73a46b202d6e6622dba4d24b926de2eb9a7bc289fb",
+          "sha256": "0b2f897fd5b06a5d8fec462f0f13cf164048ae137519cb0589e3a723d1c83e33",
           "caption": "blackfish.webm"
         },
         {
           "file": "changelog/unreleased/support-callin-previews/buzzard.jpg",
-          "sha256": "251a75ce6523b9507e6cccf4e162c1024e1a496449312613c3f015d3ee07da78",
+          "sha256": "2596f89b7e2e3d8755cd693623eb9f51a90060c8b3729709a6486691d72e9cd8",
           "caption": "buzzard.jpg"
         },
         {
           "file": "changelog/unreleased/support-callin-previews/buzzard.webm",
-          "sha256": "52b8d3e5ec7a3ce6c535f3707b82c00d6648cc074ff0bfe1557f373625a7f8fa",
+          "sha256": "816c004ca1eba87e49b3119b7b6f6d01df665aaa0289392fa0512edbc283371a",
           "caption": "buzzard.webm"
         },
         {
@@ -6524,7 +6524,7 @@
         },
         {
           "file": "changelog/unreleased/support-callin-previews/capture.json",
-          "sha256": "1a6b13840e5215c2b871d7c7edbdac7c9e947ff1e56cd49992d02baf2f58f8ab",
+          "sha256": "207fac66418fb32bb5b7fc71348549d4fd48a3a29eebbbe10c7ace14b443d2fe",
           "caption": "capture.json"
         },
         {
@@ -6539,12 +6539,12 @@
         },
         {
           "file": "changelog/unreleased/support-callin-previews/greyhawk.jpg",
-          "sha256": "70a0e0014adfa27c1b08dd09aa9b280213b6b8502d4bd45e36a4066db29be1f2",
+          "sha256": "205851945e6ad0cc4161935a01dad54185689359da9eca7db64926aa38b991a2",
           "caption": "greyhawk.jpg"
         },
         {
           "file": "changelog/unreleased/support-callin-previews/greyhawk.webm",
-          "sha256": "8fe864d1c769fe5f39ed175a92e88bb27e98c83aafbb040acc4c756c78c02a7c",
+          "sha256": "c95295e7823b7b7a48ad9408bc034180558adeb0daf977240f13f7f4de1dea27",
           "caption": "greyhawk.webm"
         },
         {
@@ -6559,12 +6559,12 @@
         },
         {
           "file": "changelog/unreleased/support-callin-previews/gryphon.jpg",
-          "sha256": "5ab664dd1c7ef590f042dccb5d5ad897e6e3b9561c8af971dc3f700740149e5c",
+          "sha256": "2a402386a6ced6d2b0b9ee4c75e0fa23cc49dad76034db0b94307e0b8bda5dc7",
           "caption": "gryphon.jpg"
         },
         {
           "file": "changelog/unreleased/support-callin-previews/gryphon.webm",
-          "sha256": "2e8549a90cdd13f36b8a3893996eb08088c6161c519af7659a3cbe98632d96fa",
+          "sha256": "18309d8d830b9ba6abf8c9b239fcb7a76a2d0b696f5edcd60561635abc5c03a9",
           "caption": "gryphon.webm"
         },
         {
@@ -6579,42 +6579,42 @@
         },
         {
           "file": "changelog/unreleased/support-callin-previews/mortars.jpg",
-          "sha256": "be4bec7b467c0e91ab2bde8967fe84b4e7bd84c3b8c29231eeea8318a6eb30d2",
+          "sha256": "b55a48123acf7f746a574bb09f0e2cfe2f3f39e8a328b2142add6d561af46ff2",
           "caption": "mortars.jpg"
         },
         {
           "file": "changelog/unreleased/support-callin-previews/mortars.webm",
-          "sha256": "8ed0e35a14ea84efe6de5365b353485e4ba5365c77de0d35f61a2b1147c160ea",
+          "sha256": "d8f21361b76fd27347f90b29e33708c6ff55091c825584b3010034da9b65f8ef",
           "caption": "mortars.webm"
         },
         {
           "file": "changelog/unreleased/support-callin-previews/neophron.jpg",
-          "sha256": "eb10bb6d584fb0e672c66cf64f5f89b41dbbdc11bfcbbb98bd65991bf7b13a4b",
+          "sha256": "704febd81252a1e2055eeb911660a92492305f5e84ee3f33e6e9656ddc38cb85",
           "caption": "neophron.jpg"
         },
         {
           "file": "changelog/unreleased/support-callin-previews/neophron.webm",
-          "sha256": "eb53e47091df1344616532b7d2bc974d21988e39f96e10d2ce6cb25ece72dcf0",
+          "sha256": "415fe99d9ac147aff9bc0e9dee27ee87f9d39e30c0f871a41d46cfb708c4ee5b",
           "caption": "neophron.webm"
         },
         {
           "file": "changelog/unreleased/support-callin-previews/sentinel.jpg",
-          "sha256": "e82765566d738daaef00587062f0641ec128d885df37d578f180bf9ca0d77db8",
+          "sha256": "a472ea0cfb0e2e55160fa72d565de47037e5466415882ebf4b6c349745f96a5a",
           "caption": "sentinel.jpg"
         },
         {
           "file": "changelog/unreleased/support-callin-previews/sentinel.webm",
-          "sha256": "2d17714e15ecf29d5eff1761e3b54fa270929b019d810feb2e71675d6c255e97",
+          "sha256": "b337f34de32cf020002623e85d8cdd1f53e6e3597093c0b82763fb78736d65e0",
           "caption": "sentinel.webm"
         },
         {
           "file": "changelog/unreleased/support-callin-previews/shikra.jpg",
-          "sha256": "935da8e53266958b61ba35cea3671de8731820c6ab227bb9fd6fe2e4935b1def",
+          "sha256": "c723f787c0c625c8677ceecdc461ef875bd14879f20c7d52d8bc2c8f34ff3098",
           "caption": "shikra.jpg"
         },
         {
           "file": "changelog/unreleased/support-callin-previews/shikra.webm",
-          "sha256": "3501ed87483f5f0828f416a015cad932a226352b3a528fec153d8f799e7f0e5e",
+          "sha256": "3d34a53986d174bf6d78f81ade87a8923589a87149dbbb680059ef103c6bcaa1",
           "caption": "shikra.webm"
         },
         {
@@ -6629,22 +6629,22 @@
         },
         {
           "file": "changelog/unreleased/support-callin-previews/wipeout.jpg",
-          "sha256": "6a4e43c91a1d2a907a24a48ae5038febb8bcbdfa76eeeade9c074b034628cc69",
+          "sha256": "9a76f3087011eaed77b17a84af933aa9c6aaf2ce632ace38e0bc3711603f2cbd",
           "caption": "wipeout.jpg"
         },
         {
           "file": "changelog/unreleased/support-callin-previews/wipeout.webm",
-          "sha256": "e9710f26e029cbf10af430b22c8b8639c0522ba3800b47d9dfef4fe03a5b45a7",
+          "sha256": "09d6ed5ce31f33148cfc31a7a7c615bc0c03b8992b7c14074aade022b7b5be4c",
           "caption": "wipeout.webm"
         },
         {
           "file": "changelog/unreleased/support-callin-previews/xian.jpg",
-          "sha256": "b8f3612031daedd82aceb3b2394416c1d0a0b2dd1fd89c25c79ddb1244fb317c",
+          "sha256": "e6f488546ae1853e0532449612da0a450d19f23da0c6b08b6c898e0542a69019",
           "caption": "xian.jpg"
         },
         {
           "file": "changelog/unreleased/support-callin-previews/xian.webm",
-          "sha256": "01a918d93b603a3ecc64918a7b58fa1f3d484b190b0e0b50a54c146ed9a75e7c",
+          "sha256": "fc2e805e90210079bb121e4b400a8f5d283c10b3a4bc30064989e517647ea52d",
           "caption": "xian.webm"
         }
       ],

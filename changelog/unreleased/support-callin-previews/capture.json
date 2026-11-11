@@ -11,7 +11,7 @@
   ],
   "audio": "Recorded game mix, Opus, continuous through both takes.",
   "capture": "godot --path CHECKOUT --rendering-method forward_plus --fixed-fps 24 --resolution 960x540 --write-movie TAKE.avi res://tests/fixtures/support-clips.tscn -- KIND LABEL",
-  "encode": "Trim the native recording to the last 192, 240, 288 or 384 frames as printed by the fixture, scale to 960x540, encode VP9 CRF 33 and Opus. Concatenate before then after without changing playback speed.",
+  "encode": "The 15 explosive comparisons preserve the historical first take. The revised take uses the last requested frames of the native recording, scaled to 960x540. The pairs use VP9 CRF 31 and native game audio encoded as Opus. The earlier smoke and reconnaissance pairs use CRF 33.",
   "source_sha256": {
     "scripts/ui/support_demo.gd": "f3fc3815090752abc41413ae3de0739e3fd39eb6d6a0f81ac9b2bd825f249326",
     "scripts/game/blast_flipbooks.gd": "13a5b78270da69c43ef5d9207f6451368a688f4839110aadb2ff4d4b415d0d14",
@@ -142,5 +142,15 @@
       "after_starts_seconds": 10
     }
   ],
-  "review": "Reviewed all 20 comparisons with Video Tool. Refreshed 15 explosive call-ins and the smoke screen. The longer armed Greyhawk pair includes a later impact. Reconnaissance footage is from the preceding revision."
+  "review": "Reviewed the revised impacts for all 15 explosive call-ins with Video Tool. Re-recorded Sentinel after finding a take that only showed the aftermath. Smoke and the four reconnaissance clips retain their earlier recordings. The earlier source hashes are preserved in source_sha256.",
+  "explosive_after_source_sha256": {
+    "scripts/ui/support_demo.gd": "f3fc3815090752abc41413ae3de0739e3fd39eb6d6a0f81ac9b2bd825f249326",
+    "scripts/game/blast_flipbooks.gd": "1b6871c672f780a8f9807ecde2a34beac82d93ca361fab380f92161c8d31bb33",
+    "scripts/game/gunfx.gd": "16e978f3fa847478340f587d8ab383913f4fd87cef321d64bf2b1d04c081e04f",
+    "scripts/shaders/blast_flipbook.gdshader": "dad3c87ab72c1f8a2a01904ab3aacd79543e401efebd468df4da2a27731bf63a",
+    "tests/fixtures/support-clips.gd": "0a8bc17010d1460352966c47aa6e3fe1188c0a62a4646c297bf3a60549c27504",
+    "scripts/game/vfx.gd": "c8d51f125754bd5925a71e8ce2da0314f4c8802aeecd4a567d34b6823009594d",
+    "scripts/autoload/sfx.gd": "9e2e90fd3a3c2fcc5b8f4186432591a6849fb9014b076ccdee4258915a0f07ed",
+    "scripts/game/projectile.gd": "a2c9f6cfd90163c7a0f28cd0b02c23c6f5a141306f7677ec0d146f28f53f0eb6"
+  }
 }

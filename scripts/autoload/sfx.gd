@@ -101,8 +101,8 @@ func _recipes() -> Array:
 		["mortar", _boom.bind(0.45, 0.55, 130.0)],
 		["whistle", _whistle],
 		["cannon", _boom.bind(1.4, 0.8, 70.0)],
-		["explosion", _boom.bind(1.6, 1.0, 55.0)],
-		["small_boom", _boom.bind(0.7, 0.7, 90.0)],
+		["explosion", _boom.bind(2.05, 1.0, 55.0)],
+		["small_boom", _boom.bind(0.95, 0.7, 90.0)],
 		["ricochet", _ricochet],
 		["drone", _drone_loop],
 		["launch", _whoosh],
@@ -123,7 +123,7 @@ func _recipes() -> Array:
 		["rumble", _rumble_loop],
 		["rain", _rain_loop],
 		["thunder", _thunder],
-		["brrt", _burst.bind(2.1, 65.0, 0.16, 1.0, 1.55)],
+		["brrt", _burst.bind(2.65, 65.0, 0.16, 1.0, 1.55)],
 		["ac25", _burst.bind(1.3, 30.0, 0.3, 0.55, 0.95)],
 		["ac40", _boom.bind(0.9, 0.95, 92.0)],
 		["ac105", _boom.bind(3.0, 1.0, 34.0)],
@@ -846,6 +846,7 @@ func _burst(rng: RandomNumberGenerator, dur: float, rate: float, bright: float, 
 	var echo := PackedFloat32Array()
 	echo.resize(int(0.09 * RATE))
 	var ei := 0
+	var reflected := 0.0
 	for i in n:
 		var t := float(i) / RATE
 		var on := 1.0 if t < hold else exp(-(t - hold) * 9.0)
@@ -857,12 +858,13 @@ func _burst(rng: RandomNumberGenerator, dur: float, rate: float, bright: float, 
 		var saw := (1.0 - ph * 2.0) * 0.4 * bass
 		var v := (lp2 * 3.2 * (0.35 + pulse) + saw * pulse) * on * minf(1.0, t * 30.0)
 		# a short slap-back off the ground
-		v += echo[ei] * 0.35
+		reflected += (echo[ei] - reflected) * 0.22
+		v += reflected * 0.64
 		echo[ei] = v
 		ei += 1
 		if ei == echo.size():
 			ei = 0
-		s[i] = clampf(v * 0.8, -1.0, 1.0)
+		s[i] = clampf(v * 0.8, -1.0, 1.0) * smoothstep(0.0, 0.07, float(n - 1 - i) / RATE)
 	return _wav(s)
 
 

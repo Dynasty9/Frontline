@@ -106,6 +106,8 @@ func _ready() -> void:
 	check(dust.mesh.visible, "Grenades use the baked dust animation")
 	check(not fl.has("flaming"), "Grenades must not use burning fragment layers")
 	v.explode(p, 1.4, "fuel")
+	if not OS.has_environment("FL_NO_PLUMES"):
+		check(is_equal_approx((v._plumes.M[-1][0] as Node3D).global_position.y, 40.4), "Fuel smoke originates at the elevated wreck")
 	var shell: Node3D = v._rigs.m[0]
 	var layers: Dictionary = shell.get_meta("layers")
 	check(layers.flaming.visible and layers.afterburn.visible, "Fuel burns after the blast")
