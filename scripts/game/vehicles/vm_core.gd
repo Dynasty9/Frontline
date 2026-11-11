@@ -908,7 +908,7 @@ static func _hilux(k: VehicleModels, team: int, seed: int, aa: bool) -> void:
 	for s: float in [-1.0, 1.0]:
 		_bx(k, m, Vector3(0.3, 0.17, 0.05), Vector3(s * 0.66, 0.9, nz + 0.01), "gunmetal_w")
 		if not k.burnt:
-			_bx(k, m, Vector3(0.18, 0.12, 0.02), Vector3(s * 0.6, 0.9, nz - 0.02), "plain", Color(0.74, 0.74, 0.68), Vector3.ZERO, false)
+			VehicleFittings.rectangular_headlamp(k, m, Vector3(s * 0.6, 0.9, nz - 0.02), Vector2(0.18, 0.12))
 			_bx(k, m, Vector3(0.07, 0.12, 0.02), Vector3(s * 0.76, 0.9, nz - 0.02), "paint", Color(0.75, 0.45, 0.12), Vector3.ZERO, false)
 	_bx(k, m, Vector3(1.8, 0.2, 0.16), Vector3(0, 0.6, nz - 0.04), "steel", Color(0.45, 0.45, 0.44), Vector3(0, 0, 0.02))
 	_path(k, m, [Vector3(-0.7, 0.62, nz - 0.2), Vector3(-0.7, 1.08, nz - 0.18), Vector3(0.7, 1.08, nz - 0.18), Vector3(0.7, 0.62, nz - 0.2)], 0.035, "gunmetal_w", null, 8)

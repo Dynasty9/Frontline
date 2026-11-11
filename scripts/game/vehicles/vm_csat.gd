@@ -137,9 +137,8 @@ static func _arch(k: VehicleModels, p: Node3D, x: float, z: float, r: float, w: 
 ## A headlight cluster facing -z: housing, two lenses and a wire guard.
 static func _headlight(k: VehicleModels, p: Node3D, pos: Vector3, guard := true) -> void:
 	k._box(p, Vector3(0.26, 0.15, 0.1), pos, "gunmetal_w")
-	if not k.burnt:
-		k._box(p, Vector3(0.1, 0.09, 0.02), pos + Vector3(-0.06, 0, -0.052), "plain", Color(0.85, 0.84, 0.76), Vector3.ZERO, false)
-		k._box(p, Vector3(0.08, 0.07, 0.02), pos + Vector3(0.07, 0, -0.052), "glass", null, Vector3.ZERO, false)
+	VehicleFittings.rectangular_headlamp(k, p, pos + Vector3(-0.06, 0, -0.052), Vector2(0.1, 0.09))
+	VehicleFittings.rectangular_headlamp(k, p, pos + Vector3(0.07, 0, -0.052), Vector2(0.08, 0.07))
 	if guard:
 		for dx in [-0.1, 0.0, 0.1]:
 			k._box(p, Vector3(0.015, 0.17, 0.015), pos + Vector3(dx, 0, -0.09), "gunmetal_w", null, Vector3.ZERO, false)

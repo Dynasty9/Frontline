@@ -406,3 +406,18 @@ static func lifting_eye(k: VehicleModels, parent: Node3D, base: Vector3, yaw := 
 	for side: float in [-1.0, 1.0]:
 		VehicleFrames.tube(k, mount, Vector3(side * radius * 0.4, 0.027, -radius * 0.65), Vector3(side * radius * 0.4, 0.027, radius * 0.65), 0.005, "steel", null, 6, false)
 	k._fold(mount)
+
+
+## Rectangular unlit headlight insert, local -Z outward. The original housing
+## and guard remain authored by the vehicle; optics fit inside the old lens size.
+static func rectangular_headlamp(k: VehicleModels, parent: Node3D, center: Vector3, size: Vector2, rotation := Vector3.ZERO) -> void:
+	var mount := k._pivot(parent, center)
+	mount.rotation = rotation
+	k._box(mount, Vector3(size.x, size.y, 0.014), Vector3.ZERO, "rubber", null, Vector3.ZERO, false)
+	if not k.burnt:
+		k._box(mount, Vector3(size.x * 0.88, size.y * 0.82, 0.009), Vector3(0, 0, -0.009), "headlamp", Color(0.76, 0.78, 0.73), Vector3.ZERO, false)
+		for i in 7:
+			var x := (i - 3) * size.x * 0.115
+			k._box(mount, Vector3(size.x * 0.025, size.y * 0.74, 0.004), Vector3(x, 0, -0.015), "headlamp", Color(0.52, 0.58, 0.56), Vector3.ZERO, false)
+		k._box(mount, Vector3(size.x * 0.12, size.y * 0.14, 0.004), Vector3(0, 0, -0.017), "gunmetal", null, Vector3.ZERO, false)
+	k._fold(mount)

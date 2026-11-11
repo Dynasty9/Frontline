@@ -350,7 +350,10 @@ static func _along(d: Vector3) -> Basis:
 
 
 static func _lamp(k: VehicleModels, parent: Node3D, s: Vector3, pos: Vector3, c: Color, rot := Vector3.ZERO) -> void:
-	k._add(parent, Res.box(s), "signal_lens", c, pos, rot, Vector3.ONE, false)
+	if (c.is_equal_approx(HEAD) or c.is_equal_approx(LENS)) and pos.z < 0 and s.z < minf(s.x, s.y):
+		VehicleFittings.rectangular_headlamp(k, parent, pos, Vector2(s.x, s.y), rot)
+	else:
+		k._add(parent, Res.box(s), "signal_lens", c, pos, rot, Vector3.ONE, false)
 
 
 ## A number plate facing -z (front) or +z (rear).

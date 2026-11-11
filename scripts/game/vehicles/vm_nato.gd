@@ -1337,7 +1337,7 @@ static func _hemtt_chassis(k: VehicleModels, team: int, paint: Color, detailed :
 	for s in [-1.0, 1.0]:
 		k._box(m, Vector3(0.3, 0.2, 0.06), Vector3(s * 0.96, 0.94, -5.27), "gunmetal_w")
 		if not k.burnt:
-			k._box(m, Vector3(0.12, 0.12, 0.02), Vector3(s * 1.02, 0.94, -5.305), "plain", Color(0.72, 0.72, 0.66), Vector3.ZERO, false)
+			VehicleFittings.rectangular_headlamp(k, m, Vector3(s * 1.02, 0.94, -5.305), Vector2(0.12, 0.12))
 			k._box(m, Vector3(0.08, 0.08, 0.02), Vector3(s * 0.88, 0.94, -5.305), "paint", Color(0.55, 0.36, 0.08), Vector3.ZERO, false)
 		_shackle(k, m, Vector3(s * 0.55, 0.8, -5.2))
 		k._box(m, Vector3(0.12, 0.06, 0.03), Vector3(s * 1.1, 1.82, -5.0), "paint", Color(0.55, 0.36, 0.08), Vector3.ZERO, false)
