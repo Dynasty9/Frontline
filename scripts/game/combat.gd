@@ -439,7 +439,7 @@ func _explode(pos: Vector3, d: Dictionary) -> void:
 				st.toss_from(pos, bsize)
 	# the flash and the burning fragments may set what's close alight
 	world.fires.blast(pos, bsize, r)
-	world.fx_event([Fx.EXPLODE, pos, float(d.get("size", 1.0))])
+	world.fx_event([Fx.EXPLODE, pos, bsize, String(d.get("vfx", "he"))])
 	world.terrain.add_crater(pos, float(d.get("size", 1.0)))
 
 

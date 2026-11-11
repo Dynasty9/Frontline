@@ -16,6 +16,15 @@ func _ready() -> void:
 		add_child(demo)
 		await demo.prepare(kind)
 		demo.set_physics_process(false)
+		if not demo.cam:
+			demo.cam = RtsCamera.new()
+			demo.cam.world = demo
+			demo.add_child(demo.cam)
+			demo.cam.process_mode = Node.PROCESS_MODE_DISABLED
+		demo._update_camera()
+		var lens: Camera3D = demo.cam.cam
+		check(absf(lens.global_position.distance_to(demo.cam.focus_pos) - demo.cam.dist) < 0.01, kind + " must frame the aircraft at the requested world-space distance")
+		check(lens.is_position_in_frustum(demo._aircraft.global_position), kind + " must start with the aircraft in frame")
 		check(demo.projectiles.size() > 0, kind + " must launch a real aircraft")
 		for step in 2100:
 			demo._physics_process(1.0 / 60.0)
