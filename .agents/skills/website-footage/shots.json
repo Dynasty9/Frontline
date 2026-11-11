@@ -95,7 +95,7 @@
       "frames": 110,
       "args": ["--preset=high", "--seed=3", "--set=volume:0.8,vol_effects:0.85,vol_music:0,battle_music:false,vol_ambience:0.28,vol_ui:0,mute_bg:false,wildlife:0,edge_pan:false", "--scenario=defense", "--mood=golden"],
       "shows": ["Mortar crew at shoulder height"],
-      "about": "Slide past the sandbags so the standing soldier, tube and pit separate in depth before the overhead impact shot."
+      "about": "From inside the sandbags, follow the crew member crossing the wall and dropping to a knee before the cut overhead."
     },
     "trailer-armour-crossing": {
       "frames": 255,
@@ -564,7 +564,7 @@
         {"take": "trailer-armour-crossing", "from": 5.83333, "to": 7.4, "gain_db": 0, "caption": "[Tracks rumble across the field]"},
         {"take": "reel-gun", "from": 13.9, "to": 15.1, "gain_db": -8, "caption": "[Tank cannon fires]"},
         {"take": "trailer-trench-close", "from": 49.23333, "to": 51.13333, "gain_db": -2, "caption": "[Fire cracks beside the trench]"},
-        {"take": "trailer-mortar-crew", "from": 1.3, "to": 2.4, "gain_db": 1, "caption": "[Distant fire at the mortar pit]"},
+        {"take": "trailer-mortar-crew", "from": 0.5, "to": 1.6, "gain_db": 1, "caption": "[Distant fire at the mortar pit]"},
         {"take": "highlight-mortar-burst", "from": 8.3, "to": 10.1, "gain_db": -3, "caption": "[Mortar bursts across the trench line]"},
         {"take": "trailer-sling", "from": 39.26667, "to": 40.9, "gain_db": 0, "caption": "[Helicopter rotors over the suspended vehicle]"},
         {"take": "trailer-cargo-door", "from": 40.9, "to": 42.0, "gain_db": 0},

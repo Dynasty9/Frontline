@@ -4,10 +4,10 @@
 
 [node name="Main" type="Node"]
 script = ExtResource("1")
-first_eye = Vector3(7.1, 1.7, 16.2)
-last_eye = Vector3(4.6, 1.45, 16.25)
-subject = Vector3(1.0, 1.10, 14.9)
-travel_seconds = Vector2(0, 3.5)
+first_eye = Vector3(-0.85, 1.22, 12.5)
+last_eye = Vector3(-1.35, 1.18, 12.55)
+subject = Vector3(0.59, 1.15, 15.4)
+travel_seconds = Vector2(0, 2.4)
 
 [node name="Camera3D" type="Camera3D" parent="."]
-fov = 39.0
+fov = 53.0

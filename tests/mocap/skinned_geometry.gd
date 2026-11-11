@@ -1,6 +1,7 @@
 extends "res://scripts/main.gd"
 
 var frames := 0
+var fixtures: Array[Soldier] = []
 
 func _ready() -> void:
 	super._ready()
@@ -9,12 +10,25 @@ func _process(dt: float) -> void:
 	super._process(dt)
 	if not is_instance_valid(world) or world.time < 0.2: return
 	frames += 1
+	if frames == 1:
+		for kind in ["crewman", "mortar_gunner"]:
+			var unit := world.spawn("soldier", {"utype": kind, "team": 0, "pos": world.cam.focus_pos}) as Soldier
+			unit.debug_pose = [Soldier.Post.STAND, Soldier.Act.IDLE, Soldier.Life.ALIVE, 0.0]
+			fixtures.append(unit)
 	if frames < 3: return
+	for unit in fixtures:
+		if unit.model == null:
+			if frames >= 90:
+				push_error("The character fixture never obtained a detailed model")
+				get_tree().quit(1)
+			return
 	var native := 0
 	var procedural := 0
 	for unit in world.soldiers:
 		var model: Node3D = unit.model
 		if model == null: continue
+		if unit.utype == "mortar_gunner" and InfantryAssets.gameplay_model == InfantryAssets.SWAT:
+			assert(model.skinned != null and model.tube.get_parent() is BoneAttachment3D, "The specialist carries his kit on the animated spine")
 		if model.skinned == null:
 			assert(not model.root.find_children("*", "MeshInstance3D", true, false).is_empty(), "Procedural soldier lost its geometry")
 			procedural += 1

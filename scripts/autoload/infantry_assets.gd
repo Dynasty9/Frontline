@@ -32,6 +32,10 @@ func _init() -> void:
 		return
 	if not ProjectSettings.load_resource_pack("res://assets/infantry/infantry.zip", false):
 		push_error("Could not mount Frontline infantry assets")
+	# Apple’s native OpenGL driver drops the animated skin while still drawing its props.
+	# The original articulated soldiers remain visible on this backend.
+	if OS.has_feature("macos") and RenderingServer.get_current_rendering_driver_name() == "opengl3":
+		return
 	gameplay_model = select_model(OS.get_cmdline_user_args(), ResourceLoader.exists)
 
 

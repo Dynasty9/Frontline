@@ -44,4 +44,6 @@ func check_model_selection() -> void:
 		assert(Assets.select_model(["--skinned-units", flag], exists) == Assets.SWAT)
 	installed.erase(Assets.SWAT)
 	assert(Assets.select_model([], exists) == Assets.SOLDIER)
-	assert(root.get_node("InfantryAssets").gameplay_model == Assets.SWAT, "Mount the shipped pack before selecting the default model")
+	assert(Assets.select_model([], ResourceLoader.exists) == Assets.SWAT, "The mounted pack must supply the default model")
+	var native_gl := OS.has_feature("macos") and RenderingServer.get_current_rendering_driver_name() == "opengl3"
+	assert(root.get_node("InfantryAssets").gameplay_model == ("" if native_gl else Assets.SWAT))
