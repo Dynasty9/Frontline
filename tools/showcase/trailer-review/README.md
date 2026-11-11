@@ -16,7 +16,7 @@ python3 tools/showcase/trailer-review/archive.py /tmp/frontline-trailer/build/re
   --takes /tmp/frontline-trailer/takes --label '01 · Squad to harbour' --note 'Describe the outcome you saw on playback.'
 ```
 
-Open `build/trailer-review/index.html` directly. Pick two editions, listen to either track and scrub both pictures together. The gallery is local. To share it, copy the entire gallery folder. Each edition keeps its recipe. Passing `--takes` also preserves the recording date, game revision and launch arguments for each take.
+Open `build/trailer-review/index.html` directly to compare the two latest editions. Choose edition 00 on the left to see the original. Listen to either track and scrub both pictures together. The gallery is local. To share it, copy the entire gallery folder. Each edition keeps its recipe. Passing `--takes` also preserves the recording date, game revision and launch arguments for each take.
 
 The edit opens on a readable action at squad scale, expands through infantry and armour, and gives the final aircraft approach and water impacts time to play as one event. Check the first ten seconds muted and the final approach with sound. These checks follow [Valve’s gameplay trailer guidance](https://partner.steamgames.com/doc/store/trailer) and [Derek Lieu’s line of rising action](https://www.derek-lieu.com/blog/2018/9/16/the-trailer-line-of-rising-action).
 
@@ -28,7 +28,7 @@ For a mix revision, keep the cut points fixed and compare editions with the audi
 | --- | --- |
 | One order | A destination appears on the commander's road view. Track the same five soldiers across the road at shoulder height, with dawn light on their gear and the village ahead. Both cameras record the same order, seed and simulation time. |
 | Armour arrives | Keep the squad's left-to-right movement through the cut. From field level, a tank crosses the foreground before the closer gun shot. |
-| Into the trench | See people beside the earthworks. Follow the mortar crew with the visible impacts along the trench line. |
+| Into the trench | See riflemen cross the timber trench beside a tracked vehicle. Slide past the mortar crew at shoulder height, then cut overhead as the rounds land along the line. The two field-camera scenes store their positions and travel times in metres and simulation seconds. |
 | Off the ground | See the helicopter take the weight, then look down past its landing gear at the Humvee turning on the sling. Its shadow stays on the field below. |
 | Into the harbour | From the starboard side of one launch, see the other cut across the bow and turn toward shore. From shore, see the squad run clear of the bow while the patrol ship crosses behind. Cut to the ship's bow as a second boat comes alongside. Follow the jet until its load clears the wing. Hold the harbour wide through the rise and fall of the spray. |
 
