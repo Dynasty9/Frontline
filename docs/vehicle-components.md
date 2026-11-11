@@ -1,5 +1,7 @@
 # Building vehicles from shared components
 
+See the [30-feature construction roadmap](vehicle-construction-roadmap.md) for prioritized extensions, source examples and rollout requirements.
+
 Family builders own the silhouette, dimensions, wheel positions, payload and weapon sockets. Reuse the parts below for ordinary wheels, belts, structural members and windows. Existing family helpers delegate to them, so variants inherit improvements together.
 
 | Component | Use | Keep specific to the vehicle |
