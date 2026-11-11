@@ -16,7 +16,7 @@ export default function RanksPage() {
   const { health } = useSite()
   const available = health?.accounts !== "off"
   return (
-    <div className="topo">
+    <div>
       <CommandersNav />
       <div className="mx-auto max-w-6xl px-4 pt-14 pb-24 sm:px-6">
         <SectionLabel>Commanders / Rank guide</SectionLabel>

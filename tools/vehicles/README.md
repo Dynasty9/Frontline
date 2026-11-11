@@ -68,6 +68,10 @@ The report includes all mesh surfaces, including near/far LOD alternatives; it i
 not a claim that all reported surfaces draw simultaneously. Build time includes
 cache warm-up in the sorted model order. Inspect gameplay frame cost separately.
 
+`assembly-extractions.json` also registers the twenty shared components of the third pass (guns,
+turret fittings, lights, rotor masts, exhausts, fenders, fuel tanks and rolled tarps); "Twenty shared
+components" in the [component guide](../../docs/vehicle-components.md) gives their contracts and adopters.
+
 `detail-improvements.json` records the next 40 improvements to 20 existing
 assemblies, separately from the original 30-technique registry. See the
 [detail review](../../docs/vehicle-detail-40-review.md) for the changes, adopters,

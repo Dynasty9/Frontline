@@ -29,7 +29,7 @@ export default function ChangelogPage() {
   }, [hash])
 
   return (
-    <div className="topo">
+    <div>
       <div className="mx-auto max-w-6xl px-4 pt-12 pb-24 sm:px-6">
         <SectionLabel>Field notes / Updates</SectionLabel>
         <div className="mt-4 flex flex-wrap items-end justify-between gap-6">

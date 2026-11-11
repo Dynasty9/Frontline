@@ -513,17 +513,7 @@ static func _m2(k: VehicleModels, m: Node3D, pos: Vector3, yaw: float, el := 0.0
 	var pv := k._pivot(m, pos + Vector3(0, 0.88, 0))
 	pv.rotation = Vector3(el, yaw, 0)
 	_bx(k, pv, Vector3(0.1, 0.1, 0.26), Vector3(0, 0.02, 0.0), "gunmetal_w")
-	_bx(k, pv, Vector3(0.13, 0.17, 0.66), Vector3(0, 0.13, -0.05), "gunmetal_w")
-	_bx(k, pv, Vector3(0.1, 0.03, 0.4), Vector3(0, 0.23, -0.08), "gunmetal_w", null, Vector3.ZERO, false)
-	k._cyl(pv, 0.036, 0.036, 0.3, Vector3(0, 0.13, -0.5), Vector3(PI / 2, 0, 0), "gunmetal_w", null, 8)
-	k._cyl(pv, 0.022, 0.022, 1.02, Vector3(0, 0.13, -1.04), Vector3(PI / 2, 0, 0), "gunmetal_w", null, 6)
-	k._cyl(pv, 0.03, 0.026, 0.09, Vector3(0, 0.13, -1.58), Vector3(PI / 2, 0, 0), "gunmetal_w", null, 8, false)
-	_rod(k, pv, Vector3(0, 0.2, -0.62), Vector3(0, 0.28, -0.75), 0.012, "gunmetal_w")
-	_rod(k, pv, Vector3(0, 0.28, -0.75), Vector3(0, 0.2, -0.88), 0.012, "gunmetal_w")
-	for sx in [-0.07, 0.07]:
-		_rod(k, pv, Vector3(sx, 0.12, 0.28), Vector3(sx, 0.2, 0.36), 0.016, "rubber", null, 6, true)
-	_bx(k, pv, Vector3(0.11, 0.19, 0.29), Vector3(-0.15, 0.08, -0.08), "paint", Color(0.3, 0.33, 0.22))
-	_bx(k, pv, Vector3(0.06, 0.02, 0.1), Vector3(-0.07, 0.19, -0.08), "steel", Color(0.6, 0.48, 0.22), Vector3(0, 0, 0.4), false)
+	VehicleWeapons.hmg(k, pv, Vector3(0, 0.13, -0.05), Vector3(0, 0.13, -1.625), 0.9, -1.0, true, "gunmetal_w", Color(0.3, 0.33, 0.22))
 	VmBoat._bake(k, pv)
 
 
@@ -747,7 +737,7 @@ static func _patrol_ship(k: VehicleModels, team: int, seed: int) -> void:
 		_bx(k, m, Vector3(0.12, 0.5, 0.36), Vector3(s * (xw.call(3.2) + 0.05), 3.2, -0.15), "paint", Color(0.55, 0.12, 0.09))
 		k._team_mark(m, team, Vector3(s * (xw.call(3.85) + 0.015), 3.85, 0.0 + 1.55), Vector3(0.012, 0.22, 0.5))
 		# navigation sidelights on the pilothouse shoulders, red to port
-		_bx(k, m, Vector3(0.08, 0.14, 0.3), Vector3(s * 1.93, y2 + 0.2, -2.9), "paint", Color(0.08, 0.42, 0.16) if s > 0 else Color(0.6, 0.08, 0.06), Vector3.ZERO, false)
+		VehicleFittings.nav_light(k, m, Vector3(s * 1.93, y2 + 0.2, -2.9), Vector3(0.08, 0.14, 0.3), s)
 		_bx(k, m, Vector3(0.02, 0.22, 0.42), Vector3(s * 1.87, y2 + 0.2, -2.85), "plain", sup, Vector3.ZERO, false)
 	for i in 8:
 		var y := 2.95 + i * 0.3
@@ -792,7 +782,7 @@ static func _patrol_ship(k: VehicleModels, team: int, seed: int) -> void:
 	for s in [-1.0, 1.0]:
 		_bx(k, m, Vector3(0.06, 0.08, 0.06), Vector3(s * 0.9, 7.9, -1.1), "plain", Color(0.9, 0.9, 0.86), Vector3.ZERO, false)
 		_rod(k, m, Vector3(s * 0.9, 7.95, -1.1), Vector3(s * 1.7, y2 + 0.1, -0.55), 0.006, "plain_dark", Color(0.1, 0.1, 0.1), 3)
-	k._add(m, Res.sphere(0.06, 8), "plain", Color(0.92, 0.92, 0.88), Vector3(0, 8.8, -1.05))
+	VehicleFittings.dome_light(k, m, Vector3(0, 8.8, -1.05), 0.06, Color(0.92, 0.92, 0.88))
 	_rod(k, m, Vector3(0.08, 8.5, -1.06), Vector3(0.08, 9.6, -1.0), 0.012, "gunmetal_w", null, 4)
 	_bx(k, m, Vector3(0.1, 0.08, 0.12), Vector3(0, 7.65, -1.32), "plain", Color(0.9, 0.9, 0.86), Vector3.ZERO, false)
 	k._cyl(m, 0.05, 0.11, 0.24, Vector3(0.22, 7.2, -1.3), Vector3(PI / 2, 0, 0), "plain", sup, 10, false)
@@ -887,7 +877,8 @@ static func _patrol_ship(k: VehicleModels, team: int, seed: int) -> void:
 	var sy := _dk(p, zt)
 	_rod(k, m, Vector3(0, sy, zt - 0.3), Vector3(0, sy + 3.2, zt + 0.05), 0.03, "plain", sup, 6, true)
 	_flag(k, m, Vector3(0, sy + 3.12, zt + 0.06), team, 1.2, 0.72)
-	k._add(m, Res.sphere(0.05, 8), "plain", Color(0.92, 0.92, 0.88), Vector3(0, sy + 1.08, zt - 0.12))
+	# the stern light on the staff's after face, looking aft
+	VehicleFittings.dome_light(k, m, Vector3(0, sy + 1.08, zt - 0.12), 0.05, Color(0.92, 0.92, 0.88), Vector3.ONE, Vector3.BACK)
 	for s in [-1.0, 1.0]:
 		var x: float = s * 0.95
 		k._cyl(m, 0.22, 0.26, 0.42, Vector3(x, 0.62, zt + 0.2), Vector3(PI / 2, 0, 0), "gunmetal_w", null, 14)
@@ -896,7 +887,7 @@ static func _patrol_ship(k: VehicleModels, team: int, seed: int) -> void:
 		for dx in [-0.25, 0.25]:
 			_bx(k, m, Vector3(0.04, 0.06, 0.48), Vector3(x + dx, 0.84, zt + 0.48), "gunmetal_w", null, Vector3(0.2, 0, 0), false)
 		_rod(k, m, Vector3(x + s * 0.32, 1.0, zt + 0.03), Vector3(x + s * 0.24, 0.75, zt + 0.5), 0.03, "steel", null, 6)
-		# the stern light and the stern's exhaust pipes
+		# the stern's exhaust pipes
 		for dy in [0.0, 0.22]:
 			k._cyl(m, 0.08, 0.08, 0.12, Vector3(s * 2.0, 1.75 + dy, zt + 0.05), Vector3(PI / 2, 0, 0), "plain_dark", Color(0.08, 0.08, 0.08), 10, false)
 
@@ -1051,7 +1042,7 @@ static func _gun_trawler(k: VehicleModels, team: int, seed: int) -> void:
 			_bx(k, m, Vector3(0.008, rng.randf_range(0.3, 0.9), rng.randf_range(0.04, 0.1)), Vector3(s * 1.925, hr - 0.45 - rng.randf() * 0.3, rz), "paint", rust.lerp(white, 0.3), Vector3.ZERO, false)
 		# sidelights in their screens on the wheelhouse's shoulders
 		_bx(k, m, Vector3(0.24, 0.3, 0.5), Vector3(s * 1.72, wy1 + 0.25, 0.75), "steel", blue.darkened(0.2))
-		_bx(k, m, Vector3(0.08, 0.14, 0.18), Vector3(s * 1.86, wy1 + 0.25, 0.7), "paint", Color(0.08, 0.42, 0.16) if s > 0 else Color(0.6, 0.08, 0.06), Vector3.ZERO, false)
+		VehicleFittings.nav_light(k, m, Vector3(s * 1.86, wy1 + 0.25, 0.7), Vector3(0.08, 0.14, 0.18), s)
 		_lifering(k, m, Vector3(s * 1.6, wy1 - 0.15, 2.4), Vector3(s, 0, 0))
 		var rr := [Vector3(s * 1.85, hr + 0.08, 0.25), Vector3(s * 1.85, hr + 0.08, 4.15), Vector3(s * 1.0, hr + 0.08, 4.5)]
 		for q in rr:
@@ -1078,7 +1069,7 @@ static func _gun_trawler(k: VehicleModels, team: int, seed: int) -> void:
 	_bx(k, m, Vector3(0.26, 0.2, 0.3), Vector3(-0.4, wy2 + 1.6, 2.6), "plain", Color(0.82, 0.82, 0.79))
 	VehicleMounts.radar_array(k, m, Vector3(1.3, 0.13, 0.12), Vector3(-0.4, wy2 + 1.78, 2.6), "plain", Color(0.84, 0.84, 0.8), Vector3(0, -0.6, 0))
 	_rod(k, m, Vector3(-0.4, wy2 + 1.5, 2.65), Vector3(-0.4, wy2 + 2.6, 2.75), 0.02, "steel", null)
-	k._add(m, Res.sphere(0.05, 8), "plain", Color(0.9, 0.9, 0.86), Vector3(-0.4, wy2 + 2.64, 2.75))
+	VehicleFittings.dome_light(k, m, Vector3(-0.4, wy2 + 2.64, 2.75), 0.05, Color(0.9, 0.9, 0.86))
 	_flag(k, m, Vector3(-0.4, wy2 + 2.5, 2.76), team, 0.9, 0.55)
 	_searchlight(k, m, Vector3(-1.15, wy2 + 0.1, 0.0), -0.3, Color(0.3, 0.32, 0.3))
 	k._cyl(m, 0.05, 0.13, 0.3, Vector3(1.1, wy2 + 0.25, 0.1), Vector3(PI / 2, 0, 0), "plain", Color(0.8, 0.8, 0.76), 10)
@@ -1094,7 +1085,7 @@ static func _gun_trawler(k: VehicleModels, team: int, seed: int) -> void:
 		# shrouds down to the bulwark
 		var bst := _at(p, mz + 0.4)
 		_rod(k, m, Vector3(0, my + 6.0, mz), Vector3(s * (VmBoat._hw(bst[1], bst[3]) - 0.05), float(bst[3]), mz + 0.4), 0.01, "steel", Color(0.25, 0.24, 0.22), 4)
-	k._add(m, Res.sphere(0.07, 8), "plain", Color(0.92, 0.9, 0.84), Vector3(0, my + 8.05, mz))
+	VehicleFittings.dome_light(k, m, Vector3(0, my + 8.05, mz), 0.07, Color(0.92, 0.9, 0.84))
 	_bx(k, m, Vector3(0.14, 0.18, 0.12), Vector3(0, my + 5.3, mz - 0.14), "plain", Color(0.9, 0.9, 0.84), Vector3.ZERO, false)
 	_rod(k, m, Vector3(0, my + 7.6, mz), Vector3(0, wy2 + 0.1, 0.0), 0.009, "steel", Color(0.25, 0.24, 0.22), 4)
 	var heel := Vector3(0, my + 1.6, mz - 0.18)

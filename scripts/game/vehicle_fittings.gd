@@ -500,3 +500,69 @@ static func filler(k: VehicleModels, parent: Node3D, center: Vector3, radius: fl
 	k._cyl(parent, radius * 1.12, radius * 1.12, radius * 0.18, center, basis.get_euler(), "rubber", null, 16, false)
 	k._cyl(parent, radius * 0.88, radius, radius * 0.24, center + normal * radius * 0.08, basis.get_euler(), mat, col, 12, false)
 	VehicleFrames.beam(k, parent, center - basis.x * radius * 0.6 + normal * radius * 0.23, center + basis.x * radius * 0.6 + normal * radius * 0.23, radius * 0.18, radius * 0.18, mat, col, false)
+
+
+## Rectangular hatch lid: the old lid box's centre and size, sitting on the
+## roof. A seat coaming round it, a bevelled lid with pressed stiffeners, two
+## hinges on the edge toward `hinge_side` along Z and a grab handle near the
+## opposite edge. Opening lids and their pivots stay with the family.
+static func panel_hatch(k: VehicleModels, parent: Node3D, center: Vector3, size: Vector3, material: String, col = null, hinge_side := 1.0, handle := true) -> void:
+	var mount := k._pivot(parent, center)
+	var t := size.y
+	var rim := minf(0.03, minf(size.x, size.z) * 0.06)
+	for side: float in [-1.0, 1.0]:
+		k._box(mount, Vector3(size.x + rim * 2, t * 0.55, rim), Vector3(0, -t * 0.225, side * (size.z + rim) * 0.5), material, col)
+		k._box(mount, Vector3(rim, t * 0.55, size.z), Vector3(side * (size.x + rim) * 0.5, -t * 0.225, 0), material, col)
+	k._add(mount, BevelMesh.make(Vector3(size.x - 0.01, t, size.z - 0.01), minf(t * 0.3, 0.012)), material, col, Vector3.ZERO)
+	k._box(mount, Vector3(size.x - 0.004, 0.006, size.z - 0.004), Vector3(0, -t * 0.5 + 0.004, 0), "rubber", null, Vector3.ZERO, false)
+	var rib := minf(0.04, minf(size.x, size.z) * 0.08)
+	k._add(mount, BevelMesh.make(Vector3(size.x * 0.7, t * 0.3, rib), t * 0.1), material, col, Vector3(0, t * 0.6, 0))
+	k._add(mount, BevelMesh.make(Vector3(rib, t * 0.3, size.z * 0.7), t * 0.1), material, col, Vector3(0, t * 0.6, 0))
+	var hinge_z := signf(hinge_side) * (size.z * 0.5 - 0.02)
+	for side: float in [-1.0, 1.0]:
+		VehicleDoors.hinge(k, mount, Vector3(side * size.x * 0.3, t * 0.5, hinge_z), Vector3.UP, Vector3.RIGHT, minf(0.016, t * 0.3), material, col)
+	if handle:
+		VehicleDoors.pull(k, mount, Vector3(0, t * 0.5, -signf(hinge_side) * (size.z * 0.5 - 0.07)), Vector3.UP, Vector3.RIGHT, minf(0.16, size.x * 0.35), minf(0.01, t * 0.2))
+	k._fold(mount)
+
+
+## Bore evacuator on a gun tube along Z: the old cylinder's centre, radius and
+## length. The chamber tapers down onto the barrel at both ends; a joint band
+## and the filler plug show where its two shells meet.
+static func evacuator(k: VehicleModels, parent: Node3D, center: Vector3, radius: float, length: float, material := "paint", col = null) -> void:
+	var mount := k._pivot(parent, center)
+	var x90 := Vector3(PI / 2, 0, 0)
+	var cap := minf(length * 0.14, radius * 0.9)
+	var half := length * 0.5
+	k._cyl(mount, radius, radius, length - cap * 2, Vector3.ZERO, x90, material, col, 16)
+	k._cyl(mount, radius * 0.72, radius, cap, Vector3(0, 0, half - cap * 0.5), x90, material, col, 16)
+	k._cyl(mount, radius, radius * 0.72, cap, Vector3(0, 0, -half + cap * 0.5), x90, material, col, 16)
+	k._cyl(mount, radius * 1.03, radius * 1.03, minf(0.04, length * 0.06), Vector3(0, 0, length * 0.08), x90, "metal_dark", null, 16, false)
+	VehicleBody.fastener(k, mount, Vector3(0, radius + 0.002, -length * 0.2), Vector3.UP, radius * 0.12)
+	k._fold(mount)
+
+
+## Round dome light (anti-collision beacon, masthead or stern light): the old
+## lens sphere's centre and radius. A metal base and rubber seat under a
+## glossy lens; `scale` flattens or stretches it as the old sphere was, and
+## `up` points from the base to the lens.
+static func dome_light(k: VehicleModels, parent: Node3D, center: Vector3, radius: float, col: Color, scale := Vector3.ONE, up := Vector3.UP) -> void:
+	var mount := k._pivot(parent, center)
+	mount.basis = VehicleFrames.aim(up) * Basis.from_scale(scale)
+	# The base reaches the old sphere's lowest point, so a lamp on a pole or a
+	# surface still sits on it.
+	k._cyl(mount, radius * 0.9, radius * 1.04, radius * 0.6, Vector3(0, -radius * 0.7, 0), Vector3.ZERO, "metal_dark", null, 12)
+	k._cyl(mount, radius * 1.0, radius * 1.0, radius * 0.12, Vector3(0, -radius * 0.38, 0), Vector3.ZERO, "rubber", null, 12, false)
+	k._add(mount, Res.sphere(radius * 0.97, 12), "signal_lens", col, Vector3(0, radius * 0.02, 0), Vector3.ZERO, Vector3(1, 0.9, 1), false)
+	k._fold(mount)
+
+
+## Red (port, side < 0) or green (starboard, side > 0) sidelight. `size` is the
+## old box in the parent's axes (X outward), so housings keep their place;
+## the lens faces outward and a short visor shades it from above.
+static func nav_light(k: VehicleModels, parent: Node3D, center: Vector3, size: Vector3, side: float) -> void:
+	var facing := 1.0 if side >= 0.0 else -1.0
+	var col := Color(0.1, 0.5, 0.2) if facing > 0.0 else Color(0.6, 0.1, 0.08)
+	marker(k, parent, center, size, facing, col)
+	var visor := maxf(0.004, size.y * 0.12)
+	k._box(parent, Vector3(size.x * 1.3, visor, size.z * 1.06), center + Vector3(facing * size.x * 0.15, size.y * 0.5 + visor * 0.5, 0), "metal_dark", null, Vector3.ZERO, false)

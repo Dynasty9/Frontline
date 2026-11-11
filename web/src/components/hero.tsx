@@ -195,10 +195,10 @@ function LiveLine({ health }: { health: Health | undefined }) {
         <span className="absolute inline-flex size-full animate-ping rounded-full bg-good opacity-60" />
         <span className="relative inline-flex size-2 rounded-full bg-good" />
       </span>
-      <a href="#battles" className="hover:text-foreground">
+      <Link to="/battles" className="hover:text-foreground">
         {n === 0 ? "No battles hosted right now" : `${n} ${n === 1 ? "battle" : "battles"} live`}
         {health.players > 0 && ` · ${health.players} ${health.players === 1 ? "player" : "players"}`}
-      </a>
+      </Link>
     </p>
   )
 }

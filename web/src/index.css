@@ -23,6 +23,8 @@
     --color-warn: var(--warn);
     --color-emblem: var(--emblem);
     --color-cream: var(--cream);
+    --color-coalition: var(--coalition);
+    --color-rebels: var(--rebels);
     --color-ring: var(--ring);
     --color-input: var(--input);
     --color-border: var(--border);
@@ -70,6 +72,9 @@
     /* the emblem: cream triangle, red dot */
     --cream: #decca1;
     --emblem: #d6523d;
+    /* the two sides, as the game marks them (Defs.TEAM_COLORS) */
+    --coalition: #599eff;
+    --rebels: #ff5c47;
     --border: rgb(255 255 255 / 9%);
     --input: rgb(255 255 255 / 12%);
     --ring: #f5c96e;
@@ -85,25 +90,15 @@
         scroll-behavior: smooth;
         color-scheme: dark;
     }
+    /* the page's ground is the html's: the body stays clear, so the map behind
+       every page (TopoBackdrop, drawn under the body's content) shows through it */
     body {
-        @apply bg-background text-foreground;
+        @apply text-foreground;
     }
     button:not(:disabled),
     [role="button"]:not(:disabled) {
         cursor: pointer;
     }
-}
-
-/* The topographic map texture from the game's splash, faded into the page. */
-.topo {
-    background-image:
-        radial-gradient(ellipse at 50% 0%, transparent 0%, var(--background) 75%), url("/shots/backdrop.jpg");
-    background-size:
-        cover,
-        1600px auto;
-    background-position:
-        center top,
-        center top;
 }
 
 /* ------------------------------------------------------------------------

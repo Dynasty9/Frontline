@@ -4,7 +4,11 @@ import assert from "node:assert/strict";
 let mode = "valid";
 const server = createServer((req, res) => {
   if (req.url === "/") res.end('<div id="root"></div>');
-  else if (req.url === "/game/viewer.json")
+  else if (req.url.startsWith("/assets/")) {
+    // a deployment that answers a missing bundle with the page
+    res.statusCode = mode === "stale-asset" ? 200 : 404;
+    res.end(mode === "stale-asset" ? '<div id="root"></div>' : "");
+  } else if (req.url === "/game/viewer.json")
     res.end(
       mode === "fallback"
         ? "<html>fallback</html>"
@@ -19,7 +23,7 @@ const server = createServer((req, res) => {
 });
 await new Promise((r) => server.listen(0, "127.0.0.1", r));
 try {
-  for (const item of ["valid", "fallback", "bad-wasm"]) {
+  for (const item of ["valid", "fallback", "bad-wasm", "stale-asset"]) {
     mode = item;
     const child = spawn(
       process.execPath,

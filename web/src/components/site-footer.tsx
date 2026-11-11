@@ -22,14 +22,14 @@ export function SiteFooter({ accounts }: { accounts?: string }) {
         <nav aria-label="Footer" className="grid grid-cols-2 gap-8 text-sm sm:grid-cols-3">
           <div className="space-y-3">
             <p className="font-mono text-xs text-muted-foreground uppercase">Discover</p>
-            <Link className="block hover:text-primary" to="/#intel">
-              The game
+            <Link className="block hover:text-primary" to="/">
+              Home
+            </Link>
+            <Link className="block hover:text-primary" to="/manual">
+              Field Manual
             </Link>
             <Link className="block hover:text-primary" to="/changelog">
               Updates
-            </Link>
-            <Link className="block hover:text-primary" to="/vehicles">
-              Vehicles
             </Link>
           </div>
           <div className="space-y-3">

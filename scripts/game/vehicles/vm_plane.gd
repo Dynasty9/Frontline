@@ -467,9 +467,11 @@ static func antenna(k: VehicleModels, p: Node3D, pos: Vector3, h: float, down :=
 	k._box(p, Vector3(0.02, h, h * 0.7), pos + Vector3(0, s * h * 0.45, h * 0.15), "paint", col, Vector3(s * 0.45, 0, 0), false)
 
 
+## Green on the right wingtip, red on the left, as on every aircraft and ship.
 static func nav_lights(k: VehicleModels, p: Node3D, right: Vector3, sz := 0.08) -> void:
-	VehicleFittings.marker(k, p, right, Vector3(sz, sz * 0.6, sz * 1.6), 1.0, Color(0.15, 0.5, 0.2))
-	VehicleFittings.marker(k, p, right * Vector3(-1, 1, 1), Vector3(sz, sz * 0.6, sz * 1.6), -1.0, Color(0.6, 0.12, 0.1))
+	var size := Vector3(sz, sz * 0.6, sz * 1.6)
+	VehicleFittings.nav_light(k, p, right, size, 1.0)
+	VehicleFittings.nav_light(k, p, right * Vector3(-1, 1, 1), size, -1.0)
 
 
 ## A team panel flat on a wing's upper surface at span x, both wings.

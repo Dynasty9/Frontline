@@ -1,0 +1,27 @@
+{
+  "entry": "changelog/unreleased/website-home-and-manual.md",
+  "summary": "The website on the menus' living map, Home for everyone, and a Field Manual of every entry with figures and 3D models.",
+  "medium": "still",
+  "stage": "native-media",
+  "rationale": "Layout and appearance: matched 1600 x 900 viewport captures of the rank guide (live site before, local build after) show the backdrop; the Manual overview and a Buildings page with the game's own browser viewer show the new pages and a model that wasn't on the site before. The backdrop's motion is slow drift, so stills carry it; browser stories cover navigation, filters and the viewer protocol.",
+  "source_ref": "69a1df03 + claude/frontline-redesign-preload-706c55 working tree; live website before captured 2026-11-11; viewer from a local Web export of the same tree (Godot 4.7.2, export preset Web)",
+  "sources": [
+    {
+      "file": "changelog/unreleased/website-home-and-manual/manual.jpg",
+      "sha256": "02e45410ac18bb8f5637cb969667634e568c0573ff3881b6fb8de8eb6ebcb81f"
+    },
+    {
+      "file": "changelog/unreleased/website-home-and-manual/buildings.jpg",
+      "sha256": "47a5c09ee774d925745e97aac3995b1f9af223d4e3f0f9318670ad0fc14c3cb1"
+    },
+    {
+      "file": "changelog/unreleased/website-home-and-manual/before.jpg",
+      "sha256": "e49a9afb3ddb33374457773fba26154f94b70b33fabbd751a24710474814feb1"
+    },
+    {
+      "file": "changelog/unreleased/website-home-and-manual/after.jpg",
+      "sha256": "a6744600cc2fc9b3c55a6e37d71626f214b3ab7d209a88d8bb845ef5dfdc79c8"
+    }
+  ],
+  "output": null
+}
