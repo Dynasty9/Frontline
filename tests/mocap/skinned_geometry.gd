@@ -1,7 +1,7 @@
 extends "res://scripts/main.gd"
 
 var frames := 0
-var fixtures: Array[Soldier] = []
+var fixtures: Array[Node3D] = []
 
 func _ready() -> void:
 	super._ready()
@@ -11,9 +11,12 @@ func _process(dt: float) -> void:
 	if not is_instance_valid(world) or world.time < 0.2: return
 	frames += 1
 	if frames == 1:
+		var soldier: GDScript = load("res://scripts/game/soldier.gd")
 		for kind in ["crewman", "mortar_gunner", "medic"]:
-			var unit := world.spawn("soldier", {"utype": kind, "team": 0, "pos": world.cam.focus_pos}) as Soldier
-			unit.debug_pose = [Soldier.Post.CROUCH, Soldier.Act.HEAL, Soldier.Life.ALIVE, 0.0] if kind == "medic" else [Soldier.Post.STAND, Soldier.Act.IDLE, Soldier.Life.ALIVE, 0.0]
+			var unit := world.spawn("soldier", {"utype": kind, "team": 0, "pos": world.cam.focus_pos}) as Node3D
+			unit.debug_pose = [soldier.Post.STAND, soldier.Act.IDLE, soldier.Life.ALIVE, 0.0]
+			if kind == "medic":
+				unit.debug_pose = [soldier.Post.CROUCH, soldier.Act.HEAL, soldier.Life.ALIVE, 0.0]
 			fixtures.append(unit)
 	if frames < 3: return
 	for unit in fixtures:
@@ -36,6 +39,10 @@ func _process(dt: float) -> void:
 				assert(not kit.find_children("*", "MeshInstance3D", true, false).is_empty())
 			assert(model.medical_band.get_parent().bone_idx == model.skinned.bones["LeftArm"])
 			assert(model.medical_pack.get_parent().bone_idx == model.skinned.bones["Spine2"])
+			var shoulder: Vector3 = model.skinned.joint("LeftArm").origin
+			var elbow: Vector3 = model.skinned.joint("LeftForeArm").origin
+			var centre: Vector3 = model.medical_band.to_global(Vector3.DOWN * 0.145)
+			assert(centre.distance_to(shoulder + shoulder.direction_to(elbow) * 0.145) < 0.002, "The cuff must stay centred on the posed upper arm")
 		if model.skinned == null:
 			assert(not model.root.find_children("*", "MeshInstance3D", true, false).is_empty(), "Procedural soldier lost its geometry")
 			procedural += 1
