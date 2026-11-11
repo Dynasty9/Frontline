@@ -55,7 +55,7 @@ The 143-subject roster, eight Forward+ subjects and eight rear/team-1 subjects b
 captured at **00d74c5**. The final change at **25a2c2b** only reduces runoff darkness and
 primer-chip opacity; the main comparisons and panel stage above include that tuning.
 
-[Roster 1](roster-roster-00.jpg) · [Roster 2](roster-roster-01.jpg) · [Roster 3](roster-roster-02.jpg) · [Roster 4](roster-roster-03.jpg) · [Roster 5](roster-roster-04.jpg) · [Roster 6](roster-roster-05.jpg) · [Roster 7](roster-roster-06.jpg) · [Roster 8](roster-roster-07.jpg) · [Roster 9](roster-roster-08.jpg) · [Roster 10](roster-roster-09.jpg) · [Roster 11](roster-roster-10.jpg) · [Roster 12](roster-roster-11.jpg) · 
+[Roster 1](roster-roster-00.jpg) · [Roster 2](roster-roster-01.jpg) · [Roster 3](roster-roster-02.jpg) · [Roster 4](roster-roster-03.jpg) · [Roster 5](roster-roster-04.jpg) · [Roster 6](roster-roster-05.jpg) · [Roster 7](roster-roster-06.jpg) · [Roster 8](roster-roster-07.jpg) · [Roster 9](roster-roster-08.jpg) · [Roster 10](roster-roster-09.jpg) · [Roster 11](roster-roster-10.jpg) · [Roster 12](roster-roster-11.jpg)
 
 ![Forward+ check](forward-roster-00.jpg)
 
