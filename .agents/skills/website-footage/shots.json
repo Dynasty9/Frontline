@@ -102,11 +102,12 @@
       "shows": ["Mortar crew at shoulder height"],
       "about": "Look across the pit. Keep the mortar on the left and the specialist visible above the sandbags as he vaults into position."
     },
-    "trailer-armour-crossing": {
-      "frames": 255,
-      "args": ["--preset=high", "--seed=3", "--set=volume:0.8,vol_effects:0.85,vol_music:0,battle_music:false,vol_ambience:0.28,vol_ui:0,mute_bg:false,wildlife:0,edge_pan:false", "--scenario=trenches", "--mood=golden", "--focus=0,52", "--zoom=31", "--pitch=-10", "--cam-yaw=1.60", "--pan=0,-1.9"],
-      "shows": ["Moving armoured column from field level"],
-      "about": "Watch the leading tank cross from left to right with a second hull in depth."
+    "trailer-bridge-column": {
+      "scene": "res://tools/showcase/trailer-review/bridge-column.tscn",
+      "frames": 5970,
+      "args": ["--preset=high", "--seed=3", "--set=volume:0.8,vol_effects:0.85,vol_music:0,battle_music:false,vol_ambience:0.28,vol_ui:0,mute_bg:false,wildlife:0,edge_pan:false", "--mission=bridgehead"],
+      "shows": ["Two Abrams moving through the village in Bridgehead"],
+      "about": "Let the Bridgehead mission run to the arrival of its armour. As the first tank crosses the roadside camera, the second emerges from the village against the mountain pass."
     },
     "trailer-beach-landing": {
       "scene": "res://tools/showcase/trailer-review/beach-landing.tscn",
@@ -566,7 +567,7 @@
       "cuts": [
         {"take": "trailer-order", "from": 1.4, "to": 2.73333, "gain_db": -1, "caption": "[Low strings as the order is given]"},
         {"take": "trailer-roadside", "from": 2.73333, "to": 3.8, "gain_db": -1, "caption": "[Rotor blades turn as the squad moves]"},
-        {"take": "trailer-armour-crossing", "from": 5.83333, "to": 7.4, "gain_db": 0, "caption": "[Tracks rumble across the field]"},
+        {"take": "trailer-bridge-column", "from": 194.83333, "to": 196.4, "gain_db": 0, "caption": "[Tank tracks approach along the village road]"},
         {"take": "reel-gun", "from": 13.9, "to": 15.1, "gain_db": -8, "caption": "[Tank cannon fires]"},
         {"take": "trailer-trench-close", "from": 49.23333, "to": 51.13333, "gain_db": -2, "caption": "[Fire cracks beside the trench]"},
         {"take": "trailer-mortar-crew", "from": 0.5, "to": 1.6, "gain_db": 1, "caption": "[Distant fire at the mortar pit]"},
