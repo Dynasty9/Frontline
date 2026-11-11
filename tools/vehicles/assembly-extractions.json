@@ -1,0 +1,157 @@
+[
+  {
+    "name": "Gun mantlets and cradles",
+    "apis": [
+      "VehicleMounts.mantlet"
+    ],
+    "boundary": "Box castings and cradle supports; bespoke cast/lofted mantlets retain their outlines."
+  },
+  {
+    "name": "Track drive sprockets",
+    "apis": [
+      "VehicleWheels.sprocket"
+    ],
+    "boundary": "Single/twin rims, tooth count and exactly one X-axis wheel registration."
+  },
+  {
+    "name": "Bumpers",
+    "apis": [
+      "VehicleMounts.bumper"
+    ],
+    "boundary": "Dimensioned steel/moulded box sections; bent tubular bars and body-integral noses remain authored."
+  },
+  {
+    "name": "Aircraft pitots",
+    "apis": [
+      "VehicleAircraft.pitot"
+    ],
+    "boundary": "Exact endpoints; tapered probe and sleeve. Refuelling booms are not pitots."
+  },
+  {
+    "name": "Radar covers and arrays",
+    "apis": [
+      "VehicleMounts.radar_array",
+      "VehicleMounts.radome"
+    ],
+    "boundary": "Flat scanner/array and ellipsoid cover styles; exposed dishes remain specialised."
+  },
+  {
+    "name": "Towing jaws",
+    "apis": [
+      "VehicleMounts.hitch"
+    ],
+    "boundary": "Open jaws with vertical pin; tow balls and weapon pintles remain distinct."
+  },
+  {
+    "name": "Stowage baskets",
+    "apis": [
+      "VehicleMounts.basket"
+    ],
+    "boundary": "Open floor, rails and stanchions; keep cargo outside the helper."
+  },
+  {
+    "name": "Engine cowlings",
+    "apis": [
+      "VehicleAircraft.cowling"
+    ],
+    "boundary": "Authored helicopter station loops with skin, seams and fasteners; aircraft nozzle and inlet topology remains specific."
+  },
+  {
+    "name": "Light guards",
+    "apis": [
+      "VehicleMounts.light_guard"
+    ],
+    "boundary": "Four family adapters retain optics and use one cage/foot builder."
+  },
+  {
+    "name": "Crane booms",
+    "apis": [
+      "VehicleMounts.boom"
+    ],
+    "boundary": "Endpoint or box adapters retain folded pose and hydraulics; rescue winch housings remain local."
+  },
+  {
+    "name": "Dashboards",
+    "apis": [
+      "VehicleCab.dashboard"
+    ],
+    "boundary": "Three open ground cabs; hull-shaped marine consoles retain their shell."
+  },
+  {
+    "name": "Steering wheels",
+    "apis": [
+      "VehicleCab.steering_wheel"
+    ],
+    "boundary": "Ring, spokes and hub with caller-owned column."
+  },
+  {
+    "name": "Marine screws",
+    "apis": [
+      "VehicleMarine.propeller"
+    ],
+    "boundary": "Pitched blades and hub; rudders and waterjets are separate assemblies."
+  },
+  {
+    "name": "Cargo sideboards",
+    "apis": [
+      "VehicleCargo.sideboard"
+    ],
+    "boundary": "Flat leaves and ribs; authored stake posts and open tailgate angles remain local."
+  },
+  {
+    "name": "Sensor masts",
+    "apis": [
+      "VehicleMounts.mast_segment"
+    ],
+    "boundary": "Stage dimensions and collars; heads and pan parents unchanged."
+  },
+  {
+    "name": "Gun receivers",
+    "apis": [
+      "VehicleMounts.receiver"
+    ],
+    "boundary": "Receiver shells and feed-cover hardware; barrels, feed boxes and sockets remain local."
+  },
+  {
+    "name": "Aircraft skid runners",
+    "apis": [
+      "VehicleAircraft.skid_runner"
+    ],
+    "boundary": "Shared runner path; drone and helicopter cross-strut layouts remain local."
+  },
+  {
+    "name": "Fuel filler caps",
+    "apis": [
+      "VehicleFittings.filler"
+    ],
+    "boundary": "Explicit outward normal, gasket, neck and cap grip."
+  },
+  {
+    "name": "Wire cutters",
+    "apis": [
+      "VehicleAircraft.wire_cutter"
+    ],
+    "boundary": "Blade profile and fasteners with original attachment axes."
+  },
+  {
+    "name": "Slat armour",
+    "apis": [
+      "VehicleMounts.slats"
+    ],
+    "boundary": "Horizontal/vertical open panels; hull stand-offs stay authored."
+  },
+  {
+    "name": "Service hose reels",
+    "apis": [
+      "VehicleFrames.hose_reel"
+    ],
+    "boundary": "Wound pack, flanges and hub on three truck families."
+  },
+  {
+    "name": "Door and ramp leaves",
+    "apis": [
+      "VehicleDoors.leaf"
+    ],
+    "boundary": "Existing body, ramp and gear panels; preserves hardware and moving parents."
+  }
+]

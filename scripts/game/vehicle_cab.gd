@@ -121,3 +121,30 @@ static func seat(k: VehicleModels, parent: Node3D, center: Vector3, size := Vect
 		k._add(mount, BevelMesh.make(Vector3(size.x * 0.11, pad * 0.62, size.z * 0.75), pad * 0.15), material, col, Vector3(side * size.x * 0.43, pad * 0.35, 0))
 	k._add(mount, BevelMesh.make(Vector3(size.x * 0.78, size.y * 0.82, pad * 0.22), pad * 0.07), "plain_dark", Color(0.12, 0.13, 0.12), back + Vector3(0, 0, pad * 0.5), Vector3(-0.12, 0, 0))
 	k._fold(mount)
+
+
+## Dash with a driver-side gauge cluster on the rear face (+Z). Caller supplies
+## the shell dimensions; no extra glass transparency or lighting is introduced.
+static func dashboard(k: VehicleModels, parent: Node3D, size: Vector3, center: Vector3, mat := "plastic", col = null, rotation := Vector3.ZERO) -> void:
+	var mount := k._pivot(parent, center)
+	mount.rotation = rotation
+	k._add(mount, BevelMesh.make(size, minf(size.y, size.z) * 0.12), mat, col, Vector3.ZERO)
+	for i in 3:
+		var r := minf(size.y * 0.26, size.x * 0.045)
+		var p := Vector3(-size.x * 0.25 + (i - 1) * r * 2.5, 0, size.z * 0.505)
+		k._cyl(mount, r * 1.12, r * 1.12, 0.008, p, Vector3(PI / 2, 0, 0), "metal_dark", null, 12, false)
+		if not k.burnt:
+			k._cyl(mount, r, r, 0.003, p + Vector3(0, 0, 0.005), Vector3(PI / 2, 0, 0), "plain_dark", null, 12, false)
+			VehicleFrames.tube(k, mount, p + Vector3(0, 0, 0.008), p + Vector3(-r * 0.4, r * 0.5, 0.008), r * 0.05, "paint", Color(0.7, 0.72, 0.65), 4, false)
+	k._fold(mount)
+
+## Torus rim, three spokes and hub; torus convention has local Y as the axis.
+static func steering_wheel(k: VehicleModels, parent: Node3D, center: Vector3, radius: float, rotation: Vector3, mat := "rubber", col = null) -> void:
+	var mount := k._pivot(parent, center)
+	mount.rotation = rotation
+	k._add(mount, Res.torus(radius * 0.84, radius), mat, col, Vector3.ZERO)
+	for i in 3:
+		var a := TAU * i / 3.0
+		VehicleFrames.beam(k, mount, Vector3.ZERO, Vector3(cos(a), 0, sin(a)) * radius * 0.87, radius * 0.1, radius * 0.12, "metal_dark", null, false)
+	k._cyl(mount, radius * 0.24, radius * 0.24, radius * 0.18, Vector3.ZERO, Vector3.ZERO, mat, col, 12, false)
+	k._fold(mount)

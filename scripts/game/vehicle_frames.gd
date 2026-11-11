@@ -87,3 +87,19 @@ static func cable(k: VehicleModels, parent: Node3D, supports: Array, radius: flo
 			var direction := (b - a).normalized()
 			for tip: Vector3 in [a, b]:
 				tube(k, parent, tip - direction * radius * 1.5, tip + direction * radius * 1.5, radius * 1.35, "steel", null, 8, false)
+
+
+## A wound service hose on a drum, with end flanges. Static, baked geometry;
+## dimensions describe the hose pack, with the axle along local X.
+static func hose_reel(k: VehicleModels, parent: Node3D, center: Vector3, radius: float, width: float, rotation := Vector3.ZERO) -> void:
+	var mount := k._pivot(parent, center)
+	mount.rotation = rotation
+	k._cyl(mount, radius * 0.91, radius * 0.91, width, Vector3.ZERO, Vector3(0, 0, PI / 2), "rubber", null, 16)
+	var count := clampi(ceili(width / (radius * 0.18)), 4, 14)
+	for i in count:
+		var ring := Res.torus(radius * 0.88, radius)
+		k._add(mount, ring, "rubber", null, Vector3(lerpf(-width * 0.46, width * 0.46, float(i) / (count - 1)), 0, 0), Vector3(0, 0, PI / 2), Vector3(1, width / count / (radius * 0.12), 1), false)
+	for side: float in [-1.0, 1.0]:
+		k._cyl(mount, radius * 1.1, radius * 1.1, width * 0.05, Vector3(side * width * 0.52, 0, 0), Vector3(0, 0, PI / 2), "gunmetal_w", null, 16)
+		k._cyl(mount, radius * 0.2, radius * 0.2, width * 0.08, Vector3(side * width * 0.54, 0, 0), Vector3(0, 0, PI / 2), "steel", null, 10, false)
+	k._fold(mount)

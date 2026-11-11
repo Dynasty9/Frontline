@@ -139,7 +139,7 @@ def write_markdown(result, directory):
         for i,r in enumerate(rows,1):
             ranking += f"| {i} | {r['name']} | {r['design_count']} | {r['site_count']} | {r['reuse']} |\n"
         ranking += '\n'
-    ranking += '## Recommended order\n\nStart with compatible migrations to **doors/ramps and vents/grilles**, which have the widest candidate coverage. For new assemblies, start with **track sprockets**: three family-local helpers already expose a similar construction boundary. Then tackle **bumpers, light guards and towing hardware**. Gun mantlets/cradles have the widest new-assembly coverage, but need several styles and careful preservation of pivot parents. Keep candidates below three builder groups as inventory only until another adopter is found. Counts below are source leads, not a migration commitment.\n\n'
+    ranking += '## Using the remaining candidates\n\nThe [assembly implementation review](vehicle-assembly-review.md) records migrations and supported shapes. Remaining matches are source leads: inspect the linked geometry before extending an API. Keep candidates below three compatible builder groups as inventory until another adopter is found. Mixed sections can still appear here after some of their parts migrate.\n\n'
     ranking += '## Evidence by candidate\n\n'
     for r in result['ranking']:
         if not r['design_count']: continue

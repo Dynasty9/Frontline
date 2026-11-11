@@ -3,24 +3,36 @@
     "name": "Track drive sprockets",
     "pattern": "\\bsprocket",
     "reuse": "Toothed drive wheel with parameterized pitch, hub and rim; preserve track alignment.",
-    "exclude_pattern": "flippers|side skirts"
+    "exclude_pattern": "flippers|side skirts",
+    "shared": [
+      "VehicleWheels.sprocket"
+    ]
   },
   {
     "name": "Light guards and protective cages",
     "pattern": "(?:head|tail|convoy|navigation|landing)?lights?.{0,25}guards?|guards?.{0,25}(?:head|tail)?lights?|wire guards?",
     "reuse": "Guard outline, standoffs and mounting feet; keep lamp optics shared.",
-    "exclude_pattern": "brush guard"
+    "exclude_pattern": "brush guard",
+    "shared": [
+      "VehicleMounts.light_guard"
+    ]
   },
   {
     "name": "Bumpers and bumper end caps",
     "pattern": "\\bbumper",
-    "reuse": "Section, end treatment, attachment points and tow cutouts; preserve vehicle width."
+    "reuse": "Section, end treatment, attachment points and tow cutouts; preserve vehicle width.",
+    "shared": [
+      "VehicleMounts.bumper"
+    ]
   },
   {
     "name": "Gun receivers and breech housings",
     "pattern": "\\breceiver|\\bbreech",
     "reuse": "Parameterized receiver families, not one universal weapon silhouette.",
-    "exclude_pattern": "radar warning|box under|feed chute into"
+    "exclude_pattern": "radar warning|box under|feed chute into",
+    "shared": [
+      "VehicleMounts.receiver"
+    ]
   },
   {
     "name": "Turret mantlets and gun cradles",
@@ -30,29 +42,44 @@
       "VmShips._liferaft",
       "VmNato._hemtt"
     ],
-    "exclude_pattern": "beside the mantlet|either side of the mantlet|left of the cradle|plate welded"
+    "exclude_pattern": "beside the mantlet|either side of the mantlet|left of the cradle|plate welded",
+    "shared": [
+      "VehicleMounts.mantlet"
+    ]
   },
   {
     "name": "Cockpit dashboards and instrument consoles",
     "pattern": "\\bdash\\b|\\bdashboard|\\binstrument|\\bconsole",
     "reuse": "Console profiles and instrument placements; keep cockpit layouts authored.",
-    "exclude_pattern": "seat on|fenders stowed|side lights|seat box"
+    "exclude_pattern": "seat on|fenders stowed|side lights|seat box",
+    "shared": [
+      "VehicleCab.dashboard"
+    ]
   },
   {
     "name": "Engine nacelles and cowling assemblies",
     "pattern": "\\bnacelle|\\bcowling|\\bengine hous|\\bengine fair",
-    "reuse": "Station loft plus service splits and mounts; aircraft silhouettes remain distinct."
+    "reuse": "Station loft plus service splits and mounts; aircraft silhouettes remain distinct.",
+    "shared": [
+      "VehicleAircraft.cowling"
+    ]
   },
   {
     "name": "Cargo sideboards and tailgates",
     "pattern": "\\btailgate|\\bdropside|\\bsideboard|\\bheadboard",
     "reuse": "Panel runs, posts, hinges and latch placement on authored bed bounds.",
-    "exclude_pattern": "spare wheel|boarding ladder|davit"
+    "exclude_pattern": "spare wheel|boarding ladder|davit",
+    "shared": [
+      "VehicleCargo.sideboard"
+    ]
   },
   {
     "name": "Turret bustle baskets and open stowage racks",
     "pattern": "\\bbasket|\\bstowage rack|\\bbustle rack",
-    "reuse": "Open frame paths and mesh panels; closed storage boxes are already shared."
+    "reuse": "Open frame paths and mesh panels; closed storage boxes are already shared.",
+    "shared": [
+      "VehicleMounts.basket"
+    ]
   },
   {
     "name": "Gun shields and weapon-station armour",
@@ -68,7 +95,10 @@
   {
     "name": "Fuel fillers and filler caps",
     "pattern": "\\bfiller|\\bfuel cap",
-    "reuse": "Recess, neck, cap and optional tether; preserve supplied outward axis."
+    "reuse": "Recess, neck, cap and optional tether; preserve supplied outward axis.",
+    "shared": [
+      "VehicleFittings.filler"
+    ]
   },
   {
     "name": "Air cleaners, filters and snorkels",
@@ -78,24 +108,36 @@
   {
     "name": "Steering wheels and control columns",
     "pattern": "\\bsteering wheel|\\bcontrol column|\\bjoystick|\\bcyclic",
-    "reuse": "Wheel/yoke profiles, spokes and column joints; author placement per cockpit."
+    "reuse": "Wheel/yoke profiles, spokes and column joints; author placement per cockpit.",
+    "shared": [
+      "VehicleCab.steering_wheel"
+    ]
   },
   {
     "name": "Towing pintles and hitches",
     "pattern": "\\bpintle|\\bhitch|\\btow ball",
     "reuse": "Mounting plate, jaws/pin or ball; recovery shackles are a separate shared part.",
-    "exclude_pattern": "\\bMG\\b|\\bminiguns|three-point hitch"
+    "exclude_pattern": "\\bMG\\b|\\bminiguns|three-point hitch",
+    "shared": [
+      "VehicleMounts.hitch"
+    ]
   },
   {
     "name": "Aircraft pitot and probe fittings",
     "pattern": "\\bpitot|\\bprobe",
     "reuse": "Tapered tubes, bases and authored angled paths; leave specialized refuelling systems local.",
-    "exclude_pattern": "refuelling probe door"
+    "exclude_pattern": "refuelling probe door",
+    "shared": [
+      "VehicleAircraft.pitot"
+    ]
   },
   {
     "name": "Aircraft wheel-bay doors",
     "pattern": "\\bgear doors?|\\bwheel.?bay|\\bundercarriage doors?",
-    "reuse": "Door outlines, inner ribs and hinges on existing Gear/GearUp parents."
+    "reuse": "Door outlines, inner ribs and hinges on existing Gear/GearUp parents.",
+    "shared": [
+      "VehicleDoors.leaf"
+    ]
   },
   {
     "name": "Missile launch rails and racks",
@@ -115,13 +157,20 @@
   {
     "name": "Sensor and telescoping masts",
     "pattern": "\\btelescop|\\bsensor mast|\\bperiscope mast",
-    "reuse": "Nested sections, collars and head mounts; optical housings already exist."
+    "reuse": "Nested sections, collars and head mounts; optical housings already exist.",
+    "shared": [
+      "VehicleMounts.mast_segment"
+    ]
   },
   {
     "name": "Radar dishes and radomes",
     "pattern": "\\bradar|\\bradome",
     "reuse": "Separate dish and dome styles with pedestals; retain rotating parents.",
-    "exclude_pattern": "radar-reflective|radar warning|velocity radar|console under"
+    "exclude_pattern": "radar-reflective|radar warning|velocity radar|console under",
+    "shared": [
+      "VehicleMounts.radar_array",
+      "VehicleMounts.radome"
+    ]
   },
   {
     "name": "Aircraft skids",
@@ -132,22 +181,34 @@
       "VmCore",
       "VmCsat",
       "VmCiv"
+    ],
+    "shared": [
+      "VehicleAircraft.skid_runner"
     ]
   },
   {
     "name": "Slat/cage armour panels",
     "pattern": "\\bslat cage|\\bcage armour|\\bcage armor|\\bslat armour|\\bslat armor",
-    "reuse": "Bounded rail/slat panels with clearance; reactive blocks remain separate."
+    "reuse": "Bounded rail/slat panels with clearance; reactive blocks remain separate.",
+    "shared": [
+      "VehicleMounts.slats"
+    ]
   },
   {
     "name": "Vehicle cranes and hoists",
     "pattern": "\\bcrane|\\bhoist",
-    "reuse": "Boom sections, pivot joints and cable routing; vehicle layouts and movement stay local."
+    "reuse": "Boom sections, pivot joints and cable routing; vehicle layouts and movement stay local.",
+    "shared": [
+      "VehicleMounts.boom"
+    ]
   },
   {
     "name": "Helicopter wire cutters",
     "pattern": "\\bwire cutter",
-    "reuse": "Blade/support profile and attachment axis."
+    "reuse": "Blade/support profile and attachment axis.",
+    "shared": [
+      "VehicleAircraft.wire_cutter"
+    ]
   },
   {
     "name": "Ship liferafts and life rings",
@@ -161,6 +222,9 @@
     "owners": [
       "VmBoat",
       "VmShips"
+    ],
+    "shared": [
+      "VehicleMarine.propeller"
     ]
   },
   {
@@ -168,7 +232,8 @@
     "pattern": "\\bdoors?|\\bramp",
     "shared": [
       "VehicleDoors.closed",
-      "VehicleDoors.rectangle"
+      "VehicleDoors.rectangle",
+      "VehicleDoors.leaf"
     ],
     "reuse": "Finish migrating compatible leaves to VehicleDoors; sliding rails and ramps need extensions."
   },
@@ -238,7 +303,8 @@
     "name": "Hose and tow-cable routes",
     "pattern": "\\bhose|\\btow cable|\\brope",
     "shared": [
-      "VehicleFrames.cable"
+      "VehicleFrames.cable",
+      "VehicleFrames.hose_reel"
     ],
     "reuse": "Use supported cable routes; coils and wound drums need distinct construction."
   }

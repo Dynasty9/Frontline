@@ -30,6 +30,12 @@ test('construction index follows active ownership and does not expand all dispat
     const details = JSON.parse(readFileSync(join(ROOT, 'tools/vehicles/detail-improvements.json')));
     assert.equal(details.flatMap(d => d.improvements).length, 40);
     assert.equal(new Set(details.flatMap(d => d.improvements.map(i => i.id))).size, 40);
+    const assemblies = JSON.parse(readFileSync(join(ROOT, 'tools/vehicles/assembly-extractions.json')));
+    for (const assembly of assemblies) for (const api of assembly.apis) {
+      const groups = new Set(Object.entries(models).filter(([key, model]) =>
+        key !== 'truck' && model.shared_calls[api]).map(([, model]) => model.roots.join('/')));
+      assert.ok(groups.size >= 3, `${api}: needs three distinct active builder groups`);
+    }
     for (const detail of details) for (const api of detail.apis) {
       const roots = new Set(Object.entries(models).filter(([key, model]) =>
         key !== 'truck' && model.shared_calls[api]).flatMap(([, model]) => model.roots));

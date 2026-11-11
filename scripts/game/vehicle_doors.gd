@@ -52,3 +52,23 @@ static func rectangle(k: VehicleModels, parent: Node3D, center: Vector3, size: V
 	var surface := VehicleSurface.plane(center - basis.x * size.x * 0.5 - basis.y * size.y * 0.5, basis.x * size.x, basis.y * size.y)
 	var hinge_x := 0.92 if basis.x.z < 0.0 else 0.08
 	closed(k, parent, surface, PackedVector2Array([Vector2(0, 0), Vector2(1, 0), Vector2(1, 1), Vector2(0, 1)]), [Vector2(hinge_x, 0.2), Vector2(hinge_x, 0.8)], Vector2(1.0 - hinge_x, 0.72), mat, col, style)
+
+
+## Leaf only: retain existing authored hinges, handles, glazing and animation.
+## Axis is the panel thickness axis (0 X, 1 Y, 2 Z). This also serves gear doors
+## and ramp panels whose hardware differs from a passenger door.
+static func leaf(k: VehicleModels, parent: Node3D, size: Vector3, center: Vector3, mat: String, col = null, rotation := Vector3.ZERO, axis := 2) -> void:
+	var basis := Basis.from_euler(rotation)
+	var u := Vector3.RIGHT
+	var v := Vector3.UP
+	var dims := Vector2(size.x, size.y)
+	if axis == 0:
+		u = Vector3.FORWARD
+		dims = Vector2(size.z, size.y)
+	elif axis == 1:
+		v = Vector3.FORWARD
+		dims = Vector2(size.x, size.z)
+	var normal := u.cross(v)
+	var origin := center - basis * (u * dims.x * 0.5 + v * dims.y * 0.5 + normal * size[axis] * 0.5)
+	var surface := VehicleSurface.plane(origin, basis * u * dims.x, basis * v * dims.y)
+	VehicleBody.fitted(k, parent, surface, PackedVector2Array([Vector2.ZERO, Vector2.RIGHT, Vector2.ONE, Vector2.DOWN]), mat, col, size[axis], 0, false)

@@ -619,7 +619,7 @@ static func _a10_gear(k: VehicleModels, m: Node3D, st: Array, c: Color) -> void:
 	for sd in [-1.0, 1.0]:
 		var dx: float = nx + sd * 0.22
 		var dy := _skin_y(st, -5.75, dx, false)
-		k._box(gear, Vector3(0.025, 0.42, 1.5), Vector3(dx + sd * 0.03, dy - 0.2, -5.75), A, c, Vector3(0, 0, sd * 0.12))
+		VehicleDoors.leaf(k, gear, Vector3(0.025, 0.42, 1.5), Vector3(dx + sd * 0.03, dy - 0.2, -5.75), A, c, Vector3(0, 0, sd * 0.12), 0)
 
 
 ## Eleven stations: an ECM pod (ALQ-131) and a rocket pod (LAU-131) outboard on
@@ -1083,7 +1083,7 @@ static func _wip_gear(k: VehicleModels, m: Node3D, fs: Array, c: Color) -> void:
 		k._cyl(gear, 0.06, 0.06, 0.26, wp + Vector3(-sd * 0.12, 0, 0), Vector3(0, 0, PI / 2), "steel", Color(0.6, 0.6, 0.58), 10)
 		# the pod's bay doors hanging open either side
 		for o in [-1.0, 1.0]:
-			k._box(gear, Vector3(0.025, 0.4, 2.0), Vector3(x + o * 0.2, y0 - 0.19, -1.75), A, c, Vector3(0, 0, o * 0.15))
+			VehicleDoors.leaf(k, gear, Vector3(0.025, 0.4, 2.0), Vector3(x + o * 0.2, y0 - 0.19, -1.75), A, c, Vector3(0, 0, o * 0.15), 0)
 	# the nose gear on the centre line behind the gun fairing, its doors
 	var q := _wst(fs, -4.95)
 	var by := float(q[2]) - float(q[5])
@@ -1099,7 +1099,7 @@ static func _wip_gear(k: VehicleModels, m: Node3D, fs: Array, c: Color) -> void:
 	VmPlane.rod(k, gear, Vector3(0.3, by + 0.1, -4.95), Vector3(0.3, 0.0, -5.08), 0.075, "steel", Color(0.6, 0.6, 0.58), 10)
 	for sd in [-1.0, 1.0]:
 		VmPlane.rod(k, gear, Vector3(0.3 + sd * 0.13, 0.02, -5.08), Vector3(0.3 + sd * 0.13, -0.32, -5.1), 0.035, "steel", Color(0.6, 0.6, 0.58), 6)
-		k._box(gear, Vector3(0.025, 0.4, 1.15), Vector3(0.3 + sd * 0.21, by - 0.2, -5.0), A, c, Vector3(0, 0, sd * 0.12))
+		VehicleDoors.leaf(k, gear, Vector3(0.025, 0.4, 1.15), Vector3(0.3 + sd * 0.21, by - 0.2, -5.0), A, c, Vector3(0, 0, sd * 0.12), 0)
 	k._box(gear, Vector3(0.3, 0.05, 0.1), Vector3(0.3, 0.02, -5.08), "steel", Color(0.6, 0.6, 0.58))
 	k._cyl(gear, 0.05, 0.05, 0.06, Vector3(0.3, 0.1, -5.2), Vector3(PI / 2, 0, 0), "glass", null, 10, false)
 

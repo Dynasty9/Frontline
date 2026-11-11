@@ -27,3 +27,18 @@ static func mooring(k: VehicleModels, parent: Node3D, base: Vector3, size: Vecto
 		for i in points.size() - 1:
 			VehicleFrames.tube(k, mount, points[i], points[i + 1], radius, material, col, 8, false)
 	k._fold(mount)
+
+## Marine screw on local Z. Blade pitch is geometric and independent of aircraft
+## propeller animation; callers retain any existing motor or rudder pivots.
+static func propeller(k: VehicleModels, parent: Node3D, pos: Vector3, radius: float, blades: int, mat: String, col = null) -> void:
+	k._cyl(parent, radius * 0.26, radius * 0.3, radius * 0.5, pos, Vector3(PI / 2, 0, 0), mat, col, 12, false)
+	k._cyl(parent, radius * 0.06, radius * 0.26, radius * 0.4, pos + Vector3(0, 0, radius * 0.45), Vector3(PI / 2, 0, 0), mat, col, 12, false)
+	var profile := [Vector2(0.12, -0.10), Vector2(0.42, -0.32), Vector2(0.86, -0.28), Vector2(1.0, -0.08), Vector2(0.88, 0.26), Vector2(0.42, 0.22)]
+	for i in blades:
+		var basis := Basis(Vector3.BACK, TAU * i / float(blades)) * Basis(Vector3.RIGHT, 0.58)
+		var front := PackedVector3Array()
+		var back := PackedVector3Array()
+		for p in profile:
+			front.append(basis * Vector3(p.y * radius, p.x * radius, radius * 0.025))
+			back.append(basis * Vector3(p.y * radius, p.x * radius, -radius * 0.025))
+		k._add(parent, VehicleProfiles.loft([back, front], 45.0, true), mat, col, pos)

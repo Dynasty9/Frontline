@@ -618,7 +618,7 @@ static func _ac130_gear(k: VehicleModels) -> void:
 	k._cyl(g, 0.05, 0.05, 0.62, Vector3(0, 0.5, -10.6), Vector3(0, 0, PI / 2), "steel", null, 8)
 	for s: float in [-1.0, 1.0]:
 		_tyre(k, g, Vector3(s * 0.25, 0.5, -10.6), 0.5, 0.3)
-		k._box(g, Vector3(0.025, 0.55, 1.5), Vector3(s * 0.62, 0.55, -10.6), AIR, GUNSHIP_GREY, Vector3(0, 0, s * 0.12))
+		VehicleDoors.leaf(k, g, Vector3(0.025, 0.55, 1.5), Vector3(s * 0.62, 0.55, -10.6), AIR, GUNSHIP_GREY, Vector3(0, 0, s * 0.12), 0)
 	k._box(g, Vector3(1.0, 0.02, 1.4), Vector3(0, 0.665, -10.6), "plain_dark", null, Vector3.ZERO, false)
 	# the main gear: the open wells, a strut and wheel at each station
 	for s: float in [-1.0, 1.0]:

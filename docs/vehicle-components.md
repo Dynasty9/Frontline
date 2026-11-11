@@ -8,7 +8,7 @@ Family builders own the silhouette, dimensions, wheel positions, payload and wea
 | --- | --- | --- |
 | `VehicleWheels.pneumatic` | Rounded tyre, recessed rim, hub bolts; `road`, `offroad`, `aircraft` profiles | Radius, width, rim paint and axle position |
 | `VehicleWheels.spare` | Same assembly folded into the chassis, never registered for wheel animation | Mount and orientation |
-| `VehicleWheels.road` | Twin tracked road wheels, recessed discs, bolts; optional ribs and steel idler mode | Radius, width, spoke count; drive sprockets remain family parts |
+| `VehicleWheels.road` | Twin tracked road wheels, recessed discs, bolts; optional ribs and steel idler mode | Radius, width, spoke count; drive sprockets use `VehicleWheels.sprocket` |
 | `VehicleTracks.shoes` | Evenly spaced shoes, hinge pins, optional rubber pads and guide teeth | Outline, width, pitch and steel/padded construction |
 | `VehicleFrames.tube`, `.beam`, `.path` | Struts, frame rails, roll cages, bars and rounded tube joints | Endpoint layout, section dimensions and taper |
 | `VehicleGlazing.rectangle`, `.quad` | Rectangular or fitted quadrilateral pane with rubber seals | Actual opening outline and whether an interior exists |
@@ -238,3 +238,7 @@ Chassis frames now use open C sections within the existing rail bounds. Pallets
 have lower runners and gaps for fork entry. When adding a pallet to a load,
 raise both the load and its restraint origin by the pallet height. Preserve
 separate equipment such as loading cranes and vehicle-specific silencers.
+
+### Equipment assembly extraction
+
+The [assembly implementation review](vehicle-assembly-review.md) documents the 22 new construction groups, adopters and shape boundaries. Use `VehicleMounts` for equipment mounts/cages, and the extended wheel, aircraft, cab, marine, cargo, door and fitting classes for their domain-specific geometry. Keep sockets and animation ownership in the caller. The registry in `tools/vehicles/assembly-extractions.json` enforces three independent builder groups per API.
