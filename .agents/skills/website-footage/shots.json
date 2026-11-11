@@ -56,6 +56,26 @@
       "shows": ["hunter", "vehicle fittings"],
       "about": "The Hunter turns toward the camera, bringing its bonnet and recessed grille into view."
     },
+    "trailer-score": {
+      "scene": "res://tools/showcase/trailer-review/title-score.tscn",
+      "frames": 800,
+      "args": [],
+      "shows": ["The game's title and orchestral score"],
+      "about": "An isolated 96 bpm battle cue builds from strings to drums, then resolves on the harbour strike."
+    },
+    "trailer-order": {
+      "scene": "res://tools/showcase/trailer-review/squad-order.tscn",
+      "frames": 210,
+      "args": ["--preset=high", "--seed=3", "--set=volume:0.8,vol_effects:0.85,vol_music:0,battle_music:false,vol_ambience:0.18,vol_ui:0.35,mute_bg:false,wildlife:0,edge_pan:false", "--scenario=town", "--static", "--play", "--team=0", "--select-first", "--focus=-4,37", "--zoom=13", "--pitch=-37", "--cam-yaw=0.62", "--mood=golden"],
+      "shows": ["The player orders one selected squad to move"],
+      "about": "A move marker, squad card and soldiers leaving together open the trailer at the scale of a single order."
+    },
+    "trailer-landing": {
+      "frames": 530,
+      "args": ["--preset=high", "--seed=3", "--set=volume:0.8,vol_effects:0.85,vol_music:0,battle_music:false,vol_ambience:0.18,vol_ui:0.35,mute_bg:false,wildlife:0,edge_pan:false", "--scenario=naval", "--play", "--team=0", "--focus-vehicle=rhib", "--vehicle-view=Behind", "--mood=golden"],
+      "shows": ["Squad disembarking"],
+      "about": "The same beach landing, recorded with wildlife and music off so the engine and surf carry into the next shot."
+    },
     "reel-rescue": {
       "frames": 390,
       "args": ["--preset=high", "--seed=3", "--set=volume:0.8,vol_effects:0.85,vol_music:0,battle_music:false,vol_ambience:0.28,vol_ui:0,mute_bg:false,wildlife:0,edge_pan:false", "--scenario=gdrill", "--play", "--focus=0,0", "--zoom=8", "--pitch=-50", "--cam-yaw=1.6", "--mood=day"],
@@ -453,27 +473,29 @@
       ]
     },
     "reel": {
-      "use": "Homepage reel with the original game effects. Cuts follow the ground assault, landing and airstrike, with the native effects and timed sound descriptions.",
+      "use": "Homepage trailer. A squad breaks cover, the fight grows from trenches to the coast, and a jet crosses the same harbour where the final impacts land.",
       "size": [1280, 720],
       "kbps": 1900,
       "max_kb": 7500,
       "audio": true,
+      "score": {"take": "trailer-score", "gain_db": -6},
       "audio_kbps": 128,
-      "fade": 2,
+      "fade": 0,
       "fade_in": 0,
-      "fade_out": 12,
+      "fade_out": 7,
       "grade": {"contrast": 1.1, "saturation": 1.14},
       "cuts": [
-        {"take": "reel-gun", "from": 13.85, "to": 15.42, "caption": "[Tank cannon cracks over the engine]"},
-        {"take": "highlight-column", "from": 4.3, "to": 7.45, "caption": "[Armoured engines and tracks rumble]"},
-        {"take": "highlight-trenches", "from": 18.5, "to": 21.45, "caption": "[Gunfire along the trench line]"},
-        {"take": "highlight-mortars", "from": 0.43, "to": 2.0, "caption": "[Distant fire as the mortar crew gathers]"},
-        {"take": "highlight-mortar-burst", "from": 8.08, "to": 10.7, "gain_db": -3, "caption": "[Mortar rounds burst in succession]"},
-        {"take": "field-transport", "from": 14.1, "to": 16.7, "gain_db": -5, "caption": "[Boat engines as the squad goes ashore]"},
-        {"take": "highlight-sea", "from": 33.45, "to": 36.99, "caption": "[Cannon fire and splashes off the patrol ship]"},
-        {"take": "highlight-flyover", "from": 4.28, "to": 7.38, "caption": "[Jet engines sweep over the harbour]"},
-        {"take": "highlight-flyover", "from": 11.04, "to": 13.13, "caption": "[Bombs hit the water in a line]"},
-        {"take": "reel-crossroads", "from": 8.56, "to": 11.43, "caption": "[A final barrage echoes across town]"}
+        {"take": "trailer-order", "from": 0.8, "to": 3.8, "gain_db": -1, "caption": "[Low strings as the squad sets off]"},
+        {"take": "reel-smoke", "from": 11.3, "to": 13.23333, "gain_db": -1, "caption": "[Rifle fire as smoke spreads]"},
+        {"take": "highlight-column", "from": 5.06667, "to": 7.03333, "gain_db": 0, "caption": "[Tracks rumble across the field]"},
+        {"take": "reel-gun", "from": 13.86667, "to": 15.2, "gain_db": -8, "caption": "[Tank cannon fires]"},
+        {"take": "highlight-trenches", "from": 19.03333, "to": 21.36667, "gain_db": -2, "caption": "[Gunfire runs along the trench]"},
+        {"take": "highlight-mortars", "from": 0.6, "to": 2.06667, "gain_db": 1, "caption": "[Distant fire at the mortar pit]"},
+        {"take": "highlight-mortar-burst", "from": 8.3, "to": 10.03333, "gain_db": -3, "caption": "[Mortar bursts in the trenches]"},
+        {"take": "trailer-landing", "from": 14.13333, "to": 16.46667, "gain_db": 0, "caption": "[Boat engine and surf as the squad goes ashore]"},
+        {"take": "highlight-sea", "from": 34.0, "to": 36.66667, "gain_db": -1, "caption": "[Patrol ship fires across the harbour]"},
+        {"take": "highlight-flyover", "from": 4.2, "to": 7.96667, "gain_db": 0, "caption": "[Jet engines climb over the harbour]"},
+        {"take": "highlight-flyover", "from": 10.23333, "to": 13.2, "gain_db": 4, "caption": "[Drums and brass swell over the water impacts]"}
       ]
     },
     "changelog-tank-motion": {

@@ -265,6 +265,11 @@ def build_output(name: str, spec: dict, takes: Takes, out: Path, how: str) -> No
     g = spec.get("grade", {})
     frames, starts = plan(spec, takes)
     n = len(frames)
+    score = spec.get("score")
+    if score:
+        if not spec.get("audio") or len(takes[score["take"]]) < n:
+            sys.exit(f"{name}: the score requires audio and must cover all {n} frames.")
+        score_gain = 10 ** (score["gain_db"] / 20)
     fi, fo = int(spec.get("fade_in", 0)), int(spec.get("fade_out", 0))
     black = Image.new("RGB", size)
     jpegs: list[bytes] = []
@@ -295,6 +300,8 @@ def build_output(name: str, spec: dict, takes: Takes, out: Path, how: str) -> No
             for w, (take, i, gain) in entry:
                 if w > 0.001:
                     a += w * gain * sound(takes, take, i)
+            if score:
+                a += score_gain * sound(takes, score["take"], k)
             pcm.append(a * dim)
     pcm16 = None
     if spec.get("audio"):

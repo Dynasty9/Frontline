@@ -120,9 +120,16 @@ def commit() -> str:
         return "unknown"
 
 
+def source_takes(spec: dict) -> list[str]:
+    names = [cut["take"] for cut in spec["cuts"]]
+    if "score" in spec:
+        names.append(spec["score"]["take"])
+    return names
+
+
 def used_by(shots: dict, take: str) -> list[str]:
     """The outputs and stills cut from a take: what has to be re-cut and rebuilt when it's re-recorded."""
-    outs = [o for o, spec in shots["outputs"].items() if any(c["take"] == take for c in spec["cuts"])]
+    outs = [o for o, spec in shots["outputs"].items() if take in source_takes(spec)]
     return outs + [f"still {s}" for s, spec in shots.get("stills", {}).items() if spec["take"] == take]
 
 
@@ -219,7 +226,7 @@ def main() -> None:
             if not clip and not still:
                 ap.error(f"Unknown output {name!r} (--list shows available names).")
             if clip:
-                names.extend(cut["take"] for cut in clip["cuts"])
+                names.extend(source_takes(clip))
             if still:
                 names.append(still["take"])
         names = list(dict.fromkeys(names))
