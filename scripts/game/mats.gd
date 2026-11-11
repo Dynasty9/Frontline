@@ -1289,11 +1289,11 @@ void fragment() {
 	r = mix(r, 0.94, corrosion);
 	if (vehicle_surface) {
 		col *= 1.0 + finish_fade;
-		col *= 1.0 - paint_stain * 0.24;
+		col *= 1.0 - paint_stain * 0.08;
 		// Rubbed paint lightens first, with small dark primer chips rather than
 		// bright silver outlining every polygon. Paint stays nonmetallic.
 		col = mix(col, col * 1.35 + vec3(0.025), paint_edge * 0.65);
-		col = mix(col, vec3(0.075, 0.08, 0.07), paint_chip * 0.8);
+		col = mix(col, vec3(0.075, 0.08, 0.07), paint_chip * 0.45);
 		r = mix(r, 0.84, paint_chip);
 		// A thin dry film softens reflections without repainting faction colours.
 		col = mix(col, col * 0.72 + vec3(0.10, 0.085, 0.06), finish_film);
