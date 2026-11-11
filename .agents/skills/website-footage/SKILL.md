@@ -91,6 +91,10 @@ python .agents/skills/website-footage/scripts/build.py hero sea reel m-beachhead
 
 Build what you re-cut, by name (`--all` only after re-recording everything; `--stills` builds every still). Each lands in `WORK/build/` with `NAME.preview.jpg`, a contact sheet of the result. **Look at every preview**: it's the only way to catch a cut that starts on a glide or lands on empty ground. Adjust and rebuild until they're right, then build again with `--install` to copy them into `web/public/media`. It reports each clip against its `max_kb` budget (hero 4 MB, a feature clip 1.3 MB, the reel 7.5 MB; today they're about 3.5, 1 and 6.7). The budgets keep the page fast and the repository small: if a clip runs over, shorten it or lower its `kbps`; don't raise the budget. An output rebuilt from unchanged takes and cuts on the same machine comes out byte-identical, so git only shows what you really changed.
 
+Watch the encoded cut with **Video Tool** before installing it. Sample each cut, check the transitions in motion, and listen to the reel audio. Use contact sheets to locate shots in the native takes. After an edit, review the new encode again.
+
+The footage player also has a separate silent vehicle roll call. Rebuild it with `record.py --render vehicles`. The studio includes the playable roster, the Field Manual garage and the remaining support aircraft.
+
 ## 5. Check the site and ship it
 
 ```bash

@@ -14,6 +14,7 @@ var fittings := false
 var accessories := false
 var antenna_motion := false
 var motion_models: Array[VehicleModels] = []
+var roll_call := false
 var camera_size := 0.0
 var grounded := false
 var rotor_focus := false
@@ -23,7 +24,9 @@ var view_direction := Vector3(1, 0.65, -1.25)
 func _ready() -> void:
 	TestRun.watch()
 	for arg in OS.get_cmdline_user_args():
-		if arg.begins_with("--surface-out="):
+		if arg == "--vehicle-roll-call":
+			roll_call = true
+		elif arg.begins_with("--surface-out="):
 			output = arg.trim_prefix("--surface-out=")
 		elif arg.begins_with("--surface-kinds="):
 			kinds.assign(arg.trim_prefix("--surface-kinds=").split(","))
@@ -56,6 +59,9 @@ func _ready() -> void:
 			swatches = true
 		elif arg == "--surface-swatches":
 			swatches = true
+	if roll_call:
+		await _record_roster()
+		return
 	if swatches:
 		kinds.assign(["armor", "aircraft", "canvas", "rubber", "plastic", "wood", "glass", "steel"] if panels else VehicleMaterials.PROFILES.keys())
 	if fittings:
@@ -101,7 +107,40 @@ func _ready() -> void:
 		Music._task = -1
 	TestRun.quit(get_tree())
 
-func _cell(grid: GridContainer, kind: String, size: Vector2i) -> void:
+## One continuous native movie. Keep each silhouette centred through the cut.
+func _record_roster() -> void:
+	var models := Defs.VEHICLES.duplicate()
+	for item in VehicleRoster.garage():
+		models[item[0]] = {"name": item[1], "team": int(String(item[3]).begins_with("CSAT")), "air": item[2] == "aircraft", "cat": item[2]}
+	for support: Dictionary in Defs.SUPPORT.values():
+		var model: String = support.get("model", "")
+		if model != "" and not models.has(model):
+			models[model] = {"name": String(support.name).trim_suffix(" Gun Run"), "team": support.team, "air": true}
+	kinds.assign(models.keys())
+	var previous: GridContainer
+	for index in kinds.size():
+		var kind := kinds[index]
+		var spec: Dictionary = models[kind]
+		team = maxi(0, int(spec.get("team", 0)))
+		grounded = not spec.get("air", false) and spec.get("cat", "") not in ["naval", "boats"]
+		var grid := GridContainer.new()
+		add_child(grid)
+		# A new SubViewport first draws black. Render it underneath the outgoing shot.
+		grid.z_index = -1
+		var pivot := _cell(grid, kind, Vector2i(1600, 900), spec.name)
+		print("ROSTER_FILM ", index + 1, "/", kinds.size(), " ", kind)
+		await RenderingServer.frame_post_draw
+		if previous:
+			previous.free()
+		grid.z_index = 0
+		previous = grid
+		for frame in 17:
+			pivot.rotation.y = deg_to_rad(-8.0 + frame)
+			await RenderingServer.frame_post_draw
+	TestRun.quit(get_tree())
+
+
+func _cell(grid: GridContainer, kind: String, size: Vector2i, film_name := "") -> Node3D:
 	var cell := Control.new()
 	cell.custom_minimum_size = size
 	grid.add_child(cell)
@@ -189,18 +228,27 @@ func _cell(grid: GridContainer, kind: String, size: Vector2i) -> void:
 		center = k.rotor.global_position - offset
 	if body_focus.is_finite():
 		center = body_focus
+	var pivot := Node3D.new()
+	stage.add_child(pivot)
+	pivot.position = center
 	var camera := Camera3D.new()
-	stage.add_child(camera)
+	pivot.add_child(camera)
 	camera.projection = Camera3D.PROJECTION_ORTHOGONAL
 	camera.size = camera_size if camera_size > 0.0 else maxf(bounds.size.length() * (1.55 if fittings else 0.78), 1.0)
 	camera.far = 1000
-	camera.position = center + view_direction.normalized() * bounds.size.length() * 2.0
+	camera.position = view_direction.normalized() * bounds.size.length() * 2.0
 	camera.look_at(center + offset)
 	var label := Label.new()
 	label.text = ("RIGID REFERENCE" if motion_models.size() == 1 else "MOTION RESPONSE") if antenna_motion else kind.replace("_", " ").to_upper()
 	label.position = Vector2(14, 12)
 	label.add_theme_font_size_override("font_size", 22 if single else 15)
+	if roll_call:
+		label.text = film_name
+		label.position = Vector2(64, 755)
+		label.add_theme_font_size_override("font_size", 56)
+		label.add_theme_constant_override("outline_size", 6)
 	cell.add_child(label)
+	return pivot
 
 func _bounds(node: Node3D, parent: Transform3D) -> AABB:
 	var xf := parent * node.transform

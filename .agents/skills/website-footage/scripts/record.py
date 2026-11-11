@@ -113,7 +113,7 @@ def commit() -> str:
     """The checkout's commit, marked "+changes" if the game's files have uncommitted edits."""
     try:
         head = subprocess.run(["git", "rev-parse", "HEAD"], cwd=REPO, capture_output=True, text=True).stdout.strip()
-        dirty = subprocess.run(["git", "status", "--porcelain", "--", "scripts", "assets", "tests", "project.godot", "main.tscn"], cwd=REPO,
+        dirty = subprocess.run(["git", "status", "--porcelain", "--", "scripts", "assets", "tests", "tools/showcase", "project.godot", "main.tscn"], cwd=REPO,
                                capture_output=True, text=True).stdout.strip()
         return head + (" +changes" if dirty else "")
     except OSError:
@@ -129,10 +129,15 @@ def used_by(shots: dict, take: str) -> list[str]:
 def record(godot: str, proj: Path, out: Path, name: str, take: dict, common: list[str], port: int) -> str:
     avi = out / f"{name}.avi"
     log = out / f"{name}.log"
-    frames = int(take["frames"])
+    frames = take.get("frames")
     embedded = sys.platform == "darwin"
     display = ["--embedded", "--debug", "--ignore-error-breaks"] if embedded else []
-    cmd = [godot, *display, "--path", str(proj), "--write-movie", str(avi), "--fixed-fps", "30", "--quit-after", str(frames), "--"]
+    cmd = [godot, *display, "--path", str(proj), "--write-movie", str(avi), "--fixed-fps", "30"]
+    if frames is not None:
+        cmd.extend(["--quit-after", str(frames)])
+    if "scene" in take:
+        cmd.append(take["scene"])
+    cmd.append("--")
     # the user's own settings.cfg is loaded: make sure the sound is up (it can be saved at 0)
     if not embedded:
         cmd.append("--offscreen")
@@ -142,7 +147,7 @@ def record(godot: str, proj: Path, out: Path, name: str, take: dict, common: lis
         f.write(" ".join(cmd) + "\n\n")
         f.flush()
         try:
-            result = subprocess.run(cmd, stdout=f, stderr=subprocess.STDOUT, timeout=300 + frames * 0.8,
+            result = subprocess.run(cmd, stdout=f, stderr=subprocess.STDOUT, timeout=300 + (frames or 2400) * 0.8,
                            env={**os.environ, **take.get("env", {})})
         except subprocess.TimeoutExpired:
             raise RuntimeError(f"{name} timed out (see {log})") from None
@@ -153,13 +158,17 @@ def record(godot: str, proj: Path, out: Path, name: str, take: dict, common: lis
     if result.returncode or errors or "Done recording movie" not in text or not avi.exists():
         raise RuntimeError(f"{name}: capture failed (see {log})")
     n = len(Avi(avi))
-    if n != frames:
+    if not n:
+        raise RuntimeError(f"{name}: empty capture (see {log})")
+    if frames is not None and n != frames:
         raise RuntimeError(f"{name}: expected {frames} frames, got {n} (see {log})")
     # what game this was: later, `git log COMMIT..HEAD -- scripts assets` says what's changed since
     revision = proj / ".capture-revision"
     stamp = {"take": name, "frames": n, "recorded": time.strftime("%Y-%m-%d %H:%M"),
              "commit": revision.read_text().strip() if revision.exists() else "unknown",
              "args": take["args"], "common_args": common, "env": take.get("env", {})}
+    if "scene" in take:
+        stamp["scene"] = take["scene"]
     (out / f"{name}.json").write_text(json.dumps(stamp, indent=2) + "\n", encoding="utf-8")
     return f"{name}: {n} frames ({n / 30:.1f} s) in {time.time() - t0:.0f} s -> {avi}"
 
@@ -194,7 +203,8 @@ def main() -> None:
             if (work / "takes" / f"{name}.avi").exists():
                 s = json.loads(stamp.read_text(encoding="utf-8")) if stamp.exists() else {}
                 have = f", recorded {s.get('recorded', '?')} at {s.get('commit', '?')}"
-            print(f"{name}  ({t['frames']} frames{have})  {' '.join(t['args'])}")
+            length = f"{t['frames']} frames" if "frames" in t else "until scene ends"
+            print(f"{name}  ({length}{have})  {' '.join(t['args'])}")
             print(f"    shows: {', '.join(t.get('shows', []))}")
             print(f"    feeds: {', '.join(used_by(shots, name)) or 'nothing yet'}")
             print(f"    {t.get('about', '')}")

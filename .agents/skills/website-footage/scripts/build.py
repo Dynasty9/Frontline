@@ -94,8 +94,9 @@ def plan(spec: dict, takes: Takes) -> tuple[list[list[tuple[float, tuple]]], lis
     out: list[list[tuple[float, tuple]]] = []
     starts: list[float] = []
     for c in spec["cuts"]:
-        a, b = int(round(c["from"] * FPS)), int(round(c["to"] * FPS))
         n = len(takes[c["take"]])
+        a = round(c["from"] * FPS)
+        b = round(c["to"] * FPS) if "to" in c else n
         if b > n:
             sys.exit(f"Cut {c} runs past the end of take '{c['take']}' ({n / FPS:.1f} s).")
         gain = level(takes, c, a, b, spec) if audio else 1.0

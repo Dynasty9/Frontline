@@ -17,6 +17,16 @@ export const Open: Story = {
   play: async ({ args }) => {
     // it fades in: keep looking until it has
     await waitFor(() => expect(screen.getByRole("dialog", { name: "Frontline gameplay footage" })).toBeVisible())
+    await userEvent.click(screen.getByRole("button", { name: "Vehicle roll call" }))
+    await expect(screen.getByLabelText("Vehicle roll call", { selector: "video" })).toHaveAttribute(
+      "src",
+      "/media/vehicles.mp4"
+    )
+    await userEvent.click(screen.getByRole("button", { name: "Battle highlights" }))
+    await expect(screen.getByLabelText("Battle highlights", { selector: "video" })).toHaveAttribute(
+      "src",
+      "/media/reel.mp4"
+    )
     await userEvent.click(screen.getByRole("button", { name: "Close" }))
     await expect(args.onClose).toHaveBeenCalledOnce()
   },
