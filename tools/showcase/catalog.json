@@ -8274,8 +8274,8 @@
           "caption": "Matched network at seed 3, time 2 s; complete frames scaled from 1600x900 to 1280x720."
         },
         {
-          "file": "changelog/unreleased/trench-realism/digging.mp4",
-          "sha256": "d31254bafe49310c30605a35e6eedc8d7bfb71f7f1e8470ef8152a852f5cfee9",
+          "file": "changelog/unreleased/trench-realism/digging.webm",
+          "sha256": "cf115bbc6fe8bbcd994bdc71144c234919b486dec4ab5c17416bb155f0cc5e3b",
           "caption": "30 seconds, 10 fps, simulation 30 Hz, silent; controlled damage at 18 seconds."
         },
         {
@@ -8322,6 +8322,10 @@
           "damage_at_seconds": 18,
           "damage_fraction": 0.9,
           "workers": "engineer_team"
+        },
+        "webm": {
+          "source": "Reviewed digging.mp4 from commit 4c7d3604",
+          "command": "ffmpeg -i digging.mp4 -c:v libvpx-vp9 -crf 34 -b:v 0 -row-mt 1 -an digging.webm"
         }
       }
     }

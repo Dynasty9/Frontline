@@ -22,8 +22,8 @@ scaled to 1280x720 without cropping and stacked with short labels.
 The baseline runs the exact commit above with only the external capture script
 from this branch. It is an actual baseline render, not a reconstructed old look.
 
-[Construction and repair](../changelog/unreleased/trench-realism/digging.mp4)
-is a silent 30-second H.264 clip, 1280x720 at 10 fps, with a
+[Construction and repair](../changelog/unreleased/trench-realism/digging.webm)
+is a silent 30-second VP9 WebM clip, 1280x720 at 10 fps, with a
 [poster](../changelog/unreleased/trench-realism/digging.jpg).
 Three real 30 Hz simulation ticks advance between saved frames. A three-person
 engineer team receives the normal work order. At 18 seconds the fixture applies
@@ -31,7 +31,8 @@ engineer team receives the normal work order. At 18 seconds the fixture applies
 The recording shows 52.6% construction at 6 seconds, completion by 15 seconds,
 662.5/3000 HP during repair at 19 seconds and full repair by 30 seconds.
 Opening, digging, completion, damage and repair frames were inspected; the
-encoded video decodes without errors. Media totals approximately 4.2 MB.
+encoded video decodes without errors. Media totals approximately 4.0 MB. The WebM replaces the original MP4 and
+was transcoded from the reviewed clip at commit `4c7d3604`.
 
 Reproduce from the repository root with Godot 4.7.2 (console build on Windows),
 using an absolute output prefix outside Git:
@@ -40,6 +41,7 @@ using an absolute output prefix outside Git:
 godot --path . --fixed-fps 30 --resolution 1600x900 --script tests/fixtures/environment-views.gd -- --scenario=trenches --seed=3 --offscreen --nohud --set=perf:0 --preset=high --mood=day --capture-set=trenches --capture-prefix=/absolute/scratch/network
 godot --path . --fixed-fps 30 --resolution 1600x900 --script tests/fixtures/environment-views.gd -- --scenario=trenches --seed=3 --offscreen --nohud --set=perf:0 --preset=high --mood=day --capture-set=trench-build --capture-prefix=/absolute/scratch/digging
 ffmpeg -framerate 10 -i /absolute/scratch/digging-frames/%04d.png -vf scale=1280:720 -c:v libx264 -crf 29 -pix_fmt yuv420p -movflags +faststart digging.mp4
+ffmpeg -i digging.mp4 -c:v libvpx-vp9 -crf 34 -b:v 0 -row-mt 1 -an digging.webm
 ```
 
 For the baseline, copy the capture script outside both checkouts, then run that

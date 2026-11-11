@@ -8,7 +8,7 @@ file = "comparison.jpg"
 caption = "The same trench network before and after: irregular earthwork, fire steps and recessed rear bays."
 
 [[videos]]
-file = "digging.mp4"
+file = "digging.webm"
 poster = "digging.jpg"
 caption = "Engineers excavate a trench, then clear a damaged section. Controlled demonstration at normal simulation speed; damage is applied at 18 seconds."
 +++
