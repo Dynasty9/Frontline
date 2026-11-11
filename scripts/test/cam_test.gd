@@ -275,13 +275,13 @@ func _run() -> void:
 	_check("despawning releases the object camera", cam.mount_label == &"")
 	world.input.clear_selection()
 
-	for fixture in [["heli", &"Cabin side"], ["rhib", &"Bow"], ["rhib", &"Waterline"], ["mohawk", &"Sling load"], ["mohawk", &"Cargo door"], ["taru_lift", &"Cargo door"], ["rhib", &"Starboard"], ["rhib", &"Helm"], ["tank", &"Periscope"], ["old_tank", &"Periscope"]]:
+	for fixture in [["heli", &"Cabin side"], ["rhib", &"Bow"], ["rhib", &"Waterline"], ["speedboat_hmg", &"Stern quarter"], ["patrol_ship", &"Stern quarter"], ["mohawk", &"Sling load"], ["mohawk", &"Cargo door"], ["taru_lift", &"Cargo door"], ["rhib", &"Starboard"], ["rhib", &"Helm"], ["tank", &"Periscope"], ["old_tank", &"Periscope"]]:
 		var vehicle := world.spawn("vehicle", {"vkind": fixture[0], "team": actor.team, "pos": actor.position}) as Vehicle
 		_check("%s has its own exterior camera" % fixture[0], vehicle.camera_mounts().has(fixture[1]))
 		if fixture[1] == &"Helm":
 			var helm := vehicle.model.get_node_or_null("Coxswain")
 			_check("the RHIB has a seated helmsman", helm != null and helm.get_child_count() > 0 and helm.get_child(0) is MeshInstance3D)
-		if fixture[1] in [&"Waterline", &"Sling load"]:
+		if fixture[1] in [&"Waterline", &"Stern quarter", &"Sling load"]:
 			world.input.sel_vehicles.append(vehicle.eid)
 			vehicle.model.rotation.z = 0.32
 			cam.cycle_mount(fixture[1])

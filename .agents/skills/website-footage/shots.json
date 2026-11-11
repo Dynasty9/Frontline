@@ -58,11 +58,10 @@
       "about": "Follow the jet to release, then hold the ship and the returning sheets of water in the same frame."
     },
     "trailer-harbour-quarter": {
-      "scene": "res://tools/showcase/trailer-review/harbour-quarter.tscn",
       "frames": 450,
-      "args": ["--preset=high", "--seed=3", "--set=volume:0.8,vol_effects:0.85,vol_music:0,battle_music:false,vol_ambience:0.28,vol_ui:0,mute_bg:false,wildlife:0,edge_pan:false", "--mission=beachhead", "--focus=372,-10", "--zoom=58", "--pitch=-17", "--cam-yaw=1.2", "--demo-support=airstrike", "--demo-at=3"],
+      "args": ["--preset=high", "--seed=3", "--set=volume:0.8,vol_effects:0.85,vol_music:0,battle_music:false,vol_ambience:0.28,vol_ui:0,mute_bg:false,wildlife:0,edge_pan:false", "--mission=beachhead", "--focus=372,-10", "--zoom=58", "--pitch=-17", "--cam-yaw=1.2", "--demo-support=airstrike", "--demo-at=3", "--focus-vehicle=speedboat_hmg", "--vehicle-view=Stern quarter", "--focus-vehicle-at=8"],
       "shows": ["Patrol boat below rising harbour spray"],
-      "about": "Watch the first splashes rise past the boat at water level. Keep the mountains and the settling foam visible under the end title."
+      "about": "After the same jet pass, switch to the playable Stern quarter camera. Watch the spray rise behind the cabin and fall away below the title."
     },
     "convoy-hemtt": {
       "frames": 150,
@@ -132,16 +131,16 @@
     "trailer-roadside": {
       "scene": "res://tools/showcase/trailer-review/squad-order.tscn",
       "frames": 210,
-      "args": ["--preset=high", "--seed=3", "--set=volume:0.8,vol_effects:0.85,vol_music:0,battle_music:false,vol_ambience:0.18,vol_ui:0.35,mute_bg:false,wildlife:0,edge_pan:false", "--scenario=town", "--static", "--play", "--team=0", "--select-first", "--focus=-4,37", "--zoom=13", "--pitch=-37", "--cam-yaw=0.62", "--mood=dawn", "--roadside"],
-      "shows": ["Squad crossing the dirt road"],
-      "about": "Back down the edge of the road as the same squad closes on the lens. Keep the riflemen in front and the road and outpost behind them."
+      "args": ["--preset=high", "--seed=4", "--set=volume:0.8,vol_effects:0.85,vol_music:0,battle_music:false,vol_ambience:0.18,vol_ui:0.35,mute_bg:false,wildlife:0,edge_pan:false", "--mission=skyhook", "--autoplay", "--play", "--team=0", "--select-first", "--zoom=14.4", "--pitch=-46", "--cam-yaw=-2.3", "--mood=day", "--roadside"],
+      "shows": ["Squad moving beside a helicopter lifting off"],
+      "about": "Cut to ground level as the five soldiers move. Behind them the Mohawk lifts off the pad before its flight to the river."
     },
     "trailer-order": {
       "scene": "res://tools/showcase/trailer-review/squad-order.tscn",
       "frames": 210,
-      "args": ["--preset=high", "--seed=3", "--set=volume:0.8,vol_effects:0.85,vol_music:0,battle_music:false,vol_ambience:0.18,vol_ui:0.35,mute_bg:false,wildlife:0,edge_pan:false", "--scenario=town", "--static", "--play", "--team=0", "--select-first", "--focus=-4,37", "--zoom=13", "--pitch=-37", "--cam-yaw=0.62", "--mood=dawn"],
+      "args": ["--preset=high", "--seed=4", "--set=volume:0.8,vol_effects:0.85,vol_music:0,battle_music:false,vol_ambience:0.18,vol_ui:0.35,mute_bg:false,wildlife:0,edge_pan:false", "--mission=skyhook", "--autoplay", "--play", "--team=0", "--select-first", "--zoom=14.4", "--pitch=-46", "--cam-yaw=-2.3", "--mood=day"],
       "shows": ["The player orders one selected squad to move"],
-      "about": "A move marker, squad card and soldiers leaving together open the trailer at the scale of a single order."
+      "about": "Open on a five-person squad and the destination ring beside the Sky Hook landing pad. The mission objective introduces the aircraft seen on the next cut."
     },
     "trailer-landing": {
       "frames": 530,
@@ -560,7 +559,7 @@
       "grade": {"contrast": 1.1, "saturation": 1.14},
       "cuts": [
         {"take": "trailer-order", "from": 1.4, "to": 2.73333, "gain_db": -1, "caption": "[Low strings as the order is given]"},
-        {"take": "trailer-roadside", "from": 2.73333, "to": 3.8, "gain_db": -1, "caption": "[The squad crosses the road]"},
+        {"take": "trailer-roadside", "from": 2.73333, "to": 3.8, "gain_db": -1, "caption": "[Rotor blades turn as the squad moves]"},
         {"take": "trailer-armour-crossing", "from": 5.83333, "to": 7.4, "gain_db": 0, "caption": "[Tracks rumble across the field]"},
         {"take": "reel-gun", "from": 13.9, "to": 15.1, "gain_db": -8, "caption": "[Tank cannon fires]"},
         {"take": "trailer-trench-close", "from": 49.23333, "to": 51.13333, "gain_db": -2, "caption": "[Fire cracks beside the trench]"},

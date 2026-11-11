@@ -228,6 +228,8 @@ func _build_camera_mounts() -> void:
 	elif is_boat():
 		_camera_mount(&"Bow", model, Vector3(size.x * 0.32, size.y * 1.15, -size.z * 0.68), Vector3(0, size.y * 0.55, 0))
 		_camera_mount(&"Waterline", model, Vector3(size.z * 0.82, size.y * 2.4, size.z * 0.97), Vector3(0, size.y * 0.4, -size.z * 0.13), true)
+		# Look past the port quarter to the water beyond the bow.
+		_camera_mount(&"Stern quarter", model, Vector3(-size.z * 0.85, size.y * 1.35, size.z * 1.25), Vector3(size.z * 0.74, size.y * 1.2, -size.z * 0.18), true)
 		if vkind == "rhib":
 			# Stand beside the RHIB console, looking over the starboard tube.
 			_camera_mount(&"Starboard", model, Vector3(0.72, 2.44, -0.44), Vector3(2.55, 2.0, -8.5))
