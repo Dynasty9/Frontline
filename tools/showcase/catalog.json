@@ -2,6 +2,16 @@
   "schema": 1,
   "entries": [
     {
+      "entry": "changelog/unreleased/strike-direction.md",
+      "summary": "Airstrikes follow the direction previewed while dragging.",
+      "medium": "text",
+      "stage": "text",
+      "rationale": "Corrects the command sent on release; the existing preview is unchanged. Input regression coverage verifies all support shapes without claiming recorded gameplay evidence.",
+      "source_ref": "working-tree",
+      "sources": [],
+      "output": null
+    },
+    {
       "entry": "changelog/v0.1.0/camera-and-minimap.md",
       "summary": "Keep your focus while zooming, orbit the battlefield, and use the whole minimap without buttons covering its edges.",
       "medium": "still",
