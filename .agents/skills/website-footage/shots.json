@@ -57,6 +57,13 @@
       "shows": ["airstrike", "harbour"],
       "about": "Follow the jet to release, then hold the ship and the returning sheets of water in the same frame."
     },
+    "trailer-harbour-quarter": {
+      "scene": "res://tools/showcase/trailer-review/harbour-quarter.tscn",
+      "frames": 450,
+      "args": ["--preset=high", "--seed=3", "--set=volume:0.8,vol_effects:0.85,vol_music:0,battle_music:false,vol_ambience:0.28,vol_ui:0,mute_bg:false,wildlife:0,edge_pan:false", "--mission=beachhead", "--focus=372,-10", "--zoom=58", "--pitch=-17", "--cam-yaw=1.2", "--demo-support=airstrike", "--demo-at=3"],
+      "shows": ["Patrol boat below rising harbour spray"],
+      "about": "Watch the first splashes rise past the boat at water level. Keep the mountains and the settling foam visible under the end title."
+    },
     "convoy-hemtt": {
       "frames": 150,
       "args": ["--preset=high", "--seed=3", "--set=volume:0.8,vol_music:0,battle_music:false,vol_effects:0.85,vol_ambience:0.28,vol_ui:0,mute_bg:false,edge_pan:false,fov:35", "--scenario=roster", "--play", "--team=0", "--focus=0,0", "--focus-vehicle=hemtt", "--zoom=19", "--pitch=-15", "--pan=0,-3", "--cam-yaw=1.85", "--mood=overcast"],
@@ -563,7 +570,7 @@
         {"take": "trailer-beach-landing", "from": 26.0, "to": 27.4, "gain_db": 0, "caption": "[Surf as the squad runs ashore]"},
         {"take": "trailer-patrol-pass", "from": 35.1, "to": 37.03333, "gain_db": -1, "caption": "[Patrol ship fires across the harbour]"},
         {"take": "trailer-harbour-finale", "from": 4.3, "to": 6.6, "gain_db": 0, "caption": "[Jet engines climb over the harbour]"},
-        {"take": "trailer-harbour-finale", "from": 11.0, "to": 14.26667, "gain_db": 4, "caption": "[Impacts roll across the water]"}
+        {"take": "trailer-harbour-quarter", "from": 11.0, "to": 14.26667, "gain_db": 4, "caption": "[Impacts roll across the water]"}
       ]
     },
     "changelog-tank-motion": {
