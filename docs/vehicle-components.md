@@ -96,4 +96,8 @@ These helpers fold temporary construction mounts into the parent's bake and reta
 
 The core, NATO, CSAT and independent whip helpers delegate to the same antenna builder. Mirrors cover HEMTT, Tempest, Zamak, Hunter, Ifrit, Strider, Qilin, Humvee, technicals and the core truck. Gun tubes cover Abrams, T-55, Slammer, Rhino, Kuma, Varsuk, Angara, Scorcher and Sochor, including variants that share those builders. Unique autocannons, machine guns, aircraft aerials and radar structures retain their authored construction.
 
-Use `--surface-accessories` in the vehicle showcase for separate antenna, mirror-face, mirror-back and barrel inspection views. All opaque fittings fold into their existing parent/material bake.
+Use `--surface-accessories` in the vehicle showcase for separate antenna, mirror-face, mirror-back and barrel inspection views. Fixed fittings fold into their existing parent/material bake. Each live antenna keeps one whip pivot and one material batch; wreck antennas remain static.
+
+`VehicleModels.update_antennas(travel, dt, active)` takes world-space travel velocity. One exact damped spring per vehicle combines drag and clamped acceleration, then transforms the resulting lean into each antenna parent’s coordinates, including traversing turrets. The view callback derives travel from displayed movement on both host and client. Motion resets outside 100 m, when hidden, after long frame gaps or after implausible position corrections. There are no rigid bodies, bones, mesh rebuilds or per-whip spring solvers. The base remains fixed while the spring/rod assembly tilts up to about 16 degrees.
+
+`--surface-antenna-motion` captures a combined rigid/animated comparison driven by controlled forward, lateral and reverse velocity inputs, followed by settling. This is an inspection rig, not recorded driving footage.

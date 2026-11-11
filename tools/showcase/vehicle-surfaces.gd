@@ -12,6 +12,8 @@ var swatches := false
 var panels := false
 var fittings := false
 var accessories := false
+var antenna_motion := false
+var motion_models: Array[VehicleModels] = []
 var camera_size := 0.0
 var grounded := false
 var rotor_focus := false
@@ -42,6 +44,8 @@ func _ready() -> void:
 			rotor_focus = true
 		elif arg == "--surface-rear":
 			view_direction = Vector3(-1, 0.65, 1.25)
+		elif arg == "--surface-antenna-motion":
+			antenna_motion = true
 		elif arg == "--surface-accessories":
 			accessories = true
 			fittings = true
@@ -56,6 +60,11 @@ func _ready() -> void:
 		kinds.assign(["armor", "aircraft", "canvas", "rubber", "plastic", "wood", "glass", "steel"] if panels else VehicleMaterials.PROFILES.keys())
 	if fittings:
 		kinds.assign(["antenna", "mirror_front", "mirror_back", "barrel"] if accessories else ["grille", "exhaust", "mudflap", "stowage"])
+	if antenna_motion:
+		kinds.assign(["slammer", "slammer"])
+		body_focus = Vector3(1.05, 3.5, 3.15)
+		camera_size = 2.5
+		view_direction = Vector3(-1, 0.35, 1.25)
 	if kinds.is_empty():
 		for list in [Defs.VEHICLES.keys(), VehicleModels.family_keys(), VmCore.KEYS, VmGunship.KEYS, VmAttack.KEYS, VmFighter.KEYS]:
 			for kind: String in list:
@@ -71,12 +80,14 @@ func _ready() -> void:
 	var per_page := 1 if single else (4 if fittings else (8 if panels else (16 if swatches else 12)))
 	for start in range(0, kinds.size(), per_page):
 		var grid := GridContainer.new()
-		grid.columns = 1 if single else (2 if fittings else 4)
+		grid.columns = 2 if antenna_motion else (1 if single else (2 if fittings else 4))
 		grid.add_theme_constant_override("h_separation", 0)
 		grid.add_theme_constant_override("v_separation", 0)
 		add_child(grid)
 		for i in range(start, mini(start + per_page, kinds.size())):
-			_cell(grid, kinds[i], Vector2i(1600, 900) if single else (Vector2i(800, 450) if fittings else (Vector2i(400, 450) if panels else (Vector2i(400, 225) if swatches else Vector2i(400, 300)))))
+			_cell(grid, kinds[i], Vector2i(800, 900) if antenna_motion else Vector2i(1600, 900) if single else (Vector2i(800, 450) if fittings else (Vector2i(400, 450) if panels else (Vector2i(400, 225) if swatches else Vector2i(400, 300)))))
+		if antenna_motion:
+			await _capture_antenna_motion()
 		for frame in 5:
 			await get_tree().process_frame
 		await RenderingServer.frame_post_draw
@@ -170,6 +181,8 @@ func _cell(grid: GridContainer, kind: String, size: Vector2i) -> void:
 	else:
 		k = VehicleModels.build(kind.trim_prefix("wreck_"), team, 3, kind.begins_with("wreck_"))
 	stage.add_child(k.root)
+	if antenna_motion:
+		motion_models.append(k)
 	var bounds := _bounds(k.root, Transform3D.IDENTITY)
 	var center := bounds.get_center()
 	if rotor_focus and is_instance_valid(k.rotor):
@@ -184,7 +197,7 @@ func _cell(grid: GridContainer, kind: String, size: Vector2i) -> void:
 	camera.position = center + view_direction.normalized() * bounds.size.length() * 2.0
 	camera.look_at(center + offset)
 	var label := Label.new()
-	label.text = kind.replace("_", " ").to_upper()
+	label.text = ("RIGID REFERENCE" if motion_models.size() == 1 else "MOTION RESPONSE") if antenna_motion else kind.replace("_", " ").to_upper()
 	label.position = Vector2(14, 12)
 	label.add_theme_font_size_override("font_size", 22 if single else 15)
 	cell.add_child(label)
@@ -202,3 +215,31 @@ func _bounds(node: Node3D, parent: Transform3D) -> AABB:
 			if cb.size != Vector3.ZERO:
 				box = cb if box.size == Vector3.ZERO else box.merge(cb)
 	return box
+
+
+## Camera-follow test rig: both views hold the same vehicle fixed; the right
+## applies the production helper to explicit world-space travel inputs.
+func _capture_antenna_motion() -> void:
+	var caption := Label.new()
+	caption.position = Vector2(18, 845)
+	caption.add_theme_font_size_override("font_size", 24)
+	add_child(caption)
+	for frame in 180:
+		var t := frame / 15.0
+		var travel := Vector3.ZERO
+		var phase := "Stopped / settling"
+		if t >= 1 and t < 3:
+			travel = Vector3(0, 0, -16)
+			phase = "Forward · 16 m/s"
+		elif t >= 4 and t < 6:
+			travel = Vector3(16, 0, 0)
+			phase = "Lateral travel · 16 m/s"
+		elif t >= 7 and t < 9:
+			travel = Vector3(0, 0, 12)
+			phase = "Reverse · 12 m/s"
+		caption.text = "Controlled travel input: " + phase
+		motion_models[1].update_antennas(travel, 1.0 / 15)
+		await get_tree().process_frame
+		await RenderingServer.frame_post_draw
+		get_viewport().get_texture().get_image().save_png(output.path_join("motion-%03d.png" % frame))
+	caption.free()

@@ -85,21 +85,26 @@ static func exhaust(k: VehicleModels, parent: Node3D, base: Vector3, direction: 
 
 
 ## A fixed whip with a rubber boot, spring base and tapered flexible rod.
-## The bend is authored geometry, so the mount needs no per-frame animation.
+## The fixed boot stays baked into the hull; the spring and rod share one pivot.
 static func antenna(k: VehicleModels, parent: Node3D, base: Vector3, height: float) -> void:
 	var mount := k._pivot(parent, base)
 	k._box(mount, Vector3(0.13, 0.025, 0.13), Vector3(0, 0.0125, 0), "gunmetal_w")
 	for side in [-1.0, 1.0]:
 		VehicleBody.fastener(k, mount, Vector3(side * 0.045, 0.03, 0), Vector3.UP, 0.012)
 	k._cyl(mount, 0.034, 0.05, 0.09, Vector3(0, 0.065, 0), Vector3.ZERO, "rubber", null, 10, false)
-	k._cyl(mount, 0.019, 0.019, 0.16, Vector3(0, 0.18, 0), Vector3.ZERO, "gunmetal_w", null, 8, false)
-	k._add(mount, _antenna_spring(), "steel", Color(0.24, 0.25, 0.23), Vector3(0, 0.108, 0), Vector3.ZERO, Vector3.ONE, false)
+	var whip := k._pivot(mount, Vector3(0, 0.10, 0))
+	if not k.burnt:
+		k.antennas.append(whip)
+	k._cyl(whip, 0.019, 0.019, 0.16, Vector3(0, 0.08, 0), Vector3.ZERO, "gunmetal_w", null, 8, false)
+	k._add(whip, _antenna_spring(), "gunmetal_w", Color(0.24, 0.25, 0.23), Vector3(0, 0.008, 0), Vector3.ZERO, Vector3.ONE, false)
 	for i in 5:
 		var t0 := float(i) / 5
 		var t1 := float(i + 1) / 5
-		var a := Vector3(0, 0.26 + (height - 0.14) * t0, height * 0.035 * t0 * t0)
-		var b := Vector3(0, 0.26 + (height - 0.14) * t1, height * 0.035 * t1 * t1)
-		VehicleFrames.tube(k, mount, a, b, lerpf(0.013, 0.005, t0), "gunmetal_w", null, 6, false, lerpf(0.013, 0.005, t1))
+		var a := Vector3(0, 0.16 + (height - 0.14) * t0, height * 0.035 * t0 * t0)
+		var b := Vector3(0, 0.16 + (height - 0.14) * t1, height * 0.035 * t1 * t1)
+		VehicleFrames.tube(k, whip, a, b, lerpf(0.013, 0.005, t0), "gunmetal_w", null, 6, false, lerpf(0.013, 0.005, t1))
+	if k.burnt:
+		k._fold(whip)
 	k._fold(mount)
 
 

@@ -105,8 +105,34 @@ func _ready() -> void:
 	assert(weapon.gun_tip.get_parent() == weapon.elev and weapon.gun_tip.position == Vector3(2, 0, 0))
 	VehicleFittings.antenna(weapon, weapon.root, Vector3.ZERO, 2.0)
 	VehicleFittings.mirror(weapon, weapon.root, Vector3(1, 1, 0), Vector2(0.22, 0.4), 0.3, [Vector3(0.7, 1, 0)])
-	assert(weapon.root.get_child_count() == 1 and weapon.wheels.is_empty())
+	assert(weapon.root.get_child_count() == 2 and weapon.wheels.is_empty())
+	assert(weapon.antennas.size() == 1)
+	var whip_parts: Array = weapon._parts[weapon.antennas[0]]
+	for part: Array in whip_parts:
+		assert(part[1] == whip_parts[0][1], "A whip should merge into one material draw")
 	assert(Mats.get_mat(VehicleMaterials.key("mirror", "armor")).get_shader_parameter("metal") == 1.0)
+	add_child(weapon.root)
+	var whip := weapon.antennas[0]
+	for frame in 120:
+		weapon.update_antennas(Vector3(0, 0, -12), 1.0 / 60)
+	assert(whip.rotation.x > 0.09 and absf(whip.rotation.z) < 0.001)
+	# Reversing travel changes lean, then a stop returns it to rest.
+	for frame in 120:
+		weapon.update_antennas(Vector3(0, 0, 12), 1.0 / 60)
+	assert(whip.rotation.x < -0.09)
+	for frame in 240:
+		weapon.update_antennas(Vector3.ZERO, 1.0 / 60)
+	assert(whip.rotation.length() < 0.001)
+	weapon.update_antennas(Vector3(0, 0, -12), 1.0 / 30)
+	weapon.update_antennas(Vector3.ZERO, 1.0 / 30, false)
+	assert(whip.rotation == Vector3.ZERO)
+	# Traversing its parent does not rotate the world-space direction of drag.
+	weapon.root.rotation.y = PI / 2
+	for frame in 90:
+		weapon.update_antennas(Vector3(0, 0, -12), 1.0 / 30)
+	assert(whip.global_basis.y.z > 0.09)
+	weapon.update_antennas(Vector3(1000, 0, 0), 1.0 / 30)
+	assert(whip.rotation == Vector3.ZERO)
 	weapon.root.free()
 	print("VEHICLE_COMPONENTS passed")
 	TestRun.quit(get_tree())
