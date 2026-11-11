@@ -1153,6 +1153,7 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   Eight companion normal maps retain the bundled CC0 surface relief; all 17 profiles tune weathering,
   roughness and grain independently. Metal brushing, canvas weave, moulded rubber, timber fibres and
   charred surfaces use separate treatments, filtered at distance.
+- **Shared service fittings** (`VehicleFittings`, `VehicleCloth.bag`): truck and Hunter radiator grilles have recessed cores and angled slats; HEMTT and Tempest exhausts have open, soot-lined outlets and heat shields. Shared rubber mudflaps have curved lower edges, ribs and clamps. Padded vehicle stowage uses softened canvas shells, sewn welts and retaining straps. These parts join the existing opaque material bake.
 - **Material-aware panels** (`VehicleBody.panel`, `VehicleCloth.panel`): painted and metal panels
   include folded edges, gaskets and fasteners; fabric uses draped meshes, hems and filtered stitching;
   rubber/plastic use chamfered moulded sheets; wood keeps its grain and glass uses fitted seals.

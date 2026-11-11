@@ -76,3 +76,14 @@ so they do not acquire an artificial box outline. `Mats` preserves these UVs thr
 This is an approximation of part-boundary wear, not a curvature or ambient-occlusion bake.
 UVs are reserved for this purpose on vehicle paint; photographic relief remains triplanar.
 Use `--surface-panels` in the vehicle showcase to inspect all construction types together.
+
+### Service fittings and padded stowage
+
+`VehicleFittings` adds opaque parts to the existing material bake:
+
+- `grille(k, parent, center, size, rotation, material, color, count, vertical)` uses local XY, with +Z outward. Allow at least 5 cm behind its centre for the recessed core; mounting it inside a solid body hides the recess. Slat count and direction preserve each vehicle's design.
+- `exhaust(k, parent, base, direction, length, radius)` aims along any authored axis. It has an uncapped outlet, inward-facing soot sleeve, rolled rim and lower shield/clamps. Pipe meshes are cached by size.
+- `mudflap(k, parent, center, size, rotation)` adds curved rubber, reinforcing ribs and a clamped upper edge. +Z faces outward.
+- `VehicleCloth.bag` (or `k._bag`) keeps the box builder's size/position/material arguments, adding a softened shell, sewn welt, fitted strap and buckle. Use it explicitly for padded stowage; seats, tarps and canvas panels have their own builders.
+
+These helpers fold temporary construction mounts into the parent's bake and retain turret/wheel animation ownership. HEMTT, Tempest, Zamak and Hunter use the grille helper; HEMTT and Tempest use the exhaust helper. HEMTT, Tempest, Hunter, Ifrit and Strider use mudflaps. Existing bags across the NATO, CSAT and independent builders share the padded construction. Inspect the four parts with `--surface-fittings` in the showcase.

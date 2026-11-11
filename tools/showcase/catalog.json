@@ -7764,6 +7764,340 @@
         "command": "godot --path CHECKOUT --rendering-method gl_compatibility --audio-driver Dummy tools/showcase/vehicle-surfaces.tscn -- --surface-out=OUTPUT --surface-single --surface-kinds=tank,zamak,hemtt,tempest,heli,hunter,patrol_ship,offroad --surface-ground",
         "camera": "Identical bounds framing, direction (1,.65,-1.25), studio light and five process frames per pair; seed 3. Panel stage uses --surface-panels and a front inspection light. Supplementary roster/Forward+/team1 captures use 00d74c5, before reducing two wear opacity constants; see review README."
       }
+    },
+    {
+      "entry": "changelog/unreleased/vehicle-service-fittings.md",
+      "summary": "Recessed radiator grilles, hollow exhausts, clamped mudflaps and sewn padded stowage.",
+      "medium": "still",
+      "stage": "vehicle-surfaces",
+      "rationale": "Fixed truck close-ups show actual recesses and open exhaust geometry; rear views expose stowage, with matched whole views for all 20 affected families.",
+      "source_ref": "d5cea3d before; fdfdf1f after",
+      "sources": [
+        {
+          "file": "docs/vehicle-fittings-review/before-hemtt.jpg",
+          "sha256": "e02210ce156e4ed319d9acc7907d0d849e72232f585c89306306e0e3637ecc8f",
+          "caption": "before hemtt (d5cea3d)"
+        },
+        {
+          "file": "docs/vehicle-fittings-review/before-zamak.jpg",
+          "sha256": "97f180adeda887d3b20b5ea78a81cda8e25570fc848c82fdd2d17b061961eda9",
+          "caption": "before zamak (d5cea3d)"
+        },
+        {
+          "file": "docs/vehicle-fittings-review/before-tempest.jpg",
+          "sha256": "b12ea08e58ef29838233694f9eef90becb28ec6a71928f7952bae284611286c4",
+          "caption": "before tempest (d5cea3d)"
+        },
+        {
+          "file": "docs/vehicle-fittings-review/before-hunter.jpg",
+          "sha256": "7c2d5b8bd980ab400a1c471710ece3f82e9f115fdf9f0fbcce6492366cf5f01f",
+          "caption": "before hunter (d5cea3d)"
+        },
+        {
+          "file": "docs/vehicle-fittings-review/before-ifrit.jpg",
+          "sha256": "74ead4aa8fd720983a7b707aff85c3cfbbb2d1ac4a17ed50a688ae770d33a7db",
+          "caption": "before ifrit (d5cea3d)"
+        },
+        {
+          "file": "docs/vehicle-fittings-review/before-strider.jpg",
+          "sha256": "98ee222cb1abd89750fcb00f4913973cccadf9eae2221ae512d988bb339107df",
+          "caption": "before strider (d5cea3d)"
+        },
+        {
+          "file": "docs/vehicle-fittings-review/before-prowler.jpg",
+          "sha256": "f5fb77a9a4a68f0b428c18a33b9d2cc3157407309189c54bd83aca0c3d4ba9f4",
+          "caption": "before prowler (d5cea3d)"
+        },
+        {
+          "file": "docs/vehicle-fittings-review/before-marshall.jpg",
+          "sha256": "f617892983afdbc5d0608dfdd07ea2817dee3d427e27825abf581b61e024c70d",
+          "caption": "before marshall (d5cea3d)"
+        },
+        {
+          "file": "docs/vehicle-fittings-review/before-rhino.jpg",
+          "sha256": "5d6875caeee6a91481dc8ddb155f0f2ba4d07a330ef6b96498caedf41f093528",
+          "caption": "before rhino (d5cea3d)"
+        },
+        {
+          "file": "docs/vehicle-fittings-review/before-slammer.jpg",
+          "sha256": "9efe125c406b7b3eb996d3eff59c12a101f4c5e537fa6efe0f02708164d63976",
+          "caption": "before slammer (d5cea3d)"
+        },
+        {
+          "file": "docs/vehicle-fittings-review/before-scorcher.jpg",
+          "sha256": "04ce163f4e4859706d50fc62611a9ad1d04ba105590a4dbc1162a3c3c766d104",
+          "caption": "before scorcher (d5cea3d)"
+        },
+        {
+          "file": "docs/vehicle-fittings-review/before-sandstorm.jpg",
+          "sha256": "4fbe7e290ac6a7f7bb7b199b97cd24fe56955053f2061214d737089bb7c46220",
+          "caption": "before sandstorm (d5cea3d)"
+        },
+        {
+          "file": "docs/vehicle-fittings-review/before-panther.jpg",
+          "sha256": "599dedb927b44b8a51ee2d5c97a652ad808a243e581a83f125092242a04258ce",
+          "caption": "before panther (d5cea3d)"
+        },
+        {
+          "file": "docs/vehicle-fittings-review/before-bobcat.jpg",
+          "sha256": "43a721f94ddfe18448c0661237f0580228332c3d23523c0a77b3c1208f748227",
+          "caption": "before bobcat (d5cea3d)"
+        },
+        {
+          "file": "docs/vehicle-fittings-review/before-cheetah.jpg",
+          "sha256": "1ee8f644c4777f9f9ca09b1d44cf19534df59e12eef018f4ad2ca0dfc1f2ca95",
+          "caption": "before cheetah (d5cea3d)"
+        },
+        {
+          "file": "docs/vehicle-fittings-review/before-marid.jpg",
+          "sha256": "cf457d3df0212ebafed41d9336aadda024c3cc93fc307b570e77bf8a78cab3eb",
+          "caption": "before marid (d5cea3d)"
+        },
+        {
+          "file": "docs/vehicle-fittings-review/before-varsuk.jpg",
+          "sha256": "fd146702c7a830595589f42195e941523b6e3c379c286506e2606bb33fa2539f",
+          "caption": "before varsuk (d5cea3d)"
+        },
+        {
+          "file": "docs/vehicle-fittings-review/before-mora.jpg",
+          "sha256": "8bb8f905e2a87bca535d9cfa51c5796de2474702beb6ed1e978d441730fb7886",
+          "caption": "before mora (d5cea3d)"
+        },
+        {
+          "file": "docs/vehicle-fittings-review/before-kuma.jpg",
+          "sha256": "6c7232bf442d8741095e9656470950838455782abc78018c3333e097a591195d",
+          "caption": "before kuma (d5cea3d)"
+        },
+        {
+          "file": "docs/vehicle-fittings-review/before-gorgon.jpg",
+          "sha256": "60719ae1b3b5484a57dc79acc6d461664391261e98f12ba181d0ca67fb8e4418",
+          "caption": "before gorgon (d5cea3d)"
+        },
+        {
+          "file": "docs/vehicle-fittings-review/after-hemtt.jpg",
+          "sha256": "7b0a05268dbe988fc47461610c246803d358c9c3c6297e2b9c51b7c8d2fc5f1e",
+          "caption": "after hemtt (fdfdf1f)"
+        },
+        {
+          "file": "docs/vehicle-fittings-review/after-zamak.jpg",
+          "sha256": "c5703d751a4bb5b8b258fa7ac6a213016031dcf40568aa47ee6559395c3b0bbf",
+          "caption": "after zamak (fdfdf1f)"
+        },
+        {
+          "file": "docs/vehicle-fittings-review/after-tempest.jpg",
+          "sha256": "8546ebaa5cafc8c8ba2e6b32f251db3315249cfb066156036457313ec402236f",
+          "caption": "after tempest (fdfdf1f)"
+        },
+        {
+          "file": "docs/vehicle-fittings-review/after-hunter.jpg",
+          "sha256": "c8b2109ca9b727cbf1fc66ec3c6a7b8e5d95632d47db8e43ef18d007bc4bdf9d",
+          "caption": "after hunter (fdfdf1f)"
+        },
+        {
+          "file": "docs/vehicle-fittings-review/after-ifrit.jpg",
+          "sha256": "c780fba8184668836c745b0ea89ebfe21242758b9a87a7d2260badb116c648df",
+          "caption": "after ifrit (fdfdf1f)"
+        },
+        {
+          "file": "docs/vehicle-fittings-review/after-strider.jpg",
+          "sha256": "434c17cb37b180c79685fae35fe4070aff52e39b970c1dd322de18605d0ad218",
+          "caption": "after strider (fdfdf1f)"
+        },
+        {
+          "file": "docs/vehicle-fittings-review/after-prowler.jpg",
+          "sha256": "57b07316a9ee12680e7d6a5bb4907e80620563e330a09fd1f8a420fb706e0bb4",
+          "caption": "after prowler (fdfdf1f)"
+        },
+        {
+          "file": "docs/vehicle-fittings-review/after-marshall.jpg",
+          "sha256": "930277cd355c679dfbc5b6542cacb2c8f37b0699eb282d4035f04b39135403f1",
+          "caption": "after marshall (fdfdf1f)"
+        },
+        {
+          "file": "docs/vehicle-fittings-review/after-rhino.jpg",
+          "sha256": "b934e3fc9c23ffbc1d478d41fe21ad7c4bba5b82df3b5d23bf98728b2c7e4d8c",
+          "caption": "after rhino (fdfdf1f)"
+        },
+        {
+          "file": "docs/vehicle-fittings-review/after-slammer.jpg",
+          "sha256": "5f133f5a7dcd5639a919783e78d7a985f4ab2bf9de8fcc7e521501505febab7d",
+          "caption": "after slammer (fdfdf1f)"
+        },
+        {
+          "file": "docs/vehicle-fittings-review/after-scorcher.jpg",
+          "sha256": "7215ad82ec24cb0e74a875438241436e365a28a8bb5a685ab42c0674fd8483b7",
+          "caption": "after scorcher (fdfdf1f)"
+        },
+        {
+          "file": "docs/vehicle-fittings-review/after-sandstorm.jpg",
+          "sha256": "bf18d9c3d7f371bb35264183dbed959eab00b5372ef645f3694de4bb27babab8",
+          "caption": "after sandstorm (fdfdf1f)"
+        },
+        {
+          "file": "docs/vehicle-fittings-review/after-panther.jpg",
+          "sha256": "7e495c87b7d6521e1ceef0018ccab8cceedca4e414c463efaa2523765a05e855",
+          "caption": "after panther (fdfdf1f)"
+        },
+        {
+          "file": "docs/vehicle-fittings-review/after-bobcat.jpg",
+          "sha256": "43a721f94ddfe18448c0661237f0580228332c3d23523c0a77b3c1208f748227",
+          "caption": "after bobcat (fdfdf1f)"
+        },
+        {
+          "file": "docs/vehicle-fittings-review/after-cheetah.jpg",
+          "sha256": "1ee8f644c4777f9f9ca09b1d44cf19534df59e12eef018f4ad2ca0dfc1f2ca95",
+          "caption": "after cheetah (fdfdf1f)"
+        },
+        {
+          "file": "docs/vehicle-fittings-review/after-marid.jpg",
+          "sha256": "2338faed379442c829e36b55761f99083b322a53884f4bc9c6412975b553b988",
+          "caption": "after marid (fdfdf1f)"
+        },
+        {
+          "file": "docs/vehicle-fittings-review/after-varsuk.jpg",
+          "sha256": "184e469dc9137949b06b894632f657156c3f7f6b1949e5a72b67dea2fd9d5883",
+          "caption": "after varsuk (fdfdf1f)"
+        },
+        {
+          "file": "docs/vehicle-fittings-review/after-mora.jpg",
+          "sha256": "b79e113bd6fb00f1934e1d623064468c541c748895a94ca50fa838fb2b7c9358",
+          "caption": "after mora (fdfdf1f)"
+        },
+        {
+          "file": "docs/vehicle-fittings-review/after-kuma.jpg",
+          "sha256": "96d51183ef20acf193175065999584a505c5b981804d60f11157cdbc08ec7bee",
+          "caption": "after kuma (fdfdf1f)"
+        },
+        {
+          "file": "docs/vehicle-fittings-review/after-gorgon.jpg",
+          "sha256": "c8a3fdde7ea1ab08560d38acd59a04465cbad3ab41532dd1421e2347d3c92a31",
+          "caption": "after gorgon (fdfdf1f)"
+        },
+        {
+          "file": "docs/vehicle-fittings-review/close-before-hemtt.jpg",
+          "sha256": "12c8d431d77c73d1740de9e7fea38aa1c143909f83484ef43f3e620ec4123e6c",
+          "caption": "close-before hemtt (d5cea3d)"
+        },
+        {
+          "file": "docs/vehicle-fittings-review/close-before-zamak.jpg",
+          "sha256": "09f94164a6103e210bcac38505bd3481c4eb362f65268333bfb07c76b302d621",
+          "caption": "close-before zamak (d5cea3d)"
+        },
+        {
+          "file": "docs/vehicle-fittings-review/close-before-tempest.jpg",
+          "sha256": "e87f22238062f72ef8a6383163b063c3dc68b57b4a7a2330f6d38b447ee21034",
+          "caption": "close-before tempest (d5cea3d)"
+        },
+        {
+          "file": "docs/vehicle-fittings-review/close-after-hemtt.jpg",
+          "sha256": "b933e63fc06eeebbe418e35644d4fb5a14f54e8b414ae98b9ac85f931e8df16c",
+          "caption": "close-after hemtt (fdfdf1f)"
+        },
+        {
+          "file": "docs/vehicle-fittings-review/close-after-zamak.jpg",
+          "sha256": "e40a1322e3d1517a8db344b40900d880fa6039a62d91c186d6e2ef97226da7ef",
+          "caption": "close-after zamak (fdfdf1f)"
+        },
+        {
+          "file": "docs/vehicle-fittings-review/close-after-tempest.jpg",
+          "sha256": "15078c0a0cba9a341b031a091057a764794f4f41e9e0871a79a357ed45709335",
+          "caption": "close-after tempest (fdfdf1f)"
+        },
+        {
+          "file": "docs/vehicle-fittings-review/rear-before-marshall.jpg",
+          "sha256": "1481968d97777cc0cb9438a7bfcf7550b5c8d1256fe5c45d5556fbc9410f1ee9",
+          "caption": "rear-before marshall (d5cea3d)"
+        },
+        {
+          "file": "docs/vehicle-fittings-review/rear-before-slammer.jpg",
+          "sha256": "7d203547d4d381a6d0bc592995ad5f81dab13429ed88e7f89e0d4c550d3086ac",
+          "caption": "rear-before slammer (d5cea3d)"
+        },
+        {
+          "file": "docs/vehicle-fittings-review/rear-before-ifrit.jpg",
+          "sha256": "c8878e9e3985ebf884b832c8afe635cfa8b5fb34f670cd0096f4f9d807f90031",
+          "caption": "rear-before ifrit (d5cea3d)"
+        },
+        {
+          "file": "docs/vehicle-fittings-review/rear-before-scorcher.jpg",
+          "sha256": "dc9e8a0f2dd20aa6b79d42d4472ee0f4e19aaacb48546ba1270a7020f6185b4a",
+          "caption": "rear-before scorcher (d5cea3d)"
+        },
+        {
+          "file": "docs/vehicle-fittings-review/rear-after-marshall.jpg",
+          "sha256": "a12a7f8845720ecf6b249dffd5a0a78bcf5beef0aee56993620d95b34d242e49",
+          "caption": "rear-after marshall (fdfdf1f)"
+        },
+        {
+          "file": "docs/vehicle-fittings-review/rear-after-slammer.jpg",
+          "sha256": "571036c134759947dff42e66e159f746bc4009ca0eaad92366b95e6de35bbc76",
+          "caption": "rear-after slammer (fdfdf1f)"
+        },
+        {
+          "file": "docs/vehicle-fittings-review/rear-after-ifrit.jpg",
+          "sha256": "a7ffc5cdaa98a710f07e14d069aae7b9f9a26702b44c8d2a9bfa9e8108f7d5c6",
+          "caption": "rear-after ifrit (fdfdf1f)"
+        },
+        {
+          "file": "docs/vehicle-fittings-review/rear-after-scorcher.jpg",
+          "sha256": "d6bf60355cb03e5244d6154b23b8fd85af55be0e8fa57149875f1a32e6c35a7d",
+          "caption": "rear-after scorcher (fdfdf1f)"
+        },
+        {
+          "file": "docs/vehicle-fittings-review/forward-roster-00.jpg",
+          "sha256": "8a00cf362196086c09c2900ad249533d8d7a468174f64e793db2db33b949f09d",
+          "caption": "forward roster-00 (fdfdf1f)"
+        },
+        {
+          "file": "docs/vehicle-fittings-review/forward-roster-01.jpg",
+          "sha256": "2f511b361adf01ee62feddebd34b9a85b12d3ea3d647322d6f72cdb1ea79a661",
+          "caption": "forward roster-01 (fdfdf1f)"
+        },
+        {
+          "file": "docs/vehicle-fittings-review/construction-roster-00.jpg",
+          "sha256": "bf1aecb53e9f06228c820929407ab4ff5c5b5c34b5013e04df21a53f0f4e38e7",
+          "caption": "construction roster-00 (fdfdf1f)"
+        },
+        {
+          "file": "changelog/unreleased/vehicle-service-fittings/hemtt-before.jpg",
+          "sha256": "12c8d431d77c73d1740de9e7fea38aa1c143909f83484ef43f3e620ec4123e6c",
+          "caption": "hemtt-before"
+        },
+        {
+          "file": "changelog/unreleased/vehicle-service-fittings/hemtt-after.jpg",
+          "sha256": "b933e63fc06eeebbe418e35644d4fb5a14f54e8b414ae98b9ac85f931e8df16c",
+          "caption": "hemtt-after"
+        },
+        {
+          "file": "changelog/unreleased/vehicle-service-fittings/fittings.jpg",
+          "sha256": "bf1aecb53e9f06228c820929407ab4ff5c5b5c34b5013e04df21a53f0f4e38e7",
+          "caption": "fittings"
+        },
+        {
+          "file": "changelog/unreleased/vehicle-service-fittings/slammer-before.jpg",
+          "sha256": "7d203547d4d381a6d0bc592995ad5f81dab13429ed88e7f89e0d4c550d3086ac",
+          "caption": "slammer-before"
+        },
+        {
+          "file": "changelog/unreleased/vehicle-service-fittings/slammer-after.jpg",
+          "sha256": "571036c134759947dff42e66e159f746bc4009ca0eaad92366b95e6de35bbc76",
+          "caption": "slammer-after"
+        }
+      ],
+      "output": null,
+      "capture": {
+        "before_ref": "d5cea3d",
+        "after_ref": "fdfdf1f",
+        "engine": "Godot 4.7.2",
+        "viewport": [
+          1600,
+          900
+        ],
+        "seed": 3,
+        "team": 0,
+        "command": "godot --path CHECKOUT --rendering-method gl_compatibility --audio-driver Dummy tools/showcase/vehicle-surfaces.tscn -- --surface-out=OUTPUT --surface-single --surface-kinds=KINDS --surface-ground",
+        "camera": "See docs/vehicle-fittings-review/README.md for exact close-up and rear flags; all pairs share light and camera settings. Construction has a separate inspection light."
+      }
     }
   ],
   "layout_capture": {

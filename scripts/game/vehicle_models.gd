@@ -364,6 +364,9 @@ func _box(parent: Node3D, s: Vector3, pos: Vector3, kind: String, col = null, ro
 	return _add(parent, Res.box(s), kind, col, pos, rot, Vector3.ONE, shadow)
 
 
+func _bag(parent: Node3D, s: Vector3, pos: Vector3, kind: String, col = null, rot := Vector3.ZERO, shadow := true) -> Variant:
+	return VehicleCloth.bag(self, parent, s, pos, kind, col, rot, shadow)
+
 func _cyl(parent: Node3D, r0: float, r1: float, h: float, pos: Vector3, rot: Vector3, kind: String, col = null, segs := 12, shadow := true) -> Variant:
 	return _add(parent, Res.cyl(r0, r1, h, segs), kind, col, pos, rot, Vector3.ONE, shadow)
 

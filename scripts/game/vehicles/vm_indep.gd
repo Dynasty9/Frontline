@@ -196,7 +196,7 @@ static func _strider(k: VehicleModels, team: int, variant: int) -> void:
 			k._wheel(m, Vector3(s * wx, wr, z), wr, 0.38, cam, col)
 			# the arch's lip
 			k._box(m, Vector3(0.1, 0.06, 1.42), Vector3(s * 1.24, 1.16, z), cam, col)
-		k._box(m, Vector3(0.32, 0.36, 0.02), Vector3(s * 1.04, 0.8, 2.3), "rubber")
+		VehicleFittings.mudflap(k, m, Vector3(s * 1.04, 0.8, 2.3), Vector2(0.32, 0.36))
 	# windscreen: two armoured panes in heavy frames on the slope, the pillar between
 	var ws_a := Vector2(-2.52, 1.36)
 	var ws_b := Vector2(-1.88, 1.79)
@@ -470,7 +470,7 @@ static func _mora(k: VehicleModels, team: int) -> void:
 	for s: float in [-1.0, 1.0]:
 		k._box(t, Vector3(0.04, 0.4, 0.55), Vector3(s * 0.8, 0.5, 1.42), "gunmetal_w")
 	k._cyl(t, 0.16, 0.16, 1.3, Vector3(0, 0.5, 1.45), Z90, "canvas", Color(0.33, 0.35, 0.24), 10)
-	k._box(t, Vector3(0.42, 0.3, 0.3), Vector3(0.55, 0.55, 1.5), "canvas", Color(0.38, 0.37, 0.27))
+	k._bag(t, Vector3(0.42, 0.3, 0.3), Vector3(0.55, 0.55, 1.5), "canvas", Color(0.38, 0.37, 0.27))
 
 
 # --- Kuma: Leopard 2 with the Revolution urban upgrade --------------------------
@@ -596,7 +596,7 @@ static func _kuma(k: VehicleModels, team: int) -> void:
 	k._box(t, Vector3(2.6, 0.05, 0.5), Vector3(0, 0.24, 2.3), "gunmetal_w")
 	k._box(t, Vector3(2.6, 0.44, 0.04), Vector3(0, 0.46, 2.55), "gunmetal_w")
 	k._cyl(t, 0.17, 0.17, 1.6, Vector3(-0.4, 0.44, 2.3), Z90, "canvas", Color(0.33, 0.35, 0.24), 10)
-	k._box(t, Vector3(0.6, 0.32, 0.38), Vector3(0.85, 0.44, 2.3), "canvas", Color(0.38, 0.37, 0.27))
+	k._bag(t, Vector3(0.6, 0.32, 0.38), Vector3(0.85, 0.44, 2.3), "canvas", Color(0.38, 0.37, 0.27))
 	_slats(k, t, Vector3(0, 0.46, 2.8), 3.3, 0.78, true, 0.26)
 	for s: float in [-1.0, 1.0]:
 		_slats(k, t, Vector3(s * 1.86, 0.46, 1.9), 1.8, 0.78, false, 0.26)
@@ -836,7 +836,7 @@ static func _gorgon(k: VehicleModels, team: int) -> void:
 	# a stowage basket on the turret's back
 	k._box(t, Vector3(1.4, 0.04, 0.4), Vector3(0, 0.2, 1.2), "gunmetal_w")
 	k._box(t, Vector3(1.4, 0.3, 0.04), Vector3(0, 0.35, 1.4), "gunmetal_w")
-	k._box(t, Vector3(0.7, 0.24, 0.3), Vector3(-0.3, 0.34, 1.2), "canvas", Color(0.36, 0.36, 0.26))
+	k._bag(t, Vector3(0.7, 0.24, 0.3), Vector3(-0.3, 0.34, 1.2), "canvas", Color(0.36, 0.36, 0.26))
 
 
 # --- Zamak: KamAZ-4310 6x6 -------------------------------------------------------
@@ -899,11 +899,7 @@ static func _zamak_cab(k: VehicleModels, team: int, cam: String, col) -> void:
 		k._add(m, Res.sphere(0.2, 10), "gunmetal_w", null, Vector3(0, 0.62, z), Vector3.ZERO, Vector3(1.0, 0.9, 0.9))
 	# the bonnet: louvres down its sides, the grille in front
 	k._add(m, VehicleModels.loft("indep_zk_bonnet", _oct(-0.6, 0.6, -3.62, -2.12, 0.08), _oct(-0.5, 0.5, -3.48, -2.12, 0.14), 1.12, 1.84), cam, col, Vector3.ZERO)
-	var ba := Vector2(-3.62, 1.16)
-	var bb := Vector2(-3.49, 1.8)
-	_plate(k, m, 0.0, 0.92, ba, bb, 0.03, "gunmetal_w", null, -0.012)
-	for i in 7:
-		_plate(k, m, -0.36 + i * 0.12, 0.04, ba.lerp(bb, 0.05), ba.lerp(bb, 0.95), 0.03, cam, col, 0.0, false)
+	VehicleFittings.grille(k, m, Vector3(0, 1.48, -3.62), Vector2(0.92, 0.65), Vector3(-0.20, PI, 0), cam, col, 7, true)
 	k._box(m, Vector3(0.9, 0.03, 0.04), Vector3(0, 1.84, -2.2), "gunmetal_w", null, Vector3.ZERO, false)
 	k._box(m, Vector3(0.03, 0.02, 1.3), Vector3(0, 1.845, -2.85), "gunmetal_w", null, Vector3.ZERO, false)
 	for s: float in [-1.0, 1.0]:
