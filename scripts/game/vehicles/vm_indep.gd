@@ -994,13 +994,7 @@ static func _zamak_bed(k: VehicleModels, cam: String, col, sides: float) -> void
 ## Troop transport: a canvas tilt over hoops, the back flap rolled up.
 static func _zamak_tilt(k: VehicleModels, tarp: Color) -> void:
 	var m := k.root
-	var prof := [-1.27, 1.9, 1.27, 1.9, 1.27, 2.6, 1.03, 2.88, -1.03, 2.88, -1.27, 2.6]
-	var r0 := PackedVector3Array()
-	var r1 := PackedVector3Array()
-	for i in range(0, prof.size(), 2):
-		r0.append(Vector3(prof[i], prof[i + 1], -0.2))
-		r1.append(Vector3(prof[i], prof[i + 1], 3.72))
-	k._add(m, VehicleModels.solid([r0, r1], "indep_zk_tilt"), "canvas_white", tarp, Vector3.ZERO)
+	VehicleCloth.canopy(k, m, [Vector2(-1.27, 1.9), Vector2(-1.27, 2.6), Vector2(-1.03, 2.88), Vector2(1.03, 2.88), Vector2(1.27, 2.6), Vector2(1.27, 1.9)], [-0.2, 0.45, 1.25, 2.05, 2.85, 3.62, 3.72], tarp)
 	# the hoops showing through, the lashing along the bottom
 	var rib := tarp.darkened(0.18)
 	for z: float in [0.45, 1.25, 2.05, 2.85, 3.62]:

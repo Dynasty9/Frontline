@@ -1400,8 +1400,7 @@ static func _tempest(k: VehicleModels, team: int, kind: String) -> void:
 		_:
 			# troops: armoured sides, the canvas cover on its bows
 			_tempest_flatbed(k, 0.62)
-			k._add(m, VehicleModels.loft("csat_typh_tarp", [-1.25, -2.0, 1.25, -2.0, 1.25, 4.38, -1.25, 4.38], [-1.12, -1.95, 1.12, -1.95, 1.12, 4.32, -1.12, 4.32], 2.1, 3.2), "canvas_white", CANVAS_TAN, Vector3.ZERO)
-			k._add(m, VehicleModels.loft("csat_typh_tarp2", [-1.12, -1.95, 1.12, -1.95, 1.12, 4.32, -1.12, 4.32], [-0.95, -1.9, 0.95, -1.9, 0.95, 4.27, -0.95, 4.27], 3.2, 3.3), "canvas_white", CANVAS_TAN, Vector3.ZERO)
+			VehicleCloth.canopy(k, m, [Vector2(-1.25, 2.1), Vector2(-1.12, 3.2), Vector2(-0.95, 3.3), Vector2(0.95, 3.3), Vector2(1.12, 3.2), Vector2(1.25, 2.1)], [-2.0, -1.6, -0.42, 0.76, 1.94, 3.12, 4.30, 4.38], CANVAS_TAN)
 			var strap := CANVAS_TAN.darkened(0.25)
 			for i in 6:
 				var z := -1.6 + i * 1.18

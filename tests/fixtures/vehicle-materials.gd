@@ -87,6 +87,11 @@ func _audit(node: Node, wreck: bool) -> void:
 				if not maps.has(texture.resource_path):
 					assert(texture.get_image().has_mipmaps(), "Detail maps need mipmaps at RTS distances")
 				maps[texture.resource_path] = true
+				var wear: Variant = material.get_shader_parameter("surface_paint_wear")
+				if wear != null and float(wear) > 0:
+					var arrays := Mats._arrays(mi.mesh, i)
+					assert(arrays[Mesh.ARRAY_TEX_UV] != null, "Baking must preserve body-piece edge coordinates")
+					assert(arrays[Mesh.ARRAY_TEX_UV].size() == arrays[Mesh.ARRAY_VERTEX].size())
 				if wreck:
 					assert(material.get_shader_parameter("rough") > 0.9)
 	for child in node.get_children():
