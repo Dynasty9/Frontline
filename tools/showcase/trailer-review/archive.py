@@ -16,8 +16,8 @@ PUBLISHED_REEL = "9659c85134cd271b589f6a0f29a37564a1b72e71"
 
 def write_viewer(folder, versions):
     original = folder / "published-homepage.mp4"
-    if not original.exists():
-        source = subprocess.run(["git", "cat-file", "blob", PUBLISHED_REEL], cwd=ROOT, capture_output=True)
+    if not original.exists() and (git := shutil.which("git")):
+        source = subprocess.run([git, "cat-file", "blob", PUBLISHED_REEL], cwd=ROOT, capture_output=True)
         if source.returncode == 0:
             original.with_suffix(".tmp").write_bytes(source.stdout)
             original.with_suffix(".tmp").replace(original)
