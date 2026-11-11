@@ -16,3 +16,5 @@ caption = "The same lift and boat turn from both camera positions. The new views
 Every subject offers a rear and aerial view. Vehicles with tracks or wheels have a low running-gear view. Models can also carry cameras on the barrel, beside the roof gun and over the engine deck. Rotorcraft add a cabin-side view. On sling-capable helicopters the sling-load view keeps the aircraft and its cargo in frame. Boats have bow and waterline views. The tanks use the same mounts used in the one-minute ridge film. Change the key in Settings under Controls.
 
 The waterline view follows the wake from the stern quarter. It keeps the horizon level as the boat turns. The sling camera looks down far enough to see the cargo leave the ground while the helicopter banks above it.
+
+From the cargo door, look down past the landing gear and watch the sling load separate from its shadow. Wheels stop throwing dust once clear of the ground. Spinning rotors show a soft sweep for each blade. On the RHIB, the starboard camera looks past the console toward the other boats.

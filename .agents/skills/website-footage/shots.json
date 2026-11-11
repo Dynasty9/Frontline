@@ -96,15 +96,21 @@
     },
     "trailer-harbour-boats": {
       "frames": 540,
-      "args": ["--preset=high", "--seed=3", "--set=volume:0.8,vol_effects:0.85,vol_music:0,battle_music:false,vol_ambience:0.28,vol_ui:0,mute_bg:false,wildlife:0,edge_pan:false", "--mission=beachhead", "--focus-vehicle=rhib,1", "--vehicle-view=Waterline"],
+      "args": ["--preset=high", "--seed=3", "--set=volume:0.8,vol_effects:0.85,vol_music:0,battle_music:false,vol_ambience:0.28,vol_ui:0,mute_bg:false,wildlife:0,edge_pan:false", "--mission=beachhead", "--focus-vehicle=rhib,1", "--vehicle-view=Starboard"],
       "shows": ["Mountain coastline and the landing party"],
-      "about": "From the stern quarter the launch turns toward the beach, leaving a curved wake in the same harbour as the ship and jet."
+      "about": "From beside the console, a second launch crosses the bow and turns toward the beach."
     },
     "trailer-sling": {
-      "frames": 1080,
-      "args": ["--preset=high", "--seed=3", "--set=volume:0.8,vol_effects:0.85,vol_music:0,battle_music:false,vol_ambience:0.28,vol_ui:0,mute_bg:false,wildlife:0,edge_pan:false", "--scenario=sling", "--play", "--team=0", "--focus-vehicle=mohawk", "--vehicle-view=Sling load", "--mood=golden"],
+      "frames": 570,
+      "args": ["--preset=high", "--seed=3", "--set=volume:0.8,vol_effects:0.85,vol_music:0,battle_music:false,vol_ambience:0.28,vol_ui:0,mute_bg:false,wildlife:0,edge_pan:false", "--scenario=sling", "--play", "--team=0", "--focus-vehicle=mohawk", "--vehicle-view=Sling load", "--mood=day"],
       "shows": ["Transport helicopter lifting a vehicle"],
       "about": "The shared sling-load mount keeps the suspended vehicle and the rotor disc together."
+    },
+    "trailer-cargo-door": {
+      "frames": 630,
+      "args": ["--preset=high", "--seed=3", "--set=volume:0.8,vol_effects:0.85,vol_music:0,battle_music:false,vol_ambience:0.28,vol_ui:0,mute_bg:false,wildlife:0,edge_pan:false", "--scenario=sling", "--play", "--team=0", "--focus-vehicle=mohawk", "--vehicle-view=Cargo door", "--mood=day"],
+      "shows": ["Humvee turning on its sling"],
+      "about": "Look down from the cargo door as the wheels separate from their shadow. Both views follow the same lift."
     },
     "trailer-roadside": {
       "scene": "res://tools/showcase/trailer-review/squad-order.tscn",
@@ -543,8 +549,9 @@
         {"take": "trailer-trench-close", "from": 9.2, "to": 10.8, "gain_db": -2, "caption": "[Fire cracks beside the trench]"},
         {"take": "highlight-mortars", "from": 0.93333, "to": 2.03333, "gain_db": 1, "caption": "[Distant fire at the mortar pit]"},
         {"take": "highlight-mortar-burst", "from": 8.3, "to": 10.1, "gain_db": -3, "caption": "[Mortar bursts across the trench line]"},
-        {"take": "trailer-sling", "from": 16.66667, "to": 19.4, "gain_db": 0, "caption": "[Helicopter rotors over the suspended vehicle]"},
-        {"take": "trailer-harbour-boats", "from": 13.13333, "to": 15.53333, "gain_db": 0, "caption": "[Boats approach the shore]"},
+        {"take": "trailer-sling", "from": 16.96667, "to": 18.6, "gain_db": 0, "caption": "[Helicopter rotors over the suspended vehicle]"},
+        {"take": "trailer-cargo-door", "from": 18.6, "to": 19.7, "gain_db": 0},
+        {"take": "trailer-harbour-boats", "from": 13.2, "to": 15.6, "gain_db": 0, "caption": "[Boats approach the shore]"},
         {"take": "trailer-beach-landing", "from": 26.0, "to": 27.4, "gain_db": 0, "caption": "[Surf as the squad runs ashore]"},
         {"take": "trailer-patrol-pass", "from": 35.1, "to": 37.03333, "gain_db": -1, "caption": "[Patrol ship fires across the harbour]"},
         {"take": "trailer-harbour-finale", "from": 4.3, "to": 6.6, "gain_db": 0, "caption": "[Jet engines climb over the harbour]"},

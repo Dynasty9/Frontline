@@ -29,7 +29,7 @@ For a mix revision, keep the cut points fixed and compare editions with the audi
 | One order | A destination appears on the commander's road view. Track the same five soldiers across the road at shoulder height, with dawn light on their gear and the village ahead. Both cameras record the same order, seed and simulation time. |
 | Armour arrives | Keep the squad's left-to-right movement through the cut. From field level, a tank crosses the foreground before the closer gun shot. |
 | Into the trench | See people beside the earthworks. Follow the mortar crew with the visible impacts along the trench line. |
-| Off the ground | Look across the cockpit and down the sling. Hold until daylight separates the Humvee's wheels from its shadow. |
-| Into the harbour | Follow the launch through its turn. From shore, see the squad run clear of the bow while the patrol ship crosses behind. Cut to the ship's bow as a second boat comes alongside. Follow the jet until its load clears the wing. Hold the harbour wide through the rise and fall of the spray. |
+| Off the ground | See the helicopter take the weight, then look down past its landing gear at the Humvee turning on the sling. Its shadow stays on the field below. |
+| Into the harbour | From the starboard side of one launch, see the other cut across the bow and turn toward shore. From shore, see the squad run clear of the bow while the patrol ship crosses behind. Cut to the ship's bow as a second boat comes alongside. Follow the jet until its load clears the wing. Hold the harbour wide through the rise and fall of the spray. |
 
 The end title uses the menu emblem and type. The score scene draws them on black. The editor blends that frame over the water as the spray falls, leaving room below for captions. The final picture holds the game name and desktop invitation.
