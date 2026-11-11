@@ -94,6 +94,7 @@ func _ready() -> void:
 		["option", "grass", "Vegetation", Settings.LABELS.grass, "Swaying grass blades across the battlefield."],
 		["option", "wildlife", "Wildlife", Settings.LABELS.wildlife, "Birds feeding in the fields and wheeling overhead, rats in town, hares, fish, ducks and dolphins, all taking fright at the fighting. Only round the camera; turn it down or off if it costs you frames."],
 		["option", "effects", "Effects quality", Settings.LABELS.effects, "Particles per explosion, smoke density, debris."],
+		["option", "mountain_clouds", "Mountain clouds", Settings.LABELS.mountain_clouds, "Cloud banks above distant ranges. Higher settings sample more detail; Off removes the banks. Independent of volumetric fog."],
 		["option", "water", "Water quality", Settings.LABELS.water, "Waves, reflections and the bed seen through the water. Low skips the see-through water, the costly part; High adds light dancing on the shallows and foam streaks in a blow; Ultra a finer swell."],
 		["check", "decals", "Scorch marks & craters", null, "Burn marks left by explosions."],
 		["check", "ragdolls", "Ragdoll physics", null, "The dead fall, tumble and are thrown by blasts under real physics; thrown earth and rubble bounce and roll."],

@@ -48,6 +48,9 @@ func generate(seed_value: int, roads: Array, water, settlements: Array, fracture
 	noise.domain_warp_amplitude = 75.0
 	noise.domain_warp_frequency = 0.004
 	var amplitude := minf(half * 0.45, 300.0)
+	if fractured:
+		# Skirmishes occupy the foothills; towering massifs belong in the distant scenery.
+		amplitude = minf(amplitude, 80.0)
 	for z in n:
 		for x in n:
 			var wx := x * STEP - half
