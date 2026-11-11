@@ -303,7 +303,9 @@ def build_output(name: str, spec: dict, takes: Takes, out: Path, how: str) -> No
             im = Image.blend(black, im, dim)
         if title is not None and k >= title_start:
             amount = min(1.0, (k - title_start + 1) / max(1, title_fade))
-            im = Image.blend(im, ImageChops.screen(im, title), amount)
+            # Lower the picture under the wordmark as the spray settles.
+            backing = Image.blend(im, black, 0.42)
+            im = Image.blend(im, ImageChops.screen(backing, title), amount)
         if k == 0:
             im.save(out / f"{name}.jpg", quality=82, optimize=True, progressive=True)
         b = io.BytesIO()
