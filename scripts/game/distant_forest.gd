@@ -51,7 +51,7 @@ func setup(atmo: Atmosphere) -> void:
 	if atmo.water_view:
 		material.set_shader_parameter("river_tips", atmo.water_view.river_tips)
 	material.set_shader_parameter("sea_x", atmo.ground_mat.get_shader_parameter("sea_x"))
-	material.set_shader_parameter("snow_line", maxf(25.0, atmo.world.terrain.landform.peak * 0.55))
+	material.set_shader_parameter("snow_line", maxf(150.0, atmo.world.terrain.landform.peak * 0.55))
 	material.set_shader_parameter("atlas", atlas_texture())
 	var rng := RandomNumberGenerator.new()
 	rng.seed = int(atmo.world.settings.get("seed", 1)) * 7919

@@ -573,7 +573,10 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   and leaf litter. Five material layers share two texture arrays with independent mipmaps, preserving
   the browser sampler budget. Detailed snow and litter follow the existing terrain-detail setting;
   height-based transitions let rock emerge through moss and snow. Reusable buttress, bowl and saddle
-  forms shape standard mountains before erosion, with small conifer stands along suitable foothills.
+  forms shape standard foothills before erosion, with small conifer stands along suitable slopes.
+  Generated skirmishes cap the base relief at 80 metres, opening the playable valley; tall massifs
+  rise only in scenery beyond the water buffer. Snow stays above the low foothills, with matching
+  terrain and forest masks and expanded culling bounds for the distant range.
   Warped mineral bands, dry grass patches and broken scree vary the surfaces at several scales. Mixed
   lowland trees give way to conifers and an irregular tree line; passable scrub and small stones
   cluster by altitude and slope below the snowy summits. Sheltered bowls retain greener soil and scrub;

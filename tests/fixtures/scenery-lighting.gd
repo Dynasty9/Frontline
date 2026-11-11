@@ -32,11 +32,27 @@ func check_coastal_buffer() -> void:
 	view.add_child(rect)
 	for shore in [MapDims.HALF - 100.0, 1e9]:
 		material.set_shader_parameter("shore", shore)
-		for distance in [-1.0, 30.0, 400.0, 1100.0, 1900.0]:
+		for distance in [-1.0, 30.0, 550.0, 1100.0, 1900.0]:
 			material.set_shader_parameter("sample_position", Vector2(-MapDims.HALF - distance, 0))
 			var output := await bake(view)
-			var wet: bool = shore < 10000.0 and distance in [400.0, 1900.0]
+			var wet: bool = shore < 10000.0 and distance in [550.0, 1900.0]
 			assert((output.get_pixel(8, 8).r > 0.99) == wet, "Water separates the coast and outer islands without flooding playable or inland ground")
+	material = ShaderMaterial.new()
+	material.shader = Shader.new()
+	material.shader.code = MapDims.shader("shader_type canvas_item; render_mode unshaded, blend_disabled; uniform vec2 sample_position; uniform sampler2D backdrop_tex : hint_default_white; uniform float sea_x = 1e9; uniform float snow_line = 100.0;\n" + Atmosphere.BACKDROP_HEIGHT + "\nvoid fragment() { COLOR = vec4(vec3(backdrop(sample_position) / 1024.0), 1.0); }")
+	var white := Image.create(2, 2, false, Image.FORMAT_RF)
+	white.fill(Color.WHITE)
+	material.set_shader_parameter("backdrop_tex", ImageTexture.create_from_image(white))
+	rect.material = material
+	await get_tree().process_frame
+	for distance in [200.0, 1200.0]:
+		material.set_shader_parameter("sample_position", Vector2(-MapDims.HALF - distance, 0))
+		var output := await bake(view)
+		var height := output.get_pixel(8, 8).r * 1024.0
+		if distance < 600.0:
+			assert(height < 100.0, "Near scenery remains low foothills: " + str(height))
+		else:
+			assert(height > 800.0 and height < 1024.0, "Far massifs rise above the valley within the terrain culling bounds: " + str(height))
 	view.queue_free()
 
 func check_river_continuation() -> void:

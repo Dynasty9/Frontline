@@ -415,7 +415,7 @@ func _build_ground() -> void:
 	ground_mat.set_shader_parameter("wet", 1.0 if mood == "rain" else 0.0)
 	ground_mat.set_shader_parameter("trench_mask", _blank_mask)
 	ground.material_override = ground_mat
-	ground.custom_aabb = AABB(Vector3(-MapDims.HALF - 1800.0, -5.0, -MapDims.HALF - 1800.0), Vector3(MapDims.SIZE + 3600.0, 517.0, MapDims.SIZE + 3600.0))
+	ground.custom_aabb = AABB(Vector3(-MapDims.HALF - 1800.0, -5.0, -MapDims.HALF - 1800.0), Vector3(MapDims.SIZE + 3600.0, 1029.0, MapDims.SIZE + 3600.0))
 	ground.layers = 5 | Res.GROUND_DECAL_LAYER  # terrain capture plus ground-only decals
 	ground.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	add_child(ground)
@@ -1109,7 +1109,7 @@ func _bake_scenery() -> void:
 		_scenery_material.set_shader_parameter("river_tips", water_view.river_tips)
 	_scenery_material.set_shader_parameter("deform_tex", deform_tex)
 	_scenery_material.set_shader_parameter("sea_x", ground_mat.get_shader_parameter("sea_x"))
-	_scenery_material.set_shader_parameter("snow_line", maxf(25.0, world.terrain.landform.peak * 0.55) if world.terrain.landform.peak > 1.0 else 10000.0)
+	_scenery_material.set_shader_parameter("snow_line", maxf(150.0, world.terrain.landform.peak * 0.55) if world.terrain.landform.peak > 1.0 else 10000.0)
 	_scenery_material.set_shader_parameter("sun_direction", sun.basis.z)
 	_scenery_bake.render_target_update_mode = SubViewport.UPDATE_ONCE
 
@@ -1140,7 +1140,7 @@ func _update_deform(dt: float) -> void:
 		post.set_shader_parameter("grain", 0.006)
 		post.set_shader_parameter("vignette", 0.15)
 	if not tm.deform_dirty.is_empty() and _deform_t <= 0.0:
-		ground_mat.set_shader_parameter("snow_line", maxf(25.0, tm.landform.peak * 0.55) if tm.landform.peak > 1.0 else 10000.0)
+		ground_mat.set_shader_parameter("snow_line", maxf(150.0, tm.landform.peak * 0.55) if tm.landform.peak > 1.0 else 10000.0)
 		_deform_t = 0.22
 		for rect: Rect2i in tm.deform_dirty:
 			_deform_tiles.mark_dirty(rect)
@@ -1273,6 +1273,8 @@ float backdrop(vec2 p) {
 	vec2 uv = (p + __MAP_HALF__ + 1800.0) / (__MAP_SIZE__ + 3600.0);
 	float mountain = textureLod(backdrop_tex, uv, 0.0).r;
 	float hills = pow(smoothstep(0.18, 0.88, mountain), 2.2) * 440.0;
+	// Tall massifs belong behind the water and foothills, leaving the near valley open.
+	hills *= 1.0 + 1.1 * smoothstep(600.0, 1100.0, edge);
 	float land = hills * smoothstep(8.0, 900.0, edge) * coast * (1.0 - step(9999.0, snow_line))
 		* (1.0 - smoothstep(1450.0, 1800.0, edge))
 		- 3.2 * smoothstep(shore, shore + 30.0, p.x);

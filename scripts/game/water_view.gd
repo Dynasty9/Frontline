@@ -25,7 +25,7 @@ float scenery_buffer_into(vec2 p, float shore_mean) {
 	float edge = max(abs(p.x), abs(p.y)) - __MAP_HALF__;
 	if (shore_mean > 10000.0 || edge <= 0.0) { return -10000.0; }
 	float rounded_edge = length(max(abs(p) - vec2(__MAP_HALF__ - 250.0), vec2(0.0))) - 250.0;
-	float bank = 220.0 + 110.0 * sin(p.x * 0.006 + p.y * 0.003) + 90.0 * sin(p.y * 0.009 - p.x * 0.002);
+	float bank = 300.0 + 80.0 * sin(p.x * 0.006 + p.y * 0.003) + 60.0 * sin(p.y * 0.009 - p.x * 0.002);
 	float islands = 780.0 + 90.0 * sin(p.x * 0.003 + 0.7) + 60.0 * sin(p.y * 0.004);
 	return max(min(rounded_edge - bank, islands - rounded_edge), edge - 1650.0);
 }

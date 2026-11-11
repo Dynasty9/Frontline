@@ -29,7 +29,7 @@ func capture() -> void:
 		"clouds":
 			world.cam.cam.fov = 55.0
 			for mood in ["day", "golden", "rain", "night"]:
-				views.append([mood.capitalize(), Vector3(-1500, 120, -450), 900.0, -8.0, 0.7, mood])
+				views.append([mood.capitalize(), Vector3(0, 80, 0), 1250.0, -10.0, 0.7, mood])
 		"stones":
 			views = [["Fractured stone detail", Vector3(311.6891,0,433.3651), 12.0, -50.0, 0.7],
 				["Stones within the alpine slope", Vector3(311.6891,0,433.3651), 42.0, -42.0, 0.7]]
@@ -45,6 +45,7 @@ func capture() -> void:
 				["Calibrated roofs, asphalt and frontages", Vector3(-30,0,-12), 55.0, -45.0, 0.7],
 				["Finer meadow and clustered shrubs", Vector3(-110,0,-130), 22.0, -35.0, 0.7]]
 	assert(not views.is_empty())
+	var orbit := 0.0 if mode == "clouds" else 0.065
 	var records := []
 	var index := 0
 	for view in views:
@@ -67,16 +68,16 @@ func capture() -> void:
 		for frame in 120:
 			var phase := float(frame) / 119.0
 			# Gentle orbit returns to its start, leaving surfaces readable throughout.
-			world.cam.yaw = float(view[4]) + sin(phase * TAU) * 0.065
+			world.cam.yaw = float(view[4]) + sin(phase * TAU) * orbit
 			world.cam.focus_pos = view[1]
 			world.cam._apply()
 			await process_frame
 			await RenderingServer.frame_post_draw
 			assert(root.get_texture().get_image().save_png(folder + "/%04d.png" % frame) == OK)
-		records.append({"label": view[0], "focus": str(view[1]), "zoom": view[2], "pitch": view[3], "yaw": view[4], "orbit_radians": 0.065, "fov": world.cam.cam.fov, "seconds": 4, "frames": 120})
+		records.append({"label": view[0], "focus": str(view[1]), "zoom": view[2], "pitch": view[3], "yaw": view[4], "orbit_radians": orbit, "fov": world.cam.cam.fov, "seconds": 4, "frames": 120})
 		print("MOTION_VIEW ", mode, " ", index)
 		index += 1
-	var metadata := {"arguments": OS.get_cmdline_args(), "user_arguments": OS.get_cmdline_user_args(), "stage": mode, "seed": 3, "preset": "high", "mood": "day", "renderer": RenderingServer.get_current_rendering_method(), "resolution": str(root.size), "fps": 30, "simulation": "Held at two seconds; native camera, wind and water remain animated. Not a combat or performance benchmark.", "views": records}
+	var metadata := {"arguments": OS.get_cmdline_args(), "user_arguments": OS.get_cmdline_user_args(), "stage": mode, "seed": 3, "preset": "high", "mood": "day", "renderer": RenderingServer.get_current_rendering_method(), "resolution": str(root.size), "fps": 30, "simulation": "Held at two seconds; native wind and water remain animated. Not a combat or performance benchmark.", "views": records}
 	var file := FileAccess.open(output + "/capture.json", FileAccess.WRITE)
 	file.store_string(JSON.stringify(metadata, "\t"))
 	quit()
