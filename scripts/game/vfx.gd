@@ -1418,9 +1418,13 @@ func make_dust(size: float, track := false) -> GeometryInstance3D:
 	pm.damping_max = 2.0
 	pm.angular_velocity_min = -20.0
 	pm.angular_velocity_max = 20.0
-	pm.scale_curve = _curve([Vector2(0, 0.3), Vector2(1, 1.0)])
-	pm.color_ramp = _ramp([0.0, 0.15, 1.0], [Color(0.52, 0.47, 0.38, 0.0), Color(0.52, 0.47, 0.38, 0.45), Color(0.56, 0.52, 0.45, 0.0)])
-	var d := _sys(int(20 * size) if track else int(26 * size), 2.0 if track else 2.6, pm, smoke_mat)
+	# A whole tread lifts soil along its edge. Let successive patches overlap
+	# close to the ground while the tread impressions still show through.
+	var spread := Vector2(0.72, 1.5) if track else Vector2(0.3, 1.0)
+	var tint := Color(0.48, 0.42, 0.32, 0.19) if track else Color(0.52, 0.47, 0.38, 0.45)
+	pm.scale_curve = _curve([Vector2(0, spread.x), Vector2(1, spread.y)])
+	pm.color_ramp = _ramp([0.0, 0.15, 1.0], [Color(0.52, 0.47, 0.38, 0.0), tint, Color(0.56, 0.52, 0.45, 0.0)])
+	var d := _sys(int(20 * size) if track else int(26 * size), 1.55 if track else 2.6, pm, smoke_mat)
 	d.one_shot = false
 	d.explosiveness = 0.0
 	d.emitting = false

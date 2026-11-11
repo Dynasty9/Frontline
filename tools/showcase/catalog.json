@@ -8200,7 +8200,7 @@
       "kind": "improved",
       "summary": "Two tanks climb, brake and reverse independently. Engine load and rolling noise follow each vehicle across the ridges.",
       "medium": "motion",
-      "stage": "tests/fixtures/ridge-duel.tscn",
+      "stage": "tests/fixtures/ridge-duel.tscn Track-dust comparison runs Bridgehead seed 3 with --focus-vehicle=tank,1 --vehicle-view=Behind from 193.4 to 196.6 seconds.",
       "rationale": "Trackside shots show the lower run gripping the hill and the upper run passing over the wheels. The two close impact shots connect the gun reports to the hull response.",
       "source_ref": "11d6794 running gear before, revised running gear after",
       "attribution": "Controlled in-engine sequence, seed 712. Record tests/fixtures/ridge-duel.tscn with Godot Forward+, --fixed-fps 120 and --write-movie. Blend two temporal samples per four for the 30 fps master. Both stills use the current stage at 3.95 seconds, with the earlier model from 11d6794. Photography and field recording credits are in tests/fixtures/ridge-light, assets/vehicles and assets/audio/tracked.",
@@ -8224,6 +8224,16 @@
           "file": "changelog/unreleased/ridge-duel/duel.jpg",
           "sha256": "c657b108026cf7e49c4d5388238e8fd3e7b84f9e5de8b6f51f43869fae9edc77",
           "caption": "The first shot across the valley."
+        },
+        {
+          "file": "changelog/unreleased/ridge-duel/track-dust.webm",
+          "sha256": "5bffd8617f98bbe1d6b789b718aa1f1ebff981d8c597fd6c344aa7dd887fc2c9",
+          "caption": "Matched native recordings of the rear tank on the Bridgehead village road."
+        },
+        {
+          "file": "changelog/unreleased/ridge-duel/track-dust.jpg",
+          "sha256": "c22a5f21d7a4a42907aed1bf11bac9a04a20e9c147c3a747be3e901bf22b91f5",
+          "caption": "Track dust before and after the second Abrams passes the houses."
         }
       ],
       "output": null
