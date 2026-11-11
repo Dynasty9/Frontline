@@ -1,0 +1,117 @@
+{
+  "date": "2026-11-09",
+  "baseline_ref": "3fced13071295fcbbf592f79cd94b1eb479ac3f5",
+  "after_source_sha256": {
+    "scripts/autoload/sfx.gd": "97564aaa1baa5829c594333c9a0a4997f968015523d114453f74a6213d2f69c8",
+    "scripts/game/fx.gd": "e7490a27886e6385131323f3c911e1e09db635030d3057f72c6e980e38cb30de",
+    "scripts/game/gunfx.gd": "70a6cf93e75f4f2adf41bf7bbdfbe7f52984b9b9a59108355cb0b7498dc1c43c",
+    "scripts/game/vfx.gd": "e210fd318863892fca8cd03003cda6b0ff8e99bd9649e7c7edeec6797235d91c",
+    "scripts/shaders/blast_flipbook.gdshader": "a69f8c4a2b87f19dc47b87a5692b19838ee5315870d2ad59b63d6b145feecfc5",
+    "tests/fixtures/armament-effects-clips.gd": "08d0e25ae7b02fac5c3f5d7f343d4398496a5cdbd8c9d874aa6efce0f1b526f6",
+    "scripts/game/blast_flipbooks.gd": "13a5b78270da69c43ef5d9207f6451368a688f4839110aadb2ff4d4b415d0d14"
+  },
+  "engine": "Godot 4.7.2.stable.official.ed1daf0bf",
+  "hardware": "Apple M5 Max",
+  "renderer": "gl_compatibility",
+  "size": [
+    1600,
+    900
+  ],
+  "simulation_hz": 30,
+  "seed": 712,
+  "fixture": "tests/fixtures/armament-effects-clips.tscn --clip=explosions",
+  "events_seconds": [
+    1,
+    5,
+    9
+  ],
+  "capture_command": "Godot --path . --rendering-method gl_compatibility --resolution 1280x720 --fixed-fps 30 --write-movie OUTPUT.avi res://tests/fixtures/armament-effects-clips.tscn -- --clip=explosions --label=LABEL",
+  "capture_note": "Project settings produce 1600x900 output. Movie startup contributes a few extra frames; the 360-frame fixture runs at normal speed. Both versions use the updated fixture routing real Fx._explode events including audio; baseline game code is 3fced130. Render settings and mixer were unchanged between captures.",
+  "encoding": "Revised range take: trim the last 12 s of the AVI and encode VP9 CRF 28 with native Opus audio.",
+  "review": {
+    "passes": 3,
+    "tool": "Video Tool",
+    "observed": [
+      "Original cloud had a hard horizontal ground cut. New contact fade removes it.",
+      "First audio pass had too little sustained energy; increased turbulent low-frequency tail.",
+      "Second pass flash visible at 5.05 seconds, decayed by 5.15 seconds.",
+      "Inspected steep 75-degree night camera at Low in Forward+ and actual battlefield in Compatibility.",
+      "Same-camera comparison of the previous and revised gun run. Fuel emission recedes into soot earlier; burst outlines and heights differ across adjacent impacts."
+    ],
+    "audio_limit": "This model cannot perceive audio input. Audio presence, waveform levels, endpoints and clipping were checked, not subjective listening.",
+    "decoded_audio_peak": 0.0968,
+    "clipped_samples": 0,
+    "he_first_second_rms_dbfs": -36.7
+  },
+  "world_capture": {
+    "file": "world.webm",
+    "audio": true,
+    "frames": 192,
+    "fps": 24,
+    "duration_seconds": 8,
+    "command": "Godot --path . --rendering-method forward_plus --fixed-fps 24 --write-movie world.avi res://tests/fixtures/blast-world-clips.tscn -- --clip=blast-close --label=AFTER --frames=OUTPUT",
+    "encoding": "Trim the last 8 s, scale to 1280x720, encode VP9 CRF 28 with native Opus audio.",
+    "scene": "showroom",
+    "seed": 712,
+    "camera": "target + (8,15,18), look_at(target + (0,2.3,0)), FOV 48",
+    "note": "The same camera and seed showed nearly black ground under Compatibility on this Mac. Forward+ makes the grass and soil visible. The last eight seconds of the native recording retain the game audio.",
+    "source_sha256": {
+      "scripts/game/blast_flipbooks.gd": "13a5b78270da69c43ef5d9207f6451368a688f4839110aadb2ff4d4b415d0d14",
+      "scripts/shaders/blast_flipbook.gdshader": "a69f8c4a2b87f19dc47b87a5692b19838ee5315870d2ad59b63d6b145feecfc5",
+      "scripts/shaders/blast_ejecta.gdshader": "79f639131d1bf0e0c60fa901eb3ad6f8d9f7cb4c105224b37ce69921cb67fe30"
+    },
+    "renderer": "forward_plus"
+  },
+  "validation": [
+    "Clean Godot import",
+    "CPU/GPU armament regressions including deterministic synthesis, peak headroom, fade endpoints and airburst ground exclusion",
+    "Scenario and full-map determinism tests",
+    "Grenade and tank: 60 simulated seconds each, seed 712",
+    "Changelog: 10 unit tests; presentation audit: 1 unit test",
+    "Compatibility day range and battlefield; Forward+ night at 75-degree elevation and Low effects"
+  ],
+  "cover_comparison": {
+    "baseline_ref": "a986faddd3ce7513482bc964faccfe4ec84c6e2a",
+    "scene": "tests/fixtures/blast-world-clips.tscn -- --clip=blast-cover",
+    "file": "cover.webm",
+    "seed": 712,
+    "fps": 24,
+    "after_starts_seconds": 8,
+    "camera": "target + (8,1.65,5), aimed 1.25 m above the burst",
+    "renderer": "forward_plus",
+    "source_sha256": {
+      "scripts/game/blast_flipbooks.gd": "13a5b78270da69c43ef5d9207f6451368a688f4839110aadb2ff4d4b415d0d14",
+      "scripts/game/gunfx.gd": "70a6cf93e75f4f2adf41bf7bbdfbe7f52984b9b9a59108355cb0b7498dc1c43c",
+      "scripts/shaders/blast_flipbook.gdshader": "a69f8c4a2b87f19dc47b87a5692b19838ee5315870d2ad59b63d6b145feecfc5",
+      "tests/fixtures/blast-world-clips.gd": "493a4c6ca5e07f0ea03810149fe117fa20d615eed83979aedf94c385162b2ab4"
+    }
+  },
+  "impact_comparison": {
+    "file": "impact-comparison.webm",
+    "previous_ref": "f1908b4da2338ab74c2e574237aba4f4a233bb9c",
+    "stage": "a10",
+    "start_of_each_take_seconds": 6.25,
+    "edit": "Two native A-10 recordings, seed 712, Forward+, 24 fps. From 6.25 s of each movie, crop 1280x552 at (160,113), stack the views and play only the revised in-game mix. Runtime is 131 frames.",
+    "revised_source_sha256": {
+      "scripts/ui/support_demo.gd": "f3fc3815090752abc41413ae3de0739e3fd39eb6d6a0f81ac9b2bd825f249326",
+      "scripts/game/blast_flipbooks.gd": "1b6871c672f780a8f9807ecde2a34beac82d93ca361fab380f92161c8d31bb33",
+      "scripts/game/gunfx.gd": "16e978f3fa847478340f587d8ab383913f4fd87cef321d64bf2b1d04c081e04f",
+      "scripts/shaders/blast_flipbook.gdshader": "dad3c87ab72c1f8a2a01904ab3aacd79543e401efebd468df4da2a27731bf63a",
+      "tests/fixtures/support-clips.gd": "0a8bc17010d1460352966c47aa6e3fe1188c0a62a4646c297bf3a60549c27504",
+      "scripts/game/vfx.gd": "c8d51f125754bd5925a71e8ce2da0314f4c8802aeecd4a567d34b6823009594d",
+      "scripts/autoload/sfx.gd": "9e2e90fd3a3c2fcc5b8f4186432591a6849fb9014b076ccdee4258915a0f07ed",
+      "scripts/game/projectile.gd": "a2c9f6cfd90163c7a0f28cd0b02c23c6f5a141306f7677ec0d146f28f53f0eb6",
+      "scripts/game/physics_fx.gd": "0e7247e14229d8b707c1bde1d21265183a0de6dae5f09fbd909197621de1a3c9"
+    }
+  },
+  "wreck_landing": {
+    "previous_ref": "820353e9de8340c2aaa488eec308f73947036e82",
+    "file": "wreck-landing.webm",
+    "stage": "a10",
+    "recording": "Two native 24 fps Forward+ takes, seed 712, starting at movie time 7.0 s. Crop 480x300 at (850,345). Track the rightmost wreck model and its authoritative landing position after each frame draw.",
+    "previous_backtrack_m": 0.907,
+    "revised_backtrack_m": 0.0,
+    "revised_final_position_error_m": 0.0,
+    "source_sha256": "0e7247e14229d8b707c1bde1d21265183a0de6dae5f09fbd909197621de1a3c9"
+  }
+}

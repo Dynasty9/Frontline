@@ -16,6 +16,7 @@ lead artifact; original notes and supporting media remain under **Explore this c
 | Controlled motion | Traverse, propulsion and muzzle geometry | `tests/fixtures/vehicle-motion-clips.tscn`; matched main/PR recordings |
 | Controlled capture presets | Tanks, boats and aircraft | `stages.json`: fixture, duration, simulation rate and cue |
 | Armament effects | Grenade, HE, fuel, tracer and impact timing | `armaments`: real effect pools, seed 712, 10 m ground marks, fixed 30 Hz |
+| Audible explosions | Separate grenade, HE and fuel reports | `explosions`: real explosion events at 1, 5 and 9 seconds; use `--write-movie` for audio |
 | Material impact close-ups | Dirt, stone and metal debris without obscuring fuel smoke | `impacts`: four seconds per material, fixed 30 Hz, normal speed |
 | Illumination flares | Parachute descent, wind, sparks and smoke | `flares`: same effect code at night, following camera, fixed 30 Hz |
 | Battlefield effects reel | All armaments over real terrain, followed by a night flare | `battlefield-effects`: 28 seconds, showroom seed 712, fixed 24 Hz, Forward+ |
@@ -50,6 +51,11 @@ python3 tools/showcase/capture.py boats --output /absolute/scratch/boats
 ```
 
 Inspect the capture log and beginning/action/end frames before keeping a clip.
+To repeat the low sandbag shot, pass `--clip=blast-sandbag` to `blast-world-clips.tscn`.
+For synchronized sound, run the `armament-effects-clips.tscn` fixture with
+`--fixed-fps 30 --write-movie /absolute/scratch/explosions.avi` before `--`, and
+`--clip=explosions` after it. Encode the AVI with its audio track retained.
+The PNG sequence from `capture.py` is silent and cannot demonstrate sound.
 Reject unclear subjects, broken materials, debug overlays and unlabelled speed
 changes. Preserve the generated `capture.json` with the catalog's capture record.
 Use fixed simulation timing when encoding image sequences so rendering speed

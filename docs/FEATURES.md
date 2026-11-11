@@ -1169,6 +1169,9 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   fuel smoke. Ground-only decals keep scorch off walls and smoke. HE leaves lighter char, while crater
   shading follows the fine height field so the bowl and raised rim remain legible. Ground chunks use local
   height bounds for distance detail, keeping the fine crater mesh near the camera and the coarse grid far away.
+  A low dust skirt spreads along the ground and upper dust drifts downwind.
+  Reports layer a pressure crack, turbulent bass, irregular ground returns and scattered grit, with clean
+  endpoints and peak headroom. Fragmentation grenades use the shorter report rather than a shell's boom.
   Each blast uses one pooled surface. Per-frame bounds trim empty pixels before drawing; quality sets the pool
   budget, and quality and distance limit interpolation. Low and medium settings leave optical-flow maps unloaded
   until a higher-quality burst needs them.

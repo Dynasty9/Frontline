@@ -27,7 +27,7 @@ var _mat: PhysicsMaterial
 var _chunk_mat: PhysicsMaterial
 var ragdolls: Array = []
 var _chunks: Array = []  # [body, visual, prev, curr, t, life]
-var _tosses: Array = []  # [body, model, owner, final local transform, prev, curr, t, offset, blend from]
+var _tosses: Array = []  # [body, model, owner, final local transform, prev, curr, t, offset, blend from, wreck flight time, launch position]
 
 
 func _init(w) -> void:
@@ -264,11 +264,18 @@ func toss(who: Node3D, model: Node3D, from_xf: Transform3D, vel: Vector3, spin: 
 	add_child(b)
 	# the body's centre sits half a height up from the model's base
 	var off := Transform3D(Basis.IDENTITY, Vector3(0, size.y * 0.5, 0))
+	# The cover collider is already at the landing spot. It belongs to
+	# this same prop and must not shove its airborne model away.
+	if who is Structure and who.body:
+		b.add_collision_exception_with(who.body)
 	b.global_transform = from_xf * off
 	b.linear_velocity = vel
 	b.angular_velocity = spin
 	model.global_transform = from_xf
-	_tosses.append([b, model, who, final_local, b.global_transform, b.global_transform, 0.0, off, Transform3D()])
+	# Vehicle._toss_plan fixes both the horizontal endpoint and the flight
+	# time. Settle during descent, before the model appears parked.
+	var flight := 2.0 * vel.y / 19.6 if who is Structure and who.skind == "wreck" else 0.0
+	_tosses.append([b, model, who, final_local, b.global_transform, b.global_transform, 0.0, off, from_xf, flight, from_xf.origin])
 
 
 ## A loose prop (a lamp post, a bench) thrown or toppled: it falls under
@@ -380,7 +387,20 @@ func _process(dt: float) -> void:
 		var t: float = e[6]
 		var off: Transform3D = e[7]
 		var final_xf: Transform3D = (who as Node3D).global_transform * (e[3] as Transform3D)
-		if t < 2.6 and not (t > 1.0 and b2.sleeping):
+		var flight: float = e[9]
+		if flight > 0.0:
+			var u := minf(t / flight, 1.0)
+			var pose := (e[4] as Transform3D).interpolate_with(e[5], a) * off.affine_inverse()
+			pose = pose.interpolate_with(final_xf, smoothstep(0.5, 1.0, u))
+			var travel := (e[10] as Vector3).lerp(final_xf.origin, u)
+			pose.origin.x = travel.x
+			pose.origin.z = travel.z
+			model.global_transform = pose
+			if u == 1.0:
+				model.transform = e[3]
+				b2.queue_free()
+				_tosses.remove_at(i)
+		elif t < 2.6 and not (t > 1.0 and b2.sleeping):
 			model.global_transform = (e[4] as Transform3D).interpolate_with(e[5], a) * off.affine_inverse()
 			e[8] = model.global_transform
 		else:

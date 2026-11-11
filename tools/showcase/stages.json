@@ -294,5 +294,20 @@
       "look_lift": 0.3
     },
     "events": "HE size 1.4 at 0.5 and 6.5 seconds. Two six-second shots. Stamps the same terrain deformation as Combat after each visual event, without entity damage. Holds each crater after dust clears; ground.json records measured depth."
+  },
+  "explosions": {
+    "scene": "tests/fixtures/armament-effects-clips.tscn",
+    "seconds": 12,
+    "fps": 30,
+    "simulation_hz": 30,
+    "engine_fixed_fps": 30,
+    "cue": "Grenade at 1 second, HE at 5 seconds, fuel at 9 seconds. Use Godot --write-movie for synchronized native audio; frame-only capture.py output is silent.",
+    "timeout": 600,
+    "crf": 24,
+    "render_settings": {
+      "effects": 2,
+      "decals": true,
+      "projection": "perspective"
+    }
   }
 }
