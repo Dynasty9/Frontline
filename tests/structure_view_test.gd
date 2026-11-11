@@ -156,6 +156,25 @@ func check_camera_residency() -> void:
 	world.terrain.landform.peak = 240.0
 	view.focus_at(elevated.position, camera)
 	check(camera.is_position_in_frustum(elevated.position) and view.resident.has(3), "Visible trees on high terrain must survive cell frustum culling")
+	# Eight cold models exceed the four-per-frame prefetch budget.
+	world.cam = RtsCamera.new()
+	world.cam.world = world
+	viewport.add_child(world.cam)
+	camera.current = true
+	world.loaded = true
+	var crowd: Array[ViewStub] = []
+	for i in 8:
+		var st := ViewStub.new()
+		st.eid = 500 + i
+		st.position = elevated.position + Vector3(i * 0.2, 0, 0)
+		st.view_active = false
+		view.add(st)
+		crowd.append(st)
+	view._process(0.016)
+	for st in crowd:
+		check(st.view_active, "Every visible structure must be ready on the first frame of a camera cut")
+		view.remove(st)
+		st.free()
 	view.remove(elevated)
 	elevated.free()
 	view.free()

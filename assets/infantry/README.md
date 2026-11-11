@@ -15,4 +15,4 @@ godot --headless --path . --script tests/mocap/bake_rifle.gd
 godot --headless --path . --script tests/mocap/pack_infantry.gd
 ```
 
-The original downloads remain ignored under `assets/local_mocap`. All export presets include the runtime bundle and exclude that source directory. Existing resource paths are retained inside the pack so the game and animation viewer use the same assets. The optional SWAT mode still uses `--skinned-units --swat-units`.
+The original downloads remain ignored under `assets/local_mocap`. All export presets include the runtime bundle and exclude that source directory. Existing resource paths are retained inside the pack so the game and animation viewer use the same assets. Ordinary battles use the bundled SWAT character for detailed Coalition riflemen by default. The existing `--skinned-units --swat-units` launch still selects it.

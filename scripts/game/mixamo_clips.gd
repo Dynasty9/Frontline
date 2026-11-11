@@ -6,6 +6,8 @@ const ROOT := "res://assets/local_mocap/mixamo/"
 static func files() -> Dictionary:
 	var result := {}
 	for folder in ["shooter", "basic_shooter", "activities", "rifle_locomotion", "pro_rifle", "prone", "pistol", "injured", "gestures"]:
+		if not DirAccess.dir_exists_absolute(ROOT + folder):
+			continue
 		for file in DirAccess.get_files_at(ROOT + folder):
 			file = file.trim_suffix(".remap")
 			if file.to_lower().ends_with(".fbx"):

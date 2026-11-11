@@ -1,6 +1,7 @@
 extends SceneTree
 
 func _initialize() -> void:
+	check_model_selection()
 	var archive := ZIPReader.new()
 	assert(archive.open("res://assets/infantry/infantry.zip") == OK)
 	var scenes := 0
@@ -21,3 +22,26 @@ func _initialize() -> void:
 	assert(ResourceLoader.exists("res://assets/local_mocap/runtime/m4.scn"))
 	print("INFANTRY PACK CHECK PASS 263 scenes, no raw sources or animation meshes")
 	quit()
+
+
+func check_model_selection() -> void:
+	const Assets := preload("res://scripts/autoload/infantry_assets.gd")
+	var installed := {}
+	var exists := func(path: String) -> bool: return installed.has(path)
+	for file: String in Assets.MIXAMO_CLIPS.values():
+		installed[Assets.MIXAMO_BASE + file] = true
+	installed[Assets.SWAT] = true
+	assert(Assets.select_model([], exists) == "", "A partial installation must keep procedural geometry")
+	installed[Assets.Rifle.SCENE] = true
+	assert(Assets.select_model([], exists) == Assets.SWAT, "Complete SWAT installations require no flags")
+	for file: String in Assets.CLIPS.values():
+		installed[Assets.BASE + file] = true
+	installed[Assets.MANNEQUIN] = true
+	installed[Assets.SOLDIER] = true
+	assert(Assets.select_model([], exists) == Assets.SWAT)
+	assert(Assets.select_model(["--skinned-units"], exists) == Assets.SOLDIER)
+	for flag in ["--swat", "--swat-units"]:
+		assert(Assets.select_model(["--skinned-units", flag], exists) == Assets.SWAT)
+	installed.erase(Assets.SWAT)
+	assert(Assets.select_model([], exists) == Assets.SOLDIER)
+	assert(root.get_node("InfantryAssets").gameplay_model == Assets.SWAT, "Mount the shipped pack before selecting the default model")

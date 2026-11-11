@@ -3,7 +3,8 @@ extends Node3D
 ## Retarget in rest space, then satisfy contacts on the receiving body. Mesh
 ## weights and bone lengths stay authored; only the pelvis translates.
 
-var model_asset := "res://assets/local_mocap/character/Soldier.glb"
+const Assets := preload("res://scripts/autoload/infantry_assets.gd")
+var model_asset := Assets.SWAT if "--swat-units" in OS.get_cmdline_user_args() or "--swat" in OS.get_cmdline_user_args() else Assets.SOLDIER
 var native_player: AnimationPlayer
 var _native_clip := ""
 var native_socket := Transform3D.IDENTITY
@@ -77,11 +78,9 @@ var ladder_contacts := {}
 func build(clips: Dictionary = MocapCharacter.CLIPS) -> bool:
 	source = MocapCharacter.new()
 	add_child(source)
-	if not source.build(clips):
+	if not source.build(clips, model_asset == Assets.SWAT):
 		return false
 	source.visible = false
-	if "--swat-units" in OS.get_cmdline_user_args():
-		model_asset = "res://assets/local_mocap/mixamo/Swat.fbx"
 	if not ResourceLoader.exists(model_asset):
 		push_error("Character asset missing: " + model_asset)
 		return false

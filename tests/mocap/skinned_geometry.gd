@@ -20,16 +20,18 @@ func _process(dt: float) -> void:
 			procedural += 1
 			continue
 		native += 1
+		if InfantryAssets.gameplay_model == InfantryAssets.SWAT:
+			assert(model.skinned.model_asset == InfantryAssets.SWAT and model.rifle_driver != null, "Bundled riflemen use the SWAT animation driver without flags")
 		assert(not model.root.visible)
 		for mesh in model.root.find_children("*", "MeshInstance3D", true, false):
 			assert(mesh.get_child_count() > 0, "Unused procedural leaf mesh survived cleanup")
 		assert(not model.skinned.find_children("*", "MeshInstance3D", true, false).is_empty(), "Skinned geometry was removed")
 		assert(is_instance_valid(model.skinned.weapon) and is_instance_valid(model.skinned.magazine.mesh))
-		for key in MocapRetarget.MAP:
+		for key in load("res://scripts/game/mocap_retarget.gd").MAP:
 			assert(is_instance_valid(model.get(key)), "Procedural pose pivot was removed")
 		for pivot in [model.gun, model.pistol, model.nade, model.stretcher]:
 			assert(is_instance_valid(pivot), "Attachment pivot was removed")
 	assert(procedural > 0)
-	assert(native > 0 if "--skinned-units" in OS.get_cmdline_user_args() else native == 0)
+	assert(native > 0 if not InfantryAssets.gameplay_model.is_empty() else native == 0)
 	print("SKINNED GEOMETRY PASS skinned=", native, " procedural=", procedural, " pivots and attachments intact")
 	get_tree().quit()

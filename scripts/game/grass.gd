@@ -2,7 +2,7 @@ class_name Grass
 extends Node3D
 ## Instanced grass clumps, bushes and stones in 32 m chunks. Placement follows
 ## the ground's biome map and avoids roads and building floors. Rebuilt
-## progressively (a few chunks per frame) when the map or settings change.
+## for the active camera first, with nearby off-screen chunks prepared between frames.
 
 const CHUNK := 32.0
 var HALF := MapDims.HALF
@@ -22,12 +22,14 @@ var level := -1
 var _queue: Array = []
 var _rebuild_t := -1.0
 var _blocked := PackedByteArray()
+var _bounds := {}  # local terrain heights for chunks still waiting to be built
 var _built := {}  # Vector2i -> Array of nodes
 var _center := Vector2i(999999, 999999)
 const REACH := 7  # beyond the bushes' 170 m fade, including a chunk and pan margin
 
 
 func _ready() -> void:
+	process_priority = 20  # The camera and director have chosen this frame's view.
 	clump = _make_clump()
 	bush = _make_bush()
 	stone = _make_stone()
@@ -97,20 +99,26 @@ func _view_process(dt: float) -> void:
 	if _scar_dirty:
 		_scar_dirty = false
 		scar_tex.update(scar_img)
-	if _rebuild_t > 0.0:
+	if atmo.world.building or not atmo.world.loaded or not atmo.world.cam:
+		return
+	if level < 0:
+		_rebuild_t = -1.0
+		_start_rebuild(true)
+	elif _rebuild_t > 0.0:
 		_rebuild_t -= dt
 		if _rebuild_t <= 0.0:
 			_start_rebuild()
-	if _task >= 0:
-		if not WorkerThreadPool.is_task_completed(_task):
-			return  # (the grass as it was stays till the new is laid out)
+	if _task >= 0 and WorkerThreadPool.is_task_completed(_task):
 		WorkerThreadPool.wait_for_task_completion(_task)
 		_task = -1
 		_lay_out()
 	if level == 0 or _blocked.is_empty():
 		return
-	var camera := atmo.world.cam
-	_stream(camera.cam.global_position if camera else Vector3.ZERO)
+	var camera := get_viewport().get_camera_3d()
+	if not camera:
+		return
+	_stream(camera.global_position)
+	_build_visible(camera)
 	var started := Time.get_ticks_usec()
 	var n := 0
 	while not _queue.is_empty() and n < 2 and Time.get_ticks_usec() - started < 1000:
@@ -124,7 +132,7 @@ func _exit_tree() -> void:
 		_task = -1
 
 
-func _start_rebuild() -> void:
+func _start_rebuild(first_view := false) -> void:
 	level = int(Settings.get_v("grass"))
 	_shrub_noise.seed = int(atmo.world.settings.get("seed", 1)) + 219
 	_shrub_noise.frequency = 0.035
@@ -136,7 +144,7 @@ func _start_rebuild() -> void:
 		_clear()
 		return
 	_job = _blocked_job()
-	if OS.has_feature("nothreads"):
+	if first_view or OS.has_feature("nothreads"):
 		_job.run()
 		_lay_out()
 	else:
@@ -157,6 +165,7 @@ func _stream(pos: Vector3) -> void:
 		return
 	_center = center
 	_queue.clear()
+	_bounds.clear()
 	for key: Vector2i in _built.keys():
 		if absi(key.x - center.x) > REACH + 2 or absi(key.y - center.y) > REACH + 2:
 			for node in _built[key]:
@@ -171,9 +180,33 @@ func _stream(pos: Vector3) -> void:
 	_queue.sort_custom(func(a: Vector2i, b: Vector2i): return (a - center).length_squared() < (b - center).length_squared())
 
 
+## Finish the visible ground before drawing. The remaining queue preloads around it.
+func _build_visible(camera: Camera3D) -> void:
+	if _queue.is_empty():
+		return
+	var planes := camera.get_frustum()
+	var pos := camera.global_position
+	for i in range(_queue.size() - 1, -1, -1):
+		var cell: Vector2i = _queue[i]
+		var center := Vector3((cell.x + 0.5) * CHUNK, 0, (cell.y + 0.5) * CHUNK)
+		if not _bounds.has(cell):
+			var box := atmo._ground_chunk_bounds(center, CHUNK).grow(2.0)
+			box.position += center
+			_bounds[cell] = box
+		var bounds: AABB = _bounds[cell]
+		# Bushes have the longest draw distance (170 m plus their 12 m fade).
+		if pos.distance_squared_to(pos.clamp(bounds.position, bounds.end)) > 182.0 * 182.0:
+			continue
+		if StructureView.intersects_view(bounds.get_center(), bounds.size * 0.5, planes):
+			_build_chunk(cell)
+			_queue.remove_at(i)
+
+
 func _clear() -> void:
+	_bounds.clear()
 	for k in _built:
 		for node in _built[k]:
+			node.hide()
 			node.queue_free()
 	_built.clear()
 	_queue.clear()

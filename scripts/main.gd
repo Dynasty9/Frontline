@@ -79,7 +79,7 @@ func _ready() -> void:
 		if s.begins_with("--"):
 			var kv := s.substr(2).split("=", true, 1)
 			args[kv[0]] = kv[1] if kv.size() > 1 else "1"
-	if args.has("skinned-units") or args.has("swat-units"):
+	if args.has("skinned-units") or args.has("swat-units") or args.has("swat") or (DisplayServer.get_name() != "headless" and not InfantryAssets.gameplay_model.is_empty()):
 		Engine.physics_ticks_per_second = 120
 		Engine.max_physics_steps_per_frame = 12
 	if OS.has_feature("web"):

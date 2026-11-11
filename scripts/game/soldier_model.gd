@@ -269,18 +269,20 @@ func build(utype: String, team: int, seed: int) -> void:
 	for j in [root, hips, torso, head, tails, thigh_l, shin_l, thigh_r, shin_r, arm_l, arm_r, forearm_l, forearm_r, gun, pistol, tube, back_item, stretcher]:
 		if j:
 			Mats.merge_static(j, [], false, false, true)
-	# Opt-in until the character source assets are installed for a release.
-	if is_inside_tree() and get_parent() is Soldier and utype == "rifleman" and "--skinned-units" in OS.get_cmdline_user_args() and ResourceLoader.exists("res://assets/local_mocap/mixamo/Swat.fbx" if "--swat-units" in OS.get_cmdline_user_args() else "res://assets/local_mocap/character/Soldier.glb"):
+	if is_inside_tree() and get_parent() is Soldier and utype == "rifleman" and not InfantryAssets.gameplay_model.is_empty():
 		skinned = SkinnedRifleman.new()
+		skinned.model_asset = InfantryAssets.gameplay_model
 		add_child(skinned)
 		if skinned.build():
 			skinned.bind_procedural(self)
 			skinned.ground_height = get_parent().world.ground_y
-			if "--swat-units" in OS.get_cmdline_user_args():
+			if skinned.model_asset == InfantryAssets.SWAT:
 				load("res://scripts/game/mixamo_clips.gd").install(skinned, true)
-				rifle_driver = load("res://scripts/game/rifle_animation_controller.gd").new()
-				rifle_driver.setup(skinned)
-				get_parent().world.stat("native_riflemen")
+				var driver := load("res://scripts/game/rifle_animation_controller.gd")
+				if (driver.LOCOMOTION + ["reloading"]).all(func(clip: String) -> bool: return skinned.native_player.has_animation(driver.PACK + clip)):
+					rifle_driver = driver.new()
+					rifle_driver.setup(skinned)
+					get_parent().world.stat("native_riflemen")
 			root.visible = false
 			# Keep pose/attachment pivots, but discard geometry replaced by the skin.
 			for mesh in root.find_children("*", "MeshInstance3D", true, false):
@@ -1385,7 +1387,7 @@ func pose(dt: float, life: int, posture: int, act: int, speed: float, backwards:
 			if captured_activity:
 				_native_locomotion = false
 				if act in [Soldier.Act.LIMP, Soldier.Act.DAZED]: weapon_slung = true
-				if act == Soldier.Act.THROW and rifle_driver != null and activity != "mixamo_prone__Throw_Grenade":
+				if act == Soldier.Act.THROW and rifle_driver != null and activity != "mixamo_prone__Throw_Grenade" and (posture != Soldier.Post.PRONE or skinned.native_player.has_animation(rifle_driver.PRONE_CLIP)):
 					skinned._begin_pose(24)
 					if posture == Soldier.Post.PRONE:
 						rifle_driver.prone_time = skinned.native_player.get_animation(rifle_driver.PRONE_CLIP).length
