@@ -2,6 +2,27 @@
 
 How the code is laid out, and the command-line modes used to test it. See also [CONTRIBUTING](../CONTRIBUTING.md).
 
+## Content guard
+
+The `No model names or unreviewed attribution` CI job rejects AI assistant,
+provider and model branding and authorship/credit phrases in tracked text on
+every pull request and push to main. Run it locally with
+`python .github/scripts/check_model_names.py`; failures show the file and line.
+The name list and explicit exemptions live in that script. Exemptions cover agent
+instructions/configuration, the guard and its tests, and existing internal
+scaling/capture provenance. Game code, website content, ordinary documentation
+and release notes are checked. Binary media and untracked files are not scanned;
+this does not inspect rendered images, audio, Git history or commit messages.
+
+New prose credits fail even if they name a contributor: Git author records remain
+the source of contribution attribution, rather than attempting to verify names in
+prose. `.github/attribution-allowlist.json` preserves reviewed, exact lines for
+asset licenses, build provenance and ordinary descriptions of game/code behavior.
+An exception applies only to that line in that file; edited or additional credits
+must be reviewed. Model-name checks still apply to those lines. Keep the phrase
+patterns current as new wording is encountered; this is a text guard, not a
+semantic authorship detector.
+
 ## Scaling and the optional native extension
 
 Gameplay remains GDScript. A Rust GDExtension accelerates nearest-enemy candidate

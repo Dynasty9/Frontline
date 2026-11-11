@@ -111,7 +111,7 @@ motion or have Data Saver on.
 The text the page quotes (the counts, the missions, the radio traffic, the vehicle names) lives in
 `src/lib/intel.ts`, taken from the game's own tables.
 
-When the game changes, the `website-footage` skill (`.claude/skills/website-footage/`) brings both up to date:
+When the game changes, the `website-footage` skill (`.agents/skills/website-footage/`) brings both up to date:
 `check_intel.py` checks the copy against the game (and `--fix` updates the counts), `record.py` re-records the
 takes listed in its `shots.json`, and `build.py` cuts and encodes them into `public/media`. Its `SKILL.md` walks
 through it, with the flags that make good footage.
