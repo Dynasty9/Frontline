@@ -4,7 +4,7 @@
   "medium": "still",
   "stage": "tools/showcase/vehicle-surfaces.tscn",
   "rationale": "Static construction change: one matched close-up sheet of six representative vehicles. Full-roster and per-part review captures stay outside Git; most added hardware is small at gameplay distance.",
-  "source_ref": "69a1df0348fb879aa98d5fbfd7f02ac31a10c6d7",
+  "source_ref": "34880bb34b5fee9a343e2203129775f49b07a172",
   "before_ref": "69a1df0348fb879aa98d5fbfd7f02ac31a10c6d7",
   "sources": [
     {
@@ -13,7 +13,7 @@
     },
     {
       "file": "changelog/unreleased/shared-guns-and-turret-fittings/capture.json",
-      "sha256": "18411fc2ebfdecbea6cba475d925059d927c9f3d8525caaf72548720b5408c4e"
+      "sha256": "bbdc1667187058511999161b2f6db748ac4c25da05ccf749114805d0679d282d"
     }
   ],
   "output": null

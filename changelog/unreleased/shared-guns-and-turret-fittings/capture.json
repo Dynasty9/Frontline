@@ -1,6 +1,6 @@
 {
   "before_ref": "69a1df0348fb879aa98d5fbfd7f02ac31a10c6d7",
-  "after_ref": "the change that adds this entry, on 69a1df0",
+  "after_ref": "34880bb34b5fee9a343e2203129775f49b07a172",
   "engine": "Godot 4.7.2 stable",
   "renderer": "forward_plus",
   "team": 0,
