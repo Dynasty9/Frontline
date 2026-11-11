@@ -185,7 +185,7 @@ func blast_chunks(p: Vector3, size: float) -> void:
 		var out := randf_range(2.5, 7.0) * sqrt(size)
 		var v := Vector3(cos(a) * out, randf_range(5.0, 11.0) * sqrt(size), sin(a) * out)
 		var col := Color(0.2, 0.16, 0.12) if randf() < 0.75 else Color(0.29, 0.28, 0.26)
-		_chunk(p + Vector3(cos(a) * 0.6, 0.4, sin(a) * 0.6), Vector3(s, s * 0.7, s * 0.85), col, v, randf_range(14.0, 30.0))
+		_chunk(p + Vector3(cos(a) * 0.6, 0.4, sin(a) * 0.6), Vector3(s, s * 0.7, s * 0.85), col, v, randf_range(14.0, 30.0), i)
 	# and whatever else was lying close by gets thrown about
 	var r := 2.0 + size * 3.0
 	for rd in ragdolls:
@@ -208,7 +208,7 @@ func debris(p: Vector3, col: Color, n: int) -> void:
 		_chunk(p + Vector3(randf_range(-0.6, 0.6), randf_range(0.2, 1.0), randf_range(-0.6, 0.6)), Vector3(s, s * 0.55, s * 0.8), col.darkened(randf_range(0.0, 0.3)), v, randf_range(20.0, 40.0))
 
 
-func _chunk(p: Vector3, size: Vector3, col: Color, v: Vector3, life: float) -> void:
+func _chunk(p: Vector3, size: Vector3, col: Color, v: Vector3, life: float, stone_variant := -1) -> void:
 	var e: Array
 	if _chunks.size() >= MAX_CHUNKS:
 		e = _chunks.pop_front()
@@ -231,9 +231,17 @@ func _chunk(p: Vector3, size: Vector3, col: Color, v: Vector3, life: float) -> v
 	b.global_transform = Transform3D(Basis.from_euler(Vector3(randf() * TAU, randf() * TAU, randf() * TAU)), p)
 	b.linear_velocity = v
 	b.angular_velocity = Vector3(randf_range(-12, 12), randf_range(-12, 12), randf_range(-12, 12))
-	var vis := MeshInstance3D.new()
-	vis.mesh = Res.box(size)
-	vis.material_override = Res.mat(col)
+	# The pivot follows the body and shrinks at the end. The stone keeps its own shape beneath it.
+	var piece := MeshInstance3D.new()
+	var vis: Node3D = piece
+	if stone_variant >= 0:
+		vis = Node3D.new()
+		vis.add_child(piece)
+		piece.mesh = Res.alpine_stone(stone_variant)
+		piece.scale = size * 0.5
+	else:
+		piece.mesh = Res.box(size)
+	piece.material_override = Res.mat(col)
 	add_child(vis)
 	vis.global_transform = b.global_transform
 	_chunks.append([b, vis, b.global_transform, b.global_transform, 0.0, life])

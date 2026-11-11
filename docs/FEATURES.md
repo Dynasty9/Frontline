@@ -1224,7 +1224,7 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   until it's dark smoke, a lit smoke column that drifts with the wind, a dirt plume, sparks and debris that
   bounce on the ground, a rolling dust ring, a faint heat-shimmer shockwave and a scorch mark. Heavy rounds
   throw a fountain of earth high into the air that rains back down, fling burning fragments out in arcs that
-  burn on where they land, leave flames licking about the crater for a moment, and clods land around the
+  burn on where they land, leave flames licking about the crater for a moment, and irregular stones and clods tumble and land around the
   crater once the debris has fallen.
 - **Explosions** distinguish fragmentation grenades, high explosive shells and fuel explosions. Grenades
   give a short flash, fast dark fragments and a small dirt burst. HE shells, including the visual scale of a
