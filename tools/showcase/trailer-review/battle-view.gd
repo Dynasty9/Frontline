@@ -2,6 +2,8 @@ extends "res://scripts/main.gd"
 ## Frame the participants already in the mission from a camera beside them.
 
 @export_enum("Boats", "Flyover", "Infantry fighting vehicles") var view := 0
+## Keep the ground camera with the rifle squads as the vehicles leave the foreground.
+var opening_centre := Vector3.INF
 @onready var lens: Camera3D = $Camera3D
 
 func _process(dt: float) -> void:
@@ -40,8 +42,10 @@ func _process(dt: float) -> void:
 		lens.position = lead.position - ahead * 22.0 + right * 11.0 + Vector3.UP * 12.0
 		lens.look_at(lead.position.lerp(centre, 0.42))
 	elif view == 2:
-		lens.position = centre + Vector3(-0.8, 4.6, 16.4)
-		lens.look_at(centre + Vector3(0, 0.9, -5.6))
+		if not opening_centre.is_finite():
+			opening_centre = centre
+		lens.position = opening_centre + Vector3(-4.6, 3.4, 17.8)
+		lens.look_at(opening_centre.lerp(centre, 0.32) + Vector3(0, 1.1, -4.3))
 	else:
 		return
 	lens.make_current()
