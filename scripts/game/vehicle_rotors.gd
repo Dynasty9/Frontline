@@ -106,3 +106,25 @@ static func tail(k: VehicleModels, p: Node3D, pos: Vector3, nb: int, r: float, c
 		k._fold(mount)
 	k.tail_rotor = tr
 	return tr
+
+## Rotor mast between the gearbox and the hub: the old shaft cylinder's centre,
+## radii and height, with a bearing housing at its foot and drive splines up
+## the shaft. `collars` are Vector2(y, radius) in the parent's space: bolted
+## flanges such as the swashplate guide and the coaxial rotors' separator.
+static func mast(k: VehicleModels, parent: Node3D, center: Vector3, top_radius: float, bottom_radius: float, height: float, collars: Array = []) -> void:
+	k._cyl(parent, top_radius, bottom_radius, height, center, Vector3.ZERO, "gunmetal_w", null, 12)
+	var foot := minf(0.07, height * 0.16)
+	k._cyl(parent, bottom_radius * 1.22, bottom_radius * 1.32, foot, center + Vector3(0, -height * 0.5 + foot * 0.5, 0), Vector3.ZERO, "metal_dark", null, 12)
+	for i in 4:
+		var a := TAU * (i + 0.25) / 4.0
+		var n := Vector3(cos(a), 0, sin(a))
+		var low := center + Vector3(0, -height * 0.5 + foot, 0) + n * bottom_radius * 0.98
+		var high := center + Vector3(0, height * 0.42, 0) + n * lerpf(bottom_radius, top_radius, 0.92) * 0.98
+		VehicleFrames.beam(k, parent, low, high, minf(0.02, top_radius * 0.16), minf(0.012, top_radius * 0.1), "steel", null, false)
+	for collar: Vector2 in collars:
+		var thickness := clampf(collar.y * 0.18, 0.04, 0.06)
+		var at := Vector3(center.x, collar.x, center.z)
+		k._cyl(parent, collar.y, collar.y * 1.03, thickness, at, Vector3.ZERO, "steel", null, 14)
+		for i in 6:
+			var a := TAU * i / 6.0
+			VehicleBody.fastener(k, parent, at + Vector3(cos(a) * collar.y * 0.74, thickness * 0.5 + 0.002, sin(a) * collar.y * 0.74), Vector3.UP, clampf(collar.y * 0.06, 0.006, 0.014))

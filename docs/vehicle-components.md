@@ -242,3 +242,68 @@ separate equipment such as loading cranes and vehicle-specific silencers.
 ### Equipment assembly extraction
 
 The [assembly implementation review](vehicle-assembly-review.md) documents the 22 new construction groups, adopters and shape boundaries. Use `VehicleMounts` for equipment mounts/cages, and the extended wheel, aircraft, cab, marine, cargo, door and fitting classes for their domain-specific geometry. Keep sockets and animation ownership in the caller. The registry in `tools/vehicles/assembly-extractions.json` enforces three independent builder groups per API.
+
+### Twenty shared components
+
+The third extraction pass started from three source surveys (armour, trucks and civilians, aircraft and
+boats) that looked for parts every family still built by hand. Each part below now has one builder, and
+every matching site across the roster calls it, so a later improvement to the builder reaches every
+vehicle at once. `tools/vehicles/assembly-extractions.json` registers them; the index test requires at
+least three independent builder groups for each (the counts below are from the construction index, not
+variants).
+
+| Part | API | Builder groups / models | What the builder adds over the old copies |
+| --- | --- | ---: | --- |
+| Turret race ring | `VehicleMounts.turret_ring` | 30 / 50 | Splash-guard lip, bolt circle on the race's outer face |
+| Sight head | `VehicleMounts.sight` | 29 / 45 | Bevelled head, bezelled windows on rubber, armoured visor, cover seam, panoramic stem with flange and rotary joint; one wreck rule for the glass |
+| Commander's cupola | `VehicleMounts.cupola` | 10 / 12 | Bolted roof flange, armoured vision-block housings with rain hoods |
+| Reactive armour brick | `VehicleMounts.era_brick` | 8 / 11 | Bevelled brick, cover plate, two bolts |
+| Rectangular hatch lid | `VehicleFittings.panel_hatch` | 16 / 26 | Coaming, rubber seal, pressed stiffeners, two hinges, grab handle |
+| Bore evacuator | `VehicleFittings.evacuator` | 9 / 12 | Tapered end cones, joint band, filler plug |
+| Dome light | `VehicleFittings.dome_light` | 19 / 25 | Metal base reaching the old sphere's foot, rubber seat, glossy lens |
+| Navigation sidelight | `VehicleFittings.nav_light` | 30 / 36 | Red to port and green to starboard by rule, marker housing, visor |
+| Coaxial gun port | `VehicleWeapons.coax` | 13 / 17 | Port sleeve, slotted flash hider, dark bore |
+| Automatic cannon | `VehicleWeapons.autocannon` | 16 / 24 | Recoil-sleeve collar, clamp bands, ported muzzle brake, bore |
+| Heavy machine gun | `VehicleWeapons.hmg` | 22 / 40 | Shared receiver, feed cover, rear sight, perforated jacket, carrying handle, spade grips, sealed ammo can and belt |
+| Medium machine gun | `VehicleWeapons.mmg` | 8 / 16 | Shared receiver, butt and pistol grip, gas tube, carrying handle, ammo can |
+| Grenade machine gun | `VehicleWeapons.gmg` | 14 / 23 | Shared receiver, spade grips, perforated jacket, drum or box feed with chute |
+| Rotary barrel cluster | `VehicleWeapons.rotary` | 11 / 19 | Spindle, barrel carrier, clamps and bores along any axis |
+| Missile launch tube | `VehicleWeapons.launch_tube` | 4 / 11 | End collars, frangible front cover, rear blast seal, clamp bands, umbilical box |
+| Rotor mast | `VehicleRotors.mast` | 12 / 16 | Bearing housing, drive splines, bolted collars |
+| Turbine exhaust | `VehicleAircraft.turbine_exhaust` | 10 / 14 | Open shell, soot liner, tail cone, heat-tinted lip, outlet aimed along the pipe |
+| Fender sheet | `VehicleBody.fender` | 9 / 30 | Rolled edge bead, bolts, inboard stays, optional valance |
+| Saddle fuel tank | `VehicleRunningGear.fuel_tank` | 6 / 23 | Dished ends and straps (round) or bevelled box, filler cap, hangers, drain |
+| Rolled tarp | `VehicleCloth.roll` | 7 / 18 | Softened ends with wound layers, webbing straps and buckles |
+
+Contracts, so a call drops in where the old primitives were:
+
+- Every builder takes the old geometry's centre, size, radii or endpoints. Position conventions follow the
+  primitives they replace: `turret_ring`, `cupola` and `mast` take the old cylinder's centre and radii;
+  `sight` and `panel_hatch` the old box; `era_brick` the old brick with local +Z outward; `dome_light`
+  the old sphere, with `up` for lamps under a belly or on a staff.
+- Guns run from a point at the back (receiver centre, breech, barrel carrier) to `muzzle`, along any
+  axis, and return `muzzle`. `muzzle` is where the gun's geometry ends; muzzle markers (`k._tip`),
+  turret pivots and recoil parents stay with the family, so weapon sockets do not move (the socket
+  fixture checks all 104 armed models). `size` scales cross-sections, never the length.
+- `sight` windows are `Rect2`s on the head's -Z face: the position is the window's centre relative to
+  the head's centre (in the head's own axes when it is tilted). `stem = (top radius, bottom radius,
+  drop below the head's centre)` makes a panoramic head.
+- `cupola` blocks sit at `first_angle + i * step` radians from forward (positive toward +X).
+- `hmg` and `mmg` take `can` (-1 left, +1 right, 0 none); a remote station whose own ammunition box
+  sits outside the yoke passes 0. `gmg` takes the feed side, drum or box, and `feed_offset`.
+- `fender` builds one flat sheet; a raked lip is a second call with the old rotation.
+- Wrecks: builders that carry glass or lenses omit the intact glass and take the burnt material.
+
+Deliberately left authored: lofted or cylindrical sight heads (Abrams CITV and doghouse, Kuma PERI),
+aircraft sensor drums, DShK-pattern guns with cooling fins, box launchers with tube mouths, packed or
+sideways launch tubes, lofted exhaust suppressors, faceted armoured wheel arches, fender-mounted fuel
+drums and aircraft drop tanks, and civilian beacons and light bars (cylinders and boxes, not domes).
+Inspect the parts with `--surface-shared-parts` in the vehicle showcase. Validate with
+`tests/vehicle-shared-parts.test.mjs` (fold, muzzle, envelope and wreck checks for each builder) and
+the socket fixture, alongside the vehicle tests listed above.
+
+Across 135 models (`tools/vehicles/construction-metrics.tscn`, before and after on the same engine),
+nodes, meshes and wheel/rotor registrations are unchanged; mesh surfaces rise 2.8% and vertices 5.6%
+(27.1 M to 28.6 M), mostly from guns with sealed ammunition cans and reactive armour on the heaviest
+tanks. Reactive bricks keep a plain cover plate because they repeat by the hundred. These are geometry
+measurements of near and far meshes together, not frame-rate claims.

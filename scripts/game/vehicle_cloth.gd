@@ -119,3 +119,23 @@ static func bag(k: VehicleModels, parent: Node3D, size: Vector3, center: Vector3
 
 
 static var _bags := {}
+
+
+## Rolled tarpaulin or bedroll: the old cylinder's centre, radius, length and
+## rotation (the roll's axis is the cylinder's local Y). Softened rolled ends
+## showing the wound layers, and two webbing straps with buckles.
+static func roll(k: VehicleModels, parent: Node3D, center: Vector3, radius: float, length: float, rotation: Vector3, col: Color, material := "canvas") -> void:
+	var mount := k._pivot(parent, center)
+	mount.rotation = rotation
+	var end := minf(0.03, length * 0.04)
+	k._cyl(mount, radius, radius, length - end * 2, Vector3.ZERO, Vector3.ZERO, material, col, 12)
+	for side: float in [-1.0, 1.0]:
+		var y := side * (length * 0.5 - end * 0.5)
+		k._cyl(mount, radius * (0.88 if side > 0 else 1.0), radius * (1.0 if side > 0 else 0.88), end, Vector3(0, y, 0), Vector3.ZERO, material, col, 12)
+		# The wound layers on the end face read as a darker inner spiral.
+		k._add(mount, VehicleFittings._ring(radius * 0.36, radius * 0.5), material, col.darkened(0.22), Vector3(0, side * length * 0.5, 0), Vector3.ZERO, Vector3(1, 0.12, 1), false)
+	var strap_col := col.darkened(0.35)
+	for f: float in [-0.3, 0.3]:
+		k._cyl(mount, radius * 1.035, radius * 1.035, minf(0.04, length * 0.05), Vector3(0, f * length, 0), Vector3.ZERO, "webbing", strap_col, 12, false)
+		k._box(mount, Vector3(0.014, minf(0.05, length * 0.06), 0.04), Vector3(radius * 1.04, f * length, 0), "gunmetal", Color(0.22, 0.23, 0.21), Vector3.ZERO, false)
+	k._fold(mount)
