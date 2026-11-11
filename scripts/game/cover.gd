@@ -25,7 +25,6 @@ const PRONE_MAX := 0.62  # below this he lies behind it
 const KNEEL_MAX := 1.12  # below this he kneels behind it
 const STAND_MAX := 1.55  # below this he stands behind it; above, it's too tall to see over
 const SPACING := 1.25  # a man's width and a bit between fighting positions
-const TRENCH_H := 0.34 - (TrenchNet.FLOOR_Y + 0.15)  # parapet over the duckboards
 # chance a round goes through, by material and by the weapon's penetration
 # (pistol and SMG / rifle / machine gun / heavy machine gun and cannon)
 const PASS := [[0.5, 0.75, 0.9, 1.0], [0.0, 0.08, 0.3, 0.75], [0.0, 0.0, 0.0, 0.15], [0.0, 0.0, 0.0, 0.0]]
@@ -199,9 +198,11 @@ static func _trench(st) -> void:
 		var c := a + dir * ((float(k) + 0.5) / n * L)
 		for s in [-1.0, 1.0]:
 			var wp: Vector3 = c + side * s * (TrenchNet.HALF_W - 0.34)
+			if TrenchNet.inside(st, wp + side * s * 0.5):
+				continue  # a recessed bay has no parapet across its entrance
 			st.anc_p.append(wp)
 			st.anc_n.append(side * s)
-			st.anc_h.append(TRENCH_H)
+			st.anc_h.append(0.34 + st.trench_depth() - (0.3 if st.trench_depth() >= 1.0 else st.trench_depth() * 0.125))
 			st.anc_k.append(OVER)
 
 

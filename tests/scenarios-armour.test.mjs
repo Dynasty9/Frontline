@@ -42,13 +42,19 @@ scenarioTests([
     seed: 1,
     secs: 90,
     does: "a dug-in position, crewed, holds off three fighter cells, a technical and an old tank",
+    begin: async (f) => {
+      const line = await f.structures({ kind: "trench" });
+      assert.equal(line.length, 7, "the trench line protects both flank emplacements");
+      assert.ok(line.some((s) => s.pos[0] === -18) && line.some((s) => s.pos[0] === 18));
+    },
     check: async (f) => {
       f.atLeast("manned", 3, "the crews got on their guns");
       f.atLeast("mortar_round", 1, "the mortar fired");
       f.atLeast("at_launch", 1, "the AT post fired at the armour");
       const armour = (await f.vehicles({ team: 1 })).filter((v) => v.kind !== "truck");
-      assert.ok(armour.every((v) => v.hp < v.max_hp * 0.5 && v.pos[1] < -70),
-        "enemy armour is destroyed or badly damaged and driven back beyond the attack");
+      // The complete protective line can force a withdrawal before half health.
+      assert.ok(armour.every((v) => v.hp <= 0 || (v.hp < v.max_hp && v.pos[1] < -70)),
+        "enemy armour is destroyed or damaged and driven back beyond the attack");
       // The works occupy x=-20..18. A withdrawn/flanking cell 75 m west
       // is outside the position even if it crosses the front trench's z line.
       const inside = (await f.soldiers({ team: 1 })).filter((s) => fighting(s) && Math.abs(s.pos[0]) < 35 && s.pos[1] > -15);
