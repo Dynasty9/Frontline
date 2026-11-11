@@ -104,10 +104,11 @@
       "about": "Watch the leading tank cross from left to right with a second hull in depth."
     },
     "trailer-beach-landing": {
+      "scene": "res://tools/showcase/trailer-review/beach-landing.tscn",
       "frames": 855,
       "args": ["--preset=high", "--seed=3", "--set=volume:0.8,vol_effects:0.85,vol_music:0,battle_music:false,vol_ambience:0.28,vol_ui:0,mute_bg:false,wildlife:0,edge_pan:false", "--mission=beachhead", "--focus=363,108", "--zoom=14", "--pitch=-19", "--cam-yaw=-1.97"],
       "shows": ["Landing squad leaving its RHIB", "Patrol ship beyond the beach"],
-      "about": "From the dry side of the bow, see the squad move away while the patrol ship crosses behind."
+      "about": "The squad clears the bow and fans across the beach. Follow their movement at eye level as the patrol ship enters behind them."
     },
     "trailer-harbour-boats": {
       "frames": 540,
@@ -132,7 +133,7 @@
       "frames": 210,
       "args": ["--preset=high", "--seed=3", "--set=volume:0.8,vol_effects:0.85,vol_music:0,battle_music:false,vol_ambience:0.18,vol_ui:0.35,mute_bg:false,wildlife:0,edge_pan:false", "--scenario=town", "--static", "--play", "--team=0", "--select-first", "--focus=-4,37", "--zoom=13", "--pitch=-37", "--cam-yaw=0.62", "--mood=dawn", "--roadside"],
       "shows": ["Squad crossing the dirt road"],
-      "about": "Shoulder-height cutaway of the exact same squad and order seen in the opening command view."
+      "about": "Back down the edge of the road as the same squad closes on the lens. Keep the riflemen in front and the road and outpost behind them."
     },
     "trailer-order": {
       "scene": "res://tools/showcase/trailer-review/squad-order.tscn",
@@ -567,7 +568,7 @@
         {"take": "trailer-sling", "from": 16.96667, "to": 18.6, "gain_db": 0, "caption": "[Helicopter rotors over the suspended vehicle]"},
         {"take": "trailer-cargo-door", "from": 18.6, "to": 19.7, "gain_db": 0},
         {"take": "trailer-harbour-boats", "from": 13.2, "to": 15.6, "gain_db": 0, "caption": "[Boats approach the shore]"},
-        {"take": "trailer-beach-landing", "from": 26.0, "to": 27.4, "gain_db": 0, "caption": "[Surf as the squad runs ashore]"},
+        {"take": "trailer-beach-landing", "from": 26.13333, "to": 27.53333, "gain_db": 0, "caption": "[Surf as the squad runs ashore]"},
         {"take": "trailer-patrol-pass", "from": 35.1, "to": 37.03333, "gain_db": -1, "caption": "[Patrol ship fires across the harbour]"},
         {"take": "trailer-harbour-finale", "from": 4.3, "to": 6.6, "gain_db": 0, "caption": "[Jet engines climb over the harbour]"},
         {"take": "trailer-harbour-quarter", "from": 11.0, "to": 14.26667, "gain_db": 4, "caption": "[Impacts roll across the water]"}
