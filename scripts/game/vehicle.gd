@@ -2636,7 +2636,10 @@ func _view_process(dt: float) -> void:
 		model.rotation.z = lerpf(model.rotation.z, clampf(ss * 0.012, -0.3, 0.3), 1.0 - exp(-dt * 3.0))
 	# The ground simulation puts the hull origin on the landform, even over a crater.
 	# A helicopter carries that origin clear of the landscape on both peers.
-	var on_ground := not rotor and not flight and not is_boat() and position.y <= world.terrain.landform.height(position) + 0.35
+	var on_ground := not rotor and not flight and not is_boat()
+	if on_ground:
+		var ground_height := world.terrain.landform.height(position) if world.terrain else world.ground_y(position)
+		on_ground = position.y <= ground_height + 0.35
 	if dust and dt > 0.0:
 		var spd2 := Defs.flat(position - _last_pos).length() / dt
 		var want_dust := on_ground and spd2 > 2.0 and position.y <= world.ground_y(position) + 0.35
