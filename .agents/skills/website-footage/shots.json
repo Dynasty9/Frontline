@@ -89,9 +89,85 @@
       "shows": ["hunter", "vehicle fittings"],
       "about": "The Hunter turns toward the camera, bringing its bonnet and recessed grille into view."
     },
+    "trailer-opposing-boats": {
+      "scene": "res://tools/showcase/trailer-review/approaching-boats.tscn",
+      "frames": 1095,
+      "args": [
+        "--preset=high",
+        "--seed=3",
+        "--set=volume:0.8,vol_effects:0.85,vol_music:0,battle_music:false,vol_ambience:0.28,vol_ui:0,mute_bg:false,wildlife:0,edge_pan:false",
+        "--mission=beachhead"
+      ],
+      "shows": [
+        "Patrol ship approaching the two harbour defenders"
+      ],
+      "about": "Patrol ship approaching the two harbour defenders."
+    },
+    "trailer-jet-target": {
+      "scene": "res://tools/showcase/trailer-review/jet-and-harbour.tscn",
+      "frames": 260,
+      "args": [
+        "--preset=high",
+        "--seed=3",
+        "--set=volume:0.8,vol_effects:0.85,vol_music:0,battle_music:false,vol_ambience:0.28,vol_ui:0,mute_bg:false,wildlife:0,edge_pan:false",
+        "--mission=beachhead",
+        "--focus=290.4156,16.97317",
+        "--zoom=58",
+        "--pitch=-17",
+        "--cam-yaw=1.2",
+        "--demo-support=airstrike",
+        "--demo-at=3"
+      ],
+      "shows": [
+        "Jet and the harbour objective ahead of it in one view"
+      ],
+      "about": "Jet and the harbour objective ahead of it in one view."
+    },
+    "trailer-trench-column": {
+      "scene": "res://tools/showcase/trailer-review/armour-and-infantry.tscn",
+      "frames": 495,
+      "args": [
+        "--preset=high",
+        "--seed=3",
+        "--set=volume:0.8,vol_effects:0.85,vol_music:0,battle_music:false,vol_ambience:0.28,vol_ui:0,mute_bg:false,wildlife:0,edge_pan:false",
+        "--scenario=trenches",
+        "--zoom=36",
+        "--pitch=-29",
+        "--cam-yaw=-0.85",
+        "--mood=golden",
+        "--focus=0,-30",
+        "--demo-support=artillery",
+        "--demo-at=6"
+      ],
+      "shows": [
+        "Two infantry fighting vehicles and the advancing rifle squads"
+      ],
+      "about": "Two infantry fighting vehicles and the advancing rifle squads."
+    },
+    "trailer-trench-barrage": {
+      "scene": "res://tools/showcase/trailer-review/trench-barrage.tscn",
+      "frames": 600,
+      "args": [
+        "--preset=high",
+        "--seed=3",
+        "--set=volume:0.8,vol_effects:0.85,vol_music:0,battle_music:false,vol_ambience:0.28,vol_ui:0,mute_bg:false,wildlife:0,edge_pan:false",
+        "--scenario=trenches",
+        "--zoom=36",
+        "--pitch=-29",
+        "--cam-yaw=-0.85",
+        "--mood=golden",
+        "--focus=0,-30",
+        "--demo-support=artillery",
+        "--demo-at=6"
+      ],
+      "shows": [
+        "An occupied trench under the game’s 155 mm artillery barrage"
+      ],
+      "about": "An occupied trench under the game’s 155 mm artillery barrage."
+    },
     "trailer-score": {
       "scene": "res://tools/showcase/trailer-review/title-score.tscn",
-      "frames": 800,
+      "frames": 1050,
       "args": [],
       "shows": ["The game's title and orchestral score"],
       "about": "An isolated 96 bpm battle cue builds from strings to drums, then resolves on the harbour strike."
