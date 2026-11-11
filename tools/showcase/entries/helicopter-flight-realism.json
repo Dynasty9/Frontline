@@ -1,0 +1,24 @@
+{
+  "entry": "changelog/unreleased/helicopter-flight-realism.md",
+  "summary": "Helicopters tilt into every change of speed, bank round turns, climb away from the pad and come down a glide path into a low hover.",
+  "medium": "motion",
+  "stage": "tests/fixtures/helicopter-flight-visual.tscn",
+  "rationale": "The change is movement: one matched before/after clip of the same scripted flight and retarget, at normal speed, with the flight path traced so the old vertical climb and descent and the new climb-out and glide path read at a glance. Its poster is the matched moment when the new flight has landed and the old one is still sinking. Silent: the rotor sound change is described in text only.",
+  "source_ref": "0e7e928d",
+  "before_ref": "69a1df03",
+  "sources": [
+    {
+      "file": "changelog/unreleased/helicopter-flight-realism/flight.mp4",
+      "sha256": "b7e35323ebda65bc025d8610a5d0a725b0aefdb4ac7da2e68b92b105d91bbf84"
+    },
+    {
+      "file": "changelog/unreleased/helicopter-flight-realism/flight.jpg",
+      "sha256": "218d0d6ed619e4128df04e781025086f2f1332ec53f601d89fab4cce4aa3f0f7"
+    },
+    {
+      "file": "changelog/unreleased/helicopter-flight-realism/capture.json",
+      "sha256": "d450e2477a4de64aadcc314061a5eb8c1303ed1b73b67ea0c32764cce48e4329"
+    }
+  ],
+  "output": null
+}

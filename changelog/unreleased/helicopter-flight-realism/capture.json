@@ -1,0 +1,23 @@
+{
+  "source_ref": "0e7e928d",
+  "before_ref": "69a1df03",
+  "stage": "tests/fixtures/helicopter-flight-visual.tscn",
+  "engine": "4.7.2",
+  "renderer": "forward_plus",
+  "resolution": "1600x900 per build, cropped to 1600x610 (rows 120-730) and stacked, scaled to 1280x976",
+  "fps": 30,
+  "frames": 690,
+  "seconds": 23,
+  "audio": "silent",
+  "flight": "UH-80 Ghost Hawk from the pad at (0, 0) to (0, -140); at 8 s its destination changes to the pad at (55, -65)",
+  "camera": {
+    "mode": "wide",
+    "position": "108,21,4",
+    "look_at": "30,9,-40",
+    "fov_degrees": 40
+  },
+  "command": "godot --path . --fixed-fps 30 --write-movie BUILD.avi res://tests/fixtures/helicopter-flight-visual.tscn -- --cam=108,21,4 --look=30,9,-40 --label-y=135 --caption=BEFORE|AFTER --shot-times=99 --seconds=23",
+  "same_fixture_both_builds": "The updated fixture script was copied into the before build; it uses only the lift helicopter's phases and view, which both builds have.",
+  "encode": "Stacked frames written as MJPEG and encoded to H.264 MP4 (1700 kbit/s) with Windows Media Foundation, moov moved to the front (website-footage build.py encode); poster is frame 660 (22.0 s)",
+  "result": "At 22.0 s the old flight is still sinking vertically over the pad (6.8 m up); the new one has landed (0.2 m)."
+}
