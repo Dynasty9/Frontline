@@ -20,8 +20,8 @@ p{margin:0;color:#c5c4b8}
 </style>
 <h1>Frontline trailer editions</h1>
 <main>
-<section><label>Compare <select id="left"></select></label><video muted playsinline preload="auto"></video><p></p></section>
-<section><label>With <select id="right"></select></label><video muted playsinline preload="auto"></video><p></p></section>
+<section><label>Compare <select id="left"></select></label><video muted playsinline preload="auto"></video><p></p><button class="change" type="button" hidden></button></section>
+<section><label>With <select id="right"></select></label><video muted playsinline preload="auto"></video><p></p><button class="change" type="button" hidden></button></section>
 </main>
 <div class="controls">
 <button id="play" type="button">Play both</button>
@@ -71,6 +71,13 @@ function switchCut(i) {
   video.onloadedmetadata = () => { video.currentTime = position; };
   video.src = cut.file;
   video.parentElement.querySelector('p').textContent = cut.note;
+  const change = video.parentElement.querySelector('.change');
+  change.hidden = !Number.isInteger(cut.change_frame);
+  if (!change.hidden) {
+    const at = cut.change_frame / 30;
+    change.textContent = 'Play change at ' + at.toFixed(2) + ' s';
+    change.onclick = () => { pause(); seek(at); startPlayback(); };
+  }
 }
 pickers.forEach((picker,i) => {
   cuts.forEach((c,n) => picker.add(new Option(c.label,n)));
@@ -81,14 +88,17 @@ pickers.forEach((picker,i) => {
 function selectAudio() { videos.forEach((v,i) => v.muted = i !== Number(listen.value)); }
 selectAudio();
 listen.onchange = selectAudio;
-play.onclick = async () => {
-  if (videos.some(v => !v.paused)) { pause(); return; }
-  if (position >= (sharedFrames() - 1) / 30) seek(0);
+async function startPlayback() {
   try { await Promise.all(videos.map(v => v.play())); }
   catch { pause(); status.textContent = 'Playback failed. Check that both MP4s are beside this viewer.'; return; }
   status.textContent = '';
   play.textContent = 'Pause both';
   tick();
+}
+play.onclick = () => {
+  if (videos.some(v => !v.paused)) { pause(); return; }
+  if (position >= (sharedFrames() - 1) / 30) seek(0);
+  startPlayback();
 };
 scrub.oninput = () => { pause(); seek(Number(scrub.value) / 30); };
 </script>

@@ -13,10 +13,10 @@ python3 .agents/skills/website-footage/scripts/build.py reel --work /tmp/frontli
 
 # Save the reviewed cut, captions and capture/edit recipe in build/trailer-review.
 python3 tools/showcase/trailer-review/archive.py /tmp/frontline-trailer/build/reel.mp4 \
-  --takes /tmp/frontline-trailer/takes --label '01 · Squad to harbour' --note 'Describe the outcome you saw on playback.'
+  --takes /tmp/frontline-trailer/takes --label '01 · Squad to harbour' --note 'Describe the outcome you saw on playback.' --at 7.07
 ```
 
-Open `build/trailer-review/index.html` directly to compare the two latest editions. Choose edition 00 on the left to see the original. Listen to either track and scrub both pictures together. The gallery is local. To share it, copy the entire gallery folder. Each edition keeps its recipe. Passing `--takes` also preserves the recording date, game revision and launch arguments for each take.
+Open `build/trailer-review/index.html` directly to compare the two latest editions. Choose edition 00 on the left to see the original. Listen to either track and scrub both pictures together. For editions archived with `--at`, the button below the note plays both pictures from the changed shot. The gallery is local. To share it, copy the entire gallery folder. Each edition keeps its recipe. Passing `--takes` also preserves the recording date, game revision and launch arguments for each take.
 
 The edit opens on a readable action at squad scale, expands through infantry and armour, and gives the final aircraft approach and water impacts time to play as one event. Check the first ten seconds muted and the final approach with sound. These checks follow [Valve’s gameplay trailer guidance](https://partner.steamgames.com/doc/store/trailer) and [Derek Lieu’s line of rising action](https://www.derek-lieu.com/blog/2018/9/16/the-trailer-line-of-rising-action).
 
@@ -28,7 +28,7 @@ For a mix revision, keep the cut points fixed and compare editions with the audi
 | --- | --- |
 | One order | The Sky Hook objective appears above five selected soldiers. When the destination ring lands, cut to the same squad at ground level. The Mohawk lifts off behind them. Both cameras record the same order, seed and simulation time. The same aircraft crosses the river later. |
 | Armour arrives | The column approaches from the distance the way the riflemen did. At field level, the lead tank crosses the foreground before the closer gun shot. |
-| Into the trench | See riflemen cross the timber trench beside a tracked vehicle. Meet the mortar crew from inside the sandbags. Follow the specialist over the wall and down to a knee, then cut overhead as the rounds land along the line. The two field-camera scenes store their positions and travel times in metres and simulation seconds. |
+| Into the trench | See riflemen cross the timber trench beside a tracked vehicle. Look across the mortar pit with the tube on the left. Follow the specialist over the middle sandbag and down to a knee, then cut overhead as the rounds land along the line. The two field-camera scenes store their positions and travel times in metres and simulation seconds. |
 | Off the ground | Watch the Mohawk fly overhead carrying the Nyx. Cut on its passage to the cargo door, where the same bridge sweeps beneath the tracked vehicle, then follow the water into the RHIB shot. |
 | Into the harbour | Look past the coxswain’s right shoulder as the other launch crosses the bow and turns toward shore. Move down to shoulder height on the sand. The squad runs toward the left foreground while the patrol ship enters from the right on the same heading. Cut to the ship's bow as a second boat approaches. On the next simulation frame, look down from the bridge roof as it passes the port rail. Follow the jet until its load clears the wing. Cut down to the boat’s playable Stern quarter view. The mount engages at mission second eight, after the jet pass is underway, so the jet and boat takes show the same event. Keep the hull in sight as the spray rises above its cabin and falls. |
 

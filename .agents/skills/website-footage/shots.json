@@ -100,7 +100,7 @@
       "frames": 110,
       "args": ["--preset=high", "--seed=3", "--set=volume:0.8,vol_effects:0.85,vol_music:0,battle_music:false,vol_ambience:0.28,vol_ui:0,mute_bg:false,wildlife:0,edge_pan:false", "--scenario=defense", "--mood=golden"],
       "shows": ["Mortar crew at shoulder height"],
-      "about": "From inside the sandbags, follow the crew member crossing the wall and dropping to a knee before the cut overhead."
+      "about": "Look across the pit. Keep the mortar on the left and the specialist visible above the sandbags as he vaults into position."
     },
     "trailer-armour-crossing": {
       "frames": 255,
