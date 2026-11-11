@@ -5,7 +5,7 @@
       "scene": "res://tools/showcase/vehicle-circuit.tscn",
       "args": [],
       "shows": ["unit roster, garage and support aircraft"],
-      "about": "One tracking shot on a coastal circuit. Ground vehicles cross the cliff into rotorcraft, planes dive into the sea, and boats land at the opening hatchback."
+      "about": "A native-scale coastal tracking shot. Curated loadouts run by vehicle type, size band and speed past roadside crews, a helipad and a working harbor. The cliff, dive and beach landing close the loop."
     },
     "highlight-trenches": {
       "frames": 900,

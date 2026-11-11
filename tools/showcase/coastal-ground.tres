@@ -9,13 +9,14 @@ code = "shader_type spatial;
 uniform sampler2D gravel : source_color, repeat_enable, filter_linear_mipmap_anisotropic;
 uniform sampler2D stone : source_color, repeat_enable, filter_linear_mipmap_anisotropic;
 uniform sampler2D meadow : source_color, repeat_enable, filter_linear_mipmap_anisotropic;
+uniform float road_radius;
 varying vec3 p;
 void vertex(){ p = VERTEX; }
 void fragment(){
 	vec3 track = texture(gravel,p.xz*0.22).rgb;
 	vec3 grass = texture(meadow,p.xz*0.12).rgb;
 	vec3 cliff = texture(stone,(p.xz + p.y*vec2(0.45,0.62))*0.14).rgb;
-	float shoulder = abs(length(p.xz) - 42.0);
+	float shoulder = abs(length(p.xz) - road_radius);
 	float ruts = 1.0 - smoothstep(0.12, 0.46, abs(shoulder - 1.04));
 	track *= 1.0 - 0.19 * ruts;
 	grass *= vec3(0.84,1.05,0.81);
