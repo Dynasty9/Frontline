@@ -52,6 +52,6 @@ func _process(dt: float) -> void:
 	$Center/Title/Row.modulate.a = smoothstep(0.12, 0.38, card_time)
 	$Center/Title.get_child(1).modulate.a = smoothstep(0.28, 0.52, card_time)
 	$Center/Title.get_child(2).modulate.a = smoothstep(0.36, 0.58, card_time)
-	if not resolved and elapsed >= 31.2:
+	if not resolved and elapsed >= 34.7:
 		resolved = true
 		Music.sting("victory")

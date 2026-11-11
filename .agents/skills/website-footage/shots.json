@@ -188,7 +188,7 @@
     },
     "trailer-score": {
       "scene": "res://tools/showcase/trailer-review/title-score.tscn",
-      "frames": 1050,
+      "frames": 1170,
       "args": [],
       "shows": ["The game's title and orchestral score"],
       "about": "An isolated 96 bpm battle cue builds from strings to drums, then resolves on the harbour strike."
