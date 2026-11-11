@@ -136,12 +136,12 @@ static func _aim(d: Vector3) -> Vector3:
 
 ## A round tube from a to b (roll cages, rails, booms, hoses).
 static func _tube(k: VehicleModels, p: Node3D, a: Vector3, b: Vector3, r: float, mat: String, col = null, segs := 8, shadow := true) -> Variant:
-	return k._cyl(p, r, r, a.distance_to(b), (a + b) * 0.5, _aim(b - a), mat, col, segs, shadow)
+	return VehicleFrames.tube(k, p, a, b, r, mat, col, segs, shadow)
 
 
 ## A square-section beam from a to b.
 static func _beam(k: VehicleModels, p: Node3D, a: Vector3, b: Vector3, w: float, h: float, mat: String, col = null) -> Variant:
-	return k._box(p, Vector3(w, a.distance_to(b), h), (a + b) * 0.5, mat, col, _aim(b - a))
+	return VehicleFrames.beam(k, p, a, b, w, h, mat, col)
 
 
 ## A headlight facing f (-1 forward, 1 back): housing, lens, wire guard.
@@ -200,10 +200,7 @@ static func _shackle(k: VehicleModels, p: Node3D, pos: Vector3, f := -1.0) -> vo
 
 ## A static spare wheel (not spinning) lying with its axle along `axis`.
 static func _spare(k: VehicleModels, p: Node3D, pos: Vector3, r: float, w: float, rot: Vector3) -> void:
-	k._cyl(p, r, r, w * 0.8, pos, rot, "rubber", null, 18)
-	k._cyl(p, r * 0.93, r * 0.93, w, pos, rot, "rubber", null, 18)
-	k._cyl(p, r * 0.58, r * 0.58, w + 0.02, pos, rot, "gunmetal_w", null, 14, false)
-	k._cyl(p, r * 0.22, r * 0.22, w + 0.06, pos, rot, "gunmetal_w", null, 8, false)
+	VehicleWheels.spare(k, p, pos, r, w, rot)
 
 
 ## The subdued identification panel (VehicleModels._team_mark).
@@ -797,30 +794,14 @@ static func _track_loop(k: VehicleModels, m: Node3D, x: float, w: float, front: 
 	for i in 5:
 		var a := deg_to_rad(-60.0 + i * 37.5)
 		pts.append(Vector2(rear.x + cos(a) * rear.z, rear.y + sin(a) * rear.z))
-	for i in pts.size():
-		var a: Vector2 = pts[i]
-		var b: Vector2 = pts[(i + 1) % pts.size()]
-		if a.distance_to(b) < 0.02:
-			continue
-		# overlap the plates a little so the belt reads as one
-		var d := (b - a).normalized() * 0.03
-		_zy(k, m, x, w, a - d, b + d, th, -th * 0.5, "track")
-	# the guide horns down the middle of the top run
-	k._box(m, Vector3(0.08, 0.06, absf(rear.x - front.x) - 0.4), Vector3(x, maxf(front.y + front.z, rear.y + rear.z) + 0.02, (front.x + rear.x) * 0.5), "gunmetal_w", null, Vector3.ZERO, false)
+	VehicleTracks.shoes(k, m, x, w, PackedVector2Array(pts), th, 0.20, true, true)
 
 
 ## A tracked vehicle's road wheel: rubber tyre, the dished disc standing
 ## proud of it, the hub with its bolt ring. Lighter than k._wheel (a tank has
 ## sixteen of these) but registered the same way, so it spins.
 static func _road_wheel(k: VehicleModels, p: Node3D, pos: Vector3, r: float, w: float) -> Node3D:
-	var pv := k._pivot(p, pos)
-	var ax := Vector3(0, 0, PI / 2)
-	k._cyl(pv, r, r, w * 0.9, Vector3.ZERO, ax, "rubber", null, 18)
-	k._cyl(pv, r * 0.8, r * 0.8, w, Vector3.ZERO, ax, "gunmetal_w", null, 16, false)
-	k._cyl(pv, r * 0.42, r * 0.46, w + 0.05, Vector3.ZERO, ax, "metal_dark", null, 12, false)
-	k._cyl(pv, r * 0.16, r * 0.16, w + 0.1, Vector3.ZERO, ax, "gunmetal_w", null, 8, false)
-	k.wheels.append(pv)
-	return pv
+	return VehicleWheels.road(k, p, pos, r, w)
 
 
 ## The Merkava IV's running gear either side: the track belt, six road wheels,
@@ -1450,8 +1431,7 @@ static func _hemtt_cab_detail(k: VehicleModels, paint: Color) -> void:
 	k._box(m, Vector3(1.88, 0.035, 0.30), Vector3(0, 1.98, -4.67), "paint", paint.darkened(0.15), Vector3(0.12, 0, 0))
 	for s in [-1.0, 1.0]:
 		# Door recess, raised inner pressing, hinges and a grab handle.
-		k._box(m, Vector3(0.055, 0.51, 1.02), Vector3(s * 1.205, 1.65, -3.71), "rubber", null, Vector3.ZERO, false)
-		k._box(m, Vector3(0.065, 0.43, 0.94), Vector3(s * 1.23, 1.65, -3.71), "paint", paint)
+		VehicleBody.panel(k, m, Vector3(s * 1.25, 1.65, -3.71), Vector2(1.02, 0.51), Vector3(0, s * PI / 2, 0), "paint", paint)
 		for y in [1.47, 1.87]:
 			k._box(m, Vector3(0.07, 0.075, 0.16), Vector3(s * 1.25, y, -4.24), "paint", edge)
 		_tube(k, m, Vector3(s * 1.28, 1.50, -3.02), Vector3(s * 1.28, 1.87, -3.02), 0.022, "paint", paint.darkened(0.25))
@@ -1475,34 +1455,9 @@ static func _hemtt_cargo_detail(k: VehicleModels, paint: Color) -> void:
 				k._box(m, Vector3(0.015, 0.018, 0.08), Vector3(s * 1.30, 1.49, z + dz), "steel", Color(0.32, 0.30, 0.25), Vector3.ZERO, false)
 
 
-
 static func _hemtt_wheel(k: VehicleModels, pos: Vector3) -> void:
-	var wheel := k._pivot(k.root, pos)
-	k.wheels.append(wheel)
-	var side := signf(pos.x)
-	var tyre := TorusMesh.new()
-	tyre.inner_radius = 0.31
-	tyre.outer_radius = 0.625
-	tyre.rings = 48
-	tyre.ring_segments = 16
-	k._add(wheel, tyre, "rubber", Color(0.17, 0.18, 0.17), Vector3.ZERO, Vector3(0, 0, PI / 2), Vector3(1, 1.4, 1))
-	# Recessed pressed rim with a rolled lip, distinct from the rounded sidewall.
-	k._cyl(wheel, 0.33, 0.33, 0.30, Vector3.ZERO, Vector3(0, 0, PI / 2), "paint", Color(0.18, 0.20, 0.16), 40)
-	var lip := TorusMesh.new()
-	lip.inner_radius = 0.30
-	lip.outer_radius = 0.34
-	lip.rings = 40
-	lip.ring_segments = 8
-	k._add(wheel, lip, "steel", Color(0.28, 0.29, 0.26), Vector3(side * 0.18, 0, 0), Vector3(0, 0, PI / 2))
-	k._cyl(wheel, 0.14, 0.16, 0.39, Vector3.ZERO, Vector3(0, 0, PI / 2), "gunmetal_w", Color(0.21, 0.23, 0.20), 24)
-	for i in 10:
-		var a := TAU * float(i) / 10.0
-		k._cyl(wheel, 0.019, 0.019, 0.035, Vector3(side * 0.205, cos(a) * 0.18, sin(a) * 0.18), Vector3(0, 0, PI / 2), "steel", Color(0.40, 0.39, 0.34), 6, false)
-	# Small staggered blocks wrap across the shoulders, with open grooves.
-	for i in 36:
-		for row in [-1.0, 1.0]:
-			var a := TAU * (float(i) + (0.45 if row > 0 else 0.0)) / 36.0
-			k._box(wheel, Vector3(0.20, 0.045, 0.085), Vector3(row * 0.115, cos(a) * 0.613, sin(a) * 0.613), "rubber", Color(0.22, 0.23, 0.21), Vector3(a, row * 0.25, row * 0.12))
+	VehicleWheels.pneumatic(k, k.root, pos, 0.63, 0.46, "paint", Color(0.18, 0.20, 0.16))
+
 
 static func _hemtt_load_detail(k: VehicleModels, base: Vector3, size: Vector3, kind: int) -> void:
 	if kind == 2:

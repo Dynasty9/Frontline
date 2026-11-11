@@ -178,7 +178,27 @@ class Hull:
 
 ## The hull as a solid.
 static func _hull(k: VehicleModels, p: Node3D, h: Hull, key: String, mat: String, col = null, grow := 0.0) -> Variant:
-	return k._add(p, h.mesh(key, grow), mat, col, Vector3.ZERO)
+	var mesh := h.mesh(key, grow)
+	if h.n >= 10:
+		mesh = VehicleBody.skin(mesh, key)
+	var part: Variant = k._add(p, mesh, mat, col, Vector3.ZERO)
+	if key.ends_with("_body") and h.n >= 10:
+		# Panel joins follow the authored skin; glazing sits above them, so
+		# seams cannot cut across a cockpit pane or change the hull outline.
+		for station in range(2, h.st.size() - 2, 2):
+			var z: float = h.st[station][0]
+			if float(h.at(z)[2]) < 0.35:
+				continue
+			var points: Array = []
+			for t in h.n + 1:
+				points.append(h.pt(z, float(t), grow + 0.006))
+			VehicleBody.seam(k, p, points)
+			for t: float in [0.15, 0.85, 1.15, 1.85]:
+				var slot := t * h.n * 0.5
+				var point := h.pt(z + 0.045, slot, grow + 0.012)
+				var normal := (h.pt(z + 0.045, slot, grow + 0.022) - point).normalized()
+				VehicleBody.fastener(k, p, point, normal)
+	return part
 
 
 ## A patch on the hull, on the right (sx 1), the left (-1) or both (0).
@@ -198,21 +218,12 @@ static func _rz(pts: Array, z: float) -> PackedVector3Array:
 
 ## A cylinder from a to b (radius ra at a, rb at b).
 static func _tube(k: VehicleModels, p: Node3D, a: Vector3, b: Vector3, ra: float, mat: String, col = null, segs := 8, rb := -1.0, shadow := true) -> Variant:
-	var d := b - a
-	var l := d.length()
-	if l < 1e-4:
-		return null
-	var dn := d / l
-	var q := Quaternion(Vector3.UP, dn) if dn.dot(Vector3.UP) > -0.9999 else Quaternion(Vector3.RIGHT, PI)
-	return k._cyl(p, rb if rb >= 0.0 else ra, ra, l, (a + b) * 0.5, Basis(q).get_euler(), mat, col, segs, shadow)
+	return VehicleFrames.tube(k, p, a, b, ra, mat, col, segs, shadow, rb)
 
 
 ## A tube along a polyline.
 static func _path(k: VehicleModels, p: Node3D, pts: Array, r: float, mat: String, col = null, segs := 8) -> void:
-	for i in pts.size() - 1:
-		_tube(k, p, pts[i], pts[i + 1], r, mat, col, segs)
-		if i > 0:
-			k._add(p, Res.sphere(r, segs), mat, col, pts[i])
+	VehicleFrames.path(k, p, pts, r, mat, col, segs)
 
 
 ## A box in a rotated frame (base, about origin) without a pivot node of its
@@ -237,71 +248,11 @@ static func _air(team: int, col: Color, hex := false) -> Array:
 ## appended to k.rotors with "Blades" and "Blur" children. tip: 0 square,
 ## 1 swept, 2 a BERP paddle.
 static func _rotor(k: VehicleModels, p: Node3D, pos: Vector3, nb: int, r: float, c: float, main := true, phase := 0.0, droop := 0.02, hub := 0.28, tip := 0, bcol = null) -> Node3D:
-	var rp := k._pivot(p, pos)
-	var bl := k._pivot(rp, Vector3.ZERO)
-	k._cyl(rp, hub, hub * 1.05, 0.2, Vector3.ZERO, Vector3.ZERO, "gunmetal_w", null, maxi(nb * 2, 10))
-	k._cyl(rp, hub * 0.55, hub * 0.7, 0.16, Vector3(0, 0.17, 0), Vector3.ZERO, "gunmetal_w", null, 10)
-	var bc: Color = bcol if bcol is Color else Color(0.15, 0.155, 0.16)
-	var grip := minf(0.2 + r * 0.06, 0.75)
-	for i in nb:
-		var bs := Basis.from_euler(Vector3(droop, phase + TAU * float(i) / float(nb), 0))
-		# the grip and pitch horn on the hub (they stay with the blur)
-		_rbox(k, rp, bs, Vector3(c * 0.75, 0.1 + c * 0.12, grip), Vector3(0, 0, hub + grip * 0.5 - 0.02), "gunmetal_w")
-		_rbox(k, rp, bs, Vector3(0.05, 0.05, 0.16), Vector3(c * 0.42, -0.06, hub + 0.06), "steel", null, Vector3.ZERO, false)
-		# the blade
-		var r0 := hub + grip - 0.04
-		var th := clampf(c * 0.16, 0.03, 0.09)
-		var ln := r - r0
-		match tip:
-			1:
-				ln -= c * 1.2
-				_rbox(k, bl, bs, Vector3(c, th, ln), Vector3(0, 0, r0 + ln * 0.5), "aircraft", bc, Vector3(0, 0, 0.06))
-				_rbox(k, bl, bs, Vector3(c * 0.7, th * 0.8, c * 1.3), Vector3(c * 0.2, 0, r - c * 0.62), "aircraft", bc, Vector3(0, -0.45, 0.06))
-			2:
-				ln -= c * 1.5
-				_rbox(k, bl, bs, Vector3(c, th, ln), Vector3(0, 0, r0 + ln * 0.5), "aircraft", bc, Vector3(0, 0, 0.06))
-				_rbox(k, bl, bs, Vector3(c * 1.35, th * 0.85, c * 1.2), Vector3(-c * 0.12, 0, r - c * 0.95), "aircraft", bc, Vector3(0, 0, 0.06))
-				_rbox(k, bl, bs, Vector3(c * 0.7, th * 0.7, c * 0.5), Vector3(c * 0.2, 0, r - c * 0.2), "aircraft", bc, Vector3(0, -0.5, 0.06))
-			_:
-				_rbox(k, bl, bs, Vector3(c, th, ln), Vector3(0, 0, r0 + ln * 0.5), "aircraft", bc, Vector3(0, 0, 0.06))
-		# the root fairing and the leading-edge erosion strip near the tip
-		_rbox(k, bl, bs, Vector3(c * 0.9, th * 1.5, 0.3), Vector3(0, 0, r0 + 0.12), "gunmetal_w")
-		_rbox(k, bl, bs, Vector3(0.03, th * 1.05, ln * 0.3), Vector3(-c * 0.5, 0, r0 + ln * 0.78), "steel", Color(0.45, 0.45, 0.43), Vector3(0, 0, 0.06), false)
-	if not k.burnt:
-		var blur := MeshInstance3D.new()
-		var disc := PlaneMesh.new()
-		disc.size = Vector2(r, r) * 2.0
-		blur.mesh = disc
-		blur.material_override = VehicleModels._blur_mat()
-		blur.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-		blur.position = Vector3(0, 0.06, 0)
-		blur.visible = false
-		rp.add_child(blur)
-		if main:
-			k.blur = blur
-		else:
-			blur.name = "Blur"
-	if main:
-		k.rotor = rp
-		k.blades = bl
-	else:
-		bl.name = "Blades"
-		k.rotors.append(rp)
-	return rp
+	return VehicleRotors.main(k, p, pos, nb, r, c, main, phase, droop, hub, tip, bcol)
 
 
-## A tail rotor spinning about X at pos: n blades of radius r, chord c.
 static func _tail_rotor(k: VehicleModels, p: Node3D, pos: Vector3, nb: int, r: float, c: float, side := 1.0, phase := 0.4) -> Node3D:
-	var tr := k._pivot(p, pos)
-	k._cyl(tr, 0.05, 0.08, 0.2, Vector3(side * 0.04, 0, 0), Vector3(0, 0, PI / 2), "gunmetal_w", null, 10)
-	k._cyl(tr, 0.035, 0.035, 0.12, Vector3(side * 0.17, 0, 0), Vector3(0, 0, PI / 2), "steel", null, 8, false)
-	for i in nb:
-		var bs := Basis.from_euler(Vector3(phase + TAU * float(i) / float(nb), 0, 0))
-		var o := Vector3(side * 0.07, 0, 0)
-		_rbox(k, tr, bs, Vector3(0.03, r - 0.07, c), Vector3(0, (r + 0.07) * 0.5, 0), "aircraft", Color(0.15, 0.155, 0.16), Vector3(0, 0.22, 0), true, o)
-		_rbox(k, tr, bs, Vector3(0.032, r * 0.22, c * 1.02), Vector3(0, r * 0.84, 0), "steel", Color(0.45, 0.45, 0.43), Vector3(0, 0.22, 0), false, o)
-	k.tail_rotor = tr
-	return tr
+	return VehicleRotors.tail(k, p, pos, nb, r, c, side, phase)
 
 
 ## A fin (side profile pairs z, y, convex, extruded x0..x1) with a round duct

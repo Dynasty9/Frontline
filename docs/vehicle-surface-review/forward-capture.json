@@ -1,0 +1,16 @@
+{
+	"body_focus": "(inf, inf, inf)",
+	"camera_size": 0.0,
+	"grounded": true,
+	"models": [
+		"heli",
+		"zamak",
+		"tank",
+		"patrol_ship"
+	],
+	"renderer": "forward_plus",
+	"rotor_focus": false,
+	"seed": 3,
+	"team": 0,
+	"view_direction": "(1.0, 0.65, -1.25)"
+}

@@ -1150,12 +1150,36 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   from ambientCG CC0 sources) add fine relief without requiring UV unwraps. RHIB decks have raised tread;
   selected trawler fittings use nonmetallic rust over exposed steel. Paint is nonmetallic; texture and lower-body dust
   stay attached to the model as it moves or climbs. Faction palettes and distant merged meshes are retained.
+  Eight companion normal maps retain the bundled CC0 surface relief; all 17 profiles tune weathering,
+  roughness and grain independently. Metal brushing, canvas weave, moulded rubber, timber fibres and
+  charred surfaces use separate treatments, filtered at distance.
+- **Shared vehicle bodywork** (`vehicle_body.gd`): curved helicopter skins share crease-aware normals
+  without moving the vertices beneath fitted glazing. Skin joins and flush fasteners follow the hull;
+  deliberately angular stealth sections remain faceted. HEMTT, Zamak and Tempest families share pressed
+  door panels, gaskets and fasteners, with shaped louvres on Zamak bonnets. Family builders retain silhouettes.
 - All HEMTT, Zamak and Tempest bodies share open cabs with seats, dashboards and steering wheels
   behind separate transparent panes. Offroad pickups, hatchbacks and SUVs have open glasshouses with
   their original window outlines and painted pillars. Glass switches to opaque panes beyond 100 m;
   wrecks lose intact glazing. Rounded tyres, recessed rims and rotating tread extend across shared
-  wheeled models, with finer road tread and smooth aircraft tyres. Tracked road wheels retain their
-  specialised builders. HEMTT and Zamak cargo covers share draped cloth and fitted restraints.
+  wheeled models, with finer road tread and smooth aircraft tyres. Tracked road wheels share twin tyres, recessed discs and hub bolts while retaining
+  family-specific spoke patterns and sprockets. HEMTT and Zamak cargo covers share draped cloth and fitted restraints.
+- **Shared helicopter rotors** (`vehicle_rotors.gd`): main and exposed tail rotors use tapered airfoil
+  sections with spanwise twist, gentle droop, shaped swept or paddle tips, erosion strips and muted tip
+  markings. Forked grips, hinge pins, pitch links and a stepped swashplate add depth to rotor heads.
+  A dedicated matte nonmetallic finish separates composite blades from painted fuselages and metal hubs.
+  Conventional, tandem and coaxial assemblies keep their existing blade counts, pivots and blur switching;
+  enclosed ducted fans remain specialised. Detail is most visible while stopped or turning slowly.
+- **Reusable vehicle components** (`vehicle_wheels.gd`, `vehicle_tracks.gd`, `vehicle_frames.gd`,
+  `vehicle_glazing.gd`): running and spare tyres share profiles; tank and ED-1 track shoes follow each
+  vehicle's own outline. Frames, struts, rails and window seals use common builders. Clear panes require
+  an open cab; armoured panes stay opaque. Parked civilian cars have fitted windscreens, divided side
+  windows and mirrors. See [the component guide](vehicle-components.md) and [roster review](vehicle-component-review/README.md).
+- Explosions are layered GPU particles: a flash and light burst, a rolling fireball that cools from the edges in
+  until it's dark smoke, a lit smoke column that drifts with the wind, a dirt plume, sparks and debris that
+  bounce on the ground, a rolling dust ring, a faint heat-shimmer shockwave and a scorch mark. Heavy rounds
+  throw a fountain of earth high into the air that rains back down, fling burning fragments out in arcs that
+  burn on where they land, leave flames licking about the crater for a moment, and clods land around the
+  crater once the debris has fallen.
 - **Explosions** distinguish fragmentation grenades, high explosive shells and fuel explosions. Grenades
   give a short flash, fast dark fragments and a small dirt burst. HE shells, including the visual scale of a
   roughly 110 mm round, throw a fountain of earth, falling clods and a ground dust cloud; sustained flames

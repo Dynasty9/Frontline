@@ -910,6 +910,12 @@ uniform float surface_roughness = 0.22;
 uniform float surface_corrosion = 0.0;
 uniform float surface_coat = 0.0;
 uniform float surface_specular = 0.4;
+uniform sampler2D surface_normal_map : hint_normal, filter_linear_mipmap_anisotropic, repeat_enable;
+uniform float surface_normal_strength = 0.0;
+uniform int surface_finish = 0; // coating, rubber, cloth, metal, grip, timber, char, moulded, glass
+uniform float surface_weather = 0.0;
+uniform float surface_grain = 0.0;
+uniform float surface_coat_roughness = 0.22;
 uniform bool use_vcolor = false;
 uniform float vcolor_k = 1.0;  // merged parts: the vertex colour is stored scaled down (Mats.VC_K)
 // paving (Mats.paving): a shell hole or a trench punches through it, as through the roads
@@ -928,6 +934,7 @@ varying vec3 tn;
 varying vec3 wpos;
 varying vec3 seed;
 varying float ground_y;
+varying mat3 vehicle_normal_basis;
 
 // STREET_SURFACE
 float h12(vec2 p) { vec3 p3 = fract(vec3(p.xyx) * 0.1031); p3 += dot(p3, p3.yzx + 33.33); return fract((p3.x + p3.y) * p3.z); }
@@ -941,6 +948,7 @@ float tfbm(vec2 p) { float v = 0.0; float a = 0.5; for (int i = 0; i < 4; i++) {
 float keep(float period, float px) { return smoothstep(1.5, 5.0, period / max(px, 1e-5)); }
 
 void vertex() {
+	vehicle_normal_basis = transpose(inverse(mat3(MODELVIEW_MATRIX)));
 	wpos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
 	ground_y = 0.0;
 	if (terrain_bound && !local_space && grime > 0.0) {
@@ -1170,6 +1178,8 @@ void fragment() {
 		h = 0.5 + tnoise(uv * 20.0) * 0.1;
 	}
 	float corrosion = 0.0;
+	float finish_film = 0.0;
+	float finish_fade = 0.0;
 	if (vehicle_surface) {
 		// Paint is a dielectric coating. Only the sparse exposed chips become
 		// metallic; rubber, fabric and glass retain their own response.
@@ -1181,11 +1191,56 @@ void fragment() {
 			vec4 detail = texture(surface_map, q.yz) * weights.x
 				+ texture(surface_map, q.xz) * weights.y
 				+ texture(surface_map, q.xy) * weights.z;
+			if (surface_normal_strength > 0.0) {
+				vec3 nx = texture(surface_normal_map, q.yz).rgb * 2.0 - 1.0;
+				vec3 ny = texture(surface_normal_map, q.xz).rgb * 2.0 - 1.0;
+				vec3 nz = texture(surface_normal_map, q.xy).rgb * 2.0 - 1.0;
+				// Project tangent slopes, then remove their normal component. A flat
+				// map preserves the geometric normal on every face and at blends.
+				vec3 slope = vec3(0.0, nx.x, nx.y) * weights.x
+					+ vec3(ny.x, 0.0, ny.y) * weights.y + vec3(nz.x, nz.y, 0.0) * weights.z;
+				vec3 base = normalize(tn);
+				slope -= base * dot(slope, base);
+				NORMAL = normalize(vehicle_normal_basis * normalize(base + slope * surface_normal_strength));
+			}
 			h = (pattern == 13 || pattern == 5) ? h + (detail.r - 0.5) * 0.15 : detail.r;
 			r = clamp(rough + (detail.g - 0.5) * surface_roughness, 0.06, 1.0);
 			col *= 1.0 + (detail.a - 0.5) * surface_tone;
 			corrosion = detail.b * surface_corrosion;
-			float worn = detail.b * surface_wear;
+			// Broad weathering and fine relief have separate physical scales. Local
+			// coordinates keep both attached to moving and rotating assemblies.
+			float broad = tnoise(tp.xz * 18.0 + tp.y * 3.7);
+			float streak = tnoise(vec2((tp.x + tp.z) * 130.0, tp.y * 9.0));
+			float upward = smoothstep(0.15, 0.8, normalize(tn).y);
+			finish_film = surface_weather * (0.20 + 0.50 * broad) * (0.45 + 0.55 * upward);
+			finish_fade = surface_weather * (broad - 0.45) * 0.35;
+			r += surface_weather * (streak - 0.5) * (1.0 - upward) * 0.16;
+			vec2 grain_uv = an.y > an.x && an.y > an.z ? tp.xz : (an.x > an.z ? tp.zy : tp.xy);
+			float pixel = max(length(dFdx(grain_uv)), length(dFdy(grain_uv)));
+			float grain = tnoise(grain_uv * 260.0);
+			if (surface_finish == 3) {
+				// Brushing runs along the surface, with roughness rather than
+				// painted bright lines. It fades before it can crawl at distance.
+				grain = tnoise(grain_uv * vec2(4.0, 520.0));
+				r += (grain - 0.5) * surface_grain * keep(0.025, pixel);
+			} else if (surface_finish == 2) {
+				float weave = sin(grain_uv.x * 1256.637) * sin(grain_uv.y * 1256.637);
+				h += weave * 0.12 * surface_grain * keep(0.005, pixel);
+				col *= 1.0 + (detail.a - 0.5) * 0.32;
+			} else if (surface_finish == 1 || surface_finish == 7 || surface_finish == 4) {
+				h += (grain - 0.5) * surface_grain * keep(0.025, pixel);
+				r += (grain - 0.5) * surface_grain * 0.15;
+			} else if (surface_finish == 5) {
+				float fibres = tnoise(grain_uv * vec2(3.0, 180.0));
+				h += (fibres - 0.5) * surface_grain * keep(0.04, pixel);
+				col *= 0.88 + 0.24 * fibres;
+			} else if (surface_finish == 6) {
+				// Char maps have no alpha channel: height supplies their ash variation.
+				col *= 0.68 + 0.70 * detail.r;
+				h += (grain - 0.5) * surface_grain * 0.18;
+			}
+			// Sparse scuffs use a threshold, not a grey metallic wash over paint.
+			float worn = smoothstep(0.74, 0.91, detail.r) * surface_wear;
 			col = mix(col, vec3(0.12, 0.13, 0.14), worn);
 			m = mix(metal, 0.85, worn);
 			r = mix(r, 0.4, worn);
@@ -1195,9 +1250,16 @@ void fragment() {
 	if (use_vcolor) { col *= COLOR.rgb * vcolor_k; }
 	// Rust is an oxide, not reflective steel tinted orange. Apply after the
 	// part tint so corroded fittings retain their mineral color.
-	col = mix(col, vec3(0.14, 0.055, 0.018), corrosion);
+	col = mix(col, mix(vec3(0.09, 0.032, 0.012), vec3(0.28, 0.12, 0.035), corrosion), corrosion);
 	m = mix(m, 0.0, corrosion);
 	r = mix(r, 0.94, corrosion);
+	if (vehicle_surface) {
+		col *= 1.0 + finish_fade;
+		// A thin dry film softens reflections without repainting faction colours.
+		col = mix(col, col * 0.72 + vec3(0.10, 0.085, 0.06), finish_film);
+		r = mix(r, 0.92, finish_film);
+		m *= 1.0 - finish_film;
+	}
 	// broad, soft variation across a surface (sun-bleached, weathered, damp
 	// patches): large enough never to alias, it keeps big walls from looking flat
 	vec3 weather_pos = vehicle_surface ? tp : wpos;
@@ -1238,7 +1300,7 @@ void fragment() {
 	METALLIC = vehicle_surface ? m * (1.0 - dirt) : m;
 	SPECULAR = vehicle_surface ? surface_specular : 0.4;
 	CLEARCOAT = vehicle_surface ? surface_coat : 0.0;
-	CLEARCOAT_ROUGHNESS = 0.22;
+	CLEARCOAT_ROUGHNESS = vehicle_surface ? surface_coat_roughness : 0.22;
 	// bump mapping from the pattern height (surface gradient); the height is
 	// band-limited above, so its screen-space slope is stable under motion
 	if (bump > 0.0) {

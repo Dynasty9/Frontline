@@ -93,24 +93,17 @@ static func _aim(d: Vector3) -> Vector3:
 
 ## A round bar from a to b (radius r, or r at a and rb at b).
 static func _tube(k: VehicleModels, p: Node3D, a: Vector3, b: Vector3, r: float, mat: String, col = null, segs := 8, shadow := true, rb := -1.0) -> Variant:
-	return k._cyl(p, rb if rb >= 0.0 else r, r, a.distance_to(b), (a + b) * 0.5, _aim(b - a), mat, col, segs, shadow)
+	return VehicleFrames.tube(k, p, a, b, r, mat, col, segs, shadow, rb)
 
 
 ## A tube along a polyline, the joints rounded.
 static func _path(k: VehicleModels, p: Node3D, pts: Array, r: float, mat: String, col = null, segs := 8) -> void:
-	for i in pts.size() - 1:
-		_tube(k, p, pts[i], pts[i + 1], r, mat, col, segs)
-		if i > 0:
-			k._add(p, Res.sphere(r, segs), mat, col, pts[i])
+	VehicleFrames.path(k, p, pts, r, mat, col, segs)
 
 
 ## A square-section bar from a to b, w across (kept level where it can be), t thick.
 static func _bar(k: VehicleModels, p: Node3D, a: Vector3, b: Vector3, w: float, t: float, mat: String, col = null, shadow := true) -> Variant:
-	var y := (b - a).normalized()
-	var ref := Vector3.RIGHT if absf(y.dot(Vector3.RIGHT)) < 0.9 else Vector3.FORWARD
-	var z := ref.cross(y).normalized()
-	var x := y.cross(z)
-	return _bx(k, p, Vector3(w, a.distance_to(b), t), (a + b) * 0.5, mat, col, Basis(x, y, z).get_euler(), shadow)
+	return VehicleFrames.beam(k, p, a, b, w, t, mat, col, shadow, true)
 
 
 ## A plate lying on a face seen side-on: its length from a to b ((z, y)
@@ -161,19 +154,7 @@ static func _oct(x0: float, x1: float, z0: float, z1: float, c: float) -> Array:
 ## guide-horn gap between them, the dished disc, the hub and its bolt ring.
 ## spokes > 0 adds stamped ribs on the disc (the T-55's "starfish" wheels).
 static func _road_wheel(k: VehicleModels, p: Node3D, pos: Vector3, r: float, w: float, mat: String, col = null, spokes := 0) -> Node3D:
-	var pv := k._pivot(p, pos)
-	for sx: float in [-1.0, 1.0]:
-		k._cyl(pv, r, r, w * 0.4, Vector3(sx * w * 0.3, 0, 0), Z90, "rubber", null, 14)
-	k._cyl(pv, r * 0.82, r * 0.82, w * 0.96, Vector3.ZERO, Z90, mat, col, 14)
-	k._cyl(pv, r * 0.3, r * 0.36, w + 0.06, Vector3.ZERO, Z90, "gunmetal_w", null, 8, false)
-	k._cyl(pv, r * 0.13, r * 0.13, w + 0.1, Vector3.ZERO, Z90, "metal_dark", null, 6, false)
-	# the stamped ribs, on the outer face only
-	var ox := signf(pos.x) if pos.x != 0.0 else 1.0
-	for i in spokes:
-		var a := TAU * i / float(spokes)
-		_bx(k, pv, Vector3(0.024, r * 0.44, 0.07), Vector3(ox * (w * 0.48 + 0.012), sin(a) * r * 0.56, cos(a) * r * 0.56), mat, col, Vector3(-a + PI / 2, 0, 0), false)
-	k.wheels.append(pv)
-	return pv
+	return VehicleWheels.road(k, p, pos, r, w, mat, col, spokes)
 
 
 ## A toothed drive sprocket spinning about x.
@@ -208,47 +189,14 @@ static func _tooth(w: float, r: float) -> BoxMesh:
 
 ## A steel idler wheel (twin discs) spinning about x.
 static func _idler(k: VehicleModels, p: Node3D, pos: Vector3, r: float, w: float, mat: String, col = null) -> Node3D:
-	var pv := k._pivot(p, pos)
-	for sx: float in [-1.0, 1.0]:
-		k._cyl(pv, r, r, w * 0.34, Vector3(sx * w * 0.3, 0, 0), Z90, "gunmetal_w", null, 14)
-	k._cyl(pv, r * 0.76, r * 0.76, w * 0.92, Vector3.ZERO, Z90, mat, col, 12)
-	k._cyl(pv, r * 0.28, r * 0.3, w + 0.06, Vector3.ZERO, Z90, "gunmetal_w", null, 8, false)
-	k.wheels.append(pv)
-	return pv
+	return VehicleWheels.road(k, p, pos, r, w, mat, col, 0, false)
 
 
 ## A track: a belt of link plates round the convex hull of its wheels (each
 ## circle (z, y, r)) at x, w wide, th thick; `horns` adds the guide horns
-## down the middle of the top run.
+## along the inside of the belt.
 static func _belt(k: VehicleModels, p: Node3D, x: float, w: float, circles: Array, th := 0.08, horns := false) -> void:
-	var pts := PackedVector2Array()
-	for c in circles:
-		var cv: Vector3 = c
-		var rr := cv.z + th * 0.5
-		for i in 12:
-			var a := TAU * (i + 0.5) / 12.0
-			pts.append(Vector2(cv.x + cos(a) * rr, cv.y + sin(a) * rr))
-	var hull := Geometry2D.convex_hull(pts)
-	var top_a := Vector2.ZERO
-	var top_b := Vector2.ZERO
-	for i in hull.size() - 1:
-		var a2 := hull[i]
-		var b2 := hull[i + 1]
-		var d := b2 - a2
-		var l := d.length()
-		if l < 0.015:
-			continue
-		var mid := (a2 + b2) * 0.5
-		_bx(k, p, Vector3(w, th, l + th * 0.7), Vector3(x, mid.y, mid.x), "track", null, Vector3(atan2(-d.y, d.x), 0, 0))
-		# the longest run near the top is where the guide horns show
-		if mid.y > 0.4 and l > top_a.distance_to(top_b):
-			top_a = a2
-			top_b = b2
-	if horns and top_a != top_b:
-		var n := int(top_a.distance_to(top_b) / 0.32)
-		for i in n:
-			var q := top_a.lerp(top_b, (i + 0.5) / float(n))
-			_bx(k, p, Vector3(0.07, 0.08, 0.09), Vector3(x, q.y + th * 0.5 + 0.03, q.x), "gunmetal_w", null, Vector3.ZERO, false)
+	VehicleTracks.shoes(k, p, x, w, VehicleTracks.wheel_envelope(circles, th, 12), th, 0.20, true, horns)
 
 
 ## A headlight facing f (-1 forward, 1 back): housing, lens, wire guard.

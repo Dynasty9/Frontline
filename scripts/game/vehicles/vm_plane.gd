@@ -382,11 +382,7 @@ static func surf_at(secs: Array, x: float) -> Array:
 
 ## A rod from a to b (radius r at a, r2 at b): struts, probes, gear legs, barrels.
 static func rod(k: VehicleModels, p: Node3D, a: Vector3, b: Vector3, r: float, mat: String, col = null, segs := 8, r2 := -1.0, shadow := true) -> Variant:
-	var d := b - a
-	var y := d.normalized()
-	var x := y.cross(Vector3.FORWARD if absf(y.z) < 0.9 else Vector3.RIGHT).normalized()
-	var bs := Basis(x, y, x.cross(y))
-	return k._add(p, Res.cyl(r if r2 < 0.0 else r2, r, d.length(), segs), mat, col, (a + b) * 0.5, bs.get_euler(), Vector3.ONE, shadow)
+	return VehicleFrames.tube(k, p, a, b, r, mat, col, segs, shadow, r2)
 
 
 # --- engines, glow, propellers -------------------------------------------------------
@@ -981,8 +977,7 @@ static func _caesar(k: VehicleModels, team: int, seed: int) -> void:
 		var wp := Vector3(s * 1.32, wr, -0.05) if s != 0.0 else Vector3(0, wr, -2.6)
 		if s != 0.0:
 			rod(k, m, Vector3(s * 0.45, 0.85, -0.1), wp + Vector3(-s * 0.1, 0.05, 0), 0.05, "car_paint", c, 8, 0.04)
-		k._cyl(m, wr, wr, 0.13, wp, Vector3(0, 0, PI / 2), "rubber", null, 16)
-		k._cyl(m, wr * 0.5, wr * 0.5, 0.15, wp, Vector3(0, 0, PI / 2), "steel", null, 12, false)
+		VehicleWheels.pneumatic(k, m, wp, wr, 0.13, "steel", null, "aircraft", false)
 		body(k, m, "cae_spat", [[-0.48, 0.0, 0.04, 0.05, 0.04], [-0.35, 0.0, 0.12, 0.17, 0.12], [-0.05, 0.0, 0.15, 0.2, 0.14], [0.25, 0.0, 0.13, 0.17, 0.1], [0.5, 0.02, 0.03, 0.05, 0.03]], P, c, 14, 50.0, wp + Vector3(0, 0.07, 0.02))
 	# the propeller: three blades with painted tips, the spinner
 	prop(k, m, "cae_prop", Vector3(0, 1.32, -3.55), 0.97, 3, 0.17, 0.17, Vector3.ZERO, false, Color(0.12, 0.12, 0.12), Color(0.75, 0.72, 0.6))
