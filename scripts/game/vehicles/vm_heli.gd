@@ -1431,6 +1431,7 @@ static func _prop(k: VehicleModels, p: Node3D, pos: Vector3, r: float, nb := 2, 
 		disc.size = Vector2(r, r) * 2.0
 		blur.mesh = disc
 		blur.material_override = VehicleModels._blur_mat()
+		Mats.set_inst(blur, &"blade_count", float(nb))
 		blur.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		blur.position = Vector3(0, r * 0.08, 0)
 		blur.visible = false

@@ -252,6 +252,14 @@ func _run() -> void:
 	world.input._key(mount_key)
 	var truck_mounts := truck.camera_mounts()
 	_check("wheeled vehicle exposes wheels and hides absent mounts", cam.mount_subject == truck and truck_mounts.has(&"Wheels") and not truck_mounts.has(&"Tracks") and not truck_mounts.has(&"Barrel"))
+	# A wheel camera can follow the same vehicle on a road or on a sling.
+	truck.position.y = world.ground_y(truck.position)
+	truck._last_pos = truck.position - Vector3.RIGHT
+	truck._view_process(1.0 / 30.0)
+	_check("moving wheels on the ground emit dust", truck.dust != null and Vfx.is_emitting(truck.dust))
+	truck.position += Vector3(1, 6, 0)
+	truck._view_process(1.0 / 30.0)
+	_check("a lifted vehicle stops shedding wheel dust", truck.dust != null and not Vfx.is_emitting(truck.dust))
 	truck.hide()
 	cam._apply()
 	_check("a hidden subject releases the camera", cam.mount_label == &"")
@@ -262,7 +270,7 @@ func _run() -> void:
 	_check("despawning releases the object camera", cam.mount_label == &"")
 	world.input.clear_selection()
 
-	for fixture in [["heli", &"Cabin side"], ["rhib", &"Bow"], ["rhib", &"Waterline"], ["mohawk", &"Sling load"], ["tank", &"Periscope"], ["old_tank", &"Periscope"]]:
+	for fixture in [["heli", &"Cabin side"], ["rhib", &"Bow"], ["rhib", &"Waterline"], ["mohawk", &"Sling load"], ["mohawk", &"Cargo door"], ["taru_lift", &"Cargo door"], ["rhib", &"Starboard"], ["tank", &"Periscope"], ["old_tank", &"Periscope"]]:
 		var vehicle := world.spawn("vehicle", {"vkind": fixture[0], "team": actor.team, "pos": actor.position}) as Vehicle
 		_check("%s has its own exterior camera" % fixture[0], vehicle.camera_mounts().has(fixture[1]))
 		if fixture[1] in [&"Waterline", &"Sling load"]:

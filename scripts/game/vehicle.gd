@@ -222,10 +222,15 @@ func _build_camera_mounts() -> void:
 		_camera_mount(&"Cabin side", model, Vector3(size.x * 1.4, size.y * 0.75, size.z * 0.28), Vector3(0, size.y * 0.5, -size.z * 0.16))
 		if int(vdef.get("sling", -1)) >= 0:
 			# Keep the aircraft and the vehicle hanging beneath it in one frame.
-			_camera_mount(&"Sling load", model, Vector3(size.z * 1.03, size.z * 0.44, -size.z * 0.72), Vector3.DOWN * SLING_ROPE * 0.35, true)
+			_camera_mount(&"Sling load", model, Vector3(-size.z, size.z * 0.25, -size.z * 0.63), Vector3.DOWN * SLING_ROPE * 0.32, true)
+			# Looking past the landing gear shows when the load clears its shadow.
+			_camera_mount(&"Cargo door", model, Vector3(-size.x * 0.65, size.y * 0.44, size.z * 0.07), Vector3.DOWN * SLING_ROPE * 0.97)
 	elif is_boat():
 		_camera_mount(&"Bow", model, Vector3(size.x * 0.32, size.y * 1.15, -size.z * 0.68), Vector3(0, size.y * 0.55, 0))
 		_camera_mount(&"Waterline", model, Vector3(size.z * 0.82, size.y * 2.4, size.z * 0.97), Vector3(0, size.y * 0.4, -size.z * 0.13), true)
+		if vkind == "rhib":
+			# Stand beside the RHIB console, looking over the starboard tube.
+			_camera_mount(&"Starboard", model, Vector3(0.72, 2.44, -0.44), Vector3(2.55, 2.0, -8.5))
 	if _vm.gun_mount and _vm.gun_tip:
 		# Look back along the moving tube so the turret stays in the picture.
 		_camera_mount(&"Barrel", _vm.gun_tip, Vector3(2.9, 0.92, -1.9), Vector3(-0.1, 0.0, 1.8))
@@ -2627,7 +2632,7 @@ func _view_process(dt: float) -> void:
 		model.rotation.z = lerpf(model.rotation.z, clampf(ss * 0.012, -0.3, 0.3), 1.0 - exp(-dt * 3.0))
 	if dust and dt > 0.0:
 		var spd2 := Defs.flat(position - _last_pos).length() / dt
-		var want_dust := spd2 > 2.0
+		var want_dust := spd2 > 2.0 and position.y <= world.ground_y(position) + 0.35
 		if want_dust != Vfx.is_emitting(dust):
 			Vfx.set_emitting(dust, want_dust)
 	if is_boat() and model:

@@ -1088,20 +1088,22 @@ static var _blur: ShaderMaterial
 static func _blur_mat() -> ShaderMaterial:
 	if _blur == null:
 		var sh := Shader.new()
-		sh.code = """
+		sh.code = Mats.code("""
 shader_type spatial;
 render_mode unshaded, cull_disabled, depth_draw_never, shadows_disabled;
+instance uniform float blade_count = 4.0;
 void fragment() {
 	vec2 p = UV * 2.0 - 1.0;
 	float r = length(p);
 	float a = atan(p.y, p.x);
-	float streak = 0.55 + 0.45 * sin(a * 4.0 + TIME * 3.0);
-	float ring = smoothstep(1.0, 0.94, r) * smoothstep(0.05, 0.2, r);
-	float tip = smoothstep(0.86, 0.95, r) * smoothstep(1.0, 0.96, r);
-	ALBEDO = vec3(0.1, 0.1, 0.095) + tip * 0.15;
-	ALPHA = ring * (0.05 + 0.07 * streak) + tip * 0.08;
+	// The mesh turns with the hub. Each blade sweeps an arc during an exposure.
+	float sweep = pow(0.5 + 0.5 * cos(a * blade_count + r * 0.7), 3.6);
+	float disc = smoothstep(0.07, 0.13, r) * (1.0 - smoothstep(0.95, 1.0, r));
+	float tip = smoothstep(0.92, 0.95, r);
+	ALBEDO = mix(vec3(0.034, 0.038, 0.04), vec3(0.42, 0.40, 0.32), tip);
+	ALPHA = disc * (0.028 + (0.50 - 0.16 * r) * sweep);
 }
-"""
+""")
 		_blur = ShaderMaterial.new()
 		_blur.shader = sh
 	return _blur
