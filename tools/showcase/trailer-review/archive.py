@@ -33,8 +33,8 @@ def main():
         "ffprobe", "-v", "error", "-show_streams", "-of", "json", str(args.clip)
     ]))["streams"]
     video = next(s for s in streams if s["codec_type"] == "video")
-    if (video["nb_frames"], video["avg_frame_rate"]) != ("765", "30/1"):
-        parser.error("Comparison cuts must contain 765 frames at 30 fps (25.5 seconds).")
+    if (video["nb_frames"], video["avg_frame_rate"]) != ("720", "30/1"):
+        parser.error("Comparison cuts must contain 720 frames at 30 fps (24 seconds).")
     if not any(s["codec_type"] == "audio" for s in streams):
         parser.error("The trailer must have an audio track.")
     args.folder.mkdir(exist_ok=True, parents=True)
@@ -52,7 +52,7 @@ def main():
         target.with_suffix(".takes.json").write_text(json.dumps(captures, indent=2) + "\n")
     if args.clip.with_suffix(".vtt").exists():
         shutil.copyfile(args.clip.with_suffix(".vtt"), target.with_suffix(".vtt"))
-    versions.append(dict(label=args.label, note=args.note, file=target.name, sha256=digest,
+    versions.append(dict(label=args.label, note=args.note, file=target.name, sha256=digest, frames=int(video["nb_frames"]),
                          date=datetime.now(timezone.utc).isoformat(timespec="seconds")))
     data = json.dumps(versions, ensure_ascii=False, indent=2)
     manifest.with_suffix(".tmp").write_text(data + "\n")
