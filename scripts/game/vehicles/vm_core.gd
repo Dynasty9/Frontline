@@ -244,10 +244,8 @@ static func _shackle(k: VehicleModels, p: Node3D, pos: Vector3, f := -1.0) -> vo
 
 ## A periscope head facing along yaw (0: forward), with its glass.
 static func _periscope(k: VehicleModels, p: Node3D, pos: Vector3, yaw := 0.0, pitch := 0.0) -> void:
-	_bx(k, p, Vector3(0.18, 0.1, 0.12), pos, "gunmetal_w", null, Vector3(pitch, yaw, 0))
-	if not k.burnt:
-		var f := Basis.from_euler(Vector3(pitch, yaw, 0)) * Vector3(0, 0.005, -0.062)
-		_bx(k, p, Vector3(0.14, 0.06, 0.012), pos + f, "glass", null, Vector3(pitch, yaw, 0), false)
+	VehicleFittings.periscope(k, p, pos, Vector3(0.18, 0.1, 0.12), Vector3(pitch, yaw, 0))
+
 
 
 ## A round hatch: the ring, the lid, its hinge and handle.

@@ -181,10 +181,8 @@ static func _hatch(k: VehicleModels, p: Node3D, pos: Vector3, r: float, mat := C
 
 ## A periscope head facing along yaw (0: forward).
 static func _periscope(k: VehicleModels, p: Node3D, pos: Vector3, yaw := 0.0) -> void:
-	k._box(p, Vector3(0.2, 0.1, 0.12), pos, "gunmetal_w", null, Vector3(0, yaw, 0))
-	if not k.burnt:
-		var f := Vector3(sin(yaw), 0, cos(yaw)) * -0.062
-		k._box(p, Vector3(0.16, 0.06, 0.012), pos + f + Vector3(0, 0.005, 0), "glass", null, Vector3(0, yaw, 0), false)
+	VehicleFittings.periscope(k, p, pos, Vector3(0.2, 0.1, 0.12), Vector3(0, yaw, 0))
+
 
 
 ## A bank of smoke dischargers on the side `s` (-1 left, +1 right), firing

@@ -244,7 +244,7 @@ static func _strider(k: VehicleModels, team: int, variant: int) -> void:
 		k._box(m, Vector3(0.6, 0.06, 0.6), Vector3(s * 0.48, 1.81, -1.3), cam, col)
 		k._box(m, Vector3(0.08, 0.05, 0.08), Vector3(s * 0.48 + 0.2, 1.85, -1.08), "gunmetal_w", null, Vector3.ZERO, false)
 		for i in 3:
-			k._box(m, Vector3(0.14, 0.08, 0.06), Vector3(s * 0.48 + (i - 1) * 0.18, 1.83, -1.7), "glass", null, Vector3(-0.3, 0, 0), false)
+			VehicleFittings.periscope(k, m, Vector3(s * 0.48 + (i - 1) * 0.18, 1.83, -1.7), Vector3(0.14, 0.08, 0.06), Vector3(-0.3, 0, 0))
 	k._box(m, Vector3(0.55, 0.05, 0.5), Vector3(-0.45, 1.81, 0.55), cam, col)
 	# engine deck: two grilles with their slats
 	for s: float in [-1.0, 1.0]:
@@ -397,7 +397,7 @@ static func _mora(k: VehicleModels, team: int) -> void:
 	var gb := Vector2(-2.05, 1.93)
 	k._box(m, Vector3(0.62, 0.06, 0.66), Vector3(-0.72, 1.95, -1.68), cam, col)
 	for i in 3:
-		k._box(m, Vector3(0.15, 0.08, 0.06), Vector3(-0.9 + i * 0.18, 1.94, -2.06), "glass", null, Vector3(-0.4, 0, 0), false)
+		VehicleFittings.periscope(k, m, Vector3(-0.9 + i * 0.18, 1.94, -2.06), Vector3(0.15, 0.08, 0.06), Vector3(-0.4, 0, 0))
 	_plate(k, m, 0.62, 1.3, ga.lerp(gb, 0.3), ga.lerp(gb, 0.95), 0.03, "gunmetal_w", null, 0.0)
 	for i in 6:
 		_plate(k, m, 0.62, 1.26, ga.lerp(gb, 0.33 + i * 0.1), ga.lerp(gb, 0.37 + i * 0.1), 0.03, cam, col, 0.02, false)
@@ -494,7 +494,7 @@ static func _kuma(k: VehicleModels, team: int) -> void:
 	_plate(k, m, -0.35, 2.2, ga.lerp(gb, 0.12), ga.lerp(gb, 0.8), 0.06, cam, col, 0.0)
 	k._box(m, Vector3(0.7, 0.06, 0.62), Vector3(0.82, 1.7, -2.15), cam, col)
 	for i in 3:
-		k._box(m, Vector3(0.16, 0.08, 0.06), Vector3(0.64 + i * 0.18, 1.69, -2.5), "glass", null, Vector3(-0.5, 0, 0), false)
+		VehicleFittings.periscope(k, m, Vector3(0.64 + i * 0.18, 1.69, -2.5), Vector3(0.16, 0.08, 0.06), Vector3(-0.5, 0, 0))
 	for s: float in [-1.0, 1.0]:
 		# headlight clusters with guards on the front corners, tow eyes
 		_light(k, m, Vector3(s * 1.45, 1.36, -3.6), 0.3, 0.13)
@@ -619,7 +619,7 @@ static func _nyx(k: VehicleModels, team: int, kind: String) -> void:
 	# glacis front-right, the exhaust on the right flank
 	k._box(m, Vector3(0.48, 0.05, 0.5), Vector3(-0.42, 1.22, -0.62), cam, col)
 	for i in 3:
-		k._box(m, Vector3(0.12, 0.07, 0.05), Vector3(-0.56 + i * 0.14, 1.21, -0.9), "glass", null, Vector3(-0.5, 0, 0), false)
+		VehicleFittings.periscope(k, m, Vector3(-0.56 + i * 0.14, 1.21, -0.9), Vector3(0.12, 0.07, 0.05), Vector3(-0.5, 0, 0))
 	_plate(k, m, 0.42, 0.72, ga.lerp(gb, 0.3), ga.lerp(gb, 0.92), 0.02, "gunmetal_w", null, 0.0)
 	for i in 5:
 		_plate(k, m, 0.42, 0.7, ga.lerp(gb, 0.33 + i * 0.12), ga.lerp(gb, 0.37 + i * 0.12), 0.02, cam, col, 0.015, false)
@@ -764,7 +764,7 @@ static func _gorgon(k: VehicleModels, team: int) -> void:
 	# grille front-right; the exhaust on the right flank
 	k._box(m, Vector3(0.6, 0.06, 0.62), Vector3(-0.62, 2.1, -2.35), cam, col)
 	for i in 3:
-		k._box(m, Vector3(0.15, 0.08, 0.06), Vector3(-0.8 + i * 0.18, 2.09, -2.72), "glass", null, Vector3(-0.4, 0, 0), false)
+		VehicleFittings.periscope(k, m, Vector3(-0.8 + i * 0.18, 2.09, -2.72), Vector3(0.15, 0.08, 0.06), Vector3(-0.4, 0, 0))
 	k._cyl(m, 0.015, 0.015, 0.3, Vector3(-1.3, 1.92, -2.95), Z90, "gunmetal_w", null, 6, false)
 	k._box(m, Vector3(0.05, 0.24, 0.15), Vector3(-1.46, 1.96, -2.95), "gunmetal_w")
 	k._box(m, Vector3(0.95, 0.03, 1.15), Vector3(0.62, 2.095, -2.1), "gunmetal_w")

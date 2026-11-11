@@ -338,3 +338,19 @@ static func smoke_tube(k: VehicleModels, parent: Node3D, center: Vector3, rotati
 	var axis := Basis.from_euler(rotation).y
 	barrel(k, parent, center - axis * length / 2, center + axis * length / 2, radius, "gunmetal_w", null, false)
 	k._cyl(parent, radius * 1.15, radius * 1.15, length * 0.16, center - axis * length * 0.30, rotation, "gunmetal_w", null, 12, false)
+
+
+## Armoured periscope head, local -Z outward. Size describes its housing.
+static func periscope(k: VehicleModels, parent: Node3D, center: Vector3, size: Vector3, rotation := Vector3.ZERO) -> void:
+	var mount := k._pivot(parent, center)
+	mount.rotation = rotation
+	k._box(mount, size, Vector3.ZERO, "gunmetal_w")
+	var face := -size.z / 2
+	k._box(mount, Vector3(size.x * 0.86, size.y * 0.72, 0.008), Vector3(0, 0, face - 0.003), "rubber", null, Vector3.ZERO, false)
+	if not k.burnt:
+		k._box(mount, Vector3(size.x * 0.73, size.y * 0.52, 0.006), Vector3(0, 0, face - 0.008), "glass", Color(0.18, 0.30, 0.27), Vector3.ZERO, false)
+	# The overhanging lip shields the glass without becoming another window.
+	k._box(mount, Vector3(size.x * 1.04, size.y * 0.12, size.z * 0.65), Vector3(0, size.y * 0.48, face * 0.6), "gunmetal_w", null, Vector3.ZERO, false)
+	for side: float in [-1.0, 1.0]:
+		VehicleBody.fastener(k, mount, Vector3(side * size.x * 0.44, 0, face - 0.009), Vector3.FORWARD, minf(size.x, size.y) * 0.055)
+	k._fold(mount)

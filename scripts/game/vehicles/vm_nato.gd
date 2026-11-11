@@ -575,7 +575,7 @@ static func _marshall(k: VehicleModels, team: int) -> void:
 		_zy(k, m, s * 1.08, 0.06, ga.lerp(gb, 0.6), ga.lerp(gb, 0.72), 0.12, 0.06, "gunmetal_w")
 	k._cyl(m, 0.3, 0.3, 0.06, Vector3(-0.6, roof + 0.03, -2.0), Vector3.ZERO, cam, null, 14)
 	for i in 3:
-		k._box(m, Vector3(0.16, 0.1, 0.07), Vector3(-0.78 + i * 0.18, roof + 0.05, -2.36), "gunmetal_w", null, Vector3(0, (i - 1) * 0.3, 0))
+		VehicleFittings.periscope(k, m, Vector3(-0.78 + i * 0.18, roof + 0.05, -2.36), Vector3(0.16, 0.1, 0.07), Vector3(0, (i - 1) * 0.3, 0))
 	k._box(m, Vector3(1.0, 0.04, 1.1), Vector3(0.42, roof + 0.01, -1.55), "gunmetal_w")
 	for i in 6:
 		k._box(m, Vector3(0.9, 0.025, 0.05), Vector3(0.42, roof + 0.035, -2.0 + i * 0.18), cam, null, Vector3.ZERO, false)
@@ -600,7 +600,7 @@ static func _marshall(k: VehicleModels, team: int) -> void:
 		k._box(m, Vector3(0.72, 0.06, 0.95), Vector3(s * 0.48, roof + 0.03, 2.55), cam)
 		k._box(m, Vector3(0.06, 0.06, 0.2), Vector3(s * 0.2, roof + 0.08, 2.2), "gunmetal_w")
 		for z in [1.75, 3.4]:
-			k._box(m, Vector3(0.14, 0.1, 0.12), Vector3(s * 0.95, roof + 0.05, z), "gunmetal_w")
+			VehicleFittings.periscope(k, m, Vector3(s * 0.95, roof + 0.05, z), Vector3(0.14, 0.1, 0.12), Vector3(0, -s * PI / 2, 0))
 	# the rear: ramp with its door, hinges, lights, steps
 	k._box(m, Vector3(1.75, 1.15, 0.08), Vector3(0, 1.4, 3.86), cam)
 	k._box(m, Vector3(0.6, 0.95, 0.04), Vector3(0.42, 1.48, 3.91), cam)
@@ -675,7 +675,7 @@ static func _rhino(k: VehicleModels, team: int, up: bool) -> void:
 	# lights in guards on the nose, tow eyes
 	k._cyl(m, 0.28, 0.28, 0.06, Vector3(0, roof + 0.03, -1.9), Vector3.ZERO, cam, null, 14)
 	for i in 3:
-		k._box(m, Vector3(0.16, 0.1, 0.07), Vector3(-0.18 + i * 0.18, roof + 0.05, -2.24), "gunmetal_w", null, Vector3(0, (i - 1) * 0.35, 0))
+		VehicleFittings.periscope(k, m, Vector3(-0.18 + i * 0.18, roof + 0.05, -2.24), Vector3(0.16, 0.1, 0.07), Vector3(0, (i - 1) * 0.35, 0))
 	_tube(k, m, Vector3(0, 1.22, -3.56), Vector3(0, roof + 0.01, -2.3), 0.04, cam)
 	for s in [-1.0, 1.0]:
 		_lamp(k, m, Vector3(s * 0.95, 1.36, -2.88), 0.07)
@@ -842,7 +842,7 @@ static func _mk_hull(k: VehicleModels, team: int, cam: String, era: bool) -> voi
 		_zy(k, m, -0.6, 0.94, ga.lerp(gb, f - 0.005), ga.lerp(gb, f + 0.005), 0.02, 0.045, "gunmetal_w", null, false)
 	k._cyl(m, 0.28, 0.28, 0.06, Vector3(-0.85, 1.92, -1.25), Vector3.ZERO, cam, null, 14)
 	for i in 3:
-		k._box(m, Vector3(0.15, 0.1, 0.07), Vector3(-1.05 + i * 0.2, 1.88, -1.58), "gunmetal_w", null, Vector3(-0.24, (i - 1) * 0.3, 0))
+		VehicleFittings.periscope(k, m, Vector3(-1.05 + i * 0.2, 1.88, -1.58), Vector3(0.15, 0.1, 0.07), Vector3(-0.24, (i - 1) * 0.3, 0))
 	# the exhaust louvres on the left of the glacis
 	k._box(m, Vector3(0.05, 0.3, 1.0), Vector3(-1.79, 1.48, -2.1), "gunmetal_w")
 	# skirts: bolted heavy panels hanging off the sponsons, the front one raked
