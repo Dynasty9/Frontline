@@ -87,8 +87,8 @@ static func _light(k: VehicleModels, p: Node3D, pos: Vector3, w: float, h: float
 	k._box(p, Vector3(w + 0.05, h + 0.05, 0.08), pos, "gunmetal_w")
 	var lens := pos + Vector3(0, 0, face * 0.042)
 	if rear:
-		k._box(p, Vector3(w * 0.45, h * 0.7, 0.02), lens + Vector3(-w * 0.24, 0, 0), "paint", Color(0.45, 0.06, 0.05), Vector3.ZERO, false)
-		k._box(p, Vector3(w * 0.45, h * 0.7, 0.02), lens + Vector3(w * 0.24, 0, 0), "paint", Color(0.55, 0.36, 0.08), Vector3.ZERO, false)
+		VehicleFittings.signal_lens(k, p, lens + Vector3(-w * 0.24, 0, 0), Vector2(w * 0.45, h * 0.7), Color(0.45, 0.035, 0.025), face)
+		VehicleFittings.signal_lens(k, p, lens + Vector3(w * 0.24, 0, 0), Vector2(w * 0.45, h * 0.7), Color(0.62, 0.27, 0.025), face)
 	else:
 		k._box(p, Vector3(w * 0.55, h * 0.72, 0.02), lens + Vector3(-w * 0.18, 0, 0), "glass", null, Vector3.ZERO, false)
 		k._box(p, Vector3(w * 0.25, h * 0.5, 0.02), lens + Vector3(w * 0.3, 0, 0), "paint", Color(0.6, 0.42, 0.12), Vector3.ZERO, false)

@@ -211,10 +211,8 @@ static func _lamp(k: VehicleModels, p: Node3D, pos: Vector3, r := 0.08, f := -1.
 
 ## A tail light cluster (red and amber) facing back.
 static func _taillight(k: VehicleModels, p: Node3D, pos: Vector3) -> void:
-	_bx(k, p, Vector3(0.22, 0.12, 0.06), pos, "gunmetal_w")
-	if not k.burnt:
-		_bx(k, p, Vector3(0.08, 0.07, 0.02), pos + Vector3(-0.05, 0, 0.035), "paint", Color(0.45, 0.06, 0.05), Vector3.ZERO, false)
-		_bx(k, p, Vector3(0.08, 0.07, 0.02), pos + Vector3(0.05, 0, 0.035), "paint", Color(0.55, 0.36, 0.08), Vector3.ZERO, false)
+	VehicleFittings.tail_cluster(k, p, pos)
+
 
 
 ## A whip antenna on a base.

@@ -148,10 +148,8 @@ static func _headlight(k: VehicleModels, p: Node3D, pos: Vector3, guard := true)
 
 ## A tail light pair facing +z.
 static func _taillight(k: VehicleModels, p: Node3D, pos: Vector3) -> void:
-	k._box(p, Vector3(0.2, 0.1, 0.05), pos, "gunmetal_w")
-	if not k.burnt:
-		k._box(p, Vector3(0.07, 0.06, 0.02), pos + Vector3(-0.045, 0, 0.03), "paint", Color(0.42, 0.06, 0.04), Vector3.ZERO, false)
-		k._box(p, Vector3(0.07, 0.06, 0.02), pos + Vector3(0.045, 0, 0.03), "paint", Color(0.5, 0.3, 0.05), Vector3.ZERO, false)
+	VehicleFittings.tail_cluster(k, p, pos, Vector3(0.2, 0.1, 0.05), Vector2(0.07, 0.06), 0.045)
+
 
 
 ## A whip antenna on a base.

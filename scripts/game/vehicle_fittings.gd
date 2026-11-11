@@ -373,3 +373,23 @@ static func hatch(k: VehicleModels, parent: Node3D, center: Vector3, radius: flo
 	for side: float in [-1.0, 1.0]:
 		VehicleBody.fastener(k, mount, Vector3(side * radius * 0.7, y + 0.003, 0), Vector3.UP, 0.012)
 	k._fold(mount)
+
+
+## A ribbed coloured signal lens, local +Z outward, on a rubber seat.
+static func signal_lens(k: VehicleModels, parent: Node3D, center: Vector3, size: Vector2, col: Color, facing := 1.0) -> void:
+	var mount := k._pivot(parent, center)
+	mount.rotation.y = PI if facing < 0 else 0.0
+	k._box(mount, Vector3(size.x + 0.008, size.y + 0.008, 0.008), Vector3(0, 0, -0.004), "rubber", null, Vector3.ZERO, false)
+	if not k.burnt:
+		k._box(mount, Vector3(size.x, size.y, 0.012), Vector3(0, 0, 0.004), "signal_lens", col, Vector3.ZERO, false)
+		for i in 5:
+			k._box(mount, Vector3(size.x * 0.9, size.y * 0.045, 0.003), Vector3(0, size.y * (i - 2) * 0.17, 0.011), "signal_lens", col.lightened(0.05), Vector3.ZERO, false)
+	k._fold(mount)
+
+
+## Two-colour convoy tail cluster. The family supplies its original dimensions.
+static func tail_cluster(k: VehicleModels, parent: Node3D, center: Vector3, size := Vector3(0.22, 0.12, 0.06), lens := Vector2(0.08, 0.07), spacing := 0.05, facing := 1.0) -> void:
+	k._box(parent, size, center, "gunmetal_w")
+	for side: float in [-1.0, 1.0]:
+		var col := Color(0.45, 0.035, 0.025) if side < 0 else Color(0.62, 0.27, 0.025)
+		signal_lens(k, parent, center + Vector3(side * spacing, 0, facing * (size.z / 2 + 0.005)), lens, col, facing)
