@@ -177,8 +177,7 @@ static func _ammo_can(k: VehicleModels, p: Node3D, pos: Vector3, rot := Vector3.
 
 ## A whip antenna on a base.
 static func _antenna(k: VehicleModels, p: Node3D, pos: Vector3, h := 2.2) -> void:
-	k._cyl(p, 0.04, 0.05, 0.12, pos + Vector3(0, 0.06, 0), Vector3.ZERO, "gunmetal_w", null, 8)
-	k._cyl(p, 0.008, 0.014, h, pos + Vector3(0, 0.12 + h * 0.5, 0), Vector3.ZERO, "gunmetal_w", null, 4, false)
+	VehicleFittings.antenna(k, p, pos, h)
 
 
 ## A cluster of smoke-grenade dischargers: n tubes fanned on a bracket on the
@@ -362,8 +361,7 @@ static func _hunter(k: VehicleModels, team: int, arm: String) -> void:
 		# the steps under the doors, the mirror on its arm
 		k._box(m, Vector3(0.24, 0.05, 0.5), Vector3(s * 1.2, 0.98, -0.3), "gunmetal_w")
 		k._box(m, Vector3(0.24, 0.05, 0.4), Vector3(s * 1.2, 0.98, 0.9), "gunmetal_w")
-		_tube(k, m, Vector3(s * 1.17, 2.2, -0.74), Vector3(s * 1.44, 2.24, -0.92), 0.02, "gunmetal_w")
-		k._box(m, Vector3(0.05, 0.32, 0.2), Vector3(s * 1.46, 2.16, -0.94), "gunmetal_w")
+		VehicleFittings.mirror(k, m, Vector3(s * 1.46, 2.16, -0.94), Vector2(0.2, 0.32), -s * 0.3, [Vector3(s * 1.17, 2.2, -0.74)])
 		# stowage box low on the capsule side by the rear door
 		k._box(m, Vector3(0.14, 0.26, 0.5), Vector3(s * 1.3, 1.26, 1.15), cam)
 	# the engine air intake up the right A-pillar
@@ -710,11 +708,8 @@ static func _rhino(k: VehicleModels, team: int, up: bool) -> void:
 	var gy := 0.42
 	k._box(t, Vector3(0.62, 0.5, 0.42), Vector3(0, gy, -1.55), cam)
 	k._cyl(t, 0.13, 0.13, 0.7, Vector3(0, gy, -2.05), Vector3(PI / 2, 0, 0), "paint", GUN, 14)
-	k._cyl(t, 0.1, 0.115, 4.4, Vector3(0, gy, -4.3), Vector3(PI / 2, 0, 0), "paint", GUN, 14)
+	VehicleFittings.barrel(k, t, Vector3(0, gy, -2.1), Vector3(0, gy, -6.5), 0.10, "paint", GUN)
 	k._cyl(t, 0.165, 0.165, 0.7, Vector3(0, gy, -3.25), Vector3(PI / 2, 0, 0), "paint", GUN, 14)
-	for z in [-2.7, -4.3, -5.4]:
-		k._cyl(t, 0.122, 0.122, 0.06, Vector3(0, gy, z), Vector3(PI / 2, 0, 0), "gunmetal_w", null, 12, false)
-	k._cyl(t, 0.12, 0.12, 0.16, Vector3(0, gy, -6.42), Vector3(PI / 2, 0, 0), "gunmetal_w", null, 12)
 	k._box(t, Vector3(0.08, 0.06, 0.12), Vector3(0, gy + 0.15, -6.4), "gunmetal_w", null, Vector3.ZERO, false)
 	k.gun_tip = k._tip(t, Vector3(0, gy, -6.52))
 	k._cyl(t, 0.025, 0.025, 0.3, Vector3(0.42, gy - 0.08, -1.7), Vector3(PI / 2, 0, 0), "gunmetal_w", null, 6, false)
@@ -928,11 +923,8 @@ static func _mk_turret(k: VehicleModels, team: int, cam: String, up: bool) -> vo
 	var gy := 0.32
 	k._box(t, Vector3(0.48, 0.4, 0.5), Vector3(0, gy, -2.4), cam)
 	k._cyl(t, 0.16, 0.16, 0.5, Vector3(0, gy, -2.8), Vector3(PI / 2, 0, 0), "paint", GUN, 14)
-	k._cyl(t, 0.105, 0.12, 3.1, Vector3(0, gy, -4.35), Vector3(PI / 2, 0, 0), "paint", GUN, 14)
+	VehicleFittings.barrel(k, t, Vector3(0, gy, -2.8), Vector3(0, gy, -5.99), 0.105, "paint", GUN)
 	k._cyl(t, 0.17, 0.17, 0.75, Vector3(0, gy, -3.85), Vector3(PI / 2, 0, 0), "paint", GUN, 14)
-	for z in [-3.2, -4.6, -5.4]:
-		k._cyl(t, 0.125, 0.125, 0.05, Vector3(0, gy, z), Vector3(PI / 2, 0, 0), "gunmetal_w", null, 12, false)
-	k._cyl(t, 0.115, 0.115, 0.14, Vector3(0, gy, -5.92), Vector3(PI / 2, 0, 0), "gunmetal_w", null, 12)
 	k._box(t, Vector3(0.07, 0.06, 0.1), Vector3(0, gy + 0.14, -5.88), "gunmetal_w", null, Vector3.ZERO, false)
 	k.gun_tip = k._tip(t, Vector3(0, gy, -6.0))
 	k._cyl(t, 0.025, 0.025, 0.3, Vector3(0.36, gy + 0.06, -2.55), Vector3(PI / 2, 0, 0), "gunmetal_w", null, 6, false)
@@ -1031,11 +1023,10 @@ static func _scorcher(k: VehicleModels, team: int) -> void:
 	k._cyl(e, 0.22, 0.22, 0.8, Vector3(0, 0, -0.8), Vector3(PI / 2, 0, 0), "paint", GUN, 14)
 	for s in [-1.0, 1.0]:
 		k._cyl(e, 0.07, 0.07, 1.0, Vector3(s * 0.22, -0.12, -0.75), Vector3(PI / 2, 0, 0), "gunmetal_w", null, 8)
-	k._cyl(e, 0.11, 0.13, 5.3, Vector3(0, 0, -3.65), Vector3(PI / 2, 0, 0), "paint", GUN, 14)
+	VehicleFittings.barrel(k, e, Vector3(0, 0, -1.0), Vector3(0, 0, -6.78), 0.11, "paint", GUN)
 	k._cyl(e, 0.19, 0.19, 0.9, Vector3(0, 0, -3.9), Vector3(PI / 2, 0, 0), "paint", GUN, 14)
-	k._cyl(e, 0.18, 0.18, 0.2, Vector3(0, 0, -6.35), Vector3(PI / 2, 0, 0), "gunmetal_w", null, 12)
-	k._cyl(e, 0.18, 0.18, 0.2, Vector3(0, 0, -6.68), Vector3(PI / 2, 0, 0), "gunmetal_w", null, 12)
-	k._cyl(e, 0.12, 0.12, 0.34, Vector3(0, 0, -6.5), Vector3(PI / 2, 0, 0), "gunmetal_w", null, 12)
+	for z in [-6.35, -6.68]:
+		k._add(e, VehicleFittings._ring(0.11, 0.18), "gunmetal_w", null, Vector3(0, 0, z), Vector3(PI / 2, 0, 0), Vector3(1, 0.7, 1))
 	k.gun_tip = k._tip(e, Vector3(0, 0, -6.8))
 	var gt := t
 	_rcws(k, t, Vector3(0.62, 1.28, 0.6), "hmg", cam, 0.85)
@@ -1382,9 +1373,7 @@ static func _hemtt_chassis(k: VehicleModels, team: int, paint: Color, detailed :
 		for dz in [-4.3, -3.05]:
 			k._box(m, Vector3(0.02, 1.3, 0.03), Vector3(s * 1.205, 2.05, dz), "gunmetal_w", null, Vector3.ZERO, false)
 		k._box(m, Vector3(0.04, 0.05, 0.16), Vector3(s * 1.23, 1.75, -3.2), "gunmetal_w", null, Vector3.ZERO, false)
-		_tube(k, m, Vector3(s * 1.2, 2.5, -4.35), Vector3(s * 1.5, 2.45, -4.5), 0.022, "gunmetal_w")
-		_tube(k, m, Vector3(s * 1.2, 2.0, -4.35), Vector3(s * 1.5, 2.1, -4.5), 0.022, "gunmetal_w")
-		k._box(m, Vector3(0.05, 0.42, 0.24), Vector3(s * 1.52, 2.28, -4.52), "gunmetal_w")
+		VehicleFittings.mirror(k, m, Vector3(s * 1.52, 2.28, -4.52), Vector2(0.24, 0.42), -s * 0.3, [Vector3(s * 1.2, 2.5, -4.35), Vector3(s * 1.2, 2.0, -4.35)])
 		# the ladder steps up to the door
 		for i in 2:
 			k._box(m, Vector3(0.3, 0.04, 0.42), Vector3(s * 1.12, 0.55 + i * 0.36, -3.05), "gunmetal_w")

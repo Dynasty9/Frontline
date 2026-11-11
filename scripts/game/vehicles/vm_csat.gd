@@ -156,8 +156,7 @@ static func _taillight(k: VehicleModels, p: Node3D, pos: Vector3) -> void:
 
 ## A whip antenna on a base.
 static func _antenna(k: VehicleModels, p: Node3D, pos: Vector3, h: float) -> void:
-	k._cyl(p, 0.04, 0.05, 0.12, pos + Vector3(0, 0.06, 0), Vector3.ZERO, "gunmetal_w", null, 8)
-	k._cyl(p, 0.008, 0.012, h, pos + Vector3(0, 0.12 + h * 0.5, 0), Vector3.ZERO, "gunmetal_w", null, 4, false)
+	VehicleFittings.antenna(k, p, pos, h)
 
 
 ## A tow hook/shackle facing along `dir` (-1 front, +1 rear).
@@ -304,8 +303,7 @@ static func _ifrit(k: VehicleModels, team: int, arm: String) -> void:
 		for sz in [0.15, 1.3]:
 			k._box(m, Vector3(0.24, 0.04, 0.42), Vector3(s * 1.0, 0.62, sz - 0.2), "gunmetal_w")
 		# mirrors on stalks at the screen's base
-		_tube(k, m, Vector3(s * 1.08, 1.62, -1.2), Vector3(s * 1.32, 1.82, -1.26), 0.018, "gunmetal_w", null, 6, false)
-		k._box(m, Vector3(0.05, 0.26, 0.17), Vector3(s * 1.35, 1.88, -1.26), "gunmetal_w", null, Vector3(0, s * 0.2, 0))
+		VehicleFittings.mirror(k, m, Vector3(s * 1.35, 1.88, -1.26), Vector2(0.17, 0.26), -s * 0.3, [Vector3(s * 1.08, 1.62, -1.2)])
 		# angular arches over the wheels and mud flaps behind them
 		for wz in [-1.85, 1.9]:
 			_arch(k, m, s * 1.14, wz, 0.56, 0.2, 1.16)
@@ -405,7 +403,7 @@ static func _qilin(k: VehicleModels, team: int, arm: String) -> void:
 		k._box(m, Vector3(0.015, 0.2, 0.015), Vector3(s * 0.48, 0.74, -2.56), "gunmetal_w", null, Vector3.ZERO, false)
 		_taillight(k, m, Vector3(s * 0.55, 0.85, 2.43))
 		# mirrors on the screen frame
-		k._box(m, Vector3(0.04, 0.14, 0.12), Vector3(s * 0.82, 1.18, -0.92), "gunmetal_w")
+		VehicleFittings.mirror(k, m, Vector3(s * 0.82, 1.18, -0.92), Vector2(0.12, 0.14), -s * 0.3, [Vector3(s * 0.72, 1.18, -0.92)])
 	# exhaust out of the right rear
 	k._cyl(m, 0.045, 0.045, 0.3, Vector3(0.62, 0.62, 2.45), Vector3(PI / 2, 0, 0), "gunmetal_w", null, 8)
 	# the grille and bull bar
@@ -902,13 +900,9 @@ static func _t100(k: VehicleModels, team: int) -> Vector3:
 ## the barrel with its thermal sleeve bands, the fume extractor, the muzzle
 ## and its reference sensor. Returns the muzzle marker.
 static func _gun125(k: VehicleModels, p: Node3D, y: float, z0: float, length: float, extractor := true) -> Node3D:
-	var zc := z0 - length * 0.5
-	k._cyl(p, 0.105, 0.088, length, Vector3(0, y, zc), Vector3(PI / 2, 0, 0), "paint", GUN_PAINT, 12)
-	for i in 4:
-		k._cyl(p, 0.112, 0.112, 0.05, Vector3(0, y, z0 - 0.4 - i * length * 0.2), Vector3(PI / 2, 0, 0), "paint", GUN_PAINT.darkened(0.15), 12, false)
+	VehicleFittings.barrel(k, p, Vector3(0, y, z0), Vector3(0, y, z0 - length), 0.10, "paint", GUN_PAINT)
 	if extractor:
 		k._cyl(p, 0.15, 0.15, 0.62, Vector3(0, y, z0 - length * 0.58), Vector3(PI / 2, 0, 0), "paint", GUN_PAINT, 14)
-	k._cyl(p, 0.1, 0.1, 0.14, Vector3(0, y, z0 - length + 0.07), Vector3(PI / 2, 0, 0), "gunmetal_w", null, 12)
 	k._box(p, Vector3(0.06, 0.05, 0.1), Vector3(0, y + 0.12, z0 - length + 0.2), "gunmetal_w", null, Vector3.ZERO, false)
 	return k._tip(p, Vector3(0, y, z0 - length - 0.05))
 
@@ -1069,9 +1063,10 @@ static func _sochor(k: VehicleModels, team: int) -> void:
 	for s in [-1.0, 1.0]:
 		k._cyl(e, 0.07, 0.07, 0.9, Vector3(s * 0.2, 0.22, -0.9), Vector3(PI / 2, 0, 0), "gunmetal_w", null, 10)
 	k._cyl(e, 0.22, 0.2, 0.6, Vector3(0, 0, -0.95), Vector3(PI / 2, 0, 0), "paint", GUN_PAINT, 14)
-	k._cyl(e, 0.14, 0.115, 5.6, Vector3(0, 0, -3.9), Vector3(PI / 2, 0, 0), "paint", GUN_PAINT, 12)
+	VehicleFittings.barrel(k, e, Vector3(0, 0, -1.1), Vector3(0, 0, -7.15), 0.115, "paint", GUN_PAINT)
 	k._cyl(e, 0.2, 0.2, 0.7, Vector3(0, 0, -3.2), Vector3(PI / 2, 0, 0), "paint", GUN_PAINT, 14)
-	k._cyl(e, 0.18, 0.18, 0.5, Vector3(0, 0, -6.9), Vector3(PI / 2, 0, 0), "gunmetal_w", null, 12)
+	for z in [-6.7, -7.1]:
+		k._add(e, VehicleFittings._ring(0.115, 0.18), "gunmetal_w", null, Vector3(0, 0, z), Vector3(PI / 2, 0, 0), Vector3(1, 0.65, 1))
 	for s in [-1.0, 1.0]:
 		k._box(e, Vector3(0.08, 0.26, 0.42), Vector3(s * 0.17, 0, -6.92), "gunmetal_w")
 	k.gun_tip = k._tip(e, Vector3(0, 0, -7.2))
@@ -1267,8 +1262,7 @@ static func _typhoon(k: VehicleModels, team: int) -> void:
 			k._box(m, Vector3(0.3, 0.04, 0.3), Vector3(s * 1.1, sy, -2.32), "gunmetal_w")
 		k._box(m, Vector3(0.04, 0.5, 0.3), Vector3(s * 1.24, 0.85, -2.32), "gunmetal_w")
 		# mirrors on long arms
-		_tube(k, m, Vector3(s * 1.2, 2.5, -4.25), Vector3(s * 1.52, 2.55, -4.2), 0.02, "gunmetal_w", null, 6, false)
-		k._box(m, Vector3(0.06, 0.42, 0.22), Vector3(s * 1.55, 2.5, -4.2), "gunmetal_w", null, Vector3(0, s * 0.15, 0))
+		VehicleFittings.mirror(k, m, Vector3(s * 1.55, 2.5, -4.2), Vector2(0.22, 0.42), -s * 0.3, [Vector3(s * 1.2, 2.5, -4.25)])
 		# the front wheel under its faceted arch, the rear tandem
 		_arch(k, m, s * 1.13, -3.05, 0.64, 0.26, 1.34)
 		k._wheel(m, Vector3(s * 1.0, 0.62, -3.05), 0.62, 0.48)

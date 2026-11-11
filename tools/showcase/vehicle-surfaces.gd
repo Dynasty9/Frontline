@@ -11,6 +11,7 @@ var offset := Vector3.ZERO
 var swatches := false
 var panels := false
 var fittings := false
+var accessories := false
 var camera_size := 0.0
 var grounded := false
 var rotor_focus := false
@@ -41,6 +42,9 @@ func _ready() -> void:
 			rotor_focus = true
 		elif arg == "--surface-rear":
 			view_direction = Vector3(-1, 0.65, 1.25)
+		elif arg == "--surface-accessories":
+			accessories = true
+			fittings = true
 		elif arg == "--surface-fittings":
 			fittings = true
 		elif arg == "--surface-panels":
@@ -51,7 +55,7 @@ func _ready() -> void:
 	if swatches:
 		kinds.assign(["armor", "aircraft", "canvas", "rubber", "plastic", "wood", "glass", "steel"] if panels else VehicleMaterials.PROFILES.keys())
 	if fittings:
-		kinds.assign(["grille", "exhaust", "mudflap", "stowage"])
+		kinds.assign(["antenna", "mirror_front", "mirror_back", "barrel"] if accessories else ["grille", "exhaust", "mudflap", "stowage"])
 	if kinds.is_empty():
 		for list in [Defs.VEHICLES.keys(), VehicleModels.family_keys(), VmCore.KEYS, VmGunship.KEYS, VmAttack.KEYS, VmFighter.KEYS]:
 			for kind: String in list:
@@ -62,7 +66,7 @@ func _ready() -> void:
 		kinds.append_array(["wreck_tank", "wreck_heli", "wreck_patrol_ship"])
 		kinds.sort()
 	DirAccess.make_dir_recursive_absolute(output)
-	var manifest := {"team": team, "seed": 3, "renderer": RenderingServer.get_current_rendering_method(), "models": kinds, "camera_size": camera_size, "grounded": grounded, "panels": panels, "fittings": fittings, "rotor_focus": rotor_focus, "body_focus": str(body_focus), "view_direction": str(view_direction)}
+	var manifest := {"team": team, "seed": 3, "renderer": RenderingServer.get_current_rendering_method(), "models": kinds, "camera_size": camera_size, "grounded": grounded, "panels": panels, "fittings": fittings, "accessories": accessories, "rotor_focus": rotor_focus, "body_focus": str(body_focus), "view_direction": str(view_direction)}
 	FileAccess.open(output.path_join("capture.json"), FileAccess.WRITE).store_string(JSON.stringify(manifest, "\t"))
 	var per_page := 1 if single else (4 if fittings else (8 if panels else (16 if swatches else 12)))
 	for start in range(0, kinds.size(), per_page):
@@ -139,6 +143,10 @@ func _cell(grid: GridContainer, kind: String, size: Vector2i) -> void:
 		k = VehicleModels.new()
 		k.root = Node3D.new()
 		match kind:
+			"antenna": VehicleFittings.antenna(k, k.root, Vector3.ZERO, 0.65)
+			"mirror_front": VehicleFittings.mirror(k, k.root, Vector3.ZERO, Vector2(0.24, 0.42), PI - 0.3, [Vector3(-0.3, 0.16, 0), Vector3(-0.3, -0.16, 0)])
+			"mirror_back": VehicleFittings.mirror(k, k.root, Vector3.ZERO, Vector2(0.24, 0.42), -0.3, [Vector3(-0.3, 0.16, 0), Vector3(-0.3, -0.16, 0)])
+			"barrel": VehicleFittings.barrel(k, k.root, Vector3(0, 0, 0.8), Vector3(0, 0, -0.8), 0.10, "paint", Color(0.3, 0.32, 0.24))
 			"grille": VehicleFittings.grille(k, k.root, Vector3.ZERO, Vector2(2, 1.1), Vector3(0, PI, 0), "paint", Color(0.30, 0.32, 0.23))
 			"exhaust": VehicleFittings.exhaust(k, k.root, Vector3(0, -0.8, 0), Vector3.UP, 1.6, 0.18)
 			"mudflap": VehicleFittings.mudflap(k, k.root, Vector3.ZERO, Vector2(1.0, 1.1), Vector3(0, PI, 0))
