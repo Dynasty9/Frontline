@@ -37,7 +37,7 @@ func _process(dt: float) -> void:
 
 
 func _follow_crossing() -> void:
-	# Let the group travel across the frame and keep the village ahead of them in sight.
+	# Back away more slowly than the squad advances so the lead riflemen fill the frame.
 	var travel := Defs.flat(squad.centroid() - origin)
-	roadside.global_position = origin + Vector3(6.6, 1.35, 2.0) + travel * 0.30
-	roadside.look_at(origin + Vector3(1.0, 1.05, -1.4) + travel * 0.60)
+	roadside.global_position = origin + Vector3(2.8, 1.45, -7.3) + travel * 0.30
+	roadside.look_at(origin + Vector3(0.7, 1.13, -1.8) + travel * 0.60)
