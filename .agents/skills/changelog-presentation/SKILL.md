@@ -7,6 +7,12 @@ Start from the player's question: what will I notice, and why is it useful? Give
 one short outcome in the summary, one clear piece of evidence, and optional
 details. Preserve the useful specifics in the body; do not repeat the summary.
 
+For visual tests and recordings on macOS, run the Godot editor binary natively
+with `--embedded --debug --ignore-error-breaks`. Use `--headless` for
+simulation-only checks. The showcase capture tool and renderer tests use the
+embedded display by default. Set `FL_SHOW_WINDOW=1` for a live review.
+Check the saved dimensions and inspect motion in the encoded clip.
+
 Choose the medium by what proves the change:
 - Appearance/layout: a legible still or matched before/after composition.
 - Movement, timing, interaction, effects: a short WebM with a poster and controls.

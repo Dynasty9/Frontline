@@ -337,16 +337,17 @@ func _mm(mesh: Mesh, m: Material, xf: Array, cd: Array, vis: float) -> MultiMesh
 	mm.use_custom_data = true
 	mm.mesh = mesh
 	mm.instance_count = xf.size()
+	var deform_bounds := m is ShaderMaterial and is_instance_valid(atmo) and is_instance_valid(atmo.world.terrain)
 	var low := INF
 	var high := -INF
 	for i in xf.size():
 		mm.set_instance_transform(i, xf[i])
 		mm.set_instance_custom_data(i, cd[i])
-		if m is ShaderMaterial:
+		if deform_bounds:
 			var height: float = atmo.world.terrain.deform_at(xf[i].origin)
 			low = minf(low, height)
 			high = maxf(high, height)
-	if m is ShaderMaterial:
+	if deform_bounds:
 		# Local height bounds preserve distance fading even beside much taller mountains.
 		var bounds := mm.get_aabb()
 		bounds.position.y += low - 5.0

@@ -88,6 +88,7 @@ var lift_phase := 0  # 0 ground, 1 climb, 2 cruise, 3 land, 4 unload, 5/6 sling,
 var lift_t := 0.0
 var uav_dest := Vector3.INF
 var _orbit := 0.0
+var _barrel_pitch_rate := 0.0  # visible motion of the gun cradle
 var _elev_v := 0.0  # (view) barrel / launcher elevation
 var model: Node3D
 var impact_response := ImpactResponse.new()
@@ -112,10 +113,18 @@ var tail_rotor: Node3D
 var blades: Node3D
 var blur: MeshInstance3D
 var wheels: Array = []
+var always_animate_tracks := false  # Long-lens footage also needs distant shoe contact.
+var _belt_yaw := 0.0
+var _belt_origin := Vector3.ZERO
+var _engine_sound: AudioStreamPlayer3D
+var _track_sound: AudioStreamPlayer3D
+var _drive_load := 0.0
 var _last_pos := Vector3.ZERO
 var _rotor_spd := 0.0
+var engine_exhaust: GeometryInstance3D
 var burner: Node3D
 var dust: GeometryInstance3D  # (GPU or CPU particles: see Vfx.part)
+var bent_skirts := 0
 var _burn_state := -1
 var ring: MeshInstance3D
 var _vis := true
@@ -154,10 +163,17 @@ func apply_props(d: Dictionary) -> void:
 		net_yaw = d.yaw
 	if d.has("max_hp"):
 		max_hp = d.max_hp
+	if d.has("bent_skirts"):
+		bent_skirts = d.bent_skirts
+		if _vm:
+			_vm.pose_skirts(bent_skirts)
 
 
 func get_props() -> Dictionary:
-	return {"vkind": vkind, "team": team, "owner": owner_peer, "pos": position, "yaw": rotation.y, "max_hp": max_hp}
+	var d := {"vkind": vkind, "team": team, "owner": owner_peer, "pos": position, "yaw": rotation.y, "max_hp": max_hp}
+	if bent_skirts:
+		d["bent_skirts"] = bent_skirts
+	return d
 
 
 func on_spawned() -> void:
@@ -271,6 +287,8 @@ func repair(amount: float) -> void:
 			track_broken = false
 			track_fix = 0.0
 			world.send_msg(team, "info", "%s track repaired." % display_name(), position)
+	if bent_skirts and not needs_repair():
+		_set_bent_skirts(0)
 
 
 func turret_pos() -> Vector3:
@@ -1518,7 +1536,19 @@ func explosion_hit(pos: Vector3, d: Dictionary) -> void:
 		var r: float = float(d.get("radius", 5.0)) + 2.0
 		dmg = float(d.get("dmg", 100.0)) * maxf(0.0, 1.0 - dist / r) * (0.12 if armor >= 2 else 0.8) * float(d.get("veh_mult", 1.0))
 	if dmg > 0.0:
+		# The damage has already been resolved. A hard hit folds the outer
+		# skirt on the side it struck, and engineers straighten it on repair.
+		if vdef.get("model", vkind) == "tank" and dmg >= max_hp * 0.25:
+			var side := 2 if to_local(pos).x > 0.0 else 1
+			_set_bent_skirts(bent_skirts | side)
 		take_damage(dmg, d.get("src"))
+
+
+func _set_bent_skirts(mask: int) -> void:
+	if mask != bent_skirts:
+		var change := {"bent_skirts": mask}
+		apply_props(change)
+		world.push_props(self, change)
 
 
 ## A missile or rocket coming at it: armour fires its smoke dischargers - a
@@ -1584,7 +1614,10 @@ func _destroyed() -> void:
 	if world.battle:
 		world.battle.end_blame(was)
 	passengers.clear()
-	world.fx_event([Fx.EXPLODE, position + Vector3(0, 1.0, 0), 2.0, "fuel"])
+	if is_tracked() and weight() >= 2:
+		world.fx_event(Fx.tank_knockout(to_global(Vector3(0, 1.6, 1.2))))
+	else:
+		world.fx_event([Fx.EXPLODE, position + Vector3(0, 1.0, 0), 2.0, "fuel"])
 	world.fx_event([Fx.DEBRIS, position + Vector3(0, 1.5, 0), Color(0.15, 0.15, 0.14), 16])
 	for s in world.soldiers_near(position, 7.0):
 		s.flinch_from(position, Defs.flat(s.position - position).length(), 7.0)
@@ -1603,12 +1636,15 @@ func _destroyed() -> void:
 		var hs := _hull_size()
 		var plan := _toss_plan(p, y)
 		props["vk"] = vkind
+		if vdef.get("model", vkind) == "tank":
+			props["bent_skirts"] = bent_skirts
+			props["wreck_turret_yaw"] = turret_yaw
 		props["size"] = Vector3(hs.x, maxf(hs.y, 1.2), hs.z)
 		props["pos"] = plan[0]
 		props["yaw"] = plan[1]
 		props["tilt"] = plan[2]
 		if (plan[3] as Vector3).length() > 0.3:
-			props["toss"] = [p, y, plan[3], plan[4]]
+			props["toss"] = [position, y, plan[3], plan[4]]
 	_bail_out(-hp)
 	var w := world
 	world.despawn(self)
@@ -2227,7 +2263,7 @@ func _suspension(dt: float) -> void:
 	tgt.x += atan2(hf - hr, hs.z * 0.76)
 	var hl := _ground_h(position - side * hs.x * 0.4)
 	var hh := _ground_h(position + side * hs.x * 0.4)
-	tgt.y += atan2(hl - hh, hs.x * 0.8)
+	tgt.y += atan2(hh - hl, hs.x * 0.8)
 	tgt.z += (hf + hr) * 0.5
 	var spring := 55.0 if heavy else 80.0
 	var damp := 8.0 if heavy else 6.5
@@ -2478,12 +2514,27 @@ func _view_process(dt: float) -> void:
 		facing.y = turret_yaw
 		if turret.rotation != facing:
 			turret.rotation = facing
+		if _vm and _vm.gun_mount:
+			var mount := _vm.gun_mount
+			var cradle := turret.global_basis
+			var direction := Defs.dir_of(rotation.y + turret_yaw)
+			if _target_ok():
+				direction = target.center_point() - mount.global_position
+			var local := cradle.inverse() * direction
+			var pitch := clampf(atan2(local.y, Vector2(local.x, local.z).length()), -0.16, 0.31)
+			# The cradle eases into a change of elevation and brakes as it settles.
+			var pose := VehicleMotion.slew(mount.rotation.x, _barrel_pitch_rate, pitch, 0.9, 3.2, dt, false)
+			mount.rotation.x = pose.x
+			_barrel_pitch_rate = pose.y
 		if _gun_kick > 0.0:
-			if _turret_rest == Vector3.INF:
-				_turret_rest = turret.position
-			# slammed back by the shot, then run out again over half a second
 			_gun_kick = maxf(0.0, _gun_kick * exp(-dt * 7.0) - dt * 0.01)
-			turret.position = _turret_rest + Basis(Vector3.UP, turret_yaw) * Vector3(0, 0, _gun_kick)
+			if _vm and _vm.gun_mount:
+				var slide := _vm.gun_tip.get_parent() as Node3D
+				slide.position.z = -_vm.gun_mount.position.z + _gun_kick
+			else:
+				if _turret_rest == Vector3.INF:
+					_turret_rest = turret.position
+				turret.position = _turret_rest + Basis(Vector3.UP, turret_yaw) * Vector3(0, 0, _gun_kick)
 	if _vm and _vm.elev:
 		# laid for indirect fire: the barrel (or the launcher) goes up
 		var want_e := float(vdef.get("elev", 0.6)) if (flags & F_ELEV) != 0 else 0.0
@@ -2533,7 +2584,35 @@ func _view_process(dt: float) -> void:
 		_boat_view(dt)
 	elif not rotor and not flight and model:
 		_suspension(dt)
-	if not wheels.is_empty():
+	if _vm and not _vm.belts.is_empty():
+		# Use the drawn hull: the host can render several frames per simulation tick.
+		var drawn := global_transform * ip_offset() if srv else global_transform
+		var yaw := Defs.yaw_of(-drawn.basis.z)
+		var dyaw := wrapf(yaw - _belt_yaw, -PI, PI)
+		var delta_pos := drawn.origin - _belt_origin
+		var forward := delta_pos.dot(Defs.dir_of(yaw - dyaw * 0.5))
+		var distance := signf(forward) * Vector2(forward, delta_pos.y).length()
+		var camera := get_viewport().get_camera_3d()
+		var nearby := visible and (not camera or camera.global_position.distance_squared_to(drawn.origin) < 100.0 * 100.0)
+		var continuous := delta_pos.length_squared() < 4.0
+		for belt in _vm.belts:
+			var step: float = distance + dyaw * belt.position.x if continuous else 0.0
+			if nearby or always_animate_tracks:
+				belt.advance(step, world.ground_y)
+			belt.stir_dust(step / dt if nearby and dt > 0.0 else 0.0)
+		if _engine_sound and dt > 0.0:
+			var travel := maxf(absf(distance), absf(dyaw * float(_vm.belts[0].position.x)))
+			var belt_speed := travel / dt if continuous else 0.0
+			_track_audio(dt, nearby and camera != null, belt_speed, signf(forward) * _sus.x)
+		if engine_exhaust:
+			burner.position = model.transform * _vm.engine_deck
+			engine_exhaust.position = model.transform * _vm.engine_vent
+			var running := nearby and continuous and absf(distance) > dt * 0.45 and health_frac() >= 0.4
+			if Vfx.is_emitting(engine_exhaust) != running:
+				Vfx.set_emitting(engine_exhaust, running)
+		_belt_yaw = yaw
+		_belt_origin = drawn.origin
+	elif not wheels.is_empty():
 		var mv := position - _last_pos
 		var fwd := Defs.dir_of(rotation.y)
 		var spd := mv.dot(fwd)
@@ -2719,6 +2798,35 @@ func muzzle_world(main_gun := false) -> Vector3:
 	return tip.global_position
 
 
+func _track_audio(dt: float, audible: bool, belt_speed: float, grade: float) -> void:
+	if not audible or not Sfx.enabled:
+		if _engine_sound.playing:
+			_engine_sound.stop()
+		if _track_sound.playing:
+			_track_sound.stop()
+		return
+	var demand := clampf(belt_speed / 5.5 + maxf(0.0, grade) * 1.4, 0.0, 1.0)
+	_drive_load = lerpf(_drive_load, demand, 1.0 - exp(-dt * (2.4 if demand > _drive_load else 1.1)))
+	_engine_sound.pitch_scale = 0.89 + 0.40 * _drive_load
+	_engine_sound.volume_db = -7.0 + 5.5 * _drive_load
+	if not _engine_sound.playing:
+		_engine_sound.play()
+	if belt_speed > 0.09:
+		var reference_speed: float = _vm.belts[0].pitch * 12.0
+		var cadence := belt_speed / reference_speed
+		if vdef.get("model", vkind) == "tank":
+			# The recorded pass includes steel ringing. Keep that pitch
+			# recognisable as the shoes slow down.
+			_track_sound.pitch_scale = clampf(0.79 + 0.21 * cadence, 0.79, 1.32)
+		else:
+			_track_sound.pitch_scale = clampf(cadence, 0.10, 3.8)
+		_track_sound.volume_db = lerpf(-30, -6, smoothstep(0.08, 2.0, belt_speed))
+		if not _track_sound.playing:
+			_track_sound.play()
+	elif _track_sound.playing:
+		_track_sound.stop()
+
+
 func _build_model() -> void:
 	var tc: Color = Defs.TEAM_COLORS[team] if team >= 0 else Color.WHITE
 	var k := VehicleModels.build(vkind, team, eid)
@@ -2726,22 +2834,46 @@ func _build_model() -> void:
 	add_child(model)
 	turret = k.turret
 	_vm = k
+	if bent_skirts:
+		k.pose_skirts(bent_skirts)
+	_belt_yaw = rotation.y
+	_belt_origin = global_position
+	_last_pos = position
 	rotor = k.rotor
 	tail_rotor = k.tail_rotor
 	blades = k.blades
 	blur = k.blur
 	wheels = k.wheels
+	if not k.belts.is_empty() and Sfx.enabled:
+		var abrams: bool = vdef.get("model", vkind) == "tank"
+		_engine_sound = Sfx.make_loop_player("turbine_engine" if abrams else "tracked_engine", 13.0, -7.0)
+		_track_sound = Sfx.make_loop_player("abrams_tracks" if abrams else "track_links", 10.0 if abrams else 9.0, -12.0)
+		for player: AudioStreamPlayer3D in [_engine_sound, _track_sound]:
+			player.autoplay = false
+			player.max_distance = 100.0
+			add_child(player)
+		_engine_sound.position.z = _hull_size().z * 0.32
 	if rotor:
 		add_child(Sfx.make_loop_player("rotor", 18.0, 0.0 if base() == "attack_heli" else -3.0))
 	elif is_boat():
 		pass  # (a wake, not dust: see _boat_view)
 	elif world.fx and world.fx.vfx:
-		dust = world.fx.vfx.make_dust(1.3 if weight() >= 2 else 1.0)
-		dust.position = Vector3(0, 0.2, _hull_size().z * 0.5)
-		add_child(dust)
+		if k.belts.is_empty():
+			dust = world.fx.vfx.make_dust(1.3 if weight() >= 2 else 1.0)
+			dust.position = Vector3(0, 0.2, _hull_size().z * 0.5)
+			add_child(dust)
+		else:
+			for belt in k.belts:
+				belt.dust = world.fx.vfx.make_dust(0.80, true)
+				belt.add_child(belt.dust)
 	if world.fx and world.fx.vfx:
-		burner = world.fx.vfx.make_burner(1.0 if weight() >= 2 else 0.7)
+		burner = world.fx.vfx.make_burner(1.0 if weight() >= 2 else 0.7, k.engine_deck.is_finite())
 		burner.position = Vector3(0, 1.6, 1.2) if base() != "lift_heli" else Vector3(0, 2.3, 0.6)
+		if k.engine_vent.is_finite():
+			burner.position = k.engine_deck
+			engine_exhaust = world.fx.vfx.make_engine_exhaust(vkind == "old_tank")
+			engine_exhaust.position = k.engine_vent
+			add_child(engine_exhaust)
 		add_child(burner)
 	var hs := _hull_size()
 	ring = Res.mi(self, Res.plane(maxf(hs.x, hs.z) * 1.22), Res.ring_mat(tc), Vector3(0, 0.06, 0), Vector3.ZERO, false)

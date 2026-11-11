@@ -38,6 +38,12 @@ func _ready() -> void:
 	# The environment still owns its original presets, and opaque glass must
 	# reflect as a dielectric rather than turning into dark chrome.
 	assert(Mats.get_mat("paint").get_shader_parameter("vehicle_surface") != true)
+	var armor := Mats.get_mat(VehicleMaterials.key("abrams_sand", "armor"))
+	assert(armor.get_shader_parameter("armour_field") != null and armor.get_shader_parameter("worn_armour") == true)
+	for base in ["camo_tank", "camo_tank_rebel"]:
+		var plate := VehicleMaterials.preset(VehicleMaterials.key(base, "armor"))
+		var casting := VehicleMaterials.preset(VehicleMaterials.key("cast_" + base, "armor"))
+		assert(casting.col_a == plate.col_a and casting.surface_normal_strength > plate.surface_normal_strength)
 	var glass := Mats.get_mat(VehicleMaterials.key("glass", "armor"))
 	assert(glass.get_shader_parameter("metal") == 0.0)
 	assert(glass.get_shader_parameter("bump") == 0.0)

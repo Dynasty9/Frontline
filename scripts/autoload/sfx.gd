@@ -1,5 +1,5 @@
 extends Node
-## Procedurally synthesised sound effects, played through a pool of 3D players.
+## Synthesised effects and recorded heavy vehicle sounds share the spatial mixer.
 ## Every player feeds one of the mixer's buses, so music, effects, ambience and
 ## the interface each have their own volume (Settings sets the levels).
 
@@ -30,7 +30,7 @@ func _ready() -> void:
 		enabled = false
 		if dump_dir() == "":
 			return
-	# Every sound is made at start-up. None depends on another, so they're
+	# The procedural sounds are made at start-up. None depends on another, so they're
 	# made side by side on the worker threads, each with random numbers of its
 	# own (seeded by its name, so it sounds the same every launch): the global
 	# ones aren't safe to share between threads. Nothing waits for them while
@@ -75,6 +75,12 @@ func _ensure() -> void:
 	_synth = -1
 	for i in _recipes_made.size():
 		streams[_recipes_made[i][0]] = _made[i]
+	streams["tracked_engine"] = load("res://assets/audio/tracked/diesel.wav")
+	streams["turbine_engine"] = load("res://assets/audio/tracked/turbine.wav")
+	streams["abrams_tracks"] = load("res://assets/audio/tracked/abrams-tracks.wav")
+	streams["track_links"] = load("res://assets/audio/tracked/running-gear.wav")
+	streams["hull_strike"] = load("res://assets/audio/tracked/strike.wav")
+	streams["tank_report"] = load("res://assets/audio/tracked/report.wav")
 	_recipes_made = []
 	_made = []
 	set_process(false)

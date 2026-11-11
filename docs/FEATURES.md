@@ -1112,7 +1112,7 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   drawn. Settings > Graphics > Wildlife: Plenty, Some or Off (Off on the Low preset).
 - Ambient sound: wind that grows as you zoom out (air rushing past and a hollow howl, in irregular gusts), and
   a distant battle (far-off artillery thumps, machine-gun bursts) that swells with the fighting.
-- Music (`music.gd`), synthesised like everything else: a small orchestra (strings, low strings, horns, a wordless
+- Music (`music.gd`), synthesised at run time: a small orchestra (strings, low strings, horns, a wordless
   choir, piano, timpani, a war drum, a snare) rendered into samples at start-up and played by a sequencer through a
   hall reverb. The menu has a theme in D minor (piano, then the horn's tune over a parade snare, then the strings).
   In battle the score is in layers that follow the fighting: a quiet bed of strings and a few piano notes while
@@ -1144,6 +1144,27 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   Defences sit in the ground: trodden earth round the nests and pits, earth banked against the bunkers up to their
   slits.
 - Vehicles are built from sloped, lofted armour: road wheels that turn, tracks, mantlets, cupolas, stowage, rotor blur.
+  On the Abrams, T-55 and Bradley, each track cycles independently and its road wheels follow the ground under that side.
+  Hinged shoes retain their place around the track. The T-55's upper run rests on its road wheels and sags in the gaps.
+  Dust rises from the end of the contact patch that leaves the soil and switches ends in reverse.
+  Rolling noise follows belt travel, including pivot turns, and falls silent at rest while the engine idles.
+  Moving Abrams and T-55 tanks leave a faint exhaust trail at the outlet. Damage vents fire and soot through the engine grille, including on the wreck. Each eddy uses the heat and opacity baked from the same volume, so its bright base rolls into darker smoke.
+  The ridge camera cuts from the eyepiece to the firing muzzle on discharge, then looks down over the tracks. Nearby shots and impacts jolt the lens when camera shake is enabled.
+  The Abrams has a turbine note and the T-55 and Bradley use a diesel recording. Both tanks have a recorded gun report
+  and elevate and recoil their main barrels independently of the turret. The visible cradle eases into elevation changes and brakes as it settles. The Abrams has recessed wheel pressings,
+  a second row of rim fasteners, stencilled turret bins and strapped canvas rolls. Its rolling loop comes from
+  a moving Abrams and blends with the turbine as the hull accelerates. The ridge film uses fictional breakaway
+  plates to show a dent and a tear, with the damaged skirt moving at its upper attachment.
+  Paint, wear and grime on vehicle fittings follow the part as it moves.
+  The ridge film opens above an Abrams and a T-55A, then cuts to an eyepiece mounted on the Abrams turret. Its lens opens wide on the far crest
+  and zooms in while the etched reticle stays fixed in the glass.
+  Sound is muffled inside the tank. Each contacting track shoe leaves a paired pad impression and presses down the grass it passes over. Each driver chooses among local relay and supply posts.
+  A second relay claim unlocks the forward objective for either crew with a claim of its own.
+  Reaching it wins the encounter and triggers the finishing impact. A camera beside the ridge holds on the struck vehicle before and after the hit. The film uses the same tank knockout event, fuel burst and burning-vehicle particles as a match. The short flash stays on the hull above the ground, and the hull settles on its suspension. Fuel smoke uses the baked directional lighting maps, with motion-vector interpolation in close views. A fuel vent releases billows at a steady rate as the smoke thickens or thins. The closing camera frames the surviving tank from the side of its turret, keeping the barrel in view as the hull turns.
+  The T-55A has a grainier finish on its cast turret and rolled rims on its painted rear drums.
+  In a match, hard hits can bend the skirt on the struck side. A complete repair straightens it.
+  A destroyed Abrams keeps the bent skirts and turret bearing it had on its last live frame.
+  Its wreck rests on the grade beneath the front and rear of both tracks.
 - **Shared vehicle finishes** (`vehicle_materials.gd`, `assets/vehicles/surfaces/`): armor paint, aircraft
   coatings, civilian clearcoat, marine paint, rubber, canvas, exposed metal, glass, nonslip decks and charred
   wrecks use distinct roughness and reflection settings. Eight shared, mipmapped detail maps (six derived

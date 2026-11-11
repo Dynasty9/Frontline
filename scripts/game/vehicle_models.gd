@@ -12,6 +12,7 @@ var burnt := false
 var surface_family := "armor"
 var turret: Node3D
 var mg_tip: Node3D  # the machine gun's muzzle (shots start here)
+var gun_mount: Node3D
 var gun_tip: Node3D  # the main gun's muzzle
 var weapon_tips := {}  # named gunship weapons (ac25/ac40/ac105), not one shared point
 var rotor: Node3D
@@ -23,6 +24,11 @@ var antennas: Array[Node3D] = []
 var _antenna_response := ImpactResponse.new()
 var _antenna_velocity := Vector3.ZERO
 var _antenna_active := false
+var belts: Array = []
+var engine_deck := Vector3.INF  # Fire breaks through the upper deck when damaged.
+var engine_vent := Vector3.INF  # Local outlet on models with visible exhaust.
+var front_skirts: Array[Node3D] = []
+var skirt_plugs: Array[Node3D] = []
 var elev: Node3D  # an artillery barrel or rocket launcher that rises to fire (rotation.x)
 ## More rotors (a tandem's rear one, a coaxial's second, a drone's four or
 ## six): pivots spinning about Y. Each may hold a "Blades" node (shown slow)
@@ -99,6 +105,16 @@ static func build(kind: String, team: int, seed: int, is_burnt := false) -> Vehi
 	return k
 
 
+## Each bit records a bent front skirt, from the left side to the right.
+func pose_skirts(mask: int) -> void:
+	for i in front_skirts.size():
+		var skirt := front_skirts[i]
+		var side := signf(skirt.position.x)
+		var damaged := (mask & (1 << i)) != 0
+		skirt.rotation = Vector3(-0.23, 0.0, side * 0.41) if damaged else Vector3.ZERO
+		skirt_plugs[i].visible = not damaged
+
+
 ## Every model key the families build (for the Field Manual's model pages).
 static func family_keys() -> Array[String]:
 	var out: Array[String] = []
@@ -128,6 +144,10 @@ func _merge_parts(n: Node3D, off: Vector3) -> void:
 		var mi := n.get_child(i) as MeshInstance3D
 		if mi and off != Vector3.ZERO:
 			Mats.set_inst(mi, &"pofs", off)
+	if not burnt and not front_skirts.is_empty() and (n == root or n == turret):
+		for child in n.get_children():
+			if child is MeshInstance3D and (child as MeshInstance3D).mesh is ArrayMesh:
+				Mats.set_inst(child, &"armour_section", 0.0 if n == root else 1.0)
 	if not burnt:
 		Mats.add_distance_lod(n, 100.0, [blur] if blur else [])
 
@@ -183,7 +203,7 @@ static func _tri(st: SurfaceTool, a: Vector3, b: Vector3, c: Vector3, inside: Ve
 
 
 ## Lofts between successive convex rings (same point count) and caps both ends.
-static func solid(rings: Array, key: String) -> ArrayMesh:
+static func solid(rings: Array, key: String, smooth := false) -> ArrayMesh:
 	if _cache.has(key):
 		return _cache[key]
 	var st := SurfaceTool.new()
@@ -197,12 +217,16 @@ static func solid(rings: Array, key: String) -> ArrayMesh:
 			var j := (i + 1) % n
 			_tri(st, r0[i], r0[j], r1[j], cen)
 			_tri(st, r0[i], r1[j], r1[i], cen)
+	if smooth:
+		st.set_smooth_group(1)  # keep the flat caps separate from the curved sides
 	for e in [0, rings.size() - 1]:
 		var r: PackedVector3Array = rings[e]
 		var other: PackedVector3Array = rings[1 if e == 0 else rings.size() - 2]
 		var inside := _centroid(other)
 		for i in range(1, r.size() - 1):
 			_tri(st, r[0], r[i], r[i + 1], inside)
+	if smooth:
+		st.generate_normals()
 	# (what st.commit() makes, keeping the arrays: see Mats.keep_arrays)
 	var arrays := st.commit_to_arrays()
 	var m := ArrayMesh.new()
@@ -249,7 +273,7 @@ static func _capsule(r: float, h: float) -> CapsuleMesh:
 func _add(parent: Node3D, mesh: Mesh, kind: String, col, pos: Vector3, rot := Vector3.ZERO, scl := Vector3.ONE, shadow := true) -> Variant:
 	var k := kind
 	if burnt:
-		k = "burnt"
+		k = "abrams_scorched" if kind in ["abrams_olive", "abrams_sand"] else "burnt"
 	k = VehicleMaterials.key(k, surface_family)
 	var t := Mats.tint_for(k, col) if col is Color and not burnt else Color(1, 1, 1)
 	if not burnt and VehicleMaterials.profile(kind, surface_family) in ["armor", "aircraft", "marine"]:

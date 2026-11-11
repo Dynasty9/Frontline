@@ -214,6 +214,12 @@ static func get_mat(kind: String) -> ShaderMaterial:
 	m.resource_name = kind
 	m.shader = shader()
 	m.set_shader_parameter("noise_tex", noise_tex())
+	var finish := kind.get_file().trim_prefix("cast_")
+	if finish in ["camo_tank", "camo_tank_rebel", "abrams_olive", "abrams_sand", "abrams_scorched"]:
+		m.set_shader_parameter("worn_armour", true)
+		m.set_shader_parameter("wear_tex", load("res://assets/vehicles/steel-wear.jpg"))
+	if finish.begins_with("abrams_"):
+		m.set_shader_parameter("armour_field", load("res://assets/vehicles/abrams-weathering.png"))
 	var p := _preset(kind)
 	for k in p:
 		m.set_shader_parameter(k, p[k])
@@ -823,6 +829,9 @@ static func _preset(kind: String) -> Dictionary:
 			return {"pattern": PAINT, "col_a": Color(0.17, 0.17, 0.17), "col_b": Color(0.35, 0.33, 0.3), "rough": 0.5, "metal": 0.6, "bump": 0.5, "grime": 0.3}
 		"burnt":
 			return {"pattern": PAINT, "col_a": Color(0.085, 0.08, 0.075), "col_b": Color(0.2, 0.17, 0.15), "rough": 0.9, "metal": 0.25, "bump": 1.2, "grime": 0.2, "rust": 0.3, "scale": 1.6}
+		"abrams_scorched":
+			# Ash catches on the hull plates while the steel fittings and rubber stay dark.
+			return {"pattern": CAMO, "col_a": Color("383530"), "col_b": Color("51483f"), "col_c": Color("262628"), "col_d": Color("62594f"), "scale": 0.86, "rough": 0.87, "metal": 0.26, "bump": 0.72, "grime": 0.38, "local_space": true}
 		"plain":
 			return {"pattern": PLAIN, "col_a": Color(0.55, 0.55, 0.55), "rough": 0.85, "bump": 0.2, "grime": 0.3}
 		"plain_dark":
@@ -837,6 +846,9 @@ static func _preset(kind: String) -> Dictionary:
 			return {"pattern": CAMO, "col_a": Color(0.4, 0.4, 0.3), "col_b": Color(0.33, 0.35, 0.25), "col_c": Color(0.43, 0.38, 0.28), "col_d": Color(0.25, 0.24, 0.19), "scale": 10.0, "rough": 0.92, "bump": 0.5, "grime": 0.3, "local_space": true}
 		"camo_rebel":
 			return {"pattern": CAMO, "col_a": Color(0.5, 0.45, 0.34), "col_b": Color(0.42, 0.36, 0.26), "col_c": Color(0.38, 0.37, 0.3), "col_d": Color(0.3, 0.26, 0.19), "scale": 8.0, "rough": 0.92, "bump": 0.5, "grime": 0.3, "local_space": true}
+		"abrams_olive", "abrams_sand":
+			var sand := kind == "abrams_sand"
+			return {"pattern": CAMO, "col_a": Color("a29471") if sand else Color("707447"), "col_b": Color("918060") if sand else Color("514a35"), "col_c": Color("ae9d7c") if sand else Color("393e30"), "col_d": Color("978665") if sand else Color("939068"), "scale": 0.60, "rough": 0.82, "metal": 0.12, "bump": 0.52, "grime": 0.72, "local_space": true}
 		"camo_tank":
 			return {"pattern": CAMO, "col_a": Color(0.3, 0.32, 0.23), "col_b": Color(0.27, 0.29, 0.21), "col_c": Color(0.31, 0.29, 0.22), "col_d": Color(0.21, 0.21, 0.17), "scale": 0.7, "rough": 0.68, "metal": 0.25, "bump": 0.6, "grime": 0.9, "local_space": true}
 		"camo_tank_rebel":
@@ -902,6 +914,10 @@ uniform float bump = 1.0;
 uniform float grime = 0.5;
 uniform float weathering = 0.0;
 uniform bool grain_horizontal = false;
+uniform bool worn_armour = false;
+uniform sampler2D armour_field : filter_linear, repeat_disable;
+instance uniform float armour_section = -1.0;
+uniform sampler2D wear_tex : filter_linear_mipmap_anisotropic, repeat_enable;
 uniform float rust = 0.0;
 uniform float pitting = 1.0;  // concrete: how much of the old pitting shows
 uniform float seams = 1.0;  // concrete: the formwork joints
@@ -956,6 +972,12 @@ float tfbm(vec2 p) { float v = 0.0; float a = 0.5; for (int i = 0; i < 4; i++) {
 // footprint: 1 when it spans 5+ pixels, 0 when it's under 1.5.
 float keep(float period, float px) { return smoothstep(1.5, 5.0, period / max(px, 1e-5)); }
 
+// The atlas contains the hull and the rotating turret in their own local frames.
+vec3 armour_slice(vec2 xy, float z) {
+	vec2 tile = vec2(mod(z,16.0),floor(z/16.0)+armour_section*16.0);
+	return texture(armour_field,(tile*vec2(128.0,64.0)+xy*vec2(127.0,63.0)+0.5)/2048.0).rgb;
+}
+
 void vertex() {
 	vehicle_normal_basis = transpose(inverse(mat3(MODELVIEW_MATRIX)));
 	wpos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
@@ -964,7 +986,7 @@ void vertex() {
 		ground_y = terrain_height(crater_tex, (wpos.xz + crater_half) / (crater_half * 2.0));
 	}
 	// Moving through the world must not change camouflage or wear.
-	seed = vehicle_surface ? vec3(0.0) : MODEL_MATRIX[3].xyz;
+	seed = (vehicle_surface || local_space) ? vec3(0.0) : MODEL_MATRIX[3].xyz;
 	if (local_space) {
 		tp = VERTEX + pofs;
 		tn = NORMAL;
@@ -1095,6 +1117,38 @@ void fragment() {
 		col = mix(col, col_d, smoothstep(0.62 - sw, 0.65 + sw, c3));
 		col *= 0.92 + 0.12 * tnoise(uv * 23.0);
 		h = 0.5 + tnoise(uv * 30.0) * 0.2;
+		if (worn_armour) {
+			// Keep the patina attached to the moving panel. The same worn
+			// patches interrupt the paint sheen and collect dirt below.
+			float wear = smoothstep(0.19, 0.42, texture(wear_tex, uv * 0.46 + off).r);
+			float runoff = smoothstep(0.26, 0.35, texture(wear_tex, uv * vec2(4.1,0.42) + off).r);
+			col *= mix(1.0, mix(0.91, 1.02, runoff), 1.0-abs(tn.y));
+			float recess = 1.0 - smoothstep(0.18, 0.48, wear);
+			float dust = smoothstep(0.28, 0.70, wear) * (1.0 - smoothstep(0.2, 1.6, tp.y));
+			col *= mix(0.85, 1.09, wear);
+			col = mix(col, vec3(0.055,0.041,0.027), recess * 0.22);
+			col = mix(col, vec3(0.19,0.145,0.086), dust * 0.25);
+			r = mix(0.55, 0.93, wear);
+			h += wear * 0.13;
+			if (armour_section >= 0.0) {
+				vec3 minimum = armour_section < 0.5 ? vec3(-1.92,-0.10,-4.05) : vec3(-1.92,-0.12,-3.36);
+				vec3 size = armour_section < 0.5 ? vec3(3.84,1.92,8.0) : vec3(3.84,1.92,6.72);
+				vec3 uvw = clamp((tp + normalize(tn)*0.022 - minimum)/size, vec3(0.0), vec3(1.0));
+				float slice = uvw.z*255.0;
+				vec3 field = mix(armour_slice(uvw.xy,floor(slice)),armour_slice(uvw.xy,min(255.0,floor(slice)+1.0)),fract(slice));
+				// Dust catches on upward-facing plate and collects against raised fittings.
+				float shelf = smoothstep(0.22, 0.85, tn.y) * smoothstep(0.22, 0.36, texture(wear_tex, uv * 0.69).r);
+				col = mix(col, vec3(0.34, 0.26, 0.15), shelf * (0.21 + 0.19 * field.r));
+				r = mix(r, 0.94, shelf);
+				AO = 1.0 - field.r * 0.73;
+				AO_LIGHT_AFFECT = 0.17;
+				col *= 1.0 - field.b * 0.32;
+				float chip = field.g * smoothstep(0.54,0.85,wear);
+				col = mix(col,vec3(0.22,0.20,0.16),chip*0.46);
+				m = mix(m,0.56,chip);
+				r = mix(r,0.47,chip);
+			}
+		}
 	} else if (pattern == 7) {
 		col = col_a * (0.9 + 0.14 * tnoise(uv * 7.0 + off));
 		float wear = smoothstep(0.68 - sw, 0.74 + sw, tfbm(uv * 3.5 + off));

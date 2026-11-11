@@ -44,6 +44,8 @@ static func profile(kind: String, vehicle_family: String) -> String:
 	match kind:
 		"rubber", "glass", "mirror", "track", "burnt", "steel", "gunmetal", "nonslip", "tread", "rotor":
 			return kind
+		"abrams_scorched":
+			return "burnt"
 		"rust_steel":
 			return "oxidized"
 		"metal_dark", "gunmetal_w", "wire":
@@ -66,7 +68,7 @@ static func preset(material_key: String) -> Dictionary:
 	var vehicle_family := material_key.get_slice("/", 1)
 	var kind := material_key.get_slice("/", 2)
 	var finish := profile(kind, vehicle_family)
-	var p := Mats._preset(kind).duplicate()
+	var p := Mats._preset(kind.trim_prefix("cast_")).duplicate()
 	# Nonslip is explicitly assigned to walking surfaces, with the same tint
 	# basis as the plain painted parts it replaces.
 	if kind in ["nonslip", "tread", "rotor", "mirror"]:
@@ -80,6 +82,12 @@ static func preset(material_key: String) -> Dictionary:
 	for setting: String in settings:
 		if setting != "map":
 			p[setting] = settings[setting]
+	if kind.begins_with("cast_"):
+		# The paint follows the shallow pits in the cast turret shell.
+		p["rough"] = 0.84
+		p["surface_normal_strength"] = 0.49
+		p["surface_grain"] = 0.38
+		p["surface_scale"] = 2.1
 	var map_name: String = settings.get("map", "coating")
 	if not _maps.has(map_name):
 		_maps[map_name] = load("res://assets/vehicles/surfaces/%s.png" % map_name)
