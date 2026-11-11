@@ -407,14 +407,16 @@ static func _ac130(k: VehicleModels, team: int) -> void:
 	var fin := [[Vector3(0, 4.35, 8.6), 6.1, 0.56], [Vector3(0, 5.0, 8.95), 5.75, 0.54], [Vector3(0, 11.5, 11.85), 2.85, 0.26], [Vector3(0, 11.66, 12.05), 2.55, 0.1]]
 	VmPlane.surf(k, m, "gs_ac_fin", fin, AIR, c, [0.0, 0.6, 0.0], false)
 	VmPlane.surf(k, m, "gs_ac_fillet", [[Vector3(0, 4.6, 4.3), 6.0, 0.34], [Vector3(0, 5.75, 9.35), 1.2, 0.3]], AIR, c, [], false)
-	# the tail cone: the white tail light, the warning sensors either side
-	k._add(m, Res.sphere(0.07, 8), "paint", Color(0.9, 0.9, 0.85), Vector3(0, 4.12, 14.98), Vector3.ZERO, Vector3.ONE, false)
+	# the tail cone: the white tail light looking aft off its tip, the warning
+	# sensors either side
+	VehicleFittings.dome_light(k, m, Vector3(0, 4.12, 14.98), 0.07, Color(0.9, 0.9, 0.85), Vector3.ONE, Vector3.BACK)
 	for s: float in [-1.0, 1.0]:
 		k._add(m, Res.sphere(0.11, 10), "glass", null, Vector3(s * 0.62, 4.05, 13.3), Vector3.ZERO, Vector3(0.6, 1, 1), false)
 		k._add(m, Res.sphere(0.1, 10), "glass", null, Vector3(s * 1.6, 3.05, -13.2), Vector3.ZERO, Vector3(0.6, 1, 1), false)
-	# the anti-collision beacons, the antennas, the SATCOM dome
-	k._add(m, Res.sphere(0.13, 10), "plain_dark", Color(0.5, 0.06, 0.05), Vector3(0, 4.78, -8.4), Vector3.ZERO, Vector3(1, 0.7, 1.3), false)
-	k._add(m, Res.sphere(0.13, 10), "plain_dark", Color(0.5, 0.06, 0.05), Vector3(0, 0.63, -3.6), Vector3.ZERO, Vector3(1, 0.7, 1.3), false)
+	# the anti-collision beacons, low flattened domes on the roof and the belly;
+	# the antennas, the SATCOM dome
+	VehicleFittings.dome_light(k, m, Vector3(0, 4.78, -8.4), 0.13, Color(0.5, 0.06, 0.05), Vector3(1, 0.7, 1.3))
+	VehicleFittings.dome_light(k, m, Vector3(0, 0.63, -3.6), 0.13, Color(0.5, 0.06, 0.05), Vector3(1, 0.7, 1.3), Vector3.DOWN)
 	k._add(m, Res.sphere(0.42, 16), AIR, c.lightened(0.05), Vector3(0, 4.62, 5.2), Vector3.ZERO, Vector3(1, 0.42, 1.25))
 	for z: float in [-7.5, -6.6, 6.5]:
 		VmPlane.antenna(k, m, Vector3(0, 4.75, z), 0.38)
@@ -534,11 +536,10 @@ static func _t56(k: VehicleModels, m: Node3D, key: String, nx: float, le: Vector
 		VmPlane.body(k, m, key + "_in" + sfx, ist, AIR, c, 18)
 		VmPlane.mouth(k, m, key + "_inm" + sfx, ist[0], 0.82, -1.0, "plain_dark")
 		# the exhaust: a short pipe out of the outboard side of the nacelle under
-		# the trailing edge, soot streaked aft of it
-		var ez := z0 + cw - 0.3
-		var ex := x + s * 0.5
-		k._cyl(m, 0.22, 0.25, 0.5, Vector3(ex, yt - 0.5, ez), Vector3(PI / 2, s * 0.25, 0), "gunmetal_w", c.darkened(0.5), 14)
-		k._cyl(m, 0.17, 0.17, 0.03, Vector3(ex + s * 0.07, yt - 0.5, ez + 0.25), Vector3(PI / 2, s * 0.25, 0), "plain_dark", null, 12, false)
+		# the trailing edge, aft and toed out a little, soot streaked aft of it
+		var ec := Vector3(x + s * 0.5, yt - 0.5, z0 + cw - 0.3)
+		var eh := Vector3(s * sin(0.25), 0.0, cos(0.25)) * 0.25
+		VehicleAircraft.turbine_exhaust(k, m, ec - eh, ec + eh, 0.25, 0.22, "gunmetal_w", c.darkened(0.5))
 		k._box(m, Vector3(0.02, 0.26, 1.7), Vector3(x + s * 0.4, yt - 0.4, z0 + cw + 0.85), "paint", Color(0.16, 0.16, 0.16), Vector3(0, s * 0.18, 0), false)
 
 
@@ -561,12 +562,8 @@ static func _ac130_guns(k: VehicleModels, m: Node3D, st: Array, c: Color) -> voi
 	_patch(k, m, "gs_ac_p25", st, -8.25, -7.45, 1.3, 2.15, true, "plain_dark", null, 0.008)
 	var g25 := Vector3(-_half_w(VmPlane.st_at(st, -7.85), 1.72), 1.72, -7.85)
 	k._add(m, Res.sphere(0.32, 14), AIR, c.darkened(0.08), g25 + Vector3(0.02, 0, 0), Vector3.ZERO, Vector3(0.6, 1.0, 1.15))
-	for i in 5:
-		var a := TAU * float(i) / 5.0
-		var o := Vector3(0, cos(a) * 0.075, sin(a) * 0.075)
-		VmPlane.rod(k, m, g25 + o, g25 + o + dn * 1.15, 0.019, "gunmetal_w", null, 6, -1.0, false)
-	for f: float in [0.35, 0.95]:
-		k._add(m, Res.cyl(0.11, 0.11, 0.07, 12), "gunmetal_w", null, g25 + dn * float(f), Vector3(0, 0, PI / 2 + dep))
+	# the five barrels out of the mount's ball, clamped twice along their length
+	VehicleWeapons.rotary(k, m, g25, g25 + dn * 1.15, 5, 0.075, 0.019, [0.35 / 1.15, 0.95 / 1.15], "gunmetal_w", PI / 2)
 	k.mg_tip = k._tip(m, g25 + dn * 1.2)
 	k.weapon_tips["ac25"] = k.mg_tip
 	# the 40 mm L/60 Bofors
@@ -724,8 +721,8 @@ static func _blackfish(k: VehicleModels, team: int, armed: bool) -> void:
 		VmPlane.antenna(k, m, Vector3(0, 4.3, z), 0.36)
 	for z: float in [-7.4, -3.4]:
 		VmPlane.antenna(k, m, Vector3(0, 0.61, z), 0.3, true)
-	k._add(m, Res.sphere(0.12, 10), "plain_dark", Color(0.5, 0.06, 0.05), Vector3(0, 4.29, -7.0), Vector3.ZERO, Vector3(1, 0.7, 1.3), false)
-	k._add(m, Res.sphere(0.12, 10), "plain_dark", Color(0.5, 0.06, 0.05), Vector3(0, 0.59, -4.6), Vector3.ZERO, Vector3(1, 0.7, 1.3), false)
+	VehicleFittings.dome_light(k, m, Vector3(0, 4.29, -7.0), 0.12, Color(0.5, 0.06, 0.05), Vector3(1, 0.7, 1.3))
+	VehicleFittings.dome_light(k, m, Vector3(0, 0.59, -4.6), 0.12, Color(0.5, 0.06, 0.05), Vector3(1, 0.7, 1.3), Vector3.DOWN)
 	k.gun_tip = k._tip(m, Vector3(0, 0.5, -10.8))
 	if armed:
 		_bf_guns(k, m, st, c)
@@ -797,11 +794,9 @@ static func _bf_nacelle(k: VehicleModels, tl: Node3D, s: float, c: Color, cj: Co
 	for sd: float in [-1.0, 1.0]:
 		for i in 4:
 			k._box(tl, Vector3(0.03, 0.42, 0.07), Vector3(sd * 0.98, 0.1, -1.1 + i * 0.16), "plain_dark", null, Vector3.ZERO, false)
-	k._cyl(tl, 0.4, 0.46, 0.4, Vector3(0, 0, 2.75), Vector3(PI / 2, 0, 0), "gunmetal_w", c.darkened(0.5), 18)
-	k._cyl(tl, 0.34, 0.34, 0.03, Vector3(0, 0, 2.95), Vector3(PI / 2, 0, 0), "plain_dark", null, 16, false)
+	VehicleAircraft.turbine_exhaust(k, tl, Vector3(0, 0, 2.55), Vector3(0, 0, 2.95), 0.46, 0.4, "gunmetal_w", c.darkened(0.5))
 	# the navigation light, green on the right, red on the left
-	if not k.burnt:
-		k._box(tl, Vector3(0.06, 0.12, 0.22), Vector3(s * 1.0, 0.0, -0.4), "paint", Color(0.15, 0.5, 0.2) if s > 0.0 else Color(0.6, 0.12, 0.1), Vector3.ZERO, false)
+	VehicleFittings.nav_light(k, tl, Vector3(s * 1.0, 0.0, -0.4), Vector3(0.06, 0.12, 0.22), s)
 
 
 ## The Blackfish's H tail: the stabiliser on top of the tail boom with its
@@ -813,7 +808,8 @@ static func _bf_tail(k: VehicleModels, m: Node3D, c: Color, cu: Color, olive: bo
 		_under(k, m, "gs_bf_stabu", hs, 1.0, 3.95, cu)
 	VmPlane.surf(k, m, "gs_bf_fin", [[Vector3(3.76, 3.0, 9.55), 2.05, 0.2], [Vector3(3.95, 4.45, 10.1), 2.15, 0.22], [Vector3(4.3, 6.85, 11.35), 1.4, 0.14],
 		[Vector3(4.32, 6.98, 11.6), 1.1, 0.06]], AIR, c, [0.0, 0.64, 0.0])
-	k._add(m, Res.sphere(0.07, 8), "paint", Color(0.9, 0.9, 0.85), Vector3(0, 3.86, 12.38), Vector3.ZERO, Vector3.ONE, false)
+	# the tail light looks aft off the tip of the boom
+	VehicleFittings.dome_light(k, m, Vector3(0, 3.86, 12.38), 0.07, Color(0.9, 0.9, 0.85), Vector3.ONE, Vector3.BACK)
 
 
 ## The gunship's port side: the 40 mm cannon in its blister forward of the
@@ -854,12 +850,8 @@ static func _bf_guns(k: VehicleModels, m: Node3D, st: Array, c: Color) -> void:
 	k.weapon_tips["ac105"] = k.gun_tip
 	var g20 := Vector3(-xg - 0.42, yg - 0.38, zg)
 	k._box(m, Vector3(0.46, 0.3, 0.32), g20, "gunmetal_w", c.darkened(0.4), Vector3(0, 0, dep))
-	for i in 6:
-		var a := TAU * float(i) / 6.0
-		var o := Vector3(0, cos(a) * 0.075, sin(a) * 0.075)
-		VmPlane.rod(k, m, g20 + o, g20 + o + dn * 1.55, 0.02, "gunmetal_w", null, 6, -1.0, false)
-	for f: float in [0.6, 1.4]:
-		k._add(m, Res.cyl(0.11, 0.11, 0.06, 12), "gunmetal_w", null, g20 + dn * f, Vector3(0, 0, PI / 2 + dep))
+	# the Gatling's six barrels out of its drive housing, clamped twice
+	VehicleWeapons.rotary(k, m, g20, g20 + dn * 1.55, 6, 0.075, 0.02, [0.6 / 1.55, 1.4 / 1.55], "gunmetal_w", PI / 2)
 	k.mg_tip = k._tip(m, g20 + dn * 1.6)
 	k.weapon_tips["ac25"] = k.mg_tip
 	# the gunners' second sensor turret

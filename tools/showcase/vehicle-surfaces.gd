@@ -20,6 +20,8 @@ var grounded := false
 var rotor_focus := false
 var body_focus := Vector3.INF
 var view_direction := Vector3(1, 0.65, -1.25)
+## The twenty shared parts of the component extraction (--surface-shared-parts).
+const SHARED_PARTS := ["turret_ring", "sight", "panoramic_sight", "cupola", "era_bricks", "panel_hatch", "evacuator", "coax", "autocannon", "hmg", "mmg", "gmg", "rotary", "launch_tube", "dome_light", "nav_light", "rotor_mast", "turbine_exhaust", "fender", "fuel_tank", "roll"]
 
 func _ready() -> void:
 	TestRun.watch()
@@ -49,6 +51,9 @@ func _ready() -> void:
 			antenna_motion = true
 		elif arg == "--surface-construction":
 			construction = true
+		elif arg == "--surface-shared-parts":
+			construction = true
+			kinds.assign(SHARED_PARTS)
 		elif arg == "--surface-accessories":
 			accessories = true
 			fittings = true
@@ -188,6 +193,48 @@ func _cell(grid: GridContainer, kind: String, size: Vector2i) -> void:
 			"mooring": VehicleMarine.mooring(k, k.root, Vector3.ZERO, Vector3(0.55, 0.2, 0.18))
 			"mirror": VehicleFittings.mirror(k, k.root, Vector3.ZERO, Vector2(0.24, 0.42), PI, [Vector3(0.35, 0.14, 0), Vector3(0.35, -0.14, 0)])
 			"exhaust": VehicleFittings.exhaust(k, k.root, Vector3(0, -0.6, 0), Vector3.UP, 1.2, 0.12)
+			"turret_ring":
+				k._box(k.root, Vector3(2.4, 0.04, 2.4), Vector3(0, -0.02, 0), "paint", Color(0.3, 0.33, 0.22))
+				VehicleMounts.turret_ring(k, k.root, Vector3(0, 0.05, 0), 0.95, 1.0, 0.1, "paint", Color(0.3, 0.33, 0.22))
+			"sight": VehicleMounts.sight(k, k.root, Vector3.ZERO, Vector3(0.36, 0.3, 0.42), [], "paint", Color(0.3, 0.33, 0.22))
+			"panoramic_sight": VehicleMounts.sight(k, k.root, Vector3(0, 0.2, 0), Vector3(0.3, 0.24, 0.3), [Rect2(Vector2(-0.06, 0.02), Vector2(0.12, 0.12)), Rect2(Vector2(0.09, 0.02), Vector2(0.08, 0.08))], "paint", Color(0.3, 0.33, 0.22), Vector3(0.1, 0.12, 0.4))
+			"cupola":
+				VehicleMounts.cupola(k, k.root, Vector3(0, 0.08, 0), 0.36, 0.38, 0.16, 5, -0.9, 0.45, "paint", Color(0.3, 0.33, 0.22))
+				VehicleFittings.hatch(k, k.root, Vector3(0, 0.19, 0), 0.32, "paint", Color(0.3, 0.33, 0.22), 1.0, 0.06)
+			"era_bricks":
+				for i in 3:
+					for j in 2:
+						VehicleMounts.era_brick(k, k.root, Vector3((i - 1) * 0.33, (j - 0.5) * 0.23, 0.05), Vector3(0.3, 0.2, 0.1), Vector3(0, PI, 0), "paint", Color(0.3, 0.33, 0.22))
+			"panel_hatch": VehicleFittings.panel_hatch(k, k.root, Vector3(0, 0.03, 0), Vector3(0.62, 0.06, 0.6), "paint", Color(0.3, 0.33, 0.22), -1.0)
+			"evacuator":
+				VehicleFittings.barrel(k, k.root, Vector3(0, 0, 0.6), Vector3(0, 0, -0.9), 0.07, "paint", Color(0.36, 0.34, 0.26), false)
+				VehicleFittings.evacuator(k, k.root, Vector3(0, 0, -0.2), 0.118, 0.56, "paint", Color(0.36, 0.34, 0.26))
+			"coax": VehicleWeapons.coax(k, k.root, Vector3.ZERO, 0.3, 0.025)
+			"autocannon": VehicleWeapons.autocannon(k, k.root, Vector3(0, 0, 1.15), Vector3(0, 0, -1.15), Vector2(0.1, 0.3), Vector2(0.045, 0.04), Vector2(0.065, 0.24), "gunmetal_w", null, 2)
+			"hmg": VehicleWeapons.hmg(k, k.root, Vector3(0, 0, 0.75), Vector3(0, 0, -0.75), 1.0, -1.0, true)
+			"mmg": VehicleWeapons.mmg(k, k.root, Vector3(0, 0, 0.46), Vector3(0, 0, -0.47))
+			"gmg": VehicleWeapons.gmg(k, k.root, Vector3(0, 0, 0.45), Vector3(0, 0, -0.45))
+			"rotary":
+				k._box(k.root, Vector3(0.15, 0.17, 0.34), Vector3(0, 0, 0.42), "gunmetal_w")
+				VehicleWeapons.rotary(k, k.root, Vector3(0, 0, 0.25), Vector3(0, 0, -0.55), 6, 0.042, 0.013, [0.5, 0.95])
+			"launch_tube": VehicleWeapons.launch_tube(k, k.root, Vector3.ZERO, 0.085, 1.25, "paint", Color(0.33, 0.35, 0.27))
+			"dome_light":
+				for i in 2:
+					k._box(k.root, Vector3(0.3, 0.04, 0.3), Vector3((i - 0.5) * 0.36, -0.06, 0), "paint", Color(0.3, 0.33, 0.22))
+					VehicleFittings.dome_light(k, k.root, Vector3((i - 0.5) * 0.36, 0, 0), 0.07, Color(0.55, 0.08, 0.06) if i == 0 else Color(0.9, 0.9, 0.86))
+			"nav_light":
+				for side: float in [-1.0, 1.0]:
+					k._box(k.root, Vector3(0.1, 0.16, 0.3), Vector3(side * 0.12, 0, 0), "paint", Color(0.3, 0.33, 0.22))
+					VehicleFittings.nav_light(k, k.root, Vector3(side * 0.2, 0, 0), Vector3(0.06, 0.07, 0.12), side)
+			"rotor_mast": VehicleRotors.mast(k, k.root, Vector3.ZERO, 0.16, 0.2, 0.55, [Vector2(-0.02, 0.34)])
+			"turbine_exhaust": VehicleAircraft.turbine_exhaust(k, k.root, Vector3(0, 0, 0.3), Vector3(0, 0.05, -0.3), 0.2, 0.18)
+			"fender":
+				VehicleBody.fender(k, k.root, Vector3(0, 0.1, 0), Vector3(0.6, 0.04, 1.6), 1.0, "paint", Color(0.3, 0.33, 0.22))
+				VehicleBody.fender(k, k.root, Vector3(0, -0.02, -0.88), Vector3(0.58, 0.04, 0.4), 1.0, "paint", Color(0.3, 0.33, 0.22), Vector3(-0.6, 0, 0))
+			"fuel_tank":
+				VehicleRunningGear.fuel_tank(k, k.root, Vector3(-0.35, 0, 0), Vector3(0.52, 0.52, 1.1), 1.0, "paint", Color(0.3, 0.33, 0.22))
+				VehicleRunningGear.fuel_tank(k, k.root, Vector3(0.35, 0, 0), Vector3(0.5, 0.52, 1.1), 1.0, "paint", Color(0.3, 0.33, 0.22), false)
+			"roll": VehicleCloth.roll(k, k.root, Vector3.ZERO, 0.17, 0.9, Vector3(0, 0, PI / 2), Color(0.42, 0.38, 0.27))
 	elif fittings:
 		k = VehicleModels.new()
 		k.root = Node3D.new()
@@ -227,7 +274,7 @@ func _cell(grid: GridContainer, kind: String, size: Vector2i) -> void:
 		center = k.rotor.global_position - offset
 	if body_focus.is_finite():
 		center = body_focus
-	var part_sizes := {"jerrycan": 0.9, "ammo_can": 0.6, "storage": 1.2, "winch": 1.0, "sensor": 0.9, "sensor_ball": 0.9, "vessel": 3.6, "skirt": 1.3, "door": 1.5, "seat": 1.0, "pallet": 1.5, "restraints": 1.5, "frame": 2.8, "axle": 2.0, "gear": 1.5, "pylon": 1.3, "rocket_pod": 1.8, "mooring": 0.9, "mirror": 0.9, "exhaust": 1.8, "hatch": 1.0}
+	var part_sizes := {"jerrycan": 0.9, "ammo_can": 0.6, "storage": 1.2, "winch": 1.0, "sensor": 0.9, "sensor_ball": 0.9, "vessel": 3.6, "skirt": 1.3, "door": 1.5, "seat": 1.0, "pallet": 1.5, "restraints": 1.5, "frame": 2.8, "axle": 2.0, "gear": 1.5, "pylon": 1.3, "rocket_pod": 1.8, "mooring": 0.9, "mirror": 0.9, "exhaust": 1.8, "hatch": 1.0, "turret_ring": 2.6, "sight": 0.7, "panoramic_sight": 0.9, "cupola": 1.1, "era_bricks": 1.2, "panel_hatch": 0.9, "evacuator": 1.6, "coax": 0.5, "autocannon": 2.4, "hmg": 1.7, "mmg": 1.1, "gmg": 1.1, "rotary": 1.1, "launch_tube": 1.4, "dome_light": 0.6, "nav_light": 0.6, "rotor_mast": 1.0, "turbine_exhaust": 0.9, "fender": 2.0, "fuel_tank": 1.6, "roll": 1.1}
 	if construction and part_sizes.has(kind) and not body_focus.is_finite():
 		center = Vector3.ZERO
 	var camera := Camera3D.new()

@@ -1200,6 +1200,14 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   vehicle's own outline. Frames, struts, rails and window seals use common builders. Clear panes require
   an open cab; armoured panes stay opaque. Parked civilian cars have fitted windscreens, divided side
   windows and mirrors. See [the component guide](vehicle-components.md), [construction inventory](../tools/vehicles/README.md), and [30-technique review](vehicle-construction-review.md), and [shared equipment detail pass](vehicle-detail-40-review.md).
+- **Shared guns and turret fittings** (`vehicle_weapons.gd`, `VehicleMounts`, `VehicleFittings`): heavy,
+  medium and grenade machine guns, autocannon, coaxial ports, rotary barrel clusters and missile launch
+  tubes each have one builder, used by every family that carries them; muzzle markers and turret pivots
+  stay where they were. Turret race rings, sight heads, commander's cupolas, reactive armour bricks,
+  rectangular hatches and bore evacuators are shared across the armour; helicopters share rotor masts and
+  turbine exhausts, and aircraft and boats share red/green sidelights and dome lights. Trucks share fender
+  sheets and saddle fuel tanks; rolled tarps are common stowage. See "Twenty shared components" in
+  [the component guide](vehicle-components.md).
 - Explosions are layered GPU particles: a flash and light burst, a rolling fireball that cools from the edges in
   until it's dark smoke, a lit smoke column that drifts with the wind, a dirt plume, sparks and debris that
   bounce on the ground, a rolling dust ring, a faint heat-shimmer shockwave and a scorch mark. Heavy rounds

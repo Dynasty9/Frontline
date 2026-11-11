@@ -295,7 +295,8 @@
     "pattern": "\\bexhaust|\\bsilencer",
     "shared": [
       "VehicleFittings.exhaust",
-      "VehicleAircraft.duct"
+      "VehicleAircraft.duct",
+      "VehicleAircraft.turbine_exhaust"
     ],
     "reuse": "Extend stack adapters; silencers, turbine grilles and suppressors are not interchangeable."
   },
@@ -307,5 +308,155 @@
       "VehicleFrames.hose_reel"
     ],
     "reuse": "Use supported cable routes; coils and wound drums need distinct construction."
+  },
+  {
+    "name": "Turret race rings",
+    "pattern": "\\bturret ring|\\brace ring|\\bturret race",
+    "shared": [
+      "VehicleMounts.turret_ring"
+    ],
+    "reuse": "Ring cylinder with splash lip and bolt circle; keep the turret pivot."
+  },
+  {
+    "name": "Sight heads and panoramic sights",
+    "pattern": "\\bsights?\\b|\\bsight head|\\bpanoramic|\\bIBAS|\\bCIV\\b",
+    "shared": [
+      "VehicleMounts.sight",
+      "VehicleEquipment.sensor"
+    ],
+    "reuse": "Armoured head, bezelled windows and visor; lofted or cylindrical heads stay authored.",
+    "exclude_pattern": "iron sight|ring sight"
+  },
+  {
+    "name": "Commander's cupolas and vision blocks",
+    "pattern": "\\bcupola|\\bvision blocks?",
+    "shared": [
+      "VehicleMounts.cupola"
+    ],
+    "reuse": "Ring, flange and vision-block housings; hatches and weapon rings stay separate."
+  },
+  {
+    "name": "Reactive armour bricks",
+    "pattern": "\\breactive|\\bERA\\b|\\bbricks?\\b",
+    "shared": [
+      "VehicleMounts.era_brick"
+    ],
+    "reuse": "One brick per call; grids and face frames stay in family helpers."
+  },
+  {
+    "name": "Rectangular hatch lids",
+    "pattern": "\\bhatch",
+    "shared": [
+      "VehicleFittings.panel_hatch",
+      "VehicleFittings.hatch"
+    ],
+    "reuse": "Flat lids with coaming, hinges and handle; round hatches use VehicleFittings.hatch."
+  },
+  {
+    "name": "Bore evacuators",
+    "pattern": "\\bfume extractor|\\bevacuator|\\bextractor",
+    "shared": [
+      "VehicleFittings.evacuator"
+    ],
+    "reuse": "Tapered chamber on the gun tube; muzzle sensors and brakes stay authored."
+  },
+  {
+    "name": "Coaxial machine-gun ports",
+    "pattern": "\\bcoax",
+    "shared": [
+      "VehicleWeapons.coax"
+    ],
+    "reuse": "Port sleeve, barrel and flash hider; the caller keeps the muzzle marker."
+  },
+  {
+    "name": "Automatic cannon",
+    "pattern": "\\bautocannon|\\bcannon\\b|\\b(?:20|25|30|35|40) ?mm",
+    "shared": [
+      "VehicleWeapons.autocannon"
+    ],
+    "reuse": "Breech-to-muzzle sleeve, tube and brake; returns the caller's muzzle.",
+    "exclude_pattern": "main gun|120|125|105|100 ?mm"
+  },
+  {
+    "name": "Machine guns",
+    "pattern": "\\bmachine gun|\\bM2\\b|\\.50|\\bHMG\\b|\\bGMG\\b|\\bMMG\\b|\\bM240|\\bPKT|\\bDShK|grenade (?:machine|launcher)",
+    "shared": [
+      "VehicleWeapons.hmg",
+      "VehicleWeapons.mmg",
+      "VehicleWeapons.gmg"
+    ],
+    "reuse": "Receiver-to-muzzle construction with feed and grips; DShK-style finned barrels may stay authored."
+  },
+  {
+    "name": "Rotary barrel clusters",
+    "pattern": "\\bminigun|\\brotary|\\bgatling|\\bGAU|\\bM134|\\bXM301",
+    "shared": [
+      "VehicleWeapons.rotary"
+    ],
+    "reuse": "Barrel ring, clamps and bores along any axis; housings and motors stay authored."
+  },
+  {
+    "name": "Missile launch tubes",
+    "pattern": "\\blaunch tube|\\btube launcher|\\bTitan|\\bVorona|\\bATGM",
+    "shared": [
+      "VehicleWeapons.launch_tube"
+    ],
+    "reuse": "Tube, collars and covers; box launchers with tube mouths are a separate design."
+  },
+  {
+    "name": "Dome and anti-collision lights",
+    "pattern": "\\bbeacons?\\b|\\banti-collision|\\bmasthead|\\bstern light",
+    "shared": [
+      "VehicleFittings.dome_light"
+    ],
+    "reuse": "Round lens on a base; box lamps and light bars stay authored."
+  },
+  {
+    "name": "Navigation sidelights",
+    "pattern": "\\bnav(?:igation)? lights?|\\bsidelights?|\\bposition lights?",
+    "shared": [
+      "VehicleFittings.nav_light"
+    ],
+    "reuse": "Red to port, green to starboard on a housing with a visor; screens stay authored."
+  },
+  {
+    "name": "Rotor masts",
+    "pattern": "\\bmast\\b|\\bmasts\\b|\\brotor shaft",
+    "shared": [
+      "VehicleRotors.mast"
+    ],
+    "reuse": "Shaft, bearing housing, splines and bolted collars; hubs and blades stay in VehicleRotors.main.",
+    "owners": [
+      "VmHeli",
+      "VmCore"
+    ]
+  },
+  {
+    "name": "Fenders and mudguards",
+    "pattern": "\\bfenders?\\b|\\bmudguards?|\\bwings? over",
+    "shared": [
+      "VehicleBody.fender",
+      "VehicleWheelArches.liner"
+    ],
+    "reuse": "Flat sheets with bead, bolts and stays; faceted armoured arches stay authored."
+  },
+  {
+    "name": "Saddle fuel tanks",
+    "pattern": "\\bfuel tank|\\bsaddle tank|\\bdiesel tank",
+    "shared": [
+      "VehicleRunningGear.fuel_tank"
+    ],
+    "reuse": "Round or box tanks on the frame rail; aircraft drop tanks are a different store.",
+    "exclude_functions": [
+      "VmCore._fuel_tank"
+    ]
+  },
+  {
+    "name": "Rolled tarps and bedrolls",
+    "pattern": "\\btarp roll|\\brolled|\\bbedroll|\\bcamouflage roll|\\bcam net",
+    "shared": [
+      "VehicleCloth.roll"
+    ],
+    "reuse": "Rolled canvas with straps; draped covers use VehicleCloth.load_cover."
   }
 ]
