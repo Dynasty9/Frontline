@@ -113,7 +113,7 @@ static func _smoke(k: VehicleModels, p: Node3D, pos: Vector3, n: int, yaw: float
 	_tb(k, p, t, Vector3(n * r * 2.3 + 0.04, 0.08, 0.16), Vector3(0, -0.02, 0.04), "gunmetal_w")
 	for i in n:
 		var fx := (i - (n - 1) * 0.5) * r * 2.3
-		_tc(k, p, t, r, r, 0.24, Vector3(fx, 0.06 + absf(fx) * 0.2, -0.04), Vector3(-PI / 2 + pitch, fx * 1.6, 0), "gunmetal_w", null, 8, false)
+		VehicleFittings.smoke_tube(k, p, t * Vector3(fx, 0.06 + absf(fx) * 0.2, -0.04), (t.basis * Basis.from_euler(Vector3(-PI / 2 + pitch, fx * 1.6, 0))).get_euler(), r, 0.24)
 
 
 ## A whip antenna on a small base.

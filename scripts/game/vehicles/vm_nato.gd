@@ -186,7 +186,7 @@ static func _smoke(k: VehicleModels, p: Node3D, pos: Vector3, s: float, n := 4, 
 	k._box(p, Vector3(0.14, 0.1, 0.12 * n + 0.04), pos, "gunmetal_w", null, Vector3(0, yaw, 0))
 	for i in n:
 		var o := b * Vector3(0, 0.07 + (i % 2) * 0.05, (i - (n - 1) * 0.5) * 0.12)
-		k._cyl(p, 0.042, 0.042, 0.22, pos + o + Vector3(s * 0.06, 0.04, 0), Vector3(0, yaw, s * -0.9), "gunmetal_w", null, 8, false)
+		VehicleFittings.smoke_tube(k, p, pos + o + Vector3(s * 0.06, 0.04, 0), Vector3(0, yaw, s * -0.9), 0.042, 0.22)
 
 
 ## A tow shackle (a U on its pin) at pos.

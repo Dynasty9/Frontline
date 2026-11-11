@@ -193,7 +193,7 @@ static func _smoke(k: VehicleModels, p: Node3D, pos: Vector3, s: float, n := 3, 
 	k._box(p, Vector3(0.16, 0.08, 0.1 + n * 0.12), pos + Vector3(0, -0.06, 0.05), "gunmetal_w", null, Vector3(0, s * -yaw, 0))
 	for i in n:
 		var o := Basis(Vector3.UP, s * -yaw) * Vector3(0, 0, -0.1 + i * 0.13)
-		k._cyl(p, 0.045, 0.045, 0.26, pos + o + Vector3(0, 0.03, 0), Vector3(-0.9, s * -yaw, 0), "gunmetal_w", null, 8, false)
+		VehicleFittings.smoke_tube(k, p, pos + o + Vector3(0, 0.03, 0), Vector3(-0.9, s * -yaw, 0), 0.045, 0.26)
 
 
 ## A remote weapon station on the roof: the turntable, the cradle with a

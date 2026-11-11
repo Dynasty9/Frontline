@@ -331,3 +331,10 @@ static func tow_shackle(k: VehicleModels, parent: Node3D, center: Vector3, facin
 	VehicleFrames.tube(k, mount, Vector3(-radius * 1.35, -0.02, z), Vector3(radius * 1.35, -0.02, z), radius * 0.24, "steel", null, 10)
 	k._box(mount, Vector3(0.012, radius * 0.65, radius * 0.42), Vector3(radius * 1.4, -0.02, z), "gunmetal_w", null, Vector3.ZERO, false)
 	k._fold(mount)
+
+
+## One smoke discharger. Families own the bank's layout, pitch and count.
+static func smoke_tube(k: VehicleModels, parent: Node3D, center: Vector3, rotation: Vector3, radius: float, length: float) -> void:
+	var axis := Basis.from_euler(rotation).y
+	barrel(k, parent, center - axis * length / 2, center + axis * length / 2, radius, "gunmetal_w", null, false)
+	k._cyl(parent, radius * 1.15, radius * 1.15, length * 0.16, center - axis * length * 0.30, rotation, "gunmetal_w", null, 12, false)

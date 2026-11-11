@@ -233,7 +233,7 @@ static func _smoke(k: VehicleModels, p: Node3D, pos: Vector3, yaw: float, cols :
 		for i in cols:
 			var fx := (i - (cols - 1) * 0.5) * r * 2.3
 			var lp := Vector3(fx, 0.05 + j * r * 2.1, -0.02 + j * 0.03)
-			k._cyl(p, r, r, 0.22, t * lp, (t.basis * Basis.from_euler(Vector3(-PI / 2 + pitch + j * 0.15, fx * 1.2, 0))).get_euler(), "gunmetal_w", null, 8, false)
+			VehicleFittings.smoke_tube(k, p, t * lp, (t.basis * Basis.from_euler(Vector3(-PI / 2 + pitch + j * 0.15, fx * 1.2, 0))).get_euler(), r, 0.22)
 
 
 ## A tow shackle (a U on its pin) at pos, facing f (-1 forward, 1 back).
