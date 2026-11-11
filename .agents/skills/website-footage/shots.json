@@ -122,6 +122,12 @@
       "shows": ["Both Abrams following the village road"],
       "about": "Ride behind the second tank as the lead hull pulls down the lane. The next frame moves to the roadside camera on the same Bridgehead run."
     },
+    "trailer-convoy-cab": {
+      "frames": 5940,
+      "args": ["--preset=high", "--seed=3", "--set=volume:0.8,vol_effects:0.85,vol_music:0,battle_music:false,vol_ambience:0.28,vol_ui:0,mute_bg:false,wildlife:0,edge_pan:false", "--mission=bridgehead", "--focus-vehicle=tank,1", "--vehicle-view=Periscope"],
+      "shows": ["Lead tank through the following crew’s periscope"],
+      "about": "Stay with the Bridgehead column. From the second tank, see the first hull and its dust on the same stretch of road that just passed the outside camera."
+    },
     "trailer-bridge-column": {
       "scene": "res://tools/showcase/trailer-review/bridge-column.tscn",
       "frames": 5970,
@@ -587,14 +593,14 @@
       "cuts": [
         {"take": "trailer-order", "from": 1.83333, "to": 2.96667, "gain_db": -1, "caption": "[Low strings as the order is given]"},
         {"take": "trailer-roadside", "from": 2.96667, "to": 4.23333, "gain_db": -1, "caption": "[Rotor blades turn as the squad moves]"},
+        {"take": "trailer-sling", "from": 39.26667, "to": 40.9, "gain_db": 0, "caption": "[Helicopter rotors over the suspended vehicle]"},
+        {"take": "trailer-cargo-door", "from": 40.9, "to": 42.0, "gain_db": 0},
         {"take": "trailer-bridge-follow", "from": 193.96667, "to": 194.83333, "gain_db": 0, "caption": "[Tank tracks approach along the village road]"},
-        {"take": "trailer-bridge-column", "from": 194.83333, "to": 196.06667, "gain_db": 0},
-        {"take": "reel-gun", "from": 14.1, "to": 15.1, "gain_db": -8, "caption": "[Tank cannon fires]"},
+        {"take": "trailer-bridge-column", "from": 194.83333, "to": 196.36667, "gain_db": 0},
+        {"take": "trailer-convoy-cab", "from": 196.36667, "to": 197.06667, "gain_db": 0, "caption": "[Tank tracks rumble]"},
         {"take": "trailer-trench-close", "from": 49.43333, "to": 51.13333, "gain_db": -2, "caption": "[Fire cracks beside the trench]"},
         {"take": "trailer-pit-round", "from": 33.16667, "to": 34.26667, "gain_db": 1, "caption": "[Mortar fires from the sandbag pit]"},
         {"take": "trailer-pit-landing", "from": 37.6, "to": 39.26667, "gain_db": -3, "caption": "[The round strikes the field]"},
-        {"take": "trailer-sling", "from": 39.26667, "to": 40.9, "gain_db": 0, "caption": "[Helicopter rotors over the suspended vehicle]"},
-        {"take": "trailer-cargo-door", "from": 40.9, "to": 42.0, "gain_db": 0},
         {"take": "trailer-harbour-boats", "from": 13.2, "to": 15.6, "gain_db": 0, "caption": "[Boats approach the shore]"},
         {"take": "trailer-beach-landing", "from": 26.13333, "to": 27.53333, "gain_db": 0, "caption": "[Surf as the squad runs ashore]"},
         {"take": "trailer-patrol-pass", "from": 34.9, "to": 35.56667, "gain_db": -1, "caption": "[Patrol ship fires as a boat passes]"},
