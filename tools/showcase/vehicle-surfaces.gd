@@ -80,7 +80,7 @@ func _ready() -> void:
 		kinds.append_array(["wreck_tank", "wreck_heli", "wreck_patrol_ship"])
 		kinds.sort()
 	DirAccess.make_dir_recursive_absolute(output)
-	var manifest := {"team": team, "seed": 3, "renderer": RenderingServer.get_current_rendering_method(), "models": kinds, "camera_size": camera_size, "grounded": grounded, "panels": panels, "fittings": fittings, "accessories": accessories, "rotor_focus": rotor_focus, "body_focus": str(body_focus), "view_direction": str(view_direction)}
+	var manifest := {"team": team, "seed": 3, "renderer": RenderingServer.get_current_rendering_method(), "models": kinds, "camera_size": camera_size, "grounded": grounded, "panels": panels, "fittings": fittings, "accessories": accessories, "construction": construction, "rotor_focus": rotor_focus, "body_focus": str(body_focus), "view_direction": str(view_direction)}
 	FileAccess.open(output.path_join("capture.json"), FileAccess.WRITE).store_string(JSON.stringify(manifest, "\t"))
 	var per_page := 1 if single else (4 if fittings else (8 if panels else (16 if swatches else 12)))
 	for start in range(0, kinds.size(), per_page):

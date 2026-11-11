@@ -154,6 +154,48 @@ func _ready() -> void:
 	weapon.update_antennas(Vector3(1000, 0, 0), 1.0 / 30)
 	assert(whip.rotation == Vector3.ZERO)
 	weapon.root.free()
+	# A turned can must rotate every handle, cap and rib with its shell.
+	var cans: Array[VehicleModels] = []
+	var turn := Basis.from_euler(Vector3(0.15, 1.2, -0.1))
+	var origin := Vector3(3, 5, 7)
+	for index in 2:
+		var can := VehicleModels.new()
+		can.root = Node3D.new()
+		can._baking = true
+		VehicleFittings.jerrycan(can, can.root, Vector3.ZERO if index == 0 else origin, Color.OLIVE, Vector3.ZERO if index == 0 else turn.get_euler())
+		assert(can.root.get_child_count() == 0)
+		cans.append(can)
+	var straight: Array = cans[0]._parts[cans[0].root]
+	var turned: Array = cans[1]._parts[cans[1].root]
+	assert(straight.size() == turned.size())
+	for i in straight.size():
+		assert((origin + turn * straight[i][4]).distance_to(turned[i][4]) < 0.0001, "All can fittings must follow the supplied transform")
+	for can in cans:
+		can.root.free()
+	# Shared fittings must stay in the turret/hull material bake, including wrecks.
+	for wreck in [false, true]:
+		var kit := VehicleModels.new()
+		kit.root = Node3D.new()
+		kit._baking = true
+		kit.burnt = wreck
+		VehicleFittings.ammo_can(kit, kit.root, Vector3.ZERO, Color.OLIVE)
+		VehicleFittings.tow_shackle(kit, kit.root, Vector3.ZERO, 1.0)
+		VehicleFittings.smoke_tube(kit, kit.root, Vector3.ZERO, Vector3(-1, 0.7, 0), 0.04, 0.22)
+		VehicleFittings.periscope(kit, kit.root, Vector3.ZERO, Vector3(0.18, 0.1, 0.12), Vector3(0.2, 0.6, 0))
+		VehicleFittings.hatch(kit, kit.root, Vector3.ZERO, 0.3, "paint")
+		VehicleFittings.tail_cluster(kit, kit.root, Vector3.ZERO)
+		VehicleFittings.lifting_eye(kit, kit.root, Vector3.ZERO)
+		VehicleFittings.rectangular_headlamp(kit, kit.root, Vector3.ZERO, Vector2(0.12, 0.1))
+		assert(kit.root.get_child_count() == 0, "Static equipment must not add animation nodes or lights")
+		assert(kit.wheels.is_empty() and kit.antennas.is_empty(), "Equipment must not claim vehicle animation pivots")
+		var parts: Array = kit._parts[kit.root]
+		assert(parts.size() < 150, "Small fittings should remain inexpensive to construct")
+		var kit_bounds := _bounds(parts)
+		assert(kit_bounds.size.length() < 1.0, "Fittings must retain their metre-scale envelopes")
+		if wreck:
+			for part: Array in parts:
+				assert(part[1] == Mats.get_mat(VehicleMaterials.key("burnt", kit.surface_family)), "No reflective glass or signal lenses on wreck equipment")
+		kit.root.free()
 	print("VEHICLE_COMPONENTS passed")
 	TestRun.quit(get_tree())
 

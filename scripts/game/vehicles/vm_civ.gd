@@ -729,8 +729,7 @@ static func _mb4wd(k: VehicleModels, team: int, seed: int, v: String) -> void:
 	for s in [-1.0, 1.0]:
 		var hp := Vector3(s * 0.5, 0.88, -1.975 + 0.26 * slope)
 		k._cyl(m, 0.125, 0.125, 0.04, hp, Vector3(PI / 2 + slope, 0, 0), "plain", TRIM, 16)
-		k._cyl(m, 0.1, 0.1, 0.04, hp + Vector3(0, 0, -0.012), Vector3(PI / 2 + slope, 0, 0), "paint", LENS, 16, false)
-		k._cyl(m, 0.04, 0.04, 0.04, hp + Vector3(0, 0, -0.02), Vector3(PI / 2 + slope, 0, 0), "paint", HEAD, 10, false)
+		VehicleFittings.headlamp(k, m, hp + Vector3(0, 0, -0.032), 0.1, -Basis.from_euler(Vector3(PI / 2 + slope, 0, 0)).y)
 		_lamp(k, m, Vector3(0.1, 0.05, 0.03), Vector3(s * 0.5, 0.69, -1.97), AMBER)
 		k._box(m, Vector3(0.06, 0.08, 0.1), Vector3(s * 0.5, 0.56, -2.07), "paint", Color(0.45, 0.08, 0.06))
 	k._box(m, Vector3(1.86, 0.18, 0.16), Vector3(0, 0.6, -1.99), "plain", bar)
@@ -895,7 +894,7 @@ static func _truck(k: VehicleModels, team: int, seed: int, v: String) -> void:
 	k._box(m, Vector3(0.12, 0.08, 0.06), Vector3(0, 0.84, -3.0), "steel", Color(0.5, 0.5, 0.5))
 	for s in [-1.0, 1.0]:
 		k._box(m, Vector3(0.08, 0.1, 0.12), Vector3(s * 0.7, 0.88, -2.95), "paint", Color(0.5, 0.1, 0.07))
-		k._cyl(m, 0.05, 0.05, 0.03, Vector3(s * 0.75, 1.1, -2.96), Vector3(PI / 2, 0, 0), "paint", HEAD, 10, false)
+		VehicleFittings.headlamp(k, m, Vector3(s * 0.75, 1.1, -2.96) + Vector3(0, 0, -0.015), 0.05)
 	_plate(k, m, Vector3(0, 1.1, -2.96), false)
 	_rod(k, m, Vector3(-0.95, 2.6, -1.4), Vector3(-0.95, 3.4, -1.3), 0.007, "gunmetal_w", null, 4, false)
 	if v == "box":
@@ -1069,7 +1068,7 @@ static func _van(k: VehicleModels, team: int, seed: int, v: String) -> void:
 		_slab(k, m, Vector3(s * 0.5, 0.91, -2.925), Vector3(s * 0.6, 0.91, -2.92), 0.09, 0.03, "paint", HEAD, up)
 		_slab(k, m, Vector3(s * 0.64, 0.92, -2.92), Vector3(s * 0.74, 0.92, -2.915), 0.09, 0.03, "paint", HEAD, up)
 		_slab(k, m, Vector3(s * 0.88, 0.96, -2.8), Vector3(s * 0.95, 0.98, -2.68), 0.06, 0.035, "paint", AMBER, up)
-		k._cyl(m, 0.045, 0.045, 0.03, Vector3(s * 0.7, 0.5, -3.0), Vector3(PI / 2, 0, 0), "paint", LENS, 10, false)
+		VehicleFittings.headlamp(k, m, Vector3(s * 0.7, 0.5, -3.0) + Vector3(0, 0, -0.015), 0.045)
 	k._box(m, Vector3(1.98, 0.34, 0.18), Vector3(0, 0.53, -2.92), "plain", TRIM)
 	k._box(m, Vector3(0.9, 0.12, 0.03), Vector3(0, 0.47, -3.01), "gunmetal_w", null, Vector3.ZERO, false)
 	_plate(k, m, Vector3(0, 0.62, -3.015), false)
@@ -1278,7 +1277,7 @@ static func _hatch(k: VehicleModels, seed: int, sport: bool) -> void:
 		_slab(k, m, Vector3(s * 0.48, 0.69 + dy, -2.16), Vector3(s * 0.6, 0.71 + dy, -2.1), 0.05, 0.03, "paint", HEAD, up)
 		_slab(k, m, Vector3(s * 0.4, 0.88 + dy, 2.172), Vector3(s * 0.69, 0.885 + dy, 2.165), 0.09, 0.03, "paint", TAIL, Vector3.UP)
 		_slab(k, m, Vector3(s * 0.68, 0.885 + dy, 2.16), Vector3(s * 0.85, 0.9 + dy, 1.96), 0.09, 0.03, "paint", TAIL, Vector3.UP)
-		k._cyl(m, 0.035, 0.035, 0.03, Vector3(s * 0.62, 0.42 + dy, -2.15), Vector3(PI / 2, 0, 0), "paint", LENS, 10, false)
+		VehicleFittings.headlamp(k, m, Vector3(s * 0.62, 0.42 + dy, -2.15) + Vector3(0, 0, -0.015), 0.035)
 	k._box(m, Vector3(0.5, 0.05, 0.03), Vector3(0, 0.66 + dy, -2.155), "plain", Color(0.06, 0.06, 0.06), Vector3(0.6, 0, 0), false)
 	k._box(m, Vector3(0.9, 0.16, 0.03), Vector3(0, 0.44 + dy, -2.175), "plain", Color(0.06, 0.06, 0.06), Vector3.ZERO, false)
 	_plate(k, m, Vector3(0, 0.5 + dy, -2.19), false, 0.46)
@@ -1421,7 +1420,7 @@ static func _suv(k: VehicleModels, seed: int) -> void:
 		_slab(k, m, Vector3(s * 0.55, 0.62, 2.455), Vector3(s * 0.75, 0.62, 2.455), 0.03, 0.02, "paint", TAIL, Vector3.UP)
 		# lower intakes and fog lights, exhausts
 		k._box(m, Vector3(0.32, 0.17, 0.03), Vector3(s * 0.52, 0.6, -2.455), "plain", Color(0.06, 0.06, 0.06), Vector3.ZERO, false)
-		k._cyl(m, 0.04, 0.04, 0.03, Vector3(s * 0.52, 0.6, -2.47), Vector3(PI / 2, 0, 0), "paint", LENS, 10, false)
+		VehicleFittings.headlamp(k, m, Vector3(s * 0.52, 0.6, -2.47) + Vector3(0, 0, -0.015), 0.04)
 		for x in [0.5, 0.62]:
 			k._cyl(m, 0.04, 0.04, 0.1, Vector3(s * x, 0.47, 2.42), Vector3(PI / 2, 0, 0), "steel", Color(0.6, 0.6, 0.6), 10, false)
 	# the twin kidneys
