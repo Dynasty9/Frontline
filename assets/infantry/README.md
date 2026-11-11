@@ -12,6 +12,7 @@ To rebuild with the locally licensed inputs already imported:
 
 ```powershell
 godot --headless --path . --script tests/mocap/bake_rifle.gd
+godot --path . res://tests/mocap/bake_rhib_helm.tscn
 godot --headless --path . --script tests/mocap/pack_infantry.gd
 ```
 

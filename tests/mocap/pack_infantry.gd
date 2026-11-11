@@ -8,7 +8,10 @@ var scenes := 0
 func _initialize() -> void:
 	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path("res://assets/infantry"))
 	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path("res://build/infantry-pack"))
+	var helm := "res://build/infantry-pack/rhib-helm.scn"
+	assert(FileAccess.file_exists(helm), "Run bake_rhib_helm.tscn before packing the infantry")
 	assert(pack.open(ProjectSettings.globalize_path(OUTPUT)) == OK)
+	assert(_write("res://assets/infantry/rhib-helm.scn", helm) == OK)
 	_collect("res://assets/local_mocap/mixamo")
 	_add("res://assets/local_mocap/runtime/m4.scn")
 	assert(scenes > 250, "Missing imported character/animation inputs")

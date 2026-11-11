@@ -770,6 +770,9 @@ static func _rhib(k: VehicleModels, team: int) -> void:
 	k._cyl(m, 0.075, 0.09, 0.14, Vector3(0.36, ah + 0.13, cz - 0.08), Vector3(PI / 2, 0, 0), "gunmetal_w", null, 10)
 	k._cyl(m, 0.06, 0.06, 0.01, Vector3(0.36, ah + 0.13, cz - 0.155), Vector3(PI / 2, 0, 0), "glass", null, 10, false)
 	k._box(m, Vector3(0.12, 0.06, 0.04), Vector3(-0.32, ah + 0.07, cz - 0.05), "gunmetal_w")
+	# The driver perches on the front of the first starboard seat to reach the wheel.
+	var seat_z := cz + 1.3
+	k.helm_seat = Vector3(0.31, _top(_station(p, _u(p, seat_z))) + 0.69, seat_z - 0.26)
 	# two rows of jockey seats, each with a grab bar
 	for zr in [cz + 1.3, cz + 2.15]:
 		var sy := _top(_station(p, _u(p, zr)))
