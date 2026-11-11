@@ -1,6 +1,6 @@
 # Trench realism review
 
-Implemented in `codex/trench-realism`, in a separate worktree created from
+Implemented in PR #162, in a separate worktree created from
 `origin/main` at `a89bd759bee003ee208f65ad4b8e418158994254`.
 
 Trenches now excavate in stages, retain unfinished work, acquire deeper cover,
