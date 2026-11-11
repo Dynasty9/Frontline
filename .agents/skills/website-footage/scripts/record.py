@@ -122,8 +122,7 @@ def commit() -> str:
 
 def source_takes(spec: dict) -> list[str]:
     names = [cut["take"] for cut in spec["cuts"]]
-    if "score" in spec:
-        names.append(spec["score"]["take"])
+    names.extend(spec[key]["take"] for key in ("score", "end_title") if key in spec)
     return names
 
 
