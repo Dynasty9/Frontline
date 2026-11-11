@@ -165,6 +165,27 @@
       ],
       "about": "An occupied trench under the game’s 155 mm artillery barrage."
     },
+    "trailer-trench-impact": {
+      "scene": "res://tools/showcase/trailer-review/trench-impact.tscn",
+      "frames": 600,
+      "args": [
+        "--preset=high",
+        "--seed=3",
+        "--set=volume:0.8,vol_effects:0.85,vol_music:0,battle_music:false,vol_ambience:0.28,vol_ui:0,mute_bg:false,wildlife:0,edge_pan:false",
+        "--scenario=trenches",
+        "--zoom=36",
+        "--pitch=-29",
+        "--cam-yaw=-0.85",
+        "--mood=golden",
+        "--focus=0,-30",
+        "--demo-support=artillery",
+        "--demo-at=6"
+      ],
+      "shows": [
+        "The last rounds lift soil beside the timber firing bay"
+      ],
+      "about": "The last rounds lift soil beside the timber firing bay."
+    },
     "trailer-score": {
       "scene": "res://tools/showcase/trailer-review/title-score.tscn",
       "frames": 1050,
