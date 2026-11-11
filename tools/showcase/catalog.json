@@ -8572,6 +8572,32 @@
           "command": "ffmpeg -i digging.mp4 -c:v libvpx-vp9 -crf 34 -b:v 0 -row-mt 1 -an digging.webm"
         }
       }
+    },
+    {
+      "entry": "changelog/unreleased/coastal-landings.md",
+      "medium": "motion",
+      "rationale": "The disappearing hull and the squad coming ashore are visible in one uninterrupted approach.",
+      "stage": "Same Beachhead landing from the playable waterline camera, side by side.",
+      "source_ref": "56c4018 versus the coastal grading and seabed order fix",
+      "sources": [
+        {
+          "file": "changelog/unreleased/coastal-landings/landing.webm",
+          "sha256": "9a0639a5b65c8a2a60da85fe6f528aa37aae25e9bfd84f630d4dbdaa281e4109"
+        },
+        {
+          "file": "changelog/unreleased/coastal-landings/landing.jpg",
+          "sha256": "d962e55bfaf330363dd3aa946bfa32987010c7272462a5bafa2c964ac069c55f"
+        }
+      ],
+      "capture": {
+        "mission": "beachhead",
+        "seed": 3,
+        "vehicle": "rhib",
+        "view": "Waterline",
+        "start_seconds": 21,
+        "end_seconds": 29,
+        "fps": 30
+      }
     }
   ],
   "layout_capture": {

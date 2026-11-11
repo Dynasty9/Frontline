@@ -69,6 +69,18 @@
       "shows": ["Occupants and the rebuilt front trench"],
       "about": "Low three-quarter view down a branch of the same trench seen in the overhead reverse."
     },
+    "trailer-armour-crossing": {
+      "frames": 255,
+      "args": ["--preset=high", "--seed=3", "--set=volume:0.8,vol_effects:0.85,vol_music:0,battle_music:false,vol_ambience:0.28,vol_ui:0,mute_bg:false,wildlife:0,edge_pan:false", "--scenario=trenches", "--mood=golden", "--focus=0,52", "--zoom=31", "--pitch=-10", "--cam-yaw=1.60", "--pan=0,-1.9"],
+      "shows": ["Moving armoured column from field level"],
+      "about": "Watch the leading tank cross from left to right with a second hull in depth."
+    },
+    "trailer-beach-landing": {
+      "frames": 855,
+      "args": ["--preset=high", "--seed=3", "--set=volume:0.8,vol_effects:0.85,vol_music:0,battle_music:false,vol_ambience:0.28,vol_ui:0,mute_bg:false,wildlife:0,edge_pan:false", "--mission=beachhead", "--focus=363,108", "--zoom=14", "--pitch=-19", "--cam-yaw=-1.97"],
+      "shows": ["Landing squad leaving its RHIB", "Patrol ship beyond the beach"],
+      "about": "From the dry side of the bow, see the squad move away while the patrol ship crosses behind."
+    },
     "trailer-harbour-boats": {
       "frames": 540,
       "args": ["--preset=high", "--seed=3", "--set=volume:0.8,vol_effects:0.85,vol_music:0,battle_music:false,vol_ambience:0.28,vol_ui:0,mute_bg:false,wildlife:0,edge_pan:false", "--mission=beachhead", "--focus-vehicle=rhib,1", "--vehicle-view=Waterline"],
@@ -512,13 +524,14 @@
       "cuts": [
         {"take": "trailer-order", "from": 1.4, "to": 2.73333, "gain_db": -1, "caption": "[Low strings as the order is given]"},
         {"take": "trailer-roadside", "from": 2.73333, "to": 3.8, "gain_db": -1, "caption": "[The squad crosses the road]"},
-        {"take": "highlight-column", "from": 5.03333, "to": 7.3, "gain_db": 0, "caption": "[Tracks rumble across the field]"},
+        {"take": "trailer-armour-crossing", "from": 5.53333, "to": 7.4, "gain_db": 0, "caption": "[Tracks rumble across the field]"},
         {"take": "reel-gun", "from": 13.9, "to": 15.1, "gain_db": -8, "caption": "[Tank cannon fires]"},
         {"take": "trailer-trench-close", "from": 9.2, "to": 10.8, "gain_db": -2, "caption": "[Fire cracks beside the trench]"},
         {"take": "highlight-mortars", "from": 0.93333, "to": 2.03333, "gain_db": 1, "caption": "[Distant fire at the mortar pit]"},
-        {"take": "highlight-mortar-burst", "from": 8.0, "to": 10.4, "gain_db": -3, "caption": "[Mortar bursts across the trench line]"},
+        {"take": "highlight-mortar-burst", "from": 8.3, "to": 10.1, "gain_db": -3, "caption": "[Mortar bursts across the trench line]"},
         {"take": "trailer-sling", "from": 16.66667, "to": 19.4, "gain_db": 0, "caption": "[Helicopter rotors over the suspended vehicle]"},
-        {"take": "trailer-harbour-boats", "from": 13.13333, "to": 15.93333, "gain_db": 0, "caption": "[Boats approach the shore]"},
+        {"take": "trailer-harbour-boats", "from": 13.13333, "to": 15.53333, "gain_db": 0, "caption": "[Boats approach the shore]"},
+        {"take": "trailer-beach-landing", "from": 26.0, "to": 27.4, "gain_db": 0, "caption": "[Surf as the squad runs ashore]"},
         {"take": "highlight-sea", "from": 34.0, "to": 35.93333, "gain_db": -1, "caption": "[Patrol ship fires across the harbour]"},
         {"take": "highlight-flyover", "from": 4.3, "to": 7.3, "gain_db": 0, "caption": "[Jet engines climb over the harbour]"},
         {"take": "highlight-flyover", "from": 10.7, "to": 13.26667, "gain_db": 4, "caption": "[Impacts roll across the water]"}

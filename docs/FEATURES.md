@@ -613,7 +613,8 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   living men stay upright while wading. Movement checks the whole step, so old routes, dives, separation
   and knockback cannot carry a man through deep water. Spawns and disembarking find safe ground;
   a living man stranded by a removed crossing is repositioned to the nearest safe bank. Bridges and the harbour are key points the AI fights over. The water is laid
-  out on the server as a few shapes and rasterized identically on every client.
+  out on the server as a few shapes and rasterized identically on every client. Erosion preserves the graded
+  beach and both host and client carve the beds after the hills are in place.
 - **How the water looks** (`water_view.gd`). The surface is drawn in tiles only where there's water. The sea
   runs two wave systems that cross: a swell from weather far out at sea, long and regular and coming in sets
   (its heading a little different on each map), and the wind's own shorter, steeper sea running offshore with
