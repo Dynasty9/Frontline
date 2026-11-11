@@ -207,8 +207,7 @@ static func _strider(k: VehicleModels, team: int, variant: int) -> void:
 	# the nose: headlight clusters in guards, tow shackles, a plate
 	for s: float in [-1.0, 1.0]:
 		_light(k, m, Vector3(s * 0.92, 1.02, -2.8), 0.3, 0.13)
-		k._box(m, Vector3(0.1, 0.14, 0.16), Vector3(s * 0.55, 0.72, -2.62), "gunmetal_w")
-		k._cyl(m, 0.05, 0.05, 0.14, Vector3(s * 0.55, 0.66, -2.7), Z90, "gunmetal_w", null, 8, false)
+		VehicleFittings.tow_shackle(k, m, Vector3(s * 0.55, 0.72, -2.62), -1.0, Vector3(0.1, 0.14, 0.16), 0.05)
 	k._box(m, Vector3(0.44, 0.12, 0.02), Vector3(0, 0.98, -2.8), "paint", Color(0.82, 0.8, 0.72), Vector3.ZERO, false)
 	for s: float in [-1.0, 1.0]:
 		# mirrors on their arms by the windscreen
@@ -276,8 +275,7 @@ static func _strider(k: VehicleModels, team: int, variant: int) -> void:
 ## Tow eyes and a pintle under the back.
 static func _tow_eyes(k: VehicleModels, p: Node3D, z: float, y: float) -> void:
 	for s: float in [-1.0, 1.0]:
-		k._box(p, Vector3(0.08, 0.12, 0.12), Vector3(s * 0.6, y, z), "gunmetal_w")
-		k._cyl(p, 0.045, 0.045, 0.12, Vector3(s * 0.6, y - 0.05, z + 0.06), Z90, "gunmetal_w", null, 8, false)
+		VehicleFittings.tow_shackle(k, p, Vector3(s * 0.6, y, z), 1.0, Vector3(0.08, 0.12, 0.12), 0.045)
 
 
 ## An electro-optical sensor head: a box with a camera window, a thermal
@@ -392,8 +390,7 @@ static func _mora(k: VehicleModels, team: int) -> void:
 		k._box(m, Vector3(0.22, 0.38, 1.1), Vector3(s * 1.52, 1.45, 2.2), cam, col)
 		# headlight clusters in guards on the glacis corners, tow hooks
 		_light(k, m, Vector3(s * 1.16, 1.22, -3.08), 0.26, 0.12)
-		k._box(m, Vector3(0.12, 0.16, 0.18), Vector3(s * 0.62, 0.92, -3.18), "gunmetal_w")
-		k._cyl(m, 0.05, 0.05, 0.16, Vector3(s * 0.62, 0.86, -3.27), Z90, "gunmetal_w", null, 8, false)
+		VehicleFittings.tow_shackle(k, m, Vector3(s * 0.62, 0.92, -3.18), -1.0, Vector3(0.12, 0.16, 0.18), 0.05)
 	# glacis: the driver's hatch and vision blocks front-left, the engine
 	# louvres front-right, lifting eyes
 	var ga := Vector2(-3.0, 1.12)
@@ -501,8 +498,7 @@ static func _kuma(k: VehicleModels, team: int) -> void:
 	for s: float in [-1.0, 1.0]:
 		# headlight clusters with guards on the front corners, tow eyes
 		_light(k, m, Vector3(s * 1.45, 1.36, -3.6), 0.3, 0.13)
-		k._box(m, Vector3(0.14, 0.18, 0.2), Vector3(s * 0.72, 1.02, -3.88), "gunmetal_w")
-		k._cyl(m, 0.055, 0.055, 0.18, Vector3(s * 0.72, 0.96, -3.98), Z90, "gunmetal_w", null, 8, false)
+		VehicleFittings.tow_shackle(k, m, Vector3(s * 0.72, 1.02, -3.88), -1.0, Vector3(0.14, 0.18, 0.2), 0.055)
 		# skirts: three heavy armour modules forward, three light panels aft,
 		# the bow panel raked
 		for i in 6:
@@ -754,8 +750,7 @@ static func _gorgon(k: VehicleModels, team: int) -> void:
 		k._box(m, Vector3(0.16, 0.42, 0.7), Vector3(s * 1.41, 1.5, -1.62), cam, col)
 		# headlight clusters with guards at the bow's corners, tow eyes
 		_light(k, m, Vector3(s * 1.1, 1.6, -3.32), 0.28, 0.13)
-		k._box(m, Vector3(0.12, 0.16, 0.2), Vector3(s * 0.62, 1.08, -3.66), "gunmetal_w")
-		k._cyl(m, 0.05, 0.05, 0.16, Vector3(s * 0.62, 1.02, -3.76), Z90, "gunmetal_w", null, 8, false)
+		VehicleFittings.tow_shackle(k, m, Vector3(s * 0.62, 1.08, -3.66), -1.0, Vector3(0.12, 0.16, 0.2), 0.05)
 		# rear: tail lights, tow eyes, a whip antenna on each corner
 		_light(k, m, Vector3(s * 1.1, 1.75, 3.74), 0.22, 0.1, 1.0, false, true)
 		k._box(m, Vector3(0.12, 0.16, 0.2), Vector3(s * 0.75, 1.0, 3.72), "gunmetal_w")
@@ -907,8 +902,7 @@ static func _zamak_cab(k: VehicleModels, team: int, cam: String, col) -> void:
 	# the bumper with its tow hooks and plate
 	k._box(m, Vector3(2.42, 0.22, 0.2), Vector3(0, 0.95, -3.72), cam, col)
 	for s: float in [-1.0, 1.0]:
-		k._box(m, Vector3(0.1, 0.16, 0.12), Vector3(s * 0.72, 0.88, -3.85), "gunmetal_w")
-		k._cyl(m, 0.05, 0.05, 0.14, Vector3(s * 0.72, 0.82, -3.92), Z90, "gunmetal_w", null, 8, false)
+		VehicleFittings.tow_shackle(k, m, Vector3(s * 0.72, 0.88, -3.85), -1.0, Vector3(0.1, 0.16, 0.12), 0.05)
 	k._box(m, Vector3(0.5, 0.12, 0.02), Vector3(0, 0.96, -3.83), "paint", Color(0.82, 0.8, 0.72), Vector3.ZERO, false)
 	# the cab: vertical lower half, the glasshouse leaning in a little
 	k._add(m, VehicleModels.solid([_ring(_oct(-1.2, 1.2, -2.15, -0.72, 0.08), 1.22), _ring(_oct(-1.2, 1.2, -2.15, -0.72, 0.08), 2.0)], "indep_zk_open_cab"), cam, col, Vector3.ZERO)

@@ -191,9 +191,8 @@ static func _smoke(k: VehicleModels, p: Node3D, pos: Vector3, s: float, n := 4, 
 
 ## A tow shackle (a U on its pin) at pos.
 static func _shackle(k: VehicleModels, p: Node3D, pos: Vector3, f := -1.0) -> void:
-	k._box(p, Vector3(0.14, 0.12, 0.1), pos, "gunmetal_w")
-	k._cyl(p, 0.035, 0.035, 0.16, pos + Vector3(0, 0, f * 0.08), Vector3(PI / 2, 0, 0), "gunmetal_w", null, 8)
-	k._cyl(p, 0.06, 0.06, 0.035, pos + Vector3(0, -0.02, f * 0.15), Vector3(0, 0, PI / 2), "gunmetal_w", null, 10, false)
+	VehicleFittings.tow_shackle(k, p, pos, f, Vector3(0.14, 0.12, 0.1), 0.06)
+
 
 
 ## A static spare wheel (not spinning) lying with its axle along `axis`.

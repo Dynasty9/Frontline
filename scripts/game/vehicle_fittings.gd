@@ -314,3 +314,19 @@ static func ammo_can(k: VehicleModels, parent: Node3D, center: Vector3, col: Col
 		for z in [-0.09, 0.09]:
 			k._box(mount, Vector3(0.006, 0.115, 0.012), Vector3(side * 0.081, -0.015, z), "paint", col, Vector3.ZERO, false)
 	k._fold(mount)
+
+
+## Forged recovery shackle, with an open bow and a transverse removable pin.
+static func tow_shackle(k: VehicleModels, parent: Node3D, center: Vector3, facing := -1.0, size := Vector3(0.14, 0.14, 0.12), radius := 0.065) -> void:
+	var mount := k._pivot(parent, center)
+	mount.rotation.y = PI if facing < 0 else 0.0
+	k._box(mount, size, Vector3.ZERO, "gunmetal_w")
+	var z := size.z / 2 + radius * 0.85
+	var points: Array = []
+	for i in 13:
+		var a := PI + PI * i / 12.0
+		points.append(Vector3(cos(a) * radius, sin(a) * radius - 0.02, z))
+	VehicleFrames.path(k, mount, points, radius * 0.23, "gunmetal_w", null, 8)
+	VehicleFrames.tube(k, mount, Vector3(-radius * 1.35, -0.02, z), Vector3(radius * 1.35, -0.02, z), radius * 0.24, "steel", null, 10)
+	k._box(mount, Vector3(0.012, radius * 0.65, radius * 0.42), Vector3(radius * 1.4, -0.02, z), "gunmetal_w", null, Vector3.ZERO, false)
+	k._fold(mount)

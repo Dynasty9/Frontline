@@ -238,9 +238,8 @@ static func _smoke(k: VehicleModels, p: Node3D, pos: Vector3, yaw: float, cols :
 
 ## A tow shackle (a U on its pin) at pos, facing f (-1 forward, 1 back).
 static func _shackle(k: VehicleModels, p: Node3D, pos: Vector3, f := -1.0) -> void:
-	_bx(k, p, Vector3(0.14, 0.14, 0.12), pos, "gunmetal_w")
-	k._cyl(p, 0.035, 0.035, 0.18, pos + Vector3(0, 0, f * 0.08), X90, "gunmetal_w", null, 8)
-	k._cyl(p, 0.065, 0.065, 0.035, pos + Vector3(0, -0.02, f * 0.16), Z90, "gunmetal_w", null, 10, false)
+	VehicleFittings.tow_shackle(k, p, pos, f)
+
 
 
 ## A periscope head facing along yaw (0: forward), with its glass.

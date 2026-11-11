@@ -161,10 +161,8 @@ static func _antenna(k: VehicleModels, p: Node3D, pos: Vector3, h: float) -> voi
 
 ## A tow hook/shackle facing along `dir` (-1 front, +1 rear).
 static func _tow(k: VehicleModels, p: Node3D, pos: Vector3, dir: float) -> void:
-	k._box(p, Vector3(0.12, 0.12, 0.14), pos, "gunmetal_w")
-	k._cyl(p, 0.05, 0.05, 0.03, pos + Vector3(0, 0, dir * 0.1), Vector3(0, 0, PI / 2), "gunmetal_w", null, 8, false)
-	k._box(p, Vector3(0.03, 0.12, 0.05), pos + Vector3(-0.045, 0, dir * 0.11), "gunmetal_w", null, Vector3.ZERO, false)
-	k._box(p, Vector3(0.03, 0.12, 0.05), pos + Vector3(0.045, 0, dir * 0.11), "gunmetal_w", null, Vector3.ZERO, false)
+	VehicleFittings.tow_shackle(k, p, pos, dir, Vector3(0.12, 0.12, 0.14), 0.05)
+
 
 
 ## A jerrycan standing upright, its face toward x.
