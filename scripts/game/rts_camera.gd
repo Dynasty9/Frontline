@@ -494,6 +494,13 @@ func _apply() -> void:
 			if mount_marker.has_meta(&"level_horizon") and absf(pose.basis.z.y) < 0.9999:
 				pose.basis = Basis.looking_at(-pose.basis.z)
 			pose.origin.y = maxf(pose.origin.y, world.ground_y(pose.origin) + 0.45)
+			# The observer follows the load as it swings away from the fixed door sightline.
+			if mount_label == &"Cargo door" and mount_subject is Vehicle:
+				var helicopter := mount_subject as Vehicle
+				var load_vehicle := world.entity(helicopter.sling_eid) as Vehicle
+				if load_vehicle and load_vehicle.model and load_vehicle.is_visible_in_tree():
+					var center := load_vehicle.model.to_global(Vector3.UP * load_vehicle._hull_size().y * 0.55)
+					pose = pose.looking_at(center, pose.basis.y)
 			cam.global_transform = pose
 			cam.h_offset = randf_range(-1, 1) * _shake * 0.08 if _shake > 0.0 else 0.0
 			cam.v_offset = randf_range(-1, 1) * _shake * 0.08 if _shake > 0.0 else 0.0
