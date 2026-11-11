@@ -36,7 +36,7 @@ import tempfile
 from pathlib import Path
 
 import numpy as np
-from PIL import Image, ImageChops, ImageEnhance
+from PIL import Image, ImageChops, ImageEnhance, ImageFilter
 
 HERE = Path(__file__).resolve().parent
 SKILL = HERE.parent
@@ -271,8 +271,8 @@ def build_output(name: str, spec: dict, takes: Takes, out: Path, how: str) -> No
             sys.exit(f"{name}: the score requires audio and must cover all {n} frames.")
         score_gain = 10 ** (score["gain_db"] / 20)
     fi, fo = int(spec.get("fade_in", 0)), int(spec.get("fade_out", 0))
-    # The title is filmed on black, so a screen blend keeps the water moving
-    # around the lettering, including while the underlying shot fades out.
+    # The title is filmed on black. A soft shadow behind the letters keeps it
+    # legible without dimming the action elsewhere in the frame.
     title = None
     if end_title := spec.get("end_title"):
         title_start = round(end_title["from"] * FPS)
@@ -282,6 +282,8 @@ def build_output(name: str, spec: dict, takes: Takes, out: Path, how: str) -> No
         if not (0 <= index < len(source) and 0 <= title_start < n and 0 <= title_fade <= n - title_start):
             sys.exit(f"{name}: the end title must fit its source and the output timeline.")
         title = source.image(index).convert("RGB").resize(size, Image.LANCZOS)
+        radius = max(1, round(size[1] / 100))
+        shadow = title.convert("L").filter(ImageFilter.MaxFilter(2 * radius + 1)).filter(ImageFilter.GaussianBlur(radius))
     black = Image.new("RGB", size)
     jpegs: list[bytes] = []
     pcm: list[np.ndarray] = []
@@ -303,8 +305,7 @@ def build_output(name: str, spec: dict, takes: Takes, out: Path, how: str) -> No
             im = Image.blend(black, im, dim)
         if title is not None and k >= title_start:
             amount = min(1.0, (k - title_start + 1) / max(1, title_fade))
-            # Lower the picture under the wordmark as the spray settles.
-            backing = Image.blend(im, black, 0.42)
+            backing = Image.composite(black, im, shadow)
             im = Image.blend(im, ImageChops.screen(backing, title), amount)
         if k == 0:
             im.save(out / f"{name}.jpg", quality=82, optimize=True, progressive=True)

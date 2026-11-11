@@ -1696,6 +1696,7 @@ func _destroyed() -> void:
 		if has_tank_model():
 			props["bent_skirts"] = bent_skirts
 			props["wreck_turret_yaw"] = turret_yaw
+		if has_tank_model() or vdef.get("model", vkind) in ["technical", "aa_tech"]:
 			props["wreck_finish"] = {"team": team, "seed": eid, "since": world.time}
 		props["size"] = Vector3(hs.x, maxf(hs.y, 1.2), hs.z)
 		props["pos"] = plan[0]
@@ -2959,8 +2960,9 @@ func _build_model() -> void:
 	if world.fx and world.fx.vfx:
 		burner = world.fx.vfx.make_burner(1.0 if weight() >= 2 else 0.7, k.engine_deck.is_finite())
 		burner.position = Vector3(0, 1.6, 1.2) if base() != "lift_heli" else Vector3(0, 2.3, 0.6)
-		if k.engine_vent.is_finite():
+		if k.engine_deck.is_finite():
 			burner.position = k.engine_deck
+		if k.engine_vent.is_finite():
 			engine_exhaust = world.fx.vfx.make_engine_exhaust(vkind == "old_tank")
 			engine_exhaust.position = k.engine_vent
 			add_child(engine_exhaust)

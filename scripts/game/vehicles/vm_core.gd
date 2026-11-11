@@ -1037,6 +1037,8 @@ const MUD := Color(0.27, 0.22, 0.16)
 ## bed; otherwise a DShK on a pintle with a welded gun shield.
 static func _hilux(k: VehicleModels, team: int, seed: int, aa: bool) -> void:
 	var m := k.root
+	# A burning pickup keeps its original finish away from the bonnet.
+	k.engine_deck = Vector3(0, 1.12, -1.55)
 	var h := absi(hash(seed * 7919 + (31 if aa else 17)))
 	var col: Color = HILUX[h % HILUX.size()]
 	col = col.lerp(Color(0.55, 0.5, 0.42), 0.08 * float((h >> 3) % 3))
