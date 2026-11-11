@@ -9,7 +9,7 @@
   "renderer": "forward_plus",
   "resolution": "1280x768 (48-pixel label above uncropped 1280x720 source)",
   "seed": 3,
-  "simulation": "Held at two seconds; native camera, wind and water remain animated. Not a combat or performance benchmark.",
+  "simulation": "Held at two seconds; native wind and water remain animated. Not a combat or performance benchmark.",
   "stage": "clouds",
   "user_arguments": [
     "--aivai",
@@ -24,55 +24,55 @@
   ],
   "views": [
     {
-      "focus": "(-1500.0, 120.0, -450.0)",
+      "focus": "(0.0, 80.0, 0.0)",
       "fov": 55.0,
       "frames": 120,
       "label": "Day",
-      "orbit_radians": 0.065,
-      "pitch": -8.0,
+      "orbit_radians": 0.0,
+      "pitch": -10.0,
       "seconds": 4,
       "yaw": 0.7,
-      "zoom": 900.0
+      "zoom": 1250.0
     },
     {
-      "focus": "(-1500.0, 120.0, -450.0)",
+      "focus": "(0.0, 80.0, 0.0)",
       "fov": 55.0,
       "frames": 120,
       "label": "Golden",
-      "orbit_radians": 0.065,
-      "pitch": -8.0,
+      "orbit_radians": 0.0,
+      "pitch": -10.0,
       "seconds": 4,
       "yaw": 0.7,
-      "zoom": 900.0
+      "zoom": 1250.0
     },
     {
-      "focus": "(-1500.0, 120.0, -450.0)",
+      "focus": "(0.0, 80.0, 0.0)",
       "fov": 55.0,
       "frames": 120,
       "label": "Rain",
-      "orbit_radians": 0.065,
-      "pitch": -8.0,
+      "orbit_radians": 0.0,
+      "pitch": -10.0,
       "seconds": 4,
       "yaw": 0.7,
-      "zoom": 900.0
+      "zoom": 1250.0
     },
     {
-      "focus": "(-1500.0, 120.0, -450.0)",
+      "focus": "(0.0, 80.0, 0.0)",
       "fov": 55.0,
       "frames": 120,
       "label": "Night",
-      "orbit_radians": 0.065,
-      "pitch": -8.0,
+      "orbit_radians": 0.0,
+      "pitch": -10.0,
       "seconds": 4,
       "yaw": 0.7,
-      "zoom": 900.0
+      "zoom": 1250.0
     }
   ],
   "editing": "0.75-second cross-dissolves between native captures of existing weather moods, returning to the opening frame for looping; not continuous weather simulation.",
-  "source_ref": "e110beba",
+  "source_ref": "5da763d0",
   "clip": "native-tour.webm",
   "poster": "native-tour.jpg",
-  "clip_sha256": "029ceca2890271de1d346d824d5c6fe61807245dbf41dc8b3e1313eb1ac800fe",
+  "clip_sha256": "ba8c07c6b1d4c3fdd66e2bc42c53ce2eed182484c21fdd98f4c5d37f5a1b0ba1",
   "seconds": 13.75,
   "audio": false,
   "codec": "VP9",
