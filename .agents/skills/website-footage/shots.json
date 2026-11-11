@@ -158,16 +158,16 @@
     "trailer-roadside": {
       "scene": "res://tools/showcase/trailer-review/squad-order.tscn",
       "frames": 210,
-      "args": ["--preset=high", "--seed=4", "--set=volume:0.8,vol_effects:0.85,vol_music:0,battle_music:false,vol_ambience:0.18,vol_ui:0.35,mute_bg:false,wildlife:0,edge_pan:false", "--mission=skyhook", "--autoplay", "--play", "--team=0", "--select-first", "--zoom=14.4", "--pitch=-46", "--cam-yaw=-2.3", "--mood=day", "--roadside"],
+      "args": ["--preset=high", "--seed=4", "--set=volume:0.8,vol_effects:0.85,vol_music:0,battle_music:false,vol_ambience:0.18,vol_ui:0.35,mute_bg:false,wildlife:0,edge_pan:false", "--mission=skyhook", "--autoplay", "--play", "--team=0", "--select-first", "--zoom=14.5", "--pitch=-15", "--cam-yaw=2.84", "--mood=day", "--roadside"],
       "shows": ["Squad moving beside a helicopter lifting off"],
       "about": "Track the squad leader past the hedge at ground level. The Mohawk lifts over his shoulder before its flight to the river."
     },
     "trailer-order": {
       "scene": "res://tools/showcase/trailer-review/squad-order.tscn",
       "frames": 210,
-      "args": ["--preset=high", "--seed=4", "--set=volume:0.8,vol_effects:0.85,vol_music:0,battle_music:false,vol_ambience:0.18,vol_ui:0.35,mute_bg:false,wildlife:0,edge_pan:false", "--mission=skyhook", "--autoplay", "--play", "--team=0", "--select-first", "--zoom=14.4", "--pitch=-46", "--cam-yaw=-2.3", "--mood=day"],
+      "args": ["--preset=high", "--seed=4", "--set=volume:0.8,vol_effects:0.85,vol_music:0,battle_music:false,vol_ambience:0.18,vol_ui:0.35,mute_bg:false,wildlife:0,edge_pan:false", "--mission=skyhook", "--autoplay", "--play", "--team=0", "--select-first", "--zoom=14.5", "--pitch=-15", "--cam-yaw=2.84", "--mood=day"],
       "shows": ["The player orders one selected squad to move"],
-      "about": "Open on a five-person squad and the destination ring beside the Sky Hook landing pad. The mission objective introduces the aircraft seen on the next cut."
+      "about": "Frame the selected squad and the whole Mohawk together. The destination ring appears on clear grass beside the hedge before the cut to the same soldiers at eye level."
     },
     "trailer-landing": {
       "frames": 530,
@@ -787,9 +787,9 @@
       "use": "Mission card: Kingpin"
     },
     "reel": {
-      "take": "trailer-harbour-finale",
-      "at": 6.4,
-      "use": "The reel's poster (overrides its first frame)"
+      "take": "trailer-roadside",
+      "at": 3.13333,
+      "use": "The squad and the lifting Mohawk on the reel poster"
     }
   }
 }

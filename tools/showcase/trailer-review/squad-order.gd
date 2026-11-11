@@ -24,7 +24,7 @@ func _process(dt: float) -> void:
 	if world.input.sel_squads.is_empty() or not world.input.can_command():
 		return
 	var start: Vector3 = world.input.selection_centre()
-	world.input.order_at(start + Vector3(4.0, 0.0, -6.0))
+	world.input.order_at(start + Vector3(1.4, 0.0, -5.6))
 	ordered = true
 	if args.has("roadside"):
 		var squad: Variant = world.squads.get(world.input.sel_squads[0])
