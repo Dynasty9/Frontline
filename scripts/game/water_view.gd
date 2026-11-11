@@ -15,10 +15,13 @@ extends Node3D
 
 # Shared by scenery ground and water so their distant shoreline cannot separate.
 const SCENERY_COAST := """
+uniform float scenery_coast_phase = 0.0;
 float scenery_shore(vec2 p, float shore_mean) {
 	float edge = max(abs(p.x), abs(p.y)) - __MAP_HALF__;
 	float bays = 85.0 * sin(p.y * 0.0043 + shore_mean * 0.003) + 32.0 * sin(p.y * 0.0127);
-	return shore_mean + bays * smoothstep(20.0, 260.0, edge);
+	float s = scenery_coast_phase;
+	float shoreline = shore_mean + 22.0 * sin(p.y * 0.0105 + s) + 9.0 * sin(p.y * 0.031 + s * 2.3) + 4.0 * sin(p.y * 0.077 + s * 0.7);
+	return shoreline + bays * smoothstep(20.0, 260.0, edge);
 }
 // Coastal battlefields continue through a broken water channel into distant islands.
 float scenery_buffer_into(vec2 p, float shore_mean) {
@@ -29,11 +32,17 @@ float scenery_buffer_into(vec2 p, float shore_mean) {
 	float islands = 780.0 + 90.0 * sin(p.x * 0.003 + 0.7) + 60.0 * sin(p.y * 0.004);
 	return max(min(rounded_edge - bank, islands - rounded_edge), edge - 1650.0);
 }
+// Match the playable coast's beach, wading shelf and seabed at the join.
+float scenery_sea_bed(float into) {
+	if (into <= 0.0) { return mix(-0.38, 0.0, clamp(-into / 14.0, 0.0, 1.0)); }
+	if (into < 9.0) { return mix(-0.5, -1.05, into / 9.0); }
+	return mix(-1.05, -3.2, clamp((into - 9.0) / 8.0, 0.0, 1.0));
+}
 vec4 scenery_sea_mask(vec2 p, float shore_mean) {
 	if (shore_mean > 10000.0) { return vec4(0.0); }
-	if (p.x > scenery_shore(p, shore_mean)) { return vec4(1.0, 0.0, 1.0, 1.0); }
-	float into = scenery_buffer_into(p, shore_mean);
-	return vec4(clamp((into + 15.0) / 55.0, 0.0, 1.0), 0.0, 1.0, step(-14.0, into));
+	float into = max(p.x - scenery_shore(p, shore_mean), scenery_buffer_into(p, shore_mean));
+	if (into < -14.0) { return vec4(0.0); }
+	return vec4(clamp((-0.45 - scenery_sea_bed(into)) / 3.0, 0.0, 1.0), clamp(1.0 + into / 14.0, 0.0, 1.0), 1.0, step(0.0, into));
 }
 """
 
@@ -184,7 +193,7 @@ func build(w: WaterMap, detail: Texture2D) -> void:
 	river_tips = scenery_river_tips(w.rivers, MapDims.HALF)
 	_mask = w.mask
 	_detail = detail
-	_sea_x = (float(w.coast.x) + 30.0) if not w.coast.is_empty() else 1e9
+	_sea_x = float(w.coast.x) if not w.coast.is_empty() else 1e9
 	if not w.coast.is_empty():
 		_set_waves((fposmod(float(w.coast.s) * 0.618, 1.0) - 0.5) * 0.7)
 	if mask_tex == null:
@@ -209,6 +218,7 @@ func build(w: WaterMap, detail: Texture2D) -> void:
 	for m in [mat, wake_mat, patch_mat]:
 		Mats.set_shared(m, "water_mask", mask_tex)
 		Mats.set_shared(m, "sea_x", _sea_x)
+		Mats.set_shared(m, "scenery_coast_phase", float(w.coast.s) if not w.coast.is_empty() else 0.0)
 		Mats.set_shared(m, "river_tips", river_tips)
 	var c := Vector3.ZERO
 	if not w.coast.is_empty():
@@ -766,7 +776,7 @@ __WAVES__
 vec4 wmask(vec2 p) {
 	if (abs(p.x) >= __MAP_HALF__ || abs(p.y) >= __MAP_HALF__) {
 		vec4 sea_mask = scenery_sea_mask(p, sea_x);
-		return sea_mask.a > 0.5 ? sea_mask : scenery_river_mask(p);
+		return sea_mask.g > 0.0 || sea_mask.a > 0.5 ? sea_mask : scenery_river_mask(p);
 	}
 	return textureLod(water_mask, (p + __MAP_HALF__) / __MAP_SIZE__, 0.0);
 }

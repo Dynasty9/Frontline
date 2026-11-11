@@ -37,6 +37,28 @@ func check_coastal_buffer() -> void:
 			var output := await bake(view)
 			var wet: bool = shore < 10000.0 and distance in [550.0, 1900.0]
 			assert((output.get_pixel(8, 8).r > 0.99) == wet, "Water separates the coast and outer islands without flooding playable or inland ground")
+	var world := World.new()
+	var water := WaterMap.new(world)
+	material = ShaderMaterial.new()
+	material.shader = Shader.new()
+	material.shader.code = MapDims.shader("shader_type canvas_item; render_mode unshaded, blend_disabled; uniform vec2 sample_position; uniform float shore; uniform float expected_shore;\n" + WaterView.SCENERY_COAST + "\nvoid fragment() { float into = sample_position.x - expected_shore; COLOR = vec4(abs(scenery_shore(sample_position, shore) - expected_shore) / 10.0, -scenery_sea_bed(into) / 4.0, scenery_sea_mask(sample_position, shore).a, 1.0); }")
+	rect.material = material
+	await get_tree().process_frame
+	for phase in [0.0, 1.7, 4.2]:
+		water.coast = {"x": MapDims.HALF - 100.0, "s": phase}
+		material.set_shader_parameter("shore", water.coast.x)
+		material.set_shader_parameter("scenery_coast_phase", phase)
+		for z in [-MapDims.HALF - 0.5, MapDims.HALF + 0.5]:
+			var shore := water.coast_x(z)
+			material.set_shader_parameter("expected_shore", shore)
+			for sample in [[-10.0, -0.38 * 4.0 / 14.0], [4.0, -0.5 - 0.55 * 4.0 / 9.0], [12.0, -1.05 - 2.15 * 3.0 / 8.0], [30.0, -3.2]]:
+				material.set_shader_parameter("sample_position", Vector2(shore + sample[0], z))
+				var output := await bake(view)
+				var pixel := output.get_pixel(8, 8)
+				assert(pixel.r < 0.01, "Scenery meets the authoritative shoreline without an offset or phase jump")
+				assert(absf(-pixel.g * 4.0 - sample[1]) < 0.03, "Beach and seabed profiles join continuously")
+				assert((pixel.b > 0.99) == (sample[0] > 0.0), "Scenery water meets the playable waterline")
+	world.free()
 	material = ShaderMaterial.new()
 	material.shader = Shader.new()
 	material.shader.code = MapDims.shader("shader_type canvas_item; render_mode unshaded, blend_disabled; uniform vec2 sample_position; uniform sampler2D backdrop_tex : hint_default_white; uniform float sea_x = 1e9; uniform float snow_line = 100.0;\n" + Atmosphere.BACKDROP_HEIGHT + "\nvoid fragment() { COLOR = vec4(vec3(backdrop(sample_position) / 1024.0), 1.0); }")

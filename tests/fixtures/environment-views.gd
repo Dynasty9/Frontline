@@ -113,6 +113,7 @@ func capture() -> void:
 		for mood in ["day", "golden", "night", "rain"]:
 			views.append([mood, Vector3(0, 80, 0), 1250.0, -10.0, 0.7, 3, mood])
 		views.append(["boundary", Vector3.ZERO, 900.0, -14.0, 0.7, 3, "day"])
+		views.append(["shore-join", Vector3(world.water.coast_x(MapDims.HALF), 0, MapDims.HALF), 180.0, -30.0, 0.7, 3, "day"])
 	if "--capture-set=cloud-distance" in OS.get_cmdline_user_args():
 		world.cam.cam.fov = 55.0
 		views = [
@@ -129,6 +130,8 @@ func capture() -> void:
 			views.append(["sample-%d-q%d" % [views.size(), quality], Vector3(0, 80, 0), 1250.0, -10.0, 0.7, quality, "day"])
 	if "--capture-set=cloud-boundary" in OS.get_cmdline_user_args():
 		views = [["boundary", Vector3.ZERO, 900.0, -14.0, 0.7, 3, "day"]]
+	if "--capture-set=coast-join" in OS.get_cmdline_user_args():
+		views = [["shore-join", Vector3(world.water.coast_x(MapDims.HALF), 0, MapDims.HALF), 180.0, -30.0, 0.7, 3, "day"]]
 	RenderingServer.viewport_set_measure_render_time(root.get_viewport_rid(), true)
 	var records := []
 	for view in views:

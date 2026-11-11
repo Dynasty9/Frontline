@@ -1071,9 +1071,10 @@ func build_water(w: WaterMap) -> void:
 	if w.mask == null:
 		return
 	water_tex = ImageTexture.create_from_image(w.mask)
-	var sea_x: float = (float(w.coast.x) + 30.0) if not w.coast.is_empty() else 1e9
+	var sea_x: float = float(w.coast.x) if not w.coast.is_empty() else 1e9
 	ground_mat.set_shader_parameter("water_mask", water_tex)
 	ground_mat.set_shader_parameter("sea_x", sea_x)
+	ground_mat.set_shader_parameter("scenery_coast_phase", float(w.coast.s) if not w.coast.is_empty() else 0.0)
 	if water_view == null:
 		water_view = WaterView.new(world)
 		add_child(water_view)
@@ -1109,6 +1110,7 @@ func _bake_scenery() -> void:
 		_scenery_material.set_shader_parameter("river_tips", water_view.river_tips)
 	_scenery_material.set_shader_parameter("deform_tex", deform_tex)
 	_scenery_material.set_shader_parameter("sea_x", ground_mat.get_shader_parameter("sea_x"))
+	_scenery_material.set_shader_parameter("scenery_coast_phase", ground_mat.get_shader_parameter("scenery_coast_phase"))
 	_scenery_material.set_shader_parameter("snow_line", maxf(150.0, world.terrain.landform.peak * 0.55) if world.terrain.landform.peak > 1.0 else 10000.0)
 	_scenery_material.set_shader_parameter("sun_direction", sun.basis.z)
 	_scenery_bake.render_target_update_mode = SubViewport.UPDATE_ONCE
@@ -1276,8 +1278,8 @@ float backdrop(vec2 p) {
 	// Tall massifs belong behind the water and foothills, leaving the near valley open.
 	hills *= 1.0 + 1.1 * smoothstep(600.0, 1100.0, edge);
 	float land = hills * smoothstep(8.0, 900.0, edge) * coast * (1.0 - step(9999.0, snow_line))
-		* (1.0 - smoothstep(1450.0, 1800.0, edge))
-		- 3.2 * smoothstep(shore, shore + 30.0, p.x);
+		* (1.0 - smoothstep(1450.0, 1800.0, edge));
+	if (p.x > shore - 14.0) { land = min(land, scenery_sea_bed(p.x - shore)); }
 	float channel = scenery_buffer_into(p, sea_x);
 	land = mix(land, min(land, -4.0), smoothstep(-180.0, 180.0, channel) * smoothstep(0.0, 120.0, edge));
 	float into = scenery_river_into(p);
@@ -1491,7 +1493,6 @@ void fragment() {
 	col = mix(col, soil, dirt_m);
 	col *= 0.9 + 0.2 * d3;
 	float edge = max(abs(p.x), abs(p.y));
-	col *= mix(1.0, 0.45, smoothstep(__MAP_HALF__, __MAP_HALF__ + 22.0, edge));
 	puddle = wet * smoothstep(0.6, 0.66, d1 * 0.7 + d2 * 0.3 + dirt_m * 0.12);
 	col *= 1.0 - wet * 0.3;
 	col = mix(col, col * 0.35 + vec3(0.01, 0.012, 0.015), puddle);
@@ -1500,7 +1501,7 @@ void fragment() {
 	vec4 wm = texture(water_mask, (p + __MAP_HALF__) / __MAP_SIZE__);
 	if (abs(p.x) >= __MAP_HALF__ || abs(p.y) >= __MAP_HALF__) {
 		wm = scenery_sea_mask(p, sea_x);
-		if (wm.a < 0.5) { wm = scenery_river_mask(p); }
+		if (wm.a < 0.5 && wm.g <= 0.0) { wm = scenery_river_mask(p); }
 		// The broad coastal slope can stand well above the water mask below it.
 		wm *= 1.0 - smoothstep(0.0, 6.0, wpos.y);
 	}
@@ -1523,7 +1524,7 @@ void fragment() {
 	// (linear colours: freshly turned earth is dark, the bottom blackened)
 	vec3 churn = mix(vec3(0.042, 0.032, 0.023), vec3(0.075, 0.056, 0.038), d3) * (0.85 + 0.3 * d2);
 	col = mix(col, churn, clamp(bowl * 1.1, 0.0, 1.0));
-	col = mix(col, vec3(0.018, 0.016, 0.014), smoothstep(-0.3, -0.75, hd) * 0.55);
+	col = mix(col, vec3(0.018, 0.016, 0.014), smoothstep(-0.3, -0.75, hd) * 0.55 * (1.0 - wm.g));
 	col = mix(col, mix(dirt, vec3(0.085, 0.066, 0.047), 0.6) * (0.85 + 0.3 * d3), lip * 0.75);
 	// Sample distant slopes across their mesh spacing, not within one height texel.
 	float normal_step = edge >= __MAP_HALF__ ? 16.0 : 1.0;
