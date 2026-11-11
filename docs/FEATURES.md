@@ -823,7 +823,7 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   Mac, makes two fingers zoom instead, for a Magic Mouse.
   Jumps (the last alert, a base, a group, a unit in the order of battle, a saved view) glide rather than cut.
   Backspace turns back to the heading the battle started on, Ctrl+F follows the selection until you pan away,
-  and Ctrl+F5..F8 save views that F5..F8 glide back to. Select one vehicle, building or individual soldier and press F9 to cycle its views. Each has behind and aerial views. Vehicle models can also offer tracks or wheels, barrel, roof gun and engine deck. Rotorcraft offer a cabin-side view and boats offer a bow view. Escape returns to command with the object still selected.
+  and Ctrl+F5..F8 save views that F5..F8 glide back to. Select one vehicle, building or individual soldier and press F9 to cycle its views. Each has behind and aerial views. Vehicle models can also offer tracks or wheels, barrel, roof gun and engine deck. Rotorcraft offer a cabin-side view. Sling-capable helicopters have a wider view that includes the hanging load. Boats offer bow and waterline views. Escape returns to command with the object still selected.
 - **The minimap** (`hud_minimap.gd`): the ground, water, roads (main roads light with a dark edge, supply
   tracks thinner), woods and every house's footprint (light while its roof stands, dark once it's a ruin) are
   baked into a texture. Over it go the fog of war (darker where your side can't see), every man you can see as a

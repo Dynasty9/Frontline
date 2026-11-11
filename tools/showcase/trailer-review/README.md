@@ -1,6 +1,6 @@
 # Comparing Frontline trailers
 
-Each edition runs 25.5 seconds (765 frames at 30 fps). Keep the original homepage reel as edition 00. After each edit, watch the export with Video Tool, including the game audio. Archive the cut with a note about the change and any moment that still needs work.
+New editions run exactly 24 seconds (720 frames at 30 fps). Editions 00–03 retain their original 25.5-second running time. The shared timeline ends with the shorter cut. Keep the original homepage reel as edition 00. Every 30 minutes, review the encoded pictures muted with Video Tool, choose a specific improvement, and capture or recut it. Check the mix after the pictures work. Archive the cut with a note about the change and any moment that still needs work.
 
 From the repository root:
 
@@ -21,3 +21,13 @@ Open `build/trailer-review/index.html` directly. Pick two editions, listen to ei
 The edit opens on a readable action at squad scale, expands through infantry and armour, and gives the final aircraft approach and water impacts time to play as one event. Check the first ten seconds muted and the final approach with sound. These checks follow [Valve’s gameplay trailer guidance](https://partner.steamgames.com/doc/store/trailer) and [Derek Lieu’s line of rising action](https://www.derek-lieu.com/blog/2018/9/16/the-trailer-line-of-rising-action).
 
 For a mix revision, keep the cut points fixed and compare editions with the audio selector. The reel's `score` names a separate take mixed continuously under the native effects. Its Godot scene records the game's battle cue and victory sting with a fixed musical seed. Edit the scene to retime the crescendo, or edit the gain in the recipe to rebalance the music against the effects.
+
+## Picture sequence
+
+| Beat | What the viewer can follow with the sound off |
+| --- | --- |
+| One order | The commander selects five soldiers. A destination appears on the road and the soldiers start moving. |
+| Armour arrives | Read the formation first, then cut close enough to see one moving gun. |
+| Into the trench | See people beside the earthworks before the overhead view reveals the whole line. Follow the mortar crew with the visible impacts. |
+| Off the ground | Keep the helicopter, rope and vehicle in one shot so the lift is understandable. |
+| Into the harbour | The landing boat, patrol ship and jet share a mountain skyline. Return to the water in time to see the impacts spread. |

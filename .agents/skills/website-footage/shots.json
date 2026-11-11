@@ -63,6 +63,24 @@
       "shows": ["The game's title and orchestral score"],
       "about": "An isolated 96 bpm battle cue builds from strings to drums, then resolves on the harbour strike."
     },
+    "trailer-trench-close": {
+      "frames": 630,
+      "args": ["--preset=high", "--seed=3", "--set=volume:0.8,vol_effects:0.85,vol_music:0,battle_music:false,vol_ambience:0.28,vol_ui:0,mute_bg:false,wildlife:0,edge_pan:false", "--scenario=trenches", "--focus=-19,-28", "--zoom=11", "--pitch=-18", "--cam-yaw=0.82", "--mood=golden"],
+      "shows": ["Occupants and the rebuilt front trench"],
+      "about": "Low three-quarter view down a branch of the same trench seen in the overhead reverse."
+    },
+    "trailer-harbour-boats": {
+      "frames": 1320,
+      "args": ["--preset=high", "--seed=3", "--set=volume:0.8,vol_effects:0.85,vol_music:0,battle_music:false,vol_ambience:0.28,vol_ui:0,mute_bg:false,wildlife:0,edge_pan:false", "--mission=beachhead", "--focus-vehicle=rhib", "--vehicle-view=Waterline"],
+      "shows": ["Mountain coastline and the landing party"],
+      "about": "A low bow-quarter camera shares the patrol ship and jet’s seeded Beachhead coastline."
+    },
+    "trailer-sling": {
+      "frames": 1080,
+      "args": ["--preset=high", "--seed=3", "--set=volume:0.8,vol_effects:0.85,vol_music:0,battle_music:false,vol_ambience:0.28,vol_ui:0,mute_bg:false,wildlife:0,edge_pan:false", "--scenario=sling", "--play", "--team=0", "--focus-vehicle=mohawk", "--vehicle-view=Sling load", "--mood=golden"],
+      "shows": ["Transport helicopter lifting a vehicle"],
+      "about": "The shared sling-load mount keeps the suspended vehicle and the rotor disc together."
+    },
     "trailer-order": {
       "scene": "res://tools/showcase/trailer-review/squad-order.tscn",
       "frames": 210,
@@ -485,17 +503,17 @@
       "fade_out": 7,
       "grade": {"contrast": 1.1, "saturation": 1.14},
       "cuts": [
-        {"take": "trailer-order", "from": 0.8, "to": 3.8, "gain_db": -1, "caption": "[Low strings as the squad sets off]"},
-        {"take": "reel-smoke", "from": 11.3, "to": 13.23333, "gain_db": -1, "caption": "[Rifle fire as smoke spreads]"},
-        {"take": "highlight-column", "from": 5.06667, "to": 7.03333, "gain_db": 0, "caption": "[Tracks rumble across the field]"},
-        {"take": "reel-gun", "from": 13.86667, "to": 15.2, "gain_db": -8, "caption": "[Tank cannon fires]"},
-        {"take": "highlight-trenches", "from": 19.03333, "to": 21.36667, "gain_db": -2, "caption": "[Gunfire runs along the trench]"},
-        {"take": "highlight-mortars", "from": 0.6, "to": 2.06667, "gain_db": 1, "caption": "[Distant fire at the mortar pit]"},
-        {"take": "highlight-mortar-burst", "from": 8.3, "to": 10.03333, "gain_db": -3, "caption": "[Mortar bursts in the trenches]"},
-        {"take": "trailer-landing", "from": 14.13333, "to": 16.46667, "gain_db": 0, "caption": "[Boat engine and surf as the squad goes ashore]"},
-        {"take": "highlight-sea", "from": 34.0, "to": 36.66667, "gain_db": -1, "caption": "[Patrol ship fires across the harbour]"},
-        {"take": "highlight-flyover", "from": 4.2, "to": 7.96667, "gain_db": 0, "caption": "[Jet engines climb over the harbour]"},
-        {"take": "highlight-flyover", "from": 10.23333, "to": 13.2, "gain_db": 4, "caption": "[Drums and brass swell over the water impacts]"}
+        {"take": "trailer-order", "from": 0.86667, "to": 3.26667, "gain_db": -1, "caption": "[Low strings as the squad sets off]"},
+        {"take": "highlight-column", "from": 5.03333, "to": 7.3, "gain_db": 0, "caption": "[Tracks rumble across the field]"},
+        {"take": "reel-gun", "from": 13.9, "to": 15.1, "gain_db": -8, "caption": "[Tank cannon fires]"},
+        {"take": "trailer-trench-close", "from": 9.2, "to": 10.8, "gain_db": -2, "caption": "[Fire cracks beside the trench]"},
+        {"take": "highlight-mortars", "from": 0.93333, "to": 2.03333, "gain_db": 1, "caption": "[Distant fire at the mortar pit]"},
+        {"take": "highlight-mortar-burst", "from": 8.0, "to": 10.4, "gain_db": -3, "caption": "[Mortar bursts across the trench line]"},
+        {"take": "trailer-sling", "from": 16.66667, "to": 19.4, "gain_db": 0, "caption": "[Helicopter rotors over the suspended vehicle]"},
+        {"take": "trailer-harbour-boats", "from": 7.83333, "to": 10.63333, "gain_db": 0, "caption": "[Boats approach the shore]"},
+        {"take": "highlight-sea", "from": 34.0, "to": 35.93333, "gain_db": -1, "caption": "[Patrol ship fires across the harbour]"},
+        {"take": "highlight-flyover", "from": 4.3, "to": 7.3, "gain_db": 0, "caption": "[Jet engines climb over the harbour]"},
+        {"take": "highlight-flyover", "from": 10.7, "to": 13.26667, "gain_db": 4, "caption": "[Impacts roll across the water]"}
       ]
     },
     "changelog-tank-motion": {
