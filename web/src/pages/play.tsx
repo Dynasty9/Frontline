@@ -46,7 +46,7 @@ export default function PlayPage() {
 
   return (
     <>
-      <section className="topo border-b">
+      <section className="border-b">
         <div className="mx-auto max-w-6xl px-4 pt-14 pb-20 sm:px-6">
           <SectionLabel>Play</SectionLabel>
           <h1 className="mt-2 font-display text-5xl leading-[0.95] font-extrabold uppercase sm:text-6xl">
