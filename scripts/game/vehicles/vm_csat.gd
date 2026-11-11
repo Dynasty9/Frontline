@@ -193,43 +193,30 @@ static func _smoke(k: VehicleModels, p: Node3D, pos: Vector3, s: float, n := 3, 
 ## Returns the traversing pivot; the muzzle is stored in k.mg_tip.
 static func _rcws(k: VehicleModels, p: Node3D, pos: Vector3, gun: String, mat := CAM) -> Node3D:
 	var t := k._pivot(p, pos)
-	k._cyl(t, 0.3, 0.34, 0.1, Vector3(0, 0.05, 0), Vector3.ZERO, "gunmetal_w", null, 16)
+	VehicleMounts.turret_ring(k, t, Vector3(0, 0.05, 0), 0.3, 0.34, 0.1, "gunmetal_w", null, 16)
 	k._add(t, VehicleModels.loft("csat_rcws_ped", [-0.2, -0.22, 0.2, -0.22, 0.2, 0.26, -0.2, 0.26], [-0.16, -0.16, 0.16, -0.16, 0.16, 0.22, -0.16, 0.22], 0.1, 0.36), mat, null, Vector3.ZERO)
 	# the trunnion arms either side of the cradle
 	for sx in [-0.17, 0.17]:
 		VehicleMounts.mantlet(k, t, Vector3(0.05, 0.22, 0.24), Vector3(sx, 0.44, 0.0), mat)
 	var y := 0.5
 	match gun:
+		# The guns feed from the station's own box beside them, so none carries a can.
 		"gmg":
-			k._box(t, Vector3(0.24, 0.24, 0.62), Vector3(0, y, 0.0), "gunmetal_w")
-			k._box(t, Vector3(0.2, 0.06, 0.4), Vector3(0, y + 0.15, 0.02), "gunmetal_w")
-			k._cyl(t, 0.065, 0.065, 0.3, Vector3(0, y, -0.45), Vector3(PI / 2, 0, 0), "gunmetal_w", null, 10)
-			k._cyl(t, 0.045, 0.045, 0.22, Vector3(0, y, -0.68), Vector3(PI / 2, 0, 0), "gunmetal_w", null, 10)
-			k._cyl(t, 0.055, 0.055, 0.04, Vector3(0, y, -0.79), Vector3(PI / 2, 0, 0), "gunmetal_w", null, 10, false)
+			VehicleWeapons.gmg(k, t, Vector3(0, y, 0.0), Vector3(0, y, -0.82), 1.0, 0.0)
 			k.mg_tip = k._tip(t, Vector3(0, y, -0.82))
 		"ac30":
 			k._box(t, Vector3(0.28, 0.26, 0.8), Vector3(0, y, 0.0), "gunmetal_w")
-			k._cyl(t, 0.07, 0.07, 0.3, Vector3(0, y, -0.55), Vector3(PI / 2, 0, 0), "gunmetal_w", null, 10)
-			k._cyl(t, 0.045, 0.04, 1.6, Vector3(0, y, -1.45), Vector3(PI / 2, 0, 0), "gunmetal_w", null, 8)
-			k._cyl(t, 0.06, 0.06, 0.16, Vector3(0, y, -2.25), Vector3(PI / 2, 0, 0), "gunmetal_w", null, 8)
+			VehicleWeapons.autocannon(k, t, Vector3(0, y, -0.4), Vector3(0, y, -2.33), Vector2(0.07, 0.3), Vector2(0.045, 0.04), Vector2(0.06, 0.16))
 			k.mg_tip = k._tip(t, Vector3(0, y, -2.35))
 		"mmg":
-			k._box(t, Vector3(0.14, 0.18, 0.6), Vector3(0, y, 0.0), "gunmetal_w")
-			k._cyl(t, 0.022, 0.02, 0.6, Vector3(0, y + 0.02, -0.6), Vector3(PI / 2, 0, 0), "gunmetal_w", null, 6)
+			VehicleWeapons.mmg(k, t, Vector3(0, y, 0.0), Vector3(0, y + 0.02, -0.92), 1.4, 0.0, false)
 			k.mg_tip = k._tip(t, Vector3(0, y + 0.02, -0.92))
 		_:
-			k._box(t, Vector3(0.18, 0.22, 0.78), Vector3(0, y, 0.02), "gunmetal_w")
-			k._box(t, Vector3(0.1, 0.08, 0.3), Vector3(0, y + 0.13, -0.05), "gunmetal_w")
-			k._cyl(t, 0.045, 0.045, 0.3, Vector3(0, y, -0.5), Vector3(PI / 2, 0, 0), "gunmetal_w", null, 8)
-			k._cyl(t, 0.028, 0.026, 0.95, Vector3(0, y, -1.1), Vector3(PI / 2, 0, 0), "gunmetal_w", null, 8)
-			k._cyl(t, 0.042, 0.042, 0.13, Vector3(0, y, -1.62), Vector3(PI / 2, 0, 0), "gunmetal_w", null, 8)
+			VehicleWeapons.hmg(k, t, Vector3(0, y, 0.02), Vector3(0, y, -1.7), 1.0, 0.0)
 			k.mg_tip = k._tip(t, Vector3(0, y, -1.7))
-	# the sight head beside the gun, the ammunition box on the other side
-	k._box(t, Vector3(0.24, 0.26, 0.34), Vector3(0.33, y + 0.06, -0.02), mat)
+	# the sight head beside the gun under its lid, the ammunition box on the other side
+	VehicleMounts.sight(k, t, Vector3(0.33, y + 0.06, -0.02), Vector3(0.24, 0.26, 0.34), [Rect2(Vector2(-0.05, 0.02), Vector2(0.08, 0.08)), Rect2(Vector2(0.06, 0.02), Vector2(0.06, 0.06))], mat)
 	k._box(t, Vector3(0.22, 0.04, 0.3), Vector3(0.33, y + 0.2, -0.02), mat)
-	if not k.burnt:
-		k._box(t, Vector3(0.08, 0.08, 0.02), Vector3(0.28, y + 0.08, -0.2), "glass", null, Vector3.ZERO, false)
-		k._box(t, Vector3(0.06, 0.06, 0.02), Vector3(0.39, y + 0.08, -0.2), "glass", null, Vector3.ZERO, false)
 	k._box(t, Vector3(0.18, 0.26, 0.42), Vector3(-0.3, y - 0.02, 0.05), "paint", OLIVE)
 	k._box(t, Vector3(0.12, 0.04, 0.16), Vector3(-0.21, y + 0.06, -0.08), "gunmetal_w", null, Vector3(0, 0, -0.5), false)
 	return t
@@ -449,11 +436,7 @@ static func _qilin(k: VehicleModels, team: int, arm: String) -> void:
 		var gy := 0.42
 		k._box(t, Vector3(0.18, 0.18, 0.36), Vector3(0, gy, 0.02), "gunmetal_w")
 		k._cyl(t, 0.07, 0.07, 0.12, Vector3(0, gy, -0.2), Vector3(PI / 2, 0, 0), "gunmetal_w", null, 10)
-		for i in 6:
-			var a := TAU * i / 6.0
-			k._cyl(t, 0.012, 0.012, 0.62, Vector3(cos(a) * 0.04, gy + sin(a) * 0.04, -0.56), Vector3(PI / 2, 0, 0), "gunmetal_w", null, 5, false)
-		k._cyl(t, 0.06, 0.06, 0.03, Vector3(0, gy, -0.72), Vector3(PI / 2, 0, 0), "gunmetal_w", null, 10, false)
-		k._cyl(t, 0.055, 0.055, 0.03, Vector3(0, gy, -0.86), Vector3(PI / 2, 0, 0), "gunmetal_w", null, 10, false)
+		VehicleWeapons.rotary(k, t, Vector3(0, gy, -0.25), Vector3(0, gy, -0.9), 6, 0.04, 0.012, [0.723, 0.938])
 		k._box(t, Vector3(0.04, 0.06, 0.24), Vector3(0, gy + 0.03, 0.25), "gunmetal_w", null, Vector3.ZERO, false)
 		for s in [-1.0, 1.0]:
 			k._box(t, Vector3(0.03, 0.12, 0.03), Vector3(s * 0.12, gy - 0.02, 0.26), "gunmetal_w", null, Vector3.ZERO, false)
@@ -464,9 +447,7 @@ static func _qilin(k: VehicleModels, team: int, arm: String) -> void:
 		# the Vorona: a fat launch tube on a cradle, the thermal sight beside it
 		var gy := 0.48
 		k._box(t, Vector3(0.1, 0.16, 0.3), Vector3(0, gy - 0.08, 0.0), "gunmetal_w")
-		k._cyl(t, 0.1, 0.1, 1.3, Vector3(0, gy + 0.04, -0.15), Vector3(PI / 2, 0, 0), "paint", OLIVE, 12)
-		k._cyl(t, 0.115, 0.115, 0.08, Vector3(0, gy + 0.04, -0.78), Vector3(PI / 2, 0, 0), "paint", OLIVE.darkened(0.15), 12)
-		k._cyl(t, 0.115, 0.115, 0.08, Vector3(0, gy + 0.04, 0.48), Vector3(PI / 2, 0, 0), "paint", OLIVE.darkened(0.15), 12)
+		VehicleWeapons.launch_tube(k, t, Vector3(0, gy + 0.04, -0.15), 0.1, 1.3, "paint", OLIVE)
 		k._box(t, Vector3(0.2, 0.2, 0.3), Vector3(0.22, gy + 0.02, -0.1), "paint", OLIVE.darkened(0.1))
 		if not k.burnt:
 			k._cyl(t, 0.055, 0.055, 0.04, Vector3(0.22, gy + 0.03, -0.26), Vector3(PI / 2, 0, 0), "glass", null, 10, false)
@@ -534,8 +515,9 @@ static func _running_gear(k: VehicleModels, p: Node3D, x: float, w: float, f: Ve
 
 
 ## A block of reactive armour bricks on a face: rows x cols bricks of size
-## `b`, centred on c, the face given by its normal n and up direction ay.
-static func _era(k: VehicleModels, p: Node3D, c: Vector3, n: Vector3, ay: Vector3, rows: int, cols: int, b: Vector3, psi := 0.0, mat := CAM) -> void:
+## `b`, centred on c, the face given by its normal n and up direction ay, the
+## bricks `gap` apart (across, up the face). A single brick is a 1 x 1 block.
+static func _era(k: VehicleModels, p: Node3D, c: Vector3, n: Vector3, ay: Vector3, rows: int, cols: int, b: Vector3, psi := 0.0, mat := CAM, gap := Vector2(0.025, 0.025)) -> void:
 	var z := n.normalized()
 	var y := (ay - z * ay.dot(z)).normalized()
 	var x := y.cross(z).normalized()
@@ -543,10 +525,11 @@ static func _era(k: VehicleModels, p: Node3D, c: Vector3, n: Vector3, ay: Vector
 		var x2 := x * cos(psi) + y * sin(psi)
 		y = -x * sin(psi) + y * cos(psi)
 		x = x2
+	var rotation := Basis(x, y, z).get_euler()
 	for i in rows:
 		for j in cols:
-			var o := x * (j - (cols - 1) * 0.5) * (b.x + 0.025) + y * (i - (rows - 1) * 0.5) * (b.y + 0.025)
-			k._add(p, Res.box(b), mat, null, c + o + z * b.z * 0.5, Basis(x, y, z).get_euler())
+			var o := x * (j - (cols - 1) * 0.5) * (b.x + gap.x) + y * (i - (rows - 1) * 0.5) * (b.y + gap.y)
+			VehicleMounts.era_brick(k, p, c + o + z * b.z * 0.5, b, rotation, mat)
 
 
 # --- Marid: Otokar Arma 6x6 --------------------------------------------------------
@@ -621,8 +604,7 @@ static func _marid(k: VehicleModels, team: int) -> void:
 		_jerrycan(k, m, Vector3(s * 1.08, 1.35, 3.62), OLIVE, Vector3(0, PI / 2, 0))
 	# roof: the troop compartment's hatches, a stowage basket
 	for s in [-1.0, 1.0]:
-		k._box(m, Vector3(0.62, 0.06, 0.8), Vector3(s * 0.48, 2.23, 1.9), c)
-		k._box(m, Vector3(0.1, 0.05, 0.14), Vector3(s * 0.48, 2.28, 1.55), "gunmetal_w", null, Vector3.ZERO, false)
+		VehicleFittings.panel_hatch(k, m, Vector3(s * 0.48, 2.23, 1.9), Vector3(0.62, 0.06, 0.8), c)
 	VehicleMounts.basket(k, m, Vector3(0, 2.23, 2.95), Vector3(1.4, .27, 0.7))
 	k._bag(m, Vector3(0.7, 0.26, 0.5), Vector3(-0.3, 2.37, 2.95), "canvas", Color(0.33, 0.33, 0.24), Vector3(0, 0.1, 0))
 	k._box(m, Vector3(0.45, 0.22, 0.4), Vector3(0.35, 2.35, 3.0), "paint", OLIVE)
@@ -631,26 +613,15 @@ static func _marid(k: VehicleModels, team: int) -> void:
 	# 40 mm on the right, the sight head between them
 	var t := k._pivot(m, Vector3(0, 2.2, -0.45))
 	k.turret = t
-	k._cyl(t, 0.52, 0.56, 0.1, Vector3(0, 0.05, 0), Vector3.ZERO, "gunmetal_w", null, 18)
+	VehicleMounts.turret_ring(k, t, Vector3(0, 0.05, 0), 0.52, 0.56, 0.1, "gunmetal_w", null, 18)
 	k._add(t, VehicleModels.loft("csat_marid_rws", [-0.42, -0.36, 0.42, -0.36, 0.46, 0.3, -0.46, 0.3], [-0.36, -0.28, 0.36, -0.28, 0.4, 0.24, -0.4, 0.24], 0.1, 0.34), c, null, Vector3.ZERO)
 	var y := 0.52
-	k._box(t, Vector3(0.26, 0.3, 0.36), Vector3(0, y + 0.02, -0.08), c)
-	if not k.burnt:
-		k._box(t, Vector3(0.09, 0.09, 0.02), Vector3(-0.06, y + 0.05, -0.27), "glass", null, Vector3.ZERO, false)
-		k._box(t, Vector3(0.07, 0.07, 0.02), Vector3(0.07, y + 0.05, -0.27), "glass", null, Vector3.ZERO, false)
+	VehicleMounts.sight(k, t, Vector3(0, y + 0.02, -0.08), Vector3(0.26, 0.3, 0.36), [Rect2(Vector2(-0.06, 0.03), Vector2(0.09, 0.09)), Rect2(Vector2(0.07, 0.03), Vector2(0.07, 0.07))], c)
 	for s in [-1.0, 1.0]:
 		k._box(t, Vector3(0.05, 0.24, 0.3), Vector3(s * 0.15, y - 0.06, 0.0), c)
-	# 12.7 mm, left
-	k._box(t, Vector3(0.17, 0.2, 0.74), Vector3(-0.3, y, 0.0), "gunmetal_w")
-	k._cyl(t, 0.042, 0.042, 0.3, Vector3(-0.3, y, -0.5), Vector3(PI / 2, 0, 0), "gunmetal_w", null, 8)
-	k._cyl(t, 0.028, 0.026, 0.9, Vector3(-0.3, y, -1.08), Vector3(PI / 2, 0, 0), "gunmetal_w", null, 8)
-	k._cyl(t, 0.042, 0.042, 0.12, Vector3(-0.3, y, -1.58), Vector3(PI / 2, 0, 0), "gunmetal_w", null, 8)
-	k._box(t, Vector3(0.16, 0.24, 0.4), Vector3(-0.5, y - 0.02, 0.04), "paint", OLIVE)
-	# 40 mm, right
-	k._box(t, Vector3(0.22, 0.24, 0.58), Vector3(0.3, y, 0.02), "gunmetal_w")
-	k._cyl(t, 0.062, 0.062, 0.28, Vector3(0.3, y, -0.4), Vector3(PI / 2, 0, 0), "gunmetal_w", null, 10)
-	k._cyl(t, 0.043, 0.043, 0.22, Vector3(0.3, y, -0.62), Vector3(PI / 2, 0, 0), "gunmetal_w", null, 10)
-	k._box(t, Vector3(0.18, 0.28, 0.42), Vector3(0.52, y - 0.02, 0.04), "paint", OLIVE)
+	# 12.7 mm, left, and 40 mm, right, each with its ammunition on the outboard side
+	VehicleWeapons.hmg(k, t, Vector3(-0.3, y, 0.0), Vector3(-0.3, y, -1.66), 1.0, -1.0, false, "gunmetal_w", OLIVE)
+	VehicleWeapons.gmg(k, t, Vector3(0.3, y, 0.02), Vector3(0.3, y, -0.75), 1.0, 1.0, false, "gunmetal_w", OLIVE, 0.22)
 	k.mg_tip = k._tip(t, Vector3(0.3, y, -0.75))
 	k.gun_tip = k._tip(t, Vector3(-0.3, y, -1.66))
 
@@ -716,8 +687,7 @@ static func _stalker(k: VehicleModels, team: int) -> Vector3:
 		_antenna(k, m, Vector3(s * 0.95, 1.72, 3.3), 2.2 if s < 0 else 1.6)
 	# roof: the troop compartment's hatches behind the turret
 	for s in [-1.0, 1.0]:
-		k._box(m, Vector3(0.6, 0.05, 0.75), Vector3(s * 0.48, 1.74, 2.4), c)
-		k._box(m, Vector3(0.12, 0.04, 0.12), Vector3(s * 0.48, 1.78, 2.08), "gunmetal_w", null, Vector3.ZERO, false)
+		VehicleFittings.panel_hatch(k, m, Vector3(s * 0.48, 1.74, 2.4), Vector3(0.6, 0.05, 0.75), c)
 	k._team_mark(m, team, Vector3(0, 1.735, 3.3), Vector3(0.7, 0.02, 0.4))
 	return Vector3(0, 1.72, -0.35)
 
@@ -729,27 +699,19 @@ static func _kamysh(k: VehicleModels, team: int) -> void:
 	var c := CAM
 	var t := k._pivot(k.root, _stalker(k, team))
 	k.turret = t
-	k._cyl(t, 0.95, 1.0, 0.1, Vector3(0, 0.05, 0), Vector3.ZERO, c, null, 20)
+	VehicleMounts.turret_ring(k, t, Vector3(0, 0.05, 0), 0.95, 1.0, 0.1, c, null, 20)
 	k._add(t, VehicleModels.loft("csat_kam_tur", [-0.62, -1.15, 0.62, -1.15, 0.95, -0.6, 0.95, 1.05, -0.95, 1.05, -0.95, -0.6],
 		[-0.5, -0.88, 0.5, -0.88, 0.8, -0.45, 0.8, 0.92, -0.8, 0.92, -0.8, -0.45], 0.08, 0.62), c, null, Vector3.ZERO)
 	# the bustle box at the back
 	k._box(t, Vector3(1.5, 0.42, 0.42), Vector3(0, 0.33, 1.15), c)
 	# mantlet, the 30 mm with its barrel jacket and muzzle brake, the coax
 	VehicleMounts.mantlet(k, t, Vector3(0.42, 0.36, 0.3), Vector3(0.08, 0.36, -1.18), c)
-	k._cyl(t, 0.075, 0.075, 0.5, Vector3(0.08, 0.36, -1.55), Vector3(PI / 2, 0, 0), "gunmetal_w", null, 10)
-	k._cyl(t, 0.048, 0.042, 1.9, Vector3(0.08, 0.36, -2.7), Vector3(PI / 2, 0, 0), "gunmetal_w", null, 8)
-	k._cyl(t, 0.065, 0.065, 0.2, Vector3(0.08, 0.36, -3.68), Vector3(PI / 2, 0, 0), "gunmetal_w", null, 10)
+	VehicleWeapons.autocannon(k, t, Vector3(0.08, 0.36, -1.3), Vector3(0.08, 0.36, -3.78), Vector2(0.075, 0.5), Vector2(0.048, 0.042), Vector2(0.065, 0.2))
 	k.mg_tip = k._tip(t, Vector3(0.08, 0.36, -3.8))
-	k._cyl(t, 0.022, 0.022, 0.35, Vector3(-0.2, 0.3, -1.4), Vector3(PI / 2, 0, 0), "gunmetal_w", null, 6, false)
+	VehicleWeapons.coax(k, t, Vector3(-0.2, 0.3, -1.4), 0.35, 0.022)
 	# the gunner's sight head (front left) and the commander's panoramic sight
-	k._box(t, Vector3(0.34, 0.3, 0.42), Vector3(-0.42, 0.77, -0.45), c)
-	if not k.burnt:
-		k._box(t, Vector3(0.12, 0.12, 0.02), Vector3(-0.48, 0.79, -0.67), "glass", null, Vector3.ZERO, false)
-		k._box(t, Vector3(0.08, 0.08, 0.02), Vector3(-0.33, 0.79, -0.67), "glass", null, Vector3.ZERO, false)
-	k._cyl(t, 0.1, 0.12, 0.3, Vector3(0.45, 0.77, 0.3), Vector3.ZERO, "gunmetal_w", null, 10)
-	k._box(t, Vector3(0.3, 0.24, 0.3), Vector3(0.45, 1.02, 0.3), c)
-	if not k.burnt:
-		k._box(t, Vector3(0.18, 0.1, 0.02), Vector3(0.45, 1.03, 0.14), "glass", null, Vector3.ZERO, false)
+	VehicleMounts.sight(k, t, Vector3(-0.42, 0.77, -0.45), Vector3(0.34, 0.3, 0.42), [Rect2(Vector2(-0.06, 0.02), Vector2(0.12, 0.12)), Rect2(Vector2(0.09, 0.02), Vector2(0.08, 0.08))], c)
+	VehicleMounts.sight(k, t, Vector3(0.45, 1.02, 0.3), Vector3(0.3, 0.24, 0.3), [Rect2(Vector2(0, 0.01), Vector2(0.18, 0.1))], c, null, Vector3(0.1, 0.12, 0.4))
 	# the twin Titan launchers on arms either side, smoke dischargers behind
 	for s in [-1.0, 1.0]:
 		k._box(t, Vector3(0.25, 0.14, 0.3), Vector3(s * 0.98, 0.42, 0.05), "gunmetal_w")
@@ -768,7 +730,7 @@ static func _tigris(k: VehicleModels, team: int) -> void:
 	var c := CAM
 	var t := k._pivot(k.root, _stalker(k, team))
 	k.turret = t
-	k._cyl(t, 1.0, 1.05, 0.1, Vector3(0, 0.05, 0), Vector3.ZERO, c, null, 20)
+	VehicleMounts.turret_ring(k, t, Vector3(0, 0.05, 0), 1.0, 1.05, 0.1, c, null, 20)
 	k._add(t, VehicleModels.loft("csat_tig_tur", [-0.95, -1.35, 0.95, -1.35, 1.2, -0.95, 1.2, 1.35, -1.2, 1.35, -1.2, -0.95],
 		[-0.8, -0.95, 0.8, -0.95, 1.05, -0.7, 1.05, 1.2, -1.05, 1.2, -1.05, -0.7], 0.08, 1.05), c, null, Vector3.ZERO)
 	# the guns: a 35 mm in a cradle on each side, ammunition feed fairings
@@ -777,9 +739,7 @@ static func _tigris(k: VehicleModels, team: int) -> void:
 		VehicleMounts.mantlet(k, t, Vector3(0.16, 0.3, 0.5), Vector3(s * 1.22, 0.6, -0.3), "gunmetal_w")
 		k._box(t, Vector3(0.3, 0.42, 1.5), Vector3(gx, 0.6, -0.35), c)
 		k._box(t, Vector3(0.26, 0.2, 0.6), Vector3(gx, 0.6, 0.6), c)
-		k._cyl(t, 0.07, 0.07, 0.4, Vector3(gx, 0.62, -1.28), Vector3(PI / 2, 0, 0), "gunmetal_w", null, 10)
-		k._cyl(t, 0.046, 0.04, 2.4, Vector3(gx, 0.62, -2.6), Vector3(PI / 2, 0, 0), "gunmetal_w", null, 8)
-		k._cyl(t, 0.06, 0.06, 0.26, Vector3(gx, 0.62, -3.86), Vector3(PI / 2, 0, 0), "gunmetal_w", null, 10)
+		VehicleWeapons.autocannon(k, t, Vector3(gx, 0.62, -1.08), Vector3(gx, 0.62, -3.99), Vector2(0.07, 0.4), Vector2(0.046, 0.04), Vector2(0.06, 0.26))
 		k._box(t, Vector3(0.12, 0.1, 0.16), Vector3(gx, 0.75, -1.15), "gunmetal_w")
 		_smoke(k, t, Vector3(s * 1.0, 0.95, 0.9), s, 3, 1.3)
 	k.mg_tip = k._tip(t, Vector3(1.42, 0.62, -4.0))
@@ -788,9 +748,7 @@ static func _tigris(k: VehicleModels, team: int) -> void:
 	k._box(t, Vector3(0.7, 0.45, 0.5), Vector3(0, 1.25, -0.55), c)
 	k._cyl(t, 0.3, 0.3, 0.06, Vector3(0, 1.27, -0.83), Vector3(PI / 2, 0, 0), "plain_dark", null, 16)
 	# the optical sight beside it
-	k._box(t, Vector3(0.3, 0.3, 0.36), Vector3(-0.6, 1.2, -0.4), c)
-	if not k.burnt:
-		k._box(t, Vector3(0.18, 0.14, 0.02), Vector3(-0.6, 1.22, -0.59), "glass", null, Vector3.ZERO, false)
+	VehicleMounts.sight(k, t, Vector3(-0.6, 1.2, -0.4), Vector3(0.3, 0.3, 0.36), [Rect2(Vector2(0, 0.02), Vector2(0.18, 0.14))], c)
 	# the search radar: a flat antenna on a mast at the back
 	k._cyl(t, 0.12, 0.15, 0.5, Vector3(0, 1.3, 0.75), Vector3.ZERO, "gunmetal_w", null, 10)
 	k._box(t, Vector3(0.3, 0.12, 0.3), Vector3(0, 1.58, 0.75), "gunmetal_w")
@@ -834,7 +792,7 @@ static func _t100(k: VehicleModels, team: int) -> Vector3:
 	for s in [-1.0, 1.0]:
 		for i in 3:
 			var d := 0.28 + i * 0.44
-			_onface(k, m, g0 + gu * d + Vector3(s * 0.56, 0, 0), gn, gu, Vector3(0.92, 0.4, 0.1), c, null, s * 0.24)
+			_era(k, m, g0 + gu * d + Vector3(s * 0.56, 0, 0), gn, gu, 1, 1, Vector3(0.92, 0.4, 0.1), s * 0.24)
 		_headlight(k, m, Vector3(s * 1.36, 1.2, -3.2))
 		_tow(k, m, Vector3(s * 0.75, 0.84, -3.76), -1.0)
 		# fender shelves, the front mudguards
@@ -881,23 +839,18 @@ static func _t100(k: VehicleModels, team: int) -> Vector3:
 static func _gun125(k: VehicleModels, p: Node3D, y: float, z0: float, length: float, extractor := true) -> Node3D:
 	VehicleFittings.barrel(k, p, Vector3(0, y, z0), Vector3(0, y, z0 - length), 0.10, "paint", GUN_PAINT)
 	if extractor:
-		k._cyl(p, 0.15, 0.15, 0.62, Vector3(0, y, z0 - length * 0.58), Vector3(PI / 2, 0, 0), "paint", GUN_PAINT, 14)
+		VehicleFittings.evacuator(k, p, Vector3(0, y, z0 - length * 0.58), 0.15, 0.62, "paint", GUN_PAINT)
 	k._box(p, Vector3(0.06, 0.05, 0.1), Vector3(0, y + 0.12, z0 - length + 0.2), "gunmetal_w", null, Vector3.ZERO, false)
 	return k._tip(p, Vector3(0, y, z0 - length - 0.05))
 
 
-## A commander's cupola with a 12.7 mm on its ring, the gun facing forward.
+## A commander's cupola with a 12.7 mm on its ring, the gun facing forward:
+## four vision blocks across the front, the hatch lid, the pintle post.
 static func _cupola_mg(k: VehicleModels, p: Node3D, pos: Vector3, mat := CAM) -> void:
-	k._cyl(p, 0.36, 0.39, 0.2, pos + Vector3(0, 0.1, 0), Vector3.ZERO, mat, null, 16)
+	VehicleMounts.cupola(k, p, pos + Vector3(0, 0.1, 0), 0.36, 0.39, 0.2, 4, -0.825, 0.55, mat, null, Vector3(0.12, 0.07, 0.05))
 	k._cyl(p, 0.3, 0.3, 0.06, pos + Vector3(0, 0.23, 0.05), Vector3.ZERO, mat, null, 14)
-	for i in 4:
-		var a := -PI / 2 + (i - 1.5) * 0.55
-		k._box(p, Vector3(0.12, 0.07, 0.05), pos + Vector3(cos(a) * 0.37, 0.14, sin(a) * 0.37), "glass", null, Vector3(0, -a + PI / 2, 0), false)
 	k._box(p, Vector3(0.06, 0.3, 0.12), pos + Vector3(0.0, 0.36, -0.2), "gunmetal_w")
-	k._box(p, Vector3(0.15, 0.15, 0.6), pos + Vector3(0.0, 0.5, -0.25), "gunmetal_w")
-	k._cyl(p, 0.028, 0.026, 0.85, pos + Vector3(0.0, 0.52, -0.97), Vector3(PI / 2, 0, 0), "gunmetal_w", null, 8)
-	k._cyl(p, 0.04, 0.04, 0.12, pos + Vector3(0.0, 0.52, -1.42), Vector3(PI / 2, 0, 0), "gunmetal_w", null, 8, false)
-	k._box(p, Vector3(0.14, 0.2, 0.3), pos + Vector3(-0.15, 0.46, -0.2), "paint", OLIVE)
+	VehicleWeapons.hmg(k, p, pos + Vector3(0.0, 0.5, -0.25), pos + Vector3(0.0, 0.52, -1.48), 1.0, -1.0, false, "gunmetal_w", OLIVE)
 
 
 ## T-100 Varsuk: the Black Eagle's wide welded turret with reactive armour on
@@ -908,7 +861,7 @@ static func _varsuk(k: VehicleModels, team: int) -> void:
 	var c := CAM
 	var t := k._pivot(k.root, _t100(k, team))
 	k.turret = t
-	k._cyl(t, 1.12, 1.16, 0.1, Vector3(0, 0.05, 0), Vector3.ZERO, c, null, 22)
+	VehicleMounts.turret_ring(k, t, Vector3(0, 0.05, 0), 1.12, 1.16, 0.1, c, null, 22)
 	k._add(t, VehicleModels.loft("csat_var_tur", [-0.7, -1.55, 0.7, -1.55, 1.38, -0.95, 1.42, 0.95, 1.2, 1.2, -1.2, 1.2, -1.42, 0.95, -1.38, -0.95],
 		[-0.58, -1.38, 0.58, -1.38, 1.22, -0.82, 1.27, 0.88, 1.08, 1.1, -1.08, 1.1, -1.27, 0.88, -1.22, -0.82], 0.06, 0.78), c, null, Vector3.ZERO)
 	# the bustle: a long box hung off the turret's back
@@ -926,13 +879,11 @@ static func _varsuk(k: VehicleModels, team: int) -> void:
 	VehicleMounts.mantlet(k, t, Vector3(0.72, 0.5, 0.3), Vector3(0, 0.42, -1.58), c)
 	k._cyl(t, 0.2, 0.15, 0.3, Vector3(0, 0.42, -1.8), Vector3(PI / 2, 0, 0), "canvas", Color(0.3, 0.29, 0.22), 12)
 	k.gun_tip = _gun125(k, t, 0.42, -1.9, 5.4)
-	k._cyl(t, 0.022, 0.022, 0.3, Vector3(0.3, 0.33, -1.85), Vector3(PI / 2, 0, 0), "gunmetal_w", null, 6, false)
+	VehicleWeapons.coax(k, t, Vector3(0.3, 0.33, -1.85), 0.3, 0.022)
 	k.mg_tip = k._tip(t, Vector3(0.3, 0.33, -2.0))
 	# commander's cupola (right) with the 12.7 mm, gunner's sight (left front)
 	_cupola_mg(k, t, Vector3(0.6, 0.78, 0.25))
-	k._box(t, Vector3(0.4, 0.34, 0.46), Vector3(-0.66, 0.95, -0.7), c)
-	if not k.burnt:
-		k._box(t, Vector3(0.28, 0.16, 0.02), Vector3(-0.66, 0.98, -0.94), "glass", null, Vector3.ZERO, false)
+	VehicleMounts.sight(k, t, Vector3(-0.66, 0.95, -0.7), Vector3(0.4, 0.34, 0.46), [Rect2(Vector2(0, 0.03), Vector2(0.28, 0.16))], c)
 	_hatch(k, t, Vector3(-0.55, 0.78, 0.35), 0.26)
 	# Drozd launchers on the flanks, their radar heads on the cheeks, smoke
 	for s in [-1.0, 1.0]:
@@ -959,7 +910,7 @@ static func _futura(k: VehicleModels, team: int) -> void:
 	var c := CAM
 	var t := k._pivot(k.root, _t100(k, team))
 	k.turret = t
-	k._cyl(t, 1.12, 1.16, 0.1, Vector3(0, 0.05, 0), Vector3.ZERO, c, null, 22)
+	VehicleMounts.turret_ring(k, t, Vector3(0, 0.05, 0), 1.12, 1.16, 0.1, c, null, 22)
 	k._add(t, VehicleModels.loft("csat_fut_tur", [-0.45, -1.95, 0.45, -1.95, 1.42, -0.75, 1.48, 1.4, 1.15, 2.35, -1.15, 2.35, -1.48, 1.4, -1.42, -0.75],
 		[-0.32, -1.62, 0.32, -1.62, 1.14, -0.55, 1.2, 1.3, 0.92, 2.15, -0.92, 2.15, -1.2, 1.3, -1.14, -0.55], 0.06, 0.6), c, null, Vector3.ZERO)
 	k._add(t, VehicleModels.loft("csat_fut_top", [-0.3, -1.55, 0.3, -1.55, 1.06, -0.5, 1.12, 1.25, 0.86, 2.05, -0.86, 2.05, -1.12, 1.25, -1.06, -0.5],
@@ -988,13 +939,8 @@ static func _futura(k: VehicleModels, team: int) -> void:
 		_smoke(k, t, Vector3(s * 1.18, 0.55, 0.6), s, 4, 1.0)
 		_antenna(k, t, Vector3(s * 0.7, 0.75, 1.9), 1.8 if s < 0 else 1.3)
 	# sights: the gunner's block, the commander's panoramic head, a remote MG
-	k._box(t, Vector3(0.36, 0.26, 0.4), Vector3(-0.42, 0.98, -0.25), c)
-	if not k.burnt:
-		k._box(t, Vector3(0.26, 0.12, 0.02), Vector3(-0.42, 1.0, -0.46), "glass", null, Vector3.ZERO, false)
-	k._cyl(t, 0.08, 0.1, 0.32, Vector3(0.45, 1.0, 0.6), Vector3.ZERO, "gunmetal_w", null, 10)
-	k._box(t, Vector3(0.3, 0.22, 0.3), Vector3(0.45, 1.25, 0.6), c)
-	if not k.burnt:
-		k._box(t, Vector3(0.18, 0.1, 0.02), Vector3(0.45, 1.26, 0.44), "glass", null, Vector3.ZERO, false)
+	VehicleMounts.sight(k, t, Vector3(-0.42, 0.98, -0.25), Vector3(0.36, 0.26, 0.4), [Rect2(Vector2(0, 0.02), Vector2(0.26, 0.12))], c)
+	VehicleMounts.sight(k, t, Vector3(0.45, 1.25, 0.6), Vector3(0.3, 0.22, 0.3), [Rect2(Vector2(0, 0.01), Vector2(0.18, 0.1))], c, null, Vector3(0.08, 0.1, 0.41))
 	_rcws(k, t, Vector3(-0.3, 0.86, 1.0), "hmg")
 	k._team_mark(t, team, Vector3(0, 0.865, 1.35), Vector3(0.6, 0.02, 0.4))
 
@@ -1009,7 +955,7 @@ static func _sochor(k: VehicleModels, team: int) -> void:
 	var ring := _t100(k, team)
 	var t := k._pivot(m, ring + Vector3(0, 0, 0.5))
 	k.turret = t
-	k._cyl(t, 1.2, 1.25, 0.1, Vector3(0, 0.05, 0), Vector3.ZERO, c, null, 22)
+	VehicleMounts.turret_ring(k, t, Vector3(0, 0.05, 0), 1.2, 1.25, 0.1, c, null, 22)
 	k._add(t, VehicleModels.loft("csat_sch_tur", [-1.5, -2.0, 1.5, -2.0, 1.62, -1.5, 1.62, 2.75, -1.62, 2.75, -1.62, -1.5],
 		[-1.3, -1.45, 1.3, -1.45, 1.46, -1.1, 1.48, 2.62, -1.48, 2.62, -1.46, -1.1], 0.06, 1.28), c, null, Vector3.ZERO)
 	# flat sides: a crew door, stowage boxes, vents; the ammunition door at the back
@@ -1025,13 +971,8 @@ static func _sochor(k: VehicleModels, team: int) -> void:
 	# roof: hatches, the commander's panoramic sight, the remote 12.7 mm
 	_hatch(k, t, Vector3(0.65, 1.28, 0.5), 0.3)
 	_hatch(k, t, Vector3(-0.2, 1.28, 1.6), 0.28)
-	k._cyl(t, 0.1, 0.12, 0.3, Vector3(0.75, 1.42, -0.6), Vector3.ZERO, "gunmetal_w", null, 10)
-	k._box(t, Vector3(0.34, 0.26, 0.34), Vector3(0.75, 1.68, -0.6), c)
-	if not k.burnt:
-		k._box(t, Vector3(0.2, 0.12, 0.02), Vector3(0.75, 1.7, -0.78), "glass", null, Vector3.ZERO, false)
-	k._box(t, Vector3(0.36, 0.3, 0.44), Vector3(-0.85, 1.42, -0.85), c)
-	if not k.burnt:
-		k._box(t, Vector3(0.24, 0.14, 0.02), Vector3(-0.85, 1.45, -1.08), "glass", null, Vector3.ZERO, false)
+	VehicleMounts.sight(k, t, Vector3(0.75, 1.68, -0.6), Vector3(0.34, 0.26, 0.34), [Rect2(Vector2(0, 0.02), Vector2(0.2, 0.12))], c, null, Vector3(0.1, 0.12, 0.41))
+	VehicleMounts.sight(k, t, Vector3(-0.85, 1.42, -0.85), Vector3(0.36, 0.3, 0.44), [Rect2(Vector2(0, 0.03), Vector2(0.24, 0.14))], c)
 	_rcws(k, t, Vector3(-0.65, 1.28, 0.6), "hmg")
 	k._team_mark(t, team, Vector3(0.5, 1.285, 2.0), Vector3(0.7, 0.02, 0.5))
 	# the barrel on its trunnions: mantlet, recoil cylinders, fume extractor,
@@ -1043,7 +984,7 @@ static func _sochor(k: VehicleModels, team: int) -> void:
 		k._cyl(e, 0.07, 0.07, 0.9, Vector3(s * 0.2, 0.22, -0.9), Vector3(PI / 2, 0, 0), "gunmetal_w", null, 10)
 	k._cyl(e, 0.22, 0.2, 0.6, Vector3(0, 0, -0.95), Vector3(PI / 2, 0, 0), "paint", GUN_PAINT, 14)
 	VehicleFittings.barrel(k, e, Vector3(0, 0, -1.1), Vector3(0, 0, -7.15), 0.115, "paint", GUN_PAINT)
-	k._cyl(e, 0.2, 0.2, 0.7, Vector3(0, 0, -3.2), Vector3(PI / 2, 0, 0), "paint", GUN_PAINT, 14)
+	VehicleFittings.evacuator(k, e, Vector3(0, 0, -3.2), 0.2, 0.7, "paint", GUN_PAINT)
 	for z in [-6.7, -7.1]:
 		k._add(e, VehicleFittings._ring(0.115, 0.18), "gunmetal_w", null, Vector3(0, 0, z), Vector3(PI / 2, 0, 0), Vector3(1, 0.65, 1))
 	for s in [-1.0, 1.0]:
@@ -1087,9 +1028,7 @@ static func _t14(k: VehicleModels, team: int) -> Vector3:
 	var gu := Vector3(0, 0.75, 1.6).normalized()
 	var gn := Vector3(0, 1.6, -0.75).normalized()
 	var g0 := Vector3(0, 1.1, -4.35)
-	for i in 3:
-		for j in 6:
-			_onface(k, m, g0 + gu * (0.32 + i * 0.47) + Vector3((j - 2.5) * 0.51, 0, 0), gn, gu, Vector3(0.48, 0.44, 0.12), c)
+	_era(k, m, g0 + gu * 0.79, gn, gu, 3, 6, Vector3(0.48, 0.44, 0.12), 0.0, c, Vector2(0.03, 0.03))
 	for s in [-1.0, 1.0]:
 		_headlight(k, m, Vector3(s * 1.45, 1.25, -3.95))
 		_tow(k, m, Vector3(s * 0.8, 0.88, -4.36), -1.0)
@@ -1137,7 +1076,7 @@ static func _angara(k: VehicleModels, team: int, command: bool) -> void:
 	var c := CAM
 	var t := k._pivot(k.root, _t14(k, team))
 	k.turret = t
-	k._cyl(t, 1.2, 1.25, 0.1, Vector3(0, 0.05, 0), Vector3.ZERO, c, null, 22)
+	VehicleMounts.turret_ring(k, t, Vector3(0, 0.05, 0), 1.2, 1.25, 0.1, c, null, 22)
 	k._add(t, VehicleModels.loft("csat_ang_tur", [-0.55, -1.85, 0.55, -1.85, 1.35, -1.15, 1.45, 1.4, 1.15, 2.1, -1.15, 2.1, -1.45, 1.4, -1.35, -1.15],
 		[-0.42, -1.55, 0.42, -1.55, 1.12, -1.0, 1.2, 1.3, 0.95, 1.9, -0.95, 1.9, -1.2, 1.3, -1.12, -1.0], 0.06, 0.74), c, null, Vector3.ZERO)
 	k._add(t, VehicleModels.loft("csat_ang_top", [-0.9, -0.6, 0.9, -0.6, 0.95, 1.6, -0.95, 1.6], [-0.8, -0.4, 0.8, -0.4, 0.85, 1.5, -0.85, 1.5], 0.74, 0.86), c, null, Vector3.ZERO)
@@ -1145,7 +1084,7 @@ static func _angara(k: VehicleModels, team: int, command: bool) -> void:
 	k._box(t, Vector3(0.5, 0.42, 0.3), Vector3(0, 0.42, -1.82), c)
 	k._box(t, Vector3(0.3, 0.3, 0.04), Vector3(0, 0.42, -1.98), "plain_dark", null, Vector3.ZERO, false)
 	k.gun_tip = _gun125(k, t, 0.42, -1.98, 5.1, false)
-	k._cyl(t, 0.022, 0.022, 0.3, Vector3(0.32, 0.3, -1.85), Vector3(PI / 2, 0, 0), "gunmetal_w", null, 6, false)
+	VehicleWeapons.coax(k, t, Vector3(0.32, 0.3, -1.85), 0.3, 0.022)
 	k.mg_tip = k._tip(t, Vector3(0.32, 0.3, -2.0))
 	# Afghanit: five launch tubes in a housing low on each flank, firing out
 	for s in [-1.0, 1.0]:
@@ -1163,24 +1102,15 @@ static func _angara(k: VehicleModels, team: int, command: bool) -> void:
 			k._cyl(t, 0.045, 0.045, 0.2, Vector3(s * (0.7 + i * 0.13), 0.95, -0.62 + i * 0.05 * s), Vector3(-0.8, s * -0.3, 0), "gunmetal_w", null, 8, false)
 		_antenna(k, t, Vector3(s * 0.85, 0.74, 1.75), 2.0 if s < 0 else 1.5)
 	# the gunner's sight (front left) and the commander's panoramic sight
-	k._box(t, Vector3(0.44, 0.34, 0.5), Vector3(-0.5, 1.0, -0.2), c)
-	if not k.burnt:
-		k._box(t, Vector3(0.3, 0.16, 0.02), Vector3(-0.5, 1.03, -0.46), "glass", null, Vector3.ZERO, false)
-	k._cyl(t, 0.12, 0.14, 0.4, Vector3(0.55, 1.06, 0.5), Vector3.ZERO, "gunmetal_w", null, 12)
-	k._box(t, Vector3(0.4, 0.3, 0.4), Vector3(0.55, 1.4, 0.5), c)
-	if not k.burnt:
-		k._box(t, Vector3(0.26, 0.14, 0.02), Vector3(0.55, 1.42, 0.29), "glass", null, Vector3.ZERO, false)
+	VehicleMounts.sight(k, t, Vector3(-0.5, 1.0, -0.2), Vector3(0.44, 0.34, 0.5), [Rect2(Vector2(0, 0.03), Vector2(0.3, 0.16))], c)
+	VehicleMounts.sight(k, t, Vector3(0.55, 1.4, 0.5), Vector3(0.4, 0.3, 0.4), [Rect2(Vector2(0, 0.02), Vector2(0.26, 0.14))], c, null, Vector3(0.12, 0.14, 0.54))
 	# the remote weapon on top: a 12.7 mm, or the command tank's 30 mm turret
 	if command:
 		var rw := k._pivot(t, Vector3(-0.1, 0.86, 0.95))
 		k._add(rw, VehicleModels.loft("csat_ang_k30", [-0.4, -0.45, 0.4, -0.45, 0.45, 0.45, -0.45, 0.45], [-0.32, -0.32, 0.32, -0.32, 0.38, 0.38, -0.38, 0.38], 0.04, 0.42), c, null, Vector3.ZERO)
 		k._box(rw, Vector3(0.22, 0.22, 0.36), Vector3(0, 0.26, -0.55), c)
-		k._cyl(rw, 0.06, 0.06, 0.4, Vector3(0, 0.26, -0.85), Vector3(PI / 2, 0, 0), "gunmetal_w", null, 10)
-		k._cyl(rw, 0.04, 0.035, 1.5, Vector3(0, 0.26, -1.75), Vector3(PI / 2, 0, 0), "gunmetal_w", null, 8)
-		k._cyl(rw, 0.055, 0.055, 0.15, Vector3(0, 0.26, -2.55), Vector3(PI / 2, 0, 0), "gunmetal_w", null, 10)
-		k._box(rw, Vector3(0.22, 0.2, 0.26), Vector3(0.32, 0.52, -0.1), c)
-		if not k.burnt:
-			k._box(rw, Vector3(0.14, 0.08, 0.02), Vector3(0.32, 0.53, -0.24), "glass", null, Vector3.ZERO, false)
+		VehicleWeapons.autocannon(k, rw, Vector3(0, 0.26, -0.65), Vector3(0, 0.26, -2.625), Vector2(0.06, 0.4), Vector2(0.04, 0.035), Vector2(0.055, 0.15))
+		VehicleMounts.sight(k, rw, Vector3(0.32, 0.52, -0.1), Vector3(0.22, 0.2, 0.26), [Rect2(Vector2(0, 0.01), Vector2(0.14, 0.08))], c)
 		k._box(rw, Vector3(0.2, 0.26, 0.4), Vector3(-0.5, 0.2, 0.05), "paint", OLIVE)
 		k.mg_tip = k._tip(rw, Vector3(0, 0.26, -2.65))
 	else:
@@ -1239,10 +1169,10 @@ static func _typhoon(k: VehicleModels, team: int) -> void:
 		k._wheel(m, Vector3(s * 1.0, 0.62, 3.0), 0.62, 0.48)
 		VehicleFittings.mudflap(k, m, Vector3(s * 1.0, 0.5, 3.75), Vector2(0.5, 0.42))
 		# the rear tandem's mudguard
-		k._box(m, Vector3(0.56, 0.05, 2.4), Vector3(s * 1.0, 1.35, 2.28), "gunmetal_w")
+		VehicleBody.fender(k, m, Vector3(s * 1.0, 1.35, 2.28), Vector3(0.56, 0.05, 2.4), s, "gunmetal_w")
 		_taillight(k, m, Vector3(s * 0.95, 0.98, 4.48))
 	# fuel tank and battery box on the frame, the exhaust stack behind the cab
-	k._box(m, Vector3(0.5, 0.52, 1.4), Vector3(0.95, 0.95, -1.2), "paint", Color(0.32, 0.31, 0.25))
+	VehicleRunningGear.fuel_tank(k, m, Vector3(0.95, 0.95, -1.2), Vector3(0.5, 0.52, 1.4), 1.0, "paint", Color(0.32, 0.31, 0.25), false)
 	k._box(m, Vector3(0.5, 0.45, 0.8), Vector3(-0.95, 0.95, -1.5), "gunmetal_w")
 	VehicleFittings.exhaust(k, m, Vector3(1.05, 1.3, -2.18), Vector3.UP, 1.95, 0.06)
 	# the rear underrun bar
