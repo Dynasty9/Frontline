@@ -60,15 +60,12 @@ static func panel(k: VehicleModels, parent: Node3D, center: Vector3, size: Vecto
 		k._fold(mount)
 		return
 	mount.rotation = rotation
-	k._box(mount, Vector3(size.x, size.y, 0.008), Vector3.ZERO, "rubber", null, Vector3.ZERO, false)
-	k._box(mount, Vector3(size.x - 0.024, size.y - 0.024, 0.018), Vector3(0, 0, 0.009), mat, col)
-	# Turned sheet edges catch light independently of the pressed centre.
-	for sign_side in [-1.0, 1.0]:
-		k._box(mount, Vector3(size.x - 0.04, 0.012, 0.022), Vector3(0, sign_side * (size.y / 2 - 0.02), 0.014), mat, col)
-		k._box(mount, Vector3(0.012, size.y - 0.04, 0.022), Vector3(sign_side * (size.x / 2 - 0.02), 0, 0.014), mat, col)
-	for x in [-1.0, 1.0]:
-		for y in [-1.0, 1.0]:
-			fastener(k, mount, Vector3(x * (size.x * 0.5 - 0.045), y * (size.y * 0.5 - 0.045), 0.022), Vector3.BACK)
+	var surface := VehicleSurface.plane(Vector3.ZERO, Vector3.RIGHT, Vector3.UP)
+	var hx := size.x * 0.5
+	var hy := size.y * 0.5
+	var corner := minf(0.035, minf(hx, hy) * 0.15)
+	var outline := PackedVector2Array([Vector2(-hx + corner, -hy), Vector2(hx - corner, -hy), Vector2(hx, -hy + corner), Vector2(hx, hy - corner), Vector2(hx - corner, hy), Vector2(-hx + corner, hy), Vector2(-hx, hy - corner), Vector2(-hx, -hy + corner)])
+	fitted(k, mount, surface, outline, mat, col)
 	if louvres:
 		for i in 4:
 			var y := (i - 1.5) * size.y * 0.16
@@ -117,3 +114,57 @@ static func paint_mesh(mesh: Mesh) -> Mesh:
 	Mats.keep_arrays(result, arrays)
 	mesh.set_meta(&"paint_mesh", result)
 	return result
+
+
+## Polygon panels share one outline for skin, edge fold, gasket and fasteners.
+## Domain coordinates may be metres (flat sheet) or a family's surface domain.
+static func fitted(k: VehicleModels, parent: Node3D, surface: VehicleSurface, outline: PackedVector2Array, mat: String, col = null, thickness := 0.018, divisions := 0, screws := true) -> Variant:
+	var finish := VehicleMaterials.profile(mat, k.surface_family)
+	if finish == "glass":
+		return VehicleGlazing.polygon(k, parent, surface, outline, false, col, thickness, divisions)
+	var part: Variant = k._add(parent, surface.patch(outline, thickness, thickness, divisions), mat, col, Vector3.ZERO)
+	boundary(k, parent, surface, outline, thickness * 0.35, minf(thickness * 0.3, 0.006), false, divisions, "rubber")
+	if finish not in ["rubber", "plastic", "wood", "canvas"]:
+		boundary(k, parent, surface, outline, thickness, minf(thickness * 0.22, 0.004), screws, divisions, mat, col)
+	return part
+
+
+## Place seams and corner fasteners from the same boundary as the panel.
+## Subdivision is explicit so tiny straight panels never inherit hull costs.
+static func boundary(k: VehicleModels, parent: Node3D, surface: VehicleSurface, outline: PackedVector2Array, lift := 0.01, radius := 0.005, screws := false, divisions := 0, mat := "rubber", col = null) -> void:
+	var center := Vector2.ZERO
+	for q in outline:
+		center += q
+	center /= outline.size()
+	var data := [[], [], []]
+	var count := 1 << clampi(divisions, 0, 3)
+	# Four-sided seal sections need no cylinder caps or hidden axial rings.
+	# Join them in one baked mesh, sampling each surface point just once.
+	var points: Array[Vector3] = []
+	var normals: Array[Vector3] = []
+	for i in outline.size():
+		for j in count:
+			var uv := outline[i].lerp(outline[(i + 1) % outline.size()], float(j) / count)
+			points.append(surface.point(uv, lift))
+			normals.append(surface.normal(uv))
+	var rings: Array = []
+	for i in points.size():
+		var tangent := (points[(i + 1) % points.size()] - points[(i - 1 + points.size()) % points.size()]).normalized()
+		var across := tangent.cross(normals[i]).normalized() * radius
+		var up := normals[i] * radius
+		rings.append([points[i] + up, points[i] + across, points[i] - up, points[i] - across])
+	for i in points.size():
+		var next := (i + 1) % points.size()
+		for side in 4:
+			var a: Vector3 = rings[i][side]
+			var b: Vector3 = rings[next][side]
+			var c: Vector3 = rings[next][(side + 1) % 4]
+			var d: Vector3 = rings[i][(side + 1) % 4]
+			var normal := (a + b + c + d - (points[i] + points[next]) * 2.0).normalized()
+			VehicleSurface._quad(data, a, b, c, d, normal)
+	k._add(parent, VehicleSurface._mesh(data), mat, col, Vector3.ZERO, Vector3.ZERO, Vector3.ONE, false)
+	if screws:
+		for a in outline:
+			var distance := surface.point(a).distance_to(surface.point(center))
+			var uv := a.lerp(center, minf(0.2, 0.035 / maxf(distance, 0.001)))
+			fastener(k, parent, surface.point(uv, lift + 0.002), surface.normal(uv), minf(0.009, distance * 0.06))

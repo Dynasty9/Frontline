@@ -49,54 +49,10 @@ static func build(k: VehicleModels, key: String, team: int, seed: int) -> bool:
 ## along the cowl, and every face looks the right way. Smooth round the axis,
 ## creased where the profile turns sharper than `crease` degrees. Cached.
 static func _lathe(key: String, prof: Array, segs := 24, crease := 50.0) -> ArrayMesh:
-	var kk := "at_" + key
-	if _mc.has(kk):
-		return _mc[kk]
-	var np := prof.size()
-	var sn: Array[Vector2] = []
-	for i in np - 1:
-		var d: Vector2 = (prof[i + 1] as Vector2) - (prof[i] as Vector2)
-		sn.append(Vector2(d.y, -d.x).normalized() if d.length() > 1e-6 else Vector2(1, 0))
-	var cs := cos(deg_to_rad(crease))
-	var vs := PackedVector3Array()
-	var ns := PackedVector3Array()
-	for i in np - 1:
-		var a: Vector2 = prof[i]
-		var b: Vector2 = prof[i + 1]
-		if a.distance_to(b) < 1e-6:
-			continue
-		# the normal at each end: shared with the neighbour unless it turns sharply
-		var na := sn[i]
-		if i > 0 and sn[i - 1].dot(sn[i]) > cs:
-			na = (sn[i - 1] + sn[i]).normalized()
-		var nb := sn[i]
-		if i < np - 2 and sn[i + 1].dot(sn[i]) > cs:
-			nb = (sn[i + 1] + sn[i]).normalized()
-		for j in segs:
-			var t0 := TAU * float(j) / float(segs)
-			var t1 := TAU * float(j + 1) / float(segs)
-			var c0 := Vector2(cos(t0), sin(t0))
-			var c1 := Vector2(cos(t1), sin(t1))
-			var p0 := Vector3(c0.x * a.x, c0.y * a.x, a.y)
-			var p1 := Vector3(c1.x * a.x, c1.y * a.x, a.y)
-			var p2 := Vector3(c1.x * b.x, c1.y * b.x, b.y)
-			var p3 := Vector3(c0.x * b.x, c0.y * b.x, b.y)
-			var n0 := Vector3(c0.x * na.x, c0.y * na.x, na.y)
-			var n1 := Vector3(c1.x * na.x, c1.y * na.x, na.y)
-			var n2 := Vector3(c1.x * nb.x, c1.y * nb.x, nb.y)
-			var n3 := Vector3(c0.x * nb.x, c0.y * nb.x, nb.y)
-			var f := (n0 + n1 + n2 + n3).normalized()
-			VmPlane._tri(vs, ns, p0, p1, p2, n0, n1, n2, f)
-			VmPlane._tri(vs, ns, p0, p2, p3, n0, n2, n3, f)
-	var arr := []
-	arr.resize(Mesh.ARRAY_MAX)
-	arr[Mesh.ARRAY_VERTEX] = vs
-	arr[Mesh.ARRAY_NORMAL] = ns
-	var am := ArrayMesh.new()
-	am.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arr)
-	Mats.keep_arrays(am, arr)
-	_mc[kk] = am
-	return am
+	var cache_key := "at_" + key
+	if not _mc.has(cache_key):
+		_mc[cache_key] = VehicleProfiles.revolve(prof, segs, crease)
+	return _mc[cache_key]
 
 
 ## A faceted ring at z: the right half of a section given as points (x >= 0)
@@ -170,42 +126,8 @@ static func _sheet(key: String, rings: Array, inward := false, face := Vector3.Z
 ## Painted markings: 2D polygons (each star-shaped about its centroid) laid on
 ## the airframe by `to3` (a Callable from Vector2 to the point on the skin,
 ## already lifted off it), facing `out`. One mesh, no shadow; cached by key.
-static func _decal(k: VehicleModels, p: Node3D, key: String, polys: Array, to3: Callable, out: Vector3, col: Color, mat := "paint") -> void:
-	if k.burnt:
-		return
-	var kk := "at_" + key
-	var am: ArrayMesh = _mc.get(kk)
-	if am == null:
-		var vs := PackedVector3Array()
-		var ns := PackedVector3Array()
-		for poly in polys:
-			var cc := Vector2.ZERO
-			for q in poly:
-				cc += q as Vector2
-			cc /= float(poly.size())
-			var pc: Vector3 = to3.call(cc)
-			var p3: Array[Vector3] = []
-			for q in poly:
-				p3.append(to3.call(q) as Vector3)
-			for i in p3.size():
-				var a := p3[i]
-				var b := p3[(i + 1) % p3.size()]
-				var f := (b - a).cross(pc - a)
-				if f.length_squared() < 1e-14:
-					continue
-				if f.dot(out) < 0.0:
-					f = -f
-				f = f.normalized()
-				VmPlane._tri(vs, ns, pc, a, b, f, f, f, f)
-		var arr := []
-		arr.resize(Mesh.ARRAY_MAX)
-		arr[Mesh.ARRAY_VERTEX] = vs
-		arr[Mesh.ARRAY_NORMAL] = ns
-		am = ArrayMesh.new()
-		am.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arr)
-		Mats.keep_arrays(am, arr)
-		_mc[kk] = am
-	k._add(p, am, mat, col, Vector3.ZERO, Vector3.ZERO, Vector3.ONE, false)
+static func _decal(k: VehicleModels, p: Node3D, _key: String, polys: Array, to3: Callable, out: Vector3, col: Color, mat := "paint") -> void:
+	VehicleMarkings.polygons(k, p, polys, to3, out, col, mat)
 
 
 ## Strokes [a, b] (Vector2 pairs) of width lw as quads, cut into pieces no
