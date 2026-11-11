@@ -354,3 +354,22 @@ static func periscope(k: VehicleModels, parent: Node3D, center: Vector3, size: V
 	for side: float in [-1.0, 1.0]:
 		VehicleBody.fastener(k, mount, Vector3(side * size.x * 0.44, 0, face - 0.009), Vector3.FORWARD, minf(size.x, size.y) * 0.055)
 	k._fold(mount)
+
+
+## Closed round hatch; center is the lid center, not the deck surface.
+## Cupola pedestals, sights and open/rectangular lids stay with the family.
+static func hatch(k: VehicleModels, parent: Node3D, center: Vector3, radius: float, material: String, col = null, hinge_side := 1.0, thickness := 0.05) -> void:
+	var mount := k._pivot(parent, center)
+	k._cyl(mount, radius + 0.03, radius + 0.04, 0.035, Vector3(0, -thickness / 2 - 0.025, 0), Vector3.ZERO, material, col, 24)
+	k._cyl(mount, radius + 0.008, radius + 0.008, 0.012, Vector3(0, -thickness / 2 - 0.006, 0), Vector3.ZERO, "rubber", null, 24, false)
+	k._cyl(mount, radius - 0.02, radius, thickness, Vector3.ZERO, Vector3.ZERO, material, col, 24)
+	# Two hinge knuckles and their common pin, all attached to the lid's edge.
+	var hz := hinge_side * radius * 0.94
+	for x in [-0.07, 0.07]:
+		k._box(mount, Vector3(0.06, 0.045, 0.09), Vector3(x, 0, hz), material, col)
+	VehicleFrames.tube(k, mount, Vector3(-0.12, 0.018, hz), Vector3(0.12, 0.018, hz), 0.018, "gunmetal_w", null, 10, false)
+	var y := thickness / 2
+	VehicleFrames.path(k, mount, [Vector3(-0.065, y, -hinge_side * radius * 0.4), Vector3(-0.065, y + 0.035, -hinge_side * radius * 0.4), Vector3(0.065, y + 0.035, -hinge_side * radius * 0.4), Vector3(0.065, y, -hinge_side * radius * 0.4)], 0.009, "gunmetal_w", null, 6)
+	for side: float in [-1.0, 1.0]:
+		VehicleBody.fastener(k, mount, Vector3(side * radius * 0.7, y + 0.003, 0), Vector3.UP, 0.012)
+	k._fold(mount)

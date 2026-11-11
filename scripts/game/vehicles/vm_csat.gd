@@ -173,10 +173,8 @@ static func _jerrycan(k: VehicleModels, p: Node3D, pos: Vector3, col := OLIVE, r
 
 ## A round hatch with its hinge (a cupola lid).
 static func _hatch(k: VehicleModels, p: Node3D, pos: Vector3, r: float, mat := CAM, col = null) -> void:
-	k._cyl(p, r + 0.03, r + 0.04, 0.06, pos + Vector3(0, 0.03, 0), Vector3.ZERO, mat, col, 16)
-	k._cyl(p, r - 0.02, r, 0.05, pos + Vector3(0, 0.08, 0), Vector3.ZERO, mat, col, 16)
-	k._box(p, Vector3(0.24, 0.05, 0.08), pos + Vector3(0, 0.08, r * 0.95), "gunmetal_w", null, Vector3.ZERO, false)
-	k._box(p, Vector3(0.12, 0.03, 0.03), pos + Vector3(0, 0.12, -r * 0.4), "gunmetal_w", null, Vector3.ZERO, false)
+	VehicleFittings.hatch(k, p, pos + Vector3(0, 0.08, 0), r, mat, col)
+
 
 
 ## A periscope head facing along yaw (0: forward).

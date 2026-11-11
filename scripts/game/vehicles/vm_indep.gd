@@ -816,7 +816,7 @@ static func _gorgon(k: VehicleModels, team: int) -> void:
 	k._cyl(t, 0.06, 0.07, 0.16, Vector3(0.5, 0.66, -0.15), Vector3.ZERO, "gunmetal_w", null, 10)
 	k._box(t, Vector3(0.3, 0.18, 0.26), Vector3(0.5, 0.82, -0.15), cam, col)
 	k._box(t, Vector3(0.2, 0.09, 0.02), Vector3(0.5, 0.83, -0.285), "glass", null, Vector3.ZERO, false)
-	k._cyl(t, 0.28, 0.28, 0.06, Vector3(0.35, 0.61, 0.5), Vector3.ZERO, cam, col, 14)
+	VehicleFittings.hatch(k, t, Vector3(0.35, 0.61, 0.5), 0.28, cam, col, 1.0, 0.06)
 	k._box(t, Vector3(0.5, 0.05, 0.5), Vector3(-0.35, 0.6, 0.45), cam, col)
 	_antenna(k, t, Vector3(-0.6, 0.58, 0.8), 1.9)
 	# a stowage basket on the turret's back
@@ -925,7 +925,7 @@ static func _zamak_cab(k: VehicleModels, team: int, cam: String, col) -> void:
 		VehicleFittings.mirror(k, m, Vector3(s * 1.56, 2.22, -2.1), Vector2(0.22, 0.36), -s * 0.3, [Vector3(s * 1.23, 2.32, -2.1), Vector3(s * 1.23, 1.75, -2.1)])
 		k._team_mark(m, team, Vector3(s * 1.205, 1.65, -1.6), Vector3(0.03, 0.24, 0.5))
 	# the roof hatch and marker lights, an antenna on the back corner
-	k._cyl(m, 0.3, 0.3, 0.05, Vector3(0.42, 2.745, -1.35), Vector3.ZERO, cam, col, 14)
+	VehicleFittings.hatch(k, m, Vector3(0.42, 2.745, -1.35), 0.3, cam, col, 1.0, 0.05)
 	for x: float in [-0.3, 0.0, 0.3]:
 		k._box(m, Vector3(0.09, 0.05, 0.06), Vector3(x, 2.74, -1.94), "paint", Color(0.62, 0.45, 0.12), Vector3.ZERO, false)
 	_antenna(k, m, Vector3(-1.0, 2.72, -0.86), 1.6)

@@ -250,10 +250,8 @@ static func _periscope(k: VehicleModels, p: Node3D, pos: Vector3, yaw := 0.0, pi
 
 ## A round hatch: the ring, the lid, its hinge and handle.
 static func _hatch(k: VehicleModels, p: Node3D, pos: Vector3, r: float, mat: String, col = null, hinge_z := 1.0) -> void:
-	k._cyl(p, r + 0.03, r + 0.05, 0.06, pos + Vector3(0, 0.03, 0), Vector3.ZERO, mat, col, 16)
-	k._cyl(p, r - 0.03, r, 0.05, pos + Vector3(0, 0.085, 0), Vector3.ZERO, mat, col, 16)
-	_bx(k, p, Vector3(0.26, 0.06, 0.09), pos + Vector3(0, 0.08, hinge_z * r * 0.95), "gunmetal_w", null, Vector3.ZERO, false)
-	_bx(k, p, Vector3(0.14, 0.03, 0.03), pos + Vector3(0, 0.125, -hinge_z * r * 0.4), "gunmetal_w", null, Vector3.ZERO, false)
+	VehicleFittings.hatch(k, p, pos + Vector3(0, 0.085, 0), r, mat, col, hinge_z)
+
 
 
 ## A jerrycan standing upright, its broad face toward x (yaw turns it).
