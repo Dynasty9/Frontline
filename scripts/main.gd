@@ -1212,11 +1212,15 @@ func _process(_dt: float) -> void:
 					break
 				want2 -= 1
 		world.set_meta("struct_focused", true)
-	# --focus-vehicle=kind: the camera on the first vehicle of a kind (and with
-	# it while it lives: a boat sinking, a convoy on the road)
+	# --focus-vehicle=kind[,n]: choose a vehicle within a convoy or flotilla.
 	if args.has("focus-vehicle") and world.cam and world.time > 1.0 and not world.has_meta("veh_focused"):
+		var pick := String(args["focus-vehicle"]).split(",")
+		var remaining := maxi(0, int(pick[1])) if pick.size() > 1 else 0
 		for v in world.vehicles:
-			if v.vkind == String(args["focus-vehicle"]):
+			if v.vkind == pick[0]:
+				if remaining > 0:
+					remaining -= 1
+					continue
 				world.cam.focus(v.position)
 				world.focused = true
 				if world.director:

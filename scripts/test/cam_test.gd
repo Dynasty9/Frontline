@@ -265,6 +265,15 @@ func _run() -> void:
 	for fixture in [["heli", &"Cabin side"], ["rhib", &"Bow"], ["rhib", &"Waterline"], ["mohawk", &"Sling load"], ["tank", &"Periscope"], ["old_tank", &"Periscope"]]:
 		var vehicle := world.spawn("vehicle", {"vkind": fixture[0], "team": actor.team, "pos": actor.position}) as Vehicle
 		_check("%s has its own exterior camera" % fixture[0], vehicle.camera_mounts().has(fixture[1]))
+		if fixture[1] in [&"Waterline", &"Sling load"]:
+			world.input.sel_vehicles.append(vehicle.eid)
+			vehicle.model.rotation.z = 0.32
+			cam.cycle_mount(fixture[1])
+			var view := cam.cam.global_basis
+			var marker: Marker3D = vehicle.camera_mounts()[fixture[1]]
+			_check("%s keeps the horizon level while the vehicle banks" % fixture[1], is_zero_approx(view.x.y) and view.z.is_equal_approx(marker.global_basis.orthonormalized().z))
+			cam.leave_mount()
+			world.input.clear_selection()
 		if fixture[1] == &"Periscope":
 			world.input.sel_vehicles.append(vehicle.eid)
 			for _i in vehicle.camera_mounts().size():

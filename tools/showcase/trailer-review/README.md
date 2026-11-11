@@ -26,8 +26,8 @@ For a mix revision, keep the cut points fixed and compare editions with the audi
 
 | Beat | What the viewer can follow with the sound off |
 | --- | --- |
-| One order | The commander selects five soldiers. A destination appears on the road and the soldiers start moving. |
+| One order | A destination appears on the commander's road view. Cut to the same five soldiers crossing it at shoulder height. Both cameras record the same order, seed and simulation time. |
 | Armour arrives | Read the formation first, then cut close enough to see one moving gun. |
 | Into the trench | See people beside the earthworks before the overhead view reveals the whole line. Follow the mortar crew with the visible impacts. |
-| Off the ground | Keep the helicopter, rope and vehicle in one shot so the lift is understandable. |
-| Into the harbour | The landing boat, patrol ship and jet share a mountain skyline. Return to the water in time to see the impacts spread. |
+| Off the ground | Look across the cockpit and down the sling. Hold until daylight separates the Humvee's wheels from its shadow. |
+| Into the harbour | Follow the launch from its stern quarter through the turn. The patrol ship and jet share its mountain skyline. Return to the water in time to see the impacts spread. |
