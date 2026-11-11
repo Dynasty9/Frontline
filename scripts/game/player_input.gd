@@ -253,7 +253,7 @@ func _unhandled_input(ev: InputEvent) -> void:
 
 ## The actions a key press can mean in a battle, most particular first (a tie
 ## goes to the earlier). Placing a building puts its own keys in front.
-const KEY_ACTIONS := ["chat_team", "chat", "support", "grenade", "smoke", "attack_move", "defend", "cam_follow",
+const KEY_ACTIONS := ["chat_team", "chat", "support", "grenade", "smoke", "attack_move", "defend", "cam_follow", "cam_mount",
 	"fire_mission", "cam_reset", "view_save_1", "view_save_2", "view_save_3", "view_save_4", "view_go_1", "view_go_2",
 	"view_go_3", "view_go_4", "retreat", "hold", "tactical", "cycle_fob", "orbat", "jump_alert", "log", "hide_hud",
 	"help", "manual", "director", "pause", "slower", "faster", "view_side", "ping", "coop_next",
@@ -278,6 +278,8 @@ func _key(ev: InputEvent) -> void:
 			sketch_pts = PackedVector3Array()
 		elif place_kind != "" or ability != "" or order_mode != "":
 			cancel_modes()
+		elif world.cam.mount_label != &"":
+			world.cam.leave_mount()
 		elif has_units() or sel_structure != 0:
 			clear_selection()
 		elif world.hud:
@@ -334,6 +336,8 @@ func _key(ev: InputEvent) -> void:
 			if has_units():
 				cancel_modes()
 				order_mode = "defend"
+		"cam_mount":
+			world.cam.cycle_mount()
 		"cam_follow":
 			world.cam.toggle_follow()
 		"fire_mission":
@@ -384,6 +388,7 @@ func _key(ev: InputEvent) -> void:
 				world.hud.toggle_manual()
 		"director":
 			if world.director:
+				world.cam.leave_mount()
 				world.director.active = not world.director.active
 				if world.hud:
 					world.hud.flash("Director camera ON" if world.director.active else "Director camera OFF")
@@ -574,6 +579,16 @@ func _focus_selection() -> void:
 	var c := selection_centre()
 	if c != Vector3.INF:
 		world.cam.glide_to(c)
+
+
+func camera_subject() -> Entity:
+	if sel_unit:
+		return world.entity(sel_unit)
+	if sel_structure:
+		return world.entity(sel_structure)
+	if sel_vehicles.size() == 1 and sel_squads.is_empty():
+		return world.entity(sel_vehicles[0])
+	return null
 
 
 ## The middle of everything selected (INF when nothing is).

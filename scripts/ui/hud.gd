@@ -582,7 +582,7 @@ func _build_help() -> void:
 	var groups := [
 		[["Camera", [[_kk(["cam_up", "cam_left", "cam_down", "cam_right"]), "Pan (or the screen's edge)"], [_kk(["cam_fast"]), "Pan faster"],
 			[_kk(["cam_zoom_in", "cam_zoom_out"]), "Zoom (or the wheel)"], [_kk(["cam_turn_left", "cam_turn_right"]), "Turn"], [_kk(["cam_tilt_up", "cam_tilt_down"]), "Tilt"],
-			[["MMB"], "Turn and tilt (Alt: grab)"], [_kk(["cam_reset"]), "Square the view up"], [_kk(["cam_follow"]), "Follow the selection"],
+			[["MMB"], "Turn and tilt (Alt: grab)"], [_kk(["cam_reset"]), "Square the view up"], [_kk(["cam_follow"]), "Follow the selection"], [_kk(["cam_mount"]), "Cycle object cameras"],
 			[_kr("view_save_1", "view_save_4"), "Save a view"], [_kr("view_go_1", "view_go_4"), "Go to a view"], [_kk(["cycle_fob"]), "Cycle your FOBs"], [_kk(["jump_alert"]), "Last alert or ping"]]],
 		 ["Command", [[["LMB"], "Select · drag a box"], [["2× LMB"], "Every squad of that type"], [["RMB"], "Move · attack · build · enter"], [["SHIFT+RMB"], "Run there"],
 			[["ALT+LMB"], "Command one man"], [_kr("group_set_1", "group_set_9"), "Set a group"], [_kr("group_1", "group_9"), "Recall a group (twice: go there)"],

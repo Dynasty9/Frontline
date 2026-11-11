@@ -65,6 +65,9 @@ var _g_tilt := [0.0, 0.0]
 var _g_moves := false
 
 ## Following the selection (Ctrl+F): the camera keeps the selected units in view until you pan away.
+var mount_label: StringName
+var mount_subject: Entity
+var mount_marker: Marker3D
 var follow := false
 var _follow_at := Vector3.INF
 var _follow_t := 0.0
@@ -89,6 +92,7 @@ func _ready() -> void:
 
 ## Jumps straight there (the minimap, test framing).
 func focus(p: Vector3) -> void:
+	leave_mount()
 	focus_pos = _clamp_map(p)
 	_gliding = false
 	_zoom_anchor = Vector3.INF
@@ -104,6 +108,7 @@ func set_heading(y: float) -> void:
 ## Slides the view there instead of cutting, so you can see which way you went.
 ## Optionally to a zoom, a heading and a tilt as well.
 func glide_to(p: Vector3, zoom := -1.0, heading := NAN, to_tilt := NAN) -> void:
+	leave_mount()
 	_g_pos = [focus_pos, _clamp_map(p)]
 	_g_yaw = [yaw, yaw if is_nan(heading) else yaw + wrapf(heading - yaw, -PI, PI)]
 	_g_tilt = [tilt, tilt if is_nan(to_tilt) else to_tilt]
@@ -155,6 +160,7 @@ func scroll_zoom(dy: float, at := Vector2(-1, -1)) -> void:
 ## `delta` is the scroll as the engine gives it: the way the view moves, so the
 ## fingers moved the other way (with macOS's usual "natural" scrolling).
 func two_finger(delta: Vector2, at: Vector2, turn := false) -> void:
+	leave_mount()
 	var fingers := -delta * TRACKPAD_PT * DisplayServer.screen_get_scale()
 	_gliding = false
 	_zoom_anchor = Vector3.INF
@@ -178,6 +184,7 @@ func two_finger(delta: Vector2, at: Vector2, turn := false) -> void:
 
 ## Zooms by a factor (below 1 in), toward a point on the screen when there is one.
 func zoom_by(mult: float, at := Vector2(-1, -1)) -> void:
+	leave_mount()
 	target_dist = clampf(target_dist * mult, MIN_DIST, MAX_DIST)
 	user_moved = true
 	stop_shadow()
@@ -191,7 +198,43 @@ func zoom_by(mult: float, at := Vector2(-1, -1)) -> void:
 			_zoom_screen = at
 
 
+func cycle_mount() -> void:
+	var subject := world.input.camera_subject()
+	if not is_instance_valid(subject) or subject.gone or not subject.seen_by_local() or not subject.is_visible_in_tree():
+		leave_mount()
+		if world.hud:
+			world.hud.flash("Select one vehicle, building or individual soldier")
+		return
+	var mounts := subject.camera_mounts()
+	var index := mounts.keys().find(mount_label) + 1 if subject == mount_subject else 0
+	if index >= mounts.size():
+		leave_mount()
+		return
+	stop_follow()
+	stop_shadow()
+	if world.director:
+		world.director.active = false
+	_gliding = false
+	_zoom_anchor = Vector3.INF
+	user_moved = true
+	mount_subject = subject
+	mount_label = mounts.keys()[index]
+	mount_marker = mounts[mount_label]
+	_apply()
+	if world.hud:
+		world.hud.flash("%s · %s" % [subject.display_name(), mount_label])
+
+func leave_mount() -> void:
+	if mount_label == &"":
+		return
+	mount_label = &""
+	mount_subject = null
+	mount_marker = null
+	cam.transform = Transform3D.IDENTITY
+	_apply()
+
 func toggle_follow() -> void:
+	leave_mount()
 	if follow:
 		stop_follow()
 		return
@@ -221,6 +264,7 @@ func stop_follow() -> void:
 ## Looks through a co-commander's eyes: your camera glides to his view and
 ## keeps to it as he moves, until you pan, turn or zoom (or press it again).
 func toggle_shadow(peer: int) -> void:
+	leave_mount()
 	if shadow == peer:
 		stop_shadow()
 		return
@@ -333,6 +377,7 @@ func _view_process(_scaled_dt: float) -> void:
 		_zoom_anchor = Vector3.INF
 		stop_follow()
 	if move != Vector2.ZERO or turn != 0.0 or lift != 0.0 or zoom != 0.0:
+		leave_mount()
 		user_moved = true
 		stop_shadow()
 	# ease in and out over a few frames: starts and stops read as a glide, not a jolt
@@ -404,7 +449,26 @@ static func pitch_for(d: float, t: float) -> float:
 	return minf(p, -rad_to_deg(asin(clampf(MIN_HEIGHT / maxf(d, 0.1), 0.0, 1.0))))
 
 
+func _mount_visible() -> bool:
+	if not is_instance_valid(mount_subject) or not is_instance_valid(mount_marker):
+		return false
+	if mount_subject.gone or mount_subject != world.input.camera_subject() or not mount_subject.seen_by_local():
+		return false
+	return mount_marker.is_visible_in_tree() and mount_subject.is_ancestor_of(mount_marker)
+
+
 func _apply() -> void:
+	if mount_label != &"":
+		if _mount_visible():
+			focus_pos = mount_subject.global_position
+			var pose := mount_marker.global_transform.orthonormalized()
+			pose.origin.y = maxf(pose.origin.y, world.ground_y(pose.origin) + 0.45)
+			cam.global_transform = pose
+			cam.h_offset = 0
+			cam.v_offset = 0
+			return
+		leave_mount()
+		return
 	position = focus_pos
 	if world != null:
 		position.y = maxf(position.y, world.ground_y(focus_pos))
@@ -430,6 +494,7 @@ func _unhandled_input(ev: InputEvent) -> void:
 		elif mb.button_index == MOUSE_BUTTON_MIDDLE:
 			_mmb = mb.pressed
 			if mb.pressed:
+				leave_mount()
 				# the setting picks what a plain drag does; Alt does the other
 				_mmb_pan = (int(Settings.get_v("mmb_mode")) == 1) != mb.alt_pressed
 				_gliding = false

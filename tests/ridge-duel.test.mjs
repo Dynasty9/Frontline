@@ -34,6 +34,7 @@ test("ridge drivers choose different routes and either crew can win", async () =
   assert.equal(original.cutTicks.length, original.cuts);
   assert.ok(boundaries.slice(1).every((tick, i) => tick - boundaries[i] >= 3 * 60),
     "Each shot in the published seed should hold for at least three seconds");
+  for (const mount of ["roof", "barrel"]) assert.ok(original.shots.includes(mount), mount);
   const optic = original.shots.indexOf("optic");
   assert.deepEqual(original.shots.slice(optic, optic + 3), ["optic", "firing", "overhead"]);
   assert.ok(original.dirt_hits > 0 && original.glances > 0 && original.shots.includes("ground"));

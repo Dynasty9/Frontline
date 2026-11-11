@@ -207,6 +207,28 @@ func on_spawned() -> void:
 		_build_model()
 
 
+func _build_camera_mounts() -> void:
+	if not model or not _vm:
+		return
+	var size := _hull_size()
+	_add_exterior_cameras(model, size)
+	if not _vm.belts.is_empty() or not _vm.wheels.is_empty():
+		var label := &"Tracks" if not _vm.belts.is_empty() else &"Wheels"
+		var side := Vector3(size.x * 0.46, size.y * 0.26, 0)
+		_camera_mount(label, model, side + Vector3(size.x * 1.35, size.y * 0.33, size.z * 0.45), side)
+	if _vm.rotor:
+		_camera_mount(&"Cabin side", model, Vector3(size.x * 1.4, size.y * 0.75, size.z * 0.28), Vector3(0, size.y * 0.5, -size.z * 0.16))
+	elif is_boat():
+		_camera_mount(&"Bow", model, Vector3(size.x * 0.32, size.y * 1.15, -size.z * 0.68), Vector3(0, size.y * 0.55, 0))
+	if _vm.gun_mount and _vm.gun_tip:
+		# Look back along the moving tube so the turret stays in the picture.
+		_camera_mount(&"Barrel", _vm.gun_tip, Vector3(1.25, 0.65, -0.85), Vector3(-0.35, 0.0, 3.0))
+	if turret and _vm.roof_gun.is_finite():
+		_camera_mount(&"Roof gun", turret, _vm.roof_gun + Vector3(-0.95, 0.62, 1.15), _vm.roof_gun + Vector3(0, 0, -0.7))
+	if _vm.engine_deck.is_finite():
+		_camera_mount(&"Engine deck", model, Vector3(size.x * 1.3, size.y * 2.55, size.z * 1.47), _vm.engine_deck + Vector3.UP * 0.65)
+
+
 func _hull_size() -> Vector3:
 	return vdef.get("size", Vector3(2.3, 2.6, 6.0))
 
@@ -2738,6 +2760,7 @@ func sink_view() -> void:
 	if model == null or world.fx == null or world.fx.vfx == null:
 		return
 	var m := model
+	_camera_mounts.clear()
 	model = null
 	remove_child(m)
 	var b := burner

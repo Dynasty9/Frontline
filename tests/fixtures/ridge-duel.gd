@@ -539,23 +539,26 @@ func _shot(t: float) -> void:
 		_cut("overhead", camera_side)
 	elif camera_mode == "overhead" and camera_age >= 3.5:
 		_cut("tracks", camera_side)
+	elif camera_mode == "barrel" and camera_age >= 3.2:
+		_cut("knockout", camera_side)
 	elif camera_mode == "push":
 		for i in 2:
 			if contest.drivers[i].advance and contest.drivers[i].hold > 0.0 and camera_age >= 3.0:
 				_cut("knockout", 1 - i)
 				break
-	elif camera_mode in ["tracks", "ground", "climb", "distant"] and "overhead" in shots_seen and camera_age >= 4.0:
+	elif camera_mode in ["tracks", "ground", "roof", "distant"] and "overhead" in shots_seen and camera_age >= 4.0:
 		if contest.drivers[0].advance or contest.drivers[1].advance:
 			var leader := 0 if contest.drivers[0].advance else 1
 			if Defs.flat(tanks[leader].position - contest.destination(leader)).length() < 9.0:
-				_cut("knockout", 1 - leader)
+				_cut("barrel" if contest.drivers[leader].hold < 0.4 else "knockout", 1 - leader)
 			else:
 				_cut("push", leader)
 		elif camera_age >= 6.0:
-			_cut("climb" if camera_mode != "climb" else "distant", 1 - camera_side)
+			_cut("roof" if camera_mode != "roof" else "distant", 1 - camera_side)
 	var own := tanks[camera_side].position
 	var facing := 1.0 if camera_side == 0 else -1.0
 	var aim := own + Vector3.UP * 1.25
+	var mount_label: StringName
 	match camera_mode:
 		"overview":
 			# Look along the valley so the foreground tank reads at this distance.
@@ -573,9 +576,8 @@ func _shot(t: float) -> void:
 			camera.fov = rad_to_deg(2.0 * atan(tan(deg_to_rad(8.0) * 0.5) / lerpf(1.0, 4.8, zoom)))
 		"wide":
 			if contest.winner < 0:
-				camera.position = own + Vector3(7.8 * facing, 3.3, 9.5)
+				mount_label = &"Behind"
 				camera.fov = 37
-				aim.x += facing * 0.95
 			else:
 				# Stage the last shot from the sunlit flank of the turret. The
 				# barrel stays in profile even when the hull turns independently.
@@ -587,27 +589,30 @@ func _shot(t: float) -> void:
 				camera.position = own + flank * 12.8 + barrel * 7.0 + Vector3.UP * 1.85
 				aim = own + Vector3.UP * 1.25 + barrel * 0.95
 				camera.fov = 31
-		"firing", "overhead":
+		"firing":
 			var tank := tanks[camera_side]
 			var axis := Defs.flat(tank.muzzle_world(true) - tank.position).normalized()
 			var flank := axis.cross(Vector3.UP)
 			if flank.z < 0.0:
 				flank = -flank
-			if camera_mode == "firing":
-				camera.position = own + flank * 14.5 + axis * 3.0 + Vector3.UP * 2.8
-				aim += axis * 1.65
-				camera.fov = 37
-			else:
-				camera.position = own + Vector3(0, 17, 14)
-				aim += axis * 1.5
-				camera.fov = 48
+			camera.position = own + flank * 14.5 + axis * 3.0 + Vector3.UP * 2.8
+			aim += axis * 1.65
+			camera.fov = 37
+		"overhead":
+			mount_label = &"Aerial"
+			camera.fov = 48
+		"barrel":
+			mount_label = &"Barrel"
+			camera.fov = 64
+		"roof":
+			mount_label = &"Roof gun"
+			camera.fov = 61
 		"ground":
 			aim = camera_anchor.lerp(own, 0.5) + Vector3.UP * 1.3
 			camera.position = aim + Vector3(8 * facing, 3.3, 18)
 			camera.fov = 40
 		"tracks":
-			camera.position = own + Vector3(-3 * facing, 1.15, 8.8)
-			aim = own + Vector3.UP * 0.7
+			mount_label = &"Tracks"
 			camera.fov = 40
 		"distant":
 			# Keep the opposite skyline visible while the rounded turret clears it.
@@ -615,10 +620,7 @@ func _shot(t: float) -> void:
 			camera.fov = 18.0
 			aim.y += 0.4
 		"engine":
-			var tank := tanks[camera_side]
-			var side := signf(tank.model.to_local(tank.plate.global_position).x)
-			camera.position = tank.model.to_global(Vector3(side * 4.4, 5.6, 9.4))
-			aim = tank.burner.global_position.lerp(own + Vector3.UP * 1.5, 0.20) + Vector3.UP * 0.52
+			mount_label = &"Engine deck"
 			camera.fov = 38
 		"knockout":
 			var tank := tanks[camera_side]
@@ -634,6 +636,10 @@ func _shot(t: float) -> void:
 			camera.position = own + Vector3(-5.6 * facing, 2.8, 9.9)
 			camera.fov = 43
 			aim.x += facing * 0.85
+	if mount_label != &"":
+		var mount: Marker3D = tanks[camera_side].camera_mounts()[mount_label]
+		camera.global_transform = mount.global_transform.orthonormalized()
+		aim = camera.position - camera.global_basis.z * 12
 	camera.position.y = maxf(camera.position.y, field.ground_y(camera.position) + 0.7)
 	camera.look_at(aim)
 	var age := maxf(0.0, float(sim_tick) / SIM_HZ - kick_time)

@@ -78,6 +78,8 @@ func _drag(cam: RtsCamera, a: Vector2, b: Vector2, alt := false) -> void:
 func _run() -> void:
 	await _wait(1.5)
 	var cam := world.cam
+	# An embedded window can report the pointer parked at its top-left corner.
+	cam.edge_pan = false
 	if world.director:
 		world.director.active = false
 	var vs := get_viewport().get_visible_rect().size
@@ -221,6 +223,49 @@ func _run() -> void:
 	_check("following keeps the selection in view", cam.follow and c != Vector3.INF and cam.focus_pos.distance_to(c) < 6.0, "%.1f m off" % cam.focus_pos.distance_to(c))
 	cam.toggle_follow()
 	_check("Ctrl+F again stops following", not cam.follow)
+
+	# Use the same input dispatch as a player, including Escape before deselection.
+	var actor: Soldier = world.input.selected_soldiers()[0]
+	world.input.select_unit(actor)
+	var mount_key := InputEventKey.new()
+	mount_key.keycode = KEY_F9
+	mount_key.pressed = true
+	world.input._key(mount_key)
+	_check("an individual has a rear camera", cam.mount_label == &"Behind" and cam.mount_subject == actor)
+	world.input._key(mount_key)
+	_check("cycle to the aerial mount", cam.mount_label == &"Aerial" and cam.cam.global_position.is_equal_approx(cam.mount_marker.global_position))
+	world.input._key(mount_key)
+	_check("cycle returns to the commander", cam.mount_label == &"" and cam.cam.rotation.is_zero_approx())
+	world.input._key(mount_key)
+	var escape := InputEventKey.new()
+	escape.keycode = KEY_ESCAPE
+	world.input._key(escape)
+	_check("Escape leaves the mount and keeps the unit selected", cam.mount_label == &"" and world.input.sel_unit == actor.eid)
+	world.input._key(mount_key)
+	world.input.clear_selection()
+	cam._apply()
+	_check("a changed selection releases the mount", cam.mount_label == &"")
+
+	# A wheeled vehicle advertises its own running gear and drops the camera on despawn.
+	var truck := world.spawn("vehicle", {"vkind": "humvee", "team": actor.team, "pos": actor.position + Vector3(4, 0, 4)}) as Vehicle
+	world.input.sel_vehicles.append(truck.eid)
+	world.input._key(mount_key)
+	var truck_mounts := truck.camera_mounts()
+	_check("wheeled vehicle exposes wheels and hides absent mounts", cam.mount_subject == truck and truck_mounts.has(&"Wheels") and not truck_mounts.has(&"Tracks") and not truck_mounts.has(&"Barrel"))
+	truck.hide()
+	cam._apply()
+	_check("a hidden subject releases the camera", cam.mount_label == &"")
+	truck.show()
+	world.input._key(mount_key)
+	world.despawn(truck)
+	cam._apply()
+	_check("despawning releases the object camera", cam.mount_label == &"")
+	world.input.clear_selection()
+
+	for fixture in [["heli", &"Cabin side"], ["rhib", &"Bow"]]:
+		var vehicle := world.spawn("vehicle", {"vkind": fixture[0], "team": actor.team, "pos": actor.position}) as Vehicle
+		_check("%s has its own exterior camera" % fixture[0], vehicle.camera_mounts().has(fixture[1]))
+		world.despawn(vehicle)
 
 	# the turning minimap: a point maps back to the same ground, and the camera's heading is up
 	var mm := world.hud.minimap

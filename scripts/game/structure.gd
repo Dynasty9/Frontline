@@ -109,6 +109,10 @@ var _char := 0.0  # (view) how charred it looks, 0..1
 var _char_mats: Array = []  # (view) its materials with the char on them
 
 
+func _build_camera_mounts() -> void:
+	_add_exterior_cameras(self, size)
+
+
 func ekind() -> String:
 	return "structure"
 

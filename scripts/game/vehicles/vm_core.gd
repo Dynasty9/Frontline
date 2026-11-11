@@ -628,7 +628,8 @@ static func _abrams(k: VehicleModels, team: int, seed: int) -> void:
 		_bx(k, t, Vector3(0.13, 0.07, 0.05), cp + Vector3(sin(a) * 0.45, 0.09, -cos(a) * 0.45), "glass", null, Vector3(0, -a, 0), false)
 	_hatch(k, t, cp + Vector3(0, 0.12, 0.04), 0.33, cam)
 	_bx(k, t, Vector3(0.1, 0.22, 0.14), cp + Vector3(0.0, 0.28, -0.44), "gunmetal_w")
-	_m2(k, t, cp + Vector3(0.0, 0.48, -0.5))
+	k.roof_gun = cp + Vector3(0.0, 0.48, -0.5)
+	_m2(k, t, k.roof_gun)
 	# the loader's hatch on the left and his M240 behind the gun shield kit
 	var lp := Vector3(-0.66, tr, 0.35)
 	_hatch(k, t, lp, 0.34, cam, null, 1.0)
@@ -1039,7 +1040,8 @@ static func _t55(k: VehicleModels, team: int, seed: int) -> void:
 	_bx(k, t, Vector3(0.24, 0.06, 0.1), lp + Vector3(0, 0.12, 0.36), "gunmetal_w", null, Vector3.ZERO, false)
 	_bx(k, t, Vector3(0.06, 0.34, 0.1), lp + Vector3(0, 0.27, -0.3), "gunmetal_w")
 	_bx(k, t, Vector3(0.16, 0.1, 0.18), lp + Vector3(0, 0.45, -0.3), "gunmetal_w")
-	_dshk(k, t, lp + Vector3(0, 0.56, -0.35))
+	k.roof_gun = lp + Vector3(0, 0.56, -0.35)
+	_dshk(k, t, k.roof_gun)
 	# grab rails round the dome, the snorkel stowed across the back, a rolled
 	# tarpaulin, lifting eyes
 	for s: float in [-1.0, 1.0]:

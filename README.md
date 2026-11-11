@@ -91,6 +91,7 @@ Every key below is a default: change any of them in **Settings → Controls**. A
 | Tilt | Page Up / Page Down, or drag the middle mouse button up and down |
 | Square the view up again | Backspace, or click the compass on the minimap |
 | Follow the selected units | Ctrl + F |
+| Cycle cameras on one selected object / return to command | F9 / Esc |
 | Save a view / go back to it | Ctrl + F5 to F8 / F5 to F8 |
 | Look somewhere else | Click or drag on the minimap |
 | Jump to your bases | Home |

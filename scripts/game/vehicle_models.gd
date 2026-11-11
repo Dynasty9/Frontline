@@ -25,6 +25,7 @@ var _antenna_response := ImpactResponse.new()
 var _antenna_velocity := Vector3.ZERO
 var _antenna_active := false
 var belts: Array = []
+var roof_gun := Vector3.INF  # receiver centre in turret space, for exterior filming
 var engine_deck := Vector3.INF  # Fire breaks through the upper deck when damaged.
 var engine_vent := Vector3.INF  # Local outlet on models with visible exhaust.
 var front_skirts: Array[Node3D] = []

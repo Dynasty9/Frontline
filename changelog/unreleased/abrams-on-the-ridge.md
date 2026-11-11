@@ -6,7 +6,7 @@ kind = "improved"
 [[videos]]
 file = "abrams-ridge-duel.mp4"
 poster = "survivor.jpg"
-caption = "The sand Abrams points right and the green T-55A points left as they crest their ridges. Watch the zoom through the Abrams sight, then follow the ground strike and the engine fire."
+caption = "Ride behind the Abrams, watch its tracks press into the hillside, and look across the T-55A roof gun. The barrel camera looks back toward the turret before the last hit."
 
 [[videos]]
 file = "grille-fire.mp4"
