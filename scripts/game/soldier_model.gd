@@ -296,11 +296,11 @@ func build(utype: String, team: int, seed: int) -> void:
 				_attach_kit(tube, "Spine2")
 			if medical_band:
 				_attach_kit(medical_pack, "Spine2")
-				# The imported skeleton rests with arms out. Fit the sleeve in that pose.
-				var rest_rotation := arm_l.rotation
-				arm_l.rotation.z = -PI * 0.5
+				var shoulder: Vector3 = skinned.target_rest[skinned.bones["LeftArm"]].origin
+				var elbow: Vector3 = skinned.target_rest[skinned.bones["LeftForeArm"]].origin
+				var sleeve_axis := Basis(Quaternion(Vector3.DOWN, shoulder.direction_to(elbow)))
+				medical_band.global_transform = skinned.global_transform * Transform3D(sleeve_axis, shoulder)
 				_attach_kit(medical_band, "LeftArm")
-				arm_l.rotation = rest_rotation
 				skinned_muzzle = Basis(Vector3.UP, PI) * muzzle_local
 			root.visible = false
 			# Keep pose/attachment pivots, but discard geometry replaced by the skin.
