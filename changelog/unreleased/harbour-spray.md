@@ -12,6 +12,11 @@ caption = "The same harbour pass in both views. On the left the plumes drift out
 file = "wake.webm"
 poster = "wake.jpg"
 caption = "Watch the stern of the boat crossing the bow. The earlier wake on the left leaves two thin trails. On the right the motors turn up a broadening patch of foam."
+
+[[videos]]
+file = "bow-foam.webm"
+poster = "bow-foam.jpg"
+caption = "The same boat from the bridge roof. On the left a straight foam edge leads the bow and a brown disc flashes over the water. On the right the wake builds along the hull and the sea stays visible through the flash."
 +++
 
 The slower spray stays near the surface while the faster sheets rise above it. Watch the water around the patrol ship as the sheets come back down.

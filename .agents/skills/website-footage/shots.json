@@ -43,6 +43,12 @@
       "shows": ["sea assault", "patrol ship"],
       "about": "Looking back from the bow, the whole patrol ship stays in frame while a second boat passes alongside."
     },
+    "trailer-bridge-roof": {
+      "frames": 1140,
+      "args": ["--preset=high", "--seed=3", "--set=volume:0.8,vol_effects:0.85,vol_music:0,battle_music:false,vol_ambience:0.28,vol_ui:0,mute_bg:false,wildlife:0,edge_pan:false", "--mission=beachhead", "--focus-vehicle=patrol_ship", "--vehicle-view=Bridge roof"],
+      "shows": ["Passing boat beside the patrol ship"],
+      "about": "Continue the same pass from the bridge roof. The second bow crosses below the lens and the water between the hulls stays visible."
+    },
     "highlight-flyover": {
       "scene": "res://tools/showcase/airstrike-camera.tscn",
       "frames": 510,
@@ -569,7 +575,8 @@
         {"take": "trailer-cargo-door", "from": 40.9, "to": 42.0, "gain_db": 0},
         {"take": "trailer-harbour-boats", "from": 13.2, "to": 15.6, "gain_db": 0, "caption": "[Boats approach the shore]"},
         {"take": "trailer-beach-landing", "from": 26.13333, "to": 27.53333, "gain_db": 0, "caption": "[Surf as the squad runs ashore]"},
-        {"take": "trailer-patrol-pass", "from": 35.1, "to": 37.03333, "gain_db": -1, "caption": "[Patrol ship fires across the harbour]"},
+        {"take": "trailer-patrol-pass", "from": 34.9, "to": 35.56667, "gain_db": -1, "caption": "[Patrol ship fires as a boat passes]"},
+        {"take": "trailer-bridge-roof", "from": 35.56667, "to": 36.83333, "gain_db": -1},
         {"take": "trailer-harbour-finale", "from": 4.3, "to": 6.6, "gain_db": 0, "caption": "[Jet engines climb over the harbour]"},
         {"take": "trailer-harbour-quarter", "from": 11.0, "to": 14.26667, "gain_db": 4, "caption": "[Impacts roll across the water]"}
       ]

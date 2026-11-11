@@ -230,6 +230,9 @@ func _build_camera_mounts() -> void:
 		_camera_mount(&"Waterline", model, Vector3(size.z * 0.82, size.y * 2.4, size.z * 0.97), Vector3(0, size.y * 0.4, -size.z * 0.13), true)
 		# Look past the port quarter to the water beyond the bow.
 		_camera_mount(&"Stern quarter", model, Vector3(-size.z * 0.85, size.y * 1.35, size.z * 1.25), Vector3(size.z * 0.74, size.y * 1.2, -size.z * 0.18), true)
+		if vkind == "patrol_ship":
+			# Look down over the port rail so the bridge and passing boat share the frame.
+			_camera_mount(&"Bridge roof", model, Vector3(-2.5, 6.85, 1.5), Vector3(-6.9, 1.15, -7.4))
 		if vkind == "rhib":
 			# Stand beside the RHIB console, looking over the starboard tube.
 			_camera_mount(&"Starboard", model, Vector3(0.72, 2.44, -0.44), Vector3(2.55, 2.0, -8.5))

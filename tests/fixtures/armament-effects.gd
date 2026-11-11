@@ -35,6 +35,7 @@ func _ready() -> void:
 	add_child(field)
 	var v: Vfx = field.fx.vfx
 	var first_spray := v.get_child_count()
+	check(v.wave_mat.render_priority < WaterView.SURFACE_PRIORITY, "Screen refraction draws before transparent water")
 	v.splash(Vector3.ZERO, 2.6)
 	var spray_column := v.get_child(first_spray) as GeometryInstance3D
 	var gravity: Vector3 = Vfx.pm_get(spray_column, &"gravity")
