@@ -4,7 +4,7 @@ extends "res://scripts/main.gd"
 
 var ordered := false
 var roadside: Camera3D
-var squad: Squad
+var squad: Variant  # Main loads before the game's squad class.
 var origin: Vector3
 
 func _process(dt: float) -> void:
