@@ -80,12 +80,12 @@
         {
           "file": "changelog/v0.1.0/camera-and-minimap/layout-before.jpg",
           "sha256": "73e3fa1b35c278d36ef4dd45351356c6c8eb87a2e745daa5a0e04cde447ee5b2",
-          "caption": "Before changelog layout, 900 Ã— 1000 viewport"
+          "caption": "Before changelog layout, 900 \u00c3\u2014 1000 viewport"
         },
         {
           "file": "changelog/v0.1.0/camera-and-minimap/layout-after.jpg",
           "sha256": "d3a2f71c8b465e6466a13a794e968adddd80cc110e73ed0a53b284f78b0a3049",
-          "caption": "After changelog layout, 900 Ã— 1000 viewport"
+          "caption": "After changelog layout, 900 \u00c3\u2014 1000 viewport"
         }
       ],
       "output": null,
@@ -110,12 +110,12 @@
         {
           "file": "changelog/v0.1.0/missions/layout-before.jpg",
           "sha256": "dcc7dbc6329be546c8a531b04666c0957c2253942b0f7280b077e2ba33a14aa2",
-          "caption": "Before changelog layout, 900 Ã— 1000 viewport"
+          "caption": "Before changelog layout, 900 \u00c3\u2014 1000 viewport"
         },
         {
           "file": "changelog/v0.1.0/missions/layout-after.jpg",
           "sha256": "3d5b6da2a8a5385f0d19d56a9c059dfee4b23714630ab8bc433f2f264bd090e7",
-          "caption": "After changelog layout, 900 Ã— 1000 viewport"
+          "caption": "After changelog layout, 900 \u00c3\u2014 1000 viewport"
         }
       ],
       "output": null,
@@ -140,12 +140,12 @@
         {
           "file": "changelog/v0.1.0/online-play/layout-before.jpg",
           "sha256": "57bb1ccd7639ae974fbe5b1ab68a41d96a65f40916dfe94536134501236cbe99",
-          "caption": "Before changelog layout, 900 Ã— 1000 viewport"
+          "caption": "Before changelog layout, 900 \u00c3\u2014 1000 viewport"
         },
         {
           "file": "changelog/v0.1.0/online-play/layout-after.jpg",
           "sha256": "b0c3cd68dcfcec237ba82ceb44569e4812b6d23ab27e3ff3f55c22757640210f",
-          "caption": "After changelog layout, 900 Ã— 1000 viewport"
+          "caption": "After changelog layout, 900 \u00c3\u2014 1000 viewport"
         }
       ],
       "output": null,
@@ -165,12 +165,12 @@
         {
           "file": "changelog/v0.1.0/restyled-soldiers/layout-before.jpg",
           "sha256": "888ff7d99fffd684f9d4720670845f711cbea48a9cd8245337f2c46ae5473107",
-          "caption": "Before changelog layout, 900 Ã— 1000 viewport"
+          "caption": "Before changelog layout, 900 \u00c3\u2014 1000 viewport"
         },
         {
           "file": "changelog/v0.1.0/restyled-soldiers/layout-after.jpg",
           "sha256": "6ce400667f2b08da8d807879afd5585a735cbf3ad6c42389cb616f789509b3f4",
-          "caption": "After changelog layout, 900 Ã— 1000 viewport"
+          "caption": "After changelog layout, 900 \u00c3\u2014 1000 viewport"
         }
       ],
       "output": null,
@@ -195,12 +195,12 @@
         {
           "file": "changelog/v0.1.0/self-updating/layout-before.jpg",
           "sha256": "5ca324eeb8dbf2ba19c883336dc4eb3a8330803681ca9e82bcd19ebefa5544f2",
-          "caption": "Before changelog layout, 900 Ã— 1000 viewport"
+          "caption": "Before changelog layout, 900 \u00c3\u2014 1000 viewport"
         },
         {
           "file": "changelog/v0.1.0/self-updating/layout-after.jpg",
           "sha256": "2b194b04a2413d44cb88dfe12249d359079d3468cc3d47c7199a3c5c3c2b3286",
-          "caption": "After changelog layout, 900 Ã— 1000 viewport"
+          "caption": "After changelog layout, 900 \u00c3\u2014 1000 viewport"
         }
       ],
       "output": null,
@@ -220,12 +220,12 @@
         {
           "file": "changelog/v0.1.0/website/layout-before.jpg",
           "sha256": "78920a2086312561ebf8cbe177b1459dd98b20c4f1457fd5492a8573c3a5685b",
-          "caption": "Before changelog layout, 900 Ã— 1000 viewport"
+          "caption": "Before changelog layout, 900 \u00c3\u2014 1000 viewport"
         },
         {
           "file": "changelog/v0.1.0/website/layout-after.jpg",
           "sha256": "fde7315f6d9bef203c5db0ea4f236613e745b753c09331703bdb74f3611aacee",
-          "caption": "After changelog layout, 900 Ã— 1000 viewport"
+          "caption": "After changelog layout, 900 \u00c3\u2014 1000 viewport"
         }
       ],
       "output": null,
@@ -250,12 +250,12 @@
         {
           "file": "changelog/v0.1.1/interface-scale/layout-before.jpg",
           "sha256": "f7d578be7e91e5b40d5313239130fbd35b43c86fff72460421909e0570878805",
-          "caption": "Before changelog layout, 900 Ã— 1000 viewport"
+          "caption": "Before changelog layout, 900 \u00c3\u2014 1000 viewport"
         },
         {
           "file": "changelog/v0.1.1/interface-scale/layout-after.jpg",
           "sha256": "d90e99726852a8cddead79d7b4a0f533c249102677129ea1748e87b8e299f80d",
-          "caption": "After changelog layout, 900 Ã— 1000 viewport"
+          "caption": "After changelog layout, 900 \u00c3\u2014 1000 viewport"
         }
       ],
       "output": null,
@@ -280,12 +280,12 @@
         {
           "file": "changelog/v0.1.2/explosions-and-smoke/layout-before.jpg",
           "sha256": "ac8e61cae303a31d6b8b714409b43ea70aa55da1f229821084c97f87016825d0",
-          "caption": "Before changelog layout, 900 Ã— 1000 viewport"
+          "caption": "Before changelog layout, 900 \u00c3\u2014 1000 viewport"
         },
         {
           "file": "changelog/v0.1.2/explosions-and-smoke/layout-after.jpg",
           "sha256": "3070f1e1aeb92d2f689055fa0507b82899d9681509330de9b37b8e98d4ff94e8",
-          "caption": "After changelog layout, 900 Ã— 1000 viewport"
+          "caption": "After changelog layout, 900 \u00c3\u2014 1000 viewport"
         }
       ],
       "output": null,
@@ -310,12 +310,12 @@
         {
           "file": "changelog/v0.1.2/fire/layout-before.jpg",
           "sha256": "7d67e5d6bd398f46a4f649267d2f133dea97b31fbd13834312b35fa55a5cdc31",
-          "caption": "Before changelog layout, 900 Ã— 1000 viewport"
+          "caption": "Before changelog layout, 900 \u00c3\u2014 1000 viewport"
         },
         {
           "file": "changelog/v0.1.2/fire/layout-after.jpg",
           "sha256": "61ea2cba33d6e1c207d78490a61c32d375a8ba82f95978f1fc2d2fab7a956d50",
-          "caption": "After changelog layout, 900 Ã— 1000 viewport"
+          "caption": "After changelog layout, 900 \u00c3\u2014 1000 viewport"
         }
       ],
       "output": null,
@@ -340,12 +340,12 @@
         {
           "file": "changelog/v0.1.3/audio-settings/layout-before.jpg",
           "sha256": "4f11aa45cccc8e38686f3fe654fbb0481ba8cfcdd8d52b5916f3110e42807fb1",
-          "caption": "Before changelog layout, 900 Ã— 1000 viewport"
+          "caption": "Before changelog layout, 900 \u00c3\u2014 1000 viewport"
         },
         {
           "file": "changelog/v0.1.3/audio-settings/layout-after.jpg",
           "sha256": "f2fd0c17089996fef335f010f6fce43686024fa7783cf7de4e62b5fd562f2b16",
-          "caption": "After changelog layout, 900 Ã— 1000 viewport"
+          "caption": "After changelog layout, 900 \u00c3\u2014 1000 viewport"
         }
       ],
       "output": null,
@@ -365,12 +365,12 @@
         {
           "file": "changelog/v0.1.3/soundtrack/layout-before.jpg",
           "sha256": "5d67b8775ecd35e3665aa05f21b8c75fcbbb140843e78eab4f51fba57955422a",
-          "caption": "Before changelog layout, 900 Ã— 1000 viewport"
+          "caption": "Before changelog layout, 900 \u00c3\u2014 1000 viewport"
         },
         {
           "file": "changelog/v0.1.3/soundtrack/layout-after.jpg",
           "sha256": "c9320a43bdc6c485c92b86ee07396658d3053074a2b2ddc2cfcb6343df5de558",
-          "caption": "After changelog layout, 900 Ã— 1000 viewport"
+          "caption": "After changelog layout, 900 \u00c3\u2014 1000 viewport"
         }
       ],
       "output": null,
@@ -390,12 +390,12 @@
         {
           "file": "changelog/v0.1.3/wind/layout-before.jpg",
           "sha256": "3e8d2739d42b31038c507c058d2720e4ae91ca5a84de794b38459d84d7c22ad4",
-          "caption": "Before changelog layout, 900 Ã— 1000 viewport"
+          "caption": "Before changelog layout, 900 \u00c3\u2014 1000 viewport"
         },
         {
           "file": "changelog/v0.1.3/wind/layout-after.jpg",
           "sha256": "d5974970e93be38820ae7b9da7ef7d76d3895ff683029774c32a2081e7790fa8",
-          "caption": "After changelog layout, 900 Ã— 1000 viewport"
+          "caption": "After changelog layout, 900 \u00c3\u2014 1000 viewport"
         }
       ],
       "output": null,
@@ -420,12 +420,12 @@
         {
           "file": "changelog/v0.1.4/fog-of-war/layout-before.jpg",
           "sha256": "e6ade82a12a72550fcb9696c65e39d62a671c37dfb82dbb1107820e75d2c5f97",
-          "caption": "Before changelog layout, 900 Ã— 1000 viewport"
+          "caption": "Before changelog layout, 900 \u00c3\u2014 1000 viewport"
         },
         {
           "file": "changelog/v0.1.4/fog-of-war/layout-after.jpg",
           "sha256": "9b88c2551267002a591d096027ea17d8b379ef7f8080f66c13709c48a4c1ba4f",
-          "caption": "After changelog layout, 900 Ã— 1000 viewport"
+          "caption": "After changelog layout, 900 \u00c3\u2014 1000 viewport"
         }
       ],
       "output": null,
@@ -450,12 +450,12 @@
         {
           "file": "changelog/v0.1.4/recon-flights/layout-before.jpg",
           "sha256": "4d2f3dbf4a8d0e5584e73b49b04f337e0464d4ee963806a86059bccd32191af9",
-          "caption": "Before changelog layout, 900 Ã— 1000 viewport"
+          "caption": "Before changelog layout, 900 \u00c3\u2014 1000 viewport"
         },
         {
           "file": "changelog/v0.1.4/recon-flights/layout-after.jpg",
           "sha256": "17cfb395d6e26b3774f313337b5e1180821279e3bc2e411c99435e159c5a553f",
-          "caption": "After changelog layout, 900 Ã— 1000 viewport"
+          "caption": "After changelog layout, 900 \u00c3\u2014 1000 viewport"
         }
       ],
       "output": null,
@@ -475,12 +475,12 @@
         {
           "file": "changelog/v0.1.5/explosion-clipping/layout-before.jpg",
           "sha256": "e6a4fbe84818b59d2641b0659b39f69af332b09ad05d3c58f3161ae1b402e3e8",
-          "caption": "Before changelog layout, 900 Ã— 1000 viewport"
+          "caption": "Before changelog layout, 900 \u00c3\u2014 1000 viewport"
         },
         {
           "file": "changelog/v0.1.5/explosion-clipping/layout-after.jpg",
           "sha256": "ca7ba5b62d3c5c6f36dcb74cd0715c91ee7dce3c9f4452144e64d8f127efea1c",
-          "caption": "After changelog layout, 900 Ã— 1000 viewport"
+          "caption": "After changelog layout, 900 \u00c3\u2014 1000 viewport"
         }
       ],
       "output": null,
@@ -500,12 +500,12 @@
         {
           "file": "changelog/v0.1.5/fire-sound/layout-before.jpg",
           "sha256": "1b7803cdbdc506f947f8958e22d283ddd8cf4173d87aca755679a686946f3dc3",
-          "caption": "Before changelog layout, 900 Ã— 1000 viewport"
+          "caption": "Before changelog layout, 900 \u00c3\u2014 1000 viewport"
         },
         {
           "file": "changelog/v0.1.5/fire-sound/layout-after.jpg",
           "sha256": "e04a7604792b250b1bf75e080b2ecbd11946cb98b3793bc9a0ee6b50a20a283c",
-          "caption": "After changelog layout, 900 Ã— 1000 viewport"
+          "caption": "After changelog layout, 900 \u00c3\u2014 1000 viewport"
         }
       ],
       "output": null,
@@ -525,12 +525,12 @@
         {
           "file": "changelog/v0.1.6/supply-picture/layout-before.jpg",
           "sha256": "5c97f0b02a3f05e301fc5dc49839c388a5940b83c62394eec8764ce61b8e2aec",
-          "caption": "Before changelog layout, 900 Ã— 1000 viewport"
+          "caption": "Before changelog layout, 900 \u00c3\u2014 1000 viewport"
         },
         {
           "file": "changelog/v0.1.6/supply-picture/layout-after.jpg",
           "sha256": "42ba1e0dcea888907575706af792aaf28900917e79173edc8f7143778cdaaff3",
-          "caption": "After changelog layout, 900 Ã— 1000 viewport"
+          "caption": "After changelog layout, 900 \u00c3\u2014 1000 viewport"
         }
       ],
       "output": null,
@@ -555,12 +555,12 @@
         {
           "file": "changelog/v0.1.6/towns/layout-before.jpg",
           "sha256": "145b68063bdd7da8e13c612347836e15297321b51309f7f6c4ab90e54915ac06",
-          "caption": "Before changelog layout, 900 Ã— 1000 viewport"
+          "caption": "Before changelog layout, 900 \u00c3\u2014 1000 viewport"
         },
         {
           "file": "changelog/v0.1.6/towns/layout-after.jpg",
           "sha256": "09b4833ccd75ea81546b7aed31ef1e0fb1a8453e12518f9002c1aa54d6a1e560",
-          "caption": "After changelog layout, 900 Ã— 1000 viewport"
+          "caption": "After changelog layout, 900 \u00c3\u2014 1000 viewport"
         }
       ],
       "output": null,
@@ -580,12 +580,12 @@
         {
           "file": "changelog/v0.1.7/squad-card/layout-before.jpg",
           "sha256": "67f4d7f4125063d5f713a7823a6f47f3fb0c8750b081c6ef9f9aeeba894280a8",
-          "caption": "Before changelog layout, 900 Ã— 1000 viewport"
+          "caption": "Before changelog layout, 900 \u00c3\u2014 1000 viewport"
         },
         {
           "file": "changelog/v0.1.7/squad-card/layout-after.jpg",
           "sha256": "1ec1ec84eaef50bc7404a72aa6dd3e1330f248a5e89c6888c18f3585017df5a6",
-          "caption": "After changelog layout, 900 Ã— 1000 viewport"
+          "caption": "After changelog layout, 900 \u00c3\u2014 1000 viewport"
         }
       ],
       "output": null,
@@ -610,12 +610,12 @@
         {
           "file": "changelog/v0.1.7/window-size/layout-before.jpg",
           "sha256": "c986d01330c5ae05e12f42b62fc471a80816a629cfb4bd64f949c9df4a445a01",
-          "caption": "Before changelog layout, 900 Ã— 1000 viewport"
+          "caption": "Before changelog layout, 900 \u00c3\u2014 1000 viewport"
         },
         {
           "file": "changelog/v0.1.7/window-size/layout-after.jpg",
           "sha256": "d13346b95b5aa33dd3a05616528c5f8f4ac3808ba1ecb0428f00465ea7b0ec32",
-          "caption": "After changelog layout, 900 Ã— 1000 viewport"
+          "caption": "After changelog layout, 900 \u00c3\u2014 1000 viewport"
         }
       ],
       "output": null,
@@ -640,12 +640,12 @@
         {
           "file": "changelog/v0.1.8/co-commanders/layout-before.jpg",
           "sha256": "e4f51d6732b77d983dc845d3c2ab3c83c8bea3f4fcf17f826b4b292500c5f210",
-          "caption": "Before changelog layout, 900 Ã— 1000 viewport"
+          "caption": "Before changelog layout, 900 \u00c3\u2014 1000 viewport"
         },
         {
           "file": "changelog/v0.1.8/co-commanders/layout-after.jpg",
           "sha256": "41672df8eaf807c5540dae3242106ea98126e576199bf1a38b303c1bec1c53d2",
-          "caption": "After changelog layout, 900 Ã— 1000 viewport"
+          "caption": "After changelog layout, 900 \u00c3\u2014 1000 viewport"
         }
       ],
       "output": null,
@@ -665,12 +665,12 @@
         {
           "file": "changelog/v0.1.8/pings/layout-before.jpg",
           "sha256": "f57845a01bebed6016a085270965881a24df9f3bebad99401a19d83367e0fda7",
-          "caption": "Before changelog layout, 900 Ã— 1000 viewport"
+          "caption": "Before changelog layout, 900 \u00c3\u2014 1000 viewport"
         },
         {
           "file": "changelog/v0.1.8/pings/layout-after.jpg",
           "sha256": "2950117f8fb80cd18e37d5a49fdc4e6d8761885d38c374b8ca7666868de145e7",
-          "caption": "After changelog layout, 900 Ã— 1000 viewport"
+          "caption": "After changelog layout, 900 \u00c3\u2014 1000 viewport"
         }
       ],
       "output": null,
@@ -695,12 +695,12 @@
         {
           "file": "changelog/v1.0.0/after-action-report/layout-before.jpg",
           "sha256": "b200058ea34725afd5e17cfd8ab933c107c6e6a0fbfaa9d1c28ddc3c31401125",
-          "caption": "Before changelog layout, 900 Ã— 1000 viewport"
+          "caption": "Before changelog layout, 900 \u00c3\u2014 1000 viewport"
         },
         {
           "file": "changelog/v1.0.0/after-action-report/layout-after.jpg",
           "sha256": "9a65522be2ff33ef34cbd10a19665cd7f238742a1a4921ac9b06ba8e93b7dd20",
-          "caption": "After changelog layout, 900 Ã— 1000 viewport"
+          "caption": "After changelog layout, 900 \u00c3\u2014 1000 viewport"
         }
       ],
       "output": null,
@@ -725,12 +725,12 @@
         {
           "file": "changelog/v1.0.0/changelog/layout-before.jpg",
           "sha256": "98d6eaaa1c1f48d58246d1d0351e259e4e41401b9fc01160def0d6e1d1c16cca",
-          "caption": "Before changelog layout, 900 Ã— 1000 viewport"
+          "caption": "Before changelog layout, 900 \u00c3\u2014 1000 viewport"
         },
         {
           "file": "changelog/v1.0.0/changelog/layout-after.jpg",
           "sha256": "827ce01fceb809a321cddc3a8dc89effbb510a75b323141f8886629d44e0ae31",
-          "caption": "After changelog layout, 900 Ã— 1000 viewport"
+          "caption": "After changelog layout, 900 \u00c3\u2014 1000 viewport"
         }
       ],
       "output": null,
@@ -755,12 +755,12 @@
         {
           "file": "changelog/v1.0.0/field-defences/layout-before.jpg",
           "sha256": "190585c475443f01627107ec7ee1ded5779134001f29335d46e9cc7ed5875a5a",
-          "caption": "Before changelog layout, 900 Ã— 1000 viewport"
+          "caption": "Before changelog layout, 900 \u00c3\u2014 1000 viewport"
         },
         {
           "file": "changelog/v1.0.0/field-defences/layout-after.jpg",
           "sha256": "b0fafe4587ce74bda5a5c15498d77052966b611235023f711628b5a3ca476d48",
-          "caption": "After changelog layout, 900 Ã— 1000 viewport"
+          "caption": "After changelog layout, 900 \u00c3\u2014 1000 viewport"
         }
       ],
       "output": null,
@@ -785,12 +785,12 @@
         {
           "file": "changelog/v1.0.0/gunfire-effects/layout-before.jpg",
           "sha256": "b59dd46fca272f4130e139710ecb1419b410a27da1006912f024a1593f054278",
-          "caption": "Before changelog layout, 900 Ã— 1000 viewport"
+          "caption": "Before changelog layout, 900 \u00c3\u2014 1000 viewport"
         },
         {
           "file": "changelog/v1.0.0/gunfire-effects/layout-after.jpg",
           "sha256": "a549dcc9cdaefd92fef4ec5c3df7a18094b894847a1d2da7cac48484f350cb45",
-          "caption": "After changelog layout, 900 Ã— 1000 viewport"
+          "caption": "After changelog layout, 900 \u00c3\u2014 1000 viewport"
         }
       ],
       "output": null,
@@ -815,12 +815,12 @@
         {
           "file": "changelog/v1.0.0/interface-themes/layout-before.jpg",
           "sha256": "3893585432a933e6610bb42248185d2d96435fcebee547739c5440afa6f67854",
-          "caption": "Before changelog layout, 900 Ã— 1000 viewport"
+          "caption": "Before changelog layout, 900 \u00c3\u2014 1000 viewport"
         },
         {
           "file": "changelog/v1.0.0/interface-themes/layout-after.jpg",
           "sha256": "3fb6d0a4383770569f3a8b8ca73b18520e52f5ec78733190a59e5deec36dc3b0",
-          "caption": "After changelog layout, 900 Ã— 1000 viewport"
+          "caption": "After changelog layout, 900 \u00c3\u2014 1000 viewport"
         }
       ],
       "output": null,
@@ -840,12 +840,12 @@
         {
           "file": "changelog/v1.0.0/joins-with-more-players/layout-before.jpg",
           "sha256": "35a39351ad1493fd0de49b828d9657aec3123261e619e4c5e7514e8e95d36f43",
-          "caption": "Before changelog layout, 900 Ã— 1000 viewport"
+          "caption": "Before changelog layout, 900 \u00c3\u2014 1000 viewport"
         },
         {
           "file": "changelog/v1.0.0/joins-with-more-players/layout-after.jpg",
           "sha256": "fe5db29373c40a0fa35850ea2056d3f9e61d6320a0aee43e61f1d118c583ae36",
-          "caption": "After changelog layout, 900 Ã— 1000 viewport"
+          "caption": "After changelog layout, 900 \u00c3\u2014 1000 viewport"
         }
       ],
       "output": null,
@@ -870,12 +870,12 @@
         {
           "file": "changelog/v1.0.0/living-map/layout-before.jpg",
           "sha256": "7d9a383fa8d3e8cfa942a0d3cf91065e2dabe6115d3353f7e7e4400b8d00132e",
-          "caption": "Before changelog layout, 900 Ã— 1000 viewport"
+          "caption": "Before changelog layout, 900 \u00c3\u2014 1000 viewport"
         },
         {
           "file": "changelog/v1.0.0/living-map/layout-after.jpg",
           "sha256": "9b608a05bd4d5ee108ac73825c43bf63de269dff04cbad6cc6558bb4f1bfc90a",
-          "caption": "After changelog layout, 900 Ã— 1000 viewport"
+          "caption": "After changelog layout, 900 \u00c3\u2014 1000 viewport"
         }
       ],
       "output": null,
@@ -900,12 +900,12 @@
         {
           "file": "changelog/v1.0.0/rebindable-controls/layout-before.jpg",
           "sha256": "447c8e63b26992d8ac9ff70c31fae96ce4743d51a75ff1056ea729e8ae98671f",
-          "caption": "Before changelog layout, 900 Ã— 1000 viewport"
+          "caption": "Before changelog layout, 900 \u00c3\u2014 1000 viewport"
         },
         {
           "file": "changelog/v1.0.0/rebindable-controls/layout-after.jpg",
           "sha256": "56e98a4cc734bb591e7a6b2da17160e3bf0114d4f0fdc83e4fbe1426956159ec",
-          "caption": "After changelog layout, 900 Ã— 1000 viewport"
+          "caption": "After changelog layout, 900 \u00c3\u2014 1000 viewport"
         }
       ],
       "output": null,
@@ -930,12 +930,12 @@
         {
           "file": "changelog/v1.0.0/service-record/layout-before.jpg",
           "sha256": "254fe76e54b0f2db4c59f55bee7414cb5f33392830ba2958c83c453ad2fa9a1b",
-          "caption": "Before changelog layout, 900 Ã— 1000 viewport"
+          "caption": "Before changelog layout, 900 \u00c3\u2014 1000 viewport"
         },
         {
           "file": "changelog/v1.0.0/service-record/layout-after.jpg",
           "sha256": "5749109a48cc3f75b732b796e4e774b6b5c11ab859335e5f66767052da42f868",
-          "caption": "After changelog layout, 900 Ã— 1000 viewport"
+          "caption": "After changelog layout, 900 \u00c3\u2014 1000 viewport"
         }
       ],
       "output": null,
@@ -955,12 +955,12 @@
         {
           "file": "changelog/v1.0.0/towns-in-help/layout-before.jpg",
           "sha256": "8d23f46f6fd272de712e5c66c97babd528f4c064c95014f0f6700e8c0767a6bb",
-          "caption": "Before changelog layout, 900 Ã— 1000 viewport"
+          "caption": "Before changelog layout, 900 \u00c3\u2014 1000 viewport"
         },
         {
           "file": "changelog/v1.0.0/towns-in-help/layout-after.jpg",
           "sha256": "0a0e3d01d3d02aa87265b592da54f445963156f9e1ea65c3168cf502088167c2",
-          "caption": "After changelog layout, 900 Ã— 1000 viewport"
+          "caption": "After changelog layout, 900 \u00c3\u2014 1000 viewport"
         }
       ],
       "output": null,
@@ -985,12 +985,12 @@
         {
           "file": "changelog/v1.0.0/water-and-sea-battles/layout-before.jpg",
           "sha256": "961b69cad59092bc66bcb29e743c7d74b46686eb31a2371d2c02b4fa50b9bfe6",
-          "caption": "Before changelog layout, 900 Ã— 1000 viewport"
+          "caption": "Before changelog layout, 900 \u00c3\u2014 1000 viewport"
         },
         {
           "file": "changelog/v1.0.0/water-and-sea-battles/layout-after.jpg",
           "sha256": "d1b8757e462bb22b14e5b7d6cd77fbf3b7e3def419e312c4fe75573bd93a377f",
-          "caption": "After changelog layout, 900 Ã— 1000 viewport"
+          "caption": "After changelog layout, 900 \u00c3\u2014 1000 viewport"
         }
       ],
       "output": null,
@@ -1015,12 +1015,12 @@
         {
           "file": "changelog/v1.0.1/error-reports/layout-before.jpg",
           "sha256": "015748e11e1487757d9a79db054f039de49de70cd4644c64ec8c7a29a45051b6",
-          "caption": "Before changelog layout, 900 Ã— 1000 viewport"
+          "caption": "Before changelog layout, 900 \u00c3\u2014 1000 viewport"
         },
         {
           "file": "changelog/v1.0.1/error-reports/layout-after.jpg",
           "sha256": "cb69b2ecf65094d904c3d1754012812bb02a750b336a349964b27f4ca77bc96e",
-          "caption": "After changelog layout, 900 Ã— 1000 viewport"
+          "caption": "After changelog layout, 900 \u00c3\u2014 1000 viewport"
         }
       ],
       "output": null,
@@ -1040,12 +1040,12 @@
         {
           "file": "changelog/v1.0.1/faster-start/layout-before.jpg",
           "sha256": "e078fc38b45d7fe4fd04ae63fcc2b3a28a29ec172a31d1cdfa51f0d8e3b68912",
-          "caption": "Before changelog layout, 900 Ã— 1000 viewport"
+          "caption": "Before changelog layout, 900 \u00c3\u2014 1000 viewport"
         },
         {
           "file": "changelog/v1.0.1/faster-start/layout-after.jpg",
           "sha256": "f5f3b2b1707f57dd2bb8b27099d6b77a4da6a262e2479ae8a89ea84a63205bb8",
-          "caption": "After changelog layout, 900 Ã— 1000 viewport"
+          "caption": "After changelog layout, 900 \u00c3\u2014 1000 viewport"
         }
       ],
       "output": null,
@@ -1070,12 +1070,12 @@
         {
           "file": "changelog/v1.0.1/ranks-and-insignia/layout-before.jpg",
           "sha256": "0a8c94bee313b3d641d913597634e034114f76fafaa4adc9d4c222f988f94bc2",
-          "caption": "Before changelog layout, 900 Ã— 1000 viewport"
+          "caption": "Before changelog layout, 900 \u00c3\u2014 1000 viewport"
         },
         {
           "file": "changelog/v1.0.1/ranks-and-insignia/layout-after.jpg",
           "sha256": "aa1f81cd8e30ca4e1e2c3e5da3d2336d646c60fc67c71e54790099d79264127d",
-          "caption": "After changelog layout, 900 Ã— 1000 viewport"
+          "caption": "After changelog layout, 900 \u00c3\u2014 1000 viewport"
         }
       ],
       "output": null,
@@ -1100,12 +1100,12 @@
         {
           "file": "changelog/v1.0.1/rejoin-a-battle/layout-before.jpg",
           "sha256": "d51a007cd8405d2a13f634145c50703aabe1b8b3294fd3224cad82f06bd7730f",
-          "caption": "Before changelog layout, 900 Ã— 1000 viewport"
+          "caption": "Before changelog layout, 900 \u00c3\u2014 1000 viewport"
         },
         {
           "file": "changelog/v1.0.1/rejoin-a-battle/layout-after.jpg",
           "sha256": "075c1733b99233037e3c30987c312df87c917cc55b162dc8453fa57d5de2bd86",
-          "caption": "After changelog layout, 900 Ã— 1000 viewport"
+          "caption": "After changelog layout, 900 \u00c3\u2014 1000 viewport"
         }
       ],
       "output": null,
@@ -1130,12 +1130,12 @@
         {
           "file": "changelog/v1.0.1/server-browser/layout-before.jpg",
           "sha256": "0a1a501e8b8dd79f185883f5fdd8ca62d54cbdaabf36b2f77734bf22e52c7380",
-          "caption": "Before changelog layout, 900 Ã— 1000 viewport"
+          "caption": "Before changelog layout, 900 \u00c3\u2014 1000 viewport"
         },
         {
           "file": "changelog/v1.0.1/server-browser/layout-after.jpg",
           "sha256": "739fbddded6572fccd23e2d406c33acd0f0520f857a8283cf7b96651f9bec68a",
-          "caption": "After changelog layout, 900 Ã— 1000 viewport"
+          "caption": "After changelog layout, 900 \u00c3\u2014 1000 viewport"
         }
       ],
       "output": null,
@@ -1160,12 +1160,12 @@
         {
           "file": "changelog/v1.0.10/console-completion/layout-before.jpg",
           "sha256": "1a25cf8577259417c5155a6c64ea05793c1589a3656fb934b50aa87a20f13e71",
-          "caption": "Before changelog layout, 900 Ã— 1000 viewport"
+          "caption": "Before changelog layout, 900 \u00c3\u2014 1000 viewport"
         },
         {
           "file": "changelog/v1.0.10/console-completion/layout-after.jpg",
           "sha256": "cc49d074621f4eb3cd095c6ec89e813656830a00b245a79f5f62d5f7840866a5",
-          "caption": "After changelog layout, 900 Ã— 1000 viewport"
+          "caption": "After changelog layout, 900 \u00c3\u2014 1000 viewport"
         }
       ],
       "output": null,
@@ -1185,12 +1185,12 @@
         {
           "file": "changelog/v1.0.10/existing-website-login/layout-before.jpg",
           "sha256": "882566127c6796ee4edda12ec7ef3201224601f796ad93fb20c8dd335ac3507e",
-          "caption": "Before changelog layout, 900 Ã— 1000 viewport"
+          "caption": "Before changelog layout, 900 \u00c3\u2014 1000 viewport"
         },
         {
           "file": "changelog/v1.0.10/existing-website-login/layout-after.jpg",
           "sha256": "6fa6c8a8adfbe9c687e3cd71f66e0dc445631fbc6575b93e8b2792ff168e6090",
-          "caption": "After changelog layout, 900 Ã— 1000 viewport"
+          "caption": "After changelog layout, 900 \u00c3\u2014 1000 viewport"
         }
       ],
       "output": null,
@@ -1215,12 +1215,12 @@
         {
           "file": "changelog/v1.0.10/text-console/layout-before.jpg",
           "sha256": "0d8f02c65b48bb1306eacc2fd80ff1981721e685b0f46a03d0091090c9f9537a",
-          "caption": "Before changelog layout, 900 Ã— 1000 viewport"
+          "caption": "Before changelog layout, 900 \u00c3\u2014 1000 viewport"
         },
         {
           "file": "changelog/v1.0.10/text-console/layout-after.jpg",
           "sha256": "ad68c7abf18ca4a505fdf0845befcc0ada8d4bac54a252b9b4dfa135da40f04c",
-          "caption": "After changelog layout, 900 Ã— 1000 viewport"
+          "caption": "After changelog layout, 900 \u00c3\u2014 1000 viewport"
         }
       ],
       "output": null,
@@ -1240,12 +1240,12 @@
         {
           "file": "changelog/v1.0.11/battle-hotpaths/layout-before.jpg",
           "sha256": "d4e7a674618ce8efd64200d6ba088d600ba4f245d598964e7df8da3e31ff5606",
-          "caption": "Before changelog layout, 900 Ã— 1000 viewport"
+          "caption": "Before changelog layout, 900 \u00c3\u2014 1000 viewport"
         },
         {
           "file": "changelog/v1.0.11/battle-hotpaths/layout-after.jpg",
           "sha256": "c7814558f0418fefc5a0077c5d65752877a41321c5a01eeb47eaa07200e4209b",
-          "caption": "After changelog layout, 900 Ã— 1000 viewport"
+          "caption": "After changelog layout, 900 \u00c3\u2014 1000 viewport"
         }
       ],
       "output": null,
@@ -1270,12 +1270,12 @@
         {
           "file": "changelog/v1.0.11/battle-viewer/layout-before.jpg",
           "sha256": "5614b2593d722f73d806878120cd50f108a4c63b1b71a574fdab27798361077e",
-          "caption": "Before changelog layout, 900 Ã— 1000 viewport"
+          "caption": "Before changelog layout, 900 \u00c3\u2014 1000 viewport"
         },
         {
           "file": "changelog/v1.0.11/battle-viewer/layout-after.jpg",
           "sha256": "439b4ce869eab02352f0db1bf94c036b902d202724e64a1c3142605a5adbf898",
-          "caption": "After changelog layout, 900 Ã— 1000 viewport"
+          "caption": "After changelog layout, 900 \u00c3\u2014 1000 viewport"
         }
       ],
       "output": null,
@@ -1305,12 +1305,12 @@
         {
           "file": "changelog/v1.0.11/battle-work-budget/layout-before.jpg",
           "sha256": "24e2150dfad88dc73b15c611fbf25c0b3d77bc77ac080500b9238e7901641514",
-          "caption": "Before changelog layout, 900 Ã— 1000 viewport"
+          "caption": "Before changelog layout, 900 \u00c3\u2014 1000 viewport"
         },
         {
           "file": "changelog/v1.0.11/battle-work-budget/layout-after.jpg",
           "sha256": "49fd4f1c15580e579762b1037fe68f0f5f5b0a8094c4e3e3095f21cbf5762f40",
-          "caption": "After changelog layout, 900 Ã— 1000 viewport"
+          "caption": "After changelog layout, 900 \u00c3\u2014 1000 viewport"
         }
       ],
       "output": null,
@@ -1341,12 +1341,12 @@
         {
           "file": "changelog/v1.0.11/clearer-battlefield/layout-before.jpg",
           "sha256": "073df04577f0dde39afd60c0f6b15719166f39a7906d4f15fb6f7da58b9a7b69",
-          "caption": "Before changelog layout, 900 Ã— 1000 viewport"
+          "caption": "Before changelog layout, 900 \u00c3\u2014 1000 viewport"
         },
         {
           "file": "changelog/v1.0.11/clearer-battlefield/layout-after.jpg",
           "sha256": "687cd6c76a5aaade769bdb82d20d6df470b246818e6294e3417afafe8d7fafba",
-          "caption": "After changelog layout, 900 Ã— 1000 viewport"
+          "caption": "After changelog layout, 900 \u00c3\u2014 1000 viewport"
         }
       ],
       "output": null,
@@ -1377,12 +1377,12 @@
         {
           "file": "changelog/v1.0.11/helicopter-flight/layout-before.jpg",
           "sha256": "56b7de06e9702c29df606027927677c5ad33cf46092d2cc41ba0f365918b4b47",
-          "caption": "Before changelog layout, 900 Ã— 1000 viewport"
+          "caption": "Before changelog layout, 900 \u00c3\u2014 1000 viewport"
         },
         {
           "file": "changelog/v1.0.11/helicopter-flight/layout-after.jpg",
           "sha256": "814e4f996311aa285e96d64241323efdff5352f2ff407406dec1534e865e6360",
-          "caption": "After changelog layout, 900 Ã— 1000 viewport"
+          "caption": "After changelog layout, 900 \u00c3\u2014 1000 viewport"
         }
       ],
       "output": null,
@@ -1408,12 +1408,12 @@
         {
           "file": "changelog/v1.0.11/homepage-story/layout-before.jpg",
           "sha256": "275e434a9fffd1030214d630cf15649724539e120e4120169f1fab67e0e6b0b1",
-          "caption": "Before changelog layout, 900 Ã— 1000 viewport"
+          "caption": "Before changelog layout, 900 \u00c3\u2014 1000 viewport"
         },
         {
           "file": "changelog/v1.0.11/homepage-story/layout-after.jpg",
           "sha256": "9b952293c857cd47f3f16d87a238b3911175cdf3ebb47bbc0f6e8f9a1b5c20d1",
-          "caption": "After changelog layout, 900 Ã— 1000 viewport"
+          "caption": "After changelog layout, 900 \u00c3\u2014 1000 viewport"
         }
       ],
       "output": null,
@@ -1443,12 +1443,12 @@
         {
           "file": "changelog/v1.0.11/large-battle-drawing/layout-before.jpg",
           "sha256": "2870f7b5fa6ace77ea57f8af3eb0999fce094431802fc7808ced175227317384",
-          "caption": "Before changelog layout, 900 Ã— 1000 viewport"
+          "caption": "Before changelog layout, 900 \u00c3\u2014 1000 viewport"
         },
         {
           "file": "changelog/v1.0.11/large-battle-drawing/layout-after.jpg",
           "sha256": "0b636a9b255202fafddd45631b60dfc34d62fbdf7c5d367a48d96598ce51da30",
-          "caption": "After changelog layout, 900 Ã— 1000 viewport"
+          "caption": "After changelog layout, 900 \u00c3\u2014 1000 viewport"
         }
       ],
       "output": null,
@@ -1479,12 +1479,12 @@
         {
           "file": "changelog/v1.0.11/large-interface-layouts/layout-before.jpg",
           "sha256": "de340190bef36228035e3413843c591ccda2e57d89cdbe13aaa8fcde829a6b7c",
-          "caption": "Before changelog layout, 900 Ã— 1000 viewport"
+          "caption": "Before changelog layout, 900 \u00c3\u2014 1000 viewport"
         },
         {
           "file": "changelog/v1.0.11/large-interface-layouts/layout-after.jpg",
           "sha256": "5197ea2c3278c34b3d34184343f5e08e0fb5b8d49a63ddda7acf45fa86860da7",
-          "caption": "After changelog layout, 900 Ã— 1000 viewport"
+          "caption": "After changelog layout, 900 \u00c3\u2014 1000 viewport"
         }
       ],
       "output": null,
@@ -1505,12 +1505,12 @@
         {
           "file": "changelog/v1.0.11/shared-allied-command/layout-before.jpg",
           "sha256": "62402dcbbfbfc53a628241fb4906235d68255ab6f886afca8a5bb29cfd27ae6c",
-          "caption": "Before changelog layout, 900 Ã— 1000 viewport"
+          "caption": "Before changelog layout, 900 \u00c3\u2014 1000 viewport"
         },
         {
           "file": "changelog/v1.0.11/shared-allied-command/layout-after.jpg",
           "sha256": "01548253a158ce91e5f112277c67a73562f592970fdaef7ba16178bcf1a85bf9",
-          "caption": "After changelog layout, 900 Ã— 1000 viewport"
+          "caption": "After changelog layout, 900 \u00c3\u2014 1000 viewport"
         }
       ],
       "output": null,
@@ -1535,12 +1535,12 @@
         {
           "file": "changelog/v1.0.11/simulation-working-sets/layout-before.jpg",
           "sha256": "46758d8087ee57630505e915093bdd9d0519937f27a5b42f0e12b0163d03d934",
-          "caption": "Before changelog layout, 900 Ã— 1000 viewport"
+          "caption": "Before changelog layout, 900 \u00c3\u2014 1000 viewport"
         },
         {
           "file": "changelog/v1.0.11/simulation-working-sets/layout-after.jpg",
           "sha256": "ac6bf57d89c17f69ec2fcac3c15fed325a76481d1986d9f78d8c2952178c6ad9",
-          "caption": "After changelog layout, 900 Ã— 1000 viewport"
+          "caption": "After changelog layout, 900 \u00c3\u2014 1000 viewport"
         }
       ],
       "output": null,
@@ -1566,12 +1566,12 @@
         {
           "file": "changelog/v1.0.11/site-journeys/layout-before.jpg",
           "sha256": "da5d2eb75cf66087c6af620174c37ea3dd5a73b0060a3a46d307053d95930ef1",
-          "caption": "Before changelog layout, 900 Ã— 1000 viewport"
+          "caption": "Before changelog layout, 900 \u00c3\u2014 1000 viewport"
         },
         {
           "file": "changelog/v1.0.11/site-journeys/layout-after.jpg",
           "sha256": "29ff7c2c89aa078550166f772f0652f80f3fc1f4c0917dc74cd52a4f01cf9b93",
-          "caption": "After changelog layout, 900 Ã— 1000 viewport"
+          "caption": "After changelog layout, 900 \u00c3\u2014 1000 viewport"
         }
       ],
       "output": null,
@@ -1601,12 +1601,12 @@
         {
           "file": "changelog/v1.0.11/squad-cohesion/layout-before.jpg",
           "sha256": "0d025e89adcf842b5d262f853afd5f81ab2b993f00658b66df0981229b72050d",
-          "caption": "Before changelog layout, 900 Ã— 1000 viewport"
+          "caption": "Before changelog layout, 900 \u00c3\u2014 1000 viewport"
         },
         {
           "file": "changelog/v1.0.11/squad-cohesion/layout-after.jpg",
           "sha256": "922f45b0c3f53dd1bd3dceb85e02398c1186e61cbeee15d07db7cad1f2c5b271",
-          "caption": "After changelog layout, 900 Ã— 1000 viewport"
+          "caption": "After changelog layout, 900 \u00c3\u2014 1000 viewport"
         }
       ],
       "output": null,
@@ -1632,12 +1632,12 @@
         {
           "file": "changelog/v1.0.11/website-field-manual/layout-before.jpg",
           "sha256": "70462cba5d0369cff7e0d177e69919230992ad9db0dffbda9ea2fea3d13cb258",
-          "caption": "Before changelog layout, 900 Ã— 1000 viewport"
+          "caption": "Before changelog layout, 900 \u00c3\u2014 1000 viewport"
         },
         {
           "file": "changelog/v1.0.11/website-field-manual/layout-after.jpg",
           "sha256": "62ec9306e587ec4b938709abb5ebbf4bf4230c472c9c906d3684956a77ef183d",
-          "caption": "After changelog layout, 900 Ã— 1000 viewport"
+          "caption": "After changelog layout, 900 \u00c3\u2014 1000 viewport"
         }
       ],
       "output": null,
@@ -1657,12 +1657,12 @@
         {
           "file": "changelog/v1.0.2/boats-come-about/layout-before.jpg",
           "sha256": "ad56a464e6df403d572708e5f529a04d93d6ed3d08bb5ff6896b9212cfd56787",
-          "caption": "Before changelog layout, 900 Ã— 1000 viewport"
+          "caption": "Before changelog layout, 900 \u00c3\u2014 1000 viewport"
         },
         {
           "file": "changelog/v1.0.2/boats-come-about/layout-after.jpg",
           "sha256": "0cc573a1b888c93f90c5eee213a933c48207ed580f33f3f1d0e66fb3288ce35d",
-          "caption": "After changelog layout, 900 Ã— 1000 viewport"
+          "caption": "After changelog layout, 900 \u00c3\u2014 1000 viewport"
         }
       ],
       "output": null,
@@ -1682,12 +1682,12 @@
         {
           "file": "changelog/v1.0.2/faster-route-repairs/layout-before.jpg",
           "sha256": "66aad5f9c3b69c148abf72cb6189448c3e6e2339b6ad16dcedfbe4c847e11350",
-          "caption": "Before changelog layout, 900 Ã— 1000 viewport"
+          "caption": "Before changelog layout, 900 \u00c3\u2014 1000 viewport"
         },
         {
           "file": "changelog/v1.0.2/faster-route-repairs/layout-after.jpg",
           "sha256": "c2322a169037dcb904e9bfc3e7c793fb5d2ea5f754465550fd3d3bd675252d4b",
-          "caption": "After changelog layout, 900 Ã— 1000 viewport"
+          "caption": "After changelog layout, 900 \u00c3\u2014 1000 viewport"
         }
       ],
       "output": null,
@@ -1712,12 +1712,12 @@
         {
           "file": "changelog/v1.0.2/field-manual-on-top/layout-before.jpg",
           "sha256": "2adbd58cc48621bf7fc34b41ffcc2bf9500f03892698dda5fb60644dafbf4559",
-          "caption": "Before changelog layout, 900 Ã— 1000 viewport"
+          "caption": "Before changelog layout, 900 \u00c3\u2014 1000 viewport"
         },
         {
           "file": "changelog/v1.0.2/field-manual-on-top/layout-after.jpg",
           "sha256": "d6c2a1831be982ce2af08087f0eb15681e74157233d15822eb459257464117e4",
-          "caption": "After changelog layout, 900 Ã— 1000 viewport"
+          "caption": "After changelog layout, 900 \u00c3\u2014 1000 viewport"
         }
       ],
       "output": null,
@@ -1737,12 +1737,12 @@
         {
           "file": "changelog/v1.0.2/lighter-pathfinding/layout-before.jpg",
           "sha256": "5ed6f6fee917d66183e12db98e7ae12b44b6e3ba73b521cbb67d16a66b590af9",
-          "caption": "Before changelog layout, 900 Ã— 1000 viewport"
+          "caption": "Before changelog layout, 900 \u00c3\u2014 1000 viewport"
         },
         {
           "file": "changelog/v1.0.2/lighter-pathfinding/layout-after.jpg",
           "sha256": "2faa14d2d42251a8bbc5dd595085b6e7432b81c9d3be83b6fe35e9de13fd5e26",
-          "caption": "After changelog layout, 900 Ã— 1000 viewport"
+          "caption": "After changelog layout, 900 \u00c3\u2014 1000 viewport"
         }
       ],
       "output": null,
@@ -1762,12 +1762,12 @@
         {
           "file": "changelog/v1.0.2/mac-build/layout-before.jpg",
           "sha256": "d4a0b7c41f1619cfa094d362f6029a492fc864d8de74effaa1ef6ea7ae2f0f08",
-          "caption": "Before changelog layout, 900 Ã— 1000 viewport"
+          "caption": "Before changelog layout, 900 \u00c3\u2014 1000 viewport"
         },
         {
           "file": "changelog/v1.0.2/mac-build/layout-after.jpg",
           "sha256": "5984c90b2f32a9055479c61877c6a5afa081172cd41cc60ff431537433846482",
-          "caption": "After changelog layout, 900 Ã— 1000 viewport"
+          "caption": "After changelog layout, 900 \u00c3\u2014 1000 viewport"
         }
       ],
       "output": null,
@@ -1792,12 +1792,12 @@
         {
           "file": "changelog/v1.0.2/ocean-swell/layout-before.jpg",
           "sha256": "90163a82f2981fe57ae2db9a114c29e14f87eecd32bd143f0b4982a20560be2f",
-          "caption": "Before changelog layout, 900 Ã— 1000 viewport"
+          "caption": "Before changelog layout, 900 \u00c3\u2014 1000 viewport"
         },
         {
           "file": "changelog/v1.0.2/ocean-swell/layout-after.jpg",
           "sha256": "0e470f276443c595778685914cca7327d4968bf9e3dac770fe1a4c8dc4ce0ab5",
-          "caption": "After changelog layout, 900 Ã— 1000 viewport"
+          "caption": "After changelog layout, 900 \u00c3\u2014 1000 viewport"
         }
       ],
       "output": null,
@@ -1822,12 +1822,12 @@
         {
           "file": "changelog/v1.0.2/play-in-a-browser/layout-before.jpg",
           "sha256": "a1979c200a8c89f20e315ceca73fea63cbd6c662e7365cf18d687e7e64b1c095",
-          "caption": "Before changelog layout, 900 Ã— 1000 viewport"
+          "caption": "Before changelog layout, 900 \u00c3\u2014 1000 viewport"
         },
         {
           "file": "changelog/v1.0.2/play-in-a-browser/layout-after.jpg",
           "sha256": "df1c993af6bcbdb966871fbc0e12c085d2f60db40b0c352e39aad9fc8bb1f28b",
-          "caption": "After changelog layout, 900 Ã— 1000 viewport"
+          "caption": "After changelog layout, 900 \u00c3\u2014 1000 viewport"
         }
       ],
       "output": null,
@@ -1852,12 +1852,12 @@
         {
           "file": "changelog/v1.0.2/realistic-gunfire/layout-before.jpg",
           "sha256": "993fa49595d5daec1a4073685d235869b1d96180eea1ae42527e3597c303f3e7",
-          "caption": "Before changelog layout, 900 Ã— 1000 viewport"
+          "caption": "Before changelog layout, 900 \u00c3\u2014 1000 viewport"
         },
         {
           "file": "changelog/v1.0.2/realistic-gunfire/layout-after.jpg",
           "sha256": "2fdbafb436d0a40747748304f586fcf41d0a3b65cfab95d9f6aed8bd788ca117",
-          "caption": "After changelog layout, 900 Ã— 1000 viewport"
+          "caption": "After changelog layout, 900 \u00c3\u2014 1000 viewport"
         }
       ],
       "output": null,
@@ -1882,12 +1882,12 @@
         {
           "file": "changelog/v1.0.2/sign-in-with-github/layout-before.jpg",
           "sha256": "fe2e2c3426ee532bf2d67667b2385f033fc492c232837ec692cb5e535c23d2be",
-          "caption": "Before changelog layout, 900 Ã— 1000 viewport"
+          "caption": "Before changelog layout, 900 \u00c3\u2014 1000 viewport"
         },
         {
           "file": "changelog/v1.0.2/sign-in-with-github/layout-after.jpg",
           "sha256": "d21149a283fe0cb63c775d33dbb123774a5aa54c3794b89d9e61512811f16367",
-          "caption": "After changelog layout, 900 Ã— 1000 viewport"
+          "caption": "After changelog layout, 900 \u00c3\u2014 1000 viewport"
         }
       ],
       "output": null,
@@ -1912,12 +1912,12 @@
         {
           "file": "changelog/v1.0.2/survey-map/layout-before.jpg",
           "sha256": "710142f26fdd1588bd3dda8cb8ed95cb410d72e4bbb60dbbf70e57fc92e4d287",
-          "caption": "Before changelog layout, 900 Ã— 1000 viewport"
+          "caption": "Before changelog layout, 900 \u00c3\u2014 1000 viewport"
         },
         {
           "file": "changelog/v1.0.2/survey-map/layout-after.jpg",
           "sha256": "47bce028b9fb48f33c20cd299230dd2d99adfc537ebf0f6f73aeedad3b622cf6",
-          "caption": "After changelog layout, 900 Ã— 1000 viewport"
+          "caption": "After changelog layout, 900 \u00c3\u2014 1000 viewport"
         }
       ],
       "output": null,
@@ -1942,12 +1942,12 @@
         {
           "file": "changelog/v1.0.3/website-pages/layout-before.jpg",
           "sha256": "c0a7162b944a4e6ff8aa6f430710c938b257f0754d6bff6bf2ed6c62c59eb2b3",
-          "caption": "Before changelog layout, 900 Ã— 1000 viewport"
+          "caption": "Before changelog layout, 900 \u00c3\u2014 1000 viewport"
         },
         {
           "file": "changelog/v1.0.3/website-pages/layout-after.jpg",
           "sha256": "7a4ad07313c8a903d0b5b2600861c69a500e8e419e084fe6928ef441027e17d5",
-          "caption": "After changelog layout, 900 Ã— 1000 viewport"
+          "caption": "After changelog layout, 900 \u00c3\u2014 1000 viewport"
         }
       ],
       "output": null,
@@ -1972,12 +1972,12 @@
         {
           "file": "changelog/v1.0.3/wildlife/layout-before.jpg",
           "sha256": "37d13c468e3ca2f2df47e37413abc1e03dfcbeb9a9ecc0872a6f4b82dc9ddf62",
-          "caption": "Before changelog layout, 900 Ã— 1000 viewport"
+          "caption": "Before changelog layout, 900 \u00c3\u2014 1000 viewport"
         },
         {
           "file": "changelog/v1.0.3/wildlife/layout-after.jpg",
           "sha256": "154506991d623ab964104f8767d0218a4099cd451cd3939862e371f4dc4ef02d",
-          "caption": "After changelog layout, 900 Ã— 1000 viewport"
+          "caption": "After changelog layout, 900 \u00c3\u2014 1000 viewport"
         }
       ],
       "output": null,
@@ -2002,12 +2002,12 @@
         {
           "file": "changelog/v1.0.4/foam-rings/layout-before.jpg",
           "sha256": "9aab8b0257b219b1f90ad3070c2d497f4922a993a33c7415d3d27667bd116477",
-          "caption": "Before changelog layout, 900 Ã— 1000 viewport"
+          "caption": "Before changelog layout, 900 \u00c3\u2014 1000 viewport"
         },
         {
           "file": "changelog/v1.0.4/foam-rings/layout-after.jpg",
           "sha256": "278dd1b0202a76c972a24b654bc169b068fcea45450a9d3d6d8d6b18ee52426a",
-          "caption": "After changelog layout, 900 Ã— 1000 viewport"
+          "caption": "After changelog layout, 900 \u00c3\u2014 1000 viewport"
         }
       ],
       "output": null,
@@ -2027,12 +2027,12 @@
         {
           "file": "changelog/v1.0.4/sooner-battle-start/layout-before.jpg",
           "sha256": "d07cc079c24d5ab917f91e857fab3e4d9833ef323141045920269c86a73d1df1",
-          "caption": "Before changelog layout, 900 Ã— 1000 viewport"
+          "caption": "Before changelog layout, 900 \u00c3\u2014 1000 viewport"
         },
         {
           "file": "changelog/v1.0.4/sooner-battle-start/layout-after.jpg",
           "sha256": "e9f7b60b1827a78da403109c17b4b99d64fcae5779b84a36829dc571a375c8ba",
-          "caption": "After changelog layout, 900 Ã— 1000 viewport"
+          "caption": "After changelog layout, 900 \u00c3\u2014 1000 viewport"
         }
       ],
       "output": null,
@@ -2057,12 +2057,12 @@
         {
           "file": "changelog/v1.0.4/website-sign-in-and-pages/layout-before.jpg",
           "sha256": "a970fbbf672ce92063f82d9b8265cc03246113e7df8d725ccacbc1ca7c5b7765",
-          "caption": "Before changelog layout, 900 Ã— 1000 viewport"
+          "caption": "Before changelog layout, 900 \u00c3\u2014 1000 viewport"
         },
         {
           "file": "changelog/v1.0.4/website-sign-in-and-pages/layout-after.jpg",
           "sha256": "f9a86aed6bfa0bcef82e7b04ae453532ac8fb67c055810c96e95ed3ea9a3ee56",
-          "caption": "After changelog layout, 900 Ã— 1000 viewport"
+          "caption": "After changelog layout, 900 \u00c3\u2014 1000 viewport"
         }
       ],
       "output": null,
@@ -2082,12 +2082,12 @@
         {
           "file": "changelog/v1.0.5/battle-start-crash/layout-before.jpg",
           "sha256": "fa787d03125b4a89a289bd21ab273f487a1ee548fef952cc8bc9573b424a1221",
-          "caption": "Before changelog layout, 900 Ã— 1000 viewport"
+          "caption": "Before changelog layout, 900 \u00c3\u2014 1000 viewport"
         },
         {
           "file": "changelog/v1.0.5/battle-start-crash/layout-after.jpg",
           "sha256": "ea920113aba3039105b79c5215ead42725d5e6cae221b6f465dfeb557fced5a7",
-          "caption": "After changelog layout, 900 Ã— 1000 viewport"
+          "caption": "After changelog layout, 900 \u00c3\u2014 1000 viewport"
         }
       ],
       "output": null,
@@ -2107,12 +2107,12 @@
         {
           "file": "changelog/v1.0.5/big-ships-come-about/layout-before.jpg",
           "sha256": "29594d460916d64b38638e8ac74d222a2dd138789433b90c69c90955d1573839",
-          "caption": "Before changelog layout, 900 Ã— 1000 viewport"
+          "caption": "Before changelog layout, 900 \u00c3\u2014 1000 viewport"
         },
         {
           "file": "changelog/v1.0.5/big-ships-come-about/layout-after.jpg",
           "sha256": "0e85ef8fe9f09543351457fd3733db53eb10d4170d0e3217b5847b5d54c98589",
-          "caption": "After changelog layout, 900 Ã— 1000 viewport"
+          "caption": "After changelog layout, 900 \u00c3\u2014 1000 viewport"
         }
       ],
       "output": null,
@@ -2137,12 +2137,12 @@
         {
           "file": "changelog/v1.0.5/boats-handle-like-boats/layout-before.jpg",
           "sha256": "ce23365f741c5e9a9e97c8110f989419e6c26df7710691f72189c8c967d14324",
-          "caption": "Before changelog layout, 900 Ã— 1000 viewport"
+          "caption": "Before changelog layout, 900 \u00c3\u2014 1000 viewport"
         },
         {
           "file": "changelog/v1.0.5/boats-handle-like-boats/layout-after.jpg",
           "sha256": "2ecdd7740939b355a1164d16210e074006f9ceb00d39d0620fb9f5ec569ed3fc",
-          "caption": "After changelog layout, 900 Ã— 1000 viewport"
+          "caption": "After changelog layout, 900 \u00c3\u2014 1000 viewport"
         }
       ],
       "output": null,
@@ -2167,12 +2167,12 @@
         {
           "file": "changelog/v1.0.5/in-game-console/layout-before.jpg",
           "sha256": "785b300e2692150d71056d5cd18defe2148ba97bf41b13d88206ad6dbdde696d",
-          "caption": "Before changelog layout, 900 Ã— 1000 viewport"
+          "caption": "Before changelog layout, 900 \u00c3\u2014 1000 viewport"
         },
         {
           "file": "changelog/v1.0.5/in-game-console/layout-after.jpg",
           "sha256": "00798c7407d8e2a0653f832b7306e94a9264795987e6ba49da4b32c69403ab75",
-          "caption": "After changelog layout, 900 Ã— 1000 viewport"
+          "caption": "After changelog layout, 900 \u00c3\u2014 1000 viewport"
         }
       ],
       "output": null,
@@ -2197,12 +2197,12 @@
         {
           "file": "changelog/v1.0.5/installers/layout-before.jpg",
           "sha256": "5fa39b805daa8d50f335afeeee3587e5102f4376e4f1a8f46bab40632a6f8a3b",
-          "caption": "Before changelog layout, 900 Ã— 1000 viewport"
+          "caption": "Before changelog layout, 900 \u00c3\u2014 1000 viewport"
         },
         {
           "file": "changelog/v1.0.5/installers/layout-after.jpg",
           "sha256": "ccf7582d96719c4bee6677c33cb7433179fc4a2dbf9c45535de0d1f2eb54eaee",
-          "caption": "After changelog layout, 900 Ã— 1000 viewport"
+          "caption": "After changelog layout, 900 \u00c3\u2014 1000 viewport"
         }
       ],
       "output": null,
@@ -2227,12 +2227,12 @@
         {
           "file": "changelog/v1.0.5/leaderboards-and-public-profiles/layout-before.jpg",
           "sha256": "511f0bd7f51e70e415335f2f7992bad8a6609623f471076bda7e2d09d99779fe",
-          "caption": "Before changelog layout, 900 Ã— 1000 viewport"
+          "caption": "Before changelog layout, 900 \u00c3\u2014 1000 viewport"
         },
         {
           "file": "changelog/v1.0.5/leaderboards-and-public-profiles/layout-after.jpg",
           "sha256": "3933a83591d9a4dad5ac3dca767faf13e806a734f0c7608acad9e905e4619e34",
-          "caption": "After changelog layout, 900 Ã— 1000 viewport"
+          "caption": "After changelog layout, 900 \u00c3\u2014 1000 viewport"
         }
       ],
       "output": null,
@@ -2252,12 +2252,12 @@
         {
           "file": "changelog/v1.0.5/lost-squad-crash/layout-before.jpg",
           "sha256": "c2d92221fdcfeb9ae872297fe7b246d35db492d2cc03842957d3762eb08be868",
-          "caption": "Before changelog layout, 900 Ã— 1000 viewport"
+          "caption": "Before changelog layout, 900 \u00c3\u2014 1000 viewport"
         },
         {
           "file": "changelog/v1.0.5/lost-squad-crash/layout-after.jpg",
           "sha256": "abbcda2a7dd25b18d1324a2e26f85c511c6d6b0a9a29953d98aae0fcd2beffea",
-          "caption": "After changelog layout, 900 Ã— 1000 viewport"
+          "caption": "After changelog layout, 900 \u00c3\u2014 1000 viewport"
         }
       ],
       "output": null,
@@ -2282,12 +2282,12 @@
         {
           "file": "changelog/v1.0.5/roads-under-smoke/layout-before.jpg",
           "sha256": "c19d18035516fdf1764bf72c113f92c8087cef68b6e84927974d93e5fe56cb76",
-          "caption": "Before changelog layout, 900 Ã— 1000 viewport"
+          "caption": "Before changelog layout, 900 \u00c3\u2014 1000 viewport"
         },
         {
           "file": "changelog/v1.0.5/roads-under-smoke/layout-after.jpg",
           "sha256": "a6d8e939ba00e0757765c444fe2d47b2838cd18255583f067daa7b147546affd",
-          "caption": "After changelog layout, 900 Ã— 1000 viewport"
+          "caption": "After changelog layout, 900 \u00c3\u2014 1000 viewport"
         }
       ],
       "output": null,
@@ -2312,12 +2312,12 @@
         {
           "file": "changelog/v1.0.5/website-links-on-windows/layout-before.jpg",
           "sha256": "e533784250b5d13980631d8fdbcefc8b74faa5c48ec5648f2e940e267d42f516",
-          "caption": "Before changelog layout, 900 Ã— 1000 viewport"
+          "caption": "Before changelog layout, 900 \u00c3\u2014 1000 viewport"
         },
         {
           "file": "changelog/v1.0.5/website-links-on-windows/layout-after.jpg",
           "sha256": "5244417d150918e48c20abe29cd8a67cf11782926486cad8d13860532523ec7c",
-          "caption": "After changelog layout, 900 Ã— 1000 viewport"
+          "caption": "After changelog layout, 900 \u00c3\u2014 1000 viewport"
         }
       ],
       "output": null,
@@ -2342,12 +2342,12 @@
         {
           "file": "changelog/v1.0.5/wildlife-in-the-fighting/layout-before.jpg",
           "sha256": "9a96b3f0ebb49fc68d1822ae887156b0324d38fc2c43712a09eb08cce5d03f8b",
-          "caption": "Before changelog layout, 900 Ã— 1000 viewport"
+          "caption": "Before changelog layout, 900 \u00c3\u2014 1000 viewport"
         },
         {
           "file": "changelog/v1.0.5/wildlife-in-the-fighting/layout-after.jpg",
           "sha256": "c649c637f4d55109c620ccc21f754250ccf081d3f0646c82a3f205a37a52e165",
-          "caption": "After changelog layout, 900 Ã— 1000 viewport"
+          "caption": "After changelog layout, 900 \u00c3\u2014 1000 viewport"
         }
       ],
       "output": null,
@@ -2367,12 +2367,12 @@
         {
           "file": "changelog/v1.0.6/faster-launch/layout-before.jpg",
           "sha256": "95a99b106362c1f31a3413a5edfaf504ca8792c9275686a716f3825068e0a248",
-          "caption": "Before changelog layout, 900 Ã— 1000 viewport"
+          "caption": "Before changelog layout, 900 \u00c3\u2014 1000 viewport"
         },
         {
           "file": "changelog/v1.0.6/faster-launch/layout-after.jpg",
           "sha256": "c93253f126e1e4e9d1eb15e0765762549cb001c1f9f261df95517b2f25b718e7",
-          "caption": "After changelog layout, 900 Ã— 1000 viewport"
+          "caption": "After changelog layout, 900 \u00c3\u2014 1000 viewport"
         }
       ],
       "output": null,
@@ -2392,12 +2392,12 @@
         {
           "file": "changelog/v1.0.6/faster-map-generation/layout-before.jpg",
           "sha256": "db1c9ba3cc445f1754c6701411b43f4ec78cc001fca25965196aeca6e569ffc9",
-          "caption": "Before changelog layout, 900 Ã— 1000 viewport"
+          "caption": "Before changelog layout, 900 \u00c3\u2014 1000 viewport"
         },
         {
           "file": "changelog/v1.0.6/faster-map-generation/layout-after.jpg",
           "sha256": "8ee63abe1308f8c49bbdd2b431ee83cfa92764b1b8a003a37f89387cbb67f8d3",
-          "caption": "After changelog layout, 900 Ã— 1000 viewport"
+          "caption": "After changelog layout, 900 \u00c3\u2014 1000 viewport"
         }
       ],
       "output": null,
@@ -2417,12 +2417,12 @@
         {
           "file": "changelog/v1.0.7/links-reach-the-open-game/layout-before.jpg",
           "sha256": "2dd8ec5a1f6f25af957326b4cc0ed69f99efd7f000fbb2dc9b839e4a1862963d",
-          "caption": "Before changelog layout, 900 Ã— 1000 viewport"
+          "caption": "Before changelog layout, 900 \u00c3\u2014 1000 viewport"
         },
         {
           "file": "changelog/v1.0.7/links-reach-the-open-game/layout-after.jpg",
           "sha256": "e5bf6381fc1b864323e180f858d325a5f79120975f632dd7f6c1f929765aebe0",
-          "caption": "After changelog layout, 900 Ã— 1000 viewport"
+          "caption": "After changelog layout, 900 \u00c3\u2014 1000 viewport"
         }
       ],
       "output": null,
@@ -2442,12 +2442,12 @@
         {
           "file": "changelog/v1.0.8/links-claimed-again/layout-before.jpg",
           "sha256": "650a9b93c3b370fb064733f049ec09fb018a56c0eb38daca4b2f75d3b8bf2f3f",
-          "caption": "Before changelog layout, 900 Ã— 1000 viewport"
+          "caption": "Before changelog layout, 900 \u00c3\u2014 1000 viewport"
         },
         {
           "file": "changelog/v1.0.8/links-claimed-again/layout-after.jpg",
           "sha256": "c5793f13fa41f0f98e8de56fcefa14247a201ef6bc2cd0de752712344d8d2d81",
-          "caption": "After changelog layout, 900 Ã— 1000 viewport"
+          "caption": "After changelog layout, 900 \u00c3\u2014 1000 viewport"
         }
       ],
       "output": null,
@@ -2472,12 +2472,12 @@
         {
           "file": "changelog/v1.0.8/signal-interface/layout-before.jpg",
           "sha256": "6a20376a83d936e3b022c6921387fa9138ffafd6327083cc6643ff2bfd0b968e",
-          "caption": "Before changelog layout, 900 Ã— 1000 viewport"
+          "caption": "Before changelog layout, 900 \u00c3\u2014 1000 viewport"
         },
         {
           "file": "changelog/v1.0.8/signal-interface/layout-after.jpg",
           "sha256": "53e85a8718b2e04d30827d91c9151ce571ddb2b3affc3fc884c7a3286083ed4c",
-          "caption": "After changelog layout, 900 Ã— 1000 viewport"
+          "caption": "After changelog layout, 900 \u00c3\u2014 1000 viewport"
         }
       ],
       "output": null,
@@ -2497,12 +2497,12 @@
         {
           "file": "changelog/v1.0.9/battle-loads-without-freezing/layout-before.jpg",
           "sha256": "e581915ad0634d56c17d3aeeed9ba57f22ff91f868db233fe4b91ea1bc9ace7d",
-          "caption": "Before changelog layout, 900 Ã— 1000 viewport"
+          "caption": "Before changelog layout, 900 \u00c3\u2014 1000 viewport"
         },
         {
           "file": "changelog/v1.0.9/battle-loads-without-freezing/layout-after.jpg",
           "sha256": "becd8ff8d2ab097426b4f496bb9a5c56c9e0fbcf2964fe8b812abcea0465e3d2",
-          "caption": "After changelog layout, 900 Ã— 1000 viewport"
+          "caption": "After changelog layout, 900 \u00c3\u2014 1000 viewport"
         }
       ],
       "output": null,
@@ -2527,12 +2527,12 @@
         {
           "file": "changelog/v1.0.9/joining-loads-first/layout-before.jpg",
           "sha256": "f42e6a69cf9657b88ed8b052d4faa469560fa20b5c82502a91b13eef3df80657",
-          "caption": "Before changelog layout, 900 Ã— 1000 viewport"
+          "caption": "Before changelog layout, 900 \u00c3\u2014 1000 viewport"
         },
         {
           "file": "changelog/v1.0.9/joining-loads-first/layout-after.jpg",
           "sha256": "e583b4f4674798800a6a22ace00adf58276089b927370c1e821a651e50e11c7c",
-          "caption": "After changelog layout, 900 Ã— 1000 viewport"
+          "caption": "After changelog layout, 900 \u00c3\u2014 1000 viewport"
         }
       ],
       "output": null,
@@ -2562,12 +2562,12 @@
         {
           "file": "changelog/v1.0.9/signal-interface/layout-before.jpg",
           "sha256": "d41578d7c8f87d381f0656abdbe1e29204e91764851a8e4fae0690b852cb6ae4",
-          "caption": "Before changelog layout, 900 Ã— 1000 viewport"
+          "caption": "Before changelog layout, 900 \u00c3\u2014 1000 viewport"
         },
         {
           "file": "changelog/v1.0.9/signal-interface/layout-after.jpg",
           "sha256": "49377b29920c2ad9e4b11ff01a5ad68c2190608b281c49beab7bc5850f8ada22",
-          "caption": "After changelog layout, 900 Ã— 1000 viewport"
+          "caption": "After changelog layout, 900 \u00c3\u2014 1000 viewport"
         }
       ],
       "output": null,
@@ -2581,18 +2581,18 @@
       "summary": "Large formation orders take less work, and pointer feedback updates independently of squad counters.",
       "medium": "still",
       "stage": "existing-evidence",
-      "rationale": "Use the entryâ€™s existing matched evidence; this entry has not been released.",
+      "rationale": "Use the entry\u00e2\u20ac\u2122s existing matched evidence; this entry has not been released.",
       "source_ref": "4d4de4a",
       "sources": [
         {
           "file": "changelog/unreleased/combat-overlay-refresh/layout-before.jpg",
           "sha256": "50d58929141ce9fdf35c0788ea55aef9243451120045007e214783e3f11e89e1",
-          "caption": "Before changelog layout, 900 Ã— 1000 viewport"
+          "caption": "Before changelog layout, 900 \u00c3\u2014 1000 viewport"
         },
         {
           "file": "changelog/unreleased/combat-overlay-refresh/layout-after.jpg",
           "sha256": "a963ed6a770c0bc1e4b1e5d17f98c8508cb200aff007d2029b94dc2ca5457b3e",
-          "caption": "After changelog layout, 900 Ã— 1000 viewport"
+          "caption": "After changelog layout, 900 \u00c3\u2014 1000 viewport"
         }
       ],
       "output": null
@@ -2602,18 +2602,18 @@
       "summary": "Minimap drawing is spread across frames while camera and pointer feedback stays responsive.",
       "medium": "still",
       "stage": "existing-evidence",
-      "rationale": "Use the entryâ€™s existing matched evidence; this entry has not been released.",
+      "rationale": "Use the entry\u00e2\u20ac\u2122s existing matched evidence; this entry has not been released.",
       "source_ref": "4d4de4a",
       "sources": [
         {
           "file": "changelog/unreleased/progressive-minimap/layout-before.jpg",
           "sha256": "3d794fffbd1addd88cbf10eb8d2c1b4d680ca40c0bb25cc400fd30f0b97977a2",
-          "caption": "Before changelog layout, 900 Ã— 1000 viewport"
+          "caption": "Before changelog layout, 900 \u00c3\u2014 1000 viewport"
         },
         {
           "file": "changelog/unreleased/progressive-minimap/layout-after.jpg",
           "sha256": "36432f1c8d6cb979ad1a9328377b0ba1d356459e33f06d62b3ca3cb0571cf144",
-          "caption": "After changelog layout, 900 Ã— 1000 viewport"
+          "caption": "After changelog layout, 900 \u00c3\u2014 1000 viewport"
         }
       ],
       "output": null
@@ -2623,18 +2623,18 @@
       "summary": "Tank turrets accelerate and settle onto targets, hold their bearing through hull turns, and acquire a steady aim before firing.",
       "medium": "motion",
       "stage": "existing-evidence",
-      "rationale": "Use the entryâ€™s existing matched evidence; this entry has not been released.",
+      "rationale": "Use the entry\u00e2\u20ac\u2122s existing matched evidence; this entry has not been released.",
       "source_ref": "4d4de4a",
       "sources": [
         {
           "file": "changelog/unreleased/tank-operation/layout-before.jpg",
           "sha256": "498a716dac09d9ecfc041222646c10eff8b7afa7c1ac74642d0d2de86815e364",
-          "caption": "Before changelog layout, 900 Ã— 1000 viewport"
+          "caption": "Before changelog layout, 900 \u00c3\u2014 1000 viewport"
         },
         {
           "file": "changelog/unreleased/tank-operation/layout-after.jpg",
           "sha256": "47ebef9ec36c2b836411c1db02324007bb517a3edeeea6fbcb2baea7ad2b4d9f",
-          "caption": "After changelog layout, 900 Ã— 1000 viewport"
+          "caption": "After changelog layout, 900 \u00c3\u2014 1000 viewport"
         }
       ],
       "output": null
@@ -2644,18 +2644,18 @@
       "summary": "Older tanks, modern armour, aircraft and mounted weapons turn and acquire targets at distinct, deliberate rates. Vehicle and gunship rounds begin at their own barrels.",
       "medium": "motion",
       "stage": "controlled-motion",
-      "rationale": "Use the entryâ€™s existing matched evidence; this entry has not been released.",
+      "rationale": "Use the entry\u00e2\u20ac\u2122s existing matched evidence; this entry has not been released.",
       "source_ref": "PR #111",
       "sources": [
         {
           "file": "changelog/unreleased/vehicle-motion-and-muzzles/layout-before.jpg",
           "sha256": "52fda3a5bed9bfa4cfcf611b16d3f85da6b1efa7248cd7893399f748421d1de9",
-          "caption": "Before changelog layout, 900 Ã— 1000 viewport"
+          "caption": "Before changelog layout, 900 \u00c3\u2014 1000 viewport"
         },
         {
           "file": "changelog/unreleased/vehicle-motion-and-muzzles/layout-after.jpg",
           "sha256": "8a12ece8ccaa03515cf501f9ebfd8751eda0abd64a0d7d9fe1a6ae496c2c1fc0",
-          "caption": "After changelog layout, 900 Ã— 1000 viewport"
+          "caption": "After changelog layout, 900 \u00c3\u2014 1000 viewport"
         }
       ],
       "output": null
@@ -2695,12 +2695,12 @@
         {
           "file": "changelog/unreleased/clearer-release-history/layout-before.jpg",
           "sha256": "bc2a187a5b6b2d2c3f88476304219e1c26afbfd98146dd47cdbe4e74520df9d8",
-          "caption": "Before changelog layout, 900 Ã— 1000 viewport"
+          "caption": "Before changelog layout, 900 \u00c3\u2014 1000 viewport"
         },
         {
           "file": "changelog/unreleased/clearer-release-history/layout-after.jpg",
           "sha256": "6ba248f7bf06a497fdd67c9b0a744e09f452da63b142484be5bb9e0aceec9c41",
-          "caption": "After changelog layout, 900 Ã— 1000 viewport"
+          "caption": "After changelog layout, 900 \u00c3\u2014 1000 viewport"
         },
         {
           "file": "changelog/unreleased/clearer-release-history/layout-review-ui.jpg",
@@ -8214,250 +8214,6 @@
       }
     },
     {
-      "entry": "changelog/unreleased/ridge-duel.md",
-      "title": "Tank tracks follow the crest",
-      "version": "unreleased",
-      "kind": "improved",
-      "summary": "Two tanks climb, brake and reverse independently. Engine load and rolling noise follow each vehicle across the ridges.",
-      "medium": "motion",
-      "stage": "tests/fixtures/ridge-duel.tscn Track-dust comparison runs Bridgehead seed 3 with --focus-vehicle=tank,1 --vehicle-view=Behind from 193.4 to 196.6 seconds.",
-      "rationale": "Trackside shots show the lower run gripping the hill and the upper run passing over the wheels. The two close impact shots connect the gun reports to the hull response.",
-      "source_ref": "11d6794 running gear before, revised running gear after",
-      "attribution": "Controlled in-engine sequence, seed 712. Record tests/fixtures/ridge-duel.tscn with Godot Forward+, --fixed-fps 120 and --write-movie. Blend two temporal samples per four for the 30 fps master. Both stills use the current stage at 3.95 seconds, with the earlier model from 11d6794. Photography and field recording credits are in tests/fixtures/ridge-light, assets/vehicles and assets/audio/tracked.",
-      "sources": [
-        {
-          "file": "changelog/unreleased/ridge-duel/ridge-duel-revised.mp4",
-          "sha256": "12e8ee72d17a9c88ff35cedf1e8a3d90e5b8b265ab18397d395ce08230577add",
-          "caption": "Staged 24-second ridge duel with independent engines, running gear, gunfire and impacts."
-        },
-        {
-          "file": "changelog/unreleased/ridge-duel/before.jpg",
-          "sha256": "be88dc2c913cfdd8df692018579425afa4efd8723e14af267ce3b5fca4d0b2e1",
-          "caption": "Earlier wheel faces and track links during the climb."
-        },
-        {
-          "file": "changelog/unreleased/ridge-duel/after.jpg",
-          "sha256": "774c46cdadef4e4a8474d42a76eb15c0c1572bcc9a55c22270bdd2ad21a2d213",
-          "caption": "Pressed wheel faces and individual shoes on the same climb."
-        },
-        {
-          "file": "changelog/unreleased/ridge-duel/duel.jpg",
-          "sha256": "c657b108026cf7e49c4d5388238e8fd3e7b84f9e5de8b6f51f43869fae9edc77",
-          "caption": "The first shot across the valley."
-        },
-        {
-          "file": "changelog/unreleased/ridge-duel/track-dust.webm",
-          "sha256": "5bffd8617f98bbe1d6b789b718aa1f1ebff981d8c597fd6c344aa7dd887fc2c9",
-          "caption": "Matched native recordings of the rear tank on the Bridgehead village road."
-        },
-        {
-          "file": "changelog/unreleased/ridge-duel/track-dust.jpg",
-          "sha256": "c22a5f21d7a4a42907aed1bf11bac9a04a20e9c147c3a747be3e901bf22b91f5",
-          "caption": "Track dust before and after the second Abrams passes the houses."
-        }
-      ],
-      "output": null
-    },
-    {
-      "entry": "changelog/unreleased/abrams-on-the-ridge.md",
-      "title": "The Abrams on the ridge",
-      "version": "unreleased",
-      "kind": "improved",
-      "summary": "The sight cuts to the firing Abrams, a return shot glances off the hull, and fire and smoke rise through the engine deck after the last hit.",
-      "medium": "motion",
-      "stage": "tests/fixtures/ridge-duel.tscn",
-      "rationale": "The firing cut shows recoil on discharge. The overhead view shows track marks beneath the hull, the hillside view holds on settling dirt, and the rear view shows where the smoke starts. A higher rear angle shows the hot base and cooling smoke at the exposed grille.",
-      "source_ref": "Barrel and cadence comparison against 024386d. One-minute native Metal capture, seed 712 at 30 fps, from the ridge fixture with object-mounted cameras. The previous one-minute edit is at b59761c. The earlier 31-second edit is at 320865b. Firing and engine-deck comparison against 6372fec. Nose and smoke comparison against 7e8c5bc. Track-clearance comparison uses 44ed4a6 and efc082f. Grille fire comparison against 6ed583d. Live-match clip: native embedded --scenario=tank --play --team=0 --seed=3 --focus-vehicle=tank --vehicle-view=Tracks, Periscope or Barrel at 24 fps, cut at simulation seconds 1.25, 6, 9.25 and 17.25.",
-      "attribution": "Controlled Godot scene, seed 712. The game rig, audio recordings and environment credits are documented in assets/vehicles, assets/audio/tracked and tests/fixtures/ridge-light. The plate in the film is a breakaway prop.",
-      "sources": [
-        {
-          "file": "changelog/unreleased/abrams-on-the-ridge/abrams-ridge-duel.mp4",
-          "sha256": "1957a6392ff543f51bbf83b48a6b681370d64d979ad94c20a1394be10adffe40",
-          "caption": "A one-minute encounter with six shared object cameras, a turret optic and fixed hillside shots."
-        },
-        {
-          "file": "changelog/unreleased/abrams-on-the-ridge/before.jpg",
-          "sha256": "7b6307f40e1ed9f86ba17dedabe2da6643491b7338ce9a6ab4d72d04d1517f68",
-          "caption": "Earlier in-game Abrams on the eastern ridge."
-        },
-        {
-          "file": "changelog/unreleased/abrams-on-the-ridge/after.jpg",
-          "sha256": "fb49cac7abbea495060244902df8f8c04204d4f306a3971953ee3c816ce1c0d1",
-          "caption": "Updated eastern Abrams from the same approach."
-        },
-        {
-          "file": "changelog/unreleased/abrams-on-the-ridge/climb.jpg",
-          "sha256": "a73f44482aee636ee289f58a4fde2e566d472fc842878e7d640ffb8f288b6886",
-          "caption": "The opening view of the sand Abrams as it climbs."
-        },
-        {
-          "file": "changelog/unreleased/abrams-on-the-ridge/wreck-before.jpg",
-          "sha256": "252108da5bf1cb3b4ef11c1b0a4f0726cd04df80e562c14685e2e28451e6223b",
-          "caption": "Earlier live-game wreck sitting level on the slope."
-        },
-        {
-          "file": "changelog/unreleased/abrams-on-the-ridge/wreck-after.jpg",
-          "sha256": "2344f66d9ee187a3214a9f449be5bb7653bd3ddfc7a037301690a5a63745c185",
-          "caption": "Same wreck on its tracks with ash on the painted armor."
-        },
-        {
-          "file": "changelog/unreleased/abrams-on-the-ridge/olive-finish.jpg",
-          "sha256": "23da33f4869d826406fec2c253bec60961ffbacb188a41da5306a38beb932241",
-          "caption": "The olive Abrams from the same ridge camera. Dust lightens the deck and turret roof while the vertical cheeks retain the deeper green."
-        },
-        {
-          "file": "changelog/unreleased/abrams-on-the-ridge/track-prints.jpg",
-          "sha256": "f78e3532b0214519f2eb888eaaf64c5f5696d80f63880488fc4e9506614c173b",
-          "caption": "The same turn with the earlier and revised tread impressions."
-        },
-        {
-          "file": "changelog/unreleased/abrams-on-the-ridge/scope.jpg",
-          "sha256": "3f02f03a0d70bab6c8049d75482975550038937ae5e64d9055e743cfdb63d4e9",
-          "caption": "The T-55A behind the fixed etched reticle after the optical zoom settles."
-        },
-        {
-          "file": "changelog/unreleased/abrams-on-the-ridge/closing-shot.jpg",
-          "sha256": "722e160ac47389e20ff56dbc4130996586c6ee9d3999398e63e3115321fb2ba3",
-          "caption": "The previous and revised closing frames, both at 30.97 seconds."
-        },
-        {
-          "file": "changelog/unreleased/abrams-on-the-ridge/survivor.jpg",
-          "sha256": "464f1eb8ad320d82cfe4b7ca0c02499822ee3ac4b7572312f24395d6190464ec",
-          "caption": "The T-55A on the hillside in the final frame of the film."
-        },
-        {
-          "file": "changelog/unreleased/abrams-on-the-ridge/tracks-and-knockout.jpg",
-          "sha256": "2be61f21682a06df48a348f34b24885ed0f29063f7ab2a857892e271006c732b",
-          "caption": "The earlier and revised track shot at 15.45 seconds and knockout at 27.30 seconds."
-        },
-        {
-          "file": "changelog/unreleased/abrams-on-the-ridge/fire-and-track-clearance.mp4",
-          "sha256": "c46d24f2f6efc6e9c424551ffc39d1741a6216c0442b10803bf615d9b57f103c",
-          "caption": "Matched close-ups of the wreck fire and the T-55A return track."
-        },
-        {
-          "file": "changelog/unreleased/abrams-on-the-ridge/fire-and-track-clearance.jpg",
-          "sha256": "4d465fb2049bdd106fc3f0a99902fed4f47c12ac384087c55cf841fc7e335ae6",
-          "caption": "Flame and smoke against the hull in the old and revised cuts."
-        },
-        {
-          "file": "changelog/unreleased/abrams-on-the-ridge/nose-and-smoke.mp4",
-          "sha256": "0614f884590517797993810a4526bc52a11308024cd8ef782f225e748074e4b9",
-          "caption": "Matched moving crops of the T-55A nose and the Abrams smoke."
-        },
-        {
-          "file": "changelog/unreleased/abrams-on-the-ridge/nose-and-smoke.jpg",
-          "sha256": "52edf78b8e69f0c5efe3a4f66b9bee412d74fe43a36672f308eb3f331d4a4b8a",
-          "caption": "Spare links and lamp guards above, the sustained fuel plume below."
-        },
-        {
-          "file": "changelog/unreleased/abrams-on-the-ridge/firing-and-engine-deck.jpg",
-          "sha256": "c592b23dc8477c083c7be54964386683ad79d0f5478d3ffdd50d90037f30c410",
-          "caption": "The first discharge and the burning engine deck at matching times in both cuts."
-        },
-        {
-          "file": "changelog/unreleased/abrams-on-the-ridge/grille-fire.mp4",
-          "sha256": "883897b4e3549d5e14a6887b68b724371ef6564b8304fea010f39edd4d39dd94",
-          "caption": "Matched close-ups of the grille as the engine fire takes hold."
-        },
-        {
-          "file": "changelog/unreleased/abrams-on-the-ridge/grille-fire.jpg",
-          "sha256": "94ecf8805d7c84a8e97422ade007300c5288600ec8897c663b6b056aa2c84598",
-          "caption": "The old and revised engine-deck plumes at 28.3 seconds."
-        },
-        {
-          "file": "changelog/unreleased/abrams-on-the-ridge/barrel-closeup.jpg",
-          "sha256": "5b5f62d1345b645713920a1c265eb4e294d4414669fd4e0302f5ae82961c7108",
-          "caption": "Abrams barrel, earlier and revised cut near 41 seconds."
-        },
-        {
-          "file": "changelog/unreleased/abrams-on-the-ridge/live-match.mp4",
-          "sha256": "807653a34cc85314668551b01c27025383cbc33d82f4bdb6907195ef4d5fbdd0",
-          "caption": "Three player camera mounts in the native tank scenario."
-        },
-        {
-          "file": "changelog/unreleased/abrams-on-the-ridge/live-match.jpg",
-          "sha256": "2c4881dbf6e6e8c72ada5c0a0f5c7ee64a210f362dfaf9a240b7530fbf712b53",
-          "caption": "Barrel camera from the playable match."
-        }
-      ],
-      "output": null
-    },
-    {
-      "entry": "changelog/unreleased/object-cameras.md",
-      "title": "Ride along with the object cameras",
-      "version": "unreleased",
-      "kind": "new",
-      "summary": "F9 cycles object-mounted views.",
-      "medium": "still",
-      "stage": "tests/fixtures/ridge-duel.tscn",
-      "rationale": "Six matched-size frames show how the available views frame different vehicle parts. The matched sling clip shows the rotor and suspended vehicle in motion from both camera heights.",
-      "source_ref": "Native Metal capture, 1600x900, seed 712, 30 fps; frames sampled at 6, 23, 28, 33, 42.3 and 54 seconds.",
-      "sources": [
-        {
-          "file": "changelog/unreleased/object-cameras/views.jpg",
-          "sha256": "cec5949abb8ce22db3bf363b85f49398430b3e2164f8501bbf8ef247ddffba87",
-          "caption": "Behind, aerial, track, roof gun, barrel and engine deck cameras."
-        },
-        {
-          "file": "changelog/unreleased/object-cameras/sling-sky.webm",
-          "sha256": "099f7d52a63ab4262da827992240d8a8af2df30e147ce47bfec3731593ac0627",
-          "caption": "Same sling scenario, seed 3, at 15.6 to 18.9 seconds. The previous F9 Sling load camera is on the left and the lower camera is on the right."
-        },
-        {
-          "file": "changelog/unreleased/object-cameras/sling-sky.jpg",
-          "sha256": "2dc22ed4dd07d5fa702fc00fe8e0ffec7ab633887cdd23be98b56962dce34988",
-          "caption": "The rotor and its shadow at the same game frame."
-        }
-      ],
-      "output": null
-    },
-    {
-      "entry": "changelog/unreleased/offscreen-camera.md",
-      "medium": "text",
-      "stage": "Native Godot Movie Maker, attack scenario",
-      "rationale": "The preference and recording fix fit in one sentence. The website supplies the resulting gameplay footage.",
-      "source_ref": "scripts/game/rts_camera.gd",
-      "sources": [],
-      "output": null
-    },
-    {
-      "entry": "changelog/unreleased/camera-visible-scenery.md",
-      "medium": "motion",
-      "stage": "Native sling scenario, seed 3, reel-pickup camera, first 3.7 seconds at 30 fps",
-      "rationale": "Matched before and after captures show when the foliage appears.",
-      "source_ref": "Before 89d3097; updated camera and rifleman defaults in this change",
-      "sources": [
-        {
-          "file": "changelog/unreleased/camera-visible-scenery/comparison.webm",
-          "sha256": "6e66613f98198ca9ac7270a578f8d5bd8f9d1edf1d6da7cf60557604b7528497"
-        },
-        {
-          "file": "changelog/unreleased/camera-visible-scenery/comparison.jpg",
-          "sha256": "4faadaccaa524e1da63634a33846d4a96922f392e23d2996ebcca5a331022e33"
-        }
-      ],
-      "output": null
-    },
-    {
-      "entry": "changelog/unreleased/default-swat-riflemen.md",
-      "medium": "still",
-      "stage": "Native gdrill scenario, seed 3, reel-rescue camera, 7.4 seconds in the homepage cut",
-      "rationale": "Matched shots show rifleman geometry in a normal battle without launch flags.",
-      "source_ref": "Before 89d3097; updated camera and rifleman defaults in this change",
-      "sources": [
-        {
-          "file": "changelog/unreleased/default-swat-riflemen/after.jpg",
-          "sha256": "b1685ae10ed0a0606b3b0fd6863808afcebb3945164dfb724a5a9de6c84895c0"
-        },
-        {
-          "file": "changelog/unreleased/default-swat-riflemen/before.jpg",
-          "sha256": "c5ff169648f07ea705c68f4b1988e992f44b00be926042b13daa453e5a365ea6"
-        }
-      ],
-      "output": null
-    },
-    {
       "entry": "changelog/unreleased/vehicle-round-headlights.md",
       "summary": "Round headlights gain a fitted rim, reflector and ribbed optical detail across 19 vehicle families.",
       "medium": "still",
@@ -8651,258 +8407,6 @@
       "capture_command": "godot --path . --fixed-fps 30 --resolution 1280x720 --script tools/showcase/environment-motion.gd -- --aivai --seed=3 --offscreen --nohud --set=perf:0,reduce_motion:false,vsync:false --preset=high --mood=day --motion-stage=clouds --motion-output=build/media-review",
       "limitations": "Forward+ and Compatibility reviewed on RTX 3090. No low-end GPU or browser validation. Simulation held near two seconds; camera fixed while native wind and water animate. Editorial dissolves compare existing moods. Skirmish relief changes routes and sightlines; mission heights are unchanged. Earlier cloud timings do not establish current total scenery cost.",
       "boundary_capture_command": "godot --path . --resolution 1280x720 --script tests/fixtures/environment-views.gd -- --aivai --seed=3 --offscreen --nohud --preset=high --mood=day --set=perf:0,reduce_motion:true,vsync:false --capture-set=coast-join --capture-prefix=<scratch>/coast-final-forward"
-    },
-    {
-      "entry": "changelog/unreleased/coastal-landings.md",
-      "medium": "motion",
-      "rationale": "The disappearing hull and the squad coming ashore are visible in one uninterrupted approach.",
-      "stage": "Same Beachhead landing from the playable waterline camera, side by side.",
-      "source_ref": "56c4018 versus the coastal grading and seabed order fix",
-      "sources": [
-        {
-          "file": "changelog/unreleased/coastal-landings/landing.webm",
-          "sha256": "9a0639a5b65c8a2a60da85fe6f528aa37aae25e9bfd84f630d4dbdaa281e4109"
-        },
-        {
-          "file": "changelog/unreleased/coastal-landings/landing.jpg",
-          "sha256": "d962e55bfaf330363dd3aa946bfa32987010c7272462a5bafa2c964ac069c55f"
-        }
-      ],
-      "capture": {
-        "mission": "beachhead",
-        "seed": 3,
-        "vehicle": "rhib",
-        "view": "Waterline",
-        "start_seconds": 21,
-        "end_seconds": 29,
-        "fps": 30
-      }
-    },
-    {
-      "entry": "changelog/unreleased/harbour-spray.md",
-      "medium": "motion",
-      "rationale": "The two uninterrupted views show the height, shape and return of the spray against the same ship. The second clip compares the same launch crossing the starboard camera at full speed.",
-      "stage": "tools/showcase/airstrike-camera.tscn Bridge roof comparison uses Beachhead seed 3 at 34.9 to 37.15 seconds.",
-      "source_ref": "524fb5d versus the revised splash particles; RHIB wake 742a026 versus dbd3ca3",
-      "sources": [
-        {
-          "file": "changelog/unreleased/harbour-spray/spray.webm",
-          "sha256": "bfc7254f3f7707bad2a36d12171f6bfb27c7b8ac1518f21c3203db1f18d6947f"
-        },
-        {
-          "file": "changelog/unreleased/harbour-spray/spray.jpg",
-          "sha256": "8e28fef39bf310cc7042d92d98984c60400acb634a882b8b8070384d7223a37d"
-        },
-        {
-          "file": "changelog/unreleased/harbour-spray/wake.webm",
-          "sha256": "9931008362b3b081e55d31e7a8a27bd4f03b496bfaaf3cb3bd1c30d0deb2e613"
-        },
-        {
-          "file": "changelog/unreleased/harbour-spray/wake.jpg",
-          "sha256": "4006d1fc76e08b18ab30a6c097e007c5c9e6a784645c99819d4e3e1b61a70fb9"
-        },
-        {
-          "file": "changelog/unreleased/harbour-spray/bow-foam.webm",
-          "sha256": "8be12bd068e2d2a7d7b82002d5fd2d5fe22b6549b4498deb1f5e6919d2b8f61b",
-          "caption": "The same crossing before and after the bow foam and refraction changes."
-        },
-        {
-          "file": "changelog/unreleased/harbour-spray/bow-foam.jpg",
-          "sha256": "9a1469e07210dcd8f029ebb1910fbb87d2fdb124233495dc4e8c5508340a5fc5",
-          "caption": "The smaller boat approaching the port rail."
-        }
-      ],
-      "capture": {
-        "mission": "beachhead",
-        "seed": 3,
-        "focus": [
-          372,
-          -10
-        ],
-        "zoom": 58,
-        "pitch": -17,
-        "yaw": 1.2,
-        "start_seconds": 9.95,
-        "end_seconds": 14.95,
-        "fps": 30,
-        "wake": {
-          "mission": "beachhead",
-          "seed": 3,
-          "focus_vehicle": "rhib,1",
-          "view": "Starboard",
-          "start_seconds": 12,
-          "end_seconds": 16.2,
-          "fps": 30
-        }
-      }
-    },
-    {
-      "entry": "changelog/unreleased/rhib-helm.md",
-      "medium": "motion",
-      "rationale": "The same starboard crossing shows the driver at the controls, the second crew and the clear view across the bow.",
-      "stage": "main.tscn",
-      "source_ref": "b0ed630 Starboard versus the Helm camera and seated crew in 25f99c2",
-      "sources": [
-        {
-          "file": "changelog/unreleased/rhib-helm/helm.webm",
-          "sha256": "79237a4e6ba6ba7d300fe2774595203e5a411da67c5381c7a54da7294c6b00f2"
-        },
-        {
-          "file": "changelog/unreleased/rhib-helm/helm.jpg",
-          "sha256": "ddf49515bb722033520503503d69e2b6972b78e6ca42bd580319a7cae62bdba9"
-        }
-      ],
-      "capture": {
-        "mission": "beachhead",
-        "seed": 3,
-        "focus_vehicle": "rhib,1",
-        "views": [
-          "Starboard",
-          "Helm"
-        ],
-        "start_seconds": 12.5,
-        "end_seconds": 16.3,
-        "fps": 30
-      }
-    },
-    {
-      "entry": "changelog/unreleased/sling-load-straps.md",
-      "title": "See the straps holding a sling load",
-      "version": "unreleased",
-      "kind": "improved",
-      "summary": "Shaded straps join the banking helicopter and the suspended vehicle body.",
-      "medium": "motion",
-      "stage": "Sky Hook, seed 4, bridge deck at 39.45 seconds and F9 Cargo door at 41.1 seconds. Compare the fixed and tracking door at 39.5 seconds.",
-      "rationale": "A fixed flyover and the close cargo view reveal both ends of the straps in motion.",
-      "source_ref": "28fab0f before; sky-bridge.tscn and the shared Cargo door mount after. The cargo-door comparison uses the same native take at 6093a05 and 00c8370.",
-      "sources": [
-        {
-          "file": "changelog/unreleased/sling-load-straps/bridge.webm",
-          "sha256": "478986f865e76072a87aee67272b7a7a35f2eefd213e361591aed09a6d1f4c92",
-          "caption": "Bridge and cargo-door cameras at the same frames before and after the straps changed."
-        },
-        {
-          "file": "changelog/unreleased/sling-load-straps/bridge.jpg",
-          "sha256": "95664962a9f8df1272fc1180cd1fc40b96042b8fa84f6cf5944fc9f5cd9ab32c",
-          "caption": "The load passing directly over the bridge deck."
-        },
-        {
-          "file": "changelog/unreleased/sling-load-straps/cargo-door.webm",
-          "sha256": "e7575b613ac49320e38b67766a020908bc1dc3564ca09c1180e614882f81fd5e",
-          "caption": "The original door view and the camera following the suspended vehicle."
-        },
-        {
-          "file": "changelog/unreleased/sling-load-straps/cargo-door.jpg",
-          "sha256": "3c9e8fce6d6b1d5c9171c5bbf036456f587c16366d0fc42a02a2051ce74479e2",
-          "caption": "The cable and hull over the same bridge."
-        }
-      ],
-      "output": null
-    },
-    {
-      "entry": "changelog/unreleased/mortar-crew-model.md",
-      "title": "A closer look at the mortar crew",
-      "version": "unreleased",
-      "kind": "improved",
-      "summary": "The mortar specialist carries his kit on the textured animated body.",
-      "medium": "motion",
-      "stage": "Defense, seed 3, inside the mortar pit for the first 2.55 seconds.",
-      "rationale": "A frame-matched vault and landing show the carried kit following the body.",
-      "source_ref": "72c3060 before; scripts/game/soldier_model.gd and tools/showcase/trailer-review/mortar-pit.tscn after.",
-      "sources": [
-        {
-          "file": "changelog/unreleased/mortar-crew-model/crossing.webm",
-          "sha256": "7ebd57e01e2ef1d0d9c8658bcb859f7a50fc84eb32f7459ba0da48483ea91931",
-          "caption": "The same vault in both versions."
-        },
-        {
-          "file": "changelog/unreleased/mortar-crew-model/crossing.jpg",
-          "sha256": "2b50b0321c25dfddef4029d9e43585cad4a0b77456a443c634bb81998ee759a1",
-          "caption": "The crew inside the sandbags."
-        }
-      ],
-      "output": null
-    },
-    {
-      "entry": "changelog/unreleased/boat-stern-camera.md",
-      "title": "See the water from the stern and bridge",
-      "version": "unreleased",
-      "kind": "improved",
-      "summary": "View the water beyond the stern or look over the patrol ship’s port rail from the bridge roof.",
-      "medium": "motion",
-      "stage": "Beachhead, seed 3, trailer-harbour-quarter, seconds 10.9 to 14.3. Use Waterline for the left camera and Stern quarter for the right. Bridge roof comparison uses Beachhead seed 3 at 34.9 to 37.15 seconds.",
-      "rationale": "Both cameras follow the same boat through the same spray, with the horizon visible above its deck.",
-      "source_ref": "scripts/game/vehicle.gd and the trailer-harbour-quarter capture recipe.",
-      "sources": [
-        {
-          "file": "changelog/unreleased/boat-stern-camera/harbour.webm",
-          "sha256": "cce4f323ab5a4694896c0a8d8d9df3cf17e00b1a05d74947251371f0047c8a3d",
-          "caption": "Both mounts during the same pass."
-        },
-        {
-          "file": "changelog/unreleased/boat-stern-camera/harbour.jpg",
-          "sha256": "227363e5187c36c1c9cf1accf7661616299af9df5926294dc64f824507d256e6",
-          "caption": "The first spray rises behind the cabin."
-        },
-        {
-          "file": "changelog/unreleased/boat-stern-camera/bridge.webm",
-          "sha256": "5364af82cc24b908ea5de43a123ea11b90d30f80d7bfd8d7bd34a4c0dfcb7455",
-          "caption": "The patrol ship bow and bridge roof during the same pass."
-        },
-        {
-          "file": "changelog/unreleased/boat-stern-camera/bridge.jpg",
-          "sha256": "6ddfc95f16f1968f2db1da2825676764d5faca44f9c5a61cf0ca364ff9877cfd",
-          "caption": "The smaller boat approaching the port rail."
-        }
-      ]
-    },
-    {
-      "entry": "changelog/unreleased/coalition-field-medic.md",
-      "title": "The field medic moves with the squad",
-      "version": "unreleased",
-      "kind": "improved",
-      "summary": "The Coalition medic carries his marked kit on the animated squad uniform.",
-      "medium": "motion",
-      "stage": "Sky Hook, seed 4. The trailer-roadside take from 3 seconds, cropped around the medic.",
-      "rationale": "Matching the movement and crop shows how the sleeve and pack follow the medic.",
-      "source_ref": "ee25c12 before and 5770b4a after. The trailer-roadside take is defined in .agents/skills/website-footage/shots.json.",
-      "sources": [
-        {
-          "file": "changelog/unreleased/coalition-field-medic/crossing.webm",
-          "sha256": "e86ec7637709524fbac1dec3055445e1ea19b5104954e35d58d3d808a6ab0857",
-          "caption": "The medic crossing the landing pad in both editions."
-        },
-        {
-          "file": "changelog/unreleased/coalition-field-medic/crossing.jpg",
-          "sha256": "ca4ceef20c78c9813558f9404ac2797edcbebb28083ebcb93a5af92db9951b94",
-          "caption": "The marked sleeve beside the squad leader."
-        }
-      ],
-      "output": null
-    },
-    {
-      "entry": "changelog/unreleased/airborne-soil.md",
-      "title": "Broken earth at ground impacts",
-      "version": "unreleased",
-      "kind": "improved",
-      "summary": "Larger clods tumble with uneven edges above the dust.",
-      "medium": "motion",
-      "stage": "Defense, seed 3. The trailer-pit-landing take at 38 seconds, cropped above the wreck.",
-      "rationale": "Matching field, camera, timing and crop show the shape of the larger physical clods against the sky.",
-      "source_ref": "46b38fa before and 6093a05 after. The trailer-pit-landing take is defined in .agents/skills/website-footage/shots.json.",
-      "sources": [
-        {
-          "file": "changelog/unreleased/airborne-soil/ground-impact.webm",
-          "sha256": "08f32fe68f5ddf6e3d422cf035018f6e3db34b91147a8b2f17a1c9e478d73b12",
-          "caption": "The same impact before and after the earth shapes changed."
-        },
-        {
-          "file": "changelog/unreleased/airborne-soil/ground-impact.jpg",
-          "sha256": "ca37b45209bccebf9185caa22123d4676dd5c68aa1a0cd7625c97c24b231ce34",
-          "caption": "Soil clods in the air above the dust."
-        }
-      ],
-      "output": null
     }
   ],
   "layout_capture": {

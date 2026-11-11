@@ -250,19 +250,6 @@ static func _sprocket(k: VehicleModels, p: Node3D, pos: Vector3, r: float, w: fl
 	return pv
 
 
-static var _teeth := {}
-
-
-## A sprocket tooth: a plain box (w across, as deep as the rim), cached.
-static func _tooth(w: float, r: float) -> BoxMesh:
-	var key := "%.3f,%.3f" % [w, r]
-	if not _teeth.has(key):
-		var bm := BoxMesh.new()
-		bm.size = Vector3(w, r * 0.26, r * 0.2)
-		_teeth[key] = bm
-	return _teeth[key]
-
-
 ## A steel idler wheel (twin discs) spinning about x.
 static func _idler(k: VehicleModels, p: Node3D, pos: Vector3, r: float, w: float, mat: String, col = null) -> Node3D:
 	var pv := k._pivot(p, pos)

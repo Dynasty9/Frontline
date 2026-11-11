@@ -1,0 +1,15 @@
+{
+  "entry": "changelog/unreleased/black-wasp-cockpit.md",
+  "summary": "See into the Black Wasp cockpit",
+  "medium": "still",
+  "stage": "Beachhead jet flypast, matched camera and frame.",
+  "rationale": "The paired cockpit views show the pilot, canopy and seat at the same scale.",
+  "source_ref": "4510311",
+  "sources": [
+    {
+      "file": "changelog/unreleased/black-wasp-cockpit/canopy.jpg",
+      "sha256": "291b171a58881b036b09c4a322d713513ef6b1105b185220f714d31696d2cfc0"
+    }
+  ],
+  "output": null
+}
