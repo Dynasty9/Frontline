@@ -246,7 +246,7 @@ The [assembly implementation review](vehicle-assembly-review.md) documents the 2
 ### Twenty shared components
 
 The third extraction pass started from three source surveys (armour, trucks and civilians, aircraft and
-boats) that looked for parts every family still built by hand. Each part below now has one builder, and
+boats) that looked for parts each family still assembled itself from primitives. Each part below now has one builder, and
 every matching site across the roster calls it, so a later improvement to the builder reaches every
 vehicle at once. `tools/vehicles/assembly-extractions.json` registers them; the index test requires at
 least three independent builder groups for each (the counts below are from the construction index, not
