@@ -8328,6 +8328,15 @@
         }
       ],
       "output": null
+    },
+    {
+      "entry": "changelog/unreleased/offscreen-camera.md",
+      "medium": "text",
+      "stage": "Native Godot Movie Maker, attack scenario",
+      "rationale": "The preference and recording fix fit in one sentence. The website supplies the resulting gameplay footage.",
+      "source_ref": "scripts/game/rts_camera.gd",
+      "sources": [],
+      "output": null
     }
   ],
   "layout_capture": {

@@ -323,17 +323,16 @@ def install(names: list[str], stills: list[str], shots: dict, out: Path) -> None
     for s in stills:  # after the outputs: a still can stand in for an output's first-frame poster
         shutil.copy2(out / f"{s}.jpg", MEDIA / f"{s}.jpg")
     print(f"\ninstalled in {MEDIA}:")
-    total = 0
-    for n, spec in shots["outputs"].items():
+    for n in names:
+        spec = shots["outputs"][n]
         p = MEDIA / f"{n}.mp4"
         if not p.exists():
             print(f"  {n}.mp4 MISSING")
             continue
         kb = p.stat().st_size // 1000
-        total += p.stat().st_size
         over = f"  OVER its budget of {spec['max_kb']} KB" if kb > spec.get("max_kb", 1e9) else ""
         print(f"  {n}.mp4 {kb} KB{over}")
-    total += sum(p.stat().st_size for p in MEDIA.iterdir() if p.suffix != ".mp4")
+    total = sum(p.stat().st_size for p in MEDIA.iterdir() if p.is_file())
     print(f"  all media: {total / 1e6:.1f} MB")
 
 

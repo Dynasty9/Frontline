@@ -40,7 +40,9 @@ var dist := 55.0
 var target_dist := 55.0
 var focus_pos := Vector3.ZERO
 var _shake := 0.0
-var edge_pan := true
+var edge_pan := bool(Settings.get_v("edge_pan"))
+# An embedded movie has no operator, but its pointer can sit at the viewport corner.
+var _recording := not Engine.get_write_movie_path().is_empty()
 var user_moved := false
 var _last_ms := 0
 var _vel := Vector2.ZERO  # eased keyboard / edge pan, -1..1 on each screen axis
@@ -382,7 +384,7 @@ func _view_process(_scaled_dt: float) -> void:
 		if Keys.held("cam_zoom_out"):
 			zoom += 1.0
 		fast = Keys.held("cam_fast")
-	if edge_pan and not _mmb and get_window().has_focus():
+	if edge_pan and not _recording and not _mmb and get_window().has_focus():
 		var mp := get_viewport().get_mouse_position()
 		var vs := get_viewport().get_visible_rect().size
 		if mp.x >= 0 and mp.y >= 0 and mp.x <= vs.x and mp.y <= vs.y:
