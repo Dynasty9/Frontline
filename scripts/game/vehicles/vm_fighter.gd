@@ -783,9 +783,9 @@ static func _f16(k: VehicleModels, team: int) -> void:
 
 	# --- details: pitot, AOA probes, IFF "bird slicers", the gun, refuelling
 	# receptacle, antennas, lights
-	VmPlane.rod(k, m, Vector3(0, y0, z0 + 0.05), Vector3(0, y0, z0 - 0.55), 0.03, "steel", STEEL, 6, 0.012)
+	VehicleAircraft.pitot(k, m, Vector3(0, y0, z0 + 0.05), Vector3(0, y0, z0 - 0.55), 0.03, "steel", STEEL)
 	for sd in [1.0, -1.0]:
-		VmPlane.rod(k, m, Vector3(sd * 0.43, y0 + 0.12, z0 + 2.6), Vector3(sd * 0.5, y0 + 0.1, z0 + 2.45), 0.012, "gunmetal_w", null, 5)
+		VehicleAircraft.pitot(k, m, Vector3(sd * 0.43, y0 + 0.12, z0 + 2.6), Vector3(sd * 0.5, y0 + 0.1, z0 + 2.45), 0.012, "gunmetal_w", null)
 	for x in [-0.15, -0.05, 0.05, 0.15]:
 		k._box(m, Vector3(0.012, 0.12, 0.16), Vector3(x, y0 + 0.52, z0 + 2.55), "paint", dark, Vector3(0.35, 0, 0), false)
 	var gn := Vector3(-0.6, 0.8, 0)

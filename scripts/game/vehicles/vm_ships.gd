@@ -557,7 +557,7 @@ static func _zu23(k: VehicleModels, m: Node3D, pos: Vector3, col: Color) -> Node
 	el.rotation.x = 0.16
 	for sx in [-0.16, 0.16]:
 		# receivers, barrel jackets, barrels and flash hiders
-		_bx(k, el, Vector3(0.14, 0.2, 1.05), Vector3(sx, 0.02, 0.05), gm)
+		VehicleMounts.receiver(k, el, Vector3(0.14, 0.2, 1.05), Vector3(sx, 0.02, 0.05), gm)
 		k._cyl(el, 0.06, 0.06, 0.4, Vector3(sx, 0.04, -0.66), Vector3(PI / 2, 0, 0), gm, null, 10)
 		k._cyl(el, 0.032, 0.036, 1.6, Vector3(sx, 0.04, -1.65), Vector3(PI / 2, 0, 0), gm, null, 8)
 		k._cyl(el, 0.05, 0.05, 0.3, Vector3(sx, 0.04, -2.55), Vector3(PI / 2, 0, 0), gm, null, 10)
@@ -721,7 +721,7 @@ static func _patrol_ship(k: VehicleModels, team: int, seed: int) -> void:
 		VmBoat._panel(k, m, a, b, b + o + Vector3(0, -0.1, 0), a + o + Vector3(0, -0.1, 0), Vector3(0, 0, -2.0), 0.0, 0.04, "plain", sup, 0.0)
 	# the pilothouse's after wall above the after house: two small windows, a door to the roof
 	for sx in [-1.0, 1.0]:
-		_bx(k, m, Vector3(0.6, 0.32, 0.03), Vector3(sx * 1.1, 4.82, -0.44), "glass", Color(0.12, 0.15, 0.18), Vector3.ZERO, false)
+		VehicleGlazing.rectangle(k, m, Vector2(0.6, 0.32), Vector3(sx * 1.1, 4.82, -0.44), Vector3.ZERO, false, Color(0.12, 0.15, 0.18), 0.03)
 	# the after house: doors and portholes in its sides, a ladder up its back
 	for s in [-1.0, 1.0]:
 		var xw := func(y: float) -> float:
@@ -783,8 +783,8 @@ static func _patrol_ship(k: VehicleModels, team: int, seed: int) -> void:
 		_rod(k, m, Vector3(s * 0.45, 6.55, -1.95), Vector3(s * 0.28, 6.05, -1.5), 0.025, "plain", sup, 6, true)
 	_bx(k, m, Vector3(0.36, 0.3, 0.44), Vector3(0, 6.73, -1.65), "paint", Color(0.82, 0.82, 0.79))
 	k._cyl(m, 0.06, 0.06, 0.16, Vector3(0, 6.95, -1.65), Vector3.ZERO, "gunmetal_w", null, 8)
-	_bx(k, m, Vector3(2.1, 0.2, 0.14), Vector3(0, 7.1, -1.65), "plain", Color(0.84, 0.84, 0.81), Vector3(0, 0.45, 0))
-	k._add(m, Res.sphere(0.28, 10), "plain", Color(0.84, 0.84, 0.81), Vector3(0, 6.3, -0.55), Vector3.ZERO, Vector3(1, 0.9, 1))
+	VehicleMounts.radar_array(k, m, Vector3(2.1, 0.2, 0.14), Vector3(0, 7.1, -1.65), "plain", Color(0.84, 0.84, 0.81), Vector3(0, 0.45, 0))
+	VehicleMounts.radome(k, m, Vector3(0, 6.3, -0.55), Vector3(1, 0.9, 1) * 0.56, "plain", Color(0.84, 0.84, 0.81))
 	_bx(k, m, Vector3(0.2, 0.06, 0.4), Vector3(0, 6.15, -0.75), "plain", sup)
 	# the topmast, the yardarm with its lights and halyards, the masthead light
 	_rod(k, m, Vector3(0, 7.4, -1.12), Vector3(0, 8.75, -1.05), 0.045, "plain", sup, 8, true)
@@ -809,8 +809,7 @@ static func _patrol_ship(k: VehicleModels, team: int, seed: int) -> void:
 	k.mg_tip = k._tip(k.turret, Vector3(0, 0.58, -2.66))
 	for s in [-1.0, 1.0]:
 		var lz := -6.05
-		_bx(k, m, Vector3(0.72, 0.55, 0.5), Vector3(s * 0.95, _dk(p, lz) + 0.28, lz), "plain", grey)
-		_bx(k, m, Vector3(0.74, 0.03, 0.52), Vector3(s * 0.95, _dk(p, lz) + 0.56, lz), "plain", grey.darkened(0.08))
+		VehicleEquipment.storage(k, m, Vector3(s * 0.95, _dk(p, lz) + 0.28, lz), Vector3(0.72, 0.55, 0.5), "plain", grey, Vector3.ZERO)
 		_bx(k, m, Vector3(0.2, 0.04, 0.03), Vector3(s * 0.95, _dk(p, lz) + 0.4, lz - 0.26), "gunmetal_w", null, Vector3.ZERO, false)
 		_bitts(k, m, Vector3(s * 0.95, _dk(p, -10.1), -10.1), 0.0, 1.0, "plain", grey.darkened(0.15))
 		_bitts(k, m, Vector3(s * 2.45, _dk(p, -3.2), -3.2), 0.0, 1.0, "plain", grey.darkened(0.15))
@@ -879,8 +878,7 @@ static func _patrol_ship(k: VehicleModels, team: int, seed: int) -> void:
 	g2.rotation.y = PI - 0.35
 	VmBoat._bake(k, g2)
 	for s in [-1.0, 1.0]:
-		_bx(k, m, Vector3(0.66, 0.5, 0.46), Vector3(s * 1.4, _dk(p, 7.0) + 0.25, 7.0), "plain", grey)
-		_bx(k, m, Vector3(0.68, 0.03, 0.48), Vector3(s * 1.4, _dk(p, 7.0) + 0.51, 7.0), "plain", grey.darkened(0.08))
+		VehicleEquipment.storage(k, m, Vector3(s * 1.4, _dk(p, 7.0) + 0.25, 7.0), Vector3(0.66, 0.5, 0.46), "plain", grey, Vector3.ZERO)
 		_vent(k, m, Vector3(s * 2.1, _dk(p, 6.6), 6.6), "plain", grey)
 		k._add(m, Res.capsule(0.13, 0.75, 10), "plain", Color(0.2, 0.25, 0.33), Vector3(s * 2.2, _dk(p, 8.2) + 0.13, 8.2), Vector3(PI / 2, 0, 0))
 	_bx(k, m, Vector3(1.3, 0.03, 1.1), Vector3(0, _dk(p, 6.4) + 0.03, 6.4), "plain", grey.darkened(0.08))
@@ -1078,7 +1076,7 @@ static func _gun_trawler(k: VehicleModels, team: int, seed: int) -> void:
 	_dshk(k, m, Vector3(0.45, wy2 + 0.1, 0.55), -0.25)
 	k._cyl(m, 0.06, 0.08, 1.4, Vector3(-0.4, wy2 + 0.8, 2.6), Vector3.ZERO, "plain", white, 8)
 	_bx(k, m, Vector3(0.26, 0.2, 0.3), Vector3(-0.4, wy2 + 1.6, 2.6), "plain", Color(0.82, 0.82, 0.79))
-	_bx(k, m, Vector3(1.3, 0.13, 0.12), Vector3(-0.4, wy2 + 1.78, 2.6), "plain", Color(0.84, 0.84, 0.8), Vector3(0, -0.6, 0))
+	VehicleMounts.radar_array(k, m, Vector3(1.3, 0.13, 0.12), Vector3(-0.4, wy2 + 1.78, 2.6), "plain", Color(0.84, 0.84, 0.8), Vector3(0, -0.6, 0))
 	_rod(k, m, Vector3(-0.4, wy2 + 1.5, 2.65), Vector3(-0.4, wy2 + 2.6, 2.75), 0.02, "steel", null)
 	k._add(m, Res.sphere(0.05, 8), "plain", Color(0.9, 0.9, 0.86), Vector3(-0.4, wy2 + 2.64, 2.75))
 	_flag(k, m, Vector3(-0.4, wy2 + 2.5, 2.76), team, 0.9, 0.55)

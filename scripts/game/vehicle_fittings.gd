@@ -112,7 +112,7 @@ static func mudflap(k: VehicleModels, parent: Node3D, center: Vector3, size: Vec
 
 ## Hollow exhaust on an authored axis. The dark sleeve sits behind the rolled
 ## lip; it is not a black disc pasted onto the end of a closed cylinder.
-static func exhaust(k: VehicleModels, parent: Node3D, base: Vector3, direction: Vector3, length: float, radius: float) -> void:
+static func exhaust(k: VehicleModels, parent: Node3D, base: Vector3, direction: Vector3, length: float, radius: float, shielded := true) -> void:
 	var mount := k._pivot(parent, base)
 	mount.basis = VehicleFrames.aim(direction)
 	var key := Vector2(radius, length)
@@ -138,13 +138,14 @@ static func exhaust(k: VehicleModels, parent: Node3D, base: Vector3, direction: 
 	k._add(mount, pipes[1], "burnt", Color(0.025, 0.025, 0.023), Vector3(0, length - depth / 2, 0))
 	k._cyl(mount, radius * 0.8, radius * 0.8, 0.004, Vector3(0, length - depth, 0), Vector3.ZERO, "burnt", null, 16, false)
 	k._add(mount, VehicleWheels.ring(radius * 0.8, radius * 1.03), "gunmetal", Color(0.28, 0.24, 0.19), Vector3(0, length, 0))
-	# Stand-off shield and clamps sit below the hot, uncovered outlet.
-	var shield := [Vector2(radius * 1.34, length * 0.28), Vector2(radius * 1.4, length * 0.28), Vector2(radius * 1.4, length * 0.58), Vector2(radius * 1.34, length * 0.58)]
-	k._add(mount, VehicleProfiles.revolve(shield, 16), "steel", Color(0.28, 0.29, 0.26), Vector3.ZERO, Vector3(-PI / 2, 0, 0))
-	for t in [0.28, 0.58]:
-		k._box(mount, Vector3(radius * 0.5, radius * 0.35, radius * 0.5), Vector3(0, length * t, radius * 1.40), "metal_dark")
-		VehicleBody.fastener(k, mount, Vector3(0, length * t, radius * 1.67), Vector3.BACK, radius * 0.15)
-		k._add(mount, VehicleWheels.ring(radius * 1.35, radius * 1.55), "gunmetal", Color(0.18, 0.19, 0.17), Vector3(0, length * t, 0), Vector3.ZERO, Vector3(1, 0.6, 1), false)
+	if shielded:
+		# Stand-off shield and clamps sit below the hot, uncovered outlet.
+		var shield := [Vector2(radius * 1.34, length * 0.28), Vector2(radius * 1.4, length * 0.28), Vector2(radius * 1.4, length * 0.58), Vector2(radius * 1.34, length * 0.58)]
+		k._add(mount, VehicleProfiles.revolve(shield, 16), "steel", Color(0.28, 0.29, 0.26), Vector3.ZERO, Vector3(-PI / 2, 0, 0))
+		for t in [0.28, 0.58]:
+			k._box(mount, Vector3(radius * 0.5, radius * 0.35, radius * 0.5), Vector3(0, length * t, radius * 1.40), "metal_dark")
+			VehicleBody.fastener(k, mount, Vector3(0, length * t, radius * 1.67), Vector3.BACK, radius * 0.15)
+			k._add(mount, VehicleWheels.ring(radius * 1.35, radius * 1.55), "gunmetal", Color(0.18, 0.19, 0.17), Vector3(0, length * t, 0), Vector3.ZERO, Vector3(1, 0.6, 1), false)
 	k._fold(mount)
 
 
@@ -491,3 +492,11 @@ static func marker(k: VehicleModels, parent: Node3D, center: Vector3, size: Vect
 	k._add(mount, BevelMesh.make(Vector3(size.z, size.y, size.x), minf(size.y, size.x) * 0.2), "metal_dark", null, Vector3.ZERO)
 	signal_lens(k, mount, Vector3(0, 0, size.x * 0.5 + 0.002), Vector2(size.z * 0.8, size.y * 0.78), col)
 	k._fold(mount)
+
+
+## Filler cap seated in a recessed neck. The caller supplies the outward normal.
+static func filler(k: VehicleModels, parent: Node3D, center: Vector3, radius: float, normal := Vector3.UP, mat := "gunmetal_w", col = null) -> void:
+	var basis := VehicleFrames.aim(normal)
+	k._cyl(parent, radius * 1.12, radius * 1.12, radius * 0.18, center, basis.get_euler(), "rubber", null, 16, false)
+	k._cyl(parent, radius * 0.88, radius, radius * 0.24, center + normal * radius * 0.08, basis.get_euler(), mat, col, 12, false)
+	VehicleFrames.beam(k, parent, center - basis.x * radius * 0.6 + normal * radius * 0.23, center + basis.x * radius * 0.6 + normal * radius * 0.23, radius * 0.18, radius * 0.18, mat, col, false)

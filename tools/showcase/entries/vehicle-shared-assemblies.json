@@ -1,0 +1,20 @@
+{
+  "entry": "changelog/unreleased/vehicle-shared-assemblies.md",
+  "summary": "Shared construction for vehicle baskets, guards, mounts and equipment.",
+  "medium": "still",
+  "stage": "tools/showcase/vehicle-surfaces.tscn",
+  "rationale": "One compact matched detail sheet. Full-roster and raw detail captures stay outside Git; small hardware is subtle at gameplay distance.",
+  "source_ref": "14a8d7027263447635118752b8357093cb607657",
+  "before_ref": "26ca2f2eeda40b48694e2b751e8ac818a85a1f70",
+  "sources": [
+    {
+      "file": "changelog/unreleased/vehicle-shared-assemblies/comparison.jpg",
+      "sha256": "3f20f78d61855d36ff5efdbabd0551496ea75768c7d8130b386d73366eb47b47"
+    },
+    {
+      "file": "changelog/unreleased/vehicle-shared-assemblies/capture.json",
+      "sha256": "06b2965807db6e2bf20003f205d1d162dbd27acfdd4ee8c2702733a017c34224"
+    }
+  ],
+  "output": null
+}
