@@ -610,6 +610,7 @@ static func _abrams(k: VehicleModels, team: int, seed: int) -> void:
 	k.gun_tip = k._tip(slide, Vector3(0, gy, -5.34))
 	# --- the roof: the gunner's primary sight doghouse front right with its
 	# armoured doors, the commander's independent thermal viewer front left
+	k.periscope = Vector3(0.81, tr + 0.22, -1.65)
 	k._add(t, VehicleModels.loft("core_m1_gps", _oct(0.5, 1.12, -1.62, -0.8, 0.05), _oct(0.54, 1.08, -1.48, -0.84, 0.05), tr, tr + 0.42), cam, null, Vector3.ZERO)
 	for sx: float in [0.63, 0.99]:
 		_bx(k, t, Vector3(0.24, 0.26, 0.04), Vector3(sx, tr + 0.24, -1.56), cam, null, Vector3(0.3, 0, 0))
@@ -1018,6 +1019,7 @@ static func _t55(k: VehicleModels, team: int, seed: int) -> void:
 		k._cyl(t, 0.15, 0.15, 0.02, Vector3(0.5, 0.82, -1.19), X90, "plain_dark", null, 14, false)
 	_bar(k, t, Vector3(0.38, 0.5, -1.1), Vector3(0.42, 0.74, -1.04), 0.03, 0.03, "gunmetal_w", null, false)
 	# the gunner's sight port front left, the ventilator dome front right
+	k.periscope = Vector3(-0.45, 0.73, -0.89)
 	_bx(k, t, Vector3(0.18, 0.12, 0.24), Vector3(-0.45, 0.72, -0.72), "gunmetal_w", null, Vector3(0.2, 0, 0))
 	if not k.burnt:
 		_bx(k, t, Vector3(0.12, 0.06, 0.02), Vector3(-0.45, 0.73, -0.85), "glass", null, Vector3(0.2, 0, 0), false)

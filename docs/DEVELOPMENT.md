@@ -247,6 +247,7 @@ Scenarios, AI-vs-AI battles and missions run offline: they take no port, so any 
 --report-at=SECONDS                                   (client) ask the host for the statistics then; a headless client
                                                       prints a CLIENT report line for each it gets
 --perf-at=480 [--perf-shot=path.png]                  fast-forward, then measure real FPS and server tick cost
+--focus-vehicle=tank --vehicle-view=Tracks             record from the selected vehicle’s named in-game camera mount
 --screenshot=out.png --shot-at=30 --focus=X,Z --zoom=40 [--shots=N --shot-every=0.5]
 --mood=golden --perf=3 --preset=ultra                 lighting, overlay level and graphics preset for screenshots
 --fx-demo=1.4 --fx-every=3                            set off explosions near the camera (visual test, no damage)

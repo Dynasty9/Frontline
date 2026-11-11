@@ -151,6 +151,8 @@ On a Mac's trackpad, scroll with two fingers to drag the map and pinch to zoom; 
 | Message history | L |
 | Menu and settings | Esc |
 
+Select an Abrams or T-55A and press **F9** to cycle through its onboard and exterior views, including the turret periscope. Press **Esc** to return to the commander camera.
+
 When watching an AI battle: **C** hands the camera back to the director, **V** picks whose view you see, **P** pauses, and **[** and **]** change the speed.
 
 ## Playing with friends

@@ -262,9 +262,19 @@ func _run() -> void:
 	_check("despawning releases the object camera", cam.mount_label == &"")
 	world.input.clear_selection()
 
-	for fixture in [["heli", &"Cabin side"], ["rhib", &"Bow"]]:
+	for fixture in [["heli", &"Cabin side"], ["rhib", &"Bow"], ["tank", &"Periscope"], ["old_tank", &"Periscope"]]:
 		var vehicle := world.spawn("vehicle", {"vkind": fixture[0], "team": actor.team, "pos": actor.position}) as Vehicle
 		_check("%s has its own exterior camera" % fixture[0], vehicle.camera_mounts().has(fixture[1]))
+		if fixture[1] == &"Periscope":
+			world.input.sel_vehicles.append(vehicle.eid)
+			for _i in vehicle.camera_mounts().size():
+				world.input._key(mount_key)
+				if cam.mount_label == &"Periscope":
+					break
+			_check("periscope frames the turret view", cam.mount_label == &"Periscope" and cam._eyepiece.visible and cam.cam.global_transform.is_equal_approx(cam.mount_marker.global_transform.orthonormalized()))
+			world.input._key(escape)
+			_check("leaving the periscope restores the commander lens", not cam._eyepiece.visible and cam.cam.fov == float(Settings.get_v("fov")))
+			world.input.clear_selection()
 		world.despawn(vehicle)
 
 	# the turning minimap: a point maps back to the same ground, and the camera's heading is up

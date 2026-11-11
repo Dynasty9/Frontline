@@ -36,6 +36,8 @@ var _rigs := {"s": [], "m": [], "l": []}
 var _small := {}  # kind -> [array, index]
 var _waves: Array = []  # [mi, t, size]
 var _wave_pool: Array = []
+var _tread_prints: MultiMesh
+var _next_print := 0
 var _decals: Array = []  # [decal, t, life, initial strength]
 var _burners: Array = []  # [node, target, t, life]
 var _smokes: Array = []
@@ -1036,6 +1038,38 @@ func char_material() -> ShaderMaterial:
 	m.shader = _char_shader
 	m.set_shader_parameter("noise_tex", noise_tex)
 	return m
+
+
+## A single draw call for the last few lengths of track, shared by all nearby vehicles.
+func tread_print(at: Vector3, forward: Vector3, width: float, pitch: float) -> void:
+	if world.terrain.kind_at(at) not in [TerrainMap.GROUND, TerrainMap.WOODS, TerrainMap.MUD, TerrainMap.CRATER]:
+		return
+	if _tread_prints == null:
+		var plane := PlaneMesh.new()
+		plane.size = Vector2.ONE
+		var mud := ShaderMaterial.new()
+		mud.shader = preload("res://scripts/shaders/tread_print.gdshader")
+		plane.material = mud
+		_tread_prints = MultiMesh.new()
+		_tread_prints.transform_format = MultiMesh.TRANSFORM_3D
+		_tread_prints.mesh = plane
+		_tread_prints.instance_count = 2048
+		_tread_prints.visible_instance_count = 0
+		var batch := MultiMeshInstance3D.new()
+		batch.multimesh = _tread_prints
+		batch.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		add_child(batch)
+	var ahead := Defs.flat(forward).normalized()
+	var across := ahead.cross(Vector3.UP)
+	at.y = world.ground_y(at)
+	ahead.y = (world.ground_y(at + ahead * pitch) - at.y) / pitch
+	across.y = (world.ground_y(at + across * width) - at.y) / width
+	at.y += 0.018
+	var basis := Basis.looking_at(ahead, across.cross(ahead)).scaled_local(Vector3(width, 1, pitch))
+	_tread_prints.set_instance_transform(_next_print, Transform3D(basis, at))
+	_next_print = (_next_print + 1) % _tread_prints.instance_count
+	if _tread_prints.visible_instance_count < _tread_prints.instance_count:
+		_tread_prints.visible_instance_count += 1
 
 
 ## A grass fire `r` across at p, burning `life` seconds: a ring of low flames

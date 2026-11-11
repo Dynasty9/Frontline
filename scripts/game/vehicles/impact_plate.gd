@@ -1,5 +1,5 @@
 extends MeshInstance3D
-## A breakaway prop for the film. Layers are art settings for a dent or a tear.
+## A cosmetic plate on the vehicle model. Layers are art settings for a dent or a tear.
 var plies_left: int
 var struck := false
 var exposed := false

@@ -9,6 +9,11 @@ poster = "survivor.jpg"
 caption = "Ride behind the Abrams, watch its tracks press into the hillside, and look across the T-55A roof gun. At 0:42 the Abrams fires past the barrel camera. At 0:46 the return shot strikes the hull."
 
 [[videos]]
+file = "live-match.mp4"
+poster = "live-match.jpg"
+caption = "The playable Abrams in an ordinary match. Three in-game F9 mounts show the tracks, periscope and barrel during the same seeded encounter."
+
+[[videos]]
 file = "grille-fire.mp4"
 poster = "grille-fire.jpg"
 caption = "The same 2.5 seconds of the knockout in both cuts. On the right, hot folds rise through the engine grille and darken into the plume."
@@ -73,3 +78,5 @@ A hard hit in a match can bend the outer skirt. It stays bent on the wreck, or e
 Weathering stays attached to moving metal fittings and rubber tyres. The opening overlook shows the valley between the sand Abrams and the green T-55A. Its tread leaves two rows of paired pad prints that fade on stony ground. Both tanks have open, shadowed muzzles with a metal rim visible in close shots. The T-55A carries four spare track links above the sloping nose. Its headlamp guards stand clear of the lenses. It has exposed road wheels, a rounded turret and a separate diesel note. In the film the turret turns while the hull climbs, and the barrel settles separately over the crest.
 
 Each crew in the ridge film chooses where to move next as the relay score changes. Either crew can reach the forward objective first. A low camera follows the wheels and the impressions they leave in the hill. The knockout shot begins while the Abrams is still moving and holds as the panel tears, the tracks stop and the barrel settles. A flash lights the hull, debris falls, and smoke rises into the wind. A glancing hit throws a short bright streak with a brief metallic scrape. The camera jolts on nearby shots and impacts when camera shake is enabled. After the knockout, the hottest parts of the engine fire show through the grille. The same folds cool and darken as they rise in the wind. Broken clods settle into the soil around the crater. In the final shot the camera comes around to the surviving tank’s flank, where grass lies pressed beneath the tracks.
+
+In a match, cycle a selected Abrams or T-55A’s cameras with F9 to look through its periscope. Watch the gun lift and settle, follow the tracer to the impact, and look behind the tank for paired tread prints. A hard hit leaves torn metal on the damaged side, and the wreck keeps its original paint and turret bearing as soot spreads from the engine deck.

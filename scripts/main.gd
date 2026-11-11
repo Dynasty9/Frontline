@@ -1221,6 +1221,15 @@ func _process(_dt: float) -> void:
 				world.focused = true
 				if world.director:
 					world.director.active = false
+				if args.has("vehicle-view") and world.input:
+					var view := StringName(args["vehicle-view"])
+					if v.camera_mounts().has(view):
+						world.input.clear_selection()
+						world.input.sel_vehicles.append(v.eid)
+						world.cam.edge_pan = false
+						world.cam.cycle_mount(view)
+					else:
+						push_error("Unknown camera mount for %s: %s" % [v.vkind, view])
 				world.set_meta("veh_focused", true)
 				break
 	# --focus-decor=kind[,n]: the camera on the nth piece of street furniture of a kind

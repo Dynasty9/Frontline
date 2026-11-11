@@ -11,6 +11,7 @@ var _space: PhysicsDirectSpaceState3D
 var _space_frame := -1
 var _reveal := {}  # eid -> time
 var _blocked_sight := {}
+var _cannon_rounds: Array[Dictionary] = []
 
 
 func _init(w: World) -> void:
@@ -370,6 +371,29 @@ func launch_drone(s: Soldier, t: Entity) -> Drone:
 	return d
 
 
+## Use battle time so pausing or stepping a match also pauses the shell.
+func queue_cannon(origin: Vector3, contact: Vector3, shooter: Vehicle, normal: Vector3, blast: Dictionary) -> void:
+	_cannon_rounds.append({"due": world.time + Fx.cannon_flight(origin, contact), "pos": contact,
+		"eid": shooter.eid, "credit": world.battle._who(shooter), "normal": normal, "blast": blast})
+
+
+func land_cannon_rounds() -> void:
+	var i := 0
+	while i < _cannon_rounds.size():
+		var shell: Dictionary = _cannon_rounds[i]
+		if world.time < float(shell.due):
+			i += 1
+			continue
+		_cannon_rounds.remove_at(i)
+		var blast: Dictionary = shell.blast
+		blast["src"] = world.entity(shell.eid)
+		if shell.normal != Vector3.ZERO:
+			blast["hull_normal"] = shell.normal
+		var previous := world.battle.blame_hit(shell.credit)
+		_explode(shell.pos, blast)
+		world.battle.end_blame(previous)
+
+
 ## d keys: dmg, radius, fling, at (anti-armour), src, team, size, track, dir, top,
 ## by (who called it in, when no src fired it: fire support, a mine)
 func explode(pos: Vector3, d: Dictionary) -> void:
@@ -380,6 +404,9 @@ func explode(pos: Vector3, d: Dictionary) -> void:
 
 
 func _explode(pos: Vector3, d: Dictionary) -> void:
+	if d.has("hull_normal"):
+		# Contact comes first, including when this hit replaces a tank with its wreck.
+		world.fx_event([Fx.EXPLODE, pos, float(d.get("size", 1.0)), String(d.get("vfx", "he")), true, d.hull_normal])
 	var dmg: float = d.get("dmg", 120.0)
 	var r: float = d.get("radius", 5.0)
 	if d.get("top", false) and r >= 3.5:
@@ -439,8 +466,9 @@ func _explode(pos: Vector3, d: Dictionary) -> void:
 				st.toss_from(pos, bsize)
 	# the flash and the burning fragments may set what's close alight
 	world.fires.blast(pos, bsize, r)
-	world.fx_event([Fx.EXPLODE, pos, bsize, String(d.get("vfx", "he"))])
-	world.terrain.add_crater(pos, float(d.get("size", 1.0)))
+	if not d.has("hull_normal"):
+		world.fx_event([Fx.EXPLODE, pos, bsize, String(d.get("vfx", "he"))])
+		world.terrain.add_crater(pos, bsize)
 
 
 # --- cover ----------------------------------------------------------------------------

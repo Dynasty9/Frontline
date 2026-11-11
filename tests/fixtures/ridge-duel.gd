@@ -6,7 +6,7 @@ signal shot_fired(beat: int, muzzle: Vector3, contact: Vector3, ground: bool, fl
 const FPS := 30
 const SIM_HZ := 60
 const Contest := preload("res://tests/fixtures/ridge-contest.gd")
-const ImpactPlate := preload("res://tests/fixtures/ridge-impact.gd")
+const ImpactPlate := VehicleModels.ImpactPlate
 
 class Field extends "res://tests/fixtures/effects-field.gd":
 	var noise := FastNoiseLite.new()
@@ -34,7 +34,6 @@ class StageTank extends Vehicle:
 	var hit_delay := AudioEffectDelay.new()
 	var report_bus: StringName
 	var impact_bus: StringName
-	var distant_report := AudioStreamPlayer.new()
 	var opening_beat := false
 	var claim_waiting := false
 
@@ -52,8 +51,7 @@ class StageTank extends Vehicle:
 		burn_age += dt
 		if previous_age < 0.85 and burn_age >= 0.85:
 			world.fx.play(Fx.tank_knockout(plate.global_position + Vector3.UP * 0.25), impact_bus)
-		soot.set_shader_parameter("source_world", plate.global_position)
-		soot.set_shader_parameter("extent", 0.46 + 2.1 * (1.0 - exp(-burn_age * 0.64)))
+		VehicleModels.spread_soot(soot, plate.global_position, burn_age)
 		if skirt:
 			var side := signf(skirt.position.x)
 			skirt.rotation.z = side * (0.41 + 0.20 * sin(burn_age * 8.0) * exp(-burn_age * 1.8)) * smoothstep(0.0, 0.24, burn_age)
@@ -74,12 +72,7 @@ class StageTank extends Vehicle:
 		target = null
 		hp = 0
 		settling_pitch = _vm.gun_mount.rotation.x
-		soot = ShaderMaterial.new()
-		soot.render_priority = -2
-		soot.shader = preload("res://tests/fixtures/ridge-soot.gdshader")
-		for part: Node in model.find_children("*", "MeshInstance3D", true, false):
-			if part != plate and (part as MeshInstance3D).visibility_range_begin == 0:
-				(part as MeshInstance3D).material_overlay = soot
+		soot = _vm.scorch_finish()
 
 	func _ground_h(p: Vector3) -> float:
 		return world.ground_y(p) - position.y
@@ -113,7 +106,6 @@ var kick_time := -1.0
 var last_hit_time := -100.0
 var eyepiece := ColorRect.new()
 var shots_seen: Array[String] = []
-var cabin_filter := AudioEffectLowPassFilter.new()
 var camera_mode := ""
 var camera_side := 0
 var camera_age := 0.0
@@ -210,16 +202,9 @@ func _ready() -> void:
 		tank.fire_sound = tank.burner.get_node("Snd") as AudioStreamPlayer3D
 		tank.fire_sound.unit_size *= 1.9
 		var side := 1.0 if i == 0 else -1.0
-		tank.plate = ImpactPlate.new()
-		tank.plate.fit(2)
+		tank.plate = tank._vm.make_impact_plate(side)
 		if not tank._vm.front_skirts.is_empty():
-			tank.skirt = tank._vm.front_skirts[1 if side > 0 else 0]
-			tank.skirt.add_child(tank.plate)
-			tank.plate.position = Vector3(side * 0.056, -0.395, -0.40)
-		else:
-			tank.model.add_child(tank.plate)
-			tank.plate.position = Vector3(side * 1.669, 1.18, -0.55)
-		tank.plate.rotation.y = side * PI / 2
+			tank.skirt = tank.plate.get_parent()
 		field.vehicles.append(tank)
 		tanks.append(tank)
 	tanks[0].target = tanks[1]
@@ -231,7 +216,7 @@ func _ready() -> void:
 	add_child(camera)
 	camera.current = true
 	var optic_glass := ShaderMaterial.new()
-	optic_glass.shader = preload("res://tests/fixtures/ridge-eyepiece.gdshader")
+	optic_glass.shader = preload("res://scripts/shaders/vehicle_eyepiece.gdshader")
 	eyepiece.material = optic_glass
 	eyepiece.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(eyepiece)
@@ -240,18 +225,12 @@ func _ready() -> void:
 	get_viewport().msaa_3d = Viewport.MSAA_4X
 	add_child(listener)
 	listener.make_current()
-	cabin_filter.cutoff_hz = 1450.0
-	AudioServer.add_bus_effect(0, cabin_filter)
 	for tank in tanks:
 		# Each side keeps its own echo when a reply arrives from across a cut.
 		tank.report_bus = StringName("Ridge report %d" % tank.eid)
 		tank.impact_bus = StringName("Ridge impact %d" % tank.eid)
 		_mic_bus(tank.report_bus, tank.gun_delay)
 		_mic_bus(tank.impact_bus, tank.hit_delay)
-		tank.distant_report.stream = Sfx.streams.get("tank_report")
-		tank.distant_report.volume_db = -25
-		tank.distant_report.bus = tank.report_bus
-		tank.add_child(tank.distant_report)
 		for step in 40:
 			tank._view_process(1.0 / FPS)
 	_shot(0.0)
@@ -369,9 +348,6 @@ func _simulate(dt: float) -> void:
 		if not tank.disabled:
 			var left := Defs.flat(contest.destination(i) - tank.position).length()
 			tank.picture_pitch = deg_to_rad(3.4) * smoothstep(1.5, 12.0, left)
-			# A brief rise and return gives the cradle a visible follow-through.
-			var since := float(sim_tick - tank.last_discharge) / SIM_HZ
-			tank.picture_pitch += deg_to_rad(2.6) * sin(minf(since / 0.95, 1.0) * PI) * exp(-since * 1.6)
 			tank._vm.gun_mount.rotation.x += tank.picture_pitch
 		else:
 			tank._vm.gun_mount.rotation.x = tank.settling_pitch
@@ -430,9 +406,7 @@ func _volley(i: int, decisive: bool, incidental: bool) -> void:
 	var shooter := tanks[i]
 	_place_sound(shooter.gun_delay, muzzle)
 	field.fx._cannon(muzzle, at, shooter, shooter.report_bus)
-	if Sfx.enabled and listener.global_position.distance_to(muzzle) >= Sfx.EFFECT_RANGE:
-		shooter.distant_report.play()
-	var flight_ticks := maxi(1, ceili(muzzle.distance_to(at) / Fx.CANNON_TRACER_SPEED * SIM_HZ))
+	var flight_ticks := maxi(1, ceili(Fx.cannon_flight(muzzle, at) * SIM_HZ))
 	tanks[i].last_discharge = sim_tick
 	if verify:
 		print("RIDGE_SHOT ", i, " ", sim_tick, " ", flight_ticks, " ", ceili(tanks[i].cannon_interval() * SIM_HZ))
@@ -466,9 +440,7 @@ func _impact(event: Dictionary) -> void:
 		return
 	struck.plate.take_hit()
 	var normal := struck.plate.global_basis.z
-	field.fx.gunfx.impact(Fx.HIT_METAL, contact, normal, 1.35, contact.distance_to(camera.global_position))
-	field.fx.gunfx.light(contact + normal * 0.12, 0.75, 0.85)
-	Sfx.play("hull_strike", contact, 3.0, 1.0, struck.impact_bus)
+	field.fx.hull_strike(contact, normal, struck.impact_bus)
 	struck.impact_react(-normal, 1.05)
 	if event.decisive:
 		if verify:
@@ -542,7 +514,7 @@ func _cut(mode: String, i: int) -> void:
 	camera_kick = 0.0
 	camera_mode = mode
 	eyepiece.visible = mode == "optic"
-	AudioServer.set_bus_effect_enabled(0, AudioServer.get_bus_effect_count(0) - 1, eyepiece.visible)
+	Sfx.cabin_listening(eyepiece.visible)
 	if mode not in shots_seen:
 		shots_seen.append(mode)
 	camera_side = i
@@ -607,7 +579,7 @@ func _shot(t: float) -> void:
 			aim = camera.position + (near_ray + far_ray).normalized()
 			camera.fov = 36
 		"optic":
-			camera.position = tanks[0].turret.to_global(Vector3(0.72, 1.18, -1.12))
+			camera.position = tanks[0].camera_mounts()[&"Periscope"].global_position
 			aim = tanks[1].turret.global_position + Vector3.UP * 0.4
 			# Hold the landscape first. Changing focal length keeps the lens
 			# on the same part of the ridge as the vehicle crosses the frame.

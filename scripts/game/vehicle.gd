@@ -88,6 +88,8 @@ var lift_phase := 0  # 0 ground, 1 climb, 2 cruise, 3 land, 4 unload, 5/6 sling,
 var lift_t := 0.0
 var uav_dest := Vector3.INF
 var _orbit := 0.0
+var _cradle_age := 1.0
+var _cradle_rise := 0.0
 var _barrel_pitch_rate := 0.0  # visible motion of the gun cradle
 var _elev_v := 0.0  # (view) barrel / launcher elevation
 var model: Node3D
@@ -223,10 +225,17 @@ func _build_camera_mounts() -> void:
 	if _vm.gun_mount and _vm.gun_tip:
 		# Look back along the moving tube so the turret stays in the picture.
 		_camera_mount(&"Barrel", _vm.gun_tip, Vector3(2.9, 0.92, -1.9), Vector3(-0.1, 0.0, 1.8))
+	if turret and _vm.periscope.is_finite():
+		var eye := _vm.periscope
+		_camera_mount(&"Periscope", turret, eye, eye + Vector3.FORWARD)
 	if turret and _vm.roof_gun.is_finite():
 		_camera_mount(&"Roof gun", turret, _vm.roof_gun + Vector3(-0.95, 0.62, 1.15), _vm.roof_gun + Vector3(0, 0, -0.7))
 	if _vm.engine_deck.is_finite():
 		_camera_mount(&"Engine deck", model, Vector3(size.x * 1.3, size.y * 2.55, size.z * 1.47), _vm.engine_deck + Vector3.UP * 0.65)
+
+
+func has_tank_model() -> bool:
+	return vdef.get("model", vkind) in ["tank", "old_tank"]
 
 
 func _hull_size() -> Vector3:
@@ -1489,8 +1498,15 @@ func _fire_cannon() -> void:
 	world.stat("cannon")
 	last_fire_t = world.time
 	var g: Dictionary = vdef.get("gun", {})
-	world.combat.explode(hit_pos, {"dmg": float(g.get("dmg", 160.0)), "radius": float(g.get("radius", 5.5)), "fling": 10.0, "at": float(g.get("at", 320.0)), "src": self, "team": team,
-		"size": float(g.get("size", 1.4)), "track": 0.3, "dir": dir, "struct_mult": 2.5})
+	var blast := {"dmg": float(g.get("dmg", 160.0)), "radius": float(g.get("radius", 5.5)), "fling": 10.0, "at": float(g.get("at", 320.0)), "team": team,
+		"size": float(g.get("size", 1.4)), "track": 0.3, "dir": dir, "struct_mult": 2.5}
+	if has_tank_model():
+		var surface := world.combat.ent_of(r.get("collider"))
+		var normal: Vector3 = r.normal if surface is Vehicle and surface.is_tracked() and surface.weight() >= 2 else Vector3.ZERO
+		world.combat.queue_cannon(from, hit_pos, self, normal, blast)
+	else:
+		blast["src"] = self
+		world.combat.explode(hit_pos, blast)
 
 
 # --- damage --------------------------------------------------------------------------
@@ -1564,7 +1580,7 @@ func explosion_hit(pos: Vector3, d: Dictionary) -> void:
 	if dmg > 0.0:
 		# The damage has already been resolved. A hard hit folds the outer
 		# skirt on the side it struck, and engineers straighten it on repair.
-		if vdef.get("model", vkind) == "tank" and dmg >= max_hp * 0.25:
+		if has_tank_model() and dmg >= max_hp * 0.25:
 			var side := 2 if to_local(pos).x > 0.0 else 1
 			_set_bent_skirts(bent_skirts | side)
 		take_damage(dmg, d.get("src"))
@@ -1662,9 +1678,10 @@ func _destroyed() -> void:
 		var hs := _hull_size()
 		var plan := _toss_plan(p, y)
 		props["vk"] = vkind
-		if vdef.get("model", vkind) == "tank":
+		if has_tank_model():
 			props["bent_skirts"] = bent_skirts
 			props["wreck_turret_yaw"] = turret_yaw
+			props["wreck_finish"] = {"team": team, "seed": eid, "since": world.time}
 		props["size"] = Vector3(hs.x, maxf(hs.y, 1.2), hs.z)
 		props["pos"] = plan[0]
 		props["yaw"] = plan[1]
@@ -2261,6 +2278,7 @@ func impact_react(direction: Vector3, strength: float) -> void:
 
 ## The main gun's kick rocks the hull back from the shot.
 func recoil(dir: Vector3) -> void:
+	_cradle_age = 0.0
 	var fwd := Defs.dir_of(rotation.y)
 	var side := fwd.cross(Vector3.UP)
 	var k := 0.9 if weight() >= 2 else 0.5
@@ -2549,8 +2567,10 @@ func _view_process(dt: float) -> void:
 			var local := cradle.inverse() * direction
 			var pitch := clampf(atan2(local.y, Vector2(local.x, local.z).length()), -0.16, 0.31)
 			# The cradle eases into a change of elevation and brakes as it settles.
-			var pose := VehicleMotion.slew(mount.rotation.x, _barrel_pitch_rate, pitch, 0.9, 3.2, dt, false)
-			mount.rotation.x = pose.x
+			var pose := VehicleMotion.slew(mount.rotation.x - _cradle_rise, _barrel_pitch_rate, pitch, 0.9, 3.2, dt, false)
+			_cradle_age = minf(0.95, _cradle_age + dt)
+			_cradle_rise = deg_to_rad(2.6) * sin(_cradle_age * PI / 0.95) * exp(-1.6 * _cradle_age) if _cradle_age < 0.95 else 0.0
+			mount.rotation.x = pose.x + _cradle_rise
 			_barrel_pitch_rate = pose.y
 		if _gun_kick > 0.0:
 			_gun_kick = maxf(0.0, _gun_kick * exp(-dt * 7.0) - dt * 0.01)
@@ -2625,6 +2645,10 @@ func _view_process(dt: float) -> void:
 			var step: float = distance + dyaw * belt.position.x if continuous else 0.0
 			if nearby or always_animate_tracks:
 				belt.advance(step, world.ground_y)
+			if nearby and continuous and world.terrain and world.fx and world.fx.vfx:
+				belt.print_ground(world.fx.vfx, step)
+			else:
+				belt.printed_end = -1
 			belt.stir_dust(step / dt if nearby and dt > 0.0 else 0.0)
 		if _engine_sound and dt > 0.0:
 			var travel := maxf(absf(distance), absf(dyaw * float(_vm.belts[0].position.x)))
@@ -2665,7 +2689,7 @@ func _view_process(dt: float) -> void:
 			world.fx.vfx.set_burning(burner, [0.0, 0.0, 0.0, 0.8][st], [0.0, 0.25, 0.6, 1.0][st])
 	_sling_view()
 	if ring:
-		ring.visible = selected
+		ring.visible = selected and (not world.cam or world.cam.mount_subject != self)
 		if selected and (position.y - world.ground_y(position)) > 0.5:
 			ring.global_position = Vector3(position.x, world.ground_y(position) + 0.06, position.z)
 

@@ -5,6 +5,8 @@ extends RefCounted
 ## surface from Mats. `burnt` builds the same shape as a charred wreck.
 ## Local -Z is forward; y = 0 is the ground.
 
+const ImpactPlate := preload("res://scripts/game/vehicles/impact_plate.gd")
+
 static var _cache := {}
 
 var root: Node3D
@@ -25,10 +27,12 @@ var _antenna_response := ImpactResponse.new()
 var _antenna_velocity := Vector3.ZERO
 var _antenna_active := false
 var belts: Array = []
+var periscope := Vector3.INF
 var roof_gun := Vector3.INF  # receiver centre in turret space, for exterior filming
 var engine_deck := Vector3.INF  # Fire breaks through the upper deck when damaged.
 var engine_vent := Vector3.INF  # Local outlet on models with visible exhaust.
 var front_skirts: Array[Node3D] = []
+var _damaged_plates := {}
 var skirt_plugs: Array[Node3D] = []
 var elev: Node3D  # an artillery barrel or rocket launcher that rises to fire (rotation.x)
 ## More rotors (a tandem's rear one, a coaxial's second, a drone's four or
@@ -106,6 +110,34 @@ static func build(kind: String, team: int, seed: int, is_burnt := false) -> Vehi
 	return k
 
 
+func scorch_finish() -> ShaderMaterial:
+	var soot := ShaderMaterial.new()
+	soot.render_priority = -2
+	soot.shader = preload("res://scripts/shaders/vehicle_soot.gdshader")
+	for part: MeshInstance3D in root.find_children("*", "MeshInstance3D", true, false):
+		if not part is ImpactPlate:
+			part.material_overlay = soot
+	return soot
+
+
+static func spread_soot(soot: ShaderMaterial, origin: Vector3, age: float) -> void:
+	soot.set_shader_parameter("source_world", origin)
+	soot.set_shader_parameter("extent", 0.46 + 2.1 * (1.0 - exp(-maxf(0.0, age) * 0.64)))
+
+
+func make_impact_plate(side: float, layers := 2) -> ImpactPlate:
+	var plate := ImpactPlate.new()
+	plate.fit(layers)
+	if front_skirts.is_empty():
+		root.add_child(plate)
+		plate.position = Vector3(side * 1.669, 1.18, -0.55)
+	else:
+		front_skirts[1 if side > 0 else 0].add_child(plate)
+		plate.position = Vector3(side * 0.056, -0.395, -0.40)
+	plate.rotation.y = side * PI / 2
+	return plate
+
+
 ## Each bit records a bent front skirt, from the left side to the right.
 func pose_skirts(mask: int) -> void:
 	for i in front_skirts.size():
@@ -114,6 +146,15 @@ func pose_skirts(mask: int) -> void:
 		var damaged := (mask & (1 << i)) != 0
 		skirt.rotation = Vector3(-0.23, 0.0, side * 0.41) if damaged else Vector3.ZERO
 		skirt_plugs[i].visible = not damaged
+	for i in 2:
+		var damaged := (mask & (1 << i)) != 0
+		if damaged and not _damaged_plates.has(i):
+			var plate := make_impact_plate(-1.0 if i == 0 else 1.0, 1)
+			plate.take_hit()
+			_damaged_plates[i] = plate
+		elif not damaged and _damaged_plates.has(i):
+			_damaged_plates[i].queue_free()
+			_damaged_plates.erase(i)
 
 
 ## Every model key the families build (for the Field Manual's model pages).

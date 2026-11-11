@@ -5,6 +5,9 @@ var phase := 0.0
 var wheel_nodes: Array[Node3D] = []
 var centers := PackedVector3Array()
 var travel := PackedFloat32Array()
+var shoe_width := 0.0
+var printed_at := Vector3.INF
+var printed_end := -1
 var pitch := 0.0
 var radii := PackedFloat32Array()
 var half_thickness := 0.0
@@ -13,6 +16,7 @@ var rests_on_wheels := false
 var dust: GeometryInstance3D
 
 func build(hull: PackedVector2Array, width: float, thickness: float, wheels: Array, unsupported_return: bool) -> void:
+	shoe_width = width
 	rests_on_wheels = unsupported_return
 	loop.bake_interval = 0.07
 	half_thickness = thickness * 0.5
@@ -101,6 +105,25 @@ func advance(distance: float, ground: Callable) -> void:
 		wheel.position.y = center.y + displacement
 	if changed:
 		_pose()
+
+func print_ground(fx: Vfx, distance: float) -> void:
+	if is_zero_approx(distance):
+		return
+	var end := centers.size() - 3 if distance > 0.0 else 0
+	var contact := wheel_nodes[end].global_position
+	if end != printed_end or not printed_at.is_finite() or Defs.flat(contact - printed_at).length_squared() > 4.0:
+		printed_at = contact
+		printed_end = end
+	var delta := Defs.flat(contact - printed_at)
+	var length := delta.length()
+	var count := floori(length / pitch)
+	if count > 0:
+		var step := delta / length * pitch
+		for i in count:
+			printed_at += step
+			printed_at.y = contact.y
+			fx.tread_print(printed_at, -global_basis.z, shoe_width, pitch)
+
 
 ## Dust lifts where a shoe peels away from the soil. That end of the
 ## contact run changes on reversing, even on one side of a pivot turn.

@@ -9,6 +9,13 @@ class FlatGroundTank extends Vehicle:
 	func _ground_h(_p: Vector3) -> float:
 		return 0.0
 
+class ShellRecorder extends Combat:
+	var contacts: Array[Vector3] = []
+	var credits: Array = []
+	func _explode(at: Vector3, d: Dictionary) -> void:
+		contacts.append(at)
+		credits.append(world.battle._who(d.src))
+
 class SlopingField extends World:
 	func ground_y(p: Vector3) -> float:
 		return 6.0 + p.x * 0.12 - p.z * 0.24
@@ -19,6 +26,8 @@ class TurningTank extends Vehicle:
 
 
 func _ready() -> void:
+	_check_prints()
+	_check_flight()
 	_check_running_gear()
 	_check_impact_and_pivot()
 	_check_wreck_on_slope()
@@ -81,12 +90,61 @@ func _ready() -> void:
 	get_tree().quit()
 
 
+func _check_prints() -> void:
+	var field := SlopingField.new()
+	field.terrain = TerrainMap.new(field)
+	var fx := Vfx.new()
+	fx.world = field
+	var model := VehicleModels.build("old_tank", 1, 2)
+	add_child(model.root)
+	var belt = model.belts[0]
+	belt.print_ground(fx, 0.1)
+	model.root.position.z -= belt.pitch * 2.4
+	belt.print_ground(fx, 0.1)
+	assert(fx._tread_prints.visible_instance_count == 2)
+	belt.print_ground(fx, 0.0)
+	belt.print_ground(fx, -0.1)
+	assert(fx._tread_prints.visible_instance_count == 2, "stopping and reversing do not duplicate prints")
+	model.root.free()
+	fx.free()
+	field.free()
+
+
+func _check_flight() -> void:
+	var field := World.new()
+	field.battle = BattleStats.new(field)
+	var combat := ShellRecorder.new(field)
+	var shooter := Vehicle.new()
+	shooter.team = 1
+	shooter.eid = 10
+	shooter.owner_peer = 31
+	var credit := field.battle._who(shooter)
+	var far := Vector3.RIGHT * Fx.CANNON_TRACER_SPEED
+	var near := far * 0.25
+	combat.queue_cannon(Vector3.ZERO, far, shooter, Vector3.ZERO, {})
+	combat.queue_cannon(Vector3.ZERO, near, shooter, Vector3.LEFT, {})
+	shooter.free()
+	field.time = 0.24
+	combat.land_cannon_rounds()
+	assert(combat.contacts.is_empty())
+	field.time = 0.25
+	combat.land_cannon_rounds()
+	assert(combat.contacts == [near], "a later shot can arrive first")
+	field.time = 1.0
+	combat.land_cannon_rounds()
+	combat.land_cannon_rounds()
+	assert(combat.contacts == [near, far] and combat.credits == [credit, credit], "arrives once even if the shooter was destroyed")
+	assert(field.battle._who(null).is_empty())
+	field.free()
+
+
 func _check_wreck_on_slope() -> void:
 	var field := SlopingField.new()
 	var wreck := Structure.new()
 	wreck.world = field
 	wreck.skind = "wreck"
 	wreck.wreck_turret_yaw = 0.42
+	wreck.wreck_finish = {"team": 1, "seed": 12, "since": 3.5}
 	wreck.bent_skirts = 2
 	wreck.size = Vector3(3.6, 2.4, 7.5)
 	wreck.yaw = 0.74
@@ -106,8 +164,16 @@ func _check_wreck_on_slope() -> void:
 	add_child(joining)
 	joining.add_child(joining.model)
 	joining.apply_props(wreck.get_props())
+	assert(joining.wreck_finish == wreck.wreck_finish)
 	assert(joining.bent_skirts == 2 and joining.wreck_turret_yaw == wreck.wreck_turret_yaw)
 	assert(joining.model.global_transform.is_equal_approx(wreck.model.global_transform), "a late join sees the same wreck on the ridge")
+	joining.model.free()
+	joining.vk = "old_tank"
+	joining._build_model()
+	joining._apply_tilt()
+	field.time = 9.0
+	joining._update_wreck_soot()
+	assert(joining._wreck_soot and float(joining._wreck_soot.get_shader_parameter("extent")) > 2.0, "a late join sees the progressed engine scorch")
 	joining.free()
 	wreck.free()
 	field.free()
@@ -283,14 +349,16 @@ func _check_impact_and_pivot() -> void:
 	assert(joining._vm.front_skirts[0].rotation == tank._vm.front_skirts[0].rotation)
 	tank.repair(40.0)
 	assert(tank.bent_skirts == 0 and tank._vm.front_skirts[0].rotation == Vector3.ZERO)
-	assert(tank._vm.skirt_plugs[0].visible)
+	assert(tank._vm.skirt_plugs[0].visible and tank._vm._damaged_plates.is_empty())
 	joining.free()
 	var ring_rest := tank.turret.position
 	var slide := tank._vm.gun_tip.get_parent() as Node3D
 	var gun_rest := slide.position.z
+	tank.recoil(Vector3.FORWARD)
 	tank.gun_kick(0.26)
 	tank.blast_jolt(tank.position + Vector3.RIGHT, 1.25)
 	tank._view_process(1.0 / 30.0)
+	assert(cradle.rotation.x > 0.003, "the visible barrel lifts as it recoils")
 	assert(tank.turret.position == ring_rest and slide.position.z > gun_rest + 0.1)
 	assert(absf(tank.model.rotation.z) > 0.008, "a side impact rolls the hull")
 	for i in 100:

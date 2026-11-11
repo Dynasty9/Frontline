@@ -8194,7 +8194,7 @@
       "medium": "motion",
       "stage": "tests/fixtures/ridge-duel.tscn",
       "rationale": "The firing cut shows recoil on discharge. The overhead view shows track marks beneath the hull, the hillside view holds on settling dirt, and the rear view shows where the smoke starts. A higher rear angle shows the hot base and cooling smoke at the exposed grille.",
-      "source_ref": "Barrel and cadence comparison against 024386d. One-minute native Metal capture, seed 712 at 30 fps, from the ridge fixture with object-mounted cameras. The previous one-minute edit is at b59761c. The earlier 31-second edit is at 320865b. Firing and engine-deck comparison against 6372fec. Nose and smoke comparison against 7e8c5bc. Track-clearance comparison uses 44ed4a6 and efc082f. Grille fire comparison against 6ed583d.",
+      "source_ref": "Barrel and cadence comparison against 024386d. One-minute native Metal capture, seed 712 at 30 fps, from the ridge fixture with object-mounted cameras. The previous one-minute edit is at b59761c. The earlier 31-second edit is at 320865b. Firing and engine-deck comparison against 6372fec. Nose and smoke comparison against 7e8c5bc. Track-clearance comparison uses 44ed4a6 and efc082f. Grille fire comparison against 6ed583d. Live-match clip: native embedded --scenario=tank --play --team=0 --seed=3 --focus-vehicle=tank --vehicle-view=Tracks, Periscope or Barrel at 24 fps, cut at simulation seconds 1.25, 6, 9.25 and 17.25.",
       "attribution": "Controlled Godot scene, seed 712. The game rig, audio recordings and environment credits are documented in assets/vehicles, assets/audio/tracked and tests/fixtures/ridge-light. The plate in the film is a breakaway prop.",
       "sources": [
         {
@@ -8296,6 +8296,16 @@
           "file": "changelog/unreleased/abrams-on-the-ridge/barrel-closeup.jpg",
           "sha256": "5b5f62d1345b645713920a1c265eb4e294d4414669fd4e0302f5ae82961c7108",
           "caption": "Abrams barrel, earlier and revised cut near 41 seconds."
+        },
+        {
+          "file": "changelog/unreleased/abrams-on-the-ridge/live-match.mp4",
+          "sha256": "807653a34cc85314668551b01c27025383cbc33d82f4bdb6907195ef4d5fbdd0",
+          "caption": "Three player camera mounts in the native tank scenario."
+        },
+        {
+          "file": "changelog/unreleased/abrams-on-the-ridge/live-match.jpg",
+          "sha256": "2c4881dbf6e6e8c72ada5c0a0f5c7ee64a210f362dfaf9a240b7530fbf712b53",
+          "caption": "Barrel camera from the playable match."
         }
       ],
       "output": null

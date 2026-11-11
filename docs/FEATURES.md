@@ -1163,7 +1163,7 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   Reaching it wins the encounter and triggers the finishing impact. A camera beside the ridge holds on the struck vehicle before and after the hit. The film uses the same tank knockout event, fuel burst and burning-vehicle particles as a match. The short flash stays on the hull above the ground, and the hull settles on its suspension. Fuel smoke uses the baked directional lighting maps, with motion-vector interpolation in close views. A fuel vent releases billows at a steady rate as the smoke thickens or thins. The closing camera frames the surviving tank from the side of its turret, keeping the barrel in view as the hull turns.
   The T-55A has a grainier finish on its cast turret and rolled rims on its painted rear drums.
   In a match, hard hits can bend the skirt on the struck side. A complete repair straightens it.
-  A destroyed Abrams keeps the bent skirts and turret bearing it had on its last live frame.
+  In a match, both the Abrams and the T-55A keep their last turret bearing on destruction and carry visible plate damage onto the wreck. Soot spreads over the original paint from the engine deck. Cannon hits land on the battle clock when the tracer reaches its destination. A hull contact produces a metal strike, and nearby soft terrain takes paired tread prints. Select either tank and press F9 to cycle to its periscope.
   Its wreck rests on the grade beneath the front and rear of both tracks.
 - **Shared vehicle finishes** (`vehicle_materials.gd`, `assets/vehicles/surfaces/`): armor paint, aircraft
   coatings, civilian clearcoat, marine paint, rubber, canvas, exposed metal, glass, nonslip decks and charred

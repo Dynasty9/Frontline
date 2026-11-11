@@ -26,6 +26,10 @@ const UNIT_HIT := 19  # [UNIT_HIT, eid, world direction, normalized strength]
 
 const CANNON_TRACER_SPEED := 950.0
 
+static func cannon_flight(from: Vector3, to: Vector3) -> float:
+	return from.distance_to(to) / CANNON_TRACER_SPEED
+
+
 ## What a round struck, as a SHOT event carries it: it decides what flies off.
 const HIT_DIRT := 1
 const HIT_FLESH := 2
@@ -132,6 +136,8 @@ func play(ev: Array, blast_bus := &"Effects") -> void:
 		SHOT:
 			_shot(_muzzle_of(ev, 5, ev[1], false), ev[2], int(ev[3]), String(ev[4]), world.entity(int(ev[5])) if ev.size() > 5 else null)
 		EXPLODE:
+			if ev.size() > 5:
+				hull_strike(ev[1], ev[5], blast_bus)
 			_explode(ev[1], float(ev[2]), String(ev[3]) if ev.size() > 3 else "he", blast_bus, ev.size() > 4 and bool(ev[4]))
 		SAY:
 			_say(int(ev[1]), String(ev[2]))
@@ -232,7 +238,8 @@ static func surface_of(st: Structure, hp: Vector3) -> int:
 
 
 func _cam_d(p: Vector3) -> float:
-	return world.cam.cam.global_position.distance_to(p) if world.cam else 0.0
+	var camera := get_viewport().get_camera_3d()
+	return camera.global_position.distance_to(p) if camera else 0.0
 
 
 ## A round fired from `from` (the muzzle on this screen) to `to`, where it
@@ -368,8 +375,12 @@ func _cannon(from: Vector3, to: Vector3, src, report_bus := &"Effects") -> void:
 	if v and v.model:
 		v.recoil(dir)
 		v.gun_kick(0.26)
-	Sfx.play("tank_report" if v and v._vm and v._vm.gun_mount else "cannon", from, 3.0, 1.0, report_bus)
 	var cd := _cam_d(from)
+	var sound := "tank_report" if v and v._vm and v._vm.gun_mount else "cannon"
+	if sound == "tank_report":
+		_tank_sound(sound, from, cd, report_bus)
+	else:
+		Sfx.play(sound, from, 3.0, 1.0, report_bus)
 	if cd < 260.0:
 		gunfx.cannon_blast(from, dir, cd)
 	gunfx.tracer(from, to, Color(1.0, 0.5, 0.18, 7.0), 14.0, 0.12, CANNON_TRACER_SPEED)
@@ -387,6 +398,35 @@ func _launch(from: Vector3, dir: Vector3, src) -> void:
 	var cd := _cam_d(from)
 	if cd < 230.0:
 		gunfx.launch_blast(from, dir, cd)
+
+
+func hull_strike(p: Vector3, normal: Vector3, bus := &"Effects") -> void:
+	var distance := _cam_d(p)
+	if distance < 230.0:
+		gunfx.impact(HIT_METAL, p, normal, 1.35, distance)
+		gunfx.light(p + normal * 0.12, 0.75, 0.85)
+	_tank_sound("hull_strike", p, distance, bus)
+
+
+func _tank_sound(sound: String, at: Vector3, distance: float, bus: StringName) -> void:
+	if not Sfx.enabled or distance >= Sfx.EFFECT_RANGE * (3.0 if sound == "tank_report" else 1.0):
+		return
+	# The film mixes its own microphone delays. Ordinary listeners hear the same travel time.
+	if bus == &"Effects" and distance > 8.0:
+		get_tree().create_timer(minf(distance / 343.0, 1.25), false).timeout.connect(
+			_play_tank_sound.bind(sound, at, distance, bus))
+	else:
+		_play_tank_sound(sound, at, distance, bus)
+
+
+func _play_tank_sound(sound: String, at: Vector3, distance: float, bus: StringName) -> void:
+	if distance < Sfx.EFFECT_RANGE:
+		Sfx.play(sound, at, 3.0, 1.0, bus)
+	var range_fraction := distance / Sfx.EFFECT_RANGE
+	if sound == "tank_report" and range_fraction > 0.75:
+		var level := -11.0 - 12.0 * maxf(0.0, range_fraction - 1.0)
+		level += linear_to_db(smoothstep(0.75, 1.0, range_fraction))
+		Sfx.play_far(sound, level, 1.0, distance, bus)
 
 
 func _ricochet(p: Vector3, dir: Vector3) -> void:

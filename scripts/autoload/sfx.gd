@@ -8,6 +8,8 @@ const RATE := 22050
 const BUSES := ["Music", "Effects", "Ambience", "Interface"]
 
 var streams := {}
+var _cabin_filters := {}
+
 const EFFECT_RANGE := 300.0
 var pool: Array = []
 var pool_i := 0
@@ -181,6 +183,20 @@ func _setup_buses() -> void:
 		AudioServer.add_bus_effect(0, AudioEffectHardLimiter.new())
 
 
+## The turret muffles exterior sounds. Interface and music keep their own mix.
+func cabin_listening(inside: bool) -> void:
+	if not enabled or (not inside and _cabin_filters.is_empty()):
+		return
+	for bus_name in [&"Effects", &"Ambience"]:
+		var bus := AudioServer.get_bus_index(bus_name)
+		if not _cabin_filters.has(bus_name):
+			var filter := AudioEffectLowPassFilter.new()
+			filter.cutoff_hz = 1450.0
+			_cabin_filters[bus_name] = AudioServer.get_bus_effect_count(bus)
+			AudioServer.add_bus_effect(bus, filter)
+		AudioServer.set_bus_effect_enabled(bus, _cabin_filters[bus_name], inside)
+
+
 ## --sound-dump=DIR: write every synthesised sound to DIR as a WAV and quit
 ## (main.gd), so a sound can be listened to or measured on its own.
 func dump_dir() -> String:
@@ -219,7 +235,7 @@ func play(sname: String, pos: Vector3, vol_db := 0.0, pitch := 1.0, bus := &"Eff
 
 ## Heard rather than placed: aircraft overhead, a gunship's guns two hundred
 ## metres up. `pan` is ignored (mono), volume falls off with `dist`.
-func play_far(sname: String, vol_db := 0.0, pitch := 1.0, dist := 0.0) -> void:
+func play_far(sname: String, vol_db := 0.0, pitch := 1.0, dist := 0.0, bus := &"Effects") -> void:
 	if not enabled:
 		return
 	_ensure()
@@ -227,6 +243,7 @@ func play_far(sname: String, vol_db := 0.0, pitch := 1.0, dist := 0.0) -> void:
 		return
 	var p: AudioStreamPlayer = far_pool[far_i]
 	far_i = (far_i + 1) % far_pool.size()
+	p.bus = bus
 	p.stream = streams[sname]
 	p.volume_db = vol_db - clampf(dist / 25.0, 0.0, 14.0)
 	p.pitch_scale = pitch * randf_range(0.95, 1.05)

@@ -68,6 +68,7 @@ var _g_moves := false
 var mount_label: StringName
 var mount_subject: Entity
 var mount_marker: Marker3D
+var _eyepiece: ColorRect
 var follow := false
 var _follow_at := Vector3.INF
 var _follow_t := 0.0
@@ -88,6 +89,11 @@ func _ready() -> void:
 	add_child(cam)
 	cam.current = true
 	_apply()
+
+
+func _exit_tree() -> void:
+	if mount_label == &"Periscope":
+		Sfx.cabin_listening(false)
 
 
 ## Jumps straight there (the minimap, test framing).
@@ -198,7 +204,7 @@ func zoom_by(mult: float, at := Vector2(-1, -1)) -> void:
 			_zoom_screen = at
 
 
-func cycle_mount() -> void:
+func cycle_mount(requested := &"") -> void:
 	var subject := world.input.camera_subject()
 	if not is_instance_valid(subject) or subject.gone or not subject.seen_by_local() or not subject.is_visible_in_tree():
 		leave_mount()
@@ -207,7 +213,9 @@ func cycle_mount() -> void:
 		return
 	var mounts := subject.camera_mounts()
 	var index := mounts.keys().find(mount_label) + 1 if subject == mount_subject else 0
-	if index >= mounts.size():
+	if requested != &"":
+		index = mounts.keys().find(requested)
+	if index < 0 or index >= mounts.size():
 		leave_mount()
 		return
 	stop_follow()
@@ -220,6 +228,18 @@ func cycle_mount() -> void:
 	mount_subject = subject
 	mount_label = mounts.keys()[index]
 	mount_marker = mounts[mount_label]
+	Sfx.cabin_listening(mount_label == &"Periscope")
+	if mount_label == &"Periscope" and not _eyepiece:
+		_eyepiece = ColorRect.new()
+		var glass := ShaderMaterial.new()
+		glass.shader = preload("res://scripts/shaders/vehicle_eyepiece.gdshader")
+		_eyepiece.material = glass
+		_eyepiece.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		add_child(_eyepiece)
+		_eyepiece.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	if _eyepiece:
+		_eyepiece.visible = mount_label == &"Periscope"
+	cam.fov = clampf(float(Settings.get_v("fov")), 35.0, 75.0)
 	_apply()
 	if world.hud:
 		world.hud.flash("%s · %s" % [subject.display_name(), mount_label])
@@ -230,6 +250,10 @@ func leave_mount() -> void:
 	mount_label = &""
 	mount_subject = null
 	mount_marker = null
+	Sfx.cabin_listening(false)
+	if _eyepiece:
+		_eyepiece.hide()
+	cam.fov = clampf(float(Settings.get_v("fov")), 35.0, 75.0)
 	cam.transform = Transform3D.IDENTITY
 	_apply()
 
@@ -424,6 +448,8 @@ func _view_process(_scaled_dt: float) -> void:
 			target_dist = sp.dist
 	focus_pos = _clamp_map(focus_pos)
 	dist = lerpf(dist, target_dist, 1.0 - exp(-dt * 10.0))
+	if mount_label == &"Periscope":
+		cam.fov = move_toward(cam.fov, 28.0, dt * 32.0)
 	_shake = maxf(0.0, _shake - dt * 2.0)
 	_apply()
 	if _zoom_anchor != Vector3.INF:
@@ -464,8 +490,8 @@ func _apply() -> void:
 			var pose := mount_marker.global_transform.orthonormalized()
 			pose.origin.y = maxf(pose.origin.y, world.ground_y(pose.origin) + 0.45)
 			cam.global_transform = pose
-			cam.h_offset = 0
-			cam.v_offset = 0
+			cam.h_offset = randf_range(-1, 1) * _shake * 0.08 if _shake > 0.0 else 0.0
+			cam.v_offset = randf_range(-1, 1) * _shake * 0.08 if _shake > 0.0 else 0.0
 			return
 		leave_mount()
 		return
