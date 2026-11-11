@@ -51,26 +51,41 @@ static func _headlamp_reflector() -> ArrayMesh:
 
 ## Local XY grille, +Z outward. Fins stand in front of a recessed radiator core.
 static func grille(k: VehicleModels, parent: Node3D, center: Vector3, size: Vector2, rotation: Vector3, material: String, col = null, count := 8, vertical := false) -> void:
-	var mount := k._pivot(parent, center)
-	mount.rotation = rotation
-	var rim := minf(0.035, minf(size.x, size.y) * 0.08)
-	k._box(mount, Vector3(size.x, size.y, 0.018), Vector3(0, 0, -0.035), "plain_dark", Color(0.025, 0.028, 0.026), Vector3.ZERO, false)
-	# Fine radiator channels behind the broad protective slats.
-	var channels := clampi(ceili(size.x / 0.055), 6, 40)
-	for i in channels:
-		k._box(mount, Vector3(0.008, size.y - rim * 2, 0.012), Vector3(lerpf(-size.x / 2 + rim, size.x / 2 - rim, float(i) / (channels - 1)), 0, -0.018), "gunmetal", Color(0.14, 0.15, 0.14), Vector3.ZERO, false)
-	for side in [-1.0, 1.0]:
-		k._box(mount, Vector3(size.x, rim, 0.06), Vector3(0, side * (size.y - rim) / 2, 0), material, col)
-		k._box(mount, Vector3(rim, size.y - rim * 2, 0.06), Vector3(side * (size.x - rim) / 2, 0, 0), material, col)
-		for y in [-1.0, 1.0]:
-			VehicleBody.fastener(k, mount, Vector3(side * (size.x / 2 - rim / 2), y * (size.y / 2 - rim / 2), 0.035), Vector3.BACK, rim * 0.24)
-	var span := (size.x if vertical else size.y) - rim * 2
-	var pitch := span / maxf(count, 1)
+	var basis := Basis.from_euler(rotation)
+	var surface := VehicleSurface.plane(center, basis.x, basis.y)
+	var x := size.x * 0.5
+	var y := size.y * 0.5
+	var cut := minf(0.035, minf(x, y) * 0.12)
+	var outline := PackedVector2Array([Vector2(-x + cut, -y), Vector2(x - cut, -y), Vector2(x, -y + cut), Vector2(x, y - cut), Vector2(x - cut, y), Vector2(-x + cut, y), Vector2(-x, y - cut), Vector2(-x, -y + cut)])
+	vent(k, parent, surface, outline, material, col, count, vertical)
+
+
+## Outline-aware grille in a metre-scaled surface domain. Fins and radiator
+## channels are clipped to the inset; tapered vents need no bespoke slat loops.
+static func vent(k: VehicleModels, parent: Node3D, surface: VehicleSurface, outline: PackedVector2Array, material: String, col = null, count := 8, vertical := false) -> void:
+	var bounds := Rect2(outline[0], Vector2.ZERO)
+	for q in outline:
+		bounds = bounds.expand(q)
+	var rim := minf(0.025, minf(bounds.size.x, bounds.size.y) * 0.065)
+	var inset := Geometry2D.offset_polygon(outline, -rim * 1.5)
+	assert(not inset.is_empty())
+	k._add(parent, surface.patch(outline, -0.025, 0.012), "plain_dark", Color(0.025, 0.028, 0.026), Vector3.ZERO)
+	VehicleBody.boundary(k, parent, surface, outline, 0.0, rim * 0.7, true, 0, material, col)
+	var axis := 0 if vertical else 1
+	var pitch := bounds.size[axis] / maxf(count, 1)
+	# Fine channels remain behind the protective slats, at a separate depth.
+	_slats(k, parent, surface, inset[0], bounds, 0, clampi(ceili(bounds.size.x / 0.055), 6, 40), 0.14, -0.012, 0.004, "gunmetal", Color(0.14, 0.15, 0.14))
+	_slats(k, parent, surface, inset[0], bounds, axis, count, 0.42, 0.012, minf(0.012, pitch * 0.15), material, col)
+
+static func _slats(k: VehicleModels, parent: Node3D, surface: VehicleSurface, inset: PackedVector2Array, bounds: Rect2, axis: int, count: int, coverage: float, lift: float, depth: float, material: String, col) -> void:
+	var pitch := bounds.size[axis] / maxf(count, 1)
 	for i in count:
-		var offset := -span / 2 + pitch * (i + 0.5)
-		var fin_size := Vector3(pitch * 0.36, size.y - rim * 2, 0.035) if vertical else Vector3(size.x - rim * 2, pitch * 0.36, 0.035)
-		k._box(mount, fin_size, Vector3(offset, 0, 0.008) if vertical else Vector3(0, offset, 0.008), material, col, Vector3(0, 0.22, 0) if vertical else Vector3(-0.28, 0, 0))
-	k._fold(mount)
+		var lo := bounds.position[axis] + pitch * (i + (1.0 - coverage) * 0.5)
+		var hi := lo + pitch * coverage
+		var strip := PackedVector2Array([Vector2(lo, bounds.position.y), Vector2(hi, bounds.position.y), Vector2(hi, bounds.end.y), Vector2(lo, bounds.end.y)]) if axis == 0 else PackedVector2Array([Vector2(bounds.position.x, lo), Vector2(bounds.end.x, lo), Vector2(bounds.end.x, hi), Vector2(bounds.position.x, hi)])
+		for clipped: PackedVector2Array in Geometry2D.intersect_polygons(inset, strip):
+			var angled := VehicleSurface.new(func(q: Vector2) -> Vector3: return surface.point(q, lift + (q[axis] - lo) * 0.25), surface.outward)
+			k._add(parent, angled.patch(clipped, 0.0, depth), material, col, Vector3.ZERO)
 
 
 ## A clamped rubber flap with a gently kicked lower edge and reinforcing ribs.
@@ -420,4 +435,31 @@ static func rectangular_headlamp(k: VehicleModels, parent: Node3D, center: Vecto
 			var x := (i - 3) * size.x * 0.115
 			k._box(mount, Vector3(size.x * 0.025, size.y * 0.74, 0.004), Vector3(x, 0, -0.015), "headlamp", Color(0.52, 0.58, 0.56), Vector3.ZERO, false)
 		k._box(mount, Vector3(size.x * 0.12, size.y * 0.14, 0.004), Vector3(0, 0, -0.017), "gunmetal", null, Vector3.ZERO, false)
+	k._fold(mount)
+
+
+## Static wiper, with a raised arm and a rubber blade seated on the pane.
+## Explicit plane directions keep both ends fitted to raked windscreens.
+static func wiper(k: VehicleModels, parent: Node3D, pivot: Vector3, blade_center: Vector3, along: Vector3, normal: Vector3, length := 0.48) -> void:
+	var n := normal.normalized()
+	var axis := along.normalized()
+	var blade_a := blade_center - axis * length * 0.5
+	var blade_b := blade_center + axis * length * 0.5
+	VehicleFrames.tube(k, parent, pivot, pivot + n * 0.018, 0.018, "metal_dark", null, 8, false)
+	VehicleFrames.beam(k, parent, pivot + n * 0.018, blade_center + n * 0.018, 0.014, 0.009, "metal_dark")
+	VehicleFrames.tube(k, parent, blade_a, blade_b, 0.007, "rubber", null, 6, false)
+	VehicleFrames.beam(k, parent, blade_a.lerp(blade_b, 0.15) + n * 0.012, blade_a.lerp(blade_b, 0.85) + n * 0.012, 0.012, 0.008, "metal_dark")
+
+static func parked_wiper(k: VehicleModels, parent: Node3D, center: Vector3, length: float, rotation: Vector3) -> void:
+	var basis := Basis.from_euler(rotation)
+	wiper(k, parent, center + basis * Vector3(-length * 0.35, -0.065, 0), center, basis.x, -basis.z, length)
+
+
+## Side marker housing, gasket and optical insert. No live light or new
+## animation is needed for the coloured navigation cue.
+static func marker(k: VehicleModels, parent: Node3D, center: Vector3, size: Vector3, facing: float, col: Color) -> void:
+	var mount := k._pivot(parent, center)
+	mount.rotation.y = facing * PI / 2
+	k._add(mount, BevelMesh.make(Vector3(size.z, size.y, size.x), minf(size.y, size.x) * 0.2), "metal_dark", null, Vector3.ZERO)
+	signal_lens(k, mount, Vector3(0, 0, size.x * 0.5 + 0.002), Vector2(size.z * 0.8, size.y * 0.78), col)
 	k._fold(mount)

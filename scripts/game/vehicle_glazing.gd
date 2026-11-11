@@ -17,26 +17,26 @@ static func rectangle(k: VehicleModels, parent: Node3D, size: Vector2, pos: Vect
 	return k._box(parent, Vector3(size.x, size.y, thickness), pos, "glass", col, rot, false)
 
 
-static func quad(k: VehicleModels, parent: Node3D, key: String, corners: Array, inside: Vector3, region: Rect2, lift: float, thickness: float, mat: String, col = null, clear := false) -> Variant:
-	var c0: Vector3 = corners[0]
-	var c1: Vector3 = corners[1]
-	var c2: Vector3 = corners[2]
-	var c3: Vector3 = corners[3]
-	var normal := (c1 - c0).cross(c3 - c0).normalized()
-	if normal.dot(c0 - inside) < 0:
-		normal = -normal
-	var inner := PackedVector3Array()
-	var outer := PackedVector3Array()
-	for uv in [region.position, Vector2(region.end.x, region.position.y), region.end, Vector2(region.position.x, region.end.y)]:
-		var q := c0.lerp(c1, uv.x).lerp(c3.lerp(c2, uv.x), uv.y)
-		inner.append(q + normal * lift)
-		outer.append(q + normal * (lift + thickness))
+static func quad(k: VehicleModels, parent: Node3D, _key: String, corners: Array, inside: Vector3, region: Rect2, lift: float, thickness: float, mat: String, col = null, clear := false) -> Variant:
+	var surface := VehicleSurface.quad(corners, inside)
+	var outline := PackedVector2Array([region.position, Vector2(region.end.x, region.position.y), region.end, Vector2(region.position.x, region.end.y)])
 	if mat == "glass":
-		var seal := minf(0.013, minf(outer[0].distance_to(outer[1]), outer[0].distance_to(outer[3])) * 0.06)
-		for i in 4:
-			VehicleFrames.tube(k, parent, outer[i], outer[(i + 1) % 4], seal, "rubber", null, 6, false)
-	var mesh := VehicleModels.solid([inner, outer], key)
+		return polygon(k, parent, surface, outline, clear, col, thickness, 0, lift)
+	return k._add(parent, surface.patch(outline, lift + thickness, thickness), mat, col, Vector3.ZERO)
+
+
+## Arbitrary fitted pane: the seal and retaining lip follow its actual outline.
+## Clear is still opt-in, and uses the existing wreck/near/far glass contract.
+static func polygon(k: VehicleModels, parent: Node3D, surface: VehicleSurface, outline: PackedVector2Array, clear := false, col = null, thickness := 0.02, divisions := 0, lift := 0.0, authored_mesh: Mesh = null) -> Variant:
+	var shortest := INF
+	for i in outline.size():
+		shortest = minf(shortest, surface.point(outline[i]).distance_to(surface.point(outline[(i + 1) % outline.size()])))
+	var seal := minf(0.014, shortest * 0.045)
+	VehicleBody.boundary(k, parent, surface, outline, lift + thickness, seal, false, divisions)
+	# The thin painted retaining bead gives the rubber a distinct attachment.
+	VehicleBody.boundary(k, parent, surface, outline, lift + thickness - seal, seal * 0.42, false, divisions, "metal_dark")
+	var mesh: Mesh = authored_mesh if authored_mesh != null else surface.patch(outline, lift + thickness * 0.6, 0.0 if clear else thickness * 0.6, divisions)
 	if clear:
 		VehicleCab.mesh_glass(k, parent, mesh)
 		return null
-	return k._add(parent, mesh, mat, col, Vector3.ZERO, Vector3.ZERO, Vector3.ONE, mat != "glass")
+	return k._add(parent, mesh, "glass", col, Vector3.ZERO, Vector3.ZERO, Vector3.ONE, false)

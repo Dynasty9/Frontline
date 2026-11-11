@@ -231,7 +231,12 @@ static func _surf(p: Dictionary, s: float, z: float, y: float) -> Transform3D:
 static func _decal(k: VehicleModels, m: Node3D, p: Dictionary, s: float, z: float, y: float, w: float, h: float, kind: String, col, t := 0.006, tilt := 0.0) -> void:
 	var tf := _surf(p, s, z, y)
 	var b := tf.basis * Basis(Vector3(0, 0, 1), tilt)
-	_bx(k, m, Vector3(w, h, t), tf.origin + tf.basis.z * (t * 0.5 + 0.002), kind, col, b.get_euler(), false)
+	var outline := PackedVector2Array([Vector2(-w, -h), Vector2(w, -h), Vector2(w, h), Vector2(-w, h)])
+	VehicleMarkings.polygons(k, m, [outline], func(q: Vector2) -> Vector3:
+		var at := tf.origin + b * Vector3(q.x * 0.5, q.y * 0.5, 0)
+		var frame := _surf(p, s, at.z, at.y)
+		return frame.origin + frame.basis.z * (t + 0.002), tf.basis.z, col, kind, false)
+
 
 
 ## Seven-segment strokes per digit: a top, b top right, c bottom right, d
@@ -368,12 +373,7 @@ static func _torus(inner: float, outer: float) -> Mesh:
 
 ## A pair of mooring bitts on a base plate, across `yaw`.
 static func _bitts(k: VehicleModels, m: Node3D, pos: Vector3, yaw: float, sc: float, kind: String, col) -> void:
-	var bs := Basis(Vector3.UP, yaw)
-	_bx(k, m, Vector3(0.62, 0.04, 0.24) * sc, pos + Vector3(0, 0.02 * sc, 0), kind, col, Vector3(0, yaw, 0))
-	for dx in [-0.2, 0.2]:
-		var q: Vector3 = pos + bs * Vector3(dx * sc, 0, 0)
-		k._cyl(m, 0.075 * sc, 0.08 * sc, 0.3 * sc, q + Vector3(0, 0.17 * sc, 0), Vector3.ZERO, kind, col, 8)
-		k._cyl(m, 0.1 * sc, 0.1 * sc, 0.035 * sc, q + Vector3(0, 0.335 * sc, 0), Vector3.ZERO, kind, col, 8, false)
+	VehicleMarine.mooring(k, m, pos, Vector3(0.62, 0.35, 0.24) * sc, yaw, "bitts", kind, col)
 
 
 ## A coil of rope lying on the deck.
@@ -710,7 +710,7 @@ static func _patrol_ship(k: VehicleModels, team: int, seed: int) -> void:
 		_rod(k, m, VmBoat._pt(sill, i, y1), VmBoat._pt(roof, i, y2), 0.045, "plain", sup, 6, true)
 	for i in 3:
 		var bx := -0.75 + i * 0.75
-		_rod(k, m, Vector3(bx, y1 + 0.12, -4.66), Vector3(bx + 0.08, y1 + 0.75, -4.24), 0.009, "plain_dark", Color(0.05, 0.05, 0.05), 4)
+		VehicleFittings.wiper(k, m, Vector3(bx, y1 + 0.12, -4.66), Vector3(bx + 0.08, y1 + 0.75, -4.24), Vector3.RIGHT, Vector3(0, 0.42, -0.63), 0.52)
 	# the roof, its visor over the windscreen, a coaming round its edge
 	var rc := VmBoat._scale_xz(roof, 1.04, -2.2)
 	k._add(m, VehicleModels.solid([VmBoat._ry(rc, y2 - 0.02), VmBoat._ry(rc, y2 + 0.1)], "ship_pb_roof"), "plain", sup, Vector3.ZERO)

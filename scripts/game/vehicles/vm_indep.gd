@@ -203,7 +203,9 @@ static func _strider(k: VehicleModels, team: int, variant: int) -> void:
 	_plate(k, m, 0.0, 0.12, ws_a.lerp(ws_b, 0.13), ws_b, 0.04, cam, col, 0.0)
 	# a wiper over each pane
 	for s: float in [-1.0, 1.0]:
-		_plate(k, m, s * 0.5, 0.025, ws_a.lerp(ws_b, 0.22), ws_a.lerp(ws_b, 0.6), 0.02, "gunmetal_w", null, 0.025, false)
+		var a := ws_a.lerp(ws_b, 0.22)
+		var b := ws_a.lerp(ws_b, 0.6)
+		VehicleFittings.wiper(k, m, Vector3(s * 0.5, a.y, a.x - 0.025), Vector3(s * 0.5, b.y, b.x - 0.025), Vector3.RIGHT, Vector3(0, ws_b.x - ws_a.x, ws_a.y - ws_b.y), 0.36)
 	# the nose: headlight clusters in guards, tow shackles, a plate
 	for s: float in [-1.0, 1.0]:
 		_light(k, m, Vector3(s * 0.92, 1.02, -2.8), 0.3, 0.13)
@@ -281,11 +283,7 @@ static func _tow_eyes(k: VehicleModels, p: Node3D, z: float, y: float) -> void:
 ## An electro-optical sensor head: a box with a camera window, a thermal
 ## imager's round lens and the rangefinder's, facing -Z.
 static func _sensor_head(k: VehicleModels, p: Node3D, pos: Vector3, cam: String, col, sc := 1.0) -> void:
-	k._box(p, Vector3(0.5, 0.26, 0.3) * sc, pos, cam, col)
-	k._box(p, Vector3(0.54, 0.03, 0.34) * sc, pos + Vector3(0, 0.145, 0) * sc, cam, col)
-	k._box(p, Vector3(0.14, 0.12, 0.02) * sc, pos + Vector3(-0.14, 0.01, -0.155) * sc, "glass", null, Vector3.ZERO, false)
-	k._cyl(p, 0.06 * sc, 0.06 * sc, 0.03 * sc, pos + Vector3(0.05, 0.01, -0.155) * sc, X90, "glass", null, 12, false)
-	k._cyl(p, 0.035 * sc, 0.035 * sc, 0.03 * sc, pos + Vector3(0.18, 0.04, -0.155) * sc, X90, "glass", null, 10, false)
+	VehicleEquipment.sensor(k, p, pos, Vector3(0.5, 0.26, 0.3) * sc, cam, col)
 	k._box(p, Vector3(0.12, 0.2, 0.12) * sc, pos + Vector3(0, -0.2, 0.02) * sc, "gunmetal_w")
 
 
@@ -382,12 +380,12 @@ static func _mora(k: VehicleModels, team: int) -> void:
 	# skirts: five bolted panels a side, the front one raked
 	for s: float in [-1.0, 1.0]:
 		for i in 5:
-			k._box(m, Vector3(0.05, 0.44, 1.08), Vector3(s * 1.49, 0.8, -1.9 + i * 1.1), cam, col)
+			VehicleEquipment.skirt(k, m, Vector3(s * 1.49, 0.8, -1.9 + i * 1.1), Vector3(0.05, 0.44, 1.08), s, cam, col)
 			k._box(m, Vector3(0.02, 0.03, 1.0), Vector3(s * 1.52, 0.98, -1.9 + i * 1.1), "gunmetal_w", null, Vector3.ZERO, false)
 		k._box(m, Vector3(0.05, 0.36, 0.6), Vector3(s * 1.49, 0.86, -2.78), cam, col, Vector3(-0.45, 0, 0))
 		# the hull's side seam at the deck line, a stowage box aft
 		k._box(m, Vector3(0.04, 0.05, 6.1), Vector3(s * 1.45, 1.5, 0.05), cam, col)
-		k._box(m, Vector3(0.22, 0.38, 1.1), Vector3(s * 1.52, 1.45, 2.2), cam, col)
+		VehicleEquipment.storage(k, m, Vector3(s * 1.52, 1.45, 2.2), Vector3(0.22, 0.38, 1.1), cam, col)
 		# headlight clusters in guards on the glacis corners, tow hooks
 		_light(k, m, Vector3(s * 1.16, 1.22, -3.08), 0.26, 0.12)
 		VehicleFittings.tow_shackle(k, m, Vector3(s * 0.62, 0.92, -3.18), -1.0, Vector3(0.12, 0.16, 0.18), 0.05)
@@ -870,7 +868,6 @@ static func _zamak_cab(k: VehicleModels, team: int, cam: String, col) -> void:
 	var m := k.root
 	# chassis rails and cross members, axles with their differentials, springs
 	for s: float in [-1.0, 1.0]:
-		k._box(m, Vector3(0.14, 0.22, 7.2), Vector3(s * 0.48, 1.0, 0.1), "gunmetal_w")
 		k._box(m, Vector3(0.1, 0.08, 1.3), Vector3(s * 0.6, 0.8, -2.45), "gunmetal_w")
 		k._box(m, Vector3(0.12, 0.14, 1.9), Vector3(s * 0.62, 0.78, 1.56), "gunmetal_w")
 		k._cyl(m, 0.13, 0.13, 0.22, Vector3(s * 0.62, 0.84, 1.56), Z90, "gunmetal_w", null, 10)
@@ -878,11 +875,9 @@ static func _zamak_cab(k: VehicleModels, team: int, cam: String, col) -> void:
 			k._wheel(m, Vector3(s * 1.03, 0.6, z), 0.6, 0.42, cam, col)
 		for z: float in [-1.78, 2.9]:
 			k._box(m, Vector3(0.44, 0.42, 0.02), Vector3(s * 1.03, 0.82, z), "rubber")
-	for z: float in [-3.3, -1.0, 0.2, 1.56, 3.55]:
-		k._box(m, Vector3(0.84, 0.12, 0.1), Vector3(0, 1.0, z), "gunmetal_w")
-	for z in ZK_AXLES:
-		k._cyl(m, 0.08, 0.08, 1.7, Vector3(0, 0.6, z), Z90, "gunmetal_w", null, 8)
-		k._add(m, Res.sphere(0.2, 10), "gunmetal_w", null, Vector3(0, 0.62, z), Vector3.ZERO, Vector3(1.0, 0.9, 0.9))
+	VehicleRunningGear.frame(k, m, Vector3(0, 1.0, 0.1), 0.48, 7.2, Vector2(0.14, 0.22), [-3.3, -1.0, 0.2, 1.56, 3.55])
+	for z: float in ZK_AXLES:
+		VehicleRunningGear.axle(k, m, Vector3(0, 0.6, z), 1.7, 0.08)
 	# the bonnet: louvres down its sides, the grille in front
 	k._add(m, VehicleModels.loft("indep_zk_bonnet", _oct(-0.6, 0.6, -3.62, -2.12, 0.08), _oct(-0.5, 0.5, -3.48, -2.12, 0.14), 1.12, 1.84), cam, col, Vector3.ZERO)
 	VehicleFittings.grille(k, m, Vector3(0, 1.48, -3.62), Vector2(0.92, 0.65), Vector3(-0.20, PI, 0), cam, col, 7, true)
@@ -907,20 +902,19 @@ static func _zamak_cab(k: VehicleModels, team: int, cam: String, col) -> void:
 	# the cab: vertical lower half, the glasshouse leaning in a little
 	k._add(m, VehicleModels.solid([_ring(_oct(-1.2, 1.2, -2.15, -0.72, 0.08), 1.22), _ring(_oct(-1.2, 1.2, -2.15, -0.72, 0.08), 2.0)], "indep_zk_open_cab"), cam, col, Vector3.ZERO)
 	for side in [-1.0, 1.0]:
-		VehicleBody.panel(k, m, Vector3(side * 1.21, 1.63, -1.59), Vector2(0.80, 0.48), Vector3(0, side * PI / 2, 0), cam, col)
+		VehicleDoors.rectangle(k, m, Vector3(side * 1.21, 1.63, -1.59), Vector2(0.80, 0.48), Vector3(0, side * PI / 2, 0), cam, col)
 	VehicleCab.upper(k, Vector2(1.2, 1.12), Vector2(2.0, 2.72), Vector2(-2.15, -2.0), -0.76, cam, col)
 	var wa := Vector2(-2.15, 2.0)
 	var wb := Vector2(-2.0, 2.72)
 	for s: float in [-1.0, 1.0]:
-		_plate(k, m, s * 0.5, 0.025, wa.lerp(wb, 0.12), wa.lerp(wb, 0.55), 0.02, "gunmetal_w", null, 0.02, false)
+		VehicleFittings.wiper(k, m, Vector3(s * 0.5, 2.09, -2.15), Vector3(s * 0.5, 2.39, -2.09), Vector3.RIGHT, Vector3(0, 0.2, -1), 0.38)
 	_plate(k, m, 0.0, 0.1, wa.lerp(wb, 0.05), wa.lerp(wb, 0.95), 0.035, cam, col, 0.0)
 	for s: float in [-1.0, 1.0]:
 		# door window and rear quarter light, the door's seams and handle,
 		# the step and grab handle, the mirror on its arm
 		for dz: float in [-2.04, -1.13]:
 			k._box(m, Vector3(0.02, 1.3, 0.025), Vector3(s * 1.2, 1.88, dz), "gunmetal_w", null, Vector3.ZERO, false)
-		k._box(m, Vector3(0.04, 0.04, 0.14), Vector3(s * 1.22, 1.95, -1.3), "gunmetal_w", null, Vector3.ZERO, false)
-		k._box(m, Vector3(0.32, 0.04, 0.44), Vector3(s * 1.12, 0.92, -1.58), "gunmetal_w")
+		VehicleFrames.step(k, m, Vector3(s * 1.12, 0.92, -1.58), Vector2(0.32, 0.44))
 		k._box(m, Vector3(0.04, 0.34, 0.04), Vector3(s * 1.2, 1.1, -1.38), "gunmetal_w", null, Vector3.ZERO, false)
 		VehicleFittings.mirror(k, m, Vector3(s * 1.56, 2.22, -2.1), Vector2(0.22, 0.36), -s * 0.3, [Vector3(s * 1.23, 2.32, -2.1), Vector3(s * 1.23, 1.75, -2.1)])
 		k._team_mark(m, team, Vector3(s * 1.205, 1.65, -1.6), Vector3(0.03, 0.24, 0.5))
@@ -1028,13 +1022,13 @@ static func _zamak_ammo(k: VehicleModels, tarp: Color) -> void:
 		var z := 0.4 + row * 1.13
 		for s: float in [-1.0, 1.0]:
 			var x: float = s * 0.6
-			k._box(m, Vector3(1.05, 0.1, 0.98), Vector3(x, 1.49, z), "wood")
+			VehicleCargo.pallet(k, m, Vector3(x, 1.44, z), Vector2(1.05, 0.98))
 			if row == 0:
 				continue
 			k._box(m, Vector3(1.0, 0.72, 0.92), Vector3(x, 1.9, z), "paint", box)
 			for y: float in [1.78, 2.02]:
 				k._box(m, Vector3(1.02, 0.014, 0.94), Vector3(x, y, z), "plain_dark", null, Vector3.ZERO, false)
-			k._box(m, Vector3(0.04, 0.74, 0.94), Vector3(x, 1.9, z), "plain_dark", null, Vector3.ZERO, false)
+			VehicleCargo.restraints(k, m, Vector3(x, 1.54, z), Vector3(1.0, 0.72, 0.92), [-0.25, 0.25])
 			k._box(m, Vector3(0.012, 0.05, 0.4), Vector3(x + s * 0.505, 1.66, z), "paint", Color(0.6, 0.52, 0.2), Vector3.ZERO, false)
 	# the front stacks under a tarp, its rolled edge
 	VehicleCloth.load_cover(k, Vector3(0, 1.54, 0.37), Vector3(2.46, 0.78, 1.18), tarp, false)
@@ -1137,21 +1131,14 @@ static func _zamak_fuel(k: VehicleModels, cam: String, col) -> void:
 		k._box(m, Vector3(0.16, 0.14, 4.0), Vector3(s * 0.48, 1.19, 1.775), "gunmetal_w")
 	for z: float in [0.25, 1.5, 2.75]:
 		k._box(m, Vector3(1.8, 0.2, 0.2), Vector3(0, 1.32, z), cam, col)
-	var tc := Vector3(0, 2.02, 1.5)
-	k._add(m, Res.cyl(1.0, 1.0, 3.1, 24), cam, col, tc, X90, Vector3(1.17, 1.0, 0.72))
-	for e: float in [-1.0, 1.0]:
-		k._add(m, Res.sphere(1.0, 20), cam, col, tc + Vector3(0, 0, e * 1.55), Vector3.ZERO, Vector3(1.17, 0.72, 0.16))
-	for z: float in [0.3, 1.5, 2.7]:
-		k._add(m, Res.cyl(1.0, 1.0, 0.06, 24), "gunmetal_w", null, Vector3(0, 2.02, z), X90, Vector3(1.19, 1.0, 0.74))
+	VehicleEquipment.vessel(k, m, Vector3(0, 2.02, 1.5), Vector3(2.34, 1.44, 3.42), [-1.2, 0.0, 1.2], cam, col, false)
 	# on top: two manholes, the walkway, fold-down rails
 	for z: float in [0.75, 2.25]:
 		k._cyl(m, 0.26, 0.28, 0.14, Vector3(0, 2.76, z), Vector3.ZERO, cam, col, 14)
 		k._cyl(m, 0.2, 0.2, 0.06, Vector3(0, 2.86, z), Vector3.ZERO, "gunmetal_w", null, 12)
 	k._box(m, Vector3(0.36, 0.03, 2.9), Vector3(-0.42, 2.73, 1.5), "gunmetal_w")
 	for s: float in [-1.0, 1.0]:
-		k._cyl(m, 0.02, 0.02, 2.7, Vector3(s * 0.62, 2.9, 1.5), X90, "gunmetal_w", null, 6, false)
-		for z: float in [0.3, 1.5, 2.7]:
-			k._cyl(m, 0.02, 0.02, 0.26, Vector3(s * 0.62, 2.78, z), Vector3.ZERO, "gunmetal_w", null, 6, false)
+		VehicleFrames.railing(k, m, [Vector3(s * 0.62, 2.65, 0.3), Vector3(s * 0.62, 2.65, 1.5), Vector3(s * 0.62, 2.65, 2.7)], 0.25, 0.02)
 		# hazard placards and the fire extinguisher by the cabinet
 		k._box(m, Vector3(0.02, 0.32, 0.42), Vector3(s * 1.17, 2.02, 1.5), "paint", Color(0.7, 0.42, 0.12), Vector3.ZERO, false)
 		k._cyl(m, 0.08, 0.08, 0.45, Vector3(s * 1.2, 1.75, 3.25), Vector3.ZERO, "paint", Color(0.5, 0.1, 0.08), 10)
