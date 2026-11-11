@@ -221,8 +221,8 @@ func _build_camera_mounts() -> void:
 	if _vm.rotor:
 		_camera_mount(&"Cabin side", model, Vector3(size.x * 1.4, size.y * 0.75, size.z * 0.28), Vector3(0, size.y * 0.5, -size.z * 0.16))
 		if int(vdef.get("sling", -1)) >= 0:
-			# Keep the aircraft and the vehicle hanging beneath it in one frame.
-			_camera_mount(&"Sling load", model, Vector3(-size.z, size.z * 0.25, -size.z * 0.63), Vector3.DOWN * SLING_ROPE * 0.32, true)
+			# Frame the rotor against the sky and keep the load and its shadow below.
+			_camera_mount(&"Sling load", model, Vector3(-size.z * 1.12, -size.z * 0.10, -size.z * 0.70), Vector3.DOWN * SLING_ROPE * 0.26, true)
 			# Looking past the landing gear shows when the load clears its shadow.
 			_camera_mount(&"Cargo door", model, Vector3(-size.x * 0.65, size.y * 0.44, size.z * 0.07), Vector3.DOWN * SLING_ROPE * 0.97)
 	elif is_boat():

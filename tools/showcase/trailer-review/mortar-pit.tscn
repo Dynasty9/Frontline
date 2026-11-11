@@ -1,0 +1,13 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://tools/showcase/trailer-review/field-camera.gd" id="1"]
+
+[node name="Main" type="Node"]
+script = ExtResource("1")
+first_eye = Vector3(7.1, 1.7, 16.2)
+last_eye = Vector3(4.6, 1.45, 16.25)
+subject = Vector3(1.0, 1.10, 14.9)
+travel_seconds = Vector2(0, 3.5)
+
+[node name="Camera3D" type="Camera3D" parent="."]
+fov = 39.0
