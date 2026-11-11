@@ -9,8 +9,8 @@
 For each output: the cuts are taken from WORK/takes/TAKE.avi, scaled to the
 output's size, graded, and joined with crossfades; loop_fade blends the end
 into the start so a looping clip has no jump. With "audio": true the sound
-comes too, each cut brought to about the same loudness and the whole run
-through a peak limiter; cuts with a "caption" give a WebVTT captions file.
+comes too. Set gain_db on a cut to trim its original mix, or omit it to
+match loudness automatically. The whole reel goes through a peak limiter; cuts with a "caption" give a WebVTT captions file.
 The result is encoded as H.264 MP4 (moov first, so it starts playing while it
 downloads), with its first frame as a JPEG poster, into WORK/build/. A
 contact sheet of what was built goes beside it (NAME.preview.jpg): look at it.
@@ -98,7 +98,7 @@ def plan(spec: dict, takes: Takes) -> tuple[list[list[tuple[float, tuple]]], lis
         n = len(takes[c["take"]])
         if b > n:
             sys.exit(f"Cut {c} runs past the end of take '{c['take']}' ({n / FPS:.1f} s).")
-        gain = level(takes, c["take"], a, b, spec) if audio else 1.0
+        gain = level(takes, c, a, b, spec) if audio else 1.0
         frames = [(c["take"], i, gain) for i in range(a, b)]
         k = min(fade, len(out), len(frames)) if out else 0
         starts.append((len(out) - k) / FPS)
@@ -119,9 +119,11 @@ def plan(spec: dict, takes: Takes) -> tuple[list[list[tuple[float, tuple]]], lis
     return out, starts
 
 
-def level(takes: Takes, take: str, a: int, b: int, spec: dict) -> float:
-    """A gain that brings this cut's sound to about the same loudness (RMS) as the others, boosting 12 dB at most."""
-    x = np.concatenate([sound(takes, take, i) for i in range(a, b)])
+def level(takes: Takes, cut: dict, a: int, b: int, spec: dict) -> float:
+    """Use the editor's trim when supplied; otherwise match cuts by RMS."""
+    if "gain_db" in cut:
+        return 10 ** (cut["gain_db"] / 20)
+    x = np.concatenate([sound(takes, cut["take"], i) for i in range(a, b)])
     rms = float(np.sqrt((x * x).mean())) + 1e-9
     return min(4.0, max(0.5, spec.get("audio_rms", 0.11) / rms))
 
