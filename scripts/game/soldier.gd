@@ -627,7 +627,7 @@ func hit_factor() -> float:
 	elif is_moving():
 		# a man dashing from cover to cover is a hard target ("I'm up, he sees me, I'm down")
 		f *= 0.5 if move_mode >= 2 else (0.65 if move_mode == 1 else 0.85)
-	if _gy < -0.6 and life == Life.ALIVE:
+	if world.in_trench(position) and life == Life.ALIVE:
 		f *= 0.55  # dug into a trench: a head and a rifle over the parapet
 	return f
 
@@ -1322,8 +1322,9 @@ func _fight_think_work() -> void:
 	var need := false
 	if not at_cover:
 		need = world.time > next_cover_eval
-	elif cover_st != null and (not is_instance_valid(cover_st) or cover_st.gone or cover_ai >= cover_st.anc_p.size() 			or Defs.flat(cover_st.anc_p[cover_ai] - cover_pos).length() > 0.3):
-		# the wall he was behind came down, or the car was blown across the road
+	elif cover_st != null and (not is_instance_valid(cover_st) or cover_st.gone or cover_ai < 0 or cover_ai >= cover_st.anc_p.size()
+			or Defs.flat(cover_st.anc_p[cover_ai] - cover_pos).length() > 0.3 or not is_equal_approx(cover_st.anc_h[cover_ai], cover_h)):
+		# the barrier moved, collapsed or changed height
 		cover_st = null
 		need = true
 	elif cover_st != null and cover_st.burn > 0.3:
@@ -1513,8 +1514,24 @@ func _move_tick_work(dt: float, speed: float) -> bool:
 		slide_t -= dt
 		mul = 1.3
 	mul *= world.terrain.speed_mul(position, false)
-	var step := minf(d, speed * mul * dt)
 	var dir := to / d
+	if world.in_trench(position):
+		for other in world.soldiers_near(position + dir * 0.45, 0.65):
+			if other == self or other.life != Life.ALIVE or other.eid > eid or not other.is_moving():
+				continue
+			if Defs.flat(other.position - position).dot(dir) < 0.0:
+				continue
+			var aside := position + dir.cross(Vector3.UP) * dt * 0.8
+			if world.in_trench(aside) and world.nav.can_step(position, aside):
+				position = aside
+			mul *= 0.3
+			break
+	if world.terrain.trench[world.terrain.idx_of(position)] > 0 or world.terrain.trench[world.terrain.idx_of(position + dir * 0.4)] > 0:
+		var next_ground: float = world.ground_y(position + dir * 0.4)
+		if absf(next_ground - _ground()) > 0.4:
+			mul *= 0.4
+			vaulting = life == Life.ALIVE
+	var step := minf(d, speed * mul * dt)
 	if (door_wait > 0.0 or (not world.door_cells.is_empty() and world.time > _door_t)) and _door_tick(dt, dir):
 		return true
 	_last_dir = dir
@@ -1606,7 +1623,7 @@ func _apply_sep(dt: float) -> void:
 	if v.length() > 1.4:
 		v = v.normalized() * 1.4
 	var np := position + v * dt
-	if world.nav.can_step(position, np):
+	if world.nav.can_step(position, np) and (not world.in_trench(position) or world.in_trench(np)):
 		position = np
 		_shuffle = v.length() > 0.3
 
@@ -1865,7 +1882,7 @@ func _cover_cycle(dt: float, w: Dictionary, want_fire: bool, pinned: bool) -> vo
 			peek_up = true
 			peek_t = world.rng.randf_range(1.0, 2.0)
 			world.stat("blind_fire")
-		elif world.rng.randf() < 0.22 + (0.15 if cover_mat >= Cover.HARD else 0.0) + (0.1 if _gy < -0.6 else 0.0):
+		elif world.rng.randf() < 0.22 + (0.15 if cover_mat >= Cover.HARD else 0.0) + (0.1 if world.in_trench(position) else 0.0):
 			peek_up = true  # pinned men still snap off the odd shot - briefly (more often behind something solid)
 			peek_t = world.rng.randf_range(0.9, 1.6)
 		else:
@@ -2747,7 +2764,7 @@ func add_suppression(amount: float, from_pos: Vector3) -> void:
 		m = Cover.SUPP[cover_mat] if cover_mat >= 0 else 0.62
 		if cover_mat >= 0 and not peek_up:
 			cap = Cover.SUPP_CAP[cover_mat]
-	if _gy < -0.6:
+	if world.in_trench(position):
 		m *= 0.5  # dug into a trench: the parapet takes it
 	suppression = minf(maxf(cap, suppression), suppression + amount * m)
 	_supp_t = world.time
@@ -2991,7 +3008,7 @@ func _dazed_tick(dt: float) -> void:
 		task_t = world.rng.randf_range(0.6, 1.3)
 		dive_dir = Defs.dir_of(world.rng.randf() * TAU)
 	var np := position + dive_dir * 0.8 * dt
-	if world.nav.can_step(position, np):
+	if world.nav.can_step(position, np) and (not world.in_trench(position) or world.in_trench(np)):
 		position = np
 	_face(dive_dir, dt, 2.0)
 	if dazed_t <= 0.0:
@@ -3370,10 +3387,32 @@ func start_build(st: Entity) -> void:
 	task_ent = st
 	task_phase = 0
 	task_pos = _work_spot(st)
-	go_to(task_pos, "task", 1)
+	if task_pos != Vector3.INF:
+		go_to(task_pos, "task", 1)
 
 
 func _work_spot(st: Entity) -> Vector3:
+	if st is Structure and st.skind == "trench":
+		var basis := Basis(Vector3.UP, st.yaw)
+		var count := maxi(1, floori(st.size.x / 1.5))
+		var best := Vector3.INF
+		var best_dist := INF
+		var workers: Array = world.soldiers  # reservations include crews still walking to the site
+		for i in count:
+			for side in [-1.0, 1.0]:
+				var p: Vector3 = st.position + basis * Vector3((i + 0.5) * st.size.x / count - st.size.x * 0.5, 0, side * (0.55 if st.trench_depth() >= 0.6 else 1.1))
+				if not world.nav.walkable(p):
+					continue
+				var occupied := false
+				for other in workers:
+					if other != self and other.task == "build" and other.task_ent == st and Defs.flat(other.task_pos - p).length() < 0.9:
+						occupied = true
+						break
+				var distance := Defs.flat(position - p).length_squared()
+				if not occupied and distance < best_dist:
+					best = p
+					best_dist = distance
+		return best
 	if st is Structure and not st.cover_pts.is_empty():
 		var arr := []
 		for p in st.cover_pts:
@@ -3390,7 +3429,7 @@ func _work_spot(st: Entity) -> Vector3:
 
 func _build_tick(dt: float) -> void:
 	var st := task_ent
-	var done := st == null or st.gone
+	var done := not is_instance_valid(st) or st.gone
 	if not done:
 		if st is Structure:
 			done = not st.needs_work()
@@ -3401,6 +3440,17 @@ func _build_tick(dt: float) -> void:
 		if squad:
 			squad.on_build_done(st)
 		return
+	if st is Structure and st.skind == "trench" and st.trench_depth() >= 0.6 and task_pos != Vector3.INF:
+		var local := Basis(Vector3.UP, st.yaw).inverse() * (task_pos - st.position)
+		if absf(local.z) > 0.8:
+			task_pos = _work_spot(st)
+	if task_pos == Vector3.INF:
+		task_t -= dt
+		if task_t <= 0.0:
+			task_t = 1.0
+			task_pos = _work_spot(st)
+		act = Act.IDLE
+		return
 	if suppression > 55.0:
 		posture = Post.CROUCH
 		act = Act.IDLE
@@ -3410,16 +3460,21 @@ func _build_tick(dt: float) -> void:
 		_move_tick(dt, _speed())
 		_choose_act(true)
 		return
-	if Defs.flat(position - task_pos).length() > 1.6:
+	if Defs.flat(position - task_pos).length() > (0.55 if st is Structure and st.skind == "trench" else 1.6):
 		go_to(task_pos, "task", 1)
 		return
 	if _target_valid(target) and Defs.flat(target.position - position).length() < 18.0:
 		_weapon_tick(dt, false, "normal")
 		_choose_act(false)
 		return
-	_face(Defs.flat(st.position - position), dt, 8.0)
+	_settle_y(dt)
+	var work_face := Defs.flat(st.position - position)
+	if st is Structure and st.skind == "trench":
+		var axis := Basis(Vector3.UP, st.yaw) * Vector3.RIGHT
+		work_face -= axis * work_face.dot(axis)
+	_face(work_face, dt, 8.0)
 	act = Act.BUILD
-	posture = Post.CROUCH
+	posture = Post.STAND if st is Structure and st.skind == "trench" else Post.CROUCH
 	var rate := float(udef.get("build", 1.0))
 	if st is Structure:
 		st.add_work(rate * dt)

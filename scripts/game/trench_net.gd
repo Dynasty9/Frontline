@@ -1,6 +1,6 @@
 class_name TrenchNet
 extends Node3D
-## Draws every finished trench segment as one network dug into the ground.
+## Draws every excavated trench segment as one network dug into the ground.
 ##
 ## Segments are rasterised as capsules into a 4 px/m mask over the map. The
 ## ground, road and grass shaders cut a hole wherever the mask is set; this
@@ -9,7 +9,7 @@ extends Node3D
 ## duckboards, and the spoil heaped along the lips as a parapet.
 
 const RES := 4  # mask texels per metre
-static var N := 1024 * RES
+static var N := MapDims.SIZE * RES
 const HALF_W := 0.72  # half the trench width (m)
 const FLOOR_Y := -1.2
 const TILE := 16
@@ -29,6 +29,8 @@ var floor_mi: MeshInstance3D
 var _dirty := true
 var _cool := 0.0
 var _sig := ""
+var _depth_shapes := {}
+var _depth_cache := {}  # shared mesh corners sample excavation once per rebuild
 var _seg_keys := {}  # what was cut last time, so only the changed ground is redone
 
 
@@ -53,7 +55,7 @@ func _ready() -> void:
 	var pm := PlaneMesh.new()
 	pm.size = Vector2(MapDims.SIZE + 14.0, MapDims.SIZE + 14.0)
 	floor_mi.mesh = pm
-	floor_mi.position = Vector3(0, FLOOR_Y, 0)
+	floor_mi.position = Vector3.ZERO
 	floor_mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	floor_mi.visible = false
 
@@ -178,17 +180,56 @@ static func sd_seg(a: Vector3, b: Vector3, p: Vector3) -> float:
 
 static func inside(st, p: Vector3, margin := 0.0) -> bool:
 	var sg := seg_of(st)
-	return sd_seg(sg[0], sg[1], p) < -margin
+	var recess := recess_of(st)
+	return minf(sd_seg(sg[0], sg[1], p), sd_seg(recess[0], recess[1], p) if not recess.is_empty() else INF) < -margin
 
 
-## Finished trench segments as [a, b] centre lines.
+## Exposed ends slope up to the surface; a connected end stays level through the junction.
+static func depth_at(st, p: Vector3, world, margin := 0.05) -> float:
+	if not inside(st, p, margin):
+		return 0.0
+	var depth: float = st.trench_depth()
+	var axis := Basis(Vector3.UP, st.yaw) * Vector3.RIGHT
+	var along: float = Defs.flat(p - st.position).dot(axis)
+	var half: float = st.size.x * 0.5
+	if absf(along) > half - 0.6:
+		var end: Vector3 = st.position + axis * half * signf(along)
+		var joined_depth := -1.0
+		for other in world._trenches_at(end):
+			if other != st and not other.gone and other.trench_depth() > 0.0 and inside(other, end, -0.1):
+				joined_depth = maxf(joined_depth, other.trench_depth())
+		if joined_depth >= 0.0:
+			return lerpf(joined_depth, depth, clampf((half + 0.6 - absf(along)) / 1.2, 0.0, 1.0))
+		depth *= clampf((half + 0.5 - absf(along)) / 1.1, 0.0, 1.0)
+	return depth
+
+
+## Excavated trench segments as [a, b, depth] centre lines.
 func segments() -> Array:
 	var out := []
 	for st in world.structures:
-		if st.gone or st.skind != "trench" or not st.built:
+		if st.gone or st.skind != "trench" or st.trench_depth() <= 0.0:
 			continue
-		out.append(seg_of(st))
+		var seg := seg_of(st)
+		seg.append(st.trench_depth())
+		out.append(seg)
+		var recess := recess_of(st)
+		if not recess.is_empty():
+			recess.append(st.trench_depth())
+			out.append(recess)
 	return out
+
+
+## Long bays have a rear recess, leaving the through route clear for passing.
+static func has_recess(st) -> bool:
+	return st.size.x >= 5.0 and st.eid % 3 == 0
+
+
+static func recess_of(st) -> Array:
+	if not has_recess(st):
+		return []
+	var rear: Vector3 = Basis(Vector3.UP, st.yaw) * Vector3(0, 0, -st._enemy_side())
+	return [st.position + rear * 0.35, st.position + rear * 1.25]
 
 
 static func seg_of(st) -> Array:
@@ -201,7 +242,7 @@ static func seg_of(st) -> Array:
 func _changed_area(segs: Array) -> Rect2:
 	var keys := {}
 	for s in segs:
-		keys["%d,%d,%d,%d" % [roundi(s[0].x * 10), roundi(s[0].z * 10), roundi(s[1].x * 10), roundi(s[1].z * 10)]] = s
+		keys[str(s)] = s
 	var first := _seg_keys.is_empty()
 	var area := Rect2()
 	var any := false
@@ -217,11 +258,12 @@ func _changed_area(segs: Array) -> Rect2:
 	return Rect2() if first else area
 
 
+# shortcut: edits rebuild the full network; split meshes into chunks if large construction sites hitch.
 func rebuild() -> void:
 	var segs := segments()
 	var sig := str(segs.size())
 	for s in segs:
-		sig += "|%d,%d" % [int(s[0].x * 10 + s[0].z * 7), int(s[1].x * 10 + s[1].z * 7)]
+		sig += "|" + str(s)
 	if sig == _sig:
 		return
 	_sig = sig
@@ -289,7 +331,60 @@ func _wp(x: float, z: float) -> Vector3:
 	return p
 
 
+## Cache immutable section geometry while rebuilding; per-vertex queries must not
+## rediscover connections or allocate segment arrays thousands of times.
+func _prepare_depths() -> void:
+	_depth_cache.clear()
+	_depth_shapes.clear()
+	for st in world.structures:
+		if st.gone or st.skind != "trench" or st.trench_depth() <= 0.0:
+			continue
+		var ends := seg_of(st)
+		var joins := [-1.0, -1.0]
+		for i in 2:
+			for other in world._trenches_at(ends[i]):
+				if other != st and not other.gone and other.trench_depth() > 0.0 and inside(other, ends[i], -0.1):
+					joins[i] = maxf(joins[i], other.trench_depth())
+		var recess := recess_of(st)
+		var bounds := Rect2(Vector2(ends[0].x, ends[0].z), Vector2.ZERO).expand(Vector2(ends[1].x, ends[1].z))
+		for point in recess:
+			bounds = bounds.expand(Vector2(point.x, point.z))
+		_depth_shapes[st.eid] = {"a": ends[0], "b": ends[1], "recess": recess, "bounds": bounds.grow(HALF_W + 0.31), "depth": st.trench_depth(),
+			"axis": Basis(Vector3.UP, st.yaw) * Vector3.RIGHT, "half": st.size.x * 0.5, "joins": joins}
+
+
+func _draw_depth(p: Vector3, margin: float) -> float:
+	var key := Vector3(p.x, margin, p.z)
+	if _depth_cache.has(key):
+		return _depth_cache[key]
+	var result := 0.0
+	for st in world._trenches_at(p):
+		if not _depth_shapes.has(st.eid):
+			continue
+		var shape: Dictionary = _depth_shapes[st.eid]
+		if not (shape.bounds as Rect2).has_point(Vector2(p.x, p.z)):
+			continue
+		var distance := sd_seg(shape.a, shape.b, p)
+		if not shape.recess.is_empty():
+			distance = minf(distance, sd_seg(shape.recess[0], shape.recess[1], p))
+		if distance >= -margin:
+			continue
+		var depth: float = shape.depth
+		var along: float = Defs.flat(p - st.position).dot(shape.axis)
+		var half: float = shape.half
+		if absf(along) > half - 0.6:
+			var joined: float = shape.joins[0 if along < 0.0 else 1]
+			if joined >= 0.0:
+				depth = lerpf(joined, depth, clampf((half + 0.6 - absf(along)) / 1.2, 0.0, 1.0))
+			else:
+				depth *= clampf((half + 0.5 - absf(along)) / 1.1, 0.0, 1.0)
+		result = maxf(result, depth)
+	_depth_cache[key] = result
+	return result
+
+
 func _build_meshes(tiles: Dictionary, segs: Array) -> void:
+	_prepare_depths()
 	var fst := SurfaceTool.new()
 	fst.begin(Mesh.PRIMITIVE_TRIANGLES)
 	var floors := 0
@@ -312,8 +407,10 @@ func _build_meshes(tiles: Dictionary, segs: Array) -> void:
 				if idx != 0:
 					var floor_corners := [_wp(x, z), _wp(x + 1, z), _wp(x + 1, z + 1), _wp(x, z + 1)]
 					fst.set_normal(Vector3.UP)
-					for k in [0, 2, 1, 0, 3, 2]:
-						fst.add_vertex(floor_corners[k])
+					for k in [0, 1, 2, 0, 2, 3]:
+						var p: Vector3 = floor_corners[k]
+						p.y -= _draw_depth(p, -0.3)
+						fst.add_vertex(p)
 					floors += 1
 				if idx == 0 or idx == 15:
 					continue
@@ -339,23 +436,30 @@ func _build_meshes(tiles: Dictionary, segs: Array) -> void:
 	floor_mi.mesh = fst.commit() if floors > 0 else null
 	walls.mesh = wst.commit() if nw > 0 else null
 	berms.mesh = bst.commit() if nw > 0 else null
-	# duckboards down the middle of every segment
+	# Short slats follow the slope instead of bridging between segment endpoints.
 	var dst := SurfaceTool.new()
 	dst.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var board_count := 0
 	for s in segs:
+		if s[2] < 1.0:
+			continue
 		var a: Vector3 = s[0]
 		var b: Vector3 = s[1]
-		var d := (b - a).normalized()
+		var d := Defs.flat(b - a).normalized()
 		var sd := d.cross(Vector3.UP) * 0.32
-		var y := Vector3(0, FLOOR_Y + 0.05, 0)
-		var l := a.distance_to(b)
-		var q := [a + sd + y, b + sd + y, b - sd + y, a - sd + y]
-		var uv := [Vector2(0, 0), Vector2(l, 0), Vector2(l, 1), Vector2(0, 1)]
-		dst.set_normal(Vector3.UP)
-		for k in [0, 2, 1, 0, 3, 2]:
-			dst.set_uv(uv[k])
-			dst.add_vertex(q[k])
-	boards.mesh = dst.commit() if not segs.is_empty() else null
+		var l := Defs.flat(b - a).length()
+		for i in ceili(l / 0.32):
+			var p := a + d * (i * 0.32)
+			var q := [p + sd, p + d * 0.28 + sd, p + d * 0.28 - sd, p - sd]
+			for j in 4:
+				q[j].y = world.terrain.landform.height(q[j]) - _draw_depth(q[j], -0.1) + minf(0.15, _draw_depth(q[j], -0.1) * 0.125)
+			var uv := [Vector2(i * 0.32, 0), Vector2(i * 0.32 + 0.28, 0), Vector2(i * 0.32 + 0.28, 1), Vector2(i * 0.32, 1)]
+			dst.set_normal(Vector3.UP)
+			for k in [0, 2, 1, 0, 3, 2]:
+				dst.set_uv(uv[k])
+				dst.add_vertex(q[k])
+			board_count += 1
+	boards.mesh = dst.commit() if board_count > 0 else null
 
 
 ## One wall quad from the lip down to the floor, facing into the trench.
@@ -370,12 +474,26 @@ func _wall(wst: SurfaceTool, p0: Vector3, p1: Vector3, inside_c: Vector3) -> voi
 	var u1 := b.x * 0.7 + b.z * 0.7
 	var tl := a + Vector3(0, 0.02, 0)
 	var tr := b + Vector3(0, 0.02, 0)
-	var bl := a + Vector3(0, FLOOR_Y, 0)
-	var br := b + Vector3(0, FLOOR_Y, 0)
+	var da: float = _draw_depth(a, -0.3)
+	var db: float = _draw_depth(b, -0.3)
+	var bl := a + Vector3(0, -da, 0)
+	var br := b + Vector3(0, -db, 0)
+	wst.set_color(Color(1, 1, 1, minf(da, db) / 1.2))
 	wst.set_normal(n)
 	for v in [[tl, Vector2(u0, 0)], [br, Vector2(u1, 1)], [tr, Vector2(u1, 0)], [tl, Vector2(u0, 0)], [bl, Vector2(u0, 1)], [br, Vector2(u1, 1)]]:
 		wst.set_uv(v[1])
 		wst.add_vertex(v[0])
+	if minf(da, db) >= 1.0:
+		var sa := bl + Vector3.UP * 0.3
+		var sb := br + Vector3.UP * 0.3
+		wst.set_normal(Vector3.UP)
+		for p in [sa, sb + n * 0.4, sb, sa, sa + n * 0.4, sb + n * 0.4]:
+			wst.set_uv(Vector2(p.x + p.z, 0.98))
+			wst.add_vertex(p)
+		wst.set_normal(n)
+		for p in [sa + n * 0.4, bl + n * 0.4, br + n * 0.4, sa + n * 0.4, br + n * 0.4, sb + n * 0.4]:
+			wst.set_uv(Vector2(p.x + p.z, 0.98))
+			wst.add_vertex(p)
 
 
 static func _inward(p0: Vector3, p1: Vector3, inside_c: Vector3) -> Vector3:
@@ -454,10 +572,15 @@ func _berm_strip(bst: SurfaceTool, pts: Array, ins: Array) -> void:
 			if _inside_w(p + o * k):
 				reach = maxf(0.0, k - 0.45)
 				break
-		var h := 0.3 * clampf(reach / 1.2, 0.0, 1.0)
+		var depth: float = _draw_depth(p, -0.3)
+		var variation := 0.85 + 0.15 * sin(p.x * 3.7 + sin(p.z * 2.3))
+		reach *= (0.4 + 0.6 * depth / 1.2) * variation
+		var h := 0.3 * clampf(reach / 1.2, 0.0, 1.0) * depth / 1.2
 		lip.append(p + Vector3(0, 0.02, 0))
 		crest.append(p + o * minf(0.55, reach * 0.4) + Vector3(0, h, 0))
-		toe.append(p + o * reach)
+		var outer := p + o * reach
+		outer.y = world.terrain.landform.height(outer)
+		toe.append(outer)
 		on.append(o)
 	for i in m - 1:
 		var inward: Vector3 = ins[clampi(i, 0, ins.size() - 1)]
@@ -501,17 +624,21 @@ void fragment() {
 	float n = texture(detail_tex, vec2(u * 0.37, v * 0.6)).r;
 	float n2 = texture(detail_tex, wpos.xz * 0.9 + vec2(0.0, wpos.y * 1.3)).r;
 	// planks: horizontal boards held by posts, earth bulging below them
-	float plank_zone = smoothstep(0.86, 0.8, v);
-	float row = fract(v * 6.5);
+	float plank_zone = smoothstep(0.86, 0.8, v) * smoothstep(0.65, 0.95, COLOR.a);
+	float row = fract(v * 6.5 + sin(floor(u * 0.62) * 13.7) * 0.08);
 	float seam = smoothstep(0.0, 0.08, row) * smoothstep(1.0, 0.92, row);
 	float post = smoothstep(0.08, 0.0, abs(fract(u * 0.62) - 0.5) - 0.04);
 	// (linear colours)
 	vec3 wood = mix(vec3(0.06, 0.042, 0.026), vec3(0.11, 0.08, 0.05), n) * (0.75 + 0.25 * seam);
 	wood = mix(wood, vec3(0.03, 0.022, 0.015), post);
 	vec3 earth = mix(vec3(0.045, 0.034, 0.024), vec3(0.08, 0.06, 0.042), n2);
+	earth *= 0.8 + 0.2 * sin(v * 27.0 + n2 * 3.0);
+	float roots = step(0.94, sin(u * 73.0 + v * 12.0 + n * 7.0)) * (1.0 - smoothstep(0.0, 0.45, v));
+	earth = mix(earth, vec3(0.025, 0.017, 0.009), roots);
 	vec3 col = mix(earth, wood, plank_zone * 0.92);
 	col *= mix(0.7, 1.0, smoothstep(1.0, 0.25, v));
 	ALBEDO = col;
+	if (OUTPUT_IS_SRGB) { ALBEDO = mix(col * 12.92, 1.055 * pow(max(col, vec3(0.0)), vec3(1.0 / 2.4)) - 0.055, step(vec3(0.0031308), col)); }
 	ROUGHNESS = 0.92;
 	NORMAL_MAP = vec3(0.5 + (n - 0.5) * 0.4, 0.5 + (seam - 0.5) * 0.4 * plank_zone, 1.0);
 }
@@ -532,6 +659,7 @@ void fragment() {
 	vec3 col = mix(fresh, grassy, g * 0.85);
 	col = mix(col, col * 0.8, clods * (1.0 - g));
 	ALBEDO = col;
+	if (OUTPUT_IS_SRGB) { ALBEDO = mix(col * 12.92, 1.055 * pow(max(col, vec3(0.0)), vec3(1.0 / 2.4)) - 0.055, step(vec3(0.0031308), col)); }
 	ROUGHNESS = 0.95;
 	NORMAL_MAP = vec3(0.5 + (n - 0.5) * 0.6, 0.5 + (clods - 0.5) * 0.3, 1.0);
 }
@@ -546,9 +674,12 @@ void fragment() {
 	float n = texture(detail_tex, wpos.xz / 1.1).r;
 	float n2 = texture(detail_tex, wpos.xz / 3.3 + 0.5).r;
 	float pud = smoothstep(0.62, 0.7, n2);
+	vec2 boot = fract(wpos.xz * vec2(2.3, 1.8)) - 0.5;
+	float tread = (1.0 - smoothstep(0.13, 0.24, length(boot * vec2(1.5, 0.7)))) * step(0.48, n);
 	vec3 col = mix(vec3(0.04, 0.03, 0.021), vec3(0.07, 0.052, 0.036), n);
-	col = mix(col, vec3(0.012, 0.011, 0.01), pud);
+	col = mix(col, vec3(0.012, 0.011, 0.01), max(pud, tread * 0.55));
 	ALBEDO = col;
+	if (OUTPUT_IS_SRGB) { ALBEDO = mix(col * 12.92, 1.055 * pow(max(col, vec3(0.0)), vec3(1.0 / 2.4)) - 0.055, step(vec3(0.0031308), col)); }
 	ROUGHNESS = mix(0.9, 0.15, pud);
 	SPECULAR = mix(0.2, 0.5, pud);
 }
@@ -565,6 +696,7 @@ void fragment() {
 	vec3 wood = mix(vec3(0.05, 0.036, 0.022), vec3(0.09, 0.066, 0.042), n);
 	vec3 col = mix(vec3(0.012, 0.009, 0.007), wood, max(gap, rail));
 	ALBEDO = col;
+	if (OUTPUT_IS_SRGB) { ALBEDO = mix(col * 12.92, 1.055 * pow(max(col, vec3(0.0)), vec3(1.0 / 2.4)) - 0.055, step(vec3(0.0031308), col)); }
 	ROUGHNESS = 0.85;
 }
 """
