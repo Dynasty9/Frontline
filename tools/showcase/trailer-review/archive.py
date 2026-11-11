@@ -10,6 +10,27 @@ import subprocess
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parents[2]
 RECIPE = ROOT / ".agents/skills/website-footage/shots.json"
+# The published homepage reel from v1.0.5. Its Git blob stays the same as main moves.
+PUBLISHED_REEL = "9659c85134cd271b589f6a0f29a37564a1b72e71"
+
+
+def write_viewer(folder, versions):
+    original = folder / "published-homepage.mp4"
+    if not original.exists():
+        source = subprocess.run(["git", "cat-file", "blob", PUBLISHED_REEL], cwd=ROOT, capture_output=True)
+        if source.returncode == 0:
+            original.with_suffix(".tmp").write_bytes(source.stdout)
+            original.with_suffix(".tmp").replace(original)
+    # The historical reference is selectable but does not consume an edition number.
+    cuts = versions
+    if original.exists():
+        cuts = [dict(label="Published homepage · 32.9 s", file=original.name, frames=987,
+                     note="The homepage reel before this series. Choose edition 00 to see the start of the 24-hour run."), *versions]
+    data = json.dumps(cuts, ensure_ascii=False).replace("<", "\\u003c")
+    output = folder / "index.html"
+    output.with_suffix(".tmp").write_text((HERE / "viewer.html").read_text().replace("__VERSIONS__", data))
+    output.with_suffix(".tmp").replace(output)
+    print(output)
 
 
 def main():
@@ -63,12 +84,7 @@ def main():
     data = json.dumps(versions, ensure_ascii=False, indent=2)
     manifest.with_suffix(".tmp").write_text(data + "\n")
     manifest.with_suffix(".tmp").replace(manifest)
-    # Embed the ledger so the viewer also works when opened directly from disk.
-    page = (HERE / "viewer.html").read_text().replace("__VERSIONS__", data.replace("<", "\\u003c"))
-    output = args.folder / "index.html"
-    output.with_suffix(".tmp").write_text(page)
-    output.with_suffix(".tmp").replace(output)
-    print(output)
+    write_viewer(args.folder, versions)
 
 
 if __name__ == "__main__":
