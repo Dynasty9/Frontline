@@ -29,6 +29,9 @@ var pistol: Node3D
 var tube: Node3D
 var stretcher: Node3D
 var back_item: Node3D
+var medical_band: Node3D
+var medical_pack: Node3D
+var skinned_muzzle := Vector3(0, 0.03, 0.6)
 var phase := 0.0
 var motion := HumanoidMotion.new()
 var act_time := 0.0
@@ -152,11 +155,15 @@ func build(utype: String, team: int, seed: int) -> void:
 	_head_gear(k, team, is_crew, bearer, rng)
 	if medic or bearer:
 		# a white armband with a red cross (a plain red one on a bearer)
+		var sleeve := arm_l
+		if utype == "medic" and team == 0:
+			medical_band = _joint(arm_l, Vector3.ZERO)
+			sleeve = medical_band
 		var band := Color(0.8, 0.79, 0.74) if medic else Color(0.62, 0.1, 0.08)
-		_p(arm_l, BodyMesh.loft([_at(UPPER_ARM, -0.11, 0.006), _at(UPPER_ARM, -0.18, 0.006)], 10), "suit", band)
+		_p(sleeve, BodyMesh.loft([_at(UPPER_ARM, -0.11, 0.006), _at(UPPER_ARM, -0.18, 0.006)], 10), "suit", band)
 		if medic:
-			_p(arm_l, Res.box(Vector3(0.012, 0.045, 0.016)), "plain", Color(0.62, 0.1, 0.08), Vector3(-0.068, -0.145, 0))
-			_p(arm_l, Res.box(Vector3(0.012, 0.016, 0.045)), "plain", Color(0.62, 0.1, 0.08), Vector3(-0.068, -0.145, 0))
+			_p(sleeve, Res.box(Vector3(0.012, 0.045, 0.016)), "plain", Color(0.62, 0.1, 0.08), Vector3(-0.068, -0.145, 0))
+			_p(sleeve, Res.box(Vector3(0.012, 0.016, 0.045)), "plain", Color(0.62, 0.1, 0.08), Vector3(-0.068, -0.145, 0))
 
 	var dark := Color(0.1, 0.1, 0.1)
 	var steel := Color(0.15, 0.15, 0.15)
@@ -266,15 +273,15 @@ func build(utype: String, team: int, seed: int) -> void:
 	_skin(self, {dark: "gunmetal", steel: "gunmetal", wood: "wood_l", fde: "plain", pack: "canvas_l"})
 	# one mesh per joint (a surface per material): animation is untouched and
 	# each body part is a single render instance to move
-	for j in [root, hips, torso, head, tails, thigh_l, shin_l, thigh_r, shin_r, arm_l, arm_r, forearm_l, forearm_r, gun, pistol, tube, back_item, stretcher]:
+	for j in [root, hips, torso, head, tails, thigh_l, shin_l, thigh_r, shin_r, arm_l, arm_r, forearm_l, forearm_r, gun, pistol, tube, back_item, stretcher, medical_pack, medical_band]:
 		if j:
 			Mats.merge_static(j, [], false, false, true)
-	var use_skin := utype == "rifleman" or (utype == "mortar_gunner" and InfantryAssets.gameplay_model == InfantryAssets.SWAT)
+	var use_skin := utype == "rifleman" or ((medical_band != null or utype == "mortar_gunner") and InfantryAssets.gameplay_model == InfantryAssets.SWAT)
 	if use_skin and is_inside_tree() and get_parent() is Soldier and not InfantryAssets.gameplay_model.is_empty():
 		skinned = SkinnedRifleman.new()
 		skinned.model_asset = InfantryAssets.gameplay_model
 		add_child(skinned)
-		if skinned.build():
+		if skinned.build(MocapCharacter.CLIPS, gun if medical_band else null):
 			skinned.bind_procedural(self)
 			skinned.ground_height = get_parent().world.ground_y
 			if skinned.model_asset == InfantryAssets.SWAT:
@@ -286,14 +293,15 @@ func build(utype: String, team: int, seed: int) -> void:
 					if utype == "rifleman":
 						get_parent().world.stat("native_riflemen")
 			if is_mortar:
-				# His carried kit follows the animated back through the vault and crouch.
-				var spine := BoneAttachment3D.new()
-				skinned.skeleton.add_child(spine)
-				spine.bone_idx = skinned.bones["Spine2"]
-				var rest: Transform3D = skinned.global_transform * skinned.target_rest[spine.bone_idx]
-				var socket := rest.affine_inverse() * tube.global_transform
-				tube.reparent(spine, false)
-				tube.transform = socket
+				_attach_kit(tube, "Spine2")
+			if medical_band:
+				_attach_kit(medical_pack, "Spine2")
+				# The imported skeleton rests with arms out. Fit the sleeve in that pose.
+				var rest_rotation := arm_l.rotation
+				arm_l.rotation.z = -PI * 0.5
+				_attach_kit(medical_band, "LeftArm")
+				arm_l.rotation = rest_rotation
+				skinned_muzzle = Basis(Vector3.UP, PI) * muzzle_local
 			root.visible = false
 			# Keep pose/attachment pivots, but discard geometry replaced by the skin.
 			for mesh in root.find_children("*", "MeshInstance3D", true, false):
@@ -302,6 +310,17 @@ func build(utype: String, team: int, seed: int) -> void:
 			skinned.queue_free()
 			skinned = null
 
+
+
+## Preserve the kit's authored position as the animated bone takes over.
+func _attach_kit(item: Node3D, bone: String) -> void:
+	var attachment := BoneAttachment3D.new()
+	skinned.skeleton.add_child(attachment)
+	attachment.bone_idx = skinned.bones[bone]
+	var rest: Transform3D = skinned.global_transform * skinned.target_rest[attachment.bone_idx]
+	var socket := rest.affine_inverse() * item.global_transform
+	item.reparent(attachment, false)
+	item.transform = socket
 
 
 ## What he wears, by side: a dictionary of colours (and the surfaces they go on).
@@ -515,14 +534,18 @@ func _kit_coalition(k: Dictionary, medic: bool, rng: RandomNumberGenerator) -> v
 	_p(torso, Res.box(Vector3(0.07, 0.15, 0.06)), "canvas_l", pouch, Vector3(-0.222, 0.34, -0.01))
 	# on the back: an assault pack, or the radio with its whip antenna
 	if medic or rng.randf() < 0.45:
-		_p(torso, Res.box(Vector3(0.27, 0.3, 0.11)), "canvas_l", pouch, Vector3(0, 0.37, 0.192))
-		_p(torso, Res.box(Vector3(0.26, 0.06, 0.12)), "canvas_l", pouch.darkened(0.1), Vector3(0, 0.535, 0.192), Vector3(-0.1, 0, 0))
-		for sx in [-1.0, 1.0]:
-			_p(torso, Res.box(Vector3(0.04, 0.16, 0.08)), "canvas_l", pouch.darkened(0.1), Vector3(sx * 0.155, 0.33, 0.2))
+		var pack_root := torso
 		if medic:
-			_p(torso, Res.box(Vector3(0.1, 0.1, 0.012)), "plain", Color(0.8, 0.79, 0.74), Vector3(0, 0.38, 0.25))
-			_p(torso, Res.box(Vector3(0.07, 0.022, 0.016)), "plain", Color(0.62, 0.1, 0.08), Vector3(0, 0.38, 0.252))
-			_p(torso, Res.box(Vector3(0.022, 0.07, 0.016)), "plain", Color(0.62, 0.1, 0.08), Vector3(0, 0.38, 0.252))
+			medical_pack = _joint(torso, Vector3.ZERO)
+			pack_root = medical_pack
+		_p(pack_root, Res.box(Vector3(0.27, 0.3, 0.11)), "canvas_l", pouch, Vector3(0, 0.37, 0.192))
+		_p(pack_root, Res.box(Vector3(0.26, 0.06, 0.12)), "canvas_l", pouch.darkened(0.1), Vector3(0, 0.535, 0.192), Vector3(-0.1, 0, 0))
+		for sx in [-1.0, 1.0]:
+			_p(pack_root, Res.box(Vector3(0.04, 0.16, 0.08)), "canvas_l", pouch.darkened(0.1), Vector3(sx * 0.155, 0.33, 0.2))
+		if medic:
+			_p(pack_root, Res.box(Vector3(0.1, 0.1, 0.012)), "plain", Color(0.8, 0.79, 0.74), Vector3(0, 0.38, 0.25))
+			_p(pack_root, Res.box(Vector3(0.07, 0.022, 0.016)), "plain", Color(0.62, 0.1, 0.08), Vector3(0, 0.38, 0.252))
+			_p(pack_root, Res.box(Vector3(0.022, 0.07, 0.016)), "plain", Color(0.62, 0.1, 0.08), Vector3(0, 0.38, 0.252))
 	else:
 		_p(torso, Res.box(Vector3(0.11, 0.18, 0.065)), "canvas_l", pouch, Vector3(-0.06, 0.4, 0.17))
 		_p(torso, Res.box(Vector3(0.04, 0.03, 0.03)), "plain_dark", Color(0.08, 0.08, 0.08), Vector3(-0.09, 0.505, 0.17))
@@ -1853,7 +1876,7 @@ var _alive_pose := true
 ## INF if he isn't visibly holding one.
 func muzzle_world() -> Vector3:
 	if skinned and not skinned.dead:
-		return skinned.weapon.global_transform * Vector3(0, 0.03, 0.6)
+		return skinned.weapon.global_transform * skinned_muzzle
 	if pistol and pistol.is_visible_in_tree():
 		return pistol.global_transform * Vector3(0, 0.0, -0.16)
 	if gun and gun.is_visible_in_tree() and look != "op":

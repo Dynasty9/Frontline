@@ -80,7 +80,7 @@ var ladder: Structure
 var ladder_contacts := {}
 
 
-func build(clips: Dictionary = MocapCharacter.CLIPS) -> bool:
+func build(clips: Dictionary = MocapCharacter.CLIPS, role_prop: Node3D = null) -> bool:
 	source = MocapCharacter.new()
 	add_child(source)
 	if not source.build(clips, model_asset == Assets.SWAT):
@@ -127,7 +127,18 @@ func build(clips: Dictionary = MocapCharacter.CLIPS) -> bool:
 	weapon.reparent(self)
 	weapon.visible = true
 	magazine = load("res://scripts/game/rifle_magazine.gd").new()
-	magazine.setup(self)
+	if role_prop:
+		# Keep the medic’s own compact prop on the same animated grip.
+		for imported in weapon.find_children("*", "MeshInstance3D", true, false):
+			imported.hide()
+		var grip := Node3D.new()
+		weapon.add_child(grip)
+		grip.rotation.y = PI
+		for part in role_prop.get_children():
+			if part is MeshInstance3D and not part.is_queued_for_deletion():
+				part.reparent(grip, false)
+	else:
+		magazine.setup(self)
 	_last_position = global_position
 	if OS.has_environment("FL_DEBUG_MOCAP"):
 		print("SKINNED_RIFLEMAN bones=%d height_ratio=%.3f" % [bones.size(), ratio])
