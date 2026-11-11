@@ -142,7 +142,7 @@
       "shows": [
         "Two infantry fighting vehicles and the advancing rifle squads"
       ],
-      "about": "Two infantry fighting vehicles and the advancing rifle squads."
+      "about": "Look across the rifle squads as both infantry fighting vehicles start forward."
     },
     "trailer-trench-barrage": {
       "scene": "res://tools/showcase/trailer-review/trench-barrage.tscn",
@@ -163,7 +163,7 @@
       "shows": [
         "An occupied trench under the game’s 155 mm artillery barrage"
       ],
-      "about": "An occupied trench under the game’s 155 mm artillery barrage."
+      "about": "See the approaching vehicles from over the defenders’ shoulders as the first artillery rounds land."
     },
     "trailer-trench-impact": {
       "scene": "res://tools/showcase/trailer-review/trench-impact.tscn",

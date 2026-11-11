@@ -40,8 +40,8 @@ func _process(dt: float) -> void:
 		lens.position = lead.position - ahead * 22.0 + right * 11.0 + Vector3.UP * 12.0
 		lens.look_at(lead.position.lerp(centre, 0.42))
 	elif view == 2:
-		lens.position = centre + Vector3(14, 12, 24)
-		lens.look_at(centre + Vector3(-1, 0, -10))
+		lens.position = centre + Vector3(-6.2, 5.2, 18.3)
+		lens.look_at(centre + Vector3(0, 0.8, -9))
 	else:
 		return
 	lens.make_current()

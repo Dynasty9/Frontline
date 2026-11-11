@@ -4,4 +4,4 @@
 script = ExtResource("1")
 view = 2
 [node name="Camera3D" type="Camera3D" parent="."]
-fov = 53.0
+fov = 57.0
