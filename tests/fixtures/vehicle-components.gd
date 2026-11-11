@@ -20,6 +20,26 @@ func _ready() -> void:
 	assert(VehicleFrames.aim(Vector3.DOWN).y.is_equal_approx(Vector3.DOWN))
 	model.root.free()
 
+	# Round lamp inserts face outward on either end and leave no live nodes.
+	var reflector := VehicleFittings._headlamp_reflector()
+	for normal: Vector3 in reflector.surface_get_arrays(0)[Mesh.ARRAY_NORMAL]:
+		assert(normal.y > 0.9, "Reflector normals must face out of the housing")
+	for direction in [Vector3.FORWARD, Vector3.BACK]:
+		for burnt in [false, true]:
+			var lamp := VehicleModels.new()
+			lamp.root = Node3D.new()
+			lamp._baking = true
+			lamp.burnt = burnt
+			VehicleFittings.headlamp(lamp, lamp.root, Vector3.ZERO, 0.1, direction)
+			assert(lamp.root.get_child_count() == 0, "Lamps must fold into the existing hull bake")
+			var lamp_bounds := _bounds(lamp._parts[lamp.root])
+			assert(lamp_bounds.size.x < 0.24 and lamp_bounds.size.y < 0.24)
+			assert(lamp_bounds.size.z < 0.06, "Insert must fit behind existing lamp guards")
+			for part: Array in lamp._parts[lamp.root]:
+				if part[0] == reflector:
+					assert(not burnt, "Wreck lamps must omit the intact optical surface")
+			lamp.root.free()
+
 	# Both winding orders must put pads outside the track, not inside the wheels.
 	for reverse in [false, true]:
 		var k := VehicleModels.new()

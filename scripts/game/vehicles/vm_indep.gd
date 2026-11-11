@@ -101,7 +101,7 @@ static func _light(k: VehicleModels, p: Node3D, pos: Vector3, w: float, h: float
 ## A round headlight in a deep housing facing -Z, with a wire guard.
 static func _round_light(k: VehicleModels, p: Node3D, pos: Vector3, r: float) -> void:
 	k._cyl(p, r * 1.2, r * 1.3, 0.16, pos, X90, "gunmetal_w", null, 14)
-	k._cyl(p, r, r, 0.02, pos + Vector3(0, 0, -0.08), X90, "glass", null, 14, false)
+	VehicleFittings.headlamp(k, p, pos + Vector3(0, 0, -0.08), r)
 	k._box(p, Vector3(0.022, r * 2.3, 0.022), pos + Vector3(0, 0, -0.13), "gunmetal_w", null, Vector3.ZERO, false)
 	k._box(p, Vector3(r * 2.3, 0.022, 0.022), pos + Vector3(0, 0, -0.13), "gunmetal_w", null, Vector3.ZERO, false)
 

@@ -398,8 +398,7 @@ static func _qilin(k: VehicleModels, team: int, arm: String) -> void:
 		k._box(m, Vector3(0.06, 0.2, 1.7), Vector3(s * 0.72, 0.62, 0.0), c)
 		# round headlamps with guards, the indicators
 		k._cyl(m, 0.09, 0.085, 0.08, Vector3(s * 0.48, 0.74, -2.46), Vector3(PI / 2, 0, 0), "gunmetal_w", null, 12)
-		if not k.burnt:
-			k._cyl(m, 0.065, 0.065, 0.02, Vector3(s * 0.48, 0.74, -2.51), Vector3(PI / 2, 0, 0), "plain", Color(0.85, 0.84, 0.76), 12, false)
+		VehicleFittings.headlamp(k, m, Vector3(s * 0.48, 0.74, -2.51), 0.065)
 		k._box(m, Vector3(0.015, 0.2, 0.015), Vector3(s * 0.48, 0.74, -2.56), "gunmetal_w", null, Vector3.ZERO, false)
 		_taillight(k, m, Vector3(s * 0.55, 0.85, 2.43))
 		# mirrors on the screen frame

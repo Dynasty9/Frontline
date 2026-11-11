@@ -3,6 +3,52 @@ extends RefCounted
 ## Repeating service fittings, folded into the parent's existing material bake.
 static var _pipes := {}
 
+## Round unlit optical insert; center is the old lens face, direction points out.
+## Families retain their mounting boxes and protective cages. The shallow cup
+## sits ahead of the old housing face so the solid housing cannot fill it in.
+static func headlamp(k: VehicleModels, parent: Node3D, center: Vector3, radius: float, direction := Vector3.FORWARD) -> void:
+	if radius <= 0.0 or direction.length_squared() < 0.000001:
+		return
+	var mount := k._pivot(parent, center)
+	mount.basis = VehicleFrames.aim(direction)
+	k._cyl(mount, radius * 1.08, radius * 1.08, radius * 0.16, Vector3.ZERO, Vector3.ZERO, "rubber", null, 20, false)
+	k._add(mount, _ring(radius * 0.96, radius * 1.09), "gunmetal_w", null, Vector3(0, radius * 0.19, 0), Vector3.ZERO, Vector3(1, 0.55, 1))
+	if not k.burnt:
+		k._add(mount, _headlamp_reflector(), "headlamp", Color(0.76, 0.78, 0.73), Vector3.ZERO, Vector3.ZERO, Vector3.ONE * radius, false)
+		# Sparse moulded ribs approximate a sealed-beam lens without transparent
+		# sorting or another light/shadow pass. All detail joins the hull bake.
+		for i in range(-3, 4):
+			var x := i * 0.23
+			var half_span := sqrt(0.88 * 0.88 - x * x)
+			for j in 4:
+				var z0 := lerpf(-half_span, half_span, j / 4.0)
+				var z1 := lerpf(-half_span, half_span, (j + 1) / 4.0)
+				var a := Vector3(x, 0.22 + 0.08 * (1.0 - x * x - z0 * z0), z0) * radius
+				var b := Vector3(x, 0.22 + 0.08 * (1.0 - x * x - z1 * z1), z1) * radius
+				VehicleFrames.tube(k, mount, a, b, radius * 0.018, "headlamp", Color(0.52, 0.58, 0.56), 5, false)
+		k._cyl(mount, radius * 0.14, radius * 0.18, radius * 0.08, Vector3(0, radius * 0.17, 0), Vector3.ZERO, "gunmetal", Color(0.28, 0.29, 0.27), 12, false)
+	k._fold(mount)
+
+
+static var _lamp_reflector: ArrayMesh
+
+## Unit dish shared by every lamp size, facing local +Y.
+static func _headlamp_reflector() -> ArrayMesh:
+	if _lamp_reflector:
+		return _lamp_reflector
+	var surface := SurfaceTool.new()
+	surface.begin(Mesh.PRIMITIVE_TRIANGLES)
+	for ring in 4:
+		for segment in 24:
+			for corner: Vector2i in [Vector2i(0, 0), Vector2i(1, 0), Vector2i(0, 1), Vector2i(1, 0), Vector2i(1, 1), Vector2i(0, 1)]:
+				var r := 0.12 + (ring + corner.x) * 0.21
+				var angle := TAU * (segment + corner.y) / 24.0
+				surface.add_vertex(Vector3(cos(angle) * r, 0.09 + 0.13 * r * r, sin(angle) * r))
+	surface.generate_normals()
+	_lamp_reflector = surface.commit()
+	return _lamp_reflector
+
+
 ## Local XY grille, +Z outward. Fins stand in front of a recessed radiator core.
 static func grille(k: VehicleModels, parent: Node3D, center: Vector3, size: Vector2, rotation: Vector3, material: String, col = null, count := 8, vertical := false) -> void:
 	var mount := k._pivot(parent, center)

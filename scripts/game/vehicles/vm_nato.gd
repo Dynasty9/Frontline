@@ -147,8 +147,7 @@ static func _beam(k: VehicleModels, p: Node3D, a: Vector3, b: Vector3, w: float,
 ## A headlight facing f (-1 forward, 1 back): housing, lens, wire guard.
 static func _lamp(k: VehicleModels, p: Node3D, pos: Vector3, r := 0.08, f := -1.0, guard := true) -> void:
 	k._box(p, Vector3(r * 2.6, r * 2.3, 0.12), pos, "gunmetal_w")
-	if not k.burnt:
-		k._cyl(p, r, r, 0.03, pos + Vector3(0, 0, f * 0.06), Vector3(PI / 2, 0, 0), "plain", Color(0.72, 0.72, 0.66), 10, false)
+	VehicleFittings.headlamp(k, p, pos + Vector3(0, 0, f * 0.06), r, Vector3(0, 0, f))
 	if guard:
 		for i in 3:
 			k._box(p, Vector3(0.014, r * 2.5, 0.014), pos + Vector3((i - 1) * r * 0.75, 0, f * 0.12), "gunmetal_w", null, Vector3.ZERO, false)

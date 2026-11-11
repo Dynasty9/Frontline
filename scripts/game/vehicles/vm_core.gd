@@ -202,8 +202,7 @@ static func _belt(k: VehicleModels, p: Node3D, x: float, w: float, circles: Arra
 ## A headlight facing f (-1 forward, 1 back): housing, lens, wire guard.
 static func _lamp(k: VehicleModels, p: Node3D, pos: Vector3, r := 0.08, f := -1.0, guard := true) -> void:
 	_bx(k, p, Vector3(r * 2.6, r * 2.3, 0.12), pos, "gunmetal_w")
-	if not k.burnt:
-		k._cyl(p, r, r, 0.03, pos + Vector3(0, 0, f * 0.06), X90, "plain", Color(0.72, 0.72, 0.66), 10, false)
+	VehicleFittings.headlamp(k, p, pos + Vector3(0, 0, f * 0.06), r, Vector3(0, 0, f))
 	if guard:
 		for i in 3:
 			_bx(k, p, Vector3(0.014, r * 2.5, 0.014), pos + Vector3((i - 1) * r * 0.75, 0, f * 0.12), "gunmetal_w", null, Vector3.ZERO, false)
@@ -649,8 +648,10 @@ static func _t55(k: VehicleModels, team: int, seed: int) -> void:
 		var lp := Vector3(float(e[0]), c2.y + 0.16, c2.x + 0.06)
 		k._cyl(k.root, 0.012, 0.012, 0.18, lp + Vector3(0, -0.1, 0.02), Vector3.ZERO, "gunmetal_w", null, 4, false)
 		k._cyl(m, 0.095, 0.11, 0.16, lp, X90, "gunmetal_w", null, 12)
-		if not k.burnt:
-			k._cyl(m, 0.08, 0.08, 0.02, lp + Vector3(0, 0, -0.08), X90, "plain" if bool(e[2]) else "plain_dark", Color(0.7, 0.7, 0.64) if bool(e[2]) else null, 12, false)
+		if bool(e[2]):
+			VehicleFittings.headlamp(k, m, lp + Vector3(0, 0, -0.08), 0.08)
+		elif not k.burnt:
+			k._cyl(m, 0.08, 0.08, 0.02, lp + Vector3(0, 0, -0.08), X90, "plain_dark", null, 12, false)
 		_bx(k, m, Vector3(0.24, 0.016, 0.016), lp + Vector3(0, 0, -0.12), "gunmetal_w", null, Vector3.ZERO, false)
 		_bx(k, m, Vector3(0.016, 0.24, 0.016), lp + Vector3(0, 0, -0.12), "gunmetal_w", null, Vector3.ZERO, false)
 	# --- fenders: thin shelves the full length over the tracks, on brackets,
@@ -1081,8 +1082,8 @@ static func _humvee(k: VehicleModels, team: int) -> void:
 		_bx(k, m, Vector3(0.05, 0.36, 0.03), Vector3(-0.48 + i * 0.12, 0.88, nz - 0.03), cam, null, Vector3.ZERO, false)
 	for s: float in [-1.0, 1.0]:
 		_bx(k, m, Vector3(0.28, 0.2, 0.06), Vector3(s * 0.84, 0.98, nz - 0.01), "gunmetal_w")
+		VehicleFittings.headlamp(k, m, Vector3(s * 0.88, 0.98, nz - 0.045), 0.075)
 		if not k.burnt:
-			k._cyl(m, 0.075, 0.075, 0.02, Vector3(s * 0.88, 0.98, nz - 0.045), X90, "plain", Color(0.72, 0.72, 0.66), 12, false)
 			_bx(k, m, Vector3(0.06, 0.06, 0.02), Vector3(s * 0.74, 0.98, nz - 0.045), "paint", Color(0.6, 0.4, 0.1), Vector3.ZERO, false)
 		_bx(k, m, Vector3(0.025, 0.24, 0.025), Vector3(s * 0.84, 0.98, nz - 0.08), "gunmetal_w", null, Vector3.ZERO, false)
 		_shackle(k, m, Vector3(s * 0.62, 0.66, nz - 0.18))

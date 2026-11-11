@@ -101,3 +101,26 @@ Use `--surface-accessories` in the vehicle showcase for separate antenna, mirror
 `VehicleModels.update_antennas(travel, dt, active)` takes world-space travel velocity. One exact damped spring per vehicle combines drag and clamped acceleration, then transforms the resulting lean into each antenna parent’s coordinates, including traversing turrets. The view callback derives travel from displayed movement on both host and client. Motion resets outside 100 m, when hidden, after long frame gaps or after implausible position corrections. There are no rigid bodies, bones, mesh rebuilds or per-whip spring solvers. The base remains fixed while the spring/rod assembly tilts up to about 16 degrees.
 
 `--surface-antenna-motion` captures a combined rigid/animated comparison driven by controlled forward, lateral and reverse velocity inputs, followed by settling. This is an inspection rig, not recorded driving footage.
+
+### Round headlights: Hunter construction pass
+
+Start each construction pass with one vehicle and one visible feature. Extract a
+shared builder only after identifying that feature on at least two other vehicles;
+then migrate every matching construction, retaining family-specific mounts and
+silhouettes. Capture broadly for inspection, but commit a compact comparison sheet
+or short video under the presentation skill's media budget.
+
+The Hunter's round headlight insert now uses
+`VehicleFittings.headlamp(k, parent, center, radius, direction)`. `center` is the
+old lens face and `direction` points outward (default -Z). The helper supplies a
+rubber seating ring, metal rim, shallow reflector, bulb shield and moulded lens
+ribs. A cached unit reflector scales to each lamp; opaque geometry approximates
+sealed-beam optics without transparent sorting or a light/shadow pass. It is an
+unlit appearance detail, not functional headlight illumination. All pieces fold
+into the existing hull bake; wrecks omit the intact reflector and lens ribs.
+
+Coverage: Hunter, Prowler, Marshall, Rhino, Slammer, Scorcher, Sandstorm, Panther,
+Bobcat, Cheetah, Stomper, Abrams, T-55, Humvee, BTR-80, Bradley, M35, Zamak and Qilin,
+including variants sharing those builders. Rectangular lamps and infrared/search
+lights retain their own construction; the T-55's missing IR lens stays missing.
+Family builders retain lamp placement, housing dimensions, guards and indicators.
