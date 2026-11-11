@@ -102,6 +102,20 @@
       "shows": ["Mortar crew at shoulder height"],
       "about": "Look across the pit. Keep the mortar on the left and the specialist visible above the sandbags as he vaults into position."
     },
+    "trailer-pit-round": {
+      "scene": "res://tools/showcase/trailer-review/pit-round.tscn",
+      "frames": 1050,
+      "args": ["--preset=high", "--seed=3", "--set=volume:0.8,vol_effects:0.85,vol_music:0,battle_music:false,vol_ambience:0.28,vol_ui:0,mute_bg:false,wildlife:0,edge_pan:false", "--scenario=defense", "--mood=golden"],
+      "shows": ["Mortar crew in the occupied sandbag pit"],
+      "about": "The crew reaches the sandbag pit at the start of the Defense scenario. Hold through its first shot with the rest of the field visible beyond the sandbags."
+    },
+    "trailer-pit-landing": {
+      "scene": "res://tools/showcase/trailer-review/pit-landing.tscn",
+      "frames": 1200,
+      "args": ["--preset=high", "--seed=3", "--set=volume:0.8,vol_effects:0.85,vol_music:0,battle_music:false,vol_ambience:0.28,vol_ui:0,mute_bg:false,wildlife:0,edge_pan:false", "--scenario=defense", "--mood=golden"],
+      "shows": ["The same round landing beyond the burning vehicle"],
+      "about": "The Defense scenario plays from the same seed and start time as the pit view. Look past the wreck as the round enters the picture and dirt rises behind it."
+    },
     "trailer-bridge-follow": {
       "frames": 5870,
       "args": ["--preset=high", "--seed=3", "--set=volume:0.8,vol_effects:0.85,vol_music:0,battle_music:false,vol_ambience:0.28,vol_ui:0,mute_bg:false,wildlife:0,edge_pan:false", "--mission=bridgehead", "--focus-vehicle=tank,1", "--vehicle-view=Behind"],
@@ -577,8 +591,8 @@
         {"take": "trailer-bridge-column", "from": 194.83333, "to": 196.06667, "gain_db": 0},
         {"take": "reel-gun", "from": 14.1, "to": 15.1, "gain_db": -8, "caption": "[Tank cannon fires]"},
         {"take": "trailer-trench-close", "from": 49.43333, "to": 51.13333, "gain_db": -2, "caption": "[Fire cracks beside the trench]"},
-        {"take": "trailer-mortar-crew", "from": 0.5, "to": 1.6, "gain_db": 1, "caption": "[Distant fire at the mortar pit]"},
-        {"take": "highlight-mortar-burst", "from": 8.3, "to": 9.96667, "gain_db": -3, "caption": "[Mortar bursts across the trench line]"},
+        {"take": "trailer-pit-round", "from": 33.16667, "to": 34.26667, "gain_db": 1, "caption": "[Mortar fires from the sandbag pit]"},
+        {"take": "trailer-pit-landing", "from": 37.6, "to": 39.26667, "gain_db": -3, "caption": "[The round strikes the field]"},
         {"take": "trailer-sling", "from": 39.26667, "to": 40.9, "gain_db": 0, "caption": "[Helicopter rotors over the suspended vehicle]"},
         {"take": "trailer-cargo-door", "from": 40.9, "to": 42.0, "gain_db": 0},
         {"take": "trailer-harbour-boats", "from": 13.2, "to": 15.6, "gain_db": 0, "caption": "[Boats approach the shore]"},
