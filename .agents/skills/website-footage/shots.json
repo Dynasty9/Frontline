@@ -132,7 +132,7 @@
       "frames": 1275,
       "args": ["--preset=high", "--seed=4", "--set=volume:0.8,vol_effects:0.85,vol_music:0,battle_music:false,vol_ambience:0.28,vol_ui:0,mute_bg:false,wildlife:0,edge_pan:false", "--mission=skyhook", "--play", "--team=0", "--mood=day", "--autoplay"],
       "shows": ["Mohawk carrying a tracked vehicle over the river"],
-      "about": "The Sky Hook mission flies the Nyx directly over a moving bridge-deck camera. Keep the suspended load in frame as the helicopter passes overhead.",
+      "about": "Follow the Mohawk from beside the bridge rail. Its tail, nose and suspended Nyx cross the sky together before the cut to the cargo door.",
       "scene": "res://tools/showcase/trailer-review/sky-bridge.tscn"
     },
     "trailer-cargo-door": {
