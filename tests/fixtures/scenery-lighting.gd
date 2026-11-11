@@ -12,6 +12,7 @@ func _ready() -> void:
 	MapDims.configure(1024)
 	if DisplayServer.get_name() != "headless":
 		await check_river_continuation()
+		await check_height_edges()
 	print("SCENERY_LIGHTING passed")
 	Sfx._ensure()
 	while Music._task >= 0:
@@ -149,3 +150,27 @@ func bake(view: SubViewport) -> Image:
 	view.render_target_update_mode = SubViewport.UPDATE_ONCE
 	await RenderingServer.frame_post_draw
 	return view.get_texture().get_image()
+
+
+func check_height_edges() -> void:
+	var view := SubViewport.new()
+	view.size = Vector2i(16, 16)
+	view.disable_3d = true
+	add_child(view)
+	var bed := Image.create(512, 512, false, Image.FORMAT_RGF)
+	bed.fill(Color(-3.2, 0.4, 0))
+	var ground := TerrainTexture.new(bed)
+	var material := ShaderMaterial.new()
+	material.shader = Shader.new()
+	material.shader.code = "shader_type canvas_item; render_mode unshaded, blend_disabled; uniform sampler2DArray edge_tex : filter_linear, repeat_disable; uniform vec2 sample_uv;\n" + TerrainTexture.SHADER_HELPER + "\nvoid fragment() { COLOR = vec4(-terrain_height(edge_tex, sample_uv) / 4.0, terrain_geology(edge_tex, sample_uv), 0.0, 1.0); }"
+	material.set_shader_parameter("edge_tex", ground.texture)
+	var rect := ColorRect.new()
+	rect.size = Vector2(16, 16)
+	rect.material = material
+	view.add_child(rect)
+	for uv in [Vector2.ZERO, Vector2.ONE, Vector2(0, 0.5), Vector2(1, 0.5), Vector2(0.5, 0), Vector2(0.5, 1)]:
+		material.set_shader_parameter("sample_uv", uv)
+		var output := await bake(view)
+		var pixel := output.get_pixel(8, 8)
+		assert(absf(pixel.r - 0.8) < 0.01 and absf(pixel.g - 0.4) < 0.01, "Map-edge filtering must not blend the seabed with empty padding: " + str(pixel))
+	view.queue_free()
