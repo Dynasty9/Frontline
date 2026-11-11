@@ -6199,6 +6199,469 @@
       "output": "changelog/unreleased/ladder-contacts/platform.jpg"
     },
     {
+      "entry": "changelog/unreleased/realistic-armament-effects.md",
+      "summary": "Rolling, scene-lit explosion clouds with ballistic earth, material impacts and drifting flare trails.",
+      "medium": "motion",
+      "stage": "blast-ground / blast-cover / battlefield-effects / blast-close / blast-rts / armaments / flares / impacts",
+      "rationale": "Lead matched open-ground/cover clips show a visible flash, thinner dust and real crater aftermath with corrected terrain detail. The previous build is freshly captured with the same current terrain-stamping fixture. Earlier intersection and armament demonstrations remain below. Actual ReleaseCard media controls and encoded beginning/action/result frames are checked.",
+      "source_ref": "b3ec8594ef59488cdfa36e5b12fcdf40b9cac791 (baseline game); 2252c93a87a54cc6a6b7498017d6f3cf5b2f6835 (implementation and capture fixtures); 3818d50 (terrain showcase); 84d242c (resumed stone/metal/flare capture); a7f3fb3 (occlusion fix and matched close-up stage); ee782db (historical cloud shader only); af36b0414fad1db50cf4a71fa15bc079a6a9965d (ground marks, flash/dust and current shared capture fixture); 5aad51e744b6b6ab4ec7879014b2f37d4646e5f4 (previous runtime with current capture fixture); 0e221360901dab0e48f020c0a2861a04f06fcbc4 (local ground bounds restore nearby crater geometry)",
+      "sources": [
+        {
+          "file": "changelog/unreleased/realistic-armament-effects/after.jpg",
+          "sha256": "8ce1bf15c6a35104388bd2c94c46574fe57418c89071920f36f19c640af2ed66",
+          "caption": "after.jpg"
+        },
+        {
+          "file": "changelog/unreleased/realistic-armament-effects/armaments.jpg",
+          "sha256": "91710cb7d05be67a1bcfa61731354cc493f915822aa893eb40fb141f4eb5f16d",
+          "caption": "armaments.jpg"
+        },
+        {
+          "file": "changelog/unreleased/realistic-armament-effects/armaments.webm",
+          "sha256": "430b5036ac1fbb221c8a2e9949393c6a28d0ceef944d0af15463274b7f7479cd",
+          "caption": "armaments.webm"
+        },
+        {
+          "file": "changelog/unreleased/realistic-armament-effects/before-range.jpg",
+          "sha256": "3eb0242f28a1c0f879055181ceb5b343a612cda8f22b483577943522b1f0b278",
+          "caption": "before-range.jpg"
+        },
+        {
+          "file": "changelog/unreleased/realistic-armament-effects/before.jpg",
+          "sha256": "a2c39a63b9929dfa445d6e20fa6e881da923b2b3003cd2b1cca3b2e1c9b1f19d",
+          "caption": "before.jpg"
+        },
+        {
+          "file": "changelog/unreleased/realistic-armament-effects/before.webm",
+          "sha256": "b84f6d949d0596733b72b0481367e5bbc75203896ea8e7576a16e185ac8fa03e",
+          "caption": "before.webm"
+        },
+        {
+          "file": "changelog/unreleased/realistic-armament-effects/capture.json",
+          "sha256": "8b714e1cceba86e52b54542f9aeb02796161c975d6349a341c03f6a9793e8cbb",
+          "caption": "capture.json"
+        },
+        {
+          "file": "changelog/unreleased/realistic-armament-effects/flares.jpg",
+          "sha256": "b0bba241e5b4186b8f63a1c5db492f5032608b2429ff0eb4d46523e85c9cd5f8",
+          "caption": "flares.jpg"
+        },
+        {
+          "file": "changelog/unreleased/realistic-armament-effects/flares.webm",
+          "sha256": "aaa1fe56c4c3b070822d6b22861a8c13ba74027e54f7fe64d4851d92372ce9f7",
+          "caption": "flares.webm"
+        },
+        {
+          "file": "changelog/unreleased/realistic-armament-effects/rts.jpg",
+          "sha256": "47a042eb5915f0e357ae216f29e4a97e3fc4ce8ee7b7fe182865f6e6545a7c5b",
+          "caption": "rts.jpg"
+        },
+        {
+          "file": "changelog/unreleased/realistic-armament-effects/rts.webm",
+          "sha256": "d71b25a49737eb48255ee0639856837464f91a0d4bb338b3f36d0f0249443084",
+          "caption": "rts.webm"
+        },
+        {
+          "file": "changelog/unreleased/realistic-armament-effects/world-before.webm",
+          "sha256": "a9a3eb65a88ce665532d15a79598a741335ec28b8efad5ecb8c899301d65abe4",
+          "caption": "world-before.webm"
+        },
+        {
+          "file": "changelog/unreleased/realistic-armament-effects/world.webm",
+          "sha256": "bf891c7b78bac1039d30fcd0ff680fca7cd53581ce8b412d1b50a7117dafa84e",
+          "caption": "world.webm"
+        },
+        {
+          "file": "changelog/unreleased/realistic-armament-effects/impacts-close.webm",
+          "sha256": "fb1a465c8f67d4db8c35c39dac7dda8b28971743c665fcfb238a068976452ec7",
+          "caption": "impacts-close.webm"
+        },
+        {
+          "file": "changelog/unreleased/realistic-armament-effects/impacts-close.jpg",
+          "sha256": "c157ce4f332714aa23060858264cc46e0055f2535b354b18b2860b1ba4b00941",
+          "caption": "impacts-close.jpg"
+        },
+        {
+          "file": "changelog/unreleased/realistic-armament-effects/flares-close.webm",
+          "sha256": "f05bd23d4d2fa3e1d8e103e0297b3b6803fcf538f11bfa252d3d14c86d037b77",
+          "caption": "flares-close.webm"
+        },
+        {
+          "file": "changelog/unreleased/realistic-armament-effects/flares-close.jpg",
+          "sha256": "f124cc31d160168b49c148e6f6781526c29a505e80a163523a9b3bcefe87c167",
+          "caption": "flares-close.jpg"
+        },
+        {
+          "file": "changelog/unreleased/realistic-armament-effects/battlefield.webm",
+          "sha256": "2802ab1d78a97ac6b0fea7b293d82aca5544a323a267f3d1d83dab76f22106b5",
+          "caption": "battlefield.webm"
+        },
+        {
+          "file": "changelog/unreleased/realistic-armament-effects/battlefield.jpg",
+          "sha256": "d36e91f7bccc59718585d8c690d68e583572517e5ef517a181013f5b39280837",
+          "caption": "battlefield.jpg"
+        },
+        {
+          "file": "changelog/unreleased/realistic-armament-effects/battlefield-capture.json",
+          "sha256": "624f56a06d4843da7a561e4f7f6cd0803849f1b940af98565ecbfb16465cf765",
+          "caption": "battlefield-capture.json"
+        },
+        {
+          "file": "changelog/unreleased/realistic-armament-effects/cover.webm",
+          "sha256": "51ca6e751a203b8eacfd3601379025b9505a07c9a23644d6164ba87702678b67",
+          "caption": "cover.webm"
+        },
+        {
+          "file": "changelog/unreleased/realistic-armament-effects/cover.jpg",
+          "sha256": "5219524271b31b1e4ca0f7f21cb5d8282c7856557a0a284e313b8c3c44ac91c2",
+          "caption": "cover.jpg"
+        },
+        {
+          "file": "changelog/unreleased/realistic-armament-effects/cover-before.webm",
+          "sha256": "4ba4b5e018c9ec153db3c7708e34316c34b9694d7a23eef43ce74e37cd041145",
+          "caption": "cover-before.webm"
+        },
+        {
+          "file": "changelog/unreleased/realistic-armament-effects/cover-before.jpg",
+          "sha256": "79041008442b682c75e80218d4ed8c6aaff2ebc908ababa98ee06de8b80edebe",
+          "caption": "cover-before.jpg"
+        },
+        {
+          "file": "changelog/unreleased/realistic-armament-effects/cover-capture.json",
+          "sha256": "b3ca1649c5cad65619540fa3d93fe3b969aeed3f836d86297abd7416ea52f406",
+          "caption": "cover-capture.json"
+        },
+        {
+          "file": "changelog/unreleased/realistic-armament-effects/ground.webm",
+          "sha256": "5de0f0b9b5d51f34f6070c423aa12e81b743d57facfd1c29d4278798f4799bb0",
+          "caption": "ground.webm"
+        },
+        {
+          "file": "changelog/unreleased/realistic-armament-effects/ground.jpg",
+          "sha256": "253a0fcf46ebc511bbfc0efa9d9afceaf6e9bcef145359106c9f3d74271c2922",
+          "caption": "ground.jpg"
+        },
+        {
+          "file": "changelog/unreleased/realistic-armament-effects/ground-before.webm",
+          "sha256": "5eec2a03c16891dfc9db2f3fc4e2ba46f24f8a72f0154d891938bcdb5aead683",
+          "caption": "ground-before.webm"
+        },
+        {
+          "file": "changelog/unreleased/realistic-armament-effects/ground-before.jpg",
+          "sha256": "69f60e28e6fe161a92882b322e3dc11c6f2a4260acbfba0440ef41306b0c5efd",
+          "caption": "ground-before.jpg"
+        },
+        {
+          "file": "changelog/unreleased/realistic-armament-effects/ground-capture.json",
+          "sha256": "eb91953d1ddd41ffe024c559df1a889ff59df5a836776e1d500406af11e23d47",
+          "caption": "ground-capture.json"
+        },
+        {
+          "file": "changelog/unreleased/realistic-armament-effects/ground-crater.jpg",
+          "caption": "Visible crater bowl after the dust clears",
+          "sha256": "2ffefea91272a3fe6640af88039a985db44b2271c77fb7b1a0eb395f5bd0bcaa"
+        }
+      ],
+      "output": null,
+      "attribution": "Lead ground pair: actual Godot 4.7.2 Forward+ output, 24 Hz, 12 seconds, silent and normal speed. Both builds stamp actual terrain; ground-capture.json records refs, commands, measurements and validation. Actual Godot 4.7.2 output, silent and normal speed. Earlier tank/cover pair: Forward+, 24 Hz, 8 seconds; cover-capture.json records the shader-only comparison and depth regression. Full terrain reel: Forward+, 24 Hz, 28 seconds; its interrupted/resumed capture provenance is in battlefield-capture.json. Original matched battlefield clips use Compatibility at 24 Hz; range/flare close-ups use 30 Hz with their recorded renderers. Baseline capture holds legacy pool timestamps to preserve particle lifetimes during offline readback; that timing control does not change the particle programs. CC0 JangaFX animation credits: assets/vfx/LICENSE.md.",
+      "capture_review": "changelog/unreleased/realistic-armament-effects/ground-capture.json"
+    },
+    {
+      "entry": "changelog/unreleased/blast-impact-and-sound.md",
+      "summary": "Brief readable flashes, soft ground contact, pooled dust skirts and layered explosion reports.",
+      "medium": "audio",
+      "stage": "explosions",
+      "rationale": "Matched audible engine captures demonstrate the sound alongside its visual event; the original recordings remain unchanged.",
+      "source_ref": "3fced13071295fcbbf592f79cd94b1eb479ac3f5 baseline; after source hashes and review in capture.json",
+      "sources": [
+        {
+          "file": "changelog/unreleased/blast-impact-and-sound/after.jpg",
+          "sha256": "9ecb0a7681115d889911e1a75dadb05bc21e2879c07b30d8f44b3f1d8f8c2898",
+          "caption": "after.jpg"
+        },
+        {
+          "file": "changelog/unreleased/blast-impact-and-sound/after.webm",
+          "sha256": "3e963fad2c89c60f20ac8ec8d4c7ed0e534933f986f5f31b47c2bf5f83c98514",
+          "caption": "after.webm"
+        },
+        {
+          "file": "changelog/unreleased/blast-impact-and-sound/before.jpg",
+          "sha256": "e0768f971bae36c409be5aeede086321d4f03959581acfd89d349a171a57eed7",
+          "caption": "before.jpg"
+        },
+        {
+          "file": "changelog/unreleased/blast-impact-and-sound/before.webm",
+          "sha256": "071baf4791b62c4c85d67ff25b9689d982c61a94273be801a5d3dbbf2e9779fc",
+          "caption": "before.webm"
+        },
+        {
+          "file": "changelog/unreleased/blast-impact-and-sound/world.jpg",
+          "sha256": "e620049452bebf3e91f73b64839574bdceb4ac345910fce531303b7b04a72648",
+          "caption": "world.jpg"
+        },
+        {
+          "file": "changelog/unreleased/blast-impact-and-sound/world.webm",
+          "sha256": "c1065e79cfdcc16efac05be4d77fb80039c4f14a70b696197455e82ecf632f76",
+          "caption": "world.webm"
+        },
+        {
+          "file": "changelog/unreleased/blast-impact-and-sound/capture.json",
+          "sha256": "a63aa21ed0178b702b916b7e54105ddf2305d9b632b7a2dff5df8a6a0a2e579f",
+          "caption": "capture.json"
+        },
+        {
+          "file": "changelog/unreleased/blast-impact-and-sound/cover.jpg",
+          "sha256": "ba822164eb307b9c62bebfcdf7569a130b2b4b883fa327a7a8bb86a2039c1673",
+          "caption": "cover.jpg"
+        },
+        {
+          "file": "changelog/unreleased/blast-impact-and-sound/cover.webm",
+          "sha256": "99a78dbfb2537155d3616dd8b816983343563239a0f279b22117349cf7ed664c",
+          "caption": "cover.webm"
+        },
+        {
+          "file": "changelog/unreleased/blast-impact-and-sound/impact-comparison.webm",
+          "caption": "impact-comparison.webm",
+          "sha256": "3f6e2c69e3b666c9249356179d764e9d43c99609ac475b7cf2e50466bf94dc36"
+        },
+        {
+          "file": "changelog/unreleased/blast-impact-and-sound/impact-comparison.jpg",
+          "caption": "impact-comparison.jpg",
+          "sha256": "ef2fce9d33dab065d5391864b9e56b292fafabbb22df40c0479aec5593de45e4"
+        },
+        {
+          "file": "changelog/unreleased/blast-impact-and-sound/wreck-landing.webm",
+          "caption": "Rightmost wreck landing comparison",
+          "sha256": "a97670279fee1ab68116b3baec1d380a31d0cba7e4b8eb98ede87b7cdb850011"
+        },
+        {
+          "file": "changelog/unreleased/blast-impact-and-sound/wreck-landing.jpg",
+          "caption": "Rightmost wreck landing comparison",
+          "sha256": "d6522f8f7b81bc60d9bf79169bc3ad7ffe8c06ed0d8b7448a5f0f24c785d63c5"
+        }
+      ],
+      "output": null,
+      "capture_review": "changelog/unreleased/blast-impact-and-sound/capture.json",
+      "attribution": "Godot 4.7.2 on Apple M5 Max. The battlefield capture uses Forward+ at 24 Hz. The matched range captures use Compatibility at 30 Hz. All include native game audio."
+    },
+    {
+      "entry": "changelog/unreleased/support-callin-previews.md",
+      "summary": "All 20 call-ins, each with matched before and after takes and native game audio.",
+      "medium": "motion",
+      "stage": "tests/fixtures/support-clips.tscn",
+      "rationale": "Each pair shows the same call-in on the same daylight range so aircraft framing, impact timing and dust can be compared.",
+      "source_ref": "a986faddd3ce7513482bc964faccfe4ec84c6e2a baseline; capture.json records the updated source and timing.",
+      "sources": [
+        {
+          "file": "changelog/unreleased/support-callin-previews/a10.jpg",
+          "sha256": "41b2b54ee13b5524c639399ea5c391b1f421492a8ad11e9d0851890d3f246035",
+          "caption": "a10.jpg"
+        },
+        {
+          "file": "changelog/unreleased/support-callin-previews/a10.webm",
+          "sha256": "e849481ebcb34e4a8ae761c4117a7be1f575452616abfd4e319f844f9a102c7a",
+          "caption": "a10.webm"
+        },
+        {
+          "file": "changelog/unreleased/support-callin-previews/ac130.jpg",
+          "sha256": "4201d624ecc5643f3939eac635db62032834c40488c85e0bad96698a8b6a81d3",
+          "caption": "ac130.jpg"
+        },
+        {
+          "file": "changelog/unreleased/support-callin-previews/ac130.webm",
+          "sha256": "234dc69dc7f6377165e09d18ce71fbf10d42323732e298db54bfb2e9c4d98907",
+          "caption": "ac130.webm"
+        },
+        {
+          "file": "changelog/unreleased/support-callin-previews/airstrike.jpg",
+          "sha256": "16a8bcadf002f691aa64c5dffa79de9944b635a46e3c81b0ffc977539a9b9329",
+          "caption": "airstrike.jpg"
+        },
+        {
+          "file": "changelog/unreleased/support-callin-previews/airstrike.webm",
+          "sha256": "0065d49ab0603470d4f506807527c917ca7f78cf472b84d74ada9e6c32c93d30",
+          "caption": "airstrike.webm"
+        },
+        {
+          "file": "changelog/unreleased/support-callin-previews/artillery.jpg",
+          "sha256": "f598627a11a652a76559d22048e971c7ac8042cad1f7a7ce5d2b2a4f6e7993b6",
+          "caption": "artillery.jpg"
+        },
+        {
+          "file": "changelog/unreleased/support-callin-previews/artillery.webm",
+          "sha256": "f802144ad88564d41754c5dd77ff7120708dbbf1e9b68f991e445fba3288964c",
+          "caption": "artillery.webm"
+        },
+        {
+          "file": "changelog/unreleased/support-callin-previews/barrage.jpg",
+          "sha256": "2d185c2e0e1e36811bb68b8bbd83634f9f69e9bf5cd7448fd4b73ec211845436",
+          "caption": "barrage.jpg"
+        },
+        {
+          "file": "changelog/unreleased/support-callin-previews/barrage.webm",
+          "sha256": "98f87ef7255b0c444592723d8a755733082e77bc425118c409d970e3d98d7c6d",
+          "caption": "barrage.webm"
+        },
+        {
+          "file": "changelog/unreleased/support-callin-previews/blackfish.jpg",
+          "sha256": "0a19a55dc0921e33ea45d8e95a82bdce6aea756161544b4d7b4a0c7ae784a906",
+          "caption": "blackfish.jpg"
+        },
+        {
+          "file": "changelog/unreleased/support-callin-previews/blackfish.webm",
+          "sha256": "0b2f897fd5b06a5d8fec462f0f13cf164048ae137519cb0589e3a723d1c83e33",
+          "caption": "blackfish.webm"
+        },
+        {
+          "file": "changelog/unreleased/support-callin-previews/buzzard.jpg",
+          "sha256": "2596f89b7e2e3d8755cd693623eb9f51a90060c8b3729709a6486691d72e9cd8",
+          "caption": "buzzard.jpg"
+        },
+        {
+          "file": "changelog/unreleased/support-callin-previews/buzzard.webm",
+          "sha256": "816c004ca1eba87e49b3119b7b6f6d01df665aaa0289392fa0512edbc283371a",
+          "caption": "buzzard.webm"
+        },
+        {
+          "file": "changelog/unreleased/support-callin-previews/caesar_spotter.jpg",
+          "sha256": "41b1b20f312ae2bc936e3135195b2b72dd3607a91406880531badca3eff879d3",
+          "caption": "caesar_spotter.jpg"
+        },
+        {
+          "file": "changelog/unreleased/support-callin-previews/caesar_spotter.webm",
+          "sha256": "5530ef408589359ad13d1c3fe8f5ab567af594fb4cecf9d4193d84c7fa64f323",
+          "caption": "caesar_spotter.webm"
+        },
+        {
+          "file": "changelog/unreleased/support-callin-previews/capture.json",
+          "sha256": "be9c4875b688a724461f60ad1d4c64078ed4869b4648047aebc28e7c070d6040",
+          "caption": "capture.json"
+        },
+        {
+          "file": "changelog/unreleased/support-callin-previews/fenghuang_watch.jpg",
+          "sha256": "dcd0c70f9e4401adf83a28bf6a75c5e9f24bae1637dad8fa69e44720289f8a91",
+          "caption": "fenghuang_watch.jpg"
+        },
+        {
+          "file": "changelog/unreleased/support-callin-previews/fenghuang_watch.webm",
+          "sha256": "fa26990bcc1b10ceef3e6dd999d1ab0f6de47408581a6925d2ce23974c399ec8",
+          "caption": "fenghuang_watch.webm"
+        },
+        {
+          "file": "changelog/unreleased/support-callin-previews/greyhawk.jpg",
+          "sha256": "205851945e6ad0cc4161935a01dad54185689359da9eca7db64926aa38b991a2",
+          "caption": "greyhawk.jpg"
+        },
+        {
+          "file": "changelog/unreleased/support-callin-previews/greyhawk.webm",
+          "sha256": "c95295e7823b7b7a48ad9408bc034180558adeb0daf977240f13f7f4de1dea27",
+          "caption": "greyhawk.webm"
+        },
+        {
+          "file": "changelog/unreleased/support-callin-previews/greyhawk_watch.jpg",
+          "sha256": "06c9f8b542393346c7ea0a998821d66c781b9967e5031be29ef6fa9d601b766d",
+          "caption": "greyhawk_watch.jpg"
+        },
+        {
+          "file": "changelog/unreleased/support-callin-previews/greyhawk_watch.webm",
+          "sha256": "8840e2d49af0d6bbd2ce424017c0d464e6d257001477ef591e41b0c5a6031c5c",
+          "caption": "greyhawk_watch.webm"
+        },
+        {
+          "file": "changelog/unreleased/support-callin-previews/gryphon.jpg",
+          "sha256": "2a402386a6ced6d2b0b9ee4c75e0fa23cc49dad76034db0b94307e0b8bda5dc7",
+          "caption": "gryphon.jpg"
+        },
+        {
+          "file": "changelog/unreleased/support-callin-previews/gryphon.webm",
+          "sha256": "18309d8d830b9ba6abf8c9b239fcb7a76a2d0b696f5edcd60561635abc5c03a9",
+          "caption": "gryphon.webm"
+        },
+        {
+          "file": "changelog/unreleased/support-callin-previews/gryphon_recon.jpg",
+          "sha256": "8675e01ecdbefe6218665a3233e30257bb3b2dec2e48f03f8e130cfa9e9edc56",
+          "caption": "gryphon_recon.jpg"
+        },
+        {
+          "file": "changelog/unreleased/support-callin-previews/gryphon_recon.webm",
+          "sha256": "bea05bd083988ba707249ca1ab674944f5d3e767466af7815eb53e39eefe6612",
+          "caption": "gryphon_recon.webm"
+        },
+        {
+          "file": "changelog/unreleased/support-callin-previews/mortars.jpg",
+          "sha256": "b55a48123acf7f746a574bb09f0e2cfe2f3f39e8a328b2142add6d561af46ff2",
+          "caption": "mortars.jpg"
+        },
+        {
+          "file": "changelog/unreleased/support-callin-previews/mortars.webm",
+          "sha256": "d8f21361b76fd27347f90b29e33708c6ff55091c825584b3010034da9b65f8ef",
+          "caption": "mortars.webm"
+        },
+        {
+          "file": "changelog/unreleased/support-callin-previews/neophron.jpg",
+          "sha256": "704febd81252a1e2055eeb911660a92492305f5e84ee3f33e6e9656ddc38cb85",
+          "caption": "neophron.jpg"
+        },
+        {
+          "file": "changelog/unreleased/support-callin-previews/neophron.webm",
+          "sha256": "415fe99d9ac147aff9bc0e9dee27ee87f9d39e30c0f871a41d46cfb708c4ee5b",
+          "caption": "neophron.webm"
+        },
+        {
+          "file": "changelog/unreleased/support-callin-previews/sentinel.jpg",
+          "sha256": "a472ea0cfb0e2e55160fa72d565de47037e5466415882ebf4b6c349745f96a5a",
+          "caption": "sentinel.jpg"
+        },
+        {
+          "file": "changelog/unreleased/support-callin-previews/sentinel.webm",
+          "sha256": "b337f34de32cf020002623e85d8cdd1f53e6e3597093c0b82763fb78736d65e0",
+          "caption": "sentinel.webm"
+        },
+        {
+          "file": "changelog/unreleased/support-callin-previews/shikra.jpg",
+          "sha256": "c723f787c0c625c8677ceecdc461ef875bd14879f20c7d52d8bc2c8f34ff3098",
+          "caption": "shikra.jpg"
+        },
+        {
+          "file": "changelog/unreleased/support-callin-previews/shikra.webm",
+          "sha256": "3d34a53986d174bf6d78f81ade87a8923589a87149dbbb680059ef103c6bcaa1",
+          "caption": "shikra.webm"
+        },
+        {
+          "file": "changelog/unreleased/support-callin-previews/smoke.jpg",
+          "sha256": "9fc663187d961f3b0afc592e89d07c9a18f628c4407a8f31727861e87ba006f5",
+          "caption": "smoke.jpg"
+        },
+        {
+          "file": "changelog/unreleased/support-callin-previews/smoke.webm",
+          "sha256": "21312c70e1ae5023a683dee41365b102401058d4fbf3dccd33a7d8b1b077cfa7",
+          "caption": "smoke.webm"
+        },
+        {
+          "file": "changelog/unreleased/support-callin-previews/wipeout.jpg",
+          "sha256": "9a76f3087011eaed77b17a84af933aa9c6aaf2ce632ace38e0bc3711603f2cbd",
+          "caption": "wipeout.jpg"
+        },
+        {
+          "file": "changelog/unreleased/support-callin-previews/wipeout.webm",
+          "sha256": "09d6ed5ce31f33148cfc31a7a7c615bc0c03b8992b7c14074aade022b7b5be4c",
+          "caption": "wipeout.webm"
+        },
+        {
+          "file": "changelog/unreleased/support-callin-previews/xian.jpg",
+          "sha256": "e6f488546ae1853e0532449612da0a450d19f23da0c6b08b6c898e0542a69019",
+          "caption": "xian.jpg"
+        },
+        {
+          "file": "changelog/unreleased/support-callin-previews/xian.webm",
+          "sha256": "fc2e805e90210079bb121e4b400a8f5d283c10b3a4bc30064989e517647ea52d",
+          "caption": "xian.webm"
+        }
+      ],
+      "capture_review": "changelog/unreleased/support-callin-previews/capture.json",
+      "output": null
+    },
+    {
       "entry": "changelog/unreleased/shared-vehicle-components.md",
       "summary": "Shared track links, wheel assemblies, structural members and fitted glazing across vehicle families.",
       "medium": "still",

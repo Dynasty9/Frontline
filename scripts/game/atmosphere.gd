@@ -412,7 +412,7 @@ func _build_ground() -> void:
 	ground_mat.set_shader_parameter("trench_mask", _blank_mask)
 	ground.material_override = ground_mat
 	ground.custom_aabb = AABB(Vector3(-MapDims.HALF - 1800.0, -5.0, -MapDims.HALF - 1800.0), Vector3(MapDims.SIZE + 3600.0, 517.0, MapDims.SIZE + 3600.0))
-	ground.layers = 5  # terrain-only capture layer for cached water reflections
+	ground.layers = 5 | Res.GROUND_DECAL_LAYER  # terrain capture plus ground-only decals
 	ground.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	add_child(ground)
 	# the battlefield itself: chunks of fine grid (culled one by one), all
@@ -431,15 +431,16 @@ func _build_ground() -> void:
 	var cm_far := _grid_mesh(cs, maxf(step, 4.0))
 	for cx in GROUND_CHUNKS:
 		for cz in GROUND_CHUNKS:
+			var center := Vector3(-GROUND_HALF + (cx + 0.5) * cs, 0, -GROUND_HALF + (cz + 0.5) * cs)
+			var bounds := _ground_chunk_bounds(center, cs)
 			for far in [false, true]:
 				var mi := MeshInstance3D.new()
 				mi.mesh = cm_far if far else cm
 				mi.material_override = ground_mat
-				mi.layers = 5
+				mi.layers = 5 | Res.GROUND_DECAL_LAYER
 				mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
-				mi.position = Vector3(-GROUND_HALF + (cx + 0.5) * cs, 0, -GROUND_HALF + (cz + 0.5) * cs)
-				# room for the displacement in the culling box
-				mi.custom_aabb = AABB(Vector3(-cs * 0.5, -5.0, -cs * 0.5), Vector3(cs, 517.0, cs))
+				mi.position = center
+				mi.custom_aabb = bounds
 				if far:
 					mi.visibility_range_begin = GROUND_LOD
 				else:
@@ -639,8 +640,9 @@ void fragment() {
 
 # --- night: illumination flares drifting down over the fighting ----------------
 
+static var _flare_canopy_mesh: ArrayMesh
 var _flare_t := 3.0
-var _flares: Array = []  # [root, light, age, life]
+var _flares: Array = []  # [root, light, age, life, glow, trail, canopy]
 
 
 func _flares_tick(dt: float) -> void:
@@ -663,13 +665,18 @@ func _flares_tick(dt: float) -> void:
 		var root: Node3D = f[0]
 		var age: float = f[2]
 		var life: float = f[3]
-		root.position.y = maxf(world.ground_y(root.position) + 6.0, root.position.y - dt * 1.3)
-		root.position.x += sin(age * 0.7) * dt * 0.8
+		root.position.y = maxf(world.ground_y(root.position) + 0.15, root.position.y - dt * 1.3)
+		root.position += Fires.WIND * dt * 0.6
+		# The canopy and its lines sway together about the suspended charge.
+		root.rotation.z = sin(age * 1.4) * 0.08
 		var fade := clampf((life - age) / 3.0, 0.0, 1.0) * clampf(age * 2.0, 0.0, 1.0)
 		var l: OmniLight3D = f[1]
 		l.light_energy = fade * (7.0 + 1.0 * sin(age * 23.0) + 0.6 * sin(age * 37.0))
-		(f[4] as MeshInstance3D).scale = Vector3.ONE * (1.6 + 0.2 * sin(age * 31.0)) * fade
-		if age > life:
+		(f[4] as MeshInstance3D).scale = Vector3.ONE * (0.65 + 0.06 * sin(age * 31.0)) * fade
+		if age >= life and is_instance_valid(f[5]):
+			for emitter: GeometryInstance3D in (f[5] as Node3D).get_children():
+				Vfx.set_emitting(emitter, false)
+		if age > life + 4.0:
 			root.queue_free()
 			_flares.remove_at(i)
 
@@ -693,16 +700,52 @@ func _spawn_flare(p: Vector3) -> void:
 	glow.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	root.add_child(glow)
 	var chute := MeshInstance3D.new()
-	chute.mesh = Res.sphere(0.9, 10)
-	chute.material_override = Mats.get_mat("canvas_white")
-	chute.scale = Vector3(1, 0.45, 1)
+	chute.mesh = _flare_canopy()
+	var cloth := StandardMaterial3D.new()
+	cloth.albedo_color = Color(0.70, 0.68, 0.61)
+	cloth.roughness = 0.95
+	cloth.cull_mode = BaseMaterial3D.CULL_DISABLED
+	cloth.vertex_color_use_as_albedo = true
+	chute.material_override = cloth
 	chute.position = Vector3(0, 2.4, 0)
 	root.add_child(chute)
+	# Suspension lines meet the cloth rim and stay attached as it sways.
+	for i in 8:
+		var a := i * TAU / 8.0
+		var seam := pow(absf(sin(a * 6.0)), 2.0)
+		var radius := 0.9 * (1.0 - 0.035 * seam)
+		var end := Vector3(cos(a) * radius, 2.4 + 0.045 * seam, sin(a) * radius)
+		var line := Res.mi(root, Res.cyl(0.003, 0.003, end.length(), 4), Mats.get_mat("canvas_white"), end * 0.5)
+		line.quaternion = Quaternion(Vector3.UP, end.normalized())
+	var tr: Node3D
 	if world.fx and world.fx.vfx:
-		var tr := world.fx.vfx.make_trail()
-		Vfx.set_ratio(tr, 0.5)
+		tr = world.fx.vfx.make_flare_trail()
 		root.add_child(tr)
-	_flares.append([root, l, 0.0, randf_range(20.0, 26.0), glow])
+	_flares.append([root, l, 0.0, randf_range(20.0, 26.0), glow, tr, chute])
+
+
+## A sewn canopy has a rounded crown and scalloped gores, open underneath.
+## One shared mesh replaces a flattened sphere, including when seen from below.
+static func _flare_canopy() -> ArrayMesh:
+	if _flare_canopy_mesh:
+		return _flare_canopy_mesh
+	var surface := SurfaceTool.new()
+	surface.begin(Mesh.PRIMITIVE_TRIANGLES)
+	for ring in 8:
+		for segment in 48:
+			for corner in [Vector2i(0, 0), Vector2i(1, 1), Vector2i(1, 0), Vector2i(0, 0), Vector2i(0, 1), Vector2i(1, 1)]:
+				var theta := float(ring + corner.x) / 8.0 * PI * 0.5
+				var phi := float(segment + corner.y) / 48.0 * TAU
+				var seam := pow(absf(sin(phi * 6.0)), 2.0)
+				var radius := 0.9 * sin(theta) * (1.0 - 0.035 * seam)
+				var y := 0.48 * cos(theta) + 0.045 * pow(sin(theta), 6.0) * seam
+				var tint := 0.92 + 0.08 * seam
+				surface.set_color(Color(tint, tint, tint))
+				surface.set_uv(Vector2(phi / TAU, theta / (PI * 0.5)))
+				surface.add_vertex(Vector3(cos(phi) * radius, y, sin(phi) * radius))
+	surface.generate_normals()
+	_flare_canopy_mesh = surface.commit()
+	return _flare_canopy_mesh
 
 
 ## Switches the lighting mood live (Settings > Time of day).
@@ -918,6 +961,31 @@ func set_town(r: Rect2) -> void:
 	Mats.set_shared(road_mat, &"town", Vector4(r.position.x, r.position.y, r.end.x, r.end.y))
 
 
+## Bound a chunk by its own geology and the allowed deformation.
+func _ground_chunk_bounds(center: Vector3, size: float) -> AABB:
+	# Godot measures visibility ranges from the AABB centre. A map-wide
+	# 512 m height allowance put that centre above even the near-detail range,
+	# so small craters disappeared into the coarse grid at ground level.
+	var low := 0.0
+	var high := 0.0
+	var form: Landform = world.terrain.landform
+	if not form.heights.is_empty():
+		low = INF
+		var start := Vector2(center.x - size * 0.5 + form.half, center.z - size * 0.5 + form.half) / Landform.STEP
+		var end := Vector2(center.x + size * 0.5 + form.half, center.z + size * 0.5 + form.half) / Landform.STEP
+		# Include neighbouring geology samples: bilinear heights cannot exceed
+		# their extrema. This runs at map setup, not every frame or explosion.
+		for z in range(maxi(0, floori(start.y) - 1), mini(form.n, ceili(end.y) + 2)):
+			for x in range(maxi(0, floori(start.x) - 1), mini(form.n, ceili(end.x) + 2)):
+				var h := form.heights[z * form.n + x]
+				low = minf(low, h)
+				high = maxf(high, h)
+		if maxf(absf(center.x), absf(center.z)) + size * 0.5 >= MapDims.HALF:
+			low = minf(low, 0.0)
+	# Craters clamp to -1.4/+0.55 m; the outer 8 m apron can reach sea floor.
+	return AABB(Vector3(-size * 0.5, low - 4.0, -size * 0.5), Vector3(size, high - low + 5.0, size))
+
+
 ## A square of ground `size` across in quads of `step` metres, centred on its origin.
 func _grid_mesh(size: float, step: float) -> ArrayMesh:
 	var n := int(round(size / step))
@@ -1045,6 +1113,10 @@ func _update_deform(dt: float) -> void:
 	if tm == null or tm.deform_img == null:
 		return
 	if not _surface_baked and not tm.landform.heights.is_empty():
+		# Joining clients install their geology after the view is constructed.
+		for child in get_children():
+			if child is MeshInstance3D and child != ground and child.material_override == ground_mat:
+				child.custom_aabb = _ground_chunk_bounds(child.position, GROUND_HALF * 2.0 / GROUND_CHUNKS)
 		ground_mat.set_shader_parameter("surface_bake", ImageTexture.create_from_image(tm.landform.bake_surface(sun.basis.z)))
 		ground_mat.set_shader_parameter("sun_direction", sun.basis.z)
 		_surface_baked = true
@@ -1112,6 +1184,7 @@ func make_road_mesh(polys: Array, team: int) -> MeshInstance3D:
 	var mi := MeshInstance3D.new()
 	mi.mesh = st.commit()
 	mi.material_override = road_mat
+	mi.layers = 1 | Res.GROUND_DECAL_LAYER
 	Mats.set_inst(mi, &"country", 1.0 if team == 2 else 0.0)
 	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	return mi
@@ -1646,8 +1719,9 @@ void fragment() {
 	float hz = hgt(p + vec2(0.0, e));
 	float bm = bump * mix(0.6, 1.4, dirt_m) * (1.0 + bowl * 1.5);
 	vec3 n = normalize(vec3((hc - hx) * bm / e * 0.1, 1.0, (hc - hz) * bm / e * 0.1));
-	// the crater's own slopes
-	float de = max(2.0, normal_step);
+	// Small craters need the height field's quarter-metre spacing. Sampling
+	// two metres either side can skip their walls and shade a dug bowl flat.
+	float de = mix(max(2.0, normal_step), 0.25, smoothstep(0.002, 0.03, abs(hd)));
 	float gx = (dfm(p + vec2(de, 0.0)) - dfm(p - vec2(de, 0.0))) / (2.0 * de);
 	float gz = (dfm(p + vec2(0.0, de)) - dfm(p - vec2(0.0, de))) / (2.0 * de);
 	n = normalize(n + vec3(-gx, 0.0, -gz));

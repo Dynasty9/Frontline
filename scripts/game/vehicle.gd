@@ -1584,7 +1584,7 @@ func _destroyed() -> void:
 	if world.battle:
 		world.battle.end_blame(was)
 	passengers.clear()
-	world.fx_event([Fx.EXPLODE, position + Vector3(0, 1.0, 0), 2.0])
+	world.fx_event([Fx.EXPLODE, position + Vector3(0, 1.0, 0), 2.0, "fuel"])
 	world.fx_event([Fx.DEBRIS, position + Vector3(0, 1.5, 0), Color(0.15, 0.15, 0.14), 16])
 	for s in world.soldiers_near(position, 7.0):
 		s.flinch_from(position, Defs.flat(s.position - position).length(), 7.0)
@@ -1628,7 +1628,7 @@ func _sink() -> void:
 			s.unhide(world.nav.nearest_walkable(shore + Vector3(world.rng.randf_range(-3, 3), 0, world.rng.randf_range(-3, 3))))
 			s.take_damage(world.rng.randf_range(30.0, 110.0) if near else 999.0, null, Vector3.UP, "explosion")
 	passengers.clear()
-	world.fx_event([Fx.EXPLODE, position + Vector3(0, 1.4, 0), 1.6 if weight() >= 2 else 1.1])  # (above the water: fire, not spray)
+	world.fx_event([Fx.EXPLODE, position + Vector3(0, 1.4, 0), 1.6 if weight() >= 2 else 1.1, "fuel"])  # (above the water: fire, not spray)
 	world.fx_event([Fx.DEBRIS, position + Vector3(0, 1.0, 0), Color(0.3, 0.3, 0.3), 12])
 	world.fx_event([Fx.SINK, eid, position])  # (she goes down on every screen that can see her)
 	world.send_msg(team, "alert", "%s sunk at %s!" % [display_name(), Defs.grid_ref(position)], position)

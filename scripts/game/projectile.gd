@@ -33,7 +33,7 @@ var _whistled := false
 var _fire_el := -1.0
 var _hits: Array = []  # A-10: [arrive_time, pos]
 var _next := {}  # AC-130: gun -> next shot time
-var _brrt_at := -1.0
+var _gun_sound_delay := -1.0
 var _gun_smoke: GeometryInstance3D  # (GPU or CPU particles: see Vfx.part)
 var _drone: AudioStreamPlayer
 var _vm: VehicleModels
@@ -211,7 +211,7 @@ func _ballistic(dt: float) -> void:
 		fuse -= dt
 		if fuse <= 0.0:
 			if not SoldierBrain.smothered(self):
-				world.combat.explode(position, {"dmg": 150.0, "radius": 6.0, "fling": 9.0, "at": 0.0, "src": world.entity(thrower_id), "team": team, "by": by, "size": 1.0})
+				world.combat.explode(position, {"dmg": 150.0, "radius": 6.0, "fling": 9.0, "at": 0.0, "src": world.entity(thrower_id), "team": team, "by": by, "size": 1.0, "vfx": "frag"})
 			world.despawn(self)
 	else:
 		if not flying or life_t > 1.6:
@@ -685,18 +685,19 @@ func _a10_view(dt: float) -> void:
 		Vfx.set_emitting(_gun_smoke, firing)
 		_gun_smoke.global_position = nose
 	if firing:
-		if _brrt_at < 0.0:
+		if _gun_sound_delay == -1.0:
 			# the shells (950 m/s) arrive well before the sound (343 m/s)
-			_brrt_at = Time.get_ticks_msec() / 1000.0 + 0.55
+			_gun_sound_delay = 0.55
 		if randf() < 0.7 and world.fx:
 			var k := clampf((along - A10_FIRE_AT) / (A10_BURST * A10_SPEED), 0.0, 1.0)
 			var side := dirn.cross(Vector3.UP)
 			var aim := target + dirn * lerpf(-A10_STRIP, A10_STRIP, k) + side * randf_range(-3.0, 3.0)
 			world.fx._tracer(nose, aim, 3.5, 1.4)
 			world.fx._flash(nose, 0.04, 2.2)
-	if _brrt_at > 0.0 and Time.get_ticks_msec() / 1000.0 >= _brrt_at:
-		_brrt_at = 1e9
-		Sfx.play_far("brrt", 2.0, 1.0, maxf(0.0, (world.cam.focus_pos.distance_to(target) if world.cam else 0.0) - 40.0))
+	if _gun_sound_delay > 0.0:
+		_gun_sound_delay = maxf(0.0, _gun_sound_delay - dt)
+		if _gun_sound_delay == 0.0:
+			Sfx.play_far("brrt", 2.0, 1.0, maxf(0.0, (world.cam.focus_pos.distance_to(target) if world.cam else 0.0) - 40.0))
 
 
 # --- AC-130 ----------------------------------------------------------------------------

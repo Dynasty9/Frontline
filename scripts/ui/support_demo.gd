@@ -7,6 +7,7 @@ var support_kind := ""
 var _duration := 18.0
 var _active := false
 var _aircraft: Projectile
+var _following_drop := false
 
 
 func _build_environment() -> void:
@@ -52,6 +53,7 @@ func replay() -> void:
 
 
 func _start_sortie() -> void:
+	_following_drop = false
 	var kind := support_kind
 	rng.seed = int(settings.get("seed", 7))
 	for i in 3:
@@ -92,17 +94,43 @@ func _process(_dt: float) -> void:
 func _update_camera() -> void:
 	if not cam:
 		return
-	var look := Vector3(0, 20, 0)
-	var offset := Vector3(-55, 90, 135)
+	# Frame the real subject in world space. The RTS rig has its own pitch,
+	# so assigning a world-space offset to the camera's local position tilts
+	# the shot a second time and can put an approaching aircraft off screen.
+	var look := Vector3(0, 2, 0)
+	var offset := Vector3(12, 22, 44)
+	var recon := bool(Defs.SUPPORT[support_kind].get("recon", false))
 	if is_instance_valid(_aircraft) and not _aircraft.gone:
+		var plane := _aircraft.global_position
+		var chase := Vector3(-17, 9, 31)
+		var follow := true
 		if _aircraft.ptype == "ac130":
-			look = _aircraft.position * 0.5
-			offset = Vector3(85, 120, 160)
-		elif _aircraft.position.x < 160.0:
-			var approach := smoothstep(-240.0, -90.0, _aircraft.position.x)
-			look = _aircraft.position.lerp(_aircraft.position * 0.5, approach)
-			offset = Vector3(-30, 18, 65).lerp(offset, approach)
+			chase = Vector3(plane.x, 0, plane.z).normalized() * 36.0 + Vector3.UP * 12.0
+			# Give wide, banked wings and tiltrotor discs room at the frame edge.
+			if _aircraft.guns in ["ac130", "blackfish", "xian"]:
+				chase = chase.rotated(Vector3.UP, 0.45) * 1.65
+			follow = recon or time < (6.0 if _aircraft.guns == "greyhawk" else 3.2)
+		elif _aircraft.ptype == "a10":
+			follow = _aircraft._fire_el < 0.0
+		elif not recon:
+			# Follow the first falling silhouette until it reaches the target.
+			# A pan between aircraft and target spends much of the pass on empty sky.
+			for drop in projectiles:
+				if drop.ptype == "bomb" and not drop.gone:
+					var blend := smoothstep(5.0, 50.0, drop.position.y)
+					look = look.lerp(drop.position, blend)
+					offset = offset.lerp(chase, blend)
+					_following_drop = true
+					break
+			follow = not _following_drop
+		if follow:
+			look = plane
+			# Recon never cuts to a ground impact. Keep the small airframes
+			# readable, including the wings of an orbiting drone.
+			offset = chase.rotated(Vector3.UP, 0.42) * 0.7 if recon else chase
+	elif recon:
+		return
 	cam.focus_pos = look
 	cam.dist = offset.length()
-	cam.cam.position = look + offset
+	cam.cam.global_position = look + offset
 	cam.cam.look_at(look)

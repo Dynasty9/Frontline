@@ -274,8 +274,8 @@ between players runs over; the menu links to the downloads instead. It looks a l
 lighting, volumetric fog or particle trails, which the browser's renderer doesn't have) and, with no threads to
 spread the work over, the map takes about 30 seconds to lay out, a stage at a time behind the loading screen. The
 simulation runs about as fast as on the desktop. The first battle also waits while the browser compiles the game's
-shaders (it keeps them, so only the first time); to keep that short, lighting is worked out per vertex, particles
-run on the processor, and explosions, muzzle flashes and fires don't cast light.
+shaders (it keeps them, so only the first time); to keep that short, surface lighting is worked out per vertex and emitter particles run on the processor. Animated blast clouds and
+batched debris still run in shaders; explosions, muzzle flashes and fires don't cast light.
 
 ## The console: finding out why it's slow
 
@@ -1180,6 +1180,34 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   throw a fountain of earth high into the air that rains back down, fling burning fragments out in arcs that
   burn on where they land, leave flames licking about the crater for a moment, and clods land around the
   crater once the debris has fallen.
+- **Explosions** distinguish fragmentation grenades, high explosive shells and fuel explosions. Grenades
+  give a short flash, fast dark fragments and a small dirt burst. HE shells, including the visual scale of a
+  roughly 110 mm round, throw a fountain of earth, falling clods and a ground dust cloud; sustained flames
+  and burning fragments belong to vehicle fuel explosions. Calibre is an artistic scale reference, not a
+  physical blast calculator. Airbursts omit ground layers, and impacts use height above the local terrain.
+  Connected smoke and dust billows come from CC0 JangaFX fluid simulations baked into animated textures.
+  Six directional lighting channels let them respond to the battlefield's sun and sky. Two elevation views and
+  motion-assisted frame blending preserve detail as the cloud rolls and expands. Depth fading softens its
+  contact with scenery. Road and rubble bursts are greyer; mud and rain suppress the fine dust.
+  The initial flash uses the immediate shared batch, followed by thinner soil dust that clears sooner than
+  fuel smoke. Ground-only decals keep scorch off walls and smoke. HE leaves lighter char, while crater
+  shading follows the fine height field so the bowl and raised rim remain legible. Ground chunks use local
+  height bounds for distance detail, keeping the fine crater mesh near the camera and the coarse grid far away.
+  A low dust skirt spreads along the ground and upper dust drifts downwind.
+  Reports layer a pressure crack, turbulent bass, irregular ground returns and scattered grit, with clean
+  endpoints and peak headroom. Fragmentation grenades use the shorter report rather than a shell's boom.
+  Each blast uses one pooled surface. Per-frame bounds trim empty pixels before drawing; quality sets the pool
+  budget, and quality and distance limit interpolation. Low and medium settings leave optical-flow maps unloaded
+  until a higher-quality burst needs them.
+  Fast fragments, curved fans of earth, tumbling clods and delayed landing dust use shared GPU instance rings
+  without per-fragment nodes. The fluid simulation runs offline, and expired surfaces stop drawing.
+  The same animated volumes and batched fragments work through WebGL; the remaining flash and flame emitters
+  use CPU particles on the Compatibility renderer. Source licenses and reproducible baking tools are in
+  `assets/vfx/LICENSE.md` and `tools/vfx/`.
+- **Illumination flares** descend under a rounded, open cloth canopy with suspension lines, drift with the wind,
+  shed fine sparks and leave animated smoke behind in world space. The charge lights its freshest smoke,
+  fades as it burns out and stops emitting before its remaining smoke disperses. Each flare uses two bounded
+  particle emitters, and the canopy mesh is shared.
 - **Gunfire** (`gunfx.gd`), sized to life: a rifle's muzzle flash is a hand's breadth of flame gone in a frame,
   a .50's a forearm's, an autocannon's a man's height - a hot core and a short jet split into petals by the flash
   hider (thrown out sideways by a heavy gun's muzzle brake), with a moment's light on everything round it
@@ -1189,7 +1217,7 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   kicks with each shot: the rifle back into the shoulder and the muzzle up, the mounted gun on its pintle, the
   turret back on its ring when the main gun fires. One round in so many is a tracer, red for the Coalition and
   green for the Rebels (Soviet-pattern ammunition): a thin bright thread at night, fainter and shorter by day,
-  never thinner than a pixel or two. What a round hits decides what flies, small and quick as in real footage: a
+  with distance-dependent dimming and a short ignition delay for small-arms tracers. What a round hits decides what flies, small and quick as in real footage: a
   crown of dust and soil thrown up out of the ground, a puff of stone dust and chips off a wall, a dry burst of
   sand off sandbags, splinters, leaves fluttering down, sparks and a glint off steel, a dark mist off a man, a
   spout off water - shown when the round gets there, not when it's fired. Now and then one skips off steel, stone

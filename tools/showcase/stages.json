@@ -19,5 +19,295 @@
     "fps": 12,
     "simulation_hz": 60,
     "cue": "Coloured pulses identify the three actual gunship launch sockets; they do not represent firing cadence."
+  },
+  "armaments": {
+    "scene": "tests/fixtures/armament-effects-clips.tscn",
+    "seconds": 12,
+    "fps": 30,
+    "simulation_hz": 30,
+    "engine_fixed_fps": 30,
+    "cue": "Compare a fragmentation grenade, roughly 110 mm HE scale ground burst and a fuel explosion, followed by dirt, stone and metal impacts.",
+    "timeout": 600,
+    "crf": 24,
+    "render_settings": {
+      "effects": 2,
+      "decals": true,
+      "projection": "perspective"
+    }
+  },
+  "flares": {
+    "scene": "tests/fixtures/armament-effects-clips.tscn",
+    "seconds": 12,
+    "fps": 30,
+    "simulation_hz": 30,
+    "engine_fixed_fps": 30,
+    "cue": "Moonlit close-up of the real flare canopy, suspension lines and smoke at normal simulation speed.",
+    "timeout": 600,
+    "crf": 24,
+    "render_settings": {
+      "effects": 2,
+      "decals": true,
+      "projection": "perspective"
+    }
+  },
+  "blast-close": {
+    "scene": "tests/fixtures/blast-world-clips.tscn",
+    "seconds": 8,
+    "fps": 24,
+    "simulation_hz": 24,
+    "engine_fixed_fps": 24,
+    "cue": "Inspect the fast dirt ejection, connected dust volume and falling clods from a nearby camera.",
+    "timeout": 1200,
+    "render_settings": {
+      "grass": 1,
+      "effects": 2,
+      "post": false,
+      "mood": "day"
+    },
+    "crf": 24
+  },
+  "blast-rts": {
+    "scene": "tests/fixtures/blast-world-clips.tscn",
+    "seconds": 8,
+    "fps": 24,
+    "simulation_hz": 24,
+    "engine_fixed_fps": 24,
+    "cue": "Check the same HE burst at ordinary RTS camera distance against the actual game terrain and scenery.",
+    "timeout": 1200,
+    "render_settings": {
+      "grass": 1,
+      "effects": 2,
+      "post": false,
+      "mood": "day"
+    },
+    "crf": 24
+  },
+  "impacts": {
+    "scene": "tests/fixtures/armament-effects-clips.tscn",
+    "seconds": 12,
+    "fps": 30,
+    "simulation_hz": 30,
+    "engine_fixed_fps": 30,
+    "cue": "Dedicated close-ups of dirt, stone and metal impacts, four seconds per material with no fuel plume in the shot.",
+    "timeout": 600,
+    "crf": 24,
+    "render_settings": {
+      "effects": 2,
+      "decals": true,
+      "projection": "perspective"
+    }
+  },
+  "battlefield-effects": {
+    "scene": "tests/fixtures/blast-world-clips.tscn",
+    "seconds": 28,
+    "fps": 24,
+    "simulation_hz": 24,
+    "engine_fixed_fps": 24,
+    "cue": "Grenade, HE, fuel, dirt/stone/metal impacts and a night flare, all against the actual battlefield terrain.",
+    "timeout": 2400,
+    "crf": 32,
+    "bitrate": "2800k",
+    "render_settings": {
+      "grass": 1,
+      "effects": 2,
+      "decals": true,
+      "post": false,
+      "mood": "day, then night at 20 seconds"
+    },
+    "shots": [
+      {
+        "start": 0,
+        "subject": "grenade"
+      },
+      {
+        "start": 4,
+        "subject": "HE"
+      },
+      {
+        "start": 9,
+        "subject": "fuel"
+      },
+      {
+        "start": 14,
+        "subject": "dirt impacts"
+      },
+      {
+        "start": 16,
+        "subject": "stone impacts"
+      },
+      {
+        "start": 18,
+        "subject": "metal impacts"
+      },
+      {
+        "start": 20,
+        "subject": "night flare over terrain"
+      },
+      {
+        "start": 23,
+        "subject": "flare close-up over terrain"
+      }
+    ],
+    "seed": 712,
+    "camera": {
+      "fov_degrees": 48,
+      "targets": "Ground height sampled from World.ground_y; coordinates are in metres.",
+      "soil_xz": [
+        4,
+        12
+      ],
+      "fuel_xz": [
+        30,
+        -2
+      ],
+      "stone_xz": [
+        -30,
+        24
+      ],
+      "car_xz": [
+        -30,
+        8
+      ],
+      "grenade_offset": [
+        5,
+        7,
+        9
+      ],
+      "he_offset": [
+        6,
+        10,
+        13
+      ],
+      "fuel_offset": [
+        11,
+        13,
+        17
+      ],
+      "dirt_offset": [
+        3,
+        2.4,
+        4.8
+      ],
+      "stone_offset": [
+        2.8,
+        1.8,
+        4.8
+      ],
+      "car_offset_local": [
+        5,
+        2,
+        3
+      ],
+      "car_yaw_radians": 0.5,
+      "flare_offset": [
+        24,
+        18,
+        32
+      ],
+      "flare_close_offset": [
+        9,
+        6,
+        13
+      ],
+      "dirt_xz": [
+        4,
+        6
+      ]
+    },
+    "gunfire": {
+      "weapon": "mg",
+      "speed_m_s": 780,
+      "distance_m": 35,
+      "shots_per_second": 4,
+      "tracer_share": 0.25,
+      "timing": "Normal simulation speed. Range lets the short tracer flight cross a 24 Hz capture frame."
+    }
+  },
+  "blast-cover": {
+    "scene": "tests/fixtures/blast-world-clips.tscn",
+    "seconds": 8,
+    "fps": 24,
+    "engine_fixed_fps": 24,
+    "timeout": 1200,
+    "seed": 712,
+    "camera": {
+      "fov_degrees": 48,
+      "tank_xz": [
+        30,
+        -2
+      ],
+      "tank_offset": [
+        8,
+        5,
+        11
+      ],
+      "wall_xz": [
+        -30,
+        24
+      ],
+      "wall_offset": [
+        4,
+        3,
+        7
+      ],
+      "look_lift": 1.2
+    },
+    "events": "Fuel size 2 at 0.5 s inside the tank wreck; HE size 1.4 at 4.5 s, 0.35 m behind stone cover. Actual showroom terrain; normal speed."
+  },
+  "blast-ground": {
+    "scene": "tests/fixtures/blast-world-clips.tscn",
+    "seconds": 12,
+    "fps": 24,
+    "engine_fixed_fps": 24,
+    "timeout": 1800,
+    "crf": 30,
+    "seed": 712,
+    "camera": {
+      "fov_degrees": 48,
+      "soil_xz": [
+        4,
+        6
+      ],
+      "soil_offset": [
+        6,
+        5,
+        9
+      ],
+      "soil_close_offset": [
+        3,
+        2.2,
+        4.5
+      ],
+      "push_in_seconds": [
+        3.7,
+        4.8
+      ],
+      "wall_xz": [
+        -30,
+        25.4
+      ],
+      "wall_offset": [
+        4,
+        3.5,
+        8
+      ],
+      "look_lift": 0.3
+    },
+    "events": "HE size 1.4 at 0.5 and 6.5 seconds. Two six-second shots. Stamps the same terrain deformation as Combat after each visual event, without entity damage. Holds each crater after dust clears; ground.json records measured depth."
+  },
+  "explosions": {
+    "scene": "tests/fixtures/armament-effects-clips.tscn",
+    "seconds": 12,
+    "fps": 30,
+    "simulation_hz": 30,
+    "engine_fixed_fps": 30,
+    "cue": "Grenade at 1 second, HE at 5 seconds, fuel at 9 seconds. Use Godot --write-movie for synchronized native audio; frame-only capture.py output is silent.",
+    "timeout": 600,
+    "crf": 24,
+    "render_settings": {
+      "effects": 2,
+      "decals": true,
+      "projection": "perspective"
+    }
   }
 }
