@@ -149,6 +149,7 @@ func _ready() -> void:
 		field.fx.gunfx.blast_fragments(p, 1.4, "he", true, 1.0)
 	check(field.fx.gunfx.get_child_count() == child_count, "Fragments and landing dust create no scene nodes")
 	check(is_equal_approx(field.fx.gunfx.ground_y(p), 40.0), "Batched fragments use the world's elevated ground contact")
+	check_bouncing_clods(field, p)
 	# The dummy renderer doesn't retain MultiMesh instance data.
 	if DisplayServer.get_name() != "headless":
 		var ring: GunFx.Ring = field.fx.gunfx._ch
@@ -288,3 +289,22 @@ func _ready() -> void:
 		Music._task = -1
 	print("ARMAMENT_EFFECTS %s failures=%d" % ["CPU" if Vfx.gl else "GPU", failures])
 	get_tree().quit(1 if failures else 0)
+
+
+func check_bouncing_clods(field: World, p: Vector3) -> void:
+	var physics := PhysicsFx.new(field)
+	field.add_child(physics)
+	physics.blast_chunks(p, 1.4)
+	check(not physics._chunks.is_empty(), "The impact throws visible clods")
+	for i in physics._chunks.size():
+		var entry: Array = physics._chunks[i]
+		var pivot: Node3D = entry[1]
+		var piece := pivot.get_child(0) as MeshInstance3D if pivot.get_child_count() else null
+		check(piece != null and piece.mesh == Res.alpine_stone(i), "Each clod uses its terrain stone variant")
+		if piece:
+			var collider := entry[0].get_child(0) as CollisionShape3D
+			check(piece.scale.is_equal_approx((collider.shape as BoxShape3D).size * 0.5), "The clod fits its physical dimensions")
+	physics.debris(p, Color.GRAY, 1)
+	var debris := physics._chunks.back()[1] as MeshInstance3D
+	check(debris != null and Res.box_size(debris.mesh) != Vector3.ZERO, "Manufactured debris retains its cut edges")
+	physics.free()
