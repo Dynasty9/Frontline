@@ -91,7 +91,11 @@ above a neighbouring ridge. This is a visual review stage, not a performance ben
 
 ## Inventory and release process
 
-`catalog.json` records every entry's medium, stage, rationale and evidence source.
+New presentation records live in `entries/<entry-slug>.json`, one change per file.
+See [the record format](entries/README.md). The audit and renderer combine these
+with the legacy `catalog.json` in memory; do not regenerate or append to that file
+for new changes. Independent PRs can then add records without editing the same array.
+Existing PRs using the legacy array still work during the transition.
 Archived sources are hashed so an asset change prompts a presentation review.
 Register new entries as part of the PR; text-only entries still state why text is
 sufficient. `audit.py` runs in changelog CI and follows unreleased entries when the

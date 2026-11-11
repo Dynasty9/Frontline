@@ -11,8 +11,15 @@ changelog = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(changelog)
 
 
+def load_catalog(root):
+    catalog = json.loads((root / 'tools/showcase/catalog.json').read_text(encoding='utf-8'))
+    for record in sorted((root / 'tools/showcase/entries').glob('*.json')):
+        catalog['entries'].append(json.loads(record.read_text(encoding='utf-8')))
+    return catalog
+
+
 def audit():
-    catalog = json.loads((ROOT / 'tools/showcase/catalog.json').read_text())
+    catalog = load_catalog(ROOT)
     paths = {p.relative_to(ROOT).as_posix(): p for p in (ROOT / 'changelog').glob('*/*.md')}
     seen, errors = set(), []
     for item in catalog['entries']:
