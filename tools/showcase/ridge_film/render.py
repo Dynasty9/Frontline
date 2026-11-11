@@ -818,7 +818,7 @@ def battle_effects(frame):
         rad.default_value = -2 if age <= 0 else 0.09 + 2.75 * smooth(age / 8)
     for e, origin, contact, course, groups, burst, particles in effects:
         age = t - e["time"]
-        hit = age - 2 / take["fps"]
+        hit = age - e.get("flight", 2 / take["fps"])
         muzzle, smoke, wash, cloudlet = groups
         for obj, level in groups:
             obj.hide_render = True

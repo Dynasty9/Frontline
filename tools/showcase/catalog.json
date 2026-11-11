@@ -8194,12 +8194,12 @@
       "medium": "motion",
       "stage": "tests/fixtures/ridge-duel.tscn",
       "rationale": "The firing cut shows recoil on discharge. The overhead view shows track marks beneath the hull, the hillside view holds on settling dirt, and the rear view shows where the smoke starts. A higher rear angle shows the hot base and cooling smoke at the exposed grille.",
-      "source_ref": "One-minute native Metal capture, seed 712 at 30 fps, from the ridge fixture with object-mounted cameras. The previous one-minute edit is at b59761c. The earlier 31-second edit is at 320865b. Firing and engine-deck comparison against 6372fec. Nose and smoke comparison against 7e8c5bc. Track-clearance comparison uses 44ed4a6 and efc082f. Grille fire comparison against 6ed583d.",
+      "source_ref": "Barrel and cadence comparison against 024386d. One-minute native Metal capture, seed 712 at 30 fps, from the ridge fixture with object-mounted cameras. The previous one-minute edit is at b59761c. The earlier 31-second edit is at 320865b. Firing and engine-deck comparison against 6372fec. Nose and smoke comparison against 7e8c5bc. Track-clearance comparison uses 44ed4a6 and efc082f. Grille fire comparison against 6ed583d.",
       "attribution": "Controlled Godot scene, seed 712. The game rig, audio recordings and environment credits are documented in assets/vehicles, assets/audio/tracked and tests/fixtures/ridge-light. The plate in the film is a breakaway prop.",
       "sources": [
         {
           "file": "changelog/unreleased/abrams-on-the-ridge/abrams-ridge-duel.mp4",
-          "sha256": "38b7c038f9ba97286456709302a2fbdda21ca231663fc2564473c06a679f17b7",
+          "sha256": "1957a6392ff543f51bbf83b48a6b681370d64d979ad94c20a1394be10adffe40",
           "caption": "A one-minute encounter with six shared object cameras, a turret optic and fixed hillside shots."
         },
         {
@@ -8291,6 +8291,11 @@
           "file": "changelog/unreleased/abrams-on-the-ridge/grille-fire.jpg",
           "sha256": "94ecf8805d7c84a8e97422ade007300c5288600ec8897c663b6b056aa2c84598",
           "caption": "The old and revised engine-deck plumes at 28.3 seconds."
+        },
+        {
+          "file": "changelog/unreleased/abrams-on-the-ridge/barrel-closeup.jpg",
+          "sha256": "5b5f62d1345b645713920a1c265eb4e294d4414669fd4e0302f5ae82961c7108",
+          "caption": "Abrams barrel, earlier and revised cut near 41 seconds."
         }
       ],
       "output": null
@@ -8304,11 +8309,11 @@
       "medium": "still",
       "stage": "tests/fixtures/ridge-duel.tscn",
       "rationale": "Six matched-size frames show how the available views frame different vehicle parts.",
-      "source_ref": "Native Metal capture, 1600x900, seed 712, 30 fps; frames sampled at 6, 23, 28, 33, 42 and 54 seconds.",
+      "source_ref": "Native Metal capture, 1600x900, seed 712, 30 fps; frames sampled at 6, 23, 28, 33, 42.3 and 54 seconds.",
       "sources": [
         {
           "file": "changelog/unreleased/object-cameras/views.jpg",
-          "sha256": "2ae7035e2f6ddfa2a4a5a07ba6fa740aa862de5302c66c9e074144290f1130e0",
+          "sha256": "cec5949abb8ce22db3bf363b85f49398430b3e2164f8501bbf8ef247ddffba87",
           "caption": "Behind, aerial, track, roof gun, barrel and engine deck cameras."
         }
       ],

@@ -8,6 +8,7 @@ const RATE := 22050
 const BUSES := ["Music", "Effects", "Ambience", "Interface"]
 
 var streams := {}
+const EFFECT_RANGE := 300.0
 var pool: Array = []
 var pool_i := 0
 var ui_player: AudioStreamPlayer
@@ -43,7 +44,7 @@ func _ready() -> void:
 	for i in 32:
 		var p := AudioStreamPlayer3D.new()
 		p.unit_size = 14.0
-		p.max_distance = 300.0
+		p.max_distance = EFFECT_RANGE
 		p.attenuation_model = AudioStreamPlayer3D.ATTENUATION_INVERSE_DISTANCE
 		p.panning_strength = 0.8
 		p.bus = &"Effects"

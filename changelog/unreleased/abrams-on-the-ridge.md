@@ -1,12 +1,12 @@
 +++
 title = "The Abrams on the ridge"
-summary = "Follow the Abrams and T-55A across two ridges in a one-minute film. Longer shots introduce each tank, and you can hear its tracks under the engine as it climbs."
+summary = "Follow the Abrams and T-55A across two ridges in a one-minute film. The tanks trade fire as their guns reload. Watch the barrels recoil and settle, and follow each tracer to the hillside or the hull it strikes."
 kind = "improved"
 
 [[videos]]
 file = "abrams-ridge-duel.mp4"
 poster = "survivor.jpg"
-caption = "Ride behind the Abrams, watch its tracks press into the hillside, and look across the T-55A roof gun. The barrel camera looks back toward the turret before the last hit."
+caption = "Ride behind the Abrams, watch its tracks press into the hillside, and look across the T-55A roof gun. At 0:42 the Abrams fires past the barrel camera. At 0:46 the return shot strikes the hull."
 
 [[videos]]
 file = "grille-fire.mp4"
@@ -22,6 +22,10 @@ caption = "The T-55A’s spare links and lamp guards cross the ridge, then smoke
 file = "fire-and-track-clearance.mp4"
 poster = "fire-and-track-clearance.jpg"
 caption = "Matched close-ups from the last seven seconds. Watch the flames against the Abrams skirt, then the upper run beneath the T-55A fender."
+
+[[screenshots]]
+file = "barrel-closeup.jpg"
+caption = "The Abrams near 0:41 in both edits. The muzzle now has a recessed opening, and the camera stands farther to the side to show recoil."
 
 [[screenshots]]
 file = "firing-and-engine-deck.jpg"
@@ -66,6 +70,6 @@ caption = "At the same position the wreck follows the grade under both tracks. A
 
 A hard hit in a match can bend the outer skirt. It stays bent on the wreck, or engineers straighten it during a full repair. Close to a burning vehicle, individual tongues of flame stay orange as they cross and the smoke catches sunlight on the edges of its billows. The T-55A’s upper track runs under the fender even when a road wheel rises to its stop. The game and the film use the same knockout effect. On a heavy tracked vehicle the fuel flash starts on the hull, including on sloping ground. The flash burns out quickly enough to see the damaged vehicle as the darker smoke builds. A knocked-out Abrams settles on the ground under its tracks.
 
-Weathering stays attached to moving metal fittings and rubber tyres. The opening overlook shows the valley between the sand Abrams and the green T-55A. Its tread leaves two rows of paired pad prints that fade on stony ground. Both tanks keep their detailed paint in the long-lens shots. The T-55A carries four spare track links above the sloping nose. Its headlamp guards stand clear of the lenses. It has exposed road wheels, a rounded turret and a separate diesel note. In the film the turret turns while the hull climbs, and the barrel settles separately over the crest.
+Weathering stays attached to moving metal fittings and rubber tyres. The opening overlook shows the valley between the sand Abrams and the green T-55A. Its tread leaves two rows of paired pad prints that fade on stony ground. Both tanks have open, shadowed muzzles with a metal rim visible in close shots. The T-55A carries four spare track links above the sloping nose. Its headlamp guards stand clear of the lenses. It has exposed road wheels, a rounded turret and a separate diesel note. In the film the turret turns while the hull climbs, and the barrel settles separately over the crest.
 
 Each crew in the ridge film chooses where to move next as the relay score changes. Either crew can reach the forward objective first. A low camera follows the wheels and the impressions they leave in the hill. The knockout shot begins while the Abrams is still moving and holds as the panel tears, the tracks stop and the barrel settles. A flash lights the hull, debris falls, and smoke rises into the wind. A glancing hit throws a short bright streak with a brief metallic scrape. The camera jolts on nearby shots and impacts when camera shake is enabled. After the knockout, the hottest parts of the engine fire show through the grille. The same folds cool and darken as they rise in the wind. Broken clods settle into the soil around the crater. In the final shot the camera comes around to the surviving tank’s flank, where grass lies pressed beneath the tracks.

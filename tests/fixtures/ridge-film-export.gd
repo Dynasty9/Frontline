@@ -145,9 +145,9 @@ func _gltf_material(material: Material) -> StandardMaterial3D:
 	return basic
 
 
-func _record_shot(beat: int, muzzle: Vector3, contact: Vector3, ground: bool) -> void:
+func _record_shot(beat: int, muzzle: Vector3, contact: Vector3, ground: bool, flight: float) -> void:
 	shots.append({"time": float(beat) / FPS, "from": [muzzle.x, muzzle.y, muzzle.z],
-		"to": [contact.x, contact.y, contact.z], "ground": ground})
+		"to": [contact.x, contact.y, contact.z], "ground": ground, "flight": flight})
 
 
 func _process(dt: float) -> void:

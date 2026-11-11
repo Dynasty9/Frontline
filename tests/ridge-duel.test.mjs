@@ -13,6 +13,18 @@ async function play(seed, fps) {
   assert.match(stdout, /RIDGE_DUEL verified/);
   const result = JSON.parse(stdout.match(/RIDGE_RESULT (.*)/)[1]);
   result.cutTicks = Array.from(stdout.matchAll(/^RIDGE_CUT (\d+) /gm), match => Number(match[1]));
+  const shots = Array.from(stdout.matchAll(/^RIDGE_SHOT (\d+) (\d+) (\d+) (\d+)/gm), match => match.slice(1).map(Number));
+  const contacts = Array.from(stdout.matchAll(/^RIDGE_CONTACT (\d+) (\d+)/gm), match => match.slice(1).map(Number));
+  for (const side of [0, 1]) {
+    const volleys = shots.filter(([shooter]) => shooter === side);
+    assert.ok(volleys.length >= 2, "Both tanks should answer during the exchange");
+    for (let i = 1; i < volleys.length; i++) {
+      assert.ok(volleys[i][1] - volleys[i - 1][1] >= volleys[i][3], "Wait for the game reload interval");
+    }
+    assert.deepEqual(contacts.filter(([shooter]) => shooter === side).map(([, tick]) => tick),
+      volleys.map(([, tick, flight]) => tick + flight), "Contacts must coincide with the tracer arrivals");
+  }
+  result.shotTicks = shots;
   return result;
 }
 
@@ -39,7 +51,7 @@ test("ridge drivers choose different routes and either crew can win", async () =
   assert.deepEqual(original.shots.slice(optic, optic + 3), ["optic", "firing", "overhead"]);
   assert.ok(original.dirt_hits > 0 && original.glances > 0 && original.shots.includes("ground"));
   const replay = await play(712, 24);
-  for (const key of ["winner", "actions", "visits", "distance", "ticks", "glances", "dirt_hits"]) {
+  for (const key of ["winner", "actions", "visits", "distance", "ticks", "glances", "dirt_hits", "shotTicks"]) {
     assert.deepEqual(replay[key], original[key]);
   }
 });

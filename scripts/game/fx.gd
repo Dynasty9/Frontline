@@ -24,6 +24,8 @@ const BURNT_OUT := 17  # something burnt through falls in: [BURNT_OUT, pos, half
 const SINK := 18  # a boat founders: [SINK, eid, pos]
 const UNIT_HIT := 19  # [UNIT_HIT, eid, world direction, normalized strength]
 
+const CANNON_TRACER_SPEED := 950.0
+
 ## What a round struck, as a SHOT event carries it: it decides what flies off.
 const HIT_DIRT := 1
 const HIT_FLESH := 2
@@ -370,7 +372,7 @@ func _cannon(from: Vector3, to: Vector3, src, report_bus := &"Effects") -> void:
 	var cd := _cam_d(from)
 	if cd < 260.0:
 		gunfx.cannon_blast(from, dir, cd)
-	gunfx.tracer(from, to, Color(1.0, 0.5, 0.18, 7.0), 14.0, 0.12, 950.0)
+	gunfx.tracer(from, to, Color(1.0, 0.5, 0.18, 7.0), 14.0, 0.12, CANNON_TRACER_SPEED)
 	if world.cam and Settings.get_v("shake"):
 		var d := world.cam.focus_pos.distance_to(from)
 		if d < 40.0:

@@ -1,7 +1,7 @@
 extends Node3D
 ## Seeded ridge-objective encounter using the game's tank models, suspension, sounds and effects.
 ## Record with --write-movie. Scene time is independent of the capture sample rate.
-signal shot_fired(beat: int, muzzle: Vector3, contact: Vector3, ground: bool)
+signal shot_fired(beat: int, muzzle: Vector3, contact: Vector3, ground: bool, flight: float)
 
 const FPS := 30
 const SIM_HZ := 60
@@ -29,6 +29,14 @@ class StageTank extends Vehicle:
 	var fire_level := -1
 	var settling_pitch := 0.0
 	var picture_pitch := 0.0
+	var last_discharge := -10000
+	var gun_delay := AudioEffectDelay.new()
+	var hit_delay := AudioEffectDelay.new()
+	var report_bus: StringName
+	var impact_bus: StringName
+	var distant_report := AudioStreamPlayer.new()
+	var opening_beat := false
+	var claim_waiting := false
 
 	func _track_audio(dt: float, audible: bool, belt_speed: float, grade: float) -> void:
 		super._track_audio(dt, audible and (not disabled or burn_age < 1.4), belt_speed, grade)
@@ -43,7 +51,7 @@ class StageTank extends Vehicle:
 		var previous_age := burn_age
 		burn_age += dt
 		if previous_age < 0.85 and burn_age >= 0.85:
-			world.fx.play(Fx.tank_knockout(plate.global_position + Vector3.UP * 0.25), IMPACT_BUS)
+			world.fx.play(Fx.tank_knockout(plate.global_position + Vector3.UP * 0.25), impact_bus)
 		soot.set_shader_parameter("source_world", plate.global_position)
 		soot.set_shader_parameter("extent", 0.46 + 2.1 * (1.0 - exp(-burn_age * 0.64)))
 		if skirt:
@@ -99,7 +107,7 @@ var end_time := 120.0
 var pending: Array[Dictionary] = []
 var glances := 0
 var dirt_hits := 0
-var last_was_dirt := false
+var last_claim_dirt := false
 var camera_kick := 0.0
 var kick_time := -1.0
 var last_hit_time := -100.0
@@ -114,10 +122,6 @@ var camera_cuts := 0
 var min_separation := INF
 var driven := [0.0, 0.0]
 var outcome_logged := false
-const REPORT_BUS := &"Ridge reports"
-const IMPACT_BUS := &"Ridge impacts"
-var gun_delay := AudioEffectDelay.new()
-var hit_delay := AudioEffectDelay.new()
 var wind: AudioStreamPlayer
 var ground_material := ShaderMaterial.new()
 var contact_lines := PackedVector4Array([Vector4.ZERO, Vector4.ZERO, Vector4.ZERO, Vector4.ZERO])
@@ -238,9 +242,16 @@ func _ready() -> void:
 	listener.make_current()
 	cabin_filter.cutoff_hz = 1450.0
 	AudioServer.add_bus_effect(0, cabin_filter)
-	_mic_bus(REPORT_BUS, gun_delay)
-	_mic_bus(IMPACT_BUS, hit_delay)
 	for tank in tanks:
+		# Each side keeps its own echo when a reply arrives from across a cut.
+		tank.report_bus = StringName("Ridge report %d" % tank.eid)
+		tank.impact_bus = StringName("Ridge impact %d" % tank.eid)
+		_mic_bus(tank.report_bus, tank.gun_delay)
+		_mic_bus(tank.impact_bus, tank.hit_delay)
+		tank.distant_report.stream = Sfx.streams.get("tank_report")
+		tank.distant_report.volume_db = -25
+		tank.distant_report.bus = tank.report_bus
+		tank.add_child(tank.distant_report)
 		for step in 40:
 			tank._view_process(1.0 / FPS)
 	_shot(0.0)
@@ -358,6 +369,9 @@ func _simulate(dt: float) -> void:
 		if not tank.disabled:
 			var left := Defs.flat(contest.destination(i) - tank.position).length()
 			tank.picture_pitch = deg_to_rad(3.4) * smoothstep(1.5, 12.0, left)
+			# A brief rise and return gives the cradle a visible follow-through.
+			var since := float(sim_tick - tank.last_discharge) / SIM_HZ
+			tank.picture_pitch += deg_to_rad(2.6) * sin(minf(since / 0.95, 1.0) * PI) * exp(-since * 1.6)
 			tank._vm.gun_mount.rotation.x += tank.picture_pitch
 		else:
 			tank._vm.gun_mount.rotation.x = tank.settling_pitch
@@ -365,7 +379,15 @@ func _simulate(dt: float) -> void:
 		_stamp(tank, i)
 		var post := contest.step(i, tank.position, tank.speed, dt)
 		if post >= Contest.Post.RELAY_LEFT:
-			_volley(i, post == Contest.Post.OBJECTIVE)
+			tank.claim_waiting = true
+		var loaded := sim_tick - tank.last_discharge >= ceili(tank.cannon_interval() * SIM_HZ)
+		if loaded and not tank.disabled and (contest.winner < 0 or contest.winner == i):
+			if tank.claim_waiting:
+				_volley(i, contest.winner == i, false)
+				tank.claim_waiting = false
+				tank.opening_beat = true
+			elif tank.opening_beat and contest.winner < 0 and contest.drivers[i].hold == 0.0:
+				_volley(i, false, true)
 	if verify and sim_tick == 1:
 		# A collapsed belt stamps every shoe at the same spot.
 		assert(marks.get_data().count(255) > 1000, "Expected four full contact patches")
@@ -374,18 +396,24 @@ func _simulate(dt: float) -> void:
 		if sim_tick >= int(pending[n].due):
 			_impact(pending.pop_at(n))
 
-func _volley(i: int, decisive: bool) -> void:
+func _volley(i: int, decisive: bool, incidental: bool) -> void:
 	var other := tanks[1 - i]
-	var ground := not decisive and contest.drivers[i].rng.randf() < 0.48
+	var ground := incidental or (not decisive and contest.drivers[i].rng.randf() < 0.48)
 	var at := other.plate.global_position
 	if ground:
-		at += Vector3(contest.drivers[i].rng.randf_range(-4, 4), 0, contest.drivers[i].rng.randf_range(3, 7))
+		if incidental:
+			# Extra dirt beats leave the two drivers’ seeded routes untouched.
+			at += Vector3(4.0 * cos(sim_tick), 0, 8.0 + 3.0 * sin(sim_tick))
+		else:
+			at += Vector3(contest.drivers[i].rng.randf_range(-4, 4), 0, contest.drivers[i].rng.randf_range(3, 7))
 		at.y = field.ground_y(at)
-	# Vary the visible impacts in a near-simultaneous exchange. The drivers
-	# still choose their own shots and the original draws determine their routes.
-	if ground and last_was_dirt and float(sim_tick) / SIM_HZ - last_hit_time < 1.0:
+	# Alternate consecutive dirt claims with a plate strike. Cosmetic shots
+	# between claims never consume the drivers’ random draws.
+	if ground and not incidental and last_claim_dirt:
 		ground = false
 		at = other.plate.global_position
+	if not incidental:
+		last_claim_dirt = ground
 	var muzzle := tanks[i].muzzle_world(true)
 	if camera_mode == "optic" and camera_side == i:
 		_cut("firing", i)
@@ -393,28 +421,39 @@ func _volley(i: int, decisive: bool) -> void:
 		listener.global_transform = camera.global_transform
 		if verify:
 			assert(_in_picture(muzzle), "The exterior camera must see the firing muzzle on the shot tick")
-	elif ground and "overhead" in shots_seen and camera_age >= 3.0 and camera_mode not in ["knockout", "push", "ground"]:
+	elif ground and not incidental and "overhead" in shots_seen and camera_age >= 3.0 and camera_mode not in ["knockout", "push", "ground"]:
 		_cut("ground", 1 - i)
 		camera_anchor = at
 		_shot(float(sim_tick) / SIM_HZ)
 		listener.global_transform = camera.global_transform
 	_kick_camera(muzzle, 1.0)
-	_place_sound(gun_delay, muzzle)
-	field.fx._cannon(muzzle, at, tanks[i], REPORT_BUS)
-	shot_fired.emit(roundi(float(sim_tick) * FPS / SIM_HZ), muzzle, at, ground)
-	pending.append({"due": sim_tick + 4, "side": 1 - i, "at": at, "ground": ground, "decisive": decisive})
+	var shooter := tanks[i]
+	_place_sound(shooter.gun_delay, muzzle)
+	field.fx._cannon(muzzle, at, shooter, shooter.report_bus)
+	if Sfx.enabled and listener.global_position.distance_to(muzzle) >= Sfx.EFFECT_RANGE:
+		shooter.distant_report.play()
+	var flight_ticks := maxi(1, ceili(muzzle.distance_to(at) / Fx.CANNON_TRACER_SPEED * SIM_HZ))
+	tanks[i].last_discharge = sim_tick
+	if verify:
+		print("RIDGE_SHOT ", i, " ", sim_tick, " ", flight_ticks, " ", ceili(tanks[i].cannon_interval() * SIM_HZ))
+	shot_fired.emit(roundi(float(sim_tick) * FPS / SIM_HZ), muzzle, at, ground, float(flight_ticks) / SIM_HZ)
+	pending.append({"due": sim_tick + flight_ticks, "side": 1 - i, "at": at, "ground": ground, "decisive": decisive})
 
 func _impact(event: Dictionary) -> void:
 	var i: int = event.side
 	var struck := tanks[i]
-	var contact: Vector3 = event.at
-	last_was_dirt = event.ground
+	var contact: Vector3 = event.at if event.ground else struck.plate.global_position
+	if verify:
+		print("RIDGE_CONTACT ", 1 - i, " ", sim_tick)
 	_kick_camera(contact, 1.35 if event.decisive else 0.8)
 	last_hit_time = float(sim_tick) / SIM_HZ
-	_place_sound(hit_delay, contact)
+	_place_sound(struck.hit_delay, contact)
 	if event.ground:
 		dirt_hits += 1
-		field.fx._explode(contact, 1.05, "he", IMPACT_BUS)
+		var distance := contact.distance_to(struck.position)
+		if distance < 10.0:
+			struck.impact_react(Defs.flat(struck.position - contact).normalized(), 0.32 * (1.0 - distance / 10.0))
+		field.fx._explode(contact, 1.05, "he", struck.impact_bus)
 		# Press down the standing grass around the crater decal.
 		var centre := Vector2i(_mark_uv(contact) * Vector2(marks.get_size()))
 		var r := roundi(MARKS_PER_METRE * 1.35)
@@ -429,7 +468,7 @@ func _impact(event: Dictionary) -> void:
 	var normal := struck.plate.global_basis.z
 	field.fx.gunfx.impact(Fx.HIT_METAL, contact, normal, 1.35, contact.distance_to(camera.global_position))
 	field.fx.gunfx.light(contact + normal * 0.12, 0.75, 0.85)
-	Sfx.play("hull_strike", contact, 3.0, 1.0, IMPACT_BUS)
+	Sfx.play("hull_strike", contact, 3.0, 1.0, struck.impact_bus)
 	struck.impact_react(-normal, 1.05)
 	if event.decisive:
 		if verify:
@@ -442,7 +481,7 @@ func _impact(event: Dictionary) -> void:
 		glances += 1
 		var skip := (normal * 0.45 + struck.model.global_basis.z + Vector3.UP * 0.28).normalized()
 		field.fx.gunfx.ricochet(contact, skip, true)
-		Sfx.play("ricochet", contact, -9.0, 0.90, IMPACT_BUS)
+		Sfx.play("ricochet", contact, -9.0, 0.90, struck.impact_bus)
 
 func _process(dt: float) -> void:
 	if capture_fps > 0:
@@ -603,7 +642,7 @@ func _shot(t: float) -> void:
 			camera.fov = 48
 		"barrel":
 			mount_label = &"Barrel"
-			camera.fov = 64
+			camera.fov = 54
 		"roof":
 			mount_label = &"Roof gun"
 			camera.fov = 61

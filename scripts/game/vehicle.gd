@@ -222,7 +222,7 @@ func _build_camera_mounts() -> void:
 		_camera_mount(&"Bow", model, Vector3(size.x * 0.32, size.y * 1.15, -size.z * 0.68), Vector3(0, size.y * 0.55, 0))
 	if _vm.gun_mount and _vm.gun_tip:
 		# Look back along the moving tube so the turret stays in the picture.
-		_camera_mount(&"Barrel", _vm.gun_tip, Vector3(1.25, 0.65, -0.85), Vector3(-0.35, 0.0, 3.0))
+		_camera_mount(&"Barrel", _vm.gun_tip, Vector3(2.9, 0.92, -1.9), Vector3(-0.1, 0.0, 1.8))
 	if turret and _vm.roof_gun.is_finite():
 		_camera_mount(&"Roof gun", turret, _vm.roof_gun + Vector3(-0.95, 0.62, 1.15), _vm.roof_gun + Vector3(0, 0, -0.7))
 	if _vm.engine_deck.is_finite():
@@ -1081,6 +1081,10 @@ func _aim_err() -> float:
 	return absf(wrapf(want - (rotation.y + turret_yaw), -PI, PI))
 
 
+func cannon_interval() -> float:
+	return float(vdef.get("gun", {}).get("cd", 5.5))
+
+
 func _fire_tick() -> void:
 	if not _target_ok():
 		return
@@ -1098,7 +1102,7 @@ func _fire_tick() -> void:
 			worth = n >= 2 or target.rockets > 0 or target.mounted != null or world.rng.randf() < 0.25
 		if worth:
 			_fire_cannon()
-			cannon_t = float(vdef.get("gun", {}).get("cd", 5.5))
+			cannon_t = cannon_interval()
 			return
 	var mg: String = vdef.mg
 	var gs := base() == "attack_heli"
