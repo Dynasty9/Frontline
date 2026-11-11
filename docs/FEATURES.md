@@ -627,7 +627,8 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   water is peaty green-brown), with the light the ripples focus dancing on it in the shallows, and the sky and
   its clouds are reflected, more the flatter you look across it. The sun glitters off every ripple (a moon path
   at night, only a sheen under cloud), rain dimples the water with rings, the chop roughens in gusts, and foam
-  gathers wherever the water meets a bank, a hull or a pile. Boats ride the same waves the player sees (the
+  gathers wherever the water meets a bank, a hull or a pile. Impacts throw up narrow sheets of spray that fall
+  back into the spreading foam. Boats ride the same waves the player sees (the
   CPU samples the waves the shader draws). **Water quality** (Settings > Graphics) trades this against speed:
   Low draws no see-through water (copying the screen for it is the costly part, most of all in a browser) and
   fewer waves on a coarser grid; Medium is the full surface; High adds the light on the bed and the wind's

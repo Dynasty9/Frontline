@@ -1252,14 +1252,19 @@ func set_burning(h: Node3D, fire: float, smoke: float) -> void:
 ## from a boil where the column came down.
 func splash(p: Vector3, size: float) -> void:
 	var k := clampf(size, 0.4, 2.6)
-	var col := _pm(Vector3.UP, 7.0, 8.0 * k, 14.0 * k, Vector3(0, -9.8, 0), 0.8 * k, 1.6 * k)
+	var lift := sqrt(k)
+	# Slow spray fills the base while faster sheets rise, narrow and fall into the foam.
+	var col := _pm(Vector3.UP, 12.0, 2.0 * lift, 17.0 * lift, Vector3(0, -25, 0), 0.65 * k, 1.35 * k)
+	col.angle_min = -24.0
+	col.angle_max = 24.0
 	col.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_SPHERE
-	col.emission_sphere_radius = 0.3 * k
-	col.scale_curve = _curve([Vector2(0, 0.35), Vector2(0.4, 1.0), Vector2(1, 1.5)])
+	col.emission_sphere_radius = 0.65 * k
+	col.scale_curve = _curve([Vector2(0, 0.35), Vector2(0.4, 1.0), Vector2(1, 0.45)])
 	col.color_ramp = _ramp([0.0, 0.06, 0.6, 1.0], [Color(0.95, 0.97, 0.98, 0.0), Color(0.96, 0.98, 0.99, 1.0), Color(0.88, 0.91, 0.93, 0.55), Color(0.85, 0.88, 0.9, 0.0)])
-	var c := _sys(int(40 * k), 2.0 + 0.4 * k, col, smoke_mat)
-	Mats.set_inst(c, &"density", 1.3)
-	var sp := _pm(Vector3.UP, 65.0, 4.0 * k, 8.0 * k, Vector3(0, -8.0, 0), 0.5 * k, 1.1 * k)
+	var c := _sys(int(40 * k), 1.9 + 0.20 * k, col, smoke_mat, Res.quad(Vector2(0.85, 2.2)))
+	c.explosiveness = 0.80
+	Mats.set_inst(c, &"density", 0.85)
+	var sp := _pm(Vector3.UP, 65.0, 3.0 * lift, 8.5 * lift, Vector3(0, -8.0, 0), 0.5 * k, 1.1 * k)
 	sp.color_ramp = _ramp([0.0, 0.08, 1.0], [Color(0.92, 0.95, 0.96, 0.0), Color(0.92, 0.95, 0.96, 0.8), Color(0.9, 0.93, 0.94, 0.0)])
 	var s := _sys(int(30 * k), 1.3, sp, smoke_mat)
 	var ring := _pm(Vector3.UP, 88.0, 2.5 * k, 5.0 * k, Vector3.ZERO, 1.0 * k, 2.2 * k)
