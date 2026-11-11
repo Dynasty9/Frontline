@@ -1044,10 +1044,10 @@ void vertex() {
 	float off;
 	if (abs(kind) < 0.5) {
 		// the wash spreads only slowly from the stern's width
-		off = across * hb * (0.7 + 0.22 * sqrt(a));
+		off = across * (hb * (0.92 + 0.40 * sqrt(a)) + 0.07 * v * sqrt(a));
 	} else {
 		// the bow wave runs out at the Kelvin angle (19.5 degrees) and broadens
-		off = kind * (hb * 0.95 + a * v * 0.34) + across * (0.25 + 0.14 * a + hb * 0.1);
+		off = kind * (hb * 0.32 + a * v * 0.34) + across * (0.24 + 0.18 * a + hb * 0.28);
 	}
 	wp = VERTEX + NORMAL * off;
 	vec4 m = wmask(wp.xz);
@@ -1069,18 +1069,18 @@ void fragment() {
 	if (abs(kind) < 0.5) {
 		// the wash: white water churned up astern in streaks, breaking up as
 		// it spreads, then a long faint streak of smoothed water
-		float core = 1.0 - x * x;
+		float core = 1.0 - smoothstep(0.38 + (l - 0.5) * 0.45, 1.0, x);
 		float streak = texture(foam_tex, vec2(across * 0.45 + UV2.y * 0.1, age * 0.05)).r;
-		amt = spd * (0.85 * exp(-age / 1.1) + 0.4 * exp(-age / 4.0) * smoothstep(0.25, 0.65, streak)) * core;
+		amt = sqrt(spd) * (0.95 * exp(-age / 1.5) + 0.36 * exp(-age / 4.0) * streak) * core;
 		sheen = core * spd * 0.05 * (1.0 - smoothstep(2.0, 12.0, age));
 	} else {
 		// the bow wave's crest: white close aboard if she's going hard, smoothing out
-		float ridge = 1.0 - x;
-		amt = (0.2 + 0.6 * spd) * exp(-age / 2.2) * ridge * ridge;
+		float ridge = 1.0 - smoothstep(0.0, 0.88 + (l - 0.5) * 0.24, x);
+		amt = (0.18 + 0.68 * sqrt(spd)) * exp(-age / 2.2) * ridge;
 		sheen = ridge * ridge * (0.07 + 0.1 * spd) * (1.0 - smoothstep(1.5, 8.0, age));
 	}
 	float blur = smoothstep(0.04, 0.2, length(fwidth(wp.xz)));
-	float foam = mix(smoothstep(1.0 - amt, 1.0 - amt + 0.25, l) * smoothstep(0.0, 0.06, amt), clamp(amt * amt, 0.0, 1.0) * 0.7, blur);
+	float foam = clamp(amt * mix(0.16 + 1.04 * smoothstep(0.29, 0.71, l), 0.78, blur), 0.0, 0.94);
 	vec3 amb = mix(horizon, zenith, 0.5) * ambient;
 	ALBEDO = mix(slick_col, foam_col, foam);
 	EMISSION = mix(slick_col * amb * 0.3, foam_col * amb * 0.6, foam);

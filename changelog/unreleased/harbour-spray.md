@@ -10,3 +10,5 @@ caption = "The same harbour pass in both views. On the left the plumes drift out
 +++
 
 The slower spray stays near the surface while the faster sheets rise above it. Watch the water around the patrol ship as the sheets come back down.
+
+Fast boats leave a widening patch of churned water behind their motors. The bow wave starts close to the hull as the boat turns.
