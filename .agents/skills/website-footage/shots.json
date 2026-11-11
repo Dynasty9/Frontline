@@ -186,6 +186,27 @@
       ],
       "about": "The last rounds lift soil beside the timber firing bay."
     },
+    "trailer-trench-salvo": {
+      "scene": "res://tools/showcase/trailer-review/trench-salvo.tscn",
+      "frames": 795,
+      "args": [
+        "--preset=high",
+        "--seed=3",
+        "--set=volume:0.8,vol_effects:0.85,vol_music:0,battle_music:false,vol_ambience:0.28,vol_ui:0,mute_bg:false,wildlife:0,edge_pan:false",
+        "--scenario=trenches",
+        "--zoom=36",
+        "--pitch=-29",
+        "--cam-yaw=-0.85",
+        "--mood=golden",
+        "--focus=0,-30",
+        "--demo-support=artillery",
+        "--demo-at=6"
+      ],
+      "shows": [
+        "The eight-round 155 mm fire mission landing across the occupied trench system"
+      ],
+      "about": "The camera rises across the front line as the later shells arrive. Hold the overlapping columns of earth before the menu appears."
+    },
     "trailer-score": {
       "scene": "res://tools/showcase/trailer-review/title-score.tscn",
       "frames": 1170,
@@ -685,11 +706,11 @@
     "reel": {
       "use": "Homepage trailer. Follow a squad order to the coast, see the opposing boats and the jet’s target, then return to the trench assault for the artillery finale.",
       "size": [1280, 720],
-      "kbps": 1580,
+      "kbps": 1450,
       "max_kb": 7500,
       "audio": true,
       "score": {"take": "trailer-score", "gain_db": -6},
-      "end_title": {"take": "trailer-score", "at": 10.0, "from": 31.4, "fade": 5, "full_frame": true},
+      "end_title": {"take": "trailer-score", "at": 10.0, "from": 34.9, "fade": 5, "full_frame": true},
       "audio_kbps": 128,
       "fade": 0,
       "fade_in": 0,
@@ -711,12 +732,14 @@
         {"take": "trailer-opposing-boats", "from": 32.5, "to": 34.6, "gain_db": 0, "caption": "[Patrol boats close on the harbour entrance]"},
         {"take": "trailer-harbour-finale", "from": 4.5, "to": 5.7, "gain_db": 0, "caption": "[Jet engines rise over the coast]"},
         {"take": "trailer-jet-target", "from": 5.7, "to": 7.03333, "gain_db": 0},
-        {"take": "trailer-quay-impact", "from": 8.26667, "to": 11.76667, "gain_db": 2, "caption": "[Bombs strike beside the truck]"},
+        {"take": "trailer-quay-impact", "from": 8.26667, "to": 11.03333, "gain_db": 2},
+        {"take": "trailer-quay-impact", "from": 11.03333, "to": 11.76667, "gain_db": 2, "caption": "[Bombs strike beside the truck]"},
         {"take": "trailer-quay-wreck", "from": 13.8, "to": 14.63333, "gain_db": 0},
-        {"take": "trailer-trench-column", "from": 2.9, "to": 5.5, "gain_db": 0, "caption": "[Tracks and rifle fire as infantry advance]"},
-        {"take": "trailer-trench-barrage", "from": 7.2, "to": 9.33333, "gain_db": 1, "caption": "[Artillery pounds the occupied trenches]"},
+        {"take": "trailer-trench-column", "from": 1.6, "to": 4.2, "gain_db": 0, "caption": "[Tracks and rifle fire as infantry advance]"},
+        {"take": "trailer-trench-barrage", "from": 7.2, "to": 9.33333, "gain_db": 1, "caption": "[Rifle fire cracks from the trench]"},
         {"take": "trailer-trench-impact", "from": 9.33333, "to": 10.53333, "gain_db": 1},
-        {"take": "trailer-trench-impact", "from": 10.53333, "to": 13.03333, "gain_db": -2, "caption": "[The barrage echoes as the music resolves]"}
+        {"take": "trailer-trench-salvo", "from": 19.9, "to": 23.4, "gain_db": 0, "caption": "[Heavy artillery bursts roll across the trenches]"},
+        {"take": "trailer-trench-salvo", "from": 23.4, "to": 25.9, "gain_db": -2, "caption": "[The barrage echoes as the music resolves]"}
       ]
     },
     "changelog-tank-motion": {
