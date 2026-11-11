@@ -125,6 +125,8 @@ func capture() -> void:
 		views = []
 		for quality in [0, 3, 3, 0, 0, 1, 1, 0, 0, 4, 4, 0]:
 			views.append(["sample-%d-q%d" % [views.size(), quality], Vector3(-1500, 120, -450), 900.0, -8.0, 0.7, quality, "day"])
+	if "--capture-set=cloud-boundary" in OS.get_cmdline_user_args():
+		views = [["boundary", Vector3.ZERO, 900.0, -14.0, 0.7, 3, "day"]]
 	RenderingServer.viewport_set_measure_render_time(root.get_viewport_rid(), true)
 	var records := []
 	for view in views:

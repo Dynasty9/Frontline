@@ -21,7 +21,7 @@ for i,view in enumerate(meta['views']):
     if len(frames) != view['frames']:
         raise SystemExit(f'Incomplete view {i}: {len(frames)} frames')
     label=capture/f'label-{i}.txt'
-    label.write_text(view['label']+'   |   Current PR - native camera capture',encoding='utf-8')
+    label.write_text(view['label']+'   |   Native camera capture',encoding='utf-8')
     part=capture/f'part-{i}.webm'
     filters=f"pad=1280:768:0:48:color=0x101518,drawtext=fontfile='{font}':textfile='build/media-review/label-{i}.txt':fontcolor=white:fontsize=21:x=22:y=13"
     subprocess.run([ff,'-y','-v','error','-framerate','30','-i',str(capture/f'view-{i}/%04d.png'),'-vf',filters,'-c:v','libvpx-vp9','-crf','29','-b:v','0','-deadline','good','-cpu-used','4','-pix_fmt','yuv420p','-an',str(part)],check=True)
@@ -32,20 +32,23 @@ seconds=len(parts)*4
 if meta['stage'] == 'clouds':
     # Editorial dissolves compare existing moods; the game does not cycle weather.
     inputs=[arg for part in parts for arg in ['-i',str(part)]]
-    filters=[]
-    previous='0:v'
+    filters=['[0:v]split[first][loop]', '[loop]trim=end_frame=1,loop=loop=24:size=1:start=0,setpts=N/(30*TB),fps=30,settb=1/1000[loopstill]']
+    previous='first'
     for i in range(1,len(parts)):
         filters.append(f'[{previous}][{i}:v]xfade=transition=fade:duration=0.75:offset={i*3.25}[v{i}]')
         previous=f'v{i}'
-    subprocess.run([ff,'-y','-v','error',*inputs,'-filter_complex', ';'.join(filters),'-map',f'[{previous}]','-c:v','libvpx-vp9','-crf','29','-b:v','0','-cpu-used','4','-pix_fmt','yuv420p','-an',str(clip)],check=True)
     seconds-=0.75*(len(parts)-1)
-    meta['editing']='0.75-second cross-dissolves between native captures of existing weather moods; not continuous weather simulation.'
+    filters.append(f'[{previous}][loopstill]xfade=transition=fade:duration=0.75:offset={seconds-0.75}[looped]')
+    subprocess.run([ff,'-y','-v','error',*inputs,'-filter_complex', ';'.join(filters),'-map','[looped]','-t',str(seconds),'-c:v','libvpx-vp9','-crf','29','-b:v','0','-cpu-used','4','-pix_fmt','yuv420p','-an',str(clip)],check=True)
+    meta['editing']='0.75-second cross-dissolves between native captures of existing weather moods, returning to the opening frame for looping; not continuous weather simulation.'
 else:
     subprocess.run([ff,'-y','-v','error','-f','concat','-safe','0','-i',str(concat),'-c','copy',str(clip)],check=True)
 subprocess.run([ff,'-y','-v','error','-ss','2','-i',str(clip),'-frames:v','1','-q:v','3',str(out/'native-tour.jpg')],check=True)
-subprocess.run([ff,'-v','error','-i',str(clip),'-f','null','-'],check=True)
+decoded=subprocess.run([ff,'-v','error','-i',str(clip),'-progress','pipe:1','-f','null','-'],check=True,capture_output=True,text=True)
+progress=dict(line.split('=',1) for line in decoded.stdout.splitlines() if '=' in line)
+assert abs(int(progress['frame'])-seconds*30) <= 1, 'Encoded clip is incomplete'
 for time in [0,2,3.9,4.1,seconds-0.1]:
-    subprocess.run([ff,'-y','-v','error','-ss',str(time),'-i',str(clip),'-frames:v','1',str(capture/f'check-{time}.jpg')],check=True)
+    subprocess.run([ff,'-y','-v','error','-ss',str(time),'-i',str(clip),'-frames:v','1','-pix_fmt','yuvj420p',str(capture/f'check-{time}.jpg')],check=True)
 meta = json.loads(json.dumps(meta).replace(root.as_posix(), '.').replace(str(root).replace('\\', '\\\\'), '.'))
 meta.update(source_ref=args.source_ref,clip='native-tour.webm',poster='native-tour.jpg',clip_sha256=hashlib.sha256(clip.read_bytes()).hexdigest(),seconds=seconds,audio=False,codec='VP9',resolution='1280x768 (48-pixel label above uncropped 1280x720 source)',command='godot --path . --fixed-fps 30 --resolution 1280x720 --script tools/showcase/environment-motion.gd -- --aivai --seed=3 --offscreen --nohud --set=perf:0,reduce_motion:false,vsync:false --preset=high --mood=day --motion-stage='+meta['stage']+' --motion-output=build/media-review')
 (out/'native-tour.json').write_bytes((json.dumps(meta,indent=2)+'\n').encode('utf-8'))

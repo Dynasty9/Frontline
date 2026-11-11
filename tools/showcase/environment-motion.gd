@@ -76,16 +76,6 @@ func capture() -> void:
 		records.append({"label": view[0], "focus": str(view[1]), "zoom": view[2], "pitch": view[3], "yaw": view[4], "orbit_radians": 0.065, "fov": world.cam.cam.fov, "seconds": 4, "frames": 120})
 		print("MOTION_VIEW ", mode, " ", index)
 		index += 1
-	if mode == "clouds":
-		world.atmo.apply_mood("day")
-		world.cam.dist = 900.0
-		world.cam.pitch_deg = -14.0
-		world.cam.yaw = 0.7
-		world.cam.focus(Vector3.ZERO)
-		for warmup in 90:
-			await process_frame
-		await RenderingServer.frame_post_draw
-		assert(root.get_texture().get_image().save_png(output + "/boundary.png") == OK)
 	var metadata := {"arguments": OS.get_cmdline_args(), "user_arguments": OS.get_cmdline_user_args(), "stage": mode, "seed": 3, "preset": "high", "mood": "day", "renderer": RenderingServer.get_current_rendering_method(), "resolution": str(root.size), "fps": 30, "simulation": "Held at two seconds; native camera, wind and water remain animated. Not a combat or performance benchmark.", "views": records}
 	var file := FileAccess.open(output + "/capture.json", FileAccess.WRITE)
 	file.store_string(JSON.stringify(metadata, "\t"))
