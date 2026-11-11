@@ -8101,391 +8101,36 @@
     },
     {
       "entry": "changelog/unreleased/vehicle-antennas-mirrors-barrels.md",
-      "summary": "Spring-mounted whips, rear-view mirror housings and hollow sleeved gun barrels.",
-      "medium": "still",
+      "summary": "Shared vehicle accessories and cheap movement-responsive antenna whips.",
+      "medium": "motion",
       "stage": "vehicle-surfaces",
-      "rationale": "Fixed close-ups expose construction changes that are subtle at RTS scale; matched whole-vehicle and full-roster sheets show fit and regression context.",
-      "source_ref": "37085ab before; 21ed5c4 after",
+      "rationale": "Three combined stills replace individual vehicle screenshots; a paired controlled motion clip demonstrates travel response and settling.",
+      "source_ref": "37085ab static before; 21ed5c4 static after; 0206a22 motion rig",
       "sources": [
         {
-          "file": "docs/vehicle-accessories-review/before-hemtt.jpg",
-          "sha256": "7b0a05268dbe988fc47461610c246803d358c9c3c6297e2b9c51b7c8d2fc5f1e",
-          "caption": "before hemtt (37085ab)"
+          "file": "changelog/unreleased/vehicle-antennas-mirrors-barrels/antenna-motion.jpg",
+          "sha256": "ed7ddb0c86f60a3ec2d4e7ed4b073793ff71d107c24c8f366fbeebdd974ef54d",
+          "caption": "antenna-motion"
         },
         {
-          "file": "docs/vehicle-accessories-review/before-zamak.jpg",
-          "sha256": "c5703d751a4bb5b8b258fa7ac6a213016031dcf40568aa47ee6559395c3b0bbf",
-          "caption": "before zamak (37085ab)"
-        },
-        {
-          "file": "docs/vehicle-accessories-review/before-tempest.jpg",
-          "sha256": "8546ebaa5cafc8c8ba2e6b32f251db3315249cfb066156036457313ec402236f",
-          "caption": "before tempest (37085ab)"
-        },
-        {
-          "file": "docs/vehicle-accessories-review/before-hunter.jpg",
-          "sha256": "c8b2109ca9b727cbf1fc66ec3c6a7b8e5d95632d47db8e43ef18d007bc4bdf9d",
-          "caption": "before hunter (37085ab)"
-        },
-        {
-          "file": "docs/vehicle-accessories-review/before-ifrit.jpg",
-          "sha256": "c780fba8184668836c745b0ea89ebfe21242758b9a87a7d2260badb116c648df",
-          "caption": "before ifrit (37085ab)"
-        },
-        {
-          "file": "docs/vehicle-accessories-review/before-strider.jpg",
-          "sha256": "434c17cb37b180c79685fae35fe4070aff52e39b970c1dd322de18605d0ad218",
-          "caption": "before strider (37085ab)"
-        },
-        {
-          "file": "docs/vehicle-accessories-review/before-slammer.jpg",
-          "sha256": "5f133f5a7dcd5639a919783e78d7a985f4ab2bf9de8fcc7e521501505febab7d",
-          "caption": "before slammer (37085ab)"
-        },
-        {
-          "file": "docs/vehicle-accessories-review/before-rhino.jpg",
-          "sha256": "b934e3fc9c23ffbc1d478d41fe21ad7c4bba5b82df3b5d23bf98728b2c7e4d8c",
-          "caption": "before rhino (37085ab)"
-        },
-        {
-          "file": "docs/vehicle-accessories-review/before-kuma.jpg",
-          "sha256": "11fc04df82080dd1f58af868b08d0085d4c1c8cb3e47fa6551f91bcc5f19aed1",
-          "caption": "before kuma (37085ab)"
-        },
-        {
-          "file": "docs/vehicle-accessories-review/before-varsuk.jpg",
-          "sha256": "a8b5e0334abcae3601cb8475f951b1866b0a2f38402feae7afbe09804dc2a933",
-          "caption": "before varsuk (37085ab)"
-        },
-        {
-          "file": "docs/vehicle-accessories-review/before-scorcher.jpg",
-          "sha256": "7215ad82ec24cb0e74a875438241436e365a28a8bb5a685ab42c0674fd8483b7",
-          "caption": "before scorcher (37085ab)"
-        },
-        {
-          "file": "docs/vehicle-accessories-review/before-sochor.jpg",
-          "sha256": "cd18e7e37c04b9aa5248c411364c6aa0973cd8f580b8477e557a3b9d006d3a52",
-          "caption": "before sochor (37085ab)"
-        },
-        {
-          "file": "docs/vehicle-accessories-review/before-angara.jpg",
-          "sha256": "0aa50b898b4cd9d2160388c538648ce741f0f1c026e4d5502d563b2630fa75e1",
-          "caption": "before angara (37085ab)"
-        },
-        {
-          "file": "docs/vehicle-accessories-review/before-tank.jpg",
-          "sha256": "0579a029cd66f29fae6f74e8c3e6c8b2dc882f4dcb1fce970e46f7f91470d9cb",
-          "caption": "before tank (37085ab)"
-        },
-        {
-          "file": "docs/vehicle-accessories-review/before-old_tank.jpg",
-          "sha256": "0d297a80b46b0c4d8e13d02ea101d3582ebd6b8a24803e4c85dc233e79551471",
-          "caption": "before old_tank (37085ab)"
-        },
-        {
-          "file": "docs/vehicle-accessories-review/before-humvee.jpg",
-          "sha256": "0868dbe5ad405e7bc22c4b24b9638591efadf48ffc7c0a2a2fec5f32dd7160c6",
-          "caption": "before humvee (37085ab)"
-        },
-        {
-          "file": "docs/vehicle-accessories-review/before-technical.jpg",
-          "sha256": "958eab8211096bbf66ab3efe7db2415d607b73d5945160405ded6d7533765167",
-          "caption": "before technical (37085ab)"
-        },
-        {
-          "file": "docs/vehicle-accessories-review/before-truck.jpg",
-          "sha256": "d9366e1cf94d530a940553d94b2805f59efba14b767cff11689829661241bb37",
-          "caption": "before truck (37085ab)"
-        },
-        {
-          "file": "docs/vehicle-accessories-review/before-qilin.jpg",
-          "sha256": "5491ff5335a2835d9fbd2cbb33507e76202a827c602a08b042ac1c238bf0ebc1",
-          "caption": "before qilin (37085ab)"
-        },
-        {
-          "file": "docs/vehicle-accessories-review/after-hemtt.jpg",
-          "sha256": "2d291fd5b256b2d3b6192d3ed893bc915deffb0032ef587e5d79ad98ec583746",
-          "caption": "after hemtt (21ed5c4)"
-        },
-        {
-          "file": "docs/vehicle-accessories-review/after-zamak.jpg",
-          "sha256": "5ecc1f58db6dab9f14a5a6209d32306dd1cca2afd17bc8fc63762c6f9cee92a2",
-          "caption": "after zamak (21ed5c4)"
-        },
-        {
-          "file": "docs/vehicle-accessories-review/after-tempest.jpg",
-          "sha256": "5f67b38e6d46e670ff72354423ddf4b4ded46f4d6ca5c3d89a84a4ad2013961f",
-          "caption": "after tempest (21ed5c4)"
-        },
-        {
-          "file": "docs/vehicle-accessories-review/after-hunter.jpg",
-          "sha256": "9bc6d8478e7998aa414e240f8e3487ec159c96476ea5b010a8e55476d80f19f4",
-          "caption": "after hunter (21ed5c4)"
-        },
-        {
-          "file": "docs/vehicle-accessories-review/after-ifrit.jpg",
-          "sha256": "cd8dc2e553a37715a52b2a5409a3daafea6350ffeac0514d866ce0d9bd1a5053",
-          "caption": "after ifrit (21ed5c4)"
-        },
-        {
-          "file": "docs/vehicle-accessories-review/after-strider.jpg",
-          "sha256": "73d590d333e9cc77d6e29e38b563e41ae3e844b4f36a33eda7dded74521036c5",
-          "caption": "after strider (21ed5c4)"
-        },
-        {
-          "file": "docs/vehicle-accessories-review/after-slammer.jpg",
-          "sha256": "9d9b45d72cf4641cd69fe5011f920610e0a096451134beb0dba5ed261bfc6d2e",
-          "caption": "after slammer (21ed5c4)"
-        },
-        {
-          "file": "docs/vehicle-accessories-review/after-rhino.jpg",
-          "sha256": "0bc1350f170e126a7e28d7f07c1503c316c5c2d3ea86fbfd599690ef6f1d6154",
-          "caption": "after rhino (21ed5c4)"
-        },
-        {
-          "file": "docs/vehicle-accessories-review/after-kuma.jpg",
-          "sha256": "892403ba08a7037328ca87f783af888df6c375f675daa29fe9ac407e9b8f9200",
-          "caption": "after kuma (21ed5c4)"
-        },
-        {
-          "file": "docs/vehicle-accessories-review/after-varsuk.jpg",
-          "sha256": "5d26603fbebf82ca6a1f542e5b38e13f7d55b5e878b0bba9b6fc20a77ba9926c",
-          "caption": "after varsuk (21ed5c4)"
-        },
-        {
-          "file": "docs/vehicle-accessories-review/after-scorcher.jpg",
-          "sha256": "2c515b1fb81f444b7420ad14258ddd32b877803bbcb6c4f68f1e55ef93f4475e",
-          "caption": "after scorcher (21ed5c4)"
-        },
-        {
-          "file": "docs/vehicle-accessories-review/after-sochor.jpg",
-          "sha256": "fe80802602d2a42d6b8720fe85948eb1e70acd03ce15325e4991fc888b3de831",
-          "caption": "after sochor (21ed5c4)"
-        },
-        {
-          "file": "docs/vehicle-accessories-review/after-angara.jpg",
-          "sha256": "8eb49f9ebdff74504654c818afa73e5063da8a110aef165688e6e4fef8f1e55e",
-          "caption": "after angara (21ed5c4)"
-        },
-        {
-          "file": "docs/vehicle-accessories-review/after-tank.jpg",
-          "sha256": "569b8285d303bbbe41e13a92cf4ba11bedd076cbccedfed7ec72cba6fdb56d62",
-          "caption": "after tank (21ed5c4)"
-        },
-        {
-          "file": "docs/vehicle-accessories-review/after-old_tank.jpg",
-          "sha256": "fda4de2619cfec71fcd20c9a46a51d2f5b1f81628e6c0b1ba06099d337841dcc",
-          "caption": "after old_tank (21ed5c4)"
-        },
-        {
-          "file": "docs/vehicle-accessories-review/after-humvee.jpg",
-          "sha256": "fa3924d51a7e16fb1bac73a8872d025e6a7571866ac1ec0f25ab28d018605803",
-          "caption": "after humvee (21ed5c4)"
-        },
-        {
-          "file": "docs/vehicle-accessories-review/after-technical.jpg",
-          "sha256": "ab0b159fb94172e2e7baeca00d4f8570150a20753aa52b3272d47f7b34736342",
-          "caption": "after technical (21ed5c4)"
-        },
-        {
-          "file": "docs/vehicle-accessories-review/after-truck.jpg",
-          "sha256": "ee028034b02d570a30d50a4bcc9da3f8d1f8b1454be4aa3d1d135cd39a266fd6",
-          "caption": "after truck (21ed5c4)"
-        },
-        {
-          "file": "docs/vehicle-accessories-review/after-qilin.jpg",
-          "sha256": "bf15d8619754b5695c678ca9031622e8ed60ce0db9cd2f3f017460d368840899",
-          "caption": "after qilin (21ed5c4)"
-        },
-        {
-          "file": "docs/vehicle-accessories-review/mirror-before-hemtt.jpg",
-          "sha256": "c55b8f16faef30e99e6d2dd28af4e92278ceb413428dbbe0183be24814715ca4",
-          "caption": "mirror-before hemtt (37085ab)"
-        },
-        {
-          "file": "docs/vehicle-accessories-review/mirror-after-hemtt.jpg",
-          "sha256": "8f7955d6fe583752b3173a6eb3fc74d0609fbec81129ee3c02f238739052fd46",
-          "caption": "mirror-after hemtt (21ed5c4)"
-        },
-        {
-          "file": "docs/vehicle-accessories-review/antenna-before-slammer.jpg",
-          "sha256": "10add4152a149d044bc7a774456d6477fbbac843569b37ee8c4f2bc5d1c8961b",
-          "caption": "antenna-before slammer (37085ab)"
-        },
-        {
-          "file": "docs/vehicle-accessories-review/antenna-after-slammer.jpg",
-          "sha256": "def68d4c88cba57c2670458dd9f560191870b6000a63b08671103f643386695a",
-          "caption": "antenna-after slammer (21ed5c4)"
-        },
-        {
-          "file": "docs/vehicle-accessories-review/barrel-before-slammer.jpg",
-          "sha256": "dacab4957425bb53875a5d08130e338b649a0f1ecd2626c59c293b9f7b07d3ea",
-          "caption": "barrel-before slammer (37085ab)"
-        },
-        {
-          "file": "docs/vehicle-accessories-review/barrel-after-slammer.jpg",
-          "sha256": "5d78f41e7b6fb7a887b388c3bc55eb2f66ca2a4d9aeac6aba3729062af0c8b0b",
-          "caption": "barrel-after slammer (21ed5c4)"
-        },
-        {
-          "file": "docs/vehicle-accessories-review/components-roster-00.jpg",
-          "sha256": "b8fd6a305cb7226d78efd1bd16625d156cd43990348840e5c592a06124190004",
-          "caption": "components roster-00 (21ed5c4)"
-        },
-        {
-          "file": "docs/vehicle-accessories-review/roster-before-roster-00.jpg",
-          "sha256": "d7f5af4c6146902d7612619f5ee1f5dfa2bb998ff5bfd9348c3ebe93838bf4c3",
-          "caption": "roster-before roster-00 (37085ab)"
-        },
-        {
-          "file": "docs/vehicle-accessories-review/roster-before-roster-01.jpg",
-          "sha256": "f27c1afefcfcaf0d5b45f72bd824b865f4f9c87e169129e19a9cac89856cc794",
-          "caption": "roster-before roster-01 (37085ab)"
-        },
-        {
-          "file": "docs/vehicle-accessories-review/roster-before-roster-02.jpg",
-          "sha256": "047ccc32493f61b7acfcb3c189b953fa1bed1280c694f12fc7cb66f7daa05400",
-          "caption": "roster-before roster-02 (37085ab)"
-        },
-        {
-          "file": "docs/vehicle-accessories-review/roster-before-roster-03.jpg",
-          "sha256": "474273890e97d13e5103b0982c805ae7d26fcbaca4aae6411e6d8650ea14076c",
-          "caption": "roster-before roster-03 (37085ab)"
-        },
-        {
-          "file": "docs/vehicle-accessories-review/roster-before-roster-04.jpg",
-          "sha256": "88f1b3355ed523f2d33e506e5c3a828a0915c545804660d0dfe8a556611255a1",
-          "caption": "roster-before roster-04 (37085ab)"
-        },
-        {
-          "file": "docs/vehicle-accessories-review/roster-before-roster-05.jpg",
-          "sha256": "1c96cdfe6edfd96ccd5b29d0d0fc39f6210cad074d4b811c660fc751841de715",
-          "caption": "roster-before roster-05 (37085ab)"
-        },
-        {
-          "file": "docs/vehicle-accessories-review/roster-before-roster-06.jpg",
-          "sha256": "ab938f277a4311abf62d69d003e0abc3f84a9e95963875f236a0a66fec08b8fa",
-          "caption": "roster-before roster-06 (37085ab)"
-        },
-        {
-          "file": "docs/vehicle-accessories-review/roster-before-roster-07.jpg",
-          "sha256": "5d98ebf89e70e0f057824d8bc42e187058c3ed863b2cfdd1eb694504b828c68b",
-          "caption": "roster-before roster-07 (37085ab)"
-        },
-        {
-          "file": "docs/vehicle-accessories-review/roster-before-roster-08.jpg",
-          "sha256": "ceffcabb4110a22c122bc873b16a612fd187c91c7fcfce3c6127efde2d8dcc91",
-          "caption": "roster-before roster-08 (37085ab)"
-        },
-        {
-          "file": "docs/vehicle-accessories-review/roster-before-roster-09.jpg",
-          "sha256": "5d944db9e554c6da1d02cf4e58c7cecde1f8ac93190067002c1b2bd3d7a57486",
-          "caption": "roster-before roster-09 (37085ab)"
-        },
-        {
-          "file": "docs/vehicle-accessories-review/roster-before-roster-10.jpg",
-          "sha256": "8a2a80e4ef89f092f15119af54425c7c38ee1b2013e6d4c9e5085b15f6848a00",
-          "caption": "roster-before roster-10 (37085ab)"
-        },
-        {
-          "file": "docs/vehicle-accessories-review/roster-before-roster-11.jpg",
-          "sha256": "2191c4a161e5b94eadac77df7190f80cffe758ff3d97ccea5977e59633d0efd8",
-          "caption": "roster-before roster-11 (37085ab)"
-        },
-        {
-          "file": "docs/vehicle-accessories-review/roster-after-roster-00.jpg",
-          "sha256": "5822b33833d97fe25ed064d64da503da04a0f2ceba9405a28586b90a21e73163",
-          "caption": "roster-after roster-00 (21ed5c4)"
-        },
-        {
-          "file": "docs/vehicle-accessories-review/roster-after-roster-01.jpg",
-          "sha256": "69c0234f4e3cd07f16baef2a9c4c28962a5f4872067561e6c6228b6e0a645a9c",
-          "caption": "roster-after roster-01 (21ed5c4)"
-        },
-        {
-          "file": "docs/vehicle-accessories-review/roster-after-roster-02.jpg",
-          "sha256": "bc2e025e3a231ba83a2d6362de65cfa94303c4b9b97a739cfd38d8cc178337b8",
-          "caption": "roster-after roster-02 (21ed5c4)"
-        },
-        {
-          "file": "docs/vehicle-accessories-review/roster-after-roster-03.jpg",
-          "sha256": "307ac4f7dcbc1ee1f68fec447c4df23ac2836b725cc89cddedae74e5320a5161",
-          "caption": "roster-after roster-03 (21ed5c4)"
-        },
-        {
-          "file": "docs/vehicle-accessories-review/roster-after-roster-04.jpg",
-          "sha256": "3afcc2ec9ac2f280b7270bc4eab9a4353ce09000190e2f8aecc2ea964281a930",
-          "caption": "roster-after roster-04 (21ed5c4)"
-        },
-        {
-          "file": "docs/vehicle-accessories-review/roster-after-roster-05.jpg",
-          "sha256": "f928b804adefdae9028bb4dd1d22e89265d24362802cf175a2a1ff0c90e20ebd",
-          "caption": "roster-after roster-05 (21ed5c4)"
-        },
-        {
-          "file": "docs/vehicle-accessories-review/roster-after-roster-06.jpg",
-          "sha256": "cb512725d546a3d5804ed1cc1e3e354883fda1d1c813695ea22588786198e629",
-          "caption": "roster-after roster-06 (21ed5c4)"
-        },
-        {
-          "file": "docs/vehicle-accessories-review/roster-after-roster-07.jpg",
-          "sha256": "1eaab1c8981c1fdcffa3ef9a123df4541f64df2f20d30f802433ec487a3e8a3a",
-          "caption": "roster-after roster-07 (21ed5c4)"
-        },
-        {
-          "file": "docs/vehicle-accessories-review/roster-after-roster-08.jpg",
-          "sha256": "dd745ab0fe69e30d714b63a8e0146c397a8319a6b0abb738a713482e88b70fa5",
-          "caption": "roster-after roster-08 (21ed5c4)"
-        },
-        {
-          "file": "docs/vehicle-accessories-review/roster-after-roster-09.jpg",
-          "sha256": "38d8d273a596da2f42368ed85a2faa75df67261af4ef8a60b929344730b7dd13",
-          "caption": "roster-after roster-09 (21ed5c4)"
-        },
-        {
-          "file": "docs/vehicle-accessories-review/roster-after-roster-10.jpg",
-          "sha256": "85a970eb3f269865cf5c2b1ee71cf3f310abe03c09bd52479e721acb0c238226",
-          "caption": "roster-after roster-10 (21ed5c4)"
-        },
-        {
-          "file": "docs/vehicle-accessories-review/roster-after-roster-11.jpg",
-          "sha256": "f1f7d928aeb62ee7c0f329ceec079bdb6f75a92899e6ad551c37355e9a4c29ad",
-          "caption": "roster-after roster-11 (21ed5c4)"
-        },
-        {
-          "file": "docs/vehicle-accessories-review/forward-roster-00.jpg",
-          "sha256": "5da618c9511e66b0f63cf88997ef4d1ccb8e8ea8882201789d3438927b9c3609",
-          "caption": "forward roster-00 (21ed5c4)"
-        },
-        {
-          "file": "docs/vehicle-accessories-review/forward-roster-01.jpg",
-          "sha256": "f8fc5e987119a064fc7ddbaac6fd8fc9a24ca72e487f2143141866b904f7afc7",
-          "caption": "forward roster-01 (21ed5c4)"
-        },
-        {
-          "file": "changelog/unreleased/vehicle-antennas-mirrors-barrels/barrel-before.jpg",
-          "sha256": "dacab4957425bb53875a5d08130e338b649a0f1ecd2626c59c293b9f7b07d3ea",
-          "caption": "barrel-before"
-        },
-        {
-          "file": "changelog/unreleased/vehicle-antennas-mirrors-barrels/barrel-after.jpg",
-          "sha256": "5d78f41e7b6fb7a887b388c3bc55eb2f66ca2a4d9aeac6aba3729062af0c8b0b",
-          "caption": "barrel-after"
-        },
-        {
-          "file": "changelog/unreleased/vehicle-antennas-mirrors-barrels/mirror-before.jpg",
-          "sha256": "c55b8f16faef30e99e6d2dd28af4e92278ceb413428dbbe0183be24814715ca4",
-          "caption": "mirror-before"
-        },
-        {
-          "file": "changelog/unreleased/vehicle-antennas-mirrors-barrels/mirror-after.jpg",
-          "sha256": "8f7955d6fe583752b3173a6eb3fc74d0609fbec81129ee3c02f238739052fd46",
-          "caption": "mirror-after"
+          "file": "changelog/unreleased/vehicle-antennas-mirrors-barrels/antenna-motion.webm",
+          "sha256": "e95b60dfd886352c8895f1878b623f90717cde2a10f0182f62192bdf144c9594",
+          "caption": "antenna-motion"
         },
         {
           "file": "changelog/unreleased/vehicle-antennas-mirrors-barrels/components.jpg",
           "sha256": "b8fd6a305cb7226d78efd1bd16625d156cd43990348840e5c592a06124190004",
           "caption": "components"
+        },
+        {
+          "file": "changelog/unreleased/vehicle-antennas-mirrors-barrels/details.jpg",
+          "sha256": "b5972a6455df44f47a09be0fae298cabec49f27ca4d2779f66804b7ff86f3d2d",
+          "caption": "details"
+        },
+        {
+          "file": "changelog/unreleased/vehicle-antennas-mirrors-barrels/vehicles.jpg",
+          "sha256": "f2ea7db5f0b0189a888085029383428c1982d1ed84e0e20980fa85a69c900c41",
+          "caption": "vehicles"
         }
       ],
       "output": null,
@@ -8500,7 +8145,9 @@
         "seed": 3,
         "team": 0,
         "command": "godot --path CHECKOUT --rendering-method gl_compatibility --audio-driver Dummy tools/showcase/vehicle-surfaces.tscn -- --surface-out=OUTPUT --surface-single --surface-kinds=KINDS --surface-ground",
-        "camera": "Exact close-up flags and roster commands in docs/vehicle-accessories-review/README.md. All pairs share light and camera settings; construction uses a separate inspection light."
+        "camera": "Static source pairs retain original cameras; combined without cropping. Reproduction in docs/vehicle-accessories-review/README.md.",
+        "motion_ref": "0206a22",
+        "motion": "--surface-antenna-motion --surface-ground; 180 frames at 15 Hz; paired rigid/animated current-build inspection, not driving footage; silent 12-second WebM"
       }
     }
   ],
