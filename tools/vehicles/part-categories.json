@@ -1,0 +1,245 @@
+[
+  {
+    "name": "Track drive sprockets",
+    "pattern": "\\bsprocket",
+    "reuse": "Toothed drive wheel with parameterized pitch, hub and rim; preserve track alignment.",
+    "exclude_pattern": "flippers|side skirts"
+  },
+  {
+    "name": "Light guards and protective cages",
+    "pattern": "(?:head|tail|convoy|navigation|landing)?lights?.{0,25}guards?|guards?.{0,25}(?:head|tail)?lights?|wire guards?",
+    "reuse": "Guard outline, standoffs and mounting feet; keep lamp optics shared.",
+    "exclude_pattern": "brush guard"
+  },
+  {
+    "name": "Bumpers and bumper end caps",
+    "pattern": "\\bbumper",
+    "reuse": "Section, end treatment, attachment points and tow cutouts; preserve vehicle width."
+  },
+  {
+    "name": "Gun receivers and breech housings",
+    "pattern": "\\breceiver|\\bbreech",
+    "reuse": "Parameterized receiver families, not one universal weapon silhouette.",
+    "exclude_pattern": "radar warning|box under|feed chute into"
+  },
+  {
+    "name": "Turret mantlets and gun cradles",
+    "pattern": "\\bmantlet|\\bcradle|\\byoke",
+    "reuse": "Pivot-relative shrouds and supports; retain weapon sockets and recoil parents.",
+    "exclude_functions": [
+      "VmShips._liferaft",
+      "VmNato._hemtt"
+    ],
+    "exclude_pattern": "beside the mantlet|either side of the mantlet|left of the cradle|plate welded"
+  },
+  {
+    "name": "Cockpit dashboards and instrument consoles",
+    "pattern": "\\bdash\\b|\\bdashboard|\\binstrument|\\bconsole",
+    "reuse": "Console profiles and instrument placements; keep cockpit layouts authored.",
+    "exclude_pattern": "seat on|fenders stowed|side lights|seat box"
+  },
+  {
+    "name": "Engine nacelles and cowling assemblies",
+    "pattern": "\\bnacelle|\\bcowling|\\bengine hous|\\bengine fair",
+    "reuse": "Station loft plus service splits and mounts; aircraft silhouettes remain distinct."
+  },
+  {
+    "name": "Cargo sideboards and tailgates",
+    "pattern": "\\btailgate|\\bdropside|\\bsideboard|\\bheadboard",
+    "reuse": "Panel runs, posts, hinges and latch placement on authored bed bounds.",
+    "exclude_pattern": "spare wheel|boarding ladder|davit"
+  },
+  {
+    "name": "Turret bustle baskets and open stowage racks",
+    "pattern": "\\bbasket|\\bstowage rack|\\bbustle rack",
+    "reuse": "Open frame paths and mesh panels; closed storage boxes are already shared."
+  },
+  {
+    "name": "Gun shields and weapon-station armour",
+    "pattern": "\\bgun shield|\\bshield.{0,30}(?:gun|weapon)|\\barmour shield|\\barmor shield",
+    "reuse": "Bent plate outlines and viewing slots; keep traverse envelope."
+  },
+  {
+    "name": "Suspension arms and hubs",
+    "pattern": "\\bwishbone|\\bswing.?arm|\\bcontrol arm|\\bshock absorber|\\bsuspension arm",
+    "reuse": "Endpoint-based links, joints and spring/damper pairs; solid axles already exist.",
+    "exclude_pattern": "\\bMG\\b"
+  },
+  {
+    "name": "Fuel fillers and filler caps",
+    "pattern": "\\bfiller|\\bfuel cap",
+    "reuse": "Recess, neck, cap and optional tether; preserve supplied outward axis."
+  },
+  {
+    "name": "Air cleaners, filters and snorkels",
+    "pattern": "\\bair cleaner|\\bair filter|\\bdust filter|\\bsnorkel",
+    "reuse": "Filter housings, clamps and pipe transitions; not generic turbine ducts."
+  },
+  {
+    "name": "Steering wheels and control columns",
+    "pattern": "\\bsteering wheel|\\bcontrol column|\\bjoystick|\\bcyclic",
+    "reuse": "Wheel/yoke profiles, spokes and column joints; author placement per cockpit."
+  },
+  {
+    "name": "Towing pintles and hitches",
+    "pattern": "\\bpintle|\\bhitch|\\btow ball",
+    "reuse": "Mounting plate, jaws/pin or ball; recovery shackles are a separate shared part.",
+    "exclude_pattern": "\\bMG\\b|\\bminiguns|three-point hitch"
+  },
+  {
+    "name": "Aircraft pitot and probe fittings",
+    "pattern": "\\bpitot|\\bprobe",
+    "reuse": "Tapered tubes, bases and authored angled paths; leave specialized refuelling systems local.",
+    "exclude_pattern": "refuelling probe door"
+  },
+  {
+    "name": "Aircraft wheel-bay doors",
+    "pattern": "\\bgear doors?|\\bwheel.?bay|\\bundercarriage doors?",
+    "reuse": "Door outlines, inner ribs and hinges on existing Gear/GearUp parents."
+  },
+  {
+    "name": "Missile launch rails and racks",
+    "pattern": "\\blaunch rails?|\\bmissile rack|\\bmissile rail|\\bHellfire rack",
+    "reuse": "Rail channels and clamps; ordinary pylons are already shared."
+  },
+  {
+    "name": "External fuel drums and drum cradles",
+    "pattern": "\\bfuel drums?|\\b200.?litre|\\b200.?liter|\\bexternal.{0,15}drum",
+    "reuse": "Drum ribs, ends and cradles; tanker vessel and aerodynamic drop tank are different."
+  },
+  {
+    "name": "Spare-wheel carriers",
+    "pattern": "\\bspare.{0,50}(?:carrier|frame|bracket|retention)|(?:carrier|bracket).{0,30}spare",
+    "reuse": "Brackets and retention hardware around the shared spare wheel; wheel itself is extracted."
+  },
+  {
+    "name": "Sensor and telescoping masts",
+    "pattern": "\\btelescop|\\bsensor mast|\\bperiscope mast",
+    "reuse": "Nested sections, collars and head mounts; optical housings already exist."
+  },
+  {
+    "name": "Radar dishes and radomes",
+    "pattern": "\\bradar|\\bradome",
+    "reuse": "Separate dish and dome styles with pedestals; retain rotating parents.",
+    "exclude_pattern": "radar-reflective|radar warning|velocity radar|console under"
+  },
+  {
+    "name": "Aircraft skids",
+    "pattern": "(?<!non-)\\bskids\\b|\\bskid runner|\\bskid tube",
+    "reuse": "Bent runner profiles, cross-struts and shoes; wheeled landing gear differs.",
+    "owners": [
+      "VmHeli",
+      "VmCore",
+      "VmCsat",
+      "VmCiv"
+    ]
+  },
+  {
+    "name": "Slat/cage armour panels",
+    "pattern": "\\bslat cage|\\bcage armour|\\bcage armor|\\bslat armour|\\bslat armor",
+    "reuse": "Bounded rail/slat panels with clearance; reactive blocks remain separate."
+  },
+  {
+    "name": "Vehicle cranes and hoists",
+    "pattern": "\\bcrane|\\bhoist",
+    "reuse": "Boom sections, pivot joints and cable routing; vehicle layouts and movement stay local."
+  },
+  {
+    "name": "Helicopter wire cutters",
+    "pattern": "\\bwire cutter",
+    "reuse": "Blade/support profile and attachment axis."
+  },
+  {
+    "name": "Ship liferafts and life rings",
+    "pattern": "\\bliferaft|\\blife ?ring|\\blife ?raft|\\blife ?buoy",
+    "reuse": "Canister cradles and buoy attachments; distinct styles, not a single shape."
+  },
+  {
+    "name": "Marine propellers and rudders",
+    "pattern": "\\brudder|\\bpropeller|\\btwin outboards|\\bhp outboard|\\bwaterjets?\\b",
+    "reuse": "Separate propeller, steering surface and waterjet families; aircraft propellers differ.",
+    "owners": [
+      "VmBoat",
+      "VmShips"
+    ]
+  },
+  {
+    "name": "Door/ramp construction",
+    "pattern": "\\bdoors?|\\bramp",
+    "shared": [
+      "VehicleDoors.closed",
+      "VehicleDoors.rectangle"
+    ],
+    "reuse": "Finish migrating compatible leaves to VehicleDoors; sliding rails and ramps need extensions."
+  },
+  {
+    "name": "Window and canopy construction",
+    "pattern": "\\bwindows?|\\bwindscreen|\\bwindshield|\\bcanopy",
+    "shared": [
+      "VehicleGlazing.",
+      "VehicleCab.framed_face",
+      "VehicleCloth.canopy"
+    ],
+    "reuse": "Extend fitted glazing where compatible; do not enable transparency over solid hulls."
+  },
+  {
+    "name": "Vents and grille construction",
+    "pattern": "\\bgrille|\\blouvres?|\\bvents?",
+    "shared": [
+      "VehicleFittings.vent",
+      "VehicleFittings.grille"
+    ],
+    "reuse": "Migrate flat/outline vents; ducts and optimized ship vents may differ."
+  },
+  {
+    "name": "Closed bins and toolboxes",
+    "pattern": "\\bstowage (?:box|bin)|\\btoolbox|\\blocker",
+    "shared": [
+      "VehicleEquipment.storage"
+    ],
+    "reuse": "Migrate top-lid bins; upright cabinets require another opening orientation."
+  },
+  {
+    "name": "Boarding steps and ladders",
+    "pattern": "\\bladder|\\bsteps?|\\brungs?",
+    "shared": [
+      "VehicleFrames.step",
+      "VehicleFrames.ladder"
+    ],
+    "reuse": "Use tread/ladder builders; retain folding stairs and helicopter-specific supports."
+  },
+  {
+    "name": "Handrails and grab handles",
+    "pattern": "\\bhandrail|\\bgrab handle|\\bgrab rail|\\bstanchion",
+    "shared": [
+      "VehicleFrames.railing",
+      "VehicleDoors.pull"
+    ],
+    "reuse": "Extend current rails and pulls; preserve optimized marine rail meshes."
+  },
+  {
+    "name": "Seat and bench construction",
+    "pattern": "\\bseats?|\\bbenches|\\bbench",
+    "shared": [
+      "VehicleCab.seat"
+    ],
+    "reuse": "Use shared seats; bench and jockey-seat layouts need separate dimension contracts."
+  },
+  {
+    "name": "Exhaust construction",
+    "pattern": "\\bexhaust|\\bsilencer",
+    "shared": [
+      "VehicleFittings.exhaust",
+      "VehicleAircraft.duct"
+    ],
+    "reuse": "Extend stack adapters; silencers, turbine grilles and suppressors are not interchangeable."
+  },
+  {
+    "name": "Hose and tow-cable routes",
+    "pattern": "\\bhose|\\btow cable|\\brope",
+    "shared": [
+      "VehicleFrames.cable"
+    ],
+    "reuse": "Use supported cable routes; coils and wound drums need distinct construction."
+  }
+]

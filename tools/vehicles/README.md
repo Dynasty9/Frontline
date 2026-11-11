@@ -1,5 +1,27 @@
 # Construction inventory
 
+The [per-vehicle catalog](../../docs/vehicle-parts-catalog.md) lists authored
+construction sections, shared APIs, local helpers and gameplay aliases. The
+[ranked extraction list](../../docs/vehicle-parts-ranking.md) separates new
+assembly candidates from remaining migrations to existing shared builders.
+
+Regenerate both from the current source (export the roster using the command
+below first):
+
+```sh
+python3 tools/vehicles/parts-catalog.py --roster /tmp/vehicle-roster.json --output /tmp/vehicle-parts.json --markdown docs
+python3 tests/vehicle-parts-catalog.test.py
+```
+
+`part-categories.json` defines semantic candidate patterns, exclusions and existing
+shared APIs. Ranking counts construction-root groups, not variants or individual
+meshes. A matching comment/helper name must have local geometry in its source
+section; existing matching shared calls exclude that section conservatively.
+Unlabelled code remains in the catalog. Mixed sections and conditional branches
+still require source review before extracting a feature. This is a reproducible
+source audit, not an exact runtime bill of materials or an exhaustive semantic
+classification of every mesh.
+
 Run from the repository root:
 
 ```sh
