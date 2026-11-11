@@ -103,8 +103,21 @@ func capture() -> void:
 		materials.foliage().shader.code = materials.foliage().shader.code.replace("uniform float wind = 1.0;", "uniform float wind = 0.0;")
 		world.atmo.grass.mat.set_shader_parameter("wind", 0.0)
 		world.atmo.grass.bush_mat.set_shader_parameter("wind", 0.0)
+	if "--capture-set=clouds" in OS.get_cmdline_user_args():
+		views = []
+		for quality in [0, 1, 2, 3, 4, 0]:
+			views.append(["clouds-%d-%d" % [quality, views.size()], Vector3.ZERO, 900.0, -14.0, 0.7, quality])
+	if "--capture-set=cloud-weather" in OS.get_cmdline_user_args():
+		views = [["off", Vector3.ZERO, 900.0, -14.0, 0.7, 0, "day"]]
+		for mood in ["day", "golden", "night", "rain"]:
+			views.append([mood, Vector3.ZERO, 900.0, -14.0, 0.7, 3, mood])
 	var records := []
 	for view in views:
+		if view.size() > 6:
+			world.atmo.apply_mood(view[6])
+		if view.size() > 5:
+			get_root().get_node("Settings").v.mountain_clouds = view[5]
+			world.atmo.mountain_clouds.apply_settings(world.atmo)
 		world.cam.dist = view[2]
 		world.cam.target_dist = view[2]
 		world.cam.pitch_deg = view[3]
@@ -117,6 +130,12 @@ func capture() -> void:
 			await process_frame
 		while world.structure_view != null and world.structure_view.warming():
 			await process_frame
+		var frame_ms := 0.0
+		if view.size() > 5:
+			var started := Time.get_ticks_usec()
+			for sample in 120:
+				await process_frame
+			frame_ms = float(Time.get_ticks_usec() - started) / 120000.0
 		await RenderingServer.frame_post_draw
 		var filename: String = prefix + "-" + view[0] + ".png"
 		assert(root.get_texture().get_image().save_png(filename) == OK)
@@ -128,7 +147,7 @@ func capture() -> void:
 				await process_frame
 				await RenderingServer.frame_post_draw
 				assert(root.get_texture().get_image().save_png(frames + "/%04d.png" % frame) == OK)
-		records.append({"file": filename, "focus": str(view[1]), "zoom": view[2], "pitch": view[3], "yaw": view[4], "time": world.time})
+		records.append({"file": filename, "focus": str(view[1]), "zoom": view[2], "pitch": view[3], "yaw": view[4], "time": world.time, "frame_ms": frame_ms})
 		print("CAPTURE ", filename)
 	var output := FileAccess.open(prefix + ".json", FileAccess.WRITE)
 	assert(output != null)

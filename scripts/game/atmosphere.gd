@@ -63,6 +63,7 @@ var detail_tex: ImageTexture
 var backdrop_tex: ImageTexture
 var road_mat: ShaderMaterial
 var grass: Grass
+var mountain_clouds: Node3D
 var forest: DistantForest
 var wildlife: Wildlife
 var _d := {}
@@ -78,6 +79,9 @@ func setup(w: World) -> void:
 	_build_env()
 	_build_ground()
 	_build_post()
+	mountain_clouds = preload("res://scripts/game/mountain_clouds.gd").new()
+	add_child(mountain_clouds)
+	mountain_clouds.setup(self)
 	grass = Grass.new()
 	grass.name = "Grass"
 	grass.atmo = self
@@ -778,6 +782,8 @@ func apply_mood(m: String) -> void:
 	ground_mat.set_shader_parameter("cloud_strength", float(_d.clouds))
 	ground_mat.set_shader_parameter("sun_tint", _d.sun)
 	ground_mat.set_shader_parameter("air_color", _d.fog)
+	if mountain_clouds:
+		mountain_clouds.apply_settings(self)
 	if water_view:
 		water_view.apply_mood(_d, mood)
 	if world.fx and world.fx.vfx:
@@ -796,6 +802,8 @@ func apply_settings() -> void:
 		_mood_asked = want
 		if MOODS.has(want) and want != mood:
 			apply_mood(want)
+	if mountain_clouds:
+		mountain_clouds.apply_settings(self)
 	_update_terrain_probe()
 	env.ssao_enabled = s.get_v("ssao")
 	env.ssr_enabled = s.get_v("ssr")

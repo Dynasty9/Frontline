@@ -8259,6 +8259,29 @@
         },
         "composition": "Uncropped source images resized to 800x450; three rows, before left / after right; JPEG quality85. These are real before/after builder inspection rigs, not gameplay footage."
       }
+    },
+    {
+      "entry": "changelog/unreleased/mountain-clouds.md",
+      "summary": "Cloud banks around distant mountains, with independent graphics tiers.",
+      "medium": "still",
+      "stage": "tests/fixtures/environment-views.gd --capture-set=cloud-weather",
+      "rationale": "Matched full-frame Off/High comparison establishes where the clouds sit without implying a performance result. Weather and renderer variants were inspected locally.",
+      "source_ref": "a89bd759bee003ee208f65ad4b8e418158994254 + mountain-clouds working tree",
+      "sources": [
+        {
+          "file": "changelog/unreleased/mountain-clouds/comparison.jpg",
+          "sha256": "ad8ef497a061028311af679021ddc2b1bce020393d0585c543f9ccda42b2d59a",
+          "caption": "Seed 3, day, 1280x720, High preset, simulation frozen at 2 seconds; cloud banks Off/High."
+        },
+        {
+          "file": "changelog/unreleased/mountain-clouds/weather.jpg",
+          "sha256": "967c7de6b968e03346b56ff8c97ebafc8a0b59f260a9f6ec27f5f1d6d5098ec8",
+          "caption": "Same seed and camera, High clouds; daylight, golden hour, night and rain. Full frames resized without cropping."
+        }
+      ],
+      "output": "changelog/unreleased/mountain-clouds/comparison.jpg",
+      "capture_command": "godot --path . --resolution 1280x720 --script tests/fixtures/environment-views.gd -- --aivai --seed=3 --offscreen --nohud --preset=high --mood=day --set=perf:0,reduce_motion:true,vsync:false --capture-set=cloud-weather --capture-prefix=<scratch>/cloud-weather",
+      "limitations": "Native Forward+ and Compatibility review, RTX 3090. No low-end GPU or browser validation. Tier timing samples were inconclusive under competing graphics load; no overhead claim. Motion is frozen for matched stills."
     }
   ],
   "layout_capture": {
