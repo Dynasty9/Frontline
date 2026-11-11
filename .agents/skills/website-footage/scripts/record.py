@@ -189,11 +189,13 @@ def main() -> None:
     ap.add_argument("--jobs", type=int, default=3, help="takes recorded at once (they share the GPU)")
     ap.add_argument("--godot")
     ap.add_argument("--work")
+    ap.add_argument("--recipe", type=Path, default=SKILL / "shots.json", help="use this saved capture and edit recipe")
     ap.add_argument("--no-sync", action="store_true", help="reuse the project copy as it is")
     ap.add_argument("--port", type=int, default=8700, help="first port to try; each take gets the next free one")
     a = ap.parse_args()
 
-    shots = json.loads((SKILL / "shots.json").read_text(encoding="utf-8"))
+    recipe = a.recipe.read_bytes()
+    shots = json.loads(recipe)
     takes: dict = shots["takes"]
     if a.render and (a.all or a.takes or a.list):
         ap.error("Use --render with output names, or give take names separately.")
@@ -256,10 +258,15 @@ def main() -> None:
             except RuntimeError as error:
                 sys.exit(str(error))
     if a.render:
-        cmd = [sys.executable, str(HERE / "build.py"), *a.render, "--work", str(work)]
-        if a.install:
-            cmd.append("--install")
-        subprocess.run(cmd, check=True)
+        # An overnight capture must assemble the edit it started with, even if
+        # the next edition is already being cut in the checkout.
+        with tempfile.TemporaryDirectory(dir=work) as folder:
+            frozen = Path(folder) / "shots.json"
+            frozen.write_bytes(recipe)
+            cmd = [sys.executable, str(HERE / "build.py"), *a.render, "--work", str(work), "--recipe", str(frozen)]
+            if a.install:
+                cmd.append("--install")
+            subprocess.run(cmd, check=True)
 
 
 if __name__ == "__main__":

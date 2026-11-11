@@ -42,7 +42,10 @@ def main():
     parser.add_argument("--folder", type=Path, default=ROOT / "build/trailer-review")
     parser.add_argument("--takes", type=Path, help="Capture folder containing the record.py take manifests")
     args = parser.parse_args()
-    recipe = json.loads(RECIPE.read_text())
+    captured_recipe = args.clip.with_suffix(".recipe.json")
+    recipe_path = captured_recipe if captured_recipe.is_file() else RECIPE
+    recipe_bytes = recipe_path.read_bytes()
+    recipe = json.loads(recipe_bytes)
     captures = {}
     if args.takes:
         edit = recipe["outputs"]["reel"]
@@ -77,7 +80,7 @@ def main():
     stem = f"{len(versions):02d}-{digest[:8]}"
     target = args.folder / (stem + ".mp4")
     shutil.copyfile(args.clip, target)
-    shutil.copyfile(RECIPE, target.with_suffix(".json"))
+    target.with_suffix(".json").write_bytes(recipe_bytes)
     if captures:
         target.with_suffix(".takes.json").write_text(json.dumps(captures, indent=2) + "\n")
     if args.clip.with_suffix(".vtt").exists():

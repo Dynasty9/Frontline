@@ -8,6 +8,7 @@ From the repository root:
 # Record every required shot from this checkout and assemble the trailer.
 python3 .agents/skills/website-footage/scripts/record.py --render reel --work /tmp/frontline-trailer
 
+# To rebuild an archived edit, pass its .json file with --recipe to either command.
 # When only the edit changed, reuse those recordings.
 python3 .agents/skills/website-footage/scripts/build.py reel --work /tmp/frontline-trailer
 

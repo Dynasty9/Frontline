@@ -375,10 +375,12 @@ def main() -> None:
     ap.add_argument("--stills", action="store_true", help="build the stills (with --all, or alone)")
     ap.add_argument("--install", action="store_true")
     ap.add_argument("--work")
+    ap.add_argument("--recipe", type=Path, default=SKILL / "shots.json", help="use this saved capture and edit recipe")
     ap.add_argument("--encoder", default="auto", choices=["auto", "ffmpeg", "mf"])
     a = ap.parse_args()
 
-    shots = json.loads((SKILL / "shots.json").read_text(encoding="utf-8"))
+    recipe = a.recipe.read_bytes()
+    shots = json.loads(recipe)
     work = Path(a.work or os.environ.get("FRONTLINE_FOOTAGE_DIR") or Path(tempfile.gettempdir()) / "frontline-footage")
     out = work / "build"
     out.mkdir(parents=True, exist_ok=True)
@@ -396,6 +398,7 @@ def main() -> None:
 
     for n in names:
         build_output(n, shots["outputs"][n], takes, out, a.encoder)
+        (out / f"{n}.recipe.json").write_bytes(recipe)
     for s in stills:
         build_still(s, shots["stills"][s], takes, out)
     if a.install:

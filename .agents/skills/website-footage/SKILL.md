@@ -32,7 +32,7 @@ From the repository root with Godot 4.7 on PATH or in `GODOT`:
 python3 .agents/skills/website-footage/scripts/record.py --render reel
 ```
 
-The recorder reads the checked-in `shots.json`, captures each required take once, then assembles the named outputs and any poster or captions. It prints the output paths. Pass multiple names to share takes (for example `--render hero infantry squads`), or add `--install` to update the website. Use `--work DIR` for a persistent capture directory outside the checkout. To recut the very same frames, use `build.py reel --work DIR` against its saved takes. A fresh recording replays the scenario setup; cosmetic motion, particles and audio variations can differ.
+The recorder snapshots the checked-in `shots.json` when it starts. Pass `--recipe PATH` to record or build an archived edit. Each built movie includes its recipe in a sibling `.recipe.json` file. The recorder captures each required take once, then assembles the named outputs and any poster or captions. It prints the output paths. Pass multiple names to share takes (for example `--render hero infantry squads`), or add `--install` to update the website. Use `--work DIR` for a persistent capture directory outside the checkout. To recut the very same frames, use `build.py reel --work DIR` against its saved takes. A fresh recording replays the scenario setup; cosmetic motion, particles and audio variations can differ.
 
 ## 0. Bring the checkout up to date
 
