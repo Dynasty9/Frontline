@@ -2,6 +2,8 @@ extends ColorRect
 ## Record the game's score in isolation so a picture cut never restarts a phrase.
 ## The same take supplies the menu wordmark when an edit calls for an end title.
 
+const CARD_START := 10.0
+
 var elapsed := 0.0
 var resolved := false
 
@@ -45,6 +47,11 @@ func _ready() -> void:
 func _process(dt: float) -> void:
 	elapsed += dt
 	Music.heat = lerpf(0.25, 1.0, smoothstep(1.0, 19.0, elapsed))
-	if not resolved and elapsed >= 21.5:
+	# The moving map arrives first, then the wordmark and the invitation.
+	var card_time := elapsed - CARD_START
+	$Center/Title/Row.modulate.a = smoothstep(0.12, 0.38, card_time)
+	$Center/Title.get_child(1).modulate.a = smoothstep(0.28, 0.52, card_time)
+	$Center/Title.get_child(2).modulate.a = smoothstep(0.36, 0.58, card_time)
+	if not resolved and elapsed >= 29.7:
 		resolved = true
 		Music.sting("victory")
