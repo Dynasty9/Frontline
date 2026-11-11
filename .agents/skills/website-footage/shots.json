@@ -592,7 +592,7 @@
       "max_kb": 7500,
       "audio": true,
       "score": {"take": "trailer-score", "gain_db": -6},
-      "end_title": {"take": "trailer-score", "at": 1.0, "from": 22.4, "fade": 10},
+      "end_title": {"take": "trailer-score", "at": 10.0, "from": 22.1, "fade": 5, "full_frame": true},
       "audio_kbps": 128,
       "fade": 0,
       "fade_in": 0,

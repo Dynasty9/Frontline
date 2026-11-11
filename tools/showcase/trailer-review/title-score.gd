@@ -11,20 +11,28 @@ func _ready() -> void:
 	Settings.apply_global()
 	Settings.changed.emit()
 
+	var map := TopoBackdrop.new()
+	map.shade = 1.0
+	add_child(map)
+	move_child(map, 0)
+
 	var row: HBoxContainer = $Center/Title/Row
 	var emblem := preload("res://scripts/ui/menu.gd").Emblem.new()
 	emblem.custom_minimum_size = Vector2(84, 84)
 	emblem.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	row.add_child(emblem)
-	var title := UiKit.label("FRONTLINE", 96, UiKit.TEXT, 700)
+	var title := UiKit.label("FRONTLINE", 108, UiKit.TEXT, 700)
 	var font := FontVariation.new()
 	font.base_font = UiKit.font(700)
 	font.spacing_glyph = 10
 	title.add_theme_font_override("font", font)
 	row.add_child(title)
-	var invitation := UiKit.label("Play free on desktop", 38, UiKit.TEXT, 600)
+	var invitation := UiKit.label("Play for free on Windows, macOS and Linux", 43, UiKit.TEXT, 600)
 	invitation.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	$Center/Title.add_child(invitation)
+	var license_line := UiKit.label("OPEN SOURCE  ·  MIT LICENSE", 29, UiKit.TEXT, 600)
+	license_line.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	$Center/Title.add_child(license_line)
 
 	# Finish the instrument render before frame zero. Otherwise a faster GPU
 	# could move the first note several beats later in the recorded movie.
