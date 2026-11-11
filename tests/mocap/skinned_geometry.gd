@@ -32,15 +32,18 @@ func _process(dt: float) -> void:
 		if model == null: continue
 		if unit.utype == "mortar_gunner" and InfantryAssets.gameplay_model == InfantryAssets.SWAT:
 			assert(model.skinned != null and model.tube.get_parent() is BoneAttachment3D, "The specialist carries his kit on the animated spine")
+			unit.debug_pose = []
 			var pit = world.spawn("structure", {"skind": "mortar_pit", "team": 0, "pos": unit.position, "built": true})
 			unit.mounted = pit
 			unit.position = pit.mount_pos()
 			unit.act = Soldier.Act.LAUNCH
-			for i in 6: unit._view_process(1.0 / 30.0)
+			for i in 6:
+				unit._view_process(1.0 / 30.0)
 			assert(model.crew and not model.tube.visible and not model.skinned.weapon.visible, "Only the fixed mortar shows while the gunner works")
 			unit.mounted = null
 			unit.position += Vector3.RIGHT * 2.0
-			for i in 6: unit._view_process(1.0 / 30.0)
+			for i in 6:
+				unit._view_process(1.0 / 30.0)
 			assert(model.tube.visible and not model.crew, "Leaving the pit restores the personal kit")
 			world.despawn(pit)
 		if unit.utype == "medic" and unit.team == 0 and InfantryAssets.gameplay_model == InfantryAssets.SWAT:
