@@ -8,6 +8,7 @@ const F_FIRE := 2
 const F_BLOCKED := 4
 const F_ELEV := 8  # gun laid up for indirect fire / launcher raised
 const F_GROUND := 16  # a helicopter sitting on the ground (rotor idling)
+const F_SPOOL := 32  # a helicopter's rotor at (or winding up to) flight speed
 
 var vkind := "tank"
 var vdef: Dictionary = {}
@@ -99,7 +100,14 @@ var sling_target: Vehicle = null  # (heli) what it's going to pick up
 var slung_by: Vehicle = null  # (cargo) the helicopter carrying it
 var sling_eid := 0  # (heli, replicated) the load's entity, for the cables
 var _sling_t := 0.0
-var _swing := Vector3.ZERO
+var _swing := Vector3.ZERO  # (heli) where the load hangs, off plumb under the hook
+var _swing_v := Vector3.ZERO
+var _hook_v := Vector3.ZERO  # (heli) the hook's velocity last tick, for the swing
+# the rotor (host): its speed as a share of flight rpm, and how long it's sat
+# with nothing to do (see _spool)
+var rotor_rpm := 0.35
+var _rotor_idle := 20.0
+var _rotor_want := false
 # suspension (view): pitch, roll, heave and how fast each is changing
 var _sus := Vector3.ZERO
 var _sus_v := Vector3.ZERO
@@ -114,6 +122,11 @@ var blur: MeshInstance3D
 var wheels: Array = []
 var _last_pos := Vector3.ZERO
 var _rotor_spd := 0.0
+var _rotor_snd: AudioStreamPlayer3D
+var _rotor_vol := 0.0
+var _wash: Node3D  # (view) dust or spray thrown out from under a low helicopter
+var _sway_t := 0.0  # (view) a hovering helicopter's gentle wander
+var _model_rest := Vector3.INF
 var burner: Node3D
 var dust: GeometryInstance3D  # (GPU or CPU particles: see Vfx.part)
 var _burn_state := -1
@@ -164,6 +177,9 @@ func on_spawned() -> void:
 	vdef = Defs.VEHICLES[vkind]
 	if base() in ["attack_heli", "lift_heli"]:
 		flight = HelicopterFlight.new()
+		if position.y - world.ground_y(position) > 0.3:
+			rotor_rpm = 1.0  # (put in the air, as by a scenario: already flying)
+			_rotor_idle = 0.0
 	if srv:
 		if base() == "supply":
 			position = world.nav.nearest_walkable(position, true)
@@ -603,8 +619,9 @@ func sim(dt: float) -> void:
 			_smash()
 	var laid := _salvo > 0 or (vdef.has("art") and world.time - last_fire_t < 4.0)
 	var grounded := is_heli() and (position.y - world.ground_y(position)) < 0.6
+	var spooled := is_heli() and (_rotor_want or not grounded)
 	flags = (F_TRACK if track_broken else 0) | (F_FIRE if world.time - last_fire_t < 0.3 else 0) | (F_BLOCKED if blocked_t > 2.0 else 0) \
-		| (F_ELEV if laid else 0) | (F_GROUND if grounded else 0)
+		| (F_ELEV if laid else 0) | (F_GROUND if grounded else 0) | (F_SPOOL if spooled else 0)
 
 
 # --- driving ----------------------------------------------------------------------------
@@ -1193,21 +1210,60 @@ func _service_tick(dt: float) -> void:
 
 # --- troop-carrying helicopters -------------------------------------------------------
 
-## Every rotorcraft phase uses the same dynamics, including vertical flight.
+## Every rotorcraft phase flies the same way (see HelicopterFlight): given
+## only where to be, the pilot works out the height to cross the ground at
+## and the speed, climbing out after lift-off and down a glide path to goal.
 func _fly_to(goal: Vector3, dt: float, face := INF) -> bool:
-	var requested := goal
-	var ahead := position + Defs.flat(goal - position).limit_length(40.0)
-	var clearance := world.ground_y(ahead) + LIFT_ALT
-	if Defs.flat(goal - position).length() > 8.0:
-		goal.y = maxf(goal.y, clearance)
-		if position.y < clearance - 3.0:
-			goal.x = position.x
-			goal.z = position.z
 	flight.step(self, goal, dt, face)
 	position.y = maxf(position.y, _flight_ground(position))
 	flight_pitch = flight.pitch
 	flight_roll = flight.roll
-	return flight.settled(self, requested)
+	return flight.settled(self, goal)
+
+
+## How far a load on the sling hangs below the helicopter (0 without one).
+func sling_hang() -> float:
+	return 0.0 if sling_cargo == null else SLING_ROPE + _cargo_h()
+
+
+## A low hover over the spot, where she stops before setting down (with a
+## load, a few metres clear of the ground before lowering it).
+func _hover_over(p: Vector3) -> Vector3:
+	return Vector3(p.x, _flight_ground(p) + (sling_hang() + 3.0 if sling_cargo != null else HelicopterFlight.HOVER_AGL), p.z)
+
+
+const ROTOR_IDLE := 0.35
+
+
+## The rotor winds up to flight speed before she lifts, and stays there on
+## the ground while she's busy (troops piling out, a quick turnaround); left
+## sitting with nothing to do, the crew throttle back to ground idle.
+func _spool(dt: float, wanted: bool) -> bool:
+	if position.y - world.ground_y(position) > 0.3:
+		rotor_rpm = 1.0
+		_rotor_idle = 0.0
+		_rotor_want = true
+		return true
+	_rotor_idle = 0.0 if wanted else _rotor_idle + dt
+	_rotor_want = wanted or _rotor_idle < 20.0
+	var target := 1.0 if _rotor_want else ROTOR_IDLE
+	rotor_rpm = move_toward(rotor_rpm, target, dt * (0.3 if target > rotor_rpm else 0.08))
+	return rotor_rpm >= 0.999
+
+
+## Lift into the hover check, a couple of metres up (and the load clear of
+## the ground): rotor at flight speed first, then up, steady, ready to go.
+## True once she's there (at once if she's already flying).
+func _lift_off(dt: float) -> bool:
+	var agl := position.y - world.ground_y(position)
+	var hover := HelicopterFlight.HOVER_AGL + sling_hang()
+	if not _spool(dt, true):
+		_fly_to(Vector3(position.x, _flight_ground(position), position.z), dt)
+		return false
+	if agl > hover + 1.0:
+		return true
+	_fly_to(Vector3(position.x, _flight_ground(position) + hover, position.z), dt)
+	return agl >= hover - 0.35 and absf(velocity.y) < 0.6
 
 
 func _flight_ground(p: Vector3) -> float:
@@ -1254,6 +1310,8 @@ func _hook(v: Vehicle) -> void:
 	v.velocity = Vector3.ZERO
 	v.assault = false
 	_swing = Vector3.ZERO
+	_swing_v = Vector3.ZERO
+	_hook_v = Defs.flat(velocity)
 	lift_phase = 1
 	world.stat("sling_hooked")
 	if not is_auto():
@@ -1290,8 +1348,9 @@ func _drop_from_sling() -> void:
 	world.stat("sling_dropped")
 
 
-## (heli) The load hangs under the hook, trailing a little behind as it flies
-## and swinging when it turns or stops.
+## (heli) The load hangs under the hook as a pendulum: it lags when she
+## accelerates, swings forward when she flares to stop, and trails back in
+## the airflow in cruise, then the swing slowly dies away.
 func _sling_tick(dt: float) -> void:
 	var v := sling_cargo
 	if v == null:
@@ -1300,12 +1359,24 @@ func _sling_tick(dt: float) -> void:
 		sling_cargo = null
 		sling_eid = 0
 		return
-	var trail := -velocity * 0.09
-	_swing = _swing.lerp(trail, 1.0 - exp(-dt * 1.6))
-	var hang := position + Vector3(_swing.x, -SLING_ROPE - v._hull_size().y, _swing.z)
-	v.position = hang
+	var length := SLING_ROPE + v._hull_size().y * 0.5
+	var hook_v := Defs.flat(velocity)
+	if dt > 0.0:
+		var hook_a := (hook_v - _hook_v) / dt
+		var w2 := 9.81 / length
+		var air := -hook_v * (hook_v.length() * 0.008)
+		_swing_v += (-_swing * w2 - hook_a + air - _swing_v * (0.6 * sqrt(w2))) * dt
+		_swing += _swing_v * dt
+		var most := length * 0.45
+		if _swing.length() > most:
+			_swing = _swing.limit_length(most)
+			_swing_v -= _swing.normalized() * maxf(0.0, _swing_v.dot(_swing.normalized()))
+	_hook_v = hook_v
+	var off := _swing.length()
+	var rise := length - sqrt(maxf(0.0, length * length - off * off))
+	v.position = position + Vector3(_swing.x, -SLING_ROPE - v._hull_size().y + rise, _swing.z)
 	v.rotation.y = lerp_angle(v.rotation.y, rotation.y, 1.0 - exp(-dt * 0.8))
-	v.velocity = velocity
+	v.velocity = velocity + _swing_v
 
 
 ## Lifts off when sent somewhere, flies there, puts down on clear ground and
@@ -1323,25 +1394,30 @@ func _lift_tick(dt: float) -> void:
 	match lift_phase:
 		0:
 			_fly_to(Vector3(position.x, _flight_ground(position), position.z), dt)
-			if lift_dest != Vector3.INF and Defs.flat(lift_dest - position).length() > 0.7:
+			var tasked := lift_dest != Vector3.INF and Defs.flat(lift_dest - position).length() > 0.7
+			_spool(dt, tasked)
+			if tasked:
 				lift_phase = 1
 		1:
-			var climb := Vector3(position.x, world.ground_y(position) + LIFT_ALT, position.z)
-			if _fly_to(climb, dt):
-				if sling_target != null:
-					lift_phase = 5
-				elif lift_dest != Vector3.INF:
-					lift_phase = 2
+			if sling_target == null and lift_dest == Vector3.INF:
+				# nowhere to go yet: climb out and wait up there
+				_spool(dt, true)
+				_fly_to(Vector3(position.x, world.ground_y(position) + LIFT_ALT, position.z), dt)
+			elif _lift_off(dt):
+				lift_phase = 5 if sling_target != null else 2
 		2:
-			var cruise := Vector3(lift_dest.x, world.ground_y(lift_dest) + LIFT_ALT, lift_dest.z)
-			if _fly_to(cruise, dt):
+			# out over the ground at cruise height, then down the approach
+			# into a low hover over the spot (or the drop height for a load)
+			if _fly_to(_hover_over(lift_dest), dt):
+				_sling_t = 0.0
 				lift_phase = 3
 		3:
 			if sling_cargo != null:
-				var drop := Vector3(lift_dest.x, _flight_ground(lift_dest) + _cargo_h() + SLING_ROPE, lift_dest.z)
-				if _fly_to(drop, dt):
+				# lower the load onto the ground, hold it there until it has
+				# stopped swinging, then let go
+				if _fly_to(Vector3(lift_dest.x, _flight_ground(lift_dest) + sling_hang(), lift_dest.z), dt):
 					_sling_t += dt
-					if _sling_t > 1.2:
+					if (_sling_t > 1.2 and _swing.length() < 0.4) or _sling_t > 6.0:
 						_release_sling()
 						lift_dest = Vector3.INF
 						lift_phase = 1
@@ -1361,7 +1437,8 @@ func _lift_tick(dt: float) -> void:
 				sling_target = null
 				lift_phase = 1
 				return
-			if _fly_to(Vector3(tv.position.x, tv.position.y + LIFT_ALT, tv.position.z), dt):
+			# straight in and down the approach to a hover over the load
+			if _fly_to(tv.position + Vector3(0, tv._hull_size().y + SLING_ROPE + 3.0, 0), dt):
 				_sling_t = 0.0
 				lift_phase = 6
 		6:
@@ -1379,6 +1456,7 @@ func _lift_tick(dt: float) -> void:
 				_sling_t = 0.0
 		4:
 			_fly_to(Vector3(position.x, _flight_ground(position), position.z), dt)
+			_spool(dt, true)
 			lift_t -= dt
 			if lift_t <= 0.0:
 				lift_phase = 0
@@ -2284,7 +2362,11 @@ func _gunship_tick(dt: float) -> void:
 	elif gs_dest != Vector3.INF:
 		want = gs_dest
 	want.y = world.ground_y(want) + (GS_ALT if hp > max_hp * 0.25 else GS_ALT * 0.7)
-	var face := Defs.yaw_of(Defs.flat(target.position - position)) if has_t else INF
+	# On the way there she flies nose first; near the firing position the
+	# pilot swings the nose onto the target and holds it there, side-stepping.
+	var face := INF
+	if has_t and Defs.flat(want - position).length() < 30.0:
+		face = Defs.yaw_of(Defs.flat(target.position - position))
 	_fly_to(want, dt, face)
 	_turret_tick(dt)
 	_fire_tick()
@@ -2316,15 +2398,13 @@ func _rocket_salvo() -> void:
 
 # --- helicopters ------------------------------------------------------------------------
 
-const HELI_ALT := 15.0
-
-
 func _heli_tick(dt: float) -> void:
 	var home := heli_home if heli_home and not heli_home.gone and heli_home.team == team else null
 	match heli_phase:
 		0:  # waiting on the pad, then pick the FOB that needs supply most
 			_fly_to(Vector3(position.x, _flight_ground(position), position.z), dt)
 			heli_t -= dt
+			_spool(dt, false)
 			if heli_t > 0.0:
 				return
 			heli_dest = null
@@ -2338,10 +2418,10 @@ func _heli_tick(dt: float) -> void:
 				heli_t = 5.0
 				return
 			heli_phase = 1
-		1, 4:  # climb
-			if _fly_to(Vector3(position.x, world.ground_y(position) + HELI_ALT, position.z), dt):
+		1, 4:  # lift off into the hover
+			if _lift_off(dt):
 				heli_phase += 1
-		2, 5:  # cruise
+		2, 5:  # climb out, cruise, and down the approach into a hover over the pad
 			var goal: Vector3
 			if heli_phase == 2:
 				if heli_dest == null or heli_dest.gone or heli_dest.team != team:
@@ -2350,8 +2430,7 @@ func _heli_tick(dt: float) -> void:
 				goal = heli_dest.position + Vector3(9.0, 0, 0)
 			else:
 				goal = home.position if home else world.rules.depots[team].position + Vector3(0, 0, -12)
-			goal.y = world.ground_y(goal) + HELI_ALT
-			if _fly_to(goal, dt):
+			if _fly_to(_hover_over(goal), dt):
 				_flight_hold = Vector3(goal.x, _flight_ground(goal), goal.z)
 				heli_phase += 1
 		3, 6:  # land
@@ -2366,6 +2445,7 @@ func _heli_tick(dt: float) -> void:
 		7:  # unloading
 			_flight_hold.y = _flight_ground(_flight_hold)
 			_fly_to(_flight_hold, dt)
+			_spool(dt, true)
 			heli_t -= dt
 			if heli_t <= 0.0:
 				if heli_dest and not heli_dest.gone and heli_dest.team == team:
@@ -2493,8 +2573,17 @@ func _view_process(dt: float) -> void:
 		if _vm.elev.rotation != elevation:
 			_vm.elev.rotation = elevation
 	if rotor:
-		var want := 30.0 if (position.y - world.ground_y(position)) > 0.3 or (flags & F_FIRE) != 0 else (9.0 if (flags & F_GROUND) == 0 or base() != "lift_heli" else 14.0)
+		# flight rpm in the air and whenever the crew have her wound up on the
+		# ground (about to lift, troops getting out); ground idle otherwise
+		var want := 30.0 if (position.y - world.ground_y(position)) > 0.3 or (flags & (F_FIRE | F_SPOOL)) != 0 else 9.0
 		_rotor_spd = move_toward(_rotor_spd, want, dt * 12.0)
+		if _rotor_snd:
+			# the beat follows the rotor; pulling hard (a flare, a steep bank)
+			# loads the blades and they slap louder
+			var load := clampf(absf(flight_roll) * 1.1 + maxf(0.0, flight_pitch) * 1.4, 0.0, 0.45)
+			var rpm := _rotor_spd / 30.0
+			_rotor_snd.pitch_scale = (0.55 + 0.45 * rpm) * (1.0 + load * 0.08)
+			_rotor_snd.volume_db = _rotor_vol + (rpm - 1.0) * 9.0 + load * 6.0
 		rotor.rotation.y += dt * _rotor_spd
 		if tail_rotor:
 			tail_rotor.rotation.x += dt * _rotor_spd * 2.6
@@ -2515,8 +2604,7 @@ func _view_process(dt: float) -> void:
 		for i in _vm.rotors.size():
 			(_vm.rotors[i] as Node3D).rotation.y += dt * 30.0 * (-1.0 if i % 2 == 0 else 1.0)
 	if flight and model and dt > 0.0:
-		model.rotation.x = lerp_angle(model.rotation.x, flight_pitch, 1.0 - exp(-dt * 10.0))
-		model.rotation.z = lerp_angle(model.rotation.z, flight_roll, 1.0 - exp(-dt * 10.0))
+		_flight_view(dt)
 	elif rotor and model and dt > 0.0:
 		# Rotary drones keep their own orbit guidance and view treatment.
 		var mv2 := position - _last_pos
@@ -2563,6 +2651,40 @@ func _view_process(dt: float) -> void:
 		ring.visible = selected
 		if selected and (position.y - world.ground_y(position)) > 0.5:
 			ring.global_position = Vector3(position.x, world.ground_y(position) + 0.06, position.z)
+
+
+## (view) A helicopter's attitude, as the host flies it, and what a pilot
+## holding a hover looks like from outside: a slight nose-up hang and one side
+## low against the tail rotor's push, never quite still. Low over the ground
+## the downwash throws dust (or spray) out in a ring.
+func _flight_view(dt: float) -> void:
+	var bed := world.ground_y(position)
+	var ground := maxf(0.0, bed)  # (the sea's surface over deep water)
+	var agl := position.y - ground
+	var air := clampf((agl - 0.3) / 1.5, 0.0, 1.0)
+	var spd := Defs.flat(position - _last_pos).length() / dt
+	var hover := air * (1.0 - clampf(spd / 8.0, 0.0, 1.0))
+	_sway_t += dt
+	var ph := float(eid % 97) * 0.731
+	var t := _sway_t
+	if _model_rest == Vector3.INF:
+		_model_rest = model.position
+	model.position = _model_rest + Vector3(sin(t * 0.71 + ph) * 0.06, sin(t * 1.13 + ph * 1.7) * 0.05 + sin(t * 0.37 + ph) * 0.05, sin(t * 0.53 + ph * 2.3) * 0.06) * hover
+	var wobble := air * (0.4 + 0.6 * hover)
+	var pitch := flight_pitch + hover * 0.03 + sin(t * 0.9 + ph * 1.3) * 0.006 * wobble
+	var roll := flight_roll + hover * 0.025 + sin(t * 1.27 + ph * 0.6) * 0.008 * wobble
+	model.rotation.x = lerp_angle(model.rotation.x, pitch, 1.0 - exp(-dt * 10.0))
+	model.rotation.z = lerp_angle(model.rotation.z, roll, 1.0 - exp(-dt * 10.0))
+	if _wash:
+		var reach := _hull_size().z * 0.5 * 2.2
+		var rpm := clampf((_rotor_spd - 9.0) / 21.0, 0.0, 1.0)
+		var vmax := maxf(1.0, float(vdef.speed))
+		var strength := clampf(1.15 - agl / reach, 0.0, 1.0) * rpm * (1.0 - 0.6 * clampf(spd / vmax, 0.0, 1.0))
+		if not visible:
+			strength = 0.0
+		var wet := bed < -0.1 or (world.water != null and world.terrain != null and world.water.wet_at(position) and not world.water.on_deck(position))
+		_wash.global_position = Vector3(position.x, ground + 0.1, position.z)
+		Vfx.set_rotor_wash(_wash, strength, wet)
 
 
 var _cables: MeshInstance3D
@@ -2732,7 +2854,13 @@ func _build_model() -> void:
 	blur = k.blur
 	wheels = k.wheels
 	if rotor:
-		add_child(Sfx.make_loop_player("rotor", 18.0, 0.0 if base() == "attack_heli" else -3.0))
+		_rotor_vol = 0.0 if base() == "attack_heli" else -3.0
+		_rotor_snd = Sfx.make_loop_player("rotor", 18.0, _rotor_vol)
+		add_child(_rotor_snd)
+		if flight and world.fx and world.fx.vfx:
+			_wash = world.fx.vfx.make_rotor_wash(_hull_size().z * 0.5)
+			_wash.top_level = true
+			add_child(_wash)
 	elif is_boat():
 		pass  # (a wake, not dust: see _boat_view)
 	elif world.fx and world.fx.vfx:
