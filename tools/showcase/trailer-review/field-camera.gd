@@ -5,6 +5,7 @@ extends "res://scripts/main.gd"
 @export var first_eye: Vector3
 @export var last_eye: Vector3
 @export var subject: Vector3
+@export var last_subject := Vector3.INF
 @export var travel_seconds: Vector2
 @export var relative_to_land := true
 
@@ -17,7 +18,8 @@ func _process(dt: float) -> void:
 		return
 	var fraction := smoothstep(travel_seconds.x, travel_seconds.y, world.time)
 	lens.position = _world_point(first_eye.lerp(last_eye, fraction))
-	lens.look_at(_world_point(subject))
+	var focus := subject.lerp(last_subject, fraction) if last_subject.is_finite() else subject
+	lens.look_at(_world_point(focus))
 	if not lens.current:
 		lens.make_current()
 
