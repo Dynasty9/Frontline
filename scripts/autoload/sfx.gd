@@ -126,6 +126,8 @@ func _recipes() -> Array:
 		["door_kick", _door_kick],
 		["door", _creak],
 		["jet", _jet],
+		["jet_engine", _airflow_loop.bind(true)],
+		["falling_air", _airflow_loop.bind(false)],
 		["big_boom", _boom.bind(2.6, 1.0, 38.0)],
 		["rotor", _rotor_loop],
 		["wind", _wind_loop],
@@ -428,6 +430,30 @@ func _jet(rng: RandomNumberGenerator) -> AudioStreamWAV:
 		var env := clampf(t / 1.2, 0.0, 1.0) * clampf((5.0 - t) / 1.5, 0.0, 1.0)
 		s[i] = (lp2 * 2.6 * (0.35 + near) + whine) * env
 	return _wav(s)
+
+
+## Continuous air sounds travel with their on-screen source. The engine has a
+## low exhaust rumble; a falling object has only the uneven rush around it.
+func _airflow_loop(rng: RandomNumberGenerator, engine: bool) -> AudioStreamWAV:
+	var fade := int(0.12 * RATE)
+	var s := PackedFloat32Array()
+	s.resize(3 * RATE + fade)
+	var bass := 0.0
+	var body := 0.0
+	var air := 0.0
+	var gust := 0.0
+	for i in s.size():
+		var noise := rng.randf_range(-1.0, 1.0)
+		bass += 0.016 * (noise - bass)
+		body += 0.11 * (noise - body)
+		air += 0.46 * (noise - air)
+		gust += 0.0008 * (rng.randf_range(-1.0, 1.0) - gust)
+		var breath := clampf(1.0 + 7.0 * gust, 0.55, 1.45)
+		if engine:
+			s[i] = tanh(5.0 * bass + 1.7 * body) * breath + 0.22 * (air - body)
+		else:
+			s[i] = (air - body + 0.4 * (body - bass)) * breath
+	return _wav(_normalize(_seamless(s, fade), -14.0 if engine else -19.0), true)
 
 
 ## Helicopter rotor: low thudding blade slap over turbine whine.

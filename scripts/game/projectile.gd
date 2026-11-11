@@ -512,10 +512,16 @@ func _build_model() -> void:
 			_vm = VehicleModels.build(mk if mk != "" else "jet", team if team >= 0 else 0, eid)
 			model.add_child(_vm.root)
 			if _vm.wheels.is_empty():
-				Sfx.play("jet", position + vel.normalized() * 160.0, 6.0)
+				var exhaust := Sfx.make_loop_player("jet_engine", 42.0, -1.0)
+				exhaust.max_distance = 570.0
+				exhaust.doppler_tracking = AudioStreamPlayer3D.DOPPLER_TRACKING_IDLE_STEP
+				add_child(exhaust)
 			else:
 				add_child(Sfx.make_loop_player("prop", 30.0, 2.0))  # a light plane droning over
 		"bomb":
+			var air := Sfx.make_loop_player("falling_air", 12.0, -6.0)
+			air.max_distance = 115.0
+			add_child(air)
 			Res.mi(model, Res.cyl(0.16, 0.16, 1.5, 10), Mats.get_mat("gunmetal_w"), Vector3.ZERO, Vector3(PI / 2, 0, 0), false)
 			Res.mi(model, Res.box(Vector3(0.7, 0.05, 0.35)), Mats.get_mat("gunmetal_w"), Vector3(0, 0, 0.75), Vector3.ZERO, false)
 			Res.mi(model, Res.box(Vector3(0.05, 0.7, 0.35)), Mats.get_mat("gunmetal_w"), Vector3(0, 0, 0.75), Vector3.ZERO, false)
