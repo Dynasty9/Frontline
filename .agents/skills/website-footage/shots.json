@@ -117,16 +117,17 @@
       "about": "From the playable Helm camera, look past the seated driver as a second launch crosses the bow and turns toward the beach."
     },
     "trailer-sling": {
-      "frames": 570,
-      "args": ["--preset=high", "--seed=3", "--set=volume:0.8,vol_effects:0.85,vol_music:0,battle_music:false,vol_ambience:0.28,vol_ui:0,mute_bg:false,wildlife:0,edge_pan:false", "--scenario=sling", "--play", "--team=0", "--focus-vehicle=mohawk", "--vehicle-view=Sling load", "--mood=day"],
-      "shows": ["Transport helicopter lifting a vehicle"],
-      "about": "The shared sling-load mount keeps the suspended vehicle and the rotor disc together."
+      "frames": 1275,
+      "args": ["--preset=high", "--seed=4", "--set=volume:0.8,vol_effects:0.85,vol_music:0,battle_music:false,vol_ambience:0.28,vol_ui:0,mute_bg:false,wildlife:0,edge_pan:false", "--mission=skyhook", "--play", "--team=0", "--mood=day", "--autoplay"],
+      "shows": ["Mohawk carrying a tracked vehicle over the river"],
+      "about": "The Sky Hook mission flies the Nyx directly over a moving bridge-deck camera. Keep the suspended load in frame as the helicopter passes overhead.",
+      "scene": "res://tools/showcase/trailer-review/sky-bridge.tscn"
     },
     "trailer-cargo-door": {
-      "frames": 630,
-      "args": ["--preset=high", "--seed=3", "--set=volume:0.8,vol_effects:0.85,vol_music:0,battle_music:false,vol_ambience:0.28,vol_ui:0,mute_bg:false,wildlife:0,edge_pan:false", "--scenario=sling", "--play", "--team=0", "--focus-vehicle=mohawk", "--vehicle-view=Cargo door", "--mood=day"],
-      "shows": ["Humvee turning on its sling"],
-      "about": "Look down from the cargo door as the wheels separate from their shadow. Both views follow the same lift."
+      "frames": 1275,
+      "args": ["--preset=high", "--seed=4", "--set=volume:0.8,vol_effects:0.85,vol_music:0,battle_music:false,vol_ambience:0.28,vol_ui:0,mute_bg:false,wildlife:0,edge_pan:false", "--mission=skyhook", "--play", "--team=0", "--focus-vehicle=mohawk", "--vehicle-view=Cargo door", "--mood=day", "--autoplay"],
+      "shows": ["Nyx crossing the bridge on its sling"],
+      "about": "The playable cargo-door view continues on the next frame of the same Sky Hook mission, looking past the landing gear as the bridge slips under the Nyx."
     },
     "trailer-roadside": {
       "scene": "res://tools/showcase/trailer-review/squad-order.tscn",
@@ -565,8 +566,8 @@
         {"take": "trailer-trench-close", "from": 49.23333, "to": 51.13333, "gain_db": -2, "caption": "[Fire cracks beside the trench]"},
         {"take": "trailer-mortar-crew", "from": 1.3, "to": 2.4, "gain_db": 1, "caption": "[Distant fire at the mortar pit]"},
         {"take": "highlight-mortar-burst", "from": 8.3, "to": 10.1, "gain_db": -3, "caption": "[Mortar bursts across the trench line]"},
-        {"take": "trailer-sling", "from": 16.96667, "to": 18.6, "gain_db": 0, "caption": "[Helicopter rotors over the suspended vehicle]"},
-        {"take": "trailer-cargo-door", "from": 18.6, "to": 19.7, "gain_db": 0},
+        {"take": "trailer-sling", "from": 39.26667, "to": 40.9, "gain_db": 0, "caption": "[Helicopter rotors over the suspended vehicle]"},
+        {"take": "trailer-cargo-door", "from": 40.9, "to": 42.0, "gain_db": 0},
         {"take": "trailer-harbour-boats", "from": 13.2, "to": 15.6, "gain_db": 0, "caption": "[Boats approach the shore]"},
         {"take": "trailer-beach-landing", "from": 26.13333, "to": 27.53333, "gain_db": 0, "caption": "[Surf as the squad runs ashore]"},
         {"take": "trailer-patrol-pass", "from": 35.1, "to": 37.03333, "gain_db": -1, "caption": "[Patrol ship fires across the harbour]"},

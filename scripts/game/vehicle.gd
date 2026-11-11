@@ -2704,43 +2704,51 @@ func _view_process(dt: float) -> void:
 			ring.global_position = Vector3(position.x, world.ground_y(position) + 0.06, position.z)
 
 
-var _cables: MeshInstance3D
+var _cables: MultiMeshInstance3D
 
 
-## (view) Four strops from the load's corners up to a hook, a cable from the
-## hook to the belly of the helicopter.
+## The lower straps meet the body of the load below its highest point.
+## Their width and shading stay visible when looking down from the cargo door.
 func _sling_view() -> void:
-	var v = world.entity(sling_eid) if sling_eid != 0 else null
-	if v == null or not (v is Vehicle) or not visible:
+	var load_vehicle := world.entity(sling_eid) as Vehicle if sling_eid != 0 else null
+	if load_vehicle == null or not visible:
 		if _cables:
 			_cables.visible = false
 		return
 	if _cables == null:
-		_cables = MeshInstance3D.new()
-		_cables.mesh = ImmediateMesh.new()
-		_cables.top_level = true
+		var spans := MultiMesh.new()
+		spans.transform_format = MultiMesh.TRANSFORM_3D
+		spans.use_colors = true
+		spans.mesh = Res.cyl(0.5, 0.5, 1.0, 8)
+		spans.instance_count = 5
+		spans.set_instance_color(0, Color(0.19, 0.20, 0.19))
+		for i in range(1, 5):
+			spans.set_instance_color(i, Color(0.40, 0.34, 0.19))
+		var mat := StandardMaterial3D.new()
+		mat.vertex_color_use_as_albedo = true
+		mat.roughness = 0.95
+		_cables = MultiMeshInstance3D.new()
+		_cables.multimesh = spans
+		_cables.material_override = mat
 		_cables.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-		var m := StandardMaterial3D.new()
-		m.albedo_color = Color(0.08, 0.08, 0.08)
-		m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-		_cables.material_override = m
 		add_child(_cables)
 	_cables.visible = true
-	_cables.global_transform = Transform3D.IDENTITY
-	var im: ImmediateMesh = _cables.mesh
-	im.clear_surfaces()
-	im.surface_begin(Mesh.PRIMITIVE_LINES)
-	var belly: Vector3 = global_position + Vector3(0, -0.6, 0)
-	var hs: Vector3 = v._hull_size()
-	var top: Vector3 = v.global_position + Vector3(0, hs.y, 0)
-	var hook: Vector3 = top + Vector3(0, 2.4, 0)
-	im.surface_add_vertex(belly)
-	im.surface_add_vertex(hook)
-	var b := Basis(Vector3.UP, v.rotation.y)
-	for c in [Vector3(hs.x * 0.4, 0, hs.z * 0.38), Vector3(-hs.x * 0.4, 0, hs.z * 0.38), Vector3(hs.x * 0.4, 0, -hs.z * 0.38), Vector3(-hs.x * 0.4, 0, -hs.z * 0.38)]:
-		im.surface_add_vertex(hook)
-		im.surface_add_vertex(top + b * c)
-	im.surface_end()
+	var body := load_vehicle.model if load_vehicle.model else load_vehicle
+	var relative := global_transform.affine_inverse() * body.global_transform
+	var size := load_vehicle._hull_size()
+	var hook := relative * Vector3(0, size.y + 2.4, 0)
+	_sling_span(0, model.transform * _vm.sling_eye, hook, 0.055, 0.055)
+	for i in 4:
+		var x := size.x * (0.37 if (i & 1) else -0.37)
+		var z := size.z * (0.34 if (i & 2) else -0.34)
+		var end := relative * Vector3(x, size.y * 0.40, z)
+		_sling_span(i + 1, hook, end, 0.09, 0.04)
+
+
+func _sling_span(i: int, a: Vector3, b: Vector3, width: float, depth: float) -> void:
+	var span := b - a
+	var basis := Basis(Quaternion(Vector3.UP, span.normalized())).scaled_local(Vector3(width, span.length(), depth))
+	_cables.multimesh.set_instance_transform(i, Transform3D(basis, (a + b) * 0.5))
 
 
 var spray: GeometryInstance3D
