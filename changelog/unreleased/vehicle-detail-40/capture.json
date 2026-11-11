@@ -1,0 +1,70 @@
+{
+  "before_ref": "7a96dd4",
+  "after_ref": "28722899f676ab074f13998c1bc3da2edb1a6d0c",
+  "engine": "Godot 4.7.2 stable",
+  "renderer": "gl_compatibility",
+  "stage": "tools/showcase/vehicle-surfaces.tscn",
+  "baseline_stage_note": "The capture-only stage from the implementation was copied to the baseline worktree; baseline game construction was unchanged.",
+  "team": 0,
+  "seed": 3,
+  "source_size": [
+    1600,
+    900
+  ],
+  "sheet_size": [
+    1400,
+    2568
+  ],
+  "sheet_bytes": 143157,
+  "composition": "Uncropped source captures, resized side by side; before left, after right. JPEG quality 86.",
+  "command": "DISPLAY=:105 godot --path <checkout> --rendering-method gl_compatibility --audio-driver Dummy tools/showcase/vehicle-surfaces.tscn -- --surface-single --surface-construction --surface-kinds=<comma-separated-parts> --surface-out=<outside-repository-directory>",
+  "sheet_parts": [
+    "frame",
+    "jerrycan",
+    "pallet",
+    "winch",
+    "hatch",
+    "storage"
+  ],
+  "camera": "Fixed component sizes and origin centres defined in the shared capture stage; identical light and view direction.",
+  "reviewed_parts": 20,
+  "reviewed_vehicles": [
+    "humvee",
+    "hunter",
+    "hemtt_fuel",
+    "zamak_cargo",
+    "tempest_ammo",
+    "slammer",
+    "varsuk",
+    "mora",
+    "rhib",
+    "patrol_ship",
+    "hellcat",
+    "kajman",
+    "blackwasp",
+    "blackfish",
+    "ac130",
+    "offroad",
+    "mb4wd",
+    "technical",
+    "tractor"
+  ],
+  "rear_review": [
+    "sensor_ball",
+    "sensor",
+    "gear",
+    "skirt",
+    "rocket_pod",
+    "mooring"
+  ],
+  "forward_plus": [
+    "tractor",
+    "tempest_ammo",
+    "hunter",
+    "kajman",
+    "rhib",
+    "slammer"
+  ],
+  "final_clearance_closeup": "--surface-single --surface-kinds=tempest_ammo --surface-size=3 --surface-focus=0,2,-0.4",
+  "raw_policy": "Individual images, comparison review sheets and measurement JSON remain outside Git."
+}

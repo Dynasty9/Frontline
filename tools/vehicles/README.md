@@ -45,3 +45,9 @@ godot --headless --path . tools/vehicles/construction-metrics.tscn -- --vehicle-
 The report includes all mesh surfaces, including near/far LOD alternatives; it is
 not a claim that all reported surfaces draw simultaneously. Build time includes
 cache warm-up in the sorted model order. Inspect gameplay frame cost separately.
+
+`detail-improvements.json` records the next 40 improvements to 20 existing
+assemblies, separately from the original 30-technique registry. See the
+[detail review](../../docs/vehicle-detail-40-review.md) for the changes, adopters,
+exceptions and validation. Extend the matching shared method instead of creating
+a parallel builder for a different size.
