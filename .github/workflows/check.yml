@@ -11,6 +11,17 @@ on:
   pull_request:
 
 jobs:
+  model-names:
+    name: No model names or unreviewed attribution
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Test the content guard
+        run: python3 -m unittest discover -s .github/scripts -p 'test_model_names.py'
+      - name: Check tracked project text
+        run: python3 .github/scripts/check_model_names.py
+
   check:
     runs-on: ubuntu-latest
     timeout-minutes: 20
