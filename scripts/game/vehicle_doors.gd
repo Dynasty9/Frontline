@@ -26,6 +26,9 @@ static func hinge(k: VehicleModels, parent: Node3D, at: Vector3, normal: Vector3
 	var tangent := axis.cross(normal).normalized()
 	var pin := at + normal * radius
 	VehicleFrames.tube(k, parent, pin - axis * radius * 2.8, pin + axis * radius * 2.8, radius * 0.52, "steel", null, 8, false)
+	for side: float in [-1.0, 1.0]:
+		var end := pin + axis * side * radius * 2.8
+		VehicleFrames.tube(k, parent, end - axis * radius * 0.18, end + axis * radius * 0.18, radius * 0.76, "steel", null, 8, false)
 	for i in 3:
 		var middle := pin + axis * (i - 1) * radius * 1.7
 		VehicleFrames.tube(k, parent, middle - axis * radius * 0.72, middle + axis * radius * 0.72, radius, mat, col, 8, false)
@@ -37,7 +40,9 @@ static func pull(k: VehicleModels, parent: Node3D, at: Vector3, normal: Vector3,
 	var a := at - along.normalized() * length * 0.5
 	var b := at + along.normalized() * length * 0.5
 	var rise := normal.normalized() * radius * 2.7
+	var basis := VehicleFrames.aim(normal)
 	for p in [a, b]:
+		k._add(parent, BevelMesh.make(Vector3(radius * 3.2, radius * 0.45, radius * 3.2), radius * 0.12), mat, col, p, basis.get_euler())
 		VehicleFrames.tube(k, parent, p, p + rise, radius, mat, col, 6, false)
 		VehicleBody.fastener(k, parent, p, normal, radius * 0.8)
 	VehicleFrames.tube(k, parent, a + rise, b + rise, radius, mat, col, 8, false)
@@ -47,3 +52,23 @@ static func rectangle(k: VehicleModels, parent: Node3D, center: Vector3, size: V
 	var surface := VehicleSurface.plane(center - basis.x * size.x * 0.5 - basis.y * size.y * 0.5, basis.x * size.x, basis.y * size.y)
 	var hinge_x := 0.92 if basis.x.z < 0.0 else 0.08
 	closed(k, parent, surface, PackedVector2Array([Vector2(0, 0), Vector2(1, 0), Vector2(1, 1), Vector2(0, 1)]), [Vector2(hinge_x, 0.2), Vector2(hinge_x, 0.8)], Vector2(1.0 - hinge_x, 0.72), mat, col, style)
+
+
+## Leaf only: retain existing authored hinges, handles, glazing and animation.
+## Axis is the panel thickness axis (0 X, 1 Y, 2 Z). This also serves gear doors
+## and ramp panels whose hardware differs from a passenger door.
+static func leaf(k: VehicleModels, parent: Node3D, size: Vector3, center: Vector3, mat: String, col = null, rotation := Vector3.ZERO, axis := 2) -> void:
+	var basis := Basis.from_euler(rotation)
+	var u := Vector3.RIGHT
+	var v := Vector3.UP
+	var dims := Vector2(size.x, size.y)
+	if axis == 0:
+		u = Vector3.FORWARD
+		dims = Vector2(size.z, size.y)
+	elif axis == 1:
+		v = Vector3.FORWARD
+		dims = Vector2(size.x, size.z)
+	var normal := u.cross(v)
+	var origin := center - basis * (u * dims.x * 0.5 + v * dims.y * 0.5 + normal * size[axis] * 0.5)
+	var surface := VehicleSurface.plane(origin, basis * u * dims.x, basis * v * dims.y)
+	VehicleBody.fitted(k, parent, surface, PackedVector2Array([Vector2.ZERO, Vector2.RIGHT, Vector2.ONE, Vector2.DOWN]), mat, col, size[axis], 0, false)

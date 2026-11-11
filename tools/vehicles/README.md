@@ -1,5 +1,27 @@
 # Construction inventory
 
+The [per-vehicle catalog](../../docs/vehicle-parts-catalog.md) lists authored
+construction sections, shared APIs, local helpers and gameplay aliases. The
+[ranked extraction list](../../docs/vehicle-parts-ranking.md) separates new
+assembly candidates from remaining migrations to existing shared builders.
+
+Regenerate both from the current source (export the roster using the command
+below first):
+
+```sh
+python3 tools/vehicles/parts-catalog.py --roster /tmp/vehicle-roster.json --output /tmp/vehicle-parts.json --markdown docs
+python3 tests/vehicle-parts-catalog.test.py
+```
+
+`part-categories.json` defines semantic candidate patterns, exclusions and existing
+shared APIs. Ranking counts construction-root groups, not variants or individual
+meshes. A matching comment/helper name must have local geometry in its source
+section; existing matching shared calls exclude that section conservatively.
+Unlabelled code remains in the catalog. Mixed sections and conditional branches
+still require source review before extracting a feature. This is a reproducible
+source audit, not an exact runtime bill of materials or an exhaustive semantic
+classification of every mesh.
+
 Run from the repository root:
 
 ```sh
@@ -45,3 +67,9 @@ godot --headless --path . tools/vehicles/construction-metrics.tscn -- --vehicle-
 The report includes all mesh surfaces, including near/far LOD alternatives; it is
 not a claim that all reported surfaces draw simultaneously. Build time includes
 cache warm-up in the sorted model order. Inspect gameplay frame cost separately.
+
+`detail-improvements.json` records the next 40 improvements to 20 existing
+assemblies, separately from the original 30-technique registry. See the
+[detail review](../../docs/vehicle-detail-40-review.md) for the changes, adopters,
+exceptions and validation. Extend the matching shared method instead of creating
+a parallel builder for a different size.

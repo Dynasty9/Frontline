@@ -109,13 +109,49 @@ func capture() -> void:
 		materials.foliage().shader.code = materials.foliage().shader.code.replace("uniform float wind = 1.0;", "uniform float wind = 0.0;")
 		world.atmo.grass.mat.set_shader_parameter("wind", 0.0)
 		world.atmo.grass.bush_mat.set_shader_parameter("wind", 0.0)
+	if "--capture-set=clouds" in OS.get_cmdline_user_args():
+		views = []
+		for quality in [0, 1, 2, 3, 4, 0]:
+			views.append(["clouds-%d-%d" % [quality, views.size()], Vector3(0, 80, 0), 1250.0, -10.0, 0.7, quality])
+	if "--capture-set=cloud-weather" in OS.get_cmdline_user_args():
+		world.cam.cam.fov = 55.0
+		views = [["off", Vector3(0, 80, 0), 1250.0, -10.0, 0.7, 0, "day"]]
+		for mood in ["day", "golden", "night", "rain"]:
+			views.append([mood, Vector3(0, 80, 0), 1250.0, -10.0, 0.7, 3, mood])
+		views.append(["boundary", Vector3.ZERO, 900.0, -14.0, 0.7, 3, "day"])
+		views.append(["shore-join", Vector3(world.water.coast_x(MapDims.HALF), 0, MapDims.HALF), 180.0, -30.0, 0.7, 3, "day"])
+	if "--capture-set=cloud-distance" in OS.get_cmdline_user_args():
+		world.cam.cam.fov = 55.0
+		views = [
+			["close", Vector3(-110, 0, -130), 18.0, -18.0, 0.7, 3, "day"],
+			["tactical", Vector3.ZERO, 180.0, -42.0, 0.7, 3, "day"],
+			["panorama", Vector3(0, 80, 0), 1250.0, -10.0, 0.7, 3, "day"],
+			["reverse", Vector3.ZERO, 900.0, -14.0, -2.4, 3, "day"],
+			["low", Vector3(0, 80, 0), 1250.0, -10.0, 0.7, 1, "day"],
+			["ultra", Vector3(0, 80, 0), 1250.0, -10.0, 0.7, 4, "day"],
+		]
+	if "--capture-set=cloud-benchmark" in OS.get_cmdline_user_args():
+		views = []
+		for quality in [0, 3, 3, 0, 0, 1, 1, 0, 0, 4, 4, 0]:
+			views.append(["sample-%d-q%d" % [views.size(), quality], Vector3(0, 80, 0), 1250.0, -10.0, 0.7, quality, "day"])
+	if "--capture-set=cloud-boundary" in OS.get_cmdline_user_args():
+		views = [["boundary", Vector3.ZERO, 900.0, -14.0, 0.7, 3, "day"]]
+	if "--capture-set=coast-join" in OS.get_cmdline_user_args():
+		views = [["shore-join", Vector3(world.water.coast_x(MapDims.HALF), 0, MapDims.HALF), 180.0, -30.0, 0.7, 3, "day"]]
+	RenderingServer.viewport_set_measure_render_time(root.get_viewport_rid(), true)
 	var records := []
 	for view in views:
+		if view.size() > 6:
+			world.atmo.apply_mood(view[6])
+		if view.size() > 5:
+			get_root().get_node("Settings").v.mountain_clouds = view[5]
+			world.atmo.mountain_clouds.apply_settings(world.atmo)
 		world.cam.dist = view[2]
 		world.cam.target_dist = view[2]
 		world.cam.pitch_deg = view[3]
 		world.cam.yaw = view[4]
-		world.cam.focus(view[1])
+		world.cam.focus_pos = view[1]
+		world.cam._apply()
 		if world.atmo.mood == "rain":
 			world.atmo._bolt_t = 100.0
 			world.atmo._flash = 0.0
@@ -123,6 +159,15 @@ func capture() -> void:
 			await process_frame
 		while world.structure_view != null and world.structure_view.warming():
 			await process_frame
+		var frame_ms := 0.0
+		var gpu_ms := 0.0
+		if view.size() > 5:
+			var started := Time.get_ticks_usec()
+			for sample in 120:
+				await process_frame
+				gpu_ms += RenderingServer.viewport_get_measured_render_time_gpu(root.get_viewport_rid())
+			gpu_ms /= 120.0
+			frame_ms = float(Time.get_ticks_usec() - started) / 120000.0
 		await RenderingServer.frame_post_draw
 		var filename: String = prefix + "-" + view[0] + ".png"
 		assert(root.get_texture().get_image().save_png(filename) == OK)
@@ -134,7 +179,7 @@ func capture() -> void:
 				await process_frame
 				await RenderingServer.frame_post_draw
 				assert(root.get_texture().get_image().save_png(frames + "/%04d.png" % frame) == OK)
-		records.append({"file": filename, "focus": str(view[1]), "zoom": view[2], "pitch": view[3], "yaw": view[4], "time": world.time})
+		records.append({"file": filename, "focus": str(view[1]), "zoom": view[2], "pitch": view[3], "yaw": view[4], "time": world.time, "mood": world.atmo.mood, "cloud_quality": get_root().get_node("Settings").v.mountain_clouds, "frame_ms": frame_ms, "gpu_ms": gpu_ms})
 		print("CAPTURE ", filename)
 	var output := FileAccess.open(prefix + ".json", FileAccess.WRITE)
 	assert(output != null)

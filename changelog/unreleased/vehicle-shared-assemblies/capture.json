@@ -1,0 +1,94 @@
+{
+  "before_ref": "26ca2f2eeda40b48694e2b751e8ac818a85a1f70",
+  "source_ref": "14a8d7027263447635118752b8357093cb607657",
+  "engine": "Godot 4.7.2 stable ed1daf0bf",
+  "stage": "tools/showcase/vehicle-surfaces.tscn",
+  "command": "godot --path CHECKOUT --audio-driver Dummy --rendering-method gl_compatibility tools/showcase/vehicle-surfaces.tscn -- FLAGS --surface-out=OUTPUT",
+  "comparisons": [
+    {
+      "model": "tank",
+      "flags": [
+        "--surface-single",
+        "--surface-kinds=tank",
+        "--surface-rear",
+        "--surface-focus=0,2.8,2.5",
+        "--surface-size=4.2"
+      ],
+      "settings": {
+        "accessories": false,
+        "body_focus": "(0.0, 2.8, 2.5)",
+        "camera_size": 4.2,
+        "construction": false,
+        "fittings": false,
+        "grounded": false,
+        "models": [
+          "tank"
+        ],
+        "panels": false,
+        "renderer": "gl_compatibility",
+        "rotor_focus": false,
+        "seed": 3,
+        "team": 0,
+        "view_direction": "(-1.0, 0.65, 1.25)"
+      }
+    },
+    {
+      "model": "hunter",
+      "flags": [
+        "--surface-single",
+        "--surface-kinds=hunter",
+        "--surface-focus=0,1.1,-2.8",
+        "--surface-size=3.2"
+      ],
+      "settings": {
+        "accessories": false,
+        "body_focus": "(0.0, 1.1, -2.8)",
+        "camera_size": 3.2,
+        "construction": false,
+        "fittings": false,
+        "grounded": false,
+        "models": [
+          "hunter"
+        ],
+        "panels": false,
+        "renderer": "gl_compatibility",
+        "rotor_focus": false,
+        "seed": 3,
+        "team": 0,
+        "view_direction": "(1.0, 0.65, -1.25)"
+      }
+    },
+    {
+      "model": "tigris",
+      "flags": [
+        "--surface-single",
+        "--surface-kinds=tigris",
+        "--surface-focus=0,3.1,0.2",
+        "--surface-size=3.6"
+      ],
+      "settings": {
+        "accessories": false,
+        "body_focus": "(0.0, 3.1, 0.2)",
+        "camera_size": 3.6,
+        "construction": false,
+        "fittings": false,
+        "grounded": false,
+        "models": [
+          "tigris"
+        ],
+        "panels": false,
+        "renderer": "gl_compatibility",
+        "rotor_focus": false,
+        "seed": 3,
+        "team": 0,
+        "view_direction": "(1.0, 0.65, -1.25)"
+      }
+    }
+  ],
+  "composition": "Full uncropped captures resized to 800x450, paired before left / after right; JPEG quality 86. Raw images remain outside Git.",
+  "dimensions": [
+    1600,
+    1480
+  ],
+  "bytes": 207219
+}

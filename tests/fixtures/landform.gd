@@ -219,6 +219,9 @@ func _ready() -> void:
 	var campaign := Landform.new(64)
 	campaign.generate(3, [[], [], []], world.water, [], false)
 	assert(campaign.heights != geology.heights and Landform.valid(campaign.heights, 64), "Campaigns retain their authored relief recipe")
+	var foothills := Landform.new(1024)
+	foothills.generate(3, [[], [], []], world.water, [])
+	assert(foothills.peak > 25.0 and foothills.peak < 140.0, "Playable skirmish terrain retains relief without towering foreground peaks")
 	assert(not Landform.valid(PackedFloat32Array([NAN]), 64))
 	var invalid := geology.heights.duplicate()
 	invalid[0] = INF

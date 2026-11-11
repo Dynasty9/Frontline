@@ -1,0 +1,323 @@
+[
+  {
+    "assembly": "jerrycan",
+    "apis": [
+      "VehicleFittings.jerrycan"
+    ],
+    "improvements": [
+      {
+        "id": 1,
+        "name": "Independent body dimensions with legacy width compatibility"
+      },
+      {
+        "id": 2,
+        "name": "Chamfered pressed shoulders and a raised filler neck"
+      }
+    ]
+  },
+  {
+    "assembly": "ammo_can",
+    "apis": [
+      "VehicleFittings.ammo_can"
+    ],
+    "improvements": [
+      {
+        "id": 3,
+        "name": "Outline-following rolled lower seam"
+      },
+      {
+        "id": 4,
+        "name": "Hinged lid closure and raised clasp"
+      }
+    ]
+  },
+  {
+    "assembly": "storage",
+    "apis": [
+      "VehicleEquipment.storage"
+    ],
+    "improvements": [
+      {
+        "id": 5,
+        "name": "Dimension-clamped formed body corners"
+      },
+      {
+        "id": 6,
+        "name": "Pressed lid stiffening panel"
+      }
+    ]
+  },
+  {
+    "assembly": "winch",
+    "apis": [
+      "VehicleEquipment.winch"
+    ],
+    "improvements": [
+      {
+        "id": 7,
+        "name": "Cable-retaining drum flanges"
+      },
+      {
+        "id": 8,
+        "name": "Motor and gearbox housings within the mount envelope"
+      }
+    ]
+  },
+  {
+    "assembly": "sensor",
+    "apis": [
+      "VehicleEquipment.sensor"
+    ],
+    "improvements": [
+      {
+        "id": 9,
+        "name": "Box sunshade or spherical neck seal"
+      },
+      {
+        "id": 10,
+        "name": "Attached service cover with housing-specific shape"
+      }
+    ]
+  },
+  {
+    "assembly": "vessel",
+    "apis": [
+      "VehicleEquipment.vessel"
+    ],
+    "improvements": [
+      {
+        "id": 11,
+        "name": "Circumferential end welds"
+      },
+      {
+        "id": 12,
+        "name": "Rubber isolation pads under mounting bands"
+      }
+    ]
+  },
+  {
+    "assembly": "skirt",
+    "apis": [
+      "VehicleEquipment.skirt"
+    ],
+    "improvements": [
+      {
+        "id": 13,
+        "name": "Clipped lower corners on formed skirt leaves"
+      },
+      {
+        "id": 14,
+        "name": "Replaceable attachment pins"
+      }
+    ]
+  },
+  {
+    "assembly": "door",
+    "apis": [
+      "VehicleDoors.pull",
+      "VehicleDoors.hinge"
+    ],
+    "improvements": [
+      {
+        "id": 15,
+        "name": "Pull-handle mounting escutcheons"
+      },
+      {
+        "id": 16,
+        "name": "Hinge-pin end retainers"
+      }
+    ]
+  },
+  {
+    "assembly": "seat",
+    "apis": [
+      "VehicleCab.seat"
+    ],
+    "improvements": [
+      {
+        "id": 17,
+        "name": "Raised cushion side bolsters"
+      },
+      {
+        "id": 18,
+        "name": "Separate rear support shell"
+      }
+    ]
+  },
+  {
+    "assembly": "pallet",
+    "apis": [
+      "VehicleCargo.pallet"
+    ],
+    "improvements": [
+      {
+        "id": 19,
+        "name": "Open forklift-entry gaps between support blocks"
+      },
+      {
+        "id": 20,
+        "name": "Lower deck runners"
+      }
+    ]
+  },
+  {
+    "assembly": "restraints",
+    "apis": [
+      "VehicleCargo.restraints"
+    ],
+    "improvements": [
+      {
+        "id": 21,
+        "name": "Open ratchet frame and winding spindle"
+      },
+      {
+        "id": 22,
+        "name": "Loose webbing tail"
+      }
+    ]
+  },
+  {
+    "assembly": "frame",
+    "apis": [
+      "VehicleRunningGear.frame"
+    ],
+    "improvements": [
+      {
+        "id": 23,
+        "name": "Open C-section chassis rails"
+      },
+      {
+        "id": 24,
+        "name": "Crossmember reinforcing gussets"
+      }
+    ]
+  },
+  {
+    "assembly": "axle",
+    "apis": [
+      "VehicleRunningGear.axle"
+    ],
+    "improvements": [
+      {
+        "id": 25,
+        "name": "Differential cover bolt circle"
+      },
+      {
+        "id": 26,
+        "name": "Pinion neck and driveline flange"
+      }
+    ]
+  },
+  {
+    "assembly": "gear",
+    "apis": [
+      "VehicleAircraft.gear_leg"
+    ],
+    "improvements": [
+      {
+        "id": 27,
+        "name": "Routed brake hose"
+      },
+      {
+        "id": 28,
+        "name": "Strut clamp collars"
+      }
+    ]
+  },
+  {
+    "assembly": "pylon",
+    "apis": [
+      "VehicleAircraft.hardpoint"
+    ],
+    "improvements": [
+      {
+        "id": 29,
+        "name": "Side inspection panels"
+      },
+      {
+        "id": 30,
+        "name": "Sway-brace adjustment nuts"
+      }
+    ]
+  },
+  {
+    "assembly": "rocket_pod",
+    "apis": [
+      "VehicleAircraft.rocket_pod"
+    ],
+    "improvements": [
+      {
+        "id": 31,
+        "name": "Mounting-band closures"
+      },
+      {
+        "id": 32,
+        "name": "Rear electrical service connector"
+      }
+    ]
+  },
+  {
+    "assembly": "mooring",
+    "apis": [
+      "VehicleMarine.mooring"
+    ],
+    "improvements": [
+      {
+        "id": 33,
+        "name": "Deck bedding pads"
+      },
+      {
+        "id": 34,
+        "name": "Flared upright roots"
+      }
+    ]
+  },
+  {
+    "assembly": "mirror",
+    "apis": [
+      "VehicleFittings.mirror"
+    ],
+    "improvements": [
+      {
+        "id": 35,
+        "name": "Chamfered mirror shell"
+      },
+      {
+        "id": 36,
+        "name": "Arm mounting shoes"
+      }
+    ]
+  },
+  {
+    "assembly": "exhaust",
+    "apis": [
+      "VehicleFittings.exhaust"
+    ],
+    "improvements": [
+      {
+        "id": 37,
+        "name": "Open-ended heat-shield sleeve"
+      },
+      {
+        "id": 38,
+        "name": "Heat-shield clamp lugs and screws"
+      }
+    ]
+  },
+  {
+    "assembly": "hatch",
+    "apis": [
+      "VehicleFittings.hatch"
+    ],
+    "improvements": [
+      {
+        "id": 39,
+        "name": "Circular pressed stiffening bead"
+      },
+      {
+        "id": 40,
+        "name": "Positive latch opposite the hinge"
+      }
+    ]
+  }
+]

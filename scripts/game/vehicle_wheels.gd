@@ -77,3 +77,24 @@ static func spare(k: VehicleModels, parent: Node3D, pos: Vector3, radius: float,
 	mount.basis = Basis.from_euler(rot) * Basis.from_euler(AXLE).inverse()
 	pneumatic(k, mount, Vector3.ZERO, radius, width, mat, col, profile, false)
 	k._fold(mount)
+
+
+## Shared drive wheel: teeth remain separate from the smooth road-wheel rim.
+## The hub uses the existing X-axis animation contract, exactly one registration.
+static func sprocket(k: VehicleModels, parent: Node3D, pos: Vector3, radius: float, width: float, mat: String, col = null, teeth := 8, twin := false) -> Node3D:
+	var pv := k._pivot(parent, pos)
+	var rows: Array = [-0.3, 0.3] if twin else [0.0]
+	for row: float in rows:
+		var w := width * (0.2 if twin else 0.7)
+		k._cyl(pv, radius * 0.86, radius * 0.86, w, Vector3(row * width, 0, 0), AXLE, "gunmetal_w", null, 20)
+		for i in teeth:
+			var a := TAU * i / float(teeth)
+			k._add(pv, BevelMesh.make(Vector3(w, radius * 0.20, radius * 0.16), radius * 0.025), "gunmetal_w", null, Vector3(row * width, sin(a) * radius * 0.9, cos(a) * radius * 0.9), Vector3(-a, 0, 0))
+	k._cyl(pv, radius * 0.66, radius * 0.70, width * 0.76, Vector3.ZERO, AXLE, mat, col, 20)
+	k._cyl(pv, radius * 0.25, radius * 0.30, width + 0.06, Vector3.ZERO, AXLE, mat, col, 12, false)
+	for side: float in [-1.0, 1.0]:
+		for i in 6:
+			var a := TAU * i / 6.0
+			VehicleBody.fastener(k, pv, Vector3(side * width * 0.39, sin(a) * radius * 0.47, cos(a) * radius * 0.47), Vector3.RIGHT * side, radius * 0.045)
+	k.wheels.append(pv)
+	return pv

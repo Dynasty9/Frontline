@@ -1,12 +1,13 @@
 // Render archived evidence through a reusable editorial stage; no image retouching.
 import { createRequire } from "node:module";
-import { readFile, mkdir } from "node:fs/promises";
+import { mkdir } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
+import { loadCatalog } from "./catalog.mjs";
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const require = createRequire(path.join(root, "web/package.json"));
 const { chromium } = require("playwright");
-const catalog = JSON.parse(await readFile(path.join(root, "tools/showcase/catalog.json"), "utf8"));
+const catalog = await loadCatalog(root);
 const filter = process.argv[2];
 const browser = await chromium.launch({ headless: true });
 try {

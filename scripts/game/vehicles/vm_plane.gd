@@ -546,7 +546,7 @@ static func _buzzard(k: VehicleModels, team: int) -> void:
 	nozzle(k, m, Vector3(0, 1.12, 6.4), 0.29, 0.22, c, 0.92)
 	glow(k, m, [Vector3(0, 1.12, 6.75)], 1.0, Color(0.7, 0.4, 0.22))
 	# probes, antennas, the airbrakes under the belly
-	rod(k, m, Vector3(0, 1.0, -6.3), Vector3(0, 1.0, -6.95), 0.03, "gunmetal_w", null, 6, 0.012)
+	VehicleAircraft.pitot(k, m, Vector3(0, 1.0, -6.3), Vector3(0, 1.0, -6.95), 0.03, "gunmetal_w", null)
 	antenna(k, m, Vector3(0, 1.74, 0.9), 0.28)
 	antenna(k, m, Vector3(0, 0.38, -1.4), 0.22, true)
 	for s in [-1.0, 1.0]:
@@ -639,7 +639,7 @@ static func _gryphon(k: VehicleModels, team: int) -> void:
 	for s in [-1.0, 1.0]:
 		k._box(m, Vector3(0.03, 0.42, 0.75), Vector3(s * 0.53, 1.12, 5.4), A, c.darkened(0.15), Vector3(0, s * 0.08, 0), false)
 	# probes and antennas, the gun port low on the left
-	rod(k, m, Vector3(0, 0.96, -6.75), Vector3(0, 0.96, -7.3), 0.03, "gunmetal_w", null, 6, 0.012)
+	VehicleAircraft.pitot(k, m, Vector3(0, 0.96, -6.75), Vector3(0, 0.96, -7.3), 0.03, "gunmetal_w", null)
 	antenna(k, m, Vector3(0, 1.74, -0.6), 0.25)
 	antenna(k, m, Vector3(0, 0.46, 0.2), 0.2, true)
 	k._box(m, Vector3(0.06, 0.1, 0.4), Vector3(-0.62, 0.66, -2.2), "plain_dark", null, Vector3(0, 0, 0.5), false)
@@ -920,7 +920,7 @@ static func _blackwasp(k: VehicleModels, team: int) -> void:
 	k.gun_tip = k.mg_tip
 	antenna(k, m, Vector3(0, 2.02, -1.5), 0.26)
 	antenna(k, m, Vector3(0, 0.66, 2.5), 0.2, true)
-	rod(k, m, Vector3(0, 0.95, 6.4), Vector3(0, 0.75, 8.1), 0.045, "gunmetal_w", null, 6)
+	VehicleAircraft.pitot(k, m, Vector3(0, 0.95, 6.4), Vector3(0, 0.75, 8.1), 0.045, "gunmetal_w", null)
 	for s in [-1.0, 1.0]:
 		k._box(m, Vector3(0.012, 0.02, 3.6), Vector3(s * 0.32, 0.69, 0.6), "gunmetal_w", null, Vector3.ZERO, false)
 	# stores: a Paveway and an AMRAAM under each wing
@@ -1071,7 +1071,7 @@ static func _neophron(k: VehicleModels, team: int) -> void:
 		k._box(m, Vector3(0.08, 0.1, 1.6), Vector3(s * 4.98, 1.36, 1.9), A, c)
 		missile(k, m, Vector3(s * 4.98, 1.25, 1.6), 2.9, 0.08, STORE_GREY, false)
 	nav_lights(k, m, Vector3(5.0, 1.42, 1.3), 0.06)
-	rod(k, m, Vector3(0, 1.08, -5.7), Vector3(0, 1.08, -6.2), 0.028, "gunmetal_w", null, 6, 0.011)
+	VehicleAircraft.pitot(k, m, Vector3(0, 1.08, -5.7), Vector3(0, 1.08, -6.2), 0.028, "gunmetal_w", null)
 	antenna(k, m, Vector3(0, 1.88, 0.4), 0.24)
 	antenna(k, m, Vector3(0, 0.72, -2.4), 0.18, true)
 	# stores: the gun pod; bombs, B-8 rocket pods and R-73s underwing
@@ -1317,10 +1317,10 @@ static func _blackfish(k: VehicleModels, team: int, armed: bool) -> void:
 		for z in [-6.4, -3.2, 0.2, 3.0]:
 			if s > 0.0 and z < -6.0:
 				continue
-			k._box(m, Vector3(0.03, 0.42, 0.42), Vector3(s * 1.585, 2.95, z), "glass", null, Vector3.ZERO, false)
+			VehicleGlazing.rectangle(k, m, Vector2(0.42, 0.42), Vector3(s * 1.585, 2.95, z), (Basis.from_euler(Vector3.ZERO) * Basis(Vector3.UP, PI / 2)).get_euler(), false, null, 0.03)
 	for z in [-7.25, -5.75]:
 		k._box(m, Vector3(0.02, 1.9, 0.03), Vector3(1.6, 2.15, z), "gunmetal_w", null, Vector3.ZERO, false)
-	k._box(m, Vector3(0.03, 0.42, 0.42), Vector3(1.6, 2.75, -6.5), "glass", null, Vector3.ZERO, false)
+	VehicleGlazing.rectangle(k, m, Vector2(0.42, 0.42), Vector3(1.6, 2.75, -6.5), (Basis.from_euler(Vector3.ZERO) * Basis(Vector3.UP, PI / 2)).get_euler(), false, null, 0.03)
 	# the sponsons for the main gear
 	body2(k, m, "bf_spon", [[-4.3, 1.15, 0.0, 0.0, 0.0, 2, 2, 1.5], [-3.7, 1.15, 0.5, 0.45, 0.5, 2.4, 2.4, 1.6], [-2.0, 1.12, 0.8, 0.55, 0.65, 2.6, 2.6, 1.7],
 		[2.0, 1.15, 0.8, 0.55, 0.65, 2.6, 2.6, 1.7], [3.8, 1.2, 0.55, 0.45, 0.5, 2.4, 2.4, 1.6], [4.8, 1.25, 0.08, 0.12, 0.12, 2, 2, 1.5]], A, c, 18)
@@ -1520,7 +1520,7 @@ static func _xian(k: VehicleModels, team: int) -> void:
 	# twin tails canted outboard of the engines, rudders
 	surf(k, m, "xi_fin", [[Vector3(1.5, 3.5, 4.6), 3.4, 0.24], [Vector3(2.29, 5.66, 6.9), 1.6, 0.12]], A, c2, [0.7])
 	# probes, antennas, the sensor under the nose
-	rod(k, m, Vector3(0.5, 1.7, -8.4), Vector3(0.5, 1.7, -9.3), 0.03, "gunmetal_w", null, 6, 0.012)
+	VehicleAircraft.pitot(k, m, Vector3(0.5, 1.7, -8.4), Vector3(0.5, 1.7, -9.3), 0.03, "gunmetal_w", null)
 	antenna(k, m, Vector3(0, 3.25, -2.0), 0.3)
 	antenna(k, m, Vector3(0, 0.8, 0.5), 0.26, true)
 	k._add(m, Res.sphere(0.2, 12), "glass", null, Vector3(0, 1.62, -8.6), Vector3.ZERO, Vector3(1, 0.8, 1))

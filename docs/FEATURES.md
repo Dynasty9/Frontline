@@ -548,7 +548,8 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   jointed bedrock shelves, thermal weathering and seeded rainfall erosion shape the relief. Roads, bridges, starting bases and settlements
   occupy graded valley corridors; forests stay below the snow line and off steep faces.
 - Distant scenery composes surveyed Mont Blanc, Matterhorn and Jungfrau ridge shapes into seeded fictional mountain groups and low passes, with floating-point heights and a finer indexed mesh at Medium/Far detail. Coastal scenery continues into an irregular shoreline and a coarse ocean surface beyond the detailed battlefield water. Boundary rivers extend into curved scenery pools with matching beds and banks; these extensions leave authoritative water shapes and navigation unchanged. Reusable cliff forms have uneven shoulders and irregular drainage cuts before erosion.
-- Distant mountain groups lose contrast into sky-coloured haze while nearby ground retains its detail.
+- Coastal scenery continues through a broad water channel to outer islands, with gentler foothills and a coarse ocean horizon beyond the terrain. The channel is entirely outside the playable boundary; inland maps keep their land backdrop. Shared shoreline masks, seed phase and beach/seabed profiles keep scenery ground and water continuous across the playable edge.
+- Distant mountain groups lose contrast into sky-coloured haze while nearby ground retains its detail. Localized 3D cloud banks and thin trailing ridge mist sit beyond the playable boundary, with shaded bases, soft edges and lighting matched to the weather. A baked 64³ R8 noise volume avoids runtime generation; scene-depth termination prevents clouds behind mountains showing through them. Stronger aerial perspective is masked to distant scenery, preserving foreground contrast. Mountain clouds have independent Off/Low/Medium/High/Ultra settings (8/12/20/32 samples), work in Compatibility, and stop drifting with reduced motion. They do not affect visibility rules.
 - Rock beds catch light along their ledges instead of appearing only as painted colour bands.
 - Broad cliff fractures and smaller joint patterns break up recognisable repeated rock tiles.
 - Sheltered lower slopes collect pale loose stone while exposed walls retain darker bedrock.
@@ -572,7 +573,10 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   and leaf litter. Five material layers share two texture arrays with independent mipmaps, preserving
   the browser sampler budget. Detailed snow and litter follow the existing terrain-detail setting;
   height-based transitions let rock emerge through moss and snow. Reusable buttress, bowl and saddle
-  forms shape standard mountains before erosion, with small conifer stands along suitable foothills.
+  forms shape standard foothills before erosion, with small conifer stands along suitable slopes.
+  Generated skirmishes cap the base relief at 80 metres, opening the playable valley; tall massifs
+  rise only in scenery beyond the water buffer. Snow stays above the low foothills, with matching
+  terrain and forest masks and expanded culling bounds for the distant range.
   Warped mineral bands, dry grass patches and broken scree vary the surfaces at several scales. Mixed
   lowland trees give way to conifers and an irregular tree line; passable scrub and small stones
   cluster by altitude and slope below the snowy summits. Sheltered bowls retain greener soil and scrub;
@@ -1216,7 +1220,7 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   `vehicle_glazing.gd`): running and spare tyres share profiles; tank and ED-1 track shoes follow each
   vehicle's own outline. Frames, struts, rails and window seals use common builders. Clear panes require
   an open cab; armoured panes stay opaque. Parked civilian cars have fitted windscreens, divided side
-  windows and mirrors. See [the component guide](vehicle-components.md), [construction inventory](../tools/vehicles/README.md), and [30-technique review](vehicle-construction-review.md).
+  windows and mirrors. See [the component guide](vehicle-components.md), [construction inventory](../tools/vehicles/README.md), and [30-technique review](vehicle-construction-review.md), and [shared equipment detail pass](vehicle-detail-40-review.md).
 - Explosions are layered GPU particles: a flash and light burst, a rolling fireball that cools from the edges in
   until it's dark smoke, a lit smoke column that drifts with the wind, a dirt plume, sparks and debris that
   bounce on the ground, a rolling dust ring, a faint heat-shimmer shockwave and a scorch mark. Heavy rounds

@@ -171,6 +171,26 @@ func _cell(grid: GridContainer, kind: String, size: Vector2i) -> void:
 			"tail_lights": VmCore._taillight(k, k.root, Vector3.ZERO)
 			"lifting_eye": VmCore._eye(k, k.root, Vector3.ZERO)
 			"rectangular_lights": VmCsat._headlight(k, k.root, Vector3.ZERO)
+			"storage": VehicleEquipment.storage(k, k.root, Vector3.ZERO, Vector3(0.8, 0.36, 0.45), "paint", Color(0.3, 0.33, 0.22))
+			"winch": VehicleEquipment.winch(k, k.root, Vector3.ZERO, Vector3(0.7, 0.3, 0.3))
+			"sensor_ball": VehicleEquipment.sensor(k, k.root, Vector3.ZERO, Vector3.ONE * 0.4, "paint", Color(0.3, 0.33, 0.22), "ball")
+			"sensor": VehicleEquipment.sensor(k, k.root, Vector3.ZERO, Vector3(0.5, 0.4, 0.4), "paint", Color(0.3, 0.33, 0.22))
+			"vessel": VehicleEquipment.vessel(k, k.root, Vector3.ZERO, Vector3(1.4, 1.2, 2.5), [-0.8, 0.8], "paint", Color(0.3, 0.33, 0.22))
+			"skirt": VehicleEquipment.skirt(k, k.root, Vector3.ZERO, Vector3(0.08, 0.6, 0.8), -1, "paint", Color(0.3, 0.33, 0.22))
+			"door": VehicleDoors.rectangle(k, k.root, Vector3.ZERO, Vector2(0.7, 0.9), Vector3(0, PI, 0), "paint", Color(0.3, 0.33, 0.22))
+			"seat": VehicleCab.seat(k, k.root, Vector3.ZERO)
+			"pallet": VehicleCargo.pallet(k, k.root, Vector3.ZERO, Vector2(1, 0.8), 0.15)
+			"restraints":
+				k._box(k.root, Vector3(0.7, 0.6, 0.9), Vector3(0, 0.3, 0), "wood")
+				VehicleCargo.restraints(k, k.root, Vector3.ZERO, Vector3(0.7, 0.6, 0.9), [-0.3, 0.3])
+			"frame": VehicleRunningGear.frame(k, k.root, Vector3.ZERO, 0.45, 2.0, Vector2(0.12, 0.2), [-0.7, 0, 0.7])
+			"axle": VehicleRunningGear.axle(k, k.root, Vector3.ZERO, 1.4, 0.1, 0.45)
+			"gear": VehicleAircraft.gear_leg(k, k.root, Vector3(0, 0.5, 0), Vector3(0, -0.5, 0), 0.08)
+			"pylon": VehicleAircraft.hardpoint(k, k.root, Vector3.ZERO, 0.8, 0.35, Color(0.35, 0.38, 0.4))
+			"rocket_pod": VehicleAircraft.rocket_pod(k, k.root, Vector3.ZERO, 0.25, 1.2)
+			"mooring": VehicleMarine.mooring(k, k.root, Vector3.ZERO, Vector3(0.55, 0.2, 0.18))
+			"mirror": VehicleFittings.mirror(k, k.root, Vector3.ZERO, Vector2(0.24, 0.42), PI, [Vector3(0.35, 0.14, 0), Vector3(0.35, -0.14, 0)])
+			"exhaust": VehicleFittings.exhaust(k, k.root, Vector3(0, -0.6, 0), Vector3.UP, 1.2, 0.12)
 	elif fittings:
 		k = VehicleModels.new()
 		k.root = Node3D.new()
@@ -210,10 +230,15 @@ func _cell(grid: GridContainer, kind: String, size: Vector2i) -> void:
 		center = k.rotor.global_position - offset
 	if body_focus.is_finite():
 		center = body_focus
+	var part_sizes := {"jerrycan": 0.9, "ammo_can": 0.6, "storage": 1.2, "winch": 1.0, "sensor": 0.9, "sensor_ball": 0.9, "vessel": 3.6, "skirt": 1.3, "door": 1.5, "seat": 1.0, "pallet": 1.5, "restraints": 1.5, "frame": 2.8, "axle": 2.0, "gear": 1.5, "pylon": 1.3, "rocket_pod": 1.8, "mooring": 0.9, "mirror": 0.9, "exhaust": 1.8, "hatch": 1.0}
+	if construction and part_sizes.has(kind) and not body_focus.is_finite():
+		center = Vector3.ZERO
 	var camera := Camera3D.new()
 	stage.add_child(camera)
 	camera.projection = Camera3D.PROJECTION_ORTHOGONAL
 	camera.size = camera_size if camera_size > 0.0 else maxf(bounds.size.length() * (1.55 if fittings else 0.78), 1.0)
+	if construction and part_sizes.has(kind) and camera_size <= 0:
+		camera.size = part_sizes[kind]
 	camera.far = 1000
 	camera.position = center + view_direction.normalized() * bounds.size.length() * 2.0
 	camera.look_at(center + offset)

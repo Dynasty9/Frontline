@@ -330,9 +330,15 @@ def notes(version: str) -> str:
     out += [
         "## Get it",
         "",
-        f"The game updates itself. To install it, download **Frontline-windows.zip**, **Frontline-macos.zip** or"
-        f" **Frontline-linux.zip** below, or from [the website]({WEBSITE}/#download), unzip it anywhere and run it"
-        f" (on a Mac, move Frontline to Applications first).",
+        f"Download the [Windows installer](https://github.com/{REPO}/releases/download/{r['tag']}/Frontline-windows-setup.exe)"
+        f" or [Mac disk image](https://github.com/{REPO}/releases/download/{r['tag']}/Frontline-macos.dmg)."
+        " On Mac, drag Frontline into a writable Applications folder before opening it; don't run it from the disk image.",
+        "",
+        "Installed copies keep themselves up to date. The game downloads and verifies the update, then offers a restart;"
+        " you don't need to run the installer again.",
+        "",
+        f"On Linux, download [Frontline-linux.zip](https://github.com/{REPO}/releases/download/{r['tag']}/Frontline-linux.zip)"
+        f" and unzip it. Windows and Mac ZIPs remain available below for portable installs. [All downloads]({WEBSITE}/play#download).",
         "",
         f"The whole history, with pictures: [Changelog]({WEBSITE}/changelog/#{r['tag']}).",
     ]

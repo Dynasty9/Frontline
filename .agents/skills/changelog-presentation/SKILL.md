@@ -76,7 +76,9 @@ If a historical medium cannot be reproduced, use its archived still with an
 explicit evidence limitation rather than synthesizing a purported demonstration.
 
 For each entry, register the medium, stage, evidence and rationale in
-`tools/showcase/catalog.json`. The presentation audit catches missing assets and
+`tools/showcase/entries/<entry-slug>.json` (one record per file, not an array).
+Do not append new records to the legacy `tools/showcase/catalog.json`: concurrent
+PRs conflict there. See `tools/showcase/entries/README.md` for the format. The presentation audit catches missing assets and
 unreviewed entries. Existing release content is regenerated only when requested;
 ordinary game changes add an unreleased entry, without rewriting release metadata.
 
