@@ -7,6 +7,11 @@ kind = "improved"
 file = "spray.webm"
 poster = "spray.jpg"
 caption = "The same harbour pass in both views. On the left the plumes drift out of frame. On the right their tips break apart and fall back around the ship."
+
+[[videos]]
+file = "wake.webm"
+poster = "wake.jpg"
+caption = "Watch the stern of the boat crossing the bow. The earlier wake on the left leaves two thin trails. On the right the motors turn up a broadening patch of foam."
 +++
 
 The slower spray stays near the surface while the faster sheets rise above it. Watch the water around the patrol ship as the sheets come back down.
