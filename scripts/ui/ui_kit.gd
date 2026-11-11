@@ -52,6 +52,11 @@ const INTEL := Color(0.5, 0.88, 1.0)
 const ROW_H := 26.0  # a row in the HUD's lists (34 to 36 in menus and dialogs)
 const TICK_ARM := 7.0  # how far a corner tick runs along each edge
 const TICK_GAP := 6.0  # how far ticks stand off what they mark
+## The dark outline round text on the battlefield: wide and dark enough that a
+## small label still reads over sunlit grass, sand or snow, which a lighter
+## one let wash out (on ink it barely shows).
+const OUTLINE_W := 4
+const OUTLINE_A := 0.72
 
 static var _fonts := {}
 static var _theme: Theme
@@ -668,14 +673,14 @@ static func rating_col(v: float) -> Color:
 ## battlefield needs it; on ink it's barely there).
 static func text(ci: CanvasItem, p: Vector2, s: String, size := 13, col := TEXT, weight := 400, align := HORIZONTAL_ALIGNMENT_LEFT, width := -1.0) -> void:
 	var f := font(weight)
-	ci.draw_string_outline(f, p, s, align, width, size, 3, Color(0, 0, 0, 0.5 * col.a))
+	ci.draw_string_outline(f, p, s, align, width, size, OUTLINE_W, Color(0, 0, 0, OUTLINE_A * col.a))
 	ci.draw_string(f, p, s, align, width, size, col)
 
 
 ## The same in a given font (cond() for capitals, mono() for codes).
 static func text_f(ci: CanvasItem, f: Font, p: Vector2, s: String, size := 12, col := TEXT, align := HORIZONTAL_ALIGNMENT_LEFT, width := -1.0, outline := true) -> void:
 	if outline:
-		ci.draw_string_outline(f, p, s, align, width, size, 3, Color(0, 0, 0, 0.5 * col.a))
+		ci.draw_string_outline(f, p, s, align, width, size, OUTLINE_W, Color(0, 0, 0, OUTLINE_A * col.a))
 	ci.draw_string(f, p, s, align, width, size, col)
 
 
