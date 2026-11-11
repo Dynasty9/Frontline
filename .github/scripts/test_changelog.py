@@ -67,6 +67,16 @@ class Videos(unittest.TestCase):
             self.assertIn(f"[Watch: Flames spread.]({changelog.WEBSITE}/changelog/#v9.9.9)", before)
             self.assertNotIn("/unreleased/", text)
 
+    def test_release_notes_lead_with_installers_and_explain_updates(self):
+        with patch.object(changelog, "pr_of", return_value=None):
+            changelog.release("9.9.9")
+        notes = changelog.notes("9.9.9").split("## Get it", 1)[1]
+        self.assertIn("/v9.9.9/Frontline-windows-setup.exe)", notes)
+        self.assertIn("/v9.9.9/Frontline-macos.dmg)", notes)
+        self.assertIn("writable Applications folder", notes)
+        self.assertIn("don't need to run the installer again", notes)
+        self.assertIn("/v9.9.9/Frontline-linux.zip)", notes)
+
     def test_overview_precedes_expandable_detail_in_both_publications(self):
         self.write(self.media + '\n[[screenshots]]\nfile = "poster.jpg"\ncaption = "Source still."\n')
         with patch.object(changelog, "pr_of", return_value=None):

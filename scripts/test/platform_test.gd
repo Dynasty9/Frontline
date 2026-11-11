@@ -34,6 +34,11 @@ static func run() -> void:
 # --- releases --------------------------------------------------------------------------------
 
 static func _releases() -> void:
+	for p in ["windows", "linux", "macos"]:
+		_check("%s installs a newer release" % p, Updater.needs_update("1.0.14", "1.0.13", p, true))
+		_check("%s never downgrades for a missing library" % p, not Updater.needs_update("1.0.12", "1.0.13", p, true))
+		_check("%s repairs only a library it ships" % p, Updater.needs_update("1.0.13", "1.0.13", p, true) == (p != "macos"))
+		_check("%s leaves a healthy current install alone" % p, not Updater.needs_update("1.0.13", "1.0.13", p, false))
 	var ours := {"version": "9.9.9", "assets": {}}
 	var github := {"tag_name": "v9.9.9", "assets": []}
 	for p in ["windows", "macos", "linux"]:

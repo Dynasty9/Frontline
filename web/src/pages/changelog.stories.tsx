@@ -24,7 +24,7 @@ export const Default: Story = {
     const canvas = within(canvasElement)
     await canvas.findByRole("heading", { level: 1, name: "What's changed" })
     const cards = canvas.getAllByRole("heading", { level: 2 })
-    await expect(cards.map((h) => h.textContent)).toEqual(releases.map((r) => r.name))
+    await expect(cards.map((h) => h.textContent)).toEqual([releases[0].name])
     // only the newest is marked as the latest
     await expect(canvas.getAllByText("Latest")).toHaveLength(1)
   },
@@ -51,13 +51,42 @@ export const PhoneNavigation: Story = {
   globals: { viewport: { value: "mobile1", isRotated: false } },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    const trigger = await canvas.findByRole("button", { name: "Jump to a release" })
+    const trigger = await canvas.findByRole("button", { name: /Choose a release/ })
     await userEvent.click(trigger)
     const menu = await screen.findByRole("menu")
     const first = within(menu).getAllByRole("menuitem")[0]
-    await expect(first).toHaveAttribute("href", `#${releases[0].tag}`)
+    await expect(first).toHaveAttribute("href", `/changelog#${releases[0].tag}`)
     await userEvent.keyboard("{Escape}")
     await waitFor(() => expect(trigger).toHaveFocus())
     await expect(canvasElement.scrollWidth).toBeLessThanOrEqual(document.documentElement.clientWidth)
+  },
+}
+
+/** Archive selection mounts only that release, and entry links open their own detail. */
+export const OlderEntry: Story = {
+  args: { path: `/changelog/#${releases[1].tag}-${releases[1].entries[0].slug}` },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await expect(await canvas.findByRole("heading", { level: 2, name: releases[1].name })).toBeVisible()
+    const entry = canvasElement.querySelector(`details[id="${releases[1].tag}-${releases[1].entries[0].slug}"]`)!
+    await waitFor(() => expect(entry).toHaveAttribute("open"))
+    await expect(canvas.queryByRole("heading", { level: 2, name: releases[0].name })).toBeNull()
+  },
+}
+
+export const InvalidLink: Story = {
+  args: { path: "/changelog/#%E0%A4%A" },
+  play: async ({ canvasElement }) => {
+    await expect(await within(canvasElement).findByRole("heading", { level: 2, name: releases[0].name })).toBeVisible()
+  },
+}
+
+export const SwitchRelease: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    const archive = within(await canvas.findByRole("navigation", { name: "Releases" }))
+    await userEvent.click(archive.getByRole("link", { name: new RegExp(releases[1].tag.replaceAll(".", "\\.")) }))
+    await expect(await canvas.findByRole("heading", { level: 2, name: releases[1].name })).toBeVisible()
+    await expect(canvas.getAllByRole("heading", { level: 2 })).toHaveLength(1)
   },
 }

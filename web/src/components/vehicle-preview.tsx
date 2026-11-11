@@ -12,6 +12,8 @@ import type { Vehicle } from "@/lib/vehicles"
 
 export function VehiclePreview({ vehicle, available }: { vehicle: Vehicle; available: boolean | null }) {
   const frame = useRef<HTMLIFrameElement>(null)
+  const statusObserver = useRef<MutationObserver | null>(null)
+  const [startupError, setStartupError] = useState<string | null>(null)
   const [initialId] = useState(vehicle.id)
   const [loaded, setLoaded] = useState(false)
   const [shownId, setShownId] = useState<string | null>(null)
@@ -19,10 +21,24 @@ export function VehiclePreview({ vehicle, available }: { vehicle: Vehicle; avail
   const [demoReady, setDemoReady] = useState(false)
   const [demoEnded, setDemoEnded] = useState(false)
   const demo = demoId === vehicle.id
-  const ready = demo ? demoReady : shownId === vehicle.id
+  const ready = !startupError && (demo ? demoReady : shownId === vehicle.id)
   const [failedId, setFailedId] = useState<string | null>(null)
-  const failed = failedId === vehicle.id && !ready
+  const failed = !!startupError || (failedId === vehicle.id && !ready)
   const [attempt, setAttempt] = useState(0)
+  useEffect(() => () => statusObserver.current?.disconnect(), [])
+  const readViewerStatus = () => {
+    statusObserver.current?.disconnect()
+    const doc = frame.current?.contentDocument
+    if (!doc?.body) return
+    // Godot's same-origin export reports startup failures inside its hidden loading overlay.
+    const read = () => {
+      const error = doc.getElementById("status-notice")?.textContent?.trim()
+      if (error) setStartupError(error)
+    }
+    read()
+    statusObserver.current = new MutationObserver(read)
+    statusObserver.current.observe(doc.body, { childList: true, characterData: true, subtree: true })
+  }
   useEffect(() => {
     if (!available) return
     const onMessage = (event: MessageEvent) => {
@@ -74,6 +90,7 @@ export function VehiclePreview({ vehicle, available }: { vehicle: Vehicle; avail
           <iframe
             key={attempt}
             ref={frame}
+            onLoad={readViewerStatus}
             title={`3D model of ${vehicle.name}`}
             // The bundled model stage needs same-origin access to its own assets.
             // oxlint-disable-next-line react/iframe-missing-sandbox
@@ -88,21 +105,27 @@ export function VehiclePreview({ vehicle, available }: { vehicle: Vehicle; avail
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 p-8 text-center">
             <span aria-hidden="true" className="h-10 w-px bg-primary" />
             <p className="font-mono text-xs tracking-widest text-muted-foreground uppercase" role="alert">
-              {failed
-                ? "The model is taking longer than expected."
-                : available === null
-                  ? "Checking 3D preview…"
-                  : available
-                    ? demo
-                      ? "Preparing the training range…"
-                      : "Preparing your vehicle…"
-                    : "3D preview unavailable"}
+              {startupError
+                ? "3D preview couldn't start"
+                : failed
+                  ? "The model is taking longer than expected."
+                  : available === null
+                    ? "Checking 3D preview…"
+                    : available
+                      ? demo
+                        ? "Preparing the training range…"
+                        : "Preparing your vehicle…"
+                      : "3D preview unavailable"}
             </p>
             {(available || failed) && (
               <p className="max-w-xs text-xs leading-relaxed text-muted-foreground">
-                {demo
-                  ? "Resetting the aircraft and range targets."
-                  : "The first model downloads the 3D assets. A WebGL 2 browser is required."}
+                {startupError
+                  ? /webgl/i.test(startupError)
+                    ? "This preview needs WebGL 2. Enable graphics acceleration in your browser, or try another browser. You can still browse the vehicle details below."
+                    : "The 3D viewer couldn't load. Check your connection and retry. You can still browse the vehicle details below."
+                  : demo
+                    ? "Resetting the aircraft and range targets."
+                    : "The first model downloads the 3D assets. A WebGL 2 browser is required."}
               </p>
             )}
             {failed && (
@@ -110,6 +133,7 @@ export function VehiclePreview({ vehicle, available }: { vehicle: Vehicle; avail
                 variant="outline"
                 onClick={() => {
                   setFailedId(null)
+                  setStartupError(null)
                   setLoaded(false)
                   setShownId(null)
                   setDemoId(null)
@@ -131,6 +155,12 @@ export function VehiclePreview({ vehicle, available }: { vehicle: Vehicle; avail
           </output>
         )}
       </div>
+      {startupError && (
+        <details className="border-t py-3 text-xs text-muted-foreground">
+          <summary className="cursor-pointer">Technical details</summary>
+          <p className="mt-2 break-words whitespace-pre-wrap">{startupError}</p>
+        </details>
+      )}
       <div className="flex flex-wrap items-center justify-between gap-3 border-y px-4 py-3">
         <span className="font-mono text-[10px] tracking-wider text-muted-foreground uppercase">
           {demo ? "In-game flight, weapons & impacts" : "Drag to rotate · Scroll to zoom"}
