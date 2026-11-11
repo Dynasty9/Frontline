@@ -109,6 +109,9 @@ func generate() -> void:
 	# Campaign routes retain the geology and woodland density they were authored against.
 	world.terrain.landform.generate(int(world.settings.get("seed", 1)), world.roads, world.water, sites, String(world.settings.get("mission", "")) == "")
 	world.terrain.install_landform(world.terrain.landform.heights)
+	# The beds use absolute heights. Carve them into the finished ground, as a joining peer does.
+	world.water.carve()
+	world.nav.build_boat_grid(world.water)
 	world._rebuild_roads()
 	await world._breathe("Laying out the town", 0.38)
 	tg.streetscape()
@@ -379,8 +382,6 @@ func _roads_meet_water(tg) -> void:
 		var d := Defs.flat(b - a)
 		_spawn("bridge", (a + b) * 0.5, Defs.yaw_of(d), -1, {"size": Vector3(float(br[2]) * 2.0, 0, d.length()), "variant": 1 if br.size() > 3 and br[3] == "quay" else 0})
 		_place([Vector2((a.x + b.x) * 0.5, (a.z + b.z) * 0.5), Vector2(float(br[2]) + 1.0, d.length() * 0.5 + 1.0), Defs.yaw_of(d)])
-	w.carve()
-	world.nav.build_boat_grid(w)
 	if OS.has_environment("FL_DEBUG_WATER"):
 		print("WATER coast x=%.0f river x0=%.0f fords=%s ponds=%s bridges=%s" % [float(w.coast.x), (w.rivers[0].pts as PackedVector3Array)[60].x,
 			str(w.fords), str(w.ponds.map(func(p): return p.c)), str(w.bridges.map(func(b): return [(b[0] + b[1]) * 0.5, b[3]]))])

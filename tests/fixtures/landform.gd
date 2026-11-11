@@ -251,6 +251,14 @@ func _ready() -> void:
 	for x in range(-100, 101, 4):
 		assert(is_zero_approx(corridor.height(Vector3(x, 0, 0))), "Roads have a continuous graded corridor")
 	assert(corridor.fits(Vector3(0, 0, 60), Vector2(10, 10), 0.0), "Settlements retain level building ground")
+	var coastal_water := WaterMap.new(world)
+	coastal_water.coast = {"x": 40.0, "s": 3.0}
+	var coast := Landform.new(256)
+	coast.generate(3, [], coastal_water, [], false)
+	for z in range(-100, 101, 4):
+		var shore := coastal_water.coast_x(z)
+		for x in range(ceili(shore / 4.0) * 4 + 4, 124, 4):
+			assert(is_zero_approx(coast.height(Vector3(x, 0, z))), "Sediment must not lift the landing boats' seabed")
 	# A known ridge separates two level firing positions, with a gentle west ramp.
 	var heights := PackedFloat32Array()
 	heights.resize(17 * 17)

@@ -110,7 +110,9 @@ func generate(seed_value: int, roads: Array, water, settlements: Array, fracture
 			var coast := 1.0 if water.coast.is_empty() else smoothstep(0.0, 85.0, water.coast_x(wz) - wx - 18.0)
 			# Blend the boundary into the distant ground ring without a vertical seam.
 			var edge := smoothstep(0.0, 36.0, half - maxf(absf(wx), absf(wz)))
-			heights[i] *= reserve[i] * coast * edge
+			# Keep the beach graded when runoff deposits sediment at the foot of the hills.
+			reserve[i] *= coast
+			heights[i] *= reserve[i] * edge
 	# Rain cuts branching gullies and deposits scree at their feet. Do not clamp
 	# every face to one angle: that turns ridges into artificial pyramids.
 	_erode(seed_value + 1093)
