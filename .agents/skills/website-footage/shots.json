@@ -1,11 +1,17 @@
 {
   "common_args": ["--nohud", "--perf=0", "--preset=ultra"],
   "takes": {
-    "reel-tracks": {
-      "frames": 420,
-      "args": ["--preset=high", "--seed=3", "--set=volume:0.8,vol_effects:0.85,vol_music:0,battle_music:false,vol_ambience:0.28,vol_ui:0,mute_bg:false,wildlife:0,edge_pan:false", "--scenario=tank", "--play", "--team=0", "--focus-vehicle=tank", "--vehicle-view=Tracks"],
-      "shows": ["tracks"],
-      "about": "A moving track, road wheels and ground from the tank mount."
+    "convoy-hemtt": {
+      "frames": 150,
+      "args": ["--preset=high", "--seed=3", "--set=volume:0.8,vol_music:0,battle_music:false,vol_effects:0.85,vol_ambience:0.28,vol_ui:0,mute_bg:false,edge_pan:false,fov:35", "--scenario=roster", "--play", "--team=0", "--focus=0,0", "--focus-vehicle=hemtt", "--zoom=19", "--pitch=-15", "--pan=0,-3", "--cam-yaw=1.85", "--mood=overcast"],
+      "shows": ["hemtt", "vehicle fittings"],
+      "about": "A low side view holds the HEMTT Transport as a second truck crosses the foreground."
+    },
+    "rollby-hunter": {
+      "frames": 150,
+      "args": ["--preset=high", "--seed=3", "--set=volume:0.8,vol_music:0,battle_music:false,vol_effects:0.85,vol_ambience:0.28,vol_ui:0,mute_bg:false,edge_pan:false,fov:35", "--scenario=roster", "--play", "--team=0", "--focus=0,0", "--focus-vehicle=hunter", "--zoom=14", "--pitch=-28", "--pan=0,-6", "--cam-yaw=2.62", "--mood=day"],
+      "shows": ["hunter", "vehicle fittings"],
+      "about": "The Hunter turns toward the camera, bringing its bonnet and recessed grille into view."
     },
     "reel-rescue": {
       "frames": 390,
@@ -405,9 +411,10 @@
       "fade_out": 12,
       "grade": {"contrast": 1.1, "saturation": 1.14},
       "cuts": [
-        {"take": "reel-tracks", "from": 1.55, "to": 4.15, "gain_db": -6, "caption": "[Tracks rumble underneath a burst of gunfire]"},
+        {"take": "convoy-hemtt", "from": 1.2, "to": 4.42, "gain_db": -4, "caption": "[Truck engines rumble under distant gunfire]"},
         {"take": "reel-pickup", "from": 0.85, "to": 3.43, "gain_db": 15, "caption": "[Helicopter rotors beat as the aircraft lifts]"},
         {"take": "reel-rescue", "from": 3.2, "to": 6.85, "gain_db": 4, "caption": "[Running footsteps and a sudden blast]"},
+        {"take": "rollby-hunter", "from": 1.12, "to": 3.3, "gain_db": -4, "caption": "[An engine revs over short bursts of gunfire]"},
         {"take": "reel-smoke", "from": 10.45, "to": 14.5, "gain_db": 6, "caption": "[Rifles fire in short bursts]"},
         {"take": "reel-gun", "from": 12.35, "to": 15.72, "gain_db": -5, "caption": "[Tank engine, gunfire and a heavy impact]"},
         {"take": "reel-yard-run", "from": 6.62, "to": 10.5, "gain_db": 3, "caption": "[An aircraft passes and impacts roll across the yard]"},
@@ -598,8 +605,8 @@
       "use": "Mission card: Kingpin"
     },
     "reel": {
-      "take": "reel-gun",
-      "at": 14.37,
+      "take": "convoy-hemtt",
+      "at": 2.55,
       "use": "The reel's poster (overrides its first frame)"
     }
   }
