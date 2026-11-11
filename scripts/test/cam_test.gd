@@ -257,9 +257,14 @@ func _run() -> void:
 	truck._last_pos = truck.position - Vector3.RIGHT
 	truck._view_process(1.0 / 30.0)
 	_check("moving wheels on the ground emit dust", truck.dust != null and Vfx.is_emitting(truck.dust))
-	truck.position += Vector3(1, 6, 0)
+	var wheel_angle: float = truck.wheels[0].rotation.x
+	truck.position += Defs.dir_of(truck.rotation.y) * 0.35 + Vector3.UP * 6.0
 	truck._view_process(1.0 / 30.0)
 	_check("a lifted vehicle stops shedding wheel dust", truck.dust != null and not Vfx.is_emitting(truck.dust))
+	_check("carried wheels stay still", is_equal_approx(truck.wheels[0].rotation.x, wheel_angle))
+	for _i in 45:
+		truck._suspension(1.0 / 30.0, false)
+	_check("airborne suspension settles without following the ground below", absf(truck._sus.z) < 0.01)
 	truck.hide()
 	cam._apply()
 	_check("a hidden subject releases the camera", cam.mount_label == &"")
@@ -312,6 +317,14 @@ func _run() -> void:
 					break
 			_check("periscope frames the turret view", cam.mount_label == &"Periscope" and cam._eyepiece.visible and cam.cam.global_transform.is_equal_approx(cam.mount_marker.global_transform.orthonormalized()))
 			world.input._key(escape)
+			if fixture[0] == "tank":
+				var belt = vehicle._vm.belts[0]
+				var phase: float = belt.phase
+				vehicle.position.y += 8.0
+				vehicle._belt_origin = (vehicle.global_transform * vehicle.ip_offset()).origin + Vector3(0, 0, 0.45)
+				vehicle.always_animate_tracks = true
+				vehicle._view_process(1.0 / 30.0)
+				_check("airborne tracks hold their phase and leave no prints", is_equal_approx(belt.phase, phase) and belt.printed_end == -1)
 			_check("leaving the periscope restores the commander lens", not cam._eyepiece.visible and cam.cam.fov == float(Settings.get_v("fov")))
 			world.input.clear_selection()
 		world.despawn(vehicle)

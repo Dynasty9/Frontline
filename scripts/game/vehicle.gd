@@ -2297,7 +2297,7 @@ func recoil(dir: Vector3) -> void:
 
 ## Hull on springs: it squats when it pulls away, dips its nose when it stops,
 ## leans out of turns, pitches over trenches and craters and rocks back to level.
-func _suspension(dt: float) -> void:
+func _suspension(dt: float, on_ground: bool) -> void:
 	if dt <= 0.0:
 		return
 	var fwd := Defs.dir_of(rotation.y)
@@ -2311,21 +2311,22 @@ func _suspension(dt: float) -> void:
 	var heavy := weight() >= 2 or (weight() == 1 and is_tracked())
 	var kp := 0.011 if heavy else 0.02
 	var tgt := Vector3(clampf(acc.dot(fwd) * kp, -0.08, 0.08), clampf(acc.dot(side) * kp * 0.9, -0.07, 0.07), 0.0)
-	var hs := _hull_size()
-	var hf := _ground_h(position + fwd * hs.z * 0.38)
-	var hr := _ground_h(position - fwd * hs.z * 0.38)
-	tgt.x += atan2(hf - hr, hs.z * 0.76)
-	var hl := _ground_h(position - side * hs.x * 0.4)
-	var hh := _ground_h(position + side * hs.x * 0.4)
-	tgt.y += atan2(hh - hl, hs.x * 0.8)
-	tgt.z += (hf + hr) * 0.5
+	if on_ground:
+		var hs := _hull_size()
+		var hf := _ground_h(position + fwd * hs.z * 0.38)
+		var hr := _ground_h(position - fwd * hs.z * 0.38)
+		tgt.x += atan2(hf - hr, hs.z * 0.76)
+		var hl := _ground_h(position - side * hs.x * 0.4)
+		var hh := _ground_h(position + side * hs.x * 0.4)
+		tgt.y += atan2(hh - hl, hs.x * 0.8)
+		tgt.z += (hf + hr) * 0.5
 	var spring := 55.0 if heavy else 80.0
 	var damp := 8.0 if heavy else 6.5
 	_sus_v += ((tgt - _sus) * spring - _sus_v * damp) * dt
 	_sus += _sus_v * dt
 	_sus = Vector3(clampf(_sus.x, -0.5, 0.5), clampf(_sus.y, -0.5, 0.5), clampf(_sus.z, -0.6, 0.5))
 	var rumble := 0.0
-	if _vel_s.length() > 1.0:
+	if on_ground and _vel_s.length() > 1.0:
 		var tt := Time.get_ticks_msec() / 1000.0
 		rumble = (sin(tt * 31.0 + eid) * 0.5 + sin(tt * 47.0) * 0.5) * (0.004 if heavy else 0.006) * minf(_vel_s.length() / 6.0, 1.0)
 	var hit := impact_response.step(dt, 9.0 if heavy else 12.0)
@@ -2631,15 +2632,18 @@ func _view_process(dt: float) -> void:
 		var ss := mv2.dot(Defs.dir_of(rotation.y).cross(Vector3.UP)) / dt
 		model.rotation.x = lerpf(model.rotation.x, clampf(-fs * 0.012, -0.3, 0.3), 1.0 - exp(-dt * 3.0))
 		model.rotation.z = lerpf(model.rotation.z, clampf(ss * 0.012, -0.3, 0.3), 1.0 - exp(-dt * 3.0))
+	# The ground simulation puts the hull origin on the landform, even over a crater.
+	# A helicopter carries that origin clear of the landscape on both peers.
+	var on_ground := not rotor and not flight and not is_boat() and position.y <= world.terrain.landform.height(position) + 0.35
 	if dust and dt > 0.0:
 		var spd2 := Defs.flat(position - _last_pos).length() / dt
-		var want_dust := spd2 > 2.0 and position.y <= world.ground_y(position) + 0.35
+		var want_dust := on_ground and spd2 > 2.0 and position.y <= world.ground_y(position) + 0.35
 		if want_dust != Vfx.is_emitting(dust):
 			Vfx.set_emitting(dust, want_dust)
 	if is_boat() and model:
 		_boat_view(dt)
 	elif not rotor and not flight and model:
-		_suspension(dt)
+		_suspension(dt, on_ground)
 	if _vm and not _vm.belts.is_empty():
 		# Use the drawn hull: the host can render several frames per simulation tick.
 		var drawn := global_transform * ip_offset() if srv else global_transform
@@ -2650,7 +2654,7 @@ func _view_process(dt: float) -> void:
 		var distance := signf(forward) * Vector2(forward, delta_pos.y).length()
 		var camera := get_viewport().get_camera_3d()
 		var nearby := visible and (not camera or camera.global_position.distance_squared_to(drawn.origin) < 100.0 * 100.0)
-		var continuous := delta_pos.length_squared() < 4.0
+		var continuous := on_ground and delta_pos.length_squared() < 4.0
 		for belt in _vm.belts:
 			var step: float = distance + dyaw * belt.position.x if continuous else 0.0
 			if nearby or always_animate_tracks:
@@ -2672,7 +2676,7 @@ func _view_process(dt: float) -> void:
 				Vfx.set_emitting(engine_exhaust, running)
 		_belt_yaw = yaw
 		_belt_origin = drawn.origin
-	elif not wheels.is_empty():
+	elif on_ground and not wheels.is_empty():
 		var mv := position - _last_pos
 		var fwd := Defs.dir_of(rotation.y)
 		var spd := mv.dot(fwd)
@@ -2736,7 +2740,7 @@ func _sling_view() -> void:
 	var body := load_vehicle.model if load_vehicle.model else load_vehicle
 	var relative := global_transform.affine_inverse() * body.global_transform
 	var size := load_vehicle._hull_size()
-	var hook := relative * Vector3(0, size.y + 2.4, 0)
+	var hook := to_local(body.global_position + Vector3.UP * (size.y + 2.4))
 	_sling_span(0, model.transform * _vm.sling_eye, hook, 0.055, 0.055)
 	for i in 4:
 		var x := size.x * (0.37 if (i & 1) else -0.37)

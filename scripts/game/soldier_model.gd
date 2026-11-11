@@ -269,7 +269,8 @@ func build(utype: String, team: int, seed: int) -> void:
 	for j in [root, hips, torso, head, tails, thigh_l, shin_l, thigh_r, shin_r, arm_l, arm_r, forearm_l, forearm_r, gun, pistol, tube, back_item, stretcher]:
 		if j:
 			Mats.merge_static(j, [], false, false, true)
-	if is_inside_tree() and get_parent() is Soldier and utype == "rifleman" and not InfantryAssets.gameplay_model.is_empty():
+	var use_skin := utype == "rifleman" or (utype == "mortar_gunner" and InfantryAssets.gameplay_model == InfantryAssets.SWAT)
+	if use_skin and is_inside_tree() and get_parent() is Soldier and not InfantryAssets.gameplay_model.is_empty():
 		skinned = SkinnedRifleman.new()
 		skinned.model_asset = InfantryAssets.gameplay_model
 		add_child(skinned)
@@ -282,7 +283,17 @@ func build(utype: String, team: int, seed: int) -> void:
 				if (driver.LOCOMOTION + ["reloading"]).all(func(clip: String) -> bool: return skinned.native_player.has_animation(driver.PACK + clip)):
 					rifle_driver = driver.new()
 					rifle_driver.setup(skinned)
-					get_parent().world.stat("native_riflemen")
+					if utype == "rifleman":
+						get_parent().world.stat("native_riflemen")
+			if is_mortar:
+				# His carried kit follows the animated back through the vault and crouch.
+				var spine := BoneAttachment3D.new()
+				skinned.skeleton.add_child(spine)
+				spine.bone_idx = skinned.bones["Spine2"]
+				var rest: Transform3D = skinned.global_transform * skinned.target_rest[spine.bone_idx]
+				var socket := rest.affine_inverse() * tube.global_transform
+				tube.reparent(spine, false)
+				tube.transform = socket
 			root.visible = false
 			# Keep pose/attachment pivots, but discard geometry replaced by the skin.
 			for mesh in root.find_children("*", "MeshInstance3D", true, false):
@@ -1338,7 +1349,7 @@ func pose(dt: float, life: int, posture: int, act: int, speed: float, backwards:
 		_sling()
 		show_gun = has_gun
 	_launch_grips = false
-	if tube:
+	if tube and not (is_mortar and skinned):
 		# from the back socket to the shoulder and back again, turning as one
 		# rigid piece (no per-axis angle blending)
 		var shouldered := act == Soldier.Act.LAUNCH and look != "op" and not is_mortar and life == 0

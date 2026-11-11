@@ -965,7 +965,7 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   bank follow the acceleration rather than pretending the aircraft is a road vehicle. Yaw has its own
   turn rate, so gunships can keep their nose on a target while moving sideways. Climbs and descents
   ease in and out; transports settle into a low-speed hover before landing or attaching a sling.
-  The cable follows the banking fuselage, and four shaded straps follow the body of the suspended vehicle.
+  The cable follows the banking fuselage, and four shaded straps follow the body of the suspended vehicle. Its wheels and tracks stop turning in the air, and the hull settles clear of the terrain below.
   Loads reduce speed, acceleration and yaw response. Stop holds a troop transport in the air without
   dropping its sling load; a new move resumes the flight, even during a landing. The host simulates
   flight and sends pitch and bank with its snapshots; clients only interpolate the view. Drones and
@@ -1420,6 +1420,8 @@ The local **Character Playground.cmd** launcher opens a controllable terrain lab
 The Character Playground also supports Alt + mouse free look, preserving the character heading and movement axes while orbiting; Home resets the view. Installed Rifle 8-Way Locomotion clips supply matching crouch directions. The full catalog contains multiple Mixamo packs: owning the eight-way movement set does not provide authored vehicle, partner or every activity interaction. Those remain preview/procedural actions where no clip is routed.
 
 The imported preview routes grenade throws through the installed Mixamo toss while retaining stance legs and grenade release timing. The installed prone family supplies armed crawling; missing clips retain the procedural alternating reach. The installed stand/kneel pair supplies stationary crouch transitions, blending from the current pose to avoid a snap on rising. The crouched grenade clip uses its throwing section with the existing visual release timing. Crouch stops settle toes; posture changes release previous foot anchors before planting again.
+
+The Coalition mortar specialist also wears the textured character and carries his role-specific kit on the animated back. Native macOS OpenGL uses articulated soldiers because animated skin geometry disappears on that driver.
 
 The default close-up SWAT infantry presentation ships in a compiled runtime bundle (assets/infantry/infantry.zip), shared by the game and animation playground. Original authoring files are not required. See assets/infantry/README.md for rebuilding and the separate asset licenses.
 
