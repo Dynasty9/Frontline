@@ -9,4 +9,4 @@ poster = "harbour.jpg"
 caption = "Turn sound on. The same harbour pass plays twice, first with the previous mix, then with the moving engine and falling air."
 +++
 
-Listen from the harbour and the engine grows louder as the aircraft passes, then fades into the distance. From a camera flying beside the jet, its engine stays with it. The falling-air sound ends when each bomb disappears.
+Listen from the harbour and the engine grows louder as the aircraft passes, then fades into the distance. From a camera flying beside the jet, its engine stays with it. Close to the aircraft, a short mechanical clack marks each release. Air rushes past the falling bombs until impact.

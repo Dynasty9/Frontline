@@ -13,8 +13,12 @@ func _process(dt: float) -> void:
 	if view == 1:
 		for plane in world.projectiles:
 			if plane.ptype == "jet":
-				var ahead: Vector3 = plane.position.direction_to(plane.target)
-				var right := ahead.cross(Vector3.UP).normalized()
+				# Keep the same side of the aircraft as the harbour passes underneath.
+				var heading: Vector3 = plane.vel.slide(Vector3.UP).normalized()
+				var to_harbour: Vector3 = plane.target - plane.position
+				var lead := maxf(32.0, to_harbour.dot(heading))
+				var ahead := (heading * lead + Vector3.UP * to_harbour.y).normalized()
+				var right := heading.cross(Vector3.UP)
 				lens.position = plane.position - ahead * 24.0 + right * 9.5 + Vector3.UP * 3.0
 				lens.look_at(plane.position + ahead * 18.0)
 				lens.make_current()

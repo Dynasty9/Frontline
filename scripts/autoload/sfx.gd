@@ -128,6 +128,7 @@ func _recipes() -> Array:
 		["jet", _jet],
 		["jet_engine", _airflow_loop.bind(true)],
 		["falling_air", _airflow_loop.bind(false)],
+		["rack_release", _rack_release],
 		["big_boom", _boom.bind(2.6, 1.0, 38.0)],
 		["rotor", _rotor_loop],
 		["wind", _wind_loop],
@@ -459,6 +460,23 @@ func _airflow_loop(rng: RandomNumberGenerator, engine: bool) -> AudioStreamWAV:
 		else:
 			s[i] = (air - body + 0.4 * (body - bass)) * breath
 	return _wav(_normalize(_seamless(s, fade), -14.0 if engine else -19.0), true)
+
+
+## Two close mechanical sounds distinguish the release from the air rushing past.
+func _rack_release(rng: RandomNumberGenerator) -> AudioStreamWAV:
+	var s := PackedFloat32Array()
+	s.resize(int(0.16 * RATE))
+	var body := 0.0
+	for i in s.size():
+		var t := float(i) / RATE
+		var noise := rng.randf_range(-1.0, 1.0)
+		body += 0.14 * (noise - body)
+		var catch := 0.0
+		if t >= 0.035:
+			var age := t - 0.035
+			catch = (0.42 * (noise - body) + 0.4 * sin(TAU * 710.0 * age)) * exp(-age * 80.0)
+		s[i] = (2.2 * body + 0.48 * sin(TAU * 190.0 * t)) * exp(-t * 52.0) + catch
+	return _wav(s)
 
 
 ## Helicopter rotor: low thudding blade slap over turbine whine.

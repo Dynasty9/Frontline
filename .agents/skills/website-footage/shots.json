@@ -313,11 +313,11 @@
       "about": "Track the squad leader past the hedge at ground level. The Mohawk lifts over his shoulder before its flight to the river."
     },
     "trailer-order": {
-      "scene": "res://tools/showcase/trailer-review/squad-order.tscn",
+      "scene": "res://tools/showcase/trailer-review/sling-order.tscn",
       "frames": 210,
-      "args": ["--preset=high", "--seed=4", "--set=volume:0.8,vol_effects:0.85,vol_music:0,battle_music:false,vol_ambience:0.18,vol_ui:0.35,mute_bg:false,wildlife:0,edge_pan:false", "--mission=skyhook", "--autoplay", "--play", "--team=0", "--select-first", "--zoom=14.5", "--pitch=-15", "--cam-yaw=2.84", "--mood=day"],
-      "shows": ["The player orders one selected squad to move"],
-      "about": "Frame the selected squad and the whole Mohawk together. The destination ring appears on clear grass beside the hedge before the cut to the same soldiers at eye level."
+      "args": ["--preset=high", "--seed=4", "--set=volume:0.8,vol_effects:0.85,vol_music:0,battle_music:false,vol_ambience:0.18,vol_ui:0.35,mute_bg:false,wildlife:0,edge_pan:false", "--mission=skyhook", "--play", "--team=0", "--focus=-71,-101", "--zoom=29", "--pitch=-21", "--cam-yaw=0.87", "--mood=day"],
+      "shows": ["The player selects the Mohawk and orders a sling pickup"],
+      "about": "Frame the selected helicopter and its cargo together. The player clicks the Nyx, its ring flashes, and the Mohawk leaves the pad on the pickup order."
     },
     "trailer-landing": {
       "frames": 530,
@@ -735,7 +735,7 @@
       "fade_out": 0,
       "grade": {"contrast": 1.1, "saturation": 1.14},
       "cuts": [
-        {"take": "trailer-order", "from": 1.83333, "to": 2.96667, "gain_db": -1, "caption": "[Low strings as the order is given]"},
+        {"take": "trailer-order", "from": 3.1, "to": 4.23333, "gain_db": -1, "caption": "[Low strings as the order is given]"},
         {"take": "trailer-roadside", "from": 2.96667, "to": 3.93333, "gain_db": -1, "caption": "[Rotor blades turn as the squad moves]"},
         {"take": "trailer-sling-liftoff", "from": 17.63333, "to": 18.93333, "gain_db": -1, "caption": "[Rotors beat as the tracked vehicle lifts]"},
         {"take": "trailer-sling", "from": 39.86667, "to": 40.9, "gain_db": 0, "caption": "[Helicopter rotors over the suspended vehicle]"},

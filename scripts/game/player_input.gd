@@ -809,7 +809,9 @@ func _order(screen: Vector2, shift: bool, face_in := Vector3.ZERO, kind := "") -
 			var hv = world.entity(id)
 			if hv is Vehicle and hv.base() == "lift_heli" and int(hv.vdef.get("sling", -1)) >= tgt.weight() and not tgt.is_heli() and not tgt.is_boat() and tgt != hv:
 				world.send_cmd({"t": "sling", "vehicles": [hv.eid], "target": tgt.eid})
-				_marker(tgt.position, Color(0.6, 0.9, 1.0))
+				# Show the order just outside the load, where the hull cannot hide it.
+				var hull: Vector3 = tgt._hull_size()
+				_marker(tgt.position, Color(0.6, 0.9, 1.0), maxf(0.8, 0.56 * maxf(hull.x, hull.z)))
 				Sfx.ui("click")
 				return
 	if tgt is Vehicle and tgt.team == lt and not sel_squads.is_empty() and tgt.seats() > 0 and tgt.health_frac() > 0.3 \
@@ -1035,9 +1037,9 @@ func _confirm_place(keep: bool) -> void:
 		cancel_modes()
 
 
-func _marker(p: Vector3, c: Color) -> void:
+func _marker(p: Vector3, c: Color, radius := 0.8) -> void:
 	var m := MeshInstance3D.new()
-	m.mesh = Res.torus(0.6, 0.8)
+	m.mesh = Res.torus(radius - 0.2, radius)
 	var mm := StandardMaterial3D.new()
 	mm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	mm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
@@ -1045,7 +1047,10 @@ func _marker(p: Vector3, c: Color) -> void:
 	m.material_override = mm
 	m.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	world.add_child(m)
-	m.position = Vector3(p.x, 0.1, p.z)
+	var surface := world.ground_y(p)
+	if world.water and world.water.wet_at(p):
+		surface = maxf(surface, WaterMap.LEVEL)
+	m.position = Vector3(p.x, surface + 0.1, p.z)
 	_markers.append([m, 0.0])
 
 

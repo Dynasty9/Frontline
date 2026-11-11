@@ -519,6 +519,7 @@ func _build_model() -> void:
 			else:
 				add_child(Sfx.make_loop_player("prop", 30.0, 2.0))  # a light plane droning over
 		"bomb":
+			Sfx.play("rack_release", position, -1.0)
 			var air := Sfx.make_loop_player("falling_air", 12.0, -6.0)
 			air.max_distance = 115.0
 			add_child(air)
