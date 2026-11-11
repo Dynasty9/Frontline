@@ -59,15 +59,16 @@
     "trailer-harbour-finale": {
       "scene": "res://tools/showcase/trailer-review/formation-pass.tscn",
       "frames": 450,
-      "args": ["--preset=high", "--seed=3", "--set=volume:0.8,vol_effects:0.85,vol_music:0,battle_music:false,vol_ambience:0.28,vol_ui:0,mute_bg:false,wildlife:0,edge_pan:false", "--mission=beachhead", "--focus=372,-10", "--zoom=58", "--pitch=-17", "--cam-yaw=1.2", "--demo-support=airstrike", "--demo-at=3"],
+      "args": ["--preset=high", "--seed=3", "--set=volume:0.8,vol_effects:0.85,vol_music:0,battle_music:false,vol_ambience:0.28,vol_ui:0,mute_bg:false,wildlife:0,edge_pan:false", "--mission=beachhead", "--focus=290.4156,16.97317", "--zoom=58", "--pitch=-17", "--cam-yaw=1.2", "--demo-support=airstrike", "--demo-at=3"],
       "shows": ["airstrike", "harbour"],
-      "about": "Fly alongside the jet as it overtakes the camera. Keep the coastline and patrol boat beneath its wing before the cut back to the water."
+      "about": "Fly alongside the jet as it overtakes the camera. Carry the falling stores across the cut to the parked truck on the quay."
     },
-    "trailer-harbour-quarter": {
-      "frames": 450,
-      "args": ["--preset=high", "--seed=3", "--set=volume:0.8,vol_effects:0.85,vol_music:0,battle_music:false,vol_ambience:0.28,vol_ui:0,mute_bg:false,wildlife:0,edge_pan:false", "--mission=beachhead", "--focus=372,-10", "--zoom=58", "--pitch=-17", "--cam-yaw=1.2", "--demo-support=airstrike", "--demo-at=3", "--focus-vehicle=speedboat_hmg", "--vehicle-view=Stern quarter", "--focus-vehicle-at=8"],
-      "shows": ["Patrol boat below rising harbour spray"],
-      "about": "After the same jet pass, switch to the playable Stern quarter camera. Watch the spray rise behind the cabin and fall away below the title."
+    "trailer-quay-impact": {
+      "scene": "res://tools/showcase/trailer-review/quay-impact.tscn",
+      "frames": 490,
+      "args": ["--preset=high", "--seed=3", "--set=volume:0.8,vol_effects:0.85,vol_music:0,battle_music:false,vol_ambience:0.28,vol_ui:0,mute_bg:false,wildlife:0,edge_pan:false", "--mission=beachhead", "--focus=290.4156,16.97317", "--zoom=58", "--pitch=-17", "--cam-yaw=1.2", "--demo-support=airstrike", "--demo-at=3"],
+      "shows": ["Intact harbour pickup, ground impacts and vehicle wreck"],
+      "about": "Stay beside the same parked Beachhead truck before, during and after the native airstrike. Let the debris clear enough to see the burning wreck."
     },
     "convoy-hemtt": {
       "frames": 150,
@@ -606,7 +607,7 @@
         {"take": "trailer-patrol-pass", "from": 34.9, "to": 35.56667, "gain_db": -1, "caption": "[Patrol ship fires as a boat passes]"},
         {"take": "trailer-bridge-roof", "from": 35.56667, "to": 36.83333, "gain_db": -1},
         {"take": "trailer-harbour-finale", "from": 4.3, "to": 6.6, "gain_db": 0, "caption": "[Jet engines climb over the harbour]"},
-        {"take": "trailer-harbour-quarter", "from": 11.0, "to": 14.26667, "gain_db": 4, "caption": "[Impacts roll across the water]"}
+        {"take": "trailer-quay-impact", "from": 10.33333, "to": 13.6, "gain_db": 2, "caption": "[Bombs strike the quay. The truck erupts.]"}
       ]
     },
     "changelog-tank-motion": {
