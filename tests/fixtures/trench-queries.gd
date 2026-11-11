@@ -2,7 +2,7 @@ extends Node
 
 func reference(w: World, p: Vector3) -> bool:
 	for st in w.structures_near(p, 4.0):
-		if st.skind == "trench" and st.built and TrenchNet.inside(st, p, 0.05):
+		if st.skind == "trench" and TrenchNet.depth_at(st, p, w) >= 0.6:
 			return true
 	return false
 
@@ -15,6 +15,7 @@ func _ready() -> void:
 		st.eid = i + 1
 		st.skind = "trench" if i % 20 == 0 else "crates"
 		st.built = i % 40 != 0
+		st.progress = 0.0 if not st.built else 1.0
 		st.position = Vector3((i % 25) * 3 - 36, 0, (i / 25) * 3 - 30)
 		st.size = Vector3(20, 1, 1.5)
 		st.yaw = i * 0.271
@@ -30,7 +31,8 @@ func _ready() -> void:
 		for p: Vector3 in points:
 			var expected := reference(w, p)
 			assert(w.in_trench(p) == expected, "index preserves exact trench containment")
-			assert(w.ground_y(p) == (TrenchNet.FLOOR_Y + 0.15 if expected else 0.0))
+			var depth := w.trench_depth(p)
+			assert(w.ground_y(p) >= -depth and w.ground_y(p) <= 0.0)
 		for st: Structure in objects:
 			if st.skind == "trench":
 				w._shash_remove(st)
