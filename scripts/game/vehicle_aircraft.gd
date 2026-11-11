@@ -15,6 +15,8 @@ static func rocket_pod(k: VehicleModels, parent: Node3D, center: Vector3, radius
 	for z in [-ln * 0.34, ln * 0.28]:
 		var band := [Vector2(r, z - 0.018), Vector2(r + 0.008, z - 0.014), Vector2(r + 0.008, z + 0.014), Vector2(r, z + 0.018)]
 		k._add(parent, VehicleProfiles.revolve(band, 20), "metal_dark", null, center)
+		k._box(parent, Vector3(r * 0.26, r * 0.08, 0.045), center + Vector3(0, r + 0.01, z), "steel", Color(0.18, 0.19, 0.18))
+	k._cyl(parent, r * 0.2, r * 0.24, ln * 0.025, center + Vector3(0, 0, ln * 0.50), Vector3(PI / 2, 0, 0), "metal_dark", null, 10, false)
 	var holes: Array[Vector2] = [Vector2.ZERO]
 	var rings := [[6, 0.55]] if tubes == 7 else [[6, 0.36], [12, 0.72]]
 	for ring: Array in rings:
@@ -72,10 +74,12 @@ static func hardpoint(k: VehicleModels, parent: Node3D, top: Vector3, length: fl
 	var profile := [-length * 0.5, 0.08, length * 0.5, 0.08, length * 0.4, -height, -length * 0.3, -height]
 	k._add(parent, VehicleModels.extrude_x("hardpoint_" + var_to_str([length, height, width]), profile, -width * 0.5, width * 0.5), "aircraft", col, top)
 	for side: float in [-1.0, 1.0]:
+		k._add(parent, BevelMesh.make(Vector3(0.006, height * 0.34, length * 0.35), 0.0015), "aircraft", col.darkened(0.08), top + Vector3(side * (width * 0.5 + 0.003), -height * 0.35, 0))
 		for z: float in [-length * 0.25, length * 0.25]:
 			var foot := top + Vector3(side * (width * 0.5 + 0.035), -height + 0.015, z)
 			VehicleFrames.tube(k, parent, top + Vector3(side * width * 0.4, -height + 0.08, z), foot, 0.014, "steel", null, 6, false)
 			k._box(parent, Vector3(0.045, 0.018, 0.06), foot, "metal_dark")
+			VehicleBody.fastener(k, parent, foot + Vector3(0, 0.012, 0), Vector3.UP, 0.012)
 	VehicleFrames.beam(k, parent, top + Vector3(0, -height - 0.006, -length * 0.3), top + Vector3(0, -height - 0.006, length * 0.35), width * 0.7, 0.02, "metal_dark")
 	return top + Vector3(0, -height - payload_radius, 0)
 
@@ -96,3 +100,8 @@ static func gear_leg(k: VehicleModels, parent: Node3D, top: Vector3, axle: Vecto
 	VehicleFrames.beam(k, parent, upper, elbow, radius * 0.4, radius * 0.35, "paint", col)
 	VehicleFrames.beam(k, parent, elbow, lower, radius * 0.4, radius * 0.35, "paint", col)
 	VehicleFrames.tube(k, parent, elbow - Vector3.RIGHT * radius * 0.4, elbow + Vector3.RIGHT * radius * 0.4, radius * 0.25, "steel", null, 8, false)
+	var hose := [top + across * radius * 1.12, mid + across * radius * 1.35, axle + across * radius * 0.85]
+	VehicleFrames.cable(k, parent, hose, radius * 0.10, radius * 0.35, "rubber", null, false)
+	for t: float in [0.2, 0.52]:
+		var at := top.lerp(axle, t)
+		VehicleFrames.tube(k, parent, at - direction * radius * 0.18, at + direction * radius * 0.18, radius * 1.06, "steel", null, 10, false)

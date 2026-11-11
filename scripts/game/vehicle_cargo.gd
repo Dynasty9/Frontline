@@ -5,7 +5,9 @@ extends RefCounted
 
 static func pallet(k: VehicleModels, parent: Node3D, base: Vector3, size: Vector2, height := 0.1) -> void:
 	for side: float in [-1.0, 0.0, 1.0]:
-		k._box(parent, Vector3(size.x * 0.13, height * 0.65, size.y), base + Vector3(side * size.x * 0.38, height * 0.325, 0), "wood_dark")
+		for z: float in [-0.37, 0.0, 0.37]:
+			k._box(parent, Vector3(size.x * 0.13, height * 0.50, size.y * 0.23), base + Vector3(side * size.x * 0.38, height * 0.40, z * size.y), "wood_dark")
+		k._box(parent, Vector3(size.x * 0.13, height * 0.15, size.y), base + Vector3(side * size.x * 0.38, height * 0.075, 0), "wood")
 	for i in 5:
 		k._box(parent, Vector3(size.x, height * 0.35, size.y * 0.17), base + Vector3(0, height * 0.825, lerpf(-size.y * 0.4, size.y * 0.4, i / 4.0)), "wood")
 
@@ -16,5 +18,9 @@ static func restraints(k: VehicleModels, parent: Node3D, base: Vector3, size: Ve
 			var x := side * (size.x * 0.5 + 0.004)
 			k._box(parent, Vector3(0.007, size.y, width), base + Vector3(x, size.y * 0.5, z), "canvas_white", col, Vector3.ZERO, false)
 			var buckle := base + Vector3(x, minf(0.2, size.y * 0.3), z)
-			k._box(parent, Vector3(0.022, width * 1.8, width * 1.35), buckle, "steel", Color(0.25, 0.26, 0.23))
+			for edge: float in [-1.0, 1.0]:
+				k._box(parent, Vector3(0.022, width * 1.8, width * 0.16), buckle + Vector3(0, 0, edge * width * 0.6), "steel", Color(0.25, 0.26, 0.23))
+				k._box(parent, Vector3(0.022, width * 0.16, width * 1.2), buckle + Vector3(0, edge * width * 0.82, 0), "steel", Color(0.25, 0.26, 0.23))
+			VehicleFrames.tube(k, parent, buckle + Vector3(side * 0.018, 0, -width * 0.5), buckle + Vector3(side * 0.018, 0, width * 0.5), width * 0.13, "steel", null, 6, false)
+			k._box(parent, Vector3(0.005, minf(size.y * 0.25, width * 3), width * 0.85), buckle + Vector3(side * 0.021, -width * 1.7, 0), "canvas_white", col, Vector3(0, 0, side * 0.12), false)
 			VehicleBody.fastener(k, parent, base + Vector3(x, 0.03, z), Vector3(side, 0, 0), minf(0.012, width * 0.25))

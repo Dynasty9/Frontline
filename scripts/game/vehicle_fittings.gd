@@ -139,8 +139,11 @@ static func exhaust(k: VehicleModels, parent: Node3D, base: Vector3, direction: 
 	k._cyl(mount, radius * 0.8, radius * 0.8, 0.004, Vector3(0, length - depth, 0), Vector3.ZERO, "burnt", null, 16, false)
 	k._add(mount, VehicleWheels.ring(radius * 0.8, radius * 1.03), "gunmetal", Color(0.28, 0.24, 0.19), Vector3(0, length, 0))
 	# Stand-off shield and clamps sit below the hot, uncovered outlet.
-	k._cyl(mount, radius * 1.4, radius * 1.4, length * 0.30, Vector3(0, length * 0.43, 0), Vector3.ZERO, "steel", Color(0.28, 0.29, 0.26), 16)
+	var shield := [Vector2(radius * 1.34, length * 0.28), Vector2(radius * 1.4, length * 0.28), Vector2(radius * 1.4, length * 0.58), Vector2(radius * 1.34, length * 0.58)]
+	k._add(mount, VehicleProfiles.revolve(shield, 16), "steel", Color(0.28, 0.29, 0.26), Vector3.ZERO, Vector3(-PI / 2, 0, 0))
 	for t in [0.28, 0.58]:
+		k._box(mount, Vector3(radius * 0.5, radius * 0.35, radius * 0.5), Vector3(0, length * t, radius * 1.40), "metal_dark")
+		VehicleBody.fastener(k, mount, Vector3(0, length * t, radius * 1.67), Vector3.BACK, radius * 0.15)
 		k._add(mount, VehicleWheels.ring(radius * 1.35, radius * 1.55), "gunmetal", Color(0.18, 0.19, 0.17), Vector3(0, length * t, 0), Vector3.ZERO, Vector3(1, 0.6, 1), false)
 	k._fold(mount)
 
@@ -181,11 +184,14 @@ static func mirror(k: VehicleModels, parent: Node3D, center: Vector3, size: Vect
 		# Route around the housing edge before turning onto its back. A straight
 		# diagonal from the door can otherwise pass through the reflective face.
 		var elbow := center + facing * Vector3(side * (size.x / 2 + 0.045), y, -0.06)
+		var anchor: Vector3 = anchors[i]
+		var axis: Vector3 = (elbow - anchor).normalized()
+		VehicleFrames.tube(k, parent, anchor - axis * 0.008, anchor + axis * 0.018, minf(size.x * 0.16, 0.038), "gunmetal_w", null, 8, false)
 		VehicleFrames.path(k, parent, [anchors[i], elbow, end], 0.018, "gunmetal_w", null, 8)
 		k._add(parent, Res.sphere(0.027, 8), "gunmetal_w", null, end)
 	var mount := k._pivot(parent, center)
 	mount.rotation.y = yaw
-	k._box(mount, Vector3(size.x, size.y, 0.06), Vector3.ZERO, "plain_dark", Color(0.11, 0.12, 0.11))
+	k._add(mount, BevelMesh.make(Vector3(size.x, size.y, 0.06), minf(0.018, size.x * 0.06)), "plain_dark", Color(0.11, 0.12, 0.11), Vector3.ZERO)
 	k._box(mount, Vector3(size.x - 0.018, size.y - 0.018, 0.009), Vector3(0, 0, 0.033), "rubber", Color(0.06, 0.065, 0.06), Vector3.ZERO, false)
 	k._add(mount, _mirror_glass(size - Vector2(0.033, 0.033)), "mirror", Color(0.78, 0.82, 0.84), Vector3(0, 0, 0.042), Vector3.ZERO, Vector3.ONE, false)
 	# A rib on the back stiffens the shell around the arm mounting points.
@@ -295,16 +301,29 @@ static func _mirror_glass(size: Vector2) -> ArrayMesh:
 
 ## Pressed 20-litre fuel can. Center is the body center, broad faces along X.
 ## Rotate the complete assembly so the cap, handle and ribs stay attached.
-static func jerrycan(k: VehicleModels, parent: Node3D, center: Vector3, col: Color, rotation := Vector3.ZERO, width := 0.17) -> void:
+static func jerrycan(k: VehicleModels, parent: Node3D, center: Vector3, col: Color, rotation := Vector3.ZERO, width := 0.17, size := Vector3.ZERO) -> void:
 	var mount := k._pivot(parent, center)
 	mount.rotation = rotation
-	k._box(mount, Vector3(width, 0.46, 0.34), Vector3.ZERO, "paint", col)
+	if size != Vector3.ZERO:
+		assert(size.x > 0 and size.y > 0 and size.z > 0)
+		mount.scale = size / Vector3(width, 0.46, 0.34)
+	var half_width := width * 0.5
+	var cut := minf(width * 0.08, 0.012)
+	var outline := PackedVector2Array([Vector2(-half_width + cut, -0.17), Vector2(half_width - cut, -0.17), Vector2(half_width, -0.17 + cut), Vector2(half_width, 0.17 - cut), Vector2(half_width - cut, 0.17), Vector2(-half_width + cut, 0.17), Vector2(-half_width, 0.17 - cut), Vector2(-half_width, -0.17 + cut)])
+	var shoulder: Array = []
+	for station: Vector3 in [Vector3(-0.23, 0.94, 0.97), Vector3(-0.215, 1, 1), Vector3(0.16, 1, 1), Vector3(0.23, 0.76, 0.85)]:
+		var ring := PackedVector2Array()
+		for q in outline:
+			ring.append(q * Vector2(station.y, station.z))
+		shoulder.append(VehicleModels.ring_y(ring, station.x))
+	k._add(mount, VehicleProfiles.loft(shoulder, 25), "paint", col, Vector3.ZERO)
+	k._cyl(mount, 0.034, 0.042, 0.028, Vector3(0, 0.231, -0.10), Vector3.ZERO, "paint", col, 12, false)
 	# The pressed seam and X ribs stiffen the broad walls of the can.
 	for side in [-1.0, 1.0]:
 		var x: float = side * (width / 2 + 0.003)
 		for z in [-1.0, 1.0]:
-			VehicleFrames.tube(k, mount, Vector3(x, -0.16, z * 0.11), Vector3(x, 0.16, -z * 0.11), 0.008, "paint", col, 6, false)
-		VehicleFrames.path(k, mount, [Vector3(x, -0.20, -0.14), Vector3(x, 0.20, -0.14), Vector3(x, 0.20, 0.14), Vector3(x, -0.20, 0.14), Vector3(x, -0.20, -0.14)], 0.005, "paint", col.darkened(0.12), 6)
+			VehicleFrames.tube(k, mount, Vector3(x, -0.16, z * 0.11), Vector3(x, 0.14, -z * 0.11), 0.008, "paint", col, 6, false)
+		VehicleFrames.path(k, mount, [Vector3(x, -0.20, -0.14), Vector3(x, 0.15, -0.14), Vector3(x, 0.15, 0.14), Vector3(x, -0.20, 0.14), Vector3(x, -0.20, -0.14)], 0.005, "paint", col.darkened(0.12), 6)
 	# Three parallel carrying bars leave real finger openings above the shoulder.
 	for x in [-width * 0.27, 0.0, width * 0.27]:
 		VehicleFrames.path(k, mount, [Vector3(x, 0.225, -0.025), Vector3(x, 0.27, 0.005), Vector3(x, 0.27, 0.105), Vector3(x, 0.225, 0.135)], 0.010, "paint", col, 6)
@@ -328,6 +347,10 @@ static func ammo_can(k: VehicleModels, parent: Node3D, center: Vector3, col: Col
 	for side: float in [-1.0, 1.0]:
 		for z in [-0.09, 0.09]:
 			k._box(mount, Vector3(0.006, 0.115, 0.012), Vector3(side * 0.081, -0.015, z), "paint", col, Vector3.ZERO, false)
+	var seam := VehicleSurface.plane(Vector3(0, -0.085, 0), Vector3.RIGHT, Vector3.FORWARD)
+	VehicleBody.boundary(k, mount, seam, PackedVector2Array([Vector2(-0.065, -0.15), Vector2(0.065, -0.15), Vector2(0.08, -0.135), Vector2(0.08, 0.135), Vector2(0.065, 0.15), Vector2(-0.065, 0.15), Vector2(-0.08, 0.135), Vector2(-0.08, -0.135)]), 0, 0.003, false, 0, "paint", col)
+	VehicleDoors.hinge(k, mount, Vector3(0, 0.09, 0.15), Vector3.BACK, Vector3.RIGHT, 0.008, "paint", col)
+	VehicleDoors.pull(k, mount, Vector3(0, 0.06, -0.164), Vector3.FORWARD, Vector3.UP, 0.035, 0.004)
 	k._fold(mount)
 
 
@@ -387,6 +410,11 @@ static func hatch(k: VehicleModels, parent: Node3D, center: Vector3, radius: flo
 	VehicleFrames.path(k, mount, [Vector3(-0.065, y, -hinge_side * radius * 0.4), Vector3(-0.065, y + 0.035, -hinge_side * radius * 0.4), Vector3(0.065, y + 0.035, -hinge_side * radius * 0.4), Vector3(0.065, y, -hinge_side * radius * 0.4)], 0.009, "gunmetal_w", null, 6)
 	for side: float in [-1.0, 1.0]:
 		VehicleBody.fastener(k, mount, Vector3(side * radius * 0.7, y + 0.003, 0), Vector3.UP, 0.012)
+	var ring := VehicleFittings._ring(radius * 0.70, radius * 0.74)
+	k._add(mount, ring, material, col, Vector3(0, y + 0.003, 0), Vector3.ZERO, Vector3(1, 0.3, 1), false)
+	var latch := Vector3(0, y + 0.01, -hinge_side * radius * 0.86)
+	k._box(mount, Vector3(radius * 0.22, thickness * 0.45, radius * 0.24), latch, "metal_dark")
+	VehicleBody.fastener(k, mount, latch + Vector3(0, thickness * 0.3, 0), Vector3.UP, minf(0.016, radius * 0.055))
 	k._fold(mount)
 
 

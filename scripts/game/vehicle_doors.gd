@@ -26,6 +26,9 @@ static func hinge(k: VehicleModels, parent: Node3D, at: Vector3, normal: Vector3
 	var tangent := axis.cross(normal).normalized()
 	var pin := at + normal * radius
 	VehicleFrames.tube(k, parent, pin - axis * radius * 2.8, pin + axis * radius * 2.8, radius * 0.52, "steel", null, 8, false)
+	for side: float in [-1.0, 1.0]:
+		var end := pin + axis * side * radius * 2.8
+		VehicleFrames.tube(k, parent, end - axis * radius * 0.18, end + axis * radius * 0.18, radius * 0.76, "steel", null, 8, false)
 	for i in 3:
 		var middle := pin + axis * (i - 1) * radius * 1.7
 		VehicleFrames.tube(k, parent, middle - axis * radius * 0.72, middle + axis * radius * 0.72, radius, mat, col, 8, false)
@@ -37,7 +40,9 @@ static func pull(k: VehicleModels, parent: Node3D, at: Vector3, normal: Vector3,
 	var a := at - along.normalized() * length * 0.5
 	var b := at + along.normalized() * length * 0.5
 	var rise := normal.normalized() * radius * 2.7
+	var basis := VehicleFrames.aim(normal)
 	for p in [a, b]:
+		k._add(parent, BevelMesh.make(Vector3(radius * 3.2, radius * 0.45, radius * 3.2), radius * 0.12), mat, col, p, basis.get_euler())
 		VehicleFrames.tube(k, parent, p, p + rise, radius, mat, col, 6, false)
 		VehicleBody.fastener(k, parent, p, normal, radius * 0.8)
 	VehicleFrames.tube(k, parent, a + rise, b + rise, radius, mat, col, 8, false)

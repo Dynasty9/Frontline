@@ -1284,20 +1284,25 @@ static func _tempest(k: VehicleModels, team: int, kind: String) -> void:
 			_tempest_flatbed(k, 0.4)
 			# long missile crates stacked forward, ammunition boxes behind them,
 			# cans at the tail, all strapped down
+			for x: float in [-0.54, 0.54]:
+				VehicleCargo.pallet(k, m, Vector3(x, 1.51, -0.55), Vector2(1.0, 1.9))
+			for z: float in [0.95, 1.83, 2.71]:
+				VehicleCargo.pallet(k, m, Vector3(0, 1.51, z), Vector2(2.1, 0.8))
+			# Shorter stacked cases preserve the clearance below the folded boom.
 			for l in 3:
 				for j in 2:
-					k._box(m, Vector3(1.0, 0.3, 1.9), Vector3((j - 0.5) * 1.08, 1.66 + l * 0.32, -0.55), "paint", OLIVE if (j + l) % 2 == 0 else OLIVE.lightened(0.08))
+					k._box(m, Vector3(1.0, 0.27, 1.9), Vector3((j - 0.5) * 1.08, 1.745 + l * 0.28, -0.55), "paint", OLIVE if (j + l) % 2 == 0 else OLIVE.lightened(0.08))
 			for i in 3:
 				for j in 3:
 					for l in 2:
-						k._box(m, Vector3(0.66, 0.4, 0.8), Vector3((j - 1) * 0.72, 1.71 + l * 0.42, 0.95 + i * 0.88), "paint", OLIVE.darkened(0.06) if (i + j + l) % 2 == 0 else OLIVE.lightened(0.1))
+						k._box(m, Vector3(0.66, 0.4, 0.8), Vector3((j - 1) * 0.72, 1.81 + l * 0.42, 0.95 + i * 0.88), "paint", OLIVE.darkened(0.06) if (i + j + l) % 2 == 0 else OLIVE.lightened(0.1))
 			for j in 4:
 				k._box(m, Vector3(0.4, 0.3, 0.55), Vector3((j - 1.5) * 0.5, 1.66, 3.8), "paint", Color(0.27, 0.29, 0.21))
 			var strap := Color(0.28, 0.26, 0.2)
 			for z in [-1.1, 0.0]:
-				VehicleCargo.restraints(k, m, Vector3(0, 1.51, z), Vector3(2.08, 0.955, 0.1), [0.0], 0.07, strap)
+				VehicleCargo.restraints(k, m, Vector3(0, 1.61, z), Vector3(2.08, 0.835, 0.1), [0.0], 0.07, strap)
 			for z in [0.95, 1.83, 2.71]:
-				VehicleCargo.restraints(k, m, Vector3(0, 1.51, z), Vector3(2.10, 0.835, 0.1), [0.0], 0.07, strap)
+				VehicleCargo.restraints(k, m, Vector3(0, 1.61, z), Vector3(2.10, 0.835, 0.1), [0.0], 0.07, strap)
 			# the loading crane behind the cab, its boom folded back over the load
 			var cc := Color(0.5, 0.45, 0.32)
 			k._cyl(m, 0.17, 0.21, 0.95, Vector3(0.75, 1.97, -1.78), Vector3.ZERO, "paint", cc, 12)

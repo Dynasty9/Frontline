@@ -2,6 +2,26 @@
   "schema": 1,
   "entries": [
     {
+      "entry": "changelog/unreleased/vehicle-detail-40.md",
+      "summary": "Forty construction refinements across twenty shared vehicle assemblies.",
+      "medium": "still",
+      "stage": "tools/showcase/vehicle-surfaces.tscn",
+      "rationale": "One compact matched component sheet shows the visible construction changes. All twenty assemblies and nineteen vehicle comparisons were reviewed outside Git.",
+      "source_ref": "28722899f676ab074f13998c1bc3da2edb1a6d0c",
+      "before_ref": "7a96dd4",
+      "sources": [
+        {
+          "file": "changelog/unreleased/vehicle-detail-40/details.jpg",
+          "sha256": "b96a468f9fbc9cccb26876d3154cdaeedc7f7c3abeff5688a29c8b2562bf6219"
+        },
+        {
+          "file": "changelog/unreleased/vehicle-detail-40/capture.json",
+          "sha256": "104b117fb30d1b620fcca890a238dc98245c702ca0ec18a59438bdb2870ec119"
+        }
+      ],
+      "output": null
+    },
+    {
       "entry": "changelog/unreleased/shared-vehicle-construction.md",
       "summary": "Fitted cabins, tanker bodies and shared equipment construction across vehicle families.",
       "medium": "still",

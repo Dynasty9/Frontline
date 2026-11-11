@@ -1438,9 +1438,9 @@ static func _tractor(k: VehicleModels, seed: int) -> void:
 	k._add(m, Res.torus(0.17, 0.2), "plain", TRIM, Vector3(0, 1.95, -0.05), Vector3(0.5, 0, 0))
 	_rod(k, m, Vector3(0, 1.95, -0.05), Vector3(0, 1.62, -0.32), 0.03, "plain", TRIM, 6)
 	# exhaust stack with its silencer and rain cap, the air intake
-	k._cyl(m, 0.045, 0.045, 1.25, Vector3(0.22, 2.2, -0.62), Vector3.ZERO, "metal_dark", null, 8)
+	VehicleFittings.exhaust(k, m, Vector3(0.22, 1.575, -0.62), Vector3.UP, 1.25, 0.06)
 	k._cyl(m, 0.08, 0.08, 0.45, Vector3(0.22, 1.95, -0.62), Vector3.ZERO, "metal_dark", null, 10)
-	k._box(m, Vector3(0.1, 0.012, 0.12), Vector3(0.22, 2.84, -0.6), "metal_dark", null, Vector3(0.4, 0, 0))
+	k._box(m, Vector3(0.14, 0.012, 0.14), Vector3(0.22, 2.84, -0.6), "metal_dark", null, Vector3(0.4, 0, 0))
 	k._cyl(m, 0.05, 0.05, 0.5, Vector3(-0.22, 1.88, -0.62), Vector3.ZERO, "paint", grey, 8)
 	k._cyl(m, 0.08, 0.06, 0.1, Vector3(-0.22, 2.18, -0.62), Vector3.ZERO, "paint", grey, 10)
 	# steps on the left, the three-point hitch and the PTO at the back

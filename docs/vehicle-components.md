@@ -224,3 +224,17 @@ Use the surface, index, material, component, LOD and motion tests together when
 changing these foundations; the index test requires three independent builder
 roots for each of the 30 registered techniques (conditional variants still need
 source inspection).
+
+### Equipment detail pass
+
+The [40-improvement review](vehicle-detail-40-review.md) lists refinements to 20
+existing assemblies. `VehicleFittings.jerrycan` adds an optional body `size`
+argument after the legacy `width`: `Vector3(0.1, 0.25, 0.18)` builds a smaller
+container using the same cap, carrying bars, shoulders and ribs. Omit `size` to
+keep existing call sites unchanged. The size describes the body; cap and handle
+project above it. The complete assembly follows the supplied rotation.
+
+Chassis frames now use open C sections within the existing rail bounds. Pallets
+have lower runners and gaps for fork entry. When adding a pallet to a load,
+raise both the load and its restraint origin by the pallet height. Preserve
+separate equipment such as loading cranes and vehicle-specific silencers.
