@@ -38,8 +38,9 @@ from a gameplay roster alias instead of a model key.
 This is conservative source analysis: conditional features are a union, dynamic
 calls and inner-class methods need inspection, and keyword hits are candidates.
 It does not claim that every variant visibly has every reachable feature. Inspect
-the linked construction before migrating it. Shadowed plane builders are listed
-but never used as additional adopters. Regenerate the output after changes; keep
+the linked construction before migrating it. A model that a later family also
+dispatches is listed as shadowed, never counted as another adopter; the index
+test expects none. Regenerate the output after changes; keep
 large generated JSON files and captures outside Git.
 
 Use the [roadmap](../../docs/vehicle-construction-roadmap.md) for priorities and
