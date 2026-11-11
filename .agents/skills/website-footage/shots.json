@@ -571,8 +571,8 @@
       "fade_out": 7,
       "grade": {"contrast": 1.1, "saturation": 1.14},
       "cuts": [
-        {"take": "trailer-order", "from": 1.73333, "to": 2.73333, "gain_db": -1, "caption": "[Low strings as the order is given]"},
-        {"take": "trailer-roadside", "from": 2.73333, "to": 4.13333, "gain_db": -1, "caption": "[Rotor blades turn as the squad moves]"},
+        {"take": "trailer-order", "from": 1.83333, "to": 2.96667, "gain_db": -1, "caption": "[Low strings as the order is given]"},
+        {"take": "trailer-roadside", "from": 2.96667, "to": 4.23333, "gain_db": -1, "caption": "[Rotor blades turn as the squad moves]"},
         {"take": "trailer-bridge-follow", "from": 193.96667, "to": 194.83333, "gain_db": 0, "caption": "[Tank tracks approach along the village road]"},
         {"take": "trailer-bridge-column", "from": 194.83333, "to": 196.06667, "gain_db": 0},
         {"take": "reel-gun", "from": 14.1, "to": 15.1, "gain_db": -8, "caption": "[Tank cannon fires]"},
