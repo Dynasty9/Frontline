@@ -266,8 +266,8 @@ static func _ammo_can(k: VehicleModels, p: Node3D, pos: Vector3, yaw := 0.0, col
 
 ## A lifting eye (a small loop) standing on a surface at pos.
 static func _eye(k: VehicleModels, p: Node3D, pos: Vector3, yaw := 0.0) -> void:
-	_bx(k, p, Vector3(0.12, 0.03, 0.08), pos + Vector3(0, 0.015, 0), "gunmetal_w", null, Vector3(0, yaw, 0), false)
-	k._cyl(p, 0.045, 0.045, 0.025, pos + Vector3(0, 0.06, 0), Z90 + Vector3(0, yaw, 0), "gunmetal_w", null, 8, false)
+	VehicleFittings.lifting_eye(k, p, pos, yaw)
+
 
 
 # --- weapons -------------------------------------------------------------------------

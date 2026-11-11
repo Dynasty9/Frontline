@@ -393,3 +393,16 @@ static func tail_cluster(k: VehicleModels, parent: Node3D, center: Vector3, size
 	for side: float in [-1.0, 1.0]:
 		var col := Color(0.45, 0.035, 0.025) if side < 0 else Color(0.62, 0.27, 0.025)
 		signal_lens(k, parent, center + Vector3(side * spacing, 0, facing * (size.z / 2 + 0.005)), lens, col, facing)
+
+
+## Welded lifting eye. Upright eyes have a clear transverse hole; deck rings
+## may lie flat. Base is the contact surface, and yaw turns the whole fitting.
+static func lifting_eye(k: VehicleModels, parent: Node3D, base: Vector3, yaw := 0.0, radius := 0.045, upright := true) -> void:
+	var mount := k._pivot(parent, base)
+	mount.rotation.y = yaw
+	k._box(mount, Vector3(radius * 2.65, 0.025, radius * 1.8), Vector3(0, 0.0125, 0), "gunmetal_w", null, Vector3.ZERO, false)
+	var height := radius + 0.015 if upright else 0.035
+	k._add(mount, _ring(radius * 0.52, radius), "gunmetal_w", null, Vector3(0, height, 0), Vector3(0, 0, PI / 2) if upright else Vector3.ZERO, Vector3.ONE, false)
+	for side: float in [-1.0, 1.0]:
+		VehicleFrames.tube(k, mount, Vector3(side * radius * 0.4, 0.027, -radius * 0.65), Vector3(side * radius * 0.4, 0.027, radius * 0.65), 0.005, "steel", null, 6, false)
+	k._fold(mount)

@@ -851,7 +851,7 @@ static func _sdv(k: VehicleModels, team: int) -> void:
 	# lifting eyes at the deck's corners
 	for s in [-1.0, 1.0]:
 		for z in [-2.05, 1.05]:
-			k._add(m, Res.torus(0.025, 0.05), "gunmetal_w", null, Vector3(s * 0.48, 1.42, z), Vector3(0, PI / 2, 0))
+			VehicleFittings.lifting_eye(k, m, Vector3(s * 0.48, 1.385, z), PI / 2, 0.05, false)
 	# the mast with the periscope head and a comms antenna beside it
 	k._add(m, VehicleModels.solid([_ry(_foil(0.22, 0.5, -2.55), 1.32), _ry(_foil(0.16, 0.36, -2.47), 1.62)], "boat_sdv_mast"), bm, bc, Vector3.ZERO)
 	k._cyl(m, 0.04, 0.04, 0.5, Vector3(0, 1.85, -2.38), Vector3.ZERO, "gunmetal_w", null, 10)

@@ -405,7 +405,7 @@ static func _mora(k: VehicleModels, team: int) -> void:
 	for i in 4:
 		k._box(m, Vector3(0.98, 0.03, 0.05), Vector3(0.62, 1.965, -1.85 + i * 0.17), cam, col, Vector3.ZERO, false)
 	for s: float in [-1.0, 1.0]:
-		k._box(m, Vector3(0.08, 0.1, 0.12), Vector3(s * 1.2, 1.97, -1.95), "gunmetal_w", null, Vector3.ZERO, false)
+		VehicleFittings.lifting_eye(k, m, Vector3(s * 1.2, 1.92, -1.95), 0.0, 0.045)
 	# exhaust: the louvred outlet on the right flank, forward
 	k._box(m, Vector3(0.1, 0.36, 0.6), Vector3(1.48, 1.62, -1.85), "gunmetal_w")
 	for i in 3:
