@@ -147,8 +147,7 @@ static func _beam(k: VehicleModels, p: Node3D, a: Vector3, b: Vector3, w: float,
 ## A headlight facing f (-1 forward, 1 back): housing, lens, wire guard.
 static func _lamp(k: VehicleModels, p: Node3D, pos: Vector3, r := 0.08, f := -1.0, guard := true) -> void:
 	k._box(p, Vector3(r * 2.6, r * 2.3, 0.12), pos, "gunmetal_w")
-	if not k.burnt:
-		k._cyl(p, r, r, 0.03, pos + Vector3(0, 0, f * 0.06), Vector3(PI / 2, 0, 0), "plain", Color(0.72, 0.72, 0.66), 10, false)
+	VehicleFittings.headlamp(k, p, pos + Vector3(0, 0, f * 0.06), r, Vector3(0, 0, f))
 	if guard:
 		for i in 3:
 			k._box(p, Vector3(0.014, r * 2.5, 0.014), pos + Vector3((i - 1) * r * 0.75, 0, f * 0.12), "gunmetal_w", null, Vector3.ZERO, false)
@@ -157,22 +156,20 @@ static func _lamp(k: VehicleModels, p: Node3D, pos: Vector3, r := 0.08, f := -1.
 
 ## A tail light cluster (red and amber) facing back.
 static func _taillight(k: VehicleModels, p: Node3D, pos: Vector3) -> void:
-	k._box(p, Vector3(0.22, 0.12, 0.06), pos, "gunmetal_w")
-	if not k.burnt:
-		k._box(p, Vector3(0.08, 0.07, 0.02), pos + Vector3(-0.05, 0, 0.035), "paint", Color(0.45, 0.06, 0.05), Vector3.ZERO, false)
-		k._box(p, Vector3(0.08, 0.07, 0.02), pos + Vector3(0.05, 0, 0.035), "paint", Color(0.55, 0.36, 0.08), Vector3.ZERO, false)
+	VehicleFittings.tail_cluster(k, p, pos)
+
 
 
 ## A jerrycan standing upright, its face toward x (s = side it faces).
 static func _jerry(k: VehicleModels, p: Node3D, pos: Vector3, col := Color(0.3, 0.33, 0.22), rot := Vector3.ZERO) -> void:
-	k._box(p, Vector3(0.17, 0.46, 0.34), pos, "paint", col, rot)
-	k._box(p, Vector3(0.06, 0.05, 0.16), pos + Vector3(0, 0.25, 0.04), "paint", col.darkened(0.2), rot, false)
+	VehicleFittings.jerrycan(k, p, pos, col, rot)
+
 
 
 ## An ammo can (olive), its long side along z.
 static func _ammo_can(k: VehicleModels, p: Node3D, pos: Vector3, rot := Vector3.ZERO) -> void:
-	k._box(p, Vector3(0.16, 0.2, 0.3), pos, "paint", STOW, rot)
-	k._box(p, Vector3(0.04, 0.02, 0.18), pos + Vector3(0, 0.11, 0), "gunmetal_w", null, rot, false)
+	VehicleFittings.ammo_can(k, p, pos, STOW, rot)
+
 
 
 ## A whip antenna on a base.
@@ -187,14 +184,13 @@ static func _smoke(k: VehicleModels, p: Node3D, pos: Vector3, s: float, n := 4, 
 	k._box(p, Vector3(0.14, 0.1, 0.12 * n + 0.04), pos, "gunmetal_w", null, Vector3(0, yaw, 0))
 	for i in n:
 		var o := b * Vector3(0, 0.07 + (i % 2) * 0.05, (i - (n - 1) * 0.5) * 0.12)
-		k._cyl(p, 0.042, 0.042, 0.22, pos + o + Vector3(s * 0.06, 0.04, 0), Vector3(0, yaw, s * -0.9), "gunmetal_w", null, 8, false)
+		VehicleFittings.smoke_tube(k, p, pos + o + Vector3(s * 0.06, 0.04, 0), Vector3(0, yaw, s * -0.9), 0.042, 0.22)
 
 
 ## A tow shackle (a U on its pin) at pos.
 static func _shackle(k: VehicleModels, p: Node3D, pos: Vector3, f := -1.0) -> void:
-	k._box(p, Vector3(0.14, 0.12, 0.1), pos, "gunmetal_w")
-	k._cyl(p, 0.035, 0.035, 0.16, pos + Vector3(0, 0, f * 0.08), Vector3(PI / 2, 0, 0), "gunmetal_w", null, 8)
-	k._cyl(p, 0.06, 0.06, 0.035, pos + Vector3(0, -0.02, f * 0.15), Vector3(0, 0, PI / 2), "gunmetal_w", null, 10, false)
+	VehicleFittings.tow_shackle(k, p, pos, f, Vector3(0.14, 0.12, 0.1), 0.06)
+
 
 
 ## A static spare wheel (not spinning) lying with its axle along `axis`.
@@ -395,7 +391,7 @@ static func _hunter(k: VehicleModels, team: int, arm: String) -> void:
 	# --- the roof: a remote weapon station, or the gunner's hatch closed
 	if arm == "":
 		k._cyl(m, 0.42, 0.44, 0.08, Vector3(0, roof + 0.04, 0.4), Vector3.ZERO, cam, null, 16)
-		k._cyl(m, 0.36, 0.36, 0.05, Vector3(0, roof + 0.1, 0.4), Vector3.ZERO, cam, null, 16)
+		VehicleFittings.hatch(k, m, Vector3(0, roof + 0.1, 0.4), 0.36, cam, null, 1.0, 0.05)
 		k._box(m, Vector3(0.1, 0.06, 0.2), Vector3(0.3, roof + 0.13, 0.4), "gunmetal_w")
 		return
 	_rcws(k, m, Vector3(0, roof, 0.35), arm, cam, 1.15)
@@ -575,9 +571,9 @@ static func _marshall(k: VehicleModels, team: int) -> void:
 		_zy(k, m, x, 0.22, ga.lerp(gb, 0.1), ga.lerp(gb, 0.15), 0.06, 0.07, "gunmetal_w")
 	for s in [-1.0, 1.0]:
 		_zy(k, m, s * 1.08, 0.06, ga.lerp(gb, 0.6), ga.lerp(gb, 0.72), 0.12, 0.06, "gunmetal_w")
-	k._cyl(m, 0.3, 0.3, 0.06, Vector3(-0.6, roof + 0.03, -2.0), Vector3.ZERO, cam, null, 14)
+	VehicleFittings.hatch(k, m, Vector3(-0.6, roof + 0.03, -2.0), 0.3, cam, null, 1.0, 0.06)
 	for i in 3:
-		k._box(m, Vector3(0.16, 0.1, 0.07), Vector3(-0.78 + i * 0.18, roof + 0.05, -2.36), "gunmetal_w", null, Vector3(0, (i - 1) * 0.3, 0))
+		VehicleFittings.periscope(k, m, Vector3(-0.78 + i * 0.18, roof + 0.05, -2.36), Vector3(0.16, 0.1, 0.07), Vector3(0, (i - 1) * 0.3, 0))
 	k._box(m, Vector3(1.0, 0.04, 1.1), Vector3(0.42, roof + 0.01, -1.55), "gunmetal_w")
 	for i in 6:
 		k._box(m, Vector3(0.9, 0.025, 0.05), Vector3(0.42, roof + 0.035, -2.0 + i * 0.18), cam, null, Vector3.ZERO, false)
@@ -602,7 +598,7 @@ static func _marshall(k: VehicleModels, team: int) -> void:
 		k._box(m, Vector3(0.72, 0.06, 0.95), Vector3(s * 0.48, roof + 0.03, 2.55), cam)
 		k._box(m, Vector3(0.06, 0.06, 0.2), Vector3(s * 0.2, roof + 0.08, 2.2), "gunmetal_w")
 		for z in [1.75, 3.4]:
-			k._box(m, Vector3(0.14, 0.1, 0.12), Vector3(s * 0.95, roof + 0.05, z), "gunmetal_w")
+			VehicleFittings.periscope(k, m, Vector3(s * 0.95, roof + 0.05, z), Vector3(0.14, 0.1, 0.12), Vector3(0, -s * PI / 2, 0))
 	# the rear: ramp with its door, hinges, lights, steps
 	k._box(m, Vector3(1.75, 1.15, 0.08), Vector3(0, 1.4, 3.86), cam)
 	k._box(m, Vector3(0.6, 0.95, 0.04), Vector3(0.42, 1.48, 3.91), cam)
@@ -638,7 +634,7 @@ static func _marshall(k: VehicleModels, team: int) -> void:
 	k._box(t, Vector3(0.36, 0.3, 0.36), Vector3(0.45, 1.05, 0.55), cam)
 	k._box(t, Vector3(0.24, 0.16, 0.02), Vector3(0.45, 1.07, 0.36), "glass", null, Vector3.ZERO, false)
 	# hatches, smoke dischargers, bustle stowage, antenna
-	k._cyl(t, 0.3, 0.3, 0.06, Vector3(-0.42, 0.69, 0.6), Vector3.ZERO, cam, null, 14)
+	VehicleFittings.hatch(k, t, Vector3(-0.42, 0.69, 0.6), 0.3, cam, null, 1.0, 0.06)
 	k._box(t, Vector3(0.12, 0.08, 0.2), Vector3(-0.2, 0.74, 0.6), "gunmetal_w")
 	for s in [-1.0, 1.0]:
 		_smoke(k, t, Vector3(s * 0.92, 0.5, -0.55), s, 4, s * -0.55)
@@ -675,9 +671,9 @@ static func _rhino(k: VehicleModels, team: int, up: bool) -> void:
 			k._box(m, Vector3(0.52, 0.03, 1.3), Vector3(s * 1.12, 1.195, z), "gunmetal_w", null, Vector3.ZERO, false)
 	# the driver's hatch centred at the top of the glacis, his periscopes,
 	# lights in guards on the nose, tow eyes
-	k._cyl(m, 0.28, 0.28, 0.06, Vector3(0, roof + 0.03, -1.9), Vector3.ZERO, cam, null, 14)
+	VehicleFittings.hatch(k, m, Vector3(0, roof + 0.03, -1.9), 0.28, cam, null, 1.0, 0.06)
 	for i in 3:
-		k._box(m, Vector3(0.16, 0.1, 0.07), Vector3(-0.18 + i * 0.18, roof + 0.05, -2.24), "gunmetal_w", null, Vector3(0, (i - 1) * 0.35, 0))
+		VehicleFittings.periscope(k, m, Vector3(-0.18 + i * 0.18, roof + 0.05, -2.24), Vector3(0.16, 0.1, 0.07), Vector3(0, (i - 1) * 0.35, 0))
 	_tube(k, m, Vector3(0, 1.22, -3.56), Vector3(0, roof + 0.01, -2.3), 0.04, cam)
 	for s in [-1.0, 1.0]:
 		_lamp(k, m, Vector3(s * 0.95, 1.36, -2.88), 0.07)
@@ -719,14 +715,14 @@ static func _rhino(k: VehicleModels, team: int, up: bool) -> void:
 	k._box(t, Vector3(0.36, 0.3, 0.42), Vector3(-0.62, 0.95, -0.5), cam)
 	k._box(t, Vector3(0.26, 0.18, 0.02), Vector3(-0.62, 0.98, -0.72), "glass", null, Vector3.ZERO, false)
 	k._cyl(t, 0.34, 0.36, 0.2, Vector3(0.52, 0.9, 0.6), Vector3.ZERO, cam, null, 14)
-	k._cyl(t, 0.3, 0.3, 0.06, Vector3(0.52, 1.03, 0.6), Vector3.ZERO, cam, null, 14)
+	VehicleFittings.hatch(k, t, Vector3(0.52, 1.03, 0.6), 0.3, cam, null, 1.0, 0.06)
 	for i in 5:
 		var a := -0.9 + i * 0.45
 		k._box(t, Vector3(0.1, 0.08, 0.05), Vector3(0.52 + sin(a) * 0.35, 0.9, 0.6 - cos(a) * 0.35), "glass", null, Vector3(0, -a, 0), false)
 	k._cyl(t, 0.07, 0.08, 0.3, Vector3(0.62, 0.95, -0.4), Vector3.ZERO, "gunmetal_w", null, 8)
 	k._box(t, Vector3(0.32, 0.28, 0.32), Vector3(0.62, 1.2, -0.4), cam)
 	k._box(t, Vector3(0.22, 0.14, 0.02), Vector3(0.62, 1.22, -0.57), "glass", null, Vector3.ZERO, false)
-	k._cyl(t, 0.28, 0.28, 0.06, Vector3(-0.5, 0.83, 0.75), Vector3.ZERO, cam, null, 14)
+	VehicleFittings.hatch(k, t, Vector3(-0.5, 0.83, 0.75), 0.28, cam, null, 1.0, 0.06)
 	for s in [-1.0, 1.0]:
 		_smoke(k, t, Vector3(s * 1.06, 0.6, -0.72), s, 4, s * -0.5)
 		# bins on the bustle sides
@@ -842,9 +838,9 @@ static func _mk_hull(k: VehicleModels, team: int, cam: String, era: bool) -> voi
 	_zy(k, m, -0.6, 0.9, ga.lerp(gb, 0.25), ga.lerp(gb, 0.6), 0.04, 0.02, cam)
 	for f in [0.25, 0.6]:
 		_zy(k, m, -0.6, 0.94, ga.lerp(gb, f - 0.005), ga.lerp(gb, f + 0.005), 0.02, 0.045, "gunmetal_w", null, false)
-	k._cyl(m, 0.28, 0.28, 0.06, Vector3(-0.85, 1.92, -1.25), Vector3.ZERO, cam, null, 14)
+	VehicleFittings.hatch(k, m, Vector3(-0.85, 1.92, -1.25), 0.28, cam, null, 1.0, 0.06)
 	for i in 3:
-		k._box(m, Vector3(0.15, 0.1, 0.07), Vector3(-1.05 + i * 0.2, 1.88, -1.58), "gunmetal_w", null, Vector3(-0.24, (i - 1) * 0.3, 0))
+		VehicleFittings.periscope(k, m, Vector3(-1.05 + i * 0.2, 1.88, -1.58), Vector3(0.15, 0.1, 0.07), Vector3(-0.24, (i - 1) * 0.3, 0))
 	# the exhaust louvres on the left of the glacis
 	k._box(m, Vector3(0.05, 0.3, 1.0), Vector3(-1.79, 1.48, -2.1), "gunmetal_w")
 	# skirts: bolted heavy panels hanging off the sponsons, the front one raked
@@ -937,11 +933,11 @@ static func _mk_turret(k: VehicleModels, team: int, cam: String, up: bool) -> vo
 	k._box(t, Vector3(0.38, 0.32, 0.38), Vector3(0.62, 1.18, -0.25), cam)
 	k._box(t, Vector3(0.26, 0.16, 0.02), Vector3(0.62, 1.2, -0.45), "glass", null, Vector3.ZERO, false)
 	k._cyl(t, 0.36, 0.38, 0.16, Vector3(0.62, 0.88, 0.62), Vector3.ZERO, cam, null, 14)
-	k._cyl(t, 0.32, 0.32, 0.06, Vector3(0.62, 0.99, 0.62), Vector3.ZERO, cam, null, 14)
+	VehicleFittings.hatch(k, t, Vector3(0.62, 0.99, 0.62), 0.32, cam, null, 1.0, 0.06)
 	for i in 5:
 		var a := -0.9 + i * 0.45
 		k._box(t, Vector3(0.1, 0.07, 0.05), Vector3(0.62 + sin(a) * 0.37, 0.88, 0.62 - cos(a) * 0.37), "glass", null, Vector3(0, -a, 0), false)
-	k._cyl(t, 0.3, 0.3, 0.06, Vector3(-0.6, 0.83, 0.75), Vector3.ZERO, cam, null, 14)
+	VehicleFittings.hatch(k, t, Vector3(-0.6, 0.83, 0.75), 0.3, cam, null, 1.0, 0.06)
 	k._box(t, Vector3(0.1, 0.06, 0.24), Vector3(-0.35, 0.86, 0.75), "gunmetal_w")
 	k._cyl(t, 0.055, 0.055, 0.7, Vector3(-0.85, 1.0, 1.35), Vector3(PI / 2 - 0.5, 0, 0), "gunmetal_w", null, 8)
 	k._box(t, Vector3(0.16, 0.16, 0.2), Vector3(-0.85, 0.86, 1.62), "gunmetal_w")
@@ -1042,8 +1038,8 @@ static func _sandstorm(k: VehicleModels, team: int) -> void:
 	_mk_hull(k, team, cam, false)
 	# the crew's cupola and periscopes forward, where a turret would be
 	k._cyl(m, 0.4, 0.42, 0.14, Vector3(0.7, 1.97, -0.5), Vector3.ZERO, cam, null, 14)
-	k._cyl(m, 0.34, 0.34, 0.06, Vector3(0.7, 2.06, -0.5), Vector3.ZERO, cam, null, 14)
-	k._cyl(m, 0.3, 0.3, 0.06, Vector3(-0.55, 1.93, -0.3), Vector3.ZERO, cam, null, 14)
+	VehicleFittings.hatch(k, m, Vector3(0.7, 2.06, -0.5), 0.34, cam, null, 1.0, 0.06)
+	VehicleFittings.hatch(k, m, Vector3(-0.55, 1.93, -0.3), 0.3, cam, null, 1.0, 0.06)
 	k._box(m, Vector3(0.36, 0.3, 0.36), Vector3(0.2, 2.05, -0.6), cam)
 	k._box(m, Vector3(0.24, 0.14, 0.02), Vector3(0.2, 2.08, -0.79), "glass", null, Vector3.ZERO, false)
 	for s in [-1.0, 1.0]:
@@ -1123,7 +1119,7 @@ static func _namer_hull(k: VehicleModels, team: int, cam: String, cupola := true
 	var fb := Vector2(-0.72, roof)
 	for i in 3:
 		_zy(k, m, -0.95 + i * 0.22, 0.16, fa.lerp(fb, 0.55), fa.lerp(fb, 0.8), 0.06, 0.03, "glass", null, false)
-	k._cyl(m, 0.3, 0.3, 0.06, Vector3(-0.72, roof + 0.03, -0.3), Vector3.ZERO, cam, null, 14)
+	VehicleFittings.hatch(k, m, Vector3(-0.72, roof + 0.03, -0.3), 0.3, cam, null, 1.0, 0.06)
 	# skirts and side armour: heavy panels low, the superstructure's armour
 	# modules with a channel between them, stowage, tow cable
 	for s in [-1.0, 1.0]:
@@ -1147,7 +1143,7 @@ static func _namer_hull(k: VehicleModels, team: int, cam: String, cupola := true
 	# compartment, stowage at the back
 	if cupola:
 		k._cyl(m, 0.36, 0.38, 0.16, Vector3(0.62, roof + 0.08, 0.15), Vector3.ZERO, cam, null, 14)
-		k._cyl(m, 0.32, 0.32, 0.06, Vector3(0.62, roof + 0.19, 0.15), Vector3.ZERO, cam, null, 14)
+		VehicleFittings.hatch(k, m, Vector3(0.62, roof + 0.19, 0.15), 0.32, cam, null, 1.0, 0.06)
 		for i in 5:
 			var a := -1.0 + i * 0.5
 			k._box(m, Vector3(0.1, 0.07, 0.05), Vector3(0.62 + sin(a) * 0.37, roof + 0.08, 0.15 - cos(a) * 0.37), "glass", null, Vector3(0, -a, 0), false)
@@ -1265,8 +1261,8 @@ static func _cheetah(k: VehicleModels, team: int) -> void:
 	k._box(t, Vector3(0.3, 0.26, 0.3), Vector3(-0.6, 1.05, -0.7), cam)
 	k._box(t, Vector3(0.22, 0.14, 0.02), Vector3(-0.6, 1.07, -0.86), "glass", null, Vector3.ZERO, false)
 	# hatches, the search radar on its folding mast at the back
-	k._cyl(t, 0.28, 0.28, 0.06, Vector3(0.5, 0.95, 0.4), Vector3.ZERO, cam, null, 14)
-	k._cyl(t, 0.28, 0.28, 0.06, Vector3(-0.5, 0.95, 0.4), Vector3.ZERO, cam, null, 14)
+	VehicleFittings.hatch(k, t, Vector3(0.5, 0.95, 0.4), 0.28, cam, null, 1.0, 0.06)
+	VehicleFittings.hatch(k, t, Vector3(-0.5, 0.95, 0.4), 0.28, cam, null, 1.0, 0.06)
 	k._box(t, Vector3(0.5, 0.3, 0.5), Vector3(0, 1.07, 1.3), cam)
 	k._cyl(t, 0.08, 0.1, 0.26, Vector3(0, 1.33, 1.3), Vector3.ZERO, "gunmetal_w", null, 10)
 	var rp := k._pivot(t, Vector3(0, 1.45, 1.3))
@@ -1341,7 +1337,7 @@ static func _hemtt_chassis(k: VehicleModels, team: int, paint: Color, detailed :
 	for s in [-1.0, 1.0]:
 		k._box(m, Vector3(0.3, 0.2, 0.06), Vector3(s * 0.96, 0.94, -5.27), "gunmetal_w")
 		if not k.burnt:
-			k._box(m, Vector3(0.12, 0.12, 0.02), Vector3(s * 1.02, 0.94, -5.305), "plain", Color(0.72, 0.72, 0.66), Vector3.ZERO, false)
+			VehicleFittings.rectangular_headlamp(k, m, Vector3(s * 1.02, 0.94, -5.305), Vector2(0.12, 0.12))
 			k._box(m, Vector3(0.08, 0.08, 0.02), Vector3(s * 0.88, 0.94, -5.305), "paint", Color(0.55, 0.36, 0.08), Vector3.ZERO, false)
 		_shackle(k, m, Vector3(s * 0.55, 0.8, -5.2))
 		k._box(m, Vector3(0.12, 0.06, 0.03), Vector3(s * 1.1, 1.82, -5.0), "paint", Color(0.55, 0.36, 0.08), Vector3.ZERO, false)

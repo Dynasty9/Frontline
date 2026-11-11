@@ -5,6 +5,8 @@ extends RefCounted
 ## Packed linear maps: R height, G roughness variation, B corrosion, A luminance variation.
 
 const PROFILES := {
+	"signal_lens": {"surface_normal_strength": 0.0, "surface_finish": 8, "surface_weather": 0.0, "surface_grain": 0.0, "surface_roughness": 0.0, "rough": 0.16, "metal": 0.0, "bump": 0.0, "grime": 0.0, "surface_detail": false, "surface_specular": 0.5},
+	"headlamp": {"surface_normal_strength": 0.0, "surface_finish": 8, "surface_weather": 0.0, "surface_grain": 0.0, "surface_roughness": 0.0, "rough": 0.20, "metal": 0.35, "bump": 0.0, "grime": 0.0, "surface_detail": false, "surface_specular": 0.5},
 	"mirror": {"surface_normal_strength": 0.0, "surface_finish": 8, "surface_weather": 0.0, "surface_grain": 0.0, "surface_roughness": 0.0, "rough": 0.035, "metal": 1.0, "bump": 0.0, "grime": 0.0, "surface_detail": false, "surface_specular": 0.5},
 	"rotor": {"surface_normal_strength": 0.12, "surface_finish": 7, "surface_weather": 0.04, "surface_grain": 0.12, "surface_roughness": 0.24, "map": "coating", "rough": 0.78, "metal": 0.0, "bump": 0.004, "grime": 0.0, "surface_scale": 3.0, "surface_tone": 0.035, "surface_specular": 0.25},
 	"armor": {"surface_paint_wear": 0.85,"surface_normal_strength": 0.08, "surface_finish": 0, "surface_weather": 0.32, "surface_grain": 0.12, "surface_wear": 0.10, "surface_roughness": 0.48, "map": "coating", "rough": 0.73, "metal": 0.0, "bump": 0.018, "grime": 0.32, "surface_scale": 1.5, "surface_tone": 0.08},
@@ -42,7 +44,7 @@ static func key(kind: String, vehicle_family: String) -> String:
 
 static func profile(kind: String, vehicle_family: String) -> String:
 	match kind:
-		"rubber", "glass", "mirror", "track", "burnt", "steel", "gunmetal", "nonslip", "tread", "rotor":
+		"rubber", "glass", "mirror", "headlamp", "signal_lens", "track", "burnt", "steel", "gunmetal", "nonslip", "tread", "rotor":
 			return kind
 		"rust_steel":
 			return "oxidized"
@@ -69,7 +71,7 @@ static func preset(material_key: String) -> Dictionary:
 	var p := Mats._preset(kind).duplicate()
 	# Nonslip is explicitly assigned to walking surfaces, with the same tint
 	# basis as the plain painted parts it replaces.
-	if kind in ["nonslip", "tread", "rotor", "mirror"]:
+	if kind in ["nonslip", "tread", "rotor", "mirror", "headlamp", "signal_lens"]:
 		p = Mats._preset("plain").duplicate()
 	if finish == "wood":
 		p["pattern"] = Mats.WOOD

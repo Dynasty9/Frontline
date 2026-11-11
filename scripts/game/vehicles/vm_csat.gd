@@ -137,9 +137,8 @@ static func _arch(k: VehicleModels, p: Node3D, x: float, z: float, r: float, w: 
 ## A headlight cluster facing -z: housing, two lenses and a wire guard.
 static func _headlight(k: VehicleModels, p: Node3D, pos: Vector3, guard := true) -> void:
 	k._box(p, Vector3(0.26, 0.15, 0.1), pos, "gunmetal_w")
-	if not k.burnt:
-		k._box(p, Vector3(0.1, 0.09, 0.02), pos + Vector3(-0.06, 0, -0.052), "plain", Color(0.85, 0.84, 0.76), Vector3.ZERO, false)
-		k._box(p, Vector3(0.08, 0.07, 0.02), pos + Vector3(0.07, 0, -0.052), "glass", null, Vector3.ZERO, false)
+	VehicleFittings.rectangular_headlamp(k, p, pos + Vector3(-0.06, 0, -0.052), Vector2(0.1, 0.09))
+	VehicleFittings.rectangular_headlamp(k, p, pos + Vector3(0.07, 0, -0.052), Vector2(0.08, 0.07))
 	if guard:
 		for dx in [-0.1, 0.0, 0.1]:
 			k._box(p, Vector3(0.015, 0.17, 0.015), pos + Vector3(dx, 0, -0.09), "gunmetal_w", null, Vector3.ZERO, false)
@@ -148,10 +147,8 @@ static func _headlight(k: VehicleModels, p: Node3D, pos: Vector3, guard := true)
 
 ## A tail light pair facing +z.
 static func _taillight(k: VehicleModels, p: Node3D, pos: Vector3) -> void:
-	k._box(p, Vector3(0.2, 0.1, 0.05), pos, "gunmetal_w")
-	if not k.burnt:
-		k._box(p, Vector3(0.07, 0.06, 0.02), pos + Vector3(-0.045, 0, 0.03), "paint", Color(0.42, 0.06, 0.04), Vector3.ZERO, false)
-		k._box(p, Vector3(0.07, 0.06, 0.02), pos + Vector3(0.045, 0, 0.03), "paint", Color(0.5, 0.3, 0.05), Vector3.ZERO, false)
+	VehicleFittings.tail_cluster(k, p, pos, Vector3(0.2, 0.1, 0.05), Vector2(0.07, 0.06), 0.045)
+
 
 
 ## A whip antenna on a base.
@@ -161,32 +158,26 @@ static func _antenna(k: VehicleModels, p: Node3D, pos: Vector3, h: float) -> voi
 
 ## A tow hook/shackle facing along `dir` (-1 front, +1 rear).
 static func _tow(k: VehicleModels, p: Node3D, pos: Vector3, dir: float) -> void:
-	k._box(p, Vector3(0.12, 0.12, 0.14), pos, "gunmetal_w")
-	k._cyl(p, 0.05, 0.05, 0.03, pos + Vector3(0, 0, dir * 0.1), Vector3(0, 0, PI / 2), "gunmetal_w", null, 8, false)
-	k._box(p, Vector3(0.03, 0.12, 0.05), pos + Vector3(-0.045, 0, dir * 0.11), "gunmetal_w", null, Vector3.ZERO, false)
-	k._box(p, Vector3(0.03, 0.12, 0.05), pos + Vector3(0.045, 0, dir * 0.11), "gunmetal_w", null, Vector3.ZERO, false)
+	VehicleFittings.tow_shackle(k, p, pos, dir, Vector3(0.12, 0.12, 0.14), 0.05)
+
 
 
 ## A jerrycan standing upright, its face toward x.
 static func _jerrycan(k: VehicleModels, p: Node3D, pos: Vector3, col := OLIVE, rot := Vector3.ZERO) -> void:
-	k._box(p, Vector3(0.16, 0.46, 0.34), pos, "paint", col, rot)
-	k._box(p, Vector3(0.05, 0.05, 0.14), pos + Vector3(0, 0.25, 0.06), "paint", col.darkened(0.2), rot, false)
+	VehicleFittings.jerrycan(k, p, pos, col, rot, 0.16)
+
 
 
 ## A round hatch with its hinge (a cupola lid).
 static func _hatch(k: VehicleModels, p: Node3D, pos: Vector3, r: float, mat := CAM, col = null) -> void:
-	k._cyl(p, r + 0.03, r + 0.04, 0.06, pos + Vector3(0, 0.03, 0), Vector3.ZERO, mat, col, 16)
-	k._cyl(p, r - 0.02, r, 0.05, pos + Vector3(0, 0.08, 0), Vector3.ZERO, mat, col, 16)
-	k._box(p, Vector3(0.24, 0.05, 0.08), pos + Vector3(0, 0.08, r * 0.95), "gunmetal_w", null, Vector3.ZERO, false)
-	k._box(p, Vector3(0.12, 0.03, 0.03), pos + Vector3(0, 0.12, -r * 0.4), "gunmetal_w", null, Vector3.ZERO, false)
+	VehicleFittings.hatch(k, p, pos + Vector3(0, 0.08, 0), r, mat, col)
+
 
 
 ## A periscope head facing along yaw (0: forward).
 static func _periscope(k: VehicleModels, p: Node3D, pos: Vector3, yaw := 0.0) -> void:
-	k._box(p, Vector3(0.2, 0.1, 0.12), pos, "gunmetal_w", null, Vector3(0, yaw, 0))
-	if not k.burnt:
-		var f := Vector3(sin(yaw), 0, cos(yaw)) * -0.062
-		k._box(p, Vector3(0.16, 0.06, 0.012), pos + f + Vector3(0, 0.005, 0), "glass", null, Vector3(0, yaw, 0), false)
+	VehicleFittings.periscope(k, p, pos, Vector3(0.2, 0.1, 0.12), Vector3(0, yaw, 0))
+
 
 
 ## A bank of smoke dischargers on the side `s` (-1 left, +1 right), firing
@@ -195,7 +186,7 @@ static func _smoke(k: VehicleModels, p: Node3D, pos: Vector3, s: float, n := 3, 
 	k._box(p, Vector3(0.16, 0.08, 0.1 + n * 0.12), pos + Vector3(0, -0.06, 0.05), "gunmetal_w", null, Vector3(0, s * -yaw, 0))
 	for i in n:
 		var o := Basis(Vector3.UP, s * -yaw) * Vector3(0, 0, -0.1 + i * 0.13)
-		k._cyl(p, 0.045, 0.045, 0.26, pos + o + Vector3(0, 0.03, 0), Vector3(-0.9, s * -yaw, 0), "gunmetal_w", null, 8, false)
+		VehicleFittings.smoke_tube(k, p, pos + o + Vector3(0, 0.03, 0), Vector3(-0.9, s * -yaw, 0), 0.045, 0.26)
 
 
 ## A remote weapon station on the roof: the turntable, the cradle with a
@@ -398,8 +389,7 @@ static func _qilin(k: VehicleModels, team: int, arm: String) -> void:
 		k._box(m, Vector3(0.06, 0.2, 1.7), Vector3(s * 0.72, 0.62, 0.0), c)
 		# round headlamps with guards, the indicators
 		k._cyl(m, 0.09, 0.085, 0.08, Vector3(s * 0.48, 0.74, -2.46), Vector3(PI / 2, 0, 0), "gunmetal_w", null, 12)
-		if not k.burnt:
-			k._cyl(m, 0.065, 0.065, 0.02, Vector3(s * 0.48, 0.74, -2.51), Vector3(PI / 2, 0, 0), "plain", Color(0.85, 0.84, 0.76), 12, false)
+		VehicleFittings.headlamp(k, m, Vector3(s * 0.48, 0.74, -2.51), 0.065)
 		k._box(m, Vector3(0.015, 0.2, 0.015), Vector3(s * 0.48, 0.74, -2.56), "gunmetal_w", null, Vector3.ZERO, false)
 		_taillight(k, m, Vector3(s * 0.55, 0.85, 2.43))
 		# mirrors on the screen frame
