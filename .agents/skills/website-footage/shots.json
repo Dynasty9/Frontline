@@ -683,13 +683,13 @@
       ]
     },
     "reel": {
-      "use": "Homepage trailer. A squad breaks cover, the fight grows from trenches to the coast, and a jet crosses the same harbour where the final impacts land.",
+      "use": "Homepage trailer. Follow a squad order to the coast, see the opposing boats and the jet’s target, then return to the trench assault for the artillery finale.",
       "size": [1280, 720],
-      "kbps": 1900,
+      "kbps": 1580,
       "max_kb": 7500,
       "audio": true,
       "score": {"take": "trailer-score", "gain_db": -6},
-      "end_title": {"take": "trailer-score", "at": 10.0, "from": 22.1, "fade": 5, "full_frame": true},
+      "end_title": {"take": "trailer-score", "at": 10.0, "from": 29.9, "fade": 5, "full_frame": true},
       "audio_kbps": 128,
       "fade": 0,
       "fade_in": 0,
@@ -708,11 +708,15 @@
         {"take": "trailer-pit-landing", "from": 37.6, "to": 39.26667, "gain_db": -3, "caption": "[The round strikes the field]"},
         {"take": "trailer-harbour-boats", "from": 13.2, "to": 15.6, "gain_db": 0, "caption": "[Boats approach the shore]"},
         {"take": "trailer-beach-landing", "from": 26.13333, "to": 27.53333, "gain_db": 0, "caption": "[Surf as the squad runs ashore]"},
-        {"take": "trailer-patrol-pass", "from": 34.9, "to": 35.56667, "gain_db": -1, "caption": "[Patrol ship fires as a boat passes]"},
-        {"take": "trailer-bridge-roof", "from": 35.56667, "to": 36.83333, "gain_db": -1},
-        {"take": "trailer-harbour-finale", "from": 4.3, "to": 6.6, "gain_db": 0, "caption": "[Jet engines climb over the harbour]"},
-        {"take": "trailer-quay-impact", "from": 10.33333, "to": 12.33333, "gain_db": 2, "caption": "[Bombs strike the quay. The truck erupts.]"},
-        {"take": "trailer-quay-wreck", "from": 13.86667, "to": 15.13333, "gain_db": 1}
+        {"take": "trailer-opposing-boats", "from": 32.5, "to": 34.6, "gain_db": 0, "caption": "[Patrol boats close on the harbour entrance]"},
+        {"take": "trailer-harbour-finale", "from": 4.5, "to": 5.7, "gain_db": 0, "caption": "[Jet engines rise over the coast]"},
+        {"take": "trailer-jet-target", "from": 5.7, "to": 7.03333, "gain_db": 0},
+        {"take": "trailer-quay-impact", "from": 10.33333, "to": 12.23333, "gain_db": 2, "caption": "[Bombs strike beside the truck]"},
+        {"take": "trailer-quay-wreck", "from": 13.8, "to": 14.73333, "gain_db": 0},
+        {"take": "trailer-trench-column", "from": 2.9, "to": 5.5, "gain_db": 0, "caption": "[Tracks and rifle fire as infantry advance]"},
+        {"take": "trailer-trench-barrage", "from": 7.2, "to": 9.33333, "gain_db": 1, "caption": "[Artillery pounds the occupied trenches]"},
+        {"take": "trailer-trench-impact", "from": 9.33333, "to": 10.53333, "gain_db": 1},
+        {"take": "trailer-trench-impact", "from": 10.53333, "to": 13.03333, "gain_db": -2, "caption": "[The barrage echoes as the music resolves]"}
       ]
     },
     "changelog-tank-motion": {

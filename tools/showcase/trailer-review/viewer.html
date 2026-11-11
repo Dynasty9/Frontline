@@ -44,8 +44,8 @@ const listen = document.querySelector('#listen'), status = document.querySelecto
 const earlier = document.querySelector('#earlier'), later = document.querySelector('#later');
 let position = 0, raf;
 function sharedFrames() {
-  // Editions recorded before the 24-second brief ran 765 frames.
-  return Math.min(...pickers.map(p => cuts[p.selectedIndex]?.frames ?? 765));
+  // Hold the shorter picture on its final frame while the longer edit finishes.
+  return Math.max(...pickers.map(p => cuts[p.selectedIndex]?.frames ?? 765));
 }
 function display(at) {
   position = Math.min(at, sharedFrames() / 30);
@@ -63,10 +63,11 @@ function seek(at) {
   videos.forEach(v => { if (v.readyState >= 1) v.currentTime = position; });
 }
 function tick() {
-  const [a,b] = videos;
-  if (Math.abs(a.currentTime - b.currentTime) > .10) b.currentTime = a.currentTime;
+  const [a,b] = videos[0].duration >= videos[1].duration ? videos : [videos[1],videos[0]];
+  const otherTime = Math.min(a.currentTime, b.duration);
+  if (Math.abs(otherTime - b.currentTime) > .10) b.currentTime = otherTime;
   display(a.currentTime);
-  if (a.ended || b.ended || a.currentTime >= sharedFrames() / 30) { pause(); seek(sharedFrames() / 30); return; }
+  if (a.ended || a.currentTime >= sharedFrames() / 30) { pause(); seek(sharedFrames() / 30); return; }
   raf = requestAnimationFrame(tick);
 }
 function switchCut(i) {
@@ -106,7 +107,7 @@ function selectAudio() { videos.forEach((v,i) => v.muted = i !== Number(listen.v
 selectAudio();
 listen.onchange = selectAudio;
 async function startPlayback() {
-  try { await Promise.all(videos.map(v => v.play())); }
+  try { await Promise.all(videos.filter(v => position < v.duration || !Number.isFinite(v.duration)).map(v => v.play())); }
   catch { pause(); status.textContent = 'Playback failed. Check that both MP4s are beside this viewer.'; return; }
   status.textContent = '';
   play.textContent = 'Pause both';

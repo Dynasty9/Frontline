@@ -1,4 +1,4 @@
-"""Append a fixed-length trailer revision and rebuild its offline comparison viewer."""
+"""Append a trailer revision and rebuild its offline comparison viewer."""
 import argparse
 from datetime import datetime, timezone
 import hashlib
@@ -55,9 +55,14 @@ def main():
         "ffprobe", "-v", "error", "-show_streams", "-of", "json", str(args.clip)
     ]))["streams"]
     video = next(s for s in streams if s["codec_type"] == "video")
-    if (video["nb_frames"], video["avg_frame_rate"]) != ("720", "30/1"):
-        parser.error("Comparison cuts must contain 720 frames at 30 fps (24 seconds).")
+    if video["avg_frame_rate"] != "30/1" or int(video["nb_frames"]) < 1:
+        parser.error("Comparison cuts must contain video at 30 fps.")
     frames = int(video["nb_frames"])
+    edit = recipe["outputs"]["reel"]
+    if edit.get("fade") == 0 and not edit.get("loop_fade") and all("to" in cut for cut in edit["cuts"]):
+        expected = sum(round(cut["to"] * 30) - round(cut["from"] * 30) for cut in edit["cuts"])
+        if frames != expected:
+            parser.error(f"The recipe calls for {expected} frames, but the movie contains {frames}.")
     if args.at is not None and not 0 <= args.at < frames / 30:
         parser.error("--at must identify a frame in the finished cut.")
     if not any(s["codec_type"] == "audio" for s in streams):

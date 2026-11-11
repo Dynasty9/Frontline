@@ -174,6 +174,13 @@ func _check_wreck_on_slope() -> void:
 	field.time = 9.0
 	joining._update_wreck_soot()
 	assert(joining._wreck_soot and float(joining._wreck_soot.get_shader_parameter("extent")) > 2.0, "a late join sees the progressed engine scorch")
+	for pickup in ["technical", "aa_tech"]:
+		joining.model.free()
+		joining.vk = pickup
+		joining.wreck_turret_yaw = INF
+		joining._build_model()
+		assert(joining._wreck_engine_deck.z < -1.0, "The pickup fire starts at the bonnet")
+		assert(joining._wreck_soot != null, "The pickup keeps its body finish beneath the engine soot")
 	joining.free()
 	wreck.free()
 	field.free()
