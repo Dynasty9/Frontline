@@ -26,8 +26,8 @@ For a mix revision, keep the cut points fixed and compare editions with the audi
 
 | Beat | What the viewer can follow with the sound off |
 | --- | --- |
-| One order | A destination appears on the commander's road view. Track the same five soldiers across the road at shoulder height, with dawn light on their gear and the village ahead. Both cameras record the same order, seed and simulation time. |
-| Armour arrives | Keep the squad's left-to-right movement through the cut. From field level, a tank crosses the foreground before the closer gun shot. |
+| One order | A destination appears on the commander's road view. Back down the roadside at shoulder height. The same five soldiers advance toward the lens, with the outpost and its flag behind them. Both cameras record the same order, seed and simulation time. |
+| Armour arrives | The column approaches from the distance the way the riflemen did. At field level, the lead tank crosses the foreground before the closer gun shot. |
 | Into the trench | See riflemen cross the timber trench beside a tracked vehicle. Slide past the mortar crew at shoulder height, then cut overhead as the rounds land along the line. The two field-camera scenes store their positions and travel times in metres and simulation seconds. |
 | Off the ground | See the helicopter take the weight, then look down past its landing gear at the Humvee turning on the sling. Its shadow stays on the field below. |
 | Into the harbour | From the starboard side of one launch, see the other cut across the bow and turn toward shore. Move down to shoulder height on the sand. The squad runs toward the left foreground while the patrol ship enters from the right on the same heading. Cut to the ship's bow as a second boat comes alongside. Follow the jet until its load clears the wing. Cut down to the boat’s stern quarter. Keep the hull in the lower left as the spray rises higher than its cabin, then hold through the fall. |
