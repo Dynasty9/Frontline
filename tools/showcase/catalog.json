@@ -2,6 +2,26 @@
   "schema": 1,
   "entries": [
     {
+      "entry": "changelog/unreleased/shared-vehicle-construction.md",
+      "summary": "Fitted cabins, tanker bodies and shared equipment construction across vehicle families.",
+      "medium": "still",
+      "stage": "tools/showcase/vehicle-surfaces.tscn",
+      "rationale": "One compact matched comparison of six representative details; broad raw roster review stays outside Git. Loft extraction is enabling work, not a new silhouette.",
+      "source_ref": "c00c9072084e7ac3c93bc82a29d3f7ecc3164477",
+      "before_ref": "a6d3708",
+      "sources": [
+        {
+          "file": "changelog/unreleased/shared-vehicle-construction/construction.jpg",
+          "sha256": "aa30af14a38461aa87284ff959d3e52d4a324ee7d07913c95a0c52cd786cc9c6"
+        },
+        {
+          "file": "changelog/unreleased/shared-vehicle-construction/capture.json",
+          "sha256": "436654847cb3484cd6fafddfa0a46f2c7730174cef0895c62ce485d5c1172ca2"
+        }
+      ],
+      "output": null
+    },
+    {
       "entry": "changelog/unreleased/strike-direction.md",
       "summary": "Airstrikes follow the direction previewed while dragging.",
       "medium": "motion",

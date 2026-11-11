@@ -1182,7 +1182,7 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   `vehicle_glazing.gd`): running and spare tyres share profiles; tank and ED-1 track shoes follow each
   vehicle's own outline. Frames, struts, rails and window seals use common builders. Clear panes require
   an open cab; armoured panes stay opaque. Parked civilian cars have fitted windscreens, divided side
-  windows and mirrors. See [the component guide](vehicle-components.md) and [roster review](vehicle-component-review/README.md).
+  windows and mirrors. See [the component guide](vehicle-components.md), [construction inventory](../tools/vehicles/README.md), and [30-technique review](vehicle-construction-review.md).
 - Explosions are layered GPU particles: a flash and light burst, a rolling fireball that cools from the edges in
   until it's dark smoke, a lit smoke column that drifts with the wind, a dirt plume, sparks and debris that
   bounce on the ground, a rolling dust ring, a faint heat-shimmer shockwave and a scorch mark. Heavy rounds

@@ -1,6 +1,6 @@
 # Building vehicles from shared components
 
-See the [30-feature construction roadmap](vehicle-construction-roadmap.md) for prioritized extensions, source examples and rollout requirements.
+See the [construction inventory](../tools/vehicles/README.md) to find existing shared methods before adding a helper. The [30-technique implementation review](vehicle-construction-review.md) lists adopters, supported shapes and deliberately specialized construction. The [roadmap](vehicle-construction-roadmap.md) records the original priorities.
 
 Family builders own the silhouette, dimensions, wheel positions, payload and weapon sockets. Reuse the parts below for ordinary wheels, belts, structural members and windows. Existing family helpers delegate to them, so variants inherit improvements together.
 
@@ -169,3 +169,58 @@ vehicle showcase for component inspection. Kinds: `jerrycan`, `ammo_can`,
 show genuine before/after component rigs, not gameplay footage. The presentation
 catalog records revisions, cameras and commands. Full-roster and individual raw
 captures are local review artifacts, not checked-in media.
+
+### Fitted construction and equipment
+
+`VehicleSurface` maps a two-dimensional domain to a vehicle's authored surface.
+Use `plane(origin, across, up)` for metre-scaled sheets, `quad(corners, inside)`
+for normalized cabin faces, or supply a sampler and outward direction for curved
+skins. Domain coordinates belong to that adapter: never assume normalized UVs
+are metres. Offsets and thickness are in model metres. Polygon outlines must be
+simple, ordered and nondegenerate; curved surfaces need explicit subdivisions.
+
+`VehicleBody.fitted` shares the outline with `boundary` seams and corner screws.
+Boundary seals form one low-section mesh, with no cylinder caps or hidden rings.
+`VehicleCab.framed_face` omits rectangular opening cells from the shell and adds
+reveals. It is not arbitrary CSG. `VehicleGlazing.polygon` accepts an optional
+authored mesh for faceted helicopter panes, preserving creases while sharing the
+seal. Never turn on clear glazing without a real opening and an interior.
+
+`VehicleDoors.closed` takes an outline, hinge anchors and handle anchor on the
+same surface. `rectangle` is the convenience adapter. `light`, `utility` and
+`armored` styles control sheet and hardware dimensions; exposed face screws are
+reserved for armored leaves. Hinges and pull handles also work independently
+on storage lids. Opening doors, sliders and vehicle-specific pivots stay local.
+
+`VehicleEquipment` builds closed storage bins, skirt segments, winches, optical
+housings and dished vessels. Dimensions are independent, rather than separate
+small/large/XL implementations. Storage hardware is clamped to the available lid;
+vessels accept independent width, height, length and strap stations; sensors
+support box and ball styles. Use the existing `VehicleFittings.jerrycan`,
+`VehicleCloth` and material library instead of adding duplicate container or
+fabric builders. Top-lid storage is not an ammunition-can or basket replacement.
+
+`VehicleRunningGear` owns ladder frames and solid axles, without registering
+wheels. `VehicleWheelArches` owns the civilian cut-body and flare kernel; its
+liners remain outside the supplied tyre radius. `VehicleCargo` supplies pallets
+and load-bound straps. `VehicleFrames` adds boarding treads, ladders, explicit
+stanchion runs and static sagging cables. These are construction, not suspension
+or rope simulation. Existing independent suspension and optimized ship rails
+remain distinct implementations.
+
+`VehicleProfiles` caches lofts/revolutions by their actual shape parameters.
+`VehicleAirfoils` shares section interpolation and metre-scaled control gaps.
+`VehicleAircraft` supplies ducts, landing struts, pylons and seven/nineteen-tube
+rocket pods. Families keep station data, planforms, nozzle petals and payload
+positions. `VehiclePropellers` shares blades, spinners and blur materials, while
+callers retain existing `k.wheels`/rotor registration and visibility parents.
+`VehicleMarkings` projects authored polygons onto surfaces and omits intact
+markings on wrecks by default. `VehicleMarine.mooring` supports cleats and bitts.
+
+All opaque assemblies use the existing bake and LOD path. Helpers that create a
+temporary construction pivot fold it back into the supplied parent. They must
+not register wheels, weapons or rotors unless that is the explicit API contract.
+Use the surface, index, material, component, LOD and motion tests together when
+changing these foundations; the index test requires three independent builder
+roots for each of the 30 registered techniques (conditional variants still need
+source inspection).
