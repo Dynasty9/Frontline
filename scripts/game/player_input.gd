@@ -189,8 +189,8 @@ func _unhandled_input(ev: InputEvent) -> void:
 			elif pinging:
 				_end_ping()
 			elif ab_drag:
-				ab_drag = false
 				_call_support()
+				ab_drag = false
 			elif rmb and rmb_left:
 				_end_order(mb.position)
 			elif place_drag:
@@ -507,7 +507,8 @@ func hold() -> void:
 ## The run-in direction for a support call: dragged out, else across the
 ## screen (observer) or from our own lines.
 func support_dir() -> Vector3:
-	if ab_drag:
+	var kind := ability.get_slice(":", 1)
+	if ab_drag and Defs.SUPPORT.get(kind, {}).get("shape", "circle") in ["line", "strafe", "sweep"]:
 		var g2 := world.cam.ground_point(_mouse())
 		if _mouse().distance_to(ab_start) > 18.0 and Defs.flat(g2 - ab_gp).length() > 2.0:
 			return Defs.flat(g2 - ab_gp).normalized()
