@@ -288,6 +288,23 @@ def build_output(name: str, spec: dict, takes: Takes, out: Path, how: str) -> No
     black = Image.new("RGB", size)
     jpegs: list[bytes] = []
     pcm: list[np.ndarray] = []
+    # A close engine can carry across a cut to a distant camera. Only the
+    # location sound crosses over. Picture, music and impact timing stay exact.
+    bridges = {}
+    for previous, cut, start in zip(spec["cuts"], spec["cuts"][1:], starts[1:]):
+        count = cut.get("audio_bridge_frames", 0)
+        if not count:
+            continue
+        name_before = previous["take"]
+        end = round(previous["to"] * FPS) if "to" in previous else len(takes[name_before])
+        incoming_end = round(cut["to"] * FPS) if "to" in cut else len(takes[cut["take"]])
+        if (not spec.get("audio") or spec.get("fade", 8) or spec.get("loop_fade") or count < 1
+                or end + count > len(takes[name_before]) or count > incoming_end - round(cut["from"] * FPS)):
+            sys.exit(f"{name}: sound bridge requires a hard cut and source audio covering {count} frames.")
+        gain_before = level(takes, previous, round(previous["from"] * FPS), end, spec)
+        blend = np.linspace(0, 1, count * SPF, dtype=np.float32).reshape(count, SPF, 1)
+        for j in range(count):
+            bridges[round(start * FPS) + j] = (name_before, end + j, gain_before, blend[j])
     print(f"{name}: {n} frames ({n / FPS:.1f} s) from {len(spec['cuts'])} cuts ...", flush=True)
     for k, entry in enumerate(frames):
         im, acc = None, 0.0
@@ -322,6 +339,9 @@ def build_output(name: str, spec: dict, takes: Takes, out: Path, how: str) -> No
             for w, (take, i, gain) in entry:
                 if w > 0.001:
                     a += w * gain * sound(takes, take, i)
+            if k in bridges:
+                old_take, old_index, old_gain, blend = bridges[k]
+                a = a * blend + sound(takes, old_take, old_index) * old_gain * (1 - blend)
             if score:
                 a += score_gain * sound(takes, score["take"], k)
             pcm.append(a * dim)

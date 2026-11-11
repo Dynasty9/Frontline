@@ -21,7 +21,7 @@ Open `build/trailer-review/index.html` directly to compare the two latest editio
 
 The edit opens on a readable action at squad scale, expands through infantry and armour, and gives the final aircraft approach and the truck’s destruction time to play as one event. Check the first ten seconds muted and the final approach with sound. These checks follow [Valve’s gameplay trailer guidance](https://partner.steamgames.com/doc/store/trailer) and [Derek Lieu’s line of rising action](https://www.derek-lieu.com/blog/2018/9/16/the-trailer-line-of-rising-action).
 
-For a mix revision, keep the cut points fixed and compare editions with the audio selector. The reel's `score` names a separate take mixed continuously under the native effects. Its Godot scene records the game's battle cue and victory sting with a fixed musical seed. Edit the scene to retime the crescendo, or edit the gain in the recipe to rebalance the music against the effects.
+For a mix revision, keep the cut points fixed and compare editions with the audio selector. On a hard picture cut, `audio_bridge_frames` carries the previous take’s audio under the new camera and fades it out over that many frames. Leave enough recorded audio beyond the previous cut. The reel's `score` names a separate take mixed continuously under the native effects. Its Godot scene records the game's battle cue and victory sting with a fixed musical seed. Edit the scene to retime the crescendo, or edit the gain in the recipe to rebalance the music against the effects.
 
 ## Picture sequence
 

@@ -1,0 +1,26 @@
+{
+  "entry": "changelog/unreleased/aircraft-pass-audio.md",
+  "title": "Hear the jet pass overhead",
+  "version": "unreleased",
+  "kind": "improved",
+  "summary": "The engine follows the aircraft and falling bombs have their own rush of air.",
+  "medium": "audio",
+  "stage": "tools/showcase/trailer-review/quay-impact.tscn",
+  "rationale": "The same jet and ground cameras play twice at their native effects levels, without the trailer score.",
+  "source_ref": "1557a72",
+  "before_ref": "d71315c",
+  "sources": [
+    {
+      "file": "changelog/unreleased/aircraft-pass-audio/harbour.webm",
+      "sha256": "2356eb1e97027d28edf995e20779eb9f9a8fa383bc38fd4c1cfceeba6a3b2c73",
+      "caption": "Previous audio followed by updated audio"
+    },
+    {
+      "file": "changelog/unreleased/aircraft-pass-audio/harbour.jpg",
+      "sha256": "d91a2b5d1294e73756fa53e170793cf6b81dd3796be412af647e3c2859d9fdfd",
+      "caption": "Jet approaching the harbour"
+    }
+  ],
+  "attribution": "Native Godot capture of the Beachhead mission with the trailer-jet-target and trailer-quay-impact takes.",
+  "output": "changelog/unreleased/aircraft-pass-audio/harbour.jpg"
+}

@@ -751,7 +751,7 @@
         {"take": "trailer-opposing-boats", "from": 32.5, "to": 34.6, "gain_db": 0, "caption": "[Patrol boats close on the harbour entrance]"},
         {"take": "trailer-harbour-finale", "from": 4.5, "to": 5.7, "gain_db": 0, "caption": "[Jet engines rise over the coast]"},
         {"take": "trailer-jet-target", "from": 5.7, "to": 7.03333, "gain_db": 0},
-        {"take": "trailer-quay-impact", "from": 8.26667, "to": 11.03333, "gain_db": 2},
+        {"take": "trailer-quay-impact", "from": 8.26667, "to": 11.03333, "gain_db": 2, "audio_bridge_frames": 6},
         {"take": "trailer-quay-impact", "from": 11.03333, "to": 11.76667, "gain_db": 2, "caption": "[Bombs strike beside the truck]"},
         {"take": "trailer-quay-wreck", "from": 13.8, "to": 14.63333, "gain_db": 0},
         {"take": "trailer-trench-column", "from": 1.6, "to": 4.2, "gain_db": 0, "caption": "[Tracks and rifle fire as infantry advance]"},
