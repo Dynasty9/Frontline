@@ -965,6 +965,7 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   bank follow the acceleration rather than pretending the aircraft is a road vehicle. Yaw has its own
   turn rate, so gunships can keep their nose on a target while moving sideways. Climbs and descents
   ease in and out; transports settle into a low-speed hover before landing or attaching a sling.
+  The cable follows the banking fuselage, and four shaded straps follow the body of the suspended vehicle.
   Loads reduce speed, acceleration and yaw response. Stop holds a troop transport in the air without
   dropping its sling load; a new move resumes the flight, even during a landing. The host simulates
   flight and sends pitch and bank with its snapshots; clients only interpolate the view. Drones and

@@ -10,6 +10,7 @@ const ImpactPlate := preload("res://scripts/game/vehicles/impact_plate.gd")
 static var _cache := {}
 
 var root: Node3D
+var sling_eye := Vector3(0, 0.7, 0)  # underside of the fuselage, in model space
 var helm_seat := Vector3.INF  # hip position of the driver at an open helm
 var burnt := false
 var surface_family := "armor"

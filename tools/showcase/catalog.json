@@ -8744,6 +8744,30 @@
         "end_seconds": 16.3,
         "fps": 30
       }
+    },
+    {
+      "entry": "changelog/unreleased/sling-load-straps.md",
+      "title": "See the straps holding a sling load",
+      "version": "unreleased",
+      "kind": "improved",
+      "summary": "Shaded straps join the banking helicopter and the suspended vehicle body.",
+      "medium": "motion",
+      "stage": "Sky Hook, seed 4, bridge deck at 39.45 seconds and F9 Cargo door at 41.1 seconds.",
+      "rationale": "A fixed flyover and the close cargo view reveal both ends of the straps in motion.",
+      "source_ref": "28fab0f before; sky-bridge.tscn and the shared Cargo door mount after.",
+      "sources": [
+        {
+          "file": "changelog/unreleased/sling-load-straps/bridge.webm",
+          "sha256": "478986f865e76072a87aee67272b7a7a35f2eefd213e361591aed09a6d1f4c92",
+          "caption": "Bridge and cargo-door cameras at the same frames before and after the straps changed."
+        },
+        {
+          "file": "changelog/unreleased/sling-load-straps/bridge.jpg",
+          "sha256": "95664962a9f8df1272fc1180cd1fc40b96042b8fa84f6cf5944fc9f5cd9ab32c",
+          "caption": "The load passing directly over the bridge deck."
+        }
+      ],
+      "output": null
     }
   ],
   "layout_capture": {

@@ -285,6 +285,25 @@ func _run() -> void:
 			_check("%s keeps the horizon level while the vehicle banks" % fixture[1], is_zero_approx(view.x.y) and view.z.is_equal_approx(marker.global_basis.orthonormalized().z))
 			cam.leave_mount()
 			world.input.clear_selection()
+		if fixture[1] == &"Sling load":
+			var load_vehicle := world.spawn("vehicle", {"vkind": "nyx_at", "team": actor.team, "pos": vehicle.position}) as Vehicle
+			load_vehicle.position += Vector3(1, -8, 2)
+			vehicle.sling_eid = load_vehicle.eid
+			vehicle._sling_view()
+			var spans := vehicle._cables.multimesh
+			var cable := spans.get_instance_transform(0)
+			var cable_top := vehicle.to_global(cable * (Vector3.DOWN * 0.5))
+			_check("the cable stays against the banking fuselage", cable_top.distance_to(vehicle.model.to_global(vehicle._vm.sling_eye)) < 0.002)
+			var joined := true
+			for i in range(1, 5):
+				var strap := spans.get_instance_transform(i)
+				var foot := load_vehicle.model.to_local(vehicle.to_global(strap * (Vector3.UP * 0.5)))
+				joined = joined and foot.y > 0.0 and foot.y < 1.2 and absf(foot.x) < 0.91 and absf(foot.z) < 1.77
+			_check("all four strap ends reach the Nyx body", joined)
+			world.despawn(load_vehicle)
+			vehicle._sling_view()
+			_check("a released load clears the entire sling", not vehicle._cables.visible)
+
 		if fixture[1] == &"Periscope":
 			world.input.sel_vehicles.append(vehicle.eid)
 			for _i in vehicle.camera_mounts().size():
