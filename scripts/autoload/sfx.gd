@@ -442,6 +442,8 @@ func _airflow_loop(rng: RandomNumberGenerator, engine: bool) -> AudioStreamWAV:
 	var body := 0.0
 	var air := 0.0
 	var gust := 0.0
+	var exhaust := 0.0
+	var resonance := 0.0
 	for i in s.size():
 		var noise := rng.randf_range(-1.0, 1.0)
 		bass += 0.016 * (noise - bass)
@@ -450,7 +452,10 @@ func _airflow_loop(rng: RandomNumberGenerator, engine: bool) -> AudioStreamWAV:
 		gust += 0.0008 * (rng.randf_range(-1.0, 1.0) - gust)
 		var breath := clampf(1.0 + 7.0 * gust, 0.55, 1.45)
 		if engine:
-			s[i] = tanh(5.0 * bass + 1.7 * body) * breath + 0.22 * (air - body)
+			# Broad exhaust resonance gives the flypast weight on small speakers.
+			exhaust += 0.042 * resonance
+			resonance += 0.042 * (noise - exhaust - 0.55 * resonance)
+			s[i] = tanh(3.1 * exhaust + 2.5 * bass + 0.92 * body) * breath + 0.15 * (air - body)
 		else:
 			s[i] = (air - body + 0.4 * (body - bass)) * breath
 	return _wav(_normalize(_seamless(s, fade), -14.0 if engine else -19.0), true)
