@@ -41,10 +41,12 @@ class ModelNames(unittest.TestCase):
                     self.assertTrue(list(findings("new-file.md", line.encode())))
 
     def test_exceptions_are_narrow(self):
-        for path in ("AGENTS.md", ".agents/skills/demo.md", ".claude/settings.json"):
+        for path in ("AGENTS.md", ".agents/skills/demo.md", ".claude/settings.json",
+                     "tools/showcase/entries/example.json"):
             self.assertEqual([], list(findings(path, b"Claude")))
         for path in ("scripts/game/unit.gd", "web/README.md", "docs/FEATURES.md",
-                     "changelog/unreleased/example.md", "web/public/AGENTS.md"):
+                     "changelog/unreleased/example.md", "web/public/AGENTS.md",
+                     "tools/showcase/entries/README.md", "tools/showcase/entries/nested/example.json"):
             self.assertEqual([f"{path}:2: prohibited model/assistant name: Claude"],
                              list(findings(path, b"first line\nClaude")))
 

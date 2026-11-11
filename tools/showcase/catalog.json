@@ -8388,6 +8388,45 @@
           "command": "ffmpeg -i digging.mp4 -c:v libvpx-vp9 -crf 34 -b:v 0 -row-mt 1 -an digging.webm"
         }
       }
+    },
+    {
+      "entry": "changelog/unreleased/mountain-clouds.md",
+      "summary": "Lower playable hills open the valley beneath towering distant ranges, coastal water and mountain clouds.",
+      "medium": "motion",
+      "stage": "tools/showcase/environment-motion.gd --motion-stage=clouds; tests/fixtures/environment-views.gd --capture-set=coast-join",
+      "rationale": "One fixed-camera native clip shows the open valley and distant range through four lighting moods. A matched wide still demonstrates removal of the projecting coastal shelf and map-edge colour seam.",
+      "source_ref": "a5933f2c game and fixed-camera capture; matched before b88b49d8",
+      "sources": [
+        {
+          "file": "changelog/unreleased/mountain-clouds/native-tour.webm",
+          "sha256": "074d670a3c2adaaa9c03175dec9dad09cb1e452a569706ec1ee4f2fc08e692b7",
+          "caption": "13.75-second silent VP9, fixed camera, four weather moods, 30 fps, 1280x768 including uncropped 1280x720 viewport; editorial dissolves and loop return."
+        },
+        {
+          "file": "changelog/unreleased/mountain-clouds/native-tour.jpg",
+          "sha256": "69b29314285d321ae26b5058f8bc150c84e9bb541ae5bc5d7e0a26ed6e0c0038",
+          "caption": "Daylight poster from the encoded clip."
+        },
+        {
+          "file": "changelog/unreleased/mountain-clouds/native-tour.json",
+          "sha256": "1c0ffeeadbab7aae0983ab117adf9da58aebf87122e26f3974ff4a375922feef",
+          "caption": "Capture camera, timing, settings, source revision and encoding provenance."
+        },
+        {
+          "file": "changelog/unreleased/mountain-clouds/comparison.jpg",
+          "sha256": "7df1d3b270fa6cac4787d62ecd79b79a0ece89ab71622ad44a188956c4ef41dc",
+          "caption": "Matched seed 3, daylight, Forward+, High, FOV 55, focus 0,80,0, distance 1250, pitch -10, yaw 0.7; opening native motion frames. Before b88b49d8 has a projecting shelf; after a5933f2c joins shoreline, seabed and shading. Uncropped 1280x720 frames resized side by side."
+        },
+        {
+          "file": "changelog/unreleased/mountain-clouds/performance.json",
+          "sha256": "2f919c6bd2a03a2b5387adfbd6edc2f134c8d3aaea2c996ce395e2d037b84d25",
+          "caption": "Earlier cloud-only interleaved measurements, before the coastal buffer and reframing; inconclusive under competing graphics load."
+        }
+      ],
+      "output": "changelog/unreleased/mountain-clouds/native-tour.jpg",
+      "capture_command": "godot --path . --fixed-fps 30 --resolution 1280x720 --script tools/showcase/environment-motion.gd -- --aivai --seed=3 --offscreen --nohud --set=perf:0,reduce_motion:false,vsync:false --preset=high --mood=day --motion-stage=clouds --motion-output=build/media-review",
+      "limitations": "Forward+ and Compatibility reviewed on RTX 3090. No low-end GPU or browser validation. Simulation held near two seconds; camera fixed while native wind and water animate. Editorial dissolves compare existing moods. Skirmish relief changes routes and sightlines; mission heights are unchanged. Earlier cloud timings do not establish current total scenery cost.",
+      "boundary_capture_command": "godot --path . --resolution 1280x720 --script tests/fixtures/environment-views.gd -- --aivai --seed=3 --offscreen --nohud --preset=high --mood=day --set=perf:0,reduce_motion:true,vsync:false --capture-set=coast-join --capture-prefix=<scratch>/coast-final-forward"
     }
   ],
   "layout_capture": {

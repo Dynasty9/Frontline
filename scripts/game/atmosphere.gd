@@ -63,6 +63,7 @@ var detail_tex: ImageTexture
 var backdrop_tex: ImageTexture
 var road_mat: ShaderMaterial
 var grass: Grass
+var mountain_clouds: Node3D
 var forest: DistantForest
 var wildlife: Wildlife
 var _d := {}
@@ -78,6 +79,9 @@ func setup(w: World) -> void:
 	_build_env()
 	_build_ground()
 	_build_post()
+	mountain_clouds = preload("res://scripts/game/mountain_clouds.gd").new()
+	add_child(mountain_clouds)
+	mountain_clouds.setup(self)
 	grass = Grass.new()
 	grass.name = "Grass"
 	grass.atmo = self
@@ -411,7 +415,7 @@ func _build_ground() -> void:
 	ground_mat.set_shader_parameter("wet", 1.0 if mood == "rain" else 0.0)
 	ground_mat.set_shader_parameter("trench_mask", _blank_mask)
 	ground.material_override = ground_mat
-	ground.custom_aabb = AABB(Vector3(-MapDims.HALF - 1800.0, -5.0, -MapDims.HALF - 1800.0), Vector3(MapDims.SIZE + 3600.0, 517.0, MapDims.SIZE + 3600.0))
+	ground.custom_aabb = AABB(Vector3(-MapDims.HALF - 1800.0, -5.0, -MapDims.HALF - 1800.0), Vector3(MapDims.SIZE + 3600.0, 1029.0, MapDims.SIZE + 3600.0))
 	ground.layers = 5 | Res.GROUND_DECAL_LAYER  # terrain capture plus ground-only decals
 	ground.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	add_child(ground)
@@ -778,6 +782,8 @@ func apply_mood(m: String) -> void:
 	ground_mat.set_shader_parameter("cloud_strength", float(_d.clouds))
 	ground_mat.set_shader_parameter("sun_tint", _d.sun)
 	ground_mat.set_shader_parameter("air_color", _d.fog)
+	if mountain_clouds:
+		mountain_clouds.apply_settings(self)
 	if water_view:
 		water_view.apply_mood(_d, mood)
 	if world.fx and world.fx.vfx:
@@ -796,6 +802,8 @@ func apply_settings() -> void:
 		_mood_asked = want
 		if MOODS.has(want) and want != mood:
 			apply_mood(want)
+	if mountain_clouds:
+		mountain_clouds.apply_settings(self)
 	_update_terrain_probe()
 	env.ssao_enabled = s.get_v("ssao")
 	env.ssr_enabled = s.get_v("ssr")
@@ -947,7 +955,7 @@ func _apply_haze(distance: float) -> void:
 		k = maxf(k, 0.45 * pow(1.0 - downward, 2.0))
 		# Sky tint separates distant ranges; keep the low valley veil out of the overhead view.
 		env.fog_aerial_perspective = 0.38 * (1.0 - downward)
-		terrain_air = float(_d.fog_d) * 0.22 * pow(1.0 - downward, 2.0)
+		terrain_air = float(_d.fog_d) * 0.48 * pow(1.0 - downward, 2.0)
 		env.fog_height = 18.0
 		env.fog_height_density = 0.0012 * pow(1.0 - downward, 2.0)
 	if ground_mat:
@@ -1063,9 +1071,10 @@ func build_water(w: WaterMap) -> void:
 	if w.mask == null:
 		return
 	water_tex = ImageTexture.create_from_image(w.mask)
-	var sea_x: float = (float(w.coast.x) + 30.0) if not w.coast.is_empty() else 1e9
+	var sea_x: float = float(w.coast.x) if not w.coast.is_empty() else 1e9
 	ground_mat.set_shader_parameter("water_mask", water_tex)
 	ground_mat.set_shader_parameter("sea_x", sea_x)
+	ground_mat.set_shader_parameter("scenery_coast_phase", float(w.coast.s) if not w.coast.is_empty() else 0.0)
 	if water_view == null:
 		water_view = WaterView.new(world)
 		add_child(water_view)
@@ -1101,7 +1110,8 @@ func _bake_scenery() -> void:
 		_scenery_material.set_shader_parameter("river_tips", water_view.river_tips)
 	_scenery_material.set_shader_parameter("deform_tex", deform_tex)
 	_scenery_material.set_shader_parameter("sea_x", ground_mat.get_shader_parameter("sea_x"))
-	_scenery_material.set_shader_parameter("snow_line", maxf(25.0, world.terrain.landform.peak * 0.55) if world.terrain.landform.peak > 1.0 else 10000.0)
+	_scenery_material.set_shader_parameter("scenery_coast_phase", ground_mat.get_shader_parameter("scenery_coast_phase"))
+	_scenery_material.set_shader_parameter("snow_line", maxf(150.0, world.terrain.landform.peak * 0.55) if world.terrain.landform.peak > 1.0 else 10000.0)
 	_scenery_material.set_shader_parameter("sun_direction", sun.basis.z)
 	_scenery_bake.render_target_update_mode = SubViewport.UPDATE_ONCE
 
@@ -1132,7 +1142,7 @@ func _update_deform(dt: float) -> void:
 		post.set_shader_parameter("grain", 0.006)
 		post.set_shader_parameter("vignette", 0.15)
 	if not tm.deform_dirty.is_empty() and _deform_t <= 0.0:
-		ground_mat.set_shader_parameter("snow_line", maxf(25.0, tm.landform.peak * 0.55) if tm.landform.peak > 1.0 else 10000.0)
+		ground_mat.set_shader_parameter("snow_line", maxf(150.0, tm.landform.peak * 0.55) if tm.landform.peak > 1.0 else 10000.0)
 		_deform_t = 0.22
 		for rect: Rect2i in tm.deform_dirty:
 			_deform_tiles.mark_dirty(rect)
@@ -1265,9 +1275,13 @@ float backdrop(vec2 p) {
 	vec2 uv = (p + __MAP_HALF__ + 1800.0) / (__MAP_SIZE__ + 3600.0);
 	float mountain = textureLod(backdrop_tex, uv, 0.0).r;
 	float hills = pow(smoothstep(0.18, 0.88, mountain), 2.2) * 440.0;
-	float land = hills * smoothstep(8.0, 380.0, edge) * coast * (1.0 - step(9999.0, snow_line))
-		* (1.0 - smoothstep(1450.0, 1800.0, edge))
-		- 3.2 * smoothstep(shore, shore + 30.0, p.x);
+	// Tall massifs belong behind the water and foothills, leaving the near valley open.
+	hills *= 1.0 + 1.1 * smoothstep(600.0, 1100.0, edge);
+	float land = hills * smoothstep(8.0, 900.0, edge) * coast * (1.0 - step(9999.0, snow_line))
+		* (1.0 - smoothstep(1450.0, 1800.0, edge));
+	if (p.x > shore - 14.0) { land = min(land, scenery_sea_bed(p.x - shore)); }
+	float channel = scenery_buffer_into(p, sea_x);
+	land = mix(land, min(land, -4.0), smoothstep(-180.0, 180.0, channel) * smoothstep(0.0, 120.0, edge));
 	float into = scenery_river_into(p);
 	return mix(land, min(land, scenery_river_bed(into)), smoothstep(-5.0, 0.0, into));
 }
@@ -1479,7 +1493,6 @@ void fragment() {
 	col = mix(col, soil, dirt_m);
 	col *= 0.9 + 0.2 * d3;
 	float edge = max(abs(p.x), abs(p.y));
-	col *= mix(1.0, 0.45, smoothstep(__MAP_HALF__, __MAP_HALF__ + 22.0, edge));
 	puddle = wet * smoothstep(0.6, 0.66, d1 * 0.7 + d2 * 0.3 + dirt_m * 0.12);
 	col *= 1.0 - wet * 0.3;
 	col = mix(col, col * 0.35 + vec3(0.01, 0.012, 0.015), puddle);
@@ -1487,7 +1500,10 @@ void fragment() {
 	// bed darker and wet under the water
 	vec4 wm = texture(water_mask, (p + __MAP_HALF__) / __MAP_SIZE__);
 	if (abs(p.x) >= __MAP_HALF__ || abs(p.y) >= __MAP_HALF__) {
-		wm = p.x > scenery_shore(p, sea_x) ? vec4(1.0, 1.0, 1.0, 1.0) : scenery_river_mask(p);
+		wm = scenery_sea_mask(p, sea_x);
+		if (wm.a < 0.5 && wm.g <= 0.0) { wm = scenery_river_mask(p); }
+		// The broad coastal slope can stand well above the water mask below it.
+		wm *= 1.0 - smoothstep(0.0, 6.0, wpos.y);
 	}
 	// (linear colours, like the rest: pale sand, dark wet mud)
 	vec3 sand = vec3(0.38, 0.31, 0.19) * (0.88 + 0.24 * d2) * (0.92 + 0.16 * d3);
@@ -1508,7 +1524,7 @@ void fragment() {
 	// (linear colours: freshly turned earth is dark, the bottom blackened)
 	vec3 churn = mix(vec3(0.042, 0.032, 0.023), vec3(0.075, 0.056, 0.038), d3) * (0.85 + 0.3 * d2);
 	col = mix(col, churn, clamp(bowl * 1.1, 0.0, 1.0));
-	col = mix(col, vec3(0.018, 0.016, 0.014), smoothstep(-0.3, -0.75, hd) * 0.55);
+	col = mix(col, vec3(0.018, 0.016, 0.014), smoothstep(-0.3, -0.75, hd) * 0.55 * (1.0 - wm.g));
 	col = mix(col, mix(dirt, vec3(0.085, 0.066, 0.047), 0.6) * (0.85 + 0.3 * d3), lip * 0.75);
 	// Sample distant slopes across their mesh spacing, not within one height texel.
 	float normal_step = edge >= __MAP_HALF__ ? 16.0 : 1.0;
@@ -1696,7 +1712,7 @@ void fragment() {
 
 	// Thin low-altitude air separates ranges without whitening their sunlit faces.
 	float optical_depth = max(0.0, distance(CAMERA_POSITION_WORLD, wpos) - 500.0) * terrain_air;
-	float aerial = min(0.24, 1.0 - exp(-optical_depth * exp(-max(wpos.y, 0.0) / 320.0)));
+	float aerial = min(0.48, 1.0 - exp(-optical_depth * exp(-max(wpos.y, 0.0) / 520.0)));
 	aerial *= smoothstep(__MAP_HALF__, __MAP_HALF__ + 200.0, edge);
 	ALBEDO = col * (1.0 - aerial);
 	EMISSION = air_color * aerial * 0.65;

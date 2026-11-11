@@ -8,13 +8,13 @@ const PATH := "user://settings.cfg"
 
 const PRESETS := {
 	"low": {"shadows": 1, "ssao": false, "ao_q": 0, "ssil": false, "gi": false, "vol_fog": false, "glow": true, "aa": 1, "scale": 0.77,
-		"upscaler": 1, "grass": 0, "wildlife": 0, "effects": 0, "decals": false, "ragdolls": false, "post": false, "dof": false, "ssr": false, "terrain_reflections": false, "alpine_haze": false, "lod": 0, "aniso": 1, "water": 0},
+		"upscaler": 1, "grass": 0, "wildlife": 0, "effects": 0, "decals": false, "ragdolls": false, "post": false, "dof": false, "ssr": false, "terrain_reflections": false, "alpine_haze": false, "lod": 0, "aniso": 1, "water": 0, "mountain_clouds": 1},
 	"medium": {"shadows": 2, "ssao": true, "ao_q": 1, "ssil": false, "gi": false, "vol_fog": false, "glow": true, "aa": 2, "scale": 1.0,
-		"upscaler": 1, "grass": 1, "wildlife": 1, "effects": 1, "decals": true, "ragdolls": true, "post": true, "dof": false, "ssr": false, "terrain_reflections": false, "alpine_haze": false, "lod": 1, "aniso": 2, "water": 1},
+		"upscaler": 1, "grass": 1, "wildlife": 1, "effects": 1, "decals": true, "ragdolls": true, "post": true, "dof": false, "ssr": false, "terrain_reflections": false, "alpine_haze": false, "lod": 1, "aniso": 2, "water": 1, "mountain_clouds": 2},
 	"high": {"shadows": 2, "ssao": true, "ao_q": 2, "ssil": true, "gi": false, "vol_fog": true, "glow": true, "aa": 6, "scale": 1.0,
-		"upscaler": 1, "grass": 2, "wildlife": 2, "effects": 2, "decals": true, "ragdolls": true, "post": true, "dof": false, "ssr": true, "terrain_reflections": false, "alpine_haze": true, "lod": 2, "aniso": 3, "water": 2},
+		"upscaler": 1, "grass": 2, "wildlife": 2, "effects": 2, "decals": true, "ragdolls": true, "post": true, "dof": false, "ssr": true, "terrain_reflections": false, "alpine_haze": true, "lod": 2, "aniso": 3, "water": 2, "mountain_clouds": 3},
 	"ultra": {"shadows": 3, "ssao": true, "ao_q": 3, "ssil": true, "gi": true, "vol_fog": true, "glow": true, "aa": 7, "scale": 1.0,
-		"upscaler": 1, "grass": 2, "wildlife": 2, "effects": 2, "decals": true, "ragdolls": true, "post": true, "dof": true, "ssr": true, "terrain_reflections": false, "alpine_haze": true, "lod": 2, "aniso": 4, "water": 3},
+		"upscaler": 1, "grass": 2, "wildlife": 2, "effects": 2, "decals": true, "ragdolls": true, "post": true, "dof": true, "ssr": true, "terrain_reflections": false, "alpine_haze": true, "lod": 2, "aniso": 4, "water": 3, "mountain_clouds": 4},
 }
 
 const LABELS := {
@@ -23,6 +23,7 @@ const LABELS := {
 	"grass": ["Off", "Sparse", "Dense"],
 	"wildlife": ["Off", "Some", "Plenty"],
 	"effects": ["Low", "Medium", "High"],
+	"mountain_clouds": ["Off", "Low", "Medium", "High", "Ultra"],
 	"water": ["Low", "Medium", "High", "Ultra"],
 	"fps_cap": ["Unlimited", "60", "120", "144", "240"],
 	"perf": ["Off", "FPS", "Compact", "Full breakdown"],
@@ -55,7 +56,7 @@ var v := {
 	"shadows": 2, "ssao": true, "ssil": true, "gi": false, "vol_fog": true, "glow": true, "aa": 6, "scale": 1.0,
 	"grass": 2, "wildlife": 2, "effects": 2, "decals": true, "ragdolls": true, "post": true, "dof": false,
 	"vsync": true, "fps_cap": 0, "perf": 1, "shake": true, "ui_scale": 1.0, "mood": "random", "labels": true, "lyr_units": true, "lyr_orders": false, "lyr_intel": true, "lyr_vision": true, "lyr_ranges": false, "orbat": true,
-	"ao_q": 2, "upscaler": 1, "sharpen": 0.2, "ssr": true, "terrain_reflections": false, "alpine_haze": true, "lod": 2, "aniso": 3, "water": 2,
+	"ao_q": 2, "upscaler": 1, "sharpen": 0.2, "ssr": true, "terrain_reflections": false, "alpine_haze": true, "lod": 2, "aniso": 3, "water": 2, "mountain_clouds": 3,
 	"window": 0, "resolution": 2, "brightness": 1.0, "contrast": 1.0, "look": 0, "tonemap": 0, "fov": 48.0,
 	"bubbles": true, "cover_preview": true, "edge_pan": true, "cam_speed": 1.0,
 	"zoom_cursor": true, "mmb_mode": 0, "scroll_mode": 0, "minimap_size": 1, "minimap_rotate": false,
@@ -68,6 +69,7 @@ const VOLUME_BUS := {"volume": "Master", "vol_music": "Music", "vol_effects": "E
 
 func _ready() -> void:
 	if OS.has_feature("web"):
+		v.mountain_clouds = 1
 		v.water = 1  # (a browser starts on Medium water, until the player picks)
 		v.wildlife = 1  # (and on Some wildlife: the game's scripts run slower there)
 	_load()
@@ -302,6 +304,9 @@ func _load() -> void:
 	preset = String(cf.get_value("main", "preset", preset))
 	for k in v:
 		v[k] = cf.get_value("main", k, v[k])
+	# Existing low-end setups keep their budget when a new scenery option arrives.
+	if not cf.has_section_key("main", "mountain_clouds"):
+		v.mountain_clouds = mini(int(v.mountain_clouds), int(PRESETS[preset].mountain_clouds) if PRESETS.has(preset) else 1)
 	# wildlife came later: someone who picked Low to save frames gets none, and a
 	# custom setup gets as much as it has grass, rather than the default's plenty
 	# (never more than this platform's default)
