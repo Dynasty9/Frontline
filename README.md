@@ -6,6 +6,15 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![Check](https://github.com/Dynasty9/Frontline/actions/workflows/check.yml/badge.svg)](https://github.com/Dynasty9/Frontline/actions/workflows/check.yml)
 
+<a href="web/public/media/vehicles.webm">
+  <picture>
+    <source media="(prefers-reduced-motion: reduce)" srcset="web/public/media/vehicles.jpg">
+    <img src="docs/screenshots/vehicle-circuit.webp" width="576" height="324" alt="A coastal drive through Frontline’s cars, tanks, helicopters, jets and boats">
+  </picture>
+</a>
+
+[Watch the vehicle circuit in 720p (WebM, 19.5 seconds)](web/public/media/vehicles.webm)
+
 ![A firefight around a Coalition trench line](docs/screenshots/battle.jpg)
 
 ## What is it?
