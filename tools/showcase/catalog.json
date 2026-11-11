@@ -8657,6 +8657,37 @@
         "end_seconds": 29,
         "fps": 30
       }
+    },
+    {
+      "entry": "changelog/unreleased/harbour-spray.md",
+      "medium": "motion",
+      "rationale": "The two uninterrupted views show the height, shape and return of the spray against the same ship.",
+      "stage": "tools/showcase/airstrike-camera.tscn",
+      "source_ref": "524fb5d versus the revised splash particles",
+      "sources": [
+        {
+          "file": "changelog/unreleased/harbour-spray/spray.webm",
+          "sha256": "bfc7254f3f7707bad2a36d12171f6bfb27c7b8ac1518f21c3203db1f18d6947f"
+        },
+        {
+          "file": "changelog/unreleased/harbour-spray/spray.jpg",
+          "sha256": "8e28fef39bf310cc7042d92d98984c60400acb634a882b8b8070384d7223a37d"
+        }
+      ],
+      "capture": {
+        "mission": "beachhead",
+        "seed": 3,
+        "focus": [
+          372,
+          -10
+        ],
+        "zoom": 58,
+        "pitch": -17,
+        "yaw": 1.2,
+        "start_seconds": 9.95,
+        "end_seconds": 14.95,
+        "fps": 30
+      }
     }
   ],
   "layout_capture": {

@@ -3,12 +3,19 @@ extends "res://scripts/main.gd"
 ## rings, destination marker and squad card visible in the recording.
 
 var ordered := false
+var roadside: Camera3D
+var squad: Squad
+var origin: Vector3
 
 func _process(dt: float) -> void:
 	if not args.has("roadside"):
 		args.erase("nohud")
 	super._process(dt)
-	if ordered or not is_instance_valid(world) or world.time < 2.0 or not world.input:
+	if ordered:
+		if is_instance_valid(roadside) and is_instance_valid(squad):
+			_follow_crossing()
+		return
+	if not is_instance_valid(world) or world.time < 2.0 or not world.input:
 		return
 	if world.input.sel_squads.is_empty() or not world.input.can_command():
 		return
@@ -16,12 +23,21 @@ func _process(dt: float) -> void:
 	world.input.order_at(start + Vector3(4.0, 0.0, -6.0))
 	ordered = true
 	if args.has("roadside"):
-		# Film the same crossing at shoulder height from beside the road.
+		origin = start
+		squad = world.squads.get(world.input.sel_squads[0])
+		if not is_instance_valid(squad):
+			return
 		args.erase("select-first")
 		world.input.clear_selection()
-		var camera := Camera3D.new()
-		world.add_child(camera)
-		camera.global_position = start + Vector3(7.6, 1.65, -4.3)
-		camera.fov = 48.0
-		camera.look_at(start + Vector3(1.7, 1.1, -2.2))
-		camera.make_current()
+		roadside = Camera3D.new()
+		world.add_child(roadside)
+		roadside.fov = 42.0
+		_follow_crossing()
+		roadside.make_current()
+
+
+func _follow_crossing() -> void:
+	# Let the group travel across the frame and keep the village ahead of them in sight.
+	var travel := Defs.flat(squad.centroid() - origin)
+	roadside.global_position = origin + Vector3(6.6, 1.35, 2.0) + travel * 0.30
+	roadside.look_at(origin + Vector3(1.0, 1.05, -1.4) + travel * 0.60)

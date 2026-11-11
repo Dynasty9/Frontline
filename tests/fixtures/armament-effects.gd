@@ -34,6 +34,12 @@ func _ready() -> void:
 	var field = load("res://tests/fixtures/effects-field.gd").new()
 	add_child(field)
 	var v: Vfx = field.fx.vfx
+	var first_spray := v.get_child_count()
+	v.splash(Vector3.ZERO, 2.6)
+	var spray_column := v.get_child(first_spray) as GeometryInstance3D
+	var gravity: Vector3 = Vfx.pm_get(spray_column, &"gravity")
+	var speed: float = Vfx.pm_get(spray_column, &"initial_velocity_max")
+	check(gravity.y < 0 and 2.0 * speed / -gravity.y < float(spray_column.get("lifetime")), "The highest spray can fall back to the water before the column disappears")
 	# A rotated finite wall on elevated ground. Call burst through the same
 	# spatial index the game uses, then recycle its surface in the open.
 	var wall := Structure.new()

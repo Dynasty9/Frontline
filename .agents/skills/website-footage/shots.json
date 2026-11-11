@@ -44,6 +44,13 @@
       "shows": ["airstrike", "harbour"],
       "about": "A chase camera joins the support jet on the same seeded pass over the harbour."
     },
+    "trailer-harbour-finale": {
+      "scene": "res://tools/showcase/airstrike-camera.tscn",
+      "frames": 450,
+      "args": ["--preset=high", "--seed=3", "--set=volume:0.8,vol_effects:0.85,vol_music:0,battle_music:false,vol_ambience:0.28,vol_ui:0,mute_bg:false,wildlife:0,edge_pan:false", "--mission=beachhead", "--focus=372,-10", "--zoom=58", "--pitch=-17", "--cam-yaw=1.2", "--demo-support=airstrike", "--demo-at=3"],
+      "shows": ["airstrike", "harbour"],
+      "about": "Follow the jet to release, then hold the ship and the returning sheets of water in the same frame."
+    },
     "convoy-hemtt": {
       "frames": 150,
       "args": ["--preset=high", "--seed=3", "--set=volume:0.8,vol_music:0,battle_music:false,vol_effects:0.85,vol_ambience:0.28,vol_ui:0,mute_bg:false,edge_pan:false,fov:35", "--scenario=roster", "--play", "--team=0", "--focus=0,0", "--focus-vehicle=hemtt", "--zoom=19", "--pitch=-15", "--pan=0,-3", "--cam-yaw=1.85", "--mood=overcast"],
@@ -96,14 +103,14 @@
     "trailer-roadside": {
       "scene": "res://tools/showcase/trailer-review/squad-order.tscn",
       "frames": 210,
-      "args": ["--preset=high", "--seed=3", "--set=volume:0.8,vol_effects:0.85,vol_music:0,battle_music:false,vol_ambience:0.18,vol_ui:0.35,mute_bg:false,wildlife:0,edge_pan:false", "--scenario=town", "--static", "--play", "--team=0", "--select-first", "--focus=-4,37", "--zoom=13", "--pitch=-37", "--cam-yaw=0.62", "--mood=golden", "--roadside"],
+      "args": ["--preset=high", "--seed=3", "--set=volume:0.8,vol_effects:0.85,vol_music:0,battle_music:false,vol_ambience:0.18,vol_ui:0.35,mute_bg:false,wildlife:0,edge_pan:false", "--scenario=town", "--static", "--play", "--team=0", "--select-first", "--focus=-4,37", "--zoom=13", "--pitch=-37", "--cam-yaw=0.62", "--mood=dawn", "--roadside"],
       "shows": ["Squad crossing the dirt road"],
       "about": "Shoulder-height cutaway of the exact same squad and order seen in the opening command view."
     },
     "trailer-order": {
       "scene": "res://tools/showcase/trailer-review/squad-order.tscn",
       "frames": 210,
-      "args": ["--preset=high", "--seed=3", "--set=volume:0.8,vol_effects:0.85,vol_music:0,battle_music:false,vol_ambience:0.18,vol_ui:0.35,mute_bg:false,wildlife:0,edge_pan:false", "--scenario=town", "--static", "--play", "--team=0", "--select-first", "--focus=-4,37", "--zoom=13", "--pitch=-37", "--cam-yaw=0.62", "--mood=golden"],
+      "args": ["--preset=high", "--seed=3", "--set=volume:0.8,vol_effects:0.85,vol_music:0,battle_music:false,vol_ambience:0.18,vol_ui:0.35,mute_bg:false,wildlife:0,edge_pan:false", "--scenario=town", "--static", "--play", "--team=0", "--select-first", "--focus=-4,37", "--zoom=13", "--pitch=-37", "--cam-yaw=0.62", "--mood=dawn"],
       "shows": ["The player orders one selected squad to move"],
       "about": "A move marker, squad card and soldiers leaving together open the trailer at the scale of a single order."
     },
@@ -533,8 +540,8 @@
         {"take": "trailer-harbour-boats", "from": 13.13333, "to": 15.53333, "gain_db": 0, "caption": "[Boats approach the shore]"},
         {"take": "trailer-beach-landing", "from": 26.0, "to": 27.4, "gain_db": 0, "caption": "[Surf as the squad runs ashore]"},
         {"take": "highlight-sea", "from": 34.0, "to": 35.93333, "gain_db": -1, "caption": "[Patrol ship fires across the harbour]"},
-        {"take": "highlight-flyover", "from": 4.3, "to": 7.3, "gain_db": 0, "caption": "[Jet engines climb over the harbour]"},
-        {"take": "highlight-flyover", "from": 10.7, "to": 13.26667, "gain_db": 4, "caption": "[Impacts roll across the water]"}
+        {"take": "trailer-harbour-finale", "from": 4.3, "to": 6.6, "gain_db": 0, "caption": "[Jet engines climb over the harbour]"},
+        {"take": "trailer-harbour-finale", "from": 11.0, "to": 14.26667, "gain_db": 4, "caption": "[Impacts roll across the water]"}
       ]
     },
     "changelog-tank-motion": {
