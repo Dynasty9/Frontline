@@ -274,6 +274,24 @@
       "shows": ["Mountain coastline and the landing party"],
       "about": "From the playable Helm camera, look past the seated driver as a second launch crosses the bow and turns toward the beach."
     },
+    "trailer-sling-liftoff": {
+      "frames": 645,
+      "args": [
+        "--preset=high",
+        "--seed=4",
+        "--set=volume:0.8,vol_effects:0.85,vol_music:0,battle_music:false,vol_ambience:0.28,vol_ui:0,mute_bg:false,wildlife:0,edge_pan:false",
+        "--mission=skyhook",
+        "--play",
+        "--team=0",
+        "--mood=day",
+        "--autoplay"
+      ],
+      "shows": [
+        "The Nyx tracks clear the grass as its sling takes the weight"
+      ],
+      "about": "Stay beside the Nyx as its tracks lift, then cut wider to reveal the Mohawk carrying it over the river.",
+      "scene": "res://tools/showcase/trailer-review/sling-liftoff.tscn"
+    },
     "trailer-sling": {
       "frames": 1275,
       "args": ["--preset=high", "--seed=4", "--set=volume:0.8,vol_effects:0.85,vol_music:0,battle_music:false,vol_ambience:0.28,vol_ui:0,mute_bg:false,wildlife:0,edge_pan:false", "--mission=skyhook", "--play", "--team=0", "--mood=day", "--autoplay"],
@@ -718,9 +736,10 @@
       "grade": {"contrast": 1.1, "saturation": 1.14},
       "cuts": [
         {"take": "trailer-order", "from": 1.83333, "to": 2.96667, "gain_db": -1, "caption": "[Low strings as the order is given]"},
-        {"take": "trailer-roadside", "from": 2.96667, "to": 4.23333, "gain_db": -1, "caption": "[Rotor blades turn as the squad moves]"},
-        {"take": "trailer-sling", "from": 39.26667, "to": 40.9, "gain_db": 0, "caption": "[Helicopter rotors over the suspended vehicle]"},
-        {"take": "trailer-cargo-door", "from": 40.9, "to": 42.0, "gain_db": 0},
+        {"take": "trailer-roadside", "from": 2.96667, "to": 3.93333, "gain_db": -1, "caption": "[Rotor blades turn as the squad moves]"},
+        {"take": "trailer-sling-liftoff", "from": 17.63333, "to": 18.93333, "gain_db": -1, "caption": "[Rotors beat as the tracked vehicle lifts]"},
+        {"take": "trailer-sling", "from": 39.86667, "to": 40.9, "gain_db": 0, "caption": "[Helicopter rotors over the suspended vehicle]"},
+        {"take": "trailer-cargo-door", "from": 40.9, "to": 41.6, "gain_db": 0},
         {"take": "trailer-bridge-follow", "from": 193.96667, "to": 194.83333, "gain_db": 0, "caption": "[Tank tracks approach along the village road]"},
         {"take": "trailer-bridge-column", "from": 194.83333, "to": 196.36667, "gain_db": 0},
         {"take": "trailer-convoy-cab", "from": 196.36667, "to": 197.06667, "gain_db": 0, "caption": "[Tank tracks rumble]"},
