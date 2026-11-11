@@ -36,7 +36,7 @@ export function ReelDialog({ open, onClose }: Props) {
     >
       <DialogPortal>
         <DialogOverlay className="bg-black/85!" />
-        <DialogPrimitive.Content className="fixed top-1/2 left-1/2 z-50 w-[min(92vw,1280px)] -translate-x-1/2 -translate-y-1/2 outline-none data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0">
+        <DialogPrimitive.Content className="fixed top-1/2 left-1/2 z-50 w-[min(92vw,1280px,calc((100dvh-6rem)*16/9))] -translate-x-1/2 -translate-y-1/2 outline-none data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0">
           <DialogTitle className="sr-only">Frontline gameplay footage</DialogTitle>
           <DialogDescription className="sr-only">
             Choose battle highlights with game audio and captions, or browse the silent vehicle roll call.
