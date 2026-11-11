@@ -322,6 +322,7 @@ static func tow_shackle(k: VehicleModels, parent: Node3D, center: Vector3, facin
 	mount.rotation.y = PI if facing < 0 else 0.0
 	k._box(mount, size, Vector3.ZERO, "gunmetal_w")
 	var z := size.z / 2 + radius * 0.85
+	k._box(mount, Vector3(radius * 0.8, radius * 0.7, radius * 1.15), Vector3(0, -0.02, size.z / 2 + radius * 0.42), "gunmetal_w")
 	var points: Array = []
 	for i in 13:
 		var a := PI + PI * i / 12.0
