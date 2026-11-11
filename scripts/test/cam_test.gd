@@ -275,7 +275,7 @@ func _run() -> void:
 	_check("despawning releases the object camera", cam.mount_label == &"")
 	world.input.clear_selection()
 
-	for fixture in [["heli", &"Cabin side"], ["rhib", &"Bow"], ["rhib", &"Waterline"], ["speedboat_hmg", &"Stern quarter"], ["patrol_ship", &"Stern quarter"], ["mohawk", &"Sling load"], ["mohawk", &"Cargo door"], ["taru_lift", &"Cargo door"], ["rhib", &"Starboard"], ["rhib", &"Helm"], ["tank", &"Periscope"], ["old_tank", &"Periscope"]]:
+	for fixture in [["heli", &"Cabin side"], ["rhib", &"Bow"], ["rhib", &"Waterline"], ["speedboat_hmg", &"Stern quarter"], ["patrol_ship", &"Stern quarter"], ["patrol_ship", &"Bridge roof"], ["mohawk", &"Sling load"], ["mohawk", &"Cargo door"], ["taru_lift", &"Cargo door"], ["rhib", &"Starboard"], ["rhib", &"Helm"], ["tank", &"Periscope"], ["old_tank", &"Periscope"]]:
 		var vehicle := world.spawn("vehicle", {"vkind": fixture[0], "team": actor.team, "pos": actor.position}) as Vehicle
 		_check("%s has its own exterior camera" % fixture[0], vehicle.camera_mounts().has(fixture[1]))
 		if fixture[1] == &"Helm":

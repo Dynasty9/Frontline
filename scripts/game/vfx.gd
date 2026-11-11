@@ -314,6 +314,9 @@ func _make_materials() -> void:
 	spark_mat = _shader_mat(SPARK_SHADER)
 	tracer_mat = _shader_mat(TRACER_SHADER)
 	wave_mat = _shader_mat(WAVE_SHADER)
+	# Refraction samples the opaque scene. Composite it before transparent water
+	# so a flash above a boat cannot paint the seabed over the waves.
+	wave_mat.render_priority = WaterView.SURFACE_PRIORITY - 1
 	flame_mat = _shader_mat(FLAME_SHADER)
 	flame_mat.set_shader_parameter("noise_tex", noise_tex)
 	blast_flame_mat = flame_mat.duplicate()

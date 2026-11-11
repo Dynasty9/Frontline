@@ -8672,7 +8672,7 @@
       "entry": "changelog/unreleased/harbour-spray.md",
       "medium": "motion",
       "rationale": "The two uninterrupted views show the height, shape and return of the spray against the same ship. The second clip compares the same launch crossing the starboard camera at full speed.",
-      "stage": "tools/showcase/airstrike-camera.tscn",
+      "stage": "tools/showcase/airstrike-camera.tscn Bridge roof comparison uses Beachhead seed 3 at 34.9 to 37.15 seconds.",
       "source_ref": "524fb5d versus the revised splash particles; RHIB wake 742a026 versus dbd3ca3",
       "sources": [
         {
@@ -8690,6 +8690,16 @@
         {
           "file": "changelog/unreleased/harbour-spray/wake.jpg",
           "sha256": "4006d1fc76e08b18ab30a6c097e007c5c9e6a784645c99819d4e3e1b61a70fb9"
+        },
+        {
+          "file": "changelog/unreleased/harbour-spray/bow-foam.webm",
+          "sha256": "8be12bd068e2d2a7d7b82002d5fd2d5fe22b6549b4498deb1f5e6919d2b8f61b",
+          "caption": "The same crossing before and after the bow foam and refraction changes."
+        },
+        {
+          "file": "changelog/unreleased/harbour-spray/bow-foam.jpg",
+          "sha256": "9a1469e07210dcd8f029ebb1910fbb87d2fdb124233495dc4e8c5508340a5fc5",
+          "caption": "The smaller boat approaching the port rail."
         }
       ],
       "capture": {
@@ -8795,12 +8805,12 @@
     },
     {
       "entry": "changelog/unreleased/boat-stern-camera.md",
-      "title": "Watch the water from the stern",
+      "title": "See the water from the stern and bridge",
       "version": "unreleased",
       "kind": "improved",
-      "summary": "View the water beyond a boat from its port stern quarter.",
+      "summary": "View the water beyond the stern or look over the patrol ship’s port rail from the bridge roof.",
       "medium": "motion",
-      "stage": "Beachhead, seed 3, trailer-harbour-quarter, seconds 10.9 to 14.3. Use Waterline for the left camera and Stern quarter for the right.",
+      "stage": "Beachhead, seed 3, trailer-harbour-quarter, seconds 10.9 to 14.3. Use Waterline for the left camera and Stern quarter for the right. Bridge roof comparison uses Beachhead seed 3 at 34.9 to 37.15 seconds.",
       "rationale": "Both cameras follow the same boat through the same spray, with the horizon visible above its deck.",
       "source_ref": "scripts/game/vehicle.gd and the trailer-harbour-quarter capture recipe.",
       "sources": [
@@ -8813,6 +8823,16 @@
           "file": "changelog/unreleased/boat-stern-camera/harbour.jpg",
           "sha256": "227363e5187c36c1c9cf1accf7661616299af9df5926294dc64f824507d256e6",
           "caption": "The first spray rises behind the cabin."
+        },
+        {
+          "file": "changelog/unreleased/boat-stern-camera/bridge.webm",
+          "sha256": "5364af82cc24b908ea5de43a123ea11b90d30f80d7bfd8d7bd34a4c0dfcb7455",
+          "caption": "The patrol ship bow and bridge roof during the same pass."
+        },
+        {
+          "file": "changelog/unreleased/boat-stern-camera/bridge.jpg",
+          "sha256": "6ddfc95f16f1968f2db1da2825676764d5faca44f9c5a61cf0ca364ff9877cfd",
+          "caption": "The smaller boat approaching the port rail."
         }
       ]
     }

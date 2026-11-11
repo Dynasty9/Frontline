@@ -13,6 +13,8 @@ extends Node3D
 ## keeps time by the `water_time` global shader uniform (project.godot). How
 ## much of it is drawn is the Water quality setting (Settings "water").
 
+const SURFACE_PRIORITY := -10
+
 # Shared by scenery ground and water so their distant shoreline cannot separate.
 const SCENERY_COAST := """
 uniform float scenery_coast_phase = 0.0;
@@ -203,7 +205,7 @@ func build(w: WaterMap, detail: Texture2D) -> void:
 	if mat == null:
 		_make_textures()
 		mat = _material("", detail)
-		mat.render_priority = -10  # under everything else see-through: smoke, splashes, wakes
+		mat.render_priority = SURFACE_PRIORITY  # below smoke, splashes and wakes
 		wake_mat = _material("", detail)
 		wake_mat.render_priority = -5
 		patch_mat = _material("", detail)
@@ -1110,6 +1112,11 @@ void fragment() {
 		float ridge = 1.0 - smoothstep(0.0, 0.88 + (l - 0.5) * 0.24, x);
 		amt = (0.18 + 0.68 * sqrt(spd)) * exp(-age / 2.2) * ridge;
 		sheen = ridge * ridge * (0.07 + 0.1 * spd) * (1.0 - smoothstep(1.5, 8.0, age));
+		// The bow parts the water at a point. Let the crest grow along the
+		// first half-beam of travel so the strip has no flat leading edge.
+		float entry = smoothstep(0.0, max(0.5, UV2.y), age * COLOR.r * 25.0);
+		amt *= entry;
+		sheen *= entry;
 	}
 	float blur = smoothstep(0.04, 0.2, length(fwidth(wp.xz)));
 	float foam = clamp(amt * mix(0.16 + 1.04 * smoothstep(0.29, 0.71, l), 0.78, blur), 0.0, 0.94);
