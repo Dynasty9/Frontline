@@ -93,7 +93,7 @@ Build what you re-cut, by name (`--all` only after re-recording everything; `--s
 
 Watch the encoded cut with **Video Tool** before installing it. Sample each cut, check the transitions in motion, and listen to the reel audio. Use contact sheets to locate shots in the native takes. After an edit, review the new encode again.
 
-The footage player also has a separate silent vehicle roll call. Rebuild it with `record.py --render vehicles`. The studio includes the playable roster, the Field Manual garage and the remaining support aircraft.
+The footage player also has a separate silent vehicle roll call. Rebuild it with `record.py --render vehicles`. The coastal circuit match-cuts the moving vehicles from the playable roster, Field Manual garage and support aircraft. Review the cliff, splash and last-to-first beach landing in motion.
 
 ## 5. Check the site and ship it
 

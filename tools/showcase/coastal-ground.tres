@@ -1,0 +1,31 @@
+[gd_resource type="ShaderMaterial" load_steps=5 format=3]
+
+[ext_resource type="Texture2D" path="res://assets/town/gravelly_sand_color.jpg" id="1"]
+[ext_resource type="Texture2D" path="res://assets/terrain/rock_face_03_diff_2k.jpg" id="2"]
+[ext_resource type="Texture2D" path="res://assets/terrain/aerial_grass_rock_diff_2k.jpg" id="3"]
+
+[sub_resource type="Shader" id="Ground"]
+code = "shader_type spatial;
+uniform sampler2D gravel : source_color, repeat_enable, filter_linear_mipmap_anisotropic;
+uniform sampler2D stone : source_color, repeat_enable, filter_linear_mipmap_anisotropic;
+uniform sampler2D meadow : source_color, repeat_enable, filter_linear_mipmap_anisotropic;
+varying vec3 p;
+void vertex(){ p = VERTEX; }
+void fragment(){
+	vec3 track = texture(gravel,p.xz*0.22).rgb;
+	vec3 grass = texture(meadow,p.xz*0.12).rgb;
+	vec3 cliff = texture(stone,(p.xz + p.y*vec2(0.45,0.62))*0.14).rgb;
+	float shoulder = abs(length(p.xz) - 42.0);
+	float ruts = 1.0 - smoothstep(0.12, 0.46, abs(shoulder - 1.04));
+	track *= 1.0 - 0.19 * ruts;
+	grass *= vec3(0.84,1.05,0.81);
+	float edge = clamp(COLOR.r + (track.r-0.3)*0.28,0.0,1.0);
+	ALBEDO = mix(mix(cliff,grass,COLOR.g),track,edge);
+	ROUGHNESS = 0.95;
+}"
+
+[resource]
+shader = SubResource("Ground")
+shader_parameter/gravel = ExtResource("1")
+shader_parameter/stone = ExtResource("2")
+shader_parameter/meadow = ExtResource("3")

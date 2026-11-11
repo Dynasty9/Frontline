@@ -22,6 +22,7 @@ export const Open: Story = {
       "src",
       "/media/vehicles.mp4"
     )
+    await expect(screen.getByLabelText("Vehicle roll call", { selector: "video" })).toHaveProperty("loop", true)
     await userEvent.click(screen.getByRole("button", { name: "Battle highlights" }))
     await expect(screen.getByLabelText("Battle highlights", { selector: "video" })).toHaveAttribute(
       "src",

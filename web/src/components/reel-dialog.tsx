@@ -60,6 +60,7 @@ export function ReelDialog({ open, onClose }: Props) {
               key={film}
               aria-label={film === "reel" ? "Battle highlights" : "Vehicle roll call"}
               muted={film === "vehicles"}
+              loop={film === "vehicles"}
               src={media(film, "mp4")}
               poster={media(film, "jpg")}
               controls
