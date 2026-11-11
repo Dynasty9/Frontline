@@ -4,11 +4,24 @@
     {
       "entry": "changelog/unreleased/strike-direction.md",
       "summary": "Airstrikes follow the direction previewed while dragging.",
-      "medium": "text",
-      "stage": "text",
-      "rationale": "Corrects the command sent on release; the existing preview is unchanged. Input regression coverage verifies all support shapes without claiming recorded gameplay evidence.",
-      "source_ref": "working-tree",
-      "sources": [],
+      "medium": "motion",
+      "stage": "tests/fixtures/strike-direction-clip.gd",
+      "rationale": "Live input preview rotates before release; the resulting jet direction is asserted against the preview. Scripted input, observer mode, silent normal-speed capture.",
+      "source_ref": "60719a52",
+      "sources": [
+        {
+          "file": "changelog/unreleased/strike-direction/drag-to-aim.mp4",
+          "sha256": "5977ae7cedc191cb3f88f32b9a9fbd8338f13e703d0e4a458a30ff95ca82cdd5"
+        },
+        {
+          "file": "changelog/unreleased/strike-direction/drag-to-aim.jpg",
+          "sha256": "0312c6453450af8e8ff06580edc935a12ec144805d183c1a1ca598a9826feb83"
+        },
+        {
+          "file": "changelog/unreleased/strike-direction/capture.json",
+          "sha256": "484b997ca25a135768e089ac5dc7dd05fe832f30f7092cce735819a7af87af05"
+        }
+      ],
       "output": null
     },
     {
