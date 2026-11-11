@@ -222,10 +222,10 @@ func _build_camera_mounts() -> void:
 		_camera_mount(&"Cabin side", model, Vector3(size.x * 1.4, size.y * 0.75, size.z * 0.28), Vector3(0, size.y * 0.5, -size.z * 0.16))
 		if int(vdef.get("sling", -1)) >= 0:
 			# Keep the aircraft and the vehicle hanging beneath it in one frame.
-			_camera_mount(&"Sling load", model, Vector3(size.z * 1.15, size.y * 0.65, size.z * 0.4), Vector3.DOWN * SLING_ROPE * 0.4)
+			_camera_mount(&"Sling load", model, Vector3(size.z * 1.03, size.z * 0.44, -size.z * 0.72), Vector3.DOWN * SLING_ROPE * 0.35, true)
 	elif is_boat():
 		_camera_mount(&"Bow", model, Vector3(size.x * 0.32, size.y * 1.15, -size.z * 0.68), Vector3(0, size.y * 0.55, 0))
-		_camera_mount(&"Waterline", model, Vector3(size.z * 1.05, size.y * 1.3, -size.z * 0.68), Vector3.UP * size.y * 0.55)
+		_camera_mount(&"Waterline", model, Vector3(size.z * 0.82, size.y * 2.4, size.z * 0.97), Vector3(0, size.y * 0.4, -size.z * 0.13), true)
 	if _vm.gun_mount and _vm.gun_tip:
 		# Look back along the moving tube so the turret stays in the picture.
 		_camera_mount(&"Barrel", _vm.gun_tip, Vector3(2.9, 0.92, -1.9), Vector3(-0.1, 0.0, 1.8))

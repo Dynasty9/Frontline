@@ -490,6 +490,9 @@ func _apply() -> void:
 		if _mount_visible():
 			focus_pos = mount_subject.global_position
 			var pose := mount_marker.global_transform.orthonormalized()
+			# An observer outside the vehicle sees the hull heel against a level horizon.
+			if mount_marker.has_meta(&"level_horizon") and absf(pose.basis.z.y) < 0.9999:
+				pose.basis = Basis.looking_at(-pose.basis.z)
 			pose.origin.y = maxf(pose.origin.y, world.ground_y(pose.origin) + 0.45)
 			cam.global_transform = pose
 			cam.h_offset = randf_range(-1, 1) * _shake * 0.08 if _shake > 0.0 else 0.0

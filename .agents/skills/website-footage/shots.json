@@ -70,16 +70,23 @@
       "about": "Low three-quarter view down a branch of the same trench seen in the overhead reverse."
     },
     "trailer-harbour-boats": {
-      "frames": 1320,
-      "args": ["--preset=high", "--seed=3", "--set=volume:0.8,vol_effects:0.85,vol_music:0,battle_music:false,vol_ambience:0.28,vol_ui:0,mute_bg:false,wildlife:0,edge_pan:false", "--mission=beachhead", "--focus-vehicle=rhib", "--vehicle-view=Waterline"],
+      "frames": 540,
+      "args": ["--preset=high", "--seed=3", "--set=volume:0.8,vol_effects:0.85,vol_music:0,battle_music:false,vol_ambience:0.28,vol_ui:0,mute_bg:false,wildlife:0,edge_pan:false", "--mission=beachhead", "--focus-vehicle=rhib,1", "--vehicle-view=Waterline"],
       "shows": ["Mountain coastline and the landing party"],
-      "about": "A low bow-quarter camera shares the patrol ship and jet’s seeded Beachhead coastline."
+      "about": "From the stern quarter the launch turns toward the beach, leaving a curved wake in the same harbour as the ship and jet."
     },
     "trailer-sling": {
       "frames": 1080,
       "args": ["--preset=high", "--seed=3", "--set=volume:0.8,vol_effects:0.85,vol_music:0,battle_music:false,vol_ambience:0.28,vol_ui:0,mute_bg:false,wildlife:0,edge_pan:false", "--scenario=sling", "--play", "--team=0", "--focus-vehicle=mohawk", "--vehicle-view=Sling load", "--mood=golden"],
       "shows": ["Transport helicopter lifting a vehicle"],
       "about": "The shared sling-load mount keeps the suspended vehicle and the rotor disc together."
+    },
+    "trailer-roadside": {
+      "scene": "res://tools/showcase/trailer-review/squad-order.tscn",
+      "frames": 210,
+      "args": ["--preset=high", "--seed=3", "--set=volume:0.8,vol_effects:0.85,vol_music:0,battle_music:false,vol_ambience:0.18,vol_ui:0.35,mute_bg:false,wildlife:0,edge_pan:false", "--scenario=town", "--static", "--play", "--team=0", "--select-first", "--focus=-4,37", "--zoom=13", "--pitch=-37", "--cam-yaw=0.62", "--mood=golden", "--roadside"],
+      "shows": ["Squad crossing the dirt road"],
+      "about": "Shoulder-height cutaway of the exact same squad and order seen in the opening command view."
     },
     "trailer-order": {
       "scene": "res://tools/showcase/trailer-review/squad-order.tscn",
@@ -503,14 +510,15 @@
       "fade_out": 7,
       "grade": {"contrast": 1.1, "saturation": 1.14},
       "cuts": [
-        {"take": "trailer-order", "from": 0.86667, "to": 3.26667, "gain_db": -1, "caption": "[Low strings as the squad sets off]"},
+        {"take": "trailer-order", "from": 1.4, "to": 2.73333, "gain_db": -1, "caption": "[Low strings as the order is given]"},
+        {"take": "trailer-roadside", "from": 2.73333, "to": 3.8, "gain_db": -1, "caption": "[The squad crosses the road]"},
         {"take": "highlight-column", "from": 5.03333, "to": 7.3, "gain_db": 0, "caption": "[Tracks rumble across the field]"},
         {"take": "reel-gun", "from": 13.9, "to": 15.1, "gain_db": -8, "caption": "[Tank cannon fires]"},
         {"take": "trailer-trench-close", "from": 9.2, "to": 10.8, "gain_db": -2, "caption": "[Fire cracks beside the trench]"},
         {"take": "highlight-mortars", "from": 0.93333, "to": 2.03333, "gain_db": 1, "caption": "[Distant fire at the mortar pit]"},
         {"take": "highlight-mortar-burst", "from": 8.0, "to": 10.4, "gain_db": -3, "caption": "[Mortar bursts across the trench line]"},
         {"take": "trailer-sling", "from": 16.66667, "to": 19.4, "gain_db": 0, "caption": "[Helicopter rotors over the suspended vehicle]"},
-        {"take": "trailer-harbour-boats", "from": 7.83333, "to": 10.63333, "gain_db": 0, "caption": "[Boats approach the shore]"},
+        {"take": "trailer-harbour-boats", "from": 13.13333, "to": 15.93333, "gain_db": 0, "caption": "[Boats approach the shore]"},
         {"take": "highlight-sea", "from": 34.0, "to": 35.93333, "gain_db": -1, "caption": "[Patrol ship fires across the harbour]"},
         {"take": "highlight-flyover", "from": 4.3, "to": 7.3, "gain_db": 0, "caption": "[Jet engines climb over the harbour]"},
         {"take": "highlight-flyover", "from": 10.7, "to": 13.26667, "gain_db": 4, "caption": "[Impacts roll across the water]"}
