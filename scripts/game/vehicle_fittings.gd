@@ -296,3 +296,21 @@ static func jerrycan(k: VehicleModels, parent: Node3D, center: Vector3, col: Col
 	k._cyl(mount, 0.035, 0.039, 0.018, Vector3(0, 0.24, -0.10), Vector3.ZERO, "gunmetal_w", null, 12, false)
 	k._box(mount, Vector3(0.018, 0.012, 0.07), Vector3(0, 0.255, -0.10), "gunmetal_w", null, Vector3.ZERO, false)
 	k._fold(mount)
+
+
+## Sealed ammunition can; feed boxes and wooden ammunition crates are separate.
+static func ammo_can(k: VehicleModels, parent: Node3D, center: Vector3, col: Color, rotation := Vector3.ZERO, size := Vector3(0.16, 0.2, 0.3)) -> void:
+	var mount := k._pivot(parent, center)
+	mount.rotation = rotation
+	mount.scale = size / Vector3(0.16, 0.2, 0.3)
+	k._box(mount, Vector3(0.16, 0.18, 0.3), Vector3(0, -0.01, 0), "paint", col)
+	k._box(mount, Vector3(0.162, 0.008, 0.302), Vector3(0, 0.078, 0), "rubber", null, Vector3.ZERO, false)
+	k._box(mount, Vector3(0.17, 0.025, 0.31), Vector3(0, 0.095, 0), "paint", col)
+	VehicleFrames.path(k, mount, [Vector3(0, 0.108, -0.065), Vector3(0, 0.133, -0.065), Vector3(0, 0.133, 0.065), Vector3(0, 0.108, 0.065)], 0.008, "gunmetal_w", null, 6)
+	for z in [-0.157, 0.157]:
+		k._box(mount, Vector3(0.04, 0.055, 0.012), Vector3(0, 0.065, z), "gunmetal_w", null, Vector3.ZERO, false)
+		VehicleFrames.tube(k, mount, Vector3(-0.028, 0.089, z), Vector3(0.028, 0.089, z), 0.007, "gunmetal_w", null, 6, false)
+	for side: float in [-1.0, 1.0]:
+		for z in [-0.09, 0.09]:
+			k._box(mount, Vector3(0.006, 0.115, 0.012), Vector3(side * 0.081, -0.015, z), "paint", col, Vector3.ZERO, false)
+	k._fold(mount)

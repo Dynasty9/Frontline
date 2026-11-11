@@ -267,8 +267,8 @@ static func _jerry(k: VehicleModels, p: Node3D, pos: Vector3, col := OD, yaw := 
 
 ## An ammo can, its long side along z (yaw turns it).
 static func _ammo_can(k: VehicleModels, p: Node3D, pos: Vector3, yaw := 0.0, col := OD) -> void:
-	_bx(k, p, Vector3(0.16, 0.2, 0.3), pos, "paint", col, Vector3(0, yaw, 0))
-	_bx(k, p, Vector3(0.04, 0.02, 0.18), pos + Vector3(0, 0.11, 0), "gunmetal_w", null, Vector3(0, yaw, 0), false)
+	VehicleFittings.ammo_can(k, p, pos, col, Vector3(0, yaw, 0))
+
 
 
 ## A lifting eye (a small loop) standing on a surface at pos.

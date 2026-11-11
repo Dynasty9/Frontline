@@ -578,7 +578,7 @@ static func _off_hmg(k: VehicleModels, team: int) -> void:
 		_strut(k, m, Vector3(s * 0.22, 1.0, 1.28), Vector3(0, 1.4, 1.5), 0.04, 0.04, "gunmetal_w")
 	# ammo cans and a spare box by the gunner's feet
 	for i in 3:
-		k._box(m, Vector3(0.14, 0.19, 0.3), Vector3(-0.55 + i * 0.16, 1.08, 2.2), "paint", OD)
+		VehicleFittings.ammo_can(k, m, Vector3(-0.55 + i * 0.16, 1.08, 2.2), OD, Vector3.ZERO, Vector3(0.14, 0.19, 0.3))
 	k._box(m, Vector3(0.6, 0.25, 0.35), Vector3(0.45, 1.1, 2.15), "wood", null)
 	k.turret = k._pivot(m, Vector3(0, 1.62, 1.5))
 	var t := k.turret
@@ -804,7 +804,7 @@ static func _mb_gun(k: VehicleModels, team: int, at: bool) -> void:
 	k._cyl(m, 0.045, 0.05, 0.16, Vector3(0, 1.86, 1.15), Vector3.ZERO, "gunmetal_w", null, 8)
 	# ammunition stowed in the back
 	for i in 2:
-		k._box(m, Vector3(0.14, 0.19, 0.3), Vector3(0.45 - i * 0.17, 1.08, 1.6), "paint", OD)
+		VehicleFittings.ammo_can(k, m, Vector3(0.45 - i * 0.17, 1.08, 1.6), OD, Vector3.ZERO, Vector3(0.14, 0.19, 0.3))
 	k.turret = k._pivot(m, Vector3(0, 1.94, 1.15))
 	var t := k.turret
 	k._cyl(t, 0.035, 0.035, 0.12, Vector3(0, 0.03, 0), Vector3.ZERO, "gunmetal_w", null, 8)

@@ -170,8 +170,8 @@ static func _jerry(k: VehicleModels, p: Node3D, pos: Vector3, col := Color(0.3, 
 
 ## An ammo can (olive), its long side along z.
 static func _ammo_can(k: VehicleModels, p: Node3D, pos: Vector3, rot := Vector3.ZERO) -> void:
-	k._box(p, Vector3(0.16, 0.2, 0.3), pos, "paint", STOW, rot)
-	k._box(p, Vector3(0.04, 0.02, 0.18), pos + Vector3(0, 0.11, 0), "gunmetal_w", null, rot, false)
+	VehicleFittings.ammo_can(k, p, pos, STOW, rot)
+
 
 
 ## A whip antenna on a base.
