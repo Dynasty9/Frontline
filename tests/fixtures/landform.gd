@@ -188,7 +188,7 @@ func _ready() -> void:
 	atmosphere.env = Environment.new()
 	atmosphere.ground_mat = ShaderMaterial.new()
 	var ground_shader := Shader.new()
-	ground_shader.code = MapDims.shader(Atmosphere.GROUND_SHADER.replace("// BACKDROP_HEIGHT", Atmosphere.BACKDROP_HEIGHT))
+	ground_shader.code = CloudShadow.shader(MapDims.shader(Atmosphere.GROUND_SHADER.replace("// BACKDROP_HEIGHT", Atmosphere.BACKDROP_HEIGHT)), CloudShadow.OWN_LIGHT)
 	atmosphere.ground_mat.shader = ground_shader
 	atmosphere._d = {"fog_d": 0.002}
 	world.terrain.landform.peak = 80.0
@@ -248,9 +248,27 @@ func _ready() -> void:
 	var corridor := Landform.new(256)
 	corridor.generate(3, [[PackedVector3Array([Vector3(-100, 0, 0), Vector3(100, 0, 0)])]], world.water, [[Vector3(0, 0, 60), 12.0]])
 	assert(corridor.peak > 5.0, "Reserved maps still contain hills")
-	for x in range(-100, 101, 4):
-		assert(is_zero_approx(corridor.height(Vector3(x, 0, 0))), "Roads have a continuous graded corridor")
+	for x in range(-100, 97, 4):
+		var here := corridor.height(Vector3(x, 0, 0))
+		assert(absf(corridor.height(Vector3(x + 4, 0, 0)) - here) < 0.5, "Roads have a continuous graded corridor: %.2f m to %.2f m at x=%d" % [here, corridor.height(Vector3(x + 4, 0, 0)), x])
+		assert(absf(corridor.height(Vector3(x, 0, 3)) - here) < 0.3 and absf(corridor.height(Vector3(x, 0, -3)) - here) < 0.3, "Roads lie level across their carriageway")
 	assert(corridor.fits(Vector3(0, 0, 60), Vector2(10, 10), 0.0), "Settlements retain level building ground")
+	var coastal_water := WaterMap.new(world)
+	coastal_water.coast = {"x": 40.0, "s": 3.0}
+	var coast := Landform.new(256)
+	coast.generate(3, [], coastal_water, [], false)
+	for z in range(-100, 101, 4):
+		var shore := coastal_water.coast_x(z)
+		for x in range(ceili(shore / 4.0) * 4 + 4, 124, 4):
+			assert(is_zero_approx(coast.height(Vector3(x, 0, z))), "Sediment must not lift the landing boats' seabed")
+	assert(is_zero_approx(corridor.height(Vector3(0, 0, 60))), "Settlements sit on the valley's level floor")
+	var floor_low := INF
+	var floor_high := -INF
+	for z in range(-100, 101, 25):
+		var h := corridor.height(Vector3(-100, 0, z))
+		floor_low = minf(floor_low, h)
+		floor_high = maxf(floor_high, h)
+	assert(floor_high - floor_low > 0.8, "Skirmish valley floors roll rather than lie planed: %.2f m" % (floor_high - floor_low))
 	# A known ridge separates two level firing positions, with a gentle west ramp.
 	var heights := PackedFloat32Array()
 	heights.resize(17 * 17)
@@ -261,8 +279,33 @@ func _ready() -> void:
 	var flat := Landform.new(64).bake_surface()
 	assert(flat.get_pixel(3, 3).r > 0.99 and absf(flat.get_pixel(3, 3).g - 0.5) < 0.01, "Flat terrain has open sky and no concavity")
 	assert(flat.get_format() == Image.FORMAT_RGBA8 and flat.get_pixel(3, 3).a == 0.0, "Flat terrain has no drainage weathering")
+	# Skirmish rock carries crag relief finer than the 4 m grid: the same on every
+	# peer, absent from campaign ground, and invisible to slopes and routes.
+	var crag_heights := PackedFloat32Array()
+	crag_heights.resize(17 * 17)
+	for z in 17:
+		for x in 17:
+			crag_heights[z * 17 + x] = 40.0 * maxf(0.0, 1.0 - absf(x * 4.0 - 32.0) / 24.0)
+	var crag_a := Landform.new(64)
+	crag_a.heights = crag_heights.duplicate()
+	crag_a.prepare_crags(true)
+	var crag_b := Landform.new(64)
+	crag_b.heights = crag_heights.duplicate()
+	crag_b.prepare_crags(true)
+	var rough := 0.0
+	for k in 16:
+		var q := Vector3(-14.0 + k * 0.25, 0, 3.0)
+		assert(crag_a.height(q) == crag_b.height(q), "Crag relief is deterministic")
+		rough = maxf(rough, absf(crag_a.height(q) - crag_a.smooth_height(q)))
+	assert(rough > 0.15, "Bare rock carries relief finer than the grid: %.3f m" % rough)
+	assert(is_equal_approx(crag_a.slope(Vector3(-12, 0, 3)), 40.0 / 24.0), "Crags do not change slopes for movement")
+	var authored := Landform.new(64)
+	authored.heights = crag_heights.duplicate()
+	authored.prepare_crags(false)
+	assert(authored.height(Vector3(-12, 0, 3)) == authored.smooth_height(Vector3(-12, 0, 3)), "Campaign ground stays as authored")
+	assert(crag_a.height(Vector3(-30, 0, 3)) == crag_a.smooth_height(Vector3(-30, 0, 3)), "Level ground takes no crags")
 	world.terrain.landform.drainage = PackedFloat32Array([1.0])
-	world.terrain.install_landform(heights)
+	world.terrain.install_landform(heights, false)  # (a smooth ridge: exact sight and sampling checks)
 	assert(world.terrain.landform.drainage.is_empty(), "Installing a map invalidates the old catchment cache")
 	var baked := world.terrain.landform.bake_surface()
 	assert(baked.get_data() == world.terrain.landform.bake_surface().get_data(), "Surface baking is deterministic")

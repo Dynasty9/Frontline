@@ -114,3 +114,15 @@ comparison's bursts. Run both revisions on the same engine, device and renderer,
 with other rendering/baking work stopped, and repeat to expose timing variance.
 Frame times are wall time through `frame_post_draw`, not GPU timestamp queries.
 This controlled scene isolates effects; it is not a full-battle FPS estimate.
+
+## Rebuild the earlier ridge film’s wreck smoke
+
+The current ridge film uses the game’s fuel explosion and vehicle burner. These commands reproduce the older volume for comparison. Blender 4.5 LTS includes OpenVDB. Use a scratch volume for the fluid cache. The final packing step uses Python with NumPy, SciPy and Pillow.
+
+```sh
+blender -b --factory-startup -t 5 --python tools/vfx/bake_ridge_fire.py -- /tmp/ridge-fire
+blender -b --factory-startup --python tools/vfx/read_ridge_fire.py -- /tmp/ridge-fire/cache/noise /tmp/ridge-frames
+python3 tools/vfx/pack_ridge_fire.py /tmp/ridge-frames tests/fixtures/ridge-light/engine-fire.bin
+```
+
+The older volume contains 12 samples per second. Its ray marcher clips against the nearest ground or hull surface.

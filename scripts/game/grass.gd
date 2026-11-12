@@ -2,7 +2,7 @@ class_name Grass
 extends Node3D
 ## Instanced grass clumps, bushes and stones in 32 m chunks. Placement follows
 ## the ground's biome map and avoids roads and building floors. Rebuilt
-## progressively (a few chunks per frame) when the map or settings change.
+## for the active camera first, with nearby off-screen chunks prepared between frames.
 
 const CHUNK := 32.0
 var HALF := MapDims.HALF
@@ -10,7 +10,7 @@ var HALF := MapDims.HALF
 var atmo: Atmosphere
 var mat: ShaderMaterial
 var bush_mat: ShaderMaterial
-var stone_mat: StandardMaterial3D
+var stone_mat: ShaderMaterial
 var clump: ArrayMesh
 var scar_img: Image
 var scar_tex: ImageTexture
@@ -22,30 +22,29 @@ var level := -1
 var _queue: Array = []
 var _rebuild_t := -1.0
 var _blocked := PackedByteArray()
+var _bounds := {}  # local terrain heights for chunks still waiting to be built
 var _built := {}  # Vector2i -> Array of nodes
 var _center := Vector2i(999999, 999999)
 const REACH := 7  # beyond the bushes' 170 m fade, including a chunk and pan margin
 
 
 func _ready() -> void:
+	process_priority = 20  # The camera and director have chosen this frame's view.
 	clump = _make_clump()
 	bush = _make_bush()
 	stone = _make_stone()
 	scar_img = Image.create(MapDims.N, MapDims.N, false, Image.FORMAT_L8)
 	scar_tex = ImageTexture.create_from_image(scar_img)
 	mat = ShaderMaterial.new()
-	var sh := Shader.new()
-	sh.code = MapDims.shader(GRASS_SHADER)
-	mat.shader = sh
+	# (the clouds' shade, CloudShadow.FOLD: in the albedo with Cloud shadows off)
+	mat.shader = CloudShadow.make(MapDims.shader(GRASS_SHADER), CloudShadow.BACKLIGHT | CloudShadow.NO_SPECULAR | CloudShadow.FOLD)
 	mat.set_shader_parameter("scar", scar_tex)
 	bush_mat = ShaderMaterial.new()
-	var bs := Shader.new()
-	bs.code = MapDims.shader(BUSH_SHADER)
-	bush_mat.shader = bs
+	bush_mat.shader = CloudShadow.make(MapDims.shader(BUSH_SHADER), CloudShadow.BACKLIGHT | CloudShadow.NO_SPECULAR | CloudShadow.FOLD)
 	bush_mat.set_shader_parameter("leaf_texture", preload("res://assets/foliage/broadleaf.png"))
-	stone_mat = StandardMaterial3D.new()
-	stone_mat.albedo_color = Color(0.42, 0.4, 0.37)
-	stone_mat.roughness = 0.9
+	# (a shader, not a StandardMaterial3D, so that the stones go into cloud shade too)
+	stone_mat = ShaderMaterial.new()
+	stone_mat.shader = CloudShadow.make(STONE_SHADER)
 	request_rebuild(1.2)
 
 
@@ -97,20 +96,26 @@ func _view_process(dt: float) -> void:
 	if _scar_dirty:
 		_scar_dirty = false
 		scar_tex.update(scar_img)
-	if _rebuild_t > 0.0:
+	if atmo.world.building or not atmo.world.loaded or not atmo.world.cam:
+		return
+	if level < 0:
+		_rebuild_t = -1.0
+		_start_rebuild(true)
+	elif _rebuild_t > 0.0:
 		_rebuild_t -= dt
 		if _rebuild_t <= 0.0:
 			_start_rebuild()
-	if _task >= 0:
-		if not WorkerThreadPool.is_task_completed(_task):
-			return  # (the grass as it was stays till the new is laid out)
+	if _task >= 0 and WorkerThreadPool.is_task_completed(_task):
 		WorkerThreadPool.wait_for_task_completion(_task)
 		_task = -1
 		_lay_out()
 	if level == 0 or _blocked.is_empty():
 		return
-	var camera := atmo.world.cam
-	_stream(camera.cam.global_position if camera else Vector3.ZERO)
+	var camera := get_viewport().get_camera_3d()
+	if not camera:
+		return
+	_stream(camera.global_position)
+	_build_visible(camera)
 	var started := Time.get_ticks_usec()
 	var n := 0
 	while not _queue.is_empty() and n < 2 and Time.get_ticks_usec() - started < 1000:
@@ -124,7 +129,7 @@ func _exit_tree() -> void:
 		_task = -1
 
 
-func _start_rebuild() -> void:
+func _start_rebuild(first_view := false) -> void:
 	level = int(Settings.get_v("grass"))
 	_shrub_noise.seed = int(atmo.world.settings.get("seed", 1)) + 219
 	_shrub_noise.frequency = 0.035
@@ -136,7 +141,7 @@ func _start_rebuild() -> void:
 		_clear()
 		return
 	_job = _blocked_job()
-	if OS.has_feature("nothreads"):
+	if first_view or OS.has_feature("nothreads"):
 		_job.run()
 		_lay_out()
 	else:
@@ -157,6 +162,7 @@ func _stream(pos: Vector3) -> void:
 		return
 	_center = center
 	_queue.clear()
+	_bounds.clear()
 	for key: Vector2i in _built.keys():
 		if absi(key.x - center.x) > REACH + 2 or absi(key.y - center.y) > REACH + 2:
 			for node in _built[key]:
@@ -171,9 +177,33 @@ func _stream(pos: Vector3) -> void:
 	_queue.sort_custom(func(a: Vector2i, b: Vector2i): return (a - center).length_squared() < (b - center).length_squared())
 
 
+## Finish the visible ground before drawing. The remaining queue preloads around it.
+func _build_visible(camera: Camera3D) -> void:
+	if _queue.is_empty():
+		return
+	var planes := camera.get_frustum()
+	var pos := camera.global_position
+	for i in range(_queue.size() - 1, -1, -1):
+		var cell: Vector2i = _queue[i]
+		var center := Vector3((cell.x + 0.5) * CHUNK, 0, (cell.y + 0.5) * CHUNK)
+		if not _bounds.has(cell):
+			var box := atmo._ground_chunk_bounds(center, CHUNK).grow(2.0)
+			box.position += center
+			_bounds[cell] = box
+		var bounds: AABB = _bounds[cell]
+		# Bushes have the longest draw distance (170 m plus their 12 m fade).
+		if pos.distance_squared_to(pos.clamp(bounds.position, bounds.end)) > 182.0 * 182.0:
+			continue
+		if StructureView.intersects_view(bounds.get_center(), bounds.size * 0.5, planes):
+			_build_chunk(cell)
+			_queue.remove_at(i)
+
+
 func _clear() -> void:
+	_bounds.clear()
 	for k in _built:
 		for node in _built[k]:
+			node.hide()
 			node.queue_free()
 	_built.clear()
 	_queue.clear()
@@ -284,6 +314,13 @@ func _build_chunk(c: Vector2i) -> void:
 	var cd := []
 	var bushes := []
 	var stones := []
+	# The ground's moisture on an 8 m lattice over the chunk, read between its
+	# corners for each clump (one lookup per clump would cost a frame).
+	var wet := PackedFloat32Array()
+	wet.resize(WET_CELLS * WET_CELLS)
+	for z in WET_CELLS:
+		for x in WET_CELLS:
+			wet[z * WET_CELLS + x] = atmo.meadow_moisture(origin + Vector3(x, 0, z) * (CHUNK / (WET_CELLS - 1)))
 	for i in count:
 		var p := origin + Vector3(rng.randf() * CHUNK, 0, rng.randf() * CHUNK)
 		if absf(p.x) > HALF + 14.0 or absf(p.z) > HALF + 14.0 or _is_blocked(p):
@@ -291,16 +328,19 @@ func _build_chunk(c: Vector2i) -> void:
 		if p.x > HALF - 1.0 and atmo.world.water and not atmo.world.water.coast.is_empty():
 			continue  # the sea, past the edge
 		var g := atmo.grass_amount(p)
-		if g <= 0.001 or rng.randf() > g * 0.92 + 0.04:
+		var m := _wet_at(wet, (p.x - origin.x) / CHUNK, (p.z - origin.z) / CHUNK)
+		# Damp ground grows thick, tall grass; a dry crest keeps thin short tufts.
+		var lush := g * lerpf(0.55, 1.15, m)
+		if lush <= 0.001 or rng.randf() > lush * 0.92 + 0.04:
 			if rng.randf() < 0.004:
 				stones.append(p)
 			continue
-		var s := rng.randf_range(0.75, 1.3) * (0.65 + 0.5 * g)
+		var s := rng.randf_range(0.75, 1.3) * (0.65 + 0.5 * g) * lerpf(0.82, 1.15, m)
 		# Shorter urban grass exposes the soil and blade texture between clumps.
 		var height := 0.45 if atmo.world.town_rect.has_area() and town.has_point(Vector2(p.x, p.z)) else 1.0
 		var basis := Basis(Vector3.UP, rng.randf() * TAU).scaled(Vector3(s, s * rng.randf_range(0.8, 1.35) * height, s))
 		xf.append(Transform3D(basis, p))
-		cd.append(Color(g, rng.randf(), 0, 0))
+		cd.append(Color(g, rng.randf(), m, 0))
 		if rng.randf() < 0.035 and g > 0.6 and _shrub_noise.get_noise_2d(p.x, p.z) > 0.08:
 			bushes.append(p)
 		elif rng.randf() < 0.003:
@@ -331,22 +371,35 @@ func _build_chunk(c: Vector2i) -> void:
 	_built[c] = nodes
 
 
+const WET_CELLS := 5  # moisture lattice points across a chunk (8 m apart)
+
+
+static func _wet_at(wet: PackedFloat32Array, u: float, v: float) -> float:
+	var x := clampf(u, 0.0, 1.0) * (WET_CELLS - 1)
+	var z := clampf(v, 0.0, 1.0) * (WET_CELLS - 1)
+	var x0 := mini(int(x), WET_CELLS - 2)
+	var z0 := mini(int(z), WET_CELLS - 2)
+	var i := z0 * WET_CELLS + x0
+	return lerpf(lerpf(wet[i], wet[i + 1], x - x0), lerpf(wet[i + WET_CELLS], wet[i + WET_CELLS + 1], x - x0), z - z0)
+
+
 func _mm(mesh: Mesh, m: Material, xf: Array, cd: Array, vis: float) -> MultiMeshInstance3D:
 	var mm := MultiMesh.new()
 	mm.transform_format = MultiMesh.TRANSFORM_3D
 	mm.use_custom_data = true
 	mm.mesh = mesh
 	mm.instance_count = xf.size()
+	var deform_bounds := m is ShaderMaterial and is_instance_valid(atmo) and is_instance_valid(atmo.world.terrain)
 	var low := INF
 	var high := -INF
 	for i in xf.size():
 		mm.set_instance_transform(i, xf[i])
 		mm.set_instance_custom_data(i, cd[i])
-		if m is ShaderMaterial:
+		if deform_bounds:
 			var height: float = atmo.world.terrain.deform_at(xf[i].origin)
 			low = minf(low, height)
 			high = maxf(high, height)
-	if m is ShaderMaterial:
+	if deform_bounds:
 		# Local height bounds preserve distance fading even beside much taller mountains.
 		var bounds := mm.get_aabb()
 		bounds.position.y += low - 5.0
@@ -441,17 +494,26 @@ uniform sampler2D scar : hint_default_black, filter_linear, repeat_disable;
 uniform sampler2D trench_mask : hint_default_black, filter_linear, repeat_disable;
 uniform sampler2DArray deform_tex : filter_linear, repeat_disable;
 // TERRAIN_TEXTURE_HELPER
+// CLOUD_SHADOW
 
 varying float h;
 varying float g;
 varying float rnd;
+varying float wet;
 varying float burnt;
+#ifdef CLOUD_PATTERN
+varying float cloud_v;  // the sunlight the clouds let through at the blade
+#endif
 
 void vertex() {
 	h = UV.y;
 	g = INSTANCE_CUSTOM.r;
 	rnd = INSTANCE_CUSTOM.g;
+	wet = INSTANCE_CUSTOM.b;
 	vec3 o = MODEL_MATRIX[3].xyz;
+#ifdef CLOUD_PATTERN
+	cloud_v = cloud_sun(o);
+#endif
 	// shell holes and blast scars flatten and scorch the grass
 	burnt = texture(scar, (o.xz + __MAP_HALF__) / __MAP_SIZE__).r;
 	// nothing grows in a trench
@@ -478,14 +540,17 @@ void fragment() {
 	}
 	vec3 col = mix(base_col, mid_col, smoothstep(0.0, 0.5, h));
 	col = mix(col, tip_col, smoothstep(0.45, 1.0, h));
-	col = mix(col, dry_col, clamp((1.0 - g) * 0.8 + (rnd - 0.7) * 0.6, 0.0, 0.85) * smoothstep(0.2, 1.0, h));
-	col *= 0.85 + 0.3 * rnd;
+	// Tips cure to straw where the ground dries out, as the turf beneath them does.
+	float cured = clamp((1.0 - wet) * 0.8 + (1.0 - g) * 0.4 + (rnd - 0.7) * 0.6 - 0.08, 0.0, 0.9);
+	col = mix(col, dry_col, cured * smoothstep(0.2, 1.0, h));
+	col *= mix(1.0, 0.86, wet) * (0.85 + 0.3 * rnd);
 	col = mix(col, vec3(0.09, 0.075, 0.05), burnt * 0.85);
 	ALBEDO = col;
 	ROUGHNESS = 0.85;
 	BACKLIGHT = vec3(0.35, 0.4, 0.15) * h * (1.0 - burnt);
 	AO = mix(0.78, 1.0, h);
 	AO_LIGHT_AFFECT = 0.6;
+	// CLOUD_FRAGMENT cloud_v
 }
 """
 
@@ -499,8 +564,15 @@ varying float rnd;
 uniform sampler2D trench_mask : hint_default_black, filter_linear, repeat_disable;
 uniform sampler2DArray deform_tex : filter_linear, repeat_disable;
 // TERRAIN_TEXTURE_HELPER
+// CLOUD_SHADOW
+#ifdef CLOUD_PATTERN
+varying float cloud_v;
+#endif
 void vertex() {
 	VERTEX.y += 0.65;
+#ifdef CLOUD_PATTERN
+	cloud_v = cloud_sun(MODEL_MATRIX[3].xyz);
+#endif
 	if (textureLod(trench_mask, (MODEL_MATRIX[3].xz + __MAP_HALF__) / __MAP_SIZE__, 0.0).r > 0.3) {
 		VERTEX *= 0.0;
 	}
@@ -537,5 +609,22 @@ void fragment() {
 	leaf_normal.y = abs(leaf_normal.y);
 	NORMAL = normalize((VIEW_MATRIX * vec4(mix(leaf_normal, vec3(0.0, 1.0, 0.0), 0.45), 0.0)).xyz);
 	BACKLIGHT = vec3(0.08, 0.1, 0.035);
+	// CLOUD_FRAGMENT cloud_v
+}
+"""
+
+## The stones in the grass: grey and rough.
+const STONE_SHADER := """
+shader_type spatial;
+uniform vec3 col : source_color = vec3(0.42, 0.4, 0.37);
+// CLOUD_SHADOW
+varying vec3 wpos;
+void vertex() {
+	wpos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
+}
+void fragment() {
+	ALBEDO = col;
+	ROUGHNESS = 0.9;
+	// CLOUD_FRAGMENT cloud_sun(wpos)
 }
 """

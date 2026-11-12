@@ -1,0 +1,33 @@
+{
+  "entry": "changelog/unreleased/boat-stern-camera.md",
+  "title": "See the water from the stern and bridge",
+  "version": "unreleased",
+  "kind": "improved",
+  "summary": "View the water beyond the stern or look over the patrol ship’s port rail from the bridge roof.",
+  "medium": "motion",
+  "stage": "Beachhead, seed 3, trailer-harbour-quarter, seconds 10.9 to 14.3. Use Waterline for the left camera and Stern quarter for the right. Bridge roof comparison uses Beachhead seed 3 at 34.9 to 37.15 seconds.",
+  "rationale": "Both cameras follow the same boat through the same spray, with the horizon visible above its deck.",
+  "source_ref": "scripts/game/vehicle.gd and the trailer-harbour-quarter capture recipe.",
+  "sources": [
+    {
+      "file": "changelog/unreleased/boat-stern-camera/harbour.webm",
+      "sha256": "cce4f323ab5a4694896c0a8d8d9df3cf17e00b1a05d74947251371f0047c8a3d",
+      "caption": "Both mounts during the same pass."
+    },
+    {
+      "file": "changelog/unreleased/boat-stern-camera/harbour.jpg",
+      "sha256": "227363e5187c36c1c9cf1accf7661616299af9df5926294dc64f824507d256e6",
+      "caption": "The first spray rises behind the cabin."
+    },
+    {
+      "file": "changelog/unreleased/boat-stern-camera/bridge.webm",
+      "sha256": "5364af82cc24b908ea5de43a123ea11b90d30f80d7bfd8d7bd34a4c0dfcb7455",
+      "caption": "The patrol ship bow and bridge roof during the same pass."
+    },
+    {
+      "file": "changelog/unreleased/boat-stern-camera/bridge.jpg",
+      "sha256": "6ddfc95f16f1968f2db1da2825676764d5faca44f9c5a61cf0ca364ff9877cfd",
+      "caption": "The smaller boat approaching the port rail."
+    }
+  ]
+}

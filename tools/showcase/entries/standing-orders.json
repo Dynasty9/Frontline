@@ -1,0 +1,19 @@
+{
+  "entry": "changelog/unreleased/standing-orders.md",
+  "summary": "Stance, fire discipline, target priority, smoke on call and partial dismount, shown on the command card.",
+  "medium": "still",
+  "stage": "game capture (1600x900, --perf=0, off-screen): --scenario=cover --seed=1 --play --select-first --standing=stance:2,roe:1 --focus=0,-14 --zoom=26 --pitch=-38 --shot-at=3; --scenario=mounted --seed=1 --static --play --select-first=veh1 --standing=roe:2,prio:1 --focus=0,-4 --zoom=24 --pitch=-38 --shot-at=6",
+  "rationale": "The new controls are command card state; a still of each card, with the units it commands in frame, shows every option and the one in force. The behaviour itself is covered by tests (tests/unit-control.test.mjs).",
+  "source_ref": "5d92de0c1a9a50f99ec7b96c92c7d2fc0d735731 + working tree",
+  "sources": [
+    {
+      "file": "changelog/unreleased/standing-orders/squad-orders.jpg",
+      "sha256": "9e80d11011be9ffa3aa055daee9901a9c3e706bab1224ba948809ddc372b660d"
+    },
+    {
+      "file": "changelog/unreleased/standing-orders/vehicle-orders.jpg",
+      "sha256": "7bd489f8f442735c3ace71492e3e6194a54e02b09dab02d84ef93dde5021d16b"
+    }
+  ],
+  "output": null
+}

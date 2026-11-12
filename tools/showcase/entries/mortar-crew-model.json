@@ -1,0 +1,24 @@
+{
+  "entry": "changelog/unreleased/mortar-crew-model.md",
+  "title": "A closer look at the mortar crew",
+  "version": "unreleased",
+  "kind": "improved",
+  "summary": "The mortar specialist carries his kit on the textured animated body.",
+  "medium": "motion",
+  "stage": "Defense, seed 3, inside the mortar pit for the first 2.55 seconds.",
+  "rationale": "A frame-matched vault and landing show the carried kit following the body.",
+  "source_ref": "72c3060 before; scripts/game/soldier_model.gd and tools/showcase/trailer-review/mortar-pit.tscn after.",
+  "sources": [
+    {
+      "file": "changelog/unreleased/mortar-crew-model/crossing.webm",
+      "sha256": "7ebd57e01e2ef1d0d9c8658bcb859f7a50fc84eb32f7459ba0da48483ea91931",
+      "caption": "The same vault in both versions."
+    },
+    {
+      "file": "changelog/unreleased/mortar-crew-model/crossing.jpg",
+      "sha256": "2b50b0321c25dfddef4029d9e43585cad4a0b77456a443c634bb81998ee759a1",
+      "caption": "The crew inside the sandbags."
+    }
+  ],
+  "output": null
+}

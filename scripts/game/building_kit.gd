@@ -113,6 +113,25 @@ func part(mesh: Mesh, kind: String, xf: Transform3D, col: Variant = null, shadow
 	Mats.apply(mi, kind, tint)
 
 
+## A mesh under a material of its own rather than a surface preset (leaf
+## cards: flowers in a window box), tinted to `col`.
+func part_with(mesh: Mesh, mat: ShaderMaterial, xf: Transform3D, col: Color, shadow := true) -> void:
+	sink.parts += 1
+	shadow = shadow or sink.cast_all
+	var placed := frame * xf
+	if sink.bake != null:
+		sink.bake.part(mesh, mat, placed, col, shadow, sink.at)
+		return
+	var mi := MeshInstance3D.new()
+	mi.mesh = mesh
+	mi.transform = placed
+	if not shadow:
+		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	sink.root.add_child(mi)
+	Mats.set_material(mi, mat)
+	Mats.set_inst(mi, &"tint", col)
+
+
 ## A box with chamfered edges (Res.box), centred on `p`.
 func box(size: Vector3, p: Vector3, kind: String, col: Variant = null, rot := Vector3.ZERO, shadow := true) -> void:
 	part(Res.box(size), kind, Mats.place(p, rot), col, shadow)

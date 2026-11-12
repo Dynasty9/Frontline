@@ -15,6 +15,8 @@ var fob_order := 0
 var _t_vis := 0.0
 var _t_sec := 0.0
 var victory: Victory
+var _resurvey_t := [0.0, 0.0]
+var hq_priority := [0, 0]  # per side: towns behind the enemy (see hq_load)
 
 
 func _init(w: World) -> void:
@@ -168,6 +170,7 @@ func tick(dt: float) -> void:
 	if _t_sec <= 0.0:
 		_t_sec = 1.0
 		_reserves()
+		_hq_priority()
 		_prisoners()
 		victory.tick()
 		var stamp := Time.get_ticks_usec() if world.measure_details else 0
@@ -580,30 +583,56 @@ func route_to(f: Structure) -> PackedVector3Array:
 	return out
 
 
+func _poly_len(poly: PackedVector3Array) -> float:
+	var n := 0.0
+	for i in range(poly.size() - 1):
+		n += poly[i].distance_to(poly[i + 1])
+	return n
+
+
+## HQ's lorries: one to each FOB on a fixed schedule (Defs.HQ_TRUCK_EVERY), not
+## as fast as it can turn round - a start FOB that happens to sit next to HQ
+## used to be fed three times as fast as one a hundred metres off, and that
+## seed's battle was decided by the map. A long road still costs: a lorry that
+## isn't back in time holds up the next.
 func _trucks(dt: float) -> void:
 	for tn in town_list:
 		_town_truck(tn, dt)
+	for t in 2:
+		_resurvey_t[t] = float(_resurvey_t[t]) - dt
 	for st in world.fob_structures:
 		if st.skind != "fob" or not st.built or st.team < 0:
 			continue
 		if st.truck and st.truck.gone:
 			st.truck = null
-		if st.truck:
-			continue
 		st.truck_t -= dt
-		if st.truck_t > 0.0:
+		if st.truck or st.truck_t > 0.0:
 			continue
 		var route := route_to(st)
+		if (route.size() < 2 or st.road.size() < 2) and float(_resurvey_t[st.team]) <= 0.0 and String(world.settings.get("scenario", "")) == "":
+			# a road that couldn't be laid (the ground still being surveyed when
+			# the battle began, or a way since cleared) is tried again. Not in a
+			# test scenario: it's a set piece, and lorries driving into it from
+			# the first seconds would change the fight it was built to show
+			_resurvey_t[st.team] = 20.0
+			rebuild_network(st.team)
+			world.stat("road_resurveyed")
+			route = route_to(st)
 		if route.size() < 2:
 			st.truck_t = 8.0
+			if OS.has_environment("FL_DEBUG_ECON"):
+				print("ECON t=%.0f team=%d no road to %s" % [world.time, st.team, st.sname])
 			continue
 		var v: Vehicle = world.spawn("vehicle", {"vkind": "truck", "team": st.team, "owner": -1 - st.team, "pos": route[0], "yaw": Defs.yaw_of(route[1] - route[0])})
 		v.route = route
 		v.route_i = 1
 		v.dest_fob = st
-		v.cargo = Defs.SUPPLY_PER_TRUCK[st.team]
+		v.cargo = hq_load(st.team)
 		st.truck = v
+		st.truck_t = Defs.HQ_TRUCK_EVERY
 		st.supply_status = "Truck en route"
+		if OS.has_environment("FL_DEBUG_ECON"):
+			print("ECON t=%.0f team=%d truck to %s route=%.0fm load=%d" % [world.time, st.team, st.sname, _poly_len(route), v.cargo])
 
 
 ## A town's own lorry takes what's in its dump to the holder's nearest FOB
@@ -657,6 +686,8 @@ func truck_arrived(v: Vehicle) -> void:
 		else:
 			f.supply_status = "OK"
 		note_income(v.team, load)
+		if OS.has_environment("FL_DEBUG_ECON"):
+			print("ECON t=%.0f team=%d delivered %d to %s%s" % [world.time, v.team, load, f.sname, (" from " + v.src_town.sname) if v.src_town else ""])
 		world.fx_event([Fx.DELIVER, f.position + Vector3(0, 4, 0), load, v.team])
 
 
@@ -671,7 +702,7 @@ func truck_home(v: Vehicle) -> void:
 	var f := v.dest_fob
 	if f and not f.gone:
 		f.truck = null
-		f.truck_t = 4.0
+		f.truck_t = maxf(f.truck_t, 4.0)
 	world.despawn(v)
 
 
@@ -689,7 +720,7 @@ func truck_lost(v: Vehicle) -> void:
 	var f := v.dest_fob
 	if f and not f.gone:
 		f.truck = null
-		f.truck_t = 28.0
+		f.truck_t = maxf(f.truck_t, 28.0)
 		f.supply_status = "Truck destroyed"
 		world.stat("truck_lost")
 		world.send_msg(v.team, "alert", "Supply truck to FOB %s destroyed at %s! The road is being ambushed." % [f.sname, Defs.grid_ref(v.position)], v.position)
@@ -711,6 +742,7 @@ func truck_blocked(v: Vehicle) -> void:
 func capture_fob(f: Structure, new_team: int) -> void:
 	var old := f.team
 	world.stat("fob_captured")
+	var burnt := _fire_the_dump(f)
 	world.battle.fob_captured(f, new_team)
 	f.team = new_team
 	f.owner_peer = -1 - new_team
@@ -722,8 +754,9 @@ func capture_fob(f: Structure, new_team: int) -> void:
 	f.queue.clear()
 	f.net_dirty = true
 	world.push_props(f, {"team": new_team, "owner": f.owner_peer})
-	world.send_msg(new_team, "info", "We captured %s!" % f.display_name(), f.position)
-	world.send_msg(old, "alert", "We lost %s!" % f.display_name(), f.position)
+	var burn_note := (" The garrison burnt %d supply as it fell back; %d is ours." % [burnt, int(f.supply)]) if burnt > 0 else ""
+	world.send_msg(new_team, "info", "We captured %s!%s" % [f.display_name(), burn_note], f.position)
+	world.send_msg(old, "alert", "We lost %s!%s" % [f.display_name(), (" The garrison burnt %d supply before it fell." % burnt) if burnt > 0 else ""], f.position)
 	victory.fob_lost(old)
 	rebuild_network(old)
 	rebuild_network(new_team)
@@ -735,6 +768,8 @@ func capture_fob(f: Structure, new_team: int) -> void:
 func capture_town(tn: Structure, new_team: int) -> void:
 	var old := tn.team
 	world.stat("town_captured")
+	if old >= 0:
+		_fire_the_dump(tn)
 	world.battle.town_captured(tn, new_team)
 	tn.team = new_team
 	tn.owner_peer = -1 - new_team
@@ -761,6 +796,45 @@ func capture_town(tn: Structure, new_team: int) -> void:
 		world.send_msg(old, "alert", "We lost %s! The enemy holds the %s." % [tn.sname, what], tn.zone_c)
 	else:
 		world.send_msg(1 - new_team, "info", "The enemy has taken the %s of %s." % [what, tn.sname], tn.zone_c)
+
+
+## A dump about to fall: its holders burn what they can't carry off, so the
+## winner of a fight takes half of it, not all - taking ground pays, but a
+## side that loses a base doesn't also hand over everything it had saved.
+func _fire_the_dump(st: Structure) -> int:
+	var burnt := int(st.supply * (1.0 - Defs.CAPTURE_KEEP))
+	if burnt > 0:
+		st.supply -= burnt
+		st.net_dirty = true
+		world.stat("dump_burnt")
+	return burnt
+
+
+## A load from HQ: bigger for a side that holds fewer towns and villages
+## than the enemy, as HQ sends its stocks where the front is giving way.
+## The side ahead loses nothing; the side behind can buy its way back in.
+func hq_load(team: int) -> int:
+	return int(round(float(Defs.SUPPLY_PER_TRUCK[team]) * (1.0 + Defs.HQ_PRIORITY * float(hq_priority[team]))))
+
+
+## How many towns or villages a side is behind by (0 to Defs.HQ_PRIORITY_MAX),
+## which sets its HQ loads; told to the side whenever it changes.
+func _hq_priority() -> void:
+	if world.mission != null or town_list.is_empty():
+		return
+	for t in 2:
+		var behind := clampi(towns(1 - t).size() - towns(t).size(), 0, Defs.HQ_PRIORITY_MAX)
+		var was := int(hq_priority[t])
+		if behind == was:
+			continue
+		hq_priority[t] = behind
+		if behind > was:
+			world.stat("hq_priority_up")
+		var pc := int(round(Defs.HQ_PRIORITY * behind * 100.0))
+		if behind > 0:
+			world.send_msg(t, "info", "The enemy holds more of the country: HQ is sending us bigger loads (+%d%% supply a lorry)." % pc)
+		else:
+			world.send_msg(t, "info", "We hold our share of the country again: HQ's loads are back to normal.")
 
 
 ## A side with no base left has lost (see Victory, which also keeps the
@@ -895,19 +969,20 @@ func tunnel_exit(st: Structure, ex: Structure, peer: int) -> void:
 var _reserve_t := [0.0, 0.0]
 
 
-## HQ reserves: a side that is down to its last few soldiers gets a free squad
-## from HQ now and then, so one lost clash doesn't end the battle on the spot.
+## HQ reserves: a side that is down to its last few soldiers, or outnumbered
+## Defs.RESERVE_ODDS to one, gets a free squad from HQ now and then, so one
+## lost clash doesn't end the battle on the spot.
 func _reserves() -> void:
 	if String(world.settings.get("scenario", "")) != "" or world.mission != null or world.time < 120.0:
 		return
 	for t in 2:
 		if world.time < float(_reserve_t[t]) or depots[t] == null or depots[t].gone:
 			continue
-		var alive := 0
+		var alive := [0, 0]
 		for sl in world.soldiers:
-			if sl.team == t and sl.life == Soldier.Life.ALIVE:
-				alive += 1
-		if alive >= 6:
+			if sl.team >= 0 and sl.team <= 1 and sl.life == Soldier.Life.ALIVE and not sl.is_bearer():
+				alive[sl.team] += 1
+		if alive[t] >= 6 and alive[t] * Defs.RESERVE_ODDS >= alive[1 - t]:
 			continue
 		_reserve_t[t] = world.time + 75.0
 		# to the side's first commander still in the battle (or the AI)
@@ -1355,5 +1430,6 @@ func team_summary() -> Array:
 				var to: String = tn.supply_parent.sname if tn.supply_parent and not tn.supply_parent.gone else ""
 				tl.append([tn.eid, tn.sname, int(tn.supply), tn.supply_status, int(round(tn.town_rate())), to])
 		out.append({"supply": sup, "units": used(t), "cap": cap(t), "fobs": fl, "up": upgrades[t].keys(), "sup": (support_ready[t] as Dictionary).duplicate(), "sq": sq, "intel": il,
-			"marks": (marks[t] as Array).duplicate(), "towns": tl, "inc": income(t), "vp": victory.info()})
+			"marks": (marks[t] as Array).duplicate(), "towns": tl, "inc": income(t), "vp": victory.info(),
+			"dg": world.delegation.summary(t) if world.delegation else []})
 	return out

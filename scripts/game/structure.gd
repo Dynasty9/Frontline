@@ -90,6 +90,10 @@ var label_h := 0.0  # height of the name plate the HUD draws over FOBs and depot
 var tilt := Vector2.ZERO  # wrecks and tossed cars can lie at an angle: (pitch, roll)
 var toss = null  # [from pos, from yaw, velocity, spin] while it's flying (clients animate it)
 var vk := ""  # what a wreck used to be
+var wreck_turret_yaw := INF
+var wreck_finish := {}
+var _wreck_soot: ShaderMaterial
+var bent_skirts := 0
 var door_shut := false  # (a house's doorway) its doors are shut: the first man through kicks them in, or just opens them
 var _door_kicked := false
 var _door_leaves: Array = []  # (view) the door leaves: [hinge pivot, how far it swings open]
@@ -100,10 +104,15 @@ var burnt := false  # burnt out: a charred snag, a burnt-out car - it won't burn
 var fire_k := ""  # (server) what it burns as, once lit (Fires.FUEL)
 var fuel := 0.0  # (server) seconds of full blaze left
 var fuel_max := 0.0
+var _wreck_engine_deck := Vector3.INF
 var _fire_fx: Node3D  # (view) its flames, embers, smoke and glow
 var _fire_shown := -1  # (view) the burn level the effects were last set for
 var _char := 0.0  # (view) how charred it looks, 0..1
 var _char_mats: Array = []  # (view) its materials with the char on them
+
+
+func _build_camera_mounts() -> void:
+	_add_exterior_cameras(self, size)
 
 
 func ekind() -> String:
@@ -170,6 +179,10 @@ func apply_props(d: Dictionary) -> void:
 		seen_mask = d.seen
 	if d.has("vk"):
 		vk = d.vk
+	if d.has("wreck_turret_yaw"):
+		wreck_turret_yaw = d.wreck_turret_yaw
+		wreck_finish = d.get("wreck_finish", {})
+		bent_skirts = d.get("bent_skirts", 0)
 	if d.has("door"):
 		door_shut = d.door
 	if d.has("zc"):
@@ -203,6 +216,11 @@ func get_props() -> Dictionary:
 	if skind == "town":
 		d["zc"] = zone_c
 		d["zr"] = zone_r
+	if is_finite(wreck_turret_yaw):
+		d["wreck_turret_yaw"] = wreck_turret_yaw
+		if not wreck_finish.is_empty():
+			d["wreck_finish"] = wreck_finish
+		d["bent_skirts"] = bent_skirts
 	return d
 
 
@@ -269,6 +287,8 @@ func set_view_active(value: bool) -> void:
 		if toss != null and Time.get_ticks_msec() - _toss_received_ms < 2000:
 			_start_toss()
 		_burn_view()
+	if _wreck_soot and value:
+		_update_wreck_soot()
 	if model:
 		model.visible = value
 	if not srv and body:
@@ -905,9 +925,39 @@ func _house_wall_detail(rng: RandomNumberGenerator) -> void:
 	elif variant == 2:
 		gaps = [Rect2(-0.95, 0.0, 1.9, 2.2)]
 	BuildingWalls.face(k, L, 3.0, material, wall, gaps, {"band": 2.9})
+	# who lives here is drawn from a stream of its own, so a wall's shutters,
+	# panes and doors stay as they were
+	var life := RandomNumberGenerator.new()
+	life.seed = rng.seed ^ 0x5eed11fe
+	# time and the weather: weeds in the angle at its foot, ivy up the plain
+	# walls of some (most often on old stone), drawn from a stream of their own
+	var wear := RandomNumberGenerator.new()
+	wear.seed = rng.seed ^ 0x77ea7e12
+	if wear.randf() < 0.45:
+		BuildingWeathering.weeds(k, L, gaps, wear)
+	if variant == 0 and wear.randf() < (0.3 if material == "stone" else 0.12):
+		BuildingWeathering.ivy(k, wear.randf_range(-L * 0.25, L * 0.25), wear.randf_range(1.0, 1.8), 2.8, wear)
+	# inside: the room's paint and skirting, what hangs on its walls
+	var room := _kit(life).at_point(Vector3(0, 0, -0.2), Vector3(0, PI, 0))
+	# (a wall doesn't know which house it is, so the paint follows the house's
+	# colour: every wall of a room the same)
+	BuildingFurnishings.lining(room, L, 3.0, gaps, BuildingFurnishings.INTERIORS[(ci * 4 + 1) % BuildingFurnishings.INTERIORS.size()])
+	match variant:
+		0:
+			BuildingFurnishings.wall_things(room, L)
+		1:
+			BuildingFurnishings.radiator(room, 0.0, 1.0)
 	match variant:
 		1:
 			var opts := {"material": material, "wall": wall, "frame": trim}
+			# who lives here: curtains or a blind or nets (or none, in an empty
+			# house), a lamp left on; flowers under some windows
+			opts["curtains"] = ["drapes", "drapes", "blind", "nets", ""][life.randi() % 5]
+			opts["curtain"] = BuildingFurnishings.FABRICS[life.randi() % BuildingFurnishings.FABRICS.size()]
+			# (and a house still lived in keeps its glass)
+			if life.randf() < 0.35:
+				opts["lit"] = true
+				opts["glazing"] = 0.85
 			if rng.randf() < 0.45:
 				opts["shutters"] = [Color(0.24, 0.36, 0.27), Color(0.31, 0.39, 0.46), Color(0.36, 0.25, 0.16), Color(0.5, 0.22, 0.17)][(ci + 1) % 4]
 				opts["shutter"] = "louvred" if rng.randf() < 0.5 else "boarded"
@@ -916,10 +966,14 @@ func _house_wall_detail(rng: RandomNumberGenerator) -> void:
 					open.append(rng.randf_range(0.0, 0.2) if rng.randf() < 0.85 else null)
 				opts["open"] = open
 			BuildingOpenings.window(k, Vector3(0, 1.5, 0), Vector2(1.3, 1.0), opts)
+			if not opts.has("shutters") and life.randf() < 0.25:
+				BuildingFurnishings.window_box(k, 0.0, 1.0, 1.1, [Color(0.75, 0.12, 0.12), Color(0.85, 0.45, 0.6), Color(0.9, 0.75, 0.2), Color(0.55, 0.3, 0.7)][life.randi() % 4])
 		2:
 			var w := 1.9
 			BuildingOpenings.doorway(k, Vector3.ZERO, Vector2(w, 2.2), {"material": material, "wall": wall, "frame": trim, "hood": rng.randf() < 0.3,
 				"hood_col": Res.vary(BuildingMaterials.color("roof_tile"), 0.1, rng)})
+			if L > 2.6 and life.randf() < 0.55:
+				BuildingFurnishings.lantern(k, Vector3((w * 0.5 + 0.3) * (1.0 if life.randf() < 0.5 else -1.0), 2.05, 0))
 			# double doors: shut (till someone comes through), or swung in -
 			# one may be gone. Each leaf hangs on its own hinge so it can swing.
 			var dc: Color = [Color(0.3, 0.2, 0.13), Color(0.22, 0.32, 0.26), Color(0.26, 0.31, 0.4), Color(0.42, 0.2, 0.15)][(ci + 2) % 4]
@@ -1067,8 +1121,10 @@ func _swing_leaves(kicked: bool) -> void:
 
 
 ## A building's model on its own, without a world (the field manual's preview).
-static func preview_model(kind: String, side: int, v := 0, sz := Vector3.ZERO, shut := false) -> Node3D:
+## `id` stands in for the entity id its look is seeded from.
+static func preview_model(kind: String, side: int, v := 0, sz := Vector3.ZERO, shut := false, id := 0) -> Node3D:
 	var st := Structure.new()
+	st.eid = id
 	st.skind = kind
 	st.team = side
 	st.variant = v
@@ -1230,11 +1286,20 @@ func _roof_model(rng: RandomNumberGenerator) -> void:
 		var end := L * 0.5 - 0.3
 		var rise := BuildingRoofs.gable(k, L, W, h, 28.0, 0.35, "roof_tile", tint, {"gable_material": material, "gable_col": wall_col,
 			"trim": trim, "gable_inset": -0.07, "gutters": true, "downpipes": [[end, 1.0], [-end, -1.0]], "wall_face": W * 0.5 + 0.2})
+		var life := RandomNumberGenerator.new()
+		life.seed = rng.seed ^ 0x5eed11fe
+		var aerial := life.randf() < 0.5
 		if rng.randf() < 0.6:
 			var z := W * 0.18
+			var cx := rng.randf_range(-L * 0.3, L * 0.3)
 			var foot := h + (W * 0.5 + 0.2 - z - 0.3) * tan(deg_to_rad(28.0))
-			BuildingFittings.chimney(k, Vector3(rng.randf_range(-L * 0.3, L * 0.3), foot, z), Vector2(0.6, 0.6), h + rise + 0.5,
+			BuildingFittings.chimney(k, Vector3(cx, foot, z), Vector2(0.6, 0.6), h + rise + 0.5,
 				"brick", Res.vary(BuildingMaterials.color("brick"), 0.08, rng))
+			if aerial:
+				# lashed to the stack, above its pots
+				BuildingFurnishings.aerial(k, Vector3(cx + 0.33, h + rise - 0.4, z), 1.9, life.randf_range(-0.6, 0.6))
+		elif aerial:
+			BuildingFurnishings.aerial(k, Vector3(L * 0.38, h + rise - 0.06, 0), 1.4, life.randf_range(-0.6, 0.6))
 	else:
 		BuildingRoofs.flat(k, L, W, h, {"material": material, "col": wall_col, "wall_face": W * 0.5 + 0.2, "hatch": rng.randf() < 0.3})
 		var top := h + 0.2
@@ -1271,6 +1336,21 @@ func _roof_view(dt: float) -> void:
 ## Lays the model at its tilt, resting on the ground (on its side, on its roof...).
 func _apply_tilt() -> void:
 	if model == null:
+		return
+	if skind == "wreck" and is_finite(wreck_turret_yaw):
+		# A stopped tank rests on its two contact runs. Sample their ends
+		# so a vehicle knocked out on a crest keeps the lay of the ridge.
+		var ahead := Defs.dir_of(yaw)
+		var side := ahead.cross(Vector3.UP) * (size.x * 0.39)
+		ahead *= size.z * 0.38
+		var front_left := world.ground_y(position + ahead - side)
+		var front_right := world.ground_y(position + ahead + side)
+		var rear_left := world.ground_y(position - ahead - side)
+		var rear_right := world.ground_y(position - ahead + side)
+		var forward := Vector3(0.0, front_left + front_right - rear_left - rear_right, -4.0 * ahead.length())
+		var across := Vector3(4.0 * side.length(), front_right + rear_right - front_left - rear_left, 0.0)
+		var height := (front_left + front_right + rear_left + rear_right) * 0.25 - position.y
+		model.transform = Transform3D(Basis.looking_at(forward, across.cross(forward)), Vector3.UP * height)
 		return
 	if tilt == Vector2.ZERO:
 		if skind in ["car", "crates", "wreck"]:
@@ -1885,6 +1965,10 @@ func read_state(b: StreamPeerBuffer) -> void:
 
 # --- visuals -----------------------------------------------------------------------
 
+func _update_wreck_soot() -> void:
+	VehicleModels.spread_soot(_wreck_soot, model.to_global(_wreck_engine_deck), world.time - float(wreck_finish.since))
+
+
 func _process(_dt: float) -> void:
 	var _t0 := Time.get_ticks_usec()
 	_view_process(_dt)
@@ -1895,6 +1979,8 @@ func _process(_dt: float) -> void:
 func _view_process(_dt: float) -> void:
 	if not world.has_view or not view_active or model == null:
 		return
+	if _wreck_soot and world.time - float(wreck_finish.since) < 10.0:
+		_update_wreck_soot()
 	if burn > 0.0 or _fire_fx:
 		_fire_view(_dt)
 	if skind == "roof":
@@ -2040,6 +2126,8 @@ func _fire_box() -> Array:
 		"car":
 			return [Vector3(0, 0.9, 0.3), Vector3(0.75, 0.45, 1.5)]
 		"wreck", "rubble":
+			if skind == "wreck" and _wreck_engine_deck.is_finite():
+				return [model.transform * _wreck_engine_deck, Vector3(0.55, 0.45, 0.55)]
 			var ws := size if size != Vector3.ONE else Vector3(3.4, 2.0, 6.2)
 			return [Vector3(0, ws.y * 0.6, 0), Vector3(ws.x * 0.32, ws.y * 0.35, ws.z * 0.3)]
 		"bunker":
@@ -2068,7 +2156,7 @@ func _burn_view() -> void:
 		if _fire_fx == null:
 			var box := _fire_box()
 			var smoke := Vfx.SMOKE_FUEL if skind in ["car", "wreck", "rubble", "barricade"] else (Vfx.SMOKE_LEAVES if skind == "tree" or (skind == "low_wall") else Vfx.SMOKE_WOOD)
-			_fire_fx = world.fx.vfx.make_fire(box[1], smoke)
+			_fire_fx = world.fx.vfx.make_fire(box[1], smoke, skind == "wreck" and _wreck_engine_deck.is_finite())
 			world.fx.vfx.add_child(_fire_fx)
 			_fire_fx.global_transform = Transform3D(Basis(Vector3.UP, yaw), to_global(box[0]))
 		world.fx.vfx.set_fire(_fire_fx, burn)
@@ -2082,7 +2170,7 @@ func _burn_view() -> void:
 func _fire_view(dt: float) -> void:
 	if burn > 0.0:
 		_char = minf(1.0, _char + dt * burn / 32.0)
-	if absf(_char - _char_set) > 0.02 or absf(burn - _glow_set) > 0.04:
+	if not _wreck_soot and (absf(_char - _char_set) > 0.02 or absf(burn - _glow_set) > 0.04):
 		_apply_char(burn)
 	if burn <= 0.0 and _fire_fx == null and team < 0 and not skind in SMOKE_KINDS and skind != "roof":
 		set_process(false)
@@ -2383,6 +2471,11 @@ func _build_model() -> void:
 				var lk := _kit(rng)
 				var lm := "brick" if variant % 3 == 2 else "stone"
 				BuildingWalls.coping(lk, p.s.x, p.s.z, p.s.y, lm, p.color)
+				var wear := RandomNumberGenerator.new()
+				wear.seed = rng.seed ^ 0x77ea7e12
+				if wear.randf() < 0.5:
+					for sd: float in [-1.0, 1.0]:
+						BuildingWeathering.weeds(lk.at_point(Vector3(0, 0, sd * p.s.z * 0.5), Vector3(0, 0.0 if sd > 0.0 else PI, 0)), p.s.x, [], wear, 0.06)
 				if lm == "brick":
 					for sd: float in [-1.0, 1.0]:
 						BuildingWalls.plinth(lk.at_point(Vector3(0, 0, sd * p.s.z * 0.5), Vector3(0, 0.0 if sd > 0.0 else PI, 0)), p.s.x, 0.22, lm, p.color)
@@ -2397,7 +2490,13 @@ func _build_model() -> void:
 		"house_wall":
 			_house_wall_detail(rng)
 		"floor":
-			pass
+			# a rug in most houses' main room, lying flat
+			if size.x > 3.0 and size.z > 3.0 and rng.randf() < 0.65:
+				BuildingFurnishings.rug(_kit(rng), Vector3(rng.randf_range(-0.6, 0.6), 0.06, rng.randf_range(-0.5, 0.5)),
+					Vector2(minf(size.x * 0.4, 3.0), minf(size.z * 0.4, 2.2)), BuildingFurnishings.FABRICS[rng.randi() % BuildingFurnishings.FABRICS.size()])
+			# a ruin: its roof burned and fell in on the floor
+			if variant == 1 and size.x > 3.0 and size.z > 3.0:
+				BuildingWeathering.ruin(_kit(rng), size, 0.06, rng)
 		"bridge":
 			_bridge_model(rng)
 		"dock":
@@ -2416,14 +2515,28 @@ func _build_model() -> void:
 				var ck := VehicleModels.build_car(variant % 5, parts[0].color, variant >= 6)
 				model.add_child(ck.root)
 		"wreck":
-			var wk := VehicleModels.build(vk if vk != "" else ("tank" if variant % 2 == 0 else "old_tank"), -1, eid, true)
+			var kind := vk if vk != "" else ("tank" if variant % 2 == 0 else "old_tank")
+			var wk := VehicleModels.build(kind, int(wreck_finish.get("team", -1)), int(wreck_finish.get("seed", eid)), wreck_finish.is_empty())
 			model.add_child(wk.root)
-			if wk.turret:
+			if wk.turret and is_finite(wreck_turret_yaw):
+				wk.pose_skirts(bent_skirts)
+				wk.turret.rotation.y = wreck_turret_yaw
+				if wk.gun_mount:
+					wk.gun_mount.rotation.x = -0.095
+			elif wk.turret:
 				wk.turret.rotation = Vector3(rng.randf_range(-0.12, 0.08), rng.randf_range(-1.4, 1.4), rng.randf_range(-0.08, 0.08))
 				if rng.randf() < 0.3:
 					wk.turret.position += Vector3(rng.randf_range(-3.0, 3.0), -1.0, rng.randf_range(1.0, 3.0))
 					wk.turret.rotation += Vector3(rng.randf_range(-0.5, 0.5), 0, rng.randf_range(-0.6, 0.6))
-			wk.root.rotation.z = rng.randf_range(-0.04, 0.04)
+			if not is_finite(wreck_turret_yaw):
+				wk.root.rotation.z = rng.randf_range(-0.04, 0.04)
+			if wk.engine_deck.is_finite():
+				_wreck_engine_deck = wk.root.transform * wk.engine_deck
+				if not wreck_finish.is_empty():
+					_wreck_soot = wk.scorch_finish()
+			if wk.rotor:
+				# a downed helicopter's rotor stopped where it hit, bent askew
+				wk.rotor.rotation = Vector3(rng.randf_range(-0.14, 0.14), rng.randf_range(0.0, TAU), rng.randf_range(-0.14, 0.14))
 		"tree":
 			tree_model(model, eid, variant)
 		"fob":
@@ -2521,7 +2634,8 @@ func _build_model() -> void:
 				BuildingWalls.face(fk, flen, 3.0, "timber", wc, gaps, {"plinth": 0.0, "corners": [-flen * 0.5, flen * 0.5]})
 				for wx: float in wins:
 					BuildingOpenings.window(fk, Vector3(wx, 1.75, 0), Vector2(1.15, 0.95), {"material": "timber", "wall": wc, "frame": frame,
-						"frame_kind": "wood_dark", "inset": -0.03, "glazing": 1.0, "transom": -1.0})
+						"frame_kind": "wood_dark", "inset": -0.03, "glazing": 1.0, "transom": -1.0, "lit": rng.randf() < 0.65,
+						"curtains": "blind" if rng.randf() < 0.4 else "", "curtain": Color(0.55, 0.52, 0.42)})
 				if face == 0:
 					BuildingOpenings.doorway(fk, Vector3(dx, 0, 0), Vector2(1.4, 2.1), {"material": "timber", "wall": wc, "inset": -0.05,
 						"frame_kind": "wood_dark", "frame": frame, "step": false})
@@ -2541,7 +2655,7 @@ func _build_model() -> void:
 			# brackets down one side, extract cowls and the works chimney
 			var fk := _kit(rng)
 			_mk(Res.box(Vector3(size.x + 0.4, 0.3, size.z + 0.4)), "concrete", Vector3(0, 5.15, 0), Vector3.ZERO, Color(0.48, 0.48, 0.46))
-			BuildingRoofs.sawtooth(fk.at_point(Vector3(0, 5.3, 0)), size.x * 0.9, size.z * 0.8, 3, 0.9, "roof_sheet", Color(0.45, 0.47, 0.45))
+			BuildingRoofs.sawtooth(fk.at_point(Vector3(0, 5.3, 0)), size.x * 0.9, size.z * 0.8, 3, 0.9, "roof_sheet", Color(0.45, 0.47, 0.45), Color(0.3, 0.32, 0.3), true)
 			var shed := Color(0.45, 0.46, 0.44)
 			for face in 4:
 				var out: Vector3 = [Vector3(0, 0, -1), Vector3(0, 0, 1), Vector3(-1, 0, 0), Vector3(1, 0, 0)][face]
@@ -2616,7 +2730,7 @@ func _build_model() -> void:
 					gaps.append(Rect2(1.5 - 0.7, 0.0, 1.4, 2.2))
 				gaps.append(Rect2(bx - band.x * 0.5, 2.1 - band.y * 0.5, band.x, band.y))
 				BuildingWalls.face(fk, flen, 3.2, "precast", wc, gaps, {"plinth": 0.3})
-				BuildingOpenings.ribbon(fk, Vector3(bx, 2.1, 0.05), band, maxi(2, int(band.x / 0.9)), Color(0.25, 0.27, 0.27))
+				BuildingOpenings.ribbon(fk, Vector3(bx, 2.1, 0.05), band, maxi(2, int(band.x / 0.9)), Color(0.25, 0.27, 0.27), "metal_dark", rng.randf() < 0.8)
 				if face == 0:
 					BuildingOpenings.doorway(fk, Vector3(1.5, 0, 0), Vector2(1.3, 2.1), {"material": "precast", "wall": wc, "inset": -0.05,
 						"frame_kind": "metal_dark", "frame": Color(0.25, 0.26, 0.26)})

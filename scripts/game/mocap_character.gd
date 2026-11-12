@@ -3,25 +3,11 @@ extends Node3D
 ## Source-rig adapter for Mixamo SWAT and the legacy mannequin evaluator.
 ## Shared local clips never affect the authoritative simulation.
 
-const BASE := "res://assets/local_mocap/FBX/"
-const CLIPS := {
-	"idle": "Animation/Rifle/Animation/Root_Motion/W2_Stand_Aim_Idle_v2.fbx",
-	"walk": "Animation/Rifle/Animation/In-Place/W2_Walk_Aim_F_Loop_IPC.fbx",
-	"jog": "Animation/Rifle/Animation/In-Place/W2_Jog_Aim_F_Loop_IPC.fbx",
-	"relax": "Animation/Rifle/Animation/Root_Motion/W2_Stand_Aim_To_Relaxed.fbx",
-	"relaxed": "Animation/Rifle/Animation/Root_Motion/W2_Stand_Relaxed_Idle_v2.fbx",
-	"crouch": "Animation/Mobility/IPC/MOB1_CrouchWalk_F_IPC.fbx",
-}
-
-const MIXAMO_BASE := "res://assets/local_mocap/mixamo/"
-const MIXAMO_CLIPS := {
-	"idle": "basic_shooter/rifle aiming idle.fbx",
-	"walk": "basic_shooter/walking.fbx",
-	"jog": "basic_shooter/rifle run.fbx",
-	"relax": "basic_shooter/rifle aiming idle.fbx",
-	"relaxed": "basic_shooter/rifle aiming idle.fbx",
-	"crouch": "Rifle Crouch Walk.fbx",
-}
+const Assets := preload("res://scripts/autoload/infantry_assets.gd")
+const BASE := Assets.BASE
+const MIXAMO_BASE := Assets.MIXAMO_BASE
+const CLIPS := Assets.CLIPS
+const MIXAMO_CLIPS := Assets.MIXAMO_CLIPS
 static var shared_libraries := {}
 
 var skeleton: Skeleton3D
@@ -36,11 +22,10 @@ var _clip := ""
 var weapon_socket := Transform3D.IDENTITY
 
 
-func build(clips: Dictionary = CLIPS) -> bool:
-	var mixamo := "--swat-units" in OS.get_cmdline_user_args()
+func build(clips: Dictionary = CLIPS, mixamo := "--swat-units" in OS.get_cmdline_user_args() or "--swat" in OS.get_cmdline_user_args()) -> bool:
 	var base := MIXAMO_BASE if mixamo else BASE
 	if mixamo: clips = MIXAMO_CLIPS
-	var asset := MIXAMO_BASE + "Swat.fbx" if mixamo else BASE + "MotusMan/MotusMan_v55.fbx"
+	var asset := Assets.SWAT if mixamo else Assets.MANNEQUIN
 	if not ResourceLoader.exists(asset):
 		push_error("Character source missing: " + asset)
 		return false

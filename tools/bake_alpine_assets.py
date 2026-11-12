@@ -69,8 +69,13 @@ def fractured_rock(color, height, normal, ao, rough):
     return color, height, normal, ao, rough
 
 
-def materials():
-    for name in ["rock_face_03", "aerial_rocks_02", "aerial_grass_rock", "snow_02", "forest_leaves_02"]:
+# Meadow turf, 90 m drone survey of grassland and eroded soil follow the gravel layer in the array.
+MATERIALS = ["rock_face_03", "aerial_rocks_02", "aerial_grass_rock", "snow_02", "forest_leaves_02",
+             "grass_ground", "rocky_terrain_02", "dirt_aerial_02"]
+
+
+def materials(names=MATERIALS):
+    for name in names:
         color = source(name + "_diff_2k.jpg").convert("RGB")
         height = source(name + "_disp_2k.jpg").convert("L")
         normal = source(name + "_nor_gl_2k.jpg").convert("RGB")
@@ -125,8 +130,115 @@ def forms():
     (ASSETS / "alpine_forms.tres").write_text("\n".join(lines) + "\n")
 
 
+def _periodic_fbm(n, rng, octaves=6, base=3):
+    """Exactly periodic fBm from integer-frequency Fourier components."""
+    out = np.zeros((n, n))
+    y, x = np.mgrid[0:n, 0:n] / n
+    amp = 1.0
+    for octave in range(octaves):
+        f = base * 2 ** octave
+        for _ in range(8):
+            kx, ky = rng.integers(-f, f + 1, 2)
+            if kx == 0 and ky == 0:
+                continue
+            out += amp * np.sin(2 * np.pi * (kx * x + ky * y) + rng.uniform(0, 2 * np.pi)) / np.hypot(kx, ky) * f
+        amp *= 0.5
+    return out / np.abs(out).max()
+
+
+def eroded_face(n=256, seed=7, slope=0.5, relief=6.0):
+    """Rain-cut gullies on a steep rock face, as a tileable layer (eroded_face_*).
+
+    Droplets run down a tilted, wrapping slope and carve branching channels. The
+    pack is flipped so the channels run down the texture's v axis: the ground
+    shader's side projections map v to world up, so they run downhill on any face.
+    """
+    rng = np.random.default_rng(seed)
+    h = _periodic_fbm(n, rng) * relief  # (cells; the tilt adds -slope per row)
+    radius = 2
+    offsets = [(dx, dy) for dy in range(-radius, radius + 1) for dx in range(-radius, radius + 1)
+               if dx * dx + dy * dy <= radius * radius + 0.5]
+    weights = np.array([max(0.0, radius + 0.5 - np.hypot(dx, dy)) for dx, dy in offsets])
+    weights /= weights.sum()
+    inertia, capacity_k, deposit_k, erode_k, evaporation, gravity = 0.1, 3.0, 0.3, 0.25, 0.03, 4.0
+
+    def sample(px, py):
+        ix, iy = int(px) % n, int(py) % n
+        fx, fy = px - int(px), py - int(py)
+        x1, y1 = (ix + 1) % n, (iy + 1) % n
+        a, b, c, e = h[iy, ix], h[iy, x1], h[y1, ix], h[y1, x1]
+        return ix, iy, x1, y1, fx, fy, (a * (1 - fx) + b * fx) * (1 - fy) + (c * (1 - fx) + e * fx) * fy - slope * py,             (b - a) * (1 - fy) + (e - c) * fy, (c - a) * (1 - fx) + (e - b) * fx - slope
+
+    for _ in range(int(n * n * 0.8)):
+        px, py = rng.uniform(0, n), rng.uniform(0, n)
+        dirx = diry = 0.0
+        speed, water, sediment = 1.0, 1.0, 0.0
+        for _ in range(64):
+            ix, iy, x1, y1, fx, fy, here, gx, gy = sample(px, py)
+            dirx = dirx * inertia - gx * (1 - inertia)
+            diry = diry * inertia - gy * (1 - inertia)
+            length = (dirx * dirx + diry * diry) ** 0.5
+            if length < 1e-9:
+                break
+            dirx /= length
+            diry /= length
+            nx, ny = px + dirx, py + diry
+            fall = sample(nx, ny)[6] - here
+            capacity = max(-fall * speed * water * capacity_k, 0.01)
+            if sediment > capacity or fall > 0:
+                amount = min(fall, sediment) if fall > 0 else (sediment - capacity) * deposit_k
+                sediment -= amount
+                h[iy, ix] += amount * (1 - fx) * (1 - fy)
+                h[iy, x1] += amount * fx * (1 - fy)
+                h[y1, ix] += amount * (1 - fx) * fy
+                h[y1, x1] += amount * fx * fy
+            else:
+                amount = min((capacity - sediment) * erode_k, -fall, 0.06)
+                for (ox, oy), weight in zip(offsets, weights):
+                    h[(iy + oy) % n, (ix + ox) % n] -= amount * weight
+                sediment += amount
+            speed = max(0.0, speed * speed - fall * gravity) ** 0.5
+            water *= 1 - evaporation
+            px, py = nx % n, ny % n
+            if water < 0.05:
+                break
+    h = np.flipud(h)  # channels down the v axis (see above)
+    size = 1024
+    height = np.asarray(Image.fromarray(((h - h.min()) / np.ptp(h)).astype(np.float32), "F")
+                        .resize((size, size), Image.Resampling.BICUBIC), dtype=np.float64)
+    height = np.clip(height, 0.0, 1.0)
+    # Normals in the scans' OpenGL convention (green toward the top of the image).
+    ddx = (np.roll(height, -1, 1) - np.roll(height, 1, 1)) * 0.5
+    ddy = (np.roll(height, -1, 0) - np.roll(height, 1, 0)) * 0.5
+    strength = 1.0 / max(np.percentile(np.abs(ddx), 98), 1e-6) * 0.45
+    normal = np.dstack([-ddx * strength, ddy * strength, np.ones_like(height)])
+    normal /= np.linalg.norm(normal, axis=-1, keepdims=True)
+    # Channels sit in shade and hold damp grit; ribs between them catch the light.
+    freq = np.fft.fftfreq(size)
+    kernel = np.exp(-2.0 * (np.pi * 6.0) ** 2 * (freq[:, None] ** 2 + freq[None, :] ** 2))
+    blur = np.real(np.fft.ifft2(np.fft.fft2(height) * kernel))  # (wraps, so the tile stays seamless)
+    cavity = np.clip(0.5 + (height - blur) * 6.0, 0.0, 1.0)
+    ao = np.clip(0.55 + cavity * 0.45, 0.0, 1.0)
+    shade = np.clip(0.35 + cavity * 0.45, 0.0, 1.0)
+
+    def byte(values):
+        return Image.fromarray(np.clip(values * 255.0 + 0.5, 0, 255).astype(np.uint8), "L")
+    colour = byte(shade)
+    Image.merge("RGBA", (colour, colour, colour, byte(height))).save(ASSETS / "eroded_face_color_height.png")
+    Image.merge("RGBA", (byte(normal[..., 0] * 0.5 + 0.5), byte(normal[..., 1] * 0.5 + 0.5), byte(ao),
+                         byte(np.full_like(height, 0.9)))).save(ASSETS / "eroded_face_surface.png")
+    assert np.ptp(height) > 0.9 and np.ptp(cavity) > 0.3
+
+
 if __name__ == "__main__":
+    import sys
     CACHE.mkdir(parents=True, exist_ok=True)
-    materials()
-    forms()
-    print("Packed five height/normal/AO/roughness materials and three alpine forms.")
+    # Named materials re-pack only those layers; with no names everything is rebuilt.
+    chosen = [name for name in sys.argv[1:] if name in MATERIALS]
+    if chosen or "eroded_face" not in sys.argv[1:]:
+        materials(chosen or MATERIALS)
+    if "eroded_face" in sys.argv[1:] or len(sys.argv) == 1:
+        eroded_face()
+    if len(sys.argv) == 1:
+        forms()
+    print("Packed the requested terrain layers.")

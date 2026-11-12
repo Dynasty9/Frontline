@@ -52,6 +52,7 @@ const BENCH := [
 	["local_exp", false, "Local exposure off"],
 	["eye_adapt", false, "Eye adaptation off"],
 	["film", false, "Film look off"],
+	["heat_haze", false, "Heat haze off"],
 	["post", false, "Post-processing off"],
 	["grass", 0, "Grass off"],
 	["water", 0, "Water on Low"],

@@ -42,6 +42,7 @@ func tick(dt: float) -> void:
 	_economy(sqs)
 	_production(sqs)
 	_military(sqs)
+	_ping_roles()
 
 
 ## Calls in the side's off-map support on the densest group of spotted
@@ -1358,3 +1359,68 @@ func _ambush_spot() -> Vector3:
 			return Vector3.INF
 	var side := Defs.flat(poly[poly.size() / 2 + 1] - p).normalized().cross(Vector3.UP)
 	return p + side * 12.0
+
+
+# --- the players' pings -------------------------------------------------------------
+
+var _ping_t := -99.0
+const PING_ANSWER := ["attack", "enemy", "defend", "help"]
+
+
+## An AI ally fighting beside human commanders answers their pings: "attack
+## here" (or an enemy marked) gets up to two of its free squads sent in, with a
+## deliberate attack if there are two; "defend here" gets them dug in there;
+## "need support" sends them to the one asking. It says so on the net - or that
+## it has nobody free. Squads it sends keep that task a few minutes (role
+## "ping"), then go back to the company.
+func answer_ping(from: int, kind: String, pos: Vector3) -> void:
+	if not kind in PING_ANSWER or world.winner >= 0 or world.time - _ping_t < 12.0:
+		return
+	_ping_t = world.time
+	var free := []
+	for sq in _by_distance(_my_squads(), pos):
+		if free.size() >= 2 or Defs.flat(sq.centroid() - pos).length() > 380.0:
+			break
+		var role := String(roles.get(sq.sid, {}).get("role", "idle"))
+		if role in ["idle", "attack", "outpost", "town"] and sq.plan == null and sq.drill == "" and sq.ambush_plan == null \
+				and sq.alive_members().size() >= 3 and not _is_engineer_squad(sq) and not sq.kind in ["crew", "r_crew"]:
+			free.append(sq)
+	var hq := "Six" if team == 0 else "Command"
+	if free.is_empty():
+		world.send_msg_to(from, "radio", "%s: nobody free to send to %s right now." % [hq, Defs.grid_ref(pos)])
+		world.stat("ai_ping_unanswered")
+		return
+	var ids := []
+	for sq in free:
+		roles[sq.sid] = {"role": "ping", "t": world.time, "pos": pos, "kind": kind}
+		ids.append(sq.sid)
+	var face := Defs.flat(pos - _centroid(free)).normalized()
+	if face.length() < 0.5:
+		face = _enemy_dir()
+	var at := world.nav.nearest_walkable(pos)
+	if kind in ["attack", "enemy"]:
+		_cmd({"t": "assault", "squads": ids, "pos": at, "face": face})
+	elif kind == "defend":
+		_cmd({"t": "defend", "squads": ids, "pos": at, "face": _enemy_dir()})
+	else:
+		_cmd({"t": "assault", "squads": ids, "pos": world.nav.nearest_walkable(pos - face * 12.0), "face": face})
+	var names := []
+	for id in ids:
+		names.append(Squad.callsign_of(team, int(id)))
+	var what := {"attack": "attacking", "enemy": "going after them at", "defend": "digging in at", "help": "on the way to you at"}
+	world.send_msg(team, "radio", "%s: %s %s %s." % [hq, ", ".join(names), what[kind], Defs.grid_ref(pos)], pos)
+	world.stat("ai_ping_" + kind)
+
+
+## Squads sent to a ping go back to the company after a while, or once they've
+## been knocked about.
+func _ping_roles() -> void:
+	var t := world.time
+	for sid in roles.keys():
+		var r: Dictionary = roles[sid]
+		if String(r.get("role", "")) != "ping":
+			continue
+		var sq: Squad = world.squads.get(sid)
+		var stay := 240.0 if String(r.get("kind", "")) == "defend" else 150.0
+		if sq == null or t - float(r.t) > stay or sq.alive_members().size() * 2 < sq.members.size():
+			roles[sid] = {"role": "idle", "t": t}

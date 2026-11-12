@@ -9,7 +9,7 @@ The site's copy lives in web/src/lib/intel.ts. This compares it with the game:
              COUNTS.support (Defs.SUPPORT less its recon flights),
              COUNTS.missions (the missions the menu lists). --fix updates
              them; the stats, ticker and feature copy all read COUNTS.
-  missions   MISSIONS against scripts/game/missions.gd: the same missions in
+  missions   MISSIONS against scripts/game/mission_list.gd: the same missions in
              the same order, titles and operation names exact, blurbs exact,
              the time of day against the mission's mood. The force line may be
              shortened on the site, so a difference there is only a note.
@@ -26,7 +26,6 @@ Standard library only.
 from __future__ import annotations
 
 import argparse
-import json
 import re
 import sys
 from pathlib import Path
@@ -66,7 +65,7 @@ def game_counts() -> dict[str, int]:
 
 
 def game_missions() -> list[dict[str, str]]:
-    text = block(read(REPO / "scripts" / "game" / "missions.gd"), "const LIST := [", "]")
+    text = block(read(REPO / "scripts" / "game" / "mission_list.gd"), "const LIST := [", "]")
     out = []
     for entry in re.split(r'\n\t\{(?="key")', text)[1:]:
         if '"hidden": true' in entry:
@@ -118,7 +117,7 @@ def from_game(text: str, corpus: list[set[tuple[str, str]]]) -> float:
 
 def names() -> list[str]:
     out = []
-    for p in ("scripts/autoload/defs.gd", "scripts/game/vehicle_roster.gd", "scripts/game/missions.gd"):
+    for p in ("scripts/autoload/defs.gd", "scripts/game/vehicle_roster.gd", "scripts/game/mission_list.gd"):
         out += re.findall(STR, read(REPO / p))
     return [n for n in out if 2 <= len(n) <= 80]
 
@@ -126,7 +125,7 @@ def names() -> list[str]:
 def media_needed(s: dict) -> list[str]:
     feats = read(REPO / "web" / "src" / "components" / "features.tsx")
     need = ["hero.mp4", "hero.jpg", "reel.mp4", "reel.jpg", "reel.vtt"]
-    for clip in re.findall(r'clip: "([\w-]+)"', feats):
+    for clip in re.findall(r'<Clip\s+name="([\w-]+)"', feats):
         need += [f"{clip}.mp4", f"{clip}.jpg"]
     need += [f"m-{m['key']}.jpg" for m in s["missions"] if "key" in m]
     return need
@@ -187,8 +186,6 @@ def main() -> None:
 
     # media
     missing = [f for f in media_needed(s) if not (MEDIA / f).exists()]
-    shots = json.loads(read(SKILL / "shots.json"))
-    missing += [f"{o}.mp4" for o in shots["outputs"] if not (MEDIA / f"{o}.mp4").exists() and f"{o}.mp4" not in missing]
     for f in missing:
         problems.append(f"media: web/public/media/{f} is missing")
 

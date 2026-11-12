@@ -1,0 +1,18 @@
+{
+  "entry": "changelog/unreleased/camera-visible-scenery.md",
+  "medium": "motion",
+  "stage": "Native sling scenario, seed 3, reel-pickup camera, first 3.7 seconds at 30 fps",
+  "rationale": "Matched before and after captures show when the foliage appears.",
+  "source_ref": "Before 89d3097; updated camera and rifleman defaults in this change",
+  "sources": [
+    {
+      "file": "changelog/unreleased/camera-visible-scenery/comparison.webm",
+      "sha256": "6e66613f98198ca9ac7270a578f8d5bd8f9d1edf1d6da7cf60557604b7528497"
+    },
+    {
+      "file": "changelog/unreleased/camera-visible-scenery/comparison.jpg",
+      "sha256": "4faadaccaa524e1da63634a33846d4a96922f392e23d2996ebcca5a331022e33"
+    }
+  ],
+  "output": null
+}

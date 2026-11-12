@@ -24,6 +24,12 @@ const BURNT_OUT := 17  # something burnt through falls in: [BURNT_OUT, pos, half
 const SINK := 18  # a boat founders: [SINK, eid, pos]
 const UNIT_HIT := 19  # [UNIT_HIT, eid, world direction, normalized strength]
 
+const CANNON_TRACER_SPEED := 950.0
+
+static func cannon_flight(from: Vector3, to: Vector3) -> float:
+	return from.distance_to(to) / CANNON_TRACER_SPEED
+
+
 ## What a round struck, as a SHOT event carries it: it decides what flies off.
 const HIT_DIRT := 1
 const HIT_FLESH := 2
@@ -89,7 +95,13 @@ func _visible_at(p: Vector3) -> bool:
 	return world.cam == null or world.cam.cam.global_position.distance_to(p) < 230.0
 
 
-func play(ev: Array) -> void:
+## The tank vents above the running gear. The optional last field of EXPLODE
+## keeps that point on the hull when it is close to the ground.
+static func tank_knockout(at: Vector3) -> Array:
+	return [EXPLODE, at, 1.35, "fuel", true]
+
+
+func play(ev: Array, blast_bus := &"Effects") -> void:
 	if not world.has_view:
 		return
 	if world.director:
@@ -125,7 +137,9 @@ func play(ev: Array) -> void:
 		SHOT:
 			_shot(_muzzle_of(ev, 5, ev[1], false), ev[2], int(ev[3]), String(ev[4]), world.entity(int(ev[5])) if ev.size() > 5 else null)
 		EXPLODE:
-			_explode(ev[1], float(ev[2]), String(ev[3]) if ev.size() > 3 else "he")
+			if ev.size() > 5:
+				hull_strike(ev[1], ev[5], blast_bus)
+			_explode(ev[1], float(ev[2]), String(ev[3]) if ev.size() > 3 else "he", blast_bus, ev.size() > 4 and bool(ev[4]))
 		SAY:
 			_say(int(ev[1]), String(ev[2]))
 		DIE:
@@ -225,7 +239,8 @@ static func surface_of(st: Structure, hp: Vector3) -> int:
 
 
 func _cam_d(p: Vector3) -> float:
-	return world.cam.cam.global_position.distance_to(p) if world.cam else 0.0
+	var camera := get_viewport().get_camera_3d()
+	return camera.global_position.distance_to(p) if camera else 0.0
 
 
 ## A round fired from `from` (the muzzle on this screen) to `to`, where it
@@ -302,25 +317,27 @@ func _light(p: Vector3, energy: float, rng_m: float) -> void:
 	l.omni_range = rng_m
 
 
-func _explode(p: Vector3, size: float, kind := "he") -> void:
+func _explode(p: Vector3, size: float, kind := "he", sound_bus := &"Effects", on_hull := false) -> void:
 	var above_ground := p.y - world.ground_y(p)
-	if not world.srv and world.terrain:
+	if not on_hull and not world.srv and world.terrain:
 		world.terrain.add_crater(p, size)
-	var wet: bool = world.water and not world.water.is_empty() and p.y < 3.0 and world.water.wet_at(p)
+	var wet: bool = not on_hull and world.water and not world.water.is_empty() and p.y < 3.0 and world.water.wet_at(p)
 	if wet and p.y < 1.2 and not _on_boat(p):
 		# in the water: a column of spray, a ring of foam, no crater
-		Sfx.play("explosion" if size >= 0.8 else "small_boom", p, 0.0)
+		Sfx.play("explosion" if size >= 0.8 else "small_boom", p, 0.0, 1.0, sound_bus)
 		_light(p, 3.0 * size, 10.0 + 6.0 * size)
 		if _visible_at(p):
 			vfx.splash(Vector3(p.x, WaterMap.LEVEL, p.z), size)
 		return
-	Sfx.play("small_boom" if kind == "frag" else ("big_boom" if size >= 2.2 else ("explosion" if size >= 0.8 else "small_boom")), p, 4.0 if size >= 2.2 else (2.0 if size >= 1.3 else 0.0))
+	Sfx.play("small_boom" if kind == "frag" else ("big_boom" if size >= 2.2 else ("explosion" if size >= 0.8 else "small_boom")), p, 4.0 if size >= 2.2 else (2.0 if size >= 1.3 else 0.0), 1.0, sound_bus)
 	_light(p, 4.5 * size, 12.0 + 9.0 * size)
+	if world.atmo:
+		world.atmo.heat.blast(p, size)  # (the air shimmers round it for a moment)
 	if _visible_at(p):
-		vfx.explode(p, size, kind)
+		vfx.explode(p, size, kind, on_hull)
 		if wet:
 			vfx.splash(Vector3(p.x, WaterMap.LEVEL, p.z), size * 0.45)  # (against a hull: spray round her)
-		elif world.phys and above_ground < 1.6 and size >= 1.2:
+		elif not on_hull and world.phys and above_ground < 1.6 and size >= 1.2:
 			world.phys.blast_chunks(p, size)
 	if world._decor_node and above_ground < 3.0 and size >= 0.8:
 		world._decor_node.blast(p, size)
@@ -328,8 +345,8 @@ func _explode(p: Vector3, size: float, kind := "he") -> void:
 	for v in world.vehicles:
 		if v.model and Defs.flat(v.position - p).length() < 5.0 + size * 5.0:
 			v.blast_jolt(p, size)
-	if wet:
-		pass  # (no hole in the water)
+	if wet or on_hull:
+		pass  # Neither burst opens the soil.
 	elif above_ground < 1.6 and size >= 0.9 and kind != "frag":
 		vfx.crater(p, size)  # permanent, wherever it lands: the ground remembers
 	elif above_ground < 1.6 and size >= 0.35 and world.atmo and world.atmo.grass:
@@ -350,7 +367,7 @@ func _on_boat(p: Vector3) -> bool:
 
 ## A tank or gun firing its main armament: the hull rocks back and the
 ## turret jolts, the muzzle blast, and the round's tracer.
-func _cannon(from: Vector3, to: Vector3, src) -> void:
+func _cannon(from: Vector3, to: Vector3, src, report_bus := &"Effects") -> void:
 	var dir := (to - from).normalized()
 	var v: Vehicle = src if src is Vehicle else null
 	if v == null:
@@ -361,11 +378,18 @@ func _cannon(from: Vector3, to: Vector3, src) -> void:
 	if v and v.model:
 		v.recoil(dir)
 		v.gun_kick(0.26)
-	Sfx.play("cannon", from, 3.0)
 	var cd := _cam_d(from)
+	var sound := "tank_report" if v and v._vm and v._vm.gun_mount else "cannon"
+	if sound == "tank_report":
+		_tank_sound(sound, from, cd, report_bus)
+	else:
+		Sfx.play(sound, from, 3.0, 1.0, report_bus)
 	if cd < 260.0:
 		gunfx.cannon_blast(from, dir, cd)
-	gunfx.tracer(from, to, Color(1.0, 0.5, 0.18, 7.0), 14.0, 0.12, 950.0)
+	if world.atmo:
+		# the muzzle blast's hot gas, for a moment out in front of the barrel
+		world.atmo.heat.pulse(from + dir * 1.6, 0.8, dir, 1.8, 1.0, 0.4, 2.0, 0.35)
+	gunfx.tracer(from, to, Color(1.0, 0.5, 0.18, 7.0), 14.0, 0.12, CANNON_TRACER_SPEED)
 	if world.cam and Settings.get_v("shake"):
 		var d := world.cam.focus_pos.distance_to(from)
 		if d < 40.0:
@@ -380,6 +404,37 @@ func _launch(from: Vector3, dir: Vector3, src) -> void:
 	var cd := _cam_d(from)
 	if cd < 230.0:
 		gunfx.launch_blast(from, dir, cd)
+	if world.atmo:
+		world.atmo.heat.pulse(from - dir * 1.8, 0.7, -dir, 1.8, 0.9, 0.45, 2.0, 0.35)  # (the back-blast's)
+
+
+func hull_strike(p: Vector3, normal: Vector3, bus := &"Effects") -> void:
+	var distance := _cam_d(p)
+	if distance < 230.0:
+		gunfx.impact(HIT_METAL, p, normal, 1.35, distance)
+		gunfx.light(p + normal * 0.12, 0.75, 0.85)
+	_tank_sound("hull_strike", p, distance, bus)
+
+
+func _tank_sound(sound: String, at: Vector3, distance: float, bus: StringName) -> void:
+	if not Sfx.enabled or distance >= Sfx.EFFECT_RANGE * (3.0 if sound == "tank_report" else 1.0):
+		return
+	# The film mixes its own microphone delays. Ordinary listeners hear the same travel time.
+	if bus == &"Effects" and distance > 8.0:
+		get_tree().create_timer(minf(distance / 343.0, 1.25), false).timeout.connect(
+			_play_tank_sound.bind(sound, at, distance, bus))
+	else:
+		_play_tank_sound(sound, at, distance, bus)
+
+
+func _play_tank_sound(sound: String, at: Vector3, distance: float, bus: StringName) -> void:
+	if distance < Sfx.EFFECT_RANGE:
+		Sfx.play(sound, at, 3.0, 1.0, bus)
+	var range_fraction := distance / Sfx.EFFECT_RANGE
+	if sound == "tank_report" and range_fraction > 0.75:
+		var level := -11.0 - 12.0 * maxf(0.0, range_fraction - 1.0)
+		level += linear_to_db(smoothstep(0.75, 1.0, range_fraction))
+		Sfx.play_far(sound, level, 1.0, distance, bus)
 
 
 func _ricochet(p: Vector3, dir: Vector3) -> void:

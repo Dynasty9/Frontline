@@ -1,0 +1,20 @@
+{
+  "entry": "changelog/unreleased/rock-crags.md",
+  "summary": "Jagged crags on bare hill rock.",
+  "medium": "still",
+  "stage": "tests/fixtures/environment-views.gd",
+  "rationale": "Appearance change: one matched before/after sheet of the fixture's crag views on two seeds and moods.",
+  "source_ref": "a24ea78080cd48a6fc141ccd3f7e941d60bcaaa4",
+  "before_ref": "a24ea78080cd48a6fc141ccd3f7e941d60bcaaa4",
+  "sources": [
+    {
+      "file": "changelog/unreleased/rock-crags/comparison.jpg",
+      "sha256": "6e5da7fb006ee3607438459ad4b02f2f0368bbca4b0e8607afc948311bc90a96"
+    },
+    {
+      "file": "changelog/unreleased/rock-crags/capture.json",
+      "sha256": "470ec6d6f9ff04e94d8d9bdb00de1fb85a1ee459d466a9f521f4aba6c22a9ea0"
+    }
+  ],
+  "output": null
+}

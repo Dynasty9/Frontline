@@ -3,7 +3,8 @@ extends Node3D
 ## Retarget in rest space, then satisfy contacts on the receiving body. Mesh
 ## weights and bone lengths stay authored; only the pelvis translates.
 
-var model_asset := "res://assets/local_mocap/character/Soldier.glb"
+const Assets := preload("res://scripts/autoload/infantry_assets.gd")
+var model_asset := Assets.SWAT if "--swat-units" in OS.get_cmdline_user_args() or "--swat" in OS.get_cmdline_user_args() else Assets.SOLDIER
 var native_player: AnimationPlayer
 var _native_clip := ""
 var native_socket := Transform3D.IDENTITY
@@ -79,14 +80,12 @@ var ladder: Structure
 var ladder_contacts := {}
 
 
-func build(clips: Dictionary = MocapCharacter.CLIPS) -> bool:
+func build(clips: Dictionary = MocapCharacter.CLIPS, role_prop: Node3D = null) -> bool:
 	source = MocapCharacter.new()
 	add_child(source)
-	if not source.build(clips):
+	if not source.build(clips, model_asset == Assets.SWAT):
 		return false
 	source.visible = false
-	if "--swat-units" in OS.get_cmdline_user_args():
-		model_asset = "res://assets/local_mocap/mixamo/Swat.fbx"
 	if not ResourceLoader.exists(model_asset):
 		push_error("Character asset missing: " + model_asset)
 		return false
@@ -128,7 +127,18 @@ func build(clips: Dictionary = MocapCharacter.CLIPS) -> bool:
 	weapon.reparent(self)
 	weapon.visible = true
 	magazine = load("res://scripts/game/rifle_magazine.gd").new()
-	magazine.setup(self)
+	if role_prop:
+		# Keep the medic’s own compact prop on the same animated grip.
+		for imported in weapon.find_children("*", "MeshInstance3D", true, false):
+			imported.hide()
+		var grip := Node3D.new()
+		weapon.add_child(grip)
+		grip.rotation.y = PI
+		for part in role_prop.get_children():
+			if part is MeshInstance3D and not part.is_queued_for_deletion():
+				part.reparent(grip, false)
+	else:
+		magazine.setup(self)
 	_last_position = global_position
 	if OS.has_environment("FL_DEBUG_MOCAP"):
 		print("SKINNED_RIFLEMAN bones=%d height_ratio=%.3f" % [bones.size(), ratio])

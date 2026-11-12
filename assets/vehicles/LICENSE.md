@@ -1,0 +1,3 @@
+[Metal Plate 02](https://polyhaven.com/a/metal_plate_02) from Poly Haven, [CC0](https://polyhaven.com/license). The 1K diffuse photograph was converted to grayscale for the paint wear mask.
+
+The Abrams hull and turret weathering atlas was sampled from the game meshes. The turret numbers are original raster stencils. Exterior references include a close view of the road wheels and turret stowage and a view of the complete M1A2 on exercise at Fort Irwin. [U.S. Marine Corps maintenance photograph](https://commons.wikimedia.org/wiki/File:M1_road_wheel_replacement.JPG), [U.S. Army M1A2 photograph](https://www.dvidshub.net/image/6224180/m1a2-abrams-tank).

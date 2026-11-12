@@ -109,6 +109,9 @@ func generate() -> void:
 	# Campaign routes retain the geology and woodland density they were authored against.
 	world.terrain.landform.generate(int(world.settings.get("seed", 1)), world.roads, world.water, sites, String(world.settings.get("mission", "")) == "")
 	world.terrain.install_landform(world.terrain.landform.heights)
+	# The beds use absolute heights. Carve them into the finished ground, as a joining peer does.
+	world.water.carve()
+	world.nav.build_boat_grid(world.water)
 	world._rebuild_roads()
 	await world._breathe("Laying out the town", 0.38)
 	tg.streetscape()
@@ -379,8 +382,6 @@ func _roads_meet_water(tg) -> void:
 		var d := Defs.flat(b - a)
 		_spawn("bridge", (a + b) * 0.5, Defs.yaw_of(d), -1, {"size": Vector3(float(br[2]) * 2.0, 0, d.length()), "variant": 1 if br.size() > 3 and br[3] == "quay" else 0})
 		_place([Vector2((a.x + b.x) * 0.5, (a.z + b.z) * 0.5), Vector2(float(br[2]) + 1.0, d.length() * 0.5 + 1.0), Defs.yaw_of(d)])
-	w.carve()
-	world.nav.build_boat_grid(w)
 	if OS.has_environment("FL_DEBUG_WATER"):
 		print("WATER coast x=%.0f river x0=%.0f fords=%s ponds=%s bridges=%s" % [float(w.coast.x), (w.rivers[0].pts as PackedVector3Array)[60].x,
 			str(w.fords), str(w.ponds.map(func(p): return p.c)), str(w.bridges.map(func(b): return [(b[0] + b[1]) * 0.5, b[3]]))])
@@ -603,6 +604,30 @@ func scenario(sname: String) -> void:
 			t2.order_move(Vector3(2, 0, -45))
 			r.spawn_squad("rpg_team", 1, b, Vector3(-30, 0, -50))
 			r.spawn_squad("fighter_cell", 1, b, Vector3(20, 0, -55))
+		"mounted":
+			# two IFVs halted with men aboard: one its own mech team, the other an MG
+			# team and an AT team. Unless static, the first drops a fire team and the
+			# second only its AT team; the rest stay aboard. A fighter cell watches
+			# from the far hedge.
+			var ifv1: Vehicle = world.spawn("vehicle", {"vkind": "ifv", "team": 0, "owner": a, "pos": Vector3(-8, 0, 0), "yaw": 0.0})
+			ifv1.embark_new_squad()
+			var ifv2: Vehicle = world.spawn("vehicle", {"vkind": "ifv", "team": 0, "owner": a, "pos": Vector3(8, 0, 0), "yaw": 0.0})
+			for k in ["mg_team", "at_team"]:
+				var mq: Squad = r.spawn_squad(k, 0, a, ifv2.position)
+				for m in mq.members:
+					ifv2.board(m)
+			for v in [ifv1, ifv2]:
+				v.order_stop()
+				v.keep_aboard = true  # (halted, a carrier would let them out at once)
+			r.spawn_squad("fighter_cell", 1, b, Vector3(0, 0, -110), Vector3(0, 0, -100))
+			if not world.settings.get("static", false):
+				var at_sid: int = ifv2.passengers[ifv2.passengers.size() - 1].sid
+				world.get_tree().create_timer(3.0, true, true).timeout.connect(func():
+					if is_instance_valid(ifv1) and not ifv1.gone:
+						ifv1.dismount(2))
+				world.get_tree().create_timer(6.0, true, true).timeout.connect(func():
+					if is_instance_valid(ifv2) and not ifv2.gone:
+						ifv2.dismount(0, at_sid))
 		"defense":
 			# Carry the protective line across both flank emplacements.
 			for i in 7:
@@ -1105,7 +1130,8 @@ func _house(c: Vector3, w: float, d: float, axis: float, street_side: float, yar
 	var b := Basis(Vector3.UP, axis)
 	var color := rng.randi() % Structure.HOUSE_COLORS.size()
 	var ruined := rng.randf() < ruin_p
-	_spawn("floor", c, axis, -1, {"size": Vector3(w, 0.06, d)})
+	# (a ruin's floor is marked, so it's drawn with the roof fallen in on it)
+	_spawn("floor", c, axis, -1, {"size": Vector3(w, 0.06, d), "variant": 1 if ruined else 0})
 	_unplace_last()
 	_place([Vector2(c.x, c.z), half, axis])
 	# four walls: front faces the street

@@ -1,0 +1,29 @@
+{
+  "entry": "changelog/unreleased/object-cameras.md",
+  "title": "Ride along with the object cameras",
+  "version": "unreleased",
+  "kind": "new",
+  "summary": "F10 cycles object-mounted views.",
+  "medium": "still",
+  "stage": "tests/fixtures/ridge-duel.tscn",
+  "rationale": "Six matched-size frames show how the available views frame different vehicle parts. The matched sling clip shows the rotor and suspended vehicle in motion from both camera heights.",
+  "source_ref": "Native Metal capture, 1600x900, seed 712, 30 fps; frames sampled at 6, 23, 28, 33, 42.3 and 54 seconds.",
+  "sources": [
+    {
+      "file": "changelog/unreleased/object-cameras/views.jpg",
+      "sha256": "cec5949abb8ce22db3bf363b85f49398430b3e2164f8501bbf8ef247ddffba87",
+      "caption": "Behind, aerial, track, roof gun, barrel and engine deck cameras."
+    },
+    {
+      "file": "changelog/unreleased/object-cameras/sling-sky.webm",
+      "sha256": "099f7d52a63ab4262da827992240d8a8af2df30e147ce47bfec3731593ac0627",
+      "caption": "Same sling scenario, seed 3, at 15.6 to 18.9 seconds. The previous F10 Sling load camera is on the left and the lower camera is on the right."
+    },
+    {
+      "file": "changelog/unreleased/object-cameras/sling-sky.jpg",
+      "sha256": "2dc22ed4dd07d5fa702fc00fe8e0ffec7ab633887cdd23be98b56962dce34988",
+      "caption": "The rotor and its shadow at the same game frame."
+    }
+  ],
+  "output": null
+}

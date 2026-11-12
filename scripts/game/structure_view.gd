@@ -24,6 +24,10 @@ var _draw_batches := {}
 var _draw_members := {}
 var _draw_broken := {}
 
+func _ready() -> void:
+	process_priority = 20
+
+
 func add(st: Structure) -> void:
 	# Hosts already built these models while generating the authoritative map.
 	if st.view_active:
@@ -101,12 +105,7 @@ func focus_at(pos: Vector3, camera: Camera3D = null) -> void:
 			# Preload roofs and shadows from valley floors through the highest hillside.
 			var midpoint := Vector3((x + 0.5) * CELL, 48.0 + terrain_rise * 0.5, (z + 0.5) * CELL)
 			var extent := Vector3(CELL, 80.0 + terrain_rise * 0.5, CELL)
-			var visible_cell := true
-			for plane: Plane in planes:
-				if plane.distance_to(midpoint) > plane.normal.abs().dot(extent):
-					visible_cell = false
-					break
-			if visible_cell:
+			if intersects_view(midpoint, extent, planes):
 				visible_cells[key] = true
 	if visible_cells == active and not resident.is_empty():
 		return
@@ -127,10 +126,27 @@ func focus_at(pos: Vector3, camera: Camera3D = null) -> void:
 	for st: Structure in nearby:
 		request(st)
 
+static func intersects_view(midpoint: Vector3, extent: Vector3, planes: Array[Plane]) -> bool:
+	for plane in planes:
+		if plane.distance_to(midpoint) > plane.normal.abs().dot(extent):
+			return false
+	return true
+
+
 func _process(_dt: float) -> void:
-	if world.cam:
-		focus_at(world.cam.focus_pos, world.cam.cam)
 	var started := Time.get_ticks_usec()
+	if world.cam:
+		var camera := world.cam.get_viewport().get_camera_3d()
+		focus_at(world.cam.focus_pos, camera)
+		if camera and world.loaded and not pending.is_empty():
+			var planes := camera.get_frustum()
+			for st: Structure in pending.values():
+				var half_height := maxf(32.0, st.size.y) * 0.5
+				var extent := Vector3(st.radius + 4.0, half_height + 4.0, st.radius + 4.0)
+				if intersects_view(st.position + Vector3.UP * half_height, extent, planes):
+					pending.erase(st.eid)
+					st.set_view_active(true)
+					_queue_draw_batch(st)
 	var count := 0
 	while head < order.size() and count < 4 and Time.get_ticks_usec() - started < 2000:
 		var id := order[head]

@@ -14,6 +14,12 @@ extends RefCounted
 ##      behind cover.
 ## Men busy with something that can't wait (a stretcher, crawling wounded,
 ## the tunnels) keep only the reflexes that save their own skin.
+## Standing orders (Soldier.stance, Soldier.roe) sit on top of this: told to
+## hold fire he neither shoots, throws nor clears a house - unless an enemy is
+## close enough to be overrunning him, or is the one he was ordered to attack -
+## but every reflex above is still his own. Told to stay down he crawls and
+## fights from the ground; behind a wall too high for that he keeps watch and
+## leaves the shooting to the others.
 
 ## Keep reflex priority explicit; per-man decisions need no tree dispatch.
 static func think(s: Soldier) -> void:
@@ -381,7 +387,7 @@ static func can_breach(s: Soldier) -> bool:
 	if s.world.time < s.bt_next_breach:
 		return false
 	s.bt_next_breach = s.world.time + 1.5
-	if s.frags <= 0 or s.squad == null or s.suppression > 50.0 or s.mounted != null or s.is_bearer() or s.cur_weapon().is_empty():
+	if s.frags <= 0 or s.squad == null or s.suppression > 50.0 or s.mounted != null or s.is_bearer() or s.cur_weapon().is_empty() or not s.may_fire():
 		return false
 	var cl: Soldier = s.squad.breach_by
 	if cl != null and is_instance_valid(cl) and cl != s and not cl.gone and cl.life == Soldier.Life.ALIVE and cl.task == "breach":

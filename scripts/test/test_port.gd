@@ -186,6 +186,11 @@ func _answer(cmd: String, req: Dictionary) -> Variant:
 			return _query(w, req)
 		"stats":
 			return {"t": w.time, "counters": w.stats, "report": w.battle.summary()}
+		"ping":
+			# a commander's ping, as the host receives it ("peer" 1: you, in a game loaded with play)
+			var pd: Dictionary = _decode(req)
+			w.coop._ping_from(int(pd.get("peer", 1)), String(pd.get("kind", "look")), pd.get("pos", Vector3.ZERO), 0)
+			return {"t": w.time}
 		"hash":
 			return {"t": w.time, "hash": _hash(w), "entities": w.entities.size()}
 		"rig":
@@ -311,20 +316,21 @@ func _query(w: World, req: Dictionary) -> Dictionary:
 				if (team == -9 or sq.team == team) and (kind == "" or sq.kind == kind) and (ids.is_empty() or ids.has(sq.sid)):
 					var alive: Array = sq.alive_members()
 					out.append({"id": sq.sid, "kind": sq.kind, "name": sq.display_name(), "team": sq.team, "owner": sq.owner, "order": sq.order,
-						"drill": sq.drill, "cleared_houses": sq.cleared.keys(), "morale": roundi(sq.morale), "men": sq.members.size(), "alive": alive.size(),
+						"drill": sq.drill, "intent": w.delegation.kind_of_squad(sq.sid) if w.delegation else "", "cleared_houses": sq.cleared.keys(), "morale": roundi(sq.morale), "men": sq.members.size(), "alive": alive.size(),
 						"pos": _xz(sq.centroid()) if not sq.members.is_empty() else null})
 		"soldiers":
 			for s in w.soldiers:
 				if (team == -9 or s.team == team) and (kind == "" or s.utype == kind) and (ids.is_empty() or ids.has(s.eid)):
 					out.append({"id": s.eid, "type": s.utype, "team": s.team, "squad": s.sid, "life": Soldier.Life.keys()[s.life],
 						"hp": snappedf(s.hp, 0.1), "pos": _xz(s.position), "posture": Soldier.Post.keys()[s.posture], "task": s.task,
-						"riding": s.riding.eid if is_instance_valid(s.riding) else 0})
+						"riding": s.riding.eid if is_instance_valid(s.riding) else 0, "stance": s.stance, "roe": s.roe})
 		"vehicles":
 			for v in w.vehicles:
 				if (team == -9 or v.team == team) and (kind == "" or v.vkind == kind) and (ids.is_empty() or ids.has(v.eid)):
 					out.append({"id": v.eid, "kind": v.vkind, "team": v.team, "owner": v.owner_peer, "hp": snappedf(v.hp, 0.1),
 						"max_hp": v.max_hp, "pos": _xz(v.position), "yaw": snappedf(wrapf(v.rotation.y, -PI, PI), 0.001),
-						"speed": snappedf(v.speed, 0.01), "vel": _xz(v.velocity), "passengers": v.passengers.size()})
+						"speed": snappedf(v.speed, 0.01), "vel": _xz(v.velocity), "passengers": v.passengers.size(),
+						"roe": v.roe, "prio": v.prio, "smoke": v.smoke_left, "pax": _plain(v.pax), "target": v.target.eid if is_instance_valid(v.target) else 0})
 		"structures":
 			for st in w.structures:
 				if (team == -9 or st.team == team) and (st.skind == kind if kind != "" else not st.skind in SCENERY) and (ids.is_empty() or ids.has(st.eid)):

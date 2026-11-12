@@ -65,7 +65,23 @@ textures/vram_compression/import_etc2_astc=true
 
 [shader_globals]
 
+cloud_noise={
+"type": "sampler2D",
+"value": ""
+}
+cloud_shadow={
+"type": "vec4",
+"value": Vector4(0, 0, 0, 0)
+}
+cloud_sun_disc={
+"type": "vec4",
+"value": Vector4(0, 1, 0, 0)
+}
 water_time={
+"type": "float",
+"value": 0.0
+}
+window_glow={
 "type": "float",
 "value": 0.0
 }

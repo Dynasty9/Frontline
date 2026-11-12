@@ -1,0 +1,19 @@
+{
+  "entry": "changelog/unreleased/pickup-wrecks.md",
+  "summary": "A pickup retains its original paint away from the engine fire.",
+  "medium": "motion",
+  "stage": "Beachhead truck, seed 3, 10.7\u201314.3 seconds from the same camera.",
+  "rationale": "The rollover shows the paint and soot on the same truck before and after.",
+  "source_ref": "4037583 before, 4eb90d8 after",
+  "sources": [
+    {
+      "file": "changelog/unreleased/pickup-wrecks/roll.jpg",
+      "sha256": "0306d756f4ed4c4a22c112faefe3077f1dd151ae66c4d54d1a80ee9abcde985e"
+    },
+    {
+      "file": "changelog/unreleased/pickup-wrecks/roll.webm",
+      "sha256": "c14dc80df62c5e1c85c69ae11db4514694a91d9f4693c67d1bd97c2c68119ab1"
+    }
+  ],
+  "output": null
+}

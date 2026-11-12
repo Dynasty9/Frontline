@@ -1,0 +1,14 @@
+{
+  "stage": "tests/fixtures/environment-views.gd",
+  "before_ref": "a24ea78080cd48a6fc141ccd3f7e941d60bcaaa4",
+  "after": "this change on main",
+  "engine": "Godot 4.7.2 stable, Forward+, 1600x900, preset high",
+  "commands": [
+    "godot --path . --audio-driver Dummy --resolution 1600x900 --script tests/fixtures/environment-views.gd -- --aivai --seed=11 --offscreen --nohud --set=perf:0 --preset=high --mood=golden --focus=0,0 --capture-prefix=<dir>/golden",
+    "godot --path . --audio-driver Dummy --resolution 1600x900 --script tests/fixtures/environment-views.gd -- --aivai --seed=3 --offscreen --nohud --set=perf:0 --preset=high --mood=day --focus=0,0 --capture-prefix=<dir>/views"
+  ],
+  "rows": [
+    "snow-close (seed 11, golden)",
+    "snow-close (seed 3, day)"
+  ]
+}
