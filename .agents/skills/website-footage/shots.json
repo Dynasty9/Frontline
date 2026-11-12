@@ -770,7 +770,7 @@
         {"take": "trailer-harbour-finale", "from": 4.0, "to": 5.13333, "gain_db": 0, "caption": "[Jet engines rise over the coast]"},
         {"take": "trailer-jet-target", "from": 5.13333, "to": 6.03333, "gain_db": 0},
         {"take": "trailer-release", "from": 6.03333, "to": 6.86667, "gain_db": 0, "caption": "[Short mechanical clacks as the bombs drop]"},
-        {"take": "trailer-quay-impact", "from": 8.6, "to": 11.03333, "gain_db": 2, "audio_bridge_frames": 6},
+        {"take": "trailer-quay-impact", "from": 8.6, "to": 11.03333, "gain_db": 2, "audio_bridge_frames": 6, "caption": "[The jet recedes as the rush of falling air builds]"},
         {"take": "trailer-quay-impact", "from": 11.03333, "to": 11.76667, "gain_db": 2, "caption": "[Bombs strike beside the truck]"},
         {"take": "trailer-quay-wreck", "from": 13.8, "to": 14.63333, "gain_db": 0},
         {"take": "trailer-trench-column", "from": 1.6, "to": 4.2, "gain_db": 0, "caption": "[Tracks and rifle fire as infantry advance]"},

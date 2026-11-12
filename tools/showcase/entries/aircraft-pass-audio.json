@@ -6,13 +6,13 @@
   "summary": "The jet engine moves with the aircraft. A short release sound gives way to falling air and the ground impact.",
   "medium": "audio",
   "stage": "tools/showcase/trailer-review/quay-impact.tscn",
-  "rationale": "Both passes use the same aircraft and quay cameras, at native effects volume with music muted. Only the game audio changes.",
-  "source_ref": "eefda56",
+  "rationale": "Both passes use the same chase, underwing and quay cameras, at native effects volume with music muted. Only the game audio changes.",
+  "source_ref": "8becbdf",
   "before_ref": "d71315c",
   "sources": [
     {
       "file": "changelog/unreleased/aircraft-pass-audio/harbour.webm",
-      "sha256": "7e3fe6140af2523bac24dab8c19cbfa9a4dcd2caa80fe6e362d6c5e6566fd7d9",
+      "sha256": "ac998671831353c313b79a3811f91528d09733f47437e562d687dd130c0b375a",
       "caption": "Previous audio followed by updated audio"
     },
     {
@@ -21,6 +21,6 @@
       "caption": "Jet approaching the harbour"
     }
   ],
-  "attribution": "Native Godot capture of the Beachhead mission with the trailer-jet-target and trailer-quay-impact takes.",
+  "attribution": "Native Godot capture of Beachhead using the trailer-jet-target, trailer-release and trailer-quay-impact takes.",
   "output": "changelog/unreleased/aircraft-pass-audio/harbour.jpg"
 }
