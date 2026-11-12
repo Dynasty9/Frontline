@@ -217,6 +217,11 @@ func _ready() -> void:
 			BuildingWeathering.boards(k, Vector3(0, 1.5, 0), Vector2(1.3, 1.0), k.rng)
 			BuildingWeathering.sill_bags(k, Vector3(0, 1.5, 0), Vector2(1.3, 1.0), k.rng)
 			BuildingOpenings.window(k.at_point(Vector3(-4, 0, 0)), Vector3(0, 1.5, 0), Vector2(1.3, 1.0), {"glazing": 1.0, "tape": true}),
+		"shops": func(k: BuildingKit):
+			for kind in BuildingShops.KINDS.size():
+				var sk := k.at_point(Vector3(kind * 8.0, 0, 0))
+				BuildingShops.front(sk, 6.8, kind, k.rng)
+				BuildingShops.wares(sk.at_point(Vector3(2.4, 0, 0)), kind, k.rng),
 		"roof_patches": func(k: BuildingKit):
 			BuildingWeathering.tarp(k, k.rng)
 			BuildingWeathering.hole(k.at_point(Vector3(3, 0, 0)), k.rng)
@@ -340,6 +345,28 @@ func _ready() -> void:
 			darks += 1
 	check(rims > 0 and darks > 0, "a stain fades from dark to the wall (%d rim, %d dark)" % [rims, darks])
 	sk.sink.root.free()
+
+	# A shop's front: its fascia and awning keep above a man's head out over
+	# the pavement, and what it puts out stays within its 1.6 m along the
+	# wall and a metre and a half out from it.
+	for s in 6:
+		for kind in BuildingShops.KINDS.size():
+			var fk2 := kit()
+			fk2.rng.seed = s
+			BuildingShops.front(fk2, 6.8, kind, fk2.rng)
+			for child in fk2.sink.root.get_children():
+				var box: AABB = (child as MeshInstance3D).transform * (child as MeshInstance3D).mesh.get_aabb()
+				check(box.end.z > BuildingShops.FACE - 0.35 or box.position.y >= 1.85, "a shop's awning keeps above head height (%s)" % box)
+				check(box.position.z >= BuildingShops.FACE - 1.5 and box.end.y <= 3.1, "a shop's front keeps to its wall (%s)" % box)
+			fk2.sink.root.free()
+			var wk4 := kit()
+			wk4.rng.seed = s
+			BuildingShops.wares(wk4, kind, wk4.rng)
+			valid(wk4.sink.root, "wares %s" % BuildingShops.KINDS[kind])
+			for child in wk4.sink.root.get_children():
+				var box: AABB = (child as MeshInstance3D).transform * (child as MeshInstance3D).mesh.get_aabb()
+				check(absf(box.get_center().x) < 1.0 and box.position.z >= BuildingShops.FACE - 1.6 and box.end.z <= BuildingShops.FACE + 0.15, "%s wares keep to the shop front (%s)" % [BuildingShops.KINDS[kind], box])
+			wk4.sink.root.free()
 
 	var bake2 := Mats.Bake.new()
 	var bk2 := BuildingKit.baked(bake2)

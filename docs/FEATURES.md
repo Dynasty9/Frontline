@@ -752,7 +752,8 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   boarded across or sandbagged along the sill. Round the houses are what the people in them keep: wheelie bins at a front corner,
   pots of flowers by the door, a bicycle against a side wall, and out the back a woodpile and chopping block, a
   table and chairs (under a parasol now and then) and the odd kennel, all set dressing that a blast or a truck
-  knocks over. All of it, and the military buildings' weatherboard, sheeting, roller shutters, north
+  knocks over. The shops by the square have fronts: a fascia with the shop's name, a striped awning, and on the
+  pavement what each kind of shop puts out (a greengrocer's produce, a cafe's tables, a newsagent's paper rack). All of it, and the military buildings' weatherboard, sheeting, roller shutters, north
   lights, masts and guys, drums, crates and pallets, comes from shared building components (see
   [building-components.md](building-components.md)).
 - Walls, hedges, trees, cars and crates are all real cover. Street furniture is set dressing generated on the

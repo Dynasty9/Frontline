@@ -16,6 +16,7 @@ The collision and cover a structure gives (`Structure._define_parts`) never depe
 | `scripts/game/building_wire.gd` | `BuildingWire` | Catenary spans, cables, guys with anchors, insulators, barbed strands, wall-top wire |
 | `scripts/game/building_weathering.gd` | `BuildingWeathering` | Ivy, weeds at the foot of walls, the fallen-in roof on a ruin's floor, roof tarps and holes; stains that fade into a wall (soot, rain streaks, scorch), shell scars, bullet strikes, boarded and sandbagged windows |
 | `scripts/game/building_furnishings.gd` | `BuildingFurnishings` | Curtains, blinds, nets, window boxes, door lanterns, TV aerials; inside: linings and skirting, radiators, pictures, mirrors, clocks, shelves, rugs |
+| `scripts/game/building_shops.gd` | `BuildingShops` | Shop fronts: fascia boards with lettering, blade signs, striped awnings, and the wares a shop puts out (produce stands, cafe tables, sandwich boards, a hardware shop's stock, paper racks) |
 | `scripts/game/building_yards.gd` | `BuildingYards` | What people keep round a house: wheelie bins, a woodpile and chopping block, a garden table and chairs (a parasol over some), a kennel, a bicycle, pots of flowers |
 
 ## The kit
@@ -116,6 +117,19 @@ and shoot through) and some have sandbags laid along the sill. Soot, streaks and
 stain to exactly the tint the wall's body was drawn in (`Structure._tone`), so it fades into the wall with no
 edge; the fixture checks the rim comes back to the wall's colour. Everything stays within a hand's breadth of the
 face, so cover is unchanged.
+
+## Shop fronts
+
+The town's shops (near the square) each have a front from `BuildingShops`, decided by the kind of shop the town
+already drew for it: a greengrocer, a cafe, a baker, a hardware shop or a newsagent. A painted fascia board over
+the windows carries the shop's name in raised letters (letter shapes from a small set, so a name reads as a name
+from the street, though not in any language), and about half have a sign standing out from the wall on a bracket.
+Under the fascia a striped canvas awning on its arms, its scalloped edge no lower than 1.88 m. On the pavement,
+clear of the door, one or two lots of what the shop puts out: crates of fruit and vegetables on a stand, a table
+and chairs, a sandwich board and tubs of flowers, sacks on a pallet with gas bottles and buckets, a paper rack.
+The wares are breakable set dressing, placed from a stream of their own after every other piece of decor, so the
+town is otherwise the same. Render a parade of three with `--building-kinds=shops` in the studio stage; the town
+views include a shop front.
 
 ## Roofscapes
 

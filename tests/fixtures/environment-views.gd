@@ -59,6 +59,11 @@ func capture() -> void:
 			if size.x > 2.5 and size.z > 3.0 and town.grow(20.0).has_point(Vector2(position.x, position.z)):
 				views.append(["driveway", position, 18.0, -50.0, float(piece[2]) + PI + 0.4])
 				break
+		# a shop's front, from across the pavement
+		for piece: Array in world.decor:
+			if piece[0] == "awning" and town.has_point(Vector2(piece[1].x, piece[1].z)):
+				views.append(["shopfront", piece[1], 16.0, -32.0, float(piece[2]) + PI + 0.5])
+				break
 		print("CAPTURE town bounds=", town)
 	if "--capture-set=trenches" in OS.get_cmdline_user_args():
 		views = [["trenches", Vector3(0, 0, -28), 24.0, -48.0, 0.5]]
