@@ -4,7 +4,7 @@
   "medium": "still",
   "stage": "tools/showcase/building-surfaces.tscn",
   "rationale": "Appearance change: one matched before/after sheet (an in-town house on the same seed and camera, three buildings under the same studio camera) and one sheet of the shared parts. Raw captures, rear views and the Compatibility check stay outside Git.",
-  "source_ref": "claude/game-building-components-1389c0 (this change, uncommitted at capture)",
+  "source_ref": "4fd15eb16d9fe32e28e430a723ccec50a48d145b",
   "before_ref": "69a1df0348fb879aa98d5fbfd7f02ac31a10c6d7",
   "sources": [
     {
@@ -17,7 +17,7 @@
     },
     {
       "file": "changelog/unreleased/building-shared-construction/capture.json",
-      "sha256": "39f1b41ea7d0a9fc212758d93bc42d6ac172c5f99e2fea08d2f48bb83c81ccda"
+      "sha256": "068934e06b71c54db20cd59e934e22f1ab72fe68c629764e90453f114e73feca"
     }
   ],
   "output": null

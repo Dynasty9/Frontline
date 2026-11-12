@@ -1,6 +1,6 @@
 {
   "before_ref": "69a1df0348fb879aa98d5fbfd7f02ac31a10c6d7",
-  "source_ref": "claude/game-building-components-1389c0 (this change, uncommitted at capture)",
+  "source_ref": "4fd15eb16d9fe32e28e430a723ccec50a48d145b",
   "engine": "Godot 4.7.2 stable ed1daf0bf",
   "stage": "tools/showcase/building-surfaces.tscn",
   "command": "godot --path CHECKOUT --resolution 1600x900 tools/showcase/building-surfaces.tscn -- --building-out=OUTPUT --offscreen FLAGS",

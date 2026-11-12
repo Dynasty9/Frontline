@@ -19,7 +19,7 @@ The collision and cover a structure gives (`Structure._define_parts`) never depe
 
 A `BuildingKit` writes either **nodes** (`BuildingKit.nodes(parent, rng)`: a `MeshInstance3D` per part, merged
 with the rest of the model by `Mats.merge_static`, or kept apart when it must move, like a door leaf on its
-hinge) or straight into a **bake** (`BuildingKit.baked(bake, rng, at)`: the scenery built by the thousand,
+hinge) or straight into a **bake** (`BuildingKit.baked(bake, rng, at)`: the scenery a town has thousands of,
 whose parts never become nodes). `Structure._kit(rng)` picks the right one for the model being built (the kinds
 in `Structure.BAKED` bake), and Decor's chunks pass their own bake and holder transform.
 
