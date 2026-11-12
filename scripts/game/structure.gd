@@ -105,6 +105,7 @@ var fire_k := ""  # (server) what it burns as, once lit (Fires.FUEL)
 var fuel := 0.0  # (server) seconds of full blaze left
 var fuel_max := 0.0
 var _wreck_engine_deck := Vector3.INF
+var _wreck_reach := 1.0  # how far the soot spreads from it (see VehicleModels.spread_soot)
 var _fire_fx: Node3D  # (view) its flames, embers, smoke and glow
 var _fire_shown := -1  # (view) the burn level the effects were last set for
 var _char := 0.0  # (view) how charred it looks, 0..1
@@ -183,6 +184,8 @@ func apply_props(d: Dictionary) -> void:
 		wreck_turret_yaw = d.wreck_turret_yaw
 		wreck_finish = d.get("wreck_finish", {})
 		bent_skirts = d.get("bent_skirts", 0)
+	if d.has("wreck_finish") and _heli_wreck():
+		wreck_finish = d.wreck_finish  # (a helicopter burns out in her own paint too)
 	if d.has("door"):
 		door_shut = d.door
 	if d.has("zc"):
@@ -1355,6 +1358,7 @@ func _apply_tilt() -> void:
 	if tilt == Vector2.ZERO:
 		if skind in ["car", "crates", "wreck"]:
 			model.transform = Transform3D.IDENTITY
+		_level_debris()
 		return
 	var b := Basis.from_euler(Vector3(tilt.x, 0, tilt.y))
 	var lo := INF
@@ -1362,7 +1366,98 @@ func _apply_tilt() -> void:
 		for cy in [0.0, 1.0]:
 			for cz in [-0.5, 0.5]:
 				lo = minf(lo, (b * Vector3(cx * size.x, cy * size.y, cz * size.z)).y)
-	model.transform = Transform3D(b, Vector3(0, -lo, 0))
+	# (a crashed helicopter has dug herself into the ground a little)
+	model.transform = Transform3D(b, Vector3(0, -lo - (0.25 if _heli_wreck() else 0.0), 0))
+	_level_debris()
+
+
+## A crashed helicopter's wreck (see Vehicle._wreck_out).
+func _heli_wreck() -> bool:
+	return skind == "wreck" and Defs.VEHICLES.has(vk) and String(Defs.VEHICLES[vk].get("base", "")) in ["attack_heli", "lift_heli"]
+
+
+## The pieces strewn round a wreck lie flat on the ground, however the wreck
+## itself is lying.
+func _level_debris() -> void:
+	var d := model.get_node_or_null("Debris") as Node3D
+	if d:
+		d.transform = model.transform.affine_inverse()
+
+
+## A helicopter doesn't come down in one piece. Her blades shatter as they
+## strike the ground: stubs at the hub, others snapped part way and bent down,
+## some flung clear to lie in the grass with burnt panels torn off her. The
+## tail rotor is usually gone. Upright after a heavy landing, her undercarriage
+## has folded under her and she sits on her belly. The fire that guts her
+## blackens her from the engines under the rotor outwards, as far as the
+## cabin and the root of the tail, leaving scorched paint at the ends.
+func _break_up(wk: VehicleModels, rng: RandomNumberGenerator) -> void:
+	wk.rotor.rotation = Vector3(rng.randf_range(-0.16, 0.16), rng.randf_range(0.0, TAU), rng.randf_range(-0.16, 0.16))
+	var holders: Array[Node3D] = [wk.blades]
+	for xr: Node3D in wk.rotors:
+		xr.rotation.y = rng.randf_range(0.0, TAU)
+		var b := xr.get_node_or_null("Blades") as Node3D
+		if b:
+			holders.append(b)
+	# Rolled onto her side, the turning blades beat themselves to pieces on the
+	# ground: only stubs are left. Upright, they droop and sag to the ground.
+	var rolled := absf(tilt.y) > 0.6
+	var lost := 0
+	for holder in holders:
+		if holder == null:
+			continue
+		for c in holder.get_children():
+			var blade := c as Node3D
+			if blade == null or blade is MeshInstance3D:
+				continue
+			var fate := rng.randf()
+			if fate < (0.55 if rolled else 0.25):
+				blade.scale = Vector3(1, 1, rng.randf_range(0.1, 0.25))  # a stub at the hub
+			elif fate < (0.55 if rolled else 0.8):
+				# snapped part way along and bent down where it struck
+				blade.scale = Vector3(1, 1, rng.randf_range(0.4, 0.75))
+				blade.rotate_object_local(Vector3.RIGHT, rng.randf_range(0.35, 0.8))  # (+ about X tips the span down)
+				blade.rotate_object_local(Vector3.BACK, rng.randf_range(-0.35, 0.35))
+			else:
+				blade.visible = false  # flung clear
+				lost += 1
+	if wk.tail_rotor and rng.randf() < 0.7:
+		wk.tail_rotor.visible = false
+		lost += 1
+	if absf(tilt.y) < 0.6:
+		wk.root.position.y -= clampf(size.y * 0.22, 0.35, 0.9)
+	# where the fire starts: the engines, just under and behind the rotor head
+	var hub := Transform3D.IDENTITY
+	var n: Node3D = wk.rotor
+	while n != null and n != wk.root:
+		hub = n.transform * hub
+		n = n.get_parent() as Node3D
+	if not wreck_finish.is_empty():
+		_wreck_engine_deck = wk.root.transform * (hub.origin + Vector3(0, -0.7, 0.9))
+		_wreck_reach = clampf(size.z / 6.0, 1.0, 3.0)
+		_wreck_soot = wk.scorch_finish()
+	var debris := Node3D.new()
+	debris.name = "Debris"
+	model.add_child(debris)
+	var spread := maxf(4.0, size.z * 0.6)
+	var turn := Basis(Vector3.UP, rotation.y)
+	for i in 6 + lost:
+		# lengths of broken blade, and torn, crumpled bits of skin half sunk
+		# into the ground (one end up where they dug in)
+		var piece_of_blade := i < lost
+		var s := Vector3(rng.randf_range(0.28, 0.42), 0.05, rng.randf_range(0.8, 2.4)) if piece_of_blade \
+			else Vector3(rng.randf_range(0.3, 0.9), rng.randf_range(0.04, 0.22), rng.randf_range(0.3, 1.0))
+		var a := rng.randf() * TAU
+		var at := Vector3(cos(a), 0.0, sin(a)) * rng.randf_range(size.x * 0.9, spread)
+		at.y = world.ground_y(position + turn * at) - position.y - s.y * 0.2
+		var mi := MeshInstance3D.new()
+		mi.mesh = Res.box(s)
+		mi.position = at
+		mi.rotation = Vector3(rng.randf_range(-0.3, 0.3), rng.randf() * TAU, rng.randf_range(-0.45, 0.45))
+		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		debris.add_child(mi)
+		Mats.apply(mi, "burnt", Color(1, 1, 1))
+	_level_debris()
 
 
 ## The clients fly the model from where it was to where it is now.
@@ -1965,7 +2060,7 @@ func read_state(b: StreamPeerBuffer) -> void:
 # --- visuals -----------------------------------------------------------------------
 
 func _update_wreck_soot() -> void:
-	VehicleModels.spread_soot(_wreck_soot, model.to_global(_wreck_engine_deck), world.time - float(wreck_finish.since))
+	VehicleModels.spread_soot(_wreck_soot, model.to_global(_wreck_engine_deck), world.time - float(wreck_finish.since), _wreck_reach)
 
 
 func _process(_dt: float) -> void:
@@ -2515,7 +2610,7 @@ func _build_model() -> void:
 				model.add_child(ck.root)
 		"wreck":
 			var kind := vk if vk != "" else ("tank" if variant % 2 == 0 else "old_tank")
-			var wk := VehicleModels.build(kind, int(wreck_finish.get("team", -1)), int(wreck_finish.get("seed", eid)), wreck_finish.is_empty())
+			var wk := VehicleModels.build(kind, int(wreck_finish.get("team", -1)), int(wreck_finish.get("seed", eid)), wreck_finish.is_empty(), true)
 			model.add_child(wk.root)
 			if wk.turret and is_finite(wreck_turret_yaw):
 				wk.pose_skirts(bent_skirts)
@@ -2533,9 +2628,8 @@ func _build_model() -> void:
 				_wreck_engine_deck = wk.root.transform * wk.engine_deck
 				if not wreck_finish.is_empty():
 					_wreck_soot = wk.scorch_finish()
-			if wk.rotor:
-				# a downed helicopter's rotor stopped where it hit, bent askew
-				wk.rotor.rotation = Vector3(rng.randf_range(-0.14, 0.14), rng.randf_range(0.0, TAU), rng.randf_range(-0.14, 0.14))
+			if wk.rotor and _heli_wreck():
+				_break_up(wk, rng)
 		"tree":
 			tree_model(model, eid, variant)
 		"fob":
@@ -2888,7 +2982,8 @@ func _build_model() -> void:
 		keep.append(_mg.root)
 		for n in [_mg.root, _mg.traverse, _mg.elev, _mg.body]:
 			Mats.merge_static(n, [], false, false, true)
-	for nm in ["Site", "Done", "Damage"]:
+	# (a wreck's debris stays its own mesh: it lies level however the wreck lies)
+	for nm in ["Site", "Done", "Damage", "Debris"]:
 		var sub := model.get_node_or_null(nm) as Node3D
 		if sub:
 			keep.append(sub)

@@ -13,6 +13,7 @@ var root: Node3D
 var sling_eye := Vector3(0, 0.7, 0)  # underside of the fuselage, in model space
 var helm_seat := Vector3.INF  # hip position of the driver at an open helm
 var burnt := false
+var wreck := false  # built for a wreck: a rotor keeps every blade a part of its own, to be broken
 var surface_family := "armor"
 var turret: Node3D
 var mg_tip: Node3D  # the machine gun's muzzle (shots start here)
@@ -71,10 +72,11 @@ static func build_car(variant: int, col: Color, is_burnt := false) -> VehicleMod
 	return k
 
 
-static func build(kind: String, team: int, seed: int, is_burnt := false) -> VehicleModels:
+static func build(kind: String, team: int, seed: int, is_burnt := false, is_wreck := false) -> VehicleModels:
 	var k := VehicleModels.new()
 	k.root = Node3D.new()
 	k.burnt = is_burnt
+	k.wreck = is_wreck or is_burnt
 	k._baking = true
 	# a vehicle may share another's model (a variant), named in its definition
 	var mk := kind
@@ -137,9 +139,11 @@ func scorch_finish() -> ShaderMaterial:
 	return soot
 
 
-static func spread_soot(soot: ShaderMaterial, origin: Vector3, age: float) -> void:
+## `reach` scales how far it spreads (a burning helicopter blackens more of
+## herself than a tank's engine fire does).
+static func spread_soot(soot: ShaderMaterial, origin: Vector3, age: float, reach := 1.0) -> void:
 	soot.set_shader_parameter("source_world", origin)
-	soot.set_shader_parameter("extent", 0.46 + 2.1 * (1.0 - exp(-maxf(0.0, age) * 0.64)))
+	soot.set_shader_parameter("extent", (0.46 + 2.1 * (1.0 - exp(-maxf(0.0, age) * 0.64))) * reach)
 
 
 func make_impact_plate(side: float, layers := 2) -> ImpactPlate:

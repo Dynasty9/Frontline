@@ -1085,8 +1085,10 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   gone (or too low to settle) she winds up into a spin against the rotor's torque and corkscrews in, still carrying
   her speed; with only the engines gone she autorotates, gliding steeply nose-down and flaring into a heavy landing.
   Where she hits, her fuel goes up (blast damage, a crater and fire, credited to whoever shot her down), how hard
-  she hit decides who aboard walks away, and the burnt-out helicopter lies there, on her side after a spin-in. Over
-  deep water she ditches and sinks. The kill, its stats and the messages count at the moment she's hit.
+  she hit decides who aboard walks away, and the burnt-out helicopter lies there in her own paint, blackening from
+  the engines outwards: rolled on her side with her nose dug in after a spin-in, slumped on her belly after a heavy
+  landing. Her blades are broken (stubs at the hub, snapped and bent into the ground, some flung clear), the tail
+  rotor is usually gone, and broken blade and torn panels lie strewn round her. Over deep water she ditches and sinks. The kill, its stats and the messages count at the moment she's hit.
 - **Boarding:** select infantry and right-click your truck, APC, Slammer or a landed helicopter: they climb in
   (as many as fit) and ride until they dismount or it arrives.
 - Tanks smash through walls, trees and cars. Small arms ricochet off them. Frontal rockets can bounce,
