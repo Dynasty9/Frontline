@@ -1415,12 +1415,13 @@ func _apply_haze(distance: float) -> void:
 	env.fog_height_density = 0.0
 	if bool(Settings.get_v("alpine_haze")) and world != null and world.terrain and world.terrain.landform.peak > 1.0:
 		var downward := absf(sin(world.cam.rotation.x)) if world.cam else 0.0
-		k = maxf(k, 0.45 * pow(1.0 - downward, 2.0))
+		k = maxf(k, 0.3 * pow(1.0 - downward, 2.0))
 		# Sky tint separates distant ranges; keep the low valley veil out of the overhead view.
-		env.fog_aerial_perspective = 0.38 * (1.0 - downward)
-		terrain_air = float(_d.fog_d) * 0.48 * pow(1.0 - downward, 2.0)
+		# (light enough that the far crags, snow and woods keep their detail)
+		env.fog_aerial_perspective = 0.26 * (1.0 - downward)
+		terrain_air = float(_d.fog_d) * 0.3 * pow(1.0 - downward, 2.0)
 		env.fog_height = 18.0
-		env.fog_height_density = 0.0012 * pow(1.0 - downward, 2.0)
+		env.fog_height_density = 0.0008 * pow(1.0 - downward, 2.0)
 	if ground_mat:
 		ground_mat.set_shader_parameter("terrain_air", terrain_air)
 		if forest:
@@ -2235,7 +2236,9 @@ void fragment() {
 	// Shoulders and aprons below the crags: grazed grass broken by stones (the drone
 	// survey), so pasture turns to rock through stony ground rather than at a line.
 	// The slope over twenty metres: ledges and benches on a crag read as part of it.
-	float wide = length(vec2(dfm(p + vec2(10.0, 0.0)) - dfm(p - vec2(10.0, 0.0)), dfm(p + vec2(0.0, 10.0)) - dfm(p - vec2(0.0, 10.0)))) / 20.0;
+	// (the distant ranges' faces are read over forty, their mesh being coarser)
+	float wide_step = edge >= __MAP_HALF__ ? 40.0 : 10.0;
+	float wide = length(vec2(dfm(p + vec2(wide_step, 0.0)) - dfm(p - vec2(wide_step, 0.0)), dfm(p + vec2(0.0, wide_step)) - dfm(p - vec2(0.0, wide_step)))) / (2.0 * wide_step);
 	// Ledges among the crags hold only thin turf between stones, not lush lawn.
 	float ledge = smoothstep(0.35, 0.75, wide) * smoothstep(8.0, 20.0, geology);
 	float stony = max(smoothstep(0.04, 0.35, cover), ledge) * (1.0 - exposed);
