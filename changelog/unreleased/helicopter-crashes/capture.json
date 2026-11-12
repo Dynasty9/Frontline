@@ -1,0 +1,26 @@
+{
+  "source_ref": "479ac865",
+  "before_ref": "69a1df03, with the stage (tests/fixtures/helicopter-world-clips.gd/.tscn as in 479ac865) copied in and World.build's Main lookup made optional; no game code changed",
+  "stage": "helicopters-crash (tools/showcase/stages.json): tests/fixtures/helicopter-world-clips.tscn",
+  "scenario": "showroom",
+  "seed": 712,
+  "mood": "day",
+  "preset": "high (depth of field off)",
+  "engine": "4.7.2",
+  "renderer": "forward_plus",
+  "resolution": "1280x720 per build; rows 0-500 kept and the two stacked to 1280x1000",
+  "fps": 30,
+  "frames": 300,
+  "seconds": 10,
+  "audio": "silent",
+  "action": "Two UH-80 Ghost Hawks at 16 m and 15 m/s cross the view; at 2.5 s the stage bursts a small HE effect on each and destroys it (take_damage 3x max hp). On this build the near one is set to spin in and the far one to autorotate (crash_mode_next); the before build has no such modes.",
+  "camera": {
+    "from_first_pad": "103,10,33",
+    "look_at_from_first_pad": "27,7,-32",
+    "fov_degrees": 40
+  },
+  "command": "godot --path . --fixed-fps 30 --audio-driver Dummy --position -10000,-10000 --resolution 1280x720 res://tests/fixtures/helicopter-world-clips.tscn -- --clip=helicopters-crash --label=BEFORE|AFTER --frames=DIR",
+  "encode": "PNG frames stacked with Pillow and piped as JPEG (quality 95) into ffmpeg n7.0.1 (Playwright build): libvpx-vp9 constrained quality, crf 36, 1300 kbit/s, keyframe every 60 frames; poster is frame 108 (3.6 s)",
+  "result": "Before: both vanish at 2.5 s, smoke puffs in the air and rubble fires directly below. After: both fall burning, the near one spinning, the far one gliding, and hit about 3 to 4 s later further along their paths, leaving burning wrecks.",
+  "note": "Recorded on 479ac865, the commit pushed to the helicopter flight branch just after PR Dynasty9/Frontline#169 merged. The same change was replayed onto main as c0ee984b for its own pull request; main's newer lighting (#171) is not in this clip."
+}

@@ -85,7 +85,7 @@ Ultra with all of the cinematic lighting on top) and every option on its own, la
   flares, rain and thunder; applies live), colour grading (natural, cinematic, vivid, warm film, cold steel,
   bleached war film, black & white), tonemapper (AgX / ACES / Filmic / Reinhard), brightness, contrast, bloom,
   film grain, tilt-shift depth of field; and the camera and lens: lens flare and glare, sun shafts, local exposure,
-  eye adaptation and the film look (`cinematic_fx.gd`, compute passes on the HDR scene; Forward+ only).
+  eye adaptation, the film look and heat haze (`cinematic_fx.gd`, compute passes on the HDR scene; Forward+ only).
 - **Display:** window mode (windowed / borderless / exclusive fullscreen), window size (applied at launch; a
   size too big for the screen maximises the window instead; test runs keep the project's window or the size
   `--resolution` asks for), VSync, frame-rate cap, field of view, performance overlay.
@@ -272,6 +272,11 @@ Scenarios, AI-vs-AI battles and missions run offline: they take no port, so any 
 --perf-at=480 [--perf-shot=path.png]                  fast-forward, then measure real FPS and server tick cost
 --screenshot=out.png --shot-at=30 --focus=X,Z --zoom=40 [--shots=N --shot-every=0.5]
 --mood=golden --perf=3 --preset=ultra                 lighting, overlay level and graphics preset for screenshots
+--photo-at=S [--photo=fov:30,blur:0.5,mood:dusk,...]   open photo mode S seconds in, with those values (any of its panel's,
+  [--photo-wait=3 --photo-shot=out.png --photo-capture] plus pos:x:y:z, yaw:deg, pitch:deg, or aim:D:H: D metres back
+  [--photo-quit]                                      from the view's focus and H up, looking at it); the battle holds, so
+                                                      the wait is real seconds: then save the screen as it is (panel and
+                                                      all), take a picture (user://screenshots), and quit
 --fx-demo=1.4 --fx-every=3                            set off explosions near the camera (visual test, no damage)
 --shot-demo[=rifle|mg|hmg|...] [--shot-demo-every=1.5] [--shot-demo-cannon]
                                                       rounds fired at earth, stone, sandbags, wood, leaves, steel and a man
@@ -281,6 +286,9 @@ Scenarios, AI-vs-AI battles and missions run offline: they take no port, so any 
 --cursor=0.5,0.4 --order-mode=defend --select-all     fake the mouse position / order mode (cover preview shots)
   --place=trench [--place-from=X,Z]                   with --cursor: show the placement ghost (or a dragged line)
 --scenario=... --play                                 command the Coalition side of a scenario instead of watching
+--delegate=KIND,X,Z[,FX,FZ] | KIND,here               hand all your units to the XO with an intent (at --delegate-at=S, 2 by default)
+--card-page=intent                                    open that page of the command card (Delegate shots)
+--aivai --play --ai-allies                           an AI commander fights beside you on your side
 --focus-fob=0|1                                       keep the camera on that side's first FOB
 --focus-town[=dx,dz] / --focus-decor=kind[,n]         camera on the town, or on a piece of street furniture
 --focus-vehicle=kind                                  camera on the first vehicle of a kind (--blast-at=f,0,SIZE,T blows it up)
@@ -323,6 +331,7 @@ Scenarios, AI-vs-AI battles and missions run offline: they take no port, so any 
 FL_DEBUG_WORKS=1 (env)                                with --scenario=cache: who's under the net and seen, who's filled up
 --scenario=roster                                     every vehicle both sides can field, facing off across the map
 --scenario=sling                                      a Mohawk carries a Humvee and a Taru a BTR on their slings
+--scenario=mounted                                    two halted IFVs drop only some of their men (Vehicle.dismount's n and squad)
 --scenario=naval                                      boats on the sea: an RHIB lands a squad under a patrol ship's guns, Rebel boats come out to fight
 FL_DEBUG_BOAT=1 (env)                                 every 2 s, each boat under way: where, heading, speed, how far down its route; and each grounding
 --scenario=tactics                                    a rifle squad and an MG team sent 120 m up to hold a hamlet with the
@@ -372,9 +381,11 @@ FL_DEBUG_TOWNS=1 (env)                                print each town and villag
 FL_DEBUG_ECON=1 (env)                                 print every supply truck HQ sends (its road's length, its load) and every load delivered
 FL_DEBUG_HPA=1 (env)                                  benchmark hierarchical vs flat paths at start-up
 FL_DEBUG_DECOR=1 (env)                                print the street-furniture chunk and mesh counts
-FL_DEBUG_CINE=1 (env)                                 say once that the cinematic lighting passes run, and which (windowed)
+FL_DEBUG_CINE=1 (env)                                 say once that the cinematic lighting passes run, and which (windowed);
+                                                      every 5 s, how many heat sources the heat haze has in view
 FL_DEBUG_CINE_VIEW=N (env)                            show one cinematic buffer instead of the scene: 1 sun shafts, 2 lens flare
-                                                      and glare, 3 local exposure (red lifted, blue tamed), 4 the bright pass
+                                                      and glare, 3 local exposure (red lifted, blue tamed), 4 the bright pass,
+                                                      5 the heat haze (blue the hot air, red and green how far it bends)
 FL_DEBUG_WILDLIFE=1 (env)                             every 5 s: the wildlife's cost, how many of each are drawn, what took
                                                       fright at what, and where one of each is (the first time, the water too)
 FL_WILDLIFE_FOLLOW=KIND (env)                         the camera keeps on one animal (birds, ducks, soarer, bat, rat, hare, fish,
@@ -437,10 +448,11 @@ run side by side too (determinism.test.mjs: the full-map battle, the longest tes
 | command | fields | answers |
 | --- | --- | --- |
 | `hello` | | `version`, `net` (NET_VERSION), `tps`, `headless` |
-| `load` | one of `scenario`, `mission`, `battle: true` (AI vs AI); `seed`, `play`, `autoplay`, `static`, `verbose` | `t` (0), `seed`, and how many `soldiers`, `vehicles`, `structures`, `squads`; a fresh battle each time |
+| `load` | one of `scenario`, `mission`, `battle: true` (AI vs AI); `seed`, `play`, `ai_allies` (with `play`: an AI commander on your side too), `autoplay`, `static`, `verbose` | `t` (0), `seed`, and how many `soldiers`, `vehicles`, `structures`, `squads`; a fresh battle each time |
 | `step` | `seconds`, or `ticks` | `t`, `ticks` run, `winner` (-1 while it goes on) |
 | `order` | `team` (0 or 1: that side's AI, which owns a scenario's squads too) or `peer` (1: you, loaded with `play`); `t` and the order's fields as `World.execute_cmd` takes them, positions as `{"v3": [x, z]}` | `squads`, `vehicles`: how many of those listed the order reached |
 | `query` | `what`: `world`, `squads`, `soldiers`, `vehicles`, `structures`; `team`, `kind`, `ids` | the list (positions as `[x, z]`; a vehicle's `yaw`, `speed` along its heading and `vel` over the ground too); structures leave out trees and floors unless asked for by `kind` |
+| `ping` | `peer` (1: you), `kind` (`attack`, `defend`, `help`...), `pos` | a co-commander's ping as the host receives it (an AI ally answers some) |
 | `stats` | | `counters` (every `world.stat`), `report` (the after-action summary) |
 | `hash` | | `hash`: a fingerprint of the whole simulation; two runs from one seed agree on it tick for tick |
 | `errors` | | `count` and the `recent` script errors |
@@ -789,7 +801,9 @@ with a display. Fog-of-war sight and server enemy filtering are deliberately unc
 
 ### Off-screen screenshots
 
-`--screenshot=FILE.png --shot-at=SECONDS` (with `--shots=N --shot-every=S` for a series) saves frames and quits. Frame the shot with `--focus=X,Z --zoom=M --pitch=DEG --cam-yaw=RAD`, and hide the interface with `--nohud`. `--manual=category,key,side` opens a Field Manual page.
+`--screenshot=FILE.png --shot-at=SECONDS` (with `--shots=N --shot-every=S` for a series) saves frames and quits. Frame the shot with `--focus=X,Z --zoom=M --pitch=DEG --cam-yaw=RAD`, and hide the interface with `--nohud`. `--manual=category,key,side` opens a Field Manual page. Photo mode's own
+picture (supersampled, the panel left out) comes from `--photo-at=S --photo-capture --photo-quit`; it lands in the
+real `user://screenshots/`, so move it out after.
 
 The menu and the title are screenshot with `--menu-shot=FILE.png`. The boot splash is the title's first frame,
 so remake it whenever the title or the map shader changes, so that the splash hands over to the title without a

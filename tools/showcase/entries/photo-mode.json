@@ -1,0 +1,19 @@
+{
+  "entry": "changelog/unreleased/photo-mode.md",
+  "summary": "Photo mode holds a solo battle or replay, frees the camera and saves a supersampled picture with lens, light and film controls.",
+  "medium": "still",
+  "stage": "game capture: --mission=beachhead --timescale=4 --perf=0 --photo-at=45 --photo=pos:362.0:3.5:4.2,yaw:58.5,pitch:-5.2,focus:22,blur:0.45,vignette:0.35,grain:0.03,lens:on,shafts:on,film:on,heat_haze:on --photo-shot=panel.png --photo-capture --photo-quit (1600x900, Forward+, off-screen, --fixed-fps 30)",
+  "rationale": "A new screen and what it makes: one still of the panel over the held battle, and the picture it saved from the same moment (panel left out, 2x supersampled). Movement of the free camera needs no clip to be understood.",
+  "source_ref": "6ea80f66 + working tree",
+  "sources": [
+    {
+      "file": "changelog/unreleased/photo-mode/panel.jpg",
+      "sha256": "714712982ff231e9912c0dd64f93aaaadbf153692edc240386e8688c85228000"
+    },
+    {
+      "file": "changelog/unreleased/photo-mode/picture.jpg",
+      "sha256": "891b0a483e8030a7849a10b49c3a168468141c887797467ba0b816cc775dfb39"
+    }
+  ],
+  "output": null
+}

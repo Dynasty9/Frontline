@@ -187,6 +187,7 @@ func _ready() -> void:
 	probe.main = self
 	add_child(probe)
 	var overlay: CanvasLayer = preload("res://scripts/ui/perf_overlay.gd").new()
+	overlay.name = "PerfOverlay"  # (photo mode puts it away while it's on)
 	overlay.probe = probe
 	add_child(overlay)
 	console = Console.new()
@@ -362,6 +363,8 @@ func start_local(a: Dictionary) -> void:
 		"gdscript_perception": a.has("gdscript-perception")})
 	Net.set_setting("verbose", a.has("verbose"))
 	Net.set_setting("debug_trucks", a.has("debug-trucks"))
+	# --ai-allies: with --play, an AI commander fights beside you on your side
+	Net.set_setting("ai_allies", a.has("ai-allies"))
 	if a.has("scenario"):
 		# --play: command the Coalition side yourself instead of watching
 		Net.set_setting("scenario", String(a.scenario))
@@ -1303,13 +1306,75 @@ func _process(_dt: float) -> void:
 				world.set_meta("fob_focused", true)
 				break
 	# --select-first: just the first of your squads (squad card tests); --tactical: the map view
-	if args.has("select-first") and world.input and world.time > 1.0 and world.input.sel_squads.is_empty():
-		for s in world.soldiers:
-			if s.owner_peer == world.local_peer and s.sid != 0:
-				world.input.sel_squads.append(s.sid)
-				break
+	# (--select-first=veh: your first vehicle, veh1 the second; --standing=roe:2,stance:1 then gives
+	# what's selected those standing orders: command card shots)
+	if args.has("select-first") and world.input and world.time > 1.0 and world.input.sel_squads.is_empty() and world.input.sel_vehicles.is_empty():
+		if String(args["select-first"]).begins_with("veh"):
+			var skip := int(String(args["select-first"]).trim_prefix("veh"))  # (veh1: the second)
+			for v in world.vehicles:
+				if v.owner_peer == world.local_peer and not v.gone:
+					skip -= 1
+					if skip < 0:
+						world.input.sel_vehicles.append(v.eid)
+						break
+		else:
+			for s in world.soldiers:
+				if s.owner_peer == world.local_peer and s.sid != 0:
+					world.input.sel_squads.append(s.sid)
+					break
+		if args.has("standing") and world.input.has_units():
+			for kv in String(args["standing"]).split(","):
+				world.input.set_standing(kv.get_slice(":", 0), int(kv.get_slice(":", 1)))
 	if args.has("nohud") and world.hud and world.hud.root.visible:
 		world.hud.root.visible = false
+	# --photo-at=S: photo mode opens S seconds into the battle, its values set from
+	# --photo=key:value,... (fov:30,mood:dusk,blur:0.6,pos:x:y:z,yaw:deg,pitch:deg). The battle
+	# is held from then on, so the rest counts real seconds: after --photo-wait (3)
+	# --photo-shot=PATH saves the screen as it is (the panel and all) and --photo-capture
+	# takes a picture; --photo-quit ends the run once they're done.
+	if args.has("photo-at") and world.get("photo") and not has_meta("photo_on") and not world.client_loading() and view_time >= float(args["photo-at"]):
+		set_meta("photo_on", Time.get_ticks_msec())
+		if world.photo.enter():
+			for kv in String(args.get("photo", "")).split(",", false):
+				var pv := kv.split(":", true, 1)
+				if pv.size() == 2 and pv[0] == "pos":
+					var xyz := pv[1].split(":")
+					world.photo.pos = Vector3(float(xyz[0]), float(xyz[1]), float(xyz[2]))
+				elif pv.size() == 2 and pv[0] in ["yaw", "pitch"]:
+					world.photo.set(pv[0], deg_to_rad(float(pv[1])))
+				elif pv.size() == 2 and pv[0] == "aim":
+					# aim:D:H - D metres back from where the view was looking, H over the ground, looking at it
+					var dh := pv[1].split(":")
+					var at: Vector3 = world.cam.focus_pos
+					at.y = world.ground_y(at) + 1.5
+					var from: Vector3 = at + Vector3(sin(world.cam.yaw), 0.0, cos(world.cam.yaw)) * float(dh[0])
+					from.y = world.ground_y(from) + float(dh[1])
+					var look: Vector3 = (at - from).normalized()
+					world.photo.pos = from
+					world.photo.yaw = atan2(-look.x, -look.z)
+					world.photo.pitch = asin(look.y)
+					world.photo.set_value("focus", from.distance_to(at))
+				elif pv.size() == 2:
+					world.photo.set_value(pv[0], pv[1])
+			world.photo.captured.connect(func(path: String, where: String):
+				print("PHOTO saved %s %s (%s)" % [path, str(world.photo.last_size), where])
+				set_meta("photo_saved", true))
+			print("PHOTO open t=%.2f held=%s pos:%.1f:%.1f:%.1f,yaw:%.1f,pitch:%.1f" % [world.time, world.photo.held, world.photo.pos.x, world.photo.pos.y,
+				world.photo.pos.z, rad_to_deg(world.photo.yaw), rad_to_deg(world.photo.pitch)])
+		else:
+			print("PHOTO couldn't open photo mode")
+	if has_meta("photo_on") and not has_meta("photo_done") and Time.get_ticks_msec() - int(get_meta("photo_on")) >= float(args.get("photo-wait", 3.0)) * 1000.0:
+		set_meta("photo_done", true)
+		print("PHOTO t=%.2f time_scale=%.2f" % [world.time, Engine.time_scale])
+		if args.has("photo-shot"):
+			get_viewport().get_texture().get_image().save_png(String(args["photo-shot"]))
+			print("PHOTO screen saved ", args["photo-shot"])
+		if args.has("photo-capture"):
+			world.photo.capture()
+		else:
+			set_meta("photo_saved", true)
+	if args.has("photo-quit") and has_meta("photo_saved"):
+		TestRun.quit(get_tree())
 	if args.has("tactical") and world.hud and not world.hud.tactical and not has_meta("tac"):
 		set_meta("tac", true)
 		world.hud.toggle_tactical()
@@ -1337,6 +1402,30 @@ func _process(_dt: float) -> void:
 		for v in world.vehicles:
 			if v.owner_peer == world.local_peer and not v.eid in world.input.sel_vehicles:
 				world.input.sel_vehicles.append(v.eid)
+	# --delegate=KIND,X,Z[,FX,FZ] or KIND,here (at --delegate-at=SECONDS, 2 by default): hand
+	# all your squads and vehicles to the XO with that intent, the way the
+	# Delegate page does (command-by-intent shots); --card-page=intent opens
+	# that page of the orders
+	if args.has("delegate") and world.time >= float(args.get("delegate-at", 2.0)) and not has_meta("delegated"):
+		set_meta("delegated", true)
+		var dp := String(args["delegate"]).split(",")
+		var dsq := []
+		var dvs := []
+		var here := Vector3.ZERO
+		for s in world.soldiers:
+			if s.owner_peer == world.local_peer and s.sid != 0 and not s.sid in dsq:
+				dsq.append(s.sid)
+				here = s.position
+		for v in world.vehicles:
+			if v.owner_peer == world.local_peer and not v.is_auto():
+				dvs.append(v.eid)
+		var dface := Vector3(float(dp[3]), 0, float(dp[4])) if dp.size() > 4 else Vector3.ZERO
+		var dpos := here if dp.size() < 3 else Vector3(float(dp[1]), 0, float(dp[2]))
+		print("DELEGATE %s %d squads %d vehicles at %s" % [dp[0], dsq.size(), dvs.size(), dpos])
+		world.send_cmd({"t": "delegate", "intent": dp[0], "squads": dsq, "vehicles": dvs, "pos": dpos, "face": dface})
+	if args.has("card-page") and world.hud and world.time > float(args.get("shot-at", 8.0)) - 1.0 and not has_meta("card_page"):
+		set_meta("card_page", true)
+		world.hud._card_page = String(args["card-page"])
 	# --report-at=SECONDS: ask the host for the battle statistics then (a client's view of them)
 	if args.has("report-at") and not has_meta("report_asked") and world.time >= float(args["report-at"]):
 		set_meta("report_asked", true)

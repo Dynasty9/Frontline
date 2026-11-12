@@ -1428,5 +1428,6 @@ func team_summary() -> Array:
 				var to: String = tn.supply_parent.sname if tn.supply_parent and not tn.supply_parent.gone else ""
 				tl.append([tn.eid, tn.sname, int(tn.supply), tn.supply_status, int(round(tn.town_rate())), to])
 		out.append({"supply": sup, "units": used(t), "cap": cap(t), "fobs": fl, "up": upgrades[t].keys(), "sup": (support_ready[t] as Dictionary).duplicate(), "sq": sq, "intel": il,
-			"marks": (marks[t] as Array).duplicate(), "towns": tl, "inc": income(t)})
+			"marks": (marks[t] as Array).duplicate(), "towns": tl, "inc": income(t),
+			"dg": world.delegation.summary(t) if world.delegation else []})
 	return out
