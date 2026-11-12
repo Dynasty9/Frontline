@@ -537,7 +537,10 @@ func _make(h: Node3D, kind: String, ex) -> void:
 			_m(Res.box(Vector3(0.26, 0.24, 0.42)), "paint", Vector3(0, 1.1, 0), [Color(0.2, 0.35, 0.25), Color(0.6, 0.15, 0.12), Color(0.15, 0.25, 0.45), Color(0.12, 0.12, 0.12)][rng.randi() % 4], Vector3.ZERO, false)
 		"soft":
 			var s2: Vector3 = ex
-			_m(Res.box(Vector3(s2.x, 0.04, s2.z)), "rubber", Vector3(0, 0.02, 0), Color(0.42, 0.2, 0.16), Vector3.ZERO, false)
+			# poured rubber crumb, in the colours councils buy it in (chosen
+			# from the lot's size, so the rest of the street's look is untouched)
+			var pour: Color = [Color(0.4, 0.19, 0.14), Color(0.4, 0.19, 0.14), Color(0.19, 0.27, 0.18), Color(0.17, 0.23, 0.3)][absi(roundi(s2.x * 10.0 + s2.z * 7.0)) & 3]
+			_m(Res.box(Vector3(s2.x, 0.04, s2.z)), "rubber_crumb", Vector3(0, 0.02, 0), pour, Vector3.ZERO, false)
 		"swing":
 			var c1: Color = PAINT[rng.randi() % PAINT.size()]
 			for x in [-1.7, 1.7]:

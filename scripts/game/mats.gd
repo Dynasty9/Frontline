@@ -29,6 +29,7 @@ const PAVEMENT := 19
 const TURF := 20
 const WEATHERED_PHOTO := 21
 const ROAD_PAINT := 22
+const RUBBER_CRUMB := 23
 const PHOTO_MEAN := preload("res://assets/town/material_means.tres")
 
 # One world-space surface keeps junction overlays continuous with street ribbons.
@@ -889,6 +890,9 @@ static func _preset(kind: String) -> Dictionary:
 			return {"pattern": PLAIN, "col_a": Color(0.55, 0.55, 0.55), "rough": 0.85, "bump": 0.2, "grime": 0.3}
 		"plain_dark":
 			return {"pattern": PLAIN, "col_a": Color(0.18, 0.18, 0.18), "rough": 0.8, "bump": 0.2, "grime": 0.2}
+		"rubber_crumb":
+			# Playground safety surface; decor picks the colour of the pour.
+			return {"pattern": RUBBER_CRUMB, "col_a": Color(0.45, 0.2, 0.15), "col_b": Color(0.7, 0.55, 0.45), "rough": 0.92, "bump": 0.6, "grime": 0.0, "scale": 1.0}
 		"rubber":
 			return {"pattern": PLAIN, "col_a": Color(0.07, 0.07, 0.07), "rough": 0.85, "bump": 0.3, "grime": 0.4}
 		"glass":
@@ -1131,6 +1135,22 @@ void fragment() {
 	} else if (pattern == 18) {
 		col = street_surface(photo_color, noise_tex, wpos.xz, street_tar);
 		h = 0.5;
+	} else if (pattern == 23) {
+		// Poured rubber crumb under the swings: granules a few millimetres
+		// across, flecked paler, laid in one pour. The sun fades it in broad
+		// patches and feet pack it dark and smooth where they land. The grain
+		// is far finer than a pixel at any distance but the closest, so it
+		// fades to its average tone rather than shimmer.
+		float grain = mix(0.5, tnoise(uv * 140.0), keep(0.007, px));
+		float fleck = step(0.74, tnoise(uv * 95.0 + 7.3)) * keep(0.01, px);
+		col = col_a * (0.82 + 0.36 * grain);
+		col = mix(col, col_b, fleck * 0.55);
+		float faded = smoothstep(0.4, 0.75, tfbm(uv * 0.35 + off));
+		col = mix(col, col * 1.12 + vec3(0.015), faded * 0.5);
+		float trodden = smoothstep(0.55, 0.78, tfbm(uv * 0.6 + 11.0));
+		col *= 1.0 - trodden * 0.22;
+		r = mix(rough, rough - 0.2, trodden);
+		h = grain;
 	} else if (pattern == 22) {
 		// Road paint is a thin film laid on the asphalt: it takes the stone's
 		// grain, and tyres wear it through to the road beneath, most where they
@@ -1462,7 +1482,7 @@ void fragment() {
 	float macro = tfbm(weather_pos.xz * 0.11 + weather_pos.y * 0.07 + off * 0.2);
 	if (vehicle_surface) { col *= 0.96 + 0.08 * macro; }
 	else if (pattern == 21) { col *= mix(1.0, 0.88 + 0.24 * macro, weathering); }
-	else if (pattern != 18 && pattern != 22) { col *= 0.88 + 0.24 * macro; }
+	else if (pattern != 18 && pattern != 22 && pattern != 23) { col *= 0.88 + 0.24 * macro; }
 	// grime and dust toward the ground
 	float low = 1.0 - smoothstep(0.0, 0.9, weather_pos.y - ground_y);
 	float gn = tnoise(uv * 2.0 + off);
