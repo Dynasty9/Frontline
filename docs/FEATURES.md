@@ -16,13 +16,14 @@ These are the default keys. **Settings â†’ Controls** (`scripts/autoload/ke
 changes any of them:
 
 - **By category:** camera, saved views, orders, abilities and fire support, building, control groups,
-  co-commanders, interface, observer, with the mouse's own controls listed at the end for reference.
+  co-commanders, interface, photo mode, observer, with the mouse's own controls listed at the end for reference.
 - **Two keys per action.** A key can be a combination with Ctrl, Shift or Alt, a modifier on its own (Pan
   faster is Shift), or a mouse side button.
 - **Rebinding:** click a key and press the new one. Esc cancels, right-click clears.
 - **Clashes.** A key another action already has is moved off it, with a line saying so and an Undo. Keys only
   clash where both could be live at once: the turn-the-building key while placing doesn't clash with retreat,
-  and observer keys don't clash with orders.
+  and observer keys don't clash with orders. Photo mode's keys are live only while it's on, so they clash only
+  with each other and the interface's keys.
 - **Matching.** The closest match wins: an exact combination first, then a key with extra modifiers held, so
   Shift + R still retreats while Ctrl + F follows rather than calling a fire mission.
 - **Finding and resetting:** search by action or key, reset one action or everything (a second click
@@ -43,12 +44,15 @@ changes any of them:
 | Groups | Ctrl+1..9 set, 1..9 recall (double-tap to jump there) |
 | Orders | Right-click: move (Shift = fast run; **drag** to set which way they face), attack enemy, build/repair your structure, enter tunnel / MG nest / watchtower. The **cover pips** under the cursor show where each man will end up: green hard cover, lime medium, yellow soft (hides, doesn't stop bullets), grey dot none, red caught in the open; a tick on a pip points the way he'll fire over the barrier, and the label says how (prone, kneeling, standing, round the edges) |
 | High-level | **X attack-move** (or Ctrl+right-click): the squad bounds forward by fire teams, cover to cover, fights whatever it meets, then digs in at the objective. **B defend**: click the area (drag to face) and the squad spreads into the best cover there and holds. **R retreat** to the nearest FOB (routes around known enemy fire, suppression halved). **H hold** |
+| Delegate | **I** opens the intents on the command card: pick **Hold sector**, **Take objective**, **Screen**, **Reserve** or **Ambush**, then click the place (drag toward the enemy to set the front) and the XO carries it out. **Shift+I** takes the selection back; so does any order of your own to one of them. Each intent can have a key of its own (Settings > Controls, unbound to begin with) |
 | One soldier | With a single man picked out: right-click to move him into the best cover at that spot, right-click an enemy to engage, a nest or mortar pit to man it; G / T throw, H hold, R fall back. Any squad order brings him back into the squad |
+| Standing orders | **K stance** (auto, prone, crouch, stand) and **J fire discipline** (fire at will, return fire, hold fire) for squads or one picked-out soldier; for vehicles J and **N target priority** (auto, armour, infantry), **T smoke** (vehicles alone selected), **U dismount**. The command card shows each order in force and drops half the men aboard, or one squad of several |
 | Squad | G grenade, T smoke, F mortar fire mission (mortar teams) |
 | Build | Select infantry, click a building in the command card, left-click to place (R turns 90 degrees, Shift+wheel or Shift + two fingers 45). Everything snaps to a 1 m build grid, shown round the cursor while you place. **Click and drag** to lay a whole line of trenches, sandbags, wire, walls or tank traps (lines run at 45 degree headings) |
 | Defenses | Emplacements are crewed by any idle soldier standing next to them. Right-click a bunker with a squad to garrison it. Select a mortar pit for HE / smoke fire missions |
 | Support | The buttons above the minimap (Z arms the first one ready): press on the target, **drag** to set the run-in direction for gun runs, bombing runs and recon passes, then release to call it in. A click keeps the default approach; mortars, artillery and orbiting support target an area without a direction |
 | Observer | C director camera, V whose eyes to watch through, P pause, [ ] speed, F2 hide the interface. **Fire support** (observer bar) launches any air or artillery support anywhere to watch it |
+| Photo mode | **F9** opens and closes it (Esc closes it too). WASD fly the way the lens looks (Shift faster, Ctrl slower), E / Q up and down, Z / C roll (Backspace levels it), hold a mouse button and drag to look, the wheel zooms, Space takes the picture, F2 hides the panel |
 | Command view | Tab tactical map (**hold Tab**: battle statistics), O order of battle (click a unit to select it and look at it, double-click to zoom in), the buttons beside the minimap turn map layers on and off (unit symbols, orders and attack plans, intelligence, fog of war, weapon ranges, soldier labels) |
 | Other | Home cycles FOBs, Space jumps to the last alert or ping (both glide there), Enter chats (Shift+Enter: team), L message history, F1 help, F3 performance overlay, **F4 field manual**, **` (or ~) the console**, Esc menu |
 
@@ -58,6 +62,40 @@ changes any of them:
 between the hottest fighting and follows individual soldiers (the caption at the bottom says who and what
 they're doing). The observer bar at the top has pause, speed (0.25x to 4x), director on/off and
 "View": both sides, or one side's fog of war. Move the camera yourself and the director lets go; press **C** to hand it back.
+
+## Photo mode
+
+**F9** (Settings > Controls) opens photo mode in any battle, a replay or while spectating (`scripts/game/photo_mode.gd`,
+its panel `scripts/ui/photo_panel.gd`):
+
+- **The action holds still** in a solo battle or offline, the way the pause key holds it (the director's speed,
+  which a solo battle's private host follows too), and in a replay by the replay's own speed. In multiplayer it
+  never stops the battle: a host with anyone else in it, even a player still loading, plays on, and so does a
+  client. Only the camera comes off.
+- **The interface goes:** the HUD, the replay's controls and the performance overlay, and with them what marks
+  the selection and a building being placed. The fog of war's shading on the ground can go too (only the
+  drawing: who sees what is the host's, as ever).
+- **A free camera** replaces the commander's orbit: WASD (the pan keys) fly the way the lens looks, the rise and
+  sink keys straight up and down, easing in and out and faster the higher it is; holding a mouse button and
+  dragging looks round, the wheel zooms. It stays between 0.6 m and 260 m over the ground and 120 m inside the
+  map's edge, looks no more than 85 degrees up or down, and rolls up to 45 degrees either way.
+- **The panel** (Signal, a sheet at the right edge; F2 hides it): field of view (15 to 90 degrees), focus (0.5 to
+  600 m, on a logarithmic bar) and blur, real depth of field from the scene's `CameraAttributesPractical` with
+  a round, high-quality bokeh while it's on; exposure in stops over the time of day's own; the time of day
+  (`Atmosphere.apply_mood`); the colour grade with its contrast and saturation; vignette and grain; and the
+  camera-and-lens passes (flare and glare, sun shafts, local exposure, eye adaptation, film look, heat haze), each on or off
+  for the picture through `Atmosphere.look_override` whatever the settings say. The browser's renderer has none of
+  those passes and no depth of field, so their rows aren't there.
+- **The picture** (Space, or Capture) is the frame without the panel or any overlay, the film look kept, saved as
+  a PNG in `user://screenshots/` (named by the date and time) with a note saying where. **Supersample** draws it
+  at twice the render scale (as long as its long side stays within 7680 pixels) and scales it down, widening the
+  depth of field's blur to match; in a browser, where a page's storage is out of reach, it's downloaded as well.
+- **Leaving** (F9 or Esc, or the battle ending) puts back the camera, the battle's speed, the interface and every
+  value it changed. Nothing is written to the player's settings.
+
+The test switches `--photo-at=S --photo=key:value,... --photo-shot=PATH --photo-capture --photo-quit` open it in a
+run and save the screen or a picture (listed with the other screenshot flags in `docs/DEVELOPMENT.md`), and
+`tests/fixtures/photo-mode.gd` checks that entering and leaving put everything back.
 
 ## Multiplayer in detail
 
@@ -434,6 +472,30 @@ Ambush Alley autoplay can call its existing mortar support against spotted, stop
   codec headsets, shoulder, elbow, knee and shin pads, and carry carbines with optics; Rebels wear balaclavas,
   berets, field caps and mismatched field jackets with chest rigs or bandoliers, and carry AKs.
 
+**Standing orders** (`soldier.gd`, `squad.gd`, `vehicle.gd`; `World.execute_cmd` "stance", "roe", "prio",
+"pop_smoke", "dismount")
+- Orders that stick until changed, through every move and attack, for a whole squad (each man gets it), one
+  picked-out soldier (he stays in his squad's formation for it) or a vehicle's crew. They replicate as each
+  soldier's and vehicle's props, and the command card shows the one in force as filled segments (none filled
+  when the selection differs).
+- **Stance**: auto (his own judgement), prone, crouch or stand. Told to stay down he crawls when he moves at a
+  walk (a run order gets him up) and fights from the ground; behind a wall too high to fire over from there, or
+  kneeling by a corner, he keeps watch and leaves the shooting to others. A pinned man won't stand up whatever
+  he's told, and the reflexes win over the order: hitting the dirt, diving from a grenade, deep water.
+- **Fire discipline**: fire at will; return fire, which frees the trigger for 10 s after a round cracks past
+  any man of the squad or hits one; or hold fire. Holding fire, men don't shoot, throw grenades, fire rockets,
+  launch drones, call their own mortar targets or clear a house - with two exceptions decided as the design:
+  an enemy within 15 m is overrunning them and they fight (holding fire never means letting them into the hole
+  with you), and anything they're explicitly told to attack is fair game. Fire missions you order still fire,
+  and hand to hand is always on. A squad holding or returning fire doesn't stop for a contact drill at an
+  enemy it merely sees, only when it's fired on.
+- **Vehicles**: the same fire discipline (the crew answers anything within 22 m, or once it's been shot at,
+  for return fire), with smoke, backing out of a missile's path and pulling out badly damaged still the
+  crew's own. **Target priority**: armour first (the main gun saved for vehicles, the machine gun for the
+  men) or infantry first (high explosive on any man in the open). **Smoke on call** fires the dischargers
+  towards the nearest threat (or along the turret) at least 4 s after the last salvo; the salvoes left are
+  on the card.
+
 **Command and squad cohesion** (`squad.gd`, `squad_brain.gd`, `commander_ai.gd`)
 - **Battle drills** (`squad_brain.gd`): each squad has its own behaviour tree, walked twice a second, most
   urgent first. *React to contact*: fired on (or a new enemy in sight) while moving, everyone gets down where he
@@ -549,6 +611,24 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
 - Standard battlefields have seeded mountain belts, hills, valleys and rivers. Domain-warped ridged noise,
   jointed bedrock shelves, thermal weathering and seeded rainfall erosion shape the relief. Roads, bridges, starting bases and settlements
   occupy graded valley corridors; forests stay below the snow line and off steep faces.
+- Skirmish valley floors roll a few metres over a few hundred (enough to fold a squad from view); roads ride over
+  the swells while rivers, ponds, towns and bases keep level ground. Hills rise out of concave aprons, end in
+  spurs and re-entrants where they meet a road or the shore, and are roughened before the rain so it cuts
+  branching gullies rather than parallel rills. Steep bare rock carries crag relief (knobs, ledges and clefts
+  up to 3.5 m) at the ground mesh's 0.5 m, which every peer derives from the same heights; slopes for movement
+  and growth read the smooth geology, so routes are unchanged. Mission terrain keeps its authored relief exactly.
+- Meadows follow what the soil holds: lush in hollows, along drainage lines and for a few tens of metres beside
+  rivers and ponds, drying to thin straw on crests and sun-facing banks, with broad soil differences parting one
+  pasture from the next. Lush ground takes its colour from a 90 m drone survey of grassland, dry ground from a
+  2.5 m turf scan, each drawn twice at a turned angle so no repeat lines up; grass clumps grow thicker, taller
+  and greener on the same damp ground. Hill shoulders pass through stony grass before bare rock, pale talus
+  collects where the ground eases off below a crag, rock within ~150 m of the camera gains a finer pass of
+  the same scan, and the mud that slows men down shows as dark rutted soil.
+- Cloud shadows are a few hundred metres across and drift with the wind over the ground, grass and bushes.
+- Distant massifs break their surveyed ridges into crags (ridged noise within the scenery height bounds) and
+  shade steep faces with finer crags still, so their snow and bare rock lie in ribs and gullies.
+- Distant woods grow in broad, warped stands from just above the water to the treeline, climbing higher and
+  steeper in the gullies than on the spurs, and take the same distance haze as the ground beneath them.
 - Distant scenery composes surveyed Mont Blanc, Matterhorn and Jungfrau ridge shapes into seeded fictional mountain groups and low passes, with floating-point heights and a finer indexed mesh at Medium/Far detail. Coastal scenery continues into an irregular shoreline and a coarse ocean surface beyond the detailed battlefield water. Boundary rivers extend into curved scenery pools with matching beds and banks; these extensions leave authoritative water shapes and navigation unchanged. Reusable cliff forms have uneven shoulders and irregular drainage cuts before erosion.
 - Coastal scenery continues through a broad water channel to outer islands, with gentler foothills and a coarse ocean horizon beyond the terrain. The channel is entirely outside the playable boundary; inland maps keep their land backdrop. Shared shoreline masks, seed phase and beach/seabed profiles keep scenery ground and water continuous across the playable edge.
 - Distant mountain groups lose contrast into sky-coloured haze while nearby ground retains its detail. Localized 3D cloud banks and thin trailing ridge mist sit beyond the playable boundary, with shaded bases, soft edges and lighting matched to the weather. A baked 64� R8 noise volume avoids runtime generation; scene-depth termination prevents clouds behind mountains showing through them. Stronger aerial perspective is masked to distant scenery, preserving foreground contrast. Mountain clouds have independent Off/Low/Medium/High/Ultra settings (8/12/20/32 samples), work in Compatibility, and stop drifting with reduced motion. They do not affect visibility rules.
@@ -561,7 +641,6 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
 - Browser vertex lighting follows displaced mountain slopes and softly lights leaf cards without enabling global per-pixel lighting.
 - Rain streaks surround the camera; soft splashes follow ground or water height and fade before becoming distant speckles. Procedural clouds remain smooth across their noise cells and use subdued moonlit shading at night, including the clouds reflected on the sea.
 - Stones at the mountain foot have irregular broken faces instead of flattened round primitives.
-- Connected dry grass and richer moss patches replace evenly green valley floors.
 - Coastal margins transition through exposed gravel and darker wet stone instead of a uniformly sandy strip.
 - Moss and soil blend into exposed stone on slopes, with baked slab fractures, broken mineral beds, sheltered weathering, loose-stone pockets and snow on high sheltered ground. A cached downhill catchment mask places runoff stains and retained snow in connected gullies; it shares the existing surface textures and leaves gameplay elevations unchanged.
 - Optional alpine haze takes on the sky colour and settles lightly into lower valleys.
@@ -662,7 +741,9 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   in a ruin) painted walls with skirting, radiators, pictures, mirrors, clocks, shelves of books and rugs, all
   hung flat or laid flat so nothing stands where a man does. At dusk and at night a lamp is on behind about a
   third of the windows, in the barracks and the research post, under the factory's north lights and in the door
-  lanterns (brightest at night, a glimmer on a dark day). All of it, and the military buildings' weatherboard, sheeting, roller shutters, north
+  lanterns (brightest at night, a glimmer on a dark day). Weeds grow at the foot of walls and ivy up some of
+  them (most often on old stone), and a ruin's floor carries its fallen roof: soot, charred rafters, broken
+  tiles, plaster and glass. All of it, and the military buildings' weatherboard, sheeting, roller shutters, north
   lights, masts and guys, drums, crates and pallets, comes from shared building components (see
   [building-components.md](building-components.md)).
 - Walls, hedges, trees, cars and crates are all real cover. Street furniture is set dressing generated on the
@@ -997,6 +1078,12 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   wander, the rotor's beat following its speed and slapping louder under load, and the downwash throwing a ring
   of dust (spray over water) when she's low. Four shaded straps follow the suspended vehicle. Its wheels and tracks stop spinning in the air.
   Drones and ground vehicles keep their own movement.
+- **Shot down.** A helicopter destroyed in the air falls rather than vanishing. With the tail rotor or controls
+  gone (or too low to settle) she winds up into a spin against the rotor's torque and corkscrews in, still carrying
+  her speed; with only the engines gone she autorotates, gliding steeply nose-down and flaring into a heavy landing.
+  Where she hits, her fuel goes up (blast damage, a crater and fire, credited to whoever shot her down), how hard
+  she hit decides who aboard walks away, and the burnt-out helicopter lies there, on her side after a spin-in. Over
+  deep water she ditches and sinks. The kill, its stats and the messages count at the moment she's hit.
 - **Boarding:** select infantry and right-click your truck, APC, Slammer or a landed helicopter: they climb in
   (as many as fit) and ride until they dismount or it arrives.
 - Tanks smash through walls, trees and cars. Small arms ricochet off them. Frontal rockets can bounce,
@@ -1008,7 +1095,10 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   23 mm that tears helicopters and drones apart), FPV operators with kamikaze drones, RPG teams.
 - **Mechanised infantry**: IFVs and BTRs come off the line loaded. The troops ride inside and dismount when the
   vehicle arrives, when the enemy is close on an attack-move, when it's badly hit, or on the Dismount button. If
-  it's destroyed with them inside, the survivors scramble out of the wreck, most of them hurt.
+  it's destroyed with them inside, the survivors scramble out of the wreck, most of them hurt. The command card
+  can drop only some of them (`Vehicle.dismount(n, sid)`): half the men aboard (the last in, so a squad's leader
+  stays with its main body), or one squad of several. The rest stay aboard (`keep_aboard`) until dismounted too,
+  or until the vehicle is moved on and stops again; badly hit, everyone bails out regardless.
 - Armour classes: soft-skinned pickups and trucks bleed from rifle fire; light armour (Humvee, helicopters) shrugs
   it off and needs .50 cals, cannons, AA or rockets; tanks only fear anti-tank weapons.
 - **Off-map support**, from minute five (recon flights sooner), each on its own cooldown:
@@ -1131,12 +1221,21 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
 - Everything can be shot up and repaired. Any FOB can be captured by whoever walks in and holds it. Lose your last FOB and you lose, but a side's last FOB is a last stand and takes four times as long to capture, and HQ sends a free reserve squad every 75 s to a side that is down to its last few soldiers.
 - Fog of war, drawn on the ground and the minimap, with intel pings and last-known enemy positions.
 
-**Look and feel** (`atmosphere.gd`, `cinematic_fx.gd`, `physical_sky.gd`, `mats.gd`, `vehicle_models.gd`, `vfx.gd`, `gunfx.gd`, `grass.gd`, `wildlife.gd`, `ui/`)
+**Look and feel** (`atmosphere.gd`, `cinematic_fx.gd`, `physical_sky.gd`, `cloud_shadow.gd`, `mats.gd`, `vehicle_models.gd`, `vfx.gd`, `gunfx.gd`, `grass.gd`, `wildlife.gd`, `ui/`)
 - Eight lighting moods (midday, golden hour, dawn, dusk, overcast, hazy, **night**, **rain & thunder**) with a
   procedural sky, AgX tonemapping, cloud shadows drifting over the ground, volumetric haze and a subtle film look.
   At night the sky fills with stars and illumination flares drift down on parachutes over the fighting, throwing
   moving shadows. In the rain, streaks fall around the camera, splashes hit the ground, puddles reflect the sky and
   lightning flashes are followed by thunder.
+- **Cloud shadows fall on everything** (`cloud_shadow.gd`), not just the ground: soldiers, vehicles, buildings,
+  trees, grass, roads and trenches darken in the same drifting shade, so a tank parked in it isn't lit up for the
+  enemy to spot from above. Every surface reads one pattern at its own position (global shader uniforms the
+  atmosphere moves downwind, with the smoke), and the shade takes direct sunlight only, never skylight: the shared
+  surface, foliage and grass shaders light themselves with Godot's own light model and let the sun through the
+  cloud, and in the browser, which lights per vertex, the albedo dims and AO hands the skylight back. It's a
+  graphics setting (Cloud shadows on everything; on from High, and in Cinematic; off, the grass and bushes fold the
+  shade into their colour instead), works in both renderers and is drawn only on each screen, never simulated.
+  Vehicle windows and the opt-in mocap soldiers still take full sun.
 - **Cinematic lighting** (`atmosphere.gd`, `cinematic_fx.gd`, `physical_sky.gd`), each part its own setting and all
   of it on the **Cinematic** preset (Ultra plus everything below; for a fast graphics card, screenshots and replays).
   None of it reaches the simulation, so it can't change a battle or its seed.
@@ -1420,6 +1519,41 @@ garrisons, answers attacks on its bases, sends waves at your FOBs and ambushes y
 digs forward tunnel entrances and moves its attack waves through them. AI-vs-AI results swing a lot between
 batches of six games (from 5–1 one way to 5–1 the other with small parameter changes), so the sides are close
 but balance needs real playtesting. With the base defenses, most games last 10–23 minutes.
+
+**Command by intent** (`delegation.gd`): a commander can hand any of his squads and vehicles to his XO with an
+intent instead of an order, and the XO carries it out with the AI commander's own drills, giving the squads
+their orders, giving them again when the fight knocks them off, and reporting on the command net ("XO: Charlie 1,
+Delta 1 - take objective, D4. Wilco.").
+
+- **Hold sector:** the squads spread across the sector facing the way you dragged, each digs in on its piece of
+  the line, and one that is knocked off it (displaced by shellfire, broken contact, chased something) is put
+  back once it has collected itself. Vehicles wait a little behind the line.
+- **Take objective:** a deliberate attack (`attack_plan.gd`), one squad the base of fire and the rest the
+  assault, or one squad's own fire and movement; when the objective is clear they consolidate on it and hold
+  it like a sector. A failed attack is re-formed and sent in again, up to three times, then they hold where they
+  are and the XO says the attack has stalled. A click near a town aims at its square.
+- **Screen:** a thin, wide line well forward, there to see the enemy coming. It reports contacts, and a squad
+  pressed by more than it can hold falls back a bound (45 m) to the next line, twice, then holds.
+- **Reserve:** the squads wait out of the fight until a squad of yours within 260 m is pinned, bleeding or stuck
+  at the fix of an attack, then go to help it, joining its attack plan when it has one, and come back to the
+  waiting place once that fight has gone quiet.
+- **Ambush:** each squad lays an ambush (`ambush_plan.gd`) on the nearest road, side by side along it, on the side
+  you dragged from; sprung or given up, it lays it again a little later for as long as the intent stands.
+- A squad cut down to a third of its men is pulled back to refit and handed back to you, and the XO says so.
+- **Taking them back:** any order of your own to a delegated squad, vehicle or one of its men (a move, an
+  attack, a build, a fire mission), or **Take back**, returns it to your command, and the XO says it is back
+  with you. Delegated units stay yours (and every allied commander can still order them); the AI commander
+  never counts them as its own, so the two never pull a squad different ways.
+- **On the map** each intent is drawn in the side's colour with an XO tag, its grid and phase: a sector's
+  forward edge with its ticks, an objective ring, a screen's dashed line, a reserve's ring (and, committed, the
+  arrow to the fight it went to), an ambush's killing zone; a faint tether runs to it from each squad still on
+  its way. The squads' symbols carry an XO tab, and the order of battle and squad card read "XO HOLD · DEF E5".
+- The intents are commands like any other (`delegate` and `take_back` through `World.execute_cmd`), so a client
+  delegates exactly as the host does; each side's intents reach its players in the team summary.
+- **An AI ally answers your pings** (`CommanderAI.answer_ping`): with an AI commander on your side, an "attack here"
+  or "enemy spotted" ping gets up to two of its free squads (not a garrison, nor one already in an attack)
+  sent in, two as a deliberate attack; "defend here" gets them dug in there; "need support" sends them to you.
+  It says who's coming on the net, or that nobody is free; the squads go back to the company after a few minutes.
 
 ### Imported rifleman and shared impacts
 

@@ -438,6 +438,8 @@ static func contact_on_the_move(q: Squad) -> bool:
 			return false  # mounted: the driver's problem
 	if avg_supp(alive) > 28.0:
 		return true  # fired on
+	if q.roe() != Soldier.Roe.FREE:
+		return false  # under orders not to start a fight: they carry on past it
 	for id in q.known:
 		if q.known_at_order.has(id):
 			continue

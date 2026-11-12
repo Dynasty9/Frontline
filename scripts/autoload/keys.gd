@@ -23,10 +23,14 @@ const NONE := 0
 ## commands do, and an observer's keys only matter to an observer, so those
 ## don't clash with the commands.
 const GLOBAL_CTX := ["cam", "ui"]
+## Photo mode's keys are live only while it's on, when everything else is off
+## but the interface's own keys (the photo mode key itself, the overlay, the
+## console): they clash with those and with each other, and nothing else.
+const PHOTO_CTX := "photo"
 
 ## The categories in the order they're listed.
 const CATEGORIES := ["Camera", "Saved views", "Orders", "Abilities & fire support", "Building", "Control groups",
-	"Co-commanders", "Interface", "Observer"]
+	"Co-commanders", "Interface", "Photo mode", "Observer"]
 
 ## [id, label, category, context, default, default (second), what it does]
 const ACTIONS := [
@@ -67,8 +71,19 @@ const ACTIONS := [
 	["defend", "Defend an area", "Orders", "cmd", KEY_B, NONE, "Then click (and drag to face): they spread into the best cover there and hold."],
 	["retreat", "Retreat", "Orders", "cmd", KEY_R, NONE, "Back to the nearest FOB, keeping clear of known enemy fire."],
 	["hold", "Hold position", "Orders", "cmd", KEY_H, NONE, ""],
+	["delegate", "Delegate (command by intent)", "Orders", "cmd", KEY_I, NONE, "Opens the intents: hand the selection to your XO to hold a sector, take an objective, screen, wait in reserve or ambush."],
+	["take_back", "Take back from the XO", "Orders", "cmd", KEY_I | KEY_MASK_SHIFT, NONE, "Delegated units come back under your command (any order of yours does too)."],
+	["intent_hold", "Delegate: hold sector", "Orders", "cmd", NONE, NONE, "Then click the sector and drag toward the enemy."],
+	["intent_take", "Delegate: take objective", "Orders", "cmd", NONE, NONE, "Then click the objective."],
+	["intent_screen", "Delegate: screen", "Orders", "cmd", NONE, NONE, "Then click the line and drag toward the enemy."],
+	["intent_reserve", "Delegate: reserve", "Orders", "cmd", NONE, NONE, "Then click where they wait."],
+	["intent_ambush", "Delegate: ambush", "Orders", "cmd", NONE, NONE, "Then click the road and drag toward it from your side."],
+	["stance", "Stance: auto, prone, crouch, stand", "Orders", "cmd", KEY_K, NONE, "Each press moves the selected men on to the next: their own judgement, lie down, keep low, stay up."],
+	["fire_discipline", "Fire discipline: free, return, hold", "Orders", "cmd", KEY_J, NONE, "Each press moves the selection on to the next: fire at will, return fire only, hold fire (unless overrun)."],
+	["target_priority", "Target priority: auto, armour, infantry", "Orders", "cmd", KEY_N, NONE, "Vehicles: what the crew shoots at first."],
+	["dismount", "Dismount", "Orders", "cmd", KEY_U, NONE, "Everyone out of the selected vehicles (the command card can drop only some)."],
 	["grenade", "Throw a grenade", "Abilities & fire support", "cmd", KEY_G, NONE, ""],
-	["smoke", "Throw smoke", "Abilities & fire support", "cmd", KEY_T, NONE, ""],
+	["smoke", "Throw smoke", "Abilities & fire support", "cmd", KEY_T, NONE, "Vehicles on their own: fire the smoke dischargers."],
 	["fire_mission", "Fire mission", "Abilities & fire support", "cmd", KEY_F, NONE, "Mortar teams and artillery: then click the target."],
 	["support", "Call fire support", "Abilities & fire support", "cmd", KEY_Z, NONE, "Arms the first air or artillery support that's ready."],
 	["rotate_build", "Turn the building 90°", "Building", "place", KEY_R, NONE, "While placing. (Shift + wheel turns it 45°.)"],
@@ -104,6 +119,14 @@ const ACTIONS := [
 	["perf", "Performance overlay", "Interface", "ui", KEY_F3, NONE, "Off, FPS, compact, full breakdown."],
 	["manual", "Field Manual", "Interface", "ui", KEY_F4, NONE, ""],
 	["console", "Console", "Interface", "ui", KEY_QUOTELEFT, NONE, "Type commands: why the game is slow (why), what each setting costs (bench), frame graphs. help lists them."],
+	["photo_mode", "Photo mode", "Interface", "ui", KEY_F9, NONE, "A solo battle or a replay holds still (in multiplayer the fighting goes on), the interface goes and the camera flies free to compose a picture."],
+	["photo_capture", "Take the picture", "Photo mode", "photo", KEY_SPACE, NONE, "Saved as a PNG in the screenshots folder."],
+	["photo_rise", "Fly up", "Photo mode", "photo", KEY_E, NONE, "The camera's pan keys fly the way the lens looks; hold a mouse button and drag to look round."],
+	["photo_sink", "Fly down", "Photo mode", "photo", KEY_Q, NONE, ""],
+	["photo_roll_left", "Roll left", "Photo mode", "photo", KEY_Z, NONE, ""],
+	["photo_roll_right", "Roll right", "Photo mode", "photo", KEY_C, NONE, ""],
+	["photo_level", "Level the horizon", "Photo mode", "photo", KEY_BACKSPACE, NONE, ""],
+	["photo_slow", "Fly slower (hold)", "Photo mode", "photo", KEY_CTRL, NONE, "Held with a move key, for small steps. (The pan-faster key flies faster.)"],
 	["director", "Director camera", "Observer", "obs", KEY_C, NONE, "The camera follows the fighting by itself."],
 	["pause", "Pause", "Observer", "obs", KEY_P, NONE, ""],
 	["slower", "Slower", "Observer", "obs", KEY_BRACKETLEFT, NONE, ""],
@@ -219,6 +242,8 @@ func clashes(id: String, code: int) -> Array:
 
 
 static func _clash_ctx(a: String, b: String) -> bool:
+	if a == PHOTO_CTX or b == PHOTO_CTX:
+		return a == b or a == "ui" or b == "ui"
 	return a == b or a in GLOBAL_CTX or b in GLOBAL_CTX
 
 

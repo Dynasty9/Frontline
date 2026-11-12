@@ -9,6 +9,7 @@ const F_BLOCKED := 4
 const F_ELEV := 8  # gun laid up for indirect fire / launcher raised
 const F_GROUND := 16  # a helicopter sitting on the ground (rotor idling)
 const F_SPOOL := 32  # a helicopter's rotor at (or winding up to) flight speed
+const F_CRASH := 64  # a helicopter shot down, on its way to the ground
 
 var vkind := "tank"
 var vdef: Dictionary = {}
@@ -41,6 +42,20 @@ var last_fire_t := -9.0
 var _alert_t := 0.0
 var smoke_cd := 0.0
 var smoke_left := 2  # salvoes in the dischargers
+var smoke_t := -99.0  # the last salvo
+# The player's standing orders for the crew. Fire discipline (Soldier.Roe):
+# fire at will, return fire (only once it's been shot at), or hold fire (not
+# a round unless the enemy is on top of it: within OVERRUN_R, or the target it
+# was told to attack). Target priority: the crew's own judgement, or armour
+# first (the main gun saved for vehicles), or infantry first (high explosive
+# on men in the open). Smoke, backing out of a missile's path and pulling out
+# badly damaged are the crew's own, whatever they're told.
+enum Prio {AUTO, ARMOUR, INFANTRY}
+const OVERRUN_R := 22.0
+var roe: int = 0
+var prio: int = Prio.AUTO
+var fired_on_t := -99.0
+var keep_aboard := false  # a partial dismount: the rest stay in until told (or it's badly hit)
 # trucks
 var route := PackedVector3Array()
 var route_i := 0
@@ -182,13 +197,69 @@ func apply_props(d: Dictionary) -> void:
 		bent_skirts = d.bent_skirts
 		if _vm:
 			_vm.pose_skirts(bent_skirts)
+	if d.has("roe"):
+		roe = d.roe
+	if d.has("prio"):
+		prio = d.prio
+	if d.has("smoke"):
+		smoke_left = d.smoke
+	if d.has("pax"):
+		pax = d.pax
 
 
 func get_props() -> Dictionary:
-	var d := {"vkind": vkind, "team": team, "owner": owner_peer, "pos": position, "yaw": rotation.y, "max_hp": max_hp}
+	var d := {"vkind": vkind, "team": team, "owner": owner_peer, "pos": position, "yaw": rotation.y, "max_hp": max_hp,
+		"roe": roe, "prio": prio, "smoke": smoke_left, "pax": pax}
 	if bent_skirts:
 		d["bent_skirts"] = bent_skirts
 	return d
+
+
+var pax: Array = []  # (replicated) who's aboard: [squad id, men, squad name] for each squad
+
+
+## Who's aboard changed: tell the clients (the command card's dismount orders).
+func _pax_changed() -> void:
+	if not srv:
+		return
+	var by := {}
+	var order := []
+	for s in passengers:
+		if not is_instance_valid(s) or s.gone:
+			continue
+		if not by.has(s.sid):
+			by[s.sid] = 0
+			order.append(s.sid)
+		by[s.sid] += 1
+	var out := []
+	for sid in order:
+		var sq: Squad = world.squads.get(sid)
+		out.append([sid, by[sid], sq.display_name() if sq else ""])
+	if out == pax:
+		return
+	pax = out
+	world.push_props(self, {"pax": pax})
+
+
+## A standing order: fire discipline ("roe") or target priority ("prio").
+func set_standing(kind: String, value: int) -> void:
+	if kind == "prio":
+		prio = clampi(value, 0, Prio.size() - 1)
+	else:
+		roe = clampi(value, 0, 2)
+	world.push_props(self, {kind: prio if kind == "prio" else roe})
+
+
+## Shot at lately: a "return fire" crew may answer.
+func fired_on() -> bool:
+	return world.time - fired_on_t < 10.0
+
+
+## The crew may fire on this one under its fire discipline.
+func may_engage(e: Entity) -> bool:
+	if roe == 0 or e == forced_target or (roe == 1 and fired_on()):
+		return true
+	return e != null and not e.gone and Defs.flat(e.position - position).length() < OVERRUN_R
 
 
 func on_spawned() -> void:
@@ -415,6 +486,7 @@ func order_move(p: Vector3) -> void:
 	_stuck_t = 0.0
 	_stuck_p = position
 	if not _brain_order:
+		keep_aboard = false  # moving on: they'll get out wherever it stops
 		if brain_state == "withdraw":
 			brain_overruled = true  # sent back in damaged: the crew does as it's told
 		brain_state = ""
@@ -462,6 +534,7 @@ func board(s: Soldier) -> bool:
 	s.riding = self
 	s.hide_in("vehicle", 9999.0, null)
 	world.stat("boarded")
+	_pax_changed()
 	return true
 
 
@@ -475,6 +548,7 @@ func embark_new_squad() -> void:
 		passengers.append(s)
 		s.riding = self
 		s.hide_in("vehicle", 9999.0, null)
+	_pax_changed()
 
 
 ## The bank or beach a boat is lying off (within reach of wading), or INF.
@@ -484,9 +558,21 @@ func _shore() -> Vector3:
 
 
 ## Ramp down: the section piles out behind the vehicle and goes to work.
-func dismount() -> void:
+## The player can drop only some of them: `n` men (the last in, so a squad's
+## leader stays with the rest of it), or squad `sid`; the rest stay aboard
+## until they're dismounted too, or it moves on and stops again.
+func dismount(n := 0, sid := 0) -> void:
 	if passengers.is_empty():
 		return
+	var out := []
+	for s in passengers:
+		if is_instance_valid(s) and not s.gone and s.life == Soldier.Life.HIDDEN and (sid == 0 or s.sid == sid):
+			out.append(s)
+	if n > 0 and n < out.size():
+		out = out.slice(out.size() - n)
+	if out.is_empty():
+		return
+	var partial := out.size() < passengers.size()
 	var back := -Defs.dir_of(rotation.y)
 	var side := back.cross(Vector3.UP)
 	if is_boat():
@@ -497,25 +583,33 @@ func dismount() -> void:
 		var up := Defs.flat(shore - position).normalized()
 		back = up
 		side = up.cross(Vector3.UP)
-	var sq: Squad = null
+	var sqs := []
 	var i := 0
-	for s in passengers:
-		if not is_instance_valid(s) or s.gone or s.life != Soldier.Life.HIDDEN:
-			continue
+	for s in out:
 		s.riding = null
 		var at := position + back * 3.6 + side * (i - 1.5) * 1.3
 		if is_boat():
 			at = world.nav.nearest_walkable(_shore() + side * (i - 1.5) * 1.3)
 		s.unhide(at)
-		sq = s.squad
+		passengers.erase(s)
+		if s.squad and not s.squad in sqs:
+			sqs.append(s.squad)
 		i += 1
-	passengers.clear()
-	world.stat("dismount")
-	if sq:
-		var fwd := Defs.dir_of(rotation.y)
-		var lead := sq.get_leader()
+	# (men who died aboard, or were freed, go from the list too)
+	for s in passengers.duplicate():
+		if not is_instance_valid(s) or s.gone or s.life != Soldier.Life.HIDDEN:
+			passengers.erase(s)
+	keep_aboard = partial and not passengers.is_empty()
+	_pax_changed()
+	world.stat("dismount_part" if partial else "dismount")
+	var fwd := Defs.dir_of(rotation.y)
+	for sq in sqs:
+		var lead: Soldier = sq.get_leader()
 		if lead:
-			lead.say("Dismount! Go, go, go!" if team == 0 else "Out! Everybody out!", true)
+			if partial:
+				lead.say("Dismount! You lot, with me!" if team == 0 else "Out! You, you, with me!", true)
+			else:
+				lead.say("Dismount! Go, go, go!" if team == 0 else "Out! Everybody out!", true)
 		if (assault or is_boat()) and assault_dest != Vector3.INF:
 			sq.order_assault(assault_dest, fwd)
 		else:
@@ -543,7 +637,7 @@ func _dismount_check(dt: float) -> void:
 			if e.team != team and e.team >= 0 and e.visible_to_team(team) and (not (e is Soldier) or e.life == Soldier.Life.ALIVE):
 				close = true
 				break
-	if arrived or close or hp < max_hp * 0.4:
+	if hp < max_hp * 0.4 or (not keep_aboard and (arrived or close)):
 		dismount()
 
 
@@ -624,6 +718,9 @@ func sim(dt: float) -> void:
 		if not is_instance_valid(slung_by) or slung_by.gone or slung_by.sling_cargo != self:
 			_drop_from_sling()
 		return  # hanging under a helicopter: it does nothing of its own
+	if crashing != 0:
+		_crash_tick(dt)
+		return  # shot down: she's just falling
 	cannon_t -= dt
 	mg_t -= dt
 	if knock_v.length_squared() > 0.0025:
@@ -1044,10 +1141,18 @@ func _scan() -> void:
 				continue
 		elif e is Vehicle:
 			sc = (110.0 if vdef.cannon else (70.0 if base() == "attack_heli" else 40.0)) - d
+			if prio == Prio.ARMOUR:
+				sc += 80.0
+			elif prio == Prio.INFANTRY:
+				sc -= 60.0
 		else:
 			sc = 50.0 - d
 			if e.rockets > 0:
 				sc += 25.0
+			if prio == Prio.INFANTRY:
+				sc += 70.0
+			elif prio == Prio.ARMOUR:
+				sc -= 30.0
 		if e == target:
 			sc += 8.0
 		if sc <= bs:
@@ -1129,6 +1234,11 @@ func cannon_interval() -> float:
 func _fire_tick() -> void:
 	if not _target_ok():
 		return
+	if not may_engage(target):
+		if world.time > float(bt_cd.get("held", 0.0)):
+			bt_cd["held"] = world.time + 2.0
+			world.stat("veh_held_fire")
+		return
 	var err := _aim_err()
 	var dist := Defs.flat(target.position - position).length()
 	if _try_missiles(err, dist):
@@ -1141,6 +1251,10 @@ func _fire_tick() -> void:
 				if o.team == target.team and o.life == Soldier.Life.ALIVE:
 					n += 1
 			worth = n >= 2 or target.rockets > 0 or target.mounted != null or world.rng.randf() < 0.25
+			if prio != Prio.AUTO:
+				# infantry first: high explosive on any of them; armour first: the
+				# main gun is saved for vehicles (the machine gun takes the men)
+				worth = prio == Prio.INFANTRY or (worth and (target.rockets > 0 or target.mounted != null))
 		if worth:
 			_fire_cannon()
 			cannon_t = cannon_interval()
@@ -1605,6 +1719,8 @@ func _fire_cannon() -> void:
 # --- damage --------------------------------------------------------------------------
 
 func bullet_hit(p: Vector3, dir: Vector3, w: Dictionary, _shooter) -> int:
+	if _shooter is Entity and is_instance_valid(_shooter) and _shooter.team != team:
+		fired_on_t = world.time
 	var armor := int(vdef.armor)
 	var ap: bool = w.get("ap", false)
 	if armor >= 2:
@@ -1689,26 +1805,55 @@ func _set_bent_skirts(mask: int) -> void:
 ## A missile or rocket coming at it: armour fires its smoke dischargers - a
 ## wall of smoke between it and the shooter - and the crew calls it.
 func threatened(from: Vector3) -> void:
-	if not srv or gone or int(vdef.get("armor", 0)) < 1 or is_air() or smoke_left <= 0 or world.time < smoke_cd:
+	fired_on_t = world.time
+	if not srv or gone or not has_smoke() or world.time < smoke_cd:
 		return
 	smoke_cd = world.time + 25.0
-	smoke_left -= 1
-	var to := Defs.flat(from - position).normalized()
-	var top := position + Vector3(0, float(vdef.get("gun_h", 2.0)) + 0.3, 0)
-	for i in 4:
-		var dir := to.rotated(Vector3.UP, (i - 1.5) * 0.32)
-		var land := position + dir * world.rng.randf_range(11.0, 16.0)
-		world.spawn("projectile", {"ptype": "smoke", "team": team, "pos": top, "vel": world.combat.ballistic_vel(top, land), "thrower": eid, "fuse": 0.0})
-	world.fx_event([Fx.SOUND, "launch", position])
+	_discharge(Defs.flat(from - position).normalized())
 	world.stat("veh_smoke")
 	if not is_auto():
 		world.send_msg(team, "info", "%s popped smoke - missile inbound!" % display_name(), position)
 	VehicleBrain.on_threat(self, from)
 
 
+## It has smoke dischargers with a salvo left in them.
+func has_smoke() -> bool:
+	return int(vdef.get("armor", 0)) >= 1 and not is_air() and smoke_left > 0
+
+
+## The player's call: smoke now, between it and the nearest threat it can see
+## (or the way the turret points). A few seconds after the last salvo at least.
+func pop_smoke() -> bool:
+	if not srv or gone or not has_smoke() or world.time - smoke_t < 4.0:
+		return false
+	var th: Entity = VehicleBrain._threat_near(self, 150.0)
+	if th == null and _target_ok():
+		th = target
+	var to := Defs.flat(th.position - position).normalized() if th else Defs.dir_of(rotation.y + turret_yaw)
+	smoke_cd = maxf(smoke_cd, world.time + 6.0)
+	_discharge(to)
+	world.stat("veh_smoke_ordered")
+	return true
+
+
+## Fire a salvo from the dischargers: a wall of smoke 11-16 m out that way.
+func _discharge(to: Vector3) -> void:
+	smoke_left -= 1
+	smoke_t = world.time
+	world.push_props(self, {"smoke": smoke_left})
+	var top := position + Vector3(0, float(vdef.get("gun_h", 2.0)) + 0.3, 0)
+	for i in 4:
+		var dir := to.rotated(Vector3.UP, (i - 1.5) * 0.32)
+		var land := position + dir * world.rng.randf_range(11.0, 16.0)
+		world.spawn("projectile", {"ptype": "smoke", "team": team, "pos": top, "vel": world.combat.ballistic_vel(top, land), "thrower": eid, "fuse": 0.0})
+	world.fx_event([Fx.SOUND, "launch", position])
+
+
 func take_damage(amount: float, _src) -> void:
 	if gone or not srv or hp <= 0.0:
 		return
+	if _src == null or (_src is Entity and is_instance_valid(_src) and _src.team != team):
+		fired_on_t = world.time
 	if world.battle:
 		world.battle.vehicle_hit(self, amount, _src)
 	if amount > 0.0 and _src is Node3D and is_instance_valid(_src):
@@ -1738,45 +1883,62 @@ func _destroyed() -> void:
 	if is_boat():
 		_sink()
 		return
-	# whoever was inside scrambles out of the burning wreck - not all of them
-	# (the men who knocked it out get the ones who don't)
+	if base() == "supply":
+		world.rules.truck_lost(self)
+	else:
+		world.send_msg(team, "alert", "%s destroyed at %s." % [display_name(), Defs.grid_ref(position)], position)
+	if is_heli():
+		world.send_msg(team, "alert", "%s shot down at %s!" % [display_name(), Defs.grid_ref(position)], position)
+		world.send_msg(1 - team, "info", "Enemy %s shot down!" % display_name().to_lower(), position)
+		if flight and position.y - maxf(0.0, world.ground_y(position)) > 2.5:
+			_go_down()
+			return
+	_wreck_out()
+
+
+## What's left of her: whoever was inside scrambles out of the burning wreck
+## (not all of them: the men who knocked it out get the ones who don't), the
+## fuel goes up, and the burnt-out hull stays where she died. `hard` is how
+## hard a helicopter hit the ground (0 for one destroyed sitting on it, up to
+## 1.5 for a spin-in): it decides who walks away and what's hurt under her.
+func _wreck_out(hard := 0.0) -> void:
+	var heli := is_heli()
 	var was: Array = world.battle.blame_hit(hit_by) if world.battle else []
 	for s in passengers:
 		if is_instance_valid(s) and not s.gone and s.life == Soldier.Life.HIDDEN:
 			s.riding = null
 			s.unhide(position + Vector3(world.rng.randf_range(-2.5, 2.5), 0, world.rng.randf_range(-2.5, 2.5)))
-			s.take_damage(world.rng.randf_range(30.0, 150.0), null, Vector3.UP, "explosion")
-	if world.battle:
-		world.battle.end_blame(was)
+			s.take_damage(world.rng.randf_range(30.0, 150.0) * ((0.5 + hard) if heli else 1.0), null, Vector3.UP, "explosion")
 	passengers.clear()
-	if is_tracked() and weight() >= 2:
+	var ground := Vector3(position.x, world.ground_y(position), position.z)
+	if heli and hard > 0.0 and world.combat:
+		# she comes down on whatever's under her, and her fuel goes up
+		world.combat._explode(ground + Vector3(0, 0.6, 0), {"dmg": 90.0 + 60.0 * hard, "radius": 4.0 + 2.5 * hard, "fling": 9.0, "at": 60.0,
+			"team": team, "size": 1.6 + 0.6 * hard, "vfx": "fuel", "struct_mult": 1.5})
+	elif is_tracked() and weight() >= 2:
 		world.fx_event(Fx.tank_knockout(to_global(Vector3(0, 1.6, 1.2))))
 	else:
 		world.fx_event([Fx.EXPLODE, position + Vector3(0, 1.0, 0), 2.0, "fuel"])
-	world.fx_event([Fx.DEBRIS, position + Vector3(0, 1.5, 0), Color(0.15, 0.15, 0.14), 16])
+	if world.battle:
+		world.battle.end_blame(was)
+	world.fx_event([Fx.DEBRIS, position + Vector3(0, 1.5, 0), Color(0.15, 0.15, 0.14), 24 if heli else 16])
 	for s in world.soldiers_near(position, 7.0):
 		s.flinch_from(position, Defs.flat(s.position - position).length(), 7.0)
-	if base() == "supply":
-		world.rules.truck_lost(self)
-	else:
-		world.send_msg(team, "alert", "%s destroyed at %s." % [display_name(), Defs.grid_ref(position)], position)
-	var wreck_kind := "rubble" if is_heli() else "wreck"
-	if is_heli():
-		world.send_msg(team, "alert", "%s shot down at %s!" % [display_name(), Defs.grid_ref(position)], position)
-		world.send_msg(1 - team, "info", "Enemy %s shot down!" % display_name().to_lower(), position)
 	var p := Vector3(position.x, 0.0, position.z)
 	var y := rotation.y
-	var props := {"skind": wreck_kind, "pos": p, "yaw": y, "variant": 9 if is_heli() else (6 if weight() >= 2 else 8)}
-	if wreck_kind == "wreck":
-		var hs := _hull_size()
+	var hs := _hull_size()
+	var props := {"skind": "wreck", "pos": p, "yaw": y, "vk": vkind, "size": Vector3(hs.x, maxf(hs.y, 1.2), hs.z),
+		"variant": 9 if heli else (6 if weight() >= 2 else 8)}
+	if heli:
+		# a helicopter's wreck lies where she hit, on her side after a spin-in
+		props["tilt"] = _crash_tilt if crashing != 0 else Vector2(world.rng.randf_range(-0.04, 0.04), world.rng.randf_range(-0.06, 0.06))
+	else:
 		var plan := _toss_plan(p, y)
-		props["vk"] = vkind
 		if has_tank_model():
 			props["bent_skirts"] = bent_skirts
 			props["wreck_turret_yaw"] = turret_yaw
 		if has_tank_model() or vdef.get("model", vkind) in ["technical", "aa_tech"]:
 			props["wreck_finish"] = {"team": team, "seed": eid, "since": world.time}
-		props["size"] = Vector3(hs.x, maxf(hs.y, 1.2), hs.z)
 		props["pos"] = plan[0]
 		props["yaw"] = plan[1]
 		props["tilt"] = plan[2]
@@ -1788,6 +1950,120 @@ func _destroyed() -> void:
 	var wst = w.spawn("structure", props)
 	if props.has("toss"):
 		w.get_tree().create_timer(3.0).timeout.connect(wst.finish_toss)
+
+
+# --- going down -------------------------------------------------------------------------
+#
+# A helicopter that's shot down falls; she doesn't vanish. With the tail rotor
+# or the controls shot away she winds up into a spin against the main rotor's
+# torque, rolling and pitching about, and comes down hard, still carrying her
+# speed. With only the engines gone the pilot drops the collective and
+# autorotates: nose down to keep the rotor turning, a steep glide, a flare at
+# the bottom and a heavy landing that some of the men inside walk away from.
+# Either way she breaks up and burns where her fall takes her, on whatever is
+# under her; over deep water she ditches and sinks.
+
+const CRASH_SPIN := 1
+const CRASH_AUTOROTATE := 2
+var crashing := 0  # (host) 0 flying, or how she's coming down
+var crash_mode_next := 0  # (tests and showcase stages) how the next shoot-down goes; 0 at random
+var _crash_t := 0.0
+var _crash_tilt := Vector2.ZERO  # (pitch, roll) the wreck comes to rest at
+
+
+func _go_down() -> void:
+	var agl := position.y - maxf(0.0, world.ground_y(position))
+	# too low to settle into autorotation: she just falls
+	crashing = CRASH_SPIN if world.rng.randf() < 0.55 or agl < 8.0 else CRASH_AUTOROTATE
+	if crash_mode_next != 0:
+		crashing = crash_mode_next
+	_crash_t = 0.0
+	yaw_rate = flight.yaw_rate
+	target = null
+	forced_target = null
+	world.stat("heli_going_down")
+
+
+func _crash_tick(dt: float) -> void:
+	if dt <= 0.0:
+		return
+	_crash_t += dt
+	var t := _crash_t
+	var agl := position.y - maxf(0.0, world.ground_y(position))
+	var flat := Defs.flat(velocity)
+	var ph := float(eid % 13)
+	if crashing == CRASH_SPIN:
+		# the airframe winds up against the rotor's torque (the rotor turns
+		# anticlockwise seen from above, so she spins the other way)
+		yaw_rate = move_toward(yaw_rate, -4.2, 2.4 * dt)
+		# the rotor still holds her up a little, less and less
+		var holding := clampf(0.8 - t * 0.3, 0.2, 0.8)
+		velocity.y -= 9.81 * (1.0 - holding) * dt
+		# the tilted disc drags her round in a widening corkscrew
+		flat = flat * exp(-0.35 * dt) + Defs.dir_of(rotation.y + 1.3) * (2.5 * minf(1.0, t) * dt)
+		var shake := minf(1.0, t / 1.2)
+		flight_pitch = (-0.18 + sin(t * 2.6 + ph) * 0.22) * shake
+		flight_roll = sin(t * 1.9 + ph * 0.7) * 0.45 * shake
+	else:
+		# autorotation: nose down for airspeed, a steady steep glide, and a
+		# flare near the ground that trades the speed for a softer landing
+		yaw_rate = move_toward(yaw_rate, 0.25, 0.5 * dt)
+		var fwd := Defs.dir_of(rotation.y)
+		var along := flat.dot(fwd)
+		var drift := flat - fwd * along
+		if agl > 7.0:
+			along = move_toward(along, 13.0, 3.0 * dt)
+			velocity.y = move_toward(velocity.y, -8.5, 5.0 * dt)
+			flight_pitch = lerpf(flight_pitch, -0.2, 1.0 - exp(-dt * 2.0))
+		else:
+			along = move_toward(along, 2.0, 7.0 * dt)
+			velocity.y = move_toward(velocity.y, -3.2, 9.0 * dt)
+			flight_pitch = lerpf(flight_pitch, 0.32, 1.0 - exp(-dt * 4.0))
+		flat = fwd * along + drift * exp(-1.5 * dt)
+		flight_roll = lerpf(flight_roll, sin(t * 1.3 + ph) * 0.1, 1.0 - exp(-dt * 3.0))
+	rotation.y = wrapf(rotation.y + yaw_rate * dt, -PI, PI)
+	velocity = Vector3(flat.x, velocity.y, flat.z)
+	var np := position + velocity * dt
+	if Defs.in_map(np, 6.0):
+		position = np
+	else:
+		position.y = np.y
+		velocity.x = 0.0
+		velocity.z = 0.0
+	speed = Defs.flat(velocity).length()
+	flags = F_CRASH | F_SPOOL
+	var ground := maxf(0.0, world.ground_y(position))
+	if position.y <= ground + 0.3 or _crash_t > 15.0:
+		position.y = ground + 0.3
+		var hard := clampf((-velocity.y + speed * 0.25) / 12.0, 0.15, 1.5)
+		if crashing == CRASH_SPIN:
+			_crash_tilt = Vector2(world.rng.randf_range(-0.15, 0.08), (1.0 if world.rng.randf() < 0.5 else -1.0) * world.rng.randf_range(0.5, 1.35))
+		else:
+			_crash_tilt = Vector2(world.rng.randf_range(-0.12, 0.02), world.rng.randf_range(-0.12, 0.12))
+		world.stat("heli_crashed")
+		if world.water != null and world.terrain != null and world.water.deep_at(position) and not world.water.on_deck(position):
+			_ditch(hard)
+			return
+		_wreck_out(hard)
+
+
+## Down in deep water: she breaks up and sinks, and whoever gets out swims
+## for the nearest bank (if it's near enough to make).
+func _ditch(hard: float) -> void:
+	var shore := world.nav.nearest_walkable(position)
+	var near := Defs.flat(shore - position).length() < 60.0
+	for s in passengers:
+		if is_instance_valid(s) and not s.gone and s.life == Soldier.Life.HIDDEN:
+			s.riding = null
+			s.unhide(world.nav.nearest_walkable(shore + Vector3(world.rng.randf_range(-3, 3), 0, world.rng.randf_range(-3, 3))))
+			s.take_damage(world.rng.randf_range(30.0, 110.0) * (0.5 + hard) if near else 999.0, null, Vector3.UP, "explosion")
+	passengers.clear()
+	var sea := Vector3(position.x, 0.0, position.z)
+	world.fx_event([Fx.EXPLODE, sea + Vector3(0, 1.2, 0), 1.4, "fuel"])  # (above the water: fire, not spray)
+	world.fx_event([Fx.DEBRIS, sea + Vector3(0, 0.8, 0), Color(0.3, 0.3, 0.3), 14])
+	world.fx_event([Fx.SINK, eid, sea])
+	world.stat("heli_ditched")
+	world.despawn(self)
 
 
 ## A boat going down: a blast, debris, and she founders (Vfx.sink); whoever's
@@ -2467,7 +2743,7 @@ func _gunship_tick(dt: float) -> void:
 	_fly_to(want, dt, face)
 	_turret_tick(dt)
 	_fire_tick()
-	if has_t and rocket_t <= 0.0 and _aim_err() < 0.35:
+	if has_t and rocket_t <= 0.0 and _aim_err() < 0.35 and may_engage(target):
 		var dist := Defs.flat(target.position - position).length()
 		var worth := target is Vehicle or target is Structure
 		if target is Soldier:
@@ -2690,6 +2966,8 @@ func _view_process(dt: float) -> void:
 		# flight rpm in the air and whenever the crew have her wound up on the
 		# ground (about to lift, troops getting out); ground idle otherwise
 		var want := 30.0 if (position.y - world.ground_y(position)) > 0.3 or (flags & (F_FIRE | F_SPOOL)) != 0 else 9.0
+		if (flags & F_CRASH) != 0:
+			want = 21.0  # (shot down: the rotor runs down as she falls)
 		_rotor_spd = move_toward(_rotor_spd, want, dt * 12.0)
 		if _rotor_snd:
 			# the beat follows the rotor; pulling hard (a flare, a steep bank)

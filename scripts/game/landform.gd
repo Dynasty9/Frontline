@@ -9,8 +9,15 @@ var n: int
 var half: float
 var heights := PackedFloat32Array()
 var reserve := PackedFloat32Array()
+var calm := PackedFloat32Array()  # 0 where the ground lies level as well: water and settlements
 var drainage := PackedFloat32Array()
 var peak := 0.0
+## How much of the metre-scale crag relief each grid vertex carries (empty: none);
+## see prepare_crags. Every peer derives it from the same heights.
+var rocky := PackedFloat32Array()
+const CRAG_METRES := 3.5  # knobs, ledges and clefts on bare rock, top to bottom
+const CRAG_CELLS := 256  # the crag tile's texels: 0.5 m, like the ground mesh (a 128 m repeat)
+static var _crags := PackedFloat32Array()
 
 
 static func valid(data: Variant, size: int) -> bool:
@@ -34,9 +41,12 @@ func _init(size: int) -> void:
 
 func generate(seed_value: int, roads: Array, water, settlements: Array, fractured := true) -> void:
 	drainage.clear()
+	rocky = PackedFloat32Array()  # (the new heights get theirs when installed)
 	heights.resize(n * n)
 	reserve.resize(n * n)
 	reserve.fill(1.0)
+	calm.resize(n * n)
+	calm.fill(1.0)
 	var noise := FastNoiseLite.new()
 	noise.seed = seed_value + 701
 	noise.noise_type = FastNoiseLite.TYPE_SIMPLEX_SMOOTH
@@ -93,15 +103,32 @@ func generate(seed_value: int, roads: Array, water, settlements: Array, fracture
 				delta[low] += amount
 		for i in heights.size():
 			heights[i] += delta[i]
+	if fractured:
+		_aprons()
 	for group in roads:
 		for path in group:
 			reserve_path(path, 15.0, 110.0)
 	for river in water.rivers:
-		reserve_path(river.pts, float(river.w) * 0.5 + 18.0, 125.0)
+		reserve_path(river.pts, float(river.w) * 0.5 + 18.0, 125.0, 125.0)
 	for pond in water.ponds:
-		reserve_disc(pond.c, float(pond.r) + 12.0, 45.0)
+		reserve_disc(pond.c, float(pond.r) + 12.0, 45.0, 110.0)
 	for site in settlements:
-		reserve_disc(site[0], site[1], 100.0)
+		reserve_disc(site[0], site[1], 100.0, 100.0)
+	# Till and old river terraces leave a valley floor rolling, not planed: a few
+	# metres over a few hundred, enough to fold a squad from view. Roads ride over
+	# it; water and settlements keep their level ground.
+	var ragged := FastNoiseLite.new()
+	ragged.seed = seed_value + 613
+	ragged.noise_type = FastNoiseLite.TYPE_SIMPLEX_SMOOTH
+	ragged.frequency = 1.0 / 70.0
+	ragged.fractal_octaves = 3
+	var roll := FastNoiseLite.new()
+	roll.seed = seed_value + 977
+	roll.noise_type = FastNoiseLite.TYPE_SIMPLEX_SMOOTH
+	roll.frequency = 1.0 / 330.0
+	roll.fractal_type = FastNoiseLite.FRACTAL_FBM
+	roll.fractal_octaves = 2
+	roll.fractal_gain = 0.35
 	for z in n:
 		for x in n:
 			var i := z * n + x
@@ -112,14 +139,62 @@ func generate(seed_value: int, roads: Array, water, settlements: Array, fracture
 			var edge := smoothstep(0.0, 36.0, half - maxf(absf(wx), absf(wz)))
 			# Keep the beach graded when runoff deposits sediment at the foot of the hills.
 			reserve[i] *= coast
-			heights[i] *= reserve[i] * edge
+			var kept := reserve[i] * edge
+			if fractured:
+				# Where a hill gives way to a road, the river or the shore it ends in
+				# spurs and re-entrants, not a planed ramp that rain would comb into rills.
+				kept = clampf(kept + ragged.get_noise_2d(wx, wz) * 2.4 * kept * (1.0 - kept), 0.0, 1.0)
+			heights[i] *= kept
+			if fractured:
+				# (fading over a wider margin than the hills, so the floor never banks up steeply)
+				var margin := smoothstep(0.0, 140.0, half - maxf(absf(wx), absf(wz)))
+				var shore := 1.0 if water.coast.is_empty() else smoothstep(0.0, 140.0, water.coast_x(wz) - wx - 18.0)
+				var swell := ROLL_METRES * (1.0 + clampf(roll.get_noise_2d(wx, wz) * 1.5, -1.0, 1.0))
+				heights[i] += swell * calm[i] * shore * margin
 	# Rain cuts branching gullies and deposits scree at their feet. Do not clamp
 	# every face to one angle: that turns ridges into artificial pyramids.
-	_erode(seed_value + 1093)
+	_erode(seed_value + 1093, fractured)
 	peak = 0.0
 	for h in heights:
 		peak = maxf(peak, h)
 	reserve = PackedFloat32Array()
+	calm = PackedFloat32Array()
+
+
+const ROLL_METRES := 3.0  # the valley floor's rolling ground: 0 to twice this above the water
+
+
+## Weathered rock and soil creep gather round the foot of every rise in a concave
+## apron, so hills climb out of the valley floor rather than stand on it.
+func _aprons() -> void:
+	var spread := _box_blur(_box_blur(heights, 6), 6)
+	for i in heights.size():
+		heights[i] = maxf(heights[i], spread[i] * 0.6)
+
+
+## A separable running-sum box blur over the grid, `radius` cells each way.
+func _box_blur(src: PackedFloat32Array, radius: int) -> PackedFloat32Array:
+	var across := PackedFloat32Array()
+	across.resize(src.size())
+	var out := PackedFloat32Array()
+	out.resize(src.size())
+	var width := 2 * radius + 1
+	for z in n:
+		var row := z * n
+		var total := 0.0
+		for x in range(-radius, radius + 1):
+			total += src[row + clampi(x, 0, n - 1)]
+		for x in n:
+			across[row + x] = total / width
+			total += src[row + mini(x + radius + 1, n - 1)] - src[row + maxi(x - radius, 0)]
+	for x in n:
+		var total := 0.0
+		for z in range(-radius, radius + 1):
+			total += across[clampi(z, 0, n - 1) * n + x]
+		for z in n:
+			out[z * n + x] = total / width
+			total += across[mini(z + radius + 1, n - 1) * n + x] - across[maxi(z - radius, 0) * n + x]
+	return out
 
 
 ## Baked buttresses, cirques and saddles replace patches of noise with coherent rock masses.
@@ -183,15 +258,32 @@ func _deposit(p: Vector2, amount: float) -> void:
 	heights[i + n + 1] += amount * fx * fz * reserve[i + n + 1]
 
 
-func _erode(seed_value: int) -> void:
+## Rain cuts gullies and leaves its sediment lower down. On skirmish maps the
+## flanks are roughened first (weathering left every face at one angle, and rain on
+## a plane runs in parallel rills) and wider rills gather it into branching gullies.
+func _erode(seed_value: int, branching := false) -> void:
+	var brush := 3.5 if branching else 2.5
+	if branching:
+		var bump := 3.0
+		var rough := FastNoiseLite.new()
+		rough.seed = seed_value + 51
+		rough.noise_type = FastNoiseLite.TYPE_SIMPLEX_SMOOTH
+		rough.frequency = 1.0 / 46.0
+		rough.fractal_octaves = 3
+		for z in n:
+			for x in n:
+				var i := z * n + x
+				heights[i] = maxf(0.0, heights[i] + rough.get_noise_2d(x * STEP, z * STEP) * bump * smoothstep(4.0, 30.0, heights[i]) * reserve[i])
 	var rain := RandomNumberGenerator.new()
 	rain.seed = seed_value
 	var offsets: Array[Vector2i] = []
 	var weights := PackedFloat32Array()
 	var total := 0.0
-	for z in range(-2, 3):
-		for x in range(-2, 3):
-			var weight := maxf(0.0, 2.5 - Vector2(x, z).length())
+	var reach := ceili(brush)
+	var margin := 1.0 if branching else 0.0  # (the wider brush needs a cell more; campaigns keep their rain exactly)
+	for z in range(-reach, reach + 1):
+		for x in range(-reach, reach + 1):
+			var weight := maxf(0.0, brush - Vector2(x, z).length())
 			if weight > 0.0:
 				offsets.append(Vector2i(x, z))
 				weights.append(weight)
@@ -199,7 +291,7 @@ func _erode(seed_value: int) -> void:
 	for i in weights.size():
 		weights[i] /= total
 	for drop in int(n * n * 0.5):
-		var p := Vector2(rain.randf_range(3.0, n - 4.0), rain.randf_range(3.0, n - 4.0))
+		var p := Vector2(rain.randf_range(3.0 + margin, n - 4.0 - margin), rain.randf_range(3.0 + margin, n - 4.0 - margin))
 		var direction := Vector2.ZERO
 		var speed := 1.0
 		var water := 1.0
@@ -211,7 +303,7 @@ func _erode(seed_value: int) -> void:
 				break
 			direction = direction.normalized()
 			var next := p + direction
-			if next.x < 3.0 or next.y < 3.0 or next.x >= n - 4.0 or next.y >= n - 4.0:
+			if next.x < 3.0 + margin or next.y < 3.0 + margin or next.x >= n - 4.0 - margin or next.y >= n - 4.0 - margin:
 				break
 			var delta := _sample(next).y - old.y
 			var capacity := maxf(-delta, 0.02) * speed * water * 3.0
@@ -233,27 +325,54 @@ func _erode(seed_value: int) -> void:
 			p = next
 
 
-func reserve_path(points: PackedVector3Array, width: float, blend: float) -> void:
+func reserve_path(points: PackedVector3Array, width: float, blend: float, level := 0.0) -> void:
 	for i in range(points.size() - 1):
 		var a := points[i]
 		var b := points[i + 1]
 		var steps := maxi(1, ceili(Defs.flat(b - a).length() / (STEP * 2.0)))
 		for j in steps + 1:
-			reserve_disc(a.lerp(b, float(j) / steps), width, blend)
+			reserve_disc(a.lerp(b, float(j) / steps), width, blend, level)
 
 
-func reserve_disc(p: Vector3, radius: float, blend: float) -> void:
-	var reach := radius + blend
+## Hills give way to graded ground here, over `blend` metres; with a `level`
+## margin the rolling valley floor flattens too, over that many metres.
+func reserve_disc(p: Vector3, radius: float, blend: float, level := 0.0) -> void:
+	var reach := radius + maxf(blend, level)
 	var lo := Vector2i(floori((p.x - reach + half) / STEP), floori((p.z - reach + half) / STEP)).clamp(Vector2i.ZERO, Vector2i.ONE * (n - 1))
 	var hi := Vector2i(ceili((p.x + reach + half) / STEP), ceili((p.z + reach + half) / STEP)).clamp(Vector2i.ZERO, Vector2i.ONE * (n - 1))
 	for z in range(lo.y, hi.y + 1):
 		for x in range(lo.x, hi.x + 1):
 			var d := Vector2(x * STEP - half - p.x, z * STEP - half - p.z).length()
 			var i := z * n + x
-			reserve[i] = minf(reserve[i], smoothstep(radius, reach, d))
+			reserve[i] = minf(reserve[i], smoothstep(radius, radius + blend, d))
+			if level > 0.0:
+				calm[i] = minf(calm[i], smoothstep(radius, radius + level, d))
 
 
+## The ground's height: the 4 m geology, and on bare rock of skirmish maps the
+## crag relief a 4 m grid cannot hold (what the men stand on and the eye sees).
 func height(p: Vector3) -> float:
+	if heights.is_empty():
+		return 0.0
+	var fx := clampf((p.x + half) / STEP, 0.0, n - 1.0)
+	var fz := clampf((p.z + half) / STEP, 0.0, n - 1.0)
+	var x := mini(int(fx), n - 2)
+	var z := mini(int(fz), n - 2)
+	var i := z * n + x
+	var tx := fx - x
+	var tz := fz - z
+	var h := lerpf(lerpf(heights[i], heights[i + 1], tx), lerpf(heights[i + n], heights[i + n + 1], tx), tz)
+	if rocky.is_empty():
+		return h
+	var r := lerpf(lerpf(rocky[i], rocky[i + 1], tx), lerpf(rocky[i + n], rocky[i + n + 1], tx), tz)
+	if r <= 0.0:
+		return h
+	return h + r * CRAG_METRES * _crag_at(p.x * 2.0, p.z * 2.0)
+
+
+## The smooth geology alone: slopes for movement and growth read this, so the
+## crags roughen the rock without re-routing anyone across the hills.
+func smooth_height(p: Vector3) -> float:
 	if heights.is_empty():
 		return 0.0
 	var fx := clampf((p.x + half) / STEP, 0.0, n - 1.0)
@@ -265,7 +384,50 @@ func height(p: Vector3) -> float:
 
 
 func slope(p: Vector3) -> float:
-	return Vector2(height(p + Vector3.RIGHT * 2.0) - height(p - Vector3.RIGHT * 2.0), height(p + Vector3.BACK * 2.0) - height(p - Vector3.BACK * 2.0)).length() * 0.25
+	return Vector2(smooth_height(p + Vector3.RIGHT * 2.0) - smooth_height(p - Vector3.RIGHT * 2.0), smooth_height(p + Vector3.BACK * 2.0) - smooth_height(p - Vector3.BACK * 2.0)).length() * 0.25
+
+
+## Bare rock (steep, well above the valley floor) takes crag relief on skirmish
+## maps; campaign ground stays exactly as authored. Call on the main thread once
+## the heights are final, on every peer.
+func prepare_crags(enabled: bool) -> void:
+	rocky = PackedFloat32Array()
+	if not enabled or heights.is_empty():
+		return
+	if _crags.is_empty():
+		var noise := FastNoiseLite.new()
+		noise.seed = 4177
+		noise.noise_type = FastNoiseLite.TYPE_SIMPLEX_SMOOTH
+		noise.fractal_type = FastNoiseLite.FRACTAL_RIDGED
+		noise.frequency = 1.0 / 16.0  # (texels: ~8 m ribs and clefts)
+		noise.fractal_octaves = 4
+		noise.fractal_gain = 0.55
+		var tile := noise.get_seamless_image(CRAG_CELLS, CRAG_CELLS, false, false, 0.12, true)
+		_crags.resize(CRAG_CELLS * CRAG_CELLS)
+		for z in CRAG_CELLS:
+			for x in CRAG_CELLS:
+				_crags[z * CRAG_CELLS + x] = tile.get_pixel(x, z).r - 0.5
+	rocky.resize(n * n)
+	for z in range(1, n - 1):
+		for x in range(1, n - 1):
+			var i := z * n + x
+			var gx := (heights[i + 1] - heights[i - 1]) / (2.0 * STEP)
+			var gz := (heights[i + n] - heights[i - n]) / (2.0 * STEP)
+			rocky[i] = smoothstep(0.45, 0.85, sqrt(gx * gx + gz * gz)) * smoothstep(6.0, 14.0, heights[i])
+
+
+## The crag tile at texel coordinates, repeating (bit masks: safe on worker threads).
+static func _crag_at(u: float, v: float) -> float:
+	var x0 := floori(u)
+	var z0 := floori(v)
+	var tx := u - x0
+	var tz := v - z0
+	var mask := CRAG_CELLS - 1
+	var xa := x0 & mask
+	var xb := (x0 + 1) & mask
+	var za := (z0 & mask) * CRAG_CELLS
+	var zb := ((z0 + 1) & mask) * CRAG_CELLS
+	return lerpf(lerpf(_crags[za + xa], _crags[za + xb], tx), lerpf(_crags[zb + xa], _crags[zb + xb], tx), tz)
 
 
 func fits(p: Vector3, footprint: Vector2, yaw: float, tolerance := 0.35) -> bool:

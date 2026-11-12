@@ -69,8 +69,13 @@ def fractured_rock(color, height, normal, ao, rough):
     return color, height, normal, ao, rough
 
 
-def materials():
-    for name in ["rock_face_03", "aerial_rocks_02", "aerial_grass_rock", "snow_02", "forest_leaves_02"]:
+# Meadow turf, 90 m drone survey of grassland and eroded soil follow the gravel layer in the array.
+MATERIALS = ["rock_face_03", "aerial_rocks_02", "aerial_grass_rock", "snow_02", "forest_leaves_02",
+             "grass_ground", "rocky_terrain_02", "dirt_aerial_02"]
+
+
+def materials(names=MATERIALS):
+    for name in names:
         color = source(name + "_diff_2k.jpg").convert("RGB")
         height = source(name + "_disp_2k.jpg").convert("L")
         normal = source(name + "_nor_gl_2k.jpg").convert("RGB")
@@ -126,7 +131,11 @@ def forms():
 
 
 if __name__ == "__main__":
+    import sys
     CACHE.mkdir(parents=True, exist_ok=True)
-    materials()
-    forms()
-    print("Packed five height/normal/AO/roughness materials and three alpine forms.")
+    # Named materials re-pack only those layers; with no names everything is rebuilt.
+    chosen = [name for name in sys.argv[1:] if name in MATERIALS]
+    materials(chosen or MATERIALS)
+    if not chosen:
+        forms()
+    print("Packed %d height/normal/AO/roughness materials." % len(chosen or MATERIALS))

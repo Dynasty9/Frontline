@@ -60,6 +60,8 @@ var cam_attr: CameraAttributesPractical
 var biome_img: Image
 var biome_tex: ImageTexture
 var detail_tex: ImageTexture
+var _detail_img: Image  # detail_tex's top level, for CPU lookups that must match the shader
+var _surface_img: Image  # the surface bake the ground shades with (see meadow_moisture)
 var backdrop_tex: ImageTexture
 var road_mat: ShaderMaterial
 var grass: Grass
@@ -82,7 +84,9 @@ func setup(w: World) -> void:
 	RenderingServer.global_shader_parameter_set("window_glow", lamplight(mood))
 	_mood_asked = String(Settings.get_v("mood"))
 	_make_noise()
+	CloudShadow.set_sky(biome_tex, float(_d.clouds))
 	_build_env()
+	CloudShadow.set_sun(sun)
 	_build_ground()
 	_build_post()
 	mountain_clouds = preload("res://scripts/game/mountain_clouds.gd").new()
@@ -126,6 +130,7 @@ func _make_noise() -> void:
 	d.fractal_type = FastNoiseLite.FRACTAL_FBM
 	d.fractal_octaves = 5
 	var di := d.get_seamless_image(256, 256, false, false, 0.1, true)
+	_detail_img = di.duplicate()
 	di.generate_mipmaps()
 	detail_tex = ImageTexture.create_from_image(di)
 	backdrop_tex = ImageTexture.create_from_image(backdrop_image(n.seed))
@@ -224,6 +229,124 @@ func grass_amount(p: Vector3) -> float:
 		habitat *= 1.0 - smoothstep(0.25, 0.5, world.terrain.slope_at(p))
 	var b := biome_at(p)
 	return (1.0 - smoothstep(0.62, 0.74, b)) * habitat
+
+
+## The ground shader's meadow_moisture() on the CPU, for the grass clumps: 0 a
+## dry crest, 1 a damp hollow or river bank. Before the surface is baked, 0.5.
+func meadow_moisture(p: Vector3) -> float:
+	if _surface_img == null or _detail_img == null:
+		return 0.5
+	var size := _surface_img.get_width()
+	var s := _bilinear(_surface_img, (p.x + MapDims.HALF) / MapDims.SIZE * size - 0.5, (p.z + MapDims.HALF) / MapDims.SIZE * size - 0.5, false)
+	var hollow := clampf((s.g - 0.5) * 5.0, -1.0, 1.0)
+	var damp := smoothstep(0.04, 0.5, s.a)
+	var landform: Landform = world.terrain.landform
+	var gx := (landform.height(p + Vector3.RIGHT) - landform.height(p - Vector3.RIGHT)) * 0.5
+	var gz := (landform.height(p + Vector3.BACK) - landform.height(p - Vector3.BACK)) * 0.5
+	var normal := Vector3(-gx, 1.0, -gz).normalized()
+	var toward_sun := Vector2(sun.basis.z.x, sun.basis.z.z)
+	var sunward := Vector2(normal.x, normal.z).dot(toward_sun / maxf(toward_sun.length(), 0.001))
+	var warp := Vector2(_detail(p.x / 5000.0, p.z / 5000.0), _detail(p.x / 5000.0 + 0.43, p.z / 5000.0 + 0.43))
+	var q := Vector2(p.x, p.z) + (warp - Vector2(0.5, 0.5)) * 260.0
+	var soil := _detail(q.x / 1900.0 + 0.27, q.y / 1900.0 + 0.27) * 0.65 + _detail(q.x / 560.0 + 0.61, q.y / 560.0 + 0.61) * 0.35
+	var thin := smoothstep(10.0, 55.0, landform.height(p)) * 0.35
+	return clampf(0.62 + hollow * 0.32 + damp * 0.42 - sunward * 1.5 - Vector2(gx, gz).length() * 0.2 + (soil - 0.5) * 1.3 - thin, 0.0, 1.0)
+
+
+## The shader's repeating detail noise at a UV, filtered as a texture is.
+func _detail(u: float, v: float) -> float:
+	var w := _detail_img.get_width()
+	return _bilinear(_detail_img, u * w - 0.5, v * w - 0.5, true).r
+
+
+static func _bilinear(img: Image, x: float, y: float, wrap: bool) -> Color:
+	var w := img.get_width()
+	var h := img.get_height()
+	var x0 := floori(x)
+	var y0 := floori(y)
+	var fx := x - x0
+	var fy := y - y0
+	var x1 := x0 + 1
+	var y1 := y0 + 1
+	if wrap:
+		x0 = posmod(x0, w)
+		x1 = posmod(x1, w)
+		y0 = posmod(y0, h)
+		y1 = posmod(y1, h)
+	else:
+		x0 = clampi(x0, 0, w - 1)
+		x1 = clampi(x1, 0, w - 1)
+		y0 = clampi(y0, 0, h - 1)
+		y1 = clampi(y1, 0, h - 1)
+	return img.get_pixel(x0, y0).lerp(img.get_pixel(x1, y0), fx).lerp(img.get_pixel(x0, y1).lerp(img.get_pixel(x1, y1), fx), fy)
+
+
+## Grass stays green along the river and around the ponds: the drainage channel
+## of the surface bake (alpha) is raised within a few tens of metres of fresh water.
+func _wet_banks(img: Image) -> void:
+	var water: WaterMap = world.water
+	if water == null or water.mask == null:
+		return
+	var size := img.get_width()
+	var cell := MapDims.SIZE / size
+	var far := 1e9
+	var distance := PackedFloat32Array()
+	distance.resize(size * size)
+	var mask_size := water.mask.get_width()
+	var corners: Array[Vector2] = [Vector2(0.25, 0.25), Vector2(0.75, 0.25), Vector2(0.25, 0.75), Vector2(0.75, 0.75)]
+	for z in size:
+		for x in size:
+			var wet := false
+			for o in corners:
+				var mx := clampi(int((x + o.x) * cell), 0, mask_size - 1)
+				var mz := clampi(int((z + o.y) * cell), 0, mask_size - 1)
+				var m := water.mask.get_pixel(mx, mz)
+				if m.a > 0.0 and m.b < 0.5:
+					wet = true
+					break
+			distance[z * size + x] = 0.0 if wet else far
+	# Two chamfer passes give every cell its distance (in cells) to fresh water.
+	for z in size:
+		for x in size:
+			var i := z * size + x
+			var d := distance[i]
+			if x > 0:
+				d = minf(d, distance[i - 1] + 1.0)
+			if z > 0:
+				d = minf(d, distance[i - size] + 1.0)
+				if x > 0:
+					d = minf(d, distance[i - size - 1] + 1.414)
+				if x < size - 1:
+					d = minf(d, distance[i - size + 1] + 1.414)
+			distance[i] = d
+	for z in range(size - 1, -1, -1):
+		for x in range(size - 1, -1, -1):
+			var i := z * size + x
+			var d := distance[i]
+			if x < size - 1:
+				d = minf(d, distance[i + 1] + 1.0)
+			if z < size - 1:
+				d = minf(d, distance[i + size] + 1.0)
+				if x < size - 1:
+					d = minf(d, distance[i + size + 1] + 1.414)
+				if x > 0:
+					d = minf(d, distance[i + size - 1] + 1.414)
+			distance[i] = d
+	var changed := false
+	for z in size:
+		for x in size:
+			var metres := distance[z * size + x] * cell
+			if metres > 40.0:
+				continue
+			var c := img.get_pixel(x, z)
+			var bank := (1.0 - smoothstep(4.0, 40.0, metres)) * 0.75
+			if bank > c.a:
+				c.a = bank
+				img.set_pixel(x, z, c)
+				changed = true
+	if changed and img.has_mipmaps():
+		img.clear_mipmaps()
+		img.generate_mipmaps()
 
 
 
@@ -397,6 +520,9 @@ const GROUND_LOD := 170.0  # beyond this from the camera a chunk is drawn on a c
 
 
 const TERRAIN_MATERIALS := ["rock_face_03", "aerial_rocks_02", "aerial_grass_rock", "snow_02", "forest_leaves_02"]
+## After the shore gravel (layer 5): dry turf (6), a 90 m drone survey of grazed
+## grassland (7) and rutted soil (8), all in the same two samplers.
+const MEADOW_MATERIALS := ["grass_ground", "rocky_terrain_02", "dirt_aerial_02"]
 static var _material_arrays: Array[Texture2DArray] = []
 
 
@@ -413,6 +539,9 @@ static func terrain_materials() -> Array[Texture2DArray]:
 			var grains := gravel.get_image()
 			grains.convert(Image.FORMAT_RGBA8)
 			images.append(grains)
+			for name in MEADOW_MATERIALS:
+				var texture: Texture2D = load("res://assets/terrain/%s_%s.png" % [name, suffix])
+				images.append(texture.get_image())
 			var array := Texture2DArray.new()
 			var error := array.create_from_images(images)
 			assert(error == OK, "Terrain material layers must share size, format and mipmaps")
@@ -425,9 +554,7 @@ func _build_ground() -> void:
 	ground = MeshInstance3D.new()
 	ground.mesh = _ground_ring(GROUND_HALF, MapDims.HALF + 1800.0)
 	ground_mat = ShaderMaterial.new()
-	var sh := Shader.new()
-	sh.code = MapDims.shader(GROUND_SHADER.replace("// BACKDROP_HEIGHT", BACKDROP_HEIGHT))
-	ground_mat.shader = sh
+	ground_mat.shader = CloudShadow.make(MapDims.shader(GROUND_SHADER.replace("// BACKDROP_HEIGHT", BACKDROP_HEIGHT)), CloudShadow.OWN_LIGHT)
 	ground_mat.set_shader_parameter("vertex_lit", ProjectSettings.get_setting_with_override("rendering/shading/overrides/force_vertex_shading"))
 	ground_mat.set_shader_parameter("biome_tex", biome_tex)
 	ground_mat.set_shader_parameter("detail_tex", detail_tex)
@@ -436,7 +563,6 @@ func _build_ground() -> void:
 	ground_mat.set_shader_parameter("material_colors", materials[0])
 	ground_mat.set_shader_parameter("material_surfaces", materials[1])
 	ground_mat.set_shader_parameter("meadow_grass", preload("res://assets/town/leafy_grass_color.jpg"))
-	ground_mat.set_shader_parameter("cloud_strength", float(_d.clouds))
 	ground_mat.set_shader_parameter("sun_tint", _d.sun)
 	ground_mat.set_shader_parameter("air_color", _d.fog)
 	ground_mat.set_shader_parameter("wet", 1.0 if mood == "rain" else 0.0)
@@ -481,9 +607,7 @@ func _build_ground() -> void:
 	add_child(trench_net)
 	trench_net.set_detail(detail_tex)
 	road_mat = ShaderMaterial.new()
-	var rs := Shader.new()
-	rs.code = Mats.code(MapDims.shader(ROAD_SHADER.replace("// STREET_SURFACE", Mats.ASPHALT_SHADER)))
-	road_mat.shader = rs
+	road_mat.shader = CloudShadow.make(Mats.code(MapDims.shader(ROAD_SHADER.replace("// STREET_SURFACE", Mats.ASPHALT_SHADER))))
 	road_mat.set_shader_parameter("detail_tex", detail_tex)
 	road_mat.set_shader_parameter("paving_noise", preload("res://assets/town/aerial_asphalt_01_color.jpg"))
 	road_mat.set_shader_parameter("street_detail", preload("res://assets/town/road_damaged_clean_color.jpg"))
@@ -827,9 +951,11 @@ func apply_mood(m: String) -> void:
 		PhysicalSky.set_sun(_phys_sky, sun)
 	rim.rotation_degrees = Vector3(-25.0, float(_d.azim) + 180.0, 0)
 	rim.light_energy = 0.28 if mood != "overcast" else 0.12
-	ground_mat.set_shader_parameter("cloud_strength", float(_d.clouds))
+	CloudShadow.set_strength(float(_d.clouds))
 	ground_mat.set_shader_parameter("sun_tint", _d.sun)
 	ground_mat.set_shader_parameter("air_color", _d.fog)
+	if forest:
+		forest.set_air(_d.fog, float(ground_mat.get_shader_parameter("terrain_air")) if ground_mat.get_shader_parameter("terrain_air") != null else 0.0)
 	if mountain_clouds:
 		mountain_clouds.apply_settings(self)
 	if water_view:
@@ -843,6 +969,7 @@ func apply_mood(m: String) -> void:
 func apply_settings() -> void:
 	var s := Settings
 	ground_mat.set_shader_parameter("terrain_detail", int(s.get_v("lod")) >= 1)
+	CloudShadow.refresh()
 	if forest:
 		forest.apply_settings()
 	# the battle's own mood stands (the host's choice, or a mission's) until
@@ -915,16 +1042,32 @@ func apply_settings() -> void:
 ## Colour grading: the chosen look on top of the time of day, plus the
 ## player's contrast slider.
 func _apply_look() -> void:
-	var lk: Array = Settings.LOOKS[clampi(int(Settings.get_v("look")), 0, Settings.LOOKS.size() - 1)]
+	apply_grade(int(Settings.get_v("look")), float(Settings.get_v("contrast")))
+
+
+## A look (Settings.LOOKS) laid over the time of day, its contrast and
+## saturation scaled: the player's setting, or photo mode's for its picture.
+func apply_grade(look_i: int, contrast_mul: float, saturation_mul := 1.0) -> void:
+	var li := clampi(look_i, 0, Settings.LOOKS.size() - 1)
+	var lk: Array = Settings.LOOKS[li]
 	env.adjustment_enabled = true
 	env.adjustment_brightness = float(lk[0])
-	env.adjustment_contrast = float(lk[1]) * float(Settings.get_v("contrast"))
+	env.adjustment_contrast = float(lk[1]) * contrast_mul
 	var sat := float(lk[2])
-	if int(Settings.get_v("look")) == 0:
+	if li == 0:
 		sat = 1.05 if mood in ["golden", "dusk", "dawn"] else 1.1
-	env.adjustment_saturation = sat
+	env.adjustment_saturation = sat * saturation_mul
 	if post_rect and post_rect.material:
 		(post_rect.material as ShaderMaterial).set_shader_parameter("tint", lk[3])
+
+
+func _exit_tree() -> void:
+	CloudShadow.set_strength(0.0)  # no clouds over the menu, or the next battle's loading
+
+
+## The exposure the time of day and the player's brightness give.
+func base_exposure() -> float:
+	return float(_d.exposure) * float(Settings.get_v("brightness"))
 
 
 func _process(_dt: float) -> void:
@@ -946,6 +1089,8 @@ var _activity := 0.0
 
 func _view_process(_dt: float) -> void:
 	_update_deform(_dt)
+	CloudShadow.tick(_dt)
+	CloudShadow.set_sun(sun)
 	if world.cam == null:
 		return
 	if _wind:
@@ -1106,9 +1251,18 @@ const NIGHT_VISION := {"night": 0.8, "dusk": 0.18, "dawn": 0.12, "rain": 0.06}
 const SHAFTS_BY_MOOD := {"day": 0.55, "golden": 1.0, "dawn": 1.15, "dusk": 1.15, "hazy": 1.35, "overcast": 0.12, "rain": 0.0, "night": 0.3}
 
 
+## Photo mode's own camera-and-lens choices, over the player's settings while
+## it's open (key -> value; never saved, and emptied when it closes).
+var look_override := {}
+
+
+## A camera-and-lens setting as the view has it now: photo mode's, else the player's.
+func look_v(key: String) -> Variant:
+	return look_override.get(key, Settings.get_v(key))
+
+
 func _apply_cinematic() -> void:
-	var s := Settings
-	var want := bool(s.get_v("lens")) or bool(s.get_v("shafts")) or bool(s.get_v("local_exp")) or bool(s.get_v("eye_adapt")) or bool(s.get_v("film")) or bool(s.get_v("heat_haze"))
+	var want := bool(look_v("lens")) or bool(look_v("shafts")) or bool(look_v("local_exp")) or bool(look_v("eye_adapt")) or bool(look_v("film")) or bool(look_v("heat_haze"))
 	if want and cine == null and world.has_view and CinematicFx.supported():
 		cine = CinematicFx.new()
 		var effects: Array[CompositorEffect] = [cine]
@@ -1117,13 +1271,13 @@ func _apply_cinematic() -> void:
 		we.compositor = comp
 	if cine == null:
 		return
-	if bool(s.get_v("eye_adapt")) and not cine.eye:
+	if bool(look_v("eye_adapt")) and not cine.eye:
 		cine.reset_adaptation = true
-	cine.lens = bool(s.get_v("lens"))
-	cine.local_exposure = bool(s.get_v("local_exp"))
-	cine.eye = bool(s.get_v("eye_adapt"))
-	cine.film = bool(s.get_v("film"))
-	cine.heat_haze = bool(s.get_v("heat_haze"))
+	cine.lens = bool(look_v("lens"))
+	cine.local_exposure = bool(look_v("local_exp"))
+	cine.eye = bool(look_v("eye_adapt"))
+	cine.film = bool(look_v("film"))
+	cine.heat_haze = bool(look_v("heat_haze"))
 	cine.enabled = want
 	heat.on = cine.heat_haze
 	if not heat.on:
@@ -1190,7 +1344,7 @@ func _cine_tick(dt: float) -> void:
 		var out := maxf(absf(sun_uv.x - 0.5), absf(sun_uv.y - 0.5)) - 0.5
 		seen = (1.0 - smoothstep(0.0, 0.5, out)) * smoothstep(-0.03, 0.05, to_sun.y)
 	var shafts: float = SHAFTS_BY_MOOD.get(mood, 0.5)
-	cine.shafts = bool(Settings.get_v("shafts")) and seen > 0.001 and shafts > 0.0
+	cine.shafts = bool(look_v("shafts")) and seen > 0.001 and shafts > 0.0
 	p[4] = sun_uv.x
 	p[5] = sun_uv.y
 	p[6] = seen
@@ -1283,14 +1437,17 @@ func _apply_haze(distance: float) -> void:
 	env.fog_height_density = 0.0
 	if bool(Settings.get_v("alpine_haze")) and world != null and world.terrain and world.terrain.landform.peak > 1.0:
 		var downward := absf(sin(world.cam.rotation.x)) if world.cam else 0.0
-		k = maxf(k, 0.45 * pow(1.0 - downward, 2.0))
+		k = maxf(k, 0.3 * pow(1.0 - downward, 2.0))
 		# Sky tint separates distant ranges; keep the low valley veil out of the overhead view.
-		env.fog_aerial_perspective = 0.38 * (1.0 - downward)
-		terrain_air = float(_d.fog_d) * 0.48 * pow(1.0 - downward, 2.0)
+		# (light enough that the far crags, snow and woods keep their detail)
+		env.fog_aerial_perspective = 0.26 * (1.0 - downward)
+		terrain_air = float(_d.fog_d) * 0.3 * pow(1.0 - downward, 2.0)
 		env.fog_height = 18.0
-		env.fog_height_density = 0.0012 * pow(1.0 - downward, 2.0)
+		env.fog_height_density = 0.0008 * pow(1.0 - downward, 2.0)
 	if ground_mat:
 		ground_mat.set_shader_parameter("terrain_air", terrain_air)
+		if forest:
+			forest.set_air(ground_mat.get_shader_parameter("air_color"), terrain_air)
 	env.fog_density = float(_d.fog_d) * HAZE_STRENGTH * k
 	env.volumetric_fog_density = (0.0011 if mood != "hazy" else 0.003) * VOLUME_STRENGTH * volume_k
 
@@ -1458,9 +1615,13 @@ func _update_deform(dt: float) -> void:
 		for child in get_children():
 			if child is MeshInstance3D and child != ground and child.material_override == ground_mat:
 				child.custom_aabb = _ground_chunk_bounds(child.position, GROUND_HALF * 2.0 / GROUND_CHUNKS)
-		ground_mat.set_shader_parameter("surface_bake", ImageTexture.create_from_image(tm.landform.bake_surface(sun.basis.z)))
+		_surface_img = tm.landform.bake_surface(sun.basis.z)
+		_wet_banks(_surface_img)
+		ground_mat.set_shader_parameter("surface_bake", ImageTexture.create_from_image(_surface_img))
 		ground_mat.set_shader_parameter("sun_direction", sun.basis.z)
 		_surface_baked = true
+		if grass:
+			grass.request_rebuild(0.2)  # the clumps take their moisture from this bake
 		_bake_scenery()
 		if forest == null:
 			forest = DistantForest.new()
@@ -1599,6 +1760,33 @@ void sky() {
 """
 
 const BACKDROP_HEIGHT := WaterView.SCENERY_COAST + WaterView.SCENERY_RIVERS + """
+// Crags, ribs and gullies too fine for the 9 m backdrop bake: ridged value noise
+// (a sine-free hash, steady at these coordinates on every GPU), scenery only.
+float crag_hash(vec2 c) {
+	vec3 q = fract(vec3(c.xyx) * 0.1031);
+	q += dot(q, q.yzx + 33.33);
+	return fract((q.x + q.y) * q.z);
+}
+float crag_value(vec2 p) {
+	vec2 c = floor(p);
+	vec2 f = fract(p);
+	vec2 u = f * f * (3.0 - 2.0 * f);
+	return mix(mix(crag_hash(c), crag_hash(c + vec2(1.0, 0.0)), u.x),
+		mix(crag_hash(c + vec2(0.0, 1.0)), crag_hash(c + vec2(1.0, 1.0)), u.x), u.y);
+}
+float scenery_crags(vec2 p) {
+	float sum = 0.0;
+	float weight = 0.5;
+	vec2 q = p / 140.0;
+	for (int octave = 0; octave < 4; octave++) {
+		float ridge = 1.0 - abs(crag_value(q) * 2.0 - 1.0);
+		sum += ridge * ridge * weight;
+		q = mat2(vec2(1.6, 1.2), vec2(-1.2, 1.6)) * q + vec2(17.3, 9.1);
+		weight *= 0.5;
+	}
+	return sum - 0.33;  // (about zero on average: the massif keeps its height)
+}
+
 float backdrop(vec2 p) {
 	float edge = max(abs(p.x), abs(p.y)) - __MAP_HALF__;
 	float shore = scenery_shore(p, sea_x);
@@ -1608,6 +1796,11 @@ float backdrop(vec2 p) {
 	float hills = pow(smoothstep(0.18, 0.88, mountain), 2.2) * 440.0;
 	// Tall massifs belong behind the water and foothills, leaving the near valley open.
 	hills *= 1.0 + 1.1 * smoothstep(600.0, 1100.0, edge);
+	// The survey's broad ridges break into crags in proportion to the massif.
+	hills *= 1.0 + scenery_crags(p) * 0.12;
+	// Saddles notch the high ridges, so a massif shows several tops rather than one
+	// cone (they only cut down: the scenery stays within its height bounds).
+	hills *= 1.0 - 0.08 * smoothstep(0.35, 0.75, crag_value(p / 380.0 + 5.1)) * smoothstep(250.0, 700.0, hills);
 	float land = hills * smoothstep(8.0, 900.0, edge) * coast * (1.0 - step(9999.0, snow_line))
 		* (1.0 - smoothstep(1450.0, 1800.0, edge));
 	if (p.x > shore - 14.0) { land = min(land, scenery_sea_bed(p.x - shore)); }
@@ -1616,10 +1809,17 @@ float backdrop(vec2 p) {
 	float into = scenery_river_into(p);
 	return mix(land, min(land, scenery_river_bed(into)), smoothstep(-5.0, 0.0, into));
 }
+// Woods grow from just above the water to the treeline. They climb the gullies,
+// where soil and water gather, higher and steeper than the bare spurs between, so
+// their upper edge branches with the drainage instead of tracing one contour.
 float forest_habitat(vec2 p, float height, float gradient) {
 	float treeline = max(150.0, snow_line * 1.5);
-	return smoothstep(2.0, 8.0, height) * (1.0 - smoothstep(treeline - 35.0, treeline - 12.0, height))
-		* (1.0 - smoothstep(0.50, 0.75, gradient))
+	vec2 uv = (p + __MAP_HALF__ + 1800.0) / (__MAP_SIZE__ + 3600.0);
+	float gully = smoothstep(0.08, 0.55, textureLod(backdrop_tex, uv, 0.0).g);
+	float steep = mix(0.45, 1.2, gully);
+	float line = treeline - 45.0 + gully * 40.0;
+	return smoothstep(0.5, 2.5, height) * (1.0 - smoothstep(line, line + 23.0, height))
+		* (1.0 - smoothstep(steep, steep + 0.4, gradient))
 		* (1.0 - smoothstep(scenery_shore(p, sea_x) - 60.0, scenery_shore(p, sea_x) - 40.0, p.x));
 }
 
@@ -1697,7 +1897,6 @@ uniform vec3 dry : source_color = vec3(0.36, 0.33, 0.19);
 uniform vec3 dirt : source_color = vec3(0.3, 0.26, 0.2);
 uniform vec3 mud : source_color = vec3(0.19, 0.16, 0.12);
 uniform vec3 sun_tint : source_color = vec3(1.0);
-uniform float cloud_strength = 0.3;
 uniform float bump = 0.85;
 uniform float snow_line = 10000.0;
 uniform float wet = 0.0;
@@ -1706,6 +1905,7 @@ uniform sampler2DArray deform_tex : filter_linear, repeat_disable;
 // TERRAIN_TEXTURE_HELPER
 uniform sampler2D water_mask : hint_default_transparent, filter_linear, repeat_disable;
 uniform float sea_x = 1e9;
+// CLOUD_SHADOW
 
 varying vec3 wpos;
 varying float puddle;
@@ -1781,13 +1981,60 @@ vec3 surface_relief(vec3 normal, float height, float strength) {
 	return normalize(normal - gradient * strength / max(abs(det), 0.000001));
 }
 
-// Photographed grass follows sheltered soil and exposed dry patches beyond the town too.
-vec3 meadow_color(vec2 p, float dryness) {
-	vec3 blades = texture(meadow_grass, p * 0.5).rgb;
+// Packed scans are sRGB colour; every blend below happens in linear light on both renderers.
+vec3 scan_linear(vec3 c) {
 	if (OUTPUT_IS_SRGB) {
-		blades = mix(blades / 12.92, pow((blades + 0.055) / 1.055, vec3(2.4)), step(vec3(0.04045), blades));
+		c = mix(c / 12.92, pow((c + 0.055) / 1.055, vec3(2.4)), step(vec3(0.04045), c));
 	}
-	return blades * mix(vec3(0.18, 0.35, 0.25), vec3(0.36, 0.48, 0.50), dryness);
+	return c;
+}
+
+float height_blend(float bed, float deposit, float coverage) {
+	vec2 relief = vec2(bed * 0.36 + 1.0 - coverage, deposit * 0.36 + coverage);
+	vec2 weight = max(relief - max(relief.x, relief.y) + 0.18, vec2(0.0));
+	return weight.y / max(0.001, weight.x + weight.y);
+}
+
+// What the soil holds decides the turf: hollows, drainage lines and river banks
+// stay lush, crests and banks facing the sun dry to thin straw, and broad soil
+// differences part one pasture from the next even where the ground lies flat.
+// Atmosphere.meadow_moisture() repeats this for the grass clumps; keep them alike.
+float meadow_moisture(vec2 p, vec4 surface, vec3 geometric, float slope, vec2 warp, float rise) {
+	float hollow = clamp((surface.g - 0.5) * 5.0, -1.0, 1.0);
+	float damp = smoothstep(0.04, 0.5, surface.a);
+	vec2 sun_ground = sun_direction.xz / max(length(sun_direction.xz), 0.001);
+	float sunward = dot(geometric.xz, sun_ground);
+	vec2 q = p + (warp - 0.5) * 260.0;
+	float soil = texture(detail_tex, q / 1900.0 + 0.27).r * 0.65 + texture(detail_tex, q / 560.0 + 0.61).r * 0.35;
+	// (soil thins on the hills above the valley floor)
+	float thin = smoothstep(10.0, 55.0, rise) * 0.35;
+	return clamp(0.62 + hollow * 0.32 + damp * 0.42 - sunward * 1.5 - slope * 0.2 + (soil - 0.5) * 1.3 - thin, 0.0, 1.0);
+}
+
+// Pasture is photographed at three scales: a drone survey of grazed grassland
+// over 90 and 230 m for the patterns one field makes, and leafy blades and dry
+// turf at 2 m. Each is drawn twice, turned against itself, so no repeat lines up
+// into rows. Damp ground takes the survey's green with the leafy scan's light and
+// shade; thin dry turf shows through first where its own relief stands highest.
+vec3 meadow_color(vec2 p, float moisture, float blend) {
+	vec2 turned = mat2(vec2(0.8, 0.6), vec2(-0.6, 0.8)) * p;
+	vec3 blades_a = scan_linear(texture(meadow_grass, p * 0.5).rgb);
+	vec3 blades_b = scan_linear(texture(meadow_grass, turned * 0.43 + 0.37).rgb);
+	float light_a = dot(blades_a, vec3(0.2126, 0.7152, 0.0722));
+	float light_b = dot(blades_b, vec3(0.2126, 0.7152, 0.0722));
+	float blades = mix(light_a, light_b, height_blend(light_a * 2.5, light_b * 2.5, blend));
+	vec4 turf_a = texture(material_colors, vec3(p * 0.5, 6.0));
+	vec4 turf_b = texture(material_colors, vec3(turned * 0.47 + 0.61, 6.0));
+	float turf_mix = height_blend(turf_a.a, turf_b.a, blend);
+	vec3 turf = scan_linear(mix(turf_a.rgb, turf_b.rgb, turf_mix));
+	float turf_relief = mix(turf_a.a, turf_b.a, turf_mix);
+	vec3 survey = scan_linear(texture(material_colors, vec3(p / 90.0, 7.0)).rgb) * 0.6
+		+ scan_linear(texture(material_colors, vec3(turned / 230.0 + 0.19, 7.0)).rgb) * 0.4;
+	// (the scans' mean linear luminance: leafy grass 0.2445, the survey 0.0747)
+	vec3 lush = survey * vec3(0.85, 1.15, 1.8) * pow(max(blades, 0.0) / 0.2445, 0.75);
+	float grazing = dot(survey, vec3(0.2126, 0.7152, 0.0722)) / 0.0747;
+	vec3 cured = turf * vec3(0.72, 0.8, 0.74) * mix(1.0, grazing, 0.5);
+	return mix(lush, cured, height_blend(blades * 1.6, turf_relief, 1.0 - moisture));
 }
 
 // Fine rounded grains share the sand's warm palette; mountain scree reads as giant chips here.
@@ -1798,12 +2045,6 @@ vec3 shore_gravel_color(vec2 p) {
 	}
 	float luma = dot(scan, vec3(0.2126, 0.7152, 0.0722));
 	return mix(vec3(luma), scan, 0.4) * vec3(1.12, 1.09, 1.02);
-}
-
-float height_blend(float bed, float deposit, float coverage) {
-	vec2 relief = vec2(bed * 0.36 + 1.0 - coverage, deposit * 0.36 + coverage);
-	vec2 weight = max(relief - max(relief.x, relief.y) + 0.18, vec2(0.0));
-	return weight.y / max(0.001, weight.x + weight.y);
 }
 
 void fragment() {
@@ -1861,6 +2102,16 @@ void fragment() {
 	float normal_step = edge >= __MAP_HALF__ ? 16.0 : 1.0;
 	float rx = (dfm(p + vec2(normal_step, 0.0)) - dfm(p - vec2(normal_step, 0.0))) / (2.0 * normal_step);
 	float rz = (dfm(p + vec2(0.0, normal_step)) - dfm(p - vec2(0.0, normal_step))) / (2.0 * normal_step);
+	if (terrain_detail && edge >= __MAP_HALF__) {
+		// Distant crags finer than the scenery mesh still catch the light, and break
+		// the snow and bare rock on steep faces into ribs and gullies.
+		float crag_steep = smoothstep(0.25, 0.8, length(vec2(rx, rz)));
+		if (crag_steep > 0.0) {
+			float c0 = scenery_crags(p * 3.0);
+			rx += (scenery_crags((p + vec2(6.0, 0.0)) * 3.0) - c0) * 2.0 * crag_steep;
+			rz += (scenery_crags((p + vec2(0.0, 6.0)) * 3.0) - c0) * 2.0 * crag_steep;
+		}
+	}
 	float slope = length(vec2(rx, rz));
 	// Standing water cannot flatten the normals of a steep cliff.
 	puddle *= 1.0 - smoothstep(0.08, 0.25, slope);
@@ -1885,6 +2136,17 @@ void fragment() {
 	float secondary_mix = smoothstep(0.25, 0.72, patch) * 0.55;
 	if (terrain_detail) {
 		rock_sample = mix(rock_sample, surface_color(0.0, secondary_uv, weights), secondary_mix);
+	}
+	// Up close a third, finer pass of the same rock brings back the cracks and grain
+	// a 48 m scan blurs away; it fades out before it could shimmer at distance.
+	float near_rock = terrain_detail ? 1.0 - smoothstep(60.0, 160.0, distance(CAMERA_POSITION_WORLD, wpos)) : 0.0;
+	vec3 fine_uv = rock_uv * 6.5 + vec3(0.13, 0.47, 0.71);
+	if (near_rock > 0.001) {
+		vec4 fine = surface_color(0.0, fine_uv, weights);
+		float coarse_light = max(dot(rock_sample.rgb, vec3(0.2126, 0.7152, 0.0722)), 0.02);
+		float fine_light = dot(fine.rgb, vec3(0.2126, 0.7152, 0.0722)) / coarse_light;
+		rock_sample.rgb *= mix(1.0, clamp(fine_light, 0.6, 1.5), 0.45 * near_rock);
+		rock_sample.a = mix(rock_sample.a, fine.a, 0.3 * near_rock);
 	}
 	vec4 scree_sample = surface_color(1.0, scree_uv, weights);
 	float debris_luma = dot(scree_sample.rgb, vec3(0.2126, 0.7152, 0.0722));
@@ -1917,7 +2179,8 @@ void fragment() {
 	float stone = dot(rock_sample.rgb, vec3(0.2126, 0.7152, 0.0722));
 	vec3 rock = mix(vec3(stone), rock_sample.rgb, 0.45) * vec3(1.04, 1.10, 1.18);
 	rock = mix(rock, scree_sample.rgb * vec3(1.04, 1.06, 1.07), scree * 0.7);
-	rock *= mix(vec3(0.58, 0.67, 0.78), vec3(1.28, 1.17, 0.98), region);
+	// (the same rock near and far: a broad cool-to-warm shift, not beige hills before grey ranges)
+	rock *= mix(vec3(0.56, 0.62, 0.7), vec3(0.84, 0.82, 0.8), region);
 	rock *= mix(1.12, 0.65, weathered);
 	rock = mix(rock, scree_sample.rgb * vec3(1.01, 1.04, 1.07), talus * 0.8);
 	rock = mix(rock, rock * vec3(1.45, 1.40, 1.29), mineral * 0.65);
@@ -1944,8 +2207,21 @@ void fragment() {
 	moss *= mix(0.93, 1.07, patch);
 	float meadow_turf = turf * (1.0 - dirt_m);
 	if (meadow_turf > 0.001) {
-		float meadow_dry = alpine_dry * 0.75 + texture(detail_tex, p / 180.0).r * 0.25;
-		moss = mix(moss, meadow_color(p, meadow_dry), meadow_turf * 0.85);
+		float moisture = meadow_moisture(p, vec4(habitat_bake, flow), geometric, slope, warp, geology);
+		float turn = smoothstep(0.3, 0.7, texture(detail_tex, p / 23.0 + 0.11).r);
+		moss = mix(moss, meadow_color(p, moisture, turn), meadow_turf * 0.9);
+	}
+	// Mud lies where the biome map slows the men down (TerrainMap's MUD): rutted, puddled soil.
+	float mud_cover = smoothstep(0.35, 1.0, dirt_m) * turf;
+	// (close by it reads as a bog; from high above, as a darker patch of grass)
+	mud_cover *= 1.0 - 0.55 * smoothstep(120.0, 600.0, distance(CAMERA_POSITION_WORLD, wpos));
+	if (mud_cover > 0.001) {
+		vec2 rut_uv = mat2(vec2(0.8, 0.6), vec2(-0.6, 0.8)) * p / 20.0;
+		vec4 rutted = texture(material_colors, vec3(rut_uv, 8.0));
+		// The scan's light and shade over dark wet soil: its dried pale tracks would read as brick.
+		float rut_light = dot(scan_linear(rutted.rgb), vec3(0.2126, 0.7152, 0.0722)) / 0.1329;
+		vec3 mud_scan = vec3(0.072, 0.06, 0.042) * pow(clamp(rut_light, 0.3, 1.6), 0.6);
+		moss = mix(moss, mud_scan, height_blend(0.5, 1.0 - rutted.a, mud_cover * 0.7));
 	}
 	vec3 rock_n; vec3 scree_n; vec3 moss_n;
 	vec2 rock_data = surface_data(0.0, rock_uv, weights, geometric, rock_n);
@@ -1954,6 +2230,11 @@ void fragment() {
 		vec2 secondary_data = surface_data(0.0, secondary_uv, weights, geometric, secondary_n);
 		rock_data = mix(rock_data, secondary_data, secondary_mix);
 		rock_n = normalize(mix(rock_n, secondary_n, secondary_mix));
+	}
+	if (near_rock > 0.001) {
+		vec3 fine_n;
+		surface_data(0.0, fine_uv, weights, geometric, fine_n);
+		rock_n = normalize(mix(rock_n, fine_n, 0.4 * near_rock));
 	}
 	vec2 scree_data = surface_data(1.0, scree_uv, weights, geometric, scree_n);
 	vec2 moss_data = surface_data(2.0, moss_uv, weights, geometric, moss_n);
@@ -1968,6 +2249,22 @@ void fragment() {
 		+ (patch - 0.5) * 0.24 + (rock_height - 0.5) * 0.35);
 	cover = max(cover, talus * 0.95);
 	float exposed = height_blend(moss_sample.a, rock_height, cover);
+	// Turf thins into rock over a few metres rather than stopping at a line.
+	exposed = mix(exposed, smoothstep(0.15, 0.85, cover), 0.35);
+	// Shoulders and aprons below the crags: grazed grass broken by stones (the drone
+	// survey), so pasture turns to rock through stony ground rather than at a line.
+	// The slope over twenty metres: ledges and benches on a crag read as part of it.
+	// (the distant ranges' faces are read over forty, their mesh being coarser)
+	float wide_step = edge >= __MAP_HALF__ ? 40.0 : 10.0;
+	float wide = length(vec2(dfm(p + vec2(wide_step, 0.0)) - dfm(p - vec2(wide_step, 0.0)), dfm(p + vec2(0.0, wide_step)) - dfm(p - vec2(0.0, wide_step)))) / (2.0 * wide_step);
+	// Ledges among the crags hold only thin turf between stones, not lush lawn.
+	float ledge = smoothstep(0.35, 0.75, wide) * smoothstep(8.0, 20.0, geology);
+	float stony = max(smoothstep(0.04, 0.35, cover), ledge) * (1.0 - exposed);
+	if (terrain_detail && stony > 0.001) {
+		vec4 shoulder = texture(material_colors, vec3(mat2(vec2(0.6, -0.8), vec2(0.8, 0.6)) * p / 45.0 + 0.53, 7.0));
+		vec3 stones = scan_linear(shoulder.rgb) * vec3(0.92, 1.08, 1.5);
+		moss = mix(moss, stones, height_blend(moss_sample.a, shoulder.a, stony * 0.85));
+	}
 	// Needle litter and sheltered undergrowth connect the same stands as the tree cards.
 	if (terrain_detail && max(abs(p.x), abs(p.y)) >= __MAP_HALF__) {
 		float woodland = texture(forest_cover, (p + __MAP_HALF__ + 1400.0) / (__MAP_SIZE__ + 2800.0)).r;
@@ -1985,6 +2282,19 @@ void fragment() {
 			moss_n = normalize(mix(moss_n, litter_n, litter_blend));
 		}
 		exposed *= 1.0 - woodland * 0.85;
+	}
+	// Gullies drop their load where they reach gentler ground: pale fans of washed
+	// soil and gravel below the crags, as on any eroded hillside.
+	float fan = smoothstep(0.08, 0.42, flow) * smoothstep(7.0, 16.0, geology)
+		* smoothstep(0.12, 0.3, slope) * (1.0 - smoothstep(0.65, 0.95, slope));
+	// Below a crag, where the ground eases off under steeper rock and turns concave,
+	// fallen stone piles into pale talus aprons.
+	float foot = smoothstep(0.04, 0.25, wide - slope) * smoothstep(0.3, 0.7, wide) * smoothstep(0.0, 0.3, cavity) * smoothstep(5.0, 12.0, geology);
+	fan = max(fan, foot) * (1.0 - exposed);
+	if (terrain_detail && fan > 0.001) {
+		vec3 silt = scan_linear(texture(material_colors, vec3(mat2(vec2(0.8, 0.6), vec2(-0.6, 0.8)) * p / 20.0 + 0.4, 8.0)).rgb);
+		vec3 wash = mix(scree_sample.rgb * vec3(0.95, 0.97, 1.0), silt * vec3(0.82, 0.86, 0.9), 0.3);
+		moss = mix(moss, wash, height_blend(moss_sample.a, scree_sample.a, fan * 0.8));
 	}
 	vec3 alpine = mix(moss, rock, exposed);
 	float clean = (1.0 - wm.g) * (1.0 - wm.a) * (1.0 - clamp(bowl, 0.0, 1.0));
@@ -2080,17 +2390,17 @@ void fragment() {
 	n = normalize(mix(n, shore_normal, shore_stone));
 	n = normalize(mix(n, vec3(0.0, 1.0, 0.0), puddle * 0.9));
 	NORMAL = normalize((VIEW_MATRIX * vec4(n, 0.0)).xyz);
+	// CLOUD_FRAGMENT cloud_sun(wpos)
 }
 
 void light() {
+	// the clouds and the mountains stand in front of the sun, not the rim light
 	float cloud = 1.0;
-	if (LIGHT_IS_DIRECTIONAL) {
-		vec2 cp = wpos.xz / 512.0 * 1.7 + vec2(TIME * 0.0016, TIME * 0.0007);
-		float c = texture(biome_tex, cp).r;
-		cloud = 1.0 - cloud_strength * smoothstep(0.48, 0.72, c);
-		if (dot(LIGHT, normalize((VIEW_MATRIX * vec4(sun_direction, 0.0)).xyz)) > 0.95) {
-			cloud *= terrain_sun;
-		}
+	if (LIGHT_IS_DIRECTIONAL && cloud_is_sun(LIGHT, VIEW_MATRIX)) {
+		cloud = cloud_sun(wpos);
+	}
+	if (LIGHT_IS_DIRECTIONAL && dot(LIGHT, normalize((VIEW_MATRIX * vec4(sun_direction, 0.0)).xyz)) > 0.95) {
+		cloud *= terrain_sun;
 	}
 	float ndl = clamp(dot(NORMAL, LIGHT), 0.0, 1.0);
 	DIFFUSE_LIGHT += ndl * ATTENUATION * LIGHT_COLOR / PI * cloud;
@@ -2118,6 +2428,7 @@ uniform sampler2D street_noise : filter_linear_mipmap_anisotropic, repeat_enable
 uniform sampler2D gravel_color : source_color, filter_linear_mipmap_anisotropic, repeat_enable;
 uniform sampler2D gravel_surface : filter_linear_mipmap_anisotropic, repeat_enable;
 uniform sampler2D paving_surface : filter_linear_mipmap_anisotropic, repeat_enable;
+// CLOUD_SHADOW
 // STREET_SURFACE
 varying vec3 wpos;
 void vertex() {
@@ -2192,6 +2503,7 @@ void fragment() {
 		ALPHA = mix(edge, 1.0, paved);
 	}
 	if (OUTPUT_IS_SRGB) { ALBEDO = mix(ALBEDO * 12.92, 1.055 * pow(max(ALBEDO, vec3(0.0)), vec3(1.0 / 2.4)) - 0.055, step(vec3(0.0031308), ALBEDO)); }
+	// CLOUD_FRAGMENT cloud_sun(wpos)
 }
 """
 

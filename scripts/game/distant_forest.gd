@@ -29,7 +29,12 @@ static func atlas_texture() -> Texture2DArray:
 static func coverage_image(seed_value: int, reach: float) -> Image:
 	var noise := FastNoiseLite.new()
 	noise.seed = seed_value
-	noise.frequency = 0.006
+	# Broad, ragged stands: seen edge-on from across the valley, small round patches
+	# foreshorten into thin parallel stripes.
+	noise.frequency = 0.003
+	noise.domain_warp_enabled = true
+	noise.domain_warp_amplitude = 180.0
+	noise.domain_warp_frequency = 0.004
 	var img := Image.create(256, 256, false, Image.FORMAT_R8)
 	for z in 256:
 		for x in 256:
@@ -43,10 +48,8 @@ static func coverage_image(seed_value: int, reach: float) -> Image:
 func setup(atmo: Atmosphere) -> void:
 	if atmo.world.terrain.landform.peak <= 1.0:
 		return
-	var shader := Shader.new()
-	shader.code = MapDims.shader(SHADER.replace("// BACKDROP_HEIGHT", Atmosphere.BACKDROP_HEIGHT))
 	material = ShaderMaterial.new()
-	material.shader = shader
+	material.shader = CloudShadow.make(MapDims.shader(SHADER.replace("// BACKDROP_HEIGHT", Atmosphere.BACKDROP_HEIGHT)), CloudShadow.OWN_LIGHT)
 	material.set_shader_parameter("backdrop_tex", atmo.backdrop_tex)
 	if atmo.water_view:
 		material.set_shader_parameter("river_tips", atmo.water_view.river_tips)
@@ -54,6 +57,8 @@ func setup(atmo: Atmosphere) -> void:
 	material.set_shader_parameter("scenery_coast_phase", atmo.ground_mat.get_shader_parameter("scenery_coast_phase"))
 	material.set_shader_parameter("snow_line", maxf(150.0, atmo.world.terrain.landform.peak * 0.55))
 	material.set_shader_parameter("atlas", atlas_texture())
+	var air: Variant = atmo.ground_mat.get_shader_parameter("terrain_air")
+	set_air(atmo.ground_mat.get_shader_parameter("air_color"), float(air) if air != null else 0.0)
 	var rng := RandomNumberGenerator.new()
 	rng.seed = int(atmo.world.settings.get("seed", 1)) * 7919
 	var cells := {}
@@ -96,6 +101,14 @@ func setup(atmo: Atmosphere) -> void:
 		tree_count += entries.size()
 	apply_settings()
 
+## The ground's distance haze, so far stands fade with the slopes they grow on.
+func set_air(color: Variant, density: float) -> void:
+	if material:
+		if color != null:
+			material.set_shader_parameter("air_color", color)
+		material.set_shader_parameter("terrain_air", density)
+
+
 func apply_settings() -> void:
 	visible = int(Settings.get_v("lod")) >= 1
 	var shadows := GeometryInstance3D.SHADOW_CASTING_SETTING_ON if int(Settings.get_v("shadows")) >= 2 else GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
@@ -116,9 +129,16 @@ uniform sampler2D scenery_bake : hint_default_white, filter_linear, repeat_disab
 uniform vec3 sun_direction = vec3(0.0, 1.0, 0.0);
 uniform float sea_x = 1000000000.0;
 uniform float snow_line = 100.0;
+uniform float terrain_air = 0.0;
+uniform vec3 air_color : source_color = vec3(0.5, 0.6, 0.7);
 varying float shade;
+varying float haze;
 varying vec3 frames;
 varying vec2 lighting;
+// CLOUD_SHADOW
+#ifdef CLOUD_ON
+varying float cloud_v;  // the sunlight the clouds let through at the tree
+#endif
 // BACKDROP_HEIGHT
 void vertex() {
 	vec3 center = MODEL_MATRIX[3].xyz;
@@ -131,6 +151,9 @@ void vertex() {
 	size *= mix(0.65, 1.0, habitat);
 	center.y = h;
 	lighting = textureLod(scenery_bake, (center.xz + __MAP_HALF__ + 1800.0) / (__MAP_SIZE__ + 3600.0), 0.0).rb;
+#ifdef CLOUD_ON
+	cloud_v = cloud_sun(center);
+#endif
 	vec3 right = INV_VIEW_MATRIX[0].xyz;
 	vec3 up = INV_VIEW_MATRIX[1].xyz;
 	// The image is captured around the physical crown centre at every elevation.
@@ -144,6 +167,11 @@ void vertex() {
 	float tile = floor(INSTANCE_CUSTOM.g * 3.99);
 	frames = vec3(floor(elevation) * 4.0 + tile, min(floor(elevation) + 1.0, 4.0) * 4.0 + tile, fract(elevation));
 	shade = 0.65 + INSTANCE_CUSTOM.a * 0.30;
+	// The same thin air the ground beneath fades into (Atmosphere's ground shader),
+	// or every distant stand reads as a dark stipple on pale, hazed slopes.
+	float optical_depth = max(0.0, distance(CAMERA_POSITION_WORLD, center) - 500.0) * terrain_air;
+	haze = min(0.48, 1.0 - exp(-optical_depth * exp(-max(center.y, 0.0) / 520.0)));
+	haze *= smoothstep(__MAP_HALF__, __MAP_HALF__ + 200.0, max(abs(center.x), abs(center.z)));
 }
 void fragment() {
 	vec4 low = texture(atlas, vec3(UV, frames.x));
@@ -154,7 +182,8 @@ void fragment() {
 	}
 	float alpha = mix(low.a, high.a, frames.z);
 	vec4 leaf = vec4(mix(low.rgb * low.a, high.rgb * high.a, frames.z) / max(alpha, 0.001), alpha);
-	ALBEDO = leaf.rgb * shade * 0.65;
+	ALBEDO = leaf.rgb * shade * 0.65 * (1.0 - haze);
+	EMISSION = air_color * haze * 0.65;
 	if (OUTPUT_IS_SRGB) {
 		ALBEDO = mix(ALBEDO * 12.92, 1.055 * pow(max(ALBEDO, vec3(0.0)), vec3(1.0 / 2.4)) - 0.055, step(vec3(0.0031308), ALBEDO));
 	}
@@ -163,12 +192,18 @@ void fragment() {
 	ROUGHNESS = 1.0;
 	SPECULAR = 0.0;
 	AO = lighting.r;
+	// CLOUD_FRAGMENT cloud_v
 }
 void light() {
 	float shadow = 1.0;
 	if (LIGHT_IS_DIRECTIONAL && dot(LIGHT, normalize((VIEW_MATRIX * vec4(sun_direction, 0.0)).xyz)) > 0.95) {
 		shadow = lighting.g;
 	}
+#ifdef CLOUD_ON
+	if (LIGHT_IS_DIRECTIONAL && cloud_is_sun(LIGHT, VIEW_MATRIX)) {
+		shadow *= cloud_v;
+	}
+#endif
 	DIFFUSE_LIGHT += max(dot(NORMAL, LIGHT), 0.0) * ATTENUATION * LIGHT_COLOR / PI * shadow;
 }
 """

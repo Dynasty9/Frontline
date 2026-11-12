@@ -80,8 +80,7 @@ static var _cache := {}
 
 static func shader() -> Shader:
 	if _shader == null:
-		_shader = Shader.new()
-		_shader.code = code(TerrainTexture.shader(SURFACE_SHADER.replace("// STREET_SURFACE", ASPHALT_SHADER)))
+		_shader = CloudShadow.make(code(TerrainTexture.shader(SURFACE_SHADER.replace("// STREET_SURFACE", ASPHALT_SHADER))), CloudShadow.CLEARCOAT)
 	return _shader
 
 
@@ -317,10 +316,8 @@ static func noise_tex() -> ImageTexture:
 ## Lumpy, wind-swayed leaf clusters with translucency (instance uniform tint).
 static func foliage() -> ShaderMaterial:
 	if _foliage == null:
-		var sh := Shader.new()
-		sh.code = code(FOLIAGE_SHADER)
 		_foliage = ShaderMaterial.new()
-		_foliage.shader = sh
+		_foliage.shader = CloudShadow.make(code(FOLIAGE_SHADER), CloudShadow.BACKLIGHT)
 		_foliage.set_shader_parameter("vertex_lit", ProjectSettings.get_setting_with_override("rendering/shading/overrides/force_vertex_shading"))
 	return _foliage
 
@@ -488,9 +485,7 @@ static func _bake_groups(groups: Dictionary) -> ArrayMesh:
 	# uniform, skin, equipment and vehicle paint colours in one surface.
 	if _distant_material == null:
 		_distant_material = ShaderMaterial.new()
-		var simple := Shader.new()
-		simple.code = "shader_type spatial; void fragment() { ALBEDO = COLOR.rgb; ROUGHNESS = 0.9; }"
-		_distant_material.shader = simple
+		_distant_material.shader = CloudShadow.make(DISTANT_SHADER)
 	mesh.surface_set_material(0, _distant_material)
 	# Hundreds of instances share this mesh. Weld identical vertex attributes
 	# once so the GPU can reuse transformed vertices without changing the pose.
@@ -736,10 +731,8 @@ static var _netting: ShaderMaterial
 ## Camouflage netting: ragged holes (discard) so it throws dappled shadows.
 static func netting() -> ShaderMaterial:
 	if _netting == null:
-		var sh := Shader.new()
-		sh.code = code(NETTING_SHADER)
 		_netting = ShaderMaterial.new()
-		_netting.shader = sh
+		_netting.shader = CloudShadow.make(code(NETTING_SHADER), CloudShadow.BACKLIGHT)
 	return _netting
 
 
@@ -897,6 +890,22 @@ static func _preset(kind: String) -> Dictionary:
 	return {"pattern": PLAIN, "col_a": Color(0.6, 0.6, 0.6), "rough": 0.85}
 
 
+## Far off, a soldier is his colours (see _bake_groups).
+const DISTANT_SHADER := """
+shader_type spatial;
+// CLOUD_SHADOW
+varying vec3 wpos;
+void vertex() {
+	wpos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
+}
+void fragment() {
+	ALBEDO = COLOR.rgb;
+	ROUGHNESS = 0.9;
+	// CLOUD_FRAGMENT cloud_sun(wpos)
+}
+"""
+
+
 const SURFACE_SHADER := """
 shader_type spatial;
 render_mode specular_schlick_ggx;
@@ -958,6 +967,7 @@ uniform float crater_half = 256.0;
 uniform sampler2D noise_tex : filter_linear_mipmap_anisotropic, repeat_enable;
 instance uniform vec4 tint : source_color = vec4(1.0);
 instance uniform vec3 pofs = vec3(0.0);
+// CLOUD_SHADOW
 
 varying vec3 tp;
 varying vec3 tn;
@@ -1419,6 +1429,7 @@ void fragment() {
 		vec3 grad = sign(det) * (dhx * r1 + dhy * r2);
 		NORMAL = normalize(abs(det) * NORMAL - grad * bump * 0.02);
 	}
+	// CLOUD_FRAGMENT cloud_sun(wpos)
 }
 """
 
@@ -1438,6 +1449,7 @@ uniform bool use_vcolor = false;
 // shrivel brown, blacken and burn away, glowing at the edges while it burns
 uniform float scorch = 0.0;
 uniform float embers = 0.0;
+// CLOUD_SHADOW
 
 varying vec3 lpos;
 varying float shade;
@@ -1531,6 +1543,7 @@ void fragment() {
 		vec3 grad = sign(det) * (dhx * r1 + dhy * r2);
 		NORMAL = normalize(abs(det) * NORMAL - grad * 0.06);
 	}
+	// CLOUD_FRAGMENT cloud_sun(lpos)
 }
 """
 
@@ -1540,6 +1553,7 @@ shader_type spatial;
 render_mode cull_disabled;
 instance uniform vec4 tint : source_color = vec4(0.3, 0.34, 0.2, 1.0);
 uniform float sag = 0.45;  // a flat net slung between poles sags in the middle
+// CLOUD_SHADOW
 varying vec3 wp;
 float h12(vec2 p) { vec3 p3 = fract(vec3(p.xyx) * 0.1031); p3 += dot(p3, p3.yzx + 33.33); return fract((p3.x + p3.y) * p3.z); }
 float vn(vec2 p) {
@@ -1567,5 +1581,6 @@ void fragment() {
 	ALBEDO = c;
 	ROUGHNESS = 0.95;
 	BACKLIGHT = c * 0.5;
+	// CLOUD_FRAGMENT cloud_sun(wp)
 }
 """

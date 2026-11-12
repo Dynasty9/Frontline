@@ -107,7 +107,7 @@ func _ready() -> void:
 		grass.stone = grass._make_stone()
 		grass.mat = material
 		grass.bush_mat = material
-		grass.stone_mat = StandardMaterial3D.new()
+		grass.stone_mat = ShaderMaterial.new()
 		var stones := 0
 		for cell in [Vector2i.ZERO, Vector2i(1, 0), Vector2i(0, 1)]:
 			grass._build_chunk(cell)
@@ -133,7 +133,7 @@ func _ready() -> void:
 	grass.mat = material
 	grass.bush_mat = ShaderMaterial.new()
 	grass.bush_mat.shader = material.shader
-	grass.stone_mat = StandardMaterial3D.new()
+	grass.stone_mat = ShaderMaterial.new()
 	grass._shrub_noise.seed = 222
 	grass._shrub_noise.frequency = 0.035
 	var rng_before := world.rng.state
