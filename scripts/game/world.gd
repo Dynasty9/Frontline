@@ -80,6 +80,7 @@ var winner := -1
 var rng := RandomNumberGenerator.new()
 var focused := false
 var director: Director
+var photo: PhotoMode  # photo mode (F9 to begin with): the battle held still, a free camera, a picture
 var structure_view: StructureView
 var soldier_view: SoldierViewBatch
 var fog: FogView  # the fog of war drawn over the ground and the minimap (clients and a host with a view)
@@ -268,6 +269,10 @@ func build() -> void:
 		hud.name = "Hud"
 		hud.world = self
 		add_child(hud)
+		photo = PhotoMode.new()
+		photo.name = "Photo"
+		photo.world = self
+		add_child(photo)
 		_try_focus()
 	if not srv and not settings.get("replay", false):
 		_client_ready.rpc_id(1)

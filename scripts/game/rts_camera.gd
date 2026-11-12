@@ -264,6 +264,29 @@ func bookmark(slot: int, save: bool) -> void:
 	glide_to(b[0], float(b[1]), float(b[2]), float(b[3]))
 
 
+## Photo mode takes the lens off the orbit (on) and gives it back (off): the
+## orbit stands where it was meanwhile, and a drag held when it went is let go.
+var _suspended := []  # [processing, taking input] as photo mode found them
+
+
+func suspend(on: bool) -> void:
+	if on == not _suspended.is_empty():
+		return
+	if on:
+		_suspended = [is_processing(), is_processing_unhandled_input()]
+		set_process(false)
+		set_process_unhandled_input(false)
+		_mmb = false
+		_vel = Vector2.ZERO
+		_shake = 0.0
+		return
+	set_process(bool(_suspended[0]))
+	set_process_unhandled_input(bool(_suspended[1]))
+	_suspended = []
+	_last_ms = 0
+	_apply()
+
+
 ## Keys are going into the chat, the console, or any text box (signing in at the end of a battle).
 func _typing() -> bool:
 	# (or a key is being rebound in Settings: it isn't for the camera)

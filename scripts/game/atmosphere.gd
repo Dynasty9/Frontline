@@ -1047,16 +1047,28 @@ func apply_settings() -> void:
 ## Colour grading: the chosen look on top of the time of day, plus the
 ## player's contrast slider.
 func _apply_look() -> void:
-	var lk: Array = Settings.LOOKS[clampi(int(Settings.get_v("look")), 0, Settings.LOOKS.size() - 1)]
+	apply_grade(int(Settings.get_v("look")), float(Settings.get_v("contrast")))
+
+
+## A look (Settings.LOOKS) laid over the time of day, its contrast and
+## saturation scaled: the player's setting, or photo mode's for its picture.
+func apply_grade(look_i: int, contrast_mul: float, saturation_mul := 1.0) -> void:
+	var li := clampi(look_i, 0, Settings.LOOKS.size() - 1)
+	var lk: Array = Settings.LOOKS[li]
 	env.adjustment_enabled = true
 	env.adjustment_brightness = float(lk[0])
-	env.adjustment_contrast = float(lk[1]) * float(Settings.get_v("contrast"))
+	env.adjustment_contrast = float(lk[1]) * contrast_mul
 	var sat := float(lk[2])
-	if int(Settings.get_v("look")) == 0:
+	if li == 0:
 		sat = 1.05 if mood in ["golden", "dusk", "dawn"] else 1.1
-	env.adjustment_saturation = sat
+	env.adjustment_saturation = sat * saturation_mul
 	if post_rect and post_rect.material:
 		(post_rect.material as ShaderMaterial).set_shader_parameter("tint", lk[3])
+
+
+## The exposure the time of day and the player's brightness give.
+func base_exposure() -> float:
+	return float(_d.exposure) * float(Settings.get_v("brightness"))
 
 
 func _process(_dt: float) -> void:
@@ -1238,9 +1250,18 @@ const NIGHT_VISION := {"night": 0.8, "dusk": 0.18, "dawn": 0.12, "rain": 0.06}
 const SHAFTS_BY_MOOD := {"day": 0.55, "golden": 1.0, "dawn": 1.15, "dusk": 1.15, "hazy": 1.35, "overcast": 0.12, "rain": 0.0, "night": 0.3}
 
 
+## Photo mode's own camera-and-lens choices, over the player's settings while
+## it's open (key -> value; never saved, and emptied when it closes).
+var look_override := {}
+
+
+## A camera-and-lens setting as the view has it now: photo mode's, else the player's.
+func look_v(key: String) -> Variant:
+	return look_override.get(key, Settings.get_v(key))
+
+
 func _apply_cinematic() -> void:
-	var s := Settings
-	var want := bool(s.get_v("lens")) or bool(s.get_v("shafts")) or bool(s.get_v("local_exp")) or bool(s.get_v("eye_adapt")) or bool(s.get_v("film")) or bool(s.get_v("heat_haze"))
+	var want := bool(look_v("lens")) or bool(look_v("shafts")) or bool(look_v("local_exp")) or bool(look_v("eye_adapt")) or bool(look_v("film")) or bool(look_v("heat_haze"))
 	if want and cine == null and world.has_view and CinematicFx.supported():
 		cine = CinematicFx.new()
 		var effects: Array[CompositorEffect] = [cine]
@@ -1249,13 +1270,13 @@ func _apply_cinematic() -> void:
 		we.compositor = comp
 	if cine == null:
 		return
-	if bool(s.get_v("eye_adapt")) and not cine.eye:
+	if bool(look_v("eye_adapt")) and not cine.eye:
 		cine.reset_adaptation = true
-	cine.lens = bool(s.get_v("lens"))
-	cine.local_exposure = bool(s.get_v("local_exp"))
-	cine.eye = bool(s.get_v("eye_adapt"))
-	cine.film = bool(s.get_v("film"))
-	cine.heat_haze = bool(s.get_v("heat_haze"))
+	cine.lens = bool(look_v("lens"))
+	cine.local_exposure = bool(look_v("local_exp"))
+	cine.eye = bool(look_v("eye_adapt"))
+	cine.film = bool(look_v("film"))
+	cine.heat_haze = bool(look_v("heat_haze"))
 	cine.enabled = want
 	heat.on = cine.heat_haze
 	if not heat.on:
@@ -1322,7 +1343,7 @@ func _cine_tick(dt: float) -> void:
 		var out := maxf(absf(sun_uv.x - 0.5), absf(sun_uv.y - 0.5)) - 0.5
 		seen = (1.0 - smoothstep(0.0, 0.5, out)) * smoothstep(-0.03, 0.05, to_sun.y)
 	var shafts: float = SHAFTS_BY_MOOD.get(mood, 0.5)
-	cine.shafts = bool(Settings.get_v("shafts")) and seen > 0.001 and shafts > 0.0
+	cine.shafts = bool(look_v("shafts")) and seen > 0.001 and shafts > 0.0
 	p[4] = sun_uv.x
 	p[5] = sun_uv.y
 	p[6] = seen

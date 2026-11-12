@@ -272,6 +272,11 @@ Scenarios, AI-vs-AI battles and missions run offline: they take no port, so any 
 --perf-at=480 [--perf-shot=path.png]                  fast-forward, then measure real FPS and server tick cost
 --screenshot=out.png --shot-at=30 --focus=X,Z --zoom=40 [--shots=N --shot-every=0.5]
 --mood=golden --perf=3 --preset=ultra                 lighting, overlay level and graphics preset for screenshots
+--photo-at=S [--photo=fov:30,blur:0.5,mood:dusk,...]   open photo mode S seconds in, with those values (any of its panel's,
+  [--photo-wait=3 --photo-shot=out.png --photo-capture] plus pos:x:y:z, yaw:deg, pitch:deg, or aim:D:H: D metres back
+  [--photo-quit]                                      from the view's focus and H up, looking at it); the battle holds, so
+                                                      the wait is real seconds: then save the screen as it is (panel and
+                                                      all), take a picture (user://screenshots), and quit
 --fx-demo=1.4 --fx-every=3                            set off explosions near the camera (visual test, no damage)
 --shot-demo[=rifle|mg|hmg|...] [--shot-demo-every=1.5] [--shot-demo-cannon]
                                                       rounds fired at earth, stone, sandbags, wood, leaves, steel and a man
@@ -791,7 +796,9 @@ with a display. Fog-of-war sight and server enemy filtering are deliberately unc
 
 ### Off-screen screenshots
 
-`--screenshot=FILE.png --shot-at=SECONDS` (with `--shots=N --shot-every=S` for a series) saves frames and quits. Frame the shot with `--focus=X,Z --zoom=M --pitch=DEG --cam-yaw=RAD`, and hide the interface with `--nohud`. `--manual=category,key,side` opens a Field Manual page.
+`--screenshot=FILE.png --shot-at=SECONDS` (with `--shots=N --shot-every=S` for a series) saves frames and quits. Frame the shot with `--focus=X,Z --zoom=M --pitch=DEG --cam-yaw=RAD`, and hide the interface with `--nohud`. `--manual=category,key,side` opens a Field Manual page. Photo mode's own
+picture (supersampled, the panel left out) comes from `--photo-at=S --photo-capture --photo-quit`; it lands in the
+real `user://screenshots/`, so move it out after.
 
 The menu and the title are screenshot with `--menu-shot=FILE.png`. The boot splash is the title's first frame,
 so remake it whenever the title or the map shader changes, so that the splash hands over to the title without a

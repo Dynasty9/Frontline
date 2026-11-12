@@ -257,7 +257,7 @@ const KEY_ACTIONS := ["chat_team", "chat", "support", "grenade", "smoke", "attac
 	"stance", "fire_discipline", "target_priority", "dismount",
 	"fire_mission", "cam_reset", "view_save_1", "view_save_2", "view_save_3", "view_save_4", "view_go_1", "view_go_2",
 	"view_go_3", "view_go_4", "retreat", "hold", "tactical", "cycle_fob", "orbat", "jump_alert", "log", "hide_hud",
-	"help", "manual", "director", "pause", "slower", "faster", "view_side", "ping", "coop_next",
+	"help", "manual", "photo_mode", "director", "pause", "slower", "faster", "view_side", "ping", "coop_next",
 	"group_set_1", "group_set_2", "group_set_3", "group_set_4", "group_set_5", "group_set_6", "group_set_7",
 	"group_set_8", "group_set_9", "group_set_0", "group_1", "group_2", "group_3", "group_4", "group_5", "group_6",
 	"group_7", "group_8", "group_9", "group_0"]
@@ -398,6 +398,10 @@ func _key(ev: InputEvent) -> void:
 		"manual":
 			if world.hud:
 				world.hud.toggle_manual()
+		"photo_mode":
+			if world.photo and world.photo.enter():
+				# (the same press mustn't reach photo mode and close it again)
+				get_viewport().set_input_as_handled()
 		"director":
 			if world.director:
 				world.director.active = not world.director.active
@@ -1102,6 +1106,54 @@ func _process(dt: float) -> void:
 	_view_process(dt)
 	if world:
 		world.vp("input", _t0)
+
+
+## Photo mode puts the commander's hands down (on) and back (off): no clicks
+## or keys reach the battle meanwhile, a drag in hand is dropped, and what
+## marks the selection and a building being placed is off the field. The
+## selection, the groups and an order being lined up are kept for after.
+var _suspended := []  # [processing, taking input, [helper, was visible]...]
+
+
+func suspend(on: bool) -> void:
+	if on == not _suspended.is_empty():
+		return
+	if on:
+		_suspended = [is_processing(), is_processing_unhandled_input(), []]
+		set_process(false)
+		set_process_unhandled_input(false)
+		lmb = false
+		dragging = false
+		rmb = false
+		rmb_left = false
+		place_drag = false
+		ab_drag = false
+		pinging = false
+		sketching = false
+		sketch_pts = PackedVector3Array()
+		for m in _markers:
+			if is_instance_valid(m[0]):
+				m[0].queue_free()
+		_markers.clear()
+		for s in _marked_soldiers:
+			if is_instance_valid(s):
+				s.selected = false
+		_marked_soldiers.clear()
+		for v in world.vehicles:
+			v.selected = false
+		var helpers: Array = _line_ghosts.duplicate()
+		helpers.append_array([ghost, build_grid])
+		for h in helpers:
+			if h != null and is_instance_valid(h):
+				_suspended[2].append([h, h.visible])
+				h.visible = false
+		return
+	set_process(bool(_suspended[0]))
+	set_process_unhandled_input(bool(_suspended[1]))
+	for hv in _suspended[2]:
+		if is_instance_valid(hv[0]):
+			hv[0].visible = bool(hv[1])
+	_suspended = []
 
 
 func _tab_up() -> void:
