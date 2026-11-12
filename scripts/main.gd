@@ -1343,7 +1343,8 @@ func _process(_dt: float) -> void:
 			world.photo.captured.connect(func(path: String, where: String):
 				print("PHOTO saved %s %s (%s)" % [path, str(world.photo.last_size), where])
 				set_meta("photo_saved", true))
-			print("PHOTO open t=%.2f held=%s" % [world.time, world.photo.held])
+			print("PHOTO open t=%.2f held=%s pos:%.1f:%.1f:%.1f,yaw:%.1f,pitch:%.1f" % [world.time, world.photo.held, world.photo.pos.x, world.photo.pos.y,
+				world.photo.pos.z, rad_to_deg(world.photo.yaw), rad_to_deg(world.photo.pitch)])
 		else:
 			print("PHOTO couldn't open photo mode")
 	if has_meta("photo_on") and not has_meta("photo_done") and Time.get_ticks_msec() - int(get_meta("photo_on")) >= float(args.get("photo-wait", 3.0)) * 1000.0:

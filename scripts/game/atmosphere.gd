@@ -1097,9 +1097,18 @@ const NIGHT_VISION := {"night": 0.8, "dusk": 0.18, "dawn": 0.12, "rain": 0.06}
 const SHAFTS_BY_MOOD := {"day": 0.55, "golden": 1.0, "dawn": 1.15, "dusk": 1.15, "hazy": 1.35, "overcast": 0.12, "rain": 0.0, "night": 0.3}
 
 
+## Photo mode's own camera-and-lens choices, over the player's settings while
+## it's open (key -> value; never saved, and emptied when it closes).
+var look_override := {}
+
+
+## A camera-and-lens setting as the view has it now: photo mode's, else the player's.
+func look_v(key: String) -> Variant:
+	return look_override.get(key, Settings.get_v(key))
+
+
 func _apply_cinematic() -> void:
-	var s := Settings
-	var want := bool(s.get_v("lens")) or bool(s.get_v("shafts")) or bool(s.get_v("local_exp")) or bool(s.get_v("eye_adapt")) or bool(s.get_v("film"))
+	var want := bool(look_v("lens")) or bool(look_v("shafts")) or bool(look_v("local_exp")) or bool(look_v("eye_adapt")) or bool(look_v("film"))
 	if want and cine == null and world.has_view and CinematicFx.supported():
 		cine = CinematicFx.new()
 		var effects: Array[CompositorEffect] = [cine]
@@ -1108,12 +1117,12 @@ func _apply_cinematic() -> void:
 		we.compositor = comp
 	if cine == null:
 		return
-	if bool(s.get_v("eye_adapt")) and not cine.eye:
+	if bool(look_v("eye_adapt")) and not cine.eye:
 		cine.reset_adaptation = true
-	cine.lens = bool(s.get_v("lens"))
-	cine.local_exposure = bool(s.get_v("local_exp"))
-	cine.eye = bool(s.get_v("eye_adapt"))
-	cine.film = bool(s.get_v("film"))
+	cine.lens = bool(look_v("lens"))
+	cine.local_exposure = bool(look_v("local_exp"))
+	cine.eye = bool(look_v("eye_adapt"))
+	cine.film = bool(look_v("film"))
 	cine.enabled = want
 
 
@@ -1176,7 +1185,7 @@ func _cine_tick(dt: float) -> void:
 		var out := maxf(absf(sun_uv.x - 0.5), absf(sun_uv.y - 0.5)) - 0.5
 		seen = (1.0 - smoothstep(0.0, 0.5, out)) * smoothstep(-0.03, 0.05, to_sun.y)
 	var shafts: float = SHAFTS_BY_MOOD.get(mood, 0.5)
-	cine.shafts = bool(Settings.get_v("shafts")) and seen > 0.001 and shafts > 0.0
+	cine.shafts = bool(look_v("shafts")) and seen > 0.001 and shafts > 0.0
 	p[4] = sun_uv.x
 	p[5] = sun_uv.y
 	p[6] = seen

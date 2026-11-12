@@ -80,8 +80,10 @@ its panel `scripts/ui/photo_panel.gd`):
 - **The panel** (Signal, a sheet at the right edge; F2 hides it): field of view (15 to 90 degrees), focus (0.5 to
   600 m, on a logarithmic bar) and blur, real depth of field from the scene's `CameraAttributesPractical` with
   a round, high-quality bokeh while it's on; exposure in stops over the time of day's own; the time of day
-  (`Atmosphere.apply_mood`); the colour grade with its contrast and saturation; vignette and grain. The browser's
-  renderer has no depth of field, so the focus and blur rows aren't there.
+  (`Atmosphere.apply_mood`); the colour grade with its contrast and saturation; vignette and grain; and the
+  camera-and-lens passes (flare and glare, sun shafts, local exposure, eye adaptation, film look), each on or off
+  for the picture through `Atmosphere.look_override` whatever the settings say. The browser's renderer has none of
+  those passes and no depth of field, so their rows aren't there.
 - **The picture** (Space, or Capture) is the frame without the panel or any overlay, the film look kept, saved as
   a PNG in `user://screenshots/` (named by the date and time) with a note saying where. **Supersample** draws it
   at twice the render scale (as long as its long side stays within 7680 pixels) and scales it down, widening the

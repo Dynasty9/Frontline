@@ -27,6 +27,16 @@ var _toast_show: Button
 var _toast_ms := 0
 var _toast_path := ""
 var _syncing := false
+var _scroll: ScrollContainer
+var _body: VBoxContainer
+## The camera-and-lens passes: [key, label, what it does].
+const LENS := [
+	["lens", "Flare", "Bright lights flare the lens: ghosts and a halo, streaks, glare on the dust on the glass."],
+	["shafts", "Shafts", "Rays of light streaming past trees, ridges and smoke against a low sun."],
+	["local_exp", "Local exp", "Keeps the detail in deep shade and in bright fire at once, as the eye does."],
+	["eye_adapt", "Eye", "The eye's adaptation: dimmed by a flash, and colours draining towards grey in the dark."],
+	["film", "Film", "Highlights bleed red into the film (halation), and fine detail is sharpened."],
+]
 
 
 func _ready() -> void:
@@ -45,9 +55,15 @@ func _ready() -> void:
 	sheet.offset_top = 22.0
 	sheet.mouse_filter = Control.MOUSE_FILTER_STOP
 	root.add_child(sheet)
+	# (it scrolls when the window is too short for all of it)
+	_scroll = ScrollContainer.new()
+	_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	sheet.add_child(_scroll)
 	var vb := VBoxContainer.new()
 	vb.add_theme_constant_override("separation", 5)
-	sheet.add_child(vb)
+	vb.custom_minimum_size = Vector2(W, 0)
+	_scroll.add_child(vb)
+	_body = vb
 	# the title: PHOTO MODE, and whether the battle is held (PAUSED) or goes on (LIVE)
 	var head := HBoxContainer.new()
 	head.add_theme_constant_override("separation", 10)
@@ -79,12 +95,27 @@ func _ready() -> void:
 	_slider(vb, "vignette", "Vignette", 0.0, 1.0, 0.05)
 	_slider(vb, "grain", "Grain", 0.0, 0.2, 0.01)
 	_seg(vb, "show_fog", "Fog of war", ["Hide", "Show"])
+	if photo.has_lens():
+		_section(vb, "Camera and lens")
+		vb.add_child(_lens_row())
 	_section(vb, "Capture")
+	# the picture's size beside the button that takes it
+	var crow := HBoxContainer.new()
+	crow.add_theme_constant_override("separation", 10)
+	vb.add_child(crow)
 	if photo.can_supersample():
-		_seg(vb, "supersample", "Supersample", ["Off", "2×"])
-	var cap := UiKit.primary_button("Capture", W, 34, 13)
+		var sg := UiSeg.make(["1×", "2×"], 0)
+		sg.set_tooltip("Supersample: draw the picture at twice the resolution and scale it down, for cleaner edges.")
+		sg.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		sg.changed.connect(func(i: int):
+			if not _syncing:
+				photo.set_value("supersample", i == 1))
+		crow.add_child(sg)
+		_rows["supersample"] = [sg, null, crow]
+	var cap := UiKit.primary_button("Capture", 0, 32, 13)
+	cap.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	cap.pressed.connect(func(): photo.capture())
-	vb.add_child(cap)
+	crow.add_child(cap)
 	_section(vb, "Keys")
 	vb.add_child(_keys())
 	# where the last picture went: bottom right, so it shows with the sheet put away too
@@ -120,8 +151,18 @@ func _ready() -> void:
 	tv.add_child(_toast_where)
 	photo.changed.connect(_sync)
 	photo.captured.connect(_on_captured)
+	root.resized.connect(_fit)
 	_sync()
+	_fit.call_deferred()
 	UiMotion.arrive(sheet, Vector2(1, 0))
+
+
+## As tall as what's in it, or as the window allows (then it scrolls).
+func _fit() -> void:
+	if not is_instance_valid(_scroll):
+		return
+	var room := root.size.y - 44.0 - 24.0  # (the margins above and below, the sheet's padding)
+	_scroll.custom_minimum_size = Vector2(W, minf(_body.get_combined_minimum_size().y, maxf(120.0, room)))
 
 
 func toggle_sheet() -> void:
@@ -147,7 +188,7 @@ func _section(parent: Control, text: String) -> void:
 func _row(parent: Control, key: String, text: String) -> HBoxContainer:
 	var hb := HBoxContainer.new()
 	hb.add_theme_constant_override("separation", 10)
-	hb.custom_minimum_size = Vector2(0, 24)
+	hb.custom_minimum_size = Vector2(0, 22)
 	var l := UiKit.caps(text, 11, UiKit.DIM)
 	l.custom_minimum_size = Vector2(LABEL_W, 0)
 	l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
@@ -208,30 +249,80 @@ func _seg(parent: Control, key: String, text: String, items: Array) -> void:
 	_rows[key] = [sg, null, hb]
 
 
+## The camera-and-lens passes as a row of switches, each on or off on its own
+## (squares like segments, the ones on filled with the accent).
+func _lens_row() -> HBoxContainer:
+	var hb := HBoxContainer.new()
+	hb.add_theme_constant_override("separation", -1)
+	var n := UiKit.box(Color(0, 0, 0, 0), 0, UiKit.LINE, 1, 0.0)
+	var h := UiKit.box(Color(UiKit.TEXT.r, UiKit.TEXT.g, UiKit.TEXT.b, 0.05), 0, UiKit.RULE2, 1, 0.0)
+	var on := UiKit.box(UiKit.ACCENT, 0, UiKit.ACCENT, 1, 0.0)
+	for sb: StyleBoxFlat in [n, h, on]:
+		sb.content_margin_left = 9
+		sb.content_margin_right = 9
+		sb.content_margin_top = 4
+		sb.content_margin_bottom = 4
+	for it in LENS:
+		var b := Button.new()
+		b.text = String(it[1]).to_upper()
+		b.tooltip_text = String(it[2])
+		b.toggle_mode = true
+		b.focus_mode = Control.FOCUS_NONE
+		b.custom_minimum_size = Vector2(0, 26)
+		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		b.add_theme_font_override("font", UiKit.cond(600, 1))
+		b.add_theme_font_size_override("font_size", 11)
+		b.add_theme_stylebox_override("normal", n)
+		b.add_theme_stylebox_override("hover", h)
+		b.add_theme_stylebox_override("pressed", on)
+		b.add_theme_stylebox_override("hover_pressed", on)
+		b.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
+		b.add_theme_color_override("font_color", UiKit.FAINT)
+		b.add_theme_color_override("font_hover_color", UiKit.TEXT)
+		b.add_theme_color_override("font_pressed_color", UiKit.ON_ACCENT)
+		b.add_theme_color_override("font_hover_pressed_color", UiKit.ON_ACCENT)
+		var key: String = it[0]
+		b.toggled.connect(func(pressed: bool):
+			if not _syncing:
+				photo.set_value(key, pressed))
+		hb.add_child(b)
+		_rows[key] = [b, null, hb]
+	return hb
+
+
 ## The keys photo mode listens to, as the player has them bound.
+## (two to a line, so the sheet fits a 900-line window without scrolling)
 func _keys() -> GridContainer:
 	var g := GridContainer.new()
-	g.columns = 2
-	g.add_theme_constant_override("h_separation", 12)
-	g.add_theme_constant_override("v_separation", 3)
+	g.columns = 4
+	g.add_theme_constant_override("h_separation", 8)
+	g.add_theme_constant_override("v_separation", 2)
 	var move := " ".join(PackedStringArray([Keys.label("cam_up"), Keys.label("cam_left"), Keys.label("cam_down"), Keys.label("cam_right")]))
+	var n := 0
 	for kv in [
 		[move, "Move"],
 		[_pair("photo_rise", "photo_sink"), "Up · down"],
-		[_pair("photo_roll_left", "photo_roll_right"), "Roll · %s level" % Keys.label("photo_level")],
+		[_pair("photo_roll_left", "photo_roll_right"), "Roll"],
+		[Keys.label("photo_level"), "Level"],
 		["DRAG", "Look"],
-		["WHEEL", "Field of view"],
-		[_pair("cam_fast", "photo_slow"), "Faster · slower"],
+		["WHEEL", "Zoom"],
+		[_pair("cam_fast", "photo_slow"), "Fast · slow"],
 		[Keys.label("photo_capture"), "Capture"],
-		[Keys.label("hide_hud"), "Hide this panel"],
+		[Keys.label("hide_hud"), "Hide panel"],
 		[_pair("photo_mode", "", "Esc"), "Close"],
 	]:
 		if String(kv[0]).strip_edges() == "":
 			continue
 		var k := UiKit.mono_label(String(kv[0]).to_upper(), 11, UiKit.DIM)
-		k.custom_minimum_size = Vector2(LABEL_W, 0)
+		k.custom_minimum_size = Vector2(56, 0)
 		g.add_child(k)
-		g.add_child(UiKit.caps(String(kv[1]), 11, UiKit.FAINT))
+		var a := UiKit.caps(String(kv[1]), 11, UiKit.FAINT)
+		a.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		g.add_child(a)
+		n += 1
+	if n % 2 == 1:
+		g.add_child(Control.new())
+		g.add_child(Control.new())
 	return g
 
 
@@ -285,9 +376,15 @@ func _sync() -> void:
 			(c as OptionButton).select(PhotoMode.MOODS.find(String(v)) if key == "mood" else int(v))
 		elif c is UiSeg:
 			(c as UiSeg).select(1 if bool(v) else 0)
+		elif c is Button and key in PhotoMode.LENS_KEYS:
+			(c as Button).set_pressed_no_signal(bool(photo.lens_fx.get(key, false)))
 	# the fog of war's row only when there's a fog of war on the ground to hide
 	if _rows.has("show_fog"):
-		(_rows.show_fog[2] as Control).visible = photo.world.fog != null and photo.world.fog.active
+		var fog_row := _rows.show_fog[2] as Control
+		var fog_on: bool = photo.world.fog != null and photo.world.fog.active
+		if fog_row.visible != fog_on:
+			fog_row.visible = fog_on
+			_fit.call_deferred()
 	if photo.held != "":
 		_status.text = "PAUSED"
 		_status.add_theme_color_override("font_color", UiKit.DIM)

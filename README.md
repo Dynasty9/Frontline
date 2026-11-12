@@ -153,7 +153,7 @@ On a Mac's trackpad, scroll with two fingers to drag the map and pinch to zoom; 
 
 When watching an AI battle: **C** hands the camera back to the director, **V** picks whose view you see, **P** pauses, and **[** and **]** change the speed.
 
-**Photo mode** (F9) holds a solo battle or a replay still (in multiplayer the fighting goes on), puts the interface away and lets the camera fly free: WASD fly the way the lens looks, E / Q go up and down, Z / C roll, and holding a mouse button and dragging looks round. Its panel sets the field of view, the focus and how soft the rest falls, exposure, the time of day, a colour grade, contrast, saturation, vignette and grain. Space takes the picture, at twice the resolution and scaled down for a cleaner edge, as a PNG in the game's `screenshots` folder; in a browser it's downloaded. F2 hides the panel, and F9 or Esc puts everything back as it was. None of it touches your settings.
+**Photo mode** (F9) holds a solo battle or a replay still (in multiplayer the fighting goes on), puts the interface away and lets the camera fly free: WASD fly the way the lens looks, E / Q go up and down, Z / C roll, and holding a mouse button and dragging looks round. Its panel sets the field of view, the focus and how soft the rest falls, exposure, the time of day, a colour grade, contrast, saturation, vignette and grain, and switches the camera-and-lens effects (flare, sun shafts, local exposure, eye adaptation, film look) for the picture alone. Space takes the picture, at twice the resolution and scaled down for a cleaner edge, as a PNG in the game's `screenshots` folder; in a browser it's downloaded. F2 hides the panel, and F9 or Esc puts everything back as it was. None of it touches your settings.
 
 ## Playing with friends
 

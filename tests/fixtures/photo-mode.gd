@@ -140,6 +140,7 @@ func _state() -> Dictionary:
 		"post": [a.post_layer.visible, post.get_shader_parameter("vignette"), post.get_shader_parameter("grain"), post.get_shader_parameter("tint")],
 		"dof": [ca.dof_blur_far_enabled, ca.dof_blur_far_distance, ca.dof_blur_far_transition, ca.dof_blur_near_enabled,
 			ca.dof_blur_near_distance, ca.dof_blur_near_transition, ca.dof_blur_amount],
+		"lens": [a.look_override.duplicate(), a.look_v("lens"), a.look_v("film"), a.look_v("shafts")],
 		"settings": Settings.v.duplicate(true), "preset": Settings.preset,
 		"mouse": Input.mouse_mode,
 		"scale": [get_viewport().scaling_3d_scale, get_viewport().scaling_3d_mode],
@@ -154,7 +155,8 @@ func _same(what: String, before: Dictionary, after: Dictionary) -> void:
 ## Every value of the picture moved off where it started, and the lens flown somewhere else.
 func _dress() -> void:
 	for kv in [["fov", 24.0], ["focus", 12.0], ["blur", 0.8], ["exposure", 1.5], ["mood", "night"], ["look", 3],
-			["contrast", 1.2], ["saturation", 0.4], ["vignette", 0.6], ["grain", 0.15], ["show_fog", true], ["roll", 12.0]]:
+			["contrast", 1.2], ["saturation", 0.4], ["vignette", 0.6], ["grain", 0.15], ["show_fog", true], ["roll", 12.0],
+			["lens", not bool(Settings.get_v("lens"))], ["film", not bool(Settings.get_v("film"))], ["shafts", "on"]]:
 		photo.set_value(kv[0], kv[1])
 	photo.pos += Vector3(30, 8, -60)
 	photo.yaw += 1.2
@@ -190,6 +192,8 @@ func _alone() -> void:
 	_check("the grade, its contrast and saturation", is_equal_approx(a.env.adjustment_contrast, float(Settings.LOOKS[3][1]) * 1.2)
 		and is_equal_approx(a.env.adjustment_saturation, float(Settings.LOOKS[3][2]) * 0.4), "%s %s" % [a.env.adjustment_contrast, a.env.adjustment_saturation])
 	var post := a.post_rect.material as ShaderMaterial
+	_check("the camera-and-lens passes are photo mode's own while it's open", a.look_v("lens") == (not bool(Settings.get_v("lens")))
+		and a.look_v("film") == (not bool(Settings.get_v("film"))) and a.look_v("shafts") == true, str(a.look_override))
 	_check("vignette and grain", is_equal_approx(float(post.get_shader_parameter("vignette")), 0.6) and is_equal_approx(float(post.get_shader_parameter("grain")), 0.15))
 	_check("values stay inside what a lens can do", photo.fov >= PhotoMode.FOV_MIN and photo.fov <= PhotoMode.FOV_MAX)
 	photo.set_value("fov", 500.0)

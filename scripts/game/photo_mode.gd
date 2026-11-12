@@ -38,6 +38,10 @@ const SUPERSAMPLE_MAX_PX := 7680.0  # ...as long as its long side stays within t
 const SHOTS_DIR := "user://screenshots"
 ## The times of day, in the order the panel lists them.
 const MOODS := ["day", "golden", "dawn", "dusk", "overcast", "hazy", "night", "rain"]
+## The camera-and-lens passes (Settings > Lighting & Look): flare and glare,
+## sun shafts, local exposure, eye adaptation, the film look. The desktop
+## renderer's only; photo mode turns them on and off for its picture.
+const LENS_KEYS := ["lens", "shafts", "local_exp", "eye_adapt", "film"]
 
 var world: World
 var active := false
@@ -68,6 +72,7 @@ var saturation := 1.0
 var vignette := 0.0
 var grain := 0.0
 var show_fog := false  # the fog of war's shading on the ground (only the drawing)
+var lens_fx := {}  # LENS_KEYS -> on, photo mode's own (Atmosphere.look_override while it's open)
 var supersample := true
 ## How the battle is held: "director" (the pause key's speed), "replay", or ""
 ## (multiplayer: it goes on).
@@ -140,6 +145,7 @@ func enter() -> bool:
 		"speed_i": world.director.speed_i if world.director else 3,
 		"mouse": Input.mouse_mode,
 		"layers": [],
+		"look_override": a.look_override.duplicate(),
 	}
 	# the battle holds still, the way the pause key holds it
 	held = ""
@@ -181,6 +187,9 @@ func enter() -> bool:
 	vignette = float(_param(post, "vignette")) if a.post_layer.visible else 0.0
 	grain = float(_param(post, "grain")) if a.post_layer.visible else 0.0
 	show_fog = false
+	lens_fx = {}
+	for k in LENS_KEYS:
+		lens_fx[k] = bool(a.look_v(k))
 	supersample = can_supersample()
 	cam.near = NEAR
 	if not _compatibility():
@@ -196,6 +205,7 @@ func enter() -> bool:
 	panel.photo = self
 	add_child(panel)
 	_apply_view()
+	_apply_lens()
 	changed.emit()
 	return true
 
@@ -231,6 +241,8 @@ func exit() -> void:
 		ca.dof_blur_near_distance = float(d[4])
 		ca.dof_blur_near_transition = float(d[5])
 		ca.dof_blur_amount = float(d[6])
+		a.look_override = _saved.look_override
+		a._apply_cinematic()
 	if not _compatibility():
 		RenderingServer.camera_attributes_set_dof_blur_bokeh_shape(int(ProjectSettings.get_setting("rendering/camera/depth_of_field/depth_of_field_bokeh_shape", 1)))
 		RenderingServer.camera_attributes_set_dof_blur_quality(int(ProjectSettings.get_setting("rendering/camera/depth_of_field/depth_of_field_bokeh_quality", 1)),
@@ -315,16 +327,35 @@ func set_value(key: String, v: Variant) -> void:
 		"grain":
 			grain = clampf(float(v), 0.0, 0.2)
 		"show_fog":
-			show_fog = v if v is bool else String(v) in ["1", "true", "on"]
+			show_fog = _on(v)
 		"supersample":
-			supersample = (v if v is bool else String(v) in ["1", "true", "on"]) and can_supersample()
+			supersample = _on(v) and can_supersample()
 		"roll":
 			roll = clampf(deg_to_rad(float(v)), -deg_to_rad(ROLL_LIMIT), deg_to_rad(ROLL_LIMIT))
 		_:
-			return
+			if not key in LENS_KEYS:
+				return
+			lens_fx[key] = _on(v)
+			if active:
+				_apply_lens()
 	if active:
 		_apply_view()
 	changed.emit()
+
+
+static func _on(v: Variant) -> bool:
+	return v if v is bool else String(v).to_lower() in ["1", "true", "on"]
+
+
+## The lens passes as photo mode has them, over the player's settings (the
+## atmosphere refuses them itself where the renderer can't draw them).
+func _apply_lens() -> void:
+	world.atmo.look_override = lens_fx.duplicate()
+	world.atmo._apply_cinematic()
+
+
+func has_lens() -> bool:
+	return CinematicFx.supported()
 
 
 ## Depth of field and a round bokeh are the desktop renderer's: the browser's

@@ -6,7 +6,7 @@ headline = true
 
 [[screenshots]]
 file = "panel.jpg"
-caption = "Photo mode over a held moment at Beachhead: the lens focused on the burning village at 28 m"
+caption = "Photo mode over a held moment at Beachhead: the lens focused on the stone house at 22 m, flare, sun shafts and film look on"
 
 [[screenshots]]
 file = "picture.jpg"
@@ -22,6 +22,8 @@ caption = "The picture it saved: no panel, drawn at twice the resolution and sca
   browser, whose renderer has none).
 - **The light and the film:** exposure, the time of day, a colour grade with its contrast and saturation, vignette
   and grain. The fog of war's shading can come off the ground too.
+- **Camera and lens:** lens flare, sun shafts, local exposure, eye adaptation and the film look switch on and off
+  for the picture alone, whatever your graphics settings have (on the desktop).
 - **Space takes the picture** without the panel, at twice the resolution for cleaner edges, as a PNG in the
   game's screenshots folder, and a note says where. In a browser it's downloaded.
 - **F2 hides the panel. F9 or Esc puts everything back** as it was, the battle's speed included. Your settings are
