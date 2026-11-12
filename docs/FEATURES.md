@@ -988,6 +988,12 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   with its snapshots; clients draw the rest: a hovering helicopter's slight nose-up, one-side-low hang and gentle
   wander, the rotor's beat following its speed and slapping louder under load, and the downwash throwing a ring
   of dust (spray over water) when she's low. Drones and ground vehicles keep their own movement.
+- **Shot down.** A helicopter destroyed in the air falls rather than vanishing. With the tail rotor or controls
+  gone (or too low to settle) she winds up into a spin against the rotor's torque and corkscrews in, still carrying
+  her speed; with only the engines gone she autorotates, gliding steeply nose-down and flaring into a heavy landing.
+  Where she hits, her fuel goes up (blast damage, a crater and fire, credited to whoever shot her down), how hard
+  she hit decides who aboard walks away, and the burnt-out helicopter lies there, on her side after a spin-in. Over
+  deep water she ditches and sinks. The kill, its stats and the messages count at the moment she's hit.
 - **Boarding:** select infantry and right-click your truck, APC, Slammer or a landed helicopter: they climb in
   (as many as fit) and ride until they dismount or it arrives.
 - Tanks smash through walls, trees and cars. Small arms ricochet off them. Frontal rockets can bounce,
