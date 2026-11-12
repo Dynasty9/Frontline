@@ -3,7 +3,7 @@ extends Control
 ## Resources (player) or the balance of forces (observer), top-left.
 
 ## The observer's balance-of-forces box.
-const OBS_W := 420.0  # (wide enough for the towns each side holds)
+const OBS_W := 480.0  # (wide enough for the towns each side holds, and its resolve)
 const OBS_H := 76.0
 
 var hud: Hud
@@ -97,6 +97,23 @@ func _draw_content() -> void:
 			x += _mono(x, y0 + 1, it[1], 15, UiKit.TEXT)
 			if it[2] != "":
 				x += 6.0 + _mono(x + 6.0, y0 + 1, it[2], 12, UiKit.GOOD if int(ti.get("inc", 0)) > 0 else UiKit.FAINT)
+			x += 14.0
+		# resolve (see Victory): ours against theirs, and what we're losing a second
+		var vp: Array = ti.get("vp", [])
+		if vp.size() >= 4:
+			x += _sep(x) + 14.0
+			x += _caps(x, y0, "Resolve", 11, UiKit.FAINT) + 6.0
+			var mine := int(vp[lt])
+			var theirs := int(vp[1 - lt])
+			x += _mono(x, y0 + 1, str(mine), 15, UiKit.BAD if mine < Victory.LOW else UiKit.TEXT)
+			x += _mono(x, y0 + 1, " / ", 12, UiKit.FAINT)
+			x += _mono(x, y0 + 1, str(theirs), 15, UiKit.DIM)
+			var drain := float(vp[2 + lt])
+			var gain := float(vp[3 - lt])
+			if drain > 0.0:
+				x += 6.0 + _mono(x + 6.0, y0 + 1, "-%.1f/S" % drain, 12, UiKit.BAD)
+			elif gain > 0.0:
+				x += 6.0 + _mono(x + 6.0, y0 + 1, "THEM -%.1f/S" % gain, 12, UiKit.GOOD)
 			x += 14.0
 		x += _sep(x) + 14.0
 		var wtot := x + _mono(x, y0 + 1, clock, 15, UiKit.TEXT)
@@ -199,7 +216,9 @@ func _draw_content() -> void:
 			_caps(13, y2, Defs.TEAM_NAMES[t], 12, UiKit.TEXT)
 			var nf := (ti2.get("fobs", []) as Array).size()
 			var nt := (ti2.get("towns", []) as Array).size()
-			_mono(110, y2, "%d TRP  %d VEH  %d FOB  %d TWN  %d SUP" % [sold[t], veh[t], nf, nt, int(ti2.get("supply", 0))], 12, UiKit.DIM)
+			var vp2: Array = ti2.get("vp", [])
+			var rs := ("  %d RES" % int(vp2[t])) if vp2.size() >= 4 else ""
+			_mono(110, y2, "%d TRP  %d VEH  %d FOB  %d TWN  %d SUP%s" % [sold[t], veh[t], nf, nt, int(ti2.get("supply", 0)), rs], 12, UiKit.DIM)
 		# the balance, counted: 40 steps split between the sides
 		var s0 := float(sold[0] + veh[0] * 4) + 0.01
 		var s1 := float(sold[1] + veh[1] * 4) + 0.01

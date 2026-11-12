@@ -272,7 +272,7 @@ var _town_t := 0.0
 ## of our lines that nobody holds (or the enemy does) - the near villages
 ## first - stay a while to hold them, and go back to throw the enemy out of
 ## one of ours he's moving into.
-func _towns(fighters: Array) -> void:
+func _towns(fighters: Array, pressing := false) -> void:
 	var t := world.time
 	var all: Array = world.rules.towns()
 	if t < _town_t or all.is_empty():
@@ -306,15 +306,19 @@ func _towns(fighters: Array) -> void:
 	for tn in all:
 		var ours: bool = tn.team == team
 		var threatened: bool = ours and tn.cap_team == enemy and tn.cap_prog > 0.0
-		if ours and not threatened:
+		if (ours or pressing) and not threatened:
 			continue
 		if (on.get(tn.eid, []) as Array).size() >= (2 if tn.team == enemy else 1):
 			continue
 		var d := _dist_from(team, tn.zone_c)
 		var de := _dist_from(enemy, tn.zone_c)
-		if de < 90.0 or (d > 340.0 and not ours):
-			continue  # right under their base, or a long way past our own
+		if de < 90.0 or (d > 340.0 and not ours and d > de + 20.0):
+			continue  # right under their base, or a long way past our own and nearer theirs
+		# (the ground halfway between is worth going for: that's where the
+		# battle is, from the first minutes)
 		var s := -d + (150.0 if threatened else 0.0) + (60.0 if tn.variant == 1 else 0.0) - (40.0 if tn.team == enemy else 0.0)
+		if tn.variant == 1 and t < 480.0 and tn.team != team:
+			s += 300.0  # the town is the prize, and whoever gets there first holds it: go now
 		if d > de + 60.0:
 			s -= 150.0  # nearer theirs than ours
 		if s > bs:
@@ -402,11 +406,36 @@ func _fob_reserve() -> int:
 	return 260 if _expansion_due() else 0
 
 
-## Time for another FOB: one more every five minutes or so, up to what the
-## map has room for.
+## Time for another FOB: one more every six minutes or so, up to a few. Every
+## base wants men to hold it and supply to wire it in, and a company that
+## keeps building them has nothing left to attack with.
 func _expansion_due() -> bool:
 	var n: int = world.rules.fobs(team).size()
-	return world.time > expand_t and n < 3 + int(MapDims.HALF / 128.0) and n < 2 + int(world.time / 360.0)
+	return world.time > expand_t and n < _max_fobs() and n < 2 + int(world.time / 360.0)
+
+
+## The most bases worth keeping (more ground, more of them).
+func _max_fobs() -> int:
+	return 2 + int(MapDims.HALF / 256.0)
+
+
+## Fewer squads in the field than the company wants by now - a few in the
+## opening, two more every five minutes - with room under the unit cap: the
+## barracks come before more digging.
+func _army_short(sqs: Array) -> bool:
+	var n := 0
+	for sq in sqs:
+		if sq.has_alive_members() and not _is_engineer_squad(sq) and not sq.kind in ["crew", "r_crew"]:
+			n += 1
+	return n < 4 + int(world.time / 150.0) and world.rules.has_cap(team, 6)
+
+
+## A FOB well behind the front (the enemy isn't near it): it gets no more
+## than its sandbags, the spades and the supply go where the fighting is.
+func _rear(f: Structure, front: Structure) -> bool:
+	if front == null or f == front:
+		return false
+	return Defs.flat(front.position - f.position).dot(_enemy_dir()) > 120.0 and not _enemy_near(f.position, 90.0)
 
 
 func _enemy_dir() -> Vector3:
@@ -465,6 +494,8 @@ func _economy(sqs: Array) -> void:
 	var front := _front_fob()
 	var t := world.time
 	var plan := []
+	# while the army is short, a squad's worth stays in hand for the barracks
+	var hold := 110 if _army_short(sqs) and t > 60.0 else 0
 	if _my_structs("barracks").is_empty():
 		plan.append(["barracks", main, 12.0, 30.0])
 	elif _my_structs("medic_tent").is_empty() and t > 70.0:
@@ -484,6 +515,8 @@ func _economy(sqs: Array) -> void:
 	for f in fobs:
 		if _count_near(f, "sandbags", 24.0) < 4 and t > 40.0:
 			plan.append(["sandbags", f, 9.0, 20.0])
+		if _rear(f, front) and f != main:
+			continue
 		# chest-high walls across the front: HESCO for the Coalition, the Rebels
 		# whatever they can drag together
 		var wall := "hesco" if team == Defs.ARMY else "barricade"
@@ -517,7 +550,7 @@ func _economy(sqs: Array) -> void:
 	if t > obstacle_t and front:
 		obstacle_t = t + rng.randf_range(80.0, 140.0)
 		plan.append([["wire", "mines", "tank_trap"][rng.randi() % 3], front, 18.0, 34.0])
-	if t > expand_t and sup > 300 and fobs.size() < 3 + int(MapDims.HALF / 128.0):  # (more ground, more bases)
+	if t > expand_t and sup > 300 + hold and fobs.size() < _max_fobs():
 		var spot := _expansion_spot()
 		if spot != Vector3.INF:
 			expand_t = t + rng.randf_range(120.0, 200.0)
@@ -531,18 +564,19 @@ func _economy(sqs: Array) -> void:
 			return
 	for p in plan:
 		if p[0] == "trench_line":
-			if sup > 150 + _fob_reserve() and _dig_line(p[1], float(p[2]), engs):
+			if sup > 150 + _fob_reserve() + hold and _dig_line(p[1], float(p[2]), engs):
 				return
 			continue
 		if p[0] == "camo_net_over":
 			var under: Structure = p[1]
-			if sup > int(Defs.BUILDINGS.camo_net.cost) + 60 + _fob_reserve() and world.placement_error(team, "camo_net", under.position, under.yaw) == "":
+			if sup > int(Defs.BUILDINGS.camo_net.cost) + 60 + _fob_reserve() + hold and world.placement_error(team, "camo_net", under.position, under.yaw) == "":
 				world.stat("ai_camo_net")
 				_place("camo_net", under.position, under.yaw, engs)
 				return
 			continue
 		var def: Dictionary = Defs.BUILDINGS[p[0]]
-		if not team in def.teams or sup < int(def.cost) + 40 + _fob_reserve():
+		var keep := 0 if p[0] in ["barracks", "medic_tent", "factory"] else hold
+		if not team in def.teams or sup < int(def.cost) + 40 + _fob_reserve() + keep:
 			continue
 		var anchor: Structure = p[1]
 		if anchor == null:
@@ -942,14 +976,29 @@ func _military(sqs: Array) -> void:
 				roles[sq.sid] = {"role": "defend", "t": t}
 				_cmd({"t": "defend", "squads": [sq.sid], "pos": f.position + _enemy_dir() * 8.0, "face": _enemy_dir()})
 				sent += 1
-	# garrison: one squad per FOB
+	# garrison: a squad in each of the FOBs nearest the enemy, no more than a
+	# third of the company (a squad sitting in every rear base is a company
+	# that never attacks); the rest are held by their wire and their guns
+	var near_first := fobs.duplicate()
+	var ed0 := _enemy_dir()
+	near_first.sort_custom(func(a, b): return a.position.dot(ed0) > b.position.dot(ed0))
+	var held_n := clampi(fighters.size() / 3, 1, near_first.size())
+	if t < 240.0 and fighters.size() < 4:
+		held_n = 0  # (the opening squads race for the town: the first threat to the base is a while off)
+	var guard := {}
+	for i in held_n:
+		guard[near_first[i].eid] = true
 	var defenders := {}
 	for sq in fighters:
 		var role: Dictionary = roles.get(sq.sid, {})
 		if role.get("role", "") == "garrison" and role.has("fob"):
-			defenders[role.fob] = sq
-	for f in fobs:
-		if defenders.has(f.eid):
+			if guard.has(role.fob):
+				defenders[role.fob] = sq
+			else:
+				roles[sq.sid] = {"role": "idle", "t": t}
+				world.stat("ai_garrison_released")
+	for f in near_first:
+		if defenders.has(f.eid) or not guard.has(f.eid):
 			continue
 		for sq in _by_distance(fighters, f.position):
 			if roles.has(sq.sid) and roles[sq.sid].role != "idle":
@@ -966,8 +1015,17 @@ func _military(sqs: Array) -> void:
 				_cmd({"t": "defend", "squads": [sq.sid], "pos": spot, "face": _enemy_dir()})
 			break
 	_reinforce(fighters)
-	_towns(fighters)
-	_outposts(fighters)
+	var pressing := _winning()
+	if pressing:
+		# going for the kill: the men lying out in the villages and the woods
+		# join the attack (a town of ours the enemy is moving into still gets them)
+		for sq in fighters:
+			if String(roles.get(sq.sid, {}).get("role", "")) == "outpost":
+				roles[sq.sid] = {"role": "idle", "t": t}
+				world.stat("ai_press_recall")
+	_towns(fighters, pressing)
+	if not pressing:
+		_outposts(fighters)
 	# pick a target
 	if attack_target == null or attack_target.gone or attack_target.team == team:
 		attack_target = _pick_target()
@@ -1025,7 +1083,9 @@ func _military(sqs: Array) -> void:
 		if Defs.flat(dv.uav_dest - over).length() > 25.0:
 			_cmd({"t": "move", "vehicles": [dv.eid], "pos": over})
 	var wave := 3 if t < 600.0 else 4
-	if attack_target and (attackers.size() >= wave or (attackers.size() >= 2 and t - last_wave_t > 200.0)):
+	if pressing:
+		wave = 2  # they're breaking: keep at them, don't wait to mass
+	if attack_target and (attackers.size() >= wave or (attackers.size() >= 2 and t - last_wave_t > (90.0 if pressing else 200.0))):
 		if t - last_wave_t > 25.0:
 			last_wave_t = t
 			var ids := []
@@ -1091,6 +1151,16 @@ func _military(sqs: Array) -> void:
 					AmbushPlan.make(world, best, site[0], site[1], site[2])
 					world.stat("ai_ambush")
 	_tunnel_progress()
+
+
+## The battle is going our way - their resolve well below ours, or they're
+## down to their last base - so the attacks go in as soon as two squads are
+## ready, at their bases rather than the villages, to finish it.
+func _winning() -> bool:
+	var v: Victory = world.rules.victory
+	if v.on and float(v.points[team]) - float(v.points[1 - team]) > 60.0:
+		return true
+	return world.rules.fobs(1 - team, false).size() <= 1 and world.time > 600.0
 
 
 ## Rebels: if a squad is near one tunnel entrance and another entrance is much
@@ -1185,8 +1255,10 @@ func _pick_target() -> Structure:
 			bd = d
 			best = st
 	# a town of theirs is a softer target than a base, and worth as much to us
+	# (unless they're breaking: then it's their bases, to finish it)
+	var k := 1.6 if _winning() and best != null else 0.8
 	for tn in world.rules.towns(1 - team):
-		var d2: float = Defs.flat(tn.zone_c - from).length() * 0.8
+		var d2: float = Defs.flat(tn.zone_c - from).length() * k
 		if d2 < bd:
 			bd = d2
 			best = tn

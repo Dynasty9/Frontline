@@ -362,6 +362,13 @@ func start_local(a: Dictionary) -> void:
 		"gdscript_perception": a.has("gdscript-perception")})
 	Net.set_setting("verbose", a.has("verbose"))
 	Net.set_setting("debug_trucks", a.has("debug-trucks"))
+	# --victory=fobs: the old rule (every enemy FOB taken) without resolve;
+	# --victory-from / --victory-grace: when resolve starts to drain and how long
+	# a wrecked FOB stays a base, for tests that can't wait minutes (see Victory)
+	Net.set_setting("victory", String(a.get("victory", "resolve")))
+	for k in ["victory-from", "victory-grace"]:
+		if a.has(k):
+			Net.set_setting(k.replace("-", "_"), float(a[k]))
 	if a.has("scenario"):
 		# --play: command the Coalition side yourself instead of watching
 		Net.set_setting("scenario", String(a.scenario))

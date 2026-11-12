@@ -1480,7 +1480,8 @@ func _fob_tick() -> void:
 	var enemy := 1 - team
 	var old := cap_prog
 	if counts[enemy] > 0 and counts[team] == 0:
-		# a side's last FOB is its last stand: four times slower to take
+		# a side's last FOB is its last stand: twice as slow to take (it was four
+		# times, and a handful of men in its sandbags could hold out for ever)
 		var last := world.rules.fobs(team).size() <= 1
 		if cap_team != enemy:
 			cap_team = enemy
@@ -1488,7 +1489,7 @@ func _fob_tick() -> void:
 			world.send_msg(team, "alert", ("LAST STAND: FOB %s is being captured! Lose it and we lose the battle." if last else "FOB %s is being captured!") % sname, position)
 			if last:
 				world.fx_event([Fx.SUPPORT, position, 20.0])
-		cap_prog += (2.0 + minf(counts[enemy], 6)) * (0.25 if last else 1.0)
+		cap_prog += (2.0 + minf(counts[enemy], 6)) * (0.5 if last else 1.0)
 		if cap_prog >= 100.0:
 			cap_prog = 0.0
 			cap_team = -1
