@@ -13,4 +13,5 @@ caption = "A country road, the edge of town and a town street from the same came
 - **Potholes** sit in the wheel lines and fill with water in the rain.
 - **Tracks worn in by the troops** get the same broken edges, rutted dark into bare earth.
 - **At the edge of town** the asphalt crumbles away into the gravel, and the track runs full width with no grass where everything going in and out wears it.
+- **Car parks** are kerbed on their three open sides instead of a bare slab dropped on the grass.
 - **Cracks in town asphalt** run along and across the streets, sealed with tar, instead of curly lines.

@@ -630,6 +630,10 @@ func _make(h: Node3D, kind: String, ex) -> void:
 			for i in slots + 1:
 				var x := -lp.x * 0.5 + i * 2.6 + (lp.x - slots * 2.6) * 0.5
 				_m(Res.box(Vector3(0.08, 0.005, 4.6)), "road_paint", Vector3(x, 0.05, lp.y * 2.6), Color(0.94, 0.94, 0.9), Vector3.ZERO, false, true)
+			# kerbed on its three open sides; the side on the street is the way in
+			for side: float in [-1.0, 1.0]:
+				_m(Res.box(Vector3(0.15, 0.12, lp.z)), "curbstone", Vector3(side * (lp.x * 0.5 - 0.075), 0.06, 0), null, Vector3.ZERO, false, true)
+			_m(Res.box(Vector3(lp.x, 0.12, 0.15)), "curbstone", Vector3(0, 0.06, lp.y * (lp.z * 0.5 - 0.075)), null, Vector3.ZERO, false, true)
 
 
 func _bench(o: Vector3) -> void:

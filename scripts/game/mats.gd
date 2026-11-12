@@ -49,14 +49,14 @@ mat3 ground_surface_basis(vec3 position) {
 // drawn where value noise crosses its middle, about 3 cm wide; with distance
 // a line covers less of a pixel, so it fades rather than crawl.
 float street_crack_family(sampler2D noise, vec2 q, vec2 wiggle) {
-	float n = texture(noise, q).r + (texture(noise, wiggle).r - 0.5) * 0.18 - 0.5;
+	float n = texture(noise, q).r + (texture(noise, wiggle).r - 0.5) * 0.08 - 0.5;
 	float w = max(fwidth(n), 0.00001);
 	float half_width = 0.005;
 	return (1.0 - smoothstep(half_width - w, half_width + w, abs(n))) * clamp(half_width * 2.0 / w, 0.0, 1.0);
 }
 float street_crack_line(sampler2D noise, vec2 p) {
-	float along_x = street_crack_family(noise, p * vec2(0.006, 0.034) + 0.37, p * 0.09 + 0.71);
-	float along_z = street_crack_family(noise, p * vec2(0.034, 0.006) + 0.11, p * 0.09 + 0.29);
+	float along_x = street_crack_family(noise, p * vec2(0.006, 0.034) + 0.37, p * 0.05 + 0.71);
+	float along_z = street_crack_family(noise, p * vec2(0.034, 0.006) + 0.11, p * 0.05 + 0.29);
 	// each family only in stretches, so a street isn't netted all over
 	along_x *= smoothstep(0.5, 0.62, texture(noise, p * vec2(0.004, 0.02) + 0.53).r);
 	along_z *= smoothstep(0.5, 0.62, texture(noise, p * vec2(0.02, 0.004) + 0.17).r);
