@@ -345,7 +345,7 @@ function ScreeningRoom({ editions }: { editions: Edition[] }) {
       <section className="cut-section" aria-labelledby="other-films">
         <p className="cut-kicker">Companion films</p>
         <h2 id="other-films">Stay with the scene.</h2>
-        <div className="cut-studies cut-films">
+        <div className="cut-studies">
           {[
             {
               title: "Two tanks, two ridges",
@@ -360,20 +360,16 @@ function ScreeningRoom({ editions }: { editions: Edition[] }) {
               film: "/media/edits/films/harbour.webm",
               poster: "/media/edits/films/harbour.jpg",
             },
-          ].map(({ title, length, film, poster }) => (
-            <div key={film}>
+          ].map(({ title: filmTitle, length, film, poster }) => (
+            <a key={film} href={film} aria-label={`Play ${filmTitle}`}>
               <div className="cut-still">
-                <a href={film} aria-label={`Play ${title}`}>
-                  <img loading="lazy" src={poster} alt={title} />
-                </a>
+                <img loading="lazy" src={poster} alt="" />
                 <span>{length}</span>
               </div>
-              <a href={film}>
-                <h3>
-                  {title} <ArrowRightIcon />
-                </h3>
-              </a>
-            </div>
+              <h3>
+                {filmTitle} <ArrowRightIcon />
+              </h3>
+            </a>
           ))}
         </div>
       </section>
