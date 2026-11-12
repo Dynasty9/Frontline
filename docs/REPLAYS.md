@@ -34,7 +34,7 @@ Absent or incompatible builds show an explanation instead of an unusable launch.
 
 The matchmaker keeps recordings in one of two places (`matchmaker/src/replays.js`):
 
-- **A Supabase Storage bucket** (what the live service uses): set `REPLAY_BUCKET=replays` on the matchmaker,
+- **A Supabase Storage bucket** (optional hosted storage): set `REPLAY_BUCKET=replays` on the matchmaker,
   beside the `SUPABASE_URL` and `SUPABASE_SECRET_KEY` it has for accounts. A migration creates the bucket
   (`20261111234500_replay_bucket.sql`): private, JSON files of at most 16 MB, no policies, so only the
   matchmaker's secret key reaches it and viewers get recordings through the matchmaker. Nothing else to set up.
