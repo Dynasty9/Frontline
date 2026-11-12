@@ -1,0 +1,89 @@
+{
+  "before_ref": "84e38a35933c52020a8fa60917db63a32fbb01b5",
+  "source_ref": "f2fdf0b0d468e4e9d49752ba4af20f7a6997d491",
+  "engine": "Godot 4.7.2 stable ed1daf0bf",
+  "stage": "tools/showcase/building-surfaces.tscn; tests/fixtures/environment-views.gd",
+  "command": "godot --path CHECKOUT --resolution 1600x900 tools/showcase/building-surfaces.tscn -- --building-out=OUTPUT --offscreen FLAGS",
+  "comparisons": [
+    {
+      "subjects": [
+        "roofscape"
+      ],
+      "flags": [
+        "--building-single",
+        "--building-kinds=roofscape"
+      ],
+      "after_flags": [
+        "--building-match=BEFORE/capture.json"
+      ],
+      "cameras": {
+        "roofscape": [
+          0.0,
+          3.39712738990784,
+          0.0409994125366211,
+          19.3807811737061,
+          88.6810302734375
+        ]
+      }
+    },
+    {
+      "subjects": [
+        "roofscape"
+      ],
+      "flags": [
+        "--building-single",
+        "--building-kinds=roofscape",
+        "--building-rear"
+      ],
+      "after_flags": [
+        "--building-match=BEFORE/capture.json"
+      ],
+      "cameras": {
+        "roofscape": [
+          0.0,
+          3.39712738990784,
+          0.0409994125366211,
+          19.3807830810547,
+          88.6810302734375
+        ]
+      }
+    },
+    {
+      "subjects": [
+        "roofscape"
+      ],
+      "flags": [
+        "--building-single",
+        "--building-kinds=roofscape",
+        "--building-rear",
+        "--building-night"
+      ],
+      "after_flags": [
+        "--building-match=BEFORE/capture.json"
+      ],
+      "cameras": {
+        "roofscape": [
+          0.0,
+          3.39712738990784,
+          0.0409994125366211,
+          19.3807830810547,
+          88.6810302734375
+        ]
+      }
+    },
+    {
+      "subjects": [
+        "town"
+      ],
+      "command": "godot --path CHECKOUT --resolution 1600x900 --script tests/fixtures/environment-views.gd -- --aivai --seed=3 --offscreen --nohud --set=perf:0 --preset=high --mood=day --focus=0,0 --capture-set=town",
+      "crop": [
+        300,
+        120,
+        1300,
+        700
+      ]
+    }
+  ],
+  "notes": "Both sides render the source_ref studio stage (its roofscape subject picks four roof ids: 95 hipped with a tarp and skylight, 54 a steep gable with a hole, 42 a gable with a skylight, 4 a pyramid over a square house). The baseline is the lived-in yards change this builds on.",
+  "composition": "PIL: matched rows, 792 px halves, JPEG quality 82"
+}
