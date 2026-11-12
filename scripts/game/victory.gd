@@ -9,15 +9,19 @@ extends RefCounted
 ## that matters (the town, the villages, working FOBs) and with every man and
 ## vehicle lost. A side that sits behind its wire while the other takes the
 ## villages loses; so does one that throws its army away. The longer the
-## battle drags on, the faster the drain (the ramp), so one that is close all
-## the way through is still decided in about half an hour. Missions have their
+## battle drags on, the faster the drain (the ramp); and from the twentieth
+## minute both sides tire of it (weariness, growing by the minute), so one that
+## is even all the way through is still decided before half an hour, against
+## whichever side has less left. Missions have their
 ## own ends and never use it.
 
 const START := 600.0
 const BLEED_FROM := 180.0  # (the first three minutes: both sides are still coming up)
-const RATE := 0.2  # resolve a second for each point of ground the enemy holds more than us
+const RATE := 0.13  # resolve a second for each point of ground the enemy holds more than us
 const RAMP_FROM := 900.0  # from the quarter hour the drain speeds up...
 const RAMP_PER := 300.0  # ...by its own rate again every five minutes
+const WEARY_FROM := 1200.0  # from the twentieth minute both sides lose resolve...
+const WEARY_PER := 240.0  # ...a point a second more for every four minutes past it
 const MAN_VALUE := 20.0  # a man (20 supply's worth) lost costs one point; a vehicle its cost / 20
 const FOB_LOST := 25.0
 const WRECK_GRACE := 120.0  # a wrecked FOB still counts as a base this long, for its engineers
@@ -82,6 +86,7 @@ func tick() -> void:
 		var b := 0.0
 		if world.time >= bleed_from:
 			b = maxi(0, held[1 - t] - held[t]) * RATE * ramp
+		b += maxf(0.0, world.time - WEARY_FROM) / WEARY_PER
 		bleed[t] = b
 		var val: float = float(world.battle.sides[t].val_lost) if world.battle else 0.0
 		var cas := (val - float(_lost_val[t])) / MAN_VALUE

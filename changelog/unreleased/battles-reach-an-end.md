@@ -12,7 +12,7 @@ caption = "Resolve on the status line: yours, theirs, and what you're losing a s
 - **Resolve:** both sides start at 600. From the third minute, the side holding less ground loses resolve every
   second: the town counts three, each village one, each working FOB one. Every man lost costs a point, and a
   vehicle costs more the dearer it was. Losing a FOB costs 25. The longer the battle goes on, the faster the drain,
-  so even a close fight ends in about half an hour.
+  and from the twentieth minute both sides tire of it, so even a level fight ends before half an hour.
 - **On the status line:** your resolve, the enemy's, and how fast you're losing it (or how fast they are). You're
   warned when yours falls below 150.
 - **Wrecked bases:** a FOB shelled to a wreck still counts as a base for two minutes. If its engineers haven't

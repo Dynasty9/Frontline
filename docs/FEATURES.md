@@ -1231,9 +1231,10 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
 - Everything can be shot up and repaired. Any FOB can be captured by whoever walks in and holds it. Lose your last FOB and you lose, but a side's last FOB is a last stand and takes twice as long to capture, and HQ sends a free reserve squad every 75 s to a side that is down to its last few soldiers. A wrecked FOB still counts as a base for two minutes; left in ruins longer than that, it doesn't, so a side whose every base lies wrecked has lost.
 - **Resolve** (`victory.gd`): each side starts with 600, shown on the status line beside the enemy's and the drain a
   second. From the third minute the side holding less ground bleeds it every second - the town counts 3, a village
-  1, a working FOB 1, and the drain is 0.2 a second for each point of difference - and every loss costs it too: a
+  1, a working FOB 1, and the drain is 0.13 a second for each point of difference - and every loss costs it too: a
   man 1, a vehicle its cost / 20, a FOB taken 25. From the quarter hour the drain speeds up (twice as fast at 20
-  minutes, three times at 25), so a close battle is still decided in about half an hour. Run out and you lose.
+  minutes, three times at 25), and from the twentieth minute both sides tire of it (a point a second more for
+  every four minutes past it), so even a battle that stays level is decided before half an hour. Run out and you lose.
   Missions and test scenarios don't use it, and `--victory=fobs` plays a skirmish by the old rule (every enemy FOB
   taken).
 - Fog of war, drawn on the ground and the minimap, with intel pings and last-known enemy positions.
@@ -1541,7 +1542,7 @@ buildings that its engineers must build, trains a mix of squads, saves for vehic
 garrisons, answers attacks on its bases, sends waves at your FOBs and ambushes your supply roads. The Rebel AI
 digs forward tunnel entrances and moves its attack waves through them. AI-vs-AI results swing a lot between
 batches of six games (from 5–1 one way to 5–1 the other with small parameter changes), so the sides are close
-but balance needs real playtesting. AI-vs-AI battles on the standard map now end in about 17-24 minutes, mostly on resolve; in most of them the first shots are fired two or three minutes in.
+but balance needs real playtesting. AI-vs-AI battles on the standard map now end in about 17-28 minutes, mostly on resolve; in most of them the first shots are fired two or three minutes in.
 
 **Command by intent** (`delegation.gd`): a commander can hand any of his squads and vehicles to his XO with an
 intent instead of an order, and the XO carries it out with the AI commander's own drills, giving the squads

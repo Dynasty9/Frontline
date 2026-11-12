@@ -4,7 +4,8 @@
 // left in ruins counting as none. Each test loads an AI-vs-AI battle and rigs
 // it through the test port ("rig"): hands a side the towns, sets resolve,
 // wrecks a FOB. victory_from / victory_grace bring the minutes-long waits
-// down to seconds.
+// down to seconds. (Two loads in all: a full battle map costs CI the better
+// part of a minute each.)
 
 import { test, before, after } from "node:test";
 import assert from "node:assert/strict";
@@ -20,7 +21,7 @@ after(async () => {
 
 const world = () => game.query("world");
 
-test("holding more ground drains the enemy's resolve, not your own", async () => {
+test("holding more ground drains the enemy's resolve, and running out of it loses", async () => {
   await game.load({ battle: true, seed: 2, victory_from: 12 });
   await game.step(11);
   const before = await world();
@@ -35,40 +36,32 @@ test("holding more ground drains the enemy's resolve, not your own", async () =>
   assert.ok(w.resolve[1] < 599, `the Rebels' resolve has fallen (${w.resolve[1]})`);
   assert.equal(w.resolve[0], 600, "the Coalition's hasn't");
   assert.equal(w.winner, -1, "nobody has won yet");
-});
 
-test("a side whose resolve runs out loses the battle", async () => {
-  await game.load({ battle: true, seed: 2, victory_from: 12 });
-  await game.step(11);
-  await game.send("rig", { towns: 0, resolve: [400, 3] });
-  const r = await game.step(10);
-  assert.equal(r.winner, 0, "the Coalition wins");
+  await game.send("rig", { resolve: [400, 3] });
+  const end = await game.step(10);
+  assert.equal(end.winner, 0, "the Coalition wins when the Rebels' resolve runs out");
   const { counters } = await game.stats();
   assert.equal(counters.victory_resolve, 1, "on resolve");
 });
 
-test("a FOB wrecked and left in ruins stops counting as a base", async () => {
-  // (its engineers have it patched up again in about eight seconds, so the
-  // grace here is shorter than that)
-  await game.load({ battle: true, seed: 2, victory_grace: 2 });
+test("under the old rule nothing bleeds, and a FOB left in ruins stops counting as a base", async () => {
+  // victory: fobs (the old rule) still loses a side its last base; the wreck's
+  // engineers have it patched up again in about eight seconds, so the grace
+  // here is shorter than that
+  await game.load({ battle: true, seed: 2, victory: "fobs", victory_from: 12, victory_grace: 2 });
   await game.step(11);
+  await game.send("rig", { towns: 0, resolve: [400, 3] });
+  let r = await game.step(10);
+  assert.equal(r.winner, -1, "nobody wins on resolve");
+  assert.deepEqual((await world()).bleed, [0, 0], "and nothing bleeds");
+
   const { structures } = await game.query("structures", { team: 1, kind: "fob" });
   assert.equal(structures.length, 1, "the Rebels have one FOB");
   await game.send("rig", { wreck: structures[0].id });
-  let r = await game.step(1);
+  r = await game.step(1);
   assert.equal(r.winner, -1, "inside its grace the wreck still counts");
   r = await game.step(4);
   assert.equal(r.winner, 0, "after it, the Rebels have no base and lose");
   const { counters } = await game.stats();
   assert.equal(counters.victory_no_base, 1, "for want of a base");
-});
-
-test("victory: fobs keeps the old rule: no resolve, only the bases", async () => {
-  await game.load({ battle: true, seed: 2, victory: "fobs", victory_from: 12 });
-  await game.step(11);
-  await game.send("rig", { towns: 0, resolve: [400, 3] });
-  const r = await game.step(10);
-  assert.equal(r.winner, -1, "nobody wins on resolve");
-  const w = await world();
-  assert.deepEqual(w.bleed, [0, 0], "and nothing bleeds");
 });

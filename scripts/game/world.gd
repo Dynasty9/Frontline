@@ -2558,6 +2558,8 @@ func debug_stats() -> String:
 			if sq.team == t and sq.has_alive_members():
 				mor.append("%d%s" % [int(sq.morale), ("/" + sq.drill) if sq.drill != "" else ""])
 		out += " mor=%s" % ",".join(mor)
+	if rules and not rules.victory.info().is_empty():
+		out += " | resolve=%s ground=%s" % [str(rules.victory.info()), str(rules.victory.held)]
 	out += "\n   events=%s" % str(stats)
 	if settings.get("debug", false):
 		for d in drones:
