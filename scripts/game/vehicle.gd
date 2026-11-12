@@ -156,6 +156,8 @@ var burner: Node3D
 var dust: GeometryInstance3D  # (GPU or CPU particles: see Vfx.part)
 var bent_skirts := 0
 var _burn_state := -1
+var _ring_centre := Vector3.INF
+var _ring_terrain_version := -1
 var ring: MeshInstance3D
 var _vis := true
 # the crew's behaviour tree (see VehicleBrain)
@@ -3079,8 +3081,34 @@ func _view_process(dt: float) -> void:
 	_sling_view()
 	if ring:
 		ring.visible = selected and (not world.cam or world.cam.mount_subject != self)
-		if selected and (position.y - world.ground_y(position)) > 0.5:
-			ring.global_position = Vector3(position.x, world.ground_y(position) + 0.06, position.z)
+		if ring.visible and is_heli():
+			_update_landing_ring()
+
+
+## The far side of a helicopter's footprint can be on a different contour from
+## the landing gear. Lay the selection stripe on the ground around its rim.
+func _update_landing_ring() -> void:
+	var centre := Vector3(position.x, 0, position.z)
+	if centre.distance_squared_to(_ring_centre) < 0.04 and _ring_terrain_version == world.terrain.version:
+		return
+	_ring_centre = centre
+	_ring_terrain_version = world.terrain.version
+	ring.global_position = centre
+	var surface := ring.mesh as ImmediateMesh
+	surface.clear_surfaces()
+	surface.surface_begin(Mesh.PRIMITIVE_TRIANGLE_STRIP)
+	var hs := _hull_size()
+	var radius := maxf(hs.x, hs.z) * 0.61
+	for i in 49:
+		var a := TAU * (i % 48) / 48.0
+		var radial := Vector2(cos(a), sin(a))
+		for edge: float in [0.75, 1.0]:
+			var offset := Vector3(radial.x, 0, radial.y) * radius * edge
+			# Clear the concrete pad, its painted markings and low ground cover.
+			offset.y = world.ground_y(centre + offset) + 0.36
+			surface.surface_set_uv(Vector2(0.5, 0.5) + radial * edge * 0.5)
+			surface.surface_add_vertex(offset)
+	surface.surface_end()
 
 
 ## (view) A helicopter's attitude, as the host flies it, and what a pilot
@@ -3417,4 +3445,8 @@ func _build_model() -> void:
 		add_child(burner)
 	var hs := _hull_size()
 	ring = Res.mi(self, Res.plane(maxf(hs.x, hs.z) * 1.22), Res.ring_mat(tc), Vector3(0, 0.06, 0), Vector3.ZERO, false)
+	if is_heli():
+		ring.top_level = true
+		ring.global_transform = Transform3D.IDENTITY
+		ring.mesh = ImmediateMesh.new()
 	ring.visible = false

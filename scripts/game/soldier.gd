@@ -4219,19 +4219,20 @@ func _view_process(dt: float, blend := -1.0) -> void:
 			model.crew_l = gr[1]
 	# At the fixed mortar the gunner puts his carried tube down and uses both hands.
 	if at_pit:
-		model.crew_r = station.to_global(Vector3(0.13, 0.89, 0.12))
-		model.crew_l = station.to_global(Vector3(-0.12, 0.72, 0.21))
+		model.global_transform = station.global_transform.translated_local(Vector3(0, 0, 0.30))
+		model.crew_r = station.to_global(WorksModels.MORTAR_PALM_R)
+		model.crew_l = station.to_global(WorksModels.MORTAR_PALM_L)
 	if model.tube:
 		model.tube.visible = not at_pit
 	model.crew = on_gun or at_pit
-	if not on_gun:
+	if not model.crew:
 		if srv:
 			# between simulation steps (see Entity.ip_offset)
 			if _ip_moving or not model.transform.is_equal_approx(frame_offset):
 				model.transform = frame_offset
 		elif _was_on_gun:
 			model.transform = Transform3D.IDENTITY
-	_was_on_gun = on_gun
+	_was_on_gun = model.crew
 	var view_act := Act.IDLE if at_pit and act == Act.LAUNCH else act
 	if model.skinned != null:
 		# Keep the knees tucked until the body clears the wall, without changing combat timing.
