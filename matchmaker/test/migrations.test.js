@@ -43,6 +43,12 @@ const SUPABASE = `
 		select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid
 	$$;
 	grant usage on schema auth to anon, authenticated, service_role;
+	-- Supabase Storage's buckets, as far as a migration sets one up
+	create schema storage;
+	create table storage.buckets (
+		id text primary key, name text not null unique, public boolean default false,
+		file_size_limit bigint, allowed_mime_types text[]
+	);
 	grant usage on schema public to anon, authenticated, service_role;
 	alter default privileges in schema public grant all on tables to anon, authenticated, service_role;
 	alter default privileges in schema public grant all on functions to anon, authenticated, service_role;
@@ -400,4 +406,9 @@ test('anyone may run the public functions, and nothing else this migration adds'
 	// the log itself is closed
 	await refused('42501', () => as(D, 'select * from public.xp_log'));
 	await refused('42501', () => as(D, `insert into public.xp_log (user_id, gained) values ($1, 1000)`, [D]));
+});
+
+test('recordings have a private bucket of their own, for JSON files of a chunk at most', NEEDS, async () => {
+	const { rows } = await db.query(`select public, file_size_limit, allowed_mime_types from storage.buckets where id = 'replays'`);
+	assert.deepEqual(rows, [{ public: false, file_size_limit: 16777216, allowed_mime_types: ['application/json'] }]);
 });
