@@ -1776,6 +1776,9 @@ float backdrop(vec2 p) {
 	hills *= 1.0 + 1.1 * smoothstep(600.0, 1100.0, edge);
 	// The survey's broad ridges break into crags in proportion to the massif.
 	hills *= 1.0 + scenery_crags(p) * 0.12;
+	// Saddles notch the high ridges, so a massif shows several tops rather than one
+	// cone (they only cut down: the scenery stays within its height bounds).
+	hills *= 1.0 - 0.08 * smoothstep(0.35, 0.75, crag_value(p / 380.0 + 5.1)) * smoothstep(250.0, 700.0, hills);
 	float land = hills * smoothstep(8.0, 900.0, edge) * coast * (1.0 - step(9999.0, snow_line))
 		* (1.0 - smoothstep(1450.0, 1800.0, edge));
 	if (p.x > shore - 14.0) { land = min(land, scenery_sea_bed(p.x - shore)); }
