@@ -5,7 +5,7 @@ kind = "new"
 
 [[screenshots]]
 file = "comparison.jpg"
-caption = "Matched before and after: the same houses under the same studio camera by day, then lit by night, and a house with its roof off as when your men are inside."
+caption = "Matched before and after: a house under the same studio camera by day, with its roof off as when your men are inside, and by night; then a house in the town on the same seed and camera."
 +++
 
 - **Windows:** drapes drawn to the sides, a blind half down, or nets across the lower panes. Some windows have
