@@ -202,6 +202,11 @@ func _subject(kind: String) -> Node3D:
 				h.position = spec[0]
 				block.add_child(h)
 			return block
+		"house_war":
+			# a house the war has been past, its walls picked (by id) to show
+			# the marks: soot over the door, a shell hit and bullet strikes,
+			# taped glass, boards, sandbags on a sill, rain under the sills
+			return _house(9.0, 7.6, 1, false, true, false, 0, {0: 13, 1: 2, 2: 12, 30: 41, 31: 7, 32: 2})
 		"house_open":
 			# the roof hidden, as when men are inside: the room as they see it
 			return _house(9.0, 7.6, 1, false, false)
@@ -265,7 +270,7 @@ func _rotated(n: Node3D) -> Node3D:
 
 ## The same layout as MapGen._house: the front (street) wall at -z with the
 ## door in it, windows in most other sections.
-func _house(w: float, d: float, color: int, flat: bool, roofed := true, ruined := false, roof_id := 0) -> Node3D:
+func _house(w: float, d: float, color: int, flat: bool, roofed := true, ruined := false, roof_id := 0, wall_ids := {}) -> Node3D:
 	var root := Node3D.new()
 	var floor := Structure.preview_model("floor", -1, 1 if ruined else 0, Vector3(w, 0.06, d), false, 7)
 	root.add_child(floor)
@@ -291,7 +296,7 @@ func _house(w: float, d: float, color: int, flat: bool, roofed := true, ruined :
 				heap.rotation.y = yaw
 				root.add_child(heap)
 				continue
-			var wall := Structure.preview_model("house_wall", -1, variant, Vector3(seg_len, float(color), 0.4), variant == 2, 100 + si * 10 + k)
+			var wall := Structure.preview_model("house_wall", -1, variant, Vector3(seg_len, float(color), 0.4), variant == 2, wall_ids.get(si * 10 + k, 100 + si * 10 + k))
 			wall.position = lp
 			wall.rotation.y = yaw
 			root.add_child(wall)

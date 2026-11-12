@@ -209,6 +209,14 @@ func _ready() -> void:
 		"curtains": func(k: BuildingKit):
 			for style in ["drapes", "blind", "nets"]:
 				BuildingFurnishings.curtains(k, Vector3(0, 1.5, -0.1), Vector2(1.3, 1.0), style, Color(0.5, 0.2, 0.2)),
+		"war": func(k: BuildingKit):
+			var tone := func(_p: Vector2) -> Color: return Color(0.9, 0.85, 0.8)
+			BuildingWeathering.streaks(k, 0.0, 1.0, 1.3, "plaster", tone, k.rng)
+			BuildingWeathering.soot(k, 0.0, 2.0, 1.3, 2.85, "plaster", tone, k.rng, 1.4)
+			BuildingWeathering.scar(k.at_point(Vector3(4, 0, 0)), Vector2(0, 1.5), 0.4, "plaster", tone, Color(0.5, 0.3, 0.2), Color(0.8, 0.78, 0.73), k.rng)
+			BuildingWeathering.boards(k, Vector3(0, 1.5, 0), Vector2(1.3, 1.0), k.rng)
+			BuildingWeathering.sill_bags(k, Vector3(0, 1.5, 0), Vector2(1.3, 1.0), k.rng)
+			BuildingOpenings.window(k.at_point(Vector3(-4, 0, 0)), Vector3(0, 1.5, 0), Vector2(1.3, 1.0), {"glazing": 1.0, "tape": true}),
 		"roof_patches": func(k: BuildingKit):
 			BuildingWeathering.tarp(k, k.rng)
 			BuildingWeathering.hole(k.at_point(Vector3(3, 0, 0)), k.rng)
@@ -287,6 +295,52 @@ func _ready() -> void:
 			var box: AABB = (child as MeshInstance3D).transform * (child as MeshInstance3D).mesh.get_aabb()
 			check(box.end.y <= 0.26 and absf(box.get_center().x) < 4.5 and absf(box.get_center().z) < 3.8, "a ruin's debris lies flat in its room (%s)" % box)
 		rk2.sink.root.free()
+	# Rain and the war on a wall keep to its face (boards and sandbags on the
+	# sill no more than a hand's breadth out), strikes miss the openings, and a
+	# stain comes back to exactly the wall's own colour at its rim.
+	var window_hole := Rect2(-0.65, 1.0, 1.3, 1.0)
+	var face_tone := func(_p: Vector2) -> Color: return Color(0.9, 0.85, 0.8)
+	for s in 10:
+		var wk3 := kit()
+		wk3.rng.seed = s
+		BuildingWeathering.streaks(wk3, 0.0, 1.0, 1.3, "plaster", face_tone, wk3.rng)
+		BuildingWeathering.soot(wk3, 0.0, 2.0, 1.3, 2.85, "plaster", face_tone, wk3.rng, 1.4)
+		BuildingWeathering.scar(wk3, Vector2(0.0, 1.5), 0.45, "plaster", face_tone, Color(0.5, 0.3, 0.2), Color(0.8, 0.78, 0.73), wk3.rng, [], 1.5)
+		BuildingWeathering.boards(wk3, Vector3(0, 1.5, 0), Vector2(1.3, 1.0), wk3.rng)
+		BuildingWeathering.sill_bags(wk3, Vector3(0, 1.5, 0), Vector2(1.3, 1.0), wk3.rng)
+		for child in wk3.sink.root.get_children():
+			var box: AABB = (child as MeshInstance3D).transform * (child as MeshInstance3D).mesh.get_aabb()
+			check(box.end.z <= 0.2 and box.position.z >= -0.15, "war and rain keep to the face (%s)" % box)
+			check(box.position.y >= 0.0 and box.end.y <= 3.0 and absf(box.get_center().x) < 1.6, "war and rain keep on the wall (%s)" % box)
+		wk3.sink.root.free()
+		var pk := kit()
+		pk.rng.seed = s
+		BuildingWeathering.pocks(pk, Vector2(0.0, 1.5), 1.2, 30, Color(0.5, 0.3, 0.2), pk.rng, [window_hole])
+		for child in pk.sink.root.get_children():
+			var c3 := (child as MeshInstance3D).transform.origin
+			check(not window_hole.has_point(Vector2(c3.x, c3.y)), "a bullet strike in a window at %s" % c3)
+		pk.sink.root.free()
+	var sk := kit()
+	BuildingWeathering.stain(sk, Rect2(-1, 1, 2, 1), "plaster", face_tone, Color(0.1, 0.1, 0.1), func(_u: float, _v: float) -> float: return 1.0)
+	var sm: MeshInstance3D = sk.sink.root.get_child(0)
+	var cols: PackedColorArray = (sm.mesh as ArrayMesh).surface_get_arrays(0)[Mesh.ARRAY_COLOR]
+	var verts: PackedVector3Array = (sm.mesh as ArrayMesh).surface_get_arrays(0)[Mesh.ARRAY_VERTEX]
+	var rim := Color(0.9, 0.85, 0.8) if Mats.per_material else Color(0.9, 0.85, 0.8).srgb_to_linear()
+	var rims := 0
+	var darks := 0
+	for i in verts.size():
+		var edge := absf(absf(verts[i].x) - 1.0) < 0.001 or absf(verts[i].y - 1.0) < 0.001 or absf(verts[i].y - 2.0) < 0.001
+		var c4: Color = cols[i] * Mats.VC_K
+		if edge:
+			rims += 1
+			# (to the precision vertex colours are stored at, as the baked wall's are)
+			var tol := 1.05 / 255.0 * Mats.VC_K
+			check(absf(c4.r - rim.r) < tol and absf(c4.g - rim.g) < tol and absf(c4.b - rim.b) < tol, "a stain's rim is the wall's own colour (%s, %s)" % [c4, rim])
+		elif c4.r < rim.r * 0.5:
+			darks += 1
+	check(rims > 0 and darks > 0, "a stain fades from dark to the wall (%d rim, %d dark)" % [rims, darks])
+	sk.sink.root.free()
+
 	var bake2 := Mats.Bake.new()
 	var bk2 := BuildingKit.baked(bake2)
 	BuildingWeathering.ivy(bk2, 0.0, 1.6, 2.8, bk2.rng)

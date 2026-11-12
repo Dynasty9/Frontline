@@ -44,7 +44,7 @@ static func window(k: BuildingKit, c: Vector3, size: Vector2, opts := {}) -> voi
 		head(k, c.x, c.y + h * 0.5, w, material, wall)
 	var fp := Vector3(c.x, c.y, -inset)
 	k.part(frame_shape(w, h, mullions, transom), fk, Transform3D(Basis.IDENTITY, fp), fc)
-	panes(k, fp, size, mullions, transom, opts.get("glazing", 0.4), opts.get("cracked", 0.5), "window_lit" if opts.get("lit", false) else "glass")
+	panes(k, fp, size, mullions, transom, opts.get("glazing", 0.4), opts.get("cracked", 0.5), "window_lit" if opts.get("lit", false) else "glass", opts.get("tape", false))
 	if opts.get("curtains", "") != "":
 		BuildingFurnishings.curtains(k, fp, size, opts.curtains, opts.get("curtain", BuildingFurnishings.FABRICS[0]))
 	if opts.get("shutters") is Color:
@@ -103,7 +103,7 @@ static func frame_shape(w: float, h: float, mullions: int, transom: float) -> Ar
 
 ## The panes between the bars of a frame at `fp`: each one whole, cracked to
 ## the shards still in its putty, or gone.
-static func panes(k: BuildingKit, fp: Vector3, size: Vector2, mullions: int, transom: float, whole: float, cracked: float, glass := "glass") -> void:
+static func panes(k: BuildingKit, fp: Vector3, size: Vector2, mullions: int, transom: float, whole: float, cracked: float, glass := "glass", tape := false) -> void:
 	var fw := 0.07
 	var cols := mullions + 1
 	var inner := Vector2(size.x - fw * 2.0, size.y - fw * 2.0)
@@ -120,6 +120,11 @@ static func panes(k: BuildingKit, fp: Vector3, size: Vector2, mullions: int, tra
 			var roll := k.rng.randf()
 			if roll < whole:
 				k.plate(Vector3(cell.x, cell.y, 0.012), mid, glass, GLASS)
+				if tape:
+					# taped against the blast: a cross of paper tape corner to corner
+					var ang := atan2(cell.y, cell.x)
+					for s: float in [-1.0, 1.0]:
+						k.plate(Vector3(cell.length() - 0.02, 0.035, 0.004), mid + Vector3(0, 0, 0.009), "paint", Color(0.8, 0.75, 0.62), Vector3(0, 0, s * ang))
 			elif k.rng.randf() < cracked:
 				var shard := shard_mesh(k.rng.randi() % 4)
 				k.part(shard, "glass", Transform3D(Basis.from_scale(Vector3(cell.x, cell.y, 1.0)), mid), GLASS, false)
