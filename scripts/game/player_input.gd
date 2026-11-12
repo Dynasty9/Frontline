@@ -253,7 +253,8 @@ func _unhandled_input(ev: InputEvent) -> void:
 
 ## The actions a key press can mean in a battle, most particular first (a tie
 ## goes to the earlier). Placing a building puts its own keys in front.
-const KEY_ACTIONS := ["chat_team", "chat", "support", "grenade", "smoke", "attack_move", "defend", "cam_follow",
+const KEY_ACTIONS := ["chat_team", "chat", "support", "grenade", "smoke", "attack_move", "defend", "take_back", "delegate",
+	"intent_hold", "intent_take", "intent_screen", "intent_reserve", "intent_ambush", "cam_follow",
 	"fire_mission", "cam_reset", "view_save_1", "view_save_2", "view_save_3", "view_save_4", "view_go_1", "view_go_2",
 	"view_go_3", "view_go_4", "retreat", "hold", "tactical", "cycle_fob", "orbat", "jump_alert", "log", "hide_hud",
 	"help", "manual", "director", "pause", "slower", "faster", "view_side", "ping", "coop_next",
@@ -334,6 +335,15 @@ func _key(ev: InputEvent) -> void:
 			if has_units():
 				cancel_modes()
 				order_mode = "defend"
+		"delegate":
+			if has_units() and sel_unit == 0 and world.hud:
+				world.hud.show_intents()
+		"take_back":
+			take_back()
+		"intent_hold", "intent_take", "intent_screen", "intent_reserve", "intent_ambush":
+			if has_units() and sel_unit == 0 and (act != "intent_ambush" or not sel_squads.is_empty()):
+				cancel_modes()
+				order_mode = "intent:" + act.trim_prefix("intent_")
 		"cam_follow":
 			world.cam.toggle_follow()
 		"fire_mission":
@@ -494,6 +504,13 @@ func retreat() -> void:
 	else:
 		world.send_cmd({"t": "retreat", "squads": sel_squads, "vehicles": sel_vehicles})
 	Sfx.ui("click")
+
+
+## Takes the selection back from the XO (see Delegation).
+func take_back() -> void:
+	if has_units():
+		world.send_cmd({"t": "take_back", "squads": sel_squads, "vehicles": sel_vehicles})
+		Sfx.ui("click")
 
 
 func hold() -> void:
@@ -756,6 +773,12 @@ func _order(screen: Vector2, shift: bool, face_in := Vector3.ZERO, kind := "") -
 		if st is Structure and st.team == world.local_team and Defs.BUILDINGS.get(st.skind, {}).has("produces"):
 			world.send_cmd({"t": "rally", "building": sel_structure, "pos": gp})
 			_marker(gp, Color(0.4, 1.0, 0.4))
+		return
+	if kind.begins_with("intent:"):
+		# command by intent: the XO places them and carries it out (see Delegation)
+		world.send_cmd({"t": "delegate", "intent": kind.trim_prefix("intent:"), "squads": sel_squads, "vehicles": sel_vehicles, "pos": gp, "face": face_in})
+		_marker(gp, UiKit.ACCENT)
+		Sfx.ui("click")
 		return
 	var tgt := pick(screen)
 	var lt := world.local_team

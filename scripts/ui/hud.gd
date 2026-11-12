@@ -67,6 +67,15 @@ func minimap_right() -> float:
 
 ## How the map is drawn (each toggled from the layer column by the minimap).
 const LAYER_KEYS := {"units": "lyr_units", "orders": "lyr_orders", "intel": "lyr_intel", "vision": "lyr_vision", "ranges": "lyr_ranges", "labels": "labels"}
+## Command by intent (Delegation): [name, its key, what the XO does with it].
+const INTENTS := {
+	"hold": ["Hold sector", "intent_hold", "Click the middle of the sector and drag toward the enemy. The XO spreads the squads across it, digs them in, and puts each back on its piece of the line when it's knocked off it."],
+	"take": ["Take objective", "intent_take", "Click the objective (a town: its square). A deliberate attack - one squad fixes, the others flank - then they consolidate and hold it. A failed attack is re-formed and sent in again, a few times."],
+	"screen": ["Screen", "intent_screen", "Click the line and drag toward the enemy. Thin and wide, out in front: they report what's coming and fall back a bound at a time when they're pressed."],
+	"reserve": ["Reserve", "intent_reserve", "Click where to wait. They stay out of it until a squad of yours near by is pinned or bleeding, go in to help it (joining its attack), then come back."],
+	"ambush": ["Ambush", "intent_ambush", "Click the road and drag from your side toward it. Each squad lays an ambush along it, springs it, slips away, and lays it again."],
+}
+const INTENT_CODES := {"hold": "HOLD", "take": "TAKE", "screen": "SCREEN", "reserve": "RESERVE", "ambush": "AMBUSH"}
 const PHASE_NAMES := {"plan": "Planning", "move": "Moving into position", "fix": "Fixing the enemy", "assault": "Assault", "fallback": "Falling back"}
 
 var world: World
@@ -858,6 +867,36 @@ func _track_orders() -> void:
 			orders.erase(id)
 
 
+## The intent a squad (or with `veh`, a vehicle) of your side has been
+## delegated with: its row of the team summary's "dg" ([id, kind, pos, face,
+## squads, vehicles, phase, target]), or [] while it's under your own command.
+func intent_of(id: int, veh := false) -> Array:
+	var lt := world.local_team
+	if lt < 0 or lt >= world.team_info.size():
+		return []
+	for it in (world.team_info[lt] as Dictionary).get("dg", []):
+		if id in (it[5] if veh else it[4]):
+			return it
+	return []
+
+
+## Is any of the selection carrying out an intent for the XO?
+func selection_delegated() -> bool:
+	var inp := world.input
+	for sid in inp.sel_squads:
+		if not intent_of(sid).is_empty():
+			return true
+	for eid in inp.sel_vehicles:
+		if not intent_of(eid, true).is_empty():
+			return true
+	return false
+
+
+## The Delegate page of the orders (its key opens it, and closes it again).
+func show_intents() -> void:
+	_card_page = "main" if _card_page == "intent" else "intent"
+
+
 ## What a squad is doing, in a few words, for the order of battle and the
 ## squad card: {text, code, col, glyph, contact, pinned, wounded, low_ammo}.
 ## `code` is the same said the Signal way (docs/UI.md, Voice): MOV D8,
@@ -946,6 +985,11 @@ func squad_state(sid: int, mem: Array) -> Dictionary:
 			out.code = plan_code(pl)
 		out.morale = int(o[7])
 		out.mstate = SquadBrain.state(float(o[7]), String(o[8]) == "rout") if int(o[7]) >= 0 else 0
+	var xo := intent_of(sid)
+	out["xo"] = String(xo[1]) if not xo.is_empty() else ""
+	if not xo.is_empty():
+		out.text = "XO · %s %s  ·  %s" % [String(INTENTS[String(xo[1])][0]), Defs.grid_ref(xo[2]), out.text]
+		out.code = "XO %s · %s" % [INTENT_CODES[String(xo[1])], out.code]
 	if riding:
 		out.text = "Mounted  ·  " + out.text
 		out.code = "MOUNTED · " + out.code
@@ -1704,6 +1748,9 @@ func mode_text() -> String:
 		return "Attack-move: click where to push (drag to face)  -  they bound forward cover to cover and fight what they meet"
 	if inp.order_mode == "defend":
 		return "Defend: click the ground to hold, drag to set the facing  -  they spread out into the best cover there"
+	if inp.order_mode.begins_with("intent:"):
+		var ik := inp.order_mode.trim_prefix("intent:")
+		return "Delegate · %s: %s  -  right-click cancels" % [String(INTENTS[ik][0]), String(INTENTS[ik][2]).get_slice(".", 0)]
 	if inp.ability != "":
 		match inp.ability:
 			"frag":
@@ -1729,6 +1776,8 @@ func _update_card() -> void:
 		key = "units:%s" % ("inf" if not inp.sel_squads.is_empty() else "veh")
 		if inp.selection_has_mortar():
 			key += ":mortar"
+		if selection_delegated():
+			key += ":xo"
 	elif inp.sel_structure != 0:
 		st = world.entity(inp.sel_structure) as Structure
 		if st:
@@ -1741,7 +1790,7 @@ func _update_card() -> void:
 						key += ":%d" % t.eid
 	if st and Defs.BUILDINGS.get(st.skind, {}).has("produces") and world.local_team >= 0:
 		key += str(world.team_info[world.local_team].get("up", []))  # research unlocks vehicle tiers
-	if not key.begins_with("units:inf") and not (_card_page.begins_with("prod:") and key == _page_base):
+	if not key.begins_with("units:inf") and not (_card_page.begins_with("prod:") and key == _page_base) and not (_card_page == "intent" and key.begins_with("units:")):
 		_card_page = "main"
 	_page_base = key
 	key += "|" + _card_page
@@ -1766,11 +1815,25 @@ func _update_card() -> void:
 			if s2 and s2.sid != 0:
 				inp.clear_selection()
 				inp.sel_squads.append(s2.sid))
+	elif key.begins_with("units:") and _card_page == "intent":
+		card_title.text = "Delegate · the XO carries it out"
+		_button("Back", "‹", "Back to orders.", func(): _card_page = "main")
+		for ik in INTENTS:
+			if ik == "ambush" and inp.sel_squads.is_empty():
+				continue
+			var row: Array = INTENTS[ik]
+			var mode: String = "intent:" + ik
+			_button(String(row[0]), Keys.label(String(row[1])), String(row[2]) + "\nAny order of your own to one of them takes it back.", func(): inp.cancel_modes(); inp.order_mode = mode)
+		if key.contains(":xo"):
+			_button("Take back", Keys.label("take_back"), "Take the selected units back from the XO: they carry on with what they were last doing until you give them an order.", func(): inp.take_back())
 	elif key.begins_with("units:inf"):
 		if _card_page == "main":
 			card_title.text = "Orders"
 			_button("Attack-move", Keys.label("attack_move"), "Push to a spot in bounds, one fire team moving while the other covers. They stop to fight anything they meet, then dig in at the objective. (Ctrl+right-click)", func(): inp.cancel_modes(); inp.order_mode = "assault")
 			_button("Defend", Keys.label("defend"), "Hold an area: the squad spreads into the best cover there facing the way you drag, and stays put.", func(): inp.cancel_modes(); inp.order_mode = "defend")
+			_button("Delegate", Keys.label("delegate"), "Command by intent: hand the selection to your XO to hold a sector, take an objective, screen, wait in reserve or ambush a road. He places them, orders them and reports.", func(): _card_page = "intent")
+			if key.contains(":xo"):
+				_button("Take back", Keys.label("take_back"), "Take the selected units back from the XO: they carry on with what they were last doing until you give them an order.", func(): inp.take_back())
 			_button("Base", "Build", "FOBs, barracks, factory, medic tent, research...", func(): _card_page = "base")
 			_button("Defenses", "Build", "Trenches, sandbags, wire, mines, nests, mortar pits, bunkers...", func(): _card_page = "def")
 			if key.contains(":mortar"):
@@ -1792,6 +1855,9 @@ func _update_card() -> void:
 		card_title.text = "Vehicle orders"
 		_button("Attack-move", Keys.label("attack_move"), "Drive to a spot, halting for a steady shot at anything in range on the way. Troops inside dismount when the enemy is close.", func(): inp.cancel_modes(); inp.order_mode = "assault")
 		_button("Dismount", "", "Drop the ramp: the troops inside get out and dig in.", func(): world.send_cmd({"t": "dismount", "vehicles": inp.sel_vehicles}))
+		_button("Delegate", Keys.label("delegate"), "Command by intent: hand the selection to your XO to hold a sector, take an objective, screen or wait in reserve.", func(): _card_page = "intent")
+		if key.contains(":xo"):
+			_button("Take back", Keys.label("take_back"), "Take the selected vehicles back from the XO.", func(): inp.take_back())
 		if inp.selection_has_arty():
 			_button("Fire mission", Keys.label("fire_mission"), "Artillery: click a spot in range for a salvo there (they also fire on their own at anything your side has spotted).", func(): inp.ability = "arty_he")
 		_button("Hold", Keys.label("hold"), "Stop moving.", func(): inp.hold())
@@ -1942,6 +2008,8 @@ func _card_active() -> void:
 	if inp == null:
 		return
 	var hand := {"Attack-move": inp.order_mode == "assault", "Defend": inp.order_mode == "defend", "Grenade": inp.ability == "frag",
+		"Hold sector": inp.order_mode == "intent:hold", "Take objective": inp.order_mode == "intent:take", "Screen": inp.order_mode == "intent:screen",
+		"Reserve": inp.order_mode == "intent:reserve", "Ambush": inp.order_mode == "intent:ambush",
 		"Smoke": inp.ability == "smoke", "Mortar HE": inp.ability == "mortar_he", "Mortar smoke": inp.ability == "mortar_smoke",
 		"Fire mission": inp.ability == "arty_he", "Fire HE": inp.ability == "pit_he", "Fire smoke": inp.ability == "pit_smoke"}
 	for b in card.get_children():
