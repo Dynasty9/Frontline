@@ -57,6 +57,9 @@ export function SiteFooter({ accounts }: { accounts?: string }) {
             <a className="block hover:text-primary" href={`${GITHUB_URL}/issues`}>
               Report a bug
             </a>
+            <Link className="block hover:text-primary" to="/cutting-room">
+              The cutting room
+            </Link>
             <p className="text-xs text-muted-foreground">Open source · MIT License</p>
           </div>
         </nav>

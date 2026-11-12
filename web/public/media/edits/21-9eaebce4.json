@@ -1,0 +1,781 @@
+{
+  "common_args": ["--nohud", "--perf=0", "--preset=ultra"],
+  "takes": {
+    "vehicle-roll-call": {
+      "scene": "res://tools/showcase/vehicle-circuit.tscn",
+      "args": [],
+      "shows": ["unit roster, garage and support aircraft"],
+      "about": "A native-scale coastal tracking shot. Curated loadouts run by vehicle type, size band and speed past roadside crews, a helipad and a working harbor. The cliff, dive and beach landing close the loop."
+    },
+    "highlight-trenches": {
+      "frames": 900,
+      "args": ["--preset=high", "--seed=3", "--set=volume:0.8,vol_effects:0.85,vol_music:0,battle_music:false,vol_ambience:0.28,vol_ui:0,mute_bg:false,wildlife:0,edge_pan:false", "--scenario=trenches", "--focus=-3,-31", "--zoom=58", "--pitch=-43", "--cam-yaw=-0.73", "--mood=golden"],
+      "shows": ["trench assault"],
+      "about": "A high oblique view keeps the zigzag trench, defenders and incoming fire in one frame."
+    },
+    "highlight-column": {
+      "frames": 420,
+      "args": ["--preset=high", "--seed=3", "--set=volume:0.8,vol_effects:0.85,vol_music:0,battle_music:false,vol_ambience:0.28,vol_ui:0,mute_bg:false,wildlife:0,edge_pan:false", "--scenario=trenches", "--focus=0,54", "--zoom=56", "--pitch=-25", "--cam-yaw=2.72", "--mood=golden"],
+      "shows": ["armoured column"],
+      "about": "Two tanks and two IFVs advance out of the assembly area with infantry following."
+    },
+    "highlight-mortars": {
+      "frames": 210,
+      "args": ["--preset=high", "--seed=3", "--set=volume:0.8,vol_effects:0.85,vol_music:0,battle_music:false,vol_ambience:0.28,vol_ui:0,mute_bg:false,wildlife:0,edge_pan:false", "--scenario=defense", "--focus=2.7,16.2", "--zoom=8", "--pitch=-38", "--cam-yaw=0.9", "--mood=day"],
+      "shows": ["mortar team", "pit"],
+      "about": "Hold on the mortar position and crew in the defensive line."
+    },
+    "highlight-mortar-burst": {
+      "frames": 510,
+      "args": ["--preset=high", "--seed=3", "--set=volume:0.8,vol_effects:0.85,vol_music:0,battle_music:false,vol_ambience:0.28,vol_ui:0,mute_bg:false,wildlife:0,edge_pan:false", "--scenario=trenches", "--focus=9,-30", "--zoom=36", "--pitch=-29", "--cam-yaw=-0.85", "--demo-support=mortars", "--demo-at=2.4", "--mood=golden"],
+      "shows": ["mortar impacts", "trench line"],
+      "about": "Mortar support lands around the front trench with the earthworks in frame."
+    },
+    "highlight-sea": {
+      "frames": 1410,
+      "args": ["--preset=high", "--seed=3", "--set=volume:0.8,vol_effects:0.85,vol_music:0,battle_music:false,vol_ambience:0.28,vol_ui:0,mute_bg:false,wildlife:0,edge_pan:false", "--mission=beachhead", "--focus-vehicle=patrol_ship", "--vehicle-view=Behind"],
+      "shows": ["sea assault", "patrol ship"],
+      "about": "An exterior camera stays aboard the moving Mk VI as the Beachhead landing begins."
+    },
+    "trailer-patrol-pass": {
+      "frames": 1140,
+      "args": ["--preset=high", "--seed=3", "--set=volume:0.8,vol_effects:0.85,vol_music:0,battle_music:false,vol_ambience:0.28,vol_ui:0,mute_bg:false,wildlife:0,edge_pan:false", "--mission=beachhead", "--focus-vehicle=patrol_ship", "--vehicle-view=Bow"],
+      "shows": ["sea assault", "patrol ship"],
+      "about": "Looking back from the bow, the whole patrol ship stays in frame while a second boat passes alongside."
+    },
+    "trailer-bridge-roof": {
+      "frames": 1140,
+      "args": ["--preset=high", "--seed=3", "--set=volume:0.8,vol_effects:0.85,vol_music:0,battle_music:false,vol_ambience:0.28,vol_ui:0,mute_bg:false,wildlife:0,edge_pan:false", "--mission=beachhead", "--focus-vehicle=patrol_ship", "--vehicle-view=Bridge roof"],
+      "shows": ["Passing boat beside the patrol ship"],
+      "about": "Continue the same pass from the bridge roof. The second bow crosses below the lens and the water between the hulls stays visible."
+    },
+    "highlight-flyover": {
+      "scene": "res://tools/showcase/airstrike-camera.tscn",
+      "frames": 510,
+      "args": ["--preset=high", "--seed=3", "--set=volume:0.8,vol_effects:0.85,vol_music:0,battle_music:false,vol_ambience:0.28,vol_ui:0,mute_bg:false,wildlife:0,edge_pan:false", "--mission=beachhead", "--focus=372,-10", "--zoom=67", "--pitch=-19", "--cam-yaw=1.2", "--demo-support=airstrike", "--demo-at=3"],
+      "shows": ["airstrike", "harbour"],
+      "about": "A chase camera joins the support jet on the same seeded pass over the harbour."
+    },
+    "trailer-harbour-finale": {
+      "scene": "res://tools/showcase/trailer-review/formation-pass.tscn",
+      "frames": 450,
+      "args": ["--preset=high", "--seed=3", "--set=volume:0.8,vol_effects:0.85,vol_music:0,battle_music:false,vol_ambience:0.28,vol_ui:0,mute_bg:false,wildlife:0,edge_pan:false", "--mission=beachhead", "--focus=372,-10", "--zoom=58", "--pitch=-17", "--cam-yaw=1.2", "--demo-support=airstrike", "--demo-at=3"],
+      "shows": ["airstrike", "harbour"],
+      "about": "Fly alongside the jet as it overtakes the camera. Keep the coastline and patrol boat beneath its wing before the cut back to the water."
+    },
+    "trailer-harbour-quarter": {
+      "frames": 450,
+      "args": ["--preset=high", "--seed=3", "--set=volume:0.8,vol_effects:0.85,vol_music:0,battle_music:false,vol_ambience:0.28,vol_ui:0,mute_bg:false,wildlife:0,edge_pan:false", "--mission=beachhead", "--focus=372,-10", "--zoom=58", "--pitch=-17", "--cam-yaw=1.2", "--demo-support=airstrike", "--demo-at=3", "--focus-vehicle=speedboat_hmg", "--vehicle-view=Stern quarter", "--focus-vehicle-at=8"],
+      "shows": ["Patrol boat below rising harbour spray"],
+      "about": "After the same jet pass, switch to the playable Stern quarter camera. Watch the spray rise behind the cabin and fall away below the title."
+    },
+    "convoy-hemtt": {
+      "frames": 150,
+      "args": ["--preset=high", "--seed=3", "--set=volume:0.8,vol_music:0,battle_music:false,vol_effects:0.85,vol_ambience:0.28,vol_ui:0,mute_bg:false,edge_pan:false,fov:35", "--scenario=roster", "--play", "--team=0", "--focus=0,0", "--focus-vehicle=hemtt", "--zoom=19", "--pitch=-15", "--pan=0,-3", "--cam-yaw=1.85", "--mood=overcast"],
+      "shows": ["hemtt", "vehicle fittings"],
+      "about": "A low side view holds the HEMTT Transport as a second truck crosses the foreground."
+    },
+    "rollby-hunter": {
+      "frames": 150,
+      "args": ["--preset=high", "--seed=3", "--set=volume:0.8,vol_music:0,battle_music:false,vol_effects:0.85,vol_ambience:0.28,vol_ui:0,mute_bg:false,edge_pan:false,fov:35", "--scenario=roster", "--play", "--team=0", "--focus=0,0", "--focus-vehicle=hunter", "--zoom=14", "--pitch=-28", "--pan=0,-6", "--cam-yaw=2.62", "--mood=day"],
+      "shows": ["hunter", "vehicle fittings"],
+      "about": "The Hunter turns toward the camera, bringing its bonnet and recessed grille into view."
+    },
+    "trailer-score": {
+      "scene": "res://tools/showcase/trailer-review/title-score.tscn",
+      "frames": 800,
+      "args": [],
+      "shows": ["The game's title and orchestral score"],
+      "about": "An isolated 96 bpm battle cue builds from strings to drums, then resolves on the harbour strike."
+    },
+    "trailer-trench-close": {
+      "scene": "res://tools/showcase/trailer-review/trench-arrival.tscn",
+      "frames": 1560,
+      "args": ["--preset=high", "--seed=3", "--set=volume:0.8,vol_effects:0.85,vol_music:0,battle_music:false,vol_ambience:0.28,vol_ui:0,mute_bg:false,wildlife:0,edge_pan:false", "--scenario=trenches", "--focus=9,-30", "--zoom=36", "--pitch=-29", "--cam-yaw=-0.85", "--demo-support=mortars", "--demo-at=2.4", "--mood=golden"],
+      "shows": ["Infantry entering a trench beside an armoured vehicle"],
+      "about": "Let the squad reach the front line. The camera looks across the timber wall as the riflemen clear the rim."
+    },
+    "trailer-mortar-crew": {
+      "scene": "res://tools/showcase/trailer-review/mortar-pit.tscn",
+      "frames": 110,
+      "args": ["--preset=high", "--seed=3", "--set=volume:0.8,vol_effects:0.85,vol_music:0,battle_music:false,vol_ambience:0.28,vol_ui:0,mute_bg:false,wildlife:0,edge_pan:false", "--scenario=defense", "--mood=golden"],
+      "shows": ["Mortar crew at shoulder height"],
+      "about": "Look across the pit. Keep the mortar on the left and the specialist visible above the sandbags as he vaults into position."
+    },
+    "trailer-bridge-follow": {
+      "frames": 5870,
+      "args": ["--preset=high", "--seed=3", "--set=volume:0.8,vol_effects:0.85,vol_music:0,battle_music:false,vol_ambience:0.28,vol_ui:0,mute_bg:false,wildlife:0,edge_pan:false", "--mission=bridgehead", "--focus-vehicle=tank,1", "--vehicle-view=Behind"],
+      "shows": ["Both Abrams following the village road"],
+      "about": "Ride behind the second tank as the lead hull pulls down the lane. The next frame moves to the roadside camera on the same Bridgehead run."
+    },
+    "trailer-bridge-column": {
+      "scene": "res://tools/showcase/trailer-review/bridge-column.tscn",
+      "frames": 5970,
+      "args": ["--preset=high", "--seed=3", "--set=volume:0.8,vol_effects:0.85,vol_music:0,battle_music:false,vol_ambience:0.28,vol_ui:0,mute_bg:false,wildlife:0,edge_pan:false", "--mission=bridgehead"],
+      "shows": ["Two Abrams moving through the village in Bridgehead"],
+      "about": "Let the Bridgehead mission run to the arrival of its armour. As the first tank crosses the roadside camera, the second emerges from the village against the mountain pass."
+    },
+    "trailer-beach-landing": {
+      "scene": "res://tools/showcase/trailer-review/beach-landing.tscn",
+      "frames": 855,
+      "args": ["--preset=high", "--seed=3", "--set=volume:0.8,vol_effects:0.85,vol_music:0,battle_music:false,vol_ambience:0.28,vol_ui:0,mute_bg:false,wildlife:0,edge_pan:false", "--mission=beachhead", "--focus=363,108", "--zoom=14", "--pitch=-19", "--cam-yaw=-1.97"],
+      "shows": ["Landing squad leaving its RHIB", "Patrol ship beyond the beach"],
+      "about": "The squad clears the bow and fans across the beach. Follow their movement at eye level as the patrol ship enters behind them."
+    },
+    "trailer-harbour-boats": {
+      "frames": 540,
+      "args": ["--preset=high", "--seed=3", "--set=volume:0.8,vol_effects:0.85,vol_music:0,battle_music:false,vol_ambience:0.28,vol_ui:0,mute_bg:false,wildlife:0,edge_pan:false", "--mission=beachhead", "--focus-vehicle=rhib,1", "--vehicle-view=Helm"],
+      "shows": ["Mountain coastline and the landing party"],
+      "about": "From the playable Helm camera, look past the seated driver as a second launch crosses the bow and turns toward the beach."
+    },
+    "trailer-sling": {
+      "frames": 1275,
+      "args": ["--preset=high", "--seed=4", "--set=volume:0.8,vol_effects:0.85,vol_music:0,battle_music:false,vol_ambience:0.28,vol_ui:0,mute_bg:false,wildlife:0,edge_pan:false", "--mission=skyhook", "--play", "--team=0", "--mood=day", "--autoplay"],
+      "shows": ["Mohawk carrying a tracked vehicle over the river"],
+      "about": "Follow the Mohawk from beside the bridge rail. Its tail, nose and suspended Nyx cross the sky together before the cut to the cargo door.",
+      "scene": "res://tools/showcase/trailer-review/sky-bridge.tscn"
+    },
+    "trailer-cargo-door": {
+      "frames": 1275,
+      "args": ["--preset=high", "--seed=4", "--set=volume:0.8,vol_effects:0.85,vol_music:0,battle_music:false,vol_ambience:0.28,vol_ui:0,mute_bg:false,wildlife:0,edge_pan:false", "--mission=skyhook", "--play", "--team=0", "--focus-vehicle=mohawk", "--vehicle-view=Cargo door", "--mood=day", "--autoplay"],
+      "shows": ["Nyx crossing the bridge on its sling"],
+      "about": "The playable cargo-door view continues on the next frame of the same Sky Hook mission, looking past the landing gear as the bridge slips under the Nyx."
+    },
+    "trailer-roadside": {
+      "scene": "res://tools/showcase/trailer-review/squad-order.tscn",
+      "frames": 210,
+      "args": ["--preset=high", "--seed=4", "--set=volume:0.8,vol_effects:0.85,vol_music:0,battle_music:false,vol_ambience:0.18,vol_ui:0.35,mute_bg:false,wildlife:0,edge_pan:false", "--mission=skyhook", "--autoplay", "--play", "--team=0", "--select-first", "--zoom=14.4", "--pitch=-46", "--cam-yaw=-2.3", "--mood=day", "--roadside"],
+      "shows": ["Squad moving beside a helicopter lifting off"],
+      "about": "Track the squad leader past the hedge at ground level. The Mohawk lifts over his shoulder before its flight to the river."
+    },
+    "trailer-order": {
+      "scene": "res://tools/showcase/trailer-review/squad-order.tscn",
+      "frames": 210,
+      "args": ["--preset=high", "--seed=4", "--set=volume:0.8,vol_effects:0.85,vol_music:0,battle_music:false,vol_ambience:0.18,vol_ui:0.35,mute_bg:false,wildlife:0,edge_pan:false", "--mission=skyhook", "--autoplay", "--play", "--team=0", "--select-first", "--zoom=14.4", "--pitch=-46", "--cam-yaw=-2.3", "--mood=day"],
+      "shows": ["The player orders one selected squad to move"],
+      "about": "Open on a five-person squad and the destination ring beside the Sky Hook landing pad. The mission objective introduces the aircraft seen on the next cut."
+    },
+    "trailer-landing": {
+      "frames": 530,
+      "args": ["--preset=high", "--seed=3", "--set=volume:0.8,vol_effects:0.85,vol_music:0,battle_music:false,vol_ambience:0.18,vol_ui:0.35,mute_bg:false,wildlife:0,edge_pan:false", "--scenario=naval", "--play", "--team=0", "--focus-vehicle=rhib", "--vehicle-view=Behind", "--mood=golden"],
+      "shows": ["Squad disembarking"],
+      "about": "The same beach landing, recorded with wildlife and music off so the engine and surf carry into the next shot."
+    },
+    "reel-rescue": {
+      "frames": 390,
+      "args": ["--preset=high", "--seed=3", "--set=volume:0.8,vol_effects:0.85,vol_music:0,battle_music:false,vol_ambience:0.28,vol_ui:0,mute_bg:false,wildlife:0,edge_pan:false", "--scenario=gdrill", "--play", "--focus=0,0", "--zoom=8", "--pitch=-50", "--cam-yaw=1.6", "--mood=day"],
+      "shows": ["rescue"],
+      "about": "Soldiers break from a casualty as a grenade lands."
+    },
+    "reel-smoke": {
+      "frames": 480,
+      "args": ["--preset=high", "--seed=3", "--set=volume:0.8,vol_effects:0.85,vol_music:0,battle_music:false,vol_ambience:0.28,vol_ui:0,mute_bg:false,wildlife:0,edge_pan:false", "--scenario=attack", "--follow=0,0", "--zoom=13", "--pitch=-36", "--cam-yaw=0.75", "--mood=day"],
+      "shows": ["smoke"],
+      "about": "The riflemen break into movement as a smoke screen grows."
+    },
+    "reel-pickup": {
+      "frames": 540,
+      "args": ["--preset=high", "--seed=3", "--set=volume:0.8,vol_effects:0.85,vol_music:0,battle_music:false,vol_ambience:0.28,vol_ui:0,mute_bg:false,wildlife:0,edge_pan:false", "--scenario=sling", "--focus=-20,16", "--zoom=47", "--pitch=-19", "--cam-yaw=1.65", "--mood=day"],
+      "shows": ["pickup"],
+      "about": "A ground-side camera watches the helicopter cross to its sling load."
+    },
+    "reel-gun": {
+      "frames": 480,
+      "args": ["--preset=high", "--seed=3", "--set=volume:0.8,vol_effects:0.85,vol_music:0,battle_music:false,vol_ambience:0.28,vol_ui:0,mute_bg:false,wildlife:0,edge_pan:false", "--scenario=tank", "--play", "--team=0", "--focus-vehicle=tank", "--vehicle-view=Barrel"],
+      "shows": ["gun"],
+      "about": "Exterior firing and moving through the smoke."
+    },
+    "reel-yard-run": {
+      "frames": 420,
+      "args": ["--preset=high", "--seed=3", "--set=volume:0.8,vol_effects:0.85,vol_music:0,battle_music:false,vol_ambience:0.28,vol_ui:0,mute_bg:false,wildlife:0,edge_pan:false", "--scenario=fire", "--focus=13,-24", "--zoom=26", "--pitch=-22", "--cam-yaw=0.95", "--mood=golden", "--demo-support=airstrike", "--demo-at=1.4"],
+      "shows": ["yard-run"],
+      "about": "A low view of bombs landing near the watchtower and parked cars."
+    },
+    "reel-crossroads": {
+      "frames": 540,
+      "args": ["--preset=high", "--seed=3", "--set=volume:0.8,vol_effects:0.85,vol_music:0,battle_music:false,vol_ambience:0.28,vol_ui:0,mute_bg:false,wildlife:0,edge_pan:false", "--mission=kingpin", "--focus=5,-40", "--zoom=31", "--pitch=-27", "--cam-yaw=2.6", "--demo-support=airstrike", "--demo-at=1.5"],
+      "shows": ["crossroads"],
+      "about": "A night-time strike seen from above the lit town intersection."
+    },
+    "field-infantry": {
+      "frames": 570,
+      "args": ["--preset=high", "--seed=3", "--set=edge_pan:false", "--scenario=gdrill", "--follow=0,0", "--zoom=12", "--pitch=-28", "--cam-yaw=0.85", "--mood=golden"],
+      "shows": ["Close view of individual soldiers reacting"],
+      "about": "Close view of individual soldiers reacting"
+    },
+    "field-armour": {
+      "frames": 540,
+      "args": ["--preset=high", "--seed=3", "--set=edge_pan:false", "--scenario=tank", "--play", "--team=0", "--focus-vehicle=tank", "--vehicle-view=Barrel"],
+      "shows": ["The playable Abrams from its barrel camera"],
+      "about": "The playable Abrams from its barrel camera"
+    },
+    "field-transport": {
+      "frames": 750,
+      "args": ["--preset=high", "--seed=3", "--set=edge_pan:false", "--scenario=naval", "--play", "--team=0", "--focus-vehicle=rhib", "--vehicle-view=Behind", "--mood=golden"],
+      "shows": ["RHIB carrying its squad to shore"],
+      "about": "RHIB carrying its squad to shore"
+    },
+    "field-lift": {
+      "frames": 660,
+      "args": ["--preset=high", "--seed=3", "--set=edge_pan:false", "--scenario=sling", "--play", "--team=0", "--focus-vehicle=mohawk", "--vehicle-view=Behind", "--mood=golden"],
+      "shows": ["Helicopter lifting a vehicle"],
+      "about": "Helicopter lifting a vehicle"
+    },
+    "field-strike": {
+      "frames": 690,
+      "args": ["--preset=high", "--seed=3", "--set=edge_pan:false", "--mission=bridgehead", "--focus=-150,176", "--zoom=50", "--pitch=-30", "--cam-yaw=0.5", "--pan=0.35,0.05", "--demo-support=a10", "--demo-at=3"],
+      "shows": ["Fire support and smoke over the village"],
+      "about": "Fire support and smoke over the village"
+    },
+    "field-rescue-close": {
+      "frames": 450,
+      "args": ["--preset=high", "--seed=3", "--scenario=gdrill", "--play", "--focus=0,0", "--zoom=8", "--pitch=-50", "--cam-yaw=1.6", "--mood=day"],
+      "shows": ["infantry", "grenade reaction"],
+      "about": "Ground detail of the squad gathered around a wounded soldier."
+    },
+    "field-sight": {
+      "frames": 450,
+      "args": ["--preset=high", "--seed=3", "--scenario=tank", "--play", "--team=0", "--focus-vehicle=tank", "--vehicle-view=Periscope"],
+      "shows": ["armour", "gunner sight"],
+      "about": "The gunner sight from the same playable tank used for the exterior shot."
+    },
+    "field-squad-close": {
+      "frames": 540,
+      "args": ["--preset=high", "--seed=3", "--scenario=attack", "--follow=0,0", "--zoom=14", "--pitch=-36", "--cam-yaw=0.75", "--mood=day"],
+      "shows": ["squad", "movement and smoke"],
+      "about": "Closer follow of the same squad as riflemen move and smoke builds."
+    },
+    "field-fireline": {
+      "frames": 540,
+      "args": ["--preset=high", "--seed=3", "--scenario=fire", "--focus=13,-26", "--zoom=37", "--pitch=-23", "--cam-yaw=0.6", "--mood=golden", "--demo-support=airstrike", "--demo-at=1.4"],
+      "shows": ["fire support", "burning cover"],
+      "about": "Support aircraft over burning cover, with a view of the parked cars and watchtower."
+    },
+    "bridgehead": {
+      "frames": 2100,
+      "args": ["--mission=bridgehead"],
+      "shows": ["village", "dawn", "artillery", "fire and smoke", "infantry", "river and bridge (late)"],
+      "about": "Director camera at its own angle. The opening 155 mm strike lands on the village about 15 s in; soldiers move through the wrecked, burning houses from about 19 s."
+    },
+    "bridgehead-low": {
+      "frames": 1200,
+      "args": ["--mission=bridgehead", "--pitch=-30"],
+      "shows": ["village", "dawn", "artillery", "fire and smoke", "infantry", "river and bridge (12-14 s)"],
+      "about": "Director camera, lower. An orbit over the village at dawn for the first 5 s; the strike lands about 16 s in; soldiers in the ruins about 20-23 s."
+    },
+    "beachhead-low": {
+      "frames": 1800,
+      "args": ["--mission=beachhead", "--pitch=-24"],
+      "shows": ["sea", "coast", "harbour", "patrol ship", "boats", "golden hour", "infantry (late)"],
+      "about": "Golden hour. The patrol ship, with its wake, fights the harbour's boats about 31-36 s in, and lies off the quay with a boat burning about 40-44 s."
+    },
+    "ambush-low": {
+      "frames": 4050,
+      "args": ["--mission=ambush", "--pitch=-32"],
+      "shows": ["dusk", "woods", "convoy", "vehicles burning", "RPGs", "infantry"],
+      "about": "Dusk. Nothing happens for about 95 s; the convoy burns about 118-126 s. Dark: brighten it in the grade."
+    },
+    "kingpin-low": {
+      "frames": 2250,
+      "args": ["--mission=kingpin", "--pitch=-34"],
+      "shows": ["town", "night", "street lights", "infantry", "Hunter vehicles"],
+      "about": "The town at night: establishing orbits early, soldiers running up the street about 52-58 s."
+    },
+    "a10": {
+      "frames": 720,
+      "args": [
+        "--mission=bridgehead",
+        "--focus=-150,176",
+        "--zoom=42",
+        "--pitch=-22",
+        "--cam-yaw=0.5",
+        "--pan=0.8,0.3",
+        "--demo-support=a10",
+        "--demo-at=3"
+      ],
+      "shows": ["village", "dawn", "A-10", "tracers", "artillery", "fire and smoke"],
+      "about": "Fixed, slowly drifting camera on the village. The A-10's tracer about 9.6 s, its fireball about 10.2 s, then the mission's own artillery engulfs the village about 14-19 s."
+    },
+    "night-barrage": {
+      "frames": 660,
+      "args": [
+        "--mission=kingpin",
+        "--focus=5,-40",
+        "--zoom=58",
+        "--pitch=-24",
+        "--cam-yaw=2.6",
+        "--pan=0.6,0",
+        "--demo-support=barrage",
+        "--demo-at=4"
+      ],
+      "shows": ["town", "night", "rocket barrage", "fire and smoke"],
+      "about": "A rocket barrage on the town at night, about 12.5-17 s; a house burns after."
+    },
+    "ac130-night": {
+      "frames": 900,
+      "args": [
+        "--mission=kingpin",
+        "--focus=16,-47",
+        "--zoom=50",
+        "--pitch=-30",
+        "--cam-yaw=0.4",
+        "--pan=0,0.5",
+        "--demo-support=ac130",
+        "--demo-at=3"
+      ],
+      "shows": ["town", "night", "AC-130", "tracers", "explosions"],
+      "about": "AC-130 rounds and tracers on the town at night from about 9.6 s; fireballs about 16.8, 24 and 28 s."
+    },
+    "airstrike-shore": {
+      "frames": 540,
+      "args": [
+        "--mission=beachhead",
+        "--focus=372,-10",
+        "--zoom=55",
+        "--pitch=-24",
+        "--cam-yaw=1.2",
+        "--pan=0.6,0.3",
+        "--demo-support=airstrike",
+        "--demo-at=3"
+      ],
+      "shows": ["sea", "shore", "quay", "jet bombs", "smoke", "golden hour"],
+      "about": "A jet's string of bombs walks along the shore by the quay about 8.5 s in; black smoke to about 11 s."
+    },
+    "trenches": {
+      "frames": 1500,
+      "args": ["--scenario=trenches", "--mood=golden"],
+      "shows": ["tanks", "IFVs", "trench line", "field defences", "smoke screens", "wrecks burning", "golden hour"],
+      "about": "Tanks and IFVs assault a trench line: a hit about 18.7 s, a tank's muzzle flash about 19.5 s, a shell bursts over the trench about 25 s, wrecks burn about 30 s. A test scenario, not a real map: don't lower its camera (its ground shows holes at low pitch)."
+    },
+    "skyhook-low": {
+      "frames": 1500,
+      "args": ["--mission=skyhook", "--pitch=-24"],
+      "shows": ["helicopter", "sling load", "river and bridge", "outpost", "overcast"],
+      "about": "Overcast. The Mohawk lifts off right by the camera about 2.7-4.5 s in; the Nyx crosses the river on its sling about 35 s."
+    },
+    "changelog-boats": {
+      "frames": 1050,
+      "args": [
+        "--scenario=naval",
+        "--seed=3",
+        "--focus-vehicle=rhib",
+        "--zoom=65",
+        "--pitch=-38",
+        "--cam-yaw=0.6"
+      ],
+      "shows": [
+        "boat movement",
+        "wakes",
+        "ocean swell"
+      ],
+      "about": "Changelog motion capture from current main; choose cuts from contact sheets."
+    },
+    "changelog-helicopter": {
+      "frames": 1050,
+      "args": [
+        "--scenario=sling",
+        "--seed=3",
+        "--focus=-25,0",
+        "--zoom=80",
+        "--pitch=-28",
+        "--cam-yaw=0.6"
+      ],
+      "shows": [
+        "helicopter lift",
+        "banking",
+        "sling load"
+      ],
+      "about": "Changelog motion capture from current main; choose cuts from contact sheets."
+    },
+    "changelog-tank-wide": {
+      "frames": 900,
+      "args": [
+        "--scenario=tank",
+        "--seed=3",
+        "--focus=2,-20",
+        "--zoom=52",
+        "--pitch=-48",
+        "--cam-yaw=0",
+        "--mood=clear"
+      ],
+      "shows": [
+        "tank movement",
+        "turret traverse",
+        "gunfire"
+      ],
+      "about": "Changelog motion capture from current main; choose cuts from contact sheets."
+    },
+    "changelog-dolphins-close": {
+      "frames": 900,
+      "args": [
+        "--mission=beachhead",
+        "--seed=3",
+        "--focus-vehicle=patrol_ship",
+        "--zoom=9",
+        "--pitch=-36",
+        "--set=wildlife:2"
+      ],
+      "shows": [
+        "dolphins",
+        "ocean swell"
+      ],
+      "about": "Changelog motion capture from current main; choose cuts from contact sheets.",
+      "env": {
+        "FL_WILDLIFE_FOLLOW": "dolphins",
+        "FL_DEBUG_WILDLIFE": "1"
+      }
+    },
+    "changelog-swell": {
+      "frames": 600,
+      "args": [
+        "--scenario=naval",
+        "--seed=3",
+        "--static",
+        "--focus-vehicle=patrol_ship",
+        "--zoom=40",
+        "--pitch=-22",
+        "--mood=overcast"
+      ],
+      "shows": [
+        "ocean swell",
+        "boat pitch and roll"
+      ],
+      "about": "Stationary patrol ship riding the sea; fixed close camera."
+    },
+    "changelog-fish-close": {
+      "frames": 900,
+      "args": [
+        "--mission=bridgehead",
+        "--seed=3",
+        "--zoom=4",
+        "--pitch=-60",
+        "--focus=-254,4",
+        "--set=wildlife:2",
+        "--mood=day"
+      ],
+      "shows": [
+        "fish swimming",
+        "fish jumping"
+      ],
+      "about": "Changelog motion capture from current main; choose cuts from contact sheets.",
+      "env": {
+        "FL_WILDLIFE_FOLLOW": "fish",
+        "FL_DEBUG_WILDLIFE": "1"
+      }
+    }
+  },
+  "outputs": {
+    "vehicles": {
+      "use": "The separate vehicle roster film in the footage player.",
+      "size": [1280, 720],
+      "kbps": 3700,
+      "max_kb": 9700,
+      "fade": 0,
+      "cuts": [{"take": "vehicle-roll-call", "from": 0.566667}]
+    },
+    "hero": {
+      "use": "The front page's full-screen loop, and the closing section's background. Cut from the firing tank to the advancing formation, trench assault, harbour fight and jet strike.",
+      "size": [1280, 720],
+      "kbps": 1800,
+      "max_kb": 4000,
+      "fade": 3,
+      "loop_fade": 10,
+      "grade": { "contrast": 1.1, "saturation": 1.14 },
+      "cuts": [
+        {"take": "reel-gun", "from": 13.83, "to": 15.52},
+        {"take": "highlight-column", "from": 4.5, "to": 7.17},
+        {"take": "highlight-trenches", "from": 18.5, "to": 21.43},
+        {"take": "highlight-sea", "from": 33.5, "to": 36.58},
+        {"take": "highlight-flyover", "from": 4.57, "to": 6.82},
+        {"take": "highlight-flyover", "from": 11.07, "to": 13.1}
+      ]
+    },
+    "infantry": {
+      "use": "Feature row 01, 'Soldiers that think for themselves'.",
+      "size": [960, 540],
+      "kbps": 1100,
+      "max_kb": 1300,
+      "fade": 9,
+      "loop_fade": 10,
+      "grade": { "contrast": 1.1, "saturation": 1.15 },
+      "cuts": [
+        {"take": "field-rescue-close", "from": 2.0, "to": 5.3},
+        {"take": "field-infantry", "from": 8.0, "to": 12.3}
+      ]
+    },
+    "squads": {
+      "use": "Feature row 02, 'Squads that fight like squads' (ambushes, house-to-house).",
+      "size": [960, 540],
+      "kbps": 1100,
+      "max_kb": 1300,
+      "fade": 9,
+      "loop_fade": 10,
+      "grade": { "contrast": 1.1, "saturation": 1.12, "brightness": 1.12 },
+      "cuts": [
+        {"take": "field-squad-close", "from": 7.3, "to": 15.95}
+      ]
+    },
+    "armour": {
+      "use": "Feature row 03, 'Armour that hits like a hammer'.",
+      "size": [960, 540],
+      "kbps": 1100,
+      "max_kb": 1300,
+      "fade": 0,
+      "loop_fade": 10,
+      "grade": { "contrast": 1.14, "saturation": 1.2 },
+      "cuts": [
+        {"take": "highlight-column", "from": 4.25, "to": 7.45},
+        {"take": "reel-gun", "from": 13.85, "to": 15.5},
+        {"take": "highlight-trenches", "from": 18.97, "to": 22.15}
+      ]
+    },
+    "fires": {
+      "use": "Feature row 04, 'Call it in' (fire support).",
+      "size": [960, 540],
+      "kbps": 1100,
+      "max_kb": 1300,
+      "fade": 9,
+      "loop_fade": 14,
+      "grade": { "contrast": 1.1, "saturation": 1.15 },
+      "cuts": [
+        {"take": "highlight-mortars", "from": 0.47, "to": 2.4},
+        {"take": "highlight-mortar-burst", "from": 8.05, "to": 10.72},
+        {"take": "reel-yard-run", "from": 7.05, "to": 10.15}
+      ]
+    },
+    "sea": {
+      "use": "Feature row 05, 'From the sea and the sky'.",
+      "size": [960, 540],
+      "kbps": 1100,
+      "max_kb": 1300,
+      "fade": 9,
+      "loop_fade": 10,
+      "grade": { "contrast": 1.1, "saturation": 1.15 },
+      "cuts": [
+        {"take": "field-transport", "from": 13.6, "to": 16.4},
+        {"take": "highlight-sea", "from": 20.35, "to": 22.25},
+        {"take": "highlight-sea", "from": 33.7, "to": 37.38}
+      ]
+    },
+    "reel": {
+      "use": "Homepage trailer. A squad breaks cover, the fight grows from trenches to the coast, and a jet crosses the same harbour where the final impacts land.",
+      "size": [1280, 720],
+      "kbps": 1900,
+      "max_kb": 7500,
+      "audio": true,
+      "score": {"take": "trailer-score", "gain_db": -6},
+      "end_title": {"take": "trailer-score", "at": 1.0, "from": 22.4, "fade": 10},
+      "audio_kbps": 128,
+      "fade": 0,
+      "fade_in": 0,
+      "fade_out": 7,
+      "grade": {"contrast": 1.1, "saturation": 1.14},
+      "cuts": [
+        {"take": "trailer-order", "from": 1.83333, "to": 2.96667, "gain_db": -1, "caption": "[Low strings as the order is given]"},
+        {"take": "trailer-roadside", "from": 2.96667, "to": 4.23333, "gain_db": -1, "caption": "[Rotor blades turn as the squad moves]"},
+        {"take": "trailer-bridge-follow", "from": 193.96667, "to": 194.83333, "gain_db": 0, "caption": "[Tank tracks approach along the village road]"},
+        {"take": "trailer-bridge-column", "from": 194.83333, "to": 196.06667, "gain_db": 0},
+        {"take": "reel-gun", "from": 14.1, "to": 15.1, "gain_db": -8, "caption": "[Tank cannon fires]"},
+        {"take": "trailer-trench-close", "from": 49.43333, "to": 51.13333, "gain_db": -2, "caption": "[Fire cracks beside the trench]"},
+        {"take": "trailer-mortar-crew", "from": 0.5, "to": 1.6, "gain_db": 1, "caption": "[Distant fire at the mortar pit]"},
+        {"take": "highlight-mortar-burst", "from": 8.3, "to": 9.96667, "gain_db": -3, "caption": "[Mortar bursts across the trench line]"},
+        {"take": "trailer-sling", "from": 39.26667, "to": 40.9, "gain_db": 0, "caption": "[Helicopter rotors over the suspended vehicle]"},
+        {"take": "trailer-cargo-door", "from": 40.9, "to": 42.0, "gain_db": 0},
+        {"take": "trailer-harbour-boats", "from": 13.2, "to": 15.6, "gain_db": 0, "caption": "[Boats approach the shore]"},
+        {"take": "trailer-beach-landing", "from": 26.13333, "to": 27.53333, "gain_db": 0, "caption": "[Surf as the squad runs ashore]"},
+        {"take": "trailer-patrol-pass", "from": 34.9, "to": 35.56667, "gain_db": -1, "caption": "[Patrol ship fires as a boat passes]"},
+        {"take": "trailer-bridge-roof", "from": 35.56667, "to": 36.83333, "gain_db": -1},
+        {"take": "trailer-harbour-finale", "from": 4.3, "to": 6.6, "gain_db": 0, "caption": "[Jet engines climb over the harbour]"},
+        {"take": "trailer-harbour-quarter", "from": 11.0, "to": 14.26667, "gain_db": 4, "caption": "[Impacts roll across the water]"}
+      ]
+    },
+    "changelog-tank-motion": {
+      "use": "Changelog: unreleased/tank-operation. Captured at 1a925b4 on 2026-10-28; current-build demonstration, not historical footage.",
+      "size": [
+        1280,
+        720
+      ],
+      "kbps": 1400,
+      "max_kb": 2500,
+      "audio": false,
+      "fade": 0,
+      "loop_fade": 0,
+      "grade": {
+        "brightness": 1.15
+      },
+      "cuts": [
+        {
+          "take": "changelog-tank-wide",
+          "from": 15,
+          "to": 27
+        }
+      ]
+    },
+    "changelog-boat-turn": {
+      "use": "Changelog: v1.0.5/boats-handle-like-boats. Captured at 1a925b4 on 2026-10-28; current-build demonstration, not historical footage.",
+      "size": [
+        1280,
+        720
+      ],
+      "kbps": 1400,
+      "max_kb": 2500,
+      "audio": false,
+      "fade": 0,
+      "loop_fade": 0,
+      "grade": {
+        "brightness": 1.1
+      },
+      "cuts": [
+        {
+          "take": "changelog-boats",
+          "from": 2,
+          "to": 11
+        }
+      ]
+    },
+    "changelog-boat-sinking": {
+      "use": "Changelog: v1.0.0/water-and-sea-battles. Captured at 1a925b4 on 2026-10-28; current-build demonstration, not historical footage.",
+      "size": [
+        1280,
+        720
+      ],
+      "kbps": 1400,
+      "max_kb": 2500,
+      "audio": false,
+      "fade": 0,
+      "loop_fade": 0,
+      "grade": {
+        "brightness": 1.1
+      },
+      "cuts": [
+        {
+          "take": "changelog-boats",
+          "from": 24,
+          "to": 35
+        }
+      ]
+    },
+    "changelog-ocean-swell": {
+      "use": "Changelog: v1.0.2/ocean-swell. Captured at 1a925b4 on 2026-10-28; current-build demonstration, not historical footage.",
+      "size": [
+        1280,
+        720
+      ],
+      "kbps": 1400,
+      "max_kb": 2500,
+      "audio": false,
+      "fade": 0,
+      "loop_fade": 0,
+      "grade": {
+        "brightness": 1.0
+      },
+      "cuts": [
+        {
+          "take": "changelog-swell",
+          "from": 2,
+          "to": 12
+        }
+      ]
+    },
+    "changelog-fish-swimming": {
+      "use": "Changelog: v1.0.3/wildlife. Captured at 1a925b4 on 2026-10-28; current-build demonstration, not historical footage.",
+      "size": [
+        1280,
+        720
+      ],
+      "kbps": 1400,
+      "max_kb": 2500,
+      "audio": false,
+      "fade": 0,
+      "loop_fade": 0,
+      "grade": {
+        "brightness": 1.4
+      },
+      "cuts": [
+        {
+          "take": "changelog-fish-close",
+          "from": 17,
+          "to": 23
+        }
+      ]
+    },
+    "changelog-dolphin-leap": {
+      "use": "Changelog: v1.0.3/wildlife. Captured at 1a925b4 on 2026-10-28; current-build demonstration, not historical footage.",
+      "size": [
+        1280,
+        720
+      ],
+      "kbps": 1400,
+      "max_kb": 2500,
+      "audio": false,
+      "fade": 0,
+      "loop_fade": 0,
+      "grade": {
+        "brightness": 1.15
+      },
+      "cuts": [
+        {
+          "take": "changelog-dolphins-close",
+          "from": 8,
+          "to": 16
+        }
+      ]
+    },
+    "changelog-helicopter-turn": {
+      "use": "Changelog: v1.0.11/helicopter-flight. Captured at 1a925b4 on 2026-10-28; current-build demonstration, not historical footage.",
+      "size": [
+        1280,
+        720
+      ],
+      "kbps": 1400,
+      "max_kb": 2500,
+      "audio": false,
+      "fade": 0,
+      "loop_fade": 0,
+      "grade": {
+        "brightness": 1.15
+      },
+      "cuts": [
+        {
+          "take": "changelog-helicopter",
+          "from": 3,
+          "to": 15
+        }
+      ]
+    }
+  },
+  "stills": {
+    "m-bridgehead": {
+      "take": "bridgehead-low",
+      "at": 17.0,
+      "use": "Mission card: Bridgehead (the big tile)"
+    },
+    "m-beachhead": {
+      "take": "beachhead-low",
+      "at": 32.2,
+      "use": "Mission card: Beachhead"
+    },
+    "m-skyhook": {
+      "take": "skyhook-low",
+      "at": 3.4,
+      "use": "Mission card: Sky Hook"
+    },
+    "m-ambush": {
+      "take": "ambush-low",
+      "at": 118.6,
+      "brightness": 1.15,
+      "use": "Mission card: Ambush Alley"
+    },
+    "m-kingpin": {
+      "take": "night-barrage",
+      "at": 14.4,
+      "brightness": 1.05,
+      "use": "Mission card: Kingpin"
+    },
+    "reel": {
+      "take": "trailer-harbour-finale",
+      "at": 6.4,
+      "use": "The reel's poster (overrides its first frame)"
+    }
+  }
+}

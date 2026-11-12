@@ -28,6 +28,7 @@ export const routes: RouteObject[] = [
         ErrorBoundary: PageError,
         children: [
           { index: true, Component: Home },
+          { path: "cutting-room", lazy: page(() => import("@/pages/cutting-room")) },
           { path: "play", lazy: page(() => import("@/pages/play")) },
           { path: "watch/:id", lazy: page(() => import("@/pages/watch")) },
           { path: "battles", lazy: page(() => import("@/pages/battles")) },

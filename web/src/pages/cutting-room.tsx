@@ -1,0 +1,394 @@
+import { useRef, useState } from "react"
+import { useSearchParams } from "react-router"
+import archive from "@/lib/trailer-editions.json"
+import { ArrowDownIcon, ArrowRightIcon, FilmStripIcon, PlayIcon } from "@phosphor-icons/react"
+import { usePageTitle } from "@/hooks/use-page-title"
+import comparison from "../../../tools/showcase/trailer-review/viewer.html?raw"
+import "./cutting-room.css"
+
+type Edition = {
+  id: string
+  label: string
+  note: string
+  frames: number
+  file: string
+  poster: string
+  change_frame?: number
+  captions?: string
+  recipe?: string
+  cuts?: number
+}
+
+const phases = [
+  { name: "All edits", first: -1, last: Infinity },
+  { name: "First assembly", first: -1, last: 8 },
+  { name: "On board", first: 9, last: 16 },
+  { name: "Closer to the action", first: 17, last: 25 },
+  { name: "Building the finale", first: 26, last: 30 },
+]
+
+const decisions = [
+  {
+    id: "13",
+    at: 9.97,
+    title: "Follow the cargo",
+    text: "The bridge passes under the load in both shots. That landmark lets the camera move from the bridge deck to the cargo door without losing the helicopter.",
+  },
+  {
+    id: "26",
+    at: 20.73,
+    title: "Give the strike an outcome",
+    text: "The early harbour sequence ended in spray. This cut introduces the pickup on the quay and stays long enough to see what happens to it.",
+  },
+  {
+    id: "30",
+    at: 20.63,
+    title: "Hear the cut change",
+    text: "From under the wing, each release has a short clack. Down on the quay, the engine recedes and falling air rises over the music.",
+  },
+]
+
+const title = (e: Edition) => e.label.replace(/^\d+ · /, "")
+const stamp = (s: number) => `${Math.floor(s / 60)}:${(s % 60).toFixed(1).padStart(4, "0")}`
+
+const cameraTests = [
+  {
+    file: "wide",
+    label: "Wide profile",
+    verdict:
+      "The ridge and the aircraft both read clearly. The dark payload passes across the mountain and is easy to miss.",
+  },
+  {
+    file: "quarter",
+    label: "Front quarter",
+    verdict:
+      "The whole aircraft stays in silhouette. The separated bombs quickly leave the frame and the ground below draws the eye.",
+  },
+  {
+    file: "belly",
+    label: "Under the wing",
+    verdict:
+      "This was the final angle. The bright sky separates each falling shape, and the close microphone makes the release audible before the cut to the quay.",
+  },
+]
+
+function CameraTests() {
+  const [choice, setChoice] = useState(0)
+  const [revealed, setRevealed] = useState(false)
+  const test = cameraTests[choice]
+  const base = "/media/edits/cameras/" + test.file
+  return (
+    <section className="cut-section cut-lab" aria-labelledby="camera-test">
+      <div>
+        <p className="cut-kicker">Camera test</p>
+        <h2 id="camera-test">Which angle would you cut to?</h2>
+        <p className="cut-summary">
+          Three recordings of the same 2.2 seconds. Choose the view that makes the release easiest to follow.
+        </p>
+        <div className="cut-filters" aria-label="Choose a camera">
+          {cameraTests.map((camera, i) => (
+            <button key={camera.file} aria-pressed={i === choice} onClick={() => setChoice(i)}>
+              {camera.label}
+            </button>
+          ))}
+        </div>
+        <button className="cut-more" aria-expanded={revealed} onClick={() => setRevealed(!revealed)}>
+          {revealed ? "Hide the editor’s notes" : "Reveal the editor’s choice"}
+        </button>
+        {revealed && (
+          <output className="cut-verdict">
+            <strong>Under the wing made the cut.</strong> {test.verdict}
+          </output>
+        )}
+      </div>
+      <video
+        key={test.file}
+        controls
+        preload="none"
+        playsInline
+        poster={base + ".jpg"}
+        src={base + ".mp4"}
+        aria-label={test.label + " camera test"}
+      >
+        <track kind="captions" label="English" srcLang="en" src="/media/edits/cameras/release.vtt" />
+      </video>
+    </section>
+  )
+}
+
+export default function CuttingRoom() {
+  usePageTitle("The cutting room")
+  return <ScreeningRoom editions={archive} />
+}
+
+function ScreeningRoom({ editions }: { editions: Edition[] }) {
+  const [params, setParams] = useSearchParams()
+  const ix = editions.findIndex((e) => e.id === params.get("edit"))
+  const index = ix < 0 ? editions.length - 1 : ix
+  const edit = editions[index]
+  const comparing = params.get("view") === "compare"
+  const at = Math.max(0, Math.min(Number(params.get("at")) || 0, (edit.frames - 1) / 30))
+  const player = useRef<HTMLVideoElement>(null)
+  const screen = useRef<HTMLDivElement>(null)
+  const [phase, setPhase] = useState(0)
+  const [started, setStarted] = useState(false)
+  const [playError, setPlayError] = useState(false)
+  const [expanded, setExpanded] = useState(false)
+  const phaseEdits = editions
+    .filter((e) => {
+      const n = e.id === "published" ? -1 : Number(e.id)
+      return n >= phases[phase].first && n <= phases[phase].last
+    })
+    .toReversed()
+  const visible = expanded ? phaseEdits : phaseEdits.slice(0, 8)
+  const prior = Math.max(0, index - 1)
+  const comparisonHtml = comparing
+    ? comparison
+        .replace('id="versions"', `id="versions" data-left="${prior}" data-right="${index}"`)
+        .replace("__VERSIONS__", () => JSON.stringify(editions).replaceAll("<", "\\u003c"))
+    : ""
+  function select(id: string, seconds = 0, compare = false, scroll = true) {
+    const next = new URLSearchParams({ edit: id })
+    if (seconds) next.set("at", String(seconds))
+    if (compare) next.set("view", "compare")
+    setParams(next, { preventScrollReset: true })
+    setStarted(false)
+    setPlayError(false)
+    if (id === edit.id && player.current && !compare) {
+      player.current.pause()
+      player.current.currentTime = seconds
+    }
+    if (scroll) screen.current?.scrollIntoView({ block: "start" })
+  }
+  function play() {
+    void player.current?.play().catch(() => setPlayError(true))
+  }
+  return (
+    <article className="cut-room">
+      <header className="cut-heading">
+        <div>
+          <p className="cut-kicker">
+            Frontline <span>/</span> Production journal
+          </p>
+          <h1>
+            The cutting room<span>.</span>
+          </h1>
+        </div>
+        <a className="cut-link" href="#edit-archive">
+          Browse the edits <ArrowDownIcon />
+        </a>
+      </header>
+      <div className="cut-screen" ref={screen}>
+        <div className="cut-screen-bar">
+          <span>
+            <i /> Screening room
+          </span>
+          <span>
+            {edit.id === "published" ? "Original release" : `Edition ${edit.id}`} &nbsp; / &nbsp;{" "}
+            {stamp(edit.frames / 30)}
+          </span>
+        </div>
+        {comparing ? (
+          <iframe
+            sandbox="allow-scripts"
+            title="Synchronized edition comparison"
+            className="cut-compare"
+            srcDoc={comparisonHtml}
+          />
+        ) : (
+          <div className="cut-player">
+            <video
+              key={edit.file}
+              ref={player}
+              controls
+              playsInline
+              preload="none"
+              poster={edit.poster}
+              src={edit.file}
+              aria-label={title(edit)}
+              onPlay={() => {
+                setStarted(true)
+                setPlayError(false)
+              }}
+              onError={() => setPlayError(true)}
+              onLoadedMetadata={(e) => {
+                e.currentTarget.currentTime = at
+              }}
+            >
+              <track kind="captions" srcLang="en" label="English" src={edit.captions} />
+            </video>
+            {!started && !playError && (
+              <button className="cut-play" onClick={play} aria-label={`Play ${title(edit)}`}>
+                <PlayIcon weight="fill" />
+              </button>
+            )}
+            {playError && (
+              <output className="cut-error">
+                Playback unavailable. <a href={edit.file}>Open the recording</a>
+              </output>
+            )}
+          </div>
+        )}
+        <div className="cut-notes">
+          <div>
+            <p className="cut-kicker">{comparing ? "Comparison" : "Selected cut"}</p>
+            <h2>{title(edit)}</h2>
+          </div>
+          <div>
+            <p>{edit.note}</p>
+            <div className="cut-actions">
+              <button onClick={() => select(edit.id, 0, !comparing, false)}>
+                {comparing ? "Single screening" : "Compare editions"}
+              </button>
+              {edit.change_frame !== undefined && !comparing && (
+                <button
+                  onClick={() => {
+                    select(edit.id, edit.change_frame! / 30, false, false)
+                    play()
+                  }}
+                >
+                  Play the change · {stamp(edit.change_frame / 30)}
+                </button>
+              )}
+              {edit.recipe && (
+                <a href={edit.recipe} download>
+                  Shot recipe ↓
+                </a>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+      <section className="cut-section" aria-labelledby="decisions">
+        <p className="cut-kicker">Editor’s assessment</p>
+        <h2 id="decisions">Three decisions you can see.</h2>
+        <p className="cut-summary cut-result">
+          In 13 hours and 24 minutes, the edit grew from a {stamp(editions.find((e) => e.id === "00")!.frames / 30)}{" "}
+          opening assembly to a {stamp(editions.at(-1)!.frames / 30)} trailer with {editions.at(-1)!.cuts} cuts. The
+          extra screen time establishes the quay before impact and gives the finale room to resolve. Audience response
+          is still unmeasured.
+        </p>
+        <div className="cut-studies">
+          {decisions.map((d) => {
+            const e = editions.find((v) => v.id === d.id)
+            return (
+              e && (
+                <button key={d.id} onClick={() => select(d.id, d.at)}>
+                  <div className="cut-still">
+                    <img loading="lazy" src={e.poster} alt="" />
+                    <span>
+                      EDIT {d.id} &nbsp; / &nbsp; {stamp(d.at)}
+                    </span>
+                  </div>
+                  <h3>
+                    {d.title} <ArrowRightIcon />
+                  </h3>
+                  <p>{d.text}</p>
+                </button>
+              )
+            )
+          })}
+        </div>
+        <p className="cut-assessment">
+          <strong>What still needs room</strong> The final cut spends less than a second under the wing. The release
+          reads at full speed, but the quay and pickup are easier to place on a second viewing. The last wide shot shows
+          the scale of the barrage better than individual soldiers.
+        </p>
+      </section>
+      <CameraTests />
+      <section className="cut-section" id="edit-archive">
+        <p className="cut-kicker">
+          <FilmStripIcon /> Film archive
+        </p>
+        <h2>Every cut, in sequence.</h2>
+        <p className="cut-summary">
+          {editions.length - 1} numbered editions and the previously published trailer. Pick a cut to screen it or
+          compare it with its predecessor.
+        </p>
+        <div className="cut-filters" aria-label="Filter editions">
+          {phases.map((p, i) => (
+            <button
+              key={p.name}
+              aria-pressed={phase === i}
+              onClick={() => {
+                setPhase(i)
+                setExpanded(false)
+              }}
+            >
+              {p.name}
+            </button>
+          ))}
+        </div>
+        <div className="cut-grid">
+          {visible.map((e) => (
+            <button
+              key={e.id}
+              className={e.id === edit.id ? "selected" : ""}
+              aria-pressed={edit.id === e.id}
+              onClick={() => select(e.id)}
+            >
+              <div className="cut-still">
+                <img loading="lazy" src={e.poster} alt="" />
+                <span>{stamp(e.frames / 30)}</span>
+              </div>
+              <small>{e.id === "published" ? "Previously published" : `Edition ${e.id}`}</small>
+              <h3>{title(e)}</h3>
+            </button>
+          ))}
+        </div>
+        {visible.length < phaseEdits.length && (
+          <button className="cut-more" onClick={() => setExpanded(true)}>
+            Show all {phaseEdits.length} cuts <ArrowDownIcon />
+          </button>
+        )}
+      </section>
+      <section className="cut-section" aria-labelledby="other-films">
+        <p className="cut-kicker">Companion films</p>
+        <h2 id="other-films">Stay with the scene.</h2>
+        <div className="cut-studies cut-films">
+          {[
+            {
+              title: "Two tanks, two ridges",
+              length: "1:00",
+              film: "/media/edits/films/ridge-duel.mp4",
+              poster: "/media/edits/films/ridge-duel.jpg",
+            },
+            { title: "The vehicle loop", length: "0:20", film: "/media/vehicles.webm", poster: "/media/vehicles.jpg" },
+            {
+              title: "Listen to the harbour pass",
+              length: "0:12",
+              film: "/media/edits/films/harbour.webm",
+              poster: "/media/edits/films/harbour.jpg",
+            },
+          ].map(({ title, length, film, poster }) => (
+            <div key={film}>
+              <div className="cut-still">
+                <a href={film} aria-label={`Play ${title}`}>
+                  <img loading="lazy" src={poster} alt={title} />
+                </a>
+                <span>{length}</span>
+              </div>
+              <a href={film}>
+                <h3>
+                  {title} <ArrowRightIcon />
+                </h3>
+              </a>
+            </div>
+          ))}
+        </div>
+      </section>
+      <details className="cut-method">
+        <summary>How the recordings were made</summary>
+        <p>
+          Each scene runs in the game with a saved mission, seed and camera. Godot records native frames and stereo
+          sound on a hidden Mac render surface. We review the pictures muted, listen again for timing and perspective,
+          then save the edit and its recipe. The older cuts here are smaller screening copies.
+        </p>
+        <p>
+          Download a numbered cut’s shot recipe to replay its setup. A new run can vary in particles and cosmetic
+          motion. The archived video preserves the original performance.
+        </p>
+      </details>
+    </article>
+  )
+}

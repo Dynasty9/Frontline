@@ -89,7 +89,8 @@ function switchCut(i) {
 }
 pickers.forEach((picker,i) => {
   cuts.forEach((c,n) => picker.add(new Option(c.label,n)));
-  picker.selectedIndex = i === 0 ? Math.max(0, cuts.length - 2) : cuts.length - 1;
+  const preset = document.querySelector('#versions').dataset[i === 0 ? 'left' : 'right'];
+  picker.selectedIndex = preset === undefined ? Math.max(0, cuts.length - 2 + i) : Number(preset);
   picker.onchange = () => switchCut(i);
   switchCut(i);
 });
@@ -108,7 +109,7 @@ selectAudio();
 listen.onchange = selectAudio;
 async function startPlayback() {
   try { await Promise.all(videos.filter(v => position < v.duration || !Number.isFinite(v.duration)).map(v => v.play())); }
-  catch { pause(); status.textContent = 'Playback failed. Check that both MP4s are beside this viewer.'; return; }
+  catch { pause(); status.textContent = 'Playback failed. Try selecting the cut again.'; return; }
   status.textContent = '';
   play.textContent = 'Pause both';
   tick();

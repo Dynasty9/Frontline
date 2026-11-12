@@ -36,3 +36,7 @@ For a mix revision, keep the cut points fixed and compare editions with the audi
 | Trench assault | Two infantry fighting vehicles move toward an occupied line with rifle squads behind. Hold on the defenders, then move down beside the timber firing bay for the 155 mm barrage. |
 
 The actual menu map comes in over the final burst. The menu emblem and wordmark appear first, followed by the free Windows, macOS and Linux invitation and the open-source license. The game score resolves over the card.
+
+## Publish the screening room
+
+The website’s `/cutting-room` page includes the archived edits, their viewing notes, timed comparisons, captions when available, and downloadable shot recipes. Run `python3 tools/showcase/trailer-review/publish.py build/trailer-review` from the repository root to refresh its media and index. The final cut retains its native resolution. Earlier editions use smaller screening copies with the complete soundtrack. The offline viewer beside the archive retains the original movies.
