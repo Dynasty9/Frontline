@@ -10,6 +10,7 @@ import {
 } from "@phosphor-icons/react"
 import { useState } from "react"
 import { Link } from "react-router"
+import { SendToComputer } from "@/components/send-to-computer"
 import { useAccount } from "@/lib/account"
 import { useSite } from "@/hooks/use-site"
 import { openSignIn } from "@/hooks/use-sign-in-dialog"
@@ -199,10 +200,13 @@ export function DesktopCard({ device, build = latest }: { device: Device; build?
             with Godot, or play on {platformList(build)}.
           </Note>
         ) : (
-          <Note icon={InfoIcon}>
-            Frontline is played with a keyboard and mouse, on {platformList(build)}. Come back on a computer to play:
-            the downloads are below.
-          </Note>
+          <>
+            <Note icon={InfoIcon}>
+              Frontline is played with a keyboard and mouse, on {platformList(build)}. Send this page to your computer
+              and play there: the downloads are below.
+            </Note>
+            <SendToComputer size="default" />
+          </>
         )}
       </div>
     </Card>

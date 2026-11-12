@@ -8,3 +8,6 @@ build
 .claude
 
 **/.env*
+
+# the image build makes these (changelog_thumbs.py): not sent with the context
+web/public/changelog-thumbs

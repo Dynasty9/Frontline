@@ -4,8 +4,14 @@ import { SectionLabel } from "@/components/battles"
 import { usePoll } from "@/hooks/use-poll"
 import { fetchReplays, replayClock } from "@/lib/replays"
 
+/**
+ * Live broadcasts and recordings to watch. A server without recording storage
+ * (the matchmaker's REPLAY_DIR, docs/REPLAYS.md) has none to offer, so then
+ * there's nothing here at all, rather than a section saying it's switched off.
+ */
 export function Replays() {
   const { data, error, loading } = usePoll(fetchReplays, 10_000)
+  if (data && !data.enabled && !data.replays.length) return null
   return (
     <section className="mx-auto max-w-6xl px-4 py-12 sm:px-6" aria-labelledby="watch-battles">
       <SectionLabel>See the battle unfold</SectionLabel>
@@ -23,9 +29,7 @@ export function Replays() {
       {error && <output className="mt-6 block text-muted-foreground">{error.message}</output>}
       {data && !data.replays.length && (
         <p className="mt-6 text-muted-foreground">
-          {data.enabled
-            ? "No recordings yet. Public battles hosted with a viewer-ready version of Frontline will appear here."
-            : "Battle broadcasts are not enabled on this server yet."}
+          No recordings yet. Public battles hosted with a viewer-ready version of Frontline will appear here.
         </p>
       )}
       <div className="mt-8 divide-y border-y">

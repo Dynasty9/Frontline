@@ -682,8 +682,16 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   Nobody holds them at the start. They are the supply worth fighting over: see *Towns* under Base building and
   supply. (Missions don't have them; the dumps use their own random numbers, so a seed's map is otherwise
   unchanged.)
-- Houses have dressed facades: sills and lintels, painted window frames with mullion and transom, panes (many
-  shot out), shutters, door frames, steps and double doors hanging open.
+- Houses are rendered and painted, bare brick or rough stone, and dressed as they're built: a darker plinth and a
+  band under the eaves, sills and lintels in render, concrete or dressed stone (a keystone over stone windows),
+  painted window frames with mullion and transom, panes whole, cracked to shards or shot out, louvred or boarded
+  shutters on their hinges, door frames, steps, now and then a hood over the door, and double doors hanging open.
+  Pitched roofs bear on the walls with a fascia, barge boards, gutters and downpipes, a round-tiled ridge and
+  often a chimney with its pots; flat roofs have a coped parapet, scuppers with a hopper and downpipe, and the
+  water tanks, air conditioners and dishes on them. Garden walls have saddleback stone copings, or brick-on-edge
+  over a blue-brick base. All of it, and the military buildings' weatherboard, sheeting, roller shutters, north
+  lights, masts and guys, drums, crates and pallets, comes from shared building components (see
+  [building-components.md](building-components.md)).
 - Walls, hedges, trees, cars and crates are all real cover. Street furniture is set dressing generated on the
   server and built on each client, and it breaks: a blast or a vehicle driving through knocks lamps, utility poles
   (their wires come down with them), signs, benches, bins, fences and playground kit over, and the pieces fall and
@@ -994,15 +1002,26 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   their side (the armed ones fire missiles); recon vehicles see further. New weapons: 40 mm grenade machine
   guns, 20/30/40 mm cannon, twin 35 mm, miniguns, each with its own sound; main guns by the vehicle (125 mm,
   120 mm, a railgun, recoilless rifles).
-- **Rotorcraft flight.** Attack, transport and supply helicopters share a flight controller: momentum
-  carries through turns and new orders, the pilot accelerates and brakes gradually, and the nose and
-  bank follow the acceleration rather than pretending the aircraft is a road vehicle. Yaw has its own
-  turn rate, so gunships can keep their nose on a target while moving sideways. Climbs and descents
-  ease in and out; transports settle into a low-speed hover before landing or attaching a sling.
-  Loads reduce speed, acceleration and yaw response. Stop holds a troop transport in the air without
-  dropping its sling load; a new move resumes the flight, even during a landing. The host simulates
-  flight and sends pitch and bank with its snapshots; clients only interpolate the view. Drones and
-  ground vehicles keep their existing movement systems.
+- **Rotorcraft flight.** Attack, transport and supply helicopters share a flight model (`helicopter_flight.gd`)
+  that flies the way a real one does: the pilot tilts the rotor and the tilt is what accelerates her, so the nose
+  dips before she gathers speed and comes up into a flare before she slows, and the cyclic only moves so fast (a
+  big lifter answers slowly, a scout snaps round). Parasite drag keeps the nose a few degrees down in cruise, more
+  with a load on the cable. In forward flight the nose stays on the flight path and turns are banked arcs, slower
+  and tighter for a sharp one; a reversal at speed is flown as a decelerating turn. Near the hover she can pedal
+  turn and side-step, but only at a walking pace sideways or backwards. Climbs are best with forward speed, and a
+  slow descent is kept under about 2 m/s, out of the rotor's own downwash. Each flight follows a profile: the rotor
+  winds up before lift-off, she lifts into a hover check a couple of metres up, then noses over and climbs away as
+  speed builds (never racing along just over the ground); she cruises 16 m above the highest ground ahead, then
+  comes down a 12-degree glide path, slowing all the way, into a low hover over the spot and sets down gently. No
+  big flare close to the ground, where the tail would strike. Sling loads hang as a pendulum: they lag on
+  acceleration, swing forward in the flare and trail in the airflow; the load is lowered from a hover and let go
+  once it has stopped swinging. Gunships fly to their firing position nose first, then hold the nose on the target
+  and side-step round it. Stop holds a transport in the air without dropping its load; a new move resumes the
+  flight, even during a landing. On the ground the rotor stays at flight speed while she's busy and idles down when
+  she's been sitting with nothing to do. The host simulates flight and sends pitch, bank and the rotor's state
+  with its snapshots; clients draw the rest: a hovering helicopter's slight nose-up, one-side-low hang and gentle
+  wander, the rotor's beat following its speed and slapping louder under load, and the downwash throwing a ring
+  of dust (spray over water) when she's low. Drones and ground vehicles keep their own movement.
 - **Boarding:** select infantry and right-click your truck, APC, Slammer or a landed helicopter: they climb in
   (as many as fit) and ride until they dismount or it arrives.
 - Tanks smash through walls, trees and cars. Small arms ricochet off them. Frontal rockets can bounce,
@@ -1137,12 +1156,46 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
 - Everything can be shot up and repaired. Any FOB can be captured by whoever walks in and holds it. Lose your last FOB and you lose, but a side's last FOB is a last stand and takes four times as long to capture, and HQ sends a free reserve squad every 75 s to a side that is down to its last few soldiers.
 - Fog of war, drawn on the ground and the minimap, with intel pings and last-known enemy positions.
 
-**Look and feel** (`atmosphere.gd`, `mats.gd`, `vehicle_models.gd`, `vfx.gd`, `gunfx.gd`, `grass.gd`, `wildlife.gd`, `ui/`)
+**Look and feel** (`atmosphere.gd`, `cinematic_fx.gd`, `physical_sky.gd`, `mats.gd`, `vehicle_models.gd`, `vfx.gd`, `gunfx.gd`, `grass.gd`, `wildlife.gd`, `ui/`)
 - Eight lighting moods (midday, golden hour, dawn, dusk, overcast, hazy, **night**, **rain & thunder**) with a
   procedural sky, AgX tonemapping, cloud shadows drifting over the ground, volumetric haze and a subtle film look.
   At night the sky fills with stars and illumination flares drift down on parachutes over the fighting, throwing
   moving shadows. In the rain, streaks fall around the camera, splashes hit the ground, puddles reflect the sky and
   lightning flashes are followed by thunder.
+- **Cinematic lighting** (`atmosphere.gd`, `cinematic_fx.gd`, `physical_sky.gd`), each part its own setting and all
+  of it on the **Cinematic** preset (Ultra plus everything below; for a fast graphics card, screenshots and replays).
+  None of it reaches the simulation, so it can't change a battle or its seed.
+  - **Adaptive shadows** (on from Medium up): the sun's shadow cascades are fitted every frame to the ground the
+    camera can see, instead of always reaching 800 m, so close in every cascade is several times as fine. The fit is
+    worked out from the view's corner rays (the idea of sample distribution shadow maps, Lauritzen, Salvi and Lefohn,
+    I3D 2011) and split by the practical scheme of parallel-split shadow maps (Zhang et al. 2006); the reach moves in
+    tenths, so a still or panning camera keeps its fit and only zooming re-fits.
+  - **Shadows from fire and flares**: explosions, muzzle flashes, burning wrecks, illumination flares and street lamps
+    are in the `fx_light` group, and the two or six of them that light the most near the camera's focus are lent soft
+    (PCSS) cube-map shadows, re-picked ten times a second.
+  - **Physical sky** (golden hour, dawn, dusk, haze): each view ray is marched through a spherical atmosphere with
+    Rayleigh, Mie (Cornette-Shanks) and ozone, using Hillaire's coefficients ("A Scalable and Production Ready Sky and
+    Atmosphere Rendering Technique", EGSR 2020, after Bruneton and Neyret 2008), with the sunlight reaching each sample
+    marched too, so a low sun reddens and the earth's shadow rises at dusk; multiple scattering is an isotropic share of
+    that light. Its brightness matches the painted sky's average over the dome, so exposure and ambient stay where each
+    mood had them, and the copy the battlefield is lit and reflects by is nearly half way to a warm grey so shade
+    turns cool without going cyan. The sun's direction is passed in, not read from the light: a reflection probe draws
+    the sky with no light. Midday keeps its photographed sky; overcast, rain and night their painted ones.
+  - **Camera and lens** (Settings > Lighting & Look): compute passes run on the HDR scene just before it is
+    tonemapped (a `CompositorEffect`, Forward+ only), at a quarter of the resolution except the final composite.
+    Sun shafts are a radial blur of the open sky near the sun (Mitchell, GPU Gems 3, 2007). Lens flare and glare:
+    a Karis-weighted bright pass (Jimenez, SIGGRAPH 2014) feeds ghosts and a halo mirrored through the lens centre
+    (Hullin et al., SIGGRAPH 2011, as approximated in screen space by Chapman), anamorphic streaks from the hottest
+    cores only (Kawase's streak filter, GDC 2003), and the glare round each light lighting dust and grease on the
+    front glass. Local exposure pulls the scene's large-scale brightness towards its average and keeps the detail on
+    top (Durand and Dorsey, SIGGRAPH 2002), with the base blurred cross-bilaterally at quarter resolution and brought
+    back edge-aware (joint bilateral upsampling, Kopf et al., SIGGRAPH 2007). Eye adaptation meters the frame
+    (centre-weighted) and follows it quickly towards a flash and slowly back into the dark (Pattanaik et al., SIGGRAPH
+    2000), relative to the scene's own long-term level so a night battle stays night; at night, dusk and dawn colour
+    drains towards a cool grey as the rods take over (the Purkinje shift, after Thompson, Shirley and Ferwerda 2002).
+    Film look adds halation and contrast-adaptive sharpening (AMD FidelityFX CAS). Every pass scrubs NaN and infinite
+    pixels, so a bad one can't be smeared across the screen. The browser build has none of these (its renderer has
+    no compositor) and hides them.
 - **Wildlife** (`wildlife.gd`), drawn only on each player's own screen and never simulated or sent by the server,
   so it can't change a battle or its seed. Flocks of sparrows and starlings (pigeons about the town) feed on bare
   ground - tracks, yards, pavements, mud, shell holes, where the grass doesn't hide them - hopping and pecking,

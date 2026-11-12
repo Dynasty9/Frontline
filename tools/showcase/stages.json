@@ -309,5 +309,39 @@
       "decals": true,
       "projection": "perspective"
     }
+  },
+  "helicopters": {
+    "scene": "tests/fixtures/helicopter-world-clips.tscn",
+    "seconds": 23,
+    "fps": 30,
+    "simulation_hz": 30,
+    "engine_fixed_fps": 30,
+    "timeout": 2400,
+    "seed": 712,
+    "crf": 34,
+    "renderer": "forward_plus",
+    "render_settings": {
+      "preset": "high",
+      "dof": false,
+      "mood": "day"
+    },
+    "cue": "A Ghost Hawk lifts off a helipad beside the showroom base, is sent 140 m out and redirected to a second pad after eight seconds; side-on view of the whole flight with its path traced."
+  },
+  "helicopters-chase": {
+    "scene": "tests/fixtures/helicopter-world-clips.tscn",
+    "seconds": 23,
+    "fps": 30,
+    "simulation_hz": 30,
+    "engine_fixed_fps": 30,
+    "timeout": 2400,
+    "seed": 712,
+    "crf": 34,
+    "renderer": "forward_plus",
+    "render_settings": {
+      "preset": "high",
+      "dof": false,
+      "mood": "day"
+    },
+    "cue": "The same Ghost Hawk flight from a camera following the helicopter: attitude, bank, flare and rotor wash up close."
   }
 }

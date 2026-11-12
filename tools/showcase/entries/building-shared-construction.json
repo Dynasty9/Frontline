@@ -1,0 +1,24 @@
+{
+  "entry": "changelog/unreleased/building-shared-construction.md",
+  "summary": "Buildings share walls, roofs, openings, fittings and wire; roofs bear on their walls, brick and stone houses.",
+  "medium": "still",
+  "stage": "tools/showcase/building-surfaces.tscn",
+  "rationale": "Appearance change: one matched before/after sheet (an in-town house on the same seed and camera, three buildings under the same studio camera) and one sheet of the shared parts. Raw captures, rear views and the Compatibility check stay outside Git.",
+  "source_ref": "4fd15eb16d9fe32e28e430a723ccec50a48d145b",
+  "before_ref": "69a1df0348fb879aa98d5fbfd7f02ac31a10c6d7",
+  "sources": [
+    {
+      "file": "changelog/unreleased/building-shared-construction/comparison.jpg",
+      "sha256": "c6be17b42b2aef4b728639d330ed102c508c3b8db3b7950068eee1046664fee2"
+    },
+    {
+      "file": "changelog/unreleased/building-shared-construction/components.jpg",
+      "sha256": "ffd8614ba121b003681ca75f9528b1bacdb712d1cd9385d4b4637211f00f04ae"
+    },
+    {
+      "file": "changelog/unreleased/building-shared-construction/capture.json",
+      "sha256": "068934e06b71c54db20cd59e934e22f1ab72fe68c629764e90453f114e73feca"
+    }
+  ],
+  "output": null
+}

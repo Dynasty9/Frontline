@@ -954,6 +954,7 @@ func make_fire(ext: Vector3, smoke_kind := SMOKE_WOOD) -> Node3D:
 	l.light_energy = 0.0
 	l.shadow_enabled = false
 	l.name = "Glow"
+	l.add_to_group(&"fx_light")
 	h.add_child(l)
 	var audible_radius := (6.0 + 3.0 * k) if smoke_kind == SMOKE_FUEL else (3.0 + 2.0 * k)
 	var snd := Sfx.make_loop_player("fire", audible_radius, -40.0)
@@ -1337,6 +1338,55 @@ func make_dust(size: float) -> GeometryInstance3D:
 	Mats.set_inst(d, &"density", 0.8)
 	d.visibility_aabb = AABB(Vector3(-20, -2, -20), Vector3(40, 12, 40))
 	return part(d)
+
+
+## The downwash of a helicopter low over the ground: dust blown out from
+## under the rotor in a ring, rolling up as it spreads (over water, spray
+## that falls back). A holder for both, sat on the ground under the aircraft;
+## set_rotor_wash picks which and how much.
+func make_rotor_wash(radius: float) -> Node3D:
+	var h := Node3D.new()
+	var k := clampf(radius / 5.0, 0.7, 1.6)
+	for wet: bool in [false, true]:
+		# low and outward: the air comes down, hits the ground and races out
+		# along it, curling up a little at the edge
+		var pm := _pm(Vector3.UP, 25.0, 0.3, 1.2, Vector3(0, -0.6, 0) if not wet else Vector3(0, -3.0, 0), (0.8 if wet else 1.5) * k, (1.8 if wet else 3.4) * k)
+		pm.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_RING
+		pm.emission_ring_axis = Vector3.UP
+		pm.emission_ring_radius = radius * 0.8
+		pm.emission_ring_inner_radius = radius * 0.2
+		pm.emission_ring_height = 0.2
+		pm.radial_accel_min = 9.0
+		pm.radial_accel_max = 16.0
+		pm.damping_min = 2.0
+		pm.damping_max = 3.5
+		pm.angular_velocity_min = -30.0
+		pm.angular_velocity_max = 30.0
+		pm.scale_curve = _curve([Vector2(0, 0.4), Vector2(1, 1.0)])
+		if wet:
+			pm.color_ramp = _ramp([0.0, 0.12, 1.0], [Color(0.92, 0.94, 0.95, 0.0), Color(0.92, 0.94, 0.95, 0.42), Color(0.9, 0.92, 0.93, 0.0)])
+		else:
+			pm.color_ramp = _ramp([0.0, 0.15, 0.6, 1.0], [Color(0.6, 0.55, 0.45, 0.0), Color(0.6, 0.55, 0.45, 0.3), Color(0.62, 0.58, 0.5, 0.18), Color(0.64, 0.6, 0.52, 0.0)])
+		var d := _sys(int((40 if wet else 64) * k), 1.2 if wet else 2.0, pm, smoke_mat)
+		d.one_shot = false
+		d.explosiveness = 0.0
+		d.emitting = false
+		d.visibility_aabb = AABB(Vector3(-radius * 3.0, -2, -radius * 3.0), Vector3(radius * 6.0, 10, radius * 6.0))
+		Mats.set_inst(d, &"density", 0.7)
+		h.add_child(part(d))
+	return h
+
+
+## How hard the downwash is blowing (0 to 1), over water or dry ground.
+static func set_rotor_wash(h: Node3D, strength: float, wet: bool) -> void:
+	var on := strength > 0.06
+	for i in 2:
+		var p := h.get_child(i) as GeometryInstance3D
+		var want := on and wet == (i == 1)
+		if want != is_emitting(p):
+			set_emitting(p, want)
+		if want:
+			set_ratio(p, clampf(strength, 0.2, 1.0))
 
 
 ## Thick white smoke screen (grenade / mortar smoke); FogVolume adds real

@@ -1,0 +1,24 @@
+{
+  "entry": "changelog/unreleased/cinematic-lighting.md",
+  "summary": "A Cinematic preset: physical sky, shadows from fires and flares, sun shafts, lens flare, local exposure, eye adaptation and a film look; adaptive sun shadows from Medium up.",
+  "medium": "still",
+  "stage": "game capture flags (--screenshot, --offscreen, --fixed-fps 30)",
+  "rationale": "Lighting is appearance: one matched sheet of the same camera, seed and moment on Ultra and Cinematic for the three lighting situations the effects change most (a low sun in view, night fires, golden hour from the command camera), plus a 1:1 crop for the shadow fit. Eye adaptation's change over time and the GPU cost are described in text: an in-run A/B could not separate the passes' cost from run noise.",
+  "source_ref": "69a1df0348fb879aa98d5fbfd7f02ac31a10c6d7",
+  "before_ref": "69a1df0348fb879aa98d5fbfd7f02ac31a10c6d7",
+  "capture": {
+    "renderer": "Forward+ (Vulkan), NVIDIA GeForce RTX 3090, 1600x900, off-screen window",
+    "dawn": "--host --team=0 --seed=3 --mood=dawn --zoom=40 --pitch=-4 --cam-yaw=4.363 --shot-at=8 --nohud --perf=0, --preset=ultra and --preset=cinematic",
+    "night": "--scenario=roster --seed=3 --mood=night --focus=-84,24 --zoom=34 --shot-at=10 --nohud --perf=0, --preset=ultra and --preset=cinematic",
+    "golden": "--scenario=roster --seed=3 --mood=golden --focus=-84,24 --zoom=34 --shot-at=10 --nohud --perf=0, --preset=ultra and --preset=cinematic",
+    "shadows": "--scenario=roster --seed=3 --mood=golden --focus=-70,30 --zoom=14 --shot-at=6 --preset=high --set=shadow_fit:false / true, crop 1150,440-1590,688",
+    "note": "All runs use --fixed-fps 30. Ultra and Cinematic share the battle's seed and time, but smoke, scenery streaming and the battle itself can differ slightly from run to run."
+  },
+  "sources": [
+    {
+      "file": "changelog/unreleased/cinematic-lighting/comparison.jpg",
+      "sha256": "30c3f5e69f19cf10b321d771fd7e016e9020ed78fd2c78663b4c8719d6f29423"
+    }
+  ],
+  "output": null
+}
