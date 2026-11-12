@@ -364,6 +364,10 @@ func _yard(root: Node3D, w: float, d: float) -> void:
 	yards.call("woodpile", k.at_point(Vector3(w * 0.5 - 1.5, 0, d * 0.5 + 0.41)), 1.8, rng)
 	yards.call("garden_set", k.at_point(Vector3(-w * 0.22, 0, d * 0.5 + 1.9), Vector3(0, 0.4, 0)), rng, true)
 	yards.call("kennel", k.at_point(Vector3(-w * 0.5 + 1.2, 0, d * 0.5 + 2.2), Vector3(0, PI + 0.3, 0)), Color(0.45, 0.32, 0.2))
+	# (a shed and a trampoline, where the yards have them)
+	if yards.get("SHEDS") != null:
+		yards.call("shed", k.at_point(Vector3(w * 0.5 - 1.3, 0, d * 0.5 + 4.4), Vector3(0, PI, 0)), yards.get("SHEDS")[0], rng)
+		yards.call("trampoline", k.at_point(Vector3(-1.2, 0, d * 0.5 + 5.4)), yards.get("PADS")[0])
 	Mats.merge_static(root)
 
 
