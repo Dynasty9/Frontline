@@ -25,7 +25,7 @@ const LIST := [
 	["draw", "[VIEW]", "Debug views: normal, overdraw (where see-through effects pile up), wireframe, unshaded, lighting, normals, shadows, ssao."],
 	["set", "SETTING VALUE", "Changes a setting now, as Settings would (set shadows off, set grass 0, set scale 0.77)."],
 	["settings", "[filter]", "The settings and their values."],
-	["preset", "low | medium | high | ultra", "Applies a graphics preset."],
+	["preset", "low | medium | high | ultra | cinematic", "Applies a graphics preset."],
 	["report", "", "Writes all of the above to a file and copies it to the clipboard, to share."],
 	["save", "", "Saves the console scrollback as a plain-text file."],
 	["clear", "", "Clears the console."],
@@ -45,6 +45,13 @@ const BENCH := [
 	["glow", false, "Glow off"],
 	["aa", 0, "Anti-aliasing off"],
 	["dof", false, "Depth of field off"],
+	["light_shadows", 0, "Shadows from fire and flares off"],
+	["phys_sky", false, "Physical sky off"],
+	["lens", false, "Lens flare and glare off"],
+	["shafts", false, "Sun shafts off"],
+	["local_exp", false, "Local exposure off"],
+	["eye_adapt", false, "Eye adaptation off"],
+	["film", false, "Film look off"],
 	["post", false, "Post-processing off"],
 	["grass", 0, "Grass off"],
 	["water", 0, "Water on Low"],
@@ -116,7 +123,7 @@ func complete(cmd: String, args: PackedStringArray) -> Array:
 		"draw":
 			return DRAWS.keys()
 		"preset":
-			return ["low", "medium", "high", "ultra"]
+			return Settings.PRESET_KEYS.duplicate()
 		"set", "settings":
 			if args.is_empty():
 				var keys := Settings.v.keys()
@@ -638,7 +645,7 @@ func c_settings(a: PackedStringArray) -> void:
 func c_preset(a: PackedStringArray) -> void:
 	var p := a[0].to_lower() if not a.is_empty() else ""
 	if not Settings.PRESETS.has(p):
-		con.bad("preset low, medium, high or ultra.")
+		con.bad("preset low, medium, high, ultra or cinematic.")
 		return
 	if not _bench.is_empty():
 		con.bad("Not while the benchmark runs (bench stop ends it).")

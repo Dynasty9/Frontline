@@ -1101,12 +1101,46 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
 - Everything can be shot up and repaired. Any FOB can be captured by whoever walks in and holds it. Lose your last FOB and you lose, but a side's last FOB is a last stand and takes four times as long to capture, and HQ sends a free reserve squad every 75 s to a side that is down to its last few soldiers.
 - Fog of war, drawn on the ground and the minimap, with intel pings and last-known enemy positions.
 
-**Look and feel** (`atmosphere.gd`, `mats.gd`, `vehicle_models.gd`, `vfx.gd`, `gunfx.gd`, `grass.gd`, `wildlife.gd`, `ui/`)
+**Look and feel** (`atmosphere.gd`, `cinematic_fx.gd`, `physical_sky.gd`, `mats.gd`, `vehicle_models.gd`, `vfx.gd`, `gunfx.gd`, `grass.gd`, `wildlife.gd`, `ui/`)
 - Eight lighting moods (midday, golden hour, dawn, dusk, overcast, hazy, **night**, **rain & thunder**) with a
   procedural sky, AgX tonemapping, cloud shadows drifting over the ground, volumetric haze and a subtle film look.
   At night the sky fills with stars and illumination flares drift down on parachutes over the fighting, throwing
   moving shadows. In the rain, streaks fall around the camera, splashes hit the ground, puddles reflect the sky and
   lightning flashes are followed by thunder.
+- **Cinematic lighting** (`atmosphere.gd`, `cinematic_fx.gd`, `physical_sky.gd`), each part its own setting and all
+  of it on the **Cinematic** preset (Ultra plus everything below; for a fast graphics card, screenshots and replays).
+  None of it reaches the simulation, so it can't change a battle or its seed.
+  - **Adaptive shadows** (on from Medium up): the sun's shadow cascades are fitted every frame to the ground the
+    camera can see, instead of always reaching 800 m, so close in every cascade is several times as fine. The fit is
+    worked out from the view's corner rays (the idea of sample distribution shadow maps, Lauritzen, Salvi and Lefohn,
+    I3D 2011) and split by the practical scheme of parallel-split shadow maps (Zhang et al. 2006); the reach moves in
+    tenths, so a still or panning camera keeps its fit and only zooming re-fits.
+  - **Shadows from fire and flares**: explosions, muzzle flashes, burning wrecks, illumination flares and street lamps
+    are in the `fx_light` group, and the two or six of them that light the most near the camera's focus are lent soft
+    (PCSS) cube-map shadows, re-picked ten times a second.
+  - **Physical sky** (golden hour, dawn, dusk, haze): each view ray is marched through a spherical atmosphere with
+    Rayleigh, Mie (Cornette-Shanks) and ozone, using Hillaire's coefficients ("A Scalable and Production Ready Sky and
+    Atmosphere Rendering Technique", EGSR 2020, after Bruneton and Neyret 2008), with the sunlight reaching each sample
+    marched too, so a low sun reddens and the earth's shadow rises at dusk; multiple scattering is an isotropic share of
+    that light. Its brightness matches the painted sky's average over the dome, so exposure and ambient stay where each
+    mood had them, and the copy the battlefield is lit and reflects by is nearly half way to a warm grey so shade
+    turns cool without going cyan. The sun's direction is passed in, not read from the light: a reflection probe draws
+    the sky with no light. Midday keeps its photographed sky; overcast, rain and night their painted ones.
+  - **Camera and lens** (Settings > Lighting & Look): compute passes run on the HDR scene just before it is
+    tonemapped (a `CompositorEffect`, Forward+ only), at a quarter of the resolution except the final composite.
+    Sun shafts are a radial blur of the open sky near the sun (Mitchell, GPU Gems 3, 2007). Lens flare and glare:
+    a Karis-weighted bright pass (Jimenez, SIGGRAPH 2014) feeds ghosts and a halo mirrored through the lens centre
+    (Hullin et al., SIGGRAPH 2011, as approximated in screen space by Chapman), anamorphic streaks from the hottest
+    cores only (Kawase's streak filter, GDC 2003), and the glare round each light lighting dust and grease on the
+    front glass. Local exposure pulls the scene's large-scale brightness towards its average and keeps the detail on
+    top (Durand and Dorsey, SIGGRAPH 2002), with the base blurred cross-bilaterally at quarter resolution and brought
+    back edge-aware (joint bilateral upsampling, Kopf et al., SIGGRAPH 2007). Eye adaptation meters the frame
+    (centre-weighted) and follows it quickly towards a flash and slowly back into the dark (Pattanaik et al., SIGGRAPH
+    2000), relative to the scene's own long-term level so a night battle stays night; at night, dusk and dawn colour
+    drains towards a cool grey as the rods take over (the Purkinje shift, after Thompson, Shirley and Ferwerda 2002).
+    Film look adds halation and contrast-adaptive sharpening (AMD FidelityFX CAS). Every pass scrubs NaN and infinite
+    pixels, so a bad one can't be smeared across the screen. The browser build has none of these (its renderer has
+    no compositor) and hides them.
 - **Wildlife** (`wildlife.gd`), drawn only on each player's own screen and never simulated or sent by the server,
   so it can't change a battle or its seed. Flocks of sparrows and starlings (pigeons about the town) feed on bare
   ground - tracks, yards, pavements, mud, shell holes, where the grass doesn't hide them - hopping and pecking,
