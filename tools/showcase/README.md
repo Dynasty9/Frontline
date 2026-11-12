@@ -27,6 +27,7 @@ lead artifact; original notes and supporting media remain under **Explore this c
 | Ground damage and blast timing | Immediate flash, lighter dust and actual crater aftermath | `blast-ground`: two six-second HE shots, open ground and stone cover, fixed 24 Hz |
 | Text | Reliability, compatibility, unrecorded sound or unmeasured performance | Short player outcome and original detail |
 | Vehicle surfaces | Fixed-light roster sheets, close-ups and material swatches | `vehicle-surfaces.tscn`; `--surface-out`, `--surface-kinds`, `--surface-team`, `--surface-single`, `--surface-swatches`, `--surface-offset` |
+| Building surfaces | Fixed-light building sheets, close-ups and the shared construction parts; matched before/after framing | `building-surfaces.tscn`; `--building-out`, `--building-kinds` (subjects, `kind:side[:variant]`), `--building-single`, `--building-rear`, `--building-components`, `--building-match=capture.json`, `--offscreen` |
 
 The website uses the main site’s Signal tokens and shadcn/Radix components.
 Do not embed a branded presentation frame inside the changelog layout: it duplicates

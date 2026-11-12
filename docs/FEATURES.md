@@ -648,8 +648,16 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   Nobody holds them at the start. They are the supply worth fighting over: see *Towns* under Base building and
   supply. (Missions don't have them; the dumps use their own random numbers, so a seed's map is otherwise
   unchanged.)
-- Houses have dressed facades: sills and lintels, painted window frames with mullion and transom, panes (many
-  shot out), shutters, door frames, steps and double doors hanging open.
+- Houses are rendered and painted, bare brick or rough stone, and dressed as they're built: a darker plinth and a
+  band under the eaves, sills and lintels in render, concrete or dressed stone (a keystone over stone windows),
+  painted window frames with mullion and transom, panes whole, cracked to shards or shot out, louvred or boarded
+  shutters on their hinges, door frames, steps, now and then a hood over the door, and double doors hanging open.
+  Pitched roofs bear on the walls with a fascia, barge boards, gutters and downpipes, a round-tiled ridge and
+  often a chimney with its pots; flat roofs have a coped parapet, scuppers with a hopper and downpipe, and the
+  water tanks, air conditioners and dishes on them. Garden walls have saddleback stone copings, or brick-on-edge
+  over a blue-brick base. All of it, and the military buildings' weatherboard, sheeting, roller shutters, north
+  lights, masts and guys, drums, crates and pallets, comes from shared building components (see
+  [building-components.md](building-components.md)).
 - Walls, hedges, trees, cars and crates are all real cover. Street furniture is set dressing generated on the
   server and built on each client, and it breaks: a blast or a vehicle driving through knocks lamps, utility poles
   (their wires come down with them), signs, benches, bins, fences and playground kit over, and the pieces fall and
