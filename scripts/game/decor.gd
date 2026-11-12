@@ -761,5 +761,6 @@ func _apply_mood_chunk(key: Vector2i) -> void:
 		l.omni_attenuation = 1.1
 		l.shadow_enabled = false
 		l.position = p
+		l.add_to_group(&"fx_light")
 		add_child(l)
 		_light_nodes[key].append(l)

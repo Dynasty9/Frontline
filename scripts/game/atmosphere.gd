@@ -68,6 +68,9 @@ var forest: DistantForest
 var wildlife: Wildlife
 var _d := {}
 var _mood_asked := ""  # the Time of day setting as the battle began: changing it mid-battle switches the mood live
+var cine: CinematicFx  # the lens and eye passes (Settings > Lighting & Look > Camera and lens), once one is on
+var _phys_sky: ShaderMaterial
+var _phys_on := false
 
 
 func setup(w: World) -> void:
@@ -223,7 +226,26 @@ func grass_amount(p: Vector3) -> float:
 
 # --- environment ---------------------------------------------------------------------
 
+## The physical sky for this mood (Settings > Graphics > Physical sky; not in
+## the browser, whose renderer would march it per pixel on a phone's GPU).
+func _use_phys_sky() -> bool:
+	return bool(Settings.get_v("phys_sky")) and PhysicalSky.MOODS.has(mood) and not OS.has_feature("web")
+
+
 func _apply_sky() -> void:
+	_phys_on = _use_phys_sky()
+	if _phys_on:
+		if _phys_sky == null:
+			_phys_sky = PhysicalSky.make(mood)
+		else:
+			PhysicalSky.apply(_phys_sky, mood)
+		if sun:
+			PhysicalSky.set_sun(_phys_sky, sun)
+		env.sky.sky_material = _phys_sky
+		# a finer radiance map: the scattered sky is what vehicles and water reflect
+		env.sky.radiance_size = Sky.RADIANCE_SIZE_256
+		return
+	env.sky.radiance_size = Sky.RADIANCE_SIZE_128
 	if mood != "day":
 		env.sky.sky_material = sky_mat
 		return
@@ -341,6 +363,8 @@ func _build_env() -> void:
 	rim.light_specular = 0.3
 	rim.light_volumetric_fog_energy = 0.0
 	add_child(rim)
+	if _phys_on:
+		PhysicalSky.set_sun(_phys_sky, sun)
 
 
 var trench_net: TrenchNet
@@ -696,6 +720,7 @@ func _spawn_flare(p: Vector3) -> void:
 	l.light_energy = 0.0
 	l.shadow_enabled = _flares.size() < 2 and int(Settings.get_v("shadows")) >= 2
 	l.light_volumetric_fog_energy = 2.0
+	l.add_to_group(LIGHT_GROUP)
 	root.add_child(l)
 	var glow := MeshInstance3D.new()
 	glow.mesh = world.fx.vfx.quad if world.fx and world.fx.vfx else QuadMesh.new()
@@ -777,6 +802,8 @@ func apply_mood(m: String) -> void:
 	sun.rotation_degrees = Vector3(-float(_d.elev), float(_d.azim), 0)
 	sun.light_color = _d.sun
 	sun.light_energy = float(_d.energy)
+	if _phys_on:
+		PhysicalSky.set_sun(_phys_sky, sun)
 	rim.rotation_degrees = Vector3(-25.0, float(_d.azim) + 180.0, 0)
 	rim.light_energy = 0.28 if mood != "overcast" else 0.12
 	ground_mat.set_shader_parameter("cloud_strength", float(_d.clouds))
@@ -788,6 +815,8 @@ func apply_mood(m: String) -> void:
 		water_view.apply_mood(_d, mood)
 	if world.fx and world.fx.vfx:
 		world.fx.vfx.apply_lighting()
+	if cine:
+		cine.reset_adaptation = true  # a new light: the eye starts afresh
 
 
 func apply_settings() -> void:
@@ -838,6 +867,19 @@ func apply_settings() -> void:
 			sun.light_angular_distance = float(_d.soft)
 	RenderingServer.directional_soft_shadow_filter_set_quality(
 		[RenderingServer.SHADOW_QUALITY_HARD, RenderingServer.SHADOW_QUALITY_SOFT_LOW, RenderingServer.SHADOW_QUALITY_SOFT_MEDIUM, RenderingServer.SHADOW_QUALITY_SOFT_HIGH][sh])
+	# the cascades' own splits; the adaptive fit (_fit_shadows) moves them next frame
+	sun.directional_shadow_split_1 = 0.1
+	sun.directional_shadow_split_2 = 0.2
+	sun.directional_shadow_split_3 = 0.5
+	_fit_far = -1.0
+	if int(s.get_v("light_shadows")) > 0:
+		# soft shadows from the lights' own size (PCSS), as good as the sun's
+		RenderingServer.positional_soft_shadow_filter_set_quality(
+			[RenderingServer.SHADOW_QUALITY_HARD, RenderingServer.SHADOW_QUALITY_SOFT_LOW, RenderingServer.SHADOW_QUALITY_SOFT_MEDIUM, RenderingServer.SHADOW_QUALITY_SOFT_HIGH][sh])
+	_light_shadows_t = 0.0
+	if _use_phys_sky() != _phys_on:
+		_apply_sky()
+	_apply_cinematic()
 	RenderingServer.environment_set_volumetric_fog_volume_size(128 if sh >= 3 else 96, 96 if sh >= 3 else 64)
 	post_layer.visible = s.get_v("post")
 	cam_attr.dof_blur_far_enabled = s.get_v("dof")
@@ -903,6 +945,12 @@ func _view_process(_dt: float) -> void:
 	if _rain:
 		_rain_tick(_dt / maxf(0.0001, Engine.time_scale) if Engine.time_scale > 0.001 else 0.016)
 	_apply_haze(world.cam.dist)
+	var real_dt := _dt / maxf(0.0001, Engine.time_scale) if Engine.time_scale > 0.001 else 0.016
+	_fit_shadows()
+	_light_shadows_tick(real_dt)
+	_cine_tick(real_dt)
+	if _cine_ab_on:
+		_cine_ab(real_dt)
 	if not Settings.get_v("dof"):
 		return
 	# gentle tilt-shift: keep the focus plane at the camera's target
@@ -911,6 +959,243 @@ func _view_process(_dt: float) -> void:
 	cam_attr.dof_blur_far_transition = d * 0.9
 	cam_attr.dof_blur_near_distance = d * 0.55
 	cam_attr.dof_blur_near_transition = d * 0.3
+
+
+# --- cinematic lighting -------------------------------------------------------
+
+## The sun's shadow reach for each Shadow quality (as apply_settings sets it).
+const SHADOW_REACH := [0.0, 140.0, 800.0, 1200.0]
+var _fit_far := -1.0  # the reach the adaptive fit last set (-1: not fitted)
+
+
+## Adaptive shadows: the sun's cascades are fitted to the ground the camera can
+## actually see, rather than reaching 800 m out whatever the zoom. A shadow
+## map's texels are spread over its reach, so close in, where the far edge of
+## the view is 80 m away, every cascade is several times as fine. This is the
+## idea of sample distribution shadow maps (Lauritzen, Salvi and Lefohn,
+## I3D 2011), worked out from the view's corner rays instead of reading the
+## depth buffer back, and the splits follow the practical scheme of parallel-
+## split shadow maps (Zhang et al. 2006): logarithmic near the camera, blended
+## with even steps. The reach moves in steps of a tenth, so a still or panning
+## camera keeps its fit and its shadows don't swim; only zooming re-fits.
+func _fit_shadows() -> void:
+	var sh := int(Settings.get_v("shadows"))
+	if sh <= 0 or not bool(Settings.get_v("shadow_fit")) or world.cam == null or world.cam.cam == null:
+		return
+	var peak := world.terrain.landform.peak if world.terrain else 0.0
+	var fit := fit_cascades(world.cam.cam, world.cam.focus_pos.y, peak, SHADOW_REACH[clampi(sh, 0, 3)], 4 if sh >= 2 else 2)
+	if absf(fit[0] - _fit_far) < 0.01:
+		return
+	_fit_far = fit[0]
+	sun.directional_shadow_max_distance = fit[0]
+	sun.directional_shadow_split_1 = fit[1]
+	if fit.size() > 2:
+		sun.directional_shadow_split_2 = fit[2]
+		sun.directional_shadow_split_3 = fit[3]
+
+
+## [reach, split 1, (split 2, split 3)] for a camera looking at ground at
+## focus_y, on a map whose highest ground stands peak metres up.
+static func fit_cascades(c: Camera3D, focus_y: float, peak: float, reach: float, count: int) -> PackedFloat32Array:
+	var size := c.get_viewport().get_visible_rect().size
+	var fwd := -c.global_transform.basis.z
+	# the far edge measured to below the focus (valleys beyond it are lower), the
+	# near one to above it (what stands up out of the ground is nearer)
+	var low := focus_y - 4.0 - 0.12 * peak
+	var high := focus_y + 3.0
+	var far := 0.0
+	var near := reach
+	for k in 5:
+		var corner := Vector2(size.x * float(k & 1), size.y * float((k >> 1) & 1)) if k < 4 else Vector2(size.x * 0.5, 0.0)
+		var o := c.project_ray_origin(corner)
+		var d := c.project_ray_normal(corner)
+		if d.y > -0.02 or o.y <= low:
+			far = reach  # at or over the horizon: as far as shadows ever go
+			continue
+		far = maxf(far, (d * ((o.y - low) / -d.y)).dot(fwd))
+		if o.y > high:
+			near = minf(near, (d * ((o.y - high) / -d.y)).dot(fwd))
+	far = clampf(far * 1.25, 30.0, reach)
+	far = minf(reach, pow(1.1, ceilf(log(far) / log(1.1))))
+	var out := PackedFloat32Array([far])
+	var n := clampf(near * 0.6, 1.0, far * 0.3)
+	for i in range(1, count):
+		var f := float(i) / float(count)
+		out.append(lerpf(n + (far - n) * f, n * pow(far / n, f), 0.7) / far)
+	return out
+
+
+## Lights that may throw shadows (explosions, muzzle flashes, fires, flares,
+## street lamps) are in this group; "Shadows from fire and flares" lends
+## shadows to the brightest few near the camera.
+const LIGHT_GROUP := &"fx_light"
+var _light_shadows_t := 0.0
+var _shadowed: Array[OmniLight3D] = []
+
+
+func _light_shadows_tick(dt: float) -> void:
+	_light_shadows_t -= dt
+	if _light_shadows_t > 0.0:
+		return
+	_light_shadows_t = 0.1
+	# (not in the browser: each shadow renders the scene six more times)
+	var want: int = [0, 2, 6][clampi(int(Settings.get_v("light_shadows")), 0, 2)] if int(Settings.get_v("shadows")) > 0 and not OS.has_feature("web") else 0
+	if want == 0 and _shadowed.is_empty():
+		return
+	var picked: Array[OmniLight3D] = []
+	if want > 0:
+		picked = pick_shadowed(get_tree().get_nodes_in_group(LIGHT_GROUP), world.cam.focus_pos, want)
+	for l in _shadowed:
+		if is_instance_valid(l) and not picked.has(l):
+			l.shadow_enabled = bool(l.get_meta(&"own_shadow", false))
+	for l in picked:
+		if not l.has_meta(&"own_shadow"):
+			l.set_meta(&"own_shadow", l.shadow_enabled)
+			# a flame or a flare is a body of fire, not a point: soft-edged shadows
+			l.light_size = maxf(l.light_size, 0.35)
+			l.omni_shadow_mode = OmniLight3D.SHADOW_CUBE
+			l.shadow_bias = 0.08
+			l.shadow_normal_bias = 1.5
+		l.shadow_enabled = true
+	_shadowed = picked
+
+
+## The n lights most worth a shadow: lit, within 150 m of the camera's focus,
+## and scored by what they light and how near the focus they light it.
+static func pick_shadowed(lights: Array, focus: Vector3, n: int) -> Array[OmniLight3D]:
+	var scored := []
+	for node in lights:
+		var l := node as OmniLight3D
+		if l == null or l.light_energy < 0.4 or not l.is_visible_in_tree():
+			continue
+		var d2 := l.global_position.distance_squared_to(focus)
+		if d2 > 22500.0:
+			continue
+		scored.append([l.light_energy * l.omni_range * l.omni_range / (400.0 + d2), l])
+	scored.sort_custom(func(a: Array, b: Array) -> bool: return float(a[0]) > float(b[0]))
+	var out: Array[OmniLight3D] = []
+	for i in mini(n, scored.size()):
+		out.append(scored[i][1])
+	return out
+
+
+## How far the eye has gone over to its rods (night vision), by mood.
+const NIGHT_VISION := {"night": 0.8, "dusk": 0.18, "dawn": 0.12, "rain": 0.06}
+## How strongly the sun streams through what stands against it, by mood.
+const SHAFTS_BY_MOOD := {"day": 0.55, "golden": 1.0, "dawn": 1.15, "dusk": 1.15, "hazy": 1.35, "overcast": 0.12, "rain": 0.0, "night": 0.3}
+
+
+func _apply_cinematic() -> void:
+	var s := Settings
+	var want := bool(s.get_v("lens")) or bool(s.get_v("shafts")) or bool(s.get_v("local_exp")) or bool(s.get_v("eye_adapt")) or bool(s.get_v("film"))
+	if want and cine == null and world.has_view and CinematicFx.supported():
+		cine = CinematicFx.new()
+		var effects: Array[CompositorEffect] = [cine]
+		var comp := Compositor.new()
+		comp.compositor_effects = effects
+		we.compositor = comp
+	if cine == null:
+		return
+	if bool(s.get_v("eye_adapt")) and not cine.eye:
+		cine.reset_adaptation = true
+	cine.lens = bool(s.get_v("lens"))
+	cine.local_exposure = bool(s.get_v("local_exp"))
+	cine.eye = bool(s.get_v("eye_adapt"))
+	cine.film = bool(s.get_v("film"))
+	cine.enabled = want
+
+
+## FL_DEBUG_CINE_AB=passes (or =light_shadows): what the lens and eye passes
+## (or the shadows from fire and flares) cost the graphics card. They're
+## switched off and on every two seconds in the same run, so whatever else
+## loads the machine falls on both halves alike, and the frame's GPU time is
+## averaged for each (the first frames after a switch left out).
+var _cine_ab_on := OS.has_environment("FL_DEBUG_CINE_AB")
+var _ab_t := 0.0
+var _ab_skip := 0
+var _ab_sum := [0.0, 0.0]
+var _ab_n := [0, 0]
+var _ab_switches := 0
+
+
+func _cine_ab(dt: float) -> void:
+	var lights := OS.get_environment("FL_DEBUG_CINE_AB") == "light_shadows"
+	if cine == null and not lights:
+		return
+	var vp := get_viewport().get_viewport_rid()
+	RenderingServer.viewport_set_measure_render_time(vp, true)
+	var on := (1 if int(Settings.v.light_shadows) > 0 else 0) if lights else (1 if cine.enabled else 0)
+	if _ab_skip > 0:
+		_ab_skip -= 1
+	else:
+		_ab_sum[on] += RenderingServer.viewport_get_measured_render_time_gpu(vp)
+		_ab_n[on] += 1
+	_ab_t += dt
+	if _ab_t < 2.0:
+		return
+	_ab_t = 0.0
+	_ab_skip = 6
+	if lights:
+		Settings.v.light_shadows = 0 if on == 1 else 2
+		_light_shadows_t = 0.0
+	else:
+		cine.enabled = not cine.enabled
+	_ab_switches += 1
+	if _ab_switches % 6 == 0 and _ab_n[0] > 0 and _ab_n[1] > 0:
+		print("CINEMATIC A/B %s gpu: off %.2f ms (%d frames), on %.2f ms (%d frames)" % ["light shadows" if lights else "passes",
+			_ab_sum[0] / _ab_n[0], _ab_n[0], _ab_sum[1] / _ab_n[1], _ab_n[1]])
+
+
+## The view's numbers for the lens and eye passes, every frame.
+func _cine_tick(dt: float) -> void:
+	if cine == null or not cine.enabled or world.cam == null or world.cam.cam == null:
+		return
+	var c := world.cam.cam
+	var vp := c.get_viewport().get_visible_rect().size
+	var p := PackedFloat32Array()
+	p.resize(CinematicFx.PARAMS)
+	var to_sun := sun.global_transform.basis.z
+	var sun_uv := Vector2(0.5, -2.0)
+	var seen := 0.0
+	var at := c.global_position + to_sun * 2000.0
+	if to_sun.y > -0.05 and not c.is_position_behind(at):
+		sun_uv = c.unproject_position(at) / vp
+		# the rays still stream in from a sun just out of the frame
+		var out := maxf(absf(sun_uv.x - 0.5), absf(sun_uv.y - 0.5)) - 0.5
+		seen = (1.0 - smoothstep(0.0, 0.5, out)) * smoothstep(-0.03, 0.05, to_sun.y)
+	var shafts: float = SHAFTS_BY_MOOD.get(mood, 0.5)
+	cine.shafts = bool(Settings.get_v("shafts")) and seen > 0.001 and shafts > 0.0
+	p[4] = sun_uv.x
+	p[5] = sun_uv.y
+	p[6] = seen
+	p[7] = vp.x / maxf(vp.y, 1.0)
+	var sc := sun.light_color * sun.light_energy * 0.3
+	p[8] = sc.r
+	p[9] = sc.g
+	p[10] = sc.b
+	p[11] = shafts
+	# lens: ghosts and halo, streaks, dirt; what counts as bright (white is about 1)
+	p[12] = 0.9
+	p[13] = 0.3
+	p[14] = 1.2
+	p[15] = 2.2
+	# local exposure and eye adaptation strengths; the scene's exposure; the frame time
+	p[16] = 1.0
+	p[17] = 1.0
+	p[18] = env.tonemap_exposure
+	p[19] = dt
+	# film: halation, night vision (the eye's), sharpening
+	p[20] = 1.0
+	p[21] = float(NIGHT_VISION.get(mood, 0.0))
+	p[22] = 0.4
+	if OS.has_environment("FL_DEBUG_CINE_VIEW"):
+		p[23] = float(OS.get_environment("FL_DEBUG_CINE_VIEW"))
+	# the eye adapts to a flash in about half a second, back to the dark over
+	# a few, and its sense of the scene's usual level over about eight
+	p[24] = 2.6
+	p[25] = 0.7
+	p[26] = 0.12
+	cine.params = p
 
 
 ## No lower clamp: distant command cameras otherwise look through an ever
