@@ -385,9 +385,12 @@ func _make(h: Node3D, kind: String, ex) -> void:
 		"zebra":
 			var wd := float(ex)
 			var n := 6
+			# The centre line stops short of a crossing: the same asphalt as the
+			# road (it's laid in world space, so it joins without a seam) over it.
+			_m(Res.box(Vector3(6.6, 0.02, 0.5)), "asphalt", Vector3(0, 0.032, 0), null, Vector3.ZERO, false, true)
 			for i in n:
 				var z := -wd * 0.5 + (i + 0.5) * wd / n
-				_m(Res.box(Vector3(2.6, 0.01, wd / n * 0.5)), "paint", Vector3(0, 0.044, z), Color(0.86, 0.86, 0.82), Vector3.ZERO, false, true)
+				_m(Res.box(Vector3(2.6, 0.01, wd / n * 0.5)), "road_paint", Vector3(0, 0.044, z), Color(0.95, 0.95, 0.93), Vector3.ZERO, false, true)
 		"lamp":
 			if ex == 1:
 				_m(Res.cyl(0.08, 0.12, 6.0, 8), "wood_dark", Vector3(0, 3.0, 0))
@@ -616,14 +619,14 @@ func _make(h: Node3D, kind: String, ex) -> void:
 			_m(Res.box(Vector3(p2.x, 0.03, p2.z)), "pavement", Vector3(0, 0.02, 0), Color(0.56, 0.53, 0.47), Vector3.ZERO, false, true)
 		"pave":
 			var pv: Vector3 = ex
-			_m(Res.box(Vector3(pv.x, 0.1, pv.z)), "floor_tiles", Vector3(0, 0.05, 0), Color(0.62, 0.58, 0.52), Vector3.ZERO, false, true)
+			_m(Res.box(Vector3(pv.x, 0.1, pv.z)), "square_paving", Vector3(0, 0.05, 0), Color(0.56, 0.535, 0.49), Vector3.ZERO, false, true)
 		"lot_pave":
 			var lp: Vector3 = ex
 			_m(Res.box(Vector3(lp.x, 0.04, lp.z)), "asphalt", Vector3(0, 0.025, 0), null, Vector3.ZERO, false, true)
 			var slots := int(lp.x / 2.6)
 			for i in slots + 1:
 				var x := -lp.x * 0.5 + i * 2.6 + (lp.x - slots * 2.6) * 0.5
-				_m(Res.box(Vector3(0.08, 0.005, 4.6)), "paint", Vector3(x, 0.05, lp.y * 2.6), Color(0.85, 0.85, 0.8), Vector3.ZERO, false, true)
+				_m(Res.box(Vector3(0.08, 0.005, 4.6)), "road_paint", Vector3(x, 0.05, lp.y * 2.6), Color(0.94, 0.94, 0.9), Vector3.ZERO, false, true)
 
 
 func _bench(o: Vector3) -> void:
