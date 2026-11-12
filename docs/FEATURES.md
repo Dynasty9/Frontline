@@ -655,7 +655,12 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   Pitched roofs bear on the walls with a fascia, barge boards, gutters and downpipes, a round-tiled ridge and
   often a chimney with its pots; flat roofs have a coped parapet, scuppers with a hopper and downpipe, and the
   water tanks, air conditioners and dishes on them. Garden walls have saddleback stone copings, or brick-on-edge
-  over a blue-brick base. All of it, and the military buildings' weatherboard, sheeting, roller shutters, north
+  over a blue-brick base. Houses look lived in: drapes, blinds and nets in the windows, flowers in window boxes,
+  lanterns by front doors, TV aerials on the roofs, and inside (seen when the roof hides for the men in there, or
+  in a ruin) painted walls with skirting, radiators, pictures, mirrors, clocks, shelves of books and rugs, all
+  hung flat or laid flat so nothing stands where a man does. At dusk and at night a lamp is on behind about a
+  third of the windows, in the barracks and the research post, under the factory's north lights and in the door
+  lanterns (brightest at night, a glimmer on a dark day). All of it, and the military buildings' weatherboard, sheeting, roller shutters, north
   lights, masts and guys, drums, crates and pallets, comes from shared building components (see
   [building-components.md](building-components.md)).
 - Walls, hedges, trees, cars and crates are all real cover. Street furniture is set dressing generated on the
@@ -1168,6 +1173,17 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
     Film look adds halation and contrast-adaptive sharpening (AMD FidelityFX CAS). Every pass scrubs NaN and infinite
     pixels, so a bad one can't be smeared across the screen. The browser build has none of these (its renderer has
     no compositor) and hides them.
+  - **Heat haze** (Camera and lens; `heat_haze.gd`, the heat pass in `cinematic_fx.gd`): the air shimmers over fires
+    and burning wrecks, over the engine decks of vehicles with their engines running and out of their exhausts (a
+    helicopter's turbines too, beaten down by its rotor), and for a moment round a blast, a tank gun's muzzle and a
+    launcher's back-blast. Each source is a blob of hot air stretched along its axis (a Gaussian: up for a fire, out
+    of the pipe and up for an exhaust). `Vfx.heat_sources` and `Vehicle.heat_sources` add them every frame, the
+    models mark their exhaust mouths (`VehicleModels.exhausts`), and the 48 in view that would show the most go to the
+    graphics card. At quarter resolution the heat pass integrates each one along every view ray in closed form, cut
+    off where the ray meets the scene, so whatever stands in front of a fire is never bent by it; the turbulence is
+    noise carried up the source's axis in the world, and the bend is sized in metres at the hot air, so nearer haze
+    bends more and haze too small on screen to read is left out. The composite then bends only what lies behind the
+    hot air, and never pulls in the sky or anything in front of it. With Reduce motion on, the air holds still.
 - **Wildlife** (`wildlife.gd`), drawn only on each player's own screen and never simulated or sent by the server,
   so it can't change a battle or its seed. Flocks of sparrows and starlings (pigeons about the town) feed on bare
   ground - tracks, yards, pavements, mud, shell holes, where the grass doesn't hide them - hopping and pecking,

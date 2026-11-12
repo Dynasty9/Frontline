@@ -2825,6 +2825,48 @@ func _flight_view(dt: float) -> void:
 		Vfx.set_rotor_wash(_wash, strength, wet)
 
 
+## (view) The heat its engines put into the air, for the heat haze (HeatHaze):
+## over the engine deck at the back, where a tank's or a truck's radiators and
+## grilles let it out, and out of every exhaust pipe the model has, harder
+## when it's working than idling. A helicopter's turbines blow theirs out of
+## their pipes, beaten down by the rotor once it's turning fast.
+func heat_sources(hh: HeatHaze) -> void:
+	var b := base()
+	if b == "uav" or b == "gunship":
+		return  # (a drone's motors are cool; a gunship orbits far overhead)
+	var hs := _hull_size()
+	var xf := model.global_transform
+	var work := 0.55
+	var down := 0.0
+	if rotor:
+		var spin := clampf(_rotor_spd / 30.0, 0.0, 1.0)
+		if spin < 0.05:
+			return  # (shut down)
+		work = 0.5 + 0.6 * spin
+		down = 0.7 * smoothstep(0.6, 1.0, spin)
+	elif dust and Vfx.is_emitting(dust):
+		work = 1.0
+	var hot: float = [0.6, 0.8, 1.0][clampi(weight(), 0, 2)] * work
+	if not rotor:
+		# the engine deck: hot air off the radiators, rising
+		var w := clampf(hs.x * 0.22, 0.4, 0.7)
+		var deck := xf * Vector3(0.0, hs.y * 0.6, hs.z * 0.3)
+		hh.add(deck + Vector3.UP * (w * 1.4), w, Vector3.UP, 1.8, hot, 1.6, 0.26, 1.0)
+	elif _vm == null or _vm.exhausts.is_empty():
+		# the turbines' outlets high on the back of the cabin
+		var t := xf * Vector3(0.0, hs.y * 0.8, hs.z * 0.15)
+		var ax := (xf.basis.z.normalized() + Vector3.UP * (0.6 - down)).normalized()
+		hh.add(t + ax * 0.9, 0.4, ax, 2.6, hot, 3.0, 0.24, 1.6)
+	if _vm == null:
+		return
+	for e in _vm.exhausts:
+		var ex := xf * e
+		# out of the pipe, then up on its own heat (or down in a rotor's wash)
+		var ax := (ex.basis.y.normalized() + Vector3.UP * (0.8 - 1.4 * down)).normalized()
+		var w := 0.32 if rotor else 0.24
+		hh.add(ex.origin + ax * (w * 1.9), w, ax, 2.6, hot * (1.0 if rotor else 0.75), 3.0, 0.22, 1.6)
+
+
 var _cables: MeshInstance3D
 
 

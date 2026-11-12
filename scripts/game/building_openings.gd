@@ -25,6 +25,8 @@ const IRON := Color(0.17, 0.16, 0.15)
 ##   glazing      chance each pane is whole (0.4); of the rest, `cracked` (0.5) hold shards
 ##   shutters     a colour, for a pair of shutters folded back on their hinges
 ##   shutter      "boarded" or "louvred"                  open       how far each swings off the wall (rad)
+##   curtains     "drapes", "blind" or "nets" (BuildingFurnishings.curtains), in `curtain` colour
+##   lit          a lamp on in the room: the whole panes glow by night (the `window_lit` glass)
 ##   sill, head   false for none
 static func window(k: BuildingKit, c: Vector3, size: Vector2, opts := {}) -> void:
 	var material: String = opts.get("material", "plaster")
@@ -42,7 +44,9 @@ static func window(k: BuildingKit, c: Vector3, size: Vector2, opts := {}) -> voi
 		head(k, c.x, c.y + h * 0.5, w, material, wall)
 	var fp := Vector3(c.x, c.y, -inset)
 	k.part(frame_shape(w, h, mullions, transom), fk, Transform3D(Basis.IDENTITY, fp), fc)
-	panes(k, fp, size, mullions, transom, opts.get("glazing", 0.4), opts.get("cracked", 0.5))
+	panes(k, fp, size, mullions, transom, opts.get("glazing", 0.4), opts.get("cracked", 0.5), "window_lit" if opts.get("lit", false) else "glass")
+	if opts.get("curtains", "") != "":
+		BuildingFurnishings.curtains(k, fp, size, opts.curtains, opts.get("curtain", BuildingFurnishings.FABRICS[0]))
 	if opts.get("shutters") is Color:
 		var open: Array = opts.get("open", [0.1, 0.1])
 		var style: String = opts.get("shutter", "boarded")
@@ -99,7 +103,7 @@ static func frame_shape(w: float, h: float, mullions: int, transom: float) -> Ar
 
 ## The panes between the bars of a frame at `fp`: each one whole, cracked to
 ## the shards still in its putty, or gone.
-static func panes(k: BuildingKit, fp: Vector3, size: Vector2, mullions: int, transom: float, whole: float, cracked: float) -> void:
+static func panes(k: BuildingKit, fp: Vector3, size: Vector2, mullions: int, transom: float, whole: float, cracked: float, glass := "glass") -> void:
 	var fw := 0.07
 	var cols := mullions + 1
 	var inner := Vector2(size.x - fw * 2.0, size.y - fw * 2.0)
@@ -115,7 +119,7 @@ static func panes(k: BuildingKit, fp: Vector3, size: Vector2, mullions: int, tra
 			var mid := fp + Vector3((x0 + x1) * 0.5, (float(r[0]) + float(r[1])) * 0.5, 0)
 			var roll := k.rng.randf()
 			if roll < whole:
-				k.plate(Vector3(cell.x, cell.y, 0.012), mid, "glass", GLASS)
+				k.plate(Vector3(cell.x, cell.y, 0.012), mid, glass, GLASS)
 			elif k.rng.randf() < cracked:
 				var shard := shard_mesh(k.rng.randi() % 4)
 				k.part(shard, "glass", Transform3D(Basis.from_scale(Vector3(cell.x, cell.y, 1.0)), mid), GLASS, false)
@@ -314,8 +318,8 @@ static func louvre(k: BuildingKit, c: Vector3, size: Vector2, col: Color, kind :
 
 ## A band of glazing `size` centred on `c`, `panes` wide: head and sill
 ## rails, mullions, the glass behind them, a flashing over the sill.
-static func ribbon(k: BuildingKit, c: Vector3, size: Vector2, panes: int, col: Color, kind := "metal_dark") -> void:
-	k.plate(Vector3(size.x - 0.04, size.y - 0.04, 0.012), c + Vector3(0, 0, -0.02), "glass", GLASS)
+static func ribbon(k: BuildingKit, c: Vector3, size: Vector2, panes: int, col: Color, kind := "metal_dark", lit := false) -> void:
+	k.plate(Vector3(size.x - 0.04, size.y - 0.04, 0.012), c + Vector3(0, 0, -0.02), "window_lit" if lit else "glass", GLASS)
 	k.part(BuildingKit.shape("ribbon|%.2f|%.2f|%d" % [size.x, size.y, panes], func() -> Array:
 		var out: Array = []
 		for sy: float in [-1.0, 1.0]:

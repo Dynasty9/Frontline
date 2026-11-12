@@ -69,6 +69,8 @@ var wildlife: Wildlife
 var _d := {}
 var _mood_asked := ""  # the Time of day setting as the battle began: changing it mid-battle switches the mood live
 var cine: CinematicFx  # the lens and eye passes (Settings > Lighting & Look > Camera and lens), once one is on
+var heat := HeatHaze.new()  # what the heat haze bends the view over (only gathered while it's on)
+var _heat_t := 0.0
 var _phys_sky: ShaderMaterial
 var _phys_on := false
 
@@ -77,6 +79,7 @@ func setup(w: World) -> void:
 	world = w
 	mood = pick_mood(w.settings)
 	_d = MOODS[mood]
+	RenderingServer.global_shader_parameter_set("window_glow", lamplight(mood))
 	_mood_asked = String(Settings.get_v("mood"))
 	_make_noise()
 	_build_env()
@@ -777,12 +780,30 @@ static func _flare_canopy() -> ArrayMesh:
 	return _flare_canopy_mesh
 
 
+## How much of the lamplight in windows shows in a mood: all of it at
+## night, some at dusk and dawn, a little on a dark day, none in sunshine.
+static func lamplight(m: String) -> float:
+	match m:
+		"night":
+			return 1.0
+		"dusk":
+			return 0.55
+		"dawn":
+			return 0.35
+		"rain":
+			return 0.18
+		"overcast":
+			return 0.12
+	return 0.0
+
+
 ## Switches the lighting mood live (Settings > Time of day).
 func apply_mood(m: String) -> void:
 	if not MOODS.has(m):
 		return
 	mood = m
 	_d = MOODS[m]
+	RenderingServer.global_shader_parameter_set("window_glow", lamplight(mood))
 	_surface_baked = false
 	sky_mat.set_shader_parameter("zenith", _d.zenith)
 	sky_mat.set_shader_parameter("horizon", _d.horizon)
@@ -1087,7 +1108,7 @@ const SHAFTS_BY_MOOD := {"day": 0.55, "golden": 1.0, "dawn": 1.15, "dusk": 1.15,
 
 func _apply_cinematic() -> void:
 	var s := Settings
-	var want := bool(s.get_v("lens")) or bool(s.get_v("shafts")) or bool(s.get_v("local_exp")) or bool(s.get_v("eye_adapt")) or bool(s.get_v("film"))
+	var want := bool(s.get_v("lens")) or bool(s.get_v("shafts")) or bool(s.get_v("local_exp")) or bool(s.get_v("eye_adapt")) or bool(s.get_v("film")) or bool(s.get_v("heat_haze"))
 	if want and cine == null and world.has_view and CinematicFx.supported():
 		cine = CinematicFx.new()
 		var effects: Array[CompositorEffect] = [cine]
@@ -1102,7 +1123,12 @@ func _apply_cinematic() -> void:
 	cine.local_exposure = bool(s.get_v("local_exp"))
 	cine.eye = bool(s.get_v("eye_adapt"))
 	cine.film = bool(s.get_v("film"))
+	cine.heat_haze = bool(s.get_v("heat_haze"))
 	cine.enabled = want
+	heat.on = cine.heat_haze
+	if not heat.on:
+		heat.clear()
+		cine.heat = PackedFloat32Array()
 
 
 ## FL_DEBUG_CINE_AB=passes (or =light_shadows): what the lens and eye passes
@@ -1196,6 +1222,26 @@ func _cine_tick(dt: float) -> void:
 	p[25] = 0.7
 	p[26] = 0.12
 	cine.params = p
+	if cine.heat_haze:
+		_heat_tick(c, dt)
+
+
+## The heat haze's sources for this frame, and how the air moves. With Reduce
+## motion on the air holds still: the haze still bends the view, but nothing
+## swims.
+func _heat_tick(c: Camera3D, dt: float) -> void:
+	var still := bool(Settings.get_v("reduce_motion"))
+	if not still:
+		_heat_t = fmod(_heat_t + dt, 600.0)
+	cine.heat_time = _heat_t
+	cine.heat_bend = HEAT_BEND * (0.6 if still else 1.0)
+	cine.heat = heat.gather(world, c, dt)
+	if OS.has_environment("FL_DEBUG_CINE") and Engine.get_process_frames() % 150 == 0:
+		print("CINEMATIC heat haze: %d sources in view" % floori(cine.heat.size() / float(CinematicFx.HEAT_STRIDE)))
+
+
+## How far the hottest air bends what's seen through it (m, at the hot air).
+const HEAT_BEND := 0.22
 
 
 ## No lower clamp: distant command cameras otherwise look through an ever
