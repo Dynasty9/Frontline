@@ -102,7 +102,8 @@ func vehicle(vkind: String, pos: Vector3, yaw: float, team: int, owner: int) -> 
 ## A new objective (hidden until started). Ones with a place get a letter.
 func add(id: String, text: String, kind: String, extra := {}) -> Dictionary:
 	var o := {"id": id, "text": text, "kind": kind, "state": HIDDEN, "pos": Vector3.INF, "r": 30.0, "need": -1, "have": 0,
-		"secs": 0.0, "prog": 0.0, "eids": [], "optional": false, "label": "", "lost_t": 0.0, "grace": 30.0, "frac": 0.75, "track": false}
+		"secs": 0.0, "prog": 0.0, "eids": [], "optional": false, "label": "", "lost_t": 0.0, "grace": 30.0, "frac": 0.75, "track": false,
+		"on": [], "got": false, "fold": false}  # (on, got: a drill, "do"; fold: leaves the list once the next is done)
 	o.merge(extra, true)
 	# a place gets a letter and a marker, unless another objective already marks it
 	if o.pos is Vector3 and o.pos != Vector3.INF and o.get("mark", true):
