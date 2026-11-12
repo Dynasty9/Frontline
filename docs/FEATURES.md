@@ -746,7 +746,10 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   third of the windows, in the barracks and the research post, under the factory's north lights and in the door
   lanterns (brightest at night, a glimmer on a dark day). Weeds grow at the foot of walls and ivy up some of
   them (most often on old stone), and a ruin's floor carries its fallen roof: soot, charred rafters, broken
-  tiles, plaster and glass. All of it, and the military buildings' weatherboard, sheeting, roller shutters, north
+  tiles, plaster and glass. Round the houses are what the people in them keep: wheelie bins at a front corner,
+  pots of flowers by the door, a bicycle against a side wall, and out the back a woodpile and chopping block, a
+  table and chairs (under a parasol now and then) and the odd kennel, all set dressing that a blast or a truck
+  knocks over. All of it, and the military buildings' weatherboard, sheeting, roller shutters, north
   lights, masts and guys, drums, crates and pallets, comes from shared building components (see
   [building-components.md](building-components.md)).
 - Walls, hedges, trees, cars and crates are all real cover. Street furniture is set dressing generated on the
