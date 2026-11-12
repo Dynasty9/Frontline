@@ -123,10 +123,14 @@ export class BucketStore {
 	}
 
 	async remove(id, names) {
-		// Storage removes at most 1000 objects a call; the recording names its own files
-		for (let i = 0; i < names.length; i += 1000) {
+		// Keep the index until every chunk is gone, so a restart can retry a partial removal.
+		const chunks = names.filter((name) => name !== 'index.json');
+		const batches = [];
+		for (let i = 0; i < chunks.length; i += 1000) batches.push(chunks.slice(i, i + 1000));
+		if (names.includes('index.json')) batches.push(['index.json']);
+		for (const batch of batches) {
 			const res = await this.call('DELETE', `/object/${this.bucket}`, {
-				body: JSON.stringify({ prefixes: names.slice(i, i + 1000).map((n) => `${id}/${n}`) }),
+				body: JSON.stringify({ prefixes: batch.map((n) => `${id}/${n}`) }),
 			});
 			if (!res.ok && res.status !== 404) throw new ReplayError(503, `Recording storage answered ${res.status}.`);
 		}
@@ -162,6 +166,7 @@ export class Replays {
 		this.now = now;
 		this.log = log;
 		this.records = new Map();
+		this.pending = new Map();
 		this.queues = new Map();
 		this.cache = new Map();
 		this.cached = 0;
@@ -184,13 +189,20 @@ export class Replays {
 		this.loading ??= (async () => {
 			try {
 				for (const id of await this.store.ids()) {
+					const index = await this.store.read(id, 'index.json');
+					let record;
 					try {
-						const record = JSON.parse((await this.store.read(id, 'index.json')) ?? 'null');
-						if (record?.id === id) this.records.set(id, record);
-					} catch (e) {
-						if (e instanceof ReplayError) throw e;
-						/* An interrupted creation has no published recording. */
+						record = JSON.parse(index ?? 'null');
+					} catch {
+						continue; // An interrupted creation has no published recording.
 					}
+					if (record?.id !== id || !Array.isArray(record.chunks)) continue;
+					// A chunk may have landed before its index write failed or the service stopped.
+					// A failed read must retry initialization, rather than leave those bytes uncharged.
+					const pending = await this.store.read(id, `${record.chunks.length}.json`);
+					this.records.set(id, record);
+					if (pending !== null) this.pending.set(id, Buffer.byteLength(pending));
+					else this.pending.delete(id);
 				}
 				this.loaded = true;
 			} finally {
@@ -214,11 +226,15 @@ export class Replays {
 	async sweep() {
 		for (const [id, r] of this.records) {
 			if (this.now() - r.created <= RETENTION_MS) continue;
-			this.records.delete(id);
-			for (const key of this.cache.keys()) if (key.startsWith(id + '/')) this.forget(key);
-			// its index, every chunk it lists, and one more in case a chunk landed without its index
-			const names = ['index.json', ...Array.from({ length: r.chunks.length + 1 }, (_, i) => `${i}.json`)];
-			await this.serial(id, () => this.store.remove(id, names)).catch((e) => this.log(`replays: couldn't remove ${id}: ${e.message}`));
+			await this.serial(id, async () => {
+				if (this.records.get(id) !== r) return;
+				// Wait for queued writes before naming the chunks. Failed removal keeps its budget and can be retried.
+				const names = ['index.json', ...Array.from({ length: r.chunks.length + 1 }, (_, i) => `${i}.json`)];
+				await this.store.remove(id, names);
+				this.records.delete(id);
+				this.pending.delete(id);
+				for (const key of this.cache.keys()) if (key.startsWith(id + '/')) this.forget(key);
+			}).catch((e) => this.log(`replays: couldn't remove ${id}: ${e.message}`));
 		}
 	}
 
@@ -227,7 +243,7 @@ export class Replays {
 	}
 
 	used() {
-		return [...this.records.values()].reduce((n, r) => n + r.bytes, 0);
+		return [...this.records.values()].reduce((n, r) => n + r.bytes, 0) + [...this.pending.values()].reduce((n, bytes) => n + bytes, 0);
 	}
 
 	async create(lobby, body) {
@@ -240,7 +256,7 @@ export class Replays {
 		// one at a time, so a host asking twice at once still gets one recording
 		return this.serial('create', async () => {
 			const token = hash(String(lobby.token) + ':replay');
-			const existing = [...this.records.values()].find((r) => r.lobby === lobby.id);
+			const existing = [...this.records.values()].find((r) => r.lobby === lobby.id && this.now() - r.created <= RETENTION_MS);
 			if (existing) return { id: existing.id, token, delay: DELAY_MS / 1000 };
 			if (this.records.size >= 500 || this.used() >= this.budget) throw new ReplayError(507, 'Recording storage is full.');
 			const r = {
@@ -298,13 +314,19 @@ export class Replays {
 		const payload = JSON.stringify({ sequence, start, end, size, data, final });
 		const digest = hash(payload);
 		return this.serial(id, async () => {
+			if (this.records.get(id) !== r || this.now() - r.created > RETENTION_MS) throw new ReplayError(404, 'Recording unavailable or expired.');
 			if (sequence < r.chunks.length && r.chunks[sequence].hash === digest) return { ok: true, sequence };
 			if (r.finished || sequence !== r.chunks.length || (sequence > 0 && start !== r.chunks.at(-1).end))
 				throw new ReplayError(409, 'Recording chunks must arrive in order.');
 			const bytes = Buffer.byteLength(payload);
-			if (r.bytes + bytes > MAX_RECORDING || this.used() + bytes > this.budget) throw new ReplayError(507, 'Recording storage is full.');
+			const previous = this.pending.get(id) ?? 0;
+			const reserved = Math.max(previous, bytes);
+			if (r.bytes + reserved > MAX_RECORDING || this.used() + reserved - previous > this.budget) throw new ReplayError(507, 'Recording storage is full.');
+			// Reserve before yielding: other recordings share this budget. Keep uncertain writes charged until retried or removed.
+			this.pending.set(id, reserved);
 			// the chunk first, then the index that lists it: an index never names a chunk that isn't there
 			await this.store.write(id, `${sequence}.json`, payload);
+			this.pending.set(id, bytes);
 			const next = {
 				...r,
 				chunks: [...r.chunks, { sequence, start, end, available: this.now() + DELAY_MS, hash: digest }],
@@ -314,6 +336,7 @@ export class Replays {
 			};
 			await this.save(next);
 			Object.assign(r, next);
+			this.pending.delete(id);
 			this.remember(`${id}/${sequence}`, payload);
 			return { ok: true, sequence };
 		});
@@ -349,6 +372,7 @@ export class Replays {
 		}
 		await this.sweep();
 		return [...this.records.values()]
+			.filter((r) => this.now() - r.created <= RETENTION_MS)
 			.toSorted((a, b) => b.created - a.created)
 			.slice(0, 100)
 			.map((r) => this.view(r));

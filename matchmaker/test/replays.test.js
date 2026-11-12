@@ -138,6 +138,175 @@ test('a full store refuses new recordings and chunks', async () => {
 	await assert.rejects(replays.append(id, token, { ...chunk, data: 'A'.repeat(200) }), { status: 507 });
 });
 
+test('concurrent recordings reserve their share of the same storage budget', async () => {
+	const store = new MemoryStore();
+	const bytes = Buffer.byteLength(JSON.stringify(chunk));
+	const replays = new Replays({ store, budget: bytes });
+	const a = await replays.create(lobby, header);
+	const b = await replays.create({ ...lobby, id: 'second' }, header);
+	let release, started;
+	const held = new Promise((resolve) => (release = resolve));
+	const writing = new Promise((resolve) => (started = resolve));
+	const write = store.write.bind(store);
+	store.write = async (id, name, text) => {
+		if (id === a.id && name === '0.json') {
+			started();
+			await held;
+		}
+		await write(id, name, text);
+	};
+	const first = replays.append(a.id, a.token, chunk);
+	try {
+		await writing;
+		assert.equal(replays.used(), bytes, 'in-flight writes count before another recording can use the space');
+		await assert.rejects(replays.append(b.id, b.token, chunk), { status: 507 });
+		await assert.rejects(replays.create({ ...lobby, id: 'third' }, header), { status: 507 });
+	} finally {
+		release();
+		await first;
+	}
+	assert.equal(replays.used(), bytes);
+	assert.equal(store.files.has(`${b.id}/0.json`), false);
+});
+
+test('a chunk whose index write failed stays charged, including after a restart and retry', async () => {
+	const store = new MemoryStore();
+	const bytes = Buffer.byteLength(JSON.stringify(chunk));
+	const replays = new Replays({ store, budget: bytes });
+	const a = await replays.create(lobby, header);
+	const b = await replays.create({ ...lobby, id: 'second' }, header);
+	const write = store.write.bind(store);
+	let fail = true;
+	store.write = async (id, name, text) => {
+		if (fail && name === 'index.json') throw new Error('index unavailable');
+		await write(id, name, text);
+	};
+	await assert.rejects(replays.append(a.id, a.token, chunk), /index unavailable/);
+	assert.equal(replays.used(), bytes);
+	assert.equal((await replays.get(a.id)).chunks.length, 0);
+	await assert.rejects(replays.append(b.id, b.token, chunk), { status: 507 });
+	const restarted = new Replays({ store, budget: bytes });
+	await restarted.ready();
+	assert.equal(restarted.used(), bytes, 'unpublished chunks still occupy storage');
+	await assert.rejects(restarted.append(b.id, b.token, chunk), { status: 507 });
+	fail = false;
+	await restarted.append(a.id, a.token, chunk);
+	assert.equal(restarted.used(), bytes, 'the retry does not charge for the same chunk twice');
+	assert.equal((await restarted.get(a.id)).chunks.length, 1);
+});
+
+test('failed retention removal stays hidden and charged until a later sweep succeeds', async () => {
+	const store = new MemoryStore();
+	let now = 100000;
+	const bytes = Buffer.byteLength(JSON.stringify(chunk));
+	const replays = new Replays({ store, budget: bytes, now: () => now });
+	const { id, token } = await replays.create(lobby, header);
+	await replays.append(id, token, chunk);
+	const remove = store.remove.bind(store);
+	let fail = true;
+	let attempts = 0;
+	store.remove = async (...args) => {
+		attempts++;
+		if (fail) throw new Error('storage unavailable');
+		await remove(...args);
+	};
+	now += 8 * 86400000;
+	assert.deepEqual(await replays.list(), []);
+	assert.equal(replays.used(), bytes);
+	assert.equal(replays.records.has(id), true);
+	await assert.rejects(replays.get(id), { status: 404 });
+	await assert.rejects(replays.create(lobby, header), { status: 507 });
+	fail = false;
+	assert.deepEqual(await replays.list(), []);
+	assert.ok(attempts >= 2, 'failed deletion is retried');
+	assert.equal(replays.used(), 0);
+	assert.equal(replays.records.has(id), false);
+	assert.equal(replays.cache.size, 0);
+	assert.equal(store.files.size, 0);
+	assert.notEqual((await replays.create(lobby, header)).id, id);
+});
+
+test('a failed expired removal cannot return an expired recording for the same lobby', async () => {
+	const store = new MemoryStore();
+	let now = 100000;
+	const replays = new Replays({ store, now: () => now });
+	const { id } = await replays.create(lobby, header);
+	store.remove = async () => {
+		throw new Error('storage unavailable');
+	};
+	now += 8 * 86400000;
+	assert.notEqual((await replays.create(lobby, header)).id, id);
+});
+
+test('queued chunks are refused if their recording expires before writing', async () => {
+	const store = new MemoryStore();
+	let now = 100000;
+	const replays = new Replays({ store, now: () => now });
+	const { id, token } = await replays.create(lobby, header);
+	let release;
+	const held = replays.serial(id, () => new Promise((resolve) => (release = resolve)));
+	await new Promise((resolve) => setImmediate(resolve));
+	const appending = replays.append(id, token, chunk);
+	const rejected = assert.rejects(appending, { status: 404 });
+	await new Promise((resolve) => setImmediate(resolve));
+	now += 8 * 86400000;
+	const sweeping = replays.sweep();
+	release();
+	await Promise.all([held, rejected, sweeping]);
+	assert.equal(store.files.size, 0);
+	assert.equal(replays.used(), 0);
+});
+
+test('a failed pending-chunk read retries initialization instead of freeing storage', async () => {
+	const store = new MemoryStore();
+	const bytes = Buffer.byteLength(JSON.stringify(chunk));
+	const replays = new Replays({ store, budget: bytes });
+	const a = await replays.create(lobby, header);
+	const b = await replays.create({ ...lobby, id: 'second' }, header);
+	// An upload survived, but its index did not.
+	await store.write(a.id, '0.json', JSON.stringify(chunk));
+	const read = store.read.bind(store);
+	let fail = true;
+	store.read = async (id, name) => {
+		if (id === a.id && name === '0.json' && fail) {
+			fail = false;
+			throw new Error('temporarily unreadable');
+		}
+		return read(id, name);
+	};
+	const restarted = new Replays({ store, budget: bytes });
+	await assert.rejects(restarted.ready(), /temporarily unreadable/);
+	assert.equal(restarted.loaded, false);
+	await assert.rejects(restarted.append(b.id, b.token, chunk), { status: 507 });
+	assert.equal(restarted.loaded, true);
+	assert.equal(restarted.used(), bytes);
+});
+
+test('bucket retention preserves its index when a later chunk-removal batch fails', async () => {
+	const names = ['index.json', ...Array.from({ length: 1001 }, (_, i) => `${i}.json`)];
+	const files = new Set(names.map((name) => `recording/${name}`));
+	let calls = 0;
+	let fail = true;
+	const store = new BucketStore({
+		url: 'https://storage.invalid',
+		key: KEY,
+		bucket: 'replays',
+		fetch: async (_url, { body }) => {
+			const { prefixes } = JSON.parse(body);
+			assert.ok(prefixes.length <= 1000);
+			calls++;
+			if (fail && calls === 2) return new Response('', { status: 503 });
+			for (const name of prefixes) files.delete(name);
+			return new Response('[]');
+		},
+	});
+	await assert.rejects(store.remove('recording', names), { status: 503 });
+	assert.equal(files.has('recording/index.json'), true, 'a restart can discover the incomplete removal');
+	fail = false;
+	await store.remove('recording', names);
+	assert.equal(files.size, 0);
+});
+
 test('an unreachable bucket: recording says so, the list stays up', async () => {
 	const replays = new Replays({ store: new BucketStore({ url: 'http://127.0.0.1:9', key: KEY, bucket: 'replays' }), log: () => {} });
 	await assert.rejects(replays.create(lobby, header), { status: 503 });
