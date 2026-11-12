@@ -603,6 +603,30 @@ func scenario(sname: String) -> void:
 			t2.order_move(Vector3(2, 0, -45))
 			r.spawn_squad("rpg_team", 1, b, Vector3(-30, 0, -50))
 			r.spawn_squad("fighter_cell", 1, b, Vector3(20, 0, -55))
+		"mounted":
+			# two IFVs halted with men aboard: one its own mech team, the other an MG
+			# team and an AT team. Unless static, the first drops a fire team and the
+			# second only its AT team; the rest stay aboard. A fighter cell watches
+			# from the far hedge.
+			var ifv1: Vehicle = world.spawn("vehicle", {"vkind": "ifv", "team": 0, "owner": a, "pos": Vector3(-8, 0, 0), "yaw": 0.0})
+			ifv1.embark_new_squad()
+			var ifv2: Vehicle = world.spawn("vehicle", {"vkind": "ifv", "team": 0, "owner": a, "pos": Vector3(8, 0, 0), "yaw": 0.0})
+			for k in ["mg_team", "at_team"]:
+				var mq: Squad = r.spawn_squad(k, 0, a, ifv2.position)
+				for m in mq.members:
+					ifv2.board(m)
+			for v in [ifv1, ifv2]:
+				v.order_stop()
+				v.keep_aboard = true  # (halted, a carrier would let them out at once)
+			r.spawn_squad("fighter_cell", 1, b, Vector3(0, 0, -110), Vector3(0, 0, -100))
+			if not world.settings.get("static", false):
+				var at_sid: int = ifv2.passengers[ifv2.passengers.size() - 1].sid
+				world.get_tree().create_timer(3.0, true, true).timeout.connect(func():
+					if is_instance_valid(ifv1) and not ifv1.gone:
+						ifv1.dismount(2))
+				world.get_tree().create_timer(6.0, true, true).timeout.connect(func():
+					if is_instance_valid(ifv2) and not ifv2.gone:
+						ifv2.dismount(0, at_sid))
 		"defense":
 			# Carry the protective line across both flank emplacements.
 			for i in 7:
@@ -1105,7 +1129,8 @@ func _house(c: Vector3, w: float, d: float, axis: float, street_side: float, yar
 	var b := Basis(Vector3.UP, axis)
 	var color := rng.randi() % Structure.HOUSE_COLORS.size()
 	var ruined := rng.randf() < ruin_p
-	_spawn("floor", c, axis, -1, {"size": Vector3(w, 0.06, d)})
+	# (a ruin's floor is marked, so it's drawn with the roof fallen in on it)
+	_spawn("floor", c, axis, -1, {"size": Vector3(w, 0.06, d), "variant": 1 if ruined else 0})
 	_unplace_last()
 	_place([Vector2(c.x, c.z), half, axis])
 	# four walls: front faces the street

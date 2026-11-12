@@ -324,6 +324,7 @@ Scenarios, AI-vs-AI battles and missions run offline: they take no port, so any 
 FL_DEBUG_WORKS=1 (env)                                with --scenario=cache: who's under the net and seen, who's filled up
 --scenario=roster                                     every vehicle both sides can field, facing off across the map
 --scenario=sling                                      a Mohawk carries a Humvee and a Taru a BTR on their slings
+--scenario=mounted                                    two halted IFVs drop only some of their men (Vehicle.dismount's n and squad)
 --scenario=naval                                      boats on the sea: an RHIB lands a squad under a patrol ship's guns, Rebel boats come out to fight
 FL_DEBUG_BOAT=1 (env)                                 every 2 s, each boat under way: where, heading, speed, how far down its route; and each grounding
 --scenario=tactics                                    a rifle squad and an MG team sent 120 m up to hold a hamlet with the

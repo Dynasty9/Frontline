@@ -98,6 +98,7 @@ var chat_team := false
 var card_panel: PanelContainer
 var card: GridContainer
 var card_title: Label
+var standing: VBoxContainer  # standing orders under the grid: stance, fire discipline, target priority
 var _card_key := ""
 var _card_page := "main"
 var _page_base := ""  # the card a production page was opened on
@@ -371,6 +372,9 @@ func _ready() -> void:
 	card.add_theme_constant_override("h_separation", 12)
 	card.add_theme_constant_override("v_separation", 0)
 	cv.add_child(card)
+	standing = VBoxContainer.new()
+	standing.add_theme_constant_override("separation", 3)
+	cv.add_child(standing)
 
 	# message history (L): it opens in place of the latest lines, top right,
 	# on a lighter ink rather than in a box
@@ -1739,6 +1743,13 @@ func _update_card() -> void:
 				for t in world.structures:
 					if t.skind == "tunnel" and t.team == st.team and t.built:
 						key += ":%d" % t.eid
+	if key.begins_with("unit:") or key.begins_with("units:"):
+		key += ":%d,%d,%d" % [inp.standing("stance"), inp.standing("roe"), inp.standing("prio")]
+		if key.begins_with("units:veh"):
+			for id in inp.sel_vehicles:
+				var sv := world.entity(int(id)) as Vehicle
+				if sv:
+					key += ":%d%s" % [sv.smoke_left if sv.has_smoke() else -1, str(sv.pax)]
 	if st and Defs.BUILDINGS.get(st.skind, {}).has("produces") and world.local_team >= 0:
 		key += str(world.team_info[world.local_team].get("up", []))  # research unlocks vehicle tiers
 	if not key.begins_with("units:inf") and not (_card_page.begins_with("prod:") and key == _page_base):
@@ -1749,6 +1760,8 @@ func _update_card() -> void:
 		return
 	_card_key = key
 	for c in card.get_children():
+		c.queue_free()
+	for c in standing.get_children():
 		c.queue_free()
 	card_title.text = ""
 	var lt := world.local_team
@@ -1766,6 +1779,7 @@ func _update_card() -> void:
 			if s2 and s2.sid != 0:
 				inp.clear_selection()
 				inp.sel_squads.append(s2.sid))
+		_infantry_standing(inp)
 	elif key.begins_with("units:inf"):
 		if _card_page == "main":
 			card_title.text = "Orders"
@@ -1780,6 +1794,7 @@ func _update_card() -> void:
 			_button("Smoke", Keys.label("smoke"), "Throw smoke to block line of sight.", func(): inp.ability = "smoke")
 			_button("Retreat", Keys.label("retreat"), "Run back to the nearest FOB, keeping clear of known enemy fire. Retreating men shrug off half the suppression.", func(): inp.retreat())
 			_button("Hold", Keys.label("hold"), "Stop and hold position here.", func(): inp.hold())
+			_infantry_standing(inp)
 		else:
 			card_title.text = "Build %s" % ("base" if _card_page == "base" else "defences")
 			_button("Back", "‹", "Back to orders.", func(): _card_page = "main")
@@ -1791,11 +1806,17 @@ func _update_card() -> void:
 	elif key.begins_with("units:veh"):
 		card_title.text = "Vehicle orders"
 		_button("Attack-move", Keys.label("attack_move"), "Drive to a spot, halting for a steady shot at anything in range on the way. Troops inside dismount when the enemy is close.", func(): inp.cancel_modes(); inp.order_mode = "assault")
-		_button("Dismount", "", "Drop the ramp: the troops inside get out and dig in.", func(): world.send_cmd({"t": "dismount", "vehicles": inp.sel_vehicles}))
 		if inp.selection_has_arty():
 			_button("Fire mission", Keys.label("fire_mission"), "Artillery: click a spot in range for a salvo there (they also fire on their own at anything your side has spotted).", func(): inp.ability = "arty_he")
 		_button("Hold", Keys.label("hold"), "Stop moving.", func(): inp.hold())
 		_button("Retreat", Keys.label("retreat"), "Drive back to the nearest FOB.", func(): inp.retreat())
+		_vehicle_orders(inp)
+		_standing_row("Fire", "fire_discipline", ["Free", "Return", "Hold"], inp.standing("roe"),
+			"Fire at will; return fire only once shot at; or hold fire - not a round unless the enemy is on top of it (within 22 m) or is the target you gave. Smoke and getting out of a missile's way are the crew's own.",
+			func(i: int): inp.set_standing("roe", i))
+		_standing_row("Target", "target_priority", ["Auto", "Armour", "Infantry"], inp.standing("prio"),
+			"What the crew shoots at first: their own judgement; armour (the main gun saved for vehicles); or infantry (high explosive on men in the open).",
+			func(i: int): inp.set_standing("prio", i))
 	elif st and st.team == lt and st.built:
 		var def: Dictionary = Defs.BUILDINGS.get(st.skind, {})
 		if def.has("produces"):
@@ -1860,6 +1881,80 @@ func _update_card() -> void:
 				if t.skind == "tunnel" and t.team == lt and t.built and t != st:
 					var ex: int = t.eid
 					_button("Exit " + Defs.grid_ref(t.position), "", "Move everyone inside to the entrance at %s." % Defs.grid_ref(t.position), func(): world.send_cmd({"t": "tunnel_exit", "building": st.eid, "exit": ex}))
+
+
+## The standing orders for men (one picked out, or whole squads): stance and
+## fire discipline, each a row of segments with the one in force filled (none
+## filled when the selection differs).
+func _infantry_standing(inp: PlayerInput) -> void:
+	_standing_row("Stance", "stance", ["Auto", "Prone", "Crouch", "Stand"], inp.standing("stance"),
+		"Auto: their own judgement. Prone: down on the ground, crawling at a walk. Crouch: kept low. Stand: up, unless pinned. Hitting the dirt and deep water still win.",
+		func(i: int): inp.set_standing("stance", i))
+	_standing_row("Fire", "fire_discipline", ["Free", "Return", "Hold"], inp.standing("roe"),
+		"Free: fire at will. Return: only once they (or their squad) are shot at. Hold: not a shot, grenade or rocket - unless an enemy gets within 15 m, or is the one you told them to attack.",
+		func(i: int): inp.set_standing("roe", i))
+
+
+## Smoke and dismounting for the selected vehicles: the dischargers with the
+## salvoes left; everyone out, half of them (a fire team), or one squad of
+## several aboard.
+func _vehicle_orders(inp: PlayerInput) -> void:
+	var smokes := -1
+	var pax: Array = []
+	var men := 0
+	var with_pax := 0
+	for id in inp.sel_vehicles:
+		var v := world.entity(int(id)) as Vehicle
+		if v == null or v.gone:
+			continue
+		if int(v.vdef.get("armor", 0)) >= 1 and not v.is_air():
+			smokes = maxi(smokes, v.smoke_left)
+		if not v.pax.is_empty():
+			with_pax += 1
+			pax = v.pax
+			for row in v.pax:
+				men += int(row[1])
+	if smokes >= 0:
+		var sb := _button("Smoke", Keys.label("smoke"), "Fire the smoke dischargers now: a wall of smoke towards the nearest threat (or the way the turret points). %d salvo%s left; the crew also fire them on their own at a missile launch." % [smokes, "" if smokes == 1 else "es"], func(): inp.pop_smoke())
+		sb.disabled = smokes <= 0
+		(sb.get_meta("name") as Label).text = "SMOKE %d" % smokes
+	if men == 0:
+		return
+	_button("Dismount", Keys.label("dismount"), "Drop the ramp: all %d inside get out and dig in." % men, func(): world.send_cmd({"t": "dismount", "vehicles": inp.sel_vehicles}))
+	if with_pax != 1:
+		return
+	if men >= 2:
+		var half := (men + 1) / 2
+		_button("Drop %d" % half, "", "Drop a fire team: %d of the %d get out and hold by the vehicle, the rest stay aboard until you dismount them or it moves on." % [half, men], func(): world.send_cmd({"t": "dismount", "vehicles": inp.sel_vehicles, "n": half}))
+	if pax.size() >= 2:
+		for row in pax:
+			var sq_id := int(row[0])
+			var nm := String(row[2]) if String(row[2]) != "" else "squad"
+			_button("Drop " + nm, str(int(row[1])), "Only %s gets out (%d men); the others stay aboard." % [nm, int(row[1])], func(): world.send_cmd({"t": "dismount", "vehicles": inp.sel_vehicles, "squad": sq_id}))
+
+
+## A standing order under the grid: its key in a box, its name in capitals,
+## and its choices as segments (UiSeg) with the one in force filled.
+func _standing_row(label: String, action: String, items: Array, sel: int, tip: String, cb: Callable) -> void:
+	if sel == -2:
+		return
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 7)
+	row.tooltip_text = tip
+	if Keys.label(action) != "":
+		var kb := _key_box(Keys.label(action).to_upper())
+		kb.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		row.add_child(kb)
+	var l := UiKit.caps(label, 12, UiKit.TEXT, 600, 1)
+	l.custom_minimum_size.x = 58
+	l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	row.add_child(l)
+	var seg := UiSeg.make(items, sel, 10)
+	seg.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	seg.set_tooltip(tip)
+	seg.changed.connect(func(i: int): cb.call(i); _card_key = "")
+	row.add_child(seg)
+	standing.add_child(row)
 
 
 ## Which production page an item is on.

@@ -83,6 +83,11 @@ func _check_paths() -> void:
 	# leaves and grass: light through them, and grass has no specular
 	var grass := CloudShadow.shader(Grass.GRASS_SHADER, CloudShadow.BACKLIGHT | CloudShadow.NO_SPECULAR, true)
 	assert(grass.contains("#define CLOUD_BACKLIGHT") and grass.contains("#define CLOUD_NO_SPECULAR") and not grass.contains("cloud_specular ="))
+	# with the setting off, grass and bushes still darken, through the albedo
+	var folded := CloudShadow.shader(Grass.GRASS_SHADER, CloudShadow.BACKLIGHT | CloudShadow.NO_SPECULAR | CloudShadow.FOLD, false)
+	assert(folded.contains("cloud_v = cloud_sun(o);") and folded.contains("ALBEDO *= OUTPUT_IS_SRGB") and not folded.contains("void light()"))
+	var folded_on := CloudShadow.shader(Grass.GRASS_SHADER, CloudShadow.BACKLIGHT | CloudShadow.NO_SPECULAR | CloudShadow.FOLD, true)
+	assert(folded_on.contains("void light()") and not folded_on.contains("cloud_f = mix"))
 	# the ground lights itself, and keeps its clouds with the setting off
 	var ground := CloudShadow.shader(Atmosphere.GROUND_SHADER, CloudShadow.OWN_LIGHT, false)
 	assert(ground.contains("float cloud_sun(") and not ground.contains("CLOUD_ON") and ground.count("void light()") == 1)
@@ -128,17 +133,17 @@ func _check_refresh() -> void:
 	CloudShadow.refresh()
 
 
-## The shade travels with the wind that carries the smoke, at about half a metre a second.
+## The shade travels with the wind that carries the smoke, at a breeze's pace.
 func _check_drift() -> void:
 	CloudShadow.set_sky(null, 0.35)
 	var o0: Vector2 = CloudShadow._offset
 	CloudShadow.tick(10.0)
 	# (the offset wraps round the pattern's edge)
 	var step: Vector2 = (CloudShadow._offset - o0 + Vector2(0.5, 0.5)).posmod(1.0) - Vector2(0.5, 0.5)
-	var moved := -step / CloudShadow.SCALE
+	var moved := -step / CloudShadow._scale
 	var wind := Vector2(Fires.WIND.x, Fires.WIND.z).normalized()
 	assert(moved.normalized().dot(wind) > 0.999, "the clouds drift downwind")
-	assert(absf(moved.length() / 10.0 - 0.53) < 0.05, "at %.2f m/s" % (moved.length() / 10.0))
+	assert(absf(moved.length() / 10.0 - CloudShadow.SPEED) < 0.05, "at %.2f m/s" % (moved.length() / 10.0))
 	for i in 2000:
 		CloudShadow.tick(1.0)
 	assert(CloudShadow._offset.x >= 0.0 and CloudShadow._offset.x < 1.0 and CloudShadow._offset.y >= 0.0 and CloudShadow._offset.y < 1.0)

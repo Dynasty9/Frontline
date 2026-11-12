@@ -21,8 +21,9 @@ extends RefCounted
 ## per vertex, where no light() runs: there the cloud dims the albedo and
 ## hands the skylight back through AO, which reaches only the ambient once
 ## AO_LIGHT_AFFECT is 0 (CLOUD_VERTEX_LIT). All of it is the Cloud shadows
-## setting's; with it off, only the ground darkens, as before it existed.
-## None of it touches the simulation: it's light, nothing else.
+## setting's; with it off, only the ground darkens, and the grass and bushes
+## the cheap way (FOLD). None of it touches the simulation: it's light,
+## nothing else.
 
 ## Flags for shader(): what the shader's fragment writes, which the light model
 ## has to take into account.
@@ -30,16 +31,21 @@ const CLEARCOAT := 1  # writes CLEARCOAT (vehicle paint's lacquer)
 const BACKLIGHT := 2  # writes BACKLIGHT (leaves, grass: light through them)
 const NO_SPECULAR := 4  # render_mode specular_disabled
 const OWN_LIGHT := 8  # has a light() of its own, which calls cloud_sun()
+## With the setting off, still darkened, by folding the share into the albedo:
+## most of a meadow's light is the sun's, so near enough, and it costs nothing
+const FOLD := 16
 
-## The pattern repeats every 512 / 1.7 = 301 m.
-const SCALE := 1.7 / 512.0
-## How fast the pattern drifts, in pattern widths a second (about 0.5 m/s).
-const DRIFT := 0.00175
+## Cumulus shadows span a few hundred metres: the biome noise's features are
+## about 83 texels across, stretched over 4.5 texture widths to ~370 m.
+const STRETCH := 4.5
+## How fast the clouds drift with the wind, in metres a second.
+const SPEED := 6.5
 
 static var _shaders: Array = []  # [WeakRef to a Shader, its source, flags], one for each make()
 static var _on := false  # what the shaders were last coded for
 static var _offset := Vector2.ZERO
 static var _strength := 0.0
+static var _scale := 1.0 / (1024.0 * STRETCH)  # pattern widths a metre (set_sky)
 
 
 ## Whether surfaces other than the ground take the shadows (Settings > Graphics).
@@ -68,10 +74,13 @@ static func shader(src: String, flags := 0, on := false) -> String:
 	if on:
 		head = "#define CLOUD_ON\n#define CLOUD_VERTEX_LIT\n" if lit else "#define CLOUD_ON\n#define CLOUD_LIGHT\n"
 	var own_light := flags & OWN_LIGHT != 0
-	if on or own_light:
+	var fold := not on and flags & FOLD != 0
+	if on or own_light or fold:
 		head += PATTERN
 	var tail := ""
-	if on and lit:
+	if fold:
+		tail = FOLDED
+	elif on and lit:
 		tail = DIM
 	elif on and not own_light:
 		head += "varying float cloud_k;\n"
@@ -112,17 +121,19 @@ static func refresh() -> void:
 	_shaders = alive
 
 
-## The battle's cloud pattern and how much sunlight its clouds take (0 for none).
+## The battle's cloud pattern (the biome noise, `MapDims.BIOME` texels across)
+## and how much sunlight its clouds take (0 for none).
 static func set_sky(pattern: Texture2D, strength: float) -> void:
 	if pattern:
 		RenderingServer.global_shader_parameter_set("cloud_noise", pattern)
+	_scale = 1.0 / (float(MapDims.BIOME) * STRETCH)
 	_offset = Vector2.ZERO
 	set_strength(strength)
 
 
 static func set_strength(strength: float) -> void:
 	_strength = strength
-	RenderingServer.global_shader_parameter_set("cloud_shadow", Vector4(strength, _offset.x, _offset.y, SCALE))
+	RenderingServer.global_shader_parameter_set("cloud_shadow", Vector4(strength, _offset.x, _offset.y, _scale))
 
 
 ## Where the sun is (the light the clouds stand in front of), and how much the
@@ -137,12 +148,12 @@ static func set_sun(sun: DirectionalLight3D) -> void:
 	RenderingServer.global_shader_parameter_set("cloud_sun_disc", Vector4(to_sun.x, to_sun.y, to_sun.z, size))
 
 
-## Moves the clouds on with the wind that carries the smoke (Fires.WIND).
+## Moves the clouds on downwind, the way the smoke goes (Fires.WIND).
 static func tick(dt: float) -> void:
 	var wind := Vector2(Fires.WIND.x, Fires.WIND.z).normalized()
-	# the pattern is read at position * SCALE + offset, so it travels against the offset
-	_offset = (_offset - wind * DRIFT * dt).posmod(1.0)
-	RenderingServer.global_shader_parameter_set("cloud_shadow", Vector4(_strength, _offset.x, _offset.y, SCALE))
+	# the pattern is read at position * scale + offset, so it travels against the offset
+	_offset = (_offset - wind * SPEED * _scale * dt).posmod(1.0)
+	RenderingServer.global_shader_parameter_set("cloud_shadow", Vector4(_strength, _offset.x, _offset.y, _scale))
 
 
 ## The pattern and cloud_sun(): the share of sunlight that gets through at a
@@ -152,6 +163,7 @@ static func tick(dt: float) -> void:
 ## front of (not the rim light opposite, the sky's fill, nor the Field Manual's
 ## studio lights, opened mid-battle).
 const PATTERN := """
+#define CLOUD_PATTERN
 global uniform sampler2D cloud_noise : filter_linear, repeat_enable;
 global uniform vec4 cloud_shadow;  // how much the clouds take, the drift (x, z), the pattern's scale
 global uniform vec4 cloud_sun_disc;  // toward the sun (world), how much its disc widens its light
@@ -165,7 +177,15 @@ float cloud_sun(vec3 p) {
 		return 1.0;
 	}
 	float c = textureLod(cloud_noise, p.xz * cloud_shadow.w + cloud_shadow.yz, 0.0).r;
-	return 1.0 - cloud_shadow.x * smoothstep(0.48, 0.72, c);
+	return 1.0 - cloud_shadow.x * smoothstep(0.45, 0.75, c);
+}
+"""
+
+## FOLD, with the setting off: the shade folded into the albedo, a little
+## lighter since the skylight goes down with it (in linear light, as DIM).
+const FOLDED := """{
+	float cloud_f = mix(1.0, __SHARE__, 0.8);
+	ALBEDO *= OUTPUT_IS_SRGB ? pow(cloud_f, 1.0 / 2.2) : cloud_f;
 }
 """
 

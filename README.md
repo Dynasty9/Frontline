@@ -121,6 +121,11 @@ On a Mac's trackpad, scroll with two fingers to drag the map and pinch to zoom; 
 | Retreat to the nearest base | R |
 | Hold position | H |
 | Throw a grenade / smoke | G / T |
+| Stance: auto, prone, crouch, stand | K (squads, or one soldier) |
+| Fire discipline: fire at will, return fire, hold fire | J (squads, one soldier or vehicles) |
+| Target priority: auto, armour, infantry | N (vehicles) |
+| Pop a vehicle's smoke | T, with only vehicles selected |
+| Dismount everyone / some of them | U / the command card (half, or one squad) |
 | Mortar fire mission (mortar teams) | F |
 | Board a vehicle or boat | Right-click it with a squad selected |
 | Carry a vehicle by helicopter | Select a transport helicopter, right-click one of your vehicles, then right-click where to drop it |
