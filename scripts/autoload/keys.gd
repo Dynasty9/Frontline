@@ -23,10 +23,14 @@ const NONE := 0
 ## commands do, and an observer's keys only matter to an observer, so those
 ## don't clash with the commands.
 const GLOBAL_CTX := ["cam", "ui"]
+## Photo mode's keys are live only while it's on, when everything else is off
+## but the interface's own keys (the photo mode key itself, the overlay, the
+## console): they clash with those and with each other, and nothing else.
+const PHOTO_CTX := "photo"
 
 ## The categories in the order they're listed.
 const CATEGORIES := ["Camera", "Saved views", "Orders", "Abilities & fire support", "Building", "Control groups",
-	"Co-commanders", "Interface", "Observer"]
+	"Co-commanders", "Interface", "Photo mode", "Observer"]
 
 ## [id, label, category, context, default, default (second), what it does]
 const ACTIONS := [
@@ -103,6 +107,14 @@ const ACTIONS := [
 	["perf", "Performance overlay", "Interface", "ui", KEY_F3, NONE, "Off, FPS, compact, full breakdown."],
 	["manual", "Field Manual", "Interface", "ui", KEY_F4, NONE, ""],
 	["console", "Console", "Interface", "ui", KEY_QUOTELEFT, NONE, "Type commands: why the game is slow (why), what each setting costs (bench), frame graphs. help lists them."],
+	["photo_mode", "Photo mode", "Interface", "ui", KEY_F9, NONE, "A solo battle or a replay holds still (in multiplayer the fighting goes on), the interface goes and the camera flies free to compose a picture."],
+	["photo_capture", "Take the picture", "Photo mode", "photo", KEY_SPACE, NONE, "Saved as a PNG in the screenshots folder."],
+	["photo_rise", "Fly up", "Photo mode", "photo", KEY_E, NONE, "The camera's pan keys fly the way the lens looks; hold a mouse button and drag to look round."],
+	["photo_sink", "Fly down", "Photo mode", "photo", KEY_Q, NONE, ""],
+	["photo_roll_left", "Roll left", "Photo mode", "photo", KEY_Z, NONE, ""],
+	["photo_roll_right", "Roll right", "Photo mode", "photo", KEY_C, NONE, ""],
+	["photo_level", "Level the horizon", "Photo mode", "photo", KEY_BACKSPACE, NONE, ""],
+	["photo_slow", "Fly slower (hold)", "Photo mode", "photo", KEY_CTRL, NONE, "Held with a move key, for small steps. (The pan-faster key flies faster.)"],
 	["director", "Director camera", "Observer", "obs", KEY_C, NONE, "The camera follows the fighting by itself."],
 	["pause", "Pause", "Observer", "obs", KEY_P, NONE, ""],
 	["slower", "Slower", "Observer", "obs", KEY_BRACKETLEFT, NONE, ""],
@@ -218,6 +230,8 @@ func clashes(id: String, code: int) -> Array:
 
 
 static func _clash_ctx(a: String, b: String) -> bool:
+	if a == PHOTO_CTX or b == PHOTO_CTX:
+		return a == b or a == "ui" or b == "ui"
 	return a == b or a in GLOBAL_CTX or b in GLOBAL_CTX
 
 

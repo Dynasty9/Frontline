@@ -852,16 +852,28 @@ func apply_settings() -> void:
 ## Colour grading: the chosen look on top of the time of day, plus the
 ## player's contrast slider.
 func _apply_look() -> void:
-	var lk: Array = Settings.LOOKS[clampi(int(Settings.get_v("look")), 0, Settings.LOOKS.size() - 1)]
+	apply_grade(int(Settings.get_v("look")), float(Settings.get_v("contrast")))
+
+
+## A look (Settings.LOOKS) laid over the time of day, its contrast and
+## saturation scaled: the player's setting, or photo mode's for its picture.
+func apply_grade(look_i: int, contrast_mul: float, saturation_mul := 1.0) -> void:
+	var li := clampi(look_i, 0, Settings.LOOKS.size() - 1)
+	var lk: Array = Settings.LOOKS[li]
 	env.adjustment_enabled = true
 	env.adjustment_brightness = float(lk[0])
-	env.adjustment_contrast = float(lk[1]) * float(Settings.get_v("contrast"))
+	env.adjustment_contrast = float(lk[1]) * contrast_mul
 	var sat := float(lk[2])
-	if int(Settings.get_v("look")) == 0:
+	if li == 0:
 		sat = 1.05 if mood in ["golden", "dusk", "dawn"] else 1.1
-	env.adjustment_saturation = sat
+	env.adjustment_saturation = sat * saturation_mul
 	if post_rect and post_rect.material:
 		(post_rect.material as ShaderMaterial).set_shader_parameter("tint", lk[3])
+
+
+## The exposure the time of day and the player's brightness give.
+func base_exposure() -> float:
+	return float(_d.exposure) * float(Settings.get_v("brightness"))
 
 
 func _process(_dt: float) -> void:
