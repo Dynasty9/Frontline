@@ -228,7 +228,7 @@ func _run() -> void:
 	var actor: Soldier = world.input.selected_soldiers()[0]
 	world.input.select_unit(actor)
 	var mount_key := InputEventKey.new()
-	mount_key.keycode = KEY_F9
+	mount_key.keycode = KEY_F10
 	mount_key.pressed = true
 	world.input._key(mount_key)
 	_check("an individual has a rear camera", cam.mount_label == &"Behind" and cam.mount_subject == actor)

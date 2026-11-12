@@ -6,7 +6,7 @@ kind = "improved"
 [[videos]]
 file = "live-match.mp4"
 poster = "live-match.jpg"
-caption = "The playable Abrams in an ordinary match. Three in-game F9 mounts show the tracks, periscope and barrel during the same seeded encounter."
+caption = "The playable Abrams in an ordinary match. Three in-game F10 mounts show the tracks, periscope and barrel during the same seeded encounter."
 
 [[videos]]
 file = "grille-fire.mp4"
@@ -18,4 +18,4 @@ file = "track-prints.jpg"
 caption = "The same turn before (left) and after (right), with the ground enlarged below. Separate tread pads press into the soil."
 +++
 
-A glancing round rings against the hull. The barrel recoils when the gun fires, and individual tread pads leave prints on soft ground. Select a tank and press F9 to cycle its views.
+A glancing round rings against the hull. The barrel recoils when the gun fires, and individual tread pads leave prints on soft ground. Select a tank and press F10 to cycle its views.

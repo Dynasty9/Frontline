@@ -55,7 +55,7 @@ const ACTIONS := [
 	["cam_zoom_in", "Zoom in", "Camera", "cam", KEY_EQUAL, KEY_KP_ADD, ""],
 	["cam_zoom_out", "Zoom out", "Camera", "cam", KEY_MINUS, KEY_KP_SUBTRACT, ""],
 	["cam_reset", "Square the view up", "Camera", "cam", KEY_BACKSPACE, NONE, "Turn back to the heading the battle started on, and the zoom's own tilt."],
-	["cam_mount", "Cycle object cameras", "Camera", "cam", KEY_F9, NONE, "Select one object to cycle its camera positions. Pan or press Escape to return."],
+	["cam_mount", "Cycle object cameras", "Camera", "cam", KEY_F10, NONE, "Select one object to cycle its camera positions. Pan or press Escape to return."],
 	["cam_follow", "Follow the selection", "Camera", "cam", KEY_F | KEY_MASK_CTRL, NONE, "The camera keeps the selected units in view until you pan away."],
 	["jump_alert", "Jump to the latest alert or ping", "Camera", "cam", KEY_SPACE, NONE, ""],
 	["cycle_fob", "Cycle your bases", "Camera", "cam", KEY_HOME, NONE, ""],

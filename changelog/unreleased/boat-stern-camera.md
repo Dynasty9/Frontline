@@ -1,6 +1,6 @@
 +++
 title = "See the water from the stern and bridge"
-summary = "Select a boat and press F9 to reach Stern quarter. The horizon stays level as the hull rolls. On the patrol ship, Bridge roof looks down on boats passing the port rail."
+summary = "Select a boat and press F10 to reach Stern quarter. The horizon stays level as the hull rolls. On the patrol ship, Bridge roof looks down on boats passing the port rail."
 kind = "improved"
 
 [[videos]]

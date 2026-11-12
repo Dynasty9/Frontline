@@ -1,6 +1,6 @@
 +++
 title = "Ride behind the RHIB’s helmsman"
-summary = "Both launches have a driver at the controls. Press F9 on a selected RHIB to look over the helmsman’s right shoulder."
+summary = "Both launches have a driver at the controls. Press F10 on a selected RHIB to look over the helmsman’s right shoulder."
 kind = "improved"
 
 [[videos]]

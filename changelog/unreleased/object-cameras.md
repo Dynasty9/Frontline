@@ -1,6 +1,6 @@
 +++
 title = "Ride along with the object cameras"
-summary = "Select one vehicle, building or individual soldier and press F9 to cycle through its camera positions. Escape returns to command with the selection intact."
+summary = "Select one vehicle, building or individual soldier and press F10 to cycle through its camera positions. Escape returns to command with the selection intact."
 kind = "new"
 
 [[screenshots]]

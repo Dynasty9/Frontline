@@ -100,7 +100,7 @@ Every key below is a default: change any of them in **Settings → Controls**. A
 | Tilt | Page Up / Page Down, or drag the middle mouse button up and down |
 | Square the view up again | Backspace, or click the compass on the minimap |
 | Follow the selected units | Ctrl + F |
-| Cycle cameras on one selected object / return to command | F9 / Esc |
+| Cycle cameras on one selected object / return to command | F10 / Esc |
 | Save a view / go back to it | Ctrl + F5 to F8 / F5 to F8 |
 | Look somewhere else | Click or drag on the minimap |
 | Jump to your bases | Home |
@@ -168,7 +168,7 @@ On a Mac's trackpad, scroll with two fingers to drag the map and pinch to zoom; 
 | Message history | L |
 | Menu and settings | Esc |
 
-Select an Abrams or T-55A and press **F9** to cycle through its onboard and exterior views, including the turret periscope. Press **Esc** to return to the commander camera.
+Select an Abrams or T-55A and press **F10** to cycle through its onboard and exterior views, including the turret periscope. Press **Esc** to return to the commander camera.
 
 When watching an AI battle: **C** hands the camera back to the director, **V** picks whose view you see, **P** pauses, and **[** and **]** change the speed.
 

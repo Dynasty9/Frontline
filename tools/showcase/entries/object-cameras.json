@@ -3,7 +3,7 @@
   "title": "Ride along with the object cameras",
   "version": "unreleased",
   "kind": "new",
-  "summary": "F9 cycles object-mounted views.",
+  "summary": "F10 cycles object-mounted views.",
   "medium": "still",
   "stage": "tests/fixtures/ridge-duel.tscn",
   "rationale": "Six matched-size frames show how the available views frame different vehicle parts. The matched sling clip shows the rotor and suspended vehicle in motion from both camera heights.",
@@ -17,7 +17,7 @@
     {
       "file": "changelog/unreleased/object-cameras/sling-sky.webm",
       "sha256": "099f7d52a63ab4262da827992240d8a8af2df30e147ce47bfec3731593ac0627",
-      "caption": "Same sling scenario, seed 3, at 15.6 to 18.9 seconds. The previous F9 Sling load camera is on the left and the lower camera is on the right."
+      "caption": "Same sling scenario, seed 3, at 15.6 to 18.9 seconds. The previous F10 Sling load camera is on the left and the lower camera is on the right."
     },
     {
       "file": "changelog/unreleased/object-cameras/sling-sky.jpg",

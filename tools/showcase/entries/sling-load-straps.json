@@ -5,7 +5,7 @@
   "kind": "improved",
   "summary": "Shaded straps join the banking helicopter and the suspended vehicle body.",
   "medium": "motion",
-  "stage": "Sky Hook, seed 4, bridge deck at 39.45 seconds and F9 Cargo door at 41.1 seconds. Compare the fixed and tracking door at 39.5 seconds.",
+  "stage": "Sky Hook, seed 4, bridge deck at 39.45 seconds and F10 Cargo door at 41.1 seconds. Compare the fixed and tracking door at 39.5 seconds.",
   "rationale": "A fixed flyover and the close cargo view reveal both ends of the straps in motion.",
   "source_ref": "28fab0f before; sky-bridge.tscn and the shared Cargo door mount after. The cargo-door comparison uses the same native take at 6093a05 and 00c8370.",
   "sources": [
