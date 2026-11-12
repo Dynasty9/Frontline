@@ -1022,8 +1022,15 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
 **Base building and supply** (`structure.gd`, `rules.gd`)
 - Placed buildings are just construction sites. Soldiers walk over and build them by hand, even mid-fight (engineers are 2x faster).
 - Each finished FOB raises the unit cap by 20, resupplies nearby soldiers, and lays its own road back toward your HQ.
-  Supply trucks drive those roads (Rebel trucks carry more, since the Rebels have no helicopters). If you ambush the trucks or block the road (tank traps, mines), every FOB past
-  that point stops getting supply.
+  HQ sends each FOB a supply truck a minute down those roads (a Rebel lorry carries a little more), however near
+  HQ it stands, so no map hands one side a richer start; a long road can only make a truck late for the next. A
+  road that couldn't be laid when the battle began is surveyed again. If you ambush the trucks or block the road
+  (tank traps, mines), every FOB past that point stops getting supply.
+- **Comeback pressure** (`rules.gd` `hq_load`, `_fire_the_dump`, `_reserves`): HQ sends bigger loads to a side
+  holding fewer towns and villages than the enemy, a quarter more for each one it is behind by (up to three), and
+  says so on the radio; the side ahead loses nothing. A FOB or town dump that falls is half burnt by its holders,
+  so the taker gets half its stock. And HQ sends a reserve squad now and then to a side down to its last few men
+  or outnumbered three to one.
 - **Towns** (`structure.gd` `_town_tick`, `rules.gd`): the town in the middle and every village are supply. Whoever
   holds one draws on it - food, fuel, lorries, labour - into its dump: 24 supply a minute from a village, 60 from
   the town, less as its houses are knocked down (a place shelled to ruins gives about a third), up to what the dump
@@ -1031,8 +1038,8 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   own (drawn on the map like the others, and just as easy to ambush or block); the truck's loss costs its load.
   - To take one, get men inside its ring (30 m round a village's middle, 42 m round the town's crossroads) with none
     of the other side's there: a squad takes a village in about half a minute, the town in nearer a minute (more
-    men, faster). Both sides there and nobody gains; the holder's men push it back; whatever's in the dump changes
-    hands with it. The holder is warned as soon as the enemy starts.
+    men, faster). Both sides there and nobody gains; the holder's men push it back; half of what's in the dump changes
+    hands with it (the holders burn the rest). The holder is warned as soon as the enemy starts.
   - Holding a town also lets you put a FOB up near it (not just near your own bases), your men round the dump
     refill their ammunition from it, and the townsfolk tell you who's about (it sees like a building).
   - Right-click a town that isn't yours with squads selected to send them to take it; select a dump to see who

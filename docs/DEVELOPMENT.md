@@ -369,6 +369,7 @@ FL_DEBUG_MISSION=1 (env)                              print the map's features (
                                                       --test-fire-every=0.3 fires that often (default 0.09 s)
 --dump-structs                                        list every built structure when --quit-after fires
 FL_DEBUG_TOWNS=1 (env)                                print each town and village: name, dump and the ground that takes it
+FL_DEBUG_ECON=1 (env)                                 print every supply truck HQ sends (its road's length, its load) and every load delivered
 FL_DEBUG_HPA=1 (env)                                  benchmark hierarchical vs flat paths at start-up
 FL_DEBUG_DECOR=1 (env)                                print the street-furniture chunk and mesh counts
 FL_DEBUG_CINE=1 (env)                                 say once that the cinematic lighting passes run, and which (windowed)
