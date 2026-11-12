@@ -15,6 +15,8 @@ lead artifact; original notes and supporting media remain under **Explore this c
 | Archive pair | A genuine, matched before/after view | Explicitly reviewed pair, same subject and conditions |
 | Controlled motion | Traverse, propulsion and muzzle geometry | `tests/fixtures/vehicle-motion-clips.tscn`; matched main/PR recordings |
 | Controlled capture presets | Tanks, boats and aircraft | `stages.json`: fixture, duration, simulation rate and cue |
+| Helicopter flight in the world | A real Ghost Hawk flight (lift-off, climb-out, banked turn, approach, landing) over the showroom battlefield on the High preset, path traced | `helicopters` / `helicopters-chase`: `tests/fixtures/helicopter-world-clips.tscn`, seed 712, fixed 30 Hz, Forward+ (`--renderer forward_plus`) |
+| Helicopter flight, flat field | The same flight on a plain test field, for quick checks | `tests/fixtures/helicopter-flight-visual.tscn`: `--camera=wide\|chase`, `--cam`/`--look`, `--caption`, `--seconds`; record with `--fixed-fps 30 --write-movie` |
 | Armament effects | Grenade, HE, fuel, tracer and impact timing | `armaments`: real effect pools, seed 712, 10 m ground marks, fixed 30 Hz |
 | Audible explosions | Separate grenade, HE and fuel reports | `explosions`: real explosion events at 1, 5 and 9 seconds; use `--write-movie` for audio |
 | Material impact close-ups | Dirt, stone and metal debris without obscuring fuel smoke | `impacts`: four seconds per material, fixed 30 Hz, normal speed |
@@ -51,6 +53,9 @@ python3 tools/showcase/capture.py boats --output /absolute/scratch/boats
 ```
 
 Inspect the capture log and beginning/action/end frames before keeping a clip.
+Without a full ffmpeg, the small build Playwright installs (`ms-playwright/ffmpeg-*`) still encodes VP9 WebM, but
+it reads only JPEG on a pipe: convert the PNG frames and feed them with `-f image2pipe -c:v mjpeg -i pipe:0`.
+A before/after pair is the same stage run on both builds, with the frames stacked before encoding.
 To repeat the low sandbag shot, pass `--clip=blast-sandbag` to `blast-world-clips.tscn`.
 For synchronized sound, run the `armament-effects-clips.tscn` fixture with
 `--fixed-fps 30 --write-movie /absolute/scratch/explosions.avi` before `--`, and

@@ -960,15 +960,26 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   their side (the armed ones fire missiles); recon vehicles see further. New weapons: 40 mm grenade machine
   guns, 20/30/40 mm cannon, twin 35 mm, miniguns, each with its own sound; main guns by the vehicle (125 mm,
   120 mm, a railgun, recoilless rifles).
-- **Rotorcraft flight.** Attack, transport and supply helicopters share a flight controller: momentum
-  carries through turns and new orders, the pilot accelerates and brakes gradually, and the nose and
-  bank follow the acceleration rather than pretending the aircraft is a road vehicle. Yaw has its own
-  turn rate, so gunships can keep their nose on a target while moving sideways. Climbs and descents
-  ease in and out; transports settle into a low-speed hover before landing or attaching a sling.
-  Loads reduce speed, acceleration and yaw response. Stop holds a troop transport in the air without
-  dropping its sling load; a new move resumes the flight, even during a landing. The host simulates
-  flight and sends pitch and bank with its snapshots; clients only interpolate the view. Drones and
-  ground vehicles keep their existing movement systems.
+- **Rotorcraft flight.** Attack, transport and supply helicopters share a flight model (`helicopter_flight.gd`)
+  that flies the way a real one does: the pilot tilts the rotor and the tilt is what accelerates her, so the nose
+  dips before she gathers speed and comes up into a flare before she slows, and the cyclic only moves so fast (a
+  big lifter answers slowly, a scout snaps round). Parasite drag keeps the nose a few degrees down in cruise, more
+  with a load on the cable. In forward flight the nose stays on the flight path and turns are banked arcs, slower
+  and tighter for a sharp one; a reversal at speed is flown as a decelerating turn. Near the hover she can pedal
+  turn and side-step, but only at a walking pace sideways or backwards. Climbs are best with forward speed, and a
+  slow descent is kept under about 2 m/s, out of the rotor's own downwash. Each flight follows a profile: the rotor
+  winds up before lift-off, she lifts into a hover check a couple of metres up, then noses over and climbs away as
+  speed builds (never racing along just over the ground); she cruises 16 m above the highest ground ahead, then
+  comes down a 12-degree glide path, slowing all the way, into a low hover over the spot and sets down gently. No
+  big flare close to the ground, where the tail would strike. Sling loads hang as a pendulum: they lag on
+  acceleration, swing forward in the flare and trail in the airflow; the load is lowered from a hover and let go
+  once it has stopped swinging. Gunships fly to their firing position nose first, then hold the nose on the target
+  and side-step round it. Stop holds a transport in the air without dropping its load; a new move resumes the
+  flight, even during a landing. On the ground the rotor stays at flight speed while she's busy and idles down when
+  she's been sitting with nothing to do. The host simulates flight and sends pitch, bank and the rotor's state
+  with its snapshots; clients draw the rest: a hovering helicopter's slight nose-up, one-side-low hang and gentle
+  wander, the rotor's beat following its speed and slapping louder under load, and the downwash throwing a ring
+  of dust (spray over water) when she's low. Drones and ground vehicles keep their own movement.
 - **Boarding:** select infantry and right-click your truck, APC, Slammer or a landed helicopter: they climb in
   (as many as fit) and ride until they dismount or it arrives.
 - Tanks smash through walls, trees and cars. Small arms ricochet off them. Frontal rockets can bounce,
