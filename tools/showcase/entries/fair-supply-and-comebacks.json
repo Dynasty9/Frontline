@@ -1,0 +1,10 @@
+{
+  "entry": "changelog/unreleased/fair-supply-and-comebacks.md",
+  "summary": "Both sides draw the same supply from HQ on every map, a side that falls behind gets help, and armour waits for its research.",
+  "medium": "text",
+  "stage": "text",
+  "rationale": "An economy rule change has no single picture that proves it; the pull request carries measured per-side income at minutes 4, 10 and 20 over AI-vs-AI seeds 1-6 before and after, and tests/economy.test.mjs checks the rules.",
+  "source_ref": "86356ba9",
+  "sources": [],
+  "output": null
+}
