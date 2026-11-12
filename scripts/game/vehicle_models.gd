@@ -28,6 +28,21 @@ var elev: Node3D  # an artillery barrel or rocket launcher that rises to fire (r
 ## six): pivots spinning about Y. Each may hold a "Blades" node (shown slow)
 ## and a "Blur" disc (shown fast), like the main rotor.
 var rotors: Array = []
+## The mouths of the exhaust pipes, in the model's own space: the origin at the
+## mouth, Y the way the gas leaves (the heat haze: Vehicle.heat_sources). Kept
+## as numbers, not nodes, so a fitting still folds away into its parent; the
+## pipes sit on parts that never move against the model.
+var exhausts: Array[Transform3D] = []
+
+
+## Notes an exhaust's mouth at `pos` on `parent`, the gas leaving along `dir`.
+func exhaust_at(parent: Node3D, pos: Vector3, dir: Vector3) -> void:
+	var t := Transform3D(VehicleFrames.aim(dir), pos)
+	var p := parent
+	while p != null and p != root:
+		t = p.transform * t
+		p = p.get_parent() as Node3D
+	exhausts.append(t)
 
 
 ## A civilian car: 0 saloon, 1 hatchback, 2 pickup, 3 van, 4 estate.
@@ -102,7 +117,16 @@ static func build(kind: String, team: int, seed: int, is_burnt := false) -> Vehi
 ## Every model key the families build (for the Field Manual's model pages).
 static func family_keys() -> Array[String]:
 	var out: Array[String] = []
-	for ks in [VmNato.KEYS, VmCsat.KEYS, VmIndep.KEYS, VmCiv.KEYS, VmHeli.KEYS, VmPlane.KEYS, VmBoat.KEYS, VmShips.KEYS]:
+	for ks in [VmNato.KEYS, VmCsat.KEYS, VmIndep.KEYS, VmCiv.KEYS, VmHeli.KEYS, plane_keys(), VmBoat.KEYS, VmShips.KEYS]:
+		out.append_array(ks)
+	return out
+
+
+## Every fixed-wing model key. The plane family spans several builders: VmPlane,
+## and the newer aircraft builders build() asks first (each builds its own keys).
+static func plane_keys() -> Array[String]:
+	var out: Array[String] = []
+	for ks in [VmPlane.KEYS, VmAttack.KEYS, VmFighter.KEYS, VmGunship.KEYS]:
 		out.append_array(ks)
 	return out
 

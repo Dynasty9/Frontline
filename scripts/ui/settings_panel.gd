@@ -42,8 +42,9 @@ func _ready() -> void:
 	var ql := UiKit.caps("Quality", 11, UiKit.FAINT)
 	ql.custom_minimum_size = Vector2(70, 0)
 	pr.add_child(ql)
-	_presets = UiSeg.make(["Low", "Medium", "High", "Ultra"], -1)
-	_presets.changed.connect(func(i: int): Settings.apply_preset(["low", "medium", "high", "ultra"][i]); _sync())
+	_presets = UiSeg.make(["Low", "Medium", "High", "Ultra", "Cinematic"], -1)
+	_presets.set_tooltip("Cinematic is Ultra with all of the cinematic lighting on top: for a fast graphics card, screenshots and replays.")
+	_presets.changed.connect(func(i: int): Settings.apply_preset(Settings.PRESET_KEYS[i]); _sync())
 	pr.add_child(_presets)
 	var custom := UiKit.mono_label("", 11, UiKit.WARN)
 	custom.name = "Custom"
@@ -89,6 +90,8 @@ func _ready() -> void:
 	_pages["graphics"] = _page(stack, [
 		["head", "", "Detail"],
 		["option", "shadows", "Shadow quality", Settings.LABELS.shadows, "Sun shadow resolution, cascades and softness."],
+		["check", "shadow_fit", "Adaptive shadows", null, "Fits the sun's shadows to the ground the camera can see, so close in they are several times sharper. Costs next to nothing."],
+		["option", "light_shadows", "Shadows from fire and flares", Settings.LABELS.light_shadows, "Explosions, burning wrecks, illumination flares and street lamps throw moving shadows: the two or six nearest the camera. Each one costs a little."],
 		["option", "aniso", "Texture filtering", Settings.LABELS.aniso, "Anisotropic filtering keeps ground textures crisp at a glancing angle."],
 		["option", "lod", "View distance / detail", Settings.LABELS.lod, "How far away models keep their full detail. Near also hides distant scenery forests."],
 		["option", "grass", "Vegetation", Settings.LABELS.grass, "Swaying grass blades across the battlefield."],
@@ -103,6 +106,7 @@ func _ready() -> void:
 		["option", "ao_q", "Ambient occlusion quality", Settings.LABELS.ao_q, "More samples, less noise."],
 		["check", "ssil", "Indirect light", null, "Light bouncing off nearby surfaces (screen-space)."],
 		["check", "gi", "Global illumination", null, "SDFGI: full bounced lighting. Expensive."],
+		["check", "phys_sky", "Physical sky", null, "At golden hour, dawn, dusk and in haze the sky is worked out from how sunlight scatters in the air: deep blue overhead, a reddened sun, the earth's shadow rising at dusk. The sky lights the battlefield too, so shade turns sky-blue while the sunlit side glows."],
 		["check", "terrain_reflections", "Mountain reflections", null, "Cached distant terrain reflected in water. Does not reflect moving units; approximate near shorelines."],
 		["check", "alpine_haze", "Alpine distance haze", null, "Stronger atmospheric depth between mountain ranges."],
 		["check", "ssr", "Screen-space reflections", null, "Puddles and wet ground reflect fire, flares and the sky."],
@@ -114,6 +118,7 @@ func _ready() -> void:
 		["slider", "sharpen", "Sharpening", [0.0, 1.0, 0.05], "FSR sharpening strength."],
 	])
 	_pages["lighting"] = _page(stack, [
+		["head", "", "Look"],
 		["option", "mood", "Time of day & weather", MOOD_NAMES, "Lighting for the battle (applies immediately)."],
 		["option", "look", "Colour grading", Settings.LABELS.look, "The film look laid over the scene."],
 		["option", "tonemap", "Tonemapper", Settings.LABELS.tonemap, "How bright highlights (fire, sun) roll off."],
@@ -122,6 +127,13 @@ func _ready() -> void:
 		["check", "glow", "Bloom", null, "Glow around fire, muzzle flashes and the sun."],
 		["check", "post", "Film grain & vignette", null, "A subtle camera look."],
 		["check", "dof", "Tilt-shift depth of field", null, "Softly blurs what is far from the camera's focus."],
+		["head", "", "Camera and lens"],
+		["check", "lens", "Lens flare and glare", null, "Bright lights flare the lens as they would a real camera's: ghosts and a halo mirrored through the centre, streaks, and glare on the dust on the glass."],
+		["check", "shafts", "Sun shafts", null, "Rays of light streaming past trees, ridges and smoke that stand against a low sun."],
+		["check", "local_exp", "Local exposure", null, "Keeps the detail in deep shade and in bright fire at the same time, as the eye does: a man in a building's shadow stays visible beside a burning wreck."],
+		["check", "eye_adapt", "Eye adaptation", null, "The view dims for a flash and recovers after it, and in the dark colours drain towards a cool grey as night vision takes over."],
+		["check", "film", "Film look", null, "Bright highlights bleed red into the film (halation), and fine detail is sharpened without halos."],
+		["check", "heat_haze", "Heat haze", null, "The air shimmers over fires and burning wrecks, over the engines and exhausts of tanks and helicopters, and for a moment round a blast. With Reduce motion on it holds still."],
 	])
 	_pages["display"] = _page(stack, [
 		["option", "window", "Window mode", Settings.LABELS.window, ""],
@@ -178,9 +190,12 @@ func _ready() -> void:
 
 
 ## What the browser build can't do: its renderer (WebGL 2) has no
-## screen-space lighting, upscaling or depth of field, and the page decides
-## the game's size and when it draws.
-const NOT_ON_WEB := ["ssao", "ao_q", "ssil", "gi", "ssr", "vol_fog", "upscaler", "sharpen", "dof", "resolution", "vsync"]
+## screen-space lighting, upscaling or depth of field, and no compositor for
+## the camera and lens passes; marching the physical sky and shadowing fires
+## would cost a browser too much; and the page decides the game's size and
+## when it draws.
+const NOT_ON_WEB := ["ssao", "ao_q", "ssil", "gi", "ssr", "vol_fog", "upscaler", "sharpen", "dof", "resolution", "vsync",
+	"light_shadows", "phys_sky", "lens", "shafts", "local_exp", "eye_adapt", "film", "heat_haze"]
 ## Settings only a Mac has a use for: elsewhere a trackpad scrolls like a wheel.
 const ONLY_ON_MAC := ["scroll_mode"]
 
@@ -337,7 +352,7 @@ func _apply(key: String, v) -> void:
 
 func _sync() -> void:
 	_syncing = true
-	_presets.select(["low", "medium", "high", "ultra"].find(Settings.preset))
+	_presets.select(Settings.PRESET_KEYS.find(Settings.preset))
 	var cl := find_child("Custom", true, false) as Label
 	if cl:
 		cl.text = "CUSTOM" if Settings.preset == "custom" else ""

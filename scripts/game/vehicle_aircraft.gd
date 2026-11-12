@@ -150,3 +150,43 @@ static func wire_cutter(k: VehicleModels, parent: Node3D, size: Vector3, center:
 	for y: float in [-0.32, 0.32]:
 		VehicleBody.fastener(k, mount, Vector3(size.x * 0.51, size.y * y, 0), Vector3.RIGHT, size.x * 0.17)
 	k._fold(mount)
+
+static var _nozzles := {}
+
+## Turbine exhaust from the engine face `a` to the outlet `b`, radius tapering
+## to `end_radius`: an open shell (no cap over the outlet), a soot-dark liner,
+## the turbine's tail cone and a heat-tinted rolled lip, all aimed along a-b so
+## the outlet disc can no longer sit crooked in the pipe.
+static func turbine_exhaust(k: VehicleModels, parent: Node3D, a: Vector3, b: Vector3, radius: float, end_radius: float, mat := "gunmetal_w", col = null) -> void:
+	var length := a.distance_to(b)
+	if length < 0.01:
+		return
+	k.exhaust_at(parent, b, b - a)
+	var mount := k._pivot(parent, a)
+	mount.basis = VehicleFrames.aim(b - a)
+	var depth := minf(length * 0.9, end_radius * 2.4)
+	var key := "%.3f_%.3f_%.3f" % [radius, end_radius, length]
+	if not _nozzles.has(key):
+		var outer := CylinderMesh.new()
+		outer.top_radius = end_radius
+		outer.bottom_radius = radius
+		outer.height = length
+		outer.radial_segments = 14
+		outer.cap_top = false
+		var liner := CylinderMesh.new()
+		liner.top_radius = end_radius * 0.86
+		liner.bottom_radius = lerpf(end_radius, radius, depth / length) * 0.86
+		liner.height = depth
+		liner.radial_segments = 14
+		liner.cap_top = false
+		liner.cap_bottom = false
+		liner.flip_faces = true
+		_nozzles[key] = [outer, liner]
+	var meshes: Array = _nozzles[key]
+	k._add(mount, meshes[0], mat, col, Vector3(0, length * 0.5, 0))
+	k._add(mount, meshes[1], "burnt", Color(0.03, 0.03, 0.028), Vector3(0, length - depth * 0.5, 0), Vector3.ZERO, Vector3.ONE, false)
+	var core := lerpf(end_radius, radius, depth / length) * 0.86
+	k._cyl(mount, core, core, 0.004, Vector3(0, length - depth, 0), Vector3.ZERO, "plain_dark", null, 14, false)
+	k._cyl(mount, end_radius * 0.12, core * 0.42, depth * 0.62, Vector3(0, length - depth + depth * 0.31, 0), Vector3.ZERO, "metal_dark", null, 10, false)
+	k._add(mount, VehicleFittings._ring(end_radius * 0.86, end_radius * 1.03), "gunmetal", Color(0.30, 0.25, 0.19), Vector3(0, length, 0), Vector3.ZERO, Vector3(1, 0.7, 1), false)
+	k._fold(mount)

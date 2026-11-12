@@ -4,47 +4,57 @@ import { Link } from "react-router"
 import { Emblem } from "@/components/emblem"
 import { HudCorners, Timecode } from "@/components/footage"
 import { RadioLog } from "@/components/radio-log"
+import { SendToComputer } from "@/components/send-to-computer"
 import { Button } from "@/components/ui/button"
 import { useInView } from "@/hooks/use-in-view"
+import { usePageLoaded } from "@/hooks/use-page-loaded"
 import { useReducedMotion } from "@/hooks/use-reduced-motion"
 import type { Health } from "@/lib/matchmaker"
 import { media, saveData } from "@/lib/media"
-import { assetFor, latest, type Platform, PLATFORM_NAMES } from "@/lib/releases"
+import { assetFor, latest, type Platform, PLATFORM_NAMES, platformList } from "@/lib/releases"
 
 type Props = {
   health: Health | undefined
   platform: Platform
+  /** a phone or tablet: no download to offer, so the link goes to a computer instead */
+  phone?: boolean
   onWatch: () => void
 }
 
 /** What you command, typed into the headline one after another. */
 const COMMANDS = ["squads", "armour", "gunships", "artillery", "patrol boats", "A-10s"]
 
-export function Hero({ health, platform, onWatch }: Props) {
+export function Hero({ health, platform, phone = false, onWatch }: Props) {
   const asset = assetFor(platform)
   const video = useRef<HTMLVideoElement>(null)
   const [ref, inView] = useInView<HTMLElement>()
   const reduced = useReducedMotion()
+  const loaded = usePageLoaded()
+  // The still, and no footage at all, for people who prefer less motion, have
+  // Data Saver on or are on a phone (3.4 MB of video on a phone's data, for a
+  // background, isn't worth it: Watch the footage is a tap away). Elsewhere the
+  // still comes first and the footage once the page has loaded.
+  const still = reduced || saveData() || phone
 
   // the footage runs while you can see it
   useEffect(() => {
     const v = video.current
     if (!v) return
-    if (inView && !reduced && !saveData()) v.play().catch(() => {})
+    if (inView && loaded && !still) v.play().catch(() => {})
     else v.pause()
-  }, [inView, reduced])
+  }, [inView, loaded, still])
 
   return (
     <section ref={ref} id="top" className="relative isolate flex min-h-[100svh] flex-col overflow-hidden">
       {/* the footage, and what's drawn over it to make the text read */}
       <video
         ref={video}
-        src={media("hero", "mp4")}
+        src={still ? undefined : media("hero", "mp4")}
         poster={media("hero", "jpg")}
         muted
         loop
         playsInline
-        preload={saveData() ? "none" : "auto"}
+        preload="none"
         aria-hidden="true"
         className="absolute inset-0 -z-30 size-full object-cover"
       />
@@ -89,17 +99,21 @@ export function Hero({ health, platform, onWatch }: Props) {
               Play now
             </Link>
           </Button>
-          <Button
-            size="lg"
-            variant="outline"
-            asChild
-            className="h-12 border-white/25 bg-black/30 px-6 text-sm font-bold tracking-wider uppercase backdrop-blur-sm"
-          >
-            <a href={asset.url}>
-              <DownloadSimpleIcon weight="bold" />
-              Download for {PLATFORM_NAMES[platform]}
-            </a>
-          </Button>
+          {phone ? (
+            <SendToComputer className="-mb-6" />
+          ) : (
+            <Button
+              size="lg"
+              variant="outline"
+              asChild
+              className="h-12 border-white/25 bg-black/30 px-6 text-sm font-bold tracking-wider uppercase backdrop-blur-sm"
+            >
+              <a href={asset.url}>
+                <DownloadSimpleIcon weight="bold" />
+                Download for {PLATFORM_NAMES[platform]}
+              </a>
+            </Button>
+          )}
           <button
             type="button"
             onClick={onWatch}
@@ -114,10 +128,16 @@ export function Hero({ health, platform, onWatch }: Props) {
         </div>
 
         <p className="mt-4 text-xs text-muted-foreground">
-          Free and open source · {latest.name} ·{" "}
-          <Link to="/play#download" className="underline-offset-4 hover:text-foreground hover:underline">
-            other platforms
-          </Link>
+          {phone ? (
+            <>Free and open source · played with a keyboard and mouse, on {platformList()}</>
+          ) : (
+            <>
+              Free and open source · {latest.name} ·{" "}
+              <Link to="/play#download" className="underline-offset-4 hover:text-foreground hover:underline">
+                other platforms
+              </Link>
+            </>
+          )}
         </p>
         <LiveLine health={health} />
       </div>
@@ -195,10 +215,10 @@ function LiveLine({ health }: { health: Health | undefined }) {
         <span className="absolute inline-flex size-full animate-ping rounded-full bg-good opacity-60" />
         <span className="relative inline-flex size-2 rounded-full bg-good" />
       </span>
-      <a href="#battles" className="hover:text-foreground">
+      <Link to="/battles" className="hover:text-foreground">
         {n === 0 ? "No battles hosted right now" : `${n} ${n === 1 ? "battle" : "battles"} live`}
         {health.players > 0 && ` · ${health.players} ${health.players === 1 ? "player" : "players"}`}
-      </a>
+      </Link>
     </p>
   )
 }

@@ -33,3 +33,23 @@ static func axle(k: VehicleModels, parent: Node3D, center: Vector3, width: float
 				VehicleFrames.beam(k, parent, c, c + Vector3(0, 0.035, length * 0.5), 0.07, 0.01, "metal_dark")
 			for z in [-spring_length * 0.4, spring_length * 0.4]:
 				k._box(parent, Vector3(0.1, 0.045, 0.035), center + Vector3(side * spring_span, radius + 0.07, z), "steel", Color(0.20, 0.21, 0.19))
+
+## Saddle fuel tank hung from the frame rail: the old tank's centre and size
+## (a round tank is 2r x 2r x length along Z). `side` is the vehicle side it
+## hangs on. Dished ends and straps (round) or a bevelled box with straps,
+## the filler cap on the outer shoulder, hanger brackets inboard and a drain.
+static func fuel_tank(k: VehicleModels, parent: Node3D, center: Vector3, size: Vector3, side: float, mat: String, col = null, round := true) -> void:
+	var s := 1.0 if side >= 0.0 else -1.0
+	var straps := [-size.z * 0.28, size.z * 0.28]
+	if round:
+		VehicleEquipment.vessel(k, parent, center, size, straps, mat, col, false)
+	else:
+		k._add(parent, BevelMesh.make(size, minf(0.03, minf(size.x, size.y) * 0.1)), mat, col, center)
+		for z: float in straps:
+			k._box(parent, Vector3(size.x + 0.012, size.y + 0.012, 0.04), center + Vector3(0, 0, z), "metal_dark")
+	var shoulder := Vector3(s * 0.45, 0.89, 0).normalized()
+	var cap_at := center + Vector3(shoulder.x * size.x * 0.5, shoulder.y * size.y * 0.5, -size.z * 0.3) if round else center + Vector3(s * size.x * 0.25, size.y * 0.5, -size.z * 0.3)
+	VehicleFittings.filler(k, parent, cap_at, minf(0.05, size.x * 0.12), shoulder if round else Vector3.UP)
+	for z: float in straps:
+		k._box(parent, Vector3(0.03, size.y * 0.8, 0.08), center + Vector3(-s * (size.x * 0.5 + 0.015), 0, z), "metal_dark")
+	VehicleBody.fastener(k, parent, center + Vector3(0, -size.y * 0.5 - 0.002, size.z * 0.3), Vector3.DOWN, 0.014)

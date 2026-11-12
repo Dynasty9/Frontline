@@ -1,3 +1,5 @@
+import { ArrowRightIcon } from "@phosphor-icons/react"
+import { Link } from "react-router"
 import { SectionLabel } from "@/components/battles"
 import { Clip } from "@/components/footage"
 import { Reveal } from "@/components/reveal"
@@ -10,8 +12,7 @@ export function Features() {
       <Reveal from="signal">
         <SectionLabel>01 / Take command</SectionLabel>
         <h2 className="mt-4 max-w-3xl font-display text-5xl leading-none font-extrabold uppercase sm:text-7xl">
-          The road is covered.
-          <br />
+          The road is covered. <br />
           <span className="text-primary">Find another way.</span>
         </h2>
         <p className="mt-6 max-w-xl text-lg leading-relaxed text-muted-foreground">
@@ -27,8 +28,7 @@ export function Features() {
         <Reveal from="type" delay={120}>
           <p className="font-mono text-xs tracking-widest text-primary uppercase">Your orders. Their instincts.</p>
           <h3 className="mt-4 font-display text-4xl leading-none font-bold uppercase">
-            You choose the move.
-            <br />
+            You choose the move. <br />
             They fight as a team.
           </h3>
           <p className="mt-5 leading-relaxed text-muted-foreground">
@@ -45,8 +45,7 @@ export function Features() {
         <Reveal from="signal">
           <SectionLabel>Every soldier matters</SectionLabel>
           <h3 className="mt-4 font-display text-4xl leading-none font-bold uppercase sm:text-5xl">
-            Under fire,
-            <br />
+            Under fire, <br />
             instinct takes over.
           </h3>
           <p className="mt-5 max-w-md leading-relaxed text-muted-foreground">
@@ -64,8 +63,7 @@ export function Features() {
           <div>
             <SectionLabel>02 / Change the fight</SectionLabel>
             <h3 className="mt-4 font-display text-5xl leading-none font-extrabold uppercase sm:text-7xl">
-              Now bring the
-              <br />
+              Now bring the <br />
               <span className="text-primary">heavy hitters.</span>
             </h3>
           </div>
@@ -79,9 +77,13 @@ export function Features() {
         </Reveal>
         <div className="flex flex-wrap justify-between gap-3 border-b py-5">
           <p className="font-display text-xl font-bold uppercase">Break through on the ground</p>
-          <p className="font-mono text-xs text-muted-foreground">
-            {COUNTS.vehicles} vehicles · From quad bikes to main battle tanks
-          </p>
+          <Link
+            to="/manual/vehicles"
+            className="inline-flex items-center gap-2 font-mono text-xs text-muted-foreground underline-offset-4 hover:text-primary hover:underline"
+          >
+            {COUNTS.vehicles} vehicles · From quad bikes to main battle tanks · In the Field Manual
+            <ArrowRightIcon aria-hidden="true" className="size-3.5" />
+          </Link>
         </div>
         <div className="mt-10 grid gap-10 md:grid-cols-2">
           <div>
@@ -106,9 +108,18 @@ export function Features() {
           </div>
         </div>
       </article>
-      <p className="mt-12 font-mono text-xs text-muted-foreground">
-        Actual gameplay throughout. Every clip recorded in Frontline.
-      </p>
+      <div className="mt-12 flex flex-wrap items-center justify-between gap-4">
+        <p className="font-mono text-xs text-muted-foreground">
+          Actual gameplay throughout. Every clip recorded in Frontline.
+        </p>
+        <Link
+          to="/manual"
+          className="inline-flex min-h-11 items-center gap-2 text-sm font-semibold underline-offset-4 hover:text-primary hover:underline"
+        >
+          How it all works: the Field Manual
+          <ArrowRightIcon aria-hidden="true" className="size-4" />
+        </Link>
+      </div>
     </section>
   )
 }

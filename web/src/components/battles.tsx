@@ -6,11 +6,13 @@ import {
   SealCheckIcon,
   WarningIcon,
   XIcon,
+  FilmStripIcon,
 } from "@phosphor-icons/react"
 import { useEffect, useState } from "react"
 import { Link } from "react-router"
 import { Emblem } from "@/components/emblem"
 import { InsigniaImg } from "@/components/insignia-img"
+import { ReelDialog } from "@/components/reel-dialog"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -394,20 +396,33 @@ function Loading() {
   )
 }
 
+/** Nobody's on: start one, or see what a battle looks like, or go and play the AI meanwhile. */
 function Empty({ onLaunch }: { onLaunch: () => void }) {
+  const [watching, setWatching] = useState(false)
   return (
     <div className="flex flex-col items-center px-6 py-14 text-center">
       <Emblem className="size-10 opacity-40" />
       <p className="mt-4 text-base font-medium">Nobody is hosting right now</p>
       <p className="mt-1 max-w-md text-sm text-muted-foreground">
-        Press Find Match and you'll host a battle for the next player to find. It shows up here the moment you do.
+        Press Find Match and you'll host a battle for the next player to find. It shows up here the moment you do. Until
+        someone joins, the AI is always ready: every mission plays alone or in co-op.
       </p>
-      <Button variant="outline" asChild className="mt-6">
-        <a href={FIND_MATCH_LINK} onClick={onLaunch}>
-          <CrosshairIcon weight="bold" />
-          Find a match
-        </a>
-      </Button>
+      <div className="mt-6 flex flex-wrap justify-center gap-2">
+        <Button variant="outline" asChild>
+          <a href={FIND_MATCH_LINK} onClick={onLaunch}>
+            <CrosshairIcon weight="bold" />
+            Find a match
+          </a>
+        </Button>
+        <Button variant="ghost" onClick={() => setWatching(true)}>
+          <FilmStripIcon weight="fill" />
+          Watch the footage
+        </Button>
+        <Button variant="ghost" asChild>
+          <Link to="/play">Play against the AI</Link>
+        </Button>
+      </div>
+      <ReelDialog open={watching} onClose={() => setWatching(false)} />
     </div>
   )
 }

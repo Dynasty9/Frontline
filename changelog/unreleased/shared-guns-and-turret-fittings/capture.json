@@ -1,0 +1,59 @@
+{
+  "before_ref": "69a1df0348fb879aa98d5fbfd7f02ac31a10c6d7",
+  "after_ref": "34880bb34b5fee9a343e2203129775f49b07a172",
+  "engine": "Godot 4.7.2 stable",
+  "renderer": "forward_plus",
+  "team": 0,
+  "seed": 3,
+  "source_size": [
+    1600,
+    900
+  ],
+  "sheet_size": [
+    1600,
+    2700
+  ],
+  "composition": "Uncropped source renders resized to 800x450, before left, after right, short labels. JPEG quality 82.",
+  "command": "godot --path <checkout> tools/showcase/vehicle-surfaces.tscn -- --surface-single --surface-kinds=<model> --surface-focus=<focus> --surface-size=<size> [--surface-rear] --surface-out=<outside-repo-directory>",
+  "component_rig": "--surface-shared-parts renders the twenty parts on their own in the same stage.",
+  "shots": [
+    {
+      "model": "tank",
+      "focus": "0.45,2.2,-0.35",
+      "size": 1.9,
+      "label": "Abrams: cupola vision blocks, .50, race ring"
+    },
+    {
+      "model": "hunter_hmg",
+      "focus": "0,3.0,0.0",
+      "size": 1.7,
+      "label": "Hunter: remote station and M2"
+    },
+    {
+      "model": "marid",
+      "focus": "0.2,2.45,0.3",
+      "size": 2.3,
+      "label": "Marid: 12.7 mm and 40 mm station, hatches"
+    },
+    {
+      "model": "varsuk",
+      "focus": "0,1.35,-3.3",
+      "size": 2.6,
+      "label": "Varsuk: reactive armour on the glacis"
+    },
+    {
+      "model": "zamak",
+      "focus": "-1.0,1.05,-2.2",
+      "size": 2.5,
+      "rear": true,
+      "label": "Zamak: strapped saddle fuel tank"
+    },
+    {
+      "model": "kajman",
+      "focus": "-1.1,2.9,1.2",
+      "size": 2.4,
+      "rear": true,
+      "label": "Kajman: open turbine exhaust"
+    }
+  ]
+}

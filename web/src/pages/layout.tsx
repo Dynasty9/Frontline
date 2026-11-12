@@ -5,6 +5,7 @@ import { GameSignIn } from "@/components/game-sign-in"
 import { SiteFooter } from "@/components/site-footer"
 import { SignInDialog } from "@/components/sign-in-dialog"
 import { SiteHeader } from "@/components/site-header"
+import { TopoBackdrop } from "@/components/topo-backdrop"
 import { TooltipProvider } from "@/components/ui/tooltip"
 import { usePoll } from "@/hooks/use-poll"
 import { closeSignIn, openSignIn, useSignInDialog } from "@/hooks/use-sign-in-dialog"
@@ -14,7 +15,7 @@ import { readSignInRequest, withoutSignInRequest } from "@/lib/game-sign-in"
 import { fetchHealth } from "@/lib/matchmaker"
 
 /**
- * Every page: the header, the page, the footer, and the sign-in dialog. The
+ * Every page: the map behind it, the header, the page, the footer, and the sign-in dialog. The
  * game opens the site's front page for a few things (?sign-in=, ?join=;
  * GitHub comes back to it with ?code=), and older copies of the game will go
  * on doing so, so they're taken care of here, whichever page they land on.
@@ -63,11 +64,9 @@ export function Layout() {
   return (
     <QueryClientProvider client={queries}>
       <TooltipProvider delayDuration={150}>
-        <SiteHeader
-          overlay={location.pathname === "/" && (!user || health.data?.accounts === "off")}
-          accounts={health.data?.accounts}
-          live={health.data?.lobbies}
-        />
+        {/* the game's menu map, behind every page */}
+        <TopoBackdrop />
+        <SiteHeader overlay={location.pathname === "/"} accounts={health.data?.accounts} live={health.data?.lobbies} />
         {/* things slide in from the sides as they reveal: never let them widen the page */}
         <main id="main-content" tabIndex={-1} className="overflow-x-clip">
           <Outlet context={{ health: health.data } satisfies Site} />

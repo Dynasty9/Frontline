@@ -99,6 +99,7 @@ func _ready() -> void:
 		l.omni_attenuation = 1.6
 		l.shadow_enabled = false
 		l.visible = false
+		l.add_to_group(&"fx_light")
 		add_child(l)
 		_lights.append([l, 0.0])
 

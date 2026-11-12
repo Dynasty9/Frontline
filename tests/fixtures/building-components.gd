@@ -1,0 +1,260 @@
+extends Node
+## The shared building construction (BuildingKit and its components): every
+## part builds real geometry in both its outputs, openings stay open, shared
+## shapes are shared, batched scenery keeps to batchable surfaces, and every
+## building's model still builds.
+
+var _failures := 0
+
+
+func check(ok: bool, what: String) -> void:
+	if not ok:
+		_failures += 1
+		TestRun.fail()
+		push_error("BUILDING_COMPONENTS failed: " + what)
+
+
+## Is `point` (in the root's space) inside any part built as a node under it?
+## (A cached shape is several solids in one mesh, so its bounding box says
+## nothing: count the faces a ray from the point crosses.)
+func occupied(root: Node3D, point: Vector3) -> bool:
+	for child in root.get_children():
+		var mi := child as MeshInstance3D
+		if mi == null or mi.mesh == null:
+			continue
+		var local := mi.transform.affine_inverse() * point
+		if not mi.mesh.get_aabb().grow(0.001).has_point(local):
+			continue
+		var faces := mi.mesh.get_faces()
+		var dir := Vector3(0.137, 0.913, 0.384).normalized()
+		var hits := 0
+		for i in range(0, faces.size(), 3):
+			if Geometry3D.ray_intersects_triangle(local, dir, faces[i], faces[i + 1], faces[i + 2]) != null:
+				hits += 1
+		if hits % 2 == 1:
+			return true
+	return false
+
+
+func valid(root: Node3D, what: String) -> void:
+	var count := 0
+	for child in root.get_children():
+		var mi := child as MeshInstance3D
+		if mi == null:
+			continue
+		count += 1
+		check(mi.mesh != null and mi.mesh.get_aabb().size.is_finite(), what + ": a part without finite geometry")
+		check(mi.transform.origin.is_finite() and mi.transform.basis.determinant() != 0.0, what + ": a part placed badly")
+		check(Mats.base_of(mi.material_override) is ShaderMaterial, what + ": a part without one of our surfaces")
+	check(count > 0, what + ": nothing built")
+
+
+func kit() -> BuildingKit:
+	var root := Node3D.new()
+	add_child(root)
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 11
+	return BuildingKit.nodes(root, rng)
+
+
+func _ready() -> void:
+	TestRun.watch()
+	# Wall gaps: dressings stop at openings and nowhere else.
+	var runs := BuildingWalls.runs(-2.0, 2.0, 0.0, 0.3, [Rect2(-0.95, 0.0, 1.9, 2.2), Rect2(1.5, 1.0, 0.4, 0.5)])
+	check(runs.size() == 2 and is_equal_approx(runs[0].y, -0.95) and is_equal_approx(runs[1].x, 0.95), "plinth runs split at the doorway only: %s" % [runs])
+	check(BuildingWalls.runs(-1.0, 1.0, 2.5, 2.6, [Rect2(-0.5, 0.0, 1.0, 2.2)]).size() == 1, "a band above an opening runs on unbroken")
+
+	# Every component builds, as nodes and into a bake.
+	var builders := {
+		"face_plaster": func(k: BuildingKit): BuildingWalls.face(k, 3.0, 3.0, "plaster", Color(0.7, 0.65, 0.55), [Rect2(-0.65, 1.0, 1.3, 1.0)], {"band": 2.9}),
+		"face_brick": func(k: BuildingKit): BuildingWalls.face(k, 3.0, 3.0, "brick", Color(0.56, 0.3, 0.21)),
+		"face_stone": func(k: BuildingKit): BuildingWalls.face(k, 3.0, 3.0, "stone", Color(0.6, 0.57, 0.5), [], {"corners": [-1.5, 1.5]}),
+		"face_timber": func(k: BuildingKit): BuildingWalls.face(k, 3.0, 3.0, "timber", Color(0.3, 0.34, 0.22), [], {"corners": [-1.5, 1.5]}),
+		"face_sheet": func(k: BuildingKit): BuildingWalls.face(k, 4.0, 4.0, "corrugated", Color(0.45, 0.46, 0.44)),
+		"face_precast": func(k: BuildingKit): BuildingWalls.face(k, 6.0, 3.0, "precast", Color(0.5, 0.5, 0.5)),
+		"coping": func(k: BuildingKit):
+			for m in ["plaster", "brick", "stone", "concrete"]:
+				BuildingWalls.coping(k, 3.0, 0.4, 1.0, m, BuildingMaterials.color(m)),
+		"window": func(k: BuildingKit): BuildingOpenings.window(k, Vector3(0, 1.5, 0), Vector2(1.3, 1.0), {"shutters": Color(0.3, 0.4, 0.3), "shutter": "louvred"}),
+		"doorway": func(k: BuildingKit): BuildingOpenings.doorway(k, Vector3.ZERO, Vector2(1.9, 2.2), {"hood": true}),
+		"leaves": func(k: BuildingKit):
+			for style in ["panelled", "ledged", "steel"]:
+				BuildingOpenings.leaf(k, Vector2(0.9, 2.0), style, Color(0.3, 0.2, 0.15), 1.0),
+		"roller": func(k: BuildingKit): BuildingOpenings.roller_door(k, Vector3.ZERO, Vector2(4.0, 3.5), Color(0.5, 0.5, 0.4)),
+		"louvre": func(k: BuildingKit): BuildingOpenings.louvre(k, Vector3(0, 1, 0), Vector2(0.6, 0.6), Color.GRAY),
+		"ribbon": func(k: BuildingKit): BuildingOpenings.ribbon(k, Vector3(0, 2, 0), Vector2(4, 0.7), 4, Color.DIM_GRAY),
+		"gable": func(k: BuildingKit): BuildingRoofs.gable(k, 9.0, 7.0, 3.0, 28.0, 0.35, "roof_tile", Color(0.5, 0.22, 0.14), {"gutters": true, "downpipes": [[4.2, 1.0]]}),
+		"gable_sheet": func(k: BuildingKit): BuildingRoofs.gable(k, 9.0, 6.0, 3.0, 26.0, 0.35, "roof_sheet", Color(0.45, 0.47, 0.45)),
+		"flat": func(k: BuildingKit): BuildingRoofs.flat(k, 8.0, 7.0, 3.0, {"hatch": true}),
+		"canopy": func(k: BuildingKit): BuildingRoofs.canopy(k, 2.4, 1.0, "roof_sheet", Color(0.45, 0.47, 0.45)),
+		"sawtooth": func(k: BuildingKit): BuildingRoofs.sawtooth(k, 9.0, 7.0, 3, 0.9, "roof_sheet", Color(0.45, 0.47, 0.45)),
+		"fittings": func(k: BuildingKit):
+			BuildingFittings.gutter(k, Vector3(-2, 2.8, 0), Vector3(2, 2.8, 0), Vector3(0, 0, 1))
+			BuildingFittings.downpipe(k, Vector3(1.8, 2.75, 0.1), Vector3(1.8, 0.1, 0.0))
+			BuildingFittings.hopper(k, Vector3(0, 3, 0))
+			BuildingFittings.chimney(k, Vector3.ZERO, Vector2(0.6, 0.6), 1.5)
+			BuildingFittings.stack(k, Vector3.ZERO, 0.5, 0.4, 5.0)
+			BuildingFittings.flue(k, Vector3.ZERO, 0.1, 1.0)
+			BuildingFittings.ac_unit(k, Vector3.ZERO)
+			BuildingFittings.water_tank(k, Vector3.ZERO)
+			BuildingFittings.dish(k, Vector3.ZERO)
+			BuildingFittings.mast(k, Vector3.ZERO, 6.0)
+			BuildingFittings.whip(k, Vector3.ZERO)
+			BuildingFittings.flagpole(k, Vector3.ZERO, 6.0)
+			BuildingFittings.lamp(k, Vector3.ZERO, Vector3.RIGHT)
+			BuildingFittings.pipe(k, Vector3(0, 2, -2), Vector3(0, 2, 2), 0.15, Color.GRAY, Vector3(-0.25, 0, 0))
+			BuildingFittings.drum(k, Vector3.ZERO, Color.DARK_RED)
+			BuildingFittings.drum(k, Vector3(1, 0, 0), Color.DARK_RED, true, 0.5)
+			BuildingFittings.crate(k, Vector3.ZERO, Vector3(1.0, 0.5, 0.6), Color.SADDLE_BROWN)
+			BuildingFittings.pallet(k, Vector3.ZERO),
+		"wire": func(k: BuildingKit):
+			BuildingWire.cable(k, Vector3(0, 5, 0), Vector3(8, 4, 0), 0.4)
+			BuildingWire.guy(k, Vector3(0, 5, 0), Vector3(2, 0, 0))
+			BuildingWire.guy(k, Vector3(0, 2, 0), Vector3(1, 0, 1), true, "peg")
+			BuildingWire.insulator(k, Vector3.ZERO)
+			BuildingWire.barbed(k, Vector3(-2, 1, 0), Vector3(2, 1, 0))
+			BuildingWire.topping(k, 4.0, 2.6),
+	}
+	for key: String in builders:
+		var k := kit()
+		builders[key].call(k)
+		valid(k.sink.root, key)
+		check(k.sink.parts == k.sink.root.get_child_count(), key + ": every part became a node")
+		var bake := Mats.Bake.new()
+		var bk := BuildingKit.baked(bake, null, Transform3D(Basis.IDENTITY, Vector3(5, 0, 5)))
+		builders[key].call(bk)
+		var baked := Node3D.new()
+		add_child(baked)
+		bake.commit(baked)
+		check(baked.get_child_count() > 0, key + ": nothing baked")
+		for mi in baked.get_children():
+			check((mi as MeshInstance3D).mesh.get_aabb().size.is_finite(), key + ": baked geometry not finite")
+		k.sink.root.free()
+		baked.free()
+
+	# Openings stay open: a doorway's passage and a window's daylight, the
+	# opening between frame and frame, are clear of its dressing.
+	var dk := kit()
+	BuildingOpenings.doorway(dk, Vector3.ZERO, Vector2(1.9, 2.2), {"hood": true})
+	for p in [Vector3(0, 1.0, 0), Vector3(0.7, 1.9, -0.05), Vector3(-0.7, 0.3, -0.05), Vector3(0, 1.0, 0.4)]:
+		check(not occupied(dk.sink.root, p), "the doorway is open at %s" % p)
+	check(occupied(dk.sink.root, Vector3(0.9, 1.0, -0.08)), "the doorway has its frame")
+	dk.sink.root.free()
+	var wk := kit()
+	BuildingOpenings.window(wk, Vector3(0, 1.5, 0), Vector2(1.3, 1.0), {"glazing": 0.0, "cracked": 0.0})
+	for p in [Vector3(-0.3, 1.3, -0.1), Vector3(0.3, 1.3, -0.1), Vector3(0, 1.5, 0.05)]:
+		check(not occupied(wk.sink.root, p), "the window is clear at %s" % p)
+	check(occupied(wk.sink.root, Vector3(0, 1.5, -0.1)), "the window has its mullion")
+	wk.sink.root.free()
+
+	# Shared shapes: windows of one size share one frame mesh.
+	check(BuildingOpenings.frame_shape(1.3, 1.0, 1, 0.7) == BuildingOpenings.frame_shape(1.3, 1.0, 1, 0.7), "window frames are cached")
+	check(BuildingOpenings.leaf_shape(Vector2(0.88, 2.06), "panelled") == BuildingOpenings.leaf_shape(Vector2(0.88, 2.06), "panelled"), "door leaves are cached")
+
+	# Materials: each house material has a surface, and house walls dress in it.
+	for ci in 5:
+		var m := BuildingMaterials.house(ci)
+		check(Mats._preset(BuildingMaterials.surface(m)).has("pattern"), "house material %s has a surface" % m)
+	check("brick" in BuildingMaterials.HOUSE and "stone" in BuildingMaterials.HOUSE, "towns have brick and stone houses")
+
+	# Batched scenery keeps to world-space surfaces (StructureView merges
+	# nothing in local space), so the new dressing doesn't break the batches.
+	for spec: Array in [["house_wall", 0, Vector3(2.8, 2.0, 0.4)], ["house_wall", 1, Vector3(2.8, 4.0, 0.4)], ["house_wall", 2, Vector3(2.8, 2.0, 0.4)],
+			["low_wall", 0, Vector3(4.0, 1.0, 0.5)], ["low_wall", 2, Vector3(4.0, 1.0, 0.5)], ["floor", 0, Vector3(8, 0.06, 7)]]:
+		var m := Structure.preview_model(spec[0], -1, spec[1], spec[2])
+		var stack: Array = [m]
+		while not stack.is_empty():
+			var n: Node = stack.pop_back()
+			stack.append_array(n.get_children())
+			var mi := n as MeshInstance3D
+			if mi and mi.material_override is ShaderMaterial:
+				var sm := Mats.base_of(mi.material_override) as ShaderMaterial
+				check(sm.get_shader_parameter("local_space") != true, "%s %d stays batchable (%s)" % [spec[0], spec[1], sm.resource_name])
+		m.free()
+
+	# Lamplight: the global the windows read is registered, lit glass is lit
+	# and plain glass isn't, and the time of day sets how much shows.
+	check(ProjectSettings.has_setting("shader_globals/window_glow"), "window_glow is a registered shader global")
+	check(Mats.get_mat("window_lit").get_shader_parameter("lit") == 1.0, "lit glass carries the lamplight")
+	check(Mats.get_mat("glass").get_shader_parameter("lit") != 1.0, "plain glass stays dark by night")
+	check(Atmosphere.lamplight("night") == 1.0 and Atmosphere.lamplight("day") == 0.0 and Atmosphere.lamplight("dusk") > 0.0, "lamplight follows the time of day")
+	var lk := kit()
+	BuildingOpenings.window(lk, Vector3(0, 1.5, 0), Vector2(1.3, 1.0), {"lit": true, "glazing": 1.0, "curtains": "drapes"})
+	var lit_panes := 0
+	for child in lk.sink.root.get_children():
+		if Mats.base_of((child as MeshInstance3D).material_override) == Mats.get_mat("window_lit"):
+			lit_panes += 1
+	check(lit_panes == 4, "a lit window's four whole panes glow (%d)" % lit_panes)
+	lk.sink.root.free()
+
+	# Furnishings build as nodes and into a bake.
+	var furnishings := {
+		"curtains": func(k: BuildingKit):
+			for style in ["drapes", "blind", "nets"]:
+				BuildingFurnishings.curtains(k, Vector3(0, 1.5, -0.1), Vector2(1.3, 1.0), style, Color(0.5, 0.2, 0.2)),
+		"outside": func(k: BuildingKit):
+			BuildingFurnishings.window_box(k, 0.0, 1.0, 1.1, Color.RED)
+			BuildingFurnishings.lantern(k, Vector3(1.2, 2.05, 0))
+			BuildingFurnishings.aerial(k, Vector3(0, 5, 0)),
+		"inside": func(k: BuildingKit):
+			BuildingFurnishings.lining(k, 2.8, 3.0, [Rect2(-0.65, 1.0, 1.3, 1.0)], Color(0.8, 0.8, 0.7))
+			BuildingFurnishings.radiator(k, 0.0, 1.0)
+			BuildingFurnishings.picture(k, Vector3(0, 1.6, 0), Vector2(0.5, 0.4), Color.DARK_GREEN)
+			BuildingFurnishings.shelf(k, Vector3(0, 2.0, 0), 1.2)
+			BuildingFurnishings.rug(k, Vector3(0, 0.06, 0), Vector2(2.4, 1.8), Color.DARK_RED),
+	}
+	for key: String in furnishings:
+		var fk := kit()
+		furnishings[key].call(fk)
+		valid(fk.sink.root, key)
+		var bake := Mats.Bake.new()
+		furnishings[key].call(BuildingKit.baked(bake))
+		var baked := Node3D.new()
+		add_child(baked)
+		bake.commit(baked)
+		check(baked.get_child_count() > 0, key + ": nothing baked")
+		fk.sink.root.free()
+		baked.free()
+	var area := Rect2(-1.4, 0.0, 2.8, 3.0)
+	var hole := Rect2(-0.65, 1.0, 1.3, 1.0)
+	var total := 0.0
+	for r in BuildingFurnishings.panels(area, [hole]):
+		total += r.get_area()
+		check(not r.intersects(hole), "a lining panel stays out of the opening")
+	check(is_equal_approx(total, area.get_area() - hole.get_area()), "the lining covers the wall round its opening (%.2f)" % total)
+
+	# Nothing in a room stands where a man does: Cover's fighting positions are
+	# half a metre off every house wall, so whatever hangs on a wall stays
+	# within a hand's breadth of it below head height.
+	for s in 40:
+		var rk := kit()
+		rk.rng.seed = s
+		BuildingFurnishings.wall_things(rk, 2.8)
+		BuildingFurnishings.radiator(rk, 0.0, 1.0)
+		for z in [0.2, 0.35, 0.5, 0.7]:
+			for y in [0.15, 0.6, 1.0, 1.4, 1.8]:
+				for x in [-1.1, -0.6, -0.2, 0.2, 0.6, 1.1]:
+					if occupied(rk.sink.root, Vector3(x, y, z)):
+						check(false, "a room's dressing stands at %s (seed %d)" % [Vector3(x, y, z), s])
+		rk.sink.root.free()
+
+	# Every building and every kind of scenery still builds a model.
+	var kinds: Array = Defs.BUILDINGS.keys()
+	kinds.append_array(["house_wall", "roof", "floor", "low_wall", "tall_wall", "bridge", "town", "depot", "rubble", "crates", "dock"])
+	for kind: String in kinds:
+		for side in [0, 1]:
+			for v in [0, 1, 2]:
+				var sz := Vector3.ZERO
+				match kind:
+					"house_wall": sz = Vector3(2.8, float(v * 2), 0.4)
+					"roof": sz = Vector3(9.0, 3.0, 7.0)
+					"low_wall", "tall_wall": sz = Vector3(4.0, 2.6 if kind == "tall_wall" else 1.0, 0.5)
+					"bridge": sz = Vector3(8.0, 1.0, 14.0)
+					"floor": sz = Vector3(8.0, 0.06, 7.0)
+					"town": sz = Vector3(3.6, 2.0, 2.4)
+					"depot": sz = Vector3(17, 3, 11)
+				var m := Structure.preview_model(kind, side, v + (4 if kind == "roof" and v == 2 else 0), sz, v == 2)
+				check(m != null and m.get_child_count() > 0, "%s/%d/%d builds" % [kind, side, v])
+				m.free()
+	print("BUILDING_COMPONENTS %s (%d failures)" % ["passed" if _failures == 0 else "failed", _failures])
+	TestRun.quit(get_tree())

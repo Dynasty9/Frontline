@@ -15,7 +15,7 @@ export default function PageError() {
   usePageTitle("Something went wrong")
   if (isRouteErrorResponse(error) && error.status === 404) return <NotFound />
   return (
-    <div className="topo">
+    <div>
       <div className="mx-auto flex min-h-[60svh] max-w-6xl flex-col items-start justify-center px-4 py-24 sm:px-6">
         <SectionLabel>Signal lost</SectionLabel>
         <h1 className="mt-3 text-4xl font-semibold">This page didn't load</h1>

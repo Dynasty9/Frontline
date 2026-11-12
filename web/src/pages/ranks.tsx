@@ -16,13 +16,12 @@ export default function RanksPage() {
   const { health } = useSite()
   const available = health?.accounts !== "off"
   return (
-    <div className="topo">
+    <div>
       <CommandersNav />
       <div className="mx-auto max-w-6xl px-4 pt-14 pb-24 sm:px-6">
         <SectionLabel>Commanders / Rank guide</SectionLabel>
         <h1 className="mt-3 font-display text-5xl leading-none font-extrabold uppercase sm:text-6xl">
-          Every battle.
-          <br />
+          Every battle. <br />
           <span className="text-primary">A step forward.</span>
         </h1>
         <div className="mt-8 grid gap-10 lg:grid-cols-[1fr_1.4fr]">

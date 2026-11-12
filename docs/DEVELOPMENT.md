@@ -72,18 +72,20 @@ library update staging. Run the full local suite with `python tools/check_scalin
 
 ## Settings and the performance overlay
 
-**Esc > Settings** (or Settings in the main menu): quality presets (Low / Medium / High / Ultra) and every
-option on its own, laid out like a PC game's options screen:
-- **Graphics:** shadow quality, texture filtering (anisotropic), view distance / detail (LOD), vegetation,
+**Esc > Settings** (or Settings in the main menu): quality presets (Low / Medium / High / Ultra / Cinematic, which is
+Ultra with all of the cinematic lighting on top) and every option on its own, laid out like a PC game's options screen:
+- **Graphics:** shadow quality, adaptive shadows (cascades fitted to the view), shadows from fire and flares,
+  texture filtering (anisotropic), view distance / detail (LOD), vegetation,
   effects quality, scorch marks and craters, ambient occlusion and its quality, screen-space indirect light,
-  SDFGI global illumination, screen-space reflections (wet ground), volumetric fog and smoke,
+  SDFGI global illumination, physical sky, screen-space reflections (wet ground), volumetric fog and smoke,
   anti-aliasing (FXAA / SMAA / MSAA / MSAA + SMAA / TAA; High and Ultra use MSAA + SMAA, which keeps the
   procedural surfaces sharp and steady while the camera moves - TAA smears them in motion), upscaler
   (bilinear / AMD FSR 1 / AMD FSR 2), render scale, sharpening.
 - **Lighting & Look:** time of day and weather (midday, golden hour, dawn, dusk, overcast, hazy, night with
   flares, rain and thunder; applies live), colour grading (natural, cinematic, vivid, warm film, cold steel,
   bleached war film, black & white), tonemapper (AgX / ACES / Filmic / Reinhard), brightness, contrast, bloom,
-  film grain, tilt-shift depth of field.
+  film grain, tilt-shift depth of field; and the camera and lens: lens flare and glare, sun shafts, local exposure,
+  eye adaptation, the film look and heat haze (`cinematic_fx.gd`, compute passes on the HDR scene; Forward+ only).
 - **Display:** window mode (windowed / borderless / exclusive fullscreen), window size (applied at launch; a
   size too big for the screen maximises the window instead; test runs keep the project's window or the size
   `--resolution` asks for), VSync, frame-rate cap, field of view, performance overlay.
@@ -369,6 +371,11 @@ FL_DEBUG_MISSION=1 (env)                              print the map's features (
 FL_DEBUG_TOWNS=1 (env)                                print each town and village: name, dump and the ground that takes it
 FL_DEBUG_HPA=1 (env)                                  benchmark hierarchical vs flat paths at start-up
 FL_DEBUG_DECOR=1 (env)                                print the street-furniture chunk and mesh counts
+FL_DEBUG_CINE=1 (env)                                 say once that the cinematic lighting passes run, and which (windowed);
+                                                      every 5 s, how many heat sources the heat haze has in view
+FL_DEBUG_CINE_VIEW=N (env)                            show one cinematic buffer instead of the scene: 1 sun shafts, 2 lens flare
+                                                      and glare, 3 local exposure (red lifted, blue tamed), 4 the bright pass,
+                                                      5 the heat haze (blue the hot air, red and green how far it bends)
 FL_DEBUG_WILDLIFE=1 (env)                             every 5 s: the wildlife's cost, how many of each are drawn, what took
                                                       fright at what, and where one of each is (the first time, the water too)
 FL_WILDLIFE_FOLLOW=KIND (env)                         the camera keeps on one animal (birds, ducks, soarer, bat, rat, hare, fish,

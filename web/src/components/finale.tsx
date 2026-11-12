@@ -2,6 +2,7 @@ import { DownloadSimpleIcon, PlayIcon } from "@phosphor-icons/react"
 import { useEffect, useRef } from "react"
 import { Link } from "react-router"
 import { Reveal } from "@/components/reveal"
+import { SendToComputer } from "@/components/send-to-computer"
 import { Button } from "@/components/ui/button"
 import { useInView } from "@/hooks/use-in-view"
 import { useReducedMotion } from "@/hooks/use-reduced-motion"
@@ -10,27 +11,32 @@ import { assetFor, type Platform, PLATFORM_NAMES, platformList } from "@/lib/rel
 
 type Props = {
   platform: Platform
+  /** a phone or tablet: the download goes to a computer instead */
+  phone?: boolean
 }
 
 /** The last word: footage behind a call to arms (the hero's own clip, which the browser already has). */
-export function Finale({ platform }: Props) {
+export function Finale({ platform, phone = false }: Props) {
   const asset = assetFor(platform)
   const [ref, inView] = useInView<HTMLElement>({ margin: "200px" })
   const video = useRef<HTMLVideoElement>(null)
   const reduced = useReducedMotion()
 
+  // as the hero: the still on a phone, or for less motion or Data Saver
+  const still = reduced || saveData() || phone
+
   useEffect(() => {
     const v = video.current
     if (!v) return
-    if (inView && !reduced && !saveData()) v.play().catch(() => {})
+    if (inView && !still) v.play().catch(() => {})
     else v.pause()
-  }, [inView, reduced])
+  }, [inView, still])
 
   return (
     <section ref={ref} className="relative isolate overflow-hidden border-t border-white/10">
       <video
         ref={video}
-        src={media("hero", "mp4")}
+        src={still ? undefined : media("hero", "mp4")}
         poster={media("hero", "jpg")}
         muted
         loop
@@ -45,20 +51,24 @@ export function Finale({ platform }: Props) {
       <Reveal className="mx-auto flex max-w-6xl flex-col items-center px-4 py-36 text-center sm:px-6 sm:py-44">
         <p className="text-xs font-bold tracking-[0.3em] text-primary uppercase">Report for duty</p>
         <h2 className="mt-4 font-display text-[clamp(3.2rem,10vw,8rem)] leading-[0.85] font-extrabold text-[#f2ebd6] uppercase">
-          The front
-          <br />
+          The front <br />
           is waiting
         </h2>
         <p className="mt-6 max-w-lg text-base text-cream/80">
-          Free and open source, for {platformList()}. Download it and play: it keeps itself up to date.
+          Free and open source, for {platformList()}.{" "}
+          {phone ? "Send it to your computer and play there." : "Download it and play: it keeps itself up to date."}
         </p>
         <div className="mt-9 flex flex-wrap justify-center gap-3">
-          <Button size="lg" asChild className="shine h-12 px-7 text-sm font-bold tracking-wider uppercase">
-            <a href={asset.url}>
-              <DownloadSimpleIcon weight="bold" />
-              Download for {PLATFORM_NAMES[platform]}
-            </a>
-          </Button>
+          {phone ? (
+            <SendToComputer className="items-center" />
+          ) : (
+            <Button size="lg" asChild className="shine h-12 px-7 text-sm font-bold tracking-wider uppercase">
+              <a href={asset.url}>
+                <DownloadSimpleIcon weight="bold" />
+                Download for {PLATFORM_NAMES[platform]}
+              </a>
+            </Button>
+          )}
           <Button
             size="lg"
             variant="outline"

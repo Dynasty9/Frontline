@@ -7,7 +7,7 @@ import { usePageTitle } from "@/hooks/use-page-title"
 export default function NotFound() {
   usePageTitle("Not found")
   return (
-    <div className="topo">
+    <div>
       <div className="mx-auto flex min-h-[60svh] max-w-6xl flex-col items-start justify-center px-4 py-24 sm:px-6">
         <SectionLabel>404</SectionLabel>
         <h1 className="mt-3 font-display text-5xl leading-[0.95] font-extrabold uppercase sm:text-6xl">
