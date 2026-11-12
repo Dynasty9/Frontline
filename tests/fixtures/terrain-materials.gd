@@ -7,9 +7,9 @@ func _ready() -> void:
 	assert(arrays[0] == Atmosphere.terrain_materials()[0], "Map reloads must reuse the material allocation")
 	for channel in 2:
 		var array := arrays[channel]
-		assert(array.get_layers() == 6 + Atmosphere.MEADOW_MATERIALS.size() and array.get_width() == 1024 and array.get_height() == 1024)
+		assert(array.get_layers() == 6 + Atmosphere.MEADOW_MATERIALS.size() + Atmosphere.DETAIL_MATERIALS.size() and array.get_width() == 1024 and array.get_height() == 1024)
 		assert(array.has_mipmaps() and array.get_format() == Image.FORMAT_RGBA8, "All packed channels and distant filtering must survive import")
-		var names: Array = Atmosphere.TERRAIN_MATERIALS + [""] + Atmosphere.MEADOW_MATERIALS
+		var names: Array = Atmosphere.TERRAIN_MATERIALS + [""] + Atmosphere.MEADOW_MATERIALS + Atmosphere.DETAIL_MATERIALS
 		for layer in names.size():
 			var name: String = names[layer]
 			if name == "":
@@ -270,7 +270,7 @@ void fragment() {
 	var survey_image := Image.create(2, 2, false, Image.FORMAT_RGBA8)
 	survey_image.fill(Color(0.3, 0.38, 0.12, 0.5))
 	var grain_layers: Array[Image] = []
-	for layer in 6 + Atmosphere.MEADOW_MATERIALS.size():
+	for layer in 6 + Atmosphere.MEADOW_MATERIALS.size() + Atmosphere.DETAIL_MATERIALS.size():
 		grain_layers.append([turf_image, survey_image][layer - 6] if layer in [6, 7] else meadow_image)
 	var grain_array := Texture2DArray.new()
 	assert(grain_array.create_from_images(grain_layers) == OK)

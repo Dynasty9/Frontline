@@ -20,6 +20,9 @@ sources are fetched by the baker (pinned in sources.json); only the packed pairs
 Licensed under [CC0 1.0 Universal](https://creativecommons.org/publicdomain/zero/1.0/).
 Poly Haven license: https://polyhaven.com/license
 
+`eroded_face_*` (layer 9) is original: `tools/bake_alpine_assets.py eroded_face` runs seeded
+rainfall erosion on a tiling rock slope and packs its gullies, shade and normals. No source assets are used.
+
 The original 2K JPEG diffuse and OpenGL normal maps are retained as baking inputs.
 Additional CC0 displacement, ambient-occlusion and roughness maps are downloaded
 only by the offline baker. Source URLs and checksums are recorded in sources.json.
