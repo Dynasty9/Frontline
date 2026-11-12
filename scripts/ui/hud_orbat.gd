@@ -156,10 +156,15 @@ func _draw_content() -> void:
 	_head = Rect2(0, 0, W, HEAD_H)
 	var x := UiKit.caps_at(self, Vector2(0, 15), "Orbat", 11, UiKit.DIM)
 	x += 8.0 + UiKit.mono_at(self, Vector2(x + 8.0, 15), "%02d" % (sqs.size() + vehs.size()), 11, UiKit.FAINT)
+	# the key in its hairline box (docs/UI.md, Keys), then open or folded
 	var ok := Keys.label("orbat")
-	var end := ("[%s] " % ok if ok != "" else "") + ("-" if open else "+")
+	var end := "-" if open else "+"
 	var ew := UiKit.mono_w(end, 11)
-	UiKit.mono_at(self, Vector2(W - ew, 15), end, 11, UiKit.FAINT)
+	UiKit.mono_at(self, Vector2(W - ew, 15), end, 11, UiKit.DIM)
+	if ok != "":
+		var kw := UiKit.mono_w(ok.to_upper(), 10) + 8.0
+		UiKit.key(self, Vector2(W - ew - 6.0 - kw, 4.0), ok.to_upper(), false, 10)
+		ew += kw + 6.0
 	UiKit.rule(self, Vector2(x + 8.0, 11.5), Vector2(W - ew - 8.0, 11.5))
 	if not open:
 		return

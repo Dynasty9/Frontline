@@ -80,7 +80,7 @@ func _draw_content() -> void:
 				draw_line(Vector2(0, y + 0.5), Vector2(w, y + 0.5), UiKit.fa(lc, 0.45 * a), 1.0)
 				draw_line(Vector2(0, y + h - 0.5), Vector2(w, y + h - 0.5), UiKit.fa(lc, 0.45 * a), 1.0)
 			var t := int(it[4])
-			UiKit.mono_at(self, Vector2(0, by + 15), "%02d:%02d" % [t / 60, t % 60], 12, UiKit.fa(lc if level else UiKit.FAINT, a))
+			UiKit.mono_at(self, Vector2(0, by + 15), "%02d:%02d" % [t / 60, t % 60], 12, UiKit.fa(lc if level else UiKit.DIM, a))
 			var from := String(parts[0])
 			var fc := lc if level or kind != "chat" else UiKit.TEXT
 			if kind == "system":

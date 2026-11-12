@@ -153,5 +153,145 @@
       "VehicleDoors.leaf"
     ],
     "boundary": "Existing body, ramp and gear panels; preserves hardware and moving parents."
+  },
+  {
+    "name": "Turret race rings",
+    "apis": [
+      "VehicleMounts.turret_ring"
+    ],
+    "boundary": "Old ring cylinder plus splash lip and bolt circle; the turret pivot and its traverse stay with the family."
+  },
+  {
+    "name": "Sight heads",
+    "apis": [
+      "VehicleMounts.sight"
+    ],
+    "boundary": "Box heads with bezelled windows, visor and optional panoramic stem; lofted, cylindrical and aircraft sensor heads stay authored."
+  },
+  {
+    "name": "Commander's cupolas",
+    "apis": [
+      "VehicleMounts.cupola"
+    ],
+    "boundary": "Ring, roof flange and vision-block housings at authored angles; hatches and weapon rings stay separate."
+  },
+  {
+    "name": "Reactive armour bricks",
+    "apis": [
+      "VehicleMounts.era_brick"
+    ],
+    "boundary": "One brick per call with local +Z outward; grids, face frames and gaps stay in family helpers."
+  },
+  {
+    "name": "Rectangular hatch lids",
+    "apis": [
+      "VehicleFittings.panel_hatch"
+    ],
+    "boundary": "Flat closed lids on a coaming with hinges and handle; round hatches, opening lids and yawed deck plates stay separate."
+  },
+  {
+    "name": "Bore evacuators",
+    "apis": [
+      "VehicleFittings.evacuator"
+    ],
+    "boundary": "Tapered chamber on a Z-axis gun tube; muzzle sensors, brakes and thermal sleeves stay authored."
+  },
+  {
+    "name": "Dome lights",
+    "apis": [
+      "VehicleFittings.dome_light"
+    ],
+    "boundary": "Round lens on a base reaching the old sphere's foot, with an explicit up axis; box lamps and light bars stay authored."
+  },
+  {
+    "name": "Navigation sidelights",
+    "apis": [
+      "VehicleFittings.nav_light"
+    ],
+    "boundary": "Red to port, green to starboard on the shared marker housing; ship screens stay authored."
+  },
+  {
+    "name": "Coaxial gun ports",
+    "apis": [
+      "VehicleWeapons.coax"
+    ],
+    "boundary": "Old port cylinder's centre and length; the caller keeps the coax muzzle marker."
+  },
+  {
+    "name": "Automatic cannon",
+    "apis": [
+      "VehicleWeapons.autocannon"
+    ],
+    "boundary": "Breech to brake face with one root radius; muzzle markers may sit ahead of the brake and stay caller-owned."
+  },
+  {
+    "name": "Heavy machine guns",
+    "apis": [
+      "VehicleWeapons.hmg"
+    ],
+    "boundary": "Receiver centre to muzzle with optional can and grips; finned DShK-pattern guns stay authored."
+  },
+  {
+    "name": "Medium machine guns",
+    "apis": [
+      "VehicleWeapons.mmg"
+    ],
+    "boundary": "Receiver centre to muzzle with optional stock and can; size scales the cross-sections, not the length."
+  },
+  {
+    "name": "Grenade machine guns",
+    "apis": [
+      "VehicleWeapons.gmg"
+    ],
+    "boundary": "Receiver centre to muzzle; drum or box feed at a mount-specific offset."
+  },
+  {
+    "name": "Rotary barrel clusters",
+    "apis": [
+      "VehicleWeapons.rotary"
+    ],
+    "boundary": "Barrels, spindle, carrier and clamps along any axis; housings, motors and chutes stay authored."
+  },
+  {
+    "name": "Missile launch tubes",
+    "apis": [
+      "VehicleWeapons.launch_tube"
+    ],
+    "boundary": "Z-axis tubes with collars and covers; box launchers, packed tube clusters and sideways tubes stay authored."
+  },
+  {
+    "name": "Rotor masts",
+    "apis": [
+      "VehicleRotors.mast"
+    ],
+    "boundary": "Shaft, bearing housing, splines and bolted collars at authored heights; hubs, blades and rotor pivots stay in VehicleRotors.main."
+  },
+  {
+    "name": "Turbine exhausts",
+    "apis": [
+      "VehicleAircraft.turbine_exhaust"
+    ],
+    "boundary": "Open tapered shell between authored endpoints with liner, tail cone and lip; lofted suppressors and box outlets stay authored."
+  },
+  {
+    "name": "Fender sheets",
+    "apis": [
+      "VehicleBody.fender"
+    ],
+    "boundary": "Flat sheets and raked lips by rotation, with bead, bolts and inboard stays; faceted armoured arches stay authored."
+  },
+  {
+    "name": "Saddle fuel tanks",
+    "apis": [
+      "VehicleRunningGear.fuel_tank"
+    ],
+    "boundary": "Round or box tanks hung from the frame rail; aircraft drop tanks and fender-mounted drums are different stores."
+  },
+  {
+    "name": "Rolled tarps",
+    "apis": [
+      "VehicleCloth.roll"
+    ],
+    "boundary": "Rolled canvas on the old cylinder's axis with straps; draped covers and tapered boots stay separate."
   }
 ]

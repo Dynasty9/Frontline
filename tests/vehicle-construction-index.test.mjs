@@ -13,9 +13,11 @@ test('construction index follows active ownership and does not expand all dispat
     execFileSync('python3', ['tools/vehicles/construction-index.py', '--output', output], { cwd: ROOT });
     const { models, limitations } = JSON.parse(readFileSync(output));
     assert.equal(models.blackwasp.owner, 'VmFighter');
-    assert.deepEqual(models.blackwasp.shadowed, ['VmPlane']);
     assert.equal(models.wipeout.owner, 'VmAttack');
     assert.equal(models.blackfish.owner, 'VmGunship');
+    // No family keeps a copy of a builder an earlier dispatcher already claims:
+    // such a copy never runs, and only misleads a survey of the construction.
+    assert.deepEqual(Object.keys(models).filter(key => models[key].shadowed.length), []);
     assert.deepEqual(models.truck.roots, ['VmCore._truck', 'VmIndep._zamak', 'VmNato._hemtt']);
     assert.ok(models.hunter.shared_calls['VehicleFittings.jerrycan']);
     assert.ok(models.ac130.shared_calls['VehiclePropellers.blade']);

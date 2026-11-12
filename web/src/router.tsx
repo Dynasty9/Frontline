@@ -4,13 +4,17 @@ import Home from "@/pages/home"
 import { Layout } from "@/pages/layout"
 import NotFound from "@/pages/not-found"
 import PageError from "@/pages/page-error"
+import { withFreshBuild } from "@/lib/stale-build"
 
 // The site's pages. The front page comes with the first load; the others are
-// fetched when they're first visited, so the front page doesn't wait on them.
+// fetched when they're first visited, so the front page doesn't wait on them
+// (and a tab left open across a deploy reloads onto the new build for them).
 // Railway serves index.html for any address that isn't a file, and the
 // router takes it from there.
 
-const page = (load: () => Promise<{ default: ComponentType }>) => async () => ({ Component: (await load()).default })
+const page = (load: () => Promise<{ default: ComponentType }>) => async () => ({
+  Component: (await withFreshBuild(load)).default,
+})
 
 export const routes: RouteObject[] = [
   {
@@ -28,7 +32,10 @@ export const routes: RouteObject[] = [
           { path: "watch/:id", lazy: page(() => import("@/pages/watch")) },
           { path: "battles", lazy: page(() => import("@/pages/battles")) },
           { path: "ranks", lazy: page(() => import("@/pages/ranks")) },
-          { path: "vehicles", lazy: page(() => import("@/pages/vehicles")) },
+          { path: "manual", lazy: page(() => import("@/pages/manual")) },
+          { path: "manual/:section", lazy: page(() => import("@/pages/manual-section")) },
+          // the vehicle roster's old address: it's the manual's vehicles now
+          { path: "vehicles", element: <Navigate to="/manual/vehicles" replace /> },
           { path: "leaderboards", lazy: page(() => import("@/pages/leaderboards")) },
           { path: "player/:callsign", lazy: page(() => import("@/pages/player")) },
           { path: "player/:callsign/battle/:id", lazy: page(() => import("@/pages/battle")) },

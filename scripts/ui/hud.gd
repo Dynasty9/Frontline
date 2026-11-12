@@ -1518,6 +1518,9 @@ func _view_process(dt: float) -> void:
 		var ty := 36.0 if objectives.need_h <= 0.0 else 12.0 + objectives.need_h + 10.0
 		if coop_roster.need_h > 0.0:
 			ty = ry + coop_roster.need_h + 10.0
+		# and under the observer's bar where it reaches across them
+		if obs_bar.visible and not _obs_low and obs_bar.position.x + obs_bar.size.x > root.size.x + toasts.offset_left:
+			ty = maxf(ty, obs_bar.position.y + obs_bar.size.y + 10.0)
 		var tb := ty + 254.0
 		if card_panel.visible:
 			tb = clampf(card_panel.position.y - 10.0, ty + 40.0, tb)
@@ -1597,7 +1600,7 @@ func _update_support() -> void:
 			b.visible = true
 		else:
 			state.text = "%dS" % int(ceil(left))
-			state.add_theme_color_override("font_color", UiKit.FAINT)
+			state.add_theme_color_override("font_color", UiKit.DIM)
 			nm.add_theme_color_override("font_color", UiKit.DIM)
 			cooling.append([left, b])
 	# the ones cooling down: shown when opened, or a couple when few are ready
@@ -1639,10 +1642,14 @@ func _fire_row(name: String, tip: String, cb: Callable) -> Button:
 	l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	row.add_child(l)
-	var st := UiKit.mono_label("", 12, UiKit.FAINT)
+	var st := UiKit.mono_label("", 12, UiKit.DIM)
 	st.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	st.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	row.add_child(st)
+	# the list sits on the battlefield: outlined like the rest of its text
+	for t: Label in [l, st]:
+		t.add_theme_constant_override("outline_size", UiKit.OUTLINE_W)
+		t.add_theme_color_override("font_outline_color", Color(0, 0, 0, UiKit.OUTLINE_A))
 	b.set_meta("name", l)
 	b.set_meta("state", st)
 	b.pressed.connect(func(): Sfx.ui("click"); cb.call())

@@ -1,3 +1,5 @@
+import { ArrowRightIcon } from "@phosphor-icons/react"
+import { Link } from "react-router"
 import { SectionLabel } from "@/components/battles"
 import { Clip } from "@/components/footage"
 import { Reveal } from "@/components/reveal"
@@ -79,9 +81,13 @@ export function Features() {
         </Reveal>
         <div className="flex flex-wrap justify-between gap-3 border-b py-5">
           <p className="font-display text-xl font-bold uppercase">Break through on the ground</p>
-          <p className="font-mono text-xs text-muted-foreground">
-            {COUNTS.vehicles} vehicles · From quad bikes to main battle tanks
-          </p>
+          <Link
+            to="/manual/vehicles"
+            className="inline-flex items-center gap-2 font-mono text-xs text-muted-foreground underline-offset-4 hover:text-primary hover:underline"
+          >
+            {COUNTS.vehicles} vehicles · From quad bikes to main battle tanks · In the Field Manual
+            <ArrowRightIcon aria-hidden="true" className="size-3.5" />
+          </Link>
         </div>
         <div className="mt-10 grid gap-10 md:grid-cols-2">
           <div>
@@ -106,9 +112,18 @@ export function Features() {
           </div>
         </div>
       </article>
-      <p className="mt-12 font-mono text-xs text-muted-foreground">
-        Actual gameplay throughout. Every clip recorded in Frontline.
-      </p>
+      <div className="mt-12 flex flex-wrap items-center justify-between gap-4">
+        <p className="font-mono text-xs text-muted-foreground">
+          Actual gameplay throughout. Every clip recorded in Frontline.
+        </p>
+        <Link
+          to="/manual"
+          className="inline-flex min-h-11 items-center gap-2 text-sm font-semibold underline-offset-4 hover:text-primary hover:underline"
+        >
+          How it all works: the Field Manual
+          <ArrowRightIcon aria-hidden="true" className="size-4" />
+        </Link>
+      </div>
     </section>
   )
 }

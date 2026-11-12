@@ -15,6 +15,16 @@ async function get(path) {
 
 const home = await get("/");
 assert.match(await home.text(), /<div id="root"/);
+// A bundle from an older build must be missing, not answered with the page:
+// a tab opened before a deploy can then reload onto the new one.
+const stale = await fetch(new URL("/assets/stale-build-check.js", origin), {
+  signal: AbortSignal.timeout(30_000),
+});
+assert.equal(
+  stale.status,
+  404,
+  `A missing bundle answers HTTP ${stale.status}`,
+);
 const manifest = await (await get("/game/viewer.json")).json();
 assert.equal(manifest.format, 1);
 assert.ok(
