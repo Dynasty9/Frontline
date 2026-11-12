@@ -22,5 +22,5 @@
   "command": "godot --path . --fixed-fps 30 --audio-driver Dummy --position -10000,-10000 --resolution 1280x720 res://tests/fixtures/helicopter-world-clips.tscn -- --clip=helicopters-crash --label=BEFORE|AFTER --frames=DIR",
   "encode": "PNG frames stacked with Pillow and piped as JPEG (quality 95) into ffmpeg n7.0.1 (Playwright build): libvpx-vp9 constrained quality, crf 36, 1300 kbit/s, keyframe every 60 frames; poster is frame 108 (3.6 s)",
   "result": "Before: both vanish at 2.5 s, smoke puffs in the air and rubble fires directly below. After: both fall burning, the near one spinning, the far one gliding, and hit about 3 to 4 s later further along their paths, leaving burning wrecks.",
-  "note": "Recorded on 479ac865 (pushed to claude/helicopter-movement-mechanics-3f7e2e just after PR Dynasty9/Frontline#169 merged). The same change was replayed onto main as c0ee984b on claude/helicopter-crashes; main's newer lighting (#171) is not in this clip."
+  "note": "Recorded on 479ac865, the commit pushed to the helicopter flight branch just after PR Dynasty9/Frontline#169 merged. The same change was replayed onto main as c0ee984b for its own pull request; main's newer lighting (#171) is not in this clip."
 }
