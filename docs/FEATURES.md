@@ -1623,7 +1623,7 @@ projectile; cloud growth, movement and dissipation still take effect immediately
 Views build scenery in and around the camera first and cache visited models; local games and hosts
 share the clients' spatial draw batches. Distant models and client cosmetic collision bodies remain
 inactive, while host collision and the complete simulation stay active. Returning to cached scenery
-does not consume the new-model construction limit. Nearby movement orders can reuse a checked route corridor, with separate
+does not consume the new-model construction limit. Each 64 m block is merged as soon as all of it is built, and a merged model's opaque surfaces cast one shadow together from a shadows-only mesh, so a town costs a few draws a block in each shadow cascade rather than several a wall. New scenery and grass coming into view are built nearest first within a few milliseconds a frame, so a camera move fills in over a few frames instead of freezing one. Nearby movement orders can reuse a checked route corridor, with separate
 destinations and invalidation when terrain or danger changes.
 
 Grass, bushes and stones are generated around the camera, beyond their visible
