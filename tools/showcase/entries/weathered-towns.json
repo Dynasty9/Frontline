@@ -1,0 +1,20 @@
+{
+  "entry": "changelog/unreleased/weathered-towns.md",
+  "summary": "Weeds and ivy on walls, and ruined houses with their fallen-in roofs on the floor.",
+  "medium": "still",
+  "stage": "tools/showcase/building-surfaces.tscn",
+  "rationale": "Appearance change: one matched sheet of a ruined house and a stone house under the same studio cameras. Town views were captured too but the details are too small to read there.",
+  "source_ref": "e30d6f63e061b20c6a2473efbd130aab2025966f",
+  "before_ref": "187fa8dbb7c94f6c22598981b798ecd1eaeefe43",
+  "sources": [
+    {
+      "file": "changelog/unreleased/weathered-towns/comparison.jpg",
+      "sha256": "4dd4c40d30cf0249f6c7ea6865912d5ce0bd25e6288144acb85ec7af5fe9cd66"
+    },
+    {
+      "file": "changelog/unreleased/weathered-towns/capture.json",
+      "sha256": "777f879dffc39281805f7417a2492bae5f2a21fa4506b95ea0cc554539d198ac"
+    }
+  ],
+  "output": null
+}
