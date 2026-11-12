@@ -13,5 +13,5 @@ caption = "The same views before and after (seed 3, day): the whole valley, a hi
 - **Meadows follow the land.** Grass stays lush in hollows, along drainage lines and beside rivers and ponds, and dries to straw on crests and slopes facing the sun. Pastures differ from one field to the next, and the grass tufts grow thicker and greener on damp ground.
 - **Stony ground** lies between meadow and crag on hill shoulders, pale talus gathers at the foot of the crags, and rock seen close up keeps its cracks and grain. The muddy patches that slow men down now look like dark rutted soil.
 - **Cloud shadows** are cloud-sized now, drifting slowly over the ground, grass and bushes, instead of small dark blotches that spotted every field.
-- **Distant woods** grow in broad, ragged stands that climb the mountain gullies, instead of thin stripes along the far slopes.
+- **Distant woods** grow in broad, ragged stands that climb the mountain gullies and fade into the haze with the slopes they stand on, instead of dark stripes along the far shore.
 - Mission maps keep their terrain exactly as before.

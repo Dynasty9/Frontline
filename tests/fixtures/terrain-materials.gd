@@ -243,7 +243,7 @@ void fragment() { ALBEDO = street_surface(scan, noise, vec2(0.0)); }
 	assert(leaves.create_from_images(leaf_images) == OK)
 	var forest_code := MapDims.shader(DistantForest.SHADER.replace("// BACKDROP_HEIGHT", Atmosphere.BACKDROP_HEIGHT))
 	forest_code = forest_code.replace("render_mode cull_disabled;", "render_mode unshaded, cull_disabled;")
-	forest_code = forest_code.substr(0, forest_code.find("void vertex()")) + "void vertex() { frames = vec3(0.0, 1.0, 0.25); shade = 0.8; lighting = vec2(1.0); }\n" + forest_code.substr(forest_code.find("void fragment()"))
+	forest_code = forest_code.substr(0, forest_code.find("void vertex()")) + "void vertex() { frames = vec3(0.0, 1.0, 0.25); shade = 0.8; lighting = vec2(1.0); haze = 0.0; }\n" + forest_code.substr(forest_code.find("void fragment()"))
 	var leaf_shader := Shader.new()
 	leaf_shader.code = forest_code
 	var leaf_material := ShaderMaterial.new()

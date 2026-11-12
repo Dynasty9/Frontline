@@ -958,6 +958,8 @@ func apply_mood(m: String) -> void:
 	ground_mat.set_shader_parameter("cloud_strength", float(_d.clouds))
 	ground_mat.set_shader_parameter("sun_tint", _d.sun)
 	ground_mat.set_shader_parameter("air_color", _d.fog)
+	if forest:
+		forest.set_air(_d.fog, float(ground_mat.get_shader_parameter("terrain_air")) if ground_mat.get_shader_parameter("terrain_air") != null else 0.0)
 	if grass:
 		grass.set_clouds(biome_tex, float(_d.clouds))
 	if mountain_clouds:
@@ -1421,6 +1423,8 @@ func _apply_haze(distance: float) -> void:
 		env.fog_height_density = 0.0012 * pow(1.0 - downward, 2.0)
 	if ground_mat:
 		ground_mat.set_shader_parameter("terrain_air", terrain_air)
+		if forest:
+			forest.set_air(ground_mat.get_shader_parameter("air_color"), terrain_air)
 	env.fog_density = float(_d.fog_d) * HAZE_STRENGTH * k
 	env.volumetric_fog_density = (0.0011 if mood != "hazy" else 0.003) * VOLUME_STRENGTH * volume_k
 
@@ -2191,7 +2195,11 @@ void fragment() {
 	exposed = mix(exposed, smoothstep(0.15, 0.85, cover), 0.35);
 	// Shoulders and aprons below the crags: grazed grass broken by stones (the drone
 	// survey), so pasture turns to rock through stony ground rather than at a line.
-	float stony = smoothstep(0.04, 0.35, cover) * (1.0 - exposed);
+	// The slope over twenty metres: ledges and benches on a crag read as part of it.
+	float wide = length(vec2(dfm(p + vec2(10.0, 0.0)) - dfm(p - vec2(10.0, 0.0)), dfm(p + vec2(0.0, 10.0)) - dfm(p - vec2(0.0, 10.0)))) / 20.0;
+	// Ledges among the crags hold only thin turf between stones, not lush lawn.
+	float ledge = smoothstep(0.35, 0.75, wide) * smoothstep(8.0, 20.0, geology);
+	float stony = max(smoothstep(0.04, 0.35, cover), ledge) * (1.0 - exposed);
 	if (terrain_detail && stony > 0.001) {
 		vec4 shoulder = texture(material_colors, vec3(mat2(vec2(0.6, -0.8), vec2(0.8, 0.6)) * p / 45.0 + 0.53, 7.0));
 		vec3 stones = scan_linear(shoulder.rgb) * vec3(0.92, 1.08, 1.5);
@@ -2221,7 +2229,6 @@ void fragment() {
 		* smoothstep(0.12, 0.3, slope) * (1.0 - smoothstep(0.65, 0.95, slope));
 	// Below a crag, where the ground eases off under steeper rock and turns concave,
 	// fallen stone piles into pale talus aprons.
-	float wide = length(vec2(dfm(p + vec2(10.0, 0.0)) - dfm(p - vec2(10.0, 0.0)), dfm(p + vec2(0.0, 10.0)) - dfm(p - vec2(0.0, 10.0)))) / 20.0;
 	float foot = smoothstep(0.04, 0.25, wide - slope) * smoothstep(0.3, 0.7, wide) * smoothstep(0.0, 0.3, cavity) * smoothstep(5.0, 12.0, geology);
 	fan = max(fan, foot) * (1.0 - exposed);
 	if (terrain_detail && fan > 0.001) {
