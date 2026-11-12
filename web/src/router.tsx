@@ -33,7 +33,8 @@ export const routes: RouteObject[] = [
           { path: "battles", lazy: page(() => import("@/pages/battles")) },
           { path: "ranks", lazy: page(() => import("@/pages/ranks")) },
           { path: "manual", lazy: page(() => import("@/pages/manual")) },
-          { path: "manual/:section", lazy: page(() => import("@/pages/manual-section")) },
+          // one route with the entry optional, so moving between entries keeps the page (and its 3D viewer)
+          { path: "manual/:section/:entry?", lazy: page(() => import("@/pages/manual-section")) },
           // the vehicle roster's old address: it's the manual's vehicles now
           { path: "vehicles", element: <Navigate to="/manual/vehicles" replace /> },
           { path: "leaderboards", lazy: page(() => import("@/pages/leaderboards")) },

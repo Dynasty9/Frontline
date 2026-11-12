@@ -1,0 +1,25 @@
+{
+  "source_ref": "1c2589d6",
+  "before_ref": "69a1df03, with the stage (tests/fixtures/helicopter-world-clips.gd/.tscn) copied in and World.build's Main lookup made optional, as in 1c2589d6; no flight code changed",
+  "stage": "helicopters (tools/showcase/stages.json): tests/fixtures/helicopter-world-clips.tscn",
+  "scenario": "showroom",
+  "seed": 712,
+  "mood": "day",
+  "preset": "high (depth of field off)",
+  "engine": "4.7.2",
+  "renderer": "forward_plus",
+  "resolution": "1280x720 per build; rows 0-500 kept (caption, sky, flight, both pads) and the two stacked to 1280x1000",
+  "fps": 30,
+  "frames": 690,
+  "seconds": 23,
+  "audio": "silent",
+  "flight": "UH-80 Ghost Hawk on a helipad at (80, 60) beside the showroom base; at recording start sent 140 m north, at 8 s redirected to the second pad at (135, -5)",
+  "camera": {
+    "from_first_pad": "103,10,33",
+    "look_at_from_first_pad": "27,7,-32",
+    "fov_degrees": 40
+  },
+  "command": "godot --path . --fixed-fps 30 --audio-driver Dummy --position -10000,-10000 --resolution 1280x720 res://tests/fixtures/helicopter-world-clips.tscn -- --clip=helicopters --label=BEFORE|AFTER --seconds=23 --frames=DIR",
+  "encode": "PNG frames stacked with Pillow and piped as JPEG (quality 95) into ffmpeg n7.0.1 (Playwright build): libvpx-vp9 constrained quality, crf 36, 1300 kbit/s, keyframe every 60 frames; poster is frame 660 (22.0 s)",
+  "result": "At 22.0 s the old flight is still sinking vertically over the second pad (6.8 m up; 2.0 m at the end of the clip); the new one has landed (0.2 m)."
+}

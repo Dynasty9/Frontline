@@ -1,0 +1,15 @@
+{
+  "entry": "changelog/unreleased/website-lighter-and-shareable.md",
+  "summary": "Smaller downloads (3D viewer on request, no hero video on phones, small changelog thumbnails, a lighter main bundle) and a page with its own link card for every Field Manual entry.",
+  "medium": "still",
+  "stage": "native-media",
+  "rationale": "The visible changes are two states: the sized Load prompt before the 3D viewer downloads, and Home on a phone with a still and Send to my computer. One combined sheet shows both. The rest are measured savings (main bundle 242 to 156 KB gzipped, Updates images about 4 MB to 178 KB, no hero video on phones) and server behaviour (per-page cards, sitemap, 404s), stated in text and checked by unit tests, stories and the smoke check.",
+  "source_ref": "5ed9a639 + claude/website-lighter-and-shareable working tree, 2026-11-11; local dev server with a local Web export for the viewer",
+  "sources": [
+    {
+      "file": "changelog/unreleased/website-lighter-and-shareable/lighter.jpg",
+      "sha256": "b37b1f1054d5a52706c2c827d04650fd5de5ee83cfceb5250714390c8d6c17f7"
+    }
+  ],
+  "output": null
+}

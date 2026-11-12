@@ -102,22 +102,14 @@ static func _tyre(model: Node3D, p: Vector3, nrm: Vector3, hang: Vector3) -> voi
 	_rod(model, p + Vector3(0, 0.32, 0), hang, 0.015, "canvas", Color(0.45, 0.4, 0.3), 4)
 
 
-## A 200-litre drum standing at p (or lying, axis along `yaw`).
+## A 200-litre drum standing at p (or lying, axis along `yaw`): BuildingFittings.drum.
 static func _drum(model: Node3D, p: Vector3, col: Color, lying := false, yaw := 0.0) -> void:
-	var rot := Vector3(0, yaw, PI / 2) if lying else Vector3.ZERO
-	var c := p + (Vector3(0, 0.29, 0) if lying else Vector3(0, 0.44, 0))
-	_cyl(model, 0.29, 0.29, 0.88, c, rot, "steel", col, 14)
-	var ax := Basis.from_euler(rot) * Vector3.UP
-	for e in [-0.28, 0.0, 0.28]:
-		_cyl(model, 0.3, 0.3, 0.03, c + ax * e, rot, "steel", col.darkened(0.15), 14, false)
+	BuildingFittings.drum(BuildingKit.nodes(model), p, col, lying, yaw, "steel")
 
 
-## A crate (w x h x l) with battens round it.
+## A crate (w x h x l) with battens round it: BuildingFittings.crate.
 static func _crate(model: Node3D, p: Vector3, s: Vector3, yaw: float, kind: String, col) -> void:
-	_box(model, s, p + Vector3(0, s.y * 0.5, 0), kind, col, Vector3(0, yaw, 0))
-	var b := Basis(Vector3.UP, yaw)
-	for e in [-1.0, 1.0]:
-		_box(model, Vector3(s.x + 0.02, 0.06, 0.06), p + b * Vector3(0, s.y * 0.5, e * (s.z * 0.5 - 0.02)) + Vector3(0, 0.0, 0), kind, col.darkened(0.12) if col is Color else Color(0.3, 0.22, 0.14), Vector3(0, yaw, 0))
+	BuildingFittings.crate(BuildingKit.nodes(model), p, s, col if col is Color else Color(0.5, 0.37, 0.23), yaw, kind, false)
 
 
 # --- the ground ---------------------------------------------------------------------
@@ -357,9 +349,11 @@ static func _shed(model: Node3D, rebel: bool, d: float, zq: float, sx: float, rn
 		for q in [[0.6, 0.0], [-0.6, 0.6]]:
 			_mk(model, Res.capsule(0.12, 0.5, 8), "bark", Vector3(sx + 1.2 + float(q[0]) * 0.5, (eave + ridge) * 0.5 + 0.18 - float(q[0]) * 0.2, z0 + l * 0.6 + float(q[1])), Vector3(PI / 2, 0, -slope), Color(0.3, 0.25, 0.2))
 	# the gutter along the eaves, a downpipe
+	var gk := BuildingKit.nodes(model)
 	for e in [-1.0, 1.0]:
-		_box(model, Vector3(0.12, 0.1, l + 0.6), Vector3(sx + e * (hw + 0.38), eave - 0.12, (z0 + z1) * 0.5), "steel", sheet.darkened(0.2))
-	_rod(model, Vector3(sx + hw + 0.38, eave - 0.15, z1), Vector3(sx + hw + 0.38, 0.1, z1), 0.05, "steel", sheet.darkened(0.2), 8, true)
+		var gx: float = sx + e * (hw + 0.38)
+		BuildingFittings.gutter(gk, Vector3(gx, eave - 0.1, z0 - 0.3), Vector3(gx, eave - 0.1, z1 + 0.3), Vector3(e, 0, 0), sheet.darkened(0.2))
+	BuildingFittings.downpipe(gk, Vector3(sx + hw + 0.38, eave - 0.14, z1), Vector3(sx + hw + 0.08, 0.1, z1), 0.05, sheet.darkened(0.2))
 	# inside: a workbench along the right wall, a vice, tools, an outboard on a stand, a lamp
 	var bx := sx + hw - 0.45
 	var bz := z0 + l * 0.62
@@ -590,10 +584,7 @@ static func _flagpole(model: Node3D, team: int, p: Vector3) -> void:
 	var h := 7.2 if not rebel else 5.6
 	if not rebel:
 		_box(model, Vector3(0.7, 0.3, 0.7), p + Vector3(0, 0.15, 0), "concrete", Color(0.58, 0.57, 0.53))
-		_cyl(model, 0.045, 0.075, h, p + Vector3(0, 0.3 + h * 0.5, 0), Vector3.ZERO, "paint", Color(0.82, 0.82, 0.8), 10)
-		_mk(model, Res.sphere(0.09, 10), "paint", p + Vector3(0, 0.3 + h + 0.06, 0), Vector3.ZERO, Color(0.7, 0.58, 0.25))
-		_rod(model, p + Vector3(0.08, 0.3 + h, 0), p + Vector3(0.08, 1.2, 0), 0.006, "plain", Color(0.85, 0.85, 0.82), 3)
-		_box(model, Vector3(0.04, 0.12, 0.08), p + Vector3(0.08, 1.2, 0), "steel", Color(0.4, 0.4, 0.4), Vector3.ZERO, false)
+		BuildingFittings.flagpole(BuildingKit.nodes(model), p + Vector3(0, 0.3, 0), h, Color(0.82, 0.82, 0.8), false)
 	else:
 		_cyl(model, 0.06, 0.09, h, p + Vector3(0, h * 0.5 - 0.3, 0), Vector3(0.03, 0, -0.04), "bark", Color(0.33, 0.27, 0.2), 7)
 		for i in 4:

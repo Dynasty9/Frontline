@@ -81,3 +81,7 @@ water_time={
 "type": "float",
 "value": 0.0
 }
+window_glow={
+"type": "float",
+"value": 0.0
+}
