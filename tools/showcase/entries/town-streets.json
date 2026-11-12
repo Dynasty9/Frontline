@@ -1,0 +1,16 @@
+{
+  "entry": "changelog/unreleased/town-streets.md",
+  "summary": "Town asphalt, markings, sidewalks and the square read as real, worn streets.",
+  "medium": "still",
+  "stage": "game capture: --aivai --seed=3 --focus-town --zoom=40 --pitch=-45 --shot-at=6; --aivai --seed=3 --focus-town=8,6 --zoom=12 --pitch=-30 --shot-at=6 (1600x900, --nohud --perf=0, off-screen window)",
+  "rationale": "Ground materials are an appearance change: matched before/after frames of the same crossroads and square show the surfaces directly.",
+  "source_ref": "faa6f2e0073af49a71fe3b91875bb8f58e3a7bb9 + working tree",
+  "before_ref": "faa6f2e0073af49a71fe3b91875bb8f58e3a7bb9",
+  "sources": [
+    {
+      "file": "changelog/unreleased/town-streets/comparison.jpg",
+      "sha256": "f64e3a2ebc6346b6e86a4e92fc166a1256967fcbb20b1e8dff643a0e76c76d1f"
+    }
+  ],
+  "output": null
+}
