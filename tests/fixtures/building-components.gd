@@ -238,7 +238,9 @@ func _ready() -> void:
 			BuildingYards.garden_set(k.at_point(Vector3(0, 0, 3)), k.rng, true)
 			BuildingYards.kennel(k.at_point(Vector3(-3, 0, 0)), Color.SADDLE_BROWN)
 			BuildingYards.bicycle(k.at_point(Vector3(0, 0, -3)), BuildingYards.BIKE_COLS[0])
-			BuildingYards.pots(k.at_point(Vector3(3, 0, 3)), 3, k.rng),
+			BuildingYards.pots(k.at_point(Vector3(3, 0, 3)), 3, k.rng)
+			BuildingYards.shed(k.at_point(Vector3(-4, 0, 3)), BuildingYards.SHEDS[0], k.rng)
+			BuildingYards.trampoline(k.at_point(Vector3(5, 0, -4)), BuildingYards.PADS[0]),
 		"inside": func(k: BuildingKit):
 			BuildingFurnishings.lining(k, 2.8, 3.0, [Rect2(-0.65, 1.0, 1.3, 1.0)], Color(0.8, 0.8, 0.7))
 			BuildingFurnishings.radiator(k, 0.0, 1.0)

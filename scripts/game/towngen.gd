@@ -577,10 +577,24 @@ func _place_yard_life(front: Vector3, n: Vector3, d: Vector3, W: float, hc: Vect
 	var yard := _depth - setback - dep
 	if life.randf() < 0.4:
 		_d("woodpile", back + n * 0.21 + d * corner * (w * 0.5 - 1.5), axis, snappedf(life.randf_range(1.4, 2.2), 0.1))
+	var has_set := false
+	var has_kennel := false
 	if yard > 4.0 and life.randf() < 0.4:
 		_d("garden_set", back + n * 1.7 - d * corner * w * 0.22, life.randf() * TAU, 1 if life.randf() < 0.4 else 0)
+		has_set = true
 	if yard > 4.0 and life.randf() < 0.15:
 		_d("kennel", front + n * (_depth - 1.2) + d * corner * (W * 0.5 - 1.1), axis + PI + life.randf_range(-0.4, 0.4))
+		has_kennel = true
+	# a shed at the bottom of the garden (in the corner the kennel isn't in),
+	# its door to the house; a trampoline on a lawn with room for it (drawn
+	# last, so the rest stays as it was)
+	var shed_side := corner if not has_kennel else -corner
+	var has_shed := false
+	if yard > 4.2 and life.randf() < 0.4 and not (shed_side != corner and has_set and yard < 5.4):
+		_d("shed", front + n * (_depth - 2.0) + d * shed_side * (W * 0.5 - 1.7), axis + PI, life.randi() % BuildingYards.SHEDS.size())
+		has_shed = true
+	if yard > 4.4 and not has_set and not has_shed and life.randf() < 0.3:
+		_d("trampoline", back + n * (yard * 0.5), 0.0, life.randi() % BuildingYards.PADS.size())
 
 
 func _curb_crossing(front: Vector3, n: Vector3, d: Vector3, width: float) -> bool:
