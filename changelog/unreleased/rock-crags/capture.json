@@ -5,10 +5,10 @@
   "engine": "Godot 4.7.2 stable, Forward+, 1600x900, preset high",
   "commands": [
     "godot --path . --audio-driver Dummy --resolution 1600x900 --script tests/fixtures/environment-views.gd -- --aivai --seed=11 --offscreen --nohud --set=perf:0 --preset=high --mood=golden --focus=0,0 --capture-prefix=<dir>/golden",
-    "godot --path . --audio-driver Dummy --resolution 1600x900 --script tests/fixtures/environment-views.gd -- --aivai --seed=3 --offscreen --nohud --set=perf:0 --preset=high --mood=day --focus=0,0 --capture-prefix=<dir>/views"
+    "godot --path . --audio-driver Dummy --resolution 1600x900 --script tests/fixtures/environment-views.gd -- --aivai --seed=11 --offscreen --nohud --set=perf:0 --preset=high --mood=golden --focus=0,0 --capture-set=cloud-distance --capture-prefix=<dir>/hero"
   ],
   "rows": [
     "snow-close (seed 11, golden)",
-    "snow-close (seed 3, day)"
+    "cloud-distance reverse, cropped (seed 11)"
   ]
 }

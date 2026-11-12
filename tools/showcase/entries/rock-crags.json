@@ -9,11 +9,11 @@
   "sources": [
     {
       "file": "changelog/unreleased/rock-crags/comparison.jpg",
-      "sha256": "6e5da7fb006ee3607438459ad4b02f2f0368bbca4b0e8607afc948311bc90a96"
+      "sha256": "85657c7d90dbdb8052a597fde1c42bb105813c7a225476b31470098ba9958b8d"
     },
     {
       "file": "changelog/unreleased/rock-crags/capture.json",
-      "sha256": "470ec6d6f9ff04e94d8d9bdb00de1fb85a1ee459d466a9f521f4aba6c22a9ea0"
+      "sha256": "77f8463c82242a65bfad3838a068ced8db8575525c78a2daa5b90a41012955ae"
     }
   ],
   "output": null

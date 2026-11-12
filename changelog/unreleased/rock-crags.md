@@ -5,7 +5,7 @@ kind = "improved"
 
 [[screenshots]]
 file = "comparison.jpg"
-caption = "The same crags before and after: at golden hour (seed 11) and by day (seed 3)."
+caption = "Before and after: a crag at golden hour, and a distant peak from a low camera (seed 11)."
 +++
 
 - Steep bare rock now has knobs, ledges and clefts up to a few metres deep, finer than the hills' own shape, so crests break into a jagged line instead of a smooth dome.
