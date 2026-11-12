@@ -109,7 +109,7 @@ func _ready() -> void:
 		["check", "phys_sky", "Physical sky", null, "At golden hour, dawn, dusk and in haze the sky is worked out from how sunlight scatters in the air: deep blue overhead, a reddened sun, the earth's shadow rising at dusk. The sky lights the battlefield too, so shade turns sky-blue while the sunlit side glows."],
 		["check", "terrain_reflections", "Mountain reflections", null, "Cached distant terrain reflected in water. Does not reflect moving units; approximate near shorelines."],
 		["check", "alpine_haze", "Alpine distance haze", null, "Stronger atmospheric depth between mountain ranges."],
-		["check", "cloud_shadows", "Cloud shadows on everything", null, "The drifting shade of the clouds falls on soldiers, vehicles, buildings, trees and grass as well as the ground, so nothing stays sunlit in it. Off, only the ground darkens."],
+		["check", "cloud_shadows", "Cloud shadows on everything", null, "The drifting shade of the clouds falls on soldiers, vehicles, buildings, trees and roads as well as the ground, taking their sunlight but not the sky's, so nothing stays sunlit in it. Off, only the ground, grass and bushes darken."],
 		["check", "ssr", "Screen-space reflections", null, "Puddles and wet ground reflect fire, flares and the sky."],
 		["check", "vol_fog", "Volumetric fog & smoke", null, "Light shafts, haze and smoke screens you can't see through."],
 		["head", "", "Anti-aliasing & upscaling"],
