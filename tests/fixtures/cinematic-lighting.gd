@@ -1,8 +1,9 @@
 extends Node
 ## The cinematic lighting's rules, without a battle: the presets and how saved
 ## settings take them up, the adaptive shadow fit, which lights get shadows,
-## and the physical sky's moods. Run windowed, it also checks that the lens and
-## eye passes compile and run on this graphics card.
+## the physical sky's moods, and which heat sources the heat haze keeps. Run
+## windowed, it also checks that the lens, eye and heat passes compile and run
+## on this graphics card.
 
 
 func _ready() -> void:
@@ -16,11 +17,14 @@ func check() -> void:
 	_check_shadow_fit()
 	_check_light_picking()
 	_check_sky()
+	_check_heat_sources()
+	_check_heat_pulses()
+	_check_exhaust_markers()
 	if DisplayServer.get_name() != "headless":
 		await _check_passes()
 	else:
 		assert(not CinematicFx.supported())
-	print("CINEMATIC LIGHTING passed: presets, saved settings, shadow fit, light shadows, sky")
+	print("CINEMATIC LIGHTING passed: presets, saved settings, shadow fit, light shadows, sky, heat haze")
 	get_tree().quit()
 
 
@@ -43,7 +47,7 @@ func _check_presets() -> void:
 		if k != "shadow_fit":
 			assert(not bool(ultra[k]), "Ultra already has %s" % k)
 	# the browser build hides what its renderer can't draw
-	for k in ["light_shadows", "phys_sky", "lens", "shafts", "local_exp", "eye_adapt", "film"]:
+	for k in ["light_shadows", "phys_sky", "lens", "shafts", "local_exp", "eye_adapt", "film", "heat_haze"]:
 		assert(k in SettingsPanel.NOT_ON_WEB)
 
 
@@ -129,8 +133,18 @@ func _check_passes() -> void:
 	var env := WorldEnvironment.new()
 	env.environment = Environment.new()
 	var fx := CinematicFx.new()
-	for k in ["shafts", "lens", "local_exposure", "eye", "film"]:
+	for k in ["shafts", "lens", "local_exposure", "eye", "film", "heat_haze"]:
 		fx.set(k, true)
+	# a column of hot air in front of the box
+	var hh := HeatHaze.new()
+	hh.on = true
+	var hc := Camera3D.new()
+	add_child(hc)
+	hh.begin(hc)
+	hh.add(Vector3(0, 0.4, -3.0), 0.5, Vector3.UP, 2.0, 1.0, 2.0, 0.3)
+	fx.heat = hh.finish()
+	fx.heat_time = 1.5
+	hc.free()
 	var p := PackedFloat32Array()
 	p.resize(CinematicFx.PARAMS)
 	p[6] = 1.0
@@ -168,3 +182,83 @@ func _check_passes() -> void:
 	env.queue_free()
 	cam.queue_free()
 	box.queue_free()
+
+
+## The heat haze keeps what the camera can see, near enough to show, and when
+## there's more than the heat pass takes, the ones that would show the most.
+func _check_heat_sources() -> void:
+	var cam := Camera3D.new()
+	cam.fov = 48.0
+	add_child(cam)
+	cam.global_transform = Transform3D.IDENTITY  # at the origin, looking down -Z
+	var hh := HeatHaze.new()
+	hh.begin(cam)
+	hh.add(Vector3(0, 0, -30), 0.6, Vector3.UP, 2.0, 1.0, 2.0, 0.3)  # in view: kept
+	hh.add(Vector3(0, 0, 30), 0.6, Vector3.UP, 2.0, 1.0, 2.0, 0.3)  # behind the camera
+	hh.add(Vector3(200, 0, -30), 0.6, Vector3.UP, 2.0, 1.0, 2.0, 0.3)  # far off to the side
+	hh.add(Vector3(0, 0, -900), 0.6, Vector3.UP, 2.0, 1.0, 2.0, 0.3)  # too far to see
+	hh.add(Vector3(2, 0, -30), 0.6, Vector3.UP, 2.0, 0.0, 2.0, 0.3)  # cold
+	var out := hh.finish()
+	assert(out.size() == HeatHaze.STRIDE, "kept %d floats" % out.size())
+	assert(is_equal_approx(out[2], -30.0) and is_equal_approx(out[8], 1.0))
+	# a big battle: only the strongest HeatHaze.MAX go to the heat pass
+	hh.begin(cam)
+	var n := HeatHaze.MAX + 20
+	for i in n:
+		hh.add(Vector3(float(i % 9) - 4.0, 0, -40), 0.6, Vector3.UP, 2.0, 0.05 + 0.01 * i, 2.0, 0.3)
+	out = hh.finish()
+	assert(out.size() == HeatHaze.MAX * HeatHaze.STRIDE, "kept %d" % (out.size() / HeatHaze.STRIDE))
+	var weakest := INF
+	for i in HeatHaze.MAX:
+		weakest = minf(weakest, out[i * HeatHaze.STRIDE + 8])
+	assert(weakest >= 0.05 + 0.01 * 20 - 0.001, "kept a source of strength %.2f over stronger ones" % weakest)
+	# a fire's hot air stands over it, leaning downwind; a bigger fire's is wider
+	hh.begin(cam)
+	hh.add_fire(Vector3(0, 0, -30), Vector3(0.55, 0.45, 0.55), 1.0)
+	hh.add_fire(Vector3(0, 0, -30), Vector3(3.0, 0.25, 3.0), 1.0)
+	out = hh.finish()
+	assert(out.size() == 2 * HeatHaze.STRIDE)
+	assert(out[1] > 1.0 and out[4] * Fires.WIND.x > 0.0 and out[5] > 0.9, "a fire's column %s" % [out.slice(0, 8)])
+	assert(out[HeatHaze.STRIDE + 3] > out[3])
+	cam.free()
+
+
+## Blasts and muzzles: a pulse only while the haze is on, in at once and gone
+## once its time is up.
+func _check_heat_pulses() -> void:
+	var cam := Camera3D.new()
+	add_child(cam)
+	var hh := HeatHaze.new()
+	hh.blast(Vector3(0, 0, -30), 1.4)
+	assert(hh.pulses() == 0, "a pulse kept with the haze off")
+	hh.on = true
+	hh.blast(Vector3(0, 0, -30), 1.4)
+	assert(hh.pulses() == 1)
+	assert(HeatHaze.pulse_strength(0.0, 1.0) == 0.0 and HeatHaze.pulse_strength(1.0, 1.0) == 0.0)
+	assert(HeatHaze.pulse_strength(0.06, 1.0) > HeatHaze.pulse_strength(0.5, 1.0))
+	assert(HeatHaze.pulse_strength(0.5, 1.0) > HeatHaze.pulse_strength(0.9, 1.0))
+	hh.begin(cam)
+	hh._tick_pulses(0.05)
+	assert(hh.finish().size() == HeatHaze.STRIDE, "a fresh blast's heat isn't in view")
+	for i in 30:
+		hh.begin(cam)
+		hh._tick_pulses(0.05)
+	assert(hh.pulses() == 0, "a blast's heat outlived it")
+	for i in HeatHaze.PULSES + 5:
+		hh.blast(Vector3(0, 0, -30), 1.0)
+	assert(hh.pulses() == HeatHaze.PULSES)
+	hh.clear()
+	assert(hh.pulses() == 0)
+	cam.free()
+
+
+## The models note the mouths of their exhausts, pointing the way the gas
+## leaves: an Apache's turbines blow out and back.
+func _check_exhaust_markers() -> void:
+	var k := VehicleModels.build("gunship", 0, 1)
+	assert(k.exhausts.size() >= 2, "the Apache notes %d exhausts" % k.exhausts.size())
+	for e in k.exhausts:
+		var out := e.basis.y.normalized()
+		assert(out.z > 0.3, "an exhaust blows %s, not back" % out)
+		assert(absf(e.origin.x) > 0.3 and e.origin.y > 1.0, "an exhaust's mouth at %s" % e.origin)
+	k.root.free()

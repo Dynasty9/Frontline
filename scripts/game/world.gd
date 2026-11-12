@@ -2088,12 +2088,14 @@ func execute_cmd(peer: int, d: Dictionary) -> void:
 			sqs.erase(sq)
 			if peer > 0:
 				send_msg_to(peer, "alert", "%s is routing - it won't take orders until it rallies." % sq.display_name())
-	if not t in ["unit", "dismount"]:
+	if not t in ["unit", "dismount", "stance", "roe", "prio", "pop_smoke"]:
 		for sq in sqs:
 			sq.order_n += 1
 	# any order of your own to a delegated unit takes it back from the XO,
-	# and he says so on the net (building and fire missions as much as moves)
-	if delegation and peer > 0 and not t in ["delegate", "take_back"]:
+	# and he says so on the net (building and fire missions as much as moves);
+	# standing orders (stance, fire discipline, target priority) and popping
+	# smoke are only how they fight, and leave them with him
+	if delegation and peer > 0 and not t in ["delegate", "take_back", "stance", "roe", "prio", "pop_smoke"]:
 		delegation.release(sqs, vehs, "back under your command")
 	match t:
 		"delegate":
@@ -2149,9 +2151,28 @@ func execute_cmd(peer: int, d: Dictionary) -> void:
 				else:
 					vehs[i].order_move(vp)
 		"dismount":
+			# everyone, or "n" men, or squad "squad" (Vehicle.dismount)
 			take_command(peer, [], vehs)
 			for v in vehs:
-				v.dismount()
+				v.dismount(int(d.get("n", 0)), int(d.get("squad", 0)))
+		"stance", "roe", "prio":
+			# standing orders: they stick through every other order until changed
+			# (Soldier.set_standing, Vehicle.set_standing); "v" is the setting
+			var val := int(d.get("v", 0))
+			var one = entities.get(int(d.get("soldier", 0)))
+			if one is Soldier and t != "prio" and can_command_unit(peer, one.team, one.owner_peer):
+				one.set_standing(t, val)
+			if t != "prio":
+				take_command(peer, sqs, [])
+				for sq in sqs:
+					sq.set_standing(t, val)
+			if t != "stance":
+				take_command(peer, [], vehs)
+				for v in vehs:
+					v.set_standing(t, val)
+		"pop_smoke":
+			for v in vehs:
+				v.pop_smoke()
 		"unit":
 			var us = entities.get(int(d.get("soldier", 0)))
 			if us is Soldier and can_command_unit(peer, us.team, us.owner_peer):

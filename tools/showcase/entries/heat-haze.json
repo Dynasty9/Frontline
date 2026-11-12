@@ -1,0 +1,29 @@
+{
+  "entry": "changelog/unreleased/heat-haze.md",
+  "summary": "On the Cinematic preset the air shimmers over fires and burning wrecks, over the engines of idling tanks and helicopters, and for a moment round a blast.",
+  "medium": "motion",
+  "stage": "blast-world-clips heat-haze / heat-haze-off (tools/showcase/stages.json)",
+  "rationale": "Heat haze is motion: a still barely shows it. One matched clip stacks the same frames with the haze off (top) and on (bottom), each a 1:1 band of a 1280x720 render, so the shimmer is seen at the size the game draws it: a tank wreck burning through the game's own fire behind the showroom's idling tanks at the RTS camera's distance, then close over an engine deck. Blasts and helicopter exhausts are described in text: the stage keeps to the two subjects the haze is mostly seen on.",
+  "source_ref": "claude/sleepy-colden-177926",
+  "before_ref": "claude/sleepy-colden-177926",
+  "capture": {
+    "renderer": "Forward+ (Vulkan), NVIDIA GeForce RTX 3090, 1280x720, borderless window off the desktop",
+    "on": "godot --fixed-fps 24 --position -10000,-10000 --resolution 1280x720 --path . res://tests/fixtures/blast-world-clips.tscn -- --clip=heat-haze --frames=DIR",
+    "off": "the same with --clip=heat-haze-off",
+    "compose": "frames 0-119 band y 180-540, frames 120-239 band y 40-400; off above on; labels drawn on each band; VP9 CRF 30 at 24 fps; poster is frame 84",
+    "note": "Both runs share the stage's seed (712) and fixed 24 Hz steps, and their frames match except where the haze bends the view."
+  },
+  "sources": [
+    {
+      "file": "changelog/unreleased/heat-haze/heat-haze.webm",
+      "sha256": "5a1054213b94e7e2c81d947d9edc54001d3a6e34f26dcfea5f346991360223a4",
+      "caption": "Haze off above, on below: the same frames of the burning wreck and the idling tanks, then an engine deck close."
+    },
+    {
+      "file": "changelog/unreleased/heat-haze/heat-haze.jpg",
+      "sha256": "954052c911d8633bf258eeae560538058e4907c8122eae93beaac64a76656430",
+      "caption": "Poster: frame 84 of the clip."
+    }
+  ],
+  "output": null
+}

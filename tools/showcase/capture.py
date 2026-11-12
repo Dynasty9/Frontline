@@ -15,10 +15,12 @@ def main():
     parser.add_argument('stage', choices=stages)
     parser.add_argument('--output', type=Path, required=True)
     parser.add_argument('--label', default='CURRENT BUILD')
-    parser.add_argument('--renderer', choices=['gl_compatibility', 'forward_plus'], default='gl_compatibility')
+    parser.add_argument('--renderer', choices=['gl_compatibility', 'forward_plus'], default=None,
+                        help="Defaults to the stage's own renderer, else gl_compatibility")
     parser.add_argument('--legacy-effects', action='store_true', help='Use the historical two-argument explosion API')
     args = parser.parse_args()
     stage = stages[args.stage]
+    renderer = args.renderer or stage.get('renderer', 'gl_compatibility')
     out = args.output.resolve()
     if out.exists() and any(out.iterdir()):
         parser.error('Use a new or empty output directory to avoid mixing captures.')
@@ -28,7 +30,7 @@ def main():
         parser.error('Set GODOT and FFMPEG, or put both on PATH.')
     out.mkdir(parents=True, exist_ok=True)
     frames = out / 'frames'
-    command = [godot, '--path', str(ROOT), '--rendering-method', args.renderer,
+    command = [godot, '--path', str(ROOT), '--rendering-method', renderer,
                '--audio-driver', 'Dummy', '--position', '-10000,-10000', '--resolution', '1280x720',
                'res://' + stage['scene'], '--', '--clip=' + args.stage,
                '--label=' + args.label, '--frames=' + str(frames)]

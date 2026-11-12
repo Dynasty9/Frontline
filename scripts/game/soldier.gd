@@ -155,6 +155,20 @@ var view_lod := false
 var debug_pose: Array = []  # test gallery: [posture, act, life, view speed] frozen
 var riding = null  # the vehicle he's sitting in (untyped: may be freed)
 var detached := false  # under a direct order of his own until the squad is given one
+# The player's standing orders for him (given to him or to his whole squad).
+# Stance: AUTO is his own judgement; otherwise he lies down, keeps low or stays
+# up wherever he is. Fire discipline: FREE (fire at will), RETURN (only once
+# he or his squad has been fired on) or HOLD (not a shot, grenade or rocket
+# unless he's being overrun: an enemy within OVERRUN_R, or the one he was
+# ordered to attack). His reflexes - diving from a grenade, hitting the dirt,
+# hand to hand - are his own whatever he's told.
+enum Stance {AUTO, PRONE, CROUCH, STAND}
+enum Roe {FREE, RETURN, HOLD}
+const OVERRUN_R := 15.0
+const FIRED_ON_S := 10.0  # how long being shot at frees a "return fire" man's trigger
+var stance: int = Stance.AUTO
+var roe: int = Roe.FREE
+var fired_on_t := -99.0  # the last round that cracked past him or hit him
 # downtime
 var calm_t := 0.0
 var idle_act := 0
@@ -466,11 +480,15 @@ func apply_props(d: Dictionary) -> void:
 		posture = d.posture
 	if d.has("dpose"):
 		debug_pose = d.dpose
+	if d.has("stance"):
+		stance = d.stance
+	if d.has("roe"):
+		roe = d.roe
 
 
 func get_props() -> Dictionary:
 	return {"utype": utype, "team": team, "owner": owner_peer, "pos": position, "yaw": rotation.y, "name": sname,
-		"squad": sid, "max_hp": max_hp, "life": life, "posture": posture}
+		"squad": sid, "max_hp": max_hp, "life": life, "posture": posture, "stance": stance, "roe": roe}
 
 
 func _ready() -> void:
@@ -1447,6 +1465,8 @@ func _arrived() -> void:
 ## Under heavy fire a man rushes for cover and only crawls the last couple
 ## of metres; a long crawl in the open just gets him shot.
 func _crawling() -> bool:
+	if stance == Stance.PRONE and move_mode == 0 and task == "" and path_i < path.size():
+		return true  # told to stay down: he crawls (a run order gets him up)
 	if goal_kind != "cover" or path_i >= path.size():
 		return false
 	if _shifting and cover_h > 0.0 and cover_h < Cover.KNEEL_MAX and _danger():
@@ -1918,7 +1938,9 @@ func _weapon_tick_work(dt: float, moving: bool, mode: String) -> void:
 	var own_cf := cf_until > world.time
 	var cf := own_cf or (squad != null and squad.cover_fire_until > world.time)
 	var cfp: Vector3 = cf_pos if own_cf else (squad.cover_fire_pos if squad else Vector3.ZERO)
-	var want_fire := have_target or cf
+	var fire_free := may_fire()
+	var target_ok := have_target and may_engage(target)
+	var want_fire := target_ok or (cf and fire_free)
 	var want := Post.STAND
 	var shoot_ok := false
 	if mode == "escort":
@@ -1979,6 +2001,10 @@ func _weapon_tick_work(dt: float, moving: bool, mode: String) -> void:
 		shoot_ok = not pinned or fmod(world.time + float(eid % 13) * 0.37, 4.0) < 1.3
 	if pinned and want == Post.STAND and mode != "escort" and mode != "crew":
 		want = Post.CROUCH
+	if stance != Stance.AUTO and mode == "normal" and not _crawling():
+		var r := _stance_post(want, pinned)
+		want = r[0]
+		shoot_ok = shoot_ok and r[1]
 	if hit_dirt_t > 0.0 and mode != "escort" and not moving:
 		want = Post.PRONE
 		shoot_ok = false
@@ -2001,12 +2027,14 @@ func _weapon_tick_work(dt: float, moving: bool, mode: String) -> void:
 		return  # holding fire till the leader springs it
 	var aim_ent: Entity = null
 	var aim_pt := Vector3.INF
-	if blind and have_target:
+	if blind and target_ok:
 		aim_ent = target  # roughly where he last saw him, head down
 		aim_pt = target.position + Vector3(world.rng.randf_range(-1.5, 1.5), world.rng.randf_range(0.5, 1.8), world.rng.randf_range(-1.5, 1.5))
-	elif have_target and _has_los_now(target):
+	elif target_ok and _has_los_now(target):
 		aim_ent = target
 		aim_pt = _aim_point(target)
+	elif not fire_free:
+		return  # holding his fire: no covering fire, no shots at where they were
 	elif cf and Defs.flat(cfp - position).length() < float(w.range) * 1.1:
 		aim_pt = cfp + Vector3(world.rng.randf_range(-2.5, 2.5), world.rng.randf_range(0.6, 1.4), world.rng.randf_range(-2.5, 2.5))
 	elif squad and (utype in ["mg_gunner", "pkm"] or not gun_override.is_empty()):
@@ -2200,7 +2228,7 @@ func _rethrow_target(g: Projectile) -> Vector3:
 
 
 func _try_grenade() -> bool:
-	if frags <= 0 or world.time < grenade_cd or suppression > 70.0 or squad == null or squad.ambush:
+	if frags <= 0 or world.time < grenade_cd or suppression > 70.0 or squad == null or squad.ambush or not may_fire():
 		return false
 	if is_moving():
 		return false
@@ -2259,7 +2287,7 @@ func _try_rocket() -> bool:
 		return false
 	var tgt: Entity = null
 	for e in vis_targets:
-		if e is Vehicle and Defs.flat(e.position - position).length() < 75.0:
+		if e is Vehicle and Defs.flat(e.position - position).length() < 75.0 and may_engage(e):
 			tgt = e
 			break
 	if tgt == null and squad:
@@ -2268,7 +2296,7 @@ func _try_rocket() -> bool:
 		var eye := position + Vector3(0, 1.6 + _ground(), 0)
 		for k in squad.known.values():
 			var ke = k.e
-			if ke is Vehicle and not ke.gone and world.time - float(k.t) < 6.0 and Defs.flat(ke.position - position).length() < 70.0:
+			if ke is Vehicle and not ke.gone and world.time - float(k.t) < 6.0 and Defs.flat(ke.position - position).length() < 70.0 and may_engage(ke):
 				if world.combat.clear_line(eye, ke.center_point(), get_exclude() + ke.get_exclude()):
 					tgt = ke
 					break
@@ -2285,7 +2313,7 @@ func _try_rocket() -> bool:
 
 
 func _try_drone() -> bool:
-	if drones_left <= 0 or world.time < drone_cd or drone_ctrl != null:
+	if drones_left <= 0 or world.time < drone_cd or drone_ctrl != null or not may_fire():
 		return false
 	drone_cd = world.time + 3.0
 	var tgt: Entity = world.rules.fpv_target(team, position, 230.0)
@@ -2631,6 +2659,70 @@ func cmd_throw(p: Vector3, kind: String) -> void:
 		go_to(position + Defs.flat(p - position).normalized() * (Defs.flat(p - position).length() - 22.0), "task", 1)
 
 
+# --- standing orders: stance and fire discipline ------------------------------------
+
+## Rounds coming his way: a "return fire" man (and his whole squad) may answer.
+func _fired_on() -> void:
+	fired_on_t = world.time
+	if squad:
+		squad.fired_on_t = world.time
+
+
+## He or his squad has been shot at lately.
+func fired_on() -> bool:
+	return world.time - fired_on_t < FIRED_ON_S or (squad != null and world.time - squad.fired_on_t < FIRED_ON_S)
+
+
+## His fire discipline lets him open fire at all: covering fire, a grenade,
+## a shot at where they were last seen.
+func may_fire() -> bool:
+	return roe == Roe.FREE or (roe == Roe.RETURN and fired_on())
+
+
+## He may shoot at this one: fire at will (or fired on), the man he was told
+## to attack, or anyone close enough to be overrunning him - holding fire
+## never means letting them walk into the hole with you.
+func may_engage(e: Entity) -> bool:
+	if roe == Roe.FREE or e == forced_target or may_fire():
+		return true
+	if e == null or e.gone:
+		return false
+	return Defs.flat(e.position - position).length() < OVERRUN_R
+
+
+const _RANK := {Post.PRONE: 0, Post.CROUCH: 1, Post.STAND: 2, Post.LEAN_L: 2, Post.LEAN_R: 2}
+
+
+## The posture his stance order gives, and whether he can still fire from it
+## where he is: lying down behind a wall he can't fire over it, and kneeling
+## by a corner he can't lean round it. A pinned man won't stand up, whatever
+## he's told.
+func _stance_post(want: int, pinned: bool) -> Array:
+	var ordered: int = Post.PRONE if stance == Stance.PRONE else (Post.CROUCH if stance == Stance.CROUCH else Post.STAND)
+	if ordered == Post.STAND and pinned:
+		ordered = Post.CROUCH
+	if ordered == Post.STAND and (want == Post.LEAN_L or want == Post.LEAN_R):
+		return [want, true]  # leaning round a corner is standing
+	var can := true
+	if at_cover and cover_type == Cov.LEAN:
+		can = ordered == Post.STAND
+	elif _over():
+		can = _RANK[ordered] >= _RANK[_over_post(true)]
+	return [ordered, can]
+
+
+## A standing order to him alone (o "stance"/"roe") or to his squad: it sticks
+## until changed, through every other order. Nothing else changes: he doesn't
+## leave his squad's formation for it.
+func set_standing(kind: String, value: int) -> void:
+	if kind == "stance":
+		stance = clampi(value, 0, Stance.size() - 1)
+		next_cover_eval = 0.0
+	else:
+		roe = clampi(value, 0, Roe.size() - 1)
+	world.push_props(self, {kind: stance if kind == "stance" else roe})
+
+
 ## A direct order from the player to this one soldier. He leaves the squad's
 ## formation (still shares what it knows) until the squad is given an order.
 func unit_order(d: Dictionary) -> void:
@@ -2768,6 +2860,7 @@ func add_suppression(amount: float, from_pos: Vector3) -> void:
 		m *= 0.5  # dug into a trench: the parapet takes it
 	suppression = minf(maxf(cap, suppression), suppression + amount * m)
 	_supp_t = world.time
+	_fired_on()
 	if squad and world.time > reveal_t:
 		reveal_t = world.time + 1.0
 		squad.report_pos(from_pos)
@@ -2792,6 +2885,8 @@ func take_damage(amount: float, src, _dir: Vector3, kind := "bullet") -> void:
 		return
 	hp -= amount
 	suppression = minf(100.0, suppression + 22.0)
+	if src is Entity and src.team != team and src.team >= 0:
+		_fired_on()
 	if src is Entity and squad and not src.gone:
 		squad.report(src)
 	if hp <= 0.0 and OS.has_environment("FL_DEBUG_DEATH"):
@@ -3812,6 +3907,8 @@ func _try_mortar() -> bool:
 			say("Target's out of range!", true)
 			return false
 	else:
+		if not may_fire():
+			return false  # (a fire mission he's ordered to shoot goes ahead)
 		mortar_cd = world.time + 2.0
 		tp = world.rules.mortar_target(team, position, 30.0, 130.0)
 		if tp == Vector3.INF:

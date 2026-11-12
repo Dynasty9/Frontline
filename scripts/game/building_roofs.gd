@@ -164,7 +164,7 @@ static func canopy(k: BuildingKit, width: float, depth: float, covering: String,
 ## A run of north lights over a roof whose top is at the kit's origin, `L`
 ## along x and `W` across: each tooth a sheeted slope up to a glazed upright
 ## face, triangular ends, a valley gutter between teeth.
-static func sawtooth(k: BuildingKit, L: float, W: float, teeth: int, rise: float, covering: String, col: Color, frame_col := Color(0.3, 0.32, 0.3)) -> void:
+static func sawtooth(k: BuildingKit, L: float, W: float, teeth: int, rise: float, covering: String, col: Color, frame_col := Color(0.3, 0.32, 0.3), lit := false) -> void:
 	var p := L / teeth
 	var sl := p * 0.78
 	var kind := BuildingMaterials.surface(covering)
@@ -182,7 +182,7 @@ static func sawtooth(k: BuildingKit, L: float, W: float, teeth: int, rise: float
 			k.part(BuildingKit.extrusion("tooth|%.2f|%.2f" % [sl, rise], tri, 0.06), kind, Transform3D(Basis.IDENTITY, Vector3(x0, 0, e * (W * 0.5 - 0.03))), col.darkened(0.08))
 		# the glazed face, its bars and rails
 		var gx := x0 + sl
-		k.plate(Vector3(0.012, rise - 0.08, W - 0.1), Vector3(gx + 0.01, rise * 0.5, 0), "glass", BuildingOpenings.GLASS)
+		k.plate(Vector3(0.012, rise - 0.08, W - 0.1), Vector3(gx + 0.01, rise * 0.5, 0), "window_lit" if lit else "glass", BuildingOpenings.GLASS)
 		k.part(BuildingKit.shape("northlight|%.2f|%.2f" % [rise, W], func() -> Array:
 			var out: Array = []
 			for sy: float in [0.03, rise - 0.03]:

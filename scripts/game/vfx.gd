@@ -964,8 +964,21 @@ func make_fire(ext: Vector3, smoke_kind := SMOKE_WOOD) -> Node3D:
 	h.add_child(snd)
 	h.set_meta("fire", 0.0)
 	h.set_meta("k", k)
+	h.set_meta("ext", ext)  # (the heat haze over it: heat_sources)
 	_burners.append(h)
 	return h
+
+
+## (view) The hot air over every fire that's alight and in sight, for the heat
+## haze (HeatHaze).
+func heat_sources(hh: HeatHaze) -> void:
+	for b in _burners:
+		if not is_instance_valid(b):
+			continue
+		var h: Node3D = b
+		var f := float(h.get_meta("fire", 0.0))
+		if f > 0.02 and h.is_visible_in_tree():
+			hh.add_fire(h.global_position, h.get_meta("ext", Vector3(0.5, 0.4, 0.5)), f)
 
 
 ## A fire made by make_fire at strength f (0..1): its smoke goes on thinly
@@ -1549,6 +1562,7 @@ func _view_process(dt: float) -> void:
 		var ring := r * (0.4 + 0.6 * sqrt(u))
 		pm_set(gfl, &"emission_ring_radius", ring)
 		pm_set(gfl, &"emission_ring_inner_radius", ring * 0.7)
+		hg.set_meta("ext", Vector3(ring, 0.25, ring))  # (the heat haze spreads with it)
 		if u > 0.8 and int(gf[4]) == 0:
 			gf[4] = 1
 			set_fire(hg, 0.4)

@@ -41,6 +41,20 @@ var last_fire_t := -9.0
 var _alert_t := 0.0
 var smoke_cd := 0.0
 var smoke_left := 2  # salvoes in the dischargers
+var smoke_t := -99.0  # the last salvo
+# The player's standing orders for the crew. Fire discipline (Soldier.Roe):
+# fire at will, return fire (only once it's been shot at), or hold fire (not
+# a round unless the enemy is on top of it: within OVERRUN_R, or the target it
+# was told to attack). Target priority: the crew's own judgement, or armour
+# first (the main gun saved for vehicles), or infantry first (high explosive
+# on men in the open). Smoke, backing out of a missile's path and pulling out
+# badly damaged are the crew's own, whatever they're told.
+enum Prio {AUTO, ARMOUR, INFANTRY}
+const OVERRUN_R := 22.0
+var roe: int = 0
+var prio: int = Prio.AUTO
+var fired_on_t := -99.0
+var keep_aboard := false  # a partial dismount: the rest stay in until told (or it's badly hit)
 # trucks
 var route := PackedVector3Array()
 var route_i := 0
@@ -167,10 +181,66 @@ func apply_props(d: Dictionary) -> void:
 		net_yaw = d.yaw
 	if d.has("max_hp"):
 		max_hp = d.max_hp
+	if d.has("roe"):
+		roe = d.roe
+	if d.has("prio"):
+		prio = d.prio
+	if d.has("smoke"):
+		smoke_left = d.smoke
+	if d.has("pax"):
+		pax = d.pax
 
 
 func get_props() -> Dictionary:
-	return {"vkind": vkind, "team": team, "owner": owner_peer, "pos": position, "yaw": rotation.y, "max_hp": max_hp}
+	return {"vkind": vkind, "team": team, "owner": owner_peer, "pos": position, "yaw": rotation.y, "max_hp": max_hp,
+		"roe": roe, "prio": prio, "smoke": smoke_left, "pax": pax}
+
+
+var pax: Array = []  # (replicated) who's aboard: [squad id, men, squad name] for each squad
+
+
+## Who's aboard changed: tell the clients (the command card's dismount orders).
+func _pax_changed() -> void:
+	if not srv:
+		return
+	var by := {}
+	var order := []
+	for s in passengers:
+		if not is_instance_valid(s) or s.gone:
+			continue
+		if not by.has(s.sid):
+			by[s.sid] = 0
+			order.append(s.sid)
+		by[s.sid] += 1
+	var out := []
+	for sid in order:
+		var sq: Squad = world.squads.get(sid)
+		out.append([sid, by[sid], sq.display_name() if sq else ""])
+	if out == pax:
+		return
+	pax = out
+	world.push_props(self, {"pax": pax})
+
+
+## A standing order: fire discipline ("roe") or target priority ("prio").
+func set_standing(kind: String, value: int) -> void:
+	if kind == "prio":
+		prio = clampi(value, 0, Prio.size() - 1)
+	else:
+		roe = clampi(value, 0, 2)
+	world.push_props(self, {kind: prio if kind == "prio" else roe})
+
+
+## Shot at lately: a "return fire" crew may answer.
+func fired_on() -> bool:
+	return world.time - fired_on_t < 10.0
+
+
+## The crew may fire on this one under its fire discipline.
+func may_engage(e: Entity) -> bool:
+	if roe == 0 or e == forced_target or (roe == 1 and fired_on()):
+		return true
+	return e != null and not e.gone and Defs.flat(e.position - position).length() < OVERRUN_R
 
 
 func on_spawned() -> void:
@@ -351,6 +421,7 @@ func order_move(p: Vector3) -> void:
 	_stuck_t = 0.0
 	_stuck_p = position
 	if not _brain_order:
+		keep_aboard = false  # moving on: they'll get out wherever it stops
 		if brain_state == "withdraw":
 			brain_overruled = true  # sent back in damaged: the crew does as it's told
 		brain_state = ""
@@ -398,6 +469,7 @@ func board(s: Soldier) -> bool:
 	s.riding = self
 	s.hide_in("vehicle", 9999.0, null)
 	world.stat("boarded")
+	_pax_changed()
 	return true
 
 
@@ -411,6 +483,7 @@ func embark_new_squad() -> void:
 		passengers.append(s)
 		s.riding = self
 		s.hide_in("vehicle", 9999.0, null)
+	_pax_changed()
 
 
 ## The bank or beach a boat is lying off (within reach of wading), or INF.
@@ -420,9 +493,21 @@ func _shore() -> Vector3:
 
 
 ## Ramp down: the section piles out behind the vehicle and goes to work.
-func dismount() -> void:
+## The player can drop only some of them: `n` men (the last in, so a squad's
+## leader stays with the rest of it), or squad `sid`; the rest stay aboard
+## until they're dismounted too, or it moves on and stops again.
+func dismount(n := 0, sid := 0) -> void:
 	if passengers.is_empty():
 		return
+	var out := []
+	for s in passengers:
+		if is_instance_valid(s) and not s.gone and s.life == Soldier.Life.HIDDEN and (sid == 0 or s.sid == sid):
+			out.append(s)
+	if n > 0 and n < out.size():
+		out = out.slice(out.size() - n)
+	if out.is_empty():
+		return
+	var partial := out.size() < passengers.size()
 	var back := -Defs.dir_of(rotation.y)
 	var side := back.cross(Vector3.UP)
 	if is_boat():
@@ -433,25 +518,33 @@ func dismount() -> void:
 		var up := Defs.flat(shore - position).normalized()
 		back = up
 		side = up.cross(Vector3.UP)
-	var sq: Squad = null
+	var sqs := []
 	var i := 0
-	for s in passengers:
-		if not is_instance_valid(s) or s.gone or s.life != Soldier.Life.HIDDEN:
-			continue
+	for s in out:
 		s.riding = null
 		var at := position + back * 3.6 + side * (i - 1.5) * 1.3
 		if is_boat():
 			at = world.nav.nearest_walkable(_shore() + side * (i - 1.5) * 1.3)
 		s.unhide(at)
-		sq = s.squad
+		passengers.erase(s)
+		if s.squad and not s.squad in sqs:
+			sqs.append(s.squad)
 		i += 1
-	passengers.clear()
-	world.stat("dismount")
-	if sq:
-		var fwd := Defs.dir_of(rotation.y)
-		var lead := sq.get_leader()
+	# (men who died aboard, or were freed, go from the list too)
+	for s in passengers.duplicate():
+		if not is_instance_valid(s) or s.gone or s.life != Soldier.Life.HIDDEN:
+			passengers.erase(s)
+	keep_aboard = partial and not passengers.is_empty()
+	_pax_changed()
+	world.stat("dismount_part" if partial else "dismount")
+	var fwd := Defs.dir_of(rotation.y)
+	for sq in sqs:
+		var lead: Soldier = sq.get_leader()
 		if lead:
-			lead.say("Dismount! Go, go, go!" if team == 0 else "Out! Everybody out!", true)
+			if partial:
+				lead.say("Dismount! You lot, with me!" if team == 0 else "Out! You, you, with me!", true)
+			else:
+				lead.say("Dismount! Go, go, go!" if team == 0 else "Out! Everybody out!", true)
 		if (assault or is_boat()) and assault_dest != Vector3.INF:
 			sq.order_assault(assault_dest, fwd)
 		else:
@@ -479,7 +572,7 @@ func _dismount_check(dt: float) -> void:
 			if e.team != team and e.team >= 0 and e.visible_to_team(team) and (not (e is Soldier) or e.life == Soldier.Life.ALIVE):
 				close = true
 				break
-	if arrived or close or hp < max_hp * 0.4:
+	if hp < max_hp * 0.4 or (not keep_aboard and (arrived or close)):
 		dismount()
 
 
@@ -980,10 +1073,18 @@ func _scan() -> void:
 				continue
 		elif e is Vehicle:
 			sc = (110.0 if vdef.cannon else (70.0 if base() == "attack_heli" else 40.0)) - d
+			if prio == Prio.ARMOUR:
+				sc += 80.0
+			elif prio == Prio.INFANTRY:
+				sc -= 60.0
 		else:
 			sc = 50.0 - d
 			if e.rockets > 0:
 				sc += 25.0
+			if prio == Prio.INFANTRY:
+				sc += 70.0
+			elif prio == Prio.ARMOUR:
+				sc -= 30.0
 		if e == target:
 			sc += 8.0
 		if sc <= bs:
@@ -1061,6 +1162,11 @@ func _aim_err() -> float:
 func _fire_tick() -> void:
 	if not _target_ok():
 		return
+	if not may_engage(target):
+		if world.time > float(bt_cd.get("held", 0.0)):
+			bt_cd["held"] = world.time + 2.0
+			world.stat("veh_held_fire")
+		return
 	var err := _aim_err()
 	var dist := Defs.flat(target.position - position).length()
 	if _try_missiles(err, dist):
@@ -1073,6 +1179,10 @@ func _fire_tick() -> void:
 				if o.team == target.team and o.life == Soldier.Life.ALIVE:
 					n += 1
 			worth = n >= 2 or target.rockets > 0 or target.mounted != null or world.rng.randf() < 0.25
+			if prio != Prio.AUTO:
+				# infantry first: high explosive on any of them; armour first: the
+				# main gun is saved for vehicles (the machine gun takes the men)
+				worth = prio == Prio.INFANTRY or (worth and (target.rockets > 0 or target.mounted != null))
 		if worth:
 			_fire_cannon()
 			cannon_t = float(vdef.get("gun", {}).get("cd", 5.5))
@@ -1530,6 +1640,8 @@ func _fire_cannon() -> void:
 # --- damage --------------------------------------------------------------------------
 
 func bullet_hit(p: Vector3, dir: Vector3, w: Dictionary, _shooter) -> int:
+	if _shooter is Entity and is_instance_valid(_shooter) and _shooter.team != team:
+		fired_on_t = world.time
 	var armor := int(vdef.armor)
 	var ap: bool = w.get("ap", false)
 	if armor >= 2:
@@ -1602,26 +1714,55 @@ func explosion_hit(pos: Vector3, d: Dictionary) -> void:
 ## A missile or rocket coming at it: armour fires its smoke dischargers - a
 ## wall of smoke between it and the shooter - and the crew calls it.
 func threatened(from: Vector3) -> void:
-	if not srv or gone or int(vdef.get("armor", 0)) < 1 or is_air() or smoke_left <= 0 or world.time < smoke_cd:
+	fired_on_t = world.time
+	if not srv or gone or not has_smoke() or world.time < smoke_cd:
 		return
 	smoke_cd = world.time + 25.0
-	smoke_left -= 1
-	var to := Defs.flat(from - position).normalized()
-	var top := position + Vector3(0, float(vdef.get("gun_h", 2.0)) + 0.3, 0)
-	for i in 4:
-		var dir := to.rotated(Vector3.UP, (i - 1.5) * 0.32)
-		var land := position + dir * world.rng.randf_range(11.0, 16.0)
-		world.spawn("projectile", {"ptype": "smoke", "team": team, "pos": top, "vel": world.combat.ballistic_vel(top, land), "thrower": eid, "fuse": 0.0})
-	world.fx_event([Fx.SOUND, "launch", position])
+	_discharge(Defs.flat(from - position).normalized())
 	world.stat("veh_smoke")
 	if not is_auto():
 		world.send_msg(team, "info", "%s popped smoke - missile inbound!" % display_name(), position)
 	VehicleBrain.on_threat(self, from)
 
 
+## It has smoke dischargers with a salvo left in them.
+func has_smoke() -> bool:
+	return int(vdef.get("armor", 0)) >= 1 and not is_air() and smoke_left > 0
+
+
+## The player's call: smoke now, between it and the nearest threat it can see
+## (or the way the turret points). A few seconds after the last salvo at least.
+func pop_smoke() -> bool:
+	if not srv or gone or not has_smoke() or world.time - smoke_t < 4.0:
+		return false
+	var th: Entity = VehicleBrain._threat_near(self, 150.0)
+	if th == null and _target_ok():
+		th = target
+	var to := Defs.flat(th.position - position).normalized() if th else Defs.dir_of(rotation.y + turret_yaw)
+	smoke_cd = maxf(smoke_cd, world.time + 6.0)
+	_discharge(to)
+	world.stat("veh_smoke_ordered")
+	return true
+
+
+## Fire a salvo from the dischargers: a wall of smoke 11-16 m out that way.
+func _discharge(to: Vector3) -> void:
+	smoke_left -= 1
+	smoke_t = world.time
+	world.push_props(self, {"smoke": smoke_left})
+	var top := position + Vector3(0, float(vdef.get("gun_h", 2.0)) + 0.3, 0)
+	for i in 4:
+		var dir := to.rotated(Vector3.UP, (i - 1.5) * 0.32)
+		var land := position + dir * world.rng.randf_range(11.0, 16.0)
+		world.spawn("projectile", {"ptype": "smoke", "team": team, "pos": top, "vel": world.combat.ballistic_vel(top, land), "thrower": eid, "fuse": 0.0})
+	world.fx_event([Fx.SOUND, "launch", position])
+
+
 func take_damage(amount: float, _src) -> void:
 	if gone or not srv or hp <= 0.0:
 		return
+	if _src == null or (_src is Entity and is_instance_valid(_src) and _src.team != team):
+		fired_on_t = world.time
 	if world.battle:
 		world.battle.vehicle_hit(self, amount, _src)
 	if amount > 0.0 and _src is Node3D and is_instance_valid(_src):
@@ -2370,7 +2511,7 @@ func _gunship_tick(dt: float) -> void:
 	_fly_to(want, dt, face)
 	_turret_tick(dt)
 	_fire_tick()
-	if has_t and rocket_t <= 0.0 and _aim_err() < 0.35:
+	if has_t and rocket_t <= 0.0 and _aim_err() < 0.35 and may_engage(target):
 		var dist := Defs.flat(target.position - position).length()
 		var worth := target is Vehicle or target is Structure
 		if target is Soldier:
@@ -2685,6 +2826,48 @@ func _flight_view(dt: float) -> void:
 		var wet := bed < -0.1 or (world.water != null and world.terrain != null and world.water.wet_at(position) and not world.water.on_deck(position))
 		_wash.global_position = Vector3(position.x, ground + 0.1, position.z)
 		Vfx.set_rotor_wash(_wash, strength, wet)
+
+
+## (view) The heat its engines put into the air, for the heat haze (HeatHaze):
+## over the engine deck at the back, where a tank's or a truck's radiators and
+## grilles let it out, and out of every exhaust pipe the model has, harder
+## when it's working than idling. A helicopter's turbines blow theirs out of
+## their pipes, beaten down by the rotor once it's turning fast.
+func heat_sources(hh: HeatHaze) -> void:
+	var b := base()
+	if b == "uav" or b == "gunship":
+		return  # (a drone's motors are cool; a gunship orbits far overhead)
+	var hs := _hull_size()
+	var xf := model.global_transform
+	var work := 0.55
+	var down := 0.0
+	if rotor:
+		var spin := clampf(_rotor_spd / 30.0, 0.0, 1.0)
+		if spin < 0.05:
+			return  # (shut down)
+		work = 0.5 + 0.6 * spin
+		down = 0.7 * smoothstep(0.6, 1.0, spin)
+	elif dust and Vfx.is_emitting(dust):
+		work = 1.0
+	var hot: float = [0.6, 0.8, 1.0][clampi(weight(), 0, 2)] * work
+	if not rotor:
+		# the engine deck: hot air off the radiators, rising
+		var w := clampf(hs.x * 0.22, 0.4, 0.7)
+		var deck := xf * Vector3(0.0, hs.y * 0.6, hs.z * 0.3)
+		hh.add(deck + Vector3.UP * (w * 1.4), w, Vector3.UP, 1.8, hot, 1.6, 0.26, 1.0)
+	elif _vm == null or _vm.exhausts.is_empty():
+		# the turbines' outlets high on the back of the cabin
+		var t := xf * Vector3(0.0, hs.y * 0.8, hs.z * 0.15)
+		var ax := (xf.basis.z.normalized() + Vector3.UP * (0.6 - down)).normalized()
+		hh.add(t + ax * 0.9, 0.4, ax, 2.6, hot, 3.0, 0.24, 1.6)
+	if _vm == null:
+		return
+	for e in _vm.exhausts:
+		var ex := xf * e
+		# out of the pipe, then up on its own heat (or down in a rotor's wash)
+		var ax := (ex.basis.y.normalized() + Vector3.UP * (0.8 - 1.4 * down)).normalized()
+		var w := 0.32 if rotor else 0.24
+		hh.add(ex.origin + ax * (w * 1.9), w, ax, 2.6, hot * (1.0 if rotor else 0.75), 3.0, 0.22, 1.6)
 
 
 var _cables: MeshInstance3D

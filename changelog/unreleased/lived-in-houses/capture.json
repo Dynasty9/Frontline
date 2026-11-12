@@ -1,0 +1,76 @@
+{
+  "before_ref": "5d92de0c1a9a50f99ec7b96c92c7d2fc0d735731",
+  "source_ref": "fc81e975adf24c3bacc0fc2358b2421ee0c3c2fd",
+  "engine": "Godot 4.7.2 stable ed1daf0bf",
+  "stage": "tools/showcase/building-surfaces.tscn",
+  "command": "godot --path CHECKOUT --resolution 1600x900 tools/showcase/building-surfaces.tscn -- --building-out=OUTPUT --offscreen FLAGS",
+  "comparisons": [
+    {
+      "subjects": [
+        "house_pitched",
+        "house_open"
+      ],
+      "flags": [
+        "--building-single",
+        "--building-kinds=house_pitched,house_brick,house_stone,house_open,barracks,research"
+      ],
+      "after_flags": [
+        "--building-match=BEFORE/capture.json"
+      ],
+      "cameras": {
+        "house_pitched": [
+          0.0,
+          3.07438445091248,
+          -0.0590000152587891,
+          12.0556011199951,
+          44.0366477966309
+        ],
+        "house_open": [
+          -0.00543022155761719,
+          1.5,
+          -0.2038254737854,
+          8.67267894744873,
+          40.3110046386719
+        ]
+      }
+    },
+    {
+      "subjects": [
+        "house_brick"
+      ],
+      "flags": [
+        "--building-single",
+        "--building-night",
+        "--building-match=BEFORE/capture.json"
+      ],
+      "cameras": {
+        "house_brick": [
+          0.0,
+          3.07438445091248,
+          -0.0590000152587891,
+          12.0556030273438,
+          44.0366477966309
+        ]
+      }
+    },
+    {
+      "subjects": [
+        "town-street"
+      ],
+      "fixture": "tests/fixtures/environment-views.gd",
+      "flags": [
+        "--aivai",
+        "--seed=3",
+        "--offscreen",
+        "--nohud",
+        "--set=perf:0",
+        "--preset=high",
+        "--mood=night",
+        "--focus=0,0",
+        "--capture-set=town"
+      ]
+    }
+  ],
+  "notes": "Studio preview walls are seeded by an id (Structure.preview_model) on both sides; the baseline checkout was given the same preview id so its walls are seeded alike.",
+  "composition": "PIL: matched rows, 792 px halves, JPEG quality 82"
+}

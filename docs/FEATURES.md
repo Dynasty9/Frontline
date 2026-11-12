@@ -45,6 +45,7 @@ changes any of them:
 | High-level | **X attack-move** (or Ctrl+right-click): the squad bounds forward by fire teams, cover to cover, fights whatever it meets, then digs in at the objective. **B defend**: click the area (drag to face) and the squad spreads into the best cover there and holds. **R retreat** to the nearest FOB (routes around known enemy fire, suppression halved). **H hold** |
 | Delegate | **I** opens the intents on the command card: pick **Hold sector**, **Take objective**, **Screen**, **Reserve** or **Ambush**, then click the place (drag toward the enemy to set the front) and the XO carries it out. **Shift+I** takes the selection back; so does any order of your own to one of them. Each intent can have a key of its own (Settings > Controls, unbound to begin with) |
 | One soldier | With a single man picked out: right-click to move him into the best cover at that spot, right-click an enemy to engage, a nest or mortar pit to man it; G / T throw, H hold, R fall back. Any squad order brings him back into the squad |
+| Standing orders | **K stance** (auto, prone, crouch, stand) and **J fire discipline** (fire at will, return fire, hold fire) for squads or one picked-out soldier; for vehicles J and **N target priority** (auto, armour, infantry), **T smoke** (vehicles alone selected), **U dismount**. The command card shows each order in force and drops half the men aboard, or one squad of several |
 | Squad | G grenade, T smoke, F mortar fire mission (mortar teams) |
 | Build | Select infantry, click a building in the command card, left-click to place (R turns 90 degrees, Shift+wheel or Shift + two fingers 45). Everything snaps to a 1 m build grid, shown round the cursor while you place. **Click and drag** to lay a whole line of trenches, sandbags, wire, walls or tank traps (lines run at 45 degree headings) |
 | Defenses | Emplacements are crewed by any idle soldier standing next to them. Right-click a bunker with a squad to garrison it. Select a mortar pit for HE / smoke fire missions |
@@ -435,6 +436,30 @@ Ambush Alley autoplay can call its existing mortar support against spotted, stop
   codec headsets, shoulder, elbow, knee and shin pads, and carry carbines with optics; Rebels wear balaclavas,
   berets, field caps and mismatched field jackets with chest rigs or bandoliers, and carry AKs.
 
+**Standing orders** (`soldier.gd`, `squad.gd`, `vehicle.gd`; `World.execute_cmd` "stance", "roe", "prio",
+"pop_smoke", "dismount")
+- Orders that stick until changed, through every move and attack, for a whole squad (each man gets it), one
+  picked-out soldier (he stays in his squad's formation for it) or a vehicle's crew. They replicate as each
+  soldier's and vehicle's props, and the command card shows the one in force as filled segments (none filled
+  when the selection differs).
+- **Stance**: auto (his own judgement), prone, crouch or stand. Told to stay down he crawls when he moves at a
+  walk (a run order gets him up) and fights from the ground; behind a wall too high to fire over from there, or
+  kneeling by a corner, he keeps watch and leaves the shooting to others. A pinned man won't stand up whatever
+  he's told, and the reflexes win over the order: hitting the dirt, diving from a grenade, deep water.
+- **Fire discipline**: fire at will; return fire, which frees the trigger for 10 s after a round cracks past
+  any man of the squad or hits one; or hold fire. Holding fire, men don't shoot, throw grenades, fire rockets,
+  launch drones, call their own mortar targets or clear a house - with two exceptions decided as the design:
+  an enemy within 15 m is overrunning them and they fight (holding fire never means letting them into the hole
+  with you), and anything they're explicitly told to attack is fair game. Fire missions you order still fire,
+  and hand to hand is always on. A squad holding or returning fire doesn't stop for a contact drill at an
+  enemy it merely sees, only when it's fired on.
+- **Vehicles**: the same fire discipline (the crew answers anything within 22 m, or once it's been shot at,
+  for return fire), with smoke, backing out of a missile's path and pulling out badly damaged still the
+  crew's own. **Target priority**: armour first (the main gun saved for vehicles, the machine gun for the
+  men) or infantry first (high explosive on any man in the open). **Smoke on call** fires the dischargers
+  towards the nearest threat (or along the turret) at least 4 s after the last salvo; the salvoes left are
+  on the card.
+
 **Command and squad cohesion** (`squad.gd`, `squad_brain.gd`, `commander_ai.gd`)
 - **Battle drills** (`squad_brain.gd`): each squad has its own behaviour tree, walked twice a second, most
   urgent first. *React to contact*: fired on (or a new enemy in sight) while moving, everyone gets down where he
@@ -550,6 +575,20 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
 - Standard battlefields have seeded mountain belts, hills, valleys and rivers. Domain-warped ridged noise,
   jointed bedrock shelves, thermal weathering and seeded rainfall erosion shape the relief. Roads, bridges, starting bases and settlements
   occupy graded valley corridors; forests stay below the snow line and off steep faces.
+- Skirmish valley floors roll a few metres over a few hundred (enough to fold a squad from view); roads ride over
+  the swells while rivers, ponds, towns and bases keep level ground. Hills rise out of concave aprons, end in
+  spurs and re-entrants where they meet a road or the shore, and are roughened before the rain so it cuts
+  branching gullies rather than parallel rills. Mission terrain keeps its authored relief exactly.
+- Meadows follow what the soil holds: lush in hollows, along drainage lines and for a few tens of metres beside
+  rivers and ponds, drying to thin straw on crests and sun-facing banks, with broad soil differences parting one
+  pasture from the next. Lush ground takes its colour from a 90 m drone survey of grassland, dry ground from a
+  2.5 m turf scan, each drawn twice at a turned angle so no repeat lines up; grass clumps grow thicker, taller
+  and greener on the same damp ground. Hill shoulders pass through stony grass before bare rock, pale talus
+  collects where the ground eases off below a crag, rock within ~150 m of the camera gains a finer pass of
+  the same scan, and the mud that slows men down shows as dark rutted soil.
+- Cloud shadows are a few hundred metres across and drift with the wind over the ground, grass and bushes.
+- Distant woods grow in broad, warped stands from just above the water to the treeline, climbing higher and
+  steeper in the gullies than on the spurs, and take the same distance haze as the ground beneath them.
 - Distant scenery composes surveyed Mont Blanc, Matterhorn and Jungfrau ridge shapes into seeded fictional mountain groups and low passes, with floating-point heights and a finer indexed mesh at Medium/Far detail. Coastal scenery continues into an irregular shoreline and a coarse ocean surface beyond the detailed battlefield water. Boundary rivers extend into curved scenery pools with matching beds and banks; these extensions leave authoritative water shapes and navigation unchanged. Reusable cliff forms have uneven shoulders and irregular drainage cuts before erosion.
 - Coastal scenery continues through a broad water channel to outer islands, with gentler foothills and a coarse ocean horizon beyond the terrain. The channel is entirely outside the playable boundary; inland maps keep their land backdrop. Shared shoreline masks, seed phase and beach/seabed profiles keep scenery ground and water continuous across the playable edge.
 - Distant mountain groups lose contrast into sky-coloured haze while nearby ground retains its detail. Localized 3D cloud banks and thin trailing ridge mist sit beyond the playable boundary, with shaded bases, soft edges and lighting matched to the weather. A baked 64³ R8 noise volume avoids runtime generation; scene-depth termination prevents clouds behind mountains showing through them. Stronger aerial perspective is masked to distant scenery, preserving foreground contrast. Mountain clouds have independent Off/Low/Medium/High/Ultra settings (8/12/20/32 samples), work in Compatibility, and stop drifting with reduced motion. They do not affect visibility rules.
@@ -562,7 +601,6 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
 - Browser vertex lighting follows displaced mountain slopes and softly lights leaf cards without enabling global per-pixel lighting.
 - Rain streaks surround the camera; soft splashes follow ground or water height and fade before becoming distant speckles. Procedural clouds remain smooth across their noise cells and use subdued moonlit shading at night, including the clouds reflected on the sea.
 - Stones at the mountain foot have irregular broken faces instead of flattened round primitives.
-- Connected dry grass and richer moss patches replace evenly green valley floors.
 - Coastal margins transition through exposed gravel and darker wet stone instead of a uniformly sandy strip.
 - Moss and soil blend into exposed stone on slopes, with baked slab fractures, broken mineral beds, sheltered weathering, loose-stone pockets and snow on high sheltered ground. A cached downhill catchment mask places runoff stains and retained snow in connected gullies; it shares the existing surface textures and leaves gameplay elevations unchanged.
 - Optional alpine haze takes on the sky colour and settles lightly into lower valleys.
@@ -656,7 +694,14 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   Pitched roofs bear on the walls with a fascia, barge boards, gutters and downpipes, a round-tiled ridge and
   often a chimney with its pots; flat roofs have a coped parapet, scuppers with a hopper and downpipe, and the
   water tanks, air conditioners and dishes on them. Garden walls have saddleback stone copings, or brick-on-edge
-  over a blue-brick base. All of it, and the military buildings' weatherboard, sheeting, roller shutters, north
+  over a blue-brick base. Houses look lived in: drapes, blinds and nets in the windows, flowers in window boxes,
+  lanterns by front doors, TV aerials on the roofs, and inside (seen when the roof hides for the men in there, or
+  in a ruin) painted walls with skirting, radiators, pictures, mirrors, clocks, shelves of books and rugs, all
+  hung flat or laid flat so nothing stands where a man does. At dusk and at night a lamp is on behind about a
+  third of the windows, in the barracks and the research post, under the factory's north lights and in the door
+  lanterns (brightest at night, a glimmer on a dark day). Weeds grow at the foot of walls and ivy up some of
+  them (most often on old stone), and a ruin's floor carries its fallen roof: soot, charred rafters, broken
+  tiles, plaster and glass. All of it, and the military buildings' weatherboard, sheeting, roller shutters, north
   lights, masts and guys, drums, crates and pallets, comes from shared building components (see
   [building-components.md](building-components.md)).
 - Walls, hedges, trees, cars and crates are all real cover. Street furniture is set dressing generated on the
@@ -1000,7 +1045,10 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   23 mm that tears helicopters and drones apart), FPV operators with kamikaze drones, RPG teams.
 - **Mechanised infantry**: IFVs and BTRs come off the line loaded. The troops ride inside and dismount when the
   vehicle arrives, when the enemy is close on an attack-move, when it's badly hit, or on the Dismount button. If
-  it's destroyed with them inside, the survivors scramble out of the wreck, most of them hurt.
+  it's destroyed with them inside, the survivors scramble out of the wreck, most of them hurt. The command card
+  can drop only some of them (`Vehicle.dismount(n, sid)`): half the men aboard (the last in, so a squad's leader
+  stays with its main body), or one squad of several. The rest stay aboard (`keep_aboard`) until dismounted too,
+  or until the vehicle is moved on and stops again; badly hit, everyone bails out regardless.
 - Armour classes: soft-skinned pickups and trucks bleed from rifle fire; light armour (Humvee, helicopters) shrugs
   it off and needs .50 cals, cannons, AA or rockets; tanks only fear anti-tank weapons.
 - **Off-map support**, from minute five (recon flights sooner), each on its own cooldown:
@@ -1163,6 +1211,17 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
     Film look adds halation and contrast-adaptive sharpening (AMD FidelityFX CAS). Every pass scrubs NaN and infinite
     pixels, so a bad one can't be smeared across the screen. The browser build has none of these (its renderer has
     no compositor) and hides them.
+  - **Heat haze** (Camera and lens; `heat_haze.gd`, the heat pass in `cinematic_fx.gd`): the air shimmers over fires
+    and burning wrecks, over the engine decks of vehicles with their engines running and out of their exhausts (a
+    helicopter's turbines too, beaten down by its rotor), and for a moment round a blast, a tank gun's muzzle and a
+    launcher's back-blast. Each source is a blob of hot air stretched along its axis (a Gaussian: up for a fire, out
+    of the pipe and up for an exhaust). `Vfx.heat_sources` and `Vehicle.heat_sources` add them every frame, the
+    models mark their exhaust mouths (`VehicleModels.exhausts`), and the 48 in view that would show the most go to the
+    graphics card. At quarter resolution the heat pass integrates each one along every view ray in closed form, cut
+    off where the ray meets the scene, so whatever stands in front of a fire is never bent by it; the turbulence is
+    noise carried up the source's axis in the world, and the bend is sized in metres at the hot air, so nearer haze
+    bends more and haze too small on screen to read is left out. The composite then bends only what lies behind the
+    hot air, and never pulls in the sky or anything in front of it. With Reduce motion on, the air holds still.
 - **Wildlife** (`wildlife.gd`), drawn only on each player's own screen and never simulated or sent by the server,
   so it can't change a battle or its seed. Flocks of sparrows and starlings (pigeons about the town) feed on bare
   ground - tracks, yards, pavements, mud, shell holes, where the grass doesn't hide them - hopping and pecking,

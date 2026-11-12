@@ -255,6 +255,7 @@ func _unhandled_input(ev: InputEvent) -> void:
 ## goes to the earlier). Placing a building puts its own keys in front.
 const KEY_ACTIONS := ["chat_team", "chat", "support", "grenade", "smoke", "attack_move", "defend", "take_back", "delegate",
 	"intent_hold", "intent_take", "intent_screen", "intent_reserve", "intent_ambush", "cam_follow",
+	"stance", "fire_discipline", "target_priority", "dismount",
 	"fire_mission", "cam_reset", "view_save_1", "view_save_2", "view_save_3", "view_save_4", "view_go_1", "view_go_2",
 	"view_go_3", "view_go_4", "retreat", "hold", "tactical", "cycle_fob", "orbat", "jump_alert", "log", "hide_hud",
 	"help", "manual", "director", "pause", "slower", "faster", "view_side", "ping", "coop_next",
@@ -327,6 +328,21 @@ func _key(ev: InputEvent) -> void:
 		"smoke":
 			if has_infantry():
 				ability = "smoke"
+			elif not sel_vehicles.is_empty():
+				pop_smoke()
+		"stance":
+			if has_infantry():
+				set_standing("stance", (maxi(standing("stance"), 0) + 1) % 4)
+		"fire_discipline":
+			if has_units():
+				set_standing("roe", (maxi(standing("roe"), 0) + 1) % 3)
+		"target_priority":
+			if not sel_vehicles.is_empty():
+				set_standing("prio", (maxi(standing("prio"), 0) + 1) % 3)
+		"dismount":
+			if not sel_vehicles.is_empty():
+				world.send_cmd({"t": "dismount", "vehicles": sel_vehicles})
+				Sfx.ui("click")
 		"attack_move":
 			if has_units():
 				cancel_modes()
@@ -496,6 +512,51 @@ static func thin_line(pts: PackedVector3Array, n: int) -> PackedVector3Array:
 	for i in n:
 		out.append(pts[int(round(float(i) * (pts.size() - 1) / (n - 1)))])
 	return out
+
+
+## A standing order to the selection (World.execute_cmd "stance", "roe",
+## "prio"): to the one picked-out soldier, or to the squads and vehicles.
+func set_standing(kind: String, v: int) -> void:
+	var d := {"t": kind, "v": v}
+	if sel_unit != 0:
+		d["soldier"] = sel_unit
+	else:
+		d["squads"] = sel_squads.duplicate()
+		d["vehicles"] = sel_vehicles.duplicate()
+	world.send_cmd(d)
+	Sfx.ui("click")
+
+
+## The selection's standing order of this kind (as replicated): the one value
+## they all share, -1 if they differ, -2 if nothing selected takes it.
+func standing(kind: String) -> int:
+	var v := -2
+	if kind != "prio":
+		for s in selected_soldiers():
+			if s.life == Soldier.Life.DEAD:
+				continue
+			var x: int = s.stance if kind == "stance" else s.roe
+			if v == -2:
+				v = x
+			elif v != x:
+				return -1
+	if kind != "stance" and sel_unit == 0:
+		for id in sel_vehicles:
+			var veh := world.entity(int(id)) as Vehicle
+			if veh == null or veh.gone:
+				continue
+			var y: int = veh.prio if kind == "prio" else veh.roe
+			if v == -2:
+				v = y
+			elif v != y:
+				return -1
+	return v
+
+
+## Fire the smoke dischargers of the selected vehicles.
+func pop_smoke() -> void:
+	world.send_cmd({"t": "pop_smoke", "vehicles": sel_vehicles.duplicate()})
+	Sfx.ui("click")
 
 
 func retreat() -> void:

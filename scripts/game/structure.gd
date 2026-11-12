@@ -905,9 +905,39 @@ func _house_wall_detail(rng: RandomNumberGenerator) -> void:
 	elif variant == 2:
 		gaps = [Rect2(-0.95, 0.0, 1.9, 2.2)]
 	BuildingWalls.face(k, L, 3.0, material, wall, gaps, {"band": 2.9})
+	# who lives here is drawn from a stream of its own, so a wall's shutters,
+	# panes and doors stay as they were
+	var life := RandomNumberGenerator.new()
+	life.seed = rng.seed ^ 0x5eed11fe
+	# time and the weather: weeds in the angle at its foot, ivy up the plain
+	# walls of some (most often on old stone), drawn from a stream of their own
+	var wear := RandomNumberGenerator.new()
+	wear.seed = rng.seed ^ 0x77ea7e12
+	if wear.randf() < 0.45:
+		BuildingWeathering.weeds(k, L, gaps, wear)
+	if variant == 0 and wear.randf() < (0.3 if material == "stone" else 0.12):
+		BuildingWeathering.ivy(k, wear.randf_range(-L * 0.25, L * 0.25), wear.randf_range(1.0, 1.8), 2.8, wear)
+	# inside: the room's paint and skirting, what hangs on its walls
+	var room := _kit(life).at_point(Vector3(0, 0, -0.2), Vector3(0, PI, 0))
+	# (a wall doesn't know which house it is, so the paint follows the house's
+	# colour: every wall of a room the same)
+	BuildingFurnishings.lining(room, L, 3.0, gaps, BuildingFurnishings.INTERIORS[(ci * 4 + 1) % BuildingFurnishings.INTERIORS.size()])
+	match variant:
+		0:
+			BuildingFurnishings.wall_things(room, L)
+		1:
+			BuildingFurnishings.radiator(room, 0.0, 1.0)
 	match variant:
 		1:
 			var opts := {"material": material, "wall": wall, "frame": trim}
+			# who lives here: curtains or a blind or nets (or none, in an empty
+			# house), a lamp left on; flowers under some windows
+			opts["curtains"] = ["drapes", "drapes", "blind", "nets", ""][life.randi() % 5]
+			opts["curtain"] = BuildingFurnishings.FABRICS[life.randi() % BuildingFurnishings.FABRICS.size()]
+			# (and a house still lived in keeps its glass)
+			if life.randf() < 0.35:
+				opts["lit"] = true
+				opts["glazing"] = 0.85
 			if rng.randf() < 0.45:
 				opts["shutters"] = [Color(0.24, 0.36, 0.27), Color(0.31, 0.39, 0.46), Color(0.36, 0.25, 0.16), Color(0.5, 0.22, 0.17)][(ci + 1) % 4]
 				opts["shutter"] = "louvred" if rng.randf() < 0.5 else "boarded"
@@ -916,10 +946,14 @@ func _house_wall_detail(rng: RandomNumberGenerator) -> void:
 					open.append(rng.randf_range(0.0, 0.2) if rng.randf() < 0.85 else null)
 				opts["open"] = open
 			BuildingOpenings.window(k, Vector3(0, 1.5, 0), Vector2(1.3, 1.0), opts)
+			if not opts.has("shutters") and life.randf() < 0.25:
+				BuildingFurnishings.window_box(k, 0.0, 1.0, 1.1, [Color(0.75, 0.12, 0.12), Color(0.85, 0.45, 0.6), Color(0.9, 0.75, 0.2), Color(0.55, 0.3, 0.7)][life.randi() % 4])
 		2:
 			var w := 1.9
 			BuildingOpenings.doorway(k, Vector3.ZERO, Vector2(w, 2.2), {"material": material, "wall": wall, "frame": trim, "hood": rng.randf() < 0.3,
 				"hood_col": Res.vary(BuildingMaterials.color("roof_tile"), 0.1, rng)})
+			if L > 2.6 and life.randf() < 0.55:
+				BuildingFurnishings.lantern(k, Vector3((w * 0.5 + 0.3) * (1.0 if life.randf() < 0.5 else -1.0), 2.05, 0))
 			# double doors: shut (till someone comes through), or swung in -
 			# one may be gone. Each leaf hangs on its own hinge so it can swing.
 			var dc: Color = [Color(0.3, 0.2, 0.13), Color(0.22, 0.32, 0.26), Color(0.26, 0.31, 0.4), Color(0.42, 0.2, 0.15)][(ci + 2) % 4]
@@ -1067,8 +1101,10 @@ func _swing_leaves(kicked: bool) -> void:
 
 
 ## A building's model on its own, without a world (the field manual's preview).
-static func preview_model(kind: String, side: int, v := 0, sz := Vector3.ZERO, shut := false) -> Node3D:
+## `id` stands in for the entity id its look is seeded from.
+static func preview_model(kind: String, side: int, v := 0, sz := Vector3.ZERO, shut := false, id := 0) -> Node3D:
 	var st := Structure.new()
+	st.eid = id
 	st.skind = kind
 	st.team = side
 	st.variant = v
@@ -1230,11 +1266,20 @@ func _roof_model(rng: RandomNumberGenerator) -> void:
 		var end := L * 0.5 - 0.3
 		var rise := BuildingRoofs.gable(k, L, W, h, 28.0, 0.35, "roof_tile", tint, {"gable_material": material, "gable_col": wall_col,
 			"trim": trim, "gable_inset": -0.07, "gutters": true, "downpipes": [[end, 1.0], [-end, -1.0]], "wall_face": W * 0.5 + 0.2})
+		var life := RandomNumberGenerator.new()
+		life.seed = rng.seed ^ 0x5eed11fe
+		var aerial := life.randf() < 0.5
 		if rng.randf() < 0.6:
 			var z := W * 0.18
+			var cx := rng.randf_range(-L * 0.3, L * 0.3)
 			var foot := h + (W * 0.5 + 0.2 - z - 0.3) * tan(deg_to_rad(28.0))
-			BuildingFittings.chimney(k, Vector3(rng.randf_range(-L * 0.3, L * 0.3), foot, z), Vector2(0.6, 0.6), h + rise + 0.5,
+			BuildingFittings.chimney(k, Vector3(cx, foot, z), Vector2(0.6, 0.6), h + rise + 0.5,
 				"brick", Res.vary(BuildingMaterials.color("brick"), 0.08, rng))
+			if aerial:
+				# lashed to the stack, above its pots
+				BuildingFurnishings.aerial(k, Vector3(cx + 0.33, h + rise - 0.4, z), 1.9, life.randf_range(-0.6, 0.6))
+		elif aerial:
+			BuildingFurnishings.aerial(k, Vector3(L * 0.38, h + rise - 0.06, 0), 1.4, life.randf_range(-0.6, 0.6))
 	else:
 		BuildingRoofs.flat(k, L, W, h, {"material": material, "col": wall_col, "wall_face": W * 0.5 + 0.2, "hatch": rng.randf() < 0.3})
 		var top := h + 0.2
@@ -2382,6 +2427,11 @@ func _build_model() -> void:
 				var lk := _kit(rng)
 				var lm := "brick" if variant % 3 == 2 else "stone"
 				BuildingWalls.coping(lk, p.s.x, p.s.z, p.s.y, lm, p.color)
+				var wear := RandomNumberGenerator.new()
+				wear.seed = rng.seed ^ 0x77ea7e12
+				if wear.randf() < 0.5:
+					for sd: float in [-1.0, 1.0]:
+						BuildingWeathering.weeds(lk.at_point(Vector3(0, 0, sd * p.s.z * 0.5), Vector3(0, 0.0 if sd > 0.0 else PI, 0)), p.s.x, [], wear, 0.06)
 				if lm == "brick":
 					for sd: float in [-1.0, 1.0]:
 						BuildingWalls.plinth(lk.at_point(Vector3(0, 0, sd * p.s.z * 0.5), Vector3(0, 0.0 if sd > 0.0 else PI, 0)), p.s.x, 0.22, lm, p.color)
@@ -2396,7 +2446,13 @@ func _build_model() -> void:
 		"house_wall":
 			_house_wall_detail(rng)
 		"floor":
-			pass
+			# a rug in most houses' main room, lying flat
+			if size.x > 3.0 and size.z > 3.0 and rng.randf() < 0.65:
+				BuildingFurnishings.rug(_kit(rng), Vector3(rng.randf_range(-0.6, 0.6), 0.06, rng.randf_range(-0.5, 0.5)),
+					Vector2(minf(size.x * 0.4, 3.0), minf(size.z * 0.4, 2.2)), BuildingFurnishings.FABRICS[rng.randi() % BuildingFurnishings.FABRICS.size()])
+			# a ruin: its roof burned and fell in on the floor
+			if variant == 1 and size.x > 3.0 and size.z > 3.0:
+				BuildingWeathering.ruin(_kit(rng), size, 0.06, rng)
 		"bridge":
 			_bridge_model(rng)
 		"dock":
@@ -2520,7 +2576,8 @@ func _build_model() -> void:
 				BuildingWalls.face(fk, flen, 3.0, "timber", wc, gaps, {"plinth": 0.0, "corners": [-flen * 0.5, flen * 0.5]})
 				for wx: float in wins:
 					BuildingOpenings.window(fk, Vector3(wx, 1.75, 0), Vector2(1.15, 0.95), {"material": "timber", "wall": wc, "frame": frame,
-						"frame_kind": "wood_dark", "inset": -0.03, "glazing": 1.0, "transom": -1.0})
+						"frame_kind": "wood_dark", "inset": -0.03, "glazing": 1.0, "transom": -1.0, "lit": rng.randf() < 0.65,
+						"curtains": "blind" if rng.randf() < 0.4 else "", "curtain": Color(0.55, 0.52, 0.42)})
 				if face == 0:
 					BuildingOpenings.doorway(fk, Vector3(dx, 0, 0), Vector2(1.4, 2.1), {"material": "timber", "wall": wc, "inset": -0.05,
 						"frame_kind": "wood_dark", "frame": frame, "step": false})
@@ -2540,7 +2597,7 @@ func _build_model() -> void:
 			# brackets down one side, extract cowls and the works chimney
 			var fk := _kit(rng)
 			_mk(Res.box(Vector3(size.x + 0.4, 0.3, size.z + 0.4)), "concrete", Vector3(0, 5.15, 0), Vector3.ZERO, Color(0.48, 0.48, 0.46))
-			BuildingRoofs.sawtooth(fk.at_point(Vector3(0, 5.3, 0)), size.x * 0.9, size.z * 0.8, 3, 0.9, "roof_sheet", Color(0.45, 0.47, 0.45))
+			BuildingRoofs.sawtooth(fk.at_point(Vector3(0, 5.3, 0)), size.x * 0.9, size.z * 0.8, 3, 0.9, "roof_sheet", Color(0.45, 0.47, 0.45), Color(0.3, 0.32, 0.3), true)
 			var shed := Color(0.45, 0.46, 0.44)
 			for face in 4:
 				var out: Vector3 = [Vector3(0, 0, -1), Vector3(0, 0, 1), Vector3(-1, 0, 0), Vector3(1, 0, 0)][face]
@@ -2615,7 +2672,7 @@ func _build_model() -> void:
 					gaps.append(Rect2(1.5 - 0.7, 0.0, 1.4, 2.2))
 				gaps.append(Rect2(bx - band.x * 0.5, 2.1 - band.y * 0.5, band.x, band.y))
 				BuildingWalls.face(fk, flen, 3.2, "precast", wc, gaps, {"plinth": 0.3})
-				BuildingOpenings.ribbon(fk, Vector3(bx, 2.1, 0.05), band, maxi(2, int(band.x / 0.9)), Color(0.25, 0.27, 0.27))
+				BuildingOpenings.ribbon(fk, Vector3(bx, 2.1, 0.05), band, maxi(2, int(band.x / 0.9)), Color(0.25, 0.27, 0.27), "metal_dark", rng.randf() < 0.8)
 				if face == 0:
 					BuildingOpenings.doorway(fk, Vector3(1.5, 0, 0), Vector2(1.3, 2.1), {"material": "precast", "wall": wc, "inset": -0.05,
 						"frame_kind": "metal_dark", "frame": Color(0.25, 0.26, 0.26)})
