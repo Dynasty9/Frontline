@@ -614,7 +614,9 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
 - Skirmish valley floors roll a few metres over a few hundred (enough to fold a squad from view); roads ride over
   the swells while rivers, ponds, towns and bases keep level ground. Hills rise out of concave aprons, end in
   spurs and re-entrants where they meet a road or the shore, and are roughened before the rain so it cuts
-  branching gullies rather than parallel rills. Mission terrain keeps its authored relief exactly.
+  branching gullies rather than parallel rills. Steep bare rock carries crag relief (knobs, ledges and clefts
+  up to 3.5 m) at the ground mesh's 0.5 m, which every peer derives from the same heights; slopes for movement
+  and growth read the smooth geology, so routes are unchanged. Mission terrain keeps its authored relief exactly.
 - Meadows follow what the soil holds: lush in hollows, along drainage lines and for a few tens of metres beside
   rivers and ponds, drying to thin straw on crests and sun-facing banks, with broad soil differences parting one
   pasture from the next. Lush ground takes its colour from a 90 m drone survey of grassland, dry ground from a
@@ -623,6 +625,8 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   collects where the ground eases off below a crag, rock within ~150 m of the camera gains a finer pass of
   the same scan, and the mud that slows men down shows as dark rutted soil.
 - Cloud shadows are a few hundred metres across and drift with the wind over the ground, grass and bushes.
+- Distant massifs break their surveyed ridges into crags (ridged noise within the scenery height bounds) and
+  shade steep faces with finer crags still, so their snow and bare rock lie in ribs and gullies.
 - Distant woods grow in broad, warped stands from just above the water to the treeline, climbing higher and
   steeper in the gullies than on the spurs, and take the same distance haze as the ground beneath them.
 - Distant scenery composes surveyed Mont Blanc, Matterhorn and Jungfrau ridge shapes into seeded fictional mountain groups and low passes, with floating-point heights and a finer indexed mesh at Medium/Far detail. Coastal scenery continues into an irregular shoreline and a coarse ocean surface beyond the detailed battlefield water. Boundary rivers extend into curved scenery pools with matching beds and banks; these extensions leave authoritative water shapes and navigation unchanged. Reusable cliff forms have uneven shoulders and irregular drainage cuts before erosion.

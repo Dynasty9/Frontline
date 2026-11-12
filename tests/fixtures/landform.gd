@@ -271,8 +271,33 @@ func _ready() -> void:
 	var flat := Landform.new(64).bake_surface()
 	assert(flat.get_pixel(3, 3).r > 0.99 and absf(flat.get_pixel(3, 3).g - 0.5) < 0.01, "Flat terrain has open sky and no concavity")
 	assert(flat.get_format() == Image.FORMAT_RGBA8 and flat.get_pixel(3, 3).a == 0.0, "Flat terrain has no drainage weathering")
+	# Skirmish rock carries crag relief finer than the 4 m grid: the same on every
+	# peer, absent from campaign ground, and invisible to slopes and routes.
+	var crag_heights := PackedFloat32Array()
+	crag_heights.resize(17 * 17)
+	for z in 17:
+		for x in 17:
+			crag_heights[z * 17 + x] = 40.0 * maxf(0.0, 1.0 - absf(x * 4.0 - 32.0) / 24.0)
+	var crag_a := Landform.new(64)
+	crag_a.heights = crag_heights.duplicate()
+	crag_a.prepare_crags(true)
+	var crag_b := Landform.new(64)
+	crag_b.heights = crag_heights.duplicate()
+	crag_b.prepare_crags(true)
+	var rough := 0.0
+	for k in 16:
+		var q := Vector3(-14.0 + k * 0.25, 0, 3.0)
+		assert(crag_a.height(q) == crag_b.height(q), "Crag relief is deterministic")
+		rough = maxf(rough, absf(crag_a.height(q) - crag_a.smooth_height(q)))
+	assert(rough > 0.15, "Bare rock carries relief finer than the grid: %.3f m" % rough)
+	assert(is_equal_approx(crag_a.slope(Vector3(-12, 0, 3)), 40.0 / 24.0), "Crags do not change slopes for movement")
+	var authored := Landform.new(64)
+	authored.heights = crag_heights.duplicate()
+	authored.prepare_crags(false)
+	assert(authored.height(Vector3(-12, 0, 3)) == authored.smooth_height(Vector3(-12, 0, 3)), "Campaign ground stays as authored")
+	assert(crag_a.height(Vector3(-30, 0, 3)) == crag_a.smooth_height(Vector3(-30, 0, 3)), "Level ground takes no crags")
 	world.terrain.landform.drainage = PackedFloat32Array([1.0])
-	world.terrain.install_landform(heights)
+	world.terrain.install_landform(heights, false)  # (a smooth ridge: exact sight and sampling checks)
 	assert(world.terrain.landform.drainage.is_empty(), "Installing a map invalidates the old catchment cache")
 	var baked := world.terrain.landform.bake_surface()
 	assert(baked.get_data() == world.terrain.landform.bake_surface().get_data(), "Surface baking is deterministic")
