@@ -607,9 +607,11 @@ func _trucks(dt: float) -> void:
 		if st.truck or st.truck_t > 0.0:
 			continue
 		var route := route_to(st)
-		if (route.size() < 2 or st.road.size() < 2) and float(_resurvey_t[st.team]) <= 0.0:
+		if (route.size() < 2 or st.road.size() < 2) and float(_resurvey_t[st.team]) <= 0.0 and String(world.settings.get("scenario", "")) == "":
 			# a road that couldn't be laid (the ground still being surveyed when
-			# the battle began, or a way since cleared) is tried again
+			# the battle began, or a way since cleared) is tried again. Not in a
+			# test scenario: it's a set piece, and lorries driving into it from
+			# the first seconds would change the fight it was built to show
 			_resurvey_t[st.team] = 20.0
 			rebuild_network(st.team)
 			world.stat("road_resurveyed")
