@@ -549,6 +549,20 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
 - Standard battlefields have seeded mountain belts, hills, valleys and rivers. Domain-warped ridged noise,
   jointed bedrock shelves, thermal weathering and seeded rainfall erosion shape the relief. Roads, bridges, starting bases and settlements
   occupy graded valley corridors; forests stay below the snow line and off steep faces.
+- Skirmish valley floors roll a few metres over a few hundred (enough to fold a squad from view); roads ride over
+  the swells while rivers, ponds, towns and bases keep level ground. Hills rise out of concave aprons, end in
+  spurs and re-entrants where they meet a road or the shore, and are roughened before the rain so it cuts
+  branching gullies rather than parallel rills. Mission terrain keeps its authored relief exactly.
+- Meadows follow what the soil holds: lush in hollows, along drainage lines and for a few tens of metres beside
+  rivers and ponds, drying to thin straw on crests and sun-facing banks, with broad soil differences parting one
+  pasture from the next. Lush ground takes its colour from a 90 m drone survey of grassland, dry ground from a
+  2.5 m turf scan, each drawn twice at a turned angle so no repeat lines up; grass clumps grow thicker, taller
+  and greener on the same damp ground. Hill shoulders pass through stony grass before bare rock, pale talus
+  collects where the ground eases off below a crag, rock within ~150 m of the camera gains a finer pass of
+  the same scan, and the mud that slows men down shows as dark rutted soil.
+- Cloud shadows are a few hundred metres across and drift with the wind over the ground, grass and bushes.
+- Distant woods grow in broad, warped stands from just above the water to the treeline, climbing higher and
+  steeper in the gullies than on the spurs, and take the same distance haze as the ground beneath them.
 - Distant scenery composes surveyed Mont Blanc, Matterhorn and Jungfrau ridge shapes into seeded fictional mountain groups and low passes, with floating-point heights and a finer indexed mesh at Medium/Far detail. Coastal scenery continues into an irregular shoreline and a coarse ocean surface beyond the detailed battlefield water. Boundary rivers extend into curved scenery pools with matching beds and banks; these extensions leave authoritative water shapes and navigation unchanged. Reusable cliff forms have uneven shoulders and irregular drainage cuts before erosion.
 - Coastal scenery continues through a broad water channel to outer islands, with gentler foothills and a coarse ocean horizon beyond the terrain. The channel is entirely outside the playable boundary; inland maps keep their land backdrop. Shared shoreline masks, seed phase and beach/seabed profiles keep scenery ground and water continuous across the playable edge.
 - Distant mountain groups lose contrast into sky-coloured haze while nearby ground retains its detail. Localized 3D cloud banks and thin trailing ridge mist sit beyond the playable boundary, with shaded bases, soft edges and lighting matched to the weather. A baked 64³ R8 noise volume avoids runtime generation; scene-depth termination prevents clouds behind mountains showing through them. Stronger aerial perspective is masked to distant scenery, preserving foreground contrast. Mountain clouds have independent Off/Low/Medium/High/Ultra settings (8/12/20/32 samples), work in Compatibility, and stop drifting with reduced motion. They do not affect visibility rules.
@@ -561,7 +575,6 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
 - Browser vertex lighting follows displaced mountain slopes and softly lights leaf cards without enabling global per-pixel lighting.
 - Rain streaks surround the camera; soft splashes follow ground or water height and fade before becoming distant speckles. Procedural clouds remain smooth across their noise cells and use subdued moonlit shading at night, including the clouds reflected on the sea.
 - Stones at the mountain foot have irregular broken faces instead of flattened round primitives.
-- Connected dry grass and richer moss patches replace evenly green valley floors.
 - Coastal margins transition through exposed gravel and darker wet stone instead of a uniformly sandy strip.
 - Moss and soil blend into exposed stone on slopes, with baked slab fractures, broken mineral beds, sheltered weathering, loose-stone pockets and snow on high sheltered ground. A cached downhill catchment mask places runoff stains and retained snow in connected gullies; it shares the existing surface textures and leaves gameplay elevations unchanged.
 - Optional alpine haze takes on the sky colour and settles lightly into lower valleys.

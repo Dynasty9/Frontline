@@ -10,6 +10,13 @@ and processed by Rico Cilliers / Poly Haven.
 [Forest Leaves 02](https://polyhaven.com/a/forest_leaves_02), by Rob Tuytel / Poly Haven.
 The snow scan covers 2 metres; the moss and leaf-litter scan covers 3 metres.
 
+Meadow layers: [Grass Ground](https://polyhaven.com/a/grass_ground) by Charlotte Baglioni
+(2.5 m of dry turf), [Rocky Terrain 02](https://polyhaven.com/a/rocky_terrain_02) by Amal Kumar
+(a 90 m drone survey of grazed grassland and stones) and
+[Dirt Aerial 02](https://polyhaven.com/a/dirt_aerial_02) by Rob Tuytel (20 m of rutted soil),
+all Poly Haven. They follow the shore gravel in the terrain material arrays. Their 2K
+sources are fetched by the baker (pinned in sources.json); only the packed pairs are bundled.
+
 Licensed under [CC0 1.0 Universal](https://creativecommons.org/publicdomain/zero/1.0/).
 Poly Haven license: https://polyhaven.com/license
 

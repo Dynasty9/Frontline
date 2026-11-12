@@ -248,9 +248,19 @@ func _ready() -> void:
 	var corridor := Landform.new(256)
 	corridor.generate(3, [[PackedVector3Array([Vector3(-100, 0, 0), Vector3(100, 0, 0)])]], world.water, [[Vector3(0, 0, 60), 12.0]])
 	assert(corridor.peak > 5.0, "Reserved maps still contain hills")
-	for x in range(-100, 101, 4):
-		assert(is_zero_approx(corridor.height(Vector3(x, 0, 0))), "Roads have a continuous graded corridor")
+	for x in range(-100, 97, 4):
+		var here := corridor.height(Vector3(x, 0, 0))
+		assert(absf(corridor.height(Vector3(x + 4, 0, 0)) - here) < 0.5, "Roads have a continuous graded corridor: %.2f m to %.2f m at x=%d" % [here, corridor.height(Vector3(x + 4, 0, 0)), x])
+		assert(absf(corridor.height(Vector3(x, 0, 3)) - here) < 0.3 and absf(corridor.height(Vector3(x, 0, -3)) - here) < 0.3, "Roads lie level across their carriageway")
 	assert(corridor.fits(Vector3(0, 0, 60), Vector2(10, 10), 0.0), "Settlements retain level building ground")
+	assert(is_zero_approx(corridor.height(Vector3(0, 0, 60))), "Settlements sit on the valley's level floor")
+	var floor_low := INF
+	var floor_high := -INF
+	for z in range(-100, 101, 25):
+		var h := corridor.height(Vector3(-100, 0, z))
+		floor_low = minf(floor_low, h)
+		floor_high = maxf(floor_high, h)
+	assert(floor_high - floor_low > 0.8, "Skirmish valley floors roll rather than lie planed: %.2f m" % (floor_high - floor_low))
 	# A known ridge separates two level firing positions, with a gentle west ramp.
 	var heights := PackedFloat32Array()
 	heights.resize(17 * 17)
