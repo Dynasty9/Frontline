@@ -190,6 +190,18 @@ func _subject(kind: String) -> Node3D:
 			if kind == "house_yard" and ClassDB.class_exists("Node") and ResourceLoader.exists("res://scripts/game/building_yards.gd"):
 				_yard(yard, 9.0, 7.6)
 			return yard
+		"roofscape":
+			# four houses' roofs as the town draws them (their ids pick the
+			# form and wear): a hipped roof mended with a tarp and with a
+			# skylight, a steep gable with a hole in it, a gable with a skylight,
+			# a pyramid over a square house
+			var block := Node3D.new()
+			for spec: Array in [[Vector3(-5.6, 0, -5.2), 9.0, 7.6, 95], [Vector3(5.6, 0, -5.2), 9.0, 7.6, 54],
+					[Vector3(-5.6, 0, 5.2), 9.0, 7.6, 42], [Vector3(5.6, 0, 5.2), 8.0, 8.0, 4]]:
+				var h := _house(spec[1], spec[2], 1, false, true, false, spec[3])
+				h.position = spec[0]
+				block.add_child(h)
+			return block
 		"house_open":
 			# the roof hidden, as when men are inside: the room as they see it
 			return _house(9.0, 7.6, 1, false, false)
@@ -253,7 +265,7 @@ func _rotated(n: Node3D) -> Node3D:
 
 ## The same layout as MapGen._house: the front (street) wall at -z with the
 ## door in it, windows in most other sections.
-func _house(w: float, d: float, color: int, flat: bool, roofed := true, ruined := false) -> Node3D:
+func _house(w: float, d: float, color: int, flat: bool, roofed := true, ruined := false, roof_id := 0) -> Node3D:
 	var root := Node3D.new()
 	var floor := Structure.preview_model("floor", -1, 1 if ruined else 0, Vector3(w, 0.06, d), false, 7)
 	root.add_child(floor)
@@ -284,7 +296,7 @@ func _house(w: float, d: float, color: int, flat: bool, roofed := true, ruined :
 			wall.rotation.y = yaw
 			root.add_child(wall)
 	if roofed:
-		var roof := Structure.preview_model("roof", -1, color * 2 + (1 if flat else 0), Vector3(w, 3.0, d))
+		var roof := Structure.preview_model("roof", -1, color * 2 + (1 if flat else 0), Vector3(w, 3.0, d), false, roof_id)
 		root.add_child(roof)
 	return root
 

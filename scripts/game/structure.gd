@@ -1284,22 +1284,57 @@ func _roof_model(rng: RandomNumberGenerator) -> void:
 	if variant % 2 == 0:
 		var tint := Res.vary(Color(0.5, 0.22, 0.14), 0.12, rng) if rng.randf() < 0.75 else Color(0.36, 0.34, 0.32)
 		var end := L * 0.5 - 0.3
-		var rise := BuildingRoofs.gable(k, L, W, h, 28.0, 0.35, "roof_tile", tint, {"gable_material": material, "gable_col": wall_col,
-			"trim": trim, "gable_inset": -0.07, "gutters": true, "downpipes": [[end, 1.0], [-end, -1.0]], "wall_face": W * 0.5 + 0.2})
+		# its form: a third of them hipped, pitched anywhere from 24 to 36
+		# degrees (a stream of its own, so tints and chimneys stay as they were)
+		var form := RandomNumberGenerator.new()
+		form.seed = rng.seed ^ 0x40f5ca1e
+		var pitch := form.randf_range(24.0, 36.0)
+		var hipped := form.randf() < 0.35
+		var fx := L * 0.5 + 0.2
+		var fz := W * 0.5 + 0.2
+		var ropts := {"gable_material": material, "gable_col": wall_col, "trim": trim, "gable_inset": -0.07, "gutters": true,
+			"downpipes": [[end, 1.0], [-end, -1.0]], "wall_face": fz, "wall_face_x": fx}
+		var rise := BuildingRoofs.hip(k, L, W, h, pitch, 0.35, "roof_tile", tint, ropts) if hipped else BuildingRoofs.gable(k, L, W, h, pitch, 0.35, "roof_tile", tint, ropts)
 		var life := RandomNumberGenerator.new()
 		life.seed = rng.seed ^ 0x5eed11fe
 		var aerial := life.randf() < 0.5
 		if rng.randf() < 0.6:
 			var z := W * 0.18
 			var cx := rng.randf_range(-L * 0.3, L * 0.3)
-			var foot := h + (W * 0.5 + 0.2 - z - 0.3) * tan(deg_to_rad(28.0))
+			# seated on the lowest point of the roof under it
+			var foot := INF
+			for px: float in [cx - 0.3, cx + 0.3]:
+				for pz: float in [z - 0.3, z + 0.3]:
+					foot = minf(foot, BuildingRoofs.underside(fx, fz, h, pitch, px, pz, hipped))
+			foot -= 0.05
 			BuildingFittings.chimney(k, Vector3(cx, foot, z), Vector2(0.6, 0.6), h + rise + 0.5,
 				"brick", Res.vary(BuildingMaterials.color("brick"), 0.08, rng))
 			if aerial:
 				# lashed to the stack, above its pots
 				BuildingFurnishings.aerial(k, Vector3(cx + 0.33, h + rise - 0.4, z), 1.9, life.randf_range(-0.6, 0.6))
 		elif aerial:
-			BuildingFurnishings.aerial(k, Vector3(L * 0.38, h + rise - 0.06, 0), 1.4, life.randf_range(-0.6, 0.6))
+			var ax := L * 0.38 if not hipped else maxf(0.0, fx - fz - 0.2)
+			BuildingFurnishings.aerial(k, Vector3(ax, h + rise - 0.06, 0), 1.4, life.randf_range(-0.6, 0.6))
+		# wear and mending on the back slope: a tarp weighted down over a hole,
+		# or a hole with the battens showing; a skylight in some
+		var patch := RandomNumberGenerator.new()
+		patch.seed = rng.seed ^ 0x7a39e5
+		var lift: float = BuildingMaterials.value("roof_tile", "thickness", 0.09) / cos(deg_to_rad(pitch))
+		var reach := (fx - fz) * 0.5 + 0.6 if hipped else L * 0.3
+		var roll := patch.randf()
+		if roll < 0.18:
+			var px := patch.randf_range(-reach, reach)
+			var pz := -fz * patch.randf_range(0.35, 0.6)
+			var on := k.moved(Transform3D(Basis(Vector3.RIGHT, -deg_to_rad(pitch)), Vector3(px, BuildingRoofs.underside(fx, fz, h, pitch, px, pz, hipped) + lift, pz)))
+			if roll < 0.12:
+				BuildingWeathering.tarp(on, patch)
+			else:
+				BuildingWeathering.hole(on, patch)
+		if patch.randf() < 0.15:
+			var sx := patch.randf_range(-reach, reach) * 0.6
+			var sz := fz * 0.45
+			BuildingFurnishings.skylight(k.moved(Transform3D(Basis(Vector3.RIGHT, deg_to_rad(pitch)), Vector3(sx, BuildingRoofs.underside(fx, fz, h, pitch, sx, sz, hipped) + lift, sz))),
+				patch.randf() < 0.4)
 	else:
 		BuildingRoofs.flat(k, L, W, h, {"material": material, "col": wall_col, "wall_face": W * 0.5 + 0.2, "hatch": rng.randf() < 0.3})
 		var top := h + 0.2

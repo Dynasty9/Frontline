@@ -11,7 +11,7 @@ The collision and cover a structure gives (`Structure._define_parts`) never depe
 | `scripts/game/building_materials.gd` | `BuildingMaterials` | Construction materials: surface, colour, dressings, finish |
 | `scripts/game/building_walls.gd` | `BuildingWalls` | Faces (plinths, bands, boards, sheeting, joints, quoins), copings, piers |
 | `scripts/game/building_openings.gd` | `BuildingOpenings` | Windows, sills, heads, shutters, doorways, door leaves, roller shutters, louvres, ribbon glazing |
-| `scripts/game/building_roofs.gd` | `BuildingRoofs` | Gables, flat roofs with parapets, single-pitch roofs, canopies, north lights |
+| `scripts/game/building_roofs.gd` | `BuildingRoofs` | Gables, hipped roofs (and pyramids), flat roofs with parapets, single-pitch roofs, canopies, north lights; `underside` for seating things on a slope |
 | `scripts/game/building_fittings.gd` | `BuildingFittings` | Gutters, hoppers, downpipes, chimneys, flues, stacks, pipe runs, plant, masts, aerials, flagpoles, lamps, drums, crates, pallets |
 | `scripts/game/building_wire.gd` | `BuildingWire` | Catenary spans, cables, guys with anchors, insulators, barbed strands, wall-top wire |
 | `scripts/game/building_weathering.gd` | `BuildingWeathering` | Ivy, weeds at the foot of walls, the fallen-in roof on a ruin's floor |
@@ -105,6 +105,18 @@ breadth of the wall and below the eaves, a ruin's debris inside the room and no 
 fixture checks both over ten seeds. Lived-in and weathering choices each draw from a stream of their own
 (seeded from the structure's), so adding either never changes a house's chimney, shutters, panes or doors.
 
+## Roofscapes
+
+A town's pitched roofs differ the way real ones do. Each is pitched anywhere from 24 to 36 degrees, and about a
+third are hipped (`BuildingRoofs.hip`: four slopes at one pitch, hip and ridge tiles, a fascia and gutters all
+round), which over a square house makes a pyramid. A chimney stands on the lowest point of the slope under it
+(`BuildingRoofs.underside` gives the underside's height anywhere over the walls, gable or hip). About one roof in
+eight has been mended with a tarpaulin weighted down with tyres and sandbags, one in sixteen has a hole with the
+battens showing (both `BuildingWeathering`), and one in seven a skylight (`BuildingFurnishings.skylight`), two in
+five of them lit after dark. The form and the patches each draw from a stream of their own, so tints, chimneys
+and aerials are what they were. Roofs are looks only (no collision), so none of this changes cover or movement.
+Render four roofs together with `--building-kinds=roofscape` in the studio stage.
+
 ## Yards
 
 `BuildingYards` builds what the people in a house keep round it, and the town places them round each house
@@ -133,7 +145,7 @@ would show the block behind. Door leaves that swing are built in their own hinge
 | `BuildingOpenings.window` | House windows (louvred or boarded shutters, cracked panes), barracks windows |
 | `BuildingOpenings.doorway`, `leaf` | House doors (panelled, now and then a hood), barracks (ledged double doors), research post and bunker (steel) |
 | `BuildingOpenings.roller_door`, `ribbon` | Factory shutter; research post glazing |
-| `BuildingRoofs.gable` | House roofs (tile), barracks (sheet) |
+| `BuildingRoofs.gable`, `hip` | House roofs (tile: about a third hipped), barracks (sheet) |
 | `BuildingRoofs.flat`, `mono`, `canopy`, `sawtooth` | Flat house roofs; watchtower roof; barracks porch and house door hoods; factory north lights |
 | `BuildingFittings` rainwater goods | Every pitched and flat house roof, the barracks, the boat shed |
 | `BuildingFittings.chimney`, `flue`, `stack`, `pipe` | House chimneys; barracks stove, bunker vent, factory cowls, generator exhaust; factory chimney and pipe runs |

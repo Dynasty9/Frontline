@@ -48,6 +48,33 @@ static func weeds(k: BuildingKit, length: float, gaps: Array, rng: RandomNumberG
 			_leaves(k, Vector3(x, h * 0.6, z), Vector3(rng.randf_range(0.14, 0.3), h, 0.09), WEEDS[rng.randi() % WEEDS.size()])
 
 
+## A tarpaulin pulled over a hole in a roof, in a kit lying on the slope
+## (its xz plane the covering's top, +z down the slope): weighted down with
+## old tyres and a sack or two.
+static func tarp(k: BuildingKit, rng: RandomNumberGenerator) -> void:
+	var size := Vector2(rng.randf_range(1.6, 2.4), rng.randf_range(1.2, 1.8))
+	var col: Color = [Color(0.2, 0.34, 0.55), Color(0.28, 0.36, 0.24), Color(0.5, 0.46, 0.36)][rng.randi() % 3]
+	k.plate(Vector3(size.x, 0.012, size.y), Vector3(0, 0.008, 0), "canvas", col, Vector3(0, rng.randf_range(-0.15, 0.15), 0), true)
+	for i in rng.randi_range(2, 4):
+		var p := Vector3(rng.randf_range(-0.4, 0.4) * size.x, 0.05, rng.randf_range(-0.4, 0.4) * size.y)
+		if i % 3 == 2:
+			k.box(Vector3(0.5, 0.15, 0.32), p + Vector3(0, 0.03, 0), "sandbag", Color(0.55, 0.49, 0.34), Vector3(0, rng.randf() * TAU, 0))
+		else:
+			k.part(BuildingKit.ring(0.13, 0.28), "rubber", Transform3D(Basis.IDENTITY, p), Color(0.07, 0.07, 0.07))
+
+
+## A hole in a roof, in a kit lying on the slope: the dark of the loft, the
+## battens across it, broken tiles at its edges.
+static func hole(k: BuildingKit, rng: RandomNumberGenerator) -> void:
+	var size := Vector2(rng.randf_range(0.8, 1.4), rng.randf_range(0.6, 1.1))
+	k.plate(Vector3(size.x, 0.006, size.y), Vector3(0, 0.003, 0), "plain_dark", Color(0.03, 0.025, 0.02))
+	for i in 3:
+		k.bar(Vector3(-size.x * 0.55, 0.012, (i - 1) * size.y * 0.3), Vector3(size.x * 0.55, 0.012, (i - 1) * size.y * 0.3), 0.04, 0.025, "wood", Color(0.42, 0.32, 0.2), false)
+	for i in rng.randi_range(3, 6):
+		var a := rng.randf() * TAU
+		k.plate(Vector3(0.2, 0.014, 0.14), Vector3(cos(a) * size.x * 0.52, 0.01, sin(a) * size.y * 0.52), "paint", Color(0.48, 0.22, 0.14), Vector3(rng.randf_range(-0.3, 0.3), a, 0))
+
+
 ## The floor of a house that burned and fell in, `size` its footprint, its
 ## top at `top`: soot where the fire was, rafters lying charred across it,
 ## broken tiles, lumps of plaster and brick, glass.

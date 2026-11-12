@@ -83,6 +83,19 @@ static func lantern(k: BuildingKit, p: Vector3, col := Color(0.12, 0.12, 0.11)) 
 	k.plate(Vector3(0.14, 0.025, 0.14), c + Vector3(0, -0.11, 0), "metal_dark", col)
 
 
+## A skylight let into a roof, in a kit lying on the slope: its frame and
+## the glass (lit by night when there's a lamp on under it).
+static func skylight(k: BuildingKit, lit := true) -> void:
+	k.part(BuildingKit.shape("skylight", func() -> Array:
+		var out: Array = []
+		for sx: float in [-1.0, 1.0]:
+			out.append(BuildingKit.piece(Vector3(0.06, 0.07, 0.9), Vector3(sx * 0.33, 0.035, 0)))
+		for sz: float in [-1.0, 1.0]:
+			out.append(BuildingKit.piece(Vector3(0.72, 0.07, 0.06), Vector3(0, 0.035, sz * 0.42)))
+		return out), "metal_dark", Transform3D.IDENTITY, Color(0.22, 0.23, 0.22))
+	k.plate(Vector3(0.6, 0.012, 0.78), Vector3(0, 0.06, 0), "window_lit" if lit else "glass", BuildingOpenings.GLASS)
+
+
 ## A TV aerial at `base` (on a chimney's side or the ridge): its pole and a
 ## Yagi aimed along `yaw` to the transmitter.
 static func aerial(k: BuildingKit, base: Vector3, h := 1.6, yaw := 0.0) -> void:

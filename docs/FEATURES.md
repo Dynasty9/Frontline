@@ -737,7 +737,8 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   painted window frames with mullion and transom, panes whole, cracked to shards or shot out, louvred or boarded
   shutters on their hinges, door frames, steps, now and then a hood over the door, and double doors hanging open.
   Pitched roofs bear on the walls with a fascia, barge boards, gutters and downpipes, a round-tiled ridge and
-  often a chimney with its pots; flat roofs have a coped parapet, scuppers with a hopper and downpipe, and the
+  often a chimney with its pots; they're pitched differently, about a third are hipped (pyramids over square
+  houses), and some are mended with a tarp weighted down with tyres, holed, or have a skylight; flat roofs have a coped parapet, scuppers with a hopper and downpipe, and the
   water tanks, air conditioners and dishes on them. Garden walls have saddleback stone copings, or brick-on-edge
   over a blue-brick base. Houses look lived in: drapes, blinds and nets in the windows, flowers in window boxes,
   lanterns by front doors, TV aerials on the roofs, and inside (seen when the roof hides for the men in there, or
