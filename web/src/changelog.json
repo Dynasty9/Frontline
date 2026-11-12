@@ -1,6 +1,963 @@
 {
   "releases": [
     {
+      "version": "2.0.0",
+      "tag": "v2.0.0",
+      "name": "Cinematic lighting",
+      "date": "2026-11-12",
+      "summary": "A new Cinematic graphics preset: a sky worked out from real sunlight scattering, shadows from fires and flares, sun shafts, lens flare, eye adaptation and a film look. Close-up shadows are sharper on every preset from Medium up.",
+      "url": "https://github.com/Dynasty9/Frontline/releases/tag/v2.0.0",
+      "pull_requests": [
+        150,
+        153,
+        154,
+        155,
+        156,
+        157,
+        160,
+        161,
+        162,
+        163,
+        165,
+        166,
+        167,
+        169,
+        170,
+        171,
+        172,
+        173,
+        175,
+        176,
+        177,
+        178,
+        179,
+        180,
+        182,
+        183,
+        184,
+        185,
+        186,
+        187,
+        188
+      ],
+      "entries": [
+        {
+          "slug": "cinematic-lighting",
+          "title": "Cinematic lighting",
+          "kind": "new",
+          "summary": "A new Cinematic graphics preset: a sky worked out from real sunlight scattering, shadows from fires and flares, sun shafts, lens flare, eye adaptation and a film look. Close-up shadows are sharper on every preset from Medium up.",
+          "body": "Pick **Cinematic** at the top of Settings, or turn each part on by itself. Cinematic is everything Ultra has, plus all of this; it's meant for a fast graphics card, screenshots and replays. None of it changes the battle itself: spotting, cover and fire work as before.\n\n- **Adaptive shadows** (Graphics, on from Medium up): the sun's shadows are fitted to the ground the camera can see instead of always reaching 800 m out, so close in they're several times sharper. Costs next to nothing.\n- **Shadows from fire and flares** (Graphics): explosions, burning wrecks, illumination flares and street lamps throw moving shadows, the two or six nearest the camera.\n- **Physical sky** (Graphics): at golden hour, dawn, dusk and in haze, the sky is worked out from how sunlight scatters in the air: deep blue overhead, a small reddened sun, pink-lit clouds, the earth's shadow rising at dusk. It lights the battlefield too, so shade turns sky-blue while the sunlit side glows.\n- **Camera and lens** (Lighting & Look):\n  - **Lens flare and glare**: bright lights throw ghosts and a halo through the lens, the hottest ones a thin streak, and light up dust on the glass.\n  - **Sun shafts**: light streaming past trees, ridges and smoke that stand against a low sun.\n  - **Local exposure**: keeps the detail in deep shade and in bright fire at the same time, as the eye does.\n  - **Eye adaptation**: the view dims for a flash and recovers after it, and in the dark colour drains towards a cool grey as night vision takes over.\n  - **Film look**: highlights bleed red into the film, and fine detail is sharpened without halos.\n- The camera and lens effects and the physical sky aren't in the browser version, whose graphics can't draw them.",
+          "layoutComparison": null,
+          "screenshots": [
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v2.0.0/cinematic-lighting/comparison.jpg",
+              "caption": "The same camera, seed and moment on Ultra (left) and Cinematic (right): looking into a dawn sun, a night battle round burning wrecks, golden hour; and a tank barrel's shadow close in on High, with adaptive shadows off and on."
+            }
+          ],
+          "videos": []
+        },
+        {
+          "slug": "photo-mode",
+          "title": "Photo mode",
+          "kind": "new",
+          "summary": "F9 holds a solo battle or a replay still, puts the interface away and frees the camera, with a real lens, the light and a film look to set before you take the picture.",
+          "body": "- **The action holds still** in a solo battle or a replay. In multiplayer the fighting goes on: only your camera\n  comes off.\n- **A free camera:** WASD fly the way the lens looks, E / Q go up and down, Z / C roll (Backspace levels it), and\n  holding a mouse button and dragging looks round. Shift flies faster, Ctrl slower, the wheel zooms. It stays\n  above the ground and over the map.\n- **The lens:** field of view, where it focuses and how soft the rest falls, as real depth of field (not in the\n  browser, whose renderer has none).\n- **The light and the film:** exposure, the time of day, a colour grade with its contrast and saturation, vignette\n  and grain. The fog of war's shading can come off the ground too.\n- **Camera and lens:** lens flare, sun shafts, local exposure, eye adaptation, the film look and heat haze switch on\n  and off for the picture alone, whatever your graphics settings have (on the desktop).\n- **Space takes the picture** without the panel, at twice the resolution for cleaner edges, as a PNG in the\n  game's screenshots folder, and a note says where. In a browser it's downloaded.\n- **F2 hides the panel. F9 or Esc puts everything back** as it was, the battle's speed included. Your settings are\n  never touched.\n- Every key is in **Settings → Controls**, under Photo mode.",
+          "layoutComparison": null,
+          "screenshots": [
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v2.0.0/photo-mode/panel.jpg",
+              "caption": "Photo mode over a held moment at Beachhead: the lens focused on the stone house at 22 m, flare, sun shafts, film look and heat haze on"
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v2.0.0/photo-mode/picture.jpg",
+              "caption": "The picture it saved: no panel, drawn at twice the resolution and scaled down"
+            }
+          ],
+          "videos": []
+        },
+        {
+          "slug": "command-by-intent",
+          "title": "Command by intent: hand squads to your XO",
+          "kind": "new",
+          "summary": "Select squads or vehicles, press I and give them an intent: hold a sector, take an objective, screen, wait in reserve or ambush a road. Your XO places them, gives their orders, sends them in again when they're knocked back, and reports over the radio.",
+          "body": "You don't have to run every squad yourself any more. **I** opens the Delegate page of the orders; pick an intent,\nclick the place (drag toward the enemy to set the front), and the squads are your XO's to run.\n\n- **Hold sector:** spread across it and dug in; a squad knocked off its piece of the line is put back.\n- **Take objective:** a deliberate attack, one squad firing while the others flank, then they consolidate and hold\n  it. A failed attack is sent in again, a few times, before the XO reports that it has stalled. A click near a\n  town aims at its square.\n- **Screen:** a thin line well forward that reports what's coming and falls back a bound at a time when pressed.\n- **Reserve:** waits out of the fight and goes to help a squad of yours nearby that's pinned or bleeding, joining\n  its attack, then comes back.\n- **Ambush:** each squad lays an ambush on the nearest road, springs it, slips away and lays it again.\n- **Taking them back:** give a delegated squad any order of your own, or press **Shift + I**, and it's yours again.\n  The XO says so on the radio. A squad cut down to a third is sent back to refit and handed back to you.\n- On the map each intent shows with an XO tag, its grid and what it's doing; delegated squads carry an XO tab,\n  and the order of battle and squad card say what they've been told.\n- **AI allies answer your pings.** With an AI commander on your side, \"attack here\", \"defend here\" and \"need\n  support\" pings now get up to two of its free squads sent there, and it tells you who's coming (or that nobody is\n  free).\n- Co-commanders delegate and take back the same way, and every allied player sees the XO's tasks.",
+          "layoutComparison": null,
+          "screenshots": [
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v2.0.0/command-by-intent/take-objective.jpg",
+              "caption": "Three squads told to take the farmyard: the XO plans a deliberate attack, a base of fire and a flanking assault. The order of battle and the squad card read XO TAKE."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v2.0.0/command-by-intent/hold-sector.jpg",
+              "caption": "The same platoon told to hold a sector: dug in across it, the sector's forward edge drawn on the ground, and the Delegate page of the orders open."
+            }
+          ],
+          "videos": []
+        },
+        {
+          "slug": "heat-haze",
+          "title": "Heat haze",
+          "kind": "new",
+          "summary": "On the Cinematic preset the air shimmers over fires and burning wrecks, over the engines of idling tanks and helicopters, and for a moment round a blast.",
+          "body": "Turn it on by itself under **Settings > Lighting & Look > Camera and lens > Heat haze**, or pick the **Cinematic** preset.\n\n- **What shimmers:** burning wrecks, buildings, woods and grass fires; the engine decks and exhausts of vehicles with their engines running, harder while they drive; a helicopter's turbines, the haze beaten down once its rotor is up to speed; and briefly round a blast, a tank gun's muzzle and a rocket's back-blast.\n- Only what lies behind the hot air is bent: a soldier standing in front of a fire stays sharp, and the sky is left alone.\n- Nearer haze bends more, and haze too small to make out from far away isn't drawn.\n- With **Reduce motion** on, the air holds still: the view is still bent, but nothing swims.\n- It's looks only: spotting, cover and fire work as before. Like the other camera and lens effects, it isn't in the browser version.",
+          "layoutComparison": null,
+          "screenshots": [],
+          "videos": [
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v2.0.0/heat-haze/heat-haze.webm",
+              "poster": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v2.0.0/heat-haze/heat-haze.jpg",
+              "caption": "A tank that has just brewed up burns behind two idling tanks: the air over the wreck and over their engine decks swims, first from the usual battle camera, then close over an engine deck."
+            }
+          ]
+        },
+        {
+          "slug": "helicopter-crashes",
+          "title": "Shot-down helicopters fall out of the sky",
+          "kind": "new",
+          "summary": "A helicopter shot down in the air no longer vanishes into a pile of rubble below: it spins in or autorotates to a crash, and its burning wreck lies where it hit.",
+          "body": "- **Spinning in:** with the tail rotor or the controls shot away, the helicopter winds up into a spin, rolling and\n  pitching as it corkscrews down, and hits hard, still carrying its speed.\n- **Autorotation:** with only the engines gone, the pilot glides it down steeply, nose low, then flares just above\n  the ground for a heavy landing. More of the troops aboard walk away from this kind of crash.\n- **The impact** is a fuel explosion that hurts whoever is underneath and can set the area alight. The burnt-out\n  helicopter is left lying where it hit, on its side after a spin-in. Over deep water it ditches and sinks, and the\n  survivors swim for shore.\n- On the way down it burns and trails smoke, and its rotor runs down.",
+          "layoutComparison": null,
+          "screenshots": [],
+          "videos": [
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v2.0.0/helicopter-crashes/crash.webm",
+              "poster": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v2.0.0/helicopter-crashes/crash.jpg",
+              "caption": "Two Ghost Hawks shot down at 16 m, before (top) and after (bottom), at normal speed. The near one loses its tail rotor and spins in; the far one autorotates to a heavy landing. The yellow lines trace their paths."
+            }
+          ]
+        },
+        {
+          "slug": "lived-in-houses",
+          "title": "Houses that look lived in, and lamplight at night",
+          "kind": "new",
+          "summary": "Curtains, blinds and nets hang in the windows, flowers sit on sills, lanterns hang by front doors and aerials stand on roofs. Inside are painted walls, pictures, shelves and rugs, and at dusk and at night lamps glow behind a third of the windows.",
+          "body": "- **Windows:** drapes drawn to the sides, a blind half down, or nets across the lower panes. Some windows have\n  flowers in a box on the sill. Houses still lived in keep their glass.\n- **Doors and roofs:** a lantern beside about half the front doors, and a TV aerial on half the pitched roofs,\n  lashed to the chimney or standing on the ridge.\n- **Inside:** you see the rooms when a roof lifts for the men inside, and in every roofless ruin. They have\n  painted walls with a skirting, a radiator under each window, and pictures, a mirror, a clock or a shelf of\n  books on the plain walls. Most floors have a rug. Everything hangs flat on the walls or lies flat on the\n  floor, so nothing stands where your men take cover.\n- **At dusk and at night** a lamp is on behind about a third of the windows. The barracks and research post\n  windows glow, and so do the factory's north lights and the door lanterns. Brightest at night, a glimmer on an\n  overcast or rainy day, nothing in sunshine. The light changes with Settings > Time of day.",
+          "layoutComparison": null,
+          "screenshots": [
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v2.0.0/lived-in-houses/comparison.jpg",
+              "caption": "Matched before and after: a house under the same studio camera by day, with its roof off as when your men are inside, and by night; then a house in the town on the same seed and camera."
+            }
+          ],
+          "videos": []
+        },
+        {
+          "slug": "object-cameras",
+          "title": "Ride along with the object cameras",
+          "kind": "new",
+          "summary": "Select one vehicle, building or individual soldier and press F10 to cycle through its camera positions. Escape returns to command with the selection intact.",
+          "body": "Every subject offers a rear and aerial view. Vehicles with tracks or wheels have a low running-gear view. Models can also carry cameras on the barrel, beside the roof gun and over the engine deck. Rotorcraft add a cabin-side view. On sling-capable helicopters the sling-load view keeps the aircraft and its cargo in frame. Boats have bow and waterline views. The tanks use the same mounts used in the one-minute ridge film. Change the key in Settings under Controls.\n\nThe waterline view follows the wake from the stern quarter. It keeps the horizon level as the boat turns. The sling camera frames the rotor against the sky, with the suspended vehicle and its shadow visible below.\n\nFrom the cargo door, look down past the landing gear and watch the sling load separate from its shadow. Wheels stop throwing dust once clear of the ground. Spinning rotors show a soft sweep for each blade. On the RHIB, the starboard camera looks past the console toward the other boats.",
+          "layoutComparison": null,
+          "screenshots": [
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v2.0.0/object-cameras/views.jpg",
+              "caption": "Six positions on the ridge. The low track view follows the suspension, the barrel view looks back toward the turret, and the roof camera stays beside the mounted gun."
+            }
+          ],
+          "videos": [
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v2.0.0/object-cameras/vehicle-quarters.webm",
+              "poster": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v2.0.0/object-cameras/vehicle-quarters.jpg",
+              "caption": "The same lift and boat turn from both camera positions. The new views on the right show the gap below the cargo and the wake behind the stern."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v2.0.0/object-cameras/sling-sky.webm",
+              "poster": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v2.0.0/object-cameras/sling-sky.jpg",
+              "caption": "The same lift in both views. On the right the rotor turns against the sky and the Humvee clears its shadow below."
+            }
+          ]
+        },
+        {
+          "slug": "standing-orders",
+          "title": "Standing orders for squads, soldiers and vehicles",
+          "kind": "new",
+          "summary": "Tell a squad or one soldier to get down or hold their fire, tell a tank what to shoot first, pop a vehicle's smoke yourself, and drop only some of the men a carrier has aboard.",
+          "body": "- **Stance** (K): auto, prone, crouch or stand, for a whole squad or one soldier you've picked out (Alt + click).\n  Told to stay down, men crawl when they move at a walk; a run order still gets them up. A pinned man won't stand\n  up whatever he's told, and diving from a grenade or hitting the dirt is still his own call.\n- **Fire discipline** (J): fire at will, return fire (only once they or their squad are shot at) or hold fire. Men\n  holding their fire throw no grenades and fire no rockets either, but they still fight anyone who gets within\n  15 m, and anything you tell them to attack. Squads under either order keep moving past enemies they only see.\n- **Vehicles** take the same fire discipline (the crew still fights anything within 22 m), and a **target\n  priority** (N): armour first saves the main gun for vehicles, infantry first puts high explosive on men in the\n  open.\n- **Smoke on call** (T with only vehicles selected): the dischargers fire towards the nearest threat; the card shows\n  the salvoes left. The crew still pops smoke by itself when a missile is launched at it.\n- **Partial dismount**: drop half the men aboard, or one squad when a carrier holds two. The rest stay in until you\n  dismount them (U) or the vehicle moves on and stops again; if it's badly hit, everyone bails out.\n- Every order sticks until you change it, through moves and attacks, and the command card shows what's in force.",
+          "layoutComparison": null,
+          "screenshots": [
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v2.0.0/standing-orders/squad-orders.jpg",
+              "caption": "A squad behind a wall told to keep low and only return fire: the command card shows both orders in force"
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v2.0.0/standing-orders/vehicle-orders.jpg",
+              "caption": "An IFV carrying two squads: smoke salvoes left, dismount everyone, half, or one squad, and its fire and target orders"
+            }
+          ],
+          "videos": []
+        },
+        {
+          "slug": "website-home-and-manual",
+          "title": "A Field Manual on the website, over the menus' living map",
+          "kind": "new",
+          "summary": "The website sits on the menus' topographic map now. Home always shows the game off, and the new Manual covers every soldier, squad, weapon, vehicle, building, fire mission and upgrade, with the game's figures and 3D models.",
+          "body": "- **Home** replaces The game in the header, and its tour greets everyone. Signed in, your rank, progress and Play sit just under the footage.\n- **Manual** replaces Vehicles. Its overview explains how the game fights: command, drills, the two sides, combined arms, building, supply, fire support and the battlefield. Infantry, Vehicles, Buildings, Fire support and Research follow.\n- Filter a chapter by kind and by side, search it, and share a link to any entry. The figures are the game's own, with the in-game manual's counted bars.\n- Turn over the 3D model of any building, squad, soldier, weapon or fire mission, as well as vehicles. Fire support plays an aircraft's sortie too.\n- Every page sits on the menus' living topographic map. It drifts, leans a little after the cursor and ripples where you click. It holds still if you prefer reduced motion.\n- Fixed: a page you hadn't opened yet, such as your profile, could fail to load in a tab left open across a website update. That tab now reloads onto the new version.\n- Old Vehicles links open the Manual's Vehicles.",
+          "layoutComparison": {
+            "before": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v2.0.0/website-home-and-manual/before.jpg",
+            "after": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v2.0.0/website-home-and-manual/after.jpg",
+            "caption": "Website layout comparison at 1600 x 900, the rank guide. Before: the live website on 11 November 2026, on a still picture of the map. After: the same page on the living map, quieter behind the text. Viewport captures, not gameplay comparisons."
+          },
+          "screenshots": [
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v2.0.0/website-home-and-manual/manual.jpg",
+              "caption": "The Field Manual: how the game fights, chapter by chapter, and a way into every catalogue."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v2.0.0/website-home-and-manual/buildings.jpg",
+              "caption": "Buildings, squads, soldiers, weapons and fire missions have the game's own figures and 3D model, as vehicles do."
+            }
+          ],
+          "videos": []
+        },
+        {
+          "slug": "abrams-on-the-ridge",
+          "title": "Ride with the Abrams and T-55A",
+          "kind": "improved",
+          "summary": "Ride beside the tracks, look down the barrel or watch through the periscope in a match. Disabled tanks keep their paint and turret bearing as smoke rises from the engine deck.",
+          "body": "A glancing round rings against the hull. The barrel recoils when the gun fires, and individual tread pads leave prints on soft ground. Select a tank and press F10 to cycle its views.",
+          "layoutComparison": null,
+          "screenshots": [
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v2.0.0/abrams-on-the-ridge/track-prints.jpg",
+              "caption": "The same turn before (left) and after (right), with the ground enlarged below. Separate tread pads press into the soil."
+            }
+          ],
+          "videos": [
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v2.0.0/abrams-on-the-ridge/live-match.mp4",
+              "poster": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v2.0.0/abrams-on-the-ridge/live-match.jpg",
+              "caption": "The playable Abrams in an ordinary match. Three in-game F10 mounts show the tracks, periscope and barrel during the same seeded encounter."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v2.0.0/abrams-on-the-ridge/grille-fire.mp4",
+              "poster": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v2.0.0/abrams-on-the-ridge/grille-fire.jpg",
+              "caption": "The same 2.5 seconds of the knockout in both cuts. On the right, hot folds rise through the engine grille and darken into the plume."
+            }
+          ]
+        },
+        {
+          "slug": "airborne-soil",
+          "title": "Broken earth at ground impacts",
+          "kind": "improved",
+          "summary": "Larger clods of earth tumble with uneven edges as the dust rises around them.",
+          "body": "The larger pieces bounce and settle back onto the ground. Their paths vary between recordings.",
+          "layoutComparison": null,
+          "screenshots": [],
+          "videos": [
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v2.0.0/airborne-soil/ground-impact.webm",
+              "poster": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v2.0.0/airborne-soil/ground-impact.jpg",
+              "caption": "The same round lands beyond the wreck. Watch the larger clods above the dust in the previous version on the left and the updated version on the right."
+            }
+          ]
+        },
+        {
+          "slug": "aircraft-pass-audio",
+          "title": "Hear the jet pass overhead",
+          "kind": "improved",
+          "summary": "The engine follows the jet across the scene, and falling bombs carry a separate rush of air into the impact.",
+          "body": "Listen from the harbour and the engine grows louder as the aircraft passes, then fades into the distance. From a camera flying beside the jet, its engine stays with it. Close to the aircraft, a short mechanical clack marks each release. Air rushes past the falling bombs until impact.",
+          "layoutComparison": null,
+          "screenshots": [],
+          "videos": [
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v2.0.0/aircraft-pass-audio/harbour.webm",
+              "poster": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v2.0.0/aircraft-pass-audio/harbour.jpg",
+              "caption": "The same harbour pass plays twice. The updated audio starts at 0:05.8. Listen under the wing for the release, then from the quay for the falling air."
+            }
+          ]
+        },
+        {
+          "slug": "battlefield-legibility",
+          "title": "Battle readouts that read over any ground",
+          "kind": "improved",
+          "summary": "The log, fire missions and squad names on the map stay legible over sunlit grass, sand and smoke, and the log no longer slides under the observer's bar.",
+          "body": "- **Darker outlines** round every readout on the battlefield, so small text holds up over bright terrain and smoke.\n- **Message times** and **fire mission cooldowns** are drawn a step brighter; cooldowns could all but vanish on grass.\n- **Squad names on the map** are a size larger and brighter.\n- **Watching a battle**, the message log starts below the observer's bar instead of running underneath it.\n- The order of battle's key is shown in a key box, like every other key on screen.",
+          "layoutComparison": null,
+          "screenshots": [
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v2.0.0/battlefield-legibility/comparison.jpg",
+              "caption": "The same moments before and after: the message log, the order of battle and the fire missions over bright ground"
+            }
+          ],
+          "videos": []
+        },
+        {
+          "slug": "black-wasp-cockpit",
+          "title": "See into the Black Wasp cockpit",
+          "kind": "improved",
+          "summary": "Catch the pilot’s helmet through the curved canopy as a Black Wasp flies past.",
+          "body": "The bronze coating catches the light along the rim. Looking down through the canopy reveals the seat back, helmet and visor.",
+          "layoutComparison": null,
+          "screenshots": [
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v2.0.0/black-wasp-cockpit/canopy.jpg",
+              "caption": "The same flypast seen from the same camera. The former canopy is on the left. On the right, the pilot and seat show through the coating."
+            }
+          ],
+          "videos": []
+        },
+        {
+          "slug": "boat-stern-camera",
+          "title": "See the water from the stern and bridge",
+          "kind": "improved",
+          "summary": "Select a boat and press F10 to reach Stern quarter. The horizon stays level as the hull rolls. On the patrol ship, Bridge roof looks down on boats passing the port rail.",
+          "body": "",
+          "layoutComparison": null,
+          "screenshots": [],
+          "videos": [
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v2.0.0/boat-stern-camera/harbour.webm",
+              "poster": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v2.0.0/boat-stern-camera/harbour.jpg",
+              "caption": "The same harbour pass from Waterline on the left and Stern quarter on the right. Watch where the first splash breaks above the cabin."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v2.0.0/boat-stern-camera/bridge.webm",
+              "poster": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v2.0.0/boat-stern-camera/bridge.jpg",
+              "caption": "One pass at the same moment. The bow view on the left shows the patrol ship. From the bridge roof on the right, the smaller boat and its wake pass below the rail."
+            }
+          ]
+        },
+        {
+          "slug": "building-shared-construction",
+          "title": "Buildings built from shared parts",
+          "kind": "improved",
+          "summary": "Houses, huts, sheds and defences now share one set of walls, roofs, windows, doors, fittings and wire. Roofs sit on their walls, gutters and downpipes take the rain, and the town has brick and stone houses among the rendered ones.",
+          "body": "- **Roofs sit on the walls.** The eave walls no longer show through the tiles, and the gable ends no longer\n  show along the verges. Pitched roofs have fascias, barge boards, a round ridge, gutters and swan-necked\n  downpipes; chimneys have an oversailing course and their pots.\n- **Brick and stone houses** stand among the rendered ones. Each house is dressed in its own material:\n  concrete sills and lintels on brick, a keystone over stone windows, darker plinths, a band under the eaves.\n- **Windows and doors:** framed windows with panes whole, cracked to shards or gone, louvred or boarded\n  shutters, door steps, the odd hood over a front door, ledged doors on the barracks, steel doors on bunkers\n  and the research post.\n- **Military buildings:** the barracks in lapped weatherboard under lapped sheeting, the factory with real\n  north lights, a roller shutter and pipes on brackets, the research post in jointed panels with ribbon glazing.\n  Masts are guyed, and the factory's flag has a pole.\n- **Common things are shared:** flat roofs have coped parapets, scuppers and downpipes. Garden walls have\n  saddleback or brick-on-edge copings. The same drums, crates and pallets turn up at FOBs, dumps, barricades,\n  caches and the dock. Tents, tarps and nets are pegged out, utility poles carry insulators, and compound\n  walls carry barbed wire.\n- None of this changes cover, collision or sight lines. House walls build in about the same time as before\n  with fewer meshes.",
+          "layoutComparison": null,
+          "screenshots": [
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v2.0.0/building-shared-construction/comparison.jpg",
+              "caption": "Matched before and after: a house in the town on the same seed and camera, then a house, the barracks and the factory under the same studio camera."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v2.0.0/building-shared-construction/components.jpg",
+              "caption": "The shared parts on their own: wall finishes, roofs, windows, doors, shutters, rainwater goods, plant, masts, stores and wire."
+            }
+          ],
+          "videos": []
+        },
+        {
+          "slug": "cloud-shadows-on-everything",
+          "title": "Cloud shadows fall on everything",
+          "kind": "improved",
+          "summary": "The drifting shade of the clouds now darkens soldiers, vehicles, buildings, trees and roads along with the ground, so a tank parked in it no longer stands out sunlit.",
+          "body": "- **Everything in the shade darkens:** soldiers, tanks and every other vehicle, houses and works, trees, hedges,\n  grass, stones, roads and trenches, by as much as the ground beneath them.\n- **Only the sunlight goes:** the sky still lights what stands in the shade, so the side of a house that was already\n  in its own shadow stays as it was.\n- **It moves with the wind**, the same way as the smoke.\n- **In the browser** the clouds now shade the ground too (they never did there before), and everything on it.\n- **Graphics setting:** *Cloud shadows on everything*, on from the High preset up. Off, only the ground, grass and\n  bushes darken, as before.",
+          "layoutComparison": null,
+          "screenshots": [
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v2.0.0/cloud-shadows-on-everything/comparison.jpg",
+              "caption": "The same moment with the new setting off (as before) and on: in the cloud's shade, the tank and the walls of the house now darken with the ground around them."
+            }
+          ],
+          "videos": [
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v2.0.0/cloud-shadows-on-everything/drift.webm",
+              "poster": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v2.0.0/cloud-shadows-on-everything/drift.jpg",
+              "caption": "A cloud's shade drifting over a parked tank and a hamlet, at twice real speed, with the setting off (as before) and on. On, the tank and the walls go into the shade and out of it with the ground."
+            }
+          ]
+        },
+        {
+          "slug": "coalition-field-medic",
+          "title": "The field medic moves with the squad",
+          "kind": "improved",
+          "summary": "The Coalition medic wears the squad’s textured uniform, with a marked sleeve and an aid pack that move with him.",
+          "body": "Look for the white band on his left arm. His pack follows his shoulders as he walks and crouches.",
+          "layoutComparison": null,
+          "screenshots": [],
+          "videos": [
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v2.0.0/coalition-field-medic/crossing.webm",
+              "poster": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v2.0.0/coalition-field-medic/crossing.jpg",
+              "caption": "The medic crosses the Sky Hook landing pad beside the squad leader. The previous model is on the left and the updated model is on the right."
+            }
+          ]
+        },
+        {
+          "slug": "default-swat-riflemen",
+          "title": "Coalition riflemen wear their SWAT kit by default",
+          "kind": "improved",
+          "summary": "Close-up riflemen now use the character and animations included with Frontline as soon as you start a battle.",
+          "body": "",
+          "layoutComparison": null,
+          "screenshots": [
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v2.0.0/default-swat-riflemen/after.jpg",
+              "caption": "Coalition riflemen in the casualty drill with the bundled SWAT kit"
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v2.0.0/default-swat-riflemen/before.jpg",
+              "caption": "The same drill previously used the procedural infantry models"
+            }
+          ],
+          "videos": []
+        },
+        {
+          "slug": "harbour-spray",
+          "title": "Water impacts fall back into the harbour",
+          "kind": "improved",
+          "summary": "Tall sheets of spray rise beside boats and fall back into the spreading foam.",
+          "body": "The slower spray stays near the surface while the faster sheets rise above it. Watch the water around the patrol ship as the sheets come back down.\n\nFast boats leave a widening patch of churned water behind their motors. The bow wave starts close to the hull as the boat turns.",
+          "layoutComparison": null,
+          "screenshots": [],
+          "videos": [
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v2.0.0/harbour-spray/spray.webm",
+              "poster": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v2.0.0/harbour-spray/spray.jpg",
+              "caption": "The same harbour pass in both views. On the left the plumes drift out of frame. On the right their tips break apart and fall back around the ship."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v2.0.0/harbour-spray/wake.webm",
+              "poster": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v2.0.0/harbour-spray/wake.jpg",
+              "caption": "Watch the stern of the boat crossing the bow. The earlier wake on the left leaves two thin trails. On the right the motors turn up a broadening patch of foam."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v2.0.0/harbour-spray/bow-foam.webm",
+              "poster": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v2.0.0/harbour-spray/bow-foam.jpg",
+              "caption": "The same boat from the bridge roof. On the left a straight foam edge leads the bow and a brown disc flashes over the water. On the right the wake builds along the hull and the sea stays visible through the flash."
+            }
+          ]
+        },
+        {
+          "slug": "helicopter-flight-realism",
+          "title": "Helicopters fly like helicopters",
+          "kind": "improved",
+          "summary": "Helicopters tilt into every change of speed, bank round turns, climb away from the pad and come down a glide path into a low hover, throwing up dust as they land.",
+          "body": "- **Tilt first, then speed:** the nose dips before a helicopter picks up speed and comes up into a flare before it\n  slows, so you can read what it is about to do. Big transports answer the controls slowly; light scouts snap round.\n- **Banked turns:** at speed the nose stays on the flight path and the helicopter banks round the turn. A sharp\n  change of course is flown as a tight, slowing turn, not a stop and a pivot in mid-air.\n- **Take-off:** the rotor winds up to speed first, then the helicopter lifts into a low hover, noses over and climbs\n  away as it gathers speed, instead of rising straight up like a lift.\n- **Landing:** it comes down a glide path, slowing all the way, into a low hover over the spot and sets down gently,\n  instead of stopping high over the landing zone and sinking straight down.\n- **Hovering:** a hovering helicopter hangs slightly nose-up with one side low and drifts gently as the pilot holds\n  it, and its downwash throws a ring of dust (or spray over water) when it is low.\n- **Sound:** the rotor's beat follows its speed as it winds up, and gets heavier in a hard flare or a steep bank.\n- **Sling loads** swing on the cable: they lag behind as the helicopter accelerates and swing forward as it slows.\n  The load is lowered from a hover and let go only once it has stopped swinging.\n- **Gunships** fly to their firing position nose first, then swing round to face the target.",
+          "layoutComparison": null,
+          "screenshots": [],
+          "videos": [
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v2.0.0/helicopter-flight-realism/flight.webm",
+              "poster": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v2.0.0/helicopter-flight-realism/flight.jpg",
+              "caption": "The same transport flight from a helipad beside a base, with a change of destination eight seconds in, before (top) and after (bottom), at normal speed. The yellow line traces the flight path, with a drop line to the ground every second."
+            }
+          ]
+        },
+        {
+          "slug": "military-body-panels",
+          "title": "Military paint wear and material-aware vehicle panels",
+          "kind": "improved",
+          "summary": "Military bodies gain clearer camouflage and worn panel edges. Truck canopies now use sewn cloth that sags between supports, with different construction for metal, fabric, rubber and glass.",
+          "body": "- Military paint has broken edge rubs, small primer chips and restrained runoff streaks. Aircraft exterior paint is more matte.\n- Vehicle camouflage has larger, more distinct colour patches. Civilian clearcoat and uniform camouflage retain their own treatment.\n- HEMTT, Zamak and Tempest troop canopies share draped cloth bays with sewn hems. Tied cargo covers also gain perimeter hems.\n- Panel construction follows the material: folded edges and fasteners for metal, hems and stitching for fabric, moulded edges for rubber and plastic, and seals for glass.\n- These are shared construction and finish improvements; unique vehicle silhouettes remain authored separately.",
+          "layoutComparison": null,
+          "screenshots": [
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v2.0.0/military-body-panels/zamak-after.jpg",
+              "caption": "After: more distinct camouflage, worn panel edges and cloth fitted between the canopy supports."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v2.0.0/military-body-panels/zamak-before.jpg",
+              "caption": "Before: the same truck with low-contrast mottling and a rigid canopy shell."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v2.0.0/military-body-panels/panels.jpg",
+              "caption": "Shared construction examples: folded metal, sewn fabric, moulded rubber and plastic, wood and sealed glass."
+            }
+          ],
+          "videos": []
+        },
+        {
+          "slug": "mortar-crew-kit",
+          "title": "Mortar crews work the emplacement with both hands",
+          "kind": "improved",
+          "summary": "The gunner kneels at the fixed mortar and puts away his carried tube while he works.",
+          "body": "Leaving the pit brings the gunner’s carried kit back into view.",
+          "layoutComparison": null,
+          "screenshots": [],
+          "videos": [
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v2.0.0/mortar-crew-kit/crew.webm",
+              "poster": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v2.0.0/mortar-crew-kit/crew.jpg",
+              "caption": "The same round from the same camera. On the left the carried tube stays on the gunner’s back. On the right he works the single mortar in the pit."
+            }
+          ]
+        },
+        {
+          "slug": "mortar-crew-model",
+          "title": "A closer look at the mortar crew",
+          "kind": "improved",
+          "summary": "The Coalition mortar specialist wears the squad’s textured kit and keeps his carried equipment on his back as he moves.",
+          "body": "The carried kit follows the spine through the vault and crouch. On Macs using native OpenGL, squads use the articulated character models so bodies remain visible alongside their equipment.",
+          "layoutComparison": null,
+          "screenshots": [],
+          "videos": [
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v2.0.0/mortar-crew-model/crossing.webm",
+              "poster": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v2.0.0/mortar-crew-model/crossing.jpg",
+              "caption": "The same specialist crosses the same sandbags from the same camera. The previous model is on the left and the updated one is on the right."
+            }
+          ]
+        },
+        {
+          "slug": "mountain-clouds",
+          "title": "Clouds and coastal horizons",
+          "kind": "improved",
+          "summary": "Open valleys and lower playable hills lead through coastal water to towering distant ranges, cloud banks and ridge mist.",
+          "body": "Cloud banks sit beyond the playable boundary, adding depth around distant peaks without changing spotting or movement. Their shaded billows and trailing mist follow the scene lighting, including rain and night. Mountains correctly hide clouds behind them, while stronger distant haze leaves the playable foreground clear.\n\nGenerated skirmish maps now occupy lower foothills, keeping the valley, roads and settlements visible instead of hiding them behind giant nearby peaks. The really tall mountain range stays in the distance. Mission terrain keeps its existing heights.\n\nCoastal maps continue through a broad water channel to the distant ranges. The seeded shoreline and shallow seabed continue across the map edge without a projecting shelf or straight colour seam, and the ocean continues beyond the terrain backdrop. Inland maps retain their land backdrop.\n\nChoose **Mountain clouds** in Graphics: Off, Low, Medium, High or Ultra. Standard presets select matching detail levels; browsers start at Low. Reduced motion stops the clouds drifting. Higher settings take more samples through each cloud; performance depends on the view and graphics card.",
+          "layoutComparison": null,
+          "screenshots": [
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v2.0.0/mountain-clouds/comparison.jpg",
+              "caption": "Matched wide view before and after the shoreline repair: the near coast continues into the scenery without the projecting shelf or straight colour boundary."
+            }
+          ],
+          "videos": [
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v2.0.0/mountain-clouds/native-tour.webm",
+              "poster": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v2.0.0/mountain-clouds/native-tour.jpg",
+              "caption": "A fixed wide view across the valley in daylight, golden hour, rain and night. Native captures joined with short dissolves; these compare existing lighting moods."
+            }
+          ]
+        },
+        {
+          "slug": "pickup-wrecks",
+          "title": "Burning pickups keep their paint beyond the bonnet",
+          "kind": "improved",
+          "summary": "When a technical overturns, soot spreads from the engine across the original bodywork.",
+          "body": "The cab, wheels and bed remain visible around the fire as the wreck settles.",
+          "layoutComparison": null,
+          "screenshots": [],
+          "videos": [
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v2.0.0/pickup-wrecks/roll.webm",
+              "poster": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v2.0.0/pickup-wrecks/roll.jpg",
+              "caption": "The same pickup and strike from the harbour side. The previous wreck finish is on the left, and the spreading engine soot is on the right."
+            }
+          ]
+        },
+        {
+          "slug": "readable-release-notes",
+          "title": "Browse updates one change at a time",
+          "kind": "improved",
+          "summary": "Scan a compact release overview, open a change for its lead image or clip, then use Previous and Next to explore the release.",
+          "body": "- Choose a release from the archive, then scan its compact titles and one-line summaries.\n- Open any change to see its lead image or clip. Thumbnail galleries keep the remaining evidence close without playing every clip at once.\n- Previous and Next move through the changes, with keyboard focus following the selection. Open the full details when you want the deeper explanation.\n- Existing release and change links continue to work, including links opened from the game.\n- Vehicle previews now explain startup failures, including unavailable WebGL, instead of hiding the error behind a loading message. Retry is available without leaving the roster.\n- Release download instructions point to the Windows installer and Mac disk image and explain automatic updates.",
+          "layoutComparison": {
+            "before": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v2.0.0/readable-release-notes/before.jpg",
+            "after": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v2.0.0/readable-release-notes/overview.jpg",
+            "caption": "Website layout comparison at 1440 x 1000. Before: the live website on 11 November 2026. After: the revised local page using the same v1.0.13 release content. Viewport captures, not gameplay comparisons."
+          },
+          "screenshots": [
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v2.0.0/readable-release-notes/reader.jpg",
+              "caption": "One change open, with its lead image, a position in the release, and Previous/Next controls. Detailed notes stay optional."
+            }
+          ],
+          "videos": []
+        },
+        {
+          "slug": "rhib-helm",
+          "title": "Ride behind the RHIB’s helmsman",
+          "kind": "improved",
+          "summary": "Both launches have a driver at the controls. Press F10 on a selected RHIB to look over the helmsman’s right shoulder.",
+          "body": "The driver sits at the starboard console. From the Helm view you can follow the other boat across your bow and pick up its wake as it turns for shore.",
+          "layoutComparison": null,
+          "screenshots": [],
+          "videos": [
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v2.0.0/rhib-helm/helm.webm",
+              "poster": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v2.0.0/rhib-helm/helm.jpg",
+              "caption": "The same boats making the same turn. The earlier starboard view is on the left. The new Helm view on the right keeps the driver and the crossing launch in sight."
+            }
+          ]
+        },
+        {
+          "slug": "ridge-duel",
+          "title": "Tank tracks follow the crest",
+          "kind": "improved",
+          "summary": "Individual shoes wrap around the road wheels as the Abrams, T-55 and Bradley cross uneven ground. Their engines stay audible at idle and the running gear grows louder as the tracks pick up speed.",
+          "body": "The inner and outer tracks travel different distances through a turn. On both tanks, the main barrel slides back into its mount when it fires, while the suspension absorbs the kick. The T-55’s upper run sags between the wheels, and the two tanks have distinct engine notes.\n\nTracked vehicles stir a low trail of dust as the shoes lift off the road.",
+          "layoutComparison": null,
+          "screenshots": [
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v2.0.0/ridge-duel/before.jpg",
+              "caption": "The previous wheel faces and track shoes on the same slope."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v2.0.0/ridge-duel/after.jpg",
+              "caption": "Stamped road wheels and hinged tread shoes in the same climb."
+            }
+          ],
+          "videos": [
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v2.0.0/ridge-duel/track-dust.webm",
+              "poster": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v2.0.0/ridge-duel/track-dust.jpg",
+              "caption": "Follow the second Abrams on the same village road. On the right the dust spreads behind both treads and the impressions stay visible through it."
+            }
+          ]
+        },
+        {
+          "slug": "rock-crags",
+          "title": "Jagged crags on the hills",
+          "kind": "improved",
+          "summary": "Bare rock on the hills breaks into knobs, ledges and clefts a few metres deep, so crests are jagged and rock faces have real relief up close.",
+          "body": "- Steep bare rock now has knobs, ledges and clefts up to a few metres deep, finer than the hills' own shape, so crests break into a jagged line instead of a smooth dome.\n- The distant mountains break into crags, ribs and gullies too, and their snowfields lie broken along them instead of in smooth sheets.\n- **Alpine haze** (High and above) is lighter, so the far crags, snowfields and woods keep their detail while the ranges still stand apart from the sky. Pale scree gathers below the far crags too.\n- Everything uses the same rock: men stand on it, it blocks sight and fire, and shells dig into it where they land.\n- Routes over the hills are unchanged: the crags roughen the rock without making new paths impassable.\n- Mission maps keep their terrain exactly as before.",
+          "layoutComparison": null,
+          "screenshots": [
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v2.0.0/rock-crags/comparison.jpg",
+              "caption": "The same crags before and after: at golden hour (seed 11) and by day (seed 3)."
+            }
+          ],
+          "videos": []
+        },
+        {
+          "slug": "rock-gullies",
+          "title": "Rain-cut gullies on the rock",
+          "kind": "improved",
+          "summary": "Steep rock faces, on the hills and the distant mountains, are cut by gullies that run downhill and branch as they gather.",
+          "body": "- Steep rock is scored by rain gullies, as real weathered faces are: they run straight downhill on every face and branch where they gather.\n- Close up they are a few metres apart; on the distant mountains they are spaced like real ravines and soften with distance.\n- This is a change of look only: the ground units stand and fight on is unchanged.",
+          "layoutComparison": null,
+          "screenshots": [
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v2.0.0/rock-gullies/comparison.jpg",
+              "caption": "Before and after: a crag at golden hour, and a distant peak from a low camera (seed 11)."
+            }
+          ],
+          "videos": []
+        },
+        {
+          "slug": "rolling-valleys-and-meadows",
+          "title": "Rolling valleys, carved hills and living meadows",
+          "kind": "improved",
+          "summary": "Battlefield valleys roll instead of lying flat, hills climb out of the ground through stony shoulders and branching gullies, and meadows change with the land: lush in hollows and by the water, dry on crests.",
+          "body": "- **The valley floor rolls.** Gentle rises and dips a few metres high run across the open ground, enough to hide a squad from a distant gun. Roads ride over them; towns, bases, rivers and ponds keep their level ground.\n- **Hills look carved, not stamped.** They rise out of the plain on soft aprons, break into spurs and gullies where they meet a road or the shore, and lose the evenly combed flanks they used to have. Rock near and far now shares the same grey stone.\n- **Meadows follow the land.** Grass stays lush in hollows, along drainage lines and beside rivers and ponds, and dries to straw on crests and slopes facing the sun. Pastures differ from one field to the next, and the grass tufts grow thicker and greener on damp ground.\n- **Stony ground** lies between meadow and crag on hill shoulders, pale talus gathers at the foot of the crags, and rock seen close up keeps its cracks and grain. The muddy patches that slow men down now look like dark rutted soil.\n- **Cloud shadows** are cloud-sized now, drifting slowly over the ground, grass and bushes, instead of small dark blotches that spotted every field.\n- **Distant woods** grow in broad, ragged stands that climb the mountain gullies and fade into the haze with the slopes they stand on, instead of dark stripes along the far shore.\n- Mission maps keep their terrain exactly as before.",
+          "layoutComparison": null,
+          "screenshots": [
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v2.0.0/rolling-valleys-and-meadows/comparison.jpg",
+              "caption": "The same views before and after (seed 3, day): the whole valley, a hill above the river, and a rock knob by a pond."
+            }
+          ],
+          "videos": []
+        },
+        {
+          "slug": "shared-guns-and-turret-fittings",
+          "title": "Better-built guns, sights, hatches and lights across the roster",
+          "kind": "improved",
+          "summary": "Machine guns, cannon, sights, cupolas, hatches, reactive armour, rotor masts, exhausts and lights now share one detailed design per part, used by every vehicle that carries them.",
+          "body": "- Machine guns have proper receivers, perforated barrel jackets, carrying handles, spade grips and sealed\n  ammunition cans with their belts; cannon have ported muzzle brakes, and miniguns and the A-10's GAU-8\n  clamped barrel clusters. Missile tubes have end collars and covers.\n- Turret rings are bolted, sight heads have framed windows under armoured visors, commander's cupolas have\n  hooded vision blocks, and roof hatches sit on seals with hinges and handles. Reactive armour bricks have\n  bolted covers, and tank guns' fume extractors taper onto the barrel.\n- Helicopter rotor masts have bolted collars and their turbine exhausts are open, sooty pipes. Aircraft and\n  boats show red to port and green to starboard in proper sidelights, with glossy beacons and masthead lights.\n- Trucks have beaded, bolted fenders and strapped fuel tanks with filler caps; rolled tarps are strapped.\n- Every gun still fires from exactly the same point. Twenty parts are now shared across more than a hundred\n  vehicle models, so future improvements to any of them reach the whole roster at once.",
+          "layoutComparison": null,
+          "screenshots": [
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v2.0.0/shared-guns-and-turret-fittings/comparison.jpg",
+              "caption": "Matched close-ups: before on the left, after on the right. Abrams and Bradley turrets, Varsuk reactive armour, the Hunter's weapon station, HEMTT fenders and fuel tank, and the Kajman's rotor mast and exhausts."
+            }
+          ],
+          "videos": []
+        },
+        {
+          "slug": "shared-vehicle-construction",
+          "title": "More convincing vehicle construction",
+          "kind": "improved",
+          "summary": "Truck cabins, tanker bodies, windows, steps and recovery equipment have more fitted detail, with shared construction carrying improvements across related vehicles.",
+          "body": "- Truck cabs gain fitted window surrounds, joined door hardware, raised wipers and gripped boarding treads. Tankers have rounded dished ends, straps and mounting saddles.\n- Storage lids, armour skirt attachments, cargo restraints and recovery winches have more distinct construction. Aircraft gain recessed duct faces, hollow rocket tubes and detailed landing struts; boats share improved seats and mooring fittings.\n- Thirty construction techniques now share builders across multiple vehicle designs. Some changes are subtle at normal camera distances; shared loft and profile code preserves the existing silhouettes while making later improvements easier.",
+          "layoutComparison": null,
+          "screenshots": [
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v2.0.0/shared-vehicle-construction/construction.jpg",
+              "caption": "Matched close-ups: before on the left, after on the right. Cab frames, tanker ends, recovery winches, helicopter glazing and rocket tubes, aircraft intakes, and boat seating."
+            }
+          ],
+          "videos": []
+        },
+        {
+          "slug": "sling-load-straps",
+          "title": "See the straps holding a sling load",
+          "kind": "improved",
+          "summary": "Look down from a helicopter’s cargo door and follow all four straps to the vehicle below.",
+          "body": "The cable moves with the helicopter’s belly as it banks. The straps have width and catch the light on the way down to the vehicle body. The suspended vehicle keeps its wheels and tracks still, and its suspension settles as it crosses a bank or bridge.\n\nThe cargo-door view follows the vehicle through the helicopter’s turns. When the straps come off, the camera looks back along its original sightline.",
+          "layoutComparison": null,
+          "screenshots": [],
+          "videos": [
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v2.0.0/sling-load-straps/bridge.webm",
+              "poster": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v2.0.0/sling-load-straps/bridge.jpg",
+              "caption": "The same Sky Hook crossing, before on the left and after on the right. Watch the gap above the tracked vehicle as it passes over the bridge camera."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v2.0.0/sling-load-straps/cargo-door.webm",
+              "poster": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v2.0.0/sling-load-straps/cargo-door.jpg",
+              "caption": "Watch the Nyx as it swings across the bridge. The older door camera is on the left. The new view follows the hull on the right."
+            }
+          ]
+        },
+        {
+          "slug": "trench-realism",
+          "title": "Trenches dug, used and repaired",
+          "kind": "improved",
+          "summary": "Crews dig usable trenches in stages, with sloped entrances, fire steps and rear bays. Bombardment collapses individual sections that engineers can clear again.",
+          "body": "- Construction leaves a shallow, usable ditch before the finished trench. Work remains when crews are interrupted; more workers help only while there is space to dig.\n- Open ends slope to the surface, junctions stay connected, and duckboards follow the terrain. Fire steps and occasional supply or resting bays keep the passage clear.\n- Uneven spoil, exposed soil and roots, muddy boot marks, supplies and broken timber give the works a lived-in appearance. Shovels lift and throw soil.\n- Troops step aside in narrow passages and slow down to climb a high lip. Trench protection also works on elevated terrain.\n- Shell damage fills individual sections with earth instead of deleting the trench. Engineers clear them using the existing repair order.\n- Digging takes longer than before, scales with length, and is slower through compacted roads. Timber shelters offer modest physical cover, not bunker protection.\n\nThe defensive-battle scenario now carries its trench line across both flank emplacements.",
+          "layoutComparison": null,
+          "screenshots": [
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v2.0.0/trench-realism/comparison.jpg",
+              "caption": "The same trench network before and after: irregular earthwork, fire steps and recessed rear bays."
+            }
+          ],
+          "videos": [
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v2.0.0/trench-realism/digging.webm",
+              "poster": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v2.0.0/trench-realism/digging.jpg",
+              "caption": "Engineers excavate a trench, then clear a damaged section. Controlled demonstration at normal simulation speed; damage is applied at 18 seconds."
+            }
+          ]
+        },
+        {
+          "slug": "vehicle-antennas-mirrors-barrels",
+          "title": "Shared antennas, mirrors and hollow gun barrels",
+          "kind": "improved",
+          "summary": "Vehicle radio whips gain spring mounts, mirrors gain housings and reflective faces, and major tank and artillery guns gain open muzzles and segmented thermal sleeves.",
+          "body": "- The core, NATO, CSAT and independent vehicle builders share tapered radio whips with bolted bases, rubber boots and helical springs.\n- Ten vehicle families share rear-view mirror construction, including trucks, MRAPs, Humvees and technicals. Mirror glass uses its own reflective finish.\n- Nine tank and artillery families share open gun tubes. Family-specific extractors, muzzle sensors and animation pivots remain authored separately; the T-55 retains its unsleeved barrel.\n- Small attachments are most visible close up. Fixed fittings reuse the existing material batches. Each moving whip uses one pivot and one material batch, driven by one spring per vehicle; no physics bodies or mirror camera are added.\n\n- Nearby visible antennas trail travel and react to acceleration and braking, then settle when stopped. Distant/hidden antennas skip motion updates.",
+          "layoutComparison": null,
+          "screenshots": [
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v2.0.0/vehicle-antennas-mirrors-barrels/details.jpg",
+              "caption": "Combined before/after: hollow barrel, rear-view mirror and spring-mounted antenna."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v2.0.0/vehicle-antennas-mirrors-barrels/vehicles.jpg",
+              "caption": "Combined comparison of 19 representative vehicles; before is left and after is right within each pair."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v2.0.0/vehicle-antennas-mirrors-barrels/components.jpg",
+              "caption": "Shared construction: antenna, mirror face and back, and hollow barrel."
+            }
+          ],
+          "videos": [
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v2.0.0/vehicle-antennas-mirrors-barrels/antenna-motion.webm",
+              "poster": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v2.0.0/vehicle-antennas-mirrors-barrels/antenna-motion.jpg",
+              "caption": "Controlled motion comparison: rigid reference on the left, movement-responsive antenna on the right. Forward, lateral and reverse inputs are followed by settling."
+            }
+          ]
+        },
+        {
+          "slug": "vehicle-detail-40",
+          "title": "Better-built vehicle equipment",
+          "kind": "improved",
+          "summary": "Shared vehicle equipment gains formed container shoulders, open chassis rails, forklift-ready pallets, winch housings and more convincing attachment hardware.",
+          "body": "- Forty refinements improve twenty existing shared assemblies, including seats, storage, mirrors, armour skirts, aircraft gear, rocket pods and marine fittings. Most are close-up details rather than silhouette changes.\n- Fuel cans support different body dimensions while keeping their caps, carrying bars and ribs together. Truck frames have open channel sections, and pallets have real gaps for lifting forks.\n- Tempest ammunition loads use shared pallets with clearance beneath the folded crane. The tractor shares the hollow exhaust stack while retaining its silencer and rain cap.",
+          "layoutComparison": null,
+          "screenshots": [
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v2.0.0/vehicle-detail-40/details.jpg",
+              "caption": "Matched component close-ups: before on the left, after on the right. These shared builders supply the equipment on multiple vehicle designs."
+            }
+          ],
+          "videos": []
+        },
+        {
+          "slug": "vehicle-round-headlights",
+          "title": "Round headlights with fitted optical detail",
+          "kind": "improved",
+          "summary": "Round headlights now have a fitted rim, shallow reflector and ribbed lens detail across 19 vehicle families, while keeping their distinctive housings and guards.",
+          "body": "- Extends from the Hunter to matching round lamps on trucks, light vehicles and armour, including their variants.\n- Preserves protective cages, indicators and older vehicle details such as the T-55's missing infrared lens.\n- Most visible up close. These are unlit lamps; this change does not add headlight beams. Wrecks lose the intact optical detail.",
+          "layoutComparison": null,
+          "screenshots": [
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v2.0.0/vehicle-round-headlights/comparison.jpg",
+              "caption": "Hunter, Zamak and Qilin close-ups: before on the left, shared headlight detail on the right. Matched camera and lighting."
+            }
+          ],
+          "videos": []
+        },
+        {
+          "slug": "vehicle-service-fittings",
+          "title": "Recessed grilles, open exhausts and sewn vehicle stowage",
+          "kind": "improved",
+          "summary": "Military trucks gain deeper radiator grilles and hollow exhaust outlets. Shared rubber mudflaps and strapped canvas bags replace simple blocks across vehicle families.",
+          "body": "- HEMTT, Tempest, Zamak and Hunter share radiator construction while retaining their own grille proportions and slat layout.\n- HEMTT and Tempest exhausts have rolled rims, soot-lined interiors and lower heat shields.\n- HEMTT, Tempest, Hunter, Ifrit and Strider mudflaps gain a curved lower edge, reinforcing ribs and mounting clamps.\n- Padded stowage across NATO, CSAT and independent vehicles shares softened canvas shells, sewn welts, straps and buckles. Slammer and Scorcher storage supports become shallow trays so the bags are visible.\n- The shared parts join existing material batches and keep their vehicle's animation pivots.",
+          "layoutComparison": null,
+          "screenshots": [
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v2.0.0/vehicle-service-fittings/hemtt-after.jpg",
+              "caption": "After: a recessed radiator core behind angled slats, and a soot-lined open exhaust above the cab."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v2.0.0/vehicle-service-fittings/hemtt-before.jpg",
+              "caption": "Before: the same HEMTT cab, camera and lighting on main before this change."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v2.0.0/vehicle-service-fittings/slammer-after.jpg",
+              "caption": "After: padded bags and straps are visible on shallow storage trays."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v2.0.0/vehicle-service-fittings/slammer-before.jpg",
+              "caption": "Before: solid storage blocks conceal the Slammer’s bags."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v2.0.0/vehicle-service-fittings/fittings.jpg",
+              "caption": "Shared builders: framed radiator grille, hollow exhaust, clamped rubber mudflap and padded canvas stowage."
+            }
+          ],
+          "videos": []
+        },
+        {
+          "slug": "vehicle-shared-assemblies",
+          "title": "Shared vehicle baskets, guards and equipment",
+          "kind": "improved",
+          "summary": "Vehicle equipment gains open stowage baskets, toothed sprockets, fitted panels and shared construction for aircraft, truck and marine fittings.",
+          "body": "Open baskets replace solid walls, radar arrays gain framed apertures, and equipment receives formed edges and attachment hardware. Twenty-two shared construction groups now supply compatible parts across multiple vehicle designs, so later improvements can reach them together.\n\nThe pass also moves more doors, windows, grilles, bins, steps, seats and exhausts onto existing shared builders. Specialized shapes retain their own construction; vehicle silhouettes and animation ownership are preserved.",
+          "layoutComparison": null,
+          "screenshots": [
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v2.0.0/vehicle-shared-assemblies/comparison.jpg",
+              "caption": "Matched close-ups, before left and after right: Abrams basket and storage, Hunter bumper and light guards, Tigris radar and gun mounts. Small hardware is most visible up close."
+            }
+          ],
+          "videos": []
+        },
+        {
+          "slug": "vehicle-shared-equipment",
+          "title": "Shared vehicle equipment with more convincing construction",
+          "kind": "improved",
+          "summary": "Fuel cans, ammo cans, shackles, smoke tubes, periscopes, hatches, tail lights, lifting eyes and rectangular headlights gain shared detail across the vehicles that use them.",
+          "body": "- Fuel cans gain pressed ribs, filler caps and open handles. Sealed ammunition cans gain fitted lids, latches and handles that stay attached when rotated.\n- Tow shackles and lifting eyes now have open holes, pins and mounting feet. Smoke tubes have hollow mouths while retaining each vehicle's bank layout.\n- Periscopes gain sealed glass and protective lips; closed round hatches gain gaskets, hinge pins and open handles.\n- Tail lights and rectangular headlights gain ribbed optical detail. Matching civilian round and fog lamps also use the shared round-headlight construction.\n- Vehicle-specific silhouettes, guards, mounts and special equipment are retained. These details are most visible up close; lamps remain unlit, and wrecks lose intact optical surfaces.",
+          "layoutComparison": null,
+          "screenshots": [
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v2.0.0/vehicle-shared-equipment/stowage-recovery.jpg",
+              "caption": "Jerrycans, sealed ammo cans and tow shackles. Matched construction rigs: before left, after right."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v2.0.0/vehicle-shared-equipment/armour-equipment.jpg",
+              "caption": "Smoke tubes, periscope heads and closed round hatches. Matched construction rigs: before left, after right."
+            },
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v2.0.0/vehicle-shared-equipment/lights-lifting.jpg",
+              "caption": "Tail lights, lifting eyes and rectangular headlights. Matched construction rigs: before left, after right."
+            }
+          ],
+          "videos": []
+        },
+        {
+          "slug": "weathered-towns",
+          "title": "Weeds, ivy and fallen-in ruins",
+          "kind": "improved",
+          "summary": "Weeds grow along the foot of walls and ivy climbs some of them, most often old stone. A ruined house's floor is strewn with its fallen roof: soot, charred rafters, broken tiles, plaster and glass.",
+          "body": "- **Weeds** tuft along the foot of about half the house walls and garden walls. They stop at doorsteps.\n- **Ivy** climbs about one plain house wall in eight, and nearer one in three on stone houses.\n- **Ruins:** the roofless houses now look like the roof burned and fell in. You'll see soot where the fire was,\n  charred rafters across the floor, broken tiles, lumps of plaster and brick, and broken glass.\n- It all lies flat or hugs the walls, so it never stands where your men take cover.",
+          "layoutComparison": null,
+          "screenshots": [
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v2.0.0/weathered-towns/comparison.jpg",
+              "caption": "Matched before and after under the same studio camera: a ruined stone house, its roof fallen in on the floor, and a stone house with ivy and weeds."
+            }
+          ],
+          "videos": []
+        },
+        {
+          "slug": "website-lighter-and-shareable",
+          "title": "A lighter website, with a link for every Field Manual entry",
+          "kind": "improved",
+          "summary": "The website downloads far less: the 3D models wait to be asked for, phones skip the hero video and the Updates page shows small thumbnails. Every Field Manual entry has its own link, with its own preview when shared.",
+          "body": "- **3D models wait for you.** The Field Manual's model viewer is the whole game, about 250 MB the first time, so it now waits for Load and says the size. Once you've loaded it on a device, it loads by itself.\n- **Phones and tablets** get the hero's still picture instead of 3.4 MB of video, and **Send to my computer** instead of a Windows download they can't use. On a computer, the page draws first and the footage starts once it has loaded.\n- **Every page loads about a third less code.** The release notes on Home load as you scroll towards them.\n- **The Updates page** lists changes with small thumbnails instead of full-size screenshots: about 4 MB less to open it.\n- **Every Field Manual entry has its own address**, such as `/manual/vehicles/tank`. Shared in a chat or found in a search, each page shows its own title, description and picture. The site now has a sitemap, and an address with no page is reported as missing.\n- **Battles:** with nobody hosting, you can watch the footage or go and play the AI. The recordings section no longer says it's switched off.\n- The leaderboard says when it's early days. The player page no longer jumps as it loads. Headlines read as separate words to screen readers. On a phone, the Manual's chapter tabs show there are more to scroll to.",
+          "layoutComparison": null,
+          "screenshots": [
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v2.0.0/website-lighter-and-shareable/lighter.jpg",
+              "caption": "The Field Manual's 3D models say how big they are before they download. On a phone, Home shows a still and sends the game to your computer."
+            }
+          ],
+          "videos": []
+        },
+        {
+          "slug": "camera-visible-scenery",
+          "title": "Ground cover is ready when the camera arrives",
+          "kind": "fixed",
+          "summary": "Camera cuts and turns show nearby grass, shrubs and scenery on the first frame. The game prepares neighbouring terrain outside the view as you play.",
+          "body": "",
+          "layoutComparison": null,
+          "screenshots": [],
+          "videos": [
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v2.0.0/camera-visible-scenery/comparison.webm",
+              "poster": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v2.0.0/camera-visible-scenery/comparison.jpg",
+              "caption": "The same helicopter pickup from the same camera. Previously (left), bushes filled in during liftoff. The updated view (right) opens with the meadow in place."
+            }
+          ]
+        },
+        {
+          "slug": "coastal-landings",
+          "title": "Landing boats stay visible at the beach",
+          "kind": "fixed",
+          "summary": "Follow a landing boat all the way to the beach and watch the squad move ashore. The host and joining players see the same seabed.",
+          "body": "Runoff from the hills used to pile sediment into the shallows. The beach now keeps its coastal slope, and the map generator cuts the seabed after the hills are in place.",
+          "layoutComparison": null,
+          "screenshots": [],
+          "videos": [
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v2.0.0/coastal-landings/landing.webm",
+              "poster": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v2.0.0/coastal-landings/landing.jpg",
+              "caption": "The same Beachhead landing, seen from the stern. On the left the sand hides the bow and cabin. On the right the boat reaches the waterline and the squad runs up the beach."
+            }
+          ]
+        },
+        {
+          "slug": "fair-supply-and-comebacks",
+          "title": "A fair start on every map, and a way back from behind",
+          "kind": "fixed",
+          "summary": "Both sides now draw the same supply from HQ whatever the map, a side that falls behind gets help from HQ, and tanks, IFVs and attack helicopters wait for their research as intended.",
+          "body": "- **Fair start:** HQ's supply trucks now leave from the first seconds of a battle and run to every FOB once a\n  minute, however close it stands to HQ. Before, the first truck could wait two minutes, and on some maps a start\n  FOB right next to HQ was fed three times as fast as the enemy's, which often decided the battle.\n- **Coming back from behind:** a side holding fewer towns and villages than the enemy gets bigger loads from HQ (a\n  quarter more for each one it's behind by, up to three), and the radio tells you when. The side ahead loses\n  nothing.\n- **Captured supply:** a FOB or town that falls is half burnt by its holders, so taking it gives you half its stock,\n  not all of it.\n- **Reserves:** HQ also sends a reserve squad now and then to a side outnumbered three to one, not only one down to\n  its last few men.\n- **Research:** the Battle Tank, IFV and Attack Helicopter (and the Rebels' Old Tank and BTR) need Armoured\n  Warfare or Foreign Advisers, like every other tank, IFV and attack helicopter. The AA Technical is still there\n  from the start.",
+          "layoutComparison": null,
+          "screenshots": [],
+          "videos": []
+        },
+        {
+          "slug": "mac-update-repair",
+          "title": "Mac updates only when a new version is available",
+          "kind": "fixed",
+          "summary": "Frontline on Mac no longer downloads the same release again on every launch. New releases still install automatically.",
+          "body": "Mac builds use the built-in simulation and do not need the extra simulation library shipped on Windows and Linux. The updater now recognises that, while keeping automatic repair for Windows and Linux installations missing that library.\n\nOn Mac, move Frontline out of the disk image into a writable Applications folder so it can replace the app when an update arrives.",
+          "layoutComparison": null,
+          "screenshots": [],
+          "videos": []
+        },
+        {
+          "slug": "offscreen-camera",
+          "title": "Steadier gameplay recordings",
+          "kind": "fixed",
+          "summary": "Movie recordings now hold their framing when the pointer rests at the edge of the screen. New battles also respect your edge-scrolling preference from the first frame.",
+          "body": "",
+          "layoutComparison": null,
+          "screenshots": [],
+          "videos": []
+        },
+        {
+          "slug": "sling-order-marker",
+          "title": "See which vehicle the helicopter will lift",
+          "kind": "fixed",
+          "summary": "A sling order now flashes a ring around the load, including on raised landing pads.",
+          "body": "The confirmation follows the ground height and clears the edges of the selected cargo.",
+          "layoutComparison": null,
+          "screenshots": [
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v2.0.0/sling-order-marker/pickup.jpg",
+              "caption": "The same pickup order on the Sky Hook landing pad. The updated ring surrounds the Nyx where the player clicked."
+            }
+          ],
+          "videos": []
+        },
+        {
+          "slug": "strike-direction",
+          "title": "Airstrikes follow your drag direction",
+          "kind": "fixed",
+          "summary": "Click the target, drag to choose the run-in angle, then release: bombing runs, gun runs and recon passes now follow the direction you previewed.",
+          "body": "The initial click stays the centre of the strike. A click without dragging keeps the default approach. Mortars, artillery and orbiting support still target an area without a directional drag. Right-click or Escape cancels targeting.",
+          "layoutComparison": null,
+          "screenshots": [],
+          "videos": [
+            {
+              "url": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v2.0.0/strike-direction/drag-to-aim.mp4",
+              "poster": "https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v2.0.0/strike-direction/drag-to-aim.jpg",
+              "caption": "Press, drag to rotate the targeting preview, then release to launch the jet along that line. Scripted mouse input in a live observer battle; silent, normal-speed capture."
+            }
+          ]
+        }
+      ]
+    },
+    {
       "version": "1.0.13",
       "tag": "v1.0.13",
       "name": "Playable character animation playground",
