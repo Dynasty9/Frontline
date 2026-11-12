@@ -23,9 +23,13 @@ static func mesh_glass(k: VehicleModels, parent: Node3D, mesh: Mesh, pos := Vect
 	var pane := Res.mi(parent, mesh, glass_near, pos, rot, false)
 	pane.name = "CabGlass"
 	pane.visibility_range_end = 100.0
+	pane.visibility_range_end_margin = Mats.LOD_FADE
+	pane.visibility_range_fade_mode = GeometryInstance3D.VISIBILITY_RANGE_FADE_SELF
 	var distant := Res.mi(parent, mesh, glass_far, pos, rot, false)
 	distant.name = "CabGlassDistant"
 	distant.visibility_range_begin = 100.0
+	distant.visibility_range_begin_margin = Mats.LOD_FADE
+	distant.visibility_range_fade_mode = GeometryInstance3D.VISIBILITY_RANGE_FADE_SELF
 
 static func interior(k: VehicleModels, origin := Vector3.ZERO, scale := Vector3.ONE) -> void:
 	var m := k._pivot(k.root, origin)

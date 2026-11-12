@@ -1,9 +1,10 @@
 extends Node
 ## The cinematic lighting's rules, without a battle: the presets and how saved
 ## settings take them up, the adaptive shadow fit, which lights get shadows,
-## the physical sky's moods, and which heat sources the heat haze keeps. Run
-## windowed, it also checks that the lens, eye and heat passes compile and run
-## on this graphics card.
+## the physical sky's moods, which heat sources the heat haze keeps, how the
+## rain soaks things and dries off, and what the motion blur asks of the
+## engine. Run windowed, it also checks that the lens, eye, heat and motion
+## blur passes compile and run on this graphics card.
 
 
 func _ready() -> void:
@@ -20,12 +21,50 @@ func check() -> void:
 	_check_heat_sources()
 	_check_heat_pulses()
 	_check_exhaust_markers()
+	_check_rain_wet()
+	_check_motion_blur()
 	if DisplayServer.get_name() != "headless":
 		await _check_passes()
 	else:
 		assert(not CinematicFx.supported())
-	print("CINEMATIC LIGHTING passed: presets, saved settings, shadow fit, light shadows, sky, heat haze")
+	print("CINEMATIC LIGHTING passed: presets, saved settings, shadow fit, light shadows, sky, heat haze, rain, motion blur")
 	get_tree().quit()
+
+
+## A battle that opens in the rain starts soaked; rain setting in wets things
+## over WET_IN seconds, and they dry over DRY_OUT once it stops.
+func _check_rain_wet() -> void:
+	var atmo := Atmosphere.new()
+	atmo.mood = "rain"
+	atmo._wet_tick(0.1)
+	assert(is_equal_approx(atmo.rain_wet, 1.0), "a battle opening in the rain starts soaked")
+	atmo.mood = "golden"
+	atmo._wet_tick(Atmosphere.DRY_OUT * 0.5)
+	assert(is_equal_approx(atmo.rain_wet, 0.5), "half dry after half the drying time")
+	atmo._wet_tick(Atmosphere.DRY_OUT)
+	assert(atmo.rain_wet == 0.0)
+	atmo.mood = "rain"
+	atmo._wet_tick(Atmosphere.WET_IN * 0.25)
+	assert(is_equal_approx(atmo.rain_wet, 0.25), "rain setting in wets things gradually")
+	var fresh := Atmosphere.new()
+	fresh.mood = "day"
+	fresh._wet_tick(0.1)
+	assert(fresh.rain_wet == 0.0, "a dry battle starts dry")
+	atmo.free()
+	fresh.free()
+	RenderingServer.global_shader_parameter_set(&"rain_wet", 0.0)
+
+
+## The velocity buffer is drawn only while the blur wants it, and the camera's
+## own movement blurs only on "Objects + camera", never with Reduce motion.
+func _check_motion_blur() -> void:
+	assert(Settings.LABELS.motion_blur.size() == 3)
+	assert(int(Settings.PRESETS.cinematic.motion_blur) == 1, "Cinematic blurs moving things, not the commander's pans")
+	for p in ["low", "medium", "high", "ultra"]:
+		assert(int(Settings.PRESETS[p].motion_blur) == 0)
+	var fx := CinematicFx.new()
+	assert(not fx.motion_blur and not fx.needs_motion_vectors)
+	fx = null
 
 
 func _check_presets() -> void:
@@ -47,7 +86,7 @@ func _check_presets() -> void:
 		if k != "shadow_fit":
 			assert(not bool(ultra[k]), "Ultra already has %s" % k)
 	# the browser build hides what its renderer can't draw
-	for k in ["light_shadows", "phys_sky", "lens", "shafts", "local_exp", "eye_adapt", "film", "heat_haze"]:
+	for k in ["light_shadows", "phys_sky", "lens", "shafts", "local_exp", "eye_adapt", "film", "heat_haze", "motion_blur"]:
 		assert(k in SettingsPanel.NOT_ON_WEB)
 
 
