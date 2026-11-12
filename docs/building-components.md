@@ -11,7 +11,7 @@ The collision and cover a structure gives (`Structure._define_parts`) never depe
 | `scripts/game/building_materials.gd` | `BuildingMaterials` | Construction materials: surface, colour, dressings, finish |
 | `scripts/game/building_walls.gd` | `BuildingWalls` | Faces (plinths, bands, boards, sheeting, joints, quoins), copings, piers |
 | `scripts/game/building_openings.gd` | `BuildingOpenings` | Windows, sills, heads, shutters, doorways, door leaves, roller shutters, louvres, ribbon glazing |
-| `scripts/game/building_roofs.gd` | `BuildingRoofs` | Gables, hipped roofs (and pyramids), flat roofs with parapets, single-pitch roofs, canopies, north lights; `underside` for seating things on a slope |
+| `scripts/game/building_roofs.gd` | `BuildingRoofs` | Gables, hipped roofs (and pyramids), flat roofs with parapets (and their wear), single-pitch roofs, canopies, north lights; `underside` for seating things on a slope |
 | `scripts/game/building_fittings.gd` | `BuildingFittings` | Gutters, hoppers, downpipes, chimneys, flues, stacks, pipe runs, plant, masts, aerials, flagpoles, lamps, drums, crates, pallets |
 | `scripts/game/building_wire.gd` | `BuildingWire` | Catenary spans, cables, guys with anchors, insulators, barbed strands, wall-top wire |
 | `scripts/game/building_weathering.gd` | `BuildingWeathering` | Ivy, weeds at the foot of walls, the fallen-in roof on a ruin's floor, roof tarps and holes; stains that fade into a wall (soot, rain streaks, scorch), shell scars, bullet strikes, boarded and sandbagged windows |
@@ -142,6 +142,14 @@ battens showing (both `BuildingWeathering`), and one in seven a skylight (`Build
 five of them lit after dark. The form and the patches each draw from a stream of their own, so tints, chimneys
 and aerials are what they were. Roofs are looks only (no collision), so none of this changes cover or movement.
 Render four roofs together with `--building-kinds=roofscape` in the studio stage.
+
+Roofs weather too, each from a stream of its own. Every pitched roof grows two to four patches of moss and
+lichen, most on the back slope: dark green where it holds the damp, pale yellow-grey where it's dry, mottled,
+each kept inside its own slope (clear of the hips and verges). Every flat roof (`BuildingRoofs.flat_wear`) has
+one to three dark rings where rain stood in a hollow, sometimes green with algae, up to two patches of newer
+membrane over old leaks, moss along the foot of a parapet on most, and a vent pipe or two. The stains are
+`BuildingWeathering.stain` on the covering (its own surface, so they fade into it); the fixture keeps a flat
+roof's wear on its deck inside the parapets, and the forty-roof check covers the pitched ones.
 
 ## Yards
 
