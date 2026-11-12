@@ -44,6 +44,7 @@ changes any of them:
 | Groups | Ctrl+1..9 set, 1..9 recall (double-tap to jump there) |
 | Orders | Right-click: move (Shift = fast run; **drag** to set which way they face), attack enemy, build/repair your structure, enter tunnel / MG nest / watchtower. The **cover pips** under the cursor show where each man will end up: green hard cover, lime medium, yellow soft (hides, doesn't stop bullets), grey dot none, red caught in the open; a tick on a pip points the way he'll fire over the barrier, and the label says how (prone, kneeling, standing, round the edges) |
 | High-level | **X attack-move** (or Ctrl+right-click): the squad bounds forward by fire teams, cover to cover, fights whatever it meets, then digs in at the objective. **B defend**: click the area (drag to face) and the squad spreads into the best cover there and holds. **R retreat** to the nearest FOB (routes around known enemy fire, suppression halved). **H hold** |
+| Delegate | **I** opens the intents on the command card: pick **Hold sector**, **Take objective**, **Screen**, **Reserve** or **Ambush**, then click the place (drag toward the enemy to set the front) and the XO carries it out. **Shift+I** takes the selection back; so does any order of your own to one of them. Each intent can have a key of its own (Settings > Controls, unbound to begin with) |
 | One soldier | With a single man picked out: right-click to move him into the best cover at that spot, right-click an enemy to engage, a nest or mortar pit to man it; G / T throw, H hold, R fall back. Any squad order brings him back into the squad |
 | Standing orders | **K stance** (auto, prone, crouch, stand) and **J fire discipline** (fire at will, return fire, hold fire) for squads or one picked-out soldier; for vehicles J and **N target priority** (auto, armour, infantry), **T smoke** (vehicles alone selected), **U dismount**. The command card shows each order in force and drops half the men aboard, or one squad of several |
 | Squad | G grenade, T smoke, F mortar fire mission (mortar teams) |
@@ -1480,6 +1481,41 @@ garrisons, answers attacks on its bases, sends waves at your FOBs and ambushes y
 digs forward tunnel entrances and moves its attack waves through them. AI-vs-AI results swing a lot between
 batches of six games (from 5–1 one way to 5–1 the other with small parameter changes), so the sides are close
 but balance needs real playtesting. With the base defenses, most games last 10–23 minutes.
+
+**Command by intent** (`delegation.gd`): a commander can hand any of his squads and vehicles to his XO with an
+intent instead of an order, and the XO carries it out with the AI commander's own drills, giving the squads
+their orders, giving them again when the fight knocks them off, and reporting on the command net ("XO: Charlie 1,
+Delta 1 - take objective, D4. Wilco.").
+
+- **Hold sector:** the squads spread across the sector facing the way you dragged, each digs in on its piece of
+  the line, and one that is knocked off it (displaced by shellfire, broken contact, chased something) is put
+  back once it has collected itself. Vehicles wait a little behind the line.
+- **Take objective:** a deliberate attack (`attack_plan.gd`), one squad the base of fire and the rest the
+  assault, or one squad's own fire and movement; when the objective is clear they consolidate on it and hold
+  it like a sector. A failed attack is re-formed and sent in again, up to three times, then they hold where they
+  are and the XO says the attack has stalled. A click near a town aims at its square.
+- **Screen:** a thin, wide line well forward, there to see the enemy coming. It reports contacts, and a squad
+  pressed by more than it can hold falls back a bound (45 m) to the next line, twice, then holds.
+- **Reserve:** the squads wait out of the fight until a squad of yours within 260 m is pinned, bleeding or stuck
+  at the fix of an attack, then go to help it, joining its attack plan when it has one, and come back to the
+  waiting place once that fight has gone quiet.
+- **Ambush:** each squad lays an ambush (`ambush_plan.gd`) on the nearest road, side by side along it, on the side
+  you dragged from; sprung or given up, it lays it again a little later for as long as the intent stands.
+- A squad cut down to a third of its men is pulled back to refit and handed back to you, and the XO says so.
+- **Taking them back:** any order of your own to a delegated squad, vehicle or one of its men (a move, an
+  attack, a build, a fire mission), or **Take back**, returns it to your command, and the XO says it is back
+  with you. Delegated units stay yours (and every allied commander can still order them); the AI commander
+  never counts them as its own, so the two never pull a squad different ways.
+- **On the map** each intent is drawn in the side's colour with an XO tag, its grid and phase: a sector's
+  forward edge with its ticks, an objective ring, a screen's dashed line, a reserve's ring (and, committed, the
+  arrow to the fight it went to), an ambush's killing zone; a faint tether runs to it from each squad still on
+  its way. The squads' symbols carry an XO tab, and the order of battle and squad card read "XO HOLD · DEF E5".
+- The intents are commands like any other (`delegate` and `take_back` through `World.execute_cmd`), so a client
+  delegates exactly as the host does; each side's intents reach its players in the team summary.
+- **An AI ally answers your pings** (`CommanderAI.answer_ping`): with an AI commander on your side, an "attack here"
+  or "enemy spotted" ping gets up to two of its free squads (not a garrison, nor one already in an attack)
+  sent in, two as a deliberate attack; "defend here" gets them dug in there; "need support" sends them to you.
+  It says who's coming on the net, or that nobody is free; the squads go back to the company after a few minutes.
 
 ### Imported rifleman and shared impacts
 

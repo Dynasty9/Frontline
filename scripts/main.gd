@@ -363,6 +363,8 @@ func start_local(a: Dictionary) -> void:
 		"gdscript_perception": a.has("gdscript-perception")})
 	Net.set_setting("verbose", a.has("verbose"))
 	Net.set_setting("debug_trucks", a.has("debug-trucks"))
+	# --ai-allies: with --play, an AI commander fights beside you on your side
+	Net.set_setting("ai_allies", a.has("ai-allies"))
 	if a.has("scenario"):
 		# --play: command the Coalition side yourself instead of watching
 		Net.set_setting("scenario", String(a.scenario))
@@ -1400,6 +1402,30 @@ func _process(_dt: float) -> void:
 		for v in world.vehicles:
 			if v.owner_peer == world.local_peer and not v.eid in world.input.sel_vehicles:
 				world.input.sel_vehicles.append(v.eid)
+	# --delegate=KIND,X,Z[,FX,FZ] or KIND,here (at --delegate-at=SECONDS, 2 by default): hand
+	# all your squads and vehicles to the XO with that intent, the way the
+	# Delegate page does (command-by-intent shots); --card-page=intent opens
+	# that page of the orders
+	if args.has("delegate") and world.time >= float(args.get("delegate-at", 2.0)) and not has_meta("delegated"):
+		set_meta("delegated", true)
+		var dp := String(args["delegate"]).split(",")
+		var dsq := []
+		var dvs := []
+		var here := Vector3.ZERO
+		for s in world.soldiers:
+			if s.owner_peer == world.local_peer and s.sid != 0 and not s.sid in dsq:
+				dsq.append(s.sid)
+				here = s.position
+		for v in world.vehicles:
+			if v.owner_peer == world.local_peer and not v.is_auto():
+				dvs.append(v.eid)
+		var dface := Vector3(float(dp[3]), 0, float(dp[4])) if dp.size() > 4 else Vector3.ZERO
+		var dpos := here if dp.size() < 3 else Vector3(float(dp[1]), 0, float(dp[2]))
+		print("DELEGATE %s %d squads %d vehicles at %s" % [dp[0], dsq.size(), dvs.size(), dpos])
+		world.send_cmd({"t": "delegate", "intent": dp[0], "squads": dsq, "vehicles": dvs, "pos": dpos, "face": dface})
+	if args.has("card-page") and world.hud and world.time > float(args.get("shot-at", 8.0)) - 1.0 and not has_meta("card_page"):
+		set_meta("card_page", true)
+		world.hud._card_page = String(args["card-page"])
 	# --report-at=SECONDS: ask the host for the battle statistics then (a client's view of them)
 	if args.has("report-at") and not has_meta("report_asked") and world.time >= float(args["report-at"]):
 		set_meta("report_asked", true)

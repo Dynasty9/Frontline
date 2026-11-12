@@ -60,6 +60,7 @@ var coop: CoCommand  # what the other commanders on our side are doing (every pe
 var squads := {}
 var next_sid := 1
 var commanders: Array = []
+var delegation: Delegation = null  # (server) units handed to the XO with an intent (see Delegation)
 var battle: BattleStats = null  # (server) the record the after-action report is made from
 var report: Dictionary = {}  # the latest after-action report this peer may see (BattleStats.report)
 var mission: MissionDirector = null  # (server) the mission being played, if it is one
@@ -234,6 +235,7 @@ func build() -> void:
 			nav.benchmark(rng)
 		for t in settings.get("ai_teams", []):
 			commanders.append(CommanderAI.new(self, int(t)))
+		delegation = Delegation.new(self)
 		Net.player_left.connect(_on_player_left)
 		Net.player_joined.connect(_on_player_joined)
 		Net.player_rejoined.connect(_on_player_rejoined)
@@ -785,6 +787,8 @@ func _simulate(dt: float) -> void:
 	tp = _p("rules + fog", tp)
 	for c in commanders:
 		c.tick(dt)
+	if delegation:
+		delegation.tick(dt)
 	if mission:
 		mission.tick(dt)
 	tp = _p("AI commanders", tp)
@@ -2092,7 +2096,25 @@ func execute_cmd(peer: int, d: Dictionary) -> void:
 	if not t in ["unit", "dismount", "stance", "roe", "prio", "pop_smoke"]:
 		for sq in sqs:
 			sq.order_n += 1
+	# any order of your own to a delegated unit takes it back from the XO,
+	# and he says so on the net (building and fire missions as much as moves);
+	# standing orders (stance, fire discipline, target priority) and popping
+	# smoke are only how they fight, and leave them with him
+	if delegation and peer > 0 and not t in ["delegate", "take_back", "stance", "roe", "prio", "pop_smoke"]:
+		delegation.release(sqs, vehs, "back under your command")
 	match t:
+		"delegate":
+			# hand them to the XO with an intent: hold a sector, take an
+			# objective, screen, wait in reserve, ambush (see Delegation)
+			var kind := String(d.get("intent", ""))
+			if delegation and peer > 0 and kind in Delegation.KINDS and d.has("pos"):
+				var dsq := sqs.filter(func(q): return q.kind not in ["crew", "r_crew"])
+				take_command(peer, dsq, vehs)
+				delegation.assign(peer, team, kind, dsq, vehs, d.pos, d.get("face", Vector3.ZERO))
+		"take_back":
+			if delegation:
+				if delegation.release(sqs, vehs, "back under your command").is_empty() and peer > 0:
+					send_msg_to(peer, "info", "None of those were delegated.")
 		"move":
 			take_command(peer, sqs, vehs)
 			var pos: Vector3 = d.pos
@@ -2160,6 +2182,8 @@ func execute_cmd(peer: int, d: Dictionary) -> void:
 			var us = entities.get(int(d.get("soldier", 0)))
 			if us is Soldier and can_command_unit(peer, us.team, us.owner_peer):
 				if us.squad:
+					if delegation and peer > 0:
+						delegation.release([us.squad], [], "back under your command")
 					take_command(peer, [us.squad], [])
 				elif peer > 0 and us.owner_peer < 0:
 					us.owner_peer = peer

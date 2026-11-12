@@ -186,6 +186,11 @@ func _answer(cmd: String, req: Dictionary) -> Variant:
 			return _query(w, req)
 		"stats":
 			return {"t": w.time, "counters": w.stats, "report": w.battle.summary()}
+		"ping":
+			# a commander's ping, as the host receives it ("peer" 1: you, in a game loaded with play)
+			var pd: Dictionary = _decode(req)
+			w.coop._ping_from(int(pd.get("peer", 1)), String(pd.get("kind", "look")), pd.get("pos", Vector3.ZERO), 0)
+			return {"t": w.time}
 		"hash":
 			return {"t": w.time, "hash": _hash(w), "entities": w.entities.size()}
 	return {"ok": false, "error": "unknown command: %s" % cmd}
@@ -289,7 +294,7 @@ func _query(w: World, req: Dictionary) -> Dictionary:
 				if (team == -9 or sq.team == team) and (kind == "" or sq.kind == kind) and (ids.is_empty() or ids.has(sq.sid)):
 					var alive: Array = sq.alive_members()
 					out.append({"id": sq.sid, "kind": sq.kind, "name": sq.display_name(), "team": sq.team, "owner": sq.owner, "order": sq.order,
-						"drill": sq.drill, "cleared_houses": sq.cleared.keys(), "morale": roundi(sq.morale), "men": sq.members.size(), "alive": alive.size(),
+						"drill": sq.drill, "intent": w.delegation.kind_of_squad(sq.sid) if w.delegation else "", "cleared_houses": sq.cleared.keys(), "morale": roundi(sq.morale), "men": sq.members.size(), "alive": alive.size(),
 						"pos": _xz(sq.centroid()) if not sq.members.is_empty() else null})
 		"soldiers":
 			for s in w.soldiers:

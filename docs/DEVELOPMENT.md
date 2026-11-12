@@ -286,6 +286,9 @@ Scenarios, AI-vs-AI battles and missions run offline: they take no port, so any 
 --cursor=0.5,0.4 --order-mode=defend --select-all     fake the mouse position / order mode (cover preview shots)
   --place=trench [--place-from=X,Z]                   with --cursor: show the placement ghost (or a dragged line)
 --scenario=... --play                                 command the Coalition side of a scenario instead of watching
+--delegate=KIND,X,Z[,FX,FZ] | KIND,here               hand all your units to the XO with an intent (at --delegate-at=S, 2 by default)
+--card-page=intent                                    open that page of the command card (Delegate shots)
+--aivai --play --ai-allies                           an AI commander fights beside you on your side
 --focus-fob=0|1                                       keep the camera on that side's first FOB
 --focus-town[=dx,dz] / --focus-decor=kind[,n]         camera on the town, or on a piece of street furniture
 --focus-vehicle=kind                                  camera on the first vehicle of a kind (--blast-at=f,0,SIZE,T blows it up)
@@ -444,10 +447,11 @@ run side by side too (determinism.test.mjs: the full-map battle, the longest tes
 | command | fields | answers |
 | --- | --- | --- |
 | `hello` | | `version`, `net` (NET_VERSION), `tps`, `headless` |
-| `load` | one of `scenario`, `mission`, `battle: true` (AI vs AI); `seed`, `play`, `autoplay`, `static`, `verbose` | `t` (0), `seed`, and how many `soldiers`, `vehicles`, `structures`, `squads`; a fresh battle each time |
+| `load` | one of `scenario`, `mission`, `battle: true` (AI vs AI); `seed`, `play`, `ai_allies` (with `play`: an AI commander on your side too), `autoplay`, `static`, `verbose` | `t` (0), `seed`, and how many `soldiers`, `vehicles`, `structures`, `squads`; a fresh battle each time |
 | `step` | `seconds`, or `ticks` | `t`, `ticks` run, `winner` (-1 while it goes on) |
 | `order` | `team` (0 or 1: that side's AI, which owns a scenario's squads too) or `peer` (1: you, loaded with `play`); `t` and the order's fields as `World.execute_cmd` takes them, positions as `{"v3": [x, z]}` | `squads`, `vehicles`: how many of those listed the order reached |
 | `query` | `what`: `world`, `squads`, `soldiers`, `vehicles`, `structures`; `team`, `kind`, `ids` | the list (positions as `[x, z]`; a vehicle's `yaw`, `speed` along its heading and `vel` over the ground too); structures leave out trees and floors unless asked for by `kind` |
+| `ping` | `peer` (1: you), `kind` (`attack`, `defend`, `help`...), `pos` | a co-commander's ping as the host receives it (an AI ally answers some) |
 | `stats` | | `counters` (every `world.stat`), `report` (the after-action summary) |
 | `hash` | | `hash`: a fingerprint of the whole simulation; two runs from one seed agree on it tick for tick |
 | `errors` | | `count` and the `recent` script errors |
