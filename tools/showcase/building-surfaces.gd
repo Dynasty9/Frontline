@@ -221,6 +221,15 @@ func _subject(kind: String) -> Node3D:
 			# a farm's barn as the farmsteads build it (weatherboarded, where
 			# the material exists; before it, a house of the colour it drew)
 			return _house(13.0, 10.0, 5 if BuildingMaterials.HOUSE.size() > 5 else 0, false)
+		"rubble":
+			# rubble as a fallen wall leaves it, and a heap inside a ruin
+			var heaps := Node3D.new()
+			for spec: Array in [[Vector3(-1.9, 0, 0), Vector3(3.2, 0, 1.2), 301, 0.2], [Vector3(1.9, 0, 0.3), Vector3(2.2, 0, 1.4), 302, -0.5]]:
+				var heap := Structure.preview_model("rubble", -1, 0, spec[1], false, spec[2])
+				heap.position = spec[0]
+				heap.rotation.y = spec[3]
+				heaps.add_child(heap)
+			return heaps
 		"house_open":
 			# the roof hidden, as when men are inside: the room as they see it
 			return _house(9.0, 7.6, 1, false, false)

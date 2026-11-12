@@ -749,7 +749,8 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   third of the windows, in the barracks and the research post, under the factory's north lights and in the door
   lanterns (brightest at night, a glimmer on a dark day). Weeds grow at the foot of walls and ivy up some of
   them (most often on old stone), and a ruin's floor carries its fallen roof: soot, charred rafters, broken
-  tiles, plaster and glass. The war shows on the walls: bullet strikes, the odd shell hit blown through the render
+  tiles, plaster and glass; where a wall has come down, a heap of broken masonry with brick lumps, plaster slabs,
+  a charred joist and bent rods sticking out. The war shows on the walls: bullet strikes, the odd shell hit blown through the render
   to the brick, soot over a window or door where a fire was, rain streaks under the sills, and windows taped,
   boarded across or sandbagged along the sill. Round the houses are what the people in them keep: wheelie bins at a front corner,
   pots of flowers by the door, a bicycle against a side wall, and out the back a woodpile and chopping block, a

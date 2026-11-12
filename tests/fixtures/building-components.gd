@@ -418,6 +418,17 @@ func _ready() -> void:
 		roof.free()
 	check(tops.size() >= 8, "roofs are pitched differently (%d heights)" % tops.size())
 
+	# A rubble heap keeps to the boxes it covers with (a joist or a rod may
+	# stick out a little, lumps at its edges bed into the ground), in every
+	# size a fallen wall leaves.
+	for s in 10:
+		for sz: Vector3 in [Vector3(3.2, 0, 1.2), Vector3(2.2, 0, 1.4), Vector3(1.4, 0, 1.0)]:
+			var rb := Structure.preview_model("rubble", -1, 0, sz, false, 300 + s)
+			var box := _bounds(rb, Transform3D.IDENTITY)
+			check(rb.get_child_count() > 0 and box.position.y >= -0.15 and box.end.y <= 2.2, "a rubble heap builds, no higher than a joist sticking out (%s)" % box)
+			check(absf(box.get_center().x) < 0.5 and box.size.x <= sz.x + 1.0 and box.size.z <= maxf(1.0, sz.z) + 1.0, "a rubble heap keeps to its footprint (%s, %s)" % [sz, box])
+			rb.free()
+
 	# A farm's barn: weatherboarded walls, a steeper sheet roof with no
 	# chimney, straw on a bare floor, in each of its three colours.
 	check(BuildingMaterials.house(5) == "timber" and BuildingMaterials.house(11) == "timber", "a barn is weatherboarded")

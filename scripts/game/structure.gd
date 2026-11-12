@@ -2588,6 +2588,8 @@ func _build_model() -> void:
 			col = BuildingMaterials.house_color(int(size.y), col)
 		if skind in ["house_wall", "rubble", "crates"]:
 			col = Res.vary(col, 0.05, rng)
+		if skind == "rubble":
+			continue  # (drawn as a heap, below)
 		if skind == "house_wall":
 			# (what it was tinted, for stains to fade into: see _tone)
 			var drawn := Res.mat(col).albedo_color
@@ -2638,6 +2640,9 @@ func _build_model() -> void:
 			BuildingWire.topping(tk, p.s.x, top, 1.0)
 		"house_wall":
 			_house_wall_detail(rng)
+		"rubble":
+			# a heap of broken masonry over the boxes it covers with
+			BuildingWeathering.heap(_kit(rng), size.x, maxf(1.0, size.z), rng)
 		"floor":
 			# a rug in most houses' main room, lying flat
 			if size.x > 3.0 and size.z > 3.0 and rng.randf() < 0.65 and variant != 2:

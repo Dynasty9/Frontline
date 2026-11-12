@@ -118,6 +118,15 @@ stain to exactly the tint the wall's body was drawn in (`Structure._tone`), so i
 edge; the fixture checks the rim comes back to the wall's colour. Everything stays within a hand's breadth of the
 face, so cover is unchanged.
 
+## Rubble
+
+A heap of rubble (where the map has a house wall down, or where one is brought down in a fight) is
+`BuildingWeathering.heap` over the same boxes it always covered with: a faceted mound of broken masonry, highest
+at a crown off to one side, with lumps of brick (some still mortared together) and slabs of painted plaster on
+it, a joist or two run up out of it (charred or bare), and reinforcing rods bent out of it. Only a joist or a rod
+stands proud of the cover boxes, and lumps at its edges bed into the ground; the fixture checks every size a
+fallen wall leaves. Render two with `--building-kinds=rubble`.
+
 ## Barns
 
 A farmstead's barn is built as a house but weatherboarded: `BuildingMaterials.HOUSE` ends in `timber`, and
