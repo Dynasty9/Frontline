@@ -14,6 +14,7 @@ The collision and cover a structure gives (`Structure._define_parts`) never depe
 | `scripts/game/building_roofs.gd` | `BuildingRoofs` | Gables, flat roofs with parapets, single-pitch roofs, canopies, north lights |
 | `scripts/game/building_fittings.gd` | `BuildingFittings` | Gutters, hoppers, downpipes, chimneys, flues, stacks, pipe runs, plant, masts, aerials, flagpoles, lamps, drums, crates, pallets |
 | `scripts/game/building_wire.gd` | `BuildingWire` | Catenary spans, cables, guys with anchors, insulators, barbed strands, wall-top wire |
+| `scripts/game/building_weathering.gd` | `BuildingWeathering` | Ivy, weeds at the foot of walls, the fallen-in roof on a ruin's floor |
 | `scripts/game/building_furnishings.gd` | `BuildingFurnishings` | Curtains, blinds, nets, window boxes, door lanterns, TV aerials; inside: linings and skirting, radiators, pictures, mirrors, clocks, shelves, rugs |
 
 ## The kit
@@ -82,7 +83,7 @@ walls a picture or two, a mirror, a clock or a shelf of books. A rug lies on mos
 **Nothing in a room may stand where a man does.** `Cover` puts fighting positions half a metre off both faces
 of every house wall, and men cross the room's middle. So room things hang flat on the walls (within a hand's
 breadth below head height; shelves stand out only above 1.85 m) or lie flat on the floor. The fixture samples
-the space a standing man takes along a wall for every seed of `wall_things`.
+the space a standing man takes along a wall over sixteen seeds of `wall_things`.
 
 **Lamplight.** The `window_lit` surface is glass with `lit` set: it glows warm by `window_glow`, a global
 shader value (registered in `project.godot`) that `Atmosphere.lamplight(mood)` sets as the time of day changes:
@@ -91,6 +92,17 @@ where it is, so a batch keeps every room's own. About a third of house windows h
 glass), most barracks windows and the research post's glazing do, and so do the factory's north lights and the
 door lanterns. It is an emissive surface, not a light: it costs nothing per window and casts no light round it.
 Render a building at night with `--building-night` in the studio stage.
+
+## Weathering and ruins
+
+`BuildingWeathering` adds what time and the war leave. Weeds tuft along the foot of about half the house walls
+(stopping at doorsteps) and of half the garden walls; ivy climbs about one plain house wall in eight, nearer one
+in three on stone houses. A ruined house's floor (mapgen marks it, variant 1, without drawing any random
+numbers) carries its fallen roof: soot where it burned, charred rafters lying across the room, broken tiles,
+lumps of plaster and brick, glass. Like furnishings these keep out of a man's way: ivy and weeds within a hand's
+breadth of the wall and below the eaves, a ruin's debris inside the room and no higher than an ankle; the
+fixture checks both over ten seeds. Lived-in and weathering choices each draw from a stream of their own
+(seeded from the structure's), so adding either never changes a house's chimney, shutters, panes or doors.
 
 ## Openings stay open
 
@@ -137,7 +149,8 @@ godot --path . tools/showcase/building-surfaces.tscn -- --building-out=/tmp/part
 ```
 
 `--building-single` gives one 1600×900 close-up per subject, `--building-rear` the back quarter, `--building-night`
-the lamps lit with the sun down (and `house_open` shows a house without its roof, as when men are inside), and
+the lamps lit with the sun down (`house_open` shows a house without its roof, as when men are inside, and
+`house_ruin` a ruin with walls down), and
 `--building-kinds=` a selection: the named subjects (`house_pitched`, `house_flat`, `house_window`, `barracks`,
 ...), any structure as `kind:side[:variant]`, or with `--building-components` the parts (`wall_brick`,
 `roof_sheet`, `window_shutters`, `door_steel`, `gutter_downpipe`, `wire_topping`, ...). The stage builds the

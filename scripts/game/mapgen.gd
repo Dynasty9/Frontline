@@ -1105,7 +1105,8 @@ func _house(c: Vector3, w: float, d: float, axis: float, street_side: float, yar
 	var b := Basis(Vector3.UP, axis)
 	var color := rng.randi() % Structure.HOUSE_COLORS.size()
 	var ruined := rng.randf() < ruin_p
-	_spawn("floor", c, axis, -1, {"size": Vector3(w, 0.06, d)})
+	# (a ruin's floor is marked, so it's drawn with the roof fallen in on it)
+	_spawn("floor", c, axis, -1, {"size": Vector3(w, 0.06, d), "variant": 1 if ruined else 0})
 	_unplace_last()
 	_place([Vector2(c.x, c.z), half, axis])
 	# four walls: front faces the street
