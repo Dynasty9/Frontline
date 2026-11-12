@@ -37,6 +37,6 @@ For a mix revision, keep the cut points fixed and compare editions with the audi
 
 The actual menu map comes in over the final burst. The menu emblem and wordmark appear first, followed by the free Windows, macOS and Linux invitation and the open-source license. The game score resolves over the card.
 
-## Publish the screening room
+## Screen archived edits locally
 
-The website’s `/cutting-room` page includes the previous homepage film and six milestone edits (00, 07, 13, 21, 26 and 30), their viewing notes, timed comparisons, captions when available, and downloadable shot recipes. Run `python3 tools/showcase/trailer-review/publish.py build/trailer-review` from the repository root to refresh its media and index. The final cut retains its native resolution. Earlier editions use smaller screening copies with the complete soundtrack. Open the ignored local `build/trailer-review/index.html` for every original movie. Keep unused takes, alternate renders and editing comparisons there or under `build/`.
+Open the generated `build/trailer-review/index.html` to compare archived movies locally. Keep alternate renders and editing comparisons under `build/`.

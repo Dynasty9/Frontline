@@ -106,7 +106,7 @@ On other platforms omit the three macOS embedded-mode switches. For a live prese
 
 Add `--ridge-seed=13` after the final `--` to see a different route and winner. Each crew chooses among supply posts, relay posts and a forward objective. The west ridge uses the game’s Abrams rig and the east ridge its T-55A. The film reads the same named markers returned by `Entity.camera_mounts()` that F9 cycles in the game. Model-specific views attach to the animated part in its local coordinates. The opening overlook shows their separation. The optical insert uses a camera on the Abrams turret and filters the soundtrack while the eyepiece is on screen. The camera follows their decisions, and the capture ends after the winning shot. The one-minute movie uses the 30 fps capture above. Pass `--verify-ridge-duel` after the final `--` to log camera cuts, discharges and tracer arrivals in 60 Hz simulation ticks. The film uses each vehicle’s game cooldown. The pose export records each shot’s flight time for the Cycles cut. Keep the pose export at 30 fps.
 
-The [native Godot recording](../../web/public/media/edits/films/ridge-duel-2026-11-11.mp4) shows seed 712. The exporter below records the current AI run for a fresh Cycles render. The eyepiece glass and the game’s relit explosion sprites are part of the native Godot recording.
+The native stage defaults to seed 712. The exporter below records the current AI run for a fresh Cycles render. The eyepiece glass and the game’s relit explosion sprites are part of the native Godot recording.
 
 #### Rebuild the Cycles cut
 
@@ -141,10 +141,10 @@ matching stereo recording. Use the audio from the native recording of the same t
 
 ```sh
 ffmpeg -framerate 30 -i /tmp/abrams-frames/%04d.png \
-  -i web/public/media/edits/films/ridge-duel-2026-11-11.mp4 -map 0:v:0 -map 1:a:0 \
+  -i /tmp/abrams-ridge.avi -map 0:v:0 -map 1:a:0 \
   -vf 'scale=out_color_matrix=bt709:out_range=tv,format=yuv420p' -c:v libx264 \
   -crf 17 -preset slow -colorspace bt709 -color_primaries bt709 -color_trc bt709 \
-  -c:a copy -movflags +faststart /tmp/abrams-cinematic.mp4
+  -c:a aac -b:a 160k -movflags +faststart /tmp/abrams-cinematic.mp4
 ```
 
 ## Inventory and release process
