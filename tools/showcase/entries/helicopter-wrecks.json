@@ -1,0 +1,20 @@
+{
+  "entry": "changelog/unreleased/helicopter-wrecks.md",
+  "summary": "Shot-down helicopters leave wrecks that look crashed: broken rotors, debris, slumped or rolled over, scorched in their own paint.",
+  "medium": "still",
+  "stage": "tests/fixtures/helicopter-world-clips.tscn",
+  "rationale": "The change is appearance: one matched before/after sheet of the same two scripted shoot-downs over the real showroom battlefield (High preset), close on each wreck and from the commander's camera, at identical times and camera paths.",
+  "source_ref": "1d0e7ab1",
+  "before_ref": "f302f20e",
+  "sources": [
+    {
+      "file": "changelog/unreleased/helicopter-wrecks/comparison.jpg",
+      "sha256": "b4d5e2411b311dd071bd34a7147e8f55a12463c03a1db60fce622cabfba002f7"
+    },
+    {
+      "file": "changelog/unreleased/helicopter-wrecks/capture.json",
+      "sha256": "20eef56758d8e1422496b27dbca87b7bc5ab7400ebc5f10992a520bdcedf38a3"
+    }
+  ],
+  "output": null
+}
