@@ -36,7 +36,7 @@ export default function ProfilePage() {
   usePageTitle(user ? "Your profile" : "Sign in")
 
   return (
-    <div className="topo">
+    <div>
       <div className="mx-auto max-w-6xl px-4 pt-14 pb-24 sm:px-6">
         <SectionLabel>Profile</SectionLabel>
         <h1 className="mt-3 font-display text-5xl font-extrabold uppercase sm:text-6xl">

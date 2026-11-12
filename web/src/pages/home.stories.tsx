@@ -76,9 +76,8 @@ export const BackFromGitHub: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     // the code swapped, /me asked, the dialog shut, the welcome shown: give it a moment on a busy machine
-    await expect(
-      await canvas.findByRole("heading", { level: 1, name: /Welcome back, Raven/ }, { timeout: 5000 })
-    ).toBeVisible()
+    const welcome = await canvas.findByRole("region", { name: "Raven" }, { timeout: 5000 })
+    await expect(within(welcome).getByText("Welcome back")).toBeVisible()
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull())
     await expect(canvas.getByRole("button", { name: "Your account: Raven rank 6" })).toBeVisible()
   },
@@ -121,14 +120,21 @@ export const Invite: Story = {
   },
 }
 
+/** Home sells the game to everyone; a signed-in player also gets their progress and the way back in, under the footage. */
 export const ReturningPlayer: Story = {
   beforeEach: [mockMatchmaker({ lobbies, health, me: player }), signedIn(player)],
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(await canvas.findByRole("heading", { level: 1, name: /Welcome back, Raven/ })).toBeVisible()
-    await expect(canvas.getByRole("link", { name: "Play Frontline" })).toHaveAttribute("href", "/play")
-    await expect(canvas.getByRole("link", { name: "Your public record" })).toHaveAttribute("href", "/player/Raven")
-    await expect(canvas.queryByRole("button", { name: "Watch the footage" })).toBeNull()
+    const welcome = within(await canvas.findByRole("region", { name: "Raven" }))
+    await expect(welcome.getByText("Welcome back")).toBeVisible()
+    await expect(welcome.getByRole("link", { name: "Play Frontline" })).toHaveAttribute("href", "/play")
+    await expect(welcome.getByRole("link", { name: "Your public record" })).toHaveAttribute("href", "/player/Raven")
+    await expect(canvas.getByRole("heading", { level: 1, name: "Frontline" })).toBeVisible()
+    await expect(canvas.getByRole("button", { name: "Watch the footage" })).toBeVisible()
+    await expect(canvas.getByRole("heading", { name: /The road is covered/ })).toBeInTheDocument()
+    await expect(
+      within(canvas.getByRole("navigation", { name: "Site" })).getByRole("link", { name: "Home" })
+    ).toHaveAttribute("aria-current", "page")
   },
 }
 
@@ -143,6 +149,7 @@ export const SignsOut: Story = {
   },
 }
 
+/** The tour's old address (/#intel) still lands on it. */
 export const ReturningGameTour: Story = {
   args: { path: "/#intel" },
   beforeEach: [mockMatchmaker({ lobbies, health, me: player }), signedIn(player)],
@@ -150,7 +157,7 @@ export const ReturningGameTour: Story = {
     const canvas = within(canvasElement)
     await expect(await canvas.findByRole("heading", { name: /The road is covered/ })).toBeInTheDocument()
     await expect(
-      within(canvas.getByRole("navigation", { name: "Site" })).getByRole("link", { name: "The game" })
+      within(canvas.getByRole("navigation", { name: "Site" })).getByRole("link", { name: "Home" })
     ).toHaveAttribute("aria-current", "page")
   },
 }

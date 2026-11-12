@@ -4,7 +4,9 @@ The game's website. Its pages (`src/pages/`, routed by React Router in `src/rout
 
 | Page                           | What's on it                                                                                                                                                 |
 | ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `/`                            | signed out: the game tour; signed in: play shortcuts, progress and updates (the tour remains at `/#intel`)                                                   |
+| `/`                            | Home: the game tour, for everyone; signed in, your progress and the way back into a battle sit just under the footage                                        |
+| `/manual`                      | the Field Manual: how the game fights, chapter by chapter, with figures from its tables, and the way into each catalogue                                     |
+| `/manual/:section`             | `infantry`, `vehicles`, `buildings`, `support`, `research`: every entry with its figures and the game's 3D model (`?entry=<key>`)                            |
 | `/play`                        | download first on a new device; launch first after a successful game handoff; Find Match and platform downloads                                              |
 | `/battles`                     | every battle being hosted, each with a **Join** link (`frontline://join/<id>`), and a friend's invite                                                        |
 | `/leaderboards`                | the commanders with the most XP: all time, this month, this week (`?period=`, `?page=`); find a player                                                       |
@@ -14,7 +16,7 @@ The game's website. Its pages (`src/pages/`, routed by React Router in `src/rout
 | `/profile`                     | signed in, your rank and record, your callsign (rename it), your picture, whether your battles are public, the insignia you wear, and signing out everywhere |
 | `/changelog`                   | every release, with its changes and screenshots                                                                                                              |
 
-The header keeps five destinations: **The game**, **Vehicles**, **Battles**, **Commanders** and **Updates**, plus **Play** and the account menu. Commanders groups the leaderboards and rank guide under a shared secondary navigation. GitHub and project links live in the footer. Personal settings and insignia selection live in the profile; the account menu also links the public record.
+The header keeps five destinations: **Home**, **Manual**, **Battles**, **Commanders** and **Updates**, plus **Play** and the account menu. Commanders groups the leaderboards and rank guide under a shared secondary navigation, and the Manual its overview and catalogues. GitHub and project links live in the footer. Personal settings and insignia selection live in the profile; the account menu also links the public record.
 
 Everything public (players, boards, battles) comes from the
 matchmaker's public routes (`src/lib/players.ts`; `matchmaker/src/players.js`), fetched with TanStack Query, so going
@@ -31,8 +33,15 @@ Railway serves `index.html` for any address that isn't a file, and the router ta
 the front page are fetched when first visited. The game opens a few of the front page's addresses, and older copies
 will go on opening them, so they keep working: `/?sign-in=` (the game's sign-in, handled on any page by
 `src/pages/layout.tsx`), `/?join=<id>` (sent on to `/battles`), `/#download` (sent on to `/play#download`) and
-`/changelog/#vX.Y.Z`. `/account`, the profile's old address, goes to `/profile`, and the front page's old sections
-(`/#insignia`, `/#battles`) to their pages.
+`/changelog/#vX.Y.Z`. `/account`, the profile's old address, goes to `/profile`, `/vehicles` (the old roster) to
+`/manual/vehicles`, and the front page's old sections (`/#insignia`, `/#battles`) to their pages.
+
+Every page sits on the game's menu backdrop, its living topographic map (`src/components/topo-backdrop.tsx`, with the
+shader ported line for line from `scripts/ui/topo_backdrop.gd` in `src/lib/topo-shader.ts`: port it again when the
+game's changes). It's a WebGL 2 canvas fixed behind the page, quieter behind the content column, drawn thirty times a
+second at no more than about 2.6 million pixels, still for reduced motion, resting in a hidden tab, and not drawn at
+all without WebGL 2 or with only a software renderer (the page keeps its plain ground). The body has no background of
+its own so the map shows through: give a section a background only when it needs one.
 
 The **Ranks** page explains ranks and shows the whole collection of insignia (the patches a player wears as their
 icon). Signed in with a game account (through the matchmaker: `src/lib/account.ts`), it and the profile show the
@@ -133,6 +142,11 @@ Keep these service settings together:
 Pushes to `main` deploy automatically. For a manual upload, run
 `railway up --service web --ci` **from the repository root**.
 
+nginx keeps the hashed bundles in `/assets/` for good and answers a missing one with a 404, never the page, and
+`index.html` is always revalidated. A tab opened before a deploy still asks for the old build's bundles when it
+first visits a page: the router reloads it once onto the new build (`src/lib/stale-build.ts`) instead of failing
+with a MIME-type error. The smoke check asserts the 404.
+
 The **Production website** workflow reports Railway's failed/error web status as a
 failed Actions run, even while the previous website remains online. It also checks
 the production HTML, viewer manifest, and WASM after a successful deploy and hourly.
@@ -146,8 +160,22 @@ prove the latest deployment succeeded.
 
 `/battles` lists live broadcasts and recordings; `/watch/:id` embeds the actual Godot observer. Build `Dockerfile.web` with repository-root context to include the browser export at `/game/`. A local Vite build needs the complete source checkout and reports the viewer unavailable until the browser export is installed. See [recording deployment](../docs/REPLAYS.md).
 
-The **Vehicles** page (/vehicles) reads the literal game tables in scripts/autoload/defs.gd and scripts/game/vehicle_roster.gd at build time. It lists units, support aircraft and Field Manual reference vehicles, with search and availability filters. Keep the source checkout available when building the site; Docker copies these two inputs explicitly. The roster unit test checks every entry is represented. Changes to the table format need a matching update to src/lib/vehicles.ts.
+The **Field Manual** (`/manual`) reads the literal game tables in `scripts/autoload/defs.gd` and
+`scripts/game/vehicle_roster.gd` at build time (`src/lib/manual.ts`): soldiers, squads, the weapons something carries,
+vehicles (built, called in as air support, automatic supply, and the Field Manual's reference garage), buildings,
+fire support and upgrades, with the figures and labels the in-game manual works out (`scripts/ui/field_manual.gd`).
+Keep the source checkout available when building the site; Docker copies these two inputs explicitly. Its unit test
+checks every table entry is represented and spot-checks the figures. Changes to the tables' format need a matching
+update to `src/lib/manual.ts`. The overview's prose (`src/pages/manual.tsx`) describes how the game plays: keep it
+true when that changes.
 
-The page embeds one model at a time in the roster. Search, filters, details and camera buttons are React/CSS; the iframe renders only the Field Manual's model stage, using its existing models, lighting and camera. The browser build accepts `?manual=<entry key>` and skips the menu and battlefield. `/game/viewer.json` advertises `manual: 3`; older or missing exports keep the text roster usable. Build the Web export and run `.github/scripts/viewer_manifest.py web/public/game` from the repository root to enable it locally. Camera messages are accepted only from the same-origin parent, and readiness messages only from the selected iframe. Embedded models remain still until dragged or rotated with the buttons.
+Each catalogue embeds one model at a time. Search, filters, figures and camera buttons are React/CSS; the iframe
+renders only the Field Manual's model stage, using its existing models, lighting and camera, and opens any entry by
+its key (vehicles, soldiers, squads, weapons, buildings and fire support; upgrades have none). The browser build
+accepts `?manual=<entry key>` and skips the menu and battlefield. `/game/viewer.json` advertises `manual: 3`; older
+or missing exports keep the text catalogue usable. Build the Web export and run `.github/scripts/viewer_manifest.py
+web/public/game` from the repository root to enable it locally. Camera messages are accepted only from the
+same-origin parent, and readiness messages only from the selected iframe. Embedded models remain still until dragged
+or rotated with the buttons.
 
-The model viewer stays mounted across selection and empty search results. Once ready, it receives the latest selection through the same-origin message bridge and acknowledges the rendered vehicle key. The export packaging script precompresses WASM, PCK and JavaScript; nginx serves these gzip files when supported, retaining cache revalidation across deployments.
+The model viewer stays mounted across selection, empty search results and moving between catalogues. Once ready, it receives the latest selection through the same-origin message bridge and acknowledges the rendered vehicle key. The export packaging script precompresses WASM, PCK and JavaScript; nginx serves these gzip files when supported, retaining cache revalidation across deployments.

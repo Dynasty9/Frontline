@@ -408,16 +408,9 @@ static func _a10_gun(k: VehicleModels, m: Node3D, st: Array, c: Color) -> void:
 	# the gun port: a dark recess in the nose's lower face
 	k._cyl(m, 0.21, 0.24, 0.5, gz + Vector3(0, 0, -7.25), Vector3(PI / 2, 0, 0), "plain_dark", null, 16)
 	k._cyl(m, 0.23, 0.23, 0.04, gz + Vector3(0, 0, -7.48), Vector3(PI / 2, 0, 0), "aircraft", c.darkened(0.3), 16, false)
-	for i in 7:
-		var a := TAU * float(i) / 7.0 + 0.2
-		var o := Vector3(cos(a) * 0.105, sin(a) * 0.105, 0)
-		VmPlane.rod(k, m, gz + o + Vector3(0, 0, -7.2), gz + o + Vector3(0, 0, -8.12), 0.032, "gunmetal_w", null, 8, 0.029)
-		# the muzzle bore
-		k._cyl(m, 0.016, 0.016, 0.02, gz + o + Vector3(0, 0, -8.125), Vector3(PI / 2, 0, 0), "plain_dark", null, 6, false)
-	# the barrel clamp and the mid support ring
-	k._cyl(m, 0.155, 0.155, 0.09, gz + Vector3(0, 0, -7.92), Vector3(PI / 2, 0, 0), "gunmetal_w", null, 18)
-	k._cyl(m, 0.15, 0.15, 0.05, gz + Vector3(0, 0, -7.6), Vector3(PI / 2, 0, 0), "gunmetal_w", null, 18, false)
-	k._cyl(m, 0.06, 0.06, 0.94, gz + Vector3(0, 0, -7.66), Vector3(PI / 2, 0, 0), "metal_dark", null, 10, false)
+	# the seven barrels out of the port, held by the mid support ring and the
+	# muzzle clamp
+	VehicleWeapons.rotary(k, m, gz + Vector3(0, 0, -7.2), gz + Vector3(0, 0, -8.12), 7, 0.105, 0.032, [0.4 / 0.92, 0.72 / 0.92], "gunmetal_w", 0.2)
 	k.mg_tip = k._tip(m, gz + Vector3(0, 0, -8.2))
 	k.gun_tip = k.mg_tip
 	# gun gas soot fanning back under the nose
@@ -901,12 +894,8 @@ static func _wip_gun(k: VehicleModels, m: Node3D, fs: Array, c: Color) -> void:
 		[-5.6, 0.0, gy + 0.1, 0.22, 0.2, 0.1, 0.13, 0.12, 0.0], [-5.0, 0.0, gy + 0.2, 0.14, 0.12, 0.04, 0.08, 0.06, 0.0]]
 	_fbody(k, m, "wip_gunf", gf, A, c)
 	k._cyl(m, 0.15, 0.15, 0.02, Vector3(0, gy, -8.06), Vector3(PI / 2, 0, 0), "plain_dark", null, 14, false)
-	for i in 7:
-		var a := TAU * float(i) / 7.0
-		var o := Vector3(cos(a) * 0.085, sin(a) * 0.085, 0)
-		VmPlane.rod(k, m, Vector3(0, gy, -7.9) + o, Vector3(0, gy, -8.5) + o, 0.026, "gunmetal_w", null, 8, 0.024)
-		k._cyl(m, 0.013, 0.013, 0.02, Vector3(0, gy, -8.505) + o, Vector3(PI / 2, 0, 0), "plain_dark", null, 6, false)
-	k._cyl(m, 0.125, 0.125, 0.07, Vector3(0, gy, -8.38), Vector3(PI / 2, 0, 0), "gunmetal_w", null, 14, false)
+	# the barrels from inside the fairing, one clamp near the muzzles
+	VehicleWeapons.rotary(k, m, Vector3(0, gy, -7.9), Vector3(0, gy, -8.5), 7, 0.085, 0.026, [0.48 / 0.6], "gunmetal_w")
 	k.mg_tip = k._tip(m, Vector3(0, gy, -8.6))
 	k.gun_tip = k.mg_tip
 	# the EO/IR targeting turret under the nose, its window looking ahead

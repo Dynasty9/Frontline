@@ -40,7 +40,7 @@ export default function BattlePage() {
   usePageTitle(b ? `${b.title} · ${callsign}` : "Battle")
 
   return (
-    <div className="topo">
+    <div>
       <div className="mx-auto max-w-6xl px-4 pt-10 pb-24 sm:px-6">
         <Button asChild variant="ghost" size="sm" className="-ml-2.5 text-muted-foreground">
           <Link to={playerPath(callsign)}>

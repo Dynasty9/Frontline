@@ -38,8 +38,9 @@ from a gameplay roster alias instead of a model key.
 This is conservative source analysis: conditional features are a union, dynamic
 calls and inner-class methods need inspection, and keyword hits are candidates.
 It does not claim that every variant visibly has every reachable feature. Inspect
-the linked construction before migrating it. Shadowed plane builders are listed
-but never used as additional adopters. Regenerate the output after changes; keep
+the linked construction before migrating it. A model that a later family also
+dispatches is listed as shadowed, never counted as another adopter; the index
+test expects none. Regenerate the output after changes; keep
 large generated JSON files and captures outside Git.
 
 Use the [roadmap](../../docs/vehicle-construction-roadmap.md) for priorities and
@@ -67,6 +68,10 @@ godot --headless --path . tools/vehicles/construction-metrics.tscn -- --vehicle-
 The report includes all mesh surfaces, including near/far LOD alternatives; it is
 not a claim that all reported surfaces draw simultaneously. Build time includes
 cache warm-up in the sorted model order. Inspect gameplay frame cost separately.
+
+`assembly-extractions.json` also registers the twenty shared components of the third pass (guns,
+turret fittings, lights, rotor masts, exhausts, fenders, fuel tanks and rolled tarps); "Twenty shared
+components" in the [component guide](../../docs/vehicle-components.md) gives their contracts and adopters.
 
 `detail-improvements.json` records the next 40 improvements to 20 existing
 assemblies, separately from the original 30-technique registry. See the

@@ -8,22 +8,31 @@ import {
 } from "@phosphor-icons/react"
 import { HudCorners } from "@/components/footage"
 import { Button } from "@/components/ui/button"
-import type { Vehicle } from "@/lib/vehicles"
+import type { Entry } from "@/lib/manual"
 
-export function VehiclePreview({ vehicle, available }: { vehicle: Vehicle; available: boolean | null }) {
+/** What the viewer needs of a manual entry: its key, its name, and a sortie to fly if it has one. */
+type Model = Pick<Entry, "id" | "name" | "support">
+
+/**
+ * The Field Manual's model stage from the game itself (its browser build at
+ * /game/, opened on one entry with ?manual=<key>), turned over with the
+ * buttons or by dragging. It stays loaded while the visitor picks one entry
+ * after another: each is sent to it, and it says when it's showing it.
+ */
+export function ModelPreview({ entry, available }: { entry: Model; available: boolean | null }) {
   const frame = useRef<HTMLIFrameElement>(null)
   const statusObserver = useRef<MutationObserver | null>(null)
   const [startupError, setStartupError] = useState<string | null>(null)
-  const [initialId] = useState(vehicle.id)
+  const [initialId] = useState(entry.id)
   const [loaded, setLoaded] = useState(false)
   const [shownId, setShownId] = useState<string | null>(null)
   const [demoId, setDemoId] = useState<string | null>(null)
   const [demoReady, setDemoReady] = useState(false)
   const [demoEnded, setDemoEnded] = useState(false)
-  const demo = demoId === vehicle.id
-  const ready = !startupError && (demo ? demoReady : shownId === vehicle.id)
+  const demo = demoId === entry.id
+  const ready = !startupError && (demo ? demoReady : shownId === entry.id)
   const [failedId, setFailedId] = useState<string | null>(null)
-  const failed = !!startupError || (failedId === vehicle.id && !ready)
+  const failed = !!startupError || (failedId === entry.id && !ready)
   const [attempt, setAttempt] = useState(0)
   useEffect(() => () => statusObserver.current?.disconnect(), [])
   const readViewerStatus = () => {
@@ -60,26 +69,26 @@ export function VehiclePreview({ vehicle, available }: { vehicle: Vehicle; avail
   useEffect(() => {
     if (!loaded) return
     frame.current?.contentWindow?.postMessage(
-      { type: "frontline-model", action: "select", key: vehicle.id },
+      { type: "frontline-model", action: "select", key: entry.id },
       window.location.origin
     )
-  }, [loaded, vehicle.id])
+  }, [loaded, entry.id])
   useEffect(() => {
     if (!available || ready) return
-    const timer = window.setTimeout(() => setFailedId(vehicle.id), 90_000)
+    const timer = window.setTimeout(() => setFailedId(entry.id), 90_000)
     return () => window.clearTimeout(timer)
     // A retry mounts a new frame, so its readiness timeout must restart too.
     // oxlint-disable-next-line react/exhaustive-effect-dependencies
-  }, [available, ready, vehicle.id, attempt])
+  }, [available, ready, entry.id, attempt])
   const control = (action: string) =>
     frame.current?.contentWindow?.postMessage({ type: "frontline-model", action }, window.location.origin)
   const playDemo = () => {
-    if (!vehicle.support) return
-    setDemoId(vehicle.id)
+    if (!entry.support) return
+    setDemoId(entry.id)
     setDemoReady(false)
     setDemoEnded(false)
     frame.current?.contentWindow?.postMessage(
-      { type: "frontline-model", action: "demo", key: vehicle.support.id },
+      { type: "frontline-model", action: "demo", key: entry.support.id },
       window.location.origin
     )
   }
@@ -91,7 +100,7 @@ export function VehiclePreview({ vehicle, available }: { vehicle: Vehicle; avail
             key={attempt}
             ref={frame}
             onLoad={readViewerStatus}
-            title={`3D model of ${vehicle.name}`}
+            title={`3D model of ${entry.name}`}
             // The bundled model stage needs same-origin access to its own assets.
             // oxlint-disable-next-line react/iframe-missing-sandbox
             sandbox="allow-scripts allow-same-origin"
@@ -114,18 +123,18 @@ export function VehiclePreview({ vehicle, available }: { vehicle: Vehicle; avail
                     : available
                       ? demo
                         ? "Preparing the training range…"
-                        : "Preparing your vehicle…"
+                        : "Preparing the model…"
                       : "3D preview unavailable"}
             </p>
             {(available || failed) && (
               <p className="max-w-xs text-xs leading-relaxed text-muted-foreground">
                 {startupError
                   ? /webgl/i.test(startupError)
-                    ? "This preview needs WebGL 2. Enable graphics acceleration in your browser, or try another browser. You can still browse the vehicle details below."
-                    : "The 3D viewer couldn't load. Check your connection and retry. You can still browse the vehicle details below."
+                    ? "This preview needs WebGL 2. Enable graphics acceleration in your browser, or try another browser. You can still read its details below."
+                    : "The 3D viewer couldn't load. Check your connection and retry. You can still read its details below."
                   : demo
                     ? "Resetting the aircraft and range targets."
-                    : "The first model downloads the 3D assets. A WebGL 2 browser is required."}
+                    : "The first model downloads the game's 3D viewer. A WebGL 2 browser is required."}
               </p>
             )}
             {failed && (
@@ -174,7 +183,7 @@ export function VehiclePreview({ vehicle, available }: { vehicle: Vehicle; avail
                   setDemoId(null)
                   setShownId(null)
                   frame.current?.contentWindow?.postMessage(
-                    { type: "frontline-model", action: "select", key: vehicle.id },
+                    { type: "frontline-model", action: "select", key: entry.id },
                     window.location.origin
                   )
                 }}
@@ -187,9 +196,9 @@ export function VehiclePreview({ vehicle, available }: { vehicle: Vehicle; avail
             </>
           ) : (
             <>
-              {vehicle.support && (
+              {entry.support && (
                 <Button variant="outline" disabled={!ready} onClick={playDemo}>
-                  {vehicle.support.shape === "strafe" ? "Watch gun run" : "Watch air support"}
+                  {entry.support.shape === "strafe" ? "Watch gun run" : "Watch air support"}
                 </Button>
               )}
               {(

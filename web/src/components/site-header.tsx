@@ -10,8 +10,8 @@ import { cn } from "@/lib/utils"
 
 // Keep the same destinations in both states. Personal actions belong to the account menu.
 const NAV = [
-  { label: "The game", to: "/#intel", paths: ["/"] },
-  { label: "Vehicles", to: "/vehicles", paths: ["/vehicles"] },
+  { label: "Home", to: "/", paths: ["/"] },
+  { label: "Manual", to: "/manual", paths: ["/manual", "/manual/"] },
   { label: "Battles", to: "/battles", paths: ["/battles"] },
   { label: "Commanders", to: "/leaderboards", paths: ["/leaderboards", "/ranks", "/player/"] },
   { label: "Updates", to: "/changelog", paths: ["/changelog"] },
@@ -27,7 +27,7 @@ export function SiteHeader({
   live?: number
 }) {
   const [scrolled, setScrolled] = useState(false)
-  const { pathname, hash } = useLocation()
+  const { pathname } = useLocation()
   const { user } = useAccount()
   const signedIn = !!user && accounts !== "off"
   useEffect(() => {
@@ -38,9 +38,7 @@ export function SiteHeader({
     return () => window.removeEventListener("scroll", on)
   }, [overlay])
   const active = (paths: string[]) =>
-    paths.some((p) =>
-      p === "/" ? pathname === "/" && (!signedIn || !!hash) : p.endsWith("/") ? pathname.startsWith(p) : pathname === p
-    )
+    paths.some((p) => (p.endsWith("/") && p !== "/" ? pathname.startsWith(p) : pathname === p))
   const clear = overlay && !scrolled
   return (
     <header
