@@ -16,8 +16,11 @@ extends RefCounted
 ## Jet exhaust glow: a node named "Afterburner" (skipped when burnt).
 
 ## Every model key this file builds (the Field Manual's model pages list them).
-const KEYS: Array[String] = ["buzzard", "gryphon", "wipeout", "caesar", "blackwasp", "shikra", "neophron",
-	"greyhawk", "sentinel", "fenghuang", "blackfish", "blackfish_armed", "xian"]
+## VmAttack, VmFighter and VmGunship construct the Wipeout, Black Wasp and
+## Blackfish: VehicleModels.build asks them before this file
+## (VehicleModels.plane_keys lists every fixed-wing key).
+const KEYS: Array[String] = ["buzzard", "gryphon", "caesar", "shikra", "neophron",
+	"greyhawk", "sentinel", "fenghuang", "xian"]
 
 const NATO := Color(0.42, 0.45, 0.48)
 const CSAT := Color(0.47, 0.44, 0.38)
@@ -35,12 +38,8 @@ static func build(k: VehicleModels, key: String, team: int, seed: int) -> bool:
 			_buzzard(k, team)
 		"gryphon":
 			_gryphon(k, team)
-		"wipeout":
-			_wipeout(k, team)
 		"caesar":
 			_caesar(k, team, seed)
-		"blackwasp":
-			_blackwasp(k, team)
 		"shikra":
 			_shikra(k, team)
 		"neophron":
@@ -51,10 +50,6 @@ static func build(k: VehicleModels, key: String, team: int, seed: int) -> bool:
 			_sentinel(k, team)
 		"fenghuang":
 			_fenghuang(k, team)
-		"blackfish":
-			_blackfish(k, team, false)
-		"blackfish_armed":
-			_blackfish(k, team, true)
 		"xian":
 			_xian(k, team)
 		_:
@@ -663,120 +658,6 @@ static func _gryphon(k: VehicleModels, team: int) -> void:
 		k._team_mark(m, team, Vector3(s * 0.082, 2.6, 4.15), Vector3(0.02, 0.4, 0.4))
 
 
-# --- A-164 Wipeout ------------------------------------------------------------------
-
-## A-164 Wipeout (A-10 Thunderbolt II): the GAU-8's seven barrels in the nose,
-## the cockpit high on an armoured tub under a bubble canopy, a thick straight
-## low wing with gear pods and drooped Hoerner tips, two big turbofans on
-## pylons on the rear fuselage with sharp-lipped intakes, a tailplane with twin
-## fins. Twelve pylons of stores. Darker grey.
-static func _wipeout(k: VehicleModels, team: int) -> void:
-	var m := k.root
-	var c := Color(0.35, 0.37, 0.39)
-	var A := "aircraft"
-	var st := [
-		[-7.72, 1.12, 0.0, 0.0, 0.0],
-		[-7.62, 1.12, 0.28, 0.3, 0.3, 2.2, 2.2],
-		[-7.3, 1.14, 0.48, 0.52, 0.5, 2.2, 2.3],
-		[-6.7, 1.17, 0.66, 0.72, 0.66, 2.3, 2.5],
-		[-5.8, 1.2, 0.76, 0.84, 0.74, 2.5, 2.7],
-		[-4.4, 1.2, 0.8, 0.86, 0.76, 2.6, 2.7],
-		[-2.5, 1.2, 0.8, 0.8, 0.74, 2.6, 2.7],
-		[0.5, 1.22, 0.76, 0.74, 0.68, 2.5, 2.6],
-		[3.0, 1.26, 0.63, 0.64, 0.58, 2.4, 2.4],
-		[5.0, 1.32, 0.49, 0.52, 0.44],
-		[6.6, 1.4, 0.34, 0.4, 0.3],
-		[7.7, 1.48, 0.17, 0.24, 0.16],
-		[7.95, 1.5, 0.06, 0.1, 0.06],
-	]
-	body(k, m, "wip_fus", st, A, c)
-	stripe(k, m, "wip_nose", st, -7.72, -7.25, -PI, PI, A, c.darkened(0.2), 0.004, 20)
-	band(k, m, "wip_joint0", st, -3.6, 0.03, 0.005, A, c.darkened(0.2))
-	band(k, m, "wip_joint1", st, 2.6, 0.03, 0.005, A, c.darkened(0.2))
-	# the canopy on its high cockpit: windscreen and bubble
-	var cst := [[-6.75, 1.86, 0.3, 0.06, 0.06], [-6.3, 1.86, 0.48, 0.36, 0.06], [-5.6, 1.88, 0.53, 0.58, 0.06], [-4.9, 1.9, 0.5, 0.56, 0.06],
-		[-4.3, 1.9, 0.4, 0.4, 0.06], [-3.85, 1.9, 0.24, 0.2, 0.06]]
-	body(k, m, "wip_can", cst, "glass", null, 18, 60.0)
-	band(k, m, "wip_bow0", cst, -6.25, 0.08, 0.02, A, c.darkened(0.2), 18)
-	band(k, m, "wip_bow1", cst, -4.3, 0.08, 0.02, A, c.darkened(0.2), 18)
-	body(k, m, "wip_hump", [[-4.6, 1.85, 0.4, 0.4, 0.1], [-3.4, 1.85, 0.36, 0.34, 0.1], [-1.2, 1.85, 0.2, 0.2, 0.1], [0.0, 1.8, 0.1, 0.12, 0.1]], A, c, 16)
-	# the GAU-8: seven barrels in a ring, low in the nose, the muzzle cluster
-	var gz := Vector3(0, 0.92, -7.7)
-	k._cyl(m, 0.17, 0.2, 0.14, gz + Vector3(0, 0, 0.05), Vector3(PI / 2, 0, 0), "metal_dark", null, 14)
-	for i in 7:
-		var a := TAU * float(i) / 7.0
-		k._cyl(m, 0.026, 0.026, 0.48, gz + Vector3(cos(a) * 0.1, sin(a) * 0.1, -0.22), Vector3(PI / 2, 0, 0), "gunmetal_w", null, 6, false)
-	k._cyl(m, 0.14, 0.14, 0.05, gz + Vector3(0, 0, -0.3), Vector3(PI / 2, 0, 0), "gunmetal_w", null, 14, false)
-	k.mg_tip = k._tip(m, gz + Vector3(0, 0, -0.48))
-	k.gun_tip = k.mg_tip
-	# the straight wing: centre section, outer panels with dihedral, drooped tips
-	var ws := [[Vector3(0.7, 0.86, -1.35), 3.05, 0.56], [Vector3(3.2, 0.86, -1.3), 3.0, 0.5], [Vector3(8.4, 1.5, -0.85), 1.85, 0.26]]
-	surf(k, m, "wip_wing", ws, A, c, [0.76, 0.74])
-	surf(k, m, "wip_htip", [[Vector3(8.38, 1.5, -0.84), 1.84, 0.26], [Vector3(8.77, 1.36, -0.7), 1.55, 0.12]], A, c, [])
-	nav_lights(k, m, Vector3(8.78, 1.36, -0.2), 0.08)
-	# main gear pods under the wing, the wheel just showing
-	for s in [-1.0, 1.0]:
-		body(k, m, "wip_gpod" + ("L" if s < 0.0 else ""), [[-2.75, 0.62, 0.0, 0.0, 0.0, 2, 2, s * 2.15], [-2.45, 0.62, 0.2, 0.2, 0.22, 2, 2, s * 2.15],
-			[-1.8, 0.62, 0.34, 0.32, 0.38, 2.2, 2.2, s * 2.15], [-0.4, 0.66, 0.36, 0.32, 0.4, 2.3, 2.3, s * 2.15], [0.9, 0.7, 0.26, 0.24, 0.26, 2.2, 2.2, s * 2.15], [1.7, 0.74, 0.04, 0.1, 0.04, 2, 2, s * 2.15]], A, c, 16)
-		k._cyl(m, 0.36, 0.36, 0.26, Vector3(s * 2.18, 0.42, -1.6), Vector3(0, 0, PI / 2), "rubber", null, 16)
-	# engines: nacelles on stub pylons, sharp intake lips, dark fan faces
-	for s in [-1.0, 1.0]:
-		var nx: float = s * 1.62
-		var nst := [[1.75, 2.42, 0.64, 0.64, 0.64, 2, 2, nx], [2.0, 2.42, 0.67, 0.67, 0.67, 2, 2, nx], [3.0, 2.42, 0.66, 0.66, 0.66, 2, 2, nx],
-			[4.2, 2.42, 0.6, 0.6, 0.6, 2, 2, nx], [5.1, 2.42, 0.48, 0.48, 0.48, 2, 2, nx], [5.45, 2.42, 0.42, 0.42, 0.42, 2, 2, nx]]
-		body(k, m, "wip_nac" + ("L" if s < 0.0 else ""), nst, A, c, 20)
-		mouth(k, m, "wip_fan" + ("L" if s < 0.0 else ""), nst[0], 0.88, -1.0, "metal_dark")
-		k._cyl(m, 0.17, 0.0, 0.3, Vector3(nx, 2.42, 1.72), Vector3(-PI / 2, 0, 0), "gunmetal_w", null, 10, false)
-		k._cyl(m, 0.42, 0.36, 0.3, Vector3(nx, 2.42, 5.55), Vector3(PI / 2, 0, 0), "gunmetal_w", c.darkened(0.4), 16)
-		k._cyl(m, 0.3, 0.3, 0.03, Vector3(nx, 2.42, 5.71), Vector3(PI / 2, 0, 0), "plain_dark", null, 12, false)
-		# the pylon from the fuselage shoulder
-		k._add(m, VehicleModels.extrude_x("pl_wip_npyl", [2.3, 0.0, 4.9, 0.0, 4.6, 0.8, 2.7, 0.8], -0.09, 0.09), A, c, Vector3(s * 0.48, 1.68, 0), Vector3(0, 0, s * -0.85))
-	glow(k, m, [Vector3(-1.62, 2.42, 5.9), Vector3(1.62, 2.42, 5.9)], 1.2, Color(0.55, 0.33, 0.2))
-	# the tailplane and twin fins, elevators and rudders
-	var tz := 6.05
-	surf(k, m, "wip_tail", [[Vector3(0.1, 1.62, tz), 2.0, 0.14], [Vector3(2.9, 1.62, tz + 0.05), 1.95, 0.12]], A, c, [0.7])
-	for s in [-1.0, 1.0]:
-		surf(k, m, "wip_fin" + ("L" if s < 0.0 else ""), [[Vector3(s * 2.9, 0.7, tz - 0.05), 1.85, 0.14], [Vector3(s * 2.9, 1.0, tz - 0.15), 2.2, 0.16],
-			[Vector3(s * 2.9, 3.4, tz + 0.15), 2.05, 0.14], [Vector3(s * 2.9, 3.85, tz + 0.5), 1.5, 0.1]], A, c, [0.0, 0.7, 0.7], false)
-	# refuelling receptacle, antennas, the formation-light strips
-	k._box(m, Vector3(0.2, 0.03, 0.3), Vector3(0, 2.06, -6.95), "plain_dark", null, Vector3(-0.35, 0, 0), false)
-	antenna(k, m, Vector3(0, 1.98, -2.0), 0.3)
-	antenna(k, m, Vector3(0, 0.48, 1.0), 0.22, true)
-	# twelve stations: two under the fuselage, five under each wing
-	for x in [-0.36, 0.36]:
-		bomb(k, m, pylon(k, m, Vector3(x, 0.6, -0.2), 1.2, 0.18, c, 0.14), 2.2, 0.14)
-	for sd in [-1.0, 1.0]:
-		for x in [1.25, 3.05, 4.45, 5.65, 6.85]:
-			var w := surf_at(ws, x)
-			var le: Vector3 = w[0]
-			var at := Vector3(sd * x, le.y - float(w[2]) * 0.32, le.z + float(w[1]) * 0.42)
-			if x < 2.0:
-				bomb(k, m, pylon(k, m, at, 1.3, 0.24, c, 0.16), 2.4, 0.16, true)
-			elif x < 4.0:
-				bomb(k, m, pylon(k, m, at, 1.3, 0.24, c, 0.14), 2.2, 0.14)
-			elif x < 5.0:
-				# a Maverick each side of a triple launcher
-				var mc := pylon(k, m, at, 1.3, 0.2, c, 0.0)
-				k._box(m, Vector3(0.5, 0.12, 1.4), mc + Vector3(0, -0.04, 0.1), "gunmetal_w")
-				for o in [-0.26, 0.26]:
-					agm(k, m, mc + Vector3(o, -0.2, 0.0), 2.4, 0.15)
-			elif x < 6.0:
-				rocket_pod(k, m, pylon(k, m, at, 1.2, 0.2, c, 0.22), 2.2, 0.22)
-			elif sd < 0.0:
-				# the ECM pod on the left, Sidewinders on the right
-				var ec := pylon(k, m, at, 1.0, 0.16, c, 0.16)
-				body(k, m, "wip_ecm", [[-1.3, 0, 0.08, 0.08, 0.08], [-1.1, 0, 0.16, 0.16, 0.16], [1.0, 0, 0.16, 0.16, 0.16], [1.3, 0, 0.06, 0.06, 0.06]], "paint", Color(0.5, 0.52, 0.5), 12, 50.0, ec)
-				k._box(m, Vector3(0.05, 0.18, 0.3), ec + Vector3(0, -0.2, -0.6), "paint", Color(0.45, 0.47, 0.45))
-			else:
-				var mc2 := pylon(k, m, at, 1.0, 0.14, c, 0.0)
-				k._box(m, Vector3(0.36, 0.08, 1.0), mc2 + Vector3(0, -0.02, 0.1), "gunmetal_w")
-				for o in [-0.17, 0.17]:
-					missile(k, m, mc2 + Vector3(o, -0.12, 0.0), 2.85, 0.064, STORE_GREY, false)
-	wing_marks(k, m, team, ws, 6.2, 0.75)
-	for s in [-1.0, 1.0]:
-		k._team_mark(m, team, Vector3(s * 0.66, 1.3, 3.4), Vector3(0.02, 0.4, 0.5))
-
-
 # --- Caesar BTT ---------------------------------------------------------------------
 
 ## Caesar BTT (Cessna TTx): a sleek four-seat composite single, cowled engine
@@ -847,97 +728,6 @@ static func _caesar(k: VehicleModels, team: int, seed: int) -> void:
 	antenna(k, m, Vector3(0, 2.28, 0.6), 0.18, false, Color(0.25, 0.25, 0.25))
 	antenna(k, m, Vector3(0, 0.84, 0.4), 0.14, true, Color(0.25, 0.25, 0.25))
 	rod(k, m, Vector3(-3.6, 0.95, -0.6), Vector3(-3.6, 0.95, -1.1), 0.015, "steel", null, 6)
-
-
-# --- F/A-181 Black Wasp II ----------------------------------------------------------
-
-## F/A-181 Black Wasp II: a Super Hornet's fuselage (chined nose, big LEXes,
-## raked caret intakes under them), an F-35C's one-piece canopy and chin
-## sensor, an F-22's trapezoid wing, twin canted fins, diamond stabilators and
-## the two engines' flat thrust-vectoring nozzles. Sidewinders on the tips,
-## a Paveway and an AMRAAM under each wing, the gun in the right LEX. NATO grey.
-static func _blackwasp(k: VehicleModels, team: int) -> void:
-	var m := k.root
-	var c := NATO
-	var A := "aircraft"
-	var st := [
-		[-9.25, 1.2, 0.0, 0.0, 0.0],
-		[-8.95, 1.21, 0.12, 0.09, 0.08, 1.7, 1.5],
-		[-8.1, 1.24, 0.32, 0.26, 0.22, 1.8, 1.5],
-		[-6.9, 1.28, 0.52, 0.44, 0.36, 1.9, 1.5],
-		[-5.6, 1.3, 0.68, 0.56, 0.48, 2.1, 1.6],
-		[-4.2, 1.3, 0.84, 0.6, 0.58, 2.2, 1.8],
-		[-2.6, 1.3, 1.0, 0.58, 0.62, 2.4, 2.2],
-		[-0.8, 1.3, 1.2, 0.52, 0.62, 2.8, 2.4],
-		[1.5, 1.3, 1.25, 0.48, 0.6, 3.0, 2.6],
-		[4.0, 1.3, 1.15, 0.42, 0.55, 3.0, 2.8],
-		[6.0, 1.3, 0.95, 0.35, 0.48, 3.0, 3.0],
-		[7.4, 1.3, 0.75, 0.28, 0.38, 3.0, 3.0],
-		[7.9, 1.3, 0.6, 0.24, 0.3, 3.0, 3.0],
-	]
-	body(k, m, "bw_fus", st, A, c)
-	stripe(k, m, "bw_rad", st, -9.25, -7.4, -PI, PI, A, c.darkened(0.16), 0.004, 20)
-	body(k, m, "bw_spine", [[-4.0, 1.7, 0.45, 0.45, 0.1], [-2.4, 1.72, 0.6, 0.34, 0.1, 2.8], [0.5, 1.7, 0.75, 0.26, 0.1, 3.2], [4.0, 1.66, 0.6, 0.18, 0.1, 3.2], [6.5, 1.56, 0.32, 0.1, 0.1]], A, c, 18)
-	# the F-35 canopy: one piece, a single bow behind the seat; the chin sensor
-	var cst := [[-7.15, 1.68, 0.3, 0.05, 0.05], [-6.6, 1.7, 0.45, 0.36, 0.05], [-5.8, 1.72, 0.52, 0.56, 0.05], [-4.9, 1.74, 0.5, 0.6, 0.05],
-		[-4.0, 1.76, 0.42, 0.48, 0.05], [-3.3, 1.78, 0.28, 0.26, 0.05]]
-	body(k, m, "bw_can", cst, "glass", null, 18, 60.0)
-	band(k, m, "bw_bow", cst, -4.3, 0.09, 0.02, A, c.darkened(0.2), 18)
-	band(k, m, "bw_bowr", cst, -3.45, 0.08, 0.02, A, c.darkened(0.2), 18)
-	body(k, m, "bw_eots", [[-7.0, 0.95, 0.0, 0.0, 0.0], [-6.8, 0.95, 0.13, 0.04, 0.12, 2.0, 1.2], [-6.4, 0.95, 0.15, 0.04, 0.13, 2.0, 1.2], [-6.15, 0.95, 0.0, 0.0, 0.0]], "glass", null, 12, 20.0)
-	# LEXes from the cockpit to the wing root
-	surf(k, m, "bw_lex", [[Vector3(0.55, 1.3, -6.1), 6.1, 0.12], [Vector3(2.3, 1.29, -1.5), 1.6, 0.06]], A, c, [])
-	# caret intakes under the LEXes, ducts running back into the engine bays
-	var ist := [[-3.4, 0.92, 0.34, 0.36, 0.36, 3.5, 3.5, 1.08, 0.55, 0.35], [-2.8, 0.93, 0.36, 0.38, 0.38, 3.2, 3.2, 1.06], [-1.0, 0.95, 0.33, 0.37, 0.38, 3.0, 3.0, 0.98],
-		[1.0, 0.98, 0.22, 0.3, 0.32, 3.0, 3.0, 0.86], [2.5, 1.0, 0.08, 0.2, 0.2, 2.5, 2.5, 0.76]]
-	body2(k, m, "bw_int", ist, A, c, 16)
-	for s in [-1.0, 1.0]:
-		var q: Array = _sp(ist[0]) if s > 0.0 else _mx(ist[0])
-		mouth(k, m, "bw_mouth" + ("L" if s < 0.0 else ""), q, 0.8)
-		k._box(m, Vector3(0.03, 0.66, 0.7), Vector3(s * 0.72, 0.94, -3.0), A, c.darkened(0.1))
-	# engine bays and the flat two-dimensional nozzles
-	for s in [-1.0, 1.0]:
-		var nx: float = s * 0.6
-		body(k, m, "bw_nac" + ("L" if s < 0.0 else ""), [[-0.5, 1.0, 0.36, 0.36, 0.38, 2.6, 2.6, nx], [2.0, 0.98, 0.48, 0.4, 0.44, 2.6, 2.8, nx], [5.0, 1.0, 0.47, 0.4, 0.42, 2.8, 3.0, nx],
-			[7.5, 1.02, 0.44, 0.36, 0.36, 3.5, 3.5, nx]], A, c, 18)
-		var zst := [[7.45, 1.02, 0.44, 0.34, 0.34, 4.0, 4.0, nx], [8.3, 1.02, 0.43, 0.29, 0.29, 4.0, 4.0, nx], [8.8, 1.02, 0.41, 0.17, 0.17, 4.0, 4.0, nx]]
-		body(k, m, "bw_noz" + ("L" if s < 0.0 else ""), zst, "gunmetal_w", c.darkened(0.42), 18, 30.0)
-		var zq := _sp(zst[2])
-		mouth(k, m, "bw_pipe" + ("L" if s < 0.0 else ""), zq, 0.82, 1.0)
-	glow(k, m, [Vector3(-0.6, 1.02, 9.15), Vector3(0.6, 1.02, 9.15)], 1.05)
-	# the F-22 wing: trapezoid, flaperons inboard, ailerons outboard
-	var ws := [[Vector3(0.9, 1.25, -2.83), 7.88, 0.3], [Vector3(3.6, 1.15, -0.4), 4.9, 0.2], [Vector3(6.8, 1.02, 2.48), 1.4, 0.1]]
-	surf(k, m, "bw_wing", ws, A, c, [0.8, 0.76])
-	# twin fins canted out, rudders; diamond stabilators
-	surf(k, m, "bw_fin", [[Vector3(0.95, 1.62, 2.6), 3.4, 0.18], [Vector3(2.22, 4.0, 5.0), 1.45, 0.08]], A, c, [0.7])
-	surf(k, m, "bw_stab", [[Vector3(0.95, 1.08, 4.6), 3.8, 0.14], [Vector3(4.1, 1.0, 6.6), 1.4, 0.06]], A, c, [])
-	# wingtip rails with Sidewinders, navigation lights
-	for s in [-1.0, 1.0]:
-		k._box(m, Vector3(0.08, 0.1, 2.0), Vector3(s * 6.86, 1.02, 3.0), A, c)
-		missile(k, m, Vector3(s * 6.86, 0.9, 2.7), 2.85, 0.064, STORE_GREY, false)
-	nav_lights(k, m, Vector3(6.9, 1.08, 2.4), 0.06)
-	# gun in the right LEX, probes, antennas, the tail hook, weapon bay doors
-	k._box(m, Vector3(0.12, 0.05, 0.5), Vector3(1.0, 1.36, -3.1), "plain_dark", null, Vector3.ZERO, false)
-	k.mg_tip = k._tip(m, Vector3(1.0, 1.38, -3.4))
-	k.gun_tip = k.mg_tip
-	antenna(k, m, Vector3(0, 2.02, -1.5), 0.26)
-	antenna(k, m, Vector3(0, 0.66, 2.5), 0.2, true)
-	VehicleAircraft.pitot(k, m, Vector3(0, 0.95, 6.4), Vector3(0, 0.75, 8.1), 0.045, "gunmetal_w", null)
-	for s in [-1.0, 1.0]:
-		k._box(m, Vector3(0.012, 0.02, 3.6), Vector3(s * 0.32, 0.69, 0.6), "gunmetal_w", null, Vector3.ZERO, false)
-	# stores: a Paveway and an AMRAAM under each wing
-	for sd in [-1.0, 1.0]:
-		for x in [2.7, 4.6]:
-			var w := surf_at(ws, x)
-			var le: Vector3 = w[0]
-			var at := Vector3(sd * x, le.y - float(w[2]) * 0.3, le.z + float(w[1]) * 0.4)
-			if x < 3.0:
-				bomb(k, m, pylon(k, m, at, 1.5, 0.26, c, 0.16), 2.4, 0.16, true)
-			else:
-				missile(k, m, pylon(k, m, at, 1.2, 0.14, c, 0.09), 3.65, 0.09)
-	wing_marks(k, m, team, ws, 5.3, 0.6)
-	for s in [-1.0, 1.0]:
-		k._team_mark(m, team, Vector3(s * 1.43, 0.95, -1.5), Vector3(0.02, 0.36, 0.36))
 
 
 # --- To-201 Shikra ------------------------------------------------------------------
@@ -1275,121 +1065,6 @@ static func _fenghuang(k: VehicleModels, team: int) -> void:
 			agm(k, m, pylon(k, m, at, 0.55, 0.1, c, 0.08), 1.4, 0.08)
 	k.gun_tip = k._tip(m, Vector3(0, 0.37, -1.48))
 	wing_marks(k, m, team, ws, 3.2, 0.35)
-
-
-# --- V-44X Blackfish ----------------------------------------------------------------
-
-## V-44X Blackfish: an Osprey grown by 1.4. A deep cabin with sponsons for the
-## gear, a glazed V-22 nose and refuelling probe, a high, slightly
-## forward-swept wing with fixed engine nacelles at its tips (V-280 style)
-## whose proprotors tilt - shown half-way, converting - an upswept tail over
-## the rear ramp, an H tail. The gunship (`armed`) carries an AC-130's guns
-## on the left: a 20 mm Gatling forward, the 40 mm and the 105 mm aft. NATO.
-static func _blackfish(k: VehicleModels, team: int, armed: bool) -> void:
-	var m := k.root
-	var c := NATO
-	var A := "aircraft"
-	var st := [
-		[-12.25, 1.95, 0.0, 0.0, 0.0],
-		[-12.05, 1.95, 0.3, 0.3, 0.28],
-		[-11.5, 2.0, 0.72, 0.75, 0.68, 2.2, 2.3],
-		[-10.5, 2.1, 1.08, 1.18, 1.05, 2.3, 2.5],
-		[-9.2, 2.2, 1.36, 1.55, 1.4, 2.5, 2.8],
-		[-7.6, 2.28, 1.54, 1.85, 1.75, 2.6, 3.0],
-		[-5.0, 2.3, 1.6, 1.95, 1.9, 2.7, 3.3],
-		[2.5, 2.3, 1.6, 1.95, 1.9, 2.7, 3.3],
-		[5.0, 2.42, 1.55, 1.85, 1.75, 2.7, 3.0],
-		[7.5, 2.8, 1.35, 1.5, 1.2, 2.6, 2.6],
-		[9.8, 3.3, 0.95, 1.05, 0.6, 2.4, 2.4],
-		[11.6, 3.65, 0.45, 0.55, 0.28],
-		[12.15, 3.72, 0.15, 0.22, 0.1],
-	]
-	body(k, m, "bf_fus", st, A, c, 24)
-	# the glazed nose: windscreens, side and chin windows, their frames
-	stripe(k, m, "bf_wind", st, -11.25, -8.9, 0.12, PI - 0.12, "glass", null, 0.012, 14)
-	for s in [-1.0, 1.0]:
-		var a0 := -0.62 if s > 0.0 else PI + 0.2
-		stripe(k, m, "bf_chin" + ("L" if s < 0.0 else ""), st, -10.9, -9.7, a0, a0 + 0.42, "glass", null, 0.012, 5)
-	for a in [PI / 2, 0.95, PI - 0.95, 0.35, PI - 0.35]:
-		stripe(k, m, "bf_post%.2f" % a, st, -11.3, -8.85, a - 0.035, a + 0.035, A, c.darkened(0.15), 0.022, 3)
-	stripe(k, m, "bf_wbow", st, -10.15, -10.05, 0.1, PI - 0.1, A, c.darkened(0.15), 0.022, 12)
-	stripe(k, m, "bf_wbow2", st, -8.95, -8.85, 0.1, PI - 0.1, A, c.darkened(0.15), 0.022, 12)
-	# cabin windows, the crew door on the right
-	for s in [-1.0, 1.0]:
-		for z in [-6.4, -3.2, 0.2, 3.0]:
-			if s > 0.0 and z < -6.0:
-				continue
-			VehicleGlazing.rectangle(k, m, Vector2(0.42, 0.42), Vector3(s * 1.585, 2.95, z), (Basis.from_euler(Vector3.ZERO) * Basis(Vector3.UP, PI / 2)).get_euler(), false, null, 0.03)
-	for z in [-7.25, -5.75]:
-		k._box(m, Vector3(0.02, 1.9, 0.03), Vector3(1.6, 2.15, z), "gunmetal_w", null, Vector3.ZERO, false)
-	VehicleGlazing.rectangle(k, m, Vector2(0.42, 0.42), Vector3(1.6, 2.75, -6.5), (Basis.from_euler(Vector3.ZERO) * Basis(Vector3.UP, PI / 2)).get_euler(), false, null, 0.03)
-	# the sponsons for the main gear
-	body2(k, m, "bf_spon", [[-4.3, 1.15, 0.0, 0.0, 0.0, 2, 2, 1.5], [-3.7, 1.15, 0.5, 0.45, 0.5, 2.4, 2.4, 1.6], [-2.0, 1.12, 0.8, 0.55, 0.65, 2.6, 2.6, 1.7],
-		[2.0, 1.15, 0.8, 0.55, 0.65, 2.6, 2.6, 1.7], [3.8, 1.2, 0.55, 0.45, 0.5, 2.4, 2.4, 1.6], [4.8, 1.25, 0.08, 0.12, 0.12, 2, 2, 1.5]], A, c, 18)
-	# the rear ramp's seams under the upswept tail
-	for a in [-PI / 2 - 0.8, -PI / 2 + 0.8]:
-		stripe(k, m, "bf_ramp%.2f" % a, st, 5.0, 9.7, a - 0.02, a + 0.02, "gunmetal_w", null, 0.01, 3)
-	stripe(k, m, "bf_rampx", st, 4.98, 5.06, -PI / 2 - 0.8, -PI / 2 + 0.8, "gunmetal_w", null, 0.01, 10)
-	# the high wing, slightly forward-swept, flaperons along it
-	var ws := [[Vector3(0.0, 4.6, -1.4), 3.6, 0.75], [Vector3(9.0, 4.6, -2.3), 3.4, 0.6]]
-	surf(k, m, "bf_wing", ws, A, c, [0.7])
-	# fixed engine nacelles at the tips; tilting proprotors ahead of them
-	var tilt := PI / 4
-	for s in [-1.0, 1.0]:
-		var nx: float = s * 9.85
-		var nst := [[-3.0, 4.6, 0.95, 0.95, 0.95, 2.2, 2.2, nx], [-1.0, 4.6, 1.0, 1.05, 1.0, 2.3, 2.3, nx], [2.0, 4.6, 0.95, 1.0, 0.95, 2.3, 2.3, nx],
-			[3.8, 4.6, 0.62, 0.66, 0.6, 2.2, 2.2, nx], [4.4, 4.6, 0.3, 0.35, 0.3, 2.0, 2.0, nx]]
-		body(k, m, "bf_nac" + ("L" if s < 0.0 else ""), nst, A, c, 20)
-		# the intake grille on top, the exhaust low on the outboard side
-		k._box(m, Vector3(0.7, 0.05, 1.3), Vector3(nx, 5.6, -1.0), "plain_dark", null, Vector3(0.05, 0, 0), false)
-		k._box(m, Vector3(0.12, 0.5, 0.9), Vector3(nx + s * 0.92, 4.2, 3.2), "gunmetal_w", null, Vector3(0, 0, s * 0.3))
-		# the swivelling gearbox and the proprotor
-		var pv := prop(k, m, "bf_rotor" + ("L" if s < 0.0 else ""), Vector3(nx, 4.6, -3.25), 8.1, 3, 0.95, 0.85, Vector3(tilt, 0, 0), false, Color(0.24, 0.25, 0.26))
-		k._cyl(pv, 0.92, 0.95, 1.1, Vector3(0, 0, 0.45), Vector3(PI / 2, 0, 0), A, c, 20)
-	nav_lights(k, m, Vector3(10.82, 4.6, -0.5), 0.1)
-	# the H tail: stabiliser with elevators, fins with rudders at its tips
-	surf(k, m, "bf_stab", [[Vector3(0.0, 4.3, 9.5), 2.5, 0.25], [Vector3(4.15, 4.3, 10.0), 2.1, 0.18]], A, c, [0.7])
-	surf(k, m, "bf_fin", [[Vector3(4.15, 3.1, 9.6), 2.2, 0.2], [Vector3(4.15, 4.3, 9.65), 2.55, 0.24], [Vector3(4.15, 6.9, 10.5), 1.8, 0.16]], A, c, [0.0, 0.68])
-	# the refuelling probe, the sensor turret under the nose, antennas
-	rod(k, m, Vector3(1.1, 2.75, -9.4), Vector3(1.0, 2.95, -13.3), 0.08, A, c, 10, 0.05)
-	k._cyl(m, 0.1, 0.06, 0.25, Vector3(1.0, 2.95, -13.4), Vector3(PI / 2, 0, 0), "gunmetal_w", null, 8, false)
-	k._cyl(m, 0.18, 0.2, 0.3, Vector3(0, 0.95, -10.2), Vector3.ZERO, A, c)
-	k._add(m, Res.sphere(0.34, 16), "paint", Color(0.5, 0.51, 0.5), Vector3(0, 0.7, -10.2))
-	k._add(m, Res.sphere(0.16, 10), "glass", null, Vector3(0, 0.66, -10.48), Vector3.ZERO, Vector3(1, 1, 0.5))
-	antenna(k, m, Vector3(0, 4.25, -6.0), 0.4)
-	antenna(k, m, Vector3(0, 0.4, -2.0), 0.3, true)
-	antenna(k, m, Vector3(0, 4.27, 4.0), 0.3)
-	k.gun_tip = k._tip(m, Vector3(0, 0.62, -10.55))
-	if armed:
-		# the 20 mm Gatling in a blister behind the cockpit
-		var gx := -1.6
-		body(k, m, "bf_blister", [[-6.75, 2.0, 0.0, 0.0, 0.0, 2, 2, gx], [-6.55, 2.0, 0.22, 0.26, 0.26, 2, 2, gx], [-5.75, 2.0, 0.26, 0.3, 0.3, 2, 2, gx], [-5.35, 2.0, 0.08, 0.1, 0.1, 2, 2, gx]], A, c, 14)
-		for i in 6:
-			var a := TAU * float(i) / 6.0
-			var o := Vector3(0, cos(a) * 0.07, sin(a) * 0.07)
-			rod(k, m, Vector3(-1.75, 1.98, -6.15) + o, Vector3(-2.85, 1.9, -6.15) + o, 0.024, "gunmetal_w", null, 6, -1.0, false)
-		k._cyl(m, 0.11, 0.11, 0.06, Vector3(-2.55, 1.92, -6.15), Vector3(0, 0, PI / 2 - 0.07), "gunmetal_w", null, 10, false)
-		k.mg_tip = k._tip(m, Vector3(-2.9, 1.9, -6.15))
-		k.weapon_tips["ac25"] = k.mg_tip
-		# the 40 mm Bofors: a mount on the side, the long barrel and flash hider
-		k._box(m, Vector3(0.24, 0.8, 0.8), Vector3(-1.58, 2.55, 2.6), A, c.darkened(0.15))
-		rod(k, m, Vector3(-1.6, 2.55, 2.6), Vector3(-2.2, 2.54, 2.6), 0.17, "gunmetal_w", null, 12)
-		rod(k, m, Vector3(-1.6, 2.55, 2.6), Vector3(-3.7, 2.5, 2.6), 0.085, "gunmetal_w", null, 10)
-		rod(k, m, Vector3(-3.5, 2.5, 2.6), Vector3(-4.0, 2.49, 2.6), 0.12, "gunmetal_w", null, 10, 0.08)
-		k.weapon_tips["ac40"] = k._tip(m, Vector3(-4.01, 2.49, 2.6))
-		# the 105 mm howitzer: a mantlet plate, the recoil sleeve, the barrel and muzzle brake
-		k._box(m, Vector3(0.26, 1.2, 1.4), Vector3(-1.58, 2.55, 5.4), A, c.darkened(0.15))
-		rod(k, m, Vector3(-1.6, 2.55, 5.4), Vector3(-4.4, 2.48, 5.4), 0.15, "gunmetal_w", null, 12)
-		rod(k, m, Vector3(-1.6, 2.55, 5.4), Vector3(-2.6, 2.53, 5.4), 0.26, "gunmetal_w", null, 12)
-		k._box(m, Vector3(0.5, 0.38, 0.42), Vector3(-4.55, 2.47, 5.4), "gunmetal_w")
-		k.gun_tip = k._tip(m, Vector3(-4.82, 2.47, 5.4))
-		k.weapon_tips["ac105"] = k.gun_tip
-		# a second sensor turret on the gun side
-		k._add(m, Res.sphere(0.3, 14), "paint", Color(0.5, 0.51, 0.5), Vector3(-1.25, 0.95, -7.6))
-		k._add(m, Res.sphere(0.13, 10), "glass", null, Vector3(-1.5, 0.9, -7.6), Vector3.ZERO, Vector3(0.5, 1, 1))
-	wing_marks(k, m, team, ws, 6.5, 1.1)
-	for s in [-1.0, 1.0]:
-		k._team_mark(m, team, Vector3(s * 1.6, 2.6, 6.0), Vector3(0.02, 0.8, 0.8))
 
 
 # --- Y-32 Xi'an ---------------------------------------------------------------------

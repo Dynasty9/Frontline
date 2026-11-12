@@ -102,7 +102,16 @@ static func build(kind: String, team: int, seed: int, is_burnt := false) -> Vehi
 ## Every model key the families build (for the Field Manual's model pages).
 static func family_keys() -> Array[String]:
 	var out: Array[String] = []
-	for ks in [VmNato.KEYS, VmCsat.KEYS, VmIndep.KEYS, VmCiv.KEYS, VmHeli.KEYS, VmPlane.KEYS, VmBoat.KEYS, VmShips.KEYS]:
+	for ks in [VmNato.KEYS, VmCsat.KEYS, VmIndep.KEYS, VmCiv.KEYS, VmHeli.KEYS, plane_keys(), VmBoat.KEYS, VmShips.KEYS]:
+		out.append_array(ks)
+	return out
+
+
+## Every fixed-wing model key. The plane family spans several builders: VmPlane,
+## and the newer aircraft builders build() asks first (each builds its own keys).
+static func plane_keys() -> Array[String]:
+	var out: Array[String] = []
+	for ks in [VmPlane.KEYS, VmAttack.KEYS, VmFighter.KEYS, VmGunship.KEYS]:
 		out.append_array(ks)
 	return out
 
