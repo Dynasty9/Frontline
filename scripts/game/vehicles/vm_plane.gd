@@ -16,8 +16,8 @@ extends RefCounted
 ## Jet exhaust glow: a node named "Afterburner" (skipped when burnt).
 
 ## Every model key this file builds (the Field Manual's model pages list them).
-## The Wipeout, Black Wasp and Blackfish are built by VmAttack, VmFighter and
-## VmGunship, which VehicleModels.build asks before this file
+## VmAttack, VmFighter and VmGunship construct the Wipeout, Black Wasp and
+## Blackfish: VehicleModels.build asks them before this file
 ## (VehicleModels.plane_keys lists every fixed-wing key).
 const KEYS: Array[String] = ["buzzard", "gryphon", "caesar", "shikra", "neophron",
 	"greyhawk", "sentinel", "fenghuang", "xian"]
