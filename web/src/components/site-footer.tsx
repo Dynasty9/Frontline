@@ -14,8 +14,7 @@ export function SiteFooter({ accounts }: { accounts?: string }) {
             Frontline
           </Link>
           <p className="mt-4 max-w-xs text-sm leading-relaxed text-muted-foreground">
-            Squad tactics. Combined arms.
-            <br />
+            Squad tactics. Combined arms. <br />
             Free to play, with or without an account.
           </p>
         </div>

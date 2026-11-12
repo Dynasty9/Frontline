@@ -12,8 +12,7 @@ export function Features() {
       <Reveal from="signal">
         <SectionLabel>01 / Take command</SectionLabel>
         <h2 className="mt-4 max-w-3xl font-display text-5xl leading-none font-extrabold uppercase sm:text-7xl">
-          The road is covered.
-          <br />
+          The road is covered. <br />
           <span className="text-primary">Find another way.</span>
         </h2>
         <p className="mt-6 max-w-xl text-lg leading-relaxed text-muted-foreground">
@@ -29,8 +28,7 @@ export function Features() {
         <Reveal from="type" delay={120}>
           <p className="font-mono text-xs tracking-widest text-primary uppercase">Your orders. Their instincts.</p>
           <h3 className="mt-4 font-display text-4xl leading-none font-bold uppercase">
-            You choose the move.
-            <br />
+            You choose the move. <br />
             They fight as a team.
           </h3>
           <p className="mt-5 leading-relaxed text-muted-foreground">
@@ -47,8 +45,7 @@ export function Features() {
         <Reveal from="signal">
           <SectionLabel>Every soldier matters</SectionLabel>
           <h3 className="mt-4 font-display text-4xl leading-none font-bold uppercase sm:text-5xl">
-            Under fire,
-            <br />
+            Under fire, <br />
             instinct takes over.
           </h3>
           <p className="mt-5 max-w-md leading-relaxed text-muted-foreground">
@@ -66,8 +63,7 @@ export function Features() {
           <div>
             <SectionLabel>02 / Change the fight</SectionLabel>
             <h3 className="mt-4 font-display text-5xl leading-none font-extrabold uppercase sm:text-7xl">
-              Now bring the
-              <br />
+              Now bring the <br />
               <span className="text-primary">heavy hitters.</span>
             </h3>
           </div>
