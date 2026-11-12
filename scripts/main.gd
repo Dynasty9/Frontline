@@ -187,6 +187,7 @@ func _ready() -> void:
 	probe.main = self
 	add_child(probe)
 	var overlay: CanvasLayer = preload("res://scripts/ui/perf_overlay.gd").new()
+	overlay.name = "PerfOverlay"  # (photo mode puts it away while it's on)
 	overlay.probe = probe
 	add_child(overlay)
 	console = Console.new()
@@ -1324,6 +1325,54 @@ func _process(_dt: float) -> void:
 				world.input.set_standing(kv.get_slice(":", 0), int(kv.get_slice(":", 1)))
 	if args.has("nohud") and world.hud and world.hud.root.visible:
 		world.hud.root.visible = false
+	# --photo-at=S: photo mode opens S seconds into the battle, its values set from
+	# --photo=key:value,... (fov:30,mood:dusk,blur:0.6,pos:x:y:z,yaw:deg,pitch:deg). The battle
+	# is held from then on, so the rest counts real seconds: after --photo-wait (3)
+	# --photo-shot=PATH saves the screen as it is (the panel and all) and --photo-capture
+	# takes a picture; --photo-quit ends the run once they're done.
+	if args.has("photo-at") and world.get("photo") and not has_meta("photo_on") and not world.client_loading() and view_time >= float(args["photo-at"]):
+		set_meta("photo_on", Time.get_ticks_msec())
+		if world.photo.enter():
+			for kv in String(args.get("photo", "")).split(",", false):
+				var pv := kv.split(":", true, 1)
+				if pv.size() == 2 and pv[0] == "pos":
+					var xyz := pv[1].split(":")
+					world.photo.pos = Vector3(float(xyz[0]), float(xyz[1]), float(xyz[2]))
+				elif pv.size() == 2 and pv[0] in ["yaw", "pitch"]:
+					world.photo.set(pv[0], deg_to_rad(float(pv[1])))
+				elif pv.size() == 2 and pv[0] == "aim":
+					# aim:D:H - D metres back from where the view was looking, H over the ground, looking at it
+					var dh := pv[1].split(":")
+					var at: Vector3 = world.cam.focus_pos
+					at.y = world.ground_y(at) + 1.5
+					var from: Vector3 = at + Vector3(sin(world.cam.yaw), 0.0, cos(world.cam.yaw)) * float(dh[0])
+					from.y = world.ground_y(from) + float(dh[1])
+					var look: Vector3 = (at - from).normalized()
+					world.photo.pos = from
+					world.photo.yaw = atan2(-look.x, -look.z)
+					world.photo.pitch = asin(look.y)
+					world.photo.set_value("focus", from.distance_to(at))
+				elif pv.size() == 2:
+					world.photo.set_value(pv[0], pv[1])
+			world.photo.captured.connect(func(path: String, where: String):
+				print("PHOTO saved %s %s (%s)" % [path, str(world.photo.last_size), where])
+				set_meta("photo_saved", true))
+			print("PHOTO open t=%.2f held=%s pos:%.1f:%.1f:%.1f,yaw:%.1f,pitch:%.1f" % [world.time, world.photo.held, world.photo.pos.x, world.photo.pos.y,
+				world.photo.pos.z, rad_to_deg(world.photo.yaw), rad_to_deg(world.photo.pitch)])
+		else:
+			print("PHOTO couldn't open photo mode")
+	if has_meta("photo_on") and not has_meta("photo_done") and Time.get_ticks_msec() - int(get_meta("photo_on")) >= float(args.get("photo-wait", 3.0)) * 1000.0:
+		set_meta("photo_done", true)
+		print("PHOTO t=%.2f time_scale=%.2f" % [world.time, Engine.time_scale])
+		if args.has("photo-shot"):
+			get_viewport().get_texture().get_image().save_png(String(args["photo-shot"]))
+			print("PHOTO screen saved ", args["photo-shot"])
+		if args.has("photo-capture"):
+			world.photo.capture()
+		else:
+			set_meta("photo_saved", true)
+	if args.has("photo-quit") and has_meta("photo_saved"):
+		TestRun.quit(get_tree())
 	if args.has("tactical") and world.hud and not world.hud.tactical and not has_meta("tac"):
 		set_meta("tac", true)
 		world.hud.toggle_tactical()

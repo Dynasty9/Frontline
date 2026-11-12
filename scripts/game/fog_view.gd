@@ -22,6 +22,9 @@ var world: World
 var sight_tex: Texture2D  # white where your side sees, black where it doesn't
 var dark_tex: Texture2D  # the same, as darkness: black, alpha 1 out of sight (the minimap)
 var active := false
+## Photo mode can take the shading off the ground for its picture (only the
+## drawing: who sees what is the host's, and stays as it was).
+var hidden := false
 
 var _vp: SubViewport
 var _vp_dark: SubViewport
@@ -119,12 +122,18 @@ func _make_disc() -> Texture2D:
 	return gt
 
 
+func set_hidden(h: bool) -> void:
+	hidden = h
+	if _mi:
+		_mi.visible = active and not hidden
+
+
 func _process(dt: float) -> void:
 	var team := world.view_team
 	var on := team >= 0 and team <= 1 and bool(Settings.get_v("lyr_vision"))
 	if on != active:
 		active = on
-		_mi.visible = on
+		_mi.visible = on and not hidden
 		_t = 0.0
 		if on and world.atmo:
 			# at night the whole field is dark already: out of sight is only a little darker

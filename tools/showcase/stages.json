@@ -459,5 +459,22 @@
       "close_look_lift": 1.2
     },
     "events": "A tank wreck spawned as a destroyed vehicle leaves one (variant 6), so it burns through the game's own fire code. The showroom's tanks idle where the scenario parks them. Forward+ only: the Compatibility renderer has no compositor."
+  },
+  "helicopters-crash": {
+    "scene": "tests/fixtures/helicopter-world-clips.tscn",
+    "seconds": 10,
+    "fps": 30,
+    "simulation_hz": 30,
+    "engine_fixed_fps": 30,
+    "timeout": 2400,
+    "seed": 712,
+    "crf": 34,
+    "renderer": "forward_plus",
+    "render_settings": {
+      "preset": "high",
+      "dof": false,
+      "mood": "day"
+    },
+    "cue": "Two Ghost Hawks cross the view at 16 m and are both shot down 2.5 s in: the near one loses its tail rotor and spins in, the far one autorotates to a heavy landing; their paths are traced."
   }
 }

@@ -2479,6 +2479,9 @@ func _build_model() -> void:
 					wk.turret.position += Vector3(rng.randf_range(-3.0, 3.0), -1.0, rng.randf_range(1.0, 3.0))
 					wk.turret.rotation += Vector3(rng.randf_range(-0.5, 0.5), 0, rng.randf_range(-0.6, 0.6))
 			wk.root.rotation.z = rng.randf_range(-0.04, 0.04)
+			if wk.rotor:
+				# a downed helicopter's rotor stopped where it hit, bent askew
+				wk.rotor.rotation = Vector3(rng.randf_range(-0.14, 0.14), rng.randf_range(0.0, TAU), rng.randf_range(-0.14, 0.14))
 		"tree":
 			tree_model(model, eid, variant)
 		"fob":

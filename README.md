@@ -12,7 +12,7 @@
 
 Frontline is a real-time strategy game about modern infantry combat. You command squads, not individual soldiers: you decide where they go, and they decide how to get there and how to fight.
 
-Your soldiers take cover behind real walls and wrecks, keep their heads down under fire, drag their wounded to safety and throw enemy grenades back. Squads leapfrog forward one team at a time, clear houses room by room, set ambushes on the roads, and break and run when a fight goes badly. Tanks pop smoke when a missile is fired at them. Shellfire sets woods, hedgerows, roofs and cars alight, and the fire spreads with the wind and drives men out of their cover. Life goes on round the fighting: birds feed in the fields until the shooting sends them up, rats run along the walls in town, ducks paddle on the ponds and dolphins roll through the swell offshore. The towns look lived in, with curtains in the windows, flowers on the sills and pictures on the walls inside, and after dark lamps glow behind a third of the windows. Boats land raiding parties on the beach, and helicopters carry vehicles to the front on a cable. Helicopters fly like the real thing: the nose dips as they gather speed, they bank round turns, climb away from the pad and come down a glide path into a low hover, throwing up dust as they set down.
+Your soldiers take cover behind real walls and wrecks, keep their heads down under fire, drag their wounded to safety and throw enemy grenades back. Squads leapfrog forward one team at a time, clear houses room by room, set ambushes on the roads, and break and run when a fight goes badly. Tanks pop smoke when a missile is fired at them. Shellfire sets woods, hedgerows, roofs and cars alight, and the fire spreads with the wind and drives men out of their cover. Life goes on round the fighting: birds feed in the fields until the shooting sends them up, rats run along the walls in town, ducks paddle on the ponds and dolphins roll through the swell offshore. The towns look lived in, with curtains in the windows, flowers on the sills and pictures on the walls inside, and after dark lamps glow behind a third of the windows. Boats land raiding parties on the beach, and helicopters carry vehicles to the front on a cable. Helicopters fly like the real thing: the nose dips as they gather speed, they bank round turns, climb away from the pad and come down a glide path into a low hover, throwing up dust as they set down. Shot down, they spin in or autorotate to a crash.
 
 Grenades burst into dust and fast fragments, shells throw dense fans of earth and falling clods, and vehicle fuel burns in rolling fireballs. Animated smoke and dust catch the sun and spread across the ground. At night, illumination flares drift down under parachutes and tracers streak across the fighting. The Cinematic graphics preset adds a sky worked out from how sunlight scatters in the air, shadows thrown by fires and flares, sun shafts, lens flare, eye adaptation, a film look, and heat haze shimmering over fires, wrecks and engines.
 
@@ -148,6 +148,7 @@ On a Mac's trackpad, scroll with two fingers to drag the map and pinch to zoom; 
 | Order of battle (all your units) | O |
 | Help | F1 |
 | Hide the interface | F2 |
+| Photo mode | F9 |
 | Performance overlay | F3 |
 | Field Manual | F4 |
 | Console (fuzzy command dropdown, copy/paste, Ctrl+F output search) | ` or ~ |
@@ -156,6 +157,8 @@ On a Mac's trackpad, scroll with two fingers to drag the map and pinch to zoom; 
 | Menu and settings | Esc |
 
 When watching an AI battle: **C** hands the camera back to the director, **V** picks whose view you see, **P** pauses, and **[** and **]** change the speed.
+
+**Photo mode** (F9) holds a solo battle or a replay still (in multiplayer the fighting goes on), puts the interface away and lets the camera fly free: WASD fly the way the lens looks, E / Q go up and down, Z / C roll, and holding a mouse button and dragging looks round. Its panel sets the field of view, the focus and how soft the rest falls, exposure, the time of day, a colour grade, contrast, saturation, vignette and grain, and switches the camera-and-lens effects (flare, sun shafts, local exposure, eye adaptation, film look, heat haze) for the picture alone. Space takes the picture, at twice the resolution and scaled down for a cleaner edge, as a PNG in the game's `screenshots` folder; in a browser it's downloaded. F2 hides the panel, and F9 or Esc puts everything back as it was. None of it touches your settings.
 
 ## Playing with friends
 

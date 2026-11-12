@@ -16,13 +16,14 @@ These are the default keys. **Settings â†’ Controls** (`scripts/autoload/ke
 changes any of them:
 
 - **By category:** camera, saved views, orders, abilities and fire support, building, control groups,
-  co-commanders, interface, observer, with the mouse's own controls listed at the end for reference.
+  co-commanders, interface, photo mode, observer, with the mouse's own controls listed at the end for reference.
 - **Two keys per action.** A key can be a combination with Ctrl, Shift or Alt, a modifier on its own (Pan
   faster is Shift), or a mouse side button.
 - **Rebinding:** click a key and press the new one. Esc cancels, right-click clears.
 - **Clashes.** A key another action already has is moved off it, with a line saying so and an Undo. Keys only
   clash where both could be live at once: the turn-the-building key while placing doesn't clash with retreat,
-  and observer keys don't clash with orders.
+  and observer keys don't clash with orders. Photo mode's keys are live only while it's on, so they clash only
+  with each other and the interface's keys.
 - **Matching.** The closest match wins: an exact combination first, then a key with extra modifiers held, so
   Shift + R still retreats while Ctrl + F follows rather than calling a fire mission.
 - **Finding and resetting:** search by action or key, reset one action or everything (a second click
@@ -50,6 +51,7 @@ changes any of them:
 | Defenses | Emplacements are crewed by any idle soldier standing next to them. Right-click a bunker with a squad to garrison it. Select a mortar pit for HE / smoke fire missions |
 | Support | The buttons above the minimap (Z arms the first one ready): press on the target, **drag** to set the run-in direction for gun runs, bombing runs and recon passes, then release to call it in. A click keeps the default approach; mortars, artillery and orbiting support target an area without a direction |
 | Observer | C director camera, V whose eyes to watch through, P pause, [ ] speed, F2 hide the interface. **Fire support** (observer bar) launches any air or artillery support anywhere to watch it |
+| Photo mode | **F9** opens and closes it (Esc closes it too). WASD fly the way the lens looks (Shift faster, Ctrl slower), E / Q up and down, Z / C roll (Backspace levels it), hold a mouse button and drag to look, the wheel zooms, Space takes the picture, F2 hides the panel |
 | Command view | Tab tactical map (**hold Tab**: battle statistics), O order of battle (click a unit to select it and look at it, double-click to zoom in), the buttons beside the minimap turn map layers on and off (unit symbols, orders and attack plans, intelligence, fog of war, weapon ranges, soldier labels) |
 | Other | Home cycles FOBs, Space jumps to the last alert or ping (both glide there), Enter chats (Shift+Enter: team), L message history, F1 help, F3 performance overlay, **F4 field manual**, **` (or ~) the console**, Esc menu |
 
@@ -59,6 +61,40 @@ changes any of them:
 between the hottest fighting and follows individual soldiers (the caption at the bottom says who and what
 they're doing). The observer bar at the top has pause, speed (0.25x to 4x), director on/off and
 "View": both sides, or one side's fog of war. Move the camera yourself and the director lets go; press **C** to hand it back.
+
+## Photo mode
+
+**F9** (Settings > Controls) opens photo mode in any battle, a replay or while spectating (`scripts/game/photo_mode.gd`,
+its panel `scripts/ui/photo_panel.gd`):
+
+- **The action holds still** in a solo battle or offline, the way the pause key holds it (the director's speed,
+  which a solo battle's private host follows too), and in a replay by the replay's own speed. In multiplayer it
+  never stops the battle: a host with anyone else in it, even a player still loading, plays on, and so does a
+  client. Only the camera comes off.
+- **The interface goes:** the HUD, the replay's controls and the performance overlay, and with them what marks
+  the selection and a building being placed. The fog of war's shading on the ground can go too (only the
+  drawing: who sees what is the host's, as ever).
+- **A free camera** replaces the commander's orbit: WASD (the pan keys) fly the way the lens looks, the rise and
+  sink keys straight up and down, easing in and out and faster the higher it is; holding a mouse button and
+  dragging looks round, the wheel zooms. It stays between 0.6 m and 260 m over the ground and 120 m inside the
+  map's edge, looks no more than 85 degrees up or down, and rolls up to 45 degrees either way.
+- **The panel** (Signal, a sheet at the right edge; F2 hides it): field of view (15 to 90 degrees), focus (0.5 to
+  600 m, on a logarithmic bar) and blur, real depth of field from the scene's `CameraAttributesPractical` with
+  a round, high-quality bokeh while it's on; exposure in stops over the time of day's own; the time of day
+  (`Atmosphere.apply_mood`); the colour grade with its contrast and saturation; vignette and grain; and the
+  camera-and-lens passes (flare and glare, sun shafts, local exposure, eye adaptation, film look, heat haze), each on or off
+  for the picture through `Atmosphere.look_override` whatever the settings say. The browser's renderer has none of
+  those passes and no depth of field, so their rows aren't there.
+- **The picture** (Space, or Capture) is the frame without the panel or any overlay, the film look kept, saved as
+  a PNG in `user://screenshots/` (named by the date and time) with a note saying where. **Supersample** draws it
+  at twice the render scale (as long as its long side stays within 7680 pixels) and scales it down, widening the
+  depth of field's blur to match; in a browser, where a page's storage is out of reach, it's downloaded as well.
+- **Leaving** (F9 or Esc, or the battle ending) puts back the camera, the battle's speed, the interface and every
+  value it changed. Nothing is written to the player's settings.
+
+The test switches `--photo-at=S --photo=key:value,... --photo-shot=PATH --photo-capture --photo-quit` open it in a
+run and save the screen or a picture (listed with the other screenshot flags in `docs/DEVELOPMENT.md`), and
+`tests/fixtures/photo-mode.gd` checks that entering and leaving put everything back.
 
 ## Multiplayer in detail
 
@@ -1033,6 +1069,12 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   with its snapshots; clients draw the rest: a hovering helicopter's slight nose-up, one-side-low hang and gentle
   wander, the rotor's beat following its speed and slapping louder under load, and the downwash throwing a ring
   of dust (spray over water) when she's low. Drones and ground vehicles keep their own movement.
+- **Shot down.** A helicopter destroyed in the air falls rather than vanishing. With the tail rotor or controls
+  gone (or too low to settle) she winds up into a spin against the rotor's torque and corkscrews in, still carrying
+  her speed; with only the engines gone she autorotates, gliding steeply nose-down and flaring into a heavy landing.
+  Where she hits, her fuel goes up (blast damage, a crater and fire, credited to whoever shot her down), how hard
+  she hit decides who aboard walks away, and the burnt-out helicopter lies there, on her side after a spin-in. Over
+  deep water she ditches and sinks. The kill, its stats and the messages count at the moment she's hit.
 - **Boarding:** select infantry and right-click your truck, APC, Slammer or a landed helicopter: they climb in
   (as many as fit) and ride until they dismount or it arrives.
 - Tanks smash through walls, trees and cars. Small arms ricochet off them. Frontal rockets can bounce,

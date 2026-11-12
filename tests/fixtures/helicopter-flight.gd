@@ -57,6 +57,7 @@ func _ready() -> void:
 		_phases(hz)
 		_retask(hz)
 	_replication()
+	_crashes()
 	var a := _trajectory(30)
 	var b := _trajectory(60)
 	var repeat := _trajectory(30)
@@ -73,9 +74,10 @@ func _check(label: String, ok: bool) -> void:
 		print("FAIL ", label)
 
 
-func _vehicle(kind := "hummingbird", altitude := 16.0) -> Vehicle:
+func _vehicle(kind := "hummingbird", altitude := 16.0, host := false) -> Vehicle:
 	var v := Vehicle.new()
 	v.world = field
+	v.srv = host
 	v.team = 0
 	v.vkind = kind
 	v.position = Vector3(0, altitude, 0)
@@ -366,6 +368,59 @@ func _phases(hz: int) -> void:
 	var tank := _vehicle("tank", 0.0)
 	_check("ground vehicle never gets flight controller", tank.flight == null)
 	tank.free()
+
+
+## Shot down in the air she falls, she doesn't vanish: spinning in, or
+## autorotating down to a heavy landing, and the wreck lies where she hit.
+func _crashes() -> void:
+	var dt := 1.0 / 30.0
+	for mode: int in [Vehicle.CRASH_SPIN, Vehicle.CRASH_AUTOROTATE]:
+		var v := _vehicle("ghosthawk", 16.0, true)
+		v.eid = 900 + mode
+		v.velocity = Vector3(0, 0, -15)
+		v.crash_mode_next = mode
+		var shot_at := v.position
+		v.take_damage(v.max_hp * 2.0, null)
+		_check("shot down in the air, she falls rather than vanishing (mode %d)" % mode, not v.gone and v.crashing == mode)
+		var spin := 0.0
+		var sink := 0.0
+		var flare := -1.0
+		var impact_sink := 0.0
+		var last := v.position
+		var t := 0.0
+		while is_instance_valid(v) and not v.gone and t < 16.0:
+			last = v.position
+			impact_sink = -v.velocity.y
+			v.sim(dt)
+			t += dt
+			if not is_instance_valid(v) or v.gone:
+				break
+			spin = maxf(spin, absf(v.yaw_rate))
+			sink = maxf(sink, -v.velocity.y)
+			if v.position.y < 6.0:
+				flare = maxf(flare, v.flight_pitch)
+			if (v.flags & Vehicle.F_CRASH) == 0:
+				break
+		var down := not is_instance_valid(v) or v.gone
+		_check("she comes down within seconds (mode %d)" % mode, down and t > 1.0 and t < 8.0)
+		_check("she carries her speed down with her (mode %d)" % mode, Defs.flat(last - shot_at).length() > 8.0)
+		if mode == Vehicle.CRASH_SPIN:
+			_check("with the tail gone she spins against the rotor's torque", spin > 3.0)
+		else:
+			_check("autorotating, she glides down steeply rather than dropping", sink < 9.5 and spin < 1.0)
+			_check("and flares before she hits", flare > 0.2 and impact_sink < 4.5)
+		var wreck: Structure = null
+		for st in field.structures:
+			if st.skind == "wreck" and st.vk == "ghosthawk" and Defs.flat(st.position - last).length() < 3.0:
+				wreck = st
+		_check("her wreck lies where she hit, not under where she was shot (mode %d)" % mode, wreck != null)
+		if wreck:
+			_check("a spin-in leaves her on her side, a heavy landing upright (mode %d)" % mode, absf(wreck.tilt.y) > 0.4 if mode == Vehicle.CRASH_SPIN else absf(wreck.tilt.y) < 0.2)
+			field.despawn(wreck)
+	var low := _vehicle("ghosthawk", 0.15, true)
+	low.eid = 950
+	low.take_damage(low.max_hp * 2.0, null)
+	_check("destroyed on the ground she burns where she sits", low.gone or not is_instance_valid(low))
 
 
 func _replication() -> void:

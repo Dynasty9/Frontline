@@ -461,6 +461,26 @@ func _valid_fx(event: Variant) -> bool:
 	return true
 
 
+## Photo mode holds the replay still and puts its controls away (on); let go
+## (off), it plays on at the speed it had, following the live end if it was.
+var _photo_hold := []  # [speed, following live] while held
+
+
+func photo_hold(on: bool) -> void:
+	if on == not _photo_hold.is_empty():
+		return
+	if on:
+		_photo_hold = [speed, follow_live]
+		speed = 0.0
+		follow_live = false
+		visible = false
+		return
+	speed = float(_photo_hold[0])
+	follow_live = bool(_photo_hold[1])
+	_photo_hold = []
+	visible = true
+
+
 func _exit_tree() -> void:
 	Engine.time_scale = 1.0
 
