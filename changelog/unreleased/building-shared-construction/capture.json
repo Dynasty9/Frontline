@@ -1,0 +1,80 @@
+{
+  "before_ref": "69a1df0348fb879aa98d5fbfd7f02ac31a10c6d7",
+  "source_ref": "claude/game-building-components-1389c0 (this change, uncommitted at capture)",
+  "engine": "Godot 4.7.2 stable ed1daf0bf",
+  "stage": "tools/showcase/building-surfaces.tscn",
+  "command": "godot --path CHECKOUT --resolution 1600x900 tools/showcase/building-surfaces.tscn -- --building-out=OUTPUT --offscreen FLAGS",
+  "comparisons": [
+    {
+      "subjects": [
+        "house_pitched",
+        "barracks",
+        "factory"
+      ],
+      "before_flags": [
+        "--building-single",
+        "--building-kinds=house_pitched,barracks,factory,research,house_flat"
+      ],
+      "after_flags": [
+        "--building-single",
+        "--building-kinds=house_pitched,barracks,factory,research,house_flat",
+        "--building-match=BEFORE/capture.json"
+      ],
+      "cameras": {
+        "barracks": [
+          0.25,
+          2.84750008583069,
+          -0.446223258972168,
+          11.1654605865479,
+          41.5911140441895
+        ],
+        "factory": [
+          0.114999771118164,
+          4.86250019073486,
+          -1.59999990463257,
+          18.861349105835,
+          62.58740234375
+        ],
+        "house_pitched": [
+          0.0,
+          2.55524778366089,
+          -0.230000495910645,
+          10.8440589904785,
+          42.0636749267578
+        ]
+      }
+    },
+    {
+      "subjects": [
+        "town-driveway"
+      ],
+      "fixture": "tests/fixtures/environment-views.gd",
+      "flags": [
+        "--aivai",
+        "--seed=3",
+        "--offscreen",
+        "--nohud",
+        "--set=perf:0",
+        "--preset=high",
+        "--mood=day",
+        "--focus=0,0",
+        "--capture-set=town"
+      ],
+      "crop": [
+        40,
+        0,
+        1180,
+        560
+      ]
+    }
+  ],
+  "components": {
+    "flags": [
+      "--building-components"
+    ],
+    "pages": 5,
+    "tiled": "5 x 6 at 320 x 270"
+  },
+  "renderer": "forward_plus (checked again under gl_compatibility)",
+  "composition": "PIL: matched rows, 792 px halves, JPEG quality 82; components tiled at quality 80"
+}
