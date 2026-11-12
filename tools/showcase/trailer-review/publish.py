@@ -75,6 +75,12 @@ def main():
     parser.add_argument("archive", type=Path)
     args = parser.parse_args()
     versions = json.loads((args.archive / "versions.json").read_text())
+    # Publish the milestones used by the website. The offline viewer serves every edit.
+    milestones = {"00", "07", "13", "21", "26", "30"}
+    versions = [v for v in versions if v["file"].split("-", 1)[0] in milestones]
+    found = {v["file"].split("-", 1)[0] for v in versions}
+    if found != milestones:
+        parser.error("Archive lacks requested editions: " + ", ".join(sorted(milestones - found)))
     original = args.archive / "published-homepage.mp4"
     if original.exists():
         frames = frame_count(original)

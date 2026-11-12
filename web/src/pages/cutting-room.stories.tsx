@@ -19,7 +19,7 @@ type Story = StoryObj<typeof meta>
 export const ScreenAndCompare: Story = {
   play: async ({ canvasElement }) => {
     const page = within(canvasElement)
-    await expect(await page.findByRole("heading", { name: "Over the bridge" })).toBeVisible()
+    await expect(await page.findByRole("heading", { name: "Over the bridge", level: 2 })).toBeVisible()
     await userEvent.click(page.getByRole("button", { name: "Compare editions" }))
     await expect(page.getByTitle("Synchronized edition comparison")).toBeInTheDocument()
     await userEvent.click(page.getByRole("button", { name: "Reveal the editor’s choice" }))

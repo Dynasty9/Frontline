@@ -1,99 +1,19 @@
 {
   "entry": "changelog/unreleased/abrams-on-the-ridge.md",
-  "title": "The Abrams on the ridge",
+  "title": "Ride with the Abrams and T-55A",
   "version": "unreleased",
   "kind": "improved",
-  "summary": "The sight cuts to the firing Abrams, a return shot glances off the hull, and fire and smoke rise through the engine deck after the last hit.",
+  "summary": "See the tracks, gun and engine deck respond during a match from the new vehicle cameras.",
   "medium": "motion",
   "stage": "tests/fixtures/ridge-duel.tscn",
-  "rationale": "The firing cut shows recoil on discharge. The overhead view shows track marks beneath the hull, the hillside view holds on settling dirt, and the rear view shows where the smoke starts. A higher rear angle shows the hot base and cooling smoke at the exposed grille.",
+  "rationale": "The live match shows the camera mounts and running gear. The close comparison shows fire rising through the engine grille.",
   "source_ref": "Barrel and cadence comparison against 024386d. One-minute native Metal capture, seed 712 at 30 fps, from the ridge fixture with object-mounted cameras. The previous one-minute edit is at b59761c. The earlier 31-second edit is at 320865b. Firing and engine-deck comparison against 6372fec. Nose and smoke comparison against 7e8c5bc. Track-clearance comparison uses 44ed4a6 and efc082f. Grille fire comparison against 6ed583d. Live-match clip: native embedded --scenario=tank --play --team=0 --seed=3 --focus-vehicle=tank --vehicle-view=Tracks, Periscope or Barrel at 24 fps, cut at simulation seconds 1.25, 6, 9.25 and 17.25.",
   "attribution": "Controlled Godot scene, seed 712. The game rig, audio recordings and environment credits are documented in assets/vehicles, assets/audio/tracked and tests/fixtures/ridge-light. The plate in the film is a breakaway prop.",
   "sources": [
     {
-      "file": "changelog/unreleased/abrams-on-the-ridge/abrams-ridge-duel.mp4",
-      "sha256": "1957a6392ff543f51bbf83b48a6b681370d64d979ad94c20a1394be10adffe40",
-      "caption": "A one-minute encounter with six shared object cameras, a turret optic and fixed hillside shots."
-    },
-    {
-      "file": "changelog/unreleased/abrams-on-the-ridge/before.jpg",
-      "sha256": "7b6307f40e1ed9f86ba17dedabe2da6643491b7338ce9a6ab4d72d04d1517f68",
-      "caption": "Earlier in-game Abrams on the eastern ridge."
-    },
-    {
-      "file": "changelog/unreleased/abrams-on-the-ridge/after.jpg",
-      "sha256": "fb49cac7abbea495060244902df8f8c04204d4f306a3971953ee3c816ce1c0d1",
-      "caption": "Updated eastern Abrams from the same approach."
-    },
-    {
-      "file": "changelog/unreleased/abrams-on-the-ridge/climb.jpg",
-      "sha256": "a73f44482aee636ee289f58a4fde2e566d472fc842878e7d640ffb8f288b6886",
-      "caption": "The opening view of the sand Abrams as it climbs."
-    },
-    {
-      "file": "changelog/unreleased/abrams-on-the-ridge/wreck-before.jpg",
-      "sha256": "252108da5bf1cb3b4ef11c1b0a4f0726cd04df80e562c14685e2e28451e6223b",
-      "caption": "Earlier live-game wreck sitting level on the slope."
-    },
-    {
-      "file": "changelog/unreleased/abrams-on-the-ridge/wreck-after.jpg",
-      "sha256": "2344f66d9ee187a3214a9f449be5bb7653bd3ddfc7a037301690a5a63745c185",
-      "caption": "Same wreck on its tracks with ash on the painted armor."
-    },
-    {
-      "file": "changelog/unreleased/abrams-on-the-ridge/olive-finish.jpg",
-      "sha256": "23da33f4869d826406fec2c253bec60961ffbacb188a41da5306a38beb932241",
-      "caption": "The olive Abrams from the same ridge camera. Dust lightens the deck and turret roof while the vertical cheeks retain the deeper green."
-    },
-    {
       "file": "changelog/unreleased/abrams-on-the-ridge/track-prints.jpg",
       "sha256": "f78e3532b0214519f2eb888eaaf64c5f5696d80f63880488fc4e9506614c173b",
       "caption": "The same turn with the earlier and revised tread impressions."
-    },
-    {
-      "file": "changelog/unreleased/abrams-on-the-ridge/scope.jpg",
-      "sha256": "3f02f03a0d70bab6c8049d75482975550038937ae5e64d9055e743cfdb63d4e9",
-      "caption": "The T-55A behind the fixed etched reticle after the optical zoom settles."
-    },
-    {
-      "file": "changelog/unreleased/abrams-on-the-ridge/closing-shot.jpg",
-      "sha256": "722e160ac47389e20ff56dbc4130996586c6ee9d3999398e63e3115321fb2ba3",
-      "caption": "The previous and revised closing frames, both at 30.97 seconds."
-    },
-    {
-      "file": "changelog/unreleased/abrams-on-the-ridge/survivor.jpg",
-      "sha256": "464f1eb8ad320d82cfe4b7ca0c02499822ee3ac4b7572312f24395d6190464ec",
-      "caption": "The T-55A on the hillside in the final frame of the film."
-    },
-    {
-      "file": "changelog/unreleased/abrams-on-the-ridge/tracks-and-knockout.jpg",
-      "sha256": "2be61f21682a06df48a348f34b24885ed0f29063f7ab2a857892e271006c732b",
-      "caption": "The earlier and revised track shot at 15.45 seconds and knockout at 27.30 seconds."
-    },
-    {
-      "file": "changelog/unreleased/abrams-on-the-ridge/fire-and-track-clearance.mp4",
-      "sha256": "c46d24f2f6efc6e9c424551ffc39d1741a6216c0442b10803bf615d9b57f103c",
-      "caption": "Matched close-ups of the wreck fire and the T-55A return track."
-    },
-    {
-      "file": "changelog/unreleased/abrams-on-the-ridge/fire-and-track-clearance.jpg",
-      "sha256": "4d465fb2049bdd106fc3f0a99902fed4f47c12ac384087c55cf841fc7e335ae6",
-      "caption": "Flame and smoke against the hull in the old and revised cuts."
-    },
-    {
-      "file": "changelog/unreleased/abrams-on-the-ridge/nose-and-smoke.mp4",
-      "sha256": "0614f884590517797993810a4526bc52a11308024cd8ef782f225e748074e4b9",
-      "caption": "Matched moving crops of the T-55A nose and the Abrams smoke."
-    },
-    {
-      "file": "changelog/unreleased/abrams-on-the-ridge/nose-and-smoke.jpg",
-      "sha256": "52edf78b8e69f0c5efe3a4f66b9bee412d74fe43a36672f308eb3f331d4a4b8a",
-      "caption": "Spare links and lamp guards above, the sustained fuel plume below."
-    },
-    {
-      "file": "changelog/unreleased/abrams-on-the-ridge/firing-and-engine-deck.jpg",
-      "sha256": "c592b23dc8477c083c7be54964386683ad79d0f5478d3ffdd50d90037f30c410",
-      "caption": "The first discharge and the burning engine deck at matching times in both cuts."
     },
     {
       "file": "changelog/unreleased/abrams-on-the-ridge/grille-fire.mp4",
@@ -104,11 +24,6 @@
       "file": "changelog/unreleased/abrams-on-the-ridge/grille-fire.jpg",
       "sha256": "94ecf8805d7c84a8e97422ade007300c5288600ec8897c663b6b056aa2c84598",
       "caption": "The old and revised engine-deck plumes at 28.3 seconds."
-    },
-    {
-      "file": "changelog/unreleased/abrams-on-the-ridge/barrel-closeup.jpg",
-      "sha256": "5b5f62d1345b645713920a1c265eb4e294d4414669fd4e0302f5ae82961c7108",
-      "caption": "Abrams barrel, earlier and revised cut near 41 seconds."
     },
     {
       "file": "changelog/unreleased/abrams-on-the-ridge/live-match.mp4",

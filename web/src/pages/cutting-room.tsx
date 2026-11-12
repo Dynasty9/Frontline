@@ -195,14 +195,12 @@ function ScreeningRoom({ editions }: { editions: Edition[] }) {
   const [phase, setPhase] = useState(0)
   const [started, setStarted] = useState(false)
   const [playError, setPlayError] = useState(false)
-  const [expanded, setExpanded] = useState(false)
   const phaseEdits = editions
     .filter((e) => {
       const n = e.id === "published" ? -1 : Number(e.id)
       return n >= phases[phase].first && n <= phases[phase].last
     })
     .toReversed()
-  const visible = expanded ? phaseEdits : phaseEdits.slice(0, 8)
   const prior = Math.max(0, index - 1)
   const comparisonHtml = comparing
     ? comparison
@@ -368,27 +366,20 @@ function ScreeningRoom({ editions }: { editions: Edition[] }) {
         <p className="cut-kicker">
           <FilmStripIcon /> Film archive
         </p>
-        <h2>Every cut, in sequence.</h2>
+        <h2>Milestone cuts, in sequence.</h2>
         <p className="cut-summary">
-          {editions.length - 1} numbered editions and the previously published trailer. Pick a cut to screen it or
-          compare it with its predecessor.
+          {editions.length - 1} selected editions and the previously published trailer. Pick a cut to screen it or
+          compare it with an earlier edit.
         </p>
         <div className="cut-filters" aria-label="Filter editions">
           {phases.map((p, i) => (
-            <button
-              key={p.name}
-              aria-pressed={phase === i}
-              onClick={() => {
-                setPhase(i)
-                setExpanded(false)
-              }}
-            >
+            <button key={p.name} aria-pressed={phase === i} onClick={() => setPhase(i)}>
               {p.name}
             </button>
           ))}
         </div>
         <div className="cut-grid">
-          {visible.map((e) => (
+          {phaseEdits.map((e) => (
             <button
               key={e.id}
               className={e.id === edit.id ? "selected" : ""}
@@ -404,11 +395,6 @@ function ScreeningRoom({ editions }: { editions: Edition[] }) {
             </button>
           ))}
         </div>
-        {visible.length < phaseEdits.length && (
-          <button className="cut-more" onClick={() => setExpanded(true)}>
-            Show all {phaseEdits.length} cuts <ArrowDownIcon />
-          </button>
-        )}
       </section>
       <section className="cut-section" aria-labelledby="other-films">
         <p className="cut-kicker">Companion films</p>

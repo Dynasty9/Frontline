@@ -12,11 +12,6 @@ file = "after.jpg"
 caption = "Stamped road wheels and hinged tread shoes in the same climb."
 
 [[videos]]
-file = "ridge-duel-revised.mp4"
-poster = "duel.jpg"
-caption = "A staged 24-second exchange between a T-55 and an Abrams on opposite ridges. Listen to the change from a loaded engine on the climb to an idling engine at the crest."
-
-[[videos]]
 file = "track-dust.webm"
 poster = "track-dust.jpg"
 caption = "Follow the second Abrams on the same village road. On the right the dust spreads behind both treads and the impressions stay visible through it."
