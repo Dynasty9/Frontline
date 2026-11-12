@@ -254,7 +254,7 @@ func _unhandled_input(ev: InputEvent) -> void:
 ## The actions a key press can mean in a battle, most particular first (a tie
 ## goes to the earlier). Placing a building puts its own keys in front.
 const KEY_ACTIONS := ["chat_team", "chat", "support", "grenade", "smoke", "attack_move", "defend", "take_back", "delegate",
-	"intent_hold", "intent_take", "intent_screen", "intent_reserve", "intent_ambush", "cam_follow",
+	"intent_hold", "intent_take", "intent_screen", "intent_reserve", "intent_ambush", "cam_follow", "cam_mount",
 	"stance", "fire_discipline", "target_priority", "dismount",
 	"fire_mission", "cam_reset", "view_save_1", "view_save_2", "view_save_3", "view_save_4", "view_go_1", "view_go_2",
 	"view_go_3", "view_go_4", "retreat", "hold", "tactical", "cycle_fob", "orbat", "jump_alert", "log", "hide_hud",
@@ -280,6 +280,8 @@ func _key(ev: InputEvent) -> void:
 			sketch_pts = PackedVector3Array()
 		elif place_kind != "" or ability != "" or order_mode != "":
 			cancel_modes()
+		elif world.cam.mount_label != &"":
+			world.cam.leave_mount()
 		elif has_units() or sel_structure != 0:
 			clear_selection()
 		elif world.hud:
@@ -351,6 +353,8 @@ func _key(ev: InputEvent) -> void:
 			if has_units():
 				cancel_modes()
 				order_mode = "defend"
+		"cam_mount":
+			world.cam.cycle_mount()
 		"delegate":
 			if has_units() and sel_unit == 0 and world.hud:
 				world.hud.show_intents()
@@ -414,6 +418,7 @@ func _key(ev: InputEvent) -> void:
 				get_viewport().set_input_as_handled()
 		"director":
 			if world.director:
+				world.cam.leave_mount()
 				world.director.active = not world.director.active
 				if world.hud:
 					world.hud.flash("Director camera ON" if world.director.active else "Director camera OFF")
@@ -659,6 +664,16 @@ func _focus_selection() -> void:
 		world.cam.glide_to(c)
 
 
+func camera_subject() -> Entity:
+	if sel_unit:
+		return world.entity(sel_unit)
+	if sel_structure:
+		return world.entity(sel_structure)
+	if sel_vehicles.size() == 1 and sel_squads.is_empty():
+		return world.entity(sel_vehicles[0])
+	return null
+
+
 ## The middle of everything selected (INF when nothing is).
 func selection_centre() -> Vector3:
 	var c := Vector3.ZERO
@@ -882,7 +897,9 @@ func _order(screen: Vector2, shift: bool, face_in := Vector3.ZERO, kind := "") -
 			var hv = world.entity(id)
 			if hv is Vehicle and hv.base() == "lift_heli" and int(hv.vdef.get("sling", -1)) >= tgt.weight() and not tgt.is_heli() and not tgt.is_boat() and tgt != hv:
 				world.send_cmd({"t": "sling", "vehicles": [hv.eid], "target": tgt.eid})
-				_marker(tgt.position, Color(0.6, 0.9, 1.0))
+				# Show the order just outside the load, where the hull cannot hide it.
+				var hull: Vector3 = tgt._hull_size()
+				_marker(tgt.position, Color(0.6, 0.9, 1.0), maxf(0.8, 0.56 * maxf(hull.x, hull.z)))
 				Sfx.ui("click")
 				return
 	if tgt is Vehicle and tgt.team == lt and not sel_squads.is_empty() and tgt.seats() > 0 and tgt.health_frac() > 0.3 \
@@ -1108,9 +1125,9 @@ func _confirm_place(keep: bool) -> void:
 		cancel_modes()
 
 
-func _marker(p: Vector3, c: Color) -> void:
+func _marker(p: Vector3, c: Color, radius := 0.8) -> void:
 	var m := MeshInstance3D.new()
-	m.mesh = Res.torus(0.6, 0.8)
+	m.mesh = Res.torus(radius - 0.2, radius)
 	var mm := StandardMaterial3D.new()
 	mm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	mm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
@@ -1118,7 +1135,10 @@ func _marker(p: Vector3, c: Color) -> void:
 	m.material_override = mm
 	m.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	world.add_child(m)
-	m.position = Vector3(p.x, 0.1, p.z)
+	var surface := world.ground_y(p)
+	if world.water and world.water.wet_at(p):
+		surface = maxf(surface, WaterMap.LEVEL)
+	m.position = Vector3(p.x, surface + 0.1, p.z)
 	_markers.append([m, 0.0])
 
 

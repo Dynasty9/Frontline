@@ -1,0 +1,18 @@
+{
+  "entry": "changelog/unreleased/default-swat-riflemen.md",
+  "medium": "still",
+  "stage": "Native gdrill scenario, seed 3, reel-rescue camera, 7.4 seconds in the homepage cut",
+  "rationale": "Matched shots show rifleman geometry in a normal battle without launch flags.",
+  "source_ref": "Before 89d3097; updated camera and rifleman defaults in this change",
+  "sources": [
+    {
+      "file": "changelog/unreleased/default-swat-riflemen/after.jpg",
+      "sha256": "b1685ae10ed0a0606b3b0fd6863808afcebb3945164dfb724a5a9de6c84895c0"
+    },
+    {
+      "file": "changelog/unreleased/default-swat-riflemen/before.jpg",
+      "sha256": "c5ff169648f07ea705c68f4b1988e992f44b00be926042b13daa453e5a365ea6"
+    }
+  ],
+  "output": null
+}

@@ -271,6 +271,7 @@ Scenarios, AI-vs-AI battles and missions run offline: they take no port, so any 
 --report-at=SECONDS                                   (client) ask the host for the statistics then; a headless client
                                                       prints a CLIENT report line for each it gets
 --perf-at=480 [--perf-shot=path.png]                  fast-forward, then measure real FPS and server tick cost
+--focus-vehicle=tank --vehicle-view=Tracks             record from the selected vehicle’s named in-game camera mount
 --screenshot=out.png --shot-at=30 --focus=X,Z --zoom=40 [--shots=N --shot-every=0.5]
 --mood=golden --perf=3 --preset=ultra                 lighting, overlay level and graphics preset for screenshots
 --photo-at=S [--photo=fov:30,blur:0.5,mood:dusk,...]   open photo mode S seconds in, with those values (any of its panel's,
@@ -292,7 +293,8 @@ Scenarios, AI-vs-AI battles and missions run offline: they take no port, so any 
 --aivai --play --ai-allies                           an AI commander fights beside you on your side
 --focus-fob=0|1                                       keep the camera on that side's first FOB
 --focus-town[=dx,dz] / --focus-decor=kind[,n]         camera on the town, or on a piece of street furniture
---focus-vehicle=kind                                  camera on the first vehicle of a kind (--blast-at=f,0,SIZE,T blows it up)
+--focus-vehicle=kind[,n]                              camera on the nth vehicle of a kind (zero-based, first by default)
+--focus-vehicle-at=SECONDS                            switch to that vehicle at this simulation time (default 1 second)
 --blast-at=X,Z,SIZE,TIME                              a real explosion at that spot and time (physics tests);
                                                       X,Z of "f,DX" is DX metres beside the camera's focus (or "v:KIND,DX"
                                                       beside the first vehicle of that kind)

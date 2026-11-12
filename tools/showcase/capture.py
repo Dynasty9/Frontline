@@ -4,7 +4,9 @@ import json
 import os
 from pathlib import Path
 import shutil
+import struct
 import subprocess
+import sys
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -30,8 +32,16 @@ def main():
         parser.error('Set GODOT and FFMPEG, or put both on PATH.')
     out.mkdir(parents=True, exist_ok=True)
     frames = out / 'frames'
-    command = [godot, '--path', str(ROOT), '--rendering-method', renderer,
-               '--audio-driver', 'Dummy', '--position', '-10000,-10000', '--resolution', '1280x720',
+    resolution = '1280x720'
+    env = os.environ.copy()
+    display = ['--position', '-10000,-10000']
+    if os.environ.get('FL_SHOW_WINDOW') == '1':
+        display = []
+    elif sys.platform == 'darwin':
+        display = ['--embedded', '--debug', '--ignore-error-breaks']
+        env['FL_CAPTURE_SIZE'] = resolution
+    command = [godot, *display, '--path', str(ROOT), '--rendering-method', renderer,
+               '--audio-driver', 'Dummy', '--resolution', resolution,
                'res://' + stage['scene'], '--', '--clip=' + args.stage,
                '--label=' + args.label, '--frames=' + str(frames)]
     if args.legacy_effects:
@@ -39,13 +49,17 @@ def main():
     if stage.get('engine_fixed_fps'):
         command[1:1] = ['--fixed-fps', str(stage['engine_fixed_fps'])]
     with (out / 'capture.log').open('w') as log:
-        subprocess.run(command, stdout=log, stderr=log, check=True, timeout=stage.get("timeout", 300))
+        subprocess.run(command, stdout=log, stderr=log, check=True, env=env, timeout=stage.get("timeout", 300))
     log = (out / 'capture.log').read_text()
     if any(error in log for error in ['SCRIPT ERROR', 'SHADER ERROR', 'Shader compilation failed', 'TESTRUN failed']):
         raise SystemExit('Capture has script or shader errors; inspect capture.log.')
     expected = stage['seconds'] * stage['fps']
     if len(list(frames.glob('*.png'))) != expected:
         raise SystemExit('Incomplete capture.')
+    with (frames / '0000.png').open('rb') as first:
+        width, height = struct.unpack('>II', first.read(24)[16:24])
+    if f'{width}x{height}' != resolution:
+        raise SystemExit(f'Expected {resolution} frames, captured {width}x{height}.')
     subprocess.run([ffmpeg, '-y', '-loglevel', 'error', '-framerate', str(stage['fps']),
                     '-i', str(frames / '%04d.png'), '-c:v', 'libvpx-vp9', '-crf', str(stage.get('crf', 30)),
                     '-b:v', str(stage.get('bitrate', '0')), '-pix_fmt', 'yuv420p', '-an', str(out / 'clip.webm')], check=True)

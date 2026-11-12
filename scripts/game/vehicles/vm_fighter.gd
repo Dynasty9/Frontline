@@ -24,6 +24,9 @@ const KEYS: Array[String] = ["blackwasp", "jet"]
 const WHITE := Color(0.8, 0.8, 0.78)  # landing gear legs and wheel hubs
 const STEEL := Color(0.62, 0.63, 0.64)  # oleo struts
 
+const CANOPY_SHADER := preload("res://scripts/shaders/fighter_canopy.gdshader")
+
+static var _canopy_glass: ShaderMaterial
 static var _mc := {}
 static var _glass := {}
 
@@ -1031,7 +1034,22 @@ static func _blackwasp(k: VehicleModels, team: int) -> void:
 	var cst := [[-5.7, y0 + 0.5, 0.1, 0.02, 0.04], [-5.3, y0 + 0.5, 0.33, 0.24, 0.04, 2.0], [-4.7, y0 + 0.5, 0.45, 0.5, 0.04, 2.1],
 		[-4.0, y0 + 0.5, 0.49, 0.6, 0.04, 2.2], [-3.3, y0 + 0.5, 0.48, 0.57, 0.04, 2.2], [-2.6, y0 + 0.5, 0.4, 0.42, 0.04, 2.1],
 		[-2.0, y0 + 0.5, 0.26, 0.22, 0.04, 2.0], [-1.5, y0 + 0.5, 0.1, 0.06, 0.04, 2.0]]
-	_glaze(k, VmPlane.body(k, m, "ft_bw_can", cst, "glass", null, 24, 60.0), Color(0.62, 0.46, 0.16), 0.85)
+	var bubble: Variant = VmPlane.body(k, m, "ft_bw_can", cst, "glass", null, 24, 60.0)
+	if not k.burnt:
+		if _canopy_glass == null:
+			_canopy_glass = ShaderMaterial.new()
+			_canopy_glass.shader = CANOPY_SHADER
+		k._restyle(bubble, _canopy_glass)
+		# The cockpit rim, seat back and pilot share the hull mesh underneath the glass.
+		var sill := [[-5.38, y0 + 0.62, 0.05, 0.03, 0.06],
+			[-4.92, y0 + 0.64, 0.32, 0.09, 0.12], [-4.34, y0 + 0.66, 0.41, 0.08, 0.12],
+			[-3.54, y0 + 0.68, 0.44, 0.07, 0.11], [-2.67, y0 + 0.71, 0.34, 0.05, 0.12],
+			[-2.02, y0 + 0.71, 0.12, 0.02, 0.08]]
+		VmPlane.body(k, m, "ft_bw_cockpit", sill, "rubber", null, 16)
+		k._box(m, Vector3(0.44, 0.32, 0.15), Vector3(0, y0 + 0.78, -3.39), "rubber", null, Vector3(-0.14, 0, 0))
+		k._add(m, Res.sphere(0.22, 12), "cloth", Color(0.21, 0.23, 0.19), Vector3(0, y0 + 0.71, -3.66), Vector3.ZERO, Vector3(1.0, 0.92, 0.76))
+		k._add(m, Res.sphere(0.145, 14), "paint", Color(0.27, 0.29, 0.23), Vector3(0, y0 + 0.92, -3.71))
+		k._add(m, Res.sphere(0.134, 12), "glass", null, Vector3(0, y0 + 0.93, -3.77), Vector3.ZERO, Vector3(1.0, 0.60, 0.80))
 	VmPlane.stripe(k, m, "ft_bw_rail", cst, -5.65, -1.55, -0.05, 0.1, A, dark, 0.01, 4)
 	VmPlane.stripe(k, m, "ft_bw_railL", cst, -5.65, -1.55, PI - 0.1, PI + 0.05, A, dark, 0.01, 4)
 

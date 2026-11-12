@@ -90,6 +90,10 @@ var label_h := 0.0  # height of the name plate the HUD draws over FOBs and depot
 var tilt := Vector2.ZERO  # wrecks and tossed cars can lie at an angle: (pitch, roll)
 var toss = null  # [from pos, from yaw, velocity, spin] while it's flying (clients animate it)
 var vk := ""  # what a wreck used to be
+var wreck_turret_yaw := INF
+var wreck_finish := {}
+var _wreck_soot: ShaderMaterial
+var bent_skirts := 0
 var door_shut := false  # (a house's doorway) its doors are shut: the first man through kicks them in, or just opens them
 var _door_kicked := false
 var _door_leaves: Array = []  # (view) the door leaves: [hinge pivot, how far it swings open]
@@ -100,10 +104,15 @@ var burnt := false  # burnt out: a charred snag, a burnt-out car - it won't burn
 var fire_k := ""  # (server) what it burns as, once lit (Fires.FUEL)
 var fuel := 0.0  # (server) seconds of full blaze left
 var fuel_max := 0.0
+var _wreck_engine_deck := Vector3.INF
 var _fire_fx: Node3D  # (view) its flames, embers, smoke and glow
 var _fire_shown := -1  # (view) the burn level the effects were last set for
 var _char := 0.0  # (view) how charred it looks, 0..1
 var _char_mats: Array = []  # (view) its materials with the char on them
+
+
+func _build_camera_mounts() -> void:
+	_add_exterior_cameras(self, size)
 
 
 func ekind() -> String:
@@ -170,6 +179,10 @@ func apply_props(d: Dictionary) -> void:
 		seen_mask = d.seen
 	if d.has("vk"):
 		vk = d.vk
+	if d.has("wreck_turret_yaw"):
+		wreck_turret_yaw = d.wreck_turret_yaw
+		wreck_finish = d.get("wreck_finish", {})
+		bent_skirts = d.get("bent_skirts", 0)
 	if d.has("door"):
 		door_shut = d.door
 	if d.has("zc"):
@@ -203,6 +216,11 @@ func get_props() -> Dictionary:
 	if skind == "town":
 		d["zc"] = zone_c
 		d["zr"] = zone_r
+	if is_finite(wreck_turret_yaw):
+		d["wreck_turret_yaw"] = wreck_turret_yaw
+		if not wreck_finish.is_empty():
+			d["wreck_finish"] = wreck_finish
+		d["bent_skirts"] = bent_skirts
 	return d
 
 
@@ -269,6 +287,8 @@ func set_view_active(value: bool) -> void:
 		if toss != null and Time.get_ticks_msec() - _toss_received_ms < 2000:
 			_start_toss()
 		_burn_view()
+	if _wreck_soot and value:
+		_update_wreck_soot()
 	if model:
 		model.visible = value
 	if not srv and body:
@@ -1317,6 +1337,21 @@ func _roof_view(dt: float) -> void:
 func _apply_tilt() -> void:
 	if model == null:
 		return
+	if skind == "wreck" and is_finite(wreck_turret_yaw):
+		# A stopped tank rests on its two contact runs. Sample their ends
+		# so a vehicle knocked out on a crest keeps the lay of the ridge.
+		var ahead := Defs.dir_of(yaw)
+		var side := ahead.cross(Vector3.UP) * (size.x * 0.39)
+		ahead *= size.z * 0.38
+		var front_left := world.ground_y(position + ahead - side)
+		var front_right := world.ground_y(position + ahead + side)
+		var rear_left := world.ground_y(position - ahead - side)
+		var rear_right := world.ground_y(position - ahead + side)
+		var forward := Vector3(0.0, front_left + front_right - rear_left - rear_right, -4.0 * ahead.length())
+		var across := Vector3(4.0 * side.length(), front_right + rear_right - front_left - rear_left, 0.0)
+		var height := (front_left + front_right + rear_left + rear_right) * 0.25 - position.y
+		model.transform = Transform3D(Basis.looking_at(forward, across.cross(forward)), Vector3.UP * height)
+		return
 	if tilt == Vector2.ZERO:
 		if skind in ["car", "crates", "wreck"]:
 			model.transform = Transform3D.IDENTITY
@@ -1929,6 +1964,10 @@ func read_state(b: StreamPeerBuffer) -> void:
 
 # --- visuals -----------------------------------------------------------------------
 
+func _update_wreck_soot() -> void:
+	VehicleModels.spread_soot(_wreck_soot, model.to_global(_wreck_engine_deck), world.time - float(wreck_finish.since))
+
+
 func _process(_dt: float) -> void:
 	var _t0 := Time.get_ticks_usec()
 	_view_process(_dt)
@@ -1939,6 +1978,8 @@ func _process(_dt: float) -> void:
 func _view_process(_dt: float) -> void:
 	if not world.has_view or not view_active or model == null:
 		return
+	if _wreck_soot and world.time - float(wreck_finish.since) < 10.0:
+		_update_wreck_soot()
 	if burn > 0.0 or _fire_fx:
 		_fire_view(_dt)
 	if skind == "roof":
@@ -2084,6 +2125,8 @@ func _fire_box() -> Array:
 		"car":
 			return [Vector3(0, 0.9, 0.3), Vector3(0.75, 0.45, 1.5)]
 		"wreck", "rubble":
+			if skind == "wreck" and _wreck_engine_deck.is_finite():
+				return [model.transform * _wreck_engine_deck, Vector3(0.55, 0.45, 0.55)]
 			var ws := size if size != Vector3.ONE else Vector3(3.4, 2.0, 6.2)
 			return [Vector3(0, ws.y * 0.6, 0), Vector3(ws.x * 0.32, ws.y * 0.35, ws.z * 0.3)]
 		"bunker":
@@ -2112,7 +2155,7 @@ func _burn_view() -> void:
 		if _fire_fx == null:
 			var box := _fire_box()
 			var smoke := Vfx.SMOKE_FUEL if skind in ["car", "wreck", "rubble", "barricade"] else (Vfx.SMOKE_LEAVES if skind == "tree" or (skind == "low_wall") else Vfx.SMOKE_WOOD)
-			_fire_fx = world.fx.vfx.make_fire(box[1], smoke)
+			_fire_fx = world.fx.vfx.make_fire(box[1], smoke, skind == "wreck" and _wreck_engine_deck.is_finite())
 			world.fx.vfx.add_child(_fire_fx)
 			_fire_fx.global_transform = Transform3D(Basis(Vector3.UP, yaw), to_global(box[0]))
 		world.fx.vfx.set_fire(_fire_fx, burn)
@@ -2126,7 +2169,7 @@ func _burn_view() -> void:
 func _fire_view(dt: float) -> void:
 	if burn > 0.0:
 		_char = minf(1.0, _char + dt * burn / 32.0)
-	if absf(_char - _char_set) > 0.02 or absf(burn - _glow_set) > 0.04:
+	if not _wreck_soot and (absf(_char - _char_set) > 0.02 or absf(burn - _glow_set) > 0.04):
 		_apply_char(burn)
 	if burn <= 0.0 and _fire_fx == null and team < 0 and not skind in SMOKE_KINDS and skind != "roof":
 		set_process(false)
@@ -2471,14 +2514,25 @@ func _build_model() -> void:
 				var ck := VehicleModels.build_car(variant % 5, parts[0].color, variant >= 6)
 				model.add_child(ck.root)
 		"wreck":
-			var wk := VehicleModels.build(vk if vk != "" else ("tank" if variant % 2 == 0 else "old_tank"), -1, eid, true)
+			var kind := vk if vk != "" else ("tank" if variant % 2 == 0 else "old_tank")
+			var wk := VehicleModels.build(kind, int(wreck_finish.get("team", -1)), int(wreck_finish.get("seed", eid)), wreck_finish.is_empty())
 			model.add_child(wk.root)
-			if wk.turret:
+			if wk.turret and is_finite(wreck_turret_yaw):
+				wk.pose_skirts(bent_skirts)
+				wk.turret.rotation.y = wreck_turret_yaw
+				if wk.gun_mount:
+					wk.gun_mount.rotation.x = -0.095
+			elif wk.turret:
 				wk.turret.rotation = Vector3(rng.randf_range(-0.12, 0.08), rng.randf_range(-1.4, 1.4), rng.randf_range(-0.08, 0.08))
 				if rng.randf() < 0.3:
 					wk.turret.position += Vector3(rng.randf_range(-3.0, 3.0), -1.0, rng.randf_range(1.0, 3.0))
 					wk.turret.rotation += Vector3(rng.randf_range(-0.5, 0.5), 0, rng.randf_range(-0.6, 0.6))
-			wk.root.rotation.z = rng.randf_range(-0.04, 0.04)
+			if not is_finite(wreck_turret_yaw):
+				wk.root.rotation.z = rng.randf_range(-0.04, 0.04)
+			if wk.engine_deck.is_finite():
+				_wreck_engine_deck = wk.root.transform * wk.engine_deck
+				if not wreck_finish.is_empty():
+					_wreck_soot = wk.scorch_finish()
 			if wk.rotor:
 				# a downed helicopter's rotor stopped where it hit, bent askew
 				wk.rotor.rotation = Vector3(rng.randf_range(-0.14, 0.14), rng.randf_range(0.0, TAU), rng.randf_range(-0.14, 0.14))

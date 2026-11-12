@@ -45,7 +45,7 @@ func _process(dt: float) -> void:
 		var native := 0
 		for man in world.soldiers:
 			if man.model != null and man.model.skinned != null: native += 1
-		if "--skinned-units" in OS.get_cmdline_user_args(): assert(native >= 48)
+		if not InfantryAssets.gameplay_model.is_empty(): assert(native >= 48)
 		print("SCALING soldiers=", world.soldiers.size(), " skinned=", native)
 	if world.time < 5.0 or Engine.time_scale != 1.0: return
 	if measured_at == 0:

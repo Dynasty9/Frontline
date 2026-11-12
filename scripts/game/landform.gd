@@ -137,7 +137,9 @@ func generate(seed_value: int, roads: Array, water, settlements: Array, fracture
 			var coast := 1.0 if water.coast.is_empty() else smoothstep(0.0, 85.0, water.coast_x(wz) - wx - 18.0)
 			# Blend the boundary into the distant ground ring without a vertical seam.
 			var edge := smoothstep(0.0, 36.0, half - maxf(absf(wx), absf(wz)))
-			var kept := reserve[i] * coast * edge
+			# Keep the beach graded when runoff deposits sediment at the foot of the hills.
+			reserve[i] *= coast
+			var kept := reserve[i] * edge
 			if fractured:
 				# Where a hill gives way to a road, the river or the shore it ends in
 				# spurs and re-entrants, not a planed ramp that rain would comb into rills.

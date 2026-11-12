@@ -6,6 +6,15 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![Check](https://github.com/Dynasty9/Frontline/actions/workflows/check.yml/badge.svg)](https://github.com/Dynasty9/Frontline/actions/workflows/check.yml)
 
+<a href="web/public/media/vehicles.webm">
+  <picture>
+    <source media="(prefers-reduced-motion: reduce)" srcset="web/public/media/vehicles.jpg">
+    <img src="docs/screenshots/vehicle-circuit.webp" width="576" height="324" alt="A coastal drive through Frontline’s cars, tanks, helicopters, jets and boats">
+  </picture>
+</a>
+
+[Watch the vehicle circuit in 720p (WebM, 19.5 seconds)](web/public/media/vehicles.webm)
+
 ![A firefight around a Coalition trench line](docs/screenshots/battle.jpg)
 
 ## What is it?
@@ -18,7 +27,7 @@ Grenades burst into dust and fast fragments, shells throw dense fans of earth an
 
 You can play alone against the computer, team up with friends against it, or fight each other online. Desktop skirmishes offer 1,024, 2,048 and 3,072 metre square battlefields. Single-player simulation runs in its own local process so combat does not block drawing the battlefield. Seeded mountain belts, snowy peaks and mossy valleys surround towns, forests, roads and river crossings. Slopes shape movement and construction, and ridges screen troops from observation and fire. Larger maps need more memory; see the measured workloads in [simulation scaling](docs/SIMULATION_SCALING.md).
 
-The landscape, models and sound are generated in code, the music included. Explosion clouds use baked CC0 fluid simulations from JangaFX ([credits](assets/vfx/LICENSE.md)); moss, rock and town surfaces use bundled CC0 photographs from Poly Haven ([terrain credits](assets/terrain/LICENSE.md), [town material credits](assets/town/LICENSE.md), [foliage credits](assets/foliage/LICENSE.md)). Even the menus sit on a living topographic map, in your choice of five themes (Settings > Interface): Field Brass, Night Vision, Thermal, Arctic or Dusk.
+The landscape, models, music and most sound effects are generated in code. Tracked vehicles mix field recordings of heavy engines, running gear and gunfire ([sound credits](assets/audio/tracked/LICENSE.md)), and their paint carries photographed surface wear ([texture credit](assets/vehicles/LICENSE.md)). Explosion clouds use baked CC0 fluid simulations from JangaFX ([credits](assets/vfx/LICENSE.md)); moss, rock and town surfaces use bundled CC0 photographs from Poly Haven ([terrain credits](assets/terrain/LICENSE.md), [town material credits](assets/town/LICENSE.md), [foliage credits](assets/foliage/LICENSE.md)). Even the menus sit on a living topographic map, in your choice of five themes (Settings > Interface): Field Brass, Night Vision, Thermal, Arctic or Dusk.
 
 ## Screenshots
 
@@ -91,6 +100,7 @@ Every key below is a default: change any of them in **Settings → Controls**. A
 | Tilt | Page Up / Page Down, or drag the middle mouse button up and down |
 | Square the view up again | Backspace, or click the compass on the minimap |
 | Follow the selected units | Ctrl + F |
+| Cycle cameras on one selected object / return to command | F10 / Esc |
 | Save a view / go back to it | Ctrl + F5 to F8 / F5 to F8 |
 | Look somewhere else | Click or drag on the minimap |
 | Jump to your bases | Home |
@@ -157,6 +167,8 @@ On a Mac's trackpad, scroll with two fingers to drag the map and pinch to zoom; 
 | Chat (team chat) | Enter (Shift + Enter) |
 | Message history | L |
 | Menu and settings | Esc |
+
+Select an Abrams or T-55A and press **F10** to cycle through its onboard and exterior views, including the turret periscope. Press **Esc** to return to the commander camera.
 
 When watching an AI battle: **C** hands the camera back to the director, **V** picks whose view you see, **P** pauses, and **[** and **]** change the speed.
 

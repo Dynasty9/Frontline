@@ -4,6 +4,8 @@ class CommandWorld extends World:
 	var commands: Array[Dictionary] = []
 	func _ready() -> void:
 		pass
+	func ground_y(_p: Vector3) -> float:
+		return 2.5
 	func send_cmd(command: Dictionary) -> void:
 		commands.append(command)
 
@@ -67,6 +69,11 @@ func _ready() -> void:
 	button(inp, start, true, MOUSE_BUTTON_RIGHT)
 	button(inp, start, false)
 	check(world.commands.size() == count and not inp.ab_drag, "Cancel must not call support")
+	# Confirmation rings use the terrain height even when the clicked object is above it.
+	inp._marker(Vector3(7, 12, 4), Color.WHITE, 2.4)
+	var marker: MeshInstance3D = inp._markers.back()[0]
+	check(marker.position.is_equal_approx(Vector3(7, 2.6, 4)), "The order ring must sit on the raised ground")
+	check(is_equal_approx(marker.mesh.outer_radius, 2.4), "The ring must accommodate the cargo footprint")
 	world.free()
 	print("SUPPORT_INPUT_TEST failures=%d" % failures)
 	get_tree().quit(1 if failures else 0)

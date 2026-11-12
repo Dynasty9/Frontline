@@ -36,6 +36,33 @@ func _ready() -> void:
 		set_process(false)
 
 
+## Camera markers are local presentation. Only an inspected or filmed object builds them.
+var _camera_mounts: Dictionary[StringName, Marker3D] = {}
+
+func camera_mounts() -> Dictionary[StringName, Marker3D]:
+	if _camera_mounts.is_empty():
+		_build_camera_mounts()
+	return _camera_mounts
+
+func _build_camera_mounts() -> void:
+	_add_exterior_cameras(self, Vector3(0.8, 1.8, 0.8))
+
+func _add_exterior_cameras(body: Node3D, size: Vector3) -> void:
+	var span := maxf(size.x, maxf(size.y, size.z))
+	var centre := Vector3.UP * size.y * 0.53
+	_camera_mount(&"Behind", body, centre + Vector3(span * 0.54, span * 0.45, span * 1.65), centre)
+	_camera_mount(&"Aerial", body, centre + Vector3(0, span * 2.6, span * 0.7), centre)
+
+func _camera_mount(label: StringName, parent: Node3D, eye: Vector3, subject: Vector3, level_horizon := false) -> void:
+	var mount := Marker3D.new()
+	mount.name = label
+	mount.transform = Transform3D(Basis.looking_at(eye.direction_to(subject)), eye)
+	if level_horizon:
+		mount.set_meta(&"level_horizon", true)
+	parent.add_child(mount)
+	_camera_mounts[label] = mount
+
+
 func ekind() -> String:
 	return ""
 

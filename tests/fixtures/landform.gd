@@ -253,6 +253,14 @@ func _ready() -> void:
 		assert(absf(corridor.height(Vector3(x + 4, 0, 0)) - here) < 0.5, "Roads have a continuous graded corridor: %.2f m to %.2f m at x=%d" % [here, corridor.height(Vector3(x + 4, 0, 0)), x])
 		assert(absf(corridor.height(Vector3(x, 0, 3)) - here) < 0.3 and absf(corridor.height(Vector3(x, 0, -3)) - here) < 0.3, "Roads lie level across their carriageway")
 	assert(corridor.fits(Vector3(0, 0, 60), Vector2(10, 10), 0.0), "Settlements retain level building ground")
+	var coastal_water := WaterMap.new(world)
+	coastal_water.coast = {"x": 40.0, "s": 3.0}
+	var coast := Landform.new(256)
+	coast.generate(3, [], coastal_water, [], false)
+	for z in range(-100, 101, 4):
+		var shore := coastal_water.coast_x(z)
+		for x in range(ceili(shore / 4.0) * 4 + 4, 124, 4):
+			assert(is_zero_approx(coast.height(Vector3(x, 0, z))), "Sediment must not lift the landing boats' seabed")
 	assert(is_zero_approx(corridor.height(Vector3(0, 0, 60))), "Settlements sit on the valley's level floor")
 	var floor_low := INF
 	var floor_high := -INF

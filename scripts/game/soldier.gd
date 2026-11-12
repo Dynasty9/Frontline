@@ -4073,10 +4073,12 @@ func muzzle_world() -> Vector3:
 
 ## The crew-served gun this man is working (server: his mount once he's on
 ## it; clients: what he's reported manning, once he's in place behind it).
-func crew_mount() -> Structure:
+func crew_mount(include_mortar_pit := false) -> Structure:
 	var st = mounted if srv else world.entity(doing_ent)
-	if st is Structure and st.skind in ["mg_nest", "hmg_nest"] and not st.gone and Defs.flat(position - st.mount_pos()).length() < 0.8:
-		return st
+	if st is Structure and not st.gone:
+		var manned: bool = st.skind in ["mg_nest", "hmg_nest"] or (include_mortar_pit and st.skind == "mortar_pit")
+		if manned and Defs.flat(position - st.mount_pos()).length() < 0.8:
+			return st
 	return null
 
 
@@ -4169,7 +4171,9 @@ func _view_process(dt: float, blend := -1.0) -> void:
 	# off-screen men are posed a few times a second, distant ones every other
 	# or third frame, close ones every frame
 	_pose_dt += dt
-	var cm := crew_mount() if life == Life.ALIVE else null
+	var station := crew_mount(true) if life == Life.ALIVE else null
+	var at_pit := station != null and station.skind == "mortar_pit"
+	var cm := station if not at_pit else null
 	if view_camera != null and cm == null:
 		var every := 1
 		if not view_camera.is_position_in_frustum(position + Vector3(0, 1.0, 0)):
@@ -4213,7 +4217,13 @@ func _view_process(dt: float, blend := -1.0) -> void:
 			model.global_transform = cm.crew_stance(position.y)
 			model.crew_r = gr[0]
 			model.crew_l = gr[1]
-	model.crew = on_gun
+	# At the fixed mortar the gunner puts his carried tube down and uses both hands.
+	if at_pit:
+		model.crew_r = station.to_global(Vector3(0.13, 0.89, 0.12))
+		model.crew_l = station.to_global(Vector3(-0.12, 0.72, 0.21))
+	if model.tube:
+		model.tube.visible = not at_pit
+	model.crew = on_gun or at_pit
 	if not on_gun:
 		if srv:
 			# between simulation steps (see Entity.ip_offset)
@@ -4222,7 +4232,7 @@ func _view_process(dt: float, blend := -1.0) -> void:
 		elif _was_on_gun:
 			model.transform = Transform3D.IDENTITY
 	_was_on_gun = on_gun
-	var view_act := act
+	var view_act := Act.IDLE if at_pit and act == Act.LAUNCH else act
 	if model.skinned != null:
 		# Keep the knees tucked until the body clears the wall, without changing combat timing.
 		_view_vault = life == Life.ALIVE and not on_gun and (act == Act.VAULT or (_view_vault and act in [Act.WALK, Act.RUN] and world.nav.kind_at(position) == Nav.LOW))

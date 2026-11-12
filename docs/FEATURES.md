@@ -37,7 +37,7 @@ changes any of them:
 
 | | |
 |---|---|
-| Camera | WASD / arrows / screen edge pan (Shift: faster), mouse wheel zoom toward the cursor (or + / -), Q/E turn, Page Up / Page Down tilt. Middle-drag turns and tilts; **Alt+middle-drag grabs the map** and pans (Settings swaps the two). **Backspace** squares the view up again, **Ctrl+F** follows the selection, **Ctrl+F5..F8** save a view and **F5..F8** go back to it. On a Mac's trackpad: two fingers grab the map (or zoom, a setting), pinch zooms, Option + two fingers turn and tilt |
+| Camera | WASD / arrows / screen edge pan (Shift: faster), mouse wheel zoom toward the cursor (or + / -), Q/E turn, Page Up / Page Down tilt. Middle-drag turns and tilts; **Alt+middle-drag grabs the map** and pans (Settings swaps the two). **Backspace** squares the view up again, **Ctrl+F** follows the selection, **F9** cycles cameras on one selected object, **Ctrl+F5..F8** save a view and **F5..F8** go back to it. On a Mac's trackpad: two fingers grab the map (or zoom, a setting), pinch zooms, Option + two fingers turn and tilt |
 | Minimap | Click or drag to look there, right-click to send the selection, wheel to zoom. Click the compass needle to square the view up. **Alt+click** pings, **Alt+right-drag** draws for your side |
 | Co-commanders | **Alt+click** pings what's under the cursor (an enemy: "enemy spotted"; one of ours: "watch this"; the ground: "look here"). **Hold Alt + left button** for the ping wheel (attack, on my way, need support, danger, defend, look; let go in the middle to call it off). **Alt+right-drag** draws a line for your side. In the Command Net, click a name to look where they're looking, the screen button (or a double-click) to watch their view live |
 | Select | Left-click a soldier to select his squad, drag a box, double-click for all of that type on screen. **Alt+click** a soldier (or click his name in the squad panel) to command just him |
@@ -701,7 +701,8 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   living men stay upright while wading. Movement checks the whole step, so old routes, dives, separation
   and knockback cannot carry a man through deep water. Spawns and disembarking find safe ground;
   a living man stranded by a removed crossing is repositioned to the nearest safe bank. Bridges and the harbour are key points the AI fights over. The water is laid
-  out on the server as a few shapes and rasterized identically on every client.
+  out on the server as a few shapes and rasterized identically on every client. Erosion preserves the graded
+  beach and both host and client carve the beds after the hills are in place.
 - **How the water looks** (`water_view.gd`). The surface is drawn in tiles only where there's water. The sea
   runs two wave systems that cross: a swell from weather far out at sea, long and regular and coming in sets
   (its heading a little different on each map), and the wind's own shorter, steeper sea running offshore with
@@ -714,7 +715,8 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   water is peaty green-brown), with the light the ripples focus dancing on it in the shallows, and the sky and
   its clouds are reflected, more the flatter you look across it. The sun glitters off every ripple (a moon path
   at night, only a sheen under cloud), rain dimples the water with rings, the chop roughens in gusts, and foam
-  gathers wherever the water meets a bank, a hull or a pile. Boats ride the same waves the player sees (the
+  gathers wherever the water meets a bank, a hull or a pile. Impacts throw up narrow sheets of spray that fall
+  back into the spreading foam. Boats ride the same waves the player sees (the
   CPU samples the waves the shader draws). **Water quality** (Settings > Graphics) trades this against speed:
   Low draws no see-through water (copying the screen for it is the costly part, most of all in a browser) and
   fewer waves on a coarser grid; Medium is the full surface; High adds the light on the bed and the wind's
@@ -926,7 +928,7 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   Mac, makes two fingers zoom instead, for a Magic Mouse.
   Jumps (the last alert, a base, a group, a unit in the order of battle, a saved view) glide rather than cut.
   Backspace turns back to the heading the battle started on, Ctrl+F follows the selection until you pan away,
-  and Ctrl+F5..F8 save views that F5..F8 glide back to.
+  and Ctrl+F5..F8 save views that F5..F8 glide back to. Select one vehicle, building or individual soldier and press F10 to cycle its views. Each has behind and aerial views. Vehicle models can also offer tracks or wheels, barrel, roof gun and engine deck. Rotorcraft offer a cabin-side view. Sling-capable helicopters offer a wide view of the lift and a cargo-door view looking down at the load. The stern-quarter view looks past a boat's cabin with the horizon level as the hull rolls. On the patrol ship, Bridge roof looks down past the port rail as boats come alongside. Boats also offer bow and waterline views. On a RHIB the starboard camera looks forward past the console. The Helm view rides behind the driver’s right shoulder as he sits at the controls. Escape returns to command with the object still selected.
 - **The minimap** (`hud_minimap.gd`): the ground, water, roads (main roads light with a dark edge, supply
   tracks thinner), woods and every house's footprint (light while its roof stands, dark once it's a ruin) are
   baked into a texture. Over it go the fog of war (darker where your side can't see), every man you can see as a
@@ -958,12 +960,13 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
 - **The core vehicles rebuilt** (`vehicles/vm_core.gd`): the M1A2 SEP Abrams, a worn T-55A, Hilux technicals (DShK
   or ZU-23-2 in the bed), the M1151 Humvee, the M2A3 Bradley, the BTR-80, the AH-64D Apache and the UH-60 Black
   Hawk - sloped armour, skirts, sights, stowage, rust and dents, each in its side's camouflage.
-- **Sling loads.** Select a lift helicopter and right-click one of your vehicles: it flies over, hovers, hooks
+- **Sling loads.** Select a lift helicopter and right-click one of your vehicles. A ring marks the load on the ground. The helicopter flies over, hovers, hooks
   it on four strops and a cable, and climbs out with it swinging underneath - then flies it wherever you send
   it (slower with a load on), lowers it until it touches and lets go. The CH-49 Mohawk and the Rebels' Mi-290
   Taru (Lift) carry anything up to an APC (Humvees, technicals, BTRs, AA trucks); the Ghost Hawk and the Orca
   light vehicles only; nothing lifts a tank. A helicopter shot down drops its load - from height, it's
-  wrecked. The AI uses its lift helicopters to ferry vehicles sitting idle far behind the lines up to its front.
+  wrecked. The Cargo door camera follows the suspended hull through turns and looks straight back down
+  its original sightline when the helicopter releases the vehicle. The AI uses its lift helicopters to ferry vehicles sitting idle far behind the lines up to its front.
 - **Boats and ships** (built at the **Boat Dock**, which goes on the shore of the sea or the river facing open
   water, on your own half of the map). Coalition: the RHIB (six men, fast, unarmed), the Speedboat Minigun
   (armoured riverine craft, 40 mm GMG, a squad aboard) and the **Patrol Ship** (`vehicles/vm_ships.gd`, a Mk VI
@@ -1076,7 +1079,8 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   she's been sitting with nothing to do. The host simulates flight and sends pitch, bank and the rotor's state
   with its snapshots; clients draw the rest: a hovering helicopter's slight nose-up, one-side-low hang and gentle
   wander, the rotor's beat following its speed and slapping louder under load, and the downwash throwing a ring
-  of dust (spray over water) when she's low. Drones and ground vehicles keep their own movement.
+  of dust (spray over water) when she's low. Four shaded straps follow the suspended vehicle. Its wheels and tracks stop spinning in the air.
+  Drones and ground vehicles keep their own movement.
 - **Shot down.** A helicopter destroyed in the air falls rather than vanishing. With the tail rotor or controls
   gone (or too low to settle) she winds up into a spin against the rotor's torque and corkscrews in, still carrying
   her speed; with only the engines gone she autorotates, gliding steeply nose-down and flaring into a heavy landing.
@@ -1309,7 +1313,7 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   drawn. Settings > Graphics > Wildlife: Plenty, Some or Off (Off on the Low preset).
 - Ambient sound: wind that grows as you zoom out (air rushing past and a hollow howl, in irregular gusts), and
   a distant battle (far-off artillery thumps, machine-gun bursts) that swells with the fighting.
-- Music (`music.gd`), synthesised like everything else: a small orchestra (strings, low strings, horns, a wordless
+- Music (`music.gd`), synthesised at run time: a small orchestra (strings, low strings, horns, a wordless
   choir, piano, timpani, a war drum, a snare) rendered into samples at start-up and played by a sequencer through a
   hall reverb. The menu has a theme in D minor (piano, then the horn's tune over a parade snare, then the strings).
   In battle the score is in layers that follow the fighting: a quiet bed of strings and a few piano notes while
@@ -1341,6 +1345,27 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   Defences sit in the ground: trodden earth round the nests and pits, earth banked against the bunkers up to their
   slits.
 - Vehicles are built from sloped, lofted armour: road wheels that turn, tracks, mantlets, cupolas, stowage, rotor blur.
+  On the Abrams, T-55 and Bradley, each track cycles independently and its road wheels follow the ground under that side.
+  Hinged shoes retain their place around the track. The T-55's upper run rests on its road wheels and sags in the gaps.
+  Dust rises from the end of the contact patch that leaves the soil and switches ends in reverse.
+  Rolling noise follows belt travel, including pivot turns, and falls silent at rest while the engine idles.
+  Moving Abrams and T-55 tanks leave a faint exhaust trail at the outlet. Damage vents fire and soot through the engine grille, including on the wreck. Each eddy uses the heat and opacity baked from the same volume, so its bright base rolls into darker smoke.
+  The ridge camera cuts from the eyepiece to the firing muzzle on discharge, then looks down over the tracks. Nearby shots and impacts jolt the lens when camera shake is enabled.
+  The Abrams has a turbine note and the T-55 and Bradley use a diesel recording. Both tanks have a recorded gun report
+  and elevate and recoil their main barrels independently of the turret. The visible cradle eases into elevation changes and brakes as it settles. The Abrams has recessed wheel pressings,
+  a second row of rim fasteners, stencilled turret bins and strapped canvas rolls. Its rolling loop comes from
+  a moving Abrams and blends with the turbine as the hull accelerates. The ridge film uses fictional breakaway
+  plates to show a dent and a tear, with the damaged skirt moving at its upper attachment.
+  Paint, wear and grime on vehicle fittings follow the part as it moves.
+  The ridge film opens above an Abrams and a T-55A, then cuts to an eyepiece mounted on the Abrams turret. Its lens opens wide on the far crest
+  and zooms in while the etched reticle stays fixed in the glass.
+  Sound is muffled inside the tank. Each contacting track shoe leaves a paired pad impression and presses down the grass it passes over. Each driver chooses among local relay and supply posts.
+  A second relay claim unlocks the forward objective for either crew with a claim of its own.
+  Reaching it wins the encounter and triggers the finishing impact. A camera beside the ridge holds on the struck vehicle before and after the hit. The film uses the same tank knockout event, fuel burst and burning-vehicle particles as a match. The short flash stays on the hull above the ground, and the hull settles on its suspension. Fuel smoke uses the baked directional lighting maps, with motion-vector interpolation in close views. A fuel vent releases billows at a steady rate as the smoke thickens or thins. The closing camera frames the surviving tank from the side of its turret, keeping the barrel in view as the hull turns.
+  The T-55A has a grainier finish on its cast turret and rolled rims on its painted rear drums.
+  In a match, hard hits can bend the skirt on the struck side. A complete repair straightens it.
+  In a match, both the Abrams and the T-55A keep their last turret bearing on destruction and carry visible plate damage onto the wreck. Soot spreads over the original paint from the engine deck. Cannon hits land on the battle clock when the tracer reaches its destination. A hull contact produces a metal strike, and nearby soft terrain takes paired tread prints. Select either tank and press F10 to cycle to its periscope.
+  Its wreck rests on the grade beneath the front and rear of both tracks.
 - **Shared vehicle finishes** (`vehicle_materials.gd`, `assets/vehicles/surfaces/`): armor paint, aircraft
   coatings, civilian clearcoat, marine paint, rubber, canvas, exposed metal, glass, nonslip decks and charred
   wrecks use distinct roughness and reflection settings. Eight shared, mipmapped detail maps (six derived
@@ -1361,7 +1386,7 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   while aircraft paint is matte. See [military exterior comparisons](military-exterior-review/README.md).
 - **Shared vehicle bodywork** (`vehicle_body.gd`): curved helicopter skins share crease-aware normals
   without moving the vertices beneath fitted glazing. Skin joins and flush fasteners follow the hull;
-  deliberately angular stealth sections remain faceted. HEMTT, Zamak and Tempest families share pressed
+  deliberately angular stealth sections remain faceted. On the Black Wasp, the curved canopy catches the light along its rim and reveals the pilot and seat beneath. HEMTT, Zamak and Tempest families share pressed
   door panels, gaskets and fasteners, with shaped louvres on Zamak bonnets. Family builders retain silhouettes.
 - All HEMTT, Zamak and Tempest bodies share open cabs with seats, dashboards and steering wheels
   behind separate transparent panes. Offroad pickups, hatchbacks and SUVs have open glasshouses with
@@ -1392,7 +1417,7 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   until it's dark smoke, a lit smoke column that drifts with the wind, a dirt plume, sparks and debris that
   bounce on the ground, a rolling dust ring, a faint heat-shimmer shockwave and a scorch mark. Heavy rounds
   throw a fountain of earth high into the air that rains back down, fling burning fragments out in arcs that
-  burn on where they land, leave flames licking about the crater for a moment, and clods land around the
+  burn on where they land, leave flames licking about the crater for a moment, and irregular stones and clods tumble and land around the
   crater once the debris has fallen.
 - **Explosions** distinguish fragmentation grenades, high explosive shells and fuel explosions. Grenades
   give a short flash, fast dark fragments and a small dirt burst. HE shells, including the visual scale of a
@@ -1542,11 +1567,11 @@ Delta 1 - take objective, D4. Wilco.").
 
 ### Imported rifleman and shared impacts
 
-The optional skinned rifleman uses imported rifle locomotion, a captured kneel-to-prone transition, contact IK, hand-attached weapons, moving reloads with a separate magazine, directional hit recovery, and a thirteen-body constrained ragdoll. Locally installed Male Injured Pack clips supply standing limping and dazed recovery with the rifle slung. Installed Talking, Laughing and Arm Stretching clips also replace the standing relaxed idles and recover to the armed pose; Rifle Idle supplies the armed lookout. Foot plants retain the visible boot position when acquiring contact. The shared motion and impact helpers also serve the procedural soldiers and tank. Damage and movement remain server-authoritative; the skin is presentation.
+The detailed rifleman uses imported rifle locomotion, a captured kneel-to-prone transition, contact IK, hand-attached weapons, moving reloads with a separate magazine, directional hit recovery, and a thirteen-body constrained ragdoll. Locally installed Male Injured Pack clips supply standing limping and dazed recovery with the rifle slung. Installed Talking, Laughing and Arm Stretching clips also replace the standing relaxed idles and recover to the armed pose; Rifle Idle supplies the armed lookout. Foot plants retain the visible boot position when acquiring contact. The shared motion and impact helpers also serve the procedural soldiers and tank. Damage and movement remain server-authoritative; the skin is presentation.
 
 When the local Mixamo prone family is installed, forward/backward crawling, stops, idle, firing, reload and grenade throw use captured clips. The installed crouch-to-prone and prone-to-crouch transitions supply entry and recovery; the kneeling pair remains the fallback. A prone-specific captured flinch supplies frontal hit reactions while keeping the weapon grips. The shared controller preserves hand contacts during prone idle/fire and releases the hands for crawling, reloading and throwing. These local evaluation assets are not bundled automatically; missing clips retain the procedural fallback.
 
-With the separately installed local evaluation assets, `--skinned-units --swat-units` enables the military character for Coalition riflemen in ordinary battles. Other units and missing-asset installations retain their procedural models. The viewer supports clip selection, scrubbing, bones, wireframes and projectile impacts; the playable controller exercises terrain, walking, crouching, jumping and reloads. Setup and exact limitations are in [the evaluation guide](../tests/mocap/SKINNED.md). Imported models, textures and animation sources are excluded from Git and releases.
+Ordinary battles automatically use the bundled SWAT character for Coalition riflemen and medics. The medic keeps the marked aid pack and armband as the character moves or crouches to help a casualty. With only the original skinned pack installed, they use that character instead. Other units and missing-asset installations retain their procedural models. The viewer supports clip selection, scrubbing, bones, wireframes and projectile impacts; the playable controller exercises terrain, walking, crouching, jumping and reloads. Setup and exact limitations are in [the evaluation guide](../tests/mocap/SKINNED.md). Imported models, textures and animation sources are excluded from Git and releases.
 
 Soldiers check space for the whole kneel-to-prone transition. If a wall blocks it, a stationary soldier can take a short backward step into clear space, settle the feet, and then lower into prone. The retreat is collision-swept, navigation-checked and bounded to 1.8 metres. New movement orders or a new obstruction cancel it. If no safe space exists, the soldier remains crouched. This authoritative movement is replicated normally.
 
@@ -1620,11 +1645,13 @@ The Character Playground also supports Alt + mouse free look, preserving the cha
 
 The imported preview routes grenade throws through the installed Mixamo toss while retaining stance legs and grenade release timing. The installed prone family supplies armed crawling; missing clips retain the procedural alternating reach. The installed stand/kneel pair supplies stationary crouch transitions, blending from the current pose to avoid a snap on rising. The crouched grenade clip uses its throwing section with the existing visual release timing. Crouch stops settle toes; posture changes release previous foot anchors before planting again.
 
-The optional SWAT infantry presentation ships in a compiled runtime bundle (assets/infantry/infantry.zip), shared by the game and animation playground. Original authoring files are not required. See assets/infantry/README.md for rebuilding and the separate asset licenses.
+The Coalition mortar specialist also wears the textured character and carries his role-specific kit on the animated back. Native macOS OpenGL uses articulated soldiers because animated skin geometry disappears on that driver.
+
+The default close-up SWAT infantry presentation ships in a compiled runtime bundle (assets/infantry/infantry.zip), shared by the game and animation playground. Original authoring files are not required. See assets/infantry/README.md for rebuilding and the separate asset licenses.
 
 Standing rifle melee uses the captured rifle punch, trimmed to meet the existing 0.55-second hit. Watchtower climbing uses a captured ladder cycle with server-controlled elevation: soldiers approach the rear ladder, climb for four seconds, then transfer onto the deck before walking through the platform's railing opening. The cycle follows elevation, with hand and boot contacts constrained to the rungs and upper side handholds. Hands-free actions blend into and out of their poses without abruptly pulling the support hand back to the rifle. The additional carrying family and turn-and-door-kick remain inspector clips: gameplay uses a two-person stretcher, and its KICK action also serves ground-level grenade kicks, so those motions are not interchangeable.
 
-Grass and shrub culling bounds follow their local ground heights, keeping distance fading correct beside taller mountains; small cosmetic stones use the ground height at placement. Meadow density fades towards the snow line and on steep slopes, with zero-density habitats kept empty. Smaller photographed shrub branches form seeded patches with open gaps, independently of gameplay randomness.
+The active camera gets visible grass, shrubs and scenery on its first frame, including after a camera cut. Nearby off-screen scenery builds ahead of the view. Grass and shrub culling bounds follow their local ground heights, keeping distance fading correct beside taller mountains; small cosmetic stones use the ground height at placement. Meadow density fades towards the snow line and on steep slopes, with zero-density habitats kept empty. Smaller photographed shrub branches form seeded patches with open gaps, independently of gameplay randomness.
 
 Alpine stone clusters combine slabs, blocks and small fragments in shared batches. Fine fragments cull beyond 180 m with a 20 m hysteresis margin; larger rocks remain visible.
 

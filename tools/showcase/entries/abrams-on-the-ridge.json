@@ -1,0 +1,40 @@
+{
+  "entry": "changelog/unreleased/abrams-on-the-ridge.md",
+  "title": "Ride with the Abrams and T-55A",
+  "version": "unreleased",
+  "kind": "improved",
+  "summary": "See the tracks, gun and engine deck respond during a match from the new vehicle cameras.",
+  "medium": "motion",
+  "stage": "tests/fixtures/ridge-duel.tscn",
+  "rationale": "The live match shows the camera mounts and running gear. The close comparison shows fire rising through the engine grille.",
+  "source_ref": "Barrel and cadence comparison against 024386d. One-minute native Metal capture, seed 712 at 30 fps, from the ridge fixture with object-mounted cameras. The previous one-minute edit is at b59761c. The earlier 31-second edit is at 320865b. Firing and engine-deck comparison against 6372fec. Nose and smoke comparison against 7e8c5bc. Track-clearance comparison uses 44ed4a6 and efc082f. Grille fire comparison against 6ed583d. Live-match clip: native embedded --scenario=tank --play --team=0 --seed=3 --focus-vehicle=tank --vehicle-view=Tracks, Periscope or Barrel at 24 fps, cut at simulation seconds 1.25, 6, 9.25 and 17.25.",
+  "attribution": "Controlled Godot scene, seed 712. The game rig, audio recordings and environment credits are documented in assets/vehicles, assets/audio/tracked and tests/fixtures/ridge-light. The plate in the film is a breakaway prop.",
+  "sources": [
+    {
+      "file": "changelog/unreleased/abrams-on-the-ridge/track-prints.jpg",
+      "sha256": "f78e3532b0214519f2eb888eaaf64c5f5696d80f63880488fc4e9506614c173b",
+      "caption": "The same turn with the earlier and revised tread impressions."
+    },
+    {
+      "file": "changelog/unreleased/abrams-on-the-ridge/grille-fire.mp4",
+      "sha256": "883897b4e3549d5e14a6887b68b724371ef6564b8304fea010f39edd4d39dd94",
+      "caption": "Matched close-ups of the grille as the engine fire takes hold."
+    },
+    {
+      "file": "changelog/unreleased/abrams-on-the-ridge/grille-fire.jpg",
+      "sha256": "94ecf8805d7c84a8e97422ade007300c5288600ec8897c663b6b056aa2c84598",
+      "caption": "The old and revised engine-deck plumes at 28.3 seconds."
+    },
+    {
+      "file": "changelog/unreleased/abrams-on-the-ridge/live-match.mp4",
+      "sha256": "807653a34cc85314668551b01c27025383cbc33d82f4bdb6907195ef4d5fbdd0",
+      "caption": "Three player camera mounts in the native tank scenario."
+    },
+    {
+      "file": "changelog/unreleased/abrams-on-the-ridge/live-match.jpg",
+      "sha256": "2c4881dbf6e6e8c72ada5c0a0f5c7ee64a210f362dfaf9a240b7530fbf712b53",
+      "caption": "Barrel camera from the playable match."
+    }
+  ],
+  "output": null
+}

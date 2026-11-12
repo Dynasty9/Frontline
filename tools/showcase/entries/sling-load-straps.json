@@ -1,0 +1,34 @@
+{
+  "entry": "changelog/unreleased/sling-load-straps.md",
+  "title": "See the straps holding a sling load",
+  "version": "unreleased",
+  "kind": "improved",
+  "summary": "Shaded straps join the banking helicopter and the suspended vehicle body.",
+  "medium": "motion",
+  "stage": "Sky Hook, seed 4, bridge deck at 39.45 seconds and F10 Cargo door at 41.1 seconds. Compare the fixed and tracking door at 39.5 seconds.",
+  "rationale": "A fixed flyover and the close cargo view reveal both ends of the straps in motion.",
+  "source_ref": "28fab0f before; sky-bridge.tscn and the shared Cargo door mount after. The cargo-door comparison uses the same native take at 6093a05 and 00c8370.",
+  "sources": [
+    {
+      "file": "changelog/unreleased/sling-load-straps/bridge.webm",
+      "sha256": "478986f865e76072a87aee67272b7a7a35f2eefd213e361591aed09a6d1f4c92",
+      "caption": "Bridge and cargo-door cameras at the same frames before and after the straps changed."
+    },
+    {
+      "file": "changelog/unreleased/sling-load-straps/bridge.jpg",
+      "sha256": "95664962a9f8df1272fc1180cd1fc40b96042b8fa84f6cf5944fc9f5cd9ab32c",
+      "caption": "The load passing directly over the bridge deck."
+    },
+    {
+      "file": "changelog/unreleased/sling-load-straps/cargo-door.webm",
+      "sha256": "e7575b613ac49320e38b67766a020908bc1dc3564ca09c1180e614882f81fd5e",
+      "caption": "The original door view and the camera following the suspended vehicle."
+    },
+    {
+      "file": "changelog/unreleased/sling-load-straps/cargo-door.jpg",
+      "sha256": "3c9e8fce6d6b1d5c9171c5bbf036456f587c16366d0fc42a02a2051ce74479e2",
+      "caption": "The cable and hull over the same bridge."
+    }
+  ],
+  "output": null
+}

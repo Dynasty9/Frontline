@@ -79,7 +79,7 @@ func _ready() -> void:
 		if s.begins_with("--"):
 			var kv := s.substr(2).split("=", true, 1)
 			args[kv[0]] = kv[1] if kv.size() > 1 else "1"
-	if args.has("skinned-units") or args.has("swat-units"):
+	if args.has("skinned-units") or args.has("swat-units") or args.has("swat") or (DisplayServer.get_name() != "headless" and not InfantryAssets.gameplay_model.is_empty()):
 		Engine.physics_ticks_per_second = 120
 		Engine.max_physics_steps_per_frame = 12
 	if OS.has_feature("web"):
@@ -1218,15 +1218,28 @@ func _process(_dt: float) -> void:
 					break
 				want2 -= 1
 		world.set_meta("struct_focused", true)
-	# --focus-vehicle=kind: the camera on the first vehicle of a kind (and with
-	# it while it lives: a boat sinking, a convoy on the road)
-	if args.has("focus-vehicle") and world.cam and world.time > 1.0 and not world.has_meta("veh_focused"):
+	# --focus-vehicle=kind[,n]: choose a vehicle within a convoy or flotilla.
+	if args.has("focus-vehicle") and world.cam and world.time > float(args.get("focus-vehicle-at", 1.0)) and not world.has_meta("veh_focused"):
+		var pick := String(args["focus-vehicle"]).split(",")
+		var remaining := maxi(0, int(pick[1])) if pick.size() > 1 else 0
 		for v in world.vehicles:
-			if v.vkind == String(args["focus-vehicle"]):
+			if v.vkind == pick[0]:
+				if remaining > 0:
+					remaining -= 1
+					continue
 				world.cam.focus(v.position)
 				world.focused = true
 				if world.director:
 					world.director.active = false
+				if args.has("vehicle-view") and world.input:
+					var view := StringName(args["vehicle-view"])
+					if v.camera_mounts().has(view):
+						world.input.clear_selection()
+						world.input.sel_vehicles.append(v.eid)
+						world.cam.edge_pan = false
+						world.cam.cycle_mount(view)
+					else:
+						push_error("Unknown camera mount for %s: %s" % [v.vkind, view])
 				world.set_meta("veh_focused", true)
 				break
 	# --focus-decor=kind[,n]: the camera on the nth piece of street furniture of a kind

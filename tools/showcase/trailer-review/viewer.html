@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Frontline · Trailer editions</title>
+<style>
+:root{color-scheme:dark;font:16px/1.5 system-ui,sans-serif;background:#171915;color:#f2ebd6}
+body{max-width:1600px;margin:auto;padding:clamp(1rem,3vw,3rem)}
+h1{font-size:clamp(1.5rem,3vw,3rem);margin:0 0 1rem}
+main{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1rem}
+section{min-width:0}
+video{display:block;width:100%;aspect-ratio:16/9;background:black;margin:.75rem 0}
+button,select{font:inherit;padding:.4rem .6rem;border-radius:.3rem}
+label{display:inline-flex;align-items:center;gap:.5rem}
+.controls{display:flex;align-items:center;gap:1rem;flex-wrap:wrap;margin:1rem 0}
+input[type=range]{flex:1;min-width:8rem;accent-color:#e7bb63}
+output{font-variant-numeric:tabular-nums}
+p{margin:0;color:#c5c4b8}
+@media(max-width:680px){main{grid-template-columns:1fr}}
+</style>
+<h1>Frontline trailer editions</h1>
+<nav class="controls" aria-label="Edition comparison">
+<button id="earlier" type="button">Previous edit</button>
+<button id="later" type="button">Next edit</button>
+</nav>
+<main>
+<section><label>Compare <select id="left"></select></label><video muted playsinline preload="auto"></video><p></p><button class="change" type="button" hidden></button></section>
+<section><label>With <select id="right"></select></label><video muted playsinline preload="auto"></video><p></p><button class="change" type="button" hidden></button></section>
+</main>
+<div class="controls">
+<button id="play" type="button">Play both</button>
+<input id="scrub" aria-label="Shared playhead" type="range" min="0" max="720" step="1" value="0">
+<output id="time">0.0 / 24.0 s</output>
+<label>Hear <select id="listen"><option value="1">Right cut</option><option value="0">Left cut</option><option value="-1" selected>Neither</option></select></label>
+</div>
+<p role="status" id="status"></p>
+<script type="application/json" id="versions">__VERSIONS__</script>
+<script>
+const cuts = JSON.parse(document.querySelector('#versions').textContent);
+const videos = [...document.querySelectorAll('video')];
+const pickers = [document.querySelector('#left'), document.querySelector('#right')];
+const play = document.querySelector('#play'), scrub = document.querySelector('#scrub');
+const listen = document.querySelector('#listen'), status = document.querySelector('#status');
+const earlier = document.querySelector('#earlier'), later = document.querySelector('#later');
+let position = 0, raf;
+function sharedFrames() {
+  // Hold the shorter picture on its final frame while the longer edit finishes.
+  return Math.max(...pickers.map(p => cuts[p.selectedIndex]?.frames ?? 765));
+}
+function display(at) {
+  position = Math.min(at, sharedFrames() / 30);
+  scrub.max = sharedFrames();
+  scrub.value = Math.round(position * 30);
+  document.querySelector('#time').textContent = position.toFixed(1) + ' / ' + (sharedFrames() / 30).toFixed(1) + ' s';
+}
+function pause() {
+  cancelAnimationFrame(raf);
+  videos.forEach(v => v.pause());
+  play.textContent = 'Play both';
+}
+function seek(at) {
+  display(at);
+  videos.forEach(v => { if (v.readyState >= 1) v.currentTime = position; });
+}
+function tick() {
+  const [a,b] = videos[0].duration >= videos[1].duration ? videos : [videos[1],videos[0]];
+  const otherTime = Math.min(a.currentTime, b.duration);
+  if (Math.abs(otherTime - b.currentTime) > .10) b.currentTime = otherTime;
+  display(a.currentTime);
+  if (a.ended || a.currentTime >= sharedFrames() / 30) { pause(); seek(sharedFrames() / 30); return; }
+  raf = requestAnimationFrame(tick);
+}
+function switchCut(i) {
+  pause();
+  earlier.disabled = pickers[1].selectedIndex <= 1;
+  later.disabled = pickers[1].selectedIndex >= cuts.length - 1;
+  const cut = cuts[pickers[i].selectedIndex], video = videos[i];
+  seek(Math.min(position, sharedFrames() / 30));
+  video.onloadedmetadata = () => { video.currentTime = position; };
+  video.src = cut.file;
+  video.parentElement.querySelector('p').textContent = cut.note;
+  const change = video.parentElement.querySelector('.change');
+  change.hidden = !Number.isInteger(cut.change_frame);
+  if (!change.hidden) {
+    const at = cut.change_frame / 30;
+    change.textContent = 'Play change at ' + at.toFixed(2) + ' s';
+    change.onclick = () => { pause(); seek(at); startPlayback(); };
+  }
+}
+pickers.forEach((picker,i) => {
+  cuts.forEach((c,n) => picker.add(new Option(c.label,n)));
+  const preset = document.querySelector('#versions').dataset[i === 0 ? 'left' : 'right'];
+  picker.selectedIndex = preset === undefined ? Math.max(0, cuts.length - 2 + i) : Number(preset);
+  picker.onchange = () => switchCut(i);
+  switchCut(i);
+});
+function stepEdit(delta) {
+  const next = pickers[1].selectedIndex + delta;
+  pickers[0].selectedIndex = next - 1;
+  pickers[1].selectedIndex = next;
+  switchCut(0);
+  switchCut(1);
+  seek((cuts[next].change_frame ?? 0) / 30);
+}
+earlier.onclick = () => stepEdit(-1);
+later.onclick = () => stepEdit(1);
+function selectAudio() { videos.forEach((v,i) => v.muted = i !== Number(listen.value)); }
+selectAudio();
+listen.onchange = selectAudio;
+async function startPlayback() {
+  try { await Promise.all(videos.filter(v => position < v.duration || !Number.isFinite(v.duration)).map(v => v.play())); }
+  catch { pause(); status.textContent = 'Playback failed. Try selecting the cut again.'; return; }
+  status.textContent = '';
+  play.textContent = 'Pause both';
+  tick();
+}
+play.onclick = () => {
+  if (videos.some(v => !v.paused)) { pause(); return; }
+  if (position >= (sharedFrames() - 1) / 30) seek(0);
+  startPlayback();
+};
+scrub.oninput = () => { pause(); seek(Number(scrub.value) / 30); };
+</script>
+</html>

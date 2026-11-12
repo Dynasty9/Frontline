@@ -104,6 +104,9 @@ var lift_phase := 0  # 0 ground, 1 climb, 2 cruise, 3 land, 4 unload, 5/6 sling,
 var lift_t := 0.0
 var uav_dest := Vector3.INF
 var _orbit := 0.0
+var _cradle_age := 1.0
+var _cradle_rise := 0.0
+var _barrel_pitch_rate := 0.0  # visible motion of the gun cradle
 var _elev_v := 0.0  # (view) barrel / launcher elevation
 var model: Node3D
 var impact_response := ImpactResponse.new()
@@ -135,8 +138,15 @@ var tail_rotor: Node3D
 var blades: Node3D
 var blur: MeshInstance3D
 var wheels: Array = []
+var always_animate_tracks := false  # Long-lens footage also needs distant shoe contact.
+var _belt_yaw := 0.0
+var _belt_origin := Vector3.ZERO
+var _engine_sound: AudioStreamPlayer3D
+var _track_sound: AudioStreamPlayer3D
+var _drive_load := 0.0
 var _last_pos := Vector3.ZERO
 var _rotor_spd := 0.0
+var engine_exhaust: GeometryInstance3D
 var _rotor_snd: AudioStreamPlayer3D
 var _rotor_vol := 0.0
 var _wash: Node3D  # (view) dust or spray thrown out from under a low helicopter
@@ -144,6 +154,7 @@ var _sway_t := 0.0  # (view) a hovering helicopter's gentle wander
 var _model_rest := Vector3.INF
 var burner: Node3D
 var dust: GeometryInstance3D  # (GPU or CPU particles: see Vfx.part)
+var bent_skirts := 0
 var _burn_state := -1
 var ring: MeshInstance3D
 var _vis := true
@@ -182,6 +193,10 @@ func apply_props(d: Dictionary) -> void:
 		net_yaw = d.yaw
 	if d.has("max_hp"):
 		max_hp = d.max_hp
+	if d.has("bent_skirts"):
+		bent_skirts = d.bent_skirts
+		if _vm:
+			_vm.pose_skirts(bent_skirts)
 	if d.has("roe"):
 		roe = d.roe
 	if d.has("prio"):
@@ -193,8 +208,11 @@ func apply_props(d: Dictionary) -> void:
 
 
 func get_props() -> Dictionary:
-	return {"vkind": vkind, "team": team, "owner": owner_peer, "pos": position, "yaw": rotation.y, "max_hp": max_hp,
+	var d := {"vkind": vkind, "team": team, "owner": owner_peer, "pos": position, "yaw": rotation.y, "max_hp": max_hp,
 		"roe": roe, "prio": prio, "smoke": smoke_left, "pax": pax}
+	if bent_skirts:
+		d["bent_skirts"] = bent_skirts
+	return d
 
 
 var pax: Array = []  # (replicated) who's aboard: [squad id, men, squad name] for each squad
@@ -278,6 +296,50 @@ func on_spawned() -> void:
 		_build_model()
 
 
+func _build_camera_mounts() -> void:
+	if not model or not _vm:
+		return
+	var size := _hull_size()
+	_add_exterior_cameras(model, size)
+	if not _vm.belts.is_empty() or not _vm.wheels.is_empty():
+		var label := &"Tracks" if not _vm.belts.is_empty() else &"Wheels"
+		var side := Vector3(size.x * 0.46, size.y * 0.26, 0)
+		_camera_mount(label, model, side + Vector3(size.x * 1.35, size.y * 0.33, size.z * 0.45), side)
+	if _vm.rotor:
+		_camera_mount(&"Cabin side", model, Vector3(size.x * 1.4, size.y * 0.75, size.z * 0.28), Vector3(0, size.y * 0.5, -size.z * 0.16))
+		if int(vdef.get("sling", -1)) >= 0:
+			# Frame the rotor against the sky and keep the load and its shadow below.
+			_camera_mount(&"Sling load", model, Vector3(-size.z * 1.12, -size.z * 0.10, -size.z * 0.70), Vector3.DOWN * SLING_ROPE * 0.26, true)
+			# Looking past the landing gear shows when the load clears its shadow.
+			_camera_mount(&"Cargo door", model, Vector3(-size.x * 0.65, size.y * 0.44, size.z * 0.07), Vector3.DOWN * SLING_ROPE * 0.97)
+	elif is_boat():
+		_camera_mount(&"Bow", model, Vector3(size.x * 0.32, size.y * 1.15, -size.z * 0.68), Vector3(0, size.y * 0.55, 0))
+		_camera_mount(&"Waterline", model, Vector3(size.z * 0.82, size.y * 2.4, size.z * 0.97), Vector3(0, size.y * 0.4, -size.z * 0.13), true)
+		# Look past the port quarter to the water beyond the bow.
+		_camera_mount(&"Stern quarter", model, Vector3(-size.z * 0.85, size.y * 1.35, size.z * 1.25), Vector3(size.z * 0.74, size.y * 1.2, -size.z * 0.18), true)
+		if vkind == "patrol_ship":
+			# Look down over the port rail so the bridge and passing boat share the frame.
+			_camera_mount(&"Bridge roof", model, Vector3(-2.5, 6.85, 1.5), Vector3(-6.9, 1.15, -7.4))
+		if vkind == "rhib":
+			# Stand beside the RHIB console, looking over the starboard tube.
+			_camera_mount(&"Starboard", model, Vector3(0.72, 2.44, -0.44), Vector3(2.55, 2.0, -8.5))
+			_camera_mount(&"Helm", model, Vector3(1.12, 2.24, 1.58), Vector3(1.1, 1.4, -7.5))
+	if _vm.gun_mount and _vm.gun_tip:
+		# Look back along the moving tube so the turret stays in the picture.
+		_camera_mount(&"Barrel", _vm.gun_tip, Vector3(2.9, 0.92, -1.9), Vector3(-0.1, 0.0, 1.8))
+	if turret and _vm.periscope.is_finite():
+		var eye := _vm.periscope
+		_camera_mount(&"Periscope", turret, eye, eye + Vector3.FORWARD)
+	if turret and _vm.roof_gun.is_finite():
+		_camera_mount(&"Roof gun", turret, _vm.roof_gun + Vector3(-0.95, 0.62, 1.15), _vm.roof_gun + Vector3(0, 0, -0.7))
+	if _vm.engine_deck.is_finite():
+		_camera_mount(&"Engine deck", model, Vector3(size.x * 1.3, size.y * 2.55, size.z * 1.47), _vm.engine_deck + Vector3.UP * 0.65)
+
+
+func has_tank_model() -> bool:
+	return vdef.get("model", vkind) in ["tank", "old_tank"]
+
+
 func _hull_size() -> Vector3:
 	return vdef.get("size", Vector3(2.3, 2.6, 6.0))
 
@@ -358,6 +420,8 @@ func repair(amount: float) -> void:
 			track_broken = false
 			track_fix = 0.0
 			world.send_msg(team, "info", "%s track repaired." % display_name(), position)
+	if bent_skirts and not needs_repair():
+		_set_bent_skirts(0)
 
 
 func turret_pos() -> Vector3:
@@ -1163,6 +1227,10 @@ func _aim_err() -> float:
 	return absf(wrapf(want - (rotation.y + turret_yaw), -PI, PI))
 
 
+func cannon_interval() -> float:
+	return float(vdef.get("gun", {}).get("cd", 5.5))
+
+
 func _fire_tick() -> void:
 	if not _target_ok():
 		return
@@ -1189,7 +1257,7 @@ func _fire_tick() -> void:
 				worth = prio == Prio.INFANTRY or (worth and (target.rockets > 0 or target.mounted != null))
 		if worth:
 			_fire_cannon()
-			cannon_t = float(vdef.get("gun", {}).get("cd", 5.5))
+			cannon_t = cannon_interval()
 			return
 	var mg: String = vdef.mg
 	var gs := base() == "attack_heli"
@@ -1637,8 +1705,15 @@ func _fire_cannon() -> void:
 	world.stat("cannon")
 	last_fire_t = world.time
 	var g: Dictionary = vdef.get("gun", {})
-	world.combat.explode(hit_pos, {"dmg": float(g.get("dmg", 160.0)), "radius": float(g.get("radius", 5.5)), "fling": 10.0, "at": float(g.get("at", 320.0)), "src": self, "team": team,
-		"size": float(g.get("size", 1.4)), "track": 0.3, "dir": dir, "struct_mult": 2.5})
+	var blast := {"dmg": float(g.get("dmg", 160.0)), "radius": float(g.get("radius", 5.5)), "fling": 10.0, "at": float(g.get("at", 320.0)), "team": team,
+		"size": float(g.get("size", 1.4)), "track": 0.3, "dir": dir, "struct_mult": 2.5}
+	if has_tank_model():
+		var surface := world.combat.ent_of(r.get("collider"))
+		var normal: Vector3 = r.normal if surface is Vehicle and surface.is_tracked() and surface.weight() >= 2 else Vector3.ZERO
+		world.combat.queue_cannon(from, hit_pos, self, normal, blast)
+	else:
+		blast["src"] = self
+		world.combat.explode(hit_pos, blast)
 
 
 # --- damage --------------------------------------------------------------------------
@@ -1712,7 +1787,19 @@ func explosion_hit(pos: Vector3, d: Dictionary) -> void:
 		var r: float = float(d.get("radius", 5.0)) + 2.0
 		dmg = float(d.get("dmg", 100.0)) * maxf(0.0, 1.0 - dist / r) * (0.12 if armor >= 2 else 0.8) * float(d.get("veh_mult", 1.0))
 	if dmg > 0.0:
+		# The damage has already been resolved. A hard hit folds the outer
+		# skirt on the side it struck, and engineers straighten it on repair.
+		if has_tank_model() and dmg >= max_hp * 0.25:
+			var side := 2 if to_local(pos).x > 0.0 else 1
+			_set_bent_skirts(bent_skirts | side)
 		take_damage(dmg, d.get("src"))
+
+
+func _set_bent_skirts(mask: int) -> void:
+	if mask != bent_skirts:
+		var change := {"bent_skirts": mask}
+		apply_props(change)
+		world.push_props(self, change)
 
 
 ## A missile or rocket coming at it: armour fires its smoke dischargers - a
@@ -1828,6 +1915,8 @@ func _wreck_out(hard := 0.0) -> void:
 		# she comes down on whatever's under her, and her fuel goes up
 		world.combat._explode(ground + Vector3(0, 0.6, 0), {"dmg": 90.0 + 60.0 * hard, "radius": 4.0 + 2.5 * hard, "fling": 9.0, "at": 60.0,
 			"team": team, "size": 1.6 + 0.6 * hard, "vfx": "fuel", "struct_mult": 1.5})
+	elif is_tracked() and weight() >= 2:
+		world.fx_event(Fx.tank_knockout(to_global(Vector3(0, 1.6, 1.2))))
 	else:
 		world.fx_event([Fx.EXPLODE, position + Vector3(0, 1.0, 0), 2.0, "fuel"])
 	if world.battle:
@@ -1845,11 +1934,16 @@ func _wreck_out(hard := 0.0) -> void:
 		props["tilt"] = _crash_tilt if crashing != 0 else Vector2(world.rng.randf_range(-0.04, 0.04), world.rng.randf_range(-0.06, 0.06))
 	else:
 		var plan := _toss_plan(p, y)
+		if has_tank_model():
+			props["bent_skirts"] = bent_skirts
+			props["wreck_turret_yaw"] = turret_yaw
+		if has_tank_model() or vdef.get("model", vkind) in ["technical", "aa_tech"]:
+			props["wreck_finish"] = {"team": team, "seed": eid, "since": world.time}
 		props["pos"] = plan[0]
 		props["yaw"] = plan[1]
 		props["tilt"] = plan[2]
 		if (plan[3] as Vector3).length() > 0.3:
-			props["toss"] = [p, y, plan[3], plan[4]]
+			props["toss"] = [position, y, plan[3], plan[4]]
 	_bail_out(-hp)
 	var w := world
 	world.despawn(self)
@@ -2554,6 +2648,7 @@ func impact_react(direction: Vector3, strength: float) -> void:
 
 ## The main gun's kick rocks the hull back from the shot.
 func recoil(dir: Vector3) -> void:
+	_cradle_age = 0.0
 	var fwd := Defs.dir_of(rotation.y)
 	var side := fwd.cross(Vector3.UP)
 	var k := 0.9 if weight() >= 2 else 0.5
@@ -2562,7 +2657,7 @@ func recoil(dir: Vector3) -> void:
 
 ## Hull on springs: it squats when it pulls away, dips its nose when it stops,
 ## leans out of turns, pitches over trenches and craters and rocks back to level.
-func _suspension(dt: float) -> void:
+func _suspension(dt: float, on_ground: bool) -> void:
 	if dt <= 0.0:
 		return
 	var fwd := Defs.dir_of(rotation.y)
@@ -2576,21 +2671,22 @@ func _suspension(dt: float) -> void:
 	var heavy := weight() >= 2 or (weight() == 1 and is_tracked())
 	var kp := 0.011 if heavy else 0.02
 	var tgt := Vector3(clampf(acc.dot(fwd) * kp, -0.08, 0.08), clampf(acc.dot(side) * kp * 0.9, -0.07, 0.07), 0.0)
-	var hs := _hull_size()
-	var hf := _ground_h(position + fwd * hs.z * 0.38)
-	var hr := _ground_h(position - fwd * hs.z * 0.38)
-	tgt.x += atan2(hf - hr, hs.z * 0.76)
-	var hl := _ground_h(position - side * hs.x * 0.4)
-	var hh := _ground_h(position + side * hs.x * 0.4)
-	tgt.y += atan2(hl - hh, hs.x * 0.8)
-	tgt.z += (hf + hr) * 0.5
+	if on_ground:
+		var hs := _hull_size()
+		var hf := _ground_h(position + fwd * hs.z * 0.38)
+		var hr := _ground_h(position - fwd * hs.z * 0.38)
+		tgt.x += atan2(hf - hr, hs.z * 0.76)
+		var hl := _ground_h(position - side * hs.x * 0.4)
+		var hh := _ground_h(position + side * hs.x * 0.4)
+		tgt.y += atan2(hh - hl, hs.x * 0.8)
+		tgt.z += (hf + hr) * 0.5
 	var spring := 55.0 if heavy else 80.0
 	var damp := 8.0 if heavy else 6.5
 	_sus_v += ((tgt - _sus) * spring - _sus_v * damp) * dt
 	_sus += _sus_v * dt
 	_sus = Vector3(clampf(_sus.x, -0.5, 0.5), clampf(_sus.y, -0.5, 0.5), clampf(_sus.z, -0.6, 0.5))
 	var rumble := 0.0
-	if _vel_s.length() > 1.0:
+	if on_ground and _vel_s.length() > 1.0:
 		var tt := Time.get_ticks_msec() / 1000.0
 		rumble = (sin(tt * 31.0 + eid) * 0.5 + sin(tt * 47.0) * 0.5) * (0.004 if heavy else 0.006) * minf(_vel_s.length() / 6.0, 1.0)
 	var hit := impact_response.step(dt, 9.0 if heavy else 12.0)
@@ -2835,12 +2931,29 @@ func _view_process(dt: float) -> void:
 		facing.y = turret_yaw
 		if turret.rotation != facing:
 			turret.rotation = facing
+		if _vm and _vm.gun_mount:
+			var mount := _vm.gun_mount
+			var cradle := turret.global_basis
+			var direction := Defs.dir_of(rotation.y + turret_yaw)
+			if _target_ok():
+				direction = target.center_point() - mount.global_position
+			var local := cradle.inverse() * direction
+			var pitch := clampf(atan2(local.y, Vector2(local.x, local.z).length()), -0.16, 0.31)
+			# The cradle eases into a change of elevation and brakes as it settles.
+			var pose := VehicleMotion.slew(mount.rotation.x - _cradle_rise, _barrel_pitch_rate, pitch, 0.9, 3.2, dt, false)
+			_cradle_age = minf(0.95, _cradle_age + dt)
+			_cradle_rise = deg_to_rad(2.6) * sin(_cradle_age * PI / 0.95) * exp(-1.6 * _cradle_age) if _cradle_age < 0.95 else 0.0
+			mount.rotation.x = pose.x + _cradle_rise
+			_barrel_pitch_rate = pose.y
 		if _gun_kick > 0.0:
-			if _turret_rest == Vector3.INF:
-				_turret_rest = turret.position
-			# slammed back by the shot, then run out again over half a second
 			_gun_kick = maxf(0.0, _gun_kick * exp(-dt * 7.0) - dt * 0.01)
-			turret.position = _turret_rest + Basis(Vector3.UP, turret_yaw) * Vector3(0, 0, _gun_kick)
+			if _vm and _vm.gun_mount:
+				var slide := _vm.gun_tip.get_parent() as Node3D
+				slide.position.z = -_vm.gun_mount.position.z + _gun_kick
+			else:
+				if _turret_rest == Vector3.INF:
+					_turret_rest = turret.position
+				turret.position = _turret_rest + Basis(Vector3.UP, turret_yaw) * Vector3(0, 0, _gun_kick)
 	if _vm and _vm.elev:
 		# laid for indirect fire: the barrel (or the launcher) goes up
 		var want_e := float(vdef.get("elev", 0.6)) if (flags & F_ELEV) != 0 else 0.0
@@ -2891,16 +3004,54 @@ func _view_process(dt: float) -> void:
 		var ss := mv2.dot(Defs.dir_of(rotation.y).cross(Vector3.UP)) / dt
 		model.rotation.x = lerpf(model.rotation.x, clampf(-fs * 0.012, -0.3, 0.3), 1.0 - exp(-dt * 3.0))
 		model.rotation.z = lerpf(model.rotation.z, clampf(ss * 0.012, -0.3, 0.3), 1.0 - exp(-dt * 3.0))
+	# The ground simulation puts the hull origin on the landform, even over a crater.
+	# A helicopter carries that origin clear of the landscape on both peers.
+	var on_ground := not rotor and not flight and not is_boat()
+	if on_ground:
+		var ground_height := world.terrain.landform.height(position) if world.terrain else world.ground_y(position)
+		on_ground = position.y <= ground_height + 0.35
 	if dust and dt > 0.0:
 		var spd2 := Defs.flat(position - _last_pos).length() / dt
-		var want_dust := spd2 > 2.0
+		var want_dust := on_ground and spd2 > 2.0 and position.y <= world.ground_y(position) + 0.35
 		if want_dust != Vfx.is_emitting(dust):
 			Vfx.set_emitting(dust, want_dust)
 	if is_boat() and model:
 		_boat_view(dt)
 	elif not rotor and not flight and model:
-		_suspension(dt)
-	if not wheels.is_empty():
+		_suspension(dt, on_ground)
+	if _vm and not _vm.belts.is_empty():
+		# Use the drawn hull: the host can render several frames per simulation tick.
+		var drawn := global_transform * ip_offset() if srv else global_transform
+		var yaw := Defs.yaw_of(-drawn.basis.z)
+		var dyaw := wrapf(yaw - _belt_yaw, -PI, PI)
+		var delta_pos := drawn.origin - _belt_origin
+		var forward := delta_pos.dot(Defs.dir_of(yaw - dyaw * 0.5))
+		var distance := signf(forward) * Vector2(forward, delta_pos.y).length()
+		var camera := get_viewport().get_camera_3d()
+		var nearby := visible and (not camera or camera.global_position.distance_squared_to(drawn.origin) < 100.0 * 100.0)
+		var continuous := on_ground and delta_pos.length_squared() < 4.0
+		for belt in _vm.belts:
+			var step: float = distance + dyaw * belt.position.x if continuous else 0.0
+			if nearby or always_animate_tracks:
+				belt.advance(step, world.ground_y)
+			if nearby and continuous and world.terrain and world.fx and world.fx.vfx:
+				belt.print_ground(world.fx.vfx, step)
+			else:
+				belt.printed_end = -1
+			belt.stir_dust(step / dt if nearby and dt > 0.0 else 0.0)
+		if _engine_sound and dt > 0.0:
+			var travel := maxf(absf(distance), absf(dyaw * float(_vm.belts[0].position.x)))
+			var belt_speed := travel / dt if continuous else 0.0
+			_track_audio(dt, nearby and camera != null, belt_speed, signf(forward) * _sus.x)
+		if engine_exhaust:
+			burner.position = model.transform * _vm.engine_deck
+			engine_exhaust.position = model.transform * _vm.engine_vent
+			var running := nearby and continuous and absf(distance) > dt * 0.45 and health_frac() >= 0.4
+			if Vfx.is_emitting(engine_exhaust) != running:
+				Vfx.set_emitting(engine_exhaust, running)
+		_belt_yaw = yaw
+		_belt_origin = drawn.origin
+	elif on_ground and not wheels.is_empty():
 		var mv := position - _last_pos
 		var fwd := Defs.dir_of(rotation.y)
 		var spd := mv.dot(fwd)
@@ -2927,7 +3078,7 @@ func _view_process(dt: float) -> void:
 			world.fx.vfx.set_burning(burner, [0.0, 0.0, 0.0, 0.8][st], [0.0, 0.25, 0.6, 1.0][st])
 	_sling_view()
 	if ring:
-		ring.visible = selected
+		ring.visible = selected and (not world.cam or world.cam.mount_subject != self)
 		if selected and (position.y - world.ground_y(position)) > 0.5:
 			ring.global_position = Vector3(position.x, world.ground_y(position) + 0.06, position.z)
 
@@ -3008,43 +3159,51 @@ func heat_sources(hh: HeatHaze) -> void:
 		hh.add(ex.origin + ax * (w * 1.9), w, ax, 2.6, hot * (1.0 if rotor else 0.75), 3.0, 0.22, 1.6)
 
 
-var _cables: MeshInstance3D
+var _cables: MultiMeshInstance3D
 
 
-## (view) Four strops from the load's corners up to a hook, a cable from the
-## hook to the belly of the helicopter.
+## The lower straps meet the body of the load below its highest point.
+## Their width and shading stay visible when looking down from the cargo door.
 func _sling_view() -> void:
-	var v = world.entity(sling_eid) if sling_eid != 0 else null
-	if v == null or not (v is Vehicle) or not visible:
+	var load_vehicle := world.entity(sling_eid) as Vehicle if sling_eid != 0 else null
+	if load_vehicle == null or not visible:
 		if _cables:
 			_cables.visible = false
 		return
 	if _cables == null:
-		_cables = MeshInstance3D.new()
-		_cables.mesh = ImmediateMesh.new()
-		_cables.top_level = true
+		var spans := MultiMesh.new()
+		spans.transform_format = MultiMesh.TRANSFORM_3D
+		spans.use_colors = true
+		spans.mesh = Res.cyl(0.5, 0.5, 1.0, 8)
+		spans.instance_count = 5
+		spans.set_instance_color(0, Color(0.19, 0.20, 0.19))
+		for i in range(1, 5):
+			spans.set_instance_color(i, Color(0.40, 0.34, 0.19))
+		var mat := StandardMaterial3D.new()
+		mat.vertex_color_use_as_albedo = true
+		mat.roughness = 0.95
+		_cables = MultiMeshInstance3D.new()
+		_cables.multimesh = spans
+		_cables.material_override = mat
 		_cables.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-		var m := StandardMaterial3D.new()
-		m.albedo_color = Color(0.08, 0.08, 0.08)
-		m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-		_cables.material_override = m
 		add_child(_cables)
 	_cables.visible = true
-	_cables.global_transform = Transform3D.IDENTITY
-	var im: ImmediateMesh = _cables.mesh
-	im.clear_surfaces()
-	im.surface_begin(Mesh.PRIMITIVE_LINES)
-	var belly: Vector3 = global_position + Vector3(0, -0.6, 0)
-	var hs: Vector3 = v._hull_size()
-	var top: Vector3 = v.global_position + Vector3(0, hs.y, 0)
-	var hook: Vector3 = top + Vector3(0, 2.4, 0)
-	im.surface_add_vertex(belly)
-	im.surface_add_vertex(hook)
-	var b := Basis(Vector3.UP, v.rotation.y)
-	for c in [Vector3(hs.x * 0.4, 0, hs.z * 0.38), Vector3(-hs.x * 0.4, 0, hs.z * 0.38), Vector3(hs.x * 0.4, 0, -hs.z * 0.38), Vector3(-hs.x * 0.4, 0, -hs.z * 0.38)]:
-		im.surface_add_vertex(hook)
-		im.surface_add_vertex(top + b * c)
-	im.surface_end()
+	var body := load_vehicle.model if load_vehicle.model else load_vehicle
+	var relative := global_transform.affine_inverse() * body.global_transform
+	var size := load_vehicle._hull_size()
+	var hook := to_local(body.global_position + Vector3.UP * (size.y + 2.4))
+	_sling_span(0, model.transform * _vm.sling_eye, hook, 0.055, 0.055)
+	for i in 4:
+		var x := size.x * (0.37 if (i & 1) else -0.37)
+		var z := size.z * (0.34 if (i & 2) else -0.34)
+		var end := relative * Vector3(x, size.y * 0.40, z)
+		_sling_span(i + 1, hook, end, 0.09, 0.04)
+
+
+func _sling_span(i: int, a: Vector3, b: Vector3, width: float, depth: float) -> void:
+	var span := b - a
+	var basis := Basis(Quaternion(Vector3.UP, span.normalized())).scaled_local(Vector3(width, span.length(), depth))
+	_cables.multimesh.set_instance_transform(i, Transform3D(basis, (a + b) * 0.5))
 
 
 var spray: GeometryInstance3D
@@ -3102,6 +3261,10 @@ func sink_view() -> void:
 	if model == null or world.fx == null or world.fx.vfx == null:
 		return
 	var m := model
+	var helm := m.get_node_or_null("Coxswain")
+	if helm:
+		helm.queue_free()
+	_camera_mounts.clear()
 	model = null
 	remove_child(m)
 	var b := burner
@@ -3162,18 +3325,67 @@ func muzzle_world(main_gun := false) -> Vector3:
 	return tip.global_position
 
 
+func _track_audio(dt: float, audible: bool, belt_speed: float, grade: float) -> void:
+	if not audible or not Sfx.enabled:
+		if _engine_sound.playing:
+			_engine_sound.stop()
+		if _track_sound.playing:
+			_track_sound.stop()
+		return
+	var demand := clampf(belt_speed / 5.5 + maxf(0.0, grade) * 1.4, 0.0, 1.0)
+	_drive_load = lerpf(_drive_load, demand, 1.0 - exp(-dt * (2.4 if demand > _drive_load else 1.1)))
+	_engine_sound.pitch_scale = 0.89 + 0.40 * _drive_load
+	_engine_sound.volume_db = -7.0 + 5.5 * _drive_load
+	if not _engine_sound.playing:
+		_engine_sound.play()
+	if belt_speed > 0.09:
+		var reference_speed: float = _vm.belts[0].pitch * 12.0
+		var cadence := belt_speed / reference_speed
+		if vdef.get("model", vkind) == "tank":
+			# The recorded pass includes steel ringing. Keep that pitch
+			# recognisable as the shoes slow down.
+			_track_sound.pitch_scale = clampf(0.79 + 0.21 * cadence, 0.79, 1.32)
+		else:
+			_track_sound.pitch_scale = clampf(cadence, 0.10, 3.8)
+		_track_sound.volume_db = lerpf(-30, -6, smoothstep(0.08, 2.0, belt_speed))
+		if not _track_sound.playing:
+			_track_sound.play()
+	elif _track_sound.playing:
+		_track_sound.stop()
+
+
 func _build_model() -> void:
 	var tc: Color = Defs.TEAM_COLORS[team] if team >= 0 else Color.WHITE
 	var k := VehicleModels.build(vkind, team, eid)
 	model = k.root
 	add_child(model)
+	if k.helm_seat.is_finite() and team >= 0:
+		var crew_scene := load("res://assets/infantry/rhib-helm.scn") as PackedScene
+		if crew_scene:
+			var helm := crew_scene.instantiate() as Node3D
+			model.add_child(helm)
+			helm.position = k.helm_seat
 	turret = k.turret
 	_vm = k
+	if bent_skirts:
+		k.pose_skirts(bent_skirts)
+	_belt_yaw = rotation.y
+	_belt_origin = global_position
+	_last_pos = position
 	rotor = k.rotor
 	tail_rotor = k.tail_rotor
 	blades = k.blades
 	blur = k.blur
 	wheels = k.wheels
+	if not k.belts.is_empty() and Sfx.enabled:
+		var abrams: bool = vdef.get("model", vkind) == "tank"
+		_engine_sound = Sfx.make_loop_player("turbine_engine" if abrams else "tracked_engine", 13.0, -7.0)
+		_track_sound = Sfx.make_loop_player("abrams_tracks" if abrams else "track_links", 10.0 if abrams else 9.0, -12.0)
+		for player: AudioStreamPlayer3D in [_engine_sound, _track_sound]:
+			player.autoplay = false
+			player.max_distance = 100.0
+			add_child(player)
+		_engine_sound.position.z = _hull_size().z * 0.32
 	if rotor:
 		_rotor_vol = 0.0 if base() == "attack_heli" else -3.0
 		_rotor_snd = Sfx.make_loop_player("rotor", 18.0, _rotor_vol)
@@ -3185,12 +3397,23 @@ func _build_model() -> void:
 	elif is_boat():
 		pass  # (a wake, not dust: see _boat_view)
 	elif world.fx and world.fx.vfx:
-		dust = world.fx.vfx.make_dust(1.3 if weight() >= 2 else 1.0)
-		dust.position = Vector3(0, 0.2, _hull_size().z * 0.5)
-		add_child(dust)
+		if k.belts.is_empty():
+			dust = world.fx.vfx.make_dust(1.3 if weight() >= 2 else 1.0)
+			dust.position = Vector3(0, 0.2, _hull_size().z * 0.5)
+			add_child(dust)
+		else:
+			for belt in k.belts:
+				belt.dust = world.fx.vfx.make_dust(0.80, true)
+				belt.add_child(belt.dust)
 	if world.fx and world.fx.vfx:
-		burner = world.fx.vfx.make_burner(1.0 if weight() >= 2 else 0.7)
+		burner = world.fx.vfx.make_burner(1.0 if weight() >= 2 else 0.7, k.engine_deck.is_finite())
 		burner.position = Vector3(0, 1.6, 1.2) if base() != "lift_heli" else Vector3(0, 2.3, 0.6)
+		if k.engine_deck.is_finite():
+			burner.position = k.engine_deck
+		if k.engine_vent.is_finite():
+			engine_exhaust = world.fx.vfx.make_engine_exhaust(vkind == "old_tank")
+			engine_exhaust.position = k.engine_vent
+			add_child(engine_exhaust)
 		add_child(burner)
 	var hs := _hull_size()
 	ring = Res.mi(self, Res.plane(maxf(hs.x, hs.z) * 1.22), Res.ring_mat(tc), Vector3(0, 0.06, 0), Vector3.ZERO, false)

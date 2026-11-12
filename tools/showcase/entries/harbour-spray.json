@@ -1,0 +1,58 @@
+{
+  "entry": "changelog/unreleased/harbour-spray.md",
+  "medium": "motion",
+  "rationale": "The two uninterrupted views show the height, shape and return of the spray against the same ship. The second clip compares the same launch crossing the starboard camera at full speed.",
+  "stage": "tools/showcase/airstrike-camera.tscn Bridge roof comparison uses Beachhead seed 3 at 34.9 to 37.15 seconds.",
+  "source_ref": "524fb5d versus the revised splash particles; RHIB wake 742a026 versus dbd3ca3",
+  "sources": [
+    {
+      "file": "changelog/unreleased/harbour-spray/spray.webm",
+      "sha256": "bfc7254f3f7707bad2a36d12171f6bfb27c7b8ac1518f21c3203db1f18d6947f"
+    },
+    {
+      "file": "changelog/unreleased/harbour-spray/spray.jpg",
+      "sha256": "8e28fef39bf310cc7042d92d98984c60400acb634a882b8b8070384d7223a37d"
+    },
+    {
+      "file": "changelog/unreleased/harbour-spray/wake.webm",
+      "sha256": "9931008362b3b081e55d31e7a8a27bd4f03b496bfaaf3cb3bd1c30d0deb2e613"
+    },
+    {
+      "file": "changelog/unreleased/harbour-spray/wake.jpg",
+      "sha256": "4006d1fc76e08b18ab30a6c097e007c5c9e6a784645c99819d4e3e1b61a70fb9"
+    },
+    {
+      "file": "changelog/unreleased/harbour-spray/bow-foam.webm",
+      "sha256": "8be12bd068e2d2a7d7b82002d5fd2d5fe22b6549b4498deb1f5e6919d2b8f61b",
+      "caption": "The same crossing before and after the bow foam and refraction changes."
+    },
+    {
+      "file": "changelog/unreleased/harbour-spray/bow-foam.jpg",
+      "sha256": "9a1469e07210dcd8f029ebb1910fbb87d2fdb124233495dc4e8c5508340a5fc5",
+      "caption": "The smaller boat approaching the port rail."
+    }
+  ],
+  "capture": {
+    "mission": "beachhead",
+    "seed": 3,
+    "focus": [
+      372,
+      -10
+    ],
+    "zoom": 58,
+    "pitch": -17,
+    "yaw": 1.2,
+    "start_seconds": 9.95,
+    "end_seconds": 14.95,
+    "fps": 30,
+    "wake": {
+      "mission": "beachhead",
+      "seed": 3,
+      "focus_vehicle": "rhib,1",
+      "view": "Starboard",
+      "start_seconds": 12,
+      "end_seconds": 16.2,
+      "fps": 30
+    }
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "entry": "changelog/unreleased/mortar-crew-kit.md",
+  "summary": "Mortar crews work the emplacement with both hands",
+  "medium": "motion",
+  "stage": "Defense, seed 3, same gunner and first round beside the fixed mortar.",
+  "rationale": "Side-by-side footage shows where the hands and portable kit go while the crew fires.",
+  "source_ref": "38163b2",
+  "sources": [
+    {
+      "file": "changelog/unreleased/mortar-crew-kit/crew.jpg",
+      "sha256": "aa90f5c7f989c9c06210964490cd0b86217b98dc9b3c471943050c99db1e0cb9"
+    },
+    {
+      "file": "changelog/unreleased/mortar-crew-kit/crew.webm",
+      "sha256": "21d845bbff2199550ec3d80c5912169d9b5513efea5b15eb48201ea6a87a24e2"
+    }
+  ],
+  "output": null
+}

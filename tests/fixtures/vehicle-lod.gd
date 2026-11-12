@@ -23,6 +23,12 @@ func _ready() -> void:
 	pivot.free()
 	var tank := VehicleModels.build("tank", 0, 3)
 	assert(_lod_count(tank.root) > 0 and _lod_count(tank.turret) > 0)
+	for part: MeshInstance3D in tank.root.find_children("*", "MeshInstance3D", true, false):
+		for surface in part.mesh.get_surface_count():
+			var paint := part.get_active_material(surface) as ShaderMaterial
+			if paint and paint.shader == Mats.shader():
+				assert(paint.get_shader_parameter("local_space"), "Wear must follow its vehicle part")
+	assert(not Mats.get_mat("gunmetal_w").get_shader_parameter("local_space"))
 	tank.root.free()
 	var wreck := VehicleModels.build("tank", 0, 3, true)
 	assert(_lod_count(wreck.root) == 0)

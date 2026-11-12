@@ -760,6 +760,7 @@ func _simulate(dt: float) -> void:
 	tp = _p("pathing", tp)
 	_rebuild_uhash()
 	tp = _p("spatial hash", tp)
+	combat.land_cannon_rounds()
 	for e in soldiers.duplicate():
 		if not e.gone:
 			e.sim(dt)

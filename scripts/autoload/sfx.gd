@@ -1,5 +1,5 @@
 extends Node
-## Procedurally synthesised sound effects, played through a pool of 3D players.
+## Synthesised effects and recorded heavy vehicle sounds share the spatial mixer.
 ## Every player feeds one of the mixer's buses, so music, effects, ambience and
 ## the interface each have their own volume (Settings sets the levels).
 
@@ -8,6 +8,9 @@ const RATE := 22050
 const BUSES := ["Music", "Effects", "Ambience", "Interface"]
 
 var streams := {}
+var _cabin_filters := {}
+
+const EFFECT_RANGE := 300.0
 var pool: Array = []
 var pool_i := 0
 var ui_player: AudioStreamPlayer
@@ -30,7 +33,7 @@ func _ready() -> void:
 		enabled = false
 		if dump_dir() == "":
 			return
-	# Every sound is made at start-up. None depends on another, so they're
+	# The procedural sounds are made at start-up. None depends on another, so they're
 	# made side by side on the worker threads, each with random numbers of its
 	# own (seeded by its name, so it sounds the same every launch): the global
 	# ones aren't safe to share between threads. Nothing waits for them while
@@ -43,7 +46,7 @@ func _ready() -> void:
 	for i in 32:
 		var p := AudioStreamPlayer3D.new()
 		p.unit_size = 14.0
-		p.max_distance = 300.0
+		p.max_distance = EFFECT_RANGE
 		p.attenuation_model = AudioStreamPlayer3D.ATTENUATION_INVERSE_DISTANCE
 		p.panning_strength = 0.8
 		p.bus = &"Effects"
@@ -75,6 +78,12 @@ func _ensure() -> void:
 	_synth = -1
 	for i in _recipes_made.size():
 		streams[_recipes_made[i][0]] = _made[i]
+	streams["tracked_engine"] = load("res://assets/audio/tracked/diesel.wav")
+	streams["turbine_engine"] = load("res://assets/audio/tracked/turbine.wav")
+	streams["abrams_tracks"] = load("res://assets/audio/tracked/abrams-tracks.wav")
+	streams["track_links"] = load("res://assets/audio/tracked/running-gear.wav")
+	streams["hull_strike"] = load("res://assets/audio/tracked/strike.wav")
+	streams["tank_report"] = load("res://assets/audio/tracked/report.wav")
 	_recipes_made = []
 	_made = []
 	set_process(false)
@@ -117,6 +126,9 @@ func _recipes() -> Array:
 		["door_kick", _door_kick],
 		["door", _creak],
 		["jet", _jet],
+		["jet_engine", _airflow_loop.bind(true)],
+		["falling_air", _airflow_loop.bind(false)],
+		["rack_release", _rack_release],
 		["big_boom", _boom.bind(2.6, 1.0, 38.0)],
 		["rotor", _rotor_loop],
 		["wind", _wind_loop],
@@ -174,6 +186,20 @@ func _setup_buses() -> void:
 		AudioServer.add_bus_effect(0, AudioEffectHardLimiter.new())
 
 
+## The turret muffles exterior sounds. Interface and music keep their own mix.
+func cabin_listening(inside: bool) -> void:
+	if not enabled or (not inside and _cabin_filters.is_empty()):
+		return
+	for bus_name in [&"Effects", &"Ambience"]:
+		var bus := AudioServer.get_bus_index(bus_name)
+		if not _cabin_filters.has(bus_name):
+			var filter := AudioEffectLowPassFilter.new()
+			filter.cutoff_hz = 1450.0
+			_cabin_filters[bus_name] = AudioServer.get_bus_effect_count(bus)
+			AudioServer.add_bus_effect(bus, filter)
+		AudioServer.set_bus_effect_enabled(bus, _cabin_filters[bus_name], inside)
+
+
 ## --sound-dump=DIR: write every synthesised sound to DIR as a WAV and quit
 ## (main.gd), so a sound can be listened to or measured on its own.
 func dump_dir() -> String:
@@ -212,7 +238,7 @@ func play(sname: String, pos: Vector3, vol_db := 0.0, pitch := 1.0, bus := &"Eff
 
 ## Heard rather than placed: aircraft overhead, a gunship's guns two hundred
 ## metres up. `pan` is ignored (mono), volume falls off with `dist`.
-func play_far(sname: String, vol_db := 0.0, pitch := 1.0, dist := 0.0) -> void:
+func play_far(sname: String, vol_db := 0.0, pitch := 1.0, dist := 0.0, bus := &"Effects") -> void:
 	if not enabled:
 		return
 	_ensure()
@@ -220,6 +246,7 @@ func play_far(sname: String, vol_db := 0.0, pitch := 1.0, dist := 0.0) -> void:
 		return
 	var p: AudioStreamPlayer = far_pool[far_i]
 	far_i = (far_i + 1) % far_pool.size()
+	p.bus = bus
 	p.stream = streams[sname]
 	p.volume_db = vol_db - clampf(dist / 25.0, 0.0, 14.0)
 	p.pitch_scale = pitch * randf_range(0.95, 1.05)
@@ -339,15 +366,18 @@ func _boom(rng: RandomNumberGenerator, dur: float, vol: float, base_hz: float) -
 
 
 func _ricochet(rng: RandomNumberGenerator) -> AudioStreamWAV:
-	var n := int(0.35 * RATE)
+	var n := int(0.19 * RATE)
 	var s := PackedFloat32Array()
 	s.resize(n)
-	var ph := 0.0
+	var previous := 0.0
 	for i in n:
 		var t := float(i) / RATE
-		var f := 3400.0 - t * 5000.0
-		ph += TAU * f / RATE
-		s[i] = (sin(ph) * 0.5 + (rng.randf() - 0.5) * 0.15) * exp(-t * 9.0)
+		var grit := rng.randf_range(-1.0, 1.0)
+		# A short scrape and two damped metal modes leave room for the strike.
+		var scrape := (grit - previous) * 0.16 * exp(-t * 46.0)
+		var ring := sin(TAU * 724.0 * t) * 0.14 + sin(TAU * 1183.0 * t) * 0.08
+		s[i] = (scrape + ring * exp(-t * 37.0)) * minf(t * 1800.0, 1.0)
+		previous = grit
 	return _wav(s)
 
 
@@ -400,6 +430,52 @@ func _jet(rng: RandomNumberGenerator) -> AudioStreamWAV:
 		var whine := sin(ph) * 0.12 * near
 		var env := clampf(t / 1.2, 0.0, 1.0) * clampf((5.0 - t) / 1.5, 0.0, 1.0)
 		s[i] = (lp2 * 2.6 * (0.35 + near) + whine) * env
+	return _wav(s)
+
+
+## Continuous air sounds travel with their on-screen source. The engine has a
+## low exhaust rumble; a falling object has only the uneven rush around it.
+func _airflow_loop(rng: RandomNumberGenerator, engine: bool) -> AudioStreamWAV:
+	var fade := int(0.12 * RATE)
+	var s := PackedFloat32Array()
+	s.resize(3 * RATE + fade)
+	var bass := 0.0
+	var body := 0.0
+	var air := 0.0
+	var gust := 0.0
+	var exhaust := 0.0
+	var resonance := 0.0
+	for i in s.size():
+		var noise := rng.randf_range(-1.0, 1.0)
+		bass += 0.016 * (noise - bass)
+		body += 0.11 * (noise - body)
+		air += 0.46 * (noise - air)
+		gust += 0.0008 * (rng.randf_range(-1.0, 1.0) - gust)
+		var breath := clampf(1.0 + 7.0 * gust, 0.55, 1.45)
+		if engine:
+			# Broad exhaust resonance gives the flypast weight on small speakers.
+			exhaust += 0.042 * resonance
+			resonance += 0.042 * (noise - exhaust - 0.55 * resonance)
+			s[i] = tanh(3.1 * exhaust + 2.5 * bass + 0.92 * body) * breath + 0.15 * (air - body)
+		else:
+			s[i] = (air - body + 0.4 * (body - bass)) * breath
+	return _wav(_normalize(_seamless(s, fade), -14.0 if engine else -19.0), true)
+
+
+## Two close mechanical sounds distinguish the release from the air rushing past.
+func _rack_release(rng: RandomNumberGenerator) -> AudioStreamWAV:
+	var s := PackedFloat32Array()
+	s.resize(int(0.16 * RATE))
+	var body := 0.0
+	for i in s.size():
+		var t := float(i) / RATE
+		var noise := rng.randf_range(-1.0, 1.0)
+		body += 0.14 * (noise - body)
+		var catch := 0.0
+		if t >= 0.035:
+			var age := t - 0.035
+			catch = (0.42 * (noise - body) + 0.4 * sin(TAU * 710.0 * age)) * exp(-age * 80.0)
+		s[i] = (2.2 * body + 0.48 * sin(TAU * 190.0 * t)) * exp(-t * 52.0) + catch
 	return _wav(s)
 
 

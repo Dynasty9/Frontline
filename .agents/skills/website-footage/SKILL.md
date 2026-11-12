@@ -19,10 +19,20 @@ The front page (web/) shows the game with footage recorded in the game itself, a
 
 ## What you need
 
-- **Godot 4.7** that can open a window (recording draws frames, so not `--headless`; on Windows either the plain or the `_console` exe): pass `--godot PATH` or set `GODOT`. Your notes on this machine may say where it is.
+- Use the **Godot 4.7 editor binary** from `--godot PATH` or `GODOT`. On macOS, record natively with `--embedded --debug --ignore-error-breaks`. Use `--headless` for imports and simulation-only tests. Open a visible window for live viewing or input tests that need one.
 - **Python 3** with Pillow and numpy; **Node 22.12+** for the website's checks.
 - **An encoder**: ffmpeg on the PATH, or Windows (Media Foundation via `scripts/encode_mf.ps1`; nothing to install).
 - **The takes folder**: `--work DIR`, else `FRONTLINE_FOOTAGE_DIR`, else `<system temp>/frontline-footage`. Takes live in `WORK/takes/` (100-500 MB each, about 3 GB in all) and are kept between sessions on purpose: an output can only be rebuilt from the takes it was cut from, and each take's `NAME.json` records when and at which commit it was recorded. Don't put them in a session scratchpad, and don't delete them because they look stale. If they're gone, rebuilding any output means re-recording its takes and choosing all its cuts again.
+
+## Re-render a finished clip
+
+From the repository root with Godot 4.7 on PATH or in `GODOT`:
+
+```sh
+python3 .agents/skills/website-footage/scripts/record.py --render reel
+```
+
+The recorder snapshots the checked-in `shots.json` when it starts. Pass `--recipe PATH` to record or build an archived edit. Each built movie includes its recipe in a sibling `.recipe.json` file. The recorder captures each required take once, then assembles the named outputs and any poster or captions. It prints the output paths. Pass multiple names to share takes (for example `--render hero infantry squads`), or add `--install` to update the website. Use `--work DIR` for a persistent capture directory outside the checkout. To recut the very same frames, use `build.py reel --work DIR` against its saved takes. A fresh recording replays the scenario setup; cosmetic motion, particles and audio variations can differ.
 
 ## 0. Bring the checkout up to date
 
@@ -31,8 +41,8 @@ The front page (web/) shows the game with footage recorded in the game itself, a
 ## 1. Find out what changed
 
 ```bash
-python .Codex/skills/website-footage/scripts/check_intel.py
-python .Codex/skills/website-footage/scripts/record.py --list
+python .agents/skills/website-footage/scripts/check_intel.py
+python .agents/skills/website-footage/scripts/record.py --list
 git log --oneline <commit from --list>..HEAD -- scripts assets project.godot
 ```
 
@@ -51,18 +61,18 @@ Re-recording a take fans out: every output and still it feeds has to be re-cut (
 ## 2. Record
 
 ```bash
-python .Codex/skills/website-footage/scripts/record.py beachhead-low airstrike-shore     # or --all
+python .agents/skills/website-footage/scripts/record.py beachhead-low airstrike-shore     # or --all
 ```
 
-It copies the game into `WORK/project`, imports it, and records each take off-screen at a fixed 30 fps. Its window starts minimized and is moved off-screen, so nothing opens on the desktop. Each job draws about 5-6 frames a second, so all eleven takes take 20-30 minutes with the default `--jobs 3`: run it in the background. It finds free ports from 8700 up and reports a take that lost its port anyway (the game would have run as an observer). Each take gets a log beside it (`WORK/takes/NAME.log`); read it if a take looks wrong.
+It copies the game into `WORK/project`, imports it, and records each take off-screen at a fixed 30 fps. On macOS the movie writer reads the embedded render target. Other desktop platforms use a minimized window moved off-screen. Each job draws about 5-6 frames a second, so all eleven takes take 20-30 minutes with the default `--jobs 3`: run it in the background. It finds free ports from 8700 up and reports a take that lost its port anyway (the game would have run as an observer). Each take gets a log beside it (`WORK/takes/NAME.log`); read it if a take looks wrong.
 
 ## 3. Choose the cuts
 
 Make contact sheets (keep them in the work folder, not the repo) and look at them:
 
 ```bash
-python .Codex/skills/website-footage/scripts/avi.py sheet WORK/takes/beachhead-low.avi WORK/sheets/beach.jpg --every 2
-python .Codex/skills/website-footage/scripts/avi.py sheet WORK/takes/beachhead-low.avi WORK/sheets/beach-fight.jpg --from 28 --to 46 --every 0.5
+python .agents/skills/website-footage/scripts/avi.py sheet WORK/takes/beachhead-low.avi WORK/sheets/beach.jpg --every 2
+python .agents/skills/website-footage/scripts/avi.py sheet WORK/takes/beachhead-low.avi WORK/sheets/beach-fight.jpg --from 28 --to 46 --every 0.5
 ```
 
 Find the action, then update the `from`/`to` times of every cut from that take in `shots.json` (and the take's `about` notes, for next time). What makes a cut work:
@@ -76,15 +86,19 @@ Find the action, then update the `from`/`to` times of every cut from that take i
 ## 4. Build, look, install
 
 ```bash
-python .Codex/skills/website-footage/scripts/build.py hero sea reel m-beachhead      # outputs and/or stills by name
+python .agents/skills/website-footage/scripts/build.py hero sea reel m-beachhead      # outputs and/or stills by name
 ```
 
 Build what you re-cut, by name (`--all` only after re-recording everything; `--stills` builds every still). Each lands in `WORK/build/` with `NAME.preview.jpg`, a contact sheet of the result. **Look at every preview**: it's the only way to catch a cut that starts on a glide or lands on empty ground. Adjust and rebuild until they're right, then build again with `--install` to copy them into `web/public/media`. It reports each clip against its `max_kb` budget (hero 4 MB, a feature clip 1.3 MB, the reel 7.5 MB; today they're about 3.5, 1 and 6.7). The budgets keep the page fast and the repository small: if a clip runs over, shorten it or lower its `kbps`; don't raise the budget. An output rebuilt from unchanged takes and cuts on the same machine comes out byte-identical, so git only shows what you really changed.
 
+Watch the encoded cut with **Video Tool** before installing it. Sample each cut, check the transitions in motion, and listen to the reel audio. Use contact sheets to locate shots in the native takes. After an edit, review the new encode again.
+
+The footage player also has a separate silent vehicle roll call. Rebuild it with `record.py --render vehicles`. The coastal circuit selects a featured loadout for each attachment family. It films the native game meshes at unit scale, orders vehicles by role, footprint band and speed, and reserves the cliff, dive and beach landing for the transition vehicles. Review the cliff, splash and last-to-first beach landing in motion.
+
 ## 5. Check the site and ship it
 
 ```bash
-python .Codex/skills/website-footage/scripts/check_intel.py
+python .agents/skills/website-footage/scripts/check_intel.py
 cd web && npm ci && npm run lint && npm run format:check && npm run typecheck && npm run test:unit && npm run test:stories && npm run build
 ```
 

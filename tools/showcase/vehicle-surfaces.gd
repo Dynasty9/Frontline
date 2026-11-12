@@ -25,6 +25,9 @@ const SHARED_PARTS := ["turret_ring", "sight", "panoramic_sight", "cupola", "era
 
 func _ready() -> void:
 	TestRun.watch()
+	if "--vehicle-roll-call" in OS.get_cmdline_user_args():
+		get_tree().call_deferred("change_scene_to_file", "res://tools/showcase/vehicle-circuit.tscn")
+		return
 	for arg in OS.get_cmdline_user_args():
 		if arg.begins_with("--surface-out="):
 			output = arg.trim_prefix("--surface-out=")
@@ -292,7 +295,7 @@ func _cell(grid: GridContainer, kind: String, size: Vector2i) -> void:
 	label.add_theme_font_size_override("font_size", 22 if single else 15)
 	cell.add_child(label)
 
-func _bounds(node: Node3D, parent: Transform3D) -> AABB:
+static func _bounds(node: Node3D, parent: Transform3D) -> AABB:
 	var xf := parent * node.transform
 	var box := AABB()
 	if node is MeshInstance3D:
