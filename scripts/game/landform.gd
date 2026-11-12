@@ -12,6 +12,12 @@ var reserve := PackedFloat32Array()
 var calm := PackedFloat32Array()  # 0 where the ground lies level as well: water and settlements
 var drainage := PackedFloat32Array()
 var peak := 0.0
+## How much of the metre-scale crag relief each grid vertex carries (empty: none);
+## see prepare_crags. Every peer derives it from the same heights.
+var rocky := PackedFloat32Array()
+const CRAG_METRES := 3.5  # knobs, ledges and clefts on bare rock, top to bottom
+const CRAG_CELLS := 256  # the crag tile's texels: 0.5 m, like the ground mesh (a 128 m repeat)
+static var _crags := PackedFloat32Array()
 
 
 static func valid(data: Variant, size: int) -> bool:
@@ -35,6 +41,7 @@ func _init(size: int) -> void:
 
 func generate(seed_value: int, roads: Array, water, settlements: Array, fractured := true) -> void:
 	drainage.clear()
+	rocky = PackedFloat32Array()  # (the new heights get theirs when installed)
 	heights.resize(n * n)
 	reserve.resize(n * n)
 	reserve.fill(1.0)
@@ -340,7 +347,30 @@ func reserve_disc(p: Vector3, radius: float, blend: float, level := 0.0) -> void
 				calm[i] = minf(calm[i], smoothstep(radius, radius + level, d))
 
 
+## The ground's height: the 4 m geology, and on bare rock of skirmish maps the
+## crag relief a 4 m grid cannot hold (what the men stand on and the eye sees).
 func height(p: Vector3) -> float:
+	if heights.is_empty():
+		return 0.0
+	var fx := clampf((p.x + half) / STEP, 0.0, n - 1.0)
+	var fz := clampf((p.z + half) / STEP, 0.0, n - 1.0)
+	var x := mini(int(fx), n - 2)
+	var z := mini(int(fz), n - 2)
+	var i := z * n + x
+	var tx := fx - x
+	var tz := fz - z
+	var h := lerpf(lerpf(heights[i], heights[i + 1], tx), lerpf(heights[i + n], heights[i + n + 1], tx), tz)
+	if rocky.is_empty():
+		return h
+	var r := lerpf(lerpf(rocky[i], rocky[i + 1], tx), lerpf(rocky[i + n], rocky[i + n + 1], tx), tz)
+	if r <= 0.0:
+		return h
+	return h + r * CRAG_METRES * _crag_at(p.x * 2.0, p.z * 2.0)
+
+
+## The smooth geology alone: slopes for movement and growth read this, so the
+## crags roughen the rock without re-routing anyone across the hills.
+func smooth_height(p: Vector3) -> float:
 	if heights.is_empty():
 		return 0.0
 	var fx := clampf((p.x + half) / STEP, 0.0, n - 1.0)
@@ -352,7 +382,50 @@ func height(p: Vector3) -> float:
 
 
 func slope(p: Vector3) -> float:
-	return Vector2(height(p + Vector3.RIGHT * 2.0) - height(p - Vector3.RIGHT * 2.0), height(p + Vector3.BACK * 2.0) - height(p - Vector3.BACK * 2.0)).length() * 0.25
+	return Vector2(smooth_height(p + Vector3.RIGHT * 2.0) - smooth_height(p - Vector3.RIGHT * 2.0), smooth_height(p + Vector3.BACK * 2.0) - smooth_height(p - Vector3.BACK * 2.0)).length() * 0.25
+
+
+## Bare rock (steep, well above the valley floor) takes crag relief on skirmish
+## maps; campaign ground stays exactly as authored. Call on the main thread once
+## the heights are final, on every peer.
+func prepare_crags(enabled: bool) -> void:
+	rocky = PackedFloat32Array()
+	if not enabled or heights.is_empty():
+		return
+	if _crags.is_empty():
+		var noise := FastNoiseLite.new()
+		noise.seed = 4177
+		noise.noise_type = FastNoiseLite.TYPE_SIMPLEX_SMOOTH
+		noise.fractal_type = FastNoiseLite.FRACTAL_RIDGED
+		noise.frequency = 1.0 / 16.0  # (texels: ~8 m ribs and clefts)
+		noise.fractal_octaves = 4
+		noise.fractal_gain = 0.55
+		var tile := noise.get_seamless_image(CRAG_CELLS, CRAG_CELLS, false, false, 0.12, true)
+		_crags.resize(CRAG_CELLS * CRAG_CELLS)
+		for z in CRAG_CELLS:
+			for x in CRAG_CELLS:
+				_crags[z * CRAG_CELLS + x] = tile.get_pixel(x, z).r - 0.5
+	rocky.resize(n * n)
+	for z in range(1, n - 1):
+		for x in range(1, n - 1):
+			var i := z * n + x
+			var gx := (heights[i + 1] - heights[i - 1]) / (2.0 * STEP)
+			var gz := (heights[i + n] - heights[i - n]) / (2.0 * STEP)
+			rocky[i] = smoothstep(0.45, 0.85, sqrt(gx * gx + gz * gz)) * smoothstep(6.0, 14.0, heights[i])
+
+
+## The crag tile at texel coordinates, repeating (bit masks: safe on worker threads).
+static func _crag_at(u: float, v: float) -> float:
+	var x0 := floori(u)
+	var z0 := floori(v)
+	var tx := u - x0
+	var tz := v - z0
+	var mask := CRAG_CELLS - 1
+	var xa := x0 & mask
+	var xb := (x0 + 1) & mask
+	var za := (z0 & mask) * CRAG_CELLS
+	var zb := ((z0 + 1) & mask) * CRAG_CELLS
+	return lerpf(lerpf(_crags[za + xa], _crags[za + xb], tx), lerpf(_crags[zb + xa], _crags[zb + xb], tx), tz)
 
 
 func fits(p: Vector3, footprint: Vector2, yaw: float, tolerance := 0.35) -> bool:

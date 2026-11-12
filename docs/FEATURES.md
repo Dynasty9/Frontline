@@ -552,7 +552,9 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
 - Skirmish valley floors roll a few metres over a few hundred (enough to fold a squad from view); roads ride over
   the swells while rivers, ponds, towns and bases keep level ground. Hills rise out of concave aprons, end in
   spurs and re-entrants where they meet a road or the shore, and are roughened before the rain so it cuts
-  branching gullies rather than parallel rills. Mission terrain keeps its authored relief exactly.
+  branching gullies rather than parallel rills. Steep bare rock carries crag relief (knobs, ledges and clefts
+  up to 3.5 m) at the ground mesh's 0.5 m, which every peer derives from the same heights; slopes for movement
+  and growth read the smooth geology, so routes are unchanged. Mission terrain keeps its authored relief exactly.
 - Meadows follow what the soil holds: lush in hollows, along drainage lines and for a few tens of metres beside
   rivers and ponds, drying to thin straw on crests and sun-facing banks, with broad soil differences parting one
   pasture from the next. Lush ground takes its colour from a 90 m drone survey of grassland, dry ground from a
