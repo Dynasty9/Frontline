@@ -1,6 +1,6 @@
 import { ArrowUpRightIcon } from "@phosphor-icons/react"
 import { useEffect, useRef, useState } from "react"
-import { useSearchParams } from "react-router"
+import { useNavigate } from "react-router"
 import { ModelPreview } from "@/components/model-preview"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -20,10 +20,11 @@ type Filters = { section: string; group: string; side: number; query: string }
 /**
  * One chapter of the Field Manual: every entry of its kind in a list you can
  * filter and search, and the chosen one with its 3D model, what it is and its
- * figures. The choice is in the address (?entry=), so a link opens on it.
+ * figures. The choice is in the address (/manual/vehicles/tank), so a link
+ * opens on it, and shared, shows that entry's name and description.
  */
-export function Catalogue({ section }: { section: Section }) {
-  const [search, setSearch] = useSearchParams()
+export function Catalogue({ section, entry: asked }: { section: Section; entry?: string }) {
+  const navigate = useNavigate()
   const fresh: Filters = { section: section.key, group: "All", side: -1, query: "" }
   const [kept, setFilters] = useState(fresh)
   // a new chapter starts unfiltered (the page stays, so the viewer stays loaded)
@@ -40,18 +41,10 @@ export function Catalogue({ section }: { section: Section }) {
       (filters.side < 0 || e.team === filters.side || e.team < 0) &&
       `${e.name} ${e.side} ${e.kind} ${e.group} ${e.description}`.toLowerCase().includes(words)
   )
-  const asked = search.get("entry")
   const selected =
     shown.find((e) => e.id === asked) ?? shown[0] ?? section.entries.find((e) => e.id === asked) ?? section.entries[0]
   const select = (id: string) => {
-    setSearch(
-      (now) => {
-        const next = new URLSearchParams(now)
-        next.set("entry", id)
-        return next
-      },
-      { replace: true, preventScrollReset: true }
-    )
+    void navigate(`/manual/${section.key}/${encodeURIComponent(id)}`, { replace: true, preventScrollReset: true })
     // on a phone the details are under the list: take the visitor to them
     if (window.matchMedia("(max-width: 1023px)").matches) detail.current?.scrollIntoView({ block: "start" })
   }
@@ -177,7 +170,7 @@ export function Catalogue({ section }: { section: Section }) {
           {/* kept while the visitor moves between entries, so the viewer loads once */}
           {models && (
             <div hidden={!selected.model}>
-              <ModelPreview entry={selected} available={viewer} />
+              <ModelPreview entry={selected} available={viewer.available} bytes={viewer.bytes} />
             </div>
           )}
           <div className="pt-6">

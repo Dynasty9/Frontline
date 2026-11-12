@@ -15,6 +15,7 @@ import {
   type Release,
   releases,
   screenshotsOf,
+  thumbnail,
 } from "@/lib/changelog"
 import { useInView } from "@/hooks/use-in-view"
 import { useReducedMotion } from "@/hooks/use-reduced-motion"
@@ -180,7 +181,7 @@ function EntryGallery({ entry }: { entry: Entry }) {
                 onClick={() => setSelected(i)}
                 className="relative w-24 shrink-0 border-2 border-transparent p-0.5 opacity-60 hover:opacity-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary aria-pressed:border-primary aria-pressed:opacity-100"
               >
-                <img src={m.thumbnail} alt="" loading="lazy" className="aspect-video w-full object-cover" />
+                <Thumb src={m.thumbnail} className="aspect-video w-full object-cover" />
                 {m.video && (
                   <span className="absolute right-1 bottom-1 bg-background/90 px-1 font-mono text-[10px] text-foreground">
                     VIDEO
@@ -192,6 +193,21 @@ function EntryGallery({ entry }: { entry: Entry }) {
         </div>
       )}
     </div>
+  )
+}
+
+/** A picture in a list or a strip: its small copy (a few KB, not the full screenshot), or the picture where there's none. */
+function Thumb({ src, className }: { src: string; className?: string }) {
+  const [failed, setFailed] = useState(false)
+  return (
+    <img
+      src={failed ? src : thumbnail(src)}
+      alt=""
+      loading="lazy"
+      decoding="async"
+      onError={() => setFailed(true)}
+      className={className}
+    />
   )
 }
 
@@ -218,14 +234,7 @@ function EntryBlock({
       onToggle={(event) => setOpen(event.currentTarget.open)}
     >
       <summary className="flex cursor-pointer list-none items-center gap-3 py-4 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-primary sm:gap-4 [&::-webkit-details-marker]:hidden">
-        {preview && (
-          <img
-            src={preview}
-            alt=""
-            loading="lazy"
-            className="hidden aspect-video w-24 shrink-0 object-cover sm:block"
-          />
-        )}
+        {preview && <Thumb src={preview} className="hidden aspect-video w-24 shrink-0 object-cover sm:block" />}
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
             <h3 className="font-display text-xl leading-tight font-semibold sm:text-2xl">{entry.title}</h3>

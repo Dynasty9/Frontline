@@ -9,17 +9,49 @@ import {
 import { HudCorners } from "@/components/footage"
 import { Button } from "@/components/ui/button"
 import type { Entry } from "@/lib/manual"
+import { formatSize } from "@/lib/releases"
 
 /** What the viewer needs of a manual entry: its key, its name, and a sortie to fly if it has one. */
 type Model = Pick<Entry, "id" | "name" | "support">
+
+// The visitor has loaded the viewer on this device before: it loads by itself from then on.
+const REMEMBER = "frontline:3d-models"
+function remembered() {
+  try {
+    return window.localStorage.getItem(REMEMBER) === "on"
+  } catch {
+    return false
+  }
+}
 
 /**
  * The Field Manual's model stage from the game itself (its browser build at
  * /game/, opened on one entry with ?manual=<key>), turned over with the
  * buttons or by dragging. It stays loaded while the visitor picks one entry
- * after another: each is sent to it, and it says when it's showing it.
+ * after another: each is sent to it, and it says when it's showing it. The
+ * viewer is the whole game (about 250 MB), so it waits to be asked for, saying
+ * how big it is, until the visitor has loaded it once on this device.
  */
-export function ModelPreview({ entry, available }: { entry: Model; available: boolean | null }) {
+export function ModelPreview({
+  entry,
+  available,
+  bytes,
+}: {
+  entry: Model
+  available: boolean | null
+  /** what the viewer downloads the first time, if its manifest says */
+  bytes?: number
+}) {
+  const [armed, setArmed] = useState(remembered)
+  const on = !!available && armed
+  const arm = () => {
+    setArmed(true)
+    try {
+      window.localStorage.setItem(REMEMBER, "on")
+    } catch {
+      // not remembered, then: it asks again next visit
+    }
+  }
   const frame = useRef<HTMLIFrameElement>(null)
   const statusObserver = useRef<MutationObserver | null>(null)
   const [startupError, setStartupError] = useState<string | null>(null)
@@ -49,7 +81,7 @@ export function ModelPreview({ entry, available }: { entry: Model; available: bo
     statusObserver.current.observe(doc.body, { childList: true, characterData: true, subtree: true })
   }
   useEffect(() => {
-    if (!available) return
+    if (!on) return
     const onMessage = (event: MessageEvent) => {
       if (event.origin !== window.location.origin || event.source !== frame.current?.contentWindow) return
       if (event.data?.type === "frontline-model-loaded") setLoaded(true)
@@ -65,7 +97,7 @@ export function ModelPreview({ entry, available }: { entry: Model; available: bo
     return () => {
       window.removeEventListener("message", onMessage)
     }
-  }, [available])
+  }, [on])
   useEffect(() => {
     if (!loaded) return
     frame.current?.contentWindow?.postMessage(
@@ -74,12 +106,12 @@ export function ModelPreview({ entry, available }: { entry: Model; available: bo
     )
   }, [loaded, entry.id])
   useEffect(() => {
-    if (!available || ready) return
+    if (!on || ready) return
     const timer = window.setTimeout(() => setFailedId(entry.id), 90_000)
     return () => window.clearTimeout(timer)
     // A retry mounts a new frame, so its readiness timeout must restart too.
     // oxlint-disable-next-line react/exhaustive-effect-dependencies
-  }, [available, ready, entry.id, attempt])
+  }, [on, ready, entry.id, attempt])
   const control = (action: string) =>
     frame.current?.contentWindow?.postMessage({ type: "frontline-model", action }, window.location.origin)
   const playDemo = () => {
@@ -95,7 +127,7 @@ export function ModelPreview({ entry, available }: { entry: Model; available: bo
   return (
     <div>
       <div className="relative aspect-[4/3] overflow-hidden bg-[#08090a] sm:aspect-[16/10]">
-        {available && (
+        {on && (
           <iframe
             key={attempt}
             ref={frame}
@@ -110,49 +142,65 @@ export function ModelPreview({ entry, available }: { entry: Model; available: bo
             tabIndex={-1}
           />
         )}
-        {!ready && (
+        {available && !armed ? (
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 p-8 text-center">
             <span aria-hidden="true" className="h-10 w-px bg-primary" />
-            <p className="font-mono text-xs tracking-widest text-muted-foreground uppercase" role="alert">
-              {startupError
-                ? "3D preview couldn't start"
-                : failed
-                  ? "The model is taking longer than expected."
-                  : available === null
-                    ? "Checking 3D preview…"
-                    : available
-                      ? demo
-                        ? "Preparing the training range…"
-                        : "Preparing the model…"
-                      : "3D preview unavailable"}
+            <p className="font-mono text-xs tracking-widest text-muted-foreground uppercase">3D models from the game</p>
+            <p className="max-w-xs text-xs leading-relaxed text-muted-foreground">
+              Turn over {entry.name} in the game's own viewer. It downloads once
+              {bytes ? <>, about {formatSize(bytes)}</> : null}, and needs a WebGL 2 browser. The details below are here
+              either way.
             </p>
-            {(available || failed) && (
-              <p className="max-w-xs text-xs leading-relaxed text-muted-foreground">
-                {startupError
-                  ? /webgl/i.test(startupError)
-                    ? "This preview needs WebGL 2. Enable graphics acceleration in your browser, or try another browser. You can still read its details below."
-                    : "The 3D viewer couldn't load. Check your connection and retry. You can still read its details below."
-                  : demo
-                    ? "Resetting the aircraft and range targets."
-                    : "The first model downloads the game's 3D viewer. A WebGL 2 browser is required."}
-              </p>
-            )}
-            {failed && (
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setFailedId(null)
-                  setStartupError(null)
-                  setLoaded(false)
-                  setShownId(null)
-                  setDemoId(null)
-                  setAttempt(attempt + 1)
-                }}
-              >
-                Retry preview
-              </Button>
-            )}
+            <Button onClick={arm}>
+              Load 3D models
+              {bytes ? <span className="opacity-75">· {formatSize(bytes)}</span> : null}
+            </Button>
           </div>
+        ) : (
+          !ready && (
+            <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 p-8 text-center">
+              <span aria-hidden="true" className="h-10 w-px bg-primary" />
+              <p className="font-mono text-xs tracking-widest text-muted-foreground uppercase" role="alert">
+                {startupError
+                  ? "3D preview couldn't start"
+                  : failed
+                    ? "The model is taking longer than expected."
+                    : available === null
+                      ? "Checking 3D preview…"
+                      : available
+                        ? demo
+                          ? "Preparing the training range…"
+                          : "Preparing the model…"
+                        : "3D preview unavailable"}
+              </p>
+              {(available || failed) && (
+                <p className="max-w-xs text-xs leading-relaxed text-muted-foreground">
+                  {startupError
+                    ? /webgl/i.test(startupError)
+                      ? "This preview needs WebGL 2. Enable graphics acceleration in your browser, or try another browser. You can still read its details below."
+                      : "The 3D viewer couldn't load. Check your connection and retry. You can still read its details below."
+                    : demo
+                      ? "Resetting the aircraft and range targets."
+                      : "The first model downloads the game's 3D viewer. A WebGL 2 browser is required."}
+                </p>
+              )}
+              {failed && (
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setFailedId(null)
+                    setStartupError(null)
+                    setLoaded(false)
+                    setShownId(null)
+                    setDemoId(null)
+                    setAttempt(attempt + 1)
+                  }}
+                >
+                  Retry preview
+                </Button>
+              )}
+            </div>
+          )
         )}
         <HudCorners inset="0.75rem" />
         <div className="pointer-events-none absolute top-4 left-5 font-mono text-[10px] tracking-[0.18em] text-primary uppercase">

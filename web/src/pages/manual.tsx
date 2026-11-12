@@ -55,7 +55,7 @@ const CHAPTERS: Chapter[] = [
     ),
     figures: ["React to contact", "Bounding overwatch", "Clear the house", "Throw it back", "Break contact"],
     still: { src: "/media/infantry.jpg", caption: "Infantry · Grid E3" },
-    more: { to: "/manual/infantry?entry=rifle_squad", label: "Squads" },
+    more: { to: "/manual/infantry/rifle_squad", label: "Squads" },
   },
   {
     code: "03 / Two sides",
@@ -122,7 +122,7 @@ const CHAPTERS: Chapter[] = [
       `Town ${LOGISTICS.townYield[1]} a min`,
     ],
     still: { src: "/shots/river_bridge.jpg", caption: "River crossing · Village" },
-    more: { to: "/manual/buildings?entry=fob", label: "The FOB" },
+    more: { to: "/manual/buildings/fob", label: "The FOB" },
   },
   {
     code: "07 / Fire support",

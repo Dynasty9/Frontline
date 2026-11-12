@@ -115,7 +115,10 @@ export default function LeaderboardsPage() {
               </Button>
             </div>
           ) : (
-            <LeaderboardTable rows={board.data.rows} period={period} you={you} me={board.data.me} />
+            <>
+              <LeaderboardTable rows={board.data.rows} period={period} you={you} me={board.data.me} />
+              {page === 1 && board.data.total < EARLY && <EarlyDays total={board.data.total} period={period} />}
+            </>
           )}
         </Card>
 
@@ -132,6 +135,29 @@ export default function LeaderboardsPage() {
             </PageLink>
           </nav>
         )}
+      </div>
+    </div>
+  )
+}
+
+// Below this many commanders the board is just getting going: say so, and that there's room at the top.
+const EARLY = 10
+
+function EarlyDays({ total, period }: { total: number; period: Period }) {
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3 border-t px-4 py-4">
+      <p className="max-w-xl text-sm text-muted-foreground">
+        <span className="font-mono text-foreground">{total}</span> {total === 1 ? "commander" : "commanders"} on the
+        board {period === "week" ? "this week" : period === "month" ? "this month" : "so far"}. It's early days: every
+        battle you fight signed in counts, and there's room near the top.
+      </p>
+      <div className="flex flex-wrap gap-2">
+        <Button asChild size="sm">
+          <Link to="/play">Play</Link>
+        </Button>
+        <Button asChild variant="outline" size="sm">
+          <Link to="/ranks">How ranks work</Link>
+        </Button>
       </div>
     </div>
   )

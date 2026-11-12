@@ -51,6 +51,18 @@ export function formatDate(iso: string) {
     : d.toLocaleDateString(undefined, { day: "numeric", month: "long", year: "numeric" })
 }
 
+// A released change's picture, as the release links it (on GitHub, from the
+// changelog/ folder), and the small copy of it the site's build makes for the
+// Updates page's lists (.github/scripts/changelog_thumbs.py).
+const PICTURE =
+  /^https:\/\/raw\.githubusercontent\.com\/[^/]+\/[^/]+\/[^/]+\/changelog\/(v[^/]+\/[^/]+\/[^/]+\.(?:jpe?g|png|webp))$/i
+
+/** The small copy of a changelog picture for a list or a strip, or the picture itself if it isn't one of the release's. */
+export function thumbnail(url: string) {
+  const path = url.match(PICTURE)?.[1]
+  return path ? `/changelog-thumbs/${path}.jpg` : url
+}
+
 /** A release's screenshots, in entry order. */
 export function screenshotsOf(r: Release) {
   return r.entries.flatMap((e) => e.screenshots.map((s) => ({ ...s, entry: e.title })))
