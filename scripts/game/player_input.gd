@@ -257,7 +257,7 @@ const KEY_ACTIONS := ["chat_team", "chat", "support", "grenade", "smoke", "attac
 	"intent_hold", "intent_take", "intent_screen", "intent_reserve", "intent_ambush", "cam_follow", "cam_mount",
 	"stance", "fire_discipline", "target_priority", "dismount",
 	"fire_mission", "cam_reset", "view_save_1", "view_save_2", "view_save_3", "view_save_4", "view_go_1", "view_go_2",
-	"view_go_3", "view_go_4", "retreat", "hold", "tactical", "cycle_fob", "orbat", "jump_alert", "log", "hide_hud",
+	"view_go_3", "view_go_4", "retreat", "hold", "tactical", "cycle_fob", "next_idle", "orbat", "jump_alert", "log", "hide_hud",
 	"help", "manual", "photo_mode", "director", "pause", "slower", "faster", "view_side", "ping", "coop_next",
 	"group_set_1", "group_set_2", "group_set_3", "group_set_4", "group_set_5", "group_set_6", "group_set_7",
 	"group_set_8", "group_set_9", "group_set_0", "group_1", "group_2", "group_3", "group_4", "group_5", "group_6",
@@ -386,6 +386,9 @@ func _key(ev: InputEvent) -> void:
 			_tab_peek = false
 		"cycle_fob":
 			_cycle_fob()
+		"next_idle":
+			if world.hud:
+				world.hud.watch.next_idle()
 		"orbat":
 			if world.hud:
 				world.hud.toggle_orbat()

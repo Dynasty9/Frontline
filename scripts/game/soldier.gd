@@ -8,23 +8,25 @@ enum Post {STAND, CROUCH, PRONE, LEAN_L, LEAN_R}
 enum Act {IDLE, WALK, RUN, SHOOT, RELOAD, THROW, MELEE, BUILD, HEAL, DRAG, CARRY, CRAWL, DRAGGED, CARRIED, VAULT, DIVE, SLIDE, FLUNG, DAZED, FLINCH, HANDSUP, PICKUP, LIMP, PISTOL, LAUNCH, CLIMB,
 	IDLE_CHAT, IDLE_LAUGH, IDLE_SMOKE, IDLE_SIT, IDLE_STRETCH, IDLE_CHECK, IDLE_LOOK, KICK, SMOTHER, COOK, WINDED}
 enum Cov {NONE, LOW, LEAN, HIDE}
-## Player-facing activity labels: [text, category]. %s = the related entity's name.
+## Player-facing activity labels: [text, category, code]. %s = the related
+## entity's name; the code (eight letters at most) is what a man's cell on
+## the squad card has room for, the full text its tooltip.
 const DOING := [
-	["", "idle"], ["Moving", "move"], ["Running", "move"], ["Firing", "fight"], ["Suppressed", "stress"],
-	["Pinned down", "stress"], ["Reloading", "fight"], ["Throwing a grenade", "fight"], ["In cover", "idle"],
-	["Bandaging %s", "medic"], ["Dragging %s to safety", "medic"], ["Stretcher run", "medic"], ["Building", "work"],
-	["Manning the %s", "fight"], ["Falling back", "move"], ["Grabbing ammo", "work"], ["Guarding a prisoner", "work"],
-	["Bleeding out", "hurt"], ["Crawling for cover", "hurt"], ["Surrendering", "hurt"], ["Prisoner", "hurt"],
-	["Limping back", "hurt"], ["In the tunnels", "move"], ["Flying a drone", "fight"], ["Hand to hand!", "fight"],
-	["Out of ammo", "stress"], ["Firing pistol", "fight"], ["Being dragged", "hurt"], ["Dazed", "stress"],
-	["Firing launcher", "fight"], ["Vaulting", "move"], ["Throwing it back!", "fight"], ["Keeping head down", "stress"],
-	["Leaning out to fire", "fight"], ["Diving for cover", "stress"],
-	["Chatting with %s", "idle"], ["Having a laugh", "idle"], ["Having a smoke", "idle"], ["Taking a load off", "idle"],
-	["Stretching his legs", "idle"], ["Checking his rifle", "idle"], ["Keeping an eye out", "idle"],
-	["Firing over cover", "fight"], ["Blind firing", "stress"], ["Moving along the wall", "move"],
-	["Throwing himself on a grenade!", "stress"], ["Kicking the grenade away", "fight"], ["Clearing the house", "fight"],
-	["Stacking on the door", "fight"], ["Cooking a grenade", "fight"], ["Hitting the dirt", "stress"],
-	["Catching his breath", "idle"], ["Holding fire", "fight"],
+	["", "idle", ""], ["Moving", "move", "MOVING"], ["Running", "move", "RUNNING"], ["Firing", "fight", "FIRING"], ["Suppressed", "stress", "SUPPR"],
+	["Pinned down", "stress", "PINNED"], ["Reloading", "fight", "RELOAD"], ["Throwing a grenade", "fight", "GRENADE"], ["In cover", "idle", "COVER"],
+	["Bandaging %s", "medic", "AID"], ["Dragging %s to safety", "medic", "DRAGGING"], ["Stretcher run", "medic", "CASEVAC"], ["Building", "work", "BUILDING"],
+	["Manning the %s", "fight", "ON GUN"], ["Falling back", "move", "FALL BK"], ["Grabbing ammo", "work", "RESUPPLY"], ["Guarding a prisoner", "work", "GUARD"],
+	["Bleeding out", "hurt", "BLEEDING"], ["Crawling for cover", "hurt", "CRAWLING"], ["Surrendering", "hurt", "HANDS UP"], ["Prisoner", "hurt", "POW"],
+	["Limping back", "hurt", "LIMPING"], ["In the tunnels", "move", "TUNNELS"], ["Flying a drone", "fight", "DRONE"], ["Hand to hand!", "fight", "MELEE"],
+	["Out of ammo", "stress", "NO AMMO"], ["Firing pistol", "fight", "PISTOL"], ["Being dragged", "hurt", "DRAGGED"], ["Dazed", "stress", "DAZED"],
+	["Firing launcher", "fight", "LAUNCHER"], ["Vaulting", "move", "VAULTING"], ["Throwing it back!", "fight", "THROW BK"], ["Keeping head down", "stress", "HEAD DN"],
+	["Leaning out to fire", "fight", "LEANING"], ["Diving for cover", "stress", "DIVING"],
+	["Chatting with %s", "idle", "CHATTING"], ["Having a laugh", "idle", "LAUGHING"], ["Having a smoke", "idle", "SMOKING"], ["Taking a load off", "idle", "RESTING"],
+	["Stretching his legs", "idle", "STRETCH"], ["Checking his rifle", "idle", "WPN CHK"], ["Keeping an eye out", "idle", "WATCHING"],
+	["Firing over cover", "fight", "FIRING"], ["Blind firing", "stress", "BLIND FR"], ["Moving along the wall", "move", "WALL"],
+	["Throwing himself on a grenade!", "stress", "SMOTHER"], ["Kicking the grenade away", "fight", "KICKING"], ["Clearing the house", "fight", "CLEARING"],
+	["Stacking on the door", "fight", "STACKED"], ["Cooking a grenade", "fight", "COOKING"], ["Hitting the dirt", "stress", "PRONE"],
+	["Catching his breath", "idle", "WINDED"], ["Holding fire", "fight", "HOLDING"],
 ]
 ## Downtime chatter: each exchange alternates speakers; %s is the other man's name.
 const BANTER := [[
@@ -445,6 +447,11 @@ func doing_text() -> String:
 			nm = Defs.BUILDINGS[(e as Structure).skind].name if Defs.BUILDINGS.has((e as Structure).skind) else "gun"
 		t = t % nm
 	return t
+
+
+## The activity as a short code for tight spaces ("SMOKING").
+func doing_code() -> String:
+	return String(DOING[doing][2]) if doing > 0 and doing < DOING.size() else ""
 
 
 func doing_cat() -> String:

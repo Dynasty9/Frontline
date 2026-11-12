@@ -182,9 +182,28 @@ func tick(dt: float) -> void:
 			world.detail("rules supply", stamp)
 
 
-func random_name(team: int) -> String:
+## A name for a new man. `taken` holds the names already in his squad: two
+## Fosters in one section would be a sergeant's nightmare on the radio, so a
+## name already there passes on to the next one in the roll (one draw either
+## way, so a seed still gives the same battle).
+func random_name(team: int, taken: Array = []) -> String:
 	var names: Array = Defs.NAMES[clampi(team, 0, 1)]
-	return names[world.rng.randi() % names.size()]
+	var i := world.rng.randi() % names.size()
+	for _n in names.size():
+		if not String(names[i]) in taken:
+			break
+		i = (i + 1) % names.size()
+	return names[i]
+
+
+## The names of a squad's men, living or not (see random_name).
+static func names_in(sq: Squad) -> Array:
+	var out := []
+	if sq != null:
+		for m in sq.members:
+			if is_instance_valid(m):
+				out.append(m.sname)
+	return out
 
 
 func next_fob_name(team: int) -> String:
@@ -855,7 +874,7 @@ func spawn_squad(key: String, team: int, owner: int, pos: Vector3, dest := Vecto
 	for ut in def.members:
 		var off := Vector3((i % 3 - 1) * 1.4, 0, (i / 3) * 1.4)
 		var p := world.nav.nearest_walkable(pos + off)
-		var s: Soldier = world.spawn("soldier", {"utype": ut, "team": team, "owner": owner, "pos": p, "yaw": Defs.yaw_of(face), "squad": sq.sid, "name": random_name(team)})
+		var s: Soldier = world.spawn("soldier", {"utype": ut, "team": team, "owner": owner, "pos": p, "yaw": Defs.yaw_of(face), "squad": sq.sid, "name": random_name(team, names_in(sq))})
 		sq.add(s)
 		i += 1
 	sq.order_pos = pos
@@ -1431,5 +1450,6 @@ func team_summary() -> Array:
 				tl.append([tn.eid, tn.sname, int(tn.supply), tn.supply_status, int(round(tn.town_rate())), to])
 		out.append({"supply": sup, "units": used(t), "cap": cap(t), "fobs": fl, "up": upgrades[t].keys(), "sup": (support_ready[t] as Dictionary).duplicate(), "sq": sq, "intel": il,
 			"marks": (marks[t] as Array).duplicate(), "towns": tl, "inc": income(t),
-			"dg": world.delegation.summary(t) if world.delegation else []})
+			"dg": world.delegation.summary(t) if world.delegation else [],
+			"tally": world.battle.tally(t) if world.battle else []})
 	return out
