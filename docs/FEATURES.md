@@ -698,7 +698,9 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   in a ruin) painted walls with skirting, radiators, pictures, mirrors, clocks, shelves of books and rugs, all
   hung flat or laid flat so nothing stands where a man does. At dusk and at night a lamp is on behind about a
   third of the windows, in the barracks and the research post, under the factory's north lights and in the door
-  lanterns (brightest at night, a glimmer on a dark day). All of it, and the military buildings' weatherboard, sheeting, roller shutters, north
+  lanterns (brightest at night, a glimmer on a dark day). Weeds grow at the foot of walls and ivy up some of
+  them (most often on old stone), and a ruin's floor carries its fallen roof: soot, charred rafters, broken
+  tiles, plaster and glass. All of it, and the military buildings' weatherboard, sheeting, roller shutters, north
   lights, masts and guys, drums, crates and pallets, comes from shared building components (see
   [building-components.md](building-components.md)).
 - Walls, hedges, trees, cars and crates are all real cover. Street furniture is set dressing generated on the

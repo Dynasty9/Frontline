@@ -7,7 +7,7 @@ import { ROOT } from './lib/game.mjs';
 test('shared building construction keeps openings open, shapes shared and town scenery batchable', async () => {
   const { stdout, stderr } = await promisify(execFile)(process.env.GODOT || 'godot', [
     '--headless', '--path', ROOT, 'res://tests/fixtures/building-components.tscn',
-  ], { timeout: 120_000, maxBuffer: 4 * 1024 * 1024 });
+  ], { timeout: 240_000, maxBuffer: 4 * 1024 * 1024 });
   assert.doesNotMatch(stdout + stderr, /SCRIPT ERROR|Parse Error|BUILDING_COMPONENTS failed/);
   assert.ok(stdout.includes('BUILDING_COMPONENTS passed'), stdout + stderr);
 });

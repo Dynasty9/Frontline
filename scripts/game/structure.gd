@@ -909,6 +909,14 @@ func _house_wall_detail(rng: RandomNumberGenerator) -> void:
 	# panes and doors stay as they were
 	var life := RandomNumberGenerator.new()
 	life.seed = rng.seed ^ 0x5eed11fe
+	# time and the weather: weeds in the angle at its foot, ivy up the plain
+	# walls of some (most often on old stone), drawn from a stream of their own
+	var wear := RandomNumberGenerator.new()
+	wear.seed = rng.seed ^ 0x77ea7e12
+	if wear.randf() < 0.45:
+		BuildingWeathering.weeds(k, L, gaps, wear)
+	if variant == 0 and wear.randf() < (0.3 if material == "stone" else 0.12):
+		BuildingWeathering.ivy(k, wear.randf_range(-L * 0.25, L * 0.25), wear.randf_range(1.0, 1.8), 2.8, wear)
 	# inside: the room's paint and skirting, what hangs on its walls
 	var room := _kit(life).at_point(Vector3(0, 0, -0.2), Vector3(0, PI, 0))
 	# (a wall doesn't know which house it is, so the paint follows the house's
@@ -2419,6 +2427,11 @@ func _build_model() -> void:
 				var lk := _kit(rng)
 				var lm := "brick" if variant % 3 == 2 else "stone"
 				BuildingWalls.coping(lk, p.s.x, p.s.z, p.s.y, lm, p.color)
+				var wear := RandomNumberGenerator.new()
+				wear.seed = rng.seed ^ 0x77ea7e12
+				if wear.randf() < 0.5:
+					for sd: float in [-1.0, 1.0]:
+						BuildingWeathering.weeds(lk.at_point(Vector3(0, 0, sd * p.s.z * 0.5), Vector3(0, 0.0 if sd > 0.0 else PI, 0)), p.s.x, [], wear, 0.06)
 				if lm == "brick":
 					for sd: float in [-1.0, 1.0]:
 						BuildingWalls.plinth(lk.at_point(Vector3(0, 0, sd * p.s.z * 0.5), Vector3(0, 0.0 if sd > 0.0 else PI, 0)), p.s.x, 0.22, lm, p.color)
@@ -2437,6 +2450,9 @@ func _build_model() -> void:
 			if size.x > 3.0 and size.z > 3.0 and rng.randf() < 0.65:
 				BuildingFurnishings.rug(_kit(rng), Vector3(rng.randf_range(-0.6, 0.6), 0.06, rng.randf_range(-0.5, 0.5)),
 					Vector2(minf(size.x * 0.4, 3.0), minf(size.z * 0.4, 2.2)), BuildingFurnishings.FABRICS[rng.randi() % BuildingFurnishings.FABRICS.size()])
+			# a ruin: its roof burned and fell in on the floor
+			if variant == 1 and size.x > 3.0 and size.z > 3.0:
+				BuildingWeathering.ruin(_kit(rng), size, 0.06, rng)
 		"bridge":
 			_bridge_model(rng)
 		"dock":

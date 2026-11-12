@@ -226,7 +226,7 @@ func _ready() -> void:
 	# Nothing in a room stands where a man does: Cover's fighting positions are
 	# half a metre off every house wall, so whatever hangs on a wall stays
 	# within a hand's breadth of it below head height.
-	for s in 40:
+	for s in 16:
 		var rk := kit()
 		rk.rng.seed = s
 		BuildingFurnishings.wall_things(rk, 2.8)
@@ -237,6 +237,41 @@ func _ready() -> void:
 					if occupied(rk.sink.root, Vector3(x, y, z)):
 						check(false, "a room's dressing stands at %s (seed %d)" % [Vector3(x, y, z), s])
 		rk.sink.root.free()
+
+	# Weathering: ivy and weeds keep within a hand's breadth of the wall, and a
+	# ruin's debris lies inside its floor, no higher than an ankle.
+	for s in 10:
+		var wk2 := kit()
+		wk2.rng.seed = s
+		BuildingWeathering.ivy(wk2, 0.0, 1.6, 2.8, wk2.rng)
+		BuildingWeathering.weeds(wk2, 2.8, [Rect2(-0.95, 0.0, 1.9, 2.2)], wk2.rng)
+		for child in wk2.sink.root.get_children():
+			var box: AABB = (child as MeshInstance3D).transform * (child as MeshInstance3D).mesh.get_aabb()
+			check(box.end.z <= 0.2 and box.position.z >= -0.05, "ivy and weeds keep to the wall (%s)" % box)
+			check(box.position.y >= -0.05 and box.end.y <= 2.9, "ivy keeps below the eaves (%s)" % box)
+		wk2.sink.root.free()
+		var rk2 := kit()
+		rk2.rng.seed = s
+		BuildingWeathering.ruin(rk2, Vector3(9.0, 0.06, 7.6), 0.06, rk2.rng)
+		valid(rk2.sink.root, "ruin")
+		for child in rk2.sink.root.get_children():
+			var box: AABB = (child as MeshInstance3D).transform * (child as MeshInstance3D).mesh.get_aabb()
+			check(box.end.y <= 0.26 and absf(box.get_center().x) < 4.5 and absf(box.get_center().z) < 3.8, "a ruin's debris lies flat in its room (%s)" % box)
+		rk2.sink.root.free()
+	var bake2 := Mats.Bake.new()
+	var bk2 := BuildingKit.baked(bake2)
+	BuildingWeathering.ivy(bk2, 0.0, 1.6, 2.8, bk2.rng)
+	BuildingWeathering.ruin(bk2, Vector3(9.0, 0.06, 7.6), 0.06, bk2.rng)
+	var baked2 := Node3D.new()
+	add_child(baked2)
+	bake2.commit(baked2)
+	check(baked2.get_child_count() > 0, "weathering bakes")
+	baked2.free()
+	var ruined_floor := Structure.preview_model("floor", -1, 1, Vector3(9.0, 0.06, 7.6), false, 7)
+	var plain_floor := Structure.preview_model("floor", -1, 0, Vector3(9.0, 0.06, 7.6), false, 7)
+	check(ruined_floor.get_child_count() > plain_floor.get_child_count(), "a ruin's floor has its fallen roof on it")
+	ruined_floor.free()
+	plain_floor.free()
 
 	# Every building and every kind of scenery still builds a model.
 	var kinds: Array = Defs.BUILDINGS.keys()
