@@ -71,7 +71,8 @@ func _init(w) -> void:
 	_make_biome()
 
 
-func install_landform(samples: PackedFloat32Array) -> void:
+## `crags`: bare rock may take its metre-scale relief (skirmish maps only).
+func install_landform(samples: PackedFloat32Array, crags := true) -> void:
 	landform.heights = samples
 	landform.drainage.clear()
 	landform.peak = 0.0
@@ -79,6 +80,7 @@ func install_landform(samples: PackedFloat32Array) -> void:
 		landform.peak = maxf(landform.peak, h)
 	if samples.is_empty():
 		return
+	landform.prepare_crags(crags and String(world.settings.get("mission", "")) == "")
 	slopes.resize(N * N)
 	for z in N:
 		for x in N:

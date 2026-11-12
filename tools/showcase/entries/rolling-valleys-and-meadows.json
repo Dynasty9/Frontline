@@ -9,11 +9,11 @@
   "sources": [
     {
       "file": "changelog/unreleased/rolling-valleys-and-meadows/comparison.jpg",
-      "sha256": "d1a863572435357f8e3afede4fcfd7a41cadf5cbacd56136768463655970d15d"
+      "sha256": "c3a71920855a6143fb482837be63dbe1bde93e2a56db8529cbe12e0569e78850"
     },
     {
       "file": "changelog/unreleased/rolling-valleys-and-meadows/capture.json",
-      "sha256": "3cad5fe15fc731fbb63675623ea06f5f81a7fb76bea141161f8b2246f6406045"
+      "sha256": "1aa4c1e8665fc1bdd846e5234f15279652ca3ab6bd2d05dac53a1c479d092fea"
     }
   ],
   "output": null
