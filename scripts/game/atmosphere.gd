@@ -522,6 +522,9 @@ const TERRAIN_MATERIALS := ["rock_face_03", "aerial_rocks_02", "aerial_grass_roc
 ## After the shore gravel (layer 5): dry turf (6), a 90 m drone survey of grazed
 ## grassland (7) and rutted soil (8), all in the same two samplers.
 const MEADOW_MATERIALS := ["grass_ground", "rocky_terrain_02", "dirt_aerial_02"]
+## Then rain-cut gullies on a rock face (9), an erosion bake of our own
+## (tools/bake_alpine_assets.py eroded_face).
+const DETAIL_MATERIALS := ["eroded_face"]
 static var _material_arrays: Array[Texture2DArray] = []
 
 
@@ -538,7 +541,7 @@ static func terrain_materials() -> Array[Texture2DArray]:
 			var grains := gravel.get_image()
 			grains.convert(Image.FORMAT_RGBA8)
 			images.append(grains)
-			for name in MEADOW_MATERIALS:
+			for name in MEADOW_MATERIALS + DETAIL_MATERIALS:
 				var texture: Texture2D = load("res://assets/terrain/%s_%s.png" % [name, suffix])
 				images.append(texture.get_image())
 			var array := Texture2DArray.new()
@@ -2225,6 +2228,27 @@ void fragment() {
 	vec2 moss_data = surface_data(2.0, moss_uv, weights, geometric, moss_n);
 	rock_data = mix(rock_data, scree_data, scree * 0.7);
 	rock_n = normalize(mix(rock_n, scree_n, scree * 0.7));
+	// Steep faces carry rain-cut gullies: an offline erosion bake whose channels run
+	// down the texture's v axis, which the side projections map to world up, so on
+	// any face they run downhill and branch as they gather, near and far.
+	float gully_face = terrain_detail ? smoothstep(0.55, 1.15, slope) : 0.0;
+	if (gully_face > 0.001) {
+		// (channels some 15-30 m apart on the far ranges, a few metres on a near crag)
+		float gully_scale = edge >= __MAP_HALF__ ? 450.0 : 90.0;
+		vec2 side = vec2(weights.x, weights.z) / max(weights.x + weights.z, 0.0001);
+		vec3 gully_p = wpos / gully_scale + vec3(0.31, 0.0, 0.17);
+		vec4 across_x = texture(material_surfaces, vec3(gully_p.zy, 9.0));
+		vec4 across_z = texture(material_surfaces, vec3(gully_p.xy, 9.0));
+		// (the side projections as surface_data builds them, with the channel walls steepened)
+		vec2 nx = (across_x.rg * 2.0 - 1.0) * 2.0;
+		vec2 nz = (across_z.rg * 2.0 - 1.0) * 2.0;
+		vec3 gully_n = normalize(vec3(geometric.x, geometric.y + nx.y, geometric.z + nx.x) * side.x
+			+ vec3(geometric.x + nz.x, geometric.y + nz.y, geometric.z) * side.y);
+		rock_n = normalize(mix(rock_n, gully_n, 0.85 * gully_face));
+		// (the bake's shade runs 0.55 in the channels to 1.0 on the ribs between)
+		float rib = clamp((across_x.b * side.x + across_z.b * side.y - 0.55) / 0.45, 0.0, 1.0);
+		rock *= mix(1.0, 0.45 + 0.85 * rib, 0.8 * gully_face);
+	}
 	float elevation = smoothstep(0.0, snow_line, geology);
 	vec3 baked = habitat_bake;
 	terrain_sun = min(baked.b, scenery.b);

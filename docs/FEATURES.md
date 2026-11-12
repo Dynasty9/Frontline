@@ -588,6 +588,9 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   collects where the ground eases off below a crag, rock within ~150 m of the camera gains a finer pass of
   the same scan, and the mud that slows men down shows as dark rutted soil.
 - Cloud shadows are a few hundred metres across and drift with the wind over the ground, grass and bushes.
+- Steep rock faces carry rain-cut gullies from an offline erosion bake (an original texture layer). Its channels run
+  down the texture's v axis, which the ground shader's side projections map to world up, so they run downhill and
+  branch on any face: a few metres apart on near crags, some 15-30 m on the distant ranges.
 - Distant massifs break their surveyed ridges into crags (ridged noise within the scenery height bounds) and
   shade steep faces with finer crags still, so their snow and bare rock lie in ribs and gullies.
 - Distant woods grow in broad, warped stands from just above the water to the treeline, climbing higher and
