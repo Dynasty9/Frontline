@@ -587,6 +587,12 @@ func _ping_from(from: int, kind: String, pos: Vector3, eid: int) -> void:
 			_rpc_ping.rpc_id(p, from, kind, pos, eid)
 	if from != world.local_peer and world.has_view and _sees(world.local_peer, team):
 		_add_ping(from, kind, pos, eid)
+	# an AI commander on his side (the lobby's AI ally) answers "attack here",
+	# "defend here" and "need support" with squads of its own
+	if from > 0:
+		for c in world.commanders:
+			if c.team == team:
+				c.answer_ping(from, kind, e.position if e != null and eid != 0 else pos)
 
 
 @rpc("authority", "call_remote", "reliable")

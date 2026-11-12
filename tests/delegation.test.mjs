@@ -106,3 +106,21 @@ test("an AI unit can't be delegated by the AI, nor an enemy squad by you", async
   const { squads: e2 } = await game.query("squads", { ids: [enemy[0].id, squads[0].id] });
   assert.deepEqual(e2.map((s) => s.intent), ["", ""]);
 });
+
+test("an AI ally answers a 'defend here' ping with squads of its own", async () => {
+  await game.load({ battle: true, seed: 3, play: true, ai_allies: true });
+  await game.step(120);
+  const { squads } = await game.query("squads", { team: 0 });
+  const ai = squads.filter((s) => s.owner < 0 && s.alive >= 3 && s.pos);
+  assert.ok(ai.length >= 2, `the AI ally has squads (${ai.length})`);
+  const [x, z] = ai[0].pos;
+  const spot = v3(x + 30, z);
+  await game.send("ping", { peer: YOU, kind: "defend", pos: spot });
+  const { counters } = await game.stats();
+  const pings = Object.fromEntries(Object.entries(counters).filter(([k]) => k.startsWith("ai_ping")));
+  assert.ok(counters.ai_ping_defend >= 1, `the ally sent squads to it (${JSON.stringify(pings)}, ${JSON.stringify(ai.map((s) => [s.name, s.order]))})`);
+  await game.step(60);
+  const { squads: after } = await game.query("squads", { team: 0 });
+  const there = after.filter((s) => s.owner < 0 && s.order === "defend" && s.pos && Math.hypot(s.pos[0] - x - 30, s.pos[1] - z) < 25);
+  assert.ok(there.length >= 1, "and they're dug in there");
+});

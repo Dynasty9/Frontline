@@ -133,11 +133,11 @@ func _run() -> void:
 	# --- a held key driving the camera
 	var cam := world.cam
 	cam.stop_follow()
-	Keys.set_bind("cam_up", 0, KEY_I)
+	Keys.set_bind("cam_up", 0, KEY_J)
 	var f0 := cam.focus_pos
-	Input.parse_input_event(_key(KEY_I))
+	Input.parse_input_event(_key(KEY_J))
 	await _wait(0.5)
-	Input.parse_input_event(_key(KEY_I, false))
+	Input.parse_input_event(_key(KEY_J, false))
 	await _wait(0.2)
 	var fwd := Vector3(-sin(cam.yaw), 0, -cos(cam.yaw))
 	_check("held, a rebound key pans the camera", (cam.focus_pos - f0).dot(fwd) > 1.0, "%.1f m forward" % (cam.focus_pos - f0).dot(fwd))

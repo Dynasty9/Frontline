@@ -120,6 +120,8 @@ On a Mac's trackpad, scroll with two fingers to drag the map and pinch to zoom; 
 | Defend an area | B, then click |
 | Retreat to the nearest base | R |
 | Hold position | H |
+| Delegate to your XO (hold a sector, take an objective, screen, reserve, ambush) | I, pick the intent, then click |
+| Take delegated units back | Shift + I (or give them any order) |
 | Throw a grenade / smoke | G / T |
 | Mortar fire mission (mortar teams) | F |
 | Board a vehicle or boat | Right-click it with a squad selected |
@@ -168,6 +170,8 @@ To play with particular people:
 3. The lobby shows who's on which side, the seats still open, anyone connecting, and who's ready. Players press **Ready**; the host clicks **Start Battle** (and can change the settings, or remove a player, until then).
 
 **Shared command.** Everyone on your side can select and command all allied troops, vehicles and individual soldiers. You do not need to recruit a unit to give it orders. A direct order to an AI-controlled unit brings it under human command so the AI does not immediately send it somewhere else. Enemies remain off limits; observers can inspect units but cannot order them.
+
+**Command by intent.** You don't have to run every squad yourself. Select a few, press **I** and hand them to your XO with an intent: **hold** this sector, **take** that objective, **screen** this line, wait in **reserve** here, **ambush** that road. He places them, gives their orders, sends them in again when they're knocked back and reports over the radio, while you fight somewhere else. Give one of them an order yourself, or press **Shift + I**, and it's yours again.
 
 **Seeing your co-commanders.** Every commander has a colour (shown next to your name in the lobby). On your side you can see what the others are doing as they do it: where each one is looking (a viewfinder on the ground and a wedge on the minimap), their cursor with their name and what they're up to, a ring round what they've selected, and the trench line, fire mission or attack they're lining up before they commit it. Selected units show the selecting commander’s initials, and the **Command Net** (top right) lists everyone with what they're doing right now and what they've just built, called in or set training, so you know where the supply went. The enemy never sees any of it.
 

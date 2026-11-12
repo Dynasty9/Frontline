@@ -186,6 +186,11 @@ func _answer(cmd: String, req: Dictionary) -> Variant:
 			return _query(w, req)
 		"stats":
 			return {"t": w.time, "counters": w.stats, "report": w.battle.summary()}
+		"ping":
+			# a commander's ping, as the host receives it ("peer" 1: you, in a game loaded with play)
+			var pd: Dictionary = _decode(req)
+			w.coop._ping_from(int(pd.get("peer", 1)), String(pd.get("kind", "look")), pd.get("pos", Vector3.ZERO), 0)
+			return {"t": w.time}
 		"hash":
 			return {"t": w.time, "hash": _hash(w), "entities": w.entities.size()}
 	return {"ok": false, "error": "unknown command: %s" % cmd}
