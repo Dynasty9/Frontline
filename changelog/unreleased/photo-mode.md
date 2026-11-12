@@ -6,7 +6,7 @@ headline = true
 
 [[screenshots]]
 file = "panel.jpg"
-caption = "Photo mode over a held moment at Beachhead: the lens focused on the stone house at 22 m, flare, sun shafts and film look on"
+caption = "Photo mode over a held moment at Beachhead: the lens focused on the stone house at 22 m, flare, sun shafts, film look and heat haze on"
 
 [[screenshots]]
 file = "picture.jpg"
