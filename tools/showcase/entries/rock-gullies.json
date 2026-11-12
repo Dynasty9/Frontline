@@ -1,0 +1,20 @@
+{
+  "entry": "changelog/unreleased/rock-gullies.md",
+  "summary": "Rain-cut gullies on steep rock, near and far.",
+  "medium": "still",
+  "stage": "tests/fixtures/environment-views.gd",
+  "rationale": "Appearance change: one matched before/after sheet of a near crag and a distant peak on the same seed and mood.",
+  "source_ref": "8ffffa66",
+  "before_ref": "8ffffa66",
+  "sources": [
+    {
+      "file": "changelog/unreleased/rock-gullies/comparison.jpg",
+      "sha256": "652b3089c1b9d8117056b2ee6cd307d2cc891e1830442cfe0e69c8f404caa365"
+    },
+    {
+      "file": "changelog/unreleased/rock-gullies/capture.json",
+      "sha256": "dc698084ce53614e1c1c273ae2be727718fbdb7c5b37c20b9fc0fe79f51c170a"
+    }
+  ],
+  "output": null
+}
