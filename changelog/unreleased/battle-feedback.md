@@ -14,6 +14,10 @@ caption = "Before and after, seven minutes in: twelve ready fire missions folded
 [[screenshots]]
 file = "squad-card-before-after.jpg"
 caption = "Before and after: what each man is doing fits his cell, and every name in the squad is his own"
+
+[[screenshots]]
+file = "before-after-timeline.jpg"
+caption = "The same battle before (left) and after (right), at 0:25, 4:00 and 7:30"
 +++
 
 - **Moments:** an enemy vehicle destroyed, a squad wiped out, a town or a FOB taken or lost shows for a few
