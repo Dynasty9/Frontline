@@ -361,7 +361,7 @@ function ScreeningRoom({ editions }: { editions: Edition[] }) {
               poster: "/media/edits/films/harbour.jpg",
             },
           ].map(({ title: filmTitle, length, film, poster }) => (
-            <a key={film} href={film} aria-label={`Play ${filmTitle}`}>
+            <a key={film} href={film}>
               <div className="cut-still">
                 <img loading="lazy" src={poster} alt="" />
                 <span>{length}</span>
