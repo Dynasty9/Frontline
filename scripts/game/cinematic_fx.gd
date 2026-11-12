@@ -46,7 +46,7 @@ const PARAMS := 32  # floats in the parameter block (eight vec4s, std140)
 const USAGE := RenderingDevice.TEXTURE_USAGE_SAMPLING_BIT | RenderingDevice.TEXTURE_USAGE_STORAGE_BIT
 const RGBA16F := RenderingDevice.DATA_FORMAT_R16G16B16A16_SFLOAT
 
-# --- written by Atmosphere on the main thread --------------------------------
+# --- set by Atmosphere on the main thread ------------------------------------
 var params := PackedFloat32Array()
 var shafts := false
 var lens := false
