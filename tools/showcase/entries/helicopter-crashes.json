@@ -1,0 +1,24 @@
+{
+  "entry": "changelog/unreleased/helicopter-crashes.md",
+  "summary": "A helicopter shot down in the air spins in or autorotates to a crash, and its wreck lies where it hit.",
+  "medium": "motion",
+  "stage": "tests/fixtures/helicopter-world-clips.tscn",
+  "rationale": "The change is movement and timing: a matched before/after WebM of the same two scripted shoot-downs over the real showroom battlefield (High preset, normal speed), one of each crash mode, paths traced. The poster is the moment after the hit, when the old build has already replaced both with rubble and the new one shows them falling. Silent.",
+  "source_ref": "479ac865",
+  "before_ref": "69a1df03",
+  "sources": [
+    {
+      "file": "changelog/unreleased/helicopter-crashes/crash.webm",
+      "sha256": "83cfea78499fee050f5af1fed04ecf2ec9ca069ff639f9e223b6585bcd267339"
+    },
+    {
+      "file": "changelog/unreleased/helicopter-crashes/crash.jpg",
+      "sha256": "9d290145ea007f687edcbe805c70b49c7640f8bdac2ddd20e934cd08774eadd8"
+    },
+    {
+      "file": "changelog/unreleased/helicopter-crashes/capture.json",
+      "sha256": "b1612b3a29c8159e4903d13657757c057166c1ad56312d32117963d572bb94eb"
+    }
+  ],
+  "output": null
+}
