@@ -915,8 +915,8 @@ func _nato_markers(cam: Camera3D, lt: int, a: float) -> void:
 			px += 5.0
 		var ty := py + 15.0
 		if mine:
-			_map_text(Vector2i(int(sid), 0), Vector2(sp.x, ty), g.callsign, UiKit.cond(600, 1), 10, UiKit.fa(UiKit.TEXT, 0.85 * a))
-			ty += 12.0
+			_map_text(Vector2i(int(sid), 0), Vector2(sp.x, ty), g.callsign, UiKit.cond(600, 1), 11, UiKit.fa(UiKit.TEXT, 0.95 * a))
+			ty += 13.0
 		if age < 6.0:
 			var tag := _order_tag(o)
 			var ta := clampf((6.0 - age) * 1.5, 0.0, 1.0) * a

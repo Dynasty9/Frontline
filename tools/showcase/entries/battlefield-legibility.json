@@ -1,0 +1,16 @@
+{
+  "entry": "changelog/unreleased/battlefield-legibility.md",
+  "summary": "Battle HUD text stays legible over bright ground and smoke; the log clears the observer bar.",
+  "medium": "still",
+  "stage": "game capture: --scenario=roster --seed=3 --select-first --focus=-84,24 --zoom=34 --shot-at=10; --mission=bridgehead --play --select-first --shot-at=40; --host --team=0 --seed=3 --timescale=4 --shot-at=90 (1920x1080, --perf=0)",
+  "rationale": "A legibility change is shown best by matched native-pixel crops of the same frames before and after; full frames shrink the text past reading.",
+  "source_ref": "69a1df0348fb879aa98d5fbfd7f02ac31a10c6d7 + working tree",
+  "before_ref": "69a1df0348fb879aa98d5fbfd7f02ac31a10c6d7",
+  "sources": [
+    {
+      "file": "changelog/unreleased/battlefield-legibility/comparison.jpg",
+      "sha256": "82e2abd115a9b0f9cd3b24c8066c2635dffeefa428179c70d7a04beac38d852e"
+    }
+  ],
+  "output": null
+}
