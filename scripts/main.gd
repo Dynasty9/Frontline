@@ -1303,11 +1303,25 @@ func _process(_dt: float) -> void:
 				world.set_meta("fob_focused", true)
 				break
 	# --select-first: just the first of your squads (squad card tests); --tactical: the map view
-	if args.has("select-first") and world.input and world.time > 1.0 and world.input.sel_squads.is_empty():
-		for s in world.soldiers:
-			if s.owner_peer == world.local_peer and s.sid != 0:
-				world.input.sel_squads.append(s.sid)
-				break
+	# (--select-first=veh: your first vehicle, veh1 the second; --standing=roe:2,stance:1 then gives
+	# what's selected those standing orders: command card shots)
+	if args.has("select-first") and world.input and world.time > 1.0 and world.input.sel_squads.is_empty() and world.input.sel_vehicles.is_empty():
+		if String(args["select-first"]).begins_with("veh"):
+			var skip := int(String(args["select-first"]).trim_prefix("veh"))  # (veh1: the second)
+			for v in world.vehicles:
+				if v.owner_peer == world.local_peer and not v.gone:
+					skip -= 1
+					if skip < 0:
+						world.input.sel_vehicles.append(v.eid)
+						break
+		else:
+			for s in world.soldiers:
+				if s.owner_peer == world.local_peer and s.sid != 0:
+					world.input.sel_squads.append(s.sid)
+					break
+		if args.has("standing") and world.input.has_units():
+			for kv in String(args["standing"]).split(","):
+				world.input.set_standing(kv.get_slice(":", 0), int(kv.get_slice(":", 1)))
 	if args.has("nohud") and world.hud and world.hud.root.visible:
 		world.hud.root.visible = false
 	if args.has("tactical") and world.hud and not world.hud.tactical and not has_meta("tac"):

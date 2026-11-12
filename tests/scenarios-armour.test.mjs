@@ -25,6 +25,19 @@ scenarioTests([
     },
   },
   {
+    scenario: "mounted",
+    seed: 1,
+    secs: 12,
+    does: "two halted IFVs drop only some of their men: a fire team from one, one squad of two from the other",
+    check: async (f) => {
+      f.atLeast("dismount_part", 2, "both dropped part of their load");
+      const [one, two] = (await f.vehicles({ kind: "ifv" })).sort((a, b) => a.pos[0] - b.pos[0]);
+      assert.equal(one.passengers, 2, "half the mech team is still aboard the first");
+      assert.equal(two.pax.length, 1, "one squad is still aboard the second");
+      assert.equal(two.passengers, 2, "the MG team, both men");
+    },
+  },
+  {
     scenario: "drone",
     seed: 1,
     secs: 60,
