@@ -1,0 +1,21 @@
+{
+  "entry": "changelog/unreleased/sling-order-marker.md",
+  "title": "See which vehicle the helicopter will lift",
+  "version": "unreleased",
+  "kind": "fixed",
+  "summary": "A ground-level ring identifies the selected sling load.",
+  "medium": "still",
+  "stage": "tools/showcase/trailer-review/sling-order.tscn",
+  "rationale": "The same frame after a real cargo click shows whether the player can see the ring on the raised pad.",
+  "source_ref": "eefda56",
+  "before_ref": "bec4b1c",
+  "sources": [
+    {
+      "file": "changelog/unreleased/sling-order-marker/pickup.jpg",
+      "sha256": "f0b9bdede354082aecb4dd03f4e7b126051ddf4880cc01593b2fe4196087e2de",
+      "caption": "The same raised pad before and after the ring fix"
+    }
+  ],
+  "attribution": "Native Sky Hook mission, same seed, camera, input and capture frame.",
+  "output": "changelog/unreleased/sling-order-marker/pickup.jpg"
+}
