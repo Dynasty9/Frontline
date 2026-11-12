@@ -77,6 +77,7 @@ func setup(w: World) -> void:
 	world = w
 	mood = pick_mood(w.settings)
 	_d = MOODS[mood]
+	RenderingServer.global_shader_parameter_set("window_glow", lamplight(mood))
 	_mood_asked = String(Settings.get_v("mood"))
 	_make_noise()
 	_build_env()
@@ -777,12 +778,30 @@ static func _flare_canopy() -> ArrayMesh:
 	return _flare_canopy_mesh
 
 
+## How much of the lamplight in windows shows in a mood: all of it at
+## night, some at dusk and dawn, a little on a dark day, none in sunshine.
+static func lamplight(m: String) -> float:
+	match m:
+		"night":
+			return 1.0
+		"dusk":
+			return 0.55
+		"dawn":
+			return 0.35
+		"rain":
+			return 0.18
+		"overcast":
+			return 0.12
+	return 0.0
+
+
 ## Switches the lighting mood live (Settings > Time of day).
 func apply_mood(m: String) -> void:
 	if not MOODS.has(m):
 		return
 	mood = m
 	_d = MOODS[m]
+	RenderingServer.global_shader_parameter_set("window_glow", lamplight(mood))
 	_surface_baked = false
 	sky_mat.set_shader_parameter("zenith", _d.zenith)
 	sky_mat.set_shader_parameter("horizon", _d.horizon)
