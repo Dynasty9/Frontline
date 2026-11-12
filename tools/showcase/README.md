@@ -53,6 +53,9 @@ python3 tools/showcase/capture.py boats --output /absolute/scratch/boats
 ```
 
 Inspect the capture log and beginning/action/end frames before keeping a clip.
+Without a full ffmpeg, the small build Playwright installs (`ms-playwright/ffmpeg-*`) still encodes VP9 WebM, but
+it reads only JPEG on a pipe: convert the PNG frames and feed them with `-f image2pipe -c:v mjpeg -i pipe:0`.
+A before/after pair is the same stage run on both builds, with the frames stacked before encoding.
 To repeat the low sandbag shot, pass `--clip=blast-sandbag` to `blast-world-clips.tscn`.
 For synchronized sound, run the `armament-effects-clips.tscn` fixture with
 `--fixed-fps 30 --write-movie /absolute/scratch/explosions.avi` before `--`, and

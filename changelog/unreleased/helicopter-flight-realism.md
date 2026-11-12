@@ -4,9 +4,9 @@ summary = "Helicopters tilt into every change of speed, bank round turns, climb 
 kind = "improved"
 
 [[videos]]
-file = "flight.mp4"
+file = "flight.webm"
 poster = "flight.jpg"
-caption = "The same transport flight, with a change of destination eight seconds in, before (top) and after (bottom), at normal speed. The yellow line traces the flight path, with a drop line to the ground every second."
+caption = "The same transport flight from a helipad beside a base, with a change of destination eight seconds in, before (top) and after (bottom), at normal speed. The yellow line traces the flight path, with a drop line to the ground every second."
 +++
 
 - **Tilt first, then speed:** the nose dips before a helicopter picks up speed and comes up into a flare before it

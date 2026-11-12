@@ -2,22 +2,22 @@
   "entry": "changelog/unreleased/helicopter-flight-realism.md",
   "summary": "Helicopters tilt into every change of speed, bank round turns, climb away from the pad and come down a glide path into a low hover.",
   "medium": "motion",
-  "stage": "tests/fixtures/helicopter-flight-visual.tscn",
-  "rationale": "The change is movement: one matched before/after clip of the same scripted flight and retarget, at normal speed, with the flight path traced so the old vertical climb and descent and the new climb-out and glide path read at a glance. Its poster is the matched moment when the new flight has landed and the old one is still sinking. Silent: the rotor sound change is described in text only.",
-  "source_ref": "0e7e928d",
+  "stage": "tests/fixtures/helicopter-world-clips.tscn",
+  "rationale": "The change is movement: one matched before/after WebM of the same scripted transport flight and retarget over the real showroom battlefield (terrain, grass, base, sky; High preset), at normal speed, with the flight path traced so the old vertical climb and descent and the new climb-out and glide path read at a glance. Its poster is the matched moment when the new flight has landed and the old one is still sinking. Silent: the rotor sound change is described in text only.",
+  "source_ref": "1c2589d6",
   "before_ref": "69a1df03",
   "sources": [
     {
-      "file": "changelog/unreleased/helicopter-flight-realism/flight.mp4",
-      "sha256": "b7e35323ebda65bc025d8610a5d0a725b0aefdb4ac7da2e68b92b105d91bbf84"
+      "file": "changelog/unreleased/helicopter-flight-realism/flight.webm",
+      "sha256": "9538c80c4e048a18bc19131ceb5105587297d425fa68c1b4fe22dd94e2a30c01"
     },
     {
       "file": "changelog/unreleased/helicopter-flight-realism/flight.jpg",
-      "sha256": "218d0d6ed619e4128df04e781025086f2f1332ec53f601d89fab4cce4aa3f0f7"
+      "sha256": "d03c6997724ccf9eb74531b8c00fbf7f5393bdbe50b74ad0be203c94acaa04dc"
     },
     {
       "file": "changelog/unreleased/helicopter-flight-realism/capture.json",
-      "sha256": "d450e2477a4de64aadcc314061a5eb8c1303ed1b73b67ea0c32764cce48e4329"
+      "sha256": "1a2024b0ffdf7e0c82ed96ce98df6aa8e1e3cc26dd0511e8147e6f80201b1818"
     }
   ],
   "output": null
