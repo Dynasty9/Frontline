@@ -24,6 +24,16 @@ export const ScreenAndCompare: Story = {
     await expect(page.getByTitle("Synchronized edition comparison")).toBeInTheDocument()
     await userEvent.click(page.getByRole("button", { name: "Reveal the editor’s choice" }))
     await expect(page.getByText("Under the wing made the cut.")).toBeVisible()
+    await userEvent.click(page.getByRole("button", { name: "Earlier recording" }))
+    await expect(page.getByLabelText("Ridge duel, earlier recording")).toHaveAttribute(
+      "src",
+      "/media/edits/films/ridge-duel.mp4"
+    )
+    await userEvent.click(page.getByRole("button", { name: "New recording" }))
+    await expect(page.getByLabelText("Ridge duel, new recording")).toHaveAttribute(
+      "src",
+      "/media/edits/films/ridge-duel-2026-11-11.mp4"
+    )
     await userEvent.click(page.getByRole("button", { name: "First assembly" }))
     await userEvent.click(page.getByRole("button", { name: /Edition 07 Dawn crossing and falling spray/ }))
     await expect(page.getByRole("heading", { name: "Dawn crossing and falling spray", level: 2 })).toBeVisible()

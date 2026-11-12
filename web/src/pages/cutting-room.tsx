@@ -116,6 +116,68 @@ function CameraTests() {
   )
 }
 
+function RidgeScreening() {
+  const [latest, setLatest] = useState(true)
+  const player = useRef<HTMLVideoElement>(null)
+  const resume = useRef<{ at: number; playing: boolean } | null>(null)
+  function swap(next: boolean) {
+    const video = player.current
+    if (!video || next === latest) return
+    resume.current = { at: video.currentTime, playing: !video.paused && !video.ended }
+    setLatest(next)
+  }
+  const base = "/media/edits/films/ridge-duel"
+  return (
+    <section id="ridge-duel" className="cut-section cut-lab" aria-labelledby="ridge-title">
+      <div>
+        <p className="cut-kicker">Full-length tank film</p>
+        <h2 id="ridge-title">Two tanks, two ridges.</h2>
+        <p className="cut-summary">
+          Ride with the Abrams and T-55A across the valley. Both recordings follow the same seeded encounter. Switch
+          versions to stay at the same moment.
+        </p>
+        <p className="cut-verdict">
+          {latest ? "New capture · 1600 × 900" : "Earlier capture · 1280 × 720"} · 30 fps · stereo
+        </p>
+        <div className="cut-filters" aria-label="Choose a ridge recording">
+          <button aria-pressed={latest} onClick={() => swap(true)}>
+            New recording
+          </button>
+          <button aria-pressed={!latest} onClick={() => swap(false)}>
+            Earlier recording
+          </button>
+        </div>
+        <a
+          className="cut-link"
+          href="https://github.com/Dynasty9/Frontline/blob/2ab72eae2467c4648b8bf26333ca2f88744c8c06/tools/showcase/README.md#record-the-two-ridge-abrams-film"
+        >
+          Recording recipe · seed 712 <ArrowRightIcon />
+        </a>
+      </div>
+      <video
+        key={String(latest)}
+        ref={player}
+        controls
+        playsInline
+        preload="metadata"
+        poster={base + (latest ? "-2026-11-11.jpg" : ".jpg")}
+        src={base + (latest ? "-2026-11-11.mp4" : ".mp4")}
+        aria-label={latest ? "Ridge duel, new recording" : "Ridge duel, earlier recording"}
+        onLoadedMetadata={(event) => {
+          const saved = resume.current
+          if (!saved) return
+          const video = event.currentTarget
+          video.currentTime = Math.min(saved.at, video.duration)
+          resume.current = null
+          if (saved.playing) void video.play().catch(() => {})
+        }}
+      >
+        <track kind="captions" label="English" srcLang="en" src={base + ".vtt"} />
+      </video>
+    </section>
+  )
+}
+
 export default function CuttingRoom() {
   usePageTitle("The cutting room")
   return <ScreeningRoom editions={archive} />
@@ -174,9 +236,14 @@ function ScreeningRoom({ editions }: { editions: Edition[] }) {
             The cutting room<span>.</span>
           </h1>
         </div>
-        <a className="cut-link" href="#edit-archive">
-          Browse the edits <ArrowDownIcon />
-        </a>
+        <div className="cut-actions">
+          <a className="cut-link" href="#ridge-duel">
+            Tank film <ArrowDownIcon />
+          </a>
+          <a className="cut-link" href="#edit-archive">
+            Browse the edits <ArrowDownIcon />
+          </a>
+        </div>
       </header>
       <div className="cut-screen" ref={screen}>
         <div className="cut-screen-bar">
@@ -259,6 +326,7 @@ function ScreeningRoom({ editions }: { editions: Edition[] }) {
           </div>
         </div>
       </div>
+      <RidgeScreening />
       <section className="cut-section" aria-labelledby="decisions">
         <p className="cut-kicker">Editor’s assessment</p>
         <h2 id="decisions">Three decisions you can see.</h2>
@@ -347,12 +415,6 @@ function ScreeningRoom({ editions }: { editions: Edition[] }) {
         <h2 id="other-films">Stay with the scene.</h2>
         <div className="cut-studies">
           {[
-            {
-              title: "Two tanks, two ridges",
-              length: "1:00",
-              film: "/media/edits/films/ridge-duel.mp4",
-              poster: "/media/edits/films/ridge-duel.jpg",
-            },
             { title: "The vehicle loop", length: "0:20", film: "/media/vehicles.webm", poster: "/media/vehicles.jpg" },
             {
               title: "Listen to the harbour pass",
