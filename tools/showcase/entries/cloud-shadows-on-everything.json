@@ -2,22 +2,22 @@
   "entry": "changelog/unreleased/cloud-shadows-on-everything.md",
   "summary": "The drifting cloud shade darkens soldiers, vehicles, buildings, trees and grass along with the ground.",
   "medium": "motion",
-  "stage": "game capture: --scenario=town --seed=3 --mood=day --preset=high --perf=0 --nohud, Forward+, --fixed-fps 30, with a tank added to the scenario parked at (7, 0, 0) in both builds (scratch-only staging). Still: --focus=-4,-8 --zoom=26 --pitch=-45 --shot-at=20 at 1600x900, clouds held still in both builds (FL_STILL_CLOUDS, scratch-only). Clip: --timescale=8 --focus=-4,-10 --zoom=28 --pitch=-45 --shot-at=16 --shots=165 --shot-every=0.5333 at 1280x720, stacked at 960x540, 15 fps (an 8x time-lapse), VP9 WebM; main's ground clouds driven by the branch's drift (game time, downwind) in its scratch copy so the ground matches frame for frame.",
-  "rationale": "The change is a moving shade, so a clip of the clouds crossing a parked tank, a squad and a hamlet shows it going in and out; it is slow in real time (half a metre a second), so the clip is a labelled time-lapse. A matched still with native-resolution crops carries the comparison when paused. Matched means the same seed, camera and cloud positions in both builds; only what stands in the shade differs.",
-  "source_ref": "2b3e348a489eb8db131d94a85437a7342a882e7b + claude/angry-mclaren-78cd33 working tree",
-  "before_ref": "2b3e348a489eb8db131d94a85437a7342a882e7b",
+  "stage": "game capture: --scenario=town --seed=3 --mood=day --preset=high --perf=0 --nohud, Forward+, --fixed-fps 30, with a tank added to the scenario parked at (7, 0, 0) (scratch-only staging); the same build with --set=cloud_shadows:false (as before: shade on the ground, grass and bushes) and :true. Still: --focus=-4,-8 --zoom=26 --pitch=-45 --shot-at=40 at 1600x900. Clip: --focus=-4,-10 --zoom=28 --pitch=-45 --shot-at=27 --shots=165 --shot-every=0.1333 at 1280x720, stacked at 960x540, 15 fps (twice real speed), VP9 WebM.",
+  "rationale": "The change is a moving shade, so a clip of a cloud's shade crossing a parked tank and a hamlet shows them going into it and out of it; the shade takes about 16 s to cross, so the clip runs at twice real speed, labelled. A matched still with native-resolution crops carries the comparison when paused. Both halves come from one build and one moment, with the new setting off (exactly the look before it) and on, so the clouds match frame for frame.",
+  "source_ref": "5a25b98c + render copy of the tree at f945731e (same lighting code)",
+  "before_ref": "the same build with Cloud shadows on everything off",
   "sources": [
     {
       "file": "changelog/unreleased/cloud-shadows-on-everything/comparison.jpg",
-      "sha256": "b46b3496ef227fc4e9920252dc7124cf01249a8ac395de9d6bdc4b350de80b94"
+      "sha256": "2a01cefe7fcda7fc54f91410916a095ba29f179be32f564da2584be0547bf0c5"
     },
     {
       "file": "changelog/unreleased/cloud-shadows-on-everything/drift.webm",
-      "sha256": "52bf54bbbdf6381855efff3c0e84aa8fd1fe58b6443fe3f5c1f56c627ca384b2"
+      "sha256": "cb835e0ecd7a1ea1aaf7178ef675a9f65758f904cc20acc96cfd1edae6c7a798"
     },
     {
       "file": "changelog/unreleased/cloud-shadows-on-everything/drift.jpg",
-      "sha256": "67f16a9fdd712b8623337bcaa95fb4885144eb3de0053868dcc3382d2ec5987e"
+      "sha256": "940cca65d881d56888dcb5a531b4674da74e72d5c12ac49ae76eb6fc1769da88"
     }
   ],
   "output": null
