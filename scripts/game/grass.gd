@@ -35,12 +35,12 @@ func _ready() -> void:
 	scar_tex = ImageTexture.create_from_image(scar_img)
 	mat = ShaderMaterial.new()
 	var sh := Shader.new()
-	sh.code = MapDims.shader(GRASS_SHADER)
+	sh.code = MapDims.shader(GRASS_SHADER.replace("// CLOUD_SHADOW", CLOUD_SHADOW))
 	mat.shader = sh
 	mat.set_shader_parameter("scar", scar_tex)
 	bush_mat = ShaderMaterial.new()
 	var bs := Shader.new()
-	bs.code = MapDims.shader(BUSH_SHADER)
+	bs.code = MapDims.shader(BUSH_SHADER.replace("// CLOUD_SHADOW", CLOUD_SHADOW))
 	bush_mat.shader = bs
 	bush_mat.set_shader_parameter("leaf_texture", preload("res://assets/foliage/broadleaf.png"))
 	stone_mat = StandardMaterial3D.new()
@@ -52,6 +52,13 @@ func _ready() -> void:
 func set_deform(t: Texture2DArray) -> void:
 	mat.set_shader_parameter("deform_tex", t)
 	bush_mat.set_shader_parameter("deform_tex", t)
+
+
+## The ground's drifting cloud shadows fall on the clumps and bushes as well.
+func set_clouds(noise: Texture2D, strength: float) -> void:
+	for m in [mat, bush_mat]:
+		m.set_shader_parameter("biome_tex", noise)
+		m.set_shader_parameter("cloud_strength", strength)
 
 
 func set_trench_mask(t: Texture2D) -> void:
@@ -284,6 +291,13 @@ func _build_chunk(c: Vector2i) -> void:
 	var cd := []
 	var bushes := []
 	var stones := []
+	# The ground's moisture on an 8 m lattice over the chunk, read between its
+	# corners for each clump (one lookup per clump would cost a frame).
+	var wet := PackedFloat32Array()
+	wet.resize(WET_CELLS * WET_CELLS)
+	for z in WET_CELLS:
+		for x in WET_CELLS:
+			wet[z * WET_CELLS + x] = atmo.meadow_moisture(origin + Vector3(x, 0, z) * (CHUNK / (WET_CELLS - 1)))
 	for i in count:
 		var p := origin + Vector3(rng.randf() * CHUNK, 0, rng.randf() * CHUNK)
 		if absf(p.x) > HALF + 14.0 or absf(p.z) > HALF + 14.0 or _is_blocked(p):
@@ -291,16 +305,19 @@ func _build_chunk(c: Vector2i) -> void:
 		if p.x > HALF - 1.0 and atmo.world.water and not atmo.world.water.coast.is_empty():
 			continue  # the sea, past the edge
 		var g := atmo.grass_amount(p)
-		if g <= 0.001 or rng.randf() > g * 0.92 + 0.04:
+		var m := _wet_at(wet, (p.x - origin.x) / CHUNK, (p.z - origin.z) / CHUNK)
+		# Damp ground grows thick, tall grass; a dry crest keeps thin short tufts.
+		var lush := g * lerpf(0.55, 1.15, m)
+		if lush <= 0.001 or rng.randf() > lush * 0.92 + 0.04:
 			if rng.randf() < 0.004:
 				stones.append(p)
 			continue
-		var s := rng.randf_range(0.75, 1.3) * (0.65 + 0.5 * g)
+		var s := rng.randf_range(0.75, 1.3) * (0.65 + 0.5 * g) * lerpf(0.82, 1.15, m)
 		# Shorter urban grass exposes the soil and blade texture between clumps.
 		var height := 0.45 if atmo.world.town_rect.has_area() and town.has_point(Vector2(p.x, p.z)) else 1.0
 		var basis := Basis(Vector3.UP, rng.randf() * TAU).scaled(Vector3(s, s * rng.randf_range(0.8, 1.35) * height, s))
 		xf.append(Transform3D(basis, p))
-		cd.append(Color(g, rng.randf(), 0, 0))
+		cd.append(Color(g, rng.randf(), m, 0))
 		if rng.randf() < 0.035 and g > 0.6 and _shrub_noise.get_noise_2d(p.x, p.z) > 0.08:
 			bushes.append(p)
 		elif rng.randf() < 0.003:
@@ -329,6 +346,18 @@ func _build_chunk(c: Vector2i) -> void:
 		sn.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
 		nodes.append(sn)
 	_built[c] = nodes
+
+
+const WET_CELLS := 5  # moisture lattice points across a chunk (8 m apart)
+
+
+static func _wet_at(wet: PackedFloat32Array, u: float, v: float) -> float:
+	var x := clampf(u, 0.0, 1.0) * (WET_CELLS - 1)
+	var z := clampf(v, 0.0, 1.0) * (WET_CELLS - 1)
+	var x0 := mini(int(x), WET_CELLS - 2)
+	var z0 := mini(int(z), WET_CELLS - 2)
+	var i := z0 * WET_CELLS + x0
+	return lerpf(lerpf(wet[i], wet[i + 1], x - x0), lerpf(wet[i + WET_CELLS], wet[i + WET_CELLS + 1], x - x0), z - z0)
 
 
 func _mm(mesh: Mesh, m: Material, xf: Array, cd: Array, vis: float) -> MultiMeshInstance3D:
@@ -428,6 +457,16 @@ func _make_stone() -> ArrayMesh:
 	return m
 
 
+## The ground shader's cloud shadows (Atmosphere's cloud_shadow_uv; keep them
+## alike), folded into the albedo: most of a meadow's light is the sun's.
+const CLOUD_SHADOW := """
+float cloud_shade(vec2 p, float t) {
+	if (cloud_strength <= 0.0) { return 1.0; }
+	float c = textureLod(biome_tex, (p + vec2(6.0, 2.5) * t) / (__BIOME__ * 4.5), 0.0).r;
+	return 1.0 - cloud_strength * 0.8 * smoothstep(0.45, 0.75, c);
+}
+"""
+
 const GRASS_SHADER := """
 shader_type spatial;
 render_mode cull_disabled, specular_disabled;
@@ -437,6 +476,8 @@ uniform vec3 mid_col : source_color = vec3(0.24, 0.32, 0.14);
 uniform vec3 tip_col : source_color = vec3(0.38, 0.45, 0.23);
 uniform vec3 dry_col : source_color = vec3(0.55, 0.49, 0.3);
 uniform float wind = 0.11;
+uniform sampler2D biome_tex : filter_linear, repeat_enable;
+uniform float cloud_strength = 0.0;
 uniform sampler2D scar : hint_default_black, filter_linear, repeat_disable;
 uniform sampler2D trench_mask : hint_default_black, filter_linear, repeat_disable;
 uniform sampler2DArray deform_tex : filter_linear, repeat_disable;
@@ -445,13 +486,19 @@ uniform sampler2DArray deform_tex : filter_linear, repeat_disable;
 varying float h;
 varying float g;
 varying float rnd;
+varying float wet;
 varying float burnt;
+varying float shade;
+
+// CLOUD_SHADOW
 
 void vertex() {
 	h = UV.y;
 	g = INSTANCE_CUSTOM.r;
 	rnd = INSTANCE_CUSTOM.g;
+	wet = INSTANCE_CUSTOM.b;
 	vec3 o = MODEL_MATRIX[3].xyz;
+	shade = cloud_shade(o.xz, TIME);
 	// shell holes and blast scars flatten and scorch the grass
 	burnt = texture(scar, (o.xz + __MAP_HALF__) / __MAP_SIZE__).r;
 	// nothing grows in a trench
@@ -478,10 +525,12 @@ void fragment() {
 	}
 	vec3 col = mix(base_col, mid_col, smoothstep(0.0, 0.5, h));
 	col = mix(col, tip_col, smoothstep(0.45, 1.0, h));
-	col = mix(col, dry_col, clamp((1.0 - g) * 0.8 + (rnd - 0.7) * 0.6, 0.0, 0.85) * smoothstep(0.2, 1.0, h));
-	col *= 0.85 + 0.3 * rnd;
+	// Tips cure to straw where the ground dries out, as the turf beneath them does.
+	float cured = clamp((1.0 - wet) * 0.8 + (1.0 - g) * 0.4 + (rnd - 0.7) * 0.6 - 0.08, 0.0, 0.9);
+	col = mix(col, dry_col, cured * smoothstep(0.2, 1.0, h));
+	col *= mix(1.0, 0.86, wet) * (0.85 + 0.3 * rnd);
 	col = mix(col, vec3(0.09, 0.075, 0.05), burnt * 0.85);
-	ALBEDO = col;
+	ALBEDO = col * shade;
 	ROUGHNESS = 0.85;
 	BACKLIGHT = vec3(0.35, 0.4, 0.15) * h * (1.0 - burnt);
 	AO = mix(0.78, 1.0, h);
@@ -494,8 +543,14 @@ shader_type spatial;
 uniform sampler2D leaf_texture : source_color, filter_linear_mipmap, repeat_disable;
 uniform float wind = 0.03;
 render_mode specular_disabled, cull_disabled;
+uniform sampler2D biome_tex : filter_linear, repeat_enable;
+uniform float cloud_strength = 0.0;
 varying float plant_height;
 varying float rnd;
+varying float shade;
+
+// CLOUD_SHADOW
+
 uniform sampler2D trench_mask : hint_default_black, filter_linear, repeat_disable;
 uniform sampler2DArray deform_tex : filter_linear, repeat_disable;
 // TERRAIN_TEXTURE_HELPER
@@ -512,6 +567,7 @@ void vertex() {
 	VERTEX.y += gd / max(0.05, length(MODEL_MATRIX[1].xyz));
 	rnd = INSTANCE_CUSTOM.r;
 	vec3 o = MODEL_MATRIX[3].xyz;
+	shade = cloud_shade(o.xz, TIME);
 	float t = TIME * 1.3 + o.x * 0.3;
 	VERTEX.x += sin(t) * wind * plant_y;
 	plant_height = plant_y;
@@ -524,7 +580,7 @@ void fragment() {
 		photograph.rgb = mix(photograph.rgb / 12.92, pow((photograph.rgb + 0.055) / 1.055, vec3(2.4)), step(vec3(0.04045), photograph.rgb));
 	}
 	float up = smoothstep(0.0, 1.1, plant_height);
-	vec3 col = photograph.rgb * mix(vec3(0.7, 0.85, 0.7), vec3(1.0, 0.9, 0.65), rnd) * mix(0.65, 1.0, up);
+	vec3 col = photograph.rgb * mix(vec3(0.7, 0.85, 0.7), vec3(1.0, 0.9, 0.65), rnd) * mix(0.65, 1.0, up) * shade;
 	if (OUTPUT_IS_SRGB) {
 		col = mix(col * 12.92, 1.055 * pow(max(col, vec3(0.0)), vec3(1.0 / 2.4)) - 0.055, step(vec3(0.0031308), col));
 	}

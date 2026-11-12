@@ -29,7 +29,12 @@ static func atlas_texture() -> Texture2DArray:
 static func coverage_image(seed_value: int, reach: float) -> Image:
 	var noise := FastNoiseLite.new()
 	noise.seed = seed_value
-	noise.frequency = 0.006
+	# Broad, ragged stands: seen edge-on from across the valley, small round patches
+	# foreshorten into thin parallel stripes.
+	noise.frequency = 0.003
+	noise.domain_warp_enabled = true
+	noise.domain_warp_amplitude = 180.0
+	noise.domain_warp_frequency = 0.004
 	var img := Image.create(256, 256, false, Image.FORMAT_R8)
 	for z in 256:
 		for x in 256:

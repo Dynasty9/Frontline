@@ -1,0 +1,13 @@
+{
+  "stage": "tests/fixtures/environment-views.gd",
+  "before_ref": "69a1df0348fb879aa98d5fbfd7f02ac31a10c6d7",
+  "after": "working tree on 69a1df03 with this change",
+  "engine": "Godot 4.7.2 stable, Forward+, 1600x900, preset high",
+  "command": "godot --path . --audio-driver Dummy --resolution 1600x900 --script tests/fixtures/environment-views.gd -- --aivai --seed=3 --offscreen --nohud --set=perf:0 --preset=high --mood=day --focus=0,0 --capture-prefix=<dir>/views",
+  "rows": [
+    "panorama",
+    "forest",
+    "snow-close"
+  ],
+  "note": "Each row pairs the fixture's matched camera before and after; images resized to 800x450 per cell."
+}

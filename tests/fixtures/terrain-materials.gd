@@ -7,10 +7,13 @@ func _ready() -> void:
 	assert(arrays[0] == Atmosphere.terrain_materials()[0], "Map reloads must reuse the material allocation")
 	for channel in 2:
 		var array := arrays[channel]
-		assert(array.get_layers() == 6 and array.get_width() == 1024 and array.get_height() == 1024)
+		assert(array.get_layers() == 6 + Atmosphere.MEADOW_MATERIALS.size() and array.get_width() == 1024 and array.get_height() == 1024)
 		assert(array.has_mipmaps() and array.get_format() == Image.FORMAT_RGBA8, "All packed channels and distant filtering must survive import")
-		for layer in Atmosphere.TERRAIN_MATERIALS.size():
-			var name: String = Atmosphere.TERRAIN_MATERIALS[layer]
+		var names: Array = Atmosphere.TERRAIN_MATERIALS + [""] + Atmosphere.MEADOW_MATERIALS
+		for layer in names.size():
+			var name: String = names[layer]
+			if name == "":
+				continue  # (the shore gravel, checked below)
 			var suffix := "color_height" if channel == 0 else "surface"
 			var path := "res://assets/terrain/%s_%s.png" % [name, suffix]
 			var original := Image.new()
@@ -256,30 +259,44 @@ void fragment() { ALBEDO = street_surface(scan, noise, vec2(0.0)); }
 	meadow_code = meadow_code.replace("render_mode specular_schlick_ggx;", "render_mode unshaded;")
 	meadow_code = meadow_code.substr(0, meadow_code.find("void fragment()")) + """
 void fragment() {
-	ALBEDO = meadow_color(vec2(0.5), 0.5);
+	ALBEDO = meadow_color(vec2(0.5), 1.0, 0.5);
 	if (OUTPUT_IS_SRGB) { ALBEDO = mix(ALBEDO * 12.92, 1.055 * pow(ALBEDO, vec3(1.0 / 2.4)) - 0.055, step(vec3(0.0031308), ALBEDO)); }
 }
 """
-	var meadow_image := Image.create(2, 2, false, Image.FORMAT_RGB8)
+	var meadow_image := Image.create(2, 2, false, Image.FORMAT_RGBA8)
 	meadow_image.fill(Color(0.5, 0.6, 0.3))
+	var turf_image := Image.create(2, 2, false, Image.FORMAT_RGBA8)
+	turf_image.fill(Color(0.55, 0.45, 0.25, 0.5))
+	var survey_image := Image.create(2, 2, false, Image.FORMAT_RGBA8)
+	survey_image.fill(Color(0.3, 0.38, 0.12, 0.5))
+	var grain_layers: Array[Image] = []
+	for layer in 6 + Atmosphere.MEADOW_MATERIALS.size():
+		grain_layers.append([turf_image, survey_image][layer - 6] if layer in [6, 7] else meadow_image)
+	var grain_array := Texture2DArray.new()
+	assert(grain_array.create_from_images(grain_layers) == OK)
 	var meadow_material := ShaderMaterial.new()
 	var meadow_shader := Shader.new()
 	meadow_shader.code = meadow_code
 	meadow_material.shader = meadow_shader
 	meadow_material.set_shader_parameter("meadow_grass", ImageTexture.create_from_image(meadow_image))
-	mesh.material_override = meadow_material
-	for frame in 3:
-		await RenderingServer.frame_post_draw
-	var meadow_pixel := view.get_texture().get_image().get_pixel(32, 32).srgb_to_linear()
-	var meadow_expected := meadow_image.get_pixel(0, 0).srgb_to_linear() * Color(0.27, 0.415, 0.375)
-	assert(Vector3(meadow_pixel.r, meadow_pixel.g, meadow_pixel.b).distance_to(Vector3(meadow_expected.r, meadow_expected.g, meadow_expected.b)) < 0.008, "Meadow photographs shade in linear light in both renderers: %s" % meadow_pixel)
-	meadow_shader.code = meadow_code.replace("meadow_color(vec2(0.5), 0.5)", "shore_gravel_color(vec2(0.5))")
-	var grain_layers: Array[Image] = []
-	for layer in 6:
-		grain_layers.append(meadow_image)
-	var grain_array := Texture2DArray.new()
-	assert(grain_array.create_from_images(grain_layers) == OK)
 	meadow_material.set_shader_parameter("material_colors", grain_array)
+	mesh.material_override = meadow_material
+	var blades := meadow_image.get_pixel(0, 0).srgb_to_linear()
+	var survey := survey_image.get_pixel(0, 0).srgb_to_linear()
+	var turf := turf_image.get_pixel(0, 0).srgb_to_linear()
+	var blade_light := blades.r * 0.2126 + blades.g * 0.7152 + blades.b * 0.0722
+	var survey_light := survey.r * 0.2126 + survey.g * 0.7152 + survey.b * 0.0722
+	# Damp ground: the survey's green with the leafy scan's light; dry ground: the turf scan.
+	var lush := Vector3(survey.r * 0.85, survey.g * 1.15, survey.b * 1.8) * pow(blade_light / 0.2445, 0.75)
+	var dry := Vector3(turf.r * 0.72, turf.g * 0.8, turf.b * 0.74) * lerpf(1.0, survey_light / 0.0747, 0.5)
+	for case in [[1.0, lush], [0.0, dry]]:
+		meadow_shader.code = meadow_code.replace("meadow_color(vec2(0.5), 1.0, 0.5)", "meadow_color(vec2(0.5), %.1f, 0.5)" % case[0])
+		for frame in 3:
+			await RenderingServer.frame_post_draw
+		var meadow_pixel := view.get_texture().get_image().get_pixel(32, 32).srgb_to_linear()
+		var expected: Vector3 = case[1]
+		assert(Vector3(meadow_pixel.r, meadow_pixel.g, meadow_pixel.b).distance_to(expected) < 0.008, "Meadow photographs shade in linear light in both renderers: %s, expected %s" % [meadow_pixel, expected])
+	meadow_shader.code = meadow_code.replace("meadow_color(vec2(0.5), 1.0, 0.5)", "shore_gravel_color(vec2(0.5))")
 	for frame in 3:
 		await RenderingServer.frame_post_draw
 	var shore_pixel := view.get_texture().get_image().get_pixel(32, 32).srgb_to_linear()
@@ -376,7 +393,7 @@ func check_shrub_leaves() -> void:
 	view.add_child(mesh)
 	var material := ShaderMaterial.new()
 	var shader := Shader.new()
-	shader.code = MapDims.shader(Grass.BUSH_SHADER.replace("render_mode specular_disabled, cull_disabled;", "render_mode unshaded, cull_disabled;"))
+	shader.code = MapDims.shader(Grass.BUSH_SHADER.replace("// CLOUD_SHADOW", Grass.CLOUD_SHADOW).replace("render_mode specular_disabled, cull_disabled;", "render_mode unshaded, cull_disabled;"))
 	material.shader = shader
 	mesh.material_override = material
 	var leaf := Image.create(2, 2, false, Image.FORMAT_RGBA8)

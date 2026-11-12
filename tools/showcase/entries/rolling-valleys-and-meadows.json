@@ -1,0 +1,20 @@
+{
+  "entry": "changelog/unreleased/rolling-valleys-and-meadows.md",
+  "summary": "Rolling valley floors, carved hills and meadows that follow the land.",
+  "medium": "still",
+  "stage": "tests/fixtures/environment-views.gd",
+  "rationale": "Appearance change: one matched before/after sheet of the fixture's valley, hill and rock views on the same seed and mood. Raw captures stay outside Git.",
+  "source_ref": "69a1df0348fb879aa98d5fbfd7f02ac31a10c6d7",
+  "before_ref": "69a1df0348fb879aa98d5fbfd7f02ac31a10c6d7",
+  "sources": [
+    {
+      "file": "changelog/unreleased/rolling-valleys-and-meadows/comparison.jpg",
+      "sha256": "e2b46c1a9bb26c2ebb138a6a705b5c6e45a77571ef3ae9dd1b1cfbf14c55e4d4"
+    },
+    {
+      "file": "changelog/unreleased/rolling-valleys-and-meadows/capture.json",
+      "sha256": "3cad5fe15fc731fbb63675623ea06f5f81a7fb76bea141161f8b2246f6406045"
+    }
+  ],
+  "output": null
+}
