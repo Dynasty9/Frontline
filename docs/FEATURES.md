@@ -1545,6 +1545,7 @@ level is a skill between recruit (0) and veteran (2):
 | Fire support | only on a big target (9+), every 90 s at most | on 4+ | on 3+ |
 | Battered squads pulled out | never | under a third left | under half left |
 | Towns and outposts | looked at every 15 s / 40 s | 6 s / 15 s | 6 s / 15 s |
+| The next FOB | 1.6 times the wait | 2 to 3.5 min after the last | as a regular |
 | Its lorries' loads | -15% | as they are | +15% |
 
 The supply handicap and bonus apply only to a side no player commands (an AI beside you never costs you supply),

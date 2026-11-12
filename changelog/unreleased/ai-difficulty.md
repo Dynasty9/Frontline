@@ -8,7 +8,7 @@ file = "opponent.jpg"
 caption = "The opponent's level in Play vs AI, with what it means"
 +++
 
-- **Recruit** is slow to react, attacks piecemeal and straight at you, never lays ambushes, scouts or calls for
+- **Recruit** is slow to react and slow to push out new bases, attacks piecemeal and straight at you, never lays ambushes, scouts or calls for
   help, fires only on big targets and leaves battered squads in the fight. Its lorries carry 15% less.
 - **Regular** is the AI as it has been: it flanks, ambushes your roads, calls in fire and pulls out battered squads.
 - **Veteran** reacts quickly, gathers bigger attacks, fires on smaller groups, scouts more and saves its squads

@@ -40,6 +40,7 @@ var scouts := true  # recon flights
 var recon_gap := 150.0
 var town_gap := 6.0  # s between looks at which towns to take or hold
 var outpost_gap := 15.0  # s between sending squads forward to the ground between
+var expand_mult := 1.0  # the wait before the next FOB, against a regular's
 var _fire_t := 0.0
 var _adapt_t := 300.0
 
@@ -58,10 +59,11 @@ func _init(w: World, t: int) -> void:
 ## through how it thinks rather than what it's given. A recruit looks at the
 ## battle less often, answers threats late and with less, attacks piecemeal
 ## and head-on, never lies in ambush, calls fire only on a big fat target,
-## doesn't scout, is slow to send men for the towns and the ground between,
-## and leaves squads in the fight till they're gone. A veteran
-## looks often, gathers bigger attacks and waits for them, fires on smaller
-## groups, scouts more and pulls squads out while they can still be rebuilt.
+## doesn't scout, is slow to send men for the towns and the ground between
+## and to push out new FOBs, and leaves squads in the fight till they're
+## gone. A veteran looks often, gathers bigger attacks and waits for them,
+## fires on smaller groups, scouts more and pulls squads out while they can
+## still be rebuilt.
 ## Regular (1) is the commander as it always was.
 func _apply_skill(s: float) -> void:
 	skill = clampf(s, 0.0, 2.0)
@@ -82,6 +84,7 @@ func _apply_skill(s: float) -> void:
 	recon_gap = _lv(240.0, 150.0, 100.0)
 	town_gap = _lv(15.0, 6.0, 6.0)
 	outpost_gap = _lv(40.0, 15.0, 15.0)
+	expand_mult = _lv(1.6, 1.0, 1.0)
 
 
 ## A figure between a recruit's (a), a regular's (b) and a veteran's (c).
@@ -624,7 +627,7 @@ func _economy(sqs: Array) -> void:
 	if t > expand_t and sup > 300 and fobs.size() < 3 + int(MapDims.HALF / 128.0):  # (more ground, more bases)
 		var spot := _expansion_spot()
 		if spot != Vector3.INF:
-			expand_t = t + rng.randf_range(120.0, 200.0)
+			expand_t = t + expand_mult * rng.randf_range(120.0, 200.0)
 			_place("fob", spot, Defs.yaw_of(_enemy_dir()), engs)
 			return
 		expand_t = t + 30.0
