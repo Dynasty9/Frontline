@@ -11,6 +11,7 @@ var capture_fps := 24
 var resume_frame := 0
 var cloud_shader := ""
 var capture_failed := false
+var haze := true  # (heat-haze) --no-haze records the same shots without it
 
 func _ready() -> void:
 	TestRun.watch()
@@ -22,6 +23,10 @@ func _ready() -> void:
 		if arg == "--preview": capture_fps = 12
 		if arg.begins_with("--resume-frame="): resume_frame = maxi(0, int(arg.get_slice("=", 1)))
 		if arg.begins_with("--cloud-shader="): cloud_shader = arg.get_slice("=", 1)
+		if arg == "--no-haze": haze = false
+	if mode == "heat-haze-off":
+		mode = "heat-haze"
+		haze = false
 	if resume_frame > 0 and (mode != "battlefield-effects" or resume_frame != 16 * capture_fps):
 		push_error("Resume is supported only at the fresh stone shot, 16 seconds into battlefield-effects.")
 		get_tree().quit(1)
@@ -33,6 +38,12 @@ func _ready() -> void:
 	Settings.v.effects = 2
 	Settings.v.post = false
 	Settings.v.decals = true
+	if mode == "heat-haze":
+		# the heat haze alone of the cinematic lighting, so it's all that differs
+		for k in Settings.CINEMATIC_KEYS:
+			Settings.v[k] = Settings.PRESETS.ultra[k]
+		Settings.v.heat_haze = haze
+		Settings.v.reduce_motion = false
 	field = World.new()
 	field.settings = {"scenario": "showroom", "seed": 712, "mood": "day", "map_size": 1024, "players": {}, "ai_teams": []}
 	add_child(field)
@@ -89,6 +100,10 @@ func _ready() -> void:
 		return
 	if mode == "battlefield-effects":
 		await _showcase(camera, caption)
+		_finish()
+		return
+	if mode == "heat-haze":
+		await _heat_haze(camera, caption)
 		_finish()
 		return
 	for frame in 192:
@@ -254,3 +269,26 @@ func _showcase(camera: Camera3D, caption: Label) -> void:
 		else:
 			await RenderingServer.frame_post_draw
 			get_viewport().get_texture().get_image().save_png(output.path_join("%04d.png" % frame))
+
+
+## Heat haze: a tank that has just brewed up burning behind the showroom's
+## idling tanks, first at the RTS camera's distance, then close over an engine
+## deck. The wreck is made as a destroyed vehicle leaves one, so it burns
+## through the game's own fire; nothing else is staged. The air's movement is
+## the evidence, so it runs at normal speed.
+func _heat_haze(camera: Camera3D, caption: Label) -> void:
+	var wreck_at := _ground(-8, -11)
+	field.spawn("structure", {"skind": "wreck", "pos": wreck_at, "yaw": 0.9, "variant": 6, "vk": "tank", "size": Vector3(3.4, 2.2, 6.4)})
+	var tank := _ground(-14, 0)
+	for frame in 10 * capture_fps:
+		var t := float(frame) / capture_fps
+		var close := t >= 5.0
+		if frame == 0 or frame == 5 * capture_fps:
+			if close:
+				_frame_subject(camera, tank + Vector3(0, 0, 2), Vector3(5, 7.5, 11), 1.2)
+			else:
+				_frame_subject(camera, (tank + wreck_at) * 0.5, Vector3(13, 22, 27), 0.5)
+			caption.text = label + " / " + ("HEAT HAZE " + ("ON" if haze else "OFF")) + " / " + ("ENGINE DECK, CLOSE" if close else "BURNING WRECK AND IDLING TANKS")
+			caption.text += "\nActual battlefield · the game's own fire and engines · normal speed"
+		await RenderingServer.frame_post_draw
+		get_viewport().get_texture().get_image().save_png(output.path_join("%04d.png" % frame))

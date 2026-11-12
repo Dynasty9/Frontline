@@ -899,49 +899,73 @@ func smash(_by) -> void:
 func _main_color() -> Color:
 	if skind == "roof":
 		return Color(0.5, 0.24, 0.16) if variant % 2 == 0 else C_CONCRETE
+	if skind == "house_wall" and not parts.is_empty():
+		return BuildingMaterials.house_color(int(size.y), parts[0].color)
 	return parts[0].color if not parts.is_empty() else C_STONE
 
 
-## The outside face of a house wall (local +z faces out): a darker plinth
-## along the bottom; windows get a sill and lintel, a painted frame with a
-## mullion and transom, panes (often shot out) and sometimes shutters;
-## doorways a frame, a step and the doors hanging open. Plaster details share
-## the wall's own surface and the woodwork shares one painted surface, so a
-## wall stays two or three draw calls.
+## The outside face of a house wall (local +z faces out), dressed as the
+## house is built (BuildingMaterials.house: rendered, bare brick or stone): a
+## plinth along the foot and a band under the eaves (BuildingWalls); windows
+## a sill and head, a painted frame with a mullion and transom, panes (often
+## shot out, or cracked to shards) and sometimes shutters; doorways a frame, a
+## head, a step and the doors hanging open, now and then a hood over them
+## (BuildingOpenings). Everything but the door leaves goes into the bake, and
+## the frames and shutters are shared meshes, so a wall stays a few parts.
 func _house_wall_detail(rng: RandomNumberGenerator) -> void:
 	var L := size.x
 	var ci := int(size.y)
-	var wall: Color = HOUSE_COLORS[ci % HOUSE_COLORS.size()]
-	var trim: Color = [Color(0.86, 0.85, 0.8), Color(0.32, 0.23, 0.16), Color(0.23, 0.34, 0.28), Color(0.84, 0.83, 0.78), Color(0.36, 0.38, 0.43)][ci % 5]
-	var zo := 0.2
-	_mkb(Res.box(Vector3(L, 0.34, 0.04)), "plaster", Vector3(0, 0.17, zo + 0.02), Vector3.ZERO, wall.darkened(0.3))
+	var material := BuildingMaterials.house(ci)
+	var wall := BuildingMaterials.house_color(ci, HOUSE_COLORS[ci % HOUSE_COLORS.size()])
+	var trim: Color = HOUSE_TRIMS[ci % HOUSE_TRIMS.size()]
+	var k := _kit(rng).at_point(Vector3(0, 0, 0.2))
+	var gaps: Array = []
+	if variant == 1:
+		gaps = [Rect2(-0.65, 1.0, 1.3, 1.0)]
+	elif variant == 2:
+		gaps = [Rect2(-0.95, 0.0, 1.9, 2.2)]
+	BuildingWalls.face(k, L, 3.0, material, wall, gaps, {"band": 2.9})
+	# who lives here is drawn from a stream of its own, so a wall's shutters,
+	# panes and doors stay as they were
+	var life := RandomNumberGenerator.new()
+	life.seed = rng.seed ^ 0x5eed11fe
+	# inside: the room's paint and skirting, what hangs on its walls
+	var room := _kit(life).at_point(Vector3(0, 0, -0.2), Vector3(0, PI, 0))
+	# (a wall doesn't know which house it is, so the paint follows the house's
+	# colour: every wall of a room the same)
+	BuildingFurnishings.lining(room, L, 3.0, gaps, BuildingFurnishings.INTERIORS[(ci * 4 + 1) % BuildingFurnishings.INTERIORS.size()])
+	match variant:
+		0:
+			BuildingFurnishings.wall_things(room, L)
+		1:
+			BuildingFurnishings.radiator(room, 0.0, 1.0)
 	match variant:
 		1:
-			var w := 1.3
-			_mkb(Res.box(Vector3(w + 0.24, 0.07, 0.16)), "plaster", Vector3(0, 0.965, zo + 0.06), Vector3.ZERO, wall.lightened(0.25))
-			_mkb(Res.box(Vector3(w + 0.16, 0.13, 0.03)), "plaster", Vector3(0, 2.07, zo + 0.015), Vector3.ZERO, wall.darkened(0.1))
-			var fz := zo - 0.1
-			for x in [-w * 0.5 + 0.035, w * 0.5 - 0.035]:
-				_mkb(Res.box(Vector3(0.07, 1.0, 0.07)), "paint", Vector3(x, 1.5, fz), Vector3.ZERO, trim, false)
-			for y in [1.035, 1.965]:
-				_mkb(Res.box(Vector3(w, 0.07, 0.07)), "paint", Vector3(0, y, fz), Vector3.ZERO, trim, false)
-			_mkb(Res.box(Vector3(0.05, 0.9, 0.05)), "paint", Vector3(0, 1.5, fz), Vector3.ZERO, trim, false)
-			_mkb(Res.box(Vector3(w - 0.1, 0.05, 0.05)), "paint", Vector3(0, 1.7, fz), Vector3.ZERO, trim, false)
-			for x in [-0.31, 0.31]:
-				if rng.randf() < 0.4:
-					_mkb(Res.box(Vector3(0.56, 0.86, 0.012)), "glass", Vector3(x, 1.5, fz), Vector3.ZERO, null, false)
+			var opts := {"material": material, "wall": wall, "frame": trim}
+			# who lives here: curtains or a blind or nets (or none, in an empty
+			# house), a lamp left on; flowers under some windows
+			opts["curtains"] = ["drapes", "drapes", "blind", "nets", ""][life.randi() % 5]
+			opts["curtain"] = BuildingFurnishings.FABRICS[life.randi() % BuildingFurnishings.FABRICS.size()]
+			# (and a house still lived in keeps its glass)
+			if life.randf() < 0.35:
+				opts["lit"] = true
+				opts["glazing"] = 0.85
 			if rng.randf() < 0.45:
-				var shc: Color = [Color(0.24, 0.36, 0.27), Color(0.31, 0.39, 0.46), Color(0.36, 0.25, 0.16), Color(0.5, 0.22, 0.17)][(ci + 1) % 4]
-				for sx in [-1.0, 1.0]:
-					if rng.randf() < 0.85:
-						_mkb(Res.box(Vector3(0.6, 1.04, 0.035)), "paint", Vector3(sx * (w * 0.5 + 0.33), 1.5, zo + 0.03), Vector3(0, sx * rng.randf_range(0.0, 0.2), 0), shc, false)
+				opts["shutters"] = [Color(0.24, 0.36, 0.27), Color(0.31, 0.39, 0.46), Color(0.36, 0.25, 0.16), Color(0.5, 0.22, 0.17)][(ci + 1) % 4]
+				opts["shutter"] = "louvred" if rng.randf() < 0.5 else "boarded"
+				var open: Array = []
+				for i in 2:
+					open.append(rng.randf_range(0.0, 0.2) if rng.randf() < 0.85 else null)
+				opts["open"] = open
+			BuildingOpenings.window(k, Vector3(0, 1.5, 0), Vector2(1.3, 1.0), opts)
+			if not opts.has("shutters") and life.randf() < 0.25:
+				BuildingFurnishings.window_box(k, 0.0, 1.0, 1.1, [Color(0.75, 0.12, 0.12), Color(0.85, 0.45, 0.6), Color(0.9, 0.75, 0.2), Color(0.55, 0.3, 0.7)][life.randi() % 4])
 		2:
 			var w := 1.9
-			var fz := zo - 0.08
-			for x in [-w * 0.5 + 0.04, w * 0.5 - 0.04]:
-				_mkb(Res.box(Vector3(0.08, 2.2, 0.1)), "paint", Vector3(x, 1.1, fz), Vector3.ZERO, trim, false)
-			_mkb(Res.box(Vector3(w, 0.09, 0.1)), "paint", Vector3(0, 2.16, fz), Vector3.ZERO, trim, false)
-			_mkb(Res.box(Vector3(w + 0.4, 0.14, 0.6)), "plaster", Vector3(0, 0.07, zo + 0.3), Vector3.ZERO, Color(0.62, 0.6, 0.56))
+			BuildingOpenings.doorway(k, Vector3.ZERO, Vector2(w, 2.2), {"material": material, "wall": wall, "frame": trim, "hood": rng.randf() < 0.3,
+				"hood_col": Res.vary(BuildingMaterials.color("roof_tile"), 0.1, rng)})
+			if L > 2.6 and life.randf() < 0.55:
+				BuildingFurnishings.lantern(k, Vector3((w * 0.5 + 0.3) * (1.0 if life.randf() < 0.5 else -1.0), 2.05, 0))
 			# double doors: shut (till someone comes through), or swung in -
 			# one may be gone. Each leaf hangs on its own hinge so it can swing.
 			var dc: Color = [Color(0.3, 0.2, 0.13), Color(0.22, 0.32, 0.26), Color(0.26, 0.31, 0.4), Color(0.42, 0.2, 0.15)][(ci + 2) % 4]
@@ -955,20 +979,13 @@ func _house_wall_detail(rng: RandomNumberGenerator) -> void:
 				pv.position = Vector3(sx * (w * 0.5 - 0.09), 0, DOOR_Z)
 				pv.rotation.y = 0.0 if door_shut else a
 				model.add_child(pv)
-				var lx: float = -sx * 0.44
-				for piece in [
-						[Vector3(0.88, 2.06, 0.05), Vector3(lx, 1.05, 0), dc],
-						# panels, a rail and the handle
-						[Vector3(0.62, 0.78, 0.02), Vector3(lx, 1.55, 0.03), dc.darkened(0.18)],
-						[Vector3(0.62, 0.62, 0.02), Vector3(lx, 0.5, 0.03), dc.darkened(0.18)],
-						[Vector3(0.62, 0.62, 0.02), Vector3(lx, 0.5, -0.03), dc.darkened(0.18)],
-						[Vector3(0.62, 0.78, 0.02), Vector3(lx, 1.55, -0.03), dc.darkened(0.18)],
-						[Vector3(0.05, 0.05, 0.16), Vector3(-sx * 0.8, 1.0, 0), Color(0.18, 0.17, 0.15)]]:
-					var mi := _mk(Res.box(piece[0]), "paint", Vector3.ZERO, Vector3.ZERO, piece[2], false)
-					model.remove_child(mi)
-					pv.add_child(mi)
-					mi.position = piece[1]
+				BuildingOpenings.leaf(BuildingKit.nodes(pv, rng), Vector2(0.88, 2.06), "panelled", dc, -sx)
 				_door_leaves.append([pv, a])
+
+
+## The house's painted woodwork (window frames, door frames, fascias and barge
+## boards), by its colour index.
+const HOUSE_TRIMS := [Color(0.86, 0.85, 0.8), Color(0.32, 0.23, 0.16), Color(0.23, 0.34, 0.28), Color(0.84, 0.83, 0.78), Color(0.36, 0.38, 0.43)]
 
 
 ## A concrete road bridge on piers - deck, kerbed footways, parapet walls,
@@ -1009,7 +1026,7 @@ func _bridge_model(rng: RandomNumberGenerator) -> void:
 		_mk(Res.box(Vector3(0.62, 0.16, L)), "concrete", Vector3(sx * (W * 0.5 - 0.67), 0.08, 0), Vector3.ZERO, conc.lightened(0.05), false)
 		# parapet wall with its coping, drain holes along the foot
 		_mk(Res.box(Vector3(0.36, 0.9, L - 1.0)), "concrete", Vector3(sx * (W * 0.5 - 0.18), 0.45, 0), Vector3.ZERO, conc)
-		_mk(Res.box(Vector3(0.46, 0.08, L - 0.9)), "concrete", Vector3(sx * (W * 0.5 - 0.18), 0.93, 0), Vector3.ZERO, conc.lightened(0.08))
+		BuildingWalls.coping(BuildingKit.nodes(model, rng).at_point(Vector3(sx * (W * 0.5 - 0.18), 0, 0), Vector3(0, PI * 0.5, 0)), L - 0.96, 0.36, 0.9, "concrete", conc.lightened(0.04))
 		# the girder under the edge, stained by the weather
 		_mk(Res.box(Vector3(0.5, 0.75, L)), "concrete", Vector3(sx * (W * 0.5 - 0.9), -0.88, 0), Vector3.ZERO, dark)
 		# a white line along the edge of the carriageway
@@ -1032,10 +1049,7 @@ func _bridge_model(rng: RandomNumberGenerator) -> void:
 
 
 func _lamp(p: Vector3) -> void:
-	var pole := Color(0.22, 0.23, 0.24)
-	_mk(Res.cyl(0.06, 0.08, 4.6, 8), "metal", p + Vector3(0, 2.3, 0), Vector3.ZERO, pole)
-	_mk(Res.box(Vector3(0.9, 0.06, 0.08)), "metal", p + Vector3(-signf(p.x) * 0.42, 4.55, 0), Vector3.ZERO, pole, false)
-	_mk(Res.box(Vector3(0.36, 0.1, 0.2)), "metal", p + Vector3(-signf(p.x) * 0.86, 4.5, 0), Vector3.ZERO, Color(0.3, 0.3, 0.3), false)
+	BuildingFittings.lamp(BuildingKit.nodes(model), p, Vector3(-signf(p.x), 0, 0), 4.6)
 
 
 ## Where the doors hang in a doorway wall (local z: just inside its outer face).
@@ -1099,8 +1113,10 @@ func _swing_leaves(kicked: bool) -> void:
 
 
 ## A building's model on its own, without a world (the field manual's preview).
-static func preview_model(kind: String, side: int, v := 0, sz := Vector3.ZERO, shut := false) -> Node3D:
+## `id` stands in for the entity id its look is seeded from.
+static func preview_model(kind: String, side: int, v := 0, sz := Vector3.ZERO, shut := false, id := 0) -> Node3D:
 	var st := Structure.new()
+	st.eid = id
 	st.skind = kind
 	st.team = side
 	st.variant = v
@@ -1241,81 +1257,52 @@ static func _leaves(bake: Mats.Bake, p: Vector3, r: float, squash: float, col: C
 ## A house roof: tiled and pitched (ridge along the long side, gable ends in
 ## the walls' colour, eaves) or flat with a parapet and the clutter people put
 ## on flat roofs. variant: colour index * 2 + style.
+## A house's roof (BuildingRoofs), in the house's own materials: pitched and
+## tiled, with fascia and barge boards in its paint, gutters and downpipes,
+## the gables in its walls' render, brick or stone and often a chimney; or
+## flat, behind a coped parapet with a scupper and downpipe, the plant on it
+## (a water tank, an air conditioner, a dish).
 func _roof_model(rng: RandomNumberGenerator) -> void:
-	var wall_col: Color = HOUSE_COLORS[(variant / 2) % HOUSE_COLORS.size()]
+	var ci: int = variant / 2
+	var material := BuildingMaterials.house(ci)
+	var wall_col := BuildingMaterials.house_color(ci, HOUSE_COLORS[ci % HOUSE_COLORS.size()])
+	var trim: Color = HOUSE_TRIMS[ci % HOUSE_TRIMS.size()]
 	var h := size.y
 	var long_x := size.x >= size.z
 	var L := size.x if long_x else size.z
 	var W := size.z if long_x else size.x
-	var holder := Node3D.new()
-	model.add_child(holder)
-	if not long_x:
-		holder.rotation.y = PI * 0.5
-	var ov := 0.35
+	var k := _kit(rng).at_point(Vector3.ZERO, Vector3(0, 0.0 if long_x else PI * 0.5, 0))
+	k.sink.cast_all = true
 	if variant % 2 == 0:
-		var rise := W * 0.5 * tan(deg_to_rad(28.0))
-		var slope := Vector2(W * 0.5 + ov, rise + ov * tan(deg_to_rad(28.0))).length()
-		var ang := atan2(rise, W * 0.5)
 		var tint := Res.vary(Color(0.5, 0.22, 0.14), 0.12, rng) if rng.randf() < 0.75 else Color(0.36, 0.34, 0.32)
-		for s in [-1.0, 1.0]:
-			var mi := MeshInstance3D.new()
-			mi.mesh = Res.box(Vector3(L + ov * 2.0, 0.09, slope))
-			mi.position = Vector3(0, h + rise * 0.5 - ov * 0.25, s * (W * 0.25 + ov * 0.1))
-			mi.rotation = Vector3(s * ang, 0, 0)
-			holder.add_child(mi)
-			Mats.apply(mi, "roof_tile", Mats.tint_for("roof_tile", tint))
-		# gable ends
-		for e in [-1.0, 1.0]:
-			var g := MeshInstance3D.new()
-			g.mesh = Res.prism(Vector3(W, rise, 0.25))
-			g.position = Vector3(e * (L * 0.5 - 0.12), h + rise * 0.5, 0)
-			g.rotation = Vector3(0, PI * 0.5, 0)
-			holder.add_child(g)
-			Mats.apply(g, "plaster", Mats.tint_for("plaster", wall_col))
-		var rd := MeshInstance3D.new()
-		rd.mesh = Res.box(Vector3(L + ov * 2.0, 0.12, 0.22))
-		rd.position = Vector3(0, h + rise + 0.03, 0)
-		holder.add_child(rd)
-		Mats.apply(rd, "roof_tile", Mats.tint_for("roof_tile", tint.darkened(0.2)))
+		var end := L * 0.5 - 0.3
+		var rise := BuildingRoofs.gable(k, L, W, h, 28.0, 0.35, "roof_tile", tint, {"gable_material": material, "gable_col": wall_col,
+			"trim": trim, "gable_inset": -0.07, "gutters": true, "downpipes": [[end, 1.0], [-end, -1.0]], "wall_face": W * 0.5 + 0.2})
+		var life := RandomNumberGenerator.new()
+		life.seed = rng.seed ^ 0x5eed11fe
+		var aerial := life.randf() < 0.5
 		if rng.randf() < 0.6:
-			var ch := MeshInstance3D.new()
-			ch.mesh = Res.box(Vector3(0.6, 1.2, 0.6))
-			ch.position = Vector3(rng.randf_range(-L * 0.3, L * 0.3), h + rise * 0.7, W * 0.18)
-			holder.add_child(ch)
-			Mats.apply(ch, "brick")
+			var z := W * 0.18
+			var cx := rng.randf_range(-L * 0.3, L * 0.3)
+			var foot := h + (W * 0.5 + 0.2 - z - 0.3) * tan(deg_to_rad(28.0))
+			BuildingFittings.chimney(k, Vector3(cx, foot, z), Vector2(0.6, 0.6), h + rise + 0.5,
+				"brick", Res.vary(BuildingMaterials.color("brick"), 0.08, rng))
+			if aerial:
+				# lashed to the stack, above its pots
+				BuildingFurnishings.aerial(k, Vector3(cx + 0.33, h + rise - 0.4, z), 1.9, life.randf_range(-0.6, 0.6))
+		elif aerial:
+			BuildingFurnishings.aerial(k, Vector3(L * 0.38, h + rise - 0.06, 0), 1.4, life.randf_range(-0.6, 0.6))
 	else:
-		var slab := MeshInstance3D.new()
-		slab.mesh = Res.box(Vector3(L + 0.1, 0.2, W + 0.1))
-		slab.position = Vector3(0, h + 0.1, 0)
-		holder.add_child(slab)
-		Mats.apply(slab, "roof_concrete")
-		for e in [-1.0, 1.0]:
-			for side in [0, 1]:
-				var p := MeshInstance3D.new()
-				p.mesh = Res.box(Vector3(L + 0.1, 0.55, 0.18) if side == 0 else Vector3(0.18, 0.55, W + 0.1))
-				p.position = Vector3(0, h + 0.47, e * (W * 0.5 - 0.04)) if side == 0 else Vector3(e * (L * 0.5 - 0.04), h + 0.47, 0)
-				holder.add_child(p)
-				Mats.apply(p, "plaster", Mats.tint_for("plaster", wall_col))
-		# what's up there: a water tank, an air conditioner, a dish, washing
+		BuildingRoofs.flat(k, L, W, h, {"material": material, "col": wall_col, "wall_face": W * 0.5 + 0.2, "hatch": rng.randf() < 0.3})
+		var top := h + 0.2
+		# what's up there: a water tank, an air conditioner, a dish
 		if rng.randf() < 0.65:
-			var tank := MeshInstance3D.new()
-			tank.mesh = Res.cyl(0.45, 0.45, 1.0, 12)
-			tank.position = Vector3(rng.randf_range(-L * 0.3, L * 0.3), h + 0.75, rng.randf_range(-W * 0.25, W * 0.25))
-			holder.add_child(tank)
-			Mats.apply(tank, "paint", Mats.tint_for("paint", [Color(0.15, 0.17, 0.2), Color(0.75, 0.75, 0.72), Color(0.3, 0.42, 0.55)][rng.randi() % 3]))
+			BuildingFittings.water_tank(k, Vector3(rng.randf_range(-L * 0.3, L * 0.3), top, rng.randf_range(-W * 0.25, W * 0.25)), 0.45, 1.0,
+				[Color(0.15, 0.17, 0.2), Color(0.75, 0.75, 0.72), Color(0.3, 0.42, 0.55)][rng.randi() % 3])
 		if rng.randf() < 0.6:
-			var ac := MeshInstance3D.new()
-			ac.mesh = Res.box(Vector3(0.8, 0.55, 0.5))
-			ac.position = Vector3(rng.randf_range(-L * 0.35, L * 0.35), h + 0.47, rng.randf_range(-W * 0.3, W * 0.3))
-			holder.add_child(ac)
-			Mats.apply(ac, "paint", Mats.tint_for("paint", Color(0.78, 0.78, 0.75)))
+			BuildingFittings.ac_unit(k, Vector3(rng.randf_range(-L * 0.35, L * 0.35), top, rng.randf_range(-W * 0.3, W * 0.3)), rng.randf_range(-0.3, 0.3))
 		if rng.randf() < 0.45:
-			var dish := MeshInstance3D.new()
-			dish.mesh = Res.cyl(0.38, 0.05, 0.12, 12)
-			dish.position = Vector3(L * 0.35, h + 0.75, -W * 0.3)
-			dish.rotation = Vector3(-0.9, 0.6, 0)
-			holder.add_child(dish)
-			Mats.apply(dish, "paint", Mats.tint_for("paint", Color(0.82, 0.82, 0.8)))
+			BuildingFittings.dish(k, Vector3(L * 0.35, top, -W * 0.3))
 
 
 var _roof_t := 0.0
@@ -2379,7 +2366,7 @@ func _mk(mesh: Mesh, kind: String, p: Vector3, rot := Vector3.ZERO, col = null, 
 ## their models that end up merged straight into the merged meshes (see
 ## Mats.Bake), with the surfaces _skin would have given them. The rest are made
 ## as nodes as ever: the door leaves (they swing), anything glassy or glowing.
-const BAKED := ["house_wall", "low_wall", "floor", "rubble", "crates"]
+const BAKED := ["house_wall", "low_wall", "floor", "rubble", "crates", "roof"]
 var _bake: Mats.Bake = null
 
 
@@ -2398,6 +2385,12 @@ func _mkb(mesh: Mesh, kind: String, p: Vector3, rot := Vector3.ZERO, col = null,
 		return
 	var t := Mats.tint_for(kind, col) if col is Color else Color(1, 1, 1)
 	_bake.part(mesh, Mats.get_mat(kind), Mats.place(p, rot), t if t != Color(1, 1, 1) else null, shadow)
+
+
+## The construction kit for this model (see BuildingKit): straight into the
+## bake for the scenery that is baked, else nodes under the model to be merged.
+func _kit(rng: RandomNumberGenerator) -> BuildingKit:
+	return BuildingKit.baked(_bake, rng) if _bake != null else BuildingKit.nodes(model, rng)
 
 
 ## A part in a flat colour (`sm`, from Res.mat) that _skin would put on one of
@@ -2437,6 +2430,8 @@ func _build_model() -> void:
 		if p.get("door", false):
 			continue  # (the leaves are their own pieces: they swing open)
 		var col: Color = p.color
+		if skind == "house_wall":
+			col = BuildingMaterials.house_color(int(size.y), col)
 		if skind in ["house_wall", "rubble", "crates"]:
 			col = Res.vary(col, 0.05, rng)
 		_bx(p.p, p.s, col, p.r, skind != "floor")
@@ -2461,12 +2456,30 @@ func _build_model() -> void:
 						var smat := Res.mat(Res.vary(hc, 0.05, rng).lightened(0.06))
 						_skinned(smesh, smat, Vector3(x, 1.2, rng.randf_range(-0.15, 0.15)), Vector3.ZERO, Vector3(0.8, 1.3, 0.8), true)
 			else:
+				# a garden wall of field stone under a saddleback coping, or of
+				# brick on a darker base course under a brick-on-edge coping
 				_bx(p.p, p.s, p.color)
-				_bx(Vector3(0, p.s.y + 0.04, 0), Vector3(p.s.x + 0.06, 0.08, p.s.z + 0.08), p.color.darkened(0.15))
+				var lk := _kit(rng)
+				var lm := "brick" if variant % 3 == 2 else "stone"
+				BuildingWalls.coping(lk, p.s.x, p.s.z, p.s.y, lm, p.color)
+				if lm == "brick":
+					for sd: float in [-1.0, 1.0]:
+						BuildingWalls.plinth(lk.at_point(Vector3(0, 0, sd * p.s.z * 0.5), Vector3(0, 0.0 if sd > 0.0 else PI, 0)), p.s.x, 0.22, lm, p.color)
+		"tall_wall":
+			# a compound wall: cast in panels, capped, wire along the top
+			var p: Dictionary = parts[0]
+			var tk := _kit(rng)
+			var top := BuildingWalls.coping(tk, p.s.x, p.s.z, p.s.y, "concrete", p.color)
+			for sd: float in [-1.0, 1.0]:
+				BuildingWalls.joints(tk.at_point(Vector3(0, 0, sd * p.s.z * 0.5), Vector3(0, 0.0 if sd > 0.0 else PI, 0)), p.s.x, p.s.y, 2.0, p.color)
+			BuildingWire.topping(tk, p.s.x, top, 1.0)
 		"house_wall":
 			_house_wall_detail(rng)
 		"floor":
-			pass
+			# a rug in most houses' main room, lying flat
+			if size.x > 3.0 and size.z > 3.0 and rng.randf() < 0.65:
+				BuildingFurnishings.rug(_kit(rng), Vector3(rng.randf_range(-0.6, 0.6), 0.06, rng.randf_range(-0.5, 0.5)),
+					Vector2(minf(size.x * 0.4, 3.0), minf(size.z * 0.4, 2.2)), BuildingFurnishings.FABRICS[rng.randi() % BuildingFurnishings.FABRICS.size()])
 		"bridge":
 			_bridge_model(rng)
 		"dock":
@@ -2521,28 +2534,35 @@ func _build_model() -> void:
 			Mats.set_inst(net, &"tint", Color(0.3, 0.34, 0.2) if team != 1 else Color(0.44, 0.39, 0.27))
 			net.position = Vector3(0, 3.45, 0)
 			model.add_child(net)
-			_mk(Res.cyl(0.05, 0.07, 9.0, 6), "steel", Vector3(-1.8, 4.5, -1.8))
-			_mk(Res.cyl(0.015, 0.015, 3.0, 4), "steel", Vector3(-1.8, 8.6, -1.8), Vector3(0, 0, 0.5))
-			_mk(Res.cyl(0.015, 0.015, 3.0, 4), "steel", Vector3(-1.8, 8.6, -1.8), Vector3(0, 0, -0.5))
+			var fk := _kit(rng)
+			# the net's corner poles guyed out to pegs
+			for x in [-2.2, 2.2]:
+				for z in [-2.2, 2.2]:
+					BuildingWire.guy(fk, Vector3(x * 1.6, 3.4, z * 1.6), Vector3(x * 2.1, 0.0, z * 2.1), true, "peg")
+			# the radio mast up through the net, guyed short to the roof of the block
+			BuildingFittings.mast(fk, Vector3(-1.8, 0, -1.8), 9.0, 3, PI * 0.25, Color(0.25, 0.26, 0.27), 0.42, 2.4)
 			_flag = _box(Vector3(-1.1, 7.6, -1.8), Vector3(1.4, 0.8, 0.04), tc)
-			_mk(Res.cyl(0.03, 0.03, 4.0, 4), "steel", Vector3(1.8, 4.4, 1.6))
+			BuildingFittings.whip(fk, Vector3(1.8, 2.4, 1.6), 3.6)
 			for i in 4:
-				_mk(Res.box(Vector3(0.8, 0.5, 0.5)), "paint", Vector3(-4.5 + i * 0.9, 0.25, 3.8), Vector3(0, rng.randf_range(-0.1, 0.1), 0), Color(0.3, 0.33, 0.2))
-				_mk(Res.box(Vector3(0.8, 0.4, 0.5)), "paint", Vector3(-4.5 + i * 0.9 + 0.1, 0.7, 3.8), Vector3(0, rng.randf_range(-0.15, 0.15), 0), Color(0.28, 0.31, 0.19))
+				BuildingFittings.crate(fk, Vector3(-4.5 + i * 0.9, 0, 3.8), Vector3(0.8, 0.5, 0.5), Color(0.3, 0.33, 0.2), rng.randf_range(-0.1, 0.1), "paint")
+				BuildingFittings.crate(fk, Vector3(-4.5 + i * 0.9 + 0.1, 0.5, 3.8), Vector3(0.8, 0.4, 0.5), Color(0.28, 0.31, 0.19), rng.randf_range(-0.15, 0.15), "paint")
 			for i in 3:
-				_mk(Res.cyl(0.3, 0.3, 0.9, 12), "steel", Vector3(3.6 + i * 0.65, 0.45, -3.9), Vector3.ZERO, Color(0.3, 0.33, 0.24))
+				BuildingFittings.drum(fk, Vector3(3.6 + i * 0.65, 0, -3.9), Color(0.3, 0.33, 0.24), false, i * 0.7)
 			_mk(Res.box(Vector3(1.2, 0.9, 0.8)), "paint", Vector3(4.0, 0.45, 3.6), Vector3(0, 0.3, 0), Color(0.33, 0.35, 0.28))
 			_add_label(display_name(), 8.0)
 		"town":
 			# the town's supply dump: stores crated on a pallet with more under a
 			# tarp, fuel drums, and a flagpole flying the colours of whoever holds
 			# the place (the town's own while nobody does)
-			_mk(Res.box(Vector3(2.4, 0.14, 1.5)), "wood", Vector3(0.55, 0.07, 0.35), Vector3.ZERO, null, false)
+			var tk := _kit(rng)
+			for ix in 2:
+				BuildingFittings.pallet(tk, Vector3(0.55 + (ix - 0.5) * 1.2, 0, 0.35), Vector2(1.18, 1.5))
 			for ix in 2:
 				for iz in 2:
 					for iy in 2:
-						var cp := Vector3(0.55 + (ix - 0.5) * 1.14, 0.14 + 0.275 + iy * 0.55, 0.35 + (iz - 0.5) * 0.69)
-						_mk(Res.box(Vector3(1.08, 0.53, 0.64)), "wood", cp, Vector3(0, rng.randf_range(-0.05, 0.05), 0), Res.vary(C_WOOD, 0.06, rng))
+						var cp := Vector3(0.55 + (ix - 0.5) * 1.14, 0.13 + iy * 0.55, 0.35 + (iz - 0.5) * 0.69)
+						var cyaw := rng.randf_range(-0.05, 0.05)
+						BuildingFittings.crate(tk, cp, Vector3(1.08, 0.53, 0.64), Res.vary(C_WOOD, 0.06, rng), cyaw, "wood", iz == 0 or ix == 1, iy == 1)
 			_mk(Res.box(Vector3(1.32, 0.86, 1.12)), "canvas", Vector3(0.85, 1.67, 0.4), Vector3(0, 0.06, 0), Color(0.33, 0.36, 0.25))
 			_mk(Res.prism(Vector3(1.12, 0.18, 1.34)), "canvas", Vector3(0.85, 2.19, 0.4), Vector3(0, PI * 0.5 + 0.06, 0), Color(0.31, 0.34, 0.23))
 			var drum_cols := [Color(0.45, 0.17, 0.12), Color(0.2, 0.3, 0.42), Color(0.3, 0.33, 0.2), Color(0.62, 0.5, 0.18)]
@@ -2550,59 +2570,92 @@ func _build_model() -> void:
 				for iz in 3:
 					if ix == 0 and iz == 0 and rng.randf() < 0.5:
 						continue
-					var dp := Vector3(-1.45 + ix * 0.6 + rng.randf_range(-0.04, 0.04), 0.44, -0.4 + iz * 0.6)
-					_mk(Res.cyl(0.28, 0.28, 0.88, 12), "paint", dp, Vector3.ZERO, drum_cols[rng.randi() % drum_cols.size()])
-			_mk(Res.cyl(0.24, 0.3, 0.3, 10), "concrete", Vector3(-0.2, 0.15, -0.85))
-			_mk(Res.cyl(0.045, 0.065, 7.2, 6), "steel", Vector3(-0.2, 3.6, -0.85), Vector3.ZERO, Color(0.8, 0.8, 0.78))
-			_mk(Res.sphere(0.09, 6), "paint", Vector3(-0.2, 7.25, -0.85), Vector3.ZERO, Color(0.75, 0.62, 0.25))
+					var dp := Vector3(-1.45 + ix * 0.6 + rng.randf_range(-0.04, 0.04), 0.0, -0.4 + iz * 0.6)
+					BuildingFittings.drum(tk, dp, drum_cols[rng.randi() % drum_cols.size()], false, (ix + iz) * 1.3, "paint")
+			BuildingFittings.flagpole(tk, Vector3(-0.2, 0, -0.85), 7.2)
 			_flag = _box(Vector3(0.52, 6.62, -0.85), Vector3(1.4, 0.86, 0.04), tc)
 			_add_label(display_name(), 8.4)
 		"barracks":
-			# plank walls, corrugated gable roof along the long side, windows, porch
+			# a hut of painted weatherboard on a concrete base under a sheeted
+			# gable roof (gutters, downpipes, a stove pipe): framed windows down
+			# both long sides, ledged double doors under a canopy, drums and a
+			# generator by the walls
 			var long_x := size.x >= size.z
 			var L := size.x if long_x else size.z
 			var W := size.z if long_x else size.x
-			_mk(Res.prism(Vector3(W + 0.7, 1.5, L + 0.6)), "corrugated", Vector3(0, 3.75, 0), Vector3(0, PI / 2 if long_x else 0.0, 0), Color(0.42, 0.44, 0.4))
+			var bk := _kit(rng)
+			var rk := bk.at_point(Vector3.ZERO, Vector3(0, 0.0 if long_x else PI * 0.5, 0))
+			var wc := C_OLIVE
+			var sheet := Color(0.42, 0.44, 0.4)
+			var frame := Color(0.33, 0.25, 0.17)
+			var rise := BuildingRoofs.gable(rk, L, W, 3.0, rad_to_deg(atan2(1.5, W * 0.5)), 0.35, "roof_sheet", sheet, {"gable_material": "timber",
+				"gable_col": wc, "trim": wc.darkened(0.3), "gable_inset": 0.125, "gutters": true, "downpipes": [[L * 0.5 - 0.3, 1.0], [-(L * 0.5 - 0.3), -1.0]],
+				"wall_face": W * 0.5})
 			_mk(Res.box(Vector3(size.x + 0.5, 0.25, size.z + 0.5)), "concrete", Vector3(0, 0.12, 0))
-			for side in [-1.0, 1.0]:
-				for i in 3:
-					var t := (float(i) - 1.0) * L * 0.3
-					var wp := Vector3(t, 1.75, side * (W * 0.5 + 0.02)) if long_x else Vector3(side * (W * 0.5 + 0.02), 1.75, t)
-					var ws := Vector3(1.15, 0.95, 0.06) if long_x else Vector3(0.06, 0.95, 1.15)
-					_mk(Res.box(ws), "wood_dark", wp)
-					_mk(Res.box(ws * Vector3(0.82, 0.78, 1.0) + (Vector3(0, 0, 0.02) if long_x else Vector3(0.02, 0, 0))), "glass", wp, Vector3.ZERO, null, false)
-			var front := Vector3(0, 0, -size.z * 0.5)
-			_mk(Res.box(Vector3(1.4, 2.1, 0.08)), "wood_dark", front + Vector3(L * 0.15 if long_x else 0.0, 1.15, -0.02))
-			_mk(Res.box(Vector3(2.4, 0.08, 1.3)), "corrugated", front + Vector3(L * 0.15 if long_x else 0.0, 2.55, -0.6), Vector3(0.2, 0, 0), Color(0.42, 0.44, 0.4))
-			_mk(Res.box(Vector3(2.0, 0.2, 0.9)), "concrete", front + Vector3(L * 0.15 if long_x else 0.0, 0.1, -0.5))
-			_mk(Res.cyl(0.12, 0.12, 1.6, 8), "gunmetal_w", Vector3(-L * 0.3 if long_x else 0.0, 4.6, 0.6))
-			for i in 2:
-				_mk(Res.cyl(0.3, 0.3, 0.9, 12), "steel", front + Vector3(-L * 0.38 + i * 0.66, 0.45, -0.8), Vector3.ZERO, Color(0.3, 0.33, 0.24))
-			_mk(Res.box(Vector3(0.9, 0.6, 0.6)), "paint", Vector3(size.x * 0.5 + 0.35, 0.6, -0.8), Vector3.ZERO, Color(0.55, 0.56, 0.52))
-			_flag = _box(Vector3(size.x * 0.4, 5.4, 0), Vector3(1.0, 0.6, 0.04), tc)
-			_mk(Res.cyl(0.03, 0.03, 2.2, 4), "steel", Vector3(size.x * 0.4 - 0.55, 4.6, 0))
+			for face in 4:
+				var out: Vector3 = [Vector3(0, 0, -1), Vector3(0, 0, 1), Vector3(-1, 0, 0), Vector3(1, 0, 0)][face]
+				var flen := size.x if face < 2 else size.z
+				var fk := bk.on_face(out * Vector3(size.x * 0.5, 0, size.z * 0.5), out)
+				# the windows down the long sides and the door at the front, in
+				# this face's own x (the front face's runs the other way)
+				var along := 1.0 if fk.frame.basis.x.dot(Vector3(1, 0, 1)) > 0.0 else -1.0
+				var wins: Array = []
+				var gaps: Array = []
+				var dx := -L * 0.15 * along
+				if (face < 2) == long_x:
+					for i in 3:
+						var wx := (float(i) - 1.0) * L * 0.3 * along
+						if face == 0 and absf(wx - dx) < 1.33:
+							continue
+						wins.append(wx)
+						gaps.append(Rect2(wx - 0.62, 1.22, 1.24, 1.06))
+				if face == 0:
+					gaps.append(Rect2(dx - 0.75, 0.0, 1.5, 2.2))
+				BuildingWalls.face(fk, flen, 3.0, "timber", wc, gaps, {"plinth": 0.0, "corners": [-flen * 0.5, flen * 0.5]})
+				for wx: float in wins:
+					BuildingOpenings.window(fk, Vector3(wx, 1.75, 0), Vector2(1.15, 0.95), {"material": "timber", "wall": wc, "frame": frame,
+						"frame_kind": "wood_dark", "inset": -0.03, "glazing": 1.0, "transom": -1.0, "lit": rng.randf() < 0.65,
+						"curtains": "blind" if rng.randf() < 0.4 else "", "curtain": Color(0.55, 0.52, 0.42)})
+				if face == 0:
+					BuildingOpenings.doorway(fk, Vector3(dx, 0, 0), Vector2(1.4, 2.1), {"material": "timber", "wall": wc, "inset": -0.05,
+						"frame_kind": "wood_dark", "frame": frame, "step": false})
+					for sd: float in [-1.0, 1.0]:
+						BuildingOpenings.leaf(fk.at_point(Vector3(dx + sd * 0.69, 0, 0.035)), Vector2(0.68, 2.04), "ledged", wc.darkened(0.12), -sd)
+					BuildingRoofs.canopy(fk.at_point(Vector3(dx, 2.75, 0)), 2.4, 1.3, "roof_sheet", sheet, wc.darkened(0.3))
+					fk.box(Vector3(2.0, 0.2, 0.9), Vector3(dx, 0.1, 0.5), "concrete")
+					for i in 2:
+						BuildingFittings.drum(fk, Vector3(L * 0.38 * along - i * 0.66 * along, 0, 0.8), Color(0.3, 0.33, 0.24), false, i * 1.1)
+			BuildingFittings.flue(rk, Vector3(-L * 0.3, 3.0 + rise * (1.0 - 0.6 / (W * 0.5)) - 0.08, 0.6), 0.11, 1.1)
+			BuildingFittings.ac_unit(bk, Vector3(size.x * 0.5 + 0.55, 0, -0.8), PI * 0.5, Color(0.55, 0.56, 0.52))
+			var hoist := BuildingFittings.flagpole(bk, Vector3(size.x * 0.4 - 0.55, 3.0 + rise - 0.1, 0), 1.3, Color(0.6, 0.6, 0.58), false)
+			_flag = _box(hoist + Vector3(0.52, -0.25, 0), Vector3(1.0, 0.6, 0.04), tc)
 		"factory":
+			# a sheeted shed on a concrete upstand under a slab, north lights
+			# along the roof, a roller shutter onto a loading apron, pipes on
+			# brackets down one side, extract cowls and the works chimney
+			var fk := _kit(rng)
 			_mk(Res.box(Vector3(size.x + 0.4, 0.3, size.z + 0.4)), "concrete", Vector3(0, 5.15, 0), Vector3.ZERO, Color(0.48, 0.48, 0.46))
-			# sawtooth skylights
-			for i in 3:
-				var zx := -size.x * 0.3 + i * size.x * 0.3
-				_mk(Res.prism(Vector3(size.z * 0.8, 0.9, 1.4)), "corrugated", Vector3(zx, 5.75, 0), Vector3(0, PI / 2, 0), Color(0.45, 0.47, 0.45))
-				_mk(Res.box(Vector3(0.05, 0.75, size.z * 0.78)), "glass", Vector3(zx + 0.36, 5.68, 0), Vector3(0, 0, 0.45), null, false)
-			# roll-up door, loading apron, pipes, vents, stack
-			_mk(Res.box(Vector3(5.0, 4.0, 0.1)), "corrugated", Vector3(0, 2.0, -size.z * 0.5 - 0.03), Vector3(0, 0, PI / 2), Color(0.55, 0.5, 0.36))
+			BuildingRoofs.sawtooth(fk.at_point(Vector3(0, 5.3, 0)), size.x * 0.9, size.z * 0.8, 3, 0.9, "roof_sheet", Color(0.45, 0.47, 0.45), Color(0.3, 0.32, 0.3), true)
+			var shed := Color(0.45, 0.46, 0.44)
+			for face in 4:
+				var out: Vector3 = [Vector3(0, 0, -1), Vector3(0, 0, 1), Vector3(-1, 0, 0), Vector3(1, 0, 0)][face]
+				var flen := size.x if face < 2 else size.z
+				var face_kit := fk.on_face(out * Vector3(size.x * 0.5, 0, size.z * 0.5), out)
+				BuildingWalls.face(face_kit, flen, 5.0, "corrugated", shed, [Rect2(-2.3, 0.0, 4.6, 4.45)] if face == 0 else [])
+				if face == 0:
+					BuildingOpenings.roller_door(face_kit, Vector3(0, 0, 0.035), Vector2(4.4, 3.9), Color(0.55, 0.5, 0.36))
 			_mk(Res.box(Vector3(6.4, 0.12, 3.4)), "concrete_floor", Vector3(0, 0.06, -size.z * 0.5 - 1.7))
-			_mk(Res.box(Vector3(5.6, 0.3, 0.4)), "steel", Vector3(0, 4.15, -size.z * 0.5 - 0.2), Vector3.ZERO, Color(0.4, 0.38, 0.33))
-			_mk(Res.cyl(0.18, 0.18, size.z * 0.9, 8), "steel", Vector3(size.x * 0.5 + 0.25, 3.2, 0), Vector3(PI / 2, 0, 0), Color(0.5, 0.42, 0.3))
-			_mk(Res.cyl(0.12, 0.12, size.z * 0.9, 8), "steel", Vector3(size.x * 0.5 + 0.25, 2.7, 0), Vector3(PI / 2, 0, 0), Color(0.35, 0.37, 0.33))
+			BuildingFittings.pipe(fk, Vector3(size.x * 0.5 + 0.25, 3.2, -size.z * 0.45), Vector3(size.x * 0.5 + 0.25, 3.2, size.z * 0.45), 0.18, Color(0.5, 0.42, 0.3), Vector3(-0.25, 0, 0))
+			BuildingFittings.pipe(fk, Vector3(size.x * 0.5 + 0.25, 2.7, -size.z * 0.45), Vector3(size.x * 0.5 + 0.25, 2.7, size.z * 0.45), 0.12, Color(0.35, 0.37, 0.33), Vector3(-0.25, 0, 0))
 			for i in 2:
-				_mk(Res.cyl(0.35, 0.35, 0.5, 12), "steel", Vector3(-size.x * 0.25 + i * 1.4, 5.55, size.z * 0.32))
-			_mk(Res.cyl(0.42, 0.55, 5.0, 12), "brick", Vector3(size.x * 0.35, 7.6, size.z * 0.3))
-			_mk(Res.cyl(0.46, 0.46, 0.25, 12), "concrete", Vector3(size.x * 0.35, 10.1, size.z * 0.3))
+				BuildingFittings.flue(fk, Vector3(-size.x * 0.25 + i * 1.4, 5.3, size.z * 0.32), 0.3, 0.35, Color(0.4, 0.41, 0.4), "steel")
+			BuildingFittings.stack(fk, Vector3(size.x * 0.35, 5.1, size.z * 0.3), 0.55, 0.42, 5.0)
 			if world != null and world.fx and world.fx.vfx and built:
 				var stack := world.fx.vfx.make_burner(0.7)
 				stack.position = Vector3(size.x * 0.35, 10.4, size.z * 0.3)
 				model.add_child(stack)
 				world.fx.vfx.set_burning(stack, 0.0, 0.35)
+			BuildingFittings.flagpole(fk, Vector3(-size.x * 0.4 - 0.66, 5.3, 0), 1.5, Color(0.6, 0.6, 0.58), false)
 			_flag = _box(Vector3(-size.x * 0.4, 6.4, 0), Vector3(1.2, 0.7, 0.04), tc)
 		"medic_tent":
 			# (the placeholder block goes now: a deferred free would still be
@@ -2624,8 +2677,7 @@ func _build_model() -> void:
 				_mk(Res.box(Vector3(1.4, 0.03, 0.42)), "paint", cpos + nrm * 0.01, rot, Color(0.75, 0.08, 0.07), false)
 				_mk(Res.box(Vector3(0.42, 0.03, 1.4)), "paint", cpos + nrm * 0.01, rot, Color(0.75, 0.08, 0.07), false)
 				for x in [-size.x * 0.4, 0.0, size.x * 0.4]:
-					var rope := _mk(Res.cyl(0.01, 0.01, 2.1, 4), "canvas", Vector3(x, 0.75, sd * (hz + 0.75)), Vector3(sd * 0.8, 0, 0), Color(0.6, 0.58, 0.5), false)
-					rope.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+					BuildingWire.guy(_kit(rng), Vector3(x, 1.4, sd * hz * 0.5), Vector3(x, 0.0, sd * (hz + 1.4)), true, "peg")
 			_mk(Res.box(Vector3(0.06, 2.0, 1.5)), "canvas", Vector3(-size.x * 0.5 - 0.02, 1.0, 0), Vector3.ZERO, Color(0.25, 0.25, 0.22))
 			_mk(Res.box(Vector3(size.x + 0.6, 0.06, size.z + 0.6)), "canvas", Vector3(0, 0.03, 0), Vector3.ZERO, Color(0.3, 0.28, 0.24), false)
 			for i in 2:
@@ -2638,19 +2690,37 @@ func _build_model() -> void:
 			_mk(Res.box(Vector3(0.6, 0.16, 0.04)), "paint", Vector3(size.x * 0.5 + 1.32, 3.85, hz + 0.5), Vector3.ZERO, Color(0.75, 0.08, 0.07), false)
 			_mk(Res.box(Vector3(0.16, 0.5, 0.04)), "paint", Vector3(size.x * 0.5 + 1.32, 3.85, hz + 0.5), Vector3.ZERO, Color(0.75, 0.08, 0.07), false)
 		"research":
+			# a precast block under a slab: ribbon glazing round it, a steel
+			# door, a dish, a guyed mast with the flag, plant on the roof and
+			# a generator by the wall
+			var rk := _kit(rng)
+			var wc := Color(0.5, 0.52, 0.5)
 			_mk(Res.box(Vector3(size.x + 0.3, 0.2, size.z + 0.3)), "concrete", Vector3(0, 3.3, 0), Vector3.ZERO, Color(0.42, 0.42, 0.4))
-			for sd in [-1.0, 1.0]:
-				_mk(Res.box(Vector3(size.x * 0.8, 0.7, 0.05)), "glass", Vector3(0, 2.1, sd * (size.z * 0.5 + 0.02)), Vector3.ZERO, null, false)
-				_mk(Res.box(Vector3(0.05, 0.7, size.z * 0.8)), "glass", Vector3(sd * (size.x * 0.5 + 0.02), 2.1, 0), Vector3.ZERO, null, false)
-			_mk(Res.box(Vector3(1.3, 2.1, 0.08)), "metal_dark", Vector3(-1.5, 1.05, -size.z * 0.5 - 0.03))
-			_mk(Res.cyl(1.3, 0.2, 0.4, 18), "paint", Vector3(1.5, 4.5, 1.5), Vector3(0.6, 0, 0.3), Color(0.82, 0.82, 0.8))
-			_mk(Res.cyl(0.08, 0.08, 1.0, 6), "steel", Vector3(1.5, 3.85, 1.5))
-			_mk(Res.cyl(0.04, 0.04, 4.0, 4), "steel", Vector3(-2.2, 5.3, -2.2))
-			_mk(Res.cyl(0.02, 0.02, 1.6, 4), "steel", Vector3(-2.2, 6.6, -2.2), Vector3(0, 0, PI / 2))
-			_mk(Res.box(Vector3(1.0, 0.5, 0.7)), "paint", Vector3(-1.6, 3.65, 1.4), Vector3.ZERO, Color(0.6, 0.6, 0.58))
+			for face in 4:
+				var out: Vector3 = [Vector3(0, 0, -1), Vector3(0, 0, 1), Vector3(-1, 0, 0), Vector3(1, 0, 0)][face]
+				var flen := size.x if face < 2 else size.z
+				var fk := rk.on_face(out * Vector3(size.x * 0.5, 0, size.z * 0.5), out)
+				var band := Vector2(flen * 0.8, 0.7)
+				var bx := 0.0
+				var gaps: Array = []
+				if face == 0:
+					# (the door is under the band's end on the front: the band stops short)
+					band.x = flen * 0.5
+					bx = -flen * 0.4 + band.x * 0.5
+					gaps.append(Rect2(1.5 - 0.7, 0.0, 1.4, 2.2))
+				gaps.append(Rect2(bx - band.x * 0.5, 2.1 - band.y * 0.5, band.x, band.y))
+				BuildingWalls.face(fk, flen, 3.2, "precast", wc, gaps, {"plinth": 0.3})
+				BuildingOpenings.ribbon(fk, Vector3(bx, 2.1, 0.05), band, maxi(2, int(band.x / 0.9)), Color(0.25, 0.27, 0.27), "metal_dark", rng.randf() < 0.8)
+				if face == 0:
+					BuildingOpenings.doorway(fk, Vector3(1.5, 0, 0), Vector2(1.3, 2.1), {"material": "precast", "wall": wc, "inset": -0.05,
+						"frame_kind": "metal_dark", "frame": Color(0.25, 0.26, 0.26)})
+					BuildingOpenings.leaf(fk.at_point(Vector3(1.5 - 0.62, 0, 0.03)), Vector2(1.22, 2.04), "steel", Color(0.2, 0.21, 0.21), 1.0)
+			BuildingFittings.dish(rk, Vector3(1.5, 3.4, 1.5), 1.3, Vector3(0.6, 0, 0.3), Color(0.82, 0.82, 0.8), 0.9)
+			BuildingFittings.mast(rk, Vector3(-2.2, 3.4, -2.2), 4.0, 3, 0.4, Color(0.3, 0.31, 0.32), 0.22, 3.4, [0.55])
+			BuildingFittings.ac_unit(rk, Vector3(-1.6, 3.4, 1.4), 0.0, Color(0.6, 0.6, 0.58))
 			_mk(Res.box(Vector3(1.6, 1.0, 0.9)), "paint", Vector3(size.x * 0.5 + 1.0, 0.5, 1.5), Vector3.ZERO, Color(0.32, 0.36, 0.26))
-			_mk(Res.cyl(0.06, 0.06, 0.6, 6), "gunmetal_w", Vector3(size.x * 0.5 + 1.4, 1.2, 1.7))
-			_flag = _box(Vector3(-2.0, 6.7, -2.2), Vector3(0.8, 0.5, 0.04), tc)
+			BuildingFittings.flue(rk, Vector3(size.x * 0.5 + 1.4, 1.0, 1.7), 0.05, 0.45)
+			_flag = _box(Vector3(-1.75, 6.9, -2.2), Vector3(0.8, 0.5, 0.04), tc)
 		"depot":
 			for i in 6:
 				Res.mi(model, Res.cyl(0.08, 0.08, 1.6, 6), Res.mat(C_WOOD), Vector3(-9 + i * 3.6, 0.8, -6))
@@ -2757,10 +2827,10 @@ func _build_model() -> void:
 				WorksModels.berms(model, 2.8, 0.95, 2.0, false)
 				for y in [1.1, 1.66]:
 					_mk(Res.box(Vector3(2.7, 0.07, 0.1)), "metal_dark", Vector3(0, y, -2.82), Vector3.ZERO, Color(0.2, 0.2, 0.19))
-				_mk(Res.box(Vector3(1.0, 1.95, 0.06)), "paint", Vector3(0, 0.98, 2.62), Vector3.ZERO, Color(0.3, 0.32, 0.25))
-				_mk(Res.cyl(0.08, 0.08, 0.7, 8), "steel", Vector3(1.8, 3.15, 1.6))
-				_mk(Res.cyl(0.13, 0.13, 0.12, 8), "steel", Vector3(1.8, 3.5, 1.6), Vector3.ZERO, Color(0.2, 0.2, 0.2))
-				_mk(Res.cyl(0.008, 0.012, 2.4, 4), "metal_dark", Vector3(-2.3, 4.0, 2.3), Vector3(0.05, 0, 0.04), null, false)
+				var bk := _kit(rng)
+				BuildingOpenings.leaf(bk.at_point(Vector3(-0.5, 0, 2.6)), Vector2(1.0, 1.92), "steel", Color(0.3, 0.32, 0.25), 1.0)
+				BuildingFittings.flue(bk, Vector3(1.8, 2.8, 1.6), 0.08, 0.6, Color(0.3, 0.3, 0.29), "steel")
+				BuildingFittings.whip(bk, Vector3(-2.3, 2.8, 2.3), 2.4)
 			_box(Vector3(0, 0.02, 0), Vector3(4.4, 0.04, 4.4), Color(0.3, 0.29, 0.27), 0.0, false)
 		"watchtower":
 			for p in parts:
@@ -2986,7 +3056,7 @@ func _surf_kind(c: Color, mesh: Mesh) -> String:
 	var dark := v < 0.16
 	match skind:
 		"house_wall":
-			return "plaster"
+			return BuildingMaterials.surface(BuildingMaterials.house(int(size.y)))
 		"floor":
 			return "floor_tiles"
 		"rubble":

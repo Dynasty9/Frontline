@@ -105,3 +105,16 @@ export const Phone: Story = {
     await expect(await within(canvasElement).findByRole("link", { name: /Kestrel/ })).toBeVisible()
   },
 }
+
+/** A board with a handful on it: it says it's early days, and that there's room near the top. */
+export const EarlyDays: Story = {
+  beforeEach: mockMatchmaker({
+    health,
+    boards: { ...boards, all: { ...board, rows: board.rows.slice(0, 3), total: 3, pages: 1 } },
+  }),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await expect(await canvas.findByText(/It's early days/)).toBeVisible()
+    await expect(canvas.getByRole("link", { name: "How ranks work" })).toHaveAttribute("href", "/ranks")
+  },
+}

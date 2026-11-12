@@ -840,6 +840,9 @@ static func _preset(kind: String) -> Dictionary:
 			return {"pattern": PLAIN, "col_a": Color(0.07, 0.07, 0.07), "rough": 0.85, "bump": 0.3, "grime": 0.4}
 		"glass":
 			return {"pattern": PLAIN, "col_a": Color(0.08, 0.1, 0.12), "rough": 0.08, "metal": 0.4, "bump": 0.0, "grime": 0.0}
+		"window_lit":
+			# the same glass with a lamp on in the room behind it (see `lit`)
+			return {"pattern": PLAIN, "col_a": Color(0.08, 0.1, 0.12), "col_c": Color(2.4, 1.55, 0.8), "rough": 0.08, "metal": 0.4, "bump": 0.0, "grime": 0.0, "lit": 1.0}
 		"track":
 			return {"pattern": TRACK, "col_a": Color(0.13, 0.12, 0.11), "col_b": Color(0.3, 0.27, 0.23), "rough": 0.7, "metal": 0.5, "bump": 2.0, "grime": 0.5, "local_space": true}
 		"camo_army":
@@ -922,6 +925,8 @@ uniform float rust = 0.0;
 uniform float pitting = 1.0;  // concrete: how much of the old pitting shows
 uniform float seams = 1.0;  // concrete: the formwork joints
 uniform float cell_w = 1.05;  // HESCO: the width of a cell
+uniform float lit = 0.0;  // lamplight behind it (a window, a lantern): glows as the light goes
+global uniform float window_glow;  // how much lamplight shows: the time of day (Atmosphere.lamplight)
 uniform bool local_space = false;
 // Shared vehicle maps are linear data, projected in metres without mesh UVs.
 uniform bool vehicle_surface = false;
@@ -1395,6 +1400,12 @@ void fragment() {
 	SPECULAR = vehicle_surface ? surface_specular : 0.4;
 	CLEARCOAT = vehicle_surface ? surface_coat : 0.0;
 	CLEARCOAT_ROUGHNESS = vehicle_surface ? surface_coat_roughness : 0.22;
+	// lamplight in a window by dusk and night, brighter in some rooms than
+	// others (a hash of where the window is, so a batch keeps each one's)
+	if (lit > 0.0) {
+		float room = fract(sin(dot(floor(wpos.xz * 0.6) + floor(wpos.y * 0.4), vec2(12.9898, 78.233))) * 43758.5453);
+		EMISSION = col_c * lit * window_glow * (0.55 + 0.9 * room);
+	}
 	// bump mapping from the pattern height (surface gradient); the height is
 	// band-limited above, so its screen-space slope is stable under motion
 	if (bump > 0.0) {

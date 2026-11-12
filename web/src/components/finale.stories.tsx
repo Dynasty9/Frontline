@@ -29,3 +29,15 @@ export const WindowsVisitor: Story = {
 export const LinuxVisitor: Story = {
   args: { platform: "linux" },
 }
+
+/** On a phone: send it to a computer. */
+export const Phone: Story = {
+  args: { phone: true },
+  globals: { viewport: { value: "mobile1" } },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await expect(canvas.queryByRole("link", { name: /Download for/ })).toBeNull()
+    // (below the fold on a phone, it comes in as it's scrolled to)
+    await expect(canvas.getByRole("button", { name: "Send to my computer" })).toBeInTheDocument()
+  },
+}

@@ -41,6 +41,21 @@ var elev: Node3D  # an artillery barrel or rocket launcher that rises to fire (r
 ## six): pivots spinning about Y. Each may hold a "Blades" node (shown slow)
 ## and a "Blur" disc (shown fast), like the main rotor.
 var rotors: Array = []
+## The mouths of the exhaust pipes, in the model's own space: the origin at the
+## mouth, Y the way the gas leaves (the heat haze: Vehicle.heat_sources). Kept
+## as numbers, not nodes, so a fitting still folds away into its parent; the
+## pipes sit on parts that never move against the model.
+var exhausts: Array[Transform3D] = []
+
+
+## Notes an exhaust's mouth at `pos` on `parent`, the gas leaving along `dir`.
+func exhaust_at(parent: Node3D, pos: Vector3, dir: Vector3) -> void:
+	var t := Transform3D(VehicleFrames.aim(dir), pos)
+	var p := parent
+	while p != null and p != root:
+		t = p.transform * t
+		p = p.get_parent() as Node3D
+	exhausts.append(t)
 
 
 ## A civilian car: 0 saloon, 1 hatchback, 2 pickup, 3 van, 4 estate.

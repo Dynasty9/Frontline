@@ -82,11 +82,13 @@ export const Loading: Story = {
   args: { lobbies: undefined, updatedAt: null },
 }
 
-/** Nobody hosting: the way in is Find Match. */
+/** Nobody hosting: the way in is Find Match, or the footage, or the AI meanwhile. */
 export const Empty: Story = {
   args: { lobbies: [] },
   play: async ({ args, canvasElement }) => {
     const canvas = within(canvasElement)
+    await expect(canvas.getByRole("link", { name: "Play against the AI" })).toHaveAttribute("href", "/play")
+    await expect(canvas.getByRole("button", { name: "Watch the footage" })).toBeVisible()
     const find = canvas.getByRole("link", { name: /Find a match/ })
     await expect(find).toHaveAttribute("href", "frontline://find-match")
     await userEvent.click(find)

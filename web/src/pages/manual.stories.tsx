@@ -20,6 +20,19 @@ const meta = {
 export default meta
 type Story = StoryObj<typeof meta>
 
+/** The viewer, asked for (it waits for the visitor, unless they've loaded it on this device before). */
+async function load(page: HTMLElement, name: RegExp = /3D model of/) {
+  const canvas = within(page)
+  // once the viewer's manifest has answered: its Load button, or the viewer itself if it was loaded before
+  const first = await waitFor(() => {
+    const found = canvas.queryByRole("button", { name: /Load 3D models/ }) ?? canvas.queryByTitle(name)
+    if (!found) throw new Error("No 3D viewer yet")
+    return found
+  })
+  if (first.tagName === "BUTTON") await userEvent.click(first)
+  return (await canvas.findByTitle(name)) as HTMLIFrameElement
+}
+
 /** A stand-in viewer: the frame emptied, and its messages to and from the page by hand. */
 async function viewer(frame: HTMLIFrameElement) {
   await new Promise<void>((resolve) => {
@@ -120,7 +133,7 @@ export const InspectModel: Story = {
   beforeEach: mockMatchmaker({ health, viewer: true, manual: true }),
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    const frame = (await canvas.findByTitle(/3D model of/)) as HTMLIFrameElement
+    const frame = await load(canvasElement)
     const { messages, receive } = await viewer(frame)
     const initialSrc = frame.getAttribute("src")
     receive("frontline-model-loaded")
@@ -165,7 +178,7 @@ export const SupportDemo: Story = {
   beforeEach: mockMatchmaker({ health, viewer: true, manual: true }),
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    const frame = (await canvas.findByTitle(/3D model of/)) as HTMLIFrameElement
+    const frame = await load(canvasElement)
     const { messages, receive } = await viewer(frame)
     receive("frontline-model-loaded")
     const search = await canvas.findByRole("searchbox", { name: "Vehicles" })
@@ -197,7 +210,7 @@ export const FireSupport: Story = {
   beforeEach: mockMatchmaker({ health, viewer: true, manual: true }),
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    const frame = (await canvas.findByTitle(/3D model of AC-130U/)) as HTMLIFrameElement
+    const frame = await load(canvasElement, /3D model of AC-130U/)
     const { messages, receive } = await viewer(frame)
     receive("frontline-model-loaded")
     receive("frontline-model-ready", "ac130")
@@ -209,6 +222,24 @@ export const FireSupport: Story = {
       window.location.origin
     )
     messages.mockRestore()
+  },
+}
+
+/** The viewer is the whole game: it says how big it is and waits to be asked for. */
+export const AsksBeforeDownloading: Story = {
+  beforeEach: [
+    mockMatchmaker({ health, viewer: true, manual: true }),
+    () => {
+      localStorage.removeItem("frontline:3d-models")
+    },
+  ],
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    const ask = await canvas.findByRole("button", { name: "Load 3D models · 249 MB" })
+    await expect(canvas.queryByTitle(/3D model of/)).toBeNull()
+    await userEvent.click(ask)
+    await expect(await canvas.findByTitle(/3D model of/)).toBeInTheDocument()
+    await expect(localStorage.getItem("frontline:3d-models")).toBe("on")
   },
 }
 
@@ -245,7 +276,7 @@ export const ViewerStartupError: Story = {
   beforeEach: mockMatchmaker({ health, viewer: true, manual: true }),
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    const frame = (await canvas.findByTitle(/3D model of/)) as HTMLIFrameElement
+    const frame = await load(canvasElement)
     await new Promise<void>((resolve) => {
       frame.addEventListener("load", () => resolve(), { once: true })
       frame.src = "about:blank"
@@ -263,5 +294,25 @@ export const ViewerStartupError: Story = {
     await userEvent.click(canvas.getByRole("button", { name: "Retry preview" }))
     await expect(canvas.queryByText("3D preview couldn't start")).toBeNull()
     await expect(canvas.getByTitle(/3D model of/)).not.toBe(frame)
+  },
+}
+
+/** Every entry has its own address, which a link (and its card) opens on. */
+export const EntryAddress: Story = {
+  args: { path: "/manual/vehicles/tank" },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await expect(await canvas.findByRole("heading", { level: 2, name: "Battle Tank" })).toBeVisible()
+    await userEvent.click(canvas.getByRole("button", { name: /^Humvee/ }))
+    await expect(canvas.getByRole("heading", { level: 2, name: "Humvee" })).toBeVisible()
+    await waitFor(() => expect(document.title).toBe("Humvee · Vehicles · Frontline"))
+  },
+}
+
+/** An entry that isn't in the manual is no page at all. */
+export const UnknownEntry: Story = {
+  args: { path: "/manual/vehicles/no-such-vehicle" },
+  play: async ({ canvasElement }) => {
+    await expect(await within(canvasElement).findByRole("heading", { name: /Off the map/ })).toBeVisible()
   },
 }

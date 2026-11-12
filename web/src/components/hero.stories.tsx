@@ -54,3 +54,16 @@ export const WatchTheFootage: Story = {
     await expect(args.onWatch).toHaveBeenCalledOnce()
   },
 }
+
+/** On a phone, where the game doesn't run: the link goes to a computer, not a download it can't use. */
+export const Phone: Story = {
+  args: { phone: true },
+  globals: { viewport: { value: "mobile1" } },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await expect(canvas.queryByRole("link", { name: /Download for/ })).toBeNull()
+    await userEvent.click(canvas.getByRole("button", { name: "Send to my computer" }))
+    // the phone's share sheet, or the link copied (or, refused both, the address to type)
+    await expect(await canvas.findByText(/open it on your computer|On your computer, go to/)).toBeVisible()
+  },
+}

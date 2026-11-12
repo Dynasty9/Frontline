@@ -14,8 +14,7 @@ export function Missions() {
         <Reveal from="signal">
           <SectionLabel>03 / Your first operation</SectionLabel>
           <h2 className="mt-4 font-display text-5xl leading-none font-extrabold uppercase sm:text-7xl">
-            A plan. A squad.
-            <br />
+            A plan. A squad. <br />
             <span className="text-primary">Then contact.</span>
           </h2>
           <p className="mt-6 max-w-xl leading-relaxed text-muted-foreground">

@@ -70,6 +70,7 @@ func _ready() -> void:
 		l.omni_range = 14.0
 		l.light_energy = 0.0
 		l.shadow_enabled = false
+		l.add_to_group(&"fx_light")  # (Atmosphere may lend it a shadow: Shadows from fire and flares)
 		add_child(l)
 		_lights.append(l)
 
@@ -330,6 +331,8 @@ func _explode(p: Vector3, size: float, kind := "he", sound_bus := &"Effects", on
 		return
 	Sfx.play("small_boom" if kind == "frag" else ("big_boom" if size >= 2.2 else ("explosion" if size >= 0.8 else "small_boom")), p, 4.0 if size >= 2.2 else (2.0 if size >= 1.3 else 0.0), 1.0, sound_bus)
 	_light(p, 4.5 * size, 12.0 + 9.0 * size)
+	if world.atmo:
+		world.atmo.heat.blast(p, size)  # (the air shimmers round it for a moment)
 	if _visible_at(p):
 		vfx.explode(p, size, kind, on_hull)
 		if wet:
@@ -383,6 +386,9 @@ func _cannon(from: Vector3, to: Vector3, src, report_bus := &"Effects") -> void:
 		Sfx.play(sound, from, 3.0, 1.0, report_bus)
 	if cd < 260.0:
 		gunfx.cannon_blast(from, dir, cd)
+	if world.atmo:
+		# the muzzle blast's hot gas, for a moment out in front of the barrel
+		world.atmo.heat.pulse(from + dir * 1.6, 0.8, dir, 1.8, 1.0, 0.4, 2.0, 0.35)
 	gunfx.tracer(from, to, Color(1.0, 0.5, 0.18, 7.0), 14.0, 0.12, CANNON_TRACER_SPEED)
 	if world.cam and Settings.get_v("shake"):
 		var d := world.cam.focus_pos.distance_to(from)
@@ -398,6 +404,8 @@ func _launch(from: Vector3, dir: Vector3, src) -> void:
 	var cd := _cam_d(from)
 	if cd < 230.0:
 		gunfx.launch_blast(from, dir, cd)
+	if world.atmo:
+		world.atmo.heat.pulse(from - dir * 1.8, 0.7, -dir, 1.8, 0.9, 0.45, 2.0, 0.35)  # (the back-blast's)
 
 
 func hull_strike(p: Vector3, normal: Vector3, bus := &"Effects") -> void:

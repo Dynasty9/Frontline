@@ -68,13 +68,7 @@ export default function PlayerPage() {
       <div className="mx-auto max-w-6xl px-4 pt-14 pb-24 sm:px-6">
         <SectionLabel>Commander</SectionLabel>
         {player.isPending ? (
-          <Card className="mt-3 flex-row items-center gap-5 p-6">
-            <Skeleton className="size-28" />
-            <div className="flex-1 space-y-3">
-              <Skeleton className="h-9 w-56" />
-              <Skeleton className="h-4 w-40" />
-            </div>
-          </Card>
+          <HeaderSkeleton />
         ) : player.isError ? (
           <Alert variant="destructive" className="mt-3 border-destructive/30">
             <WarningIcon />
@@ -168,6 +162,34 @@ function Header({ player: p, you }: { player: PublicPlayer; you: boolean }) {
   )
 }
 
+/** The header's shape while it loads, band for band, so the page doesn't jump when it arrives. */
+function HeaderSkeleton() {
+  return (
+    <Card aria-busy="true" className="mt-3 gap-0 py-0 text-sm">
+      <div className="flex flex-wrap items-center gap-5 p-5 sm:p-6">
+        <Skeleton className="size-28 shrink-0" />
+        <div className="min-w-0 flex-1 space-y-3">
+          <Skeleton className="h-9 w-56 max-w-full" />
+          <Skeleton className="h-3.5 w-40" />
+          <Skeleton className="h-3 w-48 max-w-full" />
+        </div>
+      </div>
+      <div className="border-t px-5 py-3 sm:px-6">
+        <Skeleton className="h-3 w-full" />
+        <Skeleton className="mt-3 h-1.5 w-full" />
+      </div>
+      <div className="grid grid-cols-2 border-t sm:grid-cols-4">
+        {["", "border-l", "border-t sm:border-t-0 sm:border-l", "border-t border-l sm:border-t-0"].map((edge) => (
+          <div key={edge} className={cn("px-5 py-3 sm:px-6", edge)}>
+            <Skeleton className="h-3 w-20" />
+            <Skeleton className="mt-2 h-6 w-16" />
+          </div>
+        ))}
+      </div>
+    </Card>
+  )
+}
+
 function Stat({ label, className, children }: { label: string; className?: string; children: React.ReactNode }) {
   return (
     <div className={cn("px-5 py-3 sm:px-6", className)}>
@@ -211,7 +233,15 @@ function CareerTiles({ callsign }: { callsign: string }) {
         Totalled from the after-action reports {callsign}'s game sent in.
       </p>
       {career.isPending ? (
-        <Skeleton className="mt-4 h-40" />
+        // the tiles' own grid, so the battles below don't move when the numbers land
+        <div aria-busy="true" className="mt-4 grid grid-cols-2 gap-px overflow-hidden border bg-border sm:grid-cols-3">
+          {Array.from({ length: 9 }, (_, i) => (
+            <div key={i} className="bg-card px-4 py-3">
+              <Skeleton className="h-3 w-24" />
+              <Skeleton className="mt-2 h-6 w-14" />
+            </div>
+          ))}
+        </div>
       ) : !c || c.battles === 0 ? (
         <p className="mt-4 text-sm text-muted-foreground">No battles on the record yet.</p>
       ) : (

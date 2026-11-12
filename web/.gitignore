@@ -31,3 +31,5 @@ __screenshots__
 
 # Exported Godot viewer (built with the site image)
 public/game/
+# the image's build makes these (.github/scripts/changelog_thumbs.py)
+public/changelog-thumbs/

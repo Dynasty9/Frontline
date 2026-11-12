@@ -161,6 +161,7 @@ static func turbine_exhaust(k: VehicleModels, parent: Node3D, a: Vector3, b: Vec
 	var length := a.distance_to(b)
 	if length < 0.01:
 		return
+	k.exhaust_at(parent, b, b - a)
 	var mount := k._pivot(parent, a)
 	mount.basis = VehicleFrames.aim(b - a)
 	var depth := minf(length * 0.9, end_radius * 2.4)

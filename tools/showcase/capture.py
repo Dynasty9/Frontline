@@ -17,10 +17,12 @@ def main():
     parser.add_argument('stage', choices=stages)
     parser.add_argument('--output', type=Path, required=True)
     parser.add_argument('--label', default='CURRENT BUILD')
-    parser.add_argument('--renderer', choices=['gl_compatibility', 'forward_plus'], default='gl_compatibility')
+    parser.add_argument('--renderer', choices=['gl_compatibility', 'forward_plus'], default=None,
+                        help="Defaults to the stage's own renderer, else gl_compatibility")
     parser.add_argument('--legacy-effects', action='store_true', help='Use the historical two-argument explosion API')
     args = parser.parse_args()
     stage = stages[args.stage]
+    renderer = args.renderer or stage.get('renderer', 'gl_compatibility')
     out = args.output.resolve()
     if out.exists() and any(out.iterdir()):
         parser.error('Use a new or empty output directory to avoid mixing captures.')
@@ -38,7 +40,7 @@ def main():
     elif sys.platform == 'darwin':
         display = ['--embedded', '--debug', '--ignore-error-breaks']
         env['FL_CAPTURE_SIZE'] = resolution
-    command = [godot, *display, '--path', str(ROOT), '--rendering-method', args.renderer,
+    command = [godot, *display, '--path', str(ROOT), '--rendering-method', renderer,
                '--audio-driver', 'Dummy', '--resolution', resolution,
                'res://' + stage['scene'], '--', '--clip=' + args.stage,
                '--label=' + args.label, '--frames=' + str(frames)]
