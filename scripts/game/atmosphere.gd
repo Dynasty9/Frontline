@@ -494,6 +494,7 @@ func _build_ground() -> void:
 	road_mat.set_shader_parameter("trench_mask", _blank_mask)
 	road_mat.set_shader_parameter("deform_tex", deform_tex)
 	road_mat.set_shader_parameter("wet", 1.0 if mood == "rain" else 0.0)
+	Mats.set_street_wet(1.0 if mood == "rain" else 0.0)
 
 
 func _build_post() -> void:
@@ -793,6 +794,7 @@ func apply_mood(m: String) -> void:
 	env.ambient_light_energy = float(_d.ambient)
 	ground_mat.set_shader_parameter("wet", 1.0 if mood == "rain" else 0.0)
 	Mats.set_shared(road_mat, &"wet", 1.0 if mood == "rain" else 0.0)
+	Mats.set_street_wet(1.0 if mood == "rain" else 0.0)
 	_setup_rain()
 	env.tonemap_exposure = float(_d.exposure) * float(Settings.get_v("brightness"))
 	env.fog_light_color = _d.fog
@@ -2128,21 +2130,71 @@ void fragment() {
 	float broken_edge = (texture(street_noise, wpos.xz * 0.65).r - 0.5) * 0.6;
 	float paved = smoothstep(-0.3, 0.35, distance + broken_edge) * country * step(1.0, town.z - town.x);
 	if (paved > 0.001) {
-		vec3 asph = street_surface(paving_noise, street_noise, wpos.xz);
+		float tar = 0.0;
+		vec3 asph = street_surface(paving_noise, street_noise, wpos.xz, tar);
 		if (OUTPUT_IS_SRGB) { asph = mix(asph / 12.92, pow((asph + 0.055) / 1.055, vec3(2.4)), step(vec3(0.04045), asph)); }
-		float dash = step(abs(x - 0.5), 0.011) * step(fract(UV.y / 7.0), 0.5);
-		asph = mix(asph, vec3(0.78, 0.74, 0.6) * (0.75 + 0.25 * n), dash * 0.8 * smoothstep(0.6, 0.95, paved));
-		float wear = smoothstep(0.08, 0.0, abs(x - 0.27)) + smoothstep(0.08, 0.0, abs(x - 0.73));
-		asph = mix(asph, asph * 0.85, wear * 0.4);
-		float pud2 = wet * smoothstep(0.55, 0.75, n2 * 0.8);
+		// Across a town street, kerb to kerb (5.8 m), traffic keeps to two lanes:
+		// tyres polish the wheel paths, engines drip oil down the middle of
+		// each lane, and grit and damp gather in the gutters along the kerbs.
+		float xm = x * 5.8;
+		float along = UV.y;
+		float aa = max(fwidth(xm), 0.002);
+		float ga = max(fwidth(along), 0.002);
+		float lane = fract(x * 2.0) - 0.5;
+		float drip = texture(street_noise, vec2(along * 0.09, x * 2.0) + 0.43).r;
+		float oil = (1.0 - smoothstep(0.03, 0.11, abs(lane))) * smoothstep(0.3, 0.7, drip);
+		float wheel = 1.0 - smoothstep(0.03, 0.12, abs(abs(lane) - 0.27));
+		float kerb = min(xm, 5.8 - xm);
+		float gutter = 1.0 - smoothstep(0.12, 0.5, kerb);
+		asph *= 1.0 - oil * 0.24;
+		asph = mix(asph, asph * 1.14 + 0.004, wheel * 0.45);
+		asph = mix(asph, vec3(0.115, 0.105, 0.09) * (0.75 + 0.5 * n), gutter * 0.5);
+		asph *= 1.0 - (1.0 - smoothstep(0.02, 0.09, kerb)) * 0.35;
+		// a drain grate in the gutter every 32 m, the sides taking turns
+		float stretch = floor(along / 32.0);
+		float from_grate = abs(along - stretch * 32.0 - 16.0);
+		float side = mod(stretch, 2.0) < 0.5 ? xm : 5.8 - xm;
+		float grate = (1.0 - smoothstep(0.3 - ga, 0.3 + ga, from_grate)) * smoothstep(0.06 - aa, 0.06 + aa, side) * (1.0 - smoothstep(0.52 - aa, 0.52 + aa, side));
+		float grate_inner = (1.0 - smoothstep(0.25 - ga, 0.25 + ga, from_grate)) * smoothstep(0.1 - aa, 0.1 + aa, side) * (1.0 - smoothstep(0.48 - aa, 0.48 + aa, side));
+		float slot = smoothstep(0.32, 0.45, abs(fract(side / 0.055) - 0.5)) * clamp(0.055 / (aa * 4.0), 0.0, 1.0) * grate_inner;
+		vec3 iron = vec3(0.045, 0.042, 0.04) * (0.8 + 0.4 * n3);
+		vec3 grate_col = mix(mix(iron * 1.3 + vec3(0.012, 0.006, 0.0), iron, grate_inner), vec3(0.006), slot);
+		// a manhole cover down the middle of a lane every 46 m
+		float run = floor((along + 9.0) / 46.0);
+		vec2 to_cover = vec2(xm - (mod(run, 2.0) < 0.5 ? 1.45 : 4.35), along - run * 46.0 - 14.0);
+		float r = length(to_cover);
+		float ra = max(fwidth(r), 0.002);
+		float cover = 1.0 - smoothstep(0.34 - ra, 0.34 + ra, r);
+		float ring = cover * smoothstep(0.30 - ra, 0.30 + ra, r);
+		vec2 g = abs(fract(to_cover / 0.07) - 0.5);
+		float studs = smoothstep(0.30, 0.42, max(g.x, g.y)) * clamp(0.07 / (ra * 4.0), 0.0, 1.0);
+		vec3 cover_col = mix(iron * (1.2 - studs * 0.5), iron * 1.6, ring);
+		// the asphalt laid round a cover settles and darkens in a ring of its own
+		asph *= 1.0 - 0.12 * (1.0 - smoothstep(0.34, 0.75, r)) * (1.0 - cover);
+		asph = mix(asph, grate_col, grate);
+		asph = mix(asph, cover_col, cover);
+		float metal_part = max(grate, cover);
+		// the centre line, a broken dash, worn thin where wheels cross it
+		float dash_x = 1.0 - smoothstep(0.065 - aa, 0.065 + aa, abs(xm - 2.9));
+		float dash_y = fract(along / 7.0);
+		float dash = dash_x * smoothstep(0.0, ga / 7.0 + 0.002, dash_y) * (1.0 - smoothstep(0.5 - ga / 7.0 - 0.002, 0.5, dash_y));
+		float paint_wear = smoothstep(0.55, 0.85, texture(street_noise, wpos.xz * 0.9 + 0.6).r * 0.7 + n3 * 0.45);
+		dash *= (1.0 - paint_wear * 0.85) * smoothstep(0.6, 0.95, paved) * (1.0 - metal_part);
+		asph = mix(asph, vec3(0.74, 0.73, 0.68) * (0.8 + 0.25 * n3), dash);
+		// rain lies in the wheel ruts and the gutters first
+		float pud2 = wet * smoothstep(0.55, 0.75, street_puddle(street_noise, wpos.xz) + wheel * 0.12 + gutter * 0.3) * (1.0 - metal_part);
 		asph *= 1.0 - wet * 0.3;
 		ALBEDO = mix(col, mix(asph, asph * 0.4, pud2), paved);
 		vec4 surface = texture(paving_surface, wpos.xz / 2.2);
 		vec3 normal = surface.rgb * 2.0 - 1.0;
-		normal.xy *= 0.18;
+		normal.xy *= 0.18 * (1.0 - metal_part) * (1.0 - dash * 0.5);
 		NORMAL = normalize(mix(NORMAL, (VIEW_MATRIX * vec4(ground_basis * normal, 0.0)).xyz, paved));
-		ROUGHNESS = mix(ROUGHNESS, mix(clamp(surface.a, 0.65, 1.0) - wet * 0.3, 0.06, pud2), paved);
+		float asphalt_rough = clamp(surface.a, 0.65, 1.0) - wheel * 0.1 - tar * 0.3 + gutter * 0.05;
+		asphalt_rough = mix(asphalt_rough, 0.58, dash);
+		asphalt_rough = mix(asphalt_rough, mix(0.5, 0.8, slot), metal_part);
+		ROUGHNESS = mix(ROUGHNESS, mix(asphalt_rough - wet * 0.3, 0.06, pud2), paved);
 		SPECULAR = mix(SPECULAR, mix(0.3, 0.55, pud2), paved);
+		METALLIC = metal_part * 0.45 * paved;
 		ALPHA = mix(edge, 1.0, paved);
 	}
 	if (OUTPUT_IS_SRGB) { ALBEDO = mix(ALBEDO * 12.92, 1.055 * pow(max(ALBEDO, vec3(0.0)), vec3(1.0 / 2.4)) - 0.055, step(vec3(0.0031308), ALBEDO)); }

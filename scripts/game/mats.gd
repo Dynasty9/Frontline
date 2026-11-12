@@ -28,6 +28,7 @@ const ASPHALT := 18
 const PAVEMENT := 19
 const TURF := 20
 const WEATHERED_PHOTO := 21
+const ROAD_PAINT := 22
 const PHOTO_MEAN := preload("res://assets/town/material_means.tres")
 
 # One world-space surface keeps junction overlays continuous with street ribbons.
@@ -41,7 +42,26 @@ mat3 ground_surface_basis(vec3 position) {
 	return mat3(across, -normalize(cross(across, up)), up);
 }
 
-vec3 street_surface(sampler2D tex, sampler2D noise, vec2 p) {
+// Thin lines where value noise crosses its middle: a meandering network like
+// the cracks road crews fill with tar. Each is about 4 cm wide; with distance a
+// line covers less of a pixel, so it fades out rather than crawl.
+float street_crack_line(sampler2D noise, vec2 p) {
+	float n = texture(noise, p * 0.028 + 0.37).r + (texture(noise, p * 0.11 + 0.71).r - 0.5) * 0.22 - 0.5;
+	float w = max(fwidth(n), 0.00001);
+	float half_width = 0.006;
+	return (1.0 - smoothstep(half_width - w, half_width + w, abs(n))) * clamp(half_width * 2.0 / w, 0.0, 1.0);
+}
+
+// Where rain stands on a street: the dips in its surface, the same for the
+// road ribbons and the paving laid over them (junctions, markings), so a
+// puddle runs on across both.
+float street_puddle(sampler2D noise, vec2 p) {
+	return texture(noise, p * 0.012 + 0.5).r * 0.8 + (texture(noise, p * 0.05 + 0.2).r - 0.5) * 0.3;
+}
+
+// tar: how much of this point is tar (sealed cracks, the seams round patches),
+// which is darker and smoother than the worn aggregate round it.
+vec3 street_surface(sampler2D tex, sampler2D noise, vec2 p, out float tar) {
 	vec3 aggregate = texture(street_detail, p / 2.2).rgb;
 	if (OUTPUT_IS_SRGB) {
 		aggregate = mix(aggregate / 12.92, pow((aggregate + 0.055) / 1.055, vec3(2.4)), step(vec3(0.04045), aggregate));
@@ -55,17 +75,31 @@ vec3 street_surface(sampler2D tex, sampler2D noise, vec2 p) {
 	}
 	vec3 base = aggregate * mix(1.0, clamp(dot(wear, vec3(0.2126, 0.7152, 0.0722)) / 0.126, 0.5, 1.4), 0.35);
 	float weather = texture(noise, p * 0.006 + 0.17).r;
-	float stains = smoothstep(0.56, 0.74, texture(noise, p * 0.035 + 0.63).r);
-	vec2 cell = floor(p / vec2(11.0, 7.0));
-	vec2 f = fract(p / vec2(11.0, 7.0));
+	// Spills and soot soak in as soft, uneven stains, not round blots.
+	float stains = smoothstep(0.58, 0.80, texture(noise, p * 0.035 + 0.63).r * 0.7 + texture(noise, p * 0.16 + 0.29).r * 0.3);
+	base *= 0.80 + weather * 0.45;
+	// Saw-cut repairs: rectangles of newer, darker binder, a few years apart
+	// in age, each edged with a ribbon of sealant where it meets the old road.
+	vec2 cell = floor(p / vec2(13.0, 9.0));
+	vec2 f = fract(p / vec2(13.0, 9.0));
 	vec2 variation = vec2(fract(sin(dot(cell, vec2(12.9898,78.233))) * 43758.5453), fract(sin(dot(cell, vec2(39.346,11.135))) * 23421.631));
-	float chosen = step(0.57, texture(noise, cell * 0.17).r);
-	vec2 center = vec2(0.35) + variation * 0.3;
-	vec2 half_size = vec2(0.07, 0.10) + variation.yx * vec2(0.15, 0.17);
-	float shape = max(abs(f.x - center.x) / half_size.x, abs(f.y - center.y) / half_size.y);
-	float repair = chosen * (1.0 - smoothstep(0.92, 1.02, shape + texture(noise, p * 0.3).r * 0.10));
-	base = mix(base * (0.75 + weather * 0.65), aggregate * 0.52, repair);
-	base *= 1.0 - stains * 0.28;
+	float chosen = step(0.62, texture(noise, cell * 0.17).r);
+	vec2 center = vec2(0.3) + variation * 0.4;
+	vec2 half_size = vec2(0.05, 0.07) + variation.yx * vec2(0.12, 0.14);
+	vec2 off_center = abs(f - center) / half_size;
+	float shape = max(off_center.x, off_center.y);
+	float edge_px = max(fwidth(shape), 0.0001);
+	float repair = chosen * (1.0 - smoothstep(1.0 - edge_px, 1.0 + edge_px, shape));
+	// the sealant ribbon, about 6 cm, wider than a pixel or not drawn at all
+	float seam_w = 0.06 / (min(half_size.x * 13.0, half_size.y * 9.0));
+	float seam = chosen * (1.0 - smoothstep(seam_w * 0.5, seam_w * 0.5 + edge_px, abs(shape - 1.0))) * clamp(seam_w / edge_px, 0.0, 1.0);
+	float age = fract(variation.x * 7.31);
+	vec3 patched = aggregate * mix(0.74, 0.96, age) * (0.9 + 0.2 * weather);
+	base = mix(base, patched, repair);
+	float cracks = street_crack_line(noise, p) * smoothstep(0.52, 0.68, texture(noise, p * 0.012 + 0.83).r) * (1.0 - repair);
+	tar = max(seam, cracks);
+	base = mix(base, aggregate * 0.34, tar * 0.85);
+	base *= 1.0 - stains * 0.16;
 	// Compatibility reads sRGB samples; blend in linear light, then return its expected output.
 	if (OUTPUT_IS_SRGB) {
 		base = mix(base * 12.92, 1.055 * pow(max(base, vec3(0.0)), vec3(1.0 / 2.4)) - 0.055, step(vec3(0.0031308), base));
@@ -237,12 +271,13 @@ static func paving(kind: String) -> ShaderMaterial:
 	if _paving.has(kind):
 		return _paving[kind]
 	var m := get_mat(kind).duplicate() as ShaderMaterial
-	if kind == "asphalt":
-		# Match the road ribbons' transparent lighting pass at junctions.
+	if kind == "asphalt" or kind == "road_paint":
+		# Match the road ribbons' transparent lighting pass at junctions (and
+		# where paint has worn through to them); markings draw over both.
 		var sh := Shader.new()
 		sh.code = m.shader.code.replace("ALBEDO = col;", "ALBEDO = col; ALPHA = 1.0;")
 		m.shader = sh
-		m.render_priority = -1
+		m.render_priority = -1 if kind == "asphalt" else 0
 	m.set_shader_parameter("crater_cut", true)
 	m.set_shader_parameter("crater_half", MapDims.HALF)
 	if _crater_tex:
@@ -251,6 +286,15 @@ static func paving(kind: String) -> ShaderMaterial:
 		m.set_shader_parameter("trench_tex", _trench_tex)
 	_paving[kind] = m
 	return m
+
+
+## Rain on the streets: the paving laid over the road ribbons (junctions,
+## markings, car parks) darkens and holds puddles just as the ribbons do.
+static func set_street_wet(value: float) -> void:
+	for kind in ["asphalt", "road_paint"]:
+		var m := paving(kind)
+		set_shared(m, &"wet", value)
+		set_shared(vc_variant(m), &"wet", value)
 
 
 ## The ground's deformation and trench masks (the atmosphere hands them over
@@ -775,8 +819,14 @@ static func _preset(kind: String) -> Dictionary:
 			return {"pattern": TURF, "col_a": Color(1, 1, 1), "rough": 0.98, "bump": 0.0, "grime": 0.0, "scale": 0.5, "photo_color": preload("res://assets/town/leafy_grass_color.jpg"), "photo_surface": preload("res://assets/town/leafy_grass_surface.png")}
 		"pavement":
 			return {"pattern": PAVEMENT, "col_a": Color(0.52, 0.51, 0.48), "rough": 0.93, "bump": 0.0, "grime": 0.0, "scale": 0.555556, "photo_color": preload("res://assets/town/concrete_pavement_color.jpg"), "photo_surface": preload("res://assets/town/concrete_pavement_surface.png")}
+		"square_paving":
+			# The square: the same concrete in a larger slab, 0.9 by 0.45 m.
+			return {"pattern": PAVEMENT, "col_a": Color(0.52, 0.51, 0.48), "rough": 0.93, "bump": 0.0, "grime": 0.0, "scale": 0.37037, "photo_color": preload("res://assets/town/concrete_pavement_color.jpg"), "photo_surface": preload("res://assets/town/concrete_pavement_surface.png")}
+		"road_paint":
+			# Markings on the road: a thin film over the asphalt, worn by traffic.
+			return {"street_detail": preload("res://assets/town/road_damaged_clean_color.jpg"), "pattern": ROAD_PAINT, "col_a": Color(0.9, 0.9, 0.87), "rough": 0.6, "bump": 0.0, "grime": 0.0, "photo_color": preload("res://assets/town/aerial_asphalt_01_color.jpg"), "photo_surface": preload("res://assets/town/road_damaged_clean_surface.png")}
 		"curbstone":
-			return {"pattern": WEATHERED_PHOTO, "photo_mean": PHOTO_MEAN.get_meta("concrete_floor_01"), "col_a": Color(0.57, 0.56, 0.53), "col_b": Color(0.52, 0.51, 0.48), "rough": 0.94, "bump": 0.0, "grime": 0.0, "pitting": 0.1, "seams": 0.0, "scale": 0.5, "weathering": 0.5, "photo_color": preload("res://assets/town/concrete_floor_01_color.jpg"), "photo_surface": preload("res://assets/town/concrete_floor_01_surface.png")}
+			return {"pattern": WEATHERED_PHOTO, "photo_mean": PHOTO_MEAN.get_meta("concrete_floor_01"), "col_a": Color(0.47, 0.465, 0.45), "col_b": Color(0.52, 0.51, 0.48), "rough": 0.94, "bump": 0.0, "grime": 0.0, "pitting": 0.1, "seams": 0.0, "scale": 0.5, "weathering": 0.5, "photo_color": preload("res://assets/town/concrete_floor_01_color.jpg"), "photo_surface": preload("res://assets/town/concrete_floor_01_surface.png")}
 		"concrete_floor":
 			return {"pattern": WEATHERED_PHOTO, "photo_mean": PHOTO_MEAN.get_meta("concrete_floor_01"), "col_a": Color(0.42, 0.41, 0.38), "col_b": Color(0.3, 0.28, 0.25), "rough": 0.9, "bump": 0.0, "grime": 0.0, "scale": 0.5, "weathering": 0.5, "photo_color": preload("res://assets/town/concrete_floor_01_color.jpg"), "photo_surface": preload("res://assets/town/concrete_floor_01_surface.png")}
 		"sandbag":
@@ -900,6 +950,7 @@ uniform float rough = 0.85;
 uniform float metal = 0.0;
 uniform float bump = 1.0;
 uniform float grime = 0.5;
+uniform float wet = 0.0;  // streets in the rain (Mats.set_street_wet)
 uniform float weathering = 0.0;
 uniform bool grain_horizontal = false;
 uniform float rust = 0.0;
@@ -999,6 +1050,8 @@ void fragment() {
 	float h = 0.5;
 	float r = rough;
 	float m = metal;
+	float street_tar = 0.0;
+	float paint_worn = 0.0;
 	if (pattern == 1 || pattern == 2) {
 		// brick (pattern 2 = plaster with chipped areas showing brick)
 		vec2 bs = vec2(0.25, 0.085);
@@ -1029,7 +1082,18 @@ void fragment() {
 			r = mix(rough, 0.95, chip);
 		}
 	} else if (pattern == 18) {
-		col = street_surface(photo_color, noise_tex, wpos.xz);
+		col = street_surface(photo_color, noise_tex, wpos.xz, street_tar);
+		h = 0.5;
+	} else if (pattern == 22) {
+		// Road paint is a thin film laid on the asphalt: it takes the stone's
+		// grain, and tyres wear it through to the road beneath, most where they
+		// run over it most.
+		vec3 road = street_surface(photo_color, noise_tex, wpos.xz, street_tar);
+		float grain = tnoise(wpos.xz * 22.0) * 0.6 + tnoise(wpos.xz * 7.0) * 0.4;
+		float worn = smoothstep(0.60, 0.78, tfbm(wpos.xz * 0.7 + 3.1) + (tnoise(wpos.xz * 9.0) - 0.5) * 0.25);
+		col = mix(col_a * (0.86 + 0.2 * grain) * mix(1.0, 0.82, smoothstep(0.4, 0.8, tfbm(wpos.xz * 0.35))), road / max(tint.rgb, vec3(0.05)), worn * 0.9);
+		paint_worn = worn;
+		street_tar *= worn;
 		h = 0.5;
 	} else if (pattern == 21) {
 		// Keep the photographed variation while honoring the material and instance colours.
@@ -1045,10 +1109,23 @@ void fragment() {
 			float dry = smoothstep(0.35, 0.7, tfbm(wpos.xz * 0.08));
 			col *= mix(vec3(0.23, 0.39, 0.16), vec3(0.36, 0.37, 0.21), dry);
 		} else {
-			vec2 slab = floor(uv * vec2(3.0, 6.0));
-			col *= 0.82 + 0.30 * h12(slab);
+			// The photograph is laid in stretcher bond, three slabs across and six
+			// courses down, every other course shifted half a slab: give each
+			// slab its own shade along its real joints, not a grid across them.
+			float course = floor(uv.y * 6.0);
+			vec2 slab = vec2(floor(uv.x * 3.0 + 0.5 - mod(course, 2.0) * 0.5), course);
+			float pick = h12(slab + 0.37);
+			col *= 0.93 + 0.12 * h12(slab);
+			// Desaturate the warm scan toward plain grey concrete.
+			col = mix(col, vec3(dot(col, vec3(0.2126, 0.7152, 0.0722))), 0.35);
+			// now and then a slab relaid newer and paler, or one gone dark with oil or damp
+			col = mix(col, col * vec3(1.10, 1.11, 1.13), step(0.93, pick));
+			col *= 1.0 - 0.16 * step(pick, 0.04);
 			float staining = smoothstep(0.53, 0.72, tfbm(wpos.xz * 0.21 + 13.0));
-			col *= mix(vec3(1.0), vec3(0.62, 0.60, 0.54), staining * 0.65);
+			col *= mix(vec3(1.0), vec3(0.70, 0.69, 0.65), staining * 0.55);
+			// footfall polishes the middle of the way, grit gathers at the edges
+			float trodden = smoothstep(0.45, 0.75, tfbm(wpos.xz * 0.6 + 41.0));
+			col *= 1.0 - trodden * 0.06;
 		}
 		h = 0.5;
 	} else if (pattern == 3) {
@@ -1306,7 +1383,7 @@ void fragment() {
 	float macro = tfbm(weather_pos.xz * 0.11 + weather_pos.y * 0.07 + off * 0.2);
 	if (vehicle_surface) { col *= 0.96 + 0.08 * macro; }
 	else if (pattern == 21) { col *= mix(1.0, 0.88 + 0.24 * macro, weathering); }
-	else if (pattern != 18) { col *= 0.88 + 0.24 * macro; }
+	else if (pattern != 18 && pattern != 22) { col *= 0.88 + 0.24 * macro; }
 	// grime and dust toward the ground
 	float low = 1.0 - smoothstep(0.0, 0.9, weather_pos.y - ground_y);
 	float gn = tnoise(uv * 2.0 + off);
@@ -1314,14 +1391,17 @@ void fragment() {
 	col = mix(col, vehicle_surface ? vec3(0.12, 0.095, 0.065) : col * 0.62 + vec3(0.05, 0.04, 0.02), dirt);
 	ALBEDO = col;
 	ROUGHNESS = clamp(r + (macro - 0.5) * (vehicle_surface ? 0.04 : 0.12) + (vehicle_surface ? dirt * 0.15 : 0.0), 0.05, 1.0);
-	if (pattern >= 18 && pattern <= 20 && an.y > 0.5) {
+	if ((pattern >= 18 && pattern <= 20 || pattern == 22) && an.y > 0.5) {
 		vec2 puv = wpos.xz / 2.2;
-		if (pattern != 18) { puv = uv; }
+		if (pattern == 19 || pattern == 20) { puv = uv; }
 		vec4 surface = texture(photo_surface, puv);
 		vec3 normal = surface.rgb * 2.0 - 1.0;
-		normal.xy *= 0.18;
+		normal.xy *= pattern == 22 ? mix(0.08, 0.18, paint_worn) : 0.18;
 		NORMAL = normalize((VIEW_MATRIX * vec4(ground_surface_basis(wpos) * normal, 0.0)).xyz);
 		ROUGHNESS = clamp(surface.a, 0.65, 1.0);
+		// tar is smoother than the aggregate; paint smoother still where it's whole
+		ROUGHNESS = mix(ROUGHNESS, 0.5, street_tar * 0.7);
+		if (pattern == 22) { ROUGHNESS = mix(0.58, ROUGHNESS, paint_worn); }
 	}
 	if (pattern == 21 || pattern == 2) {
 		vec4 photo = texture(photo_surface, pattern == 2 ? uv * 0.5 : uv + off * 0.03);
@@ -1339,6 +1419,18 @@ void fragment() {
 	}
 	METALLIC = vehicle_surface ? m * (1.0 - dirt) : m;
 	SPECULAR = vehicle_surface ? surface_specular : 0.4;
+	if ((pattern == 18 || pattern == 22) && wet > 0.0) {
+		// as the road ribbons do it: darkened by the rain, puddles in the dips
+		vec3 lit = ALBEDO;
+		if (OUTPUT_IS_SRGB) { lit = mix(lit / 12.92, pow((lit + 0.055) / 1.055, vec3(2.4)), step(vec3(0.04045), lit)); }
+		float pud = wet * smoothstep(0.55, 0.75, street_puddle(noise_tex, wpos.xz));
+		lit *= 1.0 - wet * 0.3;
+		lit = mix(lit, lit * 0.4, pud);
+		if (OUTPUT_IS_SRGB) { lit = mix(lit * 12.92, 1.055 * pow(max(lit, vec3(0.0)), vec3(1.0 / 2.4)) - 0.055, step(vec3(0.0031308), lit)); }
+		ALBEDO = lit;
+		ROUGHNESS = mix(ROUGHNESS - wet * 0.3, 0.06, pud);
+		SPECULAR = mix(0.3, 0.55, pud);
+	}
 	CLEARCOAT = vehicle_surface ? surface_coat : 0.0;
 	CLEARCOAT_ROUGHNESS = vehicle_surface ? surface_coat_roughness : 0.22;
 	// bump mapping from the pattern height (surface gradient); the height is
