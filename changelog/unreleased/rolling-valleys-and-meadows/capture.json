@@ -5,10 +5,9 @@
   "engine": "Godot 4.7.2 stable, Forward+, 1600x900, preset high",
   "command": "godot --path . --audio-driver Dummy --resolution 1600x900 --script tests/fixtures/environment-views.gd -- --aivai --seed=3 --offscreen --nohud --set=perf:0 --preset=high --mood=day --focus=0,0 --capture-prefix=<dir>/views",
   "rows": [
-    "panorama (seed 3, day)",
-    "forest (seed 3, day)",
-    "snow-close (seed 11, golden)"
+    "panorama",
+    "forest",
+    "snow-close"
   ],
-  "note": "Each row pairs the fixture's matched camera before and after; images resized to 800x450 per cell.",
-  "command_golden": "godot --path . --audio-driver Dummy --resolution 1600x900 --script tests/fixtures/environment-views.gd -- --aivai --seed=11 --offscreen --nohud --set=perf:0 --preset=high --mood=golden --focus=0,0 --capture-prefix=<dir>/views"
+  "note": "Each row pairs the fixture's matched camera before and after; images resized to 800x450 per cell."
 }
