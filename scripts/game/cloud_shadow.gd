@@ -36,7 +36,7 @@ const SCALE := 1.7 / 512.0
 ## How fast the pattern drifts, in pattern widths a second (about 0.5 m/s).
 const DRIFT := 0.00175
 
-static var _shaders: Array = []  # [WeakRef to a Shader, its source, flags] made by make()
+static var _shaders: Array = []  # [WeakRef to a Shader, its source, flags], one for each make()
 static var _on := false  # what the shaders were last coded for
 static var _offset := Vector2.ZERO
 static var _strength := 0.0
