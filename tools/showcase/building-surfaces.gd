@@ -217,6 +217,10 @@ func _subject(kind: String) -> Node3D:
 				parade.add_child(shop)
 				_shop_front(shop, 7.4, 9.0, [0, 1, 4][i], i)
 			return parade
+		"barn":
+			# a farm's barn as the farmsteads build it (weatherboarded, where
+			# the material exists; before it, a house of the colour it drew)
+			return _house(13.0, 10.0, 5 if BuildingMaterials.HOUSE.size() > 5 else 0, false)
 		"house_open":
 			# the roof hidden, as when men are inside: the room as they see it
 			return _house(9.0, 7.6, 1, false, false)
@@ -282,7 +286,7 @@ func _rotated(n: Node3D) -> Node3D:
 ## door in it, windows in most other sections.
 func _house(w: float, d: float, color: int, flat: bool, roofed := true, ruined := false, roof_id := 0, wall_ids := {}) -> Node3D:
 	var root := Node3D.new()
-	var floor := Structure.preview_model("floor", -1, 1 if ruined else 0, Vector3(w, 0.06, d), false, 7)
+	var floor := Structure.preview_model("floor", -1, 1 if ruined else (2 if BuildingMaterials.house(color) == "timber" else 0), Vector3(w, 0.06, d), false, 7)
 	root.add_child(floor)
 	var sides := [[Vector3(0, 0, -d * 0.5), w, 0.0], [Vector3(0, 0, d * 0.5), w, 0.0],
 		[Vector3(-w * 0.5, 0, 0), d - 0.4, PI * 0.5], [Vector3(w * 0.5, 0, 0), d - 0.4, PI * 0.5]]

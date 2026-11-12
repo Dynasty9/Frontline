@@ -906,7 +906,8 @@ func farms(k: int) -> void:
 			continue
 		mg._house(hc, rng.randf_range(9.0, 11.0), 8.0, axis, 1.0, false, 0.2)
 		_fronts.append(hc - n * 4.0 + Vector3(0, 2.85, 0))
-		mg._house(bc, 13.0, 10.0, axis, 1.0, false, 0.35)
+		var no_doors: Array[Vector3] = []
+		mg._house(bc, 13.0, 10.0, axis, 1.0, false, 0.35, no_doors, true)
 		_d("fence", base - n * 2.0 + t * 1.0, yaw_along(t), Vector3(30.0, 1.1, 1))
 		for j in rng.randi_range(2, 4):
 			_d("hay", base + n * rng.randf_range(12.0, 15.0) + t * (rng.randf_range(-4, 4)), yaw_along(t) + rng.randf_range(-0.3, 0.3), rng.randi_range(1, 3))

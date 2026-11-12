@@ -118,6 +118,17 @@ stain to exactly the tint the wall's body was drawn in (`Structure._tone`), so i
 edge; the fixture checks the rim comes back to the wall's colour. Everything stays within a hand's breadth of the
 face, so cover is unchanged.
 
+## Barns
+
+A farmstead's barn is built as a house but weatherboarded: `BuildingMaterials.HOUSE` ends in `timber`, and
+`MapGen._house(..., barn = true)` turns the colour it drew into that material in one of three colours (barn red,
+weathered grey, dark green), drawing the same random numbers as before. Its roof is corrugated sheet (rusted,
+galvanised or red) pitched four degrees steeper, always a plain gable, with no chimney or aerial and a loft door
+under a hoist beam high in each gable end. Its doors are ledged boards, its windows have no curtains or lamps,
+its walls no paint or pictures inside, and its floor (variant 2) is bare concrete strewn with straw
+(`BuildingWeathering.straw`), lying flat. Render one with `--building-kinds=barn`; the town views include a
+farmstead.
+
 ## Shop fronts
 
 The town's shops (near the square) each have a front from `BuildingShops`, decided by the kind of shop the town

@@ -925,6 +925,9 @@ func _house_wall_detail(rng: RandomNumberGenerator) -> void:
 	elif variant == 2:
 		gaps = [Rect2(-0.95, 0.0, 1.9, 2.2)]
 	BuildingWalls.face(k, L, 3.0, material, wall, gaps, {"band": 2.9})
+	# the foundation, below the ground where it's level, showing where the
+	# ground falls away under a house on a slope
+	k.box(Vector3(L, 0.5, 0.42), Vector3(0, -0.25, -0.2), "concrete", Color(0.5, 0.49, 0.46))
 	# who lives here is drawn from a stream of its own, so a wall's shutters,
 	# panes and doors stay as they were
 	var life := RandomNumberGenerator.new()
@@ -967,12 +970,15 @@ func _house_wall_detail(rng: RandomNumberGenerator) -> void:
 	var room := _kit(life).at_point(Vector3(0, 0, -0.2), Vector3(0, PI, 0))
 	# (a wall doesn't know which house it is, so the paint follows the house's
 	# colour: every wall of a room the same)
-	BuildingFurnishings.lining(room, L, 3.0, gaps, BuildingFurnishings.INTERIORS[(ci * 4 + 1) % BuildingFurnishings.INTERIORS.size()])
-	match variant:
-		0:
-			BuildingFurnishings.wall_things(room, L)
-		1:
-			BuildingFurnishings.radiator(room, 0.0, 1.0)
+	# (a barn is bare boards inside: no paint, pictures or radiators)
+	var barn := material == "timber"
+	if not barn:
+		BuildingFurnishings.lining(room, L, 3.0, gaps, BuildingFurnishings.INTERIORS[(ci * 4 + 1) % BuildingFurnishings.INTERIORS.size()])
+		match variant:
+			0:
+				BuildingFurnishings.wall_things(room, L)
+			1:
+				BuildingFurnishings.radiator(room, 0.0, 1.0)
 	match variant:
 		1:
 			var opts := {"material": material, "wall": wall, "frame": trim}
@@ -981,9 +987,11 @@ func _house_wall_detail(rng: RandomNumberGenerator) -> void:
 			opts["curtains"] = ["drapes", "drapes", "blind", "nets", ""][life.randi() % 5]
 			opts["curtain"] = BuildingFurnishings.FABRICS[life.randi() % BuildingFurnishings.FABRICS.size()]
 			# (and a house still lived in keeps its glass)
-			if life.randf() < 0.35:
+			if life.randf() < 0.35 and not barn:
 				opts["lit"] = true
 				opts["glazing"] = 0.85
+			if barn:
+				opts["curtains"] = ""
 			if rng.randf() < 0.45:
 				opts["shutters"] = [Color(0.24, 0.36, 0.27), Color(0.31, 0.39, 0.46), Color(0.36, 0.25, 0.16), Color(0.5, 0.22, 0.17)][(ci + 1) % 4]
 				opts["shutter"] = "louvred" if rng.randf() < 0.5 else "boarded"
@@ -1003,7 +1011,7 @@ func _house_wall_detail(rng: RandomNumberGenerator) -> void:
 			elif bagged:
 				BuildingWeathering.sill_bags(k, Vector3(0, 1.5, 0), Vector2(1.3, 1.0), war)
 			# (no flowers under boards or sandbags)
-			if not opts.has("shutters") and life.randf() < 0.25 and not bagged and not boarded:
+			if not opts.has("shutters") and life.randf() < 0.25 and not bagged and not boarded and not barn:
 				BuildingFurnishings.window_box(k, 0.0, 1.0, 1.1, [Color(0.75, 0.12, 0.12), Color(0.85, 0.45, 0.6), Color(0.9, 0.75, 0.2), Color(0.55, 0.3, 0.7)][life.randi() % 4])
 		2:
 			var w := 1.9
@@ -1024,7 +1032,7 @@ func _house_wall_detail(rng: RandomNumberGenerator) -> void:
 				pv.position = Vector3(sx * (w * 0.5 - 0.09), 0, DOOR_Z)
 				pv.rotation.y = 0.0 if door_shut else a
 				model.add_child(pv)
-				BuildingOpenings.leaf(BuildingKit.nodes(pv, rng), Vector2(0.88, 2.06), "panelled", dc, -sx)
+				BuildingOpenings.leaf(BuildingKit.nodes(pv, rng), Vector2(0.88, 2.06), "ledged" if barn else "panelled", dc, -sx)
 				_door_leaves.append([pv, a])
 
 
@@ -1334,22 +1342,42 @@ func _roof_model(rng: RandomNumberGenerator) -> void:
 	k.sink.cast_all = true
 	if variant % 2 == 0:
 		var tint := Res.vary(Color(0.5, 0.22, 0.14), 0.12, rng) if rng.randf() < 0.75 else Color(0.36, 0.34, 0.32)
+		var barn := material == "timber"
+		var covering := "roof_sheet" if barn else "roof_tile"
+		if barn:
+			# rusted, galvanised or painted red sheet
+			tint = [Color(0.45, 0.3, 0.22), Color(0.52, 0.53, 0.52), Color(0.44, 0.17, 0.13)][posmod(ci / BuildingMaterials.HOUSE.size() + 1, 3)]
 		var end := L * 0.5 - 0.3
 		# its form: a third of them hipped, pitched anywhere from 24 to 36
 		# degrees (a stream of its own, so tints and chimneys stay as they were)
 		var form := RandomNumberGenerator.new()
 		form.seed = rng.seed ^ 0x40f5ca1e
 		var pitch := form.randf_range(24.0, 36.0)
-		var hipped := form.randf() < 0.35
+		var hipped := form.randf() < 0.35 and not barn
+		if barn:
+			pitch += 4.0
 		var fx := L * 0.5 + 0.2
 		var fz := W * 0.5 + 0.2
 		var ropts := {"gable_material": material, "gable_col": wall_col, "trim": trim, "gable_inset": -0.07, "gutters": true,
 			"downpipes": [[end, 1.0], [-end, -1.0]], "wall_face": fz, "wall_face_x": fx}
-		var rise := BuildingRoofs.hip(k, L, W, h, pitch, 0.35, "roof_tile", tint, ropts) if hipped else BuildingRoofs.gable(k, L, W, h, pitch, 0.35, "roof_tile", tint, ropts)
+		var rise := BuildingRoofs.hip(k, L, W, h, pitch, 0.35, covering, tint, ropts) if hipped else BuildingRoofs.gable(k, L, W, h, pitch, 0.35, covering, tint, ropts)
+		if barn:
+			# a loft door high in each gable end, a hoist beam over it
+			for e: float in [-1.0, 1.0]:
+				var loft := k.at_point(Vector3(e * (L * 0.5 + 0.2), h + 0.2, 0), Vector3(0, e * PI * 0.5, 0))
+				# (boards in the barn's colour, framed, ledged and braced in white)
+				loft.box(Vector3(1.3, 1.25, 0.05), Vector3(0, 0.62, 0.02), "wood_painted", wall_col.darkened(0.15))
+				for y: float in [0.05, 1.2]:
+					loft.plate(Vector3(1.42, 0.1, 0.03), Vector3(0, y, 0.06), "paint", trim)
+				for x: float in [-0.66, 0.66]:
+					loft.plate(Vector3(0.1, 1.25, 0.03), Vector3(x, 0.62, 0.06), "paint", trim)
+				loft.plate(Vector3(0.1, 1.5, 0.03), Vector3(0, 0.62, 0.065), "paint", trim, Vector3(0, 0, 0.82))
+				loft.plate(Vector3(1.25, 0.08, 0.03), Vector3(0, 0.62, 0.07), "paint", trim)
+				loft.bar(Vector3(0, 1.75, -0.1), Vector3(0, 1.75, 0.85), 0.14, 0.14, "wood_dark", Color(0.3, 0.23, 0.16))
 		var life := RandomNumberGenerator.new()
 		life.seed = rng.seed ^ 0x5eed11fe
 		var aerial := life.randf() < 0.5
-		if rng.randf() < 0.6:
+		if rng.randf() < 0.6 and not barn:
 			var z := W * 0.18
 			var cx := rng.randf_range(-L * 0.3, L * 0.3)
 			# seated on the lowest point of the roof under it
@@ -1363,7 +1391,7 @@ func _roof_model(rng: RandomNumberGenerator) -> void:
 			if aerial:
 				# lashed to the stack, above its pots
 				BuildingFurnishings.aerial(k, Vector3(cx + 0.33, h + rise - 0.4, z), 1.9, life.randf_range(-0.6, 0.6))
-		elif aerial:
+		elif aerial and not barn:
 			var ax := L * 0.38 if not hipped else maxf(0.0, fx - fz - 0.2)
 			BuildingFurnishings.aerial(k, Vector3(ax, h + rise - 0.06, 0), 1.4, life.randf_range(-0.6, 0.6))
 		# wear and mending on the back slope: a tarp weighted down over a hole,
@@ -1392,7 +1420,7 @@ func _roof_model(rng: RandomNumberGenerator) -> void:
 		growth.seed = rng.seed ^ 0x11c4e7
 		var tile_tone := Mats.tint_for("roof_tile", tint)
 		var on_tile := func(_p: Vector2) -> Color: return tile_tone
-		for i in growth.randi_range(2, 4):
+		for i in (growth.randi_range(2, 4) if not barn else 0):
 			var side := -1.0 if growth.randf() < 0.7 else 1.0
 			var r := growth.randf_range(0.6, 1.2)
 			var lz := side * fz * growth.randf_range(0.4, 0.68)
@@ -2612,12 +2640,15 @@ func _build_model() -> void:
 			_house_wall_detail(rng)
 		"floor":
 			# a rug in most houses' main room, lying flat
-			if size.x > 3.0 and size.z > 3.0 and rng.randf() < 0.65:
+			if size.x > 3.0 and size.z > 3.0 and rng.randf() < 0.65 and variant != 2:
 				BuildingFurnishings.rug(_kit(rng), Vector3(rng.randf_range(-0.6, 0.6), 0.06, rng.randf_range(-0.5, 0.5)),
 					Vector2(minf(size.x * 0.4, 3.0), minf(size.z * 0.4, 2.2)), BuildingFurnishings.FABRICS[rng.randi() % BuildingFurnishings.FABRICS.size()])
 			# a ruin: its roof burned and fell in on the floor
 			if variant == 1 and size.x > 3.0 and size.z > 3.0:
 				BuildingWeathering.ruin(_kit(rng), size, 0.06, rng)
+			# a barn: straw over its floor
+			if variant == 2:
+				BuildingWeathering.straw(_kit(rng), size, 0.06, rng)
 		"bridge":
 			_bridge_model(rng)
 		"dock":
@@ -3199,7 +3230,7 @@ func _surf_kind(c: Color, mesh: Mesh) -> String:
 		"house_wall":
 			return BuildingMaterials.surface(BuildingMaterials.house(int(size.y)))
 		"floor":
-			return "floor_tiles"
+			return "floor_tiles" if variant != 2 else "concrete_floor"
 		"rubble":
 			return "rubble"
 		"crates":

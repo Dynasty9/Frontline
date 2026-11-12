@@ -205,6 +205,23 @@ static func sill_bags(k: BuildingKit, c: Vector3, size: Vector2, rng: RandomNumb
 				col.darkened(rng.randf_range(0.0, 0.18)), Vector3(rng.randf_range(-0.04, 0.04), rng.randf_range(-0.08, 0.08), 0))
 
 
+## Straw strewn over a barn's floor (`size` its slab, `top` its height),
+## thickest along the walls where it's swept: flat, so nobody trips on it.
+static func straw(k: BuildingKit, size: Vector3, top: float, rng: RandomNumberGenerator) -> void:
+	var hx := size.x * 0.5 - 0.3
+	var hz := size.z * 0.5 - 0.3
+	for i in rng.randi_range(14, 22):
+		var edge := rng.randf() < 0.6
+		var p := Vector3(rng.randf_range(-hx, hx), 0, rng.randf_range(-hz, hz))
+		if edge:
+			if rng.randf() < 0.5:
+				p.x = signf(p.x) * (hx - rng.randf_range(0.0, 0.5))
+			else:
+				p.z = signf(p.z) * (hz - rng.randf_range(0.0, 0.5))
+		var s := Vector2(rng.randf_range(0.5, 1.4), rng.randf_range(0.3, 0.8))
+		k.plate(Vector3(s.x, 0.012, s.y), p + Vector3(0, top + 0.006 + i * 0.0005, 0), "plain", Color(0.72, 0.62, 0.36).darkened(rng.randf_range(0.0, 0.25)), Vector3(0, rng.randf() * TAU, 0))
+
+
 ## A tarpaulin pulled over a hole in a roof, in a kit lying on the slope
 ## (its xz plane the covering's top, +z down the slope): weighted down with
 ## old tyres and a sack or two.

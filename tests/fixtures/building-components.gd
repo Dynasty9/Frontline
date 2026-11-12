@@ -418,6 +418,22 @@ func _ready() -> void:
 		roof.free()
 	check(tops.size() >= 8, "roofs are pitched differently (%d heights)" % tops.size())
 
+	# A farm's barn: weatherboarded walls, a steeper sheet roof with no
+	# chimney, straw on a bare floor, in each of its three colours.
+	check(BuildingMaterials.house(5) == "timber" and BuildingMaterials.house(11) == "timber", "a barn is weatherboarded")
+	for ci in [5, 11, 17]:
+		for v in 3:
+			var bw := Structure.preview_model("house_wall", -1, v, Vector3(2.8, float(ci), 0.4), v == 2, 50 + v)
+			check(bw.get_child_count() > 0, "a barn's wall builds (%d/%d)" % [ci, v])
+			bw.free()
+		var br := Structure.preview_model("roof", -1, ci * 2, Vector3(13.0, 3.0, 10.0), false, ci)
+		var bb := _bounds(br, Transform3D.IDENTITY)
+		check(br.get_child_count() > 0 and bb.end.y < 3.0 + 5.2 * tan(deg_to_rad(40.5)) + 0.3, "a barn's roof builds, no chimney over it (%s)" % bb)
+		br.free()
+	var bf := Structure.preview_model("floor", -1, 2, Vector3(13.0, 0.06, 10.0), false, 3)
+	check(bf.get_child_count() > 0 and _bounds(bf, Transform3D.IDENTITY).end.y < 0.12, "a barn's straw lies flat")
+	bf.free()
+
 	# Every building and every kind of scenery still builds a model.
 	var kinds: Array = Defs.BUILDINGS.keys()
 	kinds.append_array(["house_wall", "roof", "floor", "low_wall", "tall_wall", "bridge", "town", "depot", "rubble", "crates", "dock"])
