@@ -1,7 +1,7 @@
 extends "res://scripts/main.gd"
 ## Frame the participants already in the mission from a camera beside them.
 
-@export_enum("Boats", "Flyover", "Infantry fighting vehicles") var view := 0
+@export_enum("Boats", "Flyover", "Infantry fighting vehicles", "Underwing") var view := 0
 ## Keep the ground camera with the rifle squads as the vehicles leave the foreground.
 var opening_centre := Vector3.INF
 @onready var lens: Camera3D = $Camera3D
@@ -10,17 +10,22 @@ func _process(dt: float) -> void:
 	super._process(dt)
 	if not is_instance_valid(world):
 		return
-	if view == 1:
+	if view == 1 or view == 3:
 		for plane in world.projectiles:
 			if plane.ptype == "jet":
-				# Keep the same side of the aircraft as the harbour passes underneath.
 				var heading: Vector3 = plane.vel.slide(Vector3.UP).normalized()
-				var to_harbour: Vector3 = plane.target - plane.position
-				var lead := maxf(32.0, to_harbour.dot(heading))
-				var ahead := (heading * lead + Vector3.UP * to_harbour.y).normalized()
 				var right := heading.cross(Vector3.UP)
-				lens.position = plane.position - ahead * 24.0 + right * 9.5 + Vector3.UP * 3.0
-				lens.look_at(plane.position + ahead * 18.0)
+				if view == 3:
+					# Leave the mountains in the gap below the wing so each release reads in silhouette.
+					lens.position = plane.position + right * 6.6 - heading * 10.2 + Vector3.DOWN * 4.5
+					lens.look_at(plane.position + heading + Vector3.DOWN * 2.8)
+				else:
+					# Keep the same side of the aircraft as the harbour passes underneath.
+					var to_harbour: Vector3 = plane.target - plane.position
+					var lead := maxf(32.0, to_harbour.dot(heading))
+					var ahead := (heading * lead + Vector3.UP * to_harbour.y).normalized()
+					lens.position = plane.position - ahead * 24.0 + right * 9.5 + Vector3.UP * 3.0
+					lens.look_at(plane.position + ahead * 18.0)
 				lens.make_current()
 				return
 		return

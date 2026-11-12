@@ -27,12 +27,12 @@ For a mix revision, keep the cut points fixed and compare editions with the audi
 
 | Beat | What the viewer can follow with the sound off |
 | --- | --- |
-| One order | The player sees the squad and the Mohawk together. The destination ring appears on open grass beside the hedge in the first second. Cut on the next simulation frame to the same squad passing the camera. Track him at eye level as the Mohawk lifts behind his shoulder. The next cut shows that aircraft carrying the Nyx. |
+| One order | The player selects the Mohawk and clicks the Nyx in the Sky Hook mission. Hold just long enough to see the ring around the cargo and the helicopter clear the pad. Cut to the squad at eye level, then show the same type of cargo lifting on its cables. |
 | Off the ground | Track the Mohawk from the bridge rail. Hold its broadside and the suspended Nyx in frame together, then cut to the cargo door, where the camera follows the swinging hull as the same bridge sweeps beneath the tracked vehicle, then follow the water into the RHIB shot. |
 | The village road | Ride behind the second tank and watch both hulls enter the village. From the roadside, let the lead tank draw level. Cut to the following crew’s periscope on the next simulation frame, with the first tank still ahead in the dust. |
 | Into the trench | See riflemen cross the timber trench beside a tracked vehicle. Look over the sandbag wall as the crew fires. Cut to the same round dropping beside the wreck and let the dirt rise against the sky before the airlift. The two field-camera scenes store their positions and travel times in metres and simulation seconds. |
 | At sea | Follow the landing boats to the beach. From behind the patrol ship, watch the two defending boats approach from different sides of the harbour. |
-| Airstrike | Follow the jet off the ridge, then look ahead from above its tail to see the quay beneath it. Cut to the parked pickup as the strike overturns it. |
+| Airstrike | Follow the jet off the ridge, then look ahead from above its tail to see the quay. Cut under the wing as the bombs separate against the mountains. Cut to the parked pickup as the strike overturns it. |
 | Trench assault | Two infantry fighting vehicles move toward an occupied line with rifle squads behind. Hold on the defenders, then move down beside the timber firing bay for the 155 mm barrage. |
 
 The actual menu map comes in over the final burst. The menu emblem and wordmark appear first, followed by the free Windows, macOS and Linux invitation and the open-source license. The game score resolves over the card.

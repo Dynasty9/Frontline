@@ -123,6 +123,24 @@
       ],
       "about": "Jet and the harbour objective ahead of it in one view."
     },
+    "trailer-release": {
+      "scene": "res://tools/showcase/trailer-review/underwing-release.tscn",
+      "frames": 225,
+      "args": [
+        "--preset=high",
+        "--seed=3",
+        "--set=volume:0.8,vol_effects:0.85,vol_music:0,battle_music:false,vol_ambience:0.28,vol_ui:0,mute_bg:false,wildlife:0,edge_pan:false",
+        "--mission=beachhead",
+        "--focus=290.4156,16.97317",
+        "--zoom=58",
+        "--pitch=-17",
+        "--cam-yaw=1.2",
+        "--demo-support=airstrike",
+        "--demo-at=3"
+      ],
+      "shows": ["Bombs separating below the aircraft"],
+      "about": "From under the wing, see each bomb pull clear against the mountains and hear the release at the aircraft."
+    },
     "trailer-trench-column": {
       "scene": "res://tools/showcase/trailer-review/armour-and-infantry.tscn",
       "frames": 495,
@@ -722,7 +740,7 @@
       ]
     },
     "reel": {
-      "use": "Homepage trailer. Follow a squad order to the coast, see the opposing boats and the jet’s target, then return to the trench assault for the artillery finale.",
+      "use": "Homepage trailer. Follow a sling pickup to the coast, see the opposing boats and the jet’s target, then return to the trench assault for the artillery finale.",
       "size": [1280, 720],
       "kbps": 1450,
       "max_kb": 7500,
@@ -749,9 +767,10 @@
         {"take": "trailer-harbour-boats", "from": 13.2, "to": 15.6, "gain_db": 0, "caption": "[Boats approach the shore]"},
         {"take": "trailer-beach-landing", "from": 26.13333, "to": 27.53333, "gain_db": 0, "caption": "[Surf as the squad runs ashore]"},
         {"take": "trailer-opposing-boats", "from": 32.5, "to": 34.6, "gain_db": 0, "caption": "[Patrol boats close on the harbour entrance]"},
-        {"take": "trailer-harbour-finale", "from": 4.5, "to": 5.7, "gain_db": 0, "caption": "[Jet engines rise over the coast]"},
-        {"take": "trailer-jet-target", "from": 5.7, "to": 7.03333, "gain_db": 0},
-        {"take": "trailer-quay-impact", "from": 8.26667, "to": 11.03333, "gain_db": 2, "audio_bridge_frames": 6},
+        {"take": "trailer-harbour-finale", "from": 4.0, "to": 5.13333, "gain_db": 0, "caption": "[Jet engines rise over the coast]"},
+        {"take": "trailer-jet-target", "from": 5.13333, "to": 6.03333, "gain_db": 0},
+        {"take": "trailer-release", "from": 6.03333, "to": 6.86667, "gain_db": 0, "caption": "[Short mechanical clacks as the bombs drop]"},
+        {"take": "trailer-quay-impact", "from": 8.6, "to": 11.03333, "gain_db": 2, "audio_bridge_frames": 6},
         {"take": "trailer-quay-impact", "from": 11.03333, "to": 11.76667, "gain_db": 2, "caption": "[Bombs strike beside the truck]"},
         {"take": "trailer-quay-wreck", "from": 13.8, "to": 14.63333, "gain_db": 0},
         {"take": "trailer-trench-column", "from": 1.6, "to": 4.2, "gain_db": 0, "caption": "[Tracks and rifle fire as infantry advance]"},
