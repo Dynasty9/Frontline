@@ -393,7 +393,7 @@ func check_shrub_leaves() -> void:
 	view.add_child(mesh)
 	var material := ShaderMaterial.new()
 	var shader := Shader.new()
-	shader.code = MapDims.shader(Grass.BUSH_SHADER.replace("// CLOUD_SHADOW", Grass.CLOUD_SHADOW).replace("render_mode specular_disabled, cull_disabled;", "render_mode unshaded, cull_disabled;"))
+	shader.code = CloudShadow.shader(MapDims.shader(Grass.BUSH_SHADER.replace("render_mode specular_disabled, cull_disabled;", "render_mode unshaded, cull_disabled;")), CloudShadow.FOLD)
 	material.shader = shader
 	mesh.material_override = material
 	var leaf := Image.create(2, 2, false, Image.FORMAT_RGBA8)

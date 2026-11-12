@@ -10,7 +10,7 @@ var HALF := MapDims.HALF
 var atmo: Atmosphere
 var mat: ShaderMaterial
 var bush_mat: ShaderMaterial
-var stone_mat: StandardMaterial3D
+var stone_mat: ShaderMaterial
 var clump: ArrayMesh
 var scar_img: Image
 var scar_tex: ImageTexture
@@ -34,31 +34,21 @@ func _ready() -> void:
 	scar_img = Image.create(MapDims.N, MapDims.N, false, Image.FORMAT_L8)
 	scar_tex = ImageTexture.create_from_image(scar_img)
 	mat = ShaderMaterial.new()
-	var sh := Shader.new()
-	sh.code = MapDims.shader(GRASS_SHADER.replace("// CLOUD_SHADOW", CLOUD_SHADOW))
-	mat.shader = sh
+	# (the clouds' shade, CloudShadow.FOLD: in the albedo with Cloud shadows off)
+	mat.shader = CloudShadow.make(MapDims.shader(GRASS_SHADER), CloudShadow.BACKLIGHT | CloudShadow.NO_SPECULAR | CloudShadow.FOLD)
 	mat.set_shader_parameter("scar", scar_tex)
 	bush_mat = ShaderMaterial.new()
-	var bs := Shader.new()
-	bs.code = MapDims.shader(BUSH_SHADER.replace("// CLOUD_SHADOW", CLOUD_SHADOW))
-	bush_mat.shader = bs
+	bush_mat.shader = CloudShadow.make(MapDims.shader(BUSH_SHADER), CloudShadow.BACKLIGHT | CloudShadow.NO_SPECULAR | CloudShadow.FOLD)
 	bush_mat.set_shader_parameter("leaf_texture", preload("res://assets/foliage/broadleaf.png"))
-	stone_mat = StandardMaterial3D.new()
-	stone_mat.albedo_color = Color(0.42, 0.4, 0.37)
-	stone_mat.roughness = 0.9
+	# (a shader, not a StandardMaterial3D, so that the stones go into cloud shade too)
+	stone_mat = ShaderMaterial.new()
+	stone_mat.shader = CloudShadow.make(STONE_SHADER)
 	request_rebuild(1.2)
 
 
 func set_deform(t: Texture2DArray) -> void:
 	mat.set_shader_parameter("deform_tex", t)
 	bush_mat.set_shader_parameter("deform_tex", t)
-
-
-## The ground's drifting cloud shadows fall on the clumps and bushes as well.
-func set_clouds(noise: Texture2D, strength: float) -> void:
-	for m in [mat, bush_mat]:
-		m.set_shader_parameter("biome_tex", noise)
-		m.set_shader_parameter("cloud_strength", strength)
 
 
 func set_trench_mask(t: Texture2D) -> void:
@@ -457,16 +447,6 @@ func _make_stone() -> ArrayMesh:
 	return m
 
 
-## The ground shader's cloud shadows (Atmosphere's cloud_shadow_uv; keep them
-## alike), folded into the albedo: most of a meadow's light is the sun's.
-const CLOUD_SHADOW := """
-float cloud_shade(vec2 p, float t) {
-	if (cloud_strength <= 0.0) { return 1.0; }
-	float c = textureLod(biome_tex, (p + vec2(6.0, 2.5) * t) / (__BIOME__ * 4.5), 0.0).r;
-	return 1.0 - cloud_strength * 0.8 * smoothstep(0.45, 0.75, c);
-}
-"""
-
 const GRASS_SHADER := """
 shader_type spatial;
 render_mode cull_disabled, specular_disabled;
@@ -476,21 +456,20 @@ uniform vec3 mid_col : source_color = vec3(0.24, 0.32, 0.14);
 uniform vec3 tip_col : source_color = vec3(0.38, 0.45, 0.23);
 uniform vec3 dry_col : source_color = vec3(0.55, 0.49, 0.3);
 uniform float wind = 0.11;
-uniform sampler2D biome_tex : filter_linear, repeat_enable;
-uniform float cloud_strength = 0.0;
 uniform sampler2D scar : hint_default_black, filter_linear, repeat_disable;
 uniform sampler2D trench_mask : hint_default_black, filter_linear, repeat_disable;
 uniform sampler2DArray deform_tex : filter_linear, repeat_disable;
 // TERRAIN_TEXTURE_HELPER
+// CLOUD_SHADOW
 
 varying float h;
 varying float g;
 varying float rnd;
 varying float wet;
 varying float burnt;
-varying float shade;
-
-// CLOUD_SHADOW
+#ifdef CLOUD_PATTERN
+varying float cloud_v;  // the sunlight the clouds let through at the blade
+#endif
 
 void vertex() {
 	h = UV.y;
@@ -498,7 +477,9 @@ void vertex() {
 	rnd = INSTANCE_CUSTOM.g;
 	wet = INSTANCE_CUSTOM.b;
 	vec3 o = MODEL_MATRIX[3].xyz;
-	shade = cloud_shade(o.xz, TIME);
+#ifdef CLOUD_PATTERN
+	cloud_v = cloud_sun(o);
+#endif
 	// shell holes and blast scars flatten and scorch the grass
 	burnt = texture(scar, (o.xz + __MAP_HALF__) / __MAP_SIZE__).r;
 	// nothing grows in a trench
@@ -530,11 +511,12 @@ void fragment() {
 	col = mix(col, dry_col, cured * smoothstep(0.2, 1.0, h));
 	col *= mix(1.0, 0.86, wet) * (0.85 + 0.3 * rnd);
 	col = mix(col, vec3(0.09, 0.075, 0.05), burnt * 0.85);
-	ALBEDO = col * shade;
+	ALBEDO = col;
 	ROUGHNESS = 0.85;
 	BACKLIGHT = vec3(0.35, 0.4, 0.15) * h * (1.0 - burnt);
 	AO = mix(0.78, 1.0, h);
 	AO_LIGHT_AFFECT = 0.6;
+	// CLOUD_FRAGMENT cloud_v
 }
 """
 
@@ -543,19 +525,20 @@ shader_type spatial;
 uniform sampler2D leaf_texture : source_color, filter_linear_mipmap, repeat_disable;
 uniform float wind = 0.03;
 render_mode specular_disabled, cull_disabled;
-uniform sampler2D biome_tex : filter_linear, repeat_enable;
-uniform float cloud_strength = 0.0;
 varying float plant_height;
 varying float rnd;
-varying float shade;
-
-// CLOUD_SHADOW
-
 uniform sampler2D trench_mask : hint_default_black, filter_linear, repeat_disable;
 uniform sampler2DArray deform_tex : filter_linear, repeat_disable;
 // TERRAIN_TEXTURE_HELPER
+// CLOUD_SHADOW
+#ifdef CLOUD_PATTERN
+varying float cloud_v;
+#endif
 void vertex() {
 	VERTEX.y += 0.65;
+#ifdef CLOUD_PATTERN
+	cloud_v = cloud_sun(MODEL_MATRIX[3].xyz);
+#endif
 	if (textureLod(trench_mask, (MODEL_MATRIX[3].xz + __MAP_HALF__) / __MAP_SIZE__, 0.0).r > 0.3) {
 		VERTEX *= 0.0;
 	}
@@ -567,7 +550,6 @@ void vertex() {
 	VERTEX.y += gd / max(0.05, length(MODEL_MATRIX[1].xyz));
 	rnd = INSTANCE_CUSTOM.r;
 	vec3 o = MODEL_MATRIX[3].xyz;
-	shade = cloud_shade(o.xz, TIME);
 	float t = TIME * 1.3 + o.x * 0.3;
 	VERTEX.x += sin(t) * wind * plant_y;
 	plant_height = plant_y;
@@ -580,7 +562,7 @@ void fragment() {
 		photograph.rgb = mix(photograph.rgb / 12.92, pow((photograph.rgb + 0.055) / 1.055, vec3(2.4)), step(vec3(0.04045), photograph.rgb));
 	}
 	float up = smoothstep(0.0, 1.1, plant_height);
-	vec3 col = photograph.rgb * mix(vec3(0.7, 0.85, 0.7), vec3(1.0, 0.9, 0.65), rnd) * mix(0.65, 1.0, up) * shade;
+	vec3 col = photograph.rgb * mix(vec3(0.7, 0.85, 0.7), vec3(1.0, 0.9, 0.65), rnd) * mix(0.65, 1.0, up);
 	if (OUTPUT_IS_SRGB) {
 		col = mix(col * 12.92, 1.055 * pow(max(col, vec3(0.0)), vec3(1.0 / 2.4)) - 0.055, step(vec3(0.0031308), col));
 	}
@@ -593,5 +575,22 @@ void fragment() {
 	leaf_normal.y = abs(leaf_normal.y);
 	NORMAL = normalize((VIEW_MATRIX * vec4(mix(leaf_normal, vec3(0.0, 1.0, 0.0), 0.45), 0.0)).xyz);
 	BACKLIGHT = vec3(0.08, 0.1, 0.035);
+	// CLOUD_FRAGMENT cloud_v
+}
+"""
+
+## The stones in the grass: grey and rough.
+const STONE_SHADER := """
+shader_type spatial;
+uniform vec3 col : source_color = vec3(0.42, 0.4, 0.37);
+// CLOUD_SHADOW
+varying vec3 wpos;
+void vertex() {
+	wpos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
+}
+void fragment() {
+	ALBEDO = col;
+	ROUGHNESS = 0.9;
+	// CLOUD_FRAGMENT cloud_sun(wpos)
 }
 """

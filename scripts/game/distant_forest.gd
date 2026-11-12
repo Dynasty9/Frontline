@@ -48,10 +48,8 @@ static func coverage_image(seed_value: int, reach: float) -> Image:
 func setup(atmo: Atmosphere) -> void:
 	if atmo.world.terrain.landform.peak <= 1.0:
 		return
-	var shader := Shader.new()
-	shader.code = MapDims.shader(SHADER.replace("// BACKDROP_HEIGHT", Atmosphere.BACKDROP_HEIGHT))
 	material = ShaderMaterial.new()
-	material.shader = shader
+	material.shader = CloudShadow.make(MapDims.shader(SHADER.replace("// BACKDROP_HEIGHT", Atmosphere.BACKDROP_HEIGHT)), CloudShadow.OWN_LIGHT)
 	material.set_shader_parameter("backdrop_tex", atmo.backdrop_tex)
 	if atmo.water_view:
 		material.set_shader_parameter("river_tips", atmo.water_view.river_tips)
@@ -137,6 +135,10 @@ varying float shade;
 varying float haze;
 varying vec3 frames;
 varying vec2 lighting;
+// CLOUD_SHADOW
+#ifdef CLOUD_ON
+varying float cloud_v;  // the sunlight the clouds let through at the tree
+#endif
 // BACKDROP_HEIGHT
 void vertex() {
 	vec3 center = MODEL_MATRIX[3].xyz;
@@ -149,6 +151,9 @@ void vertex() {
 	size *= mix(0.65, 1.0, habitat);
 	center.y = h;
 	lighting = textureLod(scenery_bake, (center.xz + __MAP_HALF__ + 1800.0) / (__MAP_SIZE__ + 3600.0), 0.0).rb;
+#ifdef CLOUD_ON
+	cloud_v = cloud_sun(center);
+#endif
 	vec3 right = INV_VIEW_MATRIX[0].xyz;
 	vec3 up = INV_VIEW_MATRIX[1].xyz;
 	// The image is captured around the physical crown centre at every elevation.
@@ -187,12 +192,18 @@ void fragment() {
 	ROUGHNESS = 1.0;
 	SPECULAR = 0.0;
 	AO = lighting.r;
+	// CLOUD_FRAGMENT cloud_v
 }
 void light() {
 	float shadow = 1.0;
 	if (LIGHT_IS_DIRECTIONAL && dot(LIGHT, normalize((VIEW_MATRIX * vec4(sun_direction, 0.0)).xyz)) > 0.95) {
 		shadow = lighting.g;
 	}
+#ifdef CLOUD_ON
+	if (LIGHT_IS_DIRECTIONAL && cloud_is_sun(LIGHT, VIEW_MATRIX)) {
+		shadow *= cloud_v;
+	}
+#endif
 	DIFFUSE_LIGHT += max(dot(NORMAL, LIGHT), 0.0) * ATTENUATION * LIGHT_COLOR / PI * shadow;
 }
 """
