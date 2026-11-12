@@ -172,6 +172,72 @@ func _ready() -> void:
 				check(sm.get_shader_parameter("local_space") != true, "%s %d stays batchable (%s)" % [spec[0], spec[1], sm.resource_name])
 		m.free()
 
+	# Lamplight: the global the windows read is registered, lit glass is lit
+	# and plain glass isn't, and the time of day sets how much shows.
+	check(ProjectSettings.has_setting("shader_globals/window_glow"), "window_glow is a registered shader global")
+	check(Mats.get_mat("window_lit").get_shader_parameter("lit") == 1.0, "lit glass carries the lamplight")
+	check(Mats.get_mat("glass").get_shader_parameter("lit") != 1.0, "plain glass stays dark by night")
+	check(Atmosphere.lamplight("night") == 1.0 and Atmosphere.lamplight("day") == 0.0 and Atmosphere.lamplight("dusk") > 0.0, "lamplight follows the time of day")
+	var lk := kit()
+	BuildingOpenings.window(lk, Vector3(0, 1.5, 0), Vector2(1.3, 1.0), {"lit": true, "glazing": 1.0, "curtains": "drapes"})
+	var lit_panes := 0
+	for child in lk.sink.root.get_children():
+		if Mats.base_of((child as MeshInstance3D).material_override) == Mats.get_mat("window_lit"):
+			lit_panes += 1
+	check(lit_panes == 4, "a lit window's four whole panes glow (%d)" % lit_panes)
+	lk.sink.root.free()
+
+	# Furnishings build as nodes and into a bake.
+	var furnishings := {
+		"curtains": func(k: BuildingKit):
+			for style in ["drapes", "blind", "nets"]:
+				BuildingFurnishings.curtains(k, Vector3(0, 1.5, -0.1), Vector2(1.3, 1.0), style, Color(0.5, 0.2, 0.2)),
+		"outside": func(k: BuildingKit):
+			BuildingFurnishings.window_box(k, 0.0, 1.0, 1.1, Color.RED)
+			BuildingFurnishings.lantern(k, Vector3(1.2, 2.05, 0))
+			BuildingFurnishings.aerial(k, Vector3(0, 5, 0)),
+		"inside": func(k: BuildingKit):
+			BuildingFurnishings.lining(k, 2.8, 3.0, [Rect2(-0.65, 1.0, 1.3, 1.0)], Color(0.8, 0.8, 0.7))
+			BuildingFurnishings.radiator(k, 0.0, 1.0)
+			BuildingFurnishings.picture(k, Vector3(0, 1.6, 0), Vector2(0.5, 0.4), Color.DARK_GREEN)
+			BuildingFurnishings.shelf(k, Vector3(0, 2.0, 0), 1.2)
+			BuildingFurnishings.rug(k, Vector3(0, 0.06, 0), Vector2(2.4, 1.8), Color.DARK_RED),
+	}
+	for key: String in furnishings:
+		var fk := kit()
+		furnishings[key].call(fk)
+		valid(fk.sink.root, key)
+		var bake := Mats.Bake.new()
+		furnishings[key].call(BuildingKit.baked(bake))
+		var baked := Node3D.new()
+		add_child(baked)
+		bake.commit(baked)
+		check(baked.get_child_count() > 0, key + ": nothing baked")
+		fk.sink.root.free()
+		baked.free()
+	var area := Rect2(-1.4, 0.0, 2.8, 3.0)
+	var hole := Rect2(-0.65, 1.0, 1.3, 1.0)
+	var total := 0.0
+	for r in BuildingFurnishings.panels(area, [hole]):
+		total += r.get_area()
+		check(not r.intersects(hole), "a lining panel stays out of the opening")
+	check(is_equal_approx(total, area.get_area() - hole.get_area()), "the lining covers the wall round its opening (%.2f)" % total)
+
+	# Nothing in a room stands where a man does: Cover's fighting positions are
+	# half a metre off every house wall, so whatever hangs on a wall stays
+	# within a hand's breadth of it below head height.
+	for s in 40:
+		var rk := kit()
+		rk.rng.seed = s
+		BuildingFurnishings.wall_things(rk, 2.8)
+		BuildingFurnishings.radiator(rk, 0.0, 1.0)
+		for z in [0.2, 0.35, 0.5, 0.7]:
+			for y in [0.15, 0.6, 1.0, 1.4, 1.8]:
+				for x in [-1.1, -0.6, -0.2, 0.2, 0.6, 1.1]:
+					if occupied(rk.sink.root, Vector3(x, y, z)):
+						check(false, "a room's dressing stands at %s (seed %d)" % [Vector3(x, y, z), s])
+		rk.sink.root.free()
+
 	# Every building and every kind of scenery still builds a model.
 	var kinds: Array = Defs.BUILDINGS.keys()
 	kinds.append_array(["house_wall", "roof", "floor", "low_wall", "tall_wall", "bridge", "town", "depot", "rubble", "crates", "dock"])
