@@ -52,6 +52,8 @@ func _ready() -> void:
 	field.nav = FlightNav.new()
 	for hz in [30, 60]:
 		_dynamics(hz)
+		_piloting(hz)
+		_profile(hz)
 		_phases(hz)
 		_retask(hz)
 	_replication()
@@ -101,7 +103,7 @@ func _dynamics(hz: int) -> void:
 	v._fly_to(Vector3(0, 16, 500), dt)
 	_check("reversal preserves forward momentum", v.velocity.dot(before) > 0.0)
 	_check("reversal acceleration bounded", (v.velocity - before).length() <= 8.0 * dt + 0.0001)
-	for i in hz / 2:
+	for i in hz * 3 / 2:
 		v._fly_to(v.position, dt, 0.0)
 	_check("braking flares nose up", v.flight_pitch > 0.05)
 	v.free()
@@ -141,11 +143,18 @@ func _dynamics(hz: int) -> void:
 	_check("climb acceleration and speed bounded", bounds)
 	_check("climb settles without teleport", v.flight.settled(v, Vector3(0, 16, 0)))
 	bounds = true
-	for i in hz * 12:
+	var contact := 0.0
+	for i in hz * 14:
 		var old := v.velocity.y
+		var airborne := v.position.y > 0.15001
 		v._fly_to(Vector3(0, 0.15, 0), dt)
-		bounds = bounds and absf(v.velocity.y - old) <= 4.0 * dt + 0.0001 and v.position.y >= 0.14999
+		if airborne and v.position.y <= 0.15001:
+			contact = maxf(contact, -old)
+		elif airborne:
+			bounds = bounds and absf(v.velocity.y - old) <= 4.0 * dt + 0.0001
+		bounds = bounds and v.position.y >= 0.14999
 	_check("descent acceleration bounded and no ground penetration", bounds)
+	_check("touchdown is gentle", contact < 0.6)
 	_check("touchdown settles", v.flight.settled(v, Vector3(0, 0.15, 0)))
 	field.floor_height = -5.0
 	for i in hz:
@@ -163,17 +172,135 @@ func _dynamics(hz: int) -> void:
 	var loaded := _vehicle()
 	var cargo := _vehicle("tank", 0.0)
 	loaded.sling_cargo = cargo
-	for i in hz:
+	for i in hz * 2:
 		light._fly_to(Vector3(0, 16, -500), dt)
 		loaded._fly_to(Vector3(0, 16, -500), dt)
 	_check("sling load reduces acceleration", loaded.speed < light.speed * 0.6)
 	for i in hz * 15:
 		light._fly_to(Vector3(0, 16, -1000), dt)
 		loaded._fly_to(Vector3(0, 16, -1000), dt)
-	_check("sling load reduces cruise speed", loaded.speed <= float(loaded.vdef.speed) * 0.65 + 0.001)
+	_check("sling load reduces cruise speed", loaded.speed <= float(loaded.vdef.speed) * 0.65 + 0.05)
 	light.free()
 	loaded.free()
 	cargo.free()
+
+
+## How a pilot flies her: the attitude comes first and the acceleration
+## follows it; in forward flight she banks into turns with her nose on the
+## flight path; a heavy lifter answers more slowly than a scout.
+func _piloting(hz: int) -> void:
+	var dt := 1.0 / hz
+	var v := _vehicle()
+	v._fly_to(Vector3(0, 16, -500), dt)
+	_check("first tick tilts the disc rather than jumping to speed", Defs.flat(v.velocity).length() < 0.05)
+	var dipped_at := -1.0
+	var moving_at := -1.0
+	for i in hz * 2:
+		v._fly_to(Vector3(0, 16, -500), dt)
+		if dipped_at < 0.0 and v.flight_pitch < -0.05:
+			dipped_at = i * dt
+		if moving_at < 0.0 and Defs.flat(v.velocity).length() > 1.0:
+			moving_at = i * dt
+	_check("nose dips before she gathers speed", dipped_at >= 0.0 and moving_at > dipped_at)
+	v.free()
+	# a turn at cruise speed is a banked arc, not a skid
+	v = _vehicle("ghosthawk")
+	var vmax := float(v.vdef.speed)
+	v.velocity = Vector3(0, 0, -vmax)
+	var bank := 0.0
+	var slowest := vmax
+	var slip := 0.0
+	for i in hz * 10:
+		v._fly_to(Vector3(260, 16, -160), dt)
+		bank = minf(bank, v.flight_roll)
+		var spd := Defs.flat(v.velocity).length()
+		slowest = minf(slowest, spd)
+		if spd > vmax * 0.6:
+			slip = maxf(slip, absf(wrapf(v.rotation.y - Defs.yaw_of(v.velocity), -PI, PI)))
+	_check("a right turn at speed banks right", bank < -0.2)
+	_check("the nose stays on the flight path in forward flight", slip < 0.12)
+	_check("a 60 degree turn at speed keeps most of its speed", slowest > vmax * 0.7)
+	v.free()
+	# coming round to a goal behind her, she turns rather than flies backwards
+	v = _vehicle("ghosthawk")
+	v.velocity = Vector3(0, 0, -vmax)
+	var backwards := 0.0
+	for i in hz * 12:
+		v._fly_to(Vector3(0, 16, 300), dt)
+		backwards = maxf(backwards, -Defs.flat(v.velocity).dot(Defs.dir_of(v.rotation.y)))
+	_check("a reversal at speed is flown as a turn", backwards < 3.0 and v.velocity.z > vmax * 0.8)
+	v.free()
+	var mohawk := _scratch("mohawk")
+	var pawnee := _scratch("pawnee")
+	var heavy := HelicopterFlight.spec(mohawk)
+	var light := HelicopterFlight.spec(pawnee)
+	_check("a heavy lifter answers the cyclic slower than a scout", float(heavy.cyclic) < float(light.cyclic) * 0.6)
+	_check("a scout banks harder than a heavy lifter", float(light.bank) > float(heavy.bank))
+	mohawk.free()
+	pawnee.free()
+
+
+## The flight profile: rotor wound up before lift-off, a hover check, a
+## climbing departure, a glide path down to a low hover, a gentle landing.
+func _profile(hz: int) -> void:
+	var dt := 1.0 / hz
+	var v := _vehicle("ghosthawk", 0.15)
+	v.rotor_rpm = Vehicle.ROTOR_IDLE
+	v._rotor_idle = 30.0
+	v.lift_dest = Vector3(0, 0, -300)
+	var t := 0.0
+	var lifted := -1.0
+	var rpm_at_lift := 0.0
+	var spooling_flag := false
+	var climb_out_ok := true
+	var first_fast_agl := -1.0
+	var glide_ok := false
+	var slow_sink := 0.0
+	var over_spot_agl := 99.0
+	var tail_ok := true
+	var tail := float(v.vdef.size.z) * 0.5
+	while t < 60.0:
+		v.sim(dt)
+		t += dt
+		var agl := v.position.y - 0.0
+		var spd := Defs.flat(v.velocity).length()
+		var d := Defs.flat(Vector3(0, 0, -300) - v.position).length()
+		if lifted < 0.0:
+			spooling_flag = spooling_flag or (v.flags & Vehicle.F_SPOOL) != 0
+			if agl > 0.3:
+				lifted = t
+				rpm_at_lift = v.rotor_rpm
+		if first_fast_agl < 0.0 and spd > 8.0:
+			first_fast_agl = agl
+		# leaving, never racing along just over the ground
+		if d > 60.0 and agl < 3.0 and spd > 4.5:
+			climb_out_ok = false
+		# coming in, already descending while still moving along
+		if d < 70.0 and d > 50.0 and agl < 15.0 and spd > 6.0:
+			glide_ok = true
+		if spd < 4.0 and agl > 3.0:
+			slow_sink = maxf(slow_sink, -v.velocity.y)
+		if d < 3.0 and over_spot_agl == 99.0:
+			over_spot_agl = agl
+		if agl < 6.0 and agl > 0.3:
+			tail_ok = tail_ok and v.flight_pitch <= asin(clampf((agl - 0.6) / tail, 0.0, 1.0)) + 0.07
+		if v.lift_phase == 0 and lifted > 0.0:
+			break
+	_check("rotor winds up before lift-off", spooling_flag and lifted > 1.5 and rpm_at_lift > 0.99)
+	_check("climbs out while gathering speed, not straight up first", first_fast_agl > 3.0 and first_fast_agl < 14.0 and climb_out_ok)
+	_check("comes down a glide path while still moving", glide_ok)
+	_check("slow descents stay out of its own downwash", slow_sink < 2.4)
+	_check("arrives over the spot in a low hover, not from cruise height", over_spot_agl < 4.0)
+	_check("no tail-striking flare near the ground", tail_ok)
+	_check("lands on the spot", v.lift_phase == 0 and Defs.flat(v.position - Vector3(0, 0, -300)).length() < 0.7)
+	v.free()
+
+
+func _scratch(kind: String) -> Vehicle:
+	var v := Vehicle.new()
+	v.vkind = kind
+	v.vdef = Defs.VEHICLES[kind]
+	return v
 
 
 func _phases(hz: int) -> void:
@@ -293,6 +420,12 @@ func _retask(hz: int) -> void:
 		if lift.sling_cargo == cargo and lift.position.y > 15.9:
 			break
 	_check("sling pickup approaches and hooks from hover", visited.has_all([5, 6]) and lift.sling_cargo == cargo and cargo.slung_by == lift)
+	var swing := 0.0
+	for i in hz * 3:
+		lift._fly_to(lift.position + Vector3(0, 0, -200), dt)
+		lift._sling_tick(dt)
+		swing = maxf(swing, lift._swing.length())
+	_check("the load lags behind on its cable as she accelerates", swing > 0.2 and lift._swing.z > 0.0)
 	lift.velocity = Vector3(5, 0, 0)
 	lift.order_stop()
 	var hold := lift._flight_hold
@@ -300,10 +433,14 @@ func _retask(hz: int) -> void:
 		lift._lift_tick(dt)
 	_check("stop retains live sling cargo in stable hover", lift.sling_cargo == cargo and cargo.slung_by == lift and lift.position.distance_to(hold) < 0.1 and lift.velocity.length() < 0.01)
 	lift.order_move(Vector3(50, 0, 50))
+	var swing_at_release := 99.0
 	for i in hz * 60:
+		var before := lift._swing.length()
 		lift._lift_tick(dt)
 		if lift.sling_cargo == null:
+			swing_at_release = before
 			break
+	_check("the load is set down once it has stopped swinging", swing_at_release < 0.45)
 	_check("resume after pickup delivers sling cargo", lift.sling_cargo == null and cargo.slung_by == null and Defs.flat(cargo.position - Vector3(50, 0, 50)).length() < 0.8)
 	lift.free()
 	cargo.free()

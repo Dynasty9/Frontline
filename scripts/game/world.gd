@@ -276,7 +276,8 @@ func build() -> void:
 		_staged = false
 	process_mode = Node.PROCESS_MODE_INHERIT
 	building = false
-	if srv and (Online.record_battles or LocalServer.child or get_tree().root.get_node("Main").args.has("record-replay")):
+	var main := get_tree().root.get_node_or_null("Main")  # (absent in a stage that builds a world of its own)
+	if srv and (Online.record_battles or LocalServer.child or (main != null and main.args.has("record-replay"))):
 		recording = BattleRecording.new()
 		recording.world = self
 		add_child(recording)
