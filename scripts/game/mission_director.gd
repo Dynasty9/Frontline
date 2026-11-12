@@ -126,6 +126,7 @@ func start(id: String, done := Callable(), failed := Callable()) -> void:
 		return
 	o.state = ACTIVE
 	o.prog = 0.0
+	o.got = false
 	if done.is_valid():
 		o["on_done"] = done
 	if failed.is_valid():
@@ -321,6 +322,10 @@ func _evaluate(dt: float) -> void:
 					o.pos = _centroid(left2)
 				if lost > maxi(0, int(o.need)):
 					_failed(o)
+			"do":
+				# a drill: done once the player has done it (noted)
+				if o.got:
+					_complete(o)
 			"timer":
 				o.prog = float(o.prog) + dt
 				if float(o.prog) >= float(o.secs):
@@ -435,6 +440,20 @@ func _finish(ok: bool, text: String) -> void:
 	world.declare_winner(side if ok else foe)
 
 
+## Something a commander on the players' side did: an order (its "t"), or
+## one of the things only his own screen sees ("drill", with "what": the
+## camera moved, a squad selected, the order of battle or the tactical map
+## opened). A drill objective ("do") waiting for it is met.
+func noted(team: int, t: String, d: Dictionary) -> void:
+	if team != side or over != 0:
+		return
+	var what := String(d.get("what", "")) if t == "drill" else t
+	for o in objs:
+		if int(o.state) == ACTIVE and String(o.kind) == "do" and not o.got and what in (o.on as Array):
+			o.got = true
+			dirty = true
+
+
 # --- players coming and going -----------------------------------------------------------
 
 ## A friend dropping in takes over a share of the force: every other squad (and
@@ -512,9 +531,21 @@ func owner_changed(old: int, new_owner: int) -> void:
 
 func info() -> Dictionary:
 	var ol := []
-	for o in objs:
+	# drill steps ("fold") leave the list once the next is done: a course of
+	# a dozen steps shows the one just met and the one in hand, not all twelve
+	var last_fold := -1
+	for i in objs.size():
+		if objs[i].fold and int(objs[i].state) == DONE:
+			last_fold = i
+	var watch := []
+	for i in objs.size():
+		var o: Dictionary = objs[i]
 		if int(o.state) == HIDDEN:
 			continue
+		if o.fold and int(o.state) == DONE and i != last_fold:
+			continue
+		if int(o.state) == ACTIVE and String(o.kind) == "do":
+			watch.append_array(o.on)
 		var p = o.pos if o.pos is Vector3 and o.pos != Vector3.INF and o.get("mark", true) else null
 		ol.append([String(o.label), String(o.text), int(o.state), String(o.kind), p, float(o.r), _prog_text(o), bool(o.optional)])
 	var lost := 0
@@ -527,7 +558,7 @@ func info() -> Dictionary:
 			kills += 1
 	return {"key": key, "title": String(def.get("title", key)), "op": String(def.get("op", "")), "side": side, "over": over, "end": end_text,
 		"el": world.time - start_t, "left": (deadline - world.time) if deadline > 0.0 else -1.0, "objs": ol, "sup": support,
-		"focus": focus if focus != Vector3.INF else null, "fyaw": focus_yaw, "lost": [lost, _ours.size()], "kills": kills}
+		"focus": focus if focus != Vector3.INF else null, "fyaw": focus_yaw, "lost": [lost, _ours.size()], "kills": kills, "watch": watch}
 
 
 func _prog_text(o: Dictionary) -> String:

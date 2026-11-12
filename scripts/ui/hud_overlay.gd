@@ -103,7 +103,7 @@ func _draw() -> void:
 	_order_graphics(lt, maxf(a_far, a_units * 0.9))
 	_intent_graphics(lt, maxf(a_far, a_units * 0.9))
 	_mark("orders")
-	if not w.mission_info.is_empty() and int(w.mission_info.get("over", 0)) == 0:
+	if int(w.mission_info.get("over", 0)) == 0 and not HudObjectives.shown(w).is_empty():
 		_mission_marks(cam, vs)
 	var men := _men_on_screen(cam, vs) if a_close + a_mid > 0.0 else []
 	_mark("men on screen")
@@ -594,7 +594,7 @@ func _town_marks() -> void:
 func _mission_marks(cam: Camera3D, vs: Vector2) -> void:
 	var w := hud.world
 	var t := Time.get_ticks_msec() / 1000.0
-	for o in w.mission_info.get("objs", []):
+	for o in HudObjectives.shown(w).get("objs", []):
 		if int(o[2]) != MissionDirector.ACTIVE or o[4] == null:
 			continue
 		var p: Vector3 = o[4]

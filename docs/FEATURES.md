@@ -377,6 +377,7 @@ sets one up as a listed battle, and friends join it from the server browser). Ea
 
 | Mission | Side | What it shows off |
 |---|---|---|
+| **Boot Camp** | Coalition | The tutorial, listed first and offered on a first launch: a step at a time behind the lines, from the camera to the XO (below). |
 | **Bridgehead** | Coalition | Clear a riverside village house by house, seize its bridge, hold it against infantry, a BTR and mortars coming over the bridge and the ford. 155 mm artillery on call. |
 | **Beachhead** | Coalition | RHIBs land a party on the beach under a patrol ship's guns while enemy boats come out; kill two AA trucks, then a Blackfoot and a Ghost Hawk full of reinforcements come in from the sea. |
 | **Sky Hook** | Coalition | Hook a Nyx tank destroyer under a Mohawk, fly it over the river to a cut-off outpost and stop the armoured column coming for it. |
@@ -395,6 +396,30 @@ sets one up as a listed battle, and friends join it from the server browser). Ea
 - **Co-op:** the force is shared out between the players in turn; a friend dropping in takes over half of
   whoever has the most. If everyone leaves, the mission's autopilot (the same one the automated tests use) keeps playing.
 - The end screen says what happened and what it cost (time, objectives, men lost, enemy killed), with **Try Again**.
+
+### Boot Camp and the adviser
+
+- **Boot Camp** teaches command in eleven steps, each an objective that waits until the player has done it, with
+  Sergeant Hale on the radio saying how: look around (pan, then turn or zoom), select a squad, move into the
+  sandbags at A (the cover pips), pick out one man (Alt+click) and send him, build sandbags with the engineers,
+  call 155 mm artillery on a few Rebels who wander in at B, attack-move onto B, defend it, delegate a squad to
+  the XO, fold the order of battle and open the tactical map. Done steps fold out of the list.
+  - Instructions name keys as actions (`{support}`), and every player's screen shows its own binding
+    (`Keys.fill`), so a rebound key is the one the course asks for.
+  - What only the player's screen sees (the camera, the selection, the order of battle, the tactical map) the HUD
+    reports as a `drill` order once done; the rest is met by the orders themselves (`MissionDirector.noted`, the
+    `do` objective kind). Its autopilot does each step, so it plays itself headless like the other missions.
+  - The menu offers it once, top right, on a first launch (`boot_camp_offer`; a player with settings saved
+    already isn't asked).
+- **The adviser** (Play vs AI, `scripts/game/adviser.gd`) fills the objectives panel when there's no mission:
+  up to two suggestions in the same lettered style ("Take the village of X", the nearest towns nobody holds,
+  then the enemy's), ringed on the ground and marked on the minimap in the optional colour. Under them, now and
+  then, a quiet word: supply over 400 unspent for 90 s, squads of yours with no orders and nothing to shoot for
+  two minutes, a FOB taking damage (with the key that jumps there).
+  - It keeps out of the way: each word waits before it's said again (1 to 4 minutes) and is said at most three
+    or four times a battle, it never says two at once, and the suggestions stop once you hold four towns.
+  - It runs in the player's own view from what that player is sent, and changes nothing in the battle.
+    **Settings > Interface > Adviser** turns it off.
 
 The code: `scripts/game/mission_director.gd` (the machinery), `scripts/game/missions.gd` (the content),
 `scripts/game/mission_list.gd` (the catalogue), `scripts/ui/hud_objectives.gd` (the panel). Adding a mission is a

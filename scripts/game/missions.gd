@@ -59,6 +59,8 @@ func setup(d: MissionDirector) -> void:
 		if fb.team == d.side:
 			fb.supply = 0.0
 	match d.key:
+		"bootcamp":
+			_bootcamp(d)
 		"bridgehead":
 			_bridgehead(d)
 		"beachhead":
@@ -80,6 +82,8 @@ func setup(d: MissionDirector) -> void:
 func drive(d: MissionDirector) -> void:
 	_now = d.world.time
 	match d.key:
+		"bootcamp":
+			_drive_bootcamp(d)
 		"bridgehead":
 			_drive_bridgehead(d)
 		"beachhead":
@@ -245,6 +249,137 @@ func _support(d: MissionDirector, kinds: Array, supply: float) -> void:
 			fb.supply = supply
 			fb.net_dirty = true
 			break
+
+
+# --- 0. Boot Camp ---------------------------------------------------------------------
+# Basic training on the Coalition's own ground, a step at a time: each step
+# waits until the player has done it, and the sergeant says how (with the keys
+# as this player has them bound: {action} in the text, see Keys.fill). The
+# camera, picking a squad, moving into cover, one man on his own, building,
+# a fire mission, attack-move and defend against a few Rebels who wander in,
+# then the XO, the order of battle and the tactical map.
+
+## [id, the objective, what meets it (Director.noted), what the sergeant says]
+const BOOT_STEPS := [
+	["look", "Look around: {cam_up} {cam_left} {cam_down} {cam_right} pan, {cam_turn_left} {cam_turn_right} turn, the wheel zooms", ["camera"],
+		"Sgt. Hale: Welcome to Frontline, sir. First, the ground. Pan with {cam_up} {cam_left} {cam_down} {cam_right} or the screen's edge, turn with {cam_turn_left} and {cam_turn_right}, zoom with the wheel. {cam_reset} squares the view up again."],
+	["select", "Select a squad: click one of its men, or drag a box round them", ["select"],
+		"Sgt. Hale: Good. Now pick up a squad: click any man of it, or drag a box round the lot. Double-click selects every squad of that kind on the screen."],
+	["move", "Move into the sandbags at A: right-click the ground there", [],
+		"Sgt. Hale: Right-click to move. Before you click, hold the cursor over A: the pips are where each man will end up. Green is hard cover, yellow soft, red is open ground. Drag the right button to face them a way."],
+	["one", "Pick out one man: Alt+click him, then right-click where he goes", ["unit"],
+		"Sgt. Hale: Sometimes one man is all you need: a scout, a sniper, a man with a rocket. Alt+click a soldier (or his row in the squad panel, bottom left) and your orders go to him alone."],
+	["build", "Build sandbags: select the Engineers, Defenses on the command card, then Sandbags", ["build"],
+		"Sgt. Hale: The Engineers build. Select them, open Defenses on the command card (bottom right), pick Sandbags and click the ground. Drag to lay a line. It costs supply from the nearest FOB."],
+	["fire", "Call artillery on the Rebels at B: {support}, then click B", ["support"],
+		"Sgt. Hale: Contact! Rebels in the open at B. Press {support} (or the 155 mm button in the fire support list) and click on them. The circle is where the shells will fall."],
+	["take", "Attack-move onto B: {attack_move}, then click B", [],
+		"Sgt. Hale: Now finish it. Select both rifle squads, press {attack_move} and click B: they bound forward cover to cover, one team moving while the other covers, and fight what they meet."],
+	["defend", "Defend the ground you took: {defend}, then click and drag toward the enemy", ["defend"],
+		"Sgt. Hale: Hold what you took. Press {defend}, click where they are and drag the way the enemy will come: they spread into the best cover there and stay put."],
+	["delegate", "Hand a squad to your XO: {delegate}, pick an intent and click", ["delegate"],
+		"Sgt. Hale: You can't watch every squad. Select one, press {delegate} and give your XO an intent: hold a sector, take an objective, screen. He runs it and reports. Any order of yours takes it back."],
+	["orbat", "Fold the order of battle away and back: {orbat}", ["orbat"],
+		"Sgt. Hale: The list on the left is the order of battle: every unit and what it's doing. Click a row to pick it up. {orbat} folds it away."],
+	["map", "Open the tactical map: tap {tactical}", ["tactical"],
+		"Sgt. Hale: Last one. Tap {tactical} for the tactical map: the whole battlefield, the towns and what your men have seen. Hold it instead for the battle statistics."],
+]
+
+
+func _bootcamp(d: MissionDirector) -> void:
+	var f := d.feat
+	var fob: Structure = null
+	for fb in f.fobs:
+		if fb.team == d.side and (fob == null or fb.position.z > fob.position.z):
+			fob = fb  # the Coalition's furthest-back FOB: home
+	var base: Vector3 = fob.position if fob != null else Vector3(0, 0, MapDims.HALF * 0.6)
+	base.y = 0.0
+	var e := Defs.flat(-base).normalized() if base.length() > 1.0 else Vector3(0, 0, -1)  # out towards the middle of the map
+	var n := Vector3(-e.z, 0, e.x)
+	var start := _walk(d, base + e * 24.0)
+	var a := _walk(d, base + e * 62.0)
+	var b := _walk(d, base + e * 190.0)
+	ctx = {"base": base, "e": e, "n": n, "a": a, "b": b, "builds": 0}
+	d.focus = start - e * 6.0
+	d.focus_yaw = Defs.yaw_of(e)
+	# two rifle squads and the engineers, by the FOB
+	ctx.r1 = d.squad("rifle_squad", start + n * 8.0, start + n * 8.0 + e * 2.0)
+	ctx.r2 = d.squad("rifle_squad", start - n * 8.0, start - n * 8.0 + e * 2.0)
+	ctx.eng = d.squad("engineer_team", start - e * 8.0, start - e * 6.0)
+	# a line of sandbags at A for the cover lesson, facing out
+	for k in 3:
+		d.mg._try("sandbags", TrenchNet.snap_pos(a + n * (k - 1) * 4.4 + e * 2.0), Defs.yaw_of(n), d.side)
+	_support(d, ["artillery"], 420.0)
+	for st in BOOT_STEPS:
+		var id := String(st[0])
+		match id:
+			"move":
+				d.add(id, String(st[1]), "reach", {"pos": a, "r": 9.0, "need": 3, "fold": true})
+			"take":
+				d.add(id, String(st[1]), "clear", {"pos": b, "r": 30.0, "fold": true})
+			_:
+				d.add(id, String(st[1]), "do", {"on": st[2], "fold": true})
+	_boot_step(d, 0)
+
+
+func _boot_step(d: MissionDirector, i: int) -> void:
+	if i >= BOOT_STEPS.size():
+		d.radio("Sgt. Hale: That's the course, sir. Play vs AI next: the adviser will point you at the first town. Good luck out there.")
+		d.after(4.0, func(): d.win("Training complete. You're ready for the front."))
+		return
+	var st: Array = BOOT_STEPS[i]
+	var id := String(st[0])
+	if id == "fire":
+		# a few Rebels wander into the open at B
+		var q := d.enemy("fighter_cell", ctx.b)
+		for m in q.members.slice(3):
+			d.world.despawn(m)
+		q.order_defend(ctx.b, -ctx.e)
+	var at: Vector3 = ctx.b if id in ["fire", "take", "defend"] else (ctx.a if id == "move" else Vector3.INF)
+	d.after(1.5 if i > 0 else 3.0, func():
+		# (the objective, then the sergeant's word on how: the newest line on screen)
+		d.start(id, func(): _boot_step(d, i + 1))
+		d.radio(String(st[3]), at if at != Vector3.INF else null))
+
+
+func _drive_bootcamp(d: MissionDirector) -> void:
+	var w := d.world
+	var who: int = d.owners[0]
+	var rifles := []
+	for sq in [ctx.r1, ctx.r2]:
+		if is_instance_valid(sq) and sq.has_alive_members():
+			rifles.append(sq.sid)
+	for st in BOOT_STEPS:
+		var id := String(st[0])
+		if not _active(d, id):
+			continue
+		match id:
+			"look", "select", "orbat", "map":
+				# (what only a player's own screen sees)
+				d.noted(d.side, "drill", {"what": String((st[2] as Array)[0])})
+			"move":
+				if _once("move", id):
+					w.execute_cmd(who, {"t": "move", "squads": rifles, "pos": ctx.a, "face": ctx.e})
+			"one":
+				for m in (ctx.r1 as Squad).alive_members():
+					w.execute_cmd(who, {"t": "unit", "soldier": m.eid, "o": "move", "pos": ctx.a + ctx.n * 7.0})
+					break
+			"build":
+				# somewhere the ground takes it (a fresh spot each try)
+				var k := int(ctx.builds)
+				ctx.builds = k + 1
+				var p: Vector3 = ctx.a - ctx.e * (6.0 + 3.0 * (k % 4)) + ctx.n * (10.0 + 4.0 * (k >> 2))
+				var eng: Array = [ctx.eng.sid] if is_instance_valid(ctx.eng) else []
+				w.execute_cmd(who, {"t": "build", "kind": "sandbags", "pos": p, "yaw": Defs.yaw_of(ctx.n), "squads": eng})
+			"fire":
+				w.execute_cmd(who, {"t": "support", "kind": "artillery", "pos": ctx.b})
+			"take":
+				if _once("take", id, 40.0):
+					w.execute_cmd(who, {"t": "assault", "squads": rifles, "pos": ctx.b, "face": ctx.e})
+			"defend":
+				w.execute_cmd(who, {"t": "defend", "squads": rifles, "pos": ctx.b, "face": ctx.e})
+			"delegate":
+				w.execute_cmd(who, {"t": "delegate", "intent": "hold", "squads": rifles.slice(0, 1), "pos": ctx.b, "face": ctx.e})
 
 
 # --- 1. Bridgehead -------------------------------------------------------------------

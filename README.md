@@ -70,6 +70,8 @@ Press **F1** at any time for help, and **F4** for the Field Manual. Hold **Tab**
 
 ## Missions
 
+New to it? **Boot Camp**, first under **Missions** (and offered the first time you start the game), walks you through command a step at a time: the camera, orders and cover, picking out one soldier, building, fire support, and handing squads to your XO. Every step names the key as you have it bound. In **Play vs AI** an adviser then suggests the nearest town to take and says a quiet word if supply piles up or squads stand idle; turn it off in **Settings → Interface**.
+
 Want something shorter, with a story? **Missions** on the main menu has five-minute operations you can play alone or with friends:
 
 - **Bridgehead**: clear a village and seize the bridge behind it, then hold it against the counterattack.

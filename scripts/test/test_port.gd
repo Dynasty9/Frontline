@@ -196,8 +196,9 @@ func _answer(cmd: String, req: Dictionary) -> Variant:
 	return {"ok": false, "error": "unknown command: %s" % cmd}
 
 
-## A load request as start_local's switches: one of scenario, mission or
-## battle (AI against AI), and seed, play, autoplay, static, verbose...
+## A load request as start_local's switches: one of scenario, mission,
+## battle (AI against AI) or skirmish (Play vs AI: you, with play, against the
+## AI commander), and seed, play, autoplay, static, verbose...
 func _load_args(req: Dictionary) -> Variant:
 	var a := {}
 	for k in req:
@@ -213,9 +214,13 @@ func _load_args(req: Dictionary) -> Variant:
 	if a.has("battle"):
 		a.erase("battle")
 		a["aivai"] = "1"
-	var what := int(a.has("scenario")) + int(a.has("mission")) + int(a.has("aivai"))
+	var skirmish := a.has("skirmish")
+	a.erase("skirmish")
+	var what := int(a.has("scenario")) + int(a.has("mission")) + int(a.has("aivai")) + int(skirmish)
 	if what != 1:
-		return "load one of: scenario, mission, battle"
+		return "load one of: scenario, mission, battle, skirmish"
+	if skirmish and not a.has("play"):
+		return "a skirmish is played: load it with play"
 	# (find falls back to a mission: a mistyped key mustn't quietly play that one)
 	if a.has("mission") and String(MissionList.find(String(a.mission)).key) != String(a.mission):
 		return "no such mission: %s" % a.mission
@@ -314,8 +319,11 @@ func _query(w: World, req: Dictionary) -> Dictionary:
 				if (team == -9 or st.team == team) and (st.skind == kind if kind != "" else not st.skind in SCENERY) and (ids.is_empty() or ids.has(st.eid)):
 					out.append({"id": st.eid, "kind": st.skind, "team": st.team, "built": st.built, "progress": snappedf(st.progress, 0.01),
 						"wrecked": st.wrecked, "hp": snappedf(st.hp, 0.1), "pos": _xz(st.position), "yaw": snappedf(st.yaw, 0.01)})
+		"adviser":
+			# Play vs AI's adviser, as the player's screen has it (Adviser)
+			return {"t": w.time, "adviser": w.adviser.state() if w.adviser else null}
 		_:
-			return {"ok": false, "error": "query what? world, squads, soldiers, vehicles or structures"}
+			return {"ok": false, "error": "query what? world, squads, soldiers, vehicles, structures or adviser"}
 	return {"t": w.time, what: out}
 
 

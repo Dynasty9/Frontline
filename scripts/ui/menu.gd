@@ -220,6 +220,7 @@ func _ready() -> void:
 	# (the server browser and the lobby take the menu's place, and the corner)
 	main_box.visibility_changed.connect(_refresh_rejoin)
 	_refresh_rejoin()
+	_offer_boot_camp.call_deferred()  # (after main has read the test switches: --set)
 	# a Join or Find Match link from the website: the one we were started with,
 	# and any a second copy hands on while we run
 	Links.link_opened.connect(open_link)
@@ -1047,6 +1048,32 @@ func _refresh_rejoin() -> void:
 	go.pressed.connect(_rejoin)
 	h.add_child(go)
 	notices.add_child(rejoin_card)
+
+
+## On a first launch, top right: Boot Camp, the course that teaches the
+## controls. Asked once: playing it or saying not now puts it away for good
+## (it stays first under Missions).
+func _offer_boot_camp() -> void:
+	if not bool(Settings.get_v("boot_camp_offer")):
+		return
+	var p := _notice("New to Frontline?", "BOOT CAMP · 8 MIN", false)
+	p.name = "BootCampNotice"
+	p.tooltip_text = "A short course, a step at a time: the camera, orders, building, fire support and your XO."
+	var h: HBoxContainer = p.get_meta("row")
+	var done := func():
+		Settings.set_v("boot_camp_offer", false)
+		p.queue_free()
+	var later := UiKit.button("Not now", "quiet", 0, 26)
+	later.pressed.connect(done)
+	h.add_child(later)
+	var go := UiKit.primary_button("Start", 0, 26, 12)
+	go.pressed.connect(func():
+		done.call()
+		Sfx.ui("click")
+		_ms_key = "bootcamp"
+		_mission_solo())
+	h.add_child(go)
+	notices.add_child(p)
 
 
 ## Back into that battle as the player we were there: the host gives us our

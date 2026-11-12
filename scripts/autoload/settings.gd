@@ -75,7 +75,7 @@ var v := {
 	"vsync": true, "fps_cap": 0, "perf": 1, "shake": true, "ui_scale": 1.0, "mood": "random", "labels": true, "lyr_units": true, "lyr_orders": false, "lyr_intel": true, "lyr_vision": true, "lyr_ranges": false, "orbat": true,
 	"ao_q": 2, "upscaler": 1, "sharpen": 0.2, "ssr": true, "terrain_reflections": false, "alpine_haze": true, "lod": 2, "aniso": 3, "water": 2, "mountain_clouds": 3, "cloud_shadows": true,
 	"window": 0, "resolution": 2, "brightness": 1.0, "contrast": 1.0, "look": 0, "tonemap": 0, "fov": 48.0,
-	"bubbles": true, "cover_preview": true, "edge_pan": true, "cam_speed": 1.0,
+	"bubbles": true, "cover_preview": true, "edge_pan": true, "cam_speed": 1.0, "adviser": true, "boot_camp_offer": true,
 	"zoom_cursor": true, "mmb_mode": 0, "scroll_mode": 0, "minimap_size": 1, "minimap_rotate": false,
 	"coop_show": true, "ui_theme": "brass", "error_reports": true, "reduce_motion": false,
 	"volume": 0.8, "vol_music": 0.6, "vol_effects": 1.0, "vol_ambience": 0.8, "vol_ui": 0.8, "battle_music": true, "mute_bg": false,
@@ -335,6 +335,10 @@ func _load(path := PATH) -> void:
 	for k in CINEMATIC_KEYS:
 		if not cf.has_section_key("main", k) and PRESETS.has(preset):
 			v[k] = PRESETS[preset][k]
+	# Boot Camp is offered on a first launch: someone with settings saved
+	# already has played, and needn't be asked
+	if not cf.has_section_key("main", "boot_camp_offer"):
+		v.boot_camp_offer = false
 	# cloud shadows on everything came later too: a preset takes its own, a
 	# custom setup the default
 	if not cf.has_section_key("main", "cloud_shadows") and PRESETS.has(preset):
