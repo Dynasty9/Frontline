@@ -1,0 +1,20 @@
+{
+  "entry": "changelog/unreleased/shared-guns-and-turret-fittings.md",
+  "summary": "Twenty shared vehicle parts: guns, turret fittings, lights, rotor masts, exhausts, fenders, fuel tanks and rolled tarps.",
+  "medium": "still",
+  "stage": "tools/showcase/vehicle-surfaces.tscn",
+  "rationale": "Static construction change: one matched close-up sheet of six representative vehicles. Full-roster and per-part review captures stay outside Git; most added hardware is small at gameplay distance.",
+  "source_ref": "34880bb34b5fee9a343e2203129775f49b07a172",
+  "before_ref": "69a1df0348fb879aa98d5fbfd7f02ac31a10c6d7",
+  "sources": [
+    {
+      "file": "changelog/unreleased/shared-guns-and-turret-fittings/comparison.jpg",
+      "sha256": "055d93463813a6f68dba72cf1fcec68e6ede852e212e25796fd0ec4c5a316c50"
+    },
+    {
+      "file": "changelog/unreleased/shared-guns-and-turret-fittings/capture.json",
+      "sha256": "bbdc1667187058511999161b2f6db748ac4c25da05ccf749114805d0679d282d"
+    }
+  ],
+  "output": null
+}

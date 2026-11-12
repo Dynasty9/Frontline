@@ -223,44 +223,17 @@ static func _spare(k: VehicleModels, parent: Node3D, pos: Vector3, r: float, w: 
 
 # --- weapons ----------------------------------------------------------------------
 
-## M2 .50 cal along -z, the receiver's trunnion at y above the parent's origin.
+## M2 .50 cal along -z, the receiver's trunnion at y above the parent's origin:
+## spade grips for the gunner standing behind it, the ammo can on the left.
 ## Returns the muzzle.
 static func _m2(k: VehicleModels, t: Node3D, y: float) -> Vector3:
-	k._box(t, Vector3(0.17, 0.2, 0.6), Vector3(0, y - 0.02, 0.12), "gunmetal_w")
-	k._box(t, Vector3(0.18, 0.03, 0.44), Vector3(0, y + 0.095, 0.1), "gunmetal_w")
-	k._box(t, Vector3(0.16, 0.17, 0.03), Vector3(0, y - 0.02, 0.43), "gunmetal_w")
-	for sx in [-0.085, 0.085]:
-		k._cyl(t, 0.022, 0.022, 0.14, Vector3(sx, y + 0.06, 0.5), Vector3.ZERO, "gunmetal_w", null, 6, false)
-	k._box(t, Vector3(0.03, 0.045, 0.1), Vector3(0.1, y + 0.01, 0.05), "gunmetal_w", null, Vector3.ZERO, false)
-	k._cyl(t, 0.048, 0.048, 0.25, Vector3(0, y, -0.305), Vector3(PI / 2, 0, 0), "gunmetal_w", null, 10)
-	for z in [-0.24, -0.33]:
-		k._cyl(t, 0.054, 0.054, 0.03, Vector3(0, y, z), Vector3(PI / 2, 0, 0), "gunmetal_w", null, 10, false)
-	k._cyl(t, 0.029, 0.029, 0.9, Vector3(0, y, -0.88), Vector3(PI / 2, 0, 0), "gunmetal_w", null, 8)
-	k._box(t, Vector3(0.025, 0.07, 0.11), Vector3(0, y + 0.06, -0.62), "gunmetal_w", null, Vector3.ZERO, false)
-	k._cyl(t, 0.05, 0.03, 0.11, Vector3(0, y, -1.38), Vector3(PI / 2, 0, 0), "gunmetal_w", null, 8, false)
-	# the ammo can on its tray, the belt up into the feed
-	k._box(t, Vector3(0.12, 0.19, 0.29), Vector3(-0.2, y - 0.08, 0.08), "paint", OD)
-	k._box(t, Vector3(0.12, 0.02, 0.06), Vector3(-0.2, y + 0.02, 0.0), "paint", OD.darkened(0.25))
-	k._box(t, Vector3(0.1, 0.03, 0.05), Vector3(-0.13, y + 0.04, 0.08), "paint", Color(0.62, 0.5, 0.24), Vector3(0, 0, 0.4), false)
-	return Vector3(0, y, -1.45)
+	return VehicleWeapons.hmg(k, t, Vector3(0, y, 0.12), Vector3(0, y, -1.45), 1.0, -1.0, true, "gunmetal_w", OD)
 
 
-## M249-pattern light machine gun (the LIM-85) along -z. Returns the muzzle.
+## M249-pattern light machine gun (the LIM-85) along -z: butt and pistol grip,
+## the 200-round box under the left of the receiver. Returns the muzzle.
 static func _lmg(k: VehicleModels, t: Node3D, y: float) -> Vector3:
-	k._box(t, Vector3(0.075, 0.12, 0.36), Vector3(0, y, 0.05), "gunmetal_w")
-	k._box(t, Vector3(0.08, 0.03, 0.22), Vector3(0, y + 0.07, 0.02), "gunmetal_w")
-	k._box(t, Vector3(0.05, 0.11, 0.3), Vector3(0, y - 0.01, 0.37), "gunmetal_w", null, Vector3(0.06, 0, 0))
-	k._box(t, Vector3(0.055, 0.15, 0.03), Vector3(0, y - 0.02, 0.52), "gunmetal_w")
-	k._box(t, Vector3(0.035, 0.1, 0.045), Vector3(0, y - 0.1, 0.17), "gunmetal_w", null, Vector3(-0.3, 0, 0), false)
-	k._box(t, Vector3(0.06, 0.05, 0.2), Vector3(0, y - 0.01, -0.22), "gunmetal_w")
-	k._cyl(t, 0.016, 0.016, 0.5, Vector3(0, y, -0.5), Vector3(PI / 2, 0, 0), "gunmetal_w", null, 6, false)
-	k._cyl(t, 0.022, 0.018, 0.07, Vector3(0, y, -0.78), Vector3(PI / 2, 0, 0), "gunmetal_w", null, 6, false)
-	k._box(t, Vector3(0.02, 0.06, 0.12), Vector3(0.04, y + 0.06, -0.16), "gunmetal_w", null, Vector3.ZERO, false)
-	for sx in [-0.02, 0.02]:
-		k._box(t, Vector3(0.012, 0.012, 0.3), Vector3(sx, y - 0.05, -0.42), "gunmetal_w", null, Vector3.ZERO, false)
-	# 200-round box under the left of the receiver
-	k._box(t, Vector3(0.1, 0.13, 0.13), Vector3(-0.06, y - 0.11, 0.03), "paint", OD)
-	return Vector3(0, y, -0.82)
+	return VehicleWeapons.mmg(k, t, Vector3(0, y, 0.05), Vector3(0, y, -0.82), 1.0, -1.0, true, "gunmetal_w", OD)
 
 
 ## SPG-9 recoilless rifle along -z on its saddle, the trunnion at y. Returns the muzzle.
@@ -683,7 +656,7 @@ static func _truck(k: VehicleModels, team: int, seed: int, v: String) -> void:
 		k._add(m, Res.sphere(0.17, 10), "gunmetal_w", null, Vector3(0.12, wr, z), Vector3.ZERO, Vector3(1.0, 1.0, 0.8))
 		_rod(k, m, Vector3(-0.42, wr + 0.05, z), Vector3(-0.42, 0.85, z), 0.05, "gunmetal_w", null, 6)
 		_rod(k, m, Vector3(0.42, wr + 0.05, z), Vector3(0.42, 0.85, z), 0.05, "gunmetal_w", null, 6)
-	k._cyl(m, 0.21, 0.21, 0.95, Vector3(-0.7, 0.82, -0.35), Vector3(PI / 2, 0, 0), "steel", Color(0.45, 0.45, 0.44), 14)
+	VehicleRunningGear.fuel_tank(k, m, Vector3(-0.7, 0.82, -0.35), Vector3(0.42, 0.42, 0.95), -1.0, "steel", Color(0.45, 0.45, 0.44))
 	k._box(m, Vector3(0.3, 0.32, 0.55), Vector3(0.72, 0.82, -0.35), "gunmetal_w")
 	k._cyl(m, 0.05, 0.05, 1.4, Vector3(0.55, 0.62, 0.6), Vector3(PI / 2, 0, 0), "gunmetal_w", null, 8, false)
 	# the cab over the front wheels, the short nose in front of it

@@ -836,9 +836,12 @@ var _ms_t := 0.0
 func _model_sheet_tick() -> void:
 	var spec := String(args["model-sheet"])
 	var keys: Array[String] = []
-	# (a family's models are listed in its builder, scripts/game/vehicles/vm_<family>.gd)
-	if spec in ["nato", "csat", "indep", "civ", "heli", "plane", "boat"]:
+	# (a family's models are listed in its builder, scripts/game/vehicles/vm_<family>.gd;
+	# the fixed-wing ones span several builders, which VehicleModels gathers)
+	if spec in ["nato", "csat", "indep", "civ", "heli", "boat"]:
 		keys.assign(GameScripts.load_script("res://scripts/game/vehicles/vm_%s.gd" % spec).KEYS)
+	elif spec == "plane":
+		keys.assign(GameScripts.load_script("res://scripts/game/vehicle_models.gd").plane_keys())
 	elif spec == "all":
 		keys.assign(GameScripts.load_script("res://scripts/game/vehicle_models.gd").family_keys())
 	else:

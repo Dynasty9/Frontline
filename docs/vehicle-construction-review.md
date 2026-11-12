@@ -9,8 +9,8 @@ Existing CC0 surface materials remain shared; this change adds no texture pack.
 Use the [programmatic index](../tools/vehicles/README.md) to look up a model,
 its owner, reachable shared APIs and candidate duplicated construction. It covers
 137 model keys, including five ambient bodies, and can join 98 gameplay aliases
-from the runtime roster. It excludes shadowed aircraft dispatchers and does not
-count variants or the team-dependent convoy union as additional designs.
+from the runtime roster. It would exclude a shadowed dispatcher (none remain) and
+does not count variants or the team-dependent convoy union as additional designs.
 Conditional branches are a union: a fuel-tank method reachable from a truck root
 does not mean the cargo variant carries a tank. Source links and keyword evidence
 are navigation aids, not an automatic presence detector.
@@ -86,8 +86,8 @@ without accidentally adding a competing helper.
 
 Surface tests exercise mirrored winding, curved samples, real apertures,
 opaque baking, clear-glass near/far and wreck behavior, profile cache identity,
-and a bounded single-mesh seal. Index tests exercise active ownership, shadowed
-builders, convoy routing and the three-root minimum. Existing material, component,
+and a bounded single-mesh seal. Index tests exercise active ownership, the absence of
+shadowed builders, convoy routing and the three-root minimum. Existing material, component,
 LOD, motion and socket tests cover the model roster and animation contracts.
 
 Godot 4.7.2 headless smoke scenarios (`roster`, `tank`, `naval`) completed without

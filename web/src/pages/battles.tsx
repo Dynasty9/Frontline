@@ -15,7 +15,7 @@ export default function BattlesPage() {
   const invite = search.get("join")
 
   return (
-    <div className="topo min-h-[70svh]">
+    <div className="min-h-[70svh]">
       <Battles
         page
         lobbies={lobbies.data}

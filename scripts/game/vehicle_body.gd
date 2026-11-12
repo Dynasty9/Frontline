@@ -168,3 +168,31 @@ static func boundary(k: VehicleModels, parent: Node3D, surface: VehicleSurface, 
 			var distance := surface.point(a).distance_to(surface.point(center))
 			var uv := a.lerp(center, minf(0.2, 0.035 / maxf(distance, 0.001)))
 			fastener(k, parent, surface.point(uv, lift + 0.002), surface.normal(uv), minf(0.009, distance * 0.06))
+
+
+## Flat fender sheet over a wheel: the old plate's centre, size and rotation,
+## `side` the vehicle side its outer edge faces (+X or -X). A rolled bead
+## stiffens the outer edge, bolts hold the inner edge and two stays brace it
+## from below. A raked lip is another call with its own rotation; `valance`
+## drops a skirt of that height from the outer edge.
+static func fender(k: VehicleModels, parent: Node3D, center: Vector3, size: Vector3, side: float, mat: String, col = null, rotation := Vector3.ZERO, valance := 0.0) -> void:
+	var mount := k._pivot(parent, center)
+	mount.rotation = rotation
+	var s := 1.0 if side >= 0.0 else -1.0
+	k._add(mount, BevelMesh.make(size, minf(size.y * 0.35, 0.012)), mat, col, Vector3.ZERO)
+	var edge := Vector3(s * size.x * 0.5, 0, 0)
+	VehicleFrames.tube(k, mount, edge + Vector3(0, 0, -size.z * 0.5), edge + Vector3(0, 0, size.z * 0.5), size.y * 0.55, mat, col, 6, false)
+	if valance > 0.0:
+		k._box(mount, Vector3(size.y * 0.8, valance, size.z), edge + Vector3(0, -valance * 0.5, 0), mat, col)
+	var rubber := VehicleMaterials.profile(mat, k.surface_family) == "rubber"
+	var bolts := clampi(roundi(size.z / 0.3), 2, 8)
+	for i in bolts:
+		var z := lerpf(-size.z * 0.4, size.z * 0.4, (i + 0.5) / bolts if bolts > 1 else 0.5)
+		VehicleBody.fastener(k, mount, Vector3(-s * size.x * 0.4, size.y * 0.5 + 0.002, z), Vector3.UP, 0.011)
+	# Stays run inboard from the inner edge to the hull, never down over the
+	# tyre crown, so a guard sitting close above its wheel stays clear of it.
+	if not rubber and size.z > 0.5:
+		for z: float in [-size.z * 0.42, size.z * 0.42]:
+			var top := Vector3(-s * size.x * 0.46, -size.y * 0.5, z)
+			VehicleFrames.beam(k, mount, top, top + Vector3(-s * 0.1, -0.05, 0), 0.03, 0.012, "metal_dark")
+	k._fold(mount)

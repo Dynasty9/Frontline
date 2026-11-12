@@ -18,9 +18,10 @@ import { useSite } from "@/hooks/use-site"
 const MOVED: Record<string, string> = { "#download": "/play#download", "#insignia": "/ranks", "#battles": "/battles" }
 
 /**
- * The front page: what the game is, to someone who's never played it. The
- * live battles, the ranks, the downloads and your profile have pages of
- * their own.
+ * Home: what the game is, to someone who's never played it, and to everyone
+ * else. A signed-in player also gets their progress and the way back into a
+ * battle, just under the footage. The live battles, the ranks, the downloads,
+ * the Field Manual and your profile have pages of their own.
  */
 export default function Home() {
   usePageTitle()
@@ -35,25 +36,15 @@ export default function Home() {
   if (invite) return <Navigate to={`/battles?join=${encodeURIComponent(invite)}`} replace />
   if (MOVED[hash]) return <Navigate to={MOVED[hash]} replace />
 
-  const returning = !!user && health?.accounts !== "off"
-  const exploring = !returning || !!hash
-
   return (
     <>
-      {user && health?.accounts !== "off" ? (
-        <PlayerHome user={user} live={health?.lobbies} />
-      ) : (
-        <Hero health={health} platform={platform} onWatch={() => setWatching(true)} />
-      )}
-      {exploring && (
-        <>
-          <Features />
-          <Missions />
-          <Gallery />
-        </>
-      )}
+      <Hero health={health} platform={platform} onWatch={() => setWatching(true)} />
+      {user && health?.accounts !== "off" && <PlayerHome user={user} live={health?.lobbies} />}
+      <Features />
+      <Missions />
+      <Gallery />
       <WhatsNew />
-      {exploring && <Finale platform={platform} />}
+      <Finale platform={platform} />
       <ReelDialog open={watching} onClose={() => setWatching(false)} />
     </>
   )
