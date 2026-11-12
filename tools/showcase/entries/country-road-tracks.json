@@ -1,0 +1,16 @@
+{
+  "entry": "changelog/unreleased/country-road-tracks.md",
+  "summary": "Country roads read as worn gravel tracks; town asphalt crumbles into them and its cracks follow the streets.",
+  "medium": "still",
+  "stage": "game capture: --aivai --seed=3 --focus-town=85,0 --zoom=14 --pitch=-35; --focus-town=60,0 --zoom=12 --pitch=-40; --focus-town=-14,-8 --zoom=7 --pitch=-38; --shot-at=6 (1600x900, --nohud --perf=0, off-screen window)",
+  "rationale": "Ground materials are an appearance change: matched before/after frames of the same track, town edge and street show the surfaces directly.",
+  "source_ref": "548239755c3466e6f675a975df527d74a29d6a0a + working tree",
+  "before_ref": "548239755c3466e6f675a975df527d74a29d6a0a",
+  "sources": [
+    {
+      "file": "changelog/unreleased/country-road-tracks/comparison.jpg",
+      "sha256": "f5222b09d0f66ca4301a89d35d18b3072a2d17c0b2da34e6e94ca4c063f05fc9"
+    }
+  ],
+  "output": null
+}

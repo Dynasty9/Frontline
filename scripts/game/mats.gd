@@ -42,14 +42,24 @@ mat3 ground_surface_basis(vec3 position) {
 	return mat3(across, -normalize(cross(across, up)), up);
 }
 
-// Thin lines where value noise crosses its middle: a meandering network like
-// the cracks road crews fill with tar. Each is about 4 cm wide; with distance a
-// line covers less of a pixel, so it fades out rather than crawl.
-float street_crack_line(sampler2D noise, vec2 p) {
-	float n = texture(noise, p * 0.028 + 0.37).r + (texture(noise, p * 0.11 + 0.71).r - 0.5) * 0.22 - 0.5;
+// Asphalt cracks along and across the way it was laid: town streets run on
+// the world's axes, so two families of lines, each stretched along one
+// axis, give long cracks down a street and shorter ones across it. They are
+// drawn where value noise crosses its middle, about 3 cm wide; with distance
+// a line covers less of a pixel, so it fades rather than crawl.
+float street_crack_family(sampler2D noise, vec2 q, vec2 wiggle) {
+	float n = texture(noise, q).r + (texture(noise, wiggle).r - 0.5) * 0.18 - 0.5;
 	float w = max(fwidth(n), 0.00001);
-	float half_width = 0.006;
+	float half_width = 0.005;
 	return (1.0 - smoothstep(half_width - w, half_width + w, abs(n))) * clamp(half_width * 2.0 / w, 0.0, 1.0);
+}
+float street_crack_line(sampler2D noise, vec2 p) {
+	float along_x = street_crack_family(noise, p * vec2(0.006, 0.034) + 0.37, p * 0.09 + 0.71);
+	float along_z = street_crack_family(noise, p * vec2(0.034, 0.006) + 0.11, p * 0.09 + 0.29);
+	// each family only in stretches, so a street isn't netted all over
+	along_x *= smoothstep(0.5, 0.62, texture(noise, p * vec2(0.004, 0.02) + 0.53).r);
+	along_z *= smoothstep(0.5, 0.62, texture(noise, p * vec2(0.02, 0.004) + 0.17).r);
+	return max(along_x, along_z);
 }
 
 // Where rain stands on a street: the dips in its surface, the same for the
@@ -96,9 +106,9 @@ vec3 street_surface(sampler2D tex, sampler2D noise, vec2 p, out float tar) {
 	float age = fract(variation.x * 7.31);
 	vec3 patched = aggregate * mix(0.74, 0.96, age) * (0.9 + 0.2 * weather);
 	base = mix(base, patched, repair);
-	float cracks = street_crack_line(noise, p) * smoothstep(0.52, 0.68, texture(noise, p * 0.012 + 0.83).r) * (1.0 - repair);
+	float cracks = street_crack_line(noise, p) * (1.0 - repair);
 	tar = max(seam, cracks);
-	base = mix(base, aggregate * 0.34, tar * 0.85);
+	base = mix(base, aggregate * 0.42, tar * 0.6);
 	base *= 1.0 - stains * 0.16;
 	// Compatibility reads sRGB samples; blend in linear light, then return its expected output.
 	if (OUTPUT_IS_SRGB) {
