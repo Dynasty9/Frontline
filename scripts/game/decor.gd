@@ -288,6 +288,105 @@ func _m(mesh: Mesh, kind: String, p: Vector3, col = null, rot := Vector3.ZERO, s
 		tn if tn != Color(1, 1, 1) else null, shadow, _at)
 
 
+## A crossroads corner with its kerb turned on a radius: the corner square
+## of sidewalk with a quarter circle taken out of the inside, asphalt in the
+## bite, and kerbstones laid round the curve. `ex` is the square's size, its
+## signs giving which corner of the crossroads it is; ex.y is the radius.
+func _walk_corner(ex: Vector3) -> void:
+	var sx := signf(ex.x)
+	var sz := signf(ex.z)
+	var w := absf(ex.x)
+	var r := ex.y
+	# (a, b): metres out from the square's road corner, along x and along z
+	var at := func(a: float, b: float, y: float) -> Vector3:
+		return Vector3(sx * (a - w * 0.5), y, sz * (b - w * 0.5))
+	var centre := Vector2(r, r)
+	var arc := PackedVector2Array()  # from (r, 0) round to (0, r), bulging toward the road
+	var steps := 12
+	for i in steps + 1:
+		var angle := PI * 1.5 - PI * 0.5 * float(i) / steps
+		arc.append(centre + Vector2(cos(angle), sin(angle)) * r)
+	var walk := PackedVector2Array([Vector2(w, w), Vector2(w, 0.0)])
+	walk.append_array(arc)
+	walk.append(Vector2(0.0, w))
+	_m(_fan_mesh(walk, 0.12, at, w), "pavement", Vector3.ZERO, null, Vector3.ZERO, false, true)
+	var bite := PackedVector2Array([Vector2.ZERO])
+	bite.append_array(arc)
+	_m(_fan_mesh(bite, 0.04, at, -1.0), "asphalt", Vector3.ZERO, null, Vector3.ZERO, false, true)
+	for i in 8:
+		var a0 := PI * 1.5 - PI * 0.5 * float(i) / 8.0
+		var a1 := PI * 1.5 - PI * 0.5 * float(i + 1) / 8.0
+		var mid := (a0 + a1) * 0.5
+		var p2 := centre + Vector2(cos(mid), sin(mid)) * (r - 0.09)
+		var tangent := Vector2(-sin(mid), cos(mid))
+		var along := Vector2(sx * tangent.x, sz * tangent.y)
+		_m(Res.box(Vector3(r * absf(a1 - a0) * 1.04, 0.17, 0.18)), "curbstone", at.call(p2.x, p2.y, 0.085), null, Vector3(0, atan2(-along.y, along.x), 0), false, true)
+	var rest := w - r
+	if rest > 0.01:
+		_m(Res.box(Vector3(rest, 0.17, 0.18)), "curbstone", at.call(r + rest * 0.5, 0.09, 0.085), null, Vector3.ZERO, false, true)
+		_m(Res.box(Vector3(rest, 0.17, 0.18)), "curbstone", at.call(0.09, r + rest * 0.5, 0.085), null, Vector3(0, PI * 0.5, 0), false, true)
+
+
+## A flat piece of paving `top` metres up, fanned from its first point round
+## the rest (every point of the outline must be in sight of the first), laid
+## on the ground as _paving_mesh lays a box. When `back` is positive, the
+## square's two far edges (a = back and b = back) step down to the ground,
+## where the walk meets the lots. `at` turns outline coordinates into the
+## piece's own.
+func _fan_mesh(outline: PackedVector2Array, top: float, at: Callable, back: float) -> ArrayMesh:
+	var geology: Landform = world.terrain.landform
+	var to_piece := _at.basis.inverse()
+	# (plain Arrays: a lambda gets a copy of a packed array, but shares an Array)
+	var vertices: Array[Vector3] = []
+	var normals: Array[Vector3] = []
+	var lay := func(c: Vector2, y: float, normal: Vector3) -> void:
+		var v: Vector3 = at.call(c.x, c.y, y)
+		var point := _at * v
+		v.y += geology.height(point) - _at.origin.y
+		vertices.append(v)
+		if normal == Vector3.ZERO:
+			var dx: float = geology.height(point - Vector3(0.2, 0, 0)) - geology.height(point + Vector3(0.2, 0, 0))
+			var dz: float = geology.height(point - Vector3(0, 0, 0.2)) - geology.height(point + Vector3(0, 0, 0.2))
+			normal = Vector3(dx, 0.4, dz).normalized()
+		normals.append(to_piece * normal)
+	# Godot draws the face whose corners run clockwise as seen from in front.
+	var facing := func(c0: Vector2, y0: float, c1: Vector2, y1: float, c2: Vector2, y2: float, toward: Vector3) -> bool:
+		var p0: Vector3 = at.call(c0.x, c0.y, y0)
+		var p1: Vector3 = at.call(c1.x, c1.y, y1)
+		var p2: Vector3 = at.call(c2.x, c2.y, y2)
+		return (p1 - p0).cross(p2 - p0).dot(toward) < 0.0
+	for i in range(1, outline.size() - 1):
+		var c0: Vector2 = outline[0]
+		var c1: Vector2 = outline[i]
+		var c2: Vector2 = outline[i + 1]
+		if not facing.call(c0, top, c1, top, c2, top, Vector3.UP):
+			var swap := c1
+			c1 = c2
+			c2 = swap
+		for c: Vector2 in [c0, c1, c2]:
+			lay.call(c, top, Vector3.ZERO)
+	if back > 0.0:
+		for edge in [[Vector2(back, 0.0), Vector2(back, back), Vector3(1, 0, 0)], [Vector2(0.0, back), Vector2(back, back), Vector3(0, 0, 1)]]:
+			var e0: Vector2 = edge[0]
+			var e1: Vector2 = edge[1]
+			var axis: Vector3 = edge[2]
+			# out of the square, through its far edge
+			var out: Vector3 = at.call(back + axis.x, back + axis.z, 0.0) - at.call(back, back, 0.0)
+			var quad := [[e0, top], [e1, top], [e1, 0.0], [e0, top], [e1, 0.0], [e0, 0.0]]
+			if not facing.call(e0, top, e1, top, e1, 0.0, out):
+				quad = [[e0, top], [e1, 0.0], [e1, top], [e0, top], [e0, 0.0], [e1, 0.0]]
+			for q in quad:
+				lay.call(q[0], q[1], out)
+	var arrays := []
+	arrays.resize(Mesh.ARRAY_MAX)
+	arrays[Mesh.ARRAY_VERTEX] = PackedVector3Array(vertices)
+	arrays[Mesh.ARRAY_NORMAL] = PackedVector3Array(normals)
+	var mesh := ArrayMesh.new()
+	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+	Mats.keep_arrays(mesh, arrays)
+	return mesh
+
+
 func _paving_mesh(box: Mesh, local: Transform3D, lowered := Vector2.INF) -> ArrayMesh:
 	var grid := BoxMesh.new()
 	grid.size = Res.box_size(box)
@@ -374,6 +473,8 @@ func _make(h: Node3D, kind: String, ex) -> void:
 		"curb":
 			var s: Vector3 = ex
 			_m(Res.box(s), "curbstone", Vector3(0, s.y * 0.5, 0), null, Vector3.ZERO, false, true)
+		"walk_corner":
+			_walk_corner(ex)
 		"walk_crossing", "curb_crossing":
 			var s: Vector3 = ex[0]
 			var local := Transform3D(Basis.IDENTITY, Vector3(0, s.y * 0.5, 0))

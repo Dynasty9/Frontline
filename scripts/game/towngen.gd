@@ -14,6 +14,7 @@ extends RefCounted
 const ROAD_HW := 2.9
 const CURB := ROAD_HW  # the kerb meets the carriageway without a grass strip
 const WALK := 4.8  # back of the sidewalk
+const CORNER_R := 1.6  # the kerb's radius round a crossroads corner (the sidewalk is 1.9 m wide)
 const FRONT := 5.2  # lot frontage line
 const S := 40.0  # between parallel streets
 const REACH := 56.0  # the main streets run this far each way from the middle
@@ -247,11 +248,10 @@ func streetscape() -> void:
 				var m := (CURB + WALK) * 0.5
 				var w := WALK - CURB
 				if hx and hz:
+					# the kerb turns the corner on a radius, as lorries need it to
 					var cp := p + Vector3(sx * m, 0, sz * m)
-					_d("walk", cp, 0.0, Vector3(w, 0.12, w))
+					_d("walk_corner", cp, 0.0, Vector3(sx * w, CORNER_R, sz * w))
 					_pave(cp, 0.0, Vector3(w, 0.12, w))
-					_d("curb", p + Vector3(sx * m, 0, sz * (CURB + 0.09)), 0.0, Vector3(w, 0.17, 0.18))
-					_d("curb", p + Vector3(sx * (CURB + 0.09), 0, sz * m), PI * 0.5, Vector3(w, 0.17, 0.18))
 				elif not hx and not hz and dirs.has(Vector2i(-sx, 0)) and dirs.has(Vector2i(0, -sz)):
 					# the outside of a bend
 					var r1 := p + Vector3(sx * WALK * 0.5, 0, sz * m)

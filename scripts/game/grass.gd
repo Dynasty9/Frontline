@@ -229,9 +229,11 @@ func _blocked_job() -> BlockedJob:
 			j.boxes.append([Vector2(st.position.x, st.position.z), st.foot + Vector2(0.4, 0.4), float(st.yaw)])
 	# sidewalks, squares, gardens and the like
 	for e in w.decor:
-		if not String(e[0]) in ["walk", "walk_crossing", "pave", "junction", "soft", "lot_pave", "drive", "path", "garden", "yard"]:
+		if not String(e[0]) in ["walk", "walk_corner", "walk_crossing", "pave", "junction", "soft", "lot_pave", "drive", "path", "garden", "yard"]:
 			continue
 		var s3: Vector3 = e[3][0] if e[0] == "walk_crossing" else e[3]
+		if e[0] == "walk_corner":
+			s3 = Vector3(absf(s3.x), 0.12, absf(s3.z))  # (the signs say which corner)
 		var c3: Vector3 = e[1]
 		j.boxes.append([Vector2(c3.x, c3.z), Vector2(s3.x * 0.5 + 0.2, s3.z * 0.5 + 0.2), float(e[2])])
 	# the water, and the sand and mud along its shores

@@ -119,6 +119,7 @@ func _ready() -> void:
 	assert(absf(gen._contour(Vector3.ZERO).x) < 0.01, "Woodland follows the contour rather than running straight uphill")
 	var town := TownGen.new(gen)
 	check_driveway_crossings(world, gen)
+	check_rounded_corners(world, gen)
 	town._d("lamp", Vector3(0, 2, 0))
 	assert(is_equal_approx(town.decor[0][1].y, world.terrain.landform.height(Vector3.ZERO) + 2.0))
 	var wire := [Vector3(4, 0, 0), 0.0]
@@ -444,6 +445,65 @@ func _ready() -> void:
 	assert(Mats.paving("pavement").get_shader_parameter("grime") == 0.0, "Horizontal paving must not inherit ground-height wall grime")
 	print("LANDFORM passed: generation, determinism, validation, grounding, sight, slope navigation, craters, replication")
 	get_tree().quit()
+
+
+## A crossroads corner's kerb turns on a radius: the corner's paving stays
+## out of the quarter circle by the road, lies on the slope, and faces up;
+## the asphalt fills exactly that bite; and grass keeps off the whole corner.
+func check_rounded_corners(world, gen: MapGen) -> void:
+	var w := TownGen.WALK - TownGen.CURB
+	var r := TownGen.CORNER_R
+	var paving := Decor.new()
+	paving.world = world
+	var town := TownGen.new(gen)
+	for quadrant: Vector2 in [Vector2(1, 1), Vector2(-1, 1), Vector2(1, -1), Vector2(-1, -1)]:
+		var middle := Vector3(quadrant.x, 0, quadrant.y) * (TownGen.CURB + TownGen.WALK) * 0.5
+		town._d("walk_corner", middle, 0.0, Vector3(quadrant.x * w, r, quadrant.y * w))
+		var entry: Array = town.decor.back()
+		paving._at = Transform3D(Basis.IDENTITY, entry[1])
+		var at := func(a: float, b: float, y: float) -> Vector3:
+			return Vector3(quadrant.x * (a - w * 0.5), y, quadrant.y * (b - w * 0.5))
+		var arc := PackedVector2Array()
+		for i in 13:
+			var angle := PI * 1.5 - PI * 0.5 * i / 12.0
+			arc.append(Vector2(r, r) + Vector2(cos(angle), sin(angle)) * r)
+		var outline := PackedVector2Array([Vector2(w, w), Vector2(w, 0.0)])
+		outline.append_array(arc)
+		outline.append(Vector2(0.0, w))
+		var bite := PackedVector2Array([Vector2.ZERO])
+		bite.append_array(arc)
+		for piece in [[outline, 0.12, w, true], [bite, 0.04, -1.0, false]]:
+			var mesh: ArrayMesh = paving._fan_mesh(piece[0], piece[1], at, piece[2])
+			var vertices: PackedVector3Array = mesh.surface_get_arrays(0)[Mesh.ARRAY_VERTEX]
+			var normals: PackedVector3Array = mesh.surface_get_arrays(0)[Mesh.ARRAY_NORMAL]
+			assert(not vertices.is_empty() and vertices.size() % 3 == 0)
+			for i in range(0, vertices.size(), 3):
+				if normals[i].y < 0.5:
+					continue
+				# Godot draws a face whose corners run clockwise seen from in front
+				assert((vertices[i + 1] - vertices[i]).cross(vertices[i + 2] - vertices[i]).y < 0.0, "Corner paving faces up in every quadrant")
+				for k in 3:
+					var v := vertices[i + k]
+					var point := paving._at * v
+					assert(absf(point.y - world.terrain.landform.height(point) - piece[1]) < 0.001, "Corner paving lies on the slope")
+					var a := (v.x * quadrant.x) + w * 0.5
+					var b := (v.z * quadrant.y) + w * 0.5
+					var in_bite := a < r - 0.001 and b < r - 0.001 and Vector2(a, b).distance_to(Vector2(r, r)) > r + 0.001
+					assert(in_bite == false or not piece[3], "The sidewalk keeps out of the kerb's curve")
+					assert(piece[3] or a <= r + 0.001 and b <= r + 0.001, "The asphalt fills only the curve's bite")
+	world.decor = town.decor
+	var atmosphere := Atmosphere.new()
+	atmosphere.world = world
+	var grass := Grass.new()
+	grass.atmo = atmosphere
+	var blocked := grass._blocked_job()
+	for entry: Array in town.decor:
+		var point: Vector3 = entry[1]
+		assert(blocked.boxes.any(func(box: Array) -> bool: return box[0] == Vector2(point.x, point.z) and box[1].x > w * 0.5 and box[1].y > w * 0.5), "Grass must not grow through a rounded corner")
+	assert(World._unpack(World._pack(town.decor)) == town.decor, "Rounded corners survive map transfer")
+	grass.free()
+	atmosphere.free()
+	paving.free()
 
 
 func check_driveway_crossings(world, gen: MapGen) -> void:

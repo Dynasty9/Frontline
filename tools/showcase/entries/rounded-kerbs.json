@@ -1,0 +1,16 @@
+{
+  "entry": "changelog/unreleased/rounded-kerbs.md",
+  "summary": "Crossroads kerbs curve round their corners instead of meeting at right angles.",
+  "medium": "still",
+  "stage": "game capture: --aivai --seed=3 --focus-town=-2,-6 --zoom=4 --pitch=-18 --shot-at=6 (1600x900, --nohud --perf=0, off-screen window)",
+  "rationale": "A geometry change at street level: one low matched before/after frame of the same crossroads shows the corners.",
+  "source_ref": "548239755c3466e6f675a975df527d74a29d6a0a + working tree",
+  "before_ref": "548239755c3466e6f675a975df527d74a29d6a0a",
+  "sources": [
+    {
+      "file": "changelog/unreleased/rounded-kerbs/comparison.jpg",
+      "sha256": "2f70d6e6262f15f78145527105091d7d3fff340598248d015bd5279e5dd441f9"
+    }
+  ],
+  "output": null
+}
