@@ -412,8 +412,9 @@ func _make(h: Node3D, kind: String, ex) -> void:
 		"pole":
 			_m(Res.cyl(0.11, 0.16, 8.4, 8), "wood_dark", Vector3(0, 4.2, 0), Color(0.3, 0.24, 0.17))
 			_m(Res.box(Vector3(0.12, 0.11, 2.0)), "wood_dark", Vector3(0, 7.45, 0), Color(0.3, 0.24, 0.17))
+			var pk := BuildingKit.baked(_bake, rng, _at)
 			for z in [-0.8, 0.0, 0.8]:
-				_m(Res.cyl(0.035, 0.055, 0.16, 6), "paint", Vector3(0, 7.58, z), Color(0.82, 0.82, 0.78), Vector3.ZERO, false)
+				BuildingWire.insulator(pk, Vector3(0, 7.47, z))
 			_beam(Vector3(0, 6.9, 0), Vector3(0, 7.42, 0.6), 0.05, "wood_dark", Color(0.3, 0.24, 0.17), false)
 			if ex == 1:
 				_m(Res.cyl(0.27, 0.27, 0.85, 12), "paint", Vector3(0.38, 6.3, 0), Color(0.5, 0.52, 0.48))
@@ -724,14 +725,10 @@ func _wire(a: Vector3, yaw_a: float, ex) -> void:
 
 
 func _sag(a: Vector3, b: Vector3, sag: float) -> void:
-	var n := 10
-	var prev := a
-	for i in range(1, n + 1):
-		var t := float(i) / n
-		var p := a.lerp(b, t) - Vector3(0, sag * 4.0 * t * (1.0 - t), 0)
-		_wires.append(prev)
-		_wires.append(p)
-		prev = p
+	var pts := BuildingWire.catenary(a, b, sag, 10)
+	for i in range(1, pts.size()):
+		_wires.append(pts[i - 1])
+		_wires.append(pts[i])
 
 
 ## Lamp lenses glow (each chunk has its own glow mesh); at dusk, dawn and

@@ -9,6 +9,7 @@ const F_BLOCKED := 4
 const F_ELEV := 8  # gun laid up for indirect fire / launcher raised
 const F_GROUND := 16  # a helicopter sitting on the ground (rotor idling)
 const F_SPOOL := 32  # a helicopter's rotor at (or winding up to) flight speed
+const F_CRASH := 64  # a helicopter shot down, on its way to the ground
 
 var vkind := "tank"
 var vdef: Dictionary = {}
@@ -41,6 +42,20 @@ var last_fire_t := -9.0
 var _alert_t := 0.0
 var smoke_cd := 0.0
 var smoke_left := 2  # salvoes in the dischargers
+var smoke_t := -99.0  # the last salvo
+# The player's standing orders for the crew. Fire discipline (Soldier.Roe):
+# fire at will, return fire (only once it's been shot at), or hold fire (not
+# a round unless the enemy is on top of it: within OVERRUN_R, or the target it
+# was told to attack). Target priority: the crew's own judgement, or armour
+# first (the main gun saved for vehicles), or infantry first (high explosive
+# on men in the open). Smoke, backing out of a missile's path and pulling out
+# badly damaged are the crew's own, whatever they're told.
+enum Prio {AUTO, ARMOUR, INFANTRY}
+const OVERRUN_R := 22.0
+var roe: int = 0
+var prio: int = Prio.AUTO
+var fired_on_t := -99.0
+var keep_aboard := false  # a partial dismount: the rest stay in until told (or it's badly hit)
 # trucks
 var route := PackedVector3Array()
 var route_i := 0
@@ -89,6 +104,9 @@ var lift_phase := 0  # 0 ground, 1 climb, 2 cruise, 3 land, 4 unload, 5/6 sling,
 var lift_t := 0.0
 var uav_dest := Vector3.INF
 var _orbit := 0.0
+var _cradle_age := 1.0
+var _cradle_rise := 0.0
+var _barrel_pitch_rate := 0.0  # visible motion of the gun cradle
 var _elev_v := 0.0  # (view) barrel / launcher elevation
 var model: Node3D
 var impact_response := ImpactResponse.new()
@@ -120,8 +138,15 @@ var tail_rotor: Node3D
 var blades: Node3D
 var blur: MeshInstance3D
 var wheels: Array = []
+var always_animate_tracks := false  # Long-lens footage also needs distant shoe contact.
+var _belt_yaw := 0.0
+var _belt_origin := Vector3.ZERO
+var _engine_sound: AudioStreamPlayer3D
+var _track_sound: AudioStreamPlayer3D
+var _drive_load := 0.0
 var _last_pos := Vector3.ZERO
 var _rotor_spd := 0.0
+var engine_exhaust: GeometryInstance3D
 var _rotor_snd: AudioStreamPlayer3D
 var _rotor_vol := 0.0
 var _wash: Node3D  # (view) dust or spray thrown out from under a low helicopter
@@ -129,6 +154,7 @@ var _sway_t := 0.0  # (view) a hovering helicopter's gentle wander
 var _model_rest := Vector3.INF
 var burner: Node3D
 var dust: GeometryInstance3D  # (GPU or CPU particles: see Vfx.part)
+var bent_skirts := 0
 var _burn_state := -1
 var ring: MeshInstance3D
 var _vis := true
@@ -167,10 +193,73 @@ func apply_props(d: Dictionary) -> void:
 		net_yaw = d.yaw
 	if d.has("max_hp"):
 		max_hp = d.max_hp
+	if d.has("bent_skirts"):
+		bent_skirts = d.bent_skirts
+		if _vm:
+			_vm.pose_skirts(bent_skirts)
+	if d.has("roe"):
+		roe = d.roe
+	if d.has("prio"):
+		prio = d.prio
+	if d.has("smoke"):
+		smoke_left = d.smoke
+	if d.has("pax"):
+		pax = d.pax
 
 
 func get_props() -> Dictionary:
-	return {"vkind": vkind, "team": team, "owner": owner_peer, "pos": position, "yaw": rotation.y, "max_hp": max_hp}
+	var d := {"vkind": vkind, "team": team, "owner": owner_peer, "pos": position, "yaw": rotation.y, "max_hp": max_hp,
+		"roe": roe, "prio": prio, "smoke": smoke_left, "pax": pax}
+	if bent_skirts:
+		d["bent_skirts"] = bent_skirts
+	return d
+
+
+var pax: Array = []  # (replicated) who's aboard: [squad id, men, squad name] for each squad
+
+
+## Who's aboard changed: tell the clients (the command card's dismount orders).
+func _pax_changed() -> void:
+	if not srv:
+		return
+	var by := {}
+	var order := []
+	for s in passengers:
+		if not is_instance_valid(s) or s.gone:
+			continue
+		if not by.has(s.sid):
+			by[s.sid] = 0
+			order.append(s.sid)
+		by[s.sid] += 1
+	var out := []
+	for sid in order:
+		var sq: Squad = world.squads.get(sid)
+		out.append([sid, by[sid], sq.display_name() if sq else ""])
+	if out == pax:
+		return
+	pax = out
+	world.push_props(self, {"pax": pax})
+
+
+## A standing order: fire discipline ("roe") or target priority ("prio").
+func set_standing(kind: String, value: int) -> void:
+	if kind == "prio":
+		prio = clampi(value, 0, Prio.size() - 1)
+	else:
+		roe = clampi(value, 0, 2)
+	world.push_props(self, {kind: prio if kind == "prio" else roe})
+
+
+## Shot at lately: a "return fire" crew may answer.
+func fired_on() -> bool:
+	return world.time - fired_on_t < 10.0
+
+
+## The crew may fire on this one under its fire discipline.
+func may_engage(e: Entity) -> bool:
+	if roe == 0 or e == forced_target or (roe == 1 and fired_on()):
+		return true
+	return e != null and not e.gone and Defs.flat(e.position - position).length() < OVERRUN_R
 
 
 func on_spawned() -> void:
@@ -205,6 +294,50 @@ func on_spawned() -> void:
 		uav_dest = Vector3(position.x, 0.0, position.z)
 	if world.has_view:
 		_build_model()
+
+
+func _build_camera_mounts() -> void:
+	if not model or not _vm:
+		return
+	var size := _hull_size()
+	_add_exterior_cameras(model, size)
+	if not _vm.belts.is_empty() or not _vm.wheels.is_empty():
+		var label := &"Tracks" if not _vm.belts.is_empty() else &"Wheels"
+		var side := Vector3(size.x * 0.46, size.y * 0.26, 0)
+		_camera_mount(label, model, side + Vector3(size.x * 1.35, size.y * 0.33, size.z * 0.45), side)
+	if _vm.rotor:
+		_camera_mount(&"Cabin side", model, Vector3(size.x * 1.4, size.y * 0.75, size.z * 0.28), Vector3(0, size.y * 0.5, -size.z * 0.16))
+		if int(vdef.get("sling", -1)) >= 0:
+			# Frame the rotor against the sky and keep the load and its shadow below.
+			_camera_mount(&"Sling load", model, Vector3(-size.z * 1.12, -size.z * 0.10, -size.z * 0.70), Vector3.DOWN * SLING_ROPE * 0.26, true)
+			# Looking past the landing gear shows when the load clears its shadow.
+			_camera_mount(&"Cargo door", model, Vector3(-size.x * 0.65, size.y * 0.44, size.z * 0.07), Vector3.DOWN * SLING_ROPE * 0.97)
+	elif is_boat():
+		_camera_mount(&"Bow", model, Vector3(size.x * 0.32, size.y * 1.15, -size.z * 0.68), Vector3(0, size.y * 0.55, 0))
+		_camera_mount(&"Waterline", model, Vector3(size.z * 0.82, size.y * 2.4, size.z * 0.97), Vector3(0, size.y * 0.4, -size.z * 0.13), true)
+		# Look past the port quarter to the water beyond the bow.
+		_camera_mount(&"Stern quarter", model, Vector3(-size.z * 0.85, size.y * 1.35, size.z * 1.25), Vector3(size.z * 0.74, size.y * 1.2, -size.z * 0.18), true)
+		if vkind == "patrol_ship":
+			# Look down over the port rail so the bridge and passing boat share the frame.
+			_camera_mount(&"Bridge roof", model, Vector3(-2.5, 6.85, 1.5), Vector3(-6.9, 1.15, -7.4))
+		if vkind == "rhib":
+			# Stand beside the RHIB console, looking over the starboard tube.
+			_camera_mount(&"Starboard", model, Vector3(0.72, 2.44, -0.44), Vector3(2.55, 2.0, -8.5))
+			_camera_mount(&"Helm", model, Vector3(1.12, 2.24, 1.58), Vector3(1.1, 1.4, -7.5))
+	if _vm.gun_mount and _vm.gun_tip:
+		# Look back along the moving tube so the turret stays in the picture.
+		_camera_mount(&"Barrel", _vm.gun_tip, Vector3(2.9, 0.92, -1.9), Vector3(-0.1, 0.0, 1.8))
+	if turret and _vm.periscope.is_finite():
+		var eye := _vm.periscope
+		_camera_mount(&"Periscope", turret, eye, eye + Vector3.FORWARD)
+	if turret and _vm.roof_gun.is_finite():
+		_camera_mount(&"Roof gun", turret, _vm.roof_gun + Vector3(-0.95, 0.62, 1.15), _vm.roof_gun + Vector3(0, 0, -0.7))
+	if _vm.engine_deck.is_finite():
+		_camera_mount(&"Engine deck", model, Vector3(size.x * 1.3, size.y * 2.55, size.z * 1.47), _vm.engine_deck + Vector3.UP * 0.65)
+
+
+func has_tank_model() -> bool:
+	return vdef.get("model", vkind) in ["tank", "old_tank"]
 
 
 func _hull_size() -> Vector3:
@@ -287,6 +420,8 @@ func repair(amount: float) -> void:
 			track_broken = false
 			track_fix = 0.0
 			world.send_msg(team, "info", "%s track repaired." % display_name(), position)
+	if bent_skirts and not needs_repair():
+		_set_bent_skirts(0)
 
 
 func turret_pos() -> Vector3:
@@ -351,6 +486,7 @@ func order_move(p: Vector3) -> void:
 	_stuck_t = 0.0
 	_stuck_p = position
 	if not _brain_order:
+		keep_aboard = false  # moving on: they'll get out wherever it stops
 		if brain_state == "withdraw":
 			brain_overruled = true  # sent back in damaged: the crew does as it's told
 		brain_state = ""
@@ -398,6 +534,7 @@ func board(s: Soldier) -> bool:
 	s.riding = self
 	s.hide_in("vehicle", 9999.0, null)
 	world.stat("boarded")
+	_pax_changed()
 	return true
 
 
@@ -411,6 +548,7 @@ func embark_new_squad() -> void:
 		passengers.append(s)
 		s.riding = self
 		s.hide_in("vehicle", 9999.0, null)
+	_pax_changed()
 
 
 ## The bank or beach a boat is lying off (within reach of wading), or INF.
@@ -420,9 +558,21 @@ func _shore() -> Vector3:
 
 
 ## Ramp down: the section piles out behind the vehicle and goes to work.
-func dismount() -> void:
+## The player can drop only some of them: `n` men (the last in, so a squad's
+## leader stays with the rest of it), or squad `sid`; the rest stay aboard
+## until they're dismounted too, or it moves on and stops again.
+func dismount(n := 0, sid := 0) -> void:
 	if passengers.is_empty():
 		return
+	var out := []
+	for s in passengers:
+		if is_instance_valid(s) and not s.gone and s.life == Soldier.Life.HIDDEN and (sid == 0 or s.sid == sid):
+			out.append(s)
+	if n > 0 and n < out.size():
+		out = out.slice(out.size() - n)
+	if out.is_empty():
+		return
+	var partial := out.size() < passengers.size()
 	var back := -Defs.dir_of(rotation.y)
 	var side := back.cross(Vector3.UP)
 	if is_boat():
@@ -433,25 +583,33 @@ func dismount() -> void:
 		var up := Defs.flat(shore - position).normalized()
 		back = up
 		side = up.cross(Vector3.UP)
-	var sq: Squad = null
+	var sqs := []
 	var i := 0
-	for s in passengers:
-		if not is_instance_valid(s) or s.gone or s.life != Soldier.Life.HIDDEN:
-			continue
+	for s in out:
 		s.riding = null
 		var at := position + back * 3.6 + side * (i - 1.5) * 1.3
 		if is_boat():
 			at = world.nav.nearest_walkable(_shore() + side * (i - 1.5) * 1.3)
 		s.unhide(at)
-		sq = s.squad
+		passengers.erase(s)
+		if s.squad and not s.squad in sqs:
+			sqs.append(s.squad)
 		i += 1
-	passengers.clear()
-	world.stat("dismount")
-	if sq:
-		var fwd := Defs.dir_of(rotation.y)
-		var lead := sq.get_leader()
+	# (men who died aboard, or were freed, go from the list too)
+	for s in passengers.duplicate():
+		if not is_instance_valid(s) or s.gone or s.life != Soldier.Life.HIDDEN:
+			passengers.erase(s)
+	keep_aboard = partial and not passengers.is_empty()
+	_pax_changed()
+	world.stat("dismount_part" if partial else "dismount")
+	var fwd := Defs.dir_of(rotation.y)
+	for sq in sqs:
+		var lead: Soldier = sq.get_leader()
 		if lead:
-			lead.say("Dismount! Go, go, go!" if team == 0 else "Out! Everybody out!", true)
+			if partial:
+				lead.say("Dismount! You lot, with me!" if team == 0 else "Out! You, you, with me!", true)
+			else:
+				lead.say("Dismount! Go, go, go!" if team == 0 else "Out! Everybody out!", true)
 		if (assault or is_boat()) and assault_dest != Vector3.INF:
 			sq.order_assault(assault_dest, fwd)
 		else:
@@ -479,7 +637,7 @@ func _dismount_check(dt: float) -> void:
 			if e.team != team and e.team >= 0 and e.visible_to_team(team) and (not (e is Soldier) or e.life == Soldier.Life.ALIVE):
 				close = true
 				break
-	if arrived or close or hp < max_hp * 0.4:
+	if hp < max_hp * 0.4 or (not keep_aboard and (arrived or close)):
 		dismount()
 
 
@@ -560,6 +718,9 @@ func sim(dt: float) -> void:
 		if not is_instance_valid(slung_by) or slung_by.gone or slung_by.sling_cargo != self:
 			_drop_from_sling()
 		return  # hanging under a helicopter: it does nothing of its own
+	if crashing != 0:
+		_crash_tick(dt)
+		return  # shot down: she's just falling
 	cannon_t -= dt
 	mg_t -= dt
 	if knock_v.length_squared() > 0.0025:
@@ -980,10 +1141,18 @@ func _scan() -> void:
 				continue
 		elif e is Vehicle:
 			sc = (110.0 if vdef.cannon else (70.0 if base() == "attack_heli" else 40.0)) - d
+			if prio == Prio.ARMOUR:
+				sc += 80.0
+			elif prio == Prio.INFANTRY:
+				sc -= 60.0
 		else:
 			sc = 50.0 - d
 			if e.rockets > 0:
 				sc += 25.0
+			if prio == Prio.INFANTRY:
+				sc += 70.0
+			elif prio == Prio.ARMOUR:
+				sc -= 30.0
 		if e == target:
 			sc += 8.0
 		if sc <= bs:
@@ -1058,8 +1227,17 @@ func _aim_err() -> float:
 	return absf(wrapf(want - (rotation.y + turret_yaw), -PI, PI))
 
 
+func cannon_interval() -> float:
+	return float(vdef.get("gun", {}).get("cd", 5.5))
+
+
 func _fire_tick() -> void:
 	if not _target_ok():
+		return
+	if not may_engage(target):
+		if world.time > float(bt_cd.get("held", 0.0)):
+			bt_cd["held"] = world.time + 2.0
+			world.stat("veh_held_fire")
 		return
 	var err := _aim_err()
 	var dist := Defs.flat(target.position - position).length()
@@ -1073,9 +1251,13 @@ func _fire_tick() -> void:
 				if o.team == target.team and o.life == Soldier.Life.ALIVE:
 					n += 1
 			worth = n >= 2 or target.rockets > 0 or target.mounted != null or world.rng.randf() < 0.25
+			if prio != Prio.AUTO:
+				# infantry first: high explosive on any of them; armour first: the
+				# main gun is saved for vehicles (the machine gun takes the men)
+				worth = prio == Prio.INFANTRY or (worth and (target.rockets > 0 or target.mounted != null))
 		if worth:
 			_fire_cannon()
-			cannon_t = float(vdef.get("gun", {}).get("cd", 5.5))
+			cannon_t = cannon_interval()
 			return
 	var mg: String = vdef.mg
 	var gs := base() == "attack_heli"
@@ -1523,13 +1705,22 @@ func _fire_cannon() -> void:
 	world.stat("cannon")
 	last_fire_t = world.time
 	var g: Dictionary = vdef.get("gun", {})
-	world.combat.explode(hit_pos, {"dmg": float(g.get("dmg", 160.0)), "radius": float(g.get("radius", 5.5)), "fling": 10.0, "at": float(g.get("at", 320.0)), "src": self, "team": team,
-		"size": float(g.get("size", 1.4)), "track": 0.3, "dir": dir, "struct_mult": 2.5})
+	var blast := {"dmg": float(g.get("dmg", 160.0)), "radius": float(g.get("radius", 5.5)), "fling": 10.0, "at": float(g.get("at", 320.0)), "team": team,
+		"size": float(g.get("size", 1.4)), "track": 0.3, "dir": dir, "struct_mult": 2.5}
+	if has_tank_model():
+		var surface := world.combat.ent_of(r.get("collider"))
+		var normal: Vector3 = r.normal if surface is Vehicle and surface.is_tracked() and surface.weight() >= 2 else Vector3.ZERO
+		world.combat.queue_cannon(from, hit_pos, self, normal, blast)
+	else:
+		blast["src"] = self
+		world.combat.explode(hit_pos, blast)
 
 
 # --- damage --------------------------------------------------------------------------
 
 func bullet_hit(p: Vector3, dir: Vector3, w: Dictionary, _shooter) -> int:
+	if _shooter is Entity and is_instance_valid(_shooter) and _shooter.team != team:
+		fired_on_t = world.time
 	var armor := int(vdef.armor)
 	var ap: bool = w.get("ap", false)
 	if armor >= 2:
@@ -1596,32 +1787,73 @@ func explosion_hit(pos: Vector3, d: Dictionary) -> void:
 		var r: float = float(d.get("radius", 5.0)) + 2.0
 		dmg = float(d.get("dmg", 100.0)) * maxf(0.0, 1.0 - dist / r) * (0.12 if armor >= 2 else 0.8) * float(d.get("veh_mult", 1.0))
 	if dmg > 0.0:
+		# The damage has already been resolved. A hard hit folds the outer
+		# skirt on the side it struck, and engineers straighten it on repair.
+		if has_tank_model() and dmg >= max_hp * 0.25:
+			var side := 2 if to_local(pos).x > 0.0 else 1
+			_set_bent_skirts(bent_skirts | side)
 		take_damage(dmg, d.get("src"))
+
+
+func _set_bent_skirts(mask: int) -> void:
+	if mask != bent_skirts:
+		var change := {"bent_skirts": mask}
+		apply_props(change)
+		world.push_props(self, change)
 
 
 ## A missile or rocket coming at it: armour fires its smoke dischargers - a
 ## wall of smoke between it and the shooter - and the crew calls it.
 func threatened(from: Vector3) -> void:
-	if not srv or gone or int(vdef.get("armor", 0)) < 1 or is_air() or smoke_left <= 0 or world.time < smoke_cd:
+	fired_on_t = world.time
+	if not srv or gone or not has_smoke() or world.time < smoke_cd:
 		return
 	smoke_cd = world.time + 25.0
-	smoke_left -= 1
-	var to := Defs.flat(from - position).normalized()
-	var top := position + Vector3(0, float(vdef.get("gun_h", 2.0)) + 0.3, 0)
-	for i in 4:
-		var dir := to.rotated(Vector3.UP, (i - 1.5) * 0.32)
-		var land := position + dir * world.rng.randf_range(11.0, 16.0)
-		world.spawn("projectile", {"ptype": "smoke", "team": team, "pos": top, "vel": world.combat.ballistic_vel(top, land), "thrower": eid, "fuse": 0.0})
-	world.fx_event([Fx.SOUND, "launch", position])
+	_discharge(Defs.flat(from - position).normalized())
 	world.stat("veh_smoke")
 	if not is_auto():
 		world.send_msg(team, "info", "%s popped smoke - missile inbound!" % display_name(), position)
 	VehicleBrain.on_threat(self, from)
 
 
+## It has smoke dischargers with a salvo left in them.
+func has_smoke() -> bool:
+	return int(vdef.get("armor", 0)) >= 1 and not is_air() and smoke_left > 0
+
+
+## The player's call: smoke now, between it and the nearest threat it can see
+## (or the way the turret points). A few seconds after the last salvo at least.
+func pop_smoke() -> bool:
+	if not srv or gone or not has_smoke() or world.time - smoke_t < 4.0:
+		return false
+	var th: Entity = VehicleBrain._threat_near(self, 150.0)
+	if th == null and _target_ok():
+		th = target
+	var to := Defs.flat(th.position - position).normalized() if th else Defs.dir_of(rotation.y + turret_yaw)
+	smoke_cd = maxf(smoke_cd, world.time + 6.0)
+	_discharge(to)
+	world.stat("veh_smoke_ordered")
+	return true
+
+
+## Fire a salvo from the dischargers: a wall of smoke 11-16 m out that way.
+func _discharge(to: Vector3) -> void:
+	smoke_left -= 1
+	smoke_t = world.time
+	world.push_props(self, {"smoke": smoke_left})
+	var top := position + Vector3(0, float(vdef.get("gun_h", 2.0)) + 0.3, 0)
+	for i in 4:
+		var dir := to.rotated(Vector3.UP, (i - 1.5) * 0.32)
+		var land := position + dir * world.rng.randf_range(11.0, 16.0)
+		world.spawn("projectile", {"ptype": "smoke", "team": team, "pos": top, "vel": world.combat.ballistic_vel(top, land), "thrower": eid, "fuse": 0.0})
+	world.fx_event([Fx.SOUND, "launch", position])
+
+
 func take_damage(amount: float, _src) -> void:
 	if gone or not srv or hp <= 0.0:
 		return
+	if _src == null or (_src is Entity and is_instance_valid(_src) and _src.team != team):
+		fired_on_t = world.time
 	if world.battle:
 		world.battle.vehicle_hit(self, amount, _src)
 	if amount > 0.0 and _src is Node3D and is_instance_valid(_src):
@@ -1651,48 +1883,187 @@ func _destroyed() -> void:
 	if is_boat():
 		_sink()
 		return
-	# whoever was inside scrambles out of the burning wreck - not all of them
-	# (the men who knocked it out get the ones who don't)
+	if base() == "supply":
+		world.rules.truck_lost(self)
+	else:
+		world.send_msg(team, "alert", "%s destroyed at %s." % [display_name(), Defs.grid_ref(position)], position)
+	if is_heli():
+		world.send_msg(team, "alert", "%s shot down at %s!" % [display_name(), Defs.grid_ref(position)], position)
+		world.send_msg(1 - team, "info", "Enemy %s shot down!" % display_name().to_lower(), position)
+		if flight and position.y - maxf(0.0, world.ground_y(position)) > 2.5:
+			_go_down()
+			return
+	_wreck_out()
+
+
+## What's left of her: whoever was inside scrambles out of the burning wreck
+## (not all of them: the men who knocked it out get the ones who don't), the
+## fuel goes up, and the burnt-out hull stays where she died. `hard` is how
+## hard a helicopter hit the ground (0 for one destroyed sitting on it, up to
+## 1.5 for a spin-in): it decides who walks away and what's hurt under her.
+func _wreck_out(hard := 0.0) -> void:
+	var heli := is_heli()
 	var was: Array = world.battle.blame_hit(hit_by) if world.battle else []
 	for s in passengers:
 		if is_instance_valid(s) and not s.gone and s.life == Soldier.Life.HIDDEN:
 			s.riding = null
 			s.unhide(position + Vector3(world.rng.randf_range(-2.5, 2.5), 0, world.rng.randf_range(-2.5, 2.5)))
-			s.take_damage(world.rng.randf_range(30.0, 150.0), null, Vector3.UP, "explosion")
+			s.take_damage(world.rng.randf_range(30.0, 150.0) * ((0.5 + hard) if heli else 1.0), null, Vector3.UP, "explosion")
+	passengers.clear()
+	var ground := Vector3(position.x, world.ground_y(position), position.z)
+	if heli and hard > 0.0 and world.combat:
+		# she comes down on whatever's under her, and her fuel goes up
+		world.combat._explode(ground + Vector3(0, 0.6, 0), {"dmg": 90.0 + 60.0 * hard, "radius": 4.0 + 2.5 * hard, "fling": 9.0, "at": 60.0,
+			"team": team, "size": 1.6 + 0.6 * hard, "vfx": "fuel", "struct_mult": 1.5})
+	elif is_tracked() and weight() >= 2:
+		world.fx_event(Fx.tank_knockout(to_global(Vector3(0, 1.6, 1.2))))
+	else:
+		world.fx_event([Fx.EXPLODE, position + Vector3(0, 1.0, 0), 2.0, "fuel"])
 	if world.battle:
 		world.battle.end_blame(was)
-	passengers.clear()
-	world.fx_event([Fx.EXPLODE, position + Vector3(0, 1.0, 0), 2.0, "fuel"])
-	world.fx_event([Fx.DEBRIS, position + Vector3(0, 1.5, 0), Color(0.15, 0.15, 0.14), 16])
+	world.fx_event([Fx.DEBRIS, position + Vector3(0, 1.5, 0), Color(0.15, 0.15, 0.14), 24 if heli else 16])
 	for s in world.soldiers_near(position, 7.0):
 		s.flinch_from(position, Defs.flat(s.position - position).length(), 7.0)
-	if base() == "supply":
-		world.rules.truck_lost(self)
-	else:
-		world.send_msg(team, "alert", "%s destroyed at %s." % [display_name(), Defs.grid_ref(position)], position)
-	var wreck_kind := "rubble" if is_heli() else "wreck"
-	if is_heli():
-		world.send_msg(team, "alert", "%s shot down at %s!" % [display_name(), Defs.grid_ref(position)], position)
-		world.send_msg(1 - team, "info", "Enemy %s shot down!" % display_name().to_lower(), position)
 	var p := Vector3(position.x, 0.0, position.z)
 	var y := rotation.y
-	var props := {"skind": wreck_kind, "pos": p, "yaw": y, "variant": 9 if is_heli() else (6 if weight() >= 2 else 8)}
-	if wreck_kind == "wreck":
-		var hs := _hull_size()
+	var hs := _hull_size()
+	var props := {"skind": "wreck", "pos": p, "yaw": y, "vk": vkind, "size": Vector3(hs.x, maxf(hs.y, 1.2), hs.z),
+		"variant": 9 if heli else (6 if weight() >= 2 else 8)}
+	if heli:
+		# a helicopter's wreck lies where she hit, on her side after a spin-in
+		props["tilt"] = _crash_tilt if crashing != 0 else Vector2(world.rng.randf_range(-0.04, 0.04), world.rng.randf_range(-0.06, 0.06))
+	else:
 		var plan := _toss_plan(p, y)
-		props["vk"] = vkind
-		props["size"] = Vector3(hs.x, maxf(hs.y, 1.2), hs.z)
+		if has_tank_model():
+			props["bent_skirts"] = bent_skirts
+			props["wreck_turret_yaw"] = turret_yaw
+		if has_tank_model() or vdef.get("model", vkind) in ["technical", "aa_tech"]:
+			props["wreck_finish"] = {"team": team, "seed": eid, "since": world.time}
 		props["pos"] = plan[0]
 		props["yaw"] = plan[1]
 		props["tilt"] = plan[2]
 		if (plan[3] as Vector3).length() > 0.3:
-			props["toss"] = [p, y, plan[3], plan[4]]
+			props["toss"] = [position, y, plan[3], plan[4]]
 	_bail_out(-hp)
 	var w := world
 	world.despawn(self)
 	var wst = w.spawn("structure", props)
 	if props.has("toss"):
 		w.get_tree().create_timer(3.0).timeout.connect(wst.finish_toss)
+
+
+# --- going down -------------------------------------------------------------------------
+#
+# A helicopter that's shot down falls; she doesn't vanish. With the tail rotor
+# or the controls shot away she winds up into a spin against the main rotor's
+# torque, rolling and pitching about, and comes down hard, still carrying her
+# speed. With only the engines gone the pilot drops the collective and
+# autorotates: nose down to keep the rotor turning, a steep glide, a flare at
+# the bottom and a heavy landing that some of the men inside walk away from.
+# Either way she breaks up and burns where her fall takes her, on whatever is
+# under her; over deep water she ditches and sinks.
+
+const CRASH_SPIN := 1
+const CRASH_AUTOROTATE := 2
+var crashing := 0  # (host) 0 flying, or how she's coming down
+var crash_mode_next := 0  # (tests and showcase stages) how the next shoot-down goes; 0 at random
+var _crash_t := 0.0
+var _crash_tilt := Vector2.ZERO  # (pitch, roll) the wreck comes to rest at
+
+
+func _go_down() -> void:
+	var agl := position.y - maxf(0.0, world.ground_y(position))
+	# too low to settle into autorotation: she just falls
+	crashing = CRASH_SPIN if world.rng.randf() < 0.55 or agl < 8.0 else CRASH_AUTOROTATE
+	if crash_mode_next != 0:
+		crashing = crash_mode_next
+	_crash_t = 0.0
+	yaw_rate = flight.yaw_rate
+	target = null
+	forced_target = null
+	world.stat("heli_going_down")
+
+
+func _crash_tick(dt: float) -> void:
+	if dt <= 0.0:
+		return
+	_crash_t += dt
+	var t := _crash_t
+	var agl := position.y - maxf(0.0, world.ground_y(position))
+	var flat := Defs.flat(velocity)
+	var ph := float(eid % 13)
+	if crashing == CRASH_SPIN:
+		# the airframe winds up against the rotor's torque (the rotor turns
+		# anticlockwise seen from above, so she spins the other way)
+		yaw_rate = move_toward(yaw_rate, -4.2, 2.4 * dt)
+		# the rotor still holds her up a little, less and less
+		var holding := clampf(0.8 - t * 0.3, 0.2, 0.8)
+		velocity.y -= 9.81 * (1.0 - holding) * dt
+		# the tilted disc drags her round in a widening corkscrew
+		flat = flat * exp(-0.35 * dt) + Defs.dir_of(rotation.y + 1.3) * (2.5 * minf(1.0, t) * dt)
+		var shake := minf(1.0, t / 1.2)
+		flight_pitch = (-0.18 + sin(t * 2.6 + ph) * 0.22) * shake
+		flight_roll = sin(t * 1.9 + ph * 0.7) * 0.45 * shake
+	else:
+		# autorotation: nose down for airspeed, a steady steep glide, and a
+		# flare near the ground that trades the speed for a softer landing
+		yaw_rate = move_toward(yaw_rate, 0.25, 0.5 * dt)
+		var fwd := Defs.dir_of(rotation.y)
+		var along := flat.dot(fwd)
+		var drift := flat - fwd * along
+		if agl > 7.0:
+			along = move_toward(along, 13.0, 3.0 * dt)
+			velocity.y = move_toward(velocity.y, -8.5, 5.0 * dt)
+			flight_pitch = lerpf(flight_pitch, -0.2, 1.0 - exp(-dt * 2.0))
+		else:
+			along = move_toward(along, 2.0, 7.0 * dt)
+			velocity.y = move_toward(velocity.y, -3.2, 9.0 * dt)
+			flight_pitch = lerpf(flight_pitch, 0.32, 1.0 - exp(-dt * 4.0))
+		flat = fwd * along + drift * exp(-1.5 * dt)
+		flight_roll = lerpf(flight_roll, sin(t * 1.3 + ph) * 0.1, 1.0 - exp(-dt * 3.0))
+	rotation.y = wrapf(rotation.y + yaw_rate * dt, -PI, PI)
+	velocity = Vector3(flat.x, velocity.y, flat.z)
+	var np := position + velocity * dt
+	if Defs.in_map(np, 6.0):
+		position = np
+	else:
+		position.y = np.y
+		velocity.x = 0.0
+		velocity.z = 0.0
+	speed = Defs.flat(velocity).length()
+	flags = F_CRASH | F_SPOOL
+	var ground := maxf(0.0, world.ground_y(position))
+	if position.y <= ground + 0.3 or _crash_t > 15.0:
+		position.y = ground + 0.3
+		var hard := clampf((-velocity.y + speed * 0.25) / 12.0, 0.15, 1.5)
+		if crashing == CRASH_SPIN:
+			_crash_tilt = Vector2(world.rng.randf_range(-0.15, 0.08), (1.0 if world.rng.randf() < 0.5 else -1.0) * world.rng.randf_range(0.5, 1.35))
+		else:
+			_crash_tilt = Vector2(world.rng.randf_range(-0.12, 0.02), world.rng.randf_range(-0.12, 0.12))
+		world.stat("heli_crashed")
+		if world.water != null and world.terrain != null and world.water.deep_at(position) and not world.water.on_deck(position):
+			_ditch(hard)
+			return
+		_wreck_out(hard)
+
+
+## Down in deep water: she breaks up and sinks, and whoever gets out swims
+## for the nearest bank (if it's near enough to make).
+func _ditch(hard: float) -> void:
+	var shore := world.nav.nearest_walkable(position)
+	var near := Defs.flat(shore - position).length() < 60.0
+	for s in passengers:
+		if is_instance_valid(s) and not s.gone and s.life == Soldier.Life.HIDDEN:
+			s.riding = null
+			s.unhide(world.nav.nearest_walkable(shore + Vector3(world.rng.randf_range(-3, 3), 0, world.rng.randf_range(-3, 3))))
+			s.take_damage(world.rng.randf_range(30.0, 110.0) * (0.5 + hard) if near else 999.0, null, Vector3.UP, "explosion")
+	passengers.clear()
+	var sea := Vector3(position.x, 0.0, position.z)
+	world.fx_event([Fx.EXPLODE, sea + Vector3(0, 1.2, 0), 1.4, "fuel"])  # (above the water: fire, not spray)
+	world.fx_event([Fx.DEBRIS, sea + Vector3(0, 0.8, 0), Color(0.3, 0.3, 0.3), 14])
+	world.fx_event([Fx.SINK, eid, sea])
+	world.stat("heli_ditched")
+	world.despawn(self)
 
 
 ## A boat going down: a blast, debris, and she founders (Vfx.sink); whoever's
@@ -2277,6 +2648,7 @@ func impact_react(direction: Vector3, strength: float) -> void:
 
 ## The main gun's kick rocks the hull back from the shot.
 func recoil(dir: Vector3) -> void:
+	_cradle_age = 0.0
 	var fwd := Defs.dir_of(rotation.y)
 	var side := fwd.cross(Vector3.UP)
 	var k := 0.9 if weight() >= 2 else 0.5
@@ -2285,7 +2657,7 @@ func recoil(dir: Vector3) -> void:
 
 ## Hull on springs: it squats when it pulls away, dips its nose when it stops,
 ## leans out of turns, pitches over trenches and craters and rocks back to level.
-func _suspension(dt: float) -> void:
+func _suspension(dt: float, on_ground: bool) -> void:
 	if dt <= 0.0:
 		return
 	var fwd := Defs.dir_of(rotation.y)
@@ -2299,21 +2671,22 @@ func _suspension(dt: float) -> void:
 	var heavy := weight() >= 2 or (weight() == 1 and is_tracked())
 	var kp := 0.011 if heavy else 0.02
 	var tgt := Vector3(clampf(acc.dot(fwd) * kp, -0.08, 0.08), clampf(acc.dot(side) * kp * 0.9, -0.07, 0.07), 0.0)
-	var hs := _hull_size()
-	var hf := _ground_h(position + fwd * hs.z * 0.38)
-	var hr := _ground_h(position - fwd * hs.z * 0.38)
-	tgt.x += atan2(hf - hr, hs.z * 0.76)
-	var hl := _ground_h(position - side * hs.x * 0.4)
-	var hh := _ground_h(position + side * hs.x * 0.4)
-	tgt.y += atan2(hl - hh, hs.x * 0.8)
-	tgt.z += (hf + hr) * 0.5
+	if on_ground:
+		var hs := _hull_size()
+		var hf := _ground_h(position + fwd * hs.z * 0.38)
+		var hr := _ground_h(position - fwd * hs.z * 0.38)
+		tgt.x += atan2(hf - hr, hs.z * 0.76)
+		var hl := _ground_h(position - side * hs.x * 0.4)
+		var hh := _ground_h(position + side * hs.x * 0.4)
+		tgt.y += atan2(hh - hl, hs.x * 0.8)
+		tgt.z += (hf + hr) * 0.5
 	var spring := 55.0 if heavy else 80.0
 	var damp := 8.0 if heavy else 6.5
 	_sus_v += ((tgt - _sus) * spring - _sus_v * damp) * dt
 	_sus += _sus_v * dt
 	_sus = Vector3(clampf(_sus.x, -0.5, 0.5), clampf(_sus.y, -0.5, 0.5), clampf(_sus.z, -0.6, 0.5))
 	var rumble := 0.0
-	if _vel_s.length() > 1.0:
+	if on_ground and _vel_s.length() > 1.0:
 		var tt := Time.get_ticks_msec() / 1000.0
 		rumble = (sin(tt * 31.0 + eid) * 0.5 + sin(tt * 47.0) * 0.5) * (0.004 if heavy else 0.006) * minf(_vel_s.length() / 6.0, 1.0)
 	var hit := impact_response.step(dt, 9.0 if heavy else 12.0)
@@ -2370,7 +2743,7 @@ func _gunship_tick(dt: float) -> void:
 	_fly_to(want, dt, face)
 	_turret_tick(dt)
 	_fire_tick()
-	if has_t and rocket_t <= 0.0 and _aim_err() < 0.35:
+	if has_t and rocket_t <= 0.0 and _aim_err() < 0.35 and may_engage(target):
 		var dist := Defs.flat(target.position - position).length()
 		var worth := target is Vehicle or target is Structure
 		if target is Soldier:
@@ -2558,12 +2931,29 @@ func _view_process(dt: float) -> void:
 		facing.y = turret_yaw
 		if turret.rotation != facing:
 			turret.rotation = facing
+		if _vm and _vm.gun_mount:
+			var mount := _vm.gun_mount
+			var cradle := turret.global_basis
+			var direction := Defs.dir_of(rotation.y + turret_yaw)
+			if _target_ok():
+				direction = target.center_point() - mount.global_position
+			var local := cradle.inverse() * direction
+			var pitch := clampf(atan2(local.y, Vector2(local.x, local.z).length()), -0.16, 0.31)
+			# The cradle eases into a change of elevation and brakes as it settles.
+			var pose := VehicleMotion.slew(mount.rotation.x - _cradle_rise, _barrel_pitch_rate, pitch, 0.9, 3.2, dt, false)
+			_cradle_age = minf(0.95, _cradle_age + dt)
+			_cradle_rise = deg_to_rad(2.6) * sin(_cradle_age * PI / 0.95) * exp(-1.6 * _cradle_age) if _cradle_age < 0.95 else 0.0
+			mount.rotation.x = pose.x + _cradle_rise
+			_barrel_pitch_rate = pose.y
 		if _gun_kick > 0.0:
-			if _turret_rest == Vector3.INF:
-				_turret_rest = turret.position
-			# slammed back by the shot, then run out again over half a second
 			_gun_kick = maxf(0.0, _gun_kick * exp(-dt * 7.0) - dt * 0.01)
-			turret.position = _turret_rest + Basis(Vector3.UP, turret_yaw) * Vector3(0, 0, _gun_kick)
+			if _vm and _vm.gun_mount:
+				var slide := _vm.gun_tip.get_parent() as Node3D
+				slide.position.z = -_vm.gun_mount.position.z + _gun_kick
+			else:
+				if _turret_rest == Vector3.INF:
+					_turret_rest = turret.position
+				turret.position = _turret_rest + Basis(Vector3.UP, turret_yaw) * Vector3(0, 0, _gun_kick)
 	if _vm and _vm.elev:
 		# laid for indirect fire: the barrel (or the launcher) goes up
 		var want_e := float(vdef.get("elev", 0.6)) if (flags & F_ELEV) != 0 else 0.0
@@ -2576,6 +2966,8 @@ func _view_process(dt: float) -> void:
 		# flight rpm in the air and whenever the crew have her wound up on the
 		# ground (about to lift, troops getting out); ground idle otherwise
 		var want := 30.0 if (position.y - world.ground_y(position)) > 0.3 or (flags & (F_FIRE | F_SPOOL)) != 0 else 9.0
+		if (flags & F_CRASH) != 0:
+			want = 21.0  # (shot down: the rotor runs down as she falls)
 		_rotor_spd = move_toward(_rotor_spd, want, dt * 12.0)
 		if _rotor_snd:
 			# the beat follows the rotor; pulling hard (a flare, a steep bank)
@@ -2612,16 +3004,54 @@ func _view_process(dt: float) -> void:
 		var ss := mv2.dot(Defs.dir_of(rotation.y).cross(Vector3.UP)) / dt
 		model.rotation.x = lerpf(model.rotation.x, clampf(-fs * 0.012, -0.3, 0.3), 1.0 - exp(-dt * 3.0))
 		model.rotation.z = lerpf(model.rotation.z, clampf(ss * 0.012, -0.3, 0.3), 1.0 - exp(-dt * 3.0))
+	# The ground simulation puts the hull origin on the landform, even over a crater.
+	# A helicopter carries that origin clear of the landscape on both peers.
+	var on_ground := not rotor and not flight and not is_boat()
+	if on_ground:
+		var ground_height := world.terrain.landform.height(position) if world.terrain else world.ground_y(position)
+		on_ground = position.y <= ground_height + 0.35
 	if dust and dt > 0.0:
 		var spd2 := Defs.flat(position - _last_pos).length() / dt
-		var want_dust := spd2 > 2.0
+		var want_dust := on_ground and spd2 > 2.0 and position.y <= world.ground_y(position) + 0.35
 		if want_dust != Vfx.is_emitting(dust):
 			Vfx.set_emitting(dust, want_dust)
 	if is_boat() and model:
 		_boat_view(dt)
 	elif not rotor and not flight and model:
-		_suspension(dt)
-	if not wheels.is_empty():
+		_suspension(dt, on_ground)
+	if _vm and not _vm.belts.is_empty():
+		# Use the drawn hull: the host can render several frames per simulation tick.
+		var drawn := global_transform * ip_offset() if srv else global_transform
+		var yaw := Defs.yaw_of(-drawn.basis.z)
+		var dyaw := wrapf(yaw - _belt_yaw, -PI, PI)
+		var delta_pos := drawn.origin - _belt_origin
+		var forward := delta_pos.dot(Defs.dir_of(yaw - dyaw * 0.5))
+		var distance := signf(forward) * Vector2(forward, delta_pos.y).length()
+		var camera := get_viewport().get_camera_3d()
+		var nearby := visible and (not camera or camera.global_position.distance_squared_to(drawn.origin) < 100.0 * 100.0)
+		var continuous := on_ground and delta_pos.length_squared() < 4.0
+		for belt in _vm.belts:
+			var step: float = distance + dyaw * belt.position.x if continuous else 0.0
+			if nearby or always_animate_tracks:
+				belt.advance(step, world.ground_y)
+			if nearby and continuous and world.terrain and world.fx and world.fx.vfx:
+				belt.print_ground(world.fx.vfx, step)
+			else:
+				belt.printed_end = -1
+			belt.stir_dust(step / dt if nearby and dt > 0.0 else 0.0)
+		if _engine_sound and dt > 0.0:
+			var travel := maxf(absf(distance), absf(dyaw * float(_vm.belts[0].position.x)))
+			var belt_speed := travel / dt if continuous else 0.0
+			_track_audio(dt, nearby and camera != null, belt_speed, signf(forward) * _sus.x)
+		if engine_exhaust:
+			burner.position = model.transform * _vm.engine_deck
+			engine_exhaust.position = model.transform * _vm.engine_vent
+			var running := nearby and continuous and absf(distance) > dt * 0.45 and health_frac() >= 0.4
+			if Vfx.is_emitting(engine_exhaust) != running:
+				Vfx.set_emitting(engine_exhaust, running)
+		_belt_yaw = yaw
+		_belt_origin = drawn.origin
+	elif on_ground and not wheels.is_empty():
 		var mv := position - _last_pos
 		var fwd := Defs.dir_of(rotation.y)
 		var spd := mv.dot(fwd)
@@ -2648,7 +3078,7 @@ func _view_process(dt: float) -> void:
 			world.fx.vfx.set_burning(burner, [0.0, 0.0, 0.0, 0.8][st], [0.0, 0.25, 0.6, 1.0][st])
 	_sling_view()
 	if ring:
-		ring.visible = selected
+		ring.visible = selected and (not world.cam or world.cam.mount_subject != self)
 		if selected and (position.y - world.ground_y(position)) > 0.5:
 			ring.global_position = Vector3(position.x, world.ground_y(position) + 0.06, position.z)
 
@@ -2687,43 +3117,93 @@ func _flight_view(dt: float) -> void:
 		Vfx.set_rotor_wash(_wash, strength, wet)
 
 
-var _cables: MeshInstance3D
+## (view) The heat its engines put into the air, for the heat haze (HeatHaze):
+## over the engine deck at the back, where a tank's or a truck's radiators and
+## grilles let it out, and out of every exhaust pipe the model has, harder
+## when it's working than idling. A helicopter's turbines blow theirs out of
+## their pipes, beaten down by the rotor once it's turning fast.
+func heat_sources(hh: HeatHaze) -> void:
+	var b := base()
+	if b == "uav" or b == "gunship":
+		return  # (a drone's motors are cool; a gunship orbits far overhead)
+	var hs := _hull_size()
+	var xf := model.global_transform
+	var work := 0.55
+	var down := 0.0
+	if rotor:
+		var spin := clampf(_rotor_spd / 30.0, 0.0, 1.0)
+		if spin < 0.05:
+			return  # (shut down)
+		work = 0.5 + 0.6 * spin
+		down = 0.7 * smoothstep(0.6, 1.0, spin)
+	elif dust and Vfx.is_emitting(dust):
+		work = 1.0
+	var hot: float = [0.6, 0.8, 1.0][clampi(weight(), 0, 2)] * work
+	if not rotor:
+		# the engine deck: hot air off the radiators, rising
+		var w := clampf(hs.x * 0.22, 0.4, 0.7)
+		var deck := xf * Vector3(0.0, hs.y * 0.6, hs.z * 0.3)
+		hh.add(deck + Vector3.UP * (w * 1.4), w, Vector3.UP, 1.8, hot, 1.6, 0.26, 1.0)
+	elif _vm == null or _vm.exhausts.is_empty():
+		# the turbines' outlets high on the back of the cabin
+		var t := xf * Vector3(0.0, hs.y * 0.8, hs.z * 0.15)
+		var ax := (xf.basis.z.normalized() + Vector3.UP * (0.6 - down)).normalized()
+		hh.add(t + ax * 0.9, 0.4, ax, 2.6, hot, 3.0, 0.24, 1.6)
+	if _vm == null:
+		return
+	for e in _vm.exhausts:
+		var ex := xf * e
+		# out of the pipe, then up on its own heat (or down in a rotor's wash)
+		var ax := (ex.basis.y.normalized() + Vector3.UP * (0.8 - 1.4 * down)).normalized()
+		var w := 0.32 if rotor else 0.24
+		hh.add(ex.origin + ax * (w * 1.9), w, ax, 2.6, hot * (1.0 if rotor else 0.75), 3.0, 0.22, 1.6)
 
 
-## (view) Four strops from the load's corners up to a hook, a cable from the
-## hook to the belly of the helicopter.
+var _cables: MultiMeshInstance3D
+
+
+## The lower straps meet the body of the load below its highest point.
+## Their width and shading stay visible when looking down from the cargo door.
 func _sling_view() -> void:
-	var v = world.entity(sling_eid) if sling_eid != 0 else null
-	if v == null or not (v is Vehicle) or not visible:
+	var load_vehicle := world.entity(sling_eid) as Vehicle if sling_eid != 0 else null
+	if load_vehicle == null or not visible:
 		if _cables:
 			_cables.visible = false
 		return
 	if _cables == null:
-		_cables = MeshInstance3D.new()
-		_cables.mesh = ImmediateMesh.new()
-		_cables.top_level = true
+		var spans := MultiMesh.new()
+		spans.transform_format = MultiMesh.TRANSFORM_3D
+		spans.use_colors = true
+		spans.mesh = Res.cyl(0.5, 0.5, 1.0, 8)
+		spans.instance_count = 5
+		spans.set_instance_color(0, Color(0.19, 0.20, 0.19))
+		for i in range(1, 5):
+			spans.set_instance_color(i, Color(0.40, 0.34, 0.19))
+		var mat := StandardMaterial3D.new()
+		mat.vertex_color_use_as_albedo = true
+		mat.roughness = 0.95
+		_cables = MultiMeshInstance3D.new()
+		_cables.multimesh = spans
+		_cables.material_override = mat
 		_cables.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-		var m := StandardMaterial3D.new()
-		m.albedo_color = Color(0.08, 0.08, 0.08)
-		m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-		_cables.material_override = m
 		add_child(_cables)
 	_cables.visible = true
-	_cables.global_transform = Transform3D.IDENTITY
-	var im: ImmediateMesh = _cables.mesh
-	im.clear_surfaces()
-	im.surface_begin(Mesh.PRIMITIVE_LINES)
-	var belly: Vector3 = global_position + Vector3(0, -0.6, 0)
-	var hs: Vector3 = v._hull_size()
-	var top: Vector3 = v.global_position + Vector3(0, hs.y, 0)
-	var hook: Vector3 = top + Vector3(0, 2.4, 0)
-	im.surface_add_vertex(belly)
-	im.surface_add_vertex(hook)
-	var b := Basis(Vector3.UP, v.rotation.y)
-	for c in [Vector3(hs.x * 0.4, 0, hs.z * 0.38), Vector3(-hs.x * 0.4, 0, hs.z * 0.38), Vector3(hs.x * 0.4, 0, -hs.z * 0.38), Vector3(-hs.x * 0.4, 0, -hs.z * 0.38)]:
-		im.surface_add_vertex(hook)
-		im.surface_add_vertex(top + b * c)
-	im.surface_end()
+	var body := load_vehicle.model if load_vehicle.model else load_vehicle
+	var relative := global_transform.affine_inverse() * body.global_transform
+	var size := load_vehicle._hull_size()
+	var hook := to_local(body.global_position + Vector3.UP * (size.y + 2.4))
+	_sling_span(0, model.transform * _vm.sling_eye, hook, 0.055, 0.055)
+	for i in 4:
+		var x := size.x * (0.37 if (i & 1) else -0.37)
+		var z := size.z * (0.34 if (i & 2) else -0.34)
+		var end := relative * Vector3(x, size.y * 0.40, z)
+		_sling_span(i + 1, hook, end, 0.09, 0.04)
+
+
+func _sling_span(i: int, a: Vector3, b: Vector3, width: float, depth: float) -> void:
+	var span := b - a
+	var basis := Basis(Quaternion(Vector3.UP, span.normalized())).scaled_local(Vector3(width, span.length(), depth))
+	_cables.multimesh.set_instance_transform(i, Transform3D(basis, (a + b) * 0.5))
 
 
 var spray: GeometryInstance3D
@@ -2781,6 +3261,10 @@ func sink_view() -> void:
 	if model == null or world.fx == null or world.fx.vfx == null:
 		return
 	var m := model
+	var helm := m.get_node_or_null("Coxswain")
+	if helm:
+		helm.queue_free()
+	_camera_mounts.clear()
 	model = null
 	remove_child(m)
 	var b := burner
@@ -2841,18 +3325,67 @@ func muzzle_world(main_gun := false) -> Vector3:
 	return tip.global_position
 
 
+func _track_audio(dt: float, audible: bool, belt_speed: float, grade: float) -> void:
+	if not audible or not Sfx.enabled:
+		if _engine_sound.playing:
+			_engine_sound.stop()
+		if _track_sound.playing:
+			_track_sound.stop()
+		return
+	var demand := clampf(belt_speed / 5.5 + maxf(0.0, grade) * 1.4, 0.0, 1.0)
+	_drive_load = lerpf(_drive_load, demand, 1.0 - exp(-dt * (2.4 if demand > _drive_load else 1.1)))
+	_engine_sound.pitch_scale = 0.89 + 0.40 * _drive_load
+	_engine_sound.volume_db = -7.0 + 5.5 * _drive_load
+	if not _engine_sound.playing:
+		_engine_sound.play()
+	if belt_speed > 0.09:
+		var reference_speed: float = _vm.belts[0].pitch * 12.0
+		var cadence := belt_speed / reference_speed
+		if vdef.get("model", vkind) == "tank":
+			# The recorded pass includes steel ringing. Keep that pitch
+			# recognisable as the shoes slow down.
+			_track_sound.pitch_scale = clampf(0.79 + 0.21 * cadence, 0.79, 1.32)
+		else:
+			_track_sound.pitch_scale = clampf(cadence, 0.10, 3.8)
+		_track_sound.volume_db = lerpf(-30, -6, smoothstep(0.08, 2.0, belt_speed))
+		if not _track_sound.playing:
+			_track_sound.play()
+	elif _track_sound.playing:
+		_track_sound.stop()
+
+
 func _build_model() -> void:
 	var tc: Color = Defs.TEAM_COLORS[team] if team >= 0 else Color.WHITE
 	var k := VehicleModels.build(vkind, team, eid)
 	model = k.root
 	add_child(model)
+	if k.helm_seat.is_finite() and team >= 0:
+		var crew_scene := load("res://assets/infantry/rhib-helm.scn") as PackedScene
+		if crew_scene:
+			var helm := crew_scene.instantiate() as Node3D
+			model.add_child(helm)
+			helm.position = k.helm_seat
 	turret = k.turret
 	_vm = k
+	if bent_skirts:
+		k.pose_skirts(bent_skirts)
+	_belt_yaw = rotation.y
+	_belt_origin = global_position
+	_last_pos = position
 	rotor = k.rotor
 	tail_rotor = k.tail_rotor
 	blades = k.blades
 	blur = k.blur
 	wheels = k.wheels
+	if not k.belts.is_empty() and Sfx.enabled:
+		var abrams: bool = vdef.get("model", vkind) == "tank"
+		_engine_sound = Sfx.make_loop_player("turbine_engine" if abrams else "tracked_engine", 13.0, -7.0)
+		_track_sound = Sfx.make_loop_player("abrams_tracks" if abrams else "track_links", 10.0 if abrams else 9.0, -12.0)
+		for player: AudioStreamPlayer3D in [_engine_sound, _track_sound]:
+			player.autoplay = false
+			player.max_distance = 100.0
+			add_child(player)
+		_engine_sound.position.z = _hull_size().z * 0.32
 	if rotor:
 		_rotor_vol = 0.0 if base() == "attack_heli" else -3.0
 		_rotor_snd = Sfx.make_loop_player("rotor", 18.0, _rotor_vol)
@@ -2864,12 +3397,23 @@ func _build_model() -> void:
 	elif is_boat():
 		pass  # (a wake, not dust: see _boat_view)
 	elif world.fx and world.fx.vfx:
-		dust = world.fx.vfx.make_dust(1.3 if weight() >= 2 else 1.0)
-		dust.position = Vector3(0, 0.2, _hull_size().z * 0.5)
-		add_child(dust)
+		if k.belts.is_empty():
+			dust = world.fx.vfx.make_dust(1.3 if weight() >= 2 else 1.0)
+			dust.position = Vector3(0, 0.2, _hull_size().z * 0.5)
+			add_child(dust)
+		else:
+			for belt in k.belts:
+				belt.dust = world.fx.vfx.make_dust(0.80, true)
+				belt.add_child(belt.dust)
 	if world.fx and world.fx.vfx:
-		burner = world.fx.vfx.make_burner(1.0 if weight() >= 2 else 0.7)
+		burner = world.fx.vfx.make_burner(1.0 if weight() >= 2 else 0.7, k.engine_deck.is_finite())
 		burner.position = Vector3(0, 1.6, 1.2) if base() != "lift_heli" else Vector3(0, 2.3, 0.6)
+		if k.engine_deck.is_finite():
+			burner.position = k.engine_deck
+		if k.engine_vent.is_finite():
+			engine_exhaust = world.fx.vfx.make_engine_exhaust(vkind == "old_tank")
+			engine_exhaust.position = k.engine_vent
+			add_child(engine_exhaust)
 		add_child(burner)
 	var hs := _hull_size()
 	ring = Res.mi(self, Res.plane(maxf(hs.x, hs.z) * 1.22), Res.ring_mat(tc), Vector3(0, 0.06, 0), Vector3.ZERO, false)

@@ -1,6 +1,7 @@
 """Record takes of the game, off-screen, with Godot's movie writer.
 
     record.py --list                      what takes shots.json defines
+    record.py --render reel [hero ...]    record and assemble finished clips and posters
     record.py TAKE [TAKE ...]             record those takes
     record.py --all                       record every take
       [--jobs 3] [--godot PATH] [--work DIR] [--no-sync] [--port 8700]
@@ -11,18 +12,15 @@ so a slow render never drops a frame: a take of N frames is N/30 seconds of
 game time however long it takes to draw (about 5 frames a second, slower with
 several running).
 
-The game runs from a private copy of the project (WORK/project) with an
-override.cfg that starts its window minimized, borderless and unfocused, and
---offscreen moves it out of sight, so nothing opens over the desktop. The copy
+The game runs from a private copy of the project (WORK/project) with a
+private render surface on macOS or an off-screen window on other desktops. The copy
 is refreshed from the repo (and re-imported) before recording unless
 --no-sync, so it records the game as this checkout has it. Every run gets its
 own free port: a game that can't open its port carries on as an observer
 without saying so (its log shows "Couldn't create an ENet host"), and other
 games on this machine may hold the usual ones.
 
-Godot: --godot, else $GODOT, else `godot` on the PATH. It must be able to open
-a window (any build but --headless; on Windows the plain or the _console exe):
-it has to draw to record.
+Godot: --godot, else $GODOT, else `godot` on the PATH. Use the editor binary so the movie writer can draw frames.
 """
 
 from __future__ import annotations
@@ -70,7 +68,7 @@ def work_dir(arg: str | None) -> Path:
 def find_godot(arg: str | None) -> str:
     g = arg or os.environ.get("GODOT") or shutil.which("godot") or shutil.which("godot4")
     if not g or not Path(g).exists() and not shutil.which(g):
-        sys.exit("No Godot: pass --godot PATH or set GODOT to a Godot 4.7 binary that can open a window.")
+        sys.exit("No Godot: pass --godot PATH or set GODOT to the Godot 4.7 editor binary.")
     return g
 
 
@@ -91,8 +89,9 @@ def sync(godot: str, proj: Path) -> None:
     print(f"importing the project copy in {proj} ...", flush=True)
     r = subprocess.run([godot, "--headless", "--path", str(proj), "--import"], capture_output=True, text=True, timeout=900)
     bad = [line for line in (r.stdout + r.stderr).splitlines() if "SCRIPT ERROR" in line or "Parse Error" in line]
-    if bad:
-        sys.exit("The game doesn't compile:\n" + "\n".join(bad[:10]))
+    if r.returncode or bad:
+        sys.exit("Godot import failed:\n" + ("\n".join(bad[:10]) or r.stderr[-1000:]))
+    (proj / ".capture-revision").write_text(commit(), encoding="utf-8")
 
 
 def free_ports(first: int, n: int) -> list[int]:
@@ -113,66 +112,98 @@ def free_ports(first: int, n: int) -> list[int]:
 def commit() -> str:
     """The checkout's commit, marked "+changes" if the game's files have uncommitted edits."""
     try:
-        head = subprocess.run(["git", "rev-parse", "--short", "HEAD"], cwd=REPO, capture_output=True, text=True).stdout.strip()
-        dirty = subprocess.run(["git", "status", "--porcelain", "--", "scripts", "assets", "project.godot"], cwd=REPO,
+        head = subprocess.run(["git", "rev-parse", "HEAD"], cwd=REPO, capture_output=True, text=True).stdout.strip()
+        dirty = subprocess.run(["git", "status", "--porcelain", "--", "scripts", "assets", "tests", "tools/showcase", "project.godot", "main.tscn"], cwd=REPO,
                                capture_output=True, text=True).stdout.strip()
         return head + (" +changes" if dirty else "")
     except OSError:
         return "unknown"
 
 
+def source_takes(spec: dict) -> list[str]:
+    names = [cut["take"] for cut in spec["cuts"]]
+    names.extend(spec[key]["take"] for key in ("score", "end_title") if key in spec)
+    return names
+
+
 def used_by(shots: dict, take: str) -> list[str]:
     """The outputs and stills cut from a take: what has to be re-cut and rebuilt when it's re-recorded."""
-    outs = [o for o, spec in shots["outputs"].items() if any(c["take"] == take for c in spec["cuts"])]
+    outs = [o for o, spec in shots["outputs"].items() if take in source_takes(spec)]
     return outs + [f"still {s}" for s, spec in shots.get("stills", {}).items() if spec["take"] == take]
 
 
 def record(godot: str, proj: Path, out: Path, name: str, take: dict, common: list[str], port: int) -> str:
     avi = out / f"{name}.avi"
     log = out / f"{name}.log"
-    frames = int(take["frames"])
-    cmd = [godot, "--path", str(proj), "--write-movie", str(avi), "--fixed-fps", "30", "--quit-after", str(frames), "--"]
+    frames = take.get("frames")
+    embedded = sys.platform == "darwin"
+    display = ["--embedded", "--debug", "--ignore-error-breaks"] if embedded else []
+    cmd = [godot, *display, "--path", str(proj), "--write-movie", str(avi), "--fixed-fps", "30"]
+    if frames is not None:
+        cmd.extend(["--quit-after", str(frames)])
+    if "scene" in take:
+        cmd.append(take["scene"])
+    cmd.append("--")
     # the user's own settings.cfg is loaded: make sure the sound is up (it can be saved at 0)
-    cmd += ["--offscreen", "--set=volume:0.8", f"--port={port}", *common, *take["args"]]
+    if not embedded:
+        cmd.append("--offscreen")
+    cmd += ["--set=volume:0.8", f"--port={port}", *common, *take["args"]]
     t0 = time.time()
     with open(log, "w", encoding="utf-8", errors="replace") as f:
         f.write(" ".join(cmd) + "\n\n")
         f.flush()
         try:
-            subprocess.run(cmd, stdout=f, stderr=subprocess.STDOUT, timeout=300 + frames * 0.8,
+            result = subprocess.run(cmd, stdout=f, stderr=subprocess.STDOUT, timeout=300 + (frames or 2400) * 0.8,
                            env={**os.environ, **take.get("env", {})})
         except subprocess.TimeoutExpired:
-            return f"{name}: TIMED OUT after {time.time() - t0:.0f} s (see {log})"
+            raise RuntimeError(f"{name} timed out (see {log})") from None
     text = log.read_text(encoding="utf-8", errors="replace")
     if "Couldn't create an ENet host" in text:
-        return f"{name}: FAILED: port {port} was taken, so the game ran as an observer. Record it again."
+        raise RuntimeError(f"{name}: port {port} was taken (see {log})")
     errors = [line for line in text.splitlines() if "SCRIPT ERROR" in line]
-    if "Done recording movie" not in text or not avi.exists():
-        return f"{name}: FAILED (see {log})"
+    if result.returncode or errors or "Done recording movie" not in text or not avi.exists():
+        raise RuntimeError(f"{name}: capture failed (see {log})")
     n = len(Avi(avi))
+    if not n:
+        raise RuntimeError(f"{name}: empty capture (see {log})")
+    if frames is not None and n != frames:
+        raise RuntimeError(f"{name}: expected {frames} frames, got {n} (see {log})")
     # what game this was: later, `git log COMMIT..HEAD -- scripts assets` says what's changed since
-    stamp = {"take": name, "frames": n, "recorded": time.strftime("%Y-%m-%d %H:%M"), "commit": commit(),
+    revision = proj / ".capture-revision"
+    stamp = {"take": name, "frames": n, "recorded": time.strftime("%Y-%m-%d %H:%M"),
+             "commit": revision.read_text().strip() if revision.exists() else "unknown",
              "args": take["args"], "common_args": common, "env": take.get("env", {})}
+    if "scene" in take:
+        stamp["scene"] = take["scene"]
     (out / f"{name}.json").write_text(json.dumps(stamp, indent=2) + "\n", encoding="utf-8")
-    note = f", {len(errors)} script errors in the log" if errors else ""
-    return f"{name}: {n} frames ({n / 30:.1f} s) in {time.time() - t0:.0f} s -> {avi}{note}"
+    return f"{name}: {n} frames ({n / 30:.1f} s) in {time.time() - t0:.0f} s -> {avi}"
 
 
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("takes", nargs="*")
     ap.add_argument("--all", action="store_true")
+    ap.add_argument("--render", nargs="+", metavar="OUTPUT", help="record the takes and build the named clips or stills")
+    ap.add_argument("--install", action="store_true", help="also copy the rendered outputs into the website")
     ap.add_argument("--list", action="store_true")
     ap.add_argument("--jobs", type=int, default=3, help="takes recorded at once (they share the GPU)")
     ap.add_argument("--godot")
     ap.add_argument("--work")
+    ap.add_argument("--recipe", type=Path, default=SKILL / "shots.json", help="use this saved capture and edit recipe")
     ap.add_argument("--no-sync", action="store_true", help="reuse the project copy as it is")
     ap.add_argument("--port", type=int, default=8700, help="first port to try; each take gets the next free one")
     a = ap.parse_args()
 
-    shots = json.loads((SKILL / "shots.json").read_text(encoding="utf-8"))
+    recipe = a.recipe.read_bytes()
+    shots = json.loads(recipe)
     takes: dict = shots["takes"]
+    if a.render and (a.all or a.takes or a.list):
+        ap.error("Use --render with output names, or give take names separately.")
+    if a.install and not a.render:
+        ap.error("--install requires --render OUTPUT.")
     if a.list:
+        print("Clips: " + ", ".join(shots["outputs"]))
+        print("Stills: " + ", ".join(shots.get("stills", {})))
         work = work_dir(a.work)
         for name, t in takes.items():
             have = ""
@@ -180,13 +211,26 @@ def main() -> None:
             if (work / "takes" / f"{name}.avi").exists():
                 s = json.loads(stamp.read_text(encoding="utf-8")) if stamp.exists() else {}
                 have = f", recorded {s.get('recorded', '?')} at {s.get('commit', '?')}"
-            print(f"{name}  ({t['frames']} frames{have})  {' '.join(t['args'])}")
+            length = f"{t['frames']} frames" if "frames" in t else "until scene ends"
+            print(f"{name}  ({length}{have})  {' '.join(t['args'])}")
             print(f"    shows: {', '.join(t.get('shows', []))}")
             print(f"    feeds: {', '.join(used_by(shots, name)) or 'nothing yet'}")
             print(f"    {t.get('about', '')}")
         print(f"(takes folder: {work / 'takes'})")
         return
     names = list(takes) if a.all else a.takes
+    if a.render:
+        names = []
+        for name in a.render:
+            clip = shots["outputs"].get(name)
+            still = shots.get("stills", {}).get(name)
+            if not clip and not still:
+                ap.error(f"Unknown output {name!r} (--list shows available names).")
+            if clip:
+                names.extend(source_takes(clip))
+            if still:
+                names.append(still["take"])
+        names = list(dict.fromkeys(names))
     unknown = [n for n in names if n not in takes]
     if unknown or not names:
         sys.exit(f"Unknown takes: {unknown}" if unknown else "Name some takes, or --all (--list shows them).")
@@ -200,6 +244,8 @@ def main() -> None:
         sync(godot, proj)
 
     ports = free_ports(a.port, len(names))
+    if len(ports) != len(names):
+        sys.exit("Not enough free recording ports. Try a different --port.")
     print(f"recording {len(names)} take(s), {a.jobs} at a time, on ports {ports} ...", flush=True)
     with cf.ThreadPoolExecutor(max_workers=max(1, a.jobs)) as ex:
         jobs = [
@@ -207,7 +253,20 @@ def main() -> None:
             for i, n in enumerate(names)
         ]
         for j in cf.as_completed(jobs):
-            print(j.result(), flush=True)
+            try:
+                print(j.result(), flush=True)
+            except RuntimeError as error:
+                sys.exit(str(error))
+    if a.render:
+        # An overnight capture must assemble the edit it started with, even if
+        # the next edition is already being cut in the checkout.
+        with tempfile.TemporaryDirectory(dir=work) as folder:
+            frozen = Path(folder) / "shots.json"
+            frozen.write_bytes(recipe)
+            cmd = [sys.executable, str(HERE / "build.py"), *a.render, "--work", str(work), "--recipe", str(frozen)]
+            if a.install:
+                cmd.append("--install")
+            subprocess.run(cmd, check=True)
 
 
 if __name__ == "__main__":

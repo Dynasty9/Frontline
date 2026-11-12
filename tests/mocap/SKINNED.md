@@ -9,7 +9,7 @@ This is isolated animation playback; vehicle entry, seating and other available 
 
 Latest integration recording: `build/backstep-in-game-final.mp4` (8 seconds). A real server-controlled rifleman backs away from a wall, settles, and goes prone. The rendered regression measures 0.980 m retreat, 0.000093 m/s fully planted support drift and a 0.050 m maximum sampled joint step. Both character rigs also pass the isolated backstep fixture. Blocked rear paths and cancelled orders are covered without imported assets.
 
-The default battle clock remains 30 Hz. Opt-in skinned characters use 120 Hz physics while simulation remains 30 Hz. The active inspection camera now controls detail selection, and animation movement uses the interpolated rendered position to avoid stepping through false sideways poses when reversing. Earlier battle/controller recordings and measurements below are development history, not final validation of this merge. WAN latency/loss and final art quality remain unverified.
+The default battle clock remains 30 Hz. Skinned characters use 120 Hz physics while simulation remains 30 Hz. The active inspection camera now controls detail selection, and animation movement uses the interpolated rendered position to avoid stepping through false sideways poses when reversing. Earlier battle/controller recordings and measurements below are development history, not final validation of this merge. WAN latency/loss and final art quality remain unverified.
 Use `powershell -File tests/mocap/play_skinned.ps1 -Swat` for the in-game rifleman/tank
 sequence, or add `-Controller` for playable movement on terrain. `-Viewer -Swat` opens
 the animation, skeleton and projectile inspector. The military character is the local
@@ -52,8 +52,9 @@ godot --path . tests/mocap/skinned_demo.tscn -- --no-stun
 godot --path . -- --scenario=motion --skinned-units --no-stun --port=7980 --focus=-1,-3 --zoom=12 --pitch=-20 --cam-yaw=3.6 --preset=ultra --set=ragdolls:true,dof:false --perf=0 --mood=day
 ```
 
-`--skinned-units` also works in ordinary games: Coalition riflemen use the imported
-skin. Other unit types retain their existing models. Missing local character assets
+Ordinary games automatically select the bundled SWAT rifleman and its animation clips.
+With both packs installed, `--skinned-units` alone selects the original character.
+`--swat` and `--swat-units` select SWAT. Other unit types retain their existing models. Missing local character assets
 fall back to procedural units. The Field Manual keeps its procedural previews.
 
 The motion scenario runs real squad AI, movement, aiming, damage and effects in the

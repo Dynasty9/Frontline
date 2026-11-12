@@ -67,9 +67,7 @@ func set_detail(t: Texture2D) -> void:
 
 func _mat(code: String) -> ShaderMaterial:
 	var m := ShaderMaterial.new()
-	var s := Shader.new()
-	s.code = code
-	m.shader = s
+	m.shader = CloudShadow.make(code)
 	m.set_shader_parameter("trench_mask", null)
 	return m
 
@@ -616,6 +614,7 @@ const WALL_SHADER := """
 shader_type spatial;
 render_mode cull_disabled;
 uniform sampler2D detail_tex : filter_linear_mipmap, repeat_enable;
+// CLOUD_SHADOW
 varying vec3 wpos;
 void vertex() { wpos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz; }
 void fragment() {
@@ -641,12 +640,14 @@ void fragment() {
 	if (OUTPUT_IS_SRGB) { ALBEDO = mix(col * 12.92, 1.055 * pow(max(col, vec3(0.0)), vec3(1.0 / 2.4)) - 0.055, step(vec3(0.0031308), col)); }
 	ROUGHNESS = 0.92;
 	NORMAL_MAP = vec3(0.5 + (n - 0.5) * 0.4, 0.5 + (seam - 0.5) * 0.4 * plank_zone, 1.0);
+	// CLOUD_FRAGMENT cloud_sun(wpos)
 }
 """
 
 const BERM_SHADER := """
 shader_type spatial;
 uniform sampler2D detail_tex : filter_linear_mipmap, repeat_enable;
+// CLOUD_SHADOW
 varying vec3 wpos;
 void vertex() { wpos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz; }
 void fragment() {
@@ -662,12 +663,14 @@ void fragment() {
 	if (OUTPUT_IS_SRGB) { ALBEDO = mix(col * 12.92, 1.055 * pow(max(col, vec3(0.0)), vec3(1.0 / 2.4)) - 0.055, step(vec3(0.0031308), col)); }
 	ROUGHNESS = 0.95;
 	NORMAL_MAP = vec3(0.5 + (n - 0.5) * 0.6, 0.5 + (clods - 0.5) * 0.3, 1.0);
+	// CLOUD_FRAGMENT cloud_sun(wpos)
 }
 """
 
 const FLOOR_SHADER := """
 shader_type spatial;
 uniform sampler2D detail_tex : filter_linear_mipmap, repeat_enable;
+// CLOUD_SHADOW
 varying vec3 wpos;
 void vertex() { wpos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz; }
 void fragment() {
@@ -682,12 +685,16 @@ void fragment() {
 	if (OUTPUT_IS_SRGB) { ALBEDO = mix(col * 12.92, 1.055 * pow(max(col, vec3(0.0)), vec3(1.0 / 2.4)) - 0.055, step(vec3(0.0031308), col)); }
 	ROUGHNESS = mix(0.9, 0.15, pud);
 	SPECULAR = mix(0.2, 0.5, pud);
+	// CLOUD_FRAGMENT cloud_sun(wpos)
 }
 """
 
 const BOARD_SHADER := """
 shader_type spatial;
 uniform sampler2D detail_tex : filter_linear_mipmap, repeat_enable;
+// CLOUD_SHADOW
+varying vec3 wpos;
+void vertex() { wpos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz; }
 void fragment() {
 	float slat = fract(UV.x * 3.2);
 	float gap = smoothstep(0.0, 0.12, slat) * smoothstep(1.0, 0.88, slat);
@@ -698,5 +705,6 @@ void fragment() {
 	ALBEDO = col;
 	if (OUTPUT_IS_SRGB) { ALBEDO = mix(col * 12.92, 1.055 * pow(max(col, vec3(0.0)), vec3(1.0 / 2.4)) - 0.055, step(vec3(0.0031308), col)); }
 	ROUGHNESS = 0.85;
+	// CLOUD_FRAGMENT cloud_sun(wpos)
 }
 """

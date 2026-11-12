@@ -1,0 +1,29 @@
+{
+  "entry": "changelog/unreleased/rhib-helm.md",
+  "medium": "motion",
+  "rationale": "The same starboard crossing shows the driver at the controls, the second crew and the clear view across the bow.",
+  "stage": "main.tscn",
+  "source_ref": "b0ed630 Starboard versus the Helm camera and seated crew in 25f99c2",
+  "sources": [
+    {
+      "file": "changelog/unreleased/rhib-helm/helm.webm",
+      "sha256": "79237a4e6ba6ba7d300fe2774595203e5a411da67c5381c7a54da7294c6b00f2"
+    },
+    {
+      "file": "changelog/unreleased/rhib-helm/helm.jpg",
+      "sha256": "ddf49515bb722033520503503d69e2b6972b78e6ca42bd580319a7cae62bdba9"
+    }
+  ],
+  "capture": {
+    "mission": "beachhead",
+    "seed": 3,
+    "focus_vehicle": "rhib,1",
+    "views": [
+      "Starboard",
+      "Helm"
+    ],
+    "start_seconds": 12.5,
+    "end_seconds": 16.3,
+    "fps": 30
+  }
+}

@@ -39,6 +39,7 @@ var checks := 0
 var failures := 0
 var _remote := 0
 var _mode := "local"
+var _orders_before := 0
 
 
 func _ready() -> void:
@@ -81,6 +82,8 @@ func _build_field() -> void:
 	field.nav = StraightNav.new()
 	field.rules = SuppliedRules.new(field)
 	field.battle = BattleStats.new(field)
+	if field.srv:
+		field.delegation = Delegation.new(field)
 	add_child(field)
 	field.input = PlayerInput.new()
 	field.input.world = field
@@ -293,6 +296,36 @@ func _verify_remote() -> void:
 	_check_orders(_remote)
 	_check("remote client ordered host soldier", field.entities[201].detached)
 	_check("forged peer did not order enemy soldier", not field.entities[202].detached)
+	_delegate_round.rpc_id(_remote)
+
+
+## Command by intent from a client: its squad and vehicle go to the XO (an
+## enemy's never), and its take-back comes through too.
+@rpc("authority", "call_remote", "reliable")
+func _delegate_round() -> void:
+	field.send_cmd({"t": "delegate", "intent": "hold", "squads": [1, 2], "vehicles": [101, 102], "pos": Vector3(10, 0, 40), "face": Vector3.FORWARD, "peer": 3})
+	_verify_delegated.rpc_id(1)
+
+
+@rpc("any_peer", "call_remote", "reliable")
+func _verify_delegated() -> void:
+	var dg := field.delegation
+	_check("client delegates an allied squad and vehicle", dg.kind_of_squad(1) == "hold" and dg.is_delegated_vehicle(101))
+	_check("client cannot delegate enemy units", dg.kind_of_squad(2) == "" and not dg.is_delegated_vehicle(102))
+	_check("the intent is listed for its own side only", dg.summary(0).size() == 1 and dg.summary(1).is_empty())
+	_take_back_round.rpc_id(_remote)
+
+
+@rpc("authority", "call_remote", "reliable")
+func _take_back_round() -> void:
+	field.send_cmd({"t": "take_back", "squads": [1], "vehicles": [101]})
+	_verify_taken_back.rpc_id(1)
+
+
+@rpc("any_peer", "call_remote", "reliable")
+func _verify_taken_back() -> void:
+	_check("client takes them back", field.delegation.kind_of_squad(1) == "" and not field.delegation.is_delegated_vehicle(101))
+	_orders_before = field.squads[1].order_n
 	Net.players[_remote].team = -1
 	_observer_round.rpc_id(_remote)
 
@@ -310,7 +343,7 @@ func _observer_round() -> void:
 
 @rpc("any_peer", "call_remote", "reliable")
 func _verify_observer() -> void:
-	_check("observer cannot order host squads", field.squads[1].order_n == 1)
+	_check("observer cannot order host squads", field.squads[1].order_n == _orders_before)
 	_check("observer cannot order individual soldiers", not field.entities[203].detached)
 	_finish_client.rpc_id(_remote)
 	await get_tree().create_timer(0.5).timeout

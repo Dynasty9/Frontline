@@ -9,8 +9,8 @@
 For each output: the cuts are taken from WORK/takes/TAKE.avi, scaled to the
 output's size, graded, and joined with crossfades; loop_fade blends the end
 into the start so a looping clip has no jump. With "audio": true the sound
-comes too, each cut brought to about the same loudness and the whole run
-through a peak limiter; cuts with a "caption" give a WebVTT captions file.
+comes too. Set gain_db on a cut to trim its original mix, or omit it to
+match loudness automatically. The whole reel goes through a peak limiter; cuts with a "caption" give a WebVTT captions file.
 The result is encoded as H.264 MP4 (moov first, so it starts playing while it
 downloads), with its first frame as a JPEG poster, into WORK/build/. A
 contact sheet of what was built goes beside it (NAME.preview.jpg): look at it.
@@ -36,7 +36,7 @@ import tempfile
 from pathlib import Path
 
 import numpy as np
-from PIL import Image, ImageEnhance
+from PIL import Image, ImageChops, ImageEnhance
 
 HERE = Path(__file__).resolve().parent
 SKILL = HERE.parent
@@ -94,11 +94,12 @@ def plan(spec: dict, takes: Takes) -> tuple[list[list[tuple[float, tuple]]], lis
     out: list[list[tuple[float, tuple]]] = []
     starts: list[float] = []
     for c in spec["cuts"]:
-        a, b = int(round(c["from"] * FPS)), int(round(c["to"] * FPS))
         n = len(takes[c["take"]])
+        a = round(c["from"] * FPS)
+        b = round(c["to"] * FPS) if "to" in c else n
         if b > n:
             sys.exit(f"Cut {c} runs past the end of take '{c['take']}' ({n / FPS:.1f} s).")
-        gain = level(takes, c["take"], a, b, spec) if audio else 1.0
+        gain = level(takes, c, a, b, spec) if audio else 1.0
         frames = [(c["take"], i, gain) for i in range(a, b)]
         k = min(fade, len(out), len(frames)) if out else 0
         starts.append((len(out) - k) / FPS)
@@ -119,9 +120,11 @@ def plan(spec: dict, takes: Takes) -> tuple[list[list[tuple[float, tuple]]], lis
     return out, starts
 
 
-def level(takes: Takes, take: str, a: int, b: int, spec: dict) -> float:
-    """A gain that brings this cut's sound to about the same loudness (RMS) as the others, boosting 12 dB at most."""
-    x = np.concatenate([sound(takes, take, i) for i in range(a, b)])
+def level(takes: Takes, cut: dict, a: int, b: int, spec: dict) -> float:
+    """Use the editor's trim when supplied; otherwise match cuts by RMS."""
+    if "gain_db" in cut:
+        return 10 ** (cut["gain_db"] / 20)
+    x = np.concatenate([sound(takes, cut["take"], i) for i in range(a, b)])
     rms = float(np.sqrt((x * x).mean())) + 1e-9
     return min(4.0, max(0.5, spec.get("audio_rms", 0.11) / rms))
 
@@ -262,10 +265,46 @@ def build_output(name: str, spec: dict, takes: Takes, out: Path, how: str) -> No
     g = spec.get("grade", {})
     frames, starts = plan(spec, takes)
     n = len(frames)
+    score = spec.get("score")
+    if score:
+        if not spec.get("audio") or len(takes[score["take"]]) < n:
+            sys.exit(f"{name}: the score requires audio and must cover all {n} frames.")
+        score_gain = 10 ** (score["gain_db"] / 20)
     fi, fo = int(spec.get("fade_in", 0)), int(spec.get("fade_out", 0))
+    # The title is filmed on black, so a screen blend keeps the water moving
+    # around the lettering, including while the underlying shot fades out.
+    title = None
+    if end_title := spec.get("end_title"):
+        title_start = round(end_title["from"] * FPS)
+        title_fade = int(end_title["fade"])
+        source = takes[end_title["take"]]
+        index = round(end_title["at"] * FPS)
+        if not (0 <= index < len(source) and 0 <= title_start < n and 0 <= title_fade <= n - title_start):
+            sys.exit(f"{name}: the end title must fit its source and the output timeline.")
+        full_frame = end_title.get("full_frame", False)
+        if full_frame and index + n - title_start > len(source):
+            sys.exit(f"{name}: the animated end card is shorter than its hold.")
+        title = source.image(index).convert("RGB").resize(size, Image.LANCZOS)
     black = Image.new("RGB", size)
     jpegs: list[bytes] = []
     pcm: list[np.ndarray] = []
+    # A close engine can carry across a cut to a distant camera. Only the
+    # location sound crosses over. Picture, music and impact timing stay exact.
+    bridges = {}
+    for previous, cut, start in zip(spec["cuts"], spec["cuts"][1:], starts[1:]):
+        count = cut.get("audio_bridge_frames", 0)
+        if not count:
+            continue
+        name_before = previous["take"]
+        end = round(previous["to"] * FPS) if "to" in previous else len(takes[name_before])
+        incoming_end = round(cut["to"] * FPS) if "to" in cut else len(takes[cut["take"]])
+        if (not spec.get("audio") or spec.get("fade", 8) or spec.get("loop_fade") or count < 1
+                or end + count > len(takes[name_before]) or count > incoming_end - round(cut["from"] * FPS)):
+            sys.exit(f"{name}: sound bridge requires a hard cut and source audio covering {count} frames.")
+        gain_before = level(takes, previous, round(previous["from"] * FPS), end, spec)
+        blend = np.linspace(0, 1, count * SPF, dtype=np.float32).reshape(count, SPF, 1)
+        for j in range(count):
+            bridges[round(start * FPS) + j] = (name_before, end + j, gain_before, blend[j])
     print(f"{name}: {n} frames ({n / FPS:.1f} s) from {len(spec['cuts'])} cuts ...", flush=True)
     for k, entry in enumerate(frames):
         im, acc = None, 0.0
@@ -282,6 +321,14 @@ def build_output(name: str, spec: dict, takes: Takes, out: Path, how: str) -> No
             dim = (n - k) / (fo + 1)
         if dim < 1.0:
             im = Image.blend(black, im, dim)
+        if title is not None and k >= title_start:
+            amount = min(1.0, (k - title_start + 1) / max(1, title_fade))
+            if full_frame:
+                card = source.image(index + k - title_start).convert("RGB").resize(size, Image.LANCZOS)
+            else:
+                backing = Image.blend(im, black, 0.42)
+                card = ImageChops.screen(backing, title)
+            im = Image.blend(im, card, amount)
         if k == 0:
             im.save(out / f"{name}.jpg", quality=82, optimize=True, progressive=True)
         b = io.BytesIO()
@@ -292,6 +339,11 @@ def build_output(name: str, spec: dict, takes: Takes, out: Path, how: str) -> No
             for w, (take, i, gain) in entry:
                 if w > 0.001:
                     a += w * gain * sound(takes, take, i)
+            if k in bridges:
+                old_take, old_index, old_gain, blend = bridges[k]
+                a = a * blend + sound(takes, old_take, old_index) * old_gain * (1 - blend)
+            if score:
+                a += score_gain * sound(takes, score["take"], k)
             pcm.append(a * dim)
     pcm16 = None
     if spec.get("audio"):
@@ -323,17 +375,16 @@ def install(names: list[str], stills: list[str], shots: dict, out: Path) -> None
     for s in stills:  # after the outputs: a still can stand in for an output's first-frame poster
         shutil.copy2(out / f"{s}.jpg", MEDIA / f"{s}.jpg")
     print(f"\ninstalled in {MEDIA}:")
-    total = 0
-    for n, spec in shots["outputs"].items():
+    for n in names:
+        spec = shots["outputs"][n]
         p = MEDIA / f"{n}.mp4"
         if not p.exists():
             print(f"  {n}.mp4 MISSING")
             continue
         kb = p.stat().st_size // 1000
-        total += p.stat().st_size
         over = f"  OVER its budget of {spec['max_kb']} KB" if kb > spec.get("max_kb", 1e9) else ""
         print(f"  {n}.mp4 {kb} KB{over}")
-    total += sum(p.stat().st_size for p in MEDIA.iterdir() if p.suffix != ".mp4")
+    total = sum(p.stat().st_size for p in MEDIA.iterdir() if p.is_file())
     print(f"  all media: {total / 1e6:.1f} MB")
 
 
@@ -344,10 +395,12 @@ def main() -> None:
     ap.add_argument("--stills", action="store_true", help="build the stills (with --all, or alone)")
     ap.add_argument("--install", action="store_true")
     ap.add_argument("--work")
+    ap.add_argument("--recipe", type=Path, default=SKILL / "shots.json", help="use this saved capture and edit recipe")
     ap.add_argument("--encoder", default="auto", choices=["auto", "ffmpeg", "mf"])
     a = ap.parse_args()
 
-    shots = json.loads((SKILL / "shots.json").read_text(encoding="utf-8"))
+    recipe = a.recipe.read_bytes()
+    shots = json.loads(recipe)
     work = Path(a.work or os.environ.get("FRONTLINE_FOOTAGE_DIR") or Path(tempfile.gettempdir()) / "frontline-footage")
     out = work / "build"
     out.mkdir(parents=True, exist_ok=True)
@@ -365,6 +418,7 @@ def main() -> None:
 
     for n in names:
         build_output(n, shots["outputs"][n], takes, out, a.encoder)
+        (out / f"{n}.recipe.json").write_bytes(recipe)
     for s in stills:
         build_still(s, shots["stills"][s], takes, out)
     if a.install:

@@ -5,13 +5,18 @@ extends RefCounted
 ## surface from Mats. `burnt` builds the same shape as a charred wreck.
 ## Local -Z is forward; y = 0 is the ground.
 
+const ImpactPlate := preload("res://scripts/game/vehicles/impact_plate.gd")
+
 static var _cache := {}
 
 var root: Node3D
+var sling_eye := Vector3(0, 0.7, 0)  # underside of the fuselage, in model space
+var helm_seat := Vector3.INF  # hip position of the driver at an open helm
 var burnt := false
 var surface_family := "armor"
 var turret: Node3D
 var mg_tip: Node3D  # the machine gun's muzzle (shots start here)
+var gun_mount: Node3D
 var gun_tip: Node3D  # the main gun's muzzle
 var weapon_tips := {}  # named gunship weapons (ac25/ac40/ac105), not one shared point
 var rotor: Node3D
@@ -23,11 +28,34 @@ var antennas: Array[Node3D] = []
 var _antenna_response := ImpactResponse.new()
 var _antenna_velocity := Vector3.ZERO
 var _antenna_active := false
+var belts: Array = []
+var periscope := Vector3.INF
+var roof_gun := Vector3.INF  # receiver centre in turret space, for exterior filming
+var engine_deck := Vector3.INF  # Fire breaks through the upper deck when damaged.
+var engine_vent := Vector3.INF  # Local outlet on models with visible exhaust.
+var front_skirts: Array[Node3D] = []
+var _damaged_plates := {}
+var skirt_plugs: Array[Node3D] = []
 var elev: Node3D  # an artillery barrel or rocket launcher that rises to fire (rotation.x)
 ## More rotors (a tandem's rear one, a coaxial's second, a drone's four or
 ## six): pivots spinning about Y. Each may hold a "Blades" node (shown slow)
 ## and a "Blur" disc (shown fast), like the main rotor.
 var rotors: Array = []
+## The mouths of the exhaust pipes, in the model's own space: the origin at the
+## mouth, Y the way the gas leaves (the heat haze: Vehicle.heat_sources). Kept
+## as numbers, not nodes, so a fitting still folds away into its parent; the
+## pipes sit on parts that never move against the model.
+var exhausts: Array[Transform3D] = []
+
+
+## Notes an exhaust's mouth at `pos` on `parent`, the gas leaving along `dir`.
+func exhaust_at(parent: Node3D, pos: Vector3, dir: Vector3) -> void:
+	var t := Transform3D(VehicleFrames.aim(dir), pos)
+	var p := parent
+	while p != null and p != root:
+		t = p.transform * t
+		p = p.get_parent() as Node3D
+	exhausts.append(t)
 
 
 ## A civilian car: 0 saloon, 1 hatchback, 2 pickup, 3 van, 4 estate.
@@ -99,6 +127,53 @@ static func build(kind: String, team: int, seed: int, is_burnt := false) -> Vehi
 	return k
 
 
+func scorch_finish() -> ShaderMaterial:
+	var soot := ShaderMaterial.new()
+	soot.render_priority = -2
+	soot.shader = preload("res://scripts/shaders/vehicle_soot.gdshader")
+	for part: MeshInstance3D in root.find_children("*", "MeshInstance3D", true, false):
+		if not part is ImpactPlate:
+			part.material_overlay = soot
+	return soot
+
+
+static func spread_soot(soot: ShaderMaterial, origin: Vector3, age: float) -> void:
+	soot.set_shader_parameter("source_world", origin)
+	soot.set_shader_parameter("extent", 0.46 + 2.1 * (1.0 - exp(-maxf(0.0, age) * 0.64)))
+
+
+func make_impact_plate(side: float, layers := 2) -> ImpactPlate:
+	var plate := ImpactPlate.new()
+	plate.fit(layers)
+	if front_skirts.is_empty():
+		root.add_child(plate)
+		plate.position = Vector3(side * 1.669, 1.18, -0.55)
+	else:
+		front_skirts[1 if side > 0 else 0].add_child(plate)
+		plate.position = Vector3(side * 0.056, -0.395, -0.40)
+	plate.rotation.y = side * PI / 2
+	return plate
+
+
+## Each bit records a bent front skirt, from the left side to the right.
+func pose_skirts(mask: int) -> void:
+	for i in front_skirts.size():
+		var skirt := front_skirts[i]
+		var side := signf(skirt.position.x)
+		var damaged := (mask & (1 << i)) != 0
+		skirt.rotation = Vector3(-0.23, 0.0, side * 0.41) if damaged else Vector3.ZERO
+		skirt_plugs[i].visible = not damaged
+	for i in 2:
+		var damaged := (mask & (1 << i)) != 0
+		if damaged and not _damaged_plates.has(i):
+			var plate := make_impact_plate(-1.0 if i == 0 else 1.0, 1)
+			plate.take_hit()
+			_damaged_plates[i] = plate
+		elif not damaged and _damaged_plates.has(i):
+			_damaged_plates[i].queue_free()
+			_damaged_plates.erase(i)
+
+
 ## Every model key the families build (for the Field Manual's model pages).
 static func family_keys() -> Array[String]:
 	var out: Array[String] = []
@@ -137,6 +212,10 @@ func _merge_parts(n: Node3D, off: Vector3) -> void:
 		var mi := n.get_child(i) as MeshInstance3D
 		if mi and off != Vector3.ZERO:
 			Mats.set_inst(mi, &"pofs", off)
+	if not burnt and not front_skirts.is_empty() and (n == root or n == turret):
+		for child in n.get_children():
+			if child is MeshInstance3D and (child as MeshInstance3D).mesh is ArrayMesh:
+				Mats.set_inst(child, &"armour_section", 0.0 if n == root else 1.0)
 	if not burnt:
 		Mats.add_distance_lod(n, 100.0, [blur] if blur else [])
 
@@ -192,7 +271,7 @@ static func _tri(st: SurfaceTool, a: Vector3, b: Vector3, c: Vector3, inside: Ve
 
 
 ## Lofts between successive convex rings (same point count) and caps both ends.
-static func solid(rings: Array, key: String) -> ArrayMesh:
+static func solid(rings: Array, key: String, smooth := false) -> ArrayMesh:
 	if _cache.has(key):
 		return _cache[key]
 	var st := SurfaceTool.new()
@@ -206,12 +285,16 @@ static func solid(rings: Array, key: String) -> ArrayMesh:
 			var j := (i + 1) % n
 			_tri(st, r0[i], r0[j], r1[j], cen)
 			_tri(st, r0[i], r1[j], r1[i], cen)
+	if smooth:
+		st.set_smooth_group(1)  # keep the flat caps separate from the curved sides
 	for e in [0, rings.size() - 1]:
 		var r: PackedVector3Array = rings[e]
 		var other: PackedVector3Array = rings[1 if e == 0 else rings.size() - 2]
 		var inside := _centroid(other)
 		for i in range(1, r.size() - 1):
 			_tri(st, r[0], r[i], r[i + 1], inside)
+	if smooth:
+		st.generate_normals()
 	# (what st.commit() makes, keeping the arrays: see Mats.keep_arrays)
 	var arrays := st.commit_to_arrays()
 	var m := ArrayMesh.new()
@@ -258,7 +341,7 @@ static func _capsule(r: float, h: float) -> CapsuleMesh:
 func _add(parent: Node3D, mesh: Mesh, kind: String, col, pos: Vector3, rot := Vector3.ZERO, scl := Vector3.ONE, shadow := true) -> Variant:
 	var k := kind
 	if burnt:
-		k = "burnt"
+		k = "abrams_scorched" if kind in ["abrams_olive", "abrams_sand"] else "burnt"
 	k = VehicleMaterials.key(k, surface_family)
 	var t := Mats.tint_for(k, col) if col is Color and not burnt else Color(1, 1, 1)
 	if not burnt and VehicleMaterials.profile(kind, surface_family) in ["armor", "aircraft", "marine"]:
@@ -1031,20 +1114,22 @@ static var _blur: ShaderMaterial
 static func _blur_mat() -> ShaderMaterial:
 	if _blur == null:
 		var sh := Shader.new()
-		sh.code = """
+		sh.code = Mats.code("""
 shader_type spatial;
 render_mode unshaded, cull_disabled, depth_draw_never, shadows_disabled;
+instance uniform float blade_count = 4.0;
 void fragment() {
 	vec2 p = UV * 2.0 - 1.0;
 	float r = length(p);
 	float a = atan(p.y, p.x);
-	float streak = 0.55 + 0.45 * sin(a * 4.0 + TIME * 3.0);
-	float ring = smoothstep(1.0, 0.94, r) * smoothstep(0.05, 0.2, r);
-	float tip = smoothstep(0.86, 0.95, r) * smoothstep(1.0, 0.96, r);
-	ALBEDO = vec3(0.1, 0.1, 0.095) + tip * 0.15;
-	ALPHA = ring * (0.05 + 0.07 * streak) + tip * 0.08;
+	// The mesh turns with the hub. Each blade sweeps an arc during an exposure.
+	float sweep = pow(0.5 + 0.5 * cos(a * blade_count + r * 0.7), 3.6);
+	float disc = smoothstep(0.07, 0.13, r) * (1.0 - smoothstep(0.95, 1.0, r));
+	float tip = smoothstep(0.92, 0.95, r);
+	ALBEDO = mix(vec3(0.034, 0.038, 0.04), vec3(0.42, 0.40, 0.32), tip);
+	ALPHA = disc * (0.028 + (0.50 - 0.16 * r) * sweep);
 }
-"""
+""")
 		_blur = ShaderMaterial.new()
 		_blur.shader = sh
 	return _blur

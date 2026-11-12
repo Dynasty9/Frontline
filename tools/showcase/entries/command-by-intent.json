@@ -1,0 +1,19 @@
+{
+  "entry": "changelog/unreleased/command-by-intent.md",
+  "summary": "Squads and vehicles can be delegated to the XO with an intent (hold, take, screen, reserve, ambush) and taken back.",
+  "medium": "still",
+  "stage": "game capture: --scenario=attack --seed=3 --static --play --select-all --perf=0 with --delegate=take,-2,-42 --focus=0,-8 --zoom=66 --shot-at=16, and --delegate=hold,10,15,0,-1 --card-page=intent --focus=5,0 --zoom=60 --shot-at=25 (1600x900, off-screen)",
+  "rationale": "The feature is new interface and map graphics: two stills show the delegated attack as the XO runs it and the Delegate page with a held sector. The behaviour itself is covered by tests/delegation.test.mjs.",
+  "source_ref": "5e96b63a9d6462e1460c3e275b4fc16038b7ddbe + working tree",
+  "sources": [
+    {
+      "file": "changelog/unreleased/command-by-intent/take-objective.jpg",
+      "sha256": "25c5a46ab4ea8a32937285b163779fa694d5cd1e40f23ba1e48075cd204365b0"
+    },
+    {
+      "file": "changelog/unreleased/command-by-intent/hold-sector.jpg",
+      "sha256": "824adb8abf33ac13d6ccfd6d252b198f52c9a55a83a4bd530f7984274b34ce58"
+    }
+  ],
+  "output": null
+}

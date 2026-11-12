@@ -34,6 +34,14 @@ class ErrorCounter extends Logger:
 ## Starts counting (main.gd calls this for any run given switches).
 static func watch() -> void:
 	OS.add_logger(ErrorCounter.new())
+	# Without an editor host, the macOS embedded OpenGL driver reports no
+	# drawable size. Size the root render target before the first test frame.
+	if DisplayServer.get_name() == "embedded" and DisplayServer.window_get_size() == Vector2i.ZERO:
+		var size := Vector2i(ProjectSettings.get_setting("display/window/size/viewport_width"), ProjectSettings.get_setting("display/window/size/viewport_height"))
+		var requested := OS.get_environment("FL_CAPTURE_SIZE").split("x")
+		if requested.size() == 2 and requested[0].to_int() > 0 and requested[1].to_int() > 0:
+			size = Vector2i(requested[0].to_int(), requested[1].to_int())
+		(Engine.get_main_loop() as SceneTree).root.size = size
 
 
 static func _count(what: String) -> void:

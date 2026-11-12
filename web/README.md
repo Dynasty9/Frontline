@@ -138,10 +138,15 @@ they fall back to the pictures themselves.
 The text the page quotes (the counts, the missions, the radio traffic, the vehicle names) lives in
 `src/lib/intel.ts`, taken from the game's own tables.
 
-When the game changes, the `website-footage` skill (`.agents/skills/website-footage/`) brings both up to date:
-`check_intel.py` checks the copy against the game (and `--fix` updates the counts), `record.py` re-records the
-takes listed in its `shots.json`, and `build.py` cuts and encodes them into `public/media`. Its `SKILL.md` walks
-through it, with the flags that make good footage.
+The checked-in [footage recipe](../.agents/skills/website-footage/shots.json) defines each scenario, seed, camera and cut. From the repository root, with Godot 4.7 on PATH or in `GODOT`, Python with Pillow and NumPy, and FFmpeg, re-render a clip by name:
+
+```sh
+python3 .agents/skills/website-footage/scripts/record.py --render reel
+```
+
+Pass `--render vehicles` for the silent vehicle roll call in the footage dialog, or `--render hero infantry squads armour fires sea` for the homepage loops. Add `--install` to update `web/public/media`. Each capture directory holds the original takes and their launch arguments, plus the finished videos under `build/`. Re-run `build.py reel --work DIR` to recut those exact frames. For the separate one-minute ridge film, open [the Godot scene](../tests/fixtures/ridge-duel.tscn) or use the [native movie command](../tools/showcase/README.md#record-the-two-ridge-abrams-film). The [footage guide](../.agents/skills/website-footage/SKILL.md) covers recording, editing and checking the site’s game-derived copy.
+
+Run `check_intel.py` to check website copy against the game. Its `--fix` option updates counts. The [trailer comparison viewer](../tools/showcase/trailer-review/README.md) archives each reviewed cut, recipe and take manifest.
 
 ## Deploying
 

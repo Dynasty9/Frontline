@@ -11,18 +11,15 @@ so a slow render never drops a frame: a take of N frames is N/30 seconds of
 game time however long it takes to draw (about 5 frames a second, slower with
 several running).
 
-The game runs from a private copy of the project (WORK/project) with an
-override.cfg that starts its window minimized, borderless and unfocused, and
---offscreen moves it out of sight, so nothing opens over the desktop. The copy
+The game runs from a private copy of the project (WORK/project) with a
+private render surface on macOS or an off-screen window on other desktops. The copy
 is refreshed from the repo (and re-imported) before recording unless
 --no-sync, so it records the game as this checkout has it. Every run gets its
 own free port: a game that can't open its port carries on as an observer
 without saying so (its log shows "Couldn't create an ENet host"), and other
 games on this machine may hold the usual ones.
 
-Godot: --godot, else $GODOT, else `godot` on the PATH. It must be able to open
-a window (any build but --headless; on Windows the plain or the _console exe):
-it has to draw to record.
+Godot: --godot, else $GODOT, else `godot` on the PATH. Use the editor binary so the movie writer can draw frames.
 """
 
 from __future__ import annotations
@@ -70,7 +67,7 @@ def work_dir(arg: str | None) -> Path:
 def find_godot(arg: str | None) -> str:
     g = arg or os.environ.get("GODOT") or shutil.which("godot") or shutil.which("godot4")
     if not g or not Path(g).exists() and not shutil.which(g):
-        sys.exit("No Godot: pass --godot PATH or set GODOT to a Godot 4.7 binary that can open a window.")
+        sys.exit("No Godot: pass --godot PATH or set GODOT to the Godot 4.7 editor binary.")
     return g
 
 
@@ -131,9 +128,13 @@ def record(godot: str, proj: Path, out: Path, name: str, take: dict, common: lis
     avi = out / f"{name}.avi"
     log = out / f"{name}.log"
     frames = int(take["frames"])
-    cmd = [godot, "--path", str(proj), "--write-movie", str(avi), "--fixed-fps", "30", "--quit-after", str(frames), "--"]
+    embedded = sys.platform == "darwin"
+    display = ["--embedded", "--debug", "--ignore-error-breaks"] if embedded else []
+    cmd = [godot, *display, "--path", str(proj), "--write-movie", str(avi), "--fixed-fps", "30", "--quit-after", str(frames), "--"]
     # the user's own settings.cfg is loaded: make sure the sound is up (it can be saved at 0)
-    cmd += ["--offscreen", "--set=volume:0.8", f"--port={port}", *common, *take["args"]]
+    if not embedded:
+        cmd.append("--offscreen")
+    cmd += ["--set=volume:0.8", f"--port={port}", *common, *take["args"]]
     t0 = time.time()
     with open(log, "w", encoding="utf-8", errors="replace") as f:
         f.write(" ".join(cmd) + "\n\n")

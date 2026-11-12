@@ -1,0 +1,20 @@
+{
+  "entry": "changelog/unreleased/lived-in-houses.md",
+  "summary": "Houses dressed as homes (curtains, window boxes, lanterns, aerials, furnished rooms) and lamplight in windows after dark.",
+  "medium": "still",
+  "stage": "tools/showcase/building-surfaces.tscn",
+  "rationale": "Appearance change: one matched sheet with studio close-ups by day, a roofless house showing the room, the same house by night, and the town at night on the same seed and camera.",
+  "source_ref": "fc81e975adf24c3bacc0fc2358b2421ee0c3c2fd",
+  "before_ref": "5d92de0c1a9a50f99ec7b96c92c7d2fc0d735731",
+  "sources": [
+    {
+      "file": "changelog/unreleased/lived-in-houses/comparison.jpg",
+      "sha256": "8243476c4d675d05308c9bf0e4014d4c4b173a6a6ed6d8bfb2b73600f27ca3dc"
+    },
+    {
+      "file": "changelog/unreleased/lived-in-houses/capture.json",
+      "sha256": "231937781ff56757f6a754056f1b96e9b8e5f6d724860cf811549b86b1807a9e"
+    }
+  ],
+  "output": null
+}

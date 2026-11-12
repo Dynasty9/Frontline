@@ -40,7 +40,9 @@ var dist := 55.0
 var target_dist := 55.0
 var focus_pos := Vector3.ZERO
 var _shake := 0.0
-var edge_pan := true
+var edge_pan := bool(Settings.get_v("edge_pan"))
+# An embedded movie has no operator, but its pointer can sit at the viewport corner.
+var _recording := not Engine.get_write_movie_path().is_empty()
 var user_moved := false
 var _last_ms := 0
 var _vel := Vector2.ZERO  # eased keyboard / edge pan, -1..1 on each screen axis
@@ -65,6 +67,10 @@ var _g_tilt := [0.0, 0.0]
 var _g_moves := false
 
 ## Following the selection (Ctrl+F): the camera keeps the selected units in view until you pan away.
+var mount_label: StringName
+var mount_subject: Entity
+var mount_marker: Marker3D
+var _eyepiece: ColorRect
 var follow := false
 var _follow_at := Vector3.INF
 var _follow_t := 0.0
@@ -87,8 +93,14 @@ func _ready() -> void:
 	_apply()
 
 
+func _exit_tree() -> void:
+	if mount_label == &"Periscope":
+		Sfx.cabin_listening(false)
+
+
 ## Jumps straight there (the minimap, test framing).
 func focus(p: Vector3) -> void:
+	leave_mount()
 	focus_pos = _clamp_map(p)
 	_gliding = false
 	_zoom_anchor = Vector3.INF
@@ -104,6 +116,7 @@ func set_heading(y: float) -> void:
 ## Slides the view there instead of cutting, so you can see which way you went.
 ## Optionally to a zoom, a heading and a tilt as well.
 func glide_to(p: Vector3, zoom := -1.0, heading := NAN, to_tilt := NAN) -> void:
+	leave_mount()
 	_g_pos = [focus_pos, _clamp_map(p)]
 	_g_yaw = [yaw, yaw if is_nan(heading) else yaw + wrapf(heading - yaw, -PI, PI)]
 	_g_tilt = [tilt, tilt if is_nan(to_tilt) else to_tilt]
@@ -155,6 +168,7 @@ func scroll_zoom(dy: float, at := Vector2(-1, -1)) -> void:
 ## `delta` is the scroll as the engine gives it: the way the view moves, so the
 ## fingers moved the other way (with macOS's usual "natural" scrolling).
 func two_finger(delta: Vector2, at: Vector2, turn := false) -> void:
+	leave_mount()
 	var fingers := -delta * TRACKPAD_PT * DisplayServer.screen_get_scale()
 	_gliding = false
 	_zoom_anchor = Vector3.INF
@@ -178,6 +192,7 @@ func two_finger(delta: Vector2, at: Vector2, turn := false) -> void:
 
 ## Zooms by a factor (below 1 in), toward a point on the screen when there is one.
 func zoom_by(mult: float, at := Vector2(-1, -1)) -> void:
+	leave_mount()
 	target_dist = clampf(target_dist * mult, MIN_DIST, MAX_DIST)
 	user_moved = true
 	stop_shadow()
@@ -191,7 +206,61 @@ func zoom_by(mult: float, at := Vector2(-1, -1)) -> void:
 			_zoom_screen = at
 
 
+func cycle_mount(requested := &"") -> void:
+	var subject := world.input.camera_subject()
+	if not is_instance_valid(subject) or subject.gone or not subject.seen_by_local() or not subject.is_visible_in_tree():
+		leave_mount()
+		if world.hud:
+			world.hud.flash("Select one vehicle, building or individual soldier")
+		return
+	var mounts := subject.camera_mounts()
+	var index := mounts.keys().find(mount_label) + 1 if subject == mount_subject else 0
+	if requested != &"":
+		index = mounts.keys().find(requested)
+	if index < 0 or index >= mounts.size():
+		leave_mount()
+		return
+	stop_follow()
+	stop_shadow()
+	if world.director:
+		world.director.active = false
+	_gliding = false
+	_zoom_anchor = Vector3.INF
+	user_moved = true
+	mount_subject = subject
+	mount_label = mounts.keys()[index]
+	mount_marker = mounts[mount_label]
+	Sfx.cabin_listening(mount_label == &"Periscope")
+	if mount_label == &"Periscope" and not _eyepiece:
+		_eyepiece = ColorRect.new()
+		var glass := ShaderMaterial.new()
+		glass.shader = preload("res://scripts/shaders/vehicle_eyepiece.gdshader")
+		_eyepiece.material = glass
+		_eyepiece.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		add_child(_eyepiece)
+		_eyepiece.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	if _eyepiece:
+		_eyepiece.visible = mount_label == &"Periscope"
+	cam.fov = clampf(float(Settings.get_v("fov")), 35.0, 75.0)
+	_apply()
+	if world.hud:
+		world.hud.flash("%s · %s" % [subject.display_name(), mount_label])
+
+func leave_mount() -> void:
+	if mount_label == &"":
+		return
+	mount_label = &""
+	mount_subject = null
+	mount_marker = null
+	Sfx.cabin_listening(false)
+	if _eyepiece:
+		_eyepiece.hide()
+	cam.fov = clampf(float(Settings.get_v("fov")), 35.0, 75.0)
+	cam.transform = Transform3D.IDENTITY
+	_apply()
+
 func toggle_follow() -> void:
+	leave_mount()
 	if follow:
 		stop_follow()
 		return
@@ -221,6 +290,7 @@ func stop_follow() -> void:
 ## Looks through a co-commander's eyes: your camera glides to his view and
 ## keeps to it as he moves, until you pan, turn or zoom (or press it again).
 func toggle_shadow(peer: int) -> void:
+	leave_mount()
 	if shadow == peer:
 		stop_shadow()
 		return
@@ -262,6 +332,29 @@ func bookmark(slot: int, save: bool) -> void:
 		return
 	stop_follow()
 	glide_to(b[0], float(b[1]), float(b[2]), float(b[3]))
+
+
+## Photo mode takes the lens off the orbit (on) and gives it back (off): the
+## orbit stands where it was meanwhile, and a drag held when it went is let go.
+var _suspended := []  # [processing, taking input] as photo mode found them
+
+
+func suspend(on: bool) -> void:
+	if on == not _suspended.is_empty():
+		return
+	if on:
+		_suspended = [is_processing(), is_processing_unhandled_input()]
+		set_process(false)
+		set_process_unhandled_input(false)
+		_mmb = false
+		_vel = Vector2.ZERO
+		_shake = 0.0
+		return
+	set_process(bool(_suspended[0]))
+	set_process_unhandled_input(bool(_suspended[1]))
+	_suspended = []
+	_last_ms = 0
+	_apply()
 
 
 ## Keys are going into the chat, the console, or any text box (signing in at the end of a battle).
@@ -314,7 +407,7 @@ func _view_process(_scaled_dt: float) -> void:
 		if Keys.held("cam_zoom_out"):
 			zoom += 1.0
 		fast = Keys.held("cam_fast")
-	if edge_pan and not _mmb and get_window().has_focus():
+	if edge_pan and not _recording and not _mmb and get_window().has_focus():
 		var mp := get_viewport().get_mouse_position()
 		var vs := get_viewport().get_visible_rect().size
 		if mp.x >= 0 and mp.y >= 0 and mp.x <= vs.x and mp.y <= vs.y:
@@ -333,6 +426,7 @@ func _view_process(_scaled_dt: float) -> void:
 		_zoom_anchor = Vector3.INF
 		stop_follow()
 	if move != Vector2.ZERO or turn != 0.0 or lift != 0.0 or zoom != 0.0:
+		leave_mount()
 		user_moved = true
 		stop_shadow()
 	# ease in and out over a few frames: starts and stops read as a glide, not a jolt
@@ -379,6 +473,8 @@ func _view_process(_scaled_dt: float) -> void:
 			target_dist = sp.dist
 	focus_pos = _clamp_map(focus_pos)
 	dist = lerpf(dist, target_dist, 1.0 - exp(-dt * 10.0))
+	if mount_label == &"Periscope":
+		cam.fov = move_toward(cam.fov, 28.0, dt * 32.0)
 	_shake = maxf(0.0, _shake - dt * 2.0)
 	_apply()
 	if _zoom_anchor != Vector3.INF:
@@ -404,7 +500,36 @@ static func pitch_for(d: float, t: float) -> float:
 	return minf(p, -rad_to_deg(asin(clampf(MIN_HEIGHT / maxf(d, 0.1), 0.0, 1.0))))
 
 
+func _mount_visible() -> bool:
+	if not is_instance_valid(mount_subject) or not is_instance_valid(mount_marker):
+		return false
+	if mount_subject.gone or mount_subject != world.input.camera_subject() or not mount_subject.seen_by_local():
+		return false
+	return mount_marker.is_visible_in_tree() and mount_subject.is_ancestor_of(mount_marker)
+
+
 func _apply() -> void:
+	if mount_label != &"":
+		if _mount_visible():
+			focus_pos = mount_subject.global_position
+			var pose := mount_marker.global_transform.orthonormalized()
+			# An observer outside the vehicle sees the hull heel against a level horizon.
+			if mount_marker.has_meta(&"level_horizon") and absf(pose.basis.z.y) < 0.9999:
+				pose.basis = Basis.looking_at(-pose.basis.z)
+			pose.origin.y = maxf(pose.origin.y, world.ground_y(pose.origin) + 0.45)
+			# The observer follows the load as it swings away from the fixed door sightline.
+			if mount_label == &"Cargo door" and mount_subject is Vehicle:
+				var helicopter := mount_subject as Vehicle
+				var load_vehicle := world.entity(helicopter.sling_eid) as Vehicle
+				if load_vehicle and load_vehicle.model and load_vehicle.is_visible_in_tree():
+					var center := load_vehicle.model.to_global(Vector3.UP * load_vehicle._hull_size().y * 0.55)
+					pose = pose.looking_at(center, pose.basis.y)
+			cam.global_transform = pose
+			cam.h_offset = randf_range(-1, 1) * _shake * 0.08 if _shake > 0.0 else 0.0
+			cam.v_offset = randf_range(-1, 1) * _shake * 0.08 if _shake > 0.0 else 0.0
+			return
+		leave_mount()
+		return
 	position = focus_pos
 	if world != null:
 		position.y = maxf(position.y, world.ground_y(focus_pos))
@@ -430,6 +555,7 @@ func _unhandled_input(ev: InputEvent) -> void:
 		elif mb.button_index == MOUSE_BUTTON_MIDDLE:
 			_mmb = mb.pressed
 			if mb.pressed:
+				leave_mount()
 				# the setting picks what a plain drag does; Alt does the other
 				_mmb_pan = (int(Settings.get_v("mmb_mode")) == 1) != mb.alt_pressed
 				_gliding = false

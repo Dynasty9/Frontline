@@ -109,6 +109,7 @@ func _ready() -> void:
 		["check", "phys_sky", "Physical sky", null, "At golden hour, dawn, dusk and in haze the sky is worked out from how sunlight scatters in the air: deep blue overhead, a reddened sun, the earth's shadow rising at dusk. The sky lights the battlefield too, so shade turns sky-blue while the sunlit side glows."],
 		["check", "terrain_reflections", "Mountain reflections", null, "Cached distant terrain reflected in water. Does not reflect moving units; approximate near shorelines."],
 		["check", "alpine_haze", "Alpine distance haze", null, "Stronger atmospheric depth between mountain ranges."],
+		["check", "cloud_shadows", "Cloud shadows on everything", null, "The drifting shade of the clouds falls on soldiers, vehicles, buildings, trees and roads as well as the ground, taking their sunlight but not the sky's, so nothing stays sunlit in it. Off, only the ground, grass and bushes darken."],
 		["check", "ssr", "Screen-space reflections", null, "Puddles and wet ground reflect fire, flares and the sky."],
 		["check", "vol_fog", "Volumetric fog & smoke", null, "Light shafts, haze and smoke screens you can't see through."],
 		["head", "", "Anti-aliasing & upscaling"],
@@ -133,6 +134,7 @@ func _ready() -> void:
 		["check", "local_exp", "Local exposure", null, "Keeps the detail in deep shade and in bright fire at the same time, as the eye does: a man in a building's shadow stays visible beside a burning wreck."],
 		["check", "eye_adapt", "Eye adaptation", null, "The view dims for a flash and recovers after it, and in the dark colours drain towards a cool grey as night vision takes over."],
 		["check", "film", "Film look", null, "Bright highlights bleed red into the film (halation), and fine detail is sharpened without halos."],
+		["check", "heat_haze", "Heat haze", null, "The air shimmers over fires and burning wrecks, over the engines and exhausts of tanks and helicopters, and for a moment round a blast. With Reduce motion on it holds still."],
 	])
 	_pages["display"] = _page(stack, [
 		["option", "window", "Window mode", Settings.LABELS.window, ""],
@@ -194,7 +196,7 @@ func _ready() -> void:
 ## would cost a browser too much; and the page decides the game's size and
 ## when it draws.
 const NOT_ON_WEB := ["ssao", "ao_q", "ssil", "gi", "ssr", "vol_fog", "upscaler", "sharpen", "dof", "resolution", "vsync",
-	"light_shadows", "phys_sky", "lens", "shafts", "local_exp", "eye_adapt", "film"]
+	"light_shadows", "phys_sky", "lens", "shafts", "local_exp", "eye_adapt", "film", "heat_haze"]
 ## Settings only a Mac has a use for: elsewhere a trackpad scrolls like a wheel.
 const ONLY_ON_MAC := ["scroll_mode"]
 

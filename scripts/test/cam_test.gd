@@ -78,6 +78,8 @@ func _drag(cam: RtsCamera, a: Vector2, b: Vector2, alt := false) -> void:
 func _run() -> void:
 	await _wait(1.5)
 	var cam := world.cam
+	# An embedded window can report the pointer parked at its top-left corner.
+	cam.edge_pan = false
 	if world.director:
 		world.director.active = false
 	var vs := get_viewport().get_visible_rect().size
@@ -221,6 +223,124 @@ func _run() -> void:
 	_check("following keeps the selection in view", cam.follow and c != Vector3.INF and cam.focus_pos.distance_to(c) < 6.0, "%.1f m off" % cam.focus_pos.distance_to(c))
 	cam.toggle_follow()
 	_check("Ctrl+F again stops following", not cam.follow)
+
+	# Use the same input dispatch as a player, including Escape before deselection.
+	var actor: Soldier = world.input.selected_soldiers()[0]
+	world.input.select_unit(actor)
+	var mount_key := InputEventKey.new()
+	mount_key.keycode = KEY_F10
+	mount_key.pressed = true
+	world.input._key(mount_key)
+	_check("an individual has a rear camera", cam.mount_label == &"Behind" and cam.mount_subject == actor)
+	world.input._key(mount_key)
+	_check("cycle to the aerial mount", cam.mount_label == &"Aerial" and cam.cam.global_position.is_equal_approx(cam.mount_marker.global_position))
+	world.input._key(mount_key)
+	_check("cycle returns to the commander", cam.mount_label == &"" and cam.cam.rotation.is_zero_approx())
+	world.input._key(mount_key)
+	var escape := InputEventKey.new()
+	escape.keycode = KEY_ESCAPE
+	world.input._key(escape)
+	_check("Escape leaves the mount and keeps the unit selected", cam.mount_label == &"" and world.input.sel_unit == actor.eid)
+	world.input._key(mount_key)
+	world.input.clear_selection()
+	cam._apply()
+	_check("a changed selection releases the mount", cam.mount_label == &"")
+
+	# A wheeled vehicle advertises its own running gear and drops the camera on despawn.
+	var truck := world.spawn("vehicle", {"vkind": "humvee", "team": actor.team, "pos": actor.position + Vector3(4, 0, 4)}) as Vehicle
+	world.input.sel_vehicles.append(truck.eid)
+	world.input._key(mount_key)
+	var truck_mounts := truck.camera_mounts()
+	_check("wheeled vehicle exposes wheels and hides absent mounts", cam.mount_subject == truck and truck_mounts.has(&"Wheels") and not truck_mounts.has(&"Tracks") and not truck_mounts.has(&"Barrel"))
+	# A wheel camera can follow the same vehicle on a road or on a sling.
+	truck.position.y = world.ground_y(truck.position)
+	truck._last_pos = truck.position - Vector3.RIGHT
+	truck._view_process(1.0 / 30.0)
+	_check("moving wheels on the ground emit dust", truck.dust != null and Vfx.is_emitting(truck.dust))
+	var wheel_angle: float = truck.wheels[0].rotation.x
+	truck.position += Defs.dir_of(truck.rotation.y) * 0.35 + Vector3.UP * 6.0
+	truck._view_process(1.0 / 30.0)
+	_check("a lifted vehicle stops shedding wheel dust", truck.dust != null and not Vfx.is_emitting(truck.dust))
+	_check("carried wheels stay still", is_equal_approx(truck.wheels[0].rotation.x, wheel_angle))
+	for _i in 45:
+		truck._suspension(1.0 / 30.0, false)
+	_check("airborne suspension settles without following the ground below", absf(truck._sus.z) < 0.01)
+	truck.hide()
+	cam._apply()
+	_check("a hidden subject releases the camera", cam.mount_label == &"")
+	truck.show()
+	world.input._key(mount_key)
+	world.despawn(truck)
+	cam._apply()
+	_check("despawning releases the object camera", cam.mount_label == &"")
+	world.input.clear_selection()
+
+	for fixture in [["heli", &"Cabin side"], ["rhib", &"Bow"], ["rhib", &"Waterline"], ["speedboat_hmg", &"Stern quarter"], ["patrol_ship", &"Stern quarter"], ["patrol_ship", &"Bridge roof"], ["mohawk", &"Sling load"], ["mohawk", &"Cargo door"], ["taru_lift", &"Cargo door"], ["rhib", &"Starboard"], ["rhib", &"Helm"], ["tank", &"Periscope"], ["old_tank", &"Periscope"]]:
+		var vehicle := world.spawn("vehicle", {"vkind": fixture[0], "team": actor.team, "pos": actor.position}) as Vehicle
+		_check("%s has its own exterior camera" % fixture[0], vehicle.camera_mounts().has(fixture[1]))
+		if fixture[1] == &"Helm":
+			var helm := vehicle.model.get_node_or_null("Coxswain")
+			_check("the RHIB has a seated helmsman", helm != null and helm.get_child_count() > 0 and helm.get_child(0) is MeshInstance3D)
+		if fixture[1] in [&"Waterline", &"Stern quarter", &"Sling load"]:
+			world.input.sel_vehicles.append(vehicle.eid)
+			vehicle.model.rotation.z = 0.32
+			cam.cycle_mount(fixture[1])
+			var view := cam.cam.global_basis
+			var marker: Marker3D = vehicle.camera_mounts()[fixture[1]]
+			_check("%s keeps the horizon level while the vehicle banks" % fixture[1], is_zero_approx(view.x.y) and view.z.is_equal_approx(marker.global_basis.orthonormalized().z))
+			cam.leave_mount()
+			world.input.clear_selection()
+		if fixture[1] == &"Sling load":
+			var load_vehicle := world.spawn("vehicle", {"vkind": "nyx_at", "team": actor.team, "pos": vehicle.position}) as Vehicle
+			load_vehicle.position += Vector3(1, -8, 2)
+			vehicle.sling_eid = load_vehicle.eid
+			vehicle._sling_view()
+			var spans := vehicle._cables.multimesh
+			var cable := spans.get_instance_transform(0)
+			var cable_top := vehicle.to_global(cable * (Vector3.DOWN * 0.5))
+			_check("the cable stays against the banking fuselage", cable_top.distance_to(vehicle.model.to_global(vehicle._vm.sling_eye)) < 0.002)
+			var joined := true
+			for i in range(1, 5):
+				var strap := spans.get_instance_transform(i)
+				var foot := load_vehicle.model.to_local(vehicle.to_global(strap * (Vector3.UP * 0.5)))
+				joined = joined and foot.y > 0.0 and foot.y < 1.2 and absf(foot.x) < 0.91 and absf(foot.z) < 1.77
+			_check("all four strap ends reach the Nyx body", joined)
+			world.input.sel_vehicles.append(vehicle.eid)
+			cam.cycle_mount(&"Cargo door")
+			for offset in [Vector3.ZERO, Vector3(-3, 0, 2)]:
+				load_vehicle.position += Vector3(offset)
+				cam._apply()
+				var center := load_vehicle.model.to_global(Vector3.UP * load_vehicle._hull_size().y * 0.55)
+				var toward_load := cam.cam.global_position.direction_to(center)
+				_check("the cargo door follows the suspended hull", toward_load.dot(-cam.cam.global_basis.z) > 0.999)
+			world.despawn(load_vehicle)
+			vehicle._sling_view()
+			_check("a released load clears the entire sling", not vehicle._cables.visible)
+			cam._apply()
+			var door: Marker3D = vehicle.camera_mounts()[&"Cargo door"]
+			_check("the empty door returns to its fixed view", cam.cam.global_basis.z.is_equal_approx(door.global_basis.orthonormalized().z))
+			cam.leave_mount()
+			world.input.clear_selection()
+
+		if fixture[1] == &"Periscope":
+			world.input.sel_vehicles.append(vehicle.eid)
+			for _i in vehicle.camera_mounts().size():
+				world.input._key(mount_key)
+				if cam.mount_label == &"Periscope":
+					break
+			_check("periscope frames the turret view", cam.mount_label == &"Periscope" and cam._eyepiece.visible and cam.cam.global_transform.is_equal_approx(cam.mount_marker.global_transform.orthonormalized()))
+			world.input._key(escape)
+			if fixture[0] == "tank":
+				var belt = vehicle._vm.belts[0]
+				var phase: float = belt.phase
+				vehicle.position.y += 8.0
+				vehicle._belt_origin = (vehicle.global_transform * vehicle.ip_offset()).origin + Vector3(0, 0, 0.45)
+				vehicle.always_animate_tracks = true
+				vehicle._view_process(1.0 / 30.0)
+				_check("airborne tracks hold their phase and leave no prints", is_equal_approx(belt.phase, phase) and belt.printed_end == -1)
+			_check("leaving the periscope restores the commander lens", not cam._eyepiece.visible and cam.cam.fov == float(Settings.get_v("fov")))
+			world.input.clear_selection()
+		world.despawn(vehicle)
 
 	# the turning minimap: a point maps back to the same ground, and the camera's heading is up
 	var mm := world.hud.minimap

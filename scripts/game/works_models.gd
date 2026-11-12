@@ -129,61 +129,14 @@ static func _commit(v: PackedVector3Array, n: PackedVector3Array, uv := PackedVe
 static var _meshes := {}
 
 
-## A wire along `pts`: a thin three-sided tube, its frame carried along so it
-## doesn't twist.
+## A wire along `pts` (see BuildingWire.strand: the same wire as on walls).
 static func _wire_tube(v: PackedVector3Array, n: PackedVector3Array, pts: PackedVector3Array, r: float) -> void:
-	var up := Vector3.UP
-	var last: Array = []
-	for i in pts.size():
-		var t := (pts[mini(i + 1, pts.size() - 1)] - pts[maxi(i - 1, 0)]).normalized()
-		var side := t.cross(up)
-		if side.length_squared() < 1e-6:
-			side = t.cross(Vector3.RIGHT)
-		side = side.normalized()
-		up = side.cross(t).normalized()
-		var ring: Array = []
-		for k in 3:
-			var a := TAU * k / 3.0
-			var d := side * cos(a) + up * sin(a)
-			ring.append([pts[i] + d * r, d])
-		if not last.is_empty():
-			for k in 3:
-				var k2 := (k + 1) % 3
-				var a0: Array = last[k]
-				var a1: Array = last[k2]
-				var b0: Array = ring[k]
-				var b1: Array = ring[k2]
-				_tri(v, n, a0[0], b0[0], b1[0], a0[1], b0[1], b1[1])
-				_tri(v, n, a0[0], b1[0], a1[0], a0[1], b1[1], a1[1])
-		last = ring
+	BuildingWire.strand(v, n, pts, r)
 
 
-## Barbs every `every` metres along the wire: little four-pointed stars of
-## sharpened wire (razor tape's blades read the same from any distance).
+## Barbs every `every` metres along the wire (see BuildingWire.barbs).
 static func _barbs(v: PackedVector3Array, n: PackedVector3Array, pts: PackedVector3Array, every: float, size: float, rng: RandomNumberGenerator) -> void:
-	var run := 0.0
-	for i in range(1, pts.size()):
-		var seg := pts[i] - pts[i - 1]
-		run += seg.length()
-		if run < every:
-			continue
-		run = 0.0
-		var t := seg.normalized()
-		var s := t.cross(Vector3.UP if absf(t.y) < 0.9 else Vector3.RIGHT).normalized()
-		var u := s.cross(t)
-		var a := rng.randf() * TAU
-		var d1 := (s * cos(a) + u * sin(a)) * size
-		var d2 := (s * -sin(a) + u * cos(a)) * size
-		var p := pts[i]
-		for d in [d1, d2]:
-			var tip0: Vector3 = p + d
-			var tip1: Vector3 = p - d
-			var w: Vector3 = t * size * 0.35
-			var nn: Vector3 = (d as Vector3).cross(t).normalized()
-			_tri(v, n, tip0, p + w, tip1, nn, nn, nn)
-			_tri(v, n, tip0, tip1, p + w, -nn, -nn, -nn)
-			_tri(v, n, tip0, p - w, tip1, -nn, -nn, -nn)
-			_tri(v, n, tip0, tip1, p - w, nn, nn, nn)
+	BuildingWire.barbs(v, n, pts, every, size, rng)
 
 
 # --- the ground round a work -----------------------------------------------------------
@@ -298,7 +251,7 @@ static func tower(model: Node3D, rng: RandomNumberGenerator, bags: Array) -> voi
 	for x in [-1.3, 1.3]:
 		for z in [-1.3, 1.3]:
 			_rod(model, Vector3(x, 5.0, z), Vector3(x, 6.72 - z * 0.09, z), 0.05, "wood", wc, 5)
-	_mk(model, Res.box(Vector3(3.7, 0.03, 3.75)), "corrugated", Vector3(0, 6.76, 0), Vector3(0.09, 0, 0), Color(0.46, 0.45, 0.42))
+	BuildingRoofs.mono(BuildingKit.nodes(model).at_point(Vector3(0, 6.76, 0)), 3.7, 3.75, 0.09, "roof_sheet", Color(0.46, 0.45, 0.42), Color(0.46, 0.34, 0.21), 3)
 	bags.append({"p": Vector3(0, 5.27, -1.45), "s": Vector3(3.0, 0.19, 0.38), "r": 0.0})
 	# a searchlight on the front corner, on its yoke
 	var sl := Vector3(1.2, 5.52, -1.38)
@@ -733,19 +686,12 @@ static func _bar_drums(model: Node3D, x: float, room: float, rng: RandomNumberGe
 	return x + n * 0.6 + 0.05
 
 
+## A drum standing or lying across the others (BuildingFittings.drum).
 static func _drum(model: Node3D, p: Vector3, col: Color, rng: RandomNumberGenerator, lying: bool) -> void:
-	var rot := Vector3(0, rng.randf() * TAU, 0) if not lying else Vector3(rng.randf() * TAU, rng.randf_range(-0.2, 0.2), PI * 0.5)
-	var c := p + (Vector3(0, 0.44, 0) if not lying else Vector3(0, 0.29, 0))
-	var holder := Node3D.new()
-	holder.position = c
-	holder.rotation = rot
-	model.add_child(holder)
-	var dc := Res.vary(col, 0.1, rng)
-	_mk(holder, Res.cyl(0.29, 0.29, 0.88, 14), "car_paint", Vector3.ZERO, Vector3.ZERO, dc)
-	# the rolling hoops and the rims
-	for y in [-0.43, -0.15, 0.15, 0.43]:
-		_mk(holder, Res.torus(0.285, 0.305), "car_paint", Vector3(0, y, 0), Vector3.ZERO, dc.darkened(0.15), false)
-	_mk(holder, Res.cyl(0.03, 0.03, 0.02, 6), "steel", Vector3(0.17, 0.44, 0.05), Vector3.ZERO, null, false)
+	var yaw := rng.randf() * TAU
+	if lying:
+		yaw = rng.randf_range(-0.2, 0.2)
+	BuildingFittings.drum(BuildingKit.nodes(model), p, Res.vary(col, 0.1, rng), lying, yaw)
 
 
 static func _bar_tyres(model: Node3D, x: float, room: float, rng: RandomNumberGenerator, bags: Array) -> float:
@@ -794,15 +740,11 @@ static func _bar_pallets(model: Node3D, x: float, room: float, rng: RandomNumber
 	var w := minf(1.2, room - 0.05)
 	var n := rng.randi_range(4, 6)
 	if n < 6:
-		bags.append({"p": Vector3(x + w * 0.5, n * 0.15 + 0.085, -0.1), "s": Vector3(w * 0.9, 0.19, 0.42), "r": rng.randf_range(-0.15, 0.15)})
+		bags.append({"p": Vector3(x + w * 0.5, n * 0.13 + 0.095, -0.1), "s": Vector3(w * 0.9, 0.19, 0.42), "r": rng.randf_range(-0.15, 0.15)})
+	var kit := BuildingKit.nodes(model)
 	for i in n:
-		var y := 0.07 + i * 0.15
-		var p := Vector3(x + w * 0.5 + rng.randf_range(-0.05, 0.05), y, -0.1)
-		var r := Vector3(0, rng.randf_range(-0.08, 0.08), 0)
-		for s in 5:
-			_mk(model, Res.box(Vector3(w, 0.022, 0.13)), "wood", p + Basis.from_euler(r) * Vector3(0, 0.06, -0.38 + s * 0.19), r, Color(0.52, 0.42, 0.3))
-		for s in 3:
-			_mk(model, Res.box(Vector3(0.09, 0.09, 0.9)), "wood", p + Basis.from_euler(r) * Vector3(-w * 0.5 + 0.06 + s * (w - 0.12) * 0.5, 0.0, 0), r, Color(0.48, 0.38, 0.26))
+		var p := Vector3(x + w * 0.5 + rng.randf_range(-0.05, 0.05), i * 0.13, -0.1)
+		BuildingFittings.pallet(kit, p, Vector2(w, 0.9), Color(0.52, 0.42, 0.3), rng.randf_range(-0.08, 0.08))
 	return x + w + 0.05
 
 
@@ -857,20 +799,12 @@ static func _ammo_cache(model: Node3D, rebel: bool, rng: RandomNumberGenerator, 
 
 
 static func _pallet(model: Node3D, p: Vector3, rng: RandomNumberGenerator) -> void:
-	var col := Res.vary(Color(0.55, 0.45, 0.32), 0.08, rng)
-	for s in 6:
-		_mk(model, Res.box(Vector3(1.15, 0.022, 0.13)), "wood", p + Vector3(0, 0.119, -0.45 + s * 0.18), Vector3.ZERO, col)
-	for s in 3:
-		_mk(model, Res.box(Vector3(0.1, 0.1, 1.0)), "wood", p + Vector3(-0.5 + s * 0.5, 0.05, 0), Vector3.ZERO, col.darkened(0.08))
+	BuildingFittings.pallet(BuildingKit.nodes(model), p, Vector2(1.15, 1.0), Res.vary(Color(0.55, 0.45, 0.32), 0.08, rng))
 
 
 static func _crate(model: Node3D, c: Vector3, s: Vector3, col: Color, rng: RandomNumberGenerator) -> void:
-	var r := Vector3(0, rng.randf_range(-0.05, 0.05), 0)
-	_mk(model, Res.box(s), "wood_painted", c, r, Res.vary(col, 0.06, rng))
-	# battens at the ends, rope handles
-	for sx in [-1.0, 1.0]:
-		_mk(model, Res.box(Vector3(0.05, s.y + 0.01, s.z + 0.01)), "wood_painted", c + Basis.from_euler(r) * Vector3(sx * (s.x * 0.5 - 0.06), 0, 0), r, col.darkened(0.15))
-		_mk(model, Res.torus(0.03, 0.05), "canvas", c + Basis.from_euler(r) * Vector3(sx * (s.x * 0.5 + 0.01), 0.02, 0), r + Vector3(0, 0, PI * 0.5), Color(0.55, 0.5, 0.36), false)
+	var yaw := rng.randf_range(-0.05, 0.05)
+	BuildingFittings.crate(BuildingKit.nodes(model), c - Vector3(0, s.y * 0.5, 0), s, Res.vary(col, 0.06, rng), yaw, "wood_painted")
 
 
 ## A PG-7 round lying in its crate: the cone of the warhead, the motor, the fins.
@@ -891,7 +825,7 @@ static func _tarp(model: Node3D, p: Vector3, col: Color) -> void:
 	for sx in [-0.72, 0.72]:
 		_rod(model, p + Vector3(sx, -0.1, 0), p + Vector3(sx, ridge + 0.1, 0), 0.022, "wood", null, 5)
 		for sz in [-1.0, 1.0]:
-			_rod(model, p + Vector3(sx, eave, sz * half), p + Vector3(sx * 1.2, 0.02, sz * (half + 0.55)), 0.005, "canvas", Color(0.55, 0.5, 0.38), 3, false)
+			BuildingWire.guy(BuildingKit.nodes(model), p + Vector3(sx, eave, sz * half), p + Vector3(sx * 1.2, 0.0, sz * (half + 0.55)), true, "peg")
 	var ang := atan2(ridge - eave, half)
 	var ln := Vector2(half, ridge - eave).length() + 0.04
 	for sz in [-1.0, 1.0]:
@@ -920,9 +854,7 @@ static func _camo_net(model: Node3D, rebel: bool, rng: RandomNumberGenerator) ->
 			var base := Vector3(sx * 2.5, 0, sz * 2.5)
 			_rod(model, base, base + Vector3(0, 1.78, 0), 0.025, pk, pc, 5)
 			# guyed out to a peg
-			var peg := Vector3(sx * 3.5, 0.05, sz * 3.5)
-			_rod(model, base + Vector3(0, 1.85, 0), peg, 0.006, "canvas", Color(0.5, 0.47, 0.36), 3, false)
-			_rod(model, peg + Vector3(0, -0.1, 0), peg + Vector3(0, 0.12, 0), 0.015, "steel", null, 4, false)
+			BuildingWire.guy(BuildingKit.nodes(model), base + Vector3(0, 1.85, 0), Vector3(sx * 3.5, 0.0, sz * 3.5), true, "picket")
 	return [net]
 
 

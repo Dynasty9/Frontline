@@ -34,6 +34,13 @@ func _ready() -> void:
 	var field = load("res://tests/fixtures/effects-field.gd").new()
 	add_child(field)
 	var v: Vfx = field.fx.vfx
+	var first_spray := v.get_child_count()
+	check(v.wave_mat.render_priority < WaterView.SURFACE_PRIORITY, "Screen refraction draws before transparent water")
+	v.splash(Vector3.ZERO, 2.6)
+	var spray_column := v.get_child(first_spray) as GeometryInstance3D
+	var gravity: Vector3 = Vfx.pm_get(spray_column, &"gravity")
+	var speed: float = Vfx.pm_get(spray_column, &"initial_velocity_max")
+	check(gravity.y < 0 and 2.0 * speed / -gravity.y < float(spray_column.get("lifetime")), "The highest spray can fall back to the water before the column disappears")
 	# A rotated finite wall on elevated ground. Call burst through the same
 	# spatial index the game uses, then recycle its surface in the open.
 	var wall := Structure.new()
@@ -130,6 +137,11 @@ func _ready() -> void:
 	check(field.fx.gunfx._pf.i == puff_index, "Airbursts do not emit ground dust")
 	field.fx.gunfx.blast_fragments(p, 1.4, "he", true, 1.0)
 	check(field.fx.gunfx._pf.i != puff_index, "Ground bursts emit pooled dust")
+	var panel := p + Vector3.UP * 0.8
+	field.fx.play(Fx.tank_knockout(panel))
+	var mounted: BlastFlipbooks.Blast = v.blasts._pools.fuel[-1]
+	check(mounted.mesh.global_position.is_equal_approx(panel), "A tank burst stays on the hull above sloping ground")
+	check(is_equal_approx(mounted.life, float(mounted.material.get_shader_parameter("duration"))) and mounted.life < air.life, "The tank flare finishes before the lingering smoke")
 	v._fire_layer(layers.sparks, 0.0, 0.0)
 	check(not layers.sparks.visible and not Vfx.is_emitting(layers.sparks), "Zero-budget layers stop")
 	var child_count: int = field.fx.gunfx.get_child_count()
@@ -137,6 +149,7 @@ func _ready() -> void:
 		field.fx.gunfx.blast_fragments(p, 1.4, "he", true, 1.0)
 	check(field.fx.gunfx.get_child_count() == child_count, "Fragments and landing dust create no scene nodes")
 	check(is_equal_approx(field.fx.gunfx.ground_y(p), 40.0), "Batched fragments use the world's elevated ground contact")
+	check_bouncing_clods(field, p)
 	# The dummy renderer doesn't retain MultiMesh instance data.
 	if DisplayServer.get_name() != "headless":
 		var ring: GunFx.Ring = field.fx.gunfx._ch
@@ -193,6 +206,28 @@ func _ready() -> void:
 	check(low._textures.dust[2] != null and bool(low_blast.material.get_shader_parameter("motion_enabled")), "Raising quality loads optical flow for the next blast")
 	check(low._textures.fuel[2] == null, "Unused fuel optical flow stays unloaded")
 	low.queue_free()
+	var exhaust := v.make_engine_exhaust(true)
+	add_child(exhaust)
+	check((exhaust is CPUParticles3D) == Vfx.gl, "Tank exhaust follows the renderer")
+	check(not Vfx.is_emitting(exhaust) and not bool(exhaust.get("local_coords")), "Moving tanks leave their exhaust behind and start with a clear vent")
+	var burner := v.make_burner(1.0, true)
+	add_child(burner)
+	var column: GeometryInstance3D = burner.get_node("Smoke")
+	v.set_burning(burner, 0.5, 0.0)
+	check(Vfx.is_emitting(column) and not Vfx.is_emitting(burner.get_node("Fire")), "The grille carries both heat and smoke on one emitter")
+	check(is_equal_approx(float(Mats.get_inst(column, &"grille_heat")), 0.5), "The hot bake follows the fire strength")
+	var rate := &"amount" if Vfx.gl else &"amount_ratio"
+	v.set_burning(burner, 0.0, 0.25)
+	check(is_zero_approx(float(Mats.get_inst(column, &"grille_heat"))), "Smouldering cools the same plume")
+	var low_rate: float = column.get(rate)
+	v.set_burning(burner, 0.0, 1.0)
+	check(is_equal_approx(low_rate, float(column.get(rate))), "A smouldering fuel vent keeps the same spacing between billows")
+	v.set_burning(burner, 0.0, 0.0)
+	check(not Vfx.is_emitting(column), "Extinguishing the vent stops the smoke")
+	var burner_without_grille := v.make_burner(1.0)
+	add_child(burner_without_grille)
+	v.set_burning(burner_without_grille, 0.5, 0.0)
+	check(Vfx.is_emitting(burner_without_grille.get_node("Fire")), "Other fires retain their own flames")
 	var trail := v.make_flare_trail()
 	add_child(trail)
 	check(trail.get_child_count() == 2, "Flares have separate smoke and spark emitters")
@@ -254,3 +289,22 @@ func _ready() -> void:
 		Music._task = -1
 	print("ARMAMENT_EFFECTS %s failures=%d" % ["CPU" if Vfx.gl else "GPU", failures])
 	get_tree().quit(1 if failures else 0)
+
+
+func check_bouncing_clods(field: World, p: Vector3) -> void:
+	var physics := PhysicsFx.new(field)
+	field.add_child(physics)
+	physics.blast_chunks(p, 1.4)
+	check(not physics._chunks.is_empty(), "The impact throws visible clods")
+	for i in physics._chunks.size():
+		var entry: Array = physics._chunks[i]
+		var pivot: Node3D = entry[1]
+		var piece := pivot.get_child(0) as MeshInstance3D if pivot.get_child_count() else null
+		check(piece != null and piece.mesh == Res.alpine_stone(i), "Each clod uses its terrain stone variant")
+		if piece:
+			var collider := entry[0].get_child(0) as CollisionShape3D
+			check(piece.scale.is_equal_approx((collider.shape as BoxShape3D).size * 0.5), "The clod fits its physical dimensions")
+	physics.debris(p, Color.GRAY, 1)
+	var debris := physics._chunks.back()[1] as MeshInstance3D
+	check(debris != null and Res.box_size(debris.mesh) != Vector3.ZERO, "Manufactured debris retains its cut edges")
+	physics.free()

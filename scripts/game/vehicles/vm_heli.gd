@@ -1331,7 +1331,8 @@ static func _taru(k: VehicleModels, team: int) -> void:
 		for z in [-2.6, 2.4]:
 			_tube(k, m, Vector3(s * 0.4, 2.6, z), Vector3(s * 0.3, 2.95, z), 0.05, "gunmetal_w", null, 6)
 			k._box(m, Vector3(0.3, 0.08, 0.3), Vector3(s * 0.4, 2.62, z), "gunmetal_w")
-	k._box(m, Vector3(0.9, 0.05, 6.0), Vector3(0, 2.62, -0.1), "gunmetal_w")
+	k.sling_eye = Vector3(0, 2.62, -0.1)
+	k._box(m, Vector3(0.9, 0.05, 6.0), k.sling_eye, "gunmetal_w")
 	# the coaxial rotors: three blades each, turning against each other
 	_rotor(k, m, Vector3(0, 4.98, -1.0), 3, 7.5, 0.48, true, 0.0, 0.02, 0.36, 0)
 	var up := _rotor(k, m, Vector3(0, 6.08, -1.0), 3, 7.5, 0.48, false, PI / 3, 0.012, 0.36, 0)
@@ -1421,6 +1422,7 @@ static func _prop(k: VehicleModels, p: Node3D, pos: Vector3, r: float, nb := 2, 
 		disc.size = Vector2(r, r) * 2.0
 		blur.mesh = disc
 		blur.material_override = VehicleModels._blur_mat()
+		Mats.set_inst(blur, &"blade_count", float(nb))
 		blur.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		blur.position = Vector3(0, r * 0.08, 0)
 		blur.visible = false

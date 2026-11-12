@@ -101,6 +101,7 @@ func _draw() -> void:
 		_ranges(cam)
 	_sight_rings()
 	_order_graphics(lt, maxf(a_far, a_units * 0.9))
+	_intent_graphics(lt, maxf(a_far, a_units * 0.9))
 	_mark("orders")
 	if not w.mission_info.is_empty() and int(w.mission_info.get("over", 0)) == 0:
 		_mission_marks(cam, vs)
@@ -404,6 +405,102 @@ func _order_graphics(lt: int, a_far: float) -> void:
 			"build":
 				if far:
 					_ground_path(from, to, UiKit.WARN, a * 0.55, grow, true, 1.5)
+
+## What each intent's phase looks like on the map.
+const XO_PHASES := {"hold": "HOLDING", "held": "HOLDING OBJ", "ready": "IN RESERVE", "committed": "COMMITTED",
+	"screen": "SCREENING", "attack": "ATTACKING", "set": "LYING IN WAIT"}
+## How far apart the XO spaces squads for each intent (Delegation.SPREAD).
+const XO_SPREAD := {"hold": 18.0, "take": 13.0, "screen": 34.0, "reserve": 14.0, "ambush": 50.0}
+var _xo_sq := {}  # sid -> intent kind, this frame (for the tab on the squad symbol)
+
+
+## The XO's tasks (see Delegation), in the side's colour: a sector's bracket
+## with its front ticks, an objective's ring, a screen's long dashed line, a
+## reserve's assembly ring (and, committed, the arrow to the fight it went
+## to), an ambush's killing zone. Each is tagged XO and its grid, with its
+## phase, and a faint tether runs to it from each squad carrying it out.
+func _intent_graphics(lt: int, a_far: float) -> void:
+	_xo_sq.clear()
+	var w := hud.world
+	if lt < 0 or lt >= w.team_info.size():
+		return
+	var cam := w.cam.cam
+	var tc: Color = Defs.TEAM_COLORS[lt].lightened(0.35)
+	for it in (w.team_info[lt] as Dictionary).get("dg", []):
+		var kind := String(it[1])
+		var pos: Vector3 = it[2]
+		var face: Vector3 = it[3]
+		var sids: Array = it[4]
+		var sel := false
+		for sid in sids:
+			_xo_sq[int(sid)] = kind
+			if _sel_sids.has(sid):
+				sel = true
+		for eid in it[5]:
+			var v := w.entity(int(eid))
+			if v and v.selected:
+				sel = true
+		if not hud.map_layer("orders") and not sel:
+			continue
+		var a := 0.95 if sel else maxf(a_far, 0.45)
+		var lat := face.cross(Vector3.UP).normalized()
+		var n := maxi(1, sids.size())
+		var half: float = (n - 1) * 0.5 * float(XO_SPREAD.get(kind, 16.0)) + 9.0
+		match kind:
+			"hold":
+				# the sector's forward edge, a little in front of the line, open to the rear
+				var fe: Vector3 = pos + face * 9.0
+				_ground_path(fe - lat * half, fe + lat * half, tc, a, 1.0, false, 3.0, false)
+				for k in [-1.0, 1.0]:
+					var e: Vector3 = fe + lat * half * k
+					_ground_path(e, e - face * 8.0, tc, a, 1.0, false, 3.0, false)
+				for i in int(half / 8.0) * 2 + 1:
+					var tp: Vector3 = fe + lat * (i * 8.0 - int(half / 8.0) * 8.0)
+					_ground_path(tp, tp + face * 3.0, tc, a, 1.0, false, 2.0, false)
+			"screen":
+				_ground_path(pos - lat * half, pos + lat * half, tc, a, 1.0, true, 2.5, false)
+				for k in [-1.0, 1.0]:
+					var e2: Vector3 = pos + lat * half * k
+					_ground_path(e2 - face * 5.0, e2 + face * 5.0, tc, a, 1.0, false, 2.5, false)
+			"take":
+				_dashed_ring(pos, 10.0, tc, a)
+			"reserve":
+				_dashed_ring(pos, half, tc, a * 0.85)
+				if String(it[6]) == "committed":
+					_ground_path(pos, it[7], UiKit.ACCENT, a, 1.0, false, 3.0)
+			"ambush":
+				_ground_path(pos - lat * 22.0, pos + lat * 22.0, Color(1.0, 0.5, 0.35), a * 0.85, 1.0, true, 2.5, false)
+				_ground_path(pos - face * 26.0, pos - face * 4.0, tc, a * 0.7, 1.0, false, 2.0)
+		# tethers: who's carrying it out
+		for sid in sids:
+			var g: Dictionary = _groups.get(sid, {})
+			if g.is_empty() or int(g["n"]) == 0:
+				continue
+			var gc: Vector3 = g["c"]
+			if Defs.flat(gc - pos).length() > half + 6.0:
+				_ground_path(gc, pos, tc, a * 0.35, 1.0, true, 1.2, false)
+		# the tag in front of a line (clear of the squads on it), else on the spot
+		var p0 := pos + (face * 16.0 if kind in ["hold", "screen"] else Vector3.ZERO) + Vector3(0, 0.3, 0)
+		if cam.is_position_behind(p0):
+			continue
+		var sp := cam.unproject_position(p0) + Vector2(0, -16)
+		# an attack under way draws its own objective and phase: the XO's tag sits above them
+		var planned := kind == "take" and String(it[6]) == "attack"
+		if planned:
+			sp.y -= 30.0
+		_tag(sp, "XO %s %s" % [String(Hud.INTENT_CODES.get(kind, kind.to_upper())), Defs.grid_ref(pos)], UiKit.ACCENT, a)
+		var ph := String(XO_PHASES.get(String(it[6]), ""))
+		if ph != "" and not planned:
+			UiKit.caps_at(self, sp + Vector2(-UiKit.caps_w(ph, 10) * 0.5, 18), ph, 10, UiKit.fa(UiKit.TEXT, 0.85 * a))
+
+
+## A delegated squad's symbol carries a small XO tab: the XO is running it.
+func _xo_tab(at: Vector2, a: float) -> void:
+	var tw := UiKit.mono_w("XO", 8)
+	var r := Rect2(at, Vector2(tw + 6.0, 11.0))
+	draw_rect(r, UiKit.fa(UiKit.INK, 0.6 * a))
+	draw_string(UiKit.mono(600), r.position + Vector2(3.0, 8.8), "XO", HORIZONTAL_ALIGNMENT_LEFT, -1, 8, UiKit.fa(UiKit.ACCENT, a))
+
 
 func _ground_path(a: Vector3, b: Vector3, col: Color, alpha: float, grow: float, dashed: bool, width: float, arrow := true) -> void:
 	var cam := hud.world.cam.cam
@@ -898,6 +995,8 @@ func _nato_markers(cam: Camera3D, lt: int, a: float) -> void:
 		if by != 0:
 			draw_arc(sp, hw + 7.0, 0.0, TAU, 28, HudCoop._a(Net.player_color(by), 0.55 * a), 1.3, true)
 			_owner_tab(sp + Vector2(hw + 1.0, -sz * 0.34 - 12.0), by, a)
+		if mine and _xo_sq.has(int(sid)):
+			_xo_tab(sp + Vector2(-hw - 20.0, -sz * 0.34 - 12.0), a)
 		if firing > 0:
 			_contact_burst(sp + Vector2(-hw - 3.0, -hw * 0.62), a)
 		if supp * 2 >= maxi(1, alive) and alive > 0:

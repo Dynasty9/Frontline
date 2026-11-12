@@ -1,6 +1,7 @@
 extends Node
 ## Audit the actual baked roster, including both palettes, wrecks and parked cars.
 var surfaces := 0
+var canopies := 0
 var maps := {}
 
 func _ready() -> void:
@@ -21,7 +22,7 @@ func _ready() -> void:
 			var model := VehicleModels.build(kind, team, 3)
 			_audit(model.root, false)
 			model.root.free()
-	for kind in ["tank", "heli", "patrol_ship"]:
+	for kind in ["tank", "heli", "patrol_ship", "blackwasp"]:
 		var wreck := VehicleModels.build(kind, 0, 3, true)
 		_audit(wreck.root, true)
 		wreck.root.free()
@@ -38,6 +39,12 @@ func _ready() -> void:
 	# The environment still owns its original presets, and opaque glass must
 	# reflect as a dielectric rather than turning into dark chrome.
 	assert(Mats.get_mat("paint").get_shader_parameter("vehicle_surface") != true)
+	var armor := Mats.get_mat(VehicleMaterials.key("abrams_sand", "armor"))
+	assert(armor.get_shader_parameter("armour_field") != null and armor.get_shader_parameter("worn_armour") == true)
+	for base in ["camo_tank", "camo_tank_rebel"]:
+		var plate := VehicleMaterials.preset(VehicleMaterials.key(base, "armor"))
+		var casting := VehicleMaterials.preset(VehicleMaterials.key("cast_" + base, "armor"))
+		assert(casting.col_a == plate.col_a and casting.surface_normal_strength > plate.surface_normal_strength)
 	var glass := Mats.get_mat(VehicleMaterials.key("glass", "armor"))
 	assert(glass.get_shader_parameter("metal") == 0.0)
 	assert(glass.get_shader_parameter("bump") == 0.0)
@@ -66,7 +73,8 @@ func _ready() -> void:
 				assert(near_panes == 0 if wreck else near_panes >= 4, kind + " has missing glazing or intact wreck windows")
 				assert(model.wheels.size() >= 4)
 				model.root.free()
-	print("VEHICLE_MATERIALS passed models=%d surfaces=%d maps=%d" % [keys.size() * 2 + 8, surfaces, maps.size()])
+	assert(canopies == 2, "Both Black Wasp paints keep their glass through the mesh bake")
+	print("VEHICLE_MATERIALS passed models=%d surfaces=%d maps=%d" % [keys.size() * 2 + 9, surfaces, maps.size()])
 	TestRun.quit(get_tree())
 
 func _audit(node: Node, wreck: bool) -> void:
@@ -75,6 +83,9 @@ func _audit(node: Node, wreck: bool) -> void:
 		if mi.mesh:
 			for i in mi.mesh.get_surface_count():
 				var material := mi.get_active_material(i) as ShaderMaterial
+				if material and material.shader == VmFighter.CANOPY_SHADER:
+					assert(not wreck, "A burnt cockpit must lose its transparent glass")
+					canopies += 1
 				# Rotor blur, lights and the one-surface distance LOD have their
 				# own shaders; all physical surfaces must use the shared library.
 				if material == null or material.shader != Mats.shader():

@@ -19,7 +19,7 @@ The front page (web/) shows the game with footage recorded in the game itself, a
 
 ## What you need
 
-- **Godot 4.7** that can open a window (recording draws frames, so not `--headless`; on Windows either the plain or the `_console` exe): pass `--godot PATH` or set `GODOT`. Your notes on this machine may say where it is.
+- Use the **Godot 4.7 editor binary** from `--godot PATH` or `GODOT`. On macOS, record natively with `--embedded --debug --ignore-error-breaks`. Use `--headless` for imports and simulation-only tests. Open a visible window for live viewing or input tests that need one.
 - **Python 3** with Pillow and numpy; **Node 22.12+** for the website's checks.
 - **An encoder**: ffmpeg on the PATH, or Windows (Media Foundation via `scripts/encode_mf.ps1`; nothing to install).
 - **The takes folder**: `--work DIR`, else `FRONTLINE_FOOTAGE_DIR`, else `<system temp>/frontline-footage`. Takes live in `WORK/takes/` (100-500 MB each, about 3 GB in all) and are kept between sessions on purpose: an output can only be rebuilt from the takes it was cut from, and each take's `NAME.json` records when and at which commit it was recorded. Don't put them in a session scratchpad, and don't delete them because they look stale. If they're gone, rebuilding any output means re-recording its takes and choosing all its cuts again.
@@ -54,7 +54,7 @@ Re-recording a take fans out: every output and still it feeds has to be re-cut (
 python .claude/skills/website-footage/scripts/record.py beachhead-low airstrike-shore     # or --all
 ```
 
-It copies the game into `WORK/project`, imports it, and records each take off-screen at a fixed 30 fps. Its window starts minimized and is moved off-screen, so nothing opens on the desktop. Each job draws about 5-6 frames a second, so all eleven takes take 20-30 minutes with the default `--jobs 3`: run it in the background. It finds free ports from 8700 up and reports a take that lost its port anyway (the game would have run as an observer). Each take gets a log beside it (`WORK/takes/NAME.log`); read it if a take looks wrong.
+It copies the game into `WORK/project`, imports it, and records each take off-screen at a fixed 30 fps. On macOS the movie writer reads the embedded render target. Other desktop platforms use a minimized window moved off-screen. Each job draws about 5-6 frames a second, so all eleven takes take 20-30 minutes with the default `--jobs 3`: run it in the background. It finds free ports from 8700 up and reports a take that lost its port anyway (the game would have run as an observer). Each take gets a log beside it (`WORK/takes/NAME.log`); read it if a take looks wrong.
 
 ## 3. Choose the cuts
 

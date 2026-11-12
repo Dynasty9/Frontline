@@ -1,0 +1,40 @@
+{
+  "before_ref": "187fa8dbb7c94f6c22598981b798ecd1eaeefe43",
+  "source_ref": "e30d6f63e061b20c6a2473efbd130aab2025966f",
+  "engine": "Godot 4.7.2 stable ed1daf0bf",
+  "stage": "tools/showcase/building-surfaces.tscn",
+  "command": "godot --path CHECKOUT --resolution 1600x900 tools/showcase/building-surfaces.tscn -- --building-out=OUTPUT --offscreen FLAGS",
+  "comparisons": [
+    {
+      "subjects": [
+        "house_ruin",
+        "house_stone"
+      ],
+      "flags": [
+        "--building-single",
+        "--building-kinds=house_ruin,house_pitched,house_stone,low_wall_stone,house_brick,house_open"
+      ],
+      "after_flags": [
+        "--building-match=BEFORE/capture.json"
+      ],
+      "cameras": {
+        "house_ruin": [
+          0.127961158752441,
+          1.5,
+          0.0,
+          8.77973365783691,
+          41.1071968078613
+        ],
+        "house_stone": [
+          -0.00543022155761719,
+          2.26750016212463,
+          -0.165000438690186,
+          10.1211652755737,
+          40.5140266418457
+        ]
+      }
+    }
+  ],
+  "notes": "The baseline is the lived-in houses change this builds on; both sides render the studio ruin with its floor marked as a ruin (variant 1).",
+  "composition": "PIL: matched rows, 792 px halves, JPEG quality 82"
+}

@@ -1,5 +1,9 @@
 extends Node
 
+class ProbeGrass extends Grass:
+	func _build_chunk(c: Vector2i) -> void:
+		_built[c] = []
+
 var failures := 0
 
 func check(ok: bool, message: String) -> void:
@@ -51,6 +55,7 @@ func _ready() -> void:
 	check(street.blocked[(centre + 3) * MapDims.N + centre] == 1, "Road shoulders exclude overhanging grass clumps")
 	check(street.blocked[(centre + 6) * MapDims.N + centre] == 0, "Road exclusion preserves the surrounding meadow")
 	world.terrain = TerrainMap.new(world)
+	check_visible_stream(atmosphere)
 	world.terrain.landform.peak = 40.0
 	atmosphere.biome_img = Image.create(1, 1, false, Image.FORMAT_RF)
 	world.terrain.landform.peak = 100.0
@@ -102,7 +107,7 @@ func _ready() -> void:
 		grass.stone = grass._make_stone()
 		grass.mat = material
 		grass.bush_mat = material
-		grass.stone_mat = StandardMaterial3D.new()
+		grass.stone_mat = ShaderMaterial.new()
 		var stones := 0
 		for cell in [Vector2i.ZERO, Vector2i(1, 0), Vector2i(0, 1)]:
 			grass._build_chunk(cell)
@@ -128,7 +133,7 @@ func _ready() -> void:
 	grass.mat = material
 	grass.bush_mat = ShaderMaterial.new()
 	grass.bush_mat.shader = material.shader
-	grass.stone_mat = StandardMaterial3D.new()
+	grass.stone_mat = ShaderMaterial.new()
 	grass._shrub_noise.seed = 222
 	grass._shrub_noise.frequency = 0.035
 	var rng_before := world.rng.state
@@ -161,3 +166,26 @@ func _ready() -> void:
 	while Music._task >= 0:
 		await get_tree().process_frame
 	get_tree().quit(1 if failures else 0)
+
+
+func check_visible_stream(atmo: Atmosphere) -> void:
+	var view := SubViewport.new()
+	view.size = Vector2i(1024, 768)
+	add_child(view)
+	var camera := Camera3D.new()
+	view.add_child(camera)
+	camera.position = Vector3(16, 3, 16)
+	var grass := ProbeGrass.new()
+	grass.atmo = atmo
+	grass._stream(camera.position)
+	grass._build_visible(camera)
+	check(grass._built.has(Vector2i(0, -3)) and not grass._built.has(Vector2i(0, 3)), "First draw must build the visible meadow before off-screen cells")
+	camera.rotation.y = PI
+	grass._build_visible(camera)
+	check(grass._built.has(Vector2i(0, 3)), "Turning in the same chunk must fill the new view in one pass")
+	camera.position.x += 352.0
+	grass._stream(camera.position)
+	grass._build_visible(camera)
+	check(grass._built.has(Vector2i(11, 3)) and not grass._built.has(Vector2i(0, 3)), "A camera cut must fill the destination and evict the previous meadow")
+	grass.free()
+	view.free()
