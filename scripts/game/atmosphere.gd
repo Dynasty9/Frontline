@@ -1737,6 +1737,33 @@ void sky() {
 """
 
 const BACKDROP_HEIGHT := WaterView.SCENERY_COAST + WaterView.SCENERY_RIVERS + """
+// Crags, ribs and gullies too fine for the 9 m backdrop bake: ridged value noise
+// (a sine-free hash, steady at these coordinates on every GPU), scenery only.
+float crag_hash(vec2 c) {
+	vec3 q = fract(vec3(c.xyx) * 0.1031);
+	q += dot(q, q.yzx + 33.33);
+	return fract((q.x + q.y) * q.z);
+}
+float crag_value(vec2 p) {
+	vec2 c = floor(p);
+	vec2 f = fract(p);
+	vec2 u = f * f * (3.0 - 2.0 * f);
+	return mix(mix(crag_hash(c), crag_hash(c + vec2(1.0, 0.0)), u.x),
+		mix(crag_hash(c + vec2(0.0, 1.0)), crag_hash(c + vec2(1.0, 1.0)), u.x), u.y);
+}
+float scenery_crags(vec2 p) {
+	float sum = 0.0;
+	float weight = 0.5;
+	vec2 q = p / 140.0;
+	for (int octave = 0; octave < 4; octave++) {
+		float ridge = 1.0 - abs(crag_value(q) * 2.0 - 1.0);
+		sum += ridge * ridge * weight;
+		q = mat2(vec2(1.6, 1.2), vec2(-1.2, 1.6)) * q + vec2(17.3, 9.1);
+		weight *= 0.5;
+	}
+	return sum - 0.33;  // (about zero on average: the massif keeps its height)
+}
+
 float backdrop(vec2 p) {
 	float edge = max(abs(p.x), abs(p.y)) - __MAP_HALF__;
 	float shore = scenery_shore(p, sea_x);
@@ -1746,6 +1773,8 @@ float backdrop(vec2 p) {
 	float hills = pow(smoothstep(0.18, 0.88, mountain), 2.2) * 440.0;
 	// Tall massifs belong behind the water and foothills, leaving the near valley open.
 	hills *= 1.0 + 1.1 * smoothstep(600.0, 1100.0, edge);
+	// The survey's broad ridges break into crags in proportion to the massif.
+	hills *= 1.0 + scenery_crags(p) * 0.12;
 	float land = hills * smoothstep(8.0, 900.0, edge) * coast * (1.0 - step(9999.0, snow_line))
 		* (1.0 - smoothstep(1450.0, 1800.0, edge));
 	if (p.x > shore - 14.0) { land = min(land, scenery_sea_bed(p.x - shore)); }
@@ -2054,6 +2083,16 @@ void fragment() {
 	float normal_step = edge >= __MAP_HALF__ ? 16.0 : 1.0;
 	float rx = (dfm(p + vec2(normal_step, 0.0)) - dfm(p - vec2(normal_step, 0.0))) / (2.0 * normal_step);
 	float rz = (dfm(p + vec2(0.0, normal_step)) - dfm(p - vec2(0.0, normal_step))) / (2.0 * normal_step);
+	if (terrain_detail && edge >= __MAP_HALF__) {
+		// Distant crags finer than the scenery mesh still catch the light, and break
+		// the snow and bare rock on steep faces into ribs and gullies.
+		float crag_steep = smoothstep(0.25, 0.8, length(vec2(rx, rz)));
+		if (crag_steep > 0.0) {
+			float c0 = scenery_crags(p * 3.0);
+			rx += (scenery_crags((p + vec2(6.0, 0.0)) * 3.0) - c0) * 2.0 * crag_steep;
+			rz += (scenery_crags((p + vec2(0.0, 6.0)) * 3.0) - c0) * 2.0 * crag_steep;
+		}
+	}
 	float slope = length(vec2(rx, rz));
 	// Standing water cannot flatten the normals of a steep cliff.
 	puddle *= 1.0 - smoothstep(0.08, 0.25, slope);

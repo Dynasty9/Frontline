@@ -9,6 +9,7 @@ caption = "The same crags before and after: at golden hour (seed 11) and by day 
 +++
 
 - Steep bare rock now has knobs, ledges and clefts up to a few metres deep, finer than the hills' own shape, so crests break into a jagged line instead of a smooth dome.
+- The distant mountains break into crags, ribs and gullies too, and their snowfields lie broken along them instead of in smooth sheets.
 - Everything uses the same rock: men stand on it, it blocks sight and fire, and shells dig into it where they land.
 - Routes over the hills are unchanged: the crags roughen the rock without making new paths impassable.
 - Mission maps keep their terrain exactly as before.

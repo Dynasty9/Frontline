@@ -588,6 +588,8 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   collects where the ground eases off below a crag, rock within ~150 m of the camera gains a finer pass of
   the same scan, and the mud that slows men down shows as dark rutted soil.
 - Cloud shadows are a few hundred metres across and drift with the wind over the ground, grass and bushes.
+- Distant massifs break their surveyed ridges into crags (ridged noise within the scenery height bounds) and
+  shade steep faces with finer crags still, so their snow and bare rock lie in ribs and gullies.
 - Distant woods grow in broad, warped stands from just above the water to the treeline, climbing higher and
   steeper in the gullies than on the spurs, and take the same distance haze as the ground beneath them.
 - Distant scenery composes surveyed Mont Blanc, Matterhorn and Jungfrau ridge shapes into seeded fictional mountain groups and low passes, with floating-point heights and a finer indexed mesh at Medium/Far detail. Coastal scenery continues into an irregular shoreline and a coarse ocean surface beyond the detailed battlefield water. Boundary rivers extend into curved scenery pools with matching beds and banks; these extensions leave authoritative water shapes and navigation unchanged. Reusable cliff forms have uneven shoulders and irregular drainage cuts before erosion.
