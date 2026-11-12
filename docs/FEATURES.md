@@ -1167,6 +1167,17 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
     Film look adds halation and contrast-adaptive sharpening (AMD FidelityFX CAS). Every pass scrubs NaN and infinite
     pixels, so a bad one can't be smeared across the screen. The browser build has none of these (its renderer has
     no compositor) and hides them.
+  - **Heat haze** (Camera and lens; `heat_haze.gd`, the heat pass in `cinematic_fx.gd`): the air shimmers over fires
+    and burning wrecks, over the engine decks of vehicles with their engines running and out of their exhausts (a
+    helicopter's turbines too, beaten down by its rotor), and for a moment round a blast, a tank gun's muzzle and a
+    launcher's back-blast. Each source is a blob of hot air stretched along its axis (a Gaussian: up for a fire, out
+    of the pipe and up for an exhaust). `Vfx.heat_sources` and `Vehicle.heat_sources` add them every frame, the
+    models mark their exhaust mouths (`VehicleModels.exhausts`), and the 48 in view that would show the most go to the
+    graphics card. At quarter resolution the heat pass integrates each one along every view ray in closed form, cut
+    off where the ray meets the scene, so whatever stands in front of a fire is never bent by it; the turbulence is
+    noise carried up the source's axis in the world, and the bend is sized in metres at the hot air, so nearer haze
+    bends more and haze too small on screen to read is left out. The composite then bends only what lies behind the
+    hot air, and never pulls in the sky or anything in front of it. With Reduce motion on, the air holds still.
 - **Wildlife** (`wildlife.gd`), drawn only on each player's own screen and never simulated or sent by the server,
   so it can't change a battle or its seed. Flocks of sparrows and starlings (pigeons about the town) feed on bare
   ground - tracks, yards, pavements, mud, shell holes, where the grass doesn't hide them - hopping and pecking,

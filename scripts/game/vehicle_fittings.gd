@@ -113,6 +113,7 @@ static func mudflap(k: VehicleModels, parent: Node3D, center: Vector3, size: Vec
 ## Hollow exhaust on an authored axis. The dark sleeve sits behind the rolled
 ## lip; it is not a black disc pasted onto the end of a closed cylinder.
 static func exhaust(k: VehicleModels, parent: Node3D, base: Vector3, direction: Vector3, length: float, radius: float, shielded := true) -> void:
+	k.exhaust_at(parent, base + direction.normalized() * length, direction)
 	var mount := k._pivot(parent, base)
 	mount.basis = VehicleFrames.aim(direction)
 	var key := Vector2(radius, length)
