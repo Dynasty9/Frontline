@@ -387,7 +387,8 @@ func _make(h: Node3D, kind: String, ex) -> void:
 			var n := 6
 			# The centre line stops short of a crossing: the same asphalt as the
 			# road (it's laid in world space, so it joins without a seam) over it.
-			_m(Res.box(Vector3(6.6, 0.02, 0.5)), "asphalt", Vector3(0, 0.032, 0), null, Vector3.ZERO, false, true)
+			# (2 mm thick: its sides mustn't show as lines on the road)
+			_m(Res.box(Vector3(6.6, 0.002, 0.5)), "asphalt", Vector3(0, 0.035, 0), null, Vector3.ZERO, false, true)
 			for i in n:
 				var z := -wd * 0.5 + (i + 0.5) * wd / n
 				_m(Res.box(Vector3(2.6, 0.01, wd / n * 0.5)), "road_paint", Vector3(0, 0.044, z), Color(0.95, 0.95, 0.93), Vector3.ZERO, false, true)
