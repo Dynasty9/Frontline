@@ -1103,9 +1103,17 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
 - Everything can be shot up and repaired. Any FOB can be captured by whoever walks in and holds it. Lose your last FOB and you lose, but a side's last FOB is a last stand and takes four times as long to capture, and HQ sends a free reserve squad every 75 s to a side that is down to its last few soldiers.
 - Fog of war, drawn on the ground and the minimap, with intel pings and last-known enemy positions.
 
-**Look and feel** (`atmosphere.gd`, `mats.gd`, `vehicle_models.gd`, `vfx.gd`, `gunfx.gd`, `grass.gd`, `wildlife.gd`, `ui/`)
+**Look and feel** (`atmosphere.gd`, `cloud_shadow.gd`, `mats.gd`, `vehicle_models.gd`, `vfx.gd`, `gunfx.gd`, `grass.gd`, `wildlife.gd`, `ui/`)
 - Eight lighting moods (midday, golden hour, dawn, dusk, overcast, hazy, **night**, **rain & thunder**) with a
   procedural sky, AgX tonemapping, cloud shadows drifting over the ground, volumetric haze and a subtle film look.
+- **Cloud shadows fall on everything** (`cloud_shadow.gd`), not just the ground: soldiers, vehicles, buildings,
+  trees, grass, roads and trenches darken in the same drifting shade, so a tank parked in it isn't lit up for the
+  enemy to spot from above. Every surface reads one pattern at its own position (global shader uniforms the
+  atmosphere moves downwind, with the smoke), and the shade takes direct sunlight only, never skylight: the shared
+  surface, foliage and grass shaders light themselves with Godot's own light model and let the sun through the
+  cloud, and in the browser, which lights per vertex, the albedo dims and AO hands the skylight back. It's a
+  graphics setting (Cloud shadows on everything; on from High), works in both renderers and is drawn only on each
+  screen, never simulated. Vehicle windows and the opt-in mocap soldiers still take full sun.
   At night the sky fills with stars and illumination flares drift down on parachutes over the fighting, throwing
   moving shadows. In the rain, streaks fall around the camera, splashes hit the ground, puddles reflect the sky and
   lightning flashes are followed by thunder.

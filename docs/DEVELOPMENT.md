@@ -161,6 +161,7 @@ game/fx.gd              plays the server's effect events: shots, explosions, who
 game/vfx.gd             GPU particle explosions, smoke, flames, char, grass fires, decals, shockwaves (+ their shaders)
 game/gunfx.gd           gunfire on the GPU: tracers, muzzle flashes, impacts, sparks, grit, brass (MultiMesh rings flown by their shaders)
 game/atmosphere.gd      sky, sun, fog, ground shader, post effects, moods
+game/cloud_shadow.gd    the clouds' drifting shade on everything (global shader uniforms; the engine's light model in a light())
 game/grass.gd           instanced grass, bushes and stones
 game/mats.gd            procedural surface uber-shader, foliage, camouflage netting
 game/vehicle_models.gd  lofted procedural vehicle models (also used for wrecks and the menu); dispatches to
@@ -726,6 +727,9 @@ for the browser:
 - **Lighting is per vertex** (`shading/overrides/force_vertex_shading.web` in `project.godot`): per-pixel lighting
   is what Direct3D's compiler chokes on (0.2 to 4 s a program instead of a tenth of that). From above, the battle
   looks nearly the same; the Field Manual's close-up gets extra fill and a painted floor sheen to make up for it.
+  A shader's own `light()` never runs there: anything it does to the light has to be done in `fragment()` as well
+  (the water works out its glitter; `CloudShadow` dims the albedo and hands the skylight back through AO, and
+  Compatibility never lets AO reach direct light).
 - **Particles are CPU particles** (`Vfx.part`): every GPU particle effect brings a simulation shader of its own,
   and those took up to 30 s each to compile. Effects are built as GPU particles as everywhere else and converted as
   they go into the scene; code that touches an emitter afterwards goes through `Vfx.set_emitting`, `set_ratio`,

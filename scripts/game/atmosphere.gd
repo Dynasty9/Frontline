@@ -76,7 +76,9 @@ func setup(w: World) -> void:
 	_d = MOODS[mood]
 	_mood_asked = String(Settings.get_v("mood"))
 	_make_noise()
+	CloudShadow.set_sky(biome_tex, float(_d.clouds))
 	_build_env()
+	CloudShadow.set_sun(sun)
 	_build_ground()
 	_build_post()
 	mountain_clouds = preload("res://scripts/game/mountain_clouds.gd").new()
@@ -398,9 +400,7 @@ func _build_ground() -> void:
 	ground = MeshInstance3D.new()
 	ground.mesh = _ground_ring(GROUND_HALF, MapDims.HALF + 1800.0)
 	ground_mat = ShaderMaterial.new()
-	var sh := Shader.new()
-	sh.code = MapDims.shader(GROUND_SHADER.replace("// BACKDROP_HEIGHT", BACKDROP_HEIGHT))
-	ground_mat.shader = sh
+	ground_mat.shader = CloudShadow.make(MapDims.shader(GROUND_SHADER.replace("// BACKDROP_HEIGHT", BACKDROP_HEIGHT)), CloudShadow.OWN_LIGHT)
 	ground_mat.set_shader_parameter("vertex_lit", ProjectSettings.get_setting_with_override("rendering/shading/overrides/force_vertex_shading"))
 	ground_mat.set_shader_parameter("biome_tex", biome_tex)
 	ground_mat.set_shader_parameter("detail_tex", detail_tex)
@@ -409,7 +409,6 @@ func _build_ground() -> void:
 	ground_mat.set_shader_parameter("material_colors", materials[0])
 	ground_mat.set_shader_parameter("material_surfaces", materials[1])
 	ground_mat.set_shader_parameter("meadow_grass", preload("res://assets/town/leafy_grass_color.jpg"))
-	ground_mat.set_shader_parameter("cloud_strength", float(_d.clouds))
 	ground_mat.set_shader_parameter("sun_tint", _d.sun)
 	ground_mat.set_shader_parameter("air_color", _d.fog)
 	ground_mat.set_shader_parameter("wet", 1.0 if mood == "rain" else 0.0)
@@ -454,9 +453,7 @@ func _build_ground() -> void:
 	add_child(trench_net)
 	trench_net.set_detail(detail_tex)
 	road_mat = ShaderMaterial.new()
-	var rs := Shader.new()
-	rs.code = Mats.code(MapDims.shader(ROAD_SHADER.replace("// STREET_SURFACE", Mats.ASPHALT_SHADER)))
-	road_mat.shader = rs
+	road_mat.shader = CloudShadow.make(Mats.code(MapDims.shader(ROAD_SHADER.replace("// STREET_SURFACE", Mats.ASPHALT_SHADER))))
 	road_mat.set_shader_parameter("detail_tex", detail_tex)
 	road_mat.set_shader_parameter("paving_noise", preload("res://assets/town/aerial_asphalt_01_color.jpg"))
 	road_mat.set_shader_parameter("street_detail", preload("res://assets/town/road_damaged_clean_color.jpg"))
@@ -779,7 +776,7 @@ func apply_mood(m: String) -> void:
 	sun.light_energy = float(_d.energy)
 	rim.rotation_degrees = Vector3(-25.0, float(_d.azim) + 180.0, 0)
 	rim.light_energy = 0.28 if mood != "overcast" else 0.12
-	ground_mat.set_shader_parameter("cloud_strength", float(_d.clouds))
+	CloudShadow.set_strength(float(_d.clouds))
 	ground_mat.set_shader_parameter("sun_tint", _d.sun)
 	ground_mat.set_shader_parameter("air_color", _d.fog)
 	if mountain_clouds:
@@ -793,6 +790,7 @@ func apply_mood(m: String) -> void:
 func apply_settings() -> void:
 	var s := Settings
 	ground_mat.set_shader_parameter("terrain_detail", int(s.get_v("lod")) >= 1)
+	CloudShadow.refresh()
 	if forest:
 		forest.apply_settings()
 	# the battle's own mood stands (the host's choice, or a mission's) until
@@ -864,6 +862,10 @@ func _apply_look() -> void:
 		(post_rect.material as ShaderMaterial).set_shader_parameter("tint", lk[3])
 
 
+func _exit_tree() -> void:
+	CloudShadow.set_strength(0.0)  # no clouds over the menu, or the next battle's loading
+
+
 func _process(_dt: float) -> void:
 	var _t0 := Time.get_ticks_usec()
 	_view_process(_dt)
@@ -883,6 +885,8 @@ var _activity := 0.0
 
 func _view_process(_dt: float) -> void:
 	_update_deform(_dt)
+	CloudShadow.tick(_dt)
+	CloudShadow.set_sun(sun)
 	if world.cam == null:
 		return
 	if _wind:
@@ -1366,7 +1370,6 @@ uniform vec3 dry : source_color = vec3(0.36, 0.33, 0.19);
 uniform vec3 dirt : source_color = vec3(0.3, 0.26, 0.2);
 uniform vec3 mud : source_color = vec3(0.19, 0.16, 0.12);
 uniform vec3 sun_tint : source_color = vec3(1.0);
-uniform float cloud_strength = 0.3;
 uniform float bump = 0.85;
 uniform float snow_line = 10000.0;
 uniform float wet = 0.0;
@@ -1375,6 +1378,7 @@ uniform sampler2DArray deform_tex : filter_linear, repeat_disable;
 // TERRAIN_TEXTURE_HELPER
 uniform sampler2D water_mask : hint_default_transparent, filter_linear, repeat_disable;
 uniform float sea_x = 1e9;
+// CLOUD_SHADOW
 
 varying vec3 wpos;
 varying float puddle;
@@ -1749,17 +1753,17 @@ void fragment() {
 	n = normalize(mix(n, shore_normal, shore_stone));
 	n = normalize(mix(n, vec3(0.0, 1.0, 0.0), puddle * 0.9));
 	NORMAL = normalize((VIEW_MATRIX * vec4(n, 0.0)).xyz);
+	// CLOUD_FRAGMENT cloud_sun(wpos)
 }
 
 void light() {
+	// the clouds and the mountains stand in front of the sun, not the rim light
 	float cloud = 1.0;
-	if (LIGHT_IS_DIRECTIONAL) {
-		vec2 cp = wpos.xz / 512.0 * 1.7 + vec2(TIME * 0.0016, TIME * 0.0007);
-		float c = texture(biome_tex, cp).r;
-		cloud = 1.0 - cloud_strength * smoothstep(0.48, 0.72, c);
-		if (dot(LIGHT, normalize((VIEW_MATRIX * vec4(sun_direction, 0.0)).xyz)) > 0.95) {
-			cloud *= terrain_sun;
-		}
+	if (LIGHT_IS_DIRECTIONAL && cloud_is_sun(LIGHT, VIEW_MATRIX)) {
+		cloud = cloud_sun(wpos);
+	}
+	if (LIGHT_IS_DIRECTIONAL && dot(LIGHT, normalize((VIEW_MATRIX * vec4(sun_direction, 0.0)).xyz)) > 0.95) {
+		cloud *= terrain_sun;
 	}
 	float ndl = clamp(dot(NORMAL, LIGHT), 0.0, 1.0);
 	DIFFUSE_LIGHT += ndl * ATTENUATION * LIGHT_COLOR / PI * cloud;
@@ -1787,6 +1791,7 @@ uniform sampler2D street_noise : filter_linear_mipmap_anisotropic, repeat_enable
 uniform sampler2D gravel_color : source_color, filter_linear_mipmap_anisotropic, repeat_enable;
 uniform sampler2D gravel_surface : filter_linear_mipmap_anisotropic, repeat_enable;
 uniform sampler2D paving_surface : filter_linear_mipmap_anisotropic, repeat_enable;
+// CLOUD_SHADOW
 // STREET_SURFACE
 varying vec3 wpos;
 void vertex() {
@@ -1861,6 +1866,7 @@ void fragment() {
 		ALPHA = mix(edge, 1.0, paved);
 	}
 	if (OUTPUT_IS_SRGB) { ALBEDO = mix(ALBEDO * 12.92, 1.055 * pow(max(ALBEDO, vec3(0.0)), vec3(1.0 / 2.4)) - 0.055, step(vec3(0.0031308), ALBEDO)); }
+	// CLOUD_FRAGMENT cloud_sun(wpos)
 }
 """
 
