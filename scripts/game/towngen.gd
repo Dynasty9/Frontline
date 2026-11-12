@@ -38,10 +38,11 @@ var _depth := LOT_D  # depth of the lot being built (shallower where the block i
 var _special := {}
 var square := Vector3.INF  # the middle of the town square
 var square_q := Vector3.ZERO  # which corner of the central crossroads it fills
-var square_flag: Array = []
+var square_flag: Array = []  # the flagpole on it (decor; the town's supply dump takes its place)
 ## Yard dressing (see _yard_life), kept apart and put after the rest of the
 ## decor, so every older piece keeps its place in the list and so its look.
-var _yard_decor: Array = []  # the flagpole on it (decor; the town's supply dump takes its place)
+var _yard_decor: Array = []
+var _shop_decor: Array = []  # what the shops put out (decor, after the yards'; see _shop_wares)
 
 
 func _init(m) -> void:
@@ -468,7 +469,9 @@ func _lot_house(front: Vector3, n: Vector3, d: Vector3, W: float, shop: bool) ->
 	var drive_x := -signf(side) * (W * 0.5 - 1.8) if drive else INF
 	var yaw_d := yaw_along(d)
 	if shop:
-		_d("awning", hc - n * dep * 0.5, axis, Vector3(w - 0.6, 0, rng.randi() % 5))
+		var shop_kind := rng.randi() % 5
+		_d("awning", hc - n * dep * 0.5, axis, Vector3(w - 0.6, 0, shop_kind))
+		_shop_wares(hc, n, w, dep, shop_kind, entrances)
 	# the garden behind: hedge (or a wall) along the back, fences down the sides
 	var back := front + n * _depth
 	var kind := rng.randf()
@@ -513,6 +516,31 @@ func _lot_house(front: Vector3, n: Vector3, d: Vector3, W: float, shop: bool) ->
 		_d("drive", front + n * (setback + 2.6 - apron) * 0.5 + d * drive_x, axis, Vector3(2.6, 0, setback + 2.6 + apron))
 		if rng.randf() < 0.75:
 			mg._try("car", dc, axis + (PI if rng.randf() < 0.5 else 0.0), -1, {"variant": rng.randi() % 5})
+
+
+## What a shop puts out on the pavement in front of it (BuildingShops.wares):
+## one or two lots of it along the front, clear of the door. From a stream of
+## its own (seeded from where the shop is), after the rest of the decor, so
+## the map is the same as it was.
+func _shop_wares(hc: Vector3, n: Vector3, w: float, dep: float, shop_kind: int, entrances: Array[Vector3]) -> void:
+	var main_decor := decor
+	decor = _shop_decor
+	var wr := RandomNumberGenerator.new()
+	wr.seed = int(absf(hc.x) * 17.0) * 7919 + int(absf(hc.z) * 17.0) * 31 + 29
+	var wall := hc - n * dep * 0.5
+	var along := Vector3(n.z, 0, -n.x)  # (the shop front's own x)
+	var door_x := INF
+	for e in entrances:
+		if absf((e - wall).dot(n)) < 1.0:
+			door_x = (e - wall).dot(along)
+	var spots: Array[float] = []
+	for x: float in [-(w * 0.5 - 1.1), w * 0.5 - 1.1, 0.0]:
+		if absf(x - door_x) > 1.5 and spots.size() < 2 and wr.randf() < 0.8:
+			spots.append(x)
+	for x in spots:
+		_d("wares", wall + along * x, atan2(n.x, n.z), shop_kind)
+	_shop_decor = decor
+	decor = main_decor
 
 
 ## What the people living in a house keep round it (BuildingYards): bins at
@@ -993,6 +1021,8 @@ func finish(build_view := true) -> void:
 		for k in range(0, arr.size(), 2):
 			mg._keep_clear([Vector2(arr[k].x, arr[k].z), 3.6])
 	decor.append_array(_yard_decor)
+	decor.append_array(_shop_decor)
 	_yard_decor = []
+	_shop_decor = []
 	if build_view:
 		world.set_decor(decor, rect)
