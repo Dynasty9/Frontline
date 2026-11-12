@@ -343,5 +343,121 @@
       "mood": "day"
     },
     "cue": "The same Ghost Hawk flight from a camera following the helicopter: attitude, bank, flare and rotor wash up close."
+  },
+  "heat-haze": {
+    "scene": "tests/fixtures/blast-world-clips.tscn",
+    "seconds": 10,
+    "fps": 24,
+    "simulation_hz": 24,
+    "engine_fixed_fps": 24,
+    "renderer": "forward_plus",
+    "cue": "Watch the air over the burning wreck and the idling tanks' engine decks swim, at the RTS camera's distance and then close over a deck.",
+    "timeout": 1500,
+    "crf": 30,
+    "seed": 712,
+    "render_settings": {
+      "grass": 1,
+      "effects": 2,
+      "decals": true,
+      "post": false,
+      "mood": "day",
+      "heat_haze": true,
+      "other_cinematic": "the Ultra preset's (shadow fit only), so the haze is all that differs"
+    },
+    "shots": [
+      {
+        "start": 0,
+        "subject": "burning wreck behind idling tanks, RTS distance"
+      },
+      {
+        "start": 5,
+        "subject": "an idling tank's engine deck, close"
+      }
+    ],
+    "camera": {
+      "fov_degrees": 48,
+      "wreck_xz": [
+        -8,
+        -11
+      ],
+      "wreck_yaw_radians": 0.9,
+      "tank_xz": [
+        -14,
+        0
+      ],
+      "wide_target": "midway between tank and wreck",
+      "wide_offset": [
+        13,
+        22,
+        27
+      ],
+      "wide_look_lift": 0.5,
+      "close_target": "tank + (0, 0, 2)",
+      "close_offset": [
+        5,
+        7.5,
+        11
+      ],
+      "close_look_lift": 1.2
+    },
+    "events": "A tank wreck spawned as a destroyed vehicle leaves one (variant 6), so it burns through the game's own fire code. The showroom's tanks idle where the scenario parks them. Forward+ only: the Compatibility renderer has no compositor."
+  },
+  "heat-haze-off": {
+    "scene": "tests/fixtures/blast-world-clips.tscn",
+    "seconds": 10,
+    "fps": 24,
+    "simulation_hz": 24,
+    "engine_fixed_fps": 24,
+    "renderer": "forward_plus",
+    "cue": "The same shots and moment with heat haze off, for a matched comparison.",
+    "timeout": 1500,
+    "crf": 30,
+    "seed": 712,
+    "render_settings": {
+      "grass": 1,
+      "effects": 2,
+      "decals": true,
+      "post": false,
+      "mood": "day",
+      "heat_haze": false,
+      "other_cinematic": "the Ultra preset's (shadow fit only), so the haze is all that differs"
+    },
+    "shots": [
+      {
+        "start": 0,
+        "subject": "burning wreck behind idling tanks, RTS distance"
+      },
+      {
+        "start": 5,
+        "subject": "an idling tank's engine deck, close"
+      }
+    ],
+    "camera": {
+      "fov_degrees": 48,
+      "wreck_xz": [
+        -8,
+        -11
+      ],
+      "wreck_yaw_radians": 0.9,
+      "tank_xz": [
+        -14,
+        0
+      ],
+      "wide_target": "midway between tank and wreck",
+      "wide_offset": [
+        13,
+        22,
+        27
+      ],
+      "wide_look_lift": 0.5,
+      "close_target": "tank + (0, 0, 2)",
+      "close_offset": [
+        5,
+        7.5,
+        11
+      ],
+      "close_look_lift": 1.2
+    },
+    "events": "A tank wreck spawned as a destroyed vehicle leaves one (variant 6), so it burns through the game's own fire code. The showroom's tanks idle where the scenario parks them. Forward+ only: the Compatibility renderer has no compositor."
   }
 }

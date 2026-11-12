@@ -39,9 +39,9 @@ const SHOTS_DIR := "user://screenshots"
 ## The times of day, in the order the panel lists them.
 const MOODS := ["day", "golden", "dawn", "dusk", "overcast", "hazy", "night", "rain"]
 ## The camera-and-lens passes (Settings > Lighting & Look): flare and glare,
-## sun shafts, local exposure, eye adaptation, the film look. The desktop
-## renderer's only; photo mode turns them on and off for its picture.
-const LENS_KEYS := ["lens", "shafts", "local_exp", "eye_adapt", "film"]
+## sun shafts, local exposure, eye adaptation, the film look, heat haze. The
+## desktop renderer's only; photo mode turns them on and off for its picture.
+const LENS_KEYS := ["lens", "shafts", "local_exp", "eye_adapt", "film", "heat_haze"]
 
 var world: World
 var active := false

@@ -36,6 +36,7 @@ const LENS := [
 	["local_exp", "Local exp", "Keeps the detail in deep shade and in bright fire at once, as the eye does."],
 	["eye_adapt", "Eye", "The eye's adaptation: dimmed by a flash, and colours draining towards grey in the dark."],
 	["film", "Film", "Highlights bleed red into the film (halation), and fine detail is sharpened."],
+	["heat_haze", "Haze", "Heat haze: the air shimmers over fires, wrecks, engines and exhausts, and round a blast."],
 ]
 
 

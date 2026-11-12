@@ -36,15 +36,31 @@ extends CompositorEffect
 ## - Film: halation (bright light scattering back from the film base into
 ##   the red layer) and contrast-adaptive sharpening (Lottes, AMD FidelityFX
 ##   CAS, 2019), run in a compressed space so highlights don't ring.
+## - Heat haze: hot air is thinner than the air round it and bends light, and
+##   it rises in turbulent cells, so what is seen through it swims. Each
+##   source (HeatHaze gathers them) is a blob of hot air stretched along its
+##   axis, a Gaussian whose line integral along each view ray has a closed
+##   form, cut off where the ray meets the scene: so whatever stands in front
+##   of a fire is never bent by it. The rising turbulence is noise carried
+##   along the source's axis in the world, and the scene behind is pulled
+##   sideways by it, more the nearer the hot air (in the spirit of the
+##   screen-space refraction of Sousa, "Generic Refraction Simulation", GPU
+##   Gems 2, 2005, with the distortion worked out per source, not drawn).
 ##
-## Atmosphere fills `params` and the switches on the main thread every frame;
-## the render thread only reads them. Everything here is looks: none of it
-## reaches the simulation.
+## Atmosphere fills `params`, `heat` and the switches on the main thread every
+## frame; the render thread only reads them. Everything here is looks: none of
+## it reaches the simulation.
 
 const CTX := &"frontline_cinematic"
 const PARAMS := 32  # floats in the parameter block (eight vec4s, std140)
 const USAGE := RenderingDevice.TEXTURE_USAGE_SAMPLING_BIT | RenderingDevice.TEXTURE_USAGE_STORAGE_BIT
 const RGBA16F := RenderingDevice.DATA_FORMAT_R16G16B16A16_SFLOAT
+## The heat haze's sources: at most this many, each this many floats (three
+## vec4s: centre and width; axis and stretch; strength, rise, cell, churn),
+## after a header of the camera's two matrices and a vec4 (see HEAT_DECL).
+const HEAT_MAX := 48
+const HEAT_STRIDE := 12
+const HEAT_HEAD := 36
 
 # --- set by Atmosphere on the main thread ------------------------------------
 var params := PackedFloat32Array()
@@ -54,6 +70,10 @@ var local_exposure := false
 var eye := false
 var film := false
 var reset_adaptation := true
+var heat_haze := false
+var heat := PackedFloat32Array()  # this frame's sources, HEAT_STRIDE floats each (HeatHaze.gather)
+var heat_time := 0.0  # seconds the hot air has been rising (held still with Reduce motion)
+var heat_bend := 0.22  # how far the hottest air bends what's behind it (m, at the hot air)
 
 # --- render thread only ---------------------------------------------------------
 var rd: RenderingDevice
@@ -63,6 +83,7 @@ var _pipes := {}  # pass name -> compute pipeline RID
 var _sampler: RID
 var _ubo: RID
 var _adapt: RID  # adapted log2 luminance [quick, long-term], seconds since primed, this frame's
+var _heat_buf: RID  # the camera and the heat sources (HEAT_DECL)
 var _sets := {}  # pass name -> uniform set RID, for the textures below
 var _set_key := []  # what those sets were built for
 var _push_h := PackedByteArray()
@@ -93,7 +114,7 @@ func _notification(what: int) -> void:
 		for k in _shaders:
 			if (_shaders[k] as RID).is_valid():
 				rd.free_rid(_shaders[k])  # (its pipeline and uniform sets go with it)
-		for r: RID in [_sampler, _ubo, _adapt]:
+		for r: RID in [_sampler, _ubo, _adapt, _heat_buf]:
 			if r.is_valid():
 				rd.free_rid(r)
 
@@ -117,6 +138,9 @@ func _setup() -> void:
 	var a := PackedByteArray()
 	a.resize(16)
 	_adapt = rd.storage_buffer_create(16, a)
+	var hb := PackedByteArray()
+	hb.resize((HEAT_HEAD + HEAT_MAX * HEAT_STRIDE) * 4)
+	_heat_buf = rd.storage_buffer_create(hb.size(), hb)
 	_push_h = PackedFloat32Array([1.0, 0.0, 1.0, 0.0]).to_byte_array()
 	_push_v = PackedFloat32Array([0.0, 1.0, 0.0, 0.0]).to_byte_array()
 	# the first streak pass takes only the hottest cores, so streaks stay lines
@@ -130,7 +154,7 @@ func _setup() -> void:
 func _compile(pass_name: String, body: String) -> bool:
 	var src := RDShaderSource.new()
 	src.language = RenderingDevice.SHADER_LANGUAGE_GLSL
-	src.source_compute = HEADER + body
+	src.source_compute = HEADER + (HEAT_DECL if pass_name in ["heat", "composite"] else "") + body
 	var spirv := rd.shader_compile_spirv_from_source(src)
 	if spirv.compile_error_compute != "":
 		push_error("Cinematic %s pass: %s" % [pass_name, spirv.compile_error_compute])
@@ -152,7 +176,11 @@ func _render_callback(callback_type: int, render_data: RenderData) -> void:
 	var use_local := local_exposure
 	var use_eye := eye
 	var use_film := film
-	if not (use_shafts or use_lens or use_local or use_eye or use_film):
+	var hs: PackedFloat32Array = heat
+	# (no whole-number division on the render thread: see AGENTS.md, worker threads)
+	var n_heat := mini(floori(hs.size() / float(HEAT_STRIDE)), HEAT_MAX) if heat_haze else 0
+	var use_haze := n_heat > 0
+	if not (use_shafts or use_lens or use_local or use_eye or use_film or heat_haze):
 		return
 	var buffers := render_data.get_render_scene_buffers() as RenderSceneBuffersRD
 	if buffers == null:
@@ -165,13 +193,17 @@ func _render_callback(callback_type: int, render_data: RenderData) -> void:
 		return
 	var qs := Vector2i((size.x + 3) >> 2, (size.y + 3) >> 2)
 	var sharpen: bool = use_film and p[22] > 0.0
+	# the sharpening and the haze read the scene's neighbours: from a copy of it
+	var need_src := sharpen or use_haze
 	var color: RID = buffers.get_color_layer(0)
 	var depth: RID = buffers.get_depth_layer(0)
-	var tex := _textures(buffers, size, qs, sharpen)
-	var key := [color, depth, size, sharpen, tex["bright"]]
+	var tex := _textures(buffers, size, qs, need_src)
+	var key := [color, depth, size, need_src, tex["bright"]]
 	if key != _set_key:
-		_build_sets(color, depth, tex, sharpen)
+		_build_sets(color, depth, tex, need_src)
 		_set_key = key
+	if use_haze:
+		_heat_header(render_data, size, hs, n_heat)
 	p[0] = float(size.x)
 	p[1] = float(size.y)
 	p[2] = float(qs.x)
@@ -185,6 +217,7 @@ func _render_callback(callback_type: int, render_data: RenderData) -> void:
 		p[22] = 0.0
 	if not use_eye:
 		p[21] = 0.0
+	p[27] = 1.0 if use_haze else 0.0
 	rd.buffer_update(_ubo, 0, PARAMS * 4, p.to_byte_array())
 	if reset_adaptation:
 		reset_adaptation = false
@@ -192,7 +225,9 @@ func _render_callback(callback_type: int, render_data: RenderData) -> void:
 	var qg := Vector2i((qs.x + 7) >> 3, (qs.y + 7) >> 3)
 	var fg := Vector2i((size.x + 7) >> 3, (size.y + 7) >> 3)
 	rd.draw_command_begin_label("Cinematic lighting", Color(1.0, 0.8, 0.4))
-	_run("prep", qg)
+	# (the haze and the sharpening alone need no bright pass)
+	if use_shafts or use_lens or use_local or use_eye or use_film:
+		_run("prep", qg)
 	if use_local:
 		_run("blur_h", qg, _push_h)
 		_run("blur_v", qg, _push_v)
@@ -207,13 +242,50 @@ func _render_callback(callback_type: int, render_data: RenderData) -> void:
 		_run("gauss_h", qg, _push_gh)
 		_run("gauss_v", qg, _push_gv)
 		_run("flare", qg)
-	if sharpen:
+	if use_haze:
+		_run("heat", qg)
+	if need_src:
 		_run("copy", fg)
 	_run("composite", fg)
 	rd.draw_command_end_label()
-	if not _said and OS.has_environment("FL_DEBUG_CINE"):
+	if not _said and OS.has_environment("FL_DEBUG_CINE") and (use_haze or not heat_haze):
 		_said = true
-		print("CINEMATIC passes running at %dx%d: shafts %s, lens %s, local %s, eye %s, film %s" % [size.x, size.y, use_shafts, use_lens, use_local, use_eye, use_film])
+		print("CINEMATIC passes running at %dx%d: shafts %s, lens %s, local %s, eye %s, film %s, heat haze %s (%d sources)" % [size.x, size.y,
+			use_shafts, use_lens, use_local, use_eye, use_film, use_haze, n_heat])
+
+
+## The camera as this frame draws it, and the heat sources, for the heat pass.
+## (The projection comes as the renderer uses it: flipped to the image's rows,
+## its depth reversed and remapped to 0..1, so a pixel's depth goes straight in.)
+func _heat_header(render_data: RenderData, size: Vector2i, hs: PackedFloat32Array, n: int) -> void:
+	var sd := render_data.get_render_scene_data()
+	var pr: Projection = sd.get_cam_projection()
+	var xf: Transform3D = sd.get_cam_transform()
+	var inv := pr.inverse()
+	var h := PackedFloat32Array()
+	h.resize(HEAT_HEAD)
+	for c in 4:
+		var col: Vector4 = inv[c]
+		h[c * 4] = col.x
+		h[c * 4 + 1] = col.y
+		h[c * 4 + 2] = col.z
+		h[c * 4 + 3] = col.w
+	for c in 3:
+		var bc: Vector3 = xf.basis[c]
+		h[16 + c * 4] = bc.x
+		h[17 + c * 4] = bc.y
+		h[18 + c * 4] = bc.z
+	h[28] = xf.origin.x
+	h[29] = xf.origin.y
+	h[30] = xf.origin.z
+	h[31] = 1.0
+	h[32] = heat_time
+	h[33] = float(n)
+	h[34] = heat_bend
+	# pixels per metre at a metre's distance: half the image's height times the focal length
+	h[35] = 0.5 * float(size.y) * absf(pr.y.y)
+	h.append_array(hs.slice(0, n * HEAT_STRIDE))
+	rd.buffer_update(_heat_buf, 0, h.size() * 4, h.to_byte_array())
 
 
 ## The pass's own pipeline (the blur and streak passes share one each).
@@ -234,31 +306,31 @@ func _run(pass_name: String, groups: Vector2i, push := PackedByteArray()) -> voi
 
 ## The intermediate images, kept with the view's render buffers (they go when
 ## the view is resized and come back at the new size).
-func _textures(buffers: RenderSceneBuffersRD, size: Vector2i, qs: Vector2i, sharpen: bool) -> Dictionary:
+func _textures(buffers: RenderSceneBuffersRD, size: Vector2i, qs: Vector2i, need_src: bool) -> Dictionary:
 	if buffers.has_texture(CTX, "bright"):
 		var f: RDTextureFormat = buffers.get_texture_format(CTX, "bright")
 		if int(f.width) != qs.x or int(f.height) != qs.y:
 			buffers.clear_context(CTX)
 	var out := {}
-	for n: String in ["bright", "mask", "shaft", "base_a", "base_b", "streak_a", "streak_b", "glow_a", "glow_b", "flare"]:
+	for n: String in ["bright", "mask", "shaft", "base_a", "base_b", "streak_a", "streak_b", "glow_a", "glow_b", "flare", "heat"]:
 		if not buffers.has_texture(CTX, n):
 			buffers.create_texture(CTX, n, RGBA16F, USAGE, RenderingDevice.TEXTURE_SAMPLES_1, qs, 1, 1, true, false)
 		out[n] = buffers.get_texture(CTX, n)
-	if sharpen:
+	if need_src:
 		if buffers.has_texture(CTX, "src"):
 			var f: RDTextureFormat = buffers.get_texture_format(CTX, "src")
 			if int(f.width) != size.x or int(f.height) != size.y:
 				buffers.clear_context(CTX)
-				return _textures(buffers, size, qs, sharpen)
+				return _textures(buffers, size, qs, need_src)
 		else:
 			buffers.create_texture(CTX, "src", RGBA16F, USAGE, RenderingDevice.TEXTURE_SAMPLES_1, size, 1, 1, true, false)
 		out["src"] = buffers.get_texture(CTX, "src")
 	return out
 
 
-func _build_sets(color: RID, depth: RID, t: Dictionary, sharpen: bool) -> void:
+func _build_sets(color: RID, depth: RID, t: Dictionary, need_src: bool) -> void:
 	var bright: RID = t["bright"]
-	var src: RID = t["src"] if sharpen else bright
+	var src: RID = t["src"] if need_src else bright
 	var base_a: RID = t["base_a"]
 	var streak_a: RID = t["streak_a"]
 	var streak_b: RID = t["streak_b"]
@@ -274,10 +346,11 @@ func _build_sets(color: RID, depth: RID, t: Dictionary, sharpen: bool) -> void:
 	_sets["gauss_h"] = _uniforms("gauss", [_smp(1, bright), _img(2, t["glow_a"])])
 	_sets["gauss_v"] = _uniforms("gauss", [_smp(1, t["glow_a"]), _img(2, t["glow_b"])])
 	_sets["flare"] = _uniforms("flare", [_smp(1, t["glow_b"]), _smp(2, streak_a), _img(3, t["flare"])])
-	if sharpen:
+	_sets["heat"] = _uniforms("heat", [_smp(1, depth), _img(2, t["heat"]), _buf(10, _heat_buf)])
+	if need_src:
 		_sets["copy"] = _uniforms("copy", [_img(1, color), _img(2, src)])
 	_sets["composite"] = _uniforms("composite", [_img(1, color), _smp(2, src), _smp(3, t["shaft"]), _smp(4, t["flare"]),
-		_smp(5, t["base_b"]), _smp(6, bright), _buf(7, _adapt)])
+		_smp(5, t["base_b"]), _smp(6, bright), _buf(7, _adapt), _smp(8, depth), _smp(9, t["heat"]), _buf(10, _heat_buf)])
 
 
 func _uniforms(shader: String, uniforms: Array[RDUniform]) -> RID:
@@ -325,7 +398,7 @@ layout(set = 0, binding = 0, std140) uniform Params {
 	vec4 lens;     // ghosts and halo, streaks, dirt, bright threshold (display units)
 	vec4 tone;     // local exposure, eye adaptation, scene exposure, frame time (s)
 	vec4 film;     // halation, night vision, sharpening, debug view (FL_DEBUG_CINE_VIEW)
-	vec4 adapt;    // rate towards brighter, towards darker, long-term (1 / s); unused
+	vec4 adapt;    // rate towards brighter, towards darker, long-term (1 / s); heat haze (0 or 1)
 	vec4 flags;    // shafts, lens, local exposure, eye adaptation (0 or 1)
 } P;
 
@@ -342,6 +415,22 @@ vec3 clean(vec3 c) {
 // interleaved gradient noise (Jimenez 2014): dithers ray starts without patterns
 float ign(vec2 p) {
 	return fract(52.9829189 * fract(dot(p, vec2(0.06711056, 0.00583715))));
+}
+"""
+
+## The camera and the heat sources (the heat pass and the composite).
+const HEAT_DECL := """
+layout(set = 0, binding = 10, std430) restrict readonly buffer Heat {
+	mat4 inv_proj;  // the camera's projection as drawn (flipped to the image's rows, depth reversed 0..1), inverted
+	mat4 cam;       // camera to world
+	vec4 info;      // seconds rising, sources, bend (m), pixels per metre a metre away
+	vec4 src[];     // per source: centre, width (m); axis, stretch along it; strength, rise (m/s), cell (m), churn
+} H;
+
+// a pixel's point in view space, from its depth (reversed: 1 near, 0 far)
+vec3 view_at(vec2 uv, float d) {
+	vec4 v = H.inv_proj * vec4(uv * 2.0 - 1.0, d, 1.0);
+	return v.xyz / v.w;
 }
 """
 
@@ -672,7 +761,111 @@ void main() {
 	imageStore(flare_img, q, vec4(col, 1.0));
 }
 """,
-	# a copy of the scene for the sharpening to read its neighbours from
+	# the hot air over each heat source, integrated along the view rays, and the shimmer it throws
+	"heat": """
+layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
+layout(set = 0, binding = 1) uniform sampler2D depth_tex;
+layout(rgba16f, set = 0, binding = 2) uniform restrict writeonly image2D heat_img;
+
+// erf to about 1e-4 (Winitzki 2008)
+float erf_w(float x) {
+	float x2 = x * x;
+	float ax2 = 0.147 * x2;
+	return sign(x) * sqrt(max(1.0 - exp(-x2 * (1.2732395 + ax2) / (1.0 + ax2)), 0.0));
+}
+
+float hash13(vec3 p) {
+	p = fract(p * 0.1031);
+	p += dot(p, p.zyx + 31.32);
+	return fract((p.x + p.y) * p.z);
+}
+
+float vnoise3(vec3 p) {
+	vec3 i = floor(p);
+	vec3 f = fract(p);
+	f = f * f * (3.0 - 2.0 * f);
+	return mix(mix(mix(hash13(i), hash13(i + vec3(1.0, 0.0, 0.0)), f.x),
+			mix(hash13(i + vec3(0.0, 1.0, 0.0)), hash13(i + vec3(1.0, 1.0, 0.0)), f.x), f.y),
+		mix(mix(hash13(i + vec3(0.0, 0.0, 1.0)), hash13(i + vec3(1.0, 0.0, 1.0)), f.x),
+			mix(hash13(i + vec3(0.0, 1.0, 1.0)), hash13(i + vec3(1.0, 1.0, 1.0)), f.x), f.y), f.z);
+}
+
+// two octaves of turbulence, each pulling the view two ways at once (-0.75 .. 0.75)
+vec2 churn(vec3 p) {
+	vec2 a = vec2(vnoise3(p), vnoise3(p + vec3(19.1, 7.3, 11.7)));
+	vec3 p2 = p * 2.13 + vec3(5.2, 13.9, 3.1);
+	vec2 b = vec2(vnoise3(p2), vnoise3(p2 + vec3(3.7, 17.5, 8.9)));
+	return (a - 0.5) + (b - 0.5) * 0.5;
+}
+
+void main() {
+	ivec2 q = ivec2(gl_GlobalInvocationID.xy);
+	if (q.x >= int(P.size.z) || q.y >= int(P.size.w)) {
+		return;
+	}
+	vec2 uv = (vec2(q) * 4.0 + 2.0) / P.size.xy;
+	// the farthest point under this texel: the haze reaches round whatever stands
+	// in front of it here, and the composite cuts it off that at full resolution
+	ivec2 f = q * 4;
+	ivec2 fm = ivec2(P.size.xy) - 1;
+	float d = min(min(texelFetch(depth_tex, min(f + ivec2(1, 1), fm), 0).r, texelFetch(depth_tex, min(f + ivec2(3, 1), fm), 0).r),
+		min(texelFetch(depth_tex, min(f + ivec2(1, 3), fm), 0).r, texelFetch(depth_tex, min(f + ivec2(3, 3), fm), 0).r));
+	vec3 vp = view_at(uv, max(d, 1e-6));
+	float far = d < 1e-7 ? 1e6 : length(vp);
+	vec3 o = H.cam[3].xyz;
+	vec3 rd = normalize(mat3(H.cam) * vp);
+	float tt = H.info.x;
+	int n = int(H.info.y + 0.5);
+	vec2 off = vec2(0.0);
+	float mask = 0.0;
+	float front = 0.0;
+	for (int i = 0; i < n; i++) {
+		vec4 s0 = H.src[i * 3];
+		vec4 s1 = H.src[i * 3 + 1];
+		vec4 s2 = H.src[i * 3 + 2];
+		// in the blob's own coordinates, where it is round: how near the ray
+		// comes to its centre, and how much of it lies before the scene does
+		vec3 oc = o - s0.xyz;
+		float k = 1.0 / (s1.w * s1.w) - 1.0;
+		float du = dot(rd, s1.xyz);
+		float ou = dot(oc, s1.xyz);
+		float a = 1.0 + k * du * du;
+		float b = dot(oc, rd) + k * ou * du;
+		float c = dot(oc, oc) + k * ou * ou;
+		float m2 = (c - b * b / a) / (s0.w * s0.w);
+		if (m2 > 9.0) {
+			continue;
+		}
+		float tm = -b / a;
+		float sa = sqrt(0.5 * a) / s0.w;
+		float along = 0.5 * (erf_w(sa * (far - tm)) + erf_w(sa * tm));
+		float w = s2.x * exp(-0.5 * m2) * along;
+		float dist = clamp(tm, 0.5, far);
+		float ppm = H.info.w / dist;
+		// too small on screen to bend anything visibly: it would only sparkle
+		w *= smoothstep(1.5, 5.0, s0.w * ppm);
+		if (w < 0.004) {
+			continue;
+		}
+		// the turbulence, carried up the axis as the air rises and churning as it
+		// goes; never finer than this pass can draw (four of its texels a cell)
+		float cell = max(s2.z, 16.0 / ppm);
+		vec3 hp = o + rd * dist - s1.xyz * (tt * s2.y);
+		off += churn(hp / cell + vec3(0.0, 0.0, tt * s2.w)) * (w * ppm * H.info.z);
+		mask += w;
+		// where the hot air begins along the ray (weighted: divided out in the composite)
+		front += w * max(tm - 1.5 * s0.w * inversesqrt(a), 0.0);
+	}
+	// never more than a few pixels, however near the camera comes
+	float cap = 8.0 * P.size.y / 1080.0;
+	float len = length(off);
+	if (len > cap) {
+		off *= cap / len;
+	}
+	imageStore(heat_img, q, vec4(off, mask, front));
+}
+""",
+	# a copy of the scene for the sharpening and the haze to read its neighbours from
 	"copy": """
 layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
 layout(rgba16f, set = 0, binding = 1) uniform restrict readonly image2D src_img;
@@ -698,6 +891,8 @@ layout(set = 0, binding = 6) uniform sampler2D bright_tex;
 layout(set = 0, binding = 7, std430) restrict readonly buffer Adapt {
 	vec4 state;
 } A;
+layout(set = 0, binding = 8) uniform sampler2D depth_tex;
+layout(set = 0, binding = 9) uniform sampler2D heat_tex;
 
 vec3 squash(vec3 c) {
 	return c / (1.0 + c);
@@ -764,6 +959,25 @@ void main() {
 	if (P.film.z > 0.0) {
 		c = cas(p, P.film.z);
 	}
+	if (P.adapt.w > 0.5) {
+		// heat haze: what lies behind the hot air is seen through it, bent
+		vec4 hz = textureLod(heat_tex, uv, 0.0);
+		float d0 = texelFetch(depth_tex, p, 0).r;
+		if (hz.b > 0.003 && d0 > 1e-7) {
+			float front = hz.a / hz.b;
+			// only what lies behind the hot air is bent (and never the sky)
+			vec2 off = hz.rg * smoothstep(front - 0.5, front + 1.5, length(view_at(uv, d0)));
+			float len = length(off);
+			if (len > 0.03) {
+				vec2 suv = uv + off / P.size.xy;
+				float ds = texelFetch(depth_tex, clamp(ivec2(suv * P.size.xy), ivec2(0), ivec2(P.size.xy) - 1), 0).r;
+				// and neither the sky nor anything in front of the hot air is pulled into it
+				if (ds > 1e-7 && length(view_at(suv, ds)) > front - 0.5) {
+					c = mix(c, clean(textureLod(src_tex, suv, 0.0).rgb), smoothstep(0.03, 0.3, len));
+				}
+			}
+		}
+	}
 	float e = P.tone.z;
 	float ll = log2(clamp(luma(c) * e, 1e-4, 6e4));
 	float stops = 0.0;
@@ -807,7 +1021,8 @@ void main() {
 		c = mix(c, v * vec3(1.05, 0.97, 1.27), s);
 	}
 	if (P.film.w > 0.5) {
-		// debug views: 1 shafts, 2 lens, 3 local exposure (red lifts, blue tames), 4 bright pass
+		// debug views: 1 shafts, 2 lens, 3 local exposure (red lifts, blue tames), 4 bright pass,
+		// 5 heat haze (blue the hot air, red and green how far it bends, over the scene in grey)
 		int view = int(P.film.w + 0.5);
 		if (view == 1) {
 			c = textureLod(shaft_tex, uv, 0.0).rgb * 4.0;
@@ -815,6 +1030,9 @@ void main() {
 			c = textureLod(flare_tex, uv, 0.0).rgb * 4.0;
 		} else if (view == 3) {
 			c = vec3(max(stops, 0.0), 0.05, max(-stops, 0.0)) / e;
+		} else if (view == 5) {
+			vec4 hz = textureLod(heat_tex, uv, 0.0);
+			c = (vec3(luma(src.rgb) * e * 0.25) + vec3(abs(hz.r) * 0.3, abs(hz.g) * 0.3, min(hz.b, 1.0) * 0.8)) / e;
 		} else {
 			c = textureLod(bright_tex, uv, 0.0).rgb;
 		}
