@@ -44,6 +44,7 @@ changes any of them:
 | Orders | Right-click: move (Shift = fast run; **drag** to set which way they face), attack enemy, build/repair your structure, enter tunnel / MG nest / watchtower. The **cover pips** under the cursor show where each man will end up: green hard cover, lime medium, yellow soft (hides, doesn't stop bullets), grey dot none, red caught in the open; a tick on a pip points the way he'll fire over the barrier, and the label says how (prone, kneeling, standing, round the edges) |
 | High-level | **X attack-move** (or Ctrl+right-click): the squad bounds forward by fire teams, cover to cover, fights whatever it meets, then digs in at the objective. **B defend**: click the area (drag to face) and the squad spreads into the best cover there and holds. **R retreat** to the nearest FOB (routes around known enemy fire, suppression halved). **H hold** |
 | One soldier | With a single man picked out: right-click to move him into the best cover at that spot, right-click an enemy to engage, a nest or mortar pit to man it; G / T throw, H hold, R fall back. Any squad order brings him back into the squad |
+| Standing orders | **K stance** (auto, prone, crouch, stand) and **J fire discipline** (fire at will, return fire, hold fire) for squads or one picked-out soldier; for vehicles J and **N target priority** (auto, armour, infantry), **T smoke** (vehicles alone selected), **U dismount**. The command card shows each order in force and drops half the men aboard, or one squad of several |
 | Squad | G grenade, T smoke, F mortar fire mission (mortar teams) |
 | Build | Select infantry, click a building in the command card, left-click to place (R turns 90 degrees, Shift+wheel or Shift + two fingers 45). Everything snaps to a 1 m build grid, shown round the cursor while you place. **Click and drag** to lay a whole line of trenches, sandbags, wire, walls or tank traps (lines run at 45 degree headings) |
 | Defenses | Emplacements are crewed by any idle soldier standing next to them. Right-click a bunker with a squad to garrison it. Select a mortar pit for HE / smoke fire missions |
@@ -433,6 +434,30 @@ Ambush Alley autoplay can call its existing mortar support against spotted, stop
 - Kit: Coalition soldiers wear slate sneaking suits under armour vests, helmets and goggles (or a bandana),
   codec headsets, shoulder, elbow, knee and shin pads, and carry carbines with optics; Rebels wear balaclavas,
   berets, field caps and mismatched field jackets with chest rigs or bandoliers, and carry AKs.
+
+**Standing orders** (`soldier.gd`, `squad.gd`, `vehicle.gd`; `World.execute_cmd` "stance", "roe", "prio",
+"pop_smoke", "dismount")
+- Orders that stick until changed, through every move and attack, for a whole squad (each man gets it), one
+  picked-out soldier (he stays in his squad's formation for it) or a vehicle's crew. They replicate as each
+  soldier's and vehicle's props, and the command card shows the one in force as filled segments (none filled
+  when the selection differs).
+- **Stance**: auto (his own judgement), prone, crouch or stand. Told to stay down he crawls when he moves at a
+  walk (a run order gets him up) and fights from the ground; behind a wall too high to fire over from there, or
+  kneeling by a corner, he keeps watch and leaves the shooting to others. A pinned man won't stand up whatever
+  he's told, and the reflexes win over the order: hitting the dirt, diving from a grenade, deep water.
+- **Fire discipline**: fire at will; return fire, which frees the trigger for 10 s after a round cracks past
+  any man of the squad or hits one; or hold fire. Holding fire, men don't shoot, throw grenades, fire rockets,
+  launch drones, call their own mortar targets or clear a house - with two exceptions decided as the design:
+  an enemy within 15 m is overrunning them and they fight (holding fire never means letting them into the hole
+  with you), and anything they're explicitly told to attack is fair game. Fire missions you order still fire,
+  and hand to hand is always on. A squad holding or returning fire doesn't stop for a contact drill at an
+  enemy it merely sees, only when it's fired on.
+- **Vehicles**: the same fire discipline (the crew answers anything within 22 m, or once it's been shot at,
+  for return fire), with smoke, backing out of a missile's path and pulling out badly damaged still the
+  crew's own. **Target priority**: armour first (the main gun saved for vehicles, the machine gun for the
+  men) or infantry first (high explosive on any man in the open). **Smoke on call** fires the dischargers
+  towards the nearest threat (or along the turret) at least 4 s after the last salvo; the salvoes left are
+  on the card.
 
 **Command and squad cohesion** (`squad.gd`, `squad_brain.gd`, `commander_ai.gd`)
 - **Battle drills** (`squad_brain.gd`): each squad has its own behaviour tree, walked twice a second, most
@@ -1017,7 +1042,10 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   23 mm that tears helicopters and drones apart), FPV operators with kamikaze drones, RPG teams.
 - **Mechanised infantry**: IFVs and BTRs come off the line loaded. The troops ride inside and dismount when the
   vehicle arrives, when the enemy is close on an attack-move, when it's badly hit, or on the Dismount button. If
-  it's destroyed with them inside, the survivors scramble out of the wreck, most of them hurt.
+  it's destroyed with them inside, the survivors scramble out of the wreck, most of them hurt. The command card
+  can drop only some of them (`Vehicle.dismount(n, sid)`): half the men aboard (the last in, so a squad's leader
+  stays with its main body), or one squad of several. The rest stay aboard (`keep_aboard`) until dismounted too,
+  or until the vehicle is moved on and stops again; badly hit, everyone bails out regardless.
 - Armour classes: soft-skinned pickups and trucks bleed from rifle fire; light armour (Humvee, helicopters) shrugs
   it off and needs .50 cals, cannons, AA or rockets; tanks only fear anti-tank weapons.
 - **Off-map support**, from minute five (recon flights sooner), each on its own cooldown:

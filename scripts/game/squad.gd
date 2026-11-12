@@ -61,6 +61,7 @@ var bt_path := ""
 var bt_cd := {}
 var ambush := false  # defending and not yet seen: holding fire till they're close
 var ambush_t := 0.0  # the first volley (until then)
+var fired_on_t := -99.0  # the last round at any of its men (frees "return fire": Soldier.may_fire)
 var _offsets := {}  # eid -> Vector2(side, back) behind the leader
 # how it moves and makes ground its own (see Tactics)
 var technique := ""  # "" travelling, "bound" bounding overwatch
@@ -433,6 +434,26 @@ func _follow_tick() -> void:
 		m.follow_to(tgt, 2 if lag > 9.0 else (maxi(travel_mode, 1) if lag > 3.5 else travel_mode), facing)
 	# don't run off and leave them
 	ld.move_mode = 0 if max_lag > 8.0 else travel_mode
+
+
+## A standing order for every man in it (Soldier.set_standing): his stance
+## or his fire discipline, until it's changed.
+func set_standing(kind: String, value: int) -> void:
+	for m in members:
+		if is_instance_valid(m) and not m.gone and m.life != Soldier.Life.DEAD:
+			m.set_standing(kind, value)
+	var lead := get_leader()
+	if lead and lead.life == Soldier.Life.ALIVE:
+		if kind == "roe":
+			lead.say(["Weapons free!", "Return fire only - don't start it.", "Hold your fire! Nobody shoots."][clampi(value, 0, 2)], true)
+		elif value != Soldier.Stance.AUTO:
+			lead.say(["", "Get down! Stay down.", "Keep low.", "On your feet."][clampi(value, 0, 3)], true)
+
+
+## The fire discipline it's under (its leader's: the men are told together).
+func roe() -> int:
+	var lead := get_leader()
+	return lead.roe if lead else Soldier.Roe.FREE
 
 
 func order_attack(t: Entity) -> void:
