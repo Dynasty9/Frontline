@@ -46,6 +46,19 @@ var rotors: Array = []
 ## as numbers, not nodes, so a fitting still folds away into its parent; the
 ## pipes sit on parts that never move against the model.
 var exhausts: Array[Transform3D] = []
+## The cradles the machine gun (or autocannon, or twin guns) is laid in, each
+## at its gun's trunnion with the gun's parts on it: they elevate to the target
+## and run back when the gun fires (Vehicle._lay_guns). A mount on no turret
+## (a door gun, a pintle on a hull) also traverses by itself, within mg_arc of
+## its rest.
+var mg_mounts: Array[Node3D] = []
+var mg_rests: Array[Transform3D] = []  # each mount's rest pose on its parent
+var mg_free := false
+var mg_arc := 1.2
+## Every gun assembly a shared builder made (VehicleWeapons): {parent, origin,
+## muzzle (both in the parent's space), parts, nodes}, so build() can put the
+## machine gun's on a mount of its own once the model is done.
+var _guns: Array[Dictionary] = []
 
 
 ## Notes an exhaust's mouth at `pos` on `parent`, the gas leaving along `dir`.
@@ -84,6 +97,7 @@ static func build(kind: String, team: int, seed: int, is_burnt := false) -> Vehi
 	# the aircraft builders in scripts/game/vehicles/ come first: until one of
 	# them builds a key, the older model below stands
 	if VmCore.build(k, mk, team, seed) or VmGunship.build(k, mk, team, seed) or VmAttack.build(k, mk, team, seed) or VmFighter.build(k, mk, team, seed):
+		k._mount_guns()
 		k._merge_parts(k.root, Vector3.ZERO)
 		k._baked()
 		return k
@@ -122,6 +136,7 @@ static func build(kind: String, team: int, seed: int, is_burnt := false) -> Vehi
 					or VmCiv.build(k, mk, team, seed) or VmHeli.build(k, mk, team, seed) or VmPlane.build(k, mk, team, seed)
 					or VmBoat.build(k, mk, team, seed) or VmShips.build(k, mk, team, seed)):
 				k._truck(team)
+	k._mount_guns()
 	k._merge_parts(k.root, Vector3.ZERO)
 	k._baked()
 	return k
@@ -475,6 +490,109 @@ func _fold(pv: Node3D) -> void:
 		_parts.erase(pv)
 	par.remove_child(pv)
 	pv.free()
+
+
+## A shared gun builder's assembly `m` is done, its muzzle at `muzzle` in its
+## parent's space: noted down (see _guns), then folded into the parent like
+## any other construction pivot.
+func _gun(m: Node3D, muzzle: Vector3) -> void:
+	var parent := m.get_parent() as Node3D
+	var parts: Array = (_parts.get(m, []) as Array).duplicate()
+	var nodes: Array = m.get_children()
+	_guns.append({"parent": parent, "origin": m.position, "muzzle": muzzle, "parts": parts, "nodes": nodes})
+	_fold(m)
+
+
+## A gun assembly built by hand on its own pivot `m` (at its trunnion, square
+## to its parent), noted down as the shared builders' are.
+func gun_assembly(m: Node3D, muzzle_local: Vector3) -> void:
+	_gun(m, m.transform * muzzle_local)
+
+
+## The model is built: the machine gun (and a twin beside it, laid as one) is
+## lifted off whatever carries it onto a cradle of its own at its trunnion, so
+## the crew can lay it and it can recoil. Its parts move with it unchanged, so
+## at rest the model, its muzzle marker and the authority's sockets are exactly
+## as built. Wrecks keep their guns where they fell.
+func _mount_guns() -> void:
+	# (a fixed-wing aircraft's guns are fixed in its nose or its side)
+	var fixed_wing := surface_family == "aircraft" and rotor == null and rotors.is_empty()
+	if burnt or fixed_wing or mg_tip == null or mg_tip == gun_tip:
+		_guns.clear()
+		return
+	var parent := mg_tip.get_parent() as Node3D
+	if parent != turret and parent != root and turret and turret.is_ancestor_of(parent) and absf(parent.rotation.x) > 0.001 and absf(parent.rotation.y) < 0.001 and absf(parent.rotation.z) < 0.001:
+		# The builder made the cradle itself, already laid a little (a twin
+		# AA gun's, receivers, boxes and all): it is the mount.
+		_add_mount(parent)
+		_guns.clear()
+		return
+	var best: Dictionary = {}
+	var nearest := 0.3
+	for g: Dictionary in _guns:
+		# (a gun laid along its carrier's -Z: a cradle elevates about X)
+		var axis: Vector3 = (g.muzzle as Vector3) - (g.origin as Vector3)
+		if g.parent == parent and is_instance_valid(parent) and axis.normalized().dot(Vector3.FORWARD) > 0.95:
+			var d := (g.muzzle as Vector3).distance_to(mg_tip.position)
+			if d < nearest:
+				nearest = d
+				best = g
+	if best.is_empty():
+		_guns.clear()
+		return
+	var mount := _lift(best)
+	_onto(mg_tip, mount)
+	_add_mount(mount)
+	# A twin beside it (the other barrel of a twin AA gun) is laid with it.
+	var at: Vector3 = best.origin
+	var tip: Vector3 = best.muzzle
+	for g: Dictionary in _guns:
+		if g == best or g.parent != parent:
+			continue
+		var o: Vector3 = g.origin
+		var t: Vector3 = g.muzzle
+		if absf(o.x - at.x) > 0.1 and absf(o.y - at.y) < 0.05 and absf(o.z - at.z) < 0.08 and absf(t.y - tip.y) < 0.05 and absf(t.z - tip.z) < 0.08:
+			var twin := _lift(g)
+			_add_mount(twin)
+			# (a twin's own muzzle marker, where it has one, goes with it)
+			if gun_tip and gun_tip.get_parent() == parent and gun_tip.position.distance_to(t) < 0.3:
+				_onto(gun_tip, twin)
+	_guns.clear()
+
+
+## A cradle at the assembly's origin with its parts and nodes moved onto it.
+func _lift(g: Dictionary) -> Node3D:
+	var parent: Node3D = g.parent
+	var mount := _pivot(parent, g.origin)
+	var noted: Array = _parts.get(parent, [])
+	for pt: Array in g.parts:
+		var i := noted.find(pt)
+		if i < 0:
+			continue
+		noted.remove_at(i)
+		pt[4] = (pt[4] as Vector3) - mount.position
+		if not _parts.has(mount):
+			_parts[mount] = []
+		(_parts[mount] as Array).append(pt)
+	for n: Node in g.nodes:
+		if is_instance_valid(n) and n.get_parent() == parent:
+			_onto(n as Node3D, mount)
+	return mount
+
+
+## Moves `n` from its parent onto `mount`, a child of that parent, where it
+## already is (the model isn't in the scene tree yet: no global transforms).
+func _onto(n: Node3D, mount: Node3D) -> void:
+	var xf := mount.transform.affine_inverse() * n.transform
+	n.get_parent().remove_child(n)
+	mount.add_child(n)
+	n.transform = xf
+
+
+func _add_mount(mount: Node3D) -> void:
+	mg_mounts.append(mount)
+	mg_rests.append(mount.transform)
+	mg_free = turret == null or not turret.is_ancestor_of(mount)
 
 
 ## Every noted part on surface `from` put on `to`.

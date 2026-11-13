@@ -532,7 +532,8 @@ static func _zu23(k: VehicleModels, m: Node3D, pos: Vector3, col: Color) -> Node
 		_rod(k, tv, Vector3(sx * 0.46, 0.62, 0.22), Vector3(sx * 0.33, 0.62, 0.22), 0.02, gm)
 	# a slab of steel plate welded on in front of the cradle
 	_bx(k, tv, Vector3(0.95, 0.34, 0.03), Vector3(0, 0.36, -0.64), "steel", Color(0.31, 0.3, 0.26), Vector3(-0.08, 0, 0))
-	VmBoat._bake(k, el)  # (the muzzle marker moves with the rest)
+	# (the cradle stays a pivot of its own: the gun crew lay it, see
+	# VehicleModels._mount_guns)
 	return tv
 
 

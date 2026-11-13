@@ -729,20 +729,23 @@ static func _round_ring(hw: float, ef: float, er: float, y: float, n := 24, p :=
 ## feed cover, the spade grips, the finned barrel, the gas cylinder under it,
 ## the big flat muzzle brake, the 50-round box on the left. Returns the muzzle.
 static func _dshk(k: VehicleModels, p: Node3D, pos: Vector3) -> Vector3:
-	VehicleMounts.receiver(k, p, Vector3(0.13, 0.15, 0.56), pos + Vector3(0, 0, 0.1), "gunmetal_w")
-	_bx(k, p, Vector3(0.14, 0.05, 0.26), pos + Vector3(0, 0.09, 0.0), "gunmetal_w")
-	_bx(k, p, Vector3(0.14, 0.15, 0.03), pos + Vector3(0, 0.0, 0.39), "gunmetal_w")
+	# (on a pivot of its own at the receiver: the gun a mount can lay)
+	var g := k._pivot(p, pos)
+	VehicleMounts.receiver(k, g, Vector3(0.13, 0.15, 0.56), Vector3(0, 0, 0.1), "gunmetal_w")
+	_bx(k, g, Vector3(0.14, 0.05, 0.26), Vector3(0, 0.09, 0.0), "gunmetal_w")
+	_bx(k, g, Vector3(0.14, 0.15, 0.03), Vector3(0, 0.0, 0.39), "gunmetal_w")
 	for sx: float in [-0.08, 0.08]:
-		k._cyl(p, 0.022, 0.022, 0.14, pos + Vector3(sx, 0.06, 0.47), Vector3.ZERO, "wood_dark", null, 6, false)
-	k._cyl(p, 0.028, 0.028, 1.06, pos + Vector3(0, 0, -0.71), X90, "gunmetal_w", null, 8)
+		k._cyl(g, 0.022, 0.022, 0.14, Vector3(sx, 0.06, 0.47), Vector3.ZERO, "wood_dark", null, 6, false)
+	k._cyl(g, 0.028, 0.028, 1.06, Vector3(0, 0, -0.71), X90, "gunmetal_w", null, 8)
 	for i in 8:
-		k._cyl(p, 0.052, 0.052, 0.016, pos + Vector3(0, 0, -0.24 - i * 0.05), X90, "gunmetal_w", null, 10, false)
-	k._cyl(p, 0.016, 0.016, 0.6, pos + Vector3(0, -0.06, -0.48), X90, "gunmetal_w", null, 6, false)
-	_bx(k, p, Vector3(0.025, 0.07, 0.1), pos + Vector3(0, 0.06, -0.62), "gunmetal_w", null, Vector3.ZERO, false)
-	_bx(k, p, Vector3(0.02, 0.06, 0.02), pos + Vector3(0, 0.06, -1.12), "gunmetal_w", null, Vector3.ZERO, false)
-	k._cyl(p, 0.042, 0.042, 0.13, pos + Vector3(0, 0, -1.29), X90, "gunmetal_w", null, 10)
-	_bx(k, p, Vector3(0.12, 0.016, 0.1), pos + Vector3(0, 0, -1.29), "gunmetal_w", null, Vector3.ZERO, false)
-	_bx(k, p, Vector3(0.1, 0.17, 0.24), pos + Vector3(-0.15, -0.07, 0.04), "paint", OD)
+		k._cyl(g, 0.052, 0.052, 0.016, Vector3(0, 0, -0.24 - i * 0.05), X90, "gunmetal_w", null, 10, false)
+	k._cyl(g, 0.016, 0.016, 0.6, Vector3(0, -0.06, -0.48), X90, "gunmetal_w", null, 6, false)
+	_bx(k, g, Vector3(0.025, 0.07, 0.1), Vector3(0, 0.06, -0.62), "gunmetal_w", null, Vector3.ZERO, false)
+	_bx(k, g, Vector3(0.02, 0.06, 0.02), Vector3(0, 0.06, -1.12), "gunmetal_w", null, Vector3.ZERO, false)
+	k._cyl(g, 0.042, 0.042, 0.13, Vector3(0, 0, -1.29), X90, "gunmetal_w", null, 10)
+	_bx(k, g, Vector3(0.12, 0.016, 0.1), Vector3(0, 0, -1.29), "gunmetal_w", null, Vector3.ZERO, false)
+	_bx(k, g, Vector3(0.1, 0.17, 0.24), Vector3(-0.15, -0.07, 0.04), "paint", OD)
+	k.gun_assembly(g, Vector3(0, 0, -1.36))
 	return pos + Vector3(0, 0, -1.36)
 
 
