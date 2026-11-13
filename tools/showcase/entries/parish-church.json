@@ -1,0 +1,20 @@
+{
+  "entry": "changelog/unreleased/parish-church.md",
+  "summary": "A stone parish church with a tower and copper spire, in a walled churchyard, on the edge of skirmish towns.",
+  "medium": "still",
+  "stage": "tests/fixtures/environment-views.gd (town); tools/showcase/building-surfaces.tscn",
+  "rationale": "New landmark building: the same camera on the same map before and after shows where it stands with its churchyard, and studio front and rear views show its detail.",
+  "source_ref": "57a5846b9c3a05852f14521bc2878f87c8948edd",
+  "before_ref": "e09de96a9eca5c266d1aa1327aaa3a0f4a185d5f",
+  "sources": [
+    {
+      "file": "changelog/unreleased/parish-church/comparison.jpg",
+      "sha256": "0cac70c91be28504c6b1604522f101a94e3bfd870c2d90ad359f904db0be4d41"
+    },
+    {
+      "file": "changelog/unreleased/parish-church/capture.json",
+      "sha256": "da61b0b06d15c861f1b0a1fb4554a666294d6e17da88308348c90e20c77c1469"
+    }
+  ],
+  "output": null
+}

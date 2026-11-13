@@ -1,0 +1,40 @@
+{
+  "before_ref": "e09de96a9eca5c266d1aa1327aaa3a0f4a185d5f",
+  "source_ref": "57a5846b9c3a05852f14521bc2878f87c8948edd",
+  "engine": "Godot 4.7.2 stable ed1daf0bf",
+  "stage": "tests/fixtures/environment-views.gd; tools/showcase/building-surfaces.tscn",
+  "command": "godot --path CHECKOUT --resolution 1600x900 --script tests/fixtures/environment-views.gd -- --aivai --seed=3 --offscreen --nohud --set=perf:0 --preset=high --mood=day --focus=0,0 --capture-set=town",
+  "comparisons": [
+    {
+      "subjects": [
+        "town"
+      ],
+      "view": "church",
+      "after": "the church view the source_ref fixture picks",
+      "before_env": "FL_ONLY_VIEW=church,112,9,48,-30,4.52699081698724 (the after view's camera)"
+    },
+    {
+      "subjects": [
+        "church"
+      ],
+      "command": "godot --path CHECKOUT --resolution 1600x900 tools/showcase/building-surfaces.tscn -- --building-out=OUTPUT --offscreen --building-single --building-kinds=church [--building-rear]",
+      "note": "after only: a new building, front and rear",
+      "crops": [
+        [
+          540,
+          120,
+          1040,
+          900
+        ],
+        [
+          555,
+          95,
+          1055,
+          875
+        ]
+      ]
+    }
+  ],
+  "notes": "The baseline is the house plans branch (with the town realism stack), which this builds on. The church view's baseline is rendered from the after's camera with FL_ONLY_VIEW. The church is sited before the farms, so the farms and later dressing settle round it (a wreck on the road in the baseline is elsewhere after).",
+  "composition": "PIL: matched rows, 792 px halves, JPEG quality 82"
+}
