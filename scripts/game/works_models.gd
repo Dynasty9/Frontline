@@ -173,8 +173,10 @@ static func trench_backed(st, local_point: Vector3, half_span := 0.0) -> bool:
 	var basis := Basis(Vector3.UP, st.yaw)
 	for offset in [-half_span, 0.0, half_span]:
 		var point: Vector3 = st.position + basis * (local_point + Vector3.RIGHT * offset)
-		if st.world.trench_depth(point) > 0.15:
-			return false
+		# Clear the whole joining footprint when digging starts, including its shallow ramps.
+		for other in st.world._trenches_at(point):
+			if other != st and not other.gone and other.trench_depth() > 0.15 and TrenchNet.inside(other, point):
+				return false
 	return true
 
 

@@ -301,6 +301,17 @@ func _ready() -> void:
 	check(not WorksModels.trench_backed(first_cut, backing, 0.4), "A collapsed but still excavated neighbor cannot support floating bags")
 	parallel_cut.gone = true
 	check(WorksModels.trench_backed(first_cut, backing, 0.4), "Removing the neighboring cut restores the backing")
+	var partial_join := make_trench(joined_world, 94, Vector3(-1.2, 0, -1.2))
+	partial_join.progress = 0.25
+	var ramp_backing := Vector3(2, 0, -1.05)
+	check(joined_world.trench_depth(ramp_backing) < 0.15, "The joining-ramp regression begins with a shallow excavation")
+	check(not WorksModels.trench_backed(first_cut, ramp_backing, 0.1), "Digging a joining footprint clears kit over its future ramp")
+	first_cut.refresh_trench_furnishings()
+	var partial_furnishings := first_cut.model.get_node("Done")
+	partial_join.built = true
+	partial_join.progress = 1.0
+	first_cut.refresh_trench_furnishings()
+	check(first_cut.model.get_node("Done") == partial_furnishings, "Finishing the joining cut does not reshuffle already-cleared furnishings")
 	joined_world.free()
 	w.free()
 	print("TRENCH_REALISM failures=%d" % failures)
