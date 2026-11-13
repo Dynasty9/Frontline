@@ -131,6 +131,7 @@ var _rotor_want := false
 var _sus := Vector3.ZERO
 var _sus_v := Vector3.ZERO
 var _gun_kick := 0.0  # (view) how far the turret is jolted back by its own gun
+var aim_offset := Vector3.INF  # (replicated) where the crew lay their guns, from the vehicle (INF: nowhere), so a client's view lays them too
 var _mg_lay := PackedVector2Array()  # (view) each machine-gun mount's traverse and elevation
 var _mg_rate := PackedVector2Array()  # (view) and how fast each is moving
 var _mg_recoil := 0.0  # (view) how far the machine gun has run back on its cradle
@@ -2670,6 +2671,14 @@ func mg_kick(k: float) -> bool:
 	return true
 
 
+## Where the crew are laying their guns (view): on the target, as the host
+## knows it or sends it to a client. INF with nothing to shoot at.
+func aim_point() -> Vector3:
+	if srv:
+		return target.center_point() if _target_ok() else Vector3.INF
+	return position + aim_offset if aim_offset.is_finite() else Vector3.INF
+
+
 ## Where the machine gun's receiver is right now (view), for the brass it
 ## throws out: its cradle's trunnion. INF without one.
 func breech_world() -> Vector3:
@@ -2691,12 +2700,14 @@ func _lay_guns(dt: float) -> void:
 		_mg_rate.resize(mounts.size())
 		for i in mounts.size():
 			_mg_lay[i] = Vector2(0.0, _vm.mg_rests[i].basis.get_euler().x)
-	var aim := Vector3.INF
-	if _target_ok():
-		aim = target.center_point()
+	var aim := aim_point()
 	var w: Dictionary = Defs.WEAPONS.get(String(vdef.mg), {})
 	var high := 1.3 if w.get("aa", false) else 0.85
 	var low := -1.1 if is_air() else -0.3
+	if String(vdef.mg) == "coax":
+		# (laid with the main gun, within its mantlet's travel)
+		high = 0.31
+		low = -0.16
 	var arc := _vm.mg_arc if _vm.mg_free else 0.0
 	if _mg_recoil > 0.0 or _mg_climb > 0.0:
 		_mg_recoil = maxf(0.0, _mg_recoil * exp(-dt * 26.0) - dt * 0.004)
@@ -2968,6 +2979,17 @@ func write_state(b: StreamPeerBuffer) -> void:
 	b.put_u32(sling_eid)
 	put_ang(b, flight_pitch)
 	put_ang(b, flight_roll)
+	# where the guns are laid, to the decimetre (what's shot at may be hidden
+	# from a client, but the turret's bearing already gives that away)
+	var aim := target.center_point() - position if _target_ok() else Vector3.INF
+	if aim.is_finite() and aim.length() < 3000.0:
+		b.put_16(roundi(aim.x * 10.0))
+		b.put_16(roundi(aim.y * 10.0))
+		b.put_16(roundi(aim.z * 10.0))
+	else:
+		b.put_16(-32768)
+		b.put_16(0)
+		b.put_16(0)
 
 
 func read_state(b: StreamPeerBuffer) -> void:
@@ -2981,6 +3003,10 @@ func read_state(b: StreamPeerBuffer) -> void:
 	sling_eid = b.get_u32()
 	flight_pitch = wrapf(get_ang(b), -PI, PI)
 	flight_roll = wrapf(get_ang(b), -PI, PI)
+	var ax := b.get_16()
+	var ay := b.get_16()
+	var az := b.get_16()
+	aim_offset = Vector3(ax, ay, az) * 0.1 if ax != -32768 else Vector3.INF
 
 
 func health_frac() -> float:
@@ -3014,8 +3040,9 @@ func _view_process(dt: float) -> void:
 			var mount := _vm.gun_mount
 			var cradle := turret.global_basis
 			var direction := Defs.dir_of(rotation.y + turret_yaw)
-			if _target_ok():
-				direction = target.center_point() - mount.global_position
+			var aim := aim_point()
+			if aim.is_finite():
+				direction = aim - mount.global_position
 			var local := cradle.inverse() * direction
 			var pitch := clampf(atan2(local.y, Vector2(local.x, local.z).length()), -0.16, 0.31)
 			# The cradle eases into a change of elevation and brakes as it settles.
