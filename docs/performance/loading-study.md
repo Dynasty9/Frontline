@@ -191,6 +191,23 @@ and the selection UI in both renderers before presenting it as finished.
     The benchmark now has an explicit Windows-only `--above-normal` diagnostic
     flag, recording successful priority application for client and server.
 
+26. Final matched release-export comparison completed in prepared/generated/generated/prepared order. All four runs exited 0 with no engine or script errors. Same Alder Valley, player side 0, day, high, Forward+, 1280x720, camera at 0,0 / 130 m, first pan 40 m/s. Both processes used the recorded Above Normal benchmark priority; total CPU was 100% busy before every run. OS caches were not purged. Results are reproducible evidence under contention, not clean-machine estimates or cold-cache measurements.
+
+## Final matched measurements
+
+| Run | Deploy to playable | Host navigation ready | First-pan frame p50 / p95 / p99 | Worst frame |
+| --- | ---: | ---: | ---: | ---: |
+| Prepared 1 | 51.449 s | 8.776 s | 26.858 / 53.247 / 513.355 ms | 771.086 ms |
+| Generated 1 | 126.552 s | 58.437 s | 27.241 / 61.248 / 298.161 ms | 514.961 ms |
+| Generated 2 | 127.224 s | 70.290 s | 27.996 / 47.980 / 519.086 ms | 779.292 ms |
+| Prepared 2 | 50.649 s | 7.793 s | 27.288 / 46.178 / 530.157 ms | 778.136 ms |
+
+The mean full wait fell from 126.888 s to 51.049 s (59.8% less) in this four-run comparison. This isolates prepared-map reuse: both controls use the final build's other loading improvements. It does not establish a percentage gain over the original public release. Prepared host map restoration itself took 2.609–2.682 s; client scenery still used 16.1–16.2 s of measured construction work. Stages overlap and should not be summed. Every private simulation was at 100 ms when revealed, so the improvement did not advance combat unseen.
+
+The first pan still contains roughly 0.5–0.8 s stalls in both paths. This change does **not** establish smooth first movement or sustained 60 FPS. Peak client RSS was 2.38–2.46 GB prepared versus 2.39–2.44 GB generated; peak server RSS was 0.929–0.930 GB versus 0.933–0.935 GB. These are sampled working sets, not VRAM or total system memory. Three prepared packages add 118,919,118 bytes before installer compression. Windows includes them; the browser export excludes them.
+
+Compact machine-readable evidence: [prepared-battlefields-results.json](prepared-battlefields-results.json). Full local logs and captures: C:/temp/frontline-matched-final-{cached-1,generated-1,generated-2,cached-2}/. Generated and prepared town captures were visually inspected for ground, road and scenery consistency. Small-window and reduced-motion selection checks passed; the existing small text and overview road-strip appearance were not redesigned here.
+
 ## AAA comparison and target
 
 Forspoken's developers describe roughly 1–2 second loads on some NVMe SSDs and

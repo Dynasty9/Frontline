@@ -2,6 +2,14 @@
 title = "Choose your battlefield"
 summary = "Pick Alder Valley, Stonebridge or Highland Junction before deploying. Desktop builds reuse prepared ground and routes to reduce work at loading time."
 kind = "new"
+
+[[screenshots]]
+file = "battlefields.jpg"
+caption = "Alder Valley, Stonebridge and Highland Junction: coastal, river-crossing and dry foothill layouts."
+
+[[screenshots]]
+file = "selection.jpg"
+caption = "Choose a battlefield before deploying; shown at 960x600 with reduced motion."
 +++
 
 - **Alder Valley:** a coastal flank, western river and central town.
