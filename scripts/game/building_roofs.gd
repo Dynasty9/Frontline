@@ -83,6 +83,75 @@ static func gable(k: BuildingKit, L: float, W: float, eave: float, pitch: float,
 	return rise
 
 
+## A hipped roof: four slopes at one pitch over walls whose outer faces are
+## `wall_face_x` and `wall_face` either side of the middle (along and across
+## the ridge), their tops at `eave`. The long sides are trapezoids up to a ridge
+## (none, a pyramid, over a square house), the ends triangles; round tiles over
+## the hips and the ridge, a fascia, gutters and downpipes all round. Returns
+## the covering's rise above the eaves. opts as for gable() (no gables).
+static func hip(k: BuildingKit, L: float, W: float, eave: float, pitch: float, overhang: float, covering: String, col: Color, opts := {}) -> float:
+	var t := deg_to_rad(pitch)
+	var tn := tan(t)
+	var fz: float = opts.get("wall_face", W * 0.5)
+	var fx: float = maxf(opts.get("wall_face_x", L * 0.5), fz)
+	var ov := overhang
+	var kind := BuildingMaterials.surface(covering)
+	var th: float = BuildingMaterials.value(covering, "thickness", 0.09)
+	var trim_col: Color = opts.get("trim", Color(0.3, 0.24, 0.18))
+	var trim_kind: String = BuildingMaterials.trim(covering)
+	var ez := fz + ov
+	var ex := fx + ov
+	var half := fx - fz  # half the ridge
+	var slant := ez / cos(t)
+	var low := eave - ov * tn  # the underside at the eaves' edge
+	var lift := th / cos(t)
+	# the +z slope's frame: x along the eave, y up the slope, z out of it
+	var up := Basis(Vector3.RIGHT, Vector3(0, sin(t), -cos(t)), Vector3(0, cos(t), sin(t)))
+	var side := PackedVector2Array([Vector2(-ex, 0), Vector2(ex, 0), Vector2(half, slant), Vector2(-half, slant)]) if half > 0.05 \
+		else PackedVector2Array([Vector2(-ex, 0), Vector2(ex, 0), Vector2(0, slant)])
+	var end := PackedVector2Array([Vector2(-ez, 0), Vector2(ez, 0), Vector2(0, slant)])
+	for q in 4:
+		var turn := Basis(Vector3.UP, q * PI * 0.5)
+		var b := turn * up
+		var long := q % 2 == 0
+		var reach := ez if long else ex
+		var mesh := BuildingKit.extrusion("hip|%s|%.2f|%.2f|%.2f" % ["side" if long else "end", ex if long else ez, half, slant], side if long else end, th)
+		k.part(mesh, kind, Transform3D(b, turn * Vector3(0, low, reach) + b.z * th * 0.5), col)
+	# hip and ridge tiles
+	var top := eave + fz * tn + lift - 0.03
+	var tile := col.darkened(0.22)
+	for sx: float in [-1.0, 1.0]:
+		for sz: float in [-1.0, 1.0]:
+			k.rod(Vector3(sx * ex, low + lift, sz * ez), Vector3(sx * half, top, 0), 0.09, kind, tile, 6)
+	if half > 0.05:
+		k.rod(Vector3(-half, top, 0), Vector3(half, top, 0), 0.11, kind, tile, 8)
+	# fascia boards and gutters round all four sides
+	for q in 4:
+		var turn := Basis(Vector3.UP, q * PI * 0.5)
+		var run := (ex if q % 2 == 0 else ez) * 2.0
+		var reach := ez if q % 2 == 0 else ex
+		k.part(BuildingKit.plain(Vector3(run, 0.17, 0.028)), trim_kind, Transform3D(turn, turn * Vector3(0, low - 0.03, reach + 0.015)), trim_col)
+		if opts.get("gutters", false):
+			var gz := reach + 0.07
+			BuildingFittings.gutter(k, turn * Vector3(-run * 0.5, low - 0.1, gz), turn * Vector3(run * 0.5, low - 0.1, gz), turn * Vector3(0, 0, 1))
+	if opts.get("gutters", false):
+		for dp: Array in opts.get("downpipes", []):
+			var x: float = dp[0]
+			var s: float = dp[1]
+			BuildingFittings.downpipe(k, Vector3(x, low - 0.12, s * (ez + 0.07)), Vector3(x, 0.12, s * (fz + 0.06)))
+	return fz * tn + lift
+
+
+## The height of a pitched roof's underside at (x, z) over walls whose outer
+## faces are `fx` and `fz` from the middle, eaves at `eave`: a gable's falls
+## only across the ridge, a hip's to all four sides.
+static func underside(fx: float, fz: float, eave: float, pitch: float, x: float, z: float, hipped: bool) -> float:
+	var run := fz - absf(z)
+	if hipped:
+		run = minf(run, fx - absf(x))
+	return eave + run * tan(deg_to_rad(pitch))
+
+
 ## Sheet laps down a slope: the edges of the sheets, one every `pitch` along
 ## the ridge, a shadow line from eave to ridge.
 static func _laps(k: BuildingKit, run: float, slope: float, c: Vector3, ang: float, pitch: float, col: Color) -> void:

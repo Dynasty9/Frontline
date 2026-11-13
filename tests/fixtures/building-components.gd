@@ -49,6 +49,38 @@ func valid(root: Node3D, what: String) -> void:
 	check(count > 0, what + ": nothing built")
 
 
+## The box round everything drawn under `node`, in its parent's space.
+## How many of a model's meshes (or their surfaces) are lit glass.
+func _lit(node: Node) -> int:
+	var count := 0
+	var mi := node as MeshInstance3D
+	if mi != null and mi.mesh != null:
+		# (lit glass, whether a part's own or merged into a bake's copy of it)
+		var mats: Array = [mi.material_override]
+		for i in mi.mesh.get_surface_count():
+			mats.append(mi.mesh.surface_get_material(i))
+		for m: Variant in mats:
+			if m is ShaderMaterial and (m as ShaderMaterial).get_shader_parameter("lit") != null and float((m as ShaderMaterial).get_shader_parameter("lit")) > 0.0:
+				count += 1
+	for child in node.get_children():
+		count += _lit(child)
+	return count
+
+
+func _bounds(node: Node3D, parent: Transform3D) -> AABB:
+	var xf := parent * node.transform
+	var box := AABB()
+	var mi := node as MeshInstance3D
+	if mi != null and mi.mesh != null:
+		box = xf * mi.mesh.get_aabb()
+	for child in node.get_children():
+		if child is Node3D:
+			var cb := _bounds(child, xf)
+			if cb.size != Vector3.ZERO:
+				box = cb if box.size == Vector3.ZERO else box.merge(cb)
+	return box
+
+
 func kit() -> BuildingKit:
 	var root := Node3D.new()
 	add_child(root)
@@ -85,6 +117,8 @@ func _ready() -> void:
 		"ribbon": func(k: BuildingKit): BuildingOpenings.ribbon(k, Vector3(0, 2, 0), Vector2(4, 0.7), 4, Color.DIM_GRAY),
 		"gable": func(k: BuildingKit): BuildingRoofs.gable(k, 9.0, 7.0, 3.0, 28.0, 0.35, "roof_tile", Color(0.5, 0.22, 0.14), {"gutters": true, "downpipes": [[4.2, 1.0]]}),
 		"gable_sheet": func(k: BuildingKit): BuildingRoofs.gable(k, 9.0, 6.0, 3.0, 26.0, 0.35, "roof_sheet", Color(0.45, 0.47, 0.45)),
+		"hip": func(k: BuildingKit): BuildingRoofs.hip(k, 9.0, 7.0, 3.0, 32.0, 0.35, "roof_tile", Color(0.5, 0.22, 0.14), {"gutters": true, "downpipes": [[4.2, 1.0]], "wall_face": 3.7, "wall_face_x": 4.7}),
+		"pyramid": func(k: BuildingKit): BuildingRoofs.hip(k, 8.0, 8.0, 3.0, 26.0, 0.35, "roof_tile", Color(0.5, 0.22, 0.14), {"gutters": true}),
 		"flat": func(k: BuildingKit): BuildingRoofs.flat(k, 8.0, 7.0, 3.0, {"hatch": true}),
 		"canopy": func(k: BuildingKit): BuildingRoofs.canopy(k, 2.4, 1.0, "roof_sheet", Color(0.45, 0.47, 0.45)),
 		"sawtooth": func(k: BuildingKit): BuildingRoofs.sawtooth(k, 9.0, 7.0, 3, 0.9, "roof_sheet", Color(0.45, 0.47, 0.45)),
@@ -192,6 +226,11 @@ func _ready() -> void:
 		"curtains": func(k: BuildingKit):
 			for style in ["drapes", "blind", "nets"]:
 				BuildingFurnishings.curtains(k, Vector3(0, 1.5, -0.1), Vector2(1.3, 1.0), style, Color(0.5, 0.2, 0.2)),
+		"roof_patches": func(k: BuildingKit):
+			BuildingWeathering.tarp(k, k.rng)
+			BuildingWeathering.hole(k.at_point(Vector3(3, 0, 0)), k.rng)
+			BuildingFurnishings.skylight(k.at_point(Vector3(-3, 0, 0)))
+			BuildingFurnishings.skylight(k.at_point(Vector3(-3, 0, 3)), false),
 		"outside": func(k: BuildingKit):
 			BuildingFurnishings.window_box(k, 0.0, 1.0, 1.1, Color.RED)
 			BuildingFurnishings.lantern(k, Vector3(1.2, 2.05, 0))
@@ -279,6 +318,62 @@ func _ready() -> void:
 	check(ruined_floor.get_child_count() > plain_floor.get_child_count(), "a ruin's floor has its fallen roof on it")
 	ruined_floor.free()
 	plain_floor.free()
+
+	# Roofs: a hip rises as high as a gable of the same pitch over the same
+	# walls; its underside comes down to the eaves on all four walls where a
+	# gable's stands full height at its ends; and a house's roof, whatever its
+	# form, pitch, wear or mending, stays over its walls and eaves.
+	var hk := kit()
+	var hip_rise := BuildingRoofs.hip(hk, 9.0, 7.0, 3.0, 30.0, 0.35, "roof_tile", Color.BROWN, {"wall_face": 3.7, "wall_face_x": 4.7})
+	var gable_rise := BuildingRoofs.gable(hk, 9.0, 7.0, 3.0, 30.0, 0.35, "roof_tile", Color.BROWN, {"wall_face": 3.7})
+	check(is_equal_approx(hip_rise, gable_rise), "a hip rises as high as a gable (%.3f, %.3f)" % [hip_rise, gable_rise])
+	hk.sink.root.free()
+	check(is_equal_approx(BuildingRoofs.underside(4.7, 3.7, 3.0, 30.0, 4.7, 0.0, true), 3.0), "a hip comes down to the eaves at its ends")
+	check(BuildingRoofs.underside(4.7, 3.7, 3.0, 30.0, 4.7, 0.0, false) > 5.0, "a gable stands full height at its ends")
+	check(is_equal_approx(BuildingRoofs.underside(4.7, 3.7, 3.0, 30.0, 0.0, 3.7, true), 3.0), "both come down to the eaves along their sides")
+	var tops := {}
+	for id in 40:
+		var roof := Structure.preview_model("roof", -1, 2, Vector3(9.0, 3.0, 7.6), false, id)
+		var box := _bounds(roof, Transform3D.IDENTITY)
+		check(box.position.x >= -5.4 and box.end.x <= 5.4 and box.position.z >= -4.7 and box.end.z <= 4.7, "roof %d keeps over its walls (%s)" % [id, box])
+		check(box.position.y >= -0.05 and box.end.y <= 8.2, "roof %d keeps its height (%s)" % [id, box])
+		tops[snappedf(box.end.y, 0.05)] = true
+		roof.free()
+	check(tops.size() >= 8, "roofs are pitched differently (%d heights)" % tops.size())
+
+	# A house that's dark (a ruin, or hit, or burning) has no lamp lit
+	# anywhere: not in a window, not by the door, not under a skylight. The
+	# same walls and roofs lit are found among the first ids.
+	var lit_walls := 0
+	var lit_roofs := 0
+	for id in 120:
+		for v in [1, 2]:
+			var lw := Structure.preview_model("house_wall", -1, v, Vector3(2.8, float(id % 5), 0.4), false, id)
+			var dw := Structure.preview_model("house_wall", -1, v, Vector3(2.8, float(id % 5), 0.4), false, id, true)
+			if _lit(lw) > 0:
+				lit_walls += 1
+			check(_lit(dw) == 0, "a dark house's wall has no lamp lit (%d/%d)" % [id, v])
+			lw.free()
+			dw.free()
+		var lr := Structure.preview_model("roof", -1, (id % 5) * 2, Vector3(9.0, 3.0, 7.6), false, id)
+		var dr := Structure.preview_model("roof", -1, (id % 5) * 2, Vector3(9.0, 3.0, 7.6), false, id, true)
+		if _lit(lr) > 0:
+			lit_roofs += 1
+		check(_lit(dr) == 0, "a dark house's roof has no skylight lit (%d)" % id)
+		lr.free()
+		dr.free()
+	check(lit_walls >= 20 and lit_roofs >= 2, "some houses have their lamps on (%d walls, %d roofs)" % [lit_walls, lit_roofs])
+
+	# A tarp lies on its slope, its weights on it and its cords run down to
+	# the eave, no further.
+	for s in 12:
+		var tk := kit()
+		tk.rng.seed = s
+		BuildingWeathering.tarp(tk, tk.rng, 2.4)
+		var tb := _bounds(tk.sink.root, Transform3D.IDENTITY)
+		check(tb.position.y >= -0.25 and tb.end.y <= 0.3, "a tarp lies on the slope (%s)" % tb)
+		check(absf(tb.get_center().x) < 0.5 and tb.size.x <= 3.2 and tb.position.z >= -2.6 and tb.end.z <= 1.2, "a tarp keeps to its patch and the eave (%s)" % tb)
+		tk.sink.root.free()
 
 	# Every building and every kind of scenery still builds a model.
 	var kinds: Array = Defs.BUILDINGS.keys()

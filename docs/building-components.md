@@ -11,7 +11,7 @@ The collision and cover a structure gives (`Structure._define_parts`) never depe
 | `scripts/game/building_materials.gd` | `BuildingMaterials` | Construction materials: surface, colour, dressings, finish |
 | `scripts/game/building_walls.gd` | `BuildingWalls` | Faces (plinths, bands, boards, sheeting, joints, quoins), copings, piers |
 | `scripts/game/building_openings.gd` | `BuildingOpenings` | Windows, sills, heads, shutters, doorways, door leaves, roller shutters, louvres, ribbon glazing |
-| `scripts/game/building_roofs.gd` | `BuildingRoofs` | Gables, flat roofs with parapets, single-pitch roofs, canopies, north lights |
+| `scripts/game/building_roofs.gd` | `BuildingRoofs` | Gables, hipped roofs (and pyramids), flat roofs with parapets, single-pitch roofs, canopies, north lights; `underside` for seating things on a slope |
 | `scripts/game/building_fittings.gd` | `BuildingFittings` | Gutters, hoppers, downpipes, chimneys, flues, stacks, pipe runs, plant, masts, aerials, flagpoles, lamps, drums, crates, pallets |
 | `scripts/game/building_wire.gd` | `BuildingWire` | Catenary spans, cables, guys with anchors, insulators, barbed strands, wall-top wire |
 | `scripts/game/building_weathering.gd` | `BuildingWeathering` | Ivy, weeds at the foot of walls, the fallen-in roof on a ruin's floor |
@@ -86,13 +86,17 @@ of every house wall, and men cross the room's middle. So room things hang flat o
 breadth below head height; shelves stand out only above 1.85 m) or lie flat on the floor. The fixture samples
 the space a standing man takes along a wall over sixteen seeds of `wall_things`.
 
-**Lamplight.** The `window_lit` surface is glass with `lit` set: it glows warm by `window_glow`, a global
-shader value (registered in `project.godot`) that `Atmosphere.lamplight(mood)` sets as the time of day changes:
-1 at night, about half at dusk, a little on a dark day, none in sunshine. Each window's brightness varies with
-where it is, so a batch keeps every room's own. About a third of house windows have a lamp on (and keep their
-glass), most barracks windows and the research post's glazing do, and so do the factory's north lights and the
-door lanterns. It is an emissive surface, not a light: it costs nothing per window and casts no light round it.
-Render a building at night with `--building-night` in the studio stage.
+**Lamplight.** The `window_lit` surface is glass with `lit` set: it glows warm by `window_glow`, a global shader
+value (registered in `project.godot`) that `Atmosphere.lamplight(mood)` sets as the time of day changes: 1 at
+night, about half at dusk, a little on a dark day, none in sunshine. Each window's brightness varies with where
+it is, so a batch keeps every room's own; the brightest room is only just over the glow threshold, so a window
+gleams rather than flares. About a third of house windows have a lamp on (and keep their glass), most barracks
+windows and the research post's glazing do, and so do the factory's north lights and the door lanterns. It is an
+emissive surface, not a light: it costs nothing per window and casts no light round it. A house's lamps go out
+(`Structure.dark`, replicated) when it's a ruin from the start, or once it takes a heavy hit (20 damage or more),
+loses a wall, or its roof catches fire or comes down: `Structure.house_dark` finds the floor under the wall or
+roof and puts out every wall and the roof standing on it, each drawn again without lit glass (the `house_dark`
+counter). Render a building at night with `--building-night` in the studio stage.
 
 ## Weathering and ruins
 
@@ -104,6 +108,19 @@ lumps of plaster and brick, glass. Like furnishings these keep out of a man's wa
 breadth of the wall and below the eaves, a ruin's debris inside the room and no higher than an ankle; the
 fixture checks both over ten seeds. Lived-in and weathering choices each draw from a stream of their own
 (seeded from the structure's), so adding either never changes a house's chimney, shutters, panes or doors.
+
+## Roofscapes
+
+A town's pitched roofs differ the way real ones do. Each is pitched anywhere from 24 to 36 degrees, and about a
+third are hipped (`BuildingRoofs.hip`: four slopes at one pitch, hip and ridge tiles, a fascia and gutters all
+round), which over a square house makes a pyramid. A chimney stands on the lowest point of the slope under it
+(`BuildingRoofs.underside` gives the underside's height anywhere over the walls, gable or hip). About one roof in
+eight has been mended with a tarpaulin (heaped over the broken tiles, drawn into ridges between the tyres and
+sandbag weighting it, its edges pulled in between the corners, cords from its lower eyelets down over the eave,
+kept clear of the hips), one in sixteen has a hole with the battens showing (both `BuildingWeathering`), and one in seven a skylight (`BuildingFurnishings.skylight`), two in
+five of them lit after dark. The form and the patches each draw from a stream of their own, so tints, chimneys
+and aerials are what they were. Roofs are looks only (no collision), so none of this changes cover or movement.
+Render four roofs together with `--building-kinds=roofscape` in the studio stage.
 
 ## Yards
 
@@ -133,7 +150,7 @@ would show the block behind. Door leaves that swing are built in their own hinge
 | `BuildingOpenings.window` | House windows (louvred or boarded shutters, cracked panes), barracks windows |
 | `BuildingOpenings.doorway`, `leaf` | House doors (panelled, now and then a hood), barracks (ledged double doors), research post and bunker (steel) |
 | `BuildingOpenings.roller_door`, `ribbon` | Factory shutter; research post glazing |
-| `BuildingRoofs.gable` | House roofs (tile), barracks (sheet) |
+| `BuildingRoofs.gable`, `hip` | House roofs (tile: about a third hipped), barracks (sheet) |
 | `BuildingRoofs.flat`, `mono`, `canopy`, `sawtooth` | Flat house roofs; watchtower roof; barracks porch and house door hoods; factory north lights |
 | `BuildingFittings` rainwater goods | Every pitched and flat house roof, the barracks, the boat shed |
 | `BuildingFittings.chimney`, `flue`, `stack`, `pipe` | House chimneys; barracks stove, bunker vent, factory cowls, generator exhaust; factory chimney and pipe runs |
