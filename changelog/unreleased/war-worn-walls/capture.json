@@ -1,6 +1,6 @@
 {
   "before_ref": "7b0d05a06f797254f2f387013cbf34e5c0d210be",
-  "source_ref": "411728293f14a64b83fad5dded9044352f2f0b4c",
+  "source_ref": "16219bfba9eba708b86177e3485d928f68149dd0",
   "engine": "Godot 4.7.2 stable ed1daf0bf",
   "stage": "tools/showcase/building-surfaces.tscn; tests/fixtures/environment-views.gd",
   "command": "godot --path CHECKOUT --resolution 1600x900 tools/showcase/building-surfaces.tscn -- --building-out=OUTPUT --offscreen FLAGS",
@@ -31,14 +31,34 @@
           220,
           1300,
           860
-        ],
-        [
-          440,
-          560,
-          1080,
-          800
         ]
       ]
+    },
+    {
+      "subjects": [
+        "house_war"
+      ],
+      "flags": [
+        "--building-single",
+        "--building-kinds=house_war",
+        "--building-match=CAMERA.json"
+      ],
+      "cameras": {
+        "house_war": [
+          3.0,
+          1.6,
+          -3.9,
+          2.4,
+          45.6854591369629
+        ]
+      },
+      "crop": [
+        180,
+        60,
+        1420,
+        760
+      ],
+      "notes": "A close camera on the front wall's shell hit and the strikes round it (both sides through the same CAMERA.json)."
     },
     {
       "subjects": [
@@ -53,6 +73,6 @@
       ]
     }
   ],
-  "notes": "Both sides render the source_ref studio stage: house_war picks its front and right-hand walls by id (13 taped glass, 2 soot over the door, 12 a shell hit, 41 boards, 7 soot and sandbags, 2 strikes). The baseline is the roofscapes change this builds on.",
+  "notes": "Both sides render the source_ref studio stage: house_war picks its front and right-hand walls by id (13 taped glass, 2 soot over the door, 12 a shell hit, 41 boards, 7 soot and sandbags, 2 strikes). The baseline is the roofscapes change this builds on. Strikes and the shell hit are drawn in the wall's own plaster and shown by their shading.",
   "composition": "PIL: matched rows, 792 px halves, JPEG quality 82"
 }
