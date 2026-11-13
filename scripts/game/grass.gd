@@ -17,6 +17,8 @@ var scar_tex: ImageTexture
 var _scar_dirty := false
 var bush: ArrayMesh
 var stone: ArrayMesh
+var woodland: Array[ArrayMesh] = []
+var woodland_mat: ShaderMaterial
 var _shrub_noise := FastNoiseLite.new()
 var level := -1
 var _queue: Array = []
@@ -33,6 +35,11 @@ func _ready() -> void:
 	clump = _make_clump()
 	bush = _make_bush()
 	stone = _make_stone()
+	for kind in 3:
+		woodland.append(_make_woodland(kind))
+	woodland_mat = ShaderMaterial.new()
+	woodland_mat.shader = CloudShadow.make(MapDims.shader(WOODLAND_SHADER))
+	woodland_mat.set_shader_parameter("bark", preload("res://assets/town/tree_bark_03_color.jpg"))
 	scar_img = Image.create(MapDims.N, MapDims.N, false, Image.FORMAT_L8)
 	scar_tex = ImageTexture.create_from_image(scar_img)
 	mat = ShaderMaterial.new()
@@ -51,11 +58,13 @@ func _ready() -> void:
 func set_deform(t: Texture2DArray) -> void:
 	mat.set_shader_parameter("deform_tex", t)
 	bush_mat.set_shader_parameter("deform_tex", t)
+	woodland_mat.set_shader_parameter("deform_tex", t)
 
 
 func set_trench_mask(t: Texture2D) -> void:
 	mat.set_shader_parameter("trench_mask", t)
 	bush_mat.set_shader_parameter("trench_mask", t)
+	woodland_mat.set_shader_parameter("trench_mask", t)
 
 
 ## Marks a blast scar on the grass (craters: full, near misses: lighter).
@@ -385,7 +394,106 @@ func _build_chunk(c: Vector2i) -> void:
 		var sn := _mm(stone, stone_mat, sx, sc, 140.0)
 		sn.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
 		nodes.append(sn)
+	_woodland_chunk(c, nodes)
 	_built[c] = nodes
+
+
+func _woodland_chunk(c: Vector2i, nodes: Array) -> void:
+	# A separate seed keeps new undergrowth from moving existing grass or combat rolls.
+	var rng := RandomNumberGenerator.new()
+	rng.seed = hash(c) + int(atmo.world.settings.get("seed", 1)) + 71591
+	var origin := Vector3(c.x * CHUNK, 0, c.y * CHUNK)
+	var trees := atmo.world.structures_near(origin + Vector3(16, 0, 16), 28.0)
+	var transforms := [[], [], []]
+	var colors := [[], [], []]
+	for tree in trees:
+		if tree.skind != "tree" or tree.hp <= 0:
+			continue
+		for i in (8 if level == 2 else 4):
+			var angle := rng.randf() * TAU
+			var p: Vector3 = tree.position + Vector3(cos(angle), 0, sin(angle)) * rng.randf_range(1.2, 4.5)
+			p.y = 0.0
+			if floori(p.x / CHUNK) != c.x or floori(p.z / CHUNK) != c.y or _is_blocked(p) or atmo.grass_amount(p) <= 0.05:
+				continue
+			var kind := 0 if i > 1 else i + 1
+			var scale := rng.randf_range(0.7, 1.3)
+			transforms[kind].append(Transform3D(Basis(Vector3.UP, rng.randf() * TAU).scaled(Vector3.ONE * scale), p))
+			colors[kind].append(Color(rng.randf(), 0, 0, 0))
+	for kind in 3:
+		if not transforms[kind].is_empty():
+			var node := _mm(woodland[kind], woodland_mat, transforms[kind], colors[kind], 85.0)
+			if kind == 1:
+				node.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
+			nodes.append(node)
+
+
+func _make_woodland(kind: int) -> ArrayMesh:
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	if kind == 0:
+		# Paired tapered leaflets follow arching fronds, rather than a solid green fan.
+		for frond in 7:
+			var yaw := float(frond) * TAU / 7.0
+			var along := Vector3(cos(yaw), 0, sin(yaw))
+			var side := Vector3(-sin(yaw), 0, cos(yaw))
+			for step in range(1, 9):
+				var t := float(step) / 9.0
+				var center := along * t * 0.65 + Vector3.UP * (0.08 + sin(t * PI * 0.8) * 0.5)
+				var width := sin(t * PI) * 0.17
+				for sign_ in [-1.0, 1.0]:
+					st.set_color(Color(0.18 + t * 0.09, 0.29 + t * 0.08, 0.09).srgb_to_linear())
+					for point in [center - along * 0.035, center + side * width * sign_ + along * 0.07, center + along * 0.035]:
+						st.set_uv(Vector2(0, t))
+						st.add_vertex(point)
+	elif kind == 1:
+		var log_mesh := CylinderMesh.new()
+		log_mesh.top_radius = 0.13
+		log_mesh.bottom_radius = 0.19
+		log_mesh.height = 1.8
+		log_mesh.radial_segments = 9
+		_wood_part(st, log_mesh, Transform3D(Basis(Vector3.FORWARD, PI * 0.5), Vector3(0, 0.14, 0)), Color(0.55, 0.5, 0.4, 0.5))
+		var branch := CylinderMesh.new()
+		branch.top_radius = 0.025
+		branch.bottom_radius = 0.065
+		branch.height = 0.55
+		branch.radial_segments = 5
+		_wood_part(st, branch, Transform3D(Basis(Vector3.RIGHT, 0.9), Vector3(0.25, 0.26, 0.12)), Color(0.55, 0.5, 0.4, 0.5))
+	else:
+		for i in 5:
+			var p := Vector3(sin(float(i) * 2.4) * 0.24, 0, cos(float(i) * 2.4) * 0.24)
+			var height := 0.1 + float(i % 3) * 0.035
+			var stem := CylinderMesh.new()
+			stem.top_radius = 0.015
+			stem.bottom_radius = 0.025
+			stem.height = height
+			stem.radial_segments = 5
+			_wood_part(st, stem, Transform3D(Basis.IDENTITY, p + Vector3.UP * height * 0.5), Color(0.65, 0.58, 0.43, 0))
+			var cap := SphereMesh.new()
+			cap.radius = height * 0.6
+			cap.height = height * 0.5
+			cap.radial_segments = 8
+			cap.rings = 3
+			_wood_part(st, cap, Transform3D(Basis.IDENTITY, p + Vector3.UP * height), Color(0.46, 0.29, 0.13, 0))
+	st.generate_normals()
+	return st.commit()
+
+
+func _wood_part(st: SurfaceTool, mesh: PrimitiveMesh, pose: Transform3D, color: Color) -> void:
+	var arrays := mesh.get_mesh_arrays()
+	var vertices: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
+	var indices: PackedInt32Array = arrays[Mesh.ARRAY_INDEX]
+	var uv: PackedVector2Array = arrays[Mesh.ARRAY_TEX_UV]
+	for index in indices:
+		st.set_color(color.srgb_to_linear())
+		st.set_uv(uv[index])
+		var point := vertices[index]
+		if color.a == 0.5:
+			# Broken wood has uneven bark and ends, rather than a turned cylinder.
+			var rough := sin(atan2(point.z, point.x) * 5.0 + point.y * 3.0)
+			point.x *= 1.0 + rough * 0.18
+			point.z *= 1.0 + rough * 0.18
+			point.y += sin(point.x * 51.0 + point.z * 37.0) * 0.045
+		st.add_vertex(pose * point)
 
 
 const WET_CELLS := 5  # moisture lattice points across a chunk (8 m apart)
@@ -496,6 +604,48 @@ func _make_stone() -> ArrayMesh:
 	var m := ArrayMesh.new()
 	m.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
 	return m
+
+
+const WOODLAND_SHADER := """
+shader_type spatial;
+render_mode cull_disabled, specular_disabled;
+uniform sampler2D bark : source_color, filter_linear_mipmap, repeat_enable;
+uniform sampler2DArray deform_tex : filter_linear, repeat_disable;
+uniform sampler2D trench_mask : hint_default_black, filter_linear, repeat_disable;
+// TERRAIN_TEXTURE_HELPER
+// CLOUD_SHADOW
+varying vec3 wpos;
+void vertex() {
+	wpos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
+	vec2 uv = (wpos.xz + __MAP_HALF__) / __MAP_SIZE__;
+	float ground = terrain_height(deform_tex, uv);
+	if (textureLod(trench_mask, uv, 0.0).r > 0.3 || ground - terrain_geology(deform_tex, uv) < -0.12) {
+		VERTEX *= 0.0;
+	}
+	VERTEX.y += ground / max(0.05, length(MODEL_MATRIX[1].xyz));
+	VERTEX.x += sin(TIME * 1.3 + wpos.x * 0.3) * UV.y * 0.025 * step(0.9, COLOR.a);
+}
+void fragment() {
+	ALBEDO = COLOR.rgb;
+	if (COLOR.a > 0.4 && COLOR.a < 0.6) {
+		vec3 tex = texture(bark, UV * vec2(2.0, 1.0)).rgb;
+		if (OUTPUT_IS_SRGB) {
+			tex = mix(tex / 12.92, pow((tex + 0.055) / 1.055, vec3(2.4)), step(vec3(0.04045), tex));
+		}
+		ALBEDO *= tex * 2.0;
+	}
+	if (OUTPUT_IS_SRGB) {
+		ALBEDO = mix(ALBEDO * 12.92, 1.055 * pow(max(ALBEDO, vec3(0.0)), vec3(1.0 / 2.4)) - 0.055, step(vec3(0.0031308), ALBEDO));
+	}
+	if (COLOR.a > 0.9) {
+		vec3 normal = (INV_VIEW_MATRIX * vec4(NORMAL, 0.0)).xyz;
+		normal.y = abs(normal.y);
+		NORMAL = normalize((VIEW_MATRIX * vec4(mix(normal, vec3(0.0, 1.0, 0.0), 0.45), 0.0)).xyz);
+	}
+	ROUGHNESS = 0.95;
+	// CLOUD_FRAGMENT cloud_sun(wpos)
+}
+"""
 
 
 const GRASS_SHADER := """

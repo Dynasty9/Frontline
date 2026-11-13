@@ -1,0 +1,16 @@
+{
+  "entry": "changelog/unreleased/woodland-floor.md",
+  "summary": "Ferns, fallen wood and mushrooms add a lower layer beneath woodland trees.",
+  "medium": "still",
+  "stage": "Matched game captures: Godot 4.7.2 Forward+, 1280x720, --scenario=attack --seed=3 --focus=-28,-20 --zoom=15 --pitch=-35 --cam-yaw=0.6 --nohud --perf=0 --mood=day --preset=high --shot-at=3. Window positioned off-screen at 2400,1400. Comparison preserves full frames.",
+  "rationale": "Stacked matched frames show the woodland floor at a readable size. Wildlife already exists and is unchanged.",
+  "source_ref": "bd4f1b598ae80c6543cd4816e3f49a6ead730876 + woodland-floor working tree",
+  "before_ref": "bd4f1b598ae80c6543cd4816e3f49a6ead730876",
+  "sources": [
+    {
+      "file": "changelog/unreleased/woodland-floor/comparison.jpg",
+      "sha256": "89fd8df937cf54deda1c8cc38c49914b728786dd370dcdcdf87a7c7f485da9ba"
+    }
+  ],
+  "output": null
+}
