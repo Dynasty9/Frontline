@@ -738,14 +738,15 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   shutters on their hinges, door frames, steps, now and then a hood over the door, and double doors hanging open.
   Pitched roofs bear on the walls with a fascia, barge boards, gutters and downpipes, a round-tiled ridge and
   often a chimney with its pots; they're pitched differently, about a third are hipped (pyramids over square
-  houses), and some are mended with a tarp weighted down with tyres, holed, or have a skylight; flat roofs have a coped parapet, scuppers with a hopper and downpipe, and the
+  houses), and some are mended with a creased tarp weighted down with tyres and tied to the eave, holed, or have a skylight; flat roofs have a coped parapet, scuppers with a hopper and downpipe, and the
   water tanks, air conditioners and dishes on them. Garden walls have saddleback stone copings, or brick-on-edge
   over a blue-brick base. Houses look lived in: drapes, blinds and nets in the windows, flowers in window boxes,
   lanterns by front doors, TV aerials on the roofs, and inside (seen when the roof hides for the men in there, or
   in a ruin) painted walls with skirting, radiators, pictures, mirrors, clocks, shelves of books and rugs, all
   hung flat or laid flat so nothing stands where a man does. At dusk and at night a lamp is on behind about a
   third of the windows, in the barracks and the research post, under the factory's north lights and in the door
-  lanterns (brightest at night, a glimmer on a dark day). Weeds grow at the foot of walls and ivy up some of
+  lanterns (a gleam at night, a glimmer on a dark day); a ruin's lamps are out, and so are a house's once it's
+  shelled, loses a wall or its roof catches fire. Weeds grow at the foot of walls and ivy up some of
   them (most often on old stone), and a ruin's floor carries its fallen roof: soot, charred rafters, broken
   tiles, plaster and glass. Round the houses are what the people in them keep: wheelie bins at a front corner,
   pots of flowers by the door, a bicycle against a side wall, and out the back a woodpile and chopping block, a

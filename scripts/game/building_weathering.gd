@@ -48,19 +48,146 @@ static func weeds(k: BuildingKit, length: float, gaps: Array, rng: RandomNumberG
 			_leaves(k, Vector3(x, h * 0.6, z), Vector3(rng.randf_range(0.14, 0.3), h, 0.09), WEEDS[rng.randi() % WEEDS.size()])
 
 
-## A tarpaulin pulled over a hole in a roof, in a kit lying on the slope
-## (its xz plane the covering's top, +z down the slope): weighted down with
-## old tyres and a sack or two.
-static func tarp(k: BuildingKit, rng: RandomNumberGenerator) -> void:
-	var size := Vector2(rng.randf_range(1.6, 2.4), rng.randf_range(1.2, 1.8))
-	var col: Color = [Color(0.2, 0.34, 0.55), Color(0.28, 0.36, 0.24), Color(0.5, 0.46, 0.36)][rng.randi() % 3]
-	k.plate(Vector3(size.x, 0.012, size.y), Vector3(0, 0.008, 0), "canvas", col, Vector3(0, rng.randf_range(-0.15, 0.15), 0), true)
-	for i in rng.randi_range(2, 4):
-		var p := Vector3(rng.randf_range(-0.4, 0.4) * size.x, 0.05, rng.randf_range(-0.4, 0.4) * size.y)
-		if i % 3 == 2:
-			k.box(Vector3(0.5, 0.15, 0.32), p + Vector3(0, 0.03, 0), "sandbag", Color(0.55, 0.49, 0.34), Vector3(0, rng.randf() * TAU, 0))
+## A tarpaulin's colours: blue and grey-blue sheet, green, brown, orange, all
+## faded by the sun.
+const TARPS := [Color(0.22, 0.38, 0.6), Color(0.3, 0.42, 0.55), Color(0.29, 0.36, 0.25), Color(0.47, 0.42, 0.32), Color(0.62, 0.38, 0.16)]
+
+
+## A tarpaulin pulled over a hole in a roof, in a kit lying on the slope (-z
+## down it, `eave` how far down the slope the eave is, 0 if unknown; `room`
+## the most it may spread either side, short of a hip): the sheet heaped over
+## the broken tiles under it, drawn into ridges between the weights holding
+## it down (old tyres, a sandbag, a batten along its top edge) and creased by
+## the wind, its edges pulled in between the corners, its hem a darker band
+## with eyelets at the corners; cords from the lower two run down the tiles and
+## over the eave.
+static func tarp(k: BuildingKit, rng: RandomNumberGenerator, eave := 0.0, room := INF) -> void:
+	var t := RandomNumberGenerator.new()
+	t.seed = rng.randi()
+	var sx := minf(t.randf_range(1.9, 2.7), room * 2.0)
+	var sz := t.randf_range(1.5, 2.1)
+	if sx < 1.0:
+		return
+	var col: Color = TARPS[t.randi() % TARPS.size()].darkened(t.randf_range(0.0, 0.12))
+	var tk := k.at_point(Vector3.ZERO, Vector3(0, t.randf_range(-0.06, 0.06), 0))
+	var hx := sx * 0.5
+	var hz := sz * 0.5
+	# where it's weighted: a tyre near each lower corner, one or two more
+	# and a sandbag on it, none on top of another; the batten holds the top
+	var weights: Array = []  # [where, how wide it presses, a sandbag]
+	for cx: float in [-1.0, 1.0]:
+		weights.append([Vector2(cx * (hx - t.randf_range(0.3, 0.4)), -(hz - t.randf_range(0.3, 0.4))), 0.34, false])
+	for i in t.randi_range(2, 3):
+		for attempt in 8:
+			var p := Vector2(t.randf_range(-0.32, 0.32) * sx, t.randf_range(-0.15, 0.32) * sz)
+			var clear := true
+			for w: Array in weights:
+				if (w[0] as Vector2).distance_to(p) < 0.75:
+					clear = false
+			if clear:
+				weights.append([p, 0.32, i == 0])
+				break
+	var heap := Vector2(t.randf_range(-0.15, 0.15) * sx, t.randf_range(-0.1, 0.15) * sz)
+	var creases: Array = []
+	for i in 4:
+		var a := t.randf() * TAU
+		creases.append([Vector2(cos(a), sin(a)) * t.randf_range(6.0, 12.0), t.randf() * TAU, t.randf_range(0.01, 0.022)])
+	var height := func(x: float, z: float) -> float:
+		var u := x / hx
+		var v := z / hz
+		var q := Vector2(x, z)
+		# heaped over the broken battens and tiles under it, highest over the hole
+		var y := 0.06 * maxf(0.0, (1.0 - u * u) * (1.0 - v * v)) + 0.08 * exp(-(pow((x - heap.x) / 0.5, 2.0) + pow((z - heap.y) / 0.4, 2.0)))
+		for c: Array in creases:
+			y += float(c[2]) * sin((c[0] as Vector2).dot(q) + float(c[1]))
+		# pulled taut into a ridge between each pair of weights
+		for i in weights.size():
+			for j in range(i + 1, weights.size()):
+				var a: Vector2 = weights[i][0]
+				var b: Vector2 = weights[j][0]
+				var ab := b - a
+				var f := clampf((q - a).dot(ab) / ab.length_squared(), 0.0, 1.0)
+				var off := q.distance_to(a + ab * f)
+				y += 0.03 * exp(-pow(off / 0.07, 2.0)) * sin(f * PI)
+		# the edges lie on the tiles, lifting a little between the weights
+		var edge := minf(hx - absf(x), hz - absf(z))
+		y = y * smoothstep(0.0, 0.25, edge) + 0.012 * (1.0 + sin(x * 4.0 + z * 3.0)) * (1.0 - smoothstep(0.0, 0.2, edge))
+		for w: Array in weights:
+			var d: float = (w[0] as Vector2).distance_to(q)
+			y = lerpf(y, 0.0, exp(-pow(d / float(w[1]), 2.0)))
+		return 0.014 + maxf(0.0, y)
+	# (its edges pulled in between the corners, as a sheet held by its corners is)
+	var drawn := func(x: float, z: float) -> Vector2:
+		var u := x / hx
+		var v := z / hz
+		return Vector2(x - signf(x) * 0.07 * (1.0 - v * v) * pow(absf(u), 6.0), z - signf(z) * 0.06 * (1.0 - u * u) * pow(absf(v), 6.0))
+	# the sheet on a grid, its outermost band the hem
+	var xs := PackedFloat32Array([-hx, -hx + 0.045])
+	var zs := PackedFloat32Array([-hz, -hz + 0.045])
+	var nx := maxi(10, int(sx / 0.11))
+	var nz := maxi(8, int(sz / 0.11))
+	for i in range(1, nx):
+		xs.append(lerpf(-hx + 0.045, hx - 0.045, float(i) / nx))
+	for j in range(1, nz):
+		zs.append(lerpf(-hz + 0.045, hz - 0.045, float(j) / nz))
+	xs.append_array([hx - 0.045, hx])
+	zs.append_array([hz - 0.045, hz])
+	var pts: Array = []
+	var nrm: Array = []
+	for j in zs.size():
+		var row := PackedVector3Array()
+		var nrow := PackedVector3Array()
+		for i in xs.size():
+			var x := xs[i]
+			var z := zs[j]
+			var at: Vector2 = drawn.call(x, z)
+			row.append(Vector3(at.x, float(height.call(x, z)), at.y))
+			var e := 0.025
+			var dx: float = float(height.call(x + e, z)) - float(height.call(x - e, z))
+			var dz: float = float(height.call(x, z + e)) - float(height.call(x, z - e))
+			nrow.append(Vector3(-dx / (2.0 * e), 1.0, -dz / (2.0 * e)).normalized())
+		pts.append(row)
+		nrm.append(nrow)
+	var body_v := PackedVector3Array()
+	var body_n := PackedVector3Array()
+	var hem_v := PackedVector3Array()
+	var hem_n := PackedVector3Array()
+	var last_i := xs.size() - 2
+	var last_j := zs.size() - 2
+	for j in zs.size() - 1:
+		for i in xs.size() - 1:
+			var hem := i == 0 or j == 0 or i == last_i or j == last_j
+			var v := hem_v if hem else body_v
+			var n := hem_n if hem else body_n
+			var r0: PackedVector3Array = pts[j]
+			var r1: PackedVector3Array = pts[j + 1]
+			var m0: PackedVector3Array = nrm[j]
+			var m1: PackedVector3Array = nrm[j + 1]
+			BuildingWire._tri(v, n, r0[i], r0[i + 1], r1[i + 1], m0[i], m0[i + 1], m1[i + 1])
+			BuildingWire._tri(v, n, r0[i], r1[i + 1], r1[i], m0[i], m1[i + 1], m1[i])
+	tk.part(BuildingKit._commit(body_v, body_n), "canvas", Transform3D.IDENTITY, col)
+	tk.part(BuildingKit._commit(hem_v, hem_n), "canvas", Transform3D.IDENTITY, col.darkened(0.3), false)
+	# the eyelets at its corners; cords from the lower two down to the eave
+	var cord := Color(0.78, 0.74, 0.62) if t.randf() < 0.6 else Color(0.85, 0.66, 0.18)
+	for cx: float in [-1.0, 1.0]:
+		for cz: float in [-1.0, 1.0]:
+			var c2: Vector2 = drawn.call(cx * (hx - 0.05), cz * (hz - 0.05))
+			var e := Vector3(c2.x, 0.02, c2.y)
+			tk.part(BuildingKit.ring(0.008, 0.016), "metal", Transform3D(Basis.IDENTITY, e), Color(0.6, 0.6, 0.58), false)
+			if cz < 0.0 and eave > hz + 0.2:
+				var foot := Vector3(e.x + cx * t.randf_range(0.0, 0.2), 0.02, -eave)
+				tk.rod(e, foot, 0.006, "canvas", cord, 4, false)
+				tk.rod(foot, foot + Vector3(0, -0.18, -0.06), 0.006, "canvas", cord, 4, false)
+	# the weights on it: old tyres lying flat, a sandbag, a batten along the top
+	for w: Array in weights:
+		var p: Vector2 = w[0]
+		if w[2]:
+			tk.box(Vector3(0.52, 0.16, 0.32), Vector3(p.x, 0.09, p.y), "sandbag", Color(0.55, 0.49, 0.34), Vector3(t.randf_range(-0.08, 0.08), t.randf() * TAU, 0))
 		else:
-			k.part(BuildingKit.ring(0.13, 0.28), "rubber", Transform3D(Basis.IDENTITY, p), Color(0.07, 0.07, 0.07))
+			var tilt := Basis.from_euler(Vector3(t.randf_range(-0.07, 0.07), t.randf() * TAU, t.randf_range(-0.07, 0.07)))
+			tk.part(Res.torus(0.2, 0.31), "rubber", Transform3D(tilt * Basis.from_scale(Vector3(1.0, 1.55, 1.0)), Vector3(p.x, 0.08, p.y)), Color(0.07, 0.07, 0.07))
+	if t.randf() < 0.6:
+		tk.bar(Vector3(-hx + 0.08, 0.035, hz - 0.12), Vector3(hx - 0.08, 0.035, hz - 0.12), 0.07, 0.035, "wood", Color(0.46, 0.38, 0.27))
 
 
 ## A hole in a roof, in a kit lying on the slope: the dark of the loft, the

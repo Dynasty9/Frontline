@@ -78,6 +78,8 @@ func ignite(st: Structure, heat := 0.15) -> bool:
 	st.fuel_max = float(spec[1]) * world.rng.randf_range(0.8, 1.2)
 	st.fuel = st.fuel_max
 	st.set_burn(clampf(heat, 0.1, 1.0))
+	if st.skind == "roof":
+		st.house_dark()  # the house is on fire: its lamps go out
 	burning.append([st, st.position, st.radius + 2.5])
 	_stamp(st.position, st.radius + 2.5, 1)
 	world.stat("fire_" + k)
