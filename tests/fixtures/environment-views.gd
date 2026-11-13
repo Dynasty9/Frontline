@@ -64,6 +64,16 @@ func capture() -> void:
 			if piece[0] == "awning" and town.has_point(Vector2(piece[1].x, piece[1].z)):
 				views.append(["shopfront", piece[1], 16.0, -32.0, float(piece[2]) + PI + 0.5])
 				break
+		# the central crossroads close up, the square, a car park from the street
+		views.append(["crossroads", center, 24.0, -48.0, 0.7])
+		for piece: Array in world.decor:
+			if piece[0] in ["fountain", "statue"]:
+				views.append(["square", piece[1], 26.0, -45.0, 0.7])
+				break
+		for piece: Array in world.decor:
+			if piece[0] == "lot_pave":
+				views.append(["carpark", piece[1], 22.0, -38.0, float(piece[2]) + PI * 0.5 + 0.4])
+				break
 		# a farmstead off the country road (its hay stacked by the barn)
 		for piece: Array in world.decor:
 			if piece[0] == "hay":

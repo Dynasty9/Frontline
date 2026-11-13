@@ -248,6 +248,26 @@ func _subject(kind: String) -> Node3D:
 				hs.position = spec[0]
 				street.add_child(hs)
 			return street
+		"street_kit":
+			# the streets' new furniture on a stretch of pavement: a hoarding,
+			# a telephone box, a post box, an advertising column, traffic
+			# lights, a street name, what someone dropped running away
+			var kit_root := Node3D.new()
+			var rng := RandomNumberGenerator.new()
+			rng.seed = 11
+			var k := BuildingKit.nodes(kit_root, rng)
+			k.box(Vector3(17.0, 0.12, 6.0), Vector3(0, -0.06, 0), "pavement", Color(0.62, 0.6, 0.56))
+			if ResourceLoader.exists("res://scripts/game/building_street.gd"):
+				var street: Variant = load("res://scripts/game/building_street.gd")
+				street.call("hoarding", k.at_point(Vector3(-5.0, 0, 2.0)), 5.6, rng)
+				street.call("phone_box", k.at_point(Vector3(0.0, 0, 1.6)), Color(0.7, 0.1, 0.08), rng)
+				street.call("post_box", k.at_point(Vector3(1.6, 0, 0.6)))
+				street.call("ad_column", k.at_point(Vector3(4.0, 0, 1.4)), rng)
+				street.call("traffic_light", k.at_point(Vector3(6.8, 0, 1.8)), 1.0, rng)
+				street.call("street_name", k.at_point(Vector3(7.8, 0, -1.2)), rng)
+				street.call("belongings", k.at_point(Vector3(-4.6, 0, -1.4)), rng)
+				street.call("belongings", k.at_point(Vector3(-1.2, 0, -1.6)), rng)
+			return kit_root
 		"house_rooms":
 			# three houses with their roofs off, as when men are inside, their
 			# back and left walls (the ones seen from inside) without windows:
