@@ -1,10 +1,11 @@
 extends SceneTree
-## Native generated-world review: four matched views, one map build, simulation held at two seconds.
+## Native generated-world review: matched views, one map build, simulation held at two seconds.
 
 func _initialize() -> void:
 	call_deferred("capture")
 
 func capture() -> void:
+	var source_hashes := _source_hashes()
 	var game = load("res://main.tscn").instantiate()
 	root.add_child(game)
 	current_scene = game
@@ -29,7 +30,7 @@ func capture() -> void:
 		quit()
 		return
 	var heights: PackedFloat32Array = world.terrain.landform.heights
-	assert(not heights.is_empty() or "--capture-set=trenches" in OS.get_cmdline_user_args(), "The environment stage needs a generated alpine map")
+	assert(not heights.is_empty() or "--capture-set=trenches" in OS.get_cmdline_user_args() or "--capture-set=fortifications" in OS.get_cmdline_user_args(), "The environment stage needs a generated alpine map")
 	var peak_index := 0
 	for i in heights.size():
 		if heights[i] > heights[peak_index]:
@@ -59,9 +60,53 @@ func capture() -> void:
 			if size.x > 2.5 and size.z > 3.0 and town.grow(20.0).has_point(Vector2(position.x, position.z)):
 				views.append(["driveway", position, 18.0, -50.0, float(piece[2]) + PI + 0.4])
 				break
+		# a shop's front, from across the pavement
+		for piece: Array in world.decor:
+			if piece[0] == "awning" and town.has_point(Vector2(piece[1].x, piece[1].z)):
+				views.append(["shopfront", piece[1], 16.0, -32.0, float(piece[2]) + PI + 0.5])
+				break
+		# a farmstead off the country road (its hay stacked by the barn)
+		for piece: Array in world.decor:
+			if piece[0] == "hay":
+				views.append(["farm", piece[1], 34.0, -42.0, 0.7])
+				break
 		print("CAPTURE town bounds=", town)
 	if "--capture-set=trenches" in OS.get_cmdline_user_args():
 		views = [["trenches", Vector3(0, 0, -28), 24.0, -48.0, 0.5]]
+	if "--capture-set=fortifications" in OS.get_cmdline_user_args():
+		views = [["earthwork", Vector3(0, 0, -28), 13.0, -38.0, 0.5],
+			["cut", Vector3(3, -0.6, -28), 5.5, -23.0, 0.5],
+			["inside", Vector3(3, -0.6, -28), 5.5, -23.0, 0.5],
+			["bunker", Vector3(0, 0, -58), 14.0, -32.0, -0.65],
+			["position", Vector3(0, 0, -40), 55.0, -50.0, 0.35]]
+	if "--slope-review" in OS.get_cmdline_user_args():
+		assert(not heights.is_empty(), "Slope review requires generated geology")
+		var target := Vector3(-110, 0, -130)
+		var best := INF
+		for x in range(-180, -70, 10):
+			for z in range(-180, -70, 10):
+				var point := Vector3(x, 0, z)
+				var grade: float = absf(world.terrain.landform.height(point + Vector3.RIGHT * 6.0) - world.terrain.landform.height(point - Vector3.RIGHT * 6.0)) / 12.0
+				if grade > 0.08 and grade < 0.18 and point.distance_squared_to(Vector3(-110, 0, -130)) < best:
+					target = point
+					best = point.distance_squared_to(Vector3(-110, 0, -130))
+		assert(best < INF, "Review seed must provide a useful moderate slope")
+		# Clear only this review footprint so foliage cannot hide foundation gaps.
+		for obstacle in world.structures.duplicate():
+			var offset: Vector3 = obstacle.position - target - Vector3(0,0,4)
+			if obstacle.skind == "tree" and Vector2(offset.x, offset.z).length() < 17.0:
+				world.despawn(obstacle)
+		target.y = world.terrain.landform.height(target)
+		world.spawn("structure", {"skind": "trench", "team": 1, "pos": target, "yaw": 0.0, "built": true, "progress": 1.0})
+		var bunker_pos := target + Vector3(0, 0, 9)
+		bunker_pos.y = world.terrain.landform.height(bunker_pos)
+		world.spawn("structure", {"skind": "bunker", "team": 1, "pos": bunker_pos, "yaw": 0.0, "built": true, "progress": 1.0})
+		world.terrain.tick(1 << 30)
+		world.atmo.trench_net.mark_dirty()
+		world.atmo.trench_net.rebuild()
+		views = [["earthwork", target, 18.0, -38.0, 0.5], ["cut", target + Vector3(0,-0.6,0), 6.0, -23.0, 0.5],
+			["bunker", bunker_pos, 16.0, -32.0, -0.65], ["position", target, 45.0, -50.0, 0.35]]
+		print("SLOPE_REVIEW ", target, " bunker=", bunker_pos)
 	var settle_frames := 90
 	if "--capture-set=shoreline" in OS.get_cmdline_user_args():
 		var shore: float = world.water.coast_x(0.0)
@@ -138,20 +183,40 @@ func capture() -> void:
 		views = [["boundary", Vector3.ZERO, 900.0, -14.0, 0.7, 3, "day"]]
 	if "--capture-set=coast-join" in OS.get_cmdline_user_args():
 		views = [["shore-join", Vector3(world.water.coast_x(MapDims.HALF), 0, MapDims.HALF), 180.0, -30.0, 0.7, 3, "day"]]
+	if "--weather-review" in OS.get_cmdline_user_args() and "--capture-set=fortifications" in OS.get_cmdline_user_args():
+		var base_views := views.duplicate(true)
+		views = []
+		for mood in ["day", "overcast", "rain", "night"]:
+			for index in [0, 1, 3]:
+				var view: Array = base_views[index].duplicate()
+				view[0] = String(view[0]) + "-" + mood
+				view.append(3)
+				view.append(mood)
+				views.append(view)
+		settle_frames = 120
 	RenderingServer.viewport_set_measure_render_time(root.get_viewport_rid(), true)
 	var records := []
 	for view in views:
 		if view.size() > 6:
 			world.atmo.apply_mood(view[6])
+			if "--weather-review" in OS.get_cmdline_user_args():
+				world.atmo.rain_wet = -1.0
+				world.atmo._wet_tick(0.0)
 		if view.size() > 5:
 			get_root().get_node("Settings").v.mountain_clouds = view[5]
 			world.atmo.mountain_clouds.apply_settings(world.atmo)
+		world.cam.cam.rotation = Vector3.ZERO
 		world.cam.dist = view[2]
 		world.cam.target_dist = view[2]
 		world.cam.pitch_deg = view[3]
 		world.cam.yaw = view[4]
 		world.cam.focus_pos = view[1]
 		world.cam._apply()
+		if String(view[0]).begins_with("cut"):
+			world.cam.position = view[1]
+		if view[0] == "inside":
+			world.cam.cam.global_position = Vector3(0.8, 0.02, -28.0)
+			world.cam.cam.look_at(Vector3(4.8, -0.5, -28.3))
 		if world.atmo.mood == "rain":
 			world.atmo._bolt_t = 100.0
 			world.atmo._flash = 0.0
@@ -176,14 +241,18 @@ func capture() -> void:
 			var frames := prefix + "-" + clip + "-frames"
 			assert(DirAccess.make_dir_recursive_absolute(frames) == OK)
 			for frame in 180:
+				if "--capture-set=fortifications" in OS.get_cmdline_user_args():
+					world.cam.yaw = float(view[4]) + 0.18 * sin(float(frame) * TAU / 180.0)
+					world.cam._apply()
 				await process_frame
 				await RenderingServer.frame_post_draw
 				assert(root.get_texture().get_image().save_png(frames + "/%04d.png" % frame) == OK)
-		records.append({"file": filename, "focus": str(view[1]), "zoom": view[2], "pitch": view[3], "yaw": view[4], "time": world.time, "mood": world.atmo.mood, "cloud_quality": get_root().get_node("Settings").v.mountain_clouds, "frame_ms": frame_ms, "gpu_ms": gpu_ms})
+		records.append({"file": filename, "focus": str(view[1]), "zoom": view[2], "pitch": view[3], "yaw": view[4], "camera_position": str(world.cam.cam.global_position), "camera_rotation": str(world.cam.cam.global_rotation), "time": world.time, "wetness": world.atmo.rain_wet, "mood": world.atmo.mood, "cloud_quality": get_root().get_node("Settings").v.mountain_clouds, "frame_ms": frame_ms, "gpu_ms": gpu_ms})
 		print("CAPTURE ", filename)
+	assert(source_hashes == _source_hashes(), "Capture source changed during rendering; discard this take")
 	var output := FileAccess.open(prefix + ".json", FileAccess.WRITE)
 	assert(output != null)
-	output.store_string(JSON.stringify({"seed": world.settings.get("seed", 1), "mood": world.atmo.mood, "renderer": RenderingServer.get_current_rendering_method(), "resolution": root.size, "views": records}, "\t"))
+	output.store_string(JSON.stringify({"seed": world.settings.get("seed", 1), "mood": world.atmo.mood, "renderer": RenderingServer.get_current_rendering_method(), "resolution": root.size, "source_sha256": source_hashes, "views": records}, "\t"))
 	quit()
 
 
@@ -219,3 +288,11 @@ func _trench_build(world, prefix: String) -> void:
 	print("TRENCH_CAPTURE ", JSON.stringify(records))
 	var output := FileAccess.open(prefix + ".json", FileAccess.WRITE)
 	output.store_string(JSON.stringify({"fps": 10, "simulation_hz": 30, "damage_at": 18, "records": records}, "\t"))
+
+
+func _source_hashes() -> Dictionary:
+	var hashes := {}
+	if "--capture-set=fortifications" in OS.get_cmdline_user_args():
+		for path in ["scripts/game/trench_net.gd", "scripts/game/trench_earth.gdshaderinc", "scripts/game/works_models.gd", "scripts/game/structure.gd", "scripts/game/grass.gd", "scripts/game/trench_vegetation.gdshaderinc", "scripts/game/atmosphere.gd", "scripts/game/mapgen.gd", "scripts/game/mats.gd", "tests/fixtures/environment-views.gd"]:
+			hashes[path] = FileAccess.get_sha256("res://" + path)
+	return hashes
