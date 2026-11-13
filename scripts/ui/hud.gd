@@ -22,7 +22,7 @@ func refresh_minimap() -> void:
 
 ## The minimap's side in pixels for each size setting, and the panel's margin round it.
 const MINIMAP_PX := [200.0, 250.0, 320.0]
-const MINIMAP_PAD := 5.0
+const MINIMAP_PAD := 2.0  # a hairline of ink round the map: the ticks mark the region, not a thick border
 
 
 func minimap_side() -> float:
@@ -421,7 +421,7 @@ func _ready() -> void:
 	root.add_child(veil)
 	over_panel = _center_panel(Vector2(440, 220))
 	help_panel = _center_panel(Vector2(1000, 640))
-	menu_panel = _center_panel(Vector2(340, 316))
+	menu_panel = _center_panel(Vector2(340, 316))  # sized to its rows when it opens (_fit_menu)
 	_build_help()
 	Keys.changed.connect(_keys_changed)
 	_build_menu()
@@ -459,7 +459,10 @@ func _ready() -> void:
 
 func _build_observer_bar() -> void:
 	obs_bar = PanelContainer.new()
-	obs_bar.add_theme_stylebox_override("panel", UiKit.frame(Color(-1, 0, 0), 6.0, 0.6, 8.0))
+	# a strip of controls on the top scrim, ruled underneath, with no box round it
+	var strip := UiKit.underline(UiKit.LINE, 4.0, 0.0)
+	strip.bg_color = UiKit.PANEL_SOFT
+	obs_bar.add_theme_stylebox_override("panel", strip)
 	obs_bar.anchor_left = 0.5
 	obs_bar.anchor_right = 0.5
 	obs_bar.grow_horizontal = Control.GROW_DIRECTION_BOTH
@@ -467,10 +470,10 @@ func _build_observer_bar() -> void:
 	obs_bar.visible = false
 	root.add_child(obs_bar)
 	var hb := HBoxContainer.new()
-	hb.add_theme_constant_override("separation", 6)
+	hb.add_theme_constant_override("separation", 2)
 	obs_bar.add_child(hb)
 	var tag := UiKit.caps("Observer", 12, UiKit.ACCENT)
-	tag.custom_minimum_size = Vector2(76, 0)
+	tag.custom_minimum_size = Vector2(92, 0)
 	tag.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	tag.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	hb.add_child(tag)
@@ -491,13 +494,12 @@ func _build_observer_bar() -> void:
 	obs_dir.toggle_mode = true
 	hb.add_child(obs_dir)
 	obs_view = _small_button("View: Both", "Whose eyes to watch through: both sides, or one side's fog of war (V)", func(): world.director.cycle_view())
-	obs_view.custom_minimum_size = Vector2(130, 30)
+	obs_view.custom_minimum_size = Vector2(150, 30)
 	hb.add_child(obs_view)
 	var s2 := VSeparator.new()
 	hb.add_child(s2)
 	var fs := _small_button("Fire support", "Call in any air or artillery support to watch it (observer demo)", func(): demo_panel.visible = not demo_panel.visible)
 	fs.toggle_mode = true
-	fs.custom_minimum_size = Vector2(110, 30)
 	hb.add_child(fs)
 	_build_demo_panel()
 
@@ -548,8 +550,25 @@ func _small_button(text: String, tip: String, cb: Callable) -> Button:
 	b.text = text.to_upper()
 	b.tooltip_text = tip
 	b.focus_mode = Control.FOCUS_NONE
-	b.custom_minimum_size = Vector2(34 if text.length() <= 1 else 74, 30)
+	b.custom_minimum_size = Vector2(28 if text.length() <= 1 else 0, 30)
 	b.add_theme_font_size_override("font_size", 12)
+	# a control on the scrim, not a boxed button (docs/UI.md, Options: tabs):
+	# DIM at rest, lit under the cursor, the accent and an underline when on
+	var rest := UiKit.underline(Color(0, 0, 0, 0), 10.0, 6.0)
+	var lit := UiKit.underline(UiKit.RULE2, 10.0, 6.0)
+	lit.bg_color = UiKit.fa(UiKit.TEXT, 0.05)
+	var on := UiKit.underline(UiKit.ACCENT, 10.0, 6.0)
+	on.border_width_bottom = 2
+	for st: String in ["normal", "focus", "disabled"]:
+		b.add_theme_stylebox_override(st, rest)
+	b.add_theme_stylebox_override("hover", lit)
+	b.add_theme_stylebox_override("pressed", on)
+	b.add_theme_stylebox_override("hover_pressed", on)
+	b.add_theme_color_override("font_color", UiKit.DIM)
+	b.add_theme_color_override("font_hover_color", UiKit.TEXT)
+	b.add_theme_color_override("font_pressed_color", UiKit.ACCENT)
+	b.add_theme_color_override("font_hover_pressed_color", UiKit.ACCENT)
+	b.add_theme_color_override("font_disabled_color", UiKit.FAINT)
 	b.pressed.connect(func(): Sfx.ui("click"); cb.call())
 	return b
 
@@ -703,6 +722,7 @@ func _kt(id: String) -> String:
 
 func _build_menu() -> void:
 	var vb := VBoxContainer.new()
+	_menu_vb = vb
 	vb.add_theme_constant_override("separation", 0)
 	UiKit.scroll_content(menu_panel, vb)
 	var head := HBoxContainer.new()
@@ -713,7 +733,8 @@ func _build_menu() -> void:
 	_menu_clock = UiKit.mono_label("", 12, UiKit.DIM)
 	head.add_child(_menu_clock)
 	_menu_ctx = UiKit.mono_label("", 12, UiKit.FAINT)
-	_menu_ctx.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_menu_ctx.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS  # one line, so the dialog fits its rows
+	_menu_ctx.custom_minimum_size.x = 1.0
 	vb.add_child(_menu_ctx)
 	var gap := Control.new()
 	gap.custom_minimum_size = Vector2(0, 14)
@@ -729,6 +750,7 @@ func _build_menu() -> void:
 			["Controls", Keys.label("help"), func(): menu_panel.visible = false; toggle_help(), false],
 			["Leave battle", "", _leave, true]]:
 		vb.add_child(list_item(String(it[0]), String(it[1]), it[2], bool(it[3])))
+	_fit_menu()
 
 
 ## The pause dialog's context: the battle's clock and what battle it is.
@@ -815,6 +837,7 @@ func toggle_menu() -> void:
 	menu_panel.visible = not menu_panel.visible
 	if menu_panel.visible:
 		_menu_context()
+		_fit_menu()
 		UiMotion.arrive(menu_panel, Vector2(0, 1))
 
 
@@ -1157,7 +1180,7 @@ func show_game_over(w: int) -> void:
 		hv.add_child(UiKit.caps("After-action report", 11, UiKit.FAINT, 600, 2))
 		var t := UiKit.caps("", 34, UiKit.TEXT, 600, 4)
 		if world.local_team < 0:
-			t.text = "%s WIN" % Defs.TEAM_NAMES[w].to_upper()
+			t.text = "%s VICTORY" % Defs.TEAM_NAMES[w].to_upper()
 			t.add_theme_color_override("font_color", Defs.TEAM_COLORS[w].lightened(0.3))
 		elif w == world.local_team:
 			t.text = "VICTORY"
@@ -1241,7 +1264,7 @@ func _end_sequence(w: int) -> void:
 		ban.headline = "MISSION ACCOMPLISHED" if ok else "MISSION FAILED"
 		ban.sub = String(world.mission_info.get("op", ""))
 	elif world.local_team < 0:
-		ban.headline = "%s WIN" % String(Defs.TEAM_NAMES[w]).to_upper()
+		ban.headline = "%s VICTORY" % String(Defs.TEAM_NAMES[w]).to_upper()
 		ban.sub = "Battle lasted %s" % UiKit.fmt_time(world.time)
 	else:
 		ban.headline = "VICTORY" if won else "DEFEAT"
@@ -1641,13 +1664,15 @@ func _update_support() -> void:
 		var nm: Label = b.get_meta("name")
 		if left <= 0.0:
 			var zk := Keys.label("support")
-			state.text = ("[%s] RDY · %d" % [zk.to_upper(), int(sd.cost)]) if first and zk != "" else ("RDY · %d" % int(sd.cost))
+			state.text = "RDY · %d" % int(sd.cost)
+			_fire_key(b, zk.to_upper() if first else "")
 			state.add_theme_color_override("font_color", UiKit.GOOD)
 			nm.add_theme_color_override("font_color", UiKit.TEXT)
 			first = false
 			b.visible = true
 		else:
 			state.text = "%dS" % int(ceil(left))
+			_fire_key(b, "")
 			state.add_theme_color_override("font_color", UiKit.DIM)
 			nm.add_theme_color_override("font_color", UiKit.DIM)
 			cooling.append([left, b])
@@ -1660,6 +1685,14 @@ func _update_support() -> void:
 	_fires_more.visible = hidden > 0 or (_fires_open and cooling.size() > 0)
 	(_fires_more.get_meta("name") as Label).text = ("+%d on cooldown" % hidden) if hidden > 0 else "Fold the list"
 	(_fires_more.get_meta("state") as Label).text = ("NEXT %dS" % int(ceil(float(cooling[show_n][0])))) if hidden > 0 else ""
+
+
+## Shows a key in a fire row's key box, or hides the box ("").
+func _fire_key(b: Button, k: String) -> void:
+	var kb: PanelContainer = b.get_meta("key")
+	kb.visible = k != ""
+	if k != "":
+		(kb.get_child(0) as Label).text = k
 
 
 ## A row of the fire support list: its name, and its state at the end.
@@ -1690,6 +1723,13 @@ func _fire_row(name: String, tip: String, cb: Callable) -> Button:
 	l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	row.add_child(l)
+	# the support key, boxed like every key on screen, on the first ready row
+	var kb := _key_box("")
+	kb.visible = false
+	kb.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	kb.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	row.add_child(kb)
+	b.set_meta("key", kb)
 	var st := UiKit.mono_label("", 12, UiKit.DIM)
 	st.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	st.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -2123,3 +2163,16 @@ func _card_active() -> void:
 		kb.add_theme_stylebox_override("panel", sb)
 		(kb.get_child(0) as Label).add_theme_color_override("font_color", UiKit.ON_ACCENT if on else UiKit.TEXT)
 		(b.get_meta("name") as Label).add_theme_color_override("font_color", UiKit.ACCENT if on else UiKit.TEXT)
+
+
+var _menu_vb: VBoxContainer
+
+
+## The pause dialog fits its rows exactly: the last one ends at the bottom edge,
+## with no empty ink under it.
+func _fit_menu() -> void:
+	if _menu_vb == null:
+		return
+	var sb := menu_panel.get_theme_stylebox("panel")
+	var h := _menu_vb.get_combined_minimum_size().y + (sb.get_minimum_size().y if sb else 0.0)
+	UiKit.fit_center(menu_panel, Vector2(340, ceilf(h)))

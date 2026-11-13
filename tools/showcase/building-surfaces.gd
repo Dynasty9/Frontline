@@ -183,6 +183,13 @@ func _subject(kind: String) -> Node3D:
 			return _house(9.0, 7.6, 1, false)
 		"house_flat":
 			return _house(8.4, 7.4, 3, true)
+		"house_yard", "house_yard_bare":
+			# a house with what the town keeps round it (as TownGen places it),
+			# or without, for a matched comparison
+			var yard := _house(9.0, 7.6, 1, false)
+			if kind == "house_yard" and ClassDB.class_exists("Node") and ResourceLoader.exists("res://scripts/game/building_yards.gd"):
+				_yard(yard, 9.0, 7.6)
+			return yard
 		"house_open":
 			# the roof hidden, as when men are inside: the room as they see it
 			return _house(9.0, 7.6, 1, false, false)
@@ -280,6 +287,23 @@ func _house(w: float, d: float, color: int, flat: bool, roofed := true, ruined :
 		var roof := Structure.preview_model("roof", -1, color * 2 + (1 if flat else 0), Vector3(w, 3.0, d))
 		root.add_child(roof)
 	return root
+
+
+## The yard dressing round a 9 x 7.6 house, front (the street) at -z: bins at
+## a front corner, pots by the door, a bicycle on a side wall, a woodpile on the
+## back wall, a garden set and a kennel behind.
+func _yard(root: Node3D, w: float, d: float) -> void:
+	var yards: GDScript = load("res://scripts/game/building_yards.gd")
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 5
+	var k := BuildingKit.nodes(root, rng)
+	yards.call("bins", k.at_point(Vector3(w * 0.5 - 0.5, 0, -d * 0.5 - 0.95), Vector3(0, PI, 0)), 2, yards.get("BIN_COLS")[0])
+	yards.call("pots", k.at_point(Vector3(-1.4, 0, -d * 0.5 - 0.82), Vector3(0, PI, 0)), 2, rng)
+	yards.call("bicycle", k.at_point(Vector3(-w * 0.5 - 0.2, 0, -1.0), Vector3(0, -PI * 0.5, 0)), yards.get("BIKE_COLS")[1])
+	yards.call("woodpile", k.at_point(Vector3(w * 0.5 - 1.5, 0, d * 0.5 + 0.41)), 1.8, rng)
+	yards.call("garden_set", k.at_point(Vector3(-w * 0.22, 0, d * 0.5 + 1.9), Vector3(0, 0.4, 0)), rng, true)
+	yards.call("kennel", k.at_point(Vector3(-w * 0.5 + 1.2, 0, d * 0.5 + 2.2), Vector3(0, PI + 0.3, 0)), Color(0.45, 0.32, 0.2))
+	Mats.merge_static(root)
 
 
 func _bounds(node: Node3D, parent: Transform3D) -> AABB:

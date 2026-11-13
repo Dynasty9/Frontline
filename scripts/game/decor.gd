@@ -21,6 +21,8 @@ const BREAKABLE := {
 	"sign_town": [Vector3(2.0, 2.3, 0.15), 40.0], "bench": [Vector3(1.9, 0.9, 0.6), 60.0],
 	"bin": [Vector3(0.5, 0.9, 0.5), 20.0], "hydrant": [Vector3(0.35, 0.7, 0.35), 90.0],
 	"mailbox": [Vector3(0.3, 1.25, 0.45), 15.0], "bus_stop": [Vector3(3.3, 2.4, 1.6), 300.0],
+	"bins": [Vector3(1.3, 1.0, 0.75), 25.0], "pots": [Vector3(1.2, 0.5, 0.45), 15.0],
+	"bike": [Vector3(0.5, 1.0, 1.7), 15.0], "garden_set": [Vector3(1.7, 1.0, 1.7), 30.0], "kennel": [Vector3(0.75, 0.85, 0.95), 40.0],
 	"planter": [Vector3(1.2, 1.1, 1.2), 400.0], "bollard": [Vector3(0.2, 0.85, 0.2), 60.0],
 	"stall": [Vector3(2.6, 2.3, 1.5), 80.0], "fence": [Vector3(2.0, 1.1, 0.15), 40.0],
 	"clothesline": [Vector3(4.0, 1.9, 0.9), 20.0], "flagpole": [Vector3(0.2, 8.0, 0.2), 60.0],
@@ -385,9 +387,12 @@ func _make(h: Node3D, kind: String, ex) -> void:
 		"zebra":
 			var wd := float(ex)
 			var n := 6
+			# The centre line stops short of a crossing: the same asphalt as the
+			# road (it's laid in world space, so it joins without a seam) over it.
+			_m(Res.box(Vector3(6.6, 0.02, 0.5)), "asphalt", Vector3(0, 0.032, 0), null, Vector3.ZERO, false, true)
 			for i in n:
 				var z := -wd * 0.5 + (i + 0.5) * wd / n
-				_m(Res.box(Vector3(2.6, 0.01, wd / n * 0.5)), "paint", Vector3(0, 0.044, z), Color(0.86, 0.86, 0.82), Vector3.ZERO, false, true)
+				_m(Res.box(Vector3(2.6, 0.01, wd / n * 0.5)), "road_paint", Vector3(0, 0.044, z), Color(0.95, 0.95, 0.93), Vector3.ZERO, false, true)
 		"lamp":
 			if ex == 1:
 				_m(Res.cyl(0.08, 0.12, 6.0, 8), "wood_dark", Vector3(0, 3.0, 0))
@@ -529,6 +534,22 @@ func _make(h: Node3D, kind: String, ex) -> void:
 				_sag(h.transform * Vector3(-2.0, 1.85, z), h.transform * Vector3(2.0, 1.85, z), 0.15)
 				for i in rng.randi_range(2, 3):
 					_m(Res.box(Vector3(rng.randf_range(0.4, 0.7), rng.randf_range(0.5, 0.75), 0.02)), "fabric", Vector3(-1.4 + i * 1.1 + rng.randf_range(-0.2, 0.2), 1.45, z), CANVAS[rng.randi() % CANVAS.size()].lightened(0.25), Vector3.ZERO, false)
+		"bins", "pots", "woodpile", "garden_set", "kennel", "bike":
+			# what people keep round their houses (BuildingYards)
+			var yk := BuildingKit.baked(_bake, rng, _at)
+			match kind:
+				"bins":
+					BuildingYards.bins(yk, int(ex) / 10, BuildingYards.BIN_COLS[int(ex) % 10 % BuildingYards.BIN_COLS.size()])
+				"pots":
+					BuildingYards.pots(yk, int(ex), rng)
+				"woodpile":
+					BuildingYards.woodpile(yk, float(ex), rng)
+				"garden_set":
+					BuildingYards.garden_set(yk, rng, int(ex) == 1)
+				"kennel":
+					BuildingYards.kennel(yk, [Color(0.45, 0.32, 0.2), Color(0.25, 0.35, 0.25), Color(0.6, 0.55, 0.45)][rng.randi() % 3])
+				"bike":
+					BuildingYards.bicycle(yk, BuildingYards.BIKE_COLS[int(ex) % BuildingYards.BIKE_COLS.size()])
 		"mailbox":
 			_m(Res.box(Vector3(0.07, 1.0, 0.07)), "wood_dark", Vector3(0, 0.5, 0), null, Vector3.ZERO, false)
 			_m(Res.box(Vector3(0.26, 0.24, 0.42)), "paint", Vector3(0, 1.1, 0), [Color(0.2, 0.35, 0.25), Color(0.6, 0.15, 0.12), Color(0.15, 0.25, 0.45), Color(0.12, 0.12, 0.12)][rng.randi() % 4], Vector3.ZERO, false)
@@ -616,14 +637,14 @@ func _make(h: Node3D, kind: String, ex) -> void:
 			_m(Res.box(Vector3(p2.x, 0.03, p2.z)), "pavement", Vector3(0, 0.02, 0), Color(0.56, 0.53, 0.47), Vector3.ZERO, false, true)
 		"pave":
 			var pv: Vector3 = ex
-			_m(Res.box(Vector3(pv.x, 0.1, pv.z)), "floor_tiles", Vector3(0, 0.05, 0), Color(0.62, 0.58, 0.52), Vector3.ZERO, false, true)
+			_m(Res.box(Vector3(pv.x, 0.1, pv.z)), "square_paving", Vector3(0, 0.05, 0), Color(0.56, 0.535, 0.49), Vector3.ZERO, false, true)
 		"lot_pave":
 			var lp: Vector3 = ex
 			_m(Res.box(Vector3(lp.x, 0.04, lp.z)), "asphalt", Vector3(0, 0.025, 0), null, Vector3.ZERO, false, true)
 			var slots := int(lp.x / 2.6)
 			for i in slots + 1:
 				var x := -lp.x * 0.5 + i * 2.6 + (lp.x - slots * 2.6) * 0.5
-				_m(Res.box(Vector3(0.08, 0.005, 4.6)), "paint", Vector3(x, 0.05, lp.y * 2.6), Color(0.85, 0.85, 0.8), Vector3.ZERO, false, true)
+				_m(Res.box(Vector3(0.08, 0.005, 4.6)), "road_paint", Vector3(x, 0.05, lp.y * 2.6), Color(0.94, 0.94, 0.9), Vector3.ZERO, false, true)
 
 
 func _bench(o: Vector3) -> void:

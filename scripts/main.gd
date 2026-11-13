@@ -2,6 +2,7 @@ extends Node
 ## Root: owns the menu and the World. Also understands a few command-line
 ## switches (after `--`) used for automated testing:
 ##   --aivai               host as spectator, both sides AI
+##     --ai-difficulty=LEVEL or 0:LEVEL,1:LEVEL   recruit, regular, veteran or adaptive (every AI, or per side)
 ##   --host [--players=N]  host and start (when N players have joined; the
 ##                         lobby shows meanwhile)
 ##     --battle-name=NAME --coop --max-players=N --password=PW   the lobby's settings
@@ -372,6 +373,18 @@ func start_local(a: Dictionary) -> void:
 			Net.set_setting(k.replace("-", "_"), float(a[k]))
 	# --ai-allies: with --play, an AI commander fights beside you on your side
 	Net.set_setting("ai_allies", a.has("ai-allies"))
+	# --ai-difficulty=veteran (every AI commander), or per side: 0:recruit,1:regular
+	# (set every time: a test port loads one game after another in one process)
+	var per := ["", ""]
+	Net.set_setting("ai_difficulty", "regular")
+	if a.has("ai-difficulty"):
+		for part in String(a["ai-difficulty"]).split(","):
+			var kv := part.split(":")
+			if kv.size() == 2 and kv[0].is_valid_int() and int(kv[0]) in [0, 1]:
+				per[int(kv[0])] = kv[1].strip_edges()
+			else:
+				Net.set_setting("ai_difficulty", part.strip_edges())
+	Net.set_setting("ai_difficulty_teams", per)
 	if a.has("scenario"):
 		# --play: command the Coalition side yourself instead of watching
 		Net.set_setting("scenario", String(a.scenario))
@@ -480,7 +493,16 @@ func _mission_text(s: Dictionary) -> Array:
 				humans += 1
 		what = ("Command the %s against the AI" % Defs.TEAM_NAMES[team]) if humans <= 1 else ("%d commanders, %s" % [humans, "co-op" if s.get("ai_fill", true) else "head to head"])
 	side = Defs.TEAM_NAMES[team] if team >= 0 else "Observer"
-	return [what, [["SIDE", side], ["AREA", "Mountain valleys, rivers and towns, %d x %d m" % [int(s.get("map_size", 1024)), int(s.get("map_size", 1024))]], ["CONDITIONS", "Assessing"]]]
+	var rows := [["SIDE", side], ["AREA", "Mountain valleys, rivers and towns, %d x %d m" % [int(s.get("map_size", 1024)), int(s.get("map_size", 1024))]]]
+	if String(s.get("scenario", "")) == "" and not (s.get("ai_teams", []) as Array).is_empty():
+		var lv := []
+		for t in s.get("ai_teams", []):
+			var n := String(Defs.AI_LEVELS[Defs.ai_level_of(s, int(t))].name)
+			if not n in lv:
+				lv.append(n)
+		rows.append(["AI", " / ".join(lv)])
+	rows.append(["CONDITIONS", "Assessing"])
+	return [what, rows]
 
 
 func _on_game_start(s: Dictionary) -> void:
@@ -899,9 +921,9 @@ func _process(_dt: float) -> void:
 			var mu := String(args["menu-update"]).split(",")
 			var st: int = ["available", "downloading", "ready", "failed"].find(mu[1] if mu.size() > 1 else "available") + 1
 			Updater.pretend(mu[0], st)
-		# --menu-panel=browse|host|account|record|settings|insignia: the server browser,
+		# --menu-panel=browse|host|account|record|settings|insignia|op: the server browser,
 		# the host setup, the sign-in panel, the service record (signed in), the settings,
-		# the insignia
+		# the insignia, Play vs AI's new operation
 		if args.has("menu-panel") and menu and menu.browser and not has_meta("panel_open") and Engine.get_frames_drawn() > 5:
 			set_meta("panel_open", true)
 			match String(args["menu-panel"]):
@@ -916,6 +938,8 @@ func _process(_dt: float) -> void:
 					menu._open_host({"mode": String(args.get("host-mode", "coop"))})
 				"insignia":
 					menu._open_insignia()
+				"op":
+					menu._open_op(0)
 				_:
 					menu._open_browser()
 		# --browse-pick=TEXT: choose that battle in the server browser once it's listed
@@ -1411,7 +1435,9 @@ func _process(_dt: float) -> void:
 		if String(args["hud-panel"]) == "over":
 			world.hud.show_game_over(maxi(world.local_team, 0))
 		var hp: Control = {"settings": world.hud.settings_panel, "help": world.hud.help_panel, "menu": world.hud.menu_panel, "log": world.hud.log_panel}.get(String(args["hud-panel"]))
-		if hp:
+		if hp == world.hud.menu_panel:
+			world.hud.toggle_menu()  # as Esc opens it, fitted to its rows
+		elif hp:
 			hp.visible = true
 			if hp is SettingsPanel:
 				(hp as SettingsPanel)._show_tab(String(args.get("settings-tab", "interface")))
