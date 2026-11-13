@@ -574,13 +574,25 @@ static func bake_mesh(root: Node3D) -> ArrayMesh:
 
 ## Moving vehicle parts keep their pivots, but distant paint needs one surface.
 static func add_distance_lod(root: Node3D, distance: float, keep: Array = []) -> void:
+	var lod := distance_lod_parts(root, keep)
+	if not lod.is_empty():
+		attach_distance_lod(root, distance, lod[1], _bake_groups(lod[0]))
+
+
+## What add_distance_lod makes the distant mesh of: [groups, the meshes it
+## stands in for], or [] for nothing. (In two halves for a model made over
+## several frames, its distant mesh worked out on a worker meanwhile.)
+static func distance_lod_parts(root: Node3D, keep: Array = []) -> Array:
 	var groups := {}
 	var originals := []
 	_collect(root, Transform3D.IDENTITY, groups, originals, keep, false, true, true)
-	if groups.is_empty():
-		return
+	return [] if groups.is_empty() else [groups, originals]
+
+
+## The distant mesh under root, from `distance` out, where the originals end.
+static func attach_distance_lod(root: Node3D, distance: float, originals: Array, mesh: ArrayMesh) -> void:
 	var coarse := MeshInstance3D.new()
-	coarse.mesh = _bake_groups(groups)
+	coarse.mesh = mesh
 	coarse.visibility_range_begin = distance
 	coarse.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	for original: MeshInstance3D in originals:
@@ -603,6 +615,44 @@ const BAKED_KEEP := 1024
 ## mesh is made once, and a part with the same triangles, colours and paint
 ## shares it.
 static func _bake_groups(groups: Dictionary) -> ArrayMesh:
+	var key := _bake_key(groups)
+	var known: ArrayMesh = _baked.get(key)
+	if known != null:
+		return known
+	var importer := ImporterMesh.new()
+	_make_distant(_distant_arrays(groups), importer, distant_material())
+	return _keep_baked(key, importer)
+
+
+## The same, started on a worker thread: welding and simplifying a car took
+## 25-65 ms in one call, too long for a frame. Poll bake_done(job), then
+## bake_result(job), both on the main thread.
+static func bake_groups_later(groups: Dictionary) -> Dictionary:
+	var key := _bake_key(groups)
+	var known: ArrayMesh = _baked.get(key)
+	if known != null:
+		return {"key": key, "mesh": known}
+	var importer := ImporterMesh.new()
+	var arrays := _distant_arrays(groups)
+	if OS.has_feature("web"):
+		_make_distant(arrays, importer, distant_material())  # (no threads in a browser)
+		return {"key": key, "mesh": _keep_baked(key, importer)}
+	# (the task touches nothing but its own arrays and importer: see AGENTS.md on workers)
+	return {"key": key, "importer": importer, "task": WorkerThreadPool.add_task(_make_distant.bind(arrays, importer, distant_material()), false, "distant mesh")}
+
+
+static func bake_done(job: Dictionary) -> bool:
+	return job.has("mesh") or WorkerThreadPool.is_task_completed(int(job.task))
+
+
+static func bake_result(job: Dictionary) -> ArrayMesh:
+	if not job.has("mesh"):
+		WorkerThreadPool.wait_for_task_completion(int(job.task))
+		job["mesh"] = _keep_baked(job.key, job.importer)
+	return job.mesh
+
+
+static func _bake_key(groups: Dictionary) -> PackedInt64Array:
 	var key := PackedInt64Array()
 	for group: Dictionary in groups.values():
 		key.append((group.mat as ShaderMaterial).get_instance_id())
@@ -610,17 +660,19 @@ static func _bake_groups(groups: Dictionary) -> ArrayMesh:
 		key.append(hash((group.n as PackedVector3Array).to_byte_array()))
 		key.append(hash((group.c as PackedColorArray).to_byte_array()))
 		key.append((group.v as PackedVector3Array).size())
-	var known: ArrayMesh = _baked.get(key)
-	if known != null:
-		return known
-	var made := _bake_groups_now(groups)
+	return key
+
+
+static func _keep_baked(key: PackedInt64Array, importer: ImporterMesh) -> ArrayMesh:
+	var made := importer.get_mesh()
 	if _baked.size() >= BAKED_KEEP:
 		_baked.clear()  # (a long battle's worth of kinds and paints: start again)
 	_baked[key] = made
 	return made
 
 
-static func _bake_groups_now(groups: Dictionary) -> ArrayMesh:
+## The groups as one surface, each in its material's own colour.
+static func _distant_arrays(groups: Dictionary) -> Array:
 	var vertices := PackedVector3Array()
 	var normals := PackedVector3Array()
 	var colors := PackedColorArray()
@@ -643,22 +695,30 @@ static func _bake_groups_now(groups: Dictionary) -> ArrayMesh:
 	arrays[Mesh.ARRAY_VERTEX] = vertices
 	arrays[Mesh.ARRAY_NORMAL] = normals
 	arrays[Mesh.ARRAY_COLOR] = colors
-	# At this distance cloth weave and metal wear are subpixel. Keep the
-	# uniform, skin, equipment and vehicle paint colours in one surface.
+	return arrays
+
+
+## What distant meshes are drawn with. At this distance cloth weave and metal
+## wear are subpixel: the uniform, skin, equipment and vehicle paint colours
+## keep to one surface.
+static func distant_material() -> ShaderMaterial:
 	if _distant_material == null:
 		_distant_material = ShaderMaterial.new()
 		_distant_material.shader = CloudShadow.make(DISTANT_SHADER)
-	# Hundreds of instances share this mesh. Weld identical vertex attributes
-	# once so the GPU can reuse transformed vertices without changing the pose.
-	# (Welded from the arrays themselves: a mesh read back from the graphics
-	# card waits on it.)
+	return _distant_material
+
+
+## The surface welded and simplified onto `importer`. Hundreds of instances
+## share the mesh, so identical vertex attributes are welded once and the GPU
+## reuses transformed vertices without changing the pose. (Welded from the
+## arrays themselves: a mesh read back from the graphics card waits on it.)
+## Run on a worker by bake_groups_later: method calls only, on its own objects.
+static func _make_distant(arrays: Array, importer: ImporterMesh, material: ShaderMaterial) -> void:
 	var tool := SurfaceTool.new()
 	tool.create_from_arrays(arrays)
 	tool.index()
-	var importer := ImporterMesh.new()
-	importer.add_surface(Mesh.PRIMITIVE_TRIANGLES, tool.commit_to_arrays(), [], {}, _distant_material)
+	importer.add_surface(Mesh.PRIMITIVE_TRIANGLES, tool.commit_to_arrays(), [], {}, material)
 	importer.generate_lods(25.0, 60.0, [])
-	return importer.get_mesh()
 
 
 ## A surface as an unindexed triangle list [verts, normals, colours or null].

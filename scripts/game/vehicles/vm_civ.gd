@@ -63,6 +63,28 @@ static func build(k: VehicleModels, key: String, team: int, seed: int) -> bool:
 
 # --- paint ------------------------------------------------------------------------
 
+## What a parked car of this kind and seed looks like, as a key for
+## VehicleModels' stock: the seed picks its paint (or the sport's livery) and
+## nothing else, and burnt out it has none. "" for a kind not worked out here.
+## (tests/vehicle-stock.test.mjs builds each to check.)
+static func look(key: String, seed: int, is_burnt: bool) -> String:
+	var paint: Variant
+	match key:
+		"hatchback":
+			paint = _paint(seed, 53, false)
+		"hatchback_sport":
+			paint = absi(hash(seed * 13 + 3)) % 5
+		"suv":
+			paint = _paint(seed, 61, false)
+		"offroad":
+			paint = _paint(seed, 11, false)
+		"mb4wd":
+			paint = _paint(seed, 23, false)
+		_:
+			return ""
+	return key + ("/burnt" if is_burnt else "/" + str(paint))
+
+
 ## A faded paint for this vehicle: `salt` keeps different models built with the
 ## same seed from all coming out the same colour.
 static func _paint(seed: int, salt: int, irregular := false) -> Color:
