@@ -371,14 +371,9 @@ func _define_parts() -> void:
 		"tall_wall":
 			parts = [_part(Vector3(0, 1.3, 0), Vector3(L, 2.6, 0.5), Nav.SOLID, Nav.LOW, true, true, C_CONCRETE)]
 		"church":
-			# the west tower, the nave, the lower chancel: solid stone
-			var cnl := size.z - CHURCH_TOWER - CHURCH_CHANCEL
-			var cz0 := -size.z * 0.5
-			parts = [
-				_part(Vector3(0, CHURCH_TOWER_H * 0.5, cz0 + CHURCH_TOWER * 0.5), Vector3(CHURCH_TOWER, CHURCH_TOWER_H, CHURCH_TOWER), Nav.SOLID, Nav.SOLID, true, true, C_STONE),
-				_part(Vector3(0, size.y * 0.5, cz0 + CHURCH_TOWER + cnl * 0.5), Vector3(L, size.y, cnl), Nav.SOLID, Nav.SOLID, true, true, C_STONE),
-				_part(Vector3(0, (size.y - 1.3) * 0.5, size.z * 0.5 - CHURCH_CHANCEL * 0.5), Vector3(L - 2.4, size.y - 1.3, CHURCH_CHANCEL), Nav.SOLID, Nav.SOLID, true, true, C_STONE),
-			]
+			# a parish church's west tower: solid (its nave and chancel are house
+			# walls, floors and roofs: see MapGen._church)
+			parts = [_part(Vector3(0, size.y * 0.5, 0), Vector3(L, size.y, size.z), Nav.SOLID, Nav.SOLID, true, true, Color(0.76, 0.71, 0.6))]
 		"house_wall":
 			var c: Color = HOUSE_COLORS[int(size.y) % HOUSE_COLORS.size()]
 			var th := 0.4
@@ -945,6 +940,9 @@ func _house_wall_detail(rng: RandomNumberGenerator) -> void:
 	var material := BuildingMaterials.house(ci)
 	var wall := BuildingMaterials.house_color(ci, HOUSE_COLORS[ci % HOUSE_COLORS.size()])
 	var trim: Color = HOUSE_TRIMS[ci % HOUSE_TRIMS.size()]
+	if material == "church":
+		_church_wall_detail(rng, L, ci, wall)
+		return
 	var k := _kit(rng).at_point(Vector3(0, 0, 0.2))
 	var gaps: Array = []
 	if variant == 1:
@@ -1117,151 +1115,298 @@ func _wall_fixtures(k: BuildingKit, rng: RandomNumberGenerator, L: float, barn: 
 			BuildingFittings.doormat(k, Vector3(0, 0.14, 0.3), BuildingFittings.MATS[fix.randi() % BuildingFittings.MATS.size()])
 
 
-## The parish church (`size`: the nave's width, its walls' height, the whole
-## length, the tower at -z toward the road): a stone nave of four bays
-## between stepped buttresses, a tall pointed window in each, under a steep
-## slate roof; a lower chancel at the east end with three lancets in its
-## gable; the west tower in three stages - the door under its pointed arch
-## with a window over it, a clock, the belfry with louvred openings - under
-## battlements, corner pinnacles and a copper spire, a cross at its tip.
-## A stone body all through: men take cover against it, nobody goes in.
+## A parish church's west tower (`size`: its side, its height to the
+## battlements; `variant` the church's colour index): rendered in the
+## church's limewash over a dressed stone plinth, stone quoins long and short
+## up its corners, string courses between its three stages - a tall lancet
+## in the west face, a clock on two faces, two louvred lancets in each face of
+## the belfry - and over them a cornice, battlements, a pinnacle at each
+## corner and a slate spire with a gilded cross. Solid: men take cover
+## against it; the church's door is in the nave.
 func _church_model(rng: RandomNumberGenerator) -> void:
 	var k := _kit(rng)
-	var W := size.x
-	var H := size.y
-	var L := size.z
-	var stone := Res.vary(Color(0.6, 0.57, 0.5), 0.04, rng)
-	var dress := stone.lightened(0.14)
-	var slate := Color(0.36, 0.34, 0.33)
-	var oak := Color(0.26, 0.17, 0.1)
-	var tw := CHURCH_TOWER
-	var cl := CHURCH_CHANCEL
-	var cw := W - 2.4
-	var nl := L - tw - cl
-	var z0 := -L * 0.5
-	var nz := z0 + tw + nl * 0.5
-	var cz := L * 0.5 - cl * 0.5
-	var tz := z0 + tw * 0.5
-	var th := CHURCH_TOWER_H
-	var ch := H - 1.3
-	# the bodies, on footings that show where the ground falls away
-	k.box(Vector3(W + 0.3, 1.3, nl), Vector3(0, -0.3, nz), "stone", stone.darkened(0.12))
-	k.box(Vector3(cw + 0.3, 1.3, cl), Vector3(0, -0.3, cz), "stone", stone.darkened(0.12))
-	k.box(Vector3(tw + 0.3, 1.3, tw + 0.3), Vector3(0, -0.3, tz), "stone", stone.darkened(0.12))
-	k.box(Vector3(W, H, nl), Vector3(0, H * 0.5, nz), "stone", stone)
-	k.box(Vector3(cw, ch, cl), Vector3(0, ch * 0.5, cz), "stone", stone)
-	k.box(Vector3(tw, th, tw), Vector3(0, th * 0.5, tz), "stone", stone.darkened(0.03))
-	# the nave: buttresses between the bays, a lancet in each
-	var bays := 4
-	for i in bays + 1:
-		var zb := z0 + tw + nl * i / bays
-		if i == 0:
-			zb += 0.35
-		elif i == bays:
-			zb -= 0.35
-		for sx: float in [-1.0, 1.0]:
-			k.box(Vector3(0.55, H * 0.62, 0.7), Vector3(sx * (W * 0.5 + 0.27), H * 0.31, zb), "stone", stone.darkened(0.05))
-			k.box(Vector3(0.36, H * 0.26, 0.56), Vector3(sx * (W * 0.5 + 0.18), H * 0.75, zb), "stone", stone.darkened(0.05))
-			k.prism(Vector3(0.56, 0.4, 0.36), Vector3(sx * (W * 0.5 + 0.18), H * 0.88 + 0.2, zb), "stone", dress, Vector3(0, PI * 0.5, 0))
-	for i in bays:
-		var zc := z0 + tw + nl * (i + 0.5) / bays
-		for sx: float in [-1.0, 1.0]:
-			_lancet(k.at_point(Vector3(sx * W * 0.5, 0, zc), Vector3(0, sx * PI * 0.5, 0)), 0.0, 2.1, Vector2(1.1, 3.0), dress, rng)
-	for sx: float in [-1.0, 1.0]:
-		k.box(Vector3(0.12, 0.2, nl), Vector3(sx * (W * 0.5 + 0.06), 0.45, nz), "stone", dress)
-	# the roofs: the nave's, the chancel's lower one
-	BuildingRoofs.gable(k.at_point(Vector3(0, 0, nz), Vector3(0, PI * 0.5, 0)), nl, W, H, 52.0, 0.35, "roof_tile", slate,
-		{"gable_material": "stone", "gable_col": stone, "trim": Color(0.2, 0.2, 0.21), "gable_inset": 0.0, "gutters": true,
-		"downpipes": [[nl * 0.5 - 0.6, 1.0], [-(nl * 0.5 - 0.6), -1.0]], "wall_face": W * 0.5, "wall_face_x": nl * 0.5})
-	BuildingRoofs.gable(k.at_point(Vector3(0, 0, cz + 0.1), Vector3(0, PI * 0.5, 0)), cl + 0.2, cw, ch, 52.0, 0.3, "roof_tile", slate,
-		{"gable_material": "stone", "gable_col": stone, "trim": Color(0.2, 0.2, 0.21), "gable_inset": 0.0, "gutters": false, "wall_face": cw * 0.5, "wall_face_x": cl * 0.5 + 0.1})
-	# the chancel: three lancets in its east end, the middle one tallest; one in each side
-	var east := k.at_point(Vector3(0, 0, L * 0.5), Vector3.ZERO)
-	for i in 3:
-		_lancet(east, (i - 1) * 1.05, 1.6 if i != 1 else 1.4, Vector2(0.7, 2.6 if i != 1 else 3.1), dress, rng)
-	for sx: float in [-1.0, 1.0]:
-		_lancet(k.at_point(Vector3(sx * cw * 0.5, 0, cz), Vector3(0, sx * PI * 0.5, 0)), 0.0, 1.8, Vector2(0.8, 2.3), dress, rng)
-	# the tower: clasping buttresses at its corners, string courses between
-	# its stages
+	k.sink.cast_all = true
+	var tw := size.x
+	var th := size.y
+	var wall := BuildingMaterials.house_color(variant, Color(0.78, 0.73, 0.62))
+	var dress := CHURCH_DRESS
+	k.box(Vector3(tw + 0.3, 1.3, tw + 0.3), Vector3(0, -0.3, 0), "stone", dress.darkened(0.2))
+	k.box(Vector3(tw, th, tw), Vector3(0, th * 0.5, 0), "plaster", wall)
+	k.box(Vector3(tw + 0.14, 0.5, tw + 0.14), Vector3(0, 0.25, 0), "stone", dress.darkened(0.12))
+	# quoins, long and short in turn up each corner
 	for cx: float in [-1.0, 1.0]:
-		for czz: float in [-1.0, 1.0]:
-			var corner := Vector3(cx * (tw * 0.5 + 0.05), 0, tz + czz * (tw * 0.5 + 0.05))
-			k.box(Vector3(0.75, 9.8, 0.75), corner + Vector3(0, 4.9, 0), "stone", stone.darkened(0.06))
-			k.cyl(0.0, 0.5, 0.7, corner + Vector3(0, 10.15, 0), "stone", dress, Vector3.ZERO, 4)
+		for cz: float in [-1.0, 1.0]:
+			var y := 0.5
+			var i := 0
+			while y < th - 0.35:
+				var long := i % 2 == 0
+				var s := Vector3(0.62, 0.3, 0.32) if long else Vector3(0.32, 0.3, 0.62)
+				k.box(s, Vector3(cx * (tw * 0.5 - s.x * 0.5 + 0.025), y + 0.15, cz * (tw * 0.5 - s.z * 0.5 + 0.025)), "stone", dress.darkened(rng.randf_range(0.0, 0.08)), Vector3.ZERO, false)
+				y += 0.32
+				i += 1
 	for y: float in [5.2, 10.4]:
-		k.box(Vector3(tw + 0.16, 0.18, tw + 0.16), Vector3(0, y, tz), "stone", dress)
-	# the west door under its pointed arch, a step before it, a window over it
-	var west := k.at_point(Vector3(0, 0, z0), Vector3(0, PI, 0))
-	west.box(Vector3(1.9, 2.6, 0.06), Vector3(0, 1.3 + 0.15, -0.02), "plain_dark", Color(0.05, 0.04, 0.04))
-	for sx: float in [-1.0, 1.0]:
-		west.plate(Vector3(0.88, 2.55, 0.05), Vector3(sx * 0.45, 1.43, 0.02), "wood_dark", oak)
-		for y: float in [0.6, 1.4, 2.2]:
-			west.plate(Vector3(0.8, 0.06, 0.02), Vector3(sx * 0.45, y, 0.05), "metal_dark", Color(0.12, 0.12, 0.12))
-		west.box(Vector3(0.24, 2.9, 0.2), Vector3(sx * 1.08, 1.45 + 0.15, 0.06), "stone", dress)
-		west.bar(Vector3(sx * 1.08, 3.05, 0.06), Vector3(0, 4.05, 0.06), 0.24, 0.2, "stone", dress)
-	west.prism(Vector3(1.9, 0.9, 0.05), Vector3(0, 3.0 + 0.45, -0.02), "plain_dark", Color(0.05, 0.04, 0.04))
-	west.box(Vector3(2.6, 0.16, 1.0), Vector3(0, 0.08, 0.5), "stone", dress.darkened(0.08))
-	_lancet(west, 0.0, 6.0, Vector2(0.9, 2.6), dress, rng)
-	# the clock, on the west face and the side the road comes along
-	for face: Array in [[Vector3(0, 0, z0), PI], [Vector3(tw * 0.5, 0, tz), PI * 0.5]]:
-		var ck := k.at_point(face[0], Vector3(0, face[1], 0))
-		ck.cyl(0.78, 0.78, 0.06, Vector3(0, 9.0, 0.03), "paint", Color(0.92, 0.9, 0.84), Vector3(PI * 0.5, 0, 0), 20)
-		ck.part(BuildingKit.ring(0.74, 0.86), "metal", Mats.place(Vector3(0, 9.0, 0.06), Vector3(PI * 0.5, 0, 0)), Color(0.62, 0.5, 0.22), false)
-		var hr := rng.randf() * TAU
-		var mn := rng.randf() * TAU
-		ck.bar(Vector3(0, 9.0, 0.08), Vector3(sin(hr) * 0.42, 9.0 + cos(hr) * 0.42, 0.08), 0.05, 0.02, "metal_dark", Color(0.08, 0.08, 0.08), false)
-		ck.bar(Vector3(0, 9.0, 0.09), Vector3(sin(mn) * 0.64, 9.0 + cos(mn) * 0.64, 0.09), 0.035, 0.02, "metal_dark", Color(0.08, 0.08, 0.08), false)
-	# the belfry: two louvred lancets in each face
+		k.box(Vector3(tw + 0.16, 0.18, tw + 0.16), Vector3(0, y, 0), "stone", dress)
+	var faces := []
 	for f in 4:
 		var a := f * PI * 0.5
-		var bk := k.at_point(Vector3(sin(a) * tw * 0.5, 0, tz + cos(a) * tw * 0.5), Vector3(0, a, 0))
+		faces.append(k.at_point(Vector3(sin(a) * tw * 0.5, 0, cos(a) * tw * 0.5), Vector3(0, a, 0)))
+	# the west window (the face at -z)
+	var west: BuildingKit = faces[2]
+	_church_lights(west, 2.4, 4.2, rng)
+	for sx: float in [-1.0, 1.0]:
+		west.prism(Vector3(0.56, 0.4, 0.02), Vector3(sx * 0.31, 4.4, 0.012), "glass", Color(0.2, 0.22, 0.28))
+		west.bar(Vector3(sx * 0.68, 4.2, 0.05), Vector3(0, 4.95, 0.05), 0.16, 0.12, "stone", dress)
+	# the clock, on the west face and one side
+	for ck: BuildingKit in [faces[2], faces[1]]:
+		ck.cyl(0.74, 0.74, 0.06, Vector3(0, 8.5, 0.03), "paint", Color(0.9, 0.88, 0.82), Vector3(PI * 0.5, 0, 0), 20)
+		ck.part(BuildingKit.ring(0.7, 0.82), "stone", Mats.place(Vector3(0, 8.5, 0.06), Vector3(PI * 0.5, 0, 0)), dress, false)
+		for m in 12:
+			var ma := TAU * m / 12.0
+			ck.plate(Vector3(0.03, 0.1, 0.01), Vector3(sin(ma) * 0.6, 8.5 + cos(ma) * 0.6, 0.065), "metal_dark", Color(0.1, 0.1, 0.1), Vector3(0, 0, -ma))
+		var hr := rng.randf() * TAU
+		var mn := rng.randf() * TAU
+		ck.bar(Vector3(0, 8.5, 0.08), Vector3(sin(hr) * 0.38, 8.5 + cos(hr) * 0.38, 0.08), 0.045, 0.015, "metal_dark", Color(0.08, 0.08, 0.08), false)
+		ck.bar(Vector3(0, 8.5, 0.09), Vector3(sin(mn) * 0.58, 8.5 + cos(mn) * 0.58, 0.09), 0.03, 0.015, "metal_dark", Color(0.08, 0.08, 0.08), false)
+	# the belfry: two louvred lancets in each face
+	for bk: BuildingKit in faces:
 		for sx: float in [-1.0, 1.0]:
 			var x := sx * 0.62
-			bk.box(Vector3(0.78, 2.2, 0.08), Vector3(x, 12.2, -0.03), "plain_dark", Color(0.05, 0.05, 0.05))
-			BuildingOpenings.louvre(bk, Vector3(x, 12.2, 0.0), Vector2(0.66, 2.0), Color(0.34, 0.27, 0.2), "wood")
-			bk.prism(Vector3(0.78, 0.5, 0.06), Vector3(x, 13.3 + 0.25, -0.02), "plain_dark", Color(0.05, 0.05, 0.05))
+			bk.box(Vector3(0.74, 2.1, 0.06), Vector3(x, 12.15, -0.02), "plain_dark", Color(0.06, 0.06, 0.06))
+			BuildingOpenings.louvre(bk, Vector3(x, 12.15, 0.0), Vector2(0.64, 1.95), Color(0.3, 0.25, 0.2), "wood")
+			bk.prism(Vector3(0.74, 0.45, 0.05), Vector3(x, 13.2 + 0.225, -0.02), "plain_dark", Color(0.06, 0.06, 0.06))
 			for side: float in [-1.0, 1.0]:
-				bk.box(Vector3(0.14, 2.3, 0.14), Vector3(x + side * 0.46, 12.2, 0.04), "stone", dress)
+				bk.box(Vector3(0.14, 2.1, 0.14), Vector3(x + side * 0.44, 12.15, 0.04), "stone", dress)
+				bk.bar(Vector3(x + side * 0.44, 13.2, 0.04), Vector3(x, 13.75, 0.04), 0.13, 0.12, "stone", dress)
 	# the top: a cornice, battlements, a pinnacle at each corner, the spire
-	k.box(Vector3(tw + 0.3, 0.3, tw + 0.3), Vector3(0, th + 0.15, tz), "stone", dress)
+	k.box(Vector3(tw + 0.3, 0.3, tw + 0.3), Vector3(0, th + 0.15, 0), "stone", dress)
 	for f in 4:
 		var a := f * PI * 0.5
 		var along := Vector3(cos(a), 0, -sin(a))
 		var out := Vector3(sin(a), 0, cos(a))
+		k.box(Vector3(tw + 0.3, 0.35, 0.3), Vector3(0, th + 0.47, 0) + out * (tw * 0.5), "stone", dress, Vector3(0, a, 0))
 		for i in 4:
-			var m := Vector3(0, th + 0.6, tz) + out * (tw * 0.5 + 0.05) + along * ((i - 1.5) * 1.15)
-			k.box(Vector3(0.5, 0.6, 0.32), m, "stone", dress, Vector3(0, a, 0))
+			k.box(Vector3(0.5, 0.5, 0.3), Vector3(0, th + 0.9, 0) + out * (tw * 0.5) + along * ((i - 1.5) * 1.15), "stone", dress, Vector3(0, a, 0))
 	for cx: float in [-1.0, 1.0]:
-		for czz: float in [-1.0, 1.0]:
-			var p := Vector3(cx * (tw * 0.5 + 0.05), th + 0.3, tz + czz * (tw * 0.5 + 0.05))
-			k.box(Vector3(0.42, 0.9, 0.42), p + Vector3(0, 0.45, 0), "stone", dress)
-			k.cyl(0.0, 0.26, 1.3, p + Vector3(0, 0.9 + 0.65, 0), "stone", dress, Vector3.ZERO, 4)
-	var copper := Color(0.36, 0.54, 0.47)
-	k.cyl(0.0, tw * 0.4, CHURCH_SPIRE, Vector3(0, th + 0.3 + CHURCH_SPIRE * 0.5, tz), "metal", copper, Vector3(0, PI / 8.0, 0), 8)
-	var tip := Vector3(0, th + 0.3 + CHURCH_SPIRE, tz)
-	k.part(Res.sphere(0.12, 8), "metal", Transform3D(Basis.IDENTITY, tip + Vector3(0, 0.08, 0)), Color(0.75, 0.6, 0.25), false)
-	k.bar(tip, tip + Vector3(0, 1.3, 0), 0.07, 0.07, "metal", Color(0.75, 0.6, 0.25), false)
-	k.bar(tip + Vector3(-0.35, 0.95, 0), tip + Vector3(0.35, 0.95, 0), 0.07, 0.07, "metal", Color(0.75, 0.6, 0.25), false)
+		for cz: float in [-1.0, 1.0]:
+			var p := Vector3(cx * (tw * 0.5 + 0.02), th + 0.3, cz * (tw * 0.5 + 0.02))
+			k.box(Vector3(0.44, 1.0, 0.44), p + Vector3(0, 0.5, 0), "stone", dress)
+			k.cyl(0.0, 0.27, 1.4, p + Vector3(0, 1.0 + 0.7, 0), "stone", dress, Vector3(0, PI * 0.25, 0), 4)
+	k.cyl(0.0, tw * 0.4, CHURCH_SPIRE, Vector3(0, th + 0.3 + CHURCH_SPIRE * 0.5, 0), "plain_dark", CHURCH_SLATE.darkened(0.05), Vector3(0, PI / 8.0, 0), 8)
+	var tip := Vector3(0, th + 0.3 + CHURCH_SPIRE, 0)
+	var gold := Color(0.72, 0.58, 0.26)
+	k.part(Res.sphere(0.13, 8), "metal", Transform3D(Basis.IDENTITY, tip + Vector3(0, 0.08, 0)), gold, false)
+	k.bar(tip, tip + Vector3(0, 1.3, 0), 0.07, 0.07, "metal", gold, false)
+	k.bar(tip + Vector3(-0.35, 0.95, 0), tip + Vector3(0.35, 0.95, 0), 0.07, 0.07, "metal", gold, false)
 
 
-## A tall pointed window in a face kit (+z out, its foot on y = 0) at `x`,
-## its sill `sill` up and its straight sides `size.y` tall: dark leaded glass
-## in a few muted colours, a mullion and saddle bars, a dressed stone
-## surround and sill, the pointed head.
-func _lancet(k: BuildingKit, x: float, sill: float, size: Vector2, dress: Color, rng: RandomNumberGenerator) -> void:
-	var w := size.x
+## The walls of a church's nave (`W` wide, `L` long, its west end at -z) or
+## of its chancel (`chancel`), in the body's own frame: [where the wall's
+## middle is (x, z), its yaw (its +z out), its length, its variant (0 plain,
+## 1 a lancet, 2 the door)]. The long sides in bays of about 2.8 m with a
+## lancet in each, the nave's door in its south side's west bay; the nave's
+## west end either side of the tower, its east end either side of the
+## chancel arch; the chancel's east end, open to the nave at its west.
+## MapGen lays the walls by this and the roof draws their upper parts by it.
+static func church_walls(W: float, L: float, chancel: bool) -> Array:
+	var out := []
+	var segs := maxi(1, int(round(L / 2.8)))
+	var seg := L / segs
+	for side: float in [-1.0, 1.0]:
+		for i in segs:
+			var v := 2 if not chancel and side < 0.0 and i == 0 else 1
+			out.append([Vector2(side * W * 0.5, -L * 0.5 + (i + 0.5) * seg), PI * 0.5 * side, seg, v])
+	var e_len := W - 0.4
+	if chancel:
+		var n := maxi(1, int(round(e_len / 2.8)))
+		for i in n:
+			out.append([Vector2(-e_len * 0.5 + (i + 0.5) * e_len / n, L * 0.5), 0.0, e_len / n, 1])
+	else:
+		var west := (e_len - CHURCH_TOWER) * 0.5
+		var east := (e_len - (W - 2.4)) * 0.5
+		for sx: float in [-1.0, 1.0]:
+			out.append([Vector2(sx * (CHURCH_TOWER * 0.5 + west * 0.5), -L * 0.5), PI, west, 0])
+			out.append([Vector2(sx * ((W - 2.4) * 0.5 + east * 0.5), L * 0.5), 0.0, east, 0])
+	return out
+
+
+## The church's dressed stone (quoins, string courses, window surrounds) and
+## its slate.
+const CHURCH_DRESS := Color(0.74, 0.7, 0.62)
+const CHURCH_SLATE := Color(0.31, 0.3, 0.29)
+
+
+## A church's wall (the ground floor's part of it; the roof draws the rest
+## up to the eaves): rendered in the church's limewash with a dressed stone
+## plinth, whitewashed inside; a window wall the lower part of a tall
+## two-light lancet (its sill a man's chest high, so men inside fire from
+## it), a door wall the south door under a pointed stone arch, its oak doors
+## hung to swing; the odd bullet strike.
+func _church_wall_detail(rng: RandomNumberGenerator, L: float, ci: int, wall: Color) -> void:
+	var k := _kit(rng).at_point(Vector3(0, 0, 0.2))
+	var gaps: Array = []
+	if variant == 1:
+		gaps = [Rect2(-0.65, 1.0, 1.3, 1.0)]
+	elif variant == 2:
+		gaps = [Rect2(-0.95, 0.0, 1.9, 2.2)]
+	BuildingWalls.face(k, L, 3.0, "church", wall, gaps, {"plinth": 0.45})
+	k.box(Vector3(L, 0.5, 0.42), Vector3(0, -0.25, -0.2), "stone", CHURCH_DRESS.darkened(0.2))
+	var room := _kit(rng).at_point(Vector3(0, 0, -0.2), Vector3(0, PI, 0))
+	BuildingFurnishings.lining(room, L, 3.0, gaps, Color(0.86, 0.84, 0.78))
+	var war := RandomNumberGenerator.new()
+	war.seed = rng.seed ^ 0x3b0a7c55
+	if war.randf() < 0.22:
+		BuildingWeathering.pocks(k, Vector2(war.randf_range(-L * 0.35, L * 0.35), war.randf_range(1.0, 2.6)), war.randf_range(0.5, 1.1), war.randi_range(8, 20),
+			wall.lightened(0.18).lerp(Color(0.72, 0.7, 0.66), 0.5), war, gaps, L * 0.5)
+	match variant:
+		1:
+			_church_lights(k, 1.0, 3.0, rng)
+			_church_lights(room, 2.0, 3.0, rng, false)
+		2:
+			var w := 1.9
+			BuildingOpenings.doorway(k, Vector3.ZERO, Vector2(w, 2.2), {"material": "church", "wall": wall, "frame": CHURCH_DRESS})
+			# the pointed arch over it, the tympanum dark in it
+			k.prism(Vector3(w, 0.7, 0.04), Vector3(0, 2.2 + 0.35, -0.04), "plain_dark", Color(0.12, 0.1, 0.09))
+			for sx: float in [-1.0, 1.0]:
+				k.bar(Vector3(sx * (w * 0.5 + 0.12), 2.2, 0.05), Vector3(0, 3.0, 0.05), 0.22, 0.14, "stone", CHURCH_DRESS)
+				k.box(Vector3(0.24, 2.2, 0.14), Vector3(sx * (w * 0.5 + 0.12), 1.1, 0.05), "stone", CHURCH_DRESS)
+			var oak := Color(0.26, 0.17, 0.1)
+			_door_leaves = []
+			for sx in [-1.0, 1.0]:
+				var a: float = -sx * rng.randf_range(1.0, 1.55)
+				var pv := Node3D.new()
+				pv.position = Vector3(sx * (w * 0.5 - 0.09), 0, DOOR_Z)
+				pv.rotation.y = 0.0 if door_shut else a
+				model.add_child(pv)
+				BuildingOpenings.leaf(BuildingKit.nodes(pv, rng), Vector2(0.88, 2.06), "ledged", oak, -sx)
+				_door_leaves.append([pv, a])
+
+
+## A two-light lancet's straight part, from `y0` up to `y1`, in a face kit:
+## two lights of leaded glass in muted colours either side of a stone
+## mullion, saddle bars across them, dressed jambs, a sill where it starts
+## (`outer`: the outside face, which has the jambs and the sill).
+func _church_lights(k: BuildingKit, y0: float, y1: float, rng: RandomNumberGenerator, outer := true) -> void:
+	var glass: Color = [Color(0.2, 0.24, 0.3), Color(0.27, 0.22, 0.25), Color(0.22, 0.26, 0.23), Color(0.24, 0.24, 0.27)][rng.randi() % 4]
+	var w := 1.2
+	k.plate(Vector3(w, y1 - y0, 0.02), Vector3(0, (y0 + y1) * 0.5, 0.012), "glass", glass)
+	k.plate(Vector3(0.08, y1 - y0, 0.06), Vector3(0, (y0 + y1) * 0.5, 0.035), "stone", CHURCH_DRESS)
+	var y := y0 + 0.45
+	while y < y1 - 0.05:
+		k.plate(Vector3(w, 0.02, 0.016), Vector3(0, y, 0.028), "metal_dark", Color(0.1, 0.1, 0.1))
+		y += 0.45
+	if outer:
+		for sx: float in [-1.0, 1.0]:
+			k.box(Vector3(0.16, y1 - y0, 0.12), Vector3(sx * (w * 0.5 + 0.08), (y0 + y1) * 0.5, 0.05), "stone", CHURCH_DRESS)
+		if y0 < 1.5:
+			k.box(Vector3(w + 0.4, 0.12, 0.22), Vector3(0, y0 - 0.06, 0.09), "stone", CHURCH_DRESS)
+
+
+## A church's roof (`size`: its body's width, its eaves' height, its length
+## along z, the west end at -z; its body a nave, or a chancel if short): the
+## walls above the ground floor's up to the eaves (the rest of each lancet:
+## its lights, the two pointed heads under a pointed arch), a stone string
+## course where they start, stepped buttresses between the nave's bays, and
+## a steep slate roof with lead flashings, a gable wall at each end (the
+## nave's over the chancel and against the tower). All of it lifts off when
+## men go in, as a house's roof does.
+func _church_roof(rng: RandomNumberGenerator, ci: int) -> void:
+	var W := size.x
+	var L := size.z
 	var h := size.y
-	var a := w * 0.75
-	var glass: Color = [Color(0.17, 0.2, 0.27), Color(0.24, 0.18, 0.22), Color(0.19, 0.23, 0.2), Color(0.2, 0.2, 0.24)][rng.randi() % 4]
-	k.plate(Vector3(w, h, 0.02), Vector3(x, sill + h * 0.5, 0.01), "glass", glass)
-	k.prism(Vector3(w, a, 0.02), Vector3(x, sill + h + a * 0.5, 0.01), "glass", glass)
-	k.plate(Vector3(0.05, h + a * 0.7, 0.02), Vector3(x, sill + (h + a * 0.7) * 0.5, 0.025), "stone", dress)
-	for i in int(h / 0.6):
-		k.plate(Vector3(w, 0.02, 0.015), Vector3(x, sill + 0.6 * (i + 1), 0.025), "metal_dark", Color(0.1, 0.1, 0.1))
-	for sx: float in [-1.0, 1.0]:
-		k.box(Vector3(0.16, h, 0.12), Vector3(x + sx * (w * 0.5 + 0.08), sill + h * 0.5, 0.04), "stone", dress)
-		k.bar(Vector3(x + sx * (w * 0.5 + 0.08), sill + h, 0.04), Vector3(x, sill + h + a + 0.1, 0.04), 0.16, 0.12, "stone", dress)
-	k.box(Vector3(w + 0.36, 0.12, 0.2), Vector3(x, sill - 0.06, 0.08), "stone", dress)
+	var chancel := L < 6.0
+	var wall := BuildingMaterials.house_color(ci, Color(0.78, 0.73, 0.62))
+	var k := _kit(rng)
+	k.sink.cast_all = true
+	var plan := church_walls(W, L, chancel)
+	for e: Array in plan:
+		var p: Vector2 = e[0]
+		var len: float = e[2]
+		var wk := k.at_point(Vector3(p.x, 0, p.y), Vector3(0, e[1], 0))
+		wk.box(Vector3(len, h - 3.0, 0.4), Vector3(0, 3.0 + (h - 3.0) * 0.5, 0), "plaster", wall)
+		wk.box(Vector3(len, 0.14, 0.1), Vector3(0, 3.0, 0.23), "stone", CHURCH_DRESS)
+		if int(e[3]) == 1:
+			var fk := wk.at_point(Vector3(0, 0, 0.2))
+			var top := minf(3.0 + 1.3, h - 1.1)
+			_church_lights(fk, 3.0, top, rng)
+			_church_lights(wk.at_point(Vector3(0, 0, -0.2), Vector3(0, PI, 0)), 3.0, top, rng, false)
+			# the two pointed heads, the arch over them
+			for sx: float in [-1.0, 1.0]:
+				fk.prism(Vector3(0.56, 0.4, 0.02), Vector3(sx * 0.31, top + 0.2, 0.012), "glass", Color(0.2, 0.22, 0.28))
+				fk.bar(Vector3(sx * 0.68, top, 0.05), Vector3(0, top + 0.75, 0.05), 0.16, 0.12, "stone", CHURCH_DRESS)
+			fk.prism(Vector3(1.2, 0.5, 0.015), Vector3(0, top + 0.45, 0.008), "plaster", wall.darkened(0.05))
+	# the nave's end walls above its openings: over the chancel arch, and
+	# against the tower
+	if not chancel:
+		for ez: float in [-1.0, 1.0]:
+			k.box(Vector3(W - 0.4, h - 3.0, 0.4), Vector3(0, 3.0 + (h - 3.0) * 0.5, ez * L * 0.5), "plaster", wall)
+		# stepped buttresses between the bays
+		var segs := maxi(1, int(round(L / 2.8)))
+		for i in range(1, segs):
+			var z := -L * 0.5 + L * i / segs
+			for sx: float in [-1.0, 1.0]:
+				k.box(Vector3(0.55, h * 0.62, 0.7), Vector3(sx * (W * 0.5 + 0.47), h * 0.31, z), "stone", CHURCH_DRESS.darkened(0.06))
+				k.box(Vector3(0.36, h * 0.24, 0.56), Vector3(sx * (W * 0.5 + 0.38), h * 0.74, z), "stone", CHURCH_DRESS.darkened(0.06))
+				k.prism(Vector3(0.56, 0.36, 0.36), Vector3(sx * (W * 0.5 + 0.38), h * 0.86 + 0.18, z), "stone", CHURCH_DRESS, Vector3(0, PI * 0.5, 0))
+	var rk := k.at_point(Vector3.ZERO, Vector3(0, PI * 0.5, 0))
+	BuildingRoofs.gable(rk, L, W, h, 50.0, 0.35, "roof_tile", CHURCH_SLATE,
+		{"gable_material": "church", "gable_col": wall, "trim": Color(0.2, 0.2, 0.21), "gable_inset": -0.07, "gutters": not chancel,
+		"downpipes": [[L * 0.5 - 0.6, 1.0], [-(L * 0.5 - 0.6), -1.0]], "wall_face": W * 0.5 + 0.2, "wall_face_x": L * 0.5 + 0.2})
+	# a cross on the nave's east gable
+	if not chancel:
+		var apex := Vector3(0, h + (W * 0.5) * tan(deg_to_rad(50.0)) + 0.05, L * 0.5 + 0.1)
+		k.box(Vector3(0.12, 0.9, 0.12), apex + Vector3(0, 0.45, 0), "stone", CHURCH_DRESS)
+		k.box(Vector3(0.5, 0.12, 0.12), apex + Vector3(0, 0.62, 0), "stone", CHURCH_DRESS)
+
+
+## A church's floor: flagstones (their joints), and in the nave pews either
+## side of the aisle, facing east, the font by the door; in the chancel the
+## altar on its step, a cloth over it and a cross on it, the rail before it.
+## Low wood and stone: men inside stand among them.
+func _church_floor(rng: RandomNumberGenerator) -> void:
+	var k := _kit(rng)
+	var top := 0.06
+	var joint := Color(0.36, 0.34, 0.31)
+	var x := -size.x * 0.5 + 0.7
+	while x < size.x * 0.5 - 0.1:
+		k.plate(Vector3(0.012, 0.003, size.z), Vector3(x, top + 0.002, 0), "plain_dark", joint)
+		x += 0.7
+	var z := -size.z * 0.5 + 0.55
+	while z < size.z * 0.5 - 0.1:
+		k.plate(Vector3(size.x - 0.02, 0.003, 0.012), Vector3(0, top + 0.002, z), "plain_dark", joint)
+		z += 0.55
+	var oak := Color(0.32, 0.22, 0.14)
+	if size.z > 6.0:
+		var aisle := 1.4
+		var pew := (size.x - 0.8 - aisle) * 0.5 - 0.1
+		var pz := -size.z * 0.5 + 3.4
+		while pz < size.z * 0.5 - 2.2:
+			for side: float in [-1.0, 1.0]:
+				var px := side * (aisle * 0.5 + pew * 0.5)
+				k.box(Vector3(pew, 0.05, 0.42), Vector3(px, top + 0.45, pz), "wood_dark", oak)
+				k.box(Vector3(pew, 0.42, 0.05), Vector3(px, top + 0.7, pz - 0.22), "wood_dark", oak)
+				for ex: float in [-1.0, 1.0]:
+					k.box(Vector3(0.06, 0.9, 0.5), Vector3(px + ex * pew * 0.5, top + 0.45, pz - 0.02), "wood_dark", oak.darkened(0.1))
+			pz += 1.0
+		# the font by the south door
+		var fz := -size.z * 0.5 + 1.4
+		k.cyl(0.28, 0.2, 0.75, Vector3(-size.x * 0.25, top + 0.375, fz), "stone", CHURCH_DRESS, Vector3.ZERO, 8)
+		k.cyl(0.42, 0.36, 0.25, Vector3(-size.x * 0.25, top + 0.85, fz), "stone", CHURCH_DRESS, Vector3.ZERO, 8)
+	else:
+		var az := size.z * 0.5 - 0.75
+		k.box(Vector3(size.x - 0.6, 0.15, 1.6), Vector3(0, top + 0.075, size.z * 0.5 - 1.0), "stone", CHURCH_DRESS.darkened(0.05))
+		k.box(Vector3(1.8, 0.95, 0.75), Vector3(0, top + 0.15 + 0.475, az), "stone", CHURCH_DRESS)
+		k.plate(Vector3(1.9, 0.02, 0.85), Vector3(0, top + 1.11, az), "canvas", Color(0.88, 0.86, 0.8))
+		k.box(Vector3(0.06, 0.55, 0.06), Vector3(0, top + 1.4, az + 0.2), "metal", Color(0.75, 0.6, 0.25))
+		k.box(Vector3(0.3, 0.06, 0.06), Vector3(0, top + 1.52, az + 0.2), "metal", Color(0.75, 0.6, 0.25))
+		for sx: float in [-1.0, 1.0]:
+			k.cyl(0.03, 0.04, 0.3, Vector3(sx * 0.6, top + 1.27, az + 0.15), "metal", Color(0.75, 0.6, 0.25), Vector3.ZERO, 6)
+		var rz := size.z * 0.5 - 2.2
+		k.bar(Vector3(-size.x * 0.5 + 0.5, top + 0.75, rz), Vector3(size.x * 0.5 - 0.5, top + 0.75, rz), 0.08, 0.06, "wood_dark", oak)
+		var px2 := -size.x * 0.5 + 0.5
+		while px2 <= size.x * 0.5 - 0.45:
+			if absf(px2) > 0.5:
+				k.box(Vector3(0.05, 0.75, 0.05), Vector3(px2, top + 0.375, rz), "wood_dark", oak)
+			px2 += 0.35
 
 
 ## Each part of a house wall's body as drawn: [its rect in the face (x, y),
@@ -1279,7 +1424,7 @@ func _tone(p: Vector2) -> Color:
 
 
 ## A parish church's west tower (square, and how tall to its battlements),
-## its chancel's length and its spire's height (see _church_model).
+## its chancel's length and its spire's height (see MapGen._church).
 const CHURCH_TOWER := 4.6
 const CHURCH_TOWER_H := 15.5
 const CHURCH_CHANCEL := 4.4
@@ -1569,6 +1714,9 @@ static func _leaves(bake: Mats.Bake, p: Vector3, r: float, squash: float, col: C
 func _roof_model(rng: RandomNumberGenerator) -> void:
 	var ci: int = variant / 2
 	var material := BuildingMaterials.house(ci)
+	if material == "church":
+		_church_roof(rng, ci)
+		return
 	var wall_col := BuildingMaterials.house_color(ci, HOUSE_COLORS[ci % HOUSE_COLORS.size()])
 	var trim: Color = HOUSE_TRIMS[ci % HOUSE_TRIMS.size()]
 	var h := size.y
@@ -2974,7 +3122,7 @@ func _build_model() -> void:
 			BuildingWeathering.heap(_kit(rng), size.x, maxf(1.0, size.z), rng)
 		"floor":
 			# a rug in most houses' main room, lying flat
-			if size.x > 3.0 and size.z > 3.0 and rng.randf() < 0.65 and variant != 2:
+			if size.x > 3.0 and size.z > 3.0 and rng.randf() < 0.65 and variant != 2 and variant != 3:
 				BuildingFurnishings.rug(_kit(rng), Vector3(rng.randf_range(-0.6, 0.6), 0.06, rng.randf_range(-0.5, 0.5)),
 					Vector2(minf(size.x * 0.4, 3.0), minf(size.z * 0.4, 2.2)), BuildingFurnishings.FABRICS[rng.randi() % BuildingFurnishings.FABRICS.size()])
 			# a ruin: its roof burned and fell in on the floor
@@ -2983,6 +3131,9 @@ func _build_model() -> void:
 			# a barn: straw over its floor
 			if variant == 2:
 				BuildingWeathering.straw(_kit(rng), size, 0.06, rng)
+			# a church: flagstones, pews, the altar
+			if variant == 3:
+				_church_floor(rng)
 		"bridge":
 			_bridge_model(rng)
 		"dock":
@@ -3566,7 +3717,7 @@ func _surf_kind(c: Color, mesh: Mesh) -> String:
 		"house_wall":
 			return BuildingMaterials.surface(BuildingMaterials.house(int(size.y)))
 		"floor":
-			return "floor_tiles" if variant != 2 else "concrete_floor"
+			return "floor_tiles" if variant < 2 else "concrete_floor"
 		"rubble":
 			return "rubble"
 		"crates":

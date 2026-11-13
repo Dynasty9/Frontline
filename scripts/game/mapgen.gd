@@ -1314,6 +1314,43 @@ func _wing(c: Vector3, b: Basis, axis: float, w: float, d: float, k0: int, n: in
 		_late.append({"skind": "roof", "pos": Vector3(wc.x, level, wc.z), "yaw": axis, "size": Vector3(x1 - x0, BuildingStoreys.GROUND, wd), "variant": color * 2 + (1 if flat else 0), "look": roof_id})
 
 
+## A parish church at `c` (its length `size.z` along `axis`, its west tower
+## to -z): the tower solid (Structure "church"), the nave and the chancel
+## built as a house is - a floor (variant 3: flagstones, pews, the altar),
+## house walls in the church's render (`ci`) laid by Structure.church_walls
+## with the door in the nave's south side, and a roof each that draws the
+## walls on up to the eaves. Men go in by the door and fight from the
+## windows, and the roofs lift off for them as a house's does. False if
+## there's no room.
+func _church(c: Vector3, axis: float, ci: int, size: Vector3) -> bool:
+	var half := Vector2(size.x * 0.5 + 0.6, size.z * 0.5 + 0.6)
+	if not _is_free(c, half, axis, 0.6):
+		return false
+	var b := Basis(Vector3.UP, axis)
+	var level := world.terrain.landform.height(c)
+	var at := func(z: float) -> Vector3:
+		var p: Vector3 = c + b * Vector3(0, 0, z)
+		return Vector3(p.x, level, p.z)
+	var z0 := -size.z * 0.5
+	var tw := Structure.CHURCH_TOWER
+	var cl := Structure.CHURCH_CHANCEL
+	var nl := size.z - tw - cl
+	var cw := size.x - 2.4
+	world.spawn("structure", {"skind": "church", "pos": at.call(z0 + tw * 0.5), "yaw": axis, "size": Vector3(tw, Structure.CHURCH_TOWER_H, tw), "variant": ci})
+	for body: Array in [[z0 + tw + nl * 0.5, size.x, nl, size.y - 0.3, false], [size.z * 0.5 - cl * 0.5, cw, cl, size.y - 1.5, true]]:
+		var bc: Vector3 = at.call(body[0])
+		world.spawn("structure", {"skind": "floor", "pos": bc, "yaw": axis, "size": Vector3(body[1], 0.06, body[2]), "variant": 3})
+		for e: Array in Structure.church_walls(body[1], body[2], body[4]):
+			var p: Vector2 = e[0]
+			var wp := bc + b * Vector3(p.x, 0, p.y)
+			world.spawn("structure", {"skind": "house_wall", "pos": Vector3(wp.x, level, wp.z), "yaw": axis + float(e[1]), "variant": e[3],
+				"size": Vector3(e[2], float(ci), 0.4), "door": int(e[3]) == 2})
+		world.spawn("structure", {"skind": "roof", "pos": bc, "yaw": axis, "size": Vector3(body[1], body[3], body[2]), "variant": ci * 2})
+	_place([Vector2(c.x, c.z), half - Vector2(0.3, 0.3), axis])
+	world.stat("church")
+	return true
+
+
 func _hedgerow() -> void:
 	# field walls run on the same 1 m / 45 degree grid as everything built
 	var p := TrenchNet.snap_pos(Vector3(rng.randf_range(-(MapDims.HALF - 18.0), MapDims.HALF - 18.0), 0, rng.randf_range(-(MapDims.HALF - 53.0), MapDims.HALF - 53.0)))

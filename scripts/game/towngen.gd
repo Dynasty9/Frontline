@@ -1055,9 +1055,9 @@ func church() -> void:
 				continue
 			if whole and not mg._is_free(c + n * CHURCHYARD.z, Vector2(size.x * 0.5 + CHURCHYARD.x + 0.5, size.z * 0.5 + CHURCHYARD.y + 0.5), axis, 0.3, true, 1.5):
 				continue
-			if mg._try("church", c, axis, -1, {"size": size}) != null:
+			var ci := BuildingMaterials.HOUSE.find("church") + BuildingMaterials.HOUSE.size() * (cr.randi() % 3)
+			if mg._church(c, axis, ci, size):
 				church_at = c
-				world.stat("church")
 				var main_decor := decor
 				decor = _church_decor
 				_churchyard(c, axis, size, cr, whole)

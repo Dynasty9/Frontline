@@ -462,8 +462,10 @@ func _ready() -> void:
 
 	# A farm's barn: weatherboarded walls, a steeper sheet roof with no
 	# chimney, straw on a bare floor, in each of its three colours.
-	check(BuildingMaterials.house(5) == "timber" and BuildingMaterials.house(11) == "timber", "a barn is weatherboarded")
-	for ci in [5, 11, 17]:
+	var timber := BuildingMaterials.HOUSE.find("timber")
+	var n_mat := BuildingMaterials.HOUSE.size()
+	check(BuildingMaterials.house(timber) == "timber" and BuildingMaterials.house(timber + n_mat) == "timber", "a barn is weatherboarded")
+	for ci in [timber, timber + n_mat, timber + n_mat * 2]:
 		for v in 3:
 			var bw := Structure.preview_model("house_wall", -1, v, Vector3(2.8, float(ci), 0.4), v == 2, 50 + v)
 			check(bw.get_child_count() > 0, "a barn's wall builds (%d/%d)" % [ci, v])
@@ -578,13 +580,33 @@ func _ready() -> void:
 		ds.free()
 	check(dark_storeys >= 5, "some floors above have a lamp on (%d of 40)" % dark_storeys)
 
-	# The parish church: a stone body of three parts (tower, nave, chancel),
-	# the cross on its spire the top of it, nothing out past its buttresses
-	# and eaves.
-	var church := Structure.preview_model("church", -1, 0, Vector3(8.0, 6.5, 23.0), false, 1)
+	# The parish church: its tower solid, the cross on its spire the top of it;
+	# its nave and chancel house walls (a door, lancets), floors (pews, the
+	# altar) and roofs that build, the roof's gable no higher than its pitch.
+	var church := Structure.preview_model("church", -1, BuildingMaterials.HOUSE.find("church"), Vector3(Structure.CHURCH_TOWER, Structure.CHURCH_TOWER_H, Structure.CHURCH_TOWER), false, 1)
 	var chb := _bounds(church, Transform3D.IDENTITY)
-	check(church.get_child_count() > 0 and chb.end.y > 24.0 and chb.end.y < 27.5 and chb.size.x < 9.6 and chb.size.z < 25.0 and chb.position.y > -1.2, "the church builds, its spire the top of it (%s)" % chb)
+	check(church.get_child_count() > 0 and chb.end.y > 24.0 and chb.end.y < 27.5 and chb.size.x < 6.0 and chb.size.z < 6.0 and chb.position.y > -1.2, "the church tower builds, its spire the top of it (%s)" % chb)
 	church.free()
+	var cci := BuildingMaterials.HOUSE.find("church")
+	check(BuildingMaterials.house(cci) == "church" and BuildingMaterials.house(cci + BuildingMaterials.HOUSE.size()) == "church", "a church is rendered in its own limewash")
+	for body: Array in [[8.0, 14.0, 6.2, false], [5.6, 4.4, 5.0, true]]:
+		var plan := Structure.church_walls(body[0], body[1], body[3])
+		var doors := 0
+		for e: Array in plan:
+			var cw := Structure.preview_model("house_wall", -1, e[3], Vector3(e[2], float(cci), 0.4), int(e[3]) == 2, 60 + doors)
+			check(cw.get_child_count() > 0, "a church wall builds (%s)" % [e])
+			cw.free()
+			if int(e[3]) == 2:
+				doors += 1
+		check(doors == (0 if body[3] else 1), "a church's nave has its door, its chancel none (%d)" % doors)
+		var cr2 := Structure.preview_model("roof", -1, cci * 2, Vector3(body[0], body[2], body[1]), false, 5)
+		var crb := _bounds(cr2, Transform3D.IDENTITY)
+		check(cr2.get_child_count() > 0 and crb.end.y < body[2] + body[0] * 0.5 * tan(deg_to_rad(50.0)) + 1.4 and crb.position.y > -0.1, "a church roof builds over its walls (%s)" % crb)
+		cr2.free()
+		var cf := Structure.preview_model("floor", -1, 3, Vector3(body[0], 0.06, body[1]), false, 5)
+		var cfb := _bounds(cf, Transform3D.IDENTITY)
+		check(cf.get_child_count() > 0 and cfb.end.y < 1.75 and cfb.size.x <= body[0] + 0.05, "a church floor builds, its pews and altar low (%s)" % cfb)
+		cf.free()
 
 	# Every building and every kind of scenery still builds a model.
 	var kinds: Array = Defs.BUILDINGS.keys()
