@@ -196,6 +196,16 @@ func _answer(cmd: String, req: Dictionary) -> Variant:
 	return {"ok": false, "error": "unknown command: %s" % cmd}
 
 
+## The AI commanders and how good each is (Defs.AI_LEVELS).
+func _ai(w: World) -> Array:
+	var out := []
+	for c: CommanderAI in w.commanders:
+		out.append({"team": c.team, "level": c.level, "skill": snappedf(c.skill, 0.01), "think": snappedf(c.think_every, 0.01),
+			"flanks": c.flanks, "ambushes": c.ambushes, "scouts": c.scouts, "retreat_at": snappedf(c.retreat_at, 0.01),
+			"supply": snappedf(w.rules.ai_supply(c.team), 0.01)})
+	return out
+
+
 ## A load request as start_local's switches: one of scenario, mission,
 ## battle (AI against AI) or skirmish (Play vs AI: you, with play, against the
 ## AI commander), and seed, play, autoplay, static, verbose...
@@ -293,7 +303,7 @@ func _query(w: World, req: Dictionary) -> Dictionary:
 			return {"t": w.time, "winner": w.winner, "seed": int(w.settings.get("seed", 0)), "scenario": String(w.settings.get("scenario", "")),
 				"mission": String(w.settings.get("mission", "")), "soldiers": w.soldiers.size(), "vehicles": w.vehicles.size(),
 				"structures": w.structures.size(), "squads": w.squads.size(), "supply": [w.rules.supply_total(0), w.rules.supply_total(1)],
-				"mission_info": _plain(w.mission_info)}
+				"mission_info": _plain(w.mission_info), "ai": _ai(w)}
 		"squads":
 			for sq in w.squads.values():
 				if (team == -9 or sq.team == team) and (kind == "" or sq.kind == kind) and (ids.is_empty() or ids.has(sq.sid)):

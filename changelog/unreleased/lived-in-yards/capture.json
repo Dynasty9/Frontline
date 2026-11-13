@@ -1,0 +1,54 @@
+{
+  "before_ref": "548239755c3466e6f675a975df527d74a29d6a0a",
+  "source_ref": "2923545e6f7f9caef8f7b01fa425366775825d15",
+  "engine": "Godot 4.7.2 stable ed1daf0bf",
+  "stage": "tools/showcase/building-surfaces.tscn",
+  "command": "godot --path CHECKOUT --resolution 1600x900 tools/showcase/building-surfaces.tscn -- --building-out=OUTPUT --offscreen FLAGS",
+  "comparisons": [
+    {
+      "subjects": [
+        "house_yard"
+      ],
+      "flags": [
+        "--building-single",
+        "--building-kinds=house_yard"
+      ],
+      "after_flags": [
+        "--building-match=BEFORE/capture.json"
+      ],
+      "cameras": {
+        "house_yard": [
+          0.0,
+          3.3439564704895,
+          -0.0590000152587891,
+          12.7003364562988,
+          44.8487548828125
+        ]
+      }
+    },
+    {
+      "subjects": [
+        "house_yard"
+      ],
+      "flags": [
+        "--building-single",
+        "--building-kinds=house_yard",
+        "--building-rear"
+      ],
+      "after_flags": [
+        "--building-match=BEFORE/capture.json"
+      ],
+      "cameras": {
+        "house_yard": [
+          0.0,
+          3.3439564704895,
+          -0.0590000152587891,
+          12.7003364562988,
+          44.8487548828125
+        ]
+      }
+    }
+  ],
+  "notes": "Both sides render the source_ref studio stage (its house_yard subject places BuildingYards pieces only where that class exists, so the baseline shows the bare house).",
+  "composition": "PIL: matched rows, 792 px halves, JPEG quality 82"
+}

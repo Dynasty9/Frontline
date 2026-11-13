@@ -1,0 +1,20 @@
+{
+  "entry": "changelog/unreleased/lived-in-yards.md",
+  "summary": "Bins, pots, bicycles, woodpiles, garden sets and kennels round the town's houses.",
+  "medium": "still",
+  "stage": "tools/showcase/building-surfaces.tscn",
+  "rationale": "Appearance change: one matched sheet of the same house from the street and from the garden under the same studio cameras shows every piece at a readable size.",
+  "source_ref": "2923545e6f7f9caef8f7b01fa425366775825d15",
+  "before_ref": "548239755c3466e6f675a975df527d74a29d6a0a",
+  "sources": [
+    {
+      "file": "changelog/unreleased/lived-in-yards/comparison.jpg",
+      "sha256": "b9a31c4af14c445caf27ed7801b6c597c32c8d1ec5c6d46be3ada7dd138acc59"
+    },
+    {
+      "file": "changelog/unreleased/lived-in-yards/capture.json",
+      "sha256": "a141e90bf20785dc422c4dcc0dc2e8e860be3975446145b210d1ac3fac9e4e15"
+    }
+  ],
+  "output": null
+}

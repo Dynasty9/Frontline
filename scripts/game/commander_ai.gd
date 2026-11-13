@@ -19,6 +19,30 @@ var obstacle_t := 240.0
 var next_vehicle := ""
 var _back_t := 0.0
 var _recon_t := 150.0
+## How good a commander this is (Defs.AI_LEVELS): its level's key, where it
+## stands between recruit (0) and veteran (2), and what that makes of it.
+var level := "regular"
+var skill := 1.0
+var think_every := 2.0  # s between looks at the battle
+var wave_add := 0  # squads more (or fewer) than a regular gathers for an attack
+var wave_gap := 25.0  # s at least between attacks
+var lull := 200.0  # s with no attack before it goes with what it has
+var flanks := true  # attacks fix and flank (AttackPlan), or go straight in
+var ambushes := true
+var ambush_mult := 1.0  # the wait between ambushes
+var fire_min := 4.0  # how big a target (Commander._support's count) is worth a fire mission
+var fire_gap := 0.0  # s at least between fire missions
+var reinforces := true  # answers an attack's call for help
+var retreat_at := 0.34  # the share of a squad left alive when it's pulled out (0: never)
+var defend_gap := 20.0  # s between answers to a threat to a FOB
+var defenders_n := 2  # squads sent to answer it
+var scouts := true  # recon flights
+var recon_gap := 150.0
+var town_gap := 6.0  # s between looks at which towns to take or hold
+var outpost_gap := 15.0  # s between sending squads forward to the ground between
+var expand_mult := 1.0  # the wait before the next FOB, against a regular's
+var _fire_t := 0.0
+var _adapt_t := 300.0
 
 
 func _init(w: World, t: int) -> void:
@@ -27,15 +51,92 @@ func _init(w: World, t: int) -> void:
 	peer = -1 - t
 	rng.seed = int(w.settings.get("seed", 1)) + 101 * (t + 1)
 	think_t = 3.0 + t
+	level = Defs.ai_level_of(w.settings, t)
+	_apply_skill(float(Defs.AI_LEVELS[level].skill))
+
+
+## Shapes the commander from its skill (0 recruit, 1 regular, 2 veteran),
+## through how it thinks rather than what it's given. A recruit looks at the
+## battle less often, answers threats late and with less, attacks piecemeal
+## and head-on, never lies in ambush, calls fire only on a big fat target,
+## doesn't scout, is slow to send men for the towns and the ground between
+## and to push out new FOBs, and leaves squads in the fight till they're
+## gone. A veteran looks often, gathers bigger attacks and waits for them,
+## fires on smaller groups, scouts more and pulls squads out while they can
+## still be rebuilt.
+## Regular (1) is the commander as it always was.
+func _apply_skill(s: float) -> void:
+	skill = clampf(s, 0.0, 2.0)
+	think_every = _lv(3.5, 2.0, 1.25)
+	wave_add = roundi(_lv(-1.0, 0.0, 1.0))
+	wave_gap = _lv(70.0, 25.0, 20.0)
+	lull = _lv(320.0, 200.0, 160.0)
+	flanks = skill >= 0.5
+	ambushes = skill >= 0.5
+	ambush_mult = _lv(2.0, 1.0, 0.75)
+	fire_min = _lv(9.0, 4.0, 3.0)
+	fire_gap = _lv(90.0, 0.0, 0.0)
+	reinforces = skill >= 0.5
+	retreat_at = 0.0 if skill < 0.5 else _lv(0.2, 0.34, 0.5)
+	defend_gap = _lv(45.0, 20.0, 12.0)
+	defenders_n = roundi(_lv(1.0, 2.0, 3.0))
+	scouts = skill >= 0.5
+	recon_gap = _lv(240.0, 150.0, 100.0)
+	town_gap = _lv(15.0, 6.0, 6.0)
+	outpost_gap = _lv(40.0, 15.0, 15.0)
+	expand_mult = _lv(1.6, 1.0, 1.0)
+
+
+## A figure between a recruit's (a), a regular's (b) and a veteran's (c).
+func _lv(a: float, b: float, c: float) -> float:
+	return lerpf(a, b, skill) if skill <= 1.0 else lerpf(b, c, skill - 1.0)
+
+
+## Adaptive: every minute, from five minutes in, it weighs its side against
+## the other - men, vehicles, FOBs and towns - and eases off when it's well
+## ahead (the players are losing badly) or presses harder when it's well
+## behind (they're cruising), a little at a time, so a battle stays a fight.
+func _adapt() -> void:
+	if level != "adaptive" or world.time < _adapt_t:
+		return
+	_adapt_t = world.time + 60.0
+	var r := _strength(team) / maxf(1.0, _strength(1 - team))
+	var s := skill
+	if r > 1.5:
+		s -= 0.2
+	elif r < 0.7:
+		s += 0.2
+	else:
+		s = move_toward(s, 1.0, 0.05)
+	s = clampf(s, 0.25, 1.9)
+	if absf(s - skill) > 0.001:
+		_apply_skill(s)
+		world.stat("ai_adapt_down" if r > 1.5 else ("ai_adapt_up" if r < 0.7 else "ai_adapt_settle"))
+
+
+## A rough count of a side's strength, for Adaptive: what it has in the field
+## and the ground it holds.
+func _strength(side: int) -> float:
+	var n := 0.0
+	for s in world.soldiers:
+		if s.team == side and s.life == Soldier.Life.ALIVE:
+			n += 1.0
+	for v in world.vehicles:
+		if v.team == side and not v.gone:
+			n += 3.0
+	n += 15.0 * world.rules.fobs(side).size() + 10.0 * world.rules.towns(side).size()
+	return n
 
 
 func tick(dt: float) -> void:
 	think_t -= dt
 	if think_t > 0.0:
 		return
-	think_t = 2.0
+	think_t = think_every
 	if world.winner >= 0:
 		return
+	_adapt()
+	world.stat("ai_think_t%d" % team)
 	var sqs := _my_squads()
 	_support()
 	_recon()
@@ -48,6 +149,8 @@ func tick(dt: float) -> void:
 ## Calls in the side's off-map support on the densest group of spotted
 ## enemies, never danger-close to our own troops.
 func _support() -> void:
+	if world.time < _fire_t:
+		return
 	var kind := _support_kind()
 	if kind == "":
 		return
@@ -75,7 +178,8 @@ func _support() -> void:
 		if n > bs:
 			bs = n
 			best = e.position
-	if bs >= 4.0:
+	if bs >= fire_min:
+		_fire_t = world.time + fire_gap
 		var hq: Structure = world.rules.depots[team]
 		var dir := Defs.flat(best - hq.position).normalized() if hq and not hq.gone else Vector3.ZERO
 		_cmd({"t": "support", "kind": kind, "pos": best, "dir": dir})
@@ -111,7 +215,7 @@ func _support_kind() -> String:
 ## spare (the men and the next FOB come first).
 func _recon() -> void:
 	var t := world.time
-	if t < _recon_t:
+	if t < _recon_t or not scouts:
 		return
 	_recon_t = t + 20.0
 	var kinds := []
@@ -141,7 +245,7 @@ func _recon() -> void:
 	var k: String = kinds[rng.randi() % kinds.size()]
 	_cmd({"t": "support", "kind": k, "pos": tgt, "dir": Defs.flat(tgt - front.position).normalized()})
 	world.stat("ai_recon")
-	_recon_t = t + 150.0
+	_recon_t = t + recon_gap
 
 
 func _idle_count() -> int:
@@ -159,6 +263,8 @@ var _helped := {}  # plan -> when we last answered its call for help
 ## help, and the company answers: fire onto the position (if our own men are
 ## clear of it), and the nearest uncommitted squads go and join the attack.
 func _reinforce(fighters: Array) -> void:
+	if not reinforces:
+		return
 	var t := world.time
 	var plans := []
 	for sq in fighters:
@@ -207,7 +313,7 @@ func _outposts(fighters: Array) -> void:
 	var t := world.time
 	if t < _outpost_t or world.key_points.is_empty():
 		return
-	_outpost_t = t + 15.0
+	_outpost_t = t + outpost_gap
 	var front := _front_fob()
 	if front == null:
 		return
@@ -227,7 +333,7 @@ func _outposts(fighters: Array) -> void:
 			held.append(r.pos)
 		elif role == "idle" and sq.plan == null:
 			idle += 1
-	var wave := 3 if t < 600.0 else 4
+	var wave := (3 if t < 600.0 else 4) + wave_add
 	var want := clampi(idle - wave, 0, 1 + world.rules.fobs(team).size() / 2)
 	if held.is_empty() and idle >= 2 and t > 90.0:
 		want = maxi(want, 1)
@@ -278,7 +384,7 @@ func _towns(fighters: Array) -> void:
 	var all: Array = world.rules.towns()
 	if t < _town_t or all.is_empty():
 		return
-	_town_t = t + 6.0
+	_town_t = t + town_gap
 	var enemy := 1 - team
 	var on := {}  # town eid -> squads sent to it
 	var busy := 0
@@ -521,7 +627,7 @@ func _economy(sqs: Array) -> void:
 	if t > expand_t and sup > 300 and fobs.size() < 3 + int(MapDims.HALF / 128.0):  # (more ground, more bases)
 		var spot := _expansion_spot()
 		if spot != Vector3.INF:
-			expand_t = t + rng.randf_range(120.0, 200.0)
+			expand_t = t + expand_mult * rng.randf_range(120.0, 200.0)
 			_place("fob", spot, Defs.yaw_of(_enemy_dir()), engs)
 			return
 		expand_t = t + 30.0
@@ -925,7 +1031,7 @@ func _military(sqs: Array) -> void:
 	for sq in fighters:
 		var alive: int = sq.alive_members().size()
 		var total: int = maxi(1, sq.members.size())
-		if alive * 1.0 / total < 0.34 and roles.get(sq.sid, {}).get("role", "") != "retreat":
+		if alive * 1.0 / total < retreat_at and roles.get(sq.sid, {}).get("role", "") != "retreat":
 			roles[sq.sid] = {"role": "retreat", "t": t}
 			_cmd({"t": "retreat", "squads": [sq.sid]})
 	# defence: answer threats near our FOBs
@@ -935,10 +1041,10 @@ func _military(sqs: Array) -> void:
 			if s.team != team and s.team >= 0 and s.life == Soldier.Life.ALIVE and s.visible_to_team(team):
 				threat += 1
 		if threat >= 2 and t > defense_t:
-			defense_t = t + 20.0
+			defense_t = t + defend_gap
 			var sent := 0
 			for sq in _by_distance(fighters, f.position):
-				if sent >= 2 or Defs.flat(sq.centroid() - f.position).length() > 120.0:
+				if sent >= defenders_n or Defs.flat(sq.centroid() - f.position).length() > 120.0:
 					break
 				roles[sq.sid] = {"role": "defend", "t": t}
 				_cmd({"t": "defend", "squads": [sq.sid], "pos": f.position + _enemy_dir() * 8.0, "face": _enemy_dir()})
@@ -1025,9 +1131,9 @@ func _military(sqs: Array) -> void:
 		var over: Vector3 = attack_target.position if attack_target else (fbase.position + _enemy_dir() * 45.0 if fbase else dv.position)
 		if Defs.flat(dv.uav_dest - over).length() > 25.0:
 			_cmd({"t": "move", "vehicles": [dv.eid], "pos": over})
-	var wave := 3 if t < 600.0 else 4
-	if attack_target and (attackers.size() >= wave or (attackers.size() >= 2 and t - last_wave_t > 200.0)):
-		if t - last_wave_t > 25.0:
+	var wave := (3 if t < 600.0 else 4) + wave_add
+	if attack_target and (attackers.size() >= wave or (attackers.size() >= 2 and t - last_wave_t > lull)):
+		if t - last_wave_t > wave_gap:
 			last_wave_t = t
 			var ids := []
 			for sq in attackers:
@@ -1037,7 +1143,8 @@ func _military(sqs: Array) -> void:
 				ids.append(sq.sid)
 			var dir := Defs.flat(attack_target.position - _centroid(attackers)).normalized()
 			var dest: Vector3 = attack_target.position - dir * 4.0
-			_cmd({"t": "assault", "squads": ids, "pos": dest, "face": dir})
+			_cmd({"t": "assault", "squads": ids, "pos": dest, "face": dir, "plain": not flanks})
+			world.stat("ai_wave_t%d" % team)
 			var vids := []
 			for v in vehs:
 				vids.append(v.eid)
@@ -1062,10 +1169,10 @@ func _military(sqs: Array) -> void:
 			if asq == null or asq.drill != "withdraw":
 				roles[sid] = {"role": "idle", "t": t}
 				# (the next one a while after this one's over)
-				ambush_t = maxf(ambush_t, t + (rng.randf_range(90.0, 150.0) if team == Defs.REBELS else rng.randf_range(160.0, 240.0)))
+				ambush_t = maxf(ambush_t, t + ambush_mult * (rng.randf_range(90.0, 150.0) if team == Defs.REBELS else rng.randf_range(160.0, 240.0)))
 		else:
 			lying += 1
-	if t > ambush_t and lying == 0:
+	if ambushes and t > ambush_t and lying == 0:
 		ambush_t = t + 40.0
 		var site := _ambush_site()
 		if not site.is_empty():

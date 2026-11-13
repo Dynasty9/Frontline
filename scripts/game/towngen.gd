@@ -38,7 +38,10 @@ var _depth := LOT_D  # depth of the lot being built (shallower where the block i
 var _special := {}
 var square := Vector3.INF  # the middle of the town square
 var square_q := Vector3.ZERO  # which corner of the central crossroads it fills
-var square_flag: Array = []  # the flagpole on it (decor; the town's supply dump takes its place)
+var square_flag: Array = []
+## Yard dressing (see _yard_life), kept apart and put after the rest of the
+## decor, so every older piece keeps its place in the list and so its look.
+var _yard_decor: Array = []  # the flagpole on it (decor; the town's supply dump takes its place)
 
 
 func _init(m) -> void:
@@ -503,12 +506,53 @@ func _lot_house(front: Vector3, n: Vector3, d: Vector3, W: float, shop: bool) ->
 				_d("garden", yc + d * rng.randf_range(-W * 0.2, W * 0.2), yaw_d, Vector3(minf(W - 3.0, 6.0), 0, minf(yard - 1.0, 3.0)))
 			elif r < 0.85:
 				_d("clothesline", yc, yaw_d)
+		_yard_life(front, n, d, W, hc, w, dep, setback, entrances)
 	if drive:
 		var dc := front + n * (setback + 2.6) + d * (-signf(side) * (W * 0.5 - 1.8))
 		var apron := FRONT - WALK if _curb_crossing(front + d * drive_x, n, d, 2.6) else 0.0
 		_d("drive", front + n * (setback + 2.6 - apron) * 0.5 + d * drive_x, axis, Vector3(2.6, 0, setback + 2.6 + apron))
 		if rng.randf() < 0.75:
 			mg._try("car", dc, axis + (PI if rng.randf() < 0.5 else 0.0), -1, {"variant": rng.randi() % 5})
+
+
+## What the people living in a house keep round it (BuildingYards): bins at
+## the front corner away from the door, pots by the door, a bicycle against a
+## side wall, a woodpile against the back wall, a table and chairs out the back,
+## a kennel in a corner of the garden. Drawn from a stream of their own (seeded
+## from where the lot is), so the map is the same as it was. All set dressing.
+func _yard_life(front: Vector3, n: Vector3, d: Vector3, W: float, hc: Vector3, w: float, dep: float, setback: float, entrances: Array[Vector3]) -> void:
+	var main_decor := decor
+	decor = _yard_decor
+	_place_yard_life(front, n, d, W, hc, w, dep, setback, entrances)
+	_yard_decor = decor
+	decor = main_decor
+
+
+func _place_yard_life(front: Vector3, n: Vector3, d: Vector3, W: float, hc: Vector3, w: float, dep: float, setback: float, entrances: Array[Vector3]) -> void:
+	var life := RandomNumberGenerator.new()
+	life.seed = int(absf(front.x) * 13.0) * 7919 + int(absf(front.z) * 13.0) * 31 + 17
+	var axis := atan2(n.x, n.z)
+	var door := entrances[0] if not entrances.is_empty() else hc - n * dep * 0.5
+	var out := Defs.flat(door - hc)
+	out = (n if absf(out.dot(n)) > absf(out.dot(d)) else d) * signf(out.dot(n) if absf(out.dot(n)) > absf(out.dot(d)) else out.dot(d))
+	var along := Vector3(out.z, 0, -out.x)
+	# the front corner away from the door
+	var corner := -1.0 if (door - hc).dot(d) > 0.0 else 1.0
+	if life.randf() < 0.7 and setback > 0.9:
+		_d("bins", hc - n * (dep * 0.5 + 0.75) + d * corner * (w * 0.5 - 0.5), axis + PI, life.randi_range(1, 2) * 10 + life.randi() % BuildingYards.BIN_COLS.size())
+	if life.randf() < 0.35:
+		_d("pots", door + out * 0.62 + along * 1.4, atan2(out.x, out.z), life.randi_range(1, 3))
+	if life.randf() < 0.25 and (W - w) * 0.5 > 0.9:
+		var sd := -corner
+		_d("bike", hc + d * sd * (w * 0.5 + 0.2) + n * life.randf_range(-dep * 0.25, dep * 0.25), atan2(d.x * sd, d.z * sd), life.randi() % BuildingYards.BIKE_COLS.size())
+	var back := hc + n * (dep * 0.5 + 0.2)
+	var yard := _depth - setback - dep
+	if life.randf() < 0.4:
+		_d("woodpile", back + n * 0.21 + d * corner * (w * 0.5 - 1.5), axis, snappedf(life.randf_range(1.4, 2.2), 0.1))
+	if yard > 4.0 and life.randf() < 0.4:
+		_d("garden_set", back + n * 1.7 - d * corner * w * 0.22, life.randf() * TAU, 1 if life.randf() < 0.4 else 0)
+	if yard > 4.0 and life.randf() < 0.15:
+		_d("kennel", front + n * (_depth - 1.2) + d * corner * (W * 0.5 - 1.1), axis + PI + life.randf_range(-0.4, 0.4))
 
 
 func _curb_crossing(front: Vector3, n: Vector3, d: Vector3, width: float) -> bool:
@@ -948,5 +992,7 @@ func finish(build_view := true) -> void:
 		var arr: PackedVector3Array = poly
 		for k in range(0, arr.size(), 2):
 			mg._keep_clear([Vector2(arr[k].x, arr[k].z), 3.6])
+	decor.append_array(_yard_decor)
+	_yard_decor = []
 	if build_view:
 		world.set_decor(decor, rect)

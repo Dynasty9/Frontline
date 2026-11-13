@@ -72,7 +72,7 @@ var preset := "high"
 var v := {
 	"shadows": 2, "ssao": true, "ssil": true, "gi": false, "vol_fog": true, "glow": true, "aa": 6, "scale": 1.0,
 	"grass": 2, "wildlife": 2, "effects": 2, "decals": true, "ragdolls": true, "post": true, "dof": false,
-	"vsync": true, "fps_cap": 0, "perf": 1, "shake": true, "ui_scale": 1.0, "mood": "random", "labels": true, "lyr_units": true, "lyr_orders": false, "lyr_intel": true, "lyr_vision": true, "lyr_ranges": false, "orbat": true,
+	"vsync": true, "fps_cap": 0, "perf": 1, "shake": true, "ui_scale": 1.0, "mood": "random", "ai_difficulty": "regular", "labels": true, "lyr_units": true, "lyr_orders": false, "lyr_intel": true, "lyr_vision": true, "lyr_ranges": false, "orbat": true,
 	"ao_q": 2, "upscaler": 1, "sharpen": 0.2, "ssr": true, "terrain_reflections": false, "alpine_haze": true, "lod": 2, "aniso": 3, "water": 2, "mountain_clouds": 3, "cloud_shadows": true,
 	"window": 0, "resolution": 2, "brightness": 1.0, "contrast": 1.0, "look": 0, "tonemap": 0, "fov": 48.0,
 	"bubbles": true, "cover_preview": true, "edge_pan": true, "cam_speed": 1.0, "adviser": true, "boot_camp_offer": true,
