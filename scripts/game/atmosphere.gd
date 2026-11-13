@@ -1108,7 +1108,7 @@ func _time_tick() -> void:
 		return
 	if world.photo and world.photo.active:
 		return  # (photo mode has the light while it's open, and gives it back)
-	var q := floorf((world.time - _clock_t0) / TimeOfDay.STEP) * TimeOfDay.STEP
+	var q := floorf(((world.time - _clock_t0) * _clock_pace + _clock_skip) / TimeOfDay.STEP) * TimeOfDay.STEP
 	# (a client's clock steps back a moment when a snapshot lands: not worth a relight)
 	if _clock_on and (q == _clock_step or (q < _clock_step and _clock_step - q <= TimeOfDay.STEP * 1.5)):
 		return
@@ -1116,7 +1116,7 @@ func _time_tick() -> void:
 	_clock_on = true
 	_clock_step = q
 	_gpu_after_step = 0
-	_apply_light(TimeOfDay.light(_clock_start, q * _clock_pace + _clock_skip))
+	_apply_light(TimeOfDay.light(_clock_start, q))
 	if _debug_clock:
 		var sp: Vector2 = _clock.sun
 		print("TIME OF DAY t=%.0f %05.2fh %s %s sun %.1f/%.1f light %.1f/%.1f x%.2f sky %s  %d us" % [world.time, float(_clock.hour), mood,
@@ -1161,6 +1161,9 @@ func _apply_light(st: Dictionary) -> void:
 	mood = String(st.mood)
 	weights = st.weights
 	_d = st.d
+	if float(st.lift) > 0.0:
+		var physical := bool(Settings.get_v("phys_sky")) and not OS.has_feature("web")
+		_d.exposure = float(_d.exposure) * (1.0 + float(TimeOfDay.TWILIGHT_LIFT["physical" if physical else "painted"]) * float(st.lift))
 	RenderingServer.global_shader_parameter_set("window_glow", by_mood(LAMPLIGHT, 0.0))
 	sun.rotation_degrees = Vector3(-float(_d.elev), float(_d.azim), 0)
 	sun.light_color = _d.sun
@@ -1292,7 +1295,7 @@ func _rebake_tick() -> void:
 		_rebake_at = 0
 	var t0 := Time.get_ticks_usec()
 	var cells := _rebake_img.get_width() * _rebake_img.get_height()
-	var budget := REBAKE_BUDGET_US * (40 if _clock_pace > 1.0 else 1)  # (a sped-up clock for renders keeps up)
+	var budget := REBAKE_BUDGET_US * (400 if _clock_pace > 1.0 else 1)  # (a sped-up clock for renders keeps up)
 	while _rebake_at < cells and Time.get_ticks_usec() - t0 < budget:
 		var stop := mini(_rebake_at + 48, cells)
 		world.terrain.landform.bake_sunlight(_rebake_img, _rebake_dir, _rebake_at, stop)

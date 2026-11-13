@@ -63,8 +63,9 @@ const BLUE_HOUR := {"zenith": Color(0.07, 0.11, 0.27), "horizon": Color(0.36, 0.
 const BLUE_HOUR_MAX := 0.65
 ## Between sunset and moonlight there's a dark gap: the sky's light fails before
 ## the moon's is up. The eye opens up for it, so the exposure does too, by up
-## to this much again (twilight_lift()).
-const TWILIGHT_LIFT := 1.1
+## to this much again (twilight_lift()): more under the physical sky, which
+## goes darker after sunset than the painted one does.
+const TWILIGHT_LIFT := {"physical": 1.1, "painted": 0.5}
 ## The last of the sun, and the first: so low it shines through so much air
 ## that little but the red gets through. Below dusk's (or dawn's) own sun the
 ## sunlight goes this far toward this colour by the time it sets.
@@ -147,6 +148,8 @@ static func toward(elev: float, azim: float) -> Vector3:
 ##   sun_moods [mood, mood, share]: the daylight moods the sun's own colour,
 ##             strength and (Physical sky's) air come from
 ##   up        how far up the light's body is (0..1: its light fading in or out)
+##   lift      how far the eye opens up in the dark between sunset and moonlight
+##             (0..1, times TWILIGHT_LIFT: the exposure goes up by that share)
 ##   sun_energy the sun's own strength, before the horizon takes it
 ##   photo     how much of the photographed midday sky shows
 ##   rim_azim  where the cool fill light comes from (opposite the light)
@@ -171,6 +174,7 @@ static func light(start: String, t: float) -> Dictionary:
 		a = b
 		k = 0.0
 	var weights := {a: 1.0} if a == b else {a: 1.0 - k, b: k}
+	var lift := 0.0
 	var da: Dictionary = moods[a]
 	var db: Dictionary = moods[b]
 	var d := {}
@@ -214,9 +218,7 @@ static func light(start: String, t: float) -> Dictionary:
 		if blue > 0.0:
 			for key in BLUE_HOUR:
 				d[key] = (d[key] as Color).lerp(BLUE_HOUR[key], blue * BLUE_HOUR_MAX)
-		var lift := twilight_lift(sp.x)
-		if lift > 0.0:
-			d.exposure = float(d.exposure) * (1.0 + TWILIGHT_LIFT * lift)
+		lift = twilight_lift(sp.x)
 	var dark := float(weights.get("night", 0.0))
 	d.tint = _mix(sun_col, night.sun, dark)
 	# the fill light swings round with the light, not across in one go
@@ -225,7 +227,7 @@ static func light(start: String, t: float) -> Dictionary:
 		rim = float(night.azim)
 	elif dark > 0.0:
 		rim = rad_to_deg(lerp_angle(deg_to_rad(sp.y), deg_to_rad(float(night.azim)), dark))
-	return {"hour": h, "mood": a if k < 0.5 else b, "weights": weights, "d": d, "sun": sp, "sun_moods": [sa, sb, ks], "up": moon_up if by_moon else sun_up,
+	return {"hour": h, "mood": a if k < 0.5 else b, "weights": weights, "d": d, "sun": sp, "sun_moods": [sa, sb, ks], "up": moon_up if by_moon else sun_up, "lift": lift,
 		"sun_energy": sun_e, "photo": smoothstep(PHOTO.x, PHOTO.y, float(weights.get("day", 0.0))), "rim_azim": rim + 180.0}
 
 
@@ -243,10 +245,10 @@ static func blue_hour(elev: float) -> float:
 
 
 ## How far the eye opens up for the dark between sunset and moonlight (0..1):
-## from a little before sunset, most with the sun 3 to 6 degrees down, gone
-## as the moonlight comes in.
+## from a little before sunset, most with the sun 3 to 4 degrees down, gone as
+## the moonlight comes in.
 static func twilight_lift(elev: float) -> float:
-	return smoothstep(4.0, -3.0, elev) * (1.0 - smoothstep(-6.0, -11.0, elev))
+	return smoothstep(4.0, -3.0, elev) * (1.0 - smoothstep(-4.0, -9.0, elev))
 
 
 ## A mood's light as it always is, the clock stopped (weather, or the setting off).
@@ -254,7 +256,7 @@ static func still(m: String) -> Dictionary:
 	var d: Dictionary = Atmosphere.MOODS[m].duplicate()
 	d.tint = d.sun
 	return {"hour": -1.0, "mood": m, "weights": {m: 1.0}, "d": d, "sun": Vector2(float(d.elev), float(d.azim)),
-		"sun_moods": [m, m, 0.0], "up": 1.0, "sun_energy": float(d.energy), "photo": 1.0 if m == "day" else 0.0, "rim_azim": float(d.azim) + 180.0}
+		"sun_moods": [m, m, 0.0], "up": 1.0, "lift": 0.0, "sun_energy": float(d.energy), "photo": 1.0 if m == "day" else 0.0, "rim_azim": float(d.azim) + 180.0}
 
 
 ## a to b by k, exactly a at 0 and b at 1 (a mood's own hour gives its own values).
