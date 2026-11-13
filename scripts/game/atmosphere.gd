@@ -615,8 +615,9 @@ func _build_ground() -> void:
 	road_mat.set_shader_parameter("paving_noise", preload("res://assets/town/aerial_asphalt_01_color.jpg"))
 	road_mat.set_shader_parameter("street_detail", preload("res://assets/town/road_damaged_clean_color.jpg"))
 	road_mat.set_shader_parameter("street_noise", Mats.noise_tex())
-	road_mat.set_shader_parameter("gravel_color", preload("res://assets/town/gravelly_sand_color.jpg"))
-	road_mat.set_shader_parameter("gravel_surface", preload("res://assets/town/gravelly_sand_surface.png"))
+	road_mat.set_shader_parameter("trail_color", preload("res://assets/town/rocky_trail_02_color.jpg"))
+	road_mat.set_shader_parameter("trail_surface", preload("res://assets/town/rocky_trail_02_surface.png"))
+	road_mat.set_shader_parameter("wear_color", preload("res://assets/town/dirt_aerial_03_color.jpg"))
 	road_mat.set_shader_parameter("paving_surface", preload("res://assets/town/road_damaged_clean_surface.png"))
 	road_mat.set_shader_parameter("soil_color", preload("res://assets/terrain/dirt_aerial_02_color_height.png"))
 	# see-through (its edges fade into the verges), so it draws with the smoke
@@ -2452,8 +2453,9 @@ uniform sampler2DArray deform_tex : filter_linear, repeat_disable;
 instance uniform float country = 0.0;
 uniform sampler2D paving_noise : source_color, filter_linear_mipmap_anisotropic, repeat_enable;
 uniform sampler2D street_noise : filter_linear_mipmap_anisotropic, repeat_enable;
-uniform sampler2D gravel_color : source_color, filter_linear_mipmap_anisotropic, repeat_enable;
-uniform sampler2D gravel_surface : filter_linear_mipmap_anisotropic, repeat_enable;
+uniform sampler2D trail_color : source_color, filter_linear_mipmap_anisotropic, repeat_enable;  // a 2 m trail scan
+uniform sampler2D trail_surface : filter_linear_mipmap_anisotropic, repeat_enable;  // its normal, roughness in alpha
+uniform sampler2D wear_color : source_color, filter_linear_mipmap_anisotropic, repeat_enable;  // 25 m of worn dirt from the air
 uniform sampler2D paving_surface : filter_linear_mipmap_anisotropic, repeat_enable;
 uniform sampler2D soil_color : source_color, filter_linear_mipmap_anisotropic, repeat_enable;  // rutted soil scan, height in alpha
 // CLOUD_SHADOW
@@ -2476,76 +2478,98 @@ void fragment() {
 	float n = texture(detail_tex, wpos.xz / 3.0).r;
 	float n2 = texture(detail_tex, wpos.xz / 11.0 + 0.5).r;
 	float n3 = texture(detail_tex, wpos.xz / 0.6 + 0.2).r;
-	// Outside town a road is a track. Wheels keep to the same two lines, so
-	// they press them hard and smooth, the stones thrown out of them gather
-	// on the shoulders, grass holds on down the crown where no wheel runs,
-	// and the meadow takes the edges back raggedly. Map roads are gravelled
-	// (country); a track the troops wear in is bare earth, rutted dark.
+	// Outside town a road is a track: compacted earth and grit, its surface
+	// photographed (a trail scan underfoot, an aerial survey of worn dirt for
+	// the broad scuffs and wheel marks). Wheels keep to two lines and press
+	// them smooth and a little darker; loose stones gather where no wheel runs;
+	// and at the sides the trail breaks up into the meadow's own bare soil a
+	// metre or so out, as grass creeps back over the shoulders. Map roads are
+	// gravelled (country); a track the troops wear in is the meadow's mud.
 	float road_wear = texture(street_noise, wpos.xz * 0.009 + 0.21).r;
 	float half_w = mix(2.4, 2.9, country);
-	// near the town the track is used by everything going in and out of it:
-	// worn full width, no grass left down the middle
+	float xc = (x - 0.5) * half_w * 2.0;  // metres from the middle
 	vec2 to_town = min(wpos.xz - town.xy, town.zw - wpos.xz);
 	float near_town = (1.0 - smoothstep(0.0, 16.0, -min(to_town.x, to_town.y))) * step(1.0, town.z - town.x);
-	float xc = (x - 0.5) * half_w * 2.0;  // metres from the middle
 	// the wheel lines drift across the road together, a little, as drivers do
 	float drift = (texture(street_noise, vec2(UV.y * 0.0025, 0.37)).r - 0.5) * 0.8;
 	float xt = abs(xc - drift);
-	float gauge = 0.86;
-	float track_half = mix(0.24, 0.36, n);
-	float track = 1.0 - smoothstep(track_half * 0.25, track_half, abs(xt - gauge));
-	track *= mix(0.55, 1.0, smoothstep(0.2, 0.7, n2));
-	float shoulder = smoothstep(gauge + 0.25, gauge + 0.8, xt);
-	vec3 gravel = texture(gravel_color, wpos.xz * 0.5).rgb;
-	vec4 soil = texture(soil_color, wpos.xz / 9.0);
+	float track = 1.0 - smoothstep(0.12, 0.42, abs(xt - 0.86));
+	track *= mix(0.6, 1.0, smoothstep(0.2, 0.7, n2));
+	// Two turns of the trail scan, blended where each is higher, never repeat visibly.
+	vec2 turned = mat2(vec2(0.8, 0.6), vec2(-0.6, 0.8)) * wpos.xz;
+	vec4 trail_a = texture(trail_color, wpos.xz / 2.0);
+	vec4 trail_b = texture(trail_color, turned / 2.6 + 0.37);
+	float pick = smoothstep(0.35, 0.65, texture(street_noise, wpos.xz * 0.05 + 0.6).r);
+	vec3 trail = mix(trail_a.rgb, trail_b.rgb, pick);
+	vec3 survey = texture(wear_color, wpos.xz / 25.0).rgb;
+	vec4 soil = texture(soil_color, mat2(vec2(0.8, 0.6), vec2(-0.6, 0.8)) * wpos.xz / 20.0);
 	if (OUTPUT_IS_SRGB) {
-		gravel = mix(gravel / 12.92, pow((gravel + 0.055) / 1.055, vec3(2.4)), step(vec3(0.04045), gravel));
+		trail = mix(trail / 12.92, pow((trail + 0.055) / 1.055, vec3(2.4)), step(vec3(0.04045), trail));
+		survey = mix(survey / 12.92, pow((survey + 0.055) / 1.055, vec3(2.4)), step(vec3(0.04045), survey));
 		soil.rgb = mix(soil.rgb / 12.92, pow((soil.rgb + 0.055) / 1.055, vec3(2.4)), step(vec3(0.04045), soil.rgb));
 	}
-	soil.rgb = mix(soil.rgb, vec3(dot(soil.rgb, vec3(0.2126, 0.7152, 0.0722))) * vec3(1.05, 0.95, 0.8), 0.45);
-	// The scan is quarry sand; road grit is greyer, with earth worked through it.
-	gravel = mix(gravel, vec3(dot(gravel, vec3(0.2126, 0.7152, 0.0722))) * vec3(1.0, 0.95, 0.86), 0.72) * 0.4;
-	vec3 loose = mix(gravel, soil.rgb * 0.5, 0.3 + 0.35 * smoothstep(0.35, 0.7, n2)) * (0.82 + n * 0.3);
-	float peb = smoothstep(0.62, 0.74, n3) * (0.35 + 0.65 * shoulder);
-	loose = mix(loose, loose * 1.35 + vec3(0.015), peb * 0.5);
-	// wheels grind the grit to a pale, packed dust
-	vec3 pressed = mix(gravel * 1.25, soil.rgb * 0.8, 0.35) * (0.94 + n3 * 0.12);
-	vec3 gravel_road = mix(loose, pressed, track);
-	// bare earth: the wheels cut down into it, darker and damper in the ruts
-	vec3 earth = mix(soil.rgb * 0.8, vec3(0.115, 0.09, 0.0615), 0.5) * (0.85 + 0.3 * n);
-	earth = mix(earth, earth * 0.62, track * 0.8);
+	// (the scans' mean linear luminance: the trail 0.166, the survey 0.1381)
+	float grain = dot(trail, vec3(0.2126, 0.7152, 0.0722)) / 0.166;
+	float scuffs = dot(survey, vec3(0.2126, 0.7152, 0.0722)) / 0.1381;
+	// The trail scan is warm orange earth; keep its grain but give it the dust
+	// of this country, a dull grey-brown (its mean linear colour 0.247, 0.150, 0.086).
+	// Its brightness carries the grit; a little of its own hue survives to
+	// tell stone from earth.
+	vec3 hue = (trail / max(grain * 0.166, 0.002)) / (vec3(0.247, 0.150, 0.086) / 0.166);
+	vec3 bed = vec3(0.105, 0.081, 0.056) * pow(clamp(grain, 0.2, 3.0), 0.9) * mix(vec3(1.0), clamp(hue, vec3(0.6), vec3(1.6)), 0.35);
+	bed *= mix(1.0, scuffs, 0.6);
+	// wheels press the lines down smooth and darker, and the stones out of them
+	vec3 pressed = mix(bed, vec3(dot(bed, vec3(0.2126, 0.7152, 0.0722))) * vec3(1.02, 0.98, 0.92), 0.3) * 0.82;
+	pressed *= mix(1.0, pow(clamp(grain, 0.4, 2.0), 0.5), 0.6);
+	vec3 gravel_road = mix(bed, pressed, track * (1.0 - near_town * 0.5));
+	// The meadow's bare soil, as the ground shader draws its mud (the same scan,
+	// the same scale and palette), a shade drier where it's walked on.
+	float soil_light = dot(soil.rgb, vec3(0.2126, 0.7152, 0.0722)) / 0.1329;
+	vec3 meadow_soil = vec3(0.084, 0.07, 0.049) * pow(clamp(soil_light, 0.3, 1.6), 0.6);
+	vec3 earth = mix(meadow_soil * 0.95, meadow_soil * 0.62, track) * mix(1.0, pow(clamp(grain, 0.4, 2.0), 0.4), 0.5);
 	vec3 col = mix(earth, gravel_road, country);
-	col *= mix(0.8, 1.12, smoothstep(0.25, 0.70, road_wear));
-	// potholes, in the wheel lines where water stands and the wheels pound it
-	float pothole_field = texture(street_noise, wpos.xz * 0.045 + 0.91).r + (1.0 - soil.a) * 0.2 + (n3 - 0.5) * 0.08;
-	float pothole = smoothstep(0.76, 0.9, pothole_field) * smoothstep(0.2, 0.6, track + (1.0 - shoulder) * 0.3);
-	// a dark, damp hollow with paler grit washed up round its rim
-	float rim = smoothstep(0.70, 0.76, pothole_field) * (1.0 - smoothstep(0.76, 0.82, pothole_field)) * smoothstep(0.2, 0.6, track + (1.0 - shoulder) * 0.3);
-	col = mix(col, col * 1.15, rim * 0.6);
-	col = mix(col, mix(soil.rgb, vec3(dot(soil.rgb, vec3(0.3333))), 0.5) * 0.42, pothole * 0.8);
+	col *= mix(0.9, 1.08, smoothstep(0.25, 0.70, road_wear));
+	// potholes in the wheel lines, where water stands and the wheels pound it
+	float pothole_field = texture(street_noise, wpos.xz * 0.045 + 0.91).r + (1.0 - trail_a.a) * 0.15 + (n3 - 0.5) * 0.06;
+	float pothole = smoothstep(0.78, 0.9, pothole_field) * smoothstep(0.3, 0.7, track) * country;
+	col = mix(col, meadow_soil * 0.8, pothole * 0.8);
+	// Edges: how far in from the ragged line where the grass has the ground back.
+	// (street_noise has 16 features a unit: metre-scale bays and tufts, then a
+	// fine fringe where single blades come through the grit)
+	float ragged = (texture(street_noise, wpos.xz * 0.035 + 0.13).r - 0.5) * 1.1
+		+ (texture(street_noise, wpos.xz * 0.12 + 0.57).r - 0.5) * 0.4;
+	float in_from_edge = half_w - abs(xc) + ragged + near_town * 0.2 - 0.25;
+	// Over the last metre the trail breaks up: first into the meadow's darker
+	// soil, then into scattered patches of it among the grass.
+	// (blobs some 40 cm across, and a finer fringe of single tufts)
+	float blob = texture(street_noise, wpos.xz * 0.16 + 0.29).r;
+	float fringe = blob * 0.7 + texture(street_noise, wpos.xz * 0.6 + 0.81).r * 0.3;
+	float cover = in_from_edge / 2.0 + (fringe - 0.5) * 0.8;
+	// gravel, then the meadow's soil, then grass coming through it in tufts
+	float shoulder = 1.0 - smoothstep(0.2, 0.62, cover);
+	col = mix(col, meadow_soil * mix(1.2, 0.85, blob), shoulder * 0.85);
+	float edge = smoothstep(-0.06, 0.3, cover);
+	// on gravel roads, grass down the crown between the wheel lines, sparse
+	// and broken where the road is used most
+	float crown = (0.24 - xt) / 0.24 * 0.8 + (road_wear - 0.5) * 2.0 + (fringe - 0.5) * 1.6 - near_town * 3.0;
+	float crown_grass = smoothstep(0.15, 0.7, crown) * country;
+	col = mix(col, meadow_soil, smoothstep(-0.4, 0.2, crown) * country * 0.5);
+	edge *= 1.0 - crown_grass * 0.85;
 	float pud = wet * smoothstep(0.5, 0.7, track * 0.35 + pothole * 0.6 + n2 * 0.45);
 	col *= 1.0 - wet * 0.22;
 	col = mix(col, col * 0.4, pud);
 	ALBEDO = col;
-	ROUGHNESS = mix(mix(0.96, 0.78, track * country), 0.08, pud);
-	SPECULAR = mix(0.12, 0.45, pud);
-	// The meadow shows through where the road gives way to grass: a ragged
-	// verge, and on gravel roads the crown between the wheel lines.
-	// (street_noise has 16 features per unit: these are metre-scale bays and
-	// tufts, with a fine fringe where single blades meet the stones)
-	float ragged = (texture(street_noise, wpos.xz * 0.035 + 0.13).r - 0.5) * 1.1
-		+ (texture(street_noise, wpos.xz * 0.12 + 0.57).r - 0.5) * 0.35 + (n3 - 0.5) * 0.12;
-	float in_from_edge = half_w - abs(xc) + ragged + near_town * 0.2;
-	float edge_aa = max(fwidth(in_from_edge), 0.01);
-	float edge = smoothstep(0.4 - edge_aa, 0.4 + edge_aa + 0.18, in_from_edge);
-	float crown_grass = (0.24 - xt) / 0.24 + (road_wear - 0.5) * 2.4 - near_town * 3.0 + (texture(street_noise, wpos.xz * 0.1 + 0.33).r - 0.5) * 1.2;
-	float crown_aa = max(fwidth(crown_grass), 0.02);
-	edge *= 1.0 - smoothstep(-crown_aa, crown_aa, crown_grass) * country;
-	vec4 gravel_data = texture(gravel_surface, wpos.xz * 0.5);
+	vec4 surface_a = texture(trail_surface, wpos.xz / 2.0);
+	vec4 surface_b = texture(trail_surface, turned / 2.6 + 0.37);
+	vec4 trail_data = mix(surface_a, surface_b, pick);
+	ROUGHNESS = mix(clamp(trail_data.a, 0.7, 1.0) - track * country * 0.12, 0.08, pud);
+	SPECULAR = mix(0.25, 0.45, pud);
 	mat3 ground_basis = ground_surface_basis(wpos);
-	vec3 gravel_n = gravel_data.rgb * 2.0 - 1.0;
-	gravel_n.xy *= mix(0.32, 0.12, max(track * country, pothole));
-	NORMAL = normalize((VIEW_MATRIX * vec4(ground_basis * gravel_n, 0.0)).xyz);
+	vec3 trail_n = trail_data.rgb * 2.0 - 1.0;
+	// (the second turn's slopes are turned with it)
+	trail_n.xy = mix(trail_n.xy, mat2(vec2(0.8, -0.6), vec2(0.6, 0.8)) * trail_n.xy, pick);
+	trail_n.xy *= mix(0.55, 0.25, max(track * country, pothole)) * (1.0 - pud);
+	NORMAL = normalize((VIEW_MATRIX * vec4(ground_basis * normalize(trail_n), 0.0)).xyz);
 	ALPHA = edge;
 	// in town: patched asphalt between the curbs, a dashed centre line
 	vec2 inside = min(wpos.xz - town.xy, town.zw - wpos.xz);

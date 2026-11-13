@@ -168,5 +168,25 @@
     "file": "road_damaged_clean_rough_2k.jpg",
     "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/road_damaged_clean/road_damaged_clean_rough_2k.jpg",
     "sha256": "9c0e6ca41fb0846a5e7144c8af11ce607333ba1e0bbc6b13e9383ece4be8bc18"
+  },
+  {
+    "file": "rocky_trail_02_diff_2k.jpg",
+    "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/rocky_trail_02/rocky_trail_02_diff_2k.jpg",
+    "sha256": "d755ac6c70729afce6bb78b9a265d16bdf599ece64f4f079d681433e77bb24a9"
+  },
+  {
+    "file": "rocky_trail_02_nor_gl_2k.jpg",
+    "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/rocky_trail_02/rocky_trail_02_nor_gl_2k.jpg",
+    "sha256": "d85fc706716b921e1511b5dc0730ed820c904fe68603605a161095501622c0dd"
+  },
+  {
+    "file": "rocky_trail_02_rough_2k.jpg",
+    "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/rocky_trail_02/rocky_trail_02_rough_2k.jpg",
+    "sha256": "0aa89f1c148dead8b98b0d63b30aabfa12f6ae49fcf4ece6aa11818dec95ae22"
+  },
+  {
+    "file": "dirt_aerial_03_diff_2k.jpg",
+    "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/dirt_aerial_03/dirt_aerial_03_diff_2k.jpg",
+    "sha256": "ababa6da0b641cc44c54837c5166fd0ed37eb5408013a9d339b84b2d958a8822"
   }
 ]

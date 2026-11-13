@@ -1,15 +1,15 @@
 {
   "entry": "changelog/unreleased/country-road-tracks.md",
-  "summary": "Country roads read as worn gravel tracks; town asphalt crumbles into them and its cracks follow the streets.",
+  "summary": "Country roads are photographed dirt and gravel tracks that fade into the meadow; town asphalt crumbles into them and its cracks follow the streets.",
   "medium": "still",
-  "stage": "game capture, matched: --fixed-fps 30 -- --aivai --seed=3 --cam-yaw=0 --shot-at=6, with --focus=77,-5 --zoom=32 --pitch=-35; --focus=56,-5 --zoom=26 --pitch=-40; --focus=-22,-8 --zoom=18 --pitch=-42 (1600x900, --nohud --perf=0, off-screen window; before from origin/main)",
+  "stage": "game capture, matched: --fixed-fps 30 -- --aivai --seed=3 --cam-yaw=0 --shot-at=6, with --focus=77,-5 --zoom=32 --pitch=-35; --focus=74,-3 --zoom=10 --pitch=-30; --focus=56,-5 --zoom=26 --pitch=-40; --focus=-22,-8 --zoom=18 --pitch=-42 (1600x900, --nohud --perf=0, off-screen window; before from origin/main)",
   "rationale": "Ground materials are an appearance change: matched before/after frames of the same track, town edge and street show the surfaces directly.",
   "source_ref": "548239755c3466e6f675a975df527d74a29d6a0a + working tree",
   "before_ref": "548239755c3466e6f675a975df527d74a29d6a0a",
   "sources": [
     {
       "file": "changelog/unreleased/country-road-tracks/comparison.jpg",
-      "sha256": "125420e3f7bfd9188e1d351d6d28cbff852240eb3e24b82452e7e248a99d899f"
+      "sha256": "d5dcf5994d7c9eaeeac67870c0379f116e81c810edeecb8d4098b6478af0e366"
     }
   ],
   "output": null

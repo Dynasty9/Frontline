@@ -1,17 +1,18 @@
 +++
 title = "Country roads worn into the land"
-summary = "Roads outside town are gravel tracks now, not smooth orange bands: pale wheel lines, a grass crown, loose stones, potholes and ragged verges where the meadow takes them back."
+summary = "Roads outside town are photographed dirt and gravel tracks now, not smooth orange bands, and they fade into the meadow through its own bare soil instead of stopping at a hard edge."
 kind = "improved"
 
 [[screenshots]]
 file = "comparison.jpg"
-caption = "A country road, the edge of town and a town street from the same cameras, before and after"
+caption = "A country road from afar and close up, the edge of town and a town street, from the same cameras before and after"
 +++
 
-- **Wheel lines** are pressed pale and smooth into grey grit, drifting together along the road, with loose stones thrown to the shoulders.
-- **Grass** holds on down the crown between the wheel lines and takes the verges back in ragged bays and tufts, instead of a soft blurred edge.
+- **The surface** is photographed: trail grit and small stones underfoot, with broad scuffs and wheel marks from an aerial survey of worn dirt, in this country's dull grey-brown.
+- **The edges blend into the meadow.** Over the last metre or two the gravel gives way to the ground's own bare soil, then to grass growing through it in tufts, and the grass now grows into the shoulder.
+- **Wheel lines** are pressed smoother and darker, and a broken line of grass holds on down the middle.
 - **Potholes** sit in the wheel lines and fill with water in the rain.
-- **Tracks worn in by the troops** get the same broken edges, rutted dark into bare earth.
-- **At the edge of town** the asphalt crumbles away into the gravel, and the track runs full width with no grass where everything going in and out wears it.
+- **Tracks worn in by the troops** are the meadow's own earth, rutted darker.
+- **At the edge of town** the asphalt crumbles away into the gravel, and the track runs full width where everything going in and out wears it.
 - **Car parks** are kerbed on their three open sides instead of a bare slab dropped on the grass.
 - **Cracks in town asphalt** run along and across the streets, sealed with tar, instead of curly lines.
