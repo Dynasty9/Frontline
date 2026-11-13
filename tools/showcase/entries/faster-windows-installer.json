@@ -1,0 +1,10 @@
+{
+  "entry": "changelog/unreleased/faster-windows-installer.md",
+  "summary": "The Windows installer unpacks the game in seconds instead of sitting on a stuck progress bar for a minute or more.",
+  "medium": "text",
+  "stage": "text",
+  "rationale": "An installer speed fix with nothing in the game to show; the pull request carries the measured unpack times and sizes for LZMA against zlib on the same 434 MB executable.",
+  "source_ref": "dines/windows-installer-slow-progress-414525",
+  "sources": [],
+  "output": null
+}
