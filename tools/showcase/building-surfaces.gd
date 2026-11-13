@@ -217,6 +217,12 @@ func _subject(kind: String) -> Node3D:
 				parade.add_child(shop)
 				_shop_front(shop, 7.4, 9.0, [0, 1, 4][i], i)
 			return parade
+		"house_fixtures":
+			# what's fixed to a house's walls, the walls picked (by id) to show
+			# them: a meter box, the number, letterbox and mat at the door, an
+			# air conditioner on brackets; round the side a dish, a tap with
+			# its hose, an air conditioner on a pad
+			return _house(9.0, 7.6, 0, false, true, false, 0, {0: 518, 1: 384, 2: 809, 30: 517, 31: 98, 32: 596}, {0: 0, 30: 0, 31: 0})
 		"barn":
 			# a farm's barn as the farmsteads build it (weatherboarded, where
 			# the material exists; before it, a house of the colour it drew)
@@ -306,7 +312,7 @@ func _wall(v: int, sz: Vector3, shut: bool, id: int, dark: bool) -> Node3D:
 	return Structure.preview_model("house_wall", -1, v, sz, shut, id)
 
 
-func _house(w: float, d: float, color: int, flat: bool, roofed := true, ruined := false, roof_id := 0, wall_ids := {}) -> Node3D:
+func _house(w: float, d: float, color: int, flat: bool, roofed := true, ruined := false, roof_id := 0, wall_ids := {}, variants := {}) -> Node3D:
 	var root := Node3D.new()
 	var floor := Structure.preview_model("floor", -1, 1 if ruined else (2 if BuildingMaterials.house(color) == "timber" else 0), Vector3(w, 0.06, d), false, 7)
 	root.add_child(floor)
@@ -326,6 +332,7 @@ func _house(w: float, d: float, color: int, flat: bool, roofed := true, ruined :
 				variant = 2
 			elif seg_len > 2.0 and (k + si) % 3 != 2:
 				variant = 1
+			variant = variants.get(si * 10 + k, variant)
 			if ruined and (si * 3 + k) % 4 == 1:
 				var heap := Structure.preview_model("rubble", -1, 0, Vector3(seg_len * 0.9, 0, 1.2), false, 300 + si * 10 + k)
 				heap.position = lp

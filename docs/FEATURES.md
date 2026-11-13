@@ -757,7 +757,9 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   pots of flowers by the door, a bicycle against a side wall, and out the back a woodpile and chopping block, a
   table and chairs (under a parasol now and then), the odd kennel, a shed at the bottom of many gardens and here
   and there a trampoline, all set dressing that a blast or a truck
-  knocks over. The shops by the square have fronts: a fascia with the shop's name, a striped awning, and on the
+  knocks over. On the walls are a house's services and the things by its door: meter boxes, outside taps
+  with a hose on a hook, air conditioners on brackets or on a pad, satellite dishes on arms, and at the front
+  door the house's number, a letterbox and a mat on the step. The shops by the square have fronts: a fascia with the shop's name, a striped awning, and on the
   pavement what each kind of shop puts out (a greengrocer's produce, a cafe's tables, a newsagent's paper rack). All of it, and the military buildings' weatherboard, sheeting, roller shutters, north
   lights, masts and guys, drums, crates and pallets, comes from shared building components (see
   [building-components.md](building-components.md)).
