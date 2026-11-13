@@ -27,6 +27,10 @@ extends RefCounted
 ##   PANELS      - temporary welded-mesh panels standing in concrete feet,
 ##                 coupled at the joints, some hung with olive drab scrim, stayed
 ##                 and weighted with sandbags
+##   IMPROVISED  - the Rebels' perimeter: crooked stakes and the odd steel
+##                 picket, slack rusted barbed wire (a strand snapped here and
+##                 there), roofing sheets and pallets wired into the gaps, a
+##                 rusty coil dragged along the outside
 ##
 ## The code Decor stores packs the style (low four bits) with LINKED (the next
 ## bay's first post is this one's last), GATE (a gate leaf in the opening, not
@@ -41,6 +45,7 @@ const CHAIN_LINK := 5
 const BOW_TOP := 6
 const SECURITY := 7
 const PANELS := 8
+const IMPROVISED := 9
 
 const LINKED := 16
 const GATE := 32
@@ -113,6 +118,8 @@ static func bay(k: BuildingKit, length: float, height: float, c: int, y0 := 0.0,
 			_security(sk, length, height, v, posts)
 		PANELS:
 			_panels(sk, length, height, v, posts)
+		IMPROVISED:
+			_improvised(sk, length, height, v, posts)
 		_:
 			_picket(sk, length, height, v, posts)
 	k.sink.cast_all = was
@@ -191,6 +198,10 @@ static func _post_rail(k: BuildingKit, length: float, height: float, v: int, pos
 			continue
 		k.beam(a, (a + b) * 0.5 - Vector3(0, 0.015, 0), 0.11, 0.04, "fence_rail", rc)
 		k.beam((a + b) * 0.5 - Vector3(0, 0.015, 0), b, 0.11, 0.04, "fence_rail", rc)
+	if v % 2 == 1:
+		# a strand of barbed wire stapled along the post tops to keep the stock
+		# off the rails, gone rusty and slack
+		BuildingWire.barbed(k, Vector3(-length * 0.5, height + 0.08, -0.07), Vector3(length * 0.5, height + 0.08, -0.07), 0.03, 0.12, "rust")
 	_weeds(k, length, 0.8)
 
 
@@ -386,9 +397,9 @@ static func _security(k: BuildingKit, length: float, height: float, v: int, post
 		for i in 3:
 			var f := (i + 1) / 3.0
 			var p := Vector3(0, height - 0.02 + 0.44 * f, 0.04 + sd * 0.42 * f)
-			BuildingWire.barbed(k, Vector3(x0, p.y, p.z), Vector3(x1, p.y, p.z), 0.015)
+			BuildingWire.barbed(k, Vector3(x0, p.y, p.z), Vector3(x1, p.y, p.z), 0.015, 0.11, "military")
 	# razor coil laid in the V
-	k.part(_cached("razor|%.2f" % height, length, func(lk: float) -> ArrayMesh: return _razor_coil(lk, height)), "wire", _stretch(length), null, false)
+	k.part(_cached("razor|%.2f" % height, length, func(lk: float) -> ArrayMesh: return _razor_coil(lk, height)), "wire_military", _stretch(length), null, false)
 	if k.rng.randf() < 0.3:
 		_warning_sign(k, k.rng.randf_range(-length * 0.25, length * 0.25), 1.55, -0.005)
 	if k.rng.randf() < 0.3:
@@ -414,9 +425,11 @@ static func _razor_coil(lk: float, height: float) -> ArrayMesh:
 		var t := float(i) / steps
 		var a := t * loops * TAU
 		var rr := 0.22 * (1.0 + 0.07 * sin(a * 3.0 + 1.3))
-		pts.append(Vector3(-lk * 0.5 + t * lk + 0.04 * sin(a), height + 0.25 + rr * sin(a) * 0.9, 0.04 + rr * cos(a)))
-	BuildingWire.strand(v, n, pts, 0.009)
-	BuildingWire.barbs(v, n, pts, 0.07, 0.025, r)
+		# loops clipped to their neighbours lean alternately and cross (see WorksModels._concertina)
+		var lean := 0.07 * sin(a) * (1.0 if int(floor(a / TAU)) % 2 == 0 else -1.0)
+		pts.append(Vector3(-lk * 0.5 + t * lk + lean, height + 0.25 + rr * sin(a) * 0.9, 0.04 + rr * cos(a)))
+	BuildingWire.strand(v, n, pts, 0.0068)
+	BuildingWire.barbs(v, n, pts, 0.045, 0.024, r)
 	return BuildingKit._commit(v, n)
 
 
@@ -463,6 +476,45 @@ static func _panels(k: BuildingKit, length: float, height: float, v: int, posts:
 			k.box(Vector3(0.5, 0.14, 0.3), Vector3(x + k.rng.randf_range(-0.1, 0.1), 0.2, k.rng.randf_range(-0.15, 0.15)), "sandbag", null, Vector3(0, k.rng.randf_range(-0.4, 0.4), 0))
 	if k.rng.randf() < 0.15:
 		_warning_sign(k, 0.0, 1.4, -0.04)
+
+
+static func _improvised(k: BuildingKit, length: float, height: float, v: int, posts: Array[float]) -> void:
+	var r := k.rng
+	var tops: Array[Vector3] = []
+	for x in posts:
+		var lean := Vector3(r.randf_range(-0.07, 0.07), 0, r.randf_range(-0.09, 0.09))
+		var ht := height + r.randf_range(-0.15, 0.1)
+		var top := Vector3(x, ht, 0) + Vector3(lean.z, 0, -lean.x) * ht
+		if r.randf() < 0.25:
+			# a steel picket pulled from someone else's wire
+			k.beam(Vector3(x, -0.3, 0), top, 0.05, 0.012, "rust_steel")
+		else:
+			k.rod(Vector3(x, -0.3, 0), top, r.randf_range(0.035, 0.05), "wood_dark", Res.vary(Color(0.3, 0.23, 0.16), 0.15, r), 6)
+		tops.append(top)
+	# strands from post to post at whatever height they were tied, slack and rusty;
+	# one snapped, its ends hanging
+	var strands := 5
+	for i in strands:
+		var y := 0.22 + i * (height - 0.3) / (strands - 1) + r.randf_range(-0.06, 0.06)
+		var a := Vector3(-length * 0.5, y, -0.04)
+		var b := Vector3(length * 0.5, y + r.randf_range(-0.08, 0.08), -0.04)
+		if r.randf() < 0.08:
+			BuildingWire.barbed(k, a, a.lerp(b, 0.4) + Vector3(0.05, -y * 0.6, -0.1), 0.05, 0.12, "rust")
+			BuildingWire.barbed(k, b, b.lerp(a, 0.35) + Vector3(-0.05, -y * 0.7, -0.08), 0.05, 0.12, "rust")
+			continue
+		BuildingWire.barbed(k, a, b, r.randf_range(0.02, 0.05), 0.12, "rust")
+	# whatever was to hand, wired into the gaps
+	var fill := r.randf()
+	if fill < 0.3:
+		var h := r.randf_range(0.9, 1.5)
+		k.plate(Vector3(length * r.randf_range(0.6, 0.9), h, 0.012), Vector3(r.randf_range(-0.2, 0.2), h * 0.5 + 0.02, 0.03), "corrugated",
+			Res.vary(Color(0.42, 0.26, 0.15), 0.12, r), Vector3(r.randf_range(-0.05, 0.05), 0, r.randf_range(-0.04, 0.04)), true)
+	elif fill < 0.45:
+		BuildingFittings.pallet(k.at_point(Vector3(r.randf_range(-0.4, 0.4), 0.0, 0.12), Vector3(PI * 0.5 - 0.08, 0, 0)), Vector3.ZERO, Vector2(1.15, 1.0), Color(0.5, 0.41, 0.29))
+	if r.randf() < 0.4:
+		# a rusty coil dragged along the outside
+		k.at_point(Vector3(0, 0, -0.45)).part(_cached("razor|%.2f" % -0.02, length, func(lk: float) -> ArrayMesh: return _razor_coil(lk, -0.02)), "wire_rust", _stretch(length), null, false)
+	_weeds(k, length, 0.9)
 
 
 # --- gates ------------------------------------------------------------------------------

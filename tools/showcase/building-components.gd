@@ -98,8 +98,9 @@ static func build(holder: Node3D, kind: String) -> void:
 		"wire_barbed":
 			for x in [-1.5, 0.0, 1.5]:
 				k.rod(Vector3(x, -0.1, 0), Vector3(x, 1.3, 0), 0.04, "wood_dark")
-			for y in [0.4, 0.8, 1.2]:
-				BuildingWire.barbed(k, Vector3(-1.5, y, 0.04), Vector3(1.5, y, 0.04), 0.03)
+			# clean at the bottom, rusted in the middle, military at the top
+			for i in 3:
+				BuildingWire.barbed(k, Vector3(-1.5, 0.4 + i * 0.4, 0.04), Vector3(1.5, 0.4 + i * 0.4, 0.04), 0.03, 0.11, ["clean", "rust", "military"][i])
 		"wire_topping":
 			k.box(Vector3(4.0, 2.6, 0.5), Vector3(0, 1.3, 0), "concrete", Color(0.5, 0.49, 0.46))
 			var top := BuildingWalls.coping(k, 4.0, 0.5, 2.6, "concrete", Color(0.5, 0.49, 0.46))
@@ -132,7 +133,7 @@ static func _fence(k: BuildingKit, style_name: String) -> void:
 	var F := BuildingFences
 	var spec: Array = {"picket": [F.PICKET, 0.9, true], "post_rail": [F.POST_RAIL, 1.1, true], "railings": [F.RAILINGS, 0.85, true],
 		"close_board": [F.CLOSE_BOARD, 1.8, true], "paling": [F.PALING, 1.1, true], "chain_link": [F.CHAIN_LINK, 1.5, true],
-		"bow_top": [F.BOW_TOP, 1.0, true], "security": [F.SECURITY, 2.4, false], "panels": [F.PANELS, 2.0, false]}.get(style_name, [F.PICKET, 0.9, true])
+		"bow_top": [F.BOW_TOP, 1.0, true], "security": [F.SECURITY, 2.4, false], "panels": [F.PANELS, 2.0, false], "improvised": [F.IMPROVISED, 1.7, false]}.get(style_name, [F.PICKET, 0.9, true])
 	var bay := 2.2
 	for i in 3:
 		var linked := F.LINKED if i < 2 else 0

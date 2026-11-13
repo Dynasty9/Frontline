@@ -1064,21 +1064,25 @@ func roadside(cars: int, wrecks: int) -> void:
 
 ## Keep the scattered scenery out of town and off the roads; hand the street
 ## furniture to the world.
-## The military's own fences: a security fence across the back of each HQ,
+## The military's own fences: a security fence across the back of each HQ (the
+## Rebels' an improvised one),
 ## along the map's edge where the stores and vehicle park are, and a screen of
 ## mesh panels hung with scrim round the back of the town's supply dump. Put
 ## after the rest of the decor, so every older piece keeps its look.
 func military_fences(depots: Array, dumps: Array) -> void:
-	var sec := BuildingFences.code(BuildingFences.SECURITY)
 	for dp in depots:
 		var st: Structure = dp
 		var b := Basis(Vector3.UP, st.yaw)
 		var c := st.position
+		# the Coalition's is put up by engineers to a standard; the Rebels' from
+		# stakes, wire and whatever the town gave up
+		var sec := BuildingFences.code(BuildingFences.SECURITY if st.team == Defs.ARMY else BuildingFences.IMPROVISED)
+		var high := 2.4 if st.team == Defs.ARMY else 1.7
 		# (only the back and its corners: the supply tracks, laid later and
 		# relaid as FOBs go up, leave by the front and the sides)
-		_fence_line(c + b * Vector3(-15.0, 0, 4.5), c + b * Vector3(-15.0, 0, 8.5), 2.4, sec)
-		_fence_line(c + b * Vector3(-15.0, 0, 8.5), c + b * Vector3(15.0, 0, 8.5), 2.4, sec)
-		_fence_line(c + b * Vector3(15.0, 0, 8.5), c + b * Vector3(15.0, 0, 4.5), 2.4, sec)
+		_fence_line(c + b * Vector3(-15.0, 0, 4.5), c + b * Vector3(-15.0, 0, 8.5), high, sec)
+		_fence_line(c + b * Vector3(-15.0, 0, 8.5), c + b * Vector3(15.0, 0, 8.5), high, sec)
+		_fence_line(c + b * Vector3(15.0, 0, 8.5), c + b * Vector3(15.0, 0, 4.5), high, sec)
 	var panels := BuildingFences.code(BuildingFences.PANELS)
 	for dp in dumps:
 		var st: Structure = dp

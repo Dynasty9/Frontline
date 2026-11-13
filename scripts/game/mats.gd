@@ -1136,8 +1136,14 @@ static func _preset(kind: String) -> Dictionary:
 		"rust_steel":
 			return {"pattern": PAINT, "col_a": Color(0.32, 0.2, 0.12), "col_b": Color(0.22, 0.2, 0.18), "rough": 0.85, "metal": 0.35, "bump": 1.0, "grime": 0.5, "rust": 1.0}
 		"wire":
-			# galvanised barbed and razor wire, dulled and spotted with rust
-			return {"pattern": PAINT, "col_a": Color(0.44, 0.44, 0.42), "col_b": Color(0.56, 0.55, 0.52), "rough": 0.42, "metal": 0.75, "bump": 0.0, "grime": 0.2, "rust": 0.35, "scale": 4.0}
+			# new galvanised barbed and razor wire: bright zinc, a little dulled
+			return {"pattern": PAINT, "col_a": Color(0.52, 0.53, 0.51), "col_b": Color(0.64, 0.64, 0.61), "rough": 0.5, "metal": 0.7, "bump": 0.0, "grime": 0.15, "rust": 0.06, "scale": 4.0}
+		"wire_rust":
+			# wire left out for years: the zinc gone, rusted through to a flaky brown
+			return {"pattern": PAINT, "col_a": Color(0.31, 0.17, 0.09), "col_b": Color(0.43, 0.27, 0.15), "rough": 0.88, "metal": 0.2, "bump": 0.0, "grime": 0.3, "rust": 1.0, "scale": 4.0}
+		"wire_military":
+			# the armies' issue wire: dull dark zinc, weathered grey, flecked with rust
+			return {"pattern": PAINT, "col_a": Color(0.36, 0.37, 0.34), "col_b": Color(0.45, 0.46, 0.42), "rough": 0.6, "metal": 0.5, "bump": 0.0, "grime": 0.3, "rust": 0.18, "scale": 4.0}
 		"bag":
 			return {"pattern": CANVAS, "col_a": Color(0.5, 0.45, 0.33), "col_b": Color(0.4, 0.36, 0.26), "scale": 1.6, "rough": 0.97, "bump": 0.8, "grime": 0.7, "local_space": true, "use_vcolor": true}
 		"canvas_l":
