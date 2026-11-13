@@ -105,9 +105,6 @@ func _shots(prefix: String, state: String) -> void:
 		for s: Structure in field.structures_near(at, 12.0):
 			if s.skind == "wreck" and (wreck == null or s.global_position.distance_to(at) < wreck.global_position.distance_to(at)):
 				wreck = s
-		if wreck and OS.has_environment("FL_DEBUG_WRECK"):
-			for d in wreck.find_children("*", "Decal", true, false):
-				print("DECAL ", w[0], " at ", (d as Decal).global_position, " size ", (d as Decal).size, " vis ", (d as Decal).is_visible_in_tree(), " ground ", field.ground_y(wreck.global_position), " tex ", (d as Decal).texture_albedo != null)
 		if wreck:
 			at = wreck.global_position
 			var reach := maxf(wreck.size.x, wreck.size.z) * 0.62 + 5.0

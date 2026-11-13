@@ -692,7 +692,7 @@ func _wheel(parent: Node3D, pos: Vector3, r: float, w: float, hub_kind := "gunme
 
 
 func _team_mark(parent: Node3D, team: int, pos: Vector3, s: Vector3) -> void:
-	if burnt or team < 0:
+	if wreck or team < 0:  # (burnt off a wreck with the paint)
 		return
 	var mi := MeshInstance3D.new()
 	mi.mesh = Res.box(s)

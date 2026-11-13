@@ -480,7 +480,7 @@ static func _abrams(k: VehicleModels, team: int, seed: int) -> void:
 		_bx(k, m, Vector3(0.5, 0.42, 0.03), Vector3(s * 1.33, 0.84, 3.48), "rubber")
 		# fuel filler caps on the deck over the sponsons
 		VehicleFittings.filler(k, m, Vector3(s * 1.28, roof + 0.02, 1.1), 0.09)
-		if not k.burnt and team >= 0:
+		if not k.wreck and team >= 0:
 			# The recognition chevron lies flush on the skirt.
 			for end: float in [-1.0, 1.0]:
 				_bar(k, m, Vector3(s * 1.694, 0.84, 0.69), Vector3(s * 1.694, 1.1, 0.69 + end * 0.21), 0.007, 0.045, "paint", Color(0.67, 0.64, 0.5), false)
@@ -597,7 +597,7 @@ static func _abrams(k: VehicleModels, team: int, seed: int) -> void:
 			_bx(k, t, Vector3(0.028, 0.37, 0.031), Vector3(s * 1.701, 0.44, z), cam, null, Vector3.ZERO, false)
 		for z: float in [0.9, 1.7]:
 			_bx(k, t, Vector3(0.02, 0.08, 0.05), Vector3(s * 1.71, 0.57, z), "gunmetal_w", null, Vector3.ZERO, false)
-		if not k.burnt and team >= 0:
+		if not k.wreck and team >= 0:
 			var stencil := QuadMesh.new()
 			stencil.size = Vector2(0.44, 0.18)
 			var ink := StandardMaterial3D.new()

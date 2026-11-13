@@ -1089,14 +1089,19 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   gone (or too low to settle) she winds up into a spin against the rotor's torque and corkscrews in, still carrying
   her speed; with only the engines gone she autorotates, gliding steeply nose-down and flaring into a heavy landing.
   Where she hits, her fuel goes up (blast damage, a crater and fire, credited to whoever shot her down), how hard
-  she hit decides who aboard walks away, and the burnt-out helicopter lies there in her own paint, blackening from
-  the engines outwards: rolled on her side with her nose dug in after a spin-in, slumped on her belly after a heavy
+  she hit decides who aboard walks away, and she burns out where she lies, the fire spreading from her engines (see
+  wrecks, below): rolled on her side with her nose dug in after a spin-in, slumped on her belly after a heavy
   landing. Her blades are broken (stubs at the hub, snapped and bent into the ground, some flung clear), the tail
   rotor is usually gone, and broken blade and torn panels lie strewn round her. Over deep water she ditches and sinks. The kill, its stats and the messages count at the moment she's hit.
 - **Boarding:** select infantry and right-click your truck, APC, Slammer or a landed helicopter: they climb in
   (as many as fit) and ride until they dismount or it arrives.
 - Tanks smash through walls, trees and cars. Small arms ricochet off them. Frontal rockets can bounce,
   and a blown track leaves the tank stranded until engineers repair it. Destroyed vehicles become wrecks you can use as cover.
+  A destroyed vehicle burns out: over the best part of a minute the fire spreads across the hull from where it took
+  hold (the engine deck, a helicopter's engines), leaving charred steel, rust running down the sides, soot streaks and
+  ash on the tops, with a few islands of blistered paint; embers glow in the seams while it burns. Tyres and canvas
+  burn away and a wheeled hull settles on its rims, the grass round it is burnt flat and the ground blackened, and
+  torn-off pieces lie round it.
 - Coalition: battle tank, **IFV** (tracked, 25 mm with airburst rounds, carries a four-man fire team), **Humvee**
   (.50 cal), supply helicopter, **attack helicopter** (circles its target with a 30 mm chain gun firing explosive
   rounds, plus rocket salvos).
@@ -1398,7 +1403,7 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   Reaching it wins the encounter and triggers the finishing impact. A camera beside the ridge holds on the struck vehicle before and after the hit. The film uses the same tank knockout event, fuel burst and burning-vehicle particles as a match. The short flash stays on the hull above the ground, and the hull settles on its suspension. Fuel smoke uses the baked directional lighting maps, with motion-vector interpolation in close views. A fuel vent releases billows at a steady rate as the smoke thickens or thins. The closing camera frames the surviving tank from the side of its turret, keeping the barrel in view as the hull turns.
   The T-55A has a grainier finish on its cast turret and rolled rims on its painted rear drums.
   In a match, hard hits can bend the skirt on the struck side. A complete repair straightens it.
-  In a match, both the Abrams and the T-55A keep their last turret bearing on destruction and carry visible plate damage onto the wreck. Soot spreads over the original paint from the engine deck. Cannon hits land on the battle clock when the tracer reaches its destination. A hull contact produces a metal strike, and nearby soft terrain takes paired tread prints. Select either tank and press F10 to cycle to its periscope.
+  In a match, both the Abrams and the T-55A keep their last turret bearing on destruction and carry visible plate damage onto the wreck. The burn spreads over the original paint from the engine deck until the whole hull is burnt out. Cannon hits land on the battle clock when the tracer reaches its destination. A hull contact produces a metal strike, and nearby soft terrain takes paired tread prints. Select either tank and press F10 to cycle to its periscope.
   Its wreck rests on the grade beneath the front and rear of both tracks.
 - **Shared vehicle finishes** (`vehicle_materials.gd`, `assets/vehicles/surfaces/`): armor paint, aircraft
   coatings, civilian clearcoat, marine paint, rubber, canvas, exposed metal, glass, nonslip decks and charred
