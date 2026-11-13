@@ -269,6 +269,14 @@ func _ready() -> void:
 			BuildingFittings.house_number(k, Vector3(-3, 1.7, 0), 47, BuildingFittings.NUMBERS[0][0], BuildingFittings.NUMBERS[0][1])
 			BuildingFittings.letterbox(k, Vector3(-3, 1.15, 0), BuildingFittings.LETTERBOXES[0])
 			BuildingFittings.doormat(k, Vector3(-5, 0.14, 0.3), BuildingFittings.MATS[0]),
+		"furniture": func(k: BuildingKit):
+			BuildingInteriors.wardrobe(k, 0.0, BuildingInteriors.WOODS[0], k.rng)
+			BuildingInteriors.bookcase(k.at_point(Vector3(2, 0, 0)), 0.0, BuildingInteriors.WOODS[1], k.rng)
+			BuildingInteriors.dresser(k.at_point(Vector3(4, 0, 0)), 0.0, BuildingInteriors.WOODS[2], k.rng)
+			BuildingInteriors.settee(k.at_point(Vector3(6, 0, 0)), 0.0, 1.8, Color(0.5, 0.2, 0.15), k.rng)
+			BuildingInteriors.kitchen(k.at_point(Vector3(9, 0, 0)), 0.0, 2.2, BuildingInteriors.UNITS[0], k.rng)
+			BuildingInteriors.desk(k.at_point(Vector3(12, 0, 0)), 0.0, BuildingInteriors.WOODS[3], k.rng)
+			BuildingInteriors.table(k.at_point(Vector3(0, 0, 5)), Vector3(9.0, 0.06, 7.6), BuildingInteriors.WOODS[0], k.rng),
 		"inside": func(k: BuildingKit):
 			BuildingFurnishings.lining(k, 2.8, 3.0, [Rect2(-0.65, 1.0, 1.3, 1.0)], Color(0.8, 0.8, 0.7))
 			BuildingFurnishings.radiator(k, 0.0, 1.0)
@@ -593,6 +601,26 @@ func _ready() -> void:
 	check(_bounds(dark_wall, Transform3D.IDENTITY).end.z > _bounds(lit_wall, Transform3D.IDENTITY).end.z + 0.5, "a dark house's wall has its debris in front of it")
 	lit_wall.free()
 	dark_wall.free()
+	# What stands against a wall keeps its reach out from it and in from its
+	# ends (so two walls meeting in a corner never put things in each other's
+	# way), on the floor and under the ceiling; the table and chairs keep to
+	# the middle of the room.
+	for s2 in 60:
+		var L: float = [2.33, 2.6, 2.8, 3.1, 3.5][s2 % 5]
+		var ak := kit()
+		ak.rng.seed = s2
+		BuildingInteriors.against_wall(ak, L, ak.rng)
+		var ab := _bounds(ak.sink.root, Transform3D.IDENTITY)
+		check(ak.sink.root.get_child_count() > 0, "something stands against a %.2f m wall" % L)
+		check(ab.position.x >= -L * 0.5 + BuildingInteriors.REACH - 0.06 and ab.end.x <= L * 0.5 - BuildingInteriors.REACH + 0.06, "it keeps in from the wall's ends (%.2f: %s)" % [L, ab])
+		check(ab.position.z >= -0.01 and ab.end.z <= BuildingInteriors.REACH + 0.02 and ab.position.y >= 0.0 and ab.end.y <= 2.6, "it keeps within reach of the wall, under the ceiling (%.2f: %s)" % [L, ab])
+		ak.sink.root.free()
+		var tk := kit()
+		tk.rng.seed = s2
+		BuildingInteriors.table(tk, Vector3(9.0, 0.06, 7.6), BuildingInteriors.WOODS[0], tk.rng)
+		var tb := _bounds(tk.sink.root, Transform3D.IDENTITY)
+		check(tb.position.y >= 0.0 and tb.end.y <= 1.2 and absf(tb.get_center().x) < 1.0 and absf(tb.get_center().z) < 1.0 and tb.size.x < 3.6 and tb.size.z < 3.6, "a table and its chairs keep to the middle of the room (%s)" % tb)
+		tk.sink.root.free()
 
 	# Every building and every kind of scenery still builds a model.
 	var kinds: Array = Defs.BUILDINGS.keys()

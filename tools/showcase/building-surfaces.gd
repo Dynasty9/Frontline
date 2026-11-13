@@ -248,6 +248,21 @@ func _subject(kind: String) -> Node3D:
 				hs.position = spec[0]
 				street.add_child(hs)
 			return street
+		"house_rooms":
+			# three houses with their roofs off, as when men are inside, their
+			# back and left walls (the ones seen from inside) without windows:
+			# what the people living there left in them
+			var row := Node3D.new()
+			for i in 3:
+				var ids := {}
+				var plain := {}
+				for key in [10, 11, 12, 20, 21]:
+					ids[key] = 500 + i * 40 + key
+					plain[key] = 0
+				var hs := _house(9.0, 7.6, [1, 2, 3][i], false, false, false, 0, ids, plain)
+				hs.position.x = (i - 1) * 10.5
+				row.add_child(hs)
+			return row
 		"house_open":
 			# the roof hidden, as when men are inside: the room as they see it
 			return _house(9.0, 7.6, 1, false, false)
