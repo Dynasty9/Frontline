@@ -726,7 +726,8 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   sides), and on the west the lanes run on over the river - each on its own bridge - to farming villages on
   the far bank: three bridges and two fords across the river in all.
 - Country roads come in from both HQs and both edges of the map and join the main streets. Villages sit on the
-  cross road either side of town and on the road between each HQ and the town; farmsteads (farmhouse and barn round a yard, hay bales, a fenced road frontage, an orchard) and
+  cross road either side of town and on the road between each HQ and the town; farmsteads (farmhouse and barn round a yard, hay bales, a fenced road frontage, an orchard; the barn weatherboarded
+  under a corrugated sheet roof with loft doors in its gables, straw on its floor) and
   hedged fields lie along the roads; abandoned cars on the verges, burnt-out armour off the road.
 - **The town and every village have a name and a supply dump** (crated stores on a pallet, fuel drums and a
   flagpole): the town's on its square where the flagpole stood, a village's on the verge of its main street.
@@ -738,19 +739,29 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   painted window frames with mullion and transom, panes whole, cracked to shards or shot out, louvred or boarded
   shutters on their hinges, door frames, steps, now and then a hood over the door, and double doors hanging open.
   Pitched roofs bear on the walls with a fascia, barge boards, gutters and downpipes, a round-tiled ridge and
-  often a chimney with its pots; flat roofs have a coped parapet, scuppers with a hopper and downpipe, and the
+  often a chimney with its pots; they're pitched differently, about a third are hipped (pyramids over square
+  houses), and some are mended with a creased tarp weighted down with tyres and tied to the eave, holed, or have a skylight; moss and lichen
+  grow on the tiles, and flat roofs carry rain stains, patched membrane, moss along a parapet and vent pipes; flat roofs have a coped parapet, scuppers with a hopper and downpipe, and the
   water tanks, air conditioners and dishes on them. Garden walls have saddleback stone copings, or brick-on-edge
   over a blue-brick base. Houses look lived in: drapes, blinds and nets in the windows, flowers in window boxes,
   lanterns by front doors, TV aerials on the roofs, and inside (seen when the roof hides for the men in there, or
   in a ruin) painted walls with skirting, radiators, pictures, mirrors, clocks, shelves of books and rugs, all
   hung flat or laid flat so nothing stands where a man does. At dusk and at night a lamp is on behind about a
   third of the windows, in the barracks and the research post, under the factory's north lights and in the door
-  lanterns (brightest at night, a glimmer on a dark day). Weeds grow at the foot of walls and ivy up some of
+  lanterns (a gleam at night, a glimmer on a dark day); a ruin's lamps are out, and so are a house's once it's
+  shelled, loses a wall or its roof catches fire. Weeds grow at the foot of walls and ivy up some of
   them (most often on old stone), and a ruin's floor carries its fallen roof: soot, charred rafters, broken
-  tiles, plaster and glass. Round the houses are what the people in them keep: wheelie bins at a front corner,
+  tiles, plaster and glass; where a wall has come down, a heap of broken masonry with brick lumps, plaster slabs,
+  a charred joist and bent rods sticking out. The war shows on the walls: bullet strikes, the odd shell hit blown through the render
+  to the brick, soot over a window or door where a fire was, rain streaks under the sills, and windows taped,
+  boarded across or sandbagged along the sill. Round the houses are what the people in them keep: wheelie bins at a front corner,
   pots of flowers by the door, a bicycle against a side wall, and out the back a woodpile and chopping block, a
-  table and chairs (under a parasol now and then) and the odd kennel, all set dressing that a blast or a truck
-  knocks over. All of it, and the military buildings' weatherboard, sheeting, roller shutters, north
+  table and chairs (under a parasol now and then), the odd kennel, a shed at the bottom of many gardens and here
+  and there a trampoline, all set dressing that a blast or a truck
+  knocks over. On the walls are a house's services and the things by its door: meter boxes, outside taps
+  with a hose on a hook, air conditioners on brackets or on a pad, satellite dishes on arms, and at the front
+  door the house's number, a letterbox and a mat on the step. The shops by the square have fronts: a fascia with the shop's name, a striped awning, and on the
+  pavement what each kind of shop puts out (a greengrocer's produce, a cafe's tables, a newsagent's paper rack). All of it, and the military buildings' weatherboard, sheeting, roller shutters, north
   lights, masts and guys, drums, crates and pallets, comes from shared building components (see
   [building-components.md](building-components.md)).
 - Walls, hedges, trees, cars and crates are all real cover. Street furniture is set dressing generated on the
@@ -1184,7 +1195,14 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
     scaled by length, with compacted roadbeds taking 50% longer. Repair orders clear collapsed earth.
   - **Shape and materials:** floors and individual duckboard slats follow local terrain. Open ends ramp
     to the surface; connected ends stay continuous. Earth fire steps run along the walls, leaving the
-    centre route clear. Soil layers, roots, uneven spoil, damp ground and boot marks break up the surfaces.
+    centre route clear. Uneven cuts expose dark organic topsoil, lighter subsoil and stony pockets,
+    with scanned surface detail and damp litter below. Retaining boards brace loose cuts; weathered
+    duckboards rest on bearers above the mud. Rain darkens the earth and expands puddles. Bunker banks
+    use the same materials, form one continuous mound around the corners, and leave the doorway clear.
+    An uneven soil cap rests over the roof logs. Banks meet sloping ground and clear new excavations;
+    joined cuts remove retaining boards and parapet bags where their supporting ground is gone.
+    Placing or removing a bunker refreshes the vegetation around its earth banks.
+    The trenches scenario includes a rear bunker route, covered ammunition, sandbags and anti-tank obstacles.
   - **Rear bays:** occasional long sections include a recessed supply shelf or a timber-roofed resting
     bay, with kit kept off the through route. The timber roof is physical cover, not a bombproof bunker.
     Moving soldiers yield and sidestep inside narrow passages; crossing a high lip takes a slower climb.
@@ -1295,6 +1313,27 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
     noise carried up the source's axis in the world, and the bend is sized in metres at the hot air, so nearer haze
     bends more and haze too small on screen to read is left out. The composite then bends only what lies behind the
     hot air, and never pulls in the sky or anything in front of it. With Reduce motion on, the air holds still.
+  - **Motion blur** (Camera and lens: Off / Objects / Objects + camera; Cinematic: Objects): the reconstruction
+    filter of McGuire, Hennessy, Bukowski and Osman ("A Reconstruction Filter for Plausible Motion Blur", I3D 2012)
+    with Jimenez's refinements (SIGGRAPH 2014), four more passes in `cinematic_fx.gd`. Each pixel's movement comes
+    from the engine's velocity buffer (drawn only while the blur is on: `needs_motion_vectors`); the camera's share
+    is found by reprojecting the pixel's depth with last frame's camera and taken out, so on Objects a commander's
+    pan stays sharp while rotor blades, flung bodies and debris still smear (Objects + camera puts 60% of the pan
+    back, none with Reduce motion). The blur is half a frame long (a 180-degree shutter), at most 32 pixels: the
+    longest blur in each 32-pixel tile and its neighbours tells each pixel how far to look, and 14 jittered samples
+    along it are weighed by depth and speed, so a blurred foreground smears over the background and not the reverse.
+    Godot's velocity buffer holds where each pixel was less where it is, in uv (measured: `FL_DEBUG_CINE_VIEW=7`).
+- **Rain on everything** (`Mats.SURFACE_SHADER`, the `rain_wet` global; `Atmosphere._wet_tick`): in the rain the
+  vehicles, buildings, sandbags and gear standing out in it take a film of water, as the ground and streets
+  already did (after Lagarde, "Water drop 2b: dynamic rain and its effects", 2013). Rough, porous stuff (cloth,
+  timber, concrete) darkens as water fills its pores and gains little gloss; paint and metal barely darken but
+  take a glossy film. Upturned faces soak most, faces turned down stay drier, and water runs down walls and hulls
+  in streaks. A battle that opens in the rain starts soaked; rain that sets in mid-battle wets things over 30 s,
+  and they dry over three minutes once it stops. It costs a few instructions per pixel, so every preset has it,
+  the browser too.
+- **Level-of-detail cross-fades**: a vehicle and its distant single-mesh stand-in (`Mats.add_distance_lod`), cab
+  glass, the street's fine stones and distant blast clouds dissolve into each other over a few metres (Godot's
+  dithered visibility-range fade) instead of popping as the camera zooms.
 - **Wildlife** (`wildlife.gd`), drawn only on each player's own screen and never simulated or sent by the server,
   so it can't change a battle or its seed. Flocks of sparrows and starlings (pigeons about the town) feed on bare
   ground - tracks, yards, pavements, mud, shell holes, where the grass doesn't hide them - hopping and pecking,

@@ -38,10 +38,11 @@ var _depth := LOT_D  # depth of the lot being built (shallower where the block i
 var _special := {}
 var square := Vector3.INF  # the middle of the town square
 var square_q := Vector3.ZERO  # which corner of the central crossroads it fills
-var square_flag: Array = []
+var square_flag: Array = []  # the flagpole on it (decor; the town's supply dump takes its place)
 ## Yard dressing (see _yard_life), kept apart and put after the rest of the
 ## decor, so every older piece keeps its place in the list and so its look.
-var _yard_decor: Array = []  # the flagpole on it (decor; the town's supply dump takes its place)
+var _yard_decor: Array = []
+var _shop_decor: Array = []  # what the shops put out (decor, after the yards'; see _shop_wares)
 
 
 func _init(m) -> void:
@@ -468,7 +469,9 @@ func _lot_house(front: Vector3, n: Vector3, d: Vector3, W: float, shop: bool) ->
 	var drive_x := -signf(side) * (W * 0.5 - 1.8) if drive else INF
 	var yaw_d := yaw_along(d)
 	if shop:
-		_d("awning", hc - n * dep * 0.5, axis, Vector3(w - 0.6, 0, rng.randi() % 5))
+		var shop_kind := rng.randi() % 5
+		_d("awning", hc - n * dep * 0.5, axis, Vector3(w - 0.6, 0, shop_kind))
+		_shop_wares(hc, n, w, dep, shop_kind, entrances)
 	# the garden behind: hedge (or a wall) along the back, fences down the sides
 	var back := front + n * _depth
 	var kind := rng.randf()
@@ -515,6 +518,31 @@ func _lot_house(front: Vector3, n: Vector3, d: Vector3, W: float, shop: bool) ->
 			mg._try("car", dc, axis + (PI if rng.randf() < 0.5 else 0.0), -1, {"variant": rng.randi() % 5})
 
 
+## What a shop puts out on the pavement in front of it (BuildingShops.wares):
+## one or two lots of it along the front, clear of the door. From a stream of
+## its own (seeded from where the shop is), after the rest of the decor, so
+## the map is the same as it was.
+func _shop_wares(hc: Vector3, n: Vector3, w: float, dep: float, shop_kind: int, entrances: Array[Vector3]) -> void:
+	var main_decor := decor
+	decor = _shop_decor
+	var wr := RandomNumberGenerator.new()
+	wr.seed = int(absf(hc.x) * 17.0) * 7919 + int(absf(hc.z) * 17.0) * 31 + 29
+	var wall := hc - n * dep * 0.5
+	var along := Vector3(n.z, 0, -n.x)  # (the shop front's own x)
+	var door_x := INF
+	for e in entrances:
+		if absf((e - wall).dot(n)) < 1.0:
+			door_x = (e - wall).dot(along)
+	var spots: Array[float] = []
+	for x: float in [-(w * 0.5 - 1.1), w * 0.5 - 1.1, 0.0]:
+		if absf(x - door_x) > 1.5 and spots.size() < 2 and wr.randf() < 0.8:
+			spots.append(x)
+	for x in spots:
+		_d("wares", wall + along * x, atan2(n.x, n.z), shop_kind)
+	_shop_decor = decor
+	decor = main_decor
+
+
 ## What the people living in a house keep round it (BuildingYards): bins at
 ## the front corner away from the door, pots by the door, a bicycle against a
 ## side wall, a woodpile against the back wall, a table and chairs out the back,
@@ -549,10 +577,24 @@ func _place_yard_life(front: Vector3, n: Vector3, d: Vector3, W: float, hc: Vect
 	var yard := _depth - setback - dep
 	if life.randf() < 0.4:
 		_d("woodpile", back + n * 0.21 + d * corner * (w * 0.5 - 1.5), axis, snappedf(life.randf_range(1.4, 2.2), 0.1))
+	var has_set := false
+	var has_kennel := false
 	if yard > 4.0 and life.randf() < 0.4:
 		_d("garden_set", back + n * 1.7 - d * corner * w * 0.22, life.randf() * TAU, 1 if life.randf() < 0.4 else 0)
+		has_set = true
 	if yard > 4.0 and life.randf() < 0.15:
 		_d("kennel", front + n * (_depth - 1.2) + d * corner * (W * 0.5 - 1.1), axis + PI + life.randf_range(-0.4, 0.4))
+		has_kennel = true
+	# a shed at the bottom of the garden (in the corner the kennel isn't in),
+	# its door to the house; a trampoline on a lawn with room for it (drawn
+	# last, so the rest stays as it was)
+	var shed_side := corner if not has_kennel else -corner
+	var has_shed := false
+	if yard > 4.2 and life.randf() < 0.4 and not (shed_side != corner and has_set and yard < 5.4):
+		_d("shed", front + n * (_depth - 2.0) + d * shed_side * (W * 0.5 - 1.7), axis + PI, life.randi() % BuildingYards.SHEDS.size())
+		has_shed = true
+	if yard > 4.4 and not has_set and not has_shed and life.randf() < 0.3:
+		_d("trampoline", back + n * (yard * 0.5), 0.0, life.randi() % BuildingYards.PADS.size())
 
 
 func _curb_crossing(front: Vector3, n: Vector3, d: Vector3, width: float) -> bool:
@@ -878,7 +920,8 @@ func farms(k: int) -> void:
 			continue
 		mg._house(hc, rng.randf_range(9.0, 11.0), 8.0, axis, 1.0, false, 0.2)
 		_fronts.append(hc - n * 4.0 + Vector3(0, 2.85, 0))
-		mg._house(bc, 13.0, 10.0, axis, 1.0, false, 0.35)
+		var no_doors: Array[Vector3] = []
+		mg._house(bc, 13.0, 10.0, axis, 1.0, false, 0.35, no_doors, true)
 		_d("fence", base - n * 2.0 + t * 1.0, yaw_along(t), Vector3(30.0, 1.1, 1))
 		for j in rng.randi_range(2, 4):
 			_d("hay", base + n * rng.randf_range(12.0, 15.0) + t * (rng.randf_range(-4, 4)), yaw_along(t) + rng.randf_range(-0.3, 0.3), rng.randi_range(1, 3))
@@ -993,6 +1036,8 @@ func finish(build_view := true) -> void:
 		for k in range(0, arr.size(), 2):
 			mg._keep_clear([Vector2(arr[k].x, arr[k].z), 3.6])
 	decor.append_array(_yard_decor)
+	decor.append_array(_shop_decor)
 	_yard_decor = []
+	_shop_decor = []
 	if build_view:
 		world.set_decor(decor, rect)

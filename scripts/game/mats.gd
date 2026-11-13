@@ -572,19 +572,41 @@ static func bake_mesh(root: Node3D) -> ArrayMesh:
 	return _bake_groups(groups)
 
 
+## How far a detailed model and its distant stand-in cross-fade, dithered,
+## instead of one popping into the other (Godot's visibility range fade; the
+## dissolve LOD transition games use to hide the switch).
+const LOD_FADE := 8.0
+
+
 ## Moving vehicle parts keep their pivots, but distant paint needs one surface.
 static func add_distance_lod(root: Node3D, distance: float, keep: Array = []) -> void:
+	var lod := distance_lod_parts(root, keep)
+	if not lod.is_empty():
+		attach_distance_lod(root, distance, lod[1], _bake_groups(lod[0]))
+
+
+## What add_distance_lod makes the distant mesh of: [groups, the meshes it
+## stands in for], or [] for nothing. (In two halves for a model made over
+## several frames, its distant mesh worked out on a worker meanwhile.)
+static func distance_lod_parts(root: Node3D, keep: Array = []) -> Array:
 	var groups := {}
 	var originals := []
 	_collect(root, Transform3D.IDENTITY, groups, originals, keep, false, true, true)
-	if groups.is_empty():
-		return
+	return [] if groups.is_empty() else [groups, originals]
+
+
+## The distant mesh under root, from `distance` out, where the originals end.
+static func attach_distance_lod(root: Node3D, distance: float, originals: Array, mesh: ArrayMesh) -> void:
 	var coarse := MeshInstance3D.new()
-	coarse.mesh = _bake_groups(groups)
+	coarse.mesh = mesh
 	coarse.visibility_range_begin = distance
+	coarse.visibility_range_begin_margin = LOD_FADE
+	coarse.visibility_range_fade_mode = GeometryInstance3D.VISIBILITY_RANGE_FADE_SELF
 	coarse.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	for original: MeshInstance3D in originals:
 		original.visibility_range_end = distance
+		original.visibility_range_end_margin = LOD_FADE
+		original.visibility_range_fade_mode = GeometryInstance3D.VISIBILITY_RANGE_FADE_SELF
 		if shadow_of(original) != GeometryInstance3D.SHADOW_CASTING_SETTING_OFF:
 			coarse.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
 	root.add_child(coarse)
@@ -603,6 +625,44 @@ const BAKED_KEEP := 1024
 ## mesh is made once, and a part with the same triangles, colours and paint
 ## shares it.
 static func _bake_groups(groups: Dictionary) -> ArrayMesh:
+	var key := _bake_key(groups)
+	var known: ArrayMesh = _baked.get(key)
+	if known != null:
+		return known
+	var importer := ImporterMesh.new()
+	_make_distant(_distant_arrays(groups), importer, distant_material())
+	return _keep_baked(key, importer)
+
+
+## The same, started on a worker thread: welding and simplifying a car took
+## 25-65 ms in one call, too long for a frame. Poll bake_done(job), then
+## bake_result(job), both on the main thread.
+static func bake_groups_later(groups: Dictionary) -> Dictionary:
+	var key := _bake_key(groups)
+	var known: ArrayMesh = _baked.get(key)
+	if known != null:
+		return {"key": key, "mesh": known}
+	var importer := ImporterMesh.new()
+	var arrays := _distant_arrays(groups)
+	if OS.has_feature("web"):
+		_make_distant(arrays, importer, distant_material())  # (no threads in a browser)
+		return {"key": key, "mesh": _keep_baked(key, importer)}
+	# (the task touches nothing but its own arrays and importer: see AGENTS.md on workers)
+	return {"key": key, "importer": importer, "task": WorkerThreadPool.add_task(_make_distant.bind(arrays, importer, distant_material()), false, "distant mesh")}
+
+
+static func bake_done(job: Dictionary) -> bool:
+	return job.has("mesh") or WorkerThreadPool.is_task_completed(int(job.task))
+
+
+static func bake_result(job: Dictionary) -> ArrayMesh:
+	if not job.has("mesh"):
+		WorkerThreadPool.wait_for_task_completion(int(job.task))
+		job["mesh"] = _keep_baked(job.key, job.importer)
+	return job.mesh
+
+
+static func _bake_key(groups: Dictionary) -> PackedInt64Array:
 	var key := PackedInt64Array()
 	for group: Dictionary in groups.values():
 		key.append((group.mat as ShaderMaterial).get_instance_id())
@@ -610,17 +670,19 @@ static func _bake_groups(groups: Dictionary) -> ArrayMesh:
 		key.append(hash((group.n as PackedVector3Array).to_byte_array()))
 		key.append(hash((group.c as PackedColorArray).to_byte_array()))
 		key.append((group.v as PackedVector3Array).size())
-	var known: ArrayMesh = _baked.get(key)
-	if known != null:
-		return known
-	var made := _bake_groups_now(groups)
+	return key
+
+
+static func _keep_baked(key: PackedInt64Array, importer: ImporterMesh) -> ArrayMesh:
+	var made := importer.get_mesh()
 	if _baked.size() >= BAKED_KEEP:
 		_baked.clear()  # (a long battle's worth of kinds and paints: start again)
 	_baked[key] = made
 	return made
 
 
-static func _bake_groups_now(groups: Dictionary) -> ArrayMesh:
+## The groups as one surface, each in its material's own colour.
+static func _distant_arrays(groups: Dictionary) -> Array:
 	var vertices := PackedVector3Array()
 	var normals := PackedVector3Array()
 	var colors := PackedColorArray()
@@ -643,22 +705,30 @@ static func _bake_groups_now(groups: Dictionary) -> ArrayMesh:
 	arrays[Mesh.ARRAY_VERTEX] = vertices
 	arrays[Mesh.ARRAY_NORMAL] = normals
 	arrays[Mesh.ARRAY_COLOR] = colors
-	# At this distance cloth weave and metal wear are subpixel. Keep the
-	# uniform, skin, equipment and vehicle paint colours in one surface.
+	return arrays
+
+
+## What distant meshes are drawn with. At this distance cloth weave and metal
+## wear are subpixel: the uniform, skin, equipment and vehicle paint colours
+## keep to one surface.
+static func distant_material() -> ShaderMaterial:
 	if _distant_material == null:
 		_distant_material = ShaderMaterial.new()
 		_distant_material.shader = CloudShadow.make(DISTANT_SHADER)
-	# Hundreds of instances share this mesh. Weld identical vertex attributes
-	# once so the GPU can reuse transformed vertices without changing the pose.
-	# (Welded from the arrays themselves: a mesh read back from the graphics
-	# card waits on it.)
+	return _distant_material
+
+
+## The surface welded and simplified onto `importer`. Hundreds of instances
+## share the mesh, so identical vertex attributes are welded once and the GPU
+## reuses transformed vertices without changing the pose. (Welded from the
+## arrays themselves: a mesh read back from the graphics card waits on it.)
+## Run on a worker by bake_groups_later: method calls only, on its own objects.
+static func _make_distant(arrays: Array, importer: ImporterMesh, material: ShaderMaterial) -> void:
 	var tool := SurfaceTool.new()
 	tool.create_from_arrays(arrays)
 	tool.index()
-	var importer := ImporterMesh.new()
-	importer.add_surface(Mesh.PRIMITIVE_TRIANGLES, tool.commit_to_arrays(), [], {}, _distant_material)
+	importer.add_surface(Mesh.PRIMITIVE_TRIANGLES, tool.commit_to_arrays(), [], {}, material)
 	importer.generate_lods(25.0, 60.0, [])
-	return importer.get_mesh()
 
 
 ## A surface as an unindexed triangle list [verts, normals, colours or null].
@@ -1004,7 +1074,10 @@ static func _preset(kind: String) -> Dictionary:
 			return {"pattern": PLAIN, "col_a": Color(0.08, 0.1, 0.12), "rough": 0.08, "metal": 0.4, "bump": 0.0, "grime": 0.0}
 		"window_lit":
 			# the same glass with a lamp on in the room behind it (see `lit`)
-			return {"pattern": PLAIN, "col_a": Color(0.08, 0.1, 0.12), "col_c": Color(2.4, 1.55, 0.8), "rough": 0.08, "metal": 0.4, "bump": 0.0, "grime": 0.0, "lit": 1.0}
+			# (a room lamp seen through glass and curtains: warm, and at its
+			# brightest only just over the glow threshold, so a window gleams
+			# rather than flares)
+			return {"pattern": PLAIN, "col_a": Color(0.08, 0.1, 0.12), "col_c": Color(1.1, 0.66, 0.3), "rough": 0.08, "metal": 0.4, "bump": 0.0, "grime": 0.0, "lit": 1.0}
 		"track":
 			return {"pattern": TRACK, "col_a": Color(0.13, 0.12, 0.11), "col_b": Color(0.3, 0.27, 0.23), "rough": 0.7, "metal": 0.5, "bump": 2.0, "grime": 0.5, "local_space": true}
 		"camo_army":
@@ -1094,6 +1167,7 @@ uniform float metal = 0.0;
 uniform float bump = 1.0;
 uniform float grime = 0.5;
 uniform float wet = 0.0;  // streets in the rain (Mats.set_street_wet)
+global uniform float rain_wet;  // how soaked everything out in the rain is, 0..1 (Atmosphere._rain_tick)
 uniform float weathering = 0.0;
 uniform bool grain_horizontal = false;
 uniform bool worn_armour = false;
@@ -1625,7 +1699,7 @@ void fragment() {
 	// others (a hash of where the window is, so a batch keeps each one's)
 	if (lit > 0.0) {
 		float room = fract(sin(dot(floor(wpos.xz * 0.6) + floor(wpos.y * 0.4), vec2(12.9898, 78.233))) * 43758.5453);
-		EMISSION = col_c * lit * window_glow * (0.55 + 0.9 * room);
+		EMISSION = col_c * lit * window_glow * (0.4 + 0.75 * room);
 	}
 	// bump mapping from the pattern height (surface gradient); the height is
 	// band-limited above, so its screen-space slope is stable under motion
@@ -1639,6 +1713,25 @@ void fragment() {
 		float det = dot(dpdx, r1);
 		vec3 grad = sign(det) * (dhx * r1 + dhy * r2);
 		NORMAL = normalize(abs(det) * NORMAL - grad * bump * 0.02);
+	}
+	if (rain_wet > 0.0) {
+		// Out in the rain everything takes a film of water (after Lagarde,
+		// "Water drop 2b: dynamic rain and its effects", 2013). Rough, porous
+		// stuff (cloth, timber, concrete, earth on a track) soaks it up and
+		// darkens, since light now scatters inside the wet pores and less comes
+		// back out; smooth paint and metal barely change colour. Either way the
+		// film is smooth, so it all turns glossy, upturned faces most. Faces
+		// turned down stay drier, and the water runs down walls and hulls in
+		// streaks rather than evenly.
+		vec3 wn = normalize((INV_VIEW_MATRIX * vec4(NORMAL, 0.0)).xyz);
+		float exposed = mix(0.25, 1.0, smoothstep(-0.6, 0.3, wn.y));
+		float streak = smoothstep(0.35, 0.8, tnoise(vec2((wpos.x + wpos.z) * 5.0, wpos.y * 0.3)));
+		float soak = rain_wet * exposed * mix(0.55 + 0.6 * streak, 1.0, smoothstep(0.5, 0.9, abs(wn.y)));
+		float porous = clamp((ROUGHNESS - 0.35) * 1.8, 0.0, 1.0) * (1.0 - METALLIC);
+		float darken = 1.0 - soak * (0.08 + 0.47 * porous);
+		ALBEDO *= OUTPUT_IS_SRGB ? pow(darken, 1.0 / 2.2) : darken;
+		// (water stands as a film on paint and metal; cloth and timber drink most of it)
+		ROUGHNESS = mix(ROUGHNESS, mix(0.34, 0.12, smoothstep(0.4, 0.9, wn.y)), soak * mix(0.85, 0.35, porous));
 	}
 	// CLOUD_FRAGMENT cloud_sun(wpos)
 }
@@ -1783,12 +1876,18 @@ void fragment() {
 	float g = vn(p * 13.0);
 	vec2 u = UV * 2.0 - 1.0;
 	float edge = max(abs(u.x), abs(u.y));
-	if (n + g * 0.3 < 0.47 + smoothstep(0.8, 1.0, edge) * 0.3) { discard; }
+	float scraps = step(0.47 + smoothstep(0.8, 1.0, edge) * 0.3, n + g * 0.3);
+	// Garnish is tied to a fine diamond cord mesh, visible through the larger gaps.
+	vec2 weave = vec2(p.x + p.y, p.x - p.y) * 7.0;
+	vec2 cord_distance = abs(fract(weave) - 0.5);
+	float cord = 1.0 - smoothstep(0.025, 0.045, min(cord_distance.x, cord_distance.y));
+	if (max(scraps, cord) < 0.5) discard;
 	vec3 c = tint.rgb * (0.65 + 0.55 * g);
 	c = mix(c, c * vec3(1.25, 1.05, 0.7), step(0.62, vn(p * 3.1 + 9.0)) * 0.6);
 	// the garnish: darker brown and near-black scraps knotted in, breaking it up
 	c = mix(c, c * vec3(0.62, 0.5, 0.38), step(0.6, vn(p * 2.3 + 31.0)) * 0.75);
 	c = mix(c, c * 0.35, step(0.7, vn(p * 4.1 + 57.0)) * 0.6);
+	c = mix(tint.rgb * 0.45, c, scraps);
 	ALBEDO = c;
 	ROUGHNESS = 0.95;
 	BACKLIGHT = c * 0.5;

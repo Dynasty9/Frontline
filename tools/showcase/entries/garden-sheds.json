@@ -1,0 +1,20 @@
+{
+  "entry": "changelog/unreleased/garden-sheds.md",
+  "summary": "Garden sheds and trampolines in the town's back gardens.",
+  "medium": "still",
+  "stage": "tools/showcase/building-surfaces.tscn",
+  "rationale": "Appearance change: a matched studio garden, whole and close up, shows both pieces at a readable size.",
+  "source_ref": "8476852fcfa79e09e83d84dcf268890d69c03a98",
+  "before_ref": "789d1d95afea8b716c5fa5464e87ed4f6edd6f3d",
+  "sources": [
+    {
+      "file": "changelog/unreleased/garden-sheds/comparison.jpg",
+      "sha256": "d5148853a359fd430693eacd74094f5190dedaf074cb4f6ed52d4095f15c3d7c"
+    },
+    {
+      "file": "changelog/unreleased/garden-sheds/capture.json",
+      "sha256": "89c87d5a90f6d1d0e86c098904ae4a1b88758c3ca65497f9cad7f55f908437de"
+    }
+  ],
+  "output": null
+}
