@@ -78,6 +78,8 @@ vec4 scenery_river_mask(vec2 p) {
 }
 """
 
+## How bright the caustics thrown back up off the water are, against the sun's on the bed.
+const THROWN := 2.4
 const TILE := 64.0  # the surface is drawn in tiles this big, only where there's water
 const TILE_SUB := [15, 31, 31, 47]  # quads a tile side, by quality (4 m, 2 m, 2 m, 1.4 m)
 
@@ -148,6 +150,8 @@ var _q := 0.0  # how far a wave's crest bunches for its height (see STEEP)
 var _wf := PackedFloat32Array()  # (height_at) per moving wave: kx, kz, heading x, z, omega, phase, height, bunching, for this sea
 var _detail: Texture2D
 var caustic_tex: NoiseTexture2D
+var caustics: Caustics  # the light thrown back off the water onto hulls, piles and banks
+var _caustic_k := 1.0  # how strongly the sun makes caustics (apply_mood)
 var _wakes := {}  # eid -> Wake
 var _patches: Array = []  # [mi, ends at]
 var _patch_i := 0
@@ -229,11 +233,17 @@ func build(w: WaterMap, detail: Texture2D) -> void:
 		Mats.set_shared(m, "coast", c)
 	quality = -1
 	_settings_changed()
+	if caustics == null:
+		caustics = Caustics.new()
+		add_child(caustics)
+	caustics.build(self)
+	caustics.set_strength(_caustic_k * THROWN)
 
 
 ## The Water quality setting: the surface's shader and its grid are built for
-## it (Low draws no see-through water and fewer waves; High and Ultra add the
-## light dancing on the bed and the wind's streaks; Ultra a finer grid).
+## it (Low draws no see-through water and fewer waves; Medium up the light
+## dancing on the bed, finer from High, which adds the wind's streaks and the
+## light thrown up off the water; Ultra a finer grid).
 func _settings_changed() -> void:
 	if mat == null or _mask == null:
 		return
@@ -249,6 +259,8 @@ func _settings_changed() -> void:
 		surface = surface.replace(", ambient_light_disabled", "")
 	mat.shader.code = _code(surface, MOVING_LOW if wq == 0 else MOVING)
 	_lay_tiles()
+	if caustics:
+		caustics.set_strength(_caustic_k * THROWN)
 
 
 func _code(src: String, moving: int) -> String:
@@ -448,6 +460,11 @@ func apply_mood(d: Dictionary, mood: String) -> void:
 	mat.set_shader_parameter("cloud_color", Color(0.06, 0.06, 0.06).linear_to_srgb() if mood == "night" else Color.WHITE)
 	# (under cloud there's no glitter, only a sheen)
 	mat.set_shader_parameter("sun_k", {"overcast": 0.1, "rain": 0.06, "hazy": 0.55}.get(mood, 1.0))
+	# the caustics need a sun to throw: none under cloud, a faint web by moonlight
+	_caustic_k = {"overcast": 0.0, "rain": 0.0, "hazy": 0.5, "night": 0.12, "dawn": 0.7, "dusk": 0.7}.get(mood, 1.0)
+	mat.set_shader_parameter("caustic_k", _caustic_k)
+	if caustics:
+		caustics.set_strength(_caustic_k * THROWN)
 	mat.set_shader_parameter("rain", 1.0 if mood == "rain" else 0.0)
 	# rain and a grey sky: a darker, duller sea
 	var dull := 1.0 if mood in ["overcast", "rain", "night"] else 0.0
@@ -463,11 +480,14 @@ func apply_mood(d: Dictionary, mood: String) -> void:
 func _process(dt: float) -> void:
 	t += dt
 	RenderingServer.global_shader_parameter_set("water_time", t)
-	if Vfx.gl and mat and world.atmo and world.atmo.sun:
-		# (the browser lights per vertex: the water works the sun's glitter out itself)
+	if mat and world.atmo and world.atmo.sun:
+		# (the caustics fall on the bed along the sun's way down through the
+		# water; and the browser lights per vertex, so the water works the sun's
+		# glitter out itself)
 		var sun: DirectionalLight3D = world.atmo.sun
 		mat.set_shader_parameter("sun_dir", sun.global_transform.basis.z.normalized())
-		mat.set_shader_parameter("sun_col", sun.light_color * sun.light_energy)
+		if Vfx.gl:
+			mat.set_shader_parameter("sun_col", sun.light_color * sun.light_energy)
 	for k in _wakes.keys():
 		var wk: Wake = _wakes[k]
 		if t - wk.seen > Wake.LIFE:
@@ -716,8 +736,10 @@ func foam(p: Vector3, r: float, secs: float, kind: int) -> void:
 ## more the flatter you look across it. The sun's glitter is in light() (in
 ## fragment() where the lighting is per vertex: the browser build). WQ is the
 ## Water quality: Low (0) draws no see-through water, which saves copying the
-## screen every frame; High (2) and Ultra (3) add the light the ripples focus
-## on the bed and the wind's streaks of foam in a blow.
+## screen every frame; Medium (1) shows the light the ripples focus on the bed
+## as one drifting web; High (2) two, warped by the chop, plus the wind's
+## streaks of foam in a blow (and Caustics throws the light back up onto the
+## hulls and banks); Ultra (3) splits the web's colours.
 const WATER_SHADER := """
 shader_type spatial;
 render_mode blend_mix, depth_draw_always, cull_back, ambient_light_disabled;
@@ -735,8 +757,9 @@ uniform sampler2D depth_tex : hint_depth_texture, filter_nearest;
 // (only ever read at full size: no mipmaps of the screen to make each frame)
 uniform sampler2D screen_tex : hint_screen_texture, filter_linear;
 #endif
-#if WQ >= 2
+#if WQ >= 1
 uniform sampler2D caustic_tex : filter_linear_mipmap, repeat_enable;
+uniform float caustic_k = 1.0;  // the sun's share in them (none under cloud)
 #endif
 // a depth read back to clip space: OpenGL's (the browser build's) runs -1..1, Vulkan's 0..1
 #if CURRENT_RENDERER == RENDERER_COMPATIBILITY
@@ -852,6 +875,75 @@ vec2 drops(vec2 p, float seed) {
 	return d / max(r, 0.001) * wave * 0.5;
 }
 
+#if WQ >= 1
+// (Medium) a web of light lines where the cells of the caustic noise meet:
+// crisp in the shallows, softer and broader deeper down, where the light that
+// came together has spread again (`soft` 0..1)
+float caustic_web(vec2 uv, float soft) {
+	float c = textureLod(caustic_tex, uv, soft).r;
+	return pow(1.0 - smoothstep(0.0, mix(0.26, 0.4, soft), c), mix(2.2, 1.4, soft)) * mix(1.0, 0.6, soft);
+}
+
+#if WQ >= 2
+// (High up) the net worked out here: cells whose centres wander about, the
+// light gathered along the edges where two cells meet, so the net re-forms as
+// the ripples run rather than sliding across the bed; the lines broaden with
+// depth (`soft`)
+vec2 caustic_hash(vec2 c) {
+	return fract(sin(vec2(dot(c, vec2(127.1, 311.7)), dot(c, vec2(269.5, 183.3)))) * 43758.5453);
+}
+
+float caustic_net(vec2 x, float t, float soft) {
+	vec2 n = floor(x);
+	vec2 f = fract(x);
+	float f1 = 8.0;
+	float f2 = 8.0;
+	for (int j = -1; j <= 1; j++) {
+		for (int i = -1; i <= 1; i++) {
+			vec2 g = vec2(float(i), float(j));
+			vec2 o = 0.5 + 0.38 * sin(t + 6.2831 * caustic_hash(n + g));
+			float d = length(g + o - f);
+			if (d < f1) {
+				f2 = f1;
+				f1 = d;
+			} else if (d < f2) {
+				f2 = d;
+			}
+		}
+	}
+	return pow(1.0 - smoothstep(0.0, mix(0.07, 0.22, soft), f2 - f1), mix(2.5, 1.5, soft)) * mix(1.0, 0.6, soft);
+}
+#endif
+
+// the light the ripples focus on the bed at p: two nets a couple of metres
+// across, brightest where they cross; from High up the chop warps them too,
+// and on Ultra each colour comes together a little apart from the others, as
+// the water splits the light
+vec3 caustics(vec2 p, float soft) {
+#if WQ >= 2
+	p += (texture(chop_tex, p / 14.0 + vec2(water_time * 0.021, -water_time * 0.015)).xy - 0.5) * 1.2;
+	vec2 ua = p / 2.6 + vec2(water_time * 0.05, water_time * 0.02);
+	vec2 ub = p / 1.9 - vec2(water_time * 0.03, -water_time * 0.04);
+	float ta = water_time * 0.55;
+	float tb = water_time * 0.7 + 2.0;
+#if WQ >= 3
+	vec2 split = vec2(0.035, 0.025) * (0.4 + soft);
+	vec3 a = vec3(caustic_net(ua - split, ta, soft), caustic_net(ua, ta, soft), caustic_net(ua + split, ta, soft));
+	vec3 b = vec3(caustic_net(ub - split, tb, soft), caustic_net(ub, tb, soft), caustic_net(ub + split, tb, soft));
+	return max(a, b) * 0.8 + a * b * 1.5;
+#else
+	float a = caustic_net(ua, ta, soft);
+	float b = caustic_net(ub, tb, soft);
+	return vec3(max(a, b) * 0.8 + a * b * 1.5);
+#endif
+#else
+	// (Medium, the browser's: one web, from the noise texture)
+	return vec3(caustic_web(p / 26.0 + vec2(water_time * 0.009, water_time * 0.004), soft) * 0.8);
+#endif
+}
+
+#endif
+
 // `amt` of foam: solid white at 1, opening into a lace of bubbles as it thins
 float foam_of(float amt, float l) {
 	return smoothstep(1.0 - amt, 1.0 - amt + 0.22, l) * smoothstep(0.0, 0.08, amt);
@@ -938,12 +1030,20 @@ void fragment() {
 	// darker the farther out)
 	float depth = rthick + salt * clamp(into - 20.0, 0.0, 90.0) * 0.2;
 	vec3 tr = exp(-mix(fresh_absorb, sea_absorb, salt) * depth);
-#if WQ >= 2
-	// the light the ripples focus onto the bed, dancing in the shallows
-	float ca = texture(caustic_tex, p / 6.5 + vec2(water_time * 0.023, water_time * 0.011)).r;
-	float cb = texture(caustic_tex, p / 4.9 - vec2(water_time * 0.017, -water_time * 0.02)).r;
-	float caus = pow(1.0 - smoothstep(0.0, 0.2, ca), 3.0) + pow(1.0 - smoothstep(0.0, 0.2, cb), 3.0);
-	bed *= 1.0 + caus * 1.1 * sun_k * (1.0 - smoothstep(0.4, 4.0, rthick)) * (1.0 - far);
+#if WQ >= 1
+	// the light the ripples focus onto the bed, dancing in the shallows. It
+	// lies on the bed itself (where the bent view meets it) and comes down
+	// along the sun's way through the water, so it slides across the bed as
+	// the sun goes round; it's sharpest a metre or so down (just under the
+	// surface the light hasn't come together yet) and fades out by three
+	vec3 bedw = (INV_VIEW_MATRIX * vec4(rp.xyz, 1.0)).xyz;
+	float below = max(__LEVEL__ - bedw.y, 0.0);
+	vec2 cp = bedw.xz - sun_dir.xz / max(sun_dir.y, 0.25) * below * 0.75;
+	float reach = smoothstep(0.03, 0.22, below) * (1.0 - smoothstep(1.2, 3.2, below)) * (1.0 - far);
+	if (reach > 0.0 && caustic_k > 0.0) {
+		// (light added to the bed's own: the sand keeps its colour, brighter in the lines)
+		bed *= 1.0 + min(caustics(cp, clamp(below / 2.5, 0.0, 1.0)), vec3(2.5)) * 2.2 * caustic_k * reach;
+	}
 #endif
 	// the breakers: a white front with foam trailing behind it, sand stirred up
 	float surf = 0.0;
