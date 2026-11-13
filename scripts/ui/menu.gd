@@ -23,6 +23,8 @@ var _op_side := 0  # 0 Coalition, 1 Rebels, -1 observe
 var _map_size := 1024
 var _side_cards := {}  # side -> its row in the choice
 var _mood_seg: UiSeg  # the time of day and weather
+var _ai_seg: UiSeg  # how good the AI commander is (Defs.AI_LEVELS)
+var _ai_note: Label  # what that level means, supply handicap and all
 var _col: VBoxContainer
 var _items: Array[Button] = []  # the column's entries (each marker says whether its panel is open)
 # multiplayer: the server browser and the lobby (screens that take the place
@@ -400,6 +402,24 @@ func _build_op_panel() -> void:
 		(_mood_seg.get_child(i) as Button).tooltip_text = "A different time and weather each battle" if mk == "random" else String(Curtain.MOOD_TEXT.get(mk, ""))
 	_mood_seg.changed.connect(func(i: int): _pick_mood(String(MOODS[i][0])))
 	v.add_child(_mood_seg)
+	v.add_child(_gap(26))
+	v.add_child(UiKit.header("Opponent"))
+	v.add_child(_gap(12))
+	var lv := []
+	for k in Defs.AI_LEVEL_KEYS:
+		lv.append(String(Defs.AI_LEVELS[k].name))
+	_ai_seg = UiSeg.make(lv, 1, 11)
+	_ai_seg.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	for i in Defs.AI_LEVEL_KEYS.size():
+		(_ai_seg.get_child(i) as Button).tooltip_text = String(Defs.AI_LEVELS[Defs.AI_LEVEL_KEYS[i]].blurb)
+	_ai_seg.changed.connect(func(i: int): _pick_ai(String(Defs.AI_LEVEL_KEYS[i])))
+	v.add_child(_ai_seg)
+	v.add_child(_gap(8))
+	_ai_note = UiKit.label("", 12, UiKit.DIM)
+	_ai_note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_ai_note.custom_minimum_size = Vector2(360, 0)
+	v.add_child(_ai_note)
+	v.add_child(_gap(14))
 	if not OS.has_feature("web"):
 		v.add_child(UiKit.label("Battlefield size", 15, UiKit.DIM, 600))
 		var dimensions := OptionButton.new()
@@ -512,6 +532,7 @@ func _open_op(side: int) -> void:
 	_close_panels()
 	_pick_side(side)
 	_pick_mood(String(Settings.get_v("mood")))
+	_pick_ai(String(Settings.get_v("ai_difficulty")))
 	op_panel.visible = true
 	_settle(op_panel)
 	UiMotion.arrive(op_panel, Vector2(1, 0))
@@ -534,6 +555,18 @@ func _pick_mood(m: String) -> void:
 		i = 0
 	Settings.set_v("mood", m)
 	_mood_seg.select(i)
+
+
+## The AI commander's level, kept for next time (an observer watches two of them).
+func _pick_ai(k: String) -> void:
+	k = Defs.ai_level(k)
+	Settings.set_v("ai_difficulty", k)
+	_ai_seg.select(Defs.AI_LEVEL_KEYS.find(k))
+	_ai_note.text = String(Defs.AI_LEVELS[k].blurb)
+
+
+func _ai_level() -> String:
+	return Defs.ai_level(Settings.get_v("ai_difficulty"))
 
 
 func _deploy() -> void:
@@ -782,7 +815,7 @@ func _on_lobby_updated() -> void:
 
 func _single_player(side := 0) -> void:
 	if not OS.has_feature("web"):
-		var local_err := LocalServer.launch({"ai_fill": true, "map_size": _map_size}, side)
+		var local_err := LocalServer.launch({"ai_fill": true, "map_size": _map_size, "ai_difficulty": _ai_level()}, side)
 		status.text = "Starting simulation..." if local_err == OK else "Could not start a local game (error %d)." % local_err
 		return
 	var port := Net.DEFAULT_PORT
@@ -795,12 +828,13 @@ func _single_player(side := 0) -> void:
 		status.text = "Could not start a local game (error %d)." % err
 		return
 	Net.set_setting("ai_fill", true)
+	Net.set_setting("ai_difficulty", _ai_level())
 	Net.start_game()
 
 
 func _observe() -> void:
 	if not OS.has_feature("web"):
-		var local_err := LocalServer.launch({"ai_fill": true, "map_size": _map_size}, -1)
+		var local_err := LocalServer.launch({"ai_fill": true, "map_size": _map_size, "ai_difficulty": _ai_level()}, -1)
 		status.text = "Starting simulation..." if local_err == OK else "Could not start (error %d)." % local_err
 		return
 	var port := Net.DEFAULT_PORT
@@ -813,6 +847,7 @@ func _observe() -> void:
 		status.text = "Could not start (error %d)." % err
 		return
 	Net.set_setting("ai_fill", true)
+	Net.set_setting("ai_difficulty", _ai_level())
 	Net.start_game()
 
 
@@ -940,6 +975,7 @@ func _host_with(opts: Dictionary) -> void:
 		"drop_in": bool(opts.get("drop_in", true)),
 		"ai_fill": bool(opts.get("ai_fill", true)),
 		"ai_allies": bool(opts.get("ai_allies", false)),
+		"ai_difficulty": _ai_level(),  # (the last one picked: the lobby changes it)
 		"locked": String(opts.get("password", "")) != "",
 	}
 	if mk != "":

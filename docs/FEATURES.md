@@ -1534,6 +1534,31 @@ digs forward tunnel entrances and moves its attack waves through them. AI-vs-AI 
 batches of six games (from 5–1 one way to 5–1 the other with small parameter changes), so the sides are close
 but balance needs real playtesting. With the base defenses, most games last 10–23 minutes.
 
+**AI difficulty** (`Defs.AI_LEVELS`, `CommanderAI._apply_skill`): Play vs AI's **Opponent** choice and the lobby's
+**AI difficulty** row (the host's setting `ai_difficulty`, for every AI commander in the battle, the enemy's and any
+fighting beside the players) set how good the AI is, through how it thinks rather than what it's given. Each
+level is a skill between recruit (0) and veteran (2):
+
+| | Recruit | Regular | Veteran |
+|---|---|---|---|
+| Looks at the battle every | 3.5 s | 2 s | 1.25 s |
+| Answers a threat to a FOB | every 45 s, one squad | every 20 s, two | every 12 s, three |
+| Attack waves | a squad smaller, at least 70 s apart, goes with what it has after 320 s | 3 squads (4 after ten minutes), 25 s, 200 s | a squad bigger, 20 s, 160 s |
+| Attacks | head-on (no base of fire, no flanking) | fix and flank (AttackPlan) | fix and flank |
+| Ambushes, recon flights, answering a call for help | never | yes | yes, ambushes and recon more often |
+| Fire support | only on a big target (9+), every 90 s at most | on 4+ | on 3+ |
+| Battered squads pulled out | never | under a third left | under half left |
+| Towns and outposts | looked at every 15 s / 40 s | 6 s / 15 s | 6 s / 15 s |
+| The next FOB | 1.6 times the wait | 2 to 3.5 min after the last | as a regular |
+| Its lorries' loads | -15% | as they are | +15% |
+
+The supply handicap and bonus apply only to a side no player commands (an AI beside you never costs you supply),
+and the menu says so. **Adaptive** starts as a regular and, from five minutes in, weighs its side against the
+other every minute (men, vehicles, FOBs and towns): well ahead (1.5 to 1), it eases off a fifth of a level; well
+behind (0.7 to 1), it presses a fifth harder; in between it drifts back towards regular. The level shows on the
+loading brief and as **AI** on the status line. `--ai-difficulty=veteran` sets every AI, `--ai-difficulty=0:recruit,1:regular`
+one per side (for AI-vs-AI comparisons); the test port's world query lists each commander's level.
+
 **Command by intent** (`delegation.gd`): a commander can hand any of his squads and vehicles to his XO with an
 intent instead of an order, and the XO carries it out with the AI commander's own drills, giving the squads
 their orders, giving them again when the fight knocks them off, and reporting on the command net ("XO: Charlie 1,
