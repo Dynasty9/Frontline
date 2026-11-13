@@ -732,7 +732,8 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   under a corrugated sheet roof with loft doors in its gables, straw on its floor) and
   hedged fields lie along the roads; abandoned cars on the verges, burnt-out armour off the road.
 - A skirmish town has its parish church where a road comes in: a stone nave and chancel under slate roofs and a
-  west tower with a clock, louvred belfry, battlements and a copper spire seen across the map. It's solid: cover
+  west tower with a clock, louvred belfry, battlements and a copper spire seen across the map, in a walled
+  churchyard of graves. It's solid: cover
   against its walls, nobody inside, and enough fire brings it down to rubble.
 - **The town and every village have a name and a supply dump** (crated stores on a pallet, fuel drums and a
   flagpole): the town's on its square where the flagpole stood, a village's on the verge of its main street.

@@ -222,6 +222,12 @@ clasping buttresses, battlements, corner pinnacles and an octagonal copper spire
 solid parts (tower, nave, chancel): cover against its walls, nobody inside, 12000 hit points, a heap of rubble
 when it falls. Render it with `--building-kinds=church` in the studio stage.
 
+Round it `TownGen._churchyard` lays out the churchyard from the same stream: a low stone wall all round
+(Structure "low_wall", cover as a garden wall is) with a gap in front for the path up to the west door, rows of
+graves either side of the nave and behind the chancel (Decor "graves": `BuildingYards.graves`, headstones with
+round or pointed tops, the odd cross, some leaning, a few kerbed plots), a dark conifer at each front corner;
+then the yard is reserved, so nothing the map puts down after it lands among the graves.
+
 ## Wall fittings
 
 What's fixed to a house's walls comes from `BuildingFittings` (`meter_box`, `tap`, `wall_unit`, `wall_dish`,

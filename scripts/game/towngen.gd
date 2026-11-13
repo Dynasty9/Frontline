@@ -43,6 +43,7 @@ var square_flag: Array = []  # the flagpole on it (decor; the town's supply dump
 ## decor, so every older piece keeps its place in the list and so its look.
 var _yard_decor: Array = []
 var church_at := Vector3.INF  # where the parish church stands (none: INF)
+var _church_decor: Array = []  # its churchyard's dressing (decor, after everything else)
 var _shop_decor: Array = []  # what the shops put out (decor, after the yards'; see _shop_wares)
 
 
@@ -1050,7 +1051,51 @@ func church() -> void:
 		if mg._try("church", c, atan2(n.x, n.z), -1, {"size": size}) != null:
 			church_at = c
 			world.stat("church")
+			var main_decor := decor
+			decor = _church_decor
+			_churchyard(c, atan2(n.x, n.z), size, cr)
+			_church_decor = decor
+			decor = main_decor
 			return
+
+
+## The churchyard round the church at `c` (its tower to local -z, toward the
+## road): a low stone wall round it (cover, as a garden wall is) with a gap
+## in front for the path up to the west door, rows of graves either side of
+## the nave and behind the chancel, a dark conifer at each front corner.
+## Then the yard is kept clear of whatever the map puts down after it.
+func _churchyard(c: Vector3, axis: float, size: Vector3, cr: RandomNumberGenerator) -> void:
+	var b := Basis(Vector3.UP, axis)
+	var hx := size.x * 0.5 + 6.5
+	var front := -size.z * 0.5 - 2.8
+	var back := size.z * 0.5 + 6.0
+	var at := func(x: float, z: float) -> Vector3: return c + b * Vector3(x, 0, z)
+	# the wall: along the front either side of the gate, down the sides, across the back
+	for side: float in [-1.0, 1.0]:
+		var run := hx - 1.3
+		var n := maxi(1, int(round(run / 3.6)))
+		for i in n:
+			mg._try("low_wall", at.call(side * (1.3 + (i + 0.5) * run / n), front), axis, -1, {"size": Vector3(run / n, 1.0, 0.5), "variant": 0})
+		var len := back - front
+		var m := maxi(1, int(round(len / 3.8)))
+		for i in m:
+			mg._try("low_wall", at.call(side * hx, front + (i + 0.5) * len / m), axis + PI * 0.5, -1, {"size": Vector3(len / m, 1.0, 0.5), "variant": 0})
+	var k := maxi(1, int(round(hx * 2.0 / 3.8)))
+	for i in k:
+		mg._try("low_wall", at.call(-hx + (i + 0.5) * hx * 2.0 / k, back), axis, -1, {"size": Vector3(hx * 2.0 / k, 1.0, 0.5), "variant": 0})
+	# the path from the gate to the door
+	_d("path", at.call(0.0, front + 0.9), axis, Vector3(1.6, 0, 2.6))
+	# rows of graves either side of the nave, more behind the chancel
+	for side: float in [-1.0, 1.0]:
+		for i in 7:
+			if cr.randf() < 0.18:
+				continue
+			_d("graves", at.call(side * (size.x * 0.5 + 3.4), -size.z * 0.5 + 2.0 + i * 2.6), axis, cr.randi_range(2, 3))
+	for i in 2:
+		_d("graves", at.call(cr.randf_range(-1.0, 1.0), size.z * 0.5 + 1.6 + i * 2.2), axis, cr.randi_range(4, 6))
+	for side: float in [-1.0, 1.0]:
+		mg._try("tree", at.call(side * (hx - 1.6), front + 1.8), cr.randf() * TAU, -1, {"variant": 2})
+	_reserve(at.call(0.0, (front + back) * 0.5), Vector2(hx, (back - front) * 0.5), axis)
 
 
 ## A power line along each country road on the verge, pole every ~34 m.
@@ -1153,5 +1198,7 @@ func finish(build_view := true) -> void:
 	decor.append_array(_shop_decor)
 	_yard_decor = []
 	_shop_decor = []
+	decor.append_array(_church_decor)
+	_church_decor = []
 	if build_view:
 		world.set_decor(decor, rect)

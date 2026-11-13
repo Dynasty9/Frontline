@@ -257,7 +257,8 @@ func _ready() -> void:
 			BuildingYards.bicycle(k.at_point(Vector3(0, 0, -3)), BuildingYards.BIKE_COLS[0])
 			BuildingYards.pots(k.at_point(Vector3(3, 0, 3)), 3, k.rng)
 			BuildingYards.shed(k.at_point(Vector3(-4, 0, 3)), BuildingYards.SHEDS[0], k.rng)
-			BuildingYards.trampoline(k.at_point(Vector3(5, 0, -4)), BuildingYards.PADS[0]),
+			BuildingYards.trampoline(k.at_point(Vector3(5, 0, -4)), BuildingYards.PADS[0])
+			BuildingYards.graves(k.at_point(Vector3(-6, 0, -4)), 5, k.rng),
 		"storey": func(k: BuildingKit):
 			BuildingStoreys.upper(k, 9.0, 7.6, 3.0, 5.8, "brick", BuildingMaterials.color("brick"), Color(0.86, 0.85, 0.8), k.rng),
 		"fixtures": func(k: BuildingKit):
