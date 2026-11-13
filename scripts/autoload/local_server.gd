@@ -182,9 +182,10 @@ func _process(_dt: float) -> void:
 		return
 	if not starting:
 		if float(build_progress.get("frac", 0.0)) < 0.7 and FileAccess.file_exists(session + ".progress"):
-			var progress = JSON.parse_string(FileAccess.get_file_as_string(session + ".progress"))
-			if progress is Dictionary:
-				build_progress = progress
+			# A replaced sidecar may briefly be unreadable on Windows; retry next poll.
+			var progress := JSON.new()
+			if progress.parse(FileAccess.get_file_as_string(session + ".progress")) == OK and progress.data is Dictionary:
+				build_progress = progress.data
 		return
 	if _retry_ms > 0 and now >= _retry_ms:
 		_retry_ms = 0
