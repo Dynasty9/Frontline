@@ -66,6 +66,7 @@ var backdrop_tex: ImageTexture
 var road_mat: ShaderMaterial
 var grass: Grass
 var mountain_clouds: Node3D
+var light_probes: LightProbes  # (view) the skylight and bounce of streets and rooms
 var forest: DistantForest
 var wildlife: Wildlife
 var _d := {}
@@ -88,6 +89,9 @@ func setup(w: World) -> void:
 	_build_env()
 	CloudShadow.set_sun(sun)
 	_build_ground()
+	light_probes = LightProbes.new()
+	add_child(light_probes)
+	light_probes.setup(self)
 	_build_post()
 	mountain_clouds = preload("res://scripts/game/mountain_clouds.gd").new()
 	add_child(mountain_clouds)
@@ -557,7 +561,7 @@ func _build_ground() -> void:
 	ground = MeshInstance3D.new()
 	ground.mesh = _ground_ring(GROUND_HALF, MapDims.HALF + 1800.0)
 	ground_mat = ShaderMaterial.new()
-	ground_mat.shader = CloudShadow.make(MapDims.shader(GROUND_SHADER.replace("// BACKDROP_HEIGHT", BACKDROP_HEIGHT)), CloudShadow.OWN_LIGHT)
+	ground_mat.shader = CloudShadow.make(MapDims.shader(GROUND_SHADER.replace("// BACKDROP_HEIGHT", BACKDROP_HEIGHT)), CloudShadow.OWN_LIGHT | CloudShadow.PROBES)
 	ground_mat.set_shader_parameter("vertex_lit", ProjectSettings.get_setting_with_override("rendering/shading/overrides/force_vertex_shading"))
 	ground_mat.set_shader_parameter("biome_tex", biome_tex)
 	ground_mat.set_shader_parameter("detail_tex", detail_tex)
@@ -609,7 +613,7 @@ func _build_ground() -> void:
 	trench_net = TrenchNet.new(world)
 	add_child(trench_net)
 	road_mat = ShaderMaterial.new()
-	road_mat.shader = CloudShadow.make(Mats.code(MapDims.shader(ROAD_SHADER.replace("// STREET_SURFACE", Mats.ASPHALT_SHADER))))
+	road_mat.shader = CloudShadow.make(Mats.code(MapDims.shader(ROAD_SHADER.replace("// STREET_SURFACE", Mats.ASPHALT_SHADER))), CloudShadow.PROBES)
 	road_mat.set_shader_parameter("detail_tex", detail_tex)
 	road_mat.set_shader_parameter("paving_noise", preload("res://assets/town/aerial_asphalt_01_color.jpg"))
 	road_mat.set_shader_parameter("street_detail", preload("res://assets/town/road_damaged_clean_color.jpg"))
@@ -968,12 +972,16 @@ func apply_mood(m: String) -> void:
 		world.fx.vfx.apply_lighting()
 	if cine:
 		cine.reset_adaptation = true  # a new light: the eye starts afresh
+	if light_probes:
+		light_probes.relight()
 
 
 func apply_settings() -> void:
 	var s := Settings
 	ground_mat.set_shader_parameter("terrain_detail", int(s.get_v("lod")) >= 1)
 	CloudShadow.refresh()
+	if light_probes:
+		light_probes.apply_settings()
 	if forest:
 		forest.apply_settings()
 	# the battle's own mood stands (the host's choice, or a mission's) until
@@ -1677,6 +1685,8 @@ func _update_deform(dt: float) -> void:
 			_deform_tiles.mark_dirty(rect)
 			if world.phys:
 				world.phys.update_deform(rect)
+			if light_probes:
+				light_probes.terrain_changed(rect)
 		tm.deform_dirty.clear()
 	_deform_tiles.flush()
 

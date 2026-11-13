@@ -114,7 +114,7 @@ static var _cache := {}
 
 static func shader() -> Shader:
 	if _shader == null:
-		_shader = CloudShadow.make(code(TerrainTexture.shader(SURFACE_SHADER.replace("// STREET_SURFACE", ASPHALT_SHADER))), CloudShadow.CLEARCOAT)
+		_shader = CloudShadow.make(code(TerrainTexture.shader(SURFACE_SHADER.replace("// STREET_SURFACE", ASPHALT_SHADER))), CloudShadow.CLEARCOAT | CloudShadow.PROBES)
 	return _shader
 
 

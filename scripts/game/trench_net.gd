@@ -68,7 +68,7 @@ func _ready() -> void:
 
 func _mat(code: String) -> ShaderMaterial:
 	var m := ShaderMaterial.new()
-	m.shader = CloudShadow.make(code)
+	m.shader = CloudShadow.make(code, CloudShadow.PROBES)
 	m.set_shader_parameter("trench_mask", null)
 	return m
 
@@ -295,13 +295,16 @@ func rebuild() -> void:
 	for s in segs:
 		_raster(s[0], s[1], tiles)
 	img.set_data(N, N, false, Image.FORMAT_R8, mask)
+	var area := _changed_area(segs)
 	if world and world.phys:
-		world.phys.update_ground(mask, _changed_area(segs))
+		world.phys.update_ground(mask, area)
 	tex.update(img)
 	floor_mi.visible = not segs.is_empty()
 	_build_meshes(tiles, segs)
 	if world.atmo:
 		world.atmo.set_trench_mask(tex)
+		if world.atmo.light_probes:
+			world.atmo.light_probes.trench_changed(tex, area)
 
 
 static func edge_erosion(p: Vector3) -> float:
