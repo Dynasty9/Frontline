@@ -2,6 +2,15 @@
 title = "Time passes: the sun moves and dusk turns to night"
 summary = "A new Time passes setting lets a battle's light move on as it's fought. The sun crosses the sky and golden hour fades through dusk into a moonlit night in about forty minutes. Everyone who has it on sees the same sky."
 kind = "new"
+
+[[videos]]
+file = "time-passes.webm"
+poster = "time-passes.jpg"
+caption = "Forty minutes of battle in fifteen seconds: golden hour, sunset, a blue dusk with the street lights coming on, and moonlit night over the town."
+
+[[screenshots]]
+file = "golden-to-night.jpg"
+caption = "The same view as the clock runs: golden hour, sunset, blue hour and night."
 +++
 
 - **Settings > Lighting & Look > Time passes.** It's off by default and on in the Cinematic preset. With it off,
