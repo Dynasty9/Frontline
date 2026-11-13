@@ -1,0 +1,80 @@
+{
+  "entry": "changelog/unreleased/field-fortifications.md",
+  "summary": "Layered soil and patched timber make trenches and bunker earthworks less uniform.",
+  "medium": "still",
+  "stage": "tests/fixtures/environment-views.gd --capture-set=fortifications",
+  "rationale": "Matched uncropped before/after stills show material and silhouette changes; the silent orbit exposes surface detail, with a separate bunker view for the defensive layout.",
+  "source_ref": "bd4f1b598ae80c6543cd4816e3f49a6ead730876 plus field-fortifications changes",
+  "sources": [
+    {
+      "file": "changelog/unreleased/field-fortifications/bunker.jpg",
+      "sha256": "0b7a29bdfb52c5ba58768c068a5c9ab55a0f171a4aef2c03a11d93ca1dcda9a0"
+    },
+    {
+      "file": "changelog/unreleased/field-fortifications/comparison.jpg",
+      "sha256": "52339ae87c74d75b9c7deac48ad3aa415cc829d6e513bd5f39a0a0760df06287"
+    },
+    {
+      "file": "changelog/unreleased/field-fortifications/earthworks.webm",
+      "sha256": "ccfb1c7def8beca13b173e5d90ee4bb9d5084f036c98b0c164e384cb1fa6cd93"
+    },
+    {
+      "file": "changelog/unreleased/field-fortifications/poster.jpg",
+      "sha256": "b949df80581a00705e6463be673aa7d942f4bf9f0bf10cedab89cd2554bba3c5"
+    }
+  ],
+  "output": "changelog/unreleased/field-fortifications/comparison.jpg",
+  "capture": {
+    "before_ref": "bd4f1b598ae80c6543cd4816e3f49a6ead730876",
+    "scenario": "trenches",
+    "seed": 3,
+    "preset": "high",
+    "mood": "day",
+    "renderer": "forward_plus",
+    "simulation_held_at_seconds": 2,
+    "still_resolution": [
+      1600,
+      900
+    ],
+    "committed_width": 1280,
+    "clip_resolution": [
+      1280,
+      720
+    ],
+    "clip_seconds": 6,
+    "clip_fps": 30,
+    "clip_audio": "none",
+    "camera": {
+      "earthwork": {
+        "focus": [
+          0,
+          0,
+          -28
+        ],
+        "zoom": 13,
+        "pitch": -38,
+        "yaw": 0.5
+      },
+      "bunker": {
+        "focus": [
+          0,
+          0,
+          -58
+        ],
+        "zoom": 14,
+        "pitch": -32,
+        "yaw": -0.65
+      }
+    },
+    "command": "godot --path . --fixed-fps 30 --resolution 1600x900 --script tests/fixtures/environment-views.gd -- --scenario=trenches --seed=3 --offscreen --nohud --set=perf:0 --preset=high --mood=day --capture-set=fortifications --capture-prefix=../capture",
+    "clip_command_note": "Use 1280x720 and add --capture-clip=earthwork; encode 180 frames at 30 fps with libvpx-vp9, CRF 34, yuv420p.",
+    "review": "Inspected Forward+ day and native Compatibility rain; not a browser runtime or performance benchmark."
+  },
+  "implementation_sha256": {
+    "scripts/game/trench_net.gd": "73a41656154ad3e25fb107671b831a708f867bdffe50e863923f59353cdfc98b",
+    "scripts/game/trench_earth.gdshaderinc": "5758969e44d617c6cc08349687fb68ca81c8819aa75061e71db817d5625bcbef",
+    "scripts/game/works_models.gd": "ab594b2f0328efdca5bcc905ae133d715bee8c12108678d65ba083b061325a52",
+    "scripts/game/structure.gd": "fe0cebfb2b2c1faad43080f1a4ad6bdcdf005722f1c52390dd2e651713993c88",
+    "scripts/game/mapgen.gd": "149f79d74a9e06758d0ba5f156066423ee22f4a9609a905a0fd8b38e2f9a1422"
+  }
+}

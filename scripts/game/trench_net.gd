@@ -47,6 +47,8 @@ func _ready() -> void:
 	berm_mat = _mat(BERM_SHADER)
 	floor_mat = _mat(FLOOR_SHADER)
 	board_mat = _mat(BOARD_SHADER)
+	for material in [wall_mat, berm_mat, floor_mat]:
+		_bind_earth(material)
 
 	walls = _mi(wall_mat)
 	berms = _mi(berm_mat)
@@ -70,6 +72,24 @@ func _mat(code: String) -> ShaderMaterial:
 	m.shader = CloudShadow.make(code)
 	m.set_shader_parameter("trench_mask", null)
 	return m
+
+
+static var _bank_material: ShaderMaterial
+
+
+static func _bind_earth(material: ShaderMaterial) -> void:
+	var layers := Atmosphere.terrain_materials()
+	material.set_shader_parameter("earth_colors", layers[0])
+	material.set_shader_parameter("earth_surfaces", layers[1])
+
+
+static func bank_material() -> ShaderMaterial:
+	if _bank_material == null:
+		_bank_material = ShaderMaterial.new()
+		_bank_material.shader = CloudShadow.make(BERM_SHADER)
+		_bank_material.set_shader_parameter("bank_surface", 1.0)
+		_bind_earth(_bank_material)
+	return _bank_material
 
 
 func _mi(m: Material) -> MeshInstance3D:
@@ -279,6 +299,10 @@ func rebuild() -> void:
 		world.atmo.set_trench_mask(tex)
 
 
+static func edge_erosion(p: Vector3) -> float:
+	return 0.07 * sin(p.x * 1.17 + sin(p.z * 0.83)) + 0.04 * sin(p.z * 4.1 + p.x * 2.3)
+
+
 func _raster(a: Vector3, b: Vector3, tiles: Dictionary) -> void:
 	var r := HALF_W * 2.0 + 0.5
 	var x0 := clampi(floori((minf(a.x, b.x) - r + MapDims.HALF) * RES), 0, N - 1)
@@ -289,7 +313,7 @@ func _raster(a: Vector3, b: Vector3, tiles: Dictionary) -> void:
 		var wz := (z + 0.5) / RES - MapDims.HALF
 		for x in range(x0, x1 + 1):
 			var wx := (x + 0.5) / RES - MapDims.HALF
-			var d := sd_seg(a, b, Vector3(wx, 0, wz))
+			var d := sd_seg(a, b, Vector3(wx, 0, wz)) - edge_erosion(Vector3(wx, 0, wz))
 			# soft edge so the filtered mask gives a clean rim
 			var v := clampi(int(-d * RES * 0.5 * 255.0 + 127.5), 0, 255)
 			var i := z * N + x
@@ -448,7 +472,10 @@ func _build_meshes(tiles: Dictionary, segs: Array) -> void:
 		var l := Defs.flat(b - a).length()
 		for i in ceili(l / 0.32):
 			var p := a + d * (i * 0.32)
-			var q := [p + sd, p + d * 0.28 + sd, p + d * 0.28 - sd, p - sd]
+			var wear := sin(p.x * 19.7 + p.z * 8.3)
+			var width := sd * (0.94 + 0.1 * wear)
+			p += sd * (wear * 0.08)
+			var q := [p + width + d * wear * 0.025, p + d * 0.28 + width, p + d * (0.28 - wear * 0.025) - width, p - width]
 			for j in 4:
 				q[j].y = world.terrain.landform.height(q[j]) - _draw_depth(q[j], -0.1) + minf(0.15, _draw_depth(q[j], -0.1) * 0.125)
 			var uv := [Vector2(i * 0.32, 0), Vector2(i * 0.32 + 0.28, 0), Vector2(i * 0.32 + 0.28, 1), Vector2(i * 0.32, 1)]
@@ -571,13 +598,13 @@ func _berm_strip(bst: SurfaceTool, pts: Array, ins: Array) -> void:
 				reach = maxf(0.0, k - 0.45)
 				break
 		var depth: float = _draw_depth(p, -0.3)
-		var variation := 0.85 + 0.15 * sin(p.x * 3.7 + sin(p.z * 2.3))
+		var variation := 0.76 + 0.24 * sin(p.x * 1.3 + sin(p.z * 0.9))
 		reach *= (0.4 + 0.6 * depth / 1.2) * variation
-		var h := 0.3 * clampf(reach / 1.2, 0.0, 1.0) * depth / 1.2
+		var h := (0.22 + 0.13 * sin(p.x * 1.7 + p.z * 0.71) + 0.06 * sin(p.z * 5.3)) * clampf(reach / 1.2, 0.0, 1.0) * depth / 1.2
 		lip.append(p + Vector3(0, 0.02, 0))
-		crest.append(p + o * minf(0.55, reach * 0.4) + Vector3(0, h, 0))
+		crest.append(p + o * minf(0.65, reach * (0.36 + 0.12 * variation)) + Vector3(0, maxf(0.1 * depth / 1.2, h), 0))
 		var outer := p + o * reach
-		outer.y = world.terrain.landform.height(outer)
+		outer.y = world.terrain.landform.height(outer) - 0.025
 		toe.append(outer)
 		on.append(o)
 	for i in m - 1:
@@ -613,78 +640,88 @@ const _EDGES := [
 const WALL_SHADER := """
 shader_type spatial;
 render_mode cull_disabled;
-uniform sampler2D detail_tex : filter_linear_mipmap, repeat_enable;
+#include "res://scripts/game/trench_earth.gdshaderinc"
 // CLOUD_SHADOW
 varying vec3 wpos;
-void vertex() { wpos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz; }
+varying vec3 world_normal;
+void vertex() { wpos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz; world_normal = normalize(MODEL_NORMAL_MATRIX * NORMAL); }
 void fragment() {
-	float u = UV.x;
-	float v = UV.y;
-	float n = texture(detail_tex, vec2(u * 0.37, v * 0.6)).r;
-	float n2 = texture(detail_tex, wpos.xz * 0.9 + vec2(0.0, wpos.y * 1.3)).r;
-	// planks: horizontal boards held by posts, earth bulging below them
-	float plank_zone = smoothstep(0.86, 0.8, v) * smoothstep(0.65, 0.95, COLOR.a);
-	float row = fract(v * 6.5 + sin(floor(u * 0.62) * 13.7) * 0.08);
-	float seam = smoothstep(0.0, 0.08, row) * smoothstep(1.0, 0.92, row);
-	float post = smoothstep(0.08, 0.0, abs(fract(u * 0.62) - 0.5) - 0.04);
-	// (linear colours)
-	vec3 wood = mix(vec3(0.06, 0.042, 0.026), vec3(0.11, 0.08, 0.05), n) * (0.75 + 0.25 * seam);
-	wood = mix(wood, vec3(0.03, 0.022, 0.015), post);
-	vec3 earth = mix(vec3(0.045, 0.034, 0.024), vec3(0.08, 0.06, 0.042), n2);
-	earth *= 0.8 + 0.2 * sin(v * 27.0 + n2 * 3.0);
-	float roots = step(0.94, sin(u * 73.0 + v * 12.0 + n * 7.0)) * (1.0 - smoothstep(0.0, 0.45, v));
-	earth = mix(earth, vec3(0.025, 0.017, 0.009), roots);
-	vec3 col = mix(earth, wood, plank_zone * 0.92);
-	col *= mix(0.7, 1.0, smoothstep(1.0, 0.25, v));
-	ALBEDO = col;
-	if (OUTPUT_IS_SRGB) { ALBEDO = mix(col * 12.92, 1.055 * pow(max(col, vec3(0.0)), vec3(1.0 / 2.4)) - 0.055, step(vec3(0.0031308), col)); }
-	ROUGHNESS = 0.92;
-	NORMAL_MAP = vec3(0.5 + (n - 0.5) * 0.4, 0.5 + (seam - 0.5) * 0.4 * plank_zone, 1.0);
+	vec2 cut_uv = abs(world_normal.x) > abs(world_normal.z) ? wpos.zy : wpos.xy;
+	float depth = UV.y;
+	float patches = earth_noise(wpos.xz * 0.42);
+	float wet = clamp(smoothstep(0.5, 1.0, depth) * (0.25 + patches * 0.45) + rain_wet * 0.45, 0.0, 1.0);
+	vec3 soil = earth_soil(cut_uv * 0.55, wpos, depth, wet);
+	vec4 grain = texture(earth_surfaces, vec3(cut_uv * 0.55, 8.0));
+	float root_path = sin(cut_uv.x * 42.0 + sin(depth * 14.0 + patches * 6.0) * 1.7);
+	float roots = smoothstep(0.985, 0.998, root_path) * smoothstep(0.48, 0.7, patches) * (1.0 - smoothstep(0.05, 0.25 + patches * 0.15, depth));
+	soil = mix(soil, soil * 0.3, roots * 0.65);
+	// Revetting comes in repaired panels, with bare cuts between them.
+	float panel = floor(cut_uv.x / 2.2);
+	float repaired = earth_hash(vec2(panel, floor(wpos.z * 0.17 + wpos.x * 0.09)));
+	float timber = smoothstep(0.37, 0.5, repaired) * smoothstep(0.72, 0.95, COLOR.a);
+	timber *= smoothstep(0.16 + patches * 0.18, 0.24 + patches * 0.18, depth) * (1.0 - smoothstep(0.83, 0.95, depth));
+	float row = fract(depth * 7.0 + repaired * 0.12);
+	float seam = smoothstep(0.0, 0.09, row) * (1.0 - smoothstep(0.88, 1.0, row));
+	float wood_grain = earth_noise(vec2(cut_uv.x * 3.0, depth * 115.0));
+	vec3 wood = mix(vec3(0.034,0.025,0.016), vec3(0.15,0.105,0.056), wood_grain) * (0.6 + repaired * 0.5);
+	wood *= mix(0.4, 1.0, seam) * (1.0 - wet * 0.35);
+	vec3 col = mix(soil * mix(0.7, 1.0, grain.b), wood, timber);
+	ALBEDO = earth_output(col);
+	ROUGHNESS = mix(mix(0.94, 0.59, wet), 0.86, timber);
+	NORMAL_MAP = vec3(mix(grain.xy, vec2(0.5, 0.5 + (seam - 0.5) * 0.28), timber), 1.0);
+	AO = mix(0.7, 1.0, grain.b) * mix(1.0, 0.76, depth);
 	// CLOUD_FRAGMENT cloud_sun(wpos)
 }
 """
 
 const BERM_SHADER := """
 shader_type spatial;
-uniform sampler2D detail_tex : filter_linear_mipmap, repeat_enable;
+#include "res://scripts/game/trench_earth.gdshaderinc"
+uniform float bank_surface = 0.0;
 // CLOUD_SHADOW
 varying vec3 wpos;
-void vertex() { wpos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz; }
+varying float upness;
+void vertex() { wpos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz; upness = abs((MODEL_NORMAL_MATRIX * NORMAL).y); }
 void fragment() {
-	float n = texture(detail_tex, wpos.xz / 2.6).r;
-	float n2 = texture(detail_tex, wpos.xz / 4.1 + 0.3).r;
-	float clods = smoothstep(0.62, 0.74, texture(detail_tex, wpos.xz * 2.2).r) * 0.45;
-	vec3 fresh = mix(vec3(0.045, 0.033, 0.022), vec3(0.08, 0.058, 0.04), n);
-	vec3 grassy = mix(vec3(0.05, 0.068, 0.022), vec3(0.09, 0.11, 0.038), n2);
-	float g = smoothstep(0.45, 0.95, UV.x + (n2 - 0.5) * 0.5);
-	vec3 col = mix(fresh, grassy, g * 0.85);
-	col = mix(col, col * 0.8, clods * (1.0 - g));
-	ALBEDO = col;
-	if (OUTPUT_IS_SRGB) { ALBEDO = mix(col * 12.92, 1.055 * pow(max(col, vec3(0.0)), vec3(1.0 / 2.4)) - 0.055, step(vec3(0.0031308), col)); }
-	ROUGHNESS = 0.95;
-	NORMAL_MAP = vec3(0.5 + (n - 0.5) * 0.6, 0.5 + (clods - 0.5) * 0.3, 1.0);
+	float patches = earth_noise(wpos.xz * 1.7);
+	float torn = earth_noise(wpos.xz * 5.1);
+	float wet = clamp(rain_wet * 0.7 + earth_noise(wpos.xz * 0.38) * 0.12, 0.0, 1.0);
+	vec3 soil = earth_soil(wpos.xz * 0.5, wpos, 0.65, wet);
+	vec3 turf = earth_color(wpos.xz * 0.4, 6.0) * vec3(0.66, 0.7, 0.46);
+	float edge = mix(UV.x, upness * 0.7, bank_surface);
+	float grass = smoothstep(0.48, 0.82, edge + (patches - 0.5) * 0.7 + (torn - 0.5) * 0.18);
+	vec4 surface = mix(texture(earth_surfaces, vec3(wpos.xz * 0.5, 8.0)), texture(earth_surfaces, vec3(wpos.xz * 0.4, 6.0)), grass);
+	vec3 col = mix(soil, turf * (1.0 - wet * 0.45), grass);
+	ALBEDO = earth_output(col * mix(0.65, 1.0, surface.b));
+	ROUGHNESS = mix(0.95, 0.64, wet);
+	NORMAL_MAP = vec3(surface.xy, 1.0);
+	AO = surface.b;
 	// CLOUD_FRAGMENT cloud_sun(wpos)
 }
 """
 
 const FLOOR_SHADER := """
 shader_type spatial;
-uniform sampler2D detail_tex : filter_linear_mipmap, repeat_enable;
+#include "res://scripts/game/trench_earth.gdshaderinc"
 // CLOUD_SHADOW
 varying vec3 wpos;
 void vertex() { wpos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz; }
 void fragment() {
-	float n = texture(detail_tex, wpos.xz / 1.1).r;
-	float n2 = texture(detail_tex, wpos.xz / 3.3 + 0.5).r;
-	float pud = smoothstep(0.62, 0.7, n2);
-	vec2 boot = fract(wpos.xz * vec2(2.3, 1.8)) - 0.5;
-	float tread = (1.0 - smoothstep(0.13, 0.24, length(boot * vec2(1.5, 0.7)))) * step(0.48, n);
-	vec3 col = mix(vec3(0.04, 0.03, 0.021), vec3(0.07, 0.052, 0.036), n);
-	col = mix(col, vec3(0.012, 0.011, 0.01), max(pud, tread * 0.55));
-	ALBEDO = col;
-	if (OUTPUT_IS_SRGB) { ALBEDO = mix(col * 12.92, 1.055 * pow(max(col, vec3(0.0)), vec3(1.0 / 2.4)) - 0.055, step(vec3(0.0031308), col)); }
-	ROUGHNESS = mix(0.9, 0.15, pud);
-	SPECULAR = mix(0.2, 0.5, pud);
+	float drainage = earth_noise(wpos.xz * 0.58 + vec2(4.2, 0.7));
+	float grain = earth_noise(wpos.xz * 7.0);
+	float puddle = smoothstep(0.7 - rain_wet * 0.16, 0.79 - rain_wet * 0.16, drainage + (grain - 0.5) * 0.08);
+	float wet = clamp(0.28 + drainage * 0.45 + rain_wet * 0.3, 0.0, 1.0);
+	vec3 soil = earth_soil(wpos.xz * 0.6, wpos, 0.85, wet);
+	vec3 litter = earth_color(wpos.xz * 0.8, 4.0) * vec3(0.5,0.34,0.22);
+	float debris = smoothstep(0.66, 0.81, earth_noise(wpos.xz * 1.35));
+	vec3 col = mix(soil, litter, debris * 0.6);
+	col = mix(col, vec3(0.018,0.015,0.01), puddle * 0.76);
+	vec4 surface = texture(earth_surfaces, vec3(wpos.xz * 0.6, 8.0));
+	ALBEDO = earth_output(col);
+	ROUGHNESS = mix(mix(0.87, 0.59, wet), 0.19, puddle);
+	SPECULAR = mix(0.22, 0.48, puddle);
+	NORMAL_MAP = vec3(mix(surface.xy, vec2(0.5), puddle * 0.92), 1.0);
+	AO = mix(surface.b, 1.0, puddle);
 	// CLOUD_FRAGMENT cloud_sun(wpos)
 }
 """
@@ -696,15 +733,15 @@ uniform sampler2D detail_tex : filter_linear_mipmap, repeat_enable;
 varying vec3 wpos;
 void vertex() { wpos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz; }
 void fragment() {
-	float slat = fract(UV.x * 3.2);
-	float gap = smoothstep(0.0, 0.12, slat) * smoothstep(1.0, 0.88, slat);
-	float rail = smoothstep(0.1, 0.0, abs(UV.y - 0.12)) + smoothstep(0.1, 0.0, abs(UV.y - 0.88));
-	float n = texture(detail_tex, vec2(UV.x * 0.4, UV.y)).r;
-	vec3 wood = mix(vec3(0.05, 0.036, 0.022), vec3(0.09, 0.066, 0.042), n);
-	vec3 col = mix(vec3(0.012, 0.009, 0.007), wood, max(gap, rail));
+	float slat = floor(UV.x / 0.32);
+	float age = fract(sin(slat * 91.7 + floor(wpos.z) * 3.1) * 43758.5453);
+	float grain = texture(detail_tex, vec2(UV.y * 0.16, UV.x * 4.5)).r;
+	float split = smoothstep(0.47, 0.5, abs(fract(UV.y * (2.0 + age)) - 0.5)) * step(0.6, age);
+	vec3 wood = mix(vec3(0.045,0.033,0.02), vec3(0.16,0.12,0.07), grain) * (0.55 + age * 0.65);
+	vec3 col = wood * (1.0 - split * 0.7);
 	ALBEDO = col;
 	if (OUTPUT_IS_SRGB) { ALBEDO = mix(col * 12.92, 1.055 * pow(max(col, vec3(0.0)), vec3(1.0 / 2.4)) - 0.055, step(vec3(0.0031308), col)); }
-	ROUGHNESS = 0.85;
+	ROUGHNESS = 0.88;
 	// CLOUD_FRAGMENT cloud_sun(wpos)
 }
 """

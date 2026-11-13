@@ -29,7 +29,7 @@ func capture() -> void:
 		quit()
 		return
 	var heights: PackedFloat32Array = world.terrain.landform.heights
-	assert(not heights.is_empty() or "--capture-set=trenches" in OS.get_cmdline_user_args(), "The environment stage needs a generated alpine map")
+	assert(not heights.is_empty() or "--capture-set=trenches" in OS.get_cmdline_user_args() or "--capture-set=fortifications" in OS.get_cmdline_user_args(), "The environment stage needs a generated alpine map")
 	var peak_index := 0
 	for i in heights.size():
 		if heights[i] > heights[peak_index]:
@@ -62,6 +62,10 @@ func capture() -> void:
 		print("CAPTURE town bounds=", town)
 	if "--capture-set=trenches" in OS.get_cmdline_user_args():
 		views = [["trenches", Vector3(0, 0, -28), 24.0, -48.0, 0.5]]
+	if "--capture-set=fortifications" in OS.get_cmdline_user_args():
+		views = [["earthwork", Vector3(0, 0, -28), 13.0, -38.0, 0.5],
+			["bunker", Vector3(0, 0, -58), 14.0, -32.0, -0.65],
+			["position", Vector3(0, 0, -40), 55.0, -50.0, 0.35]]
 	var settle_frames := 90
 	if "--capture-set=shoreline" in OS.get_cmdline_user_args():
 		var shore: float = world.water.coast_x(0.0)
@@ -176,6 +180,9 @@ func capture() -> void:
 			var frames := prefix + "-" + clip + "-frames"
 			assert(DirAccess.make_dir_recursive_absolute(frames) == OK)
 			for frame in 180:
+				if "--capture-set=fortifications" in OS.get_cmdline_user_args():
+					world.cam.yaw = float(view[4]) + 0.18 * sin(float(frame) * TAU / 180.0)
+					world.cam._apply()
 				await process_frame
 				await RenderingServer.frame_post_draw
 				assert(root.get_texture().get_image().save_png(frames + "/%04d.png" % frame) == OK)

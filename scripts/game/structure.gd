@@ -2784,9 +2784,17 @@ func _build_model() -> void:
 			var kit_bags: Array = []
 			for i in (rng.randi_range(2, 4) if kx > 0.8 else 0):
 				var bx := rng.randf_range(-kx, kx)
-				kit_bags.append({"p": Vector3(bx, 0.32, fsgn * 1.05), "s": Vector3(0.55 * rng.randi_range(1, 2), 0.19, 0.36), "r": rng.randf_range(-0.2, 0.2)})
+				kit_bags.append({"p": Vector3(bx, 0.2, fsgn * 1.05), "s": Vector3(0.55 * rng.randi_range(1, 2), 0.19, 0.36), "r": rng.randf_range(-0.2, 0.2)})
 			if not kit_bags.is_empty():
 				_bag_walls(kit_bags, rng, done)
+			# Occasional shoring holds the cut; it leaves the centre passage clear.
+			for i in maxi(1, floori(size.x / 1.8)):
+				var x := -size.x * 0.5 + 0.7 + i * 1.8
+				for side in [-1.0, 1.0]:
+					if TrenchNet.has_recess(self) and side == -fsgn and absf(x) < 0.85:
+						continue
+					var post := Res.mi(done, Res.box(Vector3(0.1, 1.06, 0.12)), Mats.get_mat("wood"), Vector3(x, -0.65, side * 0.64), Vector3(0.0, 0.0, rng.randf_range(-0.045, 0.045)), false)
+					post.scale.y = rng.randf_range(0.9, 1.08)
 			if TrenchNet.has_recess(self):
 				var rear := -fsgn
 				var wood := Res.mat(C_WOOD.darkened(0.25))
@@ -2798,7 +2806,10 @@ func _build_model() -> void:
 				else:
 					for x in [-0.66, 0.66]:
 						Res.mi(done, Res.box(Vector3(0.09, 1.35, 0.09)), wood, Vector3(x, -0.42, rear * 1.7), Vector3.ZERO, false)
-					Res.mi(done, Res.box(Vector3(1.5, 0.12, 1.1)), wood, Vector3(0, 0.3, rear * 1.4), Vector3(0, 0, 0.04), false)
+					for board in 8:
+						Res.mi(done, Res.box(Vector3(0.18, 0.1, 1.1)), Mats.get_mat("wood"), Vector3(-0.66 + board * 0.19, 0.3 + rng.randf_range(-0.018, 0.018), rear * 1.4), Vector3(0, rng.randf_range(-0.025, 0.025), 0.04), false)
+					for x in [-0.55, 0.55]:
+						Res.mi(done, Res.box(Vector3(0.12, 0.13, 1.18)), wood, Vector3(x, 0.18, rear * 1.4), Vector3.ZERO, false)
 					Res.mi(done, Res.box(Vector3(0.9, 0.12, 0.4)), Res.mat(Color(0.29, 0.31, 0.23)), Vector3(0, -0.59, rear * 1.55), Vector3.ZERO, false)
 				for i in 3:
 					Res.mi(done, Res.box(Vector3(0.13, 0.025, 0.18)), Res.mat(Color(0.31, 0.27, 0.19)), Vector3(rng.randf_range(-0.5, 0.5), -1.13, rear * rng.randf_range(1.0, 1.6)), Vector3(0, rng.randf() * TAU, 0), false)
@@ -2826,6 +2837,7 @@ func _build_model() -> void:
 					lgg.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 				var mound := _mk(Res.dome(3.4, 16), "bank", Vector3(0, 2.6, 0), Vector3.ZERO, Color(0.29, 0.27, 0.17))
 				mound.scale = Vector3(1.0, 0.22, 1.0)
+				mound.material_override = TrenchNet.bank_material()
 				for x in [-2.85, 2.85]:
 					for z in [-2.85, 2.85]:
 						Res.mi(model, Res.cyl(0.16, 0.18, 2.5, 7), Res.mat(C_WOOD.darkened(0.3)), Vector3(x, 1.25, z))
@@ -3032,6 +3044,8 @@ func _bag(xf: Array[Transform3D], cols: Array[Color], p: Dictionary, pb: Basis, 
 				pick = i
 				break
 	var c: Color = pal[pick][0]
+	if skind in ["trench", "bunker"]:
+		c = c.lerp(C_DIRT, 0.22 if top else 0.38)
 	var k := rng.randf_range(0.86, 1.06) + (0.06 if top else 0.0)
 	var want := Color(clampf(BAG_CLOTH.r * c.r * k, 0.0, 1.0), clampf(BAG_CLOTH.g * c.g * k, 0.0, 1.0), clampf(BAG_CLOTH.b * c.b * k, 0.0, 1.0)).srgb_to_linear()
 	var base := BAG_CLOTH.srgb_to_linear()

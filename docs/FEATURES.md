@@ -1184,7 +1184,10 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
     scaled by length, with compacted roadbeds taking 50% longer. Repair orders clear collapsed earth.
   - **Shape and materials:** floors and individual duckboard slats follow local terrain. Open ends ramp
     to the surface; connected ends stay continuous. Earth fire steps run along the walls, leaving the
-    centre route clear. Soil layers, roots, uneven spoil, damp ground and boot marks break up the surfaces.
+    centre route clear. Scanned earth and turf blend across ragged spoil banks; dark topsoil, exposed
+    subsoil, roots, partial timber revetting and damp litter break up the cut. Rain darkens the soil and
+    expands puddles; duckboards vary in age and alignment. Bunker earthworks share these materials.
+    The trenches scenario includes a rear bunker route, covered ammunition, sandbags and anti-tank obstacles.
   - **Rear bays:** occasional long sections include a recessed supply shelf or a timber-roofed resting
     bay, with kit kept off the through route. The timber roof is physical cover, not a bombproof bunker.
     Moving soldiers yield and sidestep inside narrow passages; crossing a high lip takes a slower climb.

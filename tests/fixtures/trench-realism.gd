@@ -175,6 +175,13 @@ func _ready() -> void:
 	var network := TrenchNet.new(w)
 	add_child(network)
 	network.rebuild()
+	var terrain_layers := Atmosphere.terrain_materials()
+	for material in [network.wall_mat, network.berm_mat, network.floor_mat, TrenchNet.bank_material()]:
+		check(material.get_shader_parameter("earth_colors") == terrain_layers[0], "Earthworks reuse the battlefield's photographic colour layers")
+		check(material.get_shader_parameter("earth_surfaces") == terrain_layers[1], "Earthworks retain packed normal, occlusion and roughness data")
+	for i in 100:
+		var sample := Vector3(i * 0.73, 0.0, i * -0.41)
+		check(absf(TrenchNet.edge_erosion(sample)) <= 0.111, "Cosmetic edge erosion stays outside the clear walking route")
 	var arrays := network.floor_mi.mesh.surface_get_arrays(0)
 	var vertices: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
 	check(vertices.size() > 0, "The trench network has a real floor mesh")

@@ -168,9 +168,9 @@ static func berms(model: Node3D, half: float, h: float, depth: float, all_sides:
 			if not all_sides:
 				continue
 			for sx in [-1.0, 1.0]:
-				_mk(model, part, "bank", n * half + Vector3(sx * (half * 0.5 + 0.85), 0, 0), rot, col)
+				_mk(model, part, "bank", n * half + Vector3(sx * (half * 0.5 + 0.85), 0, 0), rot, col).material_override = TrenchNet.bank_material()
 			continue
-		_mk(model, full, "bank", n * half, rot, col)
+		_mk(model, full, "bank", n * half, rot, col).material_override = TrenchNet.bank_material()
 
 
 ## A bank of earth `length` long (along local x), `h` high against a wall at
@@ -191,9 +191,9 @@ static func _bank_mesh(h: float, depth: float, length: float) -> ArrayMesh:
 			var t := float(j) / ns
 			var taper := smoothstep(hl, hl - depth * 1.1, absf(u))
 			var y := h * pow(cos(t * PI * 0.5), 1.25) * taper
-			y += 0.035 * sin(u * 3.1 + t * 2.0) * sin(t * PI) * taper
+			y += (0.11 * sin(u * 1.7 + t * 3.1) + 0.035 * sin(u * 6.7)) * sin(t * PI) * taper
 			# the toe runs out a little further where the bank is highest
-			row.append(Vector3(u, maxf(y, 0.0) - 0.02, t * depth * (0.75 + 0.25 * taper)))
+			row.append(Vector3(u, maxf(y, 0.0) - 0.02, t * depth * (0.75 + 0.25 * taper + 0.1 * sin(u * 2.3))))
 		pos.append(row)
 	var nrm: Array = []
 	for j in ns + 1:
