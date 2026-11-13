@@ -2,24 +2,8 @@
 
 [ext_resource type="Script" path="res://tools/showcase/trailer-review/title-score.gd" id="1"]
 
-[node name="TitleScore" type="ColorRect"]
+[node name="TitleScore" type="Control"]
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
-color = Color(0, 0, 0, 1)
 script = ExtResource("1")
-
-[node name="Center" type="CenterContainer" parent="."]
-layout_mode = 1
-anchor_top = 0.10
-anchor_right = 1.0
-anchor_bottom = 0.90
-
-[node name="Title" type="VBoxContainer" parent="Center"]
-layout_mode = 2
-theme_override_constants/separation = 14
-
-[node name="Row" type="HBoxContainer" parent="Center/Title"]
-layout_mode = 2
-alignment = 1
-theme_override_constants/separation = 28

@@ -922,6 +922,13 @@ static func _net_mesh(v: int) -> ArrayMesh:
 
 # --- crew weapons ----------------------------------------------------------------------
 
+# The crew rig and the mesh use the same local axis, even when the pit turns.
+const MORTAR_SOCKET := Vector3(0, 0.12, 0.25)
+const MORTAR_AXIS := Vector3(0, sin(deg_to_rad(62.0)), -cos(deg_to_rad(62.0)))
+const MORTAR_PALM_R := MORTAR_SOCKET + MORTAR_AXIS * 0.86 + Vector3(0.045, 0, 0.026)
+const MORTAR_PALM_L := MORTAR_SOCKET + MORTAR_AXIS * 0.65 + Vector3(-0.045, 0, 0.026)
+
+
 ## The mortar in its pit: an 81 mm M252 for the Coalition, an 82 mm 2B14 for
 ## the Rebels - the round baseplate dug in, the tube laid at about sixty
 ## degrees, the bipod with its elevating and traversing gear and the sight on
@@ -934,9 +941,8 @@ static func _mortar(model: Node3D, rebel: bool, rng: RandomNumberGenerator) -> v
 		var a := TAU * i / 6.0
 		_mk(model, Res.box(Vector3(0.03, 0.05, 0.25)), "paint", base + Vector3(sin(a) * 0.13, 0.04, cos(a) * 0.13), Vector3(0, a, 0), tube_col.darkened(0.15))
 	# the tube, from the ball at its base up and out over the front of the pit
-	var el := deg_to_rad(62.0)
-	var dir := Vector3(0, sin(el), -cos(el))
-	var b0 := base + Vector3(0, 0.07, 0)
+	var dir := MORTAR_AXIS
+	var b0 := MORTAR_SOCKET
 	var b1 := b0 + dir * 1.27
 	_mk(model, Res.sphere(0.065, 8), "gunmetal_w", b0)
 	_rod(model, b0, b1, 0.05, "paint", tube_col, 12)
