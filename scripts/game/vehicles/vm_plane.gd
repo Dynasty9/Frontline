@@ -121,6 +121,21 @@ static func sec(s: Array, n := 20, grow := 0.0) -> PackedVector3Array:
 	return r
 
 
+## A body's side from z0 to z1 and heights y0 to y1 as a surface on the right
+## (side 1) or the left (-1) flank, q.x along z and q.y up: a door or a window
+## laid on the curved skin rather than standing off it.
+static func _flank(st: Array, z0: float, z1: float, y0: float, y1: float, side: float) -> VehicleSurface:
+	return VehicleSurface.new(func(q: Vector2) -> Vector3:
+		var z := lerpf(z0, z1, q.x)
+		var y := lerpf(y0, y1, q.y)
+		var s := st_at(st, z)
+		var top := y >= float(s[1])
+		var h: float = s[3] if top else s[4]
+		var e: float = s[5] if top else s[6]
+		var t := clampf(absf(y - float(s[1])) / maxf(h, 1e-4), 0.0, 1.0)
+		return Vector3(float(s[7]) + side * float(s[2]) * pow(maxf(0.0, 1.0 - pow(t, e)), 1.0 / e), y, z), Vector3(side, 0, 0))
+
+
 ## The station interpolated at z.
 static func st_at(st: Array, z: float) -> Array:
 	var a0 := _sp(st[0])
@@ -388,21 +403,7 @@ static func pylon(k: VehicleModels, p: Node3D, at: Vector3, len: float, h: float
 ## A general-purpose bomb (Mk 82 / 84 style) centred at c, or with `guided` a
 ## laser-guided one (Paveway: seeker and canards ahead, big tail wings).
 static func bomb(k: VehicleModels, p: Node3D, c: Vector3, len: float, r: float, guided := false) -> void:
-	var st := [[-0.5 * len, 0, r * 0.08, r * 0.08, r * 0.08], [-0.44 * len, 0, r * 0.55, r * 0.55, r * 0.55], [-0.3 * len, 0, r * 0.92, r * 0.92, r * 0.92],
-		[-0.12 * len, 0, r, r, r], [0.18 * len, 0, r, r, r], [0.34 * len, 0, r * 0.72, r * 0.72, r * 0.72], [0.46 * len, 0, r * 0.5, r * 0.5, r * 0.5]]
-	body(k, p, "bomb_%.2f_%.2f" % [len, r], st, "paint", OLIVE, 14, 50.0, c)
-	# the yellow high-explosive band, the lugs
-	k._cyl(p, r * 1.01, r * 1.01, 0.05, c + Vector3(0, 0, -0.2 * len), Vector3(PI / 2, 0, 0), "paint", Color(0.62, 0.55, 0.22), 14, false)
-	k._box(p, Vector3(0.03, 0.05, 0.06), c + Vector3(0, r, -0.1 * len), "gunmetal_w", null, Vector3.ZERO, false)
-	k._box(p, Vector3(0.03, 0.05, 0.06), c + Vector3(0, r, 0.15 * len), "gunmetal_w", null, Vector3.ZERO, false)
-	var fs := r * (3.2 if guided else 2.7)
-	for a in [PI / 4, -PI / 4]:
-		k._box(p, Vector3(0.014, fs, len * (0.2 if guided else 0.16)), c + Vector3(0, 0, len * 0.41), "paint", OLIVE.darkened(0.1), Vector3(0, 0, a), false)
-	if guided:
-		k._cyl(p, r * 0.55, r * 0.75, len * 0.16, c + Vector3(0, 0, -0.56 * len), Vector3(PI / 2, 0, 0), "paint", STORE_GREY, 12, false)
-		k._add(p, Res.sphere(r * 0.55, 10), "glass", null, c + Vector3(0, 0, -0.64 * len), Vector3.ZERO, Vector3(1, 1, 0.8), false)
-		for a in [PI / 4, -PI / 4]:
-			k._box(p, Vector3(0.012, r * 2.4, len * 0.07), c + Vector3(0, 0, -0.55 * len), "paint", STORE_GREY, Vector3(0, 0, a), false)
+	VehicleAircraft.bomb(k, p, c, len, r, VehicleAircraft.BOMB_LGB if guided else VehicleAircraft.BOMB_GP, OLIVE)
 
 
 ## A rocket pod (LAU-61 style) centred at c: the faired tube with the
@@ -411,39 +412,28 @@ static func rocket_pod(k: VehicleModels, p: Node3D, c: Vector3, len: float, r: f
 	VehicleAircraft.rocket_pod(k, p, c, r, len, "paint", col)
 
 
-## An air-to-air missile (AIM-9 style) on its launch rail, centred at c:
-## seeker, canards, tail fins.
+## An air-to-air missile (AIM-9 style) centred at c, `len` long: the seeker
+## dome, canards, the warhead's band, tail fins and the launch rail on its
+## back (without `rail`, the lugs a rail grips).
 static func missile(k: VehicleModels, p: Node3D, c: Vector3, len: float, r: float, col := STORE_GREY, rail := true) -> void:
-	k._cyl(p, r, r, len * 0.86, c + Vector3(0, 0, 0.05 * len), Vector3(PI / 2, 0, 0), "paint", col, 10)
-	k._cyl(p, r * 0.3, r, len * 0.1, c + Vector3(0, 0, -0.43 * len), Vector3(PI / 2, 0, 0), "paint", col, 10, false)
-	k._add(p, Res.sphere(r * 0.42, 8), "glass", null, c + Vector3(0, 0, -0.485 * len), Vector3.ZERO, Vector3.ONE, false)
-	k._cyl(p, r * 1.02, r * 1.02, 0.08, c + Vector3(0, 0, -0.3 * len), Vector3(PI / 2, 0, 0), "paint", Color(0.6, 0.55, 0.25), 10, false)
-	for a in [PI / 4, -PI / 4]:
-		k._box(p, Vector3(0.012, r * 5.2, len * 0.08), c + Vector3(0, 0, -0.33 * len), "paint", col, Vector3(0, 0, a), false)
-		k._box(p, Vector3(0.012, r * 7.0, len * 0.11), c + Vector3(0, 0, 0.43 * len), "paint", col, Vector3(0, 0, a), false)
-	if rail:
-		k._box(p, Vector3(0.07, 0.07, len * 0.6), c + Vector3(0, r + 0.035, 0.05 * len), "gunmetal_w")
+	VehicleAircraft.missile(k, p, c, len * 0.97, r, col, VehicleAircraft.seeker(len * 0.1, r * 0.42),
+		[VehicleAircraft.fin_set(-0.37 * len, -0.29 * len, r * 1.6), VehicleAircraft.fin_set(0.375 * len, 0.485 * len, r * 2.5)],
+		Vector2(-0.3 * len, 0.08), Vector3(0.07, 0.07, len * 0.6) if rail else Vector3.ZERO, 0.05 * len)
 
 
 ## An air-to-ground missile (Maverick / Kh-25 style): a fat body, a glass
-## seeker dome, long low wings and tail fins.
+## seeker dome, long low wings and tail fins, on its adapter rail.
 static func agm(k: VehicleModels, p: Node3D, c: Vector3, len: float, r: float, col := STORE_GREY) -> void:
-	var st := [[-0.5 * len, 0, r * 0.3, r * 0.3, r * 0.3], [-0.46 * len, 0, r * 0.82, r * 0.82, r * 0.82], [-0.4 * len, 0, r, r, r], [0.5 * len, 0, r, r, r]]
-	body(k, p, "agm_%.2f_%.2f" % [len, r], st, "paint", col, 14, 50.0, c)
-	k._add(p, Res.sphere(r * 0.62, 10), "glass", null, c + Vector3(0, 0, -0.47 * len), Vector3.ZERO, Vector3(1, 1, 0.8), false)
-	for a in [PI / 4, -PI / 4]:
-		k._box(p, Vector3(0.014, r * 3.6, len * 0.42), c + Vector3(0, 0, 0.12 * len), "paint", col.darkened(0.1), Vector3(0, 0, a), false)
-		k._box(p, Vector3(0.012, r * 4.0, len * 0.1), c + Vector3(0, 0, 0.45 * len), "paint", col.darkened(0.1), Vector3(0, 0, a), false)
-	k._box(p, Vector3(0.08, 0.06, len * 0.5), c + Vector3(0, r + 0.03, 0.0), "gunmetal_w")
+	VehicleAircraft.missile(k, p, c, len, r, col, VehicleAircraft.seeker(len * 0.1, r * 0.62),
+		[VehicleAircraft.fin_set(-0.09 * len, 0.33 * len, r * 0.8), VehicleAircraft.fin_set(0.4 * len, 0.5 * len, r)], Vector2.ZERO, Vector3(0.08, 0.06, len * 0.5), 0.0)
 
 
-## A drop tank centred at c, pointed both ends.
+## A drop tank centred at c, pointed both ends, with its three tail fins and
+## the seams either side of its barrel.
 static func drop_tank(k: VehicleModels, p: Node3D, c: Vector3, len: float, r: float, col: Color) -> void:
 	var st := [[-0.5 * len, 0, 0, 0, 0], [-0.42 * len, 0, r * 0.5, r * 0.5, r * 0.5], [-0.25 * len, 0, r * 0.92, r * 0.92, r * 0.92], [-0.05 * len, 0, r, r, r],
 		[0.15 * len, 0, r, r, r], [0.35 * len, 0, r * 0.75, r * 0.75, r * 0.75], [0.5 * len, 0, r * 0.1, r * 0.1, r * 0.1]]
-	body(k, p, "tank_%.2f_%.2f" % [len, r], st, "aircraft", col, 16, 50.0, c)
-	for a in [0.0, 2.1, -2.1]:
-		k._box(p, Vector3(0.012, r * 1.5, len * 0.1), c + Vector3(sin(a) * r * 0.7, -cos(a) * r * 0.7, 0.4 * len), "aircraft", col, Vector3(0, 0, -a), false)
+	VehicleAircraft.pod(k, p, c, st, "aircraft", col, [-0.05 * len, 0.15 * len], VehicleAircraft.POD_TANK, 3)
 
 
 ## A cannon pod (centreline gun pod) centred at c; returns the muzzle.
@@ -451,8 +441,9 @@ static func gun_pod(k: VehicleModels, p: Node3D, c: Vector3, len: float, r: floa
 	var st := [[-0.5 * len, 0, r * 0.35, r * 0.35, r * 0.35], [-0.38 * len, 0, r * 0.85, r * 0.85, r * 0.85], [-0.2 * len, 0, r, r, r], [0.3 * len, 0, r, r, r], [0.5 * len, 0, r * 0.3, r * 0.3, r * 0.3]]
 	body(k, p, "gpod_%.2f_%.2f" % [len, r], st, "aircraft", col, 16, 50.0, c)
 	var mz := c + Vector3(0, -r * 0.1, -0.5 * len - 0.35)
-	k._cyl(p, 0.035, 0.035, 0.45, mz + Vector3(0, 0, 0.2), Vector3(PI / 2, 0, 0), "gunmetal_w", null, 8, false)
-	k._cyl(p, 0.05, 0.05, 0.08, mz + Vector3(0, 0, 0.02), Vector3(PI / 2, 0, 0), "gunmetal_w", null, 8, false)
+	# the barrel out of the pod's nose (its last few centimetres inside it),
+	# the muzzle brake on its end
+	VehicleWeapons.autocannon(k, p, mz + Vector3(0, 0, 0.425), mz + Vector3(0, 0, -0.025), Vector2(0.035, 0.075), Vector2(0.035, 0.035), Vector2(0.05, 0.085))
 	return mz
 
 
@@ -696,10 +687,15 @@ static func _caesar(k: VehicleModels, team: int, seed: int) -> void:
 		band(k, m, "cae_pil%d" % i, cst, [-1.15, 0.15, 1.2][i], [0.08, 0.1, 0.12][i], 0.012, P, c, 20)
 	body(k, m, "cae_roof", [[-1.2, 1.85, 0.32, 0.35, 0.05, 3.0, 2.0], [-0.4, 1.86, 0.46, 0.43, 0.05, 3.0, 2.0], [0.5, 1.86, 0.44, 0.41, 0.05, 3.0, 2.0],
 		[1.3, 1.86, 0.34, 0.29, 0.05, 3.0, 2.0], [2.0, 1.86, 0.18, 0.11, 0.05, 3.0, 2.0]], P, c, 20)
-	# door seams
+	# door seams: the gull-wing doors' front and back edges, traced down the
+	# flank as it curves in under the cabin rather than standing straight off it
 	for s in [-1.0, 1.0]:
-		k._box(m, Vector3(0.012, 0.5, 0.012), Vector3(s * 0.665, 1.55, -1.1), "gunmetal_w", null, Vector3(0, 0, 0), false)
-		k._box(m, Vector3(0.012, 0.5, 0.012), Vector3(s * 0.62, 1.55, 0.9), "gunmetal_w", null, Vector3(0, 0, 0), false)
+		for z: float in [-1.1, 0.9]:
+			var flank := _flank(st, z, z, 1.3, 1.8, s)
+			var seam := []
+			for i in 5:
+				seam.append(flank.point(Vector2(0.0, i / 4.0), 0.004))
+			VehicleFrames.path(k, m, seam, 0.006, "gunmetal_w", null, 4)
 	# cowl inlets and exhaust stacks, the landing light
 	for s in [-1.0, 1.0]:
 		k._box(m, Vector3(0.18, 0.1, 0.04), Vector3(s * 0.2, 1.42, -3.44), "plain_dark", null, Vector3.ZERO, false)
@@ -727,7 +723,7 @@ static func _caesar(k: VehicleModels, team: int, seed: int) -> void:
 	# antennas on the roof and belly, the pitot under the left wing
 	antenna(k, m, Vector3(0, 2.28, 0.6), 0.18, false, Color(0.25, 0.25, 0.25))
 	antenna(k, m, Vector3(0, 0.84, 0.4), 0.14, true, Color(0.25, 0.25, 0.25))
-	rod(k, m, Vector3(-3.6, 0.95, -0.6), Vector3(-3.6, 0.95, -1.1), 0.015, "steel", null, 6)
+	VehicleAircraft.pitot(k, m, Vector3(-3.6, 0.95, -0.6), Vector3(-3.6, 0.95, -1.1), 0.015, "steel", null)
 
 
 # --- To-201 Shikra ------------------------------------------------------------------
@@ -915,11 +911,8 @@ static func _greyhawk(k: VehicleModels, team: int) -> void:
 	body(k, m, "gh_fus", st, A, c)
 	# the dish housing a shade lighter, its joint line
 	stripe(k, m, "gh_dome", st, -5.45, -2.9, -0.35, PI + 0.35, A, c.lightened(0.08), 0.004, 14)
-	# the sensor ball under the nose, its window looking forward
-	k._cyl(m, 0.12, 0.14, 0.22, Vector3(0, 0.55, -4.3), Vector3.ZERO, A, c)
-	k._add(m, Res.sphere(0.27, 16), "paint", Color(0.55, 0.56, 0.55), Vector3(0, 0.3, -4.3))
-	k._add(m, Res.sphere(0.13, 12), "glass", null, Vector3(0, 0.27, -4.52), Vector3.ZERO, Vector3(1.0, 1.0, 0.5))
-	k._add(m, Res.sphere(0.06, 8), "glass", null, Vector3(0.12, 0.34, -4.5), Vector3.ZERO, Vector3(1.0, 1.0, 0.5))
+	# the sensor ball hanging on its neck under the nose, its windows looking forward
+	VehicleEquipment.sensor(k, m, Vector3(0, 0.3, -4.3), Vector3.ONE * 0.54, "paint", Color(0.55, 0.56, 0.55), "ball", Vector3(0.14, 0.12, 0.36))
 	# canards, the wing with flaps and ailerons
 	surf(k, m, "gh_canard", [[Vector3(0.36, 0.95, -3.4), 0.5, 0.06], [Vector3(1.25, 0.97, -3.2), 0.28, 0.03]], A, c, [0.65])
 	var ws := [[Vector3(0.35, 1.28, -0.75), 1.35, 0.2], [Vector3(4.6, 1.38, -0.55), 0.95, 0.12], [Vector3(10.0, 1.52, -0.3), 0.5, 0.06]]
@@ -934,7 +927,7 @@ static func _greyhawk(k: VehicleModels, team: int) -> void:
 	body(k, m, "gh_scoop", sst, A, c, 14)
 	mouth(k, m, "gh_scoopm", sst[0], 0.7)
 	for s in [-1.0, 1.0]:
-		rod(k, m, Vector3(s * 0.25, 1.02, 3.5), Vector3(s * 0.36, 1.0, 3.9), 0.06, "gunmetal_w", null, 8)
+		VehicleAircraft.turbine_exhaust(k, m, Vector3(s * 0.25, 1.02, 3.5), Vector3(s * 0.36, 1.0, 3.9), 0.06, 0.06)
 	prop(k, m, "gh_prop", Vector3(0, 1.08, 5.2), 1.08, 3, 0.2, 0.15, Vector3.ZERO, true, Color(0.3, 0.31, 0.32))
 	# antennas: the satcom blades, the belly whips
 	antenna(k, m, Vector3(0, 1.45, -1.0), 0.22, false, c.darkened(0.4))
@@ -1043,19 +1036,17 @@ static func _fenghuang(k: VehicleModels, team: int) -> void:
 	mouth(k, m, "fen_scoopm", sst[0], 0.7)
 	rod(k, m, Vector3(0.16, 0.75, 2.1), Vector3(0.24, 0.72, 2.45), 0.035, "gunmetal_w", null, 8)
 	prop(k, m, "fen_prop", Vector3(0, 0.88, 2.62), 0.62, 3, 0.12, 0.1, Vector3.ZERO, true, Color(0.2, 0.2, 0.2), null, true)
-	# the sensor ball
-	k._cyl(m, 0.07, 0.08, 0.16, Vector3(0, 0.52, -1.3), Vector3.ZERO, A, c)
-	k._add(m, Res.sphere(0.16, 14), "paint", Color(0.5, 0.5, 0.48), Vector3(0, 0.38, -1.3))
-	k._add(m, Res.sphere(0.07, 10), "glass", null, Vector3(0, 0.37, -1.43), Vector3.ZERO, Vector3(1, 1, 0.5))
+	# the sensor ball on its neck, one window looking forward
+	VehicleEquipment.sensor(k, m, Vector3(0, 0.38, -1.3), Vector3.ONE * 0.32, "paint", Color(0.5, 0.5, 0.48), "ball", Vector3(0.08, 0.07, 0.22), 1)
 	# fixed tricycle gear
 	rod(k, m, Vector3(0, 0.58, -1.95), Vector3(0, 0.12, -2.0), 0.022, "steel", Color(0.55, 0.55, 0.52), 6)
 	k._cyl(m, 0.11, 0.11, 0.06, Vector3(0, 0.11, -2.0), Vector3(0, 0, PI / 2), "rubber", null, 12)
 	for s in [-1.0, 1.0]:
 		rod(k, m, Vector3(s * 0.18, 0.6, 0.5), Vector3(s * 0.72, 0.14, 0.55), 0.025, "steel", Color(0.55, 0.55, 0.52), 6)
 		k._cyl(m, 0.13, 0.13, 0.07, Vector3(s * 0.74, 0.13, 0.55), Vector3(0, 0, PI / 2), "rubber", null, 12)
-	# antennas: the satcom blade, a whip
+	# antennas: the satcom blade, a whip raked back under the belly
 	antenna(k, m, Vector3(0, 1.18, -0.6), 0.14, false, c.darkened(0.4))
-	rod(k, m, Vector3(0, 0.55, 0.0), Vector3(0, 0.3, 0.3), 0.008, "gunmetal_w", null, 4)
+	VehicleFittings.antenna(k, m, Vector3(0, 0.55, 0.0), 0.0, Vector3(0, -0.25, 0.3), 0.008, "gunmetal_w", null, "whip")
 	# four small missiles, two under each wing
 	for sd in [-1.0, 1.0]:
 		for x in [1.3, 2.3]:
@@ -1138,19 +1129,18 @@ static func _xian(k: VehicleModels, team: int) -> void:
 		stripe(k, m, "xi_rail" + String(cp[1]), cs, float(cs[0][0]), float(cs[cs.size() - 1][0]), PI / 2 - 0.04, PI / 2 + 0.04, A, c2, 0.02, 3)
 	# the chin turret: a twin 23 mm that traverses
 	k.turret = k._pivot(m, Vector3(0, 1.05, -7.2))
-	k._add(k.turret, Res.sphere(0.36, 14), A, c2, Vector3(0, -0.05, 0), Vector3.ZERO, Vector3(1, 0.75, 1))
-	k._box(k.turret, Vector3(0.36, 0.3, 0.5), Vector3(0, -0.15, -0.3), "gunmetal_w")
+	VehicleAircraft.chin_turret(k, k.turret, Vector3(0, -0.05, 0), Vector2(0.36, 0.36), 0.54, Vector3(0, -0.15, -0.3), Vector3(0.36, 0.3, 0.5), A, c2, 0.0, Vector3.ZERO, true, 14)
 	for x in [-0.09, 0.09]:
 		rod(k, k.turret, Vector3(x, -0.15, -0.5), Vector3(x, -0.15, -1.75), 0.04, "gunmetal_w", null, 8, -1.0, false)
 		k._cyl(k.turret, 0.055, 0.055, 0.14, Vector3(x, -0.15, -1.7), Vector3(PI / 2, 0, 0), "gunmetal_w", null, 8, false)
 	k.mg_tip = k._tip(k.turret, Vector3(0, -0.15, -1.8))
-	# troop doors on both sides, the rear ramp
+	# troop doors on both sides, hinged at their front edges, a window in each
+	# and another aft of it, all fitted to the curved flanks; the rear ramp
+	var square := PackedVector2Array([Vector2(0, 0), Vector2(1, 0), Vector2(1, 1), Vector2(0, 1)])
 	for s in [-1.0, 1.0]:
-		for z in [-2.2, -0.2]:
-			k._box(m, Vector3(0.02, 1.7, 0.03), Vector3(s * 1.3, 1.95, z), "gunmetal_w", null, Vector3.ZERO, false)
-		k._box(m, Vector3(0.02, 0.03, 2.0), Vector3(s * 1.29, 2.8, -1.2), "gunmetal_w", null, Vector3.ZERO, false)
-		k._box(m, Vector3(0.03, 0.36, 0.5), Vector3(s * 1.3, 2.5, -1.2), "glass", null, Vector3.ZERO, false)
-		k._box(m, Vector3(0.03, 0.36, 0.5), Vector3(s * 1.29, 2.5, 1.8), "glass", null, Vector3.ZERO, false)
+		VehicleDoors.closed(k, m, _flank(st, -2.2, -0.2, 1.1, 2.8, s), square, [Vector2(0.08, 0.2), Vector2(0.08, 0.8)], Vector2(0.85, 0.55), A, c, "light", 2)
+		VehicleGlazing.polygon(k, m, _flank(st, -1.45, -0.95, 2.32, 2.68, s), square, false, null, 0.012, 1, 0.012)
+		VehicleGlazing.polygon(k, m, _flank(st, 1.55, 2.05, 2.32, 2.68, s), square, false, null, 0.012, 1)
 	for a in [-PI / 2 - 0.75, -PI / 2 + 0.75]:
 		stripe(k, m, "xi_ramp%.2f" % a, st, 4.2, 7.6, a - 0.02, a + 0.02, "gunmetal_w", null, 0.01, 3)
 	stripe(k, m, "xi_rampx", st, 4.18, 4.26, -PI / 2 - 0.75, -PI / 2 + 0.75, "gunmetal_w", null, 0.01, 10)
@@ -1187,9 +1177,9 @@ static func _xian(k: VehicleModels, team: int) -> void:
 		var nst := [[1.2, 3.72, 0.55, 0.55, 0.55, 2.2, 2.2, nx, 0.3], [1.6, 3.72, 0.62, 0.62, 0.6, 2.2, 2.2, nx], [4.0, 3.72, 0.62, 0.62, 0.6, 2.3, 2.3, nx],
 			[6.2, 3.7, 0.5, 0.48, 0.48, 2.6, 2.6, nx], [6.7, 3.68, 0.45, 0.42, 0.42, 3.0, 3.0, nx]]
 		body(k, m, "xi_nac" + ("L" if s < 0.0 else ""), nst, A, c2, 20)
-		var q: Array = _sp(nst[0]) if s > 0.0 else _mx(nst[0])
-		mouth(k, m, "xi_fan" + ("L" if s < 0.0 else "") + "m", q, 0.82, -1.0, "metal_dark")
-		k._cyl(m, 0.16, 0.0, 0.3, Vector3(nx, 3.72, 1.25), Vector3(-PI / 2, 0, 0), "gunmetal_w", null, 10, false)
+		# the fan face in the mouth, square to its lip (raked 0.3 aft per metre
+		# up, so it looks a little upward), the spinner standing out ahead
+		VehicleAircraft.intake_face(k, m, Vector3(nx, 3.72, 1.2), 0.45, Vector3(0, 0.3, -1.0), 0.16, 0.1, 16)
 		var zst := [[6.65, 3.68, 0.44, 0.4, 0.4, 3.2, 3.2, nx], [7.2, 3.6, 0.42, 0.34, 0.34, 3.2, 3.2, nx], [7.55, 3.52, 0.4, 0.28, 0.28, 3.2, 3.2, nx]]
 		body(k, m, "xi_noz" + ("L" if s < 0.0 else ""), zst, "gunmetal_w", c.darkened(0.45), 16, 30.0)
 		mouth(k, m, "xi_pipe" + ("L" if s < 0.0 else ""), zst[2], 0.8, 1.0)

@@ -347,12 +347,51 @@ func _add(parent: Node3D, mesh: Mesh, kind: String, col, pos: Vector3, rot := Ve
 	if not burnt and VehicleMaterials.profile(kind, surface_family) in ["armor", "aircraft", "marine"]:
 		mesh = VehicleBody.paint_mesh(mesh)
 	var pt := [mesh, Mats.get_mat(k), t, shadow, pos, rot, scl, null, null]
+	if profiling:
+		_profile(mesh)
 	if not _baking:
 		return _add_node(parent, pt)
 	if not _parts.has(parent):
 		_parts[parent] = []
 	(_parts[parent] as Array).append(pt)
 	return pt
+
+
+## tools/vehicles/builder-profile.tscn: while set, every part's triangle-list
+## vertex count is charged to the outermost shared builder that made it (or to
+## the family function that added it itself), so a pass can see where a
+## roster's geometry goes. Needs script backtraces: development builds only.
+static var profiling := false
+static var profile := {}
+
+
+func _profile(mesh: Mesh) -> void:
+	var n := 0
+	for i in mesh.get_surface_count():
+		var arrays: Array = mesh.surface_get_arrays(i)
+		var index: Variant = arrays[Mesh.ARRAY_INDEX]
+		if index is PackedInt32Array and (index as PackedInt32Array).size() > 0:
+			n += (index as PackedInt32Array).size()
+		else:
+			n += (arrays[Mesh.ARRAY_VERTEX] as PackedVector3Array).size()
+	var owner := "?"
+	for trace: ScriptBacktrace in Engine.capture_script_backtraces():
+		var started := false
+		for f in trace.get_frame_count():
+			var file := trace.get_frame_file(f)
+			var here := file.get_file().get_basename() + "." + trace.get_frame_function(f)
+			# Skip this class's own primitives (_add, _box, _cyl ...) first.
+			if not started:
+				if file.ends_with("vehicle_models.gd"):
+					continue
+				started = true
+			if file.contains("/vehicles/vm_") or file.ends_with("vehicle_models.gd"):
+				if owner == "?":
+					owner = here
+				break
+			owner = here
+		break
+	profile[owner] = int(profile.get(owner, 0)) + n
 
 
 var _baking := false  # build(): parts are noted down for _merge_parts (see _add)
@@ -463,8 +502,10 @@ func _box(parent: Node3D, s: Vector3, pos: Vector3, kind: String, col = null, ro
 func _bag(parent: Node3D, s: Vector3, pos: Vector3, kind: String, col = null, rot := Vector3.ZERO, shadow := true) -> Variant:
 	return VehicleCloth.bag(self, parent, s, pos, kind, col, rot, shadow)
 
+## Res.cyl's cylinder at the same size, but with one band of sides: its middle
+## ring splits a straight side in two and adds triangles, not shape.
 func _cyl(parent: Node3D, r0: float, r1: float, h: float, pos: Vector3, rot: Vector3, kind: String, col = null, segs := 12, shadow := true) -> Variant:
-	return _add(parent, Res.cyl(r0, r1, h, segs), kind, col, pos, rot, Vector3.ONE, shadow)
+	return _add(parent, VehicleFrames.rod_mesh(r0, r1, h, segs), kind, col, pos, rot, Vector3.ONE, shadow)
 
 
 ## An empty marker at a muzzle.
@@ -736,25 +777,25 @@ func _car(v: int, col: Color) -> void:
 			var panes := 1 if v == 2 else 2
 			for pane in panes:
 				VehicleGlazing.quad(self, m, key + "side_%s_%d" % [side, pane], face, inside, Rect2(0.06 + pane * 0.46, 0.13, 0.88 if panes == 1 else 0.42, 0.74), 0.012, 0.012, "glass")
-			VehicleFrames.tube(self, m, Vector3(side * hw, fy + 0.10, fz + 0.25), Vector3(side * (w + 0.14), fy + 0.13, fz + 0.22), 0.025, "rubber")
-			_box(m, Vector3(0.09, 0.13, 0.21), Vector3(side * (w + 0.14), fy + 0.16, fz + 0.22), "rubber")
-			_box(m, Vector3(0.025, 0.035, 0.15), Vector3(side * (w + 0.01), fy - 0.07, (fz + bz) * 0.5), "steel")
-	# bumpers, lights, plate
+			# the wing mirror on its arm from the window's front corner, the door handle
+			VehicleFittings.mirror(self, m, Vector3(side * (w + 0.14), fy + 0.16, fz + 0.22), Vector2(0.09, 0.13), 0.0, [Vector3(side * hw, fy + 0.10, fz + 0.25)], "rubber", null)
+			VehicleDoors.pull(self, m, Vector3(side * (w + 0.001), fy - 0.07, (fz + bz) * 0.5), Vector3(side, 0, 0), Vector3.BACK, 0.15, 0.006, "steel")
+	# moulded bumpers, lights, plate
 	var front: float = body[0] if v != 2 else body[0]
 	var bf: float = minf(body[0], body[body.size() - 2])
 	var bb: float = maxf(body[2], body[4])
-	_box(m, Vector3(w * 2.0 + 0.04, 0.16, 0.12), Vector3(0, 0.42, bf - 0.02), "rubber")
-	_box(m, Vector3(w * 2.0 + 0.04, 0.16, 0.12), Vector3(0, 0.42, bb + 0.02), "rubber")
+	for z: float in [bf - 0.02, bb + 0.02]:
+		VehicleMounts.bumper(self, m, Vector3(w * 2.0 + 0.04, 0.16, 0.12), Vector3(0, 0.42, z), "rubber", null, Vector3.ZERO, true)
 	if not burnt:
 		for s in [-1.0, 1.0]:
 			_add(m, Res.box(Vector3(0.3, 0.1, 0.04)), "paint", Color(0.92, 0.9, 0.8), Vector3(s * (w - 0.24), 0.68, bf - 0.01), Vector3.ZERO, Vector3.ONE, false)
 			_add(m, Res.box(Vector3(0.24, 0.12, 0.04)), "paint", Color(0.62, 0.06, 0.05), Vector3(s * (w - 0.2), 0.74, bb + 0.01), Vector3.ZERO, Vector3.ONE, false)
-		_add(m, Res.box(Vector3(0.42, 0.11, 0.02)), "paint", Color(0.9, 0.88, 0.8), Vector3(0, 0.5, bb + 0.09), Vector3.ZERO, Vector3.ONE, false)
+		VehicleMarkings.plate(self, m, Vector3(0, 0.5, bb + 0.09), Vector2(0.42, 0.11), Vector3.BACK, 0.0, "", 0.02, Color(0.9, 0.88, 0.8))
 	if v == 2:
-		# the bed: sides and tailgate
+		# the bed: its sides, the ribbed tailgate between them, the rubber mat
 		for s in [-1.0, 1.0]:
 			_box(m, Vector3(0.06, 0.38, 1.95), Vector3(s * (w - 0.03), 1.2, 1.4), "car_paint", col)
-		_box(m, Vector3(w * 2.0, 0.38, 0.06), Vector3(0, 1.2, 2.38), "car_paint", col)
+		VehicleCargo.sideboard(self, m, Vector3(w * 2.0, 0.38, 0.06), Vector3(0, 1.2, 2.38), "car_paint", col, Vector3.ZERO, 2)
 		_box(m, Vector3(w * 2.0 - 0.1, 0.04, 1.9), Vector3(0, 1.03, 1.4), "rubber")
 	# wheels in dark arches
 	var wz := [bf + 0.75, bb - 0.75]

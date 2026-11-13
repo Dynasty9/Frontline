@@ -1413,6 +1413,30 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   turbine exhausts, and aircraft and boats share red/green sidelights and dome lights. Trucks share fender
   sheets and saddle fuel tanks; rolled tarps are common stowage. See "Twenty shared components" in
   [the component guide](vehicle-components.md).
+- **Second construction pass** (shared builders across `vehicle_cargo.gd`, `vehicle_aircraft.gd`,
+  `vehicle_fittings.gd` and others): engine-deck grilles, track skirts and return rollers, smoke banks and
+  lamp units are shared across the armour; trucks share cargo beds, box bodies with doors, roller shutters
+  and ladders, pedestal gun mounts, roll cages, bull bars and wheel-well tubs. Box missile launchers show
+  their tube mouths. Aircraft share missiles, store pods, engine intake faces (the A-10's fans now show),
+  stub-wing pylons, rotor hub caps, whips and sensor necks. See "Second pass" in
+  [the component guide](vehicle-components.md).
+- **Third construction pass** (shared builders across `vehicle_mounts.gd`, `vehicle_equipment.gd`,
+  `vehicle_aircraft.gd`, `vehicle_markings.gd` and others): track guards, tow cables with eyes, muzzle brakes,
+  muzzle sensors, machine-gun pintles, travel locks and hydraulic rams are shared across the armour; wheeled
+  vehicles share wishbone suspension, exhaust runs and silencers, air cleaners, searchlights, light bars,
+  number plates, door levers and crew benches; trucks share cranes, crate stacks, roof racks, tanker walkways,
+  pump cabinets and gas bottles. Helicopters share trailing-arm gear and tailwheels, aircraft share bombs,
+  chin turrets, flare dispensers, formation lights and refuelling receptacles, and boats share bow eyes and
+  fenders. See "Third pass" in [the component guide](vehicle-components.md).
+- **Fourth construction pass** (`VehicleEquipment.drum`, `VehicleWheels.carrier` and a sweep of every family):
+  200-litre drums and spare-wheel carriers are shared, and the remaining hand-built vision blocks, door
+  windows, door and gear leaves, hatches, sights, radar panels, fuel tanks, bumpers, pintles and cannon barrels
+  moved onto the shared builders. See "Fourth pass" in [the component guide](vehicle-components.md).
+- **Lighter shared hardware** (`tools/vehicles/builder-profile.tscn` charges the roster's vertices to the
+  builders that make them): tyres, bolts, hinges, lamps, shackles, dischargers and lockers draw only what can be
+  seen, one band of cylinder sides, joints only at sharp bends. About 45% less vehicle geometry and 38% faster
+  model builds (each vehicle, air-strike plane and wreck builds its model as it appears), with the same look.
+  See "Fifth pass" in [the component guide](vehicle-components.md).
 - Explosions are layered GPU particles: a flash and light burst, a rolling fireball that cools from the edges in
   until it's dark smoke, a lit smoke column that drifts with the wind, a dirt plume, sparks and debris that
   bounce on the ground, a rolling dust ring, a faint heat-shimmer shockwave and a scorch mark. Heavy rounds

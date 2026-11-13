@@ -192,6 +192,58 @@ static func _flare(k: VehicleModels, parent: Node3D, key: String, zc: float, yc:
 
 
 
+## A moulded wheel-well liner (wheel tub) inside the old dark well box: `center`
+## and `size` are that box in the parent's axes (X across the vehicle, Y up, Z
+## along it). Its roof arches over the tyre on a half-ellipse inscribed in the
+## box's side profile, springing from the box's floor line; its open edge
+## thickens into a rolled lip held by push clips, and a flat wall closes it on
+## the inboard side. `side` -1 or +1: one wheel's tub, open toward that side of
+## X across the box's whole width. `side` 0: the box spans the vehicle between
+## a pair of wheels (a civilian frame's well block): a tub opens at each end
+## and the middle between their walls stays empty. The arch-following band of
+## a cut body or flare stays `liner`. Nothing is registered.
+static func tub(k: VehicleModels, parent: Node3D, center: Vector3, size: Vector3, side := 0.0, mat := "plain_dark", col = null, segments := 8) -> void:
+	var mount := k._pivot(parent, center)
+	var hx := size.x * 0.5
+	var ends: Array = [-1.0, 1.0] if side == 0.0 else [signf(side)]
+	var depth := minf(hx, 0.34) if side == 0.0 else size.x
+	var a := size.z * 0.5
+	var b := size.y
+	var floor_y := -size.y * 0.5
+	var shell := minf(0.012, minf(a, b) * 0.06)
+	var lip := minf(0.016, minf(a, b) * 0.08)
+	for e: float in ends:
+		var xo: float = e * hx
+		var xi: float = xo - e * depth
+		var lw: float = minf(0.03, depth * 0.2)
+		# One ring per station round the arch: the shell's section, thicker at the
+		# open edge where the lip rolls toward the tyre.
+		var rings: Array = []
+		var wall := PackedVector3Array()
+		for i in segments + 1:
+			var t := PI * float(i) / segments
+			var c := cos(t)
+			var s := sin(t)
+			var outer := Vector2(a * c, floor_y + b * s)
+			var inner := Vector2((a - shell) * c, floor_y + (b - shell) * s)
+			var rolled := Vector2((a - shell - lip) * c, floor_y + (b - shell - lip) * s)
+			rings.append(PackedVector3Array([Vector3(xi, inner.y, inner.x), Vector3(xi, outer.y, outer.x), Vector3(xo, outer.y, outer.x), Vector3(xo, rolled.y, rolled.x), Vector3(xo - e * lw, rolled.y, rolled.x)]))
+			wall.append(Vector3(0, outer.y, outer.x))
+		k._add(mount, VehicleProfiles.loft(rings, 40.0), mat, col, Vector3.ZERO)
+		# The inboard wall: a D of the arch and its floor chord.
+		var thick := minf(0.012, depth * 0.1)
+		var near := PackedVector3Array()
+		var far := PackedVector3Array()
+		for q: Vector3 in wall:
+			near.append(Vector3(xi, q.y, q.z))
+			far.append(Vector3(xi + e * thick, q.y, q.z))
+		k._add(mount, VehicleProfiles.loft([near, far], 30.0), mat, col, Vector3.ZERO)
+		for t: float in [0.18, 0.5, 0.82]:
+			var r := Vector2((a - shell - lip * 0.5) * cos(PI * t), floor_y + (b - shell - lip * 0.5) * sin(PI * t))
+			VehicleBody.fastener(k, mount, Vector3(xo + e * 0.002, r.y, r.x), Vector3.RIGHT * e, minf(0.008, lip * 0.45))
+	k._fold(mount)
+
+
 ## Wheel-well liner follows the authored arch radius, outside tyre clearance.
 static func liner(k: VehicleModels, parent: Node3D, zc: float, yc: float, radius: float, x0: float, x1: float, a0: float, a1: float, segments: int) -> void:
 	for i in segments:
