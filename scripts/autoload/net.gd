@@ -30,7 +30,7 @@ const PLAYER_COLORS := [Color(0.38, 0.95, 0.72), Color(1.0, 0.5, 0.82), Color(0.
 ## one) or "coop" (every player on "coop_side", the AI commands the other);
 ## a "mission" setting overrides both. "name" is what the server browser
 ## shows ("" for "<host>'s battle").
-const DEFAULT_SETTINGS := {"ai_fill": true, "ai_allies": false, "drop_in": true, "mode": "versus", "coop_side": 0, "max_players": MAX_PLAYERS, "name": ""}
+const DEFAULT_SETTINGS := {"ai_fill": true, "ai_allies": false, "ai_difficulty": "regular", "drop_in": true, "mode": "versus", "coop_side": 0, "max_players": MAX_PLAYERS, "name": ""}
 
 ## peer_id -> {"name": String, "team": int, "ready": bool, "col": int (into PLAYER_COLORS),
 ## "icon": String, "rank": int (the insignia worn and the rank: "" and -1 signed out)}

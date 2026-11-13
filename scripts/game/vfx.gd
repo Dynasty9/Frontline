@@ -1020,7 +1020,10 @@ func heat_sources(hh: HeatHaze) -> void:
 			continue
 		var h: Node3D = b
 		var f := float(h.get_meta("fire", 0.0))
-		if f > 0.02 and h.is_visible_in_tree():
+		# (is_visible_in_tree doesn't ask whether it's in the tree at all: a
+		# destroyed vehicle is kept out of it for a while after it's cleared
+		# away, its own fire with it, and burns on as its wreck instead)
+		if f > 0.02 and h.is_inside_tree() and h.is_visible_in_tree():
 			hh.add_fire(h.global_position, h.get_meta("ext", Vector3(0.5, 0.4, 0.5)), f)
 
 
