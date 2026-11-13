@@ -1380,7 +1380,7 @@ func _ssgi_tick() -> void:
 	p[8] = SSGI_REACH
 	p[9] = SSGI_STRENGTH
 	p[14] = float(OS.get_environment("FL_DEBUG_SSGI_VIEW")) if OS.has_environment("FL_DEBUG_SSGI_VIEW") else 0.0
-	p[15] = 0.5  # a ray passes behind a surface rather than hitting it past half its step
+	p[15] = 0.5  # how deep behind a surface a ray still counts as hitting it (share of how far it has gone)
 	ssgi.params = p
 
 
