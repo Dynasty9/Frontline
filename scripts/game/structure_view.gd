@@ -190,7 +190,9 @@ func _process(_dt: float) -> void:
 					st.set_view_active(true)
 					_queue_draw_batch(st)
 	var count := 0
-	while head < order.size() and count < 4 and Time.get_ticks_usec() - started < 2000:
+	var loading := not world.loaded
+	var budget := 8000 if loading else 2000
+	while head < order.size() and (loading or count < 4) and Time.get_ticks_usec() - started < budget:
 		var id := order[head]
 		head += 1
 		var st: Structure = _take(id)
@@ -208,6 +210,8 @@ func _process(_dt: float) -> void:
 	# their turn, and every pan starts the list again), so every wall drew on
 	# its own, several draws a wall in each of the four shadow cascades.
 	merge_ready_blocks()
+	if loading and OS.has_environment("FL_DEBUG_LOAD"):
+		world.loading_ms["scenery preparation work"] = float(world.loading_ms.get("scenery preparation work", 0.0)) + (Time.get_ticks_usec() - started) / 1000.0
 	world.vp("scenery construction", started)
 
 

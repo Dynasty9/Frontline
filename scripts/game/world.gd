@@ -158,6 +158,7 @@ func _ready() -> void:
 		_build_environment()
 		if not srv and atmo.grass:
 			atmo.grass.set_process(false)  # (grown once, on the finished ground: _load_done)
+	_load_mark("environment ready")
 	fx = Fx.new()
 	fx.name = "Fx"
 	fx.world = self
@@ -228,7 +229,8 @@ func build() -> void:
 		_water_view()
 		await _breathe("Plotting the routes", 0.62)
 		var tn := Time.get_ticks_msec()
-		nav.finalize()
+		if not nav.hnav_i.built:
+			nav.finalize()
 		_load_mark("navigation ready")
 		print("Hierarchical nav: %s infantry, %s vehicles (%d ms)" % [nav.hnav_i.stats(), nav.hnav_v.stats(), Time.get_ticks_msec() - tn])
 		if OS.has_environment("FL_DEBUG_HPA"):
@@ -318,6 +320,7 @@ func _answer_window() -> void:
 ## for a --scenario test setup on the desktop (small, and its scripted events
 ## run on timers).
 func _breathe(text: String, frac: float) -> void:
+	_load_mark(text)
 	if LocalServer.child:
 		# Generation blocks the child loop; publish here so the launcher can show each stage.
 		LocalServer._write(".progress", {"text": text, "frac": frac})
@@ -370,6 +373,9 @@ func _make(kind: String) -> Entity:
 	return Entity.new()
 
 
+var restoring_battlefield := false
+
+
 func spawn(kind: String, props: Dictionary) -> Entity:
 	var e := _make(kind)
 	e.world = self
@@ -377,7 +383,7 @@ func spawn(kind: String, props: Dictionary) -> Entity:
 	next_eid += 1
 	e.srv = true
 	e.apply_props(props)
-	if e is Structure and is_zero_approx(e.position.y) and e.skind != "bridge":
+	if e is Structure and not restoring_battlefield and is_zero_approx(e.position.y) and e.skind != "bridge":
 		e.position.y = terrain.landform.height(e.position)
 	if e is Soldier or (e is Vehicle and not e.is_boat()):
 		e.position.y = maxf(e.position.y, ground_y(e.position))
@@ -389,7 +395,8 @@ func spawn(kind: String, props: Dictionary) -> Entity:
 		battle.vehicle_fielded(e)
 	if e is Structure:
 		_shash_add(e)
-		terrain.structure_changed(e, true)
+		if not restoring_battlefield:
+			terrain.structure_changed(e, true)
 		if structure_view:
 			structure_view.add(e)
 	if recording and not recording.stopped:
@@ -1328,6 +1335,8 @@ const LOAD_SLICE_US := 45000  # building per frame under the loading screen (it 
 ## The battle as the host had it when we came in is all here and built (the
 ## host's is from the start).
 var loaded := false
+var hold_for_reveal := false  # a private battle waits through shader warm-up and the curtain fade
+var _load_notified := false
 var load_frac := 0.0  # (client) how far it has got, 0..1
 var _join_n := 0  # how many entities the host is sending
 var _join_ground := false  # the ground has come
@@ -1551,6 +1560,8 @@ func _load_stage(text: String, frac: float) -> void:
 
 func _load_mark(what: String) -> void:
 	loading_ms[what] = Time.get_ticks_msec() - _load_started
+	if OS.has_environment("FL_DEBUG_LOAD"):
+		print("LOAD %s %s %d ms" % ["host" if srv else "client", what, loading_ms[what]])
 	if settings.has("perf_at") and not LocalServer.session.is_empty():
 		LocalServer._write(".load" if srv else ".view-load", loading_ms)
 	if _load_t0 == 0:
@@ -1576,9 +1587,23 @@ func _lay_ground() -> void:
 
 
 func _ground_job() -> void:
-	terrain.install_landform(_join_landform)
 	var w := _ground_water
-	if not w.is_empty():
+	var baked := {}
+	var key := String(settings.get("battlefield", ""))
+	if not key.is_empty() and not settings.get("no_baked_map", false):
+		baked = BattlefieldMap.read(key)
+	var cached: bool = not baked.is_empty()
+	if cached:
+		cached = int(baked.seed) == int(settings.get("seed", -1)) and int(baked.size) == MapDims.N
+	if cached:
+		var heights: PackedFloat32Array = baked.heights
+		var shapes: Dictionary = baked.water
+		cached = heights == _join_landform and shapes == w.to_dict()
+	if cached:
+		BattlefieldMap.restore_ground(self, baked, w)
+	else:
+		terrain.install_landform(_join_landform)
+	if not cached and not w.is_empty():
 		w.paint_kinds()
 	var tm := terrain
 	var k := _join_kinds
@@ -1587,7 +1612,7 @@ func _ground_job() -> void:
 			if tm.base[i] != k[i]:
 				tm.base[i] = k[i]
 				tm._refresh_cell(i)
-	if not w.is_empty():
+	if not cached and not w.is_empty():
 		w.carve()
 
 
@@ -1613,13 +1638,15 @@ func _load_done() -> void:
 	_try_focus()
 	if soldier_view != null and soldier_view.warming():
 		return
+	if not loading_ms.has("soldier poses ready"):
+		_load_mark("soldier poses ready")
 	if structure_view != null and structure_view.warming():
 		return
+	_load_mark("scenery ready")
 	loaded = true
 	_load_mark("client ready")
-	if is_inside_tree() and multiplayer.get_unique_id() != 1:
-		_client_loaded.rpc_id(1)
-		Net._long_timeout(1, false)
+	if not hold_for_reveal:
+		reveal_to_player()
 	set_process(false)
 	visible = true  # (main.gd's warm-up draws its first frames behind the loading screen)
 	_load_rec.clear()
@@ -1633,6 +1660,16 @@ func _load_done() -> void:
 	_load_stage("Ready", 1.0)
 	if OS.has_environment("FL_DEBUG_NET"):
 		print("JOIN loaded %d entities: %s" % [entities.size(), ", ".join(_load_marks)])
+
+
+func reveal_to_player() -> void:
+	if not loaded or _load_notified:
+		return
+	hold_for_reveal = false
+	_load_notified = true
+	if is_inside_tree() and multiplayer.get_unique_id() != 1:
+		_client_loaded.rpc_id(1)
+		Net._long_timeout(1, false)
 
 
 # --- messages / roads / end of game ------------------------------------------------

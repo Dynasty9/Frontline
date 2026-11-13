@@ -1,0 +1,30 @@
+{
+	"engine": "4.7.2-stable (official)",
+	"format": 4,
+	"key": "highland-junction",
+	"seed": 41,
+	"sha256": "31b3dcedd5d7baf13084febee110a91d0bb5ba0a7ef74dd413e1ef3a357ad92d",
+	"size": 1024,
+	"sources": {
+		"assets/terrain/alpine_forms.tres": "7f06c740b079737955f99bb94abc037ec7f7350697238515f45962fb3442702d",
+		"scripts/autoload/defs.gd": "53a41ccf3f398abd6e6ef4a583754719c457b6abdf6001d84ddb1423420571f2",
+		"scripts/battlefields.gd": "b5aa060428535f563a568c64189daf72a032fc55bcaa110770fbc2e655b0f115",
+		"scripts/game/battlefield_map.gd": "e803712b32f913ceb0a2c8b6b81b2e5df6555146f0d657ca9df41d017bfc932b",
+		"scripts/game/building_yards.gd": "5d36d5495b1dbd74fcfef5e1f982e42daa3054e6785aa8252f373197e4d2ab2e",
+		"scripts/game/cover.gd": "5ccdfb18f8fff8a2fb8d7ce3800afc401d00401a7ca88f042215c98b3eb63bb4",
+		"scripts/game/entity.gd": "586055347693acd7ab18708454a2156ee0d2ac01aabf92a12fdf790f5afd850f",
+		"scripts/game/hnav.gd": "c04dcdc2b7a8ced156127d9311fabcb2f889e92b4b27a340fb4d3a0cfecd292c",
+		"scripts/game/landform.gd": "fe4e6965ef68bd77b11d895197801488a9dffe5f5418e4eb88e89e5a27ef656b",
+		"scripts/game/map_dims.gd": "e39e91c7184b4a5ad459fcda42d87b84c2f45623a133cac56ad7610c57492ec6",
+		"scripts/game/mapgen.gd": "135fa463221c007ed8b7ac944d75dd095fbecc3e09dbb9a8e8a3cf60ef260cea",
+		"scripts/game/nav.gd": "1a15db2410e10866f4c6ace8e551637d3d9ae46c6f4ac675b1d1c704b1dff679",
+		"scripts/game/nav_raster.gd": "75bb5327f4e7f63755deb9754810b10f4208bc30d24612c358a33b2fb3dd6259",
+		"scripts/game/rules.gd": "fa676bb102c4c0e9247d0f6cfb70801d712871a58d6834b50522bb5a7cecad47",
+		"scripts/game/structure.gd": "2048036085118ad2a7a32dfe7f3e158339705c8e328aa9d51a5a15c2c34221c9",
+		"scripts/game/terrain.gd": "88c7e836c725e182b1437299ca0bc4345dffeb3081c47e63ce52d0c4b01f8a1d",
+		"scripts/game/towngen.gd": "379249e265b9590929c2f7346f1ce3cc9f2958a76ba698d1c081f58d2d4431a4",
+		"scripts/game/trench_net.gd": "7a17fbe37361287a1d79aaaeccd217407be4bcb98f6b17dce9c894eab50b9e31",
+		"scripts/game/water.gd": "5475f733026d92555f1f5136fbae8b2d9b5a5844450bc7ee9d8af43b7af08b3e",
+		"scripts/game/world.gd": "6ec747bc0ca6584ff128fccd218d74febd4fc9088a6b11aa69431c7d4ec7bad9"
+	}
+}

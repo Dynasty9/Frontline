@@ -1,0 +1,10 @@
+{
+  "entry": "changelog/unreleased/prepared-battlefields.md",
+  "summary": "Choose three repeatable battlefields and reuse prepared terrain and routes.",
+  "medium": "text",
+  "stage": "text",
+  "rationale": "Map selection and loading improvements; measured conditions and limits are recorded in docs/performance/loading-study.md. Final visual presentation is pending validation.",
+  "source_ref": "a541c8d0",
+  "sources": [],
+  "output": null
+}

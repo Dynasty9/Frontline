@@ -67,11 +67,14 @@ func _process(dt: float) -> void:
 				soldier._view_process(dt, blend)
 		world.vp("soldiers", started)
 		started = Time.get_ticks_usec()
-	# Bake one pose per frame while loading, rather than baking a whole new
-	# stance for hundreds of men on the frame they first take cover.
-	if not _warmup.is_empty():
+	# Spend spare loading time on poses; reinforcements keep the one-pose frame limit.
+	while not _warmup.is_empty():
 		var pose: Array = _warmup.pop_front()
 		_make_pose(pose[0], pose[1], pose[2], pose[3], pose[4])
+		if world.loaded or Time.get_ticks_usec() - started >= 8000:
+			break
+	if not world.loaded and OS.has_environment("FL_DEBUG_LOAD"):
+		world.loading_ms["pose preparation work"] = float(world.loading_ms.get("pose preparation work", 0.0)) + (Time.get_ticks_usec() - started) / 1000.0
 	var previous_groups := _active
 	_active = []
 	for group: DrawGroup in previous_groups:

@@ -37,6 +37,7 @@ var _mode_seg: UiSeg
 var _mission_label: Label
 var _side_seg: UiSeg
 var _mood_opt: OptionButton
+var _battlefield: BattlefieldPicker
 var _seats_seg: UiSeg
 var _fill_seg: UiSeg
 var _ally_seg: UiSeg
@@ -259,6 +260,9 @@ func _settings_panel() -> Control:
 	_set_row(v, "mode", "Mode", _mode_seg)
 	_mission_label = UiKit.mono_label("", 12, UiKit.TEXT)
 	_set_row(v, "mission", "Mission", _mission_label)
+	_battlefield = BattlefieldPicker.new()
+	_battlefield.picked.connect(func(key: String): Net.configure(Battlefields.options(key)))
+	_set_row(v, "battlefield", "Battlefield", _battlefield)
 	_side_seg = UiSeg.make([Defs.TEAM_NAMES[0], Defs.TEAM_NAMES[1]], 0)
 	_side_seg.changed.connect(func(i: int): Net.set_setting("coop_side", i))
 	_set_row(v, "side", "Players' side", _side_seg)
@@ -678,6 +682,10 @@ func _refresh_settings(host: bool, mode: String, mk: String) -> void:
 	var mission := mode == "mission"
 	(_set_rows.mode as Control).visible = not mission
 	(_set_rows.mission as Control).visible = mission
+	(_set_rows.battlefield as Control).visible = not mission
+	var map_key := String(s.get("battlefield", ""))
+	_battlefield.select_key(map_key)
+	(_set_codes.battlefield as Label).text = String(Battlefields.find(map_key).get("title", "Procedural battlefield")).to_upper()
 	_mission_label.text = String(MissionList.find(mk).title).to_upper() if mission else ""
 	_mode_seg.select(0 if mode == "coop" else 1)
 	(_set_codes.mode as Label).text = "CO-OP VS AI" if mode == "coop" else "VERSUS"

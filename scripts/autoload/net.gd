@@ -713,6 +713,10 @@ func start_game() -> void:
 	if not multiplayer.is_server() or _closing or in_game:
 		return
 	var s: Dictionary = settings.duplicate(true)
+	if String(s.get("mission", "")) == "" and String(s.get("scenario", "")) == "":
+		var battlefield := Battlefields.options(String(s.get("battlefield", "")))
+		if not battlefield.is_empty():
+			s.merge(battlefield, true)
 	s["seed"] = int(s.get("fixed_seed", randi()))
 	# the lobby's time of day, if it picked one, else this player's setting
 	s["mood"] = String(s.get("mood", Settings.get_v("mood")))

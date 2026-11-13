@@ -23,6 +23,7 @@ var tkind := PackedByteArray()
 var cell_objs := {}  # idx -> Array of [eid, ikind, vkind]
 var heat := PackedByteArray()  # per cell: how many fires burn close enough to hurt (see Fires); routes go round
 var terrain: TerrainMap
+var prepared_costs: Array = []
 var hnav_i = null  # hierarchical graphs over the three grids (see hnav.gd)
 var hnav_v = null
 var hnav_t = null
@@ -266,7 +267,8 @@ func find_boat_path(from: Vector3, to: Vector3) -> PackedVector3Array:
 
 ## Builds the abstract graphs once the map is laid out.
 func finalize() -> void:
-	HNav.build_all([hnav_i, hnav_v, hnav_t])
+	HNav.build_all([hnav_i, hnav_v, hnav_t], prepared_costs)
+	prepared_costs = []
 	for grid in [inf, veh, tracked]:
 		grid.build_regions()
 

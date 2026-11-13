@@ -13,6 +13,9 @@ func _ready() -> void:
 	var world := World.new()
 	world.srv = false
 	world.has_view = false
+	world.hold_for_reveal = true
+	world.reveal_to_player()
+	check(not world._load_notified, "An unfinished view must not release the simulation")
 	var stages: Array = []
 	world.build_stage.connect(func(text: String, frac: float): stages.append([text, frac]))
 	LocalServer.pid = 1
@@ -62,11 +65,23 @@ func _ready() -> void:
 	check(soldier.sname == "After" and soldier.owner_peer == 3, "Property updates must survive delayed construction")
 	check(soldier.life == Soldier.Life.DEAD and soldier.net_pos == source.position, "The latest snapshot must survive delayed construction")
 	check(not world.client_loading(), "Loading must finish after the final batch is constructed")
+	check(not world._load_notified, "A private battle must remain paused while the loading curtain covers it")
+	world.reveal_to_player()
+	check(world._load_notified and not world.hold_for_reveal, "Revealing the finished view must release the private battle")
 	world._rpc_spawn([[19, "soldier", {"utype": "rifleman", "team": 0}, state.data_array]])
 	check(not world.client_loading(), "Reinforcements must not restart the initial loading screen")
 	world._process(0.016)
 	check(world.entity(19).life == Soldier.Life.DEAD and world.entity(19).net_pos == source.position, "Reliable initial state must load without waiting for an unreliable snapshot")
 	source.free()
 	world.free()
+	var immediate := World.new()
+	immediate._load_done()
+	check(immediate._load_notified, "Views without a loading curtain must announce readiness immediately")
+	var main = load("res://scripts/main.gd").new()
+	main.world = immediate
+	var old_view: WeakRef = weakref(immediate)
+	immediate.free()
+	main._finish_loading(old_view, 0)
+	main.free()
 	print("CLIENT_LOADING_TEST failures=%d" % failures)
 	get_tree().quit(1 if failures else 0)

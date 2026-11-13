@@ -24,11 +24,16 @@ jobs:
 
   check:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
     env:
       GODOT_VERSION: 4.7.2
     steps:
       - uses: actions/checkout@v4
+
+      - name: Verify prepared battlefields
+        run: |
+          python3 -m unittest discover -s tools -p 'test_check_battlefields.py'
+          python3 tools/check_battlefields.py
 
       - name: Build numeric simulation extension
         run: |
@@ -84,10 +89,16 @@ jobs:
       - name: Simulation scaling regressions
         run: |
           set -o pipefail
-          for test in structure_index perception_index navigation_budget client_loading terrain_loading update_sidecars terrain_updates squad_assessment map_placement snapshot_index terrain_cover soldier_batch structure_view grass_stream field_manual_entry support_demo support_input; do
+          for test in structure_index perception_index navigation_budget client_loading terrain_loading battlefield_picker battlefield_package update_sidecars terrain_updates squad_assessment map_placement snapshot_index terrain_cover soldier_batch structure_view grass_stream field_manual_entry support_demo support_input; do
             timeout 120 ~/godot/godot --headless --path . res://tests/${test}_test.tscn 2>&1 | tee ${test}.log
             if grep -E "SCRIPT ERROR|Parse Error|failures=[1-9]" ${test}.log; then exit 1; fi
           done
+
+      - name: Prepared maps match generated gameplay
+        run: |
+          set -o pipefail
+          timeout 900 ~/godot/godot --headless --path . tests/battlefield_map_test.tscn -- --battlefield=all 2>&1 | tee battlefield_parity.log
+          if grep -E "SCRIPT ERROR|Parse Error|ERROR:" battlefield_parity.log || ! grep -q "BATTLEFIELD_MAP_TEST failures=0" battlefield_parity.log; then exit 1; fi
 
       # Installing an update (one executable, or a Mac's app, which is a folder)
       # and reading frontline:// links the way each system hands them over, in
