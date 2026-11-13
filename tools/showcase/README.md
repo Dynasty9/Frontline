@@ -22,6 +22,7 @@ lead artifact; original notes and supporting media remain under **Explore this c
 | Material impact close-ups | Dirt, stone and metal debris without obscuring fuel smoke | `impacts`: four seconds per material, fixed 30 Hz, normal speed |
 | Illumination flares | Parachute descent, wind, sparks and smoke | `flares`: same effect code at night, following camera, fixed 30 Hz |
 | Battlefield effects reel | All armaments over real terrain, followed by a night flare | `battlefield-effects`: 28 seconds, showroom seed 712, fixed 24 Hz, Forward+ |
+| Rain and lightning | Rings in puddles, drops on a deck, water down a wall, then two placed strikes seen low | `rain`: showroom on map seed 3, fixed 24 Hz, Forward+, lens on (drops on the glass in the low shot); `FL_DEBUG_LIGHTNING=1` logs each strike's distance and when its thunder arrived |
 | Battlefield blast | Earth and dust against real terrain and cover | `blast-close` / `blast-rts`: showroom seed 712, day, fixed 24 Hz |
 | Cloud intersections | Fuel inside tank armor and HE against stone cover | `blast-cover`: two four-second shots, showroom seed 712, fixed 24 Hz |
 | Ground damage and blast timing | Immediate flash, lighter dust and actual crater aftermath | `blast-ground`: two six-second HE shots, open ground and stone cover, fixed 24 Hz |

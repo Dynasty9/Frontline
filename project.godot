@@ -69,6 +69,10 @@ rain_wet={
 "type": "float",
 "value": 0.0
 }
+rain_fx={
+"type": "vec4",
+"value": Vector4(0, 0, 0, 0)
+}
 
 cloud_noise={
 "type": "sampler2D",

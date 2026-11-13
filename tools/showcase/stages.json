@@ -476,5 +476,76 @@
       "mood": "day"
     },
     "cue": "Two Ghost Hawks cross the view at 16 m and are both shot down 2.5 s in: the near one loses its tail rotor and spins in, the far one autorotates to a heavy landing; their paths are traced."
+  },
+  "rain": {
+    "scene": "tests/fixtures/blast-world-clips.tscn",
+    "seconds": 18,
+    "fps": 24,
+    "simulation_hz": 24,
+    "engine_fixed_fps": 24,
+    "renderer": "forward_plus",
+    "cue": "Rings running out across a puddle, drops bursting on a tank's deck, water running down a hut's wall, then two lightning strikes from a low camera, the second much nearer.",
+    "timeout": 1500,
+    "crf": 32,
+    "seed": 712,
+    "render_settings": {
+      "grass": 1,
+      "effects": 2,
+      "decals": true,
+      "post": false,
+      "dof": false,
+      "lens": true,
+      "mood": "rain",
+      "map_seed": 3
+    },
+    "shots": [
+      {
+        "start": 0,
+        "subject": "rain rings in a puddle beside a tank, close"
+      },
+      {
+        "start": 4,
+        "subject": "drops on a tank's deck, puddles beside it"
+      },
+      {
+        "start": 7.5,
+        "subject": "water running down a hut's wall"
+      },
+      {
+        "start": 10.5,
+        "subject": "low camera: strikes at 11.4 s (1.1 km) and 14.2 s (550 m)"
+      }
+    ],
+    "camera": {
+      "fov_degrees": 48,
+      "puddle_xz": [
+        -18,
+        3.5
+      ],
+      "puddle_offset": [
+        1.6,
+        2.6,
+        4.2
+      ],
+      "deck_target": "tank at (-14, 0) + (0, 2.2, 0)",
+      "deck_offset": [
+        3.5,
+        2.6,
+        5.0
+      ],
+      "wall_target": "(-20, -17.6) + (0, 1.4, 0)",
+      "wall_offset": [
+        2.5,
+        0.6,
+        6.5
+      ],
+      "low_target": "(0, -300) + (0, 60, 0)",
+      "low_offset": [
+        0,
+        -54,
+        340
+      ]
+    },
+    "events": "Two strikes placed by the stage (Lightning.strike) at (-260, -1100) and (150, -520); the game's own random strikes are held off. Thunder is timed by distance (343 m/s) but the PNG frames are silent: run with FL_DEBUG_LIGHTNING=1 to log each strike's distance and when its thunder arrived. Forward+ for the lens drops; the browser's Compatibility renderer draws the rest."
   }
 }
