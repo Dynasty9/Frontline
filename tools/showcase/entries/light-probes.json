@@ -1,0 +1,31 @@
+{
+  "entry": "changelog/unreleased/light-probes.md",
+  "summary": "A grid of light probes over the battlefield works out how much sky every street, room and trench can see, and how much sunlight the walls and ground round it throw back. Narrow streets fall into shade, rooms are lit from their windows, and a sunlit wall glows warm onto the one across from it.",
+  "medium": "still",
+  "stage": "Existing in-run light-probe A/B captures with FL_DEBUG_PROBES_AB=1, documented in PR #228.",
+  "rationale": "The paired stills show the same view with probes off and on, making the room and wall shading change easy to inspect without camera or town-layout differences. Interior shade is the strongest comparison; exterior changes are subtler and open paving is intentionally preserved. These stills do not demonstrate retracing over time or satisfy a motion-video request.",
+  "capture": {
+    "provenance": "Existing committed paired images, inspected without recapturing; source revision identifies the checked artifacts. https://github.com/Dynasty9/Frontline/pull/228 documents consecutive frames of one run, with probes toggled between frames.",
+    "comparison": "Left: probes off. Right: probes on. House interior in daylight with the roof lifted, village at golden hour, and an overcast town square.",
+    "limits": "A settings A/B within the implementation, not a historical before/after revision. Exact camera commands are not stored beside these files. No animation or performance measurement is inferred from the stills."
+  },
+  "source_ref": "43c99b227daa38aa57f6a436aaf535e744a4cc82",
+  "sources": [
+    {
+      "file": "changelog/unreleased/light-probes/house-interior.jpg",
+      "sha256": "6a3b7ea7acccdc3be23e6b20c305aa3ceae8833d0149660508d3a7eaa76d4470",
+      "caption": "A house being cleared, its roof lifted away: with the probes (right) the room's walls and its shaded floor lose the skylight the roof keeps out"
+    },
+    {
+      "file": "changelog/unreleased/light-probes/town-square-overcast.jpg",
+      "sha256": "65dbd030ae7eebeba391c82b2c25fbb3d9db2db3bedb99e36d6a1970f989aa24",
+      "caption": "An overcast town square: open paving looks as before, the house fronts and the corners round the stalls a touch darker"
+    },
+    {
+      "file": "changelog/unreleased/light-probes/village-golden-hour.jpg",
+      "sha256": "808ea7b8a61fd7e573ea95cf6799a45ce72740249d0b467e80bfd8f56916cc97",
+      "caption": "Golden hour in a village: the walls facing away from the sun and the lane between the houses sit in deeper shade"
+    }
+  ],
+  "output": null
+}
