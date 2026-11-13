@@ -117,13 +117,15 @@ func generate() -> void:
 	tg.streetscape()
 	tg.lots()
 	tg.hamlet_houses()
+	# the parish church and its yard where a road comes into the town, before
+	# the farms take the land round it (a mission's town is as it was written)
+	if String(world.settings.get("mission", "")) == "":
+		tg.church()
 	await world._breathe("Farms and fields", 0.44)
 	tg.farms(int(rng.randi_range(2, 3) * area * 0.6))
 	tg.country_power()
 	tg.fields(int(rng.randi_range(7, 10) * area * 0.6))
 	tg.roadside(int(rng.randi_range(3, 5) * k), int(rng.randi_range(2, 3) * k))
-	if String(world.settings.get("mission", "")) == "":
-		tg.church()  # (a mission's town is as it was written)
 	if String(world.settings.get("mission", "")) == "":
 		_towns(tg)  # (a mission's ground is fought for on the mission's terms)
 	tg.finish(false)
