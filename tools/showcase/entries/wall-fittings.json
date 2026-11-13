@@ -1,0 +1,20 @@
+{
+  "entry": "changelog/unreleased/wall-fittings.md",
+  "summary": "House walls carry meter boxes, outside taps, air conditioners and dishes, and by the front door a number, a letterbox and a mat.",
+  "medium": "still",
+  "stage": "tools/showcase/building-surfaces.tscn; tests/fixtures/environment-views.gd (town)",
+  "rationale": "Appearance change: a matched studio house, whole and its door close up, shows every fitting at a readable size; the town's driveway view shows them at the game's own camera.",
+  "source_ref": "091b91e9f0085e135081f3687acbc67ad8f50f0c",
+  "before_ref": "969bdef62f7d3db514878aaaaa36bbc749fcfd02",
+  "sources": [
+    {
+      "file": "changelog/unreleased/wall-fittings/comparison.jpg",
+      "sha256": "7e646c626bde34858064c4e3211a6c73f5b9c6dd764b65cb14d1fe250d1d21f7"
+    },
+    {
+      "file": "changelog/unreleased/wall-fittings/capture.json",
+      "sha256": "4cf2e6047588dabbb090cd6cc45e5fa484df540ff69addb57975cfd7f4c9cac4"
+    }
+  ],
+  "output": null
+}
