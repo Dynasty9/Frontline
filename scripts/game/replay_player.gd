@@ -180,7 +180,7 @@ func _valid_state(state: Dictionary, full: bool) -> bool:
 		if rec[0] <= 0 or not _valid_props(rec[1], rec[2], true):
 			return false
 		record_kinds[rec[0]] = rec[1]
-		record_lengths[rec[0]] = {"soldier": 31, "vehicle": 28, "structure": 15 if rec[2].get("skind") == "town" else 14, "projectile": 14, "drone": 16}[rec[1]]
+		record_lengths[rec[0]] = {"soldier": 31, "vehicle": 34, "structure": 15 if rec[2].get("skind") == "town" else 14, "projectile": 14, "drone": 16}[rec[1]]
 	for packet in state.snapshots:
 		if not packet is PackedByteArray or packet.size() < 4 or packet.size() > 2048:
 			return false
