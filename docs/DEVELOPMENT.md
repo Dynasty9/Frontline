@@ -385,6 +385,8 @@ FL_DEBUG_TOWNS=1 (env)                                print each town and villag
 FL_DEBUG_ECON=1 (env)                                 print every supply truck HQ sends (its road's length, its load) and every load delivered
 FL_DEBUG_HPA=1 (env)                                  benchmark hierarchical vs flat paths at start-up
 FL_DEBUG_DECOR=1 (env)                                print the street-furniture chunk and mesh counts
+FL_DEBUG_MODELS=1 (env)                               print each parked car's and wreck's model as it's made (built, copied from
+                                                      one with its look, or queued to build piecewise) and each frame's piece
 FL_DEBUG_CINE=1 (env)                                 say once that the cinematic lighting passes run, and which (windowed);
                                                       every 5 s, how many heat sources the heat haze has in view
 FL_DEBUG_CINE_VIEW=N (env)                            show one cinematic buffer instead of the scene: 1 sun shafts, 2 lens flare

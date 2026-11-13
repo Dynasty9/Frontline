@@ -109,6 +109,7 @@ var _fire_fx: Node3D  # (view) its flames, embers, smoke and glow
 var _fire_shown := -1  # (view) the burn level the effects were last set for
 var _char := 0.0  # (view) how charred it looks, 0..1
 var _char_mats: Array = []  # (view) its materials with the char on them
+var _streamed := false  # (view) _build_model is bringing it into view (see _vehicle_model)
 
 
 func _build_camera_mounts() -> void:
@@ -281,7 +282,9 @@ func set_view_active(value: bool) -> void:
 	if value and not srv and (built or (skind == "trench" and trench_depth() > 0.0)) and body == null:
 		_make_body()
 	if value and model == null:
+		_streamed = true
 		_build_model()
+		_streamed = false
 		_update_visual()
 		_apply_tilt()
 		if toss != null and Time.get_ticks_msec() - _toss_received_ms < 2000:
@@ -2179,6 +2182,69 @@ var _char_set := -1.0
 var _glow_set := -1.0
 
 
+## (view) A parked car's or a wreck's vehicle model into `model`. One that
+## looks like another already made is a copy of it; one that doesn't, coming
+## into view in a battle, is built over the next frames by the StructureView
+## (a car took 100-250 ms to build: a hitch for each one scrolled into view)
+## and arrives in _vehicle_ready. Burning out, or while the world loads, it's
+## built at once.
+func _vehicle_model(kind: String, vteam: int, vseed: int, is_burnt: bool) -> void:
+	var started := Time.get_ticks_usec()
+	var look := VehicleModels.look(kind, vteam, vseed, is_burnt)
+	var k := VehicleModels.stocked(look) if look != "" else null
+	var how := "copied"
+	if k == null:
+		if look != "" and _streamed and world != null and world.loaded and world.structure_view != null:
+			world.structure_view.build_vehicle(self, kind, vteam, vseed, is_burnt, look)
+			how = "queued"
+		else:
+			k = VehicleModels.build(kind, vteam, vseed, is_burnt)
+			VehicleModels.stock(look, k)
+			how = "built"
+	if k != null:
+		_dress_vehicle(k)
+	if OS.has_environment("FL_DEBUG_MODELS"):
+		print("MODELBUILD %s %s eid=%d at %.0f,%.0f %s %.1f ms" % [skind, look if look != "" else kind, eid, position.x, position.z, how, (Time.get_ticks_usec() - started) / 1000.0])
+
+
+## (view) The vehicle model built for it over the last frames (see _vehicle_model).
+func _vehicle_ready(k: VehicleModels) -> void:
+	_dress_vehicle(k)
+	# (charred while it waited: the char goes on what has arrived)
+	_char_mats.clear()
+	if _char > 0.0 or burn > 0.0:
+		_apply_char(maxf(burn, 0.0))
+
+
+## The model under `model`, and a wreck laid as it fell: the turret where it
+## stopped or knocked askew, a helicopter's rotor bent.
+func _dress_vehicle(wk: VehicleModels) -> void:
+	model.add_child(wk.root)
+	if skind != "wreck":
+		return
+	var rng := RandomNumberGenerator.new()
+	rng.seed = eid * 7919 + variant  # (as _build_model's)
+	if wk.turret and is_finite(wreck_turret_yaw):
+		wk.pose_skirts(bent_skirts)
+		wk.turret.rotation.y = wreck_turret_yaw
+		if wk.gun_mount:
+			wk.gun_mount.rotation.x = -0.095
+	elif wk.turret:
+		wk.turret.rotation = Vector3(rng.randf_range(-0.12, 0.08), rng.randf_range(-1.4, 1.4), rng.randf_range(-0.08, 0.08))
+		if rng.randf() < 0.3:
+			wk.turret.position += Vector3(rng.randf_range(-3.0, 3.0), -1.0, rng.randf_range(1.0, 3.0))
+			wk.turret.rotation += Vector3(rng.randf_range(-0.5, 0.5), 0, rng.randf_range(-0.6, 0.6))
+	if not is_finite(wreck_turret_yaw):
+		wk.root.rotation.z = rng.randf_range(-0.04, 0.04)
+	if wk.engine_deck.is_finite():
+		_wreck_engine_deck = wk.root.transform * wk.engine_deck
+		if not wreck_finish.is_empty():
+			_wreck_soot = wk.scorch_finish()
+	if wk.rotor:
+		# a downed helicopter's rotor stopped where it hit, bent askew
+		wk.rotor.rotation = Vector3(rng.randf_range(-0.14, 0.14), rng.randf_range(0.0, TAU), rng.randf_range(-0.14, 0.14))
+
+
 ## (view) Lays the char (and the glow of the embers in it) over the model:
 ## leaves brown, blacken and burn away; wood, cloth and paint go black.
 func _apply_char(glow: float) -> void:
@@ -2509,33 +2575,13 @@ func _build_model() -> void:
 			# parked cars: the island's own (hatchbacks, SUVs, pickups, 4x4s)
 			var civ_key: String = ["hatchback", "suv", "offroad", "mb4wd", "hatchback_sport"][variant % 5]
 			if civ_key in VmCiv.KEYS:
-				model.add_child(VehicleModels.build(civ_key, -1, eid, variant >= 6).root)
+				_vehicle_model(civ_key, -1, eid, variant >= 6)
 			else:
 				var ck := VehicleModels.build_car(variant % 5, parts[0].color, variant >= 6)
 				model.add_child(ck.root)
 		"wreck":
 			var kind := vk if vk != "" else ("tank" if variant % 2 == 0 else "old_tank")
-			var wk := VehicleModels.build(kind, int(wreck_finish.get("team", -1)), int(wreck_finish.get("seed", eid)), wreck_finish.is_empty())
-			model.add_child(wk.root)
-			if wk.turret and is_finite(wreck_turret_yaw):
-				wk.pose_skirts(bent_skirts)
-				wk.turret.rotation.y = wreck_turret_yaw
-				if wk.gun_mount:
-					wk.gun_mount.rotation.x = -0.095
-			elif wk.turret:
-				wk.turret.rotation = Vector3(rng.randf_range(-0.12, 0.08), rng.randf_range(-1.4, 1.4), rng.randf_range(-0.08, 0.08))
-				if rng.randf() < 0.3:
-					wk.turret.position += Vector3(rng.randf_range(-3.0, 3.0), -1.0, rng.randf_range(1.0, 3.0))
-					wk.turret.rotation += Vector3(rng.randf_range(-0.5, 0.5), 0, rng.randf_range(-0.6, 0.6))
-			if not is_finite(wreck_turret_yaw):
-				wk.root.rotation.z = rng.randf_range(-0.04, 0.04)
-			if wk.engine_deck.is_finite():
-				_wreck_engine_deck = wk.root.transform * wk.engine_deck
-				if not wreck_finish.is_empty():
-					_wreck_soot = wk.scorch_finish()
-			if wk.rotor:
-				# a downed helicopter's rotor stopped where it hit, bent askew
-				wk.rotor.rotation = Vector3(rng.randf_range(-0.14, 0.14), rng.randf_range(0.0, TAU), rng.randf_range(-0.14, 0.14))
+			_vehicle_model(kind, int(wreck_finish.get("team", -1)), int(wreck_finish.get("seed", eid)), wreck_finish.is_empty())
 		"tree":
 			tree_model(model, eid, variant)
 		"fob":
