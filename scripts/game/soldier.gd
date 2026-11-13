@@ -1546,11 +1546,14 @@ func _move_tick_work(dt: float, speed: float) -> bool:
 				position = aside
 			mul *= 0.3
 			break
-	if world.terrain.trench[world.terrain.idx_of(position)] > 0 or world.terrain.trench[world.terrain.idx_of(position + dir * 0.4)] > 0:
-		var next_ground: float = world.ground_y(position + dir * 0.4)
-		if absf(next_ground - _ground()) > 0.4:
+	var near_trench := world.terrain.trench[world.terrain.idx_of(position)] > 0 or world.terrain.trench[world.terrain.idx_of(position + dir * 0.4)] > 0
+	var ground_ahead := 0.0
+	if near_trench:
+		ground_ahead = world.ground_y(position + dir * 0.4)
+		if absf(ground_ahead - world.ground_y(position)) > 0.4:
 			mul *= 0.4
-			vaulting = life == Life.ALIVE
+			# A lip is a step between two floors. A wall vault lifts both feet above it.
+			vaulting = false
 	var step := minf(d, speed * mul * dt)
 	if (door_wait > 0.0 or (not world.door_cells.is_empty() and world.time > _door_t)) and _door_tick(dt, dir):
 		return true
@@ -1560,7 +1563,11 @@ func _move_tick_work(dt: float, speed: float) -> bool:
 		go_to(path[path.size() - 1], goal_kind, move_mode)
 		return true
 	position = next
-	var ty := base_y + (0.5 if vaulting else 0.0) + _ground()
+	var floor_y := _ground()
+	if near_trench and not vaulting:
+		# Ease the body between the two footholds over a stride, in either direction.
+		floor_y = (world.ground_y(position - dir * 0.4) + 2.0 * world.ground_y(position) + ground_ahead) * 0.25
+	var ty := base_y + (0.5 if vaulting else 0.0) + floor_y
 	position.y = lerpf(position.y, ty, 1.0 - exp(-dt * 12.0))
 	if not backwards:
 		_face(dir, dt, 10.0)

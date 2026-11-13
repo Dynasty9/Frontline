@@ -1648,6 +1648,8 @@ The imported preview routes grenade throws through the installed Mixamo toss whi
 
 The Coalition mortar specialist also wears the textured character and carries his role-specific kit on the animated back. Native macOS OpenGL uses articulated soldiers because animated skin geometry disappears on that driver.
 
+Rebel fighters and medics use the same close-up animation rig, with faction-tinted uniforms, their own rifles and a marked medic pack. Soldiers crossing trench lips step between ground levels in both directions.
+
 The default close-up SWAT infantry presentation ships in a compiled runtime bundle (assets/infantry/infantry.zip), shared by the game and animation playground. Original authoring files are not required. See assets/infantry/README.md for rebuilding and the separate asset licenses.
 
 Standing rifle melee uses the captured rifle punch, trimmed to meet the existing 0.55-second hit. Watchtower climbing uses a captured ladder cycle with server-controlled elevation: soldiers approach the rear ladder, climb for four seconds, then transfer onto the deck before walking through the platform's railing opening. The cycle follows elevation, with hand and boot contacts constrained to the rungs and upper side handholds. Hands-free actions blend into and out of their poses without abruptly pulling the support hand back to the rifle. The additional carrying family and turn-and-door-kick remain inspector clips: gameplay uses a two-person stretcher, and its KICK action also serves ground-level grenade kicks, so those motions are not interchangeable.

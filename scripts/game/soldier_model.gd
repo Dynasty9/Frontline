@@ -156,7 +156,7 @@ func build(utype: String, team: int, seed: int) -> void:
 	if medic or bearer:
 		# a white armband with a red cross (a plain red one on a bearer)
 		var sleeve := arm_l
-		if utype == "medic" and team == 0:
+		if medic:
 			medical_band = _joint(arm_l, Vector3.ZERO)
 			sleeve = medical_band
 		var band := Color(0.8, 0.79, 0.74) if medic else Color(0.62, 0.1, 0.08)
@@ -276,12 +276,13 @@ func build(utype: String, team: int, seed: int) -> void:
 	for j in [root, hips, torso, head, tails, thigh_l, shin_l, thigh_r, shin_r, arm_l, arm_r, forearm_l, forearm_r, gun, pistol, tube, back_item, stretcher, medical_pack, medical_band]:
 		if j:
 			Mats.merge_static(j, [], false, false, true)
-	var use_skin := utype == "rifleman" or ((medical_band != null or utype == "mortar_gunner") and InfantryAssets.gameplay_model == InfantryAssets.SWAT)
+	var use_skin := utype == "rifleman" or ((medical_band != null or utype in ["mortar_gunner", "fighter"]) and InfantryAssets.gameplay_model == InfantryAssets.SWAT)
 	if use_skin and is_inside_tree() and get_parent() is Soldier and not InfantryAssets.gameplay_model.is_empty():
 		skinned = SkinnedRifleman.new()
 		skinned.model_asset = InfantryAssets.gameplay_model
 		add_child(skinned)
-		if skinned.build(MocapCharacter.CLIPS, gun if medical_band else null):
+		var role_prop := gun if medical_band or utype == "fighter" else null
+		if skinned.build(MocapCharacter.CLIPS, role_prop, k.top.lightened(0.35) if team == 1 else Color.WHITE):
 			skinned.bind_procedural(self)
 			skinned.ground_height = get_parent().world.ground_y
 			if skinned.model_asset == InfantryAssets.SWAT:
@@ -301,6 +302,7 @@ func build(utype: String, team: int, seed: int) -> void:
 				var sleeve_axis := Basis(Quaternion(Vector3.DOWN, shoulder.direction_to(elbow)))
 				medical_band.global_transform = skinned.global_transform * Transform3D(sleeve_axis, shoulder)
 				_attach_kit(medical_band, "LeftArm")
+			if role_prop:
 				skinned_muzzle = Basis(Vector3.UP, PI) * muzzle_local
 			root.visible = false
 			# Keep pose/attachment pivots, but discard geometry replaced by the skin.
@@ -618,12 +620,16 @@ func _kit_rebel(k: Dictionary, medic: bool, rng: RandomNumberGenerator) -> void:
 			_p(fa, BodyMesh.loft([_at(FOREARM, -0.165, 0.007), _at(FOREARM, -0.2, 0.007)], 10), tk, top.darkened(0.06))
 	if medic or rng.randf() < 0.45:
 		# a canvas pack
-		_p(torso, Res.box(Vector3(0.26, 0.3, 0.12)), "canvas_l", pouch.lerp(Color(0.3, 0.32, 0.24), 0.3), Vector3(0, 0.36, 0.18))
-		_p(torso, Res.box(Vector3(0.25, 0.05, 0.13)), "canvas_l", pouch.darkened(0.12), Vector3(0, 0.525, 0.18), Vector3(-0.08, 0, 0))
+		var pack_root := torso
 		if medic:
-			_p(torso, Res.box(Vector3(0.1, 0.1, 0.012)), "plain", Color(0.8, 0.79, 0.74), Vector3(0, 0.38, 0.243))
-			_p(torso, Res.box(Vector3(0.07, 0.022, 0.016)), "plain", Color(0.62, 0.1, 0.08), Vector3(0, 0.38, 0.245))
-			_p(torso, Res.box(Vector3(0.022, 0.07, 0.016)), "plain", Color(0.62, 0.1, 0.08), Vector3(0, 0.38, 0.245))
+			medical_pack = _joint(torso, Vector3.ZERO)
+			pack_root = medical_pack
+		_p(pack_root, Res.box(Vector3(0.26, 0.3, 0.12)), "canvas_l", pouch.lerp(Color(0.3, 0.32, 0.24), 0.3), Vector3(0, 0.36, 0.18))
+		_p(pack_root, Res.box(Vector3(0.25, 0.05, 0.13)), "canvas_l", pouch.darkened(0.12), Vector3(0, 0.525, 0.18), Vector3(-0.08, 0, 0))
+		if medic:
+			_p(pack_root, Res.box(Vector3(0.1, 0.1, 0.012)), "plain", Color(0.8, 0.79, 0.74), Vector3(0, 0.38, 0.243))
+			_p(pack_root, Res.box(Vector3(0.07, 0.022, 0.016)), "plain", Color(0.62, 0.1, 0.08), Vector3(0, 0.38, 0.245))
+			_p(pack_root, Res.box(Vector3(0.022, 0.07, 0.016)), "plain", Color(0.62, 0.1, 0.08), Vector3(0, 0.38, 0.245))
 	# the belt over the jacket, a canteen and a pouch on it
 	_p(hips, BodyMesh.loft([_rg(0.032, 0.18, 0.123, 0.13, 2.4), _rg(0.082, 0.178, 0.121, 0.128, 2.4)], 14), "webbing", web)
 	_p(hips, Res.box(Vector3(0.06, 0.048, 0.018)), "gunmetal", Color(0.35, 0.33, 0.28), Vector3(0, 0.057, -0.127))

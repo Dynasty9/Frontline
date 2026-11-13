@@ -80,7 +80,7 @@ var ladder: Structure
 var ladder_contacts := {}
 
 
-func build(clips: Dictionary = MocapCharacter.CLIPS, role_prop: Node3D = null) -> bool:
+func build(clips: Dictionary = MocapCharacter.CLIPS, role_prop: Node3D = null, uniform_tint := Color.WHITE) -> bool:
 	source = MocapCharacter.new()
 	add_child(source)
 	if not source.build(clips, model_asset == Assets.SWAT):
@@ -97,6 +97,7 @@ func build(clips: Dictionary = MocapCharacter.CLIPS, role_prop: Node3D = null) -
 			for surface in mesh.mesh.get_surface_count():
 				var material: StandardMaterial3D = mesh.mesh.surface_get_material(surface).duplicate()
 				# FBX imports the supplied normal maps with zero strength.
+				material.albedo_color *= uniform_tint
 				material.normal_scale = 1.0
 				material.metallic = 0.0
 				material.roughness = 0.85
@@ -128,7 +129,7 @@ func build(clips: Dictionary = MocapCharacter.CLIPS, role_prop: Node3D = null) -
 	weapon.visible = true
 	magazine = load("res://scripts/game/rifle_magazine.gd").new()
 	if role_prop:
-		# Keep the medic’s own compact prop on the same animated grip.
+		# Keep each role’s own prop on the same animated grip.
 		for imported in weapon.find_children("*", "MeshInstance3D", true, false):
 			imported.hide()
 		var grip := Node3D.new()
