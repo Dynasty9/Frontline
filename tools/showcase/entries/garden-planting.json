@@ -1,0 +1,20 @@
+{
+  "entry": "changelog/unreleased/garden-planting.md",
+  "summary": "Town gardens planted with shrubs, clipped hedges and beds of flowers.",
+  "medium": "still",
+  "stage": "tools/showcase/building-surfaces.tscn; tests/fixtures/environment-views.gd (town)",
+  "rationale": "Appearance change: a matched studio garden shows the pieces at a readable size; the town's street and driveway views show them in front gardens at the game's own camera.",
+  "source_ref": "4297b1632d70c57347afaf1e23388ba5a2213c48",
+  "before_ref": "e09de96a9eca5c266d1aa1327aaa3a0f4a185d5f",
+  "sources": [
+    {
+      "file": "changelog/unreleased/garden-planting/comparison.jpg",
+      "sha256": "fde46a929ebd66096162e3139a8d8454f6ed205d60a9ad78a616027e949156b1"
+    },
+    {
+      "file": "changelog/unreleased/garden-planting/capture.json",
+      "sha256": "44c63ccd11b1e23f2edf6a25a25604853e3481f3e52304d6ceaf4d6440946e19"
+    }
+  ],
+  "output": null
+}
