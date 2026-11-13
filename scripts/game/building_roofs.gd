@@ -197,6 +197,48 @@ static func flat(k: BuildingKit, L: float, W: float, y: float, opts := {}) -> vo
 		var hp := Vector3(L * 0.3, y + 0.2, -W * 0.25)
 		k.box(Vector3(0.8, 0.28, 0.8), hp + Vector3(0, 0.14, 0), wk, col)
 		k.plate(Vector3(0.88, 0.04, 0.88), hp + Vector3(0, 0.3, 0), "metal_dark", Color(0.3, 0.32, 0.3), Vector3.ZERO, true)
+	var wear: RandomNumberGenerator = opts.get("wear", null)
+	if wear != null:
+		flat_wear(k, L - 0.26, W - 0.26, y + 0.2, wear)
+
+
+## Years on a flat roof `L` by `W` inside its parapets, its deck at `y`: dark
+## rings where rain stood in the hollows, patches of new membrane over old
+## leaks, moss in the angle along a parapet, a vent pipe or two. The stains
+## are BuildingWeathering.stain on the deck (its own surface, so they fade
+## into it).
+static func flat_wear(k: BuildingKit, L: float, W: float, y: float, rng: RandomNumberGenerator) -> void:
+	# the deck as a face: x along, face y toward -z, out of it up
+	var deck := k.at_point(Vector3(0, y, 0), Vector3(-PI * 0.5, 0, 0))
+	var white := func(_p: Vector2) -> Color: return Color(1, 1, 1)
+	for i in rng.randi_range(1, 3):
+		var r := rng.randf_range(0.6, 1.4)
+		var c := Vector2(rng.randf_range(-L * 0.5 + r, L * 0.5 - r), rng.randf_range(-W * 0.5 + r, W * 0.5 - r))
+		var ph := rng.randf() * TAU
+		var tone: Color = Color(0.5, 0.5, 0.48) if rng.randf() < 0.6 else Color(0.52, 0.6, 0.4)
+		BuildingWeathering.stain(deck, Rect2(c - Vector2(r, r * 0.8), Vector2(r * 2.0, r * 1.6)), "roof_concrete", white, tone, func(u: float, v: float) -> float:
+			var q := Vector2(u * 2.0 - 1.0, v * 2.0 - 1.0)
+			var d := q.length() * (1.0 + 0.2 * sin(q.angle() * 3.0 + ph))
+			# (a tide mark: darkest at its edge, where the water dried last)
+			return clampf((1.0 - d) * 1.5, 0.0, 1.0) * 0.6 + clampf(1.0 - absf(d - 0.75) * 5.0, 0.0, 1.0) * 0.4, 11, 11)
+	for i in rng.randi_range(0, 2):
+		var s := Vector2(rng.randf_range(0.8, 2.0), rng.randf_range(0.6, 1.4))
+		var p := Vector3(rng.randf_range(-L * 0.5 + s.x * 0.6, L * 0.5 - s.x * 0.6), 0.004 + i * 0.002, rng.randf_range(-W * 0.5 + s.y * 0.6, W * 0.5 - s.y * 0.6))
+		k.plate(Vector3(s.x, 0.006, s.y), Vector3(p.x, y + p.y, p.z), "roof_concrete", Color(0.36, 0.36, 0.35).lightened(rng.randf_range(0.0, 0.2)), Vector3(0, rng.randf_range(-0.08, 0.08) + (PI * 0.5 if rng.randf() < 0.3 else 0.0), 0))
+	if rng.randf() < 0.6:
+		# moss along the foot of one parapet
+		var along := L if rng.randf() < 0.5 else W
+		var turn := 0.0 if along == L else PI * 0.5
+		var e := 1.0 if rng.randf() < 0.5 else -1.0
+		var off := (W if along == L else L) * 0.5
+		var moss := deck.at_point(Vector3(0, 0, 0), Vector3(0, 0, turn))
+		var lo := rng.randf_range(-0.4, 0.1) * along
+		var hi := lo + rng.randf_range(0.3, 0.6) * along
+		BuildingWeathering.stain(moss, Rect2(lo, e * off - (0.7 if e > 0.0 else 0.0), hi - lo, 0.7), "roof_concrete", white, Color(0.45, 0.58, 0.28), func(u: float, v: float) -> float:
+			var wall := v if e > 0.0 else 1.0 - v
+			return pow(wall, 1.5) * (1.0 - absf(u * 2.0 - 1.0)) * 1.4, 8, 4, 15 - (8 if e > 0.0 else 4))
+	for i in rng.randi_range(0, 2):
+		BuildingFittings.flue(k, Vector3(rng.randf_range(-L * 0.4, L * 0.4), y, rng.randf_range(-W * 0.4, W * 0.4)), 0.05, rng.randf_range(0.4, 0.7))
 
 
 ## A single-pitch roof centred on the kit's origin, `width` along x and

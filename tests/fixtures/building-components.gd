@@ -101,6 +101,7 @@ func _ready() -> void:
 		"gable": func(k: BuildingKit): BuildingRoofs.gable(k, 9.0, 7.0, 3.0, 28.0, 0.35, "roof_tile", Color(0.5, 0.22, 0.14), {"gutters": true, "downpipes": [[4.2, 1.0]]}),
 		"gable_sheet": func(k: BuildingKit): BuildingRoofs.gable(k, 9.0, 6.0, 3.0, 26.0, 0.35, "roof_sheet", Color(0.45, 0.47, 0.45)),
 		"hip": func(k: BuildingKit): BuildingRoofs.hip(k, 9.0, 7.0, 3.0, 32.0, 0.35, "roof_tile", Color(0.5, 0.22, 0.14), {"gutters": true, "downpipes": [[4.2, 1.0]], "wall_face": 3.7, "wall_face_x": 4.7}),
+		"flat_worn": func(k: BuildingKit): BuildingRoofs.flat(k, 8.0, 7.0, 3.0, {"hatch": true, "wear": k.rng}),
 		"pyramid": func(k: BuildingKit): BuildingRoofs.hip(k, 8.0, 8.0, 3.0, 26.0, 0.35, "roof_tile", Color(0.5, 0.22, 0.14), {"gutters": true}),
 		"flat": func(k: BuildingKit): BuildingRoofs.flat(k, 8.0, 7.0, 3.0, {"hatch": true}),
 		"canopy": func(k: BuildingKit): BuildingRoofs.canopy(k, 2.4, 1.0, "roof_sheet", Color(0.45, 0.47, 0.45)),
@@ -345,6 +346,18 @@ func _ready() -> void:
 			darks += 1
 	check(rims > 0 and darks > 0, "a stain fades from dark to the wall (%d rim, %d dark)" % [rims, darks])
 	sk.sink.root.free()
+
+	# A flat roof's years of weather lie on its deck inside the parapets (only
+	# a vent pipe stands up from it).
+	for s in 10:
+		var rk3 := kit()
+		rk3.rng.seed = s
+		BuildingRoofs.flat_wear(rk3, 7.7, 6.7, 3.2, rk3.rng)
+		for child in rk3.sink.root.get_children():
+			var box: AABB = (child as MeshInstance3D).transform * (child as MeshInstance3D).mesh.get_aabb()
+			check(box.position.x >= -3.86 and box.end.x <= 3.86 and box.position.z >= -3.36 and box.end.z <= 3.36, "a flat roof's wear keeps inside its parapets (%s)" % box)
+			check(box.position.y >= 3.19 and (box.end.y <= 3.22 or box.size.x < 0.25), "a flat roof's wear lies on its deck (%s)" % box)
+		rk3.sink.root.free()
 
 	# A shop's front: its fascia and awning keep above a man's head out over
 	# the pavement, and what it puts out stays within its 1.6 m along the

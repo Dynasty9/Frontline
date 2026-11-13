@@ -1386,8 +1386,39 @@ func _roof_model(rng: RandomNumberGenerator) -> void:
 			var sz := fz * 0.45
 			BuildingFurnishings.skylight(k.moved(Transform3D(Basis(Vector3.RIGHT, deg_to_rad(pitch)), Vector3(sx, BuildingRoofs.underside(fx, fz, h, pitch, sx, sz, hipped) + lift, sz))),
 				patch.randf() < 0.4)
+		# moss and lichen on the tiles, most on the back (shadier) slope: green
+		# where it holds the damp, pale where it's dry (a stream of its own)
+		var growth := RandomNumberGenerator.new()
+		growth.seed = rng.seed ^ 0x11c4e7
+		var tile_tone := Mats.tint_for("roof_tile", tint)
+		var on_tile := func(_p: Vector2) -> Color: return tile_tone
+		for i in growth.randi_range(2, 4):
+			var side := -1.0 if growth.randf() < 0.7 else 1.0
+			var r := growth.randf_range(0.6, 1.2)
+			var lz := side * fz * growth.randf_range(0.4, 0.68)
+			# (inside its own slope: clear of the hips and the verges)
+			var room := (fx - fz + absf(lz) - r * 1.7) if hipped else (L * 0.5 - 0.2 - r)
+			if room <= 0.0:
+				continue
+			var lx := growth.randf_range(-room, room)
+			var pale := growth.randf() < 0.4
+			var ph := growth.randf() * TAU
+			# (mottled: how thick it grows at each point of the patch's grid)
+			var mottle := PackedFloat32Array()
+			for m in 15 * 15:
+				mottle.append(growth.randf())
+			var face := k.moved(Transform3D(Basis(Vector3.RIGHT, side * deg_to_rad(pitch)), Vector3(lx, BuildingRoofs.underside(fx, fz, h, pitch, lx, lz, hipped) + lift, lz))).at_point(Vector3.ZERO, Vector3(-PI * 0.5, 0, 0))
+			BuildingWeathering.stain(face, Rect2(-r, -r * 0.8, r * 2.0, r * 1.6), "roof_tile", on_tile, Color(1.3, 1.6, 1.2) if pale else Color(0.45, 0.68, 0.3), func(u: float, v: float) -> float:
+				var q := Vector2(u * 2.0 - 1.0, v * 2.0 - 1.0)
+				var d := q.length() * (1.0 + 0.22 * sin(q.angle() * 4.0 + ph) + 0.1 * sin(q.angle() * 9.0 - ph))
+				# (in clumps, thickest in the middle)
+				var spots := 0.35 + 0.65 * mottle[roundi(v * 14.0) * 15 + roundi(u * 14.0)]
+				return clampf((1.0 - d) * 1.6, 0.0, 1.0) * spots, 14, 14)
 	else:
-		BuildingRoofs.flat(k, L, W, h, {"material": material, "col": wall_col, "wall_face": W * 0.5 + 0.2, "hatch": rng.randf() < 0.3})
+		# (years of weather on it, from a stream of its own)
+		var flat_wear := RandomNumberGenerator.new()
+		flat_wear.seed = rng.seed ^ 0x6a7e5d
+		BuildingRoofs.flat(k, L, W, h, {"material": material, "col": wall_col, "wall_face": W * 0.5 + 0.2, "hatch": rng.randf() < 0.3, "wear": flat_wear})
 		var top := h + 0.2
 		# what's up there: a water tank, an air conditioner, a dish
 		if rng.randf() < 0.65:
