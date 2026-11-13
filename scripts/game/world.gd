@@ -418,6 +418,9 @@ func _register(e: Entity) -> void:
 		vehicles.append(e)
 	elif e is Structure:
 		structures.append(e)
+		# New earth banks bury plants that are already streamed into the view.
+		if e.skind == "bunker" and not building and atmo and atmo.grass:
+			atmo.grass.request_rebuild(0.2)
 		refresh_owned_structure(e)
 		mark_static_dirty(e)
 		if e.skind in Structure.SIM_KINDS:
@@ -457,6 +460,8 @@ func despawn(e: Entity) -> void:
 		if structure_view:
 			structure_view.remove(e)
 		structures.erase(e)
+		if e.skind == "bunker" and not building and atmo and atmo.grass:
+			atmo.grass.request_rebuild(0.2)
 		if recording:
 			recording.dirty_static(e.eid)
 		owned_structures.erase(e)

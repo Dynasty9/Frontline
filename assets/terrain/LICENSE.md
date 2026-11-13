@@ -65,3 +65,10 @@ stamps into fictional surrounding ranges; they are not geographic replicas.
 The bundled resource preserves 32-bit float heights. Source tiles and temporary
 baking files are not needed at runtime. USGS and Mapzen do not endorse these
 modifications or this game.
+
+## Trench soil
+
+[Brown Mud](https://polyhaven.com/a/brown_mud), by Rob Tuytel / Poly Haven, CC0.
+The scan covers 1.3 metres and supplies trench clods and fine soil grains (array layer 10).
+The offline baker packs its colour, height, OpenGL normal, occlusion and roughness maps;
+original download URLs and verified checksums are in sources.json.

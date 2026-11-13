@@ -109,6 +109,7 @@ var _fire_fx: Node3D  # (view) its flames, embers, smoke and glow
 var _fire_shown := -1  # (view) the burn level the effects were last set for
 var _char := 0.0  # (view) how charred it looks, 0..1
 var _char_mats: Array = []  # (view) its materials with the char on them
+var _streamed := false  # (view) _build_model is bringing it into view (see _vehicle_model)
 
 
 func _build_camera_mounts() -> void:
@@ -281,7 +282,9 @@ func set_view_active(value: bool) -> void:
 	if value and not srv and (built or (skind == "trench" and trench_depth() > 0.0)) and body == null:
 		_make_body()
 	if value and model == null:
+		_streamed = true
 		_build_model()
+		_streamed = false
 		_update_visual()
 		_apply_tilt()
 		if toss != null and Time.get_ticks_msec() - _toss_received_ms < 2000:
@@ -2179,6 +2182,69 @@ var _char_set := -1.0
 var _glow_set := -1.0
 
 
+## (view) A parked car's or a wreck's vehicle model into `model`. One that
+## looks like another already made is a copy of it; one that doesn't, coming
+## into view in a battle, is built over the next frames by the StructureView
+## (a car took 100-250 ms to build: a hitch for each one scrolled into view)
+## and arrives in _vehicle_ready. Burning out, or while the world loads, it's
+## built at once.
+func _vehicle_model(kind: String, vteam: int, vseed: int, is_burnt: bool) -> void:
+	var started := Time.get_ticks_usec()
+	var look := VehicleModels.look(kind, vteam, vseed, is_burnt)
+	var k := VehicleModels.stocked(look) if look != "" else null
+	var how := "copied"
+	if k == null:
+		if look != "" and _streamed and world != null and world.loaded and world.structure_view != null:
+			world.structure_view.build_vehicle(self, kind, vteam, vseed, is_burnt, look)
+			how = "queued"
+		else:
+			k = VehicleModels.build(kind, vteam, vseed, is_burnt)
+			VehicleModels.stock(look, k)
+			how = "built"
+	if k != null:
+		_dress_vehicle(k)
+	if OS.has_environment("FL_DEBUG_MODELS"):
+		print("MODELBUILD %s %s eid=%d at %.0f,%.0f %s %.1f ms" % [skind, look if look != "" else kind, eid, position.x, position.z, how, (Time.get_ticks_usec() - started) / 1000.0])
+
+
+## (view) The vehicle model built for it over the last frames (see _vehicle_model).
+func _vehicle_ready(k: VehicleModels) -> void:
+	_dress_vehicle(k)
+	# (charred while it waited: the char goes on what has arrived)
+	_char_mats.clear()
+	if _char > 0.0 or burn > 0.0:
+		_apply_char(maxf(burn, 0.0))
+
+
+## The model under `model`, and a wreck laid as it fell: the turret where it
+## stopped or knocked askew, a helicopter's rotor bent.
+func _dress_vehicle(wk: VehicleModels) -> void:
+	model.add_child(wk.root)
+	if skind != "wreck":
+		return
+	var rng := RandomNumberGenerator.new()
+	rng.seed = eid * 7919 + variant  # (as _build_model's)
+	if wk.turret and is_finite(wreck_turret_yaw):
+		wk.pose_skirts(bent_skirts)
+		wk.turret.rotation.y = wreck_turret_yaw
+		if wk.gun_mount:
+			wk.gun_mount.rotation.x = -0.095
+	elif wk.turret:
+		wk.turret.rotation = Vector3(rng.randf_range(-0.12, 0.08), rng.randf_range(-1.4, 1.4), rng.randf_range(-0.08, 0.08))
+		if rng.randf() < 0.3:
+			wk.turret.position += Vector3(rng.randf_range(-3.0, 3.0), -1.0, rng.randf_range(1.0, 3.0))
+			wk.turret.rotation += Vector3(rng.randf_range(-0.5, 0.5), 0, rng.randf_range(-0.6, 0.6))
+	if not is_finite(wreck_turret_yaw):
+		wk.root.rotation.z = rng.randf_range(-0.04, 0.04)
+	if wk.engine_deck.is_finite():
+		_wreck_engine_deck = wk.root.transform * wk.engine_deck
+		if not wreck_finish.is_empty():
+			_wreck_soot = wk.scorch_finish()
+	if wk.rotor:
+		# a downed helicopter's rotor stopped where it hit, bent askew
+		wk.rotor.rotation = Vector3(rng.randf_range(-0.14, 0.14), rng.randf_range(0.0, TAU), rng.randf_range(-0.14, 0.14))
+
+
 ## (view) Lays the char (and the glow of the embers in it) over the model:
 ## leaves brown, blacken and burn away; wood, cloth and paint go black.
 func _apply_char(glow: float) -> void:
@@ -2509,33 +2575,13 @@ func _build_model() -> void:
 			# parked cars: the island's own (hatchbacks, SUVs, pickups, 4x4s)
 			var civ_key: String = ["hatchback", "suv", "offroad", "mb4wd", "hatchback_sport"][variant % 5]
 			if civ_key in VmCiv.KEYS:
-				model.add_child(VehicleModels.build(civ_key, -1, eid, variant >= 6).root)
+				_vehicle_model(civ_key, -1, eid, variant >= 6)
 			else:
 				var ck := VehicleModels.build_car(variant % 5, parts[0].color, variant >= 6)
 				model.add_child(ck.root)
 		"wreck":
 			var kind := vk if vk != "" else ("tank" if variant % 2 == 0 else "old_tank")
-			var wk := VehicleModels.build(kind, int(wreck_finish.get("team", -1)), int(wreck_finish.get("seed", eid)), wreck_finish.is_empty())
-			model.add_child(wk.root)
-			if wk.turret and is_finite(wreck_turret_yaw):
-				wk.pose_skirts(bent_skirts)
-				wk.turret.rotation.y = wreck_turret_yaw
-				if wk.gun_mount:
-					wk.gun_mount.rotation.x = -0.095
-			elif wk.turret:
-				wk.turret.rotation = Vector3(rng.randf_range(-0.12, 0.08), rng.randf_range(-1.4, 1.4), rng.randf_range(-0.08, 0.08))
-				if rng.randf() < 0.3:
-					wk.turret.position += Vector3(rng.randf_range(-3.0, 3.0), -1.0, rng.randf_range(1.0, 3.0))
-					wk.turret.rotation += Vector3(rng.randf_range(-0.5, 0.5), 0, rng.randf_range(-0.6, 0.6))
-			if not is_finite(wreck_turret_yaw):
-				wk.root.rotation.z = rng.randf_range(-0.04, 0.04)
-			if wk.engine_deck.is_finite():
-				_wreck_engine_deck = wk.root.transform * wk.engine_deck
-				if not wreck_finish.is_empty():
-					_wreck_soot = wk.scorch_finish()
-			if wk.rotor:
-				# a downed helicopter's rotor stopped where it hit, bent askew
-				wk.rotor.rotation = Vector3(rng.randf_range(-0.14, 0.14), rng.randf_range(0.0, TAU), rng.randf_range(-0.14, 0.14))
+			_vehicle_model(kind, int(wreck_finish.get("team", -1)), int(wreck_finish.get("seed", eid)), wreck_finish.is_empty())
 		"tree":
 			tree_model(model, eid, variant)
 		"fob":
@@ -2774,34 +2820,7 @@ func _build_model() -> void:
 				var x := rng.randf_range(-size.x * 0.35, size.x * 0.35)
 				var z := rng.randf_range(-0.35, 0.35)
 				Res.mi(damage, Res.box(Vector3(0.12, 0.08, rng.randf_range(0.4, 0.9))), Res.mat(C_WOOD.darkened(0.3)), Vector3(x, 0.18, z), Vector3(0.15, rng.randf() * TAU, 0.2), false)
-			var done := Node3D.new()
-			done.name = "Done"
-			model.add_child(done)
-			var fsgn := _enemy_side()
-			# kit only along fire bays, kept clear of the corners where the traverses join
-			var kx := size.x * 0.5 - 1.2
-			# a few filled bags along the parapet (rests for the rifles)
-			var kit_bags: Array = []
-			for i in (rng.randi_range(2, 4) if kx > 0.8 else 0):
-				var bx := rng.randf_range(-kx, kx)
-				kit_bags.append({"p": Vector3(bx, 0.32, fsgn * 1.05), "s": Vector3(0.55 * rng.randi_range(1, 2), 0.19, 0.36), "r": rng.randf_range(-0.2, 0.2)})
-			if not kit_bags.is_empty():
-				_bag_walls(kit_bags, rng, done)
-			if TrenchNet.has_recess(self):
-				var rear := -fsgn
-				var wood := Res.mat(C_WOOD.darkened(0.25))
-				# Alternating supply shelves and roofed resting bays share the same excavation.
-				Res.mi(done, Res.box(Vector3(1.2, 0.1, 0.48)), wood, Vector3(0, -0.7, rear * 1.55), Vector3.ZERO, false)
-				if eid % 2 == 0:
-					for x in [-0.33, 0.3]:
-						Res.mi(done, Res.box(Vector3(0.45, 0.26, 0.3)), Res.mat(Color(0.25, 0.28, 0.2)), Vector3(x, -0.52, rear * 1.55), Vector3.ZERO, false)
-				else:
-					for x in [-0.66, 0.66]:
-						Res.mi(done, Res.box(Vector3(0.09, 1.35, 0.09)), wood, Vector3(x, -0.42, rear * 1.7), Vector3.ZERO, false)
-					Res.mi(done, Res.box(Vector3(1.5, 0.12, 1.1)), wood, Vector3(0, 0.3, rear * 1.4), Vector3(0, 0, 0.04), false)
-					Res.mi(done, Res.box(Vector3(0.9, 0.12, 0.4)), Res.mat(Color(0.29, 0.31, 0.23)), Vector3(0, -0.59, rear * 1.55), Vector3.ZERO, false)
-				for i in 3:
-					Res.mi(done, Res.box(Vector3(0.13, 0.025, 0.18)), Res.mat(Color(0.31, 0.27, 0.19)), Vector3(rng.randf_range(-0.5, 0.5), -1.13, rear * rng.randf_range(1.0, 1.6)), Vector3(0, rng.randf() * TAU, 0), false)
+			_make_trench_furnishings()
 		"wire", "mines", "tank_trap":
 			works_keep = WorksModels.build(self, model, rng, bags)
 		"mg_nest", "hmg_nest":
@@ -2824,17 +2843,20 @@ func _build_model() -> void:
 				for i in 9:
 					var lgg := Res.mi(model, Res.cyl(0.15, 0.16, 6.3, 7), Res.mat(C_WOOD.darkened(0.25)), Vector3(-2.8 + i * 0.7, 2.5, 0), Vector3(PI / 2, 0, 0))
 					lgg.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-				var mound := _mk(Res.dome(3.4, 16), "bank", Vector3(0, 2.6, 0), Vector3.ZERO, Color(0.29, 0.27, 0.17))
-				mound.scale = Vector3(1.0, 0.22, 1.0)
+				var soil_variant := posmod(eid, 4)
+				var mound := _mk(WorksModels.roof_soil(soil_variant), "bank", Vector3(0, 2.6, 0), Vector3.ZERO, Color(0.29, 0.27, 0.17))
+				mound.material_override = TrenchNet.bank_material()
 				for x in [-2.85, 2.85]:
 					for z in [-2.85, 2.85]:
 						Res.mi(model, Res.cyl(0.16, 0.18, 2.5, 7), Res.mat(C_WOOD.darkened(0.3)), Vector3(x, 1.25, z))
 				Res.mi(model, Res.cyl(0.13, 0.13, 3.0, 7), Res.mat(C_WOOD.darkened(0.3)), Vector3(0, 1.72, -2.86), Vector3(0, 0, PI / 2))
 				for sx in [-1.0, 1.0]:
 					Res.mi(model, Res.cyl(0.13, 0.13, 2.2, 7), Res.mat(C_WOOD.darkened(0.3)), Vector3(sx * 2.86, 1.72, 0), Vector3(PI / 2, 0, 0))
-				WorksModels.berms(model, 2.8, 1.0, 2.0, true)
+				WorksModels.berms(model, 2.8, 1.0, 2.0, true, self)
 				for i in 6:
-					bags.append({"p": Vector3(-2.0 + i * 0.8, 3.15, -2.2), "s": Vector3(0.75, 0.2, 0.45), "r": 0.0})
+					var x := -2.0 + i * 0.8
+					var y := 2.6 + WorksModels.roof_soil_height(Vector2(x, -2.2), soil_variant) + 0.08
+					bags.append({"p": Vector3(x, y, -2.2), "s": Vector3(0.75, 0.2, 0.45), "r": rng.randf_range(-0.09, 0.09)})
 			else:
 				# reinforced concrete: a thick roof slab with an overhang under a
 				# layer of bags, earth banked up to the slits, steel angle round
@@ -2843,7 +2865,7 @@ func _build_model() -> void:
 				for row in 2:
 					bags.append({"p": Vector3(0, 2.82, -2.6 + row * 0.5), "s": Vector3(5.2, 0.24, 0.48), "r": 0.0})
 				bags.append({"p": Vector3(0, 2.82, 2.6), "s": Vector3(5.2, 0.24, 0.48), "r": 0.0})
-				WorksModels.berms(model, 2.8, 0.95, 2.0, false)
+				WorksModels.berms(model, 2.8, 0.95, 2.0, false, self)
 				for y in [1.1, 1.66]:
 					_mk(Res.box(Vector3(2.7, 0.07, 0.1)), "metal_dark", Vector3(0, y, -2.82), Vector3.ZERO, Color(0.2, 0.2, 0.19))
 				var bk := _kit(rng)
@@ -2904,6 +2926,77 @@ func _build_model() -> void:
 	Mats.merge_static(model, keep)
 	# (a freshly killed vehicle's fire is the server's: see Fires and _burn_view)
 
+
+
+var _trench_furnishing_key := ""
+
+
+func _trench_neighbors_key() -> String:
+	if world == null:
+		return ""
+	var ids: Array[int] = []
+	for other in world.structures_near(position, size.x * 0.5 + 5.0):
+		if other != self and other.skind == "trench" and not other.gone and other.trench_depth() > 0.15:
+			ids.append(other.eid)
+	ids.sort()
+	return str(ids)
+
+
+## Joining a cut removes the soil that held an old parapet and its retaining boards.
+func refresh_trench_furnishings() -> void:
+	if model == null or _trench_furnishing_key == _trench_neighbors_key():
+		return
+	if world.structure_view:
+		world.structure_view.unbatch(self)
+	var previous := model.get_node_or_null("Done")
+	if previous:
+		model.remove_child(previous)
+		previous.queue_free()
+	_make_trench_furnishings()
+	var done := model.get_node("Done") as Node3D
+	_skin(done)
+	Mats.merge_static(done)
+	_update_visual()
+
+
+func _make_trench_furnishings() -> void:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = eid * 7919 + variant + 1709
+	var done := Node3D.new()
+	done.name = "Done"
+	model.add_child(done)
+	var fsgn := _enemy_side()
+	# kit only along fire bays, kept clear of the corners where the traverses join
+	var kx := size.x * 0.5 - 1.2
+	# a few filled bags along the parapet (rests for the rifles)
+	var kit_bags: Array = []
+	for i in (rng.randi_range(2, 4) if kx > 0.8 else 0):
+		var bx := rng.randf_range(-kx, kx)
+		var bag := {"p": Vector3(bx, 0.2, fsgn * 1.05), "s": Vector3(0.55 * rng.randi_range(1, 2), 0.19, 0.36), "r": rng.randf_range(-0.2, 0.2)}
+		if WorksModels.trench_backed(self, bag.p, bag.s.x * 0.5):
+			kit_bags.append(bag)
+	if not kit_bags.is_empty():
+		_bag_walls(kit_bags, rng, done)
+	WorksModels.trench_shoring(self, done, rng)
+	if TrenchNet.has_recess(self):
+		var rear := -fsgn
+		var wood := Res.mat(C_WOOD.darkened(0.25))
+		# Alternating supply shelves and roofed resting bays share the same excavation.
+		Res.mi(done, Res.box(Vector3(1.2, 0.1, 0.48)), wood, Vector3(0, -0.7, rear * 1.55), Vector3.ZERO, false)
+		if eid % 2 == 0:
+			for x in [-0.33, 0.3]:
+				Res.mi(done, Res.box(Vector3(0.45, 0.26, 0.3)), Res.mat(Color(0.25, 0.28, 0.2)), Vector3(x, -0.52, rear * 1.55), Vector3.ZERO, false)
+		else:
+			for x in [-0.66, 0.66]:
+				Res.mi(done, Res.box(Vector3(0.09, 1.35, 0.09)), wood, Vector3(x, -0.42, rear * 1.7), Vector3.ZERO, false)
+			for board in 8:
+				Res.mi(done, Res.box(Vector3(0.18, 0.1, 1.1)), Mats.get_mat("wood"), Vector3(-0.66 + board * 0.19, 0.3 + rng.randf_range(-0.018, 0.018), rear * 1.4), Vector3(0, rng.randf_range(-0.025, 0.025), 0.04), false)
+			for x in [-0.55, 0.55]:
+				Res.mi(done, Res.box(Vector3(0.12, 0.13, 1.18)), wood, Vector3(x, 0.18, rear * 1.4), Vector3.ZERO, false)
+			Res.mi(done, Res.box(Vector3(0.9, 0.12, 0.4)), Res.mat(Color(0.29, 0.31, 0.23)), Vector3(0, -0.59, rear * 1.55), Vector3.ZERO, false)
+		for i in 3:
+			Res.mi(done, Res.box(Vector3(0.13, 0.025, 0.18)), Res.mat(Color(0.31, 0.27, 0.19)), Vector3(rng.randf_range(-0.5, 0.5), -1.13, rear * rng.randf_range(1.0, 1.6)), Vector3(0, rng.randf() * TAU, 0), false)
+	_trench_furnishing_key = _trench_neighbors_key()
 
 static var _bag_mesh: ArrayMesh
 
@@ -3032,6 +3125,8 @@ func _bag(xf: Array[Transform3D], cols: Array[Color], p: Dictionary, pb: Basis, 
 				pick = i
 				break
 	var c: Color = pal[pick][0]
+	if skind in ["trench", "bunker"]:
+		c = c.lerp(C_DIRT, 0.22 if top else 0.38)
 	var k := rng.randf_range(0.86, 1.06) + (0.06 if top else 0.0)
 	var want := Color(clampf(BAG_CLOTH.r * c.r * k, 0.0, 1.0), clampf(BAG_CLOTH.g * c.g * k, 0.0, 1.0), clampf(BAG_CLOTH.b * c.b * k, 0.0, 1.0)).srgb_to_linear()
 	var base := BAG_CLOTH.srgb_to_linear()
