@@ -1404,7 +1404,9 @@ func _process(_dt: float) -> void:
 		if String(args["hud-panel"]) == "over":
 			world.hud.show_game_over(maxi(world.local_team, 0))
 		var hp: Control = {"settings": world.hud.settings_panel, "help": world.hud.help_panel, "menu": world.hud.menu_panel, "log": world.hud.log_panel}.get(String(args["hud-panel"]))
-		if hp:
+		if hp == world.hud.menu_panel:
+			world.hud.toggle_menu()  # as Esc opens it, fitted to its rows
+		elif hp:
 			hp.visible = true
 			if hp is SettingsPanel:
 				(hp as SettingsPanel)._show_tab(String(args.get("settings-tab", "interface")))
