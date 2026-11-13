@@ -101,6 +101,8 @@ var _flag: MeshInstance3D
 var _vis_cache := true
 var burn := 0.0  # how hard it's burning, 0..1 (every peer; see Fires)
 var burnt := false  # burnt out: a charred snag, a burnt-out car - it won't burn again
+var dark := false  # (a house's walls and roof) the lights are out: a ruin, or a house hit, holed or burning
+var _lit_glass := false  # (view) its model has a lamp lit behind glass somewhere, to put out when it goes dark
 var fire_k := ""  # (server) what it burns as, once lit (Fires.FUEL)
 var fuel := 0.0  # (server) seconds of full blaze left
 var fuel_max := 0.0
@@ -206,13 +208,18 @@ func apply_props(d: Dictionary) -> void:
 		burnt = d.burnt
 		if burnt and not was and model:
 			_rebuild_model()  # the snag or the shell the fire left
+	if d.has("dark"):
+		var was_dark := dark
+		dark = d.dark
+		if dark and not was_dark and model and _lit_glass:
+			_rebuild_model()  # the same walls with the lamps out
 
 
 func get_props() -> Dictionary:
 	var d := {"skind": skind, "team": team, "owner": owner_peer, "pos": position, "yaw": yaw, "size": size,
 		"variant": variant, "built": built, "progress": progress, "hp": hp, "max_hp": max_hp, "sname": sname,
 		"supply": supply, "queue": queue_items, "seen": seen_mask, "vk": vk, "tilt": tilt, "toss": toss, "door": door_shut,
-		"burnt": burnt}
+		"burnt": burnt, "dark": dark}
 	if skind == "town":
 		d["zc"] = zone_c
 		d["zr"] = zone_r
@@ -876,6 +883,8 @@ func take_damage(amount: float, _source = null) -> void:
 	net_dirty = true
 	if door_shut and amount >= 20.0:
 		open_door(null, true)
+	if amount >= 20.0 and skind in ["house_wall", "roof"]:
+		house_dark()  # a shell through the house: nobody's sitting by a lamp now
 	if team >= 0 and is_player_building() and world.time > _alert_t and amount > 5.0 and not skind in LINE_WORKS:
 		_alert_t = world.time + 25.0
 		world.send_msg(team, "alert", "%s is under attack at %s!" % [display_name(), Defs.grid_ref(position)], position)
@@ -986,9 +995,13 @@ func _house_wall_detail(rng: RandomNumberGenerator) -> void:
 			# house), a lamp left on; flowers under some windows
 			opts["curtains"] = ["drapes", "drapes", "blind", "nets", ""][life.randi() % 5]
 			opts["curtain"] = BuildingFurnishings.FABRICS[life.randi() % BuildingFurnishings.FABRICS.size()]
-			# (and a house still lived in keeps its glass)
-			if life.randf() < 0.35 and not barn:
-				opts["lit"] = true
+			# (and a house still lived in keeps its glass; its lamps are out
+			# once it's a ruin, or hit; a barn has none)
+			var lived := life.randf() < 0.35 and not barn
+			if lived:
+				if not dark:
+					opts["lit"] = true
+					_lit_glass = true
 				opts["glazing"] = 0.85
 			if barn:
 				opts["curtains"] = ""
@@ -1001,7 +1014,7 @@ func _house_wall_detail(rng: RandomNumberGenerator) -> void:
 				opts["open"] = open
 			# (tape on the glass of a house still lived in; boards or sandbags
 			# where the war has been)
-			if at_window < 0.3 and opts.has("lit"):
+			if at_window < 0.3 and lived:
 				opts["tape"] = true
 			BuildingOpenings.window(k, Vector3(0, 1.5, 0), Vector2(1.3, 1.0), opts)
 			var bagged := at_window >= 0.38 and at_window < 0.44
@@ -1018,7 +1031,8 @@ func _house_wall_detail(rng: RandomNumberGenerator) -> void:
 			BuildingOpenings.doorway(k, Vector3.ZERO, Vector2(w, 2.2), {"material": material, "wall": wall, "frame": trim, "hood": rng.randf() < 0.3,
 				"hood_col": Res.vary(BuildingMaterials.color("roof_tile"), 0.1, rng)})
 			if L > 2.6 and life.randf() < 0.55:
-				BuildingFurnishings.lantern(k, Vector3((w * 0.5 + 0.3) * (1.0 if life.randf() < 0.5 else -1.0), 2.05, 0))
+				BuildingFurnishings.lantern(k, Vector3((w * 0.5 + 0.3) * (1.0 if life.randf() < 0.5 else -1.0), 2.05, 0), Color(0.12, 0.12, 0.11), not dark)
+				_lit_glass = _lit_glass or not dark
 			# double doors: shut (till someone comes through), or swung in -
 			# one may be gone. Each leaf hangs on its own hinge so it can swing.
 			var dc: Color = [Color(0.3, 0.2, 0.13), Color(0.22, 0.32, 0.26), Color(0.26, 0.31, 0.4), Color(0.42, 0.2, 0.15)][(ci + 2) % 4]
@@ -1181,9 +1195,10 @@ func _swing_leaves(kicked: bool) -> void:
 
 ## A building's model on its own, without a world (the field manual's preview).
 ## `id` stands in for the entity id its look is seeded from.
-static func preview_model(kind: String, side: int, v := 0, sz := Vector3.ZERO, shut := false, id := 0) -> Node3D:
+static func preview_model(kind: String, side: int, v := 0, sz := Vector3.ZERO, shut := false, id := 0, dark := false) -> Node3D:
 	var st := Structure.new()
 	st.eid = id
+	st.dark = dark
 	st.skind = kind
 	st.team = side
 	st.variant = v
@@ -1404,16 +1419,23 @@ func _roof_model(rng: RandomNumberGenerator) -> void:
 		if roll < 0.18:
 			var px := patch.randf_range(-reach, reach)
 			var pz := -fz * patch.randf_range(0.35, 0.6)
+			# (kept short of the hips, a metre clear either side at least: a
+			# hip's slope narrows toward its ridge)
+			var top_z := absf(pz) - 1.05 * cos(deg_to_rad(pitch))
+			var span := (fx - fz + top_z if hipped else fx - 0.1) - 0.25
+			px = clampf(px, -maxf(0.0, span - 1.0), maxf(0.0, span - 1.0))
 			var on := k.moved(Transform3D(Basis(Vector3.RIGHT, -deg_to_rad(pitch)), Vector3(px, BuildingRoofs.underside(fx, fz, h, pitch, px, pz, hipped) + lift, pz)))
 			if roll < 0.12:
-				BuildingWeathering.tarp(on, patch)
+				BuildingWeathering.tarp(on, patch, (fz + 0.35 + pz) / cos(deg_to_rad(pitch)), span - absf(px))
 			else:
 				BuildingWeathering.hole(on, patch)
 		if patch.randf() < 0.15:
 			var sx := patch.randf_range(-reach, reach) * 0.6
 			var sz := fz * 0.45
+			var lamp := patch.randf() < 0.4 and not dark
+			_lit_glass = _lit_glass or lamp
 			BuildingFurnishings.skylight(k.moved(Transform3D(Basis(Vector3.RIGHT, deg_to_rad(pitch)), Vector3(sx, BuildingRoofs.underside(fx, fz, h, pitch, sx, sz, hipped) + lift, sz))),
-				patch.randf() < 0.4)
+				lamp)
 		# moss and lichen on the tiles, most on the back (shadier) slope: green
 		# where it holds the damp, pale where it's dry (a stream of its own)
 		var growth := RandomNumberGenerator.new()
@@ -1608,6 +1630,8 @@ func _destroyed(quiet := false) -> void:
 		world.fx_event([Fx.TREE_FALL, position, fy, eid, variant])
 		world.despawn(self)
 		return
+	if skind in ["house_wall", "roof"]:
+		house_dark()  # a wall down or the roof gone: the rest of the house goes dark
 	if not quiet:
 		world.fx_event([Fx.DEBRIS, position + Vector3(0, 1.0, 0), _main_color(), 14])
 	if not quiet and size.x > 3.0 and skind in ["house_wall", "tall_wall", "barracks", "factory", "research", "concrete_wall", "medic_tent"]:
@@ -2237,14 +2261,56 @@ func char_out() -> void:
 		_rebuild_model()
 
 
-## (view) A tree or a car rebuilt as what the fire left of it.
+## (server) The lights go out in the house this wall or roof is part of: a
+## shell came through it, a wall came down, its roof caught fire or fell in.
+## Every wall standing round its floor and the roof over it go dark.
+func house_dark() -> void:
+	var fl: Structure = null
+	for st in world.structures_near(position, 8.0, true):
+		if (st as Structure)._covers(position, 0.45):
+			fl = st
+			break
+	var went := false
+	if fl == null:
+		went = go_dark()
+	else:
+		for st in world.structures_near(fl.position, maxf(fl.size.x, fl.size.z) * 0.5 + 1.0):
+			if st.skind in ["house_wall", "roof"] and fl._covers(st.position, 0.45):
+				went = st.go_dark() or went
+	if went:
+		world.stat("house_dark")
+
+
+## (server) This wall's or roof's lamps are out (see house_dark). Whether
+## they were on till now.
+func go_dark() -> bool:
+	if dark or gone:
+		return false
+	dark = true
+	net_dirty = true
+	world.push_props(self, {"dark": true})
+	if world.has_view and model and _lit_glass:
+		_rebuild_model()
+	return true
+
+
+## Whether `p` is on this floor (or within `margin` of its edge, where its
+## walls stand).
+func _covers(p: Vector3, margin: float) -> bool:
+	var q := Basis(Vector3.UP, yaw).inverse() * (p - position)
+	return absf(q.x) <= size.x * 0.5 + margin and absf(q.z) <= size.z * 0.5 + margin
+
+
+## (view) A tree or a car rebuilt as what the fire left of it; a house's wall
+## or roof with its lamps out.
 func _rebuild_model() -> void:
 	if world and world.structure_view:
 		world.structure_view.unbatch(self)
-	if not skind in ["tree", "car"]:
+	if not skind in ["tree", "car", "house_wall", "roof"]:
 		return
 	model.queue_free()
 	_char_mats.clear()
+	_lit_glass = false
 	_build_model()
 	_apply_tilt()
 	model.visible = view_active

@@ -1,6 +1,6 @@
 {
   "before_ref": "84e38a35933c52020a8fa60917db63a32fbb01b5",
-  "source_ref": "f2fdf0b0d468e4e9d49752ba4af20f7a6997d491",
+  "source_ref": "d85b2109445b881bd53e5fb49a6297df08e8c920",
   "engine": "Godot 4.7.2 stable ed1daf0bf",
   "stage": "tools/showcase/building-surfaces.tscn; tests/fixtures/environment-views.gd",
   "command": "godot --path CHECKOUT --resolution 1600x900 tools/showcase/building-surfaces.tscn -- --building-out=OUTPUT --offscreen FLAGS",
@@ -73,6 +73,49 @@
     },
     {
       "subjects": [
+        "roof_tarp"
+      ],
+      "flags": [
+        "--building-single",
+        "--building-kinds=roof_tarp"
+      ],
+      "after_flags": [
+        "--building-match=BEFORE/capture.json"
+      ],
+      "cameras": {
+        "roof_tarp": [
+          0.0,
+          3.05395650863647,
+          -0.0590000152587891,
+          12.0980281829834,
+          44.0881309509277
+        ]
+      }
+    },
+    {
+      "subjects": [
+        "house_ruin"
+      ],
+      "flags": [
+        "--building-single",
+        "--building-kinds=house_ruin",
+        "--building-night"
+      ],
+      "after_flags": [
+        "--building-match=BEFORE/capture.json"
+      ],
+      "cameras": {
+        "house_ruin": [
+          0.120637893676758,
+          1.479572057724,
+          0.0,
+          8.82593441009521,
+          41.1661834716797
+        ]
+      }
+    },
+    {
+      "subjects": [
         "town"
       ],
       "command": "godot --path CHECKOUT --resolution 1600x900 --script tests/fixtures/environment-views.gd -- --aivai --seed=3 --offscreen --nohud --set=perf:0 --preset=high --mood=day --focus=0,0 --capture-set=town",
@@ -84,6 +127,6 @@
       ]
     }
   ],
-  "notes": "Both sides render the source_ref studio stage (its roofscape subject picks four roof ids: 95 hipped with a tarp and skylight, 54 a steep gable with a hole, 42 a gable with a skylight, 4 a pyramid over a square house). The baseline is the lived-in yards change this builds on.",
+  "notes": "Both sides render the source_ref studio stage (its roofscape subject picks four roof ids: 95 hipped with a tarp and skylight, 54 a steep gable with a hole, 42 a gable with a skylight, 4 a pyramid over a square house; roof_tarp is roof 95 alone, close up; house_ruin builds a ruin's walls dark where Structure can). The baseline is the lived-in yards change this builds on. The street, rear and night rows reuse the baseline renders of the first capture (same stage output for those subjects).",
   "composition": "PIL: matched rows, 792 px halves, JPEG quality 82"
 }

@@ -73,13 +73,13 @@ static func window_box(k: BuildingKit, x: float, y: float, w: float, bloom: Colo
 # --- outside ---------------------------------------------------------------------------
 
 ## A lantern on a bracket beside a door at `p` on the face: its glass lit at
-## night like the windows.
-static func lantern(k: BuildingKit, p: Vector3, col := Color(0.12, 0.12, 0.11)) -> void:
+## night like the windows (unless `lit` is false: the house is dark).
+static func lantern(k: BuildingKit, p: Vector3, col := Color(0.12, 0.12, 0.11), lit := true) -> void:
 	k.plate(Vector3(0.1, 0.16, 0.02), p + Vector3(0, 0, 0.01), "metal_dark", col)
 	k.bar(p + Vector3(0, 0.03, 0.01), p + Vector3(0, 0.08, 0.2), 0.025, 0.025, "metal_dark", col, false)
 	var c := p + Vector3(0, -0.04, 0.22)
 	k.plate(Vector3(0.16, 0.03, 0.16), c + Vector3(0, 0.14, 0), "metal_dark", col)
-	k.plate(Vector3(0.12, 0.2, 0.12), c, "window_lit", BuildingOpenings.GLASS)
+	k.plate(Vector3(0.12, 0.2, 0.12), c, "window_lit" if lit else "glass", BuildingOpenings.GLASS)
 	k.plate(Vector3(0.14, 0.025, 0.14), c + Vector3(0, -0.11, 0), "metal_dark", col)
 
 
