@@ -1058,7 +1058,7 @@ func _house_wall_detail(rng: RandomNumberGenerator) -> void:
 ## What's fixed to the outside of a house wall (`k` at its face): on a plain
 ## wall, the cabinet the mains come in at, an outside tap (a hose on a hook
 ## by some), an air conditioner on brackets or on a pad at its foot, a dish on
-## an arm under the eaves; by a front door the house's number, a letterbox
+## an arm (its top clear of the gutter); by a front door the house's number, a letterbox
 ## (on the side the lamp isn't), a mat on the step. Kept clear of the corners
 ## and the downpipes there, and of ivy. A barn has only its meter and tap.
 ## Drawn from a stream of its own, so nothing else about the wall changes.
@@ -1083,7 +1083,7 @@ func _wall_fixtures(k: BuildingKit, rng: RandomNumberGenerator, L: float, barn: 
 				k.box(Vector3(0.95, 0.08, 0.52), Vector3(cx, 0.04, 0.3), "concrete", Color(0.55, 0.54, 0.5))
 				BuildingFittings.ac_unit(k, Vector3(cx, 0.08, 0.28))
 		elif pick < 0.29 and not barn:
-			BuildingFittings.wall_dish(k, Vector3(lerpf(-room + 0.4, room - 0.4, at), fix.randf_range(2.35, 2.55), 0),
+			BuildingFittings.wall_dish(k, Vector3(lerpf(-room + 0.4, room - 0.4, at), fix.randf_range(1.85, 2.1), 0),
 				Vector3(fix.randf_range(0.8, 1.0), fix.randf_range(-0.6, 0.6), 0))
 	elif variant == 2 and not barn:
 		# the number and letterbox on the wall beside the door, the lamp's

@@ -475,14 +475,14 @@ func _ready() -> void:
 
 	# What's fixed to a house wall keeps to the room Structure gives it (its
 	# placing relies on these reaches), sits on the face, and stands proud of
-	# it no further than a dish on its arm; some plain walls carry one, none
-	# above its eaves.
+	# it no further than a dish on its arm, below the gutter; some plain walls
+	# carry one.
 	var reach := {
 		"meter": [func(k: BuildingKit): BuildingFittings.meter_box(k, Vector3(0, 0.5, 0)), Vector2(-0.25, 0.25), 0.3],
 		"gas": [func(k: BuildingKit): BuildingFittings.meter_box(k, Vector3.ZERO, true), Vector2(-0.25, 0.25), 0.3],
 		"tap": [func(k: BuildingKit): BuildingFittings.tap(k, Vector3(0, 0.55, 0), BuildingFittings.HOSES[1]), Vector2(-0.05, 0.6), 0.25],
 		"unit": [func(k: BuildingKit): BuildingFittings.wall_unit(k, Vector3(0, 1.9, 0)), Vector2(-0.42, 0.56), 0.52],
-		"dish": [func(k: BuildingKit): BuildingFittings.wall_dish(k, Vector3(0, 2.45, 0), Vector3(1.0, 0.6, 0)), Vector2(-0.4, 0.4), 0.72],
+		"dish": [func(k: BuildingKit): BuildingFittings.wall_dish(k, Vector3(0, 2.1, 0), Vector3(1.0, 0.6, 0)), Vector2(-0.4, 0.4), 0.72],
 		"number": [func(k: BuildingKit): BuildingFittings.house_number(k, Vector3(0, 1.72, 0), 88, Color.BLUE, Color.WHITE), Vector2(-0.15, 0.15), 0.03],
 		"letterbox": [func(k: BuildingKit): BuildingFittings.letterbox(k, Vector3(0, 1.15, 0), Color.RED), Vector2(-0.15, 0.15), 0.14],
 	}
@@ -492,7 +492,7 @@ func _ready() -> void:
 		var fb := _bounds(fk.sink.root, Transform3D.IDENTITY)
 		var span: Vector2 = reach[name][1]
 		check(fk.sink.root.get_child_count() > 0 and fb.position.x >= span.x and fb.end.x <= span.y, "a %s keeps its width on the wall (%s)" % [name, fb])
-		check(fb.position.z >= -0.2 and fb.end.z <= reach[name][2] and fb.position.y >= -0.05 and fb.end.y <= 2.95, "a %s keeps to the face (%s)" % [name, fb])
+		check(fb.position.z >= -0.2 and fb.end.z <= reach[name][2] and fb.position.y >= -0.05 and fb.end.y <= 2.65, "a %s keeps to the face, clear of the gutter (%s)" % [name, fb])
 		fk.sink.root.free()
 	var fitted := 0
 	for s in 240:

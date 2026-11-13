@@ -196,7 +196,7 @@ nothing else about a wall changes. About one plain wall in four carries somethin
 at (low on the wall with the duct its cable comes up in, or on the ground for the gas), an outside tap on its
 copper pipe (a hose coiled on a hook by about half), an air conditioner's outdoor unit on angle brackets with its
 pipes in white trunking and its drain run down, or on a concrete pad at the wall's foot, or a satellite dish on
-an arm under the eaves with its cable clipped down the wall. By a front door are the house's number on an enamel
+an arm below the gutter with its cable clipped down the wall. By a front door are the house's number on an enamel
 or painted plate (seven-segment figures) and often a letterbox, on the side the lamp isn't, and a mat on the step
 in half of them. Each keeps within the room `_wall_fixtures` gives it, 0.6 m clear of a wall's ends (where the
 downpipes come down), and none goes on a wall with ivy; a barn gets only its meter and tap. The fixture checks
