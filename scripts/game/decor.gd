@@ -131,6 +131,7 @@ func _build_chunk(key: Vector2i) -> void:
 		var mesh := child as MeshInstance3D
 		mesh.visibility_range_end = 180.0
 		mesh.visibility_range_end_margin = 20.0
+		mesh.visibility_range_fade_mode = GeometryInstance3D.VISIBILITY_RANGE_FADE_SELF  # dissolve, not pop
 	_fine_bake = null
 	_bake = null
 	if not _wires.is_empty():

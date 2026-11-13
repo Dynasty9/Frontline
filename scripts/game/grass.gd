@@ -239,7 +239,11 @@ func _blocked_job() -> BlockedJob:
 			continue
 		var big: bool = st.skind in ["floor", "fob", "barracks", "factory", "medic_tent", "research", "depot", "helipad", "bunker", "mortar_pit", "hmg_nest", "mg_nest", "at_post", "tunnel", "house_wall", "tall_wall", "concrete_wall", "hesco", "barricade", "ammo_cache", "wreck", "car", "crates", "bridge", "town"]
 		if big:
-			j.boxes.append([Vector2(st.position.x, st.position.z), st.foot + Vector2(0.4, 0.4), float(st.yaw)])
+			var cleared: Vector2 = st.foot + Vector2(0.4, 0.4)
+			if st.skind == "bunker":
+				# The two-metre earth bank buries plants beyond the building walls.
+				cleared = cleared.max(Vector2(5.2, 5.2))
+			j.boxes.append([Vector2(st.position.x, st.position.z), cleared, float(st.yaw)])
 	# sidewalks, squares, gardens and the like
 	for e in w.decor:
 		if not String(e[0]) in ["walk", "walk_corner", "walk_crossing", "pave", "junction", "soft", "lot_pave", "drive", "path", "garden", "yard"]:
@@ -517,6 +521,7 @@ uniform vec3 dry_col : source_color = vec3(0.55, 0.49, 0.3);
 uniform float wind = 0.11;
 uniform sampler2D scar : hint_default_black, filter_linear, repeat_disable;
 uniform sampler2D trench_mask : hint_default_black, filter_linear, repeat_disable;
+#include "res://scripts/game/trench_vegetation.gdshaderinc"
 uniform sampler2DArray deform_tex : filter_linear, repeat_disable;
 // TERRAIN_TEXTURE_HELPER
 // CLOUD_SHADOW
@@ -542,7 +547,7 @@ void vertex() {
 	// shell holes and blast scars flatten and scorch the grass
 	burnt = texture(scar, (o.xz + __MAP_HALF__) / __MAP_SIZE__).r;
 	// nothing grows in a trench
-	if (textureLod(trench_mask, (o.xz + __MAP_HALF__) / __MAP_SIZE__, 0.0).r > 0.3) {
+	if (trench_disturbed(trench_mask, (o.xz + __MAP_HALF__) / __MAP_SIZE__, 0.85 / __MAP_SIZE__) > 0.1) {
 		VERTEX *= 0.0;
 	}
 	VERTEX.y *= 1.0 - burnt * 0.85;
@@ -587,6 +592,7 @@ render_mode specular_disabled, cull_disabled;
 varying float plant_height;
 varying float rnd;
 uniform sampler2D trench_mask : hint_default_black, filter_linear, repeat_disable;
+#include "res://scripts/game/trench_vegetation.gdshaderinc"
 uniform sampler2DArray deform_tex : filter_linear, repeat_disable;
 // TERRAIN_TEXTURE_HELPER
 // CLOUD_SHADOW
@@ -598,7 +604,7 @@ void vertex() {
 #ifdef CLOUD_PATTERN
 	cloud_v = cloud_sun(MODEL_MATRIX[3].xyz);
 #endif
-	if (textureLod(trench_mask, (MODEL_MATRIX[3].xz + __MAP_HALF__) / __MAP_SIZE__, 0.0).r > 0.3) {
+	if (trench_disturbed(trench_mask, (MODEL_MATRIX[3].xz + __MAP_HALF__) / __MAP_SIZE__, 0.85 / __MAP_SIZE__) > 0.1) {
 		VERTEX *= 0.0;
 	}
 	float gd = terrain_height(deform_tex, (MODEL_MATRIX[3].xz + __MAP_HALF__) / __MAP_SIZE__);

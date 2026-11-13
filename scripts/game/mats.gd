@@ -592,6 +592,12 @@ static func bake_mesh(root: Node3D) -> ArrayMesh:
 	return _bake_groups(groups)
 
 
+## How far a detailed model and its distant stand-in cross-fade, dithered,
+## instead of one popping into the other (Godot's visibility range fade; the
+## dissolve LOD transition games use to hide the switch).
+const LOD_FADE := 8.0
+
+
 ## Moving vehicle parts keep their pivots, but distant paint needs one surface.
 static func add_distance_lod(root: Node3D, distance: float, keep: Array = []) -> void:
 	var groups := {}
@@ -602,9 +608,13 @@ static func add_distance_lod(root: Node3D, distance: float, keep: Array = []) ->
 	var coarse := MeshInstance3D.new()
 	coarse.mesh = _bake_groups(groups)
 	coarse.visibility_range_begin = distance
+	coarse.visibility_range_begin_margin = LOD_FADE
+	coarse.visibility_range_fade_mode = GeometryInstance3D.VISIBILITY_RANGE_FADE_SELF
 	coarse.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	for original: MeshInstance3D in originals:
 		original.visibility_range_end = distance
+		original.visibility_range_end_margin = LOD_FADE
+		original.visibility_range_fade_mode = GeometryInstance3D.VISIBILITY_RANGE_FADE_SELF
 		if shadow_of(original) != GeometryInstance3D.SHADOW_CASTING_SETTING_OFF:
 			coarse.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
 	root.add_child(coarse)
@@ -1117,6 +1127,7 @@ uniform float metal = 0.0;
 uniform float bump = 1.0;
 uniform float grime = 0.5;
 uniform float wet = 0.0;  // streets in the rain (Mats.set_street_wet)
+global uniform float rain_wet;  // how soaked everything out in the rain is, 0..1 (Atmosphere._rain_tick)
 uniform float weathering = 0.0;
 uniform bool grain_horizontal = false;
 uniform bool worn_armour = false;
@@ -1691,6 +1702,25 @@ void fragment() {
 		vec3 grad = sign(det) * (dhx * r1 + dhy * r2);
 		NORMAL = normalize(abs(det) * NORMAL - grad * bump * 0.02);
 	}
+	if (rain_wet > 0.0) {
+		// Out in the rain everything takes a film of water (after Lagarde,
+		// "Water drop 2b: dynamic rain and its effects", 2013). Rough, porous
+		// stuff (cloth, timber, concrete, earth on a track) soaks it up and
+		// darkens, since light now scatters inside the wet pores and less comes
+		// back out; smooth paint and metal barely change colour. Either way the
+		// film is smooth, so it all turns glossy, upturned faces most. Faces
+		// turned down stay drier, and the water runs down walls and hulls in
+		// streaks rather than evenly.
+		vec3 wn = normalize((INV_VIEW_MATRIX * vec4(NORMAL, 0.0)).xyz);
+		float exposed = mix(0.25, 1.0, smoothstep(-0.6, 0.3, wn.y));
+		float streak = smoothstep(0.35, 0.8, tnoise(vec2((wpos.x + wpos.z) * 5.0, wpos.y * 0.3)));
+		float soak = rain_wet * exposed * mix(0.55 + 0.6 * streak, 1.0, smoothstep(0.5, 0.9, abs(wn.y)));
+		float porous = clamp((ROUGHNESS - 0.35) * 1.8, 0.0, 1.0) * (1.0 - METALLIC);
+		float darken = 1.0 - soak * (0.08 + 0.47 * porous);
+		ALBEDO *= OUTPUT_IS_SRGB ? pow(darken, 1.0 / 2.2) : darken;
+		// (water stands as a film on paint and metal; cloth and timber drink most of it)
+		ROUGHNESS = mix(ROUGHNESS, mix(0.34, 0.12, smoothstep(0.4, 0.9, wn.y)), soak * mix(0.85, 0.35, porous));
+	}
 	// CLOUD_FRAGMENT cloud_sun(wpos)
 }
 """
@@ -1834,12 +1864,18 @@ void fragment() {
 	float g = vn(p * 13.0);
 	vec2 u = UV * 2.0 - 1.0;
 	float edge = max(abs(u.x), abs(u.y));
-	if (n + g * 0.3 < 0.47 + smoothstep(0.8, 1.0, edge) * 0.3) { discard; }
+	float scraps = step(0.47 + smoothstep(0.8, 1.0, edge) * 0.3, n + g * 0.3);
+	// Garnish is tied to a fine diamond cord mesh, visible through the larger gaps.
+	vec2 weave = vec2(p.x + p.y, p.x - p.y) * 7.0;
+	vec2 cord_distance = abs(fract(weave) - 0.5);
+	float cord = 1.0 - smoothstep(0.025, 0.045, min(cord_distance.x, cord_distance.y));
+	if (max(scraps, cord) < 0.5) discard;
 	vec3 c = tint.rgb * (0.65 + 0.55 * g);
 	c = mix(c, c * vec3(1.25, 1.05, 0.7), step(0.62, vn(p * 3.1 + 9.0)) * 0.6);
 	// the garnish: darker brown and near-black scraps knotted in, breaking it up
 	c = mix(c, c * vec3(0.62, 0.5, 0.38), step(0.6, vn(p * 2.3 + 31.0)) * 0.75);
 	c = mix(c, c * 0.35, step(0.7, vn(p * 4.1 + 57.0)) * 0.6);
+	c = mix(tint.rgb * 0.45, c, scraps);
 	ALBEDO = c;
 	ROUGHNESS = 0.95;
 	BACKLIGHT = c * 0.5;
