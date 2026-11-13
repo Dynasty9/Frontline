@@ -577,6 +577,14 @@ func _ready() -> void:
 		ds.free()
 	check(dark_storeys >= 5, "some floors above have a lamp on (%d of 40)" % dark_storeys)
 
+	# The parish church: a stone body of three parts (tower, nave, chancel),
+	# the cross on its spire the top of it, nothing out past its buttresses
+	# and eaves.
+	var church := Structure.preview_model("church", -1, 0, Vector3(8.0, 6.5, 23.0), false, 1)
+	var chb := _bounds(church, Transform3D.IDENTITY)
+	check(church.get_child_count() > 0 and chb.end.y > 24.0 and chb.end.y < 27.5 and chb.size.x < 9.6 and chb.size.z < 25.0 and chb.position.y > -1.2, "the church builds, its spire the top of it (%s)" % chb)
+	church.free()
+
 	# Every building and every kind of scenery still builds a model.
 	var kinds: Array = Defs.BUILDINGS.keys()
 	kinds.append_array(["house_wall", "roof", "floor", "low_wall", "tall_wall", "bridge", "town", "depot", "rubble", "crates", "dock"])

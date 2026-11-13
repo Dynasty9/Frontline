@@ -42,6 +42,7 @@ var square_flag: Array = []  # the flagpole on it (decor; the town's supply dump
 ## Yard dressing (see _yard_life), kept apart and put after the rest of the
 ## decor, so every older piece keeps its place in the list and so its look.
 var _yard_decor: Array = []
+var church_at := Vector3.INF  # where the parish church stands (none: INF)
 var _shop_decor: Array = []  # what the shops put out (decor, after the yards'; see _shop_wares)
 
 
@@ -1021,6 +1022,35 @@ func farms(k: int) -> void:
 		_d("pole", base - n * 4.4 + t * 9.0, yaw_along(t), 1)
 		poles.append([base - n * 4.4 + t * 9.0, yaw_along(t), n])
 		made += 1
+
+
+## The parish church: on the edge of the town where one of its roads comes
+## in, standing back from it with its tower to the road. From a stream of its
+## own, after the town and the farms are laid out, so they stand where they
+## did; a map with no room for it has none.
+func church() -> void:
+	var cr := RandomNumberGenerator.new()
+	cr.seed = int(absf(center.x) * 13.0) * 7919 + int(absf(center.z) * 13.0) * 31 + 71
+	var size := Vector3(8.0, 6.5, 23.0)
+	for attempt in 120:
+		var poly: PackedVector3Array = main_road if cr.randf() < 0.5 else cross_road
+		if poly.size() < 7:
+			continue
+		var i := cr.randi_range(3, poly.size() - 4)
+		var p := poly[i]
+		var out := cr.randf() < 0.5
+		var dc := Defs.flat(p - center).length()
+		if dc < REACH - 6.0 or dc > REACH + 45.0:
+			continue
+		var t := TrenchNet.snap_dir(poly[i + 2] - poly[i - 2])
+		var n := _perp(t) * (1.0 if out else -1.0)
+		var c := TrenchNet.snap_pos(p + n * (size.z * 0.5 + 7.5))
+		if not Defs.in_map(c, size.z * 0.5 + 6.0) or _road_dist(c, size.z * 0.5 + 4.0) < size.z * 0.5 + 3.5:
+			continue
+		if mg._try("church", c, atan2(n.x, n.z), -1, {"size": size}) != null:
+			church_at = c
+			world.stat("church")
+			return
 
 
 ## A power line along each country road on the verge, pole every ~34 m.

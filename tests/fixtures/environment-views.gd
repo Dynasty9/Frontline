@@ -64,12 +64,22 @@ func capture() -> void:
 			if piece[0] == "awning" and town.has_point(Vector2(piece[1].x, piece[1].z)):
 				views.append(["shopfront", piece[1], 16.0, -32.0, float(piece[2]) + PI + 0.5])
 				break
+		# the parish church from the road it stands back from, where there is one
+		for st in world.structures_near(center, 300.0):
+			if st.skind == "church":
+				views.append(["church", st.position, 48.0, -30.0, st.yaw + PI + 0.6])
+				break
 		# a farmstead off the country road (its hay stacked by the barn)
 		for piece: Array in world.decor:
 			if piece[0] == "hay":
 				views.append(["farm", piece[1], 34.0, -42.0, 0.7])
 				break
 		print("CAPTURE town bounds=", town)
+	# (FL_ONLY_VIEW="name,x,z,distance,pitch,yaw": just that view, to match a
+	# camera another revision chose)
+	if OS.has_environment("FL_ONLY_VIEW"):
+		var f := OS.get_environment("FL_ONLY_VIEW").split(",")
+		views = [[f[0], Vector3(float(f[1]), 0, float(f[2])), float(f[3]), float(f[4]), float(f[5])]]
 	if "--capture-set=trenches" in OS.get_cmdline_user_args():
 		views = [["trenches", Vector3(0, 0, -28), 24.0, -48.0, 0.5]]
 	var settle_frames := 90

@@ -123,6 +123,8 @@ func generate() -> void:
 	tg.fields(int(rng.randi_range(7, 10) * area * 0.6))
 	tg.roadside(int(rng.randi_range(3, 5) * k), int(rng.randi_range(2, 3) * k))
 	if String(world.settings.get("mission", "")) == "":
+		tg.church()  # (a mission's town is as it was written)
+	if String(world.settings.get("mission", "")) == "":
 		_towns(tg)  # (a mission's ground is fought for on the mission's terms)
 	tg.finish(false)
 	# the ground worth fighting for, for the AI commanders

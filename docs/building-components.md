@@ -209,6 +209,19 @@ door to the house) and some lawns with room for it a trampoline; these are drawn
 They're set dressing (Decor, appended after the rest so the town's other dressing keeps its looks): no cover,
 and a blast or a truck knocks them over. Render them with `--building-kinds=house_yard` in the studio stage.
 
+## The parish church
+
+A skirmish town has a parish church (Structure "church", `_church_model`): `TownGen.church` stands it back from
+one of the roads into the town, 7.5 m off it with its tower to the road, where `MapGen._try` finds room, from a
+stream of its own after the town and the farms are laid out (so they stand where they did). It is built in the
+kit: a stone nave of four bays between stepped buttresses, a lancet in each (`_lancet`: leaded glass in muted
+colours, a mullion and saddle bars, a dressed surround, the pointed head), a slate gable roof at 52 degrees; a
+lower chancel with three lancets in its east end; the west tower in three stages between string courses (the
+pointed west door with its step and a window over it, a clock on two faces, the belfry's louvred lancets),
+clasping buttresses, battlements, corner pinnacles and an octagonal copper spire with a cross. Its body is three
+solid parts (tower, nave, chancel): cover against its walls, nobody inside, 12000 hit points, a heap of rubble
+when it falls. Render it with `--building-kinds=church` in the studio stage.
+
 ## Wall fittings
 
 What's fixed to a house's walls comes from `BuildingFittings` (`meter_box`, `tap`, `wall_unit`, `wall_dish`,

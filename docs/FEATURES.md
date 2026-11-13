@@ -731,6 +731,9 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   cross road either side of town and on the road between each HQ and the town; farmsteads (a farmhouse, most on two floors with a wing, and a barn round a yard, hay bales, a fenced road frontage, an orchard; the barn weatherboarded
   under a corrugated sheet roof with loft doors in its gables, straw on its floor) and
   hedged fields lie along the roads; abandoned cars on the verges, burnt-out armour off the road.
+- A skirmish town has its parish church where a road comes in: a stone nave and chancel under slate roofs and a
+  west tower with a clock, louvred belfry, battlements and a copper spire seen across the map. It's solid: cover
+  against its walls, nobody inside, and enough fire brings it down to rubble.
 - **The town and every village have a name and a supply dump** (crated stores on a pallet, fuel drums and a
   flagpole): the town's on its square where the flagpole stood, a village's on the verge of its main street.
   Nobody holds them at the start. They are the supply worth fighting over: see *Towns* under Base building and

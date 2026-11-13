@@ -190,6 +190,11 @@ func _subject(kind: String) -> Node3D:
 			if kind == "house_yard" and ClassDB.class_exists("Node") and ResourceLoader.exists("res://scripts/game/building_yards.gd"):
 				_yard(yard, 9.0, 7.6)
 			return yard
+		"church":
+			# the parish church as the town builds it (where Structure has one)
+			if (load("res://scripts/game/structure.gd") as Script).get_script_constant_map().has("CHURCH_TOWER"):
+				return Structure.preview_model("church", -1, 0, Vector3(8.0, 6.5, 23.0), false, 1)
+			return Node3D.new()
 		"roofscape":
 			# four houses' roofs as the town draws them (their ids pick the
 			# form and wear): a hipped roof mended with a tarp and with a
