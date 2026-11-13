@@ -680,9 +680,11 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   including backward seeks; older recordings and dedicated flat test scenarios remain supported.
 - A town in the middle, laid out on a street grid: two main streets crossing at the centre, side streets closing
   some of the blocks, asphalt with a dashed centre line, curbs and sidewalks, zebra crossings at the crossroads.
-  Houses stand on lots facing the street with their door to it; behind them, gardens closed off by hedges or
+  Houses stand on lots facing the street with their door to it, some on two floors and some with a wing out of
+  the back (an L or a T); behind them, gardens closed off by hedges or
   walls, fences down the sides, vegetable patches, washing lines and trees; some have a drive with the car on it.
-  Shops with awnings line the main street near the middle.
+  Shops with awnings line the main street near the middle, most with flats over them. The floor above a ground
+  floor is looks only: it lifts off with the roof when men go in, and comes down when a wall under it is blown in.
 - A town square on one corner of the crossroads (fountain or statue, benches, planters, a flagpole, market
   stalls, bollards), a fenced playground (swings, slide, climbing frame, sandbox, seesaw, roundabout), a small
   park, allotments, a car park, a bombed-out lot and a water tower on the edge of town.
@@ -725,7 +727,7 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   sides), and on the west the lanes run on over the river - each on its own bridge - to farming villages on
   the far bank: three bridges and two fords across the river in all.
 - Country roads come in from both HQs and both edges of the map and join the main streets. Villages sit on the
-  cross road either side of town and on the road between each HQ and the town; farmsteads (farmhouse and barn round a yard, hay bales, a fenced road frontage, an orchard; the barn weatherboarded
+  cross road either side of town and on the road between each HQ and the town; farmsteads (a farmhouse, most on two floors with a wing, and a barn round a yard, hay bales, a fenced road frontage, an orchard; the barn weatherboarded
   under a corrugated sheet roof with loft doors in its gables, straw on its floor) and
   hedged fields lie along the roads; abandoned cars on the verges, burnt-out armour off the road.
 - **The town and every village have a name and a supply dump** (crated stores on a pallet, fuel drums and a

@@ -94,6 +94,9 @@ var wreck_turret_yaw := INF
 var wreck_finish := {}
 var _wreck_soot: ShaderMaterial
 var bent_skirts := 0
+## (a roof over a house's wing) the roof whose looks it shares, so its
+## covering, tint and pitch match the house's: that roof's eid (0: its own)
+var look := 0
 var door_shut := false  # (a house's doorway) its doors are shut: the first man through kicks them in, or just opens them
 var _door_kicked := false
 var _door_leaves: Array = []  # (view) the door leaves: [hinge pivot, how far it swings open]
@@ -185,6 +188,8 @@ func apply_props(d: Dictionary) -> void:
 		bent_skirts = d.get("bent_skirts", 0)
 	if d.has("door"):
 		door_shut = d.door
+	if d.has("look"):
+		look = d.look
 	if d.has("zc"):
 		zone_c = d.zc
 		zone_r = d.zr
@@ -216,6 +221,8 @@ func get_props() -> Dictionary:
 	if skind == "town":
 		d["zc"] = zone_c
 		d["zr"] = zone_r
+	if look > 0:
+		d["look"] = look
 	if is_finite(wreck_turret_yaw):
 		d["wreck_turret_yaw"] = wreck_turret_yaw
 		if not wreck_finish.is_empty():
@@ -1616,7 +1623,44 @@ func _destroyed(quiet := false) -> void:
 		world.call_deferred("spawn", "structure", {"skind": "rubble", "pos": position, "yaw": yaw, "size": rub})
 	if team >= 0 and is_player_building():
 		world.send_msg(team, "alert", "%s destroyed at %s." % [display_name(), Defs.grid_ref(position)], position)
+	if skind == "house_wall":
+		_bring_down_floors()
 	world.despawn(self)
+
+
+## A house wall knocked out brings down the storey drawn over it, and the
+## roof that carries it, rather than leave them standing on air.
+func _bring_down_floors() -> void:
+	for st: Structure in world.structures_near(position, 16.0):
+		if st.gone or st.skind != "roof" or st.size.y <= BuildingStoreys.GROUND + 0.5:
+			continue
+		var half := Vector2(st.size.x * 0.5 + 0.3, st.size.z * 0.5 + 0.3)
+		if Defs.point_in_obb(Vector2(position.x, position.z), Vector2(st.position.x, st.position.z), half, st.yaw):
+			st.call_deferred("_fall_in")
+
+
+## A roof (and the storey under it) falling in: the debris, and it's gone.
+func _fall_in() -> void:
+	if gone:
+		return
+	world.stat("storey_fell")
+	world.fx_event([Fx.DEBRIS, position + Vector3(0, size.y * 0.5, 0), _main_color(), 18])
+	world.fx_event([Fx.EXPLODE, position + Vector3(0, 1.0, 0), 0.8])
+	world.despawn(self)
+
+
+## A second storey under the roof of a house that has one (its eaves above
+## the ground floor's): see BuildingStoreys. From a stream of its own, so the
+## roof on it is as it would be on one storey.
+func _storey_model(rng: RandomNumberGenerator) -> void:
+	var ci: int = variant / 2
+	var material := BuildingMaterials.house(ci)
+	var wall_col := BuildingMaterials.house_color(ci, HOUSE_COLORS[ci % HOUSE_COLORS.size()])
+	var up := RandomNumberGenerator.new()
+	up.seed = rng.seed ^ 0x5702e7
+	var k := _kit(up)
+	k.sink.cast_all = true
+	BuildingStoreys.upper(k, size.x, size.z, BuildingStoreys.GROUND, size.y, material, wall_col, HOUSE_TRIMS[ci % HOUSE_TRIMS.size()], up)
 
 
 ## Builders and repairers call this. amount = work-seconds.
@@ -2572,7 +2616,7 @@ func _build_model() -> void:
 	_bake = Mats.Bake.new() if skind in BAKED else null
 	_body = []
 	var rng := RandomNumberGenerator.new()
-	rng.seed = eid * 7919 + variant
+	rng.seed = (look if look > 0 else eid) * 7919 + variant
 	var bags: Array = []
 	var works_keep: Array = []
 	for p in parts:
@@ -2659,6 +2703,8 @@ func _build_model() -> void:
 		"dock":
 			DockModel.build(model, team, size)
 		"roof":
+			if size.y > BuildingStoreys.GROUND + 0.5:
+				_storey_model(rng)
 			_roof_model(rng)
 		"crates":
 			for p in parts:

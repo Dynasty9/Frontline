@@ -241,6 +241,8 @@ func _ready() -> void:
 			BuildingYards.pots(k.at_point(Vector3(3, 0, 3)), 3, k.rng)
 			BuildingYards.shed(k.at_point(Vector3(-4, 0, 3)), BuildingYards.SHEDS[0], k.rng)
 			BuildingYards.trampoline(k.at_point(Vector3(5, 0, -4)), BuildingYards.PADS[0]),
+		"storey": func(k: BuildingKit):
+			BuildingStoreys.upper(k, 9.0, 7.6, 3.0, 5.8, "brick", BuildingMaterials.color("brick"), Color(0.86, 0.85, 0.8), k.rng),
 		"inside": func(k: BuildingKit):
 			BuildingFurnishings.lining(k, 2.8, 3.0, [Rect2(-0.65, 1.0, 1.3, 1.0)], Color(0.8, 0.8, 0.7))
 			BuildingFurnishings.radiator(k, 0.0, 1.0)
@@ -446,6 +448,31 @@ func _ready() -> void:
 	var bf := Structure.preview_model("floor", -1, 2, Vector3(13.0, 0.06, 10.0), false, 3)
 	check(bf.get_child_count() > 0 and _bounds(bf, Transform3D.IDENTITY).end.y < 0.12, "a barn's straw lies flat")
 	bf.free()
+
+	# A second storey is drawn with the roof over it: the roof the same, a
+	# storey higher, the storey on the ground floor's walls (sills and bands
+	# no further out than theirs).
+	for ci in [1, 2, 4]:
+		for flat in [0, 1]:
+			var one := Structure.preview_model("roof", -1, ci * 2 + flat, Vector3(9.0, 3.0, 7.6), false, 21)
+			var two := Structure.preview_model("roof", -1, ci * 2 + flat, Vector3(9.0, 5.8, 7.6), false, 21)
+			var b1 := _bounds(one, Transform3D.IDENTITY)
+			var b2 := _bounds(two, Transform3D.IDENTITY)
+			check(absf(b2.end.y - b1.end.y - 2.8) < 0.02, "a second storey lifts the roof a storey (%d: %s, %s)" % [ci, b1, b2])
+			check(b2.size.x <= maxf(b1.size.x, 9.0 + 0.4) + 0.3 and b2.size.z <= maxf(b1.size.z, 7.6 + 0.4) + 0.3, "a second storey keeps to the walls' lines (%d: %s, %s)" % [ci, b1, b2])
+			one.free()
+			two.free()
+	var stk := kit()
+	BuildingStoreys.upper(stk, 9.0, 7.6, 3.0, 5.8, "plaster", Color(0.8, 0.75, 0.7), Color.WHITE, stk.rng)
+	var stb := _bounds(stk.sink.root, Transform3D.IDENTITY)
+	check(stb.position.y >= 2.75 and stb.end.y <= 5.85 and absf(stb.get_center().x) < 0.05 and stb.size.x <= 9.6 and stb.size.z <= 8.2, "a storey stands on the ground floor's lines (%s)" % stb)
+	var panes := 0
+	for child in stk.sink.root.get_children():
+		var mat := Mats.base_of((child as MeshInstance3D).material_override)
+		if mat == Mats.get_mat("glass") or mat == Mats.get_mat("window_lit"):
+			panes += 1
+	check(panes >= 12, "a storey has its windows (%d panes)" % panes)
+	stk.sink.root.free()
 
 	# Every building and every kind of scenery still builds a model.
 	var kinds: Array = Defs.BUILDINGS.keys()
