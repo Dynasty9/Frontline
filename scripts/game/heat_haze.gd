@@ -102,7 +102,7 @@ func gather(world: World, cam: Camera3D, dt: float) -> PackedFloat32Array:
 		world.fx.vfx.heat_sources(self)
 	var far := (REACH + 20.0) * (REACH + 20.0)
 	for v in world.vehicles:
-		if v.model and v.visible and not v.gone and v.global_position.distance_squared_to(_eye) < far:
+		if v.model and v.visible and not v.gone and v.is_inside_tree() and v.global_position.distance_squared_to(_eye) < far:
 			v.heat_sources(self)
 	_tick_pulses(dt)
 	return finish()
