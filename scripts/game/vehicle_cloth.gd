@@ -26,25 +26,28 @@ static func load_cover(k: VehicleModels, base: Vector3, size: Vector3, col := Co
 	for index in [0, 24]:
 		var rim: PackedVector3Array = rings[index]
 		for j in 6:
-			VehicleFrames.tube(k, k.root, base + rim[j], base + rim[j + 1], 0.009, "canvas_white", col.darkened(0.16), 6, false)
+			VehicleEquipment._rod(k, k.root, base + rim[j], base + rim[j + 1], 0.009, "canvas_white", col.darkened(0.16), 6, false, 3)
 	for side in [0, 6]:
-		VehicleFrames.tube(k, k.root, base + rings[0][side], base + rings[24][side], 0.009, "canvas_white", col.darkened(0.16), 6, false)
+		VehicleEquipment._rod(k, k.root, base + rings[0][side], base + rings[24][side], 0.009, "canvas_white", col.darkened(0.16), 6, false, 3)
 	for index in [6, 18]:
 		var cross_section: PackedVector3Array = rings[index]
 		for j in 6:
-			VehicleFrames.tube(k, k.root, base + cross_section[j] + Vector3(0, 0.012, 0), base + cross_section[j + 1] + Vector3(0, 0.012, 0), 0.012, "webbing", Color(0.18, 0.19, 0.13), 6, false)
+			VehicleEquipment._rod(k, k.root, base + cross_section[j] + Vector3(0, 0.012, 0), base + cross_section[j + 1] + Vector3(0, 0.012, 0), 0.012, "webbing", Color(0.18, 0.19, 0.13), 6, false, 3)
 
 
 ## A sewn cloth panel in local XY. Edges stay on the frame while the centre
 ## hangs slightly between its supports; hems use the same outline as the cloth.
-static func panel(k: VehicleModels, parent: Node3D, center: Vector3, size: Vector2, rotation: Vector3, col: Color, material := "canvas_white") -> void:
+## `hems` picks the hemmed edges, one bit each: 1 the -Y edge, 2 the +X, 4 the
+## +Y and 8 the -X (all four by default); panels sewn edge to edge share one.
+static func panel(k: VehicleModels, parent: Node3D, center: Vector3, size: Vector2, rotation: Vector3, col: Color, material := "canvas_white", hems := 15) -> void:
 	var mount := k._pivot(parent, center)
 	mount.rotation = rotation
 	var mesh := _panel_mesh(size)
 	k._add(mount, mesh, material, col, Vector3.ZERO)
 	var corners := [Vector3(-size.x / 2, -size.y / 2, 0), Vector3(size.x / 2, -size.y / 2, 0), Vector3(size.x / 2, size.y / 2, 0), Vector3(-size.x / 2, size.y / 2, 0)]
 	for i in 4:
-		VehicleFrames.tube(k, mount, corners[i], corners[(i + 1) % 4], 0.009, material, col.darkened(0.16), 6, false)
+		if (hems & (1 << i)) != 0:
+			VehicleEquipment._rod(k, mount, corners[i], corners[(i + 1) % 4], 0.009, material, col.darkened(0.16), 6, false, 3)
 	k._fold(mount)
 
 
@@ -73,14 +76,21 @@ static func _panel_mesh(size: Vector2) -> ArrayMesh:
 
 
 ## Profile runs from the left hem over the crown to the right hem. Bows are
-## support positions along Z; each bay gets fitted cloth and sewn edges.
-static func canopy(k: VehicleModels, parent: Node3D, profile: Array, bows: Array, col: Color) -> void:
-	var front := PackedVector3Array()
-	var back := PackedVector3Array()
-	for point: Vector2 in profile:
-		front.append(Vector3(point.x, point.y, float(bows[0])))
-		back.append(Vector3(point.x, point.y, float(bows[0]) + 0.012))
-	k._add(parent, VehicleModels.solid([front, back], "cloth_front_%s_%s" % [str(profile), str(bows[0])]), "canvas_white", col, Vector3.ZERO)
+## support positions along Z; each bay gets fitted cloth and sewn edges. A seam
+## between two bays or two panels of the section is one hem, sewn once.
+## `closed_back` closes the rear as the front is closed (a back flap laced
+## down, following the section) instead of leaving it to the caller.
+static func canopy(k: VehicleModels, parent: Node3D, profile: Array, bows: Array, col: Color, closed_back := false) -> void:
+	var ends: Array[float] = [float(bows[0])]
+	if closed_back:
+		ends.append(float(bows[bows.size() - 1]) - 0.012)
+	for z: float in ends:
+		var front := PackedVector3Array()
+		var back := PackedVector3Array()
+		for point: Vector2 in profile:
+			front.append(Vector3(point.x, point.y, z))
+			back.append(Vector3(point.x, point.y, z + 0.012))
+		k._add(parent, VehicleModels.solid([front, back], "cloth_front_%s_%s" % [str(profile), str(z)]), "canvas_white", col, Vector3.ZERO)
 	for bay in bows.size() - 1:
 		var z0: float = bows[bay]
 		var z1: float = bows[bay + 1]
@@ -92,7 +102,10 @@ static func canopy(k: VehicleModels, parent: Node3D, profile: Array, bows: Array
 			var x_axis := Vector3.BACK
 			var normal := x_axis.cross(y_axis)
 			var basis := Basis(x_axis, y_axis, normal)
-			panel(k, parent, Vector3((a.x + b.x) / 2, (a.y + b.y) / 2, (z0 + z1) / 2), Vector2(z1 - z0, across.length()), basis.get_euler(), col)
+			# Each panel hems its rear and upper edges; the first bay also its
+			# front, and the first panel of the section its lower one.
+			var hems := 2 | 4 | (8 if bay == 0 else 0) | (1 if i == 0 else 0)
+			panel(k, parent, Vector3((a.x + b.x) / 2, (a.y + b.y) / 2, (z0 + z1) / 2), Vector2(z1 - z0, across.length()), basis.get_euler(), col, "canvas_white", hems)
 
 
 ## Padded stowage uses a softened shell, stitched welt and a retaining strap.
@@ -107,13 +120,19 @@ static func bag(k: VehicleModels, parent: Node3D, size: Vector3, center: Vector3
 	var seam_col: Color = col.darkened(0.18) if col is Color else Color(0.23, 0.24, 0.17)
 	var inset := minf(size.y, minf(size.x, size.z)) * 0.20
 	var outline := [Vector3(-size.x / 2 + inset, 0, -size.z / 2), Vector3(size.x / 2 - inset, 0, -size.z / 2), Vector3(size.x / 2, 0, -size.z / 2 + inset), Vector3(size.x / 2, 0, size.z / 2 - inset), Vector3(size.x / 2 - inset, 0, size.z / 2), Vector3(-size.x / 2 + inset, 0, size.z / 2), Vector3(-size.x / 2, 0, size.z / 2 - inset), Vector3(-size.x / 2, 0, -size.z / 2 + inset)]
+	# The welt runs round the bag in eight lengths, each ending in the next.
 	for i in outline.size():
-		VehicleFrames.tube(k, mount, outline[i], outline[(i + 1) % outline.size()], 0.006, material, seam_col, 5, false)
+		VehicleEquipment._rod(k, mount, outline[i], outline[(i + 1) % outline.size()], 0.006, material, seam_col, 5, false, 0)
 	# The narrow strap follows the softened corners and never registers a pivot.
+	# Webbing and buckle are thin: plain bands, laid level as a level beam lies.
 	var strap := [Vector3(0, -size.y / 2 + inset, -size.z / 2 - 0.008), Vector3(0, size.y / 2 - inset, -size.z / 2 - 0.008), Vector3(0, size.y / 2 + 0.008, -size.z / 2 + inset), Vector3(0, size.y / 2 + 0.008, size.z / 2 - inset), Vector3(0, size.y / 2 - inset, size.z / 2 + 0.008)]
 	for i in strap.size() - 1:
-		VehicleFrames.beam(k, mount, strap[i], strap[i + 1], minf(0.045, size.x * 0.15), 0.012, "webbing", seam_col, false, true)
-	k._box(mount, Vector3(0.065, 0.018, 0.055), Vector3(0, size.y / 2 + 0.018, 0), "gunmetal", Color(0.22, 0.23, 0.21), Vector3.ZERO, false)
+		var a: Vector3 = strap[i]
+		var b: Vector3 = strap[i + 1]
+		var y := (b - a).normalized()
+		var z := (Vector3.RIGHT if absf(y.x) < 0.9 else Vector3.FORWARD).cross(y).normalized()
+		k._add(mount, VehicleEquipment._plate(Vector3(minf(0.045, size.x * 0.15), a.distance_to(b), 0.012)), "webbing", seam_col, (a + b) * 0.5, Basis(y.cross(z), y, z).get_euler(), Vector3.ONE, false)
+	k._add(mount, VehicleEquipment._plate(Vector3(0.065, 0.018, 0.055)), "gunmetal", Color(0.22, 0.23, 0.21), Vector3(0, size.y / 2 + 0.018, 0), Vector3.ZERO, Vector3.ONE, false)
 	k._fold(mount)
 	return part
 
@@ -128,14 +147,15 @@ static func roll(k: VehicleModels, parent: Node3D, center: Vector3, radius: floa
 	var mount := k._pivot(parent, center)
 	mount.rotation = rotation
 	var end := minf(0.03, length * 0.04)
-	k._cyl(mount, radius, radius, length - end * 2, Vector3.ZERO, Vector3.ZERO, material, col, 12)
+	# The body ends in its softened ends, and those show only their outer faces.
+	VehicleEquipment._cyl(k, mount, radius, radius, length - end * 2, Vector3.ZERO, Vector3.ZERO, material, col, 12, true, 0)
 	for side: float in [-1.0, 1.0]:
 		var y := side * (length * 0.5 - end * 0.5)
-		k._cyl(mount, radius * (0.88 if side > 0 else 1.0), radius * (1.0 if side > 0 else 0.88), end, Vector3(0, y, 0), Vector3.ZERO, material, col, 12)
+		VehicleEquipment._cyl(k, mount, radius * (0.88 if side > 0 else 1.0), radius * (1.0 if side > 0 else 0.88), end, Vector3(0, y, 0), Vector3.ZERO, material, col, 12, true, 2 if side > 0 else 1)
 		# The wound layers on the end face read as a darker inner spiral.
 		k._add(mount, VehicleFittings._ring(radius * 0.36, radius * 0.5), material, col.darkened(0.22), Vector3(0, side * length * 0.5, 0), Vector3.ZERO, Vector3(1, 0.12, 1), false)
 	var strap_col := col.darkened(0.35)
 	for f: float in [-0.3, 0.3]:
-		k._cyl(mount, radius * 1.035, radius * 1.035, minf(0.04, length * 0.05), Vector3(0, f * length, 0), Vector3.ZERO, "webbing", strap_col, 12, false)
+		VehicleEquipment._cyl(k, mount, radius * 1.035, radius * 1.035, minf(0.04, length * 0.05), Vector3(0, f * length, 0), Vector3.ZERO, "webbing", strap_col, 12, false, 0)
 		k._box(mount, Vector3(0.014, minf(0.05, length * 0.06), 0.04), Vector3(radius * 1.04, f * length, 0), "gunmetal", Color(0.22, 0.23, 0.21), Vector3.ZERO, false)
 	k._fold(mount)
