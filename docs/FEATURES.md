@@ -1295,6 +1295,27 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
     noise carried up the source's axis in the world, and the bend is sized in metres at the hot air, so nearer haze
     bends more and haze too small on screen to read is left out. The composite then bends only what lies behind the
     hot air, and never pulls in the sky or anything in front of it. With Reduce motion on, the air holds still.
+  - **Motion blur** (Camera and lens: Off / Objects / Objects + camera; Cinematic: Objects): the reconstruction
+    filter of McGuire, Hennessy, Bukowski and Osman ("A Reconstruction Filter for Plausible Motion Blur", I3D 2012)
+    with Jimenez's refinements (SIGGRAPH 2014), four more passes in `cinematic_fx.gd`. Each pixel's movement comes
+    from the engine's velocity buffer (drawn only while the blur is on: `needs_motion_vectors`); the camera's share
+    is found by reprojecting the pixel's depth with last frame's camera and taken out, so on Objects a commander's
+    pan stays sharp while rotor blades, flung bodies and debris still smear (Objects + camera puts 60% of the pan
+    back, none with Reduce motion). The blur is half a frame long (a 180-degree shutter), at most 32 pixels: the
+    longest blur in each 32-pixel tile and its neighbours tells each pixel how far to look, and 14 jittered samples
+    along it are weighed by depth and speed, so a blurred foreground smears over the background and not the reverse.
+    Godot's velocity buffer holds where each pixel was less where it is, in uv (measured: `FL_DEBUG_CINE_VIEW=7`).
+- **Rain on everything** (`Mats.SURFACE_SHADER`, the `rain_wet` global; `Atmosphere._wet_tick`): in the rain the
+  vehicles, buildings, sandbags and gear standing out in it take a film of water, as the ground and streets
+  already did (after Lagarde, "Water drop 2b: dynamic rain and its effects", 2013). Rough, porous stuff (cloth,
+  timber, concrete) darkens as water fills its pores and gains little gloss; paint and metal barely darken but
+  take a glossy film. Upturned faces soak most, faces turned down stay drier, and water runs down walls and hulls
+  in streaks. A battle that opens in the rain starts soaked; rain that sets in mid-battle wets things over 30 s,
+  and they dry over three minutes once it stops. It costs a few instructions per pixel, so every preset has it,
+  the browser too.
+- **Level-of-detail cross-fades**: a vehicle and its distant single-mesh stand-in (`Mats.add_distance_lod`), cab
+  glass, the street's fine stones and distant blast clouds dissolve into each other over a few metres (Godot's
+  dithered visibility-range fade) instead of popping as the camera zooms.
 - **Wildlife** (`wildlife.gd`), drawn only on each player's own screen and never simulated or sent by the server,
   so it can't change a battle or its seed. Flocks of sparrows and starlings (pigeons about the town) feed on bare
   ground - tracks, yards, pavements, mud, shell holes, where the grass doesn't hide them - hopping and pecking,

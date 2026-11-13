@@ -65,6 +65,11 @@ textures/vram_compression/import_etc2_astc=true
 
 [shader_globals]
 
+rain_wet={
+"type": "float",
+"value": 0.0
+}
+
 cloud_noise={
 "type": "sampler2D",
 "value": ""

@@ -9,26 +9,26 @@ const PATH := "user://settings.cfg"
 ## The cinematic lighting (atmosphere.gd, cinematic_fx.gd, physical_sky.gd).
 ## Only the Cinematic preset turns it all on; Medium, High and Ultra keep just
 ## the shadow fit, which costs next to nothing and sharpens close-up shadows.
-const CINEMATIC_KEYS := ["shadow_fit", "light_shadows", "phys_sky", "lens", "shafts", "local_exp", "eye_adapt", "film", "heat_haze"]
+const CINEMATIC_KEYS := ["shadow_fit", "light_shadows", "phys_sky", "lens", "shafts", "local_exp", "eye_adapt", "film", "heat_haze", "motion_blur"]
 
 const PRESETS := {
 	"low": {"shadows": 1, "ssao": false, "ao_q": 0, "ssil": false, "gi": false, "vol_fog": false, "glow": true, "aa": 1, "scale": 0.77,
 		"upscaler": 1, "grass": 0, "wildlife": 0, "effects": 0, "decals": false, "ragdolls": false, "post": false, "dof": false, "ssr": false, "terrain_reflections": false, "alpine_haze": false, "lod": 0, "aniso": 1, "water": 0, "mountain_clouds": 1, "cloud_shadows": false,
-		"shadow_fit": false, "light_shadows": 0, "phys_sky": false, "lens": false, "shafts": false, "local_exp": false, "eye_adapt": false, "film": false, "heat_haze": false},
+		"shadow_fit": false, "light_shadows": 0, "phys_sky": false, "lens": false, "shafts": false, "local_exp": false, "eye_adapt": false, "film": false, "heat_haze": false, "motion_blur": 0},
 	"medium": {"shadows": 2, "ssao": true, "ao_q": 1, "ssil": false, "gi": false, "vol_fog": false, "glow": true, "aa": 2, "scale": 1.0,
 		"upscaler": 1, "grass": 1, "wildlife": 1, "effects": 1, "decals": true, "ragdolls": true, "post": true, "dof": false, "ssr": false, "terrain_reflections": false, "alpine_haze": false, "lod": 1, "aniso": 2, "water": 1, "mountain_clouds": 2, "cloud_shadows": false,
-		"shadow_fit": true, "light_shadows": 0, "phys_sky": false, "lens": false, "shafts": false, "local_exp": false, "eye_adapt": false, "film": false, "heat_haze": false},
+		"shadow_fit": true, "light_shadows": 0, "phys_sky": false, "lens": false, "shafts": false, "local_exp": false, "eye_adapt": false, "film": false, "heat_haze": false, "motion_blur": 0},
 	"high": {"shadows": 2, "ssao": true, "ao_q": 2, "ssil": true, "gi": false, "vol_fog": true, "glow": true, "aa": 6, "scale": 1.0,
 		"upscaler": 1, "grass": 2, "wildlife": 2, "effects": 2, "decals": true, "ragdolls": true, "post": true, "dof": false, "ssr": true, "terrain_reflections": false, "alpine_haze": true, "lod": 2, "aniso": 3, "water": 2, "mountain_clouds": 3, "cloud_shadows": true,
-		"shadow_fit": true, "light_shadows": 0, "phys_sky": false, "lens": false, "shafts": false, "local_exp": false, "eye_adapt": false, "film": false, "heat_haze": false},
+		"shadow_fit": true, "light_shadows": 0, "phys_sky": false, "lens": false, "shafts": false, "local_exp": false, "eye_adapt": false, "film": false, "heat_haze": false, "motion_blur": 0},
 	"ultra": {"shadows": 3, "ssao": true, "ao_q": 3, "ssil": true, "gi": true, "vol_fog": true, "glow": true, "aa": 7, "scale": 1.0,
 		"upscaler": 1, "grass": 2, "wildlife": 2, "effects": 2, "decals": true, "ragdolls": true, "post": true, "dof": true, "ssr": true, "terrain_reflections": false, "alpine_haze": true, "lod": 2, "aniso": 4, "water": 3, "mountain_clouds": 4, "cloud_shadows": true,
-		"shadow_fit": true, "light_shadows": 0, "phys_sky": false, "lens": false, "shafts": false, "local_exp": false, "eye_adapt": false, "film": false, "heat_haze": false},
+		"shadow_fit": true, "light_shadows": 0, "phys_sky": false, "lens": false, "shafts": false, "local_exp": false, "eye_adapt": false, "film": false, "heat_haze": false, "motion_blur": 0},
 	# everything Ultra has, and all of the cinematic lighting on top: for a
 	# fast graphics card, screenshots and replays
 	"cinematic": {"shadows": 3, "ssao": true, "ao_q": 3, "ssil": true, "gi": true, "vol_fog": true, "glow": true, "aa": 7, "scale": 1.0,
 		"upscaler": 1, "grass": 2, "wildlife": 2, "effects": 2, "decals": true, "ragdolls": true, "post": true, "dof": true, "ssr": true, "terrain_reflections": true, "alpine_haze": true, "lod": 2, "aniso": 4, "water": 3, "mountain_clouds": 4, "cloud_shadows": true,
-		"shadow_fit": true, "light_shadows": 2, "phys_sky": true, "lens": true, "shafts": true, "local_exp": true, "eye_adapt": true, "film": true, "heat_haze": true},
+		"shadow_fit": true, "light_shadows": 2, "phys_sky": true, "lens": true, "shafts": true, "local_exp": true, "eye_adapt": true, "film": true, "heat_haze": true, "motion_blur": 1},
 }
 ## The presets in the order the Settings screen lists them.
 const PRESET_KEYS := ["low", "medium", "high", "ultra", "cinematic"]
@@ -54,6 +54,7 @@ const LABELS := {
 	"scroll_mode": ["Pan (grab the map)", "Zoom"],
 	"minimap_size": ["Small", "Medium", "Large"],
 	"light_shadows": ["Off", "Nearest 2", "Nearest 6"],
+	"motion_blur": ["Off", "Objects", "Objects + camera"],
 }
 const RESOLUTIONS := [Vector2i(1280, 720), Vector2i(1600, 900), Vector2i(1920, 1080), Vector2i(2560, 1440), Vector2i(3840, 2160)]
 ## Colour grading looks: [brightness, contrast, saturation, tint]
@@ -79,7 +80,7 @@ var v := {
 	"zoom_cursor": true, "mmb_mode": 0, "scroll_mode": 0, "minimap_size": 1, "minimap_rotate": false,
 	"coop_show": true, "ui_theme": "brass", "error_reports": true, "reduce_motion": false,
 	"volume": 0.8, "vol_music": 0.6, "vol_effects": 1.0, "vol_ambience": 0.8, "vol_ui": 0.8, "battle_music": true, "mute_bg": false,
-	"shadow_fit": true, "light_shadows": 0, "phys_sky": false, "lens": false, "shafts": false, "local_exp": false, "eye_adapt": false, "film": false, "heat_haze": false,
+	"shadow_fit": true, "light_shadows": 0, "phys_sky": false, "lens": false, "shafts": false, "local_exp": false, "eye_adapt": false, "film": false, "heat_haze": false, "motion_blur": 0,
 }
 ## Volume sliders -> the mixer bus each one sets.
 const VOLUME_BUS := {"volume": "Master", "vol_music": "Music", "vol_effects": "Effects", "vol_ambience": "Ambience", "vol_ui": "Interface"}
