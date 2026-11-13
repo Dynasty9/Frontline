@@ -1813,12 +1813,18 @@ void fragment() {
 	float g = vn(p * 13.0);
 	vec2 u = UV * 2.0 - 1.0;
 	float edge = max(abs(u.x), abs(u.y));
-	if (n + g * 0.3 < 0.47 + smoothstep(0.8, 1.0, edge) * 0.3) { discard; }
+	float scraps = step(0.47 + smoothstep(0.8, 1.0, edge) * 0.3, n + g * 0.3);
+	// Garnish is tied to a fine diamond cord mesh, visible through the larger gaps.
+	vec2 weave = vec2(p.x + p.y, p.x - p.y) * 7.0;
+	vec2 cord_distance = abs(fract(weave) - 0.5);
+	float cord = 1.0 - smoothstep(0.025, 0.045, min(cord_distance.x, cord_distance.y));
+	if (max(scraps, cord) < 0.5) discard;
 	vec3 c = tint.rgb * (0.65 + 0.55 * g);
 	c = mix(c, c * vec3(1.25, 1.05, 0.7), step(0.62, vn(p * 3.1 + 9.0)) * 0.6);
 	// the garnish: darker brown and near-black scraps knotted in, breaking it up
 	c = mix(c, c * vec3(0.62, 0.5, 0.38), step(0.6, vn(p * 2.3 + 31.0)) * 0.75);
 	c = mix(c, c * 0.35, step(0.7, vn(p * 4.1 + 57.0)) * 0.6);
+	c = mix(tint.rgb * 0.45, c, scraps);
 	ALBEDO = c;
 	ROUGHNESS = 0.95;
 	BACKLIGHT = c * 0.5;

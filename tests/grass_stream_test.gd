@@ -48,6 +48,22 @@ func _ready() -> void:
 	grass.atmo = atmosphere
 	var blocked := grass._blocked_job()
 	check(blocked.boxes.size() == 1 and blocked.boxes[0][1] == Vector2(5.2, 4.2), "Maintained yards exclude wild grass and shrubs")
+	var bunker := Structure.new()
+	bunker.skind = "bunker"
+	bunker.position = Vector3(20, 40, 20)
+	bunker.foot = Vector2(3, 3)
+	bunker.yaw = 0.7
+	world.structures.append(bunker)
+	var earthworks := grass._blocked_job()
+	earthworks.run()
+	var bank_edge := bunker.position + Basis(Vector3.UP, bunker.yaw) * Vector3(4.6, 0, 0)
+	var bank_x := floori(bank_edge.x) + (MapDims.N >> 1)
+	var bank_z := floori(bank_edge.z) + (MapDims.N >> 1)
+	check(earthworks.blocked[bank_z * MapDims.N + bank_x] == 1, "Bunker spoil excludes plants outside the walls at rotated headings")
+	var meadow := bunker.position + Vector3(9, 0, 0)
+	check(earthworks.blocked[(floori(meadow.z) + (MapDims.N >> 1)) * MapDims.N + floori(meadow.x) + (MapDims.N >> 1)] == 0, "The earthwork clearing preserves nearby meadow")
+	world.structures.erase(bunker)
+	bunker.free()
 	var street := Grass.BlockedJob.new()
 	street.roads = [PackedVector3Array([Vector3(-8, 0, 0), Vector3(8, 0, 0)])]
 	street.run()

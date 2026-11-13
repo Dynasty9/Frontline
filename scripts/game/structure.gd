@@ -2837,7 +2837,7 @@ func _build_model() -> void:
 				Res.mi(model, Res.cyl(0.13, 0.13, 3.0, 7), Res.mat(C_WOOD.darkened(0.3)), Vector3(0, 1.72, -2.86), Vector3(0, 0, PI / 2))
 				for sx in [-1.0, 1.0]:
 					Res.mi(model, Res.cyl(0.13, 0.13, 2.2, 7), Res.mat(C_WOOD.darkened(0.3)), Vector3(sx * 2.86, 1.72, 0), Vector3(PI / 2, 0, 0))
-				WorksModels.berms(model, 2.8, 1.0, 2.0, true)
+				WorksModels.berms(model, 2.8, 1.0, 2.0, true, self)
 				for i in 6:
 					var x := -2.0 + i * 0.8
 					var y := 2.6 + WorksModels.roof_soil_height(Vector2(x, -2.2), soil_variant) + 0.08
@@ -2850,7 +2850,7 @@ func _build_model() -> void:
 				for row in 2:
 					bags.append({"p": Vector3(0, 2.82, -2.6 + row * 0.5), "s": Vector3(5.2, 0.24, 0.48), "r": 0.0})
 				bags.append({"p": Vector3(0, 2.82, 2.6), "s": Vector3(5.2, 0.24, 0.48), "r": 0.0})
-				WorksModels.berms(model, 2.8, 0.95, 2.0, false)
+				WorksModels.berms(model, 2.8, 0.95, 2.0, false, self)
 				for y in [1.1, 1.66]:
 					_mk(Res.box(Vector3(2.7, 0.07, 0.1)), "metal_dark", Vector3(0, y, -2.82), Vector3.ZERO, Color(0.2, 0.2, 0.19))
 				var bk := _kit(rng)

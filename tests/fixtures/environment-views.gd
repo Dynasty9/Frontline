@@ -69,6 +69,34 @@ func capture() -> void:
 			["inside", Vector3(3, -0.6, -28), 5.5, -23.0, 0.5],
 			["bunker", Vector3(0, 0, -58), 14.0, -32.0, -0.65],
 			["position", Vector3(0, 0, -40), 55.0, -50.0, 0.35]]
+	if "--slope-review" in OS.get_cmdline_user_args():
+		assert(not heights.is_empty(), "Slope review requires generated geology")
+		var target := Vector3(-110, 0, -130)
+		var best := INF
+		for x in range(-180, -70, 10):
+			for z in range(-180, -70, 10):
+				var point := Vector3(x, 0, z)
+				var grade: float = absf(world.terrain.landform.height(point + Vector3.RIGHT * 6.0) - world.terrain.landform.height(point - Vector3.RIGHT * 6.0)) / 12.0
+				if grade > 0.08 and grade < 0.18 and point.distance_squared_to(Vector3(-110, 0, -130)) < best:
+					target = point
+					best = point.distance_squared_to(Vector3(-110, 0, -130))
+		assert(best < INF, "Review seed must provide a useful moderate slope")
+		# Clear only this review footprint so foliage cannot hide foundation gaps.
+		for obstacle in world.structures.duplicate():
+			var offset: Vector3 = obstacle.position - target - Vector3(0,0,4)
+			if obstacle.skind == "tree" and Vector2(offset.x, offset.z).length() < 17.0:
+				world.despawn(obstacle)
+		target.y = world.terrain.landform.height(target)
+		world.spawn("structure", {"skind": "trench", "team": 1, "pos": target, "yaw": 0.0, "built": true, "progress": 1.0})
+		var bunker_pos := target + Vector3(0, 0, 9)
+		bunker_pos.y = world.terrain.landform.height(bunker_pos)
+		world.spawn("structure", {"skind": "bunker", "team": 1, "pos": bunker_pos, "yaw": 0.0, "built": true, "progress": 1.0})
+		world.terrain.tick(1 << 30)
+		world.atmo.trench_net.mark_dirty()
+		world.atmo.trench_net.rebuild()
+		views = [["earthwork", target, 18.0, -38.0, 0.5], ["cut", target + Vector3(0,-0.6,0), 6.0, -23.0, 0.5],
+			["bunker", bunker_pos, 16.0, -32.0, -0.65], ["position", target, 45.0, -50.0, 0.35]]
+		print("SLOPE_REVIEW ", target, " bunker=", bunker_pos)
 	var settle_frames := 90
 	if "--capture-set=shoreline" in OS.get_cmdline_user_args():
 		var shore: float = world.water.coast_x(0.0)

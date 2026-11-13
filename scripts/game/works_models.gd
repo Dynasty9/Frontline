@@ -157,8 +157,10 @@ static func pit_floor(model: Node3D, r: float) -> void:
 ## `half` from its middle, `h` high (up to the slits) and running out `depth`
 ## from the wall, rounded over and dying away at the corners. `all_sides`:
 ## round the back too, either side of the door.
-static func berms(model: Node3D, half: float, h: float, depth: float, all_sides: bool) -> void:
-	var bank := _mk(model, _bank_mesh(half, h, depth, all_sides), "bank", Vector3.ZERO, Vector3.ZERO, Color(0.29, 0.27, 0.17))
+static func berms(model: Node3D, half: float, h: float, depth: float, all_sides: bool, structure = null) -> void:
+	var terrain_world = structure.world if structure != null else null
+	var foundation := Transform3D(Basis(Vector3.UP, structure.yaw), structure.position) if structure != null else Transform3D.IDENTITY
+	var bank := _mk(model, _bank_mesh(half, h, depth, all_sides, terrain_world, foundation), "bank", Vector3.ZERO, Vector3.ZERO, Color(0.29, 0.27, 0.17))
 	bank.material_override = TrenchNet.bank_material()
 
 
@@ -247,9 +249,18 @@ static func _bank_point(angle: float, t: float, half: float, h: float, depth: fl
 	return Vector3(point.x, maxf(0.0, y * door) - 0.025, point.y)
 
 
-static func _bank_mesh(half: float, h: float, depth: float, all_sides: bool) -> ArrayMesh:
+## Keep the bank against its level foundation while its toe follows the hillside.
+static func _bank_ground_point(angle: float, t: float, half: float, h: float, depth: float, all_sides: bool, world, foundation: Transform3D) -> Vector3:
+	var point := _bank_point(angle, t, half, h, depth, all_sides)
+	if world != null:
+		var ground: float = world.ground_y(foundation * point) - foundation.origin.y
+		point.y += ground * smoothstep(0.0, 1.0, t)
+	return point
+
+
+static func _bank_mesh(half: float, h: float, depth: float, all_sides: bool, world = null, foundation := Transform3D.IDENTITY) -> ArrayMesh:
 	var key := "bank%.2f,%.2f,%.2f,%s" % [half, h, depth, all_sides]
-	if _meshes.has(key):
+	if world == null and _meshes.has(key):
 		return _meshes[key]
 	var points := []
 	var normals := []
@@ -259,9 +270,9 @@ static func _bank_mesh(half: float, h: float, depth: float, all_sides: bool) -> 
 		var t := ring / 8.0
 		for i in 65:
 			var angle := (i % 64) * TAU / 64.0
-			var point := _bank_point(angle, t, half, h, depth, all_sides)
-			var along := _bank_point(angle + 0.01, t, half, h, depth, all_sides) - _bank_point(angle - 0.01, t, half, h, depth, all_sides)
-			var across := _bank_point(angle, minf(t + 0.01, 1.0), half, h, depth, all_sides) - _bank_point(angle, maxf(t - 0.01, 0.0), half, h, depth, all_sides)
+			var point := _bank_ground_point(angle, t, half, h, depth, all_sides, world, foundation)
+			var along := _bank_ground_point(angle + 0.01, t, half, h, depth, all_sides, world, foundation) - _bank_ground_point(angle - 0.01, t, half, h, depth, all_sides, world, foundation)
+			var across := _bank_ground_point(angle, minf(t + 0.01, 1.0), half, h, depth, all_sides, world, foundation) - _bank_ground_point(angle, maxf(t - 0.01, 0.0), half, h, depth, all_sides, world, foundation)
 			row.append(point)
 			directions.append(across.cross(along).normalized())
 		points.append(row)
@@ -270,12 +281,13 @@ static func _bank_mesh(half: float, h: float, depth: float, all_sides: bool) -> 
 	var directions := PackedVector3Array()
 	for ring in 8:
 		for i in 64:
-			if (points[ring][i] as Vector3).y <= -0.024 and (points[ring][i + 1] as Vector3).y <= -0.024:
+			if _bank_point(i * TAU / 64.0, ring / 8.0, half, h, depth, all_sides).y <= -0.024 and _bank_point((i + 1) * TAU / 64.0, ring / 8.0, half, h, depth, all_sides).y <= -0.024:
 				continue
 			_tri(vertices, directions, points[ring][i], points[ring][i + 1], points[ring + 1][i + 1], normals[ring][i], normals[ring][i + 1], normals[ring + 1][i + 1])
 			_tri(vertices, directions, points[ring][i], points[ring + 1][i + 1], points[ring + 1][i], normals[ring][i], normals[ring + 1][i + 1], normals[ring + 1][i])
 	var mesh := _commit(vertices, directions)
-	_meshes[key] = mesh
+	if world == null:
+		_meshes[key] = mesh
 	return mesh
 
 

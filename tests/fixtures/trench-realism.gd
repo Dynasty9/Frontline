@@ -182,6 +182,9 @@ func _ready() -> void:
 	for i in 100:
 		var sample := Vector3(i * 0.73, 0.0, i * -0.41)
 		check(absf(TrenchNet.edge_erosion(sample)) <= 0.111, "Cosmetic edge erosion stays outside the clear walking route")
+		var rim := TrenchNet.rim_height(sample, 1.2)
+		check(rim >= 0.02 and rim <= 0.1, "Loose rim clods stay below ten centimetres and above the intact ground")
+		check(is_equal_approx(TrenchNet.rim_height(sample, 0.0), 0.02), "An unexcavated mark has no raised soil clods")
 	for i in 100:
 		var sample := Vector3(i * 0.37, 30.0, i * -0.29)
 		check(is_zero_approx(TrenchNet.cut_relief(sample, 0.0)) and is_zero_approx(TrenchNet.cut_relief(sample, 1.0)), "Cut relief meets the rim and authoritative floor without seams")
@@ -212,6 +215,17 @@ func _ready() -> void:
 			check(bank_points[i].is_finite() and bank_normals[i].y > 0.0, "Bank corners keep finite upward-facing normals")
 		for t in [0.0, 0.25, 0.5, 0.75, 1.0]:
 			check(WorksModels._bank_point(0.0, t, 2.8, 1.0, 2.0, rear_bank).y < 0.0, "The bunker approach stays clear of its bank")
+	var bank_center := Vector3(30, 0, 30)
+	bank_center.y = geology.height(bank_center)
+	for heading in [0.0, 0.7, 2.2]:
+		var foundation := Transform3D(Basis(Vector3.UP, heading), bank_center)
+		for i in 64:
+			var angle := i * TAU / 64.0
+			var toe := WorksModels._bank_ground_point(angle, 1.0, 2.8, 1.0, 2.0, true, w, foundation)
+			var contact := foundation * toe
+			check(absf(contact.y - w.ground_y(contact) + 0.025) < 0.0001, "Bunker bank toes meet elevated sloping ground at every heading")
+			var lip := WorksModels._bank_ground_point(angle, 0.0, 2.8, 1.0, 2.0, true, w, foundation)
+			check(lip == WorksModels._bank_point(angle, 0.0, 2.8, 1.0, 2.0, true), "Grounding leaves the bank against the level bunker foundation")
 	for variant in 4:
 		var roof := WorksModels.roof_soil(variant)
 		check(roof == WorksModels.roof_soil(variant), "Bunker caps reuse their mesh instead of allocating per building")

@@ -239,7 +239,11 @@ func _blocked_job() -> BlockedJob:
 			continue
 		var big: bool = st.skind in ["floor", "fob", "barracks", "factory", "medic_tent", "research", "depot", "helipad", "bunker", "mortar_pit", "hmg_nest", "mg_nest", "at_post", "tunnel", "house_wall", "tall_wall", "concrete_wall", "hesco", "barricade", "ammo_cache", "wreck", "car", "crates", "bridge", "town"]
 		if big:
-			j.boxes.append([Vector2(st.position.x, st.position.z), st.foot + Vector2(0.4, 0.4), float(st.yaw)])
+			var cleared: Vector2 = st.foot + Vector2(0.4, 0.4)
+			if st.skind == "bunker":
+				# The two-metre earth bank buries plants beyond the building walls.
+				cleared = cleared.max(Vector2(5.2, 5.2))
+			j.boxes.append([Vector2(st.position.x, st.position.z), cleared, float(st.yaw)])
 	# sidewalks, squares, gardens and the like
 	for e in w.decor:
 		if not String(e[0]) in ["walk", "walk_crossing", "pave", "junction", "soft", "lot_pave", "drive", "path", "garden", "yard"]:

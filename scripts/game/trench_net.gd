@@ -515,6 +515,12 @@ func _cut_inward(p: Vector3) -> Vector3:
 	return Vector3(_val(x + 1, z) - _val(x - 1, z), 0, _val(x, z + 1) - _val(x, z - 1)).normalized()
 
 
+## Loose clods break the level cut edge, sharing the same height with the spoil.
+static func rim_height(p: Vector3, depth: float) -> float:
+	var clods := 0.5 + 0.32 * sin(p.x * 2.7 + p.z * 1.9) + 0.18 * sin(p.z * 7.1 - p.x * 4.3)
+	return 0.02 + 0.08 * clods * clampf(depth / 1.2, 0.0, 1.0)
+
+
 static func cut_relief(p: Vector3, fraction: float) -> float:
 	return sin(fraction * PI) * (0.045 + 0.035 * sin(p.x * 8.3 + p.z * 6.7 + fraction * 12.0))
 
@@ -542,13 +548,15 @@ func _wall(wst: SurfaceTool, p0: Vector3, p1: Vector3, inside_c: Vector3) -> voi
 	var bl := a + Vector3(0, -da, 0)
 	var br := b + Vector3(0, -db, 0)
 	wst.set_color(Color(1, n.x * 0.5 + 0.5, n.z * 0.5 + 0.5, minf(da, db) / 1.2))
-	var left := a + Vector3.UP * 0.02
-	var right := b + Vector3.UP * 0.02
+	var ha := rim_height(a, da)
+	var hb := rim_height(b, db)
+	var left := a + Vector3.UP * ha
+	var right := b + Vector3.UP * hb
 	for row in 5:
 		var t0 := row * 0.2
 		var t1 := (row + 1) * 0.2
-		var lower_left := a + Vector3(0, lerpf(0.02, -da, t1), 0) + na * cut_relief(a, t1)
-		var lower_right := b + Vector3(0, lerpf(0.02, -db, t1), 0) + nb * cut_relief(b, t1)
+		var lower_left := a + Vector3(0, lerpf(ha, -da, t1), 0) + na * cut_relief(a, t1)
+		var lower_right := b + Vector3(0, lerpf(hb, -db, t1), 0) + nb * cut_relief(b, t1)
 		var normals := [cut_normal(a, na, da, t0), cut_normal(b, nb, db, t0), cut_normal(a, na, da, t1), cut_normal(b, nb, db, t1)]
 		for v in [[left, Vector2(0, da * t0), normals[0]], [lower_right, Vector2(1, db * t1), normals[3]], [right, Vector2(1, db * t0), normals[1]],
 				[left, Vector2(0, da * t0), normals[0]], [lower_left, Vector2(0, da * t1), normals[2]], [lower_right, Vector2(1, db * t1), normals[3]]]:
@@ -661,7 +669,7 @@ func _berm_strip(bst: SurfaceTool, pts: Array, ins: Array) -> void:
 		var variation := 0.76 + 0.24 * sin(p.x * 1.3 + sin(p.z * 0.9))
 		reach *= (0.4 + 0.6 * depth / 1.2) * variation
 		var h := (0.31 + 0.16 * sin(p.x * 1.7 + p.z * 0.71) + 0.07 * sin(p.z * 5.3)) * clampf(reach / 1.2, 0.0, 1.0) * depth / 1.2
-		lip.append(p + Vector3(0, 0.02, 0))
+		lip.append(p + Vector3.UP * rim_height(p, depth))
 		crest.append(p + o * minf(0.65, reach * (0.36 + 0.12 * variation)) + Vector3(0, maxf(0.1 * depth / 1.2, h), 0))
 		var outer := p + o * reach
 		outer.y = world.terrain.landform.height(outer) - 0.025
@@ -734,8 +742,6 @@ void vertex() { wpos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz; upness = abs((MOD
 void fragment() {
 	float patches = earth_noise(wpos.xz * 1.7);
 	float torn = earth_noise(wpos.xz * 5.1);
-	// Loose crumbs thin out over intact ground at the foot of the spoil.
-	if (bank_surface < 0.5 && smoothstep(0.84, 1.0, UV.x) > 0.2 + earth_noise(wpos.xz * 17.0) * 0.8) discard;
 	float wet = clamp(rain_wet * 0.7 + earth_noise(wpos.xz * 0.38) * 0.12, 0.0, 1.0);
 	vec3 soil; vec4 soil_surface;
 	earth_material(wpos.xz / 1.3, wpos, 0.65, wet, soil, soil_surface);
@@ -765,9 +771,9 @@ void fragment() {
 	float wet = clamp(0.28 + drainage * 0.45 + rain_wet * 0.3, 0.0, 1.0);
 	vec3 soil; vec4 surface;
 	earth_material(wpos.xz / 1.3, wpos, 0.85, wet, soil, surface);
-	vec3 litter = earth_color(wpos.xz * 0.8, 4.0) * vec3(0.5,0.34,0.22);
+	vec3 litter = earth_color(wpos.xz * 0.8, 4.0) * vec3(0.38,0.34,0.29);
 	float debris = smoothstep(0.66, 0.81, earth_noise(wpos.xz * 1.35));
-	vec3 col = mix(soil, litter, debris * 0.6);
+	vec3 col = mix(soil, litter, debris * 0.25);
 	col = mix(col, vec3(0.018,0.015,0.01), puddle * 0.76);
 	ALBEDO = earth_output(col);
 	ROUGHNESS = mix(mix(clamp(surface.a, 0.72, 0.98), 0.59, wet), 0.19, puddle);
