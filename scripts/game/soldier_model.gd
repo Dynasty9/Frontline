@@ -52,6 +52,8 @@ var over_wall := false  # up over the barrier he's behind, weapon on the top
 var cover_h := 0.0  # height of the barrier he's at (0: none)
 var blind := false  # holding the weapon up over the top, head down
 var muzzle_local := Vector3(0, 0.01, -0.8)  # the weapon's muzzle in gun space
+const MixamoClips := preload("res://scripts/game/mixamo_clips.gd")
+var trench_step := 0  # downhill / level / uphill, from the rendered stride
 var ladder: Structure
 var crew := false  # working a mounted gun: his own slung, hands on its grips
 var move_yaw := 0.0  # which way he's moving, relative to where he faces (+ to his left)
@@ -286,7 +288,7 @@ func build(utype: String, team: int, seed: int) -> void:
 			skinned.bind_procedural(self)
 			skinned.ground_height = get_parent().world.ground_y
 			if skinned.model_asset == InfantryAssets.SWAT:
-				load("res://scripts/game/mixamo_clips.gd").install(skinned, true)
+				MixamoClips.install(skinned, true)
 				var driver := load("res://scripts/game/rifle_animation_controller.gd")
 				if (driver.LOCOMOTION + ["reloading"]).all(func(clip: String) -> bool: return skinned.native_player.has_animation(driver.PACK + clip)):
 					rifle_driver = driver.new()
@@ -1421,7 +1423,9 @@ func pose(dt: float, life: int, posture: int, act: int, speed: float, backwards:
 				activity = "mixamo_prone__Throw_Grenade"
 			if act == Soldier.Act.THROW and posture == Soldier.Post.CROUCH and skinned.native_player != null and skinned.native_player.has_animation("mixamo_activities__Crouch_Throw_Grenade"):
 				activity = "mixamo_activities__Crouch_Throw_Grenade"
-			var captured_activity := (speed < 0.1 or act in [Soldier.Act.THROW, Soldier.Act.LIMP, Soldier.Act.CLIMB]) and not crew and skinned.native_player != null and not activity.is_empty() and skinned.native_player.has_animation(activity)
+			if trench_step != 0:
+				activity = MixamoClips.STEP_UP if trench_step > 0 else MixamoClips.STEP_DOWN
+			var captured_activity := (trench_step != 0 or speed < 0.1 or act in [Soldier.Act.THROW, Soldier.Act.LIMP, Soldier.Act.CLIMB]) and not crew and skinned.native_player != null and not activity.is_empty() and skinned.native_player.has_animation(activity)
 			var captured_prone := rifle_driver != null and posture == Soldier.Post.PRONE and (speed < 0.1 or skinned.native_player.has_animation(rifle_driver.PRONE_PACK + "Prone_Forward")) and act in [Soldier.Act.IDLE, Soldier.Act.SHOOT, Soldier.Act.RELOAD, Soldier.Act.CRAWL] and not crew and not over_wall and skinned.native_player.has_animation(rifle_driver.PRONE_CLIP)
 			if not captured_prone and not (posture == Soldier.Post.PRONE and captured_activity): _native_prone = false
 			if captured_activity:
@@ -1435,8 +1439,8 @@ func pose(dt: float, life: int, posture: int, act: int, speed: float, backwards:
 					else:
 						rifle_driver.advance(dt, Vector3.FORWARD.rotated(Vector3.UP, move_yaw) * speed, posture == Soldier.Post.CROUCH, true)
 				skinned.ladder = ladder
-				skinned.pose_activity(dt, activity, act_time if act == Soldier.Act.THROW else -1.0, posture == Soldier.Post.PRONE, speed, act in [Soldier.Act.IDLE_LOOK, Soldier.Act.MELEE], act_time)
-				if act in [Soldier.Act.IDLE_LOOK, Soldier.Act.MELEE] and rifle_driver != null: rifle_driver._hold_rifle(1.0)
+				skinned.pose_activity(dt, activity, act_time if act == Soldier.Act.THROW else -1.0, posture == Soldier.Post.PRONE, speed, trench_step != 0 or act in [Soldier.Act.IDLE_LOOK, Soldier.Act.MELEE], act_time)
+				if (trench_step != 0 or act in [Soldier.Act.IDLE_LOOK, Soldier.Act.MELEE]) and rifle_driver != null: rifle_driver._hold_rifle(1.0)
 			elif captured_prone:
 				if not _native_prone:
 					rifle_driver.prone_time = 0.0

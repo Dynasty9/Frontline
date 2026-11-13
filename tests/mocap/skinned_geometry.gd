@@ -30,6 +30,13 @@ func _process(dt: float) -> void:
 	for unit in world.soldiers:
 		var model: Node3D = unit.model
 		if model == null: continue
+		if unit.utype == "fighter" and InfantryAssets.gameplay_model == InfantryAssets.SWAT:
+			for direction in [-1, 1]:
+				model.trench_step = direction
+				model.pose(1.0 / 30.0, Soldier.Life.ALIVE, Soldier.Post.STAND, Soldier.Act.RUN, 2.0, false, false)
+				var expected := "mixamo_rifle_locomotion__jump_up" if direction > 0 else "mixamo_rifle_locomotion__jump_down"
+				assert(model.skinned.native_player.current_animation == expected, "Crossing direction must select the matching shipped clip")
+			model.trench_step = 0
 		if unit.utype == "mortar_gunner" and InfantryAssets.gameplay_model == InfantryAssets.SWAT:
 			assert(model.skinned != null and model.tube.get_parent() is BoneAttachment3D, "The specialist carries his kit on the animated spine")
 			unit.debug_pose = []

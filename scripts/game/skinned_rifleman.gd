@@ -731,7 +731,8 @@ func pose_activity(dt: float, clip: String, throw_time := -1.0, prone_throw := f
 		# Preserve the outgoing pose when changing activities, including two clips in mode 20.
 		if _pose_mode in [20, 21, 24]: _pose_mode = 19
 	_begin_pose(24 if throw_time >= 0.0 else (21 if clip.ends_with("Digging") else 20))
-	if clip.ends_with("Rifle_Punch"): _transition_duration = 0.16
+	var terrain_step := clip in ["mixamo_rifle_locomotion__jump_up", "mixamo_rifle_locomotion__jump_down"]
+	if terrain_step or clip.ends_with("Rifle_Punch"): _transition_duration = 0.16
 	var full_body_throw := clip == "mixamo_prone__Throw_Grenade"
 	var lower: Array[Transform3D] = []
 	if throw_time >= 0.0:
@@ -749,6 +750,8 @@ func pose_activity(dt: float, clip: String, throw_time := -1.0, prone_throw := f
 		var animation := native_player.get_animation(clip)
 		var travel: Vector3 = animation.get_meta("root_travel", Vector3.ZERO)
 		var rate := move_speed * animation.length / travel.length() if move_speed > 0.0 and travel.length() > 0.05 else 1.0
+		if terrain_step:
+			rate = 1.0  # the simulation carries the body, the clip supplies the leg motion
 		if clip.ends_with("Climbing_Ladder"):
 			# A detached preview has no ladder elevation to drive its cycle.
 			rate = (4.25 / Soldier.LADDER_SECONDS) * animation.length / maxf(0.1, animation.get_meta("climb_distance", 0.5))
@@ -777,7 +780,7 @@ func pose_activity(dt: float, clip: String, throw_time := -1.0, prone_throw := f
 			skeleton.set_bone_pose(spine_index, spine)
 	_apply_hit(dt)
 	_blend_pose(0.0 if throw_time >= 0.0 and not full_body_throw else dt)
-	if throw_time < 0.0 and not clip.ends_with("Climbing_Ladder") and not clip.ends_with("Rifle_Punch"): _ground_feet(move_speed, dt)
+	if throw_time < 0.0 and not terrain_step and not clip.ends_with("Climbing_Ladder") and not clip.ends_with("Rifle_Punch"): _ground_feet(move_speed, dt)
 	# The sling follows the captured torso, leaving both hands free.
 	weapon.global_transform = joint("RightHand") * native_socket if keep_rifle else joint("Spine2") * _sling_socket
 	weapon.visible = true
