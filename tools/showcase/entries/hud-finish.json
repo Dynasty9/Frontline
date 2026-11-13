@@ -1,0 +1,16 @@
+{
+  "entry": "changelog/unreleased/hud-finish.md",
+  "summary": "Observer controls, minimap edge, fire key, pause menu and the observer's end banner brought in line with the battle display.",
+  "medium": "still",
+  "stage": "game capture at 1920x1080, --perf=0: --scenario=roster --seed=3 --select-first --focus=-84,24 --zoom=34 --shot-at=10; --mission=bridgehead --play --select-first --shot-at=40; --scenario=attack --seed=3 --end-at=20 --shot-at=23; --mission=bridgehead --play --hud-panel=menu --shot-at=12",
+  "rationale": "Layout and styling changes are shown best by matched native-pixel crops of the same frames before and after, in one sheet.",
+  "source_ref": "548239755c3466e6f675a975df527d74a29d6a0a + working tree",
+  "before_ref": "548239755c3466e6f675a975df527d74a29d6a0a",
+  "sources": [
+    {
+      "file": "changelog/unreleased/hud-finish/comparison.jpg",
+      "sha256": "e6a88ec0866126bf25bffbb6b3401143745996c2910ba6b40116701e07aa4d8e"
+    }
+  ],
+  "output": null
+}

@@ -100,6 +100,8 @@ func _new_blast(kind: String) -> Blast:
 	b.mesh.mesh = vfx.quad
 	b.mesh.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	b.mesh.visibility_range_end = 650.0
+	b.mesh.visibility_range_end_margin = 60.0
+	b.mesh.visibility_range_fade_mode = GeometryInstance3D.VISIBILITY_RANGE_FADE_SELF
 	var span := 21.0 if kind == "fuel" else 18.0
 	var height := 7.0 if kind == "fuel" else 2.7
 	# The vertex shader lifts and enlarges the shared unit quad. Give culling

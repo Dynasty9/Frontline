@@ -30,6 +30,41 @@ const HQ_PRIORITY := 0.25
 const HQ_PRIORITY_MAX := 3
 const CAPTURE_KEEP := 0.5
 const RESERVE_ODDS := 3
+## How good the AI commander is (the lobby's "ai_difficulty"). "skill" places
+## it between a green recruit (0) and a veteran (2): how quickly it reacts,
+## how often and how hard it attacks, whether it flanks, lays ambushes, calls
+## in fire and scouts, and whether it pulls battered squads out (see
+## CommanderAI._apply_skill). "supply" scales the loads its own side's lorries
+## deliver, at the extremes only, and only for a side no player commands: the
+## menu says so. Adaptive starts as a regular and eases off or presses harder
+## as the battle goes (CommanderAI._adapt).
+const AI_LEVEL_KEYS := ["recruit", "regular", "veteran", "adaptive"]
+const AI_LEVELS := {
+	"recruit": {"name": "Recruit", "skill": 0.0, "supply": 0.85,
+		"blurb": "Slow to react, attacks piecemeal and head-on, no ambushes or fire support. Its lorries carry 15% less."},
+	"regular": {"name": "Regular", "skill": 1.0, "supply": 1.0,
+		"blurb": "A sound commander: flanks, ambushes, calls in fire and pulls out battered squads."},
+	"veteran": {"name": "Veteran", "skill": 2.0, "supply": 1.15,
+		"blurb": "Quick, concentrated and patient: bigger attacks, more fire, more scouting. Its lorries carry 15% more."},
+	"adaptive": {"name": "Adaptive", "skill": 1.0, "supply": 1.0,
+		"blurb": "Starts as a regular, eases off when you're losing badly and presses harder when you're cruising."},
+}
+
+
+## A difficulty key as the lobby gives it, or "regular" for anything else.
+func ai_level(key: Variant) -> String:
+	var k := String(key) if key is String else "regular"
+	return k if AI_LEVELS.has(k) else "regular"
+
+
+## The difficulty of a side's AI commander in a battle's settings: the lobby's
+## "ai_difficulty", unless "ai_difficulty_teams" ([side 0's, side 1's], from
+## --ai-difficulty=0:recruit,1:veteran) gives that side one of its own.
+func ai_level_of(settings: Dictionary, team: int) -> String:
+	var per: Variant = settings.get("ai_difficulty_teams", [])
+	if per is Array and team >= 0 and team < (per as Array).size() and String(per[team]) != "":
+		return ai_level(per[team])
+	return ai_level(settings.get("ai_difficulty", "regular"))
 
 ## Towns and villages (index: 0 a village, 1 the town). Whoever holds one
 ## draws on it - food, fuel, lorries, labour - and trucks it to their nearest

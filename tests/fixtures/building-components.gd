@@ -196,6 +196,13 @@ func _ready() -> void:
 			BuildingFurnishings.window_box(k, 0.0, 1.0, 1.1, Color.RED)
 			BuildingFurnishings.lantern(k, Vector3(1.2, 2.05, 0))
 			BuildingFurnishings.aerial(k, Vector3(0, 5, 0)),
+		"yards": func(k: BuildingKit):
+			BuildingYards.bins(k, 2, BuildingYards.BIN_COLS[0])
+			BuildingYards.woodpile(k.at_point(Vector3(3, 0, 0)), 1.8, k.rng)
+			BuildingYards.garden_set(k.at_point(Vector3(0, 0, 3)), k.rng, true)
+			BuildingYards.kennel(k.at_point(Vector3(-3, 0, 0)), Color.SADDLE_BROWN)
+			BuildingYards.bicycle(k.at_point(Vector3(0, 0, -3)), BuildingYards.BIKE_COLS[0])
+			BuildingYards.pots(k.at_point(Vector3(3, 0, 3)), 3, k.rng),
 		"inside": func(k: BuildingKit):
 			BuildingFurnishings.lining(k, 2.8, 3.0, [Rect2(-0.65, 1.0, 1.3, 1.0)], Color(0.8, 0.8, 0.7))
 			BuildingFurnishings.radiator(k, 0.0, 1.0)

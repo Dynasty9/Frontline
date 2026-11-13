@@ -73,11 +73,97 @@ static func build_car(variant: int, col: Color, is_burnt := false) -> VehicleMod
 
 
 static func build(kind: String, team: int, seed: int, is_burnt := false, is_wreck := false) -> VehicleModels:
+	var b := start(kind, team, seed, is_burnt, is_wreck)
+	b.step(-1)
+	return b.k
+
+
+## The model build() makes, made a piece at a time: Build.step() does the next
+## pieces each frame (see Build).
+static func start(kind: String, team: int, seed: int, is_burnt := false, is_wreck := false) -> Build:
 	var k := VehicleModels.new()
 	k.root = Node3D.new()
 	k.burnt = is_burnt
 	k.wreck = is_wreck or is_burnt
 	k._baking = true
+	return Build.new(k, _assemble.bind(k, kind, team, seed))
+
+
+## Finished models kept to copy, by look (see look()). Every parked car of a
+## kind and paint is the same model, and every burnt-out tank on the map the
+## same hulk: a copy, sharing the meshes, takes a millisecond or two where
+## building one took a fifth of a second.
+static var _stock := {}
+const STOCK_KEEP := 96
+
+
+## What a model will look like, as a key for the stock: "" when that can't be
+## told without building it (a kind whose seed does more than pick a paint,
+## a team's own markings).
+static func look(kind: String, team: int, seed: int, is_burnt := false) -> String:
+	if team >= 0:
+		return ""
+	var civ := VmCiv.look(kind, seed, is_burnt)
+	if civ != "":
+		return civ
+	if is_burnt and kind in ["tank", "old_tank"]:
+		return kind + "/burnt"  # (a hulk's paint is gone: nothing tells two apart)
+	return ""
+
+
+## A copy of the model with that look, or null if none is kept yet.
+static func stocked(look_key: String) -> VehicleModels:
+	var kept: VehicleModels = _stock.get(look_key)
+	return kept.copy() if kept != null else null
+
+
+## Keeps a copy of a finished model to copy for its look.
+static func stock(look_key: String, k: VehicleModels) -> void:
+	if look_key == "" or _stock.has(look_key):
+		return
+	if _stock.size() >= STOCK_KEEP:
+		for kept: VehicleModels in _stock.values():
+			kept.root.free()
+		_stock.clear()  # (a long run's worth of looks: start again)
+	_stock[look_key] = k.copy()
+
+
+## A copy to stand as scenery (a parked car, a hulk) sharing this one's meshes
+## and materials: its root and the moving parts scenery poses (the turret, the
+## gun, the rotor), not the wheels, skirts or plates a driven vehicle works.
+func copy() -> VehicleModels:
+	var c := VehicleModels.new()
+	c.root = root.duplicate() as Node3D
+	c.burnt = burnt
+	c.wreck = wreck
+	c.surface_family = surface_family
+	c.sling_eye = sling_eye
+	c.engine_deck = engine_deck
+	c.engine_vent = engine_vent
+	c.turret = _same_in(c.root, turret)
+	c.gun_mount = _same_in(c.root, gun_mount)
+	c.rotor = _same_in(c.root, rotor)
+	return c
+
+
+## The node in `other` (a copy of root) where `part` is in root: found by
+## its place among its siblings, since a copy names nodes made unnamed afresh.
+func _same_in(other: Node3D, part: Node3D) -> Node3D:
+	if part == null:
+		return null
+	var places: Array[int] = []
+	var n: Node = part
+	while n != root:
+		places.push_front(n.get_index())
+		n = n.get_parent()
+	var found: Node = other
+	for i in places:
+		found = found.get_child(i)
+	return found as Node3D
+
+
+## Every part of the model noted down (see _add), for the merge to make into meshes.
+static func _assemble(k: VehicleModels, kind: String, team: int, seed: int) -> void:
 	# a vehicle may share another's model (a variant), named in its definition
 	var mk := kind
 	if Defs.VEHICLES.has(kind):
@@ -86,9 +172,7 @@ static func build(kind: String, team: int, seed: int, is_burnt := false, is_wrec
 	# the aircraft builders in scripts/game/vehicles/ come first: until one of
 	# them builds a key, the older model below stands
 	if VmCore.build(k, mk, team, seed) or VmGunship.build(k, mk, team, seed) or VmAttack.build(k, mk, team, seed) or VmFighter.build(k, mk, team, seed):
-		k._merge_parts(k.root, Vector3.ZERO)
-		k._baked()
-		return k
+		return
 	match mk:
 		"tank":
 			k._tank(team)
@@ -124,9 +208,6 @@ static func build(kind: String, team: int, seed: int, is_burnt := false, is_wrec
 					or VmCiv.build(k, mk, team, seed) or VmHeli.build(k, mk, team, seed) or VmPlane.build(k, mk, team, seed)
 					or VmBoat.build(k, mk, team, seed) or VmShips.build(k, mk, team, seed)):
 				k._truck(team)
-	k._merge_parts(k.root, Vector3.ZERO)
-	k._baked()
-	return k
 
 
 func scorch_finish() -> ShaderMaterial:
@@ -200,29 +281,143 @@ static func plane_keys() -> Array[String]:
 ## surface per material: the detail costs vertices, not draw calls. The
 ## camouflage stays continuous across the parts.
 func _merge_parts(n: Node3D, off: Vector3) -> void:
+	Build.new(self, Callable(), n, off).step(-1)
+
+
+## The holders _merge_parts merges, in its order: the ones under a holder first.
+func _merge_order(n: Node3D, off: Vector3, nodes: Array, offs: Array) -> void:
 	for c in n.get_children():
 		if c is Node3D and not (c is MeshInstance3D):
-			_merge_parts(c, off + (c as Node3D).position)
-	if _parts.has(n):
-		# the parts made for it, straight into its mesh (see _add)
-		var bake := Mats.Bake.new(true)
-		for pt: Array in _parts[n]:
-			var xf: Transform3D = Transform3D(pt[7], pt[4]) if pt[7] is Basis else Mats.place(pt[4], pt[5], pt[6])
-			bake.part(pt[0], pt[8] if pt[8] is ShaderMaterial else pt[1], xf, pt[2] if pt[2] != Color(1, 1, 1) else null, pt[3])
-		_parts.erase(n)
-		bake.commit(n)
+			_merge_order(c, off + (c as Node3D).position, nodes, offs)
+	nodes.append(n)
+	offs.append(off)
+
+
+## A noted part into the holder's mesh (see _add).
+static func _bake_part(bake: Mats.Bake, pt: Array) -> void:
+	var xf: Transform3D = Transform3D(pt[7], pt[4]) if pt[7] is Basis else Mats.place(pt[4], pt[5], pt[6])
+	bake.part(pt[0], pt[8] if pt[8] is ShaderMaterial else pt[1], xf, pt[2] if pt[2] != Color(1, 1, 1) else null, pt[3])
+
+
+## A holder's parts made as nodes merged in with its meshes.
+func _merge_holder(n: Node3D, off: Vector3) -> void:
 	var before := n.get_child_count()
 	Mats.merge_static(n, [blur] if blur else [], false, false, true)
 	for i in range(before, n.get_child_count()):
 		var mi := n.get_child(i) as MeshInstance3D
-		if mi and off != Vector3.ZERO:
+		if mi and off != Vector3.ZERO and not mi.has_meta(&"shadow_proxy"):
 			Mats.set_inst(mi, &"pofs", off)
 	if not burnt and not front_skirts.is_empty() and (n == root or n == turret):
 		for child in n.get_children():
-			if child is MeshInstance3D and (child as MeshInstance3D).mesh is ArrayMesh:
+			if child is MeshInstance3D and (child as MeshInstance3D).mesh is ArrayMesh and not child.has_meta(&"shadow_proxy"):
 				Mats.set_inst(child, &"armour_section", 0.0 if n == root else 1.0)
-	if not burnt:
-		Mats.add_distance_lod(n, 100.0, [blur] if blur else [])
+
+
+## A model built a piece at a time. A parked car took 100-250 ms to build, a
+## tank wreck about 200: a hitch each time one came into view. step() does the
+## next pieces for up to `budget_us` (at least one) and says whether the model
+## is done; the slow welding and simplifying of its distant mesh goes to a
+## worker meanwhile. With no budget (-1) it all happens at once, as build()
+## does. Each holder's noted parts go into its mesh, its nodes are merged in,
+## and (unless burnt) it gets its distant mesh, as _merge_parts always did.
+class Build:
+	var k: VehicleModels
+	var done := false
+	var _make: Callable  # notes down the model's parts (or nothing: they're noted already)
+	var _top: Node3D
+	var _top_off: Vector3
+	var _nodes: Array = []
+	var _offs: Array = []
+	var _at := -1  # the holder being merged (-1: not assembled yet)
+	var _stage := 0  # its next piece: 0 its parts, 1 its merge, 2 its distant mesh, 3 waiting for that
+	var _part := 0
+	var _bake: Mats.Bake
+	var _lod: Array = []
+	var _job: Dictionary = {}
+
+	func _init(model: VehicleModels, assemble: Callable, top: Node3D = null, off := Vector3.ZERO) -> void:
+		k = model
+		_make = assemble
+		_top = top if top != null else model.root
+		_top_off = off
+
+	func step(budget_us: int) -> bool:
+		var started := Time.get_ticks_usec()
+		while not done:
+			if not _next(budget_us < 0):
+				return false  # (its distant mesh isn't ready yet)
+			if budget_us >= 0 and Time.get_ticks_usec() - started >= budget_us:
+				break
+		return done
+
+	## The next piece of work: false if it has to wait.
+	func _next(now: bool) -> bool:
+		if _at < 0:
+			if _make.is_valid():
+				_make.call()
+			k._merge_order(_top, _top_off, _nodes, _offs)
+			_at = 0
+			_holder_done(false)
+			return true
+		var n: Node3D = _nodes[_at]
+		match _stage:
+			0:
+				var pts: Array = k._parts.get(n, [])
+				if _part < pts.size():
+					if _bake == null:
+						_bake = Mats.Bake.new(true)
+					VehicleModels._bake_part(_bake, pts[_part])
+					_part += 1
+				else:
+					_stage = 1
+			1:
+				if k._parts.has(n):
+					k._parts.erase(n)
+					if _bake == null:
+						_bake = Mats.Bake.new(true)
+					_bake.commit(n)
+				_bake = null
+				k._merge_holder(n, _offs[_at])
+				_stage = 2
+				if k.burnt:
+					_holder_done(true)
+			2:
+				_lod = Mats.distance_lod_parts(n, [k.blur] if k.blur else [])
+				if _lod.is_empty():
+					_holder_done(true)
+				elif now:
+					Mats.attach_distance_lod(n, 100.0, _lod[1], Mats._bake_groups(_lod[0]))
+					_holder_done(true)
+				else:
+					_job = Mats.bake_groups_later(_lod[0])
+					_stage = 3
+			3:
+				if not Mats.bake_done(_job):
+					return false
+				Mats.attach_distance_lod(n, 100.0, _lod[1], Mats.bake_result(_job))
+				_holder_done(true)
+		return true
+
+	## Stops where it is (waiting out a distant mesh in the works, if any).
+	func abandon() -> void:
+		if _stage == 3:
+			Mats.bake_result(_job)
+		done = true
+		if is_instance_valid(k.root):
+			k.root.free()
+
+	## On to the next holder (`advance`), or the first; the model is done after the last.
+	func _holder_done(advance: bool) -> void:
+		if advance:
+			_at += 1
+		_stage = 0
+		_part = 0
+		_lod = []
+		_job = {}
+		if _at >= _nodes.size():
+			if _make.is_valid():
+				k._baked()
+			done = true
 
 
 # --- mesh helpers ----------------------------------------------------------------

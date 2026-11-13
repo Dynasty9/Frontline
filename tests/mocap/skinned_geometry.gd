@@ -12,10 +12,10 @@ func _process(dt: float) -> void:
 	frames += 1
 	if frames == 1:
 		var soldier: GDScript = load("res://scripts/game/soldier.gd")
-		for kind in ["crewman", "mortar_gunner", "medic"]:
-			var unit := world.spawn("soldier", {"utype": kind, "team": 0, "pos": world.cam.focus_pos}) as Node3D
+		for kind in ["crewman", "mortar_gunner", "medic", "fighter", "r_medic"]:
+			var unit := world.spawn("soldier", {"utype": kind, "team": Defs.UNITS[kind].team, "pos": world.cam.focus_pos}) as Node3D
 			unit.debug_pose = [soldier.Post.STAND, soldier.Act.IDLE, soldier.Life.ALIVE, 0.0]
-			if kind == "medic":
+			if kind in ["medic", "r_medic"]:
 				unit.debug_pose = [soldier.Post.CROUCH, soldier.Act.HEAL, soldier.Life.ALIVE, 0.0]
 			fixtures.append(unit)
 	if frames < 3: return
@@ -30,6 +30,13 @@ func _process(dt: float) -> void:
 	for unit in world.soldiers:
 		var model: Node3D = unit.model
 		if model == null: continue
+		if unit.utype == "fighter" and InfantryAssets.gameplay_model == InfantryAssets.SWAT:
+			for direction in [-1, 1]:
+				model.trench_step = direction
+				model.pose(1.0 / 30.0, Soldier.Life.ALIVE, Soldier.Post.STAND, Soldier.Act.RUN, 2.0, false, false)
+				var expected := "mixamo_rifle_locomotion__jump_up" if direction > 0 else "mixamo_rifle_locomotion__jump_down"
+				assert(model.skinned.native_player.current_animation == expected, "Crossing direction must select the matching shipped clip")
+			model.trench_step = 0
 		if unit.utype == "mortar_gunner" and InfantryAssets.gameplay_model == InfantryAssets.SWAT:
 			assert(model.skinned != null and model.tube.get_parent() is BoneAttachment3D, "The specialist carries his kit on the animated spine")
 			unit.debug_pose = []
@@ -46,7 +53,9 @@ func _process(dt: float) -> void:
 				unit._view_process(1.0 / 30.0)
 			assert(model.tube.visible and not model.crew, "Leaving the pit restores the personal kit")
 			world.despawn(pit)
-		if unit.utype == "medic" and unit.team == 0 and InfantryAssets.gameplay_model == InfantryAssets.SWAT:
+		if unit.utype == "fighter" and InfantryAssets.gameplay_model == InfantryAssets.SWAT:
+			assert(model.skinned != null, "Rebel fighters use the shipped rig")
+		if unit.utype in ["medic", "r_medic"] and InfantryAssets.gameplay_model == InfantryAssets.SWAT:
 			assert(model.skinned != null)
 			for kit in [model.medical_band, model.medical_pack]:
 				assert(kit.get_parent() is BoneAttachment3D and kit.is_visible_in_tree())
@@ -69,7 +78,7 @@ func _process(dt: float) -> void:
 			assert(mesh.get_child_count() > 0, "Unused procedural leaf mesh survived cleanup")
 		assert(not model.skinned.find_children("*", "MeshInstance3D", true, false).is_empty(), "Skinned geometry was removed")
 		assert(is_instance_valid(model.skinned.weapon))
-		if unit.utype == "medic":
+		if unit.utype in ["medic", "r_medic", "fighter"]:
 			var visible_parts := 0
 			for mesh in model.skinned.weapon.find_children("*", "MeshInstance3D", true, false):
 				if mesh.visible and mesh.get_parent().visible:

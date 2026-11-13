@@ -21,6 +21,8 @@ const BREAKABLE := {
 	"sign_town": [Vector3(2.0, 2.3, 0.15), 40.0], "bench": [Vector3(1.9, 0.9, 0.6), 60.0],
 	"bin": [Vector3(0.5, 0.9, 0.5), 20.0], "hydrant": [Vector3(0.35, 0.7, 0.35), 90.0],
 	"mailbox": [Vector3(0.3, 1.25, 0.45), 15.0], "bus_stop": [Vector3(3.3, 2.4, 1.6), 300.0],
+	"bins": [Vector3(1.3, 1.0, 0.75), 25.0], "pots": [Vector3(1.2, 0.5, 0.45), 15.0],
+	"bike": [Vector3(0.5, 1.0, 1.7), 15.0], "garden_set": [Vector3(1.7, 1.0, 1.7), 30.0], "kennel": [Vector3(0.75, 0.85, 0.95), 40.0],
 	"planter": [Vector3(1.2, 1.1, 1.2), 400.0], "bollard": [Vector3(0.2, 0.85, 0.2), 60.0],
 	"stall": [Vector3(2.6, 2.3, 1.5), 80.0], "fence": [Vector3(2.0, 1.1, 0.15), 40.0],
 	"clothesline": [Vector3(4.0, 1.9, 0.9), 20.0], "flagpole": [Vector3(0.2, 8.0, 0.2), 60.0],
@@ -129,6 +131,7 @@ func _build_chunk(key: Vector2i) -> void:
 		var mesh := child as MeshInstance3D
 		mesh.visibility_range_end = 180.0
 		mesh.visibility_range_end_margin = 20.0
+		mesh.visibility_range_fade_mode = GeometryInstance3D.VISIBILITY_RANGE_FADE_SELF  # dissolve, not pop
 	_fine_bake = null
 	_bake = null
 	if not _wires.is_empty():
@@ -532,6 +535,22 @@ func _make(h: Node3D, kind: String, ex) -> void:
 				_sag(h.transform * Vector3(-2.0, 1.85, z), h.transform * Vector3(2.0, 1.85, z), 0.15)
 				for i in rng.randi_range(2, 3):
 					_m(Res.box(Vector3(rng.randf_range(0.4, 0.7), rng.randf_range(0.5, 0.75), 0.02)), "fabric", Vector3(-1.4 + i * 1.1 + rng.randf_range(-0.2, 0.2), 1.45, z), CANVAS[rng.randi() % CANVAS.size()].lightened(0.25), Vector3.ZERO, false)
+		"bins", "pots", "woodpile", "garden_set", "kennel", "bike":
+			# what people keep round their houses (BuildingYards)
+			var yk := BuildingKit.baked(_bake, rng, _at)
+			match kind:
+				"bins":
+					BuildingYards.bins(yk, int(ex) / 10, BuildingYards.BIN_COLS[int(ex) % 10 % BuildingYards.BIN_COLS.size()])
+				"pots":
+					BuildingYards.pots(yk, int(ex), rng)
+				"woodpile":
+					BuildingYards.woodpile(yk, float(ex), rng)
+				"garden_set":
+					BuildingYards.garden_set(yk, rng, int(ex) == 1)
+				"kennel":
+					BuildingYards.kennel(yk, [Color(0.45, 0.32, 0.2), Color(0.25, 0.35, 0.25), Color(0.6, 0.55, 0.45)][rng.randi() % 3])
+				"bike":
+					BuildingYards.bicycle(yk, BuildingYards.BIKE_COLS[int(ex) % BuildingYards.BIKE_COLS.size()])
 		"mailbox":
 			_m(Res.box(Vector3(0.07, 1.0, 0.07)), "wood_dark", Vector3(0, 0.5, 0), null, Vector3.ZERO, false)
 			_m(Res.box(Vector3(0.26, 0.24, 0.42)), "paint", Vector3(0, 1.1, 0), [Color(0.2, 0.35, 0.25), Color(0.6, 0.15, 0.12), Color(0.15, 0.25, 0.45), Color(0.12, 0.12, 0.12)][rng.randi() % 4], Vector3.ZERO, false)

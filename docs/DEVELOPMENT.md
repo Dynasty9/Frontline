@@ -85,7 +85,8 @@ Ultra with all of the cinematic lighting on top) and every option on its own, la
   flares, rain and thunder; applies live), colour grading (natural, cinematic, vivid, warm film, cold steel,
   bleached war film, black & white), tonemapper (AgX / ACES / Filmic / Reinhard), brightness, contrast, bloom,
   film grain, tilt-shift depth of field; and the camera and lens: lens flare and glare, sun shafts, local exposure,
-  eye adaptation, the film look and heat haze (`cinematic_fx.gd`, compute passes on the HDR scene; Forward+ only).
+  eye adaptation, the film look, heat haze and motion blur (`cinematic_fx.gd`, compute passes on the HDR scene;
+  Forward+ only).
 - **Display:** window mode (windowed / borderless / exclusive fullscreen), window size (applied at launch; a
   size too big for the screen maximises the window instead; test runs keep the project's window or the size
   `--resolution` asks for), VSync, frame-rate cap, field of view, performance overlay.
@@ -384,11 +385,16 @@ FL_DEBUG_TOWNS=1 (env)                                print each town and villag
 FL_DEBUG_ECON=1 (env)                                 print every supply truck HQ sends (its road's length, its load) and every load delivered
 FL_DEBUG_HPA=1 (env)                                  benchmark hierarchical vs flat paths at start-up
 FL_DEBUG_DECOR=1 (env)                                print the street-furniture chunk and mesh counts
+FL_DEBUG_MODELS=1 (env)                               print each parked car's and wreck's model as it's made (built, copied from
+                                                      one with its look, or queued to build piecewise) and each frame's piece
 FL_DEBUG_CINE=1 (env)                                 say once that the cinematic lighting passes run, and which (windowed);
                                                       every 5 s, how many heat sources the heat haze has in view
 FL_DEBUG_CINE_VIEW=N (env)                            show one cinematic buffer instead of the scene: 1 sun shafts, 2 lens flare
                                                       and glare, 3 local exposure (red lifted, blue tamed), 4 the bright pass,
-                                                      5 the heat haze (blue the hot air, red and green how far it bends)
+                                                      5 the heat haze (blue the hot air, red and green how far it bends),
+                                                      6 the motion blur's per-pixel blur (px / 16), 7 its velocity check
+                                                      (red: the engine's velocity less the camera's reprojection, ~0 on
+                                                      still ground while the camera pans)
 FL_DEBUG_WILDLIFE=1 (env)                             every 5 s: the wildlife's cost, how many of each are drawn, what took
                                                       fright at what, and where one of each is (the first time, the water too)
 FL_WILDLIFE_FOLLOW=KIND (env)                         the camera keeps on one animal (birds, ducks, soarer, bat, rat, hare, fish,

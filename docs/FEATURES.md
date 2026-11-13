@@ -45,6 +45,7 @@ changes any of them:
 | Orders | Right-click: move (Shift = fast run; **drag** to set which way they face), attack enemy, build/repair your structure, enter tunnel / MG nest / watchtower. The **cover pips** under the cursor show where each man will end up: green hard cover, lime medium, yellow soft (hides, doesn't stop bullets), grey dot none, red caught in the open; a tick on a pip points the way he'll fire over the barrier, and the label says how (prone, kneeling, standing, round the edges) |
 | High-level | **X attack-move** (or Ctrl+right-click): the squad bounds forward by fire teams, cover to cover, fights whatever it meets, then digs in at the objective. **B defend**: click the area (drag to face) and the squad spreads into the best cover there and holds. **R retreat** to the nearest FOB (routes around known enemy fire, suppression halved). **H hold** |
 | Delegate | **I** opens the intents on the command card: pick **Hold sector**, **Take objective**, **Screen**, **Reserve** or **Ambush**, then click the place (drag toward the enemy to set the front) and the XO carries it out. **Shift+I** takes the selection back; so does any order of your own to one of them. Each intent can have a key of its own (Settings > Controls, unbound to begin with) |
+| Mixed groups | Give squads on foot and ground vehicles one Move order to drive at the selected foot pace. A fresh vehicle-only move restores normal driving speed. |
 | One soldier | With a single man picked out: right-click to move him into the best cover at that spot, right-click an enemy to engage, a nest or mortar pit to man it; G / T throw, H hold, R fall back. Any squad order brings him back into the squad |
 | Standing orders | **K stance** (auto, prone, crouch, stand) and **J fire discipline** (fire at will, return fire, hold fire) for squads or one picked-out soldier; for vehicles J and **N target priority** (auto, armour, infantry), **T smoke** (vehicles alone selected), **U dismount**. The command card shows each order in force and drops half the men aboard, or one squad of several |
 | Squad | G grenade, T smoke, F mortar fire mission (mortar teams) |
@@ -746,7 +747,10 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   third of the windows, in the barracks and the research post, under the factory's north lights and in the door
   lanterns (brightest at night, a glimmer on a dark day). Weeds grow at the foot of walls and ivy up some of
   them (most often on old stone), and a ruin's floor carries its fallen roof: soot, charred rafters, broken
-  tiles, plaster and glass. All of it, and the military buildings' weatherboard, sheeting, roller shutters, north
+  tiles, plaster and glass. Round the houses are what the people in them keep: wheelie bins at a front corner,
+  pots of flowers by the door, a bicycle against a side wall, and out the back a woodpile and chopping block, a
+  table and chairs (under a parasol now and then) and the odd kennel, all set dressing that a blast or a truck
+  knocks over. All of it, and the military buildings' weatherboard, sheeting, roller shutters, north
   lights, masts and guys, drums, crates and pallets, comes from shared building components (see
   [building-components.md](building-components.md)).
 - Walls, hedges, trees, cars and crates are all real cover. Street furniture is set dressing generated on the
@@ -1182,7 +1186,14 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
     scaled by length, with compacted roadbeds taking 50% longer. Repair orders clear collapsed earth.
   - **Shape and materials:** floors and individual duckboard slats follow local terrain. Open ends ramp
     to the surface; connected ends stay continuous. Earth fire steps run along the walls, leaving the
-    centre route clear. Soil layers, roots, uneven spoil, damp ground and boot marks break up the surfaces.
+    centre route clear. Uneven cuts expose dark organic topsoil, lighter subsoil and stony pockets,
+    with scanned surface detail and damp litter below. Retaining boards brace loose cuts; weathered
+    duckboards rest on bearers above the mud. Rain darkens the earth and expands puddles. Bunker banks
+    use the same materials, form one continuous mound around the corners, and leave the doorway clear.
+    An uneven soil cap rests over the roof logs. Banks meet sloping ground and clear new excavations;
+    joined cuts remove retaining boards and parapet bags where their supporting ground is gone.
+    Placing or removing a bunker refreshes the vegetation around its earth banks.
+    The trenches scenario includes a rear bunker route, covered ammunition, sandbags and anti-tank obstacles.
   - **Rear bays:** occasional long sections include a recessed supply shelf or a timber-roofed resting
     bay, with kit kept off the through route. The timber roof is physical cover, not a bombproof bunker.
     Moving soldiers yield and sidestep inside narrow passages; crossing a high lip takes a slower climb.
@@ -1293,6 +1304,27 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
     noise carried up the source's axis in the world, and the bend is sized in metres at the hot air, so nearer haze
     bends more and haze too small on screen to read is left out. The composite then bends only what lies behind the
     hot air, and never pulls in the sky or anything in front of it. With Reduce motion on, the air holds still.
+  - **Motion blur** (Camera and lens: Off / Objects / Objects + camera; Cinematic: Objects): the reconstruction
+    filter of McGuire, Hennessy, Bukowski and Osman ("A Reconstruction Filter for Plausible Motion Blur", I3D 2012)
+    with Jimenez's refinements (SIGGRAPH 2014), four more passes in `cinematic_fx.gd`. Each pixel's movement comes
+    from the engine's velocity buffer (drawn only while the blur is on: `needs_motion_vectors`); the camera's share
+    is found by reprojecting the pixel's depth with last frame's camera and taken out, so on Objects a commander's
+    pan stays sharp while rotor blades, flung bodies and debris still smear (Objects + camera puts 60% of the pan
+    back, none with Reduce motion). The blur is half a frame long (a 180-degree shutter), at most 32 pixels: the
+    longest blur in each 32-pixel tile and its neighbours tells each pixel how far to look, and 14 jittered samples
+    along it are weighed by depth and speed, so a blurred foreground smears over the background and not the reverse.
+    Godot's velocity buffer holds where each pixel was less where it is, in uv (measured: `FL_DEBUG_CINE_VIEW=7`).
+- **Rain on everything** (`Mats.SURFACE_SHADER`, the `rain_wet` global; `Atmosphere._wet_tick`): in the rain the
+  vehicles, buildings, sandbags and gear standing out in it take a film of water, as the ground and streets
+  already did (after Lagarde, "Water drop 2b: dynamic rain and its effects", 2013). Rough, porous stuff (cloth,
+  timber, concrete) darkens as water fills its pores and gains little gloss; paint and metal barely darken but
+  take a glossy film. Upturned faces soak most, faces turned down stay drier, and water runs down walls and hulls
+  in streaks. A battle that opens in the rain starts soaked; rain that sets in mid-battle wets things over 30 s,
+  and they dry over three minutes once it stops. It costs a few instructions per pixel, so every preset has it,
+  the browser too.
+- **Level-of-detail cross-fades**: a vehicle and its distant single-mesh stand-in (`Mats.add_distance_lod`), cab
+  glass, the street's fine stones and distant blast clouds dissolve into each other over a few metres (Godot's
+  dithered visibility-range fade) instead of popping as the camera zooms.
 - **Wildlife** (`wildlife.gd`), drawn only on each player's own screen and never simulated or sent by the server,
   so it can't change a battle or its seed. Flocks of sparrows and starlings (pigeons about the town) feed on bare
   ground - tracks, yards, pavements, mud, shell holes, where the grass doesn't hide them - hopping and pecking,
@@ -1532,6 +1564,31 @@ digs forward tunnel entrances and moves its attack waves through them. AI-vs-AI 
 batches of six games (from 5–1 one way to 5–1 the other with small parameter changes), so the sides are close
 but balance needs real playtesting. With the base defenses, most games last 10–23 minutes.
 
+**AI difficulty** (`Defs.AI_LEVELS`, `CommanderAI._apply_skill`): Play vs AI's **Opponent** choice and the lobby's
+**AI difficulty** row (the host's setting `ai_difficulty`, for every AI commander in the battle, the enemy's and any
+fighting beside the players) set how good the AI is, through how it thinks rather than what it's given. Each
+level is a skill between recruit (0) and veteran (2):
+
+| | Recruit | Regular | Veteran |
+|---|---|---|---|
+| Looks at the battle every | 3.5 s | 2 s | 1.25 s |
+| Answers a threat to a FOB | every 45 s, one squad | every 20 s, two | every 12 s, three |
+| Attack waves | a squad smaller, at least 70 s apart, goes with what it has after 320 s | 3 squads (4 after ten minutes), 25 s, 200 s | a squad bigger, 20 s, 160 s |
+| Attacks | head-on (no base of fire, no flanking) | fix and flank (AttackPlan) | fix and flank |
+| Ambushes, recon flights, answering a call for help | never | yes | yes, ambushes and recon more often |
+| Fire support | only on a big target (9+), every 90 s at most | on 4+ | on 3+ |
+| Battered squads pulled out | never | under a third left | under half left |
+| Towns and outposts | looked at every 15 s / 40 s | 6 s / 15 s | 6 s / 15 s |
+| The next FOB | 1.6 times the wait | 2 to 3.5 min after the last | as a regular |
+| Its lorries' loads | -15% | as they are | +15% |
+
+The supply handicap and bonus apply only to a side no player commands (an AI beside you never costs you supply),
+and the menu says so. **Adaptive** starts as a regular and, from five minutes in, weighs its side against the
+other every minute (men, vehicles, FOBs and towns): well ahead (1.5 to 1), it eases off a fifth of a level; well
+behind (0.7 to 1), it presses a fifth harder; in between it drifts back towards regular. The level shows on the
+loading brief and as **AI** on the status line. `--ai-difficulty=veteran` sets every AI, `--ai-difficulty=0:recruit,1:regular`
+one per side (for AI-vs-AI comparisons); the test port's world query lists each commander's level.
+
 **Command by intent** (`delegation.gd`): a commander can hand any of his squads and vehicles to his XO with an
 intent instead of an order, and the XO carries it out with the AI commander's own drills, giving the squads
 their orders, giving them again when the fight knocks them off, and reporting on the command net ("XO: Charlie 1,
@@ -1625,7 +1682,7 @@ projectile; cloud growth, movement and dissipation still take effect immediately
 Views build scenery in and around the camera first and cache visited models; local games and hosts
 share the clients' spatial draw batches. Distant models and client cosmetic collision bodies remain
 inactive, while host collision and the complete simulation stay active. Returning to cached scenery
-does not consume the new-model construction limit. Nearby movement orders can reuse a checked route corridor, with separate
+does not consume the new-model construction limit. Each 64 m block is merged as soon as all of it is built, and a merged model's opaque surfaces cast one shadow together from a shadows-only mesh, so a town costs a few draws a block in each shadow cascade rather than several a wall. New scenery and grass coming into view are built nearest first within a few milliseconds a frame, so a camera move fills in over a few frames instead of freezing one. Nearby movement orders can reuse a checked route corridor, with separate
 destinations and invalidation when terrain or danger changes.
 
 Grass, bushes and stones are generated around the camera, beyond their visible
@@ -1648,6 +1705,8 @@ The Character Playground also supports Alt + mouse free look, preserving the cha
 The imported preview routes grenade throws through the installed Mixamo toss while retaining stance legs and grenade release timing. The installed prone family supplies armed crawling; missing clips retain the procedural alternating reach. The installed stand/kneel pair supplies stationary crouch transitions, blending from the current pose to avoid a snap on rising. The crouched grenade clip uses its throwing section with the existing visual release timing. Crouch stops settle toes; posture changes release previous foot anchors before planting again.
 
 The Coalition mortar specialist also wears the textured character and carries his role-specific kit on the animated back. Native macOS OpenGL uses articulated soldiers because animated skin geometry disappears on that driver.
+
+Rebel fighters and medics use the same close-up animation rig, with faction-tinted uniforms, their own rifles and a marked medic pack. Soldiers crossing trench lips step between ground levels in both directions.
 
 The default close-up SWAT infantry presentation ships in a compiled runtime bundle (assets/infantry/infantry.zip), shared by the game and animation playground. Original authoring files are not required. See assets/infantry/README.md for rebuilding and the separate asset licenses.
 

@@ -523,9 +523,9 @@ const TERRAIN_MATERIALS := ["rock_face_03", "aerial_rocks_02", "aerial_grass_roc
 ## After the shore gravel (layer 5): dry turf (6), a 90 m drone survey of grazed
 ## grassland (7) and rutted soil (8), all in the same two samplers.
 const MEADOW_MATERIALS := ["grass_ground", "rocky_terrain_02", "dirt_aerial_02"]
-## Then rain-cut gullies on a rock face (9), an erosion bake of our own
-## (tools/bake_alpine_assets.py eroded_face).
-const DETAIL_MATERIALS := ["eroded_face"]
+## Rain-cut gullies (9) and a close 1.3 m soil scan for excavated cuts (10).
+## The gullies are baked by tools/bake_alpine_assets.py eroded_face.
+const DETAIL_MATERIALS := ["eroded_face", "brown_mud"]
 static var _material_arrays: Array[Texture2DArray] = []
 
 
@@ -608,7 +608,6 @@ func _build_ground() -> void:
 				add_child(mi)
 	trench_net = TrenchNet.new(world)
 	add_child(trench_net)
-	trench_net.set_detail(detail_tex)
 	road_mat = ShaderMaterial.new()
 	road_mat.shader = CloudShadow.make(Mats.code(MapDims.shader(ROAD_SHADER.replace("// STREET_SURFACE", Mats.ASPHALT_SHADER))))
 	road_mat.set_shader_parameter("detail_tex", detail_tex)
@@ -1068,6 +1067,30 @@ func apply_grade(look_i: int, contrast_mul: float, saturation_mul := 1.0) -> voi
 
 func _exit_tree() -> void:
 	CloudShadow.set_strength(0.0)  # no clouds over the menu, or the next battle's loading
+	RenderingServer.global_shader_parameter_set(&"rain_wet", 0.0)  # nor rain on the Field Manual's models
+
+
+## How soaked everything standing out in the weather is (the `rain_wet` global
+## the shared surfaces read, Mats.SURFACE_SHADER): a battle that opens in the
+## rain has been raining a while, so it starts soaked; rain that sets in
+## mid-battle wets things over half a minute, and they dry over three once it
+## stops.
+const WET_IN := 30.0
+const DRY_OUT := 180.0
+var rain_wet := -1.0
+
+
+func _wet_tick(dt: float) -> void:
+	var want := 1.0 if mood == "rain" else 0.0
+	var was := rain_wet
+	if rain_wet < 0.0:
+		rain_wet = want
+	elif want > rain_wet:
+		rain_wet = minf(want, rain_wet + dt / WET_IN)
+	else:
+		rain_wet = maxf(want, rain_wet - dt / DRY_OUT)
+	if rain_wet != was:
+		RenderingServer.global_shader_parameter_set(&"rain_wet", rain_wet)
 
 
 ## The exposure the time of day and the player's brightness give.
@@ -1096,6 +1119,7 @@ func _view_process(_dt: float) -> void:
 	_update_deform(_dt)
 	CloudShadow.tick(_dt)
 	CloudShadow.set_sun(sun)
+	_wet_tick(_dt)
 	if world.cam == null:
 		return
 	if _wind:
@@ -1267,7 +1291,9 @@ func look_v(key: String) -> Variant:
 
 
 func _apply_cinematic() -> void:
-	var want := bool(look_v("lens")) or bool(look_v("shafts")) or bool(look_v("local_exp")) or bool(look_v("eye_adapt")) or bool(look_v("film")) or bool(look_v("heat_haze"))
+	var blur := int(look_v("motion_blur"))
+	var want := bool(look_v("lens")) or bool(look_v("shafts")) or bool(look_v("local_exp")) or bool(look_v("eye_adapt")) or bool(look_v("film")) \
+		or bool(look_v("heat_haze")) or blur > 0
 	if want and cine == null and world.has_view and CinematicFx.supported():
 		cine = CinematicFx.new()
 		var effects: Array[CompositorEffect] = [cine]
@@ -1283,6 +1309,12 @@ func _apply_cinematic() -> void:
 	cine.eye = bool(look_v("eye_adapt"))
 	cine.film = bool(look_v("film"))
 	cine.heat_haze = bool(look_v("heat_haze"))
+	cine.motion_blur = blur > 0
+	# the engine draws its velocity buffer only while something asks for it
+	cine.needs_motion_vectors = blur > 0
+	# a commander pans a lot: the camera's own movement blurs only when asked
+	# for, and never with Reduce motion on
+	cine.blur_camera = 0.6 if blur >= 2 and not bool(Settings.get_v("reduce_motion")) else 0.0
 	cine.enabled = want
 	heat.on = cine.heat_haze
 	if not heat.on:
