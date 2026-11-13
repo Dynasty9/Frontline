@@ -769,6 +769,7 @@ uniform float bank_surface = 0.0;
 uniform bool cut_trench = false;
 uniform sampler2D trench_mask : hint_default_black, filter_linear, repeat_disable;
 uniform float map_half = 1.0;
+global uniform float snow_cover;  // (Atmosphere._snow_tick)
 // CLOUD_SHADOW
 varying vec3 wpos;
 varying float upness;
@@ -786,8 +787,15 @@ void fragment() {
 	float grass = smoothstep(0.58, 0.96, edge + (patches - 0.5) * 0.8 + (torn - 0.5) * 0.3);
 	vec4 surface = mix(soil_surface, texture(earth_surfaces, vec3(wpos.xz * 0.4, 6.0)), grass);
 	vec3 col = mix(soil, turf * (1.0 - wet * 0.45), grass);
+	// in snow the old, grassed-over spoil and the tops of the banks lie white;
+	// the fresh-dug earth, turned over since it fell, stays dark mud
+	float snowed = 0.0;
+	if (snow_cover > 0.0) {
+		snowed = smoothstep(0.0, 0.3, grass * 0.8 + upness * 0.45 + (patches - 0.5) * 0.5 - 0.6 - (1.0 - snow_cover) * 1.4);
+		col = mix(col, vec3(0.78, 0.8, 0.85) * (0.92 + 0.08 * torn), snowed);
+	}
 	ALBEDO = earth_output(col);
-	ROUGHNESS = mix(clamp(surface.a, 0.72, 0.98), 0.64, wet);
+	ROUGHNESS = mix(mix(clamp(surface.a, 0.72, 0.98), 0.64, wet), 0.85, snowed);
 	NORMAL = earth_detail_normal(NORMAL, VERTEX, wpos.xz, surface.xy, 0.75);
 	AO = surface.b;
 	// CLOUD_FRAGMENT cloud_sun(wpos)

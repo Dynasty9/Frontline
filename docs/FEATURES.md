@@ -1254,11 +1254,27 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
 - Fog of war, drawn on the ground and the minimap, with intel pings and last-known enemy positions.
 
 **Look and feel** (`atmosphere.gd`, `cinematic_fx.gd`, `physical_sky.gd`, `cloud_shadow.gd`, `mats.gd`, `vehicle_models.gd`, `vfx.gd`, `gunfx.gd`, `grass.gd`, `wildlife.gd`, `ui/`)
-- Eight lighting moods (midday, golden hour, dawn, dusk, overcast, hazy, **night**, **rain & thunder**) with a
-  procedural sky, AgX tonemapping, cloud shadows drifting over the ground, volumetric haze and a subtle film look.
-  At night the sky fills with stars and illumination flares drift down on parachutes over the fighting, throwing
-  moving shadows. In the rain, streaks fall around the camera, splashes hit the ground, puddles reflect the sky and
-  lightning flashes are followed by thunder.
+- Nine lighting moods (midday, golden hour, dawn, dusk, overcast, hazy, **night**, **rain & thunder**, **snow**)
+  with a procedural sky, AgX tonemapping, cloud shadows drifting over the ground, volumetric haze and a subtle film
+  look. At night the sky fills with stars and illumination flares drift down on parachutes over the fighting,
+  throwing moving shadows. In the rain, streaks fall around the camera, splashes hit the ground, puddles reflect the
+  sky and lightning flashes are followed by thunder.
+- **Snow** (`Atmosphere.MOODS.snow`, `snowfall.gd`, the `snow_cover` global; `Atmosphere._snow_tick`): a flat, cold
+  winter light, the sun weak behind cloud and its shadows barely there, a pale blue-grey sky and the haze closing in.
+  Flakes drift down with the wind (`Fires.WIND`) in a box of air the shader wraps round the view, so they keep their
+  places in the world while the camera pans through them; each flutters on a spiral of its own, never drawn smaller
+  than a pixel and a half, and fades at the box's edges. The ground lies white wherever it's gentle and stays dark on
+  the steep; shell holes and their thrown earth, and wet spots in a bog, show as dark mud flecked with grey slush, and
+  the tracks' prints run dark through it. Dirt roads become a lane of slush between white verges with the ruts open
+  to the mud; town streets keep black wheel paths, grey slush between them and white gutters. Everything standing
+  in it gathers snow on the faces turned to the sky (roofs, ledges, hulls and decks, sandbags, camouflage nets,
+  trench spoil, the tops of trees, bushes and the grass, which goes to winter straw with only its tips showing),
+  broken by drifts, while walls and the sides of hulls stay bare. Vehicles shed some of it, so their paint shows
+  through in patches; running gear, glass, charred hulls and floors indoors take none, and men only a dusting. A
+  battle that opens in snow starts covered; snow that sets in mid-battle settles over four minutes, in the hollows
+  first, and thaws over a quarter of an hour. The deep snow hushes the wind and the distant battle. A random
+  battle's weather is snow about one time in twenty (a second draw from the seed, so no other seed's weather
+  changes and never in place of rain). It's looks only: nothing sees, moves or burns any differently in it.
 - **Cloud shadows fall on everything** (`cloud_shadow.gd`), not just the ground: soldiers, vehicles, buildings,
   trees, grass, roads and trenches darken in the same drifting shade, so a tank parked in it isn't lit up for the
   enemy to spot from above. Every surface reads one pattern at its own position (global shader uniforms the

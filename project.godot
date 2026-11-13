@@ -69,6 +69,10 @@ rain_wet={
 "type": "float",
 "value": 0.0
 }
+snow_cover={
+"type": "float",
+"value": 0.0
+}
 
 cloud_noise={
 "type": "sampler2D",

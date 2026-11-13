@@ -20,6 +20,11 @@ const MOODS := {
 		"horizon": Color(0.46, 0.49, 0.52), "fog": Color(0.42, 0.45, 0.48), "fog_d": 0.0038, "ambient": 0.8, "soft": 6.0, "clouds": 0.0, "exposure": 1.2},
 	"hazy": {"elev": 38.0, "azim": 25.0, "sun": Color(1.0, 0.9, 0.76), "energy": 1.7, "zenith": Color(0.42, 0.52, 0.66),
 		"horizon": Color(0.82, 0.8, 0.74), "fog": Color(0.8, 0.77, 0.7), "fog_d": 0.0042, "ambient": 0.65, "soft": 1.5, "clouds": 0.25, "exposure": 1.05},
+	# a winter's day under a lid of snow cloud: no shadows to speak of, the light
+	# coming off a pale sky and back off the snow, cold and blue-grey, and the
+	# falling snow closing the distance in
+	"snow": {"elev": 34.0, "azim": 30.0, "sun": Color(0.8, 0.85, 0.95), "energy": 0.55, "zenith": Color(0.5, 0.55, 0.63),
+		"horizon": Color(0.76, 0.79, 0.83), "fog": Color(0.7, 0.73, 0.78), "fog_d": 0.0046, "ambient": 0.95, "soft": 9.0, "clouds": 0.0, "exposure": 1.0},
 }
 
 # Atmospheric haze is scenery, not concealment. Keep its optical depth low at
@@ -28,6 +33,8 @@ const MOODS := {
 const HAZE_STRENGTH := 0.25
 const VOLUME_STRENGTH := 0.15
 const HAZE_DISTANCE := 32.0
+## How often a random battle's weather is snow (see pick_mood).
+const SNOW_CHANCE := 0.06
 
 var world: World
 var mood := "golden"
@@ -43,6 +50,11 @@ static func pick_mood(settings: Dictionary) -> String:
 		# weight the prettier moods a bit higher
 		var bag := ["golden", "golden", "day", "day", "dawn", "dusk", "overcast", "hazy", "night", "rain"]
 		pick = bag[r.randi() % bag.size()]
+		# Now and then it snows instead: a second draw, so every other seed keeps
+		# the weather it always had, and never over a seed that rains (the rain
+		# damps the fires, Fires.wet, and snow changes no rules).
+		if pick != "rain" and r.randf() < SNOW_CHANCE:
+			pick = "snow"
 		if not MOODS.has(pick):
 			pick = MOODS.keys()[0]
 	return pick
@@ -110,6 +122,7 @@ func setup(w: World) -> void:
 		add_child(_rumble)
 		Music.play_cue("battle")
 	_setup_rain()
+	_setup_snow()
 
 
 # --- noise textures shared by the ground shader and grass placement -------------
@@ -403,7 +416,7 @@ func _build_env() -> void:
 	sky_mat.set_shader_parameter("ground_col", Color(0.24, 0.23, 0.2))
 	sky_mat.set_shader_parameter("night_cloud", Color(0.06, 0.06, 0.06).linear_to_srgb())
 	sky_mat.set_shader_parameter("sun_col", _d.sun)
-	sky_mat.set_shader_parameter("cloudiness", 1.0 if mood in ["overcast", "rain"] else (0.3 if mood == "day" else 0.55))
+	sky_mat.set_shader_parameter("cloudiness", 1.0 if mood in ["overcast", "rain", "snow"] else (0.3 if mood == "day" else 0.55))
 	sky_mat.set_shader_parameter("stars", 1.0 if mood == "night" else 0.0)
 	sky.sky_material = sky_mat
 	sky.radiance_size = Sky.RADIANCE_SIZE_128
@@ -447,7 +460,7 @@ func _build_env() -> void:
 	env.sdfgi_use_occlusion = true
 	env.sdfgi_bounce_feedback = 0.4
 	env.sdfgi_energy = 0.9
-	env.volumetric_fog_density = (0.0011 if mood != "hazy" else 0.003) * VOLUME_STRENGTH
+	env.volumetric_fog_density = _volume_fog() * VOLUME_STRENGTH
 	env.volumetric_fog_albedo = (_d.fog as Color).lerp(Color(0.9, 0.9, 0.9), 0.55)
 	env.volumetric_fog_anisotropy = 0.35
 	env.volumetric_fog_length = 260.0
@@ -484,7 +497,7 @@ func _build_env() -> void:
 	rim = DirectionalLight3D.new()
 	rim.rotation_degrees = Vector3(-25.0, float(_d.azim) + 180.0, 0)
 	rim.light_color = Color(0.6, 0.72, 0.95)
-	rim.light_energy = 0.28 if mood != "overcast" else 0.12
+	rim.light_energy = 0.12 if mood in ["overcast", "snow"] else 0.28
 	rim.shadow_enabled = false
 	rim.light_specular = 0.3
 	rim.light_volumetric_fog_energy = 0.0
@@ -796,6 +809,23 @@ void fragment() {
 """
 
 
+# --- snow: flakes drifting down around the camera ------------------------------
+
+var _snowfall: Snowfall
+
+
+func _setup_snow() -> void:
+	var want := mood == "snow" and world.has_view
+	if not want:
+		if _snowfall:
+			_snowfall.queue_free()
+			_snowfall = null
+		return
+	if _snowfall == null:
+		_snowfall = Snowfall.new()
+		add_child(_snowfall)
+
+
 # --- night: illumination flares drifting down over the fighting ----------------
 
 static var _flare_canopy_mesh: ArrayMesh
@@ -919,6 +949,8 @@ static func lamplight(m: String) -> float:
 			return 0.35
 		"rain":
 			return 0.18
+		"snow":
+			return 0.15
 		"overcast":
 			return 0.12
 	return 0.0
@@ -935,7 +967,7 @@ func apply_mood(m: String) -> void:
 	sky_mat.set_shader_parameter("zenith", _d.zenith)
 	sky_mat.set_shader_parameter("horizon", _d.horizon)
 	sky_mat.set_shader_parameter("sun_col", _d.sun)
-	sky_mat.set_shader_parameter("cloudiness", 1.0 if mood in ["overcast", "rain"] else (0.3 if mood == "day" else 0.55))
+	sky_mat.set_shader_parameter("cloudiness", 1.0 if mood in ["overcast", "rain", "snow"] else (0.3 if mood == "day" else 0.55))
 	sky_mat.set_shader_parameter("stars", 1.0 if mood == "night" else 0.0)
 	_apply_sky()
 	env.ambient_light_energy = float(_d.ambient)
@@ -943,6 +975,7 @@ func apply_mood(m: String) -> void:
 	Mats.set_shared(road_mat, &"wet", 1.0 if mood == "rain" else 0.0)
 	Mats.set_street_wet(1.0 if mood == "rain" else 0.0)
 	_setup_rain()
+	_setup_snow()
 	env.tonemap_exposure = float(_d.exposure) * float(Settings.get_v("brightness"))
 	env.fog_light_color = _d.fog
 	_apply_haze(world.cam.dist if world.cam else HAZE_DISTANCE)
@@ -954,7 +987,7 @@ func apply_mood(m: String) -> void:
 	if _phys_on:
 		PhysicalSky.set_sun(_phys_sky, sun)
 	rim.rotation_degrees = Vector3(-25.0, float(_d.azim) + 180.0, 0)
-	rim.light_energy = 0.28 if mood != "overcast" else 0.12
+	rim.light_energy = 0.12 if mood in ["overcast", "snow"] else 0.28
 	CloudShadow.set_strength(float(_d.clouds))
 	ground_mat.set_shader_parameter("sun_tint", _d.sun)
 	ground_mat.set_shader_parameter("air_color", _d.fog)
@@ -1068,6 +1101,7 @@ func apply_grade(look_i: int, contrast_mul: float, saturation_mul := 1.0) -> voi
 func _exit_tree() -> void:
 	CloudShadow.set_strength(0.0)  # no clouds over the menu, or the next battle's loading
 	RenderingServer.global_shader_parameter_set(&"rain_wet", 0.0)  # nor rain on the Field Manual's models
+	RenderingServer.global_shader_parameter_set(&"snow_cover", 0.0)  # nor snow
 
 
 ## How soaked everything standing out in the weather is (the `rain_wet` global
@@ -1093,6 +1127,29 @@ func _wet_tick(dt: float) -> void:
 		RenderingServer.global_shader_parameter_set(&"rain_wet", rain_wet)
 
 
+## How deep the snow lies on everything (the `snow_cover` global the ground,
+## the roads, the grass, the trees and the shared surfaces read): a battle
+## that opens in the snow has had it falling all night, so it starts covered;
+## snow that sets in mid-battle settles over four minutes, first in the
+## hollows and on the flat, and thaws over a quarter of an hour once it stops.
+const SNOW_IN := 240.0
+const THAW := 900.0
+var snow_cover := -1.0
+
+
+func _snow_tick(dt: float) -> void:
+	var want := 1.0 if mood == "snow" else 0.0
+	var was := snow_cover
+	if snow_cover < 0.0:
+		snow_cover = want
+	elif want > snow_cover:
+		snow_cover = minf(want, snow_cover + dt / SNOW_IN)
+	else:
+		snow_cover = maxf(want, snow_cover - dt / THAW)
+	if snow_cover != was:
+		RenderingServer.global_shader_parameter_set(&"snow_cover", snow_cover)
+
+
 ## The exposure the time of day and the player's brightness give.
 func base_exposure() -> float:
 	return float(_d.exposure) * float(Settings.get_v("brightness"))
@@ -1109,6 +1166,7 @@ func _process(_dt: float) -> void:
 ## battle from a lull to the thick of it.
 const WIND_DB := Vector2(-19.0, -15.0)
 const RUMBLE_DB := Vector2(-14.0, -6.0)
+const SNOW_HUSH_DB := 4.0
 
 var _wind: AudioStreamPlayer
 var _rumble: AudioStreamPlayer
@@ -1120,11 +1178,14 @@ func _view_process(_dt: float) -> void:
 	CloudShadow.tick(_dt)
 	CloudShadow.set_sun(sun)
 	_wet_tick(_dt)
+	_snow_tick(_dt)
 	if world.cam == null:
 		return
 	if _wind:
 		var z := clampf((world.cam.dist - 15.0) / 60.0, 0.0, 1.0)
-		_wind.volume_db = lerpf(WIND_DB.x, WIND_DB.y, z)
+		# snow lying deep soaks up sound: the wind and the battle are hushed
+		var hush := snow_cover * SNOW_HUSH_DB if snow_cover > 0.0 else 0.0
+		_wind.volume_db = lerpf(WIND_DB.x, WIND_DB.y, z) - hush
 		var act := 0.0
 		if world.director:
 			var now := Time.get_ticks_msec() / 1000.0
@@ -1133,12 +1194,14 @@ func _view_process(_dt: float) -> void:
 				if now - float(h[2]) < 8.0:
 					act += float(h[1])
 		_activity = lerpf(_activity, clampf(act / 12.0, 0.0, 1.0), 1.0 - exp(-_dt * 0.8))
-		_rumble.volume_db = lerpf(RUMBLE_DB.x, RUMBLE_DB.y, _activity)
+		_rumble.volume_db = lerpf(RUMBLE_DB.x, RUMBLE_DB.y, _activity) - hush
 		Music.heat = _activity
 	if mood == "night":
 		_flares_tick(_dt / maxf(0.0001, Engine.time_scale) if Engine.time_scale > 0.001 else 0.0)
 	if _rain:
 		_rain_tick(_dt / maxf(0.0001, Engine.time_scale) if Engine.time_scale > 0.001 else 0.016)
+	if _snowfall:
+		_snowfall.follow(world.cam.cam)
 	_apply_haze(world.cam.dist)
 	var real_dt := _dt / maxf(0.0001, Engine.time_scale) if Engine.time_scale > 0.001 else 0.016
 	_fit_shadows()
@@ -1277,7 +1340,7 @@ static func pick_shadowed(lights: Array, focus: Vector3, n: int) -> Array[OmniLi
 ## How far the eye has gone over to its rods (night vision), by mood.
 const NIGHT_VISION := {"night": 0.8, "dusk": 0.18, "dawn": 0.12, "rain": 0.06}
 ## How strongly the sun streams through what stands against it, by mood.
-const SHAFTS_BY_MOOD := {"day": 0.55, "golden": 1.0, "dawn": 1.15, "dusk": 1.15, "hazy": 1.35, "overcast": 0.12, "rain": 0.0, "night": 0.3}
+const SHAFTS_BY_MOOD := {"day": 0.55, "golden": 1.0, "dawn": 1.15, "dusk": 1.15, "hazy": 1.35, "overcast": 0.12, "rain": 0.0, "snow": 0.05, "night": 0.3}
 
 
 ## Photo mode's own camera-and-lens choices, over the player's settings while
@@ -1486,7 +1549,12 @@ func _apply_haze(distance: float) -> void:
 		if forest:
 			forest.set_air(ground_mat.get_shader_parameter("air_color"), terrain_air)
 	env.fog_density = float(_d.fog_d) * HAZE_STRENGTH * k
-	env.volumetric_fog_density = (0.0011 if mood != "hazy" else 0.003) * VOLUME_STRENGTH * volume_k
+	env.volumetric_fog_density = _volume_fog() * VOLUME_STRENGTH * volume_k
+
+
+## The air's own murk: thick in a haze, and in falling snow.
+func _volume_fog() -> float:
+	return {"hazy": 0.003, "snow": 0.0022}.get(mood, 0.0011)
 
 
 ## Builds the road strip mesh for a team (called by World when roads change).
@@ -1937,6 +2005,7 @@ uniform vec3 sun_tint : source_color = vec3(1.0);
 uniform float bump = 0.85;
 uniform float snow_line = 10000.0;
 uniform float wet = 0.0;
+global uniform float snow_cover;  // how deep the snow weather lies, 0..1 (Atmosphere._snow_tick)
 uniform sampler2D trench_mask : hint_default_black, filter_linear, repeat_disable;
 uniform sampler2DArray deform_tex : filter_linear, repeat_disable;
 // TERRAIN_TEXTURE_HELPER
@@ -2383,6 +2452,25 @@ void fragment() {
 	snow *= 1.0 - scoured * smoothstep(0.22, 0.95, slope) * mix(0.88, 0.25, flow);
 	snow = height_blend(rock_sample.a, scree_sample.a, snow);
 	snow *= clean;
+	// Snow weather: a fresh fall lies white over all the gentler ground, in the
+	// hollows first as it settles and then over the whole field, and slides off
+	// the steep, which stand out dark. Whatever has been churned since it fell
+	// shows through as dark mud flecked with grey slush: the bowl of a shell
+	// hole and the earth it threw out, and the soft ground of a bog that boots
+	// and wheels have worked. (The tracks' own prints draw over it: Vfx.tread_print.)
+	float fall = 0.0;
+	float slush = 0.0;
+	if (snow_cover > 0.0) {
+		float settled = snow_cover * 1.3 - 0.3 + (d1 - 0.5) * 0.4 + cavity * 0.25 + (macro - 0.5) * 0.3;
+		float lies = 1.0 - smoothstep(0.32, 0.95, slope + (patch - 0.5) * 0.3);
+		// (a bog shows wet only in spots, where the water stands through)
+		float boggy = mud_cover * smoothstep(0.55, 0.75, d2 * 0.5 + d1 * 0.3 + d3 * 0.2);
+		float churned = smoothstep(0.25, 0.6, bowl * 1.3 + lip * 1.2 + boggy * 0.7 + (d3 - 0.5) * 0.3);
+		fall = smoothstep(0.0, 0.35, settled) * lies * (1.0 - wm.a) * (1.0 - wet_sand);
+		slush = fall * churned * smoothstep(0.3, 0.75, d2 * 0.6 + d3 * 0.4);
+		fall *= 1.0 - churned;
+		snow = max(snow, fall);
+	}
 	// Wind ripples are resolved only while they cover several pixels.
 	float snow_phase = dot(p, vec2(0.8, 0.6)) * 1.3 + (macro - 0.5) * 7.0 + patch * 9.0;
 	float snow_resolved = 1.0 - smoothstep(0.5, 2.5, fwidth(snow_phase));
@@ -2397,10 +2485,12 @@ void fragment() {
 		vec4 powder = surface_color(3.0, snow_uv, weights);
 		snow_data = surface_data(3.0, snow_uv, weights, geometric, snow_n);
 		snow_color = min(powder.rgb * 1.8, vec3(0.9)) * mix(vec3(0.82, 0.90, 1.0), vec3(1.0), smoothstep(-0.3, 0.6, lee + macro));
-		float melt = (1.0 - smoothstep(0.0, 0.7, snow_field)) * smoothstep(0.2, 0.8, rock_height);
+		float melt = (1.0 - smoothstep(0.0, 0.7, snow_field)) * smoothstep(0.2, 0.8, rock_height) * (1.0 - fall);
 		snow_color *= mix(vec3(1.0), vec3(0.64, 0.62, 0.59), melt * 0.55);
 	}
 	col = mix(col, snow_color * (0.94 + d3 * 0.06 + snow_ripple * 0.018), snow);
+	// (linear: wet grey slush over the dark of the churned earth)
+	col = mix(col, vec3(0.16, 0.165, 0.17) * (0.8 + 0.4 * d3), slush * 0.65);
 	vec2 material_data = mix(moss_data, rock_data, exposed);
 	// Combine photographic crevices with broad shelter; do not bake a second direct-light shadow.
 	float crevice = clamp(rock_data.x * mix(1.0, 0.72, shelter), 0.25, 1.0);
@@ -2427,6 +2517,7 @@ void fragment() {
 	ROUGHNESS = mix(ROUGHNESS, mix(shore_roughness, 0.45, wet_sand), shore_stone);
 	ROUGHNESS = mix(ROUGHNESS, 0.45, max(wm.a * 0.8, wet_sand * 0.6));
 	ROUGHNESS = mix(ROUGHNESS, 0.16, puddle);
+	ROUGHNESS = mix(ROUGHNESS, 0.5, slush);
 	SPECULAR = mix(0.25, 0.38, wet);
 	float e = 0.12;
 	float hc = hgt(p);
@@ -2476,6 +2567,7 @@ shader_type spatial;
 render_mode blend_mix, depth_draw_opaque, specular_schlick_ggx;
 uniform sampler2D detail_tex : filter_linear_mipmap, repeat_enable;
 uniform float wet = 0.0;
+global uniform float snow_cover;  // (see the ground shader)
 uniform sampler2D trench_mask : hint_default_black, filter_linear, repeat_disable;
 uniform vec4 town = vec4(0.0);  // min x, min z, max x, max z: streets here are asphalt
 uniform sampler2DArray deform_tex : filter_linear, repeat_disable;
@@ -2527,8 +2619,22 @@ void fragment() {
 	float pud = wet * smoothstep(0.5, 0.7, ruts * 0.7 + n2 * 0.55);
 	col *= 1.0 - wet * 0.22;
 	col = mix(col, col * 0.4, pud);
+	// In snow a track is a lane of slush between white verges: the wheels keep
+	// the ruts open down to dark wet mud, and the crown between them holds a
+	// grey, trodden cover.
+	float lying = 0.0;
+	float rut_slush = 0.0;
+	if (snow_cover > 0.0) {
+		lying = smoothstep(0.0, 0.35, snow_cover * 1.3 - 0.3 + (n2 - 0.5) * 0.4);
+		rut_slush = lying * clamp(ruts * 1.2, 0.0, 1.0);
+		float cover = lying * mix(0.6, 1.0, max(verge, grass)) * (1.0 - rut_slush * 0.9);
+		vec3 trodden = mix(vec3(0.3, 0.3, 0.31), vec3(0.62, 0.64, 0.67), smoothstep(0.3, 0.8, n * 0.6 + n3 * 0.4));
+		col = mix(col, col * 0.6, rut_slush);
+		col = mix(col, mix(trodden, vec3(0.8, 0.82, 0.86) * (0.94 + 0.06 * n3), max(verge, grass * 0.6)), cover);
+	}
 	ALBEDO = col;
 	ROUGHNESS = mix(mix(0.95, 0.75, ruts * 0.5), 0.1, pud);
+	ROUGHNESS = mix(ROUGHNESS, 0.45, rut_slush);
 	SPECULAR = mix(0.12, 0.45, pud);
 	float edge = smoothstep(0.0, 0.14 + 0.1 * n, x) * smoothstep(1.0, 0.86 - 0.1 * n, x);
 	ALPHA = edge;
@@ -2597,6 +2703,11 @@ void fragment() {
 		// rain lies in the wheel ruts and the gutters first
 		float pud2 = wet * smoothstep(0.55, 0.75, street_puddle(street_noise, wpos.xz) + wheel * 0.12 + gutter * 0.3) * (1.0 - metal_part);
 		asph *= 1.0 - wet * 0.3;
+		// in snow the traffic keeps the wheel paths black and wet, grey slush
+		// lies between them and down the crown, and the gutters are heaped white
+		float lane_snow = lying * clamp(gutter * 1.3 + (1.0 - wheel) * 0.5 - oil * 0.2, 0.0, 1.0) * (1.0 - metal_part * 0.6);
+		asph = mix(asph, asph * 0.6, lying * wheel);
+		asph = mix(asph, mix(vec3(0.3, 0.31, 0.32), vec3(0.78, 0.8, 0.84), gutter) * (0.9 + 0.2 * n3), lane_snow);
 		ALBEDO = mix(col, mix(asph, asph * 0.4, pud2), paved);
 		vec4 surface = texture(paving_surface, wpos.xz / 2.2);
 		vec3 normal = surface.rgb * 2.0 - 1.0;
@@ -2605,6 +2716,8 @@ void fragment() {
 		float asphalt_rough = clamp(surface.a, 0.65, 1.0) - wheel * 0.1 - tar * 0.3 + gutter * 0.05;
 		asphalt_rough = mix(asphalt_rough, 0.58, dash);
 		asphalt_rough = mix(asphalt_rough, mix(0.5, 0.8, slot), metal_part);
+		asphalt_rough = mix(asphalt_rough, 0.4, lying * wheel);
+		asphalt_rough = mix(asphalt_rough, 0.85, lane_snow);
 		ROUGHNESS = mix(ROUGHNESS, mix(asphalt_rough - wet * 0.3, 0.06, pud2), paved);
 		SPECULAR = mix(SPECULAR, mix(0.3, 0.55, pud2), paved);
 		METALLIC = metal_part * 0.45 * paved;

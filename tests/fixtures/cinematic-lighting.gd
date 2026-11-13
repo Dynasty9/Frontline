@@ -2,8 +2,8 @@ extends Node
 ## The cinematic lighting's rules, without a battle: the presets and how saved
 ## settings take them up, the adaptive shadow fit, which lights get shadows,
 ## the physical sky's moods, which heat sources the heat haze keeps, how the
-## rain soaks things and dries off, and what the motion blur asks of the
-## engine. Run windowed, it also checks that the lens, eye, heat and motion
+## rain soaks things and dries off, how the snow comes and covers everything,
+## and what the motion blur asks of the engine. Run windowed, it also checks that the lens, eye, heat and motion
 ## blur passes compile and run on this graphics card.
 
 
@@ -23,12 +23,13 @@ func check() -> void:
 	_check_detached_fires()
 	_check_exhaust_markers()
 	_check_rain_wet()
+	_check_snow()
 	_check_motion_blur()
 	if DisplayServer.get_name() != "headless":
 		await _check_passes()
 	else:
 		assert(not CinematicFx.supported())
-	print("CINEMATIC LIGHTING passed: presets, saved settings, shadow fit, light shadows, sky, heat haze, rain, motion blur")
+	print("CINEMATIC LIGHTING passed: presets, saved settings, shadow fit, light shadows, sky, heat haze, rain, snow, motion blur")
 	get_tree().quit()
 
 
@@ -54,6 +55,82 @@ func _check_rain_wet() -> void:
 	atmo.free()
 	fresh.free()
 	RenderingServer.global_shader_parameter_set(&"rain_wet", 0.0)
+
+
+## Snow is a mood like the others: offered in the settings and photo mode,
+## drawn now and then from the seed (a second draw, so no other seed's weather
+## changes, and never over rain, which damps fires). A battle that opens in
+## snow starts covered; snow setting in settles over SNOW_IN, and it thaws
+## over THAW once it stops. Everything standing out in it reads the cover.
+func _check_snow() -> void:
+	assert(Atmosphere.MOODS.has("snow"))
+	assert(SettingsPanel.MOODS.has("snow") and SettingsPanel.MOODS.size() == SettingsPanel.MOOD_NAMES.size())
+	assert(PhotoMode.MOODS.has("snow"))
+	assert(Curtain.MOOD_TEXT.has("snow"))
+	var d: Dictionary = Atmosphere.MOODS.snow
+	for k in Atmosphere.MOODS.overcast:
+		assert(d.has(k), "the snow mood leaves out %s" % k)
+	# flat, cold light: a weak sun and soft shadows under a pale sky
+	assert(float(d.energy) < float(Atmosphere.MOODS.overcast.energy) and float(d.soft) >= float(Atmosphere.MOODS.overcast.soft))
+	assert((d.zenith as Color).b > (d.zenith as Color).r, "a cold, blue-grey sky")
+	assert(Atmosphere.pick_mood({"mood": "snow", "seed": 5}) == "snow")
+	var old_bag := ["golden", "golden", "day", "day", "dawn", "dusk", "overcast", "hazy", "night", "rain"]
+	var snowy := 0
+	for seed in range(1, 801):
+		var picked := Atmosphere.pick_mood({"mood": "random", "seed": seed})
+		assert(picked == Atmosphere.pick_mood({"mood": "random", "seed": seed}), "the weather comes from the seed")
+		var r := RandomNumberGenerator.new()
+		r.seed = seed * 7 + 3
+		var before: String = old_bag[r.randi() % old_bag.size()]
+		if picked == "snow":
+			snowy += 1
+			assert(before != "rain", "seed %d rained, and snow mustn't take the rain's place" % seed)
+		else:
+			assert(picked == before, "seed %d's weather changed from %s to %s" % [seed, before, picked])
+	assert(snowy > 800 * Atmosphere.SNOW_CHANCE * 0.5 and snowy < 800 * Atmosphere.SNOW_CHANCE * 1.6, "snow came %d times in 800" % snowy)
+	# the cover ramps
+	var atmo := Atmosphere.new()
+	atmo.mood = "snow"
+	atmo._snow_tick(0.1)
+	assert(is_equal_approx(atmo.snow_cover, 1.0), "a battle opening in snow starts covered")
+	atmo.mood = "overcast"
+	atmo._snow_tick(Atmosphere.THAW * 0.5)
+	assert(is_equal_approx(atmo.snow_cover, 0.5), "half thawed after half the thaw")
+	atmo._snow_tick(Atmosphere.THAW)
+	assert(atmo.snow_cover == 0.0)
+	atmo.mood = "snow"
+	atmo._snow_tick(Atmosphere.SNOW_IN * 0.25)
+	assert(is_equal_approx(atmo.snow_cover, 0.25), "snow setting in settles gradually")
+	assert(Atmosphere.SNOW_IN < Atmosphere.THAW, "snow settles faster than it thaws")
+	var fresh := Atmosphere.new()
+	fresh.mood = "rain"
+	fresh._snow_tick(0.1)
+	assert(fresh.snow_cover == 0.0, "no snow lying in the rain")
+	atmo.free()
+	fresh.free()
+	RenderingServer.global_shader_parameter_set(&"snow_cover", 0.0)
+	# what stands out in it reads the cover
+	for code in [Atmosphere.GROUND_SHADER, Atmosphere.ROAD_SHADER, Mats.SURFACE_SHADER, Mats.FOLIAGE_SHADER, Mats.NETTING_SHADER,
+			Grass.GRASS_SHADER, Grass.BUSH_SHADER, DistantForest.SHADER, TrenchNet.BERM_SHADER]:
+		assert(String(code).contains("global uniform float snow_cover;"))
+	assert(ProjectSettings.has_setting("shader_globals/snow_cover"), "snow_cover is a project shader global")
+	# a floor indoors and a windscreen hold none; a man only a dusting
+	assert(float(Mats._preset("floor_tiles").get("snow_hold", 1.0)) == 0.0)
+	assert(float(Mats._preset("glass").get("snow_hold", 1.0)) == 0.0)
+	assert(float(Mats._preset("suit").get("snow_hold", 1.0)) < 0.5)
+	assert(float(Mats._preset("camo_tank").get("snow_hold", 1.0)) == 1.0)
+	# the snowfall follows the effects setting, and the browser gets fewer flakes
+	var saved := int(Settings.v.effects)
+	var counts := []
+	for fx in [0, 2]:
+		Settings.v.effects = fx
+		var fall := Snowfall.new()
+		add_child(fall)
+		var p: GeometryInstance3D = fall.get_child(0)
+		counts.append(int(p.get(&"amount")))
+		fall.free()
+	Settings.v.effects = saved
+	assert(counts[0] < counts[1] and counts[1] >= Snowfall.FLAKES * (0.25 if Vfx.gl else 1.0) * 0.99, "flakes %s" % [counts])
 
 
 ## The velocity buffer is drawn only while the blur wants it, and the camera's

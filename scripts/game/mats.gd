@@ -988,7 +988,8 @@ static func _preset(kind: String) -> Dictionary:
 		"steel":
 			return {"pattern": PAINT, "col_a": Color(0.25, 0.26, 0.27), "col_b": Color(0.4, 0.38, 0.35), "rough": 0.6, "metal": 0.6, "bump": 0.8, "grime": 0.4, "rust": 0.3}
 		"floor_tiles":
-			return {"pattern": TILES, "col_a": Color(0.45, 0.42, 0.38), "col_b": Color(0.3, 0.28, 0.25), "col_c": Color(0.52, 0.4, 0.32), "rough": 0.7, "bump": 0.8, "grime": 0.0}
+			# (floors indoors: no snow on them)
+			return {"pattern": TILES, "col_a": Color(0.45, 0.42, 0.38), "col_b": Color(0.3, 0.28, 0.25), "col_c": Color(0.52, 0.4, 0.32), "rough": 0.7, "bump": 0.8, "grime": 0.0, "snow_hold": 0.0}
 		"car_paint":
 			return {"pattern": PAINT, "col_a": Color(0.5, 0.5, 0.5), "col_b": Color(0.35, 0.33, 0.3), "rough": 0.38, "metal": 0.3, "bump": 0.4, "grime": 0.9, "rust": 0.45}
 		"wood_painted":
@@ -1071,13 +1072,13 @@ static func _preset(kind: String) -> Dictionary:
 		"rubber":
 			return {"pattern": PLAIN, "col_a": Color(0.07, 0.07, 0.07), "rough": 0.85, "bump": 0.3, "grime": 0.4}
 		"glass":
-			return {"pattern": PLAIN, "col_a": Color(0.08, 0.1, 0.12), "rough": 0.08, "metal": 0.4, "bump": 0.0, "grime": 0.0}
+			return {"pattern": PLAIN, "col_a": Color(0.08, 0.1, 0.12), "rough": 0.08, "metal": 0.4, "bump": 0.0, "grime": 0.0, "snow_hold": 0.0}
 		"window_lit":
 			# the same glass with a lamp on in the room behind it (see `lit`)
 			# (a room lamp seen through glass and curtains: warm, and at its
 			# brightest only just over the glow threshold, so a window gleams
 			# rather than flares)
-			return {"pattern": PLAIN, "col_a": Color(0.08, 0.1, 0.12), "col_c": Color(1.1, 0.66, 0.3), "rough": 0.08, "metal": 0.4, "bump": 0.0, "grime": 0.0, "lit": 1.0}
+			return {"pattern": PLAIN, "col_a": Color(0.08, 0.1, 0.12), "col_c": Color(1.1, 0.66, 0.3), "rough": 0.08, "metal": 0.4, "bump": 0.0, "grime": 0.0, "lit": 1.0, "snow_hold": 0.0}
 		"track":
 			return {"pattern": TRACK, "col_a": Color(0.13, 0.12, 0.11), "col_b": Color(0.3, 0.27, 0.23), "rough": 0.7, "metal": 0.5, "bump": 2.0, "grime": 0.5, "local_space": true}
 		"camo_army":
@@ -1115,12 +1116,12 @@ static func _preset(kind: String) -> Dictionary:
 		"suit":
 			# close-woven uniform cloth (a sneaking suit, a field jacket): a faint
 			# weave and soft folds, a little sheen
-			return {"pattern": CANVAS, "col_a": Color(0.5, 0.5, 0.5), "col_b": Color(0.43, 0.43, 0.43), "scale": 5.0, "rough": 0.78, "bump": 0.35, "grime": 0.3, "local_space": true}
+			return {"pattern": CANVAS, "col_a": Color(0.5, 0.5, 0.5), "col_b": Color(0.43, 0.43, 0.43), "scale": 5.0, "rough": 0.78, "bump": 0.35, "grime": 0.3, "local_space": true, "snow_hold": 0.3}
 		"armor":
 			# moulded armour and helmet shells: smooth, matte, scuffed
-			return {"pattern": PLAIN, "col_a": Color(0.5, 0.5, 0.5), "rough": 0.58, "bump": 0.25, "grime": 0.25, "local_space": true}
+			return {"pattern": PLAIN, "col_a": Color(0.5, 0.5, 0.5), "rough": 0.58, "bump": 0.25, "grime": 0.25, "local_space": true, "snow_hold": 0.35}
 		"webbing":
-			return {"pattern": CANVAS, "col_a": Color(0.2, 0.2, 0.2), "col_b": Color(0.16, 0.16, 0.16), "scale": 6.0, "rough": 0.9, "bump": 0.5, "grime": 0.2, "local_space": true}
+			return {"pattern": CANVAS, "col_a": Color(0.2, 0.2, 0.2), "col_b": Color(0.16, 0.16, 0.16), "scale": 6.0, "rough": 0.9, "bump": 0.5, "grime": 0.2, "local_space": true, "snow_hold": 0.3}
 		"wood_l":
 			return {"pattern": WOOD, "col_a": Color(0.3, 0.2, 0.12), "col_b": Color(0.2, 0.13, 0.08), "scale": 3.0, "rough": 0.6, "bump": 0.4, "grime": 0.0, "local_space": true}
 		"skin":
@@ -1128,7 +1129,7 @@ static func _preset(kind: String) -> Dictionary:
 		"gunmetal":
 			return {"pattern": PAINT, "col_a": Color(0.15, 0.15, 0.145), "col_b": Color(0.36, 0.35, 0.33), "rough": 0.52, "metal": 0.55, "bump": 0.35, "grime": 0.0, "local_space": true, "scale": 3.0}
 		"boot":
-			return {"pattern": CANVAS, "col_a": Color(0.16, 0.13, 0.1), "col_b": Color(0.11, 0.09, 0.07), "scale": 6.0, "rough": 0.75, "bump": 0.4, "grime": 0.0, "local_space": true}
+			return {"pattern": CANVAS, "col_a": Color(0.16, 0.13, 0.1), "col_b": Color(0.11, 0.09, 0.07), "scale": 6.0, "rough": 0.75, "bump": 0.4, "grime": 0.0, "local_space": true, "snow_hold": 0.0}
 	return {"pattern": PLAIN, "col_a": Color(0.6, 0.6, 0.6), "rough": 0.85}
 
 
@@ -1168,6 +1169,8 @@ uniform float bump = 1.0;
 uniform float grime = 0.5;
 uniform float wet = 0.0;  // streets in the rain (Mats.set_street_wet)
 global uniform float rain_wet;  // how soaked everything out in the rain is, 0..1 (Atmosphere._rain_tick)
+global uniform float snow_cover;  // how deep the snow weather lies, 0..1 (Atmosphere._snow_tick)
+uniform float snow_hold = 1.0;  // how much of it this surface holds (none on a floor indoors, little on a man)
 uniform float weathering = 0.0;
 uniform bool grain_horizontal = false;
 uniform bool worn_armour = false;
@@ -1733,6 +1736,36 @@ void fragment() {
 		// (water stands as a film on paint and metal; cloth and timber drink most of it)
 		ROUGHNESS = mix(ROUGHNESS, mix(0.34, 0.12, smoothstep(0.4, 0.9, wn.y)), soak * mix(0.85, 0.35, porous));
 	}
+	if (snow_cover > 0.0 && snow_hold > 0.0 && pattern != 13 && pattern != 14 && !(vehicle_surface && (surface_finish == 8 || surface_finish == 6))) {
+		// Snow settles on whatever faces the sky and slides off whatever doesn't:
+		// a roof's pitch, a hull's deck and glacis, the top of a sandbag wall and
+		// every sill and ledge hold it, walls and the sides of hulls stay bare.
+		// Its edge is broken by drifts and deepest in the hollows of the surface's
+		// own relief; as it falls it settles first on the flattest, then spreads.
+		// (Running gear churns it straight off, glass is wiped or warm, and a hull
+		// that has burnt is still too hot to hold it.) A vehicle on the move
+		// shakes and blows much of it off, so its paint shows through in patches
+		// (and a side can still be told by its colours); the drift pattern rides
+		// with it, so the snow on a hull keeps its place.
+		vec3 wn = normalize((INV_VIEW_MATRIX * vec4(NORMAL, 0.0)).xyz);
+		float drift = tnoise(tp.xz * 2.3 + tp.y * 1.1) * 0.6 + tnoise(tp.xz * 7.1 + tp.y * 3.3 + 5.3) * 0.4;
+		float lying = wn.y * 1.35 - 0.62 + (drift - 0.5) * 0.7 + (0.5 - h) * 0.25 - (1.0 - snow_cover) * 1.4;
+		if (vehicle_surface) { lying -= 0.3; }
+		float settled = smoothstep(0.0, 0.25, lying) * snow_hold * (vehicle_surface ? 0.88 : 1.0);
+		if (pattern == 18 || pattern == 19 || pattern == 22) {
+			// streets and pavements are driven and trodden to a patchy slush
+			settled *= mix(0.3, 0.85, smoothstep(0.35, 0.7, tfbm(wpos.xz * 0.4 + 7.0)));
+		}
+		vec3 snow = vec3(0.8, 0.83, 0.88) * (0.93 + 0.07 * drift);
+		if (OUTPUT_IS_SRGB) { snow = pow(snow, vec3(1.0 / 2.2)); }
+		ALBEDO = mix(ALBEDO, snow, settled);
+		ROUGHNESS = mix(ROUGHNESS, 0.85, settled);
+		METALLIC *= 1.0 - settled;
+		SPECULAR = mix(SPECULAR, 0.3, settled);
+		CLEARCOAT *= 1.0 - settled;
+		// a soft blanket hides the plate seams and the bumps beneath it
+		NORMAL = normalize(mix(NORMAL, (VIEW_MATRIX * vec4(0.0, 1.0, 0.0, 0.0)).xyz, settled * 0.4));
+	}
 	// CLOUD_FRAGMENT cloud_sun(wpos)
 }
 """
@@ -1753,6 +1786,7 @@ uniform bool use_vcolor = false;
 // shrivel brown, blacken and burn away, glowing at the edges while it burns
 uniform float scorch = 0.0;
 uniform float embers = 0.0;
+global uniform float snow_cover;  // (see SURFACE_SHADER)
 // CLOUD_SHADOW
 
 varying vec3 lpos;
@@ -1827,11 +1861,21 @@ void fragment() {
 		float edge = 1.0 - smoothstep(0.0, 0.05, burnt);
 		EMISSION = vec3(1.0, 0.32, 0.05) * embers * edge * (0.9 + 0.6 * sin(TIME * 7.0 + lpos.x * 3.0 + lpos.y * 5.0));
 	}
-	ALBEDO = c * (0.55 + 0.45 * shade);
+	// Snow lies on the tops of the boughs and the upper leaves, in clumps the
+	// branches hold, while the undersides stay dark (not on a tree that's burning).
+	float snowed = 0.0;
+	if (snow_cover > 0.0 && scorch < 0.5) {
+		float up = (INV_VIEW_MATRIX * vec4(NORMAL, 0.0)).y;
+		float clump = mix(0.5, n3(lpos * 2.6 + 3.1), smoothstep(1.5, 5.0, (1.0 / 2.6) / px));
+		// (a fir's needles hold it in lumps along the boughs, the green showing between)
+		snowed = smoothstep(0.0, 0.3, up * 1.2 + shade * 0.5 - (leaf_cards ? 1.1 : 0.95) + (clump - 0.5) * 0.9 - (1.0 - snow_cover) * 1.4);
+		c = mix(c, vec3(0.74, 0.77, 0.82) * (0.92 + 0.1 * clump), snowed * 0.92);
+	}
+	ALBEDO = c * (0.55 + 0.45 * mix(shade, 1.0, snowed * 0.6));
 	if (OUTPUT_IS_SRGB) { ALBEDO = mix(ALBEDO * 12.92, 1.055 * pow(max(ALBEDO, vec3(0.0)), vec3(1.0 / 2.4)) - 0.055, step(vec3(0.0031308), ALBEDO)); }
 	ROUGHNESS = 0.85;
 	SPECULAR = 0.25;
-	BACKLIGHT = vec3(0.35, 0.42, 0.18) * (1.0 - scorch);
+	BACKLIGHT = vec3(0.35, 0.42, 0.18) * (1.0 - scorch) * (1.0 - snowed * 0.8);
 	AO = 0.55 + 0.45 * shade;
 	AO_LIGHT_AFFECT = 0.6;
 	if (leaf_cards) {
@@ -1857,6 +1901,7 @@ shader_type spatial;
 render_mode cull_disabled;
 instance uniform vec4 tint : source_color = vec4(0.3, 0.34, 0.2, 1.0);
 uniform float sag = 0.45;  // a flat net slung between poles sags in the middle
+global uniform float snow_cover;  // (see SURFACE_SHADER)
 // CLOUD_SHADOW
 varying vec3 wp;
 float h12(vec2 p) { vec3 p3 = fract(vec3(p.xyx) * 0.1031); p3 += dot(p3, p3.yzx + 33.33); return fract((p3.x + p3.y) * p3.z); }
@@ -1888,9 +1933,17 @@ void fragment() {
 	c = mix(c, c * vec3(0.62, 0.5, 0.38), step(0.6, vn(p * 2.3 + 31.0)) * 0.75);
 	c = mix(c, c * 0.35, step(0.7, vn(p * 4.1 + 57.0)) * 0.6);
 	c = mix(tint.rgb * 0.45, c, scraps);
+	// snow caught in the net lies in the sag and on the scraps, in drifts
+	float snowed = 0.0;
+	if (snow_cover > 0.0) {
+		snowed = smoothstep(0.0, 0.3, vn(p * 0.9 + 3.0) * 0.6 + n * 0.5 - 0.45 - (1.0 - snow_cover) * 1.4) * 0.85;
+		vec3 snow = vec3(0.78, 0.81, 0.86);
+		if (OUTPUT_IS_SRGB) { snow = pow(snow, vec3(1.0 / 2.2)); }
+		c = mix(c, snow, snowed);
+	}
 	ALBEDO = c;
 	ROUGHNESS = 0.95;
-	BACKLIGHT = c * 0.5;
+	BACKLIGHT = c * 0.5 * (1.0 - snowed);
 	// CLOUD_FRAGMENT cloud_sun(wp)
 }
 """
