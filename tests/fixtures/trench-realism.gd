@@ -175,13 +175,82 @@ func _ready() -> void:
 	var network := TrenchNet.new(w)
 	add_child(network)
 	network.rebuild()
+	var terrain_layers := Atmosphere.terrain_materials()
+	for material in [network.wall_mat, network.berm_mat, network.floor_mat, TrenchNet.bank_material()]:
+		check(material.get_shader_parameter("earth_colors") == terrain_layers[0], "Earthworks reuse the battlefield's photographic colour layers")
+		check(material.get_shader_parameter("earth_surfaces") == terrain_layers[1], "Earthworks retain packed normal, occlusion and roughness data")
+	for i in 100:
+		var sample := Vector3(i * 0.73, 0.0, i * -0.41)
+		check(absf(TrenchNet.edge_erosion(sample)) <= 0.111, "Cosmetic edge erosion stays outside the clear walking route")
+		var rim := TrenchNet.rim_height(sample, 1.2)
+		check(rim >= 0.02 and rim <= 0.1, "Loose rim clods stay below ten centimetres and above the intact ground")
+		check(is_equal_approx(TrenchNet.rim_height(sample, 0.0), 0.02), "An unexcavated mark has no raised soil clods")
+	for i in 100:
+		var sample := Vector3(i * 0.37, 30.0, i * -0.29)
+		check(is_zero_approx(TrenchNet.cut_relief(sample, 0.0)) and is_zero_approx(TrenchNet.cut_relief(sample, 1.0)), "Cut relief meets the rim and authoritative floor without seams")
+		for depth in [0.2, 0.4, 0.6, 0.8]:
+			var relief := TrenchNet.cut_relief(sample, depth)
+			check(relief >= 0.0 and relief <= 0.081, "Earth clods stay within eight centimetres of the cut and clear of the walking route")
+	for heading in [0.0, 0.7, 2.2]:
+		var shoring := Node3D.new()
+		var shoring_rng := RandomNumberGenerator.new()
+		shoring_rng.seed = 37
+		var original_yaw: float = st.yaw
+		st.yaw = heading
+		WorksModels.trench_shoring(st, shoring, shoring_rng)
+		check(shoring.get_child_count() > 0 and shoring.get_child_count() <= 60, "Shoring uses a bounded number of pieces before the static mesh merge")
+		for piece: MeshInstance3D in shoring.get_children():
+			var bounds := piece.transform * piece.mesh.get_aabb()
+			check(absf(piece.position.z) > 0.40, "Retaining timber leaves the central walking route clear")
+			check(bounds.position.x >= -st.size.x * 0.5 and bounds.end.x <= st.size.x * 0.5, "Retaining panels stay between the end traverses")
+		st.yaw = original_yaw
+		shoring.free()
+	for rear_bank in [false, true]:
+		var bank := WorksModels._bank_mesh(2.8, 1.0, 2.0, rear_bank)
+		var bank_arrays := bank.surface_get_arrays(0)
+		var bank_points: PackedVector3Array = bank_arrays[Mesh.ARRAY_VERTEX]
+		var bank_normals: PackedVector3Array = bank_arrays[Mesh.ARRAY_NORMAL]
+		check(bank_points.size() > 1500 and bank_points.size() <= 3072, "Continuous bunker banks have a bounded triangle budget")
+		for i in bank_points.size():
+			check(bank_points[i].is_finite() and bank_normals[i].y > 0.0, "Bank corners keep finite upward-facing normals")
+		for t in [0.0, 0.25, 0.5, 0.75, 1.0]:
+			check(WorksModels._bank_point(0.0, t, 2.8, 1.0, 2.0, rear_bank).y < 0.0, "The bunker approach stays clear of its bank")
+	check(TrenchNet.bank_material(true).get_shader_parameter("trench_mask") == network.tex, "Ground banks share the current world trench mask")
+	check(TrenchNet.bank_material(true).get_shader_parameter("cut_trench") and not TrenchNet.bank_material().get_shader_parameter("cut_trench"), "Excavation cuts bank toes but leaves roof soil intact")
+	var bank_center := Vector3(30, 0, 30)
+	bank_center.y = geology.height(bank_center)
+	for heading in [0.0, 0.7, 2.2]:
+		var foundation := Transform3D(Basis(Vector3.UP, heading), bank_center)
+		for i in 64:
+			var angle := i * TAU / 64.0
+			var toe := WorksModels._bank_ground_point(angle, 1.0, 2.8, 1.0, 2.0, true, w, foundation)
+			var contact := foundation * toe
+			check(absf(contact.y - geology.height(contact) + 0.025) < 0.0001, "Bunker bank toes meet elevated sloping ground at every heading")
+			var lip := WorksModels._bank_ground_point(angle, 0.0, 2.8, 1.0, 2.0, true, w, foundation)
+			check(lip == WorksModels._bank_point(angle, 0.0, 2.8, 1.0, 2.0, true), "Grounding leaves the bank against the level bunker foundation")
+	for variant in 4:
+		var roof := WorksModels.roof_soil(variant)
+		check(roof == WorksModels.roof_soil(variant), "Bunker caps reuse their mesh instead of allocating per building")
+		var roof_arrays := roof.surface_get_arrays(0)
+		var roof_vertices: PackedVector3Array = roof_arrays[Mesh.ARRAY_VERTEX]
+		var roof_normals: PackedVector3Array = roof_arrays[Mesh.ARRAY_NORMAL]
+		check(roof_vertices.size() > 1200 and roof_vertices.size() <= 2400, "The roof cap has a bounded triangle budget")
+		for i in roof_vertices.size():
+			var point := roof_vertices[i]
+			check(is_equal_approx(point.y, WorksModels.roof_soil_height(Vector2(point.x, point.z), variant)), "Roof bags and the earth cap share a support surface")
+			check(point.y >= -0.141 and point.y < 0.7 and roof_normals[i].y > 0.0, "Earth cap stays over its roof and faces upward")
 	var arrays := network.floor_mi.mesh.surface_get_arrays(0)
 	var vertices: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
 	check(vertices.size() > 0, "The trench network has a real floor mesh")
 	for point in vertices:
 		check(absf(point.y - (geology.height(point) - w.trench_depth(point, -0.3))) < 0.0001, "Floor vertices follow the sloped geology and local excavation depth")
-	for i in range(0, vertices.size(), 3):
-		check((vertices[i + 1] - vertices[i]).cross(vertices[i + 2] - vertices[i]).y < 0.0, "Floor triangles face the player rather than exposing the sky")
+	var indices: PackedInt32Array = arrays[Mesh.ARRAY_INDEX]
+	check(indices.size() > vertices.size(), "Floor triangles share their coincident corners")
+	for i in range(0, indices.size(), 3):
+		var a := vertices[indices[i]]
+		var b := vertices[indices[i + 1]]
+		var c := vertices[indices[i + 2]]
+		check((b - a).cross(c - a).y < 0.0, "Floor triangles face the player rather than exposing the sky")
 	st.hp = st.max_hp * 0.3
 	network.rebuild()
 	var samples := RandomNumberGenerator.new()
@@ -205,6 +274,55 @@ func _ready() -> void:
 		actor._dig_soil(0.1)
 	check(not actor._dig_flying and not actor.dig_soil.visible, "Soil lands and its single mesh is reused")
 	actor.free()
+	var mound_ring: Array = [Vector3(0,0,0), Vector3(1,0.1,0), Vector3(1,0.2,1), Vector3(0,0.1,1), Vector3(0,0,0)]
+	var seam_normal := TrenchNet._berm_normal(mound_ring, 0, Vector3(-1,0.2,-1), true)
+	check(seam_normal.is_equal_approx(TrenchNet._berm_normal(mound_ring, 4, Vector3(-1,0.2,-1), true)), "Closed spoil strips share their lighting across the seam")
+	check(seam_normal.y > 0.0 and is_equal_approx(seam_normal.length(), 1.0), "Spoil lighting follows an upward unit surface normal")
+	check(TrenchNet._berm_normal([Vector3.ZERO,Vector3.ZERO], 0, Vector3.ZERO, false) == Vector3.UP, "Collapsed mound spans keep a finite normal")
+	for kind in ["trench", "bunker"]:
+		for side in [0, 1]:
+			var preview := Structure.preview_model(kind, side)
+			check(preview.get_child_count() > 0, "Standalone defense previews build without a battlefield")
+			preview.free()
+	var isolated_bank := Node3D.new()
+	WorksModels.berms(isolated_bank, 2.8, 1.0, 2.0, true)
+	var isolated_material := (isolated_bank.get_child(0) as MeshInstance3D).material_override as ShaderMaterial
+	check(not isolated_material.get_shader_parameter("cut_trench"), "Standalone bunker previews do not inherit a battlefield excavation mask")
+	isolated_bank.free()
+	var joined_world := World.new()
+	joined_world.has_view = false
+	joined_world.srv = true
+	joined_world.nav = Nav.new()
+	joined_world.terrain = TerrainMap.new(joined_world)
+	joined_world.nav.terrain = joined_world.terrain
+	var first_cut := make_trench(joined_world, 91, Vector3.ZERO, true)
+	first_cut._build_model()
+	var original_furnishings := first_cut.model.get_node("Done")
+	first_cut.refresh_trench_furnishings()
+	check(first_cut.model.get_node("Done") == original_furnishings, "Unchanged neighbors reuse the existing furnishings")
+	var backing := Vector3(2, 0, 1.05)
+	check(WorksModels.trench_backed(first_cut, backing, 0.4), "An isolated parapet retains its bags and timber")
+	var parallel_cut := make_trench(joined_world, 92, Vector3(0, 0, 1.2), true)
+	first_cut.refresh_trench_furnishings()
+	check(first_cut.model.get_node("Done") != original_furnishings and original_furnishings.is_queued_for_deletion(), "A newly joined cut rebuilds and retires the old furnishings")
+	check(not WorksModels.trench_backed(first_cut, backing, 0.4), "A joined parallel excavation removes unsupported parapet furnishings")
+	check(WorksModels.trench_backed(first_cut, Vector3(2, 0, -1.05), 0.4), "Joining one side preserves the opposite retaining wall")
+	parallel_cut.hp = 1.0
+	check(not WorksModels.trench_backed(first_cut, backing, 0.4), "A collapsed but still excavated neighbor cannot support floating bags")
+	parallel_cut.gone = true
+	check(WorksModels.trench_backed(first_cut, backing, 0.4), "Removing the neighboring cut restores the backing")
+	var partial_join := make_trench(joined_world, 94, Vector3(-1.2, 0, -1.2))
+	partial_join.progress = 0.25
+	var ramp_backing := Vector3(2, 0, -1.05)
+	check(joined_world.trench_depth(ramp_backing) < 0.15, "The joining-ramp regression begins with a shallow excavation")
+	check(not WorksModels.trench_backed(first_cut, ramp_backing, 0.1), "Digging a joining footprint clears kit over its future ramp")
+	first_cut.refresh_trench_furnishings()
+	var partial_furnishings := first_cut.model.get_node("Done")
+	partial_join.built = true
+	partial_join.progress = 1.0
+	first_cut.refresh_trench_furnishings()
+	check(first_cut.model.get_node("Done") == partial_furnishings, "Finishing the joining cut does not reshuffle already-cleared furnishings")
+	joined_world.free()
 	w.free()
 	print("TRENCH_REALISM failures=%d" % failures)
 	get_tree().quit(1 if failures else 0)
