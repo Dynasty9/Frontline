@@ -163,7 +163,7 @@ static func berms(model: Node3D, half: float, h: float, depth: float, all_sides:
 		terrain_world = structure.world
 	var foundation := Transform3D(Basis(Vector3.UP, structure.yaw), structure.position) if structure != null else Transform3D.IDENTITY
 	var bank := _mk(model, _bank_mesh(half, h, depth, all_sides, terrain_world, foundation), "bank", Vector3.ZERO, Vector3.ZERO, Color(0.29, 0.27, 0.17))
-	bank.material_override = TrenchNet.bank_material(true)
+	bank.material_override = TrenchNet.bank_material(structure != null and structure.world != null)
 
 
 ## Furnish only ground that remains outside the combined excavation.

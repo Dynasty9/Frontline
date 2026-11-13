@@ -2886,6 +2886,8 @@ var _trench_furnishing_key := ""
 
 
 func _trench_neighbors_key() -> String:
+	if world == null:
+		return ""
 	var ids: Array[int] = []
 	for other in world.structures_near(position, size.x * 0.5 + 5.0):
 		if other != self and other.skind == "trench" and not other.gone and other.trench_depth() > 0.15:

@@ -279,6 +279,16 @@ func _ready() -> void:
 	check(seam_normal.is_equal_approx(TrenchNet._berm_normal(mound_ring, 4, Vector3(-1,0.2,-1), true)), "Closed spoil strips share their lighting across the seam")
 	check(seam_normal.y > 0.0 and is_equal_approx(seam_normal.length(), 1.0), "Spoil lighting follows an upward unit surface normal")
 	check(TrenchNet._berm_normal([Vector3.ZERO,Vector3.ZERO], 0, Vector3.ZERO, false) == Vector3.UP, "Collapsed mound spans keep a finite normal")
+	for kind in ["trench", "bunker"]:
+		for side in [0, 1]:
+			var preview := Structure.preview_model(kind, side)
+			check(preview.get_child_count() > 0, "Standalone defense previews build without a battlefield")
+			preview.free()
+	var isolated_bank := Node3D.new()
+	WorksModels.berms(isolated_bank, 2.8, 1.0, 2.0, true)
+	var isolated_material := (isolated_bank.get_child(0) as MeshInstance3D).material_override as ShaderMaterial
+	check(not isolated_material.get_shader_parameter("cut_trench"), "Standalone bunker previews do not inherit a battlefield excavation mask")
+	isolated_bank.free()
 	var joined_world := World.new()
 	joined_world.has_view = false
 	joined_world.srv = true
