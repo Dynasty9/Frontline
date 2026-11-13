@@ -45,7 +45,7 @@ func _ready() -> void:
 		return
 	var took := []
 	for c in [_check_moods_hold_their_hour, _check_weather_holds, _check_smooth_round_the_day, _check_pace, _check_no_hidden_state,
-			_check_live_light, _check_setting_off, _check_sky_code]:
+			_check_live_light, _check_photo_mode, _check_setting_off, _check_sky_code]:
 		var t0 := Time.get_ticks_msec()
 		c.call()
 		took.append("%s %d ms" % [c.get_method().trim_prefix("_check_"), Time.get_ticks_msec() - t0])
@@ -148,6 +148,9 @@ func _atmosphere(settings: Dictionary) -> Atmosphere:
 	atmo._d = Atmosphere.MOODS[atmo.mood]
 	atmo.weights = {atmo.mood: 1.0}
 	atmo._clock_start = atmo.mood
+	# (stand-ins for the ground's and the roads' materials, which a mood sets too)
+	atmo.ground_mat = ShaderMaterial.new()
+	atmo.road_mat = ShaderMaterial.new()
 	atmo._build_env()
 	atmo._build_post()
 	atmo.set_process(false)
@@ -208,6 +211,32 @@ func _check_live_light() -> void:
 	_check("the same seed, the same light", _seen(x) == _seen(y))
 	_done(x)
 	_done(y)
+
+
+## Photo mode's time of day has the light while it's open (the battle is held,
+## and the clock leaves the light alone), and once it closes the clock's light
+## comes back, as if photo mode had never been opened.
+func _check_photo_mode() -> void:
+	Settings.v.time_passes = true
+	Settings.v.phys_sky = false
+	var photo := PhotoMode.new()
+	_field.photo = photo
+	var a := _atmosphere({"seed": 3, "mood": "golden"})
+	_tick_at(a, 1500.0)
+	var clock := _seen(a)
+	photo.active = true
+	a.apply_mood("night")  # (photo mode's time of day control)
+	var night := _seen(a)
+	_tick_at(a, 1520.0)
+	_check("photo mode's time of day holds while it's open", _seen(a) == night and a.mood == "night")
+	photo.active = false
+	a.apply_mood("dusk")  # (photo mode closing puts back the mood it found: the nearest one)
+	_tick_at(a, 1500.0)
+	_check("the clock's light comes back when photo mode closes", _seen(a) == clock)
+	_field.photo = null
+	photo.free()
+	_done(a)
+	Settings.v.time_passes = false
 
 
 ## With the setting off, a battle's light is its mood's, whatever the time,
