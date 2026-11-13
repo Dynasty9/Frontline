@@ -428,9 +428,11 @@ static func track_guard(k: VehicleModels, parent: Node3D, center: Vector3, size:
 			var z := lerpf(-hz, hz, (i + 0.5) / bolts)
 			fastener(k, mount, Vector3(-s * (hx - t - 0.003), hy + rise * 0.5, z), Vector3(s, 0, 0), minf(0.009, rise * 0.25))
 	# Gussets under the inner edge, welded to the hull side, one bolt over each.
+	# They stay shallow: the track's top run passes only a few centimetres
+	# under the guard when the road wheels ride up to their stops.
 	if brackets > 0:
 		var reach := size.x * 0.6
-		var drop := minf(reach, 0.12)
+		var drop := minf(reach * 0.5, 0.05)
 		var fin := _gusset(reach, drop, minf(0.012, size.y * 0.4))
 		for i in brackets:
 			var z := lerpf(-hz * 0.9, hz * 0.9, (i + 0.5) / brackets)
