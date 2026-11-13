@@ -152,6 +152,12 @@ it, a joist or two run up out of it (charred or bare), and reinforcing rods bent
 stands proud of the cover boxes, and lumps at its edges bed into the ground; the fixture checks every size a
 fallen wall leaves. Render two with `--building-kinds=rubble`.
 
+A house that has gone dark (a ruin, or hit hard, holed or burning: see the lamplight above) also sheds debris at
+the foot of every wall (`BuildingWeathering.spill`: lumps of brick and render, plaster flakes, roof-tile shards,
+a splinter of timber, glass), thickest by the wall and thinning out over a metre and a half, all lying flat; it
+comes with the wall's rebuild when the house goes dark. Under a shot-out window lies its glass
+(`BuildingWeathering.shards`). Both draw from a stream of their own.
+
 ## Barns
 
 A farmstead's barn is built as a house but weatherboarded: `BuildingMaterials.HOUSE` ends in `timber`, and

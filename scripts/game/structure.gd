@@ -985,6 +985,7 @@ func _house_wall_detail(rng: RandomNumberGenerator) -> void:
 			BuildingWeathering.scar(k, Vector2(war.randf_range(-room_x, room_x), war.randf_range(1.25, 1.9)), r, surf, tone, raw, chips, war, gaps, L * 0.5)
 	var at_window := war.randf()
 	var lamp_side := 0.0
+	var shot_out := false
 	# inside: the room's paint and skirting, what hangs on its walls
 	var room := _kit(life).at_point(Vector3(0, 0, -0.2), Vector3(0, PI, 0))
 	# (a wall doesn't know which house it is, so the paint follows the house's
@@ -1008,6 +1009,7 @@ func _house_wall_detail(rng: RandomNumberGenerator) -> void:
 			# (and a house still lived in keeps its glass; its lamps are out
 			# once it's a ruin, or hit; a barn has none)
 			var lived := life.randf() < 0.35 and not barn
+			shot_out = not lived and not barn
 			if lived:
 				if not dark:
 					opts["lit"] = true
@@ -1060,6 +1062,15 @@ func _house_wall_detail(rng: RandomNumberGenerator) -> void:
 				BuildingOpenings.leaf(BuildingKit.nodes(pv, rng), Vector2(0.88, 2.06), "ledged" if barn else "panelled", dc, -sx)
 				_door_leaves.append([pv, a])
 	_wall_fixtures(k, rng, L, barn, ivied, lamp_side)
+	# a ruined or shelled house sheds debris at the foot of its walls, and a
+	# shot-out window its glass on the ground under it (a stream of its own,
+	# so nothing else about the wall changes)
+	var fall := RandomNumberGenerator.new()
+	fall.seed = rng.seed ^ 0x6b1d5e
+	if dark and not barn:
+		BuildingWeathering.spill(k, L, wall, fall)
+	if shot_out and fall.randf() < 0.7:
+		BuildingWeathering.shards(k, 0.0, 1.3, fall)
 
 
 ## What's fixed to the outside of a house wall (`k` at its face): on a plain
