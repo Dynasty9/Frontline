@@ -2,7 +2,8 @@ extends Node
 ## The weather grid without a battle: sized from MapDims, mist pooling in the
 ## hollows and along the water, rain in bands, a blast's smoke and dust (and
 ## none of the dust off wet ground), everything drifting downwind as a whole
-## and thinning away, and the air layers' shaders carrying what they need.
+## and thinning away, close-up smoke plumes merging and clearing, and the air
+## layers' shaders carrying what they need.
 
 
 ## A stand-in for the World the grid reads: a valley running north-south
@@ -28,9 +29,10 @@ func check() -> void:
 	_check_rain()
 	_check_blast()
 	_check_drift()
+	_check_plumes()
 	_check_shaders()
 	MapDims.configure(1024)
-	print("AIR LAYERS passed: size, hollows, rain bands, blasts, drift, shaders")
+	print("AIR LAYERS passed: size, hollows, rain bands, blasts, drift, plumes, shaders")
 	get_tree().quit()
 
 
@@ -81,7 +83,7 @@ func _check_blast() -> void:
 	var before := g.sample(p)
 	g.blast(p, 2.0, false, 0.0)
 	var after := g.sample(p)
-	assert(after.w > before.w + 0.1 and after.z > before.z + 0.1, "a blast's smoke %.2f and dust %.2f" % [after.w, after.z])
+	assert(after.w > before.w + 0.1 and after.z > before.z + 0.05, "a blast's smoke %.2f and dust %.2f" % [after.w, after.z])
 	var g2 := _grid("day")
 	g2.blast(p, 2.0, true, 0.0)
 	var wet := g2.sample(p)
@@ -111,12 +113,34 @@ func _check_drift() -> void:
 	assert(g.drift.x >= 0.0 and g.drift.x < g.cell and g.drift.y >= 0.0 and g.drift.y < g.cell, "the drift stays under a cell")
 
 
+## Shells falling close together feed one plume; one far off starts another;
+## a grenade starts none; they clear once they've thinned away.
+func _check_plumes() -> void:
+	var pl := SmokePlumes.new()
+	add_child(pl)
+	pl.setup(FakeWorld.new(), NoiseTexture3D.new())
+	pl.blast(Vector3(100, 0, 100), 2.0)
+	pl.blast(Vector3(108, 0, 104), 2.0)
+	assert(pl.count() == 1, "two shells close together make one plume, not %d" % pl.count())
+	pl.blast(Vector3(-200, 0, 50), 2.0)
+	pl.blast(Vector3(0, 0, 0), 0.5)
+	assert(pl.count() == 2, "one far off starts another, a grenade none (%d)" % pl.count())
+	for i in SmokePlumes.PLUMES + 4:
+		pl.blast(Vector3(-480 + i * 40, 0, -300), 2.0)
+	assert(pl.count() == SmokePlumes.PLUMES, "never more than %d" % SmokePlumes.PLUMES)
+	for i in 80:
+		pl.tick(1.0, true)
+	assert(pl.count() == 0, "they clear once they've thinned away (%d left)" % pl.count())
+	pl.queue_free()
+
+
 func _check_shaders() -> void:
 	var air := MapDims.shader(AirLayers.AIR_SHADER.replace("// CLOUD_SHADOW", CloudShadow.PATTERN))
 	assert(air.begins_with("\nshader_type fog;") and air.contains("float terrain_height(") and air.contains("float cloud_sun("), "the air's fog shader has its helpers")
 	assert(not air.contains("__MAP_"), "the map's size is filled in")
+	assert(SmokePlumes.SHADER.contains("shader_type fog;") and SmokePlumes.SHADER.contains("UVW"), "the plumes' fog shader")
 	var c := MapDims.shader(Caustics.SHADER)
 	assert(c.contains("hint_depth_texture") and c.contains("NDC_Z") and not c.contains("__MAP_"), "the thrown-back caustics read depth both renderers' way")
 	for wq in 4:
 		var w := WaterView.WATER_SHADER.replace("__WQ__", str(wq))
-		assert(w.contains("vec3 caustics(vec2 p)"), "the water's bed caustics")
+		assert(w.contains("vec3 caustics(vec2 p, float soft)"), "the water's bed caustics")

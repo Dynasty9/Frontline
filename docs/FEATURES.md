@@ -715,7 +715,9 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   surge up the sand, leaving it dark and wet. The bed shows through the water, bent by the ripples and dimmed
   with depth (red light dies first, so sand under the sea turns turquoise and the open sea goes deep blue; fresh
   water is peaty green-brown), with the light the ripples focus dancing on it in the shallows (laid on the bed along the sun's way
-  down through the water; from High it is also thrown back up onto hulls, piles and banks, `caustics.gd`), and the sky and
+  down through the water, crisp in the first metre and broadening deeper down; from High a net of wandering cells
+  worked out per pixel, so it re-forms rather than slides, and thrown back up onto hulls, piles and banks too,
+  `caustics.gd`), and the sky and
   its clouds are reflected, more the flatter you look across it. The sun glitters off every ripple (a moon path
   at night, only a sheen under cloud), rain dimples the water with rings, the chop roughens in gusts, and foam
   gathers wherever the water meets a bank, a hull or a pile. Impacts throw up narrow sheets of spray that fall
@@ -1253,12 +1255,18 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   shade into their colour instead), works in both renderers and is drawn only on each screen, never simulated.
   Vehicle windows and the opt-in mocap soldiers still take full sun.
 - **Layered air and weather across the map** (`air_layers.gd`, `weather_grid.gd`): the air between the camera and the
-  far side of the field lies in layers. Mist hugs the ground, pooled in the hollows and along the water and torn into
-  wisps by the wind (thickest at dawn, rising off wet ground as it dries after rain); a haze lies aloft, lit by the sun,
-  so a cloud's shadow falls through it as a shaft. Over that, a coarse weather grid sized from the map (32 cells
+  far side of the field lies in layers. Mist lies in a thin band a few metres deep, filling the valley, the hollows and
+  the ground along the water and leaving the rises clear, torn into wisps by the wind (thickest at dawn, rising off wet
+  ground as it dries after rain); far off, where the fog's cells grow too coarse for so thin a band, a height fog at
+  the valley floor carries it on. A haze lies aloft, lit by the sun, so a cloud's shadow falls through it as a shaft;
+  at a low sun the air throws its light forward (the fog's anisotropy follows the mood), so looking toward the sun the
+  mist glows, and turned from it the sky lights it blue-grey. Close up, the smoke a barrage or a fire leaves is a plume
+  of its own (`smoke_plumes.gd`, up to 16 fog volumes laid along the wind): dense where it rose, drawn out, climbing and
+  breaking into rags downwind, lit on top and grey underneath, until it thins away; shells landing close together feed
+  one plume. Over that, a coarse weather grid sized from the map (32 cells
   across a 1 km map, 64 on the bigger ones) holds the mist, rain, dust and smoke over each patch of ground: rain
   comes over in heavier and lighter bands, shells on dry ground and vehicles on dry tracks raise dust, and barrages,
-  burning buildings and smoke screens leave a pall. The grid drifts with the wind as a whole (a sub-cell offset the
+  burning buildings and smoke screens leave a pall (the far field's smoke, behind the close-up plumes). The grid drifts with the wind as a whole (a sub-cell offset the
   shader reads, the grid shifting a cell downwind once it reaches one), mist and rain settle toward what the weather
   makes of each cell, and dust and smoke thin away (half-lives of about 20 s and 55 s); it's swept a few rows a frame
   and uploaded once a sweep. With volumetric fog it's one fog volume over the map with its own fog shader (ground

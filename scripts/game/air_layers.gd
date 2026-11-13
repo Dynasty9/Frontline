@@ -20,25 +20,28 @@ extends Node3D
 ## simulation (see WeatherGrid).
 
 ## Each mood's air: [mist's scale height (m), haze aloft (density a metre),
-## how hard the sun lights the fog (its shafts)].
+## how hard the sun lights the fog (its shafts), how much of the light the air
+## throws on forward (fog anisotropy: low sun glows through the mist)].
 const MOOD := {
-	"day": [6.0, 0.00035, 1.0],
-	"golden": [6.5, 0.0005, 1.6],
-	"dawn": [12.0, 0.0006, 1.8],
-	"dusk": [7.0, 0.0005, 1.6],
-	"overcast": [7.0, 0.0004, 0.5],
-	"night": [8.0, 0.0004, 0.9],
-	"rain": [8.0, 0.0006, 0.4],
-	"hazy": [7.0, 0.0012, 1.4],
+	"day": [2.5, 0.0002, 0.8, 0.35],
+	"golden": [3.0, 0.0005, 1.6, 0.6],
+	"dawn": [4.0, 0.0006, 1.8, 0.62],
+	"dusk": [3.5, 0.0005, 1.6, 0.6],
+	"overcast": [4.0, 0.0003, 0.5, 0.3],
+	"night": [3.5, 0.0004, 0.9, 0.5],
+	"rain": [4.0, 0.0006, 0.4, 0.3],
+	"hazy": [3.5, 0.0012, 1.4, 0.6],
 }
-## Densities (a metre) where the grid's channel is full: mist at the ground,
-## smoke, dust, rain.
-const MIST_D := 0.06
-const SMOKE_D := 0.03
-const DUST_D := 0.008
+## Densities (a metre) where the grid's channel is full: mist at the ground
+## (a thin, dense band), and the far field's smoke, dust and rain (close up
+## the smoke is SmokePlumes').
+const MIST_D := 0.16
+const SMOKE_D := 0.012
+const DUST_D := 0.005
 const RAIN_D := 0.003
-const SMOKE_COL := Color(0.6, 0.59, 0.57)
-const DUST_COL := Color(0.82, 0.71, 0.55)
+## (sRGB) smoke a neutral grey with a little sky in it, dust a pale earth
+const SMOKE_COL := Color(0.66, 0.67, 0.7)
+const DUST_COL := Color(0.78, 0.73, 0.64)
 ## The volume reaches this far past the map's edge, thinning out to nothing.
 const EDGE := 60.0
 ## How far the volumetric fog reaches from the camera (m): a little beyond
@@ -48,6 +51,7 @@ const LENGTH := Vector2(260.0, 760.0)
 var atmo: Atmosphere
 var world
 var grid: WeatherGrid
+var plumes: SmokePlumes  # the smoke hanging close up (volumetric fog only)
 var volume: FogVolume
 var mat: ShaderMaterial
 var _mood := ""
@@ -95,6 +99,9 @@ func _build_volume() -> void:
 	wisps.seamless = true
 	wisps.noise = wn
 	mat.set_shader_parameter("wisps", wisps)
+	plumes = SmokePlumes.new()
+	add_child(plumes)
+	plumes.setup(world, wisps)
 	mat.set_shader_parameter("weather", grid.tex)
 	mat.set_shader_parameter("wind", Vector2(Fires.WIND.x, Fires.WIND.z).normalized())
 	mat.set_shader_parameter("mist_d", MIST_D)
@@ -127,6 +134,12 @@ func survey() -> void:
 	_fit_volume()
 	if mat and atmo.deform_tex:
 		mat.set_shader_parameter("deform_tex", atmo.deform_tex)
+	if mat and world.water and not world.water.is_empty() and world.water.mask:
+		# the water, softened over a few metres: the mist lies along it
+		var near := (world.water.mask as Image).duplicate() as Image
+		while near.get_width() > 256:
+			near.shrink_x2()
+		mat.set_shader_parameter("water_near", ImageTexture.create_from_image(near))
 
 
 func apply_mood(m: String) -> void:
@@ -136,6 +149,10 @@ func apply_mood(m: String) -> void:
 	_mist_h = float(a[0])
 	_haze = float(a[1])
 	atmo.sun.light_volumetric_fog_energy = float(a[2])
+	atmo.env.volumetric_fog_anisotropy = float(a[3])
+	# (the skylight in the air too: turned from the sun the mist is lit blue-grey
+	# by the sky rather than going dark)
+	atmo.env.volumetric_fog_ambient_inject = 0.3
 	if mat == null:
 		return
 	var fog: Color = atmo._d.fog
@@ -166,6 +183,8 @@ func _process(dt: float) -> void:
 		if vol:
 			mat.set_shader_parameter("drift", grid.drift)
 			mat.set_shader_parameter("strength", strength() * _debug_k)
+	if plumes:
+		plumes.tick(dt, volume != null and volume.visible)
 	if world:
 		world.vp("air layers", t0)
 
@@ -192,6 +211,14 @@ func _ab(real_dt: float) -> void:
 	_ab_switches += 1
 	if _ab_switches % 6 == 0 and _ab_n[0] > 0 and _ab_n[1] > 0:
 		print("AIR A/B gpu: off %.2f ms (%d frames), on %.2f ms (%d frames)" % [_ab_sum[0] / _ab_n[0], _ab_n[0], _ab_sum[1] / _ab_n[1], _ab_n[1]])
+
+
+## A blast (fx.gd's _explode): smoke and dust in the grid, and close up a
+## plume of its own.
+func blast(p: Vector3, size: float, wet: bool, above_ground: float) -> void:
+	grid.blast(p, size, wet, above_ground)
+	if plumes and not wet and above_ground < 25.0:
+		plumes.blast(p, size)
 
 
 ## How much of the layers is drawn: all of it close in, thinning as the camera
@@ -226,18 +253,20 @@ func apply_env(env: Environment) -> void:
 		env.fog_light_color = fog.lerp(tint, clampf(murk * 0.8, 0.0, 0.6))
 	else:
 		env.volumetric_fog_length = clampf(world.cam.dist * 2.4, LENGTH.x, LENGTH.y)
-	# the mist lying in the low ground, below the ground in view
-	var gy: float = world.ground_y(focus)
-	var hd := mist * (0.012 if not vol else 0.006) * (6.0 / _mist_h)
+	# the mist lying along the valley floor
+	# (drawn per pixel, this band stays a few metres thick however far off it
+	# lies, where the volume's cells have grown too coarse to hold it)
+	var valley: float = float((WeatherGrid.MOOD_AIR.get(_mood, WeatherGrid.MOOD_AIR.day) as Array)[1]) + grid.wet * 0.25
+	var hd := valley * 0.12 * s * grid.relief
 	if hd > env.fog_height_density:
-		env.fog_height = gy + _mist_h * 0.3
+		env.fog_height = grid.floor_y + _mist_h
 		env.fog_height_density = hd
 
 
 ## The --stats line: how much is in the air.
 func stats_text() -> String:
 	var t := grid.totals()
-	return "AIR mist=%.2f rain=%.2f dust=%.3f smoke=%.3f" % [t.x, t.y, t.z, t.w]
+	return "AIR mist=%.2f rain=%.2f dust=%.3f smoke=%.3f plumes=%d" % [t.x, t.y, t.z, t.w, plumes.count() if plumes else 0]
 
 
 const AIR_SHADER := """
@@ -245,6 +274,7 @@ shader_type fog;
 
 uniform sampler2DArray deform_tex : filter_linear, repeat_disable;
 uniform sampler2D weather : filter_linear, repeat_disable;
+uniform sampler2D water_near : hint_default_transparent, filter_linear, repeat_disable;
 uniform sampler3D wisps : filter_linear, repeat_enable;
 uniform vec2 drift = vec2(0.0);  // the weather grid's drift downwind (m)
 uniform vec2 wind = vec2(0.92, 0.38);
@@ -279,8 +309,20 @@ void fog() {
 	float rag = smoothstep(0.35, 0.7, texture(wisps, p * vec3(0.06, 0.09, 0.06) - vec3(wind.x, 0.4, wind.y) * TIME * 0.03).r);
 	// the mist, thinning upward from the ground; the haze, clear of the ground
 	// and fading out aloft; smoke billowing higher than dust
-	float mist = mist_d * w.r * exp(-h / mist_h) * wisp;
-	float haze = haze_d * smoothstep(2.0, 30.0, h) * exp(-max(h - 30.0, 0.0) / 220.0) * (0.6 + 0.8 * n1);
+	// the mist: a thin band, lying where the ground is lower than round about
+	// (and along the water), so it fills the valley and the hollows and leaves
+	// the rises clear
+	float mist = 0.0;
+	if (h < mist_h * 6.0 && w.r > 0.002) {
+		vec2 uv = (p.xz + __MAP_HALF__) / __MAP_SIZE__;
+		float o = 36.0 / __MAP_SIZE__;
+		float around = (terrain_height(deform_tex, uv + vec2(o, 0.0)) + terrain_height(deform_tex, uv - vec2(o, 0.0))
+			+ terrain_height(deform_tex, uv + vec2(0.0, o)) + terrain_height(deform_tex, uv - vec2(0.0, o))) * 0.25;
+		float hollow = clamp((around - g) / 5.0, 0.0, 1.0);
+		float lie = 0.12 + 1.4 * max(hollow, texture(water_near, uv).a);
+		mist = mist_d * w.r * lie * exp(-h / mist_h) * wisp;
+	}
+	float haze = haze_d * smoothstep(8.0, 40.0, h) * exp(-max(h - 40.0, 0.0) / 220.0) * (0.6 + 0.8 * n1);
 	float smoke = smoke_d * w.a * exp(-h / 14.0) * (0.05 + wisp * 0.3 + rag * 1.3);
 	float dust = dust_d * w.b * exp(-h / 8.0) * (0.05 + wisp * 0.3 + rag * 1.3);
 	float rain = rain_d * w.g * exp(-h / 150.0);

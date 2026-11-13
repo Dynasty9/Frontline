@@ -34,7 +34,7 @@ const DRIFT := 2.2
 ## Frames a sweep of the whole grid is spread over.
 const SWEEP_FRAMES := 10
 ## Half-lives (s) of what isn't topped up: dust settles quickly, smoke hangs.
-const DUST_LIFE := 22.0
+const DUST_LIFE := 14.0
 const SMOKE_LIFE := 55.0
 ## How quickly mist and rain settle toward what the weather and the ground
 ## make of each cell (s).
@@ -46,11 +46,11 @@ const SPREAD := 0.05
 ## What each mood brings: [mist over flat ground, mist in the hollows and
 ## along the water, rain, background dust].
 const MOOD_AIR := {
-	"day": [0.03, 0.14, 0.0, 0.04],
-	"golden": [0.06, 0.3, 0.0, 0.06],
+	"day": [0.0, 0.008, 0.0, 0.04],
+	"golden": [0.03, 0.22, 0.0, 0.06],
 	"dawn": [0.2, 0.95, 0.0, 0.0],
 	"dusk": [0.1, 0.45, 0.0, 0.04],
-	"overcast": [0.14, 0.4, 0.0, 0.0],
+	"overcast": [0.08, 0.3, 0.0, 0.0],
 	"night": [0.12, 0.6, 0.0, 0.0],
 	"rain": [0.2, 0.45, 0.85, 0.0],
 	"hazy": [0.08, 0.25, 0.0, 0.32],
@@ -67,6 +67,8 @@ var mood := "golden"
 var wet := 0.0  # how soaked the ground is (Atmosphere.rain_wet): after rain, mist rises off it
 
 var surveyed := false  # the hollows and the water have been found (survey)
+var floor_y := 0.0  # the valley floor: the height a sixth of the map lies below
+var relief := 1.0  # how much of a valley there is (0.25 on a flat map, 1 with one 8 m deep or more)
 var _c: Array[PackedFloat32Array] = []  # per channel, n * n
 var _low := PackedFloat32Array()  # per cell: how much of a hollow it is, or how close to water (0..1)
 var _bytes := PackedByteArray()
@@ -104,6 +106,10 @@ func survey() -> void:
 	for z in n:
 		for x in n:
 			h[z * n + x] = world.ground_y(Vector3(-half + (x + 0.5) * cell, 0.0, -half + (z + 0.5) * cell))
+	var sorted := h.duplicate()
+	sorted.sort()
+	floor_y = sorted[sorted.size() / 6]
+	relief = clampf((sorted[sorted.size() / 2] - floor_y) / 8.0, 0.25, 1.0)
 	var mask: Image = world.water.mask if world.water and not world.water.is_empty() else null
 	var ms := mask.get_width() if mask else 0
 	for z in n:
@@ -196,7 +202,7 @@ func blast(p: Vector3, size: float, wet_ground: bool, above_ground: float) -> vo
 	if wet_ground:
 		add(MIST, p, 0.08 * size, 4.0 + 3.0 * size)
 	else:
-		add(DUST, p, 0.1 * size * (1.0 - 0.8 * wet), 5.0 + 5.0 * size)
+		add(DUST, p, 0.05 * size * (1.0 - 0.8 * wet), 5.0 + 4.0 * size)
 
 
 ## A frame: the drift, sources, and a few rows of the sweep.

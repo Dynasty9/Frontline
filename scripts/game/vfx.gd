@@ -1027,15 +1027,16 @@ func heat_sources(hh: HeatHaze) -> void:
 			hh.add_fire(h.global_position, h.get_meta("ext", Vector3(0.5, 0.4, 0.5)), f)
 
 
-## (view) Every fire that's alight, seen or not, as [where, how hard (0..1)]:
-## the smoke it pours into the air (WeatherGrid).
+## (view) Every fire that's alight, seen or not, as [where, how hard (0..1),
+## how big (make_fire's k, 0.45 a small one to 2.6 a house)]: the smoke it
+## pours into the air (WeatherGrid, SmokePlumes).
 func fire_sources() -> Array:
 	var out := []
 	for b in _burners:
 		if is_instance_valid(b) and (b as Node3D).is_inside_tree():
 			var f := float(b.get_meta("fire", 0.0))
 			if f > 0.02:
-				out.append([(b as Node3D).global_position, f])
+				out.append([(b as Node3D).global_position, f, float(b.get_meta("k", 1.0))])
 	return out
 
 

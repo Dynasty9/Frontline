@@ -21,6 +21,7 @@ const BELOW := 0.3  # how far under the surface they start (m)
 const ABOVE := 2.8  # and how far above it they reach (m)
 
 var _mat: ShaderMaterial
+var _debug_k := float(OS.get_environment("FL_DEBUG_CAUSTICS")) if OS.has_environment("FL_DEBUG_CAUSTICS") else 1.0  # brighten them, to see where they fall
 
 
 ## Lays the boxes over every tile with water in it or beside it, from the
@@ -82,7 +83,7 @@ func build(water: WaterView) -> void:
 ## How bright the web is: the sun on the water (none under cloud or at night).
 func set_strength(k: float) -> void:
 	if _mat:
-		_mat.set_shader_parameter("strength", k)
+		_mat.set_shader_parameter("strength", k * _debug_k)
 	visible = k > 0.01 and mesh != null and int(Settings.get_v("water")) >= 2
 
 
@@ -122,8 +123,8 @@ void vertex() {
 }
 
 float web(vec2 p) {
-	float c = texture(caustic_tex, p).r;
-	return pow(1.0 - smoothstep(0.0, 0.22, c), 2.0);
+	float c = textureLod(caustic_tex, p, 0.0).r;
+	return pow(1.0 - smoothstep(0.0, 0.18, c), 2.0);
 }
 
 void fragment() {
@@ -154,11 +155,11 @@ void fragment() {
 	if (dot(n, CAMERA_POSITION_WORLD - wp) < 0.0) {
 		n = -n;
 	}
-	float facing = clamp(0.65 - 0.6 * n.y, 0.0, 1.0);
+	float facing = clamp(0.8 - 0.65 * n.y, 0.0, 1.0);
 	// the web, drawn out along the wall and stretched upward as the light
 	// fans out off the curved ripples, running and writhing as they do
 	vec2 p = vec2(wp.x + wp.z * 0.7, wp.y * 2.2 - wp.z * 0.3);
-	float w = web(p / 3.6 + vec2(water_time * 0.07, water_time * 0.05)) + web(p / 2.7 - vec2(water_time * 0.05, -water_time * 0.08));
+	float w = max(web(p / 7.0 + vec2(water_time * 0.05, water_time * 0.035)), web(p / 5.2 - vec2(water_time * 0.035, -water_time * 0.06)));
 	float fade = smoothstep(0.02, 0.12, above) * (1.0 - smoothstep(0.3, 2.4, above)) * smoothstep(0.01, 0.15, near);
 	vec3 col = textureLod(screen_tex, SCREEN_UV, 0.0).rgb;
 	ALBEDO = col * w * fade * facing * strength;
