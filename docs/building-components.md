@@ -132,12 +132,12 @@ it comes down with the roof rather than stand on air.
 A wide house with the garden for it may have a wing out of the back, over whole bays of the back wall: at its
 left end (an L; the back downpipe is at the right) or in the middle (a T). `MapGen._house` lays the back wall's
 bays as it always did, the same random numbers, only out at the wing's far end; the wing's sides, floor and roof
-are spawned after everything else on the map (`MapGen._late`), so nothing else is numbered differently. The
-middle bay of its far end is a back door out to the garden (the way in for a squad clearing it). On one floor a
-wing is no deeper than it is wide, so its ridge runs with the house's; its roof takes the house roof's looks
-(`Structure.look`: the same covering, tint and pitch). The garden keeps clear of it (`TownGen._in_wing`). Render
-four with `--building-kinds=house_plans` (`--building-rear` for the wings); `--scenario=storeys` blows in a wall
-under a floor.
+are spawned after everything else on the map (`MapGen._late`), so the wing itself renumbers nothing (a yard tree
+that would stand in it moves or goes, which does). The middle bay of its far end is a back door out to the garden
+(the way in for a squad clearing it). On one floor a wing is no deeper than it is wide, so its ridge runs with
+the house's; its roof takes the house roof's looks (`Structure.look`: the same covering, tint and pitch). The
+garden keeps clear of it (`TownGen._in_wing`). Render four with `--building-kinds=house_plans` (`--building-rear`
+for the wings); `--scenario=storeys` blows in a wall under a floor.
 
 ## Rubble
 
