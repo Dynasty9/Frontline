@@ -2,6 +2,7 @@ extends Node
 
 var args := {}
 var failures := 0
+var shipped := false
 
 
 func check(ok: bool, message: String) -> void:
@@ -11,6 +12,7 @@ func check(ok: bool, message: String) -> void:
 
 
 func _ready() -> void:
+	shipped = "--shipped" in OS.get_cmdline_user_args()
 	var key := OS.get_environment("FL_TEST_BATTLEFIELD")
 	for arg: String in OS.get_cmdline_user_args():
 		if arg.begins_with("--battlefield="):
@@ -43,7 +45,9 @@ func _compare(key: String) -> void:
 	var reference_props := {}
 	var changed_reference := {}
 	var simulation_reference := {}
-	for generated in [true, false]:
+	# Platform math can change fresh generation; shipped maps must repeat exactly.
+	for pass_index in 2:
+		var generated := pass_index == 0 and not shipped
 		var w := World.new()
 		w.name = "World"
 		w.settings = {"seed": entry.seed, "map_size": entry.size, "battlefield": key, "no_baked_map": generated,
@@ -57,7 +61,7 @@ func _compare(key: String) -> void:
 		w.set_process(false)
 		var state := _fingerprint(w)
 		print("BATTLEFIELD_LOAD key=%s generated=%s ms=%d structures=%d" % [key, generated, Time.get_ticks_msec() - started, w.structures.size()])
-		if generated:
+		if pass_index == 0:
 			reference = state
 			for e: Entity in w.entities.values():
 				reference_props[e.eid] = e.get_props().duplicate(true)
@@ -69,7 +73,7 @@ func _compare(key: String) -> void:
 					if expected[property] != actual.get(property):
 						print("PROPERTY_DIFFERENCE eid=%d field=%s generated=%s baked=%s" % [e.eid, property, expected[property], actual.get(property)])
 			for field: String in reference:
-				check(reference[field] == state[field], "Baked battlefield differs from generation: " + field)
+				check(reference[field] == state[field], "Prepared battlefield differs from reference: " + field)
 		var owners := {}
 		for squad: Squad in w.squads.values():
 			owners[squad.owner] = true
@@ -77,7 +81,7 @@ func _compare(key: String) -> void:
 		_check_routes(w, key)
 		_remove_scenery(w)
 		var changed := _fingerprint(w)
-		if generated:
+		if pass_index == 0:
 			changed_reference = changed
 		else:
 			for field: String in changed_reference:
@@ -85,7 +89,7 @@ func _compare(key: String) -> void:
 		for tick in 180:
 			w._physics_process(1.0 / 30.0)
 		var simulated := _fingerprint(w)
-		if generated:
+		if pass_index == 0:
 			simulation_reference = simulated
 		else:
 			for field: String in simulation_reference:

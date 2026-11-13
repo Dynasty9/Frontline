@@ -196,6 +196,8 @@ func _ready() -> void:
 	console.main = self
 	console.probe = probe
 	add_child(console)
+	if OS.has_environment("FL_DEBUG_LOAD"):
+		print("STARTUP console ready at %d ms" % Time.get_ticks_msec())
 	# a test driving the game through its port never sees the menu, so it
 	# isn't built: the menu and the screens it opens are a second or more of
 	# compiling and building at every start, and a test run starts many games
@@ -206,6 +208,8 @@ func _ready() -> void:
 		layer.layer = 10
 		add_child(layer)
 		layer.add_child(menu)
+		if OS.has_environment("FL_DEBUG_LOAD"):
+			print("STARTUP menu ready at %d ms" % Time.get_ticks_msec())
 		# the rest of the game compiles while the title plays
 		GameScripts.compile_in_background()
 	# --menu-cursor=X,Y: hold the cursor there, the map leaning after it (fractions of the screen; screenshots)
@@ -252,6 +256,8 @@ func _ready() -> void:
 	if args.has("stats"):
 		_stats_every = float(args.stats)
 	var port := int(args.get("port", Net.DEFAULT_PORT))
+	if OS.has_environment("FL_DEBUG_LOAD"):
+		print("STARTUP command dispatch at %d ms" % Time.get_ticks_msec())
 	if args.has("login"):
 		await _test_login()
 	# --test-port=N: a test drives the game over a local socket (0: any free port)

@@ -48,7 +48,12 @@ remain selectable there and use procedural generation.
 
 Run `godot --headless --path . tests/battlefield_map_test.tscn -- --battlefield=all`
 to compare generated and restored state, destruction, 180 simulation ticks and
-client ground. A catalogue key can replace `all`. CI runs this comparison too. Use
+client ground against a bake made on the same platform. A catalogue key can replace
+`all`. Add `--shipped` to compare two loads of the committed package, including
+routes, destruction and simulation. Fresh procedural generation is not bit-identical
+across operating systems; the committed packages define the desktop maps. CI first
+checks those shipped maps, then rebakes in its disposable checkout and checks exact
+same-platform generation parity. Do not commit that CI rebake automatically. Use
 `--aivai --battlefield=alder-valley` for a regular battle, or add `--no-baked-map`
 to generate its identical seed as a control. Larger procedural maps still use
 `--aivai --map-size=2048 --seed=3` without a battlefield key.

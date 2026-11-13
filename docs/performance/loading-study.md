@@ -1,8 +1,7 @@
 # Loading and selectable battlefields
 
 Work started 2026-11-13 07:49 UTC. The requested minimum five-hour iteration
-window ends at 12:49 UTC. Branch: `codex/prebuilt-battlefields`, based on
-`a541c8d0` (PR #217). This log records results, rejected experiments and remaining
+window ends at 12:49 UTC. PR #222 is based on `a541c8d0` (PR #217). This log records results, rejected experiments and remaining
 limits; it does not claim that an untested option is faster.
 
 ## Measurement contract
@@ -192,6 +191,9 @@ and the selection UI in both renderers before presenting it as finished.
     flag, recording successful priority application for client and server.
 
 26. Final matched release-export comparison completed in prepared/generated/generated/prepared order. All four runs exited 0 with no engine or script errors. Same Alder Valley, player side 0, day, high, Forward+, 1280x720, camera at 0,0 / 130 m, first pan 40 m/s. Both processes used the recorded Above Normal benchmark priority; total CPU was 100% busy before every run. OS caches were not purged. Results are reproducible evidence under contention, not clean-machine estimates or cold-cache measurements.
+
+27. Exported public Stonebridge host/client completed with both exits 0 and no errors. The client dropped at 22.6 s, rejoined with its nine units, and the host recorded rejoined=1, rejoin_returned=2 and rejoin_ai_stood_down=1. Initial readiness probes incorrectly relied on Windows UDP bind exclusivity; those attempts were stopped without launching a client. Reading the OS endpoint table by the owned host PID fixed the harness. Two intervening runner attempts referenced a nonexistent executable and performed no game test. Source startup tracing now distinguishes console, menu and command-dispatch time under FL_DEBUG_LOAD.
+28. Linux CI rejected the assumption that fresh generation matches a Windows bake byte for byte: tiny angle/position differences occurred on all maps, and Stonebridge generated 4,243 structures versus the canonical package's 4,263. This is a cross-platform generator difference, not evidence that the serialized restore round trip is correct. Validation now separately checks deterministic shipped-map loads (including routes, destruction, 180 ticks and client terrain), then explicitly rebakes on the CI platform and retains exact generated-versus-restored assertions. No tolerance or assertion was removed. The shipped data remains canonical across desktop hosts; procedural fallback/browser details can differ by platform. The first CI parity failure is retained as evidence.
 
 ## Final matched measurements
 

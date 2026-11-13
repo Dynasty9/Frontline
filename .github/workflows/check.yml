@@ -94,9 +94,18 @@ jobs:
             if grep -E "SCRIPT ERROR|Parse Error|failures=[1-9]" ${test}.log; then exit 1; fi
           done
 
-      - name: Prepared maps match generated gameplay
+      - name: Shipped maps repeat across platforms
         run: |
           set -o pipefail
+          timeout 900 ~/godot/godot --headless --path . tests/battlefield_map_test.tscn -- --battlefield=all --shipped 2>&1 | tee battlefield_shipped.log
+          if grep -E "SCRIPT ERROR|Parse Error|ERROR:" battlefield_shipped.log || ! grep -q "BATTLEFIELD_MAP_TEST failures=0" battlefield_shipped.log; then exit 1; fi
+
+      - name: Prepared maps match same-platform generation
+        run: |
+          set -o pipefail
+          # The generator's platform math is not byte-identical; test its round trip separately from shipped data.
+          FL_BAKE_BATTLEFIELD=all timeout 900 ~/godot/godot --headless --path . tools/bake_battlefield.tscn 2>&1 | tee battlefield_bake.log
+          if grep -E "SCRIPT ERROR|Parse Error|ERROR:" battlefield_bake.log; then exit 1; fi
           timeout 900 ~/godot/godot --headless --path . tests/battlefield_map_test.tscn -- --battlefield=all 2>&1 | tee battlefield_parity.log
           if grep -E "SCRIPT ERROR|Parse Error|ERROR:" battlefield_parity.log || ! grep -q "BATTLEFIELD_MAP_TEST failures=0" battlefield_parity.log; then exit 1; fi
 
