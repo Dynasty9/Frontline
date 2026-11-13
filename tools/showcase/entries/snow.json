@@ -16,11 +16,11 @@
   "sources": [
     {
       "file": "changelog/unreleased/snow/town-in-snow.jpg",
-      "sha256": "e1767d9de9b04ccee6cb63c492f174ce37036ca7ab514d400ac88fe56cc83f21"
+      "sha256": "3dc393a6a92dc5facf3af71defeeb08943287f8b142f1bce04fa86731c8aa1ae"
     },
     {
       "file": "changelog/unreleased/snow/comparison.jpg",
-      "sha256": "e4000c87e345ebe062d472127ea77e12011a271eb3615ae05c0d77fe5e1bb328"
+      "sha256": "25c615599c9e1d7b155ab8f70058b6386424baa3d751ab4235cb4a1f1ccaaed4"
     }
   ],
   "output": null

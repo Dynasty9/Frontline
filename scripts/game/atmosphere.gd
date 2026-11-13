@@ -24,7 +24,7 @@ const MOODS := {
 	# coming off a pale sky and back off the snow, cold and blue-grey, and the
 	# falling snow closing the distance in
 	"snow": {"elev": 34.0, "azim": 30.0, "sun": Color(0.8, 0.85, 0.95), "energy": 0.55, "zenith": Color(0.5, 0.55, 0.63),
-		"horizon": Color(0.76, 0.79, 0.83), "fog": Color(0.7, 0.73, 0.78), "fog_d": 0.0055, "ambient": 0.95, "soft": 9.0, "clouds": 0.0, "exposure": 1.0},
+		"horizon": Color(0.76, 0.79, 0.83), "fog": Color(0.7, 0.73, 0.78), "fog_d": 0.0046, "ambient": 0.95, "soft": 9.0, "clouds": 0.0, "exposure": 1.0},
 }
 
 # Atmospheric haze is scenery, not concealment. Keep its optical depth low at
@@ -1554,7 +1554,7 @@ func _apply_haze(distance: float) -> void:
 
 ## The air's own murk: thick in a haze, and in falling snow.
 func _volume_fog() -> float:
-	return {"hazy": 0.003, "snow": 0.0024}.get(mood, 0.0011)
+	return {"hazy": 0.003, "snow": 0.0022}.get(mood, 0.0011)
 
 
 ## Builds the road strip mesh for a team (called by World when roads change).
