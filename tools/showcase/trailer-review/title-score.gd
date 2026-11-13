@@ -1,4 +1,4 @@
-extends ColorRect
+extends Curtain
 ## Record the game's score in isolation so a picture cut never restarts a phrase.
 ## The same take supplies the menu wordmark when an edit calls for an end title.
 
@@ -6,34 +6,14 @@ const CARD_START := 10.0
 
 var elapsed := 0.0
 var resolved := false
-@onready var map := TopoBackdrop.new()
+
 
 func _ready() -> void:
+	super._ready()
 	Settings.no_save = true
 	Settings.v.merge({"volume": 1.0, "vol_music": 1.0, "battle_music": true, "mute_bg": false}, true)
 	Settings.apply_global()
 	Settings.changed.emit()
-
-	add_child(map)
-	move_child(map, 0)
-
-	var row: HBoxContainer = $Center/Title/Row
-	var emblem := preload("res://scripts/ui/menu.gd").Emblem.new()
-	emblem.custom_minimum_size = Vector2(95, 95)
-	emblem.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	row.add_child(emblem)
-	var title := UiKit.label("FRONTLINE", 130, UiKit.TEXT, 700)
-	var font := FontVariation.new()
-	font.base_font = UiKit.font(700)
-	font.spacing_glyph = 10
-	title.add_theme_font_override("font", font)
-	row.add_child(title)
-	var invitation := UiKit.label("Play for free on Windows, macOS and Linux", 55, UiKit.TEXT, 600)
-	invitation.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	$Center/Title.add_child(invitation)
-	var license_line := UiKit.label("OPEN SOURCE  ·  MIT LICENSE", 43, UiKit.TEXT, 600)
-	license_line.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	$Center/Title.add_child(license_line)
 
 	# Finish the instrument render before frame zero. Otherwise a faster GPU
 	# could move the first note several beats later in the recorded movie.
@@ -46,13 +26,20 @@ func _ready() -> void:
 func _process(dt: float) -> void:
 	elapsed += dt
 	Music.heat = lerpf(0.25, 1.0, smoothstep(1.0, 19.0, elapsed))
-	# The moving map arrives first, then the wordmark and the invitation.
-	var card_time := elapsed - CARD_START
-	map.wake_t = card_time
-	map.scan = smoothstep(-0.1, 0.1, card_time) * (1.0 - smoothstep(0.7, 2.1, card_time))
-	$Center/Title/Row.modulate.a = smoothstep(0.12, 0.38, card_time)
-	$Center/Title.get_child(1).modulate.a = smoothstep(0.28, 0.52, card_time)
-	$Center/Title.get_child(2).modulate.a = smoothstep(0.36, 0.58, card_time)
+	hold_at = maxf(0.0, elapsed - CARD_START)
+	super._process(dt)
+	_map.zoom = 1.0 + 0.27 * smoothstep(0.0, 8.0, hold_at)
 	if not resolved and elapsed >= 34.7:
 		resolved = true
 		Music.sting("victory")
+
+
+func _draw() -> void:
+	super._draw()
+	var reveal := smoothstep(0.65, 1.25, hold_at)
+	if reveal == 0:
+		return
+	var u := size.y / 1080.0
+	var baseline := Vector2(0, size.y * 0.76)
+	draw_string(UiKit.font(600), baseline, "Play for free on Windows, macOS and Linux", HORIZONTAL_ALIGNMENT_CENTER, size.x, roundi(40 * u), Color(WORD, reveal))
+	draw_string(UiKit.font(600), baseline + Vector2(0, 55 * u), "OPEN SOURCE  ·  MIT LICENSE", HORIZONTAL_ALIGNMENT_CENTER, size.x, roundi(27 * u), Color(SAND, reveal))

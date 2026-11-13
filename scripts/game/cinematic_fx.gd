@@ -47,6 +47,18 @@ extends CompositorEffect
 ##   screen-space refraction of Sousa, "Generic Refraction Simulation", GPU
 ##   Gems 2, 2005, with the distortion worked out per source, not drawn).
 ##
+## - Motion blur: what moves while the shutter is open smears along its path
+##   (McGuire, Hennessy, Bukowski and Osman, "A Reconstruction Filter for
+##   Plausible Motion Blur", I3D 2012, with Jimenez's refinements from
+##   SIGGRAPH 2014). Each pixel's movement comes from the engine's velocity
+##   buffer; the share of it that is only the camera moving is worked out by
+##   reprojecting the pixel's depth with last frame's camera, so a commander
+##   panning across the map can keep the camera's blur low or off while a
+##   rotor, a flung body or a passing jet still blurs. The longest movement in
+##   each 32-pixel tile and its neighbours tells each pixel how far to look,
+##   and the samples are weighed by depth and speed, so a blurred foreground
+##   smears over the background and not the other way round.
+##
 ## Atmosphere fills `params`, `heat` and the switches on the main thread every
 ## frame; the render thread only reads them. Everything here is looks: none of
 ## it reaches the simulation.
@@ -74,6 +86,9 @@ var heat_haze := false
 var heat := PackedFloat32Array()  # this frame's sources, HEAT_STRIDE floats each (HeatHaze.gather)
 var heat_time := 0.0  # seconds the hot air has been rising (held still with Reduce motion)
 var heat_bend := 0.22  # how far the hottest air bends what's behind it (m, at the hot air)
+var motion_blur := false
+var blur_shutter := 0.5  # the share of a frame the shutter is open (1/60 s at 30 fps: a 180 degree shutter)
+var blur_camera := 0.0  # how much of the camera's own movement blurs (0 for none)
 
 # --- render thread only ---------------------------------------------------------
 var rd: RenderingDevice
@@ -84,6 +99,10 @@ var _sampler: RID
 var _ubo: RID
 var _adapt: RID  # adapted log2 luminance [quick, long-term], seconds since primed, this frame's
 var _heat_buf: RID  # the camera and the heat sources (HEAT_DECL)
+var _motion_buf: RID  # this frame's and last frame's camera, for the motion blur (MOTION_DECL)
+var _prev_vp := Projection.IDENTITY  # last frame's projection x world-to-camera
+var _prev_ok := false
+var _motion_on := false  # what the motion buffer last told the composite
 var _sets := {}  # pass name -> uniform set RID, for the textures below
 var _set_key := []  # what those sets were built for
 var _push_h := PackedByteArray()
@@ -114,7 +133,7 @@ func _notification(what: int) -> void:
 		for k in _shaders:
 			if (_shaders[k] as RID).is_valid():
 				rd.free_rid(_shaders[k])  # (its pipeline and uniform sets go with it)
-		for r: RID in [_sampler, _ubo, _adapt, _heat_buf]:
+		for r: RID in [_sampler, _ubo, _adapt, _heat_buf, _motion_buf]:
 			if r.is_valid():
 				rd.free_rid(r)
 
@@ -141,6 +160,9 @@ func _setup() -> void:
 	var hb := PackedByteArray()
 	hb.resize((HEAT_HEAD + HEAT_MAX * HEAT_STRIDE) * 4)
 	_heat_buf = rd.storage_buffer_create(hb.size(), hb)
+	var mb := PackedByteArray()
+	mb.resize(MOTION_FLOATS * 4)
+	_motion_buf = rd.storage_buffer_create(mb.size(), mb)
 	_push_h = PackedFloat32Array([1.0, 0.0, 1.0, 0.0]).to_byte_array()
 	_push_v = PackedFloat32Array([0.0, 1.0, 0.0, 0.0]).to_byte_array()
 	# the first streak pass takes only the hottest cores, so streaks stay lines
@@ -154,7 +176,8 @@ func _setup() -> void:
 func _compile(pass_name: String, body: String) -> bool:
 	var src := RDShaderSource.new()
 	src.language = RenderingDevice.SHADER_LANGUAGE_GLSL
-	src.source_compute = HEADER + (HEAT_DECL if pass_name in ["heat", "composite"] else "") + body
+	src.source_compute = HEADER + (HEAT_DECL if pass_name in ["heat", "composite"] else "") \
+		+ (MOTION_DECL if pass_name in ["mvel", "composite"] else "") + body
 	var spirv := rd.shader_compile_spirv_from_source(src)
 	if spirv.compile_error_compute != "":
 		push_error("Cinematic %s pass: %s" % [pass_name, spirv.compile_error_compute])
@@ -180,7 +203,9 @@ func _render_callback(callback_type: int, render_data: RenderData) -> void:
 	# (no whole-number division on the render thread: see AGENTS.md, worker threads)
 	var n_heat := mini(floori(hs.size() / float(HEAT_STRIDE)), HEAT_MAX) if heat_haze else 0
 	var use_haze := n_heat > 0
-	if not (use_shafts or use_lens or use_local or use_eye or use_film or heat_haze):
+	var use_blur := motion_blur
+	if not (use_shafts or use_lens or use_local or use_eye or use_film or heat_haze or use_blur):
+		_prev_ok = false
 		return
 	var buffers := render_data.get_render_scene_buffers() as RenderSceneBuffersRD
 	if buffers == null:
@@ -193,15 +218,19 @@ func _render_callback(callback_type: int, render_data: RenderData) -> void:
 		return
 	var qs := Vector2i((size.x + 3) >> 2, (size.y + 3) >> 2)
 	var sharpen: bool = use_film and p[22] > 0.0
-	# the sharpening and the haze read the scene's neighbours: from a copy of it
-	var need_src := sharpen or use_haze
 	var color: RID = buffers.get_color_layer(0)
 	var depth: RID = buffers.get_depth_layer(0)
-	var tex := _textures(buffers, size, qs, need_src)
-	var key := [color, depth, size, need_src, tex["bright"]]
+	var velocity: RID = buffers.get_velocity_layer(0) if use_blur else RID()
+	use_blur = use_blur and velocity.is_valid()
+	# the sharpening and the haze read the scene's neighbours: from a copy of it
+	# (or from the blurred scene, which the motion blur writes there instead)
+	var need_src := sharpen or use_haze or use_blur
+	var tex := _textures(buffers, size, qs, need_src, use_blur)
+	var key := [color, depth, velocity, size, need_src, use_blur, tex["bright"]]
 	if key != _set_key:
-		_build_sets(color, depth, tex, need_src)
+		_build_sets(color, depth, velocity, tex, need_src, use_blur)
 		_set_key = key
+	_motion_header(render_data, use_blur)
 	if use_haze:
 		_heat_header(render_data, size, hs, n_heat)
 	p[0] = float(size.x)
@@ -244,14 +273,20 @@ func _render_callback(callback_type: int, render_data: RenderData) -> void:
 		_run("flare", qg)
 	if use_haze:
 		_run("heat", qg)
-	if need_src:
+	if use_blur:
+		var tg := Vector2i((size.x + TILE - 1) >> 5, (size.y + TILE - 1) >> 5)  # (TILE is 32: shifts, not division, on the render thread)
+		_run("mvel", fg)
+		_run("mtile", Vector2i((tg.x + 7) >> 3, (tg.y + 7) >> 3))
+		_run("mneigh", Vector2i((tg.x + 7) >> 3, (tg.y + 7) >> 3))
+		_run("mblur", fg)
+	elif need_src:
 		_run("copy", fg)
 	_run("composite", fg)
 	rd.draw_command_end_label()
 	if not _said and OS.has_environment("FL_DEBUG_CINE") and (use_haze or not heat_haze):
 		_said = true
-		print("CINEMATIC passes running at %dx%d: shafts %s, lens %s, local %s, eye %s, film %s, heat haze %s (%d sources)" % [size.x, size.y,
-			use_shafts, use_lens, use_local, use_eye, use_film, use_haze, n_heat])
+		print("CINEMATIC passes running at %dx%d: shafts %s, lens %s, local %s, eye %s, film %s, heat haze %s (%d sources), motion blur %s" % [size.x, size.y,
+			use_shafts, use_lens, use_local, use_eye, use_film, use_haze, n_heat, use_blur])
 
 
 ## The camera as this frame draws it, and the heat sources, for the heat pass.
@@ -288,6 +323,50 @@ func _heat_header(render_data: RenderData, size: Vector2i, hs: PackedFloat32Arra
 	rd.buffer_update(_heat_buf, 0, h.size() * 4, h.to_byte_array())
 
 
+## The motion blur's camera: this frame's (to find each pixel's point in the
+## world) and last frame's (to find where that point was on screen then).
+const TILE := 32  # pixels to a side of a motion tile: also the longest blur, as the filter needs
+const MOTION_FLOATS := 52
+
+
+func _motion_header(render_data: RenderData, on: bool) -> void:
+	var sd := render_data.get_render_scene_data()
+	var pr: Projection = sd.get_cam_projection()
+	var xf: Transform3D = sd.get_cam_transform()
+	var vp: Projection = pr * Projection(xf.affine_inverse())
+	if not on:
+		_prev_vp = vp
+		_prev_ok = true
+		if _motion_on:
+			# tell the composite the blurred scene is no longer there to start from
+			_motion_on = false
+			rd.buffer_update(_motion_buf, 48 * 4, 16, PackedFloat32Array([0.0, 0.0, 0.0, 0.0]).to_byte_array())
+		return
+	_motion_on = true
+	var h := PackedFloat32Array()
+	h.resize(MOTION_FLOATS)
+	_put(h, 0, pr.inverse())
+	_put(h, 16, Projection(xf))
+	# the first frame (or the first after the blur was off) has no last frame: no camera movement
+	_put(h, 32, _prev_vp if _prev_ok else vp)
+	h[48] = blur_shutter
+	h[49] = blur_camera
+	h[50] = float(TILE)
+	h[51] = 1.0
+	rd.buffer_update(_motion_buf, 0, MOTION_FLOATS * 4, h.to_byte_array())
+	_prev_vp = vp
+	_prev_ok = true
+
+
+static func _put(h: PackedFloat32Array, at: int, m: Projection) -> void:
+	for c in 4:
+		var col: Vector4 = m[c]
+		h[at + c * 4] = col.x
+		h[at + c * 4 + 1] = col.y
+		h[at + c * 4 + 2] = col.z
+		h[at + c * 4 + 3] = col.w
+
+
 ## The pass's own pipeline (the blur and streak passes share one each).
 const PIPE_OF := {"blur_h": "blur", "blur_v": "blur", "streak_0": "streak", "streak_1": "streak", "streak_2": "streak",
 	"gauss_h": "gauss", "gauss_v": "gauss"}
@@ -306,7 +385,7 @@ func _run(pass_name: String, groups: Vector2i, push := PackedByteArray()) -> voi
 
 ## The intermediate images, kept with the view's render buffers (they go when
 ## the view is resized and come back at the new size).
-func _textures(buffers: RenderSceneBuffersRD, size: Vector2i, qs: Vector2i, need_src: bool) -> Dictionary:
+func _textures(buffers: RenderSceneBuffersRD, size: Vector2i, qs: Vector2i, need_src: bool, blur: bool) -> Dictionary:
 	if buffers.has_texture(CTX, "bright"):
 		var f: RDTextureFormat = buffers.get_texture_format(CTX, "bright")
 		if int(f.width) != qs.x or int(f.height) != qs.y:
@@ -321,14 +400,26 @@ func _textures(buffers: RenderSceneBuffersRD, size: Vector2i, qs: Vector2i, need
 			var f: RDTextureFormat = buffers.get_texture_format(CTX, "src")
 			if int(f.width) != size.x or int(f.height) != size.y:
 				buffers.clear_context(CTX)
-				return _textures(buffers, size, qs, need_src)
+				return _textures(buffers, size, qs, need_src, blur)
 		else:
 			buffers.create_texture(CTX, "src", RGBA16F, USAGE, RenderingDevice.TEXTURE_SAMPLES_1, size, 1, 1, true, false)
 		out["src"] = buffers.get_texture(CTX, "src")
+	if blur:
+		var tg := Vector2i((size.x + TILE - 1) >> 5, (size.y + TILE - 1) >> 5)
+		for n: String in ["mvel", "mtile", "mneigh"]:
+			var want := size if n == "mvel" else tg
+			if buffers.has_texture(CTX, n):
+				var f: RDTextureFormat = buffers.get_texture_format(CTX, n)
+				if int(f.width) != want.x or int(f.height) != want.y:
+					buffers.clear_context(CTX)
+					return _textures(buffers, size, qs, need_src, blur)
+			else:
+				buffers.create_texture(CTX, n, RGBA16F, USAGE, RenderingDevice.TEXTURE_SAMPLES_1, want, 1, 1, true, false)
+			out[n] = buffers.get_texture(CTX, n)
 	return out
 
 
-func _build_sets(color: RID, depth: RID, t: Dictionary, need_src: bool) -> void:
+func _build_sets(color: RID, depth: RID, velocity: RID, t: Dictionary, need_src: bool, blur: bool) -> void:
 	var bright: RID = t["bright"]
 	var src: RID = t["src"] if need_src else bright
 	var base_a: RID = t["base_a"]
@@ -349,8 +440,14 @@ func _build_sets(color: RID, depth: RID, t: Dictionary, need_src: bool) -> void:
 	_sets["heat"] = _uniforms("heat", [_smp(1, depth), _img(2, t["heat"]), _buf(10, _heat_buf)])
 	if need_src:
 		_sets["copy"] = _uniforms("copy", [_img(1, color), _img(2, src)])
+	if blur:
+		_sets["mvel"] = _uniforms("mvel", [_smp(1, velocity), _smp(2, depth), _img(3, t["mvel"]), _buf(11, _motion_buf)])
+		_sets["mtile"] = _uniforms("mtile", [_smp(1, t["mvel"]), _img(2, t["mtile"])])
+		_sets["mneigh"] = _uniforms("mneigh", [_smp(1, t["mtile"]), _img(2, t["mneigh"])])
+		_sets["mblur"] = _uniforms("mblur", [_smp(1, color), _smp(2, t["mvel"]), _smp(3, t["mneigh"]), _img(4, src)])
 	_sets["composite"] = _uniforms("composite", [_img(1, color), _smp(2, src), _smp(3, t["shaft"]), _smp(4, t["flare"]),
-		_smp(5, t["base_b"]), _smp(6, bright), _buf(7, _adapt), _smp(8, depth), _smp(9, t["heat"]), _buf(10, _heat_buf)])
+		_smp(5, t["base_b"]), _smp(6, bright), _buf(7, _adapt), _smp(8, depth), _smp(9, t["heat"]), _buf(10, _heat_buf),
+		_buf(11, _motion_buf)])
 
 
 func _uniforms(shader: String, uniforms: Array[RDUniform]) -> RID:
@@ -432,6 +529,15 @@ vec3 view_at(vec2 uv, float d) {
 	vec4 v = H.inv_proj * vec4(uv * 2.0 - 1.0, d, 1.0);
 	return v.xyz / v.w;
 }
+"""
+
+const MOTION_DECL := """
+layout(set = 0, binding = 11, std430) restrict readonly buffer Motion {
+	mat4 inv_proj;  // this frame's projection as drawn, inverted
+	mat4 cam;       // camera to world
+	mat4 prev_vp;   // last frame's projection x world to camera
+	vec4 info;      // shutter (share of a frame), camera's share, longest blur (px), on
+} M;
 """
 
 const PASSES := {
@@ -865,6 +971,166 @@ void main() {
 	imageStore(heat_img, q, vec4(off, mask, front));
 }
 """,
+	# each pixel's blur: half its streak in pixels, and how far away it is
+	"mvel": """
+layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
+layout(set = 0, binding = 1) uniform sampler2D vel_tex;
+layout(set = 0, binding = 2) uniform sampler2D depth_tex;
+layout(rgba16f, set = 0, binding = 3) uniform restrict writeonly image2D mvel_img;
+
+// the engine's velocity buffer holds where each pixel was last frame less where
+// it is now, in uv: turned round, the move since last frame (measured: on still
+// ground while the camera pans, -velocity matches the camera's reprojection)
+const float VELOCITY_SCALE = -1.0;
+
+void main() {
+	ivec2 p = ivec2(gl_GlobalInvocationID.xy);
+	if (p.x >= int(P.size.x) || p.y >= int(P.size.y)) {
+		return;
+	}
+	vec2 uv = (vec2(p) + 0.5) / P.size.xy;
+	float d = texelFetch(depth_tex, p, 0).r;
+	bool sky = d <= 1e-7;
+	vec4 v = M.inv_proj * vec4(uv * 2.0 - 1.0, sky ? 1e-6 : d, 1.0);
+	vec3 view = v.xyz / v.w;
+	// where this point was on screen last frame, had only the camera moved
+	vec4 was = M.prev_vp * (M.cam * vec4(view, 1.0));
+	vec2 cam = uv - (was.xy / max(was.w, 1e-6) * 0.5 + 0.5);
+	// the engine's movement is the camera's and the thing's own together
+	vec2 moved = texelFetch(vel_tex, p, 0).xy * VELOCITY_SCALE;
+	vec2 own = sky ? vec2(0.0) : moved - cam;
+	vec2 b = (own + cam * M.info.y) * M.info.x * P.size.xy * 0.5;
+	if (P.film.w > 6.5) {
+		// debug view 7: red the engine's movement less the camera's (~0 on still ground), green plus it
+		b = vec2(length(moved - cam), length(moved + cam)) * P.size.y;
+	}
+	float l = length(b);
+	if (l > M.info.z) {
+		b *= M.info.z / l;
+	}
+	if (any(isnan(b)) || any(isinf(b))) {
+		b = vec2(0.0);
+	}
+	imageStore(mvel_img, p, vec4(b, -view.z, 0.0));
+}
+""",
+	# the longest blur in each tile
+	"mtile": """
+layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
+layout(set = 0, binding = 1) uniform sampler2D mvel_tex;
+layout(rgba16f, set = 0, binding = 2) uniform restrict writeonly image2D tile_img;
+
+void main() {
+	ivec2 t = ivec2(gl_GlobalInvocationID.xy);
+	ivec2 tiles = (ivec2(P.size.xy) + 31) / 32;
+	if (t.x >= tiles.x || t.y >= tiles.y) {
+		return;
+	}
+	ivec2 m = ivec2(P.size.xy) - 1;
+	vec2 best = vec2(0.0);
+	float bl = 0.0;
+	// every other pixel: a thin fast thing is still two pixels wide in its own blur
+	for (int y = 0; y < 32; y += 2) {
+		for (int x = 0; x < 32; x += 2) {
+			vec2 b = texelFetch(mvel_tex, min(t * 32 + ivec2(x, y), m), 0).xy;
+			float l = dot(b, b);
+			if (l > bl) {
+				bl = l;
+				best = b;
+			}
+		}
+	}
+	imageStore(tile_img, t, vec4(best, 0.0, 0.0));
+}
+""",
+	# and the longest among each tile's neighbours, which can reach into it
+	"mneigh": """
+layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
+layout(set = 0, binding = 1) uniform sampler2D tile_tex;
+layout(rgba16f, set = 0, binding = 2) uniform restrict writeonly image2D neigh_img;
+
+void main() {
+	ivec2 t = ivec2(gl_GlobalInvocationID.xy);
+	ivec2 tiles = (ivec2(P.size.xy) + 31) / 32;
+	if (t.x >= tiles.x || t.y >= tiles.y) {
+		return;
+	}
+	vec2 best = vec2(0.0);
+	float bl = 0.0;
+	for (int y = -1; y <= 1; y++) {
+		for (int x = -1; x <= 1; x++) {
+			vec2 b = texelFetch(tile_tex, clamp(t + ivec2(x, y), ivec2(0), tiles - 1), 0).xy;
+			float l = dot(b, b);
+			if (l > bl) {
+				bl = l;
+				best = b;
+			}
+		}
+	}
+	imageStore(neigh_img, t, vec4(best, 0.0, 0.0));
+}
+""",
+	# the gather: samples along the neighbourhood's blur, weighed by depth and speed
+	"mblur": """
+layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
+layout(set = 0, binding = 1) uniform sampler2D color_tex;
+layout(set = 0, binding = 2) uniform sampler2D mvel_tex;
+layout(set = 0, binding = 3) uniform sampler2D neigh_tex;
+layout(rgba16f, set = 0, binding = 4) uniform restrict writeonly image2D out_img;
+
+float cone(float dist, float len) {
+	return clamp(1.0 - dist / len, 0.0, 1.0);
+}
+
+float cylinder(float dist, float len) {
+	return 1.0 - smoothstep(0.95 * len, 1.05 * len, dist);
+}
+
+void main() {
+	ivec2 p = ivec2(gl_GlobalInvocationID.xy);
+	if (p.x >= int(P.size.x) || p.y >= int(P.size.y)) {
+		return;
+	}
+	vec4 c0 = texelFetch(color_tex, p, 0);
+	vec4 mc = texelFetch(mvel_tex, p, 0);
+	if (P.film.w > 5.5) {
+		// debug views: 6 each pixel's blur (px / 16), 7 the velocity check (see mvel)
+		imageStore(out_img, p, vec4(abs(mc.xy) / (P.film.w > 6.5 ? 0.02 * P.size.y : 16.0), 0.02, c0.a));
+		return;
+	}
+	vec2 vn = texelFetch(neigh_tex, p / 32, 0).xy;
+	float ln = length(vn);
+	if (ln < 0.5) {
+		imageStore(out_img, p, c0);
+		return;
+	}
+	ivec2 m = ivec2(P.size.xy) - 1;
+	float lc = max(length(mc.xy), 0.5);
+	float zc = mc.z;
+	// what counts as the same surface: a little depth, more far off
+	float extent = max(0.25, zc * 0.02);
+	float wsum = 1.0 / lc;
+	vec3 sum = clean(c0.rgb) * wsum;
+	const int S = 14;
+	float j = ign(vec2(p)) - 0.5;
+	for (int i = 0; i < S; i++) {
+		float t = (float(i) + 0.5 + j) / float(S) * 2.0 - 1.0;
+		ivec2 sp = clamp(ivec2(vec2(p) + 0.5 + vn * t), ivec2(0), m);
+		vec4 ms = texelFetch(mvel_tex, sp, 0);
+		float ls = max(length(ms.xy), 0.5);
+		float dist = abs(t) * ln;
+		// a sample in front smears over this pixel by its own blur; this pixel, if
+		// in front, smears over what's behind it by this one's; and two moving
+		// together blend
+		float in_front = clamp(1.0 - (ms.z - zc) / extent, 0.0, 1.0);
+		float behind = clamp(1.0 - (zc - ms.z) / extent, 0.0, 1.0);
+		float w = in_front * cone(dist, ls) + behind * cone(dist, lc) + cylinder(dist, ls) * cylinder(dist, lc) * 2.0;
+		sum += clean(texelFetch(color_tex, sp, 0).rgb) * w;
+		wsum += w;
+	}
+	imageStore(out_img, p, vec4(sum / wsum, c0.a));
+}
+""",
 	# a copy of the scene for the sharpening and the haze to read its neighbours from
 	"copy": """
 layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
@@ -956,6 +1222,9 @@ void main() {
 	vec2 uv = (vec2(p) + 0.5) / P.size.xy;
 	vec4 src = imageLoad(color_img, p);
 	vec3 c = src.rgb;
+	if (M.info.w > 0.5) {
+		c = texelFetch(src_tex, p, 0).rgb;  // the motion-blurred scene
+	}
 	if (P.film.z > 0.0) {
 		c = cas(p, P.film.z);
 	}
@@ -1033,9 +1302,10 @@ void main() {
 		} else if (view == 5) {
 			vec4 hz = textureLod(heat_tex, uv, 0.0);
 			c = (vec3(luma(src.rgb) * e * 0.25) + vec3(abs(hz.r) * 0.3, abs(hz.g) * 0.3, min(hz.b, 1.0) * 0.8)) / e;
-		} else {
+		} else if (view == 4) {
 			c = textureLod(bright_tex, uv, 0.0).rgb;
 		}
+		// (6 and 7, the motion blur's, are drawn by its own pass)
 	}
 	imageStore(color_img, p, vec4(c, src.a));
 }
