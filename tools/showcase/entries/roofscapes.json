@@ -1,19 +1,19 @@
 {
   "entry": "changelog/unreleased/roofscapes.md",
-  "summary": "House roofs vary in pitch and form (a third hipped), with tarps, holes and skylights.",
+  "summary": "House roofs vary in pitch and form (a third hipped), with draped tarps, holes and skylights; lamplight gleams rather than flares, and a damaged house's lamps go out.",
   "medium": "still",
   "stage": "tools/showcase/building-surfaces.tscn; tests/fixtures/environment-views.gd (town)",
-  "rationale": "Appearance change: matched studio rows show the forms and patches at a readable size, a night row the lit skylights, and the town from above shows the variety at the game's own camera.",
-  "source_ref": "f2fdf0b0d468e4e9d49752ba4af20f7a6997d491",
+  "rationale": "Appearance change: matched studio rows show the forms and patches at a readable size, a night row the softer lamplight, a close-up the tarp, a ruin at night its lamps out, and the town from above the variety at the game's own camera.",
+  "source_ref": "d85b2109445b881bd53e5fb49a6297df08e8c920",
   "before_ref": "84e38a35933c52020a8fa60917db63a32fbb01b5",
   "sources": [
     {
       "file": "changelog/unreleased/roofscapes/comparison.jpg",
-      "sha256": "041f753c8f4724393f787765e609a61f7806064ed262ea703f774864d79dccf3"
+      "sha256": "30c887c6237700ac2a415b425166c231d4d0406b2399a8720fbf27b89f8617f7"
     },
     {
       "file": "changelog/unreleased/roofscapes/capture.json",
-      "sha256": "f9fa6da16b03821131d4dc2795326eee73e62940e1371ad105d291e92e0c7ffa"
+      "sha256": "f289b48c7bc5a5023ab971e316ae48c8031bfc3280a5e8450bb3e3bf9d654d28"
     }
   ],
   "output": null

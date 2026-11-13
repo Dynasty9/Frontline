@@ -87,13 +87,17 @@ of every house wall, and men cross the room's middle. So room things hang flat o
 breadth below head height; shelves stand out only above 1.85 m) or lie flat on the floor. The fixture samples
 the space a standing man takes along a wall over sixteen seeds of `wall_things`.
 
-**Lamplight.** The `window_lit` surface is glass with `lit` set: it glows warm by `window_glow`, a global
-shader value (registered in `project.godot`) that `Atmosphere.lamplight(mood)` sets as the time of day changes:
-1 at night, about half at dusk, a little on a dark day, none in sunshine. Each window's brightness varies with
-where it is, so a batch keeps every room's own. About a third of house windows have a lamp on (and keep their
-glass), most barracks windows and the research post's glazing do, and so do the factory's north lights and the
-door lanterns. It is an emissive surface, not a light: it costs nothing per window and casts no light round it.
-Render a building at night with `--building-night` in the studio stage.
+**Lamplight.** The `window_lit` surface is glass with `lit` set: it glows warm by `window_glow`, a global shader
+value (registered in `project.godot`) that `Atmosphere.lamplight(mood)` sets as the time of day changes: 1 at
+night, about half at dusk, a little on a dark day, none in sunshine. Each window's brightness varies with where
+it is, so a batch keeps every room's own; the brightest room is only just over the glow threshold, so a window
+gleams rather than flares. About a third of house windows have a lamp on (and keep their glass), most barracks
+windows and the research post's glazing do, and so do the factory's north lights and the door lanterns. It is an
+emissive surface, not a light: it costs nothing per window and casts no light round it. A house's lamps go out
+(`Structure.dark`, replicated) when it's a ruin from the start, or once it takes a heavy hit (20 damage or more),
+loses a wall, or its roof catches fire or comes down: `Structure.house_dark` finds the floor under the wall or
+roof and puts out every wall and the roof standing on it, each drawn again without lit glass (the `house_dark`
+counter). Render a building at night with `--building-night` in the studio stage.
 
 ## Weathering and ruins
 
@@ -137,8 +141,9 @@ A town's pitched roofs differ the way real ones do. Each is pitched anywhere fro
 third are hipped (`BuildingRoofs.hip`: four slopes at one pitch, hip and ridge tiles, a fascia and gutters all
 round), which over a square house makes a pyramid. A chimney stands on the lowest point of the slope under it
 (`BuildingRoofs.underside` gives the underside's height anywhere over the walls, gable or hip). About one roof in
-eight has been mended with a tarpaulin weighted down with tyres and sandbags, one in sixteen has a hole with the
-battens showing (both `BuildingWeathering`), and one in seven a skylight (`BuildingFurnishings.skylight`), two in
+eight has been mended with a tarpaulin (heaped over the broken tiles, drawn into ridges between the tyres and
+sandbag weighting it, its edges pulled in between the corners, cords from its lower eyelets down over the eave,
+kept clear of the hips), one in sixteen has a hole with the battens showing (both `BuildingWeathering`), and one in seven a skylight (`BuildingFurnishings.skylight`), two in
 five of them lit after dark. The form and the patches each draw from a stream of their own, so tints, chimneys
 and aerials are what they were. Roofs are looks only (no collision), so none of this changes cover or movement.
 Render four roofs together with `--building-kinds=roofscape` in the studio stage.

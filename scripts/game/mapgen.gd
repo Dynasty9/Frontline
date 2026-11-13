@@ -1170,7 +1170,8 @@ func _house(c: Vector3, w: float, d: float, axis: float, street_side: float, yar
 			# most front doors are shut (decided from where it stands: the map's
 			# random numbers stay as they were)
 			var shut := variant == 2 and (doors_shut == 1 or (doors_shut < 0 and posmod(int(absf(wp.x) * 7.3 + absf(wp.z) * 13.1), 10) < 7))
-			world.spawn("structure", {"skind": "house_wall", "pos": wp, "yaw": yaw, "variant": variant, "size": Vector3(seg_len, float(color), 0.4), "door": shut})
+			# (a ruin's lamps are long out)
+			world.spawn("structure", {"skind": "house_wall", "pos": wp, "yaw": yaw, "variant": variant, "size": Vector3(seg_len, float(color), 0.4), "door": shut, "dark": ruined})
 	# a roof on every house still standing: tiled and pitched, or flat
 	if not ruined:
 		world.spawn("structure", {"skind": "roof", "pos": c, "yaw": axis, "size": Vector3(w, 3.0, d), "variant": color * 2 + (1 if rng.randf() < 0.4 else 0)})
