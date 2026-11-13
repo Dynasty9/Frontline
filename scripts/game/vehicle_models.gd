@@ -139,11 +139,12 @@ func scorch_finish() -> ShaderMaterial:
 	return soot
 
 
-## `reach` scales how far it spreads (a burning helicopter blackens more of
-## herself than a tank's engine fire does).
+## The burn creeps outwards over the half minute the fire takes hold
+## (BURN_SPREAD), as far as `reach` times 2.56 m from where it started.
+const BURN_SPREAD := 45.0
 static func spread_soot(soot: ShaderMaterial, origin: Vector3, age: float, reach := 1.0) -> void:
 	soot.set_shader_parameter("source_world", origin)
-	soot.set_shader_parameter("extent", (0.46 + 2.1 * (1.0 - exp(-maxf(0.0, age) * 0.64))) * reach)
+	soot.set_shader_parameter("extent", (0.46 + 2.1 * (1.0 - exp(-maxf(0.0, age) * 0.11))) * reach)
 
 
 func make_impact_plate(side: float, layers := 2) -> ImpactPlate:
@@ -343,6 +344,9 @@ static func _capsule(r: float, h: float) -> CapsuleMesh:
 ## straight into its piece's merged mesh without making a node of it (a tank
 ## is four hundred parts). Otherwise it's made as a node, and that returned.
 func _add(parent: Node3D, mesh: Mesh, kind: String, col, pos: Vector3, rot := Vector3.ZERO, scl := Vector3.ONE, shadow := true) -> Variant:
+	if wreck and kind in ["canvas", "cloth", "fabric"]:
+		# burnt away (the note is still handed back, so callers can treat it as made)
+		return [mesh, null, Color(1, 1, 1), shadow, pos, rot, scl, null, null]
 	var k := kind
 	if burnt:
 		k = "abrams_scorched" if kind in ["abrams_olive", "abrams_sand"] else "burnt"
