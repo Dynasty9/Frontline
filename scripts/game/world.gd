@@ -318,6 +318,9 @@ func _answer_window() -> void:
 ## for a --scenario test setup on the desktop (small, and its scripted events
 ## run on timers).
 func _breathe(text: String, frac: float) -> void:
+	if LocalServer.child:
+		# Generation blocks the child loop; publish here so the launcher can show each stage.
+		LocalServer._write(".progress", {"text": text, "frac": frac})
 	build_stage.emit(text, frac)
 	if _staged and is_inside_tree():
 		await get_tree().process_frame
@@ -1478,7 +1481,11 @@ func _load_tick() -> void:
 	match _load_step:
 		0:
 			if not _join_ground:
-				_load_stage("Waiting for the host", 0.0)
+				if LocalServer.pid > 0 and not LocalServer.build_progress.is_empty():
+					var progress: Dictionary = LocalServer.build_progress
+					build_stage.emit(String(progress.get("text", "Preparing the battlefield")), 0.14 + 0.26 * clampf(float(progress.get("frac", 0.0)) / 0.7, 0.0, 1.0))
+				else:
+					_load_stage("Waiting for the host", 0.0)
 				return
 			_lay_ground()
 			_load_step = 1
@@ -1488,10 +1495,10 @@ func _load_tick() -> void:
 			set_decor(decor, town_rect)
 			_load_mark("decor")
 			_load_step = 2
-			_load_stage("Charting the water", 0.1)
+			_load_stage("Shaping the ground", 0.1)
 		2:
 			if _ground_task >= 0 and not WorkerThreadPool.is_task_completed(_ground_task):
-				_load_stage("Charting the water", 0.1 + 0.08 * minf(1.0, (t0 - _load_t0) / 4000000.0))
+				_load_stage("Shaping the ground", 0.1 + 0.08 * terrain.landform_progress)
 				return
 			_ground_done()
 			_load_step = 3
@@ -1538,7 +1545,8 @@ func _load_stage(text: String, frac: float) -> void:
 	load_frac = frac
 	# (the loading screen runs from where the client's empty world left it to
 	# where main.gd's warm-up takes over)
-	build_stage.emit(text, 0.14 + 0.58 * frac)
+	var start := 0.4 if LocalServer.pid > 0 and _join_ground else 0.14
+	build_stage.emit(text, start + (0.72 - start) * frac)
 
 
 func _load_mark(what: String) -> void:
