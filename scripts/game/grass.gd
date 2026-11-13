@@ -297,9 +297,9 @@ class BlockedJob:
 					var p := a.lerp(b, float(k) / steps)
 					for dx in range(-4, 5):
 						for dz in range(-4, 5):
-							# Keep the 2.9 m carriageway clear, but let tufts into
-							# its soil shoulder, where the meadow takes it back.
-							if dx * dx + dz * dz <= 6:
+							# Keep clumps from overhanging the 2.9 m carriageway; past
+							# it they grow into a track's soil shoulder.
+							if dx * dx + dz * dz <= 10:
 								_mark(floori(p.x) + dx, floori(p.z) + dz)
 
 	func _mark(x: int, z: int) -> void:
