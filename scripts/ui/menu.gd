@@ -75,7 +75,7 @@ const SIDES := [
 	[1, "REBELS", "An insurgent militia. Technicals, BTRs, RPGs, FPV drones and tunnels under the town. Cheap, many and hard to pin down.", "MILITIA \u00b7 TECHNICALS \u00b7 RPGS \u00b7 DRONES \u00b7 TUNNELS"],
 	[-1, "OBSERVE", "Two AI commanders fight it out. The director camera finds the action; take the camera any time.", "AI VS AI \u00b7 DIRECTOR CAMERA"],
 ]
-const MOODS := [["random", "Random"], ["dawn", "Dawn"], ["day", "Midday"], ["golden", "Golden"], ["dusk", "Dusk"], ["overcast", "Overcast"], ["hazy", "Hazy"], ["rain", "Rain"], ["night", "Night"]]
+const MOODS := [["random", "Random"], ["dawn", "Dawn"], ["day", "Midday"], ["golden", "Golden"], ["dusk", "Dusk"], ["overcast", "Overcast"], ["hazy", "Hazy"], ["rain", "Rain"], ["snow", "Snow"], ["night", "Night"]]
 const ITEM_W := 520.0  # the column's entries (and the rules beside its section names)
 ## Ranks as codes (SSG III), from the names Insignia gives them in full.
 const RANK_CODES := {"Recruit": "RCT", "Private": "PVT", "Corporal": "CPL", "Sergeant": "SGT", "Staff Sergeant": "SSG",

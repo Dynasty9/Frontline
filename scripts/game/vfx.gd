@@ -354,7 +354,7 @@ func apply_lighting() -> void:
 		Mats.set_shared(material, &"amb_energy", float(at.MOODS[at.mood].ambient) * (0.6 if night else 1.1))
 
 	fragment_light = sc * at.sun.light_energy * 0.45 + amb * float(at.MOODS[at.mood].ambient) * 0.7
-	fire_light = 2.6 if night else (1.5 if at.mood in ["dusk", "dawn", "rain", "overcast"] else 0.8)
+	fire_light = 2.6 if night else (1.5 if at.mood in ["dusk", "dawn", "rain", "overcast", "snow"] else 0.8)
 	if blasts:
 		blasts.apply_lighting()
 	if world.fx and world.fx.gunfx:

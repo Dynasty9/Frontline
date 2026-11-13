@@ -1,0 +1,27 @@
+{
+  "entry": "changelog/unreleased/snow.md",
+  "summary": "A snow weather: falling flakes, a white battlefield with churned mud, and snow on roofs, hulls and trees.",
+  "medium": "still",
+  "stage": "game capture flags (--screenshot, --offscreen, --fixed-fps 30)",
+  "rationale": "Snow is above all a change of appearance. A wide view over a town in falling snow shows the whole look at once (flakes, white ground and roofs, snowy trees, mountains in the haze); one matched sheet then shows the same town and the same moment of a tank battle under the overcast sky and in snow. The flakes' drift is described in text.",
+  "source_ref": "bd4f1b598ae80c6543cd4816e3f49a6ead730876",
+  "before_ref": "bd4f1b598ae80c6543cd4816e3f49a6ead730876",
+  "capture": {
+    "renderer": "Forward+ (Vulkan), NVIDIA GeForce RTX 3090, 1600x900, off-screen window, the user's settings",
+    "town": "--aivai --seed=3 --mood=overcast / --mood=snow --nohud --focus-struct=town --shot-at=20; overcast from bd4f1b598ae80c6543cd4816e3f49a6ead730876, snow from this branch",
+    "battle": "--fixed-fps 30 -- --scenario=roster --seed=1 --mood=overcast / --mood=snow --nohud --focus=-84,24 --zoom=34 --shot-at=10",
+    "note": "Each capture scaled to 798x448 and laid out 2x2 with OVERCAST / SNOW labels. The battle can differ slightly run to run. Compatibility renderer checked separately (--rendering-method gl_compatibility with forced vertex shading); not in the sheet.",
+    "wide": "--aivai --seed=3 --mood=snow --nohud --focus-struct=town --zoom=220 --pitch=-22 --shot-at=15"
+  },
+  "sources": [
+    {
+      "file": "changelog/unreleased/snow/town-in-snow.jpg",
+      "sha256": "e1767d9de9b04ccee6cb63c492f174ce37036ca7ab514d400ac88fe56cc83f21"
+    },
+    {
+      "file": "changelog/unreleased/snow/comparison.jpg",
+      "sha256": "e4000c87e345ebe062d472127ea77e12011a271eb3615ae05c0d77fe5e1bb328"
+    }
+  ],
+  "output": null
+}

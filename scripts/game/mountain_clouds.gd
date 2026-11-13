@@ -38,4 +38,4 @@ func apply_settings(atmo: Atmosphere) -> void:
 	material.set_shader_parameter("shade_color", (mood.fog as Color) * 0.8)
 	var sunlight := Basis.from_euler(Vector3(deg_to_rad(-float(mood.elev)), deg_to_rad(float(mood.azim)), 0.0)).z
 	material.set_shader_parameter("sun_direction", sunlight)
-	material.set_shader_parameter("coverage", 0.47 if atmo.mood in ["rain", "overcast"] else 0.56)
+	material.set_shader_parameter("coverage", 0.47 if atmo.mood in ["rain", "overcast", "snow"] else 0.56)

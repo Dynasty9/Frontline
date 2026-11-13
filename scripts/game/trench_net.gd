@@ -647,6 +647,7 @@ void fragment() {
 const BERM_SHADER := """
 shader_type spatial;
 uniform sampler2D detail_tex : filter_linear_mipmap, repeat_enable;
+global uniform float snow_cover;  // (Atmosphere._snow_tick)
 // CLOUD_SHADOW
 varying vec3 wpos;
 void vertex() { wpos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz; }
@@ -659,6 +660,12 @@ void fragment() {
 	float g = smoothstep(0.45, 0.95, UV.x + (n2 - 0.5) * 0.5);
 	vec3 col = mix(fresh, grassy, g * 0.85);
 	col = mix(col, col * 0.8, clods * (1.0 - g));
+	// in snow the old, grassed-over spoil lies white; the fresh-dug earth at
+	// the lip, turned over since it fell, stays dark mud
+	if (snow_cover > 0.0) {
+		float snowed = smoothstep(0.0, 0.3, g + (n - 0.5) * 0.5 - 0.35 - (1.0 - snow_cover) * 1.4) * (1.0 - clods * 0.6);
+		col = mix(col, vec3(0.78, 0.8, 0.85) * (0.92 + 0.08 * n2), snowed);
+	}
 	ALBEDO = col;
 	if (OUTPUT_IS_SRGB) { ALBEDO = mix(col * 12.92, 1.055 * pow(max(col, vec3(0.0)), vec3(1.0 / 2.4)) - 0.055, step(vec3(0.0031308), col)); }
 	ROUGHNESS = 0.95;

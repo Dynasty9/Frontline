@@ -108,7 +108,7 @@ const MOVING_LOW := 4  # (Low's coarse grid can't carry the shortest of them)
 const STEEP := 0.75  # how far the crests bunch up in the roughest sea (at 1 they'd fold over)
 ## The sea in each weather: how big the (swell, wind sea) run.
 const SEA_STATE := {"day": Vector2(0.85, 0.6), "hazy": Vector2(0.7, 0.4), "golden": Vector2(0.55, 0.3), "dawn": Vector2(0.45, 0.2),
-	"dusk": Vector2(0.5, 0.25), "night": Vector2(0.75, 0.5), "overcast": Vector2(1.0, 0.85), "rain": Vector2(1.15, 1.1)}
+	"dusk": Vector2(0.5, 0.25), "night": Vector2(0.75, 0.5), "overcast": Vector2(1.0, 0.85), "rain": Vector2(1.15, 1.1), "snow": Vector2(0.8, 0.55)}
 const SEA_MAX := 1.25
 ## The waves build over the first OFFSHORE metres out from the beach (in
 ## nearer, the surf takes over), which also keeps a dock's jetty dry.
@@ -439,7 +439,7 @@ static func scenery_river_tips(rivers: Array, half: float) -> PackedVector4Array
 func apply_mood(d: Dictionary, mood: String) -> void:
 	if mat == null:
 		return
-	var cloudy := 1.0 if mood in ["overcast", "rain"] else 0.55
+	var cloudy := 1.0 if mood in ["overcast", "rain", "snow"] else 0.55
 	for m in [mat, wake_mat]:
 		m.set_shader_parameter("zenith", d.zenith)
 		m.set_shader_parameter("horizon", d.horizon)
@@ -447,10 +447,10 @@ func apply_mood(d: Dictionary, mood: String) -> void:
 	mat.set_shader_parameter("clouds", cloudy)
 	mat.set_shader_parameter("cloud_color", Color(0.06, 0.06, 0.06).linear_to_srgb() if mood == "night" else Color.WHITE)
 	# (under cloud there's no glitter, only a sheen)
-	mat.set_shader_parameter("sun_k", {"overcast": 0.1, "rain": 0.06, "hazy": 0.55}.get(mood, 1.0))
+	mat.set_shader_parameter("sun_k", {"overcast": 0.1, "rain": 0.06, "snow": 0.08, "hazy": 0.55}.get(mood, 1.0))
 	mat.set_shader_parameter("rain", 1.0 if mood == "rain" else 0.0)
 	# rain and a grey sky: a darker, duller sea
-	var dull := 1.0 if mood in ["overcast", "rain", "night"] else 0.0
+	var dull := 1.0 if mood in ["overcast", "rain", "snow", "night"] else 0.0
 	mat.set_shader_parameter("sea_tint", Color(0.025, 0.14, 0.21).lerp(Color(0.08, 0.15, 0.17), dull))
 	# the sea the weather brings: glassy at dawn, a storm sea in the rain
 	sea = SEA_STATE.get(mood, SEA_STATE.day)

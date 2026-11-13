@@ -299,11 +299,11 @@ func _tick(dt: float) -> void:
 
 
 ## What's about at this time of day and in this weather: no small birds or
-## soaring ones at night (bats instead, and more rats), fewer in the rain.
+## soaring ones at night (bats instead, and more rats), fewer in the rain or snow.
 func _plan() -> void:
 	var mood: String = world.atmo.mood if world.atmo else "day"
 	var night := mood == "night"
-	var rain := mood == "rain"
+	var rain := mood in ["rain", "snow"]
 	var li := level - 1
 	var all: int = FLOCKS[li]
 	var nf: int = 0 if night else (ceili(all * 0.5) if rain else all)

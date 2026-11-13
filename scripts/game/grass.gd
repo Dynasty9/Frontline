@@ -506,6 +506,7 @@ uniform float wind = 0.11;
 uniform sampler2D scar : hint_default_black, filter_linear, repeat_disable;
 uniform sampler2D trench_mask : hint_default_black, filter_linear, repeat_disable;
 uniform sampler2DArray deform_tex : filter_linear, repeat_disable;
+global uniform float snow_cover;  // how deep the snow weather lies (Atmosphere._snow_tick)
 // TERRAIN_TEXTURE_HELPER
 // CLOUD_SHADOW
 
@@ -535,6 +536,8 @@ void vertex() {
 	}
 	VERTEX.y *= 1.0 - burnt * 0.85;
 	VERTEX.xz *= 1.0 + burnt * 0.4;
+	// snow buries the blades and weighs the rest down
+	VERTEX.y *= 1.0 - snow_cover * 0.5;
 	// stand on the ground as it is now (shell holes, rims)
 	VERTEX.y += terrain_height(deform_tex, (o.xz + __MAP_HALF__) / __MAP_SIZE__) / max(0.05, length(MODEL_MATRIX[1].xyz));
 	float t = TIME * 1.7 + o.x * 0.21 + o.z * 0.13;
@@ -558,9 +561,16 @@ void fragment() {
 	col = mix(col, dry_col, cured * smoothstep(0.2, 1.0, h));
 	col *= mix(1.0, 0.86, wet) * (0.85 + 0.3 * rnd);
 	col = mix(col, vec3(0.09, 0.075, 0.05), burnt * 0.85);
+	// Under snow the grass is winter straw, its foot buried white and only the
+	// tips standing out of it, those dusted too.
+	if (snow_cover > 0.0) {
+		col = mix(col, dry_col * 0.8, snow_cover * 0.6);
+		vec3 snow = vec3(0.8, 0.83, 0.88);
+		col = mix(col, snow, snow_cover * mix(0.95, 0.5, smoothstep(0.3, 0.85, h)) * (1.0 - burnt));
+	}
 	ALBEDO = col;
 	ROUGHNESS = 0.85;
-	BACKLIGHT = vec3(0.35, 0.4, 0.15) * h * (1.0 - burnt);
+	BACKLIGHT = vec3(0.35, 0.4, 0.15) * h * (1.0 - burnt) * (1.0 - snow_cover * 0.7);
 	AO = mix(0.78, 1.0, h);
 	AO_LIGHT_AFFECT = 0.6;
 	// CLOUD_FRAGMENT cloud_v
@@ -576,6 +586,7 @@ varying float plant_height;
 varying float rnd;
 uniform sampler2D trench_mask : hint_default_black, filter_linear, repeat_disable;
 uniform sampler2DArray deform_tex : filter_linear, repeat_disable;
+global uniform float snow_cover;
 // TERRAIN_TEXTURE_HELPER
 // CLOUD_SHADOW
 #ifdef CLOUD_PATTERN
@@ -610,6 +621,13 @@ void fragment() {
 	}
 	float up = smoothstep(0.0, 1.1, plant_height);
 	vec3 col = photograph.rgb * mix(vec3(0.7, 0.85, 0.7), vec3(1.0, 0.9, 0.65), rnd) * mix(0.65, 1.0, up);
+	// snow caps the top of a bush and lies on the leaves that face the sky
+	if (snow_cover > 0.0) {
+		float facing = abs((INV_VIEW_MATRIX * vec4(NORMAL, 0.0)).y);
+		float lit = dot(photograph.rgb, vec3(0.2126, 0.7152, 0.0722)) * 6.0;
+		float snowed = smoothstep(0.0, 0.3, up * 0.9 + facing * 0.5 + (lit - 0.5) * 0.4 - 0.85 - (1.0 - snow_cover) * 1.4);
+		col = mix(col, vec3(0.74, 0.77, 0.82), snowed * 0.9);
+	}
 	if (OUTPUT_IS_SRGB) {
 		col = mix(col * 12.92, 1.055 * pow(max(col, vec3(0.0)), vec3(1.0 / 2.4)) - 0.055, step(vec3(0.0031308), col));
 	}
