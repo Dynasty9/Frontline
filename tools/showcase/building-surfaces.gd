@@ -15,7 +15,8 @@ const SUBJECTS := ["house_pitched", "house_flat", "house_window", "house_door", 
 const COMPONENTS := ["wall_plaster", "wall_brick", "wall_stone", "wall_timber", "wall_corrugated", "wall_precast",
 	"roof_tile", "roof_sheet", "roof_flat", "roof_lean_to", "window", "window_shutters", "window_broken", "door_panelled",
 	"door_ledged", "door_steel", "roller_door", "louvre", "gutter_downpipe", "chimney", "ac_unit", "water_tank",
-	"dish", "mast", "drum", "crate", "pallet", "wire_cable", "wire_barbed", "wire_topping"]
+	"dish", "mast", "drum", "crate", "pallet", "wire_cable", "wire_barbed", "wire_topping", "fence_picket", "fence_post_rail",
+	"fence_railings", "fence_close_board", "fence_paling", "fence_chain_link", "fence_bow_top", "fence_security", "fence_panels"]
 
 var output := "/tmp/building-surfaces"
 var kinds: Array[String] = []

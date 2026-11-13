@@ -687,6 +687,15 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
 - A town square on one corner of the crossroads (fountain or statue, benches, planters, a flagpole, market
   stalls, bollards), a fenced playground (swings, slide, climbing frame, sandbox, seesaw, roundabout), a small
   park, allotments, a car park, a bombed-out lot and a water tower on the edge of town.
+- Fences are built as the real ones are (`BuildingFences`), one bay between two posts, climbing with the ground.
+  A house keeps one look: white or painted pickets, chestnut paling, or iron railings with spear heads on a dwarf
+  brick wall at the front, with a gate shut or left swinging; featheredge close-board (on timber or concrete posts,
+  over a gravel board), paling, pickets or chain-link down the sides of the back garden. Farms run post-and-rail
+  along the road, allotments chain-link, playgrounds bow-top railings. Each HQ has a 2.4 m security fence across
+  its back (chain-link on posts set in concrete, Y-arm outriggers with barbed strands and a razor coil, warning
+  signs, floodlights), and the town's supply dump a screen of mesh panels in concrete feet, some hung with scrim.
+  Weeds grow at their feet, paint chalks, the odd picket or board is gone. Chain-link and welded mesh are drawn
+  as antialiased wire on a sheet (`Mats.wire_mesh`) that greys into a veil with distance.
 - Street lights down every street (they light up at dusk and at night), wooden utility poles carrying sagging
   power lines with a drop to each house, fire hydrants, stop signs where side streets meet the main road, the
   town's name on the way in and a bus stop. Power lines also run along the country roads.
