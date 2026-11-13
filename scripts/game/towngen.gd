@@ -1041,3 +1041,34 @@ func finish(build_view := true) -> void:
 	_shop_decor = []
 	if build_view:
 		world.set_decor(decor, rect)
+
+
+## Sparse roadside markers and loose stone, without consuming the battle's RNG.
+func _road_verges() -> void:
+	var scatter := RandomNumberGenerator.new()
+	scatter.seed = int(world.settings.get("seed", 1)) + 48017
+	for poly: PackedVector3Array in world.roads[2]:
+		var next := 12.0
+		var along := 0.0
+		var station := 0
+		for i in range(1, poly.size()):
+			var start := poly[i - 1]
+			var length := Defs.flat(poly[i] - start).length()
+			if length < 0.01:
+				continue
+			var direction := Defs.flat(poly[i] - start) / length
+			while next < along + length:
+				var centerline := start + direction * (next - along)
+				for side in [-1.0, 1.0]:
+					var p: Vector3 = centerline + _perp(direction) * side * scatter.randf_range(3.7, 4.1)
+					if rect.grow(8.0).has_point(Vector2(p.x, p.z)) or _road_dist(p, 3.4) < 3.4:
+						continue
+					var yaw := yaw_along(direction)
+					if not mg._is_free(p, Vector2(2.6, 0.65), yaw, 0.5, false):
+						continue
+					_d("road_gravel", p, yaw)
+					if station % 4 == 0:
+						_d("road_marker", p, yaw)
+				station += 1
+				next += scatter.randf_range(8.0, 12.0)
+			along += length

@@ -81,7 +81,12 @@ godot --path . --resolution 1600x900 --script tests/fixtures/environment-views.g
 ```
 
 Add `--capture-set=town` for street detail, the town entrance, an overview and a
-residential driveway. `--capture-set=foliage` frames the same broadleaf tree from
+residential driveway. `--capture-set=roads` frames country shoulders close and
+at tactical distance, followed by the town entrance. `--capture-set=road-types`
+captures gravel, asphalt, the town entrance, a supply track, a concrete driveway
+and the road bridge at larger review scales. It rebuilds the starting supply
+network after navigation is ready. Use the identical fixture for both revisions;
+`--mood=rain` checks the same surfaces wet. `--capture-set=foliage` frames the same broadleaf tree from
 both sides and at stand distance, with wind held still. Captures wait for scenery
 residency and batching to settle. `--capture-set=river-boundary` frames seed 3's
 northern river crossing close up and across the valley. Both revisions must use

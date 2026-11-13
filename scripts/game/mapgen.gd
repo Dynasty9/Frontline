@@ -150,6 +150,7 @@ func generate() -> void:
 	if String(world.settings.get("mission", "")) == "":
 		_foothill_woods(area)
 		_alpine_scatter(tg.decor, area)
+	tg._road_verges()
 	world.set_decor(tg.decor, tg.rect)
 
 	world.terrain.release_nav()

@@ -348,6 +348,22 @@ func _beam(a: Vector3, b: Vector3, t: float, kind: String, col = null, shadow :=
 
 func _make(h: Node3D, kind: String, ex) -> void:
 	match kind:
+		"road_gravel":
+			var coarse := _bake
+			_bake = _fine_bake
+			for i in 28:
+				var p := Vector3(rng.randf_range(-2.4, 2.4), 0, rng.randf_range(-0.28, 0.28))
+				var r := rng.randf_range(0.025, 0.065)
+				var shape := Vector3(1.3, 0.45, 0.9) * r
+				p.y = world.ground_y(_at * p) - _at.origin.y + shape.y * 0.2
+				_m(Res.alpine_stone(i), "alpine_stone", Vector3.ZERO, Res.vary(Color(0.36, 0.35, 0.32), 0.18, rng), Vector3.ZERO, false, false,
+					Mats.place(p, Vector3(0.1, rng.randf() * TAU, -0.15), shape))
+			_bake = coarse
+		"road_marker":
+			_m(Res.box(Vector3(0.12, 0.95, 0.16)), "paint", Vector3(0, 0.475, 0), Color(0.73, 0.72, 0.65))
+			_m(Res.box(Vector3(0.125, 0.22, 0.165)), "metal_dark", Vector3(0, 0.73, 0), Color(0.06, 0.065, 0.06))
+			for side in [-1.0, 1.0]:
+				_m(Res.box(Vector3(0.01, 0.1, 0.07)), "paint", Vector3(side * 0.067, 0.73, 0), Color(0.82, 0.25, 0.06) if side > 0 else Color(0.85, 0.86, 0.78), Vector3.ZERO, false)
 		"alpine_stones":
 			var scale := float(ex)
 			var coarse := _bake
@@ -639,6 +655,10 @@ func _make(h: Node3D, kind: String, ex) -> void:
 		"drive":
 			var d2: Vector3 = ex
 			_m(Res.box(Vector3(d2.x, 0.03, d2.z)), "concrete_floor", Vector3(0, 0.015, 0), Color(0.46, 0.45, 0.42), Vector3.ZERO, false, true)
+			# Saw-cut joints let the concrete shrink in slabs instead of cracking at random.
+			var slabs := maxi(1, ceili(d2.z / 3.0))
+			for joint in range(1, slabs):
+				_m(Res.box(Vector3(d2.x, 0.004, 0.018)), "concrete_floor", Vector3(0, 0.032, -d2.z * 0.5 + joint * d2.z / slabs), Color(0.18, 0.17, 0.15), Vector3.ZERO, false, true)
 		"path":
 			var p2: Vector3 = ex
 			_m(Res.box(Vector3(p2.x, 0.03, p2.z)), "pavement", Vector3(0, 0.02, 0), Color(0.56, 0.53, 0.47), Vector3.ZERO, false, true)
