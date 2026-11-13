@@ -728,6 +728,10 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
 - Country roads come in from both HQs and both edges of the map and join the main streets. Villages sit on the
   cross road either side of town and on the road between each HQ and the town; farmsteads (farmhouse and barn round a yard, hay bales, a fenced road frontage, an orchard) and
   hedged fields lie along the roads; abandoned cars on the verges, burnt-out armour off the road.
+  Photographed gravel roads blend compacted wheel tracks into loose aggregate and irregular dirt edges,
+  with small, ground-aligned stone deposits and reflector posts
+  outside town. The road mesh follows the terrain across its width and adds a shallow visual crown.
+  Posts avoid buildings, junctions and water; the shoulders do not widen the drivable road.
 - **The town and every village have a name and a supply dump** (crated stores on a pallet, fuel drums and a
   flagpole): the town's on its square where the flagpole stood, a village's on the verge of its main street.
   Nobody holds them at the start. They are the supply worth fighting over: see *Towns* under Base building and

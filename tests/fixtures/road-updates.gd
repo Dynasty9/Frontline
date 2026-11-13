@@ -73,6 +73,7 @@ func _ready() -> void:
 	assert(ground.calls.is_empty(), "Removing a route retains existing terrain roads without repainting")
 	assert(ground.base[ground.idx_of(Vector3.ZERO)] == TerrainMap.ROAD)
 	check_raster(w)
+	check_verges(w)
 	w.has_view = true
 	var view := RoadView.new()
 	w.atmo = view
@@ -91,6 +92,49 @@ func _ready() -> void:
 	w.free()
 	print("ROAD_UPDATES passed")
 	get_tree().quit()
+
+
+func check_verges(w: World) -> void:
+	w.water = WaterMap.new(w)
+	var view := Atmosphere.new()
+	view.road_mat = ShaderMaterial.new()
+	for team in [0, 2]:
+		var mesh := view.make_road_mesh([PackedVector3Array([Vector3.ZERO, Vector3(40, 0, 0)])], team)
+		var arrays := mesh.mesh.surface_get_arrays(0)
+		var vertices: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
+		var uvs: PackedVector2Array = arrays[Mesh.ARRAY_TEX_UV]
+		assert(vertices.size() == 960, "Road panels follow terrain along and across the carriageway")
+		assert(uvs[0].x < 0.0 and uvs[uvs.size() - 2].x > 1.0, "Shoulders extend beyond the original driving surface")
+		assert(is_equal_approx(mesh.mesh.get_aabb().size.z, 8.8 if team == 2 else 7.8))
+		mesh.free()
+	view.free()
+	w.roads[2] = [PackedVector3Array([Vector3(-100, 0, 0), Vector3(100, 0, 0)]),
+		PackedVector3Array([Vector3(0, 0, -100), Vector3(0, 0, 100)])]
+	var mg := MapGen.new(w)
+	var town := TownGen.new(mg)
+	town.rect = Rect2(-10, -10, 20, 20)
+	var state := mg.rng.state
+	town._road_verges()
+	assert(town.decor.size() > 0)
+	var first := town.decor.duplicate(true)
+	for item in first:
+		assert(town._road_dist(item[1]) >= 3.4, "Markers stay off intersecting roads")
+		assert(not town.rect.grow(8).has_point(Vector2(item[1].x, item[1].z)), "No country markers on town pavements")
+	town.decor.clear()
+	town._road_verges()
+	assert(town.decor == first and mg.rng.state == state, "Dressing repeats without changing gameplay randomness")
+	var blocked: Vector3 = first[0][1]
+	mg._place([Vector2(blocked.x, blocked.z), Vector2(3, 3), 0.0])
+	town.decor.clear()
+	town._road_verges()
+	for item in town.decor:
+		assert(item[1].distance_to(blocked) > 3.0, "Dressing avoids occupied building lots")
+	w.water.rivers = [{"pts": PackedVector3Array([Vector3(-110, 0, 0), Vector3(110, 0, 0)]), "w": 14.0}]
+	town.decor.clear()
+	town._road_verges()
+	for item in town.decor:
+		assert(not w.water.wet_at(item[1]), "No roadside furniture in water")
+	w.water.rivers.clear()
 
 func check_raster(w: World) -> void:
 	var fast := TerrainMap.new(w)

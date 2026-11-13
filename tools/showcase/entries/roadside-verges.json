@@ -1,0 +1,186 @@
+{
+  "entry": "changelog/unreleased/roadside-verges.md",
+  "summary": "Photographed gravel, compacted wheel tracks, shallow road crowns and eroded soil edges replace smooth sand strips.",
+  "medium": "still",
+  "stage": "tests/fixtures/environment-views.gd --capture-set=roads",
+  "rationale": "Matched close and tactical views show the shoulder blend and roadside scale; town kerbs were also inspected.",
+  "source_ref": "bd4f1b598ae80c6543cd4816e3f49a6ead730876 + working tree",
+  "before_ref": "bd4f1b598ae80c6543cd4816e3f49a6ead730876",
+  "sources": [
+    {
+      "file": "changelog/unreleased/roadside-verges/comparison.jpg",
+      "sha256": "be6719fbf2e86df694a91f8a65b46678ddf6a133c910c41fa0ed2d03156f7090"
+    }
+  ],
+  "output": null,
+  "capture": {
+    "command": "godot --path . --resolution 1600x900 --script tests/fixtures/environment-views.gd -- --aivai --seed=3 --offscreen --nohud --set=perf:0 --preset=high --mood=day --focus=0,0 --capture-set=roads --capture-prefix=<scratch>/before-or-after",
+    "before": {
+      "mood": "day",
+      "renderer": "forward_plus",
+      "resolution": "(1600, 900)",
+      "seed": 3,
+      "views": [
+        {
+          "cloud_quality": 3,
+          "file": "C:/Users/dines/.codex/tmp/road-review/before-shoulder.png",
+          "focus": "(3.0, 0.0, 257.0)",
+          "frame_ms": 0.0,
+          "gpu_ms": 0.0,
+          "mood": "day",
+          "pitch": -38.0,
+          "time": 2.03333333333334,
+          "yaw": 0.7,
+          "zoom": 20.0
+        },
+        {
+          "cloud_quality": 3,
+          "file": "C:/Users/dines/.codex/tmp/road-review/before-route.png",
+          "focus": "(3.0, 0.0, 257.0)",
+          "frame_ms": 0.0,
+          "gpu_ms": 0.0,
+          "mood": "day",
+          "pitch": -42.0,
+          "time": 2.03333333333334,
+          "yaw": 0.7,
+          "zoom": 65.0
+        },
+        {
+          "cloud_quality": 3,
+          "file": "C:/Users/dines/.codex/tmp/road-review/before-town.png",
+          "focus": "(-55.0, 0.0, -4.0)",
+          "frame_ms": 0.0,
+          "gpu_ms": 0.0,
+          "mood": "day",
+          "pitch": -55.0,
+          "time": 2.03333333333334,
+          "yaw": 0.7,
+          "zoom": 15.0
+        }
+      ]
+    },
+    "after": {
+      "mood": "day",
+      "renderer": "forward_plus",
+      "resolution": "(1600, 900)",
+      "seed": 3,
+      "views": [
+        {
+          "cloud_quality": 3,
+          "file": "C:/Users/dines/.codex/tmp/road-review/camber-shoulder.png",
+          "focus": "(3.0, 0.0, 257.0)",
+          "frame_ms": 0.0,
+          "gpu_ms": 0.0,
+          "mood": "day",
+          "pitch": -38.0,
+          "time": 2.0,
+          "yaw": 0.7,
+          "zoom": 20.0
+        },
+        {
+          "cloud_quality": 3,
+          "file": "C:/Users/dines/.codex/tmp/road-review/camber-surface.png",
+          "focus": "(3.0, 0.0, 257.0)",
+          "frame_ms": 0.0,
+          "gpu_ms": 0.0,
+          "mood": "day",
+          "pitch": -32.0,
+          "time": 2.0,
+          "yaw": 0.7,
+          "zoom": 8.0
+        },
+        {
+          "cloud_quality": 3,
+          "file": "C:/Users/dines/.codex/tmp/road-review/camber-route.png",
+          "focus": "(3.0, 0.0, 257.0)",
+          "frame_ms": 0.0,
+          "gpu_ms": 0.0,
+          "mood": "day",
+          "pitch": -42.0,
+          "time": 2.0,
+          "yaw": 0.7,
+          "zoom": 65.0
+        },
+        {
+          "cloud_quality": 3,
+          "file": "C:/Users/dines/.codex/tmp/road-review/camber-town.png",
+          "focus": "(-55.0, 0.0, -4.0)",
+          "frame_ms": 0.0,
+          "gpu_ms": 0.0,
+          "mood": "day",
+          "pitch": -55.0,
+          "time": 2.0,
+          "yaw": 0.7,
+          "zoom": 15.0
+        }
+      ]
+    },
+    "compatibility": {
+      "mood": "day",
+      "renderer": "gl_compatibility",
+      "resolution": "(1600, 900)",
+      "seed": 3,
+      "views": [
+        {
+          "cloud_quality": 3,
+          "file": "C:/Users/dines/.codex/tmp/road-review/rework-compat-shoulder.png",
+          "focus": "(3.0, 0.0, 257.0)",
+          "frame_ms": 0.0,
+          "gpu_ms": 0.0,
+          "mood": "day",
+          "pitch": -38.0,
+          "time": 2.0,
+          "yaw": 0.7,
+          "zoom": 20.0
+        },
+        {
+          "cloud_quality": 3,
+          "file": "C:/Users/dines/.codex/tmp/road-review/rework-compat-surface.png",
+          "focus": "(3.0, 0.0, 257.0)",
+          "frame_ms": 0.0,
+          "gpu_ms": 0.0,
+          "mood": "day",
+          "pitch": -32.0,
+          "time": 2.0,
+          "yaw": 0.7,
+          "zoom": 8.0
+        },
+        {
+          "cloud_quality": 3,
+          "file": "C:/Users/dines/.codex/tmp/road-review/rework-compat-route.png",
+          "focus": "(3.0, 0.0, 257.0)",
+          "frame_ms": 0.0,
+          "gpu_ms": 0.0,
+          "mood": "day",
+          "pitch": -42.0,
+          "time": 2.0,
+          "yaw": 0.7,
+          "zoom": 65.0
+        },
+        {
+          "cloud_quality": 3,
+          "file": "C:/Users/dines/.codex/tmp/road-review/rework-compat-town.png",
+          "focus": "(-55.0, 0.0, -4.0)",
+          "frame_ms": 0.0,
+          "gpu_ms": 0.0,
+          "mood": "day",
+          "pitch": -55.0,
+          "time": 2.0,
+          "yaw": 0.7,
+          "zoom": 15.0
+        }
+      ]
+    }
+  },
+  "validation": [
+    "ROAD_UPDATES passed after the final road mesh changes: 960 vertices for the 40-metre fixture; geometry, junction/building/water clearance and RNG isolation.",
+    "Final Forward+ and Compatibility close, tactical and town captures completed without script or shader errors.",
+    "Six CC0 source texture checksums verified; packed diffuse, normal/roughness dimensions and alpha channels checked.",
+    "The earlier road pass also completed attack seed 3 for 60 seconds and a host/client map transfer. Those runs predate the material and loose-gravel revision.",
+    "No isolated FPS benchmark, browser export, wet-weather render or low-end hardware check."
+  ],
+  "materials": [
+    "https://polyhaven.com/a/gravel_road",
+    "https://polyhaven.com/a/gravel_floor_02"
+  ]
+}

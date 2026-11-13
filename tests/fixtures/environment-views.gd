@@ -63,6 +63,13 @@ func capture() -> void:
 	if "--capture-set=trenches" in OS.get_cmdline_user_args():
 		views = [["trenches", Vector3(0, 0, -28), 24.0, -48.0, 0.5]]
 	var settle_frames := 90
+	if "--capture-set=roads" in OS.get_cmdline_user_args():
+		var road: PackedVector3Array = world.roads[2][0]
+		var target := road[road.size() / 4]
+		views = [["shoulder", target, 20.0, -38.0, 0.7],
+			["surface", target, 8.0, -32.0, 0.7],
+			["route", target, 65.0, -42.0, 0.7],
+			["town", Vector3(-55, 0, -4), 15.0, -55.0, 0.7]]
 	if "--capture-set=shoreline" in OS.get_cmdline_user_args():
 		var shore: float = world.water.coast_x(0.0)
 		views = [["town", Vector3(330, 0, 0), 90.0, -45.0, 0.7],
