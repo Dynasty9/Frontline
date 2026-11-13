@@ -43,6 +43,7 @@ func _ready() -> void:
 
 
 func add(st: Structure) -> void:
+	_probes_changed(st)
 	# Hosts already built these models while generating the authoritative map.
 	if st.view_active:
 		resident[st.eid] = st
@@ -65,6 +66,7 @@ func add(st: Structure) -> void:
 		resident.erase(st.eid)
 
 func remove(st: Structure) -> void:
+	_probes_changed(st)
 	unbatch(st, true)
 	_take(st.eid)
 	resident.erase(st.eid)
@@ -74,6 +76,12 @@ func remove(st: Structure) -> void:
 			if (cells[key] as Dictionary).is_empty():
 				cells.erase(key)
 	memberships.erase(st.eid)
+
+## The light probes round it see it come or go (LightProbes).
+func _probes_changed(st: Structure) -> void:
+	if world and world.atmo and world.atmo.light_probes:
+		world.atmo.light_probes.structure_changed(st)
+
 
 func request(st: Structure) -> void:
 	resident[st.eid] = st

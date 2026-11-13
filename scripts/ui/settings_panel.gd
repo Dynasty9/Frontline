@@ -105,6 +105,7 @@ func _ready() -> void:
 		["check", "ssao", "Ambient occlusion", null, "Contact shadows in corners, under soldiers and around sandbags."],
 		["option", "ao_q", "Ambient occlusion quality", Settings.LABELS.ao_q, "More samples, less noise."],
 		["check", "ssil", "Indirect light", null, "Light bouncing off nearby surfaces (screen-space)."],
+		["option", "light_probes", "Light probes", Settings.LABELS.light_probes, "A grid of probes over the battlefield works out how much sky every street, room and trench can see, and how much sunlight the walls and ground round it throw back: shaded streets, dim rooms lit from their windows, warm light off a sunlit wall. Updated as buildings fall and shells dig craters. Low keeps only the shade from the sky."],
 		["check", "gi", "Global illumination", null, "SDFGI: full bounced lighting. Expensive."],
 		["check", "phys_sky", "Physical sky", null, "At golden hour, dawn, dusk and in haze the sky is worked out from how sunlight scatters in the air: deep blue overhead, a reddened sun, the earth's shadow rising at dusk. The sky lights the battlefield too, so shade turns sky-blue while the sunlit side glows."],
 		["check", "terrain_reflections", "Mountain reflections", null, "Cached distant terrain reflected in water. Does not reflect moving units; approximate near shorelines."],

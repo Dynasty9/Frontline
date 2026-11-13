@@ -34,6 +34,8 @@ const OWN_LIGHT := 8  # has a light() of its own, which calls cloud_sun()
 ## With the setting off, still darkened, by folding the share into the albedo:
 ## most of a meadow's light is the sun's, so near enough, and it costs nothing
 const FOLD := 16
+## Takes its skylight and bounce from the light probes as well (LightProbes.inject).
+const PROBES := 32
 
 ## Cumulus shadows span a few hundred metres: the biome noise's features are
 ## about 83 texels across, stretched over 4.5 texture widths to ~370 m.
@@ -69,6 +71,8 @@ static func make(src: String, flags := 0) -> Shader:
 
 ## The source with its marks filled in.
 static func shader(src: String, flags := 0, on := false) -> String:
+	if flags & PROBES:
+		src = LightProbes.inject(src)
 	var lit := vertex_lit()
 	var head := ""
 	if on:

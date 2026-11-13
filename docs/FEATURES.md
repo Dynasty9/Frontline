@@ -1250,6 +1250,27 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   graphics setting (Cloud shadows on everything; on from High, and in Cinematic; off, the grass and bushes fold the
   shade into their colour instead), works in both renderers and is drawn only on each screen, never simulated.
   Vehicle windows and the opt-in mocap soldiers still take full sun.
+- **Light probes** (`light_probes.gd`): a grid of probes over the whole battlefield, one every 2 m at eight heights
+  2 m apart following the ground, records how much sky each point sees, from which way, and the mean light off
+  whatever hides the rest. Streets, courtyards, trench floors and the foot of walls take less skylight than open
+  ground; a room under its roof is dim and lit from its windows (seen when soldiers go in and the roof lifts away);
+  a sunlit wall throws some of its colour onto the shaded one across the street. The scene as the probes see it is
+  a block model: every structure's boxes (and roofs, tree crowns and nets, half see-through; floor slabs and kerbs
+  count as ground) laid into 1 m cubes up to 16 m above the ground in 64 m tiles, over the terrain's own heights. The GPU traces 32 rays a probe through it
+  (a 2D pass into a 4096x1536 atlas, 8 bytes a probe: the first two spherical-harmonic bands of what it sees, which
+  are also its bent normal, and the bounce), and every surface shader that opts in rebuilds its own light from the
+  probes round it in five filtered reads. On Low its cosine-weighted share of sky is the exact two-band formula
+  m0 + 2 m1.n; on High a tiny network with baked weights (10 inputs, 16 hidden, 176 multiply-adds a pixel), trained
+  offline against sky occlusion traced from every pixel, reads it from the same numbers with about 40% less error
+  on towns it never saw, better than the formula from probes twice as dense. It multiplies the skylight (AO); what
+  it doesn't see comes back lit by the bounce. Open ground under
+  open sky counts as seen (the sky's lower half already stands for it), so open fields look as they did. Only what
+  changes is redone: a structure built, destroyed or burnt marks its tile, which is laid again on the CPU and its
+  probes traced again, two tiles a frame nearest the camera first; craters retrace the tiles round them; a new time
+  of day or weather retraces it all (the bounce follows the sun); tiles with nothing in reach are written as open
+  sky without tracing. Map size comes from `MapDims` (2 m and 3 m cubes on the larger maps, the same grid). It's
+  light only (no gameplay reads it, no RNG, never on the server) and a graphics setting: High (from the High preset),
+  Low (sky shade only, two reads, no bounce: the Medium preset and the browser) or Off.
 - **Cinematic lighting** (`atmosphere.gd`, `cinematic_fx.gd`, `physical_sky.gd`), each part its own setting and all
   of it on the **Cinematic** preset (Ultra plus everything below; for a fast graphics card, screenshots and replays).
   None of it reaches the simulation, so it can't change a battle or its seed.

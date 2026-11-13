@@ -30,6 +30,9 @@ const PRESETS := {
 		"upscaler": 1, "grass": 2, "wildlife": 2, "effects": 2, "decals": true, "ragdolls": true, "post": true, "dof": true, "ssr": true, "terrain_reflections": true, "alpine_haze": true, "lod": 2, "aniso": 4, "water": 3, "mountain_clouds": 4, "cloud_shadows": true,
 		"shadow_fit": true, "light_shadows": 2, "phys_sky": true, "lens": true, "shafts": true, "local_exp": true, "eye_adapt": true, "film": true, "heat_haze": true, "motion_blur": 1},
 }
+## Light probes (LightProbes) by preset, kept apart from PRESETS: Off on Low,
+## the cheap sky-only Low from Medium, the full grid from High.
+const PROBE_PRESETS := {"low": 0, "medium": 1, "high": 2, "ultra": 2, "cinematic": 2}
 ## The presets in the order the Settings screen lists them.
 const PRESET_KEYS := ["low", "medium", "high", "ultra", "cinematic"]
 
@@ -55,6 +58,7 @@ const LABELS := {
 	"minimap_size": ["Small", "Medium", "Large"],
 	"light_shadows": ["Off", "Nearest 2", "Nearest 6"],
 	"motion_blur": ["Off", "Objects", "Objects + camera"],
+	"light_probes": ["Off", "Low", "High"],
 }
 const RESOLUTIONS := [Vector2i(1280, 720), Vector2i(1600, 900), Vector2i(1920, 1080), Vector2i(2560, 1440), Vector2i(3840, 2160)]
 ## Colour grading looks: [brightness, contrast, saturation, tint]
@@ -81,6 +85,7 @@ var v := {
 	"coop_show": true, "ui_theme": "brass", "error_reports": true, "reduce_motion": false,
 	"volume": 0.8, "vol_music": 0.6, "vol_effects": 1.0, "vol_ambience": 0.8, "vol_ui": 0.8, "battle_music": true, "mute_bg": false,
 	"shadow_fit": true, "light_shadows": 0, "phys_sky": false, "lens": false, "shafts": false, "local_exp": false, "eye_adapt": false, "film": false, "heat_haze": false, "motion_blur": 0,
+	"light_probes": 2,
 }
 ## Volume sliders -> the mixer bus each one sets.
 const VOLUME_BUS := {"volume": "Master", "vol_music": "Music", "vol_effects": "Effects", "vol_ambience": "Ambience", "vol_ui": "Interface"}
@@ -91,6 +96,7 @@ func _ready() -> void:
 		v.mountain_clouds = 1
 		v.water = 1  # (a browser starts on Medium water, until the player picks)
 		v.wildlife = 1  # (and on Some wildlife: the game's scripts run slower there)
+		v.light_probes = 1  # (and the light probes' cheap version: per-vertex lighting, a slower GPU)
 	_load()
 	apply_global()
 	# the interface follows the window: resizing it or going fullscreen rescales it
@@ -116,6 +122,7 @@ func apply_preset(p: String, persist := true) -> void:
 	preset = p
 	for k in PRESETS[p]:
 		v[k] = PRESETS[p][k]
+	v.light_probes = mini(int(PROBE_PRESETS.get(p, 2)), 1) if OS.has_feature("web") else int(PROBE_PRESETS.get(p, 2))
 	apply_global()
 	if persist:
 		save()
@@ -340,6 +347,9 @@ func _load(path := PATH) -> void:
 	# custom setup the default
 	if not cf.has_section_key("main", "cloud_shadows") and PRESETS.has(preset):
 		v.cloud_shadows = bool(PRESETS[preset].cloud_shadows)
+	# so did the light probes: a preset takes its own (custom setups the default)
+	if not cf.has_section_key("main", "light_probes") and PROBE_PRESETS.has(preset):
+		v.light_probes = mini(int(v.light_probes), int(PROBE_PRESETS[preset]))
 	# v2: temporal AA (and FSR 2 at native scale) smeared the procedural
 	# surfaces whenever the camera moved; move saved setups to MSAA + SMAA
 	if int(cf.get_value("main", "cfg_version", 1)) < 2:

@@ -67,7 +67,7 @@ func set_detail(t: Texture2D) -> void:
 
 func _mat(code: String) -> ShaderMaterial:
 	var m := ShaderMaterial.new()
-	m.shader = CloudShadow.make(code)
+	m.shader = CloudShadow.make(code, CloudShadow.PROBES)
 	m.set_shader_parameter("trench_mask", null)
 	return m
 
