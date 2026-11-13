@@ -589,3 +589,41 @@ column stands 22 cm taller so the folded boom clears the roof; the Xian's rack t
 Left for later: `railing` always lays a foot plate (the motorboat helm and RHIB seat rails end inside cushions)
 and puts a post under every point (the motorboat bow rail has posts at only four of seven); round hatches
 (`VehicleFittings.hatch`) take no rotation.
+
+### Seventh pass: detail against AAA references
+
+Four agents, one per family, rendered their vehicles against what Company of Heroes 3, WARNO, Steel Division 2
+and Arma 3 show, ranked the gaps by visible impact times the number of vehicles sharing the fix, and closed
+the biggest. Nodes, meshes and wheel/rotor registrations are unchanged; vertices rise 1.8% across the roster
+(no model more than 15%).
+
+- **Edges that catch light.** VmCsat's `_bevelled` (section hulls), `_chamfer_loft` and `_inset` (lofts) and
+  VmIndep's `_capped` (ring solids) chamfer roof edges by 3-8 cm on about thirty hulls and turrets. VmNato
+  lays weld beads (`_weld`, `_loop`, on `VehicleBody.bead`) round the Abrams, Merkava, Namer, Marshall, Rhino,
+  Scorcher, BTR and Bradley; `_on_loft` / `_loft_seam` put seams exactly on a loft face folded across its
+  diagonal (the Merkava wedge flank folds 13.6°).
+- **Bolt-on armour** (`VehicleMounts.applique`): a chamfered slab with a bolt grid and optional lifting lugs,
+  folded into its parent. Two rows of five per side on the Namer family, the Merkava and Marshall flank
+  modules, the Bradley's tiles.
+- **Tactical numbers.** CSAT and Indep turrets and hull sides carry three-figure numbers drawn from the
+  vehicle's seed (its entity id in play, so peers agree and neighbours differ) in the hull bars;
+  NATO and core vehicles carry fixed numbers in the stroke font. Wrecks drop them.
+- **Aircraft paint** (`VehicleAircraft.insignia`, `lettering`, `lines`, `soot`, `paint`, `face`): stars,
+  roundels and low-visibility stars and bars on wings, fins and booms; serials, bort numbers and civil
+  registrations; panel joints; exhaust soot that darkens the skin's own camouflage. Layers stack 5 mm apart
+  so none fights another on a curved skin. CSAT's jets wear `camo_tank_rebel`.
+- **Glass and car bodies.** `VehicleCab._materials` tints clear glass darker and glossier, `VmCiv._glasshouse`
+  floors the cabin, `VehicleCab.interior(seat_col, seat_mat)` gives cars cloth seats; `VehicleGlazing._crowned`
+  leans every opaque pane's normals outward so the sky slides across it. `VehicleWheelArches._xprism` /
+  `_xbody(roll)` smooth car bodies' normals across chamfers and gentle bends (flat faces stay flat);
+  `VmBoat._faired` does the same for planing hulls and ship bands.
+- **Crew kit and breakup**: tow cables along T-100 and T-14 guards, rolled tarps and nets on decks, Kuma roof
+  seams and lifting eyes, exhaust soot on the Namer, Merkava and Bradley, bonnet shut lines and black trim on
+  cars.
+
+Left for later (shared builders the family agents didn't own): a chamfered end ring in
+`VehicleModels.loft` / `solid` so lofts need no hand welds; a "tactical" lettering style and a face-corner
+`side_number` in `VehicleMarkings`, with the missing letters (B, D, M, N, R, V, X, Y); a lower-hull dust and
+mud gradient in the materials; `Mats.tint_for` clamping each channel separately (very dark tints shift hue);
+`Mats._collect` rejecting a whole merged mesh when one surface has a foreign shader (the Black Wasp's canopy
+keeps its hull out of the distance mesh); trimming `VehicleFittings.tow_cable`'s segment counts.

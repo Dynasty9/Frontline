@@ -1,0 +1,20 @@
+{
+  "entry": "changelog/unreleased/vehicle-markings-and-finish.md",
+  "summary": "Tactical numbers, insignia, welded and chamfered armour, tinted glass and car trim across the roster.",
+  "medium": "still",
+  "stage": "tools/showcase/vehicle-surfaces.tscn",
+  "rationale": "Static detail and marking change across every family: one matched close-up sheet of eight representative vehicles (two per family) shows it. In-game roster views were not repeatable between runs, so the studio stage is the controlled comparison.",
+  "source_ref": "78a9818a6551cb4b0b04e288f3df3a507118b5fc",
+  "before_ref": "78a9818a6551cb4b0b04e288f3df3a507118b5fc",
+  "sources": [
+    {
+      "file": "changelog/unreleased/vehicle-markings-and-finish/comparison.jpg",
+      "sha256": "4b60b3e8d4669352807c282ed0cf8615fcd9a28ffacb18340a990a19a600837a"
+    },
+    {
+      "file": "changelog/unreleased/vehicle-markings-and-finish/capture.json",
+      "sha256": "ed67918bc718c1c47c745def1c621774248e8f1d0e5e7a4f0a1192d0fc8d522d"
+    }
+  ],
+  "output": null
+}

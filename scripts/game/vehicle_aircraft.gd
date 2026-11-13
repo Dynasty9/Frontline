@@ -1302,3 +1302,183 @@ static func chin_turret(k: VehicleModels, turret: Node3D, drum: Vector3, drum_ra
 			for x: float in [-0.25, 0.25]:
 				k._box(turret, Vector3(0.03, 0.05, 0.012), mc + Vector3(x * magazines.x, magazines.y * 0.25, -magazines.z * 0.5 - 0.006), "gunmetal_w", null, Vector3.ZERO, false)
 			k._box(turret, Vector3(gap + 0.01, magazines.y * 0.35, magazines.z * 0.3), Vector3(cradle.x + s * (cs.x * 0.5 + gap * 0.5), cradle.y + cs.y * 0.2, feed_z), "metal_dark")
+
+
+# --- paint: insignia, numbers, panel lines, soot -------------------------------------
+
+## National insignia for `insignia`.
+const INSIGNIA_US := 0
+const INSIGNIA_ROUNDEL := 1
+const INSIGNIA_STAR := 2
+
+## CSAT's star, after the Russian star its aircraft are drawn from: red,
+## bordered white and edged red again.
+const STAR_RED := Color(0.5, 0.08, 0.06)
+const STAR_WHITE := Color(0.8, 0.79, 0.74)
+## How dark each of soot's three layers leaves the paint under it.
+const SOOT := [0.74, 0.52, 0.32]
+
+## A national insignia `radius` across its disc or star (the US bars reach
+## twice that), upright about the origin, as paint layers for `paint`
+## ([triangles, colour], bottom up). INSIGNIA_US is the low-visibility US
+## star-and-bar: `dark` disc and bars, the star left in `light` (VmFighter's
+## proportions); INSIGNIA_ROUNDEL a three-ring roundel, `dark` outside and at
+## its heart, `light` between (the AAF's, subdued); INSIGNIA_STAR CSAT's red
+## star with its white border and red edge, whatever the colours.
+static func insignia(style: int, radius: float, dark := Color(0.2, 0.21, 0.22), light := Color(0.6, 0.62, 0.62)) -> Array:
+	if style == INSIGNIA_ROUNDEL:
+		# three bands that don't overlap, none of their edges longer than
+		# about a third of the radius, so they follow a curved skin unsplit
+		return [[_annulus(radius * 0.68, radius, 20), dark], [_annulus(radius * 0.3, radius * 0.68, 20), light], [_fill(_ring(radius * 0.3, 12)), dark]]
+	if style == INSIGNIA_STAR:
+		# (a regular star scaled about its centre keeps its edges parallel, so
+		# each border is the same width all round)
+		return [[_fill(_star(radius, 0.4)), STAR_RED], [_fill(_star(radius * 0.94, 0.4)), STAR_WHITE], [_fill(_star(radius * 0.8, 0.4)), STAR_RED]]
+	var base := _fill(_ring(radius * 0.5, 10))
+	base.append_array(_annulus(radius * 0.5, radius, 20))
+	for side: float in [-1.0, 1.0]:
+		# the bars: their tops level with the star's arms, reaching a radius
+		# beyond the disc
+		base.append_array(_fill(PackedVector2Array([Vector2(side * radius * 0.8, radius * 0.31), Vector2(side * radius * 2.0, radius * 0.31),
+			Vector2(side * radius * 2.0, -radius * 0.19), Vector2(side * radius * 0.8, -radius * 0.19)])))
+	return [[base, dark], [_fill(_star(radius * 0.96, 0.385)), light]]
+
+
+## `text` `height` tall in a VehicleMarkings lettering style, centred on the
+## origin, as one paint layer's triangles. `outline` > 0 widens every stroke
+## by that much each side: lay it under the same text for an edged number.
+## Each stroke is cut into pieces about a third of the height long, so the
+## paint follows a curved skin without `paint` splitting every triangle.
+static func lettering(text: String, height: float, style := "stencil", outline := 0.0) -> PackedVector2Array:
+	var spec: Dictionary = VehicleMarkings.LETTERING[style]
+	var strokes: Array = []
+	for st: Array in VehicleMarkings.digit_strokes(text, height, Vector2.ZERO, style):
+		var a: Vector2 = st[0]
+		var b: Vector2 = st[1]
+		var n := maxi(1, ceili(a.distance_to(b) / (height * 0.34)))
+		for i in n:
+			strokes.append([a.lerp(b, float(i) / float(n)), a.lerp(b, float(i + 1) / float(n))])
+	# (inner pieces overlap their neighbours by the extension, as the ends do)
+	return VehicleMarkings.stroke_triangles(strokes, height * float(spec.get("stroke", 0.13)) + outline * 2.0, height * float(spec.get("extend", 0.0)) + outline)
+
+
+## Lines `width` wide along each of `lines` (arrays of Vector2 in a surface's
+## metres) as one paint layer's triangles: panel joints.
+static func lines(polylines: Array, width: float) -> PackedVector2Array:
+	var out := PackedVector2Array()
+	for pts: Array in polylines:
+		for i in pts.size() - 1:
+			var a: Vector2 = pts[i]
+			var b: Vector2 = pts[i + 1]
+			var d := (b - a).normalized()
+			var side := Vector2(-d.y, d.x) * width * 0.5
+			# each piece runs half a width into the next, closing the bends
+			a -= d * (width * 0.5 if i > 0 else 0.0)
+			out.append_array([a + side, a - side, b - side, a + side, b - side, b + side])
+	return out
+
+
+## Exhaust soot streaking `length` downstream from a turbine's outlet along
+## the surface's +x, `width` wide at its broadest: three paint layers, each
+## shorter, narrower and darker than the one under it, so the stain fades
+## toward its edges and its tail rather than ending in a hard box. They are
+## laid in the skin's own finish `mat` and colour `col` (null: the finish's
+## own, as camouflage takes it), only darker (SOOT), because soot darkens
+## what it lies on, camouflage pattern and all, rather than covering it. It
+## leaves the pipe narrow and spreads as the exhaust mixes downstream; its
+## edges wander as a real streak's do, the same every build.
+static func soot(length: float, width: float, mat: String, col = null) -> Array:
+	var base: Color = col if col is Color else Mats._preset(mat).get("col_a", Color(0.5, 0.5, 0.5))
+	var layers: Array = []
+	for i in 3:
+		var f: float = [1.0, 0.7, 0.42][i]
+		var g: float = [1.0, 0.68, 0.42][i]
+		# a strip of eight stations down its length, four lanes across, so no
+		# triangle spans the skin's curve round a boom
+		var rows: Array = []
+		for j in 9:
+			var u := float(j) / 8.0
+			var w := width * 0.5 * g * (0.35 + 0.65 * sqrt(u)) * sqrt(maxf(0.0, 1.0 - pow(u, 2.5)))
+			var hi := w * (1.0 + 0.1 * sin(u * 15.0 + float(i)))
+			var lo := -w * (1.0 + 0.1 * sin(u * 11.0 + 2.0 + float(i)))
+			var row := PackedVector2Array()
+			for q in 5:
+				row.append(Vector2(u * length * f, lerpf(lo, hi, float(q) / 4.0)))
+			rows.append(row)
+		var tris := PackedVector2Array()
+		for j in 8:
+			var r0: PackedVector2Array = rows[j]
+			var r1: PackedVector2Array = rows[j + 1]
+			for q in 4:
+				tris.append_array([r0[q], r1[q], r1[q + 1], r0[q], r1[q + 1], r0[q + 1]])
+		var d: float = SOOT[i]
+		layers.append([tris, Color(base.r * d, base.g * d, base.b * d), mat])
+	return layers
+
+
+## Paints `layers` ([triangles, colour] or [triangles, colour, material],
+## bottom up, from `insignia`, `lettering`, `lines` or `soot`) over `surface`
+## (a VehicleSurface in metres, such as `face` makes): the first `lift` off
+## the skin (4 mm; more over a painted patch), each layer 5 mm prouder than
+## the one under it so none fights another where a curved skin's chords sag.
+## `divisions` halves every triangle's edges that many times so a big marking
+## follows a curved skin (1 on a wing, 2 round a fuselage). One mesh per
+## layer, cast no shadow; the paint burns off a wreck. Registers nothing.
+static func paint(k: VehicleModels, parent: Node3D, surface: VehicleSurface, layers: Array, mat := "aircraft", divisions := 0, lift := 0.004) -> void:
+	if k.burnt:
+		return
+	for i in layers.size():
+		var layer: Array = layers[i]
+		var tris: PackedVector2Array = layer[0]
+		if tris.size() < 3:
+			continue
+		var data := [[], [], []]
+		for j in range(0, tris.size() - 2, 3):
+			surface._triangle(data, tris[j], tris[j + 1], tris[j + 2], lift + 0.005 * float(i), divisions, false)
+		k._add(parent, VehicleSurface._mesh(data), String(layer[2]) if layer.size() > 2 else mat, layer[1], Vector3.ZERO, Vector3.ZERO, Vector3.ONE, false)
+
+
+## A public front for _face: a surface in metres along `along` and across it
+## about `center`, facing `normal`, laid onto a curved skin by `skin`.
+static func face(center: Vector3, normal: Vector3, along: Vector3, skin := Callable()) -> VehicleSurface:
+	return _face(center, normal, along, skin)
+
+
+## A star-shaped outline filled as a fan from its centroid: no sliver
+## spans the shape, so `paint`'s subdivisions follow a curved skin evenly.
+static func _fill(pts: PackedVector2Array) -> PackedVector2Array:
+	var c := Vector2.ZERO
+	for q in pts:
+		c += q
+	c /= float(pts.size())
+	var out := PackedVector2Array()
+	for i in pts.size():
+		out.append_array([c, pts[i], pts[(i + 1) % pts.size()]])
+	return out
+
+
+## The band between radii r0 and r1, `n` segments round, as triangles.
+static func _annulus(r0: float, r1: float, n: int) -> PackedVector2Array:
+	var out := PackedVector2Array()
+	for i in n:
+		var a := Vector2.from_angle(TAU * float(i) / float(n))
+		var b := Vector2.from_angle(TAU * float(i + 1) / float(n))
+		out.append_array([a * r0, a * r1, b * r1, a * r0, b * r1, b * r0])
+	return out
+
+
+static func _ring(r: float, n: int) -> PackedVector2Array:
+	var out := PackedVector2Array()
+	for i in n:
+		var a := TAU * float(i) / float(n)
+		out.append(Vector2(cos(a), sin(a)) * r)
+	return out
+
+
+## A five-pointed star, a point up, its inner corners at `inner` of `r`.
+static func _star(r: float, inner: float) -> PackedVector2Array:
+	var out := PackedVector2Array()
+	for i in 10:
+		var a := PI / 2.0 + TAU * float(i) / 10.0
+		out.append(Vector2(cos(a), sin(a)) * (r if i % 2 == 0 else r * inner))
+	return out

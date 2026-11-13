@@ -189,7 +189,7 @@ static func _hull(p: Dictionary, u0 := 0.0, u1 := 1.0) -> Array:
 
 
 ## The hull in its three painted bands, and the bulwark on it from the deck
-## up (inn thick), from station u = bu forward.
+## up (inn thick), from station u = bu forward; faired (VmBoat._faired).
 static func _hull_bands(k: VehicleModels, m: Node3D, p: Dictionary, key: String, cols: Array, bkind: String, bcol: Color, inn: float, bu := 0.0) -> void:
 	var lo := []
 	var bt := []
@@ -198,14 +198,14 @@ static func _hull_bands(k: VehicleModels, m: Node3D, p: Dictionary, key: String,
 		lo.append(VmBoat._band(st, -9.0, p["wl0"]))
 		bt.append(VmBoat._band(st, p["wl0"], p["wl1"]))
 		hi.append(VmBoat._band(st, p["wl1"], st[2]))
-	k._add(m, VehicleModels.solid(lo, key + "_af"), cols[0], cols[1], Vector3.ZERO)
-	k._add(m, VehicleModels.solid(bt, key + "_boot"), cols[2], cols[3], Vector3.ZERO)
-	k._add(m, VehicleModels.solid(hi, key + "_top"), cols[4], cols[5], Vector3.ZERO)
+	k._add(m, VmBoat._faired(lo), cols[0], cols[1], Vector3.ZERO)
+	k._add(m, VmBoat._faired(bt), cols[2], cols[3], Vector3.ZERO)
+	k._add(m, VmBoat._faired(hi), cols[4], cols[5], Vector3.ZERO)
 	for s in [-1.0, 1.0]:
 		var bw := []
 		for st in _hull(p, bu, 1.0):
 			bw.append(VmBoat._skin(st, st[2], st[3], 0.0, inn, s))
-		k._add(m, VehicleModels.solid(bw, key + "_bw%d" % int(s)), bkind, bcol, Vector3.ZERO)
+		k._add(m, VmBoat._faired(bw), bkind, bcol, Vector3.ZERO)
 
 
 ## A deck plate t thick, inset in from the hull's side at the deck.

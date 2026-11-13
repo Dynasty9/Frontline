@@ -1480,6 +1480,12 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   seen, one band of cylinder sides, joints only at sharp bends. About 45% less vehicle geometry and 38% faster
   model builds (each vehicle, air-strike plane and wreck builds its model as it appears), with the same look.
   See "Fifth pass" in [the component guide](vehicle-components.md).
+- **Markings and finish** (seventh pass): tanks and armoured vehicles carry tactical numbers (on CSAT and
+  independent armour drawn from the vehicle's seed, so neighbours differ), chamfered or welded hull and turret
+  edges, bolt-on armour modules (`VehicleMounts.applique`), tow cables, deck tarps and exhaust soot. Aircraft
+  wear national insignia, serials and bort numbers, panel joints and exhaust soot (`VehicleAircraft.paint`).
+  Car glass is tinted with a cabin behind it, bodies shade like pressed metal, and opaque panes reflect the
+  sky. See "Seventh pass" in [the component guide](vehicle-components.md).
 - Explosions are layered GPU particles: a flash and light burst, a rolling fireball that cools from the edges in
   until it's dark smoke, a lit smoke column that drifts with the wind, a dirt plume, sparks and debris that
   bounce on the ground, a rolling dust ring, a faint heat-shimmer shockwave and a scorch mark. Heavy rounds

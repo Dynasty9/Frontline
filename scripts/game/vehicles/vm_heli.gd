@@ -261,6 +261,93 @@ static func _air(team: int, col: Color, hex := false) -> Array:
 	return ["aircraft", col]
 
 
+# --- paint: insignia, numbers, soot ------------------------------------------------
+
+## The national insignia a helicopter flies under: CSAT's red star for team 1,
+## the AAF's roundel on its own types, otherwise the US low-visibility star.
+static func _insignia_style(team: int, aaf := false) -> int:
+	if team == 1:
+		return VehicleAircraft.INSIGNIA_STAR
+	return VehicleAircraft.INSIGNIA_ROUNDEL if aaf else VehicleAircraft.INSIGNIA_US
+
+
+## A hull's flank on the right (side 1) or left (-1): a point moved across
+## onto the facets at its station and height, found by halving the section
+## between the belly and the roof (its height climbs steadily between them).
+static func _flank_skin(h: Hull, side: float) -> Callable:
+	var lo0 := (-PI / 2 - h.ph) * float(h.n) / TAU + 0.01
+	var hi0 := (PI / 2 - h.ph) * float(h.n) / TAU - 0.01
+	return func(q: Vector3) -> Vector3:
+		var lo := lo0
+		var hi := hi0
+		for i in 18:
+			var mid := (lo + hi) * 0.5
+			if h.pt(q.z, mid).y < q.y:
+				lo = mid
+			else:
+				hi = mid
+		var v := h.pt(q.z, (lo + hi) * 0.5)
+		return Vector3(v.x * side, v.y, q.z)
+
+
+## A hull's roof: a point moved down onto the facets at its station and x,
+## found by halving the section between its two flanks.
+static func _roof_skin(h: Hull) -> Callable:
+	var a0 := -h.ph * float(h.n) / TAU
+	var a1 := (PI - h.ph) * float(h.n) / TAU
+	return func(q: Vector3) -> Vector3:
+		var lo := a0
+		var hi := a1
+		for i in 18:
+			var mid := (lo + hi) * 0.5
+			if h.pt(q.z, mid).x > q.x:
+				lo = mid
+			else:
+				hi = mid
+		return h.pt(q.z, (lo + hi) * 0.5)
+
+
+## A tapered tube's skin (a tail boom from a, radius ra, to b, rb): a point
+## moved straight out from the axis onto it.
+static func _tube_skin(a: Vector3, b: Vector3, ra: float, rb: float) -> Callable:
+	return func(q: Vector3) -> Vector3:
+		var ax := b - a
+		var f := clampf((q - a).dot(ax) / ax.length_squared(), 0.0, 1.0)
+		var c := a + ax * f
+		var out := q - c - ax.normalized() * (q - c).dot(ax.normalized())
+		return c + out.normalized() * lerpf(ra, rb, f)
+
+
+## Paint (VehicleAircraft layers) on both flanks of a hull, or one (sx 1
+## right, -1 left), centred at station z, height y, reading toward the nose;
+## `divisions` splits big triangles to follow the hull's curve (lettering
+## comes in pieces already).
+static func _flank_paint(k: VehicleModels, p: Node3D, h: Hull, z: float, y: float, layers: Array, sx := 0.0, divisions := 2) -> void:
+	for sd: float in ([1.0, -1.0] if sx == 0.0 else [sx]):
+		VehicleAircraft.paint(k, p, VehicleAircraft.face(Vector3(sd, y, z), Vector3(sd, 0, 0), Vector3(0, 0, -sd), _flank_skin(h, sd)), layers, "aircraft", divisions, 0.006)
+
+
+## Paint on both faces of a flat fin or pylon (extruded across x, its faces
+## at x = ±half) centred at station z, height y.
+static func _fin_paint(k: VehicleModels, p: Node3D, half: float, z: float, y: float, layers: Array, x := 0.0) -> void:
+	for sd: float in [-1.0, 1.0]:
+		VehicleAircraft.paint(k, p, VehicleAircraft.face(Vector3(x + sd * half, y, z), Vector3(sd, 0, 0), Vector3(0, 0, -sd)), layers)
+
+
+## Exhaust soot streaking aft along both flanks of a hull from station z at
+## height y, `length` long and `width` wide at its broadest, darkening the
+## hull's paint (mat, col) under it, `lift` off the skin (more where a
+## painted patch already stands on it).
+static func _flank_soot(k: VehicleModels, p: Node3D, h: Hull, z: float, y: float, length: float, width: float, mat: String, col, lift := 0.004) -> void:
+	for sd: float in [1.0, -1.0]:
+		VehicleAircraft.paint(k, p, VehicleAircraft.face(Vector3(sd, y, z), Vector3(sd, 0, 0), Vector3.BACK, _flank_skin(h, sd)), VehicleAircraft.soot(length, width, mat, col), mat, 0, lift)
+
+
+## A bort number red edged white, as Russian helicopters wear theirs.
+static func _bort(text: String, height: float) -> Array:
+	return [[VehicleAircraft.lettering(text, height, "tail", height * 0.07), VehicleAircraft.STAR_WHITE], [VehicleAircraft.lettering(text, height, "tail"), VehicleAircraft.STAR_RED]]
+
+
 # --- rotors ----------------------------------------------------------------------
 
 ## A rotor: n blades of radius r and chord c round a hub at pos. The hub and
@@ -462,6 +549,21 @@ static func _little_bird(k: VehicleModels, team: int, seed: int, v: int) -> void
 	VehicleAircraft.turbine_exhaust(k, m, Vector3(0, 1.4, 0.95), Vector3(0, 1.33, 1.36), 0.1, 0.085)
 	_tube(k, m, Vector3(0, 1.64, 1.2), Vector3(0, 1.76, 4.8), 0.2, mat, col, 12, 0.1)
 	k._add(m, Res.sphere(0.1, 10), mat, col, Vector3(0, 1.76, 4.8))
+	var boom := _tube_skin(Vector3(0, 1.64, 1.2), Vector3(0, 1.76, 4.8), 0.2, 0.1)
+	if v == 2:
+		# a civil MD 500's registration down both sides of the boom, picked by
+		# the seed from the letters the stencil can cut
+		var letters := "ACEFHJLPSTU"
+		var reg := "C-G"
+		for i in 3:
+			reg += letters[(absi(seed) / int(pow(11.0, float(i))) + i * 4) % letters.length()]
+		var ink: Color = Color(0.12, 0.13, 0.15) if (col as Color).v > 0.5 else Color(0.85, 0.84, 0.8)
+		for sd: float in [-1.0, 1.0]:
+			VehicleAircraft.paint(k, m, VehicleAircraft.face(Vector3(sd * 0.2, 1.7, 2.75), Vector3(sd, 0, 0), Vector3(0, 0, -sd), boom), [[VehicleAircraft.lettering(reg, 0.16, "tail"), ink]])
+	else:
+		# the Army's serial small on the boom, a shade off the black
+		for sd: float in [-1.0, 1.0]:
+			VehicleAircraft.paint(k, m, VehicleAircraft.face(Vector3(sd * 0.2, 1.7, 3.3), Vector3(sd, 0, 0), Vector3(0, 0, -sd), boom), [[VehicleAircraft.lettering("23157", 0.1, "tail"), Color(0.36, 0.37, 0.37)]])
 	k._add(m, VehicleModels.extrude_x("heli_lb_fin", [4.28, 1.78, 4.82, 1.78, 4.98, 2.56, 4.66, 2.57], -0.035, 0.035), mat, col, Vector3.ZERO)
 	k._add(m, VehicleModels.extrude_x("heli_lb_vent", [4.42, 1.74, 4.88, 1.74, 5.0, 1.24, 4.84, 1.22], -0.03, 0.03), mat, col, Vector3.ZERO)
 	_tube(k, m, Vector3(0, 1.26, 4.92), Vector3(0, 1.12, 5.12), 0.018, "gunmetal_w", null, 6)
@@ -578,6 +680,11 @@ static func _ghost_hawk(k: VehicleModels, team: int, stub: bool) -> void:
 		VehicleDoors.pull(k, m, Vector3(s * 1.1, 1.4, -2.65), Vector3(s, 0, 0), Vector3.BACK, 0.3)
 	# the tail pylon, the canted tail rotor high on its right, the stabilator
 	k._add(m, VehicleModels.extrude_x("heli_gh_pylon", [6.3, 2.25, 7.85, 2.2, 8.32, 4.3, 7.62, 4.42], -0.14, 0.14), mat, col, Vector3.ZERO)
+	# the Army serial on the pylon, low-visibility grey on the black; the
+	# engines' soot streaking back over the boom from the turned-out exhausts
+	var ink: Color = (col as Color).lightened(0.22) if col is Color else Color(0.36, 0.34, 0.28)
+	_fin_paint(k, m, 0.14, 7.2, 3.1, [[VehicleAircraft.lettering("20316", 0.2, "tail"), ink]])
+	_flank_soot(k, m, h, 1.3, 2.22, 2.6, 0.42, mat, col)
 	k._add(m, VehicleModels.loft("heli_gh_tgb", [-0.12, -0.35, 0.12, -0.35, 0.12, 0.35, -0.12, 0.35], [-0.06, -0.25, 0.06, -0.25, 0.06, 0.25, -0.06, 0.25], 0.0, 0.18), mat, col, Vector3(0.12, 3.48, 7.95), Vector3(0, 0, -PI / 2))
 	var cant := k._pivot(m, Vector3(0.36, 3.48, 7.95))
 	cant.rotation.z = 0.35
@@ -910,6 +1017,12 @@ static func _mohawk(k: VehicleModels, team: int) -> void:
 	VehicleFittings.antenna(k, m, Vector3(0, 0.64, -3.0), 0, Vector3(0, -0.32, 0.3), 0.012, "gunmetal_w", null, "whip")
 	# the tail pylon, the tail rotor on its left, the tailplane on its right
 	k._add(m, VehicleModels.extrude_x("heli_mo_pylon", [7.95, 2.6, 9.75, 2.5, 10.15, 5.3, 9.3, 5.45], -0.16, 0.16), hi[0], hi[1], Vector3.ZERO)
+	# the national insignia on the cabin's flanks aft, the serial on the
+	# pylon, the side engines' soot streaking back down the roof's flanks
+	var style := _insignia_style(team, true)
+	_flank_paint(k, m, h, 2.1, 1.95, VehicleAircraft.insignia(style, 0.4, Color(0.17, 0.22, 0.15), Color(0.62, 0.63, 0.55)), 0.0, 0 if style == VehicleAircraft.INSIGNIA_ROUNDEL else 2)
+	_fin_paint(k, m, 0.16, 9.25, 3.55, [[VehicleAircraft.lettering("1042", 0.3, "tail"), Color(0.14, 0.16, 0.12)]])
+	_flank_soot(k, m, h, -0.85, 2.5, 3.4, 0.5, hi[0], hi[1], 0.008)
 	k._add(m, VehicleModels.loft("heli_mo_tail", [0.1, 9.15, 2.35, 9.35, 2.35, 9.95, 0.1, 10.05], [0.1, 9.18, 2.35, 9.37, 2.35, 9.93, 0.1, 10.02], 4.92, 5.02), hi[0], hi[1], Vector3.ZERO)
 	k._add(m, VehicleModels.extrude_x("heli_mo_tendp", [9.3, 4.75, 9.95, 4.75, 10.05, 5.25, 9.55, 5.25], -0.025, 0.025), hi[0], hi[1], Vector3(2.35, 0, 0))
 	VehicleFittings.dome_light(k, m, Vector3(0, 5.5, 9.45), 0.07, Color(0.55, 0.08, 0.06))
@@ -971,6 +1084,11 @@ static func _hellcat(k: VehicleModels, team: int) -> void:
 	VehicleAircraft.wire_cutter(k, m, Vector3(0.04, 0.34, 0.08), Vector3(0, 2.62, -3.7), Vector3(0.5, 0, 0))
 	# the tail: pylon, tail rotor on its left, tailplane on its right
 	k._add(m, VehicleModels.extrude_x("heli_hc_pylon", [5.55, 2.1, 6.95, 2.05, 7.32, 3.75, 6.75, 3.85], -0.12, 0.12), mat, col, Vector3.ZERO)
+	# the national insignia on the flanks behind the doors, the serial on
+	# the pylon, the engines' soot streaking back along the boom
+	_flank_paint(k, m, h, 0.95, 1.74, VehicleAircraft.insignia(_insignia_style(team, true), 0.3, Color(0.17, 0.22, 0.15), Color(0.62, 0.63, 0.55)), 0.0, 0 if team != 1 else 2)
+	_fin_paint(k, m, 0.12, 6.45, 2.75, [[VehicleAircraft.lettering("502", 0.24, "tail"), Color(0.12, 0.13, 0.1)]])
+	_flank_soot(k, m, h, 1.25, 2.12, 2.4, 0.36, mat, col)
 	k._add(m, VehicleModels.loft("heli_hc_tail", [0.08, 5.95, 1.55, 6.15, 1.55, 6.6, 0.08, 6.7], [0.08, 5.98, 1.55, 6.17, 1.55, 6.58, 0.08, 6.67], 2.7, 2.78), mat, col, Vector3.ZERO)
 	k._add(m, VehicleModels.extrude_x("heli_hc_tendp", [6.05, 2.5, 6.62, 2.5, 6.72, 3.0, 6.28, 3.0], -0.02, 0.02), mat, col, Vector3(1.55, 0, 0))
 	k._add(m, VehicleModels.extrude_x("heli_hc_vent", [5.9, 2.0, 6.5, 2.0, 6.75, 1.55, 6.5, 1.5], -0.04, 0.04), mat, col, Vector3.ZERO)
@@ -1122,6 +1240,14 @@ static func _kajman(k: VehicleModels, team: int) -> void:
 		k._team_mark(m, team, Vector3(s * 0.33, 2.15, 4.6), Vector3(0.02, 0.2, 0.8))
 	# the tail: a swept fin, the stabiliser with endplate fins, the tailwheel
 	k._add(m, VehicleModels.extrude_x("heli_kj_fin", [6.6, 2.3, 8.3, 2.25, 8.75, 4.0, 8.15, 4.05], -0.08, 0.08), mat, col, Vector3.ZERO)
+	# a Mi-28's paint: stars on the boom and the fin, the bort number under
+	# the gunner, soot streaking back from the exhaust deflectors
+	var style := _insignia_style(team)
+	_flank_paint(k, m, h, 6.25, 2.21, VehicleAircraft.insignia(style, 0.2, (col as Color).darkened(0.45) if col is Color else Color(0.2, 0.2, 0.18), col if col is Color else CSAT_SAND))
+	_fin_paint(k, m, 0.08, 7.75, 3.15, VehicleAircraft.insignia(style, 0.34, (col as Color).darkened(0.45) if col is Color else Color(0.2, 0.2, 0.18), col if col is Color else CSAT_SAND))
+	if team == 1:
+		_flank_paint(k, m, h, -6.35, 1.36, _bort("35", 0.4), 0.0, 0)
+	_flank_soot(k, m, h, 1.55, 2.3, 3.0, 0.42, mat, col)
 	k._box(m, Vector3(3.3, 0.07, 0.8), Vector3(0, 2.42, 7.55), mat, col)
 	for s in [-1.0, 1.0]:
 		k._add(m, VehicleModels.extrude_x("heli_kj_endp", [7.05, 1.95, 7.95, 1.95, 8.2, 2.95, 7.5, 2.95], -0.03, 0.03), mat, col, Vector3(s * 1.65, 0, 0))
@@ -1201,6 +1327,13 @@ static func _orca(k: VehicleModels, team: int, armed: bool) -> void:
 	for a in [0.6, 2.4, 4.2]:
 		k._box(m, Vector3(0.03, 0.52, 0.07), Vector3(-0.09, 1.9 + sin(a) * 0.3, 6.98 + cos(a) * 0.3), "gunmetal_w", null, Vector3(-a + PI / 2, 0, 0), false)
 	k._add(m, VehicleModels.extrude_x("heli_or_fin", [6.7, 2.6, 7.85, 2.6, 8.05, 3.6, 7.45, 3.62], -0.07, 0.07), mat, col, Vector3.ZERO)
+	# a Ka-60's paint: stars on the fin, the bort number under the cockpit,
+	# the engines' soot streaking back along the boom
+	var style := _insignia_style(team)
+	_fin_paint(k, m, 0.07, 7.48, 3.1, VehicleAircraft.insignia(style, 0.26, (col as Color).darkened(0.45) if col is Color else Color(0.2, 0.2, 0.18), col if col is Color else CSAT_SAND))
+	if team == 1:
+		_flank_paint(k, m, h, -3.3, 1.02, _bort("07", 0.3), 0.0, 0)
+	_flank_soot(k, m, h, 1.7, 2.0, 2.2, 0.32, mat, col)
 	k._box(m, Vector3(2.5, 0.06, 0.55), Vector3(0, 1.98, 5.45), mat, col)
 	for s in [-1.0, 1.0]:
 		k._add(m, VehicleModels.extrude_x("heli_or_endp", [5.15, 1.75, 5.72, 1.75, 5.85, 2.3, 5.42, 2.3], -0.02, 0.02), mat, col, Vector3(s * 1.25, 0, 0))
@@ -1285,6 +1418,13 @@ static func _taru(k: VehicleModels, team: int) -> void:
 		VehicleAircraft.intake_face(k, m, Vector3(s * 0.66, 4.36, -3.71), 0.24, Vector3.FORWARD, 0.1)
 		VehicleAircraft.turbine_exhaust(k, m, Vector3(s * 0.66, 4.36, -0.25), Vector3(s * 0.95, 4.42, 0.25), 0.2, 0.17)
 		k._team_mark(m, team, Vector3(s * 0.4, 3.62, 5.6), Vector3(0.02, 0.24, 0.9))
+		# the engines' soot streaking back along the spine's roof
+		VehicleAircraft.paint(k, m, VehicleAircraft.face(Vector3(s * 0.42, 4.1, 1.45), Vector3.UP, Vector3.BACK, _roof_skin(sp)), VehicleAircraft.soot(2.6, 0.34, mat, col), mat)
+	# stars on the spine's flanks, the bort number on the cab's
+	var style := _insignia_style(team)
+	_flank_paint(k, m, sp, 3.2, 3.47, VehicleAircraft.insignia(style, 0.3, (col as Color).darkened(0.45) if col is Color else Color(0.2, 0.2, 0.18), col if col is Color else CSAT_SAND))
+	if team == 1:
+		_flank_paint(k, m, cab, -5.8, 2.66, _bort("21", 0.34), 0.0, 0)
 	VehicleRotors.mast(k, m, Vector3(0, 5.3, -1.0), 0.17, 0.2, 1.5, [Vector2(4.66, 0.34)])
 	VehicleFittings.dome_light(k, m, Vector3(0, 4.08, 2.6), 0.07, Color(0.55, 0.08, 0.06))
 	VehicleFittings.antenna(k, m, Vector3(0, 4.0, 3.4), 0, Vector3(0, 0.35, 0.3), 0.012, "gunmetal_w", null, "whip")
@@ -1397,6 +1537,8 @@ static func _falcon(k: VehicleModels, team: int) -> void:
 			VehicleAircraft.hardpoint(k, m, Vector3(px, 1.1, -0.7), 0.3, 0.1, null, 0.055, 0.04, "gunmetal_w", 0.0)
 			_missile(k, m, Vector3(px, 0.94, -0.75), 0.055, 1.1, Color(0.32, 0.34, 0.29))
 		k._team_mark(m, team, Vector3(s * 0.11, 1.62, 2.5), Vector3(0.02, 0.1, 0.5))
+	# the national insignia on the flanks aft of the hatch, low-visibility
+	_flank_paint(k, m, h, 0.15, 1.5, VehicleAircraft.insignia(_insignia_style(team), 0.16, (col as Color).darkened(0.45) if col is Color else Color(0.2, 0.2, 0.18), col if col is Color else CSAT_SAND), 0.0, 0)
 	# the rotor: four blades
 	_rotor(k, m, Vector3(0, 2.64, -0.5), 4, 4.2, 0.2, true, PI / 4, 0.012, 0.18, 0)
 
