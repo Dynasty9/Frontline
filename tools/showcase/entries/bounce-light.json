@@ -1,0 +1,31 @@
+{
+  "entry": "changelog/unreleased/bounce-light.md",
+  "summary": "Bounce light: screen-space GI that lets sunlit walls, paving and roofs light what faces them in their colours.",
+  "medium": "still",
+  "stage": "game capture at 1600x900, --offscreen --perf=0 --nohud: --host --team=0 --seed=3 --preset=high --mood=golden with FL_DEBUG_GI_CYCLE (frozen frame, each GI mode in turn) and FL_DEBUG_GI_POSES='street:town:32:-28:0.6;ruin:ruin:16:-58:0.4;alley:alley:16:-42:0'; pan clip: --fixed-fps 30 --set=ssgi:2,ssil:false --focus=8,-154 --zoom=30 --pitch=-35 --cam-yaw=1.57 --pan=0,20 --shots=60 --shot-every=0.0333 with FL_DEBUG_SSGI_VIEW=3, brightened",
+  "rationale": "The change is a lighting difference on the same frame, so matched halves of one frozen frame with bounce light off and on show it best, in the three places it matters (street, a ruin's interior, between houses). Its stability while the camera pans is the motion question, answered by a short clip of the added light alone during a fast pan. Cost is measured in the pull request.",
+  "source_ref": "4bf6e162",
+  "sources": [
+    {
+      "file": "changelog/unreleased/bounce-light/street.jpg",
+      "sha256": "81ac11affde98bd2826e62e046c0233677b9d1c5d81bd891302d35028c2a8701"
+    },
+    {
+      "file": "changelog/unreleased/bounce-light/ruin.jpg",
+      "sha256": "90bdc254fc11b7d805fc3dda017e20cc28042c461bec31b93c3dbdb3a846fdfa"
+    },
+    {
+      "file": "changelog/unreleased/bounce-light/alley.jpg",
+      "sha256": "0a7953b12c4c27036482001c5aaba4d50436aee05dc9060a6eec7ecd95bc1091"
+    },
+    {
+      "file": "changelog/unreleased/bounce-light/pan.webm",
+      "sha256": "6d76e48ef6ccc9036f058938beab1e75cee919a1ee66197a3c5a8b1a6cf24633"
+    },
+    {
+      "file": "changelog/unreleased/bounce-light/pan.jpg",
+      "sha256": "dd2c524514ba9f643f77ffc7db5b26986f224b7fdcb08b23b1c68a295e1d0a58"
+    }
+  ],
+  "output": null
+}
