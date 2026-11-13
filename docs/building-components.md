@@ -211,16 +211,20 @@ and a blast or a truck knocks them over. Render them with `--building-kinds=hous
 
 ## The parish church
 
-A skirmish town has a parish church (Structure "church", `_church_model`): `TownGen.church` stands it back from
-one of the roads into the town, 7.5 m off it with its tower to the road, where `MapGen._try` finds room, from a
-stream of its own after the town and the farms are laid out (so they stand where they did). It is built in the
-kit: a stone nave of four bays between stepped buttresses, a lancet in each (`_lancet`: leaded glass in muted
-colours, a mullion and saddle bars, a dressed surround, the pointed head), a slate gable roof at 52 degrees; a
-lower chancel with three lancets in its east end; the west tower in three stages between string courses (the
-pointed west door with its step and a window over it, a clock on two faces, the belfry's louvred lancets),
-clasping buttresses, battlements, corner pinnacles and an octagonal copper spire with a cross. Its body is three
-solid parts (tower, nave, chancel): cover against its walls, nobody inside, 12000 hit points, a heap of rubble
-when it falls. Render it with `--building-kinds=church` in the studio stage.
+A skirmish town has a parish church, built as a house is so men can go in (`MapGen._church`): `TownGen.church`
+stands it back from one of the roads into the town with its west tower to the road, first where its whole
+churchyard has room, from a stream of its own after the town and its villages are laid out and before the farms.
+The tower is solid (Structure "church": rendered, stone quoins long and short up its corners, string courses, a
+west lancet, a clock on two faces, louvred belfry lancets, battlements, pinnacles, a matte slate spire with a
+gilded cross). The nave and the chancel are each a floor (variant 3: flagstones, pews either side of the aisle
+and the font in the nave; the altar on its step behind a rail in the chancel), house walls in the "church"
+material (limewashed render over a dressed stone plinth) laid by `Structure.church_walls` (bays with a lancet in
+each, the door in the nave's south side, the nave's ends either side of the tower and of the chancel arch), and a
+roof that draws the walls on up to the eaves by the same plan (`_church_roof`: the rest of each two-light lancet
+and its pointed heads, a string course, stepped buttresses) under a 50 degree slate roof. A window's sill is
+chest high, so men inside fire from it; the roofs lift off when they go in, and a wall knocked down leaves rubble
+as a house's does. Render it with `--building-kinds=church` (and `church_open`, its roofs off) in the studio
+stage.
 
 Round it `TownGen._churchyard` lays out the churchyard from the same stream: a low stone wall all round
 (Structure "low_wall", cover as a garden wall is) with a gap in front for the path up to the west door, rows of
