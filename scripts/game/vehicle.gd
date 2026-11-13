@@ -2721,8 +2721,9 @@ func _lay_guns(dt: float) -> void:
 			var local := frame.inverse() * (aim - mount.global_position)
 			# a gun in a side door swings out of its own side, never back
 			# across the cabin (positive yaw turns it to the left)
-			var side := signf(rest.origin.x) if absf(rest.origin.x) > 0.3 else 0.0
-			want.x = clampf(atan2(-local.x, -local.z), -arc if side >= 0.0 else -0.15, arc if side <= 0.0 else 0.15)
+			if _vm.mg_free:
+				var side := signf(rest.origin.x) if absf(rest.origin.x) > 0.3 else 0.0
+				want.x = clampf(atan2(-local.x, -local.z), -arc if side >= 0.0 else -0.15, arc if side <= 0.0 else 0.15)
 			want.y = clampf(atan2(local.y, Vector2(local.x, local.z).length()), low, high)
 		var lay := _mg_lay[i]
 		var rate := _mg_rate[i]
