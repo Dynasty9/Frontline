@@ -22,6 +22,11 @@ extends Node
 ## graphics card over "none". Each is switched on and off every AB_HOLD frames,
 ## AB_ROUNDS times, so whatever else loads the machine falls on both halves
 ## alike; the first frames after each switch are left out.
+##
+## FL_DEBUG_GI_PAN="vx,vz,frames": instead, from the first pose and in the
+## first mode, the camera pans at (vx, vz) m/s while the battle runs on, and
+## every frame is saved (DIR/pan_000.png...): run it with --fixed-fps 30 for
+## frames 1/30 s apart, to see the light hold (or smear) while the view moves.
 
 const MODES := {
 	"none": {"ssil": false, "gi": false, "ssgi": 0},
@@ -62,6 +67,7 @@ var _ab_on := false
 var _ab_round := 0
 var _ab_sum := [0.0, 0.0]
 var _ab_n := [0, 0]
+var _pan: PackedStringArray = OS.get_environment("FL_DEBUG_GI_PAN").split(",", false)
 
 
 func _ready() -> void:
@@ -73,8 +79,13 @@ func _process(_dt: float) -> void:
 	if _i < 0:
 		if world == null or float(world.get("time")) < _at:
 			return
-		Engine.time_scale = 0.0
 		DirAccess.make_dir_recursive_absolute(_dir)
+		if _pan.size() == 3:
+			_i = 0
+			_set_pose(_poses[0])
+			_apply(_modes[0])
+			return
+		Engine.time_scale = 0.0
 		if not _ab.is_empty():
 			_i = 0
 			_set_pose(_poses[0])
@@ -84,6 +95,9 @@ func _process(_dt: float) -> void:
 		return
 	if not _ab.is_empty():
 		_ab_tick()
+		return
+	if _pan.size() == 3:
+		_pan_tick()
 		return
 	var vp := get_viewport().get_viewport_rid()
 	_frames += 1
@@ -229,3 +243,14 @@ func _ab_tick() -> void:
 			get_tree().quit()
 			return
 	_ab_switch()
+
+
+func _pan_tick() -> void:
+	var cam: Node = world.get("cam")
+	var fp: Vector3 = cam.get("focus_pos")
+	cam.call("focus", fp + Vector3(float(_pan[0]), 0.0, float(_pan[1])) / 30.0)
+	# (the first frames settle the history from scratch: they're kept too)
+	get_viewport().get_texture().get_image().save_png(_dir.path_join("pan_%03d.png" % _frames))
+	_frames += 1
+	if _frames >= int(_pan[2]):
+		get_tree().quit()

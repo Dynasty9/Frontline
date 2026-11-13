@@ -17,7 +17,8 @@ extends CompositorEffect
 ## - prep: at half resolution, each pixel's place in the world, its facing,
 ##   and the light it sends out. All of it bounces, the sky's share too: the
 ##   engine's sky light comes from the open sky, so the sky light a wall
-##   throws onto the street is a bounce it never counted.
+##   throws onto the street is a bounce it never counted. Last frame's
+##   bounce light is added too, so light goes one bounce further each frame.
 ## - gather: a few rays per pixel leave the surface in cosine-weighted
 ##   directions and are marched a few metres through the depth buffer. A ray
 ##   that runs into a surface facing it brings back that surface's light; one
@@ -272,7 +273,7 @@ func _build_sets(color: RID, depth: RID, normal: RID, t: Dictionary) -> void:
 		var hist: RID = t["hist_" + cur]
 		var hist_prev: RID = t["hist_" + prev]
 		_sets["prep_" + cur] = _uniforms("prep", [_smp(1, color, true), _smp(2, depth, true), _smp(3, normal, true),
-			_img(4, gb), _img(5, t["rad"])])
+			_img(4, gb), _img(5, t["rad"]), _smp(6, t["filt"], false)])
 		_sets["gather_" + cur] = _uniforms("gather", [_smp(1, gb, true), _smp(2, t["rad"], true), _img(3, t["raw"])])
 		_sets["temporal_" + cur] = _uniforms("temporal", [_smp(1, gb, true), _smp(2, t["raw"], true), _smp(3, gb_prev, true),
 			_smp(4, hist_prev, false), _img(5, hist)])
@@ -349,6 +350,24 @@ vec3 albedo_of(vec3 c) {
 	return m > P.amb.a ? a * (P.amb.a / m) : a;
 }
 
+// the same, for a surface the bounce light lands on. Where ambient occlusion
+// or a cast shadow has darkened a pixel, its colour against the sky light
+// comes out far too dark, and the bounce light would be darkened a second
+// time: there the colour is held to what a dull real surface reflects
+// (a quarter of the light; asphalt and bark are darker, but little that
+// stands in a street is), keeping the pixel's own hue
+vec3 receiver_albedo(vec3 c) {
+	vec3 a = albedo_of(c);
+	float l = dot(a, vec3(0.2126, 0.7152, 0.0722));
+	if (l >= 0.25) {
+		return a;
+	}
+	vec3 hue = l > 1e-3 ? a / l : vec3(1.0);
+	// (a near-black pixel has no hue to keep: it takes grey)
+	hue = mix(vec3(1.0), hue, smoothstep(0.0, 0.05, l));
+	return min(hue * 0.25, vec3(P.amb.a));
+}
+
 // a little noise that differs from pixel to pixel and frame to frame, but is
 // even across the screen (Jimenez, interleaved gradient noise, 2014)
 float ign(vec2 p, float frame) {
@@ -367,6 +386,7 @@ layout(set = 0, binding = 2) uniform sampler2D depth_tex;
 layout(set = 0, binding = 3) uniform sampler2D normal_tex;
 layout(rgba16f, set = 0, binding = 4) uniform restrict writeonly image2D gbuf_img;
 layout(rgba16f, set = 0, binding = 5) uniform restrict writeonly image2D rad_img;
+layout(set = 0, binding = 6) uniform sampler2D prev_filt_tex;
 
 void main() {
 	ivec2 h = ivec2(gl_GlobalInvocationID.xy);
@@ -400,9 +420,26 @@ void main() {
 		wn = vec3(0.0, 1.0, 0.0);
 	}
 	imageStore(gbuf_img, h, vec4(wn, -v.z));
+	vec3 c = sum * 0.25;
+	// light bounces more than once: a wall lit by the sunlit street lights
+	// the floor beside it in turn. Last frame's bounce light, found again
+	// through last frame's camera, is added to what each surface sends out,
+	// so every frame carries the light one bounce further (it converges in a
+	// few frames, each bounce weaker by the surface's colour)
+	if (C.info.x > 0.5) {
+		vec4 world = C.cam * vec4(v, 1.0);
+		vec4 was = C.prev_vp * world;
+		vec2 puv = was.xy / max(was.w, 1e-6) * 0.5 + 0.5;
+		if (was.w > 0.0 && puv.x >= 0.0 && puv.y >= 0.0 && puv.x <= 1.0 && puv.y <= 1.0) {
+			vec3 again = clean(textureLod(prev_filt_tex, puv, 0.0).rgb);
+			// (at most physical strength, and a little under: a closed room
+			// would otherwise feed its own light back without end)
+			c += receiver_albedo(c) * again * min(P.gi.y, 1.0) * 0.8;
+		}
+	}
 	// (fires and muzzle flashes are far brighter than any wall: kept in
 	// bounds so a single hot pixel can't light the street)
-	vec3 r = min(sum * 0.25, vec3(8.0));
+	vec3 r = min(c, vec3(8.0));
 	imageStore(rad_img, h, vec4(r, 1.0));
 }
 """,
@@ -645,13 +682,14 @@ void main() {
 	}
 	vec3 e = wsum > 1e-5 ? sum / wsum : vec3(0.0);
 	vec3 c = clean(col.rgb);
-	vec3 outc = c + albedo_of(c) * e * P.gi.y;
+	vec3 alb = receiver_albedo(c);
+	vec3 outc = c + alb * e * P.gi.y;
 	if (view_mode == 1) {
 		outc = e;  // the bounce light alone
 	} else if (view_mode == 2) {
-		outc = albedo_of(c);  // the colour estimated for each surface
+		outc = alb;  // the colour estimated for each surface
 	} else if (view_mode == 3) {
-		outc = albedo_of(c) * e * P.gi.y * 4.0;  // what is added, four times over
+		outc = alb * e * P.gi.y * 4.0;  // what is added, four times over
 	} else if (view_mode == 4) {
 		outc = textureLod(rad_tex, uv, 0.0).rgb;  // the light each surface sends out
 	} else if (view_mode == 5) {

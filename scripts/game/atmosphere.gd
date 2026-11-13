@@ -1356,10 +1356,11 @@ func _apply_ssgi() -> void:
 ## How far a ray looks for a surface to light it (m), and how strongly what it
 ## finds lights it. 1 would be physical (a surface sends out its colour's
 ## share), but the rays only see what is on screen and stop at a few metres,
-## so they miss much of the light a real street would gather: half again
-## makes up for it.
-const SSGI_REACH := 6.0
-const SSGI_STRENGTH := 1.5
+## so they miss much of the light a real street would gather: twice makes up
+## for it (measured: shade beside a sunlit wall comes up by about a fifth of
+## the sunlit side, as in a path-traced street).
+const SSGI_REACH := 8.0
+const SSGI_STRENGTH := 2.0
 ## The brightest a surface's estimated colour may be (a white wall's ~0.8).
 const SSGI_ALBEDO_CAP := 0.8
 
