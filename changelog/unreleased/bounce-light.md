@@ -4,21 +4,38 @@ summary = "Sunlight thrown back off walls, roofs and roads now lights what faces
 kind = "new"
 
 [[screenshots]]
-file = "street.jpg"
-caption = "The edge of town at golden hour: off, on, and where the light lands (the difference, four times over)"
+file = "doorway.jpg"
+caption = "Midday, a house front in shade: the red door glows, lit from below by the sunlit step and path (off above, on below)"
+
+[[screenshots]]
+file = "doorway-light.jpg"
+caption = "The same doorway, bounce light only (on minus off, four times brighter): it lands on the door and the foot of the wall"
 
 [[screenshots]]
 file = "ruin.jpg"
-caption = "Inside a roofless ruin: its sunlit walls light the shaded floor, and the shadow by the crate is no longer black"
+caption = "Midday, inside a roofless ruin: the shaded corner by the green wall warms with light off the sunlit floor"
 
 [[screenshots]]
-file = "alley.jpg"
-caption = "Between two houses in shade: only a little light finds its way in, as it should"
+file = "ruin-light.jpg"
+caption = "The ruin, bounce light only (four times brighter): the floor's warm light climbs the wall and fills the corner"
+
+[[screenshots]]
+file = "street.jpg"
+caption = "Midday, a ruined house by the road: the shaded tiles along the wall are lit by the sunlit floor in front"
+
+[[screenshots]]
+file = "street-light.jpg"
+caption = "The same house, bounce light only (four times brighter)"
+
+[[videos]]
+file = "flicker.webm"
+poster = "flicker.jpg"
+caption = "Off and on in turn, a second each, on the same frozen frames: watch the door, the corner and the tiles brighten. Bounce light is strongest under a high sun, which floods the ground with light to throw back."
 
 [[videos]]
 file = "pan.webm"
 poster = "pan.jpg"
-caption = "The bounce light alone (brightened) while the camera pans fast over the town square: it stays on what it lights, with no smears or trails."
+caption = "The bounce light alone (brightened) while the camera pans fast: it stays on what it lights, with no smears or trails."
 +++
 
 - **What you'll see:** shaded walls facing a sunlit street glow with its colour, plinths, benches and kerbs

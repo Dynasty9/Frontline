@@ -2,21 +2,41 @@
   "entry": "changelog/unreleased/bounce-light.md",
   "summary": "Bounce light: screen-space GI that lets sunlit walls, paving and roofs light what faces them in their colours.",
   "medium": "still",
-  "stage": "game capture at 1600x900, --offscreen --perf=0 --nohud: --host --team=0 --seed=3 --preset=high --mood=golden with FL_DEBUG_GI_CYCLE (frozen frame, each GI mode in turn) and FL_DEBUG_GI_POSES='street:town:32:-28:0.6;ruin:ruin:16:-58:0.4;alley:alley:16:-42:0', composed as off | High | (High - off) x4 panels; pan clip: --fixed-fps 30 with FL_DEBUG_GI_PAN=0,-20,75 FL_DEBUG_GI_MODES=view_added FL_DEBUG_GI_POSES=p:town:30:-35:1.57 (the added light alone, gamma-brightened)",
-  "rationale": "The change is a lighting difference on the same frame, so matched panels of one frozen frame with bounce light off and on, plus their amplified difference, show both how it looks and where the light lands, in the three places it matters (street, a ruin's interior, between houses). Its stability while the camera pans is the motion question, answered by a short clip of the added light alone during a fast pan. Cost is measured in the pull request.",
-  "source_ref": "4bf6e162",
+  "stage": "game capture at 1600x900, --offscreen --perf=0 --nohud: --host --team=0 --seed=3 --preset=high --mood=day with FL_DEBUG_GI_CYCLE (frozen frame, off then High) and FL_DEBUG_GI_POSES='street:town:28:-30:0.6;ruin:ruin:14:-58:0.4;alley:alley:14:-45:0'; each shot cropped tight (640x360 at 2x) on the window with the most added light, off stacked over on with labels, an arrow and a 'look at' caption, plus the same crop as on-minus-off x4; flicker clip: the same crops alternating off/on each second; pan clip: --fixed-fps 30 with FL_DEBUG_GI_PAN=0,-20,75 FL_DEBUG_GI_MODES=view_added (the added light alone, gamma-brightened)",
+  "rationale": "Bounce light is a subtle change in shade, so the presentation leads with it at its strongest (midday: a high sun floods the ground, which throws light up into shaded walls and corners), cropped tight on exactly where it lands, off stacked over on so the same pixels sit one above the other, an arrow and a one-line caption naming what to look at, and a bounce-only panel showing where the light lands and its colour. A flicker clip toggles off/on in place, which makes small lighting changes easy to spot; a pan clip of the added light answers whether it smears in motion.",
+  "source_ref": "b183d064 (tuning unchanged; presentation only)",
   "sources": [
     {
-      "file": "changelog/unreleased/bounce-light/street.jpg",
-      "sha256": "e9f09a3ddc756220114410c262fea0e02770f87c48e54aa050324b535d0f4c2c"
+      "file": "changelog/unreleased/bounce-light/doorway.jpg",
+      "sha256": "1b3f46789ace0c52ffa5ded796e55e43af26e4c13178414414041228bc2f4bd9"
+    },
+    {
+      "file": "changelog/unreleased/bounce-light/doorway-light.jpg",
+      "sha256": "8c346a2f7c7d20cfe836addc046035ad12028f7f69e0e0f1ff15b7635b422236"
     },
     {
       "file": "changelog/unreleased/bounce-light/ruin.jpg",
-      "sha256": "38ef2373b3083995c17484a2a0ba78a57fcfeeeacf24d1a699f528034932f779"
+      "sha256": "40e669115c3889d135573b2fb613263e64e670d7952a7d32000f7d6eeb1667f3"
     },
     {
-      "file": "changelog/unreleased/bounce-light/alley.jpg",
-      "sha256": "361b38c07073c0bf8ff2c99c65521397d6344f5dc176c0253b390c2c3f3b130f"
+      "file": "changelog/unreleased/bounce-light/ruin-light.jpg",
+      "sha256": "e93772e01e6c1b053c2e8722485bf9c387ad494c8c04bae1305c2954dbb929ef"
+    },
+    {
+      "file": "changelog/unreleased/bounce-light/street.jpg",
+      "sha256": "787899b5031c483b1d7040e9e48d20729983f18880d53cfd69cc1bc7b263cf29"
+    },
+    {
+      "file": "changelog/unreleased/bounce-light/street-light.jpg",
+      "sha256": "727db0161321a3ea63bb1878d86dd44153d1bce4976279546ffde91a030be1d3"
+    },
+    {
+      "file": "changelog/unreleased/bounce-light/flicker.webm",
+      "sha256": "ac2a4ade1d3d440cbbca3c6a787dcca4d6be3f1760977d07dcfd0ea1eea0d472"
+    },
+    {
+      "file": "changelog/unreleased/bounce-light/flicker.jpg",
+      "sha256": "fa678d227b0a49f2a4f5c2579da82a8458034302a8d2cb4f1228d77d34dd6528"
     },
     {
       "file": "changelog/unreleased/bounce-light/pan.webm",
