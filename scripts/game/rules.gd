@@ -691,6 +691,7 @@ func _town_truck(tn: Structure, dt: float) -> void:
 func truck_arrived(v: Vehicle) -> void:
 	var f := v.dest_fob
 	var load: int = v.cargo if v.cargo > 0 else Defs.SUPPLY_PER_TRUCK[v.team]
+	load = int(round(load * ai_supply(v.team)))
 	v.cargo = 0
 	if f and not f.gone and f.team == v.team:
 		f.supply += load
@@ -824,6 +825,23 @@ func _fire_the_dump(st: Structure) -> int:
 		st.net_dirty = true
 		world.stat("dump_burnt")
 	return burnt
+
+
+## How much of a lorry's load reaches a side its AI commander runs alone: a
+## little less for a recruit, a little more for a veteran (Defs.AI_LEVELS;
+## the menu says so). A side with a player on it gets its loads as they are,
+## whoever fights beside him.
+func ai_supply(team: int) -> float:
+	var ai := false
+	for c in world.commanders:
+		if c.team == team:
+			ai = true
+	if not ai:
+		return 1.0
+	for id in Net.players:
+		if int(Net.players[id].get("team", -1)) == team:
+			return 1.0
+	return float(Defs.AI_LEVELS[Defs.ai_level_of(world.settings, team)].supply)
 
 
 ## A load from HQ: bigger for a side that holds fewer towns and villages

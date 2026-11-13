@@ -24,6 +24,24 @@ func _town_count(w: World) -> int:
 	return _towns_n
 
 
+## How good the AI commanders in this battle are, as a code for the status
+## line ("" with none, or in a mission or scenario): the enemy's, or the one
+## beside us when only it is an AI.
+static func ai_code(w: World, lt: int) -> String:
+	var s: Dictionary = w.settings
+	if String(s.get("mission", "")) != "" or String(s.get("scenario", "")) != "":
+		return ""
+	var ai: Array = s.get("ai_teams", [])
+	var side := -1
+	if (1 - lt) in ai or float(1 - lt) in ai:
+		side = 1 - lt
+	elif lt in ai or float(lt) in ai:
+		side = lt
+	if side < 0:
+		return ""
+	return String(Defs.AI_LEVELS[Defs.ai_level_of(s, side)].name).to_upper()
+
+
 ## A little flag on its pole, for a town.
 func _flag_mark(p: Vector2, c: Color) -> void:
 	draw_line(p, p + Vector2(0, 11), UiKit.DIM, 1.0)
@@ -96,6 +114,9 @@ func _draw_content() -> void:
 		if ty.size() >= 4:
 			items.append(["Kills", str(int(ty[0])), ("· %d VEH" % int(ty[2])) if int(ty[2]) > 0 else "", UiKit.FAINT])
 			items.append(["Lost", str(int(ty[1])), ("· %d VEH" % int(ty[3])) if int(ty[3]) > 0 else "", UiKit.FAINT])
+		var ai := ai_code(w, lt)
+		if ai != "":
+			items.append(["AI", ai, ""])
 		for it in items:
 			x += _sep(x) + 14.0
 			x += _caps(x, y0, it[0], 11, UiKit.FAINT) + 6.0

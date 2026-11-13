@@ -1,0 +1,15 @@
+{
+  "entry": "changelog/unreleased/ai-difficulty.md",
+  "summary": "Play vs AI and the lobby set the AI commander's level: Recruit, Regular, Veteran or Adaptive.",
+  "medium": "still",
+  "stage": "menu capture: --offscreen --menu-panel=op --menu-shot --shot-at=30 (1600x900)",
+  "rationale": "The player-facing change is a new choice in the New Operation panel; one still shows the picker and the line saying what the level means, supply handicap included. The behaviour itself is measured in the pull request's AI-vs-AI table.",
+  "source_ref": "f904b8f9",
+  "sources": [
+    {
+      "file": "changelog/unreleased/ai-difficulty/opponent.jpg",
+      "sha256": "0d1e96012ed3d387c8b44b54aafdd463bb71c75b7034dbe1baeb118737d76dd5"
+    }
+  ],
+  "output": null
+}

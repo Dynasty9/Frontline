@@ -1,0 +1,10 @@
+{
+  "entry": "changelog/unreleased/heat-haze-error-spam.md",
+  "summary": "With heat haze on, a fire out of view no longer logs an error every frame.",
+  "medium": "text",
+  "stage": "text",
+  "rationale": "An invisible reliability fix: nothing on screen changes, so the entry says what players are spared.",
+  "source_ref": "claude/heat-haze-out-of-tree",
+  "sources": [],
+  "output": null
+}

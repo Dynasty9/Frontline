@@ -1,0 +1,19 @@
+{
+  "entry": "changelog/unreleased/trench-infantry.md",
+  "summary": "Directional trench crossings and skinned Rebel infantry.",
+  "medium": "motion",
+  "stage": "Native embedded Godot, trenches seed 3, trailer-trench-close at 48.2 seconds and trailer-trench-barrage at 7.2 seconds.",
+  "rationale": "Matched moving footage shows the vertical transition and the updated defenders.",
+  "source_ref": "52b79f6 + directional crossing changes",
+  "sources": [
+    {
+      "file": "changelog/unreleased/trench-infantry/comparison.jpg",
+      "sha256": "71dbc457acbfecf4a0dc7333c1c1618ea62818556c13178d701c8ee28febc894"
+    },
+    {
+      "file": "changelog/unreleased/trench-infantry/comparison.mp4",
+      "sha256": "74032321abd214c31fbdfdfd2a00c26b54d11193c9bec86313a746e7c19c31cb"
+    }
+  ],
+  "output": null
+}

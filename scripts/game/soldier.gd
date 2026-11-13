@@ -124,6 +124,7 @@ var leash := 9.0
 var vaulting := false
 var _view_vault := false
 var _view_vault_lift := 0.0
+var _trench_step_hold := 0.0
 var slide_t := 0.0
 var slide_cd := 0.0
 var _sep := Vector3.ZERO
@@ -1553,11 +1554,14 @@ func _move_tick_work(dt: float, speed: float) -> bool:
 				position = aside
 			mul *= 0.3
 			break
-	if world.terrain.trench[world.terrain.idx_of(position)] > 0 or world.terrain.trench[world.terrain.idx_of(position + dir * 0.4)] > 0:
-		var next_ground: float = world.ground_y(position + dir * 0.4)
-		if absf(next_ground - _ground()) > 0.4:
+	var near_trench := world.terrain.trench[world.terrain.idx_of(position)] > 0 or world.terrain.trench[world.terrain.idx_of(position + dir * 0.4)] > 0
+	var ground_ahead := 0.0
+	if near_trench:
+		# The trench lining also registers as a low wall once both feet are inside.
+		vaulting = false
+		ground_ahead = world.ground_y(position + dir * 0.4)
+		if absf(ground_ahead - world.ground_y(position)) > 0.4:
 			mul *= 0.4
-			vaulting = life == Life.ALIVE
 	var step := minf(d, speed * mul * dt)
 	if (door_wait > 0.0 or (not world.door_cells.is_empty() and world.time > _door_t)) and _door_tick(dt, dir):
 		return true
@@ -1567,7 +1571,11 @@ func _move_tick_work(dt: float, speed: float) -> bool:
 		go_to(path[path.size() - 1], goal_kind, move_mode)
 		return true
 	position = next
-	var ty := base_y + (0.5 if vaulting else 0.0) + _ground()
+	var floor_y := _ground()
+	if near_trench and not vaulting:
+		# Ease the body between the two footholds over a stride, in either direction.
+		floor_y = (world.ground_y(position - dir * 0.4) + 2.0 * world.ground_y(position) + ground_ahead) * 0.25
+	var ty := base_y + (0.5 if vaulting else 0.0) + floor_y
 	position.y = lerpf(position.y, ty, 1.0 - exp(-dt * 12.0))
 	if not backwards:
 		_face(dir, dt, 10.0)
@@ -4226,23 +4234,38 @@ func _view_process(dt: float, blend := -1.0) -> void:
 			model.crew_l = gr[1]
 	# At the fixed mortar the gunner puts his carried tube down and uses both hands.
 	if at_pit:
-		model.crew_r = station.to_global(Vector3(0.13, 0.89, 0.12))
-		model.crew_l = station.to_global(Vector3(-0.12, 0.72, 0.21))
+		model.global_transform = station.global_transform.translated_local(Vector3(0, 0, 0.30))
+		model.crew_r = station.to_global(WorksModels.MORTAR_PALM_R)
+		model.crew_l = station.to_global(WorksModels.MORTAR_PALM_L)
 	if model.tube:
 		model.tube.visible = not at_pit
 	model.crew = on_gun or at_pit
-	if not on_gun:
+	if not model.crew:
 		if srv:
 			# between simulation steps (see Entity.ip_offset)
 			if _ip_moving or not model.transform.is_equal_approx(frame_offset):
 				model.transform = frame_offset
 		elif _was_on_gun:
 			model.transform = Transform3D.IDENTITY
-	_was_on_gun = on_gun
+	_was_on_gun = model.crew
 	var view_act := Act.IDLE if at_pit and act == Act.LAUNCH else act
 	if model.skinned != null:
+		var step_eligible := life == Life.ALIVE and not model.crew and act in [Act.WALK, Act.RUN, Act.VAULT] and posture != Post.PRONE
+		_trench_step_hold = maxf(0.0, _trench_step_hold - pdt) if step_eligible else 0.0
+		if step_eligible and sp > 0.15:
+			var stride := mv.normalized() * 0.5
+			var ahead := view_position + stride
+			var behind := view_position - stride
+			var terrain := world.terrain
+			if terrain.trench[terrain.idx_of(ahead)] > 0 or terrain.trench[terrain.idx_of(behind)] > 0:
+				var rise := world.ground_y(ahead) - world.ground_y(behind)
+				if absf(rise) > 0.4:
+					model.trench_step = 1 if rise > 0.0 else -1
+					_trench_step_hold = 0.32
+		if _trench_step_hold <= 0.0:
+			model.trench_step = 0
 		# Keep the knees tucked until the body clears the wall, without changing combat timing.
-		_view_vault = life == Life.ALIVE and not on_gun and (act == Act.VAULT or (_view_vault and act in [Act.WALK, Act.RUN] and world.nav.kind_at(position) == Nav.LOW))
+		_view_vault = model.trench_step == 0 and life == Life.ALIVE and not on_gun and (act == Act.VAULT or (_view_vault and act in [Act.WALK, Act.RUN] and world.nav.kind_at(position) == Nav.LOW))
 		var lift := maxf(0.0, _ground() + base_y + 0.5 - position.y) if _view_vault else 0.0
 		_view_vault_lift = move_toward(_view_vault_lift, lift, pdt * 4.0)
 		model.position.y += _view_vault_lift
