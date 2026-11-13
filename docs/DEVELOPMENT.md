@@ -25,6 +25,50 @@ semantic authorship detector.
 
 ## Scaling and the optional native extension
 
+### Prepared battlefields
+
+`scripts/battlefields.gd` lists the selectable maps and their seeds. To regenerate
+them after changing map-generation inputs, run from the repository root:
+
+```powershell
+$env:FL_BAKE_BATTLEFIELD = "all"
+godot --headless --path . tools/bake_battlefield.tscn
+python tools/check_battlefields.py
+```
+
+Use a catalogue key instead of `all` to rebuild one map. Commit the `.flmap`
+packages and their `.json` source manifests together. CI checks the engine
+version, normalized source hashes and package checksums before export;
+development runs fall back to generation when
+a map is missing or stale. The package stores static state before current
+players receive their forces, including terrain, water, scenery and navigation.
+Desktop exports include these packages. Web exports exclude them to avoid adding
+every map to the initial browser download; the same catalogue seeds and layouts
+remain selectable there and use procedural generation.
+
+Run `godot --headless --path . tests/battlefield_map_test.tscn -- --battlefield=all`
+to compare generated and restored state, destruction, 180 simulation ticks and
+client ground against a bake made on the same platform. A catalogue key can replace
+`all`. Add `--shipped` to compare two loads of the committed package, including
+routes, destruction and simulation. Fresh procedural generation is not bit-identical
+across operating systems; the committed packages define the desktop maps. CI first
+checks those shipped maps, then rebakes in its disposable checkout and checks exact
+same-platform generation parity. Do not commit that CI rebake automatically. Use
+`--aivai --battlefield=alder-valley` for a regular battle, or add `--no-baked-map`
+to generate its identical seed as a control. Larger procedural maps still use
+`--aivai --map-size=2048 --seed=3` without a battlefield key.
+
+`tools/benchmark_scaling.py --battlefield alder-valley --rendered --local-server`
+records a prepared battle; add `--no-baked-map` for its control and give each run
+a fresh `--output` directory. `loading_ms["deploy to playable"]` measures the
+local launch through the loading curtain disappearing. Keep settings matched
+and do not add overlapping host/client stages. The harness explicitly sets
+`--renderer`, `--mood` and `--team`; `--pan=X,Z` measures a moving camera as well.
+Process `wall_seconds` includes startup and shutdown, so it is not loading time. See
+[the loading study](performance/loading-study.md) for conditions and limits.
+
+### Simulation extension
+
 Gameplay remains GDScript. A Rust GDExtension accelerates nearest-enemy candidate
 selection using numeric snapshots and contracts degree-two navigation search states.
 Individual visibility and combat stay in Godot. Native graph assembly runs on the

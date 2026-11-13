@@ -20,7 +20,7 @@ var _ms_cards := {}
 var _ms_detail: VBoxContainer
 var _music_on := false
 var _op_side := 0  # 0 Coalition, 1 Rebels, -1 observe
-var _map_size := 1024
+var _battlefield := String(Battlefields.MAPS[0].key)
 var _side_cards := {}  # side -> its row in the choice
 var _mood_seg: UiSeg  # the time of day and weather
 var _ai_seg: UiSeg  # how good the AI commander is (Defs.AI_LEVELS)
@@ -420,13 +420,16 @@ func _build_op_panel() -> void:
 	_ai_note.custom_minimum_size = Vector2(360, 0)
 	v.add_child(_ai_note)
 	v.add_child(_gap(14))
-	if not OS.has_feature("web"):
-		v.add_child(UiKit.label("Battlefield size", 15, UiKit.DIM, 600))
-		var dimensions := OptionButton.new()
-		for metres in [1024, 2048, 3072]:
-			dimensions.add_item("%d x %d m" % [metres, metres], metres)
-		dimensions.item_selected.connect(func(index: int): _map_size = dimensions.get_item_id(index))
-		v.add_child(dimensions)
+	v.add_child(UiKit.header("Battlefield"))
+	var battlefield := BattlefieldPicker.new()
+	battlefield.select_key(_battlefield)
+	var map_note := UiKit.label(String(Battlefields.find(_battlefield).description), 12, UiKit.DIM)
+	map_note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	battlefield.picked.connect(func(key: String):
+		_battlefield = key
+		map_note.text = String(Battlefields.find(key).description))
+	v.add_child(battlefield)
+	v.add_child(map_note)
 	var fill := Control.new()
 	fill.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	v.add_child(fill)
@@ -815,7 +818,9 @@ func _on_lobby_updated() -> void:
 
 func _single_player(side := 0) -> void:
 	if not OS.has_feature("web"):
-		var local_err := LocalServer.launch({"ai_fill": true, "map_size": _map_size, "ai_difficulty": _ai_level()}, side)
+		var options := Battlefields.options(_battlefield)
+		options.merge({"ai_fill": true, "ai_difficulty": _ai_level()})
+		var local_err := LocalServer.launch(options, side)
 		status.text = "Starting simulation..." if local_err == OK else "Could not start a local game (error %d)." % local_err
 		return
 	var port := Net.DEFAULT_PORT
@@ -829,12 +834,15 @@ func _single_player(side := 0) -> void:
 		return
 	Net.set_setting("ai_fill", true)
 	Net.set_setting("ai_difficulty", _ai_level())
+	Net.configure(Battlefields.options(_battlefield))
 	Net.start_game()
 
 
 func _observe() -> void:
 	if not OS.has_feature("web"):
-		var local_err := LocalServer.launch({"ai_fill": true, "map_size": _map_size, "ai_difficulty": _ai_level()}, -1)
+		var options := Battlefields.options(_battlefield)
+		options.merge({"ai_fill": true, "ai_difficulty": _ai_level()})
+		var local_err := LocalServer.launch(options, -1)
 		status.text = "Starting simulation..." if local_err == OK else "Could not start (error %d)." % local_err
 		return
 	var port := Net.DEFAULT_PORT
@@ -848,6 +856,7 @@ func _observe() -> void:
 		return
 	Net.set_setting("ai_fill", true)
 	Net.set_setting("ai_difficulty", _ai_level())
+	Net.configure(Battlefields.options(_battlefield))
 	Net.start_game()
 
 
@@ -980,6 +989,8 @@ func _host_with(opts: Dictionary) -> void:
 	}
 	if mk != "":
 		cfg["mission"] = mk
+	else:
+		cfg.merge(Battlefields.options(String(opts.get("battlefield", Battlefields.MAPS[0].key))))
 	Net.configure(cfg)
 	Net.password = String(opts.get("password", ""))
 	if String(opts.get("access", "public")) != "unlisted":

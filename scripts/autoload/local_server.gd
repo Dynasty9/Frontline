@@ -11,6 +11,7 @@ var build_progress := {}
 var child := false
 var parent_pid := -1
 var _started_ms := 0
+var launched_ms := 0
 var _next_poll := 0
 var _team := 0
 var _config := {}
@@ -76,6 +77,7 @@ func launch(options: Dictionary, team: int) -> int:
 	starting = true
 	connected = false
 	_started_ms = Time.get_ticks_msec()
+	launched_ms = _started_ms
 	return OK
 
 
@@ -248,6 +250,7 @@ func stop() -> void:
 		# unresponsive simulation during quit; no save is in progress here.
 		OS.kill(pid)
 	pid = -1
+	launched_ms = 0
 	starting = false
 	connected = false
 	build_progress.clear()

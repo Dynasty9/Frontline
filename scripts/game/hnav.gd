@@ -227,10 +227,18 @@ func build() -> void:
 ## and never divides whole numbers: a cluster's corner comes from _corner,
 ## and each graph's clusters go to the workers as tasks of their own rather
 ## than numbered across both graphs and divided back out.
-static func build_all(navs: Array) -> void:
+static func build_all(navs: Array, prepared: Array = []) -> void:
 	# The extension bindings belong to the main thread; local-grid costing stays parallel.
 	for h: HNav in navs:
 		h._prepare()
+	if _prepared_matches(navs, prepared):
+		for i in navs.size():
+			var h: HNav = navs[i]
+			h.costs = prepared[i].costs
+			h.basis = h.cl_nodes.duplicate(true)
+			h._keys = []
+			h._link_all()
+		return
 	var tasks := PackedInt64Array()
 	for h: HNav in navs:
 		tasks.append(WorkerThreadPool.add_group_task(h._cluster_key, NCC, -1, true, "Nav: cluster keys"))
@@ -271,6 +279,21 @@ static func build_all(navs: Array) -> void:
 		h._keys = []
 	for h: HNav in navs:
 		h._link_all()
+
+
+static func _prepared_matches(navs: Array, prepared: Array) -> bool:
+	if prepared.size() != navs.size():
+		return false
+	for i in navs.size():
+		var h: HNav = navs[i]
+		var data: Variant = prepared[i]
+		if not data is Dictionary or data.get("nodes") != h.node_cell or not data.get("costs") is Array or data.costs.size() != NCC:
+			return false
+		for ci in NCC:
+			var n: int = h.cl_nodes[ci].size()
+			if not data.costs[ci] is PackedFloat64Array or data.costs[ci].size() != n * n:
+				return false
+	return true
 
 
 ## The entrances along every border.
@@ -427,8 +450,8 @@ func _relink(k: int, before: Array) -> void:
 	var bp := PackedInt32Array()  # and in the basis
 	bp.resize(n)
 	var bas: Array = basis[k]
-	var cm: PackedFloat64Array = costs[k]
-	costs[k] = PackedFloat64Array()  # (so that writing to cm doesn't copy it)
+	# Identical clusters share their initial costs; later edits belong only to this cluster.
+	var cm: PackedFloat64Array = costs[k].duplicate()
 	var fresh := regrid
 	if not regrid:
 		for i in n:

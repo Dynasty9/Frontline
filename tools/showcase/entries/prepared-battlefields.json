@@ -1,0 +1,25 @@
+{
+  "entry": "changelog/unreleased/prepared-battlefields.md",
+  "summary": "Choose three repeatable battlefields and reuse prepared terrain and routes.",
+  "medium": "still",
+  "stage": "Game overview and small-window menu captures",
+  "rationale": "Uncropped real renders show the three distinct layouts; the selector shows the player control. Measured performance and its limits are recorded in docs/performance/loading-study.md.",
+  "source_ref": "1b52c9d8",
+  "capture": {
+    "overview": "godot --path . --position -12000,-12000 --resolution 1280x720 --rendering-method forward_plus --fixed-fps 30 -- --aivai --battlefield=KEY --offscreen --nohud --mood=day --preset=high --set=perf:0,fps_cap:0 --focus=0,0 --zoom=800 --pitch=-75 --no-stun --screenshot=OUTPUT --shot-at=2 --quit-after=4",
+    "selector": "godot --path . --position -12000,-12000 --resolution 960x600 --rendering-method gl_compatibility -- --offscreen --no-stun --menu-op=0 --set=reduce_motion:true,perf:0 --menu-shot=OUTPUT --shot-at=2",
+    "provenance": "Captured during implementation of 1b52c9d8. Alder and Stonebridge overviews precede the final navigation-array copy fixes; generated/restored geometry parity was revalidated on the final build. Day lighting, high preset; no synthetic gameplay imagery.",
+    "composition": "Three complete 1280x720 source frames resized to 800x450, with plain labels; 1600x970 JPEG. Selector is complete 960x600 JPEG."
+  },
+  "sources": [
+    {
+      "file": "changelog/unreleased/prepared-battlefields/battlefields.jpg",
+      "sha256": "74020ee15598655062cafb6f1076e5d4423c9524ada7230eb7fe1f276146aef6"
+    },
+    {
+      "file": "changelog/unreleased/prepared-battlefields/selection.jpg",
+      "sha256": "15ec97c81d16685f075f44688a9689b909b9d8aeba9b9792b9938a48a4d77197"
+    }
+  ],
+  "output": null
+}

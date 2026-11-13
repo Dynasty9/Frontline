@@ -73,7 +73,7 @@ func _frame_change_report(values: Array[float]) -> Dictionary:
 
 
 func _ready() -> void:
-	if "--startup-trace" in OS.get_cmdline_user_args():
+	if "--startup-trace" in OS.get_cmdline_user_args() or OS.has_environment("FL_DEBUG_LOAD"):
 		print("STARTUP main._ready at %d ms" % Time.get_ticks_msec())
 	for a in OS.get_cmdline_user_args():
 		var s := String(a)
@@ -196,6 +196,8 @@ func _ready() -> void:
 	console.main = self
 	console.probe = probe
 	add_child(console)
+	if OS.has_environment("FL_DEBUG_LOAD"):
+		print("STARTUP console ready at %d ms" % Time.get_ticks_msec())
 	# a test driving the game through its port never sees the menu, so it
 	# isn't built: the menu and the screens it opens are a second or more of
 	# compiling and building at every start, and a test run starts many games
@@ -206,6 +208,8 @@ func _ready() -> void:
 		layer.layer = 10
 		add_child(layer)
 		layer.add_child(menu)
+		if OS.has_environment("FL_DEBUG_LOAD"):
+			print("STARTUP menu ready at %d ms" % Time.get_ticks_msec())
 		# the rest of the game compiles while the title plays
 		GameScripts.compile_in_background()
 	# --menu-cursor=X,Y: hold the cursor there, the map leaning after it (fractions of the screen; screenshots)
@@ -252,6 +256,8 @@ func _ready() -> void:
 	if args.has("stats"):
 		_stats_every = float(args.stats)
 	var port := int(args.get("port", Net.DEFAULT_PORT))
+	if OS.has_environment("FL_DEBUG_LOAD"):
+		print("STARTUP command dispatch at %d ms" % Time.get_ticks_msec())
 	if args.has("login"):
 		await _test_login()
 	# --test-port=N: a test drives the game over a local socket (0: any free port)
@@ -279,6 +285,15 @@ func _ready() -> void:
 	elif args.has("local-server"):
 		var options := {"ai_fill": not args.has("scenario"), "fixed_seed": int(args.get("seed", 3)), "stress_units": int(args.get("units", 500)), "stress_mode": String(args.get("stress-mode", "combat")), "stress_scenery": int(args.get("scenery", 200))}
 		options["map_size"] = int(args.get("map-size", 1024))
+		options["mood"] = String(Settings.get_v("mood"))
+		if args.has("battlefield"):
+			var chosen := Battlefields.options(String(args.battlefield))
+			if chosen.is_empty():
+				push_error("Unknown battlefield: " + String(args.battlefield))
+				get_tree().quit(1)
+				return
+			options.merge(chosen, true)
+		options["no_baked_map"] = args.has("no-baked-map")
 		options["benchmark_output"] = String(args.get("perf-json", ""))
 		options["stress_generated"] = args.has("stress-generated")
 		options["stress_vehicles"] = int(args.get("vehicles", 0))
@@ -307,6 +322,14 @@ func _ready() -> void:
 			Net.host_game(port, int(args.get("team", 0)))
 		var cfg := {"ai_allies": args.has("ai-allies"), "verbose": args.has("verbose"), "debug_trucks": args.has("debug-trucks"),
 			"drop_in": not args.has("no-drop-in")}
+		if args.has("battlefield") and not args.has("mission"):
+			var chosen := Battlefields.options(String(args.battlefield))
+			if chosen.is_empty():
+				push_error("Unknown battlefield: " + String(args.battlefield))
+				get_tree().quit(1)
+				return
+			cfg.merge(chosen, true)
+			cfg["no_baked_map"] = args.has("no-baked-map")
 		if args.has("mission"):
 			cfg["mission"] = String(args.mission)
 			cfg["mission_autoplay"] = args.has("autoplay")
@@ -362,6 +385,14 @@ func start_local(a: Dictionary) -> void:
 		"stress_vehicles": int(a.get("vehicles", 0)), "stress_generated": a.has("stress-generated"),
 		"stress_mode": String(a.get("stress-mode", "combat")), "stress_scenery": int(a.get("scenery", 200)),
 		"gdscript_perception": a.has("gdscript-perception")})
+	if a.has("battlefield") and not a.has("mission") and not a.has("scenario"):
+		var chosen := Battlefields.options(String(a.battlefield))
+		if chosen.is_empty():
+			push_error("Unknown battlefield: " + String(a.battlefield))
+			get_tree().quit(1)
+			return
+		Net.configure(chosen)
+	Net.set_setting("no_baked_map", a.has("no-baked-map"))
 	Net.set_setting("verbose", a.has("verbose"))
 	Net.set_setting("debug_trucks", a.has("debug-trucks"))
 	# --ai-allies: with --play, an AI commander fights beside you on your side
@@ -487,6 +518,9 @@ func _mission_text(s: Dictionary) -> Array:
 		what = ("Command the %s against the AI" % Defs.TEAM_NAMES[team]) if humans <= 1 else ("%d commanders, %s" % [humans, "co-op" if s.get("ai_fill", true) else "head to head"])
 	side = Defs.TEAM_NAMES[team] if team >= 0 else "Observer"
 	var rows := [["SIDE", side], ["AREA", "Mountain valleys, rivers and towns, %d x %d m" % [int(s.get("map_size", 1024)), int(s.get("map_size", 1024))]]]
+	var selected_map := Battlefields.find(String(s.get("battlefield", "")))
+	if not selected_map.is_empty() and String(s.get("scenario", "")) == "":
+		rows[1][1] = "%s, %d x %d m" % [selected_map.title, selected_map.size, selected_map.size]
 	if String(s.get("scenario", "")) == "" and not (s.get("ai_teams", []) as Array).is_empty():
 		var lv := []
 		for t in s.get("ai_teams", []):
@@ -499,6 +533,7 @@ func _mission_text(s: Dictionary) -> Array:
 
 
 func _on_game_start(s: Dictionary) -> void:
+	var requested_ms := LocalServer.launched_ms if LocalServer.pid > 0 else Time.get_ticks_msec()
 	var cur: Curtain = null
 	if _curtains:
 		cur = _curtain("loading")
@@ -526,6 +561,7 @@ func _on_game_start(s: Dictionary) -> void:
 	world = GameScripts.load_script(GameScripts.WORLD).new()
 	world.name = "World"
 	world.settings = s
+	world.hold_for_reveal = cur != null and LocalServer.pid > 0
 	add_child(world)
 	if cur:
 		world.build_stage.connect(func(text: String, frac: float):
@@ -553,6 +589,8 @@ func _on_game_start(s: Dictionary) -> void:
 	# counts towards their rank, from when it's under way (_process)
 	_battle_pending = world.local_team >= 0 and not s.has("scenario") and Online.record_battles
 	if cur and is_instance_valid(cur):
+		# A cancelled join can dispose its world before this curtain finishes fading.
+		cur.gone.connect(_finish_loading.bind(weakref(world), requested_ms))
 		_warm_up(cur)
 	if args.has("focus") and world.cam:
 		var f := String(args.focus).split(",")
@@ -955,7 +993,7 @@ func _process(_dt: float) -> void:
 				menu._ms_key = String(args["menu-missions"])
 			menu._open_missions()
 		# (the first frame can take seconds to arrive: count frames drawn, not time)
-		if args.has("menu-shot") and Engine.get_frames_drawn() > 30 and Time.get_ticks_msec() > float(args.get("shot-at", 2.5)) * 1000.0 and not _shot_done:
+		if args.has("menu-shot") and Engine.get_frames_drawn() > 30 and Time.get_ticks_msec() > float(args.get("shot-at", 2.5)) * 1000.0 and not _shot_done and ResourceLoader.load_threaded_get_status(GameScripts.WORLD) != ResourceLoader.THREAD_LOAD_IN_PROGRESS:
 			_shot_done = true
 			get_viewport().get_texture().get_image().save_png(String(args["menu-shot"]))
 			TestRun.quit(get_tree())
@@ -1544,3 +1582,14 @@ func open_replay(source: String) -> Node:
 		Settings.apply_preset("low", false)
 	add_child(player)
 	return player
+
+
+func _finish_loading(loaded_ref: WeakRef, requested_ms: int) -> void:
+	var loaded_world = loaded_ref.get_ref()
+	if not is_instance_valid(loaded_world) or loaded_world != world:
+		return
+	if LocalServer.pid > 0:
+		loaded_world.loading_ms["private simulation at reveal"] = loaded_world.time * 1000.0
+	loaded_world.reveal_to_player()
+	loaded_world.loading_ms["deploy to playable"] = Time.get_ticks_msec() - requested_ms
+	loaded_world._load_mark("curtain gone")
