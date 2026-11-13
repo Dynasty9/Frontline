@@ -2589,6 +2589,8 @@ func debug_stats() -> String:
 				out += "\n   fob %s t%d truck=%s truck_t=%.1f status=%s road=%d" % [st.sname, st.team, str(st.truck != null), st.truck_t, st.supply_status, st.road.size()]
 		for tn in rules.town_list:
 			out += "\n   town %s t%d stock=%d intact=%.2f cap=%d/%d truck=%s status=%s road=%d" % [tn.sname, tn.team, int(tn.supply), tn.intact, int(tn.cap_prog), tn.cap_team, str(tn.truck != null), tn.supply_status, tn.road.size()]
+	if atmo and atmo.air:
+		out += "\n " + atmo.air.stats_text()
 	return out
 
 

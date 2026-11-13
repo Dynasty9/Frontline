@@ -312,7 +312,8 @@ Every release also comes as a browser build (WebAssembly and WebGL 2), the same 
 plays alone: **Play vs AI**, **Missions** and **Watch AI Battle**, the Field Manual and Settings, and signing in for
 a service record. Multiplayer needs the desktop game, since a browser can't make the direct connections a battle
 between players runs over; the menu links to the downloads instead. It looks a little different (no screen-space
-lighting, volumetric fog or particle trails, which the browser's renderer doesn't have) and, with no threads to
+lighting, volumetric fog or particle trails, which the browser's renderer doesn't have: the mist and the weather's
+smoke and dust thicken the plain fog where you look instead, and the water's caustics are a single web) and, with no threads to
 spread the work over, the map takes about 30 seconds to lay out, a stage at a time behind the loading screen. The
 simulation runs about as fast as on the desktop. The first battle also waits while the browser compiles the game's
 shaders (it keeps them, so only the first time); to keep that short, surface lighting is worked out per vertex and emitter particles run on the processor. Animated blast clouds and
@@ -713,7 +714,8 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   crests and streaks of foam laid down the wind. Breakers rise as they shoal, spill unevenly along the beach and
   surge up the sand, leaving it dark and wet. The bed shows through the water, bent by the ripples and dimmed
   with depth (red light dies first, so sand under the sea turns turquoise and the open sea goes deep blue; fresh
-  water is peaty green-brown), with the light the ripples focus dancing on it in the shallows, and the sky and
+  water is peaty green-brown), with the light the ripples focus dancing on it in the shallows (laid on the bed along the sun's way
+  down through the water; from High it is also thrown back up onto hulls, piles and banks, `caustics.gd`), and the sky and
   its clouds are reflected, more the flatter you look across it. The sun glitters off every ripple (a moon path
   at night, only a sheen under cloud), rain dimples the water with rings, the chop roughens in gusts, and foam
   gathers wherever the water meets a bank, a hull or a pile. Impacts throw up narrow sheets of spray that fall
@@ -1250,6 +1252,22 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   graphics setting (Cloud shadows on everything; on from High, and in Cinematic; off, the grass and bushes fold the
   shade into their colour instead), works in both renderers and is drawn only on each screen, never simulated.
   Vehicle windows and the opt-in mocap soldiers still take full sun.
+- **Layered air and weather across the map** (`air_layers.gd`, `weather_grid.gd`): the air between the camera and the
+  far side of the field lies in layers. Mist hugs the ground, pooled in the hollows and along the water and torn into
+  wisps by the wind (thickest at dawn, rising off wet ground as it dries after rain); a haze lies aloft, lit by the sun,
+  so a cloud's shadow falls through it as a shaft. Over that, a coarse weather grid sized from the map (32 cells
+  across a 1 km map, 64 on the bigger ones) holds the mist, rain, dust and smoke over each patch of ground: rain
+  comes over in heavier and lighter bands, shells on dry ground and vehicles on dry tracks raise dust, and barrages,
+  burning buildings and smoke screens leave a pall. The grid drifts with the wind as a whole (a sub-cell offset the
+  shader reads, the grid shifting a cell downwind once it reaches one), mist and rain settle toward what the weather
+  makes of each cell, and dust and smoke thin away (half-lives of about 20 s and 55 s); it's swept a few rows a frame
+  and uploaded once a sweep. With volumetric fog it's one fog volume over the map with its own fog shader (ground
+  height from the terrain tiles, the grid, a drifting noise, the cloud pattern); without it, and in the browser, the
+  plain fog takes the air at the camera's focus and a height fog lays the mist in the low ground below it. All of it
+  thins as the camera pulls back, so it never veils the battle you're looking at. It's looks only: who can see whom
+  is the host's own smoke (`Combat.smoke_blocks`), so the grid runs on every peer from what it already has (the
+  mood, the rain's wetness, replicated fires, smoke rounds and vehicles, the blasts' effect events), sends nothing
+  and never touches the battle's seed.
 - **Cinematic lighting** (`atmosphere.gd`, `cinematic_fx.gd`, `physical_sky.gd`), each part its own setting and all
   of it on the **Cinematic** preset (Ultra plus everything below; for a fast graphics card, screenshots and replays).
   None of it reaches the simulation, so it can't change a battle or its seed.

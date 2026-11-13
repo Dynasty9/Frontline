@@ -75,6 +75,8 @@ var heat := HeatHaze.new()  # what the heat haze bends the view over (only gathe
 var _heat_t := 0.0
 var _phys_sky: ShaderMaterial
 var _phys_on := false
+var air: AirLayers  # the mist, haze and weather in the air (AirLayers)
+var weather: WeatherGrid  # (air's) what's in the air over each part of the map
 
 
 func setup(w: World) -> void:
@@ -101,6 +103,10 @@ func setup(w: World) -> void:
 	wildlife.name = "Wildlife"
 	wildlife.world = world
 	add_child(wildlife)
+	air = AirLayers.new()
+	add_child(air)
+	air.setup(self)
+	weather = air.grid
 	Settings.changed.connect(apply_settings)
 	apply_settings()
 	if Sfx.enabled and world.has_view:
@@ -965,6 +971,8 @@ func apply_mood(m: String) -> void:
 		mountain_clouds.apply_settings(self)
 	if water_view:
 		water_view.apply_mood(_d, mood)
+	if air:
+		air.apply_mood(mood)
 	if world.fx and world.fx.vfx:
 		world.fx.vfx.apply_lighting()
 	if cine:
@@ -1488,6 +1496,8 @@ func _apply_haze(distance: float) -> void:
 			forest.set_air(ground_mat.get_shader_parameter("air_color"), terrain_air)
 	env.fog_density = float(_d.fog_d) * HAZE_STRENGTH * k
 	env.volumetric_fog_density = (0.0011 if mood != "hazy" else 0.003) * VOLUME_STRENGTH * volume_k
+	if air:
+		air.apply_env(env)
 
 
 ## Builds the road strip mesh for a team (called by World when roads change).
@@ -1610,6 +1620,8 @@ func build_water(w: WaterMap) -> void:
 		water_view.mat.set_shader_parameter("fresh_tint", Color(0.1, 0.32, 0.30))
 		water_view.mat.set_shader_parameter("fresh_absorb", Vector3(0.85, 0.32, 0.28))
 	water_view.apply_mood(_d, mood)
+	if air:
+		air.survey()
 	if grass:
 		grass.request_rebuild(0.5)
 
@@ -1667,6 +1679,8 @@ func _update_deform(dt: float) -> void:
 			forest.setup(self)
 		forest.set_lighting(_scenery_bake.get_texture(), sun.basis.z)
 		_update_terrain_probe(true)
+		if air:
+			air.survey()
 		var post := post_rect.material as ShaderMaterial
 		post.set_shader_parameter("fringe", 0.00015)
 		post.set_shader_parameter("grain", 0.006)
