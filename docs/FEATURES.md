@@ -1269,6 +1269,23 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
     mood had them, and the copy the battlefield is lit and reflects by is nearly half way to a warm grey so shade
     turns cool without going cyan. The sun's direction is passed in, not read from the light: a reflection probe draws
     the sky with no light. Midday keeps its photographed sky; overcast, rain and night their painted ones.
+  - **Time passes** (`time_of_day.gd`, on in Cinematic): the battle's light moves on as it goes. The battle opens at
+    its mood's hour (dawn 07:00, midday 13:00, golden hour 16:30, dusk 18:30, night 01:00) and the clock runs six
+    times as fast as life, so golden hour reaches full night in about forty minutes and a night battle sees the sky
+    pale towards dawn after an hour and a half. The sun follows a smooth path (Catmull-Rom through each daylight mood's
+    own sun, on round below the horizon), each mood blends into the next, and twilight goes with the sun's depth below
+    the horizon (night from 12 degrees down). After sunset the sun's light fades out and the moon's fades in, handing
+    over only while neither lights the ground. With Physical sky on, the scattered sky carries dusk on past sunset
+    and fades into the painted night (stars and moon) as the sun sinks from 4 to 11 degrees down; midday's
+    photograph fades in and out either side of 13:00. Lamps in windows, street lights, the night's flares, stars, the
+    eye's night vision, sun shafts, water, smoke, fire light, mountain clouds and cloud shadows all follow the blend.
+    The light is a pure function of the battle's time (`World.time`, the host's) and the mood it began in, applied in
+    two-second steps: every player with it on sees the same sky at the same moment, a replay or seed brings it back,
+    and the sky's lighting is re-rendered only once a step. The hills' baked sun shadows follow the sun when it has
+    moved two degrees (re-baked a few hundred cells a frame), and the mountains' reflection is re-captured every
+    three quarters of an hour of clock. The meadows keep drying on the slopes facing the sun the battle began with.
+    Rain, overcast and haze are weather and hold, and night stays looks only: nothing in the simulation reads it.
+    Photo mode's time of day still overrides the light while it's open.
   - **Camera and lens** (Settings > Lighting & Look): compute passes run on the HDR scene just before it is
     tonemapped (a `CompositorEffect`, Forward+ only), at a quarter of the resolution except the final composite.
     Sun shafts are a radial blur of the open sky near the sun (Mitchell, GPU Gems 3, 2007). Lens flare and glare:

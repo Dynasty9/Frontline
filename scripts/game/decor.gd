@@ -238,7 +238,8 @@ func _process(dt: float) -> void:
 	_mood_t -= dt
 	if _mood_t <= 0.0:
 		_mood_t = 1.0
-		if world and world.atmo and world.atmo.mood != _mood:
+		if world and world.atmo and world.atmo.light_rev != _rev:
+			_rev = world.atmo.light_rev
 			_apply_mood()
 	# rebuild a couple of damaged chunks a frame
 	var n := 0
@@ -755,13 +756,32 @@ func _sag(a: Vector3, b: Vector3, sag: float) -> void:
 ## changes of mood.
 var _glow_mat: StandardMaterial3D
 var _light_nodes := {}  # chunk key -> [OmniLight3D]
-var _mood := ""
+var _rev := -1  # the atmosphere's light_rev the lamps were last set for
+var _lit := 0.0  # how bright the street lights burn now (0: off)
 var _mood_t := 0.0
+## How brightly the lamp lenses glow, and the street lights burn (none in
+## daylight), by mood: blended while time passes, so they come on at dusk.
+const LENS_GLOW := {"night": 6.0, "dusk": 3.0, "dawn": 3.0}
+const STREET_LIGHT := {"night": 5.0, "dusk": 2.2, "dawn": 2.2}
+## The street lights go off and on at this strength, as one mood blends into
+## the next while time passes: well into the dusk, not with the sun still high.
+const LIGHTS_ON := 1.8
 
 
 func _apply_mood() -> void:
-	_mood = world.atmo.mood if world.atmo else "day"
-	_glow_mat.emission_energy_multiplier = 6.0 if _mood == "night" else (3.0 if _mood in ["dusk", "dawn"] else 0.25)
+	var atmo: Atmosphere = world.atmo
+	_glow_mat.emission_energy_multiplier = atmo.by_mood(LENS_GLOW, 0.25) if atmo else 0.25
+	var lit := atmo.by_mood(STREET_LIGHT, 0.0) if atmo else 0.0
+	if lit < LIGHTS_ON:
+		lit = 0.0
+	var was_on := _lit > 0.0
+	_lit = lit
+	if was_on == (lit > 0.0):
+		# (on still, or off still: only brighter or dimmer)
+		for key in _light_nodes:
+			for l: OmniLight3D in _light_nodes[key]:
+				l.light_energy = lit
+		return
 	for key in _chunk_lights:
 		_apply_mood_chunk(key)
 
@@ -770,12 +790,12 @@ func _apply_mood_chunk(key: Vector2i) -> void:
 	for l in _light_nodes.get(key, []):
 		(l as Node).queue_free()
 	_light_nodes[key] = []
-	if not _mood in ["night", "dusk", "dawn"]:
+	if _lit <= 0.0:
 		return
 	for p in _chunk_lights.get(key, []):
 		var l := OmniLight3D.new()
 		l.light_color = Color(1.0, 0.8, 0.55)
-		l.light_energy = 5.0 if _mood == "night" else 2.2
+		l.light_energy = _lit
 		l.omni_range = 15.0
 		l.omni_attenuation = 1.1
 		l.shadow_enabled = false
