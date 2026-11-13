@@ -7,6 +7,11 @@
   "medium": "motion",
   "stage": "--scenario=breach --seed=3, overcast and day, --fixed-fps 30. Room: --focus=0,-30 --zoom=8 --pitch=-62 at 5 s, roof lifted by the defenders inside. Gap between houses: --focus=7.5,-27 --zoom=4.5 --pitch=-14 at 12 s. Destruction: day, --focus=12,-31 --zoom=14 --pitch=-50 --blast-at=14,-29,3,6, 60 frames every 0.1 s.",
   "rationale": "The probes shade only skylight, a small share of daylight, so a whole-scene before/after reads as identical. Each sheet is four consecutive frames of one run (FL_DEBUG_PROBES_AB=cycle: off, on, the probe term, the bent normal), cropped tight on where probes matter, so the debug panels show what the grid contributes even where the final image changes a little. The flicker clip alternates off/on on one frame; the destruction clip pairs the game with the probe term from a second, identical fixed-fps run (FL_DEBUG_PROBES_VIEW=1).",
+  "capture": {
+    "provenance": "Recaptured off-screen from this branch (Forward+, RTX 3090, High preset) with the commands in stage; panels are consecutive frames of one fixed-fps run, so they share camera, units and smoke.",
+    "comparison": "Sheets: top left probes off, bottom left on, top right the probe term (sky share on grey, bounce amplified), bottom right the bent normal. Flicker: off and on alternate each second on one frame. Destruction: the game and the probe term from two identical fixed-fps runs.",
+    "limits": "The final-image change is modest (about 4 to 5 levels in these crops, 12 to 21% of pixels darker by more than 8): the probes shade skylight only, and sunlight dominates. Interiors are seen with the roof lifted, which lets real sunlight in. Trenches are narrower than the 2 m grid and are not shown. No performance claim is made from these files."
+  },
   "source_ref": "dines/probe-grid-gi-0571ca after 43c99b22 (the debug cycle mode, trench mask and covered-surface bounce of the following commit).",
   "sources": [
     {
