@@ -2128,9 +2128,16 @@ func execute_cmd(peer: int, d: Dictionary) -> void:
 			var n := sqs.size()
 			for i in n:
 				sqs[i].order_move(pos + side * (i - (n - 1) / 2.0) * 13.0, face, mode)
+			# A shared travel order gives ground drivers the same pace setting as the walkers.
+			var foot_mode := -1
+			if not vehs.is_empty():
+				for sq: Squad in sqs:
+					if sq.members.any(func(m: Soldier): return m.riding == null and m.can_take_orders()):
+						foot_mode = clampi(mode, 0, Soldier.SPEEDS.size() - 1)
+						break
 			var m := vehs.size()
 			for i in m:
-				vehs[i].order_move(pos + side * (i - (m - 1) / 2.0) * 9.0 - face * (6.0 if n > 0 else 0.0))
+				vehs[i].order_move(pos + side * (i - (m - 1) / 2.0) * 9.0 - face * (6.0 if n > 0 else 0.0), foot_mode)
 		"assault", "defend":
 			take_command(peer, sqs, vehs)
 			var apos: Vector3 = d.pos
