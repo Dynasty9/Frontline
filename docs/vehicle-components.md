@@ -594,7 +594,7 @@ and puts a post under every point (the motorboat bow rail has posts at only four
 
 The gun builders (`coax`, `autocannon`, `hmg`, `mmg`, `gmg`, `rotary`) end with `k._gun(m, muzzle)` instead of
 folding their pivot: the assembly is noted (its parent, origin, muzzle and parts) and then folded as before.
-A gun built by hand on a pivot of its own at its receiver notes itself with `k.gun_assembly(pivot, muzzle)`
+A hand-built gun on a pivot of its own at its receiver notes itself with `k.gun_assembly(pivot, muzzle)`
 (VmCore's DShK). When the model is assembled, `_mount_guns()` finds the assembly whose muzzle is `k.mg_tip`
 (on the same parent, laid along its -Z) and lifts its parts and nodes onto a new pivot at its origin, square
 to the parent; the marker goes with it, and a twin beside it at the same height and depth (the other barrel of

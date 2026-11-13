@@ -697,7 +697,7 @@ func _gun(m: Node3D, muzzle: Vector3) -> void:
 	_fold(m)
 
 
-## A gun assembly built by hand on its own pivot `m` (at its trunnion, square
+## A hand-built gun assembly on its own pivot `m` (at its trunnion, square
 ## to its parent), noted down as the shared builders' are.
 func gun_assembly(m: Node3D, muzzle_local: Vector3) -> void:
 	_gun(m, m.transform * muzzle_local)
