@@ -88,6 +88,9 @@
     html {
         @apply bg-background font-sans antialiased;
         scroll-behavior: smooth;
+        /* the scrollbar's room is kept on every page, long or short, so going
+           from one to the next never shifts the page (or the map behind it) sideways */
+        scrollbar-gutter: stable;
         color-scheme: dark;
     }
     /* the page's ground is the html's: the body stays clear, so the map behind
