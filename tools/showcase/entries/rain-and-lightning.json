@@ -1,0 +1,43 @@
+{
+  "entry": "changelog/unreleased/rain-and-lightning.md",
+  "summary": "In the rain, drops ring the puddles, burst on roofs, decks and helmets, and run down walls. Lightning now strikes visibly on the horizon, lights the clouds and the field from its side, and its thunder arrives as late as the bolt is far.",
+  "medium": "motion",
+  "stage": "rain in tools/showcase/stages.json; tests/fixtures/blast-world-clips.tscn -- --clip=rain.",
+  "rationale": "Rings, splashes, rivulets and lightning change over time. The existing 18-second current-build clip moves from close puddles and a tank deck to a wall and two visible strikes, retaining readable stills for paused inspection. It is not a historical comparison. Thunder timing is documented and tested separately; this silent clip cannot demonstrate sound.",
+  "capture": {
+    "provenance": "Existing committed clip and stills, inspected without recapturing; source revision identifies the checked artifacts.",
+    "stage_configuration": "rain: seed 712, map seed 3, Forward+, 24 fps and 24 Hz fixed simulation; current-build labels and normal-speed playback.",
+    "video_format": "1600x900 VP9, 24 fps, 18 s, no audio.",
+    "shots": "Puddle at 0 s; tank deck at 4 s; wall at 7.5 s; low camera at 10.5 s. Staged strikes at 11.4 s and 14.2 s.",
+    "limits": "Close views make small surface effects visible. The soundtrack and thunder delay are not audible evidence in this asset; it does not compare an earlier revision."
+  },
+  "source_ref": "1b39b6fd1cdb5808cf3bd199ebdcb4d9c6ce50e0",
+  "sources": [
+    {
+      "file": "changelog/unreleased/rain-and-lightning/deck.jpg",
+      "sha256": "2cfedc88ea88386c74573f2fb614fc0f374669cbcba9be2a5dfb2789c0a64f43",
+      "caption": "Drops bursting on a tank's deck, the puddles round it ringed by the rain"
+    },
+    {
+      "file": "changelog/unreleased/rain-and-lightning/lightning.jpg",
+      "sha256": "a15738ffbd451cbfd20f41acf6db8769c1c23281d50327f3520b93ab9d1f9318",
+      "caption": "A strike half a kilometre off, forking as it comes down, with rain on the lens (Cinematic)"
+    },
+    {
+      "file": "changelog/unreleased/rain-and-lightning/rain-and-lightning.jpg",
+      "sha256": "5e8c8e4f131e2b6d81456cffe729f53e34d9fe1b819f274d4f852d0269d03076",
+      "caption": "Poster for rain-and-lightning.webm."
+    },
+    {
+      "file": "changelog/unreleased/rain-and-lightning/rain-and-lightning.webm",
+      "sha256": "5c4b3f1bf74a0c33d220cad1b7115d905ce10e3f88a5f70fbc027216eac3672d",
+      "caption": "Rings in a puddle, drops on a tank's deck, water running down a hut's wall, then two strikes seen from low down: one 1.1 km away, its thunder 3.4 s later; one 550 m away, its thunder 1.6 s later (the clip is silent)."
+    },
+    {
+      "file": "changelog/unreleased/rain-and-lightning/rings.jpg",
+      "sha256": "c887522c36d58bb35134e972b8618ca8af32b6f52cb4a1ed9c1812d47c94fbb3",
+      "caption": "Rain rings running out across a puddle beside a tank, each drop's ring its own size"
+    }
+  ],
+  "output": null
+}
