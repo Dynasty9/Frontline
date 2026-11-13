@@ -188,7 +188,7 @@ func _ready() -> void:
 	atmosphere.env = Environment.new()
 	atmosphere.ground_mat = ShaderMaterial.new()
 	var ground_shader := Shader.new()
-	ground_shader.code = CloudShadow.shader(MapDims.shader(Atmosphere.GROUND_SHADER.replace("// BACKDROP_HEIGHT", Atmosphere.BACKDROP_HEIGHT)), CloudShadow.OWN_LIGHT)
+	ground_shader.code = CloudShadow.shader(MapDims.shader(Atmosphere.GROUND_SHADER.replace("// BACKDROP_HEIGHT", Atmosphere.BACKDROP_HEIGHT).replace("// RAIN_DROPS", Mats.RAIN_DROPS)), CloudShadow.OWN_LIGHT)
 	atmosphere.ground_mat.shader = ground_shader
 	atmosphere._d = {"fog_d": 0.002}
 	world.terrain.landform.peak = 80.0

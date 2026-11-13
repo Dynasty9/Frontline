@@ -108,13 +108,110 @@ vec3 street_surface(sampler2D tex, sampler2D noise, vec2 p, out float tar) {
 }
 """
 
+# The rain as it falls on things, shared by the ground, the roads and every
+# surface here (after Lagarde, "Water drop 2a/2b: dynamic rain and its effects",
+# 2012-13): rings running out where drops land in standing water, crowns of
+# spray where they strike what stands in the rain, and water running down walls
+# and hulls in rivulets. Each is drawn from cells laid out in the world, one
+# drop to a cell each period at a spot of its own, kept clear of the cell's
+# edges, so a pixel only ever looks at its own cell. Everything fades out as it
+# shrinks under a pixel: from the command camera's height none of it is fine
+# enough to draw, and a pattern finer than its pixels would crawl and shimmer.
+const RAIN_DROPS := """
+global uniform vec4 rain_fx;  // x rings, y crowns, z rivulets and the denser rain (Effects High), w the rain's clock (s); Atmosphere._rain_fx_tick
+float rain_hash(vec2 p) { vec3 q = fract(vec3(p.xyx) * 0.1031); q += dot(q, q.yzx + 33.33); return fract((q.x + q.y) * q.z); }
+
+// One layer of rings: the water's slope (dh/dx, dh/dz) at p, in metres. A drop
+// lands in each 55 cm cell every period (most of them: some miss), and its ring
+// runs out at a capillary wave's pace, a packet of crests 6 cm apart, dying
+// away as it spreads: 10 to 21 cm and as strong as the drop was big.
+vec2 rain_ring_layer(vec2 p, float t, float salt) {
+	vec2 q = p / 0.55;
+	vec2 cell = floor(q);
+	float phase = rain_hash(cell + salt);
+	float cycle = floor(t + phase);
+	float age = t + phase - cycle;
+	vec2 at = vec2(rain_hash(cell + cycle * 0.37 + salt), rain_hash(cell.yx + cycle * 0.61 + 7.7));
+	vec2 d = (q - cell - 0.33 - 0.34 * at) * 0.55;
+	float r = length(d);
+	float big = mix(0.6, 1.25, rain_hash(cell.yx * 1.3 + cycle * 0.83 + salt));
+	float x = r - age * 0.17 * big;
+	float fade = pow(1.0 - age, 1.5) * big * step(0.3, rain_hash(cell * 1.7 + cycle + salt));
+	float env = exp(-x * x * 494.0) * fade;  // (a Gaussian packet 4.5 cm wide)
+	float slope = 0.0045 * env * (104.7 * cos(104.7 * x) - 988.0 * x * sin(104.7 * x));
+	return d / max(r, 0.0001) * slope;
+}
+
+// The rings at p on standing water (`amount` 0..1: how much of it), faded as
+// they shrink under the pixel (`footprint`, the metres it spans).
+vec2 rain_rings(vec2 p, float footprint, float amount) {
+	float keep = amount * rain_fx.x * (1.0 - smoothstep(0.012, 0.03, footprint));
+	if (keep <= 0.0) { return vec2(0.0); }
+	float t = rain_fx.w * 1.35;
+	// further layers are turned against the first, so no grid lines up
+	mat2 turn = mat2(vec2(0.8, 0.6), vec2(-0.6, 0.8));
+	vec2 s = rain_ring_layer(p, t, 0.0);
+	s += rain_ring_layer(turn * p + 0.29, t * 1.13 + 0.5, 11.0) * turn;
+	if (rain_fx.z > 0.0) {
+		s += rain_ring_layer(turn * turn * p + 0.71, t * 0.91 + 0.25, 23.0) * turn * turn * rain_fx.z;
+	}
+	return s * keep;
+}
+
+// How much of the rings' roughening stands in for the rings themselves, where
+// they're too fine to draw (0..1).
+float rain_far(float footprint) { return rain_fx.x * smoothstep(0.012, 0.03, footprint); }
+
+// Drops striking an upturned face at p: a crown of spray bursting out to two
+// or three centimetres and gone in a few hundredths of a second (0..1). Below
+// a pixel a crown is spread over the pixel and dimmed to match, then fades out
+// altogether.
+float rain_crowns(vec2 p, float footprint, float amount) {
+	float keep = amount * rain_fx.y * (1.0 - smoothstep(0.025, 0.05, footprint));
+	if (keep <= 0.0) { return 0.0; }
+	float t = rain_fx.w * 2.0;
+	vec2 q = p / 0.14;
+	vec2 cell = floor(q);
+	float phase = rain_hash(cell);
+	float cycle = floor(t + phase);
+	float age = (t + phase - cycle) / 0.15;
+	float live = step(mix(0.6, 0.45, rain_fx.z), rain_hash(cell * 1.3 + cycle * 2.9)) * step(age, 1.0);
+	vec2 at = vec2(rain_hash(cell + cycle * 0.37), rain_hash(cell.yx + cycle * 0.61 + 7.7));
+	float r = length((q - cell - 0.25 - 0.5 * at) * 0.14);
+	float size = mix(0.008, 0.03, sqrt(age)) * mix(0.7, 1.2, rain_hash(cell.yx + cycle));
+	float spread = max(size, footprint * 0.7);
+	// (the spray thins from the middle out as the crown opens)
+	float crown = (1.0 - smoothstep(spread * 0.5, spread, r)) * mix(1.0, smoothstep(spread * 0.2, spread * 0.75, r), age);
+	return crown * live * (1.0 - age * 0.5) * keep * size * size / (spread * spread);
+}
+
+// Water running down a wall or a hull's side (u across it, y up it, metres):
+// rivulets 2 to 5 cm wide, about half the lanes running, each carrying beads
+// of water down at its own pace. Returns how much water runs here (x) and how
+// much of it is a bead's swollen head (y: its top bulges out to the sky).
+vec2 rain_rivulets(float u, float y, float footprint) {
+	float keep = rain_fx.z * (1.0 - smoothstep(0.02, 0.05, footprint));
+	if (keep <= 0.0) { return vec2(0.0); }
+	float lane = u * 9.0;
+	float id = floor(lane);
+	float across = abs(fract(lane) - 0.5) * 2.0;
+	float width = mix(0.18, 0.42, rain_hash(vec2(id, 3.1)));
+	float channel = 1.0 - smoothstep(width * 0.5, width, across);
+	float bead = fract(y * 1.4 + rain_fx.w * mix(0.5, 1.2, rain_hash(vec2(id, 9.7))) + rain_hash(vec2(id, 1.3)) * 9.0);
+	float flow = smoothstep(0.0, 0.05, bead) * (1.0 - smoothstep(0.05, 0.4, bead));
+	float head = smoothstep(0.0, 0.04, bead) * (1.0 - smoothstep(0.06, 0.16, bead));
+	float run = channel * step(0.4, rain_hash(vec2(id, 5.5))) * keep;
+	return vec2(run * mix(0.35, 1.0, flow), run * head);
+}
+"""
+
 static var _shader: Shader
 static var _cache := {}
 
 
 static func shader() -> Shader:
 	if _shader == null:
-		_shader = CloudShadow.make(code(TerrainTexture.shader(SURFACE_SHADER.replace("// STREET_SURFACE", ASPHALT_SHADER))), CloudShadow.CLEARCOAT)
+		_shader = CloudShadow.make(code(TerrainTexture.shader(SURFACE_SHADER.replace("// STREET_SURFACE", ASPHALT_SHADER).replace("// RAIN_DROPS", RAIN_DROPS))), CloudShadow.CLEARCOAT)
 	return _shader
 
 
@@ -1221,6 +1318,7 @@ varying float ground_y;
 varying mat3 vehicle_normal_basis;
 
 // STREET_SURFACE
+// RAIN_DROPS
 float h12(vec2 p) { vec3 p3 = fract(vec3(p.xyx) * 0.1031); p3 += dot(p3, p3.yzx + 33.33); return fract((p3.x + p3.y) * p3.z); }
 // Value noise with one feature per unit, read from a mipmapped tileable
 // texture: the GPU filters it, so fine detail averages out with distance
@@ -1692,6 +1790,10 @@ void fragment() {
 		ALBEDO = soaked;
 		ROUGHNESS = mix(ROUGHNESS - wet * 0.3, 0.06, pud);
 		SPECULAR = mix(0.3, 0.55, pud);
+		// the rain rings the puddles and, faintly, the wet film on the stone
+		vec2 ring = rain_rings(wpos.xz, length(fwidth(wpos.xz)), max(pud, wet * 0.25));
+		NORMAL = normalize(NORMAL - (VIEW_MATRIX * vec4(ring.x, 0.0, ring.y, 0.0)).xyz);
+		ROUGHNESS = mix(ROUGHNESS, max(ROUGHNESS, 0.22), rain_far(length(fwidth(wpos.xz))) * pud);
 	}
 	CLEARCOAT = vehicle_surface ? surface_coat : 0.0;
 	CLEARCOAT_ROUGHNESS = vehicle_surface ? surface_coat_roughness : 0.22;
@@ -1732,6 +1834,26 @@ void fragment() {
 		ALBEDO *= OUTPUT_IS_SRGB ? pow(darken, 1.0 / 2.2) : darken;
 		// (water stands as a film on paint and metal; cloth and timber drink most of it)
 		ROUGHNESS = mix(ROUGHNESS, mix(0.34, 0.12, smoothstep(0.4, 0.9, wn.y)), soak * mix(0.85, 0.35, porous));
+		// While it's still coming down, drops burst on every roof, deck and
+		// helmet near the camera, and water runs down the walls and hull sides
+		// in rivulets along the streaks. A vehicle carries its rivulets with it
+		// (they're laid out in its own frame); the drops fall in the world's.
+		if (rain_fx.y > 0.0) {
+			float footprint = length(fwidth(wpos)) * 0.7;
+			float near = rain_wet * (1.0 - smoothstep(25.0, 40.0, distance(CAMERA_POSITION_WORLD, wpos)));
+			float crown = rain_crowns(wpos.xz, footprint, near * smoothstep(0.55, 0.85, wn.y));
+			ALBEDO = mix(ALBEDO, OUTPUT_IS_SRGB ? vec3(0.66) : vec3(0.4), crown * 0.7);
+			ROUGHNESS = mix(ROUGHNESS, 0.08, crown);
+			float side = 1.0 - smoothstep(0.3, 0.6, abs(wn.y));
+			if (rain_fx.z > 0.0 && side * near > 0.0) {
+				vec3 lp = vehicle_surface ? (wpos - MODEL_MATRIX[3].xyz) * mat3(MODEL_MATRIX) : wpos;
+				vec2 run = rain_rivulets(lp.x + lp.z, lp.y, footprint) * side * near * mix(0.4, 1.0, streak);
+				ALBEDO *= 1.0 - run.x * mix(0.15, 0.3, porous);
+				ROUGHNESS = mix(ROUGHNESS, 0.04, run.x * 0.9);
+				// (a bead's top turns up to the sky and catches its light)
+				NORMAL = normalize(NORMAL + (VIEW_MATRIX * vec4(0.0, 1.0, 0.0, 0.0)).xyz * run.y * 0.9);
+			}
+		}
 	}
 	// CLOUD_FRAGMENT cloud_sun(wpos)
 }
