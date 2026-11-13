@@ -1,0 +1,20 @@
+{
+  "entry": "changelog/unreleased/rubble-heaps.md",
+  "summary": "Rubble is a heap of broken masonry with bricks, plaster, joists and rods instead of grey blocks.",
+  "medium": "still",
+  "stage": "tools/showcase/building-surfaces.tscn",
+  "rationale": "Appearance change: matched studio rows of two heaps and a ruined house show the rubble at a readable size; at the game's town camera it is too small to compare.",
+  "source_ref": "493afe8dc7ef0ed7d0b96ccdfcf811f6e7060cb5",
+  "before_ref": "9016b011b1c39454bc5bf9e6777c116a4b5ddbad",
+  "sources": [
+    {
+      "file": "changelog/unreleased/rubble-heaps/comparison.jpg",
+      "sha256": "9adcb48a9f0118c7613aebb937cca5b3ae38b7f38485447a8ad876c5ce7f8e3d"
+    },
+    {
+      "file": "changelog/unreleased/rubble-heaps/capture.json",
+      "sha256": "0ea35207a0363af88acbb108a7eac41ef2bd90f885966771199b4702c6165cba"
+    }
+  ],
+  "output": null
+}

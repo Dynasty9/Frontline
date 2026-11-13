@@ -23,6 +23,7 @@ const BREAKABLE := {
 	"mailbox": [Vector3(0.3, 1.25, 0.45), 15.0], "bus_stop": [Vector3(3.3, 2.4, 1.6), 300.0],
 	"bins": [Vector3(1.3, 1.0, 0.75), 25.0], "pots": [Vector3(1.2, 0.5, 0.45), 15.0],
 	"bike": [Vector3(0.5, 1.0, 1.7), 15.0], "garden_set": [Vector3(1.7, 1.0, 1.7), 30.0], "kennel": [Vector3(0.75, 0.85, 0.95), 40.0],
+	"wares": [Vector3(1.6, 1.0, 1.0), 30.0], "shed": [Vector3(2.4, 2.3, 1.9), 120.0], "trampoline": [Vector3(3.3, 0.9, 3.3), 40.0],
 	"planter": [Vector3(1.2, 1.1, 1.2), 400.0], "bollard": [Vector3(0.2, 0.85, 0.2), 60.0],
 	"stall": [Vector3(2.6, 2.3, 1.5), 80.0], "fence": [Vector3(2.0, 1.1, 0.15), 40.0],
 	"clothesline": [Vector3(4.0, 1.9, 0.9), 20.0], "flagpole": [Vector3(0.2, 8.0, 0.2), 60.0],
@@ -510,11 +511,12 @@ func _make(h: Node3D, kind: String, ex) -> void:
 			_m(Res.box(Vector3(1.2, 0.06, 0.7)), "paint", Vector3(0, 1.43, 0), Color(0.26, 0.34, 0.26))
 			_m(Res.box(Vector3(0.22, 0.2, 0.01)), "paint", Vector3(0, 1.0, -0.31), Color(0.95, 0.8, 0.1), Vector3.ZERO, false)
 		"awning":
+			# a shop's front (BuildingShops): its fascia and name, the awning
 			var a3: Vector3 = ex
-			var col: Color = CANVAS[int(a3.z) % CANVAS.size()]
-			_m(Res.box(Vector3(a3.x, 0.05, 1.3)), "fabric", Vector3(0, 2.45, -0.78), col, Vector3(-0.3, 0, 0))
-			_m(Res.box(Vector3(a3.x, 0.24, 0.02)), "fabric", Vector3(0, 2.15, -1.4), col)
-			_m(Res.box(Vector3(a3.x * 0.6, 0.4, 0.05)), "paint", Vector3(0, 2.78, -0.25), Color(0.15, 0.17, 0.2))
+			BuildingShops.front(BuildingKit.baked(_bake, rng, _at), a3.x, int(a3.z), rng)
+		"wares":
+			# what the shop puts out on the pavement
+			BuildingShops.wares(BuildingKit.baked(_bake, rng, _at), int(ex), rng)
 		"fence":
 			_fence(ex)
 		"garden":
@@ -535,7 +537,7 @@ func _make(h: Node3D, kind: String, ex) -> void:
 				_sag(h.transform * Vector3(-2.0, 1.85, z), h.transform * Vector3(2.0, 1.85, z), 0.15)
 				for i in rng.randi_range(2, 3):
 					_m(Res.box(Vector3(rng.randf_range(0.4, 0.7), rng.randf_range(0.5, 0.75), 0.02)), "fabric", Vector3(-1.4 + i * 1.1 + rng.randf_range(-0.2, 0.2), 1.45, z), CANVAS[rng.randi() % CANVAS.size()].lightened(0.25), Vector3.ZERO, false)
-		"bins", "pots", "woodpile", "garden_set", "kennel", "bike":
+		"bins", "pots", "woodpile", "garden_set", "kennel", "bike", "shed", "trampoline":
 			# what people keep round their houses (BuildingYards)
 			var yk := BuildingKit.baked(_bake, rng, _at)
 			match kind:
@@ -551,6 +553,10 @@ func _make(h: Node3D, kind: String, ex) -> void:
 					BuildingYards.kennel(yk, [Color(0.45, 0.32, 0.2), Color(0.25, 0.35, 0.25), Color(0.6, 0.55, 0.45)][rng.randi() % 3])
 				"bike":
 					BuildingYards.bicycle(yk, BuildingYards.BIKE_COLS[int(ex) % BuildingYards.BIKE_COLS.size()])
+				"shed":
+					BuildingYards.shed(yk, BuildingYards.SHEDS[int(ex) % BuildingYards.SHEDS.size()], rng)
+				"trampoline":
+					BuildingYards.trampoline(yk, BuildingYards.PADS[int(ex) % BuildingYards.PADS.size()])
 		"mailbox":
 			_m(Res.box(Vector3(0.07, 1.0, 0.07)), "wood_dark", Vector3(0, 0.5, 0), null, Vector3.ZERO, false)
 			_m(Res.box(Vector3(0.26, 0.24, 0.42)), "paint", Vector3(0, 1.1, 0), [Color(0.2, 0.35, 0.25), Color(0.6, 0.15, 0.12), Color(0.15, 0.25, 0.45), Color(0.12, 0.12, 0.12)][rng.randi() % 4], Vector3.ZERO, false)
