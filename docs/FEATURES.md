@@ -732,6 +732,10 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   with small, ground-aligned stone deposits and reflector posts
   outside town. The road mesh follows the terrain across its width and adds a shallow visual crown.
   Posts avoid buildings, junctions and water; the shoulders do not widen the drivable road.
+  Supply tracks use darker compacted earth, two wheel ruts and a broken grassy centre.
+  Loose fines trail onto asphalt at town entrances. Bridge decks use the shared weathered
+  asphalt and worn road paint, with expansion joints; gravel stops at the deck boundary.
+  Concrete driveways have transverse slab joints. Paving and bridge decks share rain wetness.
 - **The town and every village have a name and a supply dump** (crated stores on a pallet, fuel drums and a
   flagpole): the town's on its square where the flagpole stood, a village's on the verge of its main street.
   Nobody holds them at the start. They are the supply worth fighting over: see *Towns* under Base building and

@@ -1005,7 +1005,6 @@ func _bridge_model(rng: RandomNumberGenerator) -> void:
 	var L := size.z
 	var conc := Color(0.6, 0.58, 0.54)
 	var dark := Color(0.42, 0.41, 0.39)
-	var asphalt := Color(0.16, 0.16, 0.16)
 	if variant == 1:
 		# the quay: a block of concrete from the seabed up, a lip round the top
 		_mk(Res.box(Vector3(W, 3.5, L)), "concrete", Vector3(0, -1.72, 0), Vector3.ZERO, conc)
@@ -1029,7 +1028,7 @@ func _bridge_model(rng: RandomNumberGenerator) -> void:
 		return
 	# the deck: a thick slab, asphalt down the middle between kerbed footways
 	_mk(Res.box(Vector3(W, 0.55, L)), "concrete", Vector3(0, -0.25, 0), Vector3.ZERO, conc)
-	_mk(Res.box(Vector3(W - 2.0, 0.02, L)), "concrete_floor", Vector3(0, 0.035, 0), Vector3.ZERO, asphalt, false)
+	_mk(Res.box(Vector3(W - 2.0, 0.02, L)), "asphalt", Vector3(0, 0.035, 0), Vector3.ZERO, null, false)
 	for sx in [-1.0, 1.0]:
 		_mk(Res.box(Vector3(0.62, 0.16, L)), "concrete", Vector3(sx * (W * 0.5 - 0.67), 0.08, 0), Vector3.ZERO, conc.lightened(0.05), false)
 		# parapet wall with its coping, drain holes along the foot
@@ -1038,7 +1037,7 @@ func _bridge_model(rng: RandomNumberGenerator) -> void:
 		# the girder under the edge, stained by the weather
 		_mk(Res.box(Vector3(0.5, 0.75, L)), "concrete", Vector3(sx * (W * 0.5 - 0.9), -0.88, 0), Vector3.ZERO, dark)
 		# a white line along the edge of the carriageway
-		_mk(Res.box(Vector3(0.12, 0.01, L)), "paint", Vector3(sx * (W * 0.5 - 1.15), 0.048, 0), Vector3.ZERO, Color(0.8, 0.79, 0.74), false)
+		_mk(Res.box(Vector3(0.12, 0.01, L)), "road_paint", Vector3(sx * (W * 0.5 - 1.15), 0.048, 0), Vector3.ZERO, Color(0.8, 0.79, 0.74), false)
 	# the piers: a wall of concrete under the deck, a cutwater upstream and down
 	var spans := maxi(2, int(round(L / 9.0)))
 	for i in range(1, spans):
@@ -1049,6 +1048,7 @@ func _bridge_model(rng: RandomNumberGenerator) -> void:
 			_mk(Res.cyl(0.55, 0.55, 2.6, 8), "concrete", Vector3(sx * W * 0.41, -2.0, z), Vector3.ZERO, dark)
 	# the abutments, into the banks at either end
 	for sz in [-1.0, 1.0]:
+		_mk(Res.box(Vector3(W - 2.0, 0.008, 0.06)), "metal_dark", Vector3(0, 0.048, sz * (L * 0.5 - 0.4)), Vector3.ZERO, null, false)
 		_mk(Res.box(Vector3(W + 0.8, 1.6, 1.4)), "concrete", Vector3(0, -0.85, sz * (L * 0.5 - 0.6)), Vector3.ZERO, dark)
 		for sx in [-1.0, 1.0]:
 			_mk(Res.box(Vector3(0.5, 1.1, 0.5)), "concrete", Vector3(sx * (W * 0.5 - 0.18), 0.55, sz * (L * 0.5 - 0.25)), Vector3.ZERO, conc.lightened(0.04))

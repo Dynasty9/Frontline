@@ -1737,6 +1737,7 @@ func make_road_mesh(polys: Array, team: int) -> MeshInstance3D:
 				for idx in [0, 2, 1, 0, 3, 2]:
 					st.set_normal(Vector3.UP)
 					st.set_uv(uv[idx])
+					st.set_uv2(Vector2(_road_deck_distance(q[idx]), 0))
 					st.add_vertex(q[idx])
 	var mi := MeshInstance3D.new()
 	mi.mesh = st.commit()
@@ -1745,6 +1746,26 @@ func make_road_mesh(polys: Array, team: int) -> MeshInstance3D:
 	Mats.set_inst(mi, &"country", 1.0 if team == 2 else 0.0)
 	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	return mi
+
+
+## A signed deck boundary keeps the gravel ribbon out of the bridge's own paving.
+func _road_deck_distance(p: Vector3) -> float:
+	var distance := 10000.0
+	if world == null or world.water == null:
+		return distance
+	for bridge: Array in world.water.bridges:
+		var a: Vector3 = bridge[0]
+		var b: Vector3 = bridge[1]
+		var axis := Defs.flat(b - a)
+		var length := axis.length()
+		if length < 0.001:
+			continue
+		axis /= length
+		var offset := p - (a + b) * 0.5
+		var across := absf(offset.dot(axis.cross(Vector3.UP))) - float(bridge[2])
+		var along := absf(offset.dot(axis)) - length * 0.5
+		distance = minf(distance, maxf(across, along))
+	return distance
 
 
 const PHOTO_SKY_SHADER := """
@@ -2529,6 +2550,7 @@ void fragment() {
 	vec2 town_inside = min(wpos.xz - town.xy, town.zw - wpos.xz);
 	float town_distance = min(town_inside.x, town_inside.y);
 	// Town kerbs keep their original width; loose shoulders belong outside them.
+	if (UV2.x < 0.0) { discard; }
 	if (country > 0.5 && town_distance > 0.0 && (x < 0.0 || x > 1.0)) { discard; }
 	float n = texture(detail_tex, wpos.xz / 3.0).r;
 	float n2 = texture(detail_tex, wpos.xz / 11.0 + 0.5).r;
@@ -2547,12 +2569,16 @@ void fragment() {
 	// Local limestone fines mute the red soil, but leave the photographed aggregate intact.
 	float road_light = dot(road, vec3(0.2126, 0.7152, 0.0722));
 	road = mix(road, vec3(road_light), 0.72) * vec3(1.05, 1.02, 0.94);
+	road *= mix(vec3(0.72, 0.61, 0.45), vec3(1.0), country);
 	gravel *= vec3(0.30, 0.29, 0.27);
 	float wander = (texture(detail_tex, vec2(UV.y / 19.0, 0.37)).r - 0.5) * 0.22;
-	float wheel_distance = min(abs(abs((x - 0.5) * half_width * 2.0 - wander) - 0.72), abs(abs((x - 0.5) * half_width * 2.0 + wander * 0.7) - 2.05));
+	float inner_wheels = abs(abs((x - 0.5) * half_width * 2.0 - wander) - mix(0.85, 0.72, country));
+	float outer_wheels = abs(abs((x - 0.5) * half_width * 2.0 + wander * 0.7) - 2.05);
+	float wheel_distance = mix(inner_wheels, min(inner_wheels, outer_wheels), country);
 	float ruts = 1.0 - smoothstep(0.14, 0.33, wheel_distance);
 	float shoulder = smoothstep(half_width - 0.25, half_width + 0.3, across + (n2 - 0.5) * 0.35);
 	float grit = smoothstep(0.30, 0.70, n * 0.35 + n3 * 0.65 + shoulder * 0.18 - ruts * 0.22);
+	grit *= mix(0.18, 1.0, country);
 	vec3 col = mix(road, gravel, grit * 0.72);
 	col *= mix(0.86, 1.13, n2);
 	// Tyres compact the fines; the unworn centre and edges keep loose aggregate.
@@ -2562,8 +2588,10 @@ void fragment() {
 	float edge = 1.0 - smoothstep(outer - 0.16, outer + 0.12, across + edge_noise);
 	float soil = smoothstep(half_width - 0.25, outer - 0.18, across + edge_noise);
 	col = mix(col, road * vec3(0.55, 0.48, 0.37), soil * 0.95);
-	float mid = (1.0 - smoothstep(0.06, 0.28, across)) * smoothstep(0.51, 0.69, n2) * country;
-	col = mix(col, road * vec3(0.45, 0.53, 0.24), mid * 0.7);
+	// Single-lane supply tracks keep a wider, broken strip of vegetation between the wheels.
+	float mid = (1.0 - smoothstep(mix(0.20, 0.06, country), mix(0.55, 0.28, country), across + (n3 - 0.5) * 0.12)) * smoothstep(mix(0.32, 0.51, country), mix(0.58, 0.69, country), n2);
+	vec3 centre_grass = mix(vec3(0.075, 0.095, 0.025) * (0.65 + n3 * 0.7), road * vec3(0.45, 0.53, 0.24), country);
+	col = mix(col, centre_grass, mid * 0.7);
 	float pud = wet * smoothstep(0.56, 0.75, n2 * 0.65 + ruts * 0.35);
 	col *= 1.0 - wet * 0.28;
 	col = mix(col, col * 0.55, pud);
@@ -2604,6 +2632,9 @@ void fragment() {
 		asph *= 1.0 - oil * 0.24;
 		asph = mix(asph, asph * 1.14 + 0.004, wheel * 0.45);
 		asph = mix(asph, vec3(0.115, 0.105, 0.09) * (0.75 + 0.5 * n), gutter * 0.5);
+		// Tyres carry loose fines a few metres onto the paving at the town entrance.
+		float entry_dust = (1.0 - smoothstep(0.0, 3.5, distance + (n2 - 0.5))) * (0.25 + wheel * 0.55) * (0.6 + n3 * 0.4);
+		asph = mix(asph, col, entry_dust * 0.65);
 		asph *= 1.0 - (1.0 - smoothstep(0.02, 0.09, kerb)) * 0.35;
 		// a drain grate in the gutter every 32 m, the sides taking turns
 		float stretch = floor(along / 32.0);

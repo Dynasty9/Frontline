@@ -297,9 +297,9 @@ static func paving(kind: String) -> ShaderMaterial:
 ## markings, car parks) darkens and holds puddles just as the ribbons do.
 static func set_street_wet(value: float) -> void:
 	for kind in ["asphalt", "road_paint"]:
-		var m := paving(kind)
-		set_shared(m, &"wet", value)
-		set_shared(vc_variant(m), &"wet", value)
+		for m in [paving(kind), get_mat(kind)]:
+			set_shared(m, &"wet", value)
+			set_shared(vc_variant(m), &"wet", value)
 
 
 ## The ground's deformation and trench masks (the atmosphere hands them over
@@ -1651,7 +1651,8 @@ void fragment() {
 		vec3 grad = sign(det) * (dhx * r1 + dhy * r2);
 		NORMAL = normalize(abs(det) * NORMAL - grad * bump * 0.02);
 	}
-	if (rain_wet > 0.0) {
+	// Street paving already receives the same wetness as the road ribbons above.
+	if (rain_wet > 0.0 && pattern != 18 && pattern != 22) {
 		// Out in the rain everything takes a film of water (after Lagarde,
 		// "Water drop 2b: dynamic rain and its effects", 2013). Rough, porous
 		// stuff (cloth, timber, concrete, earth on a track) soaks it up and

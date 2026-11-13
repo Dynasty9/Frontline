@@ -649,6 +649,10 @@ func _make(h: Node3D, kind: String, ex) -> void:
 		"drive":
 			var d2: Vector3 = ex
 			_m(Res.box(Vector3(d2.x, 0.03, d2.z)), "concrete_floor", Vector3(0, 0.015, 0), Color(0.46, 0.45, 0.42), Vector3.ZERO, false, true)
+			# Saw-cut joints let the concrete shrink in slabs instead of cracking at random.
+			var slabs := maxi(1, ceili(d2.z / 3.0))
+			for joint in range(1, slabs):
+				_m(Res.box(Vector3(d2.x, 0.004, 0.018)), "concrete_floor", Vector3(0, 0.032, -d2.z * 0.5 + joint * d2.z / slabs), Color(0.18, 0.17, 0.15), Vector3.ZERO, false, true)
 		"path":
 			var p2: Vector3 = ex
 			_m(Res.box(Vector3(p2.x, 0.03, p2.z)), "pavement", Vector3(0, 0.02, 0), Color(0.56, 0.53, 0.47), Vector3.ZERO, false, true)

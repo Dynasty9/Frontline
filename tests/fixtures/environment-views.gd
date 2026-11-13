@@ -1,5 +1,5 @@
 extends SceneTree
-## Native generated-world review: four matched views, one map build, simulation held at two seconds.
+## Native generated-world review: matched views, one map build, simulation held at two seconds.
 
 func _initialize() -> void:
 	call_deferred("capture")
@@ -63,6 +63,32 @@ func capture() -> void:
 	if "--capture-set=trenches" in OS.get_cmdline_user_args():
 		views = [["trenches", Vector3(0, 0, -28), 24.0, -48.0, 0.5]]
 	var settle_frames := 90
+	if "--capture-set=road-types" in OS.get_cmdline_user_args():
+		world.rules.rebuild_network(0)
+		views = [["gravel", Vector3(3, 0, 257), 12.0, -55.0, -0.8],
+			["asphalt", Vector3(-55, 0, -4), 13.0, -65.0, 0.2],
+			["transition", Vector3(world.town_rect.position.x, 0, 0), 28.0, -60.0, 0.2]]
+		var longest := 0.0
+		var track := Vector3.ZERO
+		for road: PackedVector3Array in world.roads[0]:
+			for i in range(1, road.size()):
+				var length := road[i - 1].distance_to(road[i])
+				if length > longest:
+					longest = length
+					track = road[i - 1].lerp(road[i], 0.5)
+		if longest <= 0.0:
+			push_error("Road review requires a real supply route")
+			quit(1)
+			return
+		views.append(["track", track, 14.0, -60.0, 0.2])
+		for piece: Array in world.decor:
+			if piece[0] == "drive" and piece[3] is Vector3 and piece[3].x > 2.5 and piece[3].z > 3.0:
+				views.append(["driveway", piece[1], 12.0, -65.0, float(piece[2]) + PI + 0.4])
+				break
+		for structure in world.structures:
+			if structure.skind == "bridge" and structure.variant == 0:
+				views.append(["bridge", structure.position, 45.0, -50.0, 0.7])
+				break
 	if "--capture-set=roads" in OS.get_cmdline_user_args():
 		var road: PackedVector3Array = world.roads[2][0]
 		var target := road[road.size() / 4]
