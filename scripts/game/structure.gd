@@ -1172,10 +1172,18 @@ static var _snag := false  # building a burnt tree: charred limbs, no leaves
 const C_CHAR := Color(0.07, 0.06, 0.05)
 
 
-## A flared trunk forking into three or four limbs, each carrying a clump of
-## leaf masses (lighter on top, darker underneath), twigs poking out of the
-## crown, which is wider than it is tall.
+## Scanned branches break up the repeated forks in mature woodland trees.
+## Orchard trees keep their compact, deliberately pruned crowns.
 static func _broadleaf(bake: Mats.Bake, rng: RandomNumberGenerator, small: bool) -> void:
+	if not small:
+		var scale := rng.randf_range(1.4, 2.1)
+		var pose := Mats.place(Vector3.ZERO, Vector3(0, rng.randf() * TAU, 0), Vector3(scale * rng.randf_range(0.85, 1.15), scale, scale))
+		var color := C_CHAR if _snag else Res.vary(Color(0.3, 0.24, 0.18), 0.06, rng)
+		_bark_part(bake, load("res://assets/foliage/woodland/tree_small_02-0-trunk.res"), pose, color)
+		_bark_part(bake, load("res://assets/foliage/woodland/tree_small_02-0-branches.res"), pose, color)
+		if not _snag:
+			bake.part(load("res://assets/foliage/woodland/tree_small_02-0-leaves.res"), Mats.leaf_cards(false), pose, Res.vary(Color(0.18, 0.26, 0.12), 0.05, rng))
+		return
 	var k := 0.62 if small else 1.0
 	var bark := Res.vary(Color(0.3, 0.24, 0.18), 0.08, rng)
 	if _snag:
@@ -1212,34 +1220,16 @@ static func _broadleaf(bake: Mats.Bake, rng: RandomNumberGenerator, small: bool)
 	_leaves(bake, Vector3(top.x, crown + 0.9 * k, top.z), 1.35 * k, 0.8, leaf.lightened(0.05))
 
 
-## A spruce: a straight tapering stem and tiers of drooping boughs, wide and
-## dark at the bottom, a narrow spire at the top.
+## Mature firs keep the scanned gaps and bare lower branches of two real trees.
 static func _conifer(bake: Mats.Bake, rng: RandomNumberGenerator) -> void:
-	var ph := rng.randf_range(8.0, 11.0)
-	var needles := Res.vary(Color(0.13, 0.21, 0.14), 0.12, rng)
-	_bark(bake, Vector3.ZERO, Vector3(0, ph, 0), 0.26, 0.04, Color(0.32, 0.24, 0.17))
-	# many overlapping tiers, each a little askew, so it reads as one ragged
-	# mass of boughs rather than a stack of plates
-	var tiers := rng.randi_range(9, 12)
-	var step := (ph - 2.2) / tiers
-	for i in tiers:
-		var t := float(i) / (tiers - 1)
-		var r := lerpf(2.3, 0.45, t) * rng.randf_range(0.9, 1.1)
-		var h := step * 2.6
-		var y := 1.2 + i * step
-		if _snag:
-			# the needles are gone: a few bare, drooping black stubs where each tier was
-			var a0 := rng.randf() * TAU
-			for j in 3:
-				var out := Vector3(cos(a0 + TAU * j / 3.0), 0, sin(a0 + TAU * j / 3.0))
-				var base := Vector3(0, y + h * 0.4, 0)
-				_bark(bake, base, base + out * r * rng.randf_range(0.35, 0.6) + Vector3(0, -0.25, 0), 0.05, 0.012, C_CHAR)
-			continue
-		# (drawn in this order: where the tier sits, how it leans, how wide, its colour)
-		var pos := Vector3(rng.randf_range(-0.06, 0.06), y + h * 0.5, rng.randf_range(-0.06, 0.06))
-		var rot := Vector3(rng.randf_range(-0.07, 0.07), rng.randf() * TAU, rng.randf_range(-0.07, 0.07))
-		var scl := Vector3(r * rng.randf_range(0.9, 1.1), h, r * rng.randf_range(0.9, 1.1))
-		bake.part(Res.foliage_cards(true), Mats.leaf_cards(true), Mats.place(pos, rot, scl), Res.vary(needles, 0.05, rng).darkened(0.12 * (1.0 - t)))
+	var variant := rng.randi_range(0, 1)
+	var height := rng.randf_range(9.0, 13.5)
+	var scale := height / (14.06 if variant == 0 else 14.52)
+	var pose := Mats.place(Vector3.ZERO, Vector3(0, rng.randf() * TAU, 0), Vector3(scale, scale, scale))
+	var path := "res://assets/foliage/woodland/fir_tree_01-%d-" % variant
+	_bark_part(bake, load(path + "trunk.res"), pose, C_CHAR if _snag else Color(0.32, 0.26, 0.19))
+	if not _snag:
+		bake.part(load(path + "leaves.res"), Mats.leaf_cards(true), pose, Res.vary(Color(0.13, 0.21, 0.14), 0.08, rng))
 
 
 static func _bark(bake: Mats.Bake, a: Vector3, b: Vector3, r0: float, r1: float, col: Color) -> void:

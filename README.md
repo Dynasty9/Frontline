@@ -27,7 +27,7 @@ Grenades burst into dust and fast fragments, shells throw dense fans of earth an
 
 You can play alone against the computer, team up with friends against it, or fight each other online. Desktop skirmishes offer 1,024, 2,048 and 3,072 metre square battlefields. Single-player simulation runs in its own local process so combat does not block drawing the battlefield. Seeded mountain belts, snowy peaks and mossy valleys surround towns, forests, roads and river crossings. Slopes shape movement and construction, and ridges screen troops from observation and fire. Larger maps need more memory; see the measured workloads in [simulation scaling](docs/SIMULATION_SCALING.md).
 
-The landscape, models, music and most sound effects are generated in code. Tracked vehicles mix field recordings of heavy engines, running gear and gunfire ([sound credits](assets/audio/tracked/LICENSE.md)), and their paint carries photographed surface wear ([texture credit](assets/vehicles/LICENSE.md)). Explosion clouds use baked CC0 fluid simulations from JangaFX ([credits](assets/vfx/LICENSE.md)); moss, rock and town surfaces use bundled CC0 photographs from Poly Haven ([terrain credits](assets/terrain/LICENSE.md), [town material credits](assets/town/LICENSE.md), [foliage credits](assets/foliage/LICENSE.md)). Even the menus sit on a living topographic map, in your choice of five themes (Settings > Interface): Field Brass, Night Vision, Thermal, Arctic or Dusk.
+The landscape, unit models, music and most sound effects are generated in code. Woodland trees, shrubs, ferns, deadwood and mossy stones use reduced CC0 scans, with leaf-covered soil and small butterflies beneath the canopy ([foliage credits](assets/foliage/LICENSE.md)). Tracked vehicles mix field recordings of heavy engines, running gear and gunfire ([sound credits](assets/audio/tracked/LICENSE.md)), and their paint carries photographed surface wear ([texture credit](assets/vehicles/LICENSE.md)). Explosion clouds use baked CC0 fluid simulations from JangaFX ([credits](assets/vfx/LICENSE.md)); moss, rock and town surfaces use bundled CC0 photographs from Poly Haven ([terrain credits](assets/terrain/LICENSE.md), [town material credits](assets/town/LICENSE.md)). Even the menus sit on a living topographic map, in your choice of five themes (Settings > Interface): Field Brass, Night Vision, Thermal, Arctic or Dusk.
 
 ## Screenshots
 
@@ -225,7 +225,7 @@ Signed in, every battle you fight earns XP (a win more), and you climb 50 ranks 
 
 Frontline is free and open source under the [MIT License](LICENSE). © 2026 Alexander Dines.
 
-Many vehicle names nod to the fictional vehicles of Bohemia Interactive's *Arma 3*. Frontline is an independent fan project. It is not affiliated with or endorsed by Bohemia Interactive, and all its models are original, built in code from real-world references.
+Many vehicle names nod to the fictional vehicles of Bohemia Interactive's *Arma 3*. Frontline is an independent fan project. It is not affiliated with or endorsed by Bohemia Interactive, and its vehicle models are original, built in code from real-world references.
 
 ### Watch and replay
 

@@ -1928,6 +1928,7 @@ uniform sampler2D biome_tex : filter_linear, repeat_enable;
 uniform sampler2D detail_tex : filter_linear_mipmap, repeat_enable;
 uniform sampler2D backdrop_tex : filter_linear_mipmap, repeat_disable;
 uniform sampler2D forest_cover : hint_default_black, filter_linear, repeat_disable;
+uniform bool woodland_ready = false;
 uniform vec3 grass_a : source_color = vec3(0.24, 0.29, 0.19);
 uniform vec3 grass_b : source_color = vec3(0.32, 0.36, 0.24);
 uniform vec3 dry : source_color = vec3(0.36, 0.33, 0.19);
@@ -2324,9 +2325,17 @@ void fragment() {
 		moss = mix(moss, stones, height_blend(moss_sample.a, shoulder.a, stony * 0.85));
 	}
 	// Needle litter and sheltered undergrowth connect the same stands as the tree cards.
-	if (terrain_detail && max(abs(p.x), abs(p.y)) >= __MAP_HALF__) {
-		float woodland = texture(forest_cover, (p + __MAP_HALF__ + 1400.0) / (__MAP_SIZE__ + 2800.0)).r;
-		woodland *= forest_habitat(p, geology, slope);
+	if (terrain_detail) {
+		float woodland;
+		if (max(abs(p.x), abs(p.y)) >= __MAP_HALF__) {
+			woodland = texture(forest_cover, (p + __MAP_HALF__ + 1400.0) / (__MAP_SIZE__ + 2800.0)).r;
+			woodland *= forest_habitat(p, geology, slope);
+		} else {
+			vec2 half_texel = 0.5 / vec2(textureSize(biome_tex, 0));
+			woodland = woodland_ready ? texture(biome_tex, clamp((p + __MAP_HALF__) / __MAP_SIZE__, half_texel, 1.0 - half_texel)).g : 0.0;
+			woodland *= 1.0 - smoothstep(0.35, 0.8, slope);
+			woodland *= 0.82 + (d2 - 0.5) * 0.32;
+		}
 		if (woodland > 0.001) {
 			vec3 litter_uv = wpos / 3.0;
 			vec4 litter = surface_color(4.0, litter_uv, weights);
@@ -2334,11 +2343,19 @@ void fragment() {
 			vec2 litter_data = surface_data(4.0, litter_uv, weights, geometric, litter_n);
 			float litter_blend = height_blend(moss_sample.a, litter.a, woodland * 0.9);
 			float litter_luma = dot(litter.rgb, vec3(0.2126, 0.7152, 0.0722));
-			vec3 floor_color = mix(vec3(litter_luma), litter.rgb, 0.25) * vec3(0.26, 0.30, 0.19);
+			vec3 floor_color = mix(vec3(litter_luma), litter.rgb, 0.6) * vec3(0.36, 0.36, 0.28);
+			floor_color = mix(floor_color, moss * 0.7, smoothstep(0.48, 0.72, d2) * 0.45);
 			moss = mix(moss, floor_color, litter_blend);
 			moss_data = mix(moss_data, litter_data, litter_blend);
 			moss_n = normalize(mix(moss_n, litter_n, litter_blend));
 		}
+		exposed *= 1.0 - woodland * 0.85;
+	} else if (max(abs(p.x), abs(p.y)) < __MAP_HALF__) {
+		// Keep shaded woodland soil when the expensive terrain layers are disabled.
+		vec2 half_texel = 0.5 / vec2(textureSize(biome_tex, 0));
+		float woodland = woodland_ready ? texture(biome_tex, clamp((p + __MAP_HALF__) / __MAP_SIZE__, half_texel, 1.0 - half_texel)).g : 0.0;
+		woodland *= 1.0 - smoothstep(0.35, 0.8, slope);
+		moss = mix(moss, mix(vec3(0.055, 0.043, 0.025), moss * 0.55, d2), woodland * 0.85);
 		exposed *= 1.0 - woodland * 0.85;
 	}
 	// Gullies drop their load where they reach gentler ground: pale fans of washed
