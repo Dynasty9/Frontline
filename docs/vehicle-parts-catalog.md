@@ -1,6 +1,6 @@
 # Vehicle construction part catalog
 
-Source revision: `54823975`. 137 model keys, 84 construction-root groups.
+Source revision: `ec2d275b`. 137 model keys, 84 construction-root groups.
 
 Every model key is mapped below. Designs sharing a builder are grouped to avoid counting weapon/cargo variants as new designs. Each entry lists shared assemblies, authored sections in its root builder, and local helper construction. This is a source inventory, not a certified runtime bill of materials.
 
@@ -186,14 +186,14 @@ Every model key is mapped below. Designs sharing a builder are grouped to avoid 
 
 **Authored sections:**
 
-- Unlabelled construction / setup — [VmCsat._angara:1049](../scripts\game\vehicles\vm_csat.gd#L1049)
-- the gun slot and mask, the 125 mm, the coax — [VmCsat._angara:1056](../scripts\game\vehicles\vm_csat.gd#L1056)
-- Afghanit: five launch tubes in a housing low on each flank, firing out — [VmCsat._angara:1062](../scripts\game\vehicles\vm_csat.gd#L1062)
-- each tube's mouth angled out of the housing and a little forward — [VmCsat._angara:1065](../scripts\game\vehicles\vm_csat.gd#L1065)
-- radar panels on the corners, each aperture facing out — [VmCsat._angara:1071](../scripts\game\vehicles\vm_csat.gd#L1071)
-- the soft-kill smoke launchers on the roof — [VmCsat._angara:1076](../scripts\game\vehicles\vm_csat.gd#L1076)
-- the gunner's sight (front left) and the commander's panoramic sight — [VmCsat._angara:1082](../scripts\game\vehicles\vm_csat.gd#L1082)
-- the remote weapon on top: a 12.7 mm, or the command tank's 30 mm turret — [VmCsat._angara:1085](../scripts\game\vehicles\vm_csat.gd#L1085)
+- Unlabelled construction / setup — [VmCsat._angara:1089](../scripts\game\vehicles\vm_csat.gd#L1089)
+- the gun slot and mask, the 125 mm, the coax — [VmCsat._angara:1096](../scripts\game\vehicles\vm_csat.gd#L1096)
+- Afghanit: five launch tubes in a housing low on each flank, firing out — [VmCsat._angara:1102](../scripts\game\vehicles\vm_csat.gd#L1102)
+- each tube's mouth angled out of the housing and a little forward — [VmCsat._angara:1105](../scripts\game\vehicles\vm_csat.gd#L1105)
+- radar panels on the corners, each aperture facing out — [VmCsat._angara:1111](../scripts\game\vehicles\vm_csat.gd#L1111)
+- the soft-kill smoke launchers on the roof — [VmCsat._angara:1116](../scripts\game\vehicles\vm_csat.gd#L1116)
+- the gunner's sight (front left) and the commander's panoramic sight — [VmCsat._angara:1122](../scripts\game\vehicles\vm_csat.gd#L1122)
+- the remote weapon on top: a 12.7 mm, or the command tank's 30 mm turret — [VmCsat._angara:1125](../scripts\game\vehicles\vm_csat.gd#L1125)
 
 **Local helper construction:** `VmCsat._antenna`, `VmCsat._era`, `VmCsat._face_rot`, `VmCsat._gun125`, `VmCsat._hatch`, `VmCsat._headlight`, `VmCsat._periscope`, `VmCsat._rcws`, `VmCsat._running_gear`, `VmCsat._rwheel`, `VmCsat._sec`, `VmCsat._slats`, `VmCsat._sprocket`, `VmCsat._t14`, `VmCsat._taillight`, `VmCsat._tow`.
 
@@ -493,11 +493,11 @@ Every model key is mapped below. Designs sharing a builder are grouped to avoid 
 
 **Authored sections:**
 
-- Unlabelled construction / setup — [VmCsat._futura:886](../scripts\game\vehicles\vm_csat.gd#L886)
-- seams of the panels on the faceted roof — [VmCsat._futura:894](../scripts\game\vehicles\vm_csat.gd#L894)
-- the railgun: a boxy shroud round the breech end, two flat rails ahead held by spacer bands, an open frame at the muzzle — [VmCsat._futura:897](../scripts\game\vehicles\vm_csat.gd#L897)
-- the capacitor bank and its cooling vents at the back — [VmCsat._futura:911](../scripts\game\vehicles\vm_csat.gd#L911)
-- sights: the gunner's block, the commander's panoramic head, a remote MG — [VmCsat._futura:917](../scripts\game\vehicles\vm_csat.gd#L917)
+- Unlabelled construction / setup — [VmCsat._futura:926](../scripts\game\vehicles\vm_csat.gd#L926)
+- seams of the panels on the faceted roof — [VmCsat._futura:934](../scripts\game\vehicles\vm_csat.gd#L934)
+- the railgun: a boxy shroud round the breech end, two flat rails ahead held by spacer bands, an open frame at the muzzle — [VmCsat._futura:937](../scripts\game\vehicles\vm_csat.gd#L937)
+- the capacitor bank and its cooling vents at the back — [VmCsat._futura:951](../scripts\game\vehicles\vm_csat.gd#L951)
+- sights: the gunner's block, the commander's panoramic head, a remote MG — [VmCsat._futura:957](../scripts\game\vehicles\vm_csat.gd#L957)
 
 **Local helper construction:** `VmCsat._aim_y`, `VmCsat._antenna`, `VmCsat._era`, `VmCsat._hatch`, `VmCsat._headlight`, `VmCsat._onface`, `VmCsat._periscope`, `VmCsat._plate`, `VmCsat._rcws`, `VmCsat._running_gear`, `VmCsat._rwheel`, `VmCsat._sec`, `VmCsat._smoke`, `VmCsat._sprocket`, `VmCsat._t100`, `VmCsat._taillight`, `VmCsat._tow`.
 
@@ -812,25 +812,25 @@ Every model key is mapped below. Designs sharing a builder are grouped to avoid 
 
 **Authored sections:**
 
-- Unlabelled construction / setup — [VmCsat._ifrit:225](../scripts\game\vehicles\vm_csat.gd#L225)
-- the V-shaped belly between the wheels — [VmCsat._ifrit:227](../scripts\game\vehicles\vm_csat.gd#L227)
-- the faceted body: nose, bonnet, windscreen, cabin, rear face — [VmCsat._ifrit:229](../scripts\game\vehicles\vm_csat.gd#L229)
-- the lower nose (grille and bumper) and the tail below the rear door — [VmCsat._ifrit:238](../scripts\game\vehicles\vm_csat.gd#L238)
-- the door sills between the wheels, their ends cut to the arches — [VmCsat._ifrit:241](../scripts\game\vehicles\vm_csat.gd#L241)
-- a raised panel down the bonnet and the air intake grille before the screen — [VmCsat._ifrit:246](../scripts\game\vehicles\vm_csat.gd#L246)
-- the windscreen: two small panes in the raked front of the cabin — [VmCsat._ifrit:250](../scripts\game\vehicles\vm_csat.gd#L250)
-- A-pillar cover strips on the screen's facets — [VmCsat._ifrit:255](../scripts\game\vehicles\vm_csat.gd#L255)
-- side windows, door seams and lever handles, the doors' steps — [VmCsat._ifrit:258](../scripts\game\vehicles\vm_csat.gd#L258)
-- each door's gap runs up the body from the chine over the belt to the roof edge — [VmCsat._ifrit:264](../scripts\game\vehicles\vm_csat.gd#L264)
-- mirrors on stalks at the screen's base — [VmCsat._ifrit:271](../scripts\game\vehicles\vm_csat.gd#L271)
-- angular arches over the wheels and mud flaps behind them — [VmCsat._ifrit:273](../scripts\game\vehicles\vm_csat.gd#L273)
-- headlight clusters in the wings, rear lights, tow hooks — [VmCsat._ifrit:278](../scripts\game\vehicles\vm_csat.gd#L278)
-- whip antennas at the rear roof corners — [VmCsat._ifrit:282](../scripts\game\vehicles\vm_csat.gd#L282)
-- the grille in the nose, which leans forward toward its top, the bumper — [VmCsat._ifrit:284](../scripts\game\vehicles\vm_csat.gd#L284)
-- the rear: the door with its window and hinges, the spare wheel, the step — [VmCsat._ifrit:288](../scripts\game\vehicles\vm_csat.gd#L288)
-- roof: rails on a foot at each end, the hatch or the weapon station — [VmCsat._ifrit:299](../scripts\game\vehicles\vm_csat.gd#L299)
+- Unlabelled construction / setup — [VmCsat._ifrit:265](../scripts\game\vehicles\vm_csat.gd#L265)
+- the V-shaped belly between the wheels — [VmCsat._ifrit:267](../scripts\game\vehicles\vm_csat.gd#L267)
+- the faceted body: nose, bonnet, windscreen, cabin, rear face — [VmCsat._ifrit:269](../scripts\game\vehicles\vm_csat.gd#L269)
+- the lower nose (grille and bumper) and the tail below the rear door — [VmCsat._ifrit:278](../scripts\game\vehicles\vm_csat.gd#L278)
+- the door sills between the wheels, their ends cut to the arches — [VmCsat._ifrit:281](../scripts\game\vehicles\vm_csat.gd#L281)
+- a raised panel down the bonnet and the air intake grille before the screen — [VmCsat._ifrit:286](../scripts\game\vehicles\vm_csat.gd#L286)
+- the windscreen: two small panes in the raked front of the cabin — [VmCsat._ifrit:290](../scripts\game\vehicles\vm_csat.gd#L290)
+- A-pillar cover strips on the screen's facets — [VmCsat._ifrit:295](../scripts\game\vehicles\vm_csat.gd#L295)
+- side windows, door seams and lever handles, the doors' steps — [VmCsat._ifrit:298](../scripts\game\vehicles\vm_csat.gd#L298)
+- each door's gap runs up the body from the chine over the belt to the roof edge — [VmCsat._ifrit:304](../scripts\game\vehicles\vm_csat.gd#L304)
+- mirrors on stalks at the screen's base — [VmCsat._ifrit:311](../scripts\game\vehicles\vm_csat.gd#L311)
+- angular arches over the wheels and mud flaps behind them — [VmCsat._ifrit:313](../scripts\game\vehicles\vm_csat.gd#L313)
+- headlight clusters in the wings, rear lights, tow hooks — [VmCsat._ifrit:318](../scripts\game\vehicles\vm_csat.gd#L318)
+- whip antennas at the rear roof corners — [VmCsat._ifrit:322](../scripts\game\vehicles\vm_csat.gd#L322)
+- the grille in the nose, which leans forward toward its top, the bumper — [VmCsat._ifrit:324](../scripts\game\vehicles\vm_csat.gd#L324)
+- the rear: the door with its window and hinges, the spare wheel, the step — [VmCsat._ifrit:328](../scripts\game\vehicles\vm_csat.gd#L328)
+- roof: rails on a foot at each end, the hatch or the weapon station — [VmCsat._ifrit:339](../scripts\game\vehicles\vm_csat.gd#L339)
 
-**Local helper construction:** `VmCsat._aim_y`, `VmCsat._antenna`, `VmCsat._arch`, `VmCsat._face_rot`, `VmCsat._hatch`, `VmCsat._headlight`, `VmCsat._mx`, `VmCsat._pane`, `VmCsat._periscope`, `VmCsat._plate`, `VmCsat._rcws`, `VmCsat._sec`, `VmCsat._taillight`, `VmCsat._tow`.
+**Local helper construction:** `VmCsat._aim_y`, `VmCsat._antenna`, `VmCsat._arch`, `VmCsat._arch_offset`, `VmCsat._face_rot`, `VmCsat._hatch`, `VmCsat._headlight`, `VmCsat._mx`, `VmCsat._pane`, `VmCsat._periscope`, `VmCsat._plate`, `VmCsat._rcws`, `VmCsat._sec`, `VmCsat._taillight`, `VmCsat._tow`.
 
 ### ifv
 
@@ -915,11 +915,11 @@ Every model key is mapped below. Designs sharing a builder are grouped to avoid 
 
 **Authored sections:**
 
-- Unlabelled construction / setup — [VmCsat._kamysh:681](../scripts\game\vehicles\vm_csat.gd#L681)
-- the bustle box at the back — [VmCsat._kamysh:687](../scripts\game\vehicles\vm_csat.gd#L687)
-- mantlet, the 30 mm with its barrel jacket and muzzle brake, the coax — [VmCsat._kamysh:689](../scripts\game\vehicles\vm_csat.gd#L689)
-- the gunner's sight head (front left) and the commander's panoramic sight — [VmCsat._kamysh:694](../scripts\game\vehicles\vm_csat.gd#L694)
-- the twin Titan launchers on arms either side, smoke dischargers behind — [VmCsat._kamysh:697](../scripts\game\vehicles\vm_csat.gd#L697)
+- Unlabelled construction / setup — [VmCsat._kamysh:721](../scripts\game\vehicles\vm_csat.gd#L721)
+- the bustle box at the back — [VmCsat._kamysh:727](../scripts\game\vehicles\vm_csat.gd#L727)
+- mantlet, the 30 mm with its barrel jacket and muzzle brake, the coax — [VmCsat._kamysh:729](../scripts\game\vehicles\vm_csat.gd#L729)
+- the gunner's sight head (front left) and the commander's panoramic sight — [VmCsat._kamysh:734](../scripts\game\vehicles\vm_csat.gd#L734)
+- the twin Titan launchers on arms either side, smoke dischargers behind — [VmCsat._kamysh:737](../scripts\game\vehicles\vm_csat.gd#L737)
 
 **Local helper construction:** `VmCsat._antenna`, `VmCsat._face_rot`, `VmCsat._hatch`, `VmCsat._headlight`, `VmCsat._onface`, `VmCsat._periscope`, `VmCsat._running_gear`, `VmCsat._rwheel`, `VmCsat._sec`, `VmCsat._smoke`, `VmCsat._sprocket`, `VmCsat._stalker`, `VmCsat._taillight`, `VmCsat._tow`.
 
@@ -991,18 +991,18 @@ Every model key is mapped below. Designs sharing a builder are grouped to avoid 
 
 **Authored sections:**
 
-- Unlabelled construction / setup — [VmCsat._marid:528](../scripts\game\vehicles\vm_csat.gd#L528)
-- the glacis plane (for things mounted on it) — [VmCsat._marid:537](../scripts\game\vehicles\vm_csat.gd#L537)
-- the driver's windows at the top of the glacis, front left, and his hatch — [VmCsat._marid:540](../scripts\game\vehicles\vm_csat.gd#L540)
-- the engine's louvres on the right of the glacis, exhaust on the right side — [VmCsat._marid:547](../scripts\game\vehicles\vm_csat.gd#L547)
-- headlight clusters and tow hooks on the nose, smoke dischargers — [VmCsat._marid:549](../scripts\game\vehicles\vm_csat.gd#L549)
-- the wheels on three evenly spaced axles, mud flaps — [VmCsat._marid:554](../scripts\game\vehicles\vm_csat.gd#L554)
-- the crease's side: vision blocks and firing ports along the troop compartment, stowage boxes, the exhaust — [VmCsat._marid:559](../scripts\game\vehicles\vm_csat.gd#L559)
-- grab rails along the roof edge — [VmCsat._marid:570](../scripts\game\vehicles\vm_csat.gd#L570)
-- rear: the ramp with its door, hinges, water jets, lights, stowage — [VmCsat._marid:573](../scripts\game\vehicles\vm_csat.gd#L573)
-- roof: the troop compartment's hatches, a stowage basket — [VmCsat._marid:588](../scripts\game\vehicles\vm_csat.gd#L588)
-- twin remote weapon stations on one ring: the 12.7 mm on the left, the 40 mm on the right, the sight head between them — [VmCsat._marid:595](../scripts\game\vehicles\vm_csat.gd#L595)
-- 12.7 mm, left, and 40 mm, right, each with its ammunition on the outboard side — [VmCsat._marid:605](../scripts\game\vehicles\vm_csat.gd#L605)
+- Unlabelled construction / setup — [VmCsat._marid:568](../scripts\game\vehicles\vm_csat.gd#L568)
+- the glacis plane (for things mounted on it) — [VmCsat._marid:577](../scripts\game\vehicles\vm_csat.gd#L577)
+- the driver's windows at the top of the glacis, front left, and his hatch — [VmCsat._marid:580](../scripts\game\vehicles\vm_csat.gd#L580)
+- the engine's louvres on the right of the glacis, exhaust on the right side — [VmCsat._marid:587](../scripts\game\vehicles\vm_csat.gd#L587)
+- headlight clusters and tow hooks on the nose, smoke dischargers — [VmCsat._marid:589](../scripts\game\vehicles\vm_csat.gd#L589)
+- the wheels on three evenly spaced axles, mud flaps — [VmCsat._marid:594](../scripts\game\vehicles\vm_csat.gd#L594)
+- the crease's side: vision blocks and firing ports along the troop compartment, stowage boxes, the exhaust — [VmCsat._marid:599](../scripts\game\vehicles\vm_csat.gd#L599)
+- grab rails along the roof edge — [VmCsat._marid:610](../scripts\game\vehicles\vm_csat.gd#L610)
+- rear: the ramp with its door, hinges, water jets, lights, stowage — [VmCsat._marid:613](../scripts\game\vehicles\vm_csat.gd#L613)
+- roof: the troop compartment's hatches, a stowage basket — [VmCsat._marid:628](../scripts\game\vehicles\vm_csat.gd#L628)
+- twin remote weapon stations on one ring: the 12.7 mm on the left, the 40 mm on the right, the sight head between them — [VmCsat._marid:635](../scripts\game\vehicles\vm_csat.gd#L635)
+- 12.7 mm, left, and 40 mm, right, each with its ammunition on the outboard side — [VmCsat._marid:645](../scripts\game\vehicles\vm_csat.gd#L645)
 
 **Local helper construction:** `VmCsat._antenna`, `VmCsat._face_rot`, `VmCsat._hatch`, `VmCsat._headlight`, `VmCsat._jerrycan`, `VmCsat._onface`, `VmCsat._periscope`, `VmCsat._sec`, `VmCsat._smoke`, `VmCsat._taillight`, `VmCsat._tow`.
 
@@ -1314,29 +1314,29 @@ Every model key is mapped below. Designs sharing a builder are grouped to avoid 
 
 **Authored sections:**
 
-- Unlabelled construction / setup — [VmCsat._qilin:322](../scripts\game\vehicles\vm_csat.gd#L322)
-- the belly pan and chassis rails — [VmCsat._qilin:324](../scripts\game\vehicles\vm_csat.gd#L324)
-- the nose over the radiator: a sloping bonnet — [VmCsat._qilin:326](../scripts\game\vehicles\vm_csat.gd#L326)
-- a vent in the bonnet before the screen — [VmCsat._qilin:332](../scripts\game\vehicles\vm_csat.gd#L332)
-- the open crew tub: floor and low side walls, the rear engine deck — [VmCsat._qilin:336](../scripts\game\vehicles\vm_csat.gd#L336)
-- the dash under the screen frame, the steering wheel, the seats — [VmCsat._qilin:341](../scripts\game\vehicles\vm_csat.gd#L341)
-- the passengers' benches over the engine, back to back, facing out, their backs meeting on the centre line — [VmCsat._qilin:347](../scripts\game\vehicles\vm_csat.gd#L347)
-- fenders: faceted mudguards over the wheels, steps between them — [VmCsat._qilin:351](../scripts\game\vehicles\vm_csat.gd#L351)
-- round headlamps behind their guard straps, the tail lights — [VmCsat._qilin:358](../scripts\game\vehicles\vm_csat.gd#L358)
-- mirrors on the screen frame — [VmCsat._qilin:361](../scripts\game\vehicles\vm_csat.gd#L361)
-- the exhaust's tail pipe out of the right rear, an open end — [VmCsat._qilin:363](../scripts\game\vehicles\vm_csat.gd#L363)
-- the grille, the bull bar's hoop over it and the bumper tube below — [VmCsat._qilin:365](../scripts\game\vehicles\vm_csat.gd#L365)
-- the spare wheel upright on the tail, jerrycans beside it — [VmCsat._qilin:371](../scripts\game\vehicles\vm_csat.gd#L371)
-- its carrier bolted to the tail below the hub, rising from the deck's edge — [VmCsat._qilin:373](../scripts\game\vehicles\vm_csat.gd#L373)
-- the roll cage: each side's A-pillar, roof rail and rear stay bent from one tube, the B and C hoops' legs and the cross bars welded to it, the dash bar across the front and a diagonal across the B hoop — [VmCsat._qilin:377](../scripts\game\vehicles\vm_csat.gd#L377)
-- braces from the B hoop's feet up toward the rear rails — [VmCsat._qilin:392](../scripts\game\vehicles\vm_csat.gd#L392)
-- the weapon ring on the cage over the gunner's station, braced out to the cage's sides; an armed Qilin's gun rides it on a carriage — [VmCsat._qilin:395](../scripts\game\vehicles\vm_csat.gd#L395)
-- the gun's post on the carriage, its cradle on top — [VmCsat._qilin:406](../scripts\game\vehicles\vm_csat.gd#L406)
-- the minigun: six barrels round a spindle, the motor and feed chute — [VmCsat._qilin:410](../scripts\game\vehicles\vm_csat.gd#L410)
-- the Vorona: a fat launch tube on a cradle, the thermal sight beside it — [VmCsat._qilin:422](../scripts\game\vehicles\vm_csat.gd#L422)
-- the thermal sight looks out through one big objective, 11 cm across — [VmCsat._qilin:426](../scripts\game\vehicles\vm_csat.gd#L426)
+- Unlabelled construction / setup — [VmCsat._qilin:362](../scripts\game\vehicles\vm_csat.gd#L362)
+- the belly pan and chassis rails — [VmCsat._qilin:364](../scripts\game\vehicles\vm_csat.gd#L364)
+- the nose over the radiator: a sloping bonnet — [VmCsat._qilin:366](../scripts\game\vehicles\vm_csat.gd#L366)
+- a vent in the bonnet before the screen — [VmCsat._qilin:372](../scripts\game\vehicles\vm_csat.gd#L372)
+- the open crew tub: floor and low side walls, the rear engine deck — [VmCsat._qilin:376](../scripts\game\vehicles\vm_csat.gd#L376)
+- the dash under the screen frame, the steering wheel, the seats — [VmCsat._qilin:381](../scripts\game\vehicles\vm_csat.gd#L381)
+- the passengers' benches over the engine, back to back, facing out, their backs meeting on the centre line — [VmCsat._qilin:387](../scripts\game\vehicles\vm_csat.gd#L387)
+- fenders: faceted mudguards over the wheels, steps between them — [VmCsat._qilin:391](../scripts\game\vehicles\vm_csat.gd#L391)
+- round headlamps behind their guard straps, the tail lights — [VmCsat._qilin:398](../scripts\game\vehicles\vm_csat.gd#L398)
+- mirrors on the screen frame — [VmCsat._qilin:401](../scripts\game\vehicles\vm_csat.gd#L401)
+- the exhaust's tail pipe out of the right rear, an open end — [VmCsat._qilin:403](../scripts\game\vehicles\vm_csat.gd#L403)
+- the grille, the bull bar's hoop over it and the bumper tube below — [VmCsat._qilin:405](../scripts\game\vehicles\vm_csat.gd#L405)
+- the spare wheel upright on the tail, jerrycans beside it — [VmCsat._qilin:411](../scripts\game\vehicles\vm_csat.gd#L411)
+- its carrier bolted to the tail below the hub, rising from the deck's edge — [VmCsat._qilin:413](../scripts\game\vehicles\vm_csat.gd#L413)
+- the roll cage: each side's A-pillar, roof rail and rear stay bent from one tube, the B and C hoops' legs and the cross bars welded to it, the dash bar across the front and a diagonal across the B hoop — [VmCsat._qilin:417](../scripts\game\vehicles\vm_csat.gd#L417)
+- braces from the B hoop's feet up toward the rear rails — [VmCsat._qilin:432](../scripts\game\vehicles\vm_csat.gd#L432)
+- the weapon ring on the cage over the gunner's station, braced out to the cage's sides; an armed Qilin's gun rides it on a carriage — [VmCsat._qilin:435](../scripts\game\vehicles\vm_csat.gd#L435)
+- the gun's post on the carriage, its cradle on top — [VmCsat._qilin:446](../scripts\game\vehicles\vm_csat.gd#L446)
+- the minigun: six barrels round a spindle, the motor and feed chute — [VmCsat._qilin:450](../scripts\game\vehicles\vm_csat.gd#L450)
+- the Vorona: a fat launch tube on a cradle, the thermal sight beside it — [VmCsat._qilin:462](../scripts\game\vehicles\vm_csat.gd#L462)
+- the thermal sight looks out through one big objective, 11 cm across — [VmCsat._qilin:466](../scripts\game\vehicles\vm_csat.gd#L466)
 
-**Local helper construction:** `VmCsat._aim_y`, `VmCsat._antenna`, `VmCsat._arch`, `VmCsat._face_rot`, `VmCsat._jerrycan`, `VmCsat._plate`, `VmCsat._sec`, `VmCsat._taillight`, `VmCsat._tow`, `VmCsat._tube`.
+**Local helper construction:** `VmCsat._aim_y`, `VmCsat._antenna`, `VmCsat._arch`, `VmCsat._arch_offset`, `VmCsat._face_rot`, `VmCsat._jerrycan`, `VmCsat._plate`, `VmCsat._sec`, `VmCsat._taillight`, `VmCsat._tow`, `VmCsat._tube`.
 
 ### quadbike
 
@@ -1502,13 +1502,13 @@ Every model key is mapped below. Designs sharing a builder are grouped to avoid 
 
 **Authored sections:**
 
-- Unlabelled construction / setup — [VmCsat._sochor:929](../scripts\game\vehicles\vm_csat.gd#L929)
-- flat sides: a crew door, stowage boxes, vents; the ammunition door at the back — [VmCsat._sochor:937](../scripts\game\vehicles\vm_csat.gd#L937)
-- each crew door's sealed face looks out of its own side — [VmCsat._sochor:939](../scripts\game\vehicles\vm_csat.gd#L939)
-- a louvred vent on the side plate, which has leaned in to 1.5 m out at the vent's height — [VmCsat._sochor:943](../scripts\game\vehicles\vm_csat.gd#L943)
-- roof: hatches, the commander's panoramic sight, the remote 12.7 mm — [VmCsat._sochor:951](../scripts\game\vehicles\vm_csat.gd#L951)
-- the barrel on its trunnions: mantlet, recoil cylinders, fume extractor, the long tube ending inside the double-baffle muzzle brake's sleeve — [VmCsat._sochor:958](../scripts\game\vehicles\vm_csat.gd#L958)
-- the travel lock, folded down on the glacis: two arms converging from their hinges on the nose to the cradle — [VmCsat._sochor:970](../scripts\game\vehicles\vm_csat.gd#L970)
+- Unlabelled construction / setup — [VmCsat._sochor:969](../scripts\game\vehicles\vm_csat.gd#L969)
+- flat sides: a crew door, stowage boxes, vents; the ammunition door at the back — [VmCsat._sochor:977](../scripts\game\vehicles\vm_csat.gd#L977)
+- each crew door's sealed face looks out of its own side — [VmCsat._sochor:979](../scripts\game\vehicles\vm_csat.gd#L979)
+- a louvred vent on the side plate, which has leaned in to 1.5 m out at the vent's height — [VmCsat._sochor:983](../scripts\game\vehicles\vm_csat.gd#L983)
+- roof: hatches, the commander's panoramic sight, the remote 12.7 mm — [VmCsat._sochor:991](../scripts\game\vehicles\vm_csat.gd#L991)
+- the barrel on its trunnions: mantlet, recoil cylinders, fume extractor, the long tube ending inside the double-baffle muzzle brake's sleeve — [VmCsat._sochor:998](../scripts\game\vehicles\vm_csat.gd#L998)
+- the travel lock, folded down on the glacis: two arms converging from their hinges on the nose to the cradle — [VmCsat._sochor:1010](../scripts\game\vehicles\vm_csat.gd#L1010)
 
 **Local helper construction:** `VmCsat._antenna`, `VmCsat._era`, `VmCsat._hatch`, `VmCsat._headlight`, `VmCsat._onface`, `VmCsat._periscope`, `VmCsat._rcws`, `VmCsat._running_gear`, `VmCsat._rwheel`, `VmCsat._sec`, `VmCsat._smoke`, `VmCsat._sprocket`, `VmCsat._t100`, `VmCsat._taillight`, `VmCsat._tow`.
 
@@ -1671,20 +1671,20 @@ Every model key is mapped below. Designs sharing a builder are grouped to avoid 
 
 **Authored sections:**
 
-- Unlabelled construction / setup — [VmCsat._tempest:1165](../scripts\game\vehicles\vm_csat.gd#L1165)
-- long missile crates stacked three high forward, rows of ammunition boxes behind them, each stack on its pallet and strapped down, cans at the tail. Shorter stacked cases preserve the clearance below the folded boom. — [VmCsat._tempest:1171](../scripts\game\vehicles\vm_csat.gd#L1171)
-- the loading crane behind the cab on its king post, its boom folded back over the load, the extension run out to the hook at its end — [VmCsat._tempest:1181](../scripts\game\vehicles\vm_csat.gd#L1181)
-- roller shutters on the sides, toolboxes under the body — [VmCsat._tempest:1190](../scripts\game\vehicles\vm_csat.gd#L1190)
-- the workshop's back door onto the platform, hinged on its right; its sill clears the body's bottom rail — [VmCsat._tempest:1194](../scripts\game\vehicles\vm_csat.gd#L1194)
-- the crane on the open platform behind on its king post, its boom luffed down along the roof onto its rest, the hook block at its head — [VmCsat._tempest:1197](../scripts\game\vehicles\vm_csat.gd#L1197)
-- a spare wheel standing on the platform, the welding set's oxygen and acetylene bottles in their rack against the bed side — [VmCsat._tempest:1201](../scripts\game\vehicles\vm_csat.gd#L1201)
-- the rear door with its window and steps (its sill clear of the body's bottom rail), the cross beside it, the roof's air units — [VmCsat._tempest:1214](../scripts\game\vehicles\vm_csat.gd#L1214)
-- the walkway along the crown over three manholes between folding handrails, the ladder up the barrel's back — [VmCsat._tempest:1228](../scripts\game\vehicles\vm_csat.gd#L1228)
-- the pump cabinet with its outlet and the hose reel at the back — [VmCsat._tempest:1233](../scripts\game\vehicles\vm_csat.gd#L1233)
-- troops: armoured sides, the canvas cover on its bows — [VmCsat._tempest:1239](../scripts\game\vehicles\vm_csat.gd#L1239)
-- the boarding ladder hung on the tailgate, its stiles toward the truck — [VmCsat._tempest:1252](../scripts\game\vehicles\vm_csat.gd#L1252)
+- Unlabelled construction / setup — [VmCsat._tempest:1205](../scripts\game\vehicles\vm_csat.gd#L1205)
+- long missile crates stacked three high forward, rows of ammunition boxes behind them, each stack on its pallet and strapped down, cans at the tail. Shorter stacked cases preserve the clearance below the folded boom. — [VmCsat._tempest:1211](../scripts\game\vehicles\vm_csat.gd#L1211)
+- the loading crane behind the cab on its king post, its boom folded back over the load, the extension run out to the hook at its end — [VmCsat._tempest:1221](../scripts\game\vehicles\vm_csat.gd#L1221)
+- roller shutters on the sides, toolboxes under the body — [VmCsat._tempest:1230](../scripts\game\vehicles\vm_csat.gd#L1230)
+- the workshop's back door onto the platform, hinged on its right; its sill clears the body's bottom rail — [VmCsat._tempest:1234](../scripts\game\vehicles\vm_csat.gd#L1234)
+- the crane on the open platform behind on its king post, its boom luffed down along the roof onto its rest, the hook block at its head — [VmCsat._tempest:1237](../scripts\game\vehicles\vm_csat.gd#L1237)
+- a spare wheel standing on the platform, the welding set's oxygen and acetylene bottles in their rack against the bed side — [VmCsat._tempest:1241](../scripts\game\vehicles\vm_csat.gd#L1241)
+- the rear door with its window and steps (its sill clear of the body's bottom rail), the cross beside it, the roof's air units — [VmCsat._tempest:1254](../scripts\game\vehicles\vm_csat.gd#L1254)
+- the walkway along the crown over three manholes between folding handrails, the ladder up the barrel's back — [VmCsat._tempest:1268](../scripts\game\vehicles\vm_csat.gd#L1268)
+- the pump cabinet with its outlet and the hose reel at the back — [VmCsat._tempest:1273](../scripts\game\vehicles\vm_csat.gd#L1273)
+- troops: armoured sides, the canvas cover on its bows — [VmCsat._tempest:1279](../scripts\game\vehicles\vm_csat.gd#L1279)
+- the boarding ladder hung on the tailgate, its stiles toward the truck — [VmCsat._tempest:1292](../scripts\game\vehicles\vm_csat.gd#L1292)
 
-**Local helper construction:** `VmCsat._aim_y`, `VmCsat._antenna`, `VmCsat._arch`, `VmCsat._cross`, `VmCsat._face_rot`, `VmCsat._hatch`, `VmCsat._headlight`, `VmCsat._locker`, `VmCsat._onface`, `VmCsat._plate`, `VmCsat._sec`, `VmCsat._taillight`, `VmCsat._tempest_box`, `VmCsat._tempest_flatbed`, `VmCsat._tow`, `VmCsat._typhoon`.
+**Local helper construction:** `VmCsat._aim_y`, `VmCsat._antenna`, `VmCsat._arch`, `VmCsat._arch_offset`, `VmCsat._cross`, `VmCsat._face_rot`, `VmCsat._hatch`, `VmCsat._headlight`, `VmCsat._locker`, `VmCsat._onface`, `VmCsat._plate`, `VmCsat._sec`, `VmCsat._taillight`, `VmCsat._tempest_box`, `VmCsat._tempest_flatbed`, `VmCsat._tow`, `VmCsat._typhoon`.
 
 ### tigris
 
@@ -1692,12 +1692,12 @@ Every model key is mapped below. Designs sharing a builder are grouped to avoid 
 
 **Authored sections:**
 
-- Unlabelled construction / setup — [VmCsat._tigris:709](../scripts\game\vehicles\vm_csat.gd#L709)
-- the guns: a 35 mm in a cradle on each side, ammunition feed fairings — [VmCsat._tigris:715](../scripts\game\vehicles\vm_csat.gd#L715)
-- the tracking radar in its housing on the front of the roof — [VmCsat._tigris:726](../scripts\game\vehicles\vm_csat.gd#L726)
-- the optical sight beside it — [VmCsat._tigris:729](../scripts\game\vehicles\vm_csat.gd#L729)
-- the search radar: a flat antenna on a mast at the back — [VmCsat._tigris:731](../scripts\game\vehicles\vm_csat.gd#L731)
-- twin missile boxes either side of the mast — [VmCsat._tigris:735](../scripts\game\vehicles\vm_csat.gd#L735)
+- Unlabelled construction / setup — [VmCsat._tigris:749](../scripts\game\vehicles\vm_csat.gd#L749)
+- the guns: a 35 mm in a cradle on each side, ammunition feed fairings — [VmCsat._tigris:755](../scripts\game\vehicles\vm_csat.gd#L755)
+- the tracking radar in its housing on the front of the roof — [VmCsat._tigris:766](../scripts\game\vehicles\vm_csat.gd#L766)
+- the optical sight beside it — [VmCsat._tigris:769](../scripts\game\vehicles\vm_csat.gd#L769)
+- the search radar: a flat antenna on a mast at the back — [VmCsat._tigris:771](../scripts\game\vehicles\vm_csat.gd#L771)
+- twin missile boxes either side of the mast — [VmCsat._tigris:775](../scripts\game\vehicles\vm_csat.gd#L775)
 
 **Local helper construction:** `VmCsat._antenna`, `VmCsat._face_rot`, `VmCsat._hatch`, `VmCsat._headlight`, `VmCsat._onface`, `VmCsat._periscope`, `VmCsat._running_gear`, `VmCsat._rwheel`, `VmCsat._sec`, `VmCsat._smoke`, `VmCsat._sprocket`, `VmCsat._stalker`, `VmCsat._taillight`, `VmCsat._tow`.
 
@@ -1784,14 +1784,14 @@ Every model key is mapped below. Designs sharing a builder are grouped to avoid 
 
 **Authored sections:**
 
-- Unlabelled construction / setup — [VmCsat._varsuk:839](../scripts\game\vehicles\vm_csat.gd#L839)
-- the bustle: a long box hung off the turret's back — [VmCsat._varsuk:845](../scripts\game\vehicles\vm_csat.gd#L845)
-- reactive armour on the cheeks either side of the mantlet, and on the roof — [VmCsat._varsuk:851](../scripts\game\vehicles\vm_csat.gd#L851)
-- mantlet, gun, coax — [VmCsat._varsuk:856](../scripts\game\vehicles\vm_csat.gd#L856)
-- commander's cupola (right) with the 12.7 mm, gunner's sight (left front) — [VmCsat._varsuk:862](../scripts\game\vehicles\vm_csat.gd#L862)
-- Drozd launchers on the flanks, their radar heads on the cheeks, smoke — [VmCsat._varsuk:866](../scripts\game\vehicles\vm_csat.gd#L866)
-- antennas at the bustle's back corners — [VmCsat._varsuk:873](../scripts\game\vehicles\vm_csat.gd#L873)
-- stowage on the bustle's back, a wind sensor mast — [VmCsat._varsuk:875](../scripts\game\vehicles\vm_csat.gd#L875)
+- Unlabelled construction / setup — [VmCsat._varsuk:879](../scripts\game\vehicles\vm_csat.gd#L879)
+- the bustle: a long box hung off the turret's back — [VmCsat._varsuk:885](../scripts\game\vehicles\vm_csat.gd#L885)
+- reactive armour on the cheeks either side of the mantlet, and on the roof — [VmCsat._varsuk:891](../scripts\game\vehicles\vm_csat.gd#L891)
+- mantlet, gun, coax — [VmCsat._varsuk:896](../scripts\game\vehicles\vm_csat.gd#L896)
+- commander's cupola (right) with the 12.7 mm, gunner's sight (left front) — [VmCsat._varsuk:902](../scripts\game\vehicles\vm_csat.gd#L902)
+- Drozd launchers on the flanks, their radar heads on the cheeks, smoke — [VmCsat._varsuk:906](../scripts\game\vehicles\vm_csat.gd#L906)
+- antennas at the bustle's back corners — [VmCsat._varsuk:913](../scripts\game\vehicles\vm_csat.gd#L913)
+- stowage on the bustle's back, a wind sensor mast — [VmCsat._varsuk:915](../scripts\game\vehicles\vm_csat.gd#L915)
 
 **Local helper construction:** `VmCsat._antenna`, `VmCsat._cupola_mg`, `VmCsat._era`, `VmCsat._gun125`, `VmCsat._hatch`, `VmCsat._headlight`, `VmCsat._onface`, `VmCsat._periscope`, `VmCsat._running_gear`, `VmCsat._rwheel`, `VmCsat._sec`, `VmCsat._smoke`, `VmCsat._sprocket`, `VmCsat._t100`, `VmCsat._taillight`, `VmCsat._tow`.
 
@@ -1832,7 +1832,7 @@ Every model key is mapped below. Designs sharing a builder are grouped to avoid 
 
 ### xian
 
-**Shared:** `VehicleAircraft.chin_turret`, `VehicleAircraft.hardpoint`, `VehicleAircraft.intake_face`, `VehicleAircraft.pitot`, `VehicleAircraft.rocket_pod`, `VehicleAirfoils.section`, `VehicleAirfoils.surface`, `VehicleAirfoils.thickness`, `VehicleBody.boundary`, `VehicleBody.cylinder`, `VehicleBody.drum`, `VehicleBody.fastener`, `VehicleBody.fitted`, `VehicleBody.paint_mesh`, `VehicleBody.rod`, `VehicleCab.mesh_glass`, `VehicleDoors.closed`, `VehicleDoors.hinge`, `VehicleDoors.pull`, `VehicleFittings.marker`, `VehicleFittings.nav_light`, `VehicleFittings.signal_lens`, `VehicleFrames.aim`, `VehicleFrames.beam`, `VehicleFrames.rod_mesh`, `VehicleFrames.tube`, `VehicleGlazing.polygon`, `VehicleMaterials.key`, `VehicleMaterials.profile`, `VehicleProfiles.loft`, `VehicleProfiles.revolve`, `VehiclePropellers.disc_material`.
+**Shared:** `VehicleAircraft.chin_turret`, `VehicleAircraft.hardpoint`, `VehicleAircraft.intake_face`, `VehicleAircraft.pitot`, `VehicleAircraft.rocket_pod`, `VehicleAirfoils.section`, `VehicleAirfoils.surface`, `VehicleAirfoils.thickness`, `VehicleBody.boundary`, `VehicleBody.cylinder`, `VehicleBody.drum`, `VehicleBody.fastener`, `VehicleBody.fitted`, `VehicleBody.paint_mesh`, `VehicleBody.rod`, `VehicleCab.mesh_glass`, `VehicleDoors.closed`, `VehicleDoors.hinge`, `VehicleDoors.pull`, `VehicleFittings.marker`, `VehicleFittings.nav_light`, `VehicleFittings.signal_lens`, `VehicleFrames.aim`, `VehicleFrames.beam`, `VehicleFrames.rod_mesh`, `VehicleFrames.tube`, `VehicleGlazing.polygon`, `VehicleMaterials.key`, `VehicleMaterials.profile`, `VehicleProfiles.loft`, `VehicleProfiles.revolve`, `VehiclePropellers.disc_material`, `VehicleWeapons.launch_tube`.
 
 **Authored sections:**
 
@@ -1843,10 +1843,11 @@ Every model key is mapped below. Designs sharing a builder are grouped to avoid 
 - the wings, a lift fan in each, ailerons outboard — [VmPlane._xian:1147](../scripts\game\vehicles\vm_plane.gd#L1147)
 - wingtip pod with the lights — [VmPlane._xian:1155](../scripts\game\vehicles\vm_plane.gd#L1155)
 - stub wings below, with their stores — [VmPlane._xian:1158](../scripts\game\vehicles\vm_plane.gd#L1158)
-- twin turbofans high on the back, vectoring nozzles, a fairing between them — [VmPlane._xian:1173](../scripts\game\vehicles\vm_plane.gd#L1173)
-- the fan face in the mouth, square to its lip (raked 0.3 aft per metre up, so it looks a little upward), the spinner standing out ahead — [VmPlane._xian:1180](../scripts\game\vehicles\vm_plane.gd#L1180)
-- twin tails canted outboard of the engines, rudders — [VmPlane._xian:1187](../scripts\game\vehicles\vm_plane.gd#L1187)
-- probes, antennas, the sensor under the nose — [VmPlane._xian:1189](../scripts\game\vehicles\vm_plane.gd#L1189)
+- four missile tubes packed two by two under the rack plate, held up to it by two strap cradles — [VmPlane._xian:1169](../scripts\game\vehicles\vm_plane.gd#L1169)
+- twin turbofans high on the back, vectoring nozzles, a fairing between them — [VmPlane._xian:1179](../scripts\game\vehicles\vm_plane.gd#L1179)
+- the fan face in the mouth, square to its lip (raked 0.3 aft per metre up, so it looks a little upward), the spinner standing out ahead — [VmPlane._xian:1186](../scripts\game\vehicles\vm_plane.gd#L1186)
+- twin tails canted outboard of the engines, rudders — [VmPlane._xian:1193](../scripts\game\vehicles\vm_plane.gd#L1193)
+- probes, antennas, the sensor under the nose — [VmPlane._xian:1195](../scripts\game\vehicles\vm_plane.gd#L1195)
 
 **Local helper construction:** `VmPlane._flank`, `VmPlane._sp`, `VmPlane.antenna`, `VmPlane.band`, `VmPlane.body`, `VmPlane.glow`, `VmPlane.lift_fan`, `VmPlane.mouth`, `VmPlane.nav_lights`, `VmPlane.pylon`, `VmPlane.rocket_pod`, `VmPlane.rod`, `VmPlane.sec`, `VmPlane.skin`, `VmPlane.st_at`, `VmPlane.stripe`, `VmPlane.surf`, `VmPlane.surf_at`, `VmPlane.wing_marks`.
 
@@ -2582,47 +2583,53 @@ Every model key is mapped below. Designs sharing a builder are grouped to avoid 
 
 ### VmCsat._antenna
 
-- Unlabelled construction / setup — [VmCsat._antenna:143](../scripts\game\vehicles\vm_csat.gd#L143)
+- Unlabelled construction / setup — [VmCsat._antenna:183](../scripts\game\vehicles\vm_csat.gd#L183)
 
 ### VmCsat._arch
 
-- Unlabelled construction / setup — [VmCsat._arch:120](../scripts\game\vehicles\vm_csat.gd#L120)
+- Unlabelled construction / setup — [VmCsat._arch:125](../scripts\game\vehicles\vm_csat.gd#L125)
+- the arch's top edge in side view (z, y), front foot to rear foot, and the band's underside 5 cm in, then the dark well face under that — [VmCsat._arch:130](../scripts\game\vehicles\vm_csat.gd#L130)
+- counter-clockwise in (z, y): along the underside, back along the top — [VmCsat._arch:138](../scripts\game\vehicles\vm_csat.gd#L138)
+
+### VmCsat._arch_offset
+
+- Unlabelled construction / setup — [VmCsat._arch_offset:148](../scripts\game\vehicles\vm_csat.gd#L148)
 
 ### VmCsat._cross
 
-- Unlabelled construction / setup — [VmCsat._cross:1281](../scripts\game\vehicles\vm_csat.gd#L1281)
+- Unlabelled construction / setup — [VmCsat._cross:1321](../scripts\game\vehicles\vm_csat.gd#L1321)
 
 ### VmCsat._cupola_mg
 
-- Unlabelled construction / setup — [VmCsat._cupola_mg:828](../scripts\game\vehicles\vm_csat.gd#L828)
+- Unlabelled construction / setup — [VmCsat._cupola_mg:868](../scripts\game\vehicles\vm_csat.gd#L868)
 
 ### VmCsat._era
 
-- Unlabelled construction / setup — [VmCsat._era:506](../scripts\game\vehicles\vm_csat.gd#L506)
+- Unlabelled construction / setup — [VmCsat._era:546](../scripts\game\vehicles\vm_csat.gd#L546)
 
 ### VmCsat._face_rot
 
-- Unlabelled construction / setup — [VmCsat._face_rot:454](../scripts\game\vehicles\vm_csat.gd#L454)
+- Unlabelled construction / setup — [VmCsat._face_rot:494](../scripts\game\vehicles\vm_csat.gd#L494)
 
 ### VmCsat._gun125
 
-- Unlabelled construction / setup — [VmCsat._gun125:817](../scripts\game\vehicles\vm_csat.gd#L817)
+- Unlabelled construction / setup — [VmCsat._gun125:857](../scripts\game\vehicles\vm_csat.gd#L857)
 
 ### VmCsat._hatch
 
-- Unlabelled construction / setup — [VmCsat._hatch:160](../scripts\game\vehicles\vm_csat.gd#L160)
+- Unlabelled construction / setup — [VmCsat._hatch:200](../scripts\game\vehicles\vm_csat.gd#L200)
 
 ### VmCsat._headlight
 
-- Unlabelled construction / setup — [VmCsat._headlight:131](../scripts\game\vehicles\vm_csat.gd#L131)
+- Unlabelled construction / setup — [VmCsat._headlight:171](../scripts\game\vehicles\vm_csat.gd#L171)
 
 ### VmCsat._jerrycan
 
-- Unlabelled construction / setup — [VmCsat._jerrycan:154](../scripts\game\vehicles\vm_csat.gd#L154)
+- Unlabelled construction / setup — [VmCsat._jerrycan:194](../scripts\game\vehicles\vm_csat.gd#L194)
 
 ### VmCsat._locker
 
-- Unlabelled construction / setup — [VmCsat._locker:1275](../scripts\game\vehicles\vm_csat.gd#L1275)
+- Unlabelled construction / setup — [VmCsat._locker:1315](../scripts\game\vehicles\vm_csat.gd#L1315)
 
 ### VmCsat._mx
 
@@ -2630,7 +2637,7 @@ Every model key is mapped below. Designs sharing a builder are grouped to avoid 
 
 ### VmCsat._onface
 
-- Unlabelled construction / setup — [VmCsat._onface:439](../scripts\game\vehicles\vm_csat.gd#L439)
+- Unlabelled construction / setup — [VmCsat._onface:479](../scripts\game\vehicles\vm_csat.gd#L479)
 
 ### VmCsat._pane
 
@@ -2638,7 +2645,7 @@ Every model key is mapped below. Designs sharing a builder are grouped to avoid 
 
 ### VmCsat._periscope
 
-- Unlabelled construction / setup — [VmCsat._periscope:166](../scripts\game\vehicles\vm_csat.gd#L166)
+- Unlabelled construction / setup — [VmCsat._periscope:206](../scripts\game\vehicles\vm_csat.gd#L206)
 
 ### VmCsat._plate
 
@@ -2646,18 +2653,18 @@ Every model key is mapped below. Designs sharing a builder are grouped to avoid 
 
 ### VmCsat._rcws
 
-- Unlabelled construction / setup — [VmCsat._rcws:186](../scripts\game\vehicles\vm_csat.gd#L186)
-- the trunnion arms either side of the cradle — [VmCsat._rcws:189](../scripts\game\vehicles\vm_csat.gd#L189)
-- The guns feed from the station's own box beside them, so none carries a can. — [VmCsat._rcws:194](../scripts\game\vehicles\vm_csat.gd#L194)
-- the sight head beside the gun under its lid, the ammunition box on the other side — [VmCsat._rcws:208](../scripts\game\vehicles\vm_csat.gd#L208)
+- Unlabelled construction / setup — [VmCsat._rcws:226](../scripts\game\vehicles\vm_csat.gd#L226)
+- the trunnion arms either side of the cradle — [VmCsat._rcws:229](../scripts\game\vehicles\vm_csat.gd#L229)
+- The guns feed from the station's own box beside them, so none carries a can. — [VmCsat._rcws:234](../scripts\game\vehicles\vm_csat.gd#L234)
+- the sight head beside the gun under its lid, the ammunition box on the other side — [VmCsat._rcws:248](../scripts\game\vehicles\vm_csat.gd#L248)
 
 ### VmCsat._running_gear
 
-- Unlabelled construction / setup — [VmCsat._running_gear:477](../scripts\game\vehicles\vm_csat.gd#L477)
+- Unlabelled construction / setup — [VmCsat._running_gear:517](../scripts\game\vehicles\vm_csat.gd#L517)
 
 ### VmCsat._rwheel
 
-- Unlabelled construction / setup — [VmCsat._rwheel:462](../scripts\game\vehicles\vm_csat.gd#L462)
+- Unlabelled construction / setup — [VmCsat._rwheel:502](../scripts\game\vehicles\vm_csat.gd#L502)
 
 ### VmCsat._sec
 
@@ -2665,59 +2672,59 @@ Every model key is mapped below. Designs sharing a builder are grouped to avoid 
 
 ### VmCsat._slats
 
-- Unlabelled construction / setup — [VmCsat._slats:981](../scripts\game\vehicles\vm_csat.gd#L981)
+- Unlabelled construction / setup — [VmCsat._slats:1021](../scripts\game\vehicles\vm_csat.gd#L1021)
 
 ### VmCsat._smoke
 
-- Unlabelled construction / setup — [VmCsat._smoke:173](../scripts\game\vehicles\vm_csat.gd#L173)
+- Unlabelled construction / setup — [VmCsat._smoke:213](../scripts\game\vehicles\vm_csat.gd#L213)
 
 ### VmCsat._sprocket
 
-- Unlabelled construction / setup — [VmCsat._sprocket:467](../scripts\game\vehicles\vm_csat.gd#L467)
+- Unlabelled construction / setup — [VmCsat._sprocket:507](../scripts\game\vehicles\vm_csat.gd#L507)
 
 ### VmCsat._stalker
 
-- Unlabelled construction / setup — [VmCsat._stalker:619](../scripts\game\vehicles\vm_csat.gd#L619)
-- side skirts in bolted sections, the front one angled up toward the sprocket — [VmCsat._stalker:629](../scripts\game\vehicles\vm_csat.gd#L629)
-- the glacis: driver's hatch and periscopes front left, engine louvres front right, headlights in guards at the corners, tow hooks on the nose — [VmCsat._stalker:634](../scripts\game\vehicles\vm_csat.gd#L634)
-- upper sides: stowage boxes and vision blocks, the exhaust on the right — [VmCsat._stalker:646](../scripts\game\vehicles\vm_csat.gd#L646)
-- the rear: the troop door, its hinges and vision block, lights, stowage — [VmCsat._stalker:657](../scripts\game\vehicles\vm_csat.gd#L657)
-- a stowage bin either side of the door, its catches on the outside — [VmCsat._stalker:667](../scripts\game\vehicles\vm_csat.gd#L667)
-- roof: the troop compartment's hatches behind the turret — [VmCsat._stalker:670](../scripts\game\vehicles\vm_csat.gd#L670)
+- Unlabelled construction / setup — [VmCsat._stalker:659](../scripts\game\vehicles\vm_csat.gd#L659)
+- side skirts in bolted sections, the front one angled up toward the sprocket — [VmCsat._stalker:669](../scripts\game\vehicles\vm_csat.gd#L669)
+- the glacis: driver's hatch and periscopes front left, engine louvres front right, headlights in guards at the corners, tow hooks on the nose — [VmCsat._stalker:674](../scripts\game\vehicles\vm_csat.gd#L674)
+- upper sides: stowage boxes and vision blocks, the exhaust on the right — [VmCsat._stalker:686](../scripts\game\vehicles\vm_csat.gd#L686)
+- the rear: the troop door, its hinges and vision block, lights, stowage — [VmCsat._stalker:697](../scripts\game\vehicles\vm_csat.gd#L697)
+- a stowage bin either side of the door, its catches on the outside — [VmCsat._stalker:707](../scripts\game\vehicles\vm_csat.gd#L707)
+- roof: the troop compartment's hatches behind the turret — [VmCsat._stalker:710](../scripts\game\vehicles\vm_csat.gd#L710)
 
 ### VmCsat._t100
 
-- Unlabelled construction / setup — [VmCsat._t100:754](../scripts\game\vehicles\vm_csat.gd#L754)
-- the glacis: a chevron of reactive armour plates, the driver's hatch and periscope at its top, headlights at its corners, tow hooks on the nose — [VmCsat._t100:764](../scripts\game\vehicles\vm_csat.gd#L764)
-- the track guards on their gussets, the front mudguards raked down over the idlers — [VmCsat._t100:775](../scripts\game\vehicles\vm_csat.gd#L775)
-- side skirts: reactive armour on the front three sections, rubber behind — [VmCsat._t100:781](../scripts\game\vehicles\vm_csat.gd#L781)
-- stowage along the fenders behind the turret: bins left, fuel tanks right — [VmCsat._t100:791](../scripts\game\vehicles\vm_csat.gd#L791)
-- engine deck: grilles and the access panels — [VmCsat._t100:798](../scripts\game\vehicles\vm_csat.gd#L798)
-- the rear: the turbine's exhaust grille leaning back off the plate, the unditching beam, lights, hooks — [VmCsat._t100:801](../scripts\game\vehicles\vm_csat.gd#L801)
+- Unlabelled construction / setup — [VmCsat._t100:794](../scripts\game\vehicles\vm_csat.gd#L794)
+- the glacis: a chevron of reactive armour plates, the driver's hatch and periscope at its top, headlights at its corners, tow hooks on the nose — [VmCsat._t100:804](../scripts\game\vehicles\vm_csat.gd#L804)
+- the track guards on their gussets, the front mudguards raked down over the idlers — [VmCsat._t100:815](../scripts\game\vehicles\vm_csat.gd#L815)
+- side skirts: reactive armour on the front three sections, rubber behind — [VmCsat._t100:821](../scripts\game\vehicles\vm_csat.gd#L821)
+- stowage along the fenders behind the turret: bins left, fuel tanks right — [VmCsat._t100:831](../scripts\game\vehicles\vm_csat.gd#L831)
+- engine deck: grilles and the access panels — [VmCsat._t100:838](../scripts\game\vehicles\vm_csat.gd#L838)
+- the rear: the turbine's exhaust grille leaning back off the plate, the unditching beam, lights, hooks — [VmCsat._t100:841](../scripts\game\vehicles\vm_csat.gd#L841)
 
 ### VmCsat._t14
 
-- Unlabelled construction / setup — [VmCsat._t14:993](../scripts\game\vehicles\vm_csat.gd#L993)
-- the glacis: a grid of reactive armour blocks, the lights, tow hooks; the track guards on their gussets, the front mudguards raked over the idlers — [VmCsat._t14:1003](../scripts\game\vehicles\vm_csat.gd#L1003)
-- the crew capsule: three hatches abreast, periscopes ahead of each — [VmCsat._t14:1013](../scripts\game\vehicles\vm_csat.gd#L1013)
-- tall skirts: reactive armour forward, plain plates aft; slat cages round the engine bay — [VmCsat._t14:1019](../scripts\game\vehicles\vm_csat.gd#L1019)
-- engine deck: grilles, the exhaust on the left, stowage boxes on the deck — [VmCsat._t14:1031](../scripts\game\vehicles\vm_csat.gd#L1031)
+- Unlabelled construction / setup — [VmCsat._t14:1033](../scripts\game\vehicles\vm_csat.gd#L1033)
+- the glacis: a grid of reactive armour blocks, the lights, tow hooks; the track guards on their gussets, the front mudguards raked over the idlers — [VmCsat._t14:1043](../scripts\game\vehicles\vm_csat.gd#L1043)
+- the crew capsule: three hatches abreast, periscopes ahead of each — [VmCsat._t14:1053](../scripts\game\vehicles\vm_csat.gd#L1053)
+- tall skirts: reactive armour forward, plain plates aft; slat cages round the engine bay — [VmCsat._t14:1059](../scripts\game\vehicles\vm_csat.gd#L1059)
+- engine deck: grilles, the exhaust on the left, stowage boxes on the deck — [VmCsat._t14:1071](../scripts\game\vehicles\vm_csat.gd#L1071)
 
 ### VmCsat._taillight
 
-- Unlabelled construction / setup — [VmCsat._taillight:137](../scripts\game\vehicles\vm_csat.gd#L137)
+- Unlabelled construction / setup — [VmCsat._taillight:177](../scripts\game\vehicles\vm_csat.gd#L177)
 
 ### VmCsat._tempest_box
 
-- Unlabelled construction / setup — [VmCsat._tempest_box:1268](../scripts\game\vehicles\vm_csat.gd#L1268)
+- Unlabelled construction / setup — [VmCsat._tempest_box:1308](../scripts\game\vehicles\vm_csat.gd#L1308)
 
 ### VmCsat._tempest_flatbed
 
-- Unlabelled construction / setup — [VmCsat._tempest_flatbed:1260](../scripts\game\vehicles\vm_csat.gd#L1260)
+- Unlabelled construction / setup — [VmCsat._tempest_flatbed:1300](../scripts\game\vehicles\vm_csat.gd#L1300)
 
 ### VmCsat._tow
 
-- Unlabelled construction / setup — [VmCsat._tow:148](../scripts\game\vehicles\vm_csat.gd#L148)
+- Unlabelled construction / setup — [VmCsat._tow:188](../scripts\game\vehicles\vm_csat.gd#L188)
 
 ### VmCsat._tube
 
@@ -2725,17 +2732,17 @@ Every model key is mapped below. Designs sharing a builder are grouped to avoid 
 
 ### VmCsat._typhoon
 
-- Unlabelled construction / setup — [VmCsat._typhoon:1110](../scripts\game\vehicles\vm_csat.gd#L1110)
-- the bumper block under the cab's nose — [VmCsat._typhoon:1122](../scripts\game\vehicles\vm_csat.gd#L1122)
-- the windscreen: two big flat panes, a pillar between them — [VmCsat._typhoon:1124](../scripts\game\vehicles\vm_csat.gd#L1124)
-- the grille on the cab front, headlights and tow hooks in the bumper — [VmCsat._typhoon:1129](../scripts\game\vehicles\vm_csat.gd#L1129)
-- the step ladder under the door, behind the front wheel — [VmCsat._typhoon:1134](../scripts\game\vehicles\vm_csat.gd#L1134)
-- mirrors on long arms — [VmCsat._typhoon:1136](../scripts\game\vehicles\vm_csat.gd#L1136)
-- the front wheel under its faceted arch, the rear tandem — [VmCsat._typhoon:1138](../scripts\game\vehicles\vm_csat.gd#L1138)
-- the rear tandem's mudguard — [VmCsat._typhoon:1144](../scripts\game\vehicles\vm_csat.gd#L1144)
-- fuel tank and battery box on the frame, the exhaust stack behind the cab — [VmCsat._typhoon:1147](../scripts\game\vehicles\vm_csat.gd#L1147)
-- the rear underrun bar — [VmCsat._typhoon:1151](../scripts\game\vehicles\vm_csat.gd#L1151)
-- roof: hatch, antennas, a twin work light facing forward — [VmCsat._typhoon:1153](../scripts\game\vehicles\vm_csat.gd#L1153)
+- Unlabelled construction / setup — [VmCsat._typhoon:1150](../scripts\game\vehicles\vm_csat.gd#L1150)
+- the bumper block under the cab's nose — [VmCsat._typhoon:1162](../scripts\game\vehicles\vm_csat.gd#L1162)
+- the windscreen: two big flat panes, a pillar between them — [VmCsat._typhoon:1164](../scripts\game\vehicles\vm_csat.gd#L1164)
+- the grille on the cab front, headlights and tow hooks in the bumper — [VmCsat._typhoon:1169](../scripts\game\vehicles\vm_csat.gd#L1169)
+- the step ladder under the door, behind the front wheel — [VmCsat._typhoon:1174](../scripts\game\vehicles\vm_csat.gd#L1174)
+- mirrors on long arms — [VmCsat._typhoon:1176](../scripts\game\vehicles\vm_csat.gd#L1176)
+- the front wheel under its faceted arch, the rear tandem — [VmCsat._typhoon:1178](../scripts\game\vehicles\vm_csat.gd#L1178)
+- the rear tandem's mudguard — [VmCsat._typhoon:1184](../scripts\game\vehicles\vm_csat.gd#L1184)
+- fuel tank and battery box on the frame, the exhaust stack behind the cab — [VmCsat._typhoon:1187](../scripts\game\vehicles\vm_csat.gd#L1187)
+- the rear underrun bar — [VmCsat._typhoon:1191](../scripts\game\vehicles\vm_csat.gd#L1191)
+- roof: hatch, antennas, a twin work light facing forward — [VmCsat._typhoon:1193](../scripts\game\vehicles\vm_csat.gd#L1193)
 
 ### VmFighter._aim120
 
@@ -3328,7 +3335,7 @@ Every model key is mapped below. Designs sharing a builder are grouped to avoid 
 - Unlabelled construction / setup — [VmIndep._zamak_repair:975](../scripts\game\vehicles\vm_indep.gd#L975)
 - the side door on the right, hinged at its front edge, with its fold-down step; a shuttered locker on the left — [VmIndep._zamak_repair:981](../scripts\game\vehicles\vm_indep.gd#L981)
 - a ladder from the open deck up the back of the body, over the roof edge — [VmIndep._zamak_repair:986](../scripts\game\vehicles\vm_indep.gd#L986)
-- the crane on the deck: slewing ring, column, the boom folded forward over the roof from its heel at the column's top, its luffing ram and the hook hung under the boom's end — [VmIndep._zamak_repair:988](../scripts\game\vehicles\vm_indep.gd#L988)
+- the crane on the deck: slewing ring, column, the boom folded forward over the roof from its heel at the column's top, its luffing ram and the hook hung under the boom's end. The column stands tall enough that the folded boom clears the body's roof (2.98) and rear edge, and the ram runs from the column's face up to the boom behind the body. — [VmIndep._zamak_repair:988](../scripts\game\vehicles\vm_indep.gd#L988)
 - the generator with its cooling louvres, the gas bottles racked by the bed's edge — [VmIndep._zamak_repair:996](../scripts\game\vehicles\vm_indep.gd#L996)
 
 ### VmIndep._zamak_tilt

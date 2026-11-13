@@ -115,15 +115,55 @@ static func _pane(k: VehicleModels, p: Node3D, c: Vector3, up: Vector3, s: Vecto
 	return _plate(k, p, c - u, c + u, s.x, t, mat, col, xh, false)
 
 
-## Three flat plates over a wheel: the faceted arch of an armoured car.
-static func _arch(k: VehicleModels, p: Node3D, x: float, z: float, r: float, w: float, y_top: float, mat := CAM) -> void:
-	var f := Vector3(x, y_top - r * 0.62, z - r * 1.18)
-	var a := Vector3(x, y_top, z - r * 0.55)
-	var b := Vector3(x, y_top, z + r * 0.55)
-	var e := Vector3(x, y_top - r * 0.62, z + r * 1.18)
-	_plate(k, p, f, a, w, 0.05, mat)
-	_plate(k, p, a, b, w, 0.05, mat)
-	_plate(k, p, b, e, w, 0.05, mat)
+## The faceted arch of an armoured car over a wheel: three flat plates folded
+## into one band, mitred where they meet, its outer face where the old plates'
+## was (x + w/2). `inner` is the hull's side under the arch's top (|x|): the
+## band runs from 3 cm inside it, so the arch is welded to the hull rather
+## than standing off it (zero: the band is `w` wide about x). Its underside,
+## over the tyre, is dark, as a wheel well's is.
+static func _arch(k: VehicleModels, p: Node3D, x: float, z: float, r: float, w: float, y_top: float, mat := CAM, inner := 0.0) -> void:
+	var s := 1.0 if x >= 0.0 else -1.0
+	var x_out := x + s * w * 0.5
+	var x_in := s * (inner - 0.03) if inner > 0.0 else x - s * w * 0.5
+	var x0 := minf(x_in, x_out)
+	var x1 := maxf(x_in, x_out)
+	# the arch's top edge in side view (z, y), front foot to rear foot, and the
+	# band's underside 5 cm in, then the dark well face under that
+	var top := [Vector2(z - r * 1.18, y_top - r * 0.62), Vector2(z - r * 0.55, y_top), Vector2(z + r * 0.55, y_top), Vector2(z + r * 1.18, y_top - r * 0.62)]
+	var axle := Vector2(z, y_top - r)
+	var under := _arch_offset(top, axle, 0.05)
+	var well := _arch_offset(top, axle, 0.058)
+	for i in 3:
+		var key := "csat_arch_%.3f_%.3f_%.3f_%.3f_%.3f_%d" % [z, r, y_top, x0, x1, i]
+		# counter-clockwise in (z, y): along the underside, back along the top
+		var band := [under[i].x, under[i].y, under[i + 1].x, under[i + 1].y, top[i + 1].x, top[i + 1].y, top[i].x, top[i].y]
+		k._add(p, VehicleModels.extrude_x(key, band, x0, x1), mat, null, Vector3.ZERO)
+		var lining := [well[i].x, well[i].y, well[i + 1].x, well[i + 1].y, under[i + 1].x, under[i + 1].y, under[i].x, under[i].y]
+		k._add(p, VehicleModels.extrude_x(key + "_well", lining, x0 + 0.01, x1 - 0.01), "plain_dark", Color(0.12, 0.12, 0.11), Vector3.ZERO, Vector3.ZERO, Vector3.ONE, false)
+
+
+## A polyline moved `d` toward `centre`, its corners mitred (each pair of
+## neighbouring segments' offset lines meet), its ends square to their segments.
+static func _arch_offset(line: Array, centre: Vector2, d: float) -> Array:
+	var normals: Array[Vector2] = []
+	for i in line.size() - 1:
+		var a: Vector2 = line[i]
+		var b: Vector2 = line[i + 1]
+		var n := Vector2(-(b - a).y, (b - a).x).normalized()
+		if n.dot(centre - (a + b) * 0.5) < 0.0:
+			n = -n
+		normals.append(n)
+	var out := []
+	for i in line.size():
+		var p: Vector2 = line[i]
+		if i == 0:
+			out.append(p + normals[0] * d)
+		elif i == line.size() - 1:
+			out.append(p + normals[i - 1] * d)
+		else:
+			var m := (normals[i - 1] + normals[i]).normalized()
+			out.append(p + m * d / maxf(0.3, m.dot(normals[i])))
+	return out
 
 
 ## A headlight cluster facing -z: housing, two lenses and a wire guard.
@@ -272,7 +312,7 @@ static func _ifrit(k: VehicleModels, team: int, arm: String) -> void:
 		VehicleFittings.mirror(k, m, Vector3(s * 1.35, 1.88, -1.26), Vector2(0.17, 0.26), -s * 0.3, [Vector3(s * 1.08, 1.62, -1.2)])
 		# angular arches over the wheels and mud flaps behind them
 		for wz in [-1.85, 1.9]:
-			_arch(k, m, s * 1.14, wz, 0.56, 0.2, 1.16)
+			_arch(k, m, s * 1.14, wz, 0.56, 0.2, 1.16, CAM, 0.95)
 			k._wheel(m, Vector3(s * 0.97, 0.55, wz), 0.55, 0.42)
 		VehicleFittings.mudflap(k, m, Vector3(s * 0.97, 0.42, 2.58), Vector2(0.4, 0.36))
 		# headlight clusters in the wings, rear lights, tow hooks
@@ -351,7 +391,7 @@ static func _qilin(k: VehicleModels, team: int, arm: String) -> void:
 	# fenders: faceted mudguards over the wheels, steps between them
 	for s in [-1.0, 1.0]:
 		for wz in [-1.55, 1.5]:
-			_arch(k, m, s * 0.87, wz, 0.43, 0.38, 0.98)
+			_arch(k, m, s * 0.87, wz, 0.43, 0.38, 0.98, CAM, 0.67)
 			k._wheel(m, Vector3(s * 0.86, 0.42, wz), 0.42, 0.3)
 		VehicleFrames.step(k, m, Vector3(s * 0.85, 0.62, 0.0), Vector2(1.7, 0.3), Vector3(0, PI / 2, 0), "gunmetal_w")
 		k._box(m, Vector3(0.06, 0.2, 1.7), Vector3(s * 0.72, 0.62, 0.0), c)
@@ -1136,7 +1176,7 @@ static func _typhoon(k: VehicleModels, team: int) -> void:
 		# mirrors on long arms
 		VehicleFittings.mirror(k, m, Vector3(s * 1.55, 2.5, -4.2), Vector2(0.22, 0.42), -s * 0.3, [Vector3(s * 1.2, 2.5, -4.25)])
 		# the front wheel under its faceted arch, the rear tandem
-		_arch(k, m, s * 1.13, -3.05, 0.64, 0.26, 1.34)
+		_arch(k, m, s * 1.13, -3.05, 0.64, 0.26, 1.34, CAM, 0.85)
 		k._wheel(m, Vector3(s * 1.0, 0.62, -3.05), 0.62, 0.48)
 		k._wheel(m, Vector3(s * 1.0, 0.62, 1.55), 0.62, 0.48)
 		k._wheel(m, Vector3(s * 1.0, 0.62, 3.0), 0.62, 0.48)

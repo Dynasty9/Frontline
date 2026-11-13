@@ -598,7 +598,7 @@ static func _ghost_hawk(k: VehicleModels, team: int, stub: bool) -> void:
 	# hub covers
 	for s in [-1.0, 1.0]:
 		var wp := k._wheel(m, Vector3(s * 1.48, 0.38, -3.95), 0.38, 0.26)
-		VehicleAircraft.trailing_gear(k, m, Vector3(s * 0.78, 0.68, -4.35), Vector3(s * 1.08, 1.3, -3.8), Vector3(s * 1.48, 0.38, -3.95), Vector2(0.38, 0.26), 0.07, 0.08, "gunmetal_w", null, Vector3(0.22, 0.62, 0.3), mat, col, wp, 0.3, 8)
+		VehicleAircraft.trailing_gear(k, m, Vector3(s * 0.78, 0.68, -4.35), Vector3(s * 1.08, 1.3, -3.8), Vector3(s * 1.48, 0.38, -3.95), Vector2(0.38, 0.26), 0.07, 0.08, "gunmetal_w", null, Vector3(0.22, 0.62, 0.3), mat, col, wp, 0.3, 8, Vector2(0.61, 0.977))
 	# door guns: miniguns on pintles in the gunners' windows
 	for s in [-1.0, 1.0]:
 		_tube(k, m, Vector3(s * 1.0, 1.45, -3.2), Vector3(s * 1.3, 1.55, -3.15), 0.035, "gunmetal_w", null, 6)
@@ -1116,7 +1116,7 @@ static func _kajman(k: VehicleModels, team: int) -> void:
 			else:
 				_atgm_tubes(k, m, Vector3(px, py - 0.22, -1.75))
 		# main gear on trailing legs
-		VehicleAircraft.trailing_gear(k, m, Vector3(s * 0.8, 1.0, -3.65), Vector3(s * 0.85, 1.55, -3.4), Vector3(s * 1.38, 0.42, -3.2), Vector2(0.42, 0.28), 0.07, 0.06)
+		VehicleAircraft.trailing_gear(k, m, Vector3(s * 0.8, 1.0, -3.65), Vector3(s * 0.85, 1.55, -3.4), Vector3(s * 1.38, 0.42, -3.2), Vector2(0.42, 0.28), 0.07, 0.06, "gunmetal_w", null, Vector3.ZERO, "paint", null, null, 0.0, 8, Vector2(0.697, 0.772))
 		k._wheel(m, Vector3(s * 1.38, 0.42, -3.2), 0.42, 0.28)
 		VehicleFittings.nav_light(k, m, Vector3(s * 3.62, 2.02, -1.3), Vector3(0.05, 0.06, 0.06), s)
 		k._team_mark(m, team, Vector3(s * 0.33, 2.15, 4.6), Vector3(0.02, 0.2, 0.8))

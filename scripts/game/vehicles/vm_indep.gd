@@ -987,12 +987,12 @@ static func _zamak_repair(k: VehicleModels, cam: String, col) -> void:
 	VehicleCargo.rung_ladder(k, m, Vector3(-0.9, 1.44, 2.85), 3.23, Vector3.BACK, 0.3)
 	# the crane on the deck: slewing ring, column, the boom folded forward
 	# over the roof from its heel at the column's top, its luffing ram and
-	# the hook hung under the boom's end
-	var bc := Vector3(0.6, 3.02, 2.3)
+	# the hook hung under the boom's end. The column stands tall enough that
+	# the folded boom clears the body's roof (2.98) and rear edge, and the ram
+	# runs from the column's face up to the boom behind the body.
+	var bc := Vector3(0.6, 3.24, 2.3)
 	var ba := Basis.from_euler(Vector3(0.2, 0, 0)).z * 1.15
-	var rc := Vector3(0.6, 2.62, 2.95)
-	var ry := Basis.from_euler(Vector3(-0.75, 0, 0)).y * 0.5
-	VehicleMounts.crane(k, m, Vector3(0.6, 1.44, 3.35), bc + ba, bc - ba, Vector2(0.2, 0.22), cam, col, Vector3(0.26, 0.28, 0.24), Vector3.ZERO, Vector3(0.26, 1.15, 0.28), [rc - ry, rc + ry, 0.05], Vector3(0.6, 3.04, 1.08), Vector3.INF, Vector3(0.1, 0.24, 0.12), Color(0.6, 0.48, 0.12))
+	VehicleMounts.crane(k, m, Vector3(0.6, 1.44, 3.35), bc + ba, bc - ba, Vector2(0.2, 0.22), cam, col, Vector3(0.26, 0.28, 0.24), Vector3.ZERO, Vector3(0.26, 1.37, 0.28), [Vector3(0.6, 2.62, 3.2), Vector3(0.6, 3.0, 2.93), 0.05], Vector3(0.6, 3.23, 1.08), Vector3.INF, Vector3(0.1, 0.24, 0.12), Color(0.6, 0.48, 0.12))
 	# the generator with its cooling louvres, the gas bottles racked by the
 	# bed's edge
 	k._box(m, Vector3(0.75, 0.62, 0.5), Vector3(-0.42, 1.75, 3.45), "paint", Color(0.27, 0.3, 0.22))

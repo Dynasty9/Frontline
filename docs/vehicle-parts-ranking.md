@@ -1,6 +1,6 @@
 # Most common remaining vehicle construction
 
-Source revision: `54823975`. 137 model keys, 84 construction-root groups.
+Source revision: `ec2d275b`. 137 model keys, 84 construction-root groups.
 
 Counts are **distinct builder groups with candidate evidence**, not instances or variant counts. Sites are distinct source sections. A high count means broad potential reuse; it does not prove that all shapes fit the same API.
 
@@ -27,11 +27,11 @@ Counts are **distinct builder groups with candidate evidence**, not instances or
 | 4 | Boarding steps and ladders | 19 | 18 | Use tread/ladder builders; retain folding stairs and helicopter-specific supports. |
 | 5 | Exhaust construction | 18 | 17 | Extend stack adapters; silencers, turbine grilles and suppressors are not interchangeable. |
 | 6 | Boat bow eyes | 9 | 5 | Ring with a backing plate on the stem. |
-| 7 | Rectangular hatch lids | 7 | 10 | Flat lids with coaming, hinges and handle; round hatches use VehicleFittings.hatch. |
-| 8 | Fenders and mudguards | 7 | 8 | Flat sheets with bead, bolts and stays; faceted armoured arches stay authored. |
-| 9 | Machine guns | 7 | 7 | Receiver-to-muzzle construction with feed and grips; DShK-style finned barrels may stay authored. |
-| 10 | Seat and bench construction | 7 | 7 | Use shared seats; bench and jockey-seat layouts need separate dimension contracts. |
-| 11 | Turret mantlets and gun cradles | 7 | 7 | Pivot-relative shrouds and supports; retain weapon sockets and recoil parents. |
+| 7 | Turret mantlets and gun cradles | 8 | 8 | Pivot-relative shrouds and supports; retain weapon sockets and recoil parents. |
+| 8 | Rectangular hatch lids | 7 | 10 | Flat lids with coaming, hinges and handle; round hatches use VehicleFittings.hatch. |
+| 9 | Fenders and mudguards | 7 | 8 | Flat sheets with bead, bolts and stays; faceted armoured arches stay authored. |
+| 10 | Machine guns | 7 | 7 | Receiver-to-muzzle construction with feed and grips; DShK-style finned barrels may stay authored. |
+| 11 | Seat and bench construction | 7 | 7 | Use shared seats; bench and jockey-seat layouts need separate dimension contracts. |
 | 12 | Engine nacelles and cowling assemblies | 7 | 5 | Station loft plus service splits and mounts; aircraft silhouettes remain distinct. |
 | 13 | Bumpers and bumper end caps | 6 | 6 | Section, end treatment, attachment points and tow cutouts; preserve vehicle width. |
 | 14 | Truck cargo beds | 5 | 8 | Deck, runners, rails, posts, dropsides and tailgate on authored bounds. |
@@ -59,19 +59,20 @@ Counts are **distinct builder groups with candidate evidence**, not instances or
 | 36 | Missile launch tubes | 2 | 2 | Tube, collars and covers; box launchers with tube mouths are a separate design. |
 | 37 | Smoke discharger banks | 2 | 2 | Bracket, junction box and tubes from the family's own layout. |
 | 38 | Gun shields and weapon-station armour | 1 | 3 | Bent plate outlines and viewing slots; keep traverse envelope. |
-| 39 | Aircraft pitot and probe fittings | 1 | 1 | Tapered tubes, bases and authored angled paths; leave specialized refuelling systems local. |
-| 40 | Bore evacuators | 1 | 1 | Tapered chamber on the gun tube; muzzle sensors and brakes stay authored. |
-| 41 | Door levers and sliding-door rails | 1 | 1 | Handle with boss and pin; rail with brackets along a surface. |
-| 42 | External fuel drums and drum cradles | 1 | 1 | Drum ribs, ends and cradles; tanker vessel and aerodynamic drop tank are different. |
-| 43 | Formation lights and refuelling receptacles | 1 | 1 | Strips and doors laid on the skin, open or closed, with lead-in lines. |
-| 44 | Fuel fillers and filler caps | 1 | 1 | Recess, neck, cap and optional tether; preserve supplied outward axis. |
-| 45 | Gun receivers and breech housings | 1 | 1 | Parameterized receiver families, not one universal weapon silhouette. |
-| 46 | Hose and tow-cable routes | 1 | 1 | Use supported cable routes; coils and wound drums need distinct construction. |
-| 47 | Muzzle brakes and muzzle sensors | 1 | 1 | Sleeve, baffles and side ports from the barrel's end; sensor box with its bore window. |
-| 48 | Roll cages and bull bars | 1 | 1 | Tube members with detected joints, clamps and base plates. |
-| 49 | Rotor masts | 1 | 1 | Shaft, bearing housing, splines and bolted collars; hubs and blades stay in VehicleRotors.main. |
-| 50 | Searchlights and light bars | 1 | 1 | Barrel lamp on a yoke or bracket; lens rows in a bar housing. |
-| 51 | Suspension arms and hubs | 1 | 1 | Endpoint-based links, joints and spring/damper pairs; solid axles already exist. |
+| 39 | Air-launched missiles | 1 | 1 | Revolved body, nose style, slab fins, band and rail. |
+| 40 | Aircraft pitot and probe fittings | 1 | 1 | Tapered tubes, bases and authored angled paths; leave specialized refuelling systems local. |
+| 41 | Bore evacuators | 1 | 1 | Tapered chamber on the gun tube; muzzle sensors and brakes stay authored. |
+| 42 | Door levers and sliding-door rails | 1 | 1 | Handle with boss and pin; rail with brackets along a surface. |
+| 43 | External fuel drums and drum cradles | 1 | 1 | Drum ribs, ends and cradles; tanker vessel and aerodynamic drop tank are different. |
+| 44 | Formation lights and refuelling receptacles | 1 | 1 | Strips and doors laid on the skin, open or closed, with lead-in lines. |
+| 45 | Fuel fillers and filler caps | 1 | 1 | Recess, neck, cap and optional tether; preserve supplied outward axis. |
+| 46 | Gun receivers and breech housings | 1 | 1 | Parameterized receiver families, not one universal weapon silhouette. |
+| 47 | Hose and tow-cable routes | 1 | 1 | Use supported cable routes; coils and wound drums need distinct construction. |
+| 48 | Muzzle brakes and muzzle sensors | 1 | 1 | Sleeve, baffles and side ports from the barrel's end; sensor box with its bore window. |
+| 49 | Roll cages and bull bars | 1 | 1 | Tube members with detected joints, clamps and base plates. |
+| 50 | Rotor masts | 1 | 1 | Shaft, bearing housing, splines and bolted collars; hubs and blades stay in VehicleRotors.main. |
+| 51 | Searchlights and light bars | 1 | 1 | Barrel lamp on a yoke or bracket; lens rows in a bar housing. |
+| 52 | Suspension arms and hubs | 1 | 1 | Endpoint-based links, joints and spring/damper pairs; solid axles already exist. |
 
 ## Using the remaining candidates
 
@@ -87,7 +88,7 @@ The [assembly implementation review](vehicle-assembly-review.md) records migrati
 - **hemtt, hemtt_ammo, hemtt_cargo, hemtt_fuel, hemtt_medical, hemtt_repair**: [VmNato._hemtt_chassis:1294](../scripts\game\vehicles\vm_nato.gd#L1294)
 - **humvee**: [VmCore._humvee:1271](../scripts\game\vehicles\vm_core.gd#L1271)
 - **hunter, hunter_gmg, hunter_hmg**: [VmNato._rcws:300](../scripts\game\vehicles\vm_nato.gd#L300); [VmNato._hunter:352](../scripts\game\vehicles\vm_nato.gd#L352)
-- **ifrit, ifrit_gmg, ifrit_hmg**: [VmCsat._ifrit:229](../scripts\game\vehicles\vm_csat.gd#L229)
+- **ifrit, ifrit_gmg, ifrit_hmg**: [VmCsat._ifrit:269](../scripts\game\vehicles\vm_csat.gd#L269)
 - **kajman**: [VmHeli._canopy:1016](../scripts\game\vehicles\vm_heli.gd#L1016)
 - **kuma**: [VmIndep._rcws:300](../scripts\game\vehicles\vm_indep.gd#L300)
 - **mb4wd, mb4wd_at, mb4wd_lmg**: [VmCiv._spg9:248](../scripts\game\vehicles\vm_civ.gd#L248)
@@ -119,7 +120,7 @@ The [assembly implementation review](vehicle-assembly-review.md) records migrati
 - **hemtt, hemtt_ammo, hemtt_cargo, hemtt_fuel, hemtt_medical, hemtt_repair**: [VmNato._hemtt_chassis:1296](../scripts\game\vehicles\vm_nato.gd#L1296); [VmNato._hemtt_cab_detail:1348](../scripts\game\vehicles\vm_nato.gd#L1348)
 - **hummingbird, m900, pawnee**: [VmHeli._little_bird:436](../scripts\game\vehicles\vm_heli.gd#L436)
 - **huron**: [VmHeli._huron:650](../scripts\game\vehicles\vm_heli.gd#L650); [VmHeli._huron:665](../scripts\game\vehicles\vm_heli.gd#L665); [VmHeli._huron:690](../scripts\game\vehicles\vm_heli.gd#L690)
-- **ifrit, ifrit_gmg, ifrit_hmg**: [VmCsat._ifrit:238](../scripts\game\vehicles\vm_csat.gd#L238); [VmCsat._ifrit:241](../scripts\game\vehicles\vm_csat.gd#L241)
+- **ifrit, ifrit_gmg, ifrit_hmg**: [VmCsat._ifrit:278](../scripts\game\vehicles\vm_csat.gd#L278); [VmCsat._ifrit:281](../scripts\game\vehicles\vm_csat.gd#L281)
 - **jet**: [VmFighter._f16:797](../scripts\game\vehicles\vm_fighter.gd#L797)
 - **kajman**: [VmHeli._kajman:1076](../scripts\game\vehicles\vm_heli.gd#L1076)
 - **mb4wd, mb4wd_at, mb4wd_lmg**: [VmCiv._mb4wd:499](../scripts\game\vehicles\vm_civ.gd#L499); [VmCiv._mb_top:589](../scripts\game\vehicles\vm_civ.gd#L589)
@@ -142,7 +143,7 @@ The [assembly implementation review](vehicle-assembly-review.md) records migrati
 - **hemtt, hemtt_ammo, hemtt_cargo, hemtt_fuel, hemtt_medical, hemtt_repair**: [VmNato._hemtt:1462](../scripts\game\vehicles\vm_nato.gd#L1462)
 - **humvee**: [VmCore._humvee:1206](../scripts\game\vehicles\vm_core.gd#L1206)
 - **hunter, hunter_gmg, hunter_hmg**: [VmNato._hunter:330](../scripts\game\vehicles\vm_nato.gd#L330)
-- **ifrit, ifrit_gmg, ifrit_hmg**: [VmCsat._ifrit:238](../scripts\game\vehicles\vm_csat.gd#L238)
+- **ifrit, ifrit_gmg, ifrit_hmg**: [VmCsat._ifrit:278](../scripts\game\vehicles\vm_csat.gd#L278)
 - **jet**: [VmFighter._f16:740](../scripts\game\vehicles\vm_fighter.gd#L740); [VmFighter._f16:768](../scripts\game\vehicles\vm_fighter.gd#L768)
 - **mb4wd, mb4wd_at, mb4wd_lmg**: [VmCiv._spg9:241](../scripts\game\vehicles\vm_civ.gd#L241)
 - **mora**: [VmIndep._mora:391](../scripts\game\vehicles\vm_indep.gd#L391)
@@ -183,22 +184,22 @@ The [assembly implementation review](vehicle-assembly-review.md) records migrati
 
 - **a10**: [VmAttack._a10_engines:462](../scripts\game\vehicles\vm_attack.gd#L462)
 - **aa_tech, technical**: [VmCore._hilux:992](../scripts\game\vehicles\vm_core.gd#L992)
-- **angara, angara_k**: [VmCsat._t14:1031](../scripts\game\vehicles\vm_csat.gd#L1031)
+- **angara, angara_k**: [VmCsat._t14:1071](../scripts\game\vehicles\vm_csat.gd#L1071)
 - **blackfoot**: [VmHeli._blackfoot:767](../scripts\game\vehicles\vm_heli.gd#L767)
 - **caesar**: [VmPlane._caesar:699](../scripts\game\vehicles\vm_plane.gd#L699)
-- **futura**: [VmCsat._t100:801](../scripts\game\vehicles\vm_csat.gd#L801)
+- **futura**: [VmCsat._t100:841](../scripts\game\vehicles\vm_csat.gd#L841)
 - **ghosthawk, ghosthawk_stub**: [VmHeli._ghost_hawk:565](../scripts\game\vehicles\vm_heli.gd#L565)
 - **gorgon**: [VmIndep._gorgon:723](../scripts\game\vehicles\vm_indep.gd#L723)
 - **heli**: [VmCore._blackhawk:1757](../scripts\game\vehicles\vm_core.gd#L1757)
 - **ifv**: [VmCore._bradley:1483](../scripts\game\vehicles\vm_core.gd#L1483)
 - **kajman**: [VmHeli._kajman:1089](../scripts\game\vehicles\vm_heli.gd#L1089)
 - **kuma**: [VmIndep._kuma:489](../scripts\game\vehicles\vm_indep.gd#L489)
-- **marid**: [VmCsat._marid:559](../scripts\game\vehicles\vm_csat.gd#L559)
+- **marid**: [VmCsat._marid:599](../scripts\game\vehicles\vm_csat.gd#L599)
 - **offroad, offroad_at, offroad_hmg, offroad_repair**: [VmCiv._offroad:275](../scripts\game\vehicles\vm_civ.gd#L275)
 - **old_tank**: [VmCore._t55:849](../scripts\game\vehicles\vm_core.gd#L849)
 - **patrol_ship**: [VmShips._patrol_ship:614](../scripts\game\vehicles\vm_ships.gd#L614); [VmShips._patrol_ship:853](../scripts\game\vehicles\vm_ships.gd#L853)
-- **sochor**: [VmCsat._t100:801](../scripts\game\vehicles\vm_csat.gd#L801)
-- **varsuk**: [VmCsat._t100:801](../scripts\game\vehicles\vm_csat.gd#L801)
+- **sochor**: [VmCsat._t100:841](../scripts\game\vehicles\vm_csat.gd#L841)
+- **varsuk**: [VmCsat._t100:841](../scripts\game\vehicles\vm_csat.gd#L841)
 
 ### Boat bow eyes
 
@@ -211,6 +212,17 @@ The [assembly implementation review](vehicle-assembly-review.md) records migrati
 - **sandstorm**: [VmNato._mk_hull:801](../scripts\game\vehicles\vm_nato.gd#L801)
 - **scorcher**: [VmNato._mk_hull:801](../scripts\game\vehicles\vm_nato.gd#L801)
 - **slammer, slammer_up**: [VmNato._mk_hull:801](../scripts\game\vehicles\vm_nato.gd#L801)
+
+### Turret mantlets and gun cradles
+
+- **aa_tech, technical**: [VmCore._zu23:1145](../scripts\game\vehicles\vm_core.gd#L1145)
+- **ac130**: [VmGunship._ac130_guns:562](../scripts\game\vehicles\vm_gunship.gd#L562)
+- **gun_trawler**: [VmShips._zu23:521](../scripts\game\vehicles\vm_ships.gd#L521); [VmShips._dshk:546](../scripts\game\vehicles\vm_ships.gd#L546)
+- **kuma**: [VmIndep._rcws:309](../scripts\game\vehicles\vm_indep.gd#L309)
+- **old_tank**: [VmCore._t55:899](../scripts\game\vehicles\vm_core.gd#L899)
+- **patrol_ship**: [VmShips._mk38:446](../scripts\game\vehicles\vm_ships.gd#L446)
+- **strider, strider_gmg, strider_hmg**: [VmIndep._rcws:309](../scripts\game\vehicles\vm_indep.gd#L309)
+- **xian**: [VmPlane._xian:1169](../scripts\game\vehicles\vm_plane.gd#L1169)
 
 ### Rectangular hatch lids
 
@@ -229,7 +241,7 @@ The [assembly implementation review](vehicle-assembly-review.md) records migrati
 - **hunter, hunter_gmg, hunter_hmg**: [VmNato._hunter:330](../scripts\game\vehicles\vm_nato.gd#L330)
 - **old_tank**: [VmCore._t55:849](../scripts\game\vehicles\vm_core.gd#L849)
 - **prowler, prowler_at, prowler_hmg**: [VmNato._prowler:437](../scripts\game\vehicles\vm_nato.gd#L437)
-- **qilin, qilin_at, qilin_mg**: [VmCsat._qilin:351](../scripts\game\vehicles\vm_csat.gd#L351)
+- **qilin, qilin_at, qilin_mg**: [VmCsat._qilin:391](../scripts\game\vehicles\vm_csat.gd#L391)
 - **tank**: [VmCore._abrams:436](../scripts\game\vehicles\vm_core.gd#L436); [VmCore._abrams:443](../scripts\game\vehicles\vm_core.gd#L443)
 
 ### Machine guns
@@ -252,16 +264,6 @@ The [assembly implementation review](vehicle-assembly-review.md) records migrati
 - **water_scooter**: [VmBoat._scooter:1183](../scripts\game\vehicles\vm_boat.gd#L1183)
 - **zamak, zamak_ammo, zamak_cargo, zamak_fuel, zamak_medical, zamak_mrl, zamak_repair**: [VmIndep._zamak_tilt:911](../scripts\game\vehicles\vm_indep.gd#L911)
 
-### Turret mantlets and gun cradles
-
-- **aa_tech, technical**: [VmCore._zu23:1145](../scripts\game\vehicles\vm_core.gd#L1145)
-- **ac130**: [VmGunship._ac130_guns:562](../scripts\game\vehicles\vm_gunship.gd#L562)
-- **gun_trawler**: [VmShips._zu23:521](../scripts\game\vehicles\vm_ships.gd#L521); [VmShips._dshk:546](../scripts\game\vehicles\vm_ships.gd#L546)
-- **kuma**: [VmIndep._rcws:309](../scripts\game\vehicles\vm_indep.gd#L309)
-- **old_tank**: [VmCore._t55:899](../scripts\game\vehicles\vm_core.gd#L899)
-- **patrol_ship**: [VmShips._mk38:446](../scripts\game\vehicles\vm_ships.gd#L446)
-- **strider, strider_gmg, strider_hmg**: [VmIndep._rcws:309](../scripts\game\vehicles\vm_indep.gd#L309)
-
 ### Engine nacelles and cowling assemblies
 
 - **a10**: [VmAttack._a10_engines:465](../scripts\game\vehicles\vm_attack.gd#L465)
@@ -274,10 +276,10 @@ The [assembly implementation review](vehicle-assembly-review.md) records migrati
 
 ### Bumpers and bumper end caps
 
-- **ifrit, ifrit_gmg, ifrit_hmg**: [VmCsat._ifrit:238](../scripts\game\vehicles\vm_csat.gd#L238)
+- **ifrit, ifrit_gmg, ifrit_hmg**: [VmCsat._ifrit:278](../scripts\game\vehicles\vm_csat.gd#L278)
 - **kart**: [VmCiv._kart:1271](../scripts\game\vehicles\vm_civ.gd#L1271)
 - **m35**: [VmCore._truck:1825](../scripts\game\vehicles\vm_core.gd#L1825)
-- **tempest, tempest_ammo, tempest_fuel, tempest_medical, tempest_repair**: [VmCsat._typhoon:1122](../scripts\game\vehicles\vm_csat.gd#L1122)
+- **tempest, tempest_ammo, tempest_fuel, tempest_medical, tempest_repair**: [VmCsat._typhoon:1162](../scripts\game\vehicles\vm_csat.gd#L1162)
 - **van_ambulance, van_services, van_transport**: [VmCiv._van:825](../scripts\game\vehicles\vm_civ.gd#L825)
 - **water_scooter**: [VmBoat._scooter:1116](../scripts\game\vehicles\vm_boat.gd#L1116)
 
@@ -293,7 +295,7 @@ The [assembly implementation review](vehicle-assembly-review.md) records migrati
 
 - **ac130**: [VmGunship._ac130_guns:540](../scripts\game\vehicles\vm_gunship.gd#L540); [VmGunship._ac130_guns:548](../scripts\game\vehicles\vm_gunship.gd#L548)
 - **blackfish, blackfish_armed**: [VmGunship._bf_guns:795](../scripts\game\vehicles\vm_gunship.gd#L795)
-- **marid**: [VmCsat._marid:595](../scripts\game\vehicles\vm_csat.gd#L595)
+- **marid**: [VmCsat._marid:635](../scripts\game\vehicles\vm_csat.gd#L635)
 - **marshall**: [VmNato._marshall:611](../scripts\game\vehicles\vm_nato.gd#L611)
 - **speedboat_hmg, speedboat_minigun**: [VmBoat._surc:1048](../scripts\game\vehicles\vm_boat.gd#L1048)
 
@@ -311,7 +313,7 @@ The [assembly implementation review](vehicle-assembly-review.md) records migrati
 - **gunship**: [VmCore._apache:1681](../scripts\game\vehicles\vm_core.gd#L1681)
 - **heli**: [VmCore._blackhawk:1749](../scripts\game\vehicles\vm_core.gd#L1749)
 - **mohawk**: [VmHeli._mohawk:884](../scripts\game\vehicles\vm_heli.gd#L884)
-- **tigris**: [VmCsat._tigris:726](../scripts\game\vehicles\vm_csat.gd#L726)
+- **tigris**: [VmCsat._tigris:766](../scripts\game\vehicles\vm_csat.gd#L766)
 
 ### Sight heads and panoramic sights
 
@@ -371,7 +373,7 @@ The [assembly implementation review](vehicle-assembly-review.md) records migrati
 
 ### Commander's cupolas and vision blocks
 
-- **marid**: [VmCsat._marid:559](../scripts\game\vehicles\vm_csat.gd#L559)
+- **marid**: [VmCsat._marid:599](../scripts\game\vehicles\vm_csat.gd#L599)
 - **marshall**: [VmNato._marshall:584](../scripts\game\vehicles\vm_nato.gd#L584)
 - **old_tank**: [VmCore._t55:958](../scripts\game\vehicles\vm_core.gd#L958)
 
@@ -430,7 +432,7 @@ The [assembly implementation review](vehicle-assembly-review.md) records migrati
 
 ### Missile launch tubes
 
-- **angara, angara_k**: [VmCsat._angara:1062](../scripts\game\vehicles\vm_csat.gd#L1062)
+- **angara, angara_k**: [VmCsat._angara:1102](../scripts\game\vehicles\vm_csat.gd#L1102)
 - **gorgon**: [VmIndep._gorgon:738](../scripts\game\vehicles\vm_indep.gd#L738)
 
 ### Smoke discharger banks
@@ -441,6 +443,10 @@ The [assembly implementation review](vehicle-assembly-review.md) records migrati
 ### Gun shields and weapon-station armour
 
 - **tank**: [VmCore._abrams:514](../scripts\game\vehicles\vm_core.gd#L514); [VmCore._abrams:528](../scripts\game\vehicles\vm_core.gd#L528); [VmCore._abrams:568](../scripts\game\vehicles\vm_core.gd#L568)
+
+### Air-launched missiles
+
+- **xian**: [VmPlane._xian:1169](../scripts\game\vehicles\vm_plane.gd#L1169)
 
 ### Aircraft pitot and probe fittings
 
@@ -468,7 +474,7 @@ The [assembly implementation review](vehicle-assembly-review.md) records migrati
 
 ### Gun receivers and breech housings
 
-- **futura**: [VmCsat._futura:897](../scripts\game\vehicles\vm_csat.gd#L897)
+- **futura**: [VmCsat._futura:937](../scripts\game\vehicles\vm_csat.gd#L937)
 
 ### Hose and tow-cable routes
 

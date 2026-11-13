@@ -1166,10 +1166,16 @@ static func _xian(k: VehicleModels, team: int) -> void:
 			if x < 2.5:
 				rocket_pod(k, m, pylon(k, m, at, 1.0, 0.16, c, 0.26), 2.4, 0.26, Color(0.4, 0.4, 0.36))
 			else:
+				# four missile tubes packed two by two under the rack plate,
+				# held up to it by two strap cradles
 				var rc := pylon(k, m, at, 0.9, 0.12, c, 0.0)
 				k._box(m, Vector3(0.42, 0.08, 1.4), rc + Vector3(0, -0.03, 0.1), "gunmetal_w")
-				for o in [Vector2(-0.12, -0.14), Vector2(0.12, -0.14), Vector2(-0.12, -0.38), Vector2(0.12, -0.38)]:
-					k._cyl(m, 0.09, 0.09, 1.7, rc + Vector3(o.x, o.y, 0.05), Vector3(PI / 2, 0, 0), "paint", Color(0.36, 0.38, 0.3), 10)
+				for o in [Vector2(-0.09, -0.16), Vector2(0.09, -0.16), Vector2(-0.09, -0.34), Vector2(0.09, -0.34)]:
+					VehicleWeapons.launch_tube(k, m, rc + Vector3(o.x, o.y, 0.05), 0.09, 1.7, "paint", Color(0.36, 0.38, 0.3))
+				for z: float in [-0.4, 0.5]:
+					for side: float in [-0.19, 0.19]:
+						k._box(m, Vector3(0.02, 0.37, 0.05), rc + Vector3(side, -0.255, z), "gunmetal_w", null, Vector3.ZERO, false)
+					k._box(m, Vector3(0.4, 0.02, 0.05), rc + Vector3(0, -0.44, z), "gunmetal_w", null, Vector3.ZERO, false)
 	# twin turbofans high on the back, vectoring nozzles, a fairing between them
 	body(k, m, "xi_dorsal", [[0.6, 3.25, 0.0, 0.0, 0.0], [1.4, 3.3, 0.55, 0.3, 0.1], [5.5, 3.3, 0.6, 0.28, 0.1], [7.2, 3.15, 0.2, 0.1, 0.1]], A, c, 16)
 	for s in [-1.0, 1.0]:

@@ -578,6 +578,14 @@ for want of them. Nodes, meshes and wheel/rotor registrations are unchanged; ver
   turned round, straps on the cowl. `VehicleDoors.closed` (and `rectangle`) now mirror each hinge so its outer
   straps reach toward the handle, onto the leaf, for every fitted door at once.
 
+Fixes found in review: `VehicleAircraft.trailing_gear(hull)` runs the pivot and strut fittings in to the
+fuselage skin (`|x|` at each, probed on the built model), so the Ghost Hawk's, Black Hawk's, Apache's and
+Kajman's gear no longer ends in mid-air; `VehicleWeapons._bore` is the barrel builder's near-black, not a
+dark paint the sun lights grey, so every muzzle reads as a hole; VmCsat's `_arch(inner)` folds the three
+arch plates into one mitred band from inside the hull, with a dark well face; the Zamak repair crane's
+column stands 22 cm taller so the folded boom clears the roof; the Xian's rack tubes are four
+`launch_tube`s packed under the rack plate on strap cradles.
+
 Left for later: `railing` always lays a foot plate (the motorboat helm and RHIB seat rails end inside cushions)
 and puts a post under every point (the motorboat bow rail has posts at only four of seven); round hatches
 (`VehicleFittings.hatch`) take no rotation.

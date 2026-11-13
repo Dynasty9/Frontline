@@ -30,9 +30,11 @@ static func _z(k: VehicleModels, m: Node3D, rear: float, front: float, rear_r: f
 	VehicleBody.cylinder(k, m, rear_r, front_r, rear - front, Vector3(at.x, at.y, (rear + front) * 0.5), X90, mat, col, segments, shadow, rear_cap, front_cap)
 
 ## The dark mouth of a bore, just proud of the face it sits in (its back is
-## in that face).
+## in that face). It is the near-black of the barrel builder's bore, not a
+## painted dark grey: the sun lights a dark paint to a grey disc, and the
+## muzzle must read as a hole.
 static func _bore(k: VehicleModels, m: Node3D, z: float, radius: float, at := Vector2.ZERO) -> void:
-	VehicleBody.cylinder(k, m, radius, radius, 0.004, Vector3(at.x, at.y, z - 0.0015), X90, "plain_dark", null, 8, false, false, true)
+	VehicleBody.cylinder(k, m, radius, radius, 0.004, Vector3(at.x, at.y, z - 0.0015), X90, "burnt", Color(0.018, 0.019, 0.018), 12, false, false, true)
 
 
 ## The barrel's crown standing in a brake's front face: the worn metal lip the

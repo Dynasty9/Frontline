@@ -666,8 +666,12 @@ static func _fan(count: int, r0: float, r1: float, chord: float, thickness: floa
 ## fairing_mat / fairing_col. `hub`, the caller's wheel pivot, with
 ## `hub_radius` puts a faceted hub cover of that radius and `hub_segments`
 ## sides on the wheel's outer face, in the same paint, on the pivot so it
-## turns with the wheel. Registers nothing.
-static func trailing_gear(k: VehicleModels, parent: Node3D, pivot: Vector3, strut_top: Vector3, axle: Vector3, wheel: Vector2, beam_radius: float, strut_radius: float, mat := "gunmetal_w", col = null, fairing := Vector3.ZERO, fairing_mat := "paint", fairing_col = null, hub: Node3D = null, hub_radius := 0.0, hub_segments := 8) -> void:
+## turns with the wheel. `hull` is how far out the fuselage's skin is at the
+## pivot and at the strut's top (|x|; zero: none): the pivot lugs and the
+## strut's clevis then sit on forged fittings that run from a few centimetres
+## inside the skin out to them, so the gear hangs from the airframe. Registers
+## nothing.
+static func trailing_gear(k: VehicleModels, parent: Node3D, pivot: Vector3, strut_top: Vector3, axle: Vector3, wheel: Vector2, beam_radius: float, strut_radius: float, mat := "gunmetal_w", col = null, fairing := Vector3.ZERO, fairing_mat := "paint", fairing_col = null, hub: Node3D = null, hub_radius := 0.0, hub_segments := 8, hull := Vector2.ZERO) -> void:
 	var side := signf(axle.x - pivot.x)
 	if side == 0.0:
 		side = 1.0 if axle.x >= 0.0 else -1.0
@@ -689,6 +693,13 @@ static func trailing_gear(k: VehicleModels, parent: Node3D, pivot: Vector3, stru
 		k._add(parent, BevelMesh.make(Vector3(br * 0.4, br * 2.2, br * 2.0), br * 0.1), "gunmetal_w", null, pivot + pin * s * br * 1.0 + Vector3.UP * br * 0.35 + reach, lug_euler)
 		VehicleBody.fastener(k, parent, pivot + pin * s * br * 1.33, pin * s, br * 0.45)
 	VehicleBody.rod(k, parent, pivot - pin * br * 1.3, pivot + pin * br * 1.3, br * 0.4, "steel", null, 8, false)
+	if hull.x > 0.0:
+		# the pivot's fitting: a forged block from inside the skin out to the
+		# lugs' inner ends, as wide as the pair and as tall
+		var wall := side * (hull.x - 0.03)
+		var inner := pivot.x - side * br * 0.3
+		if (inner - wall) * side > 0.0:
+			k._box(parent, Vector3(absf(inner - wall), br * 2.2, br * 2.6), Vector3((inner + wall) * 0.5, pivot.y + br * 0.35, pivot.z), "gunmetal_w")
 	# the beam tapering to the boss round the stub axle
 	VehicleBody.rod(k, parent, pivot, knuckle, br, mat, col, 8, true, br * 0.8, true, false)
 	VehicleBody.cylinder(k, parent, br * 1.15, br * 1.15, br * 1.5, knuckle, Vector3(0, 0, PI / 2), mat, col, 10)
@@ -705,6 +716,12 @@ static func trailing_gear(k: VehicleModels, parent: Node3D, pivot: Vector3, stru
 	var length := down.length()
 	var dn := down / maxf(length, 0.001)
 	k._box(parent, Vector3(sr * 2.6, sr * 1.3, sr * 2.4), strut_top + Vector3.UP * sr * 0.45, "gunmetal_w")
+	if hull.y > 0.0:
+		# the clevis's fitting, out from inside the skin to the clevis block
+		var wall := side * (hull.y - 0.03)
+		var inner := strut_top.x - side * sr * 1.2
+		if (inner - wall) * side > 0.0:
+			k._box(parent, Vector3(absf(inner - wall), sr * 1.6, sr * 2.4), Vector3((inner + wall) * 0.5, strut_top.y + sr * 0.45, strut_top.z), "gunmetal_w")
 	VehicleBody.rod(k, parent, strut_top - pin * sr * 1.4, strut_top + pin * sr * 1.4, sr * 0.36, "steel", null, 8, false)
 	VehicleBody.rod(k, parent, strut_top, strut_top + dn * length * 0.58, sr, mat, col, 10, true, -1.0, false, false)
 	VehicleBody.rod(k, parent, strut_top + dn * (length * 0.58 - sr * 0.3), strut_top + dn * (length * 0.58 + sr * 0.3), sr * 1.12, "metal_dark", null, 10, false)

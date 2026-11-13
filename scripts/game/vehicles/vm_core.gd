@@ -1669,7 +1669,7 @@ static func _apache(k: VehicleModels, team: int) -> void:
 	k._wheel(b, Vector3(0, 0.25, 7.98), 0.25, 0.15)
 	# --- main gear: trailing arms off the bays, the shock struts
 	for s: float in [-1.0, 1.0]:
-		VehicleAircraft.trailing_gear(k, b, Vector3(s * 0.8, 1.02, -3.55), Vector3(s * 0.84, 1.5, -3.2), Vector3(s * 1.12, 0.34, -3.05), Vector2(0.34, 0.22), 0.07, 0.055)
+		VehicleAircraft.trailing_gear(k, b, Vector3(s * 0.8, 1.02, -3.55), Vector3(s * 0.84, 1.5, -3.2), Vector3(s * 1.12, 0.34, -3.05), Vector2(0.34, 0.22), 0.07, 0.055, "gunmetal_w", null, Vector3.ZERO, "paint", null, null, 0.0, 8, Vector2(0.26, 0.21))
 		k._wheel(b, Vector3(s * 1.12, 0.34, -3.05), 0.34, 0.22)
 	# --- the M230 chain gun in its turret under the chin, its feeder and
 	# ammunition chute on the right
@@ -1799,7 +1799,7 @@ static func _blackhawk(k: VehicleModels, team: int) -> void:
 		k._team_mark(b, team, Vector3(s * 0.37, 2.12, 4.6), Vector3(0.02, 0.24, 0.9))
 	# --- main gear: the drag beam and the shock strut to each wheel
 	for s: float in [-1.0, 1.0]:
-		VehicleAircraft.trailing_gear(k, b, Vector3(s * 0.8, 0.66, -4.35), Vector3(s * 1.12, 1.35, -3.8), Vector3(s * 1.5, 0.38, -3.95), Vector2(0.38, 0.26), 0.07, 0.1)
+		VehicleAircraft.trailing_gear(k, b, Vector3(s * 0.8, 0.66, -4.35), Vector3(s * 1.12, 1.35, -3.8), Vector3(s * 1.5, 0.38, -3.95), Vector2(0.38, 0.26), 0.07, 0.1, "gunmetal_w", null, Vector3.ZERO, "paint", null, null, 0.0, 8, Vector2(0.376, 0.506))
 		k._wheel(b, Vector3(s * 1.5, 0.38, -3.95), 0.38, 0.26)
 
 
