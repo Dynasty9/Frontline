@@ -3,7 +3,7 @@
 	"format": 4,
 	"key": "stonebridge",
 	"seed": 17,
-	"sha256": "31a29d4f22711c61d7c2bb617d3a4b2ac9aaa4bbe8da5516cfab7856fe9bf9a9",
+	"sha256": "bd2ccd8bc997606049feb46ed61a8d4adf73c0c72538741f79d3f361ff40d944",
 	"size": 1024,
 	"sources": {
 		"assets/terrain/alpine_forms.tres": "7f06c740b079737955f99bb94abc037ec7f7350697238515f45962fb3442702d",
@@ -25,6 +25,6 @@
 		"scripts/game/towngen.gd": "379249e265b9590929c2f7346f1ce3cc9f2958a76ba698d1c081f58d2d4431a4",
 		"scripts/game/trench_net.gd": "7a17fbe37361287a1d79aaaeccd217407be4bcb98f6b17dce9c894eab50b9e31",
 		"scripts/game/water.gd": "5475f733026d92555f1f5136fbae8b2d9b5a5844450bc7ee9d8af43b7af08b3e",
-		"scripts/game/world.gd": "6ec747bc0ca6584ff128fccd218d74febd4fc9088a6b11aa69431c7d4ec7bad9"
+		"scripts/game/world.gd": "c040ebef921aa3ba210ca301ac8c7ddf7bab16ecf1b255470a09d1e1a5fdcb3a"
 	}
 }

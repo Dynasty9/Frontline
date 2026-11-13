@@ -23,7 +23,8 @@ The browser offers the same layouts, generated on demand to keep its initial
 download smaller.
 
 Loading uses more of each frame to prepare scenery and soldier poses before
-revealing the battle. The private simulation skips artwork that only the
-player's view needs.
+revealing the battle. The loading bar now tracks that preparation instead of
+staying on the completed cover stage. The private simulation skips artwork that
+only the player's view needs.
 Solo combat starts once the loading screen has faded, including the final
 shader warm-up.

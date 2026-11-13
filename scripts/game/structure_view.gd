@@ -105,6 +105,9 @@ func _take(id: int) -> Structure:
 func warming() -> bool:
 	return center == Vector2i(-999, -999) or not pending.is_empty() or not _draw_waiting.is_empty()
 
+func preparations_left() -> int:
+	return pending.size() + _draw_waiting.size() + (1 if center == Vector2i(-999, -999) else 0)
+
 func focus_at(pos: Vector3, camera: Camera3D = null) -> void:
 	var next := Vector2i(floori(pos.x / CELL), floori(pos.z / CELL))
 	var camera_id := camera.get_instance_id() if camera else 0

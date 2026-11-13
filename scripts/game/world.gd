@@ -1349,6 +1349,7 @@ var _load_rec := {}  # eid -> its record in _load_q, while it waits
 var _load_step := 0
 var _load_built := 0
 var _load_cells := 0  # cover cells to work out after the building
+var _load_models_total := 0
 var _cover_batch := 512  # and how many at a time (as many as take about a third of a slice)
 var _cover_min := -1  # (or at least as many as TerrainMap shares out over its worker threads, if it does)
 var _load_t0 := 0
@@ -1529,7 +1530,7 @@ func _load_tick() -> void:
 						_load_mark("entities")
 					_load_cells = maxi(1, terrain._queue.size() - terrain._qhead)
 					_load_step = 4
-			_load_stage("Moving in", 0.2 + 0.7 * minf(1.0, float(_load_built) / maxf(1.0, _join_n)))
+			_load_stage("Moving in", 0.2 + 0.5 * minf(1.0, float(_load_built) / maxf(1.0, _join_n)))
 		4:
 			if _load_i < _load_q.size():
 				_load_step = 3  # (more came in meanwhile)
@@ -1545,7 +1546,8 @@ func _load_tick() -> void:
 				var took := maxi(1, Time.get_ticks_usec() - c0)
 				_cover_batch = clampi(int(_cover_batch * (LOAD_SLICE_US / 3.0) / took), 128, 1 << 16)
 			var left: int = terrain._queue.size() - terrain._qhead
-			_load_stage("Taking cover", 0.9 + 0.1 * (1.0 - float(left) / _load_cells))
+			if not terrain._queue.is_empty():
+				_load_stage("Taking cover", 0.7 + 0.1 * (1.0 - float(left) / _load_cells))
 			if terrain._queue.is_empty():
 				_load_done()
 
@@ -1636,6 +1638,13 @@ func _ground_done() -> void:
 
 func _load_done() -> void:
 	_try_focus()
+	var poses_left: int = soldier_view.preparations_left() if soldier_view != null else 0
+	var scenery_left: int = structure_view.preparations_left() if structure_view != null else 0
+	var remaining := poses_left + scenery_left
+	_load_models_total = maxi(_load_models_total, remaining)
+	if remaining > 0:
+		# Count completed work rather than leaving the bar on an already-finished cover pass.
+		_load_stage("Preparing soldiers" if poses_left > 0 else "Preparing scenery", 0.8 + 0.2 * (1.0 - float(remaining) / _load_models_total))
 	if soldier_view != null and soldier_view.warming():
 		return
 	if not loading_ms.has("soldier poses ready"):

@@ -83,5 +83,26 @@ func _ready() -> void:
 	immediate.free()
 	main._finish_loading(old_view, 0)
 	main.free()
+	var preparing := World.new()
+	preparing.has_view = false
+	preparing.soldier_view = SoldierViewBatch.new()
+	preparing.add_child(preparing.soldier_view)
+	preparing.soldier_view._warmup = [[], []]
+	preparing.structure_view = StructureView.new()
+	preparing.add_child(preparing.structure_view)
+	preparing.structure_view.center = Vector2i.ZERO
+	preparing.structure_view.pending = {1: null, 2: null}
+	var preparation_stages: Array = []
+	preparing.build_stage.connect(func(text: String, frac: float): preparation_stages.append([text, frac]))
+	preparing._load_done()
+	var first: float = preparation_stages[-1][1]
+	check(preparation_stages[-1][0] == "Preparing soldiers" and not preparing.loaded, "Pending poses must have their own loading stage")
+	preparing.soldier_view._warmup.clear()
+	preparing._load_done()
+	check(preparation_stages[-1][0] == "Preparing scenery" and preparation_stages[-1][1] > first, "Model completion must advance the bar before scenery is finished")
+	preparing.structure_view.pending.clear()
+	preparing._load_done()
+	check(preparing.loaded and preparation_stages[-1][0] == "Ready", "Preparation must finish only when both queues are empty")
+	preparing.free()
 	print("CLIENT_LOADING_TEST failures=%d" % failures)
 	get_tree().quit(1 if failures else 0)

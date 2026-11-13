@@ -42,6 +42,10 @@ func warming() -> bool:
 	return not _warmup.is_empty()
 
 
+func preparations_left() -> int:
+	return _warmup.size()
+
+
 func acquire_detail_slot() -> bool:
 	var frame := Engine.get_process_frames()
 	if frame != _detail_frame:
