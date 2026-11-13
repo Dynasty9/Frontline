@@ -13,6 +13,14 @@ func check(ok: bool, message: String) -> void:
 
 func _ready() -> void:
 	var grass := Grass.new()
+	for kind in 3:
+		var detail := grass._make_woodland(kind)
+		var bounds := detail.get_aabb()
+		check(bounds.position.y >= -0.06 and bounds.end.y < 0.7, "Woodland details sit at ground level and stay below shrubs")
+		check(bounds.size.x < 2.1 and bounds.size.z < 2.1, "Woodland details fit inside the road exclusion margin")
+		var data := detail.surface_get_arrays(0)
+		check(data[Mesh.ARRAY_VERTEX].size() < 2200, "Woodland meshes have bounded geometry")
+		check(data[Mesh.ARRAY_COLOR].size() == data[Mesh.ARRAY_VERTEX].size(), "Every woodland vertex has a material color")
 	var blades := grass._make_clump().surface_get_arrays(0)
 	var vertices: PackedVector3Array = blades[Mesh.ARRAY_VERTEX]
 	var uv: PackedVector2Array = blades[Mesh.ARRAY_TEX_UV]
@@ -158,6 +166,32 @@ func _ready() -> void:
 		grass._clear()
 	check(dense > 12 and sparse < dense / 3, "Shrub habitat produces connected patches and open ground instead of even scatter")
 	check(snapshots[0] == snapshots[1] and world.rng.state == rng_before, "Cosmetic habitat rebuilds reproduce the same shrubs without advancing gameplay RNG")
+	for kind in 3:
+		grass.woodland.append(grass._make_woodland(kind))
+	grass.woodland_mat = material
+	var tree := Structure.new()
+	tree.skind = "tree"
+	tree.hp = 100
+	tree.position = Vector3(16, 0, 16)
+	world._shash_add(tree)
+	var woodland_snapshots := []
+	for repeat in 2:
+		var nodes := []
+		grass._woodland_chunk(Vector2i.ZERO, nodes)
+		check(nodes.size() == 3, "Living woodland receives ferns, deadwood and mushrooms")
+		var placements := []
+		for node: MultiMeshInstance3D in nodes:
+			for i in node.multimesh.instance_count:
+				placements.append(node.multimesh.get_instance_transform(i))
+			node.free()
+		woodland_snapshots.append(var_to_bytes(placements))
+	check(woodland_snapshots[0] == woodland_snapshots[1] and world.rng.state == rng_before, "Woodland rebuilds are repeatable and leave combat randomness untouched")
+	grass._blocked.fill(1)
+	var excluded := []
+	grass._woodland_chunk(Vector2i.ZERO, excluded)
+	check(excluded.is_empty(), "Road, water and yard exclusions also exclude woodland details")
+	world._shash_remove(tree)
+	tree.free()
 	grass.free()
 	atmosphere.free()
 	world.free()
