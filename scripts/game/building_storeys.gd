@@ -21,10 +21,12 @@ const SILL := 0.85
 ## house's `material` and colour, its woodwork `trim`: the floor slab (the
 ## ceiling of the rooms under it), walls on the ground floor's lines with
 ## windows in most bays, a string course at the floor and a band under the
-## eaves. Curtains as the house hangs them; a lamp on in some rooms.
-static func upper(k: BuildingKit, L: float, W: float, y0: float, y1: float, material: String, col: Color, trim: Color, rng: RandomNumberGenerator) -> void:
+## eaves. Curtains as the house hangs them; a lamp on in some rooms, unless
+## the house is dark (`lamps` false: hit, or a ruin). True if a lamp is lit.
+static func upper(k: BuildingKit, L: float, W: float, y0: float, y1: float, material: String, col: Color, trim: Color, rng: RandomNumberGenerator, lamps := true) -> bool:
 	var h := y1 - y0
 	k.box(Vector3(L - 0.4, 0.22, W - 0.4), Vector3(0, y0 - 0.1, 0), "plaster", Color(0.8, 0.78, 0.74))
+	var lit := false
 	var curtains: String = ["drapes", "drapes", "blind", "nets", ""][rng.randi() % 5]
 	var fabric: Color = BuildingFurnishings.FABRICS[rng.randi() % BuildingFurnishings.FABRICS.size()]
 	# (the long walls run across the corners, the ends fit between them, as
@@ -45,9 +47,12 @@ static func upper(k: BuildingKit, L: float, W: float, y0: float, y1: float, mate
 		for x in xs:
 			var opts := {"material": material, "wall": col, "frame": trim, "curtains": curtains, "curtain": fabric}
 			if rng.randf() < 0.3:
-				opts["lit"] = true
 				opts["glazing"] = 0.85
+				if lamps:
+					opts["lit"] = true
+					lit = true
 			BuildingOpenings.window(fk, Vector3(x, SILL + WINDOW.y * 0.5, 0), WINDOW, opts)
+	return lit
 
 
 ## A storey's wall `length` long and `h` tall in a face kit (its outer face

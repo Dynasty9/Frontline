@@ -1229,7 +1229,8 @@ func _house(c: Vector3, w: float, d: float, axis: float, street_side: float, yar
 			# most front doors are shut (decided from where it stands: the map's
 			# random numbers stay as they were)
 			var shut := variant == 2 and (doors_shut == 1 or (doors_shut < 0 and posmod(int(absf(wp.x) * 7.3 + absf(wp.z) * 13.1), 10) < 7))
-			world.spawn("structure", {"skind": "house_wall", "pos": Vector3(wp.x, level, wp.z), "yaw": yaw, "variant": variant, "size": Vector3(seg_len, float(color), 0.4), "door": shut})
+			# (a ruin's lamps are long out)
+			world.spawn("structure", {"skind": "house_wall", "pos": Vector3(wp.x, level, wp.z), "yaw": yaw, "variant": variant, "size": Vector3(seg_len, float(color), 0.4), "door": shut, "dark": ruined})
 	# a roof on every house still standing: tiled and pitched, or flat (over
 	# a storey above the ground floor, where it has one)
 	var flat := false
@@ -1302,7 +1303,7 @@ func _wing(c: Vector3, b: Basis, axis: float, w: float, d: float, k0: int, n: in
 					_late.append({"skind": "rubble", "pos": Vector3(wp.x, level, wp.z), "yaw": yaw + pr.randf_range(-0.2, 0.2), "size": Vector3(seg_len * 0.9, 0, 1.2)})
 				continue
 			var variant := 1 if seg_len > 2.0 and pr.randf() < 0.5 else 0
-			_late.append({"skind": "house_wall", "pos": Vector3(wp.x, level, wp.z), "yaw": yaw, "variant": variant, "size": Vector3(seg_len, float(color), 0.4), "door": false})
+			_late.append({"skind": "house_wall", "pos": Vector3(wp.x, level, wp.z), "yaw": yaw, "variant": variant, "size": Vector3(seg_len, float(color), 0.4), "door": false, "dark": ruined})
 	var wc := c + b * Vector3((x0 + x1) * 0.5, 0, d * 0.5 + wd * 0.5)
 	_late.append({"skind": "floor", "pos": Vector3(wc.x, level, wc.z), "yaw": axis, "team": -1, "size": Vector3(x1 - x0, 0.06, wd), "variant": 1 if ruined else 0})
 	if not ruined:

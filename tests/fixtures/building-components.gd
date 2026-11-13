@@ -50,6 +50,23 @@ func valid(root: Node3D, what: String) -> void:
 
 
 ## The box round everything drawn under `node`, in its parent's space.
+## How many of a model's meshes (or their surfaces) are lit glass.
+func _lit(node: Node) -> int:
+	var count := 0
+	var mi := node as MeshInstance3D
+	if mi != null and mi.mesh != null:
+		# (lit glass, whether a part's own or merged into a bake's copy of it)
+		var mats: Array = [mi.material_override]
+		for i in mi.mesh.get_surface_count():
+			mats.append(mi.mesh.surface_get_material(i))
+		for m: Variant in mats:
+			if m is ShaderMaterial and (m as ShaderMaterial).get_shader_parameter("lit") != null and float((m as ShaderMaterial).get_shader_parameter("lit")) > 0.0:
+				count += 1
+	for child in node.get_children():
+		count += _lit(child)
+	return count
+
+
 func _bounds(node: Node3D, parent: Transform3D) -> AABB:
 	var xf := parent * node.transform
 	var box := AABB()
@@ -473,6 +490,51 @@ func _ready() -> void:
 			panes += 1
 	check(panes >= 12, "a storey has its windows (%d panes)" % panes)
 	stk.sink.root.free()
+
+	# A house that's dark (a ruin, or hit, or burning) has no lamp lit
+	# anywhere: not in a window, not by the door, not under a skylight. The
+	# same walls and roofs lit are found among the first ids.
+	var lit_walls := 0
+	var lit_roofs := 0
+	for id in 120:
+		for v in [1, 2]:
+			var lw := Structure.preview_model("house_wall", -1, v, Vector3(2.8, float(id % 5), 0.4), false, id)
+			var dw := Structure.preview_model("house_wall", -1, v, Vector3(2.8, float(id % 5), 0.4), false, id, true)
+			if _lit(lw) > 0:
+				lit_walls += 1
+			check(_lit(dw) == 0, "a dark house's wall has no lamp lit (%d/%d)" % [id, v])
+			lw.free()
+			dw.free()
+		var lr := Structure.preview_model("roof", -1, (id % 5) * 2, Vector3(9.0, 3.0, 7.6), false, id)
+		var dr := Structure.preview_model("roof", -1, (id % 5) * 2, Vector3(9.0, 3.0, 7.6), false, id, true)
+		if _lit(lr) > 0:
+			lit_roofs += 1
+		check(_lit(dr) == 0, "a dark house's roof has no skylight lit (%d)" % id)
+		lr.free()
+		dr.free()
+	check(lit_walls >= 20 and lit_roofs >= 2, "some houses have their lamps on (%d walls, %d roofs)" % [lit_walls, lit_roofs])
+
+	# A tarp lies on its slope, its weights on it and its cords run down to
+	# the eave, no further.
+	for s in 12:
+		var tk := kit()
+		tk.rng.seed = s
+		BuildingWeathering.tarp(tk, tk.rng, 2.4)
+		var tb := _bounds(tk.sink.root, Transform3D.IDENTITY)
+		check(tb.position.y >= -0.25 and tb.end.y <= 0.3, "a tarp lies on the slope (%s)" % tb)
+		check(absf(tb.get_center().x) < 0.5 and tb.size.x <= 3.2 and tb.position.z >= -2.6 and tb.end.z <= 1.2, "a tarp keeps to its patch and the eave (%s)" % tb)
+		tk.sink.root.free()
+	# (and a storey's lamps go out with the rest of the house's)
+	var dark_storeys := 0
+	for id in 40:
+		var ls := Structure.preview_model("roof", -1, (id % 5) * 2, Vector3(9.0, 5.8, 7.6), false, id)
+		var ds := Structure.preview_model("roof", -1, (id % 5) * 2, Vector3(9.0, 5.8, 7.6), false, id, true)
+		if _lit(ls) > 0:
+			dark_storeys += 1
+		check(_lit(ds) == 0, "a dark house's floor above has no lamp lit (%d)" % id)
+		ls.free()
+		ds.free()
+	check(dark_storeys >= 5, "some floors above have a lamp on (%d of 40)" % dark_storeys)
 
 	# Every building and every kind of scenery still builds a model.
 	var kinds: Array = Defs.BUILDINGS.keys()
