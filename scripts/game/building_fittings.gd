@@ -3,7 +3,9 @@ extends RefCounted
 ## The fittings and stores buildings share: rainwater goods (gutters, hoppers,
 ## downpipes), chimneys, flues and stacks, the plant on a roof (an air
 ## conditioner, a water tank, a dish), masts and aerials, flagpoles, lamps,
-## and the drums, crates and pallets lying round every yard, depot and dock.
+## what's fixed to a house's walls (a meter box, an outside tap, an air
+## conditioner, a dish, the number and letterbox by its door, the mat on its
+## step), and the drums, crates and pallets lying round every yard, depot and dock.
 ## Positions are in the kit's frame (see BuildingKit); y = 0 is the ground or
 ## whatever the fitting stands on.
 
@@ -126,6 +128,126 @@ static func ac_unit(k: BuildingKit, base: Vector3, yaw := 0.0, col := Color(0.78
 	for i in 5:
 		a.plate(Vector3(0.18, 0.012, 0.01), Vector3(0.24, 0.17 + i * 0.075, 0.163), "paint", col.darkened(0.3))
 	a.rod(Vector3(0.36, 0.12, -0.12), Vector3(0.36, 0.12, -0.4), 0.012, "metal_dark", Color(0.6, 0.45, 0.3), 4, false)
+
+
+# --- on a house's walls ------------------------------------------------------------------
+# (in a kit at the wall's outer face: x along it, y up from the ground, +z out)
+
+const BRASS := Color(0.62, 0.48, 0.22)
+## A house number's plate and figures: blue enamel, white, black and brass.
+const NUMBERS := [[Color(0.1, 0.2, 0.45), Color(0.92, 0.92, 0.88)], [Color(0.92, 0.91, 0.86), Color(0.08, 0.08, 0.08)],
+	[Color(0.12, 0.12, 0.12), Color(0.62, 0.48, 0.22)], [Color(0.55, 0.22, 0.14), Color(0.92, 0.9, 0.84)]]
+const LETTERBOXES := [Color(0.15, 0.25, 0.18), Color(0.55, 0.12, 0.1), Color(0.12, 0.12, 0.12), Color(0.5, 0.5, 0.48)]
+const MATS := [Color(0.5, 0.38, 0.22), Color(0.14, 0.14, 0.13), Color(0.36, 0.13, 0.1)]
+const HOSES := [Color(0.15, 0.4, 0.15), Color(0.75, 0.6, 0.1), Color(0.2, 0.22, 0.25)]
+## The seven segments a figure is made of ([x0, y0, x1, y1] in a cell 0.6
+## wide and 1 high: top, upper right, lower right, bottom, lower left, upper
+## left, middle), and which of them each of 0 to 9 lights (a bit each).
+const _SEGMENTS := [[0.0, 0.84, 0.6, 1.0], [0.44, 0.5, 0.6, 1.0], [0.44, 0.0, 0.6, 0.5], [0.0, 0.0, 0.6, 0.16],
+	[0.0, 0.0, 0.16, 0.5], [0.0, 0.5, 0.16, 1.0], [0.0, 0.42, 0.6, 0.58]]
+const _FIGURES := [63, 6, 91, 79, 102, 109, 125, 7, 127, 111]
+
+
+## The cabinet the mains come in at, on a wall with its foot at `p`: low on
+## the wall for the electricity, standing on the ground for the gas (`gas`).
+## A moulded box with its door, the window the meter's read through, a key
+## slot, and (off the ground) the duct the cable comes up in.
+static func meter_box(k: BuildingKit, p: Vector3, gas := false) -> void:
+	var s := Vector3(0.45, 0.5, 0.24) if gas else Vector3(0.4, 0.55, 0.19)
+	var col := Color(0.78, 0.74, 0.62) if gas else Color(0.82, 0.8, 0.73)
+	k.box(s, p + Vector3(0, s.y * 0.5, s.z * 0.5), "paint", col)
+	k.plate(Vector3(s.x - 0.05, s.y - 0.05, 0.01), p + Vector3(0, s.y * 0.5, s.z + 0.004), "paint", col.darkened(0.08))
+	k.plate(Vector3(0.14, 0.09, 0.008), p + Vector3(0, s.y * 0.66, s.z + 0.01), "glass", Color(0.25, 0.28, 0.3))
+	k.plate(Vector3(0.025, 0.04, 0.008), p + Vector3(s.x * 0.32, s.y * 0.45, s.z + 0.01), "metal_dark", Color(0.2, 0.2, 0.2))
+	if p.y > 0.05:
+		k.box(Vector3(0.12, p.y + 0.04, 0.1), Vector3(p.x, p.y * 0.5 - 0.02, 0.05), "paint", col.darkened(0.15))
+
+
+## An air conditioner's outdoor unit on two angle brackets, their top at `p`
+## (on the face): the brackets bolted to the wall, the unit on them, its pipes
+## in white trunking from its side into the wall, the drain run down.
+static func wall_unit(k: BuildingKit, p: Vector3, col := Color(0.8, 0.8, 0.77)) -> void:
+	var steel := Color(0.32, 0.32, 0.31)
+	for x: float in [-0.3, 0.3]:
+		k.plate(Vector3(0.04, 0.04, 0.5), p + Vector3(x, -0.02, 0.25), "metal_dark", steel, Vector3.ZERO, true)
+		k.plate(Vector3(0.05, 0.5, 0.012), p + Vector3(x, -0.25, 0.006), "metal_dark", steel)
+		k.bar(p + Vector3(x, -0.46, 0.012), p + Vector3(x, -0.04, 0.42), 0.03, 0.03, "metal_dark", steel, false)
+	ac_unit(k, p + Vector3(0, 0, 0.24), 0.0, col)
+	var duct := Color(0.88, 0.88, 0.85)
+	k.box(Vector3(0.1, 0.06, 0.06), Vector3(p.x + 0.44, p.y + 0.16, 0.24), "paint", duct)
+	k.box(Vector3(0.06, 0.06, 0.22), Vector3(p.x + 0.5, p.y + 0.16, 0.13), "paint", duct)
+	k.box(Vector3(0.07, 0.55, 0.05), Vector3(p.x + 0.5, p.y + 0.41, 0.025), "paint", duct)
+	k.rod(p + Vector3(-0.34, 0.0, 0.22), p + Vector3(-0.34, -0.06, 0.02), 0.008, "rubber", Color(0.08, 0.08, 0.08), 4, false)
+	k.rod(p + Vector3(-0.34, -0.06, 0.02), Vector3(p.x - 0.34, 0.25, 0.02), 0.008, "rubber", Color(0.08, 0.08, 0.08), 4, false)
+
+
+## A satellite dish on an arm off the wall at `p` (on the face), aimed by
+## `aim` (pitch out from the wall, yaw): the wall plate, the arm, the dish,
+## and its cable clipped down the wall to where it goes in.
+static func wall_dish(k: BuildingKit, p: Vector3, aim := Vector3(0.9, 0.0, 0), col := Color(0.82, 0.82, 0.8)) -> void:
+	var steel := Color(0.45, 0.45, 0.44)
+	k.plate(Vector3(0.16, 0.24, 0.012), p + Vector3(0, 0, 0.006), "steel", steel)
+	k.bar(p + Vector3(0, 0, 0.012), p + Vector3(0, 0, 0.34), 0.04, 0.04, "steel", steel, false)
+	dish(k, p + Vector3(0, -0.02, 0.34), 0.3, aim, col, 0.14)
+	var black := Color(0.08, 0.08, 0.08)
+	k.rod(p + Vector3(0.03, -0.02, 0.33), p + Vector3(0.1, -0.14, 0.012), 0.005, "rubber", black, 4, false)
+	k.rod(p + Vector3(0.1, -0.14, 0.012), Vector3(p.x + 0.1, maxf(0.9, p.y - 1.2), 0.012), 0.005, "rubber", black, 4, false)
+
+
+## An outside tap at `p` (on the face): the copper pipe up to it out of the
+## ground, the bib tap with its spout and handle; with `hose` (its colour) a
+## hose coiled on a hook beside it, its end run down to the ground.
+static func tap(k: BuildingKit, p: Vector3, hose: Variant = null) -> void:
+	k.rod(Vector3(p.x, 0.0, 0.025), p + Vector3(0, 0, 0.025), 0.01, "metal_dark", Color(0.55, 0.34, 0.2), 6, false)
+	k.rod(p + Vector3(0, 0, 0.025), p + Vector3(0, 0, 0.09), 0.016, "metal", BRASS, 6, false)
+	k.rod(p + Vector3(0, 0, 0.09), p + Vector3(0, -0.06, 0.1), 0.011, "metal", BRASS, 6, false)
+	k.rod(p + Vector3(0, 0, 0.07), p + Vector3(0, 0.035, 0.07), 0.006, "metal", BRASS, 4, false)
+	k.plate(Vector3(0.07, 0.012, 0.02), p + Vector3(0, 0.04, 0.07), "paint", Color(0.55, 0.12, 0.1))
+	if hose == null:
+		return
+	var hook := p + Vector3(0.36, 0.38, 0)
+	k.bar(hook, hook + Vector3(0, 0, 0.14), 0.025, 0.025, "metal_dark", IRON, false)
+	for i in 3:
+		var r := 0.17 + i * 0.01
+		k.part(BuildingKit.ring(r - 0.012, r + 0.012), "rubber", Mats.place(hook + Vector3(0.0, -r + 0.01, 0.05 + i * 0.026), Vector3(PI * 0.5, 0, 0.1 * i)), hose, false)
+	k.rod(hook + Vector3(-0.17, -0.2, 0.06), Vector3(hook.x - 0.24, 0.02, 0.12), 0.012, "rubber", hose, 4, false)
+
+
+## A house's number beside its door, `n` on a plate (its middle at `p`, on
+## the face): the plate with its rim, the figures standing off it.
+static func house_number(k: BuildingKit, p: Vector3, n: int, plate: Color, figure: Color) -> void:
+	var digits := str(n)
+	var h := 0.085
+	var cw := h * 0.6
+	var gap := h * 0.25
+	var span := digits.length() * cw + (digits.length() - 1) * gap
+	k.plate(Vector3(span + 0.08, h + 0.07, 0.012), p + Vector3(0, 0, 0.006), "paint", figure)
+	k.plate(Vector3(span + 0.06, h + 0.05, 0.003), p + Vector3(0, 0, 0.0135), "paint", plate)
+	for i in digits.length():
+		var x0 := -span * 0.5 + i * (cw + gap)
+		var lit: int = _FIGURES[digits.unicode_at(i) - 48]
+		for s in 7:
+			if (lit & (1 << s)) == 0:
+				continue
+			var r: Array = _SEGMENTS[s]
+			var lo := Vector2(x0 + r[0] * h, r[1] * h - h * 0.5)
+			var hi := Vector2(x0 + r[2] * h, r[3] * h - h * 0.5)
+			k.plate(Vector3(hi.x - lo.x, hi.y - lo.y, 0.002), p + Vector3((lo.x + hi.x) * 0.5, (lo.y + hi.y) * 0.5, 0.016), "paint", figure, Vector3.ZERO, false)
+
+
+## A letterbox on the wall at `p` (its middle, on the face): the box, its
+## lid sloped over the slot to shed the rain, the name card.
+static func letterbox(k: BuildingKit, p: Vector3, col: Color) -> void:
+	k.box(Vector3(0.26, 0.34, 0.1), p + Vector3(0, 0, 0.05), "paint", col)
+	k.plate(Vector3(0.28, 0.025, 0.13), p + Vector3(0, 0.18, 0.06), "paint", col.darkened(0.15), Vector3(0.25, 0, 0))
+	k.plate(Vector3(0.18, 0.014, 0.006), p + Vector3(0, 0.1, 0.102), "plain_dark", Color(0.05, 0.05, 0.05))
+	k.plate(Vector3(0.1, 0.035, 0.004), p + Vector3(0, -0.05, 0.102), "paint", Color(0.9, 0.88, 0.82))
+
+
+## A doormat lying at `p` (its middle, on the step): the mat, its border.
+static func doormat(k: BuildingKit, p: Vector3, col: Color) -> void:
+	k.plate(Vector3(0.8, 0.014, 0.48), p + Vector3(0, 0.007, 0), "canvas", col.darkened(0.3), Vector3.ZERO, false)
+	k.plate(Vector3(0.7, 0.004, 0.38), p + Vector3(0, 0.016, 0), "canvas", col, Vector3.ZERO, false)
 
 
 ## A water tank on its stand at `base`: legs and a frame, the drum banded

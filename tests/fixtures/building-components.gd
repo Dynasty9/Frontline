@@ -260,6 +260,15 @@ func _ready() -> void:
 			BuildingYards.trampoline(k.at_point(Vector3(5, 0, -4)), BuildingYards.PADS[0]),
 		"storey": func(k: BuildingKit):
 			BuildingStoreys.upper(k, 9.0, 7.6, 3.0, 5.8, "brick", BuildingMaterials.color("brick"), Color(0.86, 0.85, 0.8), k.rng),
+		"fixtures": func(k: BuildingKit):
+			BuildingFittings.meter_box(k, Vector3(-1, 0.5, 0))
+			BuildingFittings.meter_box(k.at_point(Vector3(1, 0, 0)), Vector3.ZERO, true)
+			BuildingFittings.tap(k.at_point(Vector3(3, 0, 0)), Vector3(0, 0.55, 0), BuildingFittings.HOSES[0])
+			BuildingFittings.wall_unit(k.at_point(Vector3(5, 0, 0)), Vector3(0, 1.9, 0))
+			BuildingFittings.wall_dish(k.at_point(Vector3(7, 0, 0)), Vector3(0, 2.45, 0))
+			BuildingFittings.house_number(k, Vector3(-3, 1.7, 0), 47, BuildingFittings.NUMBERS[0][0], BuildingFittings.NUMBERS[0][1])
+			BuildingFittings.letterbox(k, Vector3(-3, 1.15, 0), BuildingFittings.LETTERBOXES[0])
+			BuildingFittings.doormat(k, Vector3(-5, 0.14, 0.3), BuildingFittings.MATS[0]),
 		"inside": func(k: BuildingKit):
 			BuildingFurnishings.lining(k, 2.8, 3.0, [Rect2(-0.65, 1.0, 1.3, 1.0)], Color(0.8, 0.8, 0.7))
 			BuildingFurnishings.radiator(k, 0.0, 1.0)
@@ -490,6 +499,38 @@ func _ready() -> void:
 			panes += 1
 	check(panes >= 12, "a storey has its windows (%d panes)" % panes)
 	stk.sink.root.free()
+
+	# What's fixed to a house wall keeps to the room Structure gives it (its
+	# placing relies on these reaches), sits on the face, and stands proud of
+	# it no further than a dish on its arm, below the gutter; some plain walls
+	# carry one.
+	var reach := {
+		"meter": [func(k: BuildingKit): BuildingFittings.meter_box(k, Vector3(0, 0.5, 0)), Vector2(-0.25, 0.25), 0.3],
+		"gas": [func(k: BuildingKit): BuildingFittings.meter_box(k, Vector3.ZERO, true), Vector2(-0.25, 0.25), 0.3],
+		"tap": [func(k: BuildingKit): BuildingFittings.tap(k, Vector3(0, 0.55, 0), BuildingFittings.HOSES[1]), Vector2(-0.05, 0.6), 0.25],
+		"unit": [func(k: BuildingKit): BuildingFittings.wall_unit(k, Vector3(0, 1.9, 0)), Vector2(-0.42, 0.56), 0.52],
+		"dish": [func(k: BuildingKit): BuildingFittings.wall_dish(k, Vector3(0, 2.1, 0), Vector3(1.0, 0.6, 0)), Vector2(-0.4, 0.4), 0.72],
+		"number": [func(k: BuildingKit): BuildingFittings.house_number(k, Vector3(0, 1.72, 0), 88, Color.BLUE, Color.WHITE), Vector2(-0.15, 0.15), 0.03],
+		"letterbox": [func(k: BuildingKit): BuildingFittings.letterbox(k, Vector3(0, 1.15, 0), Color.RED), Vector2(-0.15, 0.15), 0.14],
+	}
+	for name: String in reach:
+		var fk := kit()
+		(reach[name][0] as Callable).call(fk)
+		var fb := _bounds(fk.sink.root, Transform3D.IDENTITY)
+		var span: Vector2 = reach[name][1]
+		check(fk.sink.root.get_child_count() > 0 and fb.position.x >= span.x and fb.end.x <= span.y, "a %s keeps its width on the wall (%s)" % [name, fb])
+		check(fb.position.z >= -0.2 and fb.end.z <= reach[name][2] and fb.position.y >= -0.05 and fb.end.y <= 2.65, "a %s keeps to the face, clear of the gutter (%s)" % [name, fb])
+		fk.sink.root.free()
+	var fitted := 0
+	for s in 240:
+		var L: float = [2.6, 2.8, 3.3][s % 3]
+		var pw := Structure.preview_model("house_wall", -1, 0, Vector3(L, float(s % 5), 0.4), false, 900 + s)
+		var pb := _bounds(pw, Transform3D.IDENTITY)
+		check(pb.end.y <= 3.05, "a plain wall's fittings keep below its eaves (%s, %s)" % [L, pb])
+		if pb.end.z > 0.6:
+			fitted += 1
+		pw.free()
+	check(fitted >= 8 and fitted < 120, "some plain walls carry a dish or an air conditioner (%d of 240)" % fitted)
 
 	# A house that's dark (a ruin, or hit, or burning) has no lamp lit
 	# anywhere: not in a window, not by the door, not under a skylight. The

@@ -209,6 +209,21 @@ door to the house) and some lawns with room for it a trampoline; these are drawn
 They're set dressing (Decor, appended after the rest so the town's other dressing keeps its looks): no cover,
 and a blast or a truck knocks them over. Render them with `--building-kinds=house_yard` in the studio stage.
 
+## Wall fittings
+
+What's fixed to a house's walls comes from `BuildingFittings` (`meter_box`, `tap`, `wall_unit`, `wall_dish`,
+`house_number`, `letterbox`, `doormat`), placed by `Structure._wall_fixtures` from a stream of its own, so
+nothing else about a wall changes. About one plain wall in four carries something: the cabinet the mains come in
+at (low on the wall with the duct its cable comes up in, or on the ground for the gas), an outside tap on its
+copper pipe (a hose coiled on a hook by about half), an air conditioner's outdoor unit on angle brackets with its
+pipes in white trunking and its drain run down, or on a concrete pad at the wall's foot, or a satellite dish on
+an arm below the gutter with its cable clipped down the wall. By a front door are the house's number on an enamel
+or painted plate (seven-segment figures) and often a letterbox, on the side the lamp isn't, and a mat on the step
+in half of them. Each keeps within the room `_wall_fixtures` gives it, 0.6 m clear of a wall's ends (where the
+downpipes come down), and none goes on a wall with ivy; a barn gets only its meter and tap. The fixture checks
+each one's reach and that some plain walls carry one. Render a house showing them with
+`--building-kinds=house_fixtures` in the studio stage.
+
 ## Openings stay open
 
 The holes in a wall are the builder's: its collision parts leave them. Dressings must not fill them. Pass the

@@ -954,7 +954,9 @@ func _house_wall_detail(rng: RandomNumberGenerator) -> void:
 	wear.seed = rng.seed ^ 0x77ea7e12
 	if wear.randf() < 0.45:
 		BuildingWeathering.weeds(k, L, gaps, wear)
+	var ivied := false
 	if variant == 0 and wear.randf() < (0.3 if material == "stone" else 0.12):
+		ivied = true
 		BuildingWeathering.ivy(k, wear.randf_range(-L * 0.25, L * 0.25), wear.randf_range(1.0, 1.8), 2.8, wear)
 	# rain run off the sill, and the war: bullet strikes, the odd shell hit,
 	# soot up from a window or door where a fire was; at the windows tape on
@@ -982,6 +984,7 @@ func _house_wall_detail(rng: RandomNumberGenerator) -> void:
 		if room_x > 0.0:
 			BuildingWeathering.scar(k, Vector2(war.randf_range(-room_x, room_x), war.randf_range(1.25, 1.9)), r, surf, tone, raw, chips, war, gaps, L * 0.5)
 	var at_window := war.randf()
+	var lamp_side := 0.0
 	# inside: the room's paint and skirting, what hangs on its walls
 	var room := _kit(life).at_point(Vector3(0, 0, -0.2), Vector3(0, PI, 0))
 	# (a wall doesn't know which house it is, so the paint follows the house's
@@ -1038,7 +1041,8 @@ func _house_wall_detail(rng: RandomNumberGenerator) -> void:
 			BuildingOpenings.doorway(k, Vector3.ZERO, Vector2(w, 2.2), {"material": material, "wall": wall, "frame": trim, "hood": rng.randf() < 0.3,
 				"hood_col": Res.vary(BuildingMaterials.color("roof_tile"), 0.1, rng)})
 			if L > 2.6 and life.randf() < 0.55:
-				BuildingFurnishings.lantern(k, Vector3((w * 0.5 + 0.3) * (1.0 if life.randf() < 0.5 else -1.0), 2.05, 0), Color(0.12, 0.12, 0.11), not dark)
+				lamp_side = 1.0 if life.randf() < 0.5 else -1.0
+				BuildingFurnishings.lantern(k, Vector3((w * 0.5 + 0.3) * lamp_side, 2.05, 0), Color(0.12, 0.12, 0.11), not dark)
 				_lit_glass = _lit_glass or not dark
 			# double doors: shut (till someone comes through), or swung in -
 			# one may be gone. Each leaf hangs on its own hinge so it can swing.
@@ -1055,6 +1059,51 @@ func _house_wall_detail(rng: RandomNumberGenerator) -> void:
 				model.add_child(pv)
 				BuildingOpenings.leaf(BuildingKit.nodes(pv, rng), Vector2(0.88, 2.06), "ledged" if barn else "panelled", dc, -sx)
 				_door_leaves.append([pv, a])
+	_wall_fixtures(k, rng, L, barn, ivied, lamp_side)
+
+
+## What's fixed to the outside of a house wall (`k` at its face): on a plain
+## wall, the cabinet the mains come in at, an outside tap (a hose on a hook
+## by some), an air conditioner on brackets or on a pad at its foot, a dish on
+## an arm (its top clear of the gutter); by a front door the house's number, a letterbox
+## (on the side the lamp isn't), a mat on the step. Kept clear of the corners
+## and the downpipes there, and of ivy. A barn has only its meter and tap.
+## Drawn from a stream of its own, so nothing else about the wall changes.
+func _wall_fixtures(k: BuildingKit, rng: RandomNumberGenerator, L: float, barn: bool, ivied: bool, lamp_side: float) -> void:
+	var fix := RandomNumberGenerator.new()
+	fix.seed = rng.seed ^ 0x2f1d7a3b
+	var room := L * 0.5 - 0.6
+	var pick := fix.randf()
+	var at := fix.randf()
+	if variant == 0 and not ivied and room > 0.3:
+		if pick < 0.08:
+			var gas := fix.randf() < 0.4
+			BuildingFittings.meter_box(k, Vector3(lerpf(-room + 0.25, room - 0.25, at), 0.0 if gas else fix.randf_range(0.4, 0.7), 0), gas)
+		elif pick < 0.16:
+			var hose: Variant = BuildingFittings.HOSES[fix.randi() % BuildingFittings.HOSES.size()] if fix.randf() < 0.55 else null
+			BuildingFittings.tap(k, Vector3(lerpf(-room, room - (0.6 if hose != null else 0.1), at), 0.55, 0), hose)
+		elif pick < 0.23 and not barn and room > 0.5:
+			var cx := lerpf(-room + 0.4, room - 0.54, at)
+			if fix.randf() < 0.55:
+				BuildingFittings.wall_unit(k, Vector3(cx, fix.randf_range(1.75, 2.05), 0))
+			else:
+				k.box(Vector3(0.95, 0.08, 0.52), Vector3(cx, 0.04, 0.3), "concrete", Color(0.55, 0.54, 0.5))
+				BuildingFittings.ac_unit(k, Vector3(cx, 0.08, 0.28))
+		elif pick < 0.29 and not barn:
+			BuildingFittings.wall_dish(k, Vector3(lerpf(-room + 0.4, room - 0.4, at), fix.randf_range(1.85, 2.1), 0),
+				Vector3(fix.randf_range(0.8, 1.0), fix.randf_range(-0.6, 0.6), 0))
+	elif variant == 2 and not barn:
+		# the number and letterbox on the wall beside the door, the lamp's
+		# other side
+		var side := -lamp_side if lamp_side != 0.0 else (1.0 if at < 0.5 else -1.0)
+		var sx := side * (0.95 + L * 0.5) * 0.5
+		if L > 2.45 and pick < 0.7:
+			var c: Array = BuildingFittings.NUMBERS[fix.randi() % BuildingFittings.NUMBERS.size()]
+			BuildingFittings.house_number(k, Vector3(sx, 1.72, 0), fix.randi_range(1, 98), c[0], c[1])
+		if L > 2.45 and fix.randf() < 0.35:
+			BuildingFittings.letterbox(k, Vector3(sx, 1.15, 0), BuildingFittings.LETTERBOXES[fix.randi() % BuildingFittings.LETTERBOXES.size()])
+		if fix.randf() < 0.5:
+			BuildingFittings.doormat(k, Vector3(0, 0.14, 0.3), BuildingFittings.MATS[fix.randi() % BuildingFittings.MATS.size()])
 
 
 ## Each part of a house wall's body as drawn: [its rect in the face (x, y),
