@@ -1702,7 +1702,8 @@ void fragment() {
 		vec3 grad = sign(det) * (dhx * r1 + dhy * r2);
 		NORMAL = normalize(abs(det) * NORMAL - grad * bump * 0.02);
 	}
-	if (rain_wet > 0.0) {
+	// (street asphalt and its paint take the rain as the road ribbons do, above)
+	if (rain_wet > 0.0 && pattern != 18 && pattern != 22) {
 		// Out in the rain everything takes a film of water (after Lagarde,
 		// "Water drop 2b: dynamic rain and its effects", 2013). Rough, porous
 		// stuff (cloth, timber, concrete, earth on a track) soaks it up and
