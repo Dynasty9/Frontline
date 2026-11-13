@@ -205,6 +205,103 @@ static func sill_bags(k: BuildingKit, c: Vector3, size: Vector2, rng: RandomNumb
 				col.darkened(rng.randf_range(0.0, 0.18)), Vector3(rng.randf_range(-0.04, 0.04), rng.randf_range(-0.08, 0.08), 0))
 
 
+## Straw strewn over a barn's floor (`size` its slab, `top` its height),
+## thickest along the walls where it's swept: flat, so nobody trips on it.
+static func straw(k: BuildingKit, size: Vector3, top: float, rng: RandomNumberGenerator) -> void:
+	var hx := size.x * 0.5 - 0.3
+	var hz := size.z * 0.5 - 0.3
+	for i in rng.randi_range(14, 22):
+		var edge := rng.randf() < 0.6
+		var p := Vector3(rng.randf_range(-hx, hx), 0, rng.randf_range(-hz, hz))
+		if edge:
+			if rng.randf() < 0.5:
+				p.x = signf(p.x) * (hx - rng.randf_range(0.0, 0.5))
+			else:
+				p.z = signf(p.z) * (hz - rng.randf_range(0.0, 0.5))
+		var s := Vector2(rng.randf_range(0.5, 1.4), rng.randf_range(0.3, 0.8))
+		k.plate(Vector3(s.x, 0.012, s.y), p + Vector3(0, top + 0.006 + i * 0.0005, 0), "plain", Color(0.72, 0.62, 0.36).darkened(rng.randf_range(0.0, 0.25)), Vector3(0, rng.randf() * TAU, 0))
+
+
+## A heap of rubble where a wall came down, `L` long and `D` deep, standing
+## on y = 0 (its cover is the boxes Structure gives it: about 0.7 m high, a
+## metre at its crown off to one side): a faceted mound of broken masonry,
+## lumps of brick and slabs of plaster on it, a charred joist or two and
+## bent reinforcing rods sticking out.
+static func heap(k: BuildingKit, L: float, D: float, rng: RandomNumberGenerator) -> void:
+	var nx := maxi(8, int(L / 0.22))
+	var nz := maxi(5, int(D / 0.2))
+	var ph := rng.randf() * TAU
+	var cx := L * 0.15
+	var lumps := PackedFloat32Array()
+	for i in (nx + 1) * (nz + 1):
+		lumps.append(rng.randf_range(-0.09, 0.09))
+	var at := func(i: int, j: int) -> Vector3:
+		var x := -L * 0.5 + L * i / nx
+		var z := -D * 0.5 + D * j / nz
+		var ex := absf(x) / (L * 0.5)
+		var ez := absf(z) / (D * 0.5)
+		var body := 0.62 * (1.0 - pow(ex, 3.0)) * (1.0 - pow(ez, 2.5))
+		var crown := 0.85 * exp(-(pow((x - cx) / (L * 0.32), 2.0) + pow((z - 0.1) / 0.6, 2.0))) * (1.0 - pow(ez, 2.5))
+		var rough := 0.0 if i == 0 or j == 0 or i == nx or j == nz else lumps[j * (nx + 1) + i] + 0.04 * sin(x * 6.0 + ph)
+		return Vector3(x, maxf(0.0, maxf(body, crown) + rough), z)
+	var v := PackedVector3Array()
+	var n := PackedVector3Array()
+	for j in nz:
+		for i in nx:
+			var a: Vector3 = at.call(i, j)
+			var b: Vector3 = at.call(i + 1, j)
+			var c: Vector3 = at.call(i + 1, j + 1)
+			var d: Vector3 = at.call(i, j + 1)
+			for tri: Array in [[a, b, c], [a, c, d]]:
+				var nm: Vector3 = (tri[1] - tri[0]).cross(tri[2] - tri[0]).normalized()
+				if nm.y < 0.0:
+					nm = -nm
+				BuildingKit._tri(v, n, tri[0], tri[1], tri[2], nm)
+	# (dust and grit: the broken pieces are on it)
+	k.part(BuildingKit._commit(v, n), "concrete", Transform3D.IDENTITY, Color(0.5, 0.46, 0.41))
+	var top := func(x: float, z: float) -> float:
+		var p: Vector3 = at.call(clampi(roundi((x / L + 0.5) * nx), 0, nx), clampi(roundi((z / D + 0.5) * nz), 0, nz))
+		return p.y
+	# lumps of brick (some still mortared together) and of concrete and stone
+	for i in rng.randi_range(16, 26):
+		var x := rng.randf_range(-L * 0.42, L * 0.42)
+		var z := rng.randf_range(-D * 0.38, D * 0.38)
+		var s := rng.randf_range(0.8, 2.0)
+		var roll := rng.randf()
+		var col := Color(0.5, 0.29, 0.22) if roll < 0.55 else (Color(0.55, 0.54, 0.5) if roll < 0.85 else Color(0.62, 0.58, 0.5))
+		k.box(Vector3(0.22, 0.08, 0.12) * s if roll < 0.55 else Vector3(0.2, 0.12, 0.16) * s, Vector3(x, float(top.call(x, z)) + 0.02, z), "paint" if roll < 0.55 else "concrete",
+			col.darkened(rng.randf_range(0.0, 0.3)).lerp(Color(0.5, 0.48, 0.44), 0.25), Vector3(rng.randf_range(-0.5, 0.5), rng.randf() * TAU, rng.randf_range(-0.5, 0.5)), false)
+	# slabs of plaster, still painted on one side
+	for i in rng.randi_range(3, 6):
+		var x := rng.randf_range(-L * 0.4, L * 0.4)
+		var z := rng.randf_range(-D * 0.35, D * 0.35)
+		k.plate(Vector3(rng.randf_range(0.35, 0.8), 0.035, rng.randf_range(0.25, 0.55)), Vector3(x, float(top.call(x, z)) + 0.03, z), "plaster",
+			Color(0.74, 0.69, 0.6).darkened(rng.randf_range(0.0, 0.2)), Vector3(rng.randf_range(-0.45, 0.45), rng.randf() * TAU, rng.randf_range(-0.45, 0.45)), true)
+	# a joist or two, charred or bare, run up out of the heap
+	for i in rng.randi_range(1, 2):
+		var x := rng.randf_range(-L * 0.3, L * 0.3)
+		var z := rng.randf_range(-D * 0.2, D * 0.2)
+		var base := Vector3(x, float(top.call(x, z)) * 0.5, z)
+		var yaw := rng.randf() * TAU
+		var rise := rng.randf_range(0.25, 0.6)
+		var ln := rng.randf_range(1.1, 1.9)
+		var tip := base + Vector3(cos(yaw) * cos(rise), sin(rise), sin(yaw) * cos(rise)) * ln
+		tip.x = clampf(tip.x, -L * 0.5 - 0.3, L * 0.5 + 0.3)
+		tip.z = clampf(tip.z, -D * 0.5 - 0.3, D * 0.5 + 0.3)
+		var charred := rng.randf() < 0.5
+		k.bar(base, tip, 0.14, 0.09, "burnt" if charred else "wood_dark", CHAR if charred else Color(0.36, 0.27, 0.18))
+	# reinforcing rods bent out of a lump of concrete
+	for i in rng.randi_range(0, 3):
+		var x := rng.randf_range(-L * 0.35, L * 0.35)
+		var z := rng.randf_range(-D * 0.3, D * 0.3)
+		var a := Vector3(x, float(top.call(x, z)), z)
+		var b := a + Vector3(rng.randf_range(-0.2, 0.2), rng.randf_range(0.3, 0.55), rng.randf_range(-0.2, 0.2))
+		var c := b + Vector3(rng.randf_range(-0.35, 0.35), rng.randf_range(-0.1, 0.15), rng.randf_range(-0.35, 0.35))
+		var rust := Color(0.36, 0.22, 0.14)
+		k.rod(a, b, 0.012, "metal_dark", rust, 4, false)
+		k.rod(b, c, 0.012, "metal_dark", rust, 4, false)
+
+
 ## A tarpaulin's colours: blue and grey-blue sheet, green, brown, orange, all
 ## faded by the sun.
 const TARPS := [Color(0.22, 0.38, 0.6), Color(0.3, 0.42, 0.55), Color(0.29, 0.36, 0.25), Color(0.47, 0.42, 0.32), Color(0.62, 0.38, 0.16)]

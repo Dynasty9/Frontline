@@ -1123,15 +1123,21 @@ func _smooth(pts: Array) -> PackedVector3Array:
 
 ## A roofless house of wall sections, its front (door) towards the street.
 ## Returns false if there's no room.
-func _house(c: Vector3, w: float, d: float, axis: float, street_side: float, yard := true, ruin_p := 0.35, entrances: Array[Vector3] = []) -> bool:
+## (`barn`: a farm's barn, weatherboarded under a sheet roof with a bare
+## floor; it draws the same random numbers as a house.)
+func _house(c: Vector3, w: float, d: float, axis: float, street_side: float, yard := true, ruin_p := 0.35, entrances: Array[Vector3] = [], barn := false) -> bool:
 	var half := Vector2(w * 0.5 + 0.3, d * 0.5 + 0.3)
 	if not _is_free(c, half, axis, 1.0):
 		return false
 	var b := Basis(Vector3.UP, axis)
 	var color := rng.randi() % Structure.HOUSE_COLORS.size()
+	if barn:
+		# (the weatherboarded material, in one of its three colours)
+		color = BuildingMaterials.HOUSE.size() - 1 + BuildingMaterials.HOUSE.size() * (color % 3)
 	var ruined := rng.randf() < ruin_p
-	# (a ruin's floor is marked, so it's drawn with the roof fallen in on it)
-	_spawn("floor", c, axis, -1, {"size": Vector3(w, 0.06, d), "variant": 1 if ruined else 0})
+	# (a ruin's floor is marked, so it's drawn with the roof fallen in on it;
+	# a barn's, so it's bare and strewn with straw)
+	_spawn("floor", c, axis, -1, {"size": Vector3(w, 0.06, d), "variant": 1 if ruined else (2 if barn else 0)})
 	_unplace_last()
 	_place([Vector2(c.x, c.z), half, axis])
 	# four walls: front faces the street
@@ -1144,6 +1150,10 @@ func _house(c: Vector3, w: float, d: float, axis: float, street_side: float, yar
 	var door_side := 0 if street_side > 0 else 1
 	if rng.randf() < 0.3:
 		door_side = 2 + rng.randi() % 2
+	# every wall stands at the house's own level (its middle's ground, as the
+	# floor and roof do), so on a slope none pokes up through the roof; the
+	# foundation under each (Structure) fills the downhill side
+	var level := world.terrain.landform.height(c)
 	for si in 4:
 		var s: Array = sides[si]
 		var L: float = s[1]
@@ -1171,10 +1181,11 @@ func _house(c: Vector3, w: float, d: float, axis: float, street_side: float, yar
 			# random numbers stay as they were)
 			var shut := variant == 2 and (doors_shut == 1 or (doors_shut < 0 and posmod(int(absf(wp.x) * 7.3 + absf(wp.z) * 13.1), 10) < 7))
 			# (a ruin's lamps are long out)
-			world.spawn("structure", {"skind": "house_wall", "pos": wp, "yaw": yaw, "variant": variant, "size": Vector3(seg_len, float(color), 0.4), "door": shut, "dark": ruined})
+			world.spawn("structure", {"skind": "house_wall", "pos": Vector3(wp.x, level, wp.z), "yaw": yaw, "variant": variant, "size": Vector3(seg_len, float(color), 0.4), "door": shut, "dark": ruined})
 	# a roof on every house still standing: tiled and pitched, or flat
 	if not ruined:
-		world.spawn("structure", {"skind": "roof", "pos": c, "yaw": axis, "size": Vector3(w, 3.0, d), "variant": color * 2 + (1 if rng.randf() < 0.4 else 0)})
+		var flat := rng.randf() < 0.4
+		world.spawn("structure", {"skind": "roof", "pos": c, "yaw": axis, "size": Vector3(w, 3.0, d), "variant": color * 2 + (1 if flat and not barn else 0)})
 	if rng.randf() < 0.5:
 		var ip := c + b * Vector3(rng.randf_range(-w * 0.25, w * 0.25), 0, rng.randf_range(-d * 0.2, d * 0.2))
 		world.spawn("structure", {"skind": "crates", "pos": ip, "yaw": axis + rng.randf_range(-0.4, 0.4), "variant": 0})

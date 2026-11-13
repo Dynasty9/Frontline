@@ -577,10 +577,24 @@ func _place_yard_life(front: Vector3, n: Vector3, d: Vector3, W: float, hc: Vect
 	var yard := _depth - setback - dep
 	if life.randf() < 0.4:
 		_d("woodpile", back + n * 0.21 + d * corner * (w * 0.5 - 1.5), axis, snappedf(life.randf_range(1.4, 2.2), 0.1))
+	var has_set := false
+	var has_kennel := false
 	if yard > 4.0 and life.randf() < 0.4:
 		_d("garden_set", back + n * 1.7 - d * corner * w * 0.22, life.randf() * TAU, 1 if life.randf() < 0.4 else 0)
+		has_set = true
 	if yard > 4.0 and life.randf() < 0.15:
 		_d("kennel", front + n * (_depth - 1.2) + d * corner * (W * 0.5 - 1.1), axis + PI + life.randf_range(-0.4, 0.4))
+		has_kennel = true
+	# a shed at the bottom of the garden (in the corner the kennel isn't in),
+	# its door to the house; a trampoline on a lawn with room for it (drawn
+	# last, so the rest stays as it was)
+	var shed_side := corner if not has_kennel else -corner
+	var has_shed := false
+	if yard > 4.2 and life.randf() < 0.4 and not (shed_side != corner and has_set and yard < 5.4):
+		_d("shed", front + n * (_depth - 2.0) + d * shed_side * (W * 0.5 - 1.7), axis + PI, life.randi() % BuildingYards.SHEDS.size())
+		has_shed = true
+	if yard > 4.4 and not has_set and not has_shed and life.randf() < 0.3:
+		_d("trampoline", back + n * (yard * 0.5), 0.0, life.randi() % BuildingYards.PADS.size())
 
 
 func _curb_crossing(front: Vector3, n: Vector3, d: Vector3, width: float) -> bool:
@@ -906,7 +920,8 @@ func farms(k: int) -> void:
 			continue
 		mg._house(hc, rng.randf_range(9.0, 11.0), 8.0, axis, 1.0, false, 0.2)
 		_fronts.append(hc - n * 4.0 + Vector3(0, 2.85, 0))
-		mg._house(bc, 13.0, 10.0, axis, 1.0, false, 0.35)
+		var no_doors: Array[Vector3] = []
+		mg._house(bc, 13.0, 10.0, axis, 1.0, false, 0.35, no_doors, true)
 		_d("fence", base - n * 2.0 + t * 1.0, yaw_along(t), Vector3(30.0, 1.1, 1))
 		for j in rng.randi_range(2, 4):
 			_d("hay", base + n * rng.randf_range(12.0, 15.0) + t * (rng.randf_range(-4, 4)), yaw_along(t) + rng.randf_range(-0.3, 0.3), rng.randi_range(1, 3))

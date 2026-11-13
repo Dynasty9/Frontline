@@ -725,7 +725,8 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   sides), and on the west the lanes run on over the river - each on its own bridge - to farming villages on
   the far bank: three bridges and two fords across the river in all.
 - Country roads come in from both HQs and both edges of the map and join the main streets. Villages sit on the
-  cross road either side of town and on the road between each HQ and the town; farmsteads (farmhouse and barn round a yard, hay bales, a fenced road frontage, an orchard) and
+  cross road either side of town and on the road between each HQ and the town; farmsteads (farmhouse and barn round a yard, hay bales, a fenced road frontage, an orchard; the barn weatherboarded
+  under a corrugated sheet roof with loft doors in its gables, straw on its floor) and
   hedged fields lie along the roads; abandoned cars on the verges, burnt-out armour off the road.
 - **The town and every village have a name and a supply dump** (crated stores on a pallet, fuel drums and a
   flagpole): the town's on its square where the flagpole stood, a village's on the verge of its main street.
@@ -749,11 +750,13 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   lanterns (a gleam at night, a glimmer on a dark day); a ruin's lamps are out, and so are a house's once it's
   shelled, loses a wall or its roof catches fire. Weeds grow at the foot of walls and ivy up some of
   them (most often on old stone), and a ruin's floor carries its fallen roof: soot, charred rafters, broken
-  tiles, plaster and glass. The war shows on the walls: bullet strikes, the odd shell hit blown through the render
+  tiles, plaster and glass; where a wall has come down, a heap of broken masonry with brick lumps, plaster slabs,
+  a charred joist and bent rods sticking out. The war shows on the walls: bullet strikes, the odd shell hit blown through the render
   to the brick, soot over a window or door where a fire was, rain streaks under the sills, and windows taped,
   boarded across or sandbagged along the sill. Round the houses are what the people in them keep: wheelie bins at a front corner,
   pots of flowers by the door, a bicycle against a side wall, and out the back a woodpile and chopping block, a
-  table and chairs (under a parasol now and then) and the odd kennel, all set dressing that a blast or a truck
+  table and chairs (under a parasol now and then), the odd kennel, a shed at the bottom of many gardens and here
+  and there a trampoline, all set dressing that a blast or a truck
   knocks over. The shops by the square have fronts: a fascia with the shop's name, a striped awning, and on the
   pavement what each kind of shop puts out (a greengrocer's produce, a cafe's tables, a newsagent's paper rack). All of it, and the military buildings' weatherboard, sheeting, roller shutters, north
   lights, masts and guys, drums, crates and pallets, comes from shared building components (see

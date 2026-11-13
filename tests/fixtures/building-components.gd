@@ -255,7 +255,9 @@ func _ready() -> void:
 			BuildingYards.garden_set(k.at_point(Vector3(0, 0, 3)), k.rng, true)
 			BuildingYards.kennel(k.at_point(Vector3(-3, 0, 0)), Color.SADDLE_BROWN)
 			BuildingYards.bicycle(k.at_point(Vector3(0, 0, -3)), BuildingYards.BIKE_COLS[0])
-			BuildingYards.pots(k.at_point(Vector3(3, 0, 3)), 3, k.rng),
+			BuildingYards.pots(k.at_point(Vector3(3, 0, 3)), 3, k.rng)
+			BuildingYards.shed(k.at_point(Vector3(-4, 0, 3)), BuildingYards.SHEDS[0], k.rng)
+			BuildingYards.trampoline(k.at_point(Vector3(5, 0, -4)), BuildingYards.PADS[0]),
 		"inside": func(k: BuildingKit):
 			BuildingFurnishings.lining(k, 2.8, 3.0, [Rect2(-0.65, 1.0, 1.3, 1.0)], Color(0.8, 0.8, 0.7))
 			BuildingFurnishings.radiator(k, 0.0, 1.0)
@@ -434,6 +436,33 @@ func _ready() -> void:
 		tops[snappedf(box.end.y, 0.05)] = true
 		roof.free()
 	check(tops.size() >= 8, "roofs are pitched differently (%d heights)" % tops.size())
+
+	# A rubble heap keeps to the boxes it covers with (a joist or a rod may
+	# stick out a little, lumps at its edges bed into the ground), in every
+	# size a fallen wall leaves.
+	for s in 10:
+		for sz: Vector3 in [Vector3(3.2, 0, 1.2), Vector3(2.2, 0, 1.4), Vector3(1.4, 0, 1.0)]:
+			var rb := Structure.preview_model("rubble", -1, 0, sz, false, 300 + s)
+			var box := _bounds(rb, Transform3D.IDENTITY)
+			check(rb.get_child_count() > 0 and box.position.y >= -0.15 and box.end.y <= 2.2, "a rubble heap builds, no higher than a joist sticking out (%s)" % box)
+			check(absf(box.get_center().x) < 0.5 and box.size.x <= sz.x + 1.0 and box.size.z <= maxf(1.0, sz.z) + 1.0, "a rubble heap keeps to its footprint (%s, %s)" % [sz, box])
+			rb.free()
+
+	# A farm's barn: weatherboarded walls, a steeper sheet roof with no
+	# chimney, straw on a bare floor, in each of its three colours.
+	check(BuildingMaterials.house(5) == "timber" and BuildingMaterials.house(11) == "timber", "a barn is weatherboarded")
+	for ci in [5, 11, 17]:
+		for v in 3:
+			var bw := Structure.preview_model("house_wall", -1, v, Vector3(2.8, float(ci), 0.4), v == 2, 50 + v)
+			check(bw.get_child_count() > 0, "a barn's wall builds (%d/%d)" % [ci, v])
+			bw.free()
+		var br := Structure.preview_model("roof", -1, ci * 2, Vector3(13.0, 3.0, 10.0), false, ci)
+		var bb := _bounds(br, Transform3D.IDENTITY)
+		check(br.get_child_count() > 0 and bb.end.y < 3.0 + 5.2 * tan(deg_to_rad(40.5)) + 0.3, "a barn's roof builds, no chimney over it (%s)" % bb)
+		br.free()
+	var bf := Structure.preview_model("floor", -1, 2, Vector3(13.0, 0.06, 10.0), false, 3)
+	check(bf.get_child_count() > 0 and _bounds(bf, Transform3D.IDENTITY).end.y < 0.12, "a barn's straw lies flat")
+	bf.free()
 
 	# A house that's dark (a ruin, or hit, or burning) has no lamp lit
 	# anywhere: not in a window, not by the door, not under a skylight. The

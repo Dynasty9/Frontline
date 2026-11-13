@@ -17,7 +17,7 @@ The collision and cover a structure gives (`Structure._define_parts`) never depe
 | `scripts/game/building_weathering.gd` | `BuildingWeathering` | Ivy, weeds at the foot of walls, the fallen-in roof on a ruin's floor, roof tarps and holes; stains that fade into a wall (soot, rain streaks, scorch), shell scars, bullet strikes, boarded and sandbagged windows |
 | `scripts/game/building_furnishings.gd` | `BuildingFurnishings` | Curtains, blinds, nets, window boxes, door lanterns, TV aerials; inside: linings and skirting, radiators, pictures, mirrors, clocks, shelves, rugs |
 | `scripts/game/building_shops.gd` | `BuildingShops` | Shop fronts: fascia boards with lettering, blade signs, striped awnings, and the wares a shop puts out (produce stands, cafe tables, sandwich boards, a hardware shop's stock, paper racks) |
-| `scripts/game/building_yards.gd` | `BuildingYards` | What people keep round a house: wheelie bins, a woodpile and chopping block, a garden table and chairs (a parasol over some), a kennel, a bicycle, pots of flowers |
+| `scripts/game/building_yards.gd` | `BuildingYards` | What people keep round a house: wheelie bins, a woodpile and chopping block, a garden table and chairs (a parasol over some), a kennel, a bicycle, pots of flowers, a garden shed, a trampoline |
 
 ## The kit
 
@@ -122,6 +122,26 @@ stain to exactly the tint the wall's body was drawn in (`Structure._tone`), so i
 edge; the fixture checks the rim comes back to the wall's colour. Everything stays within a hand's breadth of the
 face, so cover is unchanged.
 
+## Rubble
+
+A heap of rubble (where the map has a house wall down, or where one is brought down in a fight) is
+`BuildingWeathering.heap` over the same boxes it always covered with: a faceted mound of broken masonry, highest
+at a crown off to one side, with lumps of brick (some still mortared together) and slabs of painted plaster on
+it, a joist or two run up out of it (charred or bare), and reinforcing rods bent out of it. Only a joist or a rod
+stands proud of the cover boxes, and lumps at its edges bed into the ground; the fixture checks every size a
+fallen wall leaves. Render two with `--building-kinds=rubble`.
+
+## Barns
+
+A farmstead's barn is built as a house but weatherboarded: `BuildingMaterials.HOUSE` ends in `timber`, and
+`MapGen._house(..., barn = true)` turns the colour it drew into that material in one of three colours (barn red,
+weathered grey, dark green), drawing the same random numbers as before. Its roof is corrugated sheet (rusted,
+galvanised or red) pitched four degrees steeper, always a plain gable, with no chimney or aerial and a loft door
+under a hoist beam high in each gable end. Its doors are ledged boards, its windows have no curtains or lamps,
+its walls no paint or pictures inside, and its floor (variant 2) is bare concrete strewn with straw
+(`BuildingWeathering.straw`), lying flat. Render one with `--building-kinds=barn`; the town views include a
+farmstead.
+
 ## Shop fronts
 
 The town's shops (near the square) each have a front from `BuildingShops`, decided by the kind of shop the town
@@ -163,6 +183,8 @@ roof's wear on its deck inside the parapets, and the forty-roof check covers the
 two at the front corner away from the door, a third pots of flowers by the door, a quarter a bicycle leaning on
 a side wall, and out the back two in five a woodpile against the back wall with its chopping block and axe, two
 in five a table and chairs on the grass (a parasol over some), one in seven a kennel in a corner of the garden.
+In a garden deep enough, about two in five have a shed at the bottom (in the corner the kennel isn't in, its
+door to the house) and some lawns with room for it a trampoline; these are drawn last, so the rest stays as it was.
 They're set dressing (Decor, appended after the rest so the town's other dressing keeps its looks): no cover,
 and a blast or a truck knocks them over. Render them with `--building-kinds=house_yard` in the studio stage.
 

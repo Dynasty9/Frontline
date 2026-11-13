@@ -45,7 +45,9 @@ const PROFILES := {
 ## The materials a house can be built of, by its colour index (see
 ## Structure.HOUSE_COLORS): most are rendered and painted, the red-brown ones
 ## are bare brick, the grey-brown ones rough stone.
-const HOUSE := ["plaster", "plaster", "brick", "plaster", "stone"]
+## A house's material by its colour index (the town draws 0 to 4); a barn's
+## is the last, weatherboarding (see MapGen._house).
+const HOUSE := ["plaster", "plaster", "brick", "plaster", "stone", "timber"]
 
 
 static func profile(material: String) -> Dictionary:
@@ -84,6 +86,9 @@ static func house_color(ci: int, paint: Color) -> Color:
 			return [Color(0.56, 0.3, 0.21), Color(0.5, 0.29, 0.22), Color(0.6, 0.36, 0.25)][posmod(ci / HOUSE.size(), 3)]
 		"stone":
 			return [Color(0.6, 0.57, 0.51), Color(0.55, 0.53, 0.49), Color(0.62, 0.58, 0.5)][posmod(ci / HOUSE.size(), 3)]
+		"timber":
+			# a barn's boards: barn red, weathered grey, or dark green
+			return [Color(0.46, 0.15, 0.11), Color(0.45, 0.43, 0.39), Color(0.22, 0.29, 0.21)][posmod(ci / HOUSE.size(), 3)]
 	return paint
 
 

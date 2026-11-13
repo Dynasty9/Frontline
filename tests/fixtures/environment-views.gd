@@ -64,6 +64,11 @@ func capture() -> void:
 			if piece[0] == "awning" and town.has_point(Vector2(piece[1].x, piece[1].z)):
 				views.append(["shopfront", piece[1], 16.0, -32.0, float(piece[2]) + PI + 0.5])
 				break
+		# a farmstead off the country road (its hay stacked by the barn)
+		for piece: Array in world.decor:
+			if piece[0] == "hay":
+				views.append(["farm", piece[1], 34.0, -42.0, 0.7])
+				break
 		print("CAPTURE town bounds=", town)
 	if "--capture-set=trenches" in OS.get_cmdline_user_args():
 		views = [["trenches", Vector3(0, 0, -28), 24.0, -48.0, 0.5]]
