@@ -230,7 +230,7 @@ func _ready() -> void:
 			var tone := func(_p: Vector2) -> Color: return Color(0.9, 0.85, 0.8)
 			BuildingWeathering.streaks(k, 0.0, 1.0, 1.3, "plaster", tone, k.rng)
 			BuildingWeathering.soot(k, 0.0, 2.0, 1.3, 2.85, "plaster", tone, k.rng, 1.4)
-			BuildingWeathering.scar(k.at_point(Vector3(4, 0, 0)), Vector2(0, 1.5), 0.4, "plaster", tone, Color(0.5, 0.3, 0.2), Color(0.8, 0.78, 0.73), k.rng)
+			BuildingWeathering.scar(k.at_point(Vector3(4, 0, 0)), Vector2(0, 1.5), 0.4, "plaster", tone, k.rng)
 			BuildingWeathering.boards(k, Vector3(0, 1.5, 0), Vector2(1.3, 1.0), k.rng)
 			BuildingWeathering.sill_bags(k, Vector3(0, 1.5, 0), Vector2(1.3, 1.0), k.rng)
 			BuildingOpenings.window(k.at_point(Vector3(-4, 0, 0)), Vector3(0, 1.5, 0), Vector2(1.3, 1.0), {"glazing": 1.0, "tape": true}),
@@ -327,7 +327,7 @@ func _ready() -> void:
 		wk3.rng.seed = s
 		BuildingWeathering.streaks(wk3, 0.0, 1.0, 1.3, "plaster", face_tone, wk3.rng)
 		BuildingWeathering.soot(wk3, 0.0, 2.0, 1.3, 2.85, "plaster", face_tone, wk3.rng, 1.4)
-		BuildingWeathering.scar(wk3, Vector2(0.0, 1.5), 0.45, "plaster", face_tone, Color(0.5, 0.3, 0.2), Color(0.8, 0.78, 0.73), wk3.rng, [], 1.5)
+		BuildingWeathering.scar(wk3, Vector2(0.0, 1.5), 0.45, "plaster", face_tone, wk3.rng, [], 1.5)
 		BuildingWeathering.boards(wk3, Vector3(0, 1.5, 0), Vector2(1.3, 1.0), wk3.rng)
 		BuildingWeathering.sill_bags(wk3, Vector3(0, 1.5, 0), Vector2(1.3, 1.0), wk3.rng)
 		for child in wk3.sink.root.get_children():
@@ -337,11 +337,42 @@ func _ready() -> void:
 		wk3.sink.root.free()
 		var pk := kit()
 		pk.rng.seed = s
-		BuildingWeathering.pocks(pk, Vector2(0.0, 1.5), 1.2, 30, Color(0.5, 0.3, 0.2), pk.rng, [window_hole])
+		BuildingWeathering.pocks(pk, Vector2(0.0, 1.5), 1.2, 30, "plaster", face_tone, pk.rng, [window_hole])
 		for child in pk.sink.root.get_children():
-			var c3 := (child as MeshInstance3D).transform.origin
-			check(not window_hole.has_point(Vector2(c3.x, c3.y)), "a bullet strike in a window at %s" % c3)
+			var pm := child as MeshInstance3D
+			var pb: AABB = pm.transform * pm.mesh.get_aabb()
+			check(not Rect2(pb.position.x, pb.position.y, pb.size.x, pb.size.y).intersects(window_hole), "a bullet strike in a window at %s" % pb)
+			check(pb.end.z < 0.01 and pb.position.z > 0.0, "a bullet strike lies flat on the face (%s)" % pb)
 		pk.sink.root.free()
+	# A strike is a hollow in the face's own material: its facets above its
+	# middle face down into it and those below face up, and nowhere is it
+	# lighter than the wall round it (no flake of another colour).
+	var strike_kit := kit()
+	BuildingWeathering.pocks(strike_kit, Vector2(0, 1.5), 0.01, 1, "plaster", face_tone, strike_kit.rng)
+	check(strike_kit.sink.root.get_child_count() == 1, "one strike, one hollow")
+	var hm := (strike_kit.sink.root.get_child(0) as MeshInstance3D).mesh as ArrayMesh
+	var ha := hm.surface_get_arrays(0)
+	var hv: PackedVector3Array = ha[Mesh.ARRAY_VERTEX]
+	var hn: PackedVector3Array = ha[Mesh.ARRAY_NORMAL]
+	var hc: PackedColorArray = ha[Mesh.ARRAY_COLOR]
+	var mid := hm.get_aabb().get_center()
+	var sloped := 0
+	var inward := 0
+	for t in range(0, hv.size(), 3):
+		var fc := (hv[t] + hv[t + 1] + hv[t + 2]) / 3.0
+		if absf(fc.y - mid.y) > 0.006:
+			sloped += 1
+			if signf(hn[t].y) == -signf(fc.y - mid.y):
+				inward += 1
+	check(sloped > 4 and inward >= sloped * 0.8, "a strike's facets face into it (%d of %d)" % [inward, sloped])
+	var lightest := 0.0
+	for hcol in hc:
+		var u := Color(hcol.r * Mats.VC_K, hcol.g * Mats.VC_K, hcol.b * Mats.VC_K)
+		if not Mats.per_material:
+			u = u.linear_to_srgb()
+		lightest = maxf(lightest, maxf(u.r - 0.9, maxf(u.g - 0.85, u.b - 0.8)))
+	check(lightest <= 1.05 / 255.0 * Mats.VC_K, "a strike is no lighter than the wall (%.3f over)" % lightest)
+	strike_kit.sink.root.free()
 	var sk := kit()
 	BuildingWeathering.stain(sk, Rect2(-1, 1, 2, 1), "plaster", face_tone, Color(0.1, 0.1, 0.1), func(_u: float, _v: float) -> float: return 1.0)
 	var sm: MeshInstance3D = sk.sink.root.get_child(0)

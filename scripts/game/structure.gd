@@ -954,23 +954,19 @@ func _house_wall_detail(rng: RandomNumberGenerator) -> void:
 	war.seed = rng.seed ^ 0x3b0a7c55
 	var surf := BuildingMaterials.surface(material)
 	var tone := Callable(self, "_tone")
-	# (what a strike lays bare: fresh render, pale against the weathered
-	# face, and under a shell's blast the brick behind it; or fresh brick
-	# or stone)
-	var rendered: bool = BuildingMaterials.value(material, "finish", "render") == "render"
-	var chips: Color = wall.lightened(0.18).lerp(Color(0.72, 0.7, 0.66), 0.5) if rendered else wall.lightened(0.2)
-	var raw: Color = BuildingMaterials.color("brick") if rendered else wall.darkened(0.15)
+	# (strikes and shell hits are chunks out of the face, in its own
+	# material and colour: they show by how the light falls in them)
 	if variant == 1 and war.randf() < 0.55:
 		BuildingWeathering.streaks(k, 0.0, 1.0, 1.3, surf, tone, war)
 	if variant != 0 and war.randf() < 0.07:
 		BuildingWeathering.soot(k, 0.0, 2.0 if variant == 1 else 2.2, 1.3 if variant == 1 else 1.9, 2.85, surf, tone, war, L * 0.5 - 0.05)
 	if war.randf() < 0.22:
-		BuildingWeathering.pocks(k, Vector2(war.randf_range(-L * 0.35, L * 0.35), war.randf_range(1.0, 2.2)), war.randf_range(0.5, 1.1), war.randi_range(8, 20), chips, war, gaps, L * 0.5)
+		BuildingWeathering.pocks(k, Vector2(war.randf_range(-L * 0.35, L * 0.35), war.randf_range(1.0, 2.2)), war.randf_range(0.5, 1.1), war.randi_range(8, 20), surf, tone, war, gaps, L * 0.5)
 	if variant == 0 and war.randf() < 0.07:
 		var r := war.randf_range(0.32, 0.45)
 		var room_x := L * 0.5 - r * 1.9 - 0.05
 		if room_x > 0.0:
-			BuildingWeathering.scar(k, Vector2(war.randf_range(-room_x, room_x), war.randf_range(1.25, 1.9)), r, surf, tone, raw, chips, war, gaps, L * 0.5)
+			BuildingWeathering.scar(k, Vector2(war.randf_range(-room_x, room_x), war.randf_range(1.25, 1.9)), r, surf, tone, war, gaps, L * 0.5)
 	var at_window := war.randf()
 	# inside: the room's paint and skirting, what hangs on its walls
 	var room := _kit(life).at_point(Vector3(0, 0, -0.2), Vector3(0, PI, 0))

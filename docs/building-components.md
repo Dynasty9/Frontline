@@ -112,9 +112,12 @@ fixture checks both over ten seeds. Lived-in and weathering choices each draw fr
 
 Rain and the war mark the house walls too, each wall drawing from a stream of its own. Under about half the
 window sills rain has run down the wall in two streaks; above one window or door in fourteen a fire inside has
-licked soot up the face; one wall in five has taken a burst of bullet strikes (flakes of the face knocked off
-round dark holes, missing the openings); about one plain wall in fourteen has a shell hit: the render blown off
-to the brick behind it, scorched round, spattered with strikes. At the windows, the glass of some lived-in houses
+licked soot up the face; one wall in five has taken a burst of bullet strikes (chunks knocked out of the face,
+missing the openings); about one plain wall in fourteen has a shell hit: a ragged hollow blown out of the face,
+scorched round, spattered with strikes. Strikes and shell hits are `BuildingWeathering._hollow`: drawn flat on the
+face in its own material and colour, but with the normals of a hollow, so the light falls in them as in a chunk
+knocked out (shade under the upper lip, light above the lower) and they darken toward the bottom; no colour of
+their own. At the windows, the glass of some lived-in houses
 is taped in crosses against the blast, some windows are boarded across (with gaps: a window a man can still see
 and shoot through) and some have sandbags laid along the sill. Soot, streaks and scorch are
 `BuildingWeathering.stain`: a patch of the wall's own surface 3 mm proud, its vertex colours running from the

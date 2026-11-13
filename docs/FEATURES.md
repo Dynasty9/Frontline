@@ -748,8 +748,8 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   lanterns (a gleam at night, a glimmer on a dark day); a ruin's lamps are out, and so are a house's once it's
   shelled, loses a wall or its roof catches fire. Weeds grow at the foot of walls and ivy up some of
   them (most often on old stone), and a ruin's floor carries its fallen roof: soot, charred rafters, broken
-  tiles, plaster and glass. The war shows on the walls: bullet strikes, the odd shell hit blown through the render
-  to the brick, soot over a window or door where a fire was, rain streaks under the sills, and windows taped,
+  tiles, plaster and glass. The war shows on the walls: bullet strikes and the odd shell hit, chunks knocked out of the
+  face in its own material, soot over a window or door where a fire was, rain streaks under the sills, and windows taped,
   boarded across or sandbagged along the sill. Round the houses are what the people in them keep: wheelie bins at a front corner,
   pots of flowers by the door, a bicycle against a side wall, and out the back a woodpile and chopping block, a
   table and chairs (under a parasol now and then) and the odd kennel, all set dressing that a blast or a truck
