@@ -235,6 +235,8 @@ func build() -> void:
 			nav.benchmark(rng)
 		for t in settings.get("ai_teams", []):
 			commanders.append(CommanderAI.new(self, int(t)))
+			if bool(settings.get("verbose", false)) or OS.has_environment("FL_DEBUG_AI"):
+				print("AI %s: %s" % [Defs.TEAM_NAMES[int(t)], commanders[-1].level])
 		delegation = Delegation.new(self)
 		Net.player_left.connect(_on_player_left)
 		Net.player_joined.connect(_on_player_joined)
@@ -416,6 +418,9 @@ func _register(e: Entity) -> void:
 		vehicles.append(e)
 	elif e is Structure:
 		structures.append(e)
+		# New earth banks bury plants that are already streamed into the view.
+		if e.skind == "bunker" and not building and atmo and atmo.grass:
+			atmo.grass.request_rebuild(0.2)
 		refresh_owned_structure(e)
 		mark_static_dirty(e)
 		if e.skind in Structure.SIM_KINDS:
@@ -455,6 +460,8 @@ func despawn(e: Entity) -> void:
 		if structure_view:
 			structure_view.remove(e)
 		structures.erase(e)
+		if e.skind == "bunker" and not building and atmo and atmo.grass:
+			atmo.grass.request_rebuild(0.2)
 		if recording:
 			recording.dirty_static(e.eid)
 		owned_structures.erase(e)
@@ -2128,9 +2135,16 @@ func execute_cmd(peer: int, d: Dictionary) -> void:
 			var n := sqs.size()
 			for i in n:
 				sqs[i].order_move(pos + side * (i - (n - 1) / 2.0) * 13.0, face, mode)
+			# A shared travel order gives ground drivers the same pace setting as the walkers.
+			var foot_mode := -1
+			if not vehs.is_empty():
+				for sq: Squad in sqs:
+					if sq.members.any(func(m: Soldier): return m.riding == null and m.can_take_orders()):
+						foot_mode = clampi(mode, 0, Soldier.SPEEDS.size() - 1)
+						break
 			var m := vehs.size()
 			for i in m:
-				vehs[i].order_move(pos + side * (i - (m - 1) / 2.0) * 9.0 - face * (6.0 if n > 0 else 0.0))
+				vehs[i].order_move(pos + side * (i - (m - 1) / 2.0) * 9.0 - face * (6.0 if n > 0 else 0.0), foot_mode)
 		"assault", "defend":
 			take_command(peer, sqs, vehs)
 			var apos: Vector3 = d.pos
@@ -2140,14 +2154,17 @@ func execute_cmd(peer: int, d: Dictionary) -> void:
 				aface = Defs.flat(apos - ac).normalized() if ac.distance_to(apos) > 1.0 else Vector3.FORWARD
 			var aside := aface.cross(Vector3.UP).normalized()
 			var an := sqs.size()
+			# "plain": straight at it, no base of fire and no flanking (a green
+			# AI commander's attack: see CommanderAI._apply_skill)
+			var plain: bool = d.get("plain", false)
 			for i in an:
 				var sp: Vector3 = apos + aside * (i - (an - 1) / 2.0) * 13.0
 				if t == "assault":
-					sqs[i].order_assault(sp, aface, an == 1)
+					sqs[i].order_assault(sp, aface, an == 1 and not plain)
 				else:
 					sqs[i].order_defend(sp, aface)
 			# several squads attacking together: one fixes the enemy, the rest flank
-			if t == "assault" and an >= 2:
+			if t == "assault" and an >= 2 and not plain:
 				AttackPlan.make(self, sqs, apos, aface)
 			var am := vehs.size()
 			for i in am:
