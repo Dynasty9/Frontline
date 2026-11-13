@@ -295,7 +295,7 @@ class BlockedJob:
 						for dz in range(-4, 5):
 							# Keep the 2.9 m carriageway clear, but let tufts into
 							# its soil shoulder, where the meadow takes it back.
-							if dx * dx + dz * dz <= 10:
+							if dx * dx + dz * dz <= 6:
 								_mark(floori(p.x) + dx, floori(p.z) + dz)
 
 	func _mark(x: int, z: int) -> void:
@@ -309,6 +309,13 @@ class BlockedJob:
 ## floors, the water's edge. Before the grass is laid out, nowhere is.
 func bare(p: Vector3) -> bool:
 	return level == 0 or (not _blocked.is_empty() and _is_blocked(p))
+
+
+func _near_bare(p: Vector3, r: float) -> bool:
+	for d: Vector3 in [Vector3(r, 0, 0), Vector3(-r, 0, 0), Vector3(0, 0, r), Vector3(0, 0, -r)]:
+		if _is_blocked(p + d):
+			return true
+	return false
 
 
 func _is_blocked(p: Vector3) -> bool:
@@ -358,7 +365,9 @@ func _build_chunk(c: Vector2i) -> void:
 		xf.append(Transform3D(basis, p))
 		cd.append(Color(g, rng.randf(), m, 0))
 		if rng.randf() < 0.035 and g > 0.6 and _shrub_noise.get_noise_2d(p.x, p.z) > 0.08:
-			bushes.append(p)
+			# grass grows up to a track's edge; a shrub would be cut back from it
+			if not _near_bare(p, 1.5):
+				bushes.append(p)
 		elif rng.randf() < 0.003:
 			stones.append(p)
 	var nodes := []

@@ -2542,9 +2542,12 @@ void fragment() {
 	bed *= 1.0 + (stone - 0.5) * 0.35 * (1.0 - track);
 	// tread marks: fine streaks along the ruts, the way the wheels go
 	float tread = texture(street_noise, vec2(xr * 5.0, along * 0.12) + 0.17).r * 0.6 + texture(street_noise, vec2(xr * 11.0, along * 0.3) + 0.52).r * 0.4;
-	vec3 pressed = mix(bed, vec3(dot(bed, vec3(0.2126, 0.7152, 0.0722))) * vec3(1.02, 0.97, 0.9), 0.35) * 0.8;
-	pressed *= mix(1.0, pow(clamp(grain, 0.4, 2.0), 0.5), 0.5) * (0.88 + 0.24 * tread);
+	// (packed fines are only a little darker: it's the shading of the rut that tells)
+	vec3 pressed = mix(bed, vec3(dot(bed, vec3(0.2126, 0.7152, 0.0722))) * vec3(1.02, 0.97, 0.9), 0.35) * 0.9;
+	pressed *= mix(1.0, pow(clamp(grain, 0.4, 2.0), 0.5), 0.5) * (0.92 + 0.16 * tread);
 	vec3 gravel_road = mix(bed, pressed, track);
+	// the crown dries first and dusts pale; the ruts hold the damp
+	gravel_road *= 1.0 + crown_h * 0.07 * (1.0 - track);
 	// The meadow's bare soil, as the ground shader draws its mud (the same scan,
 	// the same scale and palette).
 	float soil_light = dot(soil.rgb, vec3(0.2126, 0.7152, 0.0722)) / 0.1329;
@@ -2555,7 +2558,7 @@ void fragment() {
 	// Damp and dusty stretches along the road: under trees, in dips, where it
 	// drains badly, the ruts stay dark for days.
 	float damp = smoothstep(0.5, 0.72, texture(street_noise, vec2(along * 0.012, 0.73)).r + (n2 - 0.5) * 0.35);
-	col *= 1.0 - damp * (0.12 + 0.2 * track);
+	col *= 1.0 - damp * (0.1 + 0.1 * track);
 	// potholes in the wheel lines, where water stands and the wheels pound it
 	float pothole_field = texture(street_noise, wpos.xz * 0.045 + 0.91).r + (0.5 - stone) * 0.15 + (n3 - 0.5) * 0.06;
 	float pothole = smoothstep(0.78, 0.9, pothole_field) * smoothstep(0.3, 0.7, track) * country;
@@ -2661,18 +2664,21 @@ void fragment() {
 		dash *= (1.0 - paint_wear * 0.85) * smoothstep(0.6, 0.95, paved) * (1.0 - metal_part);
 		asph = mix(asph, vec3(0.74, 0.73, 0.68) * (0.8 + 0.25 * n3), dash);
 		// rain lies in the wheel ruts and the gutters first
-		float pud2 = wet * smoothstep(0.55, 0.75, street_puddle(street_noise, wpos.xz) + wheel * 0.12 + gutter * 0.3) * (1.0 - metal_part);
-		asph *= 1.0 - wet * 0.3;
-		ALBEDO = mix(col, mix(asph, asph * 0.4, pud2), paved);
+		// (the wheel paths and gutters only nudge the shared field, so puddles carry
+		// on across junction paving, which has neither)
+		vec2 rain = street_wetness(wet, street_puddle(street_noise, wpos.xz) + wheel * 0.06 + gutter * 0.1);
+		float pud2 = rain.y * (1.0 - metal_part);
+		asph *= 1.0 - rain.x * 0.45;
+		ALBEDO = mix(col, mix(asph, asph * 0.5, pud2), paved);
 		vec4 surface = texture(paving_surface, wpos.xz / 2.2);
 		vec3 normal = surface.rgb * 2.0 - 1.0;
-		normal.xy *= 0.18 * (1.0 - metal_part) * (1.0 - dash * 0.5);
+		normal.xy *= 0.18 * (1.0 - metal_part) * (1.0 - dash * 0.5) * (1.0 - pud2);
 		NORMAL = normalize(mix(NORMAL, (VIEW_MATRIX * vec4(ground_basis * normal, 0.0)).xyz, paved));
 		float asphalt_rough = clamp(surface.a, 0.65, 1.0) - wheel * 0.1 - tar * 0.3 + gutter * 0.05;
 		asphalt_rough = mix(asphalt_rough, 0.58, dash);
 		asphalt_rough = mix(asphalt_rough, mix(0.5, 0.8, slot), metal_part);
-		ROUGHNESS = mix(ROUGHNESS, mix(asphalt_rough - wet * 0.3, 0.06, pud2), paved);
-		SPECULAR = mix(SPECULAR, mix(0.3, 0.55, pud2), paved);
+		ROUGHNESS = mix(ROUGHNESS, mix(mix(asphalt_rough, 0.3, rain.x), 0.03, pud2), paved);
+		SPECULAR = mix(SPECULAR, mix(0.4, 0.5, pud2), paved);
 		METALLIC = metal_part * 0.45 * paved;
 		ALPHA = mix(edge, 1.0, paved);
 	}

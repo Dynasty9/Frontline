@@ -315,6 +315,11 @@ func _walk_corner(ex: Vector3) -> void:
 	var bite := PackedVector2Array([Vector2.ZERO])
 	bite.append_array(arc)
 	_m(_fan_mesh(bite, 0.04, at, -1.0), "asphalt", Vector3.ZERO, null, Vector3.ZERO, false, true)
+	# The road's own gutter runs on along its edge where the kerb has curved
+	# away; lay the junction's asphalt over that stretch of it too.
+	for strip: PackedVector2Array in [PackedVector2Array([Vector2(-0.6, -0.6), Vector2(0.0, -0.6), Vector2(0.0, r), Vector2(-0.6, r)]),
+			PackedVector2Array([Vector2(-0.6, -0.6), Vector2(r, -0.6), Vector2(r, 0.0), Vector2(-0.6, 0.0)])]:
+		_m(_fan_mesh(strip, 0.04, at, -1.0), "asphalt", Vector3.ZERO, null, Vector3.ZERO, false, true)
 	for i in 8:
 		var a0 := PI * 1.5 - PI * 0.5 * float(i) / 8.0
 		var a1 := PI * 1.5 - PI * 0.5 * float(i + 1) / 8.0
@@ -484,7 +489,8 @@ func _make(h: Node3D, kind: String, ex) -> void:
 			_m(mesh, "pavement" if kind == "walk_crossing" else "curbstone", local.origin, null, Vector3.ZERO, false, true)
 		"junction":
 			var s: Vector3 = ex
-			_m(Res.box(Vector3(s.x, 0.02, s.z)), "asphalt", Vector3(0, 0.032, 0), null, Vector3.ZERO, false, true)
+			# (2 mm thick: its sides mustn't draw an outline on the road)
+			_m(Res.box(Vector3(s.x, 0.002, s.z)), "asphalt", Vector3(0, 0.04, 0), null, Vector3.ZERO, false, true)
 		"zebra":
 			var wd := float(ex)
 			var n := 6
