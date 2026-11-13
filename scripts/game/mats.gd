@@ -1104,7 +1104,10 @@ static func _preset(kind: String) -> Dictionary:
 			return {"pattern": PLAIN, "col_a": Color(0.08, 0.1, 0.12), "rough": 0.08, "metal": 0.4, "bump": 0.0, "grime": 0.0}
 		"window_lit":
 			# the same glass with a lamp on in the room behind it (see `lit`)
-			return {"pattern": PLAIN, "col_a": Color(0.08, 0.1, 0.12), "col_c": Color(2.4, 1.55, 0.8), "rough": 0.08, "metal": 0.4, "bump": 0.0, "grime": 0.0, "lit": 1.0}
+			# (a room lamp seen through glass and curtains: warm, and at its
+			# brightest only just over the glow threshold, so a window gleams
+			# rather than flares)
+			return {"pattern": PLAIN, "col_a": Color(0.08, 0.1, 0.12), "col_c": Color(1.1, 0.66, 0.3), "rough": 0.08, "metal": 0.4, "bump": 0.0, "grime": 0.0, "lit": 1.0}
 		"track":
 			return {"pattern": TRACK, "col_a": Color(0.13, 0.12, 0.11), "col_b": Color(0.3, 0.27, 0.23), "rough": 0.7, "metal": 0.5, "bump": 2.0, "grime": 0.5, "local_space": true}
 		"camo_army":
@@ -1726,7 +1729,7 @@ void fragment() {
 	// others (a hash of where the window is, so a batch keeps each one's)
 	if (lit > 0.0) {
 		float room = fract(sin(dot(floor(wpos.xz * 0.6) + floor(wpos.y * 0.4), vec2(12.9898, 78.233))) * 43758.5453);
-		EMISSION = col_c * lit * window_glow * (0.55 + 0.9 * room);
+		EMISSION = col_c * lit * window_glow * (0.4 + 0.75 * room);
 	}
 	// bump mapping from the pattern height (surface gradient); the height is
 	// band-limited above, so its screen-space slope is stable under motion

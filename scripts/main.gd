@@ -1364,6 +1364,18 @@ func _process(_dt: float) -> void:
 				world.input.set_standing(kv.get_slice(":", 0), int(kv.get_slice(":", 1)))
 	if args.has("nohud") and world.hud and world.hud.root.visible:
 		world.hud.root.visible = false
+	# --gpu-bench[=out.json]: what each graphics setting costs the graphics card,
+	# measured on the battle held still --gpu-bench-at seconds in (scripts/test/gpu_bench.gd)
+	if args.has("gpu-bench") and not has_meta("gpu_bench") and not world.client_loading() and view_time >= float(args.get("gpu-bench-at", 8.0)):
+		set_meta("gpu_bench", true)
+		var gb: Node = (load("res://scripts/test/gpu_bench.gd") as Script).new()
+		gb.set("world", world)
+		gb.set("out", "" if String(args["gpu-bench"]) == "1" else String(args["gpu-bench"]))
+		gb.set("frames", maxi(2, int(args.get("gpu-bench-frames", 20))))
+		gb.set("cycles", maxi(1, int(args.get("gpu-bench-cycles", 10))))
+		if args.has("gpu-bench-only"):
+			gb.set("only", String(args["gpu-bench-only"]).split(",", false))
+		add_child(gb)
 	# --photo-at=S: photo mode opens S seconds into the battle, its values set from
 	# --photo=key:value,... (fov:30,mood:dusk,blur:0.6,pos:x:y:z,yaw:deg,pitch:deg). The battle
 	# is held from then on, so the rest counts real seconds: after --photo-wait (3)
