@@ -1004,7 +1004,13 @@ func _house_wall_detail(rng: RandomNumberGenerator) -> void:
 		BuildingFurnishings.lining(room, L, 3.0, gaps, BuildingFurnishings.INTERIORS[(ci * 4 + 1) % BuildingFurnishings.INTERIORS.size()])
 		match variant:
 			0:
-				BuildingFurnishings.wall_things(room, L)
+				# what stands against a wall with no window or door in it (a
+				# stream of its own, so the rest of the wall is as it was);
+				# pictures and a shelf over it, unless it's tall
+				var home := RandomNumberGenerator.new()
+				home.seed = rng.seed ^ 0x40e5c1
+				if home.randf() >= 0.8 or not BuildingInteriors.against_wall(room, L, home):
+					BuildingFurnishings.wall_things(room, L)
 			1:
 				BuildingFurnishings.radiator(room, 0.0, 1.0)
 	match variant:
@@ -3134,6 +3140,12 @@ func _build_model() -> void:
 			# a church: flagstones, pews, the altar
 			if variant == 3:
 				_church_floor(rng)
+			# a lived-in room big enough for it: the table and its chairs (a
+			# stream of its own, so the rug lies where it did)
+			var home := RandomNumberGenerator.new()
+			home.seed = rng.seed ^ 0x7ab1e5
+			if variant == 0 and size.x > 4.5 and size.z > 4.5 and home.randf() < 0.75:
+				BuildingInteriors.table(_kit(home), size, BuildingInteriors.WOODS[home.randi() % BuildingInteriors.WOODS.size()], home)
 		"bridge":
 			_bridge_model(rng)
 		"dock":

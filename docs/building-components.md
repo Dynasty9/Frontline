@@ -122,6 +122,17 @@ stain to exactly the tint the wall's body was drawn in (`Structure._tone`), so i
 edge; the fixture checks the rim comes back to the wall's colour. Everything stays within a hand's breadth of the
 face, so cover is unchanged.
 
+## Furniture
+
+A house's room is furnished (`BuildingInteriors`): against each wall with no window or door in it
+(`Structure._house_wall_detail`, from a stream of its own) a wardrobe, a bookcase, a dresser with the television
+or a lamp on it, a settee, a kitchen run (cupboards, the sink, the cooker, wall cupboards) or a desk with its
+chair; pictures and a shelf hang only over the low ones. Everything keeps `REACH` (0.65 m) out from its wall and
+in from its ends, so two walls meeting in a corner never put things in each other's way. A floor big enough has a
+table in the middle with its chairs (one knocked over now and then). It is looks only, in the walls' own
+world-space materials so a town's walls still draw together; a chair and a table are one cached shape each, and
+books stand in runs. Render three rooms with `--building-kinds=house_rooms`.
+
 ## House plans and storeys
 
 A house is more than four walls when the town plans it so (`TownGen._plan`, from a stream of its own seeded from
