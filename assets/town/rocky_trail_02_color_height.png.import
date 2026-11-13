@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://dnftwpl84vuw"
-path="res://.godot/imported/rocky_trail_02_color.jpg-56ecbdb05fc18338c8579470578afe06.ctex"
+uid="uid://daoj73mu0615x"
+path="res://.godot/imported/rocky_trail_02_color_height.png-2d2ed4584bc268867a02cac752bf7a2b.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/town/rocky_trail_02_color.jpg"
-dest_files=["res://.godot/imported/rocky_trail_02_color.jpg-56ecbdb05fc18338c8579470578afe06.ctex"]
+source_file="res://assets/town/rocky_trail_02_color_height.png"
+dest_files=["res://.godot/imported/rocky_trail_02_color_height.png-2d2ed4584bc268867a02cac752bf7a2b.ctex"]
 
 [params]
 

@@ -28,6 +28,7 @@ def mean_colour(image):
 
 NAMES = ["aerial_asphalt_01", "concrete_pavement", "leafy_grass", "roof_tiles", "weathered_planks", "concrete_floor_01", "asphalt_02", "brick_wall_001", "plastered_wall", "tree_bark_03", "gravelly_sand", "road_damaged_clean", "rocky_trail_02", "dirt_aerial_03"]
 COLOUR_ONLY = {"asphalt_02", "dirt_aerial_03"}  # repair patches share the road relief; the aerial dirt only shades the trail
+WITH_HEIGHT = {"rocky_trail_02"}  # its height rides in the colour's alpha, for height-blending the track into the meadow
 
 
 def main(only=None):
@@ -51,8 +52,15 @@ def main(only=None):
         size = (2048, 2048) if name == "aerial_asphalt_01" else (1024, 1024)
         def read(channel):
             return Image.open(CACHE / f"{name}_{channel}_2k.jpg").resize(size, Image.Resampling.LANCZOS)
-        read("diff").convert("RGB").save(ASSETS / f"{name}_color.jpg", quality=95)
-        rgb = mean_colour(Image.open(ASSETS / f"{name}_color.jpg"))
+        if name in WITH_HEIGHT:
+            colour = read("diff").convert("RGB")
+            height = Image.open(CACHE / f"{name}_disp_2k.png").point(lambda v: v / 257).convert("L").resize(size, Image.Resampling.LANCZOS)
+            colour.putalpha(height)
+            colour.save(ASSETS / f"{name}_color_height.png")
+            rgb = mean_colour(colour)
+        else:
+            read("diff").convert("RGB").save(ASSETS / f"{name}_color.jpg", quality=95)
+            rgb = mean_colour(Image.open(ASSETS / f"{name}_color.jpg"))
         means[name] = f'metadata/{name} = Color({rgb[0]:.7f}, {rgb[1]:.7f}, {rgb[2]:.7f}, 1)'
         if name in COLOUR_ONLY:
             continue

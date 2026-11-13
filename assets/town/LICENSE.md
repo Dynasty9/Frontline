@@ -32,7 +32,7 @@ with Road Damaged Clean at 2.2 m for fine aggregate and normal/roughness detail.
 The fine scan is desaturated toward charcoal in the shader; repaired patches
 retain the same aggregate scale. The normal maps follow the actual road slope.
 
-Country roads are the trail scan at 2 m, its grit and stones underfoot, shaded
+Country roads are the trail scan at 2 m (its height packed in the colour alpha), its grit and stones underfoot, shaded
 by the aerial dirt at 25 m for broad scuffs and wheel marks (colour only). Their
 shoulders and troops' tracks use the meadow's own rutted-soil scan (assets/terrain),
 so a track's edge is the same earth as the ground it fades into.

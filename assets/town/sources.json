@@ -188,5 +188,10 @@
     "file": "dirt_aerial_03_diff_2k.jpg",
     "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/dirt_aerial_03/dirt_aerial_03_diff_2k.jpg",
     "sha256": "ababa6da0b641cc44c54837c5166fd0ed37eb5408013a9d339b84b2d958a8822"
+  },
+  {
+    "file": "rocky_trail_02_disp_2k.png",
+    "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/2k/rocky_trail_02/rocky_trail_02_disp_2k.png",
+    "sha256": "3c596c0402148084006c67cd5fa4401e3d692b038f80478bacfed5044403776e"
   }
 ]
