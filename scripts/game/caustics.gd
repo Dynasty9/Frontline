@@ -161,7 +161,11 @@ void fragment() {
 	vec2 p = vec2(wp.x + wp.z * 0.7, wp.y * 2.2 - wp.z * 0.3);
 	float w = max(web(p / 7.0 + vec2(water_time * 0.05, water_time * 0.035)), web(p / 5.2 - vec2(water_time * 0.035, -water_time * 0.06)));
 	float fade = smoothstep(0.02, 0.12, above) * (1.0 - smoothstep(0.3, 2.4, above)) * smoothstep(0.01, 0.15, near);
+	// the surface's own colour, at a set brightness: the light off the water is
+	// sunlight, as bright on a hull in its own shade as in the sun (brighter to
+	// the eye there), so it mustn't scale with how lit the surface already is
 	vec3 col = textureLod(screen_tex, SCREEN_UV, 0.0).rgb;
-	ALBEDO = col * w * fade * facing * strength;
+	vec3 hue = col / max(dot(col, vec3(0.3, 0.59, 0.11)), 0.04);
+	ALBEDO = min(hue, vec3(3.0)) * 0.12 * w * fade * facing * strength;
 }
 """

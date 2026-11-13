@@ -67,6 +67,13 @@ var _ab_skip := 0
 var _ab_sum := [0.0, 0.0]
 var _ab_n := [0, 0]
 var _ab_switches := 0
+## FL_DEBUG_AIR_FLIP=S: at S seconds of battle the battle stops still and the
+## layers, plumes and caustics flip off and on every thirty frames, four times
+## each, then the game quits: the same frozen moment with and without, for
+## comparison pictures and flicker clips. Each block's first frame prints
+## "AIR FLIP on|off <frame>".
+var _flip_at := float(OS.get_environment("FL_DEBUG_AIR_FLIP")) if OS.has_environment("FL_DEBUG_AIR_FLIP") else -1.0
+var _flip_frame := -1
 var _debug_k := float(OS.get_environment("FL_DEBUG_AIR")) if OS.has_environment("FL_DEBUG_AIR") else 1.0  # thicken it all, to see where it lies
 
 
@@ -177,6 +184,8 @@ func _process(dt: float) -> void:
 	grid.tick(dt)
 	if _ab_on:
 		_ab(dt / maxf(Engine.time_scale, 0.0001))
+	if _flip_at >= 0.0:
+		_flip()
 	if volume:
 		var vol: bool = Settings.get_v("vol_fog") and _ab_state != 0
 		volume.visible = vol
@@ -202,15 +211,45 @@ func _ab(real_dt: float) -> void:
 		return
 	_ab_t = 0.0
 	_ab_skip = 6
-	_ab_state = 1 - _ab_state
-	var wv: WaterView = atmo.water_view
-	if wv and wv.mat:
-		wv.mat.set_shader_parameter("caustic_k", wv._caustic_k * _ab_state)
-		if wv.caustics:
-			wv.caustics.visible = _ab_state == 1 and wv._caustic_k > 0.0 and int(Settings.get_v("water")) >= 2
+	_show(1 - _ab_state)
 	_ab_switches += 1
 	if _ab_switches % 6 == 0 and _ab_n[0] > 0 and _ab_n[1] > 0:
 		print("AIR A/B gpu: off %.2f ms (%d frames), on %.2f ms (%d frames)" % [_ab_sum[0] / _ab_n[0], _ab_n[0], _ab_sum[1] / _ab_n[1], _ab_n[1]])
+
+
+## With (1) or without (0) everything this adds: the volume and plumes, the
+## water's caustics, and (for the flip) the fog settings as they were before.
+func _show(state: int) -> void:
+	_ab_state = state
+	var wv: WaterView = atmo.water_view
+	if wv and wv.mat:
+		wv.mat.set_shader_parameter("caustic_k", wv._caustic_k * state)
+		if wv.caustics:
+			wv.caustics.visible = state == 1 and wv._caustic_k > 0.0 and int(Settings.get_v("water")) >= 2
+	if _flip_frame >= 0:
+		if state == 1:
+			apply_mood(_mood)
+		else:
+			atmo.sun.light_volumetric_fog_energy = 0.8
+			atmo.env.volumetric_fog_anisotropy = 0.35
+			atmo.env.volumetric_fog_ambient_inject = 0.0
+			atmo.env.volumetric_fog_length = LENGTH.x
+
+
+func _flip() -> void:
+	if _flip_frame < 0:
+		if world.time < _flip_at:
+			return
+		Engine.time_scale = 0.0
+		_flip_frame = Engine.get_process_frames()
+	var n := Engine.get_process_frames() - _flip_frame
+	if n >= 240:
+		get_tree().quit()
+		return
+	var state := 1 if (n / 30) % 2 == 0 else 0
+	if n % 30 == 0:
+		_show(state)
+		print("AIR FLIP %s %d" % ["on" if state == 1 else "off", n])
 
 
 ## A blast (fx.gd's _explode): smoke and dust in the grid, and close up a
@@ -247,6 +286,8 @@ func apply_env(env: Environment) -> void:
 	var murk := air.w * 1.4 + air.z
 	var fog: Color = atmo._d.fog
 	env.fog_light_color = fog
+	if _flip_frame >= 0 and _ab_state == 0:
+		return  # (flipped off: the plain fog as it was)
 	if not vol:
 		env.fog_density += (mist * 0.0008 + murk * 0.0014 + air.y * 0.001 + _haze * 0.4) * s
 		var tint: Color = SMOKE_COL.lerp(DUST_COL, air.z / maxf(murk, 0.001))

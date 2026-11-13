@@ -1,94 +1,98 @@
 {
   "entry": "changelog/unreleased/layered-air-and-caustics.md",
-  "summary": "The air over the battlefield lies in layers now: ground mist in the low ground, a sunlit haze above, smoke plumes that drift off downwind, and weather that varies across the map. A net of sunlight plays over shallow beds and flickers on hulls and piers.",
+  "title": "Mist in the hollows, smoke that drifts, light under the water",
+  "version": "unreleased",
+  "kind": "improved",
+  "summary": "Layered mist and haze, smoke plumes that drift downwind, weather that varies across the map, and caustics in the shallows and on hulls and piers.",
   "medium": "motion",
-  "stage": "Existing gameplay captures: dawn low sun, support barrage and naval shallows; camera settings documented in PR #223.",
-  "rationale": "Caustic patterns and plume drift need motion. The three existing silent clips show the current result, while the paired stills isolate the appearance changes and enlarge the marked regions. Caustics are the clearest motion example; distant dawn mist is deliberately subtle. These clips are not before/after videos and do not establish GPU cost.",
-  "capture": {
-    "provenance": "Existing media committed at the source revision below; capture context is documented in https://github.com/Dynasty9/Frontline/pull/223. This record inventories those artifacts, not a new recording.",
-    "renderer": "PR documents Forward+ at High, Ultra water for the caustics clip, and a separate Compatibility fallback still.",
-    "video_format": "1600x900 VP9, 30 fps, no audio; caustics 7 s, barrage 10 s, dawn 9 s.",
-    "dawn_stills": "--aivai --seed=3 --set=mood:dawn --focus=0,0 --zoom=160 --pitch=-7 --cam-yaw=4.5; distant view --zoom=300 --pitch=-12.",
-    "barrage_still": "--scenario=support --set=mood:golden --focus=10,0 --zoom=90 --pitch=-28 --shot-at=22.",
-    "water_stills": "--scenario=naval --set=mood:day --focus=350,62 --zoom=26 --pitch=-35; pier --focus=352,70 --zoom=16 --pitch=-14 --cam-yaw=1.57.",
-    "limits": "The original recording commands and historical before revision are not stored in a capture manifest. Preserve the supplied paired stills without assigning an unverified baseline. Motion, not performance, is evidenced here."
-  },
-  "source_ref": "78ff2411a8381207aa193427fd3d2bb85cc5a4ba",
+  "stage": "game scenarios (--aivai, --scenario=support, --scenario=naval) off-screen at 1600x900, frozen and flipped with FL_DEBUG_AIR_FLIP",
+  "rationale": "Atmosphere and caustics are a few percent of a wide frame, so each effect gets a tight crop of one frozen moment with OFF stacked over ON, an arrow and a caption, plus a flicker clip of the same frame toggling every second; two motion clips show the caustics running and a plume drifting.",
+  "source_ref": "78ff2411 plus the presentation commit on dines/volumetrics-weather-738062 (High preset unless noted, Godot 4.7.2 Forward+, Windows). Crops and labels: PIL; WebM: VP9 via Playwright ffmpeg.",
   "sources": [
-    {
-      "file": "changelog/unreleased/layered-air-and-caustics/barrage-before-after.jpg",
-      "sha256": "a8814e2299160bde26fed0e6ade61af75448b4c090d7bc08122d03501d245d32",
-      "caption": "Before and after: twenty seconds after a barrage"
-    },
     {
       "file": "changelog/unreleased/layered-air-and-caustics/barrage-drift-poster.jpg",
       "sha256": "d18e1ced2094a44ef5e0198459b5ab6da4a8893bc8ecb00f33252c7dad98ccd1",
-      "caption": "Poster for barrage-drift.webm."
+      "caption": "Middle frame of the barrage clip."
     },
     {
       "file": "changelog/unreleased/layered-air-and-caustics/barrage-drift.webm",
       "sha256": "e31cd57ec6087a3125d7332eb85a6ccccb5d50e317f6233e9f6dcf580f446c3b",
-      "caption": "A barrage's plume drifting off downwind and breaking up."
-    },
-    {
-      "file": "changelog/unreleased/layered-air-and-caustics/barrage-pall.jpg",
-      "sha256": "75271d5126d87ef84cff7e76250bc447f9be1440714bc7c9ad9a771b98ff3a47",
-      "caption": "The plume a barrage leaves, drifting off downwind"
+      "caption": "Seconds 20-30 of a 1280x720 movie, --preset=high --scenario=support --seed=3 --set=mood:golden --focus=10,0 --zoom=90 --pitch=-28."
     },
     {
       "file": "changelog/unreleased/layered-air-and-caustics/browser-shallows.jpg",
       "sha256": "063937818a139e3a1cd62950017adec2656649ba465fbed2fbb3ca7e6cffd03c",
-      "caption": "The browser version's simpler caustics"
+      "caption": "--rendering-method gl_compatibility --preset=medium, --scenario=naval --seed=3 --set=mood:day --focus=350,62 --zoom=26 --pitch=-35 --shot-at=4."
     },
     {
       "file": "changelog/unreleased/layered-air-and-caustics/caustics-poster.jpg",
       "sha256": "5a9dd36db34df15e2056135d06fec5e51b01df8ca0ee06870440b47a67dd57c9",
-      "caption": "Poster for caustics.webm."
+      "caption": "Middle frame of the caustics clip."
     },
     {
       "file": "changelog/unreleased/layered-air-and-caustics/caustics.webm",
       "sha256": "db49cbb47aba211c9f898cf224504826df0ce9d5111e27e8c783ea60b2b02951",
-      "caption": "The caustic net re-forming across the sand in the shallows (Ultra water)."
+      "caption": "Last 7 s of a 1280x720 movie, --preset=ultra --scenario=naval --seed=3 --set=mood:day --focus=356,58 --zoom=12 --pitch=-40."
     },
     {
-      "file": "changelog/unreleased/layered-air-and-caustics/dawn-before-after.jpg",
-      "sha256": "8af7cb467ec8d6cd550b3f961bfae62eec18d0d6aab5839fecc83f2c2e73cef3",
-      "caption": "Before and after: the valley at dawn from afar"
+      "file": "changelog/unreleased/layered-air-and-caustics/mist-flicker-poster.jpg",
+      "sha256": "2ec308611f17b41b74308cbde4d52c4661b4151bd296fec00bbab6c22b601dc4",
+      "caption": "ON frame of the mist flicker."
     },
     {
-      "file": "changelog/unreleased/layered-air-and-caustics/dawn-drift-poster.jpg",
-      "sha256": "a649e7a82a037f1d91113c541b6fba6ee0bcc65985ee4644b6f79b5437a4028a",
-      "caption": "Poster for dawn-drift.webm."
+      "file": "changelog/unreleased/layered-air-and-caustics/mist-flicker.webm",
+      "sha256": "36a39417bd64970b161c2cf2918bf339f7dd23943a125f9c6cbc6977f181d78e",
+      "caption": "The same frozen frame flipping OFF/ON every 30 frames (FL_DEBUG_AIR_FLIP=8), 8 s at 30 fps."
     },
     {
-      "file": "changelog/unreleased/layered-air-and-caustics/dawn-drift.webm",
-      "sha256": "c538b5db72637589034a17d2a6a16ee744795bb7a0b8d54ff31bb04df0713055",
-      "caption": "Dawn mist and haze toward a low sun."
+      "file": "changelog/unreleased/layered-air-and-caustics/mist-off-on.jpg",
+      "sha256": "a5a9ae7fb049ef6db9021df64a977d46355271b20b19cfaac4698b5f71664365",
+      "caption": "OFF over ON, frozen at 8 s of --aivai --seed=3 --set=mood:dawn --focus=0,0 --zoom=160 --pitch=-7 --cam-yaw=4.5, cropped to x300-1300 y200-700 of 1600x900."
     },
     {
-      "file": "changelog/unreleased/layered-air-and-caustics/dawn-low-sun-before-after.jpg",
-      "sha256": "1d8f29d4a56246abe1068aed9c8cc5d075721dd1dfda0bd05a651bc0fcb4bb51",
-      "caption": "Before and after: dawn toward the sun (the boxed area enlarged below)"
+      "file": "changelog/unreleased/layered-air-and-caustics/net-flicker-poster.jpg",
+      "sha256": "2bce4b19352a6e560b95a9d01c9d1fd920be51bd18c8e6db6b209a2c713adcfb",
+      "caption": "ON frame of the caustic-net flicker."
     },
     {
-      "file": "changelog/unreleased/layered-air-and-caustics/dawn-low-sun.jpg",
-      "sha256": "cb40ff879316379af9e330ab2a3d46abc9ae00154d4d83f56c594a5a37b6954a",
-      "caption": "Dawn, looking toward a low sun: the mist in the low ground glows"
+      "file": "changelog/unreleased/layered-air-and-caustics/net-flicker.webm",
+      "sha256": "9bdfaec496cd3742845a97a7a56dcb1e668e05451d6de185ac60589594e4479e",
+      "caption": "The same frozen frame flipping OFF/ON every 30 frames (FL_DEBUG_AIR_FLIP=4), 8 s at 30 fps."
     },
     {
-      "file": "changelog/unreleased/layered-air-and-caustics/pier-before-after.jpg",
-      "sha256": "e93953d5e4f9709764d30d311c57c5cf03a4db3eafbe5f738cf1c6b15a924038",
-      "caption": "Before and after: the pier from the water"
+      "file": "changelog/unreleased/layered-air-and-caustics/net-off-on.jpg",
+      "sha256": "bdec9813aea228a8ee28ba9b092289266296387ea653ac30520250064f15ac68",
+      "caption": "OFF over ON, frozen at 4 s of --scenario=naval --seed=3 --set=mood:day --focus=356,58 --zoom=10 --pitch=-45, cropped to x500-1500 y350-900."
     },
     {
-      "file": "changelog/unreleased/layered-air-and-caustics/shallows-before-after.jpg",
-      "sha256": "04a402dc21736274fb086ce68484084eff10abaad71af318f47dbd5d7d4c36e2",
-      "caption": "Before and after: the shallows by the dock"
+      "file": "changelog/unreleased/layered-air-and-caustics/piles-flicker-poster.jpg",
+      "sha256": "526b9e7d20cbf4af0e9dec6f51576a136debb879b95d607dca9b2f1788964f3b",
+      "caption": "ON frame of the pier flicker."
     },
     {
-      "file": "changelog/unreleased/layered-air-and-caustics/shallows.jpg",
-      "sha256": "c31a0d2fa6e412562a05f8ef293861c43bf0c18d61c4afc9a30ea55943e9f475",
-      "caption": "A net of light on the sand under the shallows"
+      "file": "changelog/unreleased/layered-air-and-caustics/piles-flicker.webm",
+      "sha256": "2e2ed1492d107e1773835da296d02380c09dcce8cdbf6968240ea997e7e18b4a",
+      "caption": "The same frozen frame flipping OFF/ON every 30 frames (FL_DEBUG_AIR_FLIP=4), 8 s at 30 fps."
+    },
+    {
+      "file": "changelog/unreleased/layered-air-and-caustics/piles-off-on.jpg",
+      "sha256": "c917e7dfef72b2b3ee3c74099d38a705b83d9e52ce8d574129d4f51954dc13ea",
+      "caption": "OFF over ON, frozen at 4 s of --scenario=naval --seed=3 --set=mood:day --focus=352,70 --zoom=16 --pitch=-14 --cam-yaw=0, cropped to x0-1400 y500-900."
+    },
+    {
+      "file": "changelog/unreleased/layered-air-and-caustics/plume-flicker-poster.jpg",
+      "sha256": "e8f37a159087ed7496ae09fa28e6cb3269d39a1ffd447c6c871dd191ea4b8570",
+      "caption": "ON frame of the plume flicker."
+    },
+    {
+      "file": "changelog/unreleased/layered-air-and-caustics/plume-flicker.webm",
+      "sha256": "ed21dee343c40a51adc10f1d81c59d906fdde187e823d2e27d9e1e7e95e74542",
+      "caption": "The same frozen frame flipping OFF/ON every 30 frames (FL_DEBUG_AIR_FLIP=22), 8 s at 30 fps."
+    },
+    {
+      "file": "changelog/unreleased/layered-air-and-caustics/plume-off-on.jpg",
+      "sha256": "6432b77aaf83d9ab5afdedf7f201d04af6186c125712d0a09f16a1859f87d672",
+      "caption": "OFF over ON, frozen at 22 s of --scenario=support --seed=3 --set=mood:golden --focus=50,35 --zoom=75 --pitch=-16 --cam-yaw=2.2, cropped to x100-1500 y100-800."
     }
   ],
   "output": null

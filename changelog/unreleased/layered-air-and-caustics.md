@@ -4,55 +4,54 @@ summary = "The air over the battlefield lies in layers now: ground mist in the l
 kind = "improved"
 
 [[screenshots]]
-file = "dawn-low-sun.jpg"
-caption = "Dawn, looking toward a low sun: the mist in the low ground glows"
+file = "mist-off-on.jpg"
+caption = "Off and on: the band of mist glowing in the low ground toward the dawn sun"
 
 [[screenshots]]
-file = "barrage-pall.jpg"
-caption = "The plume a barrage leaves, drifting off downwind"
+file = "plume-off-on.jpg"
+caption = "Off and on: the plume a barrage leaves, lit by a low sun"
 
 [[screenshots]]
-file = "shallows.jpg"
-caption = "A net of light on the sand under the shallows"
+file = "net-off-on.jpg"
+caption = "Off and on: the net of sunlight on the sand under the shallows"
 
 [[screenshots]]
-file = "dawn-low-sun-before-after.jpg"
-caption = "Before and after: dawn toward the sun (the boxed area enlarged below)"
-
-[[screenshots]]
-file = "dawn-before-after.jpg"
-caption = "Before and after: the valley at dawn from afar"
-
-[[screenshots]]
-file = "barrage-before-after.jpg"
-caption = "Before and after: twenty seconds after a barrage"
-
-[[screenshots]]
-file = "shallows-before-after.jpg"
-caption = "Before and after: the shallows by the dock"
-
-[[screenshots]]
-file = "pier-before-after.jpg"
-caption = "Before and after: the pier from the water"
+file = "piles-off-on.jpg"
+caption = "Off and on: sunlight thrown up off the water onto the pier's shaded side"
 
 [[screenshots]]
 file = "browser-shallows.jpg"
 caption = "The browser version's simpler caustics"
 
 [[videos]]
+file = "mist-flicker.webm"
+poster = "mist-flicker-poster.jpg"
+caption = "The same frozen dawn moment, mist off and on every second."
+
+[[videos]]
+file = "plume-flicker.webm"
+poster = "plume-flicker-poster.jpg"
+caption = "The same frozen moment after a barrage, plume off and on every second."
+
+[[videos]]
+file = "net-flicker.webm"
+poster = "net-flicker-poster.jpg"
+caption = "The shallows, caustics off and on every second."
+
+[[videos]]
+file = "piles-flicker.webm"
+poster = "piles-flicker-poster.jpg"
+caption = "The pier's shaded side, light off the water off and on every second."
+
+[[videos]]
 file = "caustics.webm"
 poster = "caustics-poster.jpg"
-caption = "The caustic net re-forming across the sand in the shallows (Ultra water)."
+caption = "The caustic net re-forming across the sand as the ripples run (Ultra water)."
 
 [[videos]]
 file = "barrage-drift.webm"
 poster = "barrage-drift-poster.jpg"
 caption = "A barrage's plume drifting off downwind and breaking up."
-
-[[videos]]
-file = "dawn-drift.webm"
-poster = "dawn-drift-poster.jpg"
-caption = "Dawn mist and haze toward a low sun."
 +++
 
 - **Ground mist** lies in a thin band in the valley, the hollows and along the water, thickest at dawn and rising
