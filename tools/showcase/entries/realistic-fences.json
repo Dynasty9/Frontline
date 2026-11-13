@@ -1,0 +1,32 @@
+{
+  "entry": "changelog/unreleased/realistic-fences.md",
+  "summary": "Nine real kinds of fence with gates in gardens, farms and playgrounds, a security fence behind each HQ and mesh panels round the town's supply dump.",
+  "medium": "still",
+  "stage": "game capture: --aivai --seed=3 --offscreen --nohud --perf=0 --shot-at=20 with --focus=-25,-3 --zoom=12 --pitch=-24 --cam-yaw=0.4 (street, before and after), --focus=6,503 --zoom=9 --pitch=-14 --cam-yaw=3.0 (HQ), --focus=-1,12 --zoom=10 --pitch=-26 --cam-yaw=2.6 (dump); tools/showcase/building-surfaces.tscn --building-components --building-kinds=fence_* (sheet)",
+  "rationale": "Appearance change: a matched before/after of one street on the same seed and camera shows the town fences; single stills show the military fences, which are new; one studio sheet shows six fence kinds with their gates. Compatibility-renderer checks and other framings stay outside Git.",
+  "source_ref": "29d3b782 (dines/fence-visuals-realism-bfde84)",
+  "before_ref": "bd4f1b59",
+  "sources": [
+    {
+      "file": "changelog/unreleased/realistic-fences/street-fences.jpg",
+      "sha256": "668a77d0e68678d52b9c34af980f40bdb97262a241a7bc6d150e42ddbb1b6ade"
+    },
+    {
+      "file": "changelog/unreleased/realistic-fences/street-fences-before.jpg",
+      "sha256": "611a04f2fad8ade3511efbdcf973c951f2b6ae12dfd5d12580eeebb066f0181f"
+    },
+    {
+      "file": "changelog/unreleased/realistic-fences/hq-perimeter.jpg",
+      "sha256": "51dd18c1fbe7b2492427c3ab702b15f334dffe0680ec464539351ca6f6ab2dbe"
+    },
+    {
+      "file": "changelog/unreleased/realistic-fences/supply-dump-screen.jpg",
+      "sha256": "cd4f625613820d0e6db3d01bf1dd5ce6bf441da6c4a6ea488163a7a2df8cfb0c"
+    },
+    {
+      "file": "changelog/unreleased/realistic-fences/fence-kinds.jpg",
+      "sha256": "1640db652336868df46362ea9102d1495eaf405cf47abd318bc1c2501b789a83"
+    }
+  ],
+  "output": null
+}
