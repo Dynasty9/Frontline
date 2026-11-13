@@ -1188,7 +1188,8 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
     with scanned surface detail and damp litter below. Retaining boards brace loose cuts; weathered
     duckboards rest on bearers above the mud. Rain darkens the earth and expands puddles. Bunker banks
     use the same materials, form one continuous mound around the corners, and leave the doorway clear.
-    An uneven soil cap rests over the roof logs.
+    An uneven soil cap rests over the roof logs. Banks meet sloping ground and clear new excavations;
+    joined cuts remove retaining boards and parapet bags where their supporting ground is gone.
     The trenches scenario includes a rear bunker route, covered ammunition, sandbags and anti-tank obstacles.
   - **Rear bays:** occasional long sections include a recessed supply shelf or a timber-roofed resting
     bay, with kit kept off the through route. The timber roof is physical cover, not a bombproof bunker.

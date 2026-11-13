@@ -43,6 +43,8 @@ func _ready() -> void:
 	mask.resize(N * N)
 	img = Image.create_from_data(N, N, false, Image.FORMAT_R8, mask)
 	tex = ImageTexture.create_from_image(img)
+	bank_material(true).set_shader_parameter("trench_mask", tex)
+	bank_material(true).set_shader_parameter("map_half", MapDims.HALF)
 	wall_mat = _mat(WALL_SHADER)
 	berm_mat = _mat(BERM_SHADER)
 	floor_mat = _mat(FLOOR_SHADER)
@@ -72,6 +74,7 @@ func _mat(code: String) -> ShaderMaterial:
 
 
 static var _bank_material: ShaderMaterial
+static var _cut_bank_material: ShaderMaterial
 
 
 static func _bind_earth(material: ShaderMaterial) -> void:
@@ -80,12 +83,17 @@ static func _bind_earth(material: ShaderMaterial) -> void:
 	material.set_shader_parameter("earth_surfaces", layers[1])
 
 
-static func bank_material() -> ShaderMaterial:
+static func bank_material(cut_trenches := false) -> ShaderMaterial:
 	if _bank_material == null:
 		_bank_material = ShaderMaterial.new()
 		_bank_material.shader = CloudShadow.make(BERM_SHADER)
 		_bank_material.set_shader_parameter("bank_surface", 1.0)
 		_bind_earth(_bank_material)
+	if cut_trenches:
+		if _cut_bank_material == null:
+			_cut_bank_material = _bank_material.duplicate()
+			_cut_bank_material.set_shader_parameter("cut_trench", true)
+		return _cut_bank_material
 	return _bank_material
 
 
@@ -358,6 +366,8 @@ func _prepare_depths() -> void:
 	for st in world.structures:
 		if st.gone or st.skind != "trench" or st.trench_depth() <= 0.0:
 			continue
+		if world.has_view and st.model != null:
+			st.refresh_trench_furnishings()
 		var ends := seg_of(st)
 		var joins := [-1.0, -1.0]
 		for i in 2:
@@ -452,6 +462,12 @@ func _build_meshes(tiles: Dictionary, segs: Array) -> void:
 					contour.append([q0, q1, inside_c])
 					nw += 1
 	_berms(bst, contour)
+	# Shared corners retain the same shape and normals without duplicate vertex storage.
+	if floors > 0:
+		fst.index()
+	if nw > 0:
+		wst.index()
+		bst.index()
 	floor_mi.mesh = fst.commit() if floors > 0 else null
 	walls.mesh = wst.commit() if nw > 0 else null
 	berms.mesh = bst.commit() if nw > 0 else null
@@ -490,6 +506,8 @@ func _build_meshes(tiles: Dictionary, segs: Array) -> void:
 					q[j].y = world.terrain.landform.height(q[j]) - _draw_depth(q[j], -0.1) + minf(0.105, _draw_depth(q[j], -0.1) * 0.0875)
 				dst.set_color(Color(0.2, 1, 1))
 				_board(dst, q, [Vector2(0.02, 0), Vector2(0.02, span), Vector2(0.29, span), Vector2(0.29, 0)], 0.09)
+	if board_count > 0:
+		dst.index()
 	boards.mesh = dst.commit() if board_count > 0 else null
 
 
@@ -651,7 +669,6 @@ func _berm_strip(bst: SurfaceTool, pts: Array, ins: Array) -> void:
 	var lip := []
 	var crest := []
 	var toe := []
-	var on := []  # outward normal per point
 	for i in m:
 		var a: Vector3 = ins[clampi(i - 1, 0, ins.size() - 1)]
 		var b: Vector3 = ins[clampi(i, 0, ins.size() - 1)]
@@ -674,7 +691,13 @@ func _berm_strip(bst: SurfaceTool, pts: Array, ins: Array) -> void:
 		var outer := p + o * reach
 		outer.y = world.terrain.landform.height(outer) - 0.025
 		toe.append(outer)
-		on.append(o)
+	var lip_normals: Array[Vector3] = []
+	var crest_normals: Array[Vector3] = []
+	var toe_normals: Array[Vector3] = []
+	for i in m:
+		lip_normals.append(_berm_normal(lip, i, crest[i] - lip[i], closed))
+		crest_normals.append(_berm_normal(crest, i, toe[i] - lip[i], closed))
+		toe_normals.append(_berm_normal(toe, i, toe[i] - crest[i], closed))
 	for i in m - 1:
 		var inward: Vector3 = ins[clampi(i, 0, ins.size() - 1)]
 		var a := i
@@ -682,17 +705,25 @@ func _berm_strip(bst: SurfaceTool, pts: Array, ins: Array) -> void:
 		if ((pts[b] as Vector3) - (pts[a] as Vector3)).cross(Vector3.UP).dot(inward) > 0.0:
 			a = i + 1
 			b = i
-		var oa: Vector3 = on[a]
-		var ob: Vector3 = on[b]
-		var n1a := (oa * -0.48 + Vector3.UP).normalized()
-		var n1b := (ob * -0.48 + Vector3.UP).normalized()
-		var n2a := (oa * 0.3 + Vector3.UP).normalized()
-		var n2b := (ob * 0.3 + Vector3.UP).normalized()
-		for v in [[lip[a], n1a, 0.0], [lip[b], n1b, 0.0], [crest[b], n1b, 0.5], [lip[a], n1a, 0.0], [crest[b], n1b, 0.5], [crest[a], n1a, 0.5],
-				[crest[a], n2a, 0.5], [crest[b], n2b, 0.5], [toe[b], n2b, 1.0], [crest[a], n2a, 0.5], [toe[b], n2b, 1.0], [toe[a], n2a, 1.0]]:
+		for v in [[lip[a], lip_normals[a], 0.0], [lip[b], lip_normals[b], 0.0], [crest[b], crest_normals[b], 0.5], [lip[a], lip_normals[a], 0.0], [crest[b], crest_normals[b], 0.5], [crest[a], crest_normals[a], 0.5],
+				[crest[a], crest_normals[a], 0.5], [crest[b], crest_normals[b], 0.5], [toe[b], toe_normals[b], 1.0], [crest[a], crest_normals[a], 0.5], [toe[b], toe_normals[b], 1.0], [toe[a], toe_normals[a], 1.0]]:
 			bst.set_normal(v[1])
 			bst.set_uv(Vector2(v[2], 0))
 			bst.add_vertex(v[0])
+
+
+## Light follows the actual mound and hillside, with one smooth crest at each join.
+static func _berm_normal(ring: Array, i: int, across: Vector3, closed: bool) -> Vector3:
+	var previous := maxi(0, i - 1)
+	var next := mini(ring.size() - 1, i + 1)
+	if closed and (i == 0 or i == ring.size() - 1):
+		previous = ring.size() - 2
+		next = 1
+	var along: Vector3 = ring[next] - ring[previous]
+	var normal := along.cross(across).normalized()
+	if normal.length_squared() < 0.5:
+		return Vector3.UP
+	return normal if normal.y >= 0.0 else -normal
 
 
 ## Marching squares: which edge pairs to join per corner case (corners 0..3 =
@@ -735,11 +766,16 @@ const BERM_SHADER := """
 shader_type spatial;
 #include "res://scripts/game/trench_earth.gdshaderinc"
 uniform float bank_surface = 0.0;
+uniform bool cut_trench = false;
+uniform sampler2D trench_mask : hint_default_black, filter_linear, repeat_disable;
+uniform float map_half = 1.0;
 // CLOUD_SHADOW
 varying vec3 wpos;
 varying float upness;
 void vertex() { wpos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz; upness = abs((MODEL_NORMAL_MATRIX * NORMAL).y); }
 void fragment() {
+	// Excavating beside an existing bunker also cuts its ground-level spoil.
+	if (cut_trench && texture(trench_mask, (wpos.xz + vec2(map_half)) / (map_half * 2.0)).r > 0.5) discard;
 	float patches = earth_noise(wpos.xz * 1.7);
 	float torn = earth_noise(wpos.xz * 5.1);
 	float wet = clamp(rain_wet * 0.7 + earth_noise(wpos.xz * 0.38) * 0.12, 0.0, 1.0);

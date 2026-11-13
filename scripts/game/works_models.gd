@@ -158,10 +158,24 @@ static func pit_floor(model: Node3D, r: float) -> void:
 ## from the wall, rounded over and dying away at the corners. `all_sides`:
 ## round the back too, either side of the door.
 static func berms(model: Node3D, half: float, h: float, depth: float, all_sides: bool, structure = null) -> void:
-	var terrain_world = structure.world if structure != null else null
+	var terrain_world = null
+	if structure != null and structure.world != null and not structure.world.terrain.landform.heights.is_empty():
+		terrain_world = structure.world
 	var foundation := Transform3D(Basis(Vector3.UP, structure.yaw), structure.position) if structure != null else Transform3D.IDENTITY
 	var bank := _mk(model, _bank_mesh(half, h, depth, all_sides, terrain_world, foundation), "bank", Vector3.ZERO, Vector3.ZERO, Color(0.29, 0.27, 0.17))
-	bank.material_override = TrenchNet.bank_material()
+	bank.material_override = TrenchNet.bank_material(true)
+
+
+## Furnish only ground that remains outside the combined excavation.
+static func trench_backed(st, local_point: Vector3, half_span := 0.0) -> bool:
+	if st.world == null:
+		return true
+	var basis := Basis(Vector3.UP, st.yaw)
+	for offset in [-half_span, 0.0, half_span]:
+		var point: Vector3 = st.position + basis * (local_point + Vector3.RIGHT * offset)
+		if st.world.trench_depth(point) > 0.15:
+			return false
+	return true
 
 
 ## Boards hold loose soil behind the posts; gaps leave intact clay cuts exposed.
@@ -173,6 +187,8 @@ static func trench_shoring(st, parent: Node3D, rng: RandomNumberGenerator) -> vo
 			var x: float = -st.size.x * 0.5 + 0.7 + i * 1.8
 			if TrenchNet.has_recess(st) and side == -st._enemy_side() and absf(x) < 0.85:
 				continue
+			if not trench_backed(st, Vector3(x, 0, side * (TrenchNet.HALF_W + 0.25))):
+				continue
 			var point: Vector3 = st.position + basis * Vector3(x, 0, side * TrenchNet.HALF_W)
 			var edge := _shoring_edge(point, basis.x)
 			var grade: float = st.world.terrain.landform.height(point) - st.position.y if st.world else 0.0
@@ -182,6 +198,8 @@ static func trench_shoring(st, parent: Node3D, rng: RandomNumberGenerator) -> vo
 				continue
 			var middle := x + 0.9
 			if TrenchNet.has_recess(st) and side == -st._enemy_side() and absf(middle) < 1.55:
+				continue
+			if not trench_backed(st, Vector3(middle, 0, side * (TrenchNet.HALF_W + 0.25)), 0.9):
 				continue
 			var end: Vector3 = st.position + basis * Vector3(x + 1.8, 0, side * TrenchNet.HALF_W)
 			var end_edge := _shoring_edge(end, basis.x)
@@ -249,11 +267,12 @@ static func _bank_point(angle: float, t: float, half: float, h: float, depth: fl
 	return Vector3(point.x, maxf(0.0, y * door) - 0.025, point.y)
 
 
-## Keep the bank against its level foundation while its toe follows the hillside.
+## Foundations follow immutable geology, so trench spawn order cannot change their shape.
+## The shared cut mask removes bank material wherever a new passage is excavated.
 static func _bank_ground_point(angle: float, t: float, half: float, h: float, depth: float, all_sides: bool, world, foundation: Transform3D) -> Vector3:
 	var point := _bank_point(angle, t, half, h, depth, all_sides)
 	if world != null:
-		var ground: float = world.ground_y(foundation * point) - foundation.origin.y
+		var ground: float = world.terrain.landform.height(foundation * point) - foundation.origin.y
 		point.y += ground * smoothstep(0.0, 1.0, t)
 	return point
 

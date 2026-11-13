@@ -215,6 +215,8 @@ func _ready() -> void:
 			check(bank_points[i].is_finite() and bank_normals[i].y > 0.0, "Bank corners keep finite upward-facing normals")
 		for t in [0.0, 0.25, 0.5, 0.75, 1.0]:
 			check(WorksModels._bank_point(0.0, t, 2.8, 1.0, 2.0, rear_bank).y < 0.0, "The bunker approach stays clear of its bank")
+	check(TrenchNet.bank_material(true).get_shader_parameter("trench_mask") == network.tex, "Ground banks share the current world trench mask")
+	check(TrenchNet.bank_material(true).get_shader_parameter("cut_trench") and not TrenchNet.bank_material().get_shader_parameter("cut_trench"), "Excavation cuts bank toes but leaves roof soil intact")
 	var bank_center := Vector3(30, 0, 30)
 	bank_center.y = geology.height(bank_center)
 	for heading in [0.0, 0.7, 2.2]:
@@ -223,7 +225,7 @@ func _ready() -> void:
 			var angle := i * TAU / 64.0
 			var toe := WorksModels._bank_ground_point(angle, 1.0, 2.8, 1.0, 2.0, true, w, foundation)
 			var contact := foundation * toe
-			check(absf(contact.y - w.ground_y(contact) + 0.025) < 0.0001, "Bunker bank toes meet elevated sloping ground at every heading")
+			check(absf(contact.y - geology.height(contact) + 0.025) < 0.0001, "Bunker bank toes meet elevated sloping ground at every heading")
 			var lip := WorksModels._bank_ground_point(angle, 0.0, 2.8, 1.0, 2.0, true, w, foundation)
 			check(lip == WorksModels._bank_point(angle, 0.0, 2.8, 1.0, 2.0, true), "Grounding leaves the bank against the level bunker foundation")
 	for variant in 4:
@@ -242,8 +244,13 @@ func _ready() -> void:
 	check(vertices.size() > 0, "The trench network has a real floor mesh")
 	for point in vertices:
 		check(absf(point.y - (geology.height(point) - w.trench_depth(point, -0.3))) < 0.0001, "Floor vertices follow the sloped geology and local excavation depth")
-	for i in range(0, vertices.size(), 3):
-		check((vertices[i + 1] - vertices[i]).cross(vertices[i + 2] - vertices[i]).y < 0.0, "Floor triangles face the player rather than exposing the sky")
+	var indices: PackedInt32Array = arrays[Mesh.ARRAY_INDEX]
+	check(indices.size() > vertices.size(), "Floor triangles share their coincident corners")
+	for i in range(0, indices.size(), 3):
+		var a := vertices[indices[i]]
+		var b := vertices[indices[i + 1]]
+		var c := vertices[indices[i + 2]]
+		check((b - a).cross(c - a).y < 0.0, "Floor triangles face the player rather than exposing the sky")
 	st.hp = st.max_hp * 0.3
 	network.rebuild()
 	var samples := RandomNumberGenerator.new()
@@ -267,6 +274,34 @@ func _ready() -> void:
 		actor._dig_soil(0.1)
 	check(not actor._dig_flying and not actor.dig_soil.visible, "Soil lands and its single mesh is reused")
 	actor.free()
+	var mound_ring: Array = [Vector3(0,0,0), Vector3(1,0.1,0), Vector3(1,0.2,1), Vector3(0,0.1,1), Vector3(0,0,0)]
+	var seam_normal := TrenchNet._berm_normal(mound_ring, 0, Vector3(-1,0.2,-1), true)
+	check(seam_normal.is_equal_approx(TrenchNet._berm_normal(mound_ring, 4, Vector3(-1,0.2,-1), true)), "Closed spoil strips share their lighting across the seam")
+	check(seam_normal.y > 0.0 and is_equal_approx(seam_normal.length(), 1.0), "Spoil lighting follows an upward unit surface normal")
+	check(TrenchNet._berm_normal([Vector3.ZERO,Vector3.ZERO], 0, Vector3.ZERO, false) == Vector3.UP, "Collapsed mound spans keep a finite normal")
+	var joined_world := World.new()
+	joined_world.has_view = false
+	joined_world.srv = true
+	joined_world.nav = Nav.new()
+	joined_world.terrain = TerrainMap.new(joined_world)
+	joined_world.nav.terrain = joined_world.terrain
+	var first_cut := make_trench(joined_world, 91, Vector3.ZERO, true)
+	first_cut._build_model()
+	var original_furnishings := first_cut.model.get_node("Done")
+	first_cut.refresh_trench_furnishings()
+	check(first_cut.model.get_node("Done") == original_furnishings, "Unchanged neighbors reuse the existing furnishings")
+	var backing := Vector3(2, 0, 1.05)
+	check(WorksModels.trench_backed(first_cut, backing, 0.4), "An isolated parapet retains its bags and timber")
+	var parallel_cut := make_trench(joined_world, 92, Vector3(0, 0, 1.2), true)
+	first_cut.refresh_trench_furnishings()
+	check(first_cut.model.get_node("Done") != original_furnishings and original_furnishings.is_queued_for_deletion(), "A newly joined cut rebuilds and retires the old furnishings")
+	check(not WorksModels.trench_backed(first_cut, backing, 0.4), "A joined parallel excavation removes unsupported parapet furnishings")
+	check(WorksModels.trench_backed(first_cut, Vector3(2, 0, -1.05), 0.4), "Joining one side preserves the opposite retaining wall")
+	parallel_cut.hp = 1.0
+	check(not WorksModels.trench_backed(first_cut, backing, 0.4), "A collapsed but still excavated neighbor cannot support floating bags")
+	parallel_cut.gone = true
+	check(WorksModels.trench_backed(first_cut, backing, 0.4), "Removing the neighboring cut restores the backing")
+	joined_world.free()
 	w.free()
 	print("TRENCH_REALISM failures=%d" % failures)
 	get_tree().quit(1 if failures else 0)

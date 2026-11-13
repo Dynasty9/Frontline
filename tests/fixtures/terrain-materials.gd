@@ -48,6 +48,7 @@ func _ready() -> void:
 		await check_shrub_leaves()
 		await check_trench_vegetation()
 		await check_trench_horizons()
+		await check_bunker_trench_cut()
 		await check_tree_leaves()
 		await check_batched_tints()
 	print("TERRAIN_MATERIALS passed")
@@ -746,3 +747,46 @@ void fragment() {
 	assert(light[2] < light[1] * 0.7, "Wet exposed soil darkens rather than bleaching out: %s" % [light])
 	view.free()
 	print("TERRAIN_MATERIALS trench horizons and wetness passed ", light)
+
+
+func check_bunker_trench_cut() -> void:
+	var view := SubViewport.new()
+	view.size = Vector2i(64,64)
+	view.own_world_3d = true
+	view.transparent_bg = true
+	view.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	add_child(view)
+	var camera := Camera3D.new()
+	camera.projection = Camera3D.PROJECTION_ORTHOGONAL
+	camera.size = 2.0
+	view.add_child(camera)
+	camera.position = Vector3(0,2,0)
+	camera.look_at(Vector3.ZERO, Vector3.FORWARD)
+	var mesh := MeshInstance3D.new()
+	mesh.mesh = PlaneMesh.new()
+	view.add_child(mesh)
+	var cut := Image.create(4,4,false,Image.FORMAT_R8)
+	cut.fill(Color.BLACK)
+	for y in 4:
+		for x in 2:
+			cut.set_pixel(x,y,Color.WHITE)
+	var material := ShaderMaterial.new()
+	material.shader = Shader.new()
+	material.shader.code = TrenchNet.BERM_SHADER.replace("shader_type spatial;", "shader_type spatial;\nrender_mode unshaded;")
+	TrenchNet._bind_earth(material)
+	material.set_shader_parameter("bank_surface", 1.0)
+	material.set_shader_parameter("trench_mask", ImageTexture.create_from_image(cut))
+	material.set_shader_parameter("map_half", 1.0)
+	mesh.material_override = material
+	for cut_trench in [false, true]:
+		material.set_shader_parameter("cut_trench", cut_trench)
+		for frame in 3:
+			await RenderingServer.frame_post_draw
+		var shot := view.get_texture().get_image()
+		assert(shot.get_pixel(48,32).a > 0.95, "Intact ground retains its bunker bank")
+		if cut_trench:
+			assert(shot.get_pixel(16,32).a < 0.05, "A new trench cuts through the existing bank rather than hiding its walkway")
+		else:
+			assert(shot.get_pixel(16,32).a > 0.95, "Roof soil remains a solid roof above an excavation")
+	view.free()
+	print("TERRAIN_MATERIALS bunker bank trench cut passed")
