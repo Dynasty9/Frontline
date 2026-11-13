@@ -1,0 +1,15 @@
+{
+  "entry": "changelog/unreleased/landing-ring-and-crew-pose.md",
+  "summary": "A selected helicopter’s footprint follows the ground around the aircraft. At a mortar pit, the crew member’s gloves meet the model.",
+  "medium": "still",
+  "stage": "Matched embedded Sky Hook and defense captures",
+  "rationale": "Both changes are visible in one frame from the same camera.",
+  "source_ref": "262bef357de91fe27a5d7118e6a9c866540260a0",
+  "sources": [
+    {
+      "file": "changelog/unreleased/landing-ring-and-crew-pose/comparison.jpg",
+      "sha256": "8e665b038dbf5e1cd534a62d9a3b3a9dcfbaf81e37e8cb4c569d51466801053b"
+    }
+  ],
+  "output": null
+}

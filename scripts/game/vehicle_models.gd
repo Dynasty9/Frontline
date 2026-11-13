@@ -210,11 +210,11 @@ func _merge_parts(n: Node3D, off: Vector3) -> void:
 	Mats.merge_static(n, [blur] if blur else [], false, false, true)
 	for i in range(before, n.get_child_count()):
 		var mi := n.get_child(i) as MeshInstance3D
-		if mi and off != Vector3.ZERO:
+		if mi and off != Vector3.ZERO and not mi.has_meta(&"shadow_proxy"):
 			Mats.set_inst(mi, &"pofs", off)
 	if not burnt and not front_skirts.is_empty() and (n == root or n == turret):
 		for child in n.get_children():
-			if child is MeshInstance3D and (child as MeshInstance3D).mesh is ArrayMesh:
+			if child is MeshInstance3D and (child as MeshInstance3D).mesh is ArrayMesh and not child.has_meta(&"shadow_proxy"):
 				Mats.set_inst(child, &"armour_section", 0.0 if n == root else 1.0)
 	if not burnt:
 		Mats.add_distance_lod(n, 100.0, [blur] if blur else [])

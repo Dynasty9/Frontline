@@ -177,13 +177,24 @@ func _stream(pos: Vector3) -> void:
 	_queue.sort_custom(func(a: Vector2i, b: Vector2i): return (a - center).length_squared() < (b - center).length_squared())
 
 
-## Finish the visible ground before drawing. The remaining queue preloads around it.
+## The visible ground first, nearest first. The remaining queue preloads
+## around it. A camera cut used to build all of the view at once (a hundred
+## chunks, the better part of half a second in one frame); now a frame builds
+## what it can in VISIBLE_BUDGET_US and the rest of the view fills in from the
+## camera outwards over the next frames.
+const VISIBLE_BUDGET_US := 4000
+
+
 func _build_visible(camera: Camera3D) -> void:
 	if _queue.is_empty():
 		return
+	var started := Time.get_ticks_usec()
 	var planes := camera.get_frustum()
 	var pos := camera.global_position
-	for i in range(_queue.size() - 1, -1, -1):
+	var built: Array[int] = []
+	for i in _queue.size():
+		if Time.get_ticks_usec() - started > VISIBLE_BUDGET_US:
+			break
 		var cell: Vector2i = _queue[i]
 		var center := Vector3((cell.x + 0.5) * CHUNK, 0, (cell.y + 0.5) * CHUNK)
 		if not _bounds.has(cell):
@@ -196,7 +207,9 @@ func _build_visible(camera: Camera3D) -> void:
 			continue
 		if StructureView.intersects_view(bounds.get_center(), bounds.size * 0.5, planes):
 			_build_chunk(cell)
-			_queue.remove_at(i)
+			built.append(i)
+	for k in range(built.size() - 1, -1, -1):
+		_queue.remove_at(built[k])
 
 
 func _clear() -> void:

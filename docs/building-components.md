@@ -16,6 +16,7 @@ The collision and cover a structure gives (`Structure._define_parts`) never depe
 | `scripts/game/building_wire.gd` | `BuildingWire` | Catenary spans, cables, guys with anchors, insulators, barbed strands, wall-top wire |
 | `scripts/game/building_weathering.gd` | `BuildingWeathering` | Ivy, weeds at the foot of walls, the fallen-in roof on a ruin's floor |
 | `scripts/game/building_furnishings.gd` | `BuildingFurnishings` | Curtains, blinds, nets, window boxes, door lanterns, TV aerials; inside: linings and skirting, radiators, pictures, mirrors, clocks, shelves, rugs |
+| `scripts/game/building_yards.gd` | `BuildingYards` | What people keep round a house: wheelie bins, a woodpile and chopping block, a garden table and chairs (a parasol over some), a kennel, a bicycle, pots of flowers |
 
 ## The kit
 
@@ -103,6 +104,16 @@ lumps of plaster and brick, glass. Like furnishings these keep out of a man's wa
 breadth of the wall and below the eaves, a ruin's debris inside the room and no higher than an ankle; the
 fixture checks both over ten seeds. Lived-in and weathering choices each draw from a stream of their own
 (seeded from the structure's), so adding either never changes a house's chimney, shutters, panes or doors.
+
+## Yards
+
+`BuildingYards` builds what the people in a house keep round it, and the town places them round each house
+(not the shops) from a stream of its own seeded from where the lot is: two in three houses have a wheelie bin or
+two at the front corner away from the door, a third pots of flowers by the door, a quarter a bicycle leaning on
+a side wall, and out the back two in five a woodpile against the back wall with its chopping block and axe, two
+in five a table and chairs on the grass (a parasol over some), one in seven a kennel in a corner of the garden.
+They're set dressing (Decor, appended after the rest so the town's other dressing keeps its looks): no cover,
+and a blast or a truck knocks them over. Render them with `--building-kinds=house_yard` in the studio stage.
 
 ## Openings stay open
 

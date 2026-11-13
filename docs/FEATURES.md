@@ -45,6 +45,7 @@ changes any of them:
 | Orders | Right-click: move (Shift = fast run; **drag** to set which way they face), attack enemy, build/repair your structure, enter tunnel / MG nest / watchtower. The **cover pips** under the cursor show where each man will end up: green hard cover, lime medium, yellow soft (hides, doesn't stop bullets), grey dot none, red caught in the open; a tick on a pip points the way he'll fire over the barrier, and the label says how (prone, kneeling, standing, round the edges) |
 | High-level | **X attack-move** (or Ctrl+right-click): the squad bounds forward by fire teams, cover to cover, fights whatever it meets, then digs in at the objective. **B defend**: click the area (drag to face) and the squad spreads into the best cover there and holds. **R retreat** to the nearest FOB (routes around known enemy fire, suppression halved). **H hold** |
 | Delegate | **I** opens the intents on the command card: pick **Hold sector**, **Take objective**, **Screen**, **Reserve** or **Ambush**, then click the place (drag toward the enemy to set the front) and the XO carries it out. **Shift+I** takes the selection back; so does any order of your own to one of them. Each intent can have a key of its own (Settings > Controls, unbound to begin with) |
+| Mixed groups | Give squads on foot and ground vehicles one Move order to drive at the selected foot pace. A fresh vehicle-only move restores normal driving speed. |
 | One soldier | With a single man picked out: right-click to move him into the best cover at that spot, right-click an enemy to engage, a nest or mortar pit to man it; G / T throw, H hold, R fall back. Any squad order brings him back into the squad |
 | Standing orders | **K stance** (auto, prone, crouch, stand) and **J fire discipline** (fire at will, return fire, hold fire) for squads or one picked-out soldier; for vehicles J and **N target priority** (auto, armour, infantry), **T smoke** (vehicles alone selected), **U dismount**. The command card shows each order in force and drops half the men aboard, or one squad of several |
 | Squad | G grenade, T smoke, F mortar fire mission (mortar teams) |
@@ -746,7 +747,10 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   third of the windows, in the barracks and the research post, under the factory's north lights and in the door
   lanterns (brightest at night, a glimmer on a dark day). Weeds grow at the foot of walls and ivy up some of
   them (most often on old stone), and a ruin's floor carries its fallen roof: soot, charred rafters, broken
-  tiles, plaster and glass. All of it, and the military buildings' weatherboard, sheeting, roller shutters, north
+  tiles, plaster and glass. Round the houses are what the people in them keep: wheelie bins at a front corner,
+  pots of flowers by the door, a bicycle against a side wall, and out the back a woodpile and chopping block, a
+  table and chairs (under a parasol now and then) and the odd kennel, all set dressing that a blast or a truck
+  knocks over. All of it, and the military buildings' weatherboard, sheeting, roller shutters, north
   lights, masts and guys, drums, crates and pallets, comes from shared building components (see
   [building-components.md](building-components.md)).
 - Walls, hedges, trees, cars and crates are all real cover. Street furniture is set dressing generated on the
@@ -1554,6 +1558,31 @@ digs forward tunnel entrances and moves its attack waves through them. AI-vs-AI 
 batches of six games (from 5–1 one way to 5–1 the other with small parameter changes), so the sides are close
 but balance needs real playtesting. With the base defenses, most games last 10–23 minutes.
 
+**AI difficulty** (`Defs.AI_LEVELS`, `CommanderAI._apply_skill`): Play vs AI's **Opponent** choice and the lobby's
+**AI difficulty** row (the host's setting `ai_difficulty`, for every AI commander in the battle, the enemy's and any
+fighting beside the players) set how good the AI is, through how it thinks rather than what it's given. Each
+level is a skill between recruit (0) and veteran (2):
+
+| | Recruit | Regular | Veteran |
+|---|---|---|---|
+| Looks at the battle every | 3.5 s | 2 s | 1.25 s |
+| Answers a threat to a FOB | every 45 s, one squad | every 20 s, two | every 12 s, three |
+| Attack waves | a squad smaller, at least 70 s apart, goes with what it has after 320 s | 3 squads (4 after ten minutes), 25 s, 200 s | a squad bigger, 20 s, 160 s |
+| Attacks | head-on (no base of fire, no flanking) | fix and flank (AttackPlan) | fix and flank |
+| Ambushes, recon flights, answering a call for help | never | yes | yes, ambushes and recon more often |
+| Fire support | only on a big target (9+), every 90 s at most | on 4+ | on 3+ |
+| Battered squads pulled out | never | under a third left | under half left |
+| Towns and outposts | looked at every 15 s / 40 s | 6 s / 15 s | 6 s / 15 s |
+| The next FOB | 1.6 times the wait | 2 to 3.5 min after the last | as a regular |
+| Its lorries' loads | -15% | as they are | +15% |
+
+The supply handicap and bonus apply only to a side no player commands (an AI beside you never costs you supply),
+and the menu says so. **Adaptive** starts as a regular and, from five minutes in, weighs its side against the
+other every minute (men, vehicles, FOBs and towns): well ahead (1.5 to 1), it eases off a fifth of a level; well
+behind (0.7 to 1), it presses a fifth harder; in between it drifts back towards regular. The level shows on the
+loading brief and as **AI** on the status line. `--ai-difficulty=veteran` sets every AI, `--ai-difficulty=0:recruit,1:regular`
+one per side (for AI-vs-AI comparisons); the test port's world query lists each commander's level.
+
 **Command by intent** (`delegation.gd`): a commander can hand any of his squads and vehicles to his XO with an
 intent instead of an order, and the XO carries it out with the AI commander's own drills, giving the squads
 their orders, giving them again when the fight knocks them off, and reporting on the command net ("XO: Charlie 1,
@@ -1647,7 +1676,7 @@ projectile; cloud growth, movement and dissipation still take effect immediately
 Views build scenery in and around the camera first and cache visited models; local games and hosts
 share the clients' spatial draw batches. Distant models and client cosmetic collision bodies remain
 inactive, while host collision and the complete simulation stay active. Returning to cached scenery
-does not consume the new-model construction limit. Nearby movement orders can reuse a checked route corridor, with separate
+does not consume the new-model construction limit. Each 64 m block is merged as soon as all of it is built, and a merged model's opaque surfaces cast one shadow together from a shadows-only mesh, so a town costs a few draws a block in each shadow cascade rather than several a wall. New scenery and grass coming into view are built nearest first within a few milliseconds a frame, so a camera move fills in over a few frames instead of freezing one. Nearby movement orders can reuse a checked route corridor, with separate
 destinations and invalidation when terrain or danger changes.
 
 Grass, bushes and stones are generated around the camera, beyond their visible
@@ -1670,6 +1699,8 @@ The Character Playground also supports Alt + mouse free look, preserving the cha
 The imported preview routes grenade throws through the installed Mixamo toss while retaining stance legs and grenade release timing. The installed prone family supplies armed crawling; missing clips retain the procedural alternating reach. The installed stand/kneel pair supplies stationary crouch transitions, blending from the current pose to avoid a snap on rising. The crouched grenade clip uses its throwing section with the existing visual release timing. Crouch stops settle toes; posture changes release previous foot anchors before planting again.
 
 The Coalition mortar specialist also wears the textured character and carries his role-specific kit on the animated back. Native macOS OpenGL uses articulated soldiers because animated skin geometry disappears on that driver.
+
+Rebel fighters and medics use the same close-up animation rig, with faction-tinted uniforms, their own rifles and a marked medic pack. Soldiers crossing trench lips step between ground levels in both directions.
 
 The default close-up SWAT infantry presentation ships in a compiled runtime bundle (assets/infantry/infantry.zip), shared by the game and animation playground. Original authoring files are not required. See assets/infantry/README.md for rebuilding and the separate asset licenses.
 

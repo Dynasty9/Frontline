@@ -1,0 +1,15 @@
+{
+  "entry": "changelog/unreleased/smoother-towns.md",
+  "summary": "Over the town the frame rate roughly doubles, and camera moves no longer freeze while scenery and grass are built.",
+  "medium": "still",
+  "stage": "Solo battle (--local-server --team=0 --seed=3), user's Ultra settings, 1600x900 off-screen, --nohud --perf=0; camera over the town square at (0,0) 60 m and over a house at (20,-30) 25 m",
+  "rationale": "A performance change that must not change the look: one matched before/after sheet shows the same picture with the draw counts the console's render command reported for each frame. Frame times, renderer CPU time and stutters are measured numbers, given in the entry text and the pull request.",
+  "source_ref": "Before 54823975 (main); after this change's working tree, 2026-11-12",
+  "sources": [
+    {
+      "file": "changelog/unreleased/smoother-towns/comparison.jpg",
+      "sha256": "baab8a2431420e251ee6fa5b4008e9a3df95c121c23641d185aa5b2df6af1ed0"
+    }
+  ],
+  "output": null
+}
