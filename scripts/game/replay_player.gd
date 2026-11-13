@@ -27,6 +27,11 @@ var playback_buttons: Array[BaseButton] = []
 var panel: PanelContainer
 var loading_backdrop: TopoBackdrop
 
+func _supports_replay_protocol(protocol: Variant) -> bool:
+	# v2.0.0 recordings predate the six-byte vehicle aim. This is a replay-only
+	# adapter, not permission for old clients to join a current multiplayer game.
+	return (protocol is int or protocol is float) and (protocol == Net.NET_VERSION or (Net.NET_VERSION == 14 and protocol == 13))
+
 func _ready() -> void:
 	layer = 30
 	loading_backdrop = TopoBackdrop.new()
@@ -147,22 +152,49 @@ func decode(body: Dictionary) -> Dictionary:
 		return {}
 	# Objects are never deserialized: recordings contain only data, not scripts.
 	var value = bytes_to_var(raw)
-	if not value is Dictionary or value.get("format") != 1 or value.get("protocol") != Net.NET_VERSION:
+	if not value is Dictionary or value.get("format") != 1 or not _supports_replay_protocol(value.get("protocol")):
+		return {}
+	if not manifest.is_empty() and value.protocol != manifest.get("protocol"):
 		return {}
 	if not value.get("checkpoint") is Dictionary or not value.get("frames") is Array or value.frames.size() > 200:
 		return {}
 	record_kinds.clear()
 	record_lengths.clear()
-	if not _valid_state(value.checkpoint, true):
+	var protocol := int(value.protocol)
+	if not _valid_state(value.checkpoint, true, protocol):
 		return {}
+	if protocol == 13:
+		_upgrade_legacy_snapshots(value.checkpoint)
 	var previous: float = value.checkpoint.time
 	for state in value.frames:
-		if not state is Dictionary or not _valid_state(state, false) or state.time < previous:
+		if not state is Dictionary or not _valid_state(state, false, protocol) or state.time < previous:
 			return {}
+		if protocol == 13:
+			_upgrade_legacy_snapshots(state)
 		previous = state.time
 	return value
 
-func _valid_state(state: Dictionary, full: bool) -> bool:
+func _upgrade_legacy_snapshots(state: Dictionary) -> void:
+	# Only called after validating the original protocol-13 record lengths.
+	# Preserve every old field and give vehicles the current no-target sentinel.
+	var snapshots := []
+	for packet: PackedByteArray in state.snapshots:
+		var upgraded := packet.slice(0, 4)
+		var offset := 4
+		while offset < packet.size():
+			var id := packet.decode_u32(offset)
+			var length: int = packet[offset + 4]
+			var vehicle: bool = record_kinds[id] == "vehicle"
+			upgraded.append_array(packet.slice(offset, offset + 4))
+			upgraded.append(34 if vehicle else length)
+			upgraded.append_array(packet.slice(offset + 5, offset + 5 + length))
+			if vehicle:
+				upgraded.append_array(PackedByteArray([0, 128, 0, 0, 0, 0])) # i16 -32768, 0, 0, little-endian
+			offset += 5 + length
+		snapshots.append(upgraded)
+	state.snapshots = snapshots
+
+func _valid_state(state: Dictionary, full: bool, protocol: int = Net.NET_VERSION) -> bool:
 	if not (state.get("time") is float or state.get("time") is int) or not is_finite(float(state.time)):
 		return false
 	if not state.get("snapshots") is Array or not state.get("team") is Array or state.team.size() != 2 or not state.get("mission") is Dictionary:
@@ -180,7 +212,7 @@ func _valid_state(state: Dictionary, full: bool) -> bool:
 		if rec[0] <= 0 or not _valid_props(rec[1], rec[2], true):
 			return false
 		record_kinds[rec[0]] = rec[1]
-		record_lengths[rec[0]] = {"soldier": 31, "vehicle": 34, "structure": 15 if rec[2].get("skind") == "town" else 14, "projectile": 14, "drone": 16}[rec[1]]
+		record_lengths[rec[0]] = {"soldier": 31, "vehicle": 28 if protocol == 13 else 34, "structure": 15 if rec[2].get("skind") == "town" else 14, "projectile": 14, "drone": 16}[rec[1]]
 	for packet in state.snapshots:
 		if not packet is PackedByteArray or packet.size() < 4 or packet.size() > 2048:
 			return false
@@ -230,7 +262,7 @@ func _refresh() -> void:
 	if next.is_empty():
 		label.text = "Recording unavailable. Retrying…"
 		return
-	if next.get("format") != 1 or next.get("protocol") != Net.NET_VERSION or not next.get("chunks") is Array:
+	if next.get("format") != 1 or not _supports_replay_protocol(next.get("protocol")) or not next.get("chunks") is Array:
 		failed = true
 		label.text = "This recording needs a different version of Frontline."
 		return

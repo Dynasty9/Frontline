@@ -20,3 +20,5 @@ caption = "The same moments before (top) and now (bottom), on the battlefield: t
 - **Brass and links** fly from the gun's receiver, not from beside the muzzle; a coaxial gun keeps its cases inside the turret.
 - **Details:** autocannon barrels step down from a thick chamber end and carry a clamp and a ported muzzle brake; ammunition belts show their rounds; the .50 has its feed-cover latch and charging handle. The armed motorboat finally carries the PKM it fires.
 - **In solo play and multiplayer** guns now lay on their targets on your screen too, tank main guns included: before, only the host's view moved them.
+
+- **Older recordings:** battles recorded in v2.0.0 remain playable. They use their original gun direction because those recordings did not include an aim target.
