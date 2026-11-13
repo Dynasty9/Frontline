@@ -270,13 +270,16 @@ func rebuild() -> void:
 	for s in segs:
 		_raster(s[0], s[1], tiles)
 	img.set_data(N, N, false, Image.FORMAT_R8, mask)
+	var area := _changed_area(segs)
 	if world and world.phys:
-		world.phys.update_ground(mask, _changed_area(segs))
+		world.phys.update_ground(mask, area)
 	tex.update(img)
 	floor_mi.visible = not segs.is_empty()
 	_build_meshes(tiles, segs)
 	if world.atmo:
 		world.atmo.set_trench_mask(tex)
+		if world.atmo.light_probes:
+			world.atmo.light_probes.trench_changed(tex, area)
 
 
 func _raster(a: Vector3, b: Vector3, tiles: Dictionary) -> void:

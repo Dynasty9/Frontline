@@ -104,6 +104,8 @@ var _base_drawn := false
 var traced := 0  # bricks traced so far (tests, diagnostics)
 var laid := 0  # tiles laid so far
 var _ab := false
+var _trench_tex: Texture2D
+var _cycle := 0
 
 static var _globals := false
 
@@ -159,6 +161,23 @@ func structure_changed(st: Structure) -> void:
 	_mark_area(Rect2(st.position.x - r, st.position.z - r, r * 2.0, r * 2.0))
 
 
+## The trench network changed (TrenchNet.rebuild): its mask goes to the
+## tracer, and the probes round what changed (area, in metres; empty for the
+## first network or a whole new one) are traced again.
+func trench_changed(tex: Texture2D, area: Rect2) -> void:
+	_trench_tex = tex
+	for m: ShaderMaterial in [_bake_mat, _fill_mat]:
+		if m:
+			m.set_shader_parameter("trench_mask", tex)
+	if _ready_size < 0:
+		return
+	if area.size == Vector2.ZERO:
+		_requeue_all_bricks()
+		return
+	for t in _tiles_in(area.grow(REACH * _vsz)):
+		_queue_brick(t)
+
+
 ## The ground changed (a crater, in metres of the deformation grid): the
 ## probes in reach of it are traced again once the heights are on the GPU.
 func terrain_changed(cells: Rect2i) -> void:
@@ -186,7 +205,14 @@ func _process(dt: float) -> void:
 			_late.remove_at(i)
 	if OS.has_environment("FL_DEBUG_PROBES_BENCH") and _vp:
 		_bench()
-	if OS.has_environment("FL_DEBUG_PROBES_AB") and _vp:
+	if OS.get_environment("FL_DEBUG_PROBES_AB") == "cycle" and _vp:
+		# FL_DEBUG_PROBES_AB=cycle: off, on, the probes' term, the bent normal, three
+		# frames each, round and round: four panels of one moment from frames in a row
+		var phase := (_cycle / 3) % 4
+		_cycle += 1
+		RenderingServer.global_shader_parameter_set("probe_grid", Vector4(MapDims.HALF, _vsz * 2.0, 0.0 if phase == 0 else float(quality), 0.0))
+		RenderingServer.global_shader_parameter_set("probe_mix", Vector4(AO_STRENGTH, BOUNCE_STRENGTH, [0.0, 0.0, 1.0, 3.0][phase], 0.0))
+	elif OS.has_environment("FL_DEBUG_PROBES_AB") and _vp:
 		# FL_DEBUG_PROBES_AB=1: the probes on and off on alternate frames, for a
 		# before-and-after of one moment from two frames in a row (two runs of a
 		# seed don't build the same town, and the clouds move on between shots)
@@ -260,6 +286,10 @@ func _build() -> void:
 		m.set_shader_parameter("map_half", MapDims.HALF)
 		m.set_shader_parameter("vsz", _vsz)
 	_fill_mat.set_shader_parameter("mode", 0.0)
+	for m: ShaderMaterial in [_bake_mat, _fill_mat]:
+		m.set_shader_parameter("trench_floor", TrenchNet.FLOOR_Y)
+		if _trench_tex:
+			m.set_shader_parameter("trench_mask", _trench_tex)
 	_bake_mat.set_shader_parameter("mode", 1.0)
 	_fill = _Rects.new()
 	_fill.material = _fill_mat
@@ -280,8 +310,13 @@ func _start(size: int) -> void:
 	_brick_dirty.fill(0)
 	_brick_queue.clear()
 	_base_drawn = false
+	# (a network dug before the probes existed never told them)
+	if _trench_tex == null and atmo.trench_net:
+		_trench_tex = atmo.trench_net.tex
 	for m: ShaderMaterial in [_bake_mat, _fill_mat]:
 		m.set_shader_parameter("heights", atmo.deform_tex)
+		if _trench_tex:
+			m.set_shader_parameter("trench_mask", _trench_tex)
 	var seen := PackedByteArray()
 	seen.resize(TILES * TILES)
 	for st: Structure in world.structures:
@@ -530,6 +565,8 @@ func _bake_some() -> void:
 						bake_rects.append(r)
 					else:
 						fill_rects.append(r)
+			# and the heights its columns stand on (a crater or trench may have moved them)
+			(bake_rects if traced_now else fill_rects).append(Rect2(bx, 2 * P + bz, BRICK, BRICK))
 			if traced_now:
 				traced += 1
 				n -= 1
@@ -672,12 +709,22 @@ const PIXEL_USE := """if (probe_grid.z > 0.5) {
 		AO *= probe_k.x;
 		EMISSION += ALBEDO * probe_k.yzw;
 		if (probe_mix.z > 0.5) {
-			// FL_DEBUG_PROBES_VIEW: the sky each surface sees, and its bounce (=2:
-			// the raw heights block, which reads one flat colour on flat ground)
+			// FL_DEBUG_PROBES_VIEW=1: the probes' own term on grey, the share of sky each
+			// surface sees (grey) and the bounce it gets (colour, amplified); =2: the raw
+			// heights block (one flat colour on flat ground); =3: the bent normal, the way
+			// the sky it sees lies (x red, y green, z blue; open sky reads mid-grey)
+			vec3 probe_w = (INV_VIEW_MATRIX * vec4(VERTEX, 1.0)).xyz;
 			ALBEDO = vec3(0.0);
-			EMISSION = vec3(probe_k.x) * 0.15 + probe_k.yzw * 0.5;
-			if (probe_mix.z > 1.5) {
-				vec3 probe_w = (INV_VIEW_MATRIX * vec4(VERTEX, 1.0)).xyz;
+			EMISSION = vec3(probe_k.x) * 0.18 + probe_k.yzw * 0.8;
+			if (probe_mix.z > 2.5) {
+				vec3 probe_p = probe_w + normalize((INV_VIEW_MATRIX * vec4(NORMAL, 0.0)).xyz) * probe_grid.y * 0.6;
+				vec2 probe_c = (probe_p.xz + probe_grid.x) / probe_grid.y;
+				vec4 probe_b = probe_read(probe_c, 0.0, 2.0);
+				float probe_l = (probe_p.y - ((probe_b.r * 65280.0 + probe_b.g * 255.0) * 0.05 - 200.0)) / probe_grid.y - 0.5;
+				vec4 probe_a = probe_read(probe_c, clamp(floor(probe_l + 0.5), 0.0, 7.0), 0.0);
+				vec3 probe_bent = clamp((probe_a.rgb * 2.0 - 1.0) / max(probe_a.a, 0.05), -1.0, 1.0);
+				EMISSION = clamp(probe_bent * 0.8 + 0.5, 0.0, 1.0) * 0.3;
+			} else if (probe_mix.z > 1.5) {
 				EMISSION = probe_read((probe_w.xz + probe_grid.x) / probe_grid.y, 0.0, 2.0).rgb * 0.3;
 			}
 		}
@@ -697,13 +744,17 @@ const PIXEL_USE := """if (probe_grid.z > 0.5) {
 ## lower half, which already lights everything: counted again, every slope
 ## would glow with a bounce off the ground beside it.
 ## What stops a ray is lit by the sun, if it can see the sun (a second trace),
-## and by half the sky.
+## and by half the sky, or a tenth of it under a roof.
 const BAKE_SHADER := """
 shader_type canvas_item;
 render_mode unshaded, blend_disabled;
 
 uniform sampler2DArray heights : filter_linear, repeat_disable;
 uniform sampler2DArray voxels : filter_nearest, repeat_disable;
+// the trench network's mask (TrenchNet): trenches are cut into the ground by the
+// ground's own shader, not the height texture, so the probes cut them here too
+uniform sampler2D trench_mask : hint_default_black, filter_linear, repeat_disable;
+uniform float trench_floor = -1.2;
 uniform float mode = 0.0;
 uniform float map_half = 512.0;
 uniform float vsz = 1.0;
@@ -728,7 +779,9 @@ vec2 ground_at(vec2 xz) {
 	vec2 grid = clamp(uv, margin, vec2(1.0) - margin) * tiles;
 	vec2 cell = floor(grid);
 	vec2 local_uv = (fract(grid) * __TILE__ + 1.0) / (__TILE__ + 2.0);
-	return textureLod(heights, vec3(local_uv, cell.y * tiles + cell.x), 0.0).rg;
+	vec2 h = textureLod(heights, vec3(local_uv, cell.y * tiles + cell.x), 0.0).rg;
+	float cut = smoothstep(0.3, 0.7, textureLod(trench_mask, uv, 0.0).r);
+	return vec2(min(h.x, h.y + trench_floor * cut), h.y);
 }
 
 // how much the cube at q stops, and its albedo
@@ -788,15 +841,17 @@ void fragment() {
 	float ps = vsz * 2.0;
 	vec2 xz = (vec2(float(ix), float(iz)) + 0.5) * ps - map_half;
 	vec2 h0 = ground_at(xz);
+	// the probes stand on the geology, or down in a trench or crater cut below it
+	float base = min(h0.y, h0.x);
 	if (block >= 2) {
 		// the geology, to 5 cm, in two bytes (they filter apart and add back exactly)
-		float g = clamp(floor((h0.y + 200.0) / 0.05 + 0.5), 0.0, 65535.0);
+		float g = clamp(floor((base + 200.0) / 0.05 + 0.5), 0.0, 65535.0);
 		float hi = floor(g / 256.0);
 		COLOR = vec4(hi / 255.0, (g - hi * 256.0) / 255.0, 0.0, 1.0);
 	} else if (mode < 0.5 || (block == 1 && !bounce)) {
 		COLOR = block == 0 ? vec4(0.5, 0.5, 0.5, 1.0) : vec4(0.0, 0.0, 0.0, 1.0);
 	} else {
-		vec3 o = vec3(xz.x, h0.y + (float(layer) + 0.5) * ps, xz.y);
+		vec3 o = vec3(xz.x, base + (float(layer) + 0.5) * ps, xz.y);
 		o.y = max(o.y, h0.x + 0.3);
 		float a;
 		// a probe that fell inside a wall or a roof steps out of it: down first
@@ -877,7 +932,9 @@ void fragment() {
 					}
 					float ndl = max(dot(nh, sun_dir), 0.0);
 					float lit = ndl > 0.0 ? sunlit(hit + nh * 0.6 * vsz) : 0.0;
-					lh = alb3 * (sun_col * ndl * lit + sky_col * 0.5);
+					// a surface under a roof sees little sky itself: only what comes in round it
+					float sky_seen = covered(hit.xz, ground_at(hit.xz).y) ? 0.1 : 0.5;
+					lh = alb3 * (sun_col * ndl * lit + sky_col * sky_seen);
 				}
 				lsum += lh * (1.0 - vis);
 				wsum += 1.0 - vis;

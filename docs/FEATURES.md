@@ -1266,7 +1266,8 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   it doesn't see comes back lit by the bounce. Open ground under
   open sky counts as seen (the sky's lower half already stands for it), so open fields look as they did. Only what
   changes is redone: a structure built, destroyed or burnt marks its tile, which is laid again on the CPU and its
-  probes traced again, two tiles a frame nearest the camera first; craters retrace the tiles round them; a new time
+  probes traced again, two tiles a frame nearest the camera first; craters retrace the tiles round them, and trenches too (their mask cuts them into the ground the probes trace and
+  stand on, though 1.4 m trenches are narrower than the 2 m grid, so trench floors stay mostly SSAO's); a new time
   of day or weather retraces it all (the bounce follows the sun); tiles with nothing in reach are written as open
   sky without tracing. Map size comes from `MapDims` (2 m and 3 m cubes on the larger maps, the same grid). It's
   light only (no gameplay reads it, no RNG, never on the server) and a graphics setting: High (from the High preset),

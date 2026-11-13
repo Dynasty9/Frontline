@@ -1,27 +1,32 @@
 +++
-title = "Streets and rooms take their light from the world round them"
-summary = "A grid of light probes over the battlefield works out how much sky every street, room and trench can see, and how much sunlight the walls and ground round it throw back. Narrow streets fall into shade, rooms are lit from their windows, and a sunlit wall glows warm onto the one across from it."
+title = "Rooms and narrow spaces take their skylight from the world round them"
+summary = "A grid of light probes over the battlefield works out how much sky every room, wall foot and gap between houses can see, and how much light the surfaces round it throw back. Rooms under a roof and the foot of walls lose skylight; open ground looks as before."
 kind = "new"
 
 [[screenshots]]
-file = "house-interior.jpg"
-caption = "A house being cleared, its roof lifted away: with the probes (right) the room's walls and its shaded floor lose the skylight the roof keeps out"
+file = "room-under-roof.jpg"
+caption = "A room seen through its lifted roof, overcast. Left, the game without and with the probes: the back and side walls darken. Right, what the probes contribute: the share of sky each surface sees (dark: the roof shuts it out), and the bent normal, the direction that sky lies in (the windows and the door)."
 
 [[screenshots]]
-file = "village-golden-hour.jpg"
-caption = "Golden hour in a village: the walls facing away from the sun and the lane between the houses sit in deeper shade"
+file = "between-houses.jpg"
+caption = "The gap between two houses, overcast: the foot of the wall and the ground beside it lose some skylight. The probe term (right) shows the shade the walls cast on the sky."
 
-[[screenshots]]
-file = "town-square-overcast.jpg"
-caption = "An overcast town square: open paving looks as before, the house fronts and the corners round the stalls a touch darker"
+[[videos]]
+file = "room-flicker.webm"
+poster = "room-flicker.jpg"
+caption = "The same frame with the probes switched off and on every second: watch the back and side walls of the room."
+
+[[videos]]
+file = "destroyed-house.webm"
+poster = "destroyed-house.jpg"
+caption = "A house blown down, the game beside the probe term: within a second the probes are traced again, and the open floor reads open sky, shaded only along the walls left standing."
 +++
 
-- **Shade from the sky:** alleys, courtyards, the foot of a wall and the floor of a trench see less of the sky than
-  open ground, so they sit in softer, deeper shade. Open fields look exactly as before.
-- **Rooms lit from outside:** under a roof, a room is dim, and what light it has comes in through its windows and
-  doors. You see it when soldiers go in and the roof lifts away.
-- **Bounced sunlight:** a sunlit wall or square throws a little of its colour onto the shaded walls and ground near it.
-- **It keeps up with the battle:** houses blown down, trees felled and new craters change the light round them within
-  a moment, and a new time of day or weather relights everything.
-- **Light probes** in Settings › Graphics: **High** (the full grid, from the High preset up), **Low** (only the shade
-  from the sky, cheaper; the Medium preset and the browser) or **Off** (the Low preset).
+- **Shade from the sky:** rooms under a roof, the foot of walls and the ground between houses see less of the
+  sky than open ground, so they take less skylight. Open fields look as before.
+- **Bounced light:** surfaces that are shut in get a little of the light off the walls and ground round them.
+- **It keeps up with the battle:** houses blown down, trees felled, trenches dug and new craters change the
+  probes round them within a moment, and a new time of day or weather relights everything.
+- In daylight the change is mostly subtle: sunlight lights most of the scene, and the probes shade only the skylight.
+- **Light probes** in Settings › Graphics: **High** (from the High preset up), **Low** (only the shade from the
+  sky; the Medium preset and the browser) or **Off** (the Low preset).
