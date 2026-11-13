@@ -38,11 +38,11 @@ static func build(k: VehicleModels, key: String, team: int, seed: int) -> bool:
 		"aa_tech":
 			_hilux(k, team, seed, true)
 		"humvee":
-			_humvee(k, team)
+			_humvee(k, team, seed)
 		"ifv":
-			_bradley(k, team)
+			_bradley(k, team, seed)
 		"btr", "apc":
-			_btr80(k, team)
+			_btr80(k, team, seed)
 		"gunship":
 			_apache(k, team)
 		"heli":
@@ -178,21 +178,15 @@ static func _cover(k: VehicleModels, p: Node3D, key: String, outline: Array, y: 
 const ARMOR_GLASS := Color(0.08, 0.13, 0.13)
 
 
-## Stencil paint: a faded white, as hand-painted tactical numbers weather.
-const STENCIL := Color(0.74, 0.73, 0.66)
-
-
 ## A tactical number stencilled on a flat face: `text` h tall, centred on
 ## `center` (a point on the face), reading along `along` as seen from outside,
-## `out` the face's outward normal (VehicleMarkings: gone with the paint on a
-## wreck). Crews paint these big on turret and hull sides so a commander can
-## tell his vehicles apart; from the RTS camera they're the detail that reads.
-static func _stencil(k: VehicleModels, p: Node3D, text: String, h: float, center: Vector3, along: Vector3, out: Vector3, col := STENCIL) -> void:
-	var n := out.normalized()
-	var x := (along - n * along.dot(n)).normalized()
-	var y := n.cross(x)
-	var o := center + n * 0.004
-	VehicleMarkings.digits(k, p, text, h, func(q: Vector2) -> Vector3: return o + x * q.x + y * q.y, n, col)
+## `out` the face's outward normal (VehicleMarkings.face_text: heavy stencil
+## bars, gone with the paint on a wreck). Crews paint these big on turret and
+## hull sides so a commander can tell his vehicles apart; from the RTS camera
+## they're the detail that reads. The US Army's are CARC sand (`col`), as its
+## chevrons are.
+static func _stencil(k: VehicleModels, p: Node3D, text: String, h: float, center: Vector3, along: Vector3, out: Vector3, col := VehicleMarkings.STENCIL_SAND) -> void:
+	VehicleMarkings.face_text(k, p, text, h, center, along, out, col)
 
 
 ## Exhaust soot, streaked back along a face from an outlet by the slipstream:
@@ -353,7 +347,10 @@ static func _belt(k: VehicleModels, p: Node3D, x: float, w: float, circles: Arra
 		belt.build(hull, w, th, k.wheels, rests_on_wheels)
 		k.belts.append(belt)
 		return
-	VehicleTracks.shoes(k, p, x, w, hull, th, 0.20, true, rests_on_wheels)
+	# The wreck keeps its kind of track: the T-55's (the one whose return run
+	# rests on its wheels) is cast single-pin steel, the Abrams' and Bradley's
+	# double-pin with rubber pads and centre guides.
+	VehicleTracks.shoes(k, p, x, w, hull, th, 0.20, not rests_on_wheels, true)
 
 
 ## A headlight facing f (-1 forward, 1 back): housing, lens, wire guard.
@@ -570,6 +567,13 @@ static func _abrams(k: VehicleModels, team: int, seed: int) -> void:
 		_shackle(k, m, Vector3(s * 0.7, 0.62, 3.42), 1.0)
 	VehicleMounts.hitch(k, m, Vector3(0, 0.6, 3.5), Vector3(0.18, 0.16, 0.2))
 	_bx(k, m, Vector3(0.24, 0.28, 0.14), Vector3(1.0, 1.24, 3.56), cam)
+	if team >= 0:
+		# the bumper code on the band across the nose under the glacis and on
+		# the back plate under the tail lights: the battalion on the left,
+		# the company and vehicle on the right, its number the turret boxes' own
+		var code := VehicleMarkings.bumper_code(seed, VehicleMarkings.US_ARMOR, "31" if posmod(seed, 2) == 0 else "24")
+		VehicleMarkings.bumper(k, m, code, 0.065, 0.5, 1.03, -3.49, Vector3(0, 0.51, -0.86), 0.42)
+		VehicleMarkings.bumper(k, m, code, 0.06, 1.32, 1.155, 3.496, Vector3(0, 0.06, 1), 0.46)
 	# --- the turret
 	var t := k._pivot(m, Vector3(0, roof, -0.3))
 	k.turret = t
@@ -1054,13 +1058,13 @@ static func _t55(k: VehicleModels, team: int, seed: int) -> void:
 		# the turret number, painted big on both flanks of the dome as on
 		# every T-55 that ever served, a little ahead of the identification
 		# panel; laid on the cast curve, 12 mm out from its facets
-		var number := "%d%d%d" % [1 + posmod(seed, 4), posmod(seed >> 2, 4), 1 + posmod(seed >> 4, 5)]
+		var number := VehicleMarkings.tactical_number(seed)
 		var side: float = s
 		var on_dome := func(q: Vector2) -> Vector3:
-			var y := 0.44 + q.y
+			var y := 0.47 + q.y
 			var z := -0.3 - side * q.x
 			return Vector3(side * (_dome_x(y, z) + 0.012), y, z)
-		VehicleMarkings.digits(k, t, number, 0.17, on_dome, Vector3(s, 0.35, 0), Color(0.78, 0.77, 0.71))
+		VehicleMarkings.digits(k, t, number, 0.17, on_dome, Vector3(s, 0.35, 0), VehicleMarkings.STENCIL_WHITE, Vector2.ZERO, "tactical")
 	k._cyl(t, 0.16, 0.16, 1.7, Vector3(-0.15, 0.36, 1.2), Z90, "steel", Color(0.32, 0.33, 0.26), 12)
 	for x: float in [-0.75, 0.45]:
 		k._cyl(t, 0.175, 0.175, 0.04, Vector3(x, 0.36, 1.2), Z90, "gunmetal_w", null, 12, false)
@@ -1287,7 +1291,7 @@ static func _zu23(k: VehicleModels, team: int) -> void:
 ## near-vertical windscreen and four heavy doors with their thick little
 ## windows; the rear deck behind it; the O-GPK gunner's turret on the roof -
 ## faceted shields with ballistic windows round an M2.
-static func _humvee(k: VehicleModels, team: int) -> void:
+static func _humvee(k: VehicleModels, team: int, seed := 0) -> void:
 	var cam := _cam(team)
 	var m := k.root
 	var hw := 1.09
@@ -1374,6 +1378,12 @@ static func _humvee(k: VehicleModels, team: int) -> void:
 		_antenna(k, m, Vector3(s * 0.95, 1.35, 2.3), 2.6 if s < 0.0 else 2.0)
 	VehicleMounts.bumper(k, m, Vector3(1.9, 0.16, 0.16), Vector3(0, 0.68, 2.5), "gunmetal_w")
 	VehicleMounts.hitch(k, m, Vector3(0, 0.66, 2.6), Vector3(0.16, 0.14, 0.2))
+	if team >= 0:
+		# the bumper code on the front bumper either side of the winch, and
+		# on the back wall over the rear bumper
+		var code := VehicleMarkings.bumper_code(seed, VehicleMarkings.US_INFANTRY + VehicleMarkings.US_ARMOR + VehicleMarkings.US_CAVALRY)
+		VehicleMarkings.bumper(k, m, code, 0.075, 0.41, 0.66, nz - 0.16, Vector3.FORWARD, 0.27)
+		VehicleMarkings.bumper(k, m, code, 0.08, 0.42, 0.93, 2.495, Vector3.BACK, 0.5)
 	k._bag(m, Vector3(0.6, 0.32, 0.5), Vector3(0.0, 1.51, 1.85), "canvas", BAG, Vector3(0, 0.15, 0))
 	# --- the O-GPK turret on the roof ring
 	var t := k._pivot(m, Vector3(0, roof, 0.25))
@@ -1419,7 +1429,7 @@ static func _humvee(k: VehicleModels, team: int) -> void:
 ## deck aft with its louvres, the water-jet's flap in the stern; the small
 ## conical BPU-1 turret over the second axle with the KPVT and its coaxial
 ## PKT, six smoke dischargers across its back.
-static func _btr80(k: VehicleModels, team: int) -> void:
+static func _btr80(k: VehicleModels, team: int, seed := 0) -> void:
 	var cam := _cam(team)
 	var m := k.root
 	var wr := 0.53
@@ -1504,8 +1514,8 @@ static func _btr80(k: VehicleModels, team: int) -> void:
 		VehicleFittings.tow_cable(k, m, [Vector3(s * 1.47, 1.3, -2.7), Vector3(s * 1.47, 1.3, 1.7)], 0.022, 0.0, -1, sn, "gunmetal_w", null)
 		k._team_mark(m, team, Vector3(s * 1.462, 1.25, -1.7), Vector3(0.02, 0.2, 0.6))
 		# the big white hull number on the sloped side between the first two
-		# firing ports
-		_stencil(k, m, "317", 0.2, Vector3(s * 1.335, 1.6, -1.4), Vector3(0, 0, -s), sn, Color(0.8, 0.79, 0.74))
+		# firing ports: battalion, company and vehicle, Soviet style
+		_stencil(k, m, VehicleMarkings.tactical_number(seed), 0.2, Vector3(s * 1.335, 1.6, -1.4), Vector3(0, 0, -s), sn, VehicleMarkings.STENCIL_WHITE)
 	# the engine deck: the louvred grilles, the access panels
 	VehicleFittings.grille(k, m, Vector3(0, roof + 0.03, 2.55), Vector2(1.7, 1.6), Vector3(-PI / 2, 0, 0), cam, null, 8)
 	_bx(k, m, Vector3(1.6, 0.03, 0.55), Vector3(0, roof + 0.012, 1.3), cam)
@@ -1552,7 +1562,7 @@ static func _btr80(k: VehicleModels, team: int) -> void:
 ## turret with the 25 mm Bushmaster and its coax, the TOW launcher box on the
 ## left, the IBAS sight and the commander's independent viewer, smoke
 ## dischargers, the stowage basket round the back.
-static func _bradley(k: VehicleModels, team: int) -> void:
+static func _bradley(k: VehicleModels, team: int, seed := 0) -> void:
 	var cam := _cam(team)
 	var m := k.root
 	var roof := 1.8
@@ -1656,10 +1666,14 @@ static func _bradley(k: VehicleModels, team: int) -> void:
 	var tt := [-0.38, -0.8, 0.38, -0.8, 0.86, -0.42, 0.9, 0.9, 0.72, 1.12, -0.72, 1.12, -0.9, 0.9, -0.86, -0.42]
 	k._add(t, VehicleModels.loft("core_m2_tur", tb, tt, 0.04, tr), cam, null, Vector3.ZERO)
 	_weld(k, t, _loop_y(tt, tr), cam)
+	# its bumper code: the battalion and the company and vehicle, as US Army
+	# vehicles carry them across the front and back
+	var code := VehicleMarkings.bumper_code(seed, VehicleMarkings.US_INFANTRY + VehicleMarkings.US_CAVALRY)
 	if team >= 0:
-		# the bumper number repeated big on the turret's right side (the TOW
-		# launcher covers its left)
-		_stencil(k, t, "C23", 0.2, Vector3(0.936, 0.5, 0.25), Vector3.FORWARD, Vector3(0.987, 0.162, 0))
+		# the vehicle half repeated big on the turret's right side, and on the
+		# TOW launcher's flank (it covers the turret's left), between its bands
+		VehicleMarkings.side_number(k, t, code[1], 0.2, Vector3(1.02, 0.04, 0.95), Vector3(1.0, 0.04, -0.62), Vector3(0.86, 0.84, -0.42), Vector3(0.9, 0.84, 0.9), Vector2(0.48, 0.5), VehicleMarkings.STENCIL_SAND, "tactical", false)
+		_stencil(k, t, code[1], 0.22, Vector3(-1.54, 0.42, -0.06), Vector3.BACK, Vector3.LEFT)
 	# the spaced armour on the turret's front faces
 	for s: float in [-1.0, 1.0]:
 		var a := Vector3(s * 0.52, 0.1, -1.16)
@@ -1691,6 +1705,10 @@ static func _bradley(k: VehicleModels, team: int) -> void:
 	k._bag(t, Vector3(0.6, 0.34, 0.36), Vector3(-0.45, 0.5, 1.42), "canvas", BAG)
 	VehicleCloth.roll(k, t, Vector3(0.38, 0.47, 1.42), 0.15, 0.7, Z90, TAN_BAG)
 	_antenna(k, t, Vector3(0.75, tr, 1.0), 1.6)
+	if team >= 0:
+		# the bumper code on the band across the nose and low on the ramp
+		VehicleMarkings.bumper(k, m, code, 0.08, 0.55, 1.04, -2.96, Vector3(0, 0.124, -0.992), 0.7)
+		VehicleMarkings.bumper(k, m, code, 0.075, 0.3, 0.72, 3.0, Vector3.BACK, 0.36)
 
 
 # --- helicopters: AH-64D and UH-60 ----------------------------------------------------

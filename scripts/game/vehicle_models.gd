@@ -991,11 +991,15 @@ func _car(v: int, col: Color) -> void:
 			_box(m, Vector3(0.06, 0.38, 1.95), Vector3(s * (w - 0.03), 1.2, 1.4), "car_paint", col)
 		VehicleCargo.sideboard(self, m, Vector3(w * 2.0, 0.38, 0.06), Vector3(0, 1.2, 2.38), "car_paint", col, Vector3.ZERO, 2)
 		_box(m, Vector3(w * 2.0 - 0.1, 0.04, 1.9), Vector3(0, 1.03, 1.4), "rubber")
-	# wheels in dark arches
+	# wheels under black plastic arch trims: a band round the top of each tyre,
+	# a few centimetres proud of the side so the arch reads from above without
+	# hiding the wheel (a flat slab here sat over it like a mud flap)
 	var wz := [bf + 0.75, bb - 0.75]
-	for s in [-1.0, 1.0]:
-		for z in wz:
-			_box(m, Vector3(0.05, 0.5, 0.86), Vector3(s * (w - 0.01), 0.52, z), "rubber", null, Vector3.ZERO, false)
+	for s: float in [-1.0, 1.0]:
+		for z: float in wz:
+			var x0 := w - 0.03 if s > 0.0 else -(w + 0.012)
+			var x1 := w + 0.012 if s > 0.0 else -(w - 0.03)
+			VehicleWheelArches._flare(self, m, "%sarch_%d_%d" % [key, int(s), roundi(z * 100.0)], z, 0.33, 0.345, 0.41, x0, x1, 0.0, PI, "rubber", null, 6)
 			_wheel(m, Vector3(s * (w - 0.1), 0.33, z), 0.33, 0.22, "steel", Color(0.62, 0.63, 0.62))
 
 
@@ -1346,23 +1350,65 @@ func _heli(team: int, attack: bool) -> void:
 static var _blur: ShaderMaterial
 
 
+## The disc a rotor's blades sweep at flight speed, on a plane mesh the size
+## of the rotor (UV 0..1 across it), turning with the hub. What the eye and a
+## camera see of a real rotor: a translucent disc in the blades' own colour,
+## densest inboard (a blade covers chord / 2 pi r of each circle, so more of
+## the circle near the hub), the hub's own parts showing through a soft
+## centre, and the tips' paint smeared into a thin pale ring round the tip
+## path. Seen edge-on the blades overlap and the disc thickens. A few soft
+## ghost blades - each a crisp leading edge trailing a smear - drift slowly
+## round: they are laid out in the disc's plane against the world, not the
+## turning mesh, so the hub's 30 rad/s never strobes them backwards. Lit like
+## the blades (the sun's side bright, the underside in shade), so it holds
+## its tone from noon to dusk. `blade_count` and the blades' colour
+## (`blade_tint`) are per rotor.
 static func _blur_mat() -> ShaderMaterial:
 	if _blur == null:
 		var sh := Shader.new()
 		sh.code = Mats.code("""
 shader_type spatial;
-render_mode unshaded, cull_disabled, depth_draw_never, shadows_disabled;
+render_mode blend_mix, cull_disabled, depth_draw_never, shadows_disabled;
 instance uniform float blade_count = 4.0;
+instance uniform vec4 blade_tint : source_color = vec4(0.15, 0.155, 0.16, 1.0);
+varying vec2 disc_xy;
+void vertex() {
+	// the disc's plane against a fixed world direction: the hub's spin
+	// drops out
+	vec3 n = normalize((MODEL_MATRIX * vec4(NORMAL, 0.0)).xyz);
+	vec3 e1 = normalize(cross(n, abs(n.z) < 0.9 ? vec3(0.0, 0.0, 1.0) : vec3(1.0, 0.0, 0.0)));
+	vec3 d = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz - MODEL_MATRIX[3].xyz;
+	disc_xy = vec2(dot(d, e1), dot(d, cross(n, e1)));
+}
 void fragment() {
 	vec2 p = UV * 2.0 - 1.0;
 	float r = length(p);
-	float a = atan(p.y, p.x);
-	// The mesh turns with the hub. Each blade sweeps an arc during an exposure.
-	float sweep = pow(0.5 + 0.5 * cos(a * blade_count + r * 0.7), 3.6);
-	float disc = smoothstep(0.07, 0.13, r) * (1.0 - smoothstep(0.95, 1.0, r));
-	float tip = smoothstep(0.92, 0.95, r);
-	ALBEDO = mix(vec3(0.034, 0.038, 0.04), vec3(0.42, 0.40, 0.32), tip);
-	ALPHA = disc * (0.028 + (0.50 - 0.16 * r) * sweep);
+	float aa = fwidth(r) + 0.002;
+	// the blades start beyond the grips, about an eighth of the way out
+	float body = smoothstep(0.07, 0.17, r) * (1.0 - smoothstep(0.985 - aa, 0.985, r));
+	float cover = 0.19 + 0.08 / max(r, 0.12);
+	float a = atan(disc_xy.y, disc_xy.x);
+	float ph = fract((a * blade_count - r * 1.3 - TIME * 1.7) * 0.15915494);
+	float ghost = smoothstep(0.0, 0.05, ph) * exp(-ph * 6.0);
+	cover *= 0.55 + 1.7 * ghost * smoothstep(0.25, 0.65, r);
+	// the tip panels' smear, a thin ring just inside the tip path: soft
+	// inboard, its outer edge crisp
+	float ring = smoothstep(0.93, 0.975, r) * (1.0 - smoothstep(0.985 - aa, 0.985, r));
+	float alpha = min(cover * body + 0.06 * ring, 0.95);
+	// a layer of blades seen at a slant: they overlap, the disc thickens
+	float mu = clamp(abs(dot(NORMAL, VIEW)), 0.35, 1.0);
+	float cover_seen = 1.0 - pow(1.0 - alpha, 1.0 / mu);
+#if CURRENT_RENDERER == RENDERER_COMPATIBILITY
+	// (blended after tonemapping, in display space, a dark layer shows about
+	// twice as dense: what keeps the linear blend's look)
+	cover_seen = 1.0 - pow(1.0 - cover_seen, 0.4545);
+#endif
+	ALPHA = clamp(cover_seen, 0.0, 0.7);
+	// (the smear shows the blades' shaded edges and undersides as much as
+	// their lit tops: darker than a blade at rest, as on film)
+	ALBEDO = mix(blade_tint.rgb * 0.45, vec3(0.16, 0.15, 0.1), ring);
+	ROUGHNESS = 0.9;
+	SPECULAR = 0.05;
 }
 """)
 		_blur = ShaderMaterial.new()

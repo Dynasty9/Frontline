@@ -1486,6 +1486,14 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   wear national insignia, serials and bort numbers, panel joints and exhaust soot (`VehicleAircraft.paint`).
   Car glass is tinted with a cabin behind it, bodies shade like pressed metal, and opaque panes reflect the
   sky. See "Seventh pass" in [the component guide](vehicle-components.md).
+- **Mud, stencils, wheels and tracks** (eighth pass): armour and trucks carry wet mud low on the hull and
+  running gear with paler dust above (cars road dust, boats a waterline stain), measured in the model's own
+  frame so it stays put on a turning wheel. Every vehicle's tactical number comes from its seed in heavy
+  stencil bars, and US vehicles wear battalion and company bumper codes. Cars roll on alloys or plastic
+  trims; Russian-style tracks have single-pin links with guide horns between twin sprockets, Western ones
+  rubber pads with end connectors and centre guides. Vehicle glass reflects the sky, and helicopter rotors
+  blur into a soft disc with ghost blades that don't strobe. See "Eighth pass" in
+  [the component guide](vehicle-components.md).
 - Explosions are layered GPU particles: a flash and light burst, a rolling fireball that cools from the edges in
   until it's dark smoke, a lit smoke column that drifts with the wind, a dirt plume, sparks and debris that
   bounce on the ground, a rolling dust ring, a faint heat-shimmer shockwave and a scorch mark. Heavy rounds

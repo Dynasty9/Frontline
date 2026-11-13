@@ -61,33 +61,12 @@ static func _ring(pts: Array, y: float) -> PackedVector3Array:
 	return VehicleModels.ring_y(VehicleModels._v2(pts), y)
 
 
-## The AAF's three-figure tactical number for the vehicle `seed` builds
-## (company, platoon, vehicle), from its own seed: two tanks of a kind
-## differ, and a tank reads the same on every peer.
-static func _tac(seed: int) -> String:
-	var h := absi(seed * 6007 + 811)
-	return "%d%d%d" % [1 + h % 4, 1 + (h >> 3) % 3, 1 + (h >> 6) % 4]
-
-
-## `text` painted `h` tall on both side faces of a hull or turret in heavy
-## stencil bars: `rear_bottom`, `front_bottom`, `front_top` and `rear_top`
-## are the right side's face corners (mirrored for the left), `at` where the
-## number's centre sits on it (0 to 1 from the rear and from the bottom).
-## Each reads left to right as seen from its own side.
-static func _side_number(k: VehicleModels, p: Node3D, text: String, h: float, rear_bottom: Vector3, front_bottom: Vector3, front_top: Vector3, rear_top: Vector3, at: Vector2, col := Color(0.84, 0.84, 0.78)) -> void:
-	var bars := VehicleMarkings.stroke_quads(VehicleMarkings.digit_strokes(text, h, Vector2.ZERO, "hull"), h * 0.16, h * 0.08)
-	for s: float in [-1.0, 1.0]:
-		var m := Vector3(s, 1, 1)
-		var rb := rear_bottom * m
-		var fb := front_bottom * m
-		var ft := front_top * m
-		var rt := rear_top * m
-		var c := rb.lerp(fb, at.x).lerp(rt.lerp(ft, at.x), at.y)
-		var across := ((fb - rb) + (ft - rt)).normalized() * s
-		var up := (rt - rb) + (ft - fb)
-		up = (up - across * up.dot(across)).normalized()
-		var out := across.cross(up)
-		VehicleMarkings.polygons(k, p, bars, VehicleSurface.plane(c + out * 0.006, across, up).sample, out, col)
+## The AAF's three-figure tactical number (company, platoon, vehicle), drawn
+## from the vehicle's own seed by VehicleMarkings.tactical_number: two tanks
+## of a kind differ, and a tank reads the same on every peer. It is painted
+## in heavy stencil bars on both flanks (VehicleMarkings.side_number) in the
+## AAF's grey-white.
+const TAC := ["1234", "123", "1234"]
 
 
 ## Level rings (bottom to top, as VehicleModels.solid takes them) with the top
@@ -216,9 +195,11 @@ static func _sprocket(k: VehicleModels, p: Node3D, pos: Vector3, r: float, w: fl
 
 
 ## A track: a belt of link plates round the convex hull of its wheels (each
-## circle (z, y, r)), so the road wheels show between the runs.
+## circle (z, y, r)), so the road wheels show between the runs. The Leopard
+## 2's, Warrior's and Wiesel's tracks are double-pin with a centre guide
+## running between the twin road wheels.
 static func _track_belt(k: VehicleModels, p: Node3D, x: float, w: float, circles: Array, th := 0.08, segs := 16) -> void:
-	VehicleTracks.shoes(k, p, x, w, VehicleTracks.wheel_envelope(circles, th, segs), th)
+	VehicleTracks.shoes(k, p, x, w, VehicleTracks.wheel_envelope(circles, th, segs), th, 0.20, true, true)
 
 
 # --- Strider: KMW Fennek LGS scout car ---------------------------------------------
@@ -483,7 +464,7 @@ static func _mora(k: VehicleModels, team: int, seed := 0) -> void:
 	var tb := [-0.55, -1.22, 0.55, -1.22, 1.05, -0.72, 1.1, 0.95, 0.85, 1.18, -0.85, 1.18, -1.1, 0.95, -1.05, -0.72]
 	var tt := [-0.42, -0.88, 0.42, -0.88, 0.86, -0.5, 0.93, 0.85, 0.72, 1.04, -0.72, 1.04, -0.93, 0.85, -0.86, -0.5]
 	k._add(t, VehicleModels.solid(_capped([_ring(tb, 0.06), _ring(tt, 0.74)], 0.06), "indep_mora_tur"), cam, col, Vector3.ZERO)
-	_side_number(k, t, _tac(seed), 0.22, Vector3(1.1, 0.06, 0.95), Vector3(1.05, 0.06, -0.72), Vector3(0.86, 0.74, -0.5), Vector3(0.93, 0.74, 0.85), Vector2(0.39, 0.43))
+	VehicleMarkings.side_number(k, t, VehicleMarkings.tactical_number(seed, TAC), 0.22, Vector3(1.1, 0.06, 0.95), Vector3(1.05, 0.06, -0.72), Vector3(0.86, 0.74, -0.5), Vector3(0.93, 0.74, 0.85), Vector2(0.39, 0.43), VehicleMarkings.STENCIL_AAF)
 	VehicleMounts.mantlet(k, t, Vector3(0.36, 0.4, 0.4), Vector3(0, 0.4, -1.18), cam, col)
 	VehicleWeapons.autocannon(k, t, Vector3(0, 0.4, -1.3), Vector3(0, 0.4, -4.11), Vector2(0.075, 0.5), Vector2(0.045, 0.045), Vector2(0.065, 0.22))
 	k.mg_tip = k._tip(t, Vector3(0, 0.4, -4.14))
@@ -580,7 +561,7 @@ static func _kuma(k: VehicleModels, team: int, seed := 0) -> void:
 	var tt := [-1.2, -1.92, 1.2, -1.92, 1.6, -1.45, 1.6, 1.06, 1.36, 1.98, -1.36, 1.98, -1.6, 1.06, -1.6, -1.45]
 	k._add(t, VehicleModels.solid(_capped([_ring(tb, 0.0), _ring(tt, 0.86)], 0.07), "indep_kuma_tur"), cam, col, Vector3.ZERO)
 	# the tactical number on the side armour, ahead of the panel's middle strap
-	_side_number(k, t, _tac(seed), 0.28, Vector3(1.79, 0.05, 0.975), Vector3(1.79, 0.05, -1.975), Vector3(1.79, 0.81, -1.975), Vector3(1.79, 0.81, 0.975), Vector2(0.686, 0.49))
+	VehicleMarkings.side_number(k, t, VehicleMarkings.tactical_number(seed, TAC), 0.28, Vector3(1.79, 0.05, 0.975), Vector3(1.79, 0.05, -1.975), Vector3(1.79, 0.81, -1.975), Vector3(1.79, 0.81, 0.975), Vector2(0.686, 0.49), VehicleMarkings.STENCIL_AAF)
 	# bolt-on armour: flat slabs on the cheeks either side of the mantlet and
 	# along the sides
 	for s: float in [-1.0, 1.0]:
@@ -689,7 +670,7 @@ static func _nyx(k: VehicleModels, team: int, kind: String, seed := 0) -> void:
 	_antenna(k, m, Vector3(0.72, 1.2, 1.55), 1.7)
 	k._team_mark(m, team, Vector3(0.915, 0.95, 0.3), Vector3(0.03, 0.18, 0.5))
 	k._team_mark(m, team, Vector3(-0.915, 0.95, 0.3), Vector3(0.03, 0.18, 0.5))
-	_side_number(k, m, _tac(seed), 0.17, Vector3(0.91, 0.7, 1.7), Vector3(0.91, 0.7, -0.9), Vector3(0.88, 1.18, -0.9), Vector3(0.88, 1.18, 1.7), Vector2(0.75, 0.48))
+	VehicleMarkings.side_number(k, m, VehicleMarkings.tactical_number(seed, TAC), 0.17, Vector3(0.91, 0.7, 1.7), Vector3(0.91, 0.7, -0.9), Vector3(0.88, 1.18, -0.9), Vector3(0.88, 1.18, 1.7), Vector2(0.75, 0.48), VehicleMarkings.STENCIL_AAF)
 	if kind == "recon":
 		# the periscope mast, extended, at the back left
 		k._box(m, Vector3(0.24, 0.1, 0.24), Vector3(-0.5, 1.25, 1.25), "gunmetal_w")
@@ -828,7 +809,7 @@ static func _gorgon(k: VehicleModels, team: int, seed := 0) -> void:
 	k._team_mark(m, team, Vector3(1.345, 1.45, 0.3), Vector3(0.03, 0.26, 0.7))
 	k._team_mark(m, team, Vector3(-1.345, 1.45, 0.3), Vector3(0.03, 0.26, 0.7))
 	# the tactical number on each flank, between the forward bin and the panel
-	_side_number(k, m, _tac(seed), 0.26, Vector3(1.335, 1.2, 3.0), Vector3(1.335, 1.2, -3.0), Vector3(1.335, 1.85, -3.0), Vector3(1.335, 1.85, 3.0), Vector2(0.603, 0.46))
+	VehicleMarkings.side_number(k, m, VehicleMarkings.tactical_number(seed, TAC), 0.26, Vector3(1.335, 1.2, 3.0), Vector3(1.335, 1.2, -3.0), Vector3(1.335, 1.85, -3.0), Vector3(1.335, 1.85, 3.0), Vector2(0.603, 0.46), VehicleMarkings.STENCIL_AAF)
 	# the turret: low and faceted, the 30 mm in its mantlet with the coax
 	# beside it, a Titan tube on each side
 	var t := k._pivot(m, Vector3(0, 2.08, 0.3))

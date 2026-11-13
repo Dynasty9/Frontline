@@ -622,8 +622,50 @@ the biggest. Nodes, meshes and wheel/rotor registrations are unchanged; vertices
   cars.
 
 Left for later (shared builders the family agents didn't own): a chamfered end ring in
-`VehicleModels.loft` / `solid` so lofts need no hand welds; a "tactical" lettering style and a face-corner
-`side_number` in `VehicleMarkings`, with the missing letters (B, D, M, N, R, V, X, Y); a lower-hull dust and
-mud gradient in the materials; `Mats.tint_for` clamping each channel separately (very dark tints shift hue);
-`Mats._collect` rejecting a whole merged mesh when one surface has a foreign shader (the Black Wasp's canopy
-keeps its hull out of the distance mesh); trimming `VehicleFittings.tow_cable`'s segment counts.
+`VehicleModels.loft` / `solid` so lofts need no hand welds. The eighth pass took the rest.
+
+### Eighth pass: mud, stencils, wheels, tracks and rotors
+
+Four more agents, this time by shared system rather than by family (markings, materials, running gear,
+aircraft), against the same references. Nodes and meshes are unchanged except the Black Wasp's (+1 each:
+the distance mesh it was missing); vertices fall 0.3% across the roster, the CSAT tracked vehicles rising
+up to 14% for their new links and the cars falling 16-24% for lighter wheels.
+
+- **Mud and dust** (the surface shader's vehicle branch, `VehicleMaterials.DIRT`): wet mud low on the hull
+  with a splash-broken edge that fills recesses first, paler dust above it settling on upward faces, both
+  turning the surface matte. Strength and height by family: armour 0.95 to 0.85 m, cars road dust to 0.5 m,
+  boats a level waterline stain, aircraft none. It is measured in the model's own frame from each baked
+  part's pivot height, which `Mats.Bake.commit` writes into the vertex colours' alpha (`_lift`): instance
+  uniforms for it cost the browser renderer a material copy per part. On wheels it is measured outward from
+  the axle, so it doesn't turn with the wheel. Distant meshes carry each part's average dirt colour.
+- **Glass**: vehicle glass is a blue-grey tint with a stronger coating (`surface_specular` 0.8) and
+  `surface_glaze`, which leans its reflection toward the sky, so it reads as glass from above.
+- **`Mats.tint_for`** lifts only vehicle colours darker than its floor in every channel, as a whole, so
+  very dark tints keep their hue; every other call returns what it did. **`Mats._collect`** builds a
+  surface with a foreign shader into the distance mesh as dark glass instead of rejecting its whole mesh.
+- **Stencils** (`VehicleMarkings`): a "tactical" lettering style of heavy bars with stencil bridges, the
+  letters to spell unit codes, `tactical_number(seed, places)`, `bumper_code(seed, units)` (US battalion and
+  company codes), `side_number` (the face-corner builder both CSAT and Indep used), `face_text` (fitted to a
+  width) and `bumper`. Paints are army stencil colours (`STENCIL_WHITE`, `STENCIL_AAF`, `STENCIL_SAND`), each
+  bar a shade off the next like a hand-painted stencil. Every NATO, core, CSAT and Indep number comes from
+  the seed; the Abrams, Bradley, Humvee, Hunter and HEMTT carry bumper codes.
+- **Car wheels** (`VehicleWheels._car_wheel`, chosen by `pneumatic` for road tyres on steel or gunmetal rims
+  0.30-0.42 m): a low-profile tyre on a lathed rim, five-spoke alloys on dark rims, six-spoke on bright
+  large ones, domed plastic trims with vent slots on small ones. Parked cars' wheels sit under black arch
+  trims (`VehicleWheelArches._flare`) instead of behind a slab.
+- **Track links** (`VehicleTracks.shoes`, `_link`; the T-55's live belt in `track_belt.gd` shares them):
+  without `pads`, a cast single-pin link with a grouser, interleaving hinge lugs and a guide horn on every
+  link (CSAT, the T-55, its wreck), running between twin sprockets; with `pads`, a double-pin shoe with two
+  rubber pads and end connectors, `guides` putting the centre guide on the connector (Abrams, Bradley,
+  Leopard 2, Warrior, Wiesel). Short unsupported return runs sag between supports. `VehicleFittings.tow_cable`
+  costs 40% less.
+- **Rotor blur** (`VehicleModels._blur_mat`, `VehicleRotors.main(blade_tint)`): a lit translucent disc in the
+  blades' colour, denser inboard, a soft ring on the tip path, ghost blades laid out against the world (so
+  they drift instead of strobing at the hub's speed), alpha corrected for the browser renderer's blending.
+- **Aircraft**: gun-gas soot on the A-10, Wipeout, F-16, Black Wasp, AC-130 and armed Blackfish; tailplane
+  soot behind the A-10's engines; VmFighter's wing insignia point at the nose; the NATO Blackfish carries its
+  stars and fin serials.
+
+Left for later: a tail-rotor blur disc (a node and a mesh per helicopter); the same disc for
+`VehiclePropellers.disc_material`; soot with a soft alpha edge (layered paint steps in close-ups); the
+loft chamfer ring above.

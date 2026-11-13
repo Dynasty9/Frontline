@@ -7,6 +7,8 @@ var output := "/tmp/vehicle-surfaces"
 var kinds: Array[String] = []
 var single := false
 var team := 0
+## The model seed: it picks per-vehicle details such as tactical numbers.
+var model_seed := 3
 var offset := Vector3.ZERO
 var swatches := false
 var panels := false
@@ -37,6 +39,8 @@ func _ready() -> void:
 			single = true
 		elif arg.begins_with("--surface-team="):
 			team = int(arg.trim_prefix("--surface-team="))
+		elif arg.begins_with("--surface-seed="):
+			model_seed = int(arg.trim_prefix("--surface-seed="))
 		elif arg == "--surface-offset":
 			offset = Vector3(117, 35, -81)
 		elif arg == "--surface-ground":
@@ -88,7 +92,7 @@ func _ready() -> void:
 		kinds.append_array(["wreck_tank", "wreck_heli", "wreck_patrol_ship"])
 		kinds.sort()
 	DirAccess.make_dir_recursive_absolute(output)
-	var manifest := {"team": team, "seed": 3, "renderer": RenderingServer.get_current_rendering_method(), "models": kinds, "camera_size": camera_size, "grounded": grounded, "panels": panels, "fittings": fittings, "accessories": accessories, "construction": construction, "rotor_focus": rotor_focus, "body_focus": str(body_focus), "view_direction": str(view_direction)}
+	var manifest := {"team": team, "seed": model_seed, "renderer": RenderingServer.get_current_rendering_method(), "models": kinds, "camera_size": camera_size, "grounded": grounded, "panels": panels, "fittings": fittings, "accessories": accessories, "construction": construction, "rotor_focus": rotor_focus, "body_focus": str(body_focus), "view_direction": str(view_direction)}
 	FileAccess.open(output.path_join("capture.json"), FileAccess.WRITE).store_string(JSON.stringify(manifest, "\t"))
 	var per_page := 1 if single else (4 if fittings else (8 if panels else (16 if swatches else 12)))
 	for start in range(0, kinds.size(), per_page):
@@ -267,7 +271,7 @@ func _cell(grid: GridContainer, kind: String, size: Vector2i) -> void:
 	elif kind.begins_with("civilian_"):
 		k = VehicleModels.build_car(int(kind.trim_prefix("civilian_")), Color(0.36, 0.16, 0.12))
 	else:
-		k = VehicleModels.build(kind.trim_prefix("wreck_"), team, 3, kind.begins_with("wreck_"))
+		k = VehicleModels.build(kind.trim_prefix("wreck_"), team, model_seed, kind.begins_with("wreck_"))
 	stage.add_child(k.root)
 	if antenna_motion:
 		motion_models.append(k)

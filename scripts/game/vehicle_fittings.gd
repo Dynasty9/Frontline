@@ -329,16 +329,18 @@ static var _fitting_rings := {}
 ## fewer than a large one: twelve round a ring whose outer radius is under 3
 ## cm, sixteen under 12 cm, twenty beyond (as every ring once had); `rings`
 ## sets the count instead (a gun's muzzle matches its tube). A band under 2 cm
-## thick is four-sided: mostly scaled flat, it reads as a rolled edge.
-static func _ring(inner: float, outer: float, rings := 0) -> TorusMesh:
+## thick is four-sided: mostly scaled flat, it reads as a rolled edge;
+## `sides` sets the sides round the band instead.
+static func _ring(inner: float, outer: float, rings := 0, sides := 0) -> TorusMesh:
 	var count := rings if rings > 0 else (12 if outer < 0.03 else (16 if outer < 0.12 else 20))
-	var key := Vector3(inner, outer, count)
+	var band := sides if sides > 0 else (4 if outer - inner < 0.02 else 6)
+	var key := Quaternion(inner, outer, count, band)
 	if not _fitting_rings.has(key):
 		var mesh := TorusMesh.new()
 		mesh.inner_radius = inner
 		mesh.outer_radius = outer
 		mesh.rings = count
-		mesh.ring_segments = 4 if outer - inner < 0.02 else 6
+		mesh.ring_segments = band
 		_fitting_rings[key] = mesh
 	return _fitting_rings[key]
 
@@ -882,8 +884,11 @@ static func tow_cable(k: VehicleModels, parent: Node3D, supports: Array, radius:
 		var stretch := Vector3(1, 1, 1.3)
 		var loop := tip - d * (eye + radius) * 1.3
 		var neck := loop - d * eye * 1.3
-		k._add(parent, _ring(eye - radius, eye + radius), mat, col, loop, flat, stretch, false)
-		k._add(parent, _ring(eye - radius * 1.55, eye - radius * 0.75), "steel", Color(0.46, 0.47, 0.44), loop, flat, stretch, false)
+		# Twelve stations round a loop a hand across and five sides round the
+		# wire read as round from any distance a player looks at a deck; the
+		# thimble inside it is a bright band, three-sided.
+		k._add(parent, _ring(eye - radius, eye + radius, 12, 5), mat, col, loop, flat, stretch, false)
+		k._add(parent, _ring(eye - radius * 1.55, eye - radius * 0.75, 12, 3), "steel", Color(0.46, 0.47, 0.44), loop, flat, stretch, false)
 		VehicleFrames.tube(k, parent, neck - d * ferrule, neck + d * radius * 0.5, radius * 1.55, "steel", Color(0.40, 0.41, 0.38), 8, false)
 		# The peg's foot is in the hull face.
 		VehicleFrames.tube(k, parent, loop - n * 0.04, loop + n * radius * 1.6, radius * 0.6, "gunmetal_w", null, 6, false, -1.0, 1)
@@ -891,8 +896,9 @@ static func tow_cable(k: VehicleModels, parent: Node3D, supports: Array, radius:
 	points[0] = ends[0]
 	points[points.size() - 1] = ends[1]
 	# The wire, clipped at each inner support and at spread clips between,
-	# sagging between clips as VehicleFrames.cable sags it. It is one bent
-	# wire, its ends swaged inside the ferrules.
+	# sagging between clips as VehicleFrames.cable sags it: a sag of a
+	# centimetre or two needs only its lowest point. It is one bent wire,
+	# its ends swaged inside the ferrules.
 	var spans := 0.0
 	for i in points.size() - 1:
 		spans += points[i].distance_to(points[i + 1])
@@ -910,8 +916,8 @@ static func tow_cable(k: VehicleModels, parent: Node3D, supports: Array, radius:
 		for j in line.size() - 1:
 			var from: Vector3 = line[j]
 			var to: Vector3 = line[j + 1]
-			for s in range(1, 5 if sag > 0.0 else 2):
-				var t := float(s) / (4 if sag > 0.0 else 1)
+			for s in range(1, 3 if sag > 0.0 else 2):
+				var t := float(s) / (2 if sag > 0.0 else 1)
 				wire.append(from.lerp(to, t) + Vector3.DOWN * sin(PI * t) * sag)
 		for j in range(1, line.size() - 1):
 			_cable_clip(k, parent, line[j], (b - a).normalized(), n, radius)

@@ -332,9 +332,21 @@ static func apply(mi: GeometryInstance3D, kind: String, tint := Color(1, 1, 1)) 
 
 
 ## Tint that turns the preset's base colour into `c` (keeps per-part colours).
+## A tint is held to 0.25-2.5 of the base (what a merged mesh's vertex colours
+## can carry: see VC_K), a channel at a time. On a vehicle, a colour darker
+## than that in every channel (exhaust soot, a black fitting on pale paint) is
+## lifted as a whole instead, keeping its hue: clamped a channel at a time it
+## came out as the paint's own hue, darkened (olive soot on a grey jet went
+## blue-grey, near purple beside the camouflage). Colours partly in range, and
+## buildings and kit (whose darkest parts, a roof hole's loft, want only to be
+## dark), clamp as before.
 static func tint_for(kind: String, c: Color) -> Color:
 	var b: Color = _preset(kind).get("col_a", Color(0.6, 0.6, 0.6))
-	return Color(clampf(c.r / maxf(b.r, 0.02), 0.25, 2.5), clampf(c.g / maxf(b.g, 0.02), 0.25, 2.5), clampf(c.b / maxf(b.b, 0.02), 0.25, 2.5))
+	var t := Vector3(c.r / maxf(b.r, 0.02), c.g / maxf(b.g, 0.02), c.b / maxf(b.b, 0.02))
+	var lo := minf(t.x, minf(t.y, t.z))
+	if lo > 0.0 and maxf(t.x, maxf(t.y, t.z)) < 0.25 and kind.begins_with("vehicle/"):
+		t *= 0.25 / lo
+	return Color(clampf(t.x, 0.25, 2.5), clampf(t.y, 0.25, 2.5), clampf(t.z, 0.25, 2.5))
 
 
 static var _foliage: ShaderMaterial
@@ -591,8 +603,14 @@ static func add_distance_lod(root: Node3D, distance: float, keep: Array = []) ->
 static func distance_lod_parts(root: Node3D, keep: Array = []) -> Array:
 	var groups := {}
 	var originals := []
-	_collect(root, Transform3D.IDENTITY, groups, originals, keep, false, true, true)
-	return [] if groups.is_empty() else [groups, originals]
+	_collect(root, Transform3D.IDENTITY, groups, originals, keep, false, true, true, true)
+	if groups.is_empty():
+		return []
+	# (how high the holder sits on its model, for the mud: see _distant_dirt)
+	var lift := _lift(root)
+	for group: Dictionary in groups.values():
+		group["lift"] = lift
+	return [groups, originals]
 
 
 ## The distant mesh under root, from `distance` out, where the originals end.
@@ -698,14 +716,57 @@ static func _distant_arrays(groups: Dictionary) -> Array:
 		var scale := VC_K
 		if material.get_shader_parameter("use_vcolor") == true:
 			scale = float(material.get_shader_parameter("vcolor_k"))
+		# (a vehicle part's mud and dust: the paint shows through by `keep`,
+		# under what the dirt adds)
+		var dirt := _distant_dirt(group, material)
+		var keep: float = scale * float(dirt[0])
+		var add: Color = dirt[1]
 		for tint: Color in group.c:
-			colors.append(Color(base.r * tint.r * scale, base.g * tint.g * scale, base.b * tint.b * scale, 1.0))
+			colors.append(Color(base.r * tint.r * keep + add.r, base.g * tint.g * keep + add.g, base.b * tint.b * keep + add.b, 1.0))
 	var arrays := []
 	arrays.resize(Mesh.ARRAY_MAX)
 	arrays[Mesh.ARRAY_VERTEX] = vertices
 	arrays[Mesh.ARRAY_NORMAL] = normals
 	arrays[Mesh.ARRAY_COLOR] = colors
 	return arrays
+
+
+## A vehicle part's mud and dust (see the surface shader's surface_mud) in its
+## distant mesh's flat colours: how much of the part lies in the mud and the
+## dust above it, from a sample of its vertices, spread over the whole part, so
+## a muddy wheel or a dusty hull doesn't come clean as it crosses into the
+## distance. [how much of the paint still shows, the colour the dirt adds].
+static func _distant_dirt(group: Dictionary, material: ShaderMaterial) -> Array:
+	if material.get_shader_parameter("vehicle_surface") != true:
+		return [1.0, Color(0, 0, 0)]
+	var grime := float(material.get_shader_parameter("grime"))
+	var line := float(material.get_shader_parameter("surface_mud"))
+	if grime <= 0.0 or line <= 0.0:
+		return [1.0, Color(0, 0, 0)]
+	var splash := float(material.get_shader_parameter("surface_splash"))
+	var lift: float = group.get("lift", 0.0)
+	var wheel := lift > 0.0 and lift < 1.0
+	var v: PackedVector3Array = group.v
+	var step := maxi(1, v.size() / 48)
+	var dust := 0.0
+	var mud := 0.0
+	var n := 0
+	for i in range(0, v.size(), step):
+		var p := v[i]
+		var above: float = lift - Vector2(p.y, p.z).length() if wheel else p.y + lift
+		var depth := 1.0 - above / line
+		dust += smoothstep(-0.8, 0.2, depth)
+		mud += smoothstep(0.35 * splash, 0.35 * splash + lerpf(0.06, 0.4, splash), depth)
+		n += 1
+	# (the shader's amounts, its noise and the faces' tilt taken at their means)
+	dust *= grime * 0.45 * 0.82 / n
+	mud *= grime * 0.85 * 0.7 / n
+	var dust_col: Color = material.get_shader_parameter("surface_dust_col")
+	var mud_col: Color = material.get_shader_parameter("surface_mud_col")
+	if not per_material:
+		dust_col = dust_col.srgb_to_linear()
+		mud_col = mud_col.srgb_to_linear()
+	return [(1.0 - dust) * (1.0 - mud), dust_col * (dust * (1.0 - mud)) + mud_col * mud]
 
 
 ## What distant meshes are drawn with. At this distance cloth weave and metal
@@ -833,7 +894,9 @@ static func _byte(v: float) -> int:
 	return 0 if is_nan(v) else int(clampf(v * 255.0, 0.0, 255.0))
 
 
-static func _collect(node: Node, xf: Transform3D, groups: Dictionary, victims: Array, keep: Array, deep := true, remerge := false, single := false) -> void:
+## `distant`: gathering a distant mesh (distance_lod_parts), where a merged
+## mesh may carry a surface with a shader of its own (see below).
+static func _collect(node: Node, xf: Transform3D, groups: Dictionary, victims: Array, keep: Array, deep := true, remerge := false, single := false, distant := false) -> void:
 	for c in node.get_children():
 		if c in keep or not (c is Node3D):
 			continue
@@ -852,20 +915,31 @@ static func _collect(node: Node, xf: Transform3D, groups: Dictionary, victims: A
 			# every surface must be one of ours (the override, or each surface's own material)
 			var mats := []
 			var ok := true
+			var foreign := 0
 			for si0 in mi.mesh.get_surface_count():
 				var m0 = mi.material_override if mi.material_override else mi.get_active_material(si0)
 				var sm0 := base_of(m0) as ShaderMaterial
 				var vc0: bool = sm0 != null and sm0.get_shader_parameter("use_vcolor") == true
 				if sm0 == null or not (sm0.shader == shader() or sm0 == _foliage or (vc0 and (sm0.shader == shader() or sm0.shader == foliage().shader))) or (vc0 and not remerge):
+					# A vehicle's merged mesh can hold one part drawn with a shader
+					# of its own (a fighter's tinted canopy): far off it's a few
+					# dark pixels, so the distant mesh draws it as glass, rather
+					# than the whole hull staying at full detail at every range.
+					if distant:
+						mats.append(get_mat("glass"))
+						foreign += 1
+						continue
 					ok = false
 					break
 				mats.append(sm0)
+			if foreign == mats.size():
+				ok = false  # (nothing of ours in it: it draws itself, near and far)
 			if ok and not mats.is_empty():
 				_append(groups, mi.mesh, mats, shadow_of(mi), get_inst(mi, &"tint"), cx, single)
 				victims.append(mi)
 				continue
 		if deep:
-			_collect(c, cx, groups, victims, keep, deep, remerge, single)
+			_collect(c, cx, groups, victims, keep, deep, remerge, single, distant)
 
 
 ## One part onto the merged meshes: each surface of `mesh` (under its material
@@ -880,6 +954,7 @@ static func _append(groups: Dictionary, mesh: Mesh, mats: Array, shadow: int, ti
 	for si in mesh.get_surface_count():
 		var sm: ShaderMaterial = mats[si]
 		var vc: bool = sm.get_shader_parameter("use_vcolor") == true
+		var vehicle: bool = sm.get_shader_parameter("vehicle_surface") == true
 		var key := str(sm.get_instance_id()) if single else "%d|%d" % [sm.get_instance_id(), shadow]
 		if not groups.has(key):
 			groups[key] = {"mat": sm, "shadow": shadow, "v": PackedVector3Array(), "n": PackedVector3Array(), "c": PackedColorArray(), "uv": PackedVector2Array()}
@@ -892,7 +967,7 @@ static func _append(groups: Dictionary, mesh: Mesh, mats: Array, shadow: int, ti
 		var verts: PackedVector3Array = fa[0]
 		g.v.append_array(cx * verts)
 		g.n.append_array(nb * (fa[1] as PackedVector3Array))
-		if sm.get_shader_parameter("vehicle_surface") == true:
+		if vehicle:
 			if fa[3] != null:
 				g.uv.append_array(fa[3])
 			else:
@@ -905,6 +980,8 @@ static func _append(groups: Dictionary, mesh: Mesh, mats: Array, shadow: int, ti
 			g.uv.append_array(fa[3])
 		if vc and fa[2] != null and (fa[2] as PackedColorArray).size() == verts.size():
 			g.c.append_array(fa[2])
+			if vehicle:
+				g["runs"] = null  # (colours of its own: see _lift_groups)
 		else:
 			# in the scale the merged material reads it back at (see VC_K)
 			var fk := 1.0
@@ -915,8 +992,16 @@ static func _append(groups: Dictionary, mesh: Mesh, mats: Array, shadow: int, ti
 				fk = 1.0 / VC_K
 			var cols := PackedColorArray()
 			cols.resize(verts.size())
-			cols.fill(Color(col.r * fk, col.g * fk, col.b * fk, col.a))
+			var fill := Color(col.r * fk, col.g * fk, col.b * fk, col.a)
+			cols.fill(fill)
 			g.c.append_array(cols)
+			if vehicle and (not g.has("runs") or g.runs is PackedInt32Array):
+				# each part's colour, run by run (see _lift_groups)
+				if not g.has("runs"):
+					g["runs"] = PackedInt32Array()
+					g["run_c"] = PackedColorArray()
+				g.runs.append(verts.size())
+				g.run_c.append(fill)
 
 
 ## Parts written straight into merged meshes, for a model that knows as it goes
@@ -948,8 +1033,55 @@ class Bake:
 
 	## The merged meshes, added under `root` (as merge_static adds them).
 	func commit(root: Node3D) -> void:
+		Mats._lift_groups(groups, Mats._lift(root))
 		Mats._emit(root, groups, single)
 		groups = {}
+
+
+## How high a holder (a vehicle's turret, a wheel, a gun: a moving part with
+## a pivot of its own) sits on its model: its position's height added up to
+## the model's root, which is built off the scene tree (0 for the root itself,
+## or for anything already in the tree).
+static func _lift(holder: Node3D) -> float:
+	if holder.is_inside_tree():
+		return 0.0
+	var y := 0.0
+	var n := holder
+	while n.get_parent() != null:
+		y += n.position.y
+		n = n.get_parent() as Node3D
+		if n == null:
+			return 0.0
+	return maxf(y, 0.0)
+
+
+## The surface shader measures a vehicle's mud from the ground it stands on,
+## so a part on a holder of its own has to know how high the holder sits. Its
+## merged mesh carries that in its vertex colours' alpha, which nothing else
+## uses (the tint is in the colour): 1 for the hull, a step down for every
+## centimetre, 0 at 2.55 m and up (high above any mud). An object's own shader
+## value would cost the browser's renderer a copy of every material for every
+## wheel and turret (see per_material): two dozen vehicles drew several times
+## slower there. Each part's colour is set again run by run, as _append noted
+## them; a group that brought colours of its own keeps them.
+static func _lift_groups(groups: Dictionary, lift: float) -> void:
+	if lift <= 0.0:
+		return
+	var a := float(255 - clampi(roundi(lift * 100.0), 0, 255)) / 255.0
+	for g: Dictionary in groups.values():
+		if not (g.get("runs") is PackedInt32Array):
+			continue
+		var runs: PackedInt32Array = g.runs
+		var run_c: PackedColorArray = g.run_c
+		var c := PackedColorArray()
+		var chunk := PackedColorArray()
+		for i in runs.size():
+			chunk.resize(runs[i])
+			var rc := run_c[i]
+			chunk.fill(Color(rc.r, rc.g, rc.b, a))
+			c.append_array(chunk)
+		if c.size() == (g.c as PackedColorArray).size():
+			g.c = c
 
 
 ## A node's transform from its position, rotation and scale, worked out as
@@ -1199,6 +1331,15 @@ uniform float surface_weather = 0.0;
 uniform float surface_paint_wear = 0.0;
 uniform float surface_grain = 0.0;
 uniform float surface_coat_roughness = 0.22;
+// Vehicles: how high mud is thrown up the hull (metres above where it stands;
+// a boat's waterline), how ragged its edge is (flung mud 1, still water 0), the
+// wet mud low down and the drier dust carried above it (VehicleMaterials.preset).
+uniform float surface_mud = 0.0;
+uniform float surface_splash = 1.0;
+uniform vec3 surface_mud_col : source_color = vec3(0.30, 0.25, 0.19);
+uniform vec3 surface_dust_col : source_color = vec3(0.55, 0.49, 0.39);
+// Vehicle glass: how far its reflection turns up toward the sky (see below).
+uniform float surface_glaze = 0.0;
 uniform bool use_vcolor = false;
 uniform float vcolor_k = 1.0;  // merged parts: the vertex colour is stored scaled down (Mats.VC_K)
 // paving (Mats.paving): a shell hole or a trench punches through it, as through the roads
@@ -1244,6 +1385,13 @@ void vertex() {
 	if (terrain_bound && !local_space && grime > 0.0) {
 		ground_y = terrain_height(crater_tex, (wpos.xz + crater_half) / (crater_half * 2.0));
 	}
+	if (vehicle_surface) {
+		// (a vehicle is never on the ground map: it carries its own frame. For
+		// one, ground_y is how high this part's pivot sits on the model instead:
+		// its vertex colours' alpha (Mats._lift_groups), or pofs for a part
+		// merged as a node.)
+		ground_y = (1.0 - COLOR.a) * 2.55 + pofs.y;
+	}
 	// Moving through the world must not change camouflage or wear.
 	seed = (vehicle_surface || local_space) ? vec3(0.0) : MODEL_MATRIX[3].xyz;
 	if (local_space) {
@@ -1263,6 +1411,15 @@ void fragment() {
 		}
 	}
 	vec3 an = abs(tn);
+	// A vehicle's height above where it stands, in its own frame, so its dust
+	// and mud ride with it and keep their line however the hull pitches and
+	// rolls: the part's own height on its pivot plus how high that pivot sits
+	// on the model (ground_y, for a vehicle: zero for the hull). A pivot under
+	// a metre is running gear turning on its axle (x): its mud is measured out
+	// from the axle, the rim and tread as low as the ground and the hub higher,
+	// the same all the way round as the wheel turns.
+	vec3 part = tp - pofs;
+	float above = (ground_y > 0.0 && ground_y < 1.0) ? ground_y - length(part.yz) : ground_y + part.y;
 	vec2 uv;
 	if (an.y > an.x && an.y > an.z) { uv = tp.xz; }
 	else if (an.x > an.z) { uv = vec2(tp.z, tp.y); }
@@ -1409,7 +1566,7 @@ void fragment() {
 			float runoff = smoothstep(0.26, 0.35, texture(wear_tex, uv * vec2(4.1,0.42) + off).r);
 			col *= mix(1.0, mix(0.91, 1.02, runoff), 1.0-abs(tn.y));
 			float recess = 1.0 - smoothstep(0.18, 0.48, wear);
-			float dust = smoothstep(0.28, 0.70, wear) * (1.0 - smoothstep(0.2, 1.6, tp.y));
+			float dust = smoothstep(0.28, 0.70, wear) * (1.0 - smoothstep(0.2, 1.6, above));
 			col *= mix(0.85, 1.09, wear);
 			col = mix(col, vec3(0.055,0.041,0.027), recess * 0.22);
 			col = mix(col, vec3(0.19,0.145,0.086), dust * 0.25);
@@ -1647,12 +1804,38 @@ void fragment() {
 	else if (pattern == 21) { col *= mix(1.0, 0.88 + 0.24 * macro, weathering); }
 	else if (pattern != 18 && pattern != 22) { col *= 0.88 + 0.24 * macro; }
 	// grime and dust toward the ground
-	float low = 1.0 - smoothstep(0.0, 0.9, weather_pos.y - ground_y);
-	float gn = tnoise(uv * 2.0 + off);
-	float dirt = low * grime * (0.6 + 0.4 * gn);
-	col = mix(col, vehicle_surface ? vec3(0.12, 0.095, 0.065) : col * 0.62 + vec3(0.05, 0.04, 0.02), dirt);
+	float dirt = 0.0;
+	if (vehicle_surface) {
+		if (grime > 0.0 && surface_mud > 0.0) {
+			// Tracks and tyres throw mud up the lower hull: a wet crust low down,
+			// its edge wandering in lobes and splashes along the side, and above
+			// it a drier, paler dust that thins out higher up and settles most on
+			// whatever faces up. (A boat's still waterline keeps a level edge.)
+			// (one noise read for the splashes; the surface's own relief, h,
+			// breaks them up finer and lets mud fill its recesses first)
+			float blot = tnoise(vec2(tp.x + tp.z, tp.y * 1.4) * 3.4 + 5.3);
+			float fleck = clamp(h, 0.0, 1.0);
+			// how far down into the mud this point is: 1 at the ground, 0 at the line
+			float depth = 1.0 - above / surface_mud + (0.5 - h) * 0.25;
+			float rag = ((blot - 0.5) * 1.8 + (fleck - 0.5) * 0.6) * surface_splash;
+			float from = 0.35 * surface_splash;
+			float mud = smoothstep(from, from + mix(0.06, 0.4, surface_splash), depth + rag) * grime * (0.7 + 0.3 * fleck);
+			float dust = smoothstep(-0.8, 0.2, depth + rag * 0.6) * grime * 0.45
+				* (0.65 + 0.35 * smoothstep(-0.2, 0.7, tn.y));
+			col = mix(col, surface_dust_col * (0.9 + 0.2 * blot), dust);
+			col = mix(col, surface_mud_col * (0.75 + 0.5 * fleck), mud * 0.7);
+			dirt = max(mud, dust);
+			// dried mud is matte, and hides the clear coat and bare metal under it
+			r = mix(r, 0.94, dirt);
+		}
+	} else {
+		float low = 1.0 - smoothstep(0.0, 0.9, weather_pos.y - ground_y);
+		float gn = tnoise(uv * 2.0 + off);
+		dirt = low * grime * (0.6 + 0.4 * gn);
+		col = mix(col, col * 0.62 + vec3(0.05, 0.04, 0.02), dirt);
+	}
 	ALBEDO = col;
-	ROUGHNESS = clamp(r + (macro - 0.5) * (vehicle_surface ? 0.04 : 0.12) + (vehicle_surface ? dirt * 0.15 : 0.0), 0.05, 1.0);
+	ROUGHNESS = clamp(r + (macro - 0.5) * (vehicle_surface ? 0.04 : 0.12), 0.05, 1.0);
 	if ((pattern >= 18 && pattern <= 20 || pattern == 22) && an.y > 0.5) {
 		vec2 puv = wpos.xz / 2.2;
 		if (pattern == 19 || pattern == 20) { puv = uv; }
@@ -1693,7 +1876,7 @@ void fragment() {
 		ROUGHNESS = mix(ROUGHNESS - wet * 0.3, 0.06, pud);
 		SPECULAR = mix(0.3, 0.55, pud);
 	}
-	CLEARCOAT = vehicle_surface ? surface_coat : 0.0;
+	CLEARCOAT = vehicle_surface ? surface_coat * (1.0 - dirt) : 0.0;
 	CLEARCOAT_ROUGHNESS = vehicle_surface ? surface_coat_roughness : 0.22;
 	// lamplight in a window by dusk and night, brighter in some rooms than
 	// others (a hash of where the window is, so a batch keeps each one's)
@@ -1713,6 +1896,14 @@ void fragment() {
 		float det = dot(dpdx, r1);
 		vec3 grad = sign(det) * (dhx * r1 + dhy * r2);
 		NORMAL = normalize(abs(det) * NORMAL - grad * bump * 0.02);
+	}
+	if (vehicle_surface && surface_glaze > 0.0) {
+		// From the commander's height a window mostly mirrors the ground beside
+		// the vehicle, and read as a flat dark panel. Real panes are faintly
+		// curved and laminated, and in games and photographs alike glass reads
+		// by the sky in it: so its reflection leans up toward the sky, and the
+		// dark cab shows through where the eye looks straight in.
+		NORMAL = normalize(NORMAL + (VIEW_MATRIX * vec4(0.0, surface_glaze, 0.0, 0.0)).xyz);
 	}
 	if (rain_wet > 0.0) {
 		// Out in the rain everything takes a film of water (after Lagarde,

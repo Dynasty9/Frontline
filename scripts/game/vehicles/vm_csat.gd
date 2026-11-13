@@ -134,37 +134,12 @@ static func _inset(pts: PackedVector2Array, d: float) -> PackedVector2Array:
 
 
 ## The three-figure tactical number a crew paints on its vehicle: battalion,
-## company, then the vehicle in it (Russian practice, which CSAT follows).
-## It comes from the vehicle's own seed, so two tanks of a kind differ, and
-## the same tank reads the same on every peer.
-static func _tac(seed: int) -> String:
-	var h := absi(seed * 7919 + 1237)
-	return "%d%d%d" % [1 + h % 3, 1 + (h >> 3) % 4, (h >> 6) % 10]
-
-
-## `text` painted `h` tall on a side face of the hull or turret, either side:
-## `rear_bottom`, `front_bottom`, `front_top` and `rear_top` are the right
-## side's face corners (mirrored for the left), `at` where on it the number's
-## centre is (0 to 1 from the rear and from the bottom). It reads from the
-## front on the right and from the back on the left, as seen from that side.
-static func _side_number(k: VehicleModels, p: Node3D, text: String, h: float, rear_bottom: Vector3, front_bottom: Vector3, front_top: Vector3, rear_top: Vector3, at: Vector2, col := Color(0.86, 0.85, 0.8)) -> void:
-	for s in [-1.0, 1.0]:
-		var m := Vector3(s, 1, 1)
-		var rb := rear_bottom * m
-		var fb := front_bottom * m
-		var ft := front_top * m
-		var rt := rear_top * m
-		var c := rb.lerp(fb, at.x).lerp(rt.lerp(ft, at.x), at.y)
-		# as seen from outside, the left of the right side is its rear
-		var across := ((fb - rb) + (ft - rt)).normalized() * (1.0 if s > 0.0 else -1.0)
-		var up := (rt - rb) + (ft - fb)
-		up = (up - across * up.dot(across)).normalized()
-		var out := across.cross(up)
-		var face := VehicleSurface.plane(c + out * 0.006, across, up)
-		# brushed through a stencil in heavy square bars, as hull numbers are,
-		# so they still read from the RTS camera
-		var bars := VehicleMarkings.stroke_quads(VehicleMarkings.digit_strokes(text, h, Vector2.ZERO, "hull"), h * 0.16, h * 0.08)
-		VehicleMarkings.polygons(k, p, bars, face.sample, out, col)
+## company, then the vehicle in it (Russian practice, which CSAT follows),
+## drawn from the vehicle's own seed by VehicleMarkings.tactical_number, so
+## two tanks of a kind differ and the same tank reads the same on every peer.
+## They are painted in heavy stencil bars on the flanks
+## (VehicleMarkings.side_number) in chalked white enamel.
+const TAC := ["123", "1234", "0123456789"]
 
 
 ## XZ outline pairs mirrored to the -x side.
@@ -593,9 +568,10 @@ static func _rwheel(k: VehicleModels, p: Node3D, pos: Vector3, r: float, w: floa
 	return VehicleWheels.road(k, p, pos, r, w, "paint", col)
 
 
-## A toothed drive sprocket spinning about x.
+## A toothed drive sprocket spinning about x: twin toothed rings, as on a
+## T-72 or BMP, the single-pin track's guide horns running between them.
 static func _sprocket(k: VehicleModels, p: Node3D, pos: Vector3, r: float, w: float, col := WHEEL_PAINT) -> Node3D:
-	return VehicleWheels.sprocket(k, p, pos, r, w, "paint", col)
+	return VehicleWheels.sprocket(k, p, pos, r, w, "paint", col, 8, true)
 
 
 
@@ -725,7 +701,7 @@ static func _marid(k: VehicleModels, team: int, seed := 0) -> void:
 	k._team_mark(m, team, Vector3(0, 2.235, 0.85), Vector3(0.7, 0.02, 0.5))
 	# the tactical number low on each upper side, between the exhaust and the
 	# first firing port
-	_side_number(k, m, _tac(seed), 0.18, Vector3(1.45, 1.42, 3.3), Vector3(1.45, 1.42, -2.0), Vector3(1.15, 2.2, -2.0), Vector3(1.15, 2.2, 3.3), Vector2(0.585, 0.23))
+	VehicleMarkings.side_number(k, m, VehicleMarkings.tactical_number(seed, TAC), 0.18, Vector3(1.45, 1.42, 3.3), Vector3(1.45, 1.42, -2.0), Vector3(1.15, 2.2, -2.0), Vector3(1.15, 2.2, 3.3), Vector2(0.585, 0.23))
 	# twin remote weapon stations on one ring: the 12.7 mm on the left, the
 	# 40 mm on the right, the sight head between them
 	var t := k._pivot(m, Vector3(0, 2.2, -0.45))
@@ -808,7 +784,7 @@ static func _stalker(k: VehicleModels, team: int, seed := 0) -> Vector3:
 	VehicleCloth.roll(k, m, Vector3(0, 1.84, 2.95), 0.12, 1.3, Vector3(0, 0, PI / 2), Color(0.36, 0.35, 0.26))
 	k._team_mark(m, team, Vector3(0, 1.735, 3.3), Vector3(0.7, 0.02, 0.4))
 	# the tactical number on each upper side, between the bins and the vision blocks
-	_side_number(k, m, _tac(seed), 0.24, Vector3(1.7, 1.1, 3.5), Vector3(1.7, 1.1, -2.3), Vector3(1.24, 1.72, -2.3), Vector3(1.24, 1.72, 3.5), Vector2(0.61, 0.52))
+	VehicleMarkings.side_number(k, m, VehicleMarkings.tactical_number(seed, TAC), 0.24, Vector3(1.7, 1.1, 3.5), Vector3(1.7, 1.1, -2.3), Vector3(1.24, 1.72, -2.3), Vector3(1.24, 1.72, 3.5), Vector2(0.61, 0.52))
 	return Vector3(0, 1.72, -0.35)
 
 
@@ -1014,7 +990,7 @@ static func _varsuk(k: VehicleModels, team: int, seed := 0) -> void:
 		# antennas at the bustle's back corners
 		_antenna(k, t, Vector3(s * 0.8, 0.76, 2.6), 2.0 if s < 0 else 1.5)
 	# the tactical number on the turret's flanks, under the smoke dischargers
-	_side_number(k, t, _tac(seed), 0.26, Vector3(1.42, 0.06, 0.95), Vector3(1.38, 0.06, -0.95), Vector3(1.22, 0.78, -0.82), Vector3(1.27, 0.78, 0.88), Vector2(0.26, 0.36))
+	VehicleMarkings.side_number(k, t, VehicleMarkings.tactical_number(seed, TAC), 0.26, Vector3(1.42, 0.06, 0.95), Vector3(1.38, 0.06, -0.95), Vector3(1.22, 0.78, -0.82), Vector3(1.27, 0.78, 0.88), Vector2(0.26, 0.36))
 	# stowage on the bustle's back, a wind sensor mast
 	k._bag(t, Vector3(1.6, 0.36, 0.3), Vector3(0, 0.5, 3.02), "canvas", Color(0.33, 0.33, 0.24))
 	# the crew's tarpaulin rolled and strapped across the back of the bustle roof
@@ -1059,7 +1035,7 @@ static func _futura(k: VehicleModels, team: int, seed := 0) -> void:
 		VehicleFittings.grille(k, t, Vector3(s * 0.48, 0.45, 2.86), Vector2(0.5, 0.2), Vector3.ZERO, "gunmetal_w", null, 4)
 		_smoke(k, t, Vector3(s * 1.18, 0.55, 0.6), s, 4, 1.0)
 		_antenna(k, t, Vector3(s * 0.7, 0.75, 1.9), 1.8 if s < 0 else 1.3)
-	_side_number(k, t, _tac(seed), 0.24, Vector3(1.48, 0.06, 1.4), Vector3(1.42, 0.06, -0.75), Vector3(1.14, 0.6, -0.55), Vector3(1.2, 0.6, 1.3), Vector2(0.49, 0.44))
+	VehicleMarkings.side_number(k, t, VehicleMarkings.tactical_number(seed, TAC), 0.24, Vector3(1.48, 0.06, 1.4), Vector3(1.42, 0.06, -0.75), Vector3(1.14, 0.6, -0.55), Vector3(1.2, 0.6, 1.3), Vector2(0.43, 0.44))
 	# sights: the gunner's block, the commander's panoramic head, a remote MG
 	VehicleMounts.sight(k, t, Vector3(-0.42, 0.98, -0.25), Vector3(0.36, 0.26, 0.4), [Rect2(Vector2(0, 0.02), Vector2(0.26, 0.12))], c)
 	VehicleMounts.sight(k, t, Vector3(0.45, 1.25, 0.6), Vector3(0.3, 0.22, 0.3), [Rect2(Vector2(0, 0.01), Vector2(0.18, 0.1))], c, null, Vector3(0.08, 0.1, 0.41))
@@ -1099,7 +1075,7 @@ static func _sochor(k: VehicleModels, team: int, seed := 0) -> void:
 			VehicleDoors.pull(k, t, Vector3(s * 1.497, 1.15, hz), Vector3(s * cos(0.11), sin(0.11), 0), Vector3.BACK, 0.3, 0.014)
 	VehicleCloth.roll(k, t, Vector3(-0.72, 1.41, 2.36), 0.13, 1.0, Vector3(0, 0, PI / 2), Color(0.36, 0.35, 0.26))
 	# the tactical number on the turret's flanks ahead of the crew doors
-	_side_number(k, t, _tac(seed), 0.28, Vector3(1.62, 0.06, 2.75), Vector3(1.62, 0.06, -1.5), Vector3(1.46, 1.28, -1.1), Vector3(1.48, 1.28, 2.62), Vector2(0.776, 0.36))
+	VehicleMarkings.side_number(k, t, VehicleMarkings.tactical_number(seed, TAC), 0.28, Vector3(1.62, 0.06, 2.75), Vector3(1.62, 0.06, -1.5), Vector3(1.46, 1.28, -1.1), Vector3(1.48, 1.28, 2.62), Vector2(0.776, 0.36))
 	VehicleDoors.leaf(k, t, Vector3(1.0, 0.7, 0.04), Vector3(0.45, 0.6, 2.69), c, null, Vector3.ZERO, 2)
 	VehicleDoors.pull(k, t, Vector3(0.0, 0.6, 2.71), Vector3.BACK, Vector3.UP, 0.16)
 	# roof: hatches, the commander's panoramic sight, the remote 12.7 mm
@@ -1236,7 +1212,7 @@ static func _angara(k: VehicleModels, team: int, command: bool, seed := 0) -> vo
 		VehicleFittings.smoke_bank(k, t, Vector3(s * 0.85, 0.84, -0.55), Vector3(0.5, 0.18, 0.34), Vector3(0, s * -0.3, 0), tubes, 0.045, 0.2)
 		_antenna(k, t, Vector3(s * 0.85, 0.74, 1.75), 2.0 if s < 0 else 1.5)
 	# the tactical number high on the casing's flanks, behind the Afghanit housings
-	_side_number(k, t, _tac(seed), 0.26, Vector3(1.45, 0.06, 1.4), Vector3(1.35, 0.06, -1.15), Vector3(1.12, 0.74, -1.0), Vector3(1.2, 0.74, 1.3), Vector2(0.235, 0.62))
+	VehicleMarkings.side_number(k, t, VehicleMarkings.tactical_number(seed, TAC), 0.26, Vector3(1.45, 0.06, 1.4), Vector3(1.35, 0.06, -1.15), Vector3(1.12, 0.74, -1.0), Vector3(1.2, 0.74, 1.3), Vector2(0.235, 0.62))
 	# the gunner's sight (front left) and the commander's panoramic sight
 	VehicleMounts.sight(k, t, Vector3(-0.5, 1.0, -0.2), Vector3(0.44, 0.34, 0.5), [Rect2(Vector2(0, 0.03), Vector2(0.3, 0.16))], c)
 	VehicleMounts.sight(k, t, Vector3(0.55, 1.4, 0.5), Vector3(0.4, 0.3, 0.4), [Rect2(Vector2(0, 0.02), Vector2(0.26, 0.14))], c, null, Vector3(0.12, 0.14, 0.54))

@@ -82,6 +82,8 @@ static func main(k: VehicleModels, p: Node3D, pos: Vector3, nb: int, r: float, c
 		blur.mesh = disc
 		blur.material_override = VehicleModels._blur_mat()
 		Mats.set_inst(blur, &"blade_count", float(nb))
+		# (the disc in the blades' own paint)
+		Mats.set_inst(blur, &"blade_tint", bc)
 		blur.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		blur.position = Vector3(0, 0.06, 0)
 		blur.visible = false

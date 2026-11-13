@@ -19,11 +19,11 @@ const BAG := Color(0.38, 0.37, 0.27)  # canvas bags and covers
 static func build(k: VehicleModels, key: String, team: int, seed: int) -> bool:
 	match key:
 		"hunter":
-			_hunter(k, team, "")
+			_hunter(k, team, "", seed)
 		"hunter_hmg":
-			_hunter(k, team, "hmg")
+			_hunter(k, team, "hmg", seed)
 		"hunter_gmg":
-			_hunter(k, team, "gmg")
+			_hunter(k, team, "gmg", seed)
 		"prowler":
 			_prowler(k, team, "")
 		"prowler_hmg":
@@ -31,37 +31,37 @@ static func build(k: VehicleModels, key: String, team: int, seed: int) -> bool:
 		"prowler_at":
 			_prowler(k, team, "at")
 		"marshall":
-			_marshall(k, team)
+			_marshall(k, team, seed)
 		"rhino":
-			_rhino(k, team, false)
+			_rhino(k, team, false, seed)
 		"rhino_up":
-			_rhino(k, team, true)
+			_rhino(k, team, true, seed)
 		"slammer":
-			_slammer(k, team, false)
+			_slammer(k, team, false, seed)
 		"slammer_up":
-			_slammer(k, team, true)
+			_slammer(k, team, true, seed)
 		"scorcher":
-			_scorcher(k, team)
+			_scorcher(k, team, seed)
 		"sandstorm":
 			_sandstorm(k, team)
 		"panther":
-			_panther(k, team)
+			_panther(k, team, seed)
 		"bobcat":
-			_bobcat(k, team)
+			_bobcat(k, team, seed)
 		"cheetah":
-			_cheetah(k, team)
+			_cheetah(k, team, seed)
 		"hemtt":
-			_hemtt(k, team, "troop")
+			_hemtt(k, team, "troop", seed)
 		"hemtt_cargo":
-			_hemtt(k, team, "cargo")
+			_hemtt(k, team, "cargo", seed)
 		"hemtt_ammo":
-			_hemtt(k, team, "ammo")
+			_hemtt(k, team, "ammo", seed)
 		"hemtt_repair":
-			_hemtt(k, team, "repair")
+			_hemtt(k, team, "repair", seed)
 		"hemtt_medical":
-			_hemtt(k, team, "medical")
+			_hemtt(k, team, "medical", seed)
 		"hemtt_fuel":
-			_hemtt(k, team, "fuel")
+			_hemtt(k, team, "fuel", seed)
 		"stomper":
 			_stomper(k, team)
 		_:
@@ -159,21 +159,21 @@ static func _xy_module(k: VehicleModels, p: Node3D, s: float, z: float, l: float
 const ARMOR_GLASS := Color(0.08, 0.13, 0.13)
 
 
-## Stencil paint: a faded white, as hand-painted tactical numbers weather.
-const STENCIL := Color(0.74, 0.73, 0.66)
-
-
 ## A tactical number stencilled on a flat face: `text` h tall, centred on
 ## `center` (a point on the face), reading along `along` as seen from outside,
-## `out` the face's outward normal (VehicleMarkings: gone with the paint on a
-## wreck). Crews paint these big on turret and hull sides so a commander can
-## tell his vehicles apart; from the RTS camera they're the detail that reads.
+## `out` the face's outward normal (VehicleMarkings.face_text: gone with the
+## paint on a wreck). Crews paint these big on turret and hull sides so a
+## commander can tell his vehicles apart; from the RTS camera they're the
+## detail that reads. NATO's are CARC sand in heavy stencil bars.
 static func _stencil(k: VehicleModels, p: Node3D, text: String, h: float, center: Vector3, along: Vector3, out: Vector3) -> void:
-	var n := out.normalized()
-	var x := (along - n * along.dot(n)).normalized()
-	var y := n.cross(x)
-	var o := center + n * 0.004
-	VehicleMarkings.digits(k, p, text, h, func(q: Vector2) -> Vector3: return o + x * q.x + y * q.y, n, STENCIL)
+	VehicleMarkings.face_text(k, p, text, h, center, along, out, VehicleMarkings.STENCIL_SAND)
+
+
+## The vehicle's tactical number from its seed (VehicleMarkings.tactical_number):
+## NATO numbers a vehicle by its company letter (when `company`), its platoon
+## and its place in the platoon, as "B12".
+static func _tac(seed: int, company := true) -> String:
+	return VehicleMarkings.tactical_number(seed, ["ABCD", "123", "1234"] if company else ["123", "1234"], 3)
 
 
 ## Exhaust soot, streaked back along a face from an outlet by the slipstream:
@@ -411,7 +411,7 @@ static func _rcws(k: VehicleModels, p: Node3D, pos: Vector3, gun: String, cam: S
 ## heavy doors and small thick windows, a short bonnet with a big grille, the
 ## open cargo bed behind and the spare wheel on the back. arm: "", "hmg",
 ## "gmg" (a CROWS remote weapon station on the roof).
-static func _hunter(k: VehicleModels, team: int, arm: String) -> void:
+static func _hunter(k: VehicleModels, team: int, arm: String, seed := 0) -> void:
 	var cam := _cam(team)
 	var m := k.root
 	var fz := -1.9
@@ -449,6 +449,10 @@ static func _hunter(k: VehicleModels, team: int, arm: String) -> void:
 	VehicleEquipment.winch(k, m, Vector3(0, 1.0, -3.15), Vector3(0.6, 0.2, 0.14))
 	for s in [-1.0, 1.0]:
 		_shackle(k, m, Vector3(s * 0.62, 0.94, -3.08))
+	if team >= 0:
+		# the bumper code on the bumper's ends, outboard of the shackles (the
+		# spare wheel hides the back of the bed)
+		VehicleMarkings.bumper(k, m, VehicleMarkings.bumper_code(seed, VehicleMarkings.US_INFANTRY + VehicleMarkings.US_CAVALRY), 0.08, 0.89, 1.0, -3.15, Vector3.FORWARD, 0.29)
 	# --- the crew capsule: vertical lower sides, the upper sides leaning in,
 	# a lightly raked windscreen
 	var lo := [-1.2, -0.98, 1.2, -0.98, 1.2, 1.62, -1.2, 1.62]
@@ -646,7 +650,7 @@ static func _axles(k: VehicleModels, m: Node3D, x: float, zs: Array, r: float, w
 ## big wheels, the long raked glacis with the trim vane folded on it, the
 ## driver forward left beside the engine, the troop compartment and its ramp
 ## at the back, the two-man turret mid-hull.
-static func _marshall(k: VehicleModels, team: int) -> void:
+static func _marshall(k: VehicleModels, team: int, seed := 0) -> void:
 	var cam := _cam(team)
 	var m := k.root
 	var wr := 0.6
@@ -742,7 +746,7 @@ static func _marshall(k: VehicleModels, team: int) -> void:
 		k._box(t, Vector3(0.06, 0.3, 0.9), Vector3(s * 1.0, 0.36, 0.55), cam, null, Vector3(0, 0, s * 0.18))
 		if team >= 0:
 			# the tactical code on the turret's side plates
-			_stencil(k, t, "A12", 0.18, Vector3(s * 1.0295, 0.3654, 0.55), Vector3(0, 0, -s), Vector3(s * 0.984, 0.179, 0))
+			_stencil(k, t, _tac(seed), 0.18, Vector3(s * 1.0295, 0.3654, 0.55), Vector3(0, 0, -s), Vector3(s * 0.984, 0.179, 0))
 	k._box(t, Vector3(1.5, 0.05, 0.4), Vector3(0, 0.22, 1.72), "gunmetal_w")
 	k._box(t, Vector3(1.5, 0.3, 0.04), Vector3(0, 0.38, 1.92), "gunmetal_w")
 	k._bag(t, Vector3(0.7, 0.32, 0.36), Vector3(-0.35, 0.42, 1.72), "canvas", BAG, Vector3(0, 0.08, 0))
@@ -754,7 +758,7 @@ static func _marshall(k: VehicleModels, team: int) -> void:
 ## big turret set mid-rear with its long bustle and the long 120 mm with a
 ## fume extractor. up: reactive armour on the nose and turret, slat cages
 ## along the sides and over the back, and a remote .50 on the turret roof.
-static func _rhino(k: VehicleModels, team: int, up: bool) -> void:
+static func _rhino(k: VehicleModels, team: int, up: bool, seed := 0) -> void:
 	var cam := _cam(team)
 	var m := k.root
 	var wr := 0.6
@@ -827,7 +831,7 @@ static func _rhino(k: VehicleModels, team: int, up: bool) -> void:
 		VehicleEquipment.storage(k, t, Vector3(s * 1.18, 0.42, 1.35), Vector3(0.24, 0.42, 1.0), cam, null, Vector3(0, 0, s * 0.1))
 		if not up and team >= 0:
 			# the turret number on its flank ahead of the bins
-			_stencil(k, t, "31", 0.24, Vector3(s * 1.08, 0.45, 0.25), Vector3(0, 0, -s), Vector3(s * 0.971, 0.239, 0))
+			_stencil(k, t, _tac(seed, false), 0.24, Vector3(s * 1.08, 0.45, 0.25), Vector3(0, 0, -s), Vector3(s * 0.971, 0.239, 0))
 	k._box(t, Vector3(2.0, 0.05, 0.42), Vector3(0, 0.3, 2.48), "gunmetal_w")
 	k._box(t, Vector3(2.0, 0.34, 0.04), Vector3(0, 0.48, 2.68), "gunmetal_w")
 	k._bag(t, Vector3(0.8, 0.36, 0.38), Vector3(0.45, 0.52, 2.48), "canvas", BAG, Vector3(0, -0.1, 0))
@@ -998,7 +1002,7 @@ static func _mk_hull(k: VehicleModels, team: int, cam: String, era: bool) -> voi
 ## ball-and-chain curtain hanging under it, sights, cupola, smoke dischargers,
 ## 120 mm with its thermal sleeve and fume extractor. up: reactive armour on
 ## the turret sides and a remote .50 on the roof.
-static func _mk_turret(k: VehicleModels, team: int, cam: String, up: bool) -> void:
+static func _mk_turret(k: VehicleModels, team: int, cam: String, up: bool, seed := 0) -> void:
 	var m := k.root
 	var t := k._pivot(m, Vector3(0, 1.9, 0.75))
 	k.turret = t
@@ -1082,7 +1086,7 @@ static func _mk_turret(k: VehicleModels, team: int, cam: String, up: bool) -> vo
 		_xy_module(k, t, s, 0.3, 1.5, Vector2(1.6, 0.04), Vector2(1.42, 0.78), 0.08, cam, Vector2i(4, 2), 0.0)
 		if not up and team >= 0:
 			# the tactical number on the module, above its channel
-			_stencil(k, t, "21", 0.22, Vector3(s * 1.551, 0.579, 0.3), Vector3(0, 0, -s), Vector3(s * 0.972, 0.236, 0))
+			_stencil(k, t, _tac(seed, false), 0.22, Vector3(s * 1.551, 0.579, 0.3), Vector3(0, 0, -s), Vector3(s * 0.972, 0.236, 0))
 		_xy(k, t, s, 0.3, 1.52, Vector2(1.52, 0.38), Vector2(1.51, 0.44), 0.06, 0.09, "gunmetal_w", null, false)
 		VehicleMounts.basket(k, t, Vector3(s * 1.66, 0.425, 2.05), Vector3(0.3, .32, 1.3))
 		k._bag(t, Vector3(0.24, 0.34, 1.2), Vector3(s * 1.64, 0.62, 2.05), "canvas", BAG if s < 0 else STOW)
@@ -1105,16 +1109,16 @@ static func _chain(k: VehicleModels, p: Node3D, top: Vector3) -> void:
 
 
 ## M2A1 Slammer: the Merkava IV. up: the urban package (ERA, remote .50).
-static func _slammer(k: VehicleModels, team: int, up: bool) -> void:
+static func _slammer(k: VehicleModels, team: int, up: bool, seed := 0) -> void:
 	var cam := _cam(team)
 	_mk_hull(k, team, cam, up)
-	_mk_turret(k, team, cam, up)
+	_mk_turret(k, team, cam, up, seed)
 
 
 ## M4 Scorcher: the Merkava IV hull under a tall boxy M109A7-style turret set
 ## aft, the long 155 mm on k.elev (pivot at the trunnion, raises to fire), a
 ## travel lock on the glacis, the commander's remote .50 on the roof.
-static func _scorcher(k: VehicleModels, team: int) -> void:
+static func _scorcher(k: VehicleModels, team: int, seed := 0) -> void:
 	var cam := _cam(team)
 	var m := k.root
 	_mk_hull(k, team, cam, false)
@@ -1136,7 +1140,7 @@ static func _scorcher(k: VehicleModels, team: int) -> void:
 	_weld(k, t, _loop(b0, 0.7), cam)
 	if team >= 0:
 		for s in [-1.0, 1.0]:
-			_stencil(k, t, "12", 0.26, Vector3(s * 1.541, 0.98, 2.0), Vector3(0, 0, -s), Vector3(s * 0.991, 0.137, 0))
+			_stencil(k, t, _tac(seed, false), 0.26, Vector3(s * 1.541, 0.98, 2.0), Vector3(0, 0, -s), Vector3(s * 0.991, 0.137, 0))
 	# side doors, roof hatches, the commander's cupola with a remote .50
 	for s in [-1.0, 1.0]:
 		# each door's face turned out of its own side, the grab bar near its front
@@ -1232,7 +1236,7 @@ static func _sandstorm(k: VehicleModels, team: int) -> void:
 ## the big hydraulic ramp at the back. Its roof is at y 2.32. cupola: the
 ## commander's cupola and the roof hatches; stow: the stowage rack at the back
 ## of the roof (leave them off where a turret or a crane sits).
-static func _namer_hull(k: VehicleModels, team: int, cam: String, cupola := true, stow := true) -> void:
+static func _namer_hull(k: VehicleModels, team: int, cam: String, cupola := true, stow := true, seed := 0) -> void:
 	var m := k.root
 	_mk_running(k, m)
 	var roof := 2.32
@@ -1288,7 +1292,7 @@ static func _namer_hull(k: VehicleModels, team: int, cam: String, cupola := true
 			_xy_module(k, m, s, z, 0.8, Vector2(1.78, 1.24), Vector2(1.76, 1.8), 0.1, cam, Vector2i(3, 2))
 			var face := _xy_module(k, m, s, z, 0.8, Vector2(1.76, 1.8), Vector2(1.66, 2.32), 0.1, cam, Vector2i(3, 2))
 			if i == 1 and team >= 0:
-				_stencil(k, m, "34", 0.22, face, Vector3(0, 0, -s), Vector3(s * 0.982, 0.189, 0))
+				_stencil(k, m, _tac(seed, false), 0.22, face, Vector3(0, 0, -s), Vector3(s * 0.982, 0.189, 0))
 		VehicleFittings.tow_cable(k, m, [Vector3(s * 1.8, 1.4, -2.9), Vector3(s * 1.8, 1.4, -0.6)], 0.028, 0.04)
 		_taillight(k, m, Vector3(s * 1.4, 1.6, 3.8))
 		_shackle(k, m, Vector3(s * 0.85, 0.85, 3.6), 1.0)
@@ -1326,19 +1330,19 @@ static func _namer_hull(k: VehicleModels, team: int, cam: String, cupola := true
 
 ## IFV-6c Panther: the Namer with a remote station carrying a 12.7 mm and a
 ## 40 mm grenade machine gun.
-static func _panther(k: VehicleModels, team: int) -> void:
+static func _panther(k: VehicleModels, team: int, seed := 0) -> void:
 	var cam := _cam(team)
-	_namer_hull(k, team, cam)
+	_namer_hull(k, team, cam, true, true, seed)
 	_rcws(k, k.root, Vector3(-0.5, 2.32, -0.05), "both", cam, 1.15)
 
 
 ## CRV-6e Bobcat: the Namer as an engineering / recovery vehicle: a dozer
 ## blade on push arms across the nose, the recovery crane's boom folded along
 ## the roof, its winch, tools, and a remote .50.
-static func _bobcat(k: VehicleModels, team: int) -> void:
+static func _bobcat(k: VehicleModels, team: int, seed := 0) -> void:
 	var cam := _cam(team)
 	var m := k.root
-	_namer_hull(k, team, cam, true, false)
+	_namer_hull(k, team, cam, true, false, seed)
 	# the dozer blade, raised for travel: a curved mouldboard of three facets,
 	# its cutting edge, the push arms and the lifting rams
 	var bz := -4.32
@@ -1374,10 +1378,10 @@ static func _bobcat(k: VehicleModels, team: int) -> void:
 ## IFV-6a Cheetah: the Namer under a Marksman-style twin 35 mm turret: a large
 ## box with a gun on each side, the search radar on its mast at the back, the
 ## tracking radar in front, two four-round missile boxes.
-static func _cheetah(k: VehicleModels, team: int) -> void:
+static func _cheetah(k: VehicleModels, team: int, seed := 0) -> void:
 	var cam := _cam(team)
 	var m := k.root
-	_namer_hull(k, team, cam, false, false)
+	_namer_hull(k, team, cam, false, false, seed)
 	var t := k._pivot(m, Vector3(0, 2.32, 0.95))
 	k.turret = t
 	VehicleMounts.turret_ring(k, t, Vector3(0, 0.05, 0), 1.15, 1.2, 0.1, "gunmetal_w", null, 20)
@@ -1567,12 +1571,19 @@ static func _hemtt_tail(k: VehicleModels, paint: Color, z1: float) -> void:
 ## (crates and pallets), "ammo" (ammunition pallets and a loading crane),
 ## "repair" (a workshop box), "medical" (an ambulance box with red crosses),
 ## "fuel" (a tanker).
-static func _hemtt(k: VehicleModels, team: int, body: String) -> void:
+static func _hemtt(k: VehicleModels, team: int, body: String, seed := 0) -> void:
 	var m := k.root
 	var paint := Color(0.3, 0.32, 0.23) if team != 1 else Color(0.46, 0.42, 0.32)
 	var cam := "camo_tank" if team != 1 else "camo_tank_rebel"
 	_hemtt_chassis(k, team, paint, true)
 	_hemtt_cab_detail(k, paint)
+	if team >= 0:
+		# the bumper code on the front bumper either side of the pintle, and on
+		# the back one's (but where the ambulance's wide step covers it)
+		var code := VehicleMarkings.bumper_code(seed, VehicleMarkings.US_ARMOR + VehicleMarkings.US_INFANTRY)
+		VehicleMarkings.bumper(k, m, code, 0.08, 0.33, 0.97, -5.26, Vector3.FORWARD, 0.28)
+		if body != "medical":
+			VehicleMarkings.bumper(k, m, code, 0.07, 0.32, 0.9, 5.19, Vector3.BACK, 0.26)
 	match body:
 		"troop", "cargo", "ammo":
 			# the deck on its frame with its drop sides, six stake posts a side,

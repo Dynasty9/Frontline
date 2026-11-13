@@ -109,6 +109,13 @@ static func _door(k: VehicleModels, p: Node3D, _key: String, st: Array, z0: floa
 	VehicleDoors.closed(k, p, surface, PackedVector2Array([Vector2(0, 0), Vector2(1, 0), Vector2(1, 1), Vector2(0, 1)]), [Vector2(0.08, 0.2), Vector2(0.08, 0.8)], Vector2(0.85, 0.55), AIR, col.lightened(0.12), "light", 2)
 
 
+## Gun gas or exhaust soot streaking `length` aft from o on the skin facing n
+## (`skin` takes a point onto it), `width` at its broadest: the shared
+## VehicleAircraft.soot, the skin's own paint `col` only darker.
+static func _soot(k: VehicleModels, p: Node3D, o: Vector3, n: Vector3, skin: Callable, length: float, width: float, col: Color) -> void:
+	VehicleAircraft.paint(k, p, VehicleAircraft.face(o, n, Vector3.BACK, skin), VehicleAircraft.soot(length, width, AIR, col), AIR)
+
+
 ## A landing-gear tyre and hub (not in k.wheels: those are the propellers).
 static func _tyre(k: VehicleModels, p: Node3D, pos: Vector3, r: float, w: float) -> void:
 	k._cyl(p, r * 0.94, r * 0.94, w, pos, Vector3(0, 0, PI / 2), "rubber", null, 22)
@@ -519,7 +526,10 @@ static func _t56(k: VehicleModels, m: Node3D, key: String, nx: float, le: Vector
 		var ec := Vector3(x + s * 0.5, yt - 0.5, z0 + cw - 0.3)
 		var eh := Vector3(s * sin(0.25), 0.0, cos(0.25)) * 0.25
 		VehicleAircraft.turbine_exhaust(k, m, ec - eh, ec + eh, 0.25, 0.22, "gunmetal_w", c.darkened(0.5))
-		k._box(m, Vector3(0.02, 0.26, 1.7), Vector3(x + s * 0.4, yt - 0.4, z0 + cw + 0.85), "paint", Color(0.16, 0.16, 0.16), Vector3(0, s * 0.18, 0), false)
+		var side: Array = []
+		for q: Array in nst:
+			side.append(_shift(q, x))
+		_soot(k, m, Vector3(x + s * 0.5, yt - 0.38, z0 + cw + 0.02), Vector3(s, 0, 0), VmPlane.side_skin(side, s), 2.0, 0.6, c)
 
 
 ## Station s moved out to x.
@@ -569,6 +579,12 @@ static func _ac130_guns(k: VehicleModels, m: Node3D, st: Array, c: Color) -> voi
 	VehicleWeapons.muzzle_brake(k, m, mb - dn * 0.25, mb + dn * 0.25, Vector2(0.4, 0.32), "box", "gunmetal_w", null, 0.1)
 	k.gun_tip = k._tip(m, mb + dn * 0.25)
 	k.weapon_tips["ac105"] = k.gun_tip
+	# Gun gas: each gun's soot streaked aft from its port along the side, the
+	# 25 mm's above the sponson, the 105's (with the 40's beside it) back over
+	# the upswept tail, the worst of a gunship's weathering
+	var port := VmPlane.side_skin(st, -1.0)
+	_soot(k, m, Vector3(-2.15, 1.82, -7.42), Vector3.LEFT, port, 2.6, 0.72, c)
+	_soot(k, m, Vector3(-2.15, 2.25, 3.62), Vector3.LEFT, port, 4.6, 1.5, c)
 	# the AN/AAQ-117 infrared turret under the nose, the ALLTV turret in the
 	# front of the left sponson: balls on their necks, the windows turned out
 	# to port and down at the target the guns train on
@@ -702,7 +718,28 @@ static func _blackfish(k: VehicleModels, team: int, armed: bool) -> void:
 	VmPlane.wing_marks(k, m, team, ws, 6.6, 1.15)
 	for s: float in [-1.0, 1.0]:
 		k._team_mark(m, team, Vector3(s * (_half_w(VmPlane.st_at(st, 7.0), 3.4) + 0.01), 3.4, 7.0), Vector3(0.02, 0.8, 0.9))
+	if not olive:
+		_bf_marks(k, m, st)
 	_bf_gear(k, g, c)
+
+
+## The Coalition Blackfish's low-visibility markings, black as on the
+## AC-130: the outlined star-and-bar on the flanks ahead of the tail, the
+## serial and fiscal year on the outer faces of both fins.
+static func _bf_marks(k: VehicleModels, m: Node3D, st: Array) -> void:
+	var ins := _insignia_tris(0.075)
+	var fin := [[Vector3(3.76, 3.0, 9.55), 2.05, 0.2], [Vector3(3.95, 4.45, 10.1), 2.15, 0.22], [Vector3(4.3, 6.85, 11.35), 1.4, 0.14]]
+	for s: float in [-1.0, 1.0]:
+		var sfx := "L" if s < 0.0 else ""
+		_decal(k, m, "gs_bf_ins" + sfx, ins, 0.36, 0, [st, 5.55, 3.25, s], "plain_dark", MARK)
+		var fs: Array = []
+		for q: Array in fin:
+			var le: Vector3 = q[0]
+			fs.append([Vector3(s * le.x, le.y, le.z), q[1], q[2]])
+		# (on the fin below the stabiliser: the formation light runs across
+		# the upper fin)
+		_decal(k, m, "gs_bf_tn1" + sfx, _text_tris("0071", 0.34), 1.0, 2, [fs, 10.42, 3.68, s], "plain_dark", MARK)
+		_decal(k, m, "gs_bf_tn0" + sfx, _text_tris("AF 21", 0.17), 1.0, 2, [fs, 10.3, 3.22, s], "plain_dark", MARK)
 
 
 ## The Blackfish's flight deck: four big windscreen panes and their frames,
@@ -824,6 +861,10 @@ static func _bf_guns(k: VehicleModels, m: Node3D, st: Array, c: Color) -> void:
 	VehicleWeapons.rotary(k, m, g20, g20 + dn * 1.55, 6, 0.075, 0.02, [0.6 / 1.55, 1.4 / 1.55], "gunmetal_w", PI / 2)
 	k.mg_tip = k._tip(m, g20 + dn * 1.6)
 	k.weapon_tips["ac25"] = k.mg_tip
+	# gun gas streaked aft from the 40 mm's blister and the big mount
+	var port := VmPlane.side_skin(st, -1.0)
+	_soot(k, m, Vector3(-x40, y40, z40 + 0.72), Vector3.LEFT, port, 3.0, 0.55, c)
+	_soot(k, m, Vector3(-xg, yg - 0.15, zg + 1.02), Vector3.LEFT, port, 4.2, 1.1, c)
 	# the gunners' second sensor turret, its window looking out to port
 	VehicleEquipment.sensor(k, m, Vector3(-1.45, 1.05, -8.3), Vector3.ONE * 0.6, "paint", Color(0.46, 0.47, 0.48), "ball", Vector3.ZERO, 1, Vector3(0, PI / 2, 0))
 
