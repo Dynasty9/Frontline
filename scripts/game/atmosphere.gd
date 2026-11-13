@@ -523,9 +523,9 @@ const TERRAIN_MATERIALS := ["rock_face_03", "aerial_rocks_02", "aerial_grass_roc
 ## After the shore gravel (layer 5): dry turf (6), a 90 m drone survey of grazed
 ## grassland (7) and rutted soil (8), all in the same two samplers.
 const MEADOW_MATERIALS := ["grass_ground", "rocky_terrain_02", "dirt_aerial_02"]
-## Then rain-cut gullies on a rock face (9), an erosion bake of our own
-## (tools/bake_alpine_assets.py eroded_face).
-const DETAIL_MATERIALS := ["eroded_face"]
+## Rain-cut gullies (9) and a close 1.3 m soil scan for excavated cuts (10).
+## The gullies are baked by tools/bake_alpine_assets.py eroded_face.
+const DETAIL_MATERIALS := ["eroded_face", "brown_mud"]
 static var _material_arrays: Array[Texture2DArray] = []
 
 
@@ -608,7 +608,6 @@ func _build_ground() -> void:
 				add_child(mi)
 	trench_net = TrenchNet.new(world)
 	add_child(trench_net)
-	trench_net.set_detail(detail_tex)
 	road_mat = ShaderMaterial.new()
 	road_mat.shader = CloudShadow.make(Mats.code(MapDims.shader(ROAD_SHADER.replace("// STREET_SURFACE", Mats.ASPHALT_SHADER))))
 	road_mat.set_shader_parameter("detail_tex", detail_tex)

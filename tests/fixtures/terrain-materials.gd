@@ -46,6 +46,8 @@ func _ready() -> void:
 		await check_road_surfaces()
 		await check_ground_grime()
 		await check_shrub_leaves()
+		await check_trench_vegetation()
+		await check_trench_horizons()
 		await check_tree_leaves()
 		await check_batched_tints()
 	print("TERRAIN_MATERIALS passed")
@@ -648,3 +650,99 @@ void fragment() {
 			assert(maxf(pixel.r, pixel.g) < 0.01, "Cloud noise must remain continuous across neighboring grid cells: %s" % pixel)
 	view.free()
 	print("TERRAIN_MATERIALS native cloud continuity passed")
+
+
+func check_trench_vegetation() -> void:
+	var view := SubViewport.new()
+	view.size = Vector2i(32, 32)
+	view.own_world_3d = true
+	view.transparent_bg = true
+	view.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	add_child(view)
+	var camera := Camera3D.new()
+	camera.projection = Camera3D.PROJECTION_ORTHOGONAL
+	camera.size = 2.0
+	view.add_child(camera)
+	var mesh := MeshInstance3D.new()
+	mesh.mesh = PlaneMesh.new()
+	view.add_child(mesh)
+	var size := int(MapDims.SIZE * TrenchNet.RES)
+	var mid := size >> 1
+	var cut := Image.create(size, size, false, Image.FORMAT_R8)
+	cut.fill_rect(Rect2i(mid - 2, mid - 32, 4, 64), Color.WHITE)
+	var cut_texture := ImageTexture.create_from_image(cut)
+	var ground := Image.create(MapDims.N, MapDims.N, false, Image.FORMAT_RGF)
+	var terrain := TerrainTexture.new(ground)
+	var leaf := Image.create(2, 2, false, Image.FORMAT_RGBA8)
+	leaf.fill(Color.WHITE)
+	for code in [Grass.GRASS_SHADER, Grass.BUSH_SHADER]:
+		var material := ShaderMaterial.new()
+		var shader := Shader.new()
+		shader.code = CloudShadow.shader(MapDims.shader(code.replace("render_mode cull_disabled, specular_disabled;", "render_mode unshaded, cull_disabled;").replace("render_mode specular_disabled, cull_disabled;", "render_mode unshaded, cull_disabled;")), CloudShadow.FOLD)
+		material.shader = shader
+		material.set_shader_parameter("trench_mask", cut_texture)
+		material.set_shader_parameter("deform_tex", terrain.texture)
+		material.set_shader_parameter("leaf_texture", ImageTexture.create_from_image(leaf))
+		material.set_shader_parameter("wind", 0.0)
+		mesh.material_override = material
+		for x in [0.0, 1.1, 3.0]:
+			mesh.position.x = x
+			camera.position = Vector3(x, 5, 0)
+			camera.look_at(Vector3(x, 0, 0), Vector3.FORWARD)
+			for frame in 3:
+				await RenderingServer.frame_post_draw
+			var visible := view.get_texture().get_image().get_pixel(16, 16).a > 0.5
+			assert(visible == (x > 2.0), "Plants clear the cut and its buried rim, while undisturbed ground keeps its vegetation")
+	view.queue_free()
+	print("TERRAIN_MATERIALS trench vegetation clearance passed")
+
+
+func check_trench_horizons() -> void:
+	var view := SubViewport.new()
+	view.size = Vector2i(64, 64)
+	view.own_world_3d = true
+	view.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	add_child(view)
+	var camera := Camera3D.new()
+	camera.projection = Camera3D.PROJECTION_ORTHOGONAL
+	camera.size = 2.0
+	view.add_child(camera)
+	camera.position = Vector3(0, 2, 0)
+	camera.look_at(Vector3.ZERO, Vector3.FORWARD)
+	var mesh := MeshInstance3D.new()
+	mesh.mesh = PlaneMesh.new()
+	view.add_child(mesh)
+	var shader := Shader.new()
+	shader.code = """
+shader_type spatial;
+render_mode unshaded;
+#include "res://scripts/game/trench_earth.gdshaderinc"
+uniform float test_depth;
+uniform float test_wet;
+void fragment() {
+	vec3 col; vec4 surface;
+	earth_material(UV, vec3(UV.x * 3.0, 0.0, UV.y * 3.0), test_depth, test_wet, col, surface);
+	ALBEDO = earth_output(col);
+}
+"""
+	var material := ShaderMaterial.new()
+	material.shader = shader
+	TrenchNet._bind_earth(material)
+	mesh.material_override = material
+	var light: Array[float] = []
+	for sample in [Vector2(0.1, 0.0), Vector2(0.8, 0.0), Vector2(0.8, 1.0)]:
+		material.set_shader_parameter("test_depth", sample.x)
+		material.set_shader_parameter("test_wet", sample.y)
+		for frame in 3:
+			await RenderingServer.frame_post_draw
+		var shot := view.get_texture().get_image()
+		var total := 0.0
+		for y in range(8, 56, 4):
+			for x in range(8, 56, 4):
+				var col := shot.get_pixel(x, y).srgb_to_linear()
+				total += (col.r + col.g + col.b) / 3.0
+		light.append(total / 144.0)
+	assert(light[0] > 0.001 and light[1] > light[0] * 1.3, "The upper organic horizon must remain visibly darker than exposed subsoil: %s" % [light])
+	assert(light[2] < light[1] * 0.7, "Wet exposed soil darkens rather than bleaching out: %s" % [light])
+	view.free()
+	print("TERRAIN_MATERIALS trench horizons and wetness passed ", light)

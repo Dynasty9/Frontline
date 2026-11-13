@@ -47,6 +47,8 @@ func _ready() -> void:
 	berm_mat = _mat(BERM_SHADER)
 	floor_mat = _mat(FLOOR_SHADER)
 	board_mat = _mat(BOARD_SHADER)
+	board_mat.set_shader_parameter("wood_color", load("res://assets/town/weathered_planks_color.jpg"))
+	board_mat.set_shader_parameter("wood_surface", load("res://assets/town/weathered_planks_surface.png"))
 	for material in [wall_mat, berm_mat, floor_mat]:
 		_bind_earth(material)
 
@@ -60,11 +62,6 @@ func _ready() -> void:
 	floor_mi.position = Vector3.ZERO
 	floor_mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	floor_mi.visible = false
-
-
-func set_detail(t: Texture2D) -> void:
-	for m in [wall_mat, berm_mat, floor_mat, board_mat]:
-		m.set_shader_parameter("detail_tex", t)
 
 
 func _mat(code: String) -> ShaderMaterial:
@@ -479,15 +476,58 @@ func _build_meshes(tiles: Dictionary, segs: Array) -> void:
 			for j in 4:
 				q[j].y = world.terrain.landform.height(q[j]) - _draw_depth(q[j], -0.1) + minf(0.15, _draw_depth(q[j], -0.1) * 0.125)
 			var uv := [Vector2(i * 0.32, 0), Vector2(i * 0.32 + 0.28, 0), Vector2(i * 0.32 + 0.28, 1), Vector2(i * 0.32, 1)]
-			dst.set_normal(Vector3.UP)
-			for k in [0, 2, 1, 0, 3, 2]:
-				dst.set_uv(uv[k])
-				dst.add_vertex(q[k])
+			dst.set_color(Color((wear + 1.0) * 0.5, 1, 1))
+			_board(dst, q, uv, 0.045)
 			board_count += 1
+		# Bearers carry the slats above drainage mud, rather than leaving them suspended.
+		for side in [-1.0, 1.0]:
+			for i in ceili(l):
+				var p: Vector3 = a + d * float(i) + sd.normalized() * side * 0.2
+				var span := minf(1.0, l - float(i))
+				var width := sd.normalized() * 0.035
+				var q := [p + width, p + d * span + width, p + d * span - width, p - width]
+				for j in 4:
+					q[j].y = world.terrain.landform.height(q[j]) - _draw_depth(q[j], -0.1) + minf(0.105, _draw_depth(q[j], -0.1) * 0.0875)
+				dst.set_color(Color(0.2, 1, 1))
+				_board(dst, q, [Vector2(0.02, 0), Vector2(0.02, span), Vector2(0.29, span), Vector2(0.29, 0)], 0.09)
 	boards.mesh = dst.commit() if board_count > 0 else null
 
 
-## One wall quad from the lip down to the floor, facing into the trench.
+func _board(dst: SurfaceTool, q: Array, uv: Array, thickness: float) -> void:
+	dst.set_normal(Vector3.UP)
+	for k in [0, 2, 1, 0, 3, 2]:
+		dst.set_uv(uv[k])
+		dst.add_vertex(q[k])
+	for edge in 4:
+		var next := (edge + 1) % 4
+		var a: Vector3 = q[edge]
+		var b: Vector3 = q[next]
+		dst.set_normal((b - a).cross(Vector3.UP).normalized())
+		for vertex in [[a, uv[edge]], [b, uv[next]], [b - Vector3.UP * thickness, uv[next]], [a, uv[edge]], [b - Vector3.UP * thickness, uv[next]], [a - Vector3.UP * thickness, uv[edge]]]:
+			dst.set_uv(vertex[1])
+			dst.add_vertex(vertex[0])
+
+
+## A battered cut; shared rim directions keep the layered mesh closed around corners.
+func _cut_inward(p: Vector3) -> Vector3:
+	var x := roundi((p.x + MapDims.HALF) * RES - 0.5)
+	var z := roundi((p.z + MapDims.HALF) * RES - 0.5)
+	return Vector3(_val(x + 1, z) - _val(x - 1, z), 0, _val(x, z + 1) - _val(x, z - 1)).normalized()
+
+
+static func cut_relief(p: Vector3, fraction: float) -> float:
+	return sin(fraction * PI) * (0.045 + 0.035 * sin(p.x * 8.3 + p.z * 6.7 + fraction * 12.0))
+
+
+static func cut_normal(p: Vector3, inward: Vector3, depth: float, fraction: float) -> Vector3:
+	var phase := p.x * 8.3 + p.z * 6.7 + fraction * 12.0
+	var wave := sin(fraction * PI)
+	var across := Vector3(-inward.z, 0, inward.x)
+	var along_slope := wave * 0.035 * cos(phase) * (across.x * 8.3 + across.z * 6.7)
+	var down_slope := PI * cos(fraction * PI) * (0.045 + 0.035 * sin(phase)) + wave * 0.42 * cos(phase)
+	return (inward - across * along_slope + Vector3.UP * down_slope / maxf(depth, 0.15)).normalized()
+
+
 func _wall(wst: SurfaceTool, p0: Vector3, p1: Vector3, inside_c: Vector3) -> void:
 	var n := _inward(p0, p1, inside_c)
 	var a := p0
@@ -495,30 +535,50 @@ func _wall(wst: SurfaceTool, p0: Vector3, p1: Vector3, inside_c: Vector3) -> voi
 	if (b - a).cross(Vector3.UP).dot(n) > 0.0:
 		a = p1
 		b = p0
-	var u0 := a.x * 0.7 + a.z * 0.7
-	var u1 := b.x * 0.7 + b.z * 0.7
-	var tl := a + Vector3(0, 0.02, 0)
-	var tr := b + Vector3(0, 0.02, 0)
 	var da: float = _draw_depth(a, -0.3)
 	var db: float = _draw_depth(b, -0.3)
+	var na := _cut_inward(a)
+	var nb := _cut_inward(b)
 	var bl := a + Vector3(0, -da, 0)
 	var br := b + Vector3(0, -db, 0)
-	wst.set_color(Color(1, 1, 1, minf(da, db) / 1.2))
-	wst.set_normal(n)
-	for v in [[tl, Vector2(u0, 0)], [br, Vector2(u1, 1)], [tr, Vector2(u1, 0)], [tl, Vector2(u0, 0)], [bl, Vector2(u0, 1)], [br, Vector2(u1, 1)]]:
-		wst.set_uv(v[1])
-		wst.add_vertex(v[0])
+	wst.set_color(Color(1, n.x * 0.5 + 0.5, n.z * 0.5 + 0.5, minf(da, db) / 1.2))
+	var left := a + Vector3.UP * 0.02
+	var right := b + Vector3.UP * 0.02
+	for row in 5:
+		var t0 := row * 0.2
+		var t1 := (row + 1) * 0.2
+		var lower_left := a + Vector3(0, lerpf(0.02, -da, t1), 0) + na * cut_relief(a, t1)
+		var lower_right := b + Vector3(0, lerpf(0.02, -db, t1), 0) + nb * cut_relief(b, t1)
+		var normals := [cut_normal(a, na, da, t0), cut_normal(b, nb, db, t0), cut_normal(a, na, da, t1), cut_normal(b, nb, db, t1)]
+		for v in [[left, Vector2(0, da * t0), normals[0]], [lower_right, Vector2(1, db * t1), normals[3]], [right, Vector2(1, db * t0), normals[1]],
+				[left, Vector2(0, da * t0), normals[0]], [lower_left, Vector2(0, da * t1), normals[2]], [lower_right, Vector2(1, db * t1), normals[3]]]:
+			wst.set_uv(v[1])
+			wst.set_normal(v[2])
+			wst.add_vertex(v[0])
+		left = lower_left
+		right = lower_right
 	if minf(da, db) >= 1.0:
+		# The standing surface stays level; boots wear a rounded, irregular edge into it.
 		var sa := bl + Vector3.UP * 0.3
 		var sb := br + Vector3.UP * 0.3
+		var ea := na * (0.4 + 0.035 * sin(a.x * 3.7 + a.z * 2.1))
+		var eb := nb * (0.4 + 0.035 * sin(b.x * 3.7 + b.z * 2.1))
+		var ta := sa + ea - na * 0.045
+		var tb := sb + eb - nb * 0.045
+		var fa := sa + ea - Vector3.UP * 0.055
+		var fb := sb + eb - Vector3.UP * 0.055
+		wst.set_color(Color(0, 0.5, 0.5, minf(da, db) / 1.2))
 		wst.set_normal(Vector3.UP)
-		for p in [sa, sb + n * 0.4, sb, sa, sa + n * 0.4, sb + n * 0.4]:
-			wst.set_uv(Vector2(p.x + p.z, 0.98))
+		for p in [sa, tb, sb, sa, ta, tb]:
+			wst.set_uv(Vector2(p.x + p.z, minf(da, db) - 0.3))
 			wst.add_vertex(p)
-		wst.set_normal(n)
-		for p in [sa + n * 0.4, bl + n * 0.4, br + n * 0.4, sa + n * 0.4, br + n * 0.4, sb + n * 0.4]:
-			wst.set_uv(Vector2(p.x + p.z, 0.98))
-			wst.add_vertex(p)
+		for strip in [[ta, tb, fa, fb, (n + Vector3.UP).normalized()], [fa, fb, bl + ea, br + eb, n]]:
+			wst.set_normal(strip[4])
+			wst.set_color(Color(0, n.x * 0.5 + 0.5, n.z * 0.5 + 0.5, minf(da, db) / 1.2))
+			for p in [strip[0], strip[2], strip[3], strip[0], strip[3], strip[1]]:
+				wst.set_uv(Vector2(p.x + p.z, (a.y + b.y) * 0.5 - p.y))
+				wst.add_vertex(p)
+
 
 
 static func _inward(p0: Vector3, p1: Vector3, inside_c: Vector3) -> Vector3:
@@ -600,7 +660,7 @@ func _berm_strip(bst: SurfaceTool, pts: Array, ins: Array) -> void:
 		var depth: float = _draw_depth(p, -0.3)
 		var variation := 0.76 + 0.24 * sin(p.x * 1.3 + sin(p.z * 0.9))
 		reach *= (0.4 + 0.6 * depth / 1.2) * variation
-		var h := (0.22 + 0.13 * sin(p.x * 1.7 + p.z * 0.71) + 0.06 * sin(p.z * 5.3)) * clampf(reach / 1.2, 0.0, 1.0) * depth / 1.2
+		var h := (0.31 + 0.16 * sin(p.x * 1.7 + p.z * 0.71) + 0.07 * sin(p.z * 5.3)) * clampf(reach / 1.2, 0.0, 1.0) * depth / 1.2
 		lip.append(p + Vector3(0, 0.02, 0))
 		crest.append(p + o * minf(0.65, reach * (0.36 + 0.12 * variation)) + Vector3(0, maxf(0.1 * depth / 1.2, h), 0))
 		var outer := p + o * reach
@@ -643,32 +703,21 @@ render_mode cull_disabled;
 #include "res://scripts/game/trench_earth.gdshaderinc"
 // CLOUD_SHADOW
 varying vec3 wpos;
-varying vec3 world_normal;
-void vertex() { wpos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz; world_normal = normalize(MODEL_NORMAL_MATRIX * NORMAL); }
+varying vec3 cut_normal;
+void vertex() { wpos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz; cut_normal = vec3(COLOR.g * 2.0 - 1.0, 0.0, COLOR.b * 2.0 - 1.0); }
 void fragment() {
-	vec2 cut_uv = abs(world_normal.x) > abs(world_normal.z) ? wpos.zy : wpos.xy;
+	vec2 cut_uv = dot(cut_normal, cut_normal) < 0.1 ? wpos.xz : (abs(cut_normal.x) > abs(cut_normal.z) ? wpos.zy : wpos.xy);
 	float depth = UV.y;
 	float patches = earth_noise(wpos.xz * 0.42);
-	float wet = clamp(smoothstep(0.5, 1.0, depth) * (0.25 + patches * 0.45) + rain_wet * 0.45, 0.0, 1.0);
-	vec3 soil = earth_soil(cut_uv * 0.55, wpos, depth, wet);
-	vec4 grain = texture(earth_surfaces, vec3(cut_uv * 0.55, 8.0));
+	float wet = clamp(smoothstep(0.6, 1.2, depth) * (0.12 + patches * 0.25) + rain_wet * 0.45, 0.0, 1.0);
+	vec3 soil; vec4 grain;
+	earth_material(cut_uv / 1.3, wpos, depth, wet, soil, grain);
 	float root_path = sin(cut_uv.x * 42.0 + sin(depth * 14.0 + patches * 6.0) * 1.7);
 	float roots = smoothstep(0.985, 0.998, root_path) * smoothstep(0.48, 0.7, patches) * (1.0 - smoothstep(0.05, 0.25 + patches * 0.15, depth));
 	soil = mix(soil, soil * 0.3, roots * 0.65);
-	// Revetting comes in repaired panels, with bare cuts between them.
-	float panel = floor(cut_uv.x / 2.2);
-	float repaired = earth_hash(vec2(panel, floor(wpos.z * 0.17 + wpos.x * 0.09)));
-	float timber = smoothstep(0.37, 0.5, repaired) * smoothstep(0.72, 0.95, COLOR.a);
-	timber *= smoothstep(0.16 + patches * 0.18, 0.24 + patches * 0.18, depth) * (1.0 - smoothstep(0.83, 0.95, depth));
-	float row = fract(depth * 7.0 + repaired * 0.12);
-	float seam = smoothstep(0.0, 0.09, row) * (1.0 - smoothstep(0.88, 1.0, row));
-	float wood_grain = earth_noise(vec2(cut_uv.x * 3.0, depth * 115.0));
-	vec3 wood = mix(vec3(0.034,0.025,0.016), vec3(0.15,0.105,0.056), wood_grain) * (0.6 + repaired * 0.5);
-	wood *= mix(0.4, 1.0, seam) * (1.0 - wet * 0.35);
-	vec3 col = mix(soil * mix(0.7, 1.0, grain.b), wood, timber);
-	ALBEDO = earth_output(col);
-	ROUGHNESS = mix(mix(0.94, 0.59, wet), 0.86, timber);
-	NORMAL_MAP = vec3(mix(grain.xy, vec2(0.5, 0.5 + (seam - 0.5) * 0.28), timber), 1.0);
+	ALBEDO = earth_output(soil);
+	ROUGHNESS = mix(clamp(grain.a, 0.72, 0.98), 0.59, wet);
+	NORMAL = earth_detail_normal(NORMAL, VERTEX, cut_uv / 1.3, grain.xy, 0.7);
 	AO = mix(0.7, 1.0, grain.b) * mix(1.0, 0.76, depth);
 	// CLOUD_FRAGMENT cloud_sun(wpos)
 }
@@ -685,16 +734,19 @@ void vertex() { wpos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz; upness = abs((MOD
 void fragment() {
 	float patches = earth_noise(wpos.xz * 1.7);
 	float torn = earth_noise(wpos.xz * 5.1);
+	// Loose crumbs thin out over intact ground at the foot of the spoil.
+	if (bank_surface < 0.5 && smoothstep(0.84, 1.0, UV.x) > 0.2 + earth_noise(wpos.xz * 17.0) * 0.8) discard;
 	float wet = clamp(rain_wet * 0.7 + earth_noise(wpos.xz * 0.38) * 0.12, 0.0, 1.0);
-	vec3 soil = earth_soil(wpos.xz * 0.5, wpos, 0.65, wet);
-	vec3 turf = earth_color(wpos.xz * 0.4, 6.0) * vec3(0.66, 0.7, 0.46);
+	vec3 soil; vec4 soil_surface;
+	earth_material(wpos.xz / 1.3, wpos, 0.65, wet, soil, soil_surface);
+	vec3 turf = earth_color(wpos.xz * 0.4, 6.0) * vec3(0.43, 0.53, 0.30);
 	float edge = mix(UV.x, upness * 0.7, bank_surface);
-	float grass = smoothstep(0.48, 0.82, edge + (patches - 0.5) * 0.7 + (torn - 0.5) * 0.18);
-	vec4 surface = mix(texture(earth_surfaces, vec3(wpos.xz * 0.5, 8.0)), texture(earth_surfaces, vec3(wpos.xz * 0.4, 6.0)), grass);
+	float grass = smoothstep(0.58, 0.96, edge + (patches - 0.5) * 0.8 + (torn - 0.5) * 0.3);
+	vec4 surface = mix(soil_surface, texture(earth_surfaces, vec3(wpos.xz * 0.4, 6.0)), grass);
 	vec3 col = mix(soil, turf * (1.0 - wet * 0.45), grass);
-	ALBEDO = earth_output(col * mix(0.65, 1.0, surface.b));
-	ROUGHNESS = mix(0.95, 0.64, wet);
-	NORMAL_MAP = vec3(surface.xy, 1.0);
+	ALBEDO = earth_output(col);
+	ROUGHNESS = mix(clamp(surface.a, 0.72, 0.98), 0.64, wet);
+	NORMAL = earth_detail_normal(NORMAL, VERTEX, wpos.xz, surface.xy, 0.75);
 	AO = surface.b;
 	// CLOUD_FRAGMENT cloud_sun(wpos)
 }
@@ -711,16 +763,16 @@ void fragment() {
 	float grain = earth_noise(wpos.xz * 7.0);
 	float puddle = smoothstep(0.7 - rain_wet * 0.16, 0.79 - rain_wet * 0.16, drainage + (grain - 0.5) * 0.08);
 	float wet = clamp(0.28 + drainage * 0.45 + rain_wet * 0.3, 0.0, 1.0);
-	vec3 soil = earth_soil(wpos.xz * 0.6, wpos, 0.85, wet);
+	vec3 soil; vec4 surface;
+	earth_material(wpos.xz / 1.3, wpos, 0.85, wet, soil, surface);
 	vec3 litter = earth_color(wpos.xz * 0.8, 4.0) * vec3(0.5,0.34,0.22);
 	float debris = smoothstep(0.66, 0.81, earth_noise(wpos.xz * 1.35));
 	vec3 col = mix(soil, litter, debris * 0.6);
 	col = mix(col, vec3(0.018,0.015,0.01), puddle * 0.76);
-	vec4 surface = texture(earth_surfaces, vec3(wpos.xz * 0.6, 8.0));
 	ALBEDO = earth_output(col);
-	ROUGHNESS = mix(mix(0.87, 0.59, wet), 0.19, puddle);
+	ROUGHNESS = mix(mix(clamp(surface.a, 0.72, 0.98), 0.59, wet), 0.19, puddle);
 	SPECULAR = mix(0.22, 0.48, puddle);
-	NORMAL_MAP = vec3(mix(surface.xy, vec2(0.5), puddle * 0.92), 1.0);
+	NORMAL = earth_detail_normal(NORMAL, VERTEX, wpos.xz, surface.xy, mix(0.6, 0.03, puddle));
 	AO = mix(surface.b, 1.0, puddle);
 	// CLOUD_FRAGMENT cloud_sun(wpos)
 }
@@ -728,20 +780,25 @@ void fragment() {
 
 const BOARD_SHADER := """
 shader_type spatial;
-uniform sampler2D detail_tex : filter_linear_mipmap, repeat_enable;
+#include "res://scripts/game/trench_earth.gdshaderinc"
+uniform sampler2D wood_color : source_color, filter_linear_mipmap_anisotropic, repeat_enable;
+uniform sampler2D wood_surface : filter_linear_mipmap_anisotropic, repeat_enable;
 // CLOUD_SHADOW
 varying vec3 wpos;
 void vertex() { wpos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz; }
 void fragment() {
-	float slat = floor(UV.x / 0.32);
-	float age = fract(sin(slat * 91.7 + floor(wpos.z) * 3.1) * 43758.5453);
-	float grain = texture(detail_tex, vec2(UV.y * 0.16, UV.x * 4.5)).r;
-	float split = smoothstep(0.47, 0.5, abs(fract(UV.y * (2.0 + age)) - 0.5)) * step(0.6, age);
-	vec3 wood = mix(vec3(0.045,0.033,0.02), vec3(0.16,0.12,0.07), grain) * (0.55 + age * 0.65);
-	vec3 col = wood * (1.0 - split * 0.7);
-	ALBEDO = col;
-	if (OUTPUT_IS_SRGB) { ALBEDO = mix(col * 12.92, 1.055 * pow(max(col, vec3(0.0)), vec3(1.0 / 2.4)) - 0.055, step(vec3(0.0031308), col)); }
-	ROUGHNESS = 0.88;
+	float age = COLOR.r;
+	// Sample one plank across each slat, with the photographed grain along its length.
+	vec2 wood_uv = vec2(fract(UV.x / 0.32) * 0.08 + 0.01 + floor(age * 9.0) * 0.11, UV.y * 0.34 + age * 0.4);
+	vec3 col = texture(wood_color, wood_uv).rgb;
+	if (OUTPUT_IS_SRGB) col = mix(col / 12.92, pow((col + 0.055) / 1.055, vec3(2.4)), step(vec3(0.04045), col));
+	vec4 surface = texture(wood_surface, wood_uv);
+	float wet = clamp(0.1 + rain_wet * 0.7, 0.0, 1.0);
+	col *= (0.65 + age * 0.45) * (1.0 - wet * 0.4);
+	ALBEDO = earth_output(col);
+	ROUGHNESS = mix(max(surface.a, 0.78), 0.57, wet);
+	NORMAL = earth_detail_normal(NORMAL, VERTEX, wood_uv, surface.xy, 0.4);
+	AO = 1.0;
 	// CLOUD_FRAGMENT cloud_sun(wpos)
 }
 """

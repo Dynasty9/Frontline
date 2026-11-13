@@ -17,6 +17,6 @@ poster = "poster.jpg"
 caption = "A six-second camera orbit over the new earth and timber materials; simulation held for inspection."
 +++
 
-- Dark topsoil gives way to exposed subsoil, with roots, damp patches and leaf litter. Rain darkens earth and spreads puddles.
-- Spoil banks have irregular edges and patches of turf. Timber lining, shoring, duckboards and resting-bay roofs look assembled and repaired.
-- Bunker banks use the same earth materials. The trench assault scenario now includes a rear communication route, ammunition under camouflage netting, sandbags and anti-tank obstacles, using the existing buildable defenses.
+- Dark topsoil gives way to lighter subsoil and stony pockets, with roots, damp patches and leaf litter. Scanned dirt has close-up grain and relief; rain darkens it and spreads puddles.
+- Ragged spoil, worn firing-step edges and physical retaining boards break up the cuts. Weathered duckboards rest on bearers above the mud, and timber roofs shelter the resting bays.
+- Bunkers have continuous earth banks and uneven soil over their roof logs. The trench assault scenario now includes a rear communication route, ammunition under camouflage netting, sandbags and anti-tank obstacles, using the existing buildable defenses.

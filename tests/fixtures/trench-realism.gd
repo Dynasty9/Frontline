@@ -182,6 +182,47 @@ func _ready() -> void:
 	for i in 100:
 		var sample := Vector3(i * 0.73, 0.0, i * -0.41)
 		check(absf(TrenchNet.edge_erosion(sample)) <= 0.111, "Cosmetic edge erosion stays outside the clear walking route")
+	for i in 100:
+		var sample := Vector3(i * 0.37, 30.0, i * -0.29)
+		check(is_zero_approx(TrenchNet.cut_relief(sample, 0.0)) and is_zero_approx(TrenchNet.cut_relief(sample, 1.0)), "Cut relief meets the rim and authoritative floor without seams")
+		for depth in [0.2, 0.4, 0.6, 0.8]:
+			var relief := TrenchNet.cut_relief(sample, depth)
+			check(relief >= 0.0 and relief <= 0.081, "Earth clods stay within eight centimetres of the cut and clear of the walking route")
+	for heading in [0.0, 0.7, 2.2]:
+		var shoring := Node3D.new()
+		var shoring_rng := RandomNumberGenerator.new()
+		shoring_rng.seed = 37
+		var original_yaw: float = st.yaw
+		st.yaw = heading
+		WorksModels.trench_shoring(st, shoring, shoring_rng)
+		check(shoring.get_child_count() > 0 and shoring.get_child_count() <= 60, "Shoring uses a bounded number of pieces before the static mesh merge")
+		for piece: MeshInstance3D in shoring.get_children():
+			var bounds := piece.transform * piece.mesh.get_aabb()
+			check(absf(piece.position.z) > 0.40, "Retaining timber leaves the central walking route clear")
+			check(bounds.position.x >= -st.size.x * 0.5 and bounds.end.x <= st.size.x * 0.5, "Retaining panels stay between the end traverses")
+		st.yaw = original_yaw
+		shoring.free()
+	for rear_bank in [false, true]:
+		var bank := WorksModels._bank_mesh(2.8, 1.0, 2.0, rear_bank)
+		var bank_arrays := bank.surface_get_arrays(0)
+		var bank_points: PackedVector3Array = bank_arrays[Mesh.ARRAY_VERTEX]
+		var bank_normals: PackedVector3Array = bank_arrays[Mesh.ARRAY_NORMAL]
+		check(bank_points.size() > 1500 and bank_points.size() <= 3072, "Continuous bunker banks have a bounded triangle budget")
+		for i in bank_points.size():
+			check(bank_points[i].is_finite() and bank_normals[i].y > 0.0, "Bank corners keep finite upward-facing normals")
+		for t in [0.0, 0.25, 0.5, 0.75, 1.0]:
+			check(WorksModels._bank_point(0.0, t, 2.8, 1.0, 2.0, rear_bank).y < 0.0, "The bunker approach stays clear of its bank")
+	for variant in 4:
+		var roof := WorksModels.roof_soil(variant)
+		check(roof == WorksModels.roof_soil(variant), "Bunker caps reuse their mesh instead of allocating per building")
+		var roof_arrays := roof.surface_get_arrays(0)
+		var roof_vertices: PackedVector3Array = roof_arrays[Mesh.ARRAY_VERTEX]
+		var roof_normals: PackedVector3Array = roof_arrays[Mesh.ARRAY_NORMAL]
+		check(roof_vertices.size() > 1200 and roof_vertices.size() <= 2400, "The roof cap has a bounded triangle budget")
+		for i in roof_vertices.size():
+			var point := roof_vertices[i]
+			check(is_equal_approx(point.y, WorksModels.roof_soil_height(Vector2(point.x, point.z), variant)), "Roof bags and the earth cap share a support surface")
+			check(point.y >= -0.141 and point.y < 0.7 and roof_normals[i].y > 0.0, "Earth cap stays over its roof and faces upward")
 	var arrays := network.floor_mi.mesh.surface_get_arrays(0)
 	var vertices: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
 	check(vertices.size() > 0, "The trench network has a real floor mesh")

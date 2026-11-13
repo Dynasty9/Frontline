@@ -2787,14 +2787,7 @@ func _build_model() -> void:
 				kit_bags.append({"p": Vector3(bx, 0.2, fsgn * 1.05), "s": Vector3(0.55 * rng.randi_range(1, 2), 0.19, 0.36), "r": rng.randf_range(-0.2, 0.2)})
 			if not kit_bags.is_empty():
 				_bag_walls(kit_bags, rng, done)
-			# Occasional shoring holds the cut; it leaves the centre passage clear.
-			for i in maxi(1, floori(size.x / 1.8)):
-				var x := -size.x * 0.5 + 0.7 + i * 1.8
-				for side in [-1.0, 1.0]:
-					if TrenchNet.has_recess(self) and side == -fsgn and absf(x) < 0.85:
-						continue
-					var post := Res.mi(done, Res.box(Vector3(0.1, 1.06, 0.12)), Mats.get_mat("wood"), Vector3(x, -0.65, side * 0.64), Vector3(0.0, 0.0, rng.randf_range(-0.045, 0.045)), false)
-					post.scale.y = rng.randf_range(0.9, 1.08)
+			WorksModels.trench_shoring(self, done, rng)
 			if TrenchNet.has_recess(self):
 				var rear := -fsgn
 				var wood := Res.mat(C_WOOD.darkened(0.25))
@@ -2835,8 +2828,8 @@ func _build_model() -> void:
 				for i in 9:
 					var lgg := Res.mi(model, Res.cyl(0.15, 0.16, 6.3, 7), Res.mat(C_WOOD.darkened(0.25)), Vector3(-2.8 + i * 0.7, 2.5, 0), Vector3(PI / 2, 0, 0))
 					lgg.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-				var mound := _mk(Res.dome(3.4, 16), "bank", Vector3(0, 2.6, 0), Vector3.ZERO, Color(0.29, 0.27, 0.17))
-				mound.scale = Vector3(1.0, 0.22, 1.0)
+				var soil_variant := posmod(eid, 4)
+				var mound := _mk(WorksModels.roof_soil(soil_variant), "bank", Vector3(0, 2.6, 0), Vector3.ZERO, Color(0.29, 0.27, 0.17))
 				mound.material_override = TrenchNet.bank_material()
 				for x in [-2.85, 2.85]:
 					for z in [-2.85, 2.85]:
@@ -2846,7 +2839,9 @@ func _build_model() -> void:
 					Res.mi(model, Res.cyl(0.13, 0.13, 2.2, 7), Res.mat(C_WOOD.darkened(0.3)), Vector3(sx * 2.86, 1.72, 0), Vector3(PI / 2, 0, 0))
 				WorksModels.berms(model, 2.8, 1.0, 2.0, true)
 				for i in 6:
-					bags.append({"p": Vector3(-2.0 + i * 0.8, 3.15, -2.2), "s": Vector3(0.75, 0.2, 0.45), "r": 0.0})
+					var x := -2.0 + i * 0.8
+					var y := 2.6 + WorksModels.roof_soil_height(Vector2(x, -2.2), soil_variant) + 0.08
+					bags.append({"p": Vector3(x, y, -2.2), "s": Vector3(0.75, 0.2, 0.45), "r": rng.randf_range(-0.09, 0.09)})
 			else:
 				# reinforced concrete: a thick roof slab with an overhang under a
 				# layer of bags, earth banked up to the slits, steel angle round
