@@ -4,23 +4,27 @@
   "medium": "still",
   "stage": "tests/fixtures/environment-views.gd --capture-set=fortifications",
   "rationale": "Matched uncropped before/after stills show material and silhouette changes; the silent orbit exposes surface detail, with a separate bunker view for the defensive layout.",
-  "source_ref": "bd4f1b598ae80c6543cd4816e3f49a6ead730876 plus field-fortifications changes",
+  "source_ref": "5b77d902f64fb25bb3862a4f1c214c2181577d29",
   "sources": [
     {
-      "file": "changelog/unreleased/field-fortifications/bunker.jpg",
-      "sha256": "0b7a29bdfb52c5ba58768c068a5c9ab55a0f171a4aef2c03a11d93ca1dcda9a0"
+      "file": "changelog/unreleased/field-fortifications/comparison.jpg",
+      "sha256": "55d491bb96c0fc0a287a92e0c0123ca2f72edb0074d97c5e16c0bbc059ba6374"
     },
     {
-      "file": "changelog/unreleased/field-fortifications/comparison.jpg",
-      "sha256": "52339ae87c74d75b9c7deac48ad3aa415cc829d6e513bd5f39a0a0760df06287"
+      "file": "changelog/unreleased/field-fortifications/inside.jpg",
+      "sha256": "f5b509e3ad245e40475ff99fab33cfecf53e99dc7eae7188456797c333a648dd"
+    },
+    {
+      "file": "changelog/unreleased/field-fortifications/bunker.jpg",
+      "sha256": "df29ed7750827a741580ae1cedf6acfdbe7abfbaabae49c54418ea76440471b0"
     },
     {
       "file": "changelog/unreleased/field-fortifications/earthworks.webm",
-      "sha256": "ccfb1c7def8beca13b173e5d90ee4bb9d5084f036c98b0c164e384cb1fa6cd93"
+      "sha256": "d1839c5804c7aaf2301d327a3341626f9802a40236775cbe6b31208f1d07f744"
     },
     {
       "file": "changelog/unreleased/field-fortifications/poster.jpg",
-      "sha256": "b949df80581a00705e6463be673aa7d942f4bf9f0bf10cedab89cd2554bba3c5"
+      "sha256": "3ef76d22edf80a7e3b0bc8c6f93db644967271fc0724c917d25b912515f6ef97"
     }
   ],
   "output": "changelog/unreleased/field-fortifications/comparison.jpg",
@@ -66,15 +70,102 @@
         "yaw": -0.65
       }
     },
-    "command": "godot --path . --fixed-fps 30 --resolution 1600x900 --script tests/fixtures/environment-views.gd -- --scenario=trenches --seed=3 --offscreen --nohud --set=perf:0 --preset=high --mood=day --capture-set=fortifications --capture-prefix=../capture",
-    "clip_command_note": "Use 1280x720 and add --capture-clip=earthwork; encode 180 frames at 30 fps with libvpx-vp9, CRF 34, yuv420p.",
-    "review": "Inspected Forward+ day and native Compatibility rain; not a browser runtime or performance benchmark."
+    "command": "godot --path . --position -10000,-10000 --fixed-fps 30 --resolution 1600x900 --script tests/fixtures/environment-views.gd -- --scenario=trenches --seed=3 --nohud --preset=high --mood=day --set=perf:0,dof:false --capture-set=fortifications --capture-prefix=../capture",
+    "clip_command_note": "Add --capture-clip=earthwork; encode 180 frames at 30 fps, downscale to 1280x720 with Lanczos, libvpx-vp9 CRF 34, yuv420p, no audio.",
+    "review": "Inspected native Forward+ day, overcast, rain and night; native Compatibility; legal joined cuts; generated slopes; and construction, collapse and repair. This is not a browser runtime or FPS benchmark.",
+    "clip_source_resolution": [
+      1600,
+      900
+    ],
+    "actual_views": [
+      {
+        "file": "final-24-earthwork.png",
+        "camera_position": "(4.854731, 8.003599, -18.97925)",
+        "camera_rotation": "(-0.663225, 0.493718, 0.0)",
+        "cloud_quality": 3,
+        "focus": "(0.0, 0.0, -28.0)",
+        "frame_ms": 0,
+        "gpu_ms": 0,
+        "mood": "day",
+        "pitch": -38,
+        "time": 2,
+        "wetness": 0,
+        "yaw": 0.5,
+        "zoom": 13
+      },
+      {
+        "file": "final-24-cut.png",
+        "camera_position": "(5.427225, 1.549021, -23.557)",
+        "camera_rotation": "(-0.401426, 0.5, 0.0)",
+        "cloud_quality": 3,
+        "focus": "(3.0, -0.6, -28.0)",
+        "frame_ms": 0,
+        "gpu_ms": 0,
+        "mood": "day",
+        "pitch": -23,
+        "time": 2,
+        "wetness": 0,
+        "yaw": 0.5,
+        "zoom": 5.5
+      },
+      {
+        "file": "final-24-inside.png",
+        "camera_position": "(0.799999, 0.019999, -28.0)",
+        "camera_rotation": "(-0.128917, -1.495937, 0.0)",
+        "cloud_quality": 3,
+        "focus": "(3.0, -0.6, -28.0)",
+        "frame_ms": 0,
+        "gpu_ms": 0,
+        "mood": "day",
+        "pitch": -23,
+        "time": 2,
+        "wetness": 0,
+        "yaw": 0.5,
+        "zoom": 5.5
+      },
+      {
+        "file": "final-24-bunker.png",
+        "camera_position": "(-7.18518, 7.41887, -48.54836)",
+        "camera_rotation": "(-0.558505, -0.65, 0.0)",
+        "cloud_quality": 3,
+        "focus": "(0.0, 0.0, -58.0)",
+        "frame_ms": 0,
+        "gpu_ms": 0,
+        "mood": "day",
+        "pitch": -32,
+        "time": 2,
+        "wetness": 0,
+        "yaw": -0.65,
+        "zoom": 14
+      },
+      {
+        "file": "final-24-position.png",
+        "camera_position": "(12.12258, 42.13244, -6.790054)",
+        "camera_rotation": "(-0.872665, 0.35, 0.0)",
+        "cloud_quality": 3,
+        "focus": "(0.0, 0.0, -40.0)",
+        "frame_ms": 0,
+        "gpu_ms": 0,
+        "mood": "day",
+        "pitch": -50,
+        "time": 2,
+        "wetness": 0,
+        "yaw": 0.35,
+        "zoom": 55
+      }
+    ],
+    "capture_source_note": "Battlefield media predates the standalone-preview guards and late-placement vegetation invalidation; neither changes this prebuilt scenario view."
   },
   "implementation_sha256": {
-    "scripts/game/trench_net.gd": "73a41656154ad3e25fb107671b831a708f867bdffe50e863923f59353cdfc98b",
-    "scripts/game/trench_earth.gdshaderinc": "5758969e44d617c6cc08349687fb68ca81c8819aa75061e71db817d5625bcbef",
-    "scripts/game/works_models.gd": "ab594b2f0328efdca5bcc905ae133d715bee8c12108678d65ba083b061325a52",
-    "scripts/game/structure.gd": "fe0cebfb2b2c1faad43080f1a4ad6bdcdf005722f1c52390dd2e651713993c88",
-    "scripts/game/mapgen.gd": "149f79d74a9e06758d0ba5f156066423ee22f4a9609a905a0fd8b38e2f9a1422"
+    "scripts/game/atmosphere.gd": "ef1c75a154f02c671085fe883b50dda53a07e7f3599a9b2f7431465ecfe67ec3",
+    "scripts/game/grass.gd": "098c300218d9dbe875f7645be141fd8a5a34367f9d9e8cb948c8f143fcc5738f",
+    "scripts/game/mapgen.gd": "149f79d74a9e06758d0ba5f156066423ee22f4a9609a905a0fd8b38e2f9a1422",
+    "scripts/game/mats.gd": "3eb6568c413f83982c3ad0fef0a671f63dbc50ba4360dbea0cacde7834b577c5",
+    "scripts/game/structure.gd": "a26bbddd629e754135d4f36211baf42487b91c40f06cd1140a978bb40d7b4134",
+    "scripts/game/trench_earth.gdshaderinc": "290b3ae30d2ed013144f5b67b9c579ad5c86a83d2221105b31ff3d7bb288ff70",
+    "scripts/game/trench_net.gd": "7ded336ceb65e54ff1a7de447c5f3fc2b15ac2e607a4f75270edd5fa11f6a22d",
+    "scripts/game/trench_vegetation.gdshaderinc": "c85531237cb1a8a7abcb0b103e1c4ccb1198e7b87e672bcd75f1fff13a8e41ad",
+    "scripts/game/works_models.gd": "5e1325167c33301df1079b8cd786c946f48c4fe9863efcca71e7d36485b1f9c6",
+    "tests/fixtures/environment-views.gd": "3110d704155d684ecfc343dbfac9b47ad82e5c363334434492c852c666b45659"
   }
 }

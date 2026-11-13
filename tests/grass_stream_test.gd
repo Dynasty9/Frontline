@@ -64,6 +64,27 @@ func _ready() -> void:
 	check(earthworks.blocked[(floori(meadow.z) + (MapDims.N >> 1)) * MapDims.N + floori(meadow.x) + (MapDims.N >> 1)] == 0, "The earthwork clearing preserves nearby meadow")
 	world.structures.erase(bunker)
 	bunker.free()
+	world.atmo = atmosphere
+	atmosphere.grass = grass
+	world.building = false
+	for authoritative in [false, true]:
+		world.srv = authoritative
+		var placed := Structure.new()
+		placed.world = world
+		placed.eid = 81 if authoritative else 80
+		placed.skind = "bunker"
+		placed.foot = Vector2(3,3)
+		world.add_child(placed)
+		grass._rebuild_t = -1.0
+		world._register(placed)
+		world._shash_add(placed)
+		check(grass._rebuild_t > 0.0, "Placing a bunker refreshes resident plants on hosts and clients")
+		grass._rebuild_t = -1.0
+		world.despawn(placed)
+		check(grass._rebuild_t > 0.0, "Removing a bunker refreshes its old vegetation footprint")
+		await get_tree().process_frame
+		world._graveyard.clear()
+		placed.free()
 	var street := Grass.BlockedJob.new()
 	street.roads = [PackedVector3Array([Vector3(-8, 0, 0), Vector3(8, 0, 0)])]
 	street.run()
