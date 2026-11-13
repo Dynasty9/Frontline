@@ -55,7 +55,7 @@ To run it from source instead:
 
 The easiest way in is to watch first. Choose **Watch AI Battle** from the main menu: two computer commanders fight, and the camera follows the action on its own.
 
-When you're ready, choose **Play vs AI** and pick a side. You start at your base with a rifle squad and some engineers.
+When you're ready, choose **Play vs AI**, pick a side and an opponent (**Recruit**, **Regular**, **Veteran**, or **Adaptive**, which eases off or presses harder to keep the fight close). You start at your base with a rifle squad and some engineers.
 
 1. **Select a squad.** Left-click any of its soldiers, or drag a box around it.
 2. **Move it.** Right-click the ground. Coloured dots show where each man will stand: green is good cover, yellow only hides him, red means he's out in the open.

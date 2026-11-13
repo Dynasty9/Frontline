@@ -528,6 +528,13 @@ func _net_line() -> String:
 	var loss := pp.get_statistic(ENetPacketPeer.PEER_PACKET_LOSS) * 100.0 / ENetPacketPeer.PACKET_LOSS_SCALE
 	if rtt < 150 and loss < 2.0:
 		return ""
+	if LocalServer.connected:
+		# A solo battle's host is a second copy of the game on this computer,
+		# and its packets never leave it. But the window only reads them (and
+		# answers) between frames, so its round trip is counted in frames: at
+		# 30 frames a second a reply waits up to 33 ms, and one waiting through
+		# a stutter is given up on, resent and counted lost.
+		return "The host is this computer (a solo battle runs in a second process): the %d ms round trip and %.1f%% loss are this window's frames, which it answers between, not the network. A higher frame rate brings them down." % [rtt, loss]
 	return "The connection to the host is slow: a %d ms round trip, %.1f%% of packets lost. Orders take that long to arrive, and units jump when updates go missing." % [rtt, loss]
 
 

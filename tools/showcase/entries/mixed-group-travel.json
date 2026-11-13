@@ -1,0 +1,10 @@
+{
+  "entry": "changelog/unreleased/mixed-group-travel.md",
+  "summary": "Select a squad on foot and a ground vehicle together and give them a Move order. The driver uses the squad’s selected pace for that trip. A separate move order lets the vehicle drive at normal speed again.",
+  "medium": "text",
+  "stage": "tests/mixed-group-travel.test.mjs",
+  "rationale": "The command-port test measures travel speed before and after a new order.",
+  "source_ref": "021b8c8",
+  "sources": [],
+  "output": null
+}

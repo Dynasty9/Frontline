@@ -1,6 +1,8 @@
 extends RefCounted
 ## Mixamo clips stay in separate pack namespaces; matching filenames can differ.
 static var libraries := {}
+const STEP_UP := "mixamo_rifle_locomotion__jump_up"
+const STEP_DOWN := "mixamo_rifle_locomotion__jump_down"
 const ROOT := "res://assets/local_mocap/mixamo/"
 
 static func files() -> Dictionary:
@@ -21,6 +23,7 @@ static func install(actor: SkinnedRifleman, gameplay := false) -> Dictionary:
 	var paths := files()
 	if gameplay:
 		for key in paths.keys():
+			if key in [STEP_UP, STEP_DOWN]: continue
 			if not key.begins_with("mixamo_gestures__") and not key.begins_with("mixamo_injured__") and not key.begins_with("mixamo_prone__") and not key.begins_with("mixamo_basic_shooter__") and not key.begins_with("mixamo_activities__") and not key.begins_with("mixamo_transition__") and not key.begins_with("mixamo_rifle_locomotion__walk_crouching_"): paths.erase(key)
 	actor.native_player = AnimationPlayer.new()
 	actor.native_player.name = "MixamoClips"

@@ -16,6 +16,70 @@ func wall(w: World, id: int, at: Vector3) -> Structure:
 	st.model.add_child(mesh)
 	return st
 
+class Unbuilt extends Structure:
+	func set_view_active(value: bool) -> void:
+		view_active = value
+
+
+func proxies(n: Node) -> Array:
+	return n.get_children().filter(func(c: Node) -> bool: return c.has_meta(&"shadow_proxy"))
+
+
+## A merged model (and a merged block) casts one shadow from one mesh, not one
+## per material, and merging again doesn't leave the old one behind.
+func check_shadow_proxies(w: World, view: StructureView) -> void:
+	var house := Node3D.new()
+	w.add_child(house)
+	for kind in ["concrete", "brick", "steel"]:
+		var part := MeshInstance3D.new()
+		part.mesh = BoxMesh.new()
+		part.material_override = Mats.get_mat(kind)
+		house.add_child(part)
+	Mats.merge_static(house)
+	var shadows: Array = proxies(house)
+	assert(shadows.size() == 1 and shadows[0].cast_shadow == GeometryInstance3D.SHADOW_CASTING_SETTING_SHADOWS_ONLY, "A merged house casts one shadow")
+	for c: MeshInstance3D in house.get_children():
+		if not c.has_meta(&"shadow_proxy"):
+			assert(c.cast_shadow == GeometryInstance3D.SHADOW_CASTING_SETTING_OFF and Mats.shadow_of(c) == GeometryInstance3D.SHADOW_CASTING_SETTING_ON, "The meshes the eye sees cast through the proxy")
+	var triangles: int = (shadows[0].mesh as ArrayMesh).surface_get_array_len(0)
+	assert(triangles == 3 * 36, "The proxy holds every caster's triangles")
+	Mats.merge_static(house, [], true, true)
+	assert(proxies(house).size() == 1, "Merging again replaces the proxy")
+	# a block waits for the last of its pieces, then merges with one shadow
+	var walls: Array[Structure] = []
+	for id in [40, 41]:
+		var st := wall(w, id, Vector3(id - 30, 0, 330))
+		var extra := MeshInstance3D.new()
+		extra.mesh = BoxMesh.new()
+		extra.material_override = Mats.get_mat("brick")
+		st.model.add_child(extra)
+		walls.append(st)
+		view._queue_draw_batch(st)
+	var late := Unbuilt.new()
+	late.world = w
+	late.eid = 42
+	late.view_active = false
+	late.position = Vector3(14, 0, 330)
+	w.add_child(late)
+	view.request(late)
+	var cell := view._draw_cell(late)
+	view.merge_ready_blocks()
+	assert(not view._draw_batches.has(cell), "A block with pieces still to build waits for them")
+	view._take(late.eid)
+	view.merge_ready_blocks()
+	assert(view._draw_batches.has(cell), "A wholly built block merges at once")
+	var block: Node3D = view._draw_batches[cell].node
+	assert(proxies(block).size() == 1, "A merged block casts one shadow")
+	for c: MeshInstance3D in block.get_children():
+		if not c.has_meta(&"shadow_proxy"):
+			assert(c.cast_shadow == GeometryInstance3D.SHADOW_CASTING_SETTING_OFF)
+	var spans: Array = view._draw_members[40].ranges
+	assert(spans.any(func(sp: Array) -> bool: return sp[0] == proxies(block)[0].mesh), "A member's triangles are known in the block's shadow too")
+	view.unbatch(walls[0])
+	for c: Node3D in walls[0].model.get_children():
+		assert(c.visible, "A member leaving the block shows its own meshes and shadow again")
+
+
 func _ready() -> void:
 	var w := World.new()
 	var view := StructureView.new()
@@ -88,6 +152,7 @@ func _ready() -> void:
 	trees[1].position.x = 1400.0
 	w.push_props(trees[1], {"pos": trees[1].position})
 	assert(view.memberships[11].has(Vector2i(10, 0)), "Host movement updates scenery residency even without connected peers")
+	check_shadow_proxies(w, view)
 	# Background forests cannot masquerade as cover inside the combat map.
 	var atmosphere := Atmosphere.new()
 	atmosphere.world = w

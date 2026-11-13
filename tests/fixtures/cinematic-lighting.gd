@@ -20,6 +20,7 @@ func check() -> void:
 	_check_sky()
 	_check_heat_sources()
 	_check_heat_pulses()
+	_check_detached_fires()
 	_check_exhaust_markers()
 	_check_rain_wet()
 	_check_motion_blur()
@@ -301,3 +302,31 @@ func _check_exhaust_markers() -> void:
 		assert(out.z > 0.3, "an exhaust blows %s, not back" % out)
 		assert(absf(e.origin.x) > 0.3 and e.origin.y > 1.0, "an exhaust's mouth at %s" % e.origin)
 	k.root.free()
+
+
+## A fire on something taken out of the tree (a destroyed vehicle, kept a
+## while after it's cleared away) adds no heat, and reading where it is mustn't
+## raise an engine error every frame.
+func _check_detached_fires() -> void:
+	var cam := Camera3D.new()
+	add_child(cam)
+	var vfx := Vfx.new()
+	var holder := Node3D.new()
+	for i in 2:
+		var h := Node3D.new()
+		h.position = Vector3(0, 0, -30)
+		h.set_meta("fire", 1.0)
+		h.set_meta("ext", Vector3(0.55, 0.45, 0.55))
+		holder.add_child(h)
+		vfx._burners.append(h)
+	var hh := HeatHaze.new()
+	hh.begin(cam)
+	vfx.heat_sources(hh)
+	assert(hh.finish().is_empty(), "fires outside the tree gave off heat")
+	add_child(holder)
+	hh.begin(cam)
+	vfx.heat_sources(hh)
+	assert(hh.finish().size() == 2 * HeatHaze.STRIDE, "fires back in the tree gave off no heat")
+	holder.free()
+	vfx.free()
+	cam.free()
