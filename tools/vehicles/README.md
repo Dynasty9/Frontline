@@ -69,9 +69,28 @@ The report includes all mesh surfaces, including near/far LOD alternatives; it i
 not a claim that all reported surfaces draw simultaneously. Build time includes
 cache warm-up in the sorted model order. Inspect gameplay frame cost separately.
 
+To see where that geometry comes from, the builder profile charges every part's
+triangle-list vertices to the outermost shared builder that made it (or to the
+family function that added it itself), across the same models, heaviest first:
+
+```sh
+godot --headless --path . tools/vehicles/builder-profile.tscn -- --builder-profile-out=/tmp/vehicle-builder-profile.tsv
+```
+
+It reads script backtraces, so it runs in development builds only. A builder near
+the top repeats on many vehicles: making it cheaper lightens all of them at once.
+
 `assembly-extractions.json` also registers the twenty shared components of the third pass (guns,
 turret fittings, lights, rotor masts, exhausts, fenders, fuel tanks and rolled tarps); "Twenty shared
 components" in the [component guide](../../docs/vehicle-components.md) gives their contracts and adopters.
+The second pass registers twenty more (cargo beds and box bodies, rollers, skirt bows, smoke banks, lamp
+units, launchers, missiles, pods, intake faces, hub caps, mounts and tubework); see "Second pass" in the
+same guide.
+The pass after that registers twenty-three more groups (track guards, suspension, exhausts, searchlights,
+benches, plates and lettering, cranes, gun fittings, tanker equipment, helicopter gear, bombs and boat
+fittings); see "Third pass" in the same guide. Builders with a single family so far (`spare_links`,
+`piano_hinge`) stay unregistered until three groups use them.
+The fourth pass registers drums and spare-wheel carriers; see "Fourth pass" in the same guide.
 
 `detail-improvements.json` records the next 40 improvements to 20 existing
 assemblies, separately from the original 30-technique registry. See the

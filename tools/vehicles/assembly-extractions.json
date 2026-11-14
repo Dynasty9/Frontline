@@ -293,5 +293,302 @@
       "VehicleCloth.roll"
     ],
     "boundary": "Rolled canvas on the old cylinder's axis with straps; draped covers and tapered boots stay separate."
+  },
+  {
+    "name": "Raked skirt bow panels",
+    "apis": [
+      "VehicleEquipment.skirt_bow"
+    ],
+    "boundary": "The old rotated bow box with hinges, grab handle, rounded leading corner and wear strip; plain panels use skirt; extruded fronts stay authored."
+  },
+  {
+    "name": "Track return rollers",
+    "apis": [
+      "VehicleWheels.roller"
+    ],
+    "boundary": "Old disc centre, radius and width on an X axle; static, registers nothing."
+  },
+  {
+    "name": "Truck cargo beds",
+    "apis": [
+      "VehicleCargo.flatbed"
+    ],
+    "boundary": "Deck between authored z0/z1 at the load surface, with runners, rails, posts, dropsides, headboard and tailgate; loads, canopies and lamps stay caller-owned."
+  },
+  {
+    "name": "Box bodies and their openings",
+    "apis": [
+      "VehicleCargo.shelter",
+      "VehicleCargo.body_door",
+      "VehicleCargo.roller_shutter",
+      "VehicleCargo.rung_ladder"
+    ],
+    "boundary": "Body between authored bounds; doors, shutters and ladders take a wall face centre and outward normal; shutters without a colour keep their material's own finish."
+  },
+  {
+    "name": "Box missile launchers",
+    "apis": [
+      "VehicleWeapons.missile_box",
+      "VehicleWeapons.missile_face"
+    ],
+    "boundary": "Old box centre and size, mouths in a grid on the -Z face; arms, elevation pivots and weapon tips stay caller-owned."
+  },
+  {
+    "name": "Air-launched missiles",
+    "apis": [
+      "VehicleAircraft.missile"
+    ],
+    "boundary": "Revolved body along -Z with seeker, cone or ogive nose, cached slab fins, band and rail; bombs and packed tube launchers stay authored."
+  },
+  {
+    "name": "Smoke discharger banks",
+    "apis": [
+      "VehicleFittings.smoke_bank"
+    ],
+    "boundary": "Old bracket box plus the caller's tube transforms, so every family keeps its exact layout."
+  },
+  {
+    "name": "Rotor hub caps",
+    "apis": [
+      "VehicleRotors.hub_cap"
+    ],
+    "boundary": "Old cap cylinder on the rotor pivot, faceted or domed, optional second tier and bifilar arms; registers nothing."
+  },
+  {
+    "name": "Lamp units",
+    "apis": [
+      "VehicleFittings.lamp_unit"
+    ],
+    "boundary": "Old housing with round or rectangular inserts, indicator and cage, rails, bar or cross guard; light bars of side-by-side lenses stay authored."
+  },
+  {
+    "name": "Engine intake faces",
+    "apis": [
+      "VehicleAircraft.intake_face"
+    ],
+    "boundary": "Old dark disc's centre and radius with an explicit facing; hub, spinner, fan blades, vanes or dust cone; lift fans and hollow ducts stay separate."
+  },
+  {
+    "name": "Pedestal gun mounts",
+    "apis": [
+      "VehicleMounts.pedestal"
+    ],
+    "boundary": "Static plate, post and braces on the parent; swivel and yoke on the caller's head pivot. Companions gun_shield and ring_mount serve the pickups and light vehicles that carry them."
+  },
+  {
+    "name": "Roll cages and sport bars",
+    "apis": [
+      "VehicleFrames.roll_bar"
+    ],
+    "boundary": "Members as the old tubes' points; welded nodes, saddle clamps and base plates detected from the layout."
+  },
+  {
+    "name": "Bull bars and tube bumpers",
+    "apis": [
+      "VehicleFrames.bull_bar"
+    ],
+    "boundary": "Members as the old tubes' points, with base plates and optional lamp tabs."
+  },
+  {
+    "name": "Wheel-well tubs",
+    "apis": [
+      "VehicleWheelArches.tub"
+    ],
+    "boundary": "The old dark well box, opened at one or both ends with a curved roof and rolled lip; armour flat-roofed bays stay authored."
+  },
+  {
+    "name": "Aircraft store pods",
+    "apis": [
+      "VehicleAircraft.pod"
+    ],
+    "boundary": "The old VmPlane.body station list with lugs, sway-brace pads and seam bands; targeting, jamming and tank presets."
+  },
+  {
+    "name": "Muzzle brakes and muzzle sensors",
+    "apis": [
+      "VehicleWeapons.muzzle_brake",
+      "VehicleWeapons.muzzle_sensor"
+    ],
+    "boundary": "Ring-and-plate brake stacks on the howitzers and gunship cannons, and the bare boxes standing in for tank guns' muzzle reference sensors."
+  },
+  {
+    "name": "Vehicle cranes",
+    "apis": [
+      "VehicleMounts.crane"
+    ],
+    "boundary": "The repair, ammunition and engineer cranes' slewing rings, posts, boxed booms, lift rams, sheaves and hooks, each drawn as separate boxes per truck."
+  },
+  {
+    "name": "Gun travel locks",
+    "apis": [
+      "VehicleMounts.travel_lock"
+    ],
+    "boundary": "The self-propelled guns' and rocket launcher's travel-lock struts, arms and saddles."
+  },
+  {
+    "name": "Machine-gun pintles",
+    "apis": [
+      "VehicleMounts.pintle"
+    ],
+    "boundary": "Turret-top machine-gun posts and cradles, including the Merkava loader's gun that floated over the roof."
+  },
+  {
+    "name": "Trim vanes",
+    "apis": [
+      "VehicleMounts.trim_vane"
+    ],
+    "boundary": "Amphibians' bow trim boards with their hinge brackets, latches and ribs."
+  },
+  {
+    "name": "Tow cables",
+    "apis": [
+      "VehicleFittings.tow_cable"
+    ],
+    "boundary": "Hull-side tow cables strung as plain cable sags or tubes, now with eyes and retaining clips."
+  },
+  {
+    "name": "Exhausts and silencers",
+    "apis": [
+      "VehicleFittings.exhaust_run",
+      "VehicleFittings.silencer"
+    ],
+    "boundary": "Single exhaust pipe cylinders and box silencers under civilian cars, trucks and military trucks."
+  },
+  {
+    "name": "Air cleaners",
+    "apis": [
+      "VehicleFittings.air_cleaner"
+    ],
+    "boundary": "Truck and tractor air-cleaner cans with their caps, straps and intake hoses."
+  },
+  {
+    "name": "Searchlights and light bars",
+    "apis": [
+      "VehicleFittings.searchlight",
+      "VehicleFittings.light_bar"
+    ],
+    "boundary": "Ship, boat and aircraft searchlight cylinders on their yokes, and the emergency and work light bars on vans, pickups and the tractor."
+  },
+  {
+    "name": "Crew benches",
+    "apis": [
+      "VehicleCab.bench"
+    ],
+    "boundary": "Boat thwarts, troop-bed benches and rear seats drawn as cushion boxes on plain legs."
+  },
+  {
+    "name": "Roof racks and crate stacks",
+    "apis": [
+      "VehicleCargo.roof_rack",
+      "VehicleCargo.crate_stack"
+    ],
+    "boundary": "Roof-rack rails and cross bars, and loads of crates and ammunition boxes stacked by hand on cargo beds."
+  },
+  {
+    "name": "Tanker and supply equipment",
+    "apis": [
+      "VehicleEquipment.tanker_top",
+      "VehicleEquipment.pump_cabinet",
+      "VehicleEquipment.gas_bottle"
+    ],
+    "boundary": "Fuel tankers' walkways, manholes and rails, their pump cabinets, and the gas bottles on repair trucks."
+  },
+  {
+    "name": "Helicopter landing gear",
+    "apis": [
+      "VehicleAircraft.trailing_gear",
+      "VehicleAircraft.tailwheel"
+    ],
+    "boundary": "Main-gear drag tubes, struts and oleos, and tailwheel legs, braces and crowns on the gunships and utility helicopters."
+  },
+  {
+    "name": "Countermeasure dispensers",
+    "apis": [
+      "VehicleAircraft.dispenser"
+    ],
+    "boundary": "Flare and chaff boxes with their slot rows on the gunships, attack jets and the Kajman."
+  },
+  {
+    "name": "Formation lights and refuelling receptacles",
+    "apis": [
+      "VehicleAircraft.formation_light",
+      "VehicleAircraft.refuel_receptacle"
+    ],
+    "boundary": "Boxed formation-light strips and painted refuelling doors that sat off the curved skin."
+  },
+  {
+    "name": "Aircraft bombs",
+    "apis": [
+      "VehicleAircraft.bomb"
+    ],
+    "boundary": "General-purpose, laser-guided and satellite-guided bombs built separately by the attack jets, fighters and bombers."
+  },
+  {
+    "name": "Chin turrets",
+    "apis": [
+      "VehicleAircraft.chin_turret"
+    ],
+    "boundary": "Gunship chin-turret drums, cradles, ammunition chutes and magazines."
+  },
+  {
+    "name": "Track guards",
+    "apis": [
+      "VehicleBody.track_guard"
+    ],
+    "boundary": "Track shelves and mudguards drawn as long flat boxes over the tracks of tanks and tracked carriers."
+  },
+  {
+    "name": "Wishbone suspension",
+    "apis": [
+      "VehicleRunningGear.wishbone"
+    ],
+    "boundary": "Upper and lower suspension arm boxes, dampers and uprights on wheeled vehicles."
+  },
+  {
+    "name": "Hydraulic rams",
+    "apis": [
+      "VehicleFrames.ram"
+    ],
+    "boundary": "Recoil cylinders, elevation rams, dozer and crane lift rams drawn as single tubes."
+  },
+  {
+    "name": "Plates, crosses and stencil lettering",
+    "apis": [
+      "VehicleMarkings.plate",
+      "VehicleMarkings.cross",
+      "VehicleMarkings.digit_strokes",
+      "VehicleMarkings.stroke_rects"
+    ],
+    "boundary": "Number plates, red crosses and the stroke-font registration and hull numbers each family generated its own way."
+  },
+  {
+    "name": "Door levers and slide rails",
+    "apis": [
+      "VehicleDoors.lever",
+      "VehicleDoors.slide_rail"
+    ],
+    "boundary": "Door handle stubs on armoured hulls and the helicopters' sliding-door rails."
+  },
+  {
+    "name": "Boat bow eyes and fenders",
+    "apis": [
+      "VehicleMarine.bow_eye",
+      "VehicleMarine.fender"
+    ],
+    "boundary": "Bow towing eyes and hung fenders on boats and ships."
+  },
+  {
+    "name": "Oil and fuel drums",
+    "apis": [
+      "VehicleEquipment.drum"
+    ],
+    "boundary": "200-litre drums drawn as plain cylinders with separate rim, hoop and bung parts on the T-55's rear plate, the Rebel supply truck and the HEMTT drum loads."
+  },
+  {
+    "name": "Spare-wheel carriers",
+    "apis": [
+      "VehicleWheels.carrier"
+    ],
+    "boundary": "Bracket boxes, bars and missing mounts under spare wheels on doors, tailgates, cab backs, platforms and beds; the wheel stays VehicleWheels.spare."
   }
 ]

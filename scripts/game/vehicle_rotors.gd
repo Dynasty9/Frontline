@@ -44,8 +44,10 @@ static func blade(k: VehicleModels, parent: Node3D, root: float, radius: float, 
 static func main(k: VehicleModels, p: Node3D, pos: Vector3, nb: int, r: float, c: float, main := true, phase := 0.0, droop := 0.02, hub := 0.28, tip := 0, bcol = null) -> Node3D:
 	var rp := k._pivot(p, pos)
 	var bl := k._pivot(rp, Vector3.ZERO)
-	k._cyl(rp, hub, hub * 1.05, 0.2, Vector3.ZERO, Vector3.ZERO, "gunmetal_w", null, maxi(nb * 2, 10))
-	k._cyl(rp, hub * 0.55, hub * 0.7, 0.16, Vector3(0, 0.17, 0), Vector3.ZERO, "gunmetal_w", null, 10)
+	# The hub's drums keep their facets (a rotor head's round edge is what the
+	# camera sees), on one band of sides each.
+	VehicleBody.cylinder(k, rp, hub, hub * 1.05, 0.2, Vector3.ZERO, Vector3.ZERO, "gunmetal_w", null, maxi(nb * 2, 10))
+	VehicleBody.cylinder(k, rp, hub * 0.55, hub * 0.7, 0.16, Vector3(0, 0.17, 0), Vector3.ZERO, "gunmetal_w", null, 10)
 	var bc: Color = bcol if bcol is Color else Color(0.15, 0.155, 0.16)
 	var grip := minf(0.2 + r * 0.06, 0.75)
 	for i in nb:
@@ -64,14 +66,16 @@ static func main(k: VehicleModels, p: Node3D, pos: Vector3, nb: int, r: float, c
 		for side in [-1.0, 1.0]:
 			_rbox(k, rp, bs, Vector3(c * 0.12, 0.08, grip * 0.82), Vector3(side * c * 0.34, 0.10, hub + grip * 0.48), "steel", Color(0.29, 0.30, 0.28))
 		var pin := bs * Vector3(0, 0.17, hub + grip * 0.65)
-		k._cyl(rp, c * 0.14, c * 0.14, 0.07, pin, Vector3.ZERO, "steel", Color(0.4, 0.41, 0.38), 12, false)
-		VehicleFrames.tube(k, rp, bs * Vector3(c * 0.43, -0.23, hub * 0.65), bs * Vector3(c * 0.43, 0.03, hub + grip * 0.30), c * 0.035, "steel", Color(0.4, 0.41, 0.38), 8)
+		VehicleBody.cylinder(k, rp, c * 0.14, c * 0.14, 0.07, pin, Vector3.ZERO, "steel", Color(0.4, 0.41, 0.38), 12, false)
+		# (the pitch link's foot is in the swashplate)
+		VehicleBody.rod(k, rp, bs * Vector3(c * 0.43, -0.23, hub * 0.65), bs * Vector3(c * 0.43, 0.03, hub + grip * 0.30), c * 0.035, "steel", Color(0.4, 0.41, 0.38), 8, true, -1.0, false)
 	# Stepped swashplate, mast collar and evenly spaced hub fasteners.
-	k._cyl(rp, hub * 1.28, hub * 1.28, 0.055, Vector3(0, -0.22, 0), Vector3.ZERO, "steel", Color(0.32, 0.33, 0.30), 24)
-	k._cyl(rp, hub * 0.86, hub * 0.86, 0.07, Vector3(0, -0.15, 0), Vector3.ZERO, "gunmetal_w", null, 24)
+	VehicleBody.cylinder(k, rp, hub * 1.28, hub * 1.28, 0.055, Vector3(0, -0.22, 0), Vector3.ZERO, "steel", Color(0.32, 0.33, 0.30), 24)
+	VehicleBody.cylinder(k, rp, hub * 0.86, hub * 0.86, 0.07, Vector3(0, -0.15, 0), Vector3.ZERO, "gunmetal_w", null, 24)
+	# (each bolt's foot is in the hub's top)
 	for i in nb * 2:
 		var angle := TAU * i / float(nb * 2)
-		k._cyl(rp, hub * 0.075, hub * 0.075, 0.035, Vector3(sin(angle) * hub * 0.82, 0.115, cos(angle) * hub * 0.82), Vector3.ZERO, "steel", Color(0.39, 0.4, 0.37), 6, false)
+		VehicleBody.cylinder(k, rp, hub * 0.075, hub * 0.075, 0.035, Vector3(sin(angle) * hub * 0.82, 0.115, cos(angle) * hub * 0.82), Vector3.ZERO, "steel", Color(0.39, 0.4, 0.37), 6, false, true, false)
 	if not k.wreck:
 		var blur := MeshInstance3D.new()
 		var disc := PlaneMesh.new()
@@ -99,8 +103,8 @@ static func main(k: VehicleModels, p: Node3D, pos: Vector3, nb: int, r: float, c
 ## A tail rotor spinning about X at pos: n blades of radius r, chord c.
 static func tail(k: VehicleModels, p: Node3D, pos: Vector3, nb: int, r: float, c: float, side := 1.0, phase := 0.4) -> Node3D:
 	var tr := k._pivot(p, pos)
-	k._cyl(tr, 0.05, 0.08, 0.2, Vector3(side * 0.04, 0, 0), Vector3(0, 0, PI / 2), "gunmetal_w", null, 10)
-	k._cyl(tr, 0.035, 0.035, 0.12, Vector3(side * 0.17, 0, 0), Vector3(0, 0, PI / 2), "steel", null, 8, false)
+	VehicleBody.cylinder(k, tr, 0.05, 0.08, 0.2, Vector3(side * 0.04, 0, 0), Vector3(0, 0, PI / 2), "gunmetal_w", null, 10)
+	VehicleBody.cylinder(k, tr, 0.035, 0.035, 0.12, Vector3(side * 0.17, 0, 0), Vector3(0, 0, PI / 2), "steel", null, 8, false)
 	for i in nb:
 		var mount := k._pivot(tr, Vector3(side * 0.07, 0, 0))
 		mount.basis = Basis.from_euler(Vector3(phase + TAU * float(i) / float(nb), 0, 0)) * Basis(Vector3.BACK, Vector3.RIGHT, Vector3.UP)
@@ -114,9 +118,10 @@ static func tail(k: VehicleModels, p: Node3D, pos: Vector3, nb: int, r: float, c
 ## the shaft. `collars` are Vector2(y, radius) in the parent's space: bolted
 ## flanges such as the swashplate guide and the coaxial rotors' separator.
 static func mast(k: VehicleModels, parent: Node3D, center: Vector3, top_radius: float, bottom_radius: float, height: float, collars: Array = []) -> void:
-	k._cyl(parent, top_radius, bottom_radius, height, center, Vector3.ZERO, "gunmetal_w", null, 12)
+	# (the shaft's foot is inside its bearing housing)
+	VehicleBody.cylinder(k, parent, top_radius, bottom_radius, height, center, Vector3.ZERO, "gunmetal_w", null, 12, true, true, false)
 	var foot := minf(0.07, height * 0.16)
-	k._cyl(parent, bottom_radius * 1.22, bottom_radius * 1.32, foot, center + Vector3(0, -height * 0.5 + foot * 0.5, 0), Vector3.ZERO, "metal_dark", null, 12)
+	VehicleBody.cylinder(k, parent, bottom_radius * 1.22, bottom_radius * 1.32, foot, center + Vector3(0, -height * 0.5 + foot * 0.5, 0), Vector3.ZERO, "metal_dark", null, 12)
 	for i in 4:
 		var a := TAU * (i + 0.25) / 4.0
 		var n := Vector3(cos(a), 0, sin(a))
@@ -126,7 +131,76 @@ static func mast(k: VehicleModels, parent: Node3D, center: Vector3, top_radius: 
 	for collar: Vector2 in collars:
 		var thickness := clampf(collar.y * 0.18, 0.04, 0.06)
 		var at := Vector3(center.x, collar.x, center.z)
-		k._cyl(parent, collar.y, collar.y * 1.03, thickness, at, Vector3.ZERO, "steel", null, 14)
+		VehicleBody.cylinder(k, parent, collar.y, collar.y * 1.03, thickness, at, Vector3.ZERO, "steel", null, 14)
 		for i in 6:
 			var a := TAU * i / 6.0
 			VehicleBody.fastener(k, parent, at + Vector3(cos(a) * collar.y * 0.74, thickness * 0.5 + 0.002, sin(a) * collar.y * 0.74), Vector3.UP, clampf(collar.y * 0.06, 0.006, 0.014))
+
+## A rotor hub's cap, the fairing over the head that turns with it: the old
+## cap cylinder's centre, top and bottom radii, height and facet count, in
+## the rotor pivot's own space (Y up). Built on the caller's rotor pivot, it
+## spins with the hub main() drew and registers nothing. A bolted flange
+## round its foot, the shell above, a domed crown inside the old height or,
+## without `dome`, a flat chamfered top (keep a faceted fairing of eight
+## sides or fewer flat-topped, as it was). `upper` = (top radius, bottom
+## radius, height) stacks a second tier on the first's top (a two-step
+## faceted fairing); the crown then crowns that. `arms` > 0 adds a bifilar
+## vibration absorber on the crown: that many arms reaching `reach` from the
+## axis, the first `phase` radians from +Z toward +X (as main() counts its
+## blades), each swinging a pendulum weight on its two pins.
+static func hub_cap(k: VehicleModels, rotor: Node3D, center: Vector3, top_radius: float, bottom_radius: float, height: float, segments := 10, mat := "gunmetal_w", col = null, dome := true, upper := Vector3.ZERO, arms := 0, reach := 0.0, phase := 0.0) -> void:
+	var m := k._pivot(rotor, center)
+	var y0 := -height * 0.5
+	var y1 := height * 0.5
+	var flange := minf(height * 0.14, 0.04)
+	var ledge := lerpf(bottom_radius, top_radius, flange / height) * 0.96
+	# (each flat step rises 2 mm toward the axis, so the loft can tell which
+	# way it faces)
+	var prof := [Vector2(bottom_radius, y0), Vector2(bottom_radius, y0 + flange), Vector2(ledge, y0 + flange + 0.002)]
+	var lower := Vector2(ledge, y0 + flange + 0.002)
+	var crown := Vector2(top_radius, y1)
+	if not upper.is_zero_approx():
+		prof.append(Vector2(top_radius, y1))
+		if absf(upper.y - top_radius) > 0.002:
+			prof.append(Vector2(upper.y, y1 + 0.002))
+		lower = Vector2(upper.y, y1 + 0.002)
+		crown = Vector2(upper.x, y1 + upper.z)
+	if dome:
+		var rise := minf((crown.y - lower.y) * 0.35, crown.x * 0.6)
+		var yd := crown.y - rise
+		var rd := lerpf(lower.x, crown.x, (yd - lower.y) / maxf(crown.y - lower.y, 0.001))
+		prof.append_array([Vector2(rd, yd), Vector2(rd * 0.77, yd + rise * 0.64), Vector2(rd * 0.34, yd + rise * 0.94), Vector2(0, crown.y)])
+	else:
+		var chamfer := minf(crown.x * 0.08, 0.015)
+		prof.append_array([Vector2(crown.x, crown.y - chamfer), Vector2(crown.x - chamfer, crown.y - 0.002), Vector2(0, crown.y)])
+	# lofted through polygons laid out as a CylinderMesh lays its sides (the
+	# first corner toward +Z): eight sides or fewer stay crisp facets, ten or
+	# more read round
+	var rings := []
+	for q: Vector2 in prof:
+		var ring := PackedVector3Array()
+		for j in segments:
+			var a := TAU * float(j) / float(segments)
+			ring.append(Vector3(sin(a) * q.x, q.y, cos(a) * q.x))
+		rings.append(ring)
+	k._add(m, VehicleProfiles.loft(rings, 40.0), mat, col, Vector3.ZERO)
+	# the flange's bolts, one to a facet (every other on a rounder cap)
+	var bolts := segments if segments <= 8 else segments >> 1
+	var circle := (bottom_radius + ledge) * 0.5 * cos(PI / float(segments))
+	for i in bolts:
+		var a := (float(i) * float(segments) / float(bolts) + 0.5) * TAU / float(segments)
+		VehicleBody.fastener(k, m, Vector3(sin(a) * circle, y0 + flange + 0.004, cos(a) * circle), Vector3.UP, clampf(bottom_radius * 0.035, 0.005, 0.014))
+	if arms > 0 and reach > 0.0:
+		var depth := clampf(reach * 0.12, 0.03, 0.07)
+		var arm_y := crown.y - depth * 0.5
+		var weight := reach * 0.17
+		for i in arms:
+			var a := phase + TAU * float(i) / float(arms)
+			var d := Vector3(sin(a), 0, cos(a))
+			var across := Vector3(cos(a), 0, -sin(a))
+			VehicleFrames.beam(k, m, Vector3(0, arm_y, 0) + d * crown.x * 0.3, Vector3(0, arm_y, 0) + d * reach, depth * 1.3, depth, "gunmetal_w", null, false, true)
+			var at := Vector3(0, arm_y - weight * 0.4, 0) + d * reach
+			VehicleBody.cylinder(k, m, weight, weight, weight * 1.6, at, Vector3.ZERO, "gunmetal_w", null, 10)
+			for side: float in [-1.0, 1.0]:
+				VehicleBody.fastener(k, m, at + across * side * weight * 0.45 + Vector3(0, weight * 0.8 + 0.003, 0), Vector3.UP, weight * 0.16)
+	k._fold(m)

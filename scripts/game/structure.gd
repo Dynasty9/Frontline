@@ -101,6 +101,8 @@ var _flag: MeshInstance3D
 var _vis_cache := true
 var burn := 0.0  # how hard it's burning, 0..1 (every peer; see Fires)
 var burnt := false  # burnt out: a charred snag, a burnt-out car - it won't burn again
+var dark := false  # (a house's walls and roof) the lights are out: a ruin, or a house hit, holed or burning
+var _lit_glass := false  # (view) its model has a lamp lit behind glass somewhere, to put out when it goes dark
 var fire_k := ""  # (server) what it burns as, once lit (Fires.FUEL)
 var fuel := 0.0  # (server) seconds of full blaze left
 var fuel_max := 0.0
@@ -210,13 +212,18 @@ func apply_props(d: Dictionary) -> void:
 		burnt = d.burnt
 		if burnt and not was and model:
 			_rebuild_model()  # the snag or the shell the fire left
+	if d.has("dark"):
+		var was_dark := dark
+		dark = d.dark
+		if dark and not was_dark and model and _lit_glass:
+			_rebuild_model()  # the same walls with the lamps out
 
 
 func get_props() -> Dictionary:
 	var d := {"skind": skind, "team": team, "owner": owner_peer, "pos": position, "yaw": yaw, "size": size,
 		"variant": variant, "built": built, "progress": progress, "hp": hp, "max_hp": max_hp, "sname": sname,
 		"supply": supply, "queue": queue_items, "seen": seen_mask, "vk": vk, "tilt": tilt, "toss": toss, "door": door_shut,
-		"burnt": burnt}
+		"burnt": burnt, "dark": dark}
 	if skind == "town":
 		d["zc"] = zone_c
 		d["zr"] = zone_r
@@ -882,6 +889,8 @@ func take_damage(amount: float, _source = null) -> void:
 	net_dirty = true
 	if door_shut and amount >= 20.0:
 		open_door(null, true)
+	if amount >= 20.0 and skind in ["house_wall", "roof"]:
+		house_dark()  # a shell through the house: nobody's sitting by a lamp now
 	if team >= 0 and is_player_building() and world.time > _alert_t and amount > 5.0 and not skind in LINE_WORKS:
 		_alert_t = world.time + 25.0
 		world.send_msg(team, "alert", "%s is under attack at %s!" % [display_name(), Defs.grid_ref(position)], position)
@@ -931,6 +940,9 @@ func _house_wall_detail(rng: RandomNumberGenerator) -> void:
 	elif variant == 2:
 		gaps = [Rect2(-0.95, 0.0, 1.9, 2.2)]
 	BuildingWalls.face(k, L, 3.0, material, wall, gaps, {"band": 2.9})
+	# the foundation, below the ground where it's level, showing where the
+	# ground falls away under a house on a slope
+	k.box(Vector3(L, 0.5, 0.42), Vector3(0, -0.25, -0.2), "concrete", Color(0.5, 0.49, 0.46))
 	# who lives here is drawn from a stream of its own, so a wall's shutters,
 	# panes and doors stay as they were
 	var life := RandomNumberGenerator.new()
@@ -941,18 +953,50 @@ func _house_wall_detail(rng: RandomNumberGenerator) -> void:
 	wear.seed = rng.seed ^ 0x77ea7e12
 	if wear.randf() < 0.45:
 		BuildingWeathering.weeds(k, L, gaps, wear)
+	var ivied := false
 	if variant == 0 and wear.randf() < (0.3 if material == "stone" else 0.12):
+		ivied = true
 		BuildingWeathering.ivy(k, wear.randf_range(-L * 0.25, L * 0.25), wear.randf_range(1.0, 1.8), 2.8, wear)
+	# rain run off the sill, and the war: bullet strikes, the odd shell hit,
+	# soot up from a window or door where a fire was; at the windows tape on
+	# the glass, boards across, sandbags along the sill. A stream of its own
+	# again, so nothing else about the wall changes.
+	var war := RandomNumberGenerator.new()
+	war.seed = rng.seed ^ 0x3b0a7c55
+	var surf := BuildingMaterials.surface(material)
+	var tone := Callable(self, "_tone")
+	# (what a strike lays bare: fresh render, pale against the weathered
+	# face, and under a shell's blast the brick behind it; or fresh brick
+	# or stone)
+	var rendered: bool = BuildingMaterials.value(material, "finish", "render") == "render"
+	var chips: Color = wall.lightened(0.18).lerp(Color(0.72, 0.7, 0.66), 0.5) if rendered else wall.lightened(0.2)
+	var raw: Color = BuildingMaterials.color("brick") if rendered else wall.darkened(0.15)
+	if variant == 1 and war.randf() < 0.55:
+		BuildingWeathering.streaks(k, 0.0, 1.0, 1.3, surf, tone, war)
+	if variant != 0 and war.randf() < 0.07:
+		BuildingWeathering.soot(k, 0.0, 2.0 if variant == 1 else 2.2, 1.3 if variant == 1 else 1.9, 2.85, surf, tone, war, L * 0.5 - 0.05)
+	if war.randf() < 0.22:
+		BuildingWeathering.pocks(k, Vector2(war.randf_range(-L * 0.35, L * 0.35), war.randf_range(1.0, 2.2)), war.randf_range(0.5, 1.1), war.randi_range(8, 20), chips, war, gaps, L * 0.5)
+	if variant == 0 and war.randf() < 0.07:
+		var r := war.randf_range(0.32, 0.45)
+		var room_x := L * 0.5 - r * 1.9 - 0.05
+		if room_x > 0.0:
+			BuildingWeathering.scar(k, Vector2(war.randf_range(-room_x, room_x), war.randf_range(1.25, 1.9)), r, surf, tone, raw, chips, war, gaps, L * 0.5)
+	var at_window := war.randf()
+	var lamp_side := 0.0
 	# inside: the room's paint and skirting, what hangs on its walls
 	var room := _kit(life).at_point(Vector3(0, 0, -0.2), Vector3(0, PI, 0))
 	# (a wall doesn't know which house it is, so the paint follows the house's
 	# colour: every wall of a room the same)
-	BuildingFurnishings.lining(room, L, 3.0, gaps, BuildingFurnishings.INTERIORS[(ci * 4 + 1) % BuildingFurnishings.INTERIORS.size()])
-	match variant:
-		0:
-			BuildingFurnishings.wall_things(room, L)
-		1:
-			BuildingFurnishings.radiator(room, 0.0, 1.0)
+	# (a barn is bare boards inside: no paint, pictures or radiators)
+	var barn := material == "timber"
+	if not barn:
+		BuildingFurnishings.lining(room, L, 3.0, gaps, BuildingFurnishings.INTERIORS[(ci * 4 + 1) % BuildingFurnishings.INTERIORS.size()])
+		match variant:
+			0:
+				BuildingFurnishings.wall_things(room, L)
+			1:
+				BuildingFurnishings.radiator(room, 0.0, 1.0)
 	match variant:
 		1:
 			var opts := {"material": material, "wall": wall, "frame": trim}
@@ -960,10 +1004,16 @@ func _house_wall_detail(rng: RandomNumberGenerator) -> void:
 			# house), a lamp left on; flowers under some windows
 			opts["curtains"] = ["drapes", "drapes", "blind", "nets", ""][life.randi() % 5]
 			opts["curtain"] = BuildingFurnishings.FABRICS[life.randi() % BuildingFurnishings.FABRICS.size()]
-			# (and a house still lived in keeps its glass)
-			if life.randf() < 0.35:
-				opts["lit"] = true
+			# (and a house still lived in keeps its glass; its lamps are out
+			# once it's a ruin, or hit; a barn has none)
+			var lived := life.randf() < 0.35 and not barn
+			if lived:
+				if not dark:
+					opts["lit"] = true
+					_lit_glass = true
 				opts["glazing"] = 0.85
+			if barn:
+				opts["curtains"] = ""
 			if rng.randf() < 0.45:
 				opts["shutters"] = [Color(0.24, 0.36, 0.27), Color(0.31, 0.39, 0.46), Color(0.36, 0.25, 0.16), Color(0.5, 0.22, 0.17)][(ci + 1) % 4]
 				opts["shutter"] = "louvred" if rng.randf() < 0.5 else "boarded"
@@ -971,15 +1021,28 @@ func _house_wall_detail(rng: RandomNumberGenerator) -> void:
 				for i in 2:
 					open.append(rng.randf_range(0.0, 0.2) if rng.randf() < 0.85 else null)
 				opts["open"] = open
+			# (tape on the glass of a house still lived in; boards or sandbags
+			# where the war has been)
+			if at_window < 0.3 and lived:
+				opts["tape"] = true
 			BuildingOpenings.window(k, Vector3(0, 1.5, 0), Vector2(1.3, 1.0), opts)
-			if not opts.has("shutters") and life.randf() < 0.25:
+			var bagged := at_window >= 0.38 and at_window < 0.44
+			var boarded := not opts.has("shutters") and at_window >= 0.3 and at_window < 0.38
+			if boarded:
+				BuildingWeathering.boards(k, Vector3(0, 1.5, 0), Vector2(1.3, 1.0), war)
+			elif bagged:
+				BuildingWeathering.sill_bags(k, Vector3(0, 1.5, 0), Vector2(1.3, 1.0), war)
+			# (no flowers under boards or sandbags)
+			if not opts.has("shutters") and life.randf() < 0.25 and not bagged and not boarded and not barn:
 				BuildingFurnishings.window_box(k, 0.0, 1.0, 1.1, [Color(0.75, 0.12, 0.12), Color(0.85, 0.45, 0.6), Color(0.9, 0.75, 0.2), Color(0.55, 0.3, 0.7)][life.randi() % 4])
 		2:
 			var w := 1.9
 			BuildingOpenings.doorway(k, Vector3.ZERO, Vector2(w, 2.2), {"material": material, "wall": wall, "frame": trim, "hood": rng.randf() < 0.3,
 				"hood_col": Res.vary(BuildingMaterials.color("roof_tile"), 0.1, rng)})
 			if L > 2.6 and life.randf() < 0.55:
-				BuildingFurnishings.lantern(k, Vector3((w * 0.5 + 0.3) * (1.0 if life.randf() < 0.5 else -1.0), 2.05, 0))
+				lamp_side = 1.0 if life.randf() < 0.5 else -1.0
+				BuildingFurnishings.lantern(k, Vector3((w * 0.5 + 0.3) * lamp_side, 2.05, 0), Color(0.12, 0.12, 0.11), not dark)
+				_lit_glass = _lit_glass or not dark
 			# double doors: shut (till someone comes through), or swung in -
 			# one may be gone. Each leaf hangs on its own hinge so it can swing.
 			var dc: Color = [Color(0.3, 0.2, 0.13), Color(0.22, 0.32, 0.26), Color(0.26, 0.31, 0.4), Color(0.42, 0.2, 0.15)][(ci + 2) % 4]
@@ -993,8 +1056,67 @@ func _house_wall_detail(rng: RandomNumberGenerator) -> void:
 				pv.position = Vector3(sx * (w * 0.5 - 0.09), 0, DOOR_Z)
 				pv.rotation.y = 0.0 if door_shut else a
 				model.add_child(pv)
-				BuildingOpenings.leaf(BuildingKit.nodes(pv, rng), Vector2(0.88, 2.06), "panelled", dc, -sx)
+				BuildingOpenings.leaf(BuildingKit.nodes(pv, rng), Vector2(0.88, 2.06), "ledged" if barn else "panelled", dc, -sx)
 				_door_leaves.append([pv, a])
+	_wall_fixtures(k, rng, L, barn, ivied, lamp_side)
+
+
+## What's fixed to the outside of a house wall (`k` at its face): on a plain
+## wall, the cabinet the mains come in at, an outside tap (a hose on a hook
+## by some), an air conditioner on brackets or on a pad at its foot, a dish on
+## an arm (its top clear of the gutter); by a front door the house's number, a letterbox
+## (on the side the lamp isn't), a mat on the step. Kept clear of the corners
+## and the downpipes there, and of ivy. A barn has only its meter and tap.
+## Drawn from a stream of its own, so nothing else about the wall changes.
+func _wall_fixtures(k: BuildingKit, rng: RandomNumberGenerator, L: float, barn: bool, ivied: bool, lamp_side: float) -> void:
+	var fix := RandomNumberGenerator.new()
+	fix.seed = rng.seed ^ 0x2f1d7a3b
+	var room := L * 0.5 - 0.6
+	var pick := fix.randf()
+	var at := fix.randf()
+	if variant == 0 and not ivied and room > 0.3:
+		if pick < 0.08:
+			var gas := fix.randf() < 0.4
+			BuildingFittings.meter_box(k, Vector3(lerpf(-room + 0.25, room - 0.25, at), 0.0 if gas else fix.randf_range(0.4, 0.7), 0), gas)
+		elif pick < 0.16:
+			var hose: Variant = BuildingFittings.HOSES[fix.randi() % BuildingFittings.HOSES.size()] if fix.randf() < 0.55 else null
+			BuildingFittings.tap(k, Vector3(lerpf(-room, room - (0.6 if hose != null else 0.1), at), 0.55, 0), hose)
+		elif pick < 0.23 and not barn and room > 0.5:
+			var cx := lerpf(-room + 0.4, room - 0.54, at)
+			if fix.randf() < 0.55:
+				BuildingFittings.wall_unit(k, Vector3(cx, fix.randf_range(1.75, 2.05), 0))
+			else:
+				k.box(Vector3(0.95, 0.08, 0.52), Vector3(cx, 0.04, 0.3), "concrete", Color(0.55, 0.54, 0.5))
+				BuildingFittings.ac_unit(k, Vector3(cx, 0.08, 0.28))
+		elif pick < 0.29 and not barn:
+			BuildingFittings.wall_dish(k, Vector3(lerpf(-room + 0.4, room - 0.4, at), fix.randf_range(1.85, 2.1), 0),
+				Vector3(fix.randf_range(0.8, 1.0), fix.randf_range(-0.6, 0.6), 0))
+	elif variant == 2 and not barn:
+		# the number and letterbox on the wall beside the door, the lamp's
+		# other side
+		var side := -lamp_side if lamp_side != 0.0 else (1.0 if at < 0.5 else -1.0)
+		var sx := side * (0.95 + L * 0.5) * 0.5
+		if L > 2.45 and pick < 0.7:
+			var c: Array = BuildingFittings.NUMBERS[fix.randi() % BuildingFittings.NUMBERS.size()]
+			BuildingFittings.house_number(k, Vector3(sx, 1.72, 0), fix.randi_range(1, 98), c[0], c[1])
+		if L > 2.45 and fix.randf() < 0.35:
+			BuildingFittings.letterbox(k, Vector3(sx, 1.15, 0), BuildingFittings.LETTERBOXES[fix.randi() % BuildingFittings.LETTERBOXES.size()])
+		if fix.randf() < 0.5:
+			BuildingFittings.doormat(k, Vector3(0, 0.14, 0.3), BuildingFittings.MATS[fix.randi() % BuildingFittings.MATS.size()])
+
+
+## Each part of a house wall's body as drawn: [its rect in the face (x, y),
+## its tint], so a stain can fade into exactly the wall it lies on.
+var _body: Array = []
+
+
+## The tint of a house wall's face at `p` (face x and y), as its body was drawn.
+func _tone(p: Vector2) -> Color:
+	var best: Color = _body[0][1] if not _body.is_empty() else Color(1, 1, 1)
+	for b: Array in _body:
+		if (b[0] as Rect2).grow(0.001).has_point(p):
+			return b[1]
+	return best
 
 
 ## The house's painted woodwork (window frames, door frames, fascias and barge
@@ -1128,9 +1250,10 @@ func _swing_leaves(kicked: bool) -> void:
 
 ## A building's model on its own, without a world (the field manual's preview).
 ## `id` stands in for the entity id its look is seeded from.
-static func preview_model(kind: String, side: int, v := 0, sz := Vector3.ZERO, shut := false, id := 0) -> Node3D:
+static func preview_model(kind: String, side: int, v := 0, sz := Vector3.ZERO, shut := false, id := 0, dark := false) -> Node3D:
 	var st := Structure.new()
 	st.eid = id
+	st.dark = dark
 	st.skind = kind
 	st.team = side
 	st.variant = v
@@ -1289,25 +1412,118 @@ func _roof_model(rng: RandomNumberGenerator) -> void:
 	k.sink.cast_all = true
 	if variant % 2 == 0:
 		var tint := Res.vary(Color(0.5, 0.22, 0.14), 0.12, rng) if rng.randf() < 0.75 else Color(0.36, 0.34, 0.32)
+		var barn := material == "timber"
+		var covering := "roof_sheet" if barn else "roof_tile"
+		if barn:
+			# rusted, galvanised or painted red sheet
+			tint = [Color(0.45, 0.3, 0.22), Color(0.52, 0.53, 0.52), Color(0.44, 0.17, 0.13)][posmod(ci / BuildingMaterials.HOUSE.size() + 1, 3)]
 		var end := L * 0.5 - 0.3
-		var rise := BuildingRoofs.gable(k, L, W, h, 28.0, 0.35, "roof_tile", tint, {"gable_material": material, "gable_col": wall_col,
-			"trim": trim, "gable_inset": -0.07, "gutters": true, "downpipes": [[end, 1.0], [-end, -1.0]], "wall_face": W * 0.5 + 0.2})
+		# its form: a third of them hipped, pitched anywhere from 24 to 36
+		# degrees (a stream of its own, so tints and chimneys stay as they were)
+		var form := RandomNumberGenerator.new()
+		form.seed = rng.seed ^ 0x40f5ca1e
+		var pitch := form.randf_range(24.0, 36.0)
+		var hipped := form.randf() < 0.35 and not barn
+		if barn:
+			pitch += 4.0
+		var fx := L * 0.5 + 0.2
+		var fz := W * 0.5 + 0.2
+		var ropts := {"gable_material": material, "gable_col": wall_col, "trim": trim, "gable_inset": -0.07, "gutters": true,
+			"downpipes": [[end, 1.0], [-end, -1.0]], "wall_face": fz, "wall_face_x": fx}
+		var rise := BuildingRoofs.hip(k, L, W, h, pitch, 0.35, covering, tint, ropts) if hipped else BuildingRoofs.gable(k, L, W, h, pitch, 0.35, covering, tint, ropts)
+		if barn:
+			# a loft door high in each gable end, a hoist beam over it
+			for e: float in [-1.0, 1.0]:
+				var loft := k.at_point(Vector3(e * (L * 0.5 + 0.2), h + 0.2, 0), Vector3(0, e * PI * 0.5, 0))
+				# (boards in the barn's colour, framed, ledged and braced in white)
+				loft.box(Vector3(1.3, 1.25, 0.05), Vector3(0, 0.62, 0.02), "wood_painted", wall_col.darkened(0.15))
+				for y: float in [0.05, 1.2]:
+					loft.plate(Vector3(1.42, 0.1, 0.03), Vector3(0, y, 0.06), "paint", trim)
+				for x: float in [-0.66, 0.66]:
+					loft.plate(Vector3(0.1, 1.25, 0.03), Vector3(x, 0.62, 0.06), "paint", trim)
+				loft.plate(Vector3(0.1, 1.5, 0.03), Vector3(0, 0.62, 0.065), "paint", trim, Vector3(0, 0, 0.82))
+				loft.plate(Vector3(1.25, 0.08, 0.03), Vector3(0, 0.62, 0.07), "paint", trim)
+				loft.bar(Vector3(0, 1.75, -0.1), Vector3(0, 1.75, 0.85), 0.14, 0.14, "wood_dark", Color(0.3, 0.23, 0.16))
 		var life := RandomNumberGenerator.new()
 		life.seed = rng.seed ^ 0x5eed11fe
 		var aerial := life.randf() < 0.5
-		if rng.randf() < 0.6:
+		if rng.randf() < 0.6 and not barn:
 			var z := W * 0.18
 			var cx := rng.randf_range(-L * 0.3, L * 0.3)
-			var foot := h + (W * 0.5 + 0.2 - z - 0.3) * tan(deg_to_rad(28.0))
+			# seated on the lowest point of the roof under it
+			var foot := INF
+			for px: float in [cx - 0.3, cx + 0.3]:
+				for pz: float in [z - 0.3, z + 0.3]:
+					foot = minf(foot, BuildingRoofs.underside(fx, fz, h, pitch, px, pz, hipped))
+			foot -= 0.05
 			BuildingFittings.chimney(k, Vector3(cx, foot, z), Vector2(0.6, 0.6), h + rise + 0.5,
 				"brick", Res.vary(BuildingMaterials.color("brick"), 0.08, rng))
 			if aerial:
 				# lashed to the stack, above its pots
 				BuildingFurnishings.aerial(k, Vector3(cx + 0.33, h + rise - 0.4, z), 1.9, life.randf_range(-0.6, 0.6))
-		elif aerial:
-			BuildingFurnishings.aerial(k, Vector3(L * 0.38, h + rise - 0.06, 0), 1.4, life.randf_range(-0.6, 0.6))
+		elif aerial and not barn:
+			var ax := L * 0.38 if not hipped else maxf(0.0, fx - fz - 0.2)
+			BuildingFurnishings.aerial(k, Vector3(ax, h + rise - 0.06, 0), 1.4, life.randf_range(-0.6, 0.6))
+		# wear and mending on the back slope: a tarp weighted down over a hole,
+		# or a hole with the battens showing; a skylight in some
+		var patch := RandomNumberGenerator.new()
+		patch.seed = rng.seed ^ 0x7a39e5
+		var lift: float = BuildingMaterials.value("roof_tile", "thickness", 0.09) / cos(deg_to_rad(pitch))
+		var reach := (fx - fz) * 0.5 + 0.6 if hipped else L * 0.3
+		var roll := patch.randf()
+		if roll < 0.18:
+			var px := patch.randf_range(-reach, reach)
+			var pz := -fz * patch.randf_range(0.35, 0.6)
+			# (kept short of the hips, a metre clear either side at least: a
+			# hip's slope narrows toward its ridge)
+			var top_z := absf(pz) - 1.05 * cos(deg_to_rad(pitch))
+			var span := (fx - fz + top_z if hipped else fx - 0.1) - 0.25
+			px = clampf(px, -maxf(0.0, span - 1.0), maxf(0.0, span - 1.0))
+			var on := k.moved(Transform3D(Basis(Vector3.RIGHT, -deg_to_rad(pitch)), Vector3(px, BuildingRoofs.underside(fx, fz, h, pitch, px, pz, hipped) + lift, pz)))
+			if roll < 0.12:
+				BuildingWeathering.tarp(on, patch, (fz + 0.35 + pz) / cos(deg_to_rad(pitch)), span - absf(px))
+			else:
+				BuildingWeathering.hole(on, patch)
+		if patch.randf() < 0.15:
+			var sx := patch.randf_range(-reach, reach) * 0.6
+			var sz := fz * 0.45
+			var lamp := patch.randf() < 0.4 and not dark
+			_lit_glass = _lit_glass or lamp
+			BuildingFurnishings.skylight(k.moved(Transform3D(Basis(Vector3.RIGHT, deg_to_rad(pitch)), Vector3(sx, BuildingRoofs.underside(fx, fz, h, pitch, sx, sz, hipped) + lift, sz))),
+				lamp)
+		# moss and lichen on the tiles, most on the back (shadier) slope: green
+		# where it holds the damp, pale where it's dry (a stream of its own)
+		var growth := RandomNumberGenerator.new()
+		growth.seed = rng.seed ^ 0x11c4e7
+		var tile_tone := Mats.tint_for("roof_tile", tint)
+		var on_tile := func(_p: Vector2) -> Color: return tile_tone
+		for i in (growth.randi_range(2, 4) if not barn else 0):
+			var side := -1.0 if growth.randf() < 0.7 else 1.0
+			var r := growth.randf_range(0.6, 1.2)
+			var lz := side * fz * growth.randf_range(0.4, 0.68)
+			# (inside its own slope: clear of the hips and the verges)
+			var room := (fx - fz + absf(lz) - r * 1.7) if hipped else (L * 0.5 - 0.2 - r)
+			if room <= 0.0:
+				continue
+			var lx := growth.randf_range(-room, room)
+			var pale := growth.randf() < 0.4
+			var ph := growth.randf() * TAU
+			# (mottled: how thick it grows at each point of the patch's grid)
+			var mottle := PackedFloat32Array()
+			for m in 15 * 15:
+				mottle.append(growth.randf())
+			var face := k.moved(Transform3D(Basis(Vector3.RIGHT, side * deg_to_rad(pitch)), Vector3(lx, BuildingRoofs.underside(fx, fz, h, pitch, lx, lz, hipped) + lift, lz))).at_point(Vector3.ZERO, Vector3(-PI * 0.5, 0, 0))
+			BuildingWeathering.stain(face, Rect2(-r, -r * 0.8, r * 2.0, r * 1.6), "roof_tile", on_tile, Color(1.3, 1.6, 1.2) if pale else Color(0.45, 0.68, 0.3), func(u: float, v: float) -> float:
+				var q := Vector2(u * 2.0 - 1.0, v * 2.0 - 1.0)
+				var d := q.length() * (1.0 + 0.22 * sin(q.angle() * 4.0 + ph) + 0.1 * sin(q.angle() * 9.0 - ph))
+				# (in clumps, thickest in the middle)
+				var spots := 0.35 + 0.65 * mottle[roundi(v * 14.0) * 15 + roundi(u * 14.0)]
+				return clampf((1.0 - d) * 1.6, 0.0, 1.0) * spots, 14, 14)
 	else:
-		BuildingRoofs.flat(k, L, W, h, {"material": material, "col": wall_col, "wall_face": W * 0.5 + 0.2, "hatch": rng.randf() < 0.3})
+		# (years of weather on it, from a stream of its own)
+		var flat_wear := RandomNumberGenerator.new()
+		flat_wear.seed = rng.seed ^ 0x6a7e5d
+		BuildingRoofs.flat(k, L, W, h, {"material": material, "col": wall_col, "wall_face": W * 0.5 + 0.2, "hatch": rng.randf() < 0.3, "wear": flat_wear})
 		var top := h + 0.2
 		# what's up there: a water tank, an air conditioner, a dish
 		if rng.randf() < 0.65:
@@ -1610,6 +1826,8 @@ func _destroyed(quiet := false) -> void:
 		world.fx_event([Fx.TREE_FALL, position, fy, eid, variant])
 		world.despawn(self)
 		return
+	if skind in ["house_wall", "roof"]:
+		house_dark()  # a wall down or the roof gone: the rest of the house goes dark
 	if not quiet:
 		world.fx_event([Fx.DEBRIS, position + Vector3(0, 1.0, 0), _main_color(), 14])
 	if not quiet and size.x > 3.0 and skind in ["house_wall", "tall_wall", "barracks", "factory", "research", "concrete_wall", "medic_tent"]:
@@ -2240,14 +2458,56 @@ func char_out() -> void:
 		_rebuild_model()
 
 
-## (view) A tree or a car rebuilt as what the fire left of it.
+## (server) The lights go out in the house this wall or roof is part of: a
+## shell came through it, a wall came down, its roof caught fire or fell in.
+## Every wall standing round its floor and the roof over it go dark.
+func house_dark() -> void:
+	var fl: Structure = null
+	for st in world.structures_near(position, 8.0, true):
+		if (st as Structure)._covers(position, 0.45):
+			fl = st
+			break
+	var went := false
+	if fl == null:
+		went = go_dark()
+	else:
+		for st in world.structures_near(fl.position, maxf(fl.size.x, fl.size.z) * 0.5 + 1.0):
+			if st.skind in ["house_wall", "roof"] and fl._covers(st.position, 0.45):
+				went = st.go_dark() or went
+	if went:
+		world.stat("house_dark")
+
+
+## (server) This wall's or roof's lamps are out (see house_dark). Whether
+## they were on till now.
+func go_dark() -> bool:
+	if dark or gone:
+		return false
+	dark = true
+	net_dirty = true
+	world.push_props(self, {"dark": true})
+	if world.has_view and model and _lit_glass:
+		_rebuild_model()
+	return true
+
+
+## Whether `p` is on this floor (or within `margin` of its edge, where its
+## walls stand).
+func _covers(p: Vector3, margin: float) -> bool:
+	var q := Basis(Vector3.UP, yaw).inverse() * (p - position)
+	return absf(q.x) <= size.x * 0.5 + margin and absf(q.z) <= size.z * 0.5 + margin
+
+
+## (view) A tree or a car rebuilt as what the fire left of it; a house's wall
+## or roof with its lamps out.
 func _rebuild_model() -> void:
 	if world and world.structure_view:
 		world.structure_view.unbatch(self)
-	if not skind in ["tree", "car"]:
+	if not skind in ["tree", "car", "house_wall", "roof"]:
 		return
 	model.queue_free()
 	_char_mats.clear()
+	_lit_glass = false
 	_build_model()
 	_apply_tilt()
 	model.visible = view_active
@@ -2639,6 +2899,7 @@ func _build_model() -> void:
 	model = Node3D.new()
 	add_child(model)
 	_bake = Mats.Bake.new() if skind in BAKED else null
+	_body = []
 	var rng := RandomNumberGenerator.new()
 	rng.seed = eid * 7919 + variant
 	var bags: Array = []
@@ -2656,6 +2917,12 @@ func _build_model() -> void:
 			col = BuildingMaterials.house_color(int(size.y), col)
 		if skind in ["house_wall", "rubble", "crates"]:
 			col = Res.vary(col, 0.05, rng)
+		if skind == "rubble":
+			continue  # (drawn as a heap, below)
+		if skind == "house_wall":
+			# (what it was tinted, for stains to fade into: see _tone)
+			var drawn := Res.mat(col).albedo_color
+			_body.append([Rect2(p.p.x - p.s.x * 0.5, p.p.y - p.s.y * 0.5, p.s.x, p.s.y), Mats.tint_for(_surf_kind(drawn, null), drawn)])
 		_bx(p.p, p.s, col, p.r, skind != "floor")
 	var tc := _flag_color()
 	match skind:
@@ -2699,17 +2966,24 @@ func _build_model() -> void:
 			var top := BuildingWalls.coping(tk, p.s.x, p.s.z, p.s.y, "concrete", p.color)
 			for sd: float in [-1.0, 1.0]:
 				BuildingWalls.joints(tk.at_point(Vector3(0, 0, sd * p.s.z * 0.5), Vector3(0, 0.0 if sd > 0.0 else PI, 0)), p.s.x, p.s.y, 2.0, p.color)
-			BuildingWire.topping(tk, p.s.x, top, 1.0)
+			# new bright wire on some compounds, rusted brown on the older ones
+			BuildingWire.topping(tk, p.s.x, top, 1.0, 3, "clean" if rng.randf() < 0.5 else "rust")
 		"house_wall":
 			_house_wall_detail(rng)
+		"rubble":
+			# a heap of broken masonry over the boxes it covers with
+			BuildingWeathering.heap(_kit(rng), size.x, maxf(1.0, size.z), rng)
 		"floor":
 			# a rug in most houses' main room, lying flat
-			if size.x > 3.0 and size.z > 3.0 and rng.randf() < 0.65:
+			if size.x > 3.0 and size.z > 3.0 and rng.randf() < 0.65 and variant != 2:
 				BuildingFurnishings.rug(_kit(rng), Vector3(rng.randf_range(-0.6, 0.6), 0.06, rng.randf_range(-0.5, 0.5)),
 					Vector2(minf(size.x * 0.4, 3.0), minf(size.z * 0.4, 2.2)), BuildingFurnishings.FABRICS[rng.randi() % BuildingFurnishings.FABRICS.size()])
 			# a ruin: its roof burned and fell in on the floor
 			if variant == 1 and size.x > 3.0 and size.z > 3.0:
 				BuildingWeathering.ruin(_kit(rng), size, 0.06, rng)
+			# a barn: straw over its floor
+			if variant == 2:
+				BuildingWeathering.straw(_kit(rng), size, 0.06, rng)
 		"bridge":
 			_bridge_model(rng)
 		"dock":
@@ -3321,7 +3595,7 @@ func _surf_kind(c: Color, mesh: Mesh) -> String:
 		"house_wall":
 			return BuildingMaterials.surface(BuildingMaterials.house(int(size.y)))
 		"floor":
-			return "floor_tiles"
+			return "floor_tiles" if variant != 2 else "concrete_floor"
 		"rubble":
 			return "rubble"
 		"crates":
