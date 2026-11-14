@@ -6,33 +6,33 @@
   "summary": "Rooms under a roof, wall feet and gaps between houses lose skylight; open ground is unchanged.",
   "medium": "motion",
   "stage": "--scenario=breach --seed=3 --fixed-fps 30. Midday room: --mood=day --focus=0,-30 --zoom=8 --pitch=-62 at 5 s. Golden-hour room: --mood=golden --focus=0,-30 --zoom=12 --pitch=-40 --cam-yaw=0.5 at 5 s. Between houses (review): --mood=golden --focus=7,-31 --zoom=12 --pitch=-10 at 12 s. Destruction: --mood=day --focus=12,-31 --zoom=14 --pitch=-50 --blast-at=14,-29,3,6, 60 frames every 0.1 s. The roof over the room is lifted by the defenders inside.",
-  "rationale": "Each sheet is cropped tight on where probes matter. OFF is a --set=light_probes:0 run; ON, the probe term and the bent normal are consecutive frames of a --set=light_probes:2 run cycling them (FL_DEBUG_PROBES_AB=cycle). The scenario is deterministic at a fixed frame rate, so OFF and ON are the same moment (only smoke differs). The flicker clip alternates them on one frame; the destruction clip pairs the game with the probe term from a second identical run (FL_DEBUG_PROBES_VIEW=1).",
+  "rationale": "Each sheet is cropped tight on where probes matter. OFF and ON are adjacent frames (1/30 s apart) of one probes-on run that cycles the probes off, on, their term and the bent normal three frames each (FL_DEBUG_PROBES_AB=cycle), so smoke and men barely move between them; the probe term comes from the same run. The difference panel is ON minus OFF x4 around mid grey. The flicker clip alternates OFF and ON; the destruction clip pairs the game with the probe term from a second identical fixed-fps run (FL_DEBUG_PROBES_VIEW=1).",
   "capture": {
     "provenance": "Recaptured off-screen from this branch (Forward+, RTX 3090, High preset) with the commands in stage; panels are consecutive frames of one fixed-fps run, so they share camera, units and smoke.",
     "comparison": "Player sheets: top left probes off, bottom left on, top right the probe term (sky share on grey, bounce amplified), bottom right ON minus OFF x4 on mid grey. Review sheets (PR only) show the bent normal instead of the difference. Flicker: off and on alternate each second on one frame. Destruction: the game and the probe term from two identical fixed-fps runs.",
-    "limits": "Measured: the midday room falls to 0.73 of its brightness (sunlit floor 0.60, shaded floor 0.69); in it the shade is 0.22 of the sunlit floor in linear light. Outdoors the change is small (golden hour between houses: 2.4 levels mean); roof tops and open ground stay at 1.00. Smoke differs between OFF and ON runs. Trenches are narrower than the 2 m grid and are not shown. The destruction clip predates the floor-bounce change. The Compatibility renderer (browser) gets the skylight shading and bounce but not the indoor sun cut."
+    "limits": "Measured: the midday room falls to 0.75 of its brightness (sunlit floor 0.61, shaded floor 0.73); its shade is 0.22 of the sunlit floor in linear light. At golden hour the grass in the house's shade by its walls darkens (0.82 at the wall foot, 0.86 four metres out) and far grass stays at 1.00; outdoors in sun the change is small. Fast debris still moves between the two frames and speckles the difference. Trenches are narrower than the 2 m grid and are not shown. The destruction clip predates the floor-bounce change. The Compatibility renderer (browser) gets the skylight shading and bounce but not the indoor sun cut."
   },
   "source_ref": "dines/probe-grid-gi-0571ca: the warm-bounce commit after edadf5ca.",
   "sources": [
     {
       "file": "changelog/unreleased/light-probes/room-under-roof.jpg",
       "caption": "Midday room: OFF/ON, probe term and the difference x4.",
-      "sha256": "42430d9063fe0e26658f9ce0912fca8cca73e5a03a9975b71343da8b78a1703a"
+      "sha256": "0652686a3b0d5f48b386fa717c648d44232411084ea1e994dfa8de99f2b223d7"
     },
     {
       "file": "changelog/unreleased/light-probes/room-golden-hour.jpg",
       "caption": "Golden-hour room: OFF/ON, probe term and the difference x4.",
-      "sha256": "24cacb7005440c673fed7ca20be483d8689e4302ee33cc92c665c2b2a4c2bf9c"
+      "sha256": "e0997650ca6fce906e357ece7f04704393055bc9e21bbb9d5d1758df8e1abe75"
     },
     {
       "file": "changelog/unreleased/light-probes/room-flicker.webm",
       "caption": "Probes off/on every second on one frame of the midday room, 8 s, VP9.",
-      "sha256": "2a72a4c5fe4fb19a7bcc60896a53a49df57e4c35fc3c49ab2fe41a5153b74164"
+      "sha256": "051423d731821556b072858f196a0b446e17c0371da6b0e4b6249ec5f50831bb"
     },
     {
       "file": "changelog/unreleased/light-probes/room-flicker.jpg",
       "caption": "Poster: the ON frame.",
-      "sha256": "367639a18094366a27182f1b6417da4b06ef896a00de12e8e529f5b898f77c20"
+      "sha256": "5d5c069bd3ca3671c8880abfa69e238fe52b267f87e8add73b15db694efb2598"
     },
     {
       "file": "changelog/unreleased/light-probes/destroyed-house.webm",
@@ -47,12 +47,12 @@
     {
       "file": "changelog/unreleased/light-probes/review/pr-room-bent.jpg",
       "caption": "Review only (PR): midday room with the bent-normal panel.",
-      "sha256": "b6231cdd009c2318b6824682b828f0c61aba055f1aee1777ae3044d3bb2efce6"
+      "sha256": "e2a197ebacd574a269af563e163c6d6dabc8f4ebf70f14bb5e2412458f3732ef"
     },
     {
       "file": "changelog/unreleased/light-probes/review/pr-golden-bent.jpg",
       "caption": "Review only (PR): golden-hour room with the bent-normal panel.",
-      "sha256": "c085d3f060393501931009199064a4ff82957f0157660d57f6d3a518a142dff4"
+      "sha256": "f0827f9719d5de4ada3fe36aaeb58c50efa9b6503188abf4922a9fe9fa781232"
     },
     {
       "file": "changelog/unreleased/light-probes/review/pr-between-houses.jpg",

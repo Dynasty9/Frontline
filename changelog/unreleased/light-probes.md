@@ -9,7 +9,7 @@ caption = "Midday, a room seen through its lifted roof. Left, without and with t
 
 [[screenshots]]
 file = "room-golden-hour.jpg"
-caption = "The same room at golden hour: the low sun across the far wall is cut back, and the shaded walls and floor warm with its bounce. The difference panel, four times over, shows both."
+caption = "The same room at golden hour: the low sun across the far wall is cut back, the shaded walls and floor warm with its bounce, and the grass in the house's shade by its walls darkens a little. The difference panel, four times over around mid grey (grey is no change), shows all three."
 
 [[videos]]
 file = "room-flicker.webm"
