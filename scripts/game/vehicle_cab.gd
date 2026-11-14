@@ -31,12 +31,15 @@ static func mesh_glass(k: VehicleModels, parent: Node3D, mesh: Mesh, pos := Vect
 	distant.visibility_range_begin_margin = Mats.LOD_FADE
 	distant.visibility_range_fade_mode = GeometryInstance3D.VISIBILITY_RANGE_FADE_SELF
 
-static func interior(k: VehicleModels, origin := Vector3.ZERO, scale := Vector3.ONE) -> void:
+## A cab's dash, two seats and the wheel, scaled into the cab. `seat_col` and
+## `seat_mat` trim the seats: olive canvas in a military cab, and a car's in
+## its own dark cloth.
+static func interior(k: VehicleModels, origin := Vector3.ZERO, scale := Vector3.ONE, seat_col := Color(0.18, 0.20, 0.13), seat_mat := "canvas") -> void:
 	var m := k._pivot(k.root, origin)
 	m.scale = scale
 	k._box(m, Vector3(2.10, 0.17, 0.34), Vector3(0, 2.03, -4.17), "plain_dark", Color(0.10, 0.12, 0.10))
 	for side: float in [-1.0, 1.0]:
-		seat(k, m, Vector3(side * 0.60, 1.99, -3.49), Vector3(0.57, 0.58, 0.54), Vector3.ZERO, Color(0.18, 0.20, 0.13), "canvas", true)
+		seat(k, m, Vector3(side * 0.60, 1.99, -3.49), Vector3(0.57, 0.58, 0.54), Vector3.ZERO, seat_col, seat_mat, true)
 	# Steering wheel, spokes, column and an instrument binnacle. The rim is the
 	# shared steering wheel's torus: a 2 cm grip seen through a cab window needs
 	# no more than its 24 sections of six sides.
@@ -75,17 +78,24 @@ static func window(k: VehicleModels, size: Vector2, pos: Vector3, rot: Vector3) 
 
 
 
+## Laminated vehicle glass is a faint green-grey that lets most of the light
+## through, but a cabin is dark inside, so from outside a window reads dark:
+## the seats and dash show dimly through it and the sky lies on it as a sheen.
+## A pale, mostly clear pane read as an open frame, as if the glass were
+## missing, wherever the sky was bright.
 static func _materials() -> void:
 	if glass_near == null:
 		glass_near = StandardMaterial3D.new()
 		glass_near.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-		glass_near.albedo_color = Color(0.16, 0.20, 0.21, 0.27)
-		glass_near.roughness = 0.045
+		glass_near.albedo_color = Color(0.03, 0.045, 0.05, 0.62)
+		glass_near.roughness = 0.03
 		glass_near.metallic_specular = 0.5
 		glass_near.cull_mode = BaseMaterial3D.CULL_DISABLED
+		# (the opaque pane past 100 m is what the tinted pane over a dark cab
+		# averages to, so the hand-over doesn't brighten the windows)
 		glass_far = StandardMaterial3D.new()
-		glass_far.albedo_color = Color(0.10, 0.14, 0.16)
-		glass_far.roughness = 0.09
+		glass_far.albedo_color = Color(0.055, 0.07, 0.075)
+		glass_far.roughness = 0.06
 		glass_far.cull_mode = BaseMaterial3D.CULL_DISABLED
 
 

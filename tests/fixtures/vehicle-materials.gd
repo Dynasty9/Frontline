@@ -74,8 +74,33 @@ func _ready() -> void:
 				assert(model.wheels.size() >= 4)
 				model.root.free()
 	assert(canopies == 2, "Both Black Wasp paints keep their glass through the mesh bake")
+	# Mud is measured from the ground the vehicle stands on, so a part baked on
+	# a pivot of its own (a turret, a wheel) carries how high that pivot sits in
+	# its vertex colours' alpha; the hull, at the root, carries none.
+	var tank := VehicleModels.build("tank", 0, 3)
+	assert(_lowest_alpha(tank.root, false) == 1.0, "The hull must not carry a lift")
+	assert(_lowest_alpha(tank.turret, true) < 0.99, "The turret's meshes must carry how high its ring sits")
+	assert(_lowest_alpha(tank.wheels[0], true) < 1.0, "A wheel's meshes must carry how high its axle sits")
+	tank.root.free()
 	print("VEHICLE_MATERIALS passed models=%d surfaces=%d maps=%d" % [keys.size() * 2 + 9, surfaces, maps.size()])
 	TestRun.quit(get_tree())
+
+## The lowest vertex-colour alpha of the opaque meshes directly under `node`
+## (or under it at any depth), 1.0 when none carries colours.
+func _lowest_alpha(node: Node, deep: bool) -> float:
+	var lowest := 1.0
+	for child in node.get_children():
+		if child is MeshInstance3D and (child as MeshInstance3D).mesh is ArrayMesh:
+			var mesh := (child as MeshInstance3D).mesh as ArrayMesh
+			for s in mesh.get_surface_count():
+				var colors = mesh.surface_get_arrays(s)[Mesh.ARRAY_COLOR]
+				if colors is PackedColorArray:
+					for c: Color in colors:
+						lowest = minf(lowest, c.a)
+		if deep:
+			lowest = minf(lowest, _lowest_alpha(child, true))
+	return lowest
+
 
 func _audit(node: Node, wreck: bool) -> void:
 	if node is MeshInstance3D:

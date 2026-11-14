@@ -3,6 +3,73 @@ extends RefCounted
 ## Airfoil blades and articulated hub fittings shared by helicopter families.
 ## The assembly preserves each aircraft's rotor pivots and blur contract.
 
+## The disc a rotor's or a propeller's blades sweep at speed, drawn on a plane
+## mesh the size of the rotor (UV 0..1 across it) that turns with the hub:
+## VehicleModels._blur_mat for rotors, VehiclePropellers.disc_material for
+## propellers and fans. What a commander looks for from 30-60 m above, as
+## the RTS games draw it: a translucent disc clearly darker than the ground
+## under it, but never so dense the airframe under it is lost, its tip-path
+## edge soft (the tips cover least of their circle, so a photograph's disc
+## fades out there rather than ending on a line: a crisp pale ring read as a
+## selection circle). A few ghost blades - each a crisp leading edge trailing
+## its smear, as a moving blade leaves on film - drift slowly round: they are
+## laid out in the disc's plane against the world, not the turning mesh, so
+## the hub's 30 rad/s (a tail rotor's 80, a propeller's 40) never strobes
+## them backwards. Lit, so it darkens with the scene at dusk and at night.
+## `blade_count` and the blades' colour (`blade_tint`) are per rotor; `hub`
+## is where the blades begin, as a fraction of the radius (a propeller's
+## spinner, a fan's boss).
+const BLUR_SHADER := """
+shader_type spatial;
+render_mode blend_mix, cull_disabled, depth_draw_never, shadows_disabled;
+instance uniform float blade_count = 4.0;
+instance uniform vec4 blade_tint : source_color = vec4(0.15, 0.155, 0.16, 1.0);
+uniform float hub = 0.12;
+varying vec2 disc_xy;
+void vertex() {
+	// the disc's plane against a fixed world direction: the hub's spin drops out
+	vec3 n = normalize((MODEL_MATRIX * vec4(NORMAL, 0.0)).xyz);
+	vec3 e1 = normalize(cross(n, abs(n.z) < 0.9 ? vec3(0.0, 0.0, 1.0) : vec3(1.0, 0.0, 0.0)));
+	vec3 d = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz - MODEL_MATRIX[3].xyz;
+	disc_xy = vec2(dot(d, e1), dot(d, cross(n, e1)));
+}
+void fragment() {
+	vec2 p = UV * 2.0 - 1.0;
+	float r = length(p);
+	// the blades from their roots beyond the grips (or the spinner) out to
+	// the tip path, its edge soft over the last few hundredths of the radius
+	float body = smoothstep(hub * 0.6, hub + 0.1, r) * (1.0 - smoothstep(0.93, 1.0, r));
+	// how much of each circle the blades darken: a game's share, not the
+	// 5-10% a real rotor's solidity gives, which over grass from 40 m reads
+	// as nothing; a little less over the cabin (the blade roots are narrow
+	// there), so the airframe under it still reads, and a little more out
+	// where the tip caps sweep, a soft band that gives the disc its edge
+	float cover = 0.26 * mix(0.8, 1.0, smoothstep(hub, 0.45, r)) + 0.07 * smoothstep(0.8, 0.94, r);
+	// the ghost blades, each a sharp leading edge and a short trailing smear,
+	// swept back a little toward the tips
+	float a = atan(disc_xy.y, disc_xy.x);
+	float ph = fract((a * blade_count - r * 1.3 - TIME * 1.7) * 0.15915494);
+	float ghost = smoothstep(0.0, 0.03, ph) * exp(-ph * 9.0);
+	cover *= 1.0 + 0.8 * ghost * smoothstep(0.15, 0.45, r);
+	float alpha = min(cover * body, 0.9);
+	// a layer of blades seen at a slant: they overlap, the disc thickens
+	float mu = clamp(abs(dot(NORMAL, VIEW)), 0.35, 1.0);
+	float seen = 1.0 - pow(1.0 - alpha, 1.0 / mu);
+#if CURRENT_RENDERER == RENDERER_COMPATIBILITY
+	// (blended after tonemapping, in display space, a dark layer shows about
+	// twice as dense: what keeps the linear blend's look)
+	seen = 1.0 - pow(1.0 - seen, 0.4545);
+#endif
+	ALPHA = clamp(seen, 0.0, 0.75);
+	// Nearly black but lit, in the blades' own hue: it darkens what is under
+	// it by its share in any light (a grey disc as bright as the grass would
+	// vanish over it) and still goes dark with the scene at night.
+	ALBEDO = blade_tint.rgb * 0.08;
+	ROUGHNESS = 0.8;
+	SPECULAR = 0.1;
+}
+"""
+
 static func _rbox(k: VehicleModels, p: Node3D, base: Basis, size: Vector3, pos: Vector3, mat: String, col = null, rot := Vector3.ZERO, shadow := true, origin := Vector3.ZERO) -> Variant:
 	return k._box(p, size, origin + base * pos, mat, col, (base * Basis.from_euler(rot)).get_euler(), shadow)
 
@@ -83,6 +150,8 @@ static func main(k: VehicleModels, p: Node3D, pos: Vector3, nb: int, r: float, c
 		blur.mesh = disc
 		blur.material_override = VehicleModels._blur_mat()
 		Mats.set_inst(blur, &"blade_count", float(nb))
+		# (the disc in the blades' own paint)
+		Mats.set_inst(blur, &"blade_tint", bc)
 		blur.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		blur.position = Vector3(0, 0.06, 0)
 		blur.visible = false
@@ -100,16 +169,39 @@ static func main(k: VehicleModels, p: Node3D, pos: Vector3, nb: int, r: float, c
 	return rp
 
 
-## A tail rotor spinning about X at pos: n blades of radius r, chord c.
+## A tail rotor spinning about X at pos: n blades of radius r, chord c. Like
+## the main rotor's, its blades sit in a "Blades" node shown when slow and a
+## "Blur" disc takes their place at flight speed: turning 2.6 times as fast
+## as the main rotor, the blades would strobe on every frame. The hub, a
+## hand's width across, goes with the blades (one mesh, not two: under the
+## disc it is lost anyway).
 static func tail(k: VehicleModels, p: Node3D, pos: Vector3, nb: int, r: float, c: float, side := 1.0, phase := 0.4) -> Node3D:
 	var tr := k._pivot(p, pos)
-	VehicleBody.cylinder(k, tr, 0.05, 0.08, 0.2, Vector3(side * 0.04, 0, 0), Vector3(0, 0, PI / 2), "gunmetal_w", null, 10)
-	VehicleBody.cylinder(k, tr, 0.035, 0.035, 0.12, Vector3(side * 0.17, 0, 0), Vector3(0, 0, PI / 2), "steel", null, 8, false)
+	var bl := k._pivot(tr, Vector3.ZERO)
+	bl.name = "Blades"
+	VehicleBody.cylinder(k, bl, 0.05, 0.08, 0.2, Vector3(side * 0.04, 0, 0), Vector3(0, 0, PI / 2), "gunmetal_w", null, 10)
+	VehicleBody.cylinder(k, bl, 0.035, 0.035, 0.12, Vector3(side * 0.17, 0, 0), Vector3(0, 0, PI / 2), "steel", null, 8, false)
 	for i in nb:
-		var mount := k._pivot(tr, Vector3(side * 0.07, 0, 0))
+		var mount := k._pivot(bl, Vector3(side * 0.07, 0, 0))
 		mount.basis = Basis.from_euler(Vector3(phase + TAU * float(i) / float(nb), 0, 0)) * Basis(Vector3.BACK, Vector3.RIGHT, Vector3.UP)
 		blade(k, mount, 0.07, r, c, 0, Color(0.15, 0.155, 0.16))
 		k._fold(mount)
+	if not k.wreck:
+		var blur := MeshInstance3D.new()
+		blur.name = "Blur"
+		var disc := PlaneMesh.new()
+		disc.size = Vector2(r, r) * 2.0
+		disc.orientation = PlaneMesh.FACE_X
+		blur.mesh = disc
+		blur.material_override = VehicleModels._blur_mat()
+		# (four blades and the blades' dark paint are the disc's own defaults:
+		# no per-object values, so no material copy in the browser's renderer)
+		if nb != 4:
+			Mats.set_inst(blur, &"blade_count", float(nb))
+		blur.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		blur.position = Vector3(side * 0.07, 0, 0)
+		blur.visible = false
+		tr.add_child(blur)
 	k.tail_rotor = tr
 	return tr
 

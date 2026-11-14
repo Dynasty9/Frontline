@@ -1,0 +1,20 @@
+{
+  "entry": "changelog/unreleased/vehicle-mud-wheels-and-tracks.md",
+  "summary": "Mud and dust weathering, per-vehicle stencils and bumper codes, car wheels, single-pin tracks, glass and rotor blur across the roster.",
+  "medium": "still",
+  "stage": "tools/showcase/vehicle-surfaces.tscn",
+  "rationale": "Static surface and detail changes across every family: one matched close-up sheet of eight representative vehicles shows them. The rotor blur moves and only shows in flight, so it is described in text rather than shown; in-game roster views were not repeatable between runs, so the studio stage is the controlled comparison.",
+  "source_ref": "45c979b088b50636b65d23abb0e7c39e6b8f48cd",
+  "before_ref": "45c979b088b50636b65d23abb0e7c39e6b8f48cd",
+  "sources": [
+    {
+      "file": "changelog/unreleased/vehicle-mud-wheels-and-tracks/comparison.jpg",
+      "sha256": "6ad09ea5807fc122baebc610391eea21033161f26aca8a936a9d22f9defa5617"
+    },
+    {
+      "file": "changelog/unreleased/vehicle-mud-wheels-and-tracks/capture.json",
+      "sha256": "477f69a824652477737bcb4b8bcde0e107d1c4a1b4af600725ac4a978bde0b48"
+    }
+  ],
+  "output": null
+}

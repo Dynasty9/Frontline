@@ -274,6 +274,13 @@ static func _wheel(k: VehicleModels, p: Node3D, _key: String, pos: Vector3, r: f
 	VehicleWheels.pneumatic(k, p, pos, r, w, "steel", Color(0.55, 0.56, 0.55), "aircraft", false)
 
 
+## Gun gas or exhaust soot streaking `length` aft from o on the skin facing n
+## (`skin` takes a point onto it), `width` at its broadest: the shared
+## VehicleAircraft.soot, the skin's own grey `col` only darker.
+static func _soot(k: VehicleModels, p: Node3D, o: Vector3, n: Vector3, skin: Callable, length: float, width: float, col: Color) -> void:
+	VehicleAircraft.paint(k, p, VehicleAircraft.face(o, n, Vector3.BACK, skin), VehicleAircraft.soot(length, width, "aircraft", col), "aircraft")
+
+
 # --- A-10C Thunderbolt II -----------------------------------------------------------
 
 ## Fairchild Republic A-10C Thunderbolt II: 16.26 m long, 17.53 m span. The
@@ -382,16 +389,14 @@ static func _a10_gun(k: VehicleModels, m: Node3D, st: Array, c: Color) -> void:
 	VehicleWeapons.rotary(k, m, gz + Vector3(0, 0, -7.2), gz + Vector3(0, 0, -8.12), 7, 0.105, 0.032, [0.4 / 0.92, 0.72 / 0.92], "gunmetal_w", 0.2)
 	k.mg_tip = k._tip(m, gz + Vector3(0, 0, -8.2))
 	k.gun_tip = k.mg_tip
-	# gun gas soot fanning back under the nose
-	var soot := []
-	for i in 9:
-		var a := lerpf(-0.95, 0.95, i / 8.0)
-		soot.append(Vector2(sin(a) * 0.42 * (1.0 + 0.3 * absf(a)), -cos(a) * 0.5 + 0.5))
-	var sp := []
-	for i in 9:
-		sp.append(Vector2(soot[i].x, soot[i].y * 1.9))
-	sp.append(Vector2(0, 0))
-	_decal(k, m, "a10_soot", [sp], func(q: Vector2) -> Vector3: return Vector3(q.x - 0.06, _skin_y(st, -7.2 + q.y, q.x - 0.06, false) - 0.006, -7.2 + q.y), Vector3.DOWN, Color(0.2, 0.2, 0.2))
+	# Gun gas: every burst blows the propellant's soot back from the muzzles,
+	# under the nose and up both its lower flanks, the left (the firing
+	# barrel's side) the worse. It darkens the grey, panel lines and all,
+	# rather than covering it.
+	_soot(k, m, Vector3(gz.x, 0.0, -7.34), Vector3.DOWN, func(p: Vector3) -> Vector3: return Vector3(p.x, _skin_y(st, p.z, p.x, false), p.z), 2.0, 0.95, c)
+	for sd in [-1.0, 1.0]:
+		var flank := func(p: Vector3) -> Vector3: return Vector3(sd * _skin_x(st, p.z, p.y), p.y, p.z)
+		_soot(k, m, Vector3(sd * 0.3, 0.97, -7.32), Vector3(sd, -0.4, 0), flank, 2.9 if sd < 0.0 else 2.1, 0.62, c)
 
 
 ## The wing: a flat constant-chord centre section, outer panels with 7 degrees
@@ -482,6 +487,10 @@ static func _a10_tail(k: VehicleModels, m: Node3D, c: Color, team: int, seed: in
 	var ty := 1.74
 	var hs := [[Vector3(0.15, ty, 6.1), 1.9, 0.17], [Vector3(2.88, ty, 6.15), 1.85, 0.14]]
 	VmPlane.surf(k, m, "at_a10_stab", hs, A, c, [0.66])
+	# the TF34s' exhaust streams back over the tailplane (the fins and the
+	# tailplane hide its heat from below and beside): soot behind each engine
+	for sd in [-1.0, 1.0]:
+		_soot(k, m, Vector3(sd * 1.52, ty, 6.22), Vector3.UP, VmPlane.wing_skin(hs, 1.0), 1.6, 0.85, c)
 	# the elevator trim tabs
 	for sd in [-1.0, 1.0]:
 		k._box(m, Vector3(0.7, 0.02, 0.012), Vector3(sd * 0.9, ty, 7.68), "plain_dark", null, Vector3.ZERO, false)
@@ -853,6 +862,17 @@ static func _wip_gun(k: VehicleModels, m: Node3D, fs: Array, c: Color) -> void:
 	VehicleWeapons.rotary(k, m, Vector3(0, gy, -7.9), Vector3(0, gy, -8.5), 7, 0.085, 0.026, [0.48 / 0.6], "gunmetal_w")
 	k.mg_tip = k._tip(m, Vector3(0, gy, -8.6))
 	k.gun_tip = k.mg_tip
+	# gun gas soot blown back under the chin fairing and on along the belly:
+	# the lower of the two faceted skins (the flat belly out to bw, the lower
+	# flank up to the chine)
+	var under := func(p: Vector3) -> Vector3:
+		var y := INF
+		for body: Array in [gf, fs]:
+			var q := _wst(body, p.z)
+			var f := clampf((float(q[3]) - absf(p.x)) / maxf(float(q[3]) - float(q[7]), 0.01), 0.0, 1.0)
+			y = minf(y, float(q[2]) - float(q[5]) * f)
+		return Vector3(p.x, y, p.z)
+	_soot(k, m, Vector3(0, 0.0, -7.98), Vector3.DOWN, under, 2.4, 0.6, c)
 	# the EO/IR targeting turret under the nose, its window looking ahead
 	var ball := [Vector2(0.0, -0.17), Vector2(0.1, -0.14), Vector2(0.16, -0.06), Vector2(0.17, 0.02), Vector2(0.14, 0.1), Vector2(0.07, 0.15), Vector2(0.0, 0.16)]
 	var q := _wst(fs, -4.4)
@@ -972,7 +992,11 @@ static func _wip_engines(k: VehicleModels, m: Node3D, fs: Array, c: Color) -> vo
 static func _wip_tail(k: VehicleModels, m: Node3D, c: Color) -> Array:
 	var A := "aircraft"
 	var ty := 1.86
-	VmPlane.surf(k, m, "at_wip_stab", [[Vector3(0.15, ty, 6.0), 2.05, 0.16], [Vector3(2.85, ty, 6.42), 1.62, 0.12], [Vector3(3.05, ty, 6.6), 1.4, 0.09]], A, c, [0.66, 0.66])
+	var hs := [[Vector3(0.15, ty, 6.0), 2.05, 0.16], [Vector3(2.85, ty, 6.42), 1.62, 0.12], [Vector3(3.05, ty, 6.6), 1.4, 0.09]]
+	VmPlane.surf(k, m, "at_wip_stab", hs, A, c, [0.66, 0.66])
+	# exhaust soot over the tailplane behind each nozzle, as on the A-10
+	for sd in [-1.0, 1.0]:
+		_soot(k, m, Vector3(sd * 1.5, ty, 6.15), Vector3.UP, VmPlane.wing_skin(hs, 1.0), 1.5, 0.8, c)
 	var fx := 2.62
 	var cant := deg_to_rad(20.0)
 	var hgt := 2.05
@@ -1131,6 +1155,9 @@ static func _wip_details(k: VehicleModels, m: Node3D, fs: Array, ws: Array, fins
 		_decal(k, m, "wip_ins" + ("L" if sd < 0.0 else ""), _star_bar(0.2, 0.0, 0.2, 0.024), fl, Vector3(sd, 0.6, 0), WIP_MARK)
 	var wt := func(q: Vector2) -> Vector3: return Vector3(-6.5 + q.x, _wing_y(ws, 6.5 - q.x, -0.55 - q.y, true) + 0.01, -0.55 - q.y)
 	_decal(k, m, "wip_ins_wl", _star_bar(0.45, 0.0, 0.0, 0.032), wt, Vector3.UP, WIP_MARK)
+	# "USAF" across the upper right wing, read from behind, as on the A-10
+	var ut := func(q: Vector2) -> Vector3: return Vector3(5.9 + q.x, _wing_y(ws, 5.9 + q.x, -0.42 - q.y, true) + 0.01, -0.42 - q.y)
+	_decal(k, m, "wip_usaf", _text("USAF", 0.66, 0.0, 0.0), ut, Vector3.UP, WIP_MARK)
 	var serial := "35-%03d" % (100 + absi(seed * 53) % 800)
 	var r0: Vector3 = fins[0][0]
 	var r2: Vector3 = fins[2][0]

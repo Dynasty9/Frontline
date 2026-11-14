@@ -1532,6 +1532,26 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   seen, one band of cylinder sides, joints only at sharp bends. About 45% less vehicle geometry and 38% faster
   model builds (each vehicle, air-strike plane and wreck builds its model as it appears), with the same look.
   See "Fifth pass" in [the component guide](vehicle-components.md).
+- **Markings and finish** (seventh pass): tanks and armoured vehicles carry tactical numbers (on CSAT and
+  independent armour drawn from the vehicle's seed, so neighbours differ), chamfered or welded hull and turret
+  edges, bolt-on armour modules (`VehicleMounts.applique`), tow cables, deck tarps and exhaust soot. Aircraft
+  wear national insignia, serials and bort numbers, panel joints and exhaust soot (`VehicleAircraft.paint`).
+  Car glass is tinted with a cabin behind it, bodies shade like pressed metal, and opaque panes reflect the
+  sky. See "Seventh pass" in [the component guide](vehicle-components.md).
+- **Mud, stencils, wheels and tracks** (eighth pass): armour and trucks carry wet mud low on the hull and
+  running gear with paler dust above (cars road dust, boats a waterline stain), measured in the model's own
+  frame so it stays put on a turning wheel. Every vehicle's tactical number comes from its seed in heavy
+  stencil bars, and US vehicles wear battalion and company bumper codes. Cars roll on alloys or plastic
+  trims; Russian-style tracks have single-pin links with guide horns between twin sprockets, Western ones
+  rubber pads with end connectors and centre guides. Vehicle glass reflects the sky, and helicopter rotors
+  blur into a soft disc with ghost blades that don't strobe. See "Eighth pass" in
+  [the component guide](vehicle-components.md).
+- **Rotor discs, wrecks, edges and kit** (ninth pass): a helicopter's rotor reads from above as a soft dark
+  disc in its blades' paint rather than a pale ring, and tail rotors, ducted fans, drones' rotors and
+  propellers blur too. Burnt-out hulks on the map and gutted cars are rust, ash and soot (a car's tyres
+  burnt to the wire), not black shapes. Every crew's load is its own: crate stacks, tarps, bags, bedrolls, cans and canvas tilts vary by
+  seed, so a column of one kind isn't stamped from one mould. Bonnets, roofs, consoles and deckhouses have
+  chamfered edges that catch the light. See "Ninth pass" in [the component guide](vehicle-components.md).
 - Explosions are layered GPU particles: a flash and light burst, a rolling fireball that cools from the edges in
   until it's dark smoke, a lit smoke column that drifts with the wind, a dirt plume, sparks and debris that
   bounce on the ground, a rolling dust ring, a faint heat-shimmer shockwave and a scorch mark. Heavy rounds

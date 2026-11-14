@@ -1,0 +1,27 @@
+{
+  "before_ref": "45c979b088b50636b65d23abb0e7c39e6b8f48cd",
+  "after_ref": "the change that adds this entry",
+  "engine": "Godot 4.7.2 stable",
+  "renderer": "forward_plus",
+  "seed": 3,
+  "source_size": [
+    1600,
+    900
+  ],
+  "sheet_size": [
+    1600,
+    3600
+  ],
+  "composition": "Uncropped source renders resized to 800x450, before left, after right, short labels. JPEG quality 82.",
+  "command": "godot --path <checkout> tools/showcase/vehicle-surfaces.tscn -- --surface-single --surface-kinds=<model> --surface-focus=<focus> --surface-size=<size> --surface-out=<outside-repo-directory>",
+  "shots": [
+    {"model": "kuma", "focus": "1.8,2.4,0.2", "size": 3, "team": 0, "label": "Kuma: stencilled number, mud on the skirts"},
+    {"model": "tank", "focus": "0,1.1,-3.5", "size": 2.5, "team": 0, "label": "Abrams: bumper codes on the nose"},
+    {"model": "ifv", "focus": "1.0,2.3,-0.3", "size": 2.6, "team": 0, "label": "Bradley: company and vehicle on the turret"},
+    {"model": "kamysh", "focus": "1.3,0.7,-2.2", "size": 3.2, "team": 0, "label": "Kamysh: single-pin links, twin sprocket, mud"},
+    {"model": "slammer", "focus": "1.6,0.8,0", "size": 5, "team": 0, "label": "Merkava: mud on the running gear and skirts"},
+    {"model": "marshall", "focus": "1.4,1.1,-0.3", "size": 5.5, "team": 0, "label": "Marshall: muddy wheels, stencil, glass blocks"},
+    {"model": "suv", "focus": "0.835,0.37,-1.5", "size": 1.5, "team": 0, "label": "SUV: six-spoke alloy, low-profile tyre"},
+    {"model": "van_transport", "focus": "0,1.4,0", "size": 6.5, "team": 0, "label": "Minibus: glass reflecting the sky, plastic trims"}
+  ]
+}

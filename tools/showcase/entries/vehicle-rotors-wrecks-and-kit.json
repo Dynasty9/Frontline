@@ -1,0 +1,20 @@
+{
+  "entry": "changelog/unreleased/vehicle-rotors-wrecks-and-kit.md",
+  "summary": "Rotor and propeller blur discs readable from above, rust-and-ash wrecks, per-crew kit and tarp variety, chamfered hull edges.",
+  "medium": "still",
+  "stage": "tools/showcase/vehicle-surfaces.tscn",
+  "rationale": "Surface, colour and geometry changes: one matched studio sheet shows each. The rotor discs are shown with the stage's --surface-flight view from above (blur in place of the blades, as in flight) rather than as motion, since what changed is how the disc reads, not how it moves. Kit variety is shown as one truck at two seeds, since in-game neighbours change from run to run.",
+  "source_ref": "1dba1feafa5104b69c75f0ded24e6870cd51d3d9",
+  "before_ref": "1dba1feafa5104b69c75f0ded24e6870cd51d3d9",
+  "sources": [
+    {
+      "file": "changelog/unreleased/vehicle-rotors-wrecks-and-kit/comparison.jpg",
+      "sha256": "ea13f253218ca7185b2cf6fc00676f058df1d4dde32ef6ce16affeca967e0040"
+    },
+    {
+      "file": "changelog/unreleased/vehicle-rotors-wrecks-and-kit/capture.json",
+      "sha256": "d8ceeb0688247f6076571b5ab6bb04dfa124da7711fd5b5cc0ee2398ee0bb3e5"
+    }
+  ],
+  "output": null
+}

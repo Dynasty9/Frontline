@@ -19,15 +19,30 @@ static func polygons(k: VehicleModels, parent: Node3D, outlines: Array, project:
 ## The seven segments of a stencilled digit as strokes across a unit cell (x
 ## right, y up), run clockwise from the top: a the top, b top right, c bottom
 ## right, d the bottom, e bottom left, f top left, g the middle bar; and i, a
-## centre upright (a T's stem, the 1 of a hull number).
+## centre upright (a T's stem, the 1 of a hull number). The rest draw the
+## letters seven segments can't: j, k, l and m run from the corners (top
+## left, top right, bottom left, bottom right) to the centre, o the lower
+## half of the centre upright, v and w a V's arms, x and z a K's arms from
+## the middle of its upright; p, q, r, s and t a D's bowl (the top and bottom
+## cut short, their corners chamfered), u and y the short uprights of a B's
+## two lobes, h the right half of the middle bar (a G's spur); ( and ) an
+## I's serifs, ! a 1's flag, _ a hyphen and . a full stop.
 const SEGMENTS := {"a": [0.0, 1.0, 1.0, 1.0], "b": [1.0, 1.0, 1.0, 0.5], "c": [1.0, 0.5, 1.0, 0.0], "d": [1.0, 0.0, 0.0, 0.0],
-	"e": [0.0, 0.0, 0.0, 0.5], "f": [0.0, 0.5, 0.0, 1.0], "g": [0.0, 0.5, 1.0, 0.5], "i": [0.5, 0.0, 0.5, 1.0]}
+	"e": [0.0, 0.0, 0.0, 0.5], "f": [0.0, 0.5, 0.0, 1.0], "g": [0.0, 0.5, 1.0, 0.5], "i": [0.5, 0.0, 0.5, 1.0],
+	"j": [0.0, 1.0, 0.5, 0.5], "k": [1.0, 1.0, 0.5, 0.5], "l": [0.0, 0.0, 0.5, 0.5], "m": [1.0, 0.0, 0.5, 0.5], "o": [0.5, 0.5, 0.5, 0.0],
+	"v": [0.0, 1.0, 0.5, 0.0], "w": [1.0, 1.0, 0.5, 0.0], "x": [0.0, 0.5, 1.0, 1.0], "z": [0.0, 0.5, 1.0, 0.0],
+	"p": [0.0, 1.0, 0.62, 1.0], "q": [0.62, 1.0, 1.0, 0.74], "r": [1.0, 0.74, 1.0, 0.26], "s": [1.0, 0.26, 0.62, 0.0], "t": [0.62, 0.0, 0.0, 0.0],
+	"u": [1.0, 0.74, 1.0, 0.5], "y": [1.0, 0.5, 1.0, 0.26], "h": [0.5, 0.5, 1.0, 0.5],
+	"(": [0.18, 1.0, 0.82, 1.0], ")": [0.18, 0.0, 0.82, 0.0], "!": [0.5, 1.0, 0.12, 0.72], "_": [0.0, 0.5, 0.7, 0.5], ".": [0.1, 0.0, 0.1, 0.18]}
 
 ## The segments each character lights: the digits and the letters a stencil
-## can cut (tail codes, serials, USAF, number plates).
+## can cut (tail codes, serials, USAF, number plates, bumper codes, U.S. ARMY
+## and NAVY).
 const GLYPHS := {"0": "abcdef", "1": "bc", "2": "abged", "3": "abgcd", "4": "fgbc", "5": "afgcd", "6": "afgedc", "7": "abc",
 	"8": "abcdefg", "9": "abcdfg", "A": "abcefg", "C": "afed", "E": "afedg", "F": "afeg", "S": "afgcd", "T": "ai", "U": "bcdef", "-": "g",
-	"H": "bcefg", "J": "bcde", "L": "def", "P": "abefg"}
+	"H": "bcefg", "J": "bcde", "L": "def", "P": "abefg",
+	"B": "efpqugyst", "D": "efpqrst", "G": "afedch", "I": "i()", "K": "efxz", "M": "efbcjk", "N": "efbcjm", "O": "abcdef",
+	"R": "abfgem", "V": "vw", "W": "efbclm", "X": "jklm", "Y": "jko", "Z": "adkl", ".": "."}
 
 ## Painted stroke lettering for tail codes: each character's strokes
 ## [x0, y0, x1, y1] in units of the text's height, from its baseline.
@@ -47,9 +62,10 @@ const STROKE_FONT := {
 ## next and the `gap` closing the last, the `stroke` width and how far each
 ## stroke runs past its ends (`extend`), the middle bar's length (`middle`, a
 ## fraction of the cell), the 1 moved across its cell (`one`, cells), strokes
-## kept inside their cell (`inset`), characters drawn differently (`glyphs`)
-## or narrower (`narrow`), and the stroke pieces' longest length on a curved
-## skin (`piece`).
+## kept inside their cell (`inset`), the gap a stencil's bridges leave where
+## an upright meets the top or bottom bar (`bridge`), characters drawn
+## differently (`glyphs`) or narrower (`narrow`), and the stroke pieces'
+## longest length on a curved skin (`piece`).
 const LETTERING := {
 	# Stencilled codes and serials on combat aircraft: a short middle bar.
 	"stencil": {"cell": 0.58, "advance": 0.86, "gap": 0.28, "stroke": 0.13, "extend": 0.065, "middle": 0.85, "piece": 0.2},
@@ -60,7 +76,31 @@ const LETTERING := {
 	"hull": {"cell": 0.56, "advance": 0.78, "gap": 0.22, "stroke": 0.16, "inset": true, "glyphs": {"1": "i"}},
 	# Painted stroke lettering from STROKE_FONT, the 1 narrower.
 	"stroke": {"cell": 1.0, "advance": 0.62, "gap": 0.06, "stroke": 0.13, "extend": 0.065, "font": true, "narrow": {"1": 0.42}},
+	# A tactical number or bumper code on armour, brushed through a cut
+	# stencil: heavy square bars that still read from the RTS camera, each
+	# upright stopping short of the top and bottom bars where the stencil's
+	# bridges held its islands in (so no 0 or 8 is a closed ring, and close up
+	# it reads as paint, not print). The 1 is an upright with its flag; spaces,
+	# hyphens and stops are narrow, as a crew spaces "1-64 AR".
+	"tactical": {"cell": 0.56, "advance": 0.76, "gap": 0.2, "stroke": 0.17, "inset": true, "bridge": 0.035,
+		"glyphs": {"1": "i!", "-": "_"}, "narrow": {"1": 0.6, "I": 0.66, "-": 0.6, " ": 0.36, ".": 0.42}},
 }
+
+
+## How far a character in `spec` moves the next one on, `height` tall.
+static func _advance(ch: String, height: float, spec: Dictionary) -> float:
+	var narrow: Dictionary = spec.get("narrow", {})
+	return height * float(narrow[ch] if narrow.has(ch) else spec.get("advance", 0.86))
+
+
+## How wide `text` is laid out `height` tall in `style`, from its first
+## character's left edge to its last one's right.
+static func text_width(text: String, height: float, style := "stencil") -> float:
+	var spec: Dictionary = LETTERING[style]
+	var total := -height * float(spec.get("gap", 0.28))
+	for i in text.length():
+		total += _advance(text[i], height, spec)
+	return total
 
 
 ## The centre lines of `text`, `height` tall, laid out in `style` (a
@@ -70,24 +110,20 @@ const LETTERING := {
 static func digit_strokes(text: String, height: float, center := Vector2.ZERO, style := "stencil") -> Array:
 	var spec: Dictionary = LETTERING[style]
 	var cell: float = height * float(spec.get("cell", 0.58))
-	var advance: float = height * float(spec.get("advance", 0.86))
 	var stroke: float = height * float(spec.get("stroke", 0.13))
 	var middle: float = spec.get("middle", 1.0)
 	var one: float = spec.get("one", 0.0)
 	var inset: bool = spec.get("inset", false)
+	var bridge: float = height * float(spec.get("bridge", 0.0))
 	var font: bool = spec.get("font", false)
 	var glyphs: Dictionary = spec.get("glyphs", {})
-	var narrow: Dictionary = spec.get("narrow", {})
-	var total := -height * float(spec.get("gap", 0.28))
-	for i in text.length():
-		total += height * float(narrow[text[i]]) if narrow.has(text[i]) else advance
-	var x := center.x - total * 0.5
+	var x := center.x - text_width(text, height, style) * 0.5
 	var y0 := center.y - height * 0.5
 	var out: Array = []
 	for i in text.length():
 		var ch := text[i]
 		var left := x + (cell * one if ch == "1" else 0.0)
-		x += height * float(narrow[ch]) if narrow.has(ch) else advance
+		x += _advance(ch, height, spec)
 		var strokes: Array = []
 		if font:
 			strokes = STROKE_FONT.get(ch, [])
@@ -109,8 +145,45 @@ static func digit_strokes(text: String, height: float, center := Vector2.ZERO, s
 					var dx := stroke * 0.5 * (1.0 if float(seg[0]) < 0.25 else (-1.0 if float(seg[0]) > 0.75 else 0.0))
 					a.x += dx
 					b.x += dx
+					if bridge > 0.0:
+						var ends := _bridge(seg, strokes, Vector2(a.y, b.y), y0, height, stroke, bridge)
+						a.y = ends.x
+						b.y = ends.y
+				else:
+					# a diagonal's ends come in off the cell's edges with the
+					# bars', so it meets their centre lines
+					a += _inward(float(seg[0]), float(seg[1]), stroke)
+					b += _inward(float(seg[2]), float(seg[3]), stroke)
 			out.append([a, b])
 	return out
+
+
+## Half a stroke in from whichever edges of the cell the point (x, y, cell
+## units) lies on.
+static func _inward(x: float, y: float, stroke: float) -> Vector2:
+	return Vector2(stroke * 0.5 * (1.0 if x < 0.25 else (-1.0 if x > 0.75 else 0.0)), stroke * 0.5 * (1.0 if y < 0.25 else (-1.0 if y > 0.75 else 0.0)))
+
+
+## The heights of the upright `seg`'s two ends (cell units; `ends` where they
+## are laid out now), each stopped `bridge` short of the character's top or
+## bottom bar (among its `strokes`) where it meets one: the strip of stencil
+## card left standing there.
+static func _bridge(seg: Array, strokes: Array, ends: Vector2, y0: float, height: float, stroke: float, bridge: float) -> Vector2:
+	for end in 2:
+		var y: float = seg[1 + end * 2]
+		var other: float = seg[3 - end * 2]
+		for bar: Array in strokes:
+			var level := float(bar[1])
+			# (only the top and bottom bars: a bridge there is enough to keep
+			# every counter's island in, and the middle joins stay whole)
+			if not is_equal_approx(level, float(bar[3])) or not is_equal_approx(level, y) or absf(level - 0.5) < 0.25:
+				continue
+			if float(seg[0]) < minf(bar[0], bar[2]) - 0.01 or float(seg[0]) > maxf(bar[0], bar[2]) + 0.01:
+				continue
+			# the bar's centre line, moved in off the cell's edge as above
+			var mid := y0 + level * height + stroke * 0.5 * (1.0 if level < 0.25 else (-1.0 if level > 0.75 else 0.0))
+			ends[end] = mid + (stroke * 0.5 + bridge) * (1.0 if other > y else -1.0)
+	return ends
 
 
 ## `text` in `style`, `height` tall and centred on `center`, as the stroke
@@ -178,6 +251,131 @@ static func stroke_rects(strokes: Array, width: float, extend := 0.0) -> Array[R
 ## and keep their own sizes and spacing. Gone with the paint on a wreck.
 static func digits(k: VehicleModels, parent: Node3D, text: String, height: float, project: Callable, outward: Vector3, col, center := Vector2.ZERO, style := "stencil", material := "paint", omit_wreck := true, divisions := 1) -> void:
 	polygons(k, parent, digit_quads(text, height, center, style), project, outward, col, material, omit_wreck, divisions)
+
+
+# --- tactical numbers and bumper codes --------------------------------------------
+
+## Stencil paint as each army mixes it. Crews brush or spray their numbers in
+## the same lusterless paint as the rest of the vehicle, never a sticker's
+## clean white, and dust and sun soon chalk it down; each army's is the same
+## on every vehicle it fields.
+## CSAT, and the Soviet-built armour the rebels field: white enamel, chalked.
+const STENCIL_WHITE := Color(0.66, 0.65, 0.6)
+## The AAF: a cooler grey-white over its digital green.
+const STENCIL_AAF := Color(0.64, 0.65, 0.62)
+## NATO and the US Army: CARC sand, the same paint as the recognition
+## chevrons on the Abrams' and Bradley's skirts.
+const STENCIL_SAND := Color(0.67, 0.64, 0.5)
+
+## The battalions a US bumper code names, by branch: armour, infantry and
+## cavalry, numbered as the Army's are (battalion - regiment, branch).
+const US_ARMOR := ["1-64 AR", "3-69 AR", "2-70 AR", "1-35 AR", "4-64 AR", "1-37 AR", "2-34 AR", "1-66 AR"]
+const US_INFANTRY := ["2-7 IN", "3-15 IN", "1-30 IN", "2-12 IN", "1-41 IN", "1-18 IN", "2-5 IN", "3-8 IN"]
+const US_CAVALRY := ["1-4 CAV", "3-7 CAV", "6-9 CAV", "1-10 CAV", "5-4 CAV"]
+
+
+## A 31-bit hash of `seed` and `salt` (multiply and xor-shift): whole-number
+## arithmetic only, so every peer gets the same bits from the same seed.
+static func _hash(seed: int, salt := 0) -> int:
+	var h := (seed ^ (salt * 0x9E3779B1)) & 0x7FFFFFFF
+	h = (((h >> 16) ^ h) * 0x45D9F3B) & 0x7FFFFFFF
+	h = (((h >> 16) ^ h) * 0x45D9F3B) & 0x7FFFFFFF
+	return (h >> 16) ^ h
+
+
+## A vehicle's own tactical number, drawn from its seed (its entity id in
+## play, so every peer paints the same figures and two tanks of a kind
+## differ): one character from each string in `places`, in order, as an army
+## numbers a vehicle by its place in the unit. Russian practice (CSAT's) is
+## battalion, company and vehicle (["123", "1234", "0123456789"]); NATO's is
+## company letter, platoon and vehicle (["ABCD", "123", "1234"]). The same
+## seed and `salt` always give the same number; another salt, another one.
+static func tactical_number(seed: int, places: Array = ["123", "1234", "0123456789"], salt := 0) -> String:
+	var h := _hash(seed, salt)
+	var out := ""
+	for place: String in places:
+		out += place[posmod(h, place.length())]
+		h = _hash(h, 1)
+	return out
+
+
+## A US Army vehicle's bumper code, drawn from its seed: [unit, vehicle], the
+## battalion on the vehicle's left ("1-64 AR", one of `units`) and its company
+## and number on its right ("B12": B Company, first platoon, its second
+## vehicle). `number` (when given) is the vehicle's number painted elsewhere
+## already, so the two agree. Crews repeat the vehicle half big on a turret.
+static func bumper_code(seed: int, units: Array, number := "") -> PackedStringArray:
+	var unit: String = units[posmod(_hash(seed, 7), units.size())]
+	var vehicle := tactical_number(seed, ["ABCD", "123", "1234"], 3)
+	if number != "":
+		vehicle = vehicle[0] + number
+	return PackedStringArray([unit, vehicle])
+
+
+## A bumper code (bumper_code) painted across a face looking along `out`
+## (forward or back), `height` tall: the unit `code[0]` on the vehicle's left
+## (-x), centred `x` out from the middle at height `y` and depth `z`, the
+## company and vehicle `code[1]` on its right, each no wider than `fit`. Both
+## read left to right as seen from in front of that face.
+static func bumper(k: VehicleModels, parent: Node3D, code: PackedStringArray, height: float, x: float, y: float, z: float, out: Vector3, fit: float, col := STENCIL_SAND) -> void:
+	var along := Vector3.UP.cross(out)
+	for i in 2:
+		face_text(k, parent, code[i], height, Vector3(x * (-1.0 if i == 0 else 1.0), y, z), along, out, col, "tactical", fit)
+
+
+## `text` painted on a flat face: `height` tall, or shorter if it would come
+## out wider than `fit`, centred on `center` (a point on the face), reading
+## along `along` as seen from outside, `out` the face's outward normal, laid
+## `lift` off it. Gone with the paint on a wreck.
+static func face_text(k: VehicleModels, parent: Node3D, text: String, height: float, center: Vector3, along: Vector3, out: Vector3, col: Color, style := "tactical", fit := INF, lift := 0.004) -> void:
+	var n := out.normalized()
+	var x := (along - n * along.dot(n)).normalized()
+	var y := n.cross(x)
+	var o := center + n * lift
+	var h := minf(height, height * fit / text_width(text, height, style))
+	_brushed(k, parent, digit_quads(text, h, Vector2.ZERO, style), func(q: Vector2) -> Vector3: return o + x * q.x + y * q.y, n, col)
+
+
+## `text` painted `height` tall on a side face of a hull or turret, on both
+## flanks (or only the one the corners are on, if not `both`):
+## `rear_bottom`, `front_bottom`, `front_top` and `rear_top` are the face's
+## corners on the right flank (mirrored for the left), `at` where on the face
+## the text's centre is (0 to 1 from the rear and from the bottom). Each reads
+## left to right as seen from its own side (toward the front on the right,
+## toward the back on the left), laid `lift` out from the face.
+static func side_number(k: VehicleModels, parent: Node3D, text: String, height: float, rear_bottom: Vector3, front_bottom: Vector3, front_top: Vector3, rear_top: Vector3, at: Vector2, col := STENCIL_WHITE, style := "tactical", both := true, lift := 0.006) -> void:
+	var quads := digit_quads(text, height, Vector2.ZERO, style)
+	for s: float in ([-1.0, 1.0] if both else [1.0]):
+		var m := Vector3(s, 1, 1)
+		var rb := rear_bottom * m
+		var fb := front_bottom * m
+		var ft := front_top * m
+		var rt := rear_top * m
+		var c := rb.lerp(fb, at.x).lerp(rt.lerp(ft, at.x), at.y)
+		var ahead := ((fb - rb) + (ft - rt)).normalized()
+		var up := (rt - rb) + (ft - fb)
+		up = (up - ahead * up.dot(ahead)).normalized()
+		# (out of whichever flank the face is on; to its viewer's right along it)
+		var out := ahead.cross(up) * signf(c.x)
+		_brushed(k, parent, quads, VehicleSurface.plane(c + out * lift, up.cross(out), up).sample, out, col)
+
+
+## Stencil bars laid flat on a face (`project` maps their 2D domain onto it,
+## facing `out`), one quad each with no subdividing, and each a shade off the
+## next as a brush leaves the paint: heavier on one bar, scuffed thinner on
+## another. The shade (up to 7% darker) is fixed by where the bar is, so a
+## seed still reproduces the vehicle. Gone with the paint on a wreck.
+static func _brushed(k: VehicleModels, parent: Node3D, quads: Array, project: Callable, out: Vector3, col: Color) -> void:
+	if k.wreck:
+		return
+	var surface := VehicleSurface.new(project, out)
+	for quad: Array in quads:
+		var outline := PackedVector2Array(quad)
+		if Geometry2D.triangulate_polygon(outline).is_empty():
+			continue
+		var mid: Vector2 = (outline[0] + outline[2]) * 500.0
+		var tone := 1.0 - 0.07 * float(_hash(int(mid.x) * 7919 + int(mid.y), 5) & 1023) / 1023.0
+		k._add(parent, surface.patch(outline, 0.0, 0.0, 0), "paint", Color(col.r * tone, col.g * tone, col.b * tone), Vector3.ZERO, Vector3.ZERO, Vector3.ONE, false)
 
 
 # --- number plates --------------------------------------------------------------

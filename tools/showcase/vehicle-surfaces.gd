@@ -7,6 +7,8 @@ var output := "/tmp/vehicle-surfaces"
 var kinds: Array[String] = []
 var single := false
 var team := 0
+## The model seed: it picks per-vehicle details such as tactical numbers.
+var model_seed := 3
 var offset := Vector3.ZERO
 var swatches := false
 var panels := false
@@ -18,6 +20,10 @@ var motion_models: Array[VehicleModels] = []
 var camera_size := 0.0
 var grounded := false
 var rotor_focus := false
+## --surface-flight: rotors and propellers as they look turning at flight speed
+## (each blur disc shown in place of its blades, as Vehicle does in the air),
+## seen from above.
+var flight := false
 var body_focus := Vector3.INF
 var view_direction := Vector3(1, 0.65, -1.25)
 ## The twenty shared parts of the component extraction (--surface-shared-parts).
@@ -37,6 +43,8 @@ func _ready() -> void:
 			single = true
 		elif arg.begins_with("--surface-team="):
 			team = int(arg.trim_prefix("--surface-team="))
+		elif arg.begins_with("--surface-seed="):
+			model_seed = int(arg.trim_prefix("--surface-seed="))
 		elif arg == "--surface-offset":
 			offset = Vector3(117, 35, -81)
 		elif arg == "--surface-ground":
@@ -48,6 +56,9 @@ func _ready() -> void:
 			body_focus = Vector3(float(xyz[0]), float(xyz[1]), float(xyz[2]))
 		elif arg == "--surface-rotor":
 			rotor_focus = true
+		elif arg == "--surface-flight":
+			flight = true
+			view_direction = Vector3(0.7, 1.5, -1.0)  # (from above, as the RTS camera sees an aircraft)
 		elif arg == "--surface-rear":
 			view_direction = Vector3(-1, 0.65, 1.25)
 		elif arg == "--surface-antenna-motion":
@@ -88,7 +99,7 @@ func _ready() -> void:
 		kinds.append_array(["wreck_tank", "wreck_heli", "wreck_patrol_ship"])
 		kinds.sort()
 	DirAccess.make_dir_recursive_absolute(output)
-	var manifest := {"team": team, "seed": 3, "renderer": RenderingServer.get_current_rendering_method(), "models": kinds, "camera_size": camera_size, "grounded": grounded, "panels": panels, "fittings": fittings, "accessories": accessories, "construction": construction, "rotor_focus": rotor_focus, "body_focus": str(body_focus), "view_direction": str(view_direction)}
+	var manifest := {"team": team, "seed": model_seed, "renderer": RenderingServer.get_current_rendering_method(), "models": kinds, "camera_size": camera_size, "grounded": grounded, "panels": panels, "fittings": fittings, "accessories": accessories, "construction": construction, "rotor_focus": rotor_focus, "flight": flight, "body_focus": str(body_focus), "view_direction": str(view_direction)}
 	FileAccess.open(output.path_join("capture.json"), FileAccess.WRITE).store_string(JSON.stringify(manifest, "\t"))
 	var per_page := 1 if single else (4 if fittings else (8 if panels else (16 if swatches else 12)))
 	for start in range(0, kinds.size(), per_page):
@@ -267,8 +278,13 @@ func _cell(grid: GridContainer, kind: String, size: Vector2i) -> void:
 	elif kind.begins_with("civilian_"):
 		k = VehicleModels.build_car(int(kind.trim_prefix("civilian_")), Color(0.36, 0.16, 0.12))
 	else:
-		k = VehicleModels.build(kind.trim_prefix("wreck_"), team, 3, kind.begins_with("wreck_"))
+		k = VehicleModels.build(kind.trim_prefix("wreck_"), team, model_seed, kind.begins_with("wreck_"))
 	stage.add_child(k.root)
+	if flight:
+		_spin_up(k.root)
+		if k.blur and k.blades:
+			k.blur.visible = true
+			k.blades.visible = false
 	if antenna_motion:
 		motion_models.append(k)
 	var bounds := _bounds(k.root, Transform3D.IDENTITY)
@@ -336,3 +352,15 @@ func _capture_antenna_motion() -> void:
 		await RenderingServer.frame_post_draw
 		get_viewport().get_texture().get_image().save_png(output.path_join("motion-%03d.png" % frame))
 	caption.free()
+
+
+## Every rotor and propeller below `n` at flight speed: its "Blur" disc shown,
+## its "Blades" hidden.
+func _spin_up(n: Node) -> void:
+	var blur := n.get_node_or_null("Blur") as Node3D
+	var blades := n.get_node_or_null("Blades") as Node3D
+	if blur and blades:
+		blur.visible = true
+		blades.visible = false
+	for c in n.get_children():
+		_spin_up(c)

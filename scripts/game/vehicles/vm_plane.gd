@@ -27,6 +27,9 @@ const CSAT := Color(0.47, 0.44, 0.38)
 const AAF := Color(0.4, 0.43, 0.38)
 const OLIVE := Color(0.33, 0.35, 0.27)  # bombs and rocket pods
 const STORE_GREY := Color(0.55, 0.56, 0.55)  # missiles
+## The AAF's roundel in its subdued greens, and its numbers.
+const AAF_DARK := Color(0.17, 0.22, 0.15)
+const AAF_LIGHT := Color(0.6, 0.62, 0.52)
 
 static var _mc := {}
 
@@ -188,6 +191,13 @@ static func band(k: VehicleModels, p: Node3D, key: String, st: Array, z: float, 
 	if not _mc.has(kk):
 		rings = [sec(st_at(st, z - len * 0.5), n, grow), sec(st_at(st, z + len * 0.5), n, grow)]
 	k._add(p, skin(rings, kk, 50.0), mat, col, Vector3.ZERO)
+
+
+## The fuselage's panel joints: a band at each z in zs, the paint darkened
+## where grime holds in the joint.
+static func joints(k: VehicleModels, p: Node3D, key: String, st: Array, zs: Array, mat: String, col: Color) -> void:
+	for z: float in zs:
+		band(k, p, "%s_pj%.2f" % [key, z], st, z, 0.025, 0.004, mat, col.darkened(0.22), 16)
 
 
 ## A strip of paint (a livery stripe, a radome, a walkway) laid over a body
@@ -469,6 +479,140 @@ static func wing_marks(k: VehicleModels, p: Node3D, team: int, secs: Array, x: f
 		k._team_mark(p, team, Vector3(sd * x, y, le.z + float(w[1]) * 0.38), Vector3(s, 0.015, s))
 
 
+# --- paint: insignia, numbers, panel lines, soot ------------------------------------
+
+## A lifting surface's skin on top (face 1) or underneath (-1): a point moved
+## up or down onto the airfoil at its span and chord (secs as surf takes
+## them; points on the left wing find the right wing's sections).
+static func wing_skin(secs: Array, face: float) -> Callable:
+	return func(q: Vector3) -> Vector3:
+		var w := surf_at(secs, absf(q.x))
+		var le: Vector3 = w[0]
+		var f := clampf((q.z - le.z) / float(w[1]), 0.0, 1.0)
+		return Vector3(q.x, le.y + face * _foil_t(f) * float(w[2]) * 0.5, q.z)
+
+
+## A fin's skin (sections stacked up y, as surf takes a fin's) on its right
+## (side 1) or left (-1) face.
+static func fin_skin(secs: Array, side: float) -> Callable:
+	return func(q: Vector3) -> Vector3:
+		var w := VmGunship._fin_at(secs, q.y)
+		var le: Vector3 = w[0]
+		var f := clampf((q.z - le.z) / float(w[1]), 0.0, 1.0)
+		return Vector3(le.x + side * _foil_t(f) * float(w[2]) * 0.5, q.y, q.z)
+
+
+## A body's flank on the right (side 1) or left (-1): a point moved across
+## onto the skin at its station and height.
+static func side_skin(st: Array, side: float) -> Callable:
+	return func(q: Vector3) -> Vector3:
+		var s := st_at(st, q.z)
+		return Vector3(float(s[7]) + side * VmGunship._half_w(s, q.y), q.y, q.z)
+
+
+## The national insignia (VehicleAircraft.INSIGNIA_*) `r` across on the
+## wings at span x, chord fraction f: a US aircraft's on top of the left wing
+## and under the right, as the USAF paints them; anyone else's above and
+## below both. Upright toward the nose, seen from above or below.
+static func wing_insignia(k: VehicleModels, p: Node3D, secs: Array, x: float, f: float, r: float, style: int, dark := Color(0.2, 0.21, 0.22), light := Color(0.6, 0.62, 0.62)) -> void:
+	var w := surf_at(secs, x)
+	var le: Vector3 = w[0]
+	var layers := VehicleAircraft.insignia(style, r, dark, light)
+	for sd: float in [-1.0, 1.0]:
+		for face: float in [1.0, -1.0]:
+			if style == VehicleAircraft.INSIGNIA_US and (sd > 0.0) == (face > 0.0):
+				continue
+			var at := Vector3(sd * x, le.y, le.z + float(w[1]) * f)
+			VehicleAircraft.paint(k, p, VehicleAircraft.face(at, Vector3.UP * face, Vector3.RIGHT * face, wing_skin(secs, face)), layers, "aircraft", 1 if style == VehicleAircraft.INSIGNIA_STAR else 0)
+
+
+## Painted lettering (a serial, a bort number, a registration) `h` tall on
+## both flanks of a body, centred at height y and station z, reading from
+## nose to tail as each side is seen. `edge` > 0 lays the same strokes that
+## much wider underneath in `edge_col`: a Russian bort number's outline.
+static func side_text(k: VehicleModels, p: Node3D, st: Array, text: String, z: float, y: float, h: float, col: Color, edge := 0.0, edge_col := Color.WHITE, style := "tail") -> void:
+	var layers: Array = []
+	if edge > 0.0:
+		layers.append([VehicleAircraft.lettering(text, h, style, edge), edge_col])
+	layers.append([VehicleAircraft.lettering(text, h, style), col])
+	for sd: float in [-1.0, 1.0]:
+		var s := st_at(st, z)
+		var at := Vector3(float(s[7]) + sd * float(s[2]), y, z)
+		VehicleAircraft.paint(k, p, VehicleAircraft.face(at, Vector3(sd, 0, 0), Vector3(0, 0, -sd), side_skin(st, sd)), layers)
+
+
+## The insignia (VehicleAircraft.INSIGNIA_*) `r` across on both flanks of a
+## body at station z, height y.
+static func side_insignia(k: VehicleModels, p: Node3D, st: Array, z: float, y: float, r: float, style: int, dark := Color(0.2, 0.21, 0.22), light := Color(0.6, 0.62, 0.62)) -> void:
+	var layers := VehicleAircraft.insignia(style, r, dark, light)
+	for sd: float in [-1.0, 1.0]:
+		var s := st_at(st, z)
+		var at := Vector3(float(s[7]) + sd * float(s[2]), y, z)
+		VehicleAircraft.paint(k, p, VehicleAircraft.face(at, Vector3(sd, 0, 0), Vector3(0, 0, -sd), side_skin(st, sd)), layers, "aircraft", 2)
+
+
+## The insignia or a number on both faces of a fin (sections as surf takes
+## them) at height y, station z: `layers` from VehicleAircraft.insignia or a
+## [lettering, colour] list. `mirror` paints the twin fin across x = 0 too.
+static func fin_paint(k: VehicleModels, p: Node3D, secs: Array, layers: Array, z: float, y: float, mirror := false) -> void:
+	var fins: Array = [secs]
+	if mirror:
+		var left: Array = []
+		for q: Array in secs:
+			var le: Vector3 = q[0]
+			left.append([Vector3(-le.x, le.y, le.z), q[1], q[2]])
+		fins.append(left)
+	for fin: Array in fins:
+		for sd: float in [-1.0, 1.0]:
+			var w := VmGunship._fin_at(fin, y)
+			var le: Vector3 = w[0]
+			VehicleAircraft.paint(k, p, VehicleAircraft.face(Vector3(le.x, y, z), Vector3(sd, 0, 0), Vector3(0, 0, -sd), fin_skin(fin, sd)), layers)
+
+
+## Panel joints over the top of a wing, both sides, in `col` (the paint
+## darkened: grime holds in the joints): chordwise joints at the spans in xs,
+## from just behind the leading edge back to chord fraction f1 (the hinge
+## line; the control surfaces have their own gap), and spanwise along the
+## spars at the chord fractions in fs from span x0 to x1. Lines `width` wide.
+static func wing_lines(k: VehicleModels, p: Node3D, secs: Array, xs: Array, fs: Array, x0: float, x1: float, f1: float, col: Color, width := 0.022) -> void:
+	for sd: float in [-1.0, 1.0]:
+		var polys: Array = []
+		for x: float in xs:
+			var w := surf_at(secs, x)
+			var le: Vector3 = w[0]
+			var line: Array = []
+			for i in 7:
+				line.append(Vector2(x, -(le.z + lerpf(0.04, f1, float(i) / 6.0) * float(w[1]))))
+			polys.append(line)
+		for f: float in fs:
+			var line: Array = []
+			for i in 5:
+				var x := lerpf(x0, x1, float(i) / 4.0)
+				var w := surf_at(secs, x)
+				var le: Vector3 = w[0]
+				line.append(Vector2(x, -(le.z + f * float(w[1]))))
+			polys.append(line)
+		var mirrored: Array = []
+		for line: Array in polys:
+			var m: Array = []
+			for q: Vector2 in line:
+				m.append(Vector2(q.x * sd, q.y))
+			mirrored.append(m)
+		var root := surf_at(secs, x0)
+		VehicleAircraft.paint(k, p, VehicleAircraft.face(Vector3(0, (root[0] as Vector3).y, 0), Vector3.UP, Vector3.RIGHT, wing_skin(secs, 1.0)), [[VehicleAircraft.lines(mirrored, width), col]])
+
+
+## Heat and soot round a jet pipe: the body's paint (mat, col) darkening
+## over the last `len` metres ahead of the nozzle at z1, in three bands each
+## darker (VehicleAircraft.SOOT) and a little prouder than the one it
+## overlaps.
+static func pipe_soot(k: VehicleModels, p: Node3D, key: String, st: Array, z1: float, len: float, mat: String, col: Color) -> void:
+	for i in 3:
+		var z0 := z1 - len * (1.0 - 0.3 * float(i))
+		var d: float = VehicleAircraft.SOOT[i]
+		stripe(k, p, "%s_soot%d" % [key, i], st, z0, z1, -PI, PI, mat, Color(col.r * d, col.g * d, col.b * d), 0.003 + 0.002 * float(i), 14)
+
+
 # --- A-143 Buzzard ------------------------------------------------------------------
 
 ## A-143 Buzzard (Aero L-159 ALCA): a long sharp nose, a single bubble canopy,
@@ -500,6 +644,7 @@ static func _buzzard(k: VehicleModels, team: int) -> void:
 	# the radome a shade darker, a joint band behind it
 	band(k, m, "buz_rjoint", st, -4.6, 0.03, 0.006, A, c.darkened(0.25))
 	band(k, m, "buz_tjoint", st, 3.0, 0.03, 0.005, A, c.darkened(0.2))
+	joints(k, m, "buz", st, [-3.6, -1.0, 0.9, 2.1, 4.7], A, c)
 	# dorsal spine from the canopy to the fin
 	body(k, m, "buz_spine", [[-1.3, 1.42, 0.34, 0.4, 0.1], [-0.4, 1.44, 0.33, 0.37, 0.1], [1.6, 1.45, 0.25, 0.3, 0.1], [3.6, 1.45, 0.14, 0.19, 0.1]], A, c, 16)
 	# the canopy: windscreen and bubble, its bows
@@ -559,6 +704,14 @@ static func _buzzard(k: VehicleModels, team: int) -> void:
 	wing_marks(k, m, team, ws, 3.3, 0.6)
 	for s in [-1.0, 1.0]:
 		k._team_mark(m, team, Vector3(s * 0.47, 1.1, 3.6), Vector3(0.02, 0.34, 0.34))
+	# the AAF's paint: roundels above and below the wings and on the fin, the
+	# serial on the nose, panel joints over the wings, the tail cone sooted
+	# ahead of the jet pipe
+	wing_insignia(k, m, ws, 2.0, 0.45, 0.42, VehicleAircraft.INSIGNIA_ROUNDEL, AAF_DARK, AAF_LIGHT)
+	fin_paint(k, m, [[Vector3(0, 1.45, 3.2), 2.5, 0.2], [Vector3(0, 3.6, 5.3), 1.05, 0.1]], VehicleAircraft.insignia(VehicleAircraft.INSIGNIA_ROUNDEL, 0.3, AAF_DARK, AAF_LIGHT), 5.05, 2.75)
+	side_text(k, m, st, "6064", -4.3, 0.98, 0.24, AAF_DARK)
+	wing_lines(k, m, ws, [1.35, 2.55, 3.6], [0.14, 0.6], 0.62, 4.3, 0.72, c.darkened(0.24), 0.02)
+	pipe_soot(k, m, "buz", st, 6.36, 1.3, A, c)
 
 
 # --- A-149 Gryphon ------------------------------------------------------------------
@@ -591,6 +744,7 @@ static func _gryphon(k: VehicleModels, team: int) -> void:
 	body(k, m, "gry_fus", st, A, c)
 	stripe(k, m, "gry_rad", st, -6.8, -5.05, -PI, PI, A, c.darkened(0.18), 0.004, 20)
 	band(k, m, "gry_tjoint", st, 4.4, 0.03, 0.005, A, c.darkened(0.2))
+	joints(k, m, "gry", st, [-4.2, -2.3, 0.4, 2.5, 5.7], A, c)
 	body(k, m, "gry_spine", [[-2.3, 1.42, 0.36, 0.36, 0.1], [-1.0, 1.44, 0.34, 0.34, 0.1], [1.5, 1.44, 0.28, 0.3, 0.1], [3.5, 1.44, 0.18, 0.22, 0.1], [5.2, 1.42, 0.08, 0.1, 0.1]], A, c, 16)
 	var cst := [[-4.55, 1.42, 0.28, 0.06, 0.06], [-4.0, 1.42, 0.4, 0.33, 0.06], [-3.4, 1.43, 0.44, 0.49, 0.06], [-2.7, 1.44, 0.42, 0.47, 0.06],
 		[-2.1, 1.45, 0.34, 0.33, 0.06], [-1.7, 1.45, 0.2, 0.17, 0.06]]
@@ -647,6 +801,13 @@ static func _gryphon(k: VehicleModels, team: int) -> void:
 	wing_marks(k, m, team, ws, 2.9, 0.55)
 	for s in [-1.0, 1.0]:
 		k._team_mark(m, team, Vector3(s * 0.082, 2.6, 4.15), Vector3(0.02, 0.4, 0.4))
+	# roundels above and below the wings and on the fin, the big two-digit
+	# number on the nose a Gripen wears, panel joints, the tail cone sooted
+	wing_insignia(k, m, ws, 1.75, 0.6, 0.4, VehicleAircraft.INSIGNIA_ROUNDEL, AAF_DARK, AAF_LIGHT)
+	fin_paint(k, m, [[Vector3(0, 1.4, 2.1), 3.6, 0.22], [Vector3(0, 3.9, 5.0), 1.3, 0.1]], VehicleAircraft.insignia(VehicleAircraft.INSIGNIA_ROUNDEL, 0.27, AAF_DARK, AAF_LIGHT), 5.05, 3.25)
+	side_text(k, m, st, "28", -4.9, 0.97, 0.36, AAF_DARK)
+	wing_lines(k, m, ws, [1.6, 2.4, 3.3], [0.12, 0.55], 0.85, 3.9, 0.8, c.darkened(0.24), 0.02)
+	pipe_soot(k, m, "gry", st, 6.6, 1.2, A, c)
 
 
 # --- Caesar BTT ---------------------------------------------------------------------
@@ -724,6 +885,13 @@ static func _caesar(k: VehicleModels, team: int, seed: int) -> void:
 	antenna(k, m, Vector3(0, 2.28, 0.6), 0.18, false, Color(0.25, 0.25, 0.25))
 	antenna(k, m, Vector3(0, 0.84, 0.4), 0.14, true, Color(0.25, 0.25, 0.25))
 	VehicleAircraft.pitot(k, m, Vector3(-3.6, 0.95, -0.6), Vector3(-3.6, 0.95, -1.1), 0.015, "steel", null)
+	# the registration down both sides of the tail cone, in the stripe's
+	# colour, picked by the seed from the letters the stencil can cut
+	var letters := "ACEFHJLPSTU"
+	var reg := "C-F"
+	for i in 3:
+		reg += letters[(absi(seed) / int(pow(11.0, float(i))) + i * 5) % letters.length()]
+	side_text(k, m, st, reg, 2.05, 1.5, 0.22, sc.darkened(0.25))
 
 
 # --- To-201 Shikra ------------------------------------------------------------------
@@ -737,7 +905,9 @@ static func _shikra(k: VehicleModels, team: int) -> void:
 	var m := k.root
 	var c := CSAT
 	var c2 := Color(0.37, 0.37, 0.34)
-	var A := "aircraft"
+	# CSAT's hex camouflage over the airframe, as its armour wears it; the
+	# radome, stores and fittings stay in plain paint
+	var A := "camo_tank_rebel"
 	var st := [
 		[-10.05, 1.3, 0.0, 0.0, 0.0],
 		[-9.7, 1.31, 0.13, 0.1, 0.09, 1.7, 1.5],
@@ -753,7 +923,8 @@ static func _shikra(k: VehicleModels, team: int) -> void:
 		[8.6, 1.42, 0.3, 0.18, 0.15],
 	]
 	body(k, m, "shk_fus", st, A, c)
-	stripe(k, m, "shk_rad", st, -10.05, -8.0, -PI, PI, A, c2, 0.004, 20)
+	stripe(k, m, "shk_rad", st, -10.05, -8.0, -PI, PI, "aircraft", c2, 0.004, 20)
+	joints(k, m, "shk", st, [-6.2, -3.4, 3.4, 6.6], A, c)
 	body(k, m, "shk_spine", [[-4.6, 1.85, 0.42, 0.38, 0.1], [-2.5, 1.86, 0.6, 0.26, 0.1, 2.8], [1.0, 1.86, 0.65, 0.2, 0.1, 3.2], [4.0, 1.82, 0.5, 0.14, 0.1, 3.2], [6.0, 1.75, 0.25, 0.08, 0.1]], A, c, 18)
 	var cst := [[-7.6, 1.8, 0.3, 0.05, 0.05], [-7.1, 1.82, 0.44, 0.34, 0.05], [-6.3, 1.84, 0.5, 0.55, 0.05], [-5.4, 1.86, 0.48, 0.55, 0.05],
 		[-4.6, 1.88, 0.38, 0.38, 0.05], [-4.1, 1.88, 0.22, 0.18, 0.05]]
@@ -803,6 +974,18 @@ static func _shikra(k: VehicleModels, team: int) -> void:
 	wing_marks(k, m, team, ws, 5.9, 0.65)
 	for s in [-1.0, 1.0]:
 		k._team_mark(m, team, Vector3(s * 1.95, 1.08, 2.5), Vector3(0.02, 0.36, 0.36))
+	# the paint a Su-57 wears: red stars above and below the wings and on the
+	# fins, the bort number red edged white on the nose, panel joints over
+	# the wings, the nacelles sooted ahead of the nozzles
+	wing_insignia(k, m, ws, 4.3, 0.42, 0.68, VehicleAircraft.INSIGNIA_STAR)
+	fin_paint(k, m, [[Vector3(1.42, 1.6, 3.9), 2.9, 0.16], [Vector3(2.42, 3.67, 6.0), 1.2, 0.07]], VehicleAircraft.insignia(VehicleAircraft.INSIGNIA_STAR, 0.4), 5.6, 2.85, true)
+	side_text(k, m, st, "51", -6.6, 1.3, 0.48, VehicleAircraft.STAR_RED, 0.03, VehicleAircraft.STAR_WHITE)
+	wing_lines(k, m, ws, [2.4, 3.8, 5.3], [0.14, 0.56], 1.45, 6.9, 0.78, c.darkened(0.24))
+	pipe_soot(k, m, "shk_nr", nst, 8.2, 1.7, A, c)
+	var nst_l: Array = []
+	for q: Array in nst:
+		nst_l.append(_mx(q))
+	pipe_soot(k, m, "shk_nl", nst_l, 8.2, 1.7, A, c)
 
 
 # --- To-199 Neophron ----------------------------------------------------------------
@@ -815,7 +998,8 @@ static func _shikra(k: VehicleModels, team: int) -> void:
 static func _neophron(k: VehicleModels, team: int) -> void:
 	var m := k.root
 	var c := CSAT
-	var A := "aircraft"
+	# CSAT's hex camouflage over the airframe, as on the Shikra
+	var A := "camo_tank_rebel"
 	var st := [
 		[-5.75, 1.08, 0.0, 0.0, 0.0],
 		[-5.5, 1.08, 0.08, 0.08, 0.08],
@@ -831,8 +1015,9 @@ static func _neophron(k: VehicleModels, team: int) -> void:
 		[5.75, 1.32, 0.06, 0.08, 0.05],
 	]
 	body(k, m, "neo_fus", st, A, c)
-	stripe(k, m, "neo_rad", st, -5.75, -4.3, -PI, PI, A, c.darkened(0.2), 0.004, 20)
+	stripe(k, m, "neo_rad", st, -5.75, -4.3, -PI, PI, "aircraft", c.darkened(0.2), 0.004, 20)
 	band(k, m, "neo_tjoint", st, 3.4, 0.03, 0.005, A, c.darkened(0.2))
+	joints(k, m, "neo", st, [-3.4, -0.5, 1.5, 4.6], A, c)
 	body(k, m, "neo_spine", [[-1.4, 1.6, 0.3, 0.32, 0.1], [0.0, 1.6, 0.3, 0.28, 0.1], [2.0, 1.6, 0.2, 0.18, 0.1], [3.2, 1.58, 0.1, 0.1, 0.1]], A, c, 14)
 	var cst := [[-3.75, 1.6, 0.26, 0.05, 0.05], [-3.3, 1.6, 0.38, 0.32, 0.05], [-2.6, 1.62, 0.42, 0.5, 0.05], [-1.9, 1.63, 0.4, 0.48, 0.05],
 		[-1.3, 1.64, 0.32, 0.32, 0.05], [-0.9, 1.64, 0.18, 0.15, 0.05]]
@@ -881,6 +1066,17 @@ static func _neophron(k: VehicleModels, team: int) -> void:
 	wing_marks(k, m, team, ws, 3.6, 0.5)
 	for s in [-1.0, 1.0]:
 		k._team_mark(m, team, Vector3(s * 0.068, 2.9, 3.8), Vector3(0.02, 0.36, 0.36))
+	# a Yak-130's paint: red stars above and below the wings and on the fin,
+	# the bort number under the cockpit, panel joints, the nacelles sooted
+	wing_insignia(k, m, ws, 2.2, 0.45, 0.4, VehicleAircraft.INSIGNIA_STAR)
+	fin_paint(k, m, [[Vector3(0, 1.55, 1.9), 2.8, 0.2], [Vector3(0, 3.55, 4.1), 1.05, 0.09]], VehicleAircraft.insignia(VehicleAircraft.INSIGNIA_STAR, 0.3), 3.55, 2.3)
+	side_text(k, m, st, "12", -3.55, 1.1, 0.34, VehicleAircraft.STAR_RED, 0.025, VehicleAircraft.STAR_WHITE)
+	wing_lines(k, m, ws, [1.3, 2.6, 3.8], [0.15, 0.6], 0.5, 4.7, 0.75, c.darkened(0.24), 0.02)
+	var nst_l: Array = []
+	for q: Array in nst:
+		nst_l.append(_mx(q))
+	pipe_soot(k, m, "neo_nr", nst, 3.95, 1.1, A, c)
+	pipe_soot(k, m, "neo_nl", nst_l, 3.95, 1.1, A, c)
 
 
 # --- MQ-4A Greyhawk -----------------------------------------------------------------
@@ -911,6 +1107,7 @@ static func _greyhawk(k: VehicleModels, team: int) -> void:
 	body(k, m, "gh_fus", st, A, c)
 	# the dish housing a shade lighter, its joint line
 	stripe(k, m, "gh_dome", st, -5.45, -2.9, -0.35, PI + 0.35, A, c.lightened(0.08), 0.004, 14)
+	joints(k, m, "gh", st, [-1.7, 0.4, 2.3, 3.7], A, c)
 	# the sensor ball hanging on its neck under the nose, its windows looking forward
 	VehicleEquipment.sensor(k, m, Vector3(0, 0.3, -4.3), Vector3.ONE * 0.54, "paint", Color(0.55, 0.56, 0.55), "ball", Vector3(0.14, 0.12, 0.36))
 	# canards, the wing with flaps and ailerons
@@ -941,6 +1138,12 @@ static func _greyhawk(k: VehicleModels, team: int) -> void:
 		bomb(k, m, pylon(k, m, at, 0.9, 0.18, c, 0.16), 2.4, 0.16, true)
 	k.gun_tip = k._tip(m, Vector3(0, 0.3, -4.6))
 	wing_marks(k, m, team, ws, 7.6, 0.45)
+	# an MQ-9's few markings: the wing's tail code on the V-tail, the serial
+	# small on the rear fuselage, the turboprop's exhaust sooting the flanks
+	fin_paint(k, m, [[Vector3(0.12, 1.25, 3.2), 1.05, 0.09], [Vector3(1.8, 2.75, 3.8), 0.55, 0.04]], [[VehicleAircraft.lettering("CH", 0.2, "tail"), c.darkened(0.55)]], 3.62, 1.95, true)
+	side_text(k, m, st, "4011", 2.6, 1.0, 0.12, c.darkened(0.55))
+	for s in [-1.0, 1.0]:
+		VehicleAircraft.paint(k, m, VehicleAircraft.face(Vector3(s * 0.3, 1.0, 3.95), Vector3(s, 0, 0), Vector3.BACK, side_skin(st, s)), VehicleAircraft.soot(0.9, 0.16, A, c), A)
 
 
 # --- UCAV Sentinel ------------------------------------------------------------------
@@ -1000,6 +1203,9 @@ static func _sentinel(k: VehicleModels, team: int) -> void:
 	k._box(m, Vector3(0.4, 0.02, 0.9), Vector3(1.1, yc + 0.5, -1.9), A, c.darkened(0.12), Vector3(0, 0, -0.3), false)
 	k.gun_tip = k._tip(m, Vector3(0, yc - 0.3, 0.0))
 	wing_marks(k, m, team, ws, 7.6, 0.55)
+	# the X-47B's low-visibility star-and-bar, dark grey on the grey, on top
+	# of the left wing and under the right
+	wing_insignia(k, m, ws, 5.0, 0.42, 0.38, VehicleAircraft.INSIGNIA_US, c.darkened(0.4), c.lightened(0.04))
 
 
 # --- KH-3A Fenghuang ----------------------------------------------------------------
@@ -1025,6 +1231,7 @@ static func _fenghuang(k: VehicleModels, team: int) -> void:
 	]
 	body(k, m, "fen_fus", st, A, c, 18)
 	stripe(k, m, "fen_nose", st, -2.75, -2.1, -PI, PI, A, c.darkened(0.25), 0.004, 18)
+	joints(k, m, "fen", st, [-1.3, 0.3, 1.7], A, c)
 	# canards with elevators; the main wing with ailerons; fins at its tips
 	surf(k, m, "fen_canard", [[Vector3(0.2, 0.93, -2.15), 0.56, 0.07], [Vector3(1.3, 0.96, -2.0), 0.36, 0.04]], A, c, [0.65])
 	var ws := [[Vector3(0.2, 1.05, 0.55), 0.95, 0.12], [Vector3(4.0, 1.15, 0.85), 0.55, 0.06]]
@@ -1056,6 +1263,10 @@ static func _fenghuang(k: VehicleModels, team: int) -> void:
 			agm(k, m, pylon(k, m, at, 0.55, 0.1, c, 0.08), 1.4, 0.08)
 	k.gun_tip = k._tip(m, Vector3(0, 0.37, -1.48))
 	wing_marks(k, m, team, ws, 3.2, 0.35)
+	# red stars above and below the wings between the pylons, the airframe
+	# number on the nose
+	wing_insignia(k, m, ws, 1.8, 0.42, 0.26, VehicleAircraft.INSIGNIA_STAR)
+	side_text(k, m, st, "03", -1.6, 0.86, 0.2, c.darkened(0.6))
 
 
 # --- Y-32 Xi'an ---------------------------------------------------------------------
@@ -1101,7 +1312,8 @@ static func _xian(k: VehicleModels, team: int) -> void:
 	var m := k.root
 	var c := CSAT
 	var c2 := CSAT.darkened(0.16)
-	var A := "aircraft"
+	# CSAT's hex camouflage, as the Y-32 wears it
+	var A := "camo_tank_rebel"
 	var st := [
 		[-9.0, 1.55, 0.0, 0.0, 0.0],
 		[-8.75, 1.56, 0.2, 0.2, 0.18],
@@ -1117,7 +1329,8 @@ static func _xian(k: VehicleModels, team: int) -> void:
 		[9.0, 2.9, 0.14, 0.2, 0.1],
 	]
 	body(k, m, "xi_fus", st, A, c, 22)
-	stripe(k, m, "xi_nose", st, -9.0, -7.9, -PI, PI, A, c2, 0.004, 20)
+	stripe(k, m, "xi_nose", st, -9.0, -7.9, -PI, PI, "aircraft", c2, 0.004, 20)
+	joints(k, m, "xi", st, [-3.3, 1.2, 3.6, 6.2], A, c)
 	# the stepped cockpit: the gunner's bubble low in front, the pilot's above
 	var g := [[-7.75, 2.0, 0.3, 0.05, 0.05, 2.6], [-7.3, 2.02, 0.48, 0.32, 0.05, 2.6], [-6.6, 2.06, 0.55, 0.48, 0.05, 2.6], [-6.0, 2.1, 0.52, 0.42, 0.05, 2.6], [-5.6, 2.12, 0.35, 0.2, 0.05, 2.6]]
 	var p := [[-5.6, 2.62, 0.35, 0.05, 0.05, 2.6], [-5.1, 2.64, 0.55, 0.36, 0.05, 2.6], [-4.4, 2.68, 0.6, 0.52, 0.05, 2.6], [-3.7, 2.72, 0.56, 0.45, 0.05, 2.6], [-3.2, 2.74, 0.36, 0.22, 0.05, 2.6]]
@@ -1201,3 +1414,9 @@ static func _xian(k: VehicleModels, team: int) -> void:
 	wing_marks(k, m, team, ws, 6.7, 0.8)
 	for s in [-1.0, 1.0]:
 		k._team_mark(m, team, Vector3(s * 1.28, 2.2, 2.9), Vector3(0.02, 0.6, 0.6))
+	# red stars on the flanks aft, the wings' roots and the tails, the bort
+	# number red edged white on the nose under the gunner
+	side_insignia(k, m, st, 4.7, 2.25, 0.45, VehicleAircraft.INSIGNIA_STAR)
+	wing_insignia(k, m, ws, 2.25, 0.22, 0.4, VehicleAircraft.INSIGNIA_STAR)
+	fin_paint(k, m, [[Vector3(1.5, 3.5, 4.6), 3.4, 0.24], [Vector3(2.29, 5.66, 6.9), 1.6, 0.12]], VehicleAircraft.insignia(VehicleAircraft.INSIGNIA_STAR, 0.4), 6.62, 4.6, true)
+	side_text(k, m, st, "35", -6.9, 1.62, 0.42, VehicleAircraft.STAR_RED, 0.03, VehicleAircraft.STAR_WHITE)
