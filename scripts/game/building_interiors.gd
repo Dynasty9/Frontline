@@ -253,3 +253,79 @@ static func table(k: BuildingKit, size: Vector3, wood: Color, rng: RandomNumberG
 			var back := rng.randf_range(0.0, 0.25)
 			var fallen := rng.randf() < 0.08
 			chair(t, Vector3(sx, 0, sz * (W * 0.5 + 0.12 + back)), 0.0 if sz < 0.0 else PI, chair_col, fallen)
+
+
+# --- a shop ----------------------------------------------------------------------------
+
+## Goods on a shelf: tins, packets, bottles and jars in their colours.
+const GOODS := [Color(0.75, 0.15, 0.1), Color(0.9, 0.75, 0.2), Color(0.2, 0.35, 0.6), Color(0.85, 0.85, 0.8), Color(0.3, 0.5, 0.25),
+	Color(0.55, 0.32, 0.18), Color(0.92, 0.5, 0.15), Color(0.4, 0.25, 0.45)]
+
+
+## A shop's floor `size` (the floor's own frame: its front, the street, to
+## -z): rows of shelving running back from the door (clear of the front, and
+## of what stands against the side walls), stocked or picked half empty; the
+## counter across the back with its till and scales, sacks and boxes of stock
+## stacked at its end.
+static func shop(k: BuildingKit, size: Vector3, rng: RandomNumberGenerator) -> void:
+	var wood: Color = WOODS[rng.randi() % WOODS.size()]
+	var hx := size.x * 0.5
+	var hz := size.z * 0.5
+	# the shelving, from 2 m in from the front to short of the counter
+	var z0 := -hz + 2.0
+	var z1 := hz - 2.3
+	if z1 - z0 >= 2.0:
+		var rows: Array[float] = [0.0]
+		if hx >= 4.2:
+			rows = [-1.9, 1.9]
+		for x in rows:
+			gondola(k.at_point(Vector3(x, FLOOR, (z0 + z1) * 0.5), Vector3(0, PI * 0.5, 0)), z1 - z0, rng.randf() < 0.3, rng)
+	# the counter across the back (in front of what stands against the back
+	# wall), the till and scales on it
+	var cz := hz - 0.2 - REACH - 0.45
+	var cw := minf(size.x * 0.45, 3.2)
+	var side := 1.0 if rng.randf() < 0.5 else -1.0
+	var cx := side * maxf(0.0, hx - 0.2 - REACH - cw * 0.5)
+	k.box(Vector3(cw, 0.95, 0.6), Vector3(cx, FLOOR + 0.475, cz), "wood", wood)
+	k.box(Vector3(cw + 0.06, 0.04, 0.68), Vector3(cx, FLOOR + 0.97, cz), "wood", wood.darkened(0.2))
+	k.box(Vector3(0.36, 0.22, 0.3), Vector3(cx - cw * 0.3, FLOOR + 1.1, cz), "metal_dark", Color(0.3, 0.3, 0.32))
+	k.plate(Vector3(0.3, 0.12, 0.012), Vector3(cx - cw * 0.3, FLOOR + 1.25, cz - 0.1), "plain_dark", Color(0.1, 0.12, 0.1), Vector3(-0.5, 0, 0))
+	k.box(Vector3(0.22, 0.08, 0.16), Vector3(cx + cw * 0.25, FLOOR + 1.03, cz), "paint", Color(0.85, 0.82, 0.75))
+	k.cyl(0.14, 0.14, 0.02, Vector3(cx + cw * 0.25, FLOOR + 1.08, cz), "steel", Color(0.75, 0.75, 0.72), Vector3.ZERO, 12, false)
+	# the stock, at the counter's open end
+	var sx := cx - side * (cw * 0.5 + 0.55)
+	for i in rng.randi_range(3, 6):
+		var p := Vector3(sx + rng.randf_range(-0.35, 0.35), FLOOR, cz + rng.randf_range(-0.45, 0.1))
+		if rng.randf() < 0.5:
+			# a sack of flour or potatoes
+			k.part(Res.sphere(0.24, 8), "canvas", Transform3D(Basis.from_scale(Vector3(1.0, 1.4, 0.8)), p + Vector3(0, 0.32, 0)), Color(0.78, 0.72, 0.58).darkened(rng.randf_range(0.0, 0.2)), false)
+		else:
+			var bs := Vector3(rng.randf_range(0.35, 0.55), rng.randf_range(0.25, 0.4), rng.randf_range(0.3, 0.42))
+			k.box(bs, p + Vector3(0, bs.y * 0.5 + (0.0 if i < 3 else 0.4), 0), "wood", Color(0.6, 0.48, 0.32).darkened(rng.randf_range(0.0, 0.2)), Vector3(0, rng.randf_range(-0.4, 0.4), 0))
+
+
+## A run of shelving `length` long (along x, both faces stocked): the plinth,
+## the spine, four shelves a side with the goods along them in runs of one
+## kind; `bare` when it's been picked half empty.
+static func gondola(k: BuildingKit, length: float, bare: bool, rng: RandomNumberGenerator) -> void:
+	var h := 1.45
+	var d := 0.9
+	var white := Color(0.82, 0.8, 0.74)
+	k.box(Vector3(length, 0.12, d), Vector3(0, 0.06, 0), "paint", Color(0.3, 0.3, 0.3))
+	k.box(Vector3(length, h, 0.05), Vector3(0, h * 0.5, 0), "paint", white)
+	for e: float in [-1.0, 1.0]:
+		k.box(Vector3(0.05, h, d), Vector3(e * length * 0.5, h * 0.5, 0), "paint", white)
+	for side: float in [-1.0, 1.0]:
+		for i in 4:
+			var y := 0.12 + i * 0.34
+			k.box(Vector3(length - 0.04, 0.025, d * 0.5 - 0.05), Vector3(0, y, side * d * 0.25), "paint", white.darkened(0.08), Vector3.ZERO, false)
+			var x := -length * 0.5 + 0.05
+			while x < length * 0.5 - 0.12:
+				var w := minf(rng.randf_range(0.2, 0.55), length * 0.5 - 0.05 - x)
+				if rng.randf() < (0.55 if bare else 0.12):
+					x += w + 0.04
+					continue  # (a gap where it's been taken)
+				var gh := rng.randf_range(0.12, 0.26)
+				var col: Color = GOODS[rng.randi() % GOODS.size()]
+				k.box(Vector3(w, gh, d * 0.5 - 0.12), Vector3(x + w * 0.5, y + 0.0125 + gh * 0.5, side * (d * 0.25 + 0.02)), "paint", col.darkened(rng.randf_range(0.0, 0.25)), Vector3.ZERO, false)
+				x += w + rng.randf_range(0.01, 0.05)

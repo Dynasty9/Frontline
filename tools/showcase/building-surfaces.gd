@@ -269,6 +269,22 @@ func _subject(kind: String) -> Node3D:
 				street.call("belongings", k.at_point(Vector3(-4.6, 0, -1.4)), rng)
 				street.call("belongings", k.at_point(Vector3(-1.2, 0, -1.6)), rng)
 			return kit_root
+		"shop_rooms":
+			# two shops with their roofs off, as when men are inside (as they
+			# were before, where shops had no fitting out of their own: a
+			# room like a house's)
+			var fitted := BuildingInteriors.new().has_method("shop")
+			var shops := Node3D.new()
+			for i in 2:
+				var ids := {}
+				var plain := {}
+				for key in [10, 11, 12, 20, 21, 22]:
+					ids[key] = 700 + i * 40 + key
+					plain[key] = 0
+				var hs := _house([9.0, 7.6][i], [10.0, 9.4][i], [3, 1][i], true, false, false, 0, ids, plain, 3 if fitted else 0, 30 + i)
+				hs.position.x = (i - 0.5) * 11.0
+				shops.add_child(hs)
+			return shops
 		"house_rooms":
 			# three houses with their roofs off, as when men are inside, their
 			# back and left walls (the ones seen from inside) without windows:
@@ -360,9 +376,10 @@ func _wall(v: int, sz: Vector3, shut: bool, id: int, dark: bool) -> Node3D:
 	return Structure.preview_model("house_wall", -1, v, sz, shut, id)
 
 
-func _house(w: float, d: float, color: int, flat: bool, roofed := true, ruined := false, roof_id := 0, wall_ids := {}, variants := {}) -> Node3D:
+func _house(w: float, d: float, color: int, flat: bool, roofed := true, ruined := false, roof_id := 0, wall_ids := {}, variants := {}, floor_variant := -1, floor_id := 7) -> Node3D:
 	var root := Node3D.new()
-	var floor := Structure.preview_model("floor", -1, 1 if ruined else (2 if BuildingMaterials.house(color) == "timber" else 0), Vector3(w, 0.06, d), false, 7)
+	var fv := floor_variant if floor_variant >= 0 else (1 if ruined else (2 if BuildingMaterials.house(color) == "timber" else 0))
+	var floor := Structure.preview_model("floor", -1, fv, Vector3(w, 0.06, d), false, floor_id)
 	root.add_child(floor)
 	var sides := [[Vector3(0, 0, -d * 0.5), w, 0.0], [Vector3(0, 0, d * 0.5), w, 0.0],
 		[Vector3(-w * 0.5, 0, 0), d - 0.4, PI * 0.5], [Vector3(w * 0.5, 0, 0), d - 0.4, PI * 0.5]]

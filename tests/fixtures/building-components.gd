@@ -276,7 +276,8 @@ func _ready() -> void:
 			BuildingInteriors.settee(k.at_point(Vector3(6, 0, 0)), 0.0, 1.8, Color(0.5, 0.2, 0.15), k.rng)
 			BuildingInteriors.kitchen(k.at_point(Vector3(9, 0, 0)), 0.0, 2.2, BuildingInteriors.UNITS[0], k.rng)
 			BuildingInteriors.desk(k.at_point(Vector3(12, 0, 0)), 0.0, BuildingInteriors.WOODS[3], k.rng)
-			BuildingInteriors.table(k.at_point(Vector3(0, 0, 5)), Vector3(9.0, 0.06, 7.6), BuildingInteriors.WOODS[0], k.rng),
+			BuildingInteriors.table(k.at_point(Vector3(0, 0, 5)), Vector3(9.0, 0.06, 7.6), BuildingInteriors.WOODS[0], k.rng)
+			BuildingInteriors.shop(k.at_point(Vector3(0, 0, 16)), Vector3(9.0, 0.06, 10.0), k.rng),
 		"street": func(k: BuildingKit):
 			BuildingStreet.traffic_light(k, 1.0, k.rng)
 			BuildingStreet.phone_box(k.at_point(Vector3(2, 0, 0)), Color(0.7, 0.1, 0.08), k.rng)
@@ -613,6 +614,19 @@ func _ready() -> void:
 		var tb := _bounds(tk.sink.root, Transform3D.IDENTITY)
 		check(tb.position.y >= 0.0 and tb.end.y <= 1.2 and absf(tb.get_center().x) < 1.0 and absf(tb.get_center().z) < 1.0 and tb.size.x < 3.6 and tb.size.z < 3.6, "a table and its chairs keep to the middle of the room (%s)" % tb)
 		tk.sink.root.free()
+
+	# A shop's fittings keep inside its room, clear of its front (the door)
+	# and of what stands against its walls, and no taller than its shelving.
+	for s5 in 24:
+		var size5: Vector3 = [Vector3(9.0, 0.06, 10.0), Vector3(7.4, 0.06, 9.4), Vector3(12.6, 0.06, 10.5), Vector3(6.5, 0.06, 9.0)][s5 % 4]
+		var shk := kit()
+		shk.rng.seed = s5
+		BuildingInteriors.shop(shk, size5, shk.rng)
+		var shb := _bounds(shk.sink.root, Transform3D.IDENTITY)
+		check(shb.position.y >= 0.0 and shb.end.y <= 1.7, "a shop's fittings stand on its floor, waist to head high (%s)" % shb)
+		check(shb.position.x >= -size5.x * 0.5 + 0.2 + BuildingInteriors.REACH - 0.05 and shb.end.x <= size5.x * 0.5 - 0.2 - BuildingInteriors.REACH + 0.05, "they keep off the side walls' furniture (%s, %s)" % [size5, shb])
+		check(shb.position.z >= -size5.z * 0.5 + 1.9 and shb.end.z <= size5.z * 0.5 - 0.2 - BuildingInteriors.REACH + 0.05, "they keep clear of the door and the back wall's furniture (%s, %s)" % [size5, shb])
+		shk.sink.root.free()
 
 	# The streets' furniture stands on the pavement inside the box a vehicle
 	# or a blast knocks it down as (Decor.BREAKABLE), whatever it drew.
