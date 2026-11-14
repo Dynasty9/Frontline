@@ -43,6 +43,8 @@ var square_flag: Array = []  # the flagpole on it (decor; the town's supply dump
 ## decor, so every older piece keeps its place in the list and so its look.
 var _yard_decor: Array = []
 var _shop_decor: Array = []  # what the shops put out (decor, after the yards'; see _shop_wares)
+var _street_decor: Array = []  # the streets' furniture (decor, after the shops'; see _street_furniture)
+var _vacant: Array = []  # [front, n, d, W] of each car park and bombed-out lot, for the hoardings
 
 
 func _init(m) -> void:
@@ -820,6 +822,7 @@ func _park(front: Vector3, n: Vector3, d: Vector3, W: float) -> void:
 func _parking(front: Vector3, n: Vector3, d: Vector3, W: float) -> void:
 	if not _lot_free(front, n, d, W):
 		return
+	_vacant.append([front, n, d, W, 10.6])
 	var c := front + n * 5.5
 	var size := Vector3(W - 1.0, 0, 11.0)
 	_reserve(c, Vector2(W * 0.5, 5.6), yaw_along(d))
@@ -849,12 +852,125 @@ func _allotment(front: Vector3, n: Vector3, d: Vector3, W: float) -> void:
 func _ruin_lot(front: Vector3, n: Vector3, d: Vector3, W: float) -> void:
 	if not _lot_free(front, n, d, W):
 		return
+	_vacant.append([front, n, d, W, 1.7])
 	var c := front + n * 5.0
 	_reserve(c, Vector2(W * 0.5, _depth * 0.5), yaw_along(d))
 	for i in rng.randi_range(2, 4):
 		world.spawn("structure", {"skind": "rubble", "pos": c + d * rng.randf_range(-W * 0.35, W * 0.35) + n * rng.randf_range(-3, 4), "yaw": rng.randf() * TAU, "size": Vector3(rng.randf_range(2.0, 3.6), 0, rng.randf_range(1.2, 2.0))})
 	if rng.randf() < 0.6:
 		mg._try("low_wall", front + n * 0.6, yaw_along(d), -1, {"size": Vector3(minf(W - 2.0, 6.0), 1.0, 0.5), "variant": 0})
+
+
+## The streets' furniture beyond their lamps and poles (BuildingStreet):
+## traffic lights at the central crossroads, a telephone box and post boxes
+## on the main street's pavements, an advertising column on the square, a
+## hoarding over each car park and bombed-out lot, street names on posts at
+## the junctions, and what people running from the fighting dropped on the
+## pavements. Laid once everything else is down, each kept clear of what's
+## on the pavement already (and off the drives); a stream of its own and a
+## list of its own after the rest, so the town is as it was.
+func _street_furniture() -> void:
+	var sr := RandomNumberGenerator.new()
+	sr.seed = int(absf(center.x) * 13.0) * 7919 + int(absf(center.z) * 13.0) * 31 + 71
+	var main_decor := decor
+	decor = _street_decor
+	var taken: Array = []  # [position, reach] of every piece standing on the ground
+	var drives: Array = []
+	for list: Array in [main_decor, _yard_decor, _shop_decor]:
+		for e: Array in list:
+			var k: String = e[0]
+			if k == "drive":
+				drives.append(e)
+			elif not k in ["walk", "curb", "junction", "zebra", "pave", "lot_pave", "yard", "wire", "drop", "garden", "fence", "soft"]:
+				taken.append([e[1], 1.0])
+	var clear := func(p: Vector3, r: float) -> bool:
+		for t: Array in taken:
+			if Defs.flat((t[0] as Vector3) - p).length() < r + float(t[1]):
+				return false
+		for e: Array in drives:
+			var half: Vector2 = Vector2((e[3] as Vector3).x, (e[3] as Vector3).z) * 0.5 + Vector2(r, r)
+			if Defs.point_in_obb(Vector2(p.x, p.z), Vector2(e[1].x, e[1].z), half, float(e[2])):
+				return false
+		return true
+	var put := func(kind: String, p: Vector3, yaw: float, extra: Variant, r: float) -> bool:
+		if not clear.call(p, r):
+			return false
+		_d(kind, p, yaw, extra)
+		taken.append([p, r])
+		world.stat("street_" + kind)
+		return true
+	# traffic lights at the four corners of the central crossroads, each with
+	# a head down its street and one down the cross street (all dark now)
+	if (node_dirs.get(_key(center), {}) as Dictionary).size() >= 4:
+		for sx: float in [-1.0, 1.0]:
+			for sz: float in [-1.0, 1.0]:
+				var tp := center + Vector3(sx, 0, sz) * (CURB + 0.55)
+				var yaw := Defs.yaw_of(Vector3(sx, 0, 0))
+				var side := signf((Basis(Vector3.UP, yaw) * Vector3.RIGHT).dot(Vector3(0, 0, sz)))
+				put.call("traffic_light", tp, yaw, side, 0.4)
+	# a telephone box and two post boxes along the main street near the middle
+	var mains: Array = []
+	for pc: Array in pieces:
+		if pc[2] and ((pc[0] as Vector3).lerp(pc[1], 0.5)).distance_to(center) < 36.0:
+			mains.append(pc)
+	for item: Array in [["phone_box", 0.75], ["post_box", 0.4], ["post_box", 0.4]]:
+		for attempt in 8:
+			if mains.is_empty():
+				break
+			var pc: Array = mains[sr.randi() % mains.size()]
+			var a: Vector3 = pc[0]
+			var b: Vector3 = pc[1]
+			var dd := (b - a).normalized()
+			var n := _perp(dd) * (1.0 if sr.randf() < 0.5 else -1.0)
+			var L := a.distance_to(b)
+			var pp := a + dd * sr.randf_range(WALK + 1.5, L - WALK - 1.5) + n * (4.15 if item[0] == "phone_box" else 4.3)
+			if put.call(item[0], pp, Defs.yaw_of(-n), sr.randi() % 3, item[1]):
+				break
+	# an advertising column on the square
+	if square != Vector3.INF:
+		for attempt in 8:
+			var cp := square + Vector3(sr.randf_range(-7.5, 7.5), 0, sr.randf_range(-7.5, 7.5))
+			if put.call("ad_column", cp, sr.randf() * TAU, null, 1.1):
+				break
+	# a hoarding over each car park and bombed-out lot, facing the street
+	for v: Array in _vacant:
+		var front: Vector3 = v[0]
+		var n: Vector3 = v[1]
+		var w := minf(float(v[3]) - 2.0, 6.0)
+		if w >= 3.0:
+			put.call("hoarding", front + n * float(v[4]), Defs.yaw_of(-n), snappedf(w, 0.1), 0.3)
+	# street names at the junctions, on whichever corner has room
+	for key in node_dirs:
+		var dirs: Dictionary = node_dirs[key]
+		if dirs.size() < 3:
+			continue
+		var p := Vector3(key.x, 0, key.y)
+		var corners: Array = []
+		for sx: int in [-1, 1]:
+			for sz: int in [-1, 1]:
+				if dirs.has(Vector2i(sx, 0)) and dirs.has(Vector2i(0, sz)):
+					corners.append(Vector3(sx, 0, sz))
+		var first := sr.randi() % maxi(1, corners.size())
+		for i in corners.size():
+			var c: Vector3 = corners[(first + i) % corners.size()]
+			if put.call("street_name", p + c * (CURB + 0.45), Defs.yaw_of(Vector3(0, 0, -c.z)), null, 0.3):
+				break
+	# what people running from the fighting dropped on the pavements
+	for i in sr.randi_range(4, 7):
+		for attempt in 6:
+			var pc: Array = pieces[sr.randi() % pieces.size()]
+			var a: Vector3 = pc[0]
+			var b: Vector3 = pc[1]
+			var dd := (b - a).normalized()
+			var L := a.distance_to(b)
+			if L < WALK * 2.0 + 3.0:
+				break
+			var n := _perp(dd) * (1.0 if sr.randf() < 0.5 else -1.0)
+			var bp := a + dd * sr.randf_range(WALK + 1.0, L - WALK - 1.0) + n * sr.randf_range(3.5, 4.2)
+			if put.call("belongings", bp, sr.randf() * TAU, null, 1.2):
+				break
+	_street_decor = decor
+	decor = main_decor
 
 
 ## Every house within reach of a pole gets its service wire.
@@ -1119,9 +1235,12 @@ func finish(build_view := true) -> void:
 		var arr: PackedVector3Array = poly
 		for k in range(0, arr.size(), 2):
 			mg._keep_clear([Vector2(arr[k].x, arr[k].z), 3.6])
+	_street_furniture()
 	decor.append_array(_yard_decor)
 	decor.append_array(_shop_decor)
+	decor.append_array(_street_decor)
 	_yard_decor = []
 	_shop_decor = []
+	_street_decor = []
 	if build_view:
 		world.set_decor(decor, rect)

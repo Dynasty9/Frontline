@@ -122,6 +122,18 @@ stain to exactly the tint the wall's body was drawn in (`Structure._tone`), so i
 edge; the fixture checks the rim comes back to the wall's colour. Everything stays within a hand's breadth of the
 face, so cover is unchanged.
 
+## Street furniture
+
+A town's streets carry more than lamps and poles (`BuildingStreet`, laid by `TownGen._street_furniture` once
+everything else is down): traffic lights at the four corners of the central crossroads (a head down each street,
+the lenses dark: the power's off; now and then one askew or a pole leaning), a telephone box and pillar post
+boxes on the main street's pavements, an advertising column on the square, a hoarding over each car park and
+bombed-out lot, street names on posts at the junctions, and what people running from the fighting dropped on the
+pavements. Each is kept clear of what's on the pavement already and off the drives, from a stream of its own into
+a decor list of its own after the rest, so the town is as it was; vehicles and blasts knock them down like the
+other street furniture (`Decor.BREAKABLE`). Render the pieces with `--building-kinds=street_kit`; the town views
+include the crossroads and the square.
+
 ## Furniture
 
 A house's room is furnished (`BuildingInteriors`): against each wall with no window or door in it

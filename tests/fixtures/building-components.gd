@@ -277,6 +277,14 @@ func _ready() -> void:
 			BuildingInteriors.kitchen(k.at_point(Vector3(9, 0, 0)), 0.0, 2.2, BuildingInteriors.UNITS[0], k.rng)
 			BuildingInteriors.desk(k.at_point(Vector3(12, 0, 0)), 0.0, BuildingInteriors.WOODS[3], k.rng)
 			BuildingInteriors.table(k.at_point(Vector3(0, 0, 5)), Vector3(9.0, 0.06, 7.6), BuildingInteriors.WOODS[0], k.rng),
+		"street": func(k: BuildingKit):
+			BuildingStreet.traffic_light(k, 1.0, k.rng)
+			BuildingStreet.phone_box(k.at_point(Vector3(2, 0, 0)), Color(0.7, 0.1, 0.08), k.rng)
+			BuildingStreet.post_box(k.at_point(Vector3(4, 0, 0)))
+			BuildingStreet.ad_column(k.at_point(Vector3(6, 0, 0)), k.rng)
+			BuildingStreet.hoarding(k.at_point(Vector3(10, 0, 0)), 5.6, k.rng)
+			BuildingStreet.street_name(k.at_point(Vector3(14, 0, 0)), k.rng)
+			BuildingStreet.belongings(k.at_point(Vector3(16, 0, 0)), k.rng),
 		"inside": func(k: BuildingKit):
 			BuildingFurnishings.lining(k, 2.8, 3.0, [Rect2(-0.65, 1.0, 1.3, 1.0)], Color(0.8, 0.8, 0.7))
 			BuildingFurnishings.radiator(k, 0.0, 1.0)
@@ -605,6 +613,34 @@ func _ready() -> void:
 		var tb := _bounds(tk.sink.root, Transform3D.IDENTITY)
 		check(tb.position.y >= 0.0 and tb.end.y <= 1.2 and absf(tb.get_center().x) < 1.0 and absf(tb.get_center().z) < 1.0 and tb.size.x < 3.6 and tb.size.z < 3.6, "a table and its chairs keep to the middle of the room (%s)" % tb)
 		tk.sink.root.free()
+
+	# The streets' furniture stands on the pavement inside the box a vehicle
+	# or a blast knocks it down as (Decor.BREAKABLE), whatever it drew.
+	var street_kits := {
+		"traffic_light": func(k: BuildingKit): BuildingStreet.traffic_light(k, -1.0, k.rng),
+		"phone_box": func(k: BuildingKit): BuildingStreet.phone_box(k, Color(0.22, 0.3, 0.24), k.rng),
+		"post_box": func(k: BuildingKit): BuildingStreet.post_box(k),
+		"ad_column": func(k: BuildingKit): BuildingStreet.ad_column(k, k.rng),
+		"hoarding": func(k: BuildingKit): BuildingStreet.hoarding(k, 5.0, k.rng),
+		"street_name": func(k: BuildingKit): BuildingStreet.street_name(k, k.rng),
+	}
+	for kind: String in street_kits:
+		var size: Vector3 = Decor.BREAKABLE[kind][0]
+		for s3 in 12:
+			var skt := kit()
+			skt.rng.seed = s3
+			(street_kits[kind] as Callable).call(skt)
+			var sb := _bounds(skt.sink.root, Transform3D.IDENTITY)
+			check(sb.position.y >= -0.02 and sb.end.y <= size.y + 0.2, "a %s stands on the pavement, no taller than it falls (%s)" % [kind, sb])
+			check(maxf(absf(sb.position.x), absf(sb.end.x)) <= size.x * 0.5 + 0.9 and maxf(absf(sb.position.z), absf(sb.end.z)) <= size.z * 0.5 + 0.9, "a %s keeps near its own box (%s)" % [kind, sb])
+			skt.sink.root.free()
+	for s4 in 20:
+		var bk := kit()
+		bk.rng.seed = s4
+		BuildingStreet.belongings(bk, bk.rng)
+		var bb := _bounds(bk.sink.root, Transform3D.IDENTITY)
+		check(bb.position.y >= -0.02 and bb.end.y <= 1.1 and bb.size.x <= 3.4 and bb.size.z <= 3.4, "what was dropped lies on the pavement in a heap (%s)" % bb)
+		bk.sink.root.free()
 
 	# Every building and every kind of scenery still builds a model.
 	var kinds: Array = Defs.BUILDINGS.keys()
