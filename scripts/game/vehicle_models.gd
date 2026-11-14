@@ -12,7 +12,11 @@ static var _cache := {}
 var root: Node3D
 var sling_eye := Vector3(0, 0.7, 0)  # underside of the fuselage, in model space
 var helm_seat := Vector3.INF  # hip position of the driver at an open helm
-var burnt := false
+var burnt := false:
+	set(v):
+		burnt = v
+		wreck = wreck or v  # (a burnt hulk is a wreck, whoever builds it)
+var wreck := false  # built for a wreck: paint and tyres are gone, a rotor keeps every blade a part of its own, to be broken
 var surface_family := "armor"
 var turret: Node3D
 var mg_tip: Node3D  # the machine gun's muzzle (shots start here)
@@ -84,18 +88,19 @@ static func build_car(variant: int, col: Color, is_burnt := false) -> VehicleMod
 	return k
 
 
-static func build(kind: String, team: int, seed: int, is_burnt := false) -> VehicleModels:
-	var b := start(kind, team, seed, is_burnt)
+static func build(kind: String, team: int, seed: int, is_burnt := false, is_wreck := false) -> VehicleModels:
+	var b := start(kind, team, seed, is_burnt, is_wreck)
 	b.step(-1)
 	return b.k
 
 
 ## The model build() makes, made a piece at a time: Build.step() does the next
 ## pieces each frame (see Build).
-static func start(kind: String, team: int, seed: int, is_burnt := false) -> Build:
+static func start(kind: String, team: int, seed: int, is_burnt := false, is_wreck := false) -> Build:
 	var k := VehicleModels.new()
 	k.root = Node3D.new()
 	k.burnt = is_burnt
+	k.wreck = is_wreck or is_burnt
 	k._baking = true
 	return Build.new(k, _assemble.bind(k, kind, team, seed))
 
@@ -146,6 +151,7 @@ func copy() -> VehicleModels:
 	var c := VehicleModels.new()
 	c.root = root.duplicate() as Node3D
 	c.burnt = burnt
+	c.wreck = wreck
 	c.surface_family = surface_family
 	c.sling_eye = sling_eye
 	c.engine_deck = engine_deck
@@ -232,9 +238,12 @@ func scorch_finish() -> ShaderMaterial:
 	return soot
 
 
-static func spread_soot(soot: ShaderMaterial, origin: Vector3, age: float) -> void:
+## The burn creeps outwards over the half minute the fire takes hold
+## (BURN_SPREAD), as far as `reach` times 2.56 m from where it started.
+const BURN_SPREAD := 45.0
+static func spread_soot(soot: ShaderMaterial, origin: Vector3, age: float, reach := 1.0) -> void:
 	soot.set_shader_parameter("source_world", origin)
-	soot.set_shader_parameter("extent", 0.46 + 2.1 * (1.0 - exp(-maxf(0.0, age) * 0.64)))
+	soot.set_shader_parameter("extent", (0.46 + 2.1 * (1.0 - exp(-maxf(0.0, age) * 0.11))) * reach)
 
 
 func make_impact_plate(side: float, layers := 2) -> ImpactPlate:
@@ -548,6 +557,9 @@ static func _capsule(r: float, h: float) -> CapsuleMesh:
 ## straight into its piece's merged mesh without making a node of it (a tank
 ## is four hundred parts). Otherwise it's made as a node, and that returned.
 func _add(parent: Node3D, mesh: Mesh, kind: String, col, pos: Vector3, rot := Vector3.ZERO, scl := Vector3.ONE, shadow := true) -> Variant:
+	if wreck and kind in ["canvas", "cloth", "fabric"]:
+		# burnt away (the note is still handed back, so callers can treat it as made)
+		return [mesh, null, Color(1, 1, 1), shadow, pos, rot, scl, null, null]
 	var k := kind
 	if burnt:
 		k = "abrams_scorched" if kind in ["abrams_olive", "abrams_sand"] else "burnt"
@@ -842,7 +854,7 @@ func _wheel(parent: Node3D, pos: Vector3, r: float, w: float, hub_kind := "gunme
 
 
 func _team_mark(parent: Node3D, team: int, pos: Vector3, s: Vector3) -> void:
-	if burnt or team < 0:
+	if wreck or team < 0:  # (burnt off a wreck with the paint)
 		return
 	var mi := MeshInstance3D.new()
 	mi.mesh = Res.box(s)

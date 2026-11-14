@@ -1054,7 +1054,7 @@ static func refuel_receptacle(k: VehicleModels, parent: Node3D, center: Vector3,
 		for y: float in [-hw * 0.55, hw * 0.55]:
 			var at := surface.point(Vector2(-hl + 0.008, y), base + 0.006)
 			VehicleBody.rod(k, parent, at - axis * hw * 0.12, at + axis * hw * 0.12, minf(0.006, hw * 0.05), "metal_dark", null, 6, false)
-	if lead != 0.0 and not k.burnt:
+	if lead != 0.0 and not k.wreck:
 		var start := (reach + 0.02) * signf(lead)
 		var lines := [[], [], []]
 		for s: float in [-1.0, 1.0]:

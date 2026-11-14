@@ -11,7 +11,9 @@ static func pneumatic(k: VehicleModels, parent: Node3D, pos: Vector3, r: float, 
 	# Rounded shoulders and recessed rims share meshes at every wheel size.
 	# Tiny trolley wheels and broad tracked road wheels retain their solid discs.
 	var fine := r >= 0.18
-	if r < 0.18 or w > r * 1.2:
+	if k.wreck:
+		pass  # (burnt away: only the rim is left)
+	elif r < 0.18 or w > r * 1.2:
 		k._add(pv, drum(r, r, w, 24), "rubber", null, Vector3.ZERO, AXLE)
 	else:
 		k._add(pv, _carcass(), "rubber", Color(0.17, 0.18, 0.17), Vector3.ZERO, AXLE, Vector3(r, w / 0.50, r))
