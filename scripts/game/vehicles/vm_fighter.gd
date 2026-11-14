@@ -180,6 +180,20 @@ static func _slab(key: String, a: Vector3, b: Vector3, c: Vector3, d: Vector3, t
 	return _skin([PackedVector3Array([a - n, b - n, b + n, a + n]), PackedVector3Array([d - n, c - n, c + n, d + n])], key, 30.0)
 
 
+## A landing-gear door hanging open, `t` thick, from its hinge line a-b down
+## to its lower edge d-c (the corners as _slab takes them): a door leaf through
+## the corners' middle, as long as its two edges on average and as deep as
+## their mean drop, its sealed outer face turned away from the centre line.
+static func _gear_door(k: VehicleModels, p: Node3D, a: Vector3, b: Vector3, c: Vector3, d: Vector3, t: float, mat: String, col) -> void:
+	var center := (a + b + c + d) * 0.25
+	var along := ((b - a) + (c - d)) * 0.5
+	var drop := ((d - a) + (c - b)) * 0.5
+	var z := along.normalized()
+	var y := (z * drop.dot(z) - drop).normalized()
+	var x := y.cross(z)
+	VehicleDoors.leaf(k, p, Vector3(t, drop.length(), along.length()), center, mat, col, Basis(x, y, z).get_euler(), 0, -1.0 if x.x * center.x < 0.0 else 1.0)
+
+
 ## k._add with the order of arguments used here.
 static func _put(k: VehicleModels, p: Node3D, mesh: Mesh, mat: String, col, pos := Vector3.ZERO, rot := Vector3.ZERO, shadow := true) -> Variant:
 	return k._add(p, mesh, mat, col, pos, rot, Vector3.ONE, shadow)
@@ -553,21 +567,9 @@ static func _insignia(k: VehicleModels, p: Node3D, key: String, o: Vector3, n: V
 	_decal(k, p, key + "_s", _star2(r * 0.96, r * 0.37), o, n, ax, light, 0.009, proj)
 
 
-## Stroke letters for tail codes and numbers (unit height).
-const FONT := {
-	"W": [[0, 1, 0.15, 0], [0.15, 0, 0.3, 0.62], [0.3, 0.62, 0.45, 0], [0.45, 0, 0.6, 1]],
-	"N": [[0, 0, 0, 1], [0, 1, 0.55, 0], [0.55, 0, 0.55, 1]],
-	"H": [[0, 0, 0, 1], [0.55, 0, 0.55, 1], [0, 0.5, 0.55, 0.5]],
-	"1": [[0.3, 0, 0.3, 1], [0.3, 1, 0.1, 0.8]],
-	"0": [[0, 0, 0.5, 0], [0.5, 0, 0.5, 1], [0.5, 1, 0, 1], [0, 1, 0, 0]],
-	"6": [[0.5, 1, 0, 1], [0, 1, 0, 0], [0, 0, 0.5, 0], [0.5, 0, 0.5, 0.5], [0.5, 0.5, 0, 0.5]],
-	"8": [[0, 0, 0.5, 0], [0.5, 0, 0.5, 1], [0.5, 1, 0, 1], [0, 1, 0, 0], [0, 0.5, 0.5, 0.5]],
-	"9": [[0, 0, 0.5, 0], [0.5, 0, 0.5, 1], [0.5, 1, 0, 1], [0, 1, 0, 0.5], [0, 0.5, 0.5, 0.5]],
-}
-
-
 ## Painted text (a tail code, a serial) h tall, its baseline centred on o,
-## reading along ax on the face n; `proj` as for _decal. One merged mesh.
+## reading along ax on the face n, in VehicleMarkings' stroke lettering;
+## `proj` as for _decal. One merged mesh.
 static func _text(k: VehicleModels, p: Node3D, key: String, txt: String, o: Vector3, n: Vector3, ax: Vector3, h: float, col: Color, proj := []) -> void:
 	if k.burnt:
 		return
@@ -579,22 +581,18 @@ static func _text(k: VehicleModels, p: Node3D, key: String, txt: String, o: Vect
 		var w := h * 0.13
 		var vs := PackedVector3Array()
 		var ns := PackedVector3Array()
-		var wide := 0.0
-		for ch in txt:
-			wide += 0.62 if ch != "1" else 0.42
-		var cx := -(wide - 0.06) * 0.5
-		for ch in txt:
-			for sg in FONT.get(ch, []):
-				var a := o + x * ((cx + float(sg[0])) * h) + y * (float(sg[1]) * h)
-				var b := o + x * ((cx + float(sg[2])) * h) + y * (float(sg[3]) * h)
-				var d := (b - a).normalized()
-				var s := nn.cross(d) * (w * 0.5)
-				a -= d * w * 0.5
-				b += d * w * 0.5
-				var q := [_project(a - s, nn, 0.007, proj), _project(b - s, nn, 0.007, proj), _project(b + s, nn, 0.007, proj), _project(a + s, nn, 0.007, proj)]
-				_tri(vs, ns, q[0], q[1], q[2], nn, nn, nn, nn)
-				_tri(vs, ns, q[0], q[2], q[3], nn, nn, nn, nn)
-			cx += 0.62 if ch != "1" else 0.42
+		for sg: Array in VehicleMarkings.digit_strokes(txt, h, Vector2(0, h * 0.5), "stroke"):
+			var u: Vector2 = sg[0]
+			var v: Vector2 = sg[1]
+			var a := o + x * u.x + y * u.y
+			var b := o + x * v.x + y * v.y
+			var d := (b - a).normalized()
+			var s := nn.cross(d) * (w * 0.5)
+			a -= d * w * 0.5
+			b += d * w * 0.5
+			var q := [_project(a - s, nn, 0.007, proj), _project(b - s, nn, 0.007, proj), _project(b + s, nn, 0.007, proj), _project(a + s, nn, 0.007, proj)]
+			_tri(vs, ns, q[0], q[1], q[2], nn, nn, nn, nn)
+			_tri(vs, ns, q[0], q[2], q[3], nn, nn, nn, nn)
 		_mc[kk] = _mesh(vs, ns)
 	_put(k, p, _mc[kk], "aircraft", col, Vector3.ZERO, Vector3.ZERO, false)
 
@@ -796,9 +794,9 @@ static func _f16(k: VehicleModels, team: int) -> void:
 	_decal(k, m, "f16_gun", _rect2(Vector2.ZERO, Vector2(0.32, 0.1)), gun, gn, Vector3(0, 0, 1), Color(0.12, 0.12, 0.12), 0.006, hp)
 	k.mg_tip = k._tip(m, gun + Vector3(0, 0, -0.2))
 	k.gun_tip = k.mg_tip
-	_decal(k, m, "f16_aar", _rect2(Vector2.ZERO, Vector2(0.2, 0.4)), Vector3(0, y0 + 0.715, z0 + 7.7), Vector3.UP, Vector3(1, 0, 0), dark.darkened(0.25))
-	_lines(k, m, "f16_aarl", [[Vector3(-0.1, y0 + 0.73, z0 + 7.3), Vector3(-0.04, y0 + 0.75, z0 + 6.85), Vector3.UP],
-		[Vector3(0.1, y0 + 0.73, z0 + 7.3), Vector3(0.04, y0 + 0.75, z0 + 6.85), Vector3.UP]], 0.025, dark)
+	# The receptacle door sits on the crown of the dorsal spine (about y0 + 0.728
+	# there), so it shows rather than sinking into the curved skin.
+	VehicleAircraft.refuel_receptacle(k, m, Vector3(0, y0 + 0.732, z0 + 7.7), Vector2(0.4, 0.2), Vector3.UP, Vector3.FORWARD, false, 0.0, 0.63, A, dark, Callable(), dark)
 	VmPlane.antenna(k, m, Vector3(0, y0 + 0.66, z0 + 8.9), 0.16, false, dark)
 	VmPlane.antenna(k, m, Vector3(0, y0 - 1.1, z0 + 6.9), 0.16, true, dark)
 	VmPlane.nav_lights(k, m, Vector3(0.54, y0 - 0.7, z0 + 5.75), 0.06)
@@ -807,10 +805,12 @@ static func _f16(k: VehicleModels, team: int) -> void:
 	var fl := Color(0.62, 0.68, 0.5)
 	var fp := ["surf", fin]
 	for sd in [1.0, -1.0]:
-		var L := "L" if sd < 0.0 else ""
-		_decal(k, m, "f16_fl1" + L, _rect2(Vector2.ZERO, Vector2(0.06, 0.42)), Vector3(sd * 0.4, y0 + 0.08, z0 + 3.2), Vector3(sd, 0.15, 0), Vector3(0, 0, 1), fl, 0.006, hp)
-		_decal(k, m, "f16_fl3" + L, _rect2(Vector2.ZERO, Vector2(0.4, 0.06)), Vector3(0, y0 + 2.2, z0 + 13.05), Vector3(sd, 0, 0), Vector3(0, -1.07, 1), fl, 0.006, fp)
-		_decal(k, m, "f16_fl2" + L, _rect2(Vector2.ZERO, Vector2(0.4, 0.06)), Vector3(sd * 0.5, y0 + 0.1, z0 + 12.3), Vector3(sd, 0.2, 0), Vector3(0, 0, 1), fl, 0.006, hp)
+		var n1 := Vector3(sd, 0.15, 0).normalized()
+		VehicleAircraft.formation_light(k, m, Vector3(sd * 0.4, y0 + 0.08, z0 + 3.2), Vector2(0.42, 0.06), n1, n1.cross(Vector3.BACK), fl, func(q: Vector3) -> Vector3: return _project(q, n1, 0.0, hp))
+		var n3 := Vector3(sd, 0, 0)
+		VehicleAircraft.formation_light(k, m, Vector3(0, y0 + 2.2, z0 + 13.05), Vector2(0.4, 0.06), n3, Vector3(0, -1.07, 1), fl, func(q: Vector3) -> Vector3: return _project(q, n3, 0.0, fp))
+		var n2 := Vector3(sd, 0.2, 0).normalized()
+		VehicleAircraft.formation_light(k, m, Vector3(sd * 0.5, y0 + 0.1, z0 + 12.3), Vector2(0.4, 0.06), n2, Vector3.BACK, fl, func(q: Vector3) -> Vector3: return _project(q, n2, 0.0, hp))
 
 	# --- panel lines: control-surface hinge lines are gaps; these are the
 	# access panels and the gear doors (closed flush)
@@ -878,8 +878,8 @@ static func _f16(k: VehicleModels, team: int) -> void:
 	for sd in [1.0, -1.0]:
 		var L := "L" if sd < 0.0 else ""
 		var dn := Vector3(sd * 0.5, -0.85, 0)
-		_put(k, g, _slab("f16_ndoor" + L, Vector3(sd * 0.16, y0 - 1.1, z0 + 5.4), Vector3(sd * 0.16, y0 - 1.1, z0 + 6.55),
-			Vector3(sd * 0.2, y0 - 1.45, z0 + 6.5), Vector3(sd * 0.2, y0 - 1.45, z0 + 5.45), 0.025), A, bot)
+		_gear_door(k, g, Vector3(sd * 0.16, y0 - 1.1, z0 + 5.4), Vector3(sd * 0.16, y0 - 1.1, z0 + 6.55),
+			Vector3(sd * 0.2, y0 - 1.45, z0 + 6.5), Vector3(sd * 0.2, y0 - 1.45, z0 + 5.45), 0.025, A, bot)
 		var ma := Vector3(sd * 1.18, yg + 0.36, z0 + 9.3)
 		var tp := _project(Vector3(sd * 0.8, y0 - 0.5, z0 + 9.1), Vector3.DOWN, -0.02, hp)
 		_leg(k, g, tp, ma + Vector3(-sd * 0.14, 0, 0), 0.075)
@@ -888,93 +888,45 @@ static func _f16(k: VehicleModels, team: int) -> void:
 		# the main door hangs from the strake outboard of the well
 		var h0 := _project(Vector3(sd * 1.0, y0 - 0.5, z0 + 8.15), Vector3.DOWN, 0.0, hp)
 		var h1 := _project(Vector3(sd * 1.0, y0 - 0.5, z0 + 9.95), Vector3.DOWN, 0.0, hp)
-		_put(k, g, _slab("f16_mdoor" + L, h0, h1, h1 + Vector3(sd * 0.22, -0.62, 0), h0 + Vector3(sd * 0.22, -0.62, 0), 0.03), A, bot)
+		_gear_door(k, g, h0, h1, h1 + Vector3(sd * 0.22, -0.62, 0), h0 + Vector3(sd * 0.22, -0.62, 0), 0.03, A, bot)
 		_decal(k, g, "f16_well" + L, _rect2(Vector2.ZERO, Vector2(1.8, 0.34)), Vector3(sd * 0.82, y0 - 0.3, z0 + 9.05), dn, Vector3(0, 0, 1), Color(0.3, 0.3, 0.3), 0.012, hp)
 
 
 ## GBU-31(V)1 JDAM: a Mk 84 2,000 lb bomb (olive, yellow nose band) with
 ## the strake kit along its middle and the JDAM tail kit's four fins.
 static func _gbu31(k: VehicleModels, p: Node3D, c: Vector3) -> void:
-	var r := 0.229
-	var ol := VmPlane.OLIVE
-	VmPlane.body(k, p, "ft_mk84", [[-1.94, 0, 0.02, 0.02, 0.02], [-1.78, 0, r * 0.42, r * 0.42, r * 0.42], [-1.5, 0, r * 0.76, r * 0.76, r * 0.76],
-		[-1.05, 0, r * 0.96, r * 0.96, r * 0.96], [-0.7, 0, r, r, r], [0.45, 0, r, r, r], [0.92, 0, r * 0.84, r * 0.84, r * 0.84],
-		[0.95, 0, r * 0.88, r * 0.88, r * 0.88], [1.8, 0, r * 0.8, r * 0.8, r * 0.8], [1.94, 0, r * 0.6, r * 0.6, r * 0.6]], "paint", ol, 16, 50.0, c)
-	k._cyl(p, r * 0.98, r * 0.98, 0.06, c + Vector3(0, 0, -1.25), Vector3(PI / 2, 0, 0), "paint", Color(0.62, 0.55, 0.22), 16, false)
-	k._cyl(p, r * 0.9, r * 0.9, 0.03, c + Vector3(0, 0, 0.94), Vector3(PI / 2, 0, 0), "gunmetal_w", null, 16, false)
-	# strakes: either side and below
-	for a in [0.0, PI, -PI / 2]:
-		var d := Vector3(cos(a), sin(a), 0)
-		k._box(p, Vector3(0.012, 0.09, 0.8) if absf(d.y) > 0.5 else Vector3(0.09, 0.012, 0.8), c + d * (r + 0.04) + Vector3(0, 0, -0.25), "paint", ol.darkened(0.1), Vector3.ZERO, false)
-	# the tail kit's fins (X)
-	var fm := _slab("jdam_fin", Vector3(0, r * 0.7, 1.45), Vector3(0, r * 0.7, 1.93), Vector3(0, r + 0.2, 1.93), Vector3(0, r + 0.2, 1.68), 0.016)
-	for i in 4:
-		_put(k, p, fm, "paint", ol.darkened(0.08), c, Vector3(0, 0, PI / 4 + PI / 2 * float(i)), false)
-	k._box(p, Vector3(0.04, 0.05, 0.08), c + Vector3(0, r, -0.4), "gunmetal_w", null, Vector3.ZERO, false)
-	k._box(p, Vector3(0.04, 0.05, 0.08), c + Vector3(0, r, 0.36), "gunmetal_w", null, Vector3.ZERO, false)
+	VehicleAircraft.bomb(k, p, c, 3.88, 0.229, VehicleAircraft.BOMB_JDAM, VmPlane.OLIVE)
 
 
 ## AIM-9X Sidewinder at c: the slender body, the glass seeker dome, small
 ## fixed fins forward, clipped tail control fins.
 static func _aim9x(k: VehicleModels, p: Node3D, c: Vector3) -> void:
-	var r := 0.0635
-	var col := Color(0.68, 0.69, 0.68)
-	k._cyl(p, r, r, 2.86, c + Vector3(0, 0, 0.07), Vector3(PI / 2, 0, 0), "paint", col, 12)
-	k._cyl(p, r * 0.55, r, 0.1, c + Vector3(0, 0, -1.41), Vector3(PI / 2, 0, 0), "paint", col, 12, false)
-	k._add(p, Res.sphere(r * 0.56, 10), "glass", null, c + Vector3(0, 0, -1.47), Vector3.ZERO, Vector3.ONE, false)
-	k._cyl(p, r * 1.02, r * 1.02, 0.06, c + Vector3(0, 0, -0.9), Vector3(PI / 2, 0, 0), "paint", Color(0.6, 0.55, 0.25), 12, false)
-	var ff := _slab("aim9x_ff", Vector3(0, r, -1.05), Vector3(0, r, -0.86), Vector3(0, r + 0.04, -0.9), Vector3(0, r + 0.04, -1.0), 0.008)
-	var tf := _slab("aim9x_tf", Vector3(0, r, 1.18), Vector3(0, r, 1.5), Vector3(0, r + 0.11, 1.5), Vector3(0, r + 0.11, 1.32), 0.01)
-	for i in 4:
-		var rot := Vector3(0, 0, PI / 4 + PI / 2 * float(i))
-		_put(k, p, ff, "paint", col, c, rot, false)
-		_put(k, p, tf, "paint", col, c, rot, false)
+	VehicleAircraft.missile(k, p, c, 3.0, 0.0635, Color(0.68, 0.69, 0.68), VehicleAircraft.seeker(0.14, 0.0356),
+		[VehicleAircraft.fin_set(-1.05, -0.86, 0.04, -1.0, -0.9), VehicleAircraft.fin_set(1.18, 1.5, 0.11, 1.32, 1.5)], Vector2(-0.9, 0.06))
 
 
 ## AIM-120C AMRAAM at c: the grey radome, clipped mid-body wings, tail fins.
 static func _aim120(k: VehicleModels, p: Node3D, c: Vector3) -> void:
-	var r := 0.089
-	var col := Color(0.72, 0.73, 0.72)
-	VmPlane.body(k, p, "ft_aim120", [[-1.83, 0, 0.01, 0.01, 0.01], [-1.7, 0, r * 0.5, r * 0.5, r * 0.5], [-1.5, 0, r * 0.88, r * 0.88, r * 0.88],
-		[-1.3, 0, r, r, r], [1.83, 0, r, r, r]], "paint", col, 12, 50.0, c)
-	k._cyl(p, r * 1.01, r * 1.01, 0.05, c + Vector3(0, 0, -1.28), Vector3(PI / 2, 0, 0), "paint", Color(0.6, 0.55, 0.25), 12, false)
-	var wf := _slab("aim120_w", Vector3(0, r, -0.35), Vector3(0, r, 0.1), Vector3(0, r + 0.13, 0.08), Vector3(0, r + 0.13, -0.15), 0.01)
-	var tf := _slab("aim120_t", Vector3(0, r, 1.5), Vector3(0, r, 1.83), Vector3(0, r + 0.135, 1.83), Vector3(0, r + 0.135, 1.66), 0.01)
-	for i in 4:
-		var rot := Vector3(0, 0, PI / 4 + PI / 2 * float(i))
-		_put(k, p, wf, "paint", col, c, rot, false)
-		_put(k, p, tf, "paint", col, c, rot, false)
+	VehicleAircraft.missile(k, p, c, 3.66, 0.089, Color(0.72, 0.73, 0.72), VehicleAircraft.ogive(0.53),
+		[VehicleAircraft.fin_set(-0.35, 0.1, 0.13, -0.15, 0.08), VehicleAircraft.fin_set(1.5, 1.83, 0.135, 1.66, 1.83)], Vector2(-1.28, 0.05))
 
 
-## AN/AAQ-33 Sniper targeting pod at c: the long body, the faceted nose
-## with its sensor window.
+## AN/AAQ-33 Sniper targeting pod at c: the long body, the faceted head
+## turning in its nose ahead of the joint at -0.85, with its sensor window.
 static func _sniper(k: VehicleModels, p: Node3D, c: Vector3) -> void:
 	var r := 0.15
-	var col := Color(0.5, 0.52, 0.54)
-	VmPlane.body(k, p, "ft_sniper", [[-0.85, 0, r * 0.98, r * 0.98, r * 0.98], [0.9, 0, r, r, r], [1.1, 0, r * 0.82, r * 0.82, r * 0.82], [1.2, 0, r * 0.45, r * 0.45, r * 0.45]], "paint", col, 14, 50.0, c)
-	# the rotating head: a faceted nose, its window
-	var hd := []
-	for z in [[-0.85, 1.0], [-1.0, 0.95], [-1.12, 0.75], [-1.19, 0.3]]:
-		var ring := PackedVector3Array()
-		for i in 8:
-			var a := TAU * float(i) / 8.0 + PI / 8.0
-			ring.append(c + Vector3(cos(a) * r * float(z[1]), sin(a) * r * float(z[1]), float(z[0])))
-		hd.append(ring)
-	_put(k, p, _skin(hd, "sniper_head", 20.0), "paint", col.darkened(0.12))
-	_decal(k, p, "sniper_win", _rect2(Vector2.ZERO, Vector2(0.16, 0.12)), c + Vector3(0, -r * 0.83, -1.07), Vector3(0, -1, -0.6), Vector3(1, 0, 0), Color(0.1, 0.1, 0.12))
+	var st := [[-1.19, 0, r * 0.3, r * 0.3, r * 0.3], [-1.12, 0, r * 0.75, r * 0.75, r * 0.75], [-1.0, 0, r * 0.95, r * 0.95, r * 0.95], [-0.85, 0, r, r, r],
+		[0.9, 0, r, r, r], [1.1, 0, r * 0.82, r * 0.82, r * 0.82], [1.2, 0, r * 0.45, r * 0.45, r * 0.45]]
+	VehicleAircraft.pod(k, p, c, st, "paint", Color(0.5, 0.52, 0.54), [-0.85], VehicleAircraft.POD_TARGETING, 0, [], Vector3.ZERO, 14)
 
 
 ## AN/ALQ-184 jamming pod at c: a long can with rounded radome ends and the
 ## antenna blisters under it.
 static func _alq184(k: VehicleModels, p: Node3D, c: Vector3) -> void:
 	var r := 0.17
-	var col := Color(0.52, 0.54, 0.55)
-	VmPlane.body(k, p, "ft_alq184", [[-1.95, 0, 0.02, 0.02, 0.02], [-1.82, 0, r * 0.6, r * 0.6, r * 0.6], [-1.6, 0, r * 0.95, r * 0.95, r * 0.95], [-1.45, 0, r, r, r],
-		[1.45, 0, r, r, r], [1.6, 0, r * 0.95, r * 0.95, r * 0.95], [1.82, 0, r * 0.6, r * 0.6, r * 0.6], [1.95, 0, 0.02, 0.02, 0.02]], "paint", col, 14, 50.0, c)
-	for z in [-1.45, 1.45]:
-		k._cyl(p, r * 1.01, r * 1.01, 0.03, c + Vector3(0, 0, z), Vector3(PI / 2, 0, 0), "paint", col.darkened(0.25), 14, false)
-	for z in [-1.1, 1.1]:
-		k._add(p, Res.sphere(0.09, 10), "paint", col.lightened(0.1), c + Vector3(0, -r, z), Vector3.ZERO, Vector3(1, 0.6, 1.6), false)
+	var st := [[-1.95, 0, 0.02, 0.02, 0.02], [-1.82, 0, r * 0.6, r * 0.6, r * 0.6], [-1.6, 0, r * 0.95, r * 0.95, r * 0.95], [-1.45, 0, r, r, r],
+		[1.45, 0, r, r, r], [1.6, 0, r * 0.95, r * 0.95, r * 0.95], [1.82, 0, r * 0.6, r * 0.6, r * 0.6], [1.95, 0, 0.02, 0.02, 0.02]]
+	VehicleAircraft.pod(k, p, c, st, "paint", Color(0.52, 0.54, 0.55), [-1.45, 1.45], VehicleAircraft.POD_ECM, 0, [-1.1, 1.1], Vector3.ZERO, 14)
 
 
 # --- F/A-181 Black Wasp II ----------------------------------------------------------
@@ -1122,11 +1074,12 @@ static func _blackwasp(k: VehicleModels, team: int) -> void:
 	VmPlane.nav_lights(k, m, Vector3(6.18, y0 - 0.18, 2.95), 0.05)
 	var fl := Color(0.46, 0.5, 0.4)
 	for sd in [1.0, -1.0]:
-		var L := "L" if sd < 0.0 else ""
 		var fp := ["surf", fin if sd > 0.0 else _msecs(fin)]
 		var fo := Vector3(sd * (fr.x + cv.x * 1.3), fr.y + cv.y * 1.3, fr.z + 1.3 * 0.78 + 0.45)
-		_decal(k, m, "bw_flf" + L, _rect2(Vector2.ZERO, Vector2(0.5, 0.06)), fo, Vector3(sd * cv.y, -cv.x, 0), Vector3(0, -cv.y, 0.78), fl, 0.006, fp)
-		_decal(k, m, "bw_fln" + L, _rect2(Vector2.ZERO, Vector2(0.4, 0.05)), Vector3(sd * 0.6, y0 - 0.15, -5.6), Vector3(sd * 0.83, -0.56, 0), Vector3(0, 0, 1), fl, 0.006, hp)
+		var nf := Vector3(sd * cv.y, -cv.x, 0)
+		VehicleAircraft.formation_light(k, m, fo, Vector2(0.5, 0.06), nf, Vector3(0, -cv.y, 0.78), fl, func(q: Vector3) -> Vector3: return _project(q, nf, 0.0, fp))
+		var nn := Vector3(sd * 0.83, -0.56, 0).normalized()
+		VehicleAircraft.formation_light(k, m, Vector3(sd * 0.6, y0 - 0.15, -5.6), Vector2(0.4, 0.05), nn, Vector3.BACK, fl, func(q: Vector3) -> Vector3: return _project(q, nn, 0.0, hp))
 
 	# --- panel lines: the weapon bay doors and the gear doors (sawtooth ends),
 	# the radome joint, access panels on the deck
@@ -1220,12 +1173,12 @@ static func _blackwasp(k: VehicleModels, team: int) -> void:
 		var L := "L" if sd < 0.0 else ""
 		var d0 := _project(Vector3(sd * 0.19, y0, -5.85), Vector3.DOWN, 0.0, hp)
 		var d1 := _project(Vector3(sd * 0.19, y0, -4.45), Vector3.DOWN, 0.0, hp)
-		_put(k, g, _slab("bw_ndoor" + L, d0, d1, d1 + Vector3(sd * 0.04, -0.5, 0), d0 + Vector3(sd * 0.04, -0.5, 0), 0.025), A, low)
+		_gear_door(k, g, d0, d1, d1 + Vector3(sd * 0.04, -0.5, 0), d0 + Vector3(sd * 0.04, -0.5, 0), 0.025, A, low)
 		var ma := Vector3(sd * 1.45, yg + 0.38, 0.9)
 		_leg(k, g, Vector3(sd * 0.95, yb - 0.005, 0.4), ma + Vector3(-sd * 0.16, 0, 0), 0.085)
 		VmPlane.rod(k, g, Vector3(sd * 0.75, yb - 0.005, -0.2), ma + Vector3(-sd * 0.14, 0.55, -0.05), 0.04, "paint", WHITE, 6)
 		_awheel(k, g, ma, 0.38, 0.26)
-		_put(k, g, _slab("bw_mdoor" + L, Vector3(sd * 0.64, yb - 0.01, -0.35), Vector3(sd * 0.64, yb - 0.01, 1.35),
-			Vector3(sd * 0.58, yb - 0.62, 1.3), Vector3(sd * 0.58, yb - 0.62, -0.3), 0.03), A, low)
+		_gear_door(k, g, Vector3(sd * 0.64, yb - 0.01, -0.35), Vector3(sd * 0.64, yb - 0.01, 1.35),
+			Vector3(sd * 0.58, yb - 0.62, 1.3), Vector3(sd * 0.58, yb - 0.62, -0.3), 0.03, A, low)
 		_decal(k, g, "bw_well" + L, _rect2(Vector2.ZERO, Vector2(0.46, 1.7)), Vector3(sd * 0.88, y0 - 0.68, 0.5), Vector3.DOWN, Vector3(1, 0, 0), Color(0.3, 0.3, 0.3), 0.012)
 	_decal(k, g, "bw_nwell", _rect2(Vector2.ZERO, Vector2(0.36, 1.4)), Vector3(0, y0, -5.15), Vector3.DOWN, Vector3(1, 0, 0), Color(0.3, 0.3, 0.3), 0.012, hp)

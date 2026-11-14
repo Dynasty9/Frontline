@@ -49,6 +49,7 @@ var deform_img: Image  # (view only) the same heights as a texture
 var landform: Landform
 var slopes := PackedFloat32Array()
 var vehicle_slopes := PackedFloat32Array()
+var landform_progress := 0.0
 
 
 func _init(w) -> void:
@@ -73,12 +74,14 @@ func _init(w) -> void:
 
 ## `crags`: bare rock may take its metre-scale relief (skirmish maps only).
 func install_landform(samples: PackedFloat32Array, crags := true) -> void:
+	landform_progress = 0.0
 	landform.heights = samples
 	landform.drainage.clear()
 	landform.peak = 0.0
 	for h in samples:
 		landform.peak = maxf(landform.peak, h)
 	if samples.is_empty():
+		landform_progress = 1.0
 		return
 	landform.prepare_crags(crags and String(world.settings.get("mission", "")) == "")
 	slopes.resize(N * N)
@@ -86,23 +89,26 @@ func install_landform(samples: PackedFloat32Array, crags := true) -> void:
 		for x in N:
 			var i := z * N + x
 			slopes[i] = landform.slope(Vector3(x + 0.5 - H, 0, z + 0.5 - H))
-	# A conservative eight-metre envelope stays safe when a hull turns across a slope.
-	var horizontal := PackedFloat32Array()
-	horizontal.resize(N * N)
-	vehicle_slopes.resize(N * N)
-	for z in N:
-		for x in N:
-			var steep := 0.0
-			for xx in range(maxi(0, x - 4), mini(N, x + 5)):
-				steep = maxf(steep, slopes[z * N + xx])
-			horizontal[z * N + x] = steep
-	for z in N:
-		for x in N:
-			var steep := 0.0
-			for zz in range(maxi(0, z - 4), mini(N, z + 5)):
-				steep = maxf(steep, horizontal[zz * N + x])
-			vehicle_slopes[z * N + x] = steep
-			_nav_refresh(z * N + x)
+		landform_progress = 0.2 * (z + 1.0) / N
+	# Only the host routes vehicles; clients still need heights and slopes for the view.
+	if world.srv:
+		# A conservative eight-metre envelope stays safe when a hull turns across a slope.
+		var horizontal := PackedFloat32Array()
+		horizontal.resize(N * N)
+		vehicle_slopes.resize(N * N)
+		for z in N:
+			for x in N:
+				var steep := 0.0
+				for xx in range(maxi(0, x - 4), mini(N, x + 5)):
+					steep = maxf(steep, slopes[z * N + xx])
+				horizontal[z * N + x] = steep
+		for z in N:
+			for x in N:
+				var steep := 0.0
+				for zz in range(maxi(0, z - 4), mini(N, z + 5)):
+					steep = maxf(steep, horizontal[zz * N + x])
+				vehicle_slopes[z * N + x] = steep
+				_nav_refresh(z * N + x)
 	for z in DN:
 		for x in DN:
 			var i := z * DN + x
@@ -110,6 +116,7 @@ func install_landform(samples: PackedFloat32Array, crags := true) -> void:
 			dh[i] += h
 			if deform_img:
 				deform_img.set_pixel(x, z, Color(dh[i], h, 0))
+		landform_progress = 0.2 + 0.8 * (z + 1.0) / DN
 	if deform_img:
 		deform_dirty.append(Rect2i(0, 0, DN, DN))
 	version += 1

@@ -205,15 +205,28 @@ static func _hull(k: VehicleModels, p: Node3D, h: Hull, key: String, mat: String
 static func _patch(k: VehicleModels, p: Node3D, h: Hull, key: String, z0: float, z1: float, t0: float, t1: float, mat: String, col = null, grow := 0.012, depth := 0.03, sx := 0.0) -> void:
 	for s in ([1.0, -1.0] if sx == 0.0 else [sx]):
 		if mat == "glass":
-			var mid := h.pt((z0 + z1) * 0.5, (t0 + t1) * 0.5)
-			var out := h.pt((z0 + z1) * 0.5, (t0 + t1) * 0.5, 0.01) - mid
-			var surface := VehicleSurface.new(func(q: Vector2) -> Vector3:
-				var v := h.pt(lerpf(z0, z1, q.x), lerpf(t0, t1, q.y))
-				return Vector3(v.x * s, v.y, v.z), Vector3(out.x * s, out.y, out.z))
-			VehicleGlazing.polygon(k, p, surface, PackedVector2Array([Vector2(0, 0), Vector2(1, 0), Vector2(1, 1), Vector2(0, 1)]), false, col, 0.012, 2, grow, h.patch("%s%s" % [key, "r" if s > 0.0 else "l"], z0, z1, t0, t1, grow, depth, s))
+			VehicleGlazing.polygon(k, p, _skin(h, z0, z1, t0, t1, s), PackedVector2Array([Vector2(0, 0), Vector2(1, 0), Vector2(1, 1), Vector2(0, 1)]), false, col, 0.012, 2, grow, h.patch("%s%s" % [key, "r" if s > 0.0 else "l"], z0, z1, t0, t1, grow, depth, s))
 			continue
 		var mi: Variant = k._add(p, h.patch("%s%s" % [key, "r" if s > 0.0 else "l"], z0, z1, t0, t1, grow, depth, s), mat, col, Vector3.ZERO)
 		k._unshadow(mi)
+
+
+## The hull's skin between z0..z1 and t0..t1 as a surface (q.x along z, q.y
+## across t), mirrored to the left for sx -1, facing out of its middle.
+static func _skin(h: Hull, z0: float, z1: float, t0: float, t1: float, sx: float) -> VehicleSurface:
+	var mid := h.pt((z0 + z1) * 0.5, (t0 + t1) * 0.5)
+	var out := h.pt((z0 + z1) * 0.5, (t0 + t1) * 0.5, 0.01) - mid
+	return VehicleSurface.new(func(q: Vector2) -> Vector3:
+		var v := h.pt(lerpf(z0, z1, q.x), lerpf(t0, t1, q.y))
+		return Vector3(v.x * sx, v.y, v.z), Vector3(out.x * sx, out.y, out.z))
+
+
+## A sliding door's rail laid along the hull between z0..z1 and t0..t1, on the
+## right (sx 1), the left (-1) or both (0): its flanges stand grow proud of
+## the skin and it is seated depth into it.
+static func _door_rail(k: VehicleModels, p: Node3D, h: Hull, z0: float, z1: float, t0: float, t1: float, grow := 0.012, depth := 0.03, sx := 0.0) -> void:
+	for s: float in ([1.0, -1.0] if sx == 0.0 else [sx]):
+		VehicleDoors.slide_rail(k, p, _skin(h, z0, z1, t0, t1, s), z1 - z0, grow, depth)
 
 
 ## A ring of points (x, y pairs) in the XY plane at z.
@@ -366,18 +379,18 @@ static func _rocket_pod(k: VehicleModels, p: Node3D, pos: Vector3, r: float, ln:
 	VehicleAircraft.rocket_pod(k, p, pos, r, ln, mat, col, tubes)
 
 
-## A missile along Z (nose at -Z) centred at pos.
+## A missile along Z (nose at -Z) centred at pos: a Hellfire's blunt seeker
+## cone in a lighter shade, and (with fins) its X of tail fins.
 static func _missile(k: VehicleModels, p: Node3D, pos: Vector3, r: float, ln: float, col := Color(0.32, 0.34, 0.29), fins := true) -> void:
-	k._cyl(p, r, r, ln * 0.82, pos + Vector3(0, 0, ln * 0.06), Vector3(PI / 2, 0, 0), "paint", col, 10)
-	k._cyl(p, r * 0.25, r, ln * 0.14, pos + Vector3(0, 0, -ln * 0.41), Vector3(PI / 2, 0, 0), "paint", col.lightened(0.15), 10)
-	if fins:
-		for i in 2:
-			k._box(p, Vector3(r * 3.4 if i == 0 else 0.012, r * 3.4 if i == 1 else 0.012, ln * 0.12), pos + Vector3(0, 0, ln * 0.4), "paint", col, Vector3(0, 0, PI / 4), false)
+	var surfaces: Array = [VehicleAircraft.fin_set(ln * 0.34, ln * 0.46, r * 0.7)] if fins else []
+	VehicleAircraft.missile(k, p, pos, ln * 0.94, r, col, VehicleAircraft.cone(ln * 0.14), surfaces, Vector2.ZERO, Vector3.ZERO, 0.0, "paint", col.lightened(0.15))
 
 
 ## A four-round Hellfire launcher hanging from pos (2 x 2 missiles on rails).
 static func _hellfires(k: VehicleModels, p: Node3D, pos: Vector3, rounds := 4) -> void:
-	k._box(p, Vector3(0.12, 0.2, 1.3), pos + Vector3(0, -0.1, 0), "gunmetal_w")
+	# the spine under the pylon (the launcher's own rails hold the rounds, so
+	# no sway braces), the cross beam the rails hang from
+	VehicleAircraft.hardpoint(k, p, pos, 1.3, 0.2, null, 0.0, 0.12, "gunmetal_w", 0.0, false)
 	k._box(p, Vector3(0.62, 0.06, 1.2), pos + Vector3(0, -0.22, 0.05), "gunmetal_w")
 	for i in rounds:
 		var sx := -1.0 if i % 2 == 0 else 1.0
@@ -459,19 +472,21 @@ static func _little_bird(k: VehicleModels, team: int, seed: int, v: int) -> void
 	_tail_rotor(k, m, Vector3(-0.1, 1.76, 4.88), 2, 0.7, 0.11, -1.0)
 	# beacon, antennas, pitot, the landing light
 	VehicleFittings.dome_light(k, m, Vector3(0, 1.93, 3.2), 0.04, Color(0.55, 0.08, 0.06))
-	_tube(k, m, Vector3(0, 1.9, 2.3), Vector3(0, 2.18, 2.48), 0.012, "gunmetal_w", null, 4)
-	_tube(k, m, Vector3(0, 0.58, 0.1), Vector3(0, 0.3, 0.42), 0.01, "gunmetal_w", null, 4)
+	VehicleFittings.antenna(k, m, Vector3(0, 1.9, 2.3), 0, Vector3(0, 0.28, 0.18), 0.012, "gunmetal_w", null, "whip")
+	VehicleFittings.antenna(k, m, Vector3(0, 0.58, 0.1), 0, Vector3(0, -0.28, 0.32), 0.01, "gunmetal_w", null, "whip")
 	VehicleAircraft.pitot(k, m, Vector3(0.12, 0.9, -2.05), Vector3(0.12, 0.86, -2.42), 0.012, "steel", null)
-	k._cyl(m, 0.07, 0.07, 0.04, Vector3(0, 0.6, -1.55), Vector3(0.3, 0, 0), "glass", null, 10, false)
+	VehicleFittings.searchlight(k, m, Vector3(0, 0.6, -1.55), Vector3(0, -0.955, -0.296), 0.07, 0.04)
 	_skids(k, m, 0.98, -1.5, 1.05, [-0.85, 0.5], 0.5, 0.62, 0.042, "gunmetal_w")
+	# a step on a stub post off each skid
 	for s in [-1.0, 1.0]:
-		k._box(m, Vector3(0.16, 0.03, 0.3), Vector3(s * 0.98, 0.15, -0.55), "steel", null, Vector3.ZERO, false)
+		VehicleFrames.step(k, m, Vector3(s * 0.98, 0.15, -0.55), Vector2(0.16, 0.3), Vector3.ZERO, "steel")
 		_tube(k, m, Vector3(s * 0.98, 0.1, -0.55), Vector3(s * 0.98, 0.14, -0.55), 0.03, "steel", null, 6)
 	if v == 0:
-		# the external personnel benches, two a side
+		# the external personnel benches, two a side, facing out: the padded
+		# seat on its tray with a lip along the outer edge
 		for s in [-1.0, 1.0]:
 			k._box(m, Vector3(0.46, 0.05, 1.85), Vector3(s * 1.05, 0.78, -0.12), "gunmetal_w")
-			k._box(m, Vector3(0.42, 0.04, 1.75), Vector3(s * 1.05, 0.82, -0.12), "canvas", Color(0.18, 0.19, 0.16))
+			VehicleCab.bench(k, m, Vector3(s * 1.05, 0.82, -0.12), Vector3(0.42, 0.04, 1.75), Vector3(s, 0, 0), Vector3.ZERO, "canvas", Color(0.18, 0.19, 0.16))
 			k._box(m, Vector3(0.04, 0.08, 1.85), Vector3(s * 1.28, 0.8, -0.12), "gunmetal_w", null, Vector3.ZERO, false)
 			for z in [-0.85, 0.5]:
 				_tube(k, m, Vector3(s * 0.95, 0.38, z), Vector3(s * 1.1, 0.76, z), 0.025, "gunmetal_w", null, 6)
@@ -494,9 +509,8 @@ static func _little_bird(k: VehicleModels, team: int, seed: int, v: int) -> void
 			else:
 				_minigun(k, m, Vector3(-1.0, 0.66, -0.25), 0.72)
 	if v != 2:
-		# the FLIR ball under the nose
-		k._box(m, Vector3(0.1, 0.12, 0.1), Vector3(0, 0.62, -1.8), "gunmetal_w")
-		VehicleEquipment.sensor(k, m, Vector3(0, 0.5, -1.8), Vector3.ONE * 0.13 * 2.0, "paint", Color(0.3, 0.31, 0.3), "ball")
+		# the FLIR ball hanging on its neck under the nose
+		VehicleEquipment.sensor(k, m, Vector3(0, 0.5, -1.8), Vector3.ONE * 0.13 * 2.0, "paint", Color(0.3, 0.31, 0.3), "ball", Vector3(0.05, 0.05, 0.18))
 		k._team_mark(m, team, Vector3(0, 1.94, 2.6), Vector3(0.14, 0.02, 0.6))
 	_rotor(k, m, Vector3(0, 2.58, -0.25), 5, 4.03, 0.17, true, 0.3, 0.012, 0.2)
 
@@ -541,7 +555,7 @@ static func _ghost_hawk(k: VehicleModels, team: int, stub: bool) -> void:
 	_patch(k, m, h, "heli_gh_seamb", -2.8, -0.8, -1.72, -1.66, "gunmetal_w", null, 0.008)
 	_patch(k, m, h, "heli_gh_gunwin", -3.5, -2.92, -0.3, 0.8, "plain", dark, 0.006)
 	_patch(k, m, h, "heli_gh_dwin", -2.45, -1.2, -0.05, 0.76, "glass", null, 0.012)
-	_patch(k, m, h, "heli_gh_rail", -2.85, 0.3, 0.9, 0.98, "gunmetal_w", null, 0.02)
+	_door_rail(k, m, h, -2.85, 0.3, 0.9, 0.98, 0.02)
 	# the top fairing over the gearbox, the engines either side of it
 	k._add(m, VehicleModels.loft("heli_gh_top", [-0.75, -3.7, 0.75, -3.7, 0.98, -2.9, 0.98, 0.9, 0.6, 1.8, -0.6, 1.8, -0.98, 0.9, -0.98, -2.9],
 		[-0.42, -3.15, 0.42, -3.15, 0.6, -2.55, 0.6, 0.55, 0.32, 1.25, -0.32, 1.25, -0.6, 0.55, -0.6, -2.55], 2.45, 3.12), mat, col, Vector3.ZERO)
@@ -558,10 +572,10 @@ static func _ghost_hawk(k: VehicleModels, team: int, stub: bool) -> void:
 	VehicleAircraft.wire_cutter(k, m, Vector3(0.04, 0.3, 0.08), Vector3(0, 0.9, -6.2), Vector3(-0.6, 0, 0))
 	for s in [-1.0, 1.0]:
 		VehicleAircraft.pitot(k, m, Vector3(s * 0.32, 1.72, -6.2), Vector3(s * 0.32, 1.7, -6.95), 0.018, "steel", null)
-		# steps, a grab handle, the navigation lights
+		# steps, the cabin door's grab handle, the navigation lights
 		VehicleFrames.step(k, m, Vector3(s * 1.2, 0.7, -4.6), Vector2(0.12, 0.3))
 		VehicleFittings.nav_light(k, m, Vector3(s * 1.12, 2.3, -4.2), Vector3(0.05, 0.05, 0.06), s)
-		k._box(m, Vector3(0.02, 0.04, 0.3), Vector3(s * 1.2, 1.4, -2.65), "gunmetal_w", null, Vector3.ZERO, false)
+		VehicleDoors.pull(k, m, Vector3(s * 1.1, 1.4, -2.65), Vector3(s, 0, 0), Vector3.BACK, 0.3)
 	# the tail pylon, the canted tail rotor high on its right, the stabilator
 	k._add(m, VehicleModels.extrude_x("heli_gh_pylon", [6.3, 2.25, 7.85, 2.2, 8.32, 4.3, 7.62, 4.42], -0.14, 0.14), mat, col, Vector3.ZERO)
 	k._add(m, VehicleModels.loft("heli_gh_tgb", [-0.12, -0.35, 0.12, -0.35, 0.12, 0.35, -0.12, 0.35], [-0.06, -0.25, 0.06, -0.25, 0.06, 0.25, -0.06, 0.25], 0.0, 0.18), mat, col, Vector3(0.12, 3.48, 7.95), Vector3(0, 0, -PI / 2))
@@ -574,21 +588,17 @@ static func _ghost_hawk(k: VehicleModels, team: int, stub: bool) -> void:
 	for s in [-1.0, 1.0]:
 		k._add(m, VehicleModels.extrude_x("heli_gh_endp", [7.68, 0.0, 8.32, 0.0, 8.5, 0.62, 8.08, 0.62], -0.03, 0.03), mat, col, Vector3(s * 2.1, 2.27, 0), Vector3(0, 0, -s * 0.38))
 		k._team_mark(m, team, Vector3(s * 0.4, 2.06, 4.6), Vector3(0.02, 0.24, 0.8))
-	_tube(k, m, Vector3(0, 2.4, 3.6), Vector3(0, 2.72, 3.9), 0.014, "gunmetal_w", null, 4)
+	VehicleFittings.antenna(k, m, Vector3(0, 2.4, 3.6), 0, Vector3(0, 0.32, 0.3), 0.014, "gunmetal_w", null, "whip")
 	k._box(m, Vector3(0.03, 0.2, 0.3), Vector3(0, 2.48, 5.6), "gunmetal_w", null, Vector3(0, 0, 0))
 	VehicleFittings.dome_light(k, m, Vector3(0, 4.45, 7.65), 0.06, Color(0.55, 0.08, 0.06))
-	# tailwheel
-	_tube(k, m, Vector3(0, 1.88, 6.05), Vector3(0, 0.36, 6.4), 0.06, "gunmetal_w", null, 8)
-	_tube(k, m, Vector3(0, 1.84, 5.55), Vector3(0, 0.9, 6.25), 0.04, "steel", null, 6)
-	k._box(m, Vector3(0.26, 0.08, 0.2), Vector3(0, 0.4, 6.42), "gunmetal_w")
+	# the tailwheel on its leg and drag brace
+	VehicleAircraft.tailwheel(k, m, Vector3(0, 1.88, 6.05), Vector3(0, 0.24, 6.48), Vector2(0.24, 0.16), 0.06, Vector3(0, 1.84, 5.55), 0.04)
 	k._wheel(m, Vector3(0, 0.24, 6.48), 0.24, 0.16)
-	# main gear: drag beam and shock strut, faceted hub covers
+	# main gear: drag beams and shock struts under faceted fairings, faceted
+	# hub covers
 	for s in [-1.0, 1.0]:
-		_tube(k, m, Vector3(s * 0.78, 0.68, -4.35), Vector3(s * 1.36, 0.4, -3.95), 0.07, "gunmetal_w", null, 8)
-		_tube(k, m, Vector3(s * 1.08, 1.3, -3.8), Vector3(s * 1.38, 0.5, -3.92), 0.08, "gunmetal_w", null, 8)
-		k._box(m, Vector3(0.22, 0.62, 0.3), Vector3(s * 1.18, 1.05, -3.84), mat, col, Vector3(0, 0, s * 0.35))
 		var wp := k._wheel(m, Vector3(s * 1.48, 0.38, -3.95), 0.38, 0.26)
-		k._cyl(wp, 0.3, 0.3, 0.04, Vector3(s * 0.14, 0, 0), Vector3(0, 0, PI / 2), mat, col, 8)
+		VehicleAircraft.trailing_gear(k, m, Vector3(s * 0.78, 0.68, -4.35), Vector3(s * 1.08, 1.3, -3.8), Vector3(s * 1.48, 0.38, -3.95), Vector2(0.38, 0.26), 0.07, 0.08, "gunmetal_w", null, Vector3(0.22, 0.62, 0.3), mat, col, wp, 0.3, 8, Vector2(0.61, 0.977))
 	# door guns: miniguns on pintles in the gunners' windows
 	for s in [-1.0, 1.0]:
 		_tube(k, m, Vector3(s * 1.0, 1.45, -3.2), Vector3(s * 1.3, 1.55, -3.15), 0.035, "gunmetal_w", null, 6)
@@ -606,12 +616,11 @@ static func _ghost_hawk(k: VehicleModels, team: int, stub: bool) -> void:
 			for j in 2:
 				var px: float = s * (1.7 + j * 0.95)
 				var py: float = 2.16 - (absf(px) - 2.0) * 0.1
-				k._box(m, Vector3(0.1, 0.24, 0.62), Vector3(px, py - 0.18, -0.1), "gunmetal_w")
+				VehicleAircraft.hardpoint(k, m, Vector3(px, py - 0.06, -0.1), 0.62, 0.24, null, 0.2, 0.1, "gunmetal_w", 0.04)
 				_rocket_pod(k, m, Vector3(px, py - 0.5, -0.2), 0.2, 1.7, "paint", Color(0.3, 0.32, 0.27), 7 if j == 0 else 19)
 	# the rotor: four blades with swept tips under a faceted hub cap
 	_rotor(k, m, Vector3(0, 3.62, -2.0), 4, 8.18, 0.53, true, PI / 4, 0.02, 0.42, 1)
-	k._cyl(k.rotor, 0.5, 0.84, 0.2, Vector3(0, 0.22, 0), Vector3.ZERO, mat, col, 8)
-	k._cyl(k.rotor, 0.2, 0.5, 0.1, Vector3(0, 0.37, 0), Vector3.ZERO, mat, col, 8)
+	VehicleRotors.hub_cap(k, k.rotor, Vector3(0, 0.22, 0), 0.5, 0.84, 0.2, 8, mat, col, false, Vector3(0.2, 0.5, 0.1))
 
 
 # --- CH-67 Huron ----------------------------------------------------------------------
@@ -686,8 +695,7 @@ static func _huron(k: VehicleModels, team: int) -> void:
 	# cargo hooks, the FLIR ball, pitots
 	for z in [-1.5, 0.0, 1.5]:
 		k._box(m, Vector3(0.2, 0.12, 0.3), Vector3(0, 0.66, z), "gunmetal_w")
-	k._box(m, Vector3(0.14, 0.14, 0.14), Vector3(0, 0.85, -7.3), "gunmetal_w")
-	VehicleEquipment.sensor(k, m, Vector3(0, 0.7, -7.32), Vector3.ONE * 0.4, "paint", Color(0.28, 0.29, 0.28), "ball")
+	VehicleEquipment.sensor(k, m, Vector3(0, 0.7, -7.32), Vector3.ONE * 0.4, "paint", Color(0.28, 0.29, 0.28), "ball", Vector3(0.07, 0.07, 0.22))
 	for s in [-1.0, 1.0]:
 		VehicleAircraft.pitot(k, m, Vector3(s * 0.45, 2.3, -7.75), Vector3(s * 0.45, 2.28, -8.25), 0.02, "steel", null)
 	# forward pylon, the shaft tunnel, the tall aft pylon with its engines
@@ -702,23 +710,23 @@ static func _huron(k: VehicleModels, team: int) -> void:
 		for station: Array in eng.st:
 			cowling_rings.append(eng.ring(float(station[0])))
 		VehicleAircraft.cowling(k, m, cowling_rings, Vector3(s * 1.56, 0, 0), mat, col)
-		k._cyl(m, 0.3, 0.3, 0.04, Vector3(s * 1.56, 3.55, 3.29), Vector3(PI / 2, 0, 0), "plain", dark, 8, false)
-		k._cyl(m, 0.13, 0.13, 0.06, Vector3(s * 1.56, 3.55, 3.27), Vector3(PI / 2, 0, 0), "gunmetal_w", null, 8, false)
+		VehicleAircraft.intake_face(k, m, Vector3(s * 1.56, 3.55, 3.29), 0.3, Vector3.FORWARD, 0.13)
 		k._box(m, Vector3(0.32, 0.3, 0.12), Vector3(s * 1.56, 3.55, 6.98), "plain", dark, Vector3.ZERO, false)
 		k._box(m, Vector3(0.5, 0.18, 1.6), Vector3(s * 1.12, 3.5, 4.9), mat, col)
 		k._team_mark(m, team, Vector3(s * 0.97, 4.0, 6.6), Vector3(0.02, 0.4, 0.8))
 	# masts, antennas, beacons
 	VehicleRotors.mast(k, m, Vector3(0, 4.05, -5.95), 0.2, 0.24, 0.45)
 	VehicleRotors.mast(k, m, Vector3(0, 5.2, 6.0), 0.2, 0.24, 0.45)
-	_tube(k, m, Vector3(0, 3.5, -1.0), Vector3(0, 3.9, -0.8), 0.014, "gunmetal_w", null, 4)
+	VehicleFittings.antenna(k, m, Vector3(0, 3.5, -1.0), 0, Vector3(0, 0.4, 0.2), 0.014, "gunmetal_w", null, "whip")
 	k._box(m, Vector3(0.03, 0.22, 0.32), Vector3(0, 3.6, 1.6), "gunmetal_w")
 	VehicleFittings.dome_light(k, m, Vector3(0, 3.53, 2.6), 0.07, Color(0.55, 0.08, 0.06))
-	_tube(k, m, Vector3(0, 0.66, 2.8), Vector3(0, 0.36, 3.1), 0.012, "gunmetal_w", null, 4)
-	# the rotors: three-blade, contra-rotating, the aft one higher
+	VehicleFittings.antenna(k, m, Vector3(0, 0.66, 2.8), 0, Vector3(0, -0.3, 0.3), 0.012, "gunmetal_w", null, "whip")
+	# the rotors: three-blade, contra-rotating, the aft one higher, each under
+	# a six-sided hub cap
 	_rotor(k, m, Vector3(0, 4.32, -5.95), 3, 9.15, 0.81, true, 0.0, 0.028, 0.5, 1)
-	k._cyl(k.rotor, 0.4, 0.78, 0.22, Vector3(0, 0.24, 0), Vector3.ZERO, mat, col, 6)
+	VehicleRotors.hub_cap(k, k.rotor, Vector3(0, 0.24, 0), 0.4, 0.78, 0.22, 6, mat, col, false)
 	var rr := _rotor(k, m, Vector3(0, 5.48, 6.0), 3, 9.15, 0.81, false, PI / 3, 0.028, 0.5, 1)
-	k._cyl(rr, 0.4, 0.78, 0.22, Vector3(0, 0.24, 0), Vector3.ZERO, mat, col, 6)
+	VehicleRotors.hub_cap(k, rr, Vector3(0, 0.24, 0), 0.4, 0.78, 0.22, 6, mat, col, false)
 
 
 # --- AH-99 Blackfoot ------------------------------------------------------------------
@@ -776,18 +784,16 @@ static func _blackfoot(k: VehicleModels, team: int) -> void:
 		[-0.2, 6.65, 0.2, 6.65, 1.08, 6.87, 1.08, 7.27, -1.08, 7.27, -1.08, 6.87], 3.34, 3.41), mat, col, Vector3.ZERO)
 	VehicleFittings.dome_light(k, m, Vector3(0, 3.44, 7.1), 0.05, Color(0.55, 0.08, 0.06))
 	# tailwheel under the boom
-	_tube(k, m, Vector3(0, 1.34, 4.5), Vector3(0, 0.3, 4.82), 0.045, "gunmetal_w", null, 8)
-	k._box(m, Vector3(0.18, 0.06, 0.16), Vector3(0, 0.34, 4.84), "gunmetal_w")
+	VehicleAircraft.tailwheel(k, m, Vector3(0, 1.34, 4.5), Vector3(0, 0.2, 4.88), Vector2(0.2, 0.12), 0.045)
 	k._wheel(m, Vector3(0, 0.2, 4.88), 0.2, 0.12)
 	for s in [-1.0, 1.0]:
-		# main gear legs out of their stubs
+		# main gear legs out of their stubs: trailing beams and struts,
+		# six-sided hub covers
 		k._box(m, Vector3(0.24, 0.24, 0.62), Vector3(s * 0.78, 0.8, -2.95), mat, col, Vector3(0, 0, s * 0.5))
-		_tube(k, m, Vector3(s * 0.82, 0.8, -3.1), Vector3(s * 0.98, 0.34, -2.85), 0.06, "gunmetal_w", null, 8)
-		_tube(k, m, Vector3(s * 0.8, 0.86, -2.7), Vector3(s * 0.95, 0.4, -2.85), 0.04, "steel", null, 6)
 		var wp := k._wheel(m, Vector3(s * 1.04, 0.3, -2.85), 0.3, 0.16)
-		k._cyl(wp, 0.22, 0.22, 0.03, Vector3(s * 0.08, 0, 0), Vector3(0, 0, PI / 2), mat, col, 6)
+		VehicleAircraft.trailing_gear(k, m, Vector3(s * 0.82, 0.8, -3.1), Vector3(s * 0.8, 0.86, -2.7), Vector3(s * 1.04, 0.3, -2.85), Vector2(0.3, 0.16), 0.06, 0.04, "gunmetal_w", null, Vector3.ZERO, mat, col, wp, 0.22, 6)
 		# the bay doors opened out: three Hellfires on rails under each
-		k._box(m, Vector3(0.82, 0.05, 2.3), Vector3(s * 1.33, 1.2, -0.65), mat, col, Vector3(0, 0, -s * 0.06))
+		VehicleDoors.leaf(k, m, Vector3(0.82, 0.05, 2.3), Vector3(s * 1.33, 1.2, -0.65), mat, col, Vector3(0, 0, -s * 0.06), 1)
 		k._box(m, Vector3(0.06, 0.12, 2.2), Vector3(s * 0.94, 1.22, -0.65), "gunmetal_w")
 		for j in 3:
 			var mx: float = s * (1.08 + j * 0.25)
@@ -795,10 +801,10 @@ static func _blackfoot(k: VehicleModels, team: int) -> void:
 			_missile(k, m, Vector3(mx, 0.97, -0.6), 0.085, 1.62, Color(0.3, 0.33, 0.26))
 		k._team_mark(m, team, Vector3(s * 0.43, 1.58, 3.0), Vector3(0.02, 0.18, 0.7))
 		VehicleFittings.nav_light(k, m, Vector3(s * 1.74, 1.18, -0.2), Vector3(0.05, 0.05, 0.06), s)
-	# the chin turret: XM301 three-barrel 20 mm
+	# the chin turret: XM301 three-barrel 20 mm, its faceted drum and the
+	# gun's cradle tucked under it
 	k.turret = k._pivot(m, Vector3(0, 0.68, -4.75))
-	k._cyl(k.turret, 0.2, 0.24, 0.2, Vector3(0, -0.02, 0), Vector3.ZERO, mat, col, 8)
-	k._box(k.turret, Vector3(0.22, 0.2, 0.55), Vector3(0, -0.18, -0.18), "gunmetal_w")
+	VehicleAircraft.chin_turret(k, k.turret, Vector3(0, -0.02, 0), Vector2(0.2, 0.24), 0.2, Vector3(0, -0.18, -0.18), Vector3(0.22, 0.2, 0.55), mat, col, 0.0, Vector3.ZERO, false, 8)
 	# the barrels out of the receiver, one on top, clamped near the breech and
 	# at the muzzles
 	VehicleWeapons.rotary(k, k.turret, Vector3(0, -0.18, -0.4), Vector3(0, -0.18, -1.7), 3, 0.045, 0.022, [0.154, 0.938], "gunmetal_w", PI / 2)
@@ -809,7 +815,7 @@ static func _blackfoot(k: VehicleModels, team: int) -> void:
 	k._box(m, Vector3(0.03, 0.16, 0.25), Vector3(0, 2.0, 1.5), "gunmetal_w")
 	# the rotor: five blades with swept tips, a faceted hub shroud
 	_rotor(k, m, Vector3(0, 3.12, -1.1), 5, 5.95, 0.36, true, 0.0, 0.015, 0.3, 1)
-	k._cyl(k.rotor, 0.3, 0.6, 0.2, Vector3(0, 0.18, 0), Vector3.ZERO, mat, col, 5)
+	VehicleRotors.hub_cap(k, k.rotor, Vector3(0, 0.18, 0), 0.3, 0.6, 0.2, 5, mat, col, false)
 
 
 # --- CH-49 Mohawk ---------------------------------------------------------------------
@@ -851,7 +857,7 @@ static func _mohawk(k: VehicleModels, team: int) -> void:
 	# the cabin door (right, forward), windows down both sides
 	for z in [-6.85, -5.25]:
 		_patch(k, m, h, "heli_mo_dseam%d" % int(-z * 10), z - 0.015, z + 0.015, -2.0, 1.7, "gunmetal_w", null, 0.01, 0.03, 1.0)
-	_patch(k, m, h, "heli_mo_drail", -6.9, -3.8, -2.05, -1.95, "gunmetal_w", null, 0.014, 0.03, 1.0)
+	_door_rail(k, m, h, -6.9, -3.8, -2.05, -1.95, 0.014, 0.03, 1.0)
 	for i in 6:
 		var zc := -6.05 + i * 1.32
 		_patch(k, m, h, "heli_mo_cw%d" % i, zc - 0.3, zc + 0.3, 0.15, 0.9, "glass", null, 0.012)
@@ -872,12 +878,14 @@ static func _mohawk(k: VehicleModels, team: int) -> void:
 		k._add(m, VehicleModels.solid(rings, "heli_mo_spon%s" % ("r" if s > 0.0 else "l")), lo[0], lo[1], Vector3.ZERO)
 		_gear(k, m, Vector3(s * 1.78, 0.72, 0.0), Vector3(s * 1.8, 0.38, 0.12), 0.38, 0.22, true)
 		VehicleFittings.nav_light(k, m, Vector3(s * 2.15, 1.3, -0.5), Vector3(0.05, 0.06, 0.06), s)
-		k._box(m, Vector3(0.14, 0.04, 0.32), Vector3(s * 1.4, 0.66, -6.0), "gunmetal_w")
+		VehicleFrames.step(k, m, Vector3(s * 1.4, 0.66, -6.0), Vector2(0.14, 0.32))
 		k._team_mark(m, team, Vector3(s * 0.4, 2.6, 7.4), Vector3(0.02, 0.26, 0.9))
 	_gear(k, m, Vector3(0, 0.72, -8.3), Vector3(0, 0.32, -8.45), 0.32, 0.18, true)
 	# the hoist over the door, the radome, pitots
 	k._box(m, Vector3(0.55, 0.2, 0.32), Vector3(1.35, 3.0, -6.1), "gunmetal_w", null, Vector3(0, 0, -0.45))
-	VehicleAircraft.pitot(k, m, Vector3(1.62, 2.95, -6.1), Vector3(1.62, 2.55, -6.1), 0.015, "steel", null)
+	# the cable hanging from the hoist's arm, its hook block at the bottom
+	VehicleFrames.tube(k, m, Vector3(1.62, 2.95, -6.1), Vector3(1.62, 2.61, -6.1), 0.008, "metal_dark", null, 6, false)
+	k._box(m, Vector3(0.06, 0.08, 0.045), Vector3(1.62, 2.58, -6.1), "gunmetal_w", null, Vector3.ZERO, false)
 	VehicleMounts.radome(k, m, Vector3(0, 0.88, -8.95), Vector3(1.3, 0.55, 1.3) * 0.9, lo[0], (lo[1] as Color).darkened(0.1))
 	for s in [-1.0, 1.0]:
 		VehicleAircraft.pitot(k, m, Vector3(s * 0.55, 2.35, -9.45), Vector3(s * 0.55, 2.32, -10.0), 0.02, "steel", null)
@@ -890,17 +898,16 @@ static func _mohawk(k: VehicleModels, team: int) -> void:
 		for station: Array in eng.st:
 			cowling_rings.append(eng.ring(float(station[0])))
 		VehicleAircraft.cowling(k, m, cowling_rings, Vector3(s * 0.98, 0, 0), hi[0], hi[1])
-		k._cyl(m, 0.27, 0.27, 0.04, Vector3(s * 0.98, 3.25, -4.76), Vector3(PI / 2, 0, 0), "plain", dark, 10, false)
-		k._cyl(m, 0.1, 0.1, 0.06, Vector3(s * 0.98, 3.25, -4.78), Vector3(PI / 2, 0, 0), "gunmetal_w", null, 8, false)
+		VehicleAircraft.intake_face(k, m, Vector3(s * 0.98, 3.25, -4.76), 0.27, Vector3.FORWARD, 0.1)
 		VehicleAircraft.turbine_exhaust(k, m, Vector3(s * 1.0, 3.25, -1.45), Vector3(s * 1.42, 3.3, -1.0), 0.2, 0.18)
 	k._add(m, VehicleModels.loft("heli_mo_eng2", [-0.45, -0.9, 0.45, -0.9, 0.5, 1.9, -0.5, 1.9], [-0.3, -0.75, 0.3, -0.75, 0.34, 1.6, -0.34, 1.6], 3.5, 4.0), hi[0], hi[1], Vector3.ZERO)
 	k._box(m, Vector3(0.5, 0.3, 0.04), Vector3(0, 3.78, -0.92), "plain", dark, Vector3(-0.3, 0, 0), false)
 	VehicleAircraft.turbine_exhaust(k, m, Vector3(-0.3, 3.7, 1.7), Vector3(-0.6, 3.75, 2.3), 0.18, 0.16)
 	# mast, the IR jammer, antennas
 	VehicleRotors.mast(k, m, Vector3(0, 4.1, -2.5), 0.2, 0.26, 0.6, [Vector2(3.95, 0.42)])
-	_tube(k, m, Vector3(0, 2.95, 4.0), Vector3(0, 3.35, 4.3), 0.014, "gunmetal_w", null, 4)
+	VehicleFittings.antenna(k, m, Vector3(0, 2.95, 4.0), 0, Vector3(0, 0.4, 0.3), 0.014, "gunmetal_w", null, "whip")
 	k._box(m, Vector3(0.03, 0.22, 0.32), Vector3(0, 3.05, 6.0), "gunmetal_w")
-	_tube(k, m, Vector3(0, 0.64, -3.0), Vector3(0, 0.32, -2.7), 0.012, "gunmetal_w", null, 4)
+	VehicleFittings.antenna(k, m, Vector3(0, 0.64, -3.0), 0, Vector3(0, -0.32, 0.3), 0.012, "gunmetal_w", null, "whip")
 	# the tail pylon, the tail rotor on its left, the tailplane on its right
 	k._add(m, VehicleModels.extrude_x("heli_mo_pylon", [7.95, 2.6, 9.75, 2.5, 10.15, 5.3, 9.3, 5.45], -0.16, 0.16), hi[0], hi[1], Vector3.ZERO)
 	k._add(m, VehicleModels.loft("heli_mo_tail", [0.1, 9.15, 2.35, 9.35, 2.35, 9.95, 0.1, 10.05], [0.1, 9.18, 2.35, 9.37, 2.35, 9.93, 0.1, 10.02], 4.92, 5.02), hi[0], hi[1], Vector3.ZERO)
@@ -908,9 +915,9 @@ static func _mohawk(k: VehicleModels, team: int) -> void:
 	VehicleFittings.dome_light(k, m, Vector3(0, 5.5, 9.45), 0.07, Color(0.55, 0.08, 0.06))
 	_tail_rotor(k, m, Vector3(-0.22, 4.68, 9.55), 4, 2.0, 0.3, -1.0, 0.2)
 	k._cyl(k.tail_rotor, 0.14, 0.22, 0.14, Vector3(-0.12, 0, 0), Vector3(0, 0, PI / 2), "gunmetal_w", null, 10)
-	# the rotor: five BERP blades
+	# the rotor: five BERP blades under a domed hub cap
 	_rotor(k, m, Vector3(0, 4.45, -2.5), 5, 9.3, 0.62, true, 0.25, 0.026, 0.5, 2)
-	k._cyl(k.rotor, 0.36, 0.5, 0.18, Vector3(0, 0.2, 0), Vector3.ZERO, "gunmetal_w", null, 10)
+	VehicleRotors.hub_cap(k, k.rotor, Vector3(0, 0.2, 0), 0.36, 0.5, 0.18, 10)
 
 
 # --- WY-55 Hellcat --------------------------------------------------------------------
@@ -949,7 +956,7 @@ static func _hellcat(k: VehicleModels, team: int) -> void:
 	for z in [-3.58, -2.35, -0.55]:
 		_patch(k, m, h, "heli_hc_seam%d" % int(-z * 100), z - 0.014, z + 0.014, -2.2, 1.75, "gunmetal_w", null, 0.008)
 	_patch(k, m, h, "heli_hc_dwin", -2.05, -0.95, 0.15, 1.35, "glass", null, 0.012)
-	_patch(k, m, h, "heli_hc_rail", -2.4, 0.5, 1.75, 1.85, "gunmetal_w", null, 0.016)
+	_door_rail(k, m, h, -2.4, 0.5, 1.75, 1.85, 0.016)
 	# the roof fairing, engines with side exhausts, mast
 	k._add(m, VehicleModels.loft("heli_hc_roof", [-0.72, -3.3, 0.72, -3.3, 0.9, -2.5, 0.9, 1.2, 0.5, 2.3, -0.5, 2.3, -0.9, 1.2, -0.9, -2.5],
 		[-0.42, -2.9, 0.42, -2.9, 0.6, -2.2, 0.6, 0.9, 0.3, 1.8, -0.3, 1.8, -0.6, 0.9, -0.6, -2.2], 2.3, 2.95), mat, col, Vector3.ZERO)
@@ -957,9 +964,8 @@ static func _hellcat(k: VehicleModels, team: int) -> void:
 		k._box(m, Vector3(0.04, 0.3, 0.5), Vector3(s * 0.8, 2.62, -1.9), "plain", dark, Vector3(0, 0, s * 0.3), false)
 		VehicleAircraft.turbine_exhaust(k, m, Vector3(s * 0.6, 2.62, 0.75), Vector3(s * 0.98, 2.62, 1.1), 0.17, 0.15)
 	VehicleRotors.mast(k, m, Vector3(0, 3.12, -0.7), 0.14, 0.18, 0.45, [Vector2(3.02, 0.3)])
-	# the sensor turret on the nose, pitots, wire cutters
-	k._cyl(m, 0.12, 0.15, 0.14, Vector3(0, 2.05, -4.85), Vector3.ZERO, "gunmetal_w", null, 10)
-	VehicleEquipment.sensor(k, m, Vector3(0, 2.28, -4.85), Vector3.ONE * 0.21 * 2.0, "paint", Color(0.3, 0.31, 0.3), "ball")
+	# the sensor turret standing on its neck on the nose, pitots, wire cutters
+	VehicleEquipment.sensor(k, m, Vector3(0, 2.28, -4.85), Vector3.ONE * 0.21 * 2.0, "paint", Color(0.3, 0.31, 0.3), "ball", Vector3(0.12, 0.15, -0.3))
 	for s in [-1.0, 1.0]:
 		VehicleAircraft.pitot(k, m, Vector3(s * 0.35, 1.6, -5.1), Vector3(s * 0.35, 1.58, -5.65), 0.015, "steel", null)
 	VehicleAircraft.wire_cutter(k, m, Vector3(0.04, 0.34, 0.08), Vector3(0, 2.62, -3.7), Vector3(0.5, 0, 0))
@@ -970,28 +976,30 @@ static func _hellcat(k: VehicleModels, team: int) -> void:
 	k._add(m, VehicleModels.extrude_x("heli_hc_vent", [5.9, 2.0, 6.5, 2.0, 6.75, 1.55, 6.5, 1.5], -0.04, 0.04), mat, col, Vector3.ZERO)
 	_tail_rotor(k, m, Vector3(-0.18, 3.28, 6.95), 4, 1.1, 0.18, -1.0, 0.2)
 	VehicleFittings.dome_light(k, m, Vector3(0, 3.88, 6.8), 0.05, Color(0.55, 0.08, 0.06))
-	_tube(k, m, Vector3(0, 2.36, 3.0), Vector3(0, 2.66, 3.25), 0.012, "gunmetal_w", null, 4)
-	# skids
+	VehicleFittings.antenna(k, m, Vector3(0, 2.36, 3.0), 0, Vector3(0, 0.3, 0.25), 0.012, "gunmetal_w", null, "whip")
+	# skids and their steps
 	_skids(k, m, 1.15, -3.3, 0.95, [-2.55, 0.25], 0.7, 0.8, 0.05, "gunmetal_w")
 	for s in [-1.0, 1.0]:
-		k._box(m, Vector3(0.16, 0.03, 0.34), Vector3(s * 1.15, 0.18, -3.0), "steel", null, Vector3.ZERO, false)
+		VehicleFrames.step(k, m, Vector3(s * 1.15, 0.18, -3.0), Vector2(0.16, 0.34), Vector3.ZERO, "steel")
 		VehicleFittings.nav_light(k, m, Vector3(s * 1.0, 1.2, -4.0), Vector3(0.05, 0.06, 0.06), s)
 		k._team_mark(m, team, Vector3(s * 0.29, 2.14, 4.4), Vector3(0.02, 0.18, 0.7))
 	# weapon pylons: a minigun inboard, a rocket pod out
 	for s in [-1.0, 1.0]:
 		k._add(m, VehicleModels.loft("heli_hc_pyl%d" % int(s), _mx([0.0, -0.45, 1.0, -0.3, 1.0, 0.15, 0.0, 0.3], s), _mx([0.0, -0.4, 1.0, -0.27, 1.0, 0.12, 0.0, 0.25], s), 0.0, 0.1),
 			mat, col, Vector3(s * 0.85, 1.05, -1.25))
-		k._box(m, Vector3(0.08, 0.16, 0.5), Vector3(s * 1.3, 0.97, -1.3), "gunmetal_w")
-		k._box(m, Vector3(0.08, 0.16, 0.7), Vector3(s * 1.78, 0.97, -1.25), "gunmetal_w")
+		VehicleAircraft.hardpoint(k, m, Vector3(s * 1.3, 1.05, -1.3), 0.5, 0.16, null, 0.09, 0.08, "gunmetal_w", 0.04)
+		# The outer pylon runs past the wing's trailing edge, so it hangs flush
+		# under the skin rather than standing on a fairing.
+		VehicleAircraft.hardpoint(k, m, Vector3(s * 1.78, 1.05, -1.25), 0.7, 0.16, null, 0.17, 0.08, "gunmetal_w", 0.0)
 		_rocket_pod(k, m, Vector3(s * 1.78, 0.72, -1.3), 0.17, 1.6, "paint", Color(0.3, 0.32, 0.27), 7)
 		if s > 0.0:
 			k.turret = k._pivot(m, Vector3(1.3, 0.8, -1.4))
 			k.mg_tip = k._tip(k.turret, _minigun(k, k.turret, Vector3.ZERO, 0.72))
 		else:
 			_minigun(k, m, Vector3(-1.3, 0.8, -1.4), 0.72)
-	# the rotor: four BERP blades on the compact hub
+	# the rotor: four BERP blades on the compact hub, under its domed cap
 	_rotor(k, m, Vector3(0, 3.4, -0.7), 4, 6.4, 0.39, true, PI / 4, 0.018, 0.32, 2)
-	k._cyl(k.rotor, 0.22, 0.32, 0.14, Vector3(0, 0.18, 0), Vector3.ZERO, "gunmetal_w", null, 10)
+	VehicleRotors.hub_cap(k, k.rotor, Vector3(0, 0.18, 0), 0.22, 0.32, 0.14, 10)
 
 
 ## Flat [x, z, ...] pairs with x scaled by s (mirrors an outline to the left).
@@ -1019,13 +1027,14 @@ static func _canopy(k: VehicleModels, p: Node3D, key: String, bottom: Array, top
 
 ## A launcher of four anti-tank missile tubes (2 x 2) hanging from pos.
 static func _atgm_tubes(k: VehicleModels, p: Node3D, pos: Vector3, ln := 1.9, r := 0.11) -> void:
-	k._box(p, Vector3(0.1, 0.16, ln * 0.6), pos + Vector3(0, -0.08, 0), "gunmetal_w")
+	# the spine under the pylon (the tubes' frames hold them, so no sway
+	# braces), the plate the tubes hang from
+	VehicleAircraft.hardpoint(k, p, pos, ln * 0.6, 0.16, null, 0.0, 0.1, "gunmetal_w", 0.0, false)
 	k._box(p, Vector3(r * 4.6, 0.05, ln * 0.7), pos + Vector3(0, -0.18, 0), "gunmetal_w")
 	for i in 4:
 		var x := (r * 1.08) * (-1.0 if i % 2 == 0 else 1.0)
 		var y := -0.18 - r * 1.1 - (0.0 if i < 2 else r * 2.15)
-		k._cyl(p, r, r, ln, pos + Vector3(x, y, 0), Vector3(PI / 2, 0, 0), "paint", Color(0.33, 0.35, 0.28), 10)
-		k._cyl(p, r * 0.8, r * 0.8, 0.02, pos + Vector3(x, y, -ln * 0.5 - 0.01), Vector3(PI / 2, 0, 0), "paint", Color(0.5, 0.48, 0.4), 10, false)
+		VehicleWeapons.launch_tube(k, p, pos + Vector3(x, y, 0), r, ln, "paint", Color(0.33, 0.35, 0.28))
 	for z in [-ln * 0.38, ln * 0.38]:
 		k._box(p, Vector3(r * 4.7, r * 4.6, 0.05), pos + Vector3(0, -0.18 - r * 2.15, z), "gunmetal_w", null, Vector3.ZERO, false)
 
@@ -1045,7 +1054,6 @@ static func _kajman(k: VehicleModels, team: int) -> void:
 	if team != 1:
 		mat = "aircraft"
 		col = NATO_GREY
-	var dark := Color(0.06, 0.06, 0.06)
 	var h := Hull.new([
 		[-8.35, 1.35, 0.12, 0.12, 0.12],
 		[-8.0, 1.38, 0.5, 0.45, 0.48],
@@ -1077,7 +1085,7 @@ static func _kajman(k: VehicleModels, team: int) -> void:
 	VehicleEquipment.sensor(k, m, Vector3(0, 1.05, -7.85), Vector3.ONE * 0.6, "paint", Color(0.3, 0.31, 0.29), "ball")
 	k._add(m, Res.sphere(0.17, 10), "paint", Color(0.3, 0.31, 0.29), Vector3(0, 1.75, -8.05))
 	for s in [-1.0, 1.0]:
-		_tube(k, m, Vector3(s * 0.3, 1.6, -7.9), Vector3(s * 0.3, 1.58, -8.55), 0.018, "steel", null, 4)
+		VehicleAircraft.pitot(k, m, Vector3(s * 0.3, 1.6, -7.9), Vector3(s * 0.3, 1.58, -8.55), 0.018, "steel", null)
 	# top fairing, the engines with their dust filters and exhaust deflectors
 	k._add(m, VehicleModels.loft("heli_kj_top", [-0.6, -3.0, 0.6, -3.0, 0.75, -2.3, 0.75, 0.8, 0.45, 1.4, -0.45, 1.4, -0.75, 0.8, -0.75, -2.3],
 		[-0.35, -2.6, 0.35, -2.6, 0.48, -2.0, 0.48, 0.4, 0.25, 1.0, -0.25, 1.0, -0.48, 0.4, -0.48, -2.0], 2.5, 3.32), mat, col, Vector3.ZERO)
@@ -1088,8 +1096,7 @@ static func _kajman(k: VehicleModels, team: int) -> void:
 			cowling_rings.append(eng.ring(float(station[0])))
 		VehicleAircraft.cowling(k, m, cowling_rings, Vector3(s * 1.0, 0, 0), mat, col)
 		# the dust protector: a cone ahead of a dark annular intake
-		k._cyl(m, 0.4, 0.4, 0.06, Vector3(s * 1.0, 2.95, -3.08), Vector3(PI / 2, 0, 0), "plain", dark, 12, false)
-		k._cyl(m, 0.09, 0.36, 0.42, Vector3(s * 1.0, 2.95, -3.3), Vector3(-PI / 2, 0, 0), mat, col, 12)
+		VehicleAircraft.intake_face(k, m, Vector3(s * 1.0, 2.95, -3.08), 0.4, Vector3.FORWARD, 0.0, 0.0, 0, 0, Vector2(0.42, 0.36), mat, col)
 		VehicleAircraft.turbine_exhaust(k, m, Vector3(s * 1.0, 2.95, 0.7), Vector3(s * 1.3, 2.75, 1.5), 0.3, 0.26, mat, col)
 		_tube(k, m, Vector3(s * 0.62, 2.6, -1.0), Vector3(s * 0.7, 2.55, 0.2), 0.04, "gunmetal_w", null, 6)
 	# the coaxial mast: the swashplate guide at its foot, the separator
@@ -1099,19 +1106,17 @@ static func _kajman(k: VehicleModels, team: int) -> void:
 	for s in [-1.0, 1.0]:
 		k._add(m, VehicleModels.loft("heli_kj_wing%d" % int(s), _mx([0.0, -2.45, 2.6, -2.15, 2.6, -1.25, 0.0, -0.95], s), _mx([0.0, -2.42, 2.6, -2.12, 2.6, -1.28, 0.0, -0.98], s), -0.07, 0.07),
 			mat, col, Vector3(s * 0.85, 2.12, 0), Vector3(0, 0, -s * 0.1))
-		k._box(m, Vector3(0.22, 0.26, 1.1), Vector3(s * 3.5, 1.86, -1.7), "gunmetal_w")
-		k._box(m, Vector3(0.02, 0.16, 0.5), Vector3(s * 3.62, 1.86, -1.75), "plain", dark, Vector3.ZERO, false)
+		VehicleAircraft.dispenser(k, m, Vector3(s * 3.5, 1.86, -1.7), Vector3(0.22, 0.26, 1.1), Vector3.ZERO, Vector3(s, 0, 0), 2, 7, "gunmetal_w", null, Vector2(0.5, 0.16))
 		for j in 3:
 			var px: float = s * (1.6 + j * 0.72)
 			var py: float = 2.12 - (absf(px) - 0.85) * 0.1
-			k._box(m, Vector3(0.09, 0.2, 0.7), Vector3(px, py - 0.14, -1.7), "gunmetal_w")
+			VehicleAircraft.hardpoint(k, m, Vector3(px, py - 0.04, -1.7), 0.7, 0.2, null, 0.26 if j < 2 else 0.0, 0.09, "gunmetal_w", 0.04)
 			if j < 2:
 				_rocket_pod(k, m, Vector3(px, py - 0.5, -1.85), 0.26, 2.0, "paint", Color(0.3, 0.32, 0.27), 19 if j == 0 else 7)
 			else:
 				_atgm_tubes(k, m, Vector3(px, py - 0.22, -1.75))
 		# main gear on trailing legs
-		_tube(k, m, Vector3(s * 0.8, 1.0, -3.65), Vector3(s * 1.32, 0.48, -3.2), 0.07, "gunmetal_w", null, 8)
-		_tube(k, m, Vector3(s * 0.85, 1.55, -3.4), Vector3(s * 1.3, 0.55, -3.22), 0.06, "steel", null, 8)
+		VehicleAircraft.trailing_gear(k, m, Vector3(s * 0.8, 1.0, -3.65), Vector3(s * 0.85, 1.55, -3.4), Vector3(s * 1.38, 0.42, -3.2), Vector2(0.42, 0.28), 0.07, 0.06, "gunmetal_w", null, Vector3.ZERO, "paint", null, null, 0.0, 8, Vector2(0.697, 0.772))
 		k._wheel(m, Vector3(s * 1.38, 0.42, -3.2), 0.42, 0.28)
 		VehicleFittings.nav_light(k, m, Vector3(s * 3.62, 2.02, -1.3), Vector3(0.05, 0.06, 0.06), s)
 		k._team_mark(m, team, Vector3(s * 0.33, 2.15, 4.6), Vector3(0.02, 0.2, 0.8))
@@ -1121,24 +1126,19 @@ static func _kajman(k: VehicleModels, team: int) -> void:
 	for s in [-1.0, 1.0]:
 		k._add(m, VehicleModels.extrude_x("heli_kj_endp", [7.05, 1.95, 7.95, 1.95, 8.2, 2.95, 7.5, 2.95], -0.03, 0.03), mat, col, Vector3(s * 1.65, 0, 0))
 	VehicleFittings.dome_light(k, m, Vector3(0, 4.07, 8.4), 0.05, Color(0.55, 0.08, 0.06))
-	_tube(k, m, Vector3(0, 1.95, 6.8), Vector3(0, 0.38, 7.1), 0.05, "gunmetal_w", null, 8)
-	k._box(m, Vector3(0.2, 0.07, 0.18), Vector3(0, 0.42, 7.12), "gunmetal_w")
+	VehicleAircraft.tailwheel(k, m, Vector3(0, 1.95, 6.8), Vector3(0, 0.25, 7.16), Vector2(0.25, 0.16), 0.05)
 	k._wheel(m, Vector3(0, 0.25, 7.16), 0.25, 0.16)
-	_tube(k, m, Vector3(0, 2.5, 2.4), Vector3(0, 2.85, 2.7), 0.014, "gunmetal_w", null, 4)
+	VehicleFittings.antenna(k, m, Vector3(0, 2.5, 2.4), 0, Vector3(0, 0.35, 0.3), 0.014, "gunmetal_w", null, "whip")
 	# the chin turret: 2A42 30 mm with its ammunition boxes either side
 	k.turret = k._pivot(m, Vector3(0, 0.9, -6.75))
-	k._cyl(k.turret, 0.26, 0.3, 0.16, Vector3.ZERO, Vector3.ZERO, mat, col, 12)
-	k._box(k.turret, Vector3(0.2, 0.3, 0.3), Vector3(0, -0.2, 0), "gunmetal_w")
-	k._box(k.turret, Vector3(0.24, 0.24, 0.9), Vector3(0, -0.36, -0.2), "gunmetal_w")
-	for s in [-1.0, 1.0]:
-		k._box(k.turret, Vector3(0.2, 0.3, 0.7), Vector3(s * 0.25, -0.34, 0.05), mat, col)
+	VehicleAircraft.chin_turret(k, k.turret, Vector3.ZERO, Vector2(0.26, 0.3), 0.16, Vector3(0, -0.36, -0.2), Vector3(0.24, 0.24, 0.9), mat, col, 0.0, Vector3(0.2, 0.3, 0.7))
 	# the cannon: its recoil sleeve out of the gun box, the barrel, the brake
 	VehicleWeapons.autocannon(k, k.turret, Vector3(0, -0.36, -0.62), Vector3(0, -0.36, -2.41), Vector2(0.07, 0.4), Vector2(0.05, 0.05), Vector2(0.075, 0.18))
 	k.mg_tip = k._tip(k.turret, Vector3(0, -0.36, -2.45))
 	# the coaxial rotors: three blades each, the upper one turning the other way
 	_rotor(k, m, Vector3(0, 3.92, -1.4), 3, 7.25, 0.5, true, 0.0, 0.016, 0.36, 1)
 	var up := _rotor(k, m, Vector3(0, 4.95, -1.4), 3, 7.25, 0.5, false, PI / 3, 0.01, 0.36, 1)
-	k._cyl(up, 0.18, 0.34, 0.24, Vector3(0, 0.22, 0), Vector3.ZERO, mat, col, 10)
+	VehicleRotors.hub_cap(k, up, Vector3(0, 0.22, 0), 0.18, 0.34, 0.24, 10, mat, col)
 
 
 # --- PO-30 Orca -----------------------------------------------------------------------
@@ -1179,7 +1179,7 @@ static func _orca(k: VehicleModels, team: int, armed: bool) -> void:
 		_patch(k, m, h, "heli_or_seam%d" % int(-z * 100), z - 0.014, z + 0.014, -2.6, 2.4, "gunmetal_w", null, 0.008)
 	_patch(k, m, h, "heli_or_dwin", -2.3, -1.0, 0.3, 1.85, "glass", null, 0.012)
 	_patch(k, m, h, "heli_or_rwin", -0.42, 0.15, 0.45, 1.7, "glass", null, 0.012)
-	_patch(k, m, h, "heli_or_rail", -2.65, 0.6, 2.35, 2.45, "gunmetal_w", null, 0.014)
+	_door_rail(k, m, h, -2.65, 0.6, 2.35, 2.45, 0.014)
 	# the roof fairing with the engine intakes and exhausts
 	k._add(m, VehicleModels.loft("heli_or_roof", [-0.62, -3.6, 0.62, -3.6, 0.85, -2.6, 0.85, 1.0, 0.5, 2.1, -0.5, 2.1, -0.85, 1.0, -0.85, -2.6],
 		[-0.3, -3.0, 0.3, -3.0, 0.56, -2.2, 0.56, 0.7, 0.28, 1.6, -0.28, 1.6, -0.56, 0.7, -0.56, -2.2], 2.08, 2.86), mat, col, Vector3.ZERO)
@@ -1191,9 +1191,9 @@ static func _orca(k: VehicleModels, team: int, armed: bool) -> void:
 		k._team_mark(m, team, Vector3(s * 0.27, 1.9, 4.6), Vector3(0.02, 0.18, 0.7))
 	VehicleRotors.mast(k, m, Vector3(0, 3.06, -1.0), 0.13, 0.17, 0.48, [Vector2(2.95, 0.3)])
 	for s in [-1.0, 1.0]:
-		_tube(k, m, Vector3(s * 0.28, 1.45, -5.2), Vector3(s * 0.28, 1.43, -5.75), 0.015, "steel", null, 4)
+		VehicleAircraft.pitot(k, m, Vector3(s * 0.28, 1.45, -5.2), Vector3(s * 0.28, 1.43, -5.75), 0.015, "steel", null)
 	VehicleFittings.dome_light(k, m, Vector3(0, 2.88, 0.9), 0.06, Color(0.55, 0.08, 0.06))
-	_tube(k, m, Vector3(0, 2.15, 2.6), Vector3(0, 2.45, 2.85), 0.012, "gunmetal_w", null, 4)
+	VehicleFittings.antenna(k, m, Vector3(0, 2.15, 2.6), 0, Vector3(0, 0.3, 0.25), 0.012, "gunmetal_w", null, "whip")
 	# the fenestron: shroud with its open duct, the fin, the tailplane
 	_ducted_fin(k, m, "heli_or_duct", [6.05, 1.45, 6.4, 1.15, 7.55, 1.15, 7.9, 1.5, 7.9, 2.3, 7.55, 2.65, 6.4, 2.65, 6.05, 2.35],
 		Vector2(6.98, 1.9), 0.58, -0.17, 0.17, mat, col, 16)
@@ -1209,21 +1209,21 @@ static func _orca(k: VehicleModels, team: int, armed: bool) -> void:
 	for s in [-1.0, 1.0]:
 		k._add(m, VehicleModels.loft("heli_or_spon%d" % int(s), _mx([0.75, -0.3, 1.15, -0.1, 1.15, 1.0, 0.75, 1.2], s), _mx([0.75, -0.1, 1.05, 0.0, 1.05, 0.85, 0.75, 1.0], s), 0.62, 1.08), mat, col, Vector3.ZERO)
 		_gear(k, m, Vector3(s * 1.0, 0.7, 0.4), Vector3(s * 1.15, 0.3, 0.45), 0.3, 0.18)
-		k._box(m, Vector3(0.14, 0.04, 0.3), Vector3(s * 1.0, 0.55, -2.0), "gunmetal_w")
+		VehicleFrames.step(k, m, Vector3(s * 1.0, 0.55, -2.0), Vector2(0.14, 0.3))
 	if armed:
 		# side pylons: a minigun on the left, a rocket pod on the right
 		for s in [-1.0, 1.0]:
 			k._add(m, VehicleModels.loft("heli_or_pyl%d" % int(s), _mx([0.0, -0.45, 0.85, -0.3, 0.85, 0.2, 0.0, 0.35], s), _mx([0.0, -0.4, 0.85, -0.27, 0.85, 0.17, 0.0, 0.3], s), 0.0, 0.1),
 				mat, col, Vector3(s * 0.8, 1.08, 0.0))
-			k._box(m, Vector3(0.08, 0.16, 0.62), Vector3(s * 1.5, 1.0, -0.05), "gunmetal_w")
+			VehicleAircraft.hardpoint(k, m, Vector3(s * 1.5, 1.08, -0.05), 0.62, 0.16, null, 0.2 if s > 0.0 else 0.16, 0.08, "gunmetal_w", 0.04)
 		_rocket_pod(k, m, Vector3(1.5, 0.74, -0.15), 0.2, 1.6, "paint", Color(0.3, 0.32, 0.27), 19)
 		k.turret = k._pivot(m, Vector3(-1.5, 0.82, -0.1))
 		k._cyl(k.turret, 0.16, 0.16, 0.9, Vector3(0, 0, 0.25), Vector3(PI / 2, 0, 0), "paint", Color(0.3, 0.32, 0.27), 12)
 		k._add(k.turret, Res.sphere(0.16, 12), "paint", Color(0.3, 0.32, 0.27), Vector3(0, 0, 0.7), Vector3.ZERO, Vector3(1, 1, 0.8))
 		k.mg_tip = k._tip(k.turret, _minigun(k, k.turret, Vector3(0, 0, -0.2), 0.6))
-	# the rotor: four blades with swept tips
+	# the rotor: four blades with swept tips under a domed hub cap
 	_rotor(k, m, Vector3(0, 3.36, -1.0), 4, 6.75, 0.4, true, PI / 4, 0.018, 0.32, 1)
-	k._cyl(k.rotor, 0.2, 0.36, 0.2, Vector3(0, 0.2, 0), Vector3.ZERO, mat, col, 10)
+	VehicleRotors.hub_cap(k, k.rotor, Vector3(0, 0.2, 0), 0.2, 0.36, 0.2, 10, mat, col)
 
 
 # --- Mi-290 Taru ----------------------------------------------------------------------
@@ -1240,7 +1240,6 @@ static func _taru(k: VehicleModels, team: int) -> void:
 	if team != 1:
 		mat = "aircraft"
 		col = NATO_GREY
-	var dark := Color(0.06, 0.06, 0.06)
 	# the spine
 	var sp := Hull.new([
 		[-5.7, 3.45, 0.6, 0.55, 0.58],
@@ -1272,8 +1271,8 @@ static func _taru(k: VehicleModels, team: int) -> void:
 	_patch(k, m, cab, "heli_ta_dseam", -6.42, -6.38, -2.4, 2.6, "gunmetal_w", null, 0.01)
 	k._box(m, Vector3(0.9, 0.5, 0.04), Vector3(0, 2.75, -4.85), "glass", null, Vector3(0.5, 0, 0), false)
 	for s in [-1.0, 1.0]:
-		_tube(k, m, Vector3(s * 0.35, 3.0, -8.1), Vector3(s * 0.35, 2.98, -8.7), 0.018, "steel", null, 4)
-		k._box(m, Vector3(0.14, 0.04, 0.3), Vector3(s * 0.95, 2.28, -5.8), "gunmetal_w")
+		VehicleAircraft.pitot(k, m, Vector3(s * 0.35, 3.0, -8.1), Vector3(s * 0.35, 2.98, -8.7), 0.018, "steel", null)
+		VehicleFrames.step(k, m, Vector3(s * 0.95, 2.28, -5.8), Vector2(0.14, 0.3))
 	# the engines and the gearbox fairing on the spine
 	k._add(m, VehicleModels.loft("heli_ta_top", [-0.55, -4.4, 0.55, -4.4, 0.62, -3.6, 0.62, 0.8, 0.4, 1.4, -0.4, 1.4, -0.62, 0.8, -0.62, -3.6],
 		[-0.3, -3.9, 0.3, -3.9, 0.4, -3.2, 0.4, 0.4, 0.22, 0.95, -0.22, 0.95, -0.4, 0.4, -0.4, -3.2], 3.95, 4.62), mat, col, Vector3.ZERO)
@@ -1283,13 +1282,12 @@ static func _taru(k: VehicleModels, team: int) -> void:
 		for station: Array in eng.st:
 			cowling_rings.append(eng.ring(float(station[0])))
 		VehicleAircraft.cowling(k, m, cowling_rings, Vector3(s * 0.66, 0, 0), mat, col)
-		k._cyl(m, 0.24, 0.24, 0.04, Vector3(s * 0.66, 4.36, -3.71), Vector3(PI / 2, 0, 0), "plain", dark, 10, false)
-		k._cyl(m, 0.1, 0.1, 0.06, Vector3(s * 0.66, 4.36, -3.73), Vector3(PI / 2, 0, 0), "gunmetal_w", null, 8, false)
+		VehicleAircraft.intake_face(k, m, Vector3(s * 0.66, 4.36, -3.71), 0.24, Vector3.FORWARD, 0.1)
 		VehicleAircraft.turbine_exhaust(k, m, Vector3(s * 0.66, 4.36, -0.25), Vector3(s * 0.95, 4.42, 0.25), 0.2, 0.17)
 		k._team_mark(m, team, Vector3(s * 0.4, 3.62, 5.6), Vector3(0.02, 0.24, 0.9))
 	VehicleRotors.mast(k, m, Vector3(0, 5.3, -1.0), 0.17, 0.2, 1.5, [Vector2(4.66, 0.34)])
 	VehicleFittings.dome_light(k, m, Vector3(0, 4.08, 2.6), 0.07, Color(0.55, 0.08, 0.06))
-	_tube(k, m, Vector3(0, 4.0, 3.4), Vector3(0, 4.35, 3.7), 0.012, "gunmetal_w", null, 4)
+	VehicleFittings.antenna(k, m, Vector3(0, 4.0, 3.4), 0, Vector3(0, 0.35, 0.3), 0.012, "gunmetal_w", null, "whip")
 	# the tailplane with its twin fins, a ventral fin
 	k._box(m, Vector3(3.1, 0.07, 0.8), Vector3(0, 3.62, 8.0), mat, col)
 	for s in [-1.0, 1.0]:
@@ -1300,12 +1298,12 @@ static func _taru(k: VehicleModels, team: int) -> void:
 		for lz in [[-4.25, -4.55, 2.45], [3.7, 4.3, 2.6]]:
 			var top := Vector3(s * 0.55, 3.05, float(lz[0]))
 			var axle := Vector3(s * float(lz[2]), 0.42, float(lz[1]))
-			var knee := top.lerp(axle, 0.62)
-			_tube(k, m, top, knee, 0.085, "gunmetal_w", null, 8)
-			_tube(k, m, knee, axle + Vector3(0, 0.25, 0), 0.06, "steel", null, 8)
-			_tube(k, m, knee - (knee - top) * 0.15, knee, 0.11, "gunmetal_w", null, 8)
-			_tube(k, m, Vector3(s * 0.3, 2.9, float(lz[0]) + (0.9 if float(lz[0]) < 0.0 else -0.9)), top.lerp(axle, 0.45), 0.05, "gunmetal_w", null, 6)
-			_tube(k, m, Vector3(s * 0.45, 2.88, float(lz[0])), knee, 0.04, "gunmetal_w", null, 6)
+			# the strut runs down to the axle's fitting over the wheel; one
+			# brace meets its barrel, the other its gland nut
+			var foot := axle + Vector3(0, 0.25, 0)
+			VehicleAircraft.gear_leg(k, m, top, foot, 0.085, Color(0.25, 0.27, 0.24))
+			_tube(k, m, Vector3(s * 0.3, 2.9, float(lz[0]) + (0.9 if float(lz[0]) < 0.0 else -0.9)), top.lerp(foot, 0.45), 0.05, "gunmetal_w", null, 6)
+			_tube(k, m, Vector3(s * 0.45, 2.88, float(lz[0])), top.lerp(foot, 0.62), 0.04, "gunmetal_w", null, 6)
 			k._box(m, Vector3(0.1, 0.12, 0.38), axle + Vector3(-s * 0.05, 0.28, 0), "gunmetal_w")
 			k._wheel(m, axle, 0.42, 0.3)
 	# the transport pod on its four hooks
@@ -1322,8 +1320,9 @@ static func _taru(k: VehicleModels, team: int) -> void:
 	for z in [-0.6, 0.45]:
 		_patch(k, m, pod, "heli_ta_pdoor%d" % int(z * 10 + 10), z - 0.014, z + 0.014, -0.95, 0.75, "gunmetal_w", null, 0.008, 0.03, -1.0)
 	_patch(k, m, pod, "heli_ta_pdwin", -0.4, 0.25, -0.35, -0.08, "glass", null, 0.012, 0.03, -1.0)
+	# the rear doors: their frame, the leaf, the split between the two halves
 	k._box(m, Vector3(2.2, 1.7, 0.03), Vector3(0, 1.6, 3.21), "gunmetal_w", null, Vector3.ZERO, false)
-	k._box(m, Vector3(2.1, 1.6, 0.04), Vector3(0, 1.6, 3.22), mat, col, Vector3.ZERO, false)
+	VehicleDoors.leaf(k, m, Vector3(2.1, 1.6, 0.04), Vector3(0, 1.6, 3.22), mat, col)
 	k._box(m, Vector3(0.03, 1.6, 0.05), Vector3(0, 1.6, 3.25), "gunmetal_w", null, Vector3.ZERO, false)
 	for s in [-1.0, 1.0]:
 		k._box(m, Vector3(0.05, 0.05, 0.4), Vector3(s * 1.27, 0.95, -0.1), "gunmetal_w", null, Vector3.ZERO, false)
@@ -1336,7 +1335,7 @@ static func _taru(k: VehicleModels, team: int) -> void:
 	# the coaxial rotors: three blades each, turning against each other
 	_rotor(k, m, Vector3(0, 4.98, -1.0), 3, 7.5, 0.48, true, 0.0, 0.02, 0.36, 0)
 	var up := _rotor(k, m, Vector3(0, 6.08, -1.0), 3, 7.5, 0.48, false, PI / 3, 0.012, 0.36, 0)
-	k._cyl(up, 0.16, 0.32, 0.22, Vector3(0, 0.2, 0), Vector3.ZERO, mat, col, 10)
+	VehicleRotors.hub_cap(k, up, Vector3(0, 0.2, 0), 0.16, 0.32, 0.22, 10, mat, col)
 
 
 # --- MQ-12 Falcon ---------------------------------------------------------------------
@@ -1381,12 +1380,12 @@ static func _falcon(k: VehicleModels, team: int) -> void:
 	k._add(m, VehicleModels.extrude_x("heli_fa_vent", [3.9, 1.66, 4.3, 1.66, 4.45, 1.2, 4.28, 1.18], -0.025, 0.025), mat, col, Vector3.ZERO)
 	k._box(m, Vector3(1.15, 0.035, 0.3), Vector3(0, 1.7, 3.55), mat, col)
 	_tail_rotor(k, m, Vector3(-0.08, 1.72, 4.3), 2, 0.62, 0.09, -1.0)
-	# the sensor ball under the nose, antennas, the datalink dome
-	k._box(m, Vector3(0.12, 0.14, 0.12), Vector3(0, 0.82, -2.15), "gunmetal_w")
-	VehicleEquipment.sensor(k, m, Vector3(0, 0.66, -2.15), Vector3.ONE * 0.18 * 2.0, "paint", Color(0.28, 0.29, 0.3), "ball")
+	# the sensor ball hanging on its neck under the nose, antennas, the
+	# datalink dome
+	VehicleEquipment.sensor(k, m, Vector3(0, 0.66, -2.15), Vector3.ONE * 0.18 * 2.0, "paint", Color(0.28, 0.29, 0.3), "ball", Vector3(0.06, 0.06, 0.23))
 	k._add(m, Res.dome(0.16, 10), mat, col, Vector3(0, 1.98, -1.6))
 	k._box(m, Vector3(0.025, 0.18, 0.18), Vector3(0, 0.66, 0.0), "gunmetal_w")
-	_tube(k, m, Vector3(0, 1.82, 2.4), Vector3(0, 2.05, 2.55), 0.01, "gunmetal_w", null, 4)
+	VehicleFittings.antenna(k, m, Vector3(0, 1.82, 2.4), 0, Vector3(0, 0.23, 0.15), 0.01, "gunmetal_w", null, "whip")
 	VehicleFittings.dome_light(k, m, Vector3(0, 2.38, 4.22), 0.035, Color(0.55, 0.08, 0.06))
 	# skids
 	_skids(k, m, 0.82, -1.55, 0.85, [-1.1, 0.4], 0.42, 0.8, 0.035, "gunmetal_w")
@@ -1395,7 +1394,7 @@ static func _falcon(k: VehicleModels, team: int) -> void:
 		k._box(m, Vector3(0.75, 0.05, 0.42), Vector3(s * 0.95, 1.12, -0.7), mat, col, Vector3(0, 0, -s * 0.05))
 		for j in 2:
 			var px: float = s * (0.82 + j * 0.36)
-			k._box(m, Vector3(0.04, 0.1, 0.3), Vector3(px, 1.05, -0.7), "gunmetal_w")
+			VehicleAircraft.hardpoint(k, m, Vector3(px, 1.1, -0.7), 0.3, 0.1, null, 0.055, 0.04, "gunmetal_w", 0.0)
 			_missile(k, m, Vector3(px, 0.94, -0.75), 0.055, 1.1, Color(0.32, 0.34, 0.29))
 		k._team_mark(m, team, Vector3(s * 0.11, 1.62, 2.5), Vector3(0.02, 0.1, 0.5))
 	# the rotor: four blades
@@ -1466,7 +1465,7 @@ static func _darter(k: VehicleModels, team: int) -> void:
 		# lights under the motors: red on the left and green on the right up
 		# front, white aft
 		if d.y > 0.0:
-			k._box(m, Vector3(0.02, 0.012, 0.02), mp + Vector3(0, -0.018, 0), "plain", Color(0.8, 0.8, 0.75), Vector3.ZERO, false)
+			VehicleFittings.marker(k, m, mp + Vector3(0, -0.018, 0), Vector3(0.02, 0.012, 0.02), 0.0, Color(0.8, 0.8, 0.75))
 		else:
 			VehicleFittings.nav_light(k, m, mp + Vector3(0, -0.018, 0), Vector3(0.02, 0.012, 0.02), d.x)
 		_prop(k, m, mp + Vector3(0, 0.05, 0), 0.155, 2, float(i) * 0.7)

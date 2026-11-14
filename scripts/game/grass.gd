@@ -17,8 +17,11 @@ var scar_tex: ImageTexture
 var _scar_dirty := false
 var bush: ArrayMesh
 var stone: ArrayMesh
+var woodland: Woodland
+var canopy_img: Image
 var _shrub_noise := FastNoiseLite.new()
 var level := -1
+var _wildlife_level := -1
 var _queue: Array = []
 var _rebuild_t := -1.0
 var _blocked := PackedByteArray()
@@ -33,6 +36,8 @@ func _ready() -> void:
 	clump = _make_clump()
 	bush = _make_bush()
 	stone = _make_stone()
+	woodland = Woodland.new()
+	woodland.setup()
 	scar_img = Image.create(MapDims.N, MapDims.N, false, Image.FORMAT_L8)
 	scar_tex = ImageTexture.create_from_image(scar_img)
 	mat = ShaderMaterial.new()
@@ -41,21 +46,30 @@ func _ready() -> void:
 	mat.set_shader_parameter("scar", scar_tex)
 	bush_mat = ShaderMaterial.new()
 	bush_mat.shader = CloudShadow.make(MapDims.shader(BUSH_SHADER), CloudShadow.BACKLIGHT | CloudShadow.NO_SPECULAR | CloudShadow.FOLD)
-	bush_mat.set_shader_parameter("leaf_texture", preload("res://assets/foliage/broadleaf.png"))
+	bush_mat.set_shader_parameter("leaf_texture", preload("res://assets/foliage/woodland/shrub_02-color.png"))
+	bush_mat.set_shader_parameter("leaf_surface", preload("res://assets/foliage/woodland/shrub_02-surface.png"))
 	# (a shader, not a StandardMaterial3D, so that the stones go into cloud shade too)
 	stone_mat = ShaderMaterial.new()
 	stone_mat.shader = CloudShadow.make(STONE_SHADER)
+	stone_mat.set_shader_parameter("stone_color", preload("res://assets/foliage/woodland/rock_moss_set_01-color.png"))
+	stone_mat.set_shader_parameter("stone_surface", preload("res://assets/foliage/woodland/rock_moss_set_01-surface.png"))
 	request_rebuild(1.2)
 
 
 func set_deform(t: Texture2DArray) -> void:
 	mat.set_shader_parameter("deform_tex", t)
 	bush_mat.set_shader_parameter("deform_tex", t)
+	if woodland:
+		for material in woodland.materials:
+			material.set_shader_parameter("deform_tex", t)
 
 
 func set_trench_mask(t: Texture2D) -> void:
 	mat.set_shader_parameter("trench_mask", t)
 	bush_mat.set_shader_parameter("trench_mask", t)
+	if woodland:
+		for material in woodland.materials:
+			material.set_shader_parameter("trench_mask", t)
 
 
 ## Marks a blast scar on the grass (craters: full, near misses: lighter).
@@ -77,7 +91,7 @@ func scar(p: Vector3, r: float, strength := 1.0) -> void:
 
 func apply_settings() -> void:
 	var lvl := int(Settings.get_v("grass"))
-	if lvl != level:
+	if lvl != level or int(Settings.get_v("wildlife")) != _wildlife_level:
 		request_rebuild(0.1)
 
 
@@ -131,15 +145,13 @@ func _exit_tree() -> void:
 
 func _start_rebuild(first_view := false) -> void:
 	level = int(Settings.get_v("grass"))
+	_wildlife_level = int(Settings.get_v("wildlife"))
 	_shrub_noise.seed = int(atmo.world.settings.get("seed", 1)) + 219
 	_shrub_noise.frequency = 0.035
 	if _task >= 0:
 		WorkerThreadPool.wait_for_task_completion(_task)  # (a rebuild already on its way: redone from now)
 		_task = -1
-	if level == 0:
-		_job = null
-		_clear()
-		return
+	# The forest floor remains visible with grass disabled.
 	_job = _blocked_job()
 	if first_view or OS.has_feature("nothreads"):
 		_job.run()
@@ -152,6 +164,10 @@ func _start_rebuild(first_view := false) -> void:
 ## queue up, the nearest the camera first.
 func _lay_out() -> void:
 	_blocked = _job.blocked
+	canopy_img = Image.create_from_data(MapDims.N >> 1, MapDims.N >> 1, false, Image.FORMAT_R8, _job.canopy)
+	if is_instance_valid(_job.biome):
+		atmo.biome_tex.set_image(_job.biome)
+	atmo.ground_mat.set_shader_parameter("woodland_ready", woodland != null)
 	_job = null
 	_clear()
 
@@ -233,13 +249,21 @@ var _task := -1
 ## second and more of script that held up a frame).
 func _blocked_job() -> BlockedJob:
 	var j := BlockedJob.new()
+	if is_instance_valid(atmo.biome_img):
+		j.biome = atmo.biome_img.duplicate()
 	var w := atmo.world
 	for st in w.structures:
 		if st.gone:
 			continue
+		if st.skind == "tree":
+			j.trees.append(Vector3(st.position.x, 4.0 if st.variant == 1 else 7.0, st.position.z))
 		var big: bool = st.skind in ["floor", "fob", "barracks", "factory", "medic_tent", "research", "depot", "helipad", "bunker", "mortar_pit", "hmg_nest", "mg_nest", "at_post", "tunnel", "house_wall", "tall_wall", "concrete_wall", "hesco", "barricade", "ammo_cache", "wreck", "car", "crates", "bridge", "town"]
 		if big:
-			j.boxes.append([Vector2(st.position.x, st.position.z), st.foot + Vector2(0.4, 0.4), float(st.yaw)])
+			var cleared: Vector2 = st.foot + Vector2(0.4, 0.4)
+			if st.skind == "bunker":
+				# The two-metre earth bank buries plants beyond the building walls.
+				cleared = cleared.max(Vector2(5.2, 5.2))
+			j.boxes.append([Vector2(st.position.x, st.position.z), cleared, float(st.yaw)])
 	# sidewalks, squares, gardens and the like
 	for e in w.decor:
 		if not String(e[0]) in ["walk", "walk_crossing", "pave", "junction", "soft", "lot_pave", "drive", "path", "garden", "yard"]:
@@ -257,6 +281,9 @@ func _blocked_job() -> BlockedJob:
 
 ## 1 m grid of places grass must not grow: building floors, walls, roads.
 class BlockedJob:
+	var biome: Image
+	var trees: Array[Vector3] = []  # x, litter radius, z
+	var canopy := PackedByteArray()
 	var boxes: Array = []  # [centre, half size, yaw] (x, z)
 	var water := PackedByteArray()  # the water mask's pixels (RGBA8)
 	var roads: Array = []  # PackedVector3Array polylines
@@ -294,6 +321,20 @@ class BlockedJob:
 							# Include the grass clump radius beyond the 2.9 m carriageway.
 							if dx * dx + dz * dz <= 16:
 								_mark(floori(p.x) + dx, floori(p.z) + dz)
+		var n := MapDims.N >> 1
+		var half := float(MapDims.N) * 0.5
+		canopy.resize(n * n)
+		for tree: Vector3 in trees:
+			for z in range(maxi(0, floori((tree.z - tree.y + half) * 0.5)), mini(n, ceili((tree.z + tree.y + half) * 0.5))):
+				for x in range(maxi(0, floori((tree.x - tree.y + half) * 0.5)), mini(n, ceili((tree.x + tree.y + half) * 0.5))):
+					if blocked[((z << 1) + 1) * MapDims.N + (x << 1) + 1] != 0:
+						continue
+					var distance := Vector2(float(x * 2 + 1) - half - tree.x, float(z * 2 + 1) - half - tree.z).length()
+					var weight := 1.0 - smoothstep(tree.y * 0.2, tree.y, distance)
+					var index := z * n + x
+					canopy[index] = mini(255, canopy[index] + int(weight * 215.0))
+		if is_instance_valid(biome):
+			biome = Grass.pack_biome(biome, Image.create_from_data(n, n, false, Image.FORMAT_R8, canopy))
 
 	func _mark(x: int, z: int) -> void:
 		var ix := x + MapDims.N / 2
@@ -314,6 +355,32 @@ func _is_blocked(p: Vector3) -> bool:
 	if ix < 0 or iz < 0 or ix >= MapDims.N or iz >= MapDims.N:
 		return false
 	return _blocked[iz * MapDims.N + ix] == 1
+
+
+## Share a sampler with biome noise without changing its red channel or CPU image.
+static func pack_biome(source: Image, canopy: Image) -> Image:
+	var noise: Image = source.duplicate()
+	noise.convert(Image.FORMAT_R8)
+	var mask: Image = canopy.duplicate()
+	mask.resize(noise.get_width(), noise.get_height(), Image.INTERPOLATE_BILINEAR)
+	var red := noise.get_data()
+	var green := mask.get_data()
+	var packed := PackedByteArray()
+	packed.resize(red.size() * 2)
+	for i in red.size():
+		packed[i << 1] = red[i]
+		packed[(i << 1) + 1] = green[i]
+	return Image.create_from_data(noise.get_width(), noise.get_height(), false, Image.FORMAT_RG8, packed)
+
+
+func canopy_at(p: Vector3) -> float:
+	if canopy_img == null or woodland == null:
+		return 0.0
+	var x := floori((p.x + HALF) * 0.5)
+	var z := floori((p.z + HALF) * 0.5)
+	if x < 0 or z < 0 or x >= canopy_img.get_width() or z >= canopy_img.get_height():
+		return 0.0
+	return canopy_img.get_pixel(x, z).r
 
 
 func _build_chunk(c: Vector2i) -> void:
@@ -343,7 +410,8 @@ func _build_chunk(c: Vector2i) -> void:
 		var g := atmo.grass_amount(p)
 		var m := _wet_at(wet, (p.x - origin.x) / CHUNK, (p.z - origin.z) / CHUNK)
 		# Damp ground grows thick, tall grass; a dry crest keeps thin short tufts.
-		var lush := g * lerpf(0.55, 1.15, m)
+		var shade := canopy_at(p)
+		var lush := g * lerpf(0.55, 1.15, m) * lerpf(1.0, 0.16, shade)
 		if lush <= 0.001 or rng.randf() > lush * 0.92 + 0.04:
 			if rng.randf() < 0.004:
 				stones.append(p)
@@ -375,12 +443,14 @@ func _build_chunk(c: Vector2i) -> void:
 		var sx := []
 		var sc := []
 		for p in stones:
-			var s3 := rng.randf_range(0.25, 0.8)
-			sx.append(Transform3D(Basis.from_euler(Vector3(rng.randf() * TAU, rng.randf() * TAU, 0)).scaled(Vector3(s3, s3 * 0.6, s3)), Vector3(p.x, atmo.world.ground_y(p) + s3 * 0.15, p.z)))
+			var s3 := rng.randf_range(0.15, 0.4)
+			sx.append(Transform3D(Basis(Vector3.UP, rng.randf() * TAU).scaled(Vector3(s3, s3 * 0.6, s3)), Vector3(p.x, atmo.world.ground_y(p) + s3 * 0.15, p.z)))
 			sc.append(Color(0, 0, 0, 0))
 		var sn := _mm(stone, stone_mat, sx, sc, 140.0)
 		sn.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
 		nodes.append(sn)
+	if woodland:
+		woodland.build(self, c, nodes)
 	_built[c] = nodes
 
 
@@ -440,9 +510,9 @@ func _make_clump() -> ArrayMesh:
 		var radius := sqrt(rng.randf()) * 0.32
 		var base := Vector3(cos(angle) * radius, 0, sin(angle) * radius)
 		var yaw := rng.randf() * TAU
-		var side := Vector3(cos(yaw), 0, sin(yaw)) * rng.randf_range(0.008, 0.016)
-		var lean := Vector3(cos(angle), 0, sin(angle)) * rng.randf_range(0.06, 0.22)
-		var height := rng.randf_range(0.18, 0.55)
+		var side := Vector3(cos(yaw), 0, sin(yaw)) * rng.randf_range(0.003, 0.008)
+		var lean := Vector3(cos(angle), 0, sin(angle)) * rng.randf_range(0.1, 0.3)
+		var height := rng.randf_range(0.12, 0.42)
 		var middle := base + lean * 0.25 + Vector3(0, height * 0.5, 0)
 		var points := [base - side, base + side, middle - side * 0.65, middle + side * 0.65, base + lean + Vector3(0, height, 0)]
 		var heights := [0.0, 0.0, 0.5, 0.5, 1.0]
@@ -454,44 +524,12 @@ func _make_clump() -> ArrayMesh:
 
 
 func _make_bush() -> ArrayMesh:
-	var st := SurfaceTool.new()
-	st.begin(Mesh.PRIMITIVE_TRIANGLES)
-	var rng := RandomNumberGenerator.new()
-	rng.seed = 55127
-	for i in 80:
-		var angle := rng.randf() * TAU
-		var up := rng.randf_range(0.12, 1.15)
-		var radius := sqrt(rng.randf()) * 0.62 * sqrt(maxf(0.1, 1.0 - pow((up - 0.65) / 0.75, 2.0)))
-		var center := Vector3(cos(angle) * radius, up - 0.65, sin(angle) * radius)
-		var along := Vector3(cos(angle) * 0.6, rng.randf_range(0.4, 0.9), sin(angle) * 0.6).normalized()
-		var side := Vector3(-sin(angle), 0, cos(angle)).rotated(along, rng.randf_range(-0.7, 0.7))
-		var width := rng.randf_range(0.08, 0.15)
-		var length := rng.randf_range(0.15, 0.25)
-		var normal := side.cross(along).normalized()
-		var points := [center - side * width - along * length, center + side * width - along * length,
-			center + side * width + along * length, center - side * width + along * length]
-		var uv := [Vector2(0, 1), Vector2(1, 1), Vector2(1, 0), Vector2(0, 0)]
-		for j in [0, 2, 1, 0, 3, 2]:
-			st.set_normal(normal)
-			st.set_uv(uv[j])
-			st.add_vertex(points[j])
-	return st.commit()
+	return preload("res://assets/foliage/woodland/shrub_02-0.res")
 
 
 func _make_stone() -> ArrayMesh:
-	var sph := SphereMesh.new()
-	sph.radial_segments = 7
-	sph.rings = 4
-	var arrays := sph.get_mesh_arrays()
-	var verts: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
-	var rng := RandomNumberGenerator.new()
-	rng.seed = 99
-	for i in verts.size():
-		verts[i] *= rng.randf_range(0.8, 1.15)
-	arrays[Mesh.ARRAY_VERTEX] = verts
-	var m := ArrayMesh.new()
-	m.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
-	return m
+	# Retain the baked distance LODs; rebuilding surface arrays discards them.
+	return preload("res://assets/foliage/woodland/rock_moss_set_01-2.res")
 
 
 const GRASS_SHADER := """
@@ -505,6 +543,7 @@ uniform vec3 dry_col : source_color = vec3(0.55, 0.49, 0.3);
 uniform float wind = 0.11;
 uniform sampler2D scar : hint_default_black, filter_linear, repeat_disable;
 uniform sampler2D trench_mask : hint_default_black, filter_linear, repeat_disable;
+#include "res://scripts/game/trench_vegetation.gdshaderinc"
 uniform sampler2DArray deform_tex : filter_linear, repeat_disable;
 // TERRAIN_TEXTURE_HELPER
 // CLOUD_SHADOW
@@ -530,7 +569,7 @@ void vertex() {
 	// shell holes and blast scars flatten and scorch the grass
 	burnt = texture(scar, (o.xz + __MAP_HALF__) / __MAP_SIZE__).r;
 	// nothing grows in a trench
-	if (textureLod(trench_mask, (o.xz + __MAP_HALF__) / __MAP_SIZE__, 0.0).r > 0.3) {
+	if (trench_disturbed(trench_mask, (o.xz + __MAP_HALF__) / __MAP_SIZE__, 0.85 / __MAP_SIZE__) > 0.1) {
 		VERTEX *= 0.0;
 	}
 	VERTEX.y *= 1.0 - burnt * 0.85;
@@ -570,11 +609,13 @@ void fragment() {
 const BUSH_SHADER := """
 shader_type spatial;
 uniform sampler2D leaf_texture : source_color, filter_linear_mipmap, repeat_disable;
+uniform sampler2D leaf_surface : hint_normal, filter_linear_mipmap, repeat_disable;
 uniform float wind = 0.03;
 render_mode specular_disabled, cull_disabled;
 varying float plant_height;
 varying float rnd;
 uniform sampler2D trench_mask : hint_default_black, filter_linear, repeat_disable;
+#include "res://scripts/game/trench_vegetation.gdshaderinc"
 uniform sampler2DArray deform_tex : filter_linear, repeat_disable;
 // TERRAIN_TEXTURE_HELPER
 // CLOUD_SHADOW
@@ -586,7 +627,7 @@ void vertex() {
 #ifdef CLOUD_PATTERN
 	cloud_v = cloud_sun(MODEL_MATRIX[3].xyz);
 #endif
-	if (textureLod(trench_mask, (MODEL_MATRIX[3].xz + __MAP_HALF__) / __MAP_SIZE__, 0.0).r > 0.3) {
+	if (trench_disturbed(trench_mask, (MODEL_MATRIX[3].xz + __MAP_HALF__) / __MAP_SIZE__, 0.85 / __MAP_SIZE__) > 0.1) {
 		VERTEX *= 0.0;
 	}
 	float gd = terrain_height(deform_tex, (MODEL_MATRIX[3].xz + __MAP_HALF__) / __MAP_SIZE__);
@@ -614,8 +655,11 @@ void fragment() {
 		col = mix(col * 12.92, 1.055 * pow(max(col, vec3(0.0)), vec3(1.0 / 2.4)) - 0.055, step(vec3(0.0031308), col));
 	}
 	ALBEDO = col;
-	ROUGHNESS = 0.95;
-	AO = 0.6 + 0.4 * up;
+	vec4 detail = texture(leaf_surface, UV);
+	NORMAL_MAP = vec3(detail.rg, 1.0);
+	NORMAL_MAP_DEPTH = 0.4;
+	ROUGHNESS = clamp(detail.a, 0.65, 1.0);
+	AO = detail.b * (0.6 + 0.4 * up);
 	AO_LIGHT_AFFECT = 0.5;
 	// Keep the engine's two-sided normal, with both leaf faces receiving skylight.
 	vec3 leaf_normal = (INV_VIEW_MATRIX * vec4(NORMAL, 0.0)).xyz;
@@ -626,18 +670,26 @@ void fragment() {
 }
 """
 
-## The stones in the grass: grey and rough.
+## Scanned stones share the woodland geology and cloud lighting.
 const STONE_SHADER := """
 shader_type spatial;
-uniform vec3 col : source_color = vec3(0.42, 0.4, 0.37);
+uniform sampler2D stone_color : source_color, filter_linear_mipmap_anisotropic;
+uniform sampler2D stone_surface : hint_normal, filter_linear_mipmap_anisotropic;
 // CLOUD_SHADOW
 varying vec3 wpos;
 void vertex() {
+	VERTEX.y -= 0.25; // The established scatter origin sits slightly above the soil.
 	wpos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
 }
 void fragment() {
-	ALBEDO = col;
-	ROUGHNESS = 0.9;
+	vec4 photograph = texture(stone_color, UV);
+	ALBEDO = photograph.rgb;
+	vec4 detail = texture(stone_surface, UV);
+	NORMAL_MAP = vec3(detail.rg, 1.0);
+	NORMAL_MAP_DEPTH = 0.8;
+	ROUGHNESS = clamp(detail.a, 0.65, 1.0);
+	AO = detail.b;
+	AO_LIGHT_AFFECT = 0.5;
 	// CLOUD_FRAGMENT cloud_sun(wpos)
 }
 """

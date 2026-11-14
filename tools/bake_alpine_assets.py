@@ -71,7 +71,7 @@ def fractured_rock(color, height, normal, ao, rough):
 
 # Meadow turf, 90 m drone survey of grassland and eroded soil follow the gravel layer in the array.
 MATERIALS = ["rock_face_03", "aerial_rocks_02", "aerial_grass_rock", "snow_02", "forest_leaves_02",
-             "grass_ground", "rocky_terrain_02", "dirt_aerial_02"]
+             "grass_ground", "rocky_terrain_02", "dirt_aerial_02", "brown_mud"]
 
 
 def materials(names=MATERIALS):

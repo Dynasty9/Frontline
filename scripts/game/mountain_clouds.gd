@@ -33,9 +33,16 @@ func apply_settings(atmo: Atmosphere) -> void:
 	material.set_shader_parameter("steps", [8, 8, 12, 20, 32][quality])
 	material.set_shader_parameter("detail", quality >= 3)
 	material.set_shader_parameter("still", bool(Settings.get_v("reduce_motion")))
-	var mood: Dictionary = Atmosphere.MOODS[atmo.mood]
-	material.set_shader_parameter("lit_color", (mood.sun as Color) * (0.11 if atmo.mood == "night" else 0.95))
+	# (the light as it is now: a mood's own, or one blending into the next while time passes)
+	var mood: Dictionary = atmo._d if not atmo._d.is_empty() else Atmosphere.MOODS[atmo.mood]
+	material.set_shader_parameter("lit_color", (mood.get("tint", mood.sun) as Color) * atmo.by_mood(LIT, 0.95))
 	material.set_shader_parameter("shade_color", (mood.fog as Color) * 0.8)
 	var sunlight := Basis.from_euler(Vector3(deg_to_rad(-float(mood.elev)), deg_to_rad(float(mood.azim)), 0.0)).z
 	material.set_shader_parameter("sun_direction", sunlight)
-	material.set_shader_parameter("coverage", 0.47 if atmo.mood in ["rain", "overcast"] else 0.56)
+	material.set_shader_parameter("coverage", atmo.by_mood(COVERAGE, 0.56))
+
+
+## How brightly the light catches the banks (moonlight barely), and how much
+## of the sky they cover, by mood.
+const LIT := {"night": 0.11}
+const COVERAGE := {"rain": 0.47, "overcast": 0.47}
