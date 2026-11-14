@@ -1,0 +1,69 @@
+{
+  "before_ref": "54823975 with the second construction pass applied: an intermediate state of the change that adds this entry, which carries passes 2 to 6",
+  "after_ref": "the change that adds this entry",
+  "engine": "Godot 4.7.2 stable",
+  "renderer": "forward_plus",
+  "team": 0,
+  "seed": 3,
+  "source_size": [
+    1600,
+    900
+  ],
+  "sheet_size": [
+    1600,
+    3600
+  ],
+  "composition": "Uncropped source renders resized to 800x450, before left, after right, short labels. JPEG quality 82.",
+  "command": "godot --path <checkout> tools/showcase/vehicle-surfaces.tscn -- --surface-single --surface-kinds=<model> --surface-focus=<focus> --surface-size=<size> [--surface-rear] --surface-out=<outside-repo-directory>",
+  "shots": [
+    {
+      "model": "old_tank",
+      "focus": "1.0,1.35,-2.6",
+      "size": 3.0,
+      "label": "T-55: track guard, spare links, searchlight"
+    },
+    {
+      "model": "sochor",
+      "focus": "0,2.2,-7.95",
+      "size": 1.4,
+      "label": "Sochor: muzzle brake"
+    },
+    {
+      "model": "sochor",
+      "focus": "0,1.7,-3.7",
+      "size": 2.2,
+      "label": "Sochor: travel lock and track guards"
+    },
+    {
+      "model": "hemtt_fuel",
+      "focus": "0,2.4,1.2",
+      "size": 5.0,
+      "label": "HEMTT tanker: walkway, manholes, rails"
+    },
+    {
+      "model": "zamak_repair",
+      "focus": "0.3,2.4,2.6",
+      "size": 3.6,
+      "rear": true,
+      "label": "Zamak repair: crane, gas bottles"
+    },
+    {
+      "model": "van_ambulance",
+      "focus": "0,2.3,-0.6",
+      "size": 3.0,
+      "label": "Ambulance: light bar, cross, plate"
+    },
+    {
+      "model": "ghosthawk",
+      "focus": "1.3,0.8,-3.9",
+      "size": 2.4,
+      "label": "Ghost Hawk: trailing-arm gear"
+    },
+    {
+      "model": "speedboat_hmg",
+      "focus": "0,1.8,-2.8",
+      "size": 4.0,
+      "label": "Speedboat: searchlight, benches, bow eye"
+    }
+  ]
+}

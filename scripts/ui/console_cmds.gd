@@ -39,6 +39,7 @@ const BENCH := [
 	["shadows", 0, "Shadows off"],
 	["ssao", false, "Ambient occlusion off"],
 	["ssil", false, "Indirect light (SSIL) off"],
+	["ssgi", 0, "Bounce light off"],
 	["gi", false, "Global illumination off"],
 	["vol_fog", false, "Volumetric fog off"],
 	["ssr", false, "Reflections off"],

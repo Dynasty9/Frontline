@@ -7,6 +7,7 @@ var session := ""
 var token := ""
 var starting := false
 var connected := false
+var build_progress := {}
 var child := false
 var parent_pid := -1
 var _started_ms := 0
@@ -180,6 +181,11 @@ func _process(_dt: float) -> void:
 		Net.net_error.emit("The local simulation stopped. Log: " + log_path)
 		return
 	if not starting:
+		if float(build_progress.get("frac", 0.0)) < 0.7 and FileAccess.file_exists(session + ".progress"):
+			# A replaced sidecar may briefly be unreadable on Windows; retry next poll.
+			var progress := JSON.new()
+			if progress.parse(FileAccess.get_file_as_string(session + ".progress")) == OK and progress.data is Dictionary:
+				build_progress = progress.data
 		return
 	if _retry_ms > 0 and now >= _retry_ms:
 		_retry_ms = 0
@@ -244,11 +250,12 @@ func stop() -> void:
 	pid = -1
 	starting = false
 	connected = false
+	build_progress.clear()
 	_port = 0
 	_retry_ms = 0
 	_retries = 0
 	if not session.is_empty():
-		for suffix in [".json", ".ready", ".error", ".stop", ".speed", ".heartbeat"]:
+		for suffix in [".json", ".ready", ".error", ".stop", ".speed", ".heartbeat", ".progress"]:
 			if FileAccess.file_exists(session + suffix):
 				DirAccess.remove_absolute(session + suffix)
 	token = ""
