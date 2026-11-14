@@ -80,6 +80,14 @@ var ladder: Structure
 var ladder_contacts := {}
 
 
+## The camouflage his uniform is reprinted in ("" leaves the texture's own),
+## his webbing's colour (null leaves it black), and where on the pattern he
+## was cut from.
+var camo_pattern := ""
+var camo_gear: Variant = null
+var camo_seed := Vector2.ZERO
+
+
 func build(clips: Dictionary = MocapCharacter.CLIPS, role_prop: Node3D = null, uniform_tint := Color.WHITE) -> bool:
 	source = MocapCharacter.new()
 	add_child(source)
@@ -102,6 +110,12 @@ func build(clips: Dictionary = MocapCharacter.CLIPS, role_prop: Node3D = null, u
 				material.metallic = 0.0
 				material.roughness = 0.85
 				material.metallic_specular = 0.25
+				if camo_pattern != "" or camo_gear != null:
+					# his uniform reprinted in his side's camouflage (Camo)
+					mesh.set_surface_override_material(surface, Camo.swat_material(mesh.mesh.surface_get_material(surface), surface, camo_pattern, camo_gear))
+					if not Mats.per_material:
+						mesh.set_instance_shader_parameter(&"camo_seed", camo_seed)
+					continue
 				mesh.set_surface_override_material(surface, material)
 
 	skeleton = visual.find_children("*", "Skeleton3D", true, false)[0]

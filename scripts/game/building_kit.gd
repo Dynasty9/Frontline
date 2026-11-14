@@ -32,6 +32,9 @@ class Sink:
 var sink: Sink
 var frame := Transform3D.IDENTITY
 var rng: RandomNumberGenerator
+## A side's disruptive paint over what this kit builds (Camo.painted), or -1:
+## a base's buildings are painted over, a town's are not.
+var paint := -1
 
 static var _shapes := {}
 static var _plates := {}
@@ -71,6 +74,7 @@ func moved(xf: Transform3D) -> BuildingKit:
 	k.sink = sink
 	k.rng = rng
 	k.frame = frame * xf
+	k.paint = paint
 	return k
 
 
@@ -98,6 +102,8 @@ func to_model(p: Vector3) -> Vector3:
 ## to `col` (or the surface's own colour), casting a shadow or not.
 func part(mesh: Mesh, kind: String, xf: Transform3D, col: Variant = null, shadow := true) -> void:
 	sink.parts += 1
+	if paint >= 0:
+		kind = Camo.painted(kind, paint)
 	shadow = shadow or sink.cast_all
 	var tint := Mats.tint_for(kind, col) if col is Color else Color(1, 1, 1)
 	var placed := frame * xf

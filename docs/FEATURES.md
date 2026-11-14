@@ -469,9 +469,10 @@ Ambush Alley autoplay can call its existing mortar support against spotted, stop
   moving one way while he aims another turns his hips and legs towards where he's going and his shoulders
   back to the target. Kicking, lying on a grenade, cooking one (grenade in hand), breathing at rest, a
   knee-buckle before the fall, three ways to lie dead.
-- Kit: Coalition soldiers wear slate sneaking suits under armour vests, helmets and goggles (or a bandana),
-  codec headsets, shoulder, elbow, knee and shin pads, and carry carbines with optics; Rebels wear balaclavas,
-  berets, field caps and mismatched field jackets with chest rigs or bandoliers, and carry AKs.
+- Kit: Coalition soldiers wear slate sneaking suits printed in a tonal slate camouflage under armour vests,
+  camouflage-covered helmets and goggles (or a bandana), codec headsets, shoulder, elbow, knee and shin pads, and
+  carry carbines with optics; Rebels wear balaclavas, berets, field caps and mismatched field jackets and trousers
+  in surplus camouflage of every kind (or plain), with chest rigs or bandoliers, and carry AKs.
 
 **Standing orders** (`soldier.gd`, `squad.gd`, `vehicle.gd`; `World.execute_cmd` "stance", "roe", "prio",
 "pop_smoke", "dismount")
@@ -1387,6 +1388,19 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   stacked from individual bags in proper courses, FOBs and camouflage nets throw dappled shadows, trees sway.
   Defences sit in the ground: trodden earth round the nests and pits, earth banked against the bunkers up to their
   slits.
+- Camouflage (`camo.gd`): uniforms are printed, not tinted: hard-edged motifs at their real size, laid out so a
+  blotch runs on unbroken round a sleeve or a helmet, each man cut from a different part of the bolt. The patterns
+  follow real issue: woodland, leaf, three-colour desert, fleck dots, square-pixel digital, tiger stripe, rain
+  dashes and multi-terrain, plus the Coalition's tonal slate. The Coalition wear their slate (the detailed riflemen
+  its digital form); a Rebel's jacket and trousers are surplus from anywhere, often two different patterns, or
+  plain. On the imported character the shader reprints the cloth in its texture space, keeping its folds, and its
+  black webbing takes the man's rig colour. Detail too fine to see fades to the colour the print averages to.
+  The base's buildings (barracks, factory, research post, and the Coalition's concrete bunker) are painted over in
+  big disruptive blotches of three colours by side, green, brown and black or sand, earth and olive, running on
+  across walls, corners and roof, sun-bleached on top and flaked through low down. Camouflage nets are garnish
+  cut into leaves, each turned its own way, tied to a diamond cord mesh and printed in blotches, woodland for the
+  Coalition and desert for the Rebels; the FOB's net is pitched over the block on its poles and hangs to head
+  height.
 - Vehicles are built from sloped, lofted armour: road wheels that turn, tracks, mantlets, cupolas, stowage, rotor blur.
   On the Abrams, T-55 and Bradley, each track cycles independently and its road wheels follow the ground under that side.
   Hinged shoes retain their place around the track. The T-55's upper run rests on its road wheels and sags in the gaps.
