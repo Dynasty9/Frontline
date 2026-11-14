@@ -3017,7 +3017,7 @@ func _build_model() -> void:
 			BuildingWeathering.heap(_kit(rng), size.x, maxf(1.0, size.z), rng)
 		"floor":
 			# a rug in most houses' main room, lying flat
-			if size.x > 3.0 and size.z > 3.0 and rng.randf() < 0.65 and variant != 2:
+			if size.x > 3.0 and size.z > 3.0 and rng.randf() < 0.65 and variant != 2 and variant != 3:
 				BuildingFurnishings.rug(_kit(rng), Vector3(rng.randf_range(-0.6, 0.6), 0.06, rng.randf_range(-0.5, 0.5)),
 					Vector2(minf(size.x * 0.4, 3.0), minf(size.z * 0.4, 2.2)), BuildingFurnishings.FABRICS[rng.randi() % BuildingFurnishings.FABRICS.size()])
 			# a ruin: its roof burned and fell in on the floor
@@ -3032,6 +3032,9 @@ func _build_model() -> void:
 			home.seed = rng.seed ^ 0x7ab1e5
 			if variant == 0 and size.x > 4.5 and size.z > 4.5 and home.randf() < 0.75:
 				BuildingInteriors.table(_kit(home), size, BuildingInteriors.WOODS[home.randi() % BuildingInteriors.WOODS.size()], home)
+			# a shop's: its shelving, its counter, its stock
+			if variant == 3:
+				BuildingInteriors.shop(_kit(home), size, home)
 		"bridge":
 			_bridge_model(rng)
 		"dock":

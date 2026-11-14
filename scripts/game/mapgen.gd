@@ -1186,7 +1186,8 @@ func _house(c: Vector3, w: float, d: float, axis: float, street_side: float, yar
 	var ruined := rng.randf() < ruin_p
 	# (a ruin's floor is marked, so it's drawn with the roof fallen in on it;
 	# a barn's, so it's bare and strewn with straw)
-	_spawn("floor", c, axis, -1, {"size": Vector3(w, 0.06, d), "variant": 1 if ruined else (2 if barn else 0)})
+	# (a shop's, so it's fitted out as one: TownGen._plan)
+	_spawn("floor", c, axis, -1, {"size": Vector3(w, 0.06, d), "variant": 1 if ruined else (2 if barn else (3 if plan.get("shop", false) else 0))})
 	_unplace_last()
 	_place([Vector2(c.x, c.z), half, axis])
 	if wk > 0:

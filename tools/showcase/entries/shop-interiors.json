@@ -1,0 +1,20 @@
+{
+  "entry": "changelog/unreleased/shop-interiors.md",
+  "summary": "Shops are fitted out inside: shelving stocked with goods, a counter with its till, stock at the back.",
+  "medium": "still",
+  "stage": "tools/showcase/building-surfaces.tscn",
+  "rationale": "Appearance change seen when a shop's roof lifts: matched studio rows of two shops with their roofs off, then each closer, from a double-resolution render.",
+  "source_ref": "8281842aa8e2a5e997aac775c3273d2fdba866fa",
+  "before_ref": "326d3a4bed2c34b913aeb0b2326526518f007377",
+  "sources": [
+    {
+      "file": "changelog/unreleased/shop-interiors/comparison.jpg",
+      "sha256": "cca43bc7dabecd505aede0ab6a507aafdd901e6b66e5e1932455273ee7f24bb9"
+    },
+    {
+      "file": "changelog/unreleased/shop-interiors/capture.json",
+      "sha256": "56a3fc7f2bd2e1d333a2a9ea5105dfc9aabfae36060cced17d4d2fded6fbcd67"
+    }
+  ],
+  "output": null
+}

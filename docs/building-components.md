@@ -144,7 +144,11 @@ chair; pictures and a shelf hang only over the low ones. Everything keeps `REACH
 in from its ends, so two walls meeting in a corner never put things in each other's way. A floor big enough has a
 table in the middle with its chairs (one knocked over now and then). It is looks only, in the walls' own
 world-space materials so a town's walls still draw together; a chair and a table are one cached shape each, and
-books stand in runs. Render three rooms with `--building-kinds=house_rooms`.
+books stand in runs. Render three rooms with `--building-kinds=house_rooms`. A shop's floor (variant 3:
+`TownGen._plan` marks a shop) is fitted out instead of furnished (`BuildingInteriors.shop`): rows of shelving
+running back from the door, stocked in runs of one kind or picked half empty, and the counter across the back
+with its till and scales and stock at its end, all clear of the front and of what stands against the walls.
+Render two with `--building-kinds=shop_rooms`.
 
 ## House plans and storeys
 
