@@ -82,7 +82,10 @@ darkens toward that edge (`UiScrim`), so it reads over any ground without a box:
 - **Top** (the **Status** line): the side, `SUP` and its rate, `UNITS`, `FOB`, `TOWNS`, and the clock. A line under
   it for each FOB says what its trucks are doing.
 - **Left**: the ORBAT (one ruled line per squad and vehicle) and under it FIRES (the ready missions; the rest
-  folded into one line). The minimap and its tool column at the bottom.
+  folded into one line). The minimap and its tool column at the bottom. A quiet row (a squad moving or holding
+  with nothing wrong, a vehicle holding or moving whole) steps back to `DIM` and `FAINT`; one that needs the
+  commander (in contact, pinned, breaking, short of ammunition, carrying wounded, attacking) stays bright. Pointing
+  at a row marks its unit on the map with accent ticks.
 - **Bottom**: the selection (the squad's name, its codes, the plan's stages, a cell per man) and the orders as keys.
   The bottom scrim only darkens while there's something selected.
 - **Right**: the **Log** and the mission's objectives; in co-op the command net.
@@ -148,9 +151,15 @@ says in prose. They come in three levels:
 - a **caution** (`▲ CAUTION`) is ruled off above and below in `WARN` and flickers on once;
 - a **warning** (`▲ WARNING`) is ruled off in `BAD` and flickers on twice.
 
+The same report from several units within a few seconds is one line that names them (`Bravo 1, Charlie 1 and
+Delta 1 are moving out of the shellfire.`, then `Bravo 1, Charlie 1 +3 are …`).
+
 The message history (L by default) opens in their place on a lighter ink.
 
 ## Marks on the battlefield
+
+A squad's callsign over its symbol shows only when it helps: when it is selected, pointed at on the map or in the
+ORBAT, suppressed, newly ordered, or on the tactical map. Otherwise the symbol and its pips say enough.
 
 Names over bases and towns are capitals with the world-text outline and a small square in the owner's colour, no
 box; a selected vehicle wears accent corner ticks; hover cards are ink with ticks and counted health and ammunition;
