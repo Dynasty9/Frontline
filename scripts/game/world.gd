@@ -578,6 +578,20 @@ func trench_mount_spot(pos: Vector3, yaw: float) -> Dictionary:
 	return best
 
 
+## The nearest dugout within r of p with room left in it, or null.
+func dugout_for(p: Vector3, r: float) -> Structure:
+	var best: Structure = null
+	var bd := r
+	for st in structures_near(p, r + 4.0):
+		if not TrenchNet.has_dugout(st) or st.inside.size() >= TrenchNet.DUGOUT_ROOM:
+			continue
+		var d := Defs.flat(TrenchNet.dugout_door(st) - p).length()
+		if d < bd:
+			bd = d
+			best = st
+	return best
+
+
 func trench_depth(p: Vector3, margin := 0.05) -> float:
 	var depth := 0.0
 	for st: Structure in _trenches_at(p):

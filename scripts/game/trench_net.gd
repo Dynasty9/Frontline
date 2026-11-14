@@ -248,6 +248,30 @@ static func has_recess(st) -> bool:
 	return st.size.x >= 5.0 and st.eid % 3 == 0
 
 
+## What a rear recess holds: a dugout's entrance (the stairs down to a shelter
+## dug deep under the back wall), a roofed funk hole or a supply shelf.
+const RECESS_DUGOUT := 0
+const RECESS_FUNK_HOLE := 1
+const RECESS_SHELF := 2
+const DUGOUT_ROOM := 9  # a section's dugout held a section, packed in
+
+
+static func recess_kind(st) -> int:
+	return posmod(floori(st.eid / 3.0), 3)
+
+
+## A finished section with a dugout under its back wall, its entrance still
+## open (bombardment that brings the section in buries the stairs too).
+static func has_dugout(st) -> bool:
+	return st.skind == "trench" and not st.gone and st.built and has_recess(st) and recess_kind(st) == RECESS_DUGOUT and st.trench_depth() >= 0.85
+
+
+## Where men go down: the floor of the recess, in front of the door.
+static func dugout_door(st) -> Vector3:
+	var rear: Vector3 = Basis(Vector3.UP, st.yaw) * Vector3(0, 0, -st._enemy_side())
+	return st.position + rear * 1.25
+
+
 static func recess_of(st) -> Array:
 	if not has_recess(st):
 		return []

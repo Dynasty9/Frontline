@@ -44,7 +44,7 @@ var plan = null  # AttackPlan this squad is part of (untyped: shared between squ
 var breach_by: Soldier = null  # the man clearing a house for the squad (see SoldierBrain)
 # battle drills and morale (see SquadBrain)
 var morale := -1.0  # 0-100 (set from the side's base on the first tick)
-var drill := ""  # under way: "contact", "displace", "withdraw", "rout" (or "")
+var drill := ""  # under way: "contact", "displace", "dugout", "withdraw", "rout" (or "")
 var drill_t := 0.0
 var drill_pos := Vector3.ZERO
 var halt_dest := Vector3.ZERO  # where a move was going when contact stopped it
@@ -56,6 +56,9 @@ var impacts: Array = []  # [pos, time]: shells and bombs landing near us
 var last_cas_t := -99.0
 var displace_cd := 0.0
 var pre_order: Array = []  # what it was doing before it displaced: [order, pos, facing, mode]
+var dugout_cd := 0.0
+var dugout_spots := {}  # eid -> where each man was before he went down the dugout
+var dugout_st = null  # the trench section whose dugout it is sheltering in (Structure)
 var ammo_t := 0.0
 var bt_path := ""
 var bt_cd := {}
@@ -325,6 +328,11 @@ func formation(center: Vector3, face: Vector3, n: int, wide := false) -> Array:
 
 ## Any squad-wide order pulls individually commanded men back into the squad.
 func _regroup() -> void:
+	if drill == "dugout":
+		# a new order: everybody up the dugout stairs first, so it reaches them
+		for m in members:
+			if is_instance_valid(m) and not m.gone and m.life == Soldier.Life.HIDDEN and m.hidden_reason == "dugout":
+				m.leave_dugout()
 	plan = null
 	shown_order = ""
 	travel = false

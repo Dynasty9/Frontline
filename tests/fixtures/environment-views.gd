@@ -33,7 +33,7 @@ func capture() -> void:
 		quit()
 		return
 	var heights: PackedFloat32Array = world.terrain.landform.heights
-	assert(not heights.is_empty() or "--capture-set=trenches" in OS.get_cmdline_user_args() or "--capture-set=fortifications" in OS.get_cmdline_user_args() or "--capture-set=woodland" in OS.get_cmdline_user_args(), "The environment stage needs a generated alpine map")
+	assert(not heights.is_empty() or "--capture-set=trenches" in OS.get_cmdline_user_args() or "--capture-set=fortifications" in OS.get_cmdline_user_args() or "--capture-set=woodland" in OS.get_cmdline_user_args() or "--capture-set=trench-fittings" in OS.get_cmdline_user_args(), "The environment stage needs a generated alpine map")
 	var peak_index := 0
 	for i in heights.size():
 		if heights[i] > heights[peak_index]:
@@ -82,6 +82,42 @@ func capture() -> void:
 			["inside", Vector3(3, -0.6, -28), 5.5, -23.0, 0.5],
 			["bunker", Vector3(0, 0, -58), 14.0, -32.0, -0.65],
 			["position", Vector3(0, 0, -40), 55.0, -50.0, 0.35]]
+	var eyes := {}  # name -> [eye, target]: photo views that bypass the RTS camera
+	if "--capture-set=trench-fittings" in OS.get_cmdline_user_args():
+		# one close view of each kind of fitting, found in the scenario's own lines
+		var fittings = load("res://scripts/game/trench_fittings.gd")
+		var net = load("res://scripts/game/trench_net.gd")
+		var found := {}
+		for st in world.structures:
+			if st.gone or not st.built:
+				continue
+			var key := ""
+			if st.skind == "trench" and fittings.fire_bay(st):
+				if net.has_recess(st):
+					key = ["dugout", "funk-hole", "shelf"][fittings.recess(st)]
+				else:
+					key = ["timber", "iron", "wattle"][fittings.revetment(st)]
+			elif st.skind in ["mg_nest", "hmg_nest"] and st.variant == 1:
+				key = "mg-bay"
+			if key != "" and not found.has(key):
+				found[key] = st
+		views = []
+		for key in ["dugout", "funk-hole", "timber", "iron", "wattle", "mg-bay"]:
+			if found.has(key):
+				var st = found[key]
+				views.append([key, st.position + Vector3(0, -0.4, 0), 7.5, -34.0, 0.35])
+				var b := Basis(Vector3.UP, st.yaw)
+				if key == "dugout":
+					var rear: float = -st._enemy_side()
+					views.append(["dugout-eye", st.position, 5.0, -30.0, 0.35])
+					eyes["dugout-eye"] = [st.position + b * Vector3(1.7, -0.25, -rear * 0.45), st.position + b * Vector3(0, -0.55, rear * 1.7)]
+				if key == "mg-bay":
+					views.append(["mg-front", st.position, 5.0, -30.0, 0.35])
+					eyes["mg-front"] = [st.position + b * Vector3(1.6, 0.9, -7.0), st.position + b * Vector3(0, 0.3, -1.3)]
+					views.append(["mg-trench", st.position, 5.0, -30.0, 0.35])
+					eyes["mg-trench"] = [st.position + b * Vector3(2.4, -0.15, 0.25), st.position + b * Vector3(0, 0.1, -1.2)]
+		views.append(["line", Vector3(-6, 0, -30), 20.0, -40.0, 0.35])
+		print("CAPTURE fittings ", found.keys())
 	if "--slope-review" in OS.get_cmdline_user_args():
 		assert(not heights.is_empty(), "Slope review requires generated geology")
 		var target := Vector3(-110, 0, -130)
@@ -239,6 +275,9 @@ func capture() -> void:
 		world.cam._apply()
 		if String(view[0]).begins_with("cut"):
 			world.cam.position = view[1]
+		if eyes.has(view[0]):
+			world.cam.cam.global_position = eyes[view[0]][0]
+			world.cam.cam.look_at(eyes[view[0]][1])
 		if view[0] == "inside":
 			world.cam.cam.global_position = Vector3(0.8, 0.02, -28.0)
 			world.cam.cam.look_at(Vector3(4.8, -0.5, -28.3))
