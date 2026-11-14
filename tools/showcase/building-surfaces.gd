@@ -190,6 +190,16 @@ func _subject(kind: String) -> Node3D:
 			if kind == "house_yard" and ClassDB.class_exists("Node") and ResourceLoader.exists("res://scripts/game/building_yards.gd"):
 				_yard(yard, 9.0, 7.6)
 			return yard
+		"house_garden":
+			# a house with its yard and, where the town plants them, a bed of
+			# flowers and shrubs along the front, a clipped hedge along the
+			# street with a gap for the path, shrubs at the back corners
+			var garden := _house(9.0, 7.6, 1, false)
+			if ResourceLoader.exists("res://scripts/game/building_yards.gd"):
+				_yard(garden, 9.0, 7.6)
+			if ResourceLoader.exists("res://scripts/game/building_planting.gd"):
+				_planting(garden, 9.0, 7.6)
+			return garden
 		"roofscape":
 			# four houses' roofs as the town draws them (their ids pick the
 			# form and wear): a hipped roof mended with a tarp and with a
@@ -476,6 +486,27 @@ func _yard(root: Node3D, w: float, d: float) -> void:
 	if yards.get("SHEDS") != null:
 		yards.call("shed", k.at_point(Vector3(w * 0.5 - 1.3, 0, d * 0.5 + 4.4), Vector3(0, PI, 0)), yards.get("SHEDS")[0], rng)
 		yards.call("trampoline", k.at_point(Vector3(-1.2, 0, d * 0.5 + 5.4)), yards.get("PADS")[0])
+	Mats.merge_static(root)
+
+
+## The planting round a house `w` by `d` as TownGen lays it out (its front
+## at -z, a 12 m lot, the street 2.3 m beyond the front wall).
+func _planting(root: Node3D, w: float, d: float) -> void:
+	var plants: GDScript = load("res://scripts/game/building_planting.gd")
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 11
+	var k := BuildingKit.nodes(root, rng)
+	var greens: Array = plants.get("GREENS")
+	var blooms: Array = plants.get("BLOOMS")
+	var face := -(d * 0.5 + 0.6)
+	plants.call("bed", k.at_point(Vector3(-3.1, 0, face), Vector3(0, PI, 0)), 2.0, 0.6, rng)
+	plants.call("shrub", k.at_point(Vector3(2.55, 0, face - 0.42)), 0.75, greens[1], blooms[1], rng)
+	for x: float in [-2.5, 2.5]:
+		for i in 2:
+			var cx := x * 0.5 + signf(x) * (0.25 + i * 2.3) + (0.75 if x > 0.0 else -0.75)
+			plants.call("hedge", k.at_point(Vector3(cx, 0, -(d * 0.5 + 1.85))), 2.2, 0.7, 0.55, greens[2], rng)
+	plants.call("shrub", k.at_point(Vector3(-5.4, 0, d * 0.5 + 1.0)), 1.0, greens[0], null, rng)
+	plants.call("shrub", k.at_point(Vector3(5.4, 0, d * 0.5 + 1.0)), 0.9, greens[3], blooms[0], rng)
 	Mats.merge_static(root)
 
 

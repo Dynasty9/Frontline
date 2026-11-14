@@ -1,0 +1,64 @@
+{
+  "before_ref": "e09de96a9eca5c266d1aa1327aaa3a0f4a185d5f",
+  "source_ref": "4297b1632d70c57347afaf1e23388ba5a2213c48",
+  "engine": "Godot 4.7.2 stable ed1daf0bf",
+  "stage": "tools/showcase/building-surfaces.tscn; tests/fixtures/environment-views.gd",
+  "command": "godot --path CHECKOUT --resolution 1600x900 tools/showcase/building-surfaces.tscn -- --building-out=OUTPUT --offscreen FLAGS",
+  "comparisons": [
+    {
+      "subjects": [
+        "house_garden"
+      ],
+      "flags": [
+        "--building-single",
+        "--building-kinds=house_garden"
+      ],
+      "after_flags": [
+        "--building-match=BEFORE/capture.json"
+      ],
+      "cameras": {
+        "house_garden": [
+          -0.27400016784668,
+          2.97118353843689,
+          2.85474443435669,
+          15.5725002288818,
+          61.6516761779785
+        ]
+      },
+      "crop": [
+        200,
+        160,
+        1400,
+        860
+      ]
+    },
+    {
+      "subjects": [
+        "town"
+      ],
+      "command": "godot --path CHECKOUT --resolution 1600x900 --script tests/fixtures/environment-views.gd -- --aivai --seed=3 --offscreen --nohud --set=perf:0 --preset=high --mood=day --focus=0,0 --capture-set=town",
+      "view": "street",
+      "crop": [
+        0,
+        300,
+        1100,
+        900
+      ]
+    },
+    {
+      "subjects": [
+        "town"
+      ],
+      "command": "godot --path CHECKOUT --resolution 1600x900 --script tests/fixtures/environment-views.gd -- --aivai --seed=3 --offscreen --nohud --set=perf:0 --preset=high --mood=day --focus=0,0 --capture-set=town",
+      "view": "driveway",
+      "crop": [
+        0,
+        0,
+        1000,
+        520
+      ]
+    }
+  ],
+  "notes": "Both sides render the source_ref studio stage: house_garden is a house with its yard, and where BuildingPlanting exists the planting TownGen lays out (studio hedge 0.7 m so the camera sees over it). The baseline is the house plans branch (with the town realism stack), which this builds on.",
+  "composition": "PIL: matched rows, 792 px halves, JPEG quality 82"
+}

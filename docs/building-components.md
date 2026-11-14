@@ -226,6 +226,19 @@ door to the house) and some lawns with room for it a trampoline; these are drawn
 They're set dressing (Decor, appended after the rest so the town's other dressing keeps its looks): no cover,
 and a blast or a truck knocks them over. Render them with `--building-kinds=house_yard` in the studio stage.
 
+## Planting
+
+`BuildingPlanting` builds what grows round a house from the trees' photographed leaf cards round a dark core, so
+a bush has no see-through gaps and bakes with the rest of the scenery: `shrub` (a mound of clumps, flower heads
+on a flowering one), `hedge` (clipped, its top level) and `bed` (turned earth edged with bricks on end, plants
+and flowers in two or three colours). `TownGen._planting` places them after everything else, from a stream of its
+own seeded from where the lot is: along a house's front, outside the paved apron and clear of the fence, a bed or
+a few shrubs in each stretch clear of the door, the bins and the pots (it draws the yard's stream as
+`_place_yard_life` does to know where they are); a clipped hedge along the front of nearly half the unfenced
+gardens, with gaps for the path, the drive and the mailbox; and a shrub or two behind the house at its corners,
+never in a wing or on the drive's side. They're Decor (`shrub`, `hedge_trim`, `bed`): no cover, and a blast or a
+truck flattens them. Render a planted garden with `--building-kinds=house_garden` in the studio stage.
+
 ## Wall fittings
 
 What's fixed to a house's walls comes from `BuildingFittings` (`meter_box`, `tap`, `wall_unit`, `wall_dish`,

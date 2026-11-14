@@ -23,7 +23,7 @@ const BREAKABLE := {
 	"mailbox": [Vector3(0.3, 1.25, 0.45), 15.0], "bus_stop": [Vector3(3.3, 2.4, 1.6), 300.0],
 	"bins": [Vector3(1.3, 1.0, 0.75), 25.0], "pots": [Vector3(1.2, 0.5, 0.45), 15.0],
 	"bike": [Vector3(0.5, 1.0, 1.7), 15.0], "garden_set": [Vector3(1.7, 1.0, 1.7), 30.0], "kennel": [Vector3(0.75, 0.85, 0.95), 40.0],
-	"wares": [Vector3(1.6, 1.0, 1.0), 30.0], "shed": [Vector3(2.4, 2.3, 1.9), 120.0], "trampoline": [Vector3(3.3, 0.9, 3.3), 40.0],
+	"wares": [Vector3(1.6, 1.0, 1.0), 30.0], "shrub": [Vector3(1.0, 0.9, 1.0), 25.0], "hedge_trim": [Vector3(2.2, 1.0, 0.6), 60.0], "bed": [Vector3(2.0, 0.4, 0.7), 10.0], "shed": [Vector3(2.4, 2.3, 1.9), 120.0], "trampoline": [Vector3(3.3, 0.9, 3.3), 40.0],
 	"planter": [Vector3(1.2, 1.1, 1.2), 400.0], "bollard": [Vector3(0.2, 0.85, 0.2), 60.0],
 	"stall": [Vector3(2.6, 2.3, 1.5), 80.0], "fence": [Vector3(2.0, 1.1, 0.15), 40.0],
 	"clothesline": [Vector3(4.0, 1.9, 0.9), 20.0], "flagpole": [Vector3(0.2, 8.0, 0.2), 60.0],
@@ -537,6 +537,17 @@ func _make(h: Node3D, kind: String, ex) -> void:
 				_sag(h.transform * Vector3(-2.0, 1.85, z), h.transform * Vector3(2.0, 1.85, z), 0.15)
 				for i in rng.randi_range(2, 3):
 					_m(Res.box(Vector3(rng.randf_range(0.4, 0.7), rng.randf_range(0.5, 0.75), 0.02)), "fabric", Vector3(-1.4 + i * 1.1 + rng.randf_range(-0.2, 0.2), 1.45, z), CANVAS[rng.randi() % CANVAS.size()].lightened(0.25), Vector3.ZERO, false)
+		"shrub", "hedge_trim", "bed":
+			# what grows round the houses (BuildingPlanting)
+			var pk := BuildingKit.baked(_bake, rng, _at)
+			var v: Vector3 = ex
+			match kind:
+				"shrub":
+					BuildingPlanting.shrub(pk, v.x, BuildingPlanting.GREENS[int(v.y) % BuildingPlanting.GREENS.size()], BuildingPlanting.BLOOMS[int(v.z)] if v.z >= 0.0 else null, rng)
+				"hedge_trim":
+					BuildingPlanting.hedge(pk, v.x, v.y, 0.55, BuildingPlanting.GREENS[int(v.z) % BuildingPlanting.GREENS.size()], rng)
+				"bed":
+					BuildingPlanting.bed(pk, v.x, v.y, rng)
 		"bins", "pots", "woodpile", "garden_set", "kennel", "bike", "shed", "trampoline":
 			# what people keep round their houses (BuildingYards)
 			var yk := BuildingKit.baked(_bake, rng, _at)
