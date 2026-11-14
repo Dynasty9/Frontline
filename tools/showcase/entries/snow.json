@@ -1,26 +1,31 @@
 {
   "entry": "changelog/unreleased/snow.md",
-  "summary": "A snow weather: falling flakes, a white battlefield with churned mud, and snow on roofs, hulls and trees.",
+  "summary": "A snow weather: falling flakes, a white battlefield with wind-scoured drifts and churned mud, patchy snow on roofs, trees and the flat tops of vehicles.",
   "medium": "still",
   "stage": "game capture flags (--screenshot, --offscreen, --fixed-fps 30)",
-  "rationale": "Snow is above all a change of appearance. A wide view over a town in falling snow shows the whole look at once (flakes, white ground and roofs, snowy trees, mountains in the haze); one matched sheet then shows the same town and the same moment of a tank battle under the overcast sky and in snow. The flakes' drift is described in text.",
+  "rationale": "Snow is above all a change of appearance. A wide view over a town in falling snow shows the whole look at once (flakes, drifted ground, roofs that differ, trees holding it in lumps, mountains in the haze); a close-up shows how a tank that has been fighting carries it (patches on the flat tops, a bare engine deck); and one matched sheet shows the same town and the same moment of a tank battle under the overcast sky and in snow. The flakes' drift and the shedding as a vehicle drives are described in text.",
   "source_ref": "bd4f1b598ae80c6543cd4816e3f49a6ead730876",
   "before_ref": "bd4f1b598ae80c6543cd4816e3f49a6ead730876",
   "capture": {
     "renderer": "Forward+ (Vulkan), NVIDIA GeForce RTX 3090, 1600x900, off-screen window, the user's settings",
     "town": "--aivai --seed=3 --mood=overcast / --mood=snow --nohud --focus-struct=town --shot-at=20; overcast from bd4f1b598ae80c6543cd4816e3f49a6ead730876, snow from this branch",
     "battle": "--fixed-fps 30 -- --scenario=roster --seed=1 --mood=overcast / --mood=snow --nohud --focus=-84,24 --zoom=34 --shot-at=10",
-    "note": "Each capture scaled to 798x448 and laid out 2x2 with OVERCAST / SNOW labels. The battle can differ slightly run to run. Compatibility renderer checked separately (--rendering-method gl_compatibility with forced vertex shading); not in the sheet.",
-    "wide": "--aivai --seed=3 --mood=snow --nohud --focus-struct=town --zoom=220 --pitch=-22 --shot-at=15"
+    "note": "Each capture scaled to 798x448 and laid out 2x2 with OVERCAST / SNOW labels. The battle can differ slightly run to run. Compatibility renderer checked separately (--rendering-method gl_compatibility with forced vertex shading, the town and the tank close-up); not in the sheet.",
+    "wide": "--aivai --seed=3 --mood=snow --nohud --focus-struct=town --zoom=220 --pitch=-22 --shot-at=15",
+    "tank": "--fixed-fps 30 -- --scenario=roster --seed=1 --mood=snow --nohud --focus=-84,24 --focus-vehicle=tank --focus-vehicle-at=9 --zoom=12 --pitch=-34 --shot-at=10"
   },
   "sources": [
     {
       "file": "changelog/unreleased/snow/town-in-snow.jpg",
-      "sha256": "3dc393a6a92dc5facf3af71defeeb08943287f8b142f1bce04fa86731c8aa1ae"
+      "sha256": "687c352f84277f22a72938c5aa611c96e88e444f02be9270507c2e62b0b004a1"
+    },
+    {
+      "file": "changelog/unreleased/snow/tank-in-snow.jpg",
+      "sha256": "040b329c5405a283e883b1cd54a0285b8aab6ac2ad5456bec193be6bbbb4cbd9"
     },
     {
       "file": "changelog/unreleased/snow/comparison.jpg",
-      "sha256": "25c615599c9e1d7b155ab8f70058b6386424baa3d751ab4235cb4a1f1ccaaed4"
+      "sha256": "b41b4c6e7a2511e78385987333b9e5efd0ec779534d140f04bf807b98268e1d5"
     }
   ],
   "output": null

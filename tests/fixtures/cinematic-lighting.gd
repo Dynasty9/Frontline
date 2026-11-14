@@ -119,6 +119,17 @@ func _check_snow() -> void:
 	assert(float(Mats._preset("glass").get("snow_hold", 1.0)) == 0.0)
 	assert(float(Mats._preset("suit").get("snow_hold", 1.0)) < 0.5)
 	assert(float(Mats._preset("camo_tank").get("snow_hold", 1.0)) == 1.0)
+	# a vehicle carries its own snow (snow_k): it gathers on one standing still
+	# and is shaken off one on the move or swinging its turret, never all of it
+	assert(Mats.SURFACE_SHADER.contains("instance uniform vec4 snow_k"))
+	assert(Vehicle.snow_carry(0.3, 1.0, 0.0, 0.0, Atmosphere.SNOW_IN) == 1.0, "a parked hull gathers a full load")
+	assert(Vehicle.snow_carry(0.3, 0.0, 0.0, 0.0, 60.0) == 0.3, "no more gathers once it stops snowing")
+	var driven := Vehicle.snow_carry(1.0, 1.0, 5.0, 0.0, Vehicle.SNOW_SHED * 0.5)
+	assert(driven < 0.6 and driven > Vehicle.SNOW_KEPT, "driving shakes it off as it goes (%s)" % driven)
+	assert(is_equal_approx(Vehicle.snow_carry(1.0, 1.0, 5.0, 0.0, Vehicle.SNOW_SHED * 3.0), Vehicle.SNOW_KEPT), "some stays in the corners")
+	assert(Vehicle.snow_carry(0.1, 1.0, 5.0, 0.0, 10.0) == 0.1, "none gathers on the move")
+	assert(Vehicle.snow_carry(1.0, 1.0, 0.0, 0.5, 10.0) < 1.0, "a swinging turret throws some off")
+	assert(Vehicle.snow_carry(1.0, 1.0, 9.0, 0.0, 1.0) < Vehicle.snow_carry(1.0, 1.0, 3.0, 0.0, 1.0), "faster sheds faster")
 	# the snowfall follows the effects setting, and the browser gets fewer flakes
 	var saved := int(Settings.v.effects)
 	var counts := []

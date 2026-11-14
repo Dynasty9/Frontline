@@ -1267,10 +1267,16 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   the steep; shell holes and their thrown earth, and wet spots in a bog, show as dark mud flecked with grey slush, and
   the tracks' prints run dark through it. Dirt roads become a lane of slush between white verges with the ruts open
   to the mud; town streets keep black wheel paths, grey slush between them and white gutters. Everything standing
-  in it gathers snow on the faces turned to the sky (roofs, ledges, hulls and decks, sandbags, camouflage nets,
-  trench spoil, the tops of trees, bushes and the grass, which goes to winter straw with only its tips showing),
-  broken by drifts, while walls and the sides of hulls stay bare. Vehicles shed some of it, so their paint shows
-  through in patches; running gear, glass, charred hulls and floors indoors take none, and men only a dusting. A
+  in it gathers snow on the faces turned to the sky (roofs, ledges, sandbags, camouflage nets, trench spoil, the
+  tops of trees and bushes, and the grass, which goes to winter straw with only its tips showing), while walls stay
+  bare. It never lies as an even coat: the wind scours long streaks and the open rises thin, so the grass shows
+  through, and heaps drifts in the hollows; on a roof or a wall top a thin fall lies in the grooves first, one roof
+  holds more than the next, and trees hold it in lumps on their boughs, one tree more than its neighbour. A vehicle
+  (`Vehicle._snow_view`, the `snow_k` instance value) keeps it only on its flat tops (deck, turret roof, fenders,
+  stowage), in patches of its own, while the glacis and sides shed it and the warm engine deck stays bare and wet;
+  standing still it gathers a full load, and driving or swinging its turret shakes most of it off, faster the
+  faster it goes, so a parked or wrecked hull carries far more than one in the fight. Running gear, glass, charred
+  hulls and floors indoors take none, and men only a dusting. A
   battle that opens in snow starts covered; snow that sets in mid-battle settles over four minutes, in the hollows
   first, and thaws over a quarter of an hour. The deep snow hushes the wind and the distant battle. A random
   battle's weather is snow about one time in twenty (a second draw from the seed, so no other seed's weather

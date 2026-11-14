@@ -520,6 +520,7 @@ varying float g;
 varying float rnd;
 varying float wet;
 varying float burnt;
+varying float drifted;  // (snow) deep in a drift 1, scoured thin by the wind 0
 #ifdef CLOUD_PATTERN
 varying float cloud_v;  // the sunlight the clouds let through at the blade
 #endif
@@ -541,8 +542,12 @@ void vertex() {
 	}
 	VERTEX.y *= 1.0 - burnt * 0.85;
 	VERTEX.xz *= 1.0 + burnt * 0.4;
-	// snow buries the blades and weighs the rest down
-	VERTEX.y *= 1.0 - snow_cover * 0.5;
+	// snow buries the blades and weighs the rest down: deep in the drifts,
+	// which run with the wind (Fires.WIND), hardly where it has blown thin
+	float along = dot(o.xz, vec2(0.924, 0.382));
+	float across = dot(o.xz, vec2(-0.382, 0.924));
+	drifted = clamp(0.5 + 0.32 * sin(across * 0.29 + sin(along * 0.043) * 2.6) + 0.22 * sin(o.x * 0.093 + sin(o.z * 0.117) * 1.9), 0.0, 1.0);
+	VERTEX.y *= 1.0 - snow_cover * mix(0.2, 0.75, drifted);
 	// stand on the ground as it is now (shell holes, rims)
 	VERTEX.y += terrain_height(deform_tex, (o.xz + __MAP_HALF__) / __MAP_SIZE__) / max(0.05, length(MODEL_MATRIX[1].xyz));
 	float t = TIME * 1.7 + o.x * 0.21 + o.z * 0.13;
@@ -571,7 +576,7 @@ void fragment() {
 	if (snow_cover > 0.0) {
 		col = mix(col, dry_col * 0.8, snow_cover * 0.6);
 		vec3 snow = vec3(0.8, 0.83, 0.88);
-		col = mix(col, snow, snow_cover * mix(0.95, 0.5, smoothstep(0.3, 0.85, h)) * (1.0 - burnt));
+		col = mix(col, snow, snow_cover * mix(mix(0.55, 1.0, drifted), mix(0.2, 0.6, drifted), smoothstep(0.3, 0.85, h)) * (1.0 - burnt));
 	}
 	ALBEDO = col;
 	ROUGHNESS = 0.85;
@@ -627,11 +632,12 @@ void fragment() {
 	}
 	float up = smoothstep(0.0, 1.1, plant_height);
 	vec3 col = photograph.rgb * mix(vec3(0.7, 0.85, 0.7), vec3(1.0, 0.9, 0.65), rnd) * mix(0.65, 1.0, up);
-	// snow caps the top of a bush and lies on the leaves that face the sky
+	// snow caps the top of a bush in lumps on the leaves that face the sky,
+	// one bush more than the next
 	if (snow_cover > 0.0) {
 		float facing = abs((INV_VIEW_MATRIX * vec4(NORMAL, 0.0)).y);
 		float lit = dot(photograph.rgb, vec3(0.2126, 0.7152, 0.0722)) * 6.0;
-		float snowed = smoothstep(0.0, 0.3, up * 0.9 + facing * 0.5 + (lit - 0.5) * 0.4 - 0.85 - (1.0 - snow_cover) * 1.4);
+		float snowed = smoothstep(0.0, 0.18, up * 0.9 + facing * 0.5 + (lit - 0.5) * 0.6 + (fract(rnd * 7.13) - 0.5) * 0.5 - 0.9 - (1.0 - snow_cover) * 1.4);
 		col = mix(col, vec3(0.74, 0.77, 0.82), snowed * 0.9);
 	}
 	if (OUTPUT_IS_SRGB) {

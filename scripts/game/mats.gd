@@ -1214,6 +1214,10 @@ uniform float crater_half = 256.0;
 uniform sampler2D noise_tex : filter_linear_mipmap_anisotropic, repeat_enable;
 instance uniform vec4 tint : source_color = vec4(1.0);
 instance uniform vec3 pofs = vec3(0.0);
+// A vehicle's own snow (Vehicle._snow_view): how much it carries (a parked or
+// wrecked hull all of it, one on the move far less), a seed so no two match,
+// and where its warm engine deck lies (x, z in the hull's frame).
+instance uniform vec4 snow_k = vec4(1.0, 0.0, 10000.0, 10000.0);
 // CLOUD_SHADOW
 
 varying vec3 tp;
@@ -1738,20 +1742,47 @@ void fragment() {
 	}
 	if (snow_cover > 0.0 && snow_hold > 0.0 && pattern != 13 && pattern != 14 && !(vehicle_surface && (surface_finish == 8 || surface_finish == 6))) {
 		// Snow settles on whatever faces the sky and slides off whatever doesn't:
-		// a roof's pitch, a hull's deck and glacis, the top of a sandbag wall and
-		// every sill and ledge hold it, walls and the sides of hulls stay bare.
-		// Its edge is broken by drifts and deepest in the hollows of the surface's
-		// own relief; as it falls it settles first on the flattest, then spreads.
-		// (Running gear churns it straight off, glass is wiped or warm, and a hull
-		// that has burnt is still too hot to hold it.) A vehicle on the move
-		// shakes and blows much of it off, so its paint shows through in patches
-		// (and a side can still be told by its colours); the drift pattern rides
-		// with it, so the snow on a hull keeps its place.
+		// a roof's pitch, the top of a sandbag wall and every sill and ledge hold
+		// it, walls stay bare. It never lies as an even coat: the wind scours some
+		// patches bare and heaps others into drifts, long along the wind and
+		// short across it, and it lies deepest in the hollows of the surface's own
+		// relief; as it falls it settles first there, then spreads. Neighbours
+		// differ (one roof or wreck holds more than the next). On a vehicle only
+		// the flat tops hold it, the deck, turret roof, fenders and stowage, and
+		// it slides off the glacis and the sides but for their ledges; the engine
+		// deck is warm and stays bare and wet, and a hull on the move shakes and
+		// blows most of it off (Vehicle._snow_view: snow_k). The pattern rides
+		// with the hull, so its snow keeps its place. (Running gear churns it
+		// straight off, glass is wiped or warm, a burnt hull is still too hot.)
 		vec3 wn = normalize((INV_VIEW_MATRIX * vec4(NORMAL, 0.0)).xyz);
-		float drift = tnoise(tp.xz * 2.3 + tp.y * 1.1) * 0.6 + tnoise(tp.xz * 7.1 + tp.y * 3.3 + 5.3) * 0.4;
-		float lying = wn.y * 1.35 - 0.62 + (drift - 0.5) * 0.7 + (0.5 - h) * 0.25 - (1.0 - snow_cover) * 1.4;
-		if (vehicle_surface) { lying -= 0.3; }
-		float settled = smoothstep(0.0, 0.25, lying) * snow_hold * (vehicle_surface ? 0.88 : 1.0);
+		vec2 so = vec2(snow_k.y * 13.7, snow_k.y * 7.9);
+		float carry = snow_k.x;
+		if (snow_k.y == 0.0 && snow_hold > 0.5) {
+			carry *= mix(0.6, 1.12, smoothstep(0.3, 0.7, tnoise(wpos.xz * 0.021 + 3.7)));
+		}
+		float depth = clamp(snow_cover * carry * snow_hold, 0.0, 1.0);
+		// (Fires.WIND: drifts run with it)
+		vec2 along = vec2(0.924, 0.382);
+		vec2 wq = vec2(dot(tp.xz, along) * 0.55, dot(tp.xz, vec2(-along.y, along.x)) * 1.9) + so;
+		float drift = tnoise(wq * 0.45 + tp.y * 0.4) * 0.5 + tnoise(wq * 1.3 + tp.y * 0.9 + 2.1) * 0.38 + tnoise(tp.xz * 6.0 + tp.y * 3.0 + so.yx) * 0.12;
+		float face = vehicle_surface ? smoothstep(0.8, 0.96, wn.y) : smoothstep(0.4, 0.78, wn.y);
+		// (a hull's drifts are big patches, shaken loose; on a roof or a wall top
+		// a thin fall lies in the grooves between the tiles and the stones first)
+		float lying = vehicle_surface
+			? (drift - 0.5) * 3.8 + (0.5 - h) * 0.6 + (depth - 0.68) * 2.4
+			: (drift - 0.5) * 1.5 + (0.5 - h) * 1.8 + (depth - 0.72) * 2.6;
+		lying -= (1.0 - face) * 1.2;
+		// (a crisp edge: snow lies or it doesn't, it doesn't tint what's beneath)
+		float settled = smoothstep(0.0, 0.07, lying) * face;
+		if (vehicle_surface) {
+			// (a hull that has shaken most of it off keeps a grey film between the patches)
+			settled = max(settled, smoothstep(-0.5, 0.0, lying) * face * depth * 0.22);
+		}
+		float warm = 0.0;
+		if (vehicle_surface) {
+			warm = 1.0 - smoothstep(0.8, 1.5, distance(tp.xz, snow_k.zw));
+			settled *= 1.0 - warm;
+		}
 		if (pattern == 18 || pattern == 19 || pattern == 22) {
 			// streets and pavements are driven and trodden to a patchy slush
 			settled *= mix(0.3, 0.85, smoothstep(0.35, 0.7, tfbm(wpos.xz * 0.4 + 7.0)));
@@ -1759,7 +1790,8 @@ void fragment() {
 		vec3 snow = vec3(0.8, 0.83, 0.88) * (0.93 + 0.07 * drift);
 		if (OUTPUT_IS_SRGB) { snow = pow(snow, vec3(1.0 / 2.2)); }
 		ALBEDO = mix(ALBEDO, snow, settled);
-		ROUGHNESS = mix(ROUGHNESS, 0.85, settled);
+		// (meltwater on the warm deck, and round the snow's edge)
+		ROUGHNESS = mix(mix(ROUGHNESS, 0.3, warm * snow_cover * 0.7), 0.85, settled);
 		METALLIC *= 1.0 - settled;
 		SPECULAR = mix(SPECULAR, 0.3, settled);
 		CLEARCOAT *= 1.0 - settled;
@@ -1867,8 +1899,11 @@ void fragment() {
 	if (snow_cover > 0.0 && scorch < 0.5) {
 		float up = (INV_VIEW_MATRIX * vec4(NORMAL, 0.0)).y;
 		float clump = mix(0.5, n3(lpos * 2.6 + 3.1), smoothstep(1.5, 5.0, (1.0 / 2.6) / px));
-		// (a fir's needles hold it in lumps along the boughs, the green showing between)
-		snowed = smoothstep(0.0, 0.3, up * 1.2 + shade * 0.5 - (leaf_cards ? 1.1 : 0.95) + (clump - 0.5) * 0.9 - (1.0 - snow_cover) * 1.4);
+		// (the boughs hold it in lumps, the green showing between, and one tree
+		// in a stand has shed more of it than the next)
+		float lump = smoothstep(0.36, 0.66, clump);
+		float tree = n3(lpos * 0.09 + 11.0);
+		snowed = smoothstep(0.0, 0.16, up * 1.1 + shade * 0.45 - (leaf_cards ? 1.12 : 0.97) + (lump - 0.5) * 1.5 + (tree - 0.5) * 0.6 - (1.0 - snow_cover) * 1.4);
 		c = mix(c, vec3(0.74, 0.77, 0.82) * (0.92 + 0.1 * clump), snowed * 0.92);
 	}
 	ALBEDO = c * (0.55 + 0.45 * mix(shade, 1.0, snowed * 0.6));

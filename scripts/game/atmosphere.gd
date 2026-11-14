@@ -2462,6 +2462,13 @@ void fragment() {
 	float slush = 0.0;
 	if (snow_cover > 0.0) {
 		float settled = snow_cover * 1.3 - 0.3 + (d1 - 0.5) * 0.4 + cavity * 0.25 + (macro - 0.5) * 0.3;
+		// The wind (Fires.WIND) scours it thin in long streaks, and on the open
+		// rises, and heaps it in the hollows: the grass shows through in places.
+		vec2 along = vec2(0.924, 0.382);
+		float streak = texture(detail_tex, vec2(dot(p, along) / 31.0, dot(p, vec2(-along.y, along.x)) / 5.5) + 0.53).r;
+		float scour = smoothstep(0.56, 0.74, streak + max(0.0, -cavity) * 0.9 + (macro - 0.5) * 0.35 + (d2 - 0.5) * 0.15);
+		settled -= scour * 0.7;
+		settled += max(0.0, cavity) * 0.35;
 		float lies = 1.0 - smoothstep(0.32, 0.95, slope + (patch - 0.5) * 0.3);
 		// (a bog shows wet only in spots, where the water stands through)
 		float boggy = mud_cover * smoothstep(0.55, 0.75, d2 * 0.5 + d1 * 0.3 + d3 * 0.2);
