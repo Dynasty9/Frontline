@@ -1,0 +1,90 @@
+{
+  "before_ref": "6f0c3a2adc6a7d3639191106c5f86f0f28925cee",
+  "source_ref": "d5ebf00492cdd4c7191e334fc596ffd4e719189c",
+  "engine": "Godot 4.7.2 stable ed1daf0bf",
+  "stage": "tools/showcase/building-surfaces.tscn; tests/fixtures/environment-views.gd",
+  "command": "godot --path CHECKOUT --resolution 1600x900 tools/showcase/building-surfaces.tscn -- --building-out=OUTPUT --offscreen FLAGS",
+  "comparisons": [
+    {
+      "subjects": [
+        "house_plans"
+      ],
+      "flags": [
+        "--building-single",
+        "--building-kinds=house_plans",
+        "--building-rear"
+      ],
+      "before_flags": [
+        "--building-match=AFTER/capture.json"
+      ],
+      "cameras": {
+        "house_plans": [
+          -0.152000427246094,
+          4.50059223175049,
+          2.24100017547607,
+          29.0762023925781,
+          133.674362182617
+        ]
+      },
+      "crop": [
+        120,
+        170,
+        1420,
+        790
+      ]
+    },
+    {
+      "subjects": [
+        "house_plans"
+      ],
+      "flags": [
+        "--building-single",
+        "--building-kinds=house_plans"
+      ],
+      "before_flags": [
+        "--building-match=AFTER/capture.json"
+      ],
+      "cameras": {
+        "house_plans": [
+          -0.152000427246094,
+          4.50059223175049,
+          2.24100017547607,
+          29.0762023925781,
+          133.674362182617
+        ]
+      },
+      "crop": [
+        200,
+        150,
+        1500,
+        860
+      ]
+    },
+    {
+      "subjects": [
+        "town"
+      ],
+      "command": "godot --path CHECKOUT --resolution 1600x900 --script tests/fixtures/environment-views.gd -- --aivai --seed=3 --offscreen --nohud --set=perf:0 --preset=high --mood=day --focus=0,0 --capture-set=town",
+      "crop": [
+        300,
+        160,
+        1400,
+        760
+      ]
+    },
+    {
+      "subjects": [
+        "farm"
+      ],
+      "command": "godot --path CHECKOUT --resolution 1600x900 --script tests/fixtures/environment-views.gd -- --aivai --seed=3 --offscreen --nohud --set=perf:0 --preset=high --mood=day --focus=0,0 --capture-set=town",
+      "crop": [
+        380,
+        0,
+        1380,
+        520
+      ]
+    }
+  ],
+  "notes": "Both sides render the source_ref studio stage (its house_plans subject draws the same four houses as plain boxes on one floor where BuildingStoreys does not exist: what the town drew before). The after was framed first and the baseline matched to its camera. The baseline is the rubble and sheds change this builds on. The town views are the same seed and camera: streets, lots and trees match, but a yard tree that would stand in a wing moves or goes, so things generated after it are numbered differently and some get other random looks (a roof's tint).",
+  "composition": "PIL: matched rows, 792 px halves, JPEG quality 82"
+}

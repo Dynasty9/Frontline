@@ -31,6 +31,9 @@ const BREAKABLE := {
 	"swing": [Vector3(3.5, 2.5, 1.6), 150.0], "slide": [Vector3(3.2, 1.9, 0.8), 120.0],
 	"climber": [Vector3(2.0, 1.9, 2.0), 120.0], "seesaw": [Vector3(3.4, 0.7, 0.4), 60.0],
 	"roundabout": [Vector3(2.2, 1.0, 2.2), 150.0], "statue": [Vector3(1.8, 4.5, 1.8), 2000.0],
+	"traffic_light": [Vector3(0.5, 3.4, 0.5), 120.0], "phone_box": [Vector3(1.0, 2.6, 1.0), 300.0],
+	"post_box": [Vector3(0.55, 1.4, 0.55), 200.0], "ad_column": [Vector3(1.4, 2.9, 1.4), 600.0],
+	"hoarding": [Vector3(5.0, 3.8, 0.6), 150.0], "street_name": [Vector3(0.9, 2.6, 0.9), 20.0],
 }
 
 var world
@@ -579,6 +582,24 @@ func _make(h: Node3D, kind: String, ex) -> void:
 					BuildingYards.shed(yk, BuildingYards.SHEDS[int(ex) % BuildingYards.SHEDS.size()], rng)
 				"trampoline":
 					BuildingYards.trampoline(yk, BuildingYards.PADS[int(ex) % BuildingYards.PADS.size()])
+		"traffic_light", "phone_box", "post_box", "ad_column", "hoarding", "street_name", "belongings":
+			# the street's furniture beyond its lamps and poles (BuildingStreet)
+			var sk := BuildingKit.baked(_bake, rng, _at)
+			match kind:
+				"traffic_light":
+					BuildingStreet.traffic_light(sk, float(ex), rng)
+				"phone_box":
+					BuildingStreet.phone_box(sk, [Color(0.7, 0.1, 0.08), Color(0.22, 0.3, 0.24), Color(0.42, 0.44, 0.46)][int(ex) % 3], rng)
+				"post_box":
+					BuildingStreet.post_box(sk)
+				"ad_column":
+					BuildingStreet.ad_column(sk, rng)
+				"hoarding":
+					BuildingStreet.hoarding(sk, float(ex), rng)
+				"street_name":
+					BuildingStreet.street_name(sk, rng)
+				"belongings":
+					BuildingStreet.belongings(sk, rng)
 		"mailbox":
 			_m(Res.box(Vector3(0.07, 1.0, 0.07)), "wood_dark", Vector3(0, 0.5, 0), null, Vector3.ZERO, false)
 			_m(Res.box(Vector3(0.26, 0.24, 0.42)), "paint", Vector3(0, 1.1, 0), [Color(0.2, 0.35, 0.25), Color(0.6, 0.15, 0.12), Color(0.15, 0.25, 0.45), Color(0.12, 0.12, 0.12)][rng.randi() % 4], Vector3.ZERO, false)

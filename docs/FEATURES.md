@@ -684,9 +684,12 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   including backward seeks; older recordings and dedicated flat test scenarios remain supported.
 - A town in the middle, laid out on a street grid: two main streets crossing at the centre, side streets closing
   some of the blocks, asphalt with a dashed centre line, curbs and sidewalks, zebra crossings at the crossroads.
-  Houses stand on lots facing the street with their door to it; behind them, gardens closed off by hedges or
+  Houses stand on lots facing the street with their door to it, some on two floors and some with a wing out of
+  the back (an L or a T); behind them, gardens closed off by hedges or
   walls, fences down the sides, vegetable patches, washing lines and trees; some have a drive with the car on it.
-  Shops with awnings line the main street near the middle.
+  Inside, the rooms are furnished (a wardrobe, a bookcase, a kitchen, a settee, a table and chairs), seen when
+  the roof lifts as men go in. Shops with awnings line the main street near the middle, most with flats over them. The floor above a ground
+  floor is looks only: it lifts off with the roof when men go in, and comes down when a wall under it is blown in.
 - A town square on one corner of the crossroads (fountain or statue, benches, planters, a flagpole, market
   stalls, bollards), a fenced playground (swings, slide, climbing frame, sandbox, seesaw, roundabout), a small
   park, allotments, a car park, a bombed-out lot and a water tower on the edge of town.
@@ -704,7 +707,10 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   wire. Concertina is razor tape whose clipped loops cross as it is pulled out.
 - Street lights down every street (they light up at dusk and at night), wooden utility poles carrying sagging
   power lines with a drop to each house, fire hydrants, stop signs where side streets meet the main road, the
-  town's name on the way in and a bus stop. Power lines also run along the country roads.
+  town's name on the way in and a bus stop; traffic lights at the central crossroads (dark, the power's off), a
+  telephone box, post boxes, an advertising column on the square, hoardings over car parks and bombed-out lots,
+  street names at the junctions, and belongings dropped on the pavements by people fleeing the fighting. Power
+  lines also run along the country roads.
 - **1 x 1 km** (`map_dims.gd`: every size, grid, mask and texture derives from one constant). The HQs sit
   at the north and south edges, their starting FOBs some 940 m apart, so a battle has room to move: fights for
   the villages, farms, woods and river line on the way in, then the town.
@@ -741,7 +747,7 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   sides), and on the west the lanes run on over the river - each on its own bridge - to farming villages on
   the far bank: three bridges and two fords across the river in all.
 - Country roads come in from both HQs and both edges of the map and join the main streets. Villages sit on the
-  cross road either side of town and on the road between each HQ and the town; farmsteads (farmhouse and barn round a yard, hay bales, a fenced road frontage, an orchard; the barn weatherboarded
+  cross road either side of town and on the road between each HQ and the town; farmsteads (a farmhouse, most on two floors with a wing, and a barn round a yard, hay bales, a fenced road frontage, an orchard; the barn weatherboarded
   under a corrugated sheet roof with loft doors in its gables, straw on its floor) and
   hedged fields lie along the roads; abandoned cars on the verges, burnt-out armour off the road.
 - **The town and every village have a name and a supply dump** (crated stores on a pallet, fuel drums and a
