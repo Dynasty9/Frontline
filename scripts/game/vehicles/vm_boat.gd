@@ -696,6 +696,18 @@ static func _motorboat(k: VehicleModels, seed: int) -> void:
 			k._box(m, Vector3(0.006, 0.1, 0.055), Vector3(s * (_hw(side, y) + 0.004), y, z), "paint", stripe.darkened(0.3), Vector3(0, 0, -s * fl), false)
 	# 115 hp outboard on the transom notch
 	_bake(k, _outboard(k, m, Vector3(0, 0.71, zt + 0.04), 0.92, 0.66, "plain", Color(0.86, 0.86, 0.84), "plain", Color(0.7, 0.7, 0.69), "boat_mb_ob"))
+	# the PKM it's armed with: on a pintle stepped into the foredeck, where the
+	# gunner can kneel behind it, its belt box hung on the left
+	var pz := -1.72
+	var pk_deck := _top(_station(p, _u(p, pz)))
+	var pk_base := Vector3(0, pk_deck, pz)
+	var pk_head := pk_base + Vector3(0, 0.56, 0)
+	var pk := k._pivot(m, pk_head)
+	k.turret = pk
+	# (the round post turns in its socket with the gun, the cradle on top)
+	VehicleMounts.pintle(k, pk, pk_base - pk_head, Vector3.ZERO, "gunmetal_w", null, Vector2(0.026, 0.034), Vector2(0.08, 0.13))
+	var pk_muzzle := VehicleWeapons.mmg(k, pk, Vector3.ZERO, Vector3(0, 0, -0.98), 1.0, -1.0, true, "gunmetal_w", Color(0.3, 0.3, 0.26))
+	k.mg_tip = k._tip(pk, pk_muzzle + Vector3(0, 0, -0.02))
 
 
 # --- RHIB ------------------------------------------------------------------------------

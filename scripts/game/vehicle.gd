@@ -131,6 +131,11 @@ var _rotor_want := false
 var _sus := Vector3.ZERO
 var _sus_v := Vector3.ZERO
 var _gun_kick := 0.0  # (view) how far the turret is jolted back by its own gun
+var aim_offset := Vector3.INF  # (replicated) where the crew lay their guns, from the vehicle (INF: nowhere), so a client's view lays them too
+var _mg_lay := PackedVector2Array()  # (view) each machine-gun mount's traverse and elevation
+var _mg_rate := PackedVector2Array()  # (view) and how fast each is moving
+var _mg_recoil := 0.0  # (view) how far the machine gun has run back on its cradle
+var _mg_climb := 0.0  # (view) how far its muzzle has jumped with the last rounds
 var _turret_rest := Vector3.INF
 var _vel_s := Vector3.ZERO
 var _vel_prev := Vector3.ZERO
@@ -2656,6 +2661,84 @@ func impact_react(direction: Vector3, strength: float) -> void:
 	impact_response.kick(Vector3(local.z, -local.x, 0.0) * strength * resistance * 2.0)
 
 
+## A mounted machine gun or autocannon fired a round (view): the gun runs back
+## `k` metres on its cradle and its muzzle jumps; the cradle's buffer runs it
+## out again before the next round. Without a cradle of its own an autocannon
+## still jolts its turret, as before.
+func mg_kick(k: float) -> bool:
+	if _vm == null or _vm.mg_mounts.is_empty():
+		return false
+	_mg_recoil = minf(_mg_recoil + k, k * 2.4)
+	_mg_climb = minf(_mg_climb + k * randf_range(0.15, 0.6), 0.045)
+	return true
+
+
+## Where the crew are laying their guns (view): on the target, as the host
+## knows it or sends it to a client. INF with nothing to shoot at.
+func aim_point() -> Vector3:
+	if srv:
+		return target.center_point() if _target_ok() else Vector3.INF
+	return position + aim_offset if aim_offset.is_finite() else Vector3.INF
+
+
+## Where the machine gun's receiver is right now (view), for the brass it
+## throws out: its cradle's trunnion. INF without one.
+func breech_world() -> Vector3:
+	if _vm == null or _vm.mg_mounts.is_empty() or model == null or not model.is_visible_in_tree():
+		return Vector3.INF
+	return _vm.mg_mounts[0].global_position
+
+
+## The crew lay the machine gun (view): its cradle elevates to what the
+## vehicle is shooting at - a pintle or door gun on no turret also swings to
+## it, within its arc - at a gunner's or a remote station's pace, easing
+## into the lay and settling, and goes back to its rest with nothing to
+## shoot. AA guns climb steeply; a helicopter's guns depress well down. Each
+## round's recoil and muzzle jump ride on top.
+func _lay_guns(dt: float) -> void:
+	var mounts: Array[Node3D] = _vm.mg_mounts
+	if _mg_lay.size() != mounts.size():
+		_mg_lay.resize(mounts.size())
+		_mg_rate.resize(mounts.size())
+		for i in mounts.size():
+			_mg_lay[i] = Vector2(0.0, _vm.mg_rests[i].basis.get_euler().x)
+	var aim := aim_point()
+	var w: Dictionary = Defs.WEAPONS.get(String(vdef.mg), {})
+	var high := 1.3 if w.get("aa", false) else 0.85
+	var low := -1.1 if is_air() else -0.3
+	if String(vdef.mg) == "coax":
+		# (laid with the main gun, within its mantlet's travel)
+		high = 0.31
+		low = -0.16
+	var arc := _vm.mg_arc if _vm.mg_free else 0.0
+	if _mg_recoil > 0.0 or _mg_climb > 0.0:
+		_mg_recoil = maxf(0.0, _mg_recoil * exp(-dt * 26.0) - dt * 0.004)
+		_mg_climb = maxf(0.0, _mg_climb * exp(-dt * 9.0) - dt * 0.002)
+	for i in mounts.size():
+		var mount := mounts[i]
+		var rest: Transform3D = _vm.mg_rests[i]
+		var want := Vector2(0.0, rest.basis.get_euler().x)
+		if aim.is_finite():
+			var frame := (mount.get_parent() as Node3D).global_basis.orthonormalized()
+			var local := frame.inverse() * (aim - mount.global_position)
+			# a gun in a side door swings out of its own side, never back
+			# across the cabin (positive yaw turns it to the left)
+			if _vm.mg_free:
+				var side := signf(rest.origin.x) if absf(rest.origin.x) > 0.3 else 0.0
+				want.x = clampf(atan2(-local.x, -local.z), -arc if side >= 0.0 else -0.15, arc if side <= 0.0 else 0.15)
+			want.y = clampf(atan2(local.y, Vector2(local.x, local.z).length()), low, high)
+		var lay := _mg_lay[i]
+		var rate := _mg_rate[i]
+		var yaw := VehicleMotion.slew(lay.x, rate.x, want.x, 1.5, 7.0, dt, false)
+		var pitch := VehicleMotion.slew(lay.y, rate.y, want.y, 1.1, 6.0, dt, false)
+		_mg_lay[i] = Vector2(yaw.x, pitch.x)
+		_mg_rate[i] = Vector2(yaw.y, pitch.y)
+		var pose := Basis.from_euler(Vector3(pitch.x + _mg_climb, yaw.x, 0.0))
+		var xf := Transform3D(pose, rest.origin + pose.z * _mg_recoil)
+		if mount.transform != xf:
+			mount.transform = xf
+
+
 ## The main gun's kick rocks the hull back from the shot.
 func recoil(dir: Vector3) -> void:
 	_cradle_age = 0.0
@@ -2899,6 +2982,17 @@ func write_state(b: StreamPeerBuffer) -> void:
 	b.put_u32(sling_eid)
 	put_ang(b, flight_pitch)
 	put_ang(b, flight_roll)
+	# where the guns are laid, to the decimetre (what's shot at may be hidden
+	# from a client, but the turret's bearing already gives that away)
+	var aim := target.center_point() - position if _target_ok() else Vector3.INF
+	if aim.is_finite() and aim.length() < 3000.0:
+		b.put_16(roundi(aim.x * 10.0))
+		b.put_16(roundi(aim.y * 10.0))
+		b.put_16(roundi(aim.z * 10.0))
+	else:
+		b.put_16(-32768)
+		b.put_16(0)
+		b.put_16(0)
 
 
 func read_state(b: StreamPeerBuffer) -> void:
@@ -2912,6 +3006,10 @@ func read_state(b: StreamPeerBuffer) -> void:
 	sling_eid = b.get_u32()
 	flight_pitch = wrapf(get_ang(b), -PI, PI)
 	flight_roll = wrapf(get_ang(b), -PI, PI)
+	var ax := b.get_16()
+	var ay := b.get_16()
+	var az := b.get_16()
+	aim_offset = Vector3(ax, ay, az) * 0.1 if ax != -32768 else Vector3.INF
 
 
 func health_frac() -> float:
@@ -2945,8 +3043,9 @@ func _view_process(dt: float) -> void:
 			var mount := _vm.gun_mount
 			var cradle := turret.global_basis
 			var direction := Defs.dir_of(rotation.y + turret_yaw)
-			if _target_ok():
-				direction = target.center_point() - mount.global_position
+			var aim := aim_point()
+			if aim.is_finite():
+				direction = aim - mount.global_position
 			var local := cradle.inverse() * direction
 			var pitch := clampf(atan2(local.y, Vector2(local.x, local.z).length()), -0.16, 0.31)
 			# The cradle eases into a change of elevation and brakes as it settles.
@@ -2964,6 +3063,8 @@ func _view_process(dt: float) -> void:
 				if _turret_rest == Vector3.INF:
 					_turret_rest = turret.position
 				turret.position = _turret_rest + Basis(Vector3.UP, turret_yaw) * Vector3(0, 0, _gun_kick)
+	if _vm and not _vm.mg_mounts.is_empty() and _vis:
+		_lay_guns(dt)
 	if _vm and _vm.elev:
 		# laid for indirect fire: the barrel (or the launcher) goes up
 		var want_e := float(vdef.get("elev", 0.6)) if (flags & F_ELEV) != 0 else 0.0

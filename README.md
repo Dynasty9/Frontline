@@ -72,13 +72,13 @@ Press **F1** at any time for help, and **F4** for the Field Manual. Hold **Tab**
 
 Want something shorter, with a story? **Missions** on the main menu has five-minute operations you can play alone or with friends:
 
-- **Bridgehead**: clear a village and seize the bridge behind it, then hold it against the counterattack.
-- **Beachhead**: land from the sea, knock out the harbour's anti-aircraft guns and take the harbour.
+- **Bridgehead**: clear a village, silence the mortar observers or brave their fire, then hold the bridge until Lancer's tanks reach you.
+- **Beachhead**: land from the sea, knock out the anti-aircraft guns to bring in air support, then take the harbour and repel the inland counterattack.
 - **Sky Hook**: carry a tank destroyer to a cut-off outpost under a helicopter, then stop the armour coming for it.
 - **Ambush Alley**: play the Rebels, ambush a Coalition convoy and vanish before the reaction force arrives.
-- **Kingpin**: a night raid into the town to take down a Rebel commander.
+- **Kingpin**: raid the town at night, pursue a fleeing Rebel commander and withdraw before the road out closes.
 
-Each has objectives on screen and marked on the map. Choose **Host Co-op** to play one with friends: it's listed in the server browser for them to join.
+Objectives are marked on screen and on the map, and radio warnings announce major threats. Coalition missions also have optional goals for preserving key vehicles. Choose **Host Co-op** to play one with friends: it's listed in the server browser for them to join.
 
 | | |
 |---|---|

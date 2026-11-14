@@ -1413,12 +1413,25 @@ func _mission_head(vb: VBoxContainer) -> String:
 	vb.add_child(s)
 	var done := 0
 	var all := 0
+	var optional_done := 0
+	var optional_all := 0
+	var optional_lines := PackedStringArray()
 	for o in info.get("objs", []):
 		if bool(o[7]):
+			optional_all += 1
+			var completed := int(o[2]) == MissionDirector.DONE
+			if completed:
+				optional_done += 1
+			optional_lines.append(("Complete: " if completed else "Not completed: ") + String(o[1]))
 			continue
 		all += 1
 		if int(o[2]) == MissionDirector.DONE:
 			done += 1
+	if optional_all > 0:
+		var bonus := UiKit.mono_label("OPTIONAL OBJECTIVES %d/%d" % [optional_done, optional_all], 12, UiKit.GOOD if optional_done == optional_all else UiKit.FAINT)
+		bonus.mouse_filter = Control.MOUSE_FILTER_PASS
+		bonus.tooltip_text = "\n".join(optional_lines)
+		vb.add_child(bonus)
 	var el := float(info.get("el", 0.0))
 	var lost: Array = info.get("lost", [0, 0])
 	return "T+%s · OBJECTIVES %d/%d · LOST %d/%d · KILLED %d" % [UiKit.fmt_time(el), done, all, int(lost[0]), int(lost[1]), int(info.get("kills", 0))]

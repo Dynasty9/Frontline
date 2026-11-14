@@ -378,11 +378,13 @@ sets one up as a listed battle, and friends join it from the server browser). Ea
 
 | Mission | Side | What it shows off |
 |---|---|---|
-| **Bridgehead** | Coalition | Clear a riverside village house by house, seize its bridge, hold it against infantry, a BTR and mortars coming over the bridge and the ford. 155 mm artillery on call. |
-| **Beachhead** | Coalition | RHIBs land a party on the beach under a patrol ship's guns while enemy boats come out; kill two AA trucks, then a Blackfoot and a Ghost Hawk full of reinforcements come in from the sea. |
-| **Sky Hook** | Coalition | Hook a Nyx tank destroyer under a Mohawk, fly it over the river to a cut-off outpost and stop the armoured column coming for it. |
-| **Ambush Alley** | Rebels | Get into the woods above a lane before a convoy leaves, let the IED open the ambush, destroy the convoy, then break contact before the QRF (and its helicopter) arrives. |
-| **Kingpin** | Coalition | A night raid: a checkpoint on the main street, a barred house, a Rebel commander to kill or capture, and a run back to the Hunters before the town cuts the road. |
+| **Bridgehead** | Coalition | Clear the village, seize the bridge, then use a twenty-second regroup window to cover the crossing and ford. Armour and mortar warnings give time to react; neutralising the optional observer team stops further mortar salvos. Hold until Lancer's relief tanks reach the cleared bridgehead. Two 155 mm missions on call, three minutes apart. |
+| **Beachhead** | Coalition | Land under Neptune's guns, destroy the AA trucks to unlock helicopters and an A-10 strike, then capture the harbour. The ninety-second defence starts on capture, with two inland counterattack waves and radio warnings; victory also requires a clear quay, with a CLEAR AREA prompt if enemies remain after the timer. Reserves exist from the start and can be weakened before their advance. Keep Neptune afloat as an optional objective. Co-op allocates whole boatloads to commanders, keeping each landing party with its transport. |
+| **Sky Hook** | Coalition | Race the eighty-second vanguard countdown to sling the Nyx to Kilo. Delivery and destroying the technical and both BTRs are required; radio prompts infantry spotting and a clear firing position if the fight drags on. The grounded Nyx counts on elevated terrain too. Keep the Mohawk flying as an optional objective. |
+| **Ambush Alley** | Rebels | Set up above the lane and destroy at least three convoy vehicles. First damage starts a visible forty-five-second QRF clock; further hits do not reset it. Its Hunter enters on the village road, then advances toward the ambush. Destroying the fourth convoy vehicle is optional; three unlock extraction. Extract sixty percent of surviving fighters before the escape deadline. |
+| **Kingpin** | Coalition | Clear the checkpoint, raid Kassem's house, and pursue him using sighted last-known-position updates. Searching his reported position prompts a street search if he has left, without revealing hidden targets. Extract three quarters of survivors, with ninety- and thirty-second warnings. Keep a Hunter intact as an optional objective. |
+
+The mission report records optional objectives separately from required completion. Hover over the optional count to inspect each result.
 
 - **Objectives** sit top right with the mission clock: each has a letter, and the same letter marks it on the
   ground (a ring round the area and a marker over it that waits at the screen edge when it's off screen) and on
@@ -687,6 +689,18 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
 - A town square on one corner of the crossroads (fountain or statue, benches, planters, a flagpole, market
   stalls, bollards), a fenced playground (swings, slide, climbing frame, sandbox, seesaw, roundabout), a small
   park, allotments, a car park, a bombed-out lot and a water tower on the edge of town.
+- Fences are built as the real ones are (`BuildingFences`), one bay between two posts, climbing with the ground.
+  A house keeps one look: white or painted pickets, chestnut paling, or iron railings with spear heads on a dwarf
+  brick wall at the front, with a gate shut or left swinging; featheredge close-board (on timber or concrete posts,
+  over a gravel board), paling, pickets or chain-link down the sides of the back garden. Farms run post-and-rail
+  along the road, allotments chain-link, playgrounds bow-top railings. The Coalition's HQ has a 2.4 m security fence
+  across its back (chain-link on posts set in concrete, Y-arm outriggers with barbed strands and a razor coil,
+  warning signs, floodlights), the Rebels' an improvised one (stakes, slack rusty wire, roofing sheets and pallets), and the town's supply dump a screen of mesh panels in concrete feet, some hung with scrim.
+  Weeds grow at their feet, paint chalks, the odd picket or board is gone. Chain-link and welded mesh are drawn
+  as antialiased wire on a sheet (`Mats.wire_mesh`) that greys into a veil with distance.
+- Barbed wire (`BuildingWire.barbed`) is two twisted line wires with four-point barbs every 11 cm, in three
+  finishes: new galvanised (compound walls), rusted and slack (farms, the Rebels), and the Coalition's dull issue
+  wire. Concertina is razor tape whose clipped loops cross as it is pulled out.
 - Street lights down every street (they light up at dusk and at night), wooden utility poles carrying sagging
   power lines with a drop to each house, fire hydrants, stop signs where side streets meet the main road, the
   town's name on the way in and a bus stop. Power lines also run along the country roads.
@@ -1034,7 +1048,12 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   and plans again. (Trucks are slower on the road than they were, so each load carries more.)
 - **Vehicle gun handling.** Old tanks, modern MBTs, IFVs, AA mounts, artillery and aircraft
   have distinct traverse, acceleration and braking profiles ([rates and complete roster audit](VEHICLE_HANDLING.md)).
-  Mounted machine guns must traverse onto the bearing before firing. Vehicle and gunship shots leave the
+  Mounted machine guns must traverse onto the bearing before firing. Machine guns, autocannon and AA guns sit in
+  cradles of their own that the crew lay on the target: they elevate onto it (twin AA guns climb steeply after
+  aircraft, a helicopter's guns depress onto the ground), door guns and hull pintles swing out to it within an arc
+  on their own side, a coaxial gun keeps to the main gun's travel, and each round runs the gun back on its cradle
+  with a jump at the muzzle. The host sends where each vehicle's guns are laid, so a client (and a solo battle,
+  whose view is a client of its own simulation) lays them too, main guns included. Vehicle and gunship shots leave the
   actual model barrels, including separately positioned gunship guns. Tank drivers build into turns. Turrets accelerate into a traverse and brake onto
   the target, holding their world bearing as the hull turns underneath. The gunner holds a steady aim
   for 0.3 seconds before firing, and reacquires when switching targets. Without a target, the turret
@@ -1451,7 +1470,9 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
 - **Shared guns and turret fittings** (`vehicle_weapons.gd`, `VehicleMounts`, `VehicleFittings`): heavy,
   medium and grenade machine guns, autocannon, coaxial ports, rotary barrel clusters and missile launch
   tubes each have one builder, used by every family that carries them; muzzle markers and turret pivots
-  stay where they were. Turret race rings, sight heads, commander's cupolas, reactive armour bricks,
+  stay where they were. Autocannon tubes step down from a thick chamber end, carry a barrel clamp and end in a
+  ported brake; machine-gun belts show their rounds, the .50 its feed-cover latch and retracting handle. Each
+  builder notes its gun, so the finished model lifts the machine gun onto a cradle the crew can lay. Turret race rings, sight heads, commander's cupolas, reactive armour bricks,
   rectangular hatches and bore evacuators are shared across the armour; helicopters share rotor masts and
   turbine exhausts, and aircraft and boats share red/green sidelights and dome lights. Trucks share fender
   sheets and saddle fuel tanks; rolled tarps are common stowage. See "Twenty shared components" in
@@ -1538,10 +1559,12 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   a .50's a forearm's, an autocannon's a man's height - a hot core and a short jet split into petals by the flash
   hider (thrown out sideways by a heavy gun's muzzle brake), with a moment's light on everything round it
   (striking at night). The gas that follows the round out glows for an instant and cools into a breath of smoke,
-  and the case spins out of the ejection port to lie in the grass (brass piles up round a machine gun). However
+  and the case spins out of the ejection port to lie in the grass (brass piles up round a machine gun). A vehicle's
+  gun throws its cases from its receiver, and a belt-fed one its links too; a coaxial gun keeps them inside the
+  turret. 25 and 30 mm cannon (the Bradley's Bushmaster, the chain guns, the ZU-23) flash and bark as cannon. However
   small, a flash never shrinks below a few pixels, so you can still see who's firing from high up. The weapon
-  kicks with each shot: the rifle back into the shoulder and the muzzle up, the mounted gun on its pintle, the
-  turret back on its ring when the main gun fires. One round in so many is a tracer, red for the Coalition and
+  kicks with each shot: the rifle back into the shoulder and the muzzle up, the mounted gun on its pintle or its
+  vehicle cradle, the main gun back in its mantlet. One round in so many is a tracer, red for the Coalition and
   green for the Rebels (Soviet-pattern ammunition): a thin bright thread at night, fainter and shorter by day,
   with distance-dependent dimming and a short ignition delay for small-arms tracers. What a round hits decides what flies, small and quick as in real footage: a
   crown of dust and soil thrown up out of the ground, a puff of stone dust and chips off a wall, a dry burst of

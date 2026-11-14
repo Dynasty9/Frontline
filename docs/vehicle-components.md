@@ -711,3 +711,30 @@ Merkava and Scorcher, for their split rolls and bags).
   full or slumped, some with pockets; `roll` may split in two; `load_cover` varies its tarp, folds and
   lashings; jerrycans and ammo cans vary their paint; `VehicleCargo.tilt_colour` gives each truck's canvas
   tilt one shade for its cloth, bows' lashing and rolled flap; `VmCore._bedroll` draws its colour too.
+
+### Gun mounts: laying, recoil and the guns themselves
+
+The gun builders (`coax`, `autocannon`, `hmg`, `mmg`, `gmg`, `rotary`) end with `k._gun(m, muzzle)` instead of
+folding their pivot: the assembly is noted (its parent, origin, muzzle and parts) and then folded as before.
+A hand-built gun on a pivot of its own at its receiver notes itself with `k.gun_assembly(pivot, muzzle)`
+(VmCore's DShK). When the model is assembled, `_mount_guns()` finds the assembly whose muzzle is `k.mg_tip`
+(on the same parent, laid along its -Z) and lifts its parts and nodes onto a new pivot at its origin, square
+to the parent; the marker goes with it, and a twin beside it at the same height and depth (the other barrel of
+a twin AA gun) gets a pivot of its own. A cradle the family made itself, already laid a little under the
+turret (the ZU-23s' `el`), is the mount as it stands, receivers, boxes and all. Each mount lands in
+`k.mg_mounts` with its rest pose in `k.mg_rests`; `k.mg_free` is set when it rides on no turret (door guns,
+hull pintles). At rest nothing moves, so the sockets fixture and every part's place are unchanged. Wrecks and
+fixed-wing aircraft get no mounts.
+
+`Vehicle._lay_guns` (view) lays each mount on `aim_point()`: the target on the host, the replicated aim on a
+client. Elevation runs -0.3 to 0.85 rad (to 1.3 for AA weapons, from -1.1 for a helicopter in the air; a coax
+keeps to the main gun's -0.16 to 0.31); a free mount also traverses within `mg_arc` (1.2 rad), out of its own
+side only. `mg_kick` runs the gun back along its axis by `Fx.MOUNT_KICK` per round with a little muzzle jump,
+and `breech_world()` is where its brass and links leave. Each mount is a holder of its own in the merge: a
+handful of draw calls per armed vehicle.
+
+The autocannon tube now steps down from a thick chamber end, carries one barrel clamp with a pinch bolt (when
+the family asks for no bands) and ends in a brake with dark side ports in two rows and a lip; `_belt` lays a
+linked belt with brass rounds from an ammo can's mouth to the feed tray (`hmg`, `mmg`); the `hmg` has its
+feed-cover latch and retracting handle, the `mmg` its cover hinge and rear sight. The armed motorboat carries
+its PKM on a pintle in the foredeck (it had a gun only in its definition).

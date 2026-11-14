@@ -2823,7 +2823,8 @@ func _build_model() -> void:
 			var top := BuildingWalls.coping(tk, p.s.x, p.s.z, p.s.y, "concrete", p.color)
 			for sd: float in [-1.0, 1.0]:
 				BuildingWalls.joints(tk.at_point(Vector3(0, 0, sd * p.s.z * 0.5), Vector3(0, 0.0 if sd > 0.0 else PI, 0)), p.s.x, p.s.y, 2.0, p.color)
-			BuildingWire.topping(tk, p.s.x, top, 1.0)
+			# new bright wire on some compounds, rusted brown on the older ones
+			BuildingWire.topping(tk, p.s.x, top, 1.0, 3, "clean" if rng.randf() < 0.5 else "rust")
 		"house_wall":
 			_house_wall_detail(rng)
 		"rubble":

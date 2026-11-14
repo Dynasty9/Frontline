@@ -57,13 +57,14 @@ static func coax(k: VehicleModels, parent: Node3D, center: Vector3, length: floa
 	_z(k, m, half - sleeve, -half + hider, radius, radius, mat, null, 6, false, Vector2.ZERO, false, false)
 	_z(k, m, -half + hider, -half, radius * 1.28, radius * 1.15, mat, null, 6, false)
 	_bore(k, m, -half, radius * 0.55)
-	k._fold(m)
+	k._gun(m, center + Vector3(0, 0, -half))
 
 
 ## Automatic cannon between its breech (the back of the recoil sleeve) and its
 ## muzzle (the brake's front face). `root` is the sleeve's (radius, length),
 ## `barrel` the tube's (rear, front) radii, `brake` the muzzle brake's (radius,
-## length). `bands` adds evenly spaced clamp bands along the tube.
+## length). `bands` adds evenly spaced clamp bands along the tube; with none,
+## one barrel clamp still stands where the tube's rear third ends.
 static func autocannon(k: VehicleModels, parent: Node3D, breech: Vector3, muzzle: Vector3, root: Vector2, barrel: Vector2, brake: Vector2, mat := "gunmetal_w", col = null, bands := 0) -> Vector3:
 	var m := _aimed(k, parent, breech, muzzle)
 	var length := breech.distance_to(muzzle)
@@ -72,20 +73,34 @@ static func autocannon(k: VehicleModels, parent: Node3D, breech: Vector3, muzzle
 	# The recoil sleeve, with a collar where the barrel leaves it.
 	_z(k, m, 0.0, root_end, root.x, root.x, mat, col, 12)
 	_z(k, m, root_end + 0.015, root_end - 0.02, root.x * 0.82, root.x * 0.82, "metal_dark", null, 12, false, Vector2.ZERO, false)
-	# (the tube's ends are in the collar and the brake)
-	_z(k, m, root_end + 0.01, brake_start - 0.01, barrel.x, barrel.y, mat, col, 10, true, Vector2.ZERO, false, false)
-	for i in bands:
-		var z := lerpf(root_end, brake_start, (i + 1.0) / (bands + 1.0))
-		var r := lerpf(barrel.x, barrel.y, (i + 1.0) / (bands + 1.0))
-		_z(k, m, z + 0.015, z - 0.015, r * 1.35, r * 1.35, "metal_dark", null, 10, false)
-	# Muzzle brake: a body with two rows of dark side ports and a front lip.
-	_z(k, m, brake_start, -length, brake.x, brake.x * 0.94, "gunmetal_w", null, 10)
-	for f: float in [0.3, 0.62]:
+	# The chamber end of the tube stands thicker than the rest and steps down
+	# to it: what gives a cannon its weight at a glance.
+	var chamber := minf((root_end - brake_start) * 0.16, 0.32)
+	var thick := minf(barrel.x * 1.24, root.x * 0.8)
+	_z(k, m, root_end + 0.01, root_end - chamber, thick, thick, mat, col, 10, true, Vector2.ZERO, false)
+	_z(k, m, root_end - chamber, root_end - chamber - 0.03, thick, barrel.x, mat, col, 10, false, Vector2.ZERO, false, false)
+	# (the tube's ends are in the chamber step and the brake)
+	_z(k, m, root_end - chamber - 0.03, brake_start - 0.01, barrel.x, barrel.y, mat, col, 10, true, Vector2.ZERO, false, false)
+	var clamps := bands if bands > 0 else 1
+	for i in clamps:
+		var f := (i + 1.0) / (clamps + 1.0) if bands > 0 else 0.38
+		var z := lerpf(root_end - chamber, brake_start, f)
+		var r := lerpf(barrel.x, barrel.y, f)
+		_z(k, m, z + 0.018, z - 0.018, r * 1.35, r * 1.35, "metal_dark", null, 10, false)
+		# the clamp's pinch bolt on top
+		k._box(m, Vector3(r * 0.5, r * 0.5, 0.03), Vector3(0, r * 1.45, z), "metal_dark", null, Vector3.ZERO, false)
+	# Muzzle brake: a body with its front lip, the side ports cut through it in
+	# two rows (dark slots either side, where the gas turns out and blackens
+	# the steel), the crown and bore in its face.
+	_z(k, m, brake_start, -length + brake.y * 0.12, brake.x * 0.96, brake.x, "gunmetal_w", null, 10)
+	_z(k, m, -length + brake.y * 0.12, -length, brake.x * 1.02, brake.x * 0.96, "gunmetal_w", null, 10, false)
+	for f: float in [0.34, 0.66]:
 		var z := lerpf(brake_start, -length, f)
-		# (a port band stands only 1 % proud: its ends are not worth a face)
-		_z(k, m, z + brake.y * 0.07, z - brake.y * 0.07, brake.x * 1.01, brake.x * 1.01, "plain_dark", null, 10, false, Vector2.ZERO, false, false)
+		for side: float in [-1.0, 1.0]:
+			k._box(m, Vector3(brake.x * 0.36, brake.x * 1.1, brake.y * 0.2), Vector3(side * brake.x * 0.84, 0, z), "plain_dark", Color(0.06, 0.06, 0.055), Vector3.ZERO, false)
+	_z(k, m, brake_start + 0.006, brake_start - 0.004, brake.x * 1.04, brake.x * 1.04, "metal_dark", null, 10, false)
 	_bore(k, m, -length, barrel.y * 0.75)
-	k._fold(m)
+	k._gun(m, muzzle)
 	return muzzle
 
 
@@ -122,8 +137,13 @@ static func hmg(k: VehicleModels, parent: Node3D, receiver: Vector3, muzzle: Vec
 		var side := signf(can)
 		VehicleFittings.ammo_can(k, m, Vector3(side * 0.18, -0.07, 0.08) * s, can_col, Vector3.ZERO, Vector3(0.12, 0.19, 0.29) * s)
 		# The belt rises from the can's mouth into the feed tray.
-		VehicleFrames.beam(k, m, Vector3(side * 0.15, 0.04, 0.06) * s, Vector3(side * 0.085, 0.07, 0.04) * s, 0.06 * s, 0.012 * s, "paint", Color(0.62, 0.5, 0.24), false)
-	k._fold(m)
+		_belt(k, m, Vector3(side * 0.16, 0.035, 0.06) * s, Vector3(side * 0.085, 0.07, 0.04) * s, 0.011 * s, 0.12 * s, 3)
+	# The feed cover's latch at its front, the bolt's retracting handle on
+	# the right of the receiver.
+	k._box(m, Vector3(0.05, 0.02, 0.025) * s, Vector3(0, 0.13, -0.24) * s, "metal_dark", null, Vector3.ZERO, false)
+	VehicleBody.rod(k, m, Vector3(0.085, 0.0, 0.08) * s, Vector3(0.13, 0.0, 0.08) * s, 0.008 * s, "steel", null, 6, false)
+	VehicleBody.cylinder(k, m, 0.016 * s, 0.016 * s, 0.03 * s, Vector3(0.135, 0.0, 0.08) * s, Vector3(0, 0, PI / 2), "rubber", null, 6, false)
+	k._gun(m, muzzle)
 	return muzzle
 
 
@@ -147,8 +167,23 @@ static func mmg(k: VehicleModels, parent: Node3D, receiver: Vector3, muzzle: Vec
 	_bore(k, m, -length, 0.009 * s)
 	if can != 0.0:
 		VehicleFittings.ammo_can(k, m, Vector3(signf(can) * 0.08, -0.07, 0.02) * s, can_col, Vector3.ZERO, Vector3(0.08, 0.13, 0.15) * s)
-	k._fold(m)
+		_belt(k, m, Vector3(signf(can) * 0.075, 0.0, 0.0) * s, Vector3(signf(can) * 0.04, 0.045, -0.02) * s, 0.0065 * s, 0.065 * s, 2)
+	# The feed cover's hinge across its back, the rear sight leaf up on it.
+	VehicleBody.rod(k, m, Vector3(-0.045, 0.09, 0.11) * s, Vector3(0.045, 0.09, 0.11) * s, 0.007 * s, "metal_dark", null, 6, false)
+	k._box(m, Vector3(0.03, 0.028, 0.006) * s, Vector3(0, 0.102, 0.08) * s, mat, null, Vector3.ZERO, false)
+	k._gun(m, muzzle)
 	return muzzle
+
+
+## A belt of linked rounds from `a` (the can's mouth) to `b` (the feed tray):
+## the blackened steel links and `n` cartridges standing in them, laid along
+## the gun's axis, brass cases and their dark bullet tips forward.
+static func _belt(k: VehicleModels, m: Node3D, a: Vector3, b: Vector3, radius: float, length: float, n: int) -> void:
+	VehicleFrames.beam(k, m, a, b, length * 0.55, radius * 0.9, "metal_dark", null, false)
+	for i in n:
+		var at := a.lerp(b, (i + 0.5) / n) + Vector3(0, radius * 0.5, 0)
+		VehicleBody.cylinder(k, m, radius, radius, length * 0.68, at + Vector3(0, 0, length * 0.16), X90, "paint", Color(0.62, 0.48, 0.2), 6, false, true, false)
+		VehicleBody.cylinder(k, m, radius * 0.95, radius * 0.45, length * 0.32, at - Vector3(0, 0, length * 0.34), X90, "metal_dark", null, 6, false, false, true)
 
 
 ## Automatic grenade launcher (40 mm). `feed` puts the linked-round container on
@@ -183,7 +218,7 @@ static func gmg(k: VehicleModels, parent: Node3D, receiver: Vector3, muzzle: Vec
 		var inner := 0.11
 		var outer := maxf(inner, feed_offset - (0.08 if drum else 0.11))
 		k._box(m, Vector3(outer - inner + 0.04, 0.08, 0.12) * s, Vector3(side * (inner + outer) * 0.5, 0.05, 0.0) * s, mat)
-	k._fold(m)
+	k._gun(m, muzzle)
 	return muzzle
 
 
@@ -206,7 +241,7 @@ static func rotary(k: VehicleModels, parent: Node3D, rear: Vector3, muzzle: Vect
 		var z := -length * f
 		var half := maxf(0.015, length * 0.025)
 		_z(k, m, z + half, z - half, clamp_r, clamp_r, mat, null, 14, false)
-	k._fold(m)
+	k._gun(m, muzzle)
 	return muzzle
 
 

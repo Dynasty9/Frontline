@@ -281,20 +281,43 @@ func _bridgehead(d: MissionDirector) -> void:
 	d.enemy("pkm_team", nv - n * 16.0 + e * 6.0).order_defend(nv - n * 16.0 + e * 6.0, e)
 	var tech := d.vehicle("technical", _walk(d, nv - e * 10.0), Defs.yaw_of(e), d.foe, d.ai_owner(d.foe))
 	tech.order_stop()
-	# and a gun team on the bridge itself, covering the men wiring it
+	# the crossing's gun team, and an observation pair overlooking our approach
 	d.enemy("pkm_team", east + e * 10.0).order_defend(east + e * 8.0, e)
+	var observer_pos := _walk(d, east + e * 25.0 + n * 95.0)
+	var observers := d.world.new_squad(d.foe, d.ai_owner(d.foe), "fighter_cell")
+	var observer_ids := []
+	# A small observation pair makes a detached rifle squad a viable choice.
+	for i in 2:
+		var man: Soldier = d.world.spawn("soldier", {"utype": "fighter", "team": d.foe, "owner": d.ai_owner(d.foe),
+			"pos": _walk(d, observer_pos + n * (i * 3.0)), "squad": observers.sid,
+			"name": "Mortar observer" if i == 0 else "Mortar radio operator"})
+		observers.add(man)
+		observer_ids.append(man.eid)
+	observers.order_defend(observer_pos, e)
 	_support(d, ["artillery"], 650.0)
 
 	d.add("village", "Clear the village", "clear", {"pos": nv, "r": 42.0})
 	d.add("bridge", "Seize the bridge", "clear", {"pos": c + e * 6.0, "r": 26.0})
-	d.add("hold", "Hold the bridge until the tanks arrive", "hold", {"pos": east + e * 6.0, "r": 40.0, "secs": 120.0, "grace": 30.0,
+	d.add("prepare", "Regroup: cover the bridge and the ford", "timer", {"secs": 20.0})
+	d.add("hold", "Repel the bridge counterattack", "hold", {"pos": east + e * 6.0, "r": 40.0, "secs": 120.0, "grace": 30.0,
+		"fail_text": "The Rebels have retaken the bridge."})
+	d.add("relief", "Secure the bridgehead for Lancer", "guard", {"pos": east + e * 6.0, "r": 40.0, "mark": false,
 		"fail_text": "The Rebels have retaken the bridge."})
 	d.add("marshall", "Keep the Marshall in the fight", "protect", {"eids": [ifv.eid], "optional": true})
-	d.radio("Overlord: Rebels hold the village at %s and the bridge behind it. Clear the village, then take that bridge before they blow it." % Defs.grid_ref(nv), nv)
+	d.add("spotters", "Silence the mortar observers", "destroy", {"pos": observer_pos, "eids": observer_ids, "optional": true})
+	d.radio("Overlord: Clear the village at %s, then seize the bridge. Keep your AT team alive: enemy armour is across the river. Two artillery missions on call." % Defs.grid_ref(nv), nv)
 	d.start("marshall")
 	d.start("village", func():
-		d.radio("Overlord: Village is clear. Push on to the bridge, they're wiring it now.", c)
-		d.start("bridge", func(): _bridgehead_hold(d)))
+		d.radio("Overlord: Village clear. Gun team covers the bridge. Fix it with the Marshall and move your infantry up the flanks.", c)
+		d.after(4.0, func():
+			d.radio("Scout: Mortar observers on our flank at %s. Clear their position before taking the bridge, or keep the platoon together and endure their fire." % Defs.grid_ref(observer_pos), observer_pos)
+			d.start("spotters", func(): d.radio("Overlord: Observer team neutralised. Their mortar fire is cut off.", observer_pos)))
+		d.start("bridge", func():
+			d.radio("Overlord: Bridge secured. Twenty seconds to reorganise. Face across the river, AT behind cover, one squad watching the ford.", east)
+			var ford := _nearest(d.feat.fords, c)
+			if ford != Vector3.INF and Defs.flat(ford - c).length() < 260.0:
+				d.after(7.0, func(): d.radio("Scout: Ford at %s. That's their route around the bridge; keep eyes on it." % Defs.grid_ref(ford), ford))
+			d.start("prepare", func(): _bridgehead_hold(d))))
 
 
 func _bridgehead_hold(d: MissionDirector) -> void:
@@ -304,14 +327,18 @@ func _bridgehead_hold(d: MissionDirector) -> void:
 	var west: Vector3 = ctx.west
 	var east: Vector3 = ctx.east
 	var fv: Vector3 = ctx.fv
-	d.radio("Overlord: Bridge is ours. Enemy column forming up in the village across the river. Dig in on this bank: the tanks are two minutes out.", c)
+	d.radio("Overlord: Bridge is ours. Enemy column forming up in the village across the river. Dig in on this bank. Lancer is on the way.", c)
 	d.start("hold", func():
-		# the armour comes up the lane, and that's that
+		d.start("relief")
+		d.radio("Overlord: Keep infantry at the crossing and clear any remaining enemy off this bank. Lancer is taking over.", east)
+		_bridgehead_relief(d))
+	ctx.relief = []
+	d.after(80.0, func():
 		for i in 2:
-			var tk := d.vehicle("tank", _walk(d, east + e * (170.0 + i * 16.0) + n * (i * 6.0 - 3.0)), Defs.yaw_of(-e), d.side, d.ai_owner(d.side))
+			var tk := d.vehicle("tank", _walk(d, east + e * (150.0 + i * 16.0) + n * (i * 6.0 - 3.0)), Defs.yaw_of(-e), d.side, d.ai_owner(d.side))
 			tk.order_assault(east + e * (14.0 + i * 8.0))
-		d.radio("Lancer 6: Tanks on the bridge. Good work, we have it from here.")
-		d.after(6.0, func(): d.win("The bridge is ours, intact, and the armour is across.")))
+			ctx.relief.append(tk)
+		d.radio("Lancer 6: On the village road. Engines behind you are friendly. Keep that lane open.", ctx.nv))
 	# the counterattack: infantry over the bridge at once, then a BTR, then a
 	# cell wading the ford to come in on the flank, and mortars
 	var fo := fv if fv != Vector3.INF else west - e * 120.0
@@ -319,6 +346,7 @@ func _bridgehead_hold(d: MissionDirector) -> void:
 	q.order_assault(east + e * 10.0, e)
 	var rq := d.enemy("rpg_team", fo - e * 8.0 + n * 6.0)
 	rq.order_assault(east + e * 6.0, e)
+	d.after(28.0, func(): d.radio("Overlord: Armour forming up beyond the bridge. Move the AT team into a covered firing position.", west))
 	d.after(40.0, func():
 		var btr := d.vehicle("btr", _walk(d, fo - e * 20.0), Defs.yaw_of(e), d.foe, d.ai_owner(d.foe))
 		btr.embark_new_squad()
@@ -330,7 +358,10 @@ func _bridgehead_hold(d: MissionDirector) -> void:
 			var fq := d.enemy("fighter_cell", ford - e * 40.0)
 			fq.order_assault(east + e * 12.0, e)
 			d.radio("Overlord: Movement at the ford, %s. They're coming round your flank." % Defs.grid_ref(ford), ford))
-	d.after(80.0, func(): _enemy_support(d, "mortars", east + e * 10.0))
+	d.after(70.0, func():
+		if not _done(d, "spotters"):
+			d.radio("Overlord: Mortars preparing to fire. Spread out, or silence their observers on our flank.", east))
+	d.after(80.0, func(): _bridgehead_mortars(d))
 	# and help for us: a squad and an AT team from the second platoon, at the run
 	d.after(20.0, func():
 		var start: Vector3 = ctx.nv + e * 120.0
@@ -339,6 +370,36 @@ func _bridgehead_hold(d: MissionDirector) -> void:
 		var r2 := d.squad("at_team", start - n * 6.0)
 		r2.order_move(east + e * 12.0 - n * 8.0, -e, 2)
 		d.radio("2nd Platoon: Sending you a squad and an AT team up the lane. Hold on.", start))
+
+
+func _bridgehead_mortars(d: MissionDirector) -> void:
+	if _done(d, "spotters"):
+		return
+	for id in d.obj("spotters").eids:
+		if d.alive(int(id)):
+			_enemy_support(d, "mortars", ctx.east + ctx.e * 10.0)
+			d.world.stat("mission_mortar_salvo")
+			d.after(60.0, func(): _bridgehead_mortars(d))
+			return
+
+
+func _bridgehead_relief(d: MissionDirector) -> void:
+	var can_arrive := false
+	for tank in ctx.relief:
+		if not _live(tank):
+			continue
+		var arrived: bool = Defs.flat(tank.position - ctx.east).length() < 45.0
+		if not arrived and tank.track_broken:
+			continue
+		can_arrive = true
+		if arrived and d.foes_in(ctx.east, 40.0) == 0 and d.afoot_in(ctx.east, 40.0) > 0:
+			d.radio("Lancer 6: On your position. Bridgehead secure. We'll take it from here.", ctx.east)
+			d.after(6.0, func(): d.win("The platoon held the bridgehead and Lancer's tanks have reached it."))
+			return
+	if not can_arrive:
+		d.fail("Lancer's relief tanks were destroyed or immobilised before reaching the bridgehead.")
+		return
+	d.after(2.0, func(): _bridgehead_relief(d))
 
 
 func _drive_bridgehead(d: MissionDirector) -> void:
@@ -350,13 +411,15 @@ func _drive_bridgehead(d: MissionDirector) -> void:
 	elif _active(d, "bridge"):
 		stage = "bridge"
 		at = ctx.c + ctx.e * 6.0
-	elif _active(d, "hold"):
+	elif _active(d, "prepare") or _active(d, "hold") or _active(d, "relief"):
 		stage = "hold"
 		at = ctx.east + ctx.e * 10.0
 	if stage == "":
 		return
 	if stage == "village":
 		_call(d, "artillery", ctx.nv - ctx.e * 6.0)
+	elif stage == "hold" and _active(d, "spotters"):
+		_call(d, "artillery", d.obj("spotters").pos)
 	var i := 0
 	for sq in _my_squads(d):
 		if _once("sq%d" % sq.sid, stage):
@@ -394,9 +457,12 @@ func _beachhead(d: MissionDirector) -> void:
 	var loads := [["rifle_squad"], ["rifle_squad"], ["mg_team", "at_team"]]
 	for i in loads.size():
 		var p := w.nav.nearest_boat(sea0 + Vector3(-i * 14.0, 0, i * 18.0))
-		var rh := d.vehicle("rhib", p, Defs.yaw_of(Defs.flat(beach - p)), d.side, d.next_owner())
+		# Share landing parties, not alternating boats and men: with two
+		# commanders that gave both rifle squads to one and empty boats to the other.
+		var owner := d.next_owner()
+		var rh := d.vehicle("rhib", p, Defs.yaw_of(Defs.flat(beach - p)), d.side, owner)
 		for kind in loads[i]:
-			var sq := d.squad(kind, _walk(d, beach))
+			var sq := w.rules.spawn_squad(kind, d.side, owner, w.nav.nearest_walkable(_walk(d, beach)))
 			for m in sq.members:
 				rh.board(m)
 		boats.append(rh)
@@ -429,15 +495,30 @@ func _beachhead(d: MissionDirector) -> void:
 		d.radio("Neptune: Two enemy boats coming out of the harbour. Engaging.", h + Vector3(40, 0, 0)))
 	ctx.aa = aa
 	_support(d, ["artillery"], 320.0)
+	# Reserves wait inland from the start. A player who scouts ahead can find
+	# them; the counterattack must not materialise beside the supporting helicopter.
+	ctx.counter_squads = []
+	for spec in [["fighter_cell", 150.0, -15.0], ["rpg_team", 160.0, -20.0], ["fighter_cell", 155.0, 8.0]]:
+		var p := _walk(d, h + inland * float(spec[1]) + Vector3(0, 0, float(spec[2])))
+		var reserve := d.enemy(String(spec[0]), p)
+		reserve.order_defend(p, -inland)
+		ctx.counter_squads.append(reserve)
+	ctx.counter_vehicles = []
+	for i in 2:
+		var t := d.vehicle("technical", _walk(d, h + inland * 190.0 + Vector3(0, 0, i * 12.0 - 6.0)), Defs.yaw_of(-inland), d.foe, d.ai_owner(d.foe))
+		t.order_stop()
+		ctx.counter_vehicles.append(t)
 
 	d.add("land", "Land on the beach", "reach", {"pos": beach, "r": 30.0, "need": 4, "afoot": true})
 	d.add("aa", "Destroy the two AA guns", "destroy", {"eids": aa, "pos": (h + inland * 28.0)})
 	d.add("harbour", "Clear the harbour", "clear", {"pos": h + inland * 8.0, "r": 42.0, "afoot": true})
-	d.add("hold", "Hold the harbour until the landing craft are in", "hold", {"pos": h + inland * 8.0, "r": 50.0, "secs": 90.0, "afoot": true,
-		"grace": 30.0, "fail_text": "The Rebels have retaken the harbour."})
+	d.add("hold", "Repel the harbour counterattack", "hold", {"pos": h + inland * 8.0, "r": 50.0, "secs": 90.0, "afoot": true,
+		"grace": 30.0, "clear_end": true, "fail_text": "The Rebels have retaken the harbour."})
 	d.add("boats", "Sink the enemy boats", "destroy", {"eids": [mb.eid, sb.eid], "optional": true, "track": true, "pos": h + Vector3(40, 0, 0)})
+	d.add("neptune", "Keep Neptune afloat", "protect", {"eids": [ship.eid], "optional": true})
 	d.radio("Overlord: Two AA guns cover the harbour and our helicopters can't get in. Land on the beach at %s, find the guns and kill them." % Defs.grid_ref(beach), beach)
 	d.start("boats", func(): d.radio("Neptune: Enemy boats are on the bottom. Coast is clear."))
+	d.start("neptune")
 	d.start("land", func():
 		d.radio("Overlord: Feet dry. The AA guns are just inland of the harbour, %s. Bring the patrol ship in close: once they're spotted its guns can reach them from the water." % Defs.grid_ref(h + inland * 28.0), h + inland * 28.0)
 		d.start("aa", func(): _beachhead_air(d)))
@@ -459,21 +540,39 @@ func _beachhead_air(d: MissionDirector) -> void:
 		gh.board(m)
 	gh.order_move(beach + Vector3(-30, 0, -10))
 	d.start("harbour", func():
-		d.radio("Overlord: Harbour's clear. Landing craft are ninety seconds out: hold the quay till they're in.", h)
-		d.start("hold", func(): d.win("The harbour is ours, and the battalion is coming ashore.")))
+		_beachhead_hold(d))
+
+
+func _beachhead_hold(d: MissionDirector) -> void:
+	var h: Vector3 = ctx.h
+	d.radio("Overlord: Harbour secure. Turn inland and cover the town road. Put the AT team in cover and save the A-10 for the counterattack.", h + Vector3(-90, 0, 0))
+	d.start("hold", func(): d.win("The harbour and its approaches are secure for the battalion's landing."))
 	# the Rebels in the town send what they have down the road to the harbour
 	var road := Vector3(-1, 0, 0)
 	var src := _walk(d, h + road * 190.0)
 	d.after(20.0, func():
+		var advancing := false
+		for i in ctx.counter_vehicles.size():
+			var t = ctx.counter_vehicles[i]
+			if _live(t):
+				t.order_assault(h + road * 10.0 + Vector3(0, 0, i * 10.0 - 5.0))
+				advancing = true
 		for i in 2:
-			var t := d.vehicle("technical", _walk(d, src + Vector3(0, 0, i * 12.0 - 6.0)), Defs.yaw_of(-road), d.foe, d.ai_owner(d.foe))
-			t.order_assault(h + road * 10.0 + Vector3(0, 0, i * 10.0 - 5.0))
-		var q := d.enemy("fighter_cell", src + road * 10.0)
-		q.order_assault(h + road * 8.0, -road)
-		d.radio("Overlord: Two technicals and a cell coming down the road from the town to the harbour.", src))
-	d.after(55.0, func():
-		var q2 := d.enemy("fighter_cell", src + Vector3(0, 0, 30))
-		q2.order_assault(h + road * 14.0 + Vector3(0, 0, 20), -road))
+			var reserve: Squad = ctx.counter_squads[i]
+			if not reserve.alive_members().is_empty():
+				reserve.order_assault(h + road * (8.0 + i * 12.0), -road)
+				advancing = true
+		if advancing:
+			d.radio("Overlord: Enemy reserves advancing down the town road. Hold your firing positions.", src)
+		else:
+			d.radio("Overlord: Town-road reserves neutralised. Keep watch on the southern approach.", src))
+	d.after(35.0, func():
+		var flank := _walk(d, h + road * 155.0 + Vector3(0, 0, 8))
+		var reserve: Squad = ctx.counter_squads[2]
+		if not reserve.alive_members().is_empty():
+			reserve.order_assault(h + road * 14.0 + Vector3(0, 0, 20), -road)
+			d.radio("Overlord: Infantry approaching the southern flank. Keep the quay covered.", flank))
+	d.after(75.0, func(): d.radio("Overlord: Keep infantry on the quay. Drive back anyone still inside the harbour; the battalion needs this approach secure.", h))
 
 
 func mgen_sandbags(d: MissionDirector, p: Vector3) -> void:
@@ -581,15 +680,23 @@ func _skyhook(d: MissionDirector) -> void:
 	d.add("deliver", "Sling the Nyx to Outpost Kilo", "deliver", {"eids": [nyx.eid], "pos": op, "r": 34.0,
 		"fail_text": "The Nyx has been lost."})
 	d.add("kilo", "Don't let Kilo fall", "guard", {"pos": op, "r": 40.0, "grace": 25.0, "mark": false, "fail_text": "Outpost Kilo has been overrun."})
-	d.add("column", "Stop the armoured column", "destroy", {"eids": [], "need": 2, "pos": op + north * 60.0})
-	d.radio("Kilo: Overlord, Kilo. Armour forming up a click north of us and we've got nothing that can touch it. Requesting anti-armour, over.", op)
+	d.add("column", "Break the vanguard and both BTRs", "destroy", {"eids": [], "need": 3, "pos": op + north * 60.0})
+	d.add("incoming", "Enemy vanguard moves in", "timer", {"secs": 80.0})
+	d.add("mohawk", "Keep the Mohawk flying", "protect", {"eids": [mh.eid], "optional": true})
+	d.radio("Kilo: Overlord, Kilo. Armour forming on the road north of us and we've got nothing that can touch it. Requesting anti-armour, over.", op)
 	d.after(6.0, func(): d.radio("Overlord: Kilo, help is on the way by air. Mohawk, hook that Nyx and get it over the river.", pad))
 	d.start("deliver", func():
-		d.radio("Kilo: Nyx is on the ground. Thanks for the lift.", op))
+		d.radio("Kilo: Nyx is down. Take a firing position facing north and keep it back while the missiles reload. Mohawk, clear the firing line.", op)
+		_skyhook_finish(d))
 	d.start("kilo")
+	d.start("mohawk")
 	# the column moves at 1:20 whatever happens, its armour a minute behind
-	d.after(80.0, func(): _skyhook_column(d, 1))
+	d.start("incoming", func(): _skyhook_column(d, 1))
+	d.after(115.0, func(): d.radio("Kilo: Heavy engines north. Two BTRs behind the vanguard. Infantry, spot their armour for the Nyx and keep their riflemen off the launcher.", op + north * 100.0))
 	d.after(140.0, func(): _skyhook_column(d, 2))
+	d.after(220.0, func():
+		if _active(d, "column") and _done(d, "deliver"):
+			d.radio("Kilo: Enemy vehicles still moving. Nyx, shift around the houses for a clear shot. Infantry, keep eyes on the road.", op))
 
 
 func _skyhook_column(d: MissionDirector, wave: int) -> void:
@@ -605,7 +712,8 @@ func _skyhook_column(d: MissionDirector, wave: int) -> void:
 		q.order_assault(op + north * 14.0, -north)
 		d.radio("Kilo: Contact north! A technical and infantry coming down the road. Armour behind them.", c0)
 		d.start("column", func():
-			d.win("The column is burning on the road north of Kilo. The outpost holds."))
+			d.radio("Kilo: Column broken. Keep the Nyx at the outpost; we'll need it when they come back." if _done(d, "deliver") else "Kilo: Column broken. Finish bringing the Nyx over; we still need its anti-armour cover.", op)
+			_skyhook_finish(d))
 	else:
 		var btr := d.vehicle("btr", _walk(d, c0 + Vector3(-8, 0, -10)), Defs.yaw_of(-north), d.foe, d.ai_owner(d.foe))
 		btr.order_assault(op + north * 24.0)
@@ -613,8 +721,13 @@ func _skyhook_column(d: MissionDirector, wave: int) -> void:
 		tk.order_assault(op + north * 30.0)
 		o.eids.append(btr.eid)
 		o.eids.append(tk.eid)
-		d.radio("Kilo: Two BTRs behind them! Where's that Nyx?", c0)
+		d.radio("Kilo: Two BTRs on the road! Nyx, engage!" if _done(d, "deliver") else "Kilo: Two BTRs on the road! We need that Nyx now!", c0)
 	d.dirty = true
+
+
+func _skyhook_finish(d: MissionDirector) -> void:
+	if _done(d, "deliver") and _done(d, "column"):
+		d.win("The Nyx is delivered, the enemy column is broken, and Kilo holds.")
 
 
 func _drive_skyhook(d: MissionDirector) -> void:
@@ -732,7 +845,9 @@ func _ambush(d: MissionDirector) -> void:
 
 	d.add("position", "Get into the woods above the lane", "reach", {"pos": ap, "r": 26.0, "need": 6})
 	d.add("depart", "The convoy leaves the village", "timer", {"secs": 100.0})
+	d.add("qrf", "Reaction force moves in", "timer", {"secs": 45.0})
 	d.add("convoy", "Destroy the convoy", "destroy", {"eids": [], "need": 3, "pos": kz, "track": true})
+	d.add("wipeout", "Destroy all four convoy vehicles", "destroy", {"eids": [], "need": 4, "optional": true})
 	d.add("exfil", "Break contact: back to the rally point", "extract", {"pos": rp, "r": 30.0, "frac": 0.6})
 	d.radio("Cell leader: The convoy leaves the village at %s when the light goes. Into the woods above the lane, and nobody fires before the RPGs." % Defs.grid_ref(route[0]), ap)
 	d.start("position", func(): d.radio("Cell leader: In position. Wait for it... let the lead car into the bend."))
@@ -749,6 +864,7 @@ func _ambush_go(d: MissionDirector) -> void:
 		v.embark_new_squad()
 		ctx.convoy.append(v)
 		d.obj("convoy").eids.append(v.eid)
+	d.obj("wipeout").eids = d.obj("convoy").eids.duplicate()
 	d.radio("Lookout: They're moving! Four vehicles, a Hunter in front.", ctx.route[0])
 	d.start("convoy", func():
 		d.radio("Cell leader: That's enough, they'll have called it in. Back to the rally point, move!", ctx.rp)
@@ -756,17 +872,30 @@ func _ambush_go(d: MissionDirector) -> void:
 		d.deadline_text = "The reaction force has cut you off."
 		d.dirty = true
 		d.start("exfil", func(): d.win("The convoy is burning and the cell has melted away into the dusk.")))
+	d.start("wipeout", func(): d.radio("Lookout: All four vehicles are out. Nothing else to prove here; get clear!", ctx.rp))
 	_convoy_tick(d)
-	# the quick reaction force: a Pawnee and a Hunter full of riflemen from the
-	# main road, a minute and a half after the shooting starts
-	d.after(45.0, func():
-		var qrf := d.vehicle("hunter_hmg", _walk(d, ctx.kz - ctx.t * 220.0 - ctx.n * 10.0), Defs.yaw_of(ctx.t), d.foe, d.ai_owner(d.foe))
-		qrf.embark_new_squad()
-		qrf.order_assault(ctx.ap)
-		var hx: float = clampf(ctx.kz.x, -MapDims.HALF + 20.0, MapDims.HALF - 20.0)
-		var heli := d.vehicle("pawnee", Vector3(hx, 0, MapDims.HALF - 30.0), 0.0, d.foe, d.ai_owner(d.foe))
-		heli.order_move(ctx.ap)
-		d.radio("Lookout: Helicopter coming up from the south, and a Hunter on the main road. QRF!", ctx.kz))
+
+
+func _ambush_contact(d: MissionDirector) -> void:
+	if int(d.obj("qrf").state) != MissionDirector.HIDDEN:
+		return
+	for v in ctx.convoy:
+		if not _live(v) or v.hp < v.max_hp:
+			d.radio("Lookout: They've called for help. Their reaction force moves in forty-five seconds. Hit the convoy hard, then break contact!", ctx.kz)
+			d.start("qrf", func(): _ambush_qrf(d))
+			return
+
+
+func _ambush_qrf(d: MissionDirector) -> void:
+	# The village end of the convoy route is drivable. Extending the lane
+	# backwards from the bend can put the Hunter in a house beyond the road.
+	var qrf := d.vehicle("hunter_hmg", _walk(d, ctx.route[0]), Defs.yaw_of(ctx.t), d.foe, d.ai_owner(d.foe))
+	qrf.embark_new_squad()
+	qrf.order_assault(ctx.ap)
+	var hx: float = clampf(ctx.kz.x, -MapDims.HALF + 20.0, MapDims.HALF - 20.0)
+	var heli := d.vehicle("pawnee", Vector3(hx, 0, MapDims.HALF - 30.0), 0.0, d.foe, d.ai_owner(d.foe))
+	heli.order_move(ctx.ap)
+	d.radio("Lookout: Helicopter coming up from the south, and a Hunter on the main road. QRF!", ctx.kz)
 
 
 ## Drives the convoy down its route a few points at a time, through the kill
@@ -774,6 +903,7 @@ func _ambush_go(d: MissionDirector) -> void:
 ## reaches the end of the route has got away.
 func _convoy_tick(d: MissionDirector) -> void:
 	_now = d.world.time
+	_ambush_contact(d)
 	var route: PackedVector3Array = ctx.route
 	var escaped := 0
 	for i in ctx.convoy.size():
@@ -894,19 +1024,42 @@ func _kingpin(d: MissionDirector) -> void:
 
 	d.add("checkpoint", "Clear the checkpoint", "clear", {"pos": cp, "r": 24.0})
 	d.add("hvt", "Kill or capture Commander Kassem", "destroy", {"eids": [hvt.eid], "pos": hv})
-	d.add("exfil", "Get back to the Hunters", "extract", {"pos": start, "r": 30.0, "frac": 0.75})
+	d.add("exfil", "Break contact: return to the insertion point", "extract", {"pos": start, "r": 30.0, "frac": 0.75})
+	d.add("hunters", "Keep an extraction Hunter intact", "protect", {"eids": [vh[0].eid, vh[1].eid], "need": 1, "optional": true})
+	d.start("hunters")
 	d.radio("Overlord: Kassem is in the house at %s. Checkpoint on the main street first. Quiet as you can." % Defs.grid_ref(hv), hv)
 	d.start("checkpoint", func():
 		d.radio("Overlord: Checkpoint down. The house is seventy metres up the street, doors barred. Breach it.", hv)
-		d.start("hvt", func(): _kingpin_out(d)))
+		d.start("hvt", func(): _kingpin_out(d))
+		_kingpin_watch(d))
+
+
+func _kingpin_watch(d: MissionDirector) -> void:
+	if not _active(d, "hvt"):
+		return
+	var h = ctx.hvt
+	if is_instance_valid(h) and d.alive(h.eid):
+		var o := d.obj("hvt")
+		if h.visible_to_team(d.side) and Defs.flat(h.position - (o.pos as Vector3)).length() > 20.0:
+			o.pos = h.position
+			d.dirty = true
+			if d.world.time - float(ctx.get("target_report", -30.0)) >= 20.0:
+				ctx.target_report = d.world.time
+				d.radio("Assault team: Kassem is moving! Last seen at %s. Cut him off before he reaches another block." % Defs.grid_ref(h.position), h.position)
+		elif not h.visible_to_team(d.side) and not ctx.get("house_searched", false) and Defs.flat(h.position - (ctx.hv as Vector3)).length() > 20.0 and d.afoot_in(ctx.hv, 12.0) > 0:
+			ctx.house_searched = true
+			d.radio("Assault team: No sign of Kassem at the house. Search the surrounding streets; keep the Hunters covering the way out.", ctx.hv)
+	d.after(2.0, func(): _kingpin_watch(d))
 
 
 func _kingpin_out(d: MissionDirector) -> void:
-	d.radio("Overlord: Jackpot, Kassem is down. The whole town is waking up: get back to the Hunters, now!", ctx.start)
+	d.radio("Overlord: Jackpot, Kassem is down. The whole town is waking up: back to the insertion point, now!", ctx.start)
 	d.deadline = d.world.time + 150.0
 	d.deadline_text = "The Rebels have cut the road out of town."
 	d.dirty = true
 	d.start("exfil", func(): d.win("Kassem is off the board and the raid is out of the town."))
+	d.after(60.0, func(): d.radio("Overlord: Ninety seconds to get clear. Break contact and cover each other as you withdraw.", ctx.start))
+	d.after(120.0, func(): d.radio("Overlord: Thirty seconds. All surviving teams back to the insertion point, now!", ctx.start))
 	# everyone in town comes running, and two technicals from the north
 	var north := Vector3(0, 0, -1)
 	var hv: Vector3 = ctx.hv
