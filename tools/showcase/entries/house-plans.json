@@ -1,0 +1,20 @@
+{
+  "entry": "changelog/unreleased/house-plans.md",
+  "summary": "Houses on two floors, L and T wings out of the back, big farmhouses.",
+  "medium": "still",
+  "stage": "tools/showcase/building-surfaces.tscn",
+  "rationale": "Appearance and layout change: matched studio rows of four planned houses from behind (the wings) and the front, then the town from above and a farmstead at the same seed and camera.",
+  "source_ref": "d5ebf00492cdd4c7191e334fc596ffd4e719189c",
+  "before_ref": "6f0c3a2adc6a7d3639191106c5f86f0f28925cee",
+  "sources": [
+    {
+      "file": "changelog/unreleased/house-plans/comparison.jpg",
+      "sha256": "158268b17c713b2e944ee1c941f48ec26ac83a915d4c3e99ff3d441d5a437554"
+    },
+    {
+      "file": "changelog/unreleased/house-plans/capture.json",
+      "sha256": "0a7685edfc524b5ce672c533f98ef28c74d4b0cca492701ff9a7f29dd3b8538c"
+    }
+  ],
+  "output": null
+}
