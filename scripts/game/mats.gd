@@ -693,7 +693,9 @@ static func _distant_arrays(groups: Dictionary) -> Array:
 		var base: Color = material.get_shader_parameter("col_a")
 		if int(material.get_shader_parameter("pattern")) == CAMO:
 			base = base.lerp(material.get_shader_parameter("col_b"), 0.35)
-			if int(material.get_shader_parameter("camo_style")) > 0:
+			# the old two-colour camo never sets a style: unset reads back null
+			var style: Variant = material.get_shader_parameter("camo_style")
+			if style != null and int(style) > 0:
 				base = material.get_shader_parameter("camo_mean")
 		if not per_material:
 			base = base.srgb_to_linear()
