@@ -74,12 +74,12 @@ static func barbed(k: BuildingKit, a: Vector3, b: Vector3, sag := 0.02, every :=
 	k.part(BuildingKit._commit(v, n), FINISHES.get(finish, "wire"), Transform3D.IDENTITY, null, false)
 
 
-## Barbed wire along `pts` as it's made: two 2.5 mm line wires twisted together
-## (a turn every 8 cm), and every `every` a barb, two short wires wrapped round
+## Barbed wire along `pts` as it's made: two 2.5 mm line wires twisted tight
+## together (a turn every 7.5 cm), and every `every` a barb, two short wires wrapped round
 ## the pair with their four cut ends standing out.
 static func barbed_wire(v: PackedVector3Array, n: PackedVector3Array, pts: PackedVector3Array, every: float, rng: RandomNumberGenerator) -> void:
 	var line := resample(pts, 0.025)
-	twisted(v, n, line, 0.0022, 0.08, 0.0017)
+	twisted(v, n, line, 0.0011, 0.075, 0.0017)
 	var run := every * rng.randf()
 	for i in range(1, line.size()):
 		var seg := line[i] - line[i - 1]
@@ -87,7 +87,7 @@ static func barbed_wire(v: PackedVector3Array, n: PackedVector3Array, pts: Packe
 		if run < every:
 			continue
 		run -= every
-		barb(v, n, line[i], seg.normalized(), 0.021, rng)
+		barb(v, n, line[i], seg.normalized(), 0.017, rng)
 
 
 ## The same line every `step` metres along it (so a twist or a barb spacing
@@ -133,28 +133,46 @@ static func twisted(v: PackedVector3Array, n: PackedVector3Array, pts: PackedVec
 	strand(v, n, b_pts, r)
 
 
-## One barb at `p` on a line running `t`: the wrap (a knot a little thicker
-## than the wire) and four sharpened points `size` long, splayed at right
-## angles round the line and leaning back along it, as the barbing machine
-## leaves them.
+## One barb at `p` on a line running `t`, as the barbing machine makes it: two
+## short wires each coiled twice round the twisted pair, their four cut ends
+## standing out at right angles round the line as round tapered points `size`
+## long, one pair leaning a little forward along the wire and the other back,
+## none quite where the next one is.
 static func barb(v: PackedVector3Array, n: PackedVector3Array, p: Vector3, t: Vector3, size: float, rng: RandomNumberGenerator) -> void:
 	var s := t.cross(Vector3.UP if absf(t.y) < 0.9 else Vector3.RIGHT).normalized()
 	var u := s.cross(t)
 	var a0 := rng.randf() * TAU
-	strand(v, n, PackedVector3Array([p - t * 0.007, p + t * 0.007]), 0.0042)
+	for w in 2:
+		# the wrap: two turns of a 2 mm wire round the pair, side by side
+		var start := p + t * (-0.006 + w * 0.006)
+		var coil := PackedVector3Array()
+		for k in 13:
+			var a := a0 + w * PI * 0.5 + k * TAU * 2.0 / 12.0
+			coil.append(start + t * (k * 0.0045 / 12.0) + (s * cos(a) + u * sin(a)) * 0.0042)
+		strand(v, n, coil, 0.0011)
+		# its two cut ends, opposite each other, leaning one forward and one back
+		for e in 2:
+			var a := a0 + w * PI * 0.5 + e * PI + rng.randf_range(-0.3, 0.3)
+			var out := s * cos(a) + u * sin(a)
+			var lean := t * (0.32 if (w + e) % 2 == 0 else -0.32) + t * rng.randf_range(-0.12, 0.12)
+			var root := start + t * 0.0022 + out * 0.004
+			var tip := root + (out + lean).normalized() * size * rng.randf_range(0.8, 1.1)
+			point(v, n, root, tip, 0.0012)
+
+
+## A sharpened wire end from `root` to `tip`: a round rod `r` thick tapering to
+## a point (four sides: it is a few pixels across at most).
+static func point(v: PackedVector3Array, n: PackedVector3Array, root: Vector3, tip: Vector3, r: float) -> void:
+	var d := (tip - root).normalized()
+	var x := d.cross(Vector3.UP if absf(d.y) < 0.9 else Vector3.RIGHT).normalized()
+	var y := d.cross(x)
 	for k in 4:
-		var a := a0 + k * PI * 0.5 + rng.randf_range(-0.25, 0.25)
-		var out := s * cos(a) + u * sin(a)
-		var along := t * (0.004 if k % 2 == 0 else -0.004)
-		var root := p + along + out * 0.003
-		var tip := root + (out + t * rng.randf_range(-0.35, 0.35)).normalized() * size * rng.randf_range(0.85, 1.1)
-		var w := out.cross(t).normalized() * 0.0016
-		# a square-cut wire end, tapered: two crossed blades so it reads from any side
-		for side in [w, (tip - root).cross(w).normalized() * 0.0016]:
-			var sw: Vector3 = side
-			var nm := (tip - root).cross(sw).normalized()
-			_tri(v, n, root + sw, tip, root - sw, nm, nm, nm)
-			_tri(v, n, root - sw, tip, root + sw, -nm, -nm, -nm)
+		var a0 := TAU * k / 4.0
+		var a1 := TAU * (k + 1) / 4.0
+		var o0 := x * cos(a0) + y * sin(a0)
+		var o1 := x * cos(a1) + y * sin(a1)
+		var nm := (o0 + o1).normalized()
+		_tri(v, n, root + o0 * r, root + o1 * r, tip, o0, o1, nm)
 
 
 ## Barbed wire along the top of a wall `length` long whose top is at `y`:
