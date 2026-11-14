@@ -17,7 +17,9 @@ extends Node
 ## switch are left out: the renderer reports a frame's GPU time a frame or two
 ## late, and global illumination, water, grass and shadows rebuild.
 ##
-## Start it on the settings to be priced (--preset=cinematic prices them all).
+## This is a stationary cost, not the cost of an advancing battle. Time passes
+## is reported separately as unmeasured: its relighting work needs a moving clock.
+## Start it on the settings to be priced (--preset=cinematic enables them).
 ## Render scale is in the list as a control: halving the pixels must save far
 ## more than the noise, or the numbers aren't to be trusted (the run says so).
 ## Nothing here is saved, and the settings are put back before the run ends.
@@ -37,6 +39,11 @@ const EXTRA := [
 	["decals", false, "Scorch marks off"],
 ]
 const CONTROL := "scale"
+## Do not toggle these in a frozen scene and mistake the settled frames for
+## their running cost. Keep the reason in both the console and JSON report.
+const DYNAMIC := {
+	"time_passes": "The battle clock is held still; sky relighting, terrain-shadow rebakes and reflection recaptures need advancing battle time.",
+}
 ## Settings that take longer to settle once switched: global illumination
 ## rebuilds its cascades over many frames, water and grass their meshes.
 const SLOW := {"gi": 6, "water": 2, "grass": 2, "lod": 2, "terrain_reflections": 3, "shadows": 2}
@@ -61,6 +68,8 @@ var _take: PackedFloat32Array = []
 var _blocks: Array[float] = []  # each block's quick frame time, in order
 var _base: PackedFloat32Array = []
 var _results := []
+var _unmeasured := []
+var _battle_time := 0.0
 var _rid: RID
 
 
@@ -69,10 +78,14 @@ func _ready() -> void:
 	_orig = Settings.v.duplicate()
 	_no_save = Settings.no_save
 	Settings.no_save = true
+	_battle_time = float(world.get("time"))
+	for key in DYNAMIC:
+		if bool(_orig.get(key, false)) and (only.is_empty() or key in only):
+			_unmeasured.append({"key": key, "reason": DYNAMIC[key], "requires": "advancing_battle_clock"})
 	var bench: Array = (load("res://scripts/ui/console_cmds.gd") as Script).get_script_constant_map()["BENCH"]
 	for b in bench + EXTRA:
 		var key: String = b[0]
-		if key.begins_with("(") or not Settings.v.has(key) or (not only.is_empty() and not key in only and key != CONTROL):
+		if DYNAMIC.has(key) or key.begins_with("(") or not Settings.v.has(key) or (not only.is_empty() and not key in only and key != CONTROL):
 			continue
 		var cur: Variant = Settings.v[key]
 		if key == CONTROL:
@@ -189,6 +202,8 @@ func _done() -> void:
 	print("GPUBENCH what each setting costs, the most first (baseline %.2f ms, %s):" % [_median(_base), _gpu_name()])
 	for r in _results:
 		print("GPUBENCH   %s %+7.2f ms  spread %.2f" % [String(r.label).trim_suffix(" off").trim_suffix(" on Low").rpad(34), r.cost_ms, r.spread_ms])
+	for r in _unmeasured:
+		print("GPUBENCH %s NOT MEASURED: %s" % [r.key, r.reason])
 	if DisplayServer.get_name() == "headless":
 		print("GPUBENCH headless: no GPU time to read, so this run only checked itself")
 	elif control.is_empty():
@@ -202,7 +217,8 @@ func _done() -> void:
 		"frames": frames, "settle": _settle, "cycles": cycles, "quick_fraction": QUICK, "baseline_ms": _median(_base),
 		"baseline_quick_ms": _quick(_base), "baseline_spread_ms": _spread(_base),
 		"control_ok": sound, "restored": restored, "no_save": Settings.no_save, "cinematic_keys": Settings.CINEMATIC_KEYS, "mood": String(world.get("atmo").mood) if world.get("atmo") else "",
-		"settings": _results}
+		"scope": "stationary", "battle_time_start": _battle_time, "battle_time_end": float(world.get("time")),
+		"settings": _results, "unmeasured_settings": _unmeasured}
 	if out != "":
 		var f := FileAccess.open(out, FileAccess.WRITE)
 		if f:

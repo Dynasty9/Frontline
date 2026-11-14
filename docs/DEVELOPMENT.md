@@ -222,7 +222,7 @@ the calling system's time; do not add it to the total. Headless FPS is zero beca
 frames are rendered. The overlay's game-logic bar is time per rendered frame, which can
 contain several simulation ticks; its system table is time per tick.
 
-`--gpu-bench[=out.json]` prices each graphics setting on the graphics card. Windowed (it reads the renderer's
+`--gpu-bench[=out.json]` prices graphics settings in a stationary scene on the graphics card. Windowed (it reads the renderer's
 GPU time, which headless runs don't have), `--gpu-bench-at` seconds into the battle (8) it holds the battle still,
 hides the interface, turns vsync and the frame cap off, and switches each setting that's on off and on again in
 short blocks (off, on, off, on, ... off: `--gpu-bench-cycles` pairs, 10, of `--gpu-bench-frames` frames, 20, after a
@@ -231,12 +231,20 @@ time, so each block counts by the frame a fifth of the way up from its quickest,
 the average of the off blocks either side of it, which cancels load that rises or fades steadily. A setting's cost
 is the median of those differences and its spread their middle half; render scale (100% against 50%) is the control
 and the run says whether it stood clear of the noise. It prints a table (`GPUBENCH` lines), writes the report as
-JSON, puts every setting back and never saves them. Start it on the settings to price (`--preset=cinematic` prices
+JSON, puts every setting back and never saves them. Start it on the settings to price (`--preset=cinematic` enables
 them all) with `--gpu-bench-only=key,key` for a few, e.g.
 `godot --path . --resolution 1920x1080 -- --offscreen --nohud --perf=0 --scenario=roster --seed=3 --mood=golden
 --preset=cinematic --focus=-84,24 --zoom=34 --gpu-bench=costs.json --gpu-bench-at=10`. Other programs drawing on
 the same card widen the spread (several game windows rendering at once made it several milliseconds); keep the
 machine quiet for small settings.
+
+This is not an advancing-battle benchmark. `Time passes` is explicitly **not measured**:
+the held clock does not exercise periodic sky relighting, terrain-shadow rebakes or mountain
+reflection recaptures. The JSON lists it in `unmeasured_settings` with its reason and
+`requires: "advancing_battle_clock"`, never as a zero-cost setting. `scope: "stationary"`
+and the starting/ending battle times record the measurement boundary. Use an advancing-clock
+run (the existing `FL_DEBUG_TOD` diagnostics separate step/rebake frames from other frames)
+for that work; this report does not establish its cost.
 
 Run `godot --headless --path . res://tests/structure_index_test.tscn` for building-index
 lifecycle checks and a same-process FOB lookup comparison with 1,000 scenery objects.
