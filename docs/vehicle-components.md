@@ -676,7 +676,7 @@ meshes change only on helicopters (+2 to +4 nodes, +1 to +3 meshes: the tail rot
 and the ducted fans' on the Blackfoot and Orca); vertices rise 0.23% across the roster, at most 2.3% (the
 Merkava and Scorcher, for their split rolls and bags).
 
-- **Rotor and propeller discs** (`VehicleRotors.BLUR_SHADER`, built by `VehicleModels._blur_mat` and
+- **Rotor and propeller discs** (`VehicleRotors.BLUR_SHADER`, the material of `VehicleModels._blur_mat` and
   `VehiclePropellers.disc_material`): one lit shader for every rotor and propeller, a nearly black disc
   tinted by the blades' paint at about a quarter opacity, a little thinner over the cabin, with a soft
   darker band near the tips instead of the pale ring that read as a selection circle from above. The ghost
