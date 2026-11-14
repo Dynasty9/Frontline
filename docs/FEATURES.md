@@ -673,6 +673,7 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   Optional alpine haze adds atmospheric depth; cached terrain reflections exclude moving units and refresh with lighting.
   Standard-battle woods are denser and share spatial bark and foliage batches; changed trees recover their individual models.
   Campaign missions retain their previous geology and woodland layout to preserve authored routes and cover.
+- Tree canopies build a continuous leaf-and-moss soil layer, with less meadow grass in shade. The grass stream places scanned ferns, bracken, nettles, shrubs, young pines, fallen trunks, stumps and mossy stones, plus loose leaves, small brown fungi and occasional daylight butterflies. A separate seeded generator leaves gameplay randomness untouched; weather and Wildlife settings preserve plant and debris placement. Moisture limits ferns and fungi; roads, floors, water and barren slopes exclude the details. Terrain displacement, trench masks and blast scars keep them attached to changing ground. These are cosmetic, streamed with grass quality and culled at 65 m (95 m for larger wood, rocks and saplings), with no added cover or collision. The soil remains when grass is disabled; butterflies also respect Wildlife being off. Scanned understory meshes retain distance LODs and mipmapped colour, normal, occlusion and roughness maps; mature trees retain the existing spatial batching path.
   Infantry and vehicles follow the ground, slow on slopes, and route around faces too steep to cross.
   Infantry, wheels and tracks have separate traversal limits (about 40, 26 and 33 degrees). Vehicle slopes
   use an eight-metre envelope so a flat centre cannot conceal a cliff under the hull. Routes favour roads;
@@ -782,8 +783,8 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   server and built on each client, and it breaks: a blast or a vehicle driving through knocks lamps, utility poles
   (their wires come down with them), signs, benches, bins, fences and playground kit over, and the pieces fall and
   lie where they land. Broken street lights stay dark at night.
-- Trees are broadleaves (a flared trunk forking into limbs that carry clumps of leaves, darker underneath),
-  spruces (many overlapping tiers of boughs) and small orchard trees; foliage has ragged, leafy edges and throws
+- Trees are broadleaves and two mature fir shapes with scanned trunks and branches, plus small orchard trees.
+  Branch cards follow the scanned canopy envelopes; foliage has ragged, leafy edges and throws
   dappled shadows. A tree that is shelled or run over falls away from what hit it and stays down.
 
 **Terrain** (`terrain.gd`, `mapgen.gd`)
