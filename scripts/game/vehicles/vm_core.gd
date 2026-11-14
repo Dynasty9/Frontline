@@ -546,7 +546,7 @@ static func _abrams(k: VehicleModels, team: int, seed: int) -> void:
 		VehicleFittings.mudflap(k, m, Vector3(s * 1.33, 0.84, 3.48), Vector2(0.5, 0.42))
 		# fuel filler caps on the deck over the sponsons
 		VehicleFittings.filler(k, m, Vector3(s * 1.28, roof + 0.02, 1.1), 0.09)
-		if not k.burnt and team >= 0:
+		if not k.wreck and team >= 0:
 			# The recognition chevron lies flush on the skirt.
 			for end: float in [-1.0, 1.0]:
 				_bar(k, m, Vector3(s * 1.694, 0.84, 0.69), Vector3(s * 1.694, 1.1, 0.69 + end * 0.21), 0.007, 0.045, "paint", Color(0.67, 0.64, 0.5), false)
@@ -679,7 +679,7 @@ static func _abrams(k: VehicleModels, team: int, seed: int) -> void:
 			_bx(k, t, Vector3(0.028, 0.37, 0.031), Vector3(s * 1.701, 0.44, z), cam, null, Vector3.ZERO, false)
 		for z: float in [0.9, 1.7]:
 			_bx(k, t, Vector3(0.02, 0.08, 0.05), Vector3(s * 1.71, 0.57, z), "gunmetal_w", null, Vector3.ZERO, false)
-		if not k.burnt and team >= 0:
+		if not k.wreck and team >= 0:
 			var stencil := QuadMesh.new()
 			stencil.size = Vector2(0.44, 0.18)
 			var ink := StandardMaterial3D.new()
@@ -1638,7 +1638,7 @@ static func _bradley(k: VehicleModels, team: int, seed := 0) -> void:
 		for i in 5:
 			var z0 := -2.55 + i * 1.06
 			VehicleEquipment.skirt(k, m, Vector3(s * 1.46, 0.88, z0 + 0.52), Vector3(0.07, 0.5, 1.03), s, cam)
-			if i == 2 and not k.burnt and team >= 0:
+			if i == 2 and not k.wreck and team >= 0:
 				# the same recognition chevron as the Abrams', flush on the skirt
 				for end: float in [-1.0, 1.0]:
 					_bar(k, m, Vector3(s * 1.499, 0.74, z0 + 0.52), Vector3(s * 1.499, 1.0, z0 + 0.52 + end * 0.21), 0.007, 0.045, "paint", Color(0.67, 0.64, 0.5), false)

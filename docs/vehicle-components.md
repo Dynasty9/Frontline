@@ -686,14 +686,16 @@ Merkava and Scorcher, for their split rolls and bags).
   speed threshold. A drone's rotors (no main rotor) show their discs from the start, and an aircraft's
   propellers in flight (`Projectile._blur_props`) show only theirs. The studio stage's `--surface-flight`
   shows a model's rotors as they look turning, from above.
-- **Wrecks** (the surface shader's char branch, `surface_finish == 6`, with `VehicleMaterials.CHAR`'s
-  per-family heights): a burnt model's parts read as rust that runs from dark brown to orange with grey
+- **Burnt hulks** (the surface shader's char branch, `surface_finish == 6`, with `VehicleMaterials.CHAR`'s
+  per-family heights; a battle wreck is built in its own paint instead, `k.wreck` without `k.burnt`, and
+  burns out under `vehicle_soot.gdshader`): a burnt model's parts read as rust that runs from dark brown to orange with grey
   scale and pitting, a grainy ash film on upward faces, paint only scorched below a family height (armour
   0.55 m, cars 0.28 m), soot along that line and streaked up the sides, and grey-black with white ash on
   aircraft. Parts tinted darker than 0.6 in a channel (exhaust and muzzle mouths, and a burnt vehicle's
-  glass and lamps, which `_add` tints 0.3) keep the old sooty black. Burnt tyres (`VehicleWheels._belt`)
-  are a ragged steel-wire band hung on the rim; tracked road wheels' rubber turns to ash. A wreck or a
-  gutted car that burns again chars to 30% at most (`Structure._fire_view`), so its rust shows between the
+  glass and lamps, which `_add` tints 0.3) keep the old sooty black. A gutted car's tyres (`VehicleWheels._belt`)
+  are a ragged steel-wire band hung on the rim; every other wreck's burn away to the rims it settles on
+  (`Structure._ruin`). Markings, stencils and the tail-rotor and fan discs are left off anything built for a
+  wreck (`k.wreck`). A hulk or a gutted car that burns again chars to 30% at most (`Structure._fire_view`), so its rust shows between the
   blackened patches. Buildings' "burnt" preset is unchanged.
 - **Chamfered lofts** (`VehicleModels.loft` / `solid` `bevel` and `bevel_bottom`, `extrude_x` `bevel`):
   the end ring moved in by the width within its own plane and a new ring that far back, so the cap keeps its

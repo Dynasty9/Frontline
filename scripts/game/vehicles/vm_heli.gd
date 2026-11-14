@@ -419,7 +419,7 @@ static func _fan(k: VehicleModels, p: Node3D, pos: Vector3, nb: int, r: float, c
 		# unevenly spaced, as on the real fans (it spreads the noise)
 		var bs := Basis.from_euler(Vector3(TAU * float(i) / float(nb) + sin(float(i) * 2.3) * 0.08, 0, 0))
 		_rbox(k, bl, bs, Vector3(0.02, r * 0.68, c), Vector3(0, r * 0.62, 0), "aircraft", Color(0.17, 0.17, 0.18), Vector3(0, 0.35, 0))
-	if not k.burnt:
+	if not k.wreck:
 		var blur := MeshInstance3D.new()
 		blur.name = "Blur"
 		var disc := PlaneMesh.new()

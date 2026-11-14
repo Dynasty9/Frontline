@@ -673,6 +673,7 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   Optional alpine haze adds atmospheric depth; cached terrain reflections exclude moving units and refresh with lighting.
   Standard-battle woods are denser and share spatial bark and foliage batches; changed trees recover their individual models.
   Campaign missions retain their previous geology and woodland layout to preserve authored routes and cover.
+- Tree canopies build a continuous leaf-and-moss soil layer, with less meadow grass in shade. The grass stream places scanned ferns, bracken, nettles, shrubs, young pines, fallen trunks, stumps and mossy stones, plus loose leaves, small brown fungi and occasional daylight butterflies. A separate seeded generator leaves gameplay randomness untouched; weather and Wildlife settings preserve plant and debris placement. Moisture limits ferns and fungi; roads, floors, water and barren slopes exclude the details. Terrain displacement, trench masks and blast scars keep them attached to changing ground. These are cosmetic, streamed with grass quality and culled at 65 m (95 m for larger wood, rocks and saplings), with no added cover or collision. The soil remains when grass is disabled; butterflies also respect Wildlife being off. Scanned understory meshes retain distance LODs and mipmapped colour, normal, occlusion and roughness maps; mature trees retain the existing spatial batching path.
   Infantry and vehicles follow the ground, slow on slopes, and route around faces too steep to cross.
   Infantry, wheels and tracks have separate traversal limits (about 40, 26 and 33 degrees). Vehicle slopes
   use an eight-metre envelope so a flat centre cannot conceal a cliff under the hull. Routes favour roads;
@@ -782,8 +783,8 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   server and built on each client, and it breaks: a blast or a vehicle driving through knocks lamps, utility poles
   (their wires come down with them), signs, benches, bins, fences and playground kit over, and the pieces fall and
   lie where they land. Broken street lights stay dark at night.
-- Trees are broadleaves (a flared trunk forking into limbs that carry clumps of leaves, darker underneath),
-  spruces (many overlapping tiers of boughs) and small orchard trees; foliage has ragged, leafy edges and throws
+- Trees are broadleaves and two mature fir shapes with scanned trunks and branches, plus small orchard trees.
+  Branch cards follow the scanned canopy envelopes; foliage has ragged, leafy edges and throws
   dappled shadows. A tree that is shelled or run over falls away from what hit it and stays down.
 
 **Terrain** (`terrain.gd`, `mapgen.gd`)
@@ -1119,12 +1120,19 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   gone (or too low to settle) she winds up into a spin against the rotor's torque and corkscrews in, still carrying
   her speed; with only the engines gone she autorotates, gliding steeply nose-down and flaring into a heavy landing.
   Where she hits, her fuel goes up (blast damage, a crater and fire, credited to whoever shot her down), how hard
-  she hit decides who aboard walks away, and the burnt-out helicopter lies there, on her side after a spin-in. Over
-  deep water she ditches and sinks. The kill, its stats and the messages count at the moment she's hit.
+  she hit decides who aboard walks away, and she burns out where she lies, the fire spreading from her engines (see
+  wrecks, below): rolled on her side with her nose dug in after a spin-in, slumped on her belly after a heavy
+  landing. Her blades are broken (stubs at the hub, snapped and bent into the ground, some flung clear), the tail
+  rotor is usually gone, and broken blade and torn panels lie strewn round her. Over deep water she ditches and sinks. The kill, its stats and the messages count at the moment she's hit.
 - **Boarding:** select infantry and right-click your truck, APC, Slammer or a landed helicopter: they climb in
   (as many as fit) and ride until they dismount or it arrives.
 - Tanks smash through walls, trees and cars. Small arms ricochet off them. Frontal rockets can bounce,
   and a blown track leaves the tank stranded until engineers repair it. Destroyed vehicles become wrecks you can use as cover.
+  A destroyed vehicle burns out: over the best part of a minute the fire spreads across the hull from where it took
+  hold (the engine deck, a helicopter's engines), leaving charred steel, rust running down the sides, soot streaks and
+  ash on the tops, with a few islands of blistered paint; embers glow in the seams while it burns. Tyres and canvas
+  burn away and a wheeled hull settles on its rims, the grass round it is burnt flat and the ground blackened, and
+  torn-off pieces lie round it.
 - Coalition: battle tank, **IFV** (tracked, 25 mm with airburst rounds, carries a four-man fire team), **Humvee**
   (.50 cal), supply helicopter, **attack helicopter** (circles its target with a 30 mm chain gun firing explosive
   rounds, plus rocket salvos).
@@ -1306,6 +1314,29 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
     mood had them, and the copy the battlefield is lit and reflects by is nearly half way to a warm grey so shade
     turns cool without going cyan. The sun's direction is passed in, not read from the light: a reflection probe draws
     the sky with no light. Midday keeps its photographed sky; overcast, rain and night their painted ones.
+  - **Time passes** (`time_of_day.gd`, on in Cinematic): the battle's light moves on as it goes. The battle opens at
+    its mood's hour (dawn 07:00, midday 13:00, golden hour 16:30, dusk 18:30, night 01:00) and the clock runs six
+    times as fast as life, so golden hour reaches full night in about forty minutes and a night battle sees the sky
+    pale towards dawn after an hour and a half. The sun follows a smooth path (Catmull-Rom through each daylight mood's
+    own sun, on round below the horizon) and each mood blends into the next; twilight goes with the sun's depth below
+    the horizon, not the clock (night from 12 degrees down). Below dusk's own sun the sunlight reddens as it sets;
+    after sunset comes a blue hour (sky, air and land go blue with the sun 4 to 7 degrees down), and the exposure
+    opens up over the dark gap before the moon is up, more under the physical sky, which darkens faster. The sun's
+    light fades out and the moon's in, handing over only while neither lights the ground. With Physical sky on, the
+    scattered sky carries dusk on past sunset (its battlefield light going from warm grey to the clear sky's blue)
+    and fades into the painted night (stars and moon) as the sun sinks from 4 to 11 degrees down; midday's
+    photograph fades in and out either side of 13:00, the scattered midday sky calibrated to its brightness
+    (`tools/sky_calibration.py`). Lamps in windows, street lights, the night's flares, stars, the eye's night vision,
+    sun shafts, water, smoke, fire light, mountain clouds, cloud shadows and the fog of war's shade all follow the
+    blend (`Atmosphere.by_mood`). The light is a pure function of the battle's time (`World.time`, the host's) and
+    the mood it began in, applied in two-second steps: every player with it on sees the same sky at the same
+    moment, a replay or seed brings it back, and the sky's lighting is re-rendered only once a step (measured: no
+    extra GPU time in the frames after a step). The hills' baked sun shadows follow the sun once it has moved two
+    degrees (re-baked a few hundred cells a frame), and the mountains' reflection is re-captured every three quarters
+    of an hour of clock. The meadows keep drying on the slopes facing the sun the battle began with. Rain, overcast
+    and haze are weather and hold, and night stays looks only: nothing in the simulation reads it. Photo mode's time
+    of day still overrides the light while it's open. `FL_DEBUG_TOD=1` prints each step and the GPU time after it;
+    `FL_DEBUG_TOD_AT=S` and `FL_DEBUG_TOD_PACE=N` light a battle as it will be S seconds in, N times as fast.
   - **Camera and lens** (Settings > Lighting & Look): compute passes run on the HDR scene just before it is
     tonemapped (a `CompositorEffect`, Forward+ only), at a quarter of the resolution except the final composite.
     Sun shafts are a radial blur of the open sky near the sun (Mitchell, GPU Gems 3, 2007). Lens flare and glare:
@@ -1426,7 +1457,7 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   Reaching it wins the encounter and triggers the finishing impact. A camera beside the ridge holds on the struck vehicle before and after the hit. The film uses the same tank knockout event, fuel burst and burning-vehicle particles as a match. The short flash stays on the hull above the ground, and the hull settles on its suspension. Fuel smoke uses the baked directional lighting maps, with motion-vector interpolation in close views. A fuel vent releases billows at a steady rate as the smoke thickens or thins. The closing camera frames the surviving tank from the side of its turret, keeping the barrel in view as the hull turns.
   The T-55A has a grainier finish on its cast turret and rolled rims on its painted rear drums.
   In a match, hard hits can bend the skirt on the struck side. A complete repair straightens it.
-  In a match, both the Abrams and the T-55A keep their last turret bearing on destruction and carry visible plate damage onto the wreck. Soot spreads over the original paint from the engine deck. Cannon hits land on the battle clock when the tracer reaches its destination. A hull contact produces a metal strike, and nearby soft terrain takes paired tread prints. Select either tank and press F10 to cycle to its periscope.
+  In a match, both the Abrams and the T-55A keep their last turret bearing on destruction and carry visible plate damage onto the wreck. The burn spreads over the original paint from the engine deck until the whole hull is burnt out. Cannon hits land on the battle clock when the tracer reaches its destination. A hull contact produces a metal strike, and nearby soft terrain takes paired tread prints. Select either tank and press F10 to cycle to its periscope.
   Its wreck rests on the grade beneath the front and rear of both tracks.
 - **Shared vehicle finishes** (`vehicle_materials.gd`, `assets/vehicles/surfaces/`): armor paint, aircraft
   coatings, civilian clearcoat, marine paint, rubber, canvas, exposed metal, glass, nonslip decks and charred
@@ -1517,8 +1548,8 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   [the component guide](vehicle-components.md).
 - **Rotor discs, wrecks, edges and kit** (ninth pass): a helicopter's rotor reads from above as a soft dark
   disc in its blades' paint rather than a pale ring, and tail rotors, ducted fans, drones' rotors and
-  propellers blur too. Burnt-out vehicles are rust, ash and soot with tyres burnt to the wire, not black
-  shapes. Every crew's load is its own: crate stacks, tarps, bags, bedrolls, cans and canvas tilts vary by
+  propellers blur too. Burnt-out hulks on the map and gutted cars are rust, ash and soot (a car's tyres
+  burnt to the wire), not black shapes. Every crew's load is its own: crate stacks, tarps, bags, bedrolls, cans and canvas tilts vary by
   seed, so a column of one kind isn't stamped from one mould. Bonnets, roofs, consoles and deckhouses have
   chamfered edges that catch the light. See "Ninth pass" in [the component guide](vehicle-components.md).
 - Explosions are layered GPU particles: a flash and light burst, a rolling fireball that cools from the edges in

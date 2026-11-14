@@ -17,7 +17,7 @@
   "shots": [
     {"model": "heli", "flight": true, "size": 17, "label": "Supply helicopter in flight: a soft rotor disc, no pale ring"},
     {"model": "blackfish", "flight": true, "size": 30, "label": "Blackfish: proprotor discs in the blades' paint"},
-    {"model": "wreck_marshall", "size": 9, "label": "Marshall wreck: rust, ash and soot, burnt tyres"},
+    {"model": "wreck_marshall", "size": 9, "label": "Marshall wreck: rust, ash and soot, bare rims", "after_note": "re-rendered after merging main's burnt-out wrecks (#196), which take a wreck's tyres off"},
     {"model": "wreck_suv", "size": 6, "label": "Burnt-out car: rust and ash, empty sooty windows"},
     {"model": "hunter", "focus": "0.85,1.6,-1.9", "size": 2.2, "label": "Hunter: chamfered bonnet and fender edges"},
     {"model": "zamak_ammo", "seed": 3, "focus": "0,1.9,1.6", "size": 5.5, "label": "Zamak ammo truck, seed 3: its own tarp and load"},

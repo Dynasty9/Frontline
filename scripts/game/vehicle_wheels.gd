@@ -16,11 +16,10 @@ static func pneumatic(k: VehicleModels, parent: Node3D, pos: Vector3, r: float, 
 	# Rounded shoulders and recessed rims share meshes at every wheel size.
 	# Tiny trolley wheels and broad tracked road wheels retain their solid discs.
 	var fine := r >= 0.18
-	if r < 0.18 or w > r * 1.2:
+	if k.wreck:
+		pass  # (burnt away: only the rim is left, and the hull sits down on it: Structure._ruin)
+	elif r < 0.18 or w > r * 1.2:
 		k._add(pv, drum(r, r, w, 24), "rubber", null, Vector3.ZERO, AXLE)
-	elif k.burnt:
-		# Burnt out: the rubber is gone, leaving the steel belt (see _belt).
-		k._add(pv, _belt(r, w), "steel", null, Vector3(0, -r * 0.05, 0))
 	else:
 		k._add(pv, _carcass(), "rubber", Color(0.17, 0.18, 0.17), Vector3.ZERO, AXLE, Vector3(r, w / 0.50, r))
 		if profile != "aircraft":
@@ -66,9 +65,11 @@ static func _car_wheel(k: VehicleModels, parent: Node3D, pos: Vector3, r: float,
 	var trim := not dark and r < 0.36
 	var rr := r * (0.70 if dark and r < 0.36 else 0.63)
 	if k.burnt:
+		# a gutted car stands on what its tyres left (see _belt)
 		k._add(pv, _belt(r, w), "steel", null, Vector3(0, -r * 0.05, 0))
-	else:
+	elif not k.wreck:
 		k._add(pv, _car_tyre(r, w, rr), "rubber", Color(0.17, 0.18, 0.17), Vector3.ZERO)
+	# (a wreck's tyres burn away and its hull sits down on the rims: Structure._ruin)
 	var faces: Array = [signf(pos.x) if pos.x != 0.0 else 1.0] if register else [-1.0, 1.0]
 	for side: float in faces:
 		var turn := Vector3(0, PI, 0) if side < 0.0 else Vector3.ZERO

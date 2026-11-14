@@ -1944,16 +1944,18 @@ func _wreck_out(hard := 0.0) -> void:
 	var hs := _hull_size()
 	var props := {"skind": "wreck", "pos": p, "yaw": y, "vk": vkind, "size": Vector3(hs.x, maxf(hs.y, 1.2), hs.z),
 		"variant": 9 if heli else (6 if weight() >= 2 else 8)}
+	# every wreck is built in its own paint and burnt out over it (Structure._ruin)
+	props["wreck_finish"] = {"team": team, "seed": eid, "since": world.time}
 	if heli:
-		# a helicopter's wreck lies where she hit, on her side after a spin-in
+		# a helicopter's wreck lies where she hit, on her side after a spin-in,
+		# in her own paint with the fire's soot spreading over it (and broken
+		# up: Structure._break_up)
 		props["tilt"] = _crash_tilt if crashing != 0 else Vector2(world.rng.randf_range(-0.04, 0.04), world.rng.randf_range(-0.06, 0.06))
 	else:
 		var plan := _toss_plan(p, y)
 		if has_tank_model():
 			props["bent_skirts"] = bent_skirts
 			props["wreck_turret_yaw"] = turret_yaw
-		if has_tank_model() or vdef.get("model", vkind) in ["technical", "aa_tech"]:
-			props["wreck_finish"] = {"team": team, "seed": eid, "since": world.time}
 		props["pos"] = plan[0]
 		props["yaw"] = plan[1]
 		props["tilt"] = plan[2]
@@ -2052,9 +2054,11 @@ func _crash_tick(dt: float) -> void:
 		position.y = ground + 0.3
 		var hard := clampf((-velocity.y + speed * 0.25) / 12.0, 0.15, 1.5)
 		if crashing == CRASH_SPIN:
-			_crash_tilt = Vector2(world.rng.randf_range(-0.15, 0.08), (1.0 if world.rng.randf() < 0.5 else -1.0) * world.rng.randf_range(0.5, 1.35))
+			# rolled right over onto her side, nose dug in
+			_crash_tilt = Vector2(world.rng.randf_range(-0.25, 0.0), (1.0 if world.rng.randf() < 0.5 else -1.0) * world.rng.randf_range(1.2, 1.5))
 		else:
-			_crash_tilt = Vector2(world.rng.randf_range(-0.12, 0.02), world.rng.randf_range(-0.12, 0.12))
+			# slumped where the undercarriage gave way, nose down
+			_crash_tilt = Vector2(world.rng.randf_range(-0.16, -0.04), (1.0 if world.rng.randf() < 0.5 else -1.0) * world.rng.randf_range(0.08, 0.22))
 		world.stat("heli_crashed")
 		if world.water != null and world.terrain != null and world.water.deep_at(position) and not world.water.on_deck(position):
 			_ditch(hard)

@@ -4,7 +4,7 @@ extends RefCounted
 ## projection and symbols; this owns triangulation and consistent facing.
 
 static func polygons(k: VehicleModels, parent: Node3D, outlines: Array, project: Callable, outward: Vector3, col, material := "paint", omit_wreck := true, divisions := 1) -> void:
-	if omit_wreck and k.burnt:
+	if omit_wreck and k.wreck:
 		return
 	var surface := VehicleSurface.new(project, outward)
 	for points in outlines:
@@ -366,7 +366,7 @@ static func side_number(k: VehicleModels, parent: Node3D, text: String, height: 
 ## another. The shade (up to 7% darker) is fixed by where the bar is, so a
 ## seed still reproduces the vehicle. Gone with the paint on a wreck.
 static func _brushed(k: VehicleModels, parent: Node3D, quads: Array, project: Callable, out: Vector3, col: Color) -> void:
-	if k.burnt:
+	if k.wreck:
 		return
 	var surface := VehicleSurface.new(project, out)
 	for quad: Array in quads:
@@ -495,7 +495,7 @@ static func cross_outline(span: float, bar: float) -> PackedVector2Array:
 ## panel), `bolts` fixes it with a screw in each corner. Markings are gone on a
 ## wreck unless `omit_wreck` is false (then everything is burnt).
 static func cross(k: VehicleModels, parent: Node3D, center: Vector3, size: Vector2, rotation := Vector3.ZERO, ground = CROSS_GROUND, red := CROSS_RED, arm := 0.7, bar := 0.22, depth := 0.02, material := "paint", bolts := false, omit_wreck := true) -> void:
-	if omit_wreck and k.burnt:
+	if omit_wreck and k.wreck:
 		return
 	var basis := Basis.from_euler(rotation)
 	var span := minf(size.x, size.y)

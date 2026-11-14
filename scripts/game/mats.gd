@@ -1222,7 +1222,11 @@ static func _preset(kind: String) -> Dictionary:
 		"metal_dark":
 			return {"pattern": PAINT, "col_a": Color(0.17, 0.17, 0.17), "col_b": Color(0.35, 0.33, 0.3), "rough": 0.5, "metal": 0.6, "bump": 0.5, "grime": 0.3}
 		"burnt":
-			return {"pattern": PAINT, "col_a": Color(0.085, 0.08, 0.075), "col_b": Color(0.2, 0.17, 0.15), "rough": 0.9, "metal": 0.25, "bump": 1.2, "grime": 0.2, "rust": 0.3, "scale": 1.6}
+			# (the rust is a dull brown bloom, not flecks bright enough to read as embers)
+			return {"pattern": PAINT, "col_a": Color(0.085, 0.08, 0.075), "col_b": Color(0.2, 0.17, 0.15), "rough": 0.9, "metal": 0.25, "bump": 1.2, "grime": 0.2, "rust": 0.12, "scale": 1.6}
+		"burnt_debris":
+			# torn-off skin and kit lying round a burnt-out vehicle: charred, rust-brown at the edges
+			return {"pattern": PAINT, "col_a": Color(0.05, 0.045, 0.04), "col_b": Color(0.15, 0.09, 0.055), "rough": 0.95, "metal": 0.2, "bump": 1.0, "grime": 0.3, "rust": 0.1, "scale": 2.0}
 		"abrams_scorched":
 			# Ash catches on the hull plates while the steel fittings and rubber stay dark.
 			return {"pattern": CAMO, "col_a": Color("383530"), "col_b": Color("51483f"), "col_c": Color("262628"), "col_d": Color("62594f"), "scale": 0.86, "rough": 0.87, "metal": 0.26, "bump": 0.72, "grime": 0.38, "local_space": true}

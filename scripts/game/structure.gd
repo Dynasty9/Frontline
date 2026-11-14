@@ -107,6 +107,8 @@ var fire_k := ""  # (server) what it burns as, once lit (Fires.FUEL)
 var fuel := 0.0  # (server) seconds of full blaze left
 var fuel_max := 0.0
 var _wreck_engine_deck := Vector3.INF
+var _wreck_reach := 1.0  # how far the fire's burn spreads from it (see VehicleModels.spread_soot)
+var _burn_source := Vector3.INF  # (model space) where a wreck's fire took hold, if not its engine deck
 var _fire_fx: Node3D  # (view) its flames, embers, smoke and glow
 var _fire_shown := -1  # (view) the burn level the effects were last set for
 var _char := 0.0  # (view) how charred it looks, 0..1
@@ -184,8 +186,9 @@ func apply_props(d: Dictionary) -> void:
 		vk = d.vk
 	if d.has("wreck_turret_yaw"):
 		wreck_turret_yaw = d.wreck_turret_yaw
-		wreck_finish = d.get("wreck_finish", {})
 		bent_skirts = d.get("bent_skirts", 0)
+	if d.has("wreck_finish"):
+		wreck_finish = d.wreck_finish  # (built in its own paint, burnt out over it: _ruin)
 	if d.has("door"):
 		door_shut = d.door
 	if d.has("zc"):
@@ -1295,10 +1298,18 @@ static var _snag := false  # building a burnt tree: charred limbs, no leaves
 const C_CHAR := Color(0.07, 0.06, 0.05)
 
 
-## A flared trunk forking into three or four limbs, each carrying a clump of
-## leaf masses (lighter on top, darker underneath), twigs poking out of the
-## crown, which is wider than it is tall.
+## Scanned branches break up the repeated forks in mature woodland trees.
+## Orchard trees keep their compact, deliberately pruned crowns.
 static func _broadleaf(bake: Mats.Bake, rng: RandomNumberGenerator, small: bool) -> void:
+	if not small:
+		var scale := rng.randf_range(1.4, 2.1)
+		var pose := Mats.place(Vector3.ZERO, Vector3(0, rng.randf() * TAU, 0), Vector3(scale * rng.randf_range(0.85, 1.15), scale, scale))
+		var color := C_CHAR if _snag else Res.vary(Color(0.3, 0.24, 0.18), 0.06, rng)
+		_bark_part(bake, load("res://assets/foliage/woodland/tree_small_02-0-trunk.res"), pose, color)
+		_bark_part(bake, load("res://assets/foliage/woodland/tree_small_02-0-branches.res"), pose, color)
+		if not _snag:
+			bake.part(load("res://assets/foliage/woodland/tree_small_02-0-leaves.res"), Mats.leaf_cards(false), pose, Res.vary(Color(0.18, 0.26, 0.12), 0.05, rng))
+		return
 	var k := 0.62 if small else 1.0
 	var bark := Res.vary(Color(0.3, 0.24, 0.18), 0.08, rng)
 	if _snag:
@@ -1335,34 +1346,16 @@ static func _broadleaf(bake: Mats.Bake, rng: RandomNumberGenerator, small: bool)
 	_leaves(bake, Vector3(top.x, crown + 0.9 * k, top.z), 1.35 * k, 0.8, leaf.lightened(0.05))
 
 
-## A spruce: a straight tapering stem and tiers of drooping boughs, wide and
-## dark at the bottom, a narrow spire at the top.
+## Mature firs keep the scanned gaps and bare lower branches of two real trees.
 static func _conifer(bake: Mats.Bake, rng: RandomNumberGenerator) -> void:
-	var ph := rng.randf_range(8.0, 11.0)
-	var needles := Res.vary(Color(0.13, 0.21, 0.14), 0.12, rng)
-	_bark(bake, Vector3.ZERO, Vector3(0, ph, 0), 0.26, 0.04, Color(0.32, 0.24, 0.17))
-	# many overlapping tiers, each a little askew, so it reads as one ragged
-	# mass of boughs rather than a stack of plates
-	var tiers := rng.randi_range(9, 12)
-	var step := (ph - 2.2) / tiers
-	for i in tiers:
-		var t := float(i) / (tiers - 1)
-		var r := lerpf(2.3, 0.45, t) * rng.randf_range(0.9, 1.1)
-		var h := step * 2.6
-		var y := 1.2 + i * step
-		if _snag:
-			# the needles are gone: a few bare, drooping black stubs where each tier was
-			var a0 := rng.randf() * TAU
-			for j in 3:
-				var out := Vector3(cos(a0 + TAU * j / 3.0), 0, sin(a0 + TAU * j / 3.0))
-				var base := Vector3(0, y + h * 0.4, 0)
-				_bark(bake, base, base + out * r * rng.randf_range(0.35, 0.6) + Vector3(0, -0.25, 0), 0.05, 0.012, C_CHAR)
-			continue
-		# (drawn in this order: where the tier sits, how it leans, how wide, its colour)
-		var pos := Vector3(rng.randf_range(-0.06, 0.06), y + h * 0.5, rng.randf_range(-0.06, 0.06))
-		var rot := Vector3(rng.randf_range(-0.07, 0.07), rng.randf() * TAU, rng.randf_range(-0.07, 0.07))
-		var scl := Vector3(r * rng.randf_range(0.9, 1.1), h, r * rng.randf_range(0.9, 1.1))
-		bake.part(Res.foliage_cards(true), Mats.leaf_cards(true), Mats.place(pos, rot, scl), Res.vary(needles, 0.05, rng).darkened(0.12 * (1.0 - t)))
+	var variant := rng.randi_range(0, 1)
+	var height := rng.randf_range(9.0, 13.5)
+	var scale := height / (14.06 if variant == 0 else 14.52)
+	var pose := Mats.place(Vector3.ZERO, Vector3(0, rng.randf() * TAU, 0), Vector3(scale, scale, scale))
+	var path := "res://assets/foliage/woodland/fir_tree_01-%d-" % variant
+	_bark_part(bake, load(path + "trunk.res"), pose, C_CHAR if _snag else Color(0.32, 0.26, 0.19))
+	if not _snag:
+		bake.part(load(path + "leaves.res"), Mats.leaf_cards(true), pose, Res.vary(Color(0.13, 0.21, 0.14), 0.08, rng))
 
 
 static func _bark(bake: Mats.Bake, a: Vector3, b: Vector3, r0: float, r1: float, col: Color) -> void:
@@ -1574,6 +1567,7 @@ func _apply_tilt() -> void:
 	if tilt == Vector2.ZERO:
 		if skind in ["car", "crates", "wreck"]:
 			model.transform = Transform3D.IDENTITY
+		_level_debris()
 		return
 	var b := Basis.from_euler(Vector3(tilt.x, 0, tilt.y))
 	var lo := INF
@@ -1581,7 +1575,147 @@ func _apply_tilt() -> void:
 		for cy in [0.0, 1.0]:
 			for cz in [-0.5, 0.5]:
 				lo = minf(lo, (b * Vector3(cx * size.x, cy * size.y, cz * size.z)).y)
-	model.transform = Transform3D(b, Vector3(0, -lo, 0))
+	# (a crashed helicopter has dug herself into the ground a little)
+	model.transform = Transform3D(b, Vector3(0, -lo - (0.25 if _heli_wreck() else 0.0), 0))
+	_level_debris()
+
+
+## A crashed helicopter's wreck (see Vehicle._wreck_out).
+func _heli_wreck() -> bool:
+	return skind == "wreck" and Defs.VEHICLES.has(vk) and String(Defs.VEHICLES[vk].get("base", "")) in ["attack_heli", "lift_heli"]
+
+
+## The pieces strewn round a wreck lie flat on the ground, however the wreck
+## itself is lying.
+func _level_debris() -> void:
+	var d := model.get_node_or_null("Debris") as Node3D
+	if d:
+		d.transform = model.transform.affine_inverse()
+
+
+## A helicopter doesn't come down in one piece. Her blades shatter as they
+## strike the ground: stubs at the hub, others snapped part way and bent down,
+## some flung clear (they lie in the grass with the rest: _ruin). The tail rotor
+## is usually gone. Upright after a heavy landing, her undercarriage has folded
+## under her and she sits on her belly. Her fire takes hold in the engines,
+## just under and behind the rotor head. Returns how many blades were flung.
+func _break_up(wk: VehicleModels, rng: RandomNumberGenerator) -> int:
+	wk.rotor.rotation = Vector3(rng.randf_range(-0.16, 0.16), rng.randf_range(0.0, TAU), rng.randf_range(-0.16, 0.16))
+	var holders: Array[Node3D] = [wk.blades]
+	for xr: Node3D in wk.rotors:
+		xr.rotation.y = rng.randf_range(0.0, TAU)
+		var b := xr.get_node_or_null("Blades") as Node3D
+		if b:
+			holders.append(b)
+	# Rolled onto her side, the turning blades beat themselves to pieces on the
+	# ground: only stubs are left. Upright, they droop and sag to the ground.
+	var rolled := absf(tilt.y) > 0.6
+	var lost := 0
+	for holder in holders:
+		if holder == null:
+			continue
+		for c in holder.get_children():
+			var blade := c as Node3D
+			if blade == null or blade is MeshInstance3D:
+				continue
+			var fate := rng.randf()
+			if fate < (0.55 if rolled else 0.25):
+				blade.scale = Vector3(1, 1, rng.randf_range(0.1, 0.25))  # a stub at the hub
+			elif fate < (0.55 if rolled else 0.8):
+				# snapped part way along and bent down where it struck
+				blade.scale = Vector3(1, 1, rng.randf_range(0.4, 0.75))
+				blade.rotate_object_local(Vector3.RIGHT, rng.randf_range(0.35, 0.8))  # (+ about X tips the span down)
+				blade.rotate_object_local(Vector3.BACK, rng.randf_range(-0.35, 0.35))
+			else:
+				blade.visible = false  # flung clear
+				lost += 1
+	if wk.tail_rotor and rng.randf() < 0.7:
+		wk.tail_rotor.visible = false
+		lost += 1
+	if not rolled:
+		wk.root.position.y -= clampf(size.y * 0.22, 0.35, 0.9)
+	var hub := Transform3D.IDENTITY
+	var n: Node3D = wk.rotor
+	while n != null and n != wk.root:
+		hub = n.transform * hub
+		n = n.get_parent() as Node3D
+	_burn_source = wk.root.transform * (hub.origin + Vector3(0, -0.7, 0.9))
+	return lost
+
+
+## A vehicle burnt out: built in its own paint, with the fire's burn laid
+## over it, spreading from where the fire took hold over the half minute it
+## burns (VehicleModels.scorch_finish): char, heat-greyed steel, rust down the
+## sides, ash on top, blistered paint where the fire stopped. The tyres burn
+## away and a wheeled hull sits down on its rims. The ground under it is
+## scorched black, and pieces torn off it lie round it (more for a helicopter,
+## with `blades` lengths of rotor blade among them).
+func _ruin(wk: VehicleModels, rng: RandomNumberGenerator, blades := 0) -> void:
+	var mk := vk if vk != "" else ("tank" if variant % 2 == 0 else "old_tank")  # (as _build_model's)
+	var tracked := Defs.VEHICLES.has(mk) and bool(Defs.VEHICLES[mk].get("tracked", false))
+	if not tracked and not _heli_wreck() and not wk.wheels.is_empty():
+		var axle := 0.0
+		for w: Node3D in wk.wheels:
+			var xf := w.transform
+			var up := w.get_parent() as Node3D
+			while up != null and up != wk.root:
+				xf = up.transform * xf
+				up = up.get_parent() as Node3D
+			axle += xf.origin.y
+		axle /= float(wk.wheels.size())
+		# (the rim is about half the tyre: the hull drops by the rest, unevenly)
+		wk.root.position.y -= clampf(axle * 0.42, 0.0, 0.6)
+		wk.root.rotation.x += rng.randf_range(-0.035, 0.035)
+		wk.root.rotation.z += rng.randf_range(-0.04, 0.04)
+	if not wreck_finish.is_empty():
+		if not _burn_source.is_finite() and not _wreck_engine_deck.is_finite():
+			_burn_source = wk.root.transform * Vector3(rng.randf_range(-0.08, 0.08) * size.x, size.y * 0.65, rng.randf_range(-0.12, 0.12) * size.z)
+		# A vehicle that brews up burns out end to end: the burn reaches the
+		# hull's farthest corner from where the fire started, whichever end that is.
+		var from := _burn_source if _burn_source.is_finite() else _wreck_engine_deck
+		var far := 0.0
+		for cx: float in [-0.5, 0.5]:
+			for cy: float in [0.0, 1.0]:
+				for cz: float in [-0.5, 0.5]:
+					far = maxf(far, ((Vector3(cx * size.x, cy * size.y, cz * size.z) - from) * Vector3(1.0, 0.74, 1.0)).length())
+		_wreck_reach = clampf(far * 1.12 / 2.56, 1.0, 4.5)
+		_wreck_soot = wk.scorch_finish()
+	var debris := Node3D.new()
+	debris.name = "Debris"
+	model.add_child(debris)
+	if world.fx and world.fx.vfx and world.fx.vfx.scorch_tex:
+		# the ground it burnt on, black and ashen
+		var burnt_ground := Decal.new()
+		burnt_ground.texture_albedo = world.fx.vfx.scorch_tex
+		burnt_ground.cull_mask = Res.GROUND_DECAL_LAYER
+		var across := maxf(size.x, size.z) * 1.7
+		burnt_ground.size = Vector3(across, 4.0, across)
+		burnt_ground.upper_fade = 0.3
+		burnt_ground.lower_fade = 0.3
+		burnt_ground.rotation.y = rng.randf() * TAU
+		burnt_ground.modulate = Color(1, 1, 1, 0.92)
+		debris.add_child(burnt_ground)
+	if world.atmo and world.atmo.grass:
+		world.atmo.grass.scar(position, maxf(size.x, size.z) * 0.8, 0.9)  # (and the grass round it burnt flat)
+	var spread := maxf(3.5, size.z * 0.65)
+	var turn := Basis(Vector3.UP, rotation.y)
+	for i in clampi(int(size.z * 0.6), 3, 8) + blades:
+		# lengths of broken blade, and torn, crumpled bits of skin and kit
+		# half sunk into the ground (one end up where they dug in)
+		var piece_of_blade := i < blades
+		var s := Vector3(rng.randf_range(0.28, 0.42), 0.05, rng.randf_range(0.8, 2.4)) if piece_of_blade \
+			else Vector3(rng.randf_range(0.25, 0.8), rng.randf_range(0.04, 0.2), rng.randf_range(0.25, 0.9))
+		var a := rng.randf() * TAU
+		var at := Vector3(cos(a), 0.0, sin(a)) * rng.randf_range(size.x * 0.8, spread)
+		at.y = world.ground_y(position + turn * at) - position.y - s.y * 0.2
+		var mi := MeshInstance3D.new()
+		mi.mesh = Res.box(s)
+		mi.position = at
+		mi.rotation = Vector3(rng.randf_range(-0.3, 0.3), rng.randf() * TAU, rng.randf_range(-0.45, 0.45))
+		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		debris.add_child(mi)
+		Mats.apply(mi, "burnt_debris", Color(1, 1, 1))
+	_level_debris()
 
 
 ## The clients fly the model from where it was to where it is now.
@@ -2186,7 +2320,8 @@ func read_state(b: StreamPeerBuffer) -> void:
 # --- visuals -----------------------------------------------------------------------
 
 func _update_wreck_soot() -> void:
-	VehicleModels.spread_soot(_wreck_soot, model.to_global(_wreck_engine_deck), world.time - float(wreck_finish.since))
+	var from := _burn_source if _burn_source.is_finite() else _wreck_engine_deck
+	VehicleModels.spread_soot(_wreck_soot, model.to_global(from), world.time - float(wreck_finish.since), _wreck_reach)
 
 
 func _process(_dt: float) -> void:
@@ -2199,7 +2334,7 @@ func _process(_dt: float) -> void:
 func _view_process(_dt: float) -> void:
 	if not world.has_view or not view_active or model == null:
 		return
-	if _wreck_soot and world.time - float(wreck_finish.since) < 10.0:
+	if _wreck_soot and world.time - float(wreck_finish.since) < VehicleModels.BURN_SPREAD:
 		_update_wreck_soot()
 	if burn > 0.0 or _fire_fx:
 		_fire_view(_dt)
@@ -2424,7 +2559,7 @@ func _burn_view() -> void:
 		world.fx.vfx.set_fire(_fire_fx, burn)
 	elif _fire_fx and was > 0:
 		# out: it smoulders a while, then the smoke thins away
-		world.fx.vfx.smoulder(_fire_fx, 45.0 if skind in ["wreck", "rubble", "car"] else 30.0)
+		world.fx.vfx.smoulder(_fire_fx, 150.0 if skind == "wreck" else (45.0 if skind in ["rubble", "car"] else 30.0))
 		_fire_fx = null
 
 
@@ -2439,6 +2574,9 @@ func _fire_view(dt: float) -> void:
 		_char = minf(most, _char + dt * burn / 32.0)
 	if not _wreck_soot and (absf(_char - _char_set) > 0.02 or absf(burn - _glow_set) > 0.04):
 		_apply_char(burn)
+	elif _wreck_soot and (absf(burn - _glow_set) > 0.04 or (burn <= 0.0 and _glow_set > 0.0)):
+		_glow_set = burn
+		_wreck_soot.set_shader_parameter("glow", burn)
 	if burn <= 0.0 and _fire_fx == null and team < 0 and not skind in SMOKE_KINDS and skind != "roof":
 		set_process(false)
 
@@ -2463,7 +2601,7 @@ func _vehicle_model(kind: String, vteam: int, vseed: int, is_burnt: bool) -> voi
 			world.structure_view.build_vehicle(self, kind, vteam, vseed, is_burnt, look)
 			how = "queued"
 		else:
-			k = VehicleModels.build(kind, vteam, vseed, is_burnt)
+			k = VehicleModels.build(kind, vteam, vseed, is_burnt, skind == "wreck")
 			VehicleModels.stock(look, k)
 			how = "built"
 	if k != null:
@@ -2482,7 +2620,8 @@ func _vehicle_ready(k: VehicleModels) -> void:
 
 
 ## The model under `model`, and a wreck laid as it fell: the turret where it
-## stopped or knocked askew, a helicopter's rotor bent.
+## stopped or knocked askew, a helicopter broken up (see _break_up), burnt out
+## where it lay (_ruin).
 func _dress_vehicle(wk: VehicleModels) -> void:
 	model.add_child(wk.root)
 	if skind != "wreck":
@@ -2503,11 +2642,10 @@ func _dress_vehicle(wk: VehicleModels) -> void:
 		wk.root.rotation.z = rng.randf_range(-0.04, 0.04)
 	if wk.engine_deck.is_finite():
 		_wreck_engine_deck = wk.root.transform * wk.engine_deck
-		if not wreck_finish.is_empty():
-			_wreck_soot = wk.scorch_finish()
-	if wk.rotor:
-		# a downed helicopter's rotor stopped where it hit, bent askew
-		wk.rotor.rotation = Vector3(rng.randf_range(-0.14, 0.14), rng.randf_range(0.0, TAU), rng.randf_range(-0.14, 0.14))
+	var lost := 0
+	if wk.rotor and _heli_wreck():
+		lost = _break_up(wk, rng)
+	_ruin(wk, rng, lost)
 
 
 ## (view) Lays the char (and the glow of the embers in it) over the model:
@@ -3189,7 +3327,8 @@ func _build_model() -> void:
 		keep.append(_mg.root)
 		for n in [_mg.root, _mg.traverse, _mg.elev, _mg.body]:
 			Mats.merge_static(n, [], false, false, true)
-	for nm in ["Site", "Done", "Damage"]:
+	# (a wreck's debris stays its own mesh: it lies level however the wreck lies)
+	for nm in ["Site", "Done", "Damage", "Debris"]:
 		var sub := model.get_node_or_null(nm) as Node3D
 		if sub:
 			keep.append(sub)

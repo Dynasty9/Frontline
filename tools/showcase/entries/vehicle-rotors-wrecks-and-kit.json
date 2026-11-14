@@ -9,11 +9,11 @@
   "sources": [
     {
       "file": "changelog/unreleased/vehicle-rotors-wrecks-and-kit/comparison.jpg",
-      "sha256": "31144d5446dd0e02449db7d489c25bb0acc57e658d7665112ad63ad604d8b495"
+      "sha256": "ea13f253218ca7185b2cf6fc00676f058df1d4dde32ef6ce16affeca967e0040"
     },
     {
       "file": "changelog/unreleased/vehicle-rotors-wrecks-and-kit/capture.json",
-      "sha256": "672922976bc7b3ffa7ea4169065f52240a7208cf7e31e511ac9e1d6621c4bbc3"
+      "sha256": "d8ceeb0688247f6076571b5ab6bb04dfa124da7711fd5b5cc0ee2398ee0bb3e5"
     }
   ],
   "output": null

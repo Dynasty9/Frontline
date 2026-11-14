@@ -126,7 +126,8 @@ static func main(k: VehicleModels, p: Node3D, pos: Vector3, nb: int, r: float, c
 		var mount := k._pivot(bl, Vector3.ZERO)
 		mount.basis = bs
 		blade(k, mount, r0, r, c, tip, bc)
-		k._fold(mount)
+		if not k.wreck:
+			k._fold(mount)  # (a wreck's blades stay apart, to be broken: Structure._break_up)
 		# Forked grips, vertical hinge pins and pitch links remain with the hub
 		# when the explicit blades switch to the existing blur disc.
 		for side in [-1.0, 1.0]:
@@ -142,7 +143,7 @@ static func main(k: VehicleModels, p: Node3D, pos: Vector3, nb: int, r: float, c
 	for i in nb * 2:
 		var angle := TAU * i / float(nb * 2)
 		VehicleBody.cylinder(k, rp, hub * 0.075, hub * 0.075, 0.035, Vector3(sin(angle) * hub * 0.82, 0.115, cos(angle) * hub * 0.82), Vector3.ZERO, "steel", Color(0.39, 0.4, 0.37), 6, false, true, false)
-	if not k.burnt:
+	if not k.wreck:
 		var blur := MeshInstance3D.new()
 		var disc := PlaneMesh.new()
 		disc.size = Vector2(r, r) * 2.0
@@ -185,7 +186,7 @@ static func tail(k: VehicleModels, p: Node3D, pos: Vector3, nb: int, r: float, c
 		mount.basis = Basis.from_euler(Vector3(phase + TAU * float(i) / float(nb), 0, 0)) * Basis(Vector3.BACK, Vector3.RIGHT, Vector3.UP)
 		blade(k, mount, 0.07, r, c, 0, Color(0.15, 0.155, 0.16))
 		k._fold(mount)
-	if not k.burnt:
+	if not k.wreck:
 		var blur := MeshInstance3D.new()
 		blur.name = "Blur"
 		var disc := PlaneMesh.new()
