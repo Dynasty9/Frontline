@@ -4,33 +4,33 @@ summary = "Sunlight thrown back off walls, roofs and roads now lights what faces
 kind = "new"
 
 [[screenshots]]
-file = "doorway.jpg"
-caption = "Midday, a house front in shade: the red door glows, lit from below by the sunlit step and path (off above, on below)"
+file = "midday.jpg"
+caption = "Midday, inside a roofless ruin: the foot of the shaded wall glows warm with light off the sunlit floor, fading up the wall (off above, on below)"
 
 [[screenshots]]
-file = "doorway-light.jpg"
-caption = "The same doorway, bounce light only (on minus off, four times brighter): it lands on the door and the foot of the wall"
+file = "midday-light.jpg"
+caption = "The same, bounce light only (on minus off, four times brighter): it climbs the walls from the floor"
 
 [[screenshots]]
-file = "ruin.jpg"
-caption = "Midday, inside a roofless ruin: the shaded corner by the green wall warms with light off the sunlit floor"
+file = "golden.jpg"
+caption = "Golden hour, from 30 m: the shaded floor and the far wall of a ruin lift"
 
 [[screenshots]]
-file = "ruin-light.jpg"
-caption = "The ruin, bounce light only (four times brighter): the floor's warm light climbs the wall and fills the corner"
+file = "golden-light.jpg"
+caption = "Golden hour, bounce light only (four times brighter)"
 
 [[screenshots]]
-file = "street.jpg"
-caption = "Midday, a ruined house by the road: the shaded tiles along the wall are lit by the sunlit floor in front"
+file = "overcast.jpg"
+caption = "Overcast, from 30 m: the floor and the walls' feet lift, lit by the paler ground round them"
 
 [[screenshots]]
-file = "street-light.jpg"
-caption = "The same house, bounce light only (four times brighter)"
+file = "overcast-light.jpg"
+caption = "Overcast, bounce light only (four times brighter)"
 
 [[videos]]
 file = "flicker.webm"
 poster = "flicker.jpg"
-caption = "Off and on in turn, a second each, on the same frozen frames: watch the door, the corner and the tiles brighten. Bounce light is strongest under a high sun, which floods the ground with light to throw back."
+caption = "Off and on in turn, a second each, on the same frozen frames: midday, golden hour and overcast (the last view, from the usual command height, shows how faint it is from up there)."
 
 [[videos]]
 file = "pan.webm"
@@ -41,10 +41,11 @@ caption = "The bounce light alone (brightened) while the camera pans fast: it st
 - **What you'll see:** shaded walls facing a sunlit street glow with its colour, plinths, benches and kerbs
   standing on sunlit paving catch its warmth from below, and rooms open to the sky fill with light off their
   own walls, and light carries on from there, so shadows beside furniture and rubble are lifted rather than
-  black. Open ground, lit by the sky alone, looks as before.
+  black. Sunlit floors light the foot of the walls above them, fading up the wall, and a coloured wall tints
+  what lies beside it. Open ground, lit by the sky alone, looks as before, and sunlit surfaces aren't veiled.
 - **It holds still while you pan and zoom:** the light is kept from frame to frame and moves with the world,
   and nothing moving drags a smear behind it.
 - **Settings > Graphics > Lighting > Bounce light:** Off, Medium or High (High casts more rays, for less grain).
   It's on Medium in the High preset and on High in Ultra and Cinematic, and costs well under a millisecond a frame
-  on a fast graphics card (at 1600x900 on an RTX 3090: 0.1 to 0.35 ms on Medium, 0.35 to 0.7 ms on High).
+  on a fast graphics card (at 1600x900 on an RTX 3090, about a third of a millisecond on High; Medium less).
 - The browser version draws without it.

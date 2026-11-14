@@ -35,8 +35,11 @@ extends CompositorEffect
 ##   al., "Joint Bilateral Upsampling", SIGGRAPH 2007) and laid onto the
 ##   scene, tinted by each surface's own colour. Forward+ keeps no albedo
 ##   buffer, so the colour is estimated from the pixel against the sky light
-##   it gets: exact in shade, where bounce light shows, and capped in the sun,
-##   where it hardly does.
+##   it gets (exact in shade, where bounce light shows), or against the sky
+##   and the sun together where the sky alone couldn't make it that bright.
+##   Further off, where a wall is a few pixels tall, the rays reach further
+##   and the light is laid on stronger, so it still shows from the command
+##   height.
 ##
 ## Only Forward+ can run it: the browser build's OpenGL renderer has no
 ## compositor, so there the setting does nothing. Atmosphere fills `params`
@@ -44,7 +47,7 @@ extends CompositorEffect
 ## looks only: nothing here reaches the simulation.
 
 const CTX := &"frontline_ssgi"
-const PARAMS := 16  # floats in the parameter block (four vec4s, std140)
+const PARAMS := 28  # floats in the parameter block (seven vec4s, std140)
 const CAM_FLOATS := 84  # five matrices and a vec4 (CAM_DECL)
 const USAGE := RenderingDevice.TEXTURE_USAGE_SAMPLING_BIT | RenderingDevice.TEXTURE_USAGE_STORAGE_BIT
 const RGBA16F := RenderingDevice.DATA_FORMAT_R16G16B16A16_SFLOAT
@@ -321,6 +324,9 @@ layout(set = 0, binding = 0, std140) uniform Params {
 	vec4 amb;   // the sky light a surface gets (rgb, scene units); the brightest a surface's colour can be
 	vec4 gi;    // ray length (m), strength, rays, steps
 	vec4 misc;  // frame, history (frames), debug view (FL_DEBUG_SSGI_VIEW), ray thickness (share of its length)
+	vec4 far;   // distance (m) the far view starts and is full at; reach and strength there (multipliers)
+	vec4 sun;   // towards the sun (world); how much more saturated the gathered light is laid on
+	vec4 sun_col;  // the sun's light on a surface square to it (rgb, scene units)
 } P;
 layout(set = 0, binding = 10, std430) restrict readonly buffer Cam {
 	mat4 inv_proj;   // this frame's projection as drawn, inverted
@@ -356,8 +362,19 @@ vec3 albedo_of(vec3 c) {
 // time: there the colour is held to what a dull real surface reflects
 // (a quarter of the light; asphalt and bark are darker, but little that
 // stands in a street is), keeping the pixel's own hue
-vec3 receiver_albedo(vec3 c) {
+vec3 receiver_albedo(vec3 c, vec3 wn) {
 	vec3 a = albedo_of(c);
+	// a pixel brighter than the sky light alone could make it is in the sun:
+	// its colour is what it shows against the sky and the sun together (or
+	// a dark, sunlit road would be taken for a white wall in the shade, and
+	// the bounce light would lay a milky veil over everything in the sun)
+	vec3 raw = c / max(P.amb.rgb, vec3(1e-4));
+	float lit = max(dot(wn, P.sun.xyz), 0.0);
+	if (max(raw.r, max(raw.g, raw.b)) > P.amb.a && lit > 0.0) {
+		vec3 b = c / max(P.amb.rgb + P.sun_col.rgb * lit, vec3(1e-4));
+		float mb = max(b.r, max(b.g, b.b));
+		a = mb > P.amb.a ? b * (P.amb.a / mb) : b;
+	}
 	float l = dot(a, vec3(0.2126, 0.7152, 0.0722));
 	if (l >= 0.25) {
 		return a;
@@ -434,7 +451,7 @@ void main() {
 			vec3 again = clean(textureLod(prev_filt_tex, puv, 0.0).rgb);
 			// (at most physical strength, and a little under: a closed room
 			// would otherwise feed its own light back without end)
-			c += receiver_albedo(c) * again * min(P.gi.y, 1.0) * 0.8;
+			c += receiver_albedo(c, wn) * again * min(P.gi.y, 1.0) * 0.8;
 		}
 	}
 	// (fires and muzzle flashes are far brighter than any wall: kept in
@@ -474,7 +491,11 @@ void main() {
 	int steps = int(P.gi.w);
 	float jit = ign(vec2(h), P.misc.x);
 	float spin = ign(vec2(h) + vec2(17.0, 59.0), P.misc.x) * 6.2831853;
-	float len = P.gi.x;
+	// seen from afar a pixel stands for more of the world, and the walls a
+	// player sees from the usual command height are a few pixels tall: the
+	// rays reach further there, so a street still gathers its walls' light
+	float far_k = smoothstep(P.far.x, P.far.y, g.w);
+	float len = P.gi.x * mix(1.0, P.far.z, far_k);
 	// start a little off the surface, more far away (where a depth step is coarser)
 	vec3 start = pos + n * (0.05 + g.w * 0.002);
 	vec3 sum = vec3(0.0);
@@ -681,15 +702,23 @@ void main() {
 		wsum += w;
 	}
 	vec3 e = wsum > 1e-5 ? sum / wsum : vec3(0.0);
+	// what a wall throws carries its own colour, but mixed over many rays and
+	// a surface's own tint, it greys: brought back a little, so the green of
+	// a wall reads in the tiles beside it
+	float el = dot(e, vec3(0.2126, 0.7152, 0.0722));
+	e = max(vec3(el) + (e - vec3(el)) * P.sun.w, vec3(0.0));
 	vec3 c = clean(col.rgb);
-	vec3 alb = receiver_albedo(c);
-	vec3 outc = c + alb * e * P.gi.y;
+	vec3 alb = receiver_albedo(c, wn);
+	// (and further off it is laid on a little stronger: from the command
+	// height a lift of a few levels in a wall's shade is lost)
+	float strength = P.gi.y * mix(1.0, P.far.w, smoothstep(P.far.x, P.far.y, z));
+	vec3 outc = c + alb * e * strength;
 	if (view_mode == 1) {
 		outc = e;  // the bounce light alone
 	} else if (view_mode == 2) {
 		outc = alb;  // the colour estimated for each surface
 	} else if (view_mode == 3) {
-		outc = alb * e * P.gi.y * 4.0;  // what is added, four times over
+		outc = alb * e * strength * 4.0;  // what is added, four times over
 	} else if (view_mode == 4) {
 		outc = textureLod(rad_tex, uv, 0.0).rgb;  // the light each surface sends out
 	} else if (view_mode == 5) {

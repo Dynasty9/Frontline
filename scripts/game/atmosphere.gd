@@ -1645,6 +1645,15 @@ func _apply_ssgi() -> void:
 ## the sunlit side, as in a path-traced street).
 const SSGI_REACH := 8.0
 const SSGI_STRENGTH := 2.0
+## Seen from further than SSGI_FAR.x (m) and fully past SSGI_FAR.y, rays
+## reach SSGI_FAR_REACH times as far and the light is laid on SSGI_FAR_STRENGTH
+## times as strong: from the command height a wall is a few pixels tall and a
+## lift of a few levels in its shade goes unseen.
+const SSGI_FAR := Vector2(25.0, 90.0)
+const SSGI_FAR_REACH := 2.0
+const SSGI_FAR_STRENGTH := 2.0
+## How much more saturated the gathered light is laid on (1 as gathered).
+const SSGI_BLEED := 1.6
 ## The brightest a surface's estimated colour may be (a white wall's ~0.8).
 const SSGI_ALBEDO_CAP := 0.8
 
@@ -1666,6 +1675,21 @@ func _ssgi_tick() -> void:
 	p[9] = SSGI_STRENGTH
 	p[14] = float(OS.get_environment("FL_DEBUG_SSGI_VIEW")) if OS.has_environment("FL_DEBUG_SSGI_VIEW") else 0.0
 	p[15] = 0.5  # how deep behind a surface a ray still counts as hitting it (share of how far it has gone)
+	p[16] = SSGI_FAR.x
+	p[17] = SSGI_FAR.y
+	p[18] = SSGI_FAR_REACH
+	p[19] = SSGI_FAR_STRENGTH
+	var to_sun := sun.global_transform.basis.z
+	p[20] = to_sun.x
+	p[21] = to_sun.y
+	p[22] = to_sun.z
+	p[23] = SSGI_BLEED
+	# (the engine's lights carry pi in their energy, so a white surface
+	# square to the sun shows its colour times its energy)
+	var sc := sun.light_color.srgb_to_linear() * sun.light_energy * (1.0 if sun.visible else 0.0)
+	p[24] = sc.r
+	p[25] = sc.g
+	p[26] = sc.b
 	ssgi.params = p
 
 

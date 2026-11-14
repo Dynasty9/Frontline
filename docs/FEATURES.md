@@ -1313,13 +1313,20 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   from its pixel against the sky light it gets (exact in shade, where bounce light shows; capped in sun). Where
   ambient occlusion or a cast shadow has darkened a pixel, that estimate would darken the bounce a second time, so a
   receiver's colour is held to at least a quarter's reflectance in its own hue: contact shadows lift instead of
-  staying black. The bounce is laid on at twice physical strength, to make up for what the rays can't see off screen
-  and past 8 m. Godot's
+  staying black. A pixel brighter than the sky light alone could make it is taken to be in the sun and its colour is
+  read against sky and sun together, so sunlit surfaces aren't veiled. The bounce is laid on at twice physical
+  strength, to make up for what the rays can't see off screen and past 8 m, and its colour is brought back towards
+  the wall it came from (mixed over many rays it greys). From the usual command height (past 25 m, fully by 90 m) the
+  rays reach twice as far and the light is laid on twice as strong again: there a wall is a few pixels tall, and a
+  lift of a few levels in its shade went unseen. Measured at golden hour and overcast, shade where bounce lands comes
+  up by about a fifth to a quarter (linear) from 30 to 85 m, but from the command height so little of the frame is
+  wall that it stays subtle; up close and at midday it is plain. Godot's
   own SSIL (the Indirect light setting) and SDFGI (Global illumination) stay as options, but on the RTS camera
   neither shows colour bleed: SSIL mostly darkens corners (over the town it lowered the frame's mean by half a
   level and added nothing visible), and SDFGI lifts the whole frame evenly (its cells are too coarse for a street
   seen from 30 m) and sees only static geometry. Measured at 1600x900 on an RTX 3090, interleaved on the same frozen
-  frame, two runs: Medium 0.11-0.35 ms, High 0.34-0.71 ms, SSIL 0.27-0.47 ms, SDFGI 0.65-0.90 ms. `FL_DEBUG_GI_CYCLE=DIR` saves the
+  frame, median of five runs: High 0.34 ms, SSIL 0.27 ms, SDFGI 0.83 ms; Medium is below what a shared card can
+  resolve (its runs ranged -1.3 to +0.35 ms). `FL_DEBUG_GI_CYCLE=DIR` saves the
   same frozen frame with each (`scripts/test/gi_compare.gd`), `FL_DEBUG_GI_AB=mode,...` measures what each costs
   the graphics card, and `FL_DEBUG_SSGI_VIEW=1..7` shows the pass's buffers.
 - **Cinematic lighting** (`atmosphere.gd`, `cinematic_fx.gd`, `physical_sky.gd`), each part its own setting and all

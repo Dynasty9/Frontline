@@ -17,6 +17,7 @@ extends Node
 ## x,z on the map, or found on it: "town" (the town's centre), "ruin" (the
 ## roofless house nearest it, open to the sky) or "alley" (the narrowest gap
 ## between two houses near it, looked along; yaw then turns from there).
+## Pitch "auto" leaves the camera's own pitch for that zoom.
 ##
 ## FL_DEBUG_GI_AB=mode,mode,...: instead of pictures, what each mode costs the
 ## graphics card over "none". Each is switched on and off every AB_HOLD frames,
@@ -149,7 +150,8 @@ func _set_pose(pose: String) -> void:
 	cam.call("focus", at)
 	cam.set("target_dist", float(f[2]))
 	cam.set("dist", float(f[2]))
-	cam.set("pitch_deg", float(f[3]))
+	# "auto": the pitch the game itself gives that zoom, as a player sees it
+	cam.set("pitch_deg", NAN if f[3] == "auto" else float(f[3]))
 	cam.set("yaw", yaw)
 	print("GICMP pose %s at %.1f,%.1f yaw %.2f" % [f[0], at.x, at.z, yaw])
 
