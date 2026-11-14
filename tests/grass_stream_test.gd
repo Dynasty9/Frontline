@@ -4,6 +4,14 @@ class ProbeGrass extends Grass:
 	func _build_chunk(c: Vector2i) -> void:
 		_built[c] = []
 
+class CaptureGrass extends Grass:
+	var captured := []
+	var captured_materials := []
+	func _mm(mesh: Mesh, material: Material, transforms: Array, colors: Array, distance: float) -> MultiMeshInstance3D:
+		captured.append_array(transforms)
+		captured_materials.append(material)
+		return super._mm(mesh, material, transforms, colors, distance)
+
 var failures := 0
 
 func check(ok: bool, message: String) -> void:
@@ -12,19 +20,18 @@ func check(ok: bool, message: String) -> void:
 		failures += 1
 
 func _ready() -> void:
-	var grass := Grass.new()
+	var grass := CaptureGrass.new()
 	var blades := grass._make_clump().surface_get_arrays(0)
 	var vertices: PackedVector3Array = blades[Mesh.ARRAY_VERTEX]
 	var uv: PackedVector2Array = blades[Mesh.ARRAY_TEX_UV]
 	check(vertices.size() == 270, "Fine grass retains the 90-triangle clump budget")
 	for i in range(0, vertices.size(), 9):
 		check(vertices[i].y == 0.0 and vertices[i + 1].y == 0.0 and uv[i].y == 0.0, "Grass roots stay on the terrain with zero wind weight")
-		check(vertices[i + 8].y > 0.17 and vertices[i + 8].y < 0.56 and uv[i + 8].y == 1.0, "Pointed tips retain full wind weight and varied heights")
-		check(vertices[i].distance_to(vertices[i + 1]) < 0.033, "Grass blades keep a natural centimetre scale")
-	var leaves: PackedVector3Array = grass._make_bush().surface_get_arrays(0)[Mesh.ARRAY_VERTEX]
-	check(leaves.size() == 480, "Shrubs use a bounded 160-triangle small-leaf canopy")
-	for i in range(0, leaves.size(), 6):
-		check(leaves[i].distance_to(leaves[i + 2]) <= 0.301, "Shrub branches keep their leaves at a natural scale")
+		check(vertices[i + 8].y > 0.11 and vertices[i + 8].y < 0.43 and uv[i + 8].y == 1.0, "Pointed tips retain full wind weight and varied heights")
+		check(vertices[i].distance_to(vertices[i + 1]) < 0.017, "Grass blades keep a natural centimetre scale")
+	var shrub := grass._make_bush()
+	check(shrub.get_faces().size() <= 5400, "Scanned shrubs stay within an 1800-triangle near-view budget")
+	check(absf(shrub.get_aabb().position.y + 0.65) < 0.01, "Scanned shrub roots retain the shader's ground offset")
 	grass.HALF = 1536.0
 	grass._stream(Vector3.ZERO)
 	check(grass._queue.size() == 225, "Large maps must queue only nearby cosmetic chunks")
@@ -91,6 +98,36 @@ func _ready() -> void:
 	var centre := MapDims.N >> 1
 	check(street.blocked[(centre + 3) * MapDims.N + centre] == 1, "Road shoulders exclude overhanging grass clumps")
 	check(street.blocked[(centre + 6) * MapDims.N + centre] == 0, "Road exclusion preserves the surrounding meadow")
+	var woods := Grass.BlockedJob.new()
+	woods.trees = [Vector3(0, 7, 0), Vector3(3, 7, 0)]
+	woods.run()
+	var canopy_n := MapDims.N >> 1
+	var canopy_c := MapDims.N >> 2
+	check(woods.canopy[canopy_c * canopy_n + canopy_c] == 255, "Overlapping crowns form continuous forest-floor habitat")
+	check(woods.canopy[(canopy_c + 5) * canopy_n + canopy_c] == 0, "Canopy litter stops beyond tree stands")
+	var road_woods := Grass.BlockedJob.new()
+	road_woods.trees = woods.trees.duplicate()
+	road_woods.roads = street.roads.duplicate()
+	road_woods.run()
+	check(road_woods.canopy[canopy_c * canopy_n + canopy_c] == 0, "Canopy litter does not bury roads")
+	var biome := Image.create(4, 4, false, Image.FORMAT_R8)
+	for y in 4:
+		for x in 4:
+			biome.set_pixel(x, y, Color(float(x + y * 4) / 15.0, 0, 0))
+	var biome_before := biome.get_data()
+	var canopy := Image.create(2, 2, false, Image.FORMAT_R8)
+	canopy.fill(Color(1, 0, 0))
+	var packed_biome := Grass.pack_biome(biome, canopy)
+	for y in 4:
+		for x in 4:
+			check(packed_biome.get_pixel(x, y).r == biome.get_pixel(x, y).r, "Packing woodland preserves every biome noise texel")
+			check(packed_biome.get_pixel(x, y).g == 1.0, "Woodland coverage occupies the existing texture's green channel")
+	check(biome.get_data() == biome_before, "Woodland packing does not mutate shared terrain noise")
+	var generated_biome := FastNoiseLite.new().get_seamless_image(16, 16, false, false, 0.1, true)
+	var packed_generated := Grass.pack_biome(generated_biome, canopy)
+	for y in 16:
+		for x in 16:
+			check(packed_generated.get_pixel(x, y).r == generated_biome.get_pixel(x, y).r, "Generated biome noise retains its exact values after packing")
 	world.terrain = TerrainMap.new(world)
 	check_visible_stream(atmosphere)
 	world.terrain.landform.peak = 40.0
@@ -195,6 +232,66 @@ func _ready() -> void:
 		grass._clear()
 	check(dense > 12 and sparse < dense / 3, "Shrub habitat produces connected patches and open ground instead of even scatter")
 	check(snapshots[0] == snapshots[1] and world.rng.state == rng_before, "Cosmetic habitat rebuilds reproduce the same shrubs without advancing gameplay RNG")
+	grass.woodland = Woodland.new()
+	grass.woodland.setup()
+	check(grass.woodland.meshes[0].get_faces().size() <= 4800, "Scanned fern retains its silhouette within a 1600-triangle budget")
+	var tree := Structure.new()
+	tree.skind = "tree"
+	tree.position = Vector3(16, 0, 16)
+	world._shash_add(tree)
+	var woodland_samples := []
+	var plant_sample := PackedByteArray()
+	var wildlife_setting: int = Settings.get_v("wildlife")
+	Settings.v.wildlife = 2
+	atmosphere.mood = "day"
+	for repeat in 2:
+		var nodes := []
+		grass.captured.clear()
+		grass.woodland.build(grass, Vector2i.ZERO, nodes)
+		var placements: Array = grass.captured.duplicate()
+		for transform: Transform3D in placements:
+			check(Vector2(transform.origin.x - tree.position.x, transform.origin.z - tree.position.z).length() <= 6.0, "Woodland details stay under real tree canopies")
+		plant_sample = woodland_plants(nodes, grass.woodland)
+		for node: MultiMeshInstance3D in nodes:
+			check(node.extra_cull_margin >= 1.5, "Woodland wind and butterfly flight retain a culling margin beyond static bounds")
+			node.free()
+		check(not placements.is_empty(), "A seeded tree stand receives woodland details")
+		woodland_samples.append(var_to_bytes(placements))
+	check(woodland_samples[0] == woodland_samples[1] and world.rng.state == rng_before, "Woodland rebuilds reproduce placements without consuming gameplay randomness")
+	check(grass.captured_materials.has(grass.woodland.materials[4]), "The seeded daylight stand includes a butterfly for settings comparisons")
+	Settings.v.wildlife = 0
+	grass.captured_materials.clear()
+	var quiet_woods := []
+	grass.woodland.build(grass, Vector2i.ZERO, quiet_woods)
+	check(not grass.captured_materials.has(grass.woodland.materials[4]), "Wildlife off excludes woodland butterflies")
+	check(woodland_plants(quiet_woods, grass.woodland) == plant_sample, "Wildlife settings do not rearrange plants and deadwood")
+	for node: MultiMeshInstance3D in quiet_woods:
+		node.free()
+	quiet_woods.clear()
+	grass.captured_materials.clear()
+	Settings.v.wildlife = 2
+	atmosphere.mood = "rain"
+	grass.woodland.build(grass, Vector2i.ZERO, quiet_woods)
+	check(not grass.captured_materials.has(grass.woodland.materials[4]), "Rain hides butterflies")
+	check(woodland_plants(quiet_woods, grass.woodland) == plant_sample, "Weather changes preserve plants and deadwood")
+	for node: MultiMeshInstance3D in quiet_woods:
+		node.free()
+	atmosphere.mood = "day"
+	Settings.v.wildlife = wildlife_setting
+	grass._blocked.fill(1)
+	var excluded := []
+	grass.woodland.build(grass, Vector2i.ZERO, excluded)
+	check(excluded.is_empty(), "Woodland details respect blocked ground")
+	grass._blocked.fill(0)
+	world.terrain.landform.heights.fill(54.0)
+	world.terrain.landform.peak = 100.0
+	grass.woodland.build(grass, Vector2i.ZERO, excluded)
+	check(excluded.is_empty(), "Barren alpine ground excludes woodland details even beside a tree")
+	world.terrain.landform.heights.fill(0.0)
+	world._shash_remove(tree)
+	grass.woodland.build(grass, Vector2i.ZERO, excluded)
+	check(excluded.is_empty(), "Open meadows do not receive woodland debris")
+	tree.free()
 	grass.free()
 	atmosphere.free()
 	world.free()
@@ -203,6 +300,17 @@ func _ready() -> void:
 	while Music._task >= 0:
 		await get_tree().process_frame
 	get_tree().quit(1 if failures else 0)
+
+
+func woodland_plants(nodes: Array, woodland: Woodland) -> PackedByteArray:
+	var placements := []
+	for node: MultiMeshInstance3D in nodes:
+		var kind := woodland.materials.find(node.material_override)
+		if kind == 4:
+			continue
+		for i in node.multimesh.instance_count:
+			placements.append([kind, node.multimesh.get_instance_transform(i)])
+	return var_to_bytes(placements)
 
 
 func check_visible_stream(atmo: Atmosphere) -> void:
@@ -215,14 +323,22 @@ func check_visible_stream(atmo: Atmosphere) -> void:
 	var grass := ProbeGrass.new()
 	grass.atmo = atmo
 	grass._stream(camera.position)
-	grass._build_visible(camera)
-	check(grass._built.has(Vector2i(0, -3)) and not grass._built.has(Vector2i(0, 3)), "First draw must build the visible meadow before off-screen cells")
+	check(visible_ready(grass, camera, Vector2i(0, -3)) and not grass._built.has(Vector2i(0, 3)), "Visible streaming gives the current meadow priority over off-screen cells")
 	camera.rotation.y = PI
-	grass._build_visible(camera)
-	check(grass._built.has(Vector2i(0, 3)), "Turning in the same chunk must fill the new view in one pass")
+	check(visible_ready(grass, camera, Vector2i(0, 3)), "Turning in the same chunk fills the new view")
 	camera.position.x += 352.0
 	grass._stream(camera.position)
-	grass._build_visible(camera)
-	check(grass._built.has(Vector2i(11, 3)) and not grass._built.has(Vector2i(0, 3)), "A camera cut must fill the destination and evict the previous meadow")
+	check(not grass._built.has(Vector2i(0, 3)), "A camera cut immediately evicts the previous meadow")
+	check(visible_ready(grass, camera, Vector2i(11, 3)), "A camera cut fills the visible destination within bounded streaming passes")
 	grass.free()
 	view.free()
+
+
+func visible_ready(grass: Grass, camera: Camera3D, cell: Vector2i) -> bool:
+	# Streaming deliberately yields after four milliseconds; OS preemption on a
+	# loaded machine must not turn its wall-clock budget into a placement failure.
+	for frame in 8:
+		grass._build_visible(camera)
+		if grass._built.has(cell):
+			return true
+	return false

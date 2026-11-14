@@ -504,12 +504,17 @@ func _on_game_start(s: Dictionary) -> void:
 		cur = _curtain("loading")
 		var mt := _mission_text(s)
 		cur.brief(int(s.get("seed", 1)), String(mt[0]), mt[1], String(mt[2]) if mt.size() > 2 else "", String(mt[3]) if mt.size() > 3 else "")
+		cur.set_stage("Preparing the battlefield", 0.02)
+		await get_tree().process_frame
+		await get_tree().process_frame
+		# Starting immediately after launch must not block the curtain on script compilation.
+		while ResourceLoader.load_threaded_get_status(GameScripts.WORLD) == ResourceLoader.THREAD_LOAD_IN_PROGRESS:
+			if not is_instance_valid(cur):
+				return
+			await get_tree().process_frame
+		if not is_instance_valid(cur):
+			return
 		cur.set_stage("Surveying the ground", 0.14)
-		if multiplayer.is_server():
-			# let it reach the screen before the long build (clients build at once:
-			# their world is small and the host's state is on its way)
-			await get_tree().process_frame
-			await get_tree().process_frame
 	if menu:
 		menu.visible = false
 	Settings.set_ui_menu(false)

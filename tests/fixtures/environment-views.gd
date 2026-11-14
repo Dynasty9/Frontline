@@ -19,7 +19,10 @@ func capture() -> void:
 		world.director.active = false
 	var prefix := "build/terrain/environment-views"
 	var clip := ""
+	var capture_views := PackedStringArray()
 	for arg in OS.get_cmdline_user_args():
+		if arg.begins_with("--capture-views="):
+			capture_views = arg.get_slice("=", 1).split(",")
 		if arg.begins_with("--capture-clip="):
 			clip = arg.get_slice("=", 1)
 		if arg.begins_with("--capture-prefix="):
@@ -30,7 +33,7 @@ func capture() -> void:
 		quit()
 		return
 	var heights: PackedFloat32Array = world.terrain.landform.heights
-	assert(not heights.is_empty() or "--capture-set=trenches" in OS.get_cmdline_user_args() or "--capture-set=fortifications" in OS.get_cmdline_user_args(), "The environment stage needs a generated alpine map")
+	assert(not heights.is_empty() or "--capture-set=trenches" in OS.get_cmdline_user_args() or "--capture-set=fortifications" in OS.get_cmdline_user_args() or "--capture-set=woodland" in OS.get_cmdline_user_args(), "The environment stage needs a generated alpine map")
 	var peak_index := 0
 	for i in heights.size():
 		if heights[i] > heights[peak_index]:
@@ -108,6 +111,26 @@ func capture() -> void:
 			["bunker", bunker_pos, 16.0, -32.0, -0.65], ["position", target, 45.0, -50.0, 0.35]]
 		print("SLOPE_REVIEW ", target, " bunker=", bunker_pos)
 	var settle_frames := 90
+	if "--capture-set=woodland" in OS.get_cmdline_user_args():
+		if "--woodland-before" in OS.get_cmdline_user_args():
+			world.atmo.grass.woodland = null
+			world.atmo.grass.request_rebuild(0.01)
+		var stand := Vector3(-28, 0, -20)
+		if "--woodland-generated" in OS.get_cmdline_user_args():
+			var density := 0
+			for tree in world.structures:
+				if tree.skind != "tree" or tree.gone or world.town_rect.grow(30.0).has_point(Vector2(tree.position.x, tree.position.z)):
+					continue
+				var count := 0
+				for neighbor in world.structures_near(tree.position, 15.0):
+					if neighbor.skind == "tree":
+						count += 1
+				if count > density:
+					density = count
+					stand = tree.position
+			print("WOODLAND stand=", stand, " trees=", density)
+		views = [["floor", stand, 12.0, -32.0, 0.6], ["stand", stand, 30.0, -42.0, 0.6], ["eye", stand, 12.0, -8.0, 0.6]]
+		settle_frames = 180
 	if "--capture-set=shoreline" in OS.get_cmdline_user_args():
 		var shore: float = world.water.coast_x(0.0)
 		views = [["town", Vector3(330, 0, 0), 90.0, -45.0, 0.7],
@@ -197,6 +220,8 @@ func capture() -> void:
 	RenderingServer.viewport_set_measure_render_time(root.get_viewport_rid(), true)
 	var records := []
 	for view in views:
+		if not capture_views.is_empty() and view[0] not in capture_views:
+			continue
 		if view.size() > 6:
 			world.atmo.apply_mood(view[6])
 			if "--weather-review" in OS.get_cmdline_user_args():
@@ -217,16 +242,63 @@ func capture() -> void:
 		if view[0] == "inside":
 			world.cam.cam.global_position = Vector3(0.8, 0.02, -28.0)
 			world.cam.cam.look_at(Vector3(4.8, -0.5, -28.3))
+		if view[0] == "eye":
+			var target: Vector3 = view[1] + Vector3(1.5, 0, 1.0)
+			target.y = world.ground_y(target) + 2.0
+			for angle in [0.6, 1.2, -0.6, -1.2]:
+				var eye: Vector3 = view[1] + Vector3(sin(angle), 0, cos(angle)) * 12.0
+				var clear := true
+				for tree in world.structures_near(eye, 2.0):
+					if tree.skind == "tree":
+						clear = false
+				if clear:
+					eye.y = world.ground_y(eye) + 1.75
+					world.cam.cam.global_position = eye
+					world.cam.cam.look_at(target)
+					break
+		if String(view[0]).begins_with("detail-"):
+			var subject: Vector3 = view[1]
+			subject.y = world.ground_y(subject) + (0.8 if view[0] == "detail-4" else 0.18)
+			# Photo close-ups bypass the RTS camera's minimum ground clearance.
+			var offset := Vector3(1.4, 1.0, 1.6)
+			if view[0] == "detail-13":
+				subject.y += 1.0
+				offset = Vector3(2.7, 1.1, 3.0)
+			elif view[0] == "detail-1":
+				offset = Vector3(2.7, 2.4, -2.7)
+			elif view[0] == "detail-4":
+				offset = Vector3(1.0, 0.6, 1.0)
+			world.cam.cam.global_position = subject + offset
+			world.cam.cam.look_at(subject)
 		if world.atmo.mood == "rain":
 			world.atmo._bolt_t = 100.0
 			world.atmo._flash = 0.0
-		for frame in settle_frames:
+		for frame in (60 if String(view[0]).begins_with("detail-") else settle_frames):
 			await process_frame
 		while world.structure_view != null and world.structure_view.warming():
 			await process_frame
+		if "--capture-set=woodland" in OS.get_cmdline_user_args() and world.atmo.grass.woodland:
+			var details := []
+			details.resize(world.atmo.grass.woodland.meshes.size())
+			details.fill(0)
+			var subjects := {}
+			for chunk: Array in world.atmo.grass._built.values():
+				for node: MultiMeshInstance3D in chunk:
+					var kind: int = world.atmo.grass.woodland.materials.find(node.material_override)
+					if kind >= 0:
+						details[kind] += node.multimesh.instance_count
+						for i in node.multimesh.instance_count:
+							var candidate := node.multimesh.get_instance_transform(i).origin
+							if not subjects.has(kind) or candidate.distance_squared_to(view[1]) < (subjects[kind] as Vector3).distance_squared_to(view[1]):
+								subjects[kind] = candidate
+			print("WOODLAND instance counts by mesh: ", details)
+			if view[0] == "floor":
+				for kind in [0, 1, 3, 4, 6, 7, 9, 11, 13, 17]:
+					if subjects.has(kind):
+						views.append(["detail-%d" % kind, subjects[kind], 3.0, -28.0, 0.6])
 		var frame_ms := 0.0
 		var gpu_ms := 0.0
-		if view.size() > 5:
+		if view.size() > 5 or "--capture-benchmark" in OS.get_cmdline_user_args():
 			var started := Time.get_ticks_usec()
 			for sample in 120:
 				await process_frame
@@ -247,7 +319,7 @@ func capture() -> void:
 				await process_frame
 				await RenderingServer.frame_post_draw
 				assert(root.get_texture().get_image().save_png(frames + "/%04d.png" % frame) == OK)
-		records.append({"file": filename, "focus": str(view[1]), "zoom": view[2], "pitch": view[3], "yaw": view[4], "camera_position": str(world.cam.cam.global_position), "camera_rotation": str(world.cam.cam.global_rotation), "time": world.time, "wetness": world.atmo.rain_wet, "mood": world.atmo.mood, "cloud_quality": get_root().get_node("Settings").v.mountain_clouds, "frame_ms": frame_ms, "gpu_ms": gpu_ms})
+		records.append({"file": filename, "focus": str(view[1]), "zoom": view[2], "pitch": view[3], "yaw": view[4], "camera": str(world.cam.cam.global_transform), "camera_position": str(world.cam.cam.global_position), "camera_rotation": str(world.cam.cam.global_rotation), "time": world.time, "wetness": world.atmo.rain_wet, "mood": world.atmo.mood, "cloud_quality": get_root().get_node("Settings").v.mountain_clouds, "frame_ms": frame_ms, "gpu_ms": gpu_ms, "draw_calls": Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME), "primitives": Performance.get_monitor(Performance.RENDER_TOTAL_PRIMITIVES_IN_FRAME)})
 		print("CAPTURE ", filename)
 	assert(source_hashes == _source_hashes(), "Capture source changed during rendering; discard this take")
 	var output := FileAccess.open(prefix + ".json", FileAccess.WRITE)

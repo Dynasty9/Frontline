@@ -121,6 +121,7 @@ func _ready() -> void:
 	_pages["lighting"] = _page(stack, [
 		["head", "", "Look"],
 		["option", "mood", "Time of day & weather", MOOD_NAMES, "Lighting for the battle (applies immediately)."],
+		["check", "time_passes", "Time passes", null, "The light moves on as the battle goes: the sun crosses the sky and one time of day turns into the next, dawn into midday, golden hour into dusk and then night in about forty minutes. Rain, overcast and haze hold. Everyone in a battle who has it on sees the same sky."],
 		["option", "look", "Colour grading", Settings.LABELS.look, "The film look laid over the scene."],
 		["option", "tonemap", "Tonemapper", Settings.LABELS.tonemap, "How bright highlights (fire, sun) roll off."],
 		["slider", "brightness", "Brightness", [0.6, 1.5, 0.05], "Overall exposure."],

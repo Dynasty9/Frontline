@@ -84,13 +84,19 @@
   {
     "name": "Gun shields and weapon-station armour",
     "pattern": "\\bgun shield|\\bshield.{0,30}(?:gun|weapon)|\\barmour shield|\\barmor shield",
-    "reuse": "Bent plate outlines and viewing slots; keep traverse envelope."
+    "reuse": "Bent plate outlines and viewing slots; keep traverse envelope.",
+    "shared": [
+      "VehicleMounts.gun_shield"
+    ]
   },
   {
     "name": "Suspension arms and hubs",
     "pattern": "\\bwishbone|\\bswing.?arm|\\bcontrol arm|\\bshock absorber|\\bsuspension arm",
     "reuse": "Endpoint-based links, joints and spring/damper pairs; solid axles already exist.",
-    "exclude_pattern": "\\bMG\\b"
+    "exclude_pattern": "\\bMG\\b",
+    "shared": [
+      "VehicleRunningGear.wishbone"
+    ]
   },
   {
     "name": "Fuel fillers and filler caps",
@@ -103,7 +109,10 @@
   {
     "name": "Air cleaners, filters and snorkels",
     "pattern": "\\bair cleaner|\\bair filter|\\bdust filter|\\bsnorkel",
-    "reuse": "Filter housings, clamps and pipe transitions; not generic turbine ducts."
+    "reuse": "Filter housings, clamps and pipe transitions; not generic turbine ducts.",
+    "shared": [
+      "VehicleFittings.air_cleaner"
+    ]
   },
   {
     "name": "Steering wheels and control columns",
@@ -116,7 +125,7 @@
   {
     "name": "Towing pintles and hitches",
     "pattern": "\\bpintle|\\bhitch|\\btow ball",
-    "reuse": "Mounting plate, jaws/pin or ball; recovery shackles are a separate shared part.",
+    "reuse": "Mounting plate, jaws and pin; tow balls and recovery shackles are separate parts.",
     "exclude_pattern": "\\bMG\\b|\\bminiguns|three-point hitch",
     "shared": [
       "VehicleMounts.hitch"
@@ -147,12 +156,18 @@
   {
     "name": "External fuel drums and drum cradles",
     "pattern": "\\bfuel drums?|\\b200.?litre|\\b200.?liter|\\bexternal.{0,15}drum",
-    "reuse": "Drum ribs, ends and cradles; tanker vessel and aerodynamic drop tank are different."
+    "reuse": "Drum ribs, ends and cradles; tanker vessel and aerodynamic drop tank are different.",
+    "shared": [
+      "VehicleEquipment.drum"
+    ]
   },
   {
     "name": "Spare-wheel carriers",
     "pattern": "\\bspare.{0,50}(?:carrier|frame|bracket|retention)|(?:carrier|bracket).{0,30}spare",
-    "reuse": "Brackets and retention hardware around the shared spare wheel; wheel itself is extracted."
+    "reuse": "Brackets and retention hardware around the shared spare wheel; wheel itself is extracted.",
+    "shared": [
+      "VehicleWheels.carrier"
+    ]
   },
   {
     "name": "Sensor and telescoping masts",
@@ -199,7 +214,8 @@
     "pattern": "\\bcrane|\\bhoist",
     "reuse": "Boom sections, pivot joints and cable routing; vehicle layouts and movement stay local.",
     "shared": [
-      "VehicleMounts.boom"
+      "VehicleMounts.boom",
+      "VehicleMounts.crane"
     ]
   },
   {
@@ -218,7 +234,7 @@
   {
     "name": "Marine propellers and rudders",
     "pattern": "\\brudder|\\bpropeller|\\btwin outboards|\\bhp outboard|\\bwaterjets?\\b",
-    "reuse": "Separate propeller, steering surface and waterjet families; aircraft propellers differ.",
+    "reuse": "Screw propellers share VehicleMarine.propeller; rudders and waterjets have no shared builder yet.",
     "owners": [
       "VmBoat",
       "VmShips"
@@ -286,7 +302,8 @@
     "name": "Seat and bench construction",
     "pattern": "\\bseats?|\\bbenches|\\bbench",
     "shared": [
-      "VehicleCab.seat"
+      "VehicleCab.seat",
+      "VehicleCab.bench"
     ],
     "reuse": "Use shared seats; bench and jockey-seat layouts need separate dimension contracts."
   },
@@ -296,7 +313,9 @@
     "shared": [
       "VehicleFittings.exhaust",
       "VehicleAircraft.duct",
-      "VehicleAircraft.turbine_exhaust"
+      "VehicleAircraft.turbine_exhaust",
+      "VehicleFittings.exhaust_run",
+      "VehicleFittings.silencer"
     ],
     "reuse": "Extend stack adapters; silencers, turbine grilles and suppressors are not interchangeable."
   },
@@ -305,7 +324,8 @@
     "pattern": "\\bhose|\\btow cable|\\brope",
     "shared": [
       "VehicleFrames.cable",
-      "VehicleFrames.hose_reel"
+      "VehicleFrames.hose_reel",
+      "VehicleFittings.tow_cable"
     ],
     "reuse": "Use supported cable routes; coils and wound drums need distinct construction."
   },
@@ -399,7 +419,9 @@
     "name": "Missile launch tubes",
     "pattern": "\\blaunch tube|\\btube launcher|\\bTitan|\\bVorona|\\bATGM",
     "shared": [
-      "VehicleWeapons.launch_tube"
+      "VehicleWeapons.launch_tube",
+      "VehicleWeapons.missile_box",
+      "VehicleWeapons.missile_face"
     ],
     "reuse": "Tube, collars and covers; box launchers with tube mouths are a separate design."
   },
@@ -436,7 +458,10 @@
     "pattern": "\\bfenders?\\b|\\bmudguards?|\\bwings? over",
     "shared": [
       "VehicleBody.fender",
-      "VehicleWheelArches.liner"
+      "VehicleWheelArches.liner",
+      "VehicleWheelArches.tub",
+      "VehicleBody.track_guard",
+      "VehicleMarine.fender"
     ],
     "reuse": "Flat sheets with bead, bolts and stays; faceted armoured arches stay authored."
   },
@@ -458,5 +483,253 @@
       "VehicleCloth.roll"
     ],
     "reuse": "Rolled canvas with straps; draped covers use VehicleCloth.load_cover."
+  },
+  {
+    "name": "Track return rollers",
+    "pattern": "\\breturn rollers?|\\bsupport rollers?|\\btop rollers?",
+    "shared": [
+      "VehicleWheels.roller"
+    ],
+    "reuse": "Rubber-tyred rollers on stub axles; registers nothing."
+  },
+  {
+    "name": "Truck cargo beds",
+    "pattern": "\\bcargo bed|\\bflatbed|\\bdropsides?|\\bload bed|\\bthe bed\\b",
+    "shared": [
+      "VehicleCargo.flatbed",
+      "VehicleCargo.sideboard"
+    ],
+    "reuse": "Deck, runners, rails, posts, dropsides and tailgate on authored bounds."
+  },
+  {
+    "name": "Box bodies and shutters",
+    "pattern": "\\bbox body|\\bshelter|\\broller shutters?|\\bworkshop body",
+    "shared": [
+      "VehicleCargo.shelter",
+      "VehicleCargo.roller_shutter",
+      "VehicleCargo.body_door"
+    ],
+    "reuse": "Body, doors, shutters and ladders from authored bounds and wall faces."
+  },
+  {
+    "name": "Smoke discharger banks",
+    "pattern": "\\bsmoke(?:-grenade)? dischargers?|\\bsmoke grenade",
+    "shared": [
+      "VehicleFittings.smoke_bank",
+      "VehicleFittings.smoke_tube"
+    ],
+    "reuse": "Bracket, junction box and tubes from the family's own layout."
+  },
+  {
+    "name": "Air-launched missiles",
+    "pattern": "\\bmissiles?\\b|\\bHellfire|\\bMaverick|\\bAIM-",
+    "shared": [
+      "VehicleAircraft.missile"
+    ],
+    "reuse": "Revolved body, nose style, slab fins, band and rail.",
+    "owners": [
+      "VmPlane",
+      "VmFighter",
+      "VmAttack",
+      "VmGunship",
+      "VmHeli",
+      "VmCore"
+    ]
+  },
+  {
+    "name": "Rotor hub caps",
+    "pattern": "\\bhub caps?|\\brotor head|\\bbifilar",
+    "shared": [
+      "VehicleRotors.hub_cap"
+    ],
+    "reuse": "Faceted or domed caps with flange and absorbers on the rotor pivot.",
+    "owners": [
+      "VmHeli",
+      "VmCore"
+    ]
+  },
+  {
+    "name": "Lamp units",
+    "pattern": "\\bheadlights?|\\bheadlamps?|\\blamps? in guards|\\blight clusters?",
+    "shared": [
+      "VehicleFittings.lamp_unit",
+      "VehicleFittings.headlamp",
+      "VehicleFittings.rectangular_headlamp"
+    ],
+    "reuse": "Housing, inserts, indicator and guard; light bars stay authored."
+  },
+  {
+    "name": "Engine intake faces",
+    "pattern": "\\bintake face|\\bfan face|\\bengine face|\\bcompressor",
+    "shared": [
+      "VehicleAircraft.intake_face"
+    ],
+    "reuse": "Hub or spinner, blades, vanes or dust cone behind the lip."
+  },
+  {
+    "name": "Pedestal gun mounts",
+    "pattern": "\\bpedestal|\\bpintle post|\\bgun shield|\\bring mount",
+    "shared": [
+      "VehicleMounts.pedestal",
+      "VehicleMounts.gun_shield",
+      "VehicleMounts.ring_mount",
+      "VehicleMounts.pintle"
+    ],
+    "reuse": "Plate, post, braces, swivel and yoke around the caller's pivot."
+  },
+  {
+    "name": "Roll cages and bull bars",
+    "pattern": "\\broll ?bars?|\\broll cage|\\bsport bar|\\bbull ?bars?|\\bbrush guard|\\bcage of tubes",
+    "shared": [
+      "VehicleFrames.roll_bar",
+      "VehicleFrames.bull_bar"
+    ],
+    "reuse": "Tube members with detected joints, clamps and base plates."
+  },
+  {
+    "name": "Aircraft store pods",
+    "pattern": "\\btargeting pod|\\bECM pod|\\bjamming pod|\\bdrop tank|\\bfuel tank under",
+    "shared": [
+      "VehicleAircraft.pod"
+    ],
+    "reuse": "Store body with lugs, pads, bands and preset details.",
+    "owners": [
+      "VmPlane",
+      "VmFighter",
+      "VmAttack",
+      "VmGunship",
+      "VmCore"
+    ]
+  },
+  {
+    "name": "Muzzle brakes and muzzle sensors",
+    "pattern": "\\bmuzzle brakes?|\\bMRS\\b|\\bmuzzle reference|\\bmuzzle sensor",
+    "shared": [
+      "VehicleWeapons.muzzle_brake",
+      "VehicleWeapons.muzzle_sensor"
+    ],
+    "reuse": "Sleeve, baffles and side ports from the barrel's end; sensor box with its bore window."
+  },
+  {
+    "name": "Gun travel locks",
+    "pattern": "\\btravel locks?|\\bgun locks?|\\bbarrel rest|\\bbarrel lock",
+    "shared": [
+      "VehicleMounts.travel_lock"
+    ],
+    "reuse": "Folding struts, arm and saddle from a foot to the barrel cradle."
+  },
+  {
+    "name": "Trim vanes and bow boards",
+    "pattern": "\\btrim vanes?|\\btrim boards?|\\bsplash boards?|\\bwave breakers?",
+    "shared": [
+      "VehicleMounts.trim_vane"
+    ],
+    "reuse": "Hinged board with ribs and hinges on the hull face."
+  },
+  {
+    "name": "Searchlights and light bars",
+    "pattern": "\\bsearchlights?|\\bspotlights?|\\blight bars?|\\bwork lights?|\\bflashers?",
+    "shared": [
+      "VehicleFittings.searchlight",
+      "VehicleFittings.light_bar"
+    ],
+    "reuse": "Barrel lamp on a yoke or bracket; lens rows in a bar housing."
+  },
+  {
+    "name": "Roof racks and crate loads",
+    "pattern": "\\broof racks?|\\bcrates?\\b|\\bammo(?:nition)? boxes|\\bcargo load",
+    "shared": [
+      "VehicleCargo.roof_rack",
+      "VehicleCargo.crate_stack"
+    ],
+    "reuse": "Rails, feet and slats; deterministic stacks of strapped crates."
+  },
+  {
+    "name": "Tanker and supply equipment",
+    "pattern": "\\bmanholes?|\\bwalkways?|\\bpump (?:cabinet|box)|\\bgas (?:bottles?|cylinders?)|\\boxy(?:gen|-acetylene)?\\b",
+    "shared": [
+      "VehicleEquipment.tanker_top",
+      "VehicleEquipment.pump_cabinet",
+      "VehicleEquipment.gas_bottle"
+    ],
+    "reuse": "Walkway, manholes and rails along a tank; pump doors and reels; bottles in a rack."
+  },
+  {
+    "name": "Helicopter landing gear",
+    "pattern": "\\bmain gear|\\btrailing.?arm|\\boleos?\\b|\\btail ?wheels?|\\bdrag (?:tubes?|braces?)",
+    "shared": [
+      "VehicleAircraft.trailing_gear",
+      "VehicleAircraft.tailwheel"
+    ],
+    "reuse": "Drag beam, strut and oleo to the caller's wheel pivot; tailwheel leg, brace and crown."
+  },
+  {
+    "name": "Countermeasure dispensers",
+    "pattern": "\\bflares?\\b|\\bchaff|\\bdispensers?|\\bcountermeasures?",
+    "shared": [
+      "VehicleAircraft.dispenser"
+    ],
+    "reuse": "Box with a field of slots on one face."
+  },
+  {
+    "name": "Formation lights and refuelling receptacles",
+    "pattern": "\\bformation lights?|\\bslime lights?|\\brefuel(?:l?ing)? (?:receptacle|door)|\\breceptacle",
+    "shared": [
+      "VehicleAircraft.formation_light",
+      "VehicleAircraft.refuel_receptacle"
+    ],
+    "reuse": "Strips and doors laid on the skin, open or closed, with lead-in lines."
+  },
+  {
+    "name": "Aircraft bombs",
+    "pattern": "\\bbombs?\\b|\\bGBU|\\bJDAM|\\bMk ?8[234]",
+    "shared": [
+      "VehicleAircraft.bomb"
+    ],
+    "reuse": "Body, fins, lugs and a guidance kit by preset."
+  },
+  {
+    "name": "Chin turrets",
+    "pattern": "\\bchin turrets?|\\bchin guns?",
+    "shared": [
+      "VehicleAircraft.chin_turret"
+    ],
+    "reuse": "Drum, cradle, feed chute and magazines on the caller's turret pivot."
+  },
+  {
+    "name": "Hydraulic rams",
+    "pattern": "\\bhydraulic|\\brecoil (?:cylinders?|buffers?)|\\b(?:lift|elevation|dozer|boom) rams?",
+    "shared": [
+      "VehicleFrames.ram"
+    ],
+    "reuse": "Barrel and rod between two pins with eyes and an optional hose."
+  },
+  {
+    "name": "Plates, crosses and lettering",
+    "pattern": "\\bnumber plates?|\\blicen[cs]e plates?|\\bred cross|\\bmedical cross|\\bhull numbers?|\\bregistration|\\bstencil",
+    "shared": [
+      "VehicleMarkings.plate",
+      "VehicleMarkings.cross",
+      "VehicleMarkings.digit_strokes",
+      "VehicleMarkings.stroke_rects"
+    ],
+    "reuse": "Embossed plate in a holder; cross on a ground; the shared stroke font."
+  },
+  {
+    "name": "Door levers and sliding-door rails",
+    "pattern": "\\bdoor handles?|\\blevers?\\b|\\bslide rails?|\\bdoor rails?|\\bsliding doors?",
+    "shared": [
+      "VehicleDoors.lever",
+      "VehicleDoors.slide_rail"
+    ],
+    "reuse": "Handle with boss and pin; rail with brackets along a surface."
+  },
+  {
+    "name": "Boat bow eyes",
+    "pattern": "\\bbow eyes?|\\btowing eyes?|\\btow eyes?",
+    "shared": [
+      "VehicleMarine.bow_eye"
+    ],
+    "reuse": "Ring with a backing plate on the stem."
   }
 ]

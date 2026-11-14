@@ -150,6 +150,8 @@ func generate() -> void:
 	if String(world.settings.get("mission", "")) == "":
 		_foothill_woods(area)
 		_alpine_scatter(tg.decor, area)
+		var dumps := world.rules.town_list.filter(func(t: Structure) -> bool: return t.variant == 1)
+		tg.military_fences(r.depots, dumps)
 	world.set_decor(tg.decor, tg.rect)
 
 	world.terrain.release_nav()
