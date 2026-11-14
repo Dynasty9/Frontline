@@ -499,7 +499,7 @@ func _define_parts() -> void:
 				for side in [-1.0, 1.0]:
 					parts.append(_part(Vector3(side * (L + 1.5) * 0.25, y, rear * 1.2), Vector3((L - 1.5) * 0.5, h, 0.95), Nav.LOW, Nav.LOW, true, true, C_DIRT))
 				parts.append(_part(Vector3(0, y, rear * 2.4), Vector3(1.5, h, 0.85), Nav.LOW, Nav.LOW, true, true, C_DIRT))
-				if built and trench_depth() >= 0.85 and eid % 2 == 1:
+				if built and trench_depth() >= 0.85 and TrenchFittings.recess(self) != TrenchFittings.Recess.SHELF:
 					parts.append(_part(Vector3(0, 0.3, rear * 1.4), Vector3(1.5, 0.12, 1.1), Nav.FREE, Nav.FREE, true, true, C_WOOD))
 			else:
 				parts.append(_part(Vector3(0, y, rear * 1.2), Vector3(L, h, 0.95), Nav.LOW, Nav.LOW, true, true, C_DIRT))
@@ -783,6 +783,7 @@ func _mg_model(rng: RandomNumberGenerator, bags: Array) -> void:
 		# dug into the trench's front lip: tripod feet on the parapet, ammo
 		# at the gunner's elbow
 		WeaponModels.ammo_dump(model, Vector3(0.8, 0.0, -(TrenchNet.HALF_W + 0.3)), heavy, rng)
+		TrenchFittings.mg_bay(model, self, heavy, rng, bags)
 	else:
 		# the gun sits on a platform of filled bags behind the front wall
 		var ph := 0.45 if heavy else 0.5
@@ -3239,6 +3240,11 @@ func _build_model() -> void:
 			_mg_model(rng, bags)
 			if variant != 1:
 				WorksModels.apron(model, foot.x + 0.3, foot.y + 0.3)
+			elif world != null:
+				# the trench it's dug into clears its own parapet and kit from the bay
+				for other in world.structures_near(position, 8.0):
+					if other.skind == "trench" and not other.gone and other.model != null:
+						other.refresh_trench_furnishings()
 		"mortar_pit":
 			# the floor dug out and trodden flat inside the ring of bags
 			WorksModels.pit_floor(model, 1.7)
@@ -3351,6 +3357,8 @@ func _trench_neighbors_key() -> String:
 	for other in world.structures_near(position, size.x * 0.5 + 5.0):
 		if other != self and other.skind == "trench" and not other.gone and other.trench_depth() > 0.15:
 			ids.append(other.eid)
+		elif other.skind in ["mg_nest", "hmg_nest"] and other.variant == 1 and not other.gone:
+			ids.append(-other.eid)  # a gun bay dug into the line takes the place of the bay's own kit
 	ids.sort()
 	return str(ids)
 
@@ -3378,37 +3386,9 @@ func _make_trench_furnishings() -> void:
 	var done := Node3D.new()
 	done.name = "Done"
 	model.add_child(done)
-	var fsgn := _enemy_side()
-	# kit only along fire bays, kept clear of the corners where the traverses join
-	var kx := size.x * 0.5 - 1.2
-	# a few filled bags along the parapet (rests for the rifles)
-	var kit_bags: Array = []
-	for i in (rng.randi_range(2, 4) if kx > 0.8 else 0):
-		var bx := rng.randf_range(-kx, kx)
-		var bag := {"p": Vector3(bx, 0.2, fsgn * 1.05), "s": Vector3(0.55 * rng.randi_range(1, 2), 0.19, 0.36), "r": rng.randf_range(-0.2, 0.2)}
-		if WorksModels.trench_backed(self, bag.p, bag.s.x * 0.5):
-			kit_bags.append(bag)
+	var kit_bags := TrenchFittings.furnish(self, done, rng)
 	if not kit_bags.is_empty():
 		_bag_walls(kit_bags, rng, done)
-	WorksModels.trench_shoring(self, done, rng)
-	if TrenchNet.has_recess(self):
-		var rear := -fsgn
-		var wood := Res.mat(C_WOOD.darkened(0.25))
-		# Alternating supply shelves and roofed resting bays share the same excavation.
-		Res.mi(done, Res.box(Vector3(1.2, 0.1, 0.48)), wood, Vector3(0, -0.7, rear * 1.55), Vector3.ZERO, false)
-		if eid % 2 == 0:
-			for x in [-0.33, 0.3]:
-				Res.mi(done, Res.box(Vector3(0.45, 0.26, 0.3)), Res.mat(Color(0.25, 0.28, 0.2)), Vector3(x, -0.52, rear * 1.55), Vector3.ZERO, false)
-		else:
-			for x in [-0.66, 0.66]:
-				Res.mi(done, Res.box(Vector3(0.09, 1.35, 0.09)), wood, Vector3(x, -0.42, rear * 1.7), Vector3.ZERO, false)
-			for board in 8:
-				Res.mi(done, Res.box(Vector3(0.18, 0.1, 1.1)), Mats.get_mat("wood"), Vector3(-0.66 + board * 0.19, 0.3 + rng.randf_range(-0.018, 0.018), rear * 1.4), Vector3(0, rng.randf_range(-0.025, 0.025), 0.04), false)
-			for x in [-0.55, 0.55]:
-				Res.mi(done, Res.box(Vector3(0.12, 0.13, 1.18)), wood, Vector3(x, 0.18, rear * 1.4), Vector3.ZERO, false)
-			Res.mi(done, Res.box(Vector3(0.9, 0.12, 0.4)), Res.mat(Color(0.29, 0.31, 0.23)), Vector3(0, -0.59, rear * 1.55), Vector3.ZERO, false)
-		for i in 3:
-			Res.mi(done, Res.box(Vector3(0.13, 0.025, 0.18)), Res.mat(Color(0.31, 0.27, 0.19)), Vector3(rng.randf_range(-0.5, 0.5), -1.13, rear * rng.randf_range(1.0, 1.6)), Vector3(0, rng.randf() * TAU, 0), false)
 	_trench_furnishing_key = _trench_neighbors_key()
 
 static var _bag_mesh: ArrayMesh

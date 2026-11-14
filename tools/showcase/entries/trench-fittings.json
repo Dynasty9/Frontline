@@ -1,0 +1,58 @@
+{
+  "entry": "changelog/unreleased/trench-fittings.md",
+  "summary": "Fitted-out fire trenches (parapets, revetment, kit, dugout entrances, roofed gun bays) and squads sheltering in dugouts under shellfire.",
+  "medium": "motion",
+  "stage": "tests/fixtures/environment-views.gd --capture-set=fortifications | trench-fittings | dugout-shelter",
+  "rationale": "Matched uncropped before/after stills show the fittings; a close-up sheet shows the dugout entrance and roofed gun bay; a short clip shows the shelter-and-stand-to behaviour, which a still cannot.",
+  "source_ref": "this branch (realistic-trench-design) on 99b8723d",
+  "sources": [
+    {
+      "file": "changelog/unreleased/trench-fittings/comparison.jpg",
+      "sha256": "3eaf6959e24305a12d5a21d412a3a45c425da8ca3a2c4625670876ec59f311cf"
+    },
+    {
+      "file": "changelog/unreleased/trench-fittings/details.jpg",
+      "sha256": "5e465539cd4733985bdb257e39e8fe6379e7f0a92df8db7c13fedb6aa6bc2b05"
+    },
+    {
+      "file": "changelog/unreleased/trench-fittings/dugout.webm",
+      "sha256": "5fc50996e51de405a16617702394bb871db513cc5966a00937e6b1f76965575c"
+    },
+    {
+      "file": "changelog/unreleased/trench-fittings/dugout.jpg",
+      "sha256": "06dc0f857d290c117488a2f9609e405e6cbe9c972915d7a84cdd40cdd8fb1f0b"
+    }
+  ],
+  "output": "changelog/unreleased/trench-fittings/comparison.jpg",
+  "capture": {
+    "before_ref": "99b8723d",
+    "scenario": "trenches",
+    "seed": 3,
+    "preset": "high",
+    "mood": "day",
+    "renderer": "forward_plus",
+    "still_resolution": [
+      1600,
+      900
+    ],
+    "sheet_tiles": [
+      800,
+      450
+    ],
+    "clip_resolution": [
+      1280,
+      720
+    ],
+    "clip_frames": "90-305 of 320, one frame per three 30 Hz ticks (10 per simulated second)",
+    "clip_playback_fps": 15,
+    "clip_speed": "1.5x",
+    "clip_audio": "none",
+    "commands": [
+      "godot --path . --position -10000,-10000 --fixed-fps 30 --resolution 1600x900 --script tests/fixtures/environment-views.gd -- --scenario=trenches --seed=3 --offscreen --nohud --set=perf:0 --preset=high --mood=day --capture-set=fortifications --capture-prefix=<scratch>/f",
+      "godot --path . --position -10000,-10000 --fixed-fps 30 --resolution 1600x900 --script tests/fixtures/environment-views.gd -- --scenario=trenches --seed=3 --offscreen --nohud --set=perf:0 --preset=high --mood=day --capture-set=trench-fittings --capture-prefix=<scratch>/f",
+      "godot --path . --position -10000,-10000 --fixed-fps 30 --resolution 1280x720 --script tests/fixtures/environment-views.gd -- --scenario=trenches --static --seed=3 --offscreen --nohud --set=perf:0 --preset=high --mood=day --capture-set=dugout-shelter --capture-prefix=<scratch>/d"
+    ],
+    "clip_command_note": "JPEG frames piped to ffmpeg: -f image2pipe -framerate 15 -c:v mjpeg -i pipe:0 -vf format=yuv420p -c:v libvpx-vp9 -crf 36 -b:v 0 -row-mt 1 -g 60 -an",
+    "review": "Inspected native Forward+ and Compatibility (line, dugout entrance, gun bay). The mortar barrage in the clip is an observer demonstration (no side fired it)."
+  }
+}

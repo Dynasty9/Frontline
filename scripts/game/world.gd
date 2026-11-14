@@ -578,6 +578,47 @@ func trench_mount_spot(pos: Vector3, yaw: float) -> Dictionary:
 	return best
 
 
+## A spot the coarse cover grid calls "in the trench" can be a pace outside the
+## cut, standing on its lip, or at the foot of the back wall. A man sent there
+## belongs on the fire step: the nearest point against the wall facing `face`.
+func onto_fire_step(p: Vector3, face: Vector3) -> Vector3:
+	var best := p
+	var bd := 1.6
+	for st in structures_near(p, 5.0):
+		if st.skind != "trench" or st.trench_depth() < 0.6:
+			continue
+		var sg := TrenchNet.seg_of(st)
+		var a := Defs.flat(sg[0])
+		var ab := Defs.flat(sg[1]) - a
+		var length := ab.length()
+		if length < 1.2:
+			continue
+		var dir := ab / length
+		var side := Vector3(-dir.z, 0, dir.x)
+		if side.dot(face) < 0.0:
+			side = -side
+		var q := a + dir * clampf(Defs.flat(p - a).dot(dir), 0.6, length - 0.6) + side * (TrenchNet.HALF_W - 0.34)
+		var d := Defs.flat(q - p).length()
+		if d < bd and trench_depth(q) >= 0.6:
+			bd = d
+			best = q
+	return best
+
+
+## The nearest dugout within r of p with room left in it, or null.
+func dugout_for(p: Vector3, r: float) -> Structure:
+	var best: Structure = null
+	var bd := r
+	for st in structures_near(p, r + 4.0):
+		if not TrenchNet.has_dugout(st) or TrenchNet.dugout_room(st) <= 0:
+			continue
+		var d := Defs.flat(TrenchNet.dugout_door(st) - p).length()
+		if d < bd:
+			bd = d
+			best = st
+	return best
+
+
 func trench_depth(p: Vector3, margin := 0.05) -> float:
 	var depth := 0.0
 	for st: Structure in _trenches_at(p):

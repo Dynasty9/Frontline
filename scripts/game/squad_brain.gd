@@ -2,8 +2,12 @@ class_name SquadBrain
 extends RefCounted
 ## A squad's battle drills, as a behaviour tree (see BT) walked twice a second,
 ## most urgent first:
+##   - in the dugouts: sheltering from a barrage until it lifts or the enemy
+##     comes on, then "stand to!" and everyone races back up to the fire step;
 ##   - routed: a squad whose nerve has gone runs for the rear and won't take
 ##     orders until it has rallied;
+##   - take shelter: shelled in a trench line with a dugout at hand - all but
+##     a sentry go down the stairs;
 ##   - react to indirect fire: rounds landing on it and it isn't dug in - out
 ##     of the impact area, fast, sideways or back from the enemy, never into it;
 ##   - break contact: losing its nerve (or, for the AI, cut up and outnumbered) -
@@ -38,8 +42,10 @@ static func think(q: Squad) -> void:
 
 static func _build() -> BT.Branch:
 	return BT.sel("squad", [
+		BT.seq("in the dugouts", [BT.cond("sheltering", func(q): return q.drill == "dugout"), BT.act("wait it out, then stand to", func(q): return dugout_tick(q))]),
 		BT.seq("routed", [BT.cond("running", func(q): return q.drill == "rout"), BT.act("run, or rally", func(q): return rout_tick(q))]),
 		BT.seq("rout", [BT.cond("nerve gone", func(q): return should_rout(q)), BT.act("run for it", func(q): return start_rout(q))]),
+		BT.seq("take shelter", [BT.cond("shelled, a dugout at hand", func(q): return can_shelter(q)), BT.act("down the dugouts", func(q): return shelter(q))]),
 		BT.seq("indirect fire", [BT.cond("shells landing on us", func(q): return shells_on_us(q)), BT.act("out of the impact area", func(q): return displace(q))]),
 		BT.seq("displacing", [BT.cond("displacing", func(q): return q.drill == "displace"), BT.act("get there, then hold", func(q): return displace_tick(q))]),
 		BT.seq("break contact", [BT.cond("outmatched", func(q): return should_break(q)), BT.act("smoke, fall back by bounds", func(q): return start_withdraw(q))]),
@@ -264,6 +270,134 @@ static func shells_on_us(q: Squad) -> bool:
 		if m._gy < -0.6:
 			dug += 1
 	return not alive.is_empty() and dug * 2 < alive.size()
+
+
+# --- shelter in the dugouts ----------------------------------------------------------------
+
+const STAND_TO := 90.0  # enemy infantry this close: everybody up, whatever is falling
+const DUGOUT_REACH := 20.0
+
+
+## A barrage on a squad holding a trench line with a dugout close by: the
+## shells are what the dugout was dug for. Not while the enemy is already
+## close (that is when the parapet must be manned), and not on the move.
+static func can_shelter(q: Squad) -> bool:
+	if q.drill != "" or q.world.time < q.dugout_cd or not q.order in ["defend", "hold", "move"]:
+		return false
+	if q.plan != null and String(q.plan.phase) == "assault":
+		return false
+	var c := q.centroid()
+	var n := 0
+	for im in q.impacts:
+		if q.world.time - float(im[1]) < 20.0 and Defs.flat(im[0] - c).length() < 32.0:
+			n += 1
+	if n < 2 or _enemies_near(q, STAND_TO) > 0:
+		return false
+	var alive := q.alive_members()
+	if alive.size() < 2:
+		return false
+	var moving := 0
+	for m in alive:
+		if m.is_moving():
+			moving += 1
+	if moving * 2 > alive.size():
+		return false
+	return q.world.dugout_for(c, DUGOUT_REACH) != null
+
+
+## Down the dugouts, all but one: the man furthest forward stays at the
+## parapet as sentry, and gun crews stay on their guns. `held`: its commander
+## sent it below, so it stays there, barrage or no, until he says otherwise
+## (or the sentry sees them coming).
+static func shelter(q: Squad, st: Structure = null, held := false) -> int:
+	var c := q.centroid()
+	if st == null:
+		st = q.world.dugout_for(c, DUGOUT_REACH)
+	if st == null:
+		return BT.FAIL
+	var alive := q.alive_members()
+	var ed := enemy_dir(q)
+	var sentry: Soldier = null
+	var front := -INF
+	for m in alive:
+		var f := Defs.flat(m.position - c).dot(ed)
+		if m.task == "" and f > front:
+			front = f
+			sentry = m
+	var room: int = TrenchNet.dugout_room(st)
+	q.pre_order = [q.order, q.order_pos, q.facing, q.move_mode_ord]
+	if held:
+		q.pre_order = ["defend", TrenchNet.dugout_door(st), Basis(Vector3.UP, st.yaw) * Vector3(0, 0, st._enemy_side()), 0]
+	q.dugout_spots.clear()
+	var sent := 0
+	for m in alive:
+		if m == sentry or m.task != "" or sent >= room:
+			continue
+		q.dugout_spots[m.eid] = m.position
+		m.order_dugout(st)
+		sent += 1
+	if sent == 0:
+		return BT.FAIL
+	q.drill = "dugout"
+	q.dugout_st = st
+	q.dugout_held = held
+	q.drill_t = q.world.time
+	q.drill_pos = TrenchNet.dugout_door(st)
+	q.shown_order = "dugout"
+	_say(q, ["Into the dugout! Sentry, stay up!", "Get below! Get below!", "Down the stairs, move! Watch the parapet!", "Shelter! Everybody down the dugout!"])
+	q.world.send_msg(q.team, "info", "%s is sheltering in a dugout." % q.display_name(), q.drill_pos)
+	q.world.stat("dugout_shelter")
+	return BT.OK
+
+
+## Below until the barrage lifts, or the sentry sees them coming: then the
+## race for the parapet.
+static func dugout_tick(q: Squad) -> int:
+	var t := q.world.time
+	var coming := _enemies_near(q, STAND_TO) > 0
+	var lifted := not q.dugout_held and t - q.drill_t > 8.0 and q.world.impacts_near(q.drill_pos, 35.0, 10.0) == 0
+	var st = q.dugout_st
+	var open: bool = st != null and is_instance_valid(st) and TrenchNet.has_dugout(st)
+	var below := 0
+	for m in q.members:
+		if not is_instance_valid(m) or m.gone:
+			continue
+		if (m.life == Soldier.Life.HIDDEN and m.hidden_reason == "dugout") or m.task == "dugout":
+			below += 1
+		elif open and m.life == Soldier.Life.ALIVE and m.task == "" and q.dugout_spots.has(m.eid) and TrenchNet.dugout_room(st) > 0:
+			# threw himself flat as a shell came in: up and on down the stairs
+			m.order_dugout(st)
+			below += 1
+	if not open or coming or lifted or (t - q.drill_t > 150.0 and not q.dugout_held) or (below == 0 and t - q.drill_t > 3.0):
+		stand_to(q, coming)
+	return BT.OK
+
+
+static func stand_to(q: Squad, urgent: bool) -> void:
+	for m in q.members:
+		if is_instance_valid(m) and not m.gone and m.life == Soldier.Life.HIDDEN and m.hidden_reason == "dugout":
+			m.leave_dugout()
+	q.drill = ""
+	q.shown_order = ""
+	q.dugout_held = false
+	q.dugout_cd = q.world.time + 25.0
+	# what fell while they were below has passed over them: no running from it now
+	q.impacts.clear()
+	q.displace_cd = maxf(q.displace_cd, q.world.time + 20.0)
+	var pre: Array = q.pre_order
+	if not pre.is_empty() and String(pre[0]) == "defend":
+		q.order_defend(pre[1], pre[2], true)
+	else:
+		for m in q.alive_members():
+			if q.dugout_spots.has(m.eid):
+				m.cmd_move(q.dugout_spots[m.eid], 2 if urgent else 0, q.facing)
+	q.dugout_spots.clear()
+	q.dugout_st = null
+	if urgent:
+		_say(q, ["Stand to! Stand to! Up on the fire step!", "They're coming! Up, up, man the parapet!", "Stand to! Here they come!"])
+	else:
+		_say(q, ["It's lifted. Stand to!", "Barrage has lifted! Everybody up!", "Up, up! Back on the step!"])
+	q.world.stat("stand_to")
 
 
 static func displace(q: Squad) -> int:

@@ -588,6 +588,9 @@ func _line_free(a: Vector3, b: Vector3, vehicle: bool, tracks := false) -> bool:
 	# it starts in one, when the way out is the way out)
 	var ca := cell_of(a)
 	var mind_fire := not vehicle and heat[ca.y * N + ca.x] == 0
+	# (nor climb out over the parapet where the route keeps to a trench: a
+	# man going along the line goes round the traverses, under cover)
+	var mind_trench: bool = not vehicle and terrain != null and terrain.trench[terrain.idx_of(a)] > 0 and terrain.trench[terrain.idx_of(b)] > 0
 	for s in range(1, steps):
 		var p := a + d * (float(s) / steps)
 		var c := cell_of(p)
@@ -596,6 +599,8 @@ func _line_free(a: Vector3, b: Vector3, vehicle: bool, tracks := false) -> bool:
 		if terrain and terrain.world.water and terrain.world.water.too_deep(p):
 			return false
 		if mind_fire and heat[c.y * N + c.x] > 0:
+			return false
+		if mind_trench and terrain.trench[terrain.idx_of(p)] == 0:
 			return false
 	return true
 

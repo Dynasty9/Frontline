@@ -954,7 +954,7 @@ func squad_state(sid: int, mem: Array) -> Dictionary:
 	if not o.is_empty():
 		var g := Defs.grid_ref(o[1])
 		out.code = {"move": "MOV ", "bound": "BOUND ", "ambush": "AMBUSH ", "assault": "ATK ", "defend": "DEF ", "build": "BUILD "}.get(String(o[0]), "") + g
-		out.code = {"retreat": "FALL BACK", "attack": "ENGAGE", "tunnel": "TUNNELS", "contact": "CONTACT", "displace": "DISPLACE", "rout": "ROUTING"}.get(String(o[0]), out.code)
+		out.code = {"retreat": "FALL BACK", "attack": "ENGAGE", "tunnel": "TUNNELS", "contact": "CONTACT", "displace": "DISPLACE", "dugout": "DUGOUT", "rout": "ROUTING"}.get(String(o[0]), out.code)
 		match String(o[0]):
 			"move":
 				out.text = "Moving to " + g
@@ -998,6 +998,10 @@ func squad_state(sid: int, mem: Array) -> Dictionary:
 			"displace":
 				out.text = "Moving out of the shellfire"
 				out.glyph = "move"
+				out.col = Color(1.0, 0.72, 0.42)
+			"dugout":
+				out.text = "Sheltering in a dugout"
+				out.glyph = "defend"
 				out.col = Color(1.0, 0.72, 0.42)
 			"rout":
 				out.text = "ROUTING"
