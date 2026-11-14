@@ -364,6 +364,13 @@ func start_local(a: Dictionary) -> void:
 		"gdscript_perception": a.has("gdscript-perception")})
 	Net.set_setting("verbose", a.has("verbose"))
 	Net.set_setting("debug_trucks", a.has("debug-trucks"))
+	# --victory=fobs: the old rule (every enemy FOB taken) without resolve;
+	# --victory-from / --victory-grace: when resolve starts to drain and how long
+	# a wrecked FOB stays a base, for tests that can't wait minutes (see Victory)
+	Net.set_setting("victory", String(a.get("victory", "resolve")))
+	for k in ["victory-from", "victory-grace"]:
+		if a.has(k):
+			Net.set_setting(k.replace("-", "_"), float(a[k]))
 	# --ai-allies: with --play, an AI commander fights beside you on your side
 	Net.set_setting("ai_allies", a.has("ai-allies"))
 	# --ai-difficulty=veteran (every AI commander), or per side: 0:recruit,1:regular

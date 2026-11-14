@@ -476,13 +476,14 @@ run side by side too (determinism.test.mjs: the full-map battle, the longest tes
 | command | fields | answers |
 | --- | --- | --- |
 | `hello` | | `version`, `net` (NET_VERSION), `tps`, `headless` |
-| `load` | one of `scenario`, `mission`, `battle: true` (AI vs AI); `seed`, `play`, `ai_allies` (with `play`: an AI commander on your side too), `autoplay`, `static`, `verbose` | `t` (0), `seed`, and how many `soldiers`, `vehicles`, `structures`, `squads`; a fresh battle each time |
+| `load` | one of `scenario`, `mission`, `battle: true` (AI vs AI); `seed`, `play`, `ai_allies` (with `play`: an AI commander on your side too), `autoplay`, `static`, `verbose`; `victory` (`fobs`: the old rule), `victory_from`, `victory_grace` (seconds: when resolve starts to drain, how long a wrecked FOB stays a base) | `t` (0), `seed`, and how many `soldiers`, `vehicles`, `structures`, `squads`; a fresh battle each time |
 | `step` | `seconds`, or `ticks` | `t`, `ticks` run, `winner` (-1 while it goes on) |
 | `order` | `team` (0 or 1: that side's AI, which owns a scenario's squads too) or `peer` (1: you, loaded with `play`); `t` and the order's fields as `World.execute_cmd` takes them, positions as `{"v3": [x, z]}` | `squads`, `vehicles`: how many of those listed the order reached |
 | `query` | `what`: `world`, `squads`, `soldiers`, `vehicles`, `structures`; `team`, `kind`, `ids` | the list (positions as `[x, z]`; a vehicle's `yaw`, `speed` along its heading and `vel` over the ground too); structures leave out trees and floors unless asked for by `kind` |
 | `ping` | `peer` (1: you), `kind` (`attack`, `defend`, `help`...), `pos` | a co-commander's ping as the host receives it (an AI ally answers some) |
 | `stats` | | `counters` (every `world.stat`), `report` (the after-action summary) |
 | `hash` | | `hash`: a fingerprint of the whole simulation; two runs from one seed agree on it tick for tick |
+| `rig` | `towns` (a side takes every town), `resolve` ([a, b]), `wreck` (a FOB's id) | `t`, `winner`: sets a battle up for a test of how it's won (`tests/victory.test.mjs`) |
 | `errors` | | `count` and the `recent` script errors |
 | `console` | `line` | `out`: what typing that line into the console printed, a line a string (`game.console("why")`) |
 | `quit` | | the game quits with its exit code |

@@ -14,12 +14,14 @@ var fob_names_used: Array = [0, 0]
 var fob_order := 0
 var _t_vis := 0.0
 var _t_sec := 0.0
+var victory: Victory
 var _resurvey_t := [0.0, 0.0]
 var hq_priority := [0, 0]  # per side: towns behind the enemy (see hq_load)
 
 
 func _init(w: World) -> void:
 	world = w
+	victory = Victory.new(w)
 
 
 var support_ready := [{}, {}]  # per side: kind -> world time it is available again (none in the opening)
@@ -170,7 +172,7 @@ func tick(dt: float) -> void:
 		_reserves()
 		_hq_priority()
 		_prisoners()
-		_check_victory()
+		victory.tick()
 		var stamp := Time.get_ticks_usec() if world.measure_details else 0
 		_danger_maps()
 		if stamp:
@@ -756,6 +758,7 @@ func capture_fob(f: Structure, new_team: int) -> void:
 	var burn_note := (" The garrison burnt %d supply as it fell back; %d is ours." % [burnt, int(f.supply)]) if burnt > 0 else ""
 	world.send_msg(new_team, "info", "We captured %s!%s" % [f.display_name(), burn_note], f.position)
 	world.send_msg(old, "alert", "We lost %s!%s" % [f.display_name(), (" The garrison burnt %d supply before it fell." % burnt) if burnt > 0 else ""], f.position)
+	victory.fob_lost(old)
 	rebuild_network(old)
 	rebuild_network(new_team)
 	_check_victory()
@@ -852,13 +855,10 @@ func _hq_priority() -> void:
 			world.send_msg(t, "info", "We hold our share of the country again: HQ's loads are back to normal.")
 
 
+## A side with no base left has lost (see Victory, which also keeps the
+## sides' resolve).
 func _check_victory() -> void:
-	if world.winner >= 0 or world.time < 10.0 or world.mission != null:
-		return
-	for t in 2:
-		if fobs(t).is_empty():
-			world.declare_winner(1 - t)
-			return
+	victory.check_bases()
 
 
 # --- squads --------------------------------------------------------------------------
@@ -1448,6 +1448,6 @@ func team_summary() -> Array:
 				var to: String = tn.supply_parent.sname if tn.supply_parent and not tn.supply_parent.gone else ""
 				tl.append([tn.eid, tn.sname, int(tn.supply), tn.supply_status, int(round(tn.town_rate())), to])
 		out.append({"supply": sup, "units": used(t), "cap": cap(t), "fobs": fl, "up": upgrades[t].keys(), "sup": (support_ready[t] as Dictionary).duplicate(), "sq": sq, "intel": il,
-			"marks": (marks[t] as Array).duplicate(), "towns": tl, "inc": income(t),
+			"marks": (marks[t] as Array).duplicate(), "towns": tl, "inc": income(t), "vp": victory.info(),
 			"dg": world.delegation.summary(t) if world.delegation else []})
 	return out

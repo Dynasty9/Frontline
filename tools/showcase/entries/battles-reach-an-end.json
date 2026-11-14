@@ -1,0 +1,19 @@
+{
+  "entry": "changelog/unreleased/battles-reach-an-end.md",
+  "title": "Battles reach an end: resolve, and an AI that presses home",
+  "version": "unreleased",
+  "kind": "improved",
+  "summary": "Skirmishes against the AI now end in about 20 minutes, on resolve or on bases, instead of grinding on past half an hour.",
+  "medium": "still",
+  "stage": "game player view (--host --team=0)",
+  "rationale": "The rule players see is the resolve readout on the status line, so one legible still shows it in place. The change in pacing is a measurement, given as end times, kills and first contact over AI-vs-AI seeds 1-6 in the pull request, not as footage.",
+  "source_ref": "47194210 (merge of main into claude/pacing-victory-e2061b). Windowed off-screen render: --offscreen --host --team=0 --seed=3 --timescale=6 --perf=0 --screenshot --shot-at=330 at 1600x900; the top-left 1000x300 is kept (status line, order of battle, the FOB), JPEG quality 85.",
+  "sources": [
+    {
+      "file": "changelog/unreleased/battles-reach-an-end/resolve-readout.jpg",
+      "sha256": "ab0b612508b74deba006bae128226000fb360c1c98bb84742acb6b6eb7a983af",
+      "caption": "Resolve on the status line: yours, theirs, and what you're losing a second (cropped from a 1600x900 frame)."
+    }
+  ],
+  "output": null
+}

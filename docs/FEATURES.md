@@ -1269,7 +1269,15 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   a blast, then rounds and grenades going off round it for a few seconds. The AI puts one ahead of its front FOB.
 - Soldiers in good cover are much harder to pin down than soldiers in the open, and only their head and shoulders are
   exposed when they pop up to fire. A fortified line beats a frontal assault by similar numbers.
-- Everything can be shot up and repaired. Any FOB can be captured by whoever walks in and holds it. Lose your last FOB and you lose, but a side's last FOB is a last stand and takes four times as long to capture, and HQ sends a free reserve squad every 75 s to a side that is down to its last few soldiers.
+- Everything can be shot up and repaired. Any FOB can be captured by whoever walks in and holds it. Lose your last FOB and you lose, but a side's last FOB is a last stand and takes twice as long to capture, and HQ sends a free reserve squad every 75 s to a side that is down to its last few soldiers. A wrecked FOB still counts as a base for two minutes; left in ruins longer than that, it doesn't, so a side whose every base lies wrecked has lost.
+- **Resolve** (`victory.gd`): each side starts with 600, shown on the status line beside the enemy's and the drain a
+  second. From the third minute the side holding less ground bleeds it every second - the town counts 3, a village
+  1, a working FOB 1, and the drain is 0.13 a second for each point of difference - and every loss costs it too: a
+  man 1, a vehicle its cost / 20, a FOB taken 25. From the quarter hour the drain speeds up (twice as fast at 20
+  minutes, three times at 25), and from the twentieth minute both sides tire of it (a point a second more for
+  every four minutes past it), so even a battle that stays level is decided before half an hour. Run out and you lose.
+  Missions and test scenarios don't use it, and `--victory=fobs` plays a skirmish by the old rule (every enemy FOB
+  taken).
 - Fog of war, drawn on the ground and the minimap, with intel pings and last-known enemy positions.
 
 **Look and feel** (`atmosphere.gd`, `cinematic_fx.gd`, `physical_sky.gd`, `cloud_shadow.gd`, `mats.gd`, `vehicle_models.gd`, `vfx.gd`, `gunfx.gd`, `grass.gd`, `wildlife.gd`, `ui/`)
@@ -1597,6 +1605,12 @@ time to each village or the town within reach that it doesn't hold (two to one t
 first; it stays a few minutes once the flag is up, sends the nearest squad back when the enemy starts taking
 one of its own, and gives up on one it can't get into. Its attack waves count an enemy-held town as a softer
 target than a base, and a town it holds out beyond its bases gets the next FOB beside it, on its own side.
+The town between the fronts is the prize: its first squads race for it in the opening minutes, so the
+sides meet there early. It garrisons only its forward FOBs (no more than a third of its squads; the rear ones are
+held by their wire), trains troops before it digs and wires while its army is short of what it wants by then, and
+stops at four FOBs. When the battle goes its way - the enemy's resolve well behind its own, or the enemy down to
+one base - it **presses**: its outposts come in, waves go as soon as two squads are ready, and they go for the
+enemy's bases rather than the villages.
 It lays **ambushes** (`ambush_plan.gd`) on straight stretches of the
 roads the enemy uses - his supply track above all - where there's cover to lie in: the squad moves to a rally
 point back from the road, then into an L - the assault line 20-odd metres off the road, the gun at one end
@@ -1618,7 +1632,7 @@ buildings that its engineers must build, trains a mix of squads, saves for vehic
 garrisons, answers attacks on its bases, sends waves at your FOBs and ambushes your supply roads. The Rebel AI
 digs forward tunnel entrances and moves its attack waves through them. AI-vs-AI results swing a lot between
 batches of six games (from 5–1 one way to 5–1 the other with small parameter changes), so the sides are close
-but balance needs real playtesting. With the base defenses, most games last 10–23 minutes.
+but balance needs real playtesting. AI-vs-AI battles on the standard map now end in about 17-28 minutes, mostly on resolve; in most of them the first shots are fired two or three minutes in.
 
 **AI difficulty** (`Defs.AI_LEVELS`, `CommanderAI._apply_skill`): Play vs AI's **Opponent** choice and the lobby's
 **AI difficulty** row (the host's setting `ai_difficulty`, for every AI commander in the battle, the enemy's and any

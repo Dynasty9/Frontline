@@ -30,6 +30,7 @@ var events: Array = []  # [t, team, kind, text]: FOBs and towns, vehicles lost, 
 var every := SAMPLE_EVERY
 var _sample_t := 0.0
 var _blame: Array = []  # [owner, team] while a blast nobody fired goes off (fire support, a mine)
+var first_blood := -1.0  # when a soldier was first hurt by the other side: first contact
 
 
 func _init(w: World) -> void:
@@ -176,6 +177,8 @@ func _mark(e: Entity, src) -> Array:
 
 func soldier_hit(s: Soldier, amount: float, src) -> void:
 	var w := _mark(s, src)
+	if first_blood < 0.0 and not w.is_empty() and int(w[1]) != s.team:
+		first_blood = world.time
 	if not w.is_empty() and s.life == Soldier.Life.ALIVE:
 		add(int(w[0]), int(w[1]), "dmg", minf(amount, maxf(s.hp, 0.0)))
 
@@ -512,6 +515,7 @@ func summary() -> String:
 		var s: Dictionary = sides[t]
 		out.append("%s kills=%d lost=%d veh=%d/%d bld=%d/%d val=%d/%d delivered=%d" % [Defs.TEAM_NAMES[t], int(s.kills), int(s.lost), int(s.veh_kills), int(s.veh_lost),
 			int(s.bld_kills), int(s.bld_lost), int(s.val_killed), int(s.val_lost), int(s.delivered)])
+	out.append("first contact t=%.0f" % first_blood)
 	return "\n   ".join(out)
 
 
