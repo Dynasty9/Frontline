@@ -1,0 +1,20 @@
+{
+  "entry": "changelog/unreleased/street-furniture.md",
+  "summary": "Traffic lights, a telephone box, post boxes, an advertising column, hoardings, street names and dropped belongings on the town's streets.",
+  "medium": "still",
+  "stage": "tests/fixtures/environment-views.gd",
+  "rationale": "Appearance change in the town: matched town views of the crossroads, the square and a corner at seed 3, then the pieces close up in the studio.",
+  "source_ref": "9f7c640cc8083a266f9a4c9ed5f1f00a7ef8d926",
+  "before_ref": "3a30105f34acc92c943cea52730cc202e18abebb",
+  "sources": [
+    {
+      "file": "changelog/unreleased/street-furniture/comparison.jpg",
+      "sha256": "38ac0a96139eb4c91ffa685ab62d5fc9aac3c971356a8cb6da0e7c812e457000"
+    },
+    {
+      "file": "changelog/unreleased/street-furniture/capture.json",
+      "sha256": "23740cbe266391c3cf3b5381901af88802773d0e4db3d8513e40fc4df24ee04a"
+    }
+  ],
+  "output": null
+}

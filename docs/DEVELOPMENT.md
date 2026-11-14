@@ -360,6 +360,8 @@ FL_DEBUG_BOAT=1 (env)                                 every 2 s, each boat under
 --scenario=tactics                                    a rifle squad and an MG team sent 120 m up to hold a hamlet with the
                                                       enemy about: they bound there by teams and clear the houses
 --scenario=breach                                     a fighter cell holed up in a house; two rifle squads and a gun team clear it
+--scenario=storeys                                    a house on two floors with a wing; a charge blows in a front wall
+                                                      and the floor above comes down with its roof (storey_fell)
 --scenario=gdrill                                     grenade drill: frags with all sorts of fuses land among a squad round its wounded
 --scenario=town                                       a rifle squad takes a village's supply dump, its lorry runs the stock to
                                                       FOB Alpha, then a Rebel cell comes to take it back (town_captured,
