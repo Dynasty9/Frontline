@@ -140,7 +140,8 @@ func _draw_panel(info: Dictionary) -> void:
 			UiKit.mono_at(self, Vector2(x0 + W - UiKit.mono_w("OPTIONAL", 10), y), "OPTIONAL", 10, UiKit.FAINT)
 		if pt != "" and st == MissionDirector.ACTIVE:
 			var pu := pt.to_upper()
-			UiKit.mono_at(self, Vector2(x0 + W - UiKit.mono_w(pu, 12), y), pu, 12, UiKit.ACCENT if not pt.ends_with("contested") else UiKit.WARN)
+			var contested := pt.ends_with("contested") or pt == "clear area"
+			UiKit.mono_at(self, Vector2(x0 + W - UiKit.mono_w(pu, 12), y), pu, 12, UiKit.WARN if contested else UiKit.ACCENT)
 		y += 6.0 + lines.size() * 17.0
 	if left >= 0.0:
 		left = maxf(0.0, left)

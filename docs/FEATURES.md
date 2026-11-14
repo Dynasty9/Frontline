@@ -378,11 +378,13 @@ sets one up as a listed battle, and friends join it from the server browser). Ea
 
 | Mission | Side | What it shows off |
 |---|---|---|
-| **Bridgehead** | Coalition | Clear a riverside village house by house, seize its bridge, hold it against infantry, a BTR and mortars coming over the bridge and the ford. 155 mm artillery on call. |
-| **Beachhead** | Coalition | RHIBs land a party on the beach under a patrol ship's guns while enemy boats come out; kill two AA trucks, then a Blackfoot and a Ghost Hawk full of reinforcements come in from the sea. |
-| **Sky Hook** | Coalition | Hook a Nyx tank destroyer under a Mohawk, fly it over the river to a cut-off outpost and stop the armoured column coming for it. |
-| **Ambush Alley** | Rebels | Get into the woods above a lane before a convoy leaves, let the IED open the ambush, destroy the convoy, then break contact before the QRF (and its helicopter) arrives. |
-| **Kingpin** | Coalition | A night raid: a checkpoint on the main street, a barred house, a Rebel commander to kill or capture, and a run back to the Hunters before the town cuts the road. |
+| **Bridgehead** | Coalition | Clear the village, seize the bridge, then use a twenty-second regroup window to cover the crossing and ford. Armour and mortar warnings give time to react; neutralising the optional observer team stops further mortar salvos. Hold until Lancer's relief tanks reach the cleared bridgehead. Two 155 mm missions on call, three minutes apart. |
+| **Beachhead** | Coalition | Land under Neptune's guns, destroy the AA trucks to unlock helicopters and an A-10 strike, then capture the harbour. The ninety-second defence starts on capture, with two inland counterattack waves and radio warnings; victory also requires a clear quay, with a CLEAR AREA prompt if enemies remain after the timer. Reserves exist from the start and can be weakened before their advance. Keep Neptune afloat as an optional objective. Co-op allocates whole boatloads to commanders, keeping each landing party with its transport. |
+| **Sky Hook** | Coalition | Race the eighty-second vanguard countdown to sling the Nyx to Kilo. Delivery and destroying the technical and both BTRs are required; radio prompts infantry spotting and a clear firing position if the fight drags on. The grounded Nyx counts on elevated terrain too. Keep the Mohawk flying as an optional objective. |
+| **Ambush Alley** | Rebels | Set up above the lane and destroy at least three convoy vehicles. First damage starts a visible forty-five-second QRF clock; further hits do not reset it. Its Hunter enters on the village road, then advances toward the ambush. Destroying the fourth convoy vehicle is optional; three unlock extraction. Extract sixty percent of surviving fighters before the escape deadline. |
+| **Kingpin** | Coalition | Clear the checkpoint, raid Kassem's house, and pursue him using sighted last-known-position updates. Searching his reported position prompts a street search if he has left, without revealing hidden targets. Extract three quarters of survivors, with ninety- and thirty-second warnings. Keep a Hunter intact as an optional objective. |
+
+The mission report records optional objectives separately from required completion. Hover over the optional count to inspect each result.
 
 - **Objectives** sit top right with the mission clock: each has a letter, and the same letter marks it on the
   ground (a ring round the area and a marker over it that waits at the screen edge when it's off screen) and on
