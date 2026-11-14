@@ -235,6 +235,25 @@ func _run() -> void:
 	await _settle()
 	await get_tree().create_timer(0.3).timeout
 	_check("delayed arrival becomes visible after its delay", stagger_row.modulate.a == 1.0)
+	# the log says a report several units make at once in one line
+	var log := HudToasts.new()
+	stage.add_child(log)
+	log.push("info", "Bravo 1 is moving out of the shellfire.")
+	log.push("info", "Charlie 1 is moving out of the shellfire.")
+	log.push("info", "Delta 1 is moving out of the shellfire.")
+	log.push("info", "Bravo 1 is moving out of the shellfire.")
+	_check("same report from three units is one log line", log.items.size() == 1)
+	_check("merged log line names them", String(log.items[0][1]) == "Bravo 1, Charlie 1 and Delta 1 are moving out of the shellfire.")
+	log.push("info", "Echo 1 is digging in.")
+	log.push("radio", "Bravo 1: Contact east!")
+	_check("different reports keep their own lines", log.items.size() == 3)
+	log.free()
+	# the order of battle's quiet rows: nothing to do, nothing wrong
+	var calm := {"contact": false, "pinned": false, "low_ammo": false, "wounded": 0, "mstate": 0}
+	_check("a squad on the move is quiet", not HudOrbat.needs_you(calm, "MOV D6"))
+	_check("a squad in contact needs you", HudOrbat.needs_you(calm.merged({"contact": true}, true), "MOV D6"))
+	_check("a squad with wounded needs you", HudOrbat.needs_you(calm.merged({"wounded": 1}, true), "DEF D6"))
+	_check("a breaking squad needs you", HudOrbat.needs_you(calm.merged({"mstate": 2}, true), "HOLD"))
 	menu.free()
 	hud.free()
 	battle.free()

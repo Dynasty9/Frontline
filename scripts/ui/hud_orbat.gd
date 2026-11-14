@@ -68,6 +68,21 @@ func content_h() -> float:
 	return _content_h
 
 
+## The squad or vehicle under the cursor in the list, as [kind, id] ("" when
+## none): the map marks the same unit, so a name in the list finds its place.
+func hovered() -> Array:
+	if _hover < 0 or _hover >= _rows.size():
+		return ["", 0]
+	return [String(_rows[_hover][1]), int(_rows[_hover][2])]
+
+
+## Whether a squad needs its commander now: in a fight, pinned, breaking, short
+## of ammunition or carrying wounded. The rest are quiet, and their rows step
+## back so the ones that matter catch the eye without a word being read.
+static func needs_you(st: Dictionary, code: String) -> bool:
+	return bool(st.contact) or bool(st.pinned) or bool(st.low_ammo) or int(st.wounded) > 0 		or int(st.get("mstate", 0)) >= 2 or code.begins_with("ROUTING") or code.contains("FALL BACK") 		or code.begins_with("CONTACT") or code.begins_with("ATK") or code.contains("ASLT") or code.contains("ASSAULT")
+
+
 func toggle() -> void:
 	open = not open
 	Settings.v["orbat"] = open
@@ -263,13 +278,14 @@ func _squad_row(y: float, sid: int, mem: Array, top: float, bottom: float) -> fl
 	_rows.append([r, "sq", sid, mine])
 	_row_bg(r, sel, idx)
 	var st: Dictionary = hud.squad_state(sid, mem)
+	var quiet := not sel and idx != _hover and not needs_you(st, String(st.code))
 	var sym: Array = MapSymbols.squad_symbol(mem)
-	MapSymbols.nato(self, Vector2(11, y + ROW_H * 0.5), 17.0, team == w.local_team or w.local_team < 0, team, sym[0], "", 1.0)
+	MapSymbols.nato(self, Vector2(11, y + ROW_H * 0.5), 17.0, team == w.local_team or w.local_team < 0, team, sym[0], "", 0.55 if quiet else 1.0)
 	var by := int(w.coop.sel_sq.get(sid, 0)) if w.coop else 0
 	if by != 0:
 		# a co-commander has it selected: his colour down the row's edge
 		draw_rect(Rect2(0, y + 3, 2, ROW_H - 6), Net.player_color(by))
-	var x := 26.0 + UiKit.caps_at(self, Vector2(26, y + 17), Squad.callsign_of(team, sid), 13, UiKit.ACCENT if sel else UiKit.TEXT)
+	var x := 26.0 + UiKit.caps_at(self, Vector2(26, y + 17), Squad.callsign_of(team, sid), 13, UiKit.ACCENT if sel else (UiKit.DIM if quiet else UiKit.TEXT))
 	var tag := String(sym[1])
 	if tag != "":
 		x += 5.0 + UiKit.caps_at(self, Vector2(x + 5.0, y + 17), tag, 10, UiKit.FAINT)
@@ -291,7 +307,7 @@ func _squad_row(y: float, sid: int, mem: Array, top: float, bottom: float) -> fl
 	var maxw := W - pw - 12.0 - cx
 	while code.length() > 3 and UiKit.mono_w(code, 12) > maxw:
 		code = code.substr(0, code.length() - 2)
-	UiKit.mono_at(self, Vector2(cx, y + 17), code, 12, _code_col(st, sel))
+	UiKit.mono_at(self, Vector2(cx, y + 17), code, 12, UiKit.FAINT if quiet else _code_col(st, sel))
 	return y + ROW_H
 
 
@@ -326,5 +342,7 @@ func _vehicle_row(y: float, v, top: float, bottom: float) -> float:
 		col = UiKit.BAD
 	elif Defs.flat(v.position - v._last_pos).length() > 0.02:
 		code = "MOVING"
+	if code in ["HOLD", "MOVING"] and not sel and idx != _hover:
+		col = UiKit.FAINT  # nothing wrong and nothing to do: it steps back
 	UiKit.mono_at(self, Vector2(maxf(x + 12.0, 128.0), y + 17), code, 12, col)
 	return y + ROW_H

@@ -1,0 +1,16 @@
+{
+  "entry": "changelog/unreleased/right-info.md",
+  "summary": "Quiet ORBAT rows recede, map callsigns show on demand, and repeated log reports merge.",
+  "medium": "still",
+  "stage": "game capture at 1920x1080, --perf=0: --scenario=roster --seed=3 --focus=-84,24 --zoom=34 --shot-at=12; --mission=bridgehead --play --shot-at=40",
+  "rationale": "Matched native-pixel crops of the same frames show the order of battle, log and map labels before and after; hover behaviour is covered by the UI layout test, not a still.",
+  "source_ref": "690053683a3d4cc4fb92236ed37e95391a2baf4f + working tree",
+  "before_ref": "99b8723de85d0f6e04c2ab5f2350377c15dfadb7",
+  "sources": [
+    {
+      "file": "changelog/unreleased/right-info/comparison.jpg",
+      "sha256": "c02d16562b6e2967ff21a9811a4b9bd0d2ae1aed084e575ff055696db1262411"
+    }
+  ],
+  "output": null
+}

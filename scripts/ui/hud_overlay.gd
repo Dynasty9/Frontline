@@ -952,6 +952,10 @@ func _nato_markers(cam: Camera3D, lt: int, a: float) -> void:
 		return
 	var w := hud.world
 	var now := Time.get_ticks_msec()
+	# the unit under the cursor in the order of battle, and on the map
+	var listed: Array = hud.orbat.hovered() if hud.orbat else ["", 0]
+	var pointed: Entity = w.input.hover if w.input else null
+	var pointed_sid := (pointed as Soldier).sid if pointed is Soldier else 0
 	for sid in _groups:
 		var g: Dictionary = _groups[sid]
 		if int(g["n"]) == 0:
@@ -990,8 +994,12 @@ func _nato_markers(cam: Camera3D, lt: int, a: float) -> void:
 		var supp: int = g.supp
 		var alive: int = g.n
 		MapSymbols.nato(self, sp, sz, mine, tm, sym[0], sym[1], a, not hud.tactical)
+		var in_list := String(listed[0]) == "sq" and int(listed[1]) == int(sid)
 		if sel:
 			draw_arc(sp, hw + 7.0, 0.0, TAU, 28, Color(1, 1, 1, 0.55 * a), 1.5, true)
+		if in_list:
+			# hovered in the list: the accent's ticks find it on the map
+			UiKit.ticks(self, Rect2(sp - Vector2(hw + 4.0, hw + 2.0), Vector2(sz + 8.0, sz + 4.0)), UiKit.fa(UiKit.ACCENT, a), 5.0, 3.0, 1.5)
 		# Shared troops have no exclusive controller. Only mark a teammate
 		# who is actively selecting them, not the commander who recruited them.
 		var by := int(w.coop.sel_sq.get(sid, 0)) if w.coop else 0
@@ -1016,7 +1024,11 @@ func _nato_markers(cam: Camera3D, lt: int, a: float) -> void:
 			draw_rect(Rect2(px, py, 4, 3), Color(pc.r, pc.g, pc.b, a))
 			px += 5.0
 		var ty := py + 15.0
-		if mine:
+		# its name only when it helps: picked out (selected, under the cursor
+		# here or in the list), on the tactical map, under fire, or just ordered.
+		# A field of names over every squad hides the battle they're fighting.
+		var named := sel or in_list or pointed_sid == int(sid) or hud.tactical or age < 6.0 			or (supp * 2 >= maxi(1, alive) and alive > 0)
+		if mine and named:
 			_map_text(Vector2i(int(sid), 0), Vector2(sp.x, ty), g.callsign, UiKit.cond(600, 1), 11, UiKit.fa(UiKit.TEXT, 0.95 * a))
 			ty += 13.0
 		if age < 6.0:
@@ -1045,7 +1057,7 @@ func _nato_markers(cam: Camera3D, lt: int, a: float) -> void:
 				break
 		_place_rect(vr)
 		MapSymbols.nato(self, vp, 28.0 if hud.tactical else 24.0, v.team == lt or lt < 0, v.team, vs3[0], vs3[1], a, not hud.tactical)
-		if v.selected:
+		if v.selected or (String(listed[0]) == "veh" and int(listed[1]) == v.eid):
 			UiKit.ticks(self, Rect2(vp - Vector2(17, 13), Vector2(34, 26)), UiKit.fa(UiKit.ACCENT, a), 5.0, 2.0, 1.5)
 		var vby := int(w.coop.sel_veh.get(v.eid, 0)) if w.coop else 0
 		if vby != 0:

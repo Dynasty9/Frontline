@@ -9,9 +9,10 @@ extends Control
 const LIFE := 7.0  # seconds a line stays (alerts and intel longer)
 const TIME_W := 46.0
 const FROM_W := 92.0
+const MERGE_S := 4.0  # how soon the same report from another unit joins the line already up
 
 var hud: Hud
-var items: Array = []  # [kind, text, age, life, time stamp]
+var items: Array = []  # [kind, text, age, life, time stamp(, who, what: a merged report)]
 
 
 func push(kind: String, text: String) -> void:
@@ -20,8 +21,26 @@ func push(kind: String, text: String) -> void:
 			it[2] = 0.0
 			queue_redraw()
 			return
+	# several units reporting the same thing at once ("Bravo 1 is moving out of
+	# the shellfire", then Charlie 1, then Delta 1) is one event: say it once,
+	# naming them, rather than filling the log with the same line
+	var said := _subject_split(text)
+	if not said.is_empty():
+		for it in items:
+			if it[0] == kind and float(it[2]) < MERGE_S and it.size() > 5 and String(it[6]) == String(said[1]):
+				var who: Array = it[5]
+				if not String(said[0]) in who:
+					who.append(String(said[0]))
+				it[1] = _joined(who, String(said[1]))
+				it[2] = 0.0
+				queue_redraw()
+				return
 	var t := hud.world.time if hud and hud.world else 0.0
-	items.push_front([kind, text, 0.0, 10.0 if kind in ["alert", "intel", "warn"] else LIFE, t])
+	var item := [kind, text, 0.0, 10.0 if kind in ["alert", "intel", "warn"] else LIFE, t]
+	if not said.is_empty():
+		item.append([String(said[0])])
+		item.append(String(said[1]))
+	items.push_front(item)
 	if items.size() > 6:
 		items.pop_back()
 	queue_redraw()
@@ -37,6 +56,27 @@ func tick(dt: float) -> void:
 			items.remove_at(i)
 	if changed:
 		queue_redraw()
+
+
+## "Bravo 1 is moving out of the shellfire." as [who, what it's doing], or []
+## when the line isn't a unit saying what it is doing.
+static func _subject_split(text: String) -> Array:
+	var i := text.find(" is ")
+	if i <= 0 or i > 28 or text.find(": ") >= 0:
+		return []
+	return [text.substr(0, i), text.substr(i + 4)]
+
+
+## Several units doing the same thing, in a line: "Bravo 1 and Charlie 1 are
+## …", "Bravo 1, Charlie 1 and Delta 1 are …", "Bravo 1, Charlie 1 +3 are …".
+static func _joined(who: Array, what: String) -> String:
+	if who.size() == 1:
+		return "%s is %s" % [who[0], what]
+	if who.size() == 2:
+		return "%s and %s are %s" % [who[0], who[1], what]
+	if who.size() == 3:
+		return "%s, %s and %s are %s" % [who[0], who[1], who[2], what]
+	return "%s, %s +%d are %s" % [who[0], who[1], who.size() - 2, what]
 
 
 ## Who a message is from, and what it says: "Bravo 1: Contact east" splits at
