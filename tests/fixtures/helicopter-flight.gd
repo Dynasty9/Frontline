@@ -417,6 +417,7 @@ func _crashes() -> void:
 		if wreck:
 			_check("a spin-in leaves her on her side, a heavy landing slumped upright (mode %d)" % mode, absf(wreck.tilt.y) > 1.1 if mode == Vehicle.CRASH_SPIN else absf(wreck.tilt.y) < 0.3)
 			_check("her wreck keeps her paint, to burn and blacken (mode %d)" % mode, not wreck.wreck_finish.is_empty())
+			_check("and the clients are sent it, to build her the same (mode %d)" % mode, wreck.get_props().get("wreck_finish", {}) == wreck.wreck_finish)
 			field.despawn(wreck)
 	# a wreck's rotor keeps each blade apart, so it can be broken up; a flying
 	# helicopter's blades are one part

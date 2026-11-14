@@ -3,7 +3,7 @@ extends Node3D
 ## and lighting, High preset): one of each kind of hull in a row - a main
 ## battle tank, a tracked IFV, an 8x8 APC, an MRAP, a technical, a truck and a
 ## helicopter - all knocked out at once, the game's own death and fire code
-## doing the rest. Stills while they burn and again once they've burnt out,
+## doing the rest (the tank's ammunition goes up, and its turret is blown off). Stills while they burn and again once they've burnt out,
 ## the whole row and each wreck close up, so the same stage on two builds
 ## gives a matched before/after.
 ##   --frames=DIR   where the stills go (burning-wide.png, burning-<kind>.png,
@@ -51,6 +51,8 @@ func _ready() -> void:
 		p.y = field.ground_y(p)
 		var v: Vehicle = field.spawn("vehicle", {"vkind": String(kinds[i]), "team": 0 if i % 2 == 0 else 1, "owner": -1, "pos": p, "yaw": 0.5})
 		v.order_stop()
+		if i == 0:
+			v.set("brew_up_next", 1)  # (the tank's ammunition goes up: its turret is blown off)
 		vehicles.append(v)
 		wrecks.append([String(kinds[i]), p])
 	var canvas := CanvasLayer.new()
@@ -108,7 +110,19 @@ func _shots(prefix: String, state: String) -> void:
 		if wreck:
 			at = wreck.global_position
 			var reach := maxf(wreck.size.x, wreck.size.z) * 0.62 + 5.0
-			off = (wreck.global_basis.x * 0.8 - wreck.global_basis.z * 0.6).normalized() * reach + Vector3(0, reach * 0.45, 0)
+			var view := (wreck.global_basis.x * 0.8 - wreck.global_basis.z * 0.6).normalized()
+			var rise := 0.45
+			# a turret blown off lies beside the hull: frame the two side by side,
+			# from ahead and higher up
+			var debris := wreck.model.get_node_or_null("Debris") if wreck.model else null
+			if debris and wreck.get("turret_off") == true:
+				for c in debris.get_children():
+					if c is Node3D and not c is MeshInstance3D and not c is Decal:
+						at += Defs.flat((c as Node3D).global_position - at) * 0.5
+						view = (-wreck.global_basis.z * 0.9 + wreck.global_basis.x * 0.25).normalized()
+						reach += 4.0
+						rise = 0.7
+			off = view * reach + Vector3(0, reach * rise, 0)
 		camera.global_position = at + off
 		camera.look_at(at + Vector3(0, 1.0, 0))
 		caption.text = "%s · %s · %s" % [label, state, String(w[0]).to_upper()]

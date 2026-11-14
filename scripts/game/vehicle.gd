@@ -1954,6 +1954,16 @@ func _wreck_out(hard := 0.0) -> void:
 		if has_tank_model():
 			props["bent_skirts"] = bent_skirts
 			props["wreck_turret_yaw"] = turret_yaw
+		if String(vdef.get("cat", "")) == "armour" and bool(vdef.get("cannon", false)):
+			# A hit that sets her ammunition off lifts the turret clean off its
+			# ring and throws it down beside her (Structure._blow_turret): the
+			# harder she was hit, the likelier.
+			var odds := 0.15 + 0.45 * clampf(-hp / maxf(max_hp, 1.0), 0.0, 1.0)
+			if brew_up_next > 0 or (brew_up_next == 0 and world.rng.randf() < odds):
+				props["turret_off"] = true
+				world.stat("turret_blown_off")
+				world.fx_event([Fx.EXPLODE, position + Vector3(0, hs.y + 0.4, 0), 2.2, "fuel"])
+			brew_up_next = 0
 		props["pos"] = plan[0]
 		props["yaw"] = plan[1]
 		props["tilt"] = plan[2]
@@ -1982,6 +1992,7 @@ const CRASH_SPIN := 1
 const CRASH_AUTOROTATE := 2
 var crashing := 0  # (host) 0 flying, or how she's coming down
 var crash_mode_next := 0  # (tests and showcase stages) how the next shoot-down goes; 0 at random
+var brew_up_next := 0  # (tests and showcase stages) 1: her ammunition goes up when she's knocked out, -1: it doesn't; 0 by chance
 var _crash_t := 0.0
 var _crash_tilt := Vector2.ZERO  # (pitch, roll) the wreck comes to rest at
 

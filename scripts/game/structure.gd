@@ -92,6 +92,7 @@ var toss = null  # [from pos, from yaw, velocity, spin] while it's flying (clien
 var vk := ""  # what a wreck used to be
 var wreck_turret_yaw := INF
 var wreck_finish := {}
+var turret_off := false  # (a wreck) its ammunition went up and blew the turret off (_blow_turret)
 var _wreck_soot: ShaderMaterial
 var bent_skirts := 0
 var door_shut := false  # (a house's doorway) its doors are shut: the first man through kicks them in, or just opens them
@@ -189,6 +190,8 @@ func apply_props(d: Dictionary) -> void:
 		bent_skirts = d.get("bent_skirts", 0)
 	if d.has("wreck_finish"):
 		wreck_finish = d.wreck_finish  # (built in its own paint, burnt out over it: _ruin)
+	if d.has("turret_off"):
+		turret_off = d.turret_off
 	if d.has("door"):
 		door_shut = d.door
 	if d.has("zc"):
@@ -229,9 +232,11 @@ func get_props() -> Dictionary:
 		d["zr"] = zone_r
 	if is_finite(wreck_turret_yaw):
 		d["wreck_turret_yaw"] = wreck_turret_yaw
-		if not wreck_finish.is_empty():
-			d["wreck_finish"] = wreck_finish
 		d["bent_skirts"] = bent_skirts
+	if not wreck_finish.is_empty():
+		d["wreck_finish"] = wreck_finish  # (every wreck, not just a tank's: the clients build it burnt out from this)
+	if turret_off:
+		d["turret_off"] = true
 	return d
 
 
@@ -1656,12 +1661,7 @@ func _ruin(wk: VehicleModels, rng: RandomNumberGenerator, blades := 0) -> void:
 	if not tracked and not _heli_wreck() and not wk.wheels.is_empty():
 		var axle := 0.0
 		for w: Node3D in wk.wheels:
-			var xf := w.transform
-			var up := w.get_parent() as Node3D
-			while up != null and up != wk.root:
-				xf = up.transform * xf
-				up = up.get_parent() as Node3D
-			axle += xf.origin.y
+			axle += _in_root(wk, w).origin.y
 		axle /= float(wk.wheels.size())
 		# (the rim is about half the tyre: the hull drops by the rest, unevenly)
 		wk.root.position.y -= clampf(axle * 0.42, 0.0, 0.6)
@@ -1673,32 +1673,42 @@ func _ruin(wk: VehicleModels, rng: RandomNumberGenerator, blades := 0) -> void:
 		# A vehicle that brews up burns out end to end: the burn reaches the
 		# hull's farthest corner from where the fire started, whichever end that is.
 		var from := _burn_source if _burn_source.is_finite() else _wreck_engine_deck
-		var far := 0.0
+		var ends: Array[Vector3] = []
 		for cx: float in [-0.5, 0.5]:
 			for cy: float in [0.0, 1.0]:
 				for cz: float in [-0.5, 0.5]:
-					far = maxf(far, ((Vector3(cx * size.x, cy * size.y, cz * size.z) - from) * Vector3(1.0, 0.74, 1.0)).length())
+					ends.append(Vector3(cx * size.x, cy * size.y, cz * size.z))
+		if wk.gun_tip:
+			ends.append(wk.root.transform * _in_root(wk, wk.gun_tip).origin)  # (and out along the gun: its paint burns off too)
+		var far := 0.0
+		for e in ends:
+			far = maxf(far, ((e - from) * Vector3(1.0, 0.74, 1.0)).length())
 		_wreck_reach = clampf(far * 1.12 / 2.56, 1.0, 4.5)
 		_wreck_soot = wk.scorch_finish()
 	var debris := Node3D.new()
 	debris.name = "Debris"
 	model.add_child(debris)
 	if world.fx and world.fx.vfx and world.fx.vfx.scorch_tex:
-		# the ground it burnt on, black and ashen
-		var burnt_ground := Decal.new()
-		burnt_ground.texture_albedo = world.fx.vfx.scorch_tex
-		burnt_ground.cull_mask = Res.GROUND_DECAL_LAYER
-		var across := maxf(size.x, size.z) * 1.7
-		burnt_ground.size = Vector3(across, 4.0, across)
-		burnt_ground.upper_fade = 0.3
-		burnt_ground.lower_fade = 0.3
-		burnt_ground.rotation.y = rng.randf() * TAU
-		burnt_ground.modulate = Color(1, 1, 1, 0.92)
-		debris.add_child(burnt_ground)
-	if world.atmo and world.atmo.grass:
-		world.atmo.grass.scar(position, maxf(size.x, size.z) * 0.8, 0.9)  # (and the grass round it burnt flat)
+		# the ground it burnt on, black and ashen a few metres out all round
+		# it (a scorch's black heart is about half its size): two laid one
+		# over the other, the blacker the nearer the hull
+		for grow: float in [1.8, 1.3]:
+			var burnt_ground := Decal.new()
+			burnt_ground.texture_albedo = world.fx.vfx.scorch_tex
+			burnt_ground.cull_mask = Res.GROUND_DECAL_LAYER
+			burnt_ground.size = Vector3(size.x * grow + 9.0 * (grow - 0.8), 4.0, size.z * grow + 9.0 * (grow - 0.8))
+			burnt_ground.upper_fade = 0.3
+			burnt_ground.lower_fade = 0.3
+			burnt_ground.rotation.y = rng.randf_range(-0.25, 0.25) + (PI if rng.randf() < 0.5 else 0.0)
+			burnt_ground.modulate = Color(1, 1, 1, 0.95)
+			debris.add_child(burnt_ground)
 	var spread := maxf(3.5, size.z * 0.65)
 	var turn := Basis(Vector3.UP, rotation.y)
+	if world.atmo and world.atmo.grass:
+		# and the grass round it burnt flat, all along it
+		var along := turn * Vector3(0, 0, size.z * 0.3)
+		for end: float in [-1.0, 0.0, 1.0]:
+			world.atmo.grass.scar(position + along * end, size.x * 0.5 + 4.5, 1.5)
 	for i in clampi(int(size.z * 0.6), 3, 8) + blades:
 		# lengths of broken blade, and torn, crumpled bits of skin and kit
 		# half sunk into the ground (one end up where they dug in)
@@ -1716,6 +1726,91 @@ func _ruin(wk: VehicleModels, rng: RandomNumberGenerator, blades := 0) -> void:
 		debris.add_child(mi)
 		Mats.apply(mi, "burnt_debris", Color(1, 1, 1))
 	_level_debris()
+
+
+## `n`'s place in the model, as a transform in `wk.root`'s space.
+static func _in_root(wk: VehicleModels, n: Node3D) -> Transform3D:
+	var xf := n.transform
+	var up := n.get_parent() as Node3D
+	while up != null and up != wk.root:
+		xf = up.transform * xf
+		up = up.get_parent() as Node3D
+	return xf
+
+
+## The box round everything drawn under `n`, in its own space.
+static func _bounds_in(n: Node3D) -> AABB:
+	var box := AABB()
+	var first := true
+	for mi: MeshInstance3D in n.find_children("*", "MeshInstance3D", true, false):
+		if mi.mesh == null:
+			continue
+		var xf := mi.transform
+		var up := mi.get_parent() as Node3D
+		while up != null and up != n:
+			xf = up.transform * xf
+			up = up.get_parent() as Node3D
+		var b := xf * mi.get_aabb()
+		box = b if first else box.merge(b)
+		first = false
+	return box
+
+
+## Her ammunition went up: the blast lifted the turret clean off its ring and
+## threw it down a few metres away, upside down, on its side or dug in nose
+## first, its gun bent. Where it sat there's a black hole in the hull roof.
+## It was burning when it went, so the burn reaches it where it fell.
+func _blow_turret(wk: VehicleModels, rng: RandomNumberGenerator) -> void:
+	var t := wk.turret
+	var debris := model.get_node_or_null("Debris") as Node3D
+	if t == null or debris == null:
+		return
+	var seat := _in_root(wk, t)
+	var box := _bounds_in(t)
+	var aim := seat.basis.inverse() * (_in_root(wk, wk.gun_tip).origin - seat.origin) if wk.gun_tip else Vector3.ZERO  # (the gun, in the turret's own space)
+	# the ring it sat on, gaping and black
+	var ring := clampf(minf(box.size.x, box.size.z) * 0.34, 0.45, 1.15)
+	var hole := MeshInstance3D.new()
+	hole.mesh = Res.cyl(ring, ring, 0.1, 20)
+	hole.position = seat.origin + Vector3(0, 0.02, 0)
+	hole.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	wk.root.add_child(hole)
+	Mats.apply(hole, "burnt", Color(0.12, 0.11, 0.1))
+	if wk.gun_mount:
+		wk.gun_mount.rotation.x = rng.randf_range(-0.45, 0.25)  # (bent up or down where it hit)
+	t.get_parent().remove_child(t)
+	debris.add_child(t)
+	# thrown off to one side, a little ahead or behind
+	var side := -1.0 if rng.randf() < 0.5 else 1.0
+	var gap := rng.randf_range(0.8, 2.8)
+	var spot := Vector3(0.0, 0.0, rng.randf_range(-0.35, 0.25) * size.z)
+	var fate := rng.randf()
+	var tilt_at := Vector3(rng.randf_range(-0.12, 0.12), rng.randf() * TAU, PI + rng.randf_range(-0.18, 0.18))  # upside down
+	if fate >= 0.8:
+		tilt_at = Vector3(rng.randf_range(0.3, 0.55), tilt_at.y, rng.randf_range(-0.3, 0.3))  # dug in, nose first
+	elif fate >= 0.45:
+		tilt_at = Vector3(rng.randf_range(-0.2, 0.2), tilt_at.y, side * rng.randf_range(1.15, 1.45))  # on its side
+	var b := Basis.from_euler(tilt_at)
+	if (b * aim).x * side < -1.0:
+		# (its gun points away from the hull, not back across it)
+		tilt_at.y += PI
+		b = Basis.from_euler(tilt_at)
+	var lo := INF
+	var inner := INF  # how far it reaches back towards the hull
+	for i in 8:
+		var corner := b * (box.position + box.size * Vector3(i & 1, (i >> 1) & 1, (i >> 2) & 1))
+		lo = minf(lo, corner.y)
+		inner = minf(inner, corner.x * side)
+	spot.x = side * (size.x * 0.5 + gap - inner)
+	var turn := Basis(Vector3.UP, rotation.y)
+	spot.y = world.ground_y(position + turn * spot) - position.y - lo - 0.18  # (bedded into the ground a little)
+	t.transform = Transform3D(b, spot)
+	# the burn reaches it where it lies
+	var from := _burn_source if _burn_source.is_finite() else _wreck_engine_deck
+	if from.is_finite() and _wreck_soot:
+		var lie := (debris.transform * t.transform).origin  # (in the model's space, as `from` is)
+		var reach := ((lie - from) * Vector3(1.0, 0.74, 1.0)).length() + box.size.length() * 0.5
+		_wreck_reach = maxf(_wreck_reach, clampf(reach * 1.12 / 2.56, 1.0, 4.5))
 
 
 ## The clients fly the model from where it was to where it is now.
@@ -2623,24 +2718,29 @@ func _dress_vehicle(wk: VehicleModels) -> void:
 		return
 	var rng := RandomNumberGenerator.new()
 	rng.seed = eid * 7919 + variant  # (as _build_model's)
+	var blown := false
 	if wk.turret and is_finite(wreck_turret_yaw):
 		wk.pose_skirts(bent_skirts)
 		wk.turret.rotation.y = wreck_turret_yaw
 		if wk.gun_mount:
 			wk.gun_mount.rotation.x = -0.095
+		blown = turret_off
 	elif wk.turret:
 		wk.turret.rotation = Vector3(rng.randf_range(-0.12, 0.08), rng.randf_range(-1.4, 1.4), rng.randf_range(-0.08, 0.08))
-		if rng.randf() < 0.3:
-			wk.turret.position += Vector3(rng.randf_range(-3.0, 3.0), -1.0, rng.randf_range(1.0, 3.0))
-			wk.turret.rotation += Vector3(rng.randf_range(-0.5, 0.5), 0, rng.randf_range(-0.6, 0.6))
+		# (an old hulk on the map: some had theirs blown off)
+		blown = turret_off or (vk == "" and rng.randf() < 0.3)
 	if not is_finite(wreck_turret_yaw):
 		wk.root.rotation.z = rng.randf_range(-0.04, 0.04)
 	if wk.engine_deck.is_finite():
 		_wreck_engine_deck = wk.root.transform * wk.engine_deck
+	if blown:
+		_burn_source = wk.root.transform * (_in_root(wk, wk.turret).origin + Vector3(0, 0.3, 0))  # (the ammunition went up under it)
 	var lost := 0
 	if wk.rotor and _heli_wreck():
 		lost = _break_up(wk, rng)
 	_ruin(wk, rng, lost)
+	if blown:
+		_blow_turret(wk, rng)
 
 
 ## (view) Lays the char (and the glow of the embers in it) over the model:
