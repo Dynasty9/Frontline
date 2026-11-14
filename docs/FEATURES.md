@@ -716,7 +716,8 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   with depth (red light dies first, so sand under the sea turns turquoise and the open sea goes deep blue; fresh
   water is peaty green-brown), with the light the ripples focus dancing on it in the shallows (laid on the bed along the sun's way
   down through the water, crisp in the first metre and broadening deeper down; from High a net of wandering cells
-  worked out per pixel, so it re-forms rather than slides, and thrown back up onto hulls, piles and banks too,
+  worked out per pixel, thin lines brightest at the nodes where they meet and tinted by the sun, so it re-forms
+  rather than slides; the same net is thrown back up onto hulls, piles and banks, moving with the bed's,
   `caustics.gd`), and the sky and
   its clouds are reflected, more the flatter you look across it. The sun glitters off every ripple (a moon path
   at night, only a sheen under cloud), rain dimples the water with rings, the chop roughens in gusts, and foam
@@ -1257,8 +1258,7 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
 - **Layered air and weather across the map** (`air_layers.gd`, `weather_grid.gd`): the air between the camera and the
   far side of the field lies in layers. Mist lies in a thin band a few metres deep, filling the valley, the hollows and
   the ground along the water and leaving the rises clear, torn into wisps by the wind (thickest at dawn, rising off wet
-  ground as it dries after rain); far off, where the fog's cells grow too coarse for so thin a band, a height fog at
-  the valley floor carries it on. A haze lies aloft, lit by the sun, so a cloud's shadow falls through it as a shaft;
+  ground as it dries after rain), thinning upward to a soft top so the ridges behind stand out as silhouettes. A haze lies aloft, lit by the sun, so a cloud's shadow falls through it as a shaft;
   at a low sun the air throws its light forward (the fog's anisotropy follows the mood), so looking toward the sun the
   mist glows, and turned from it the sky lights it blue-grey. Close up, the smoke a barrage or a fire leaves is a plume
   of its own (`smoke_plumes.gd`, up to 16 fog volumes laid along the wind): dense where it rose, drawn out, climbing and

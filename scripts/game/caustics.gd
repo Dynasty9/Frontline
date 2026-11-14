@@ -32,14 +32,14 @@ func build(water: WaterView) -> void:
 	if _mat == null:
 		_mat = ShaderMaterial.new()
 		var sh := Shader.new()
-		sh.code = MapDims.shader(SHADER.replace("__LEVEL__", "%.3f" % WaterMap.LEVEL))
+		sh.code = MapDims.shader(SHADER.replace("__LEVEL__", "%.3f" % WaterMap.LEVEL).replace("// CAUSTICS_GLSL", WaterView.CAUSTICS_GLSL))
 		_mat.shader = sh
 		material_override = _mat
 	# (with mipmaps: a lower level is "water within a few metres")
 	var mask := water.water.mask.duplicate() as Image
 	mask.generate_mipmaps()
 	_mat.set_shader_parameter("water_mask", ImageTexture.create_from_image(mask))
-	_mat.set_shader_parameter("caustic_tex", water.caustic_tex)
+	_mat.set_shader_parameter("chop_tex", water.chop_tex)
 	var small := water.water.mask.duplicate() as Image
 	var n := int(MapDims.SIZE / TILE)
 	small.resize(n, n, Image.INTERPOLATE_BILINEAR)
@@ -87,6 +87,12 @@ func set_strength(k: float) -> void:
 	visible = k > 0.01 and mesh != null and int(Settings.get_v("water")) >= 2
 
 
+## The sun's colour and strength (WaterView, every frame: the mood can change).
+func set_sun(c: Color) -> void:
+	if _mat and visible:
+		_mat.set_shader_parameter("sun_col", c)
+
+
 ## A box's twelve triangles, each corner carrying the box's own footprint
 ## (UV the near corner, UV2 the far one).
 static func _box(verts: PackedVector3Array, uv: PackedVector2Array, uv2: PackedVector2Array, lo: Vector3, hi: Vector3) -> void:
@@ -108,8 +114,9 @@ global uniform float water_time;
 uniform sampler2D depth_tex : hint_depth_texture, filter_nearest;
 uniform sampler2D screen_tex : hint_screen_texture, filter_linear;
 uniform sampler2D water_mask : hint_default_transparent, filter_linear_mipmap, repeat_disable;
-uniform sampler2D caustic_tex : filter_linear_mipmap, repeat_enable;
+uniform sampler2D chop_tex : hint_normal, filter_linear_mipmap, repeat_enable;
 uniform float strength = 0.0;
+uniform vec3 sun_col = vec3(1.0);
 #if CURRENT_RENDERER == RENDERER_COMPATIBILITY
 #define NDC_Z(d) ((d) * 2.0 - 1.0)
 #else
@@ -122,10 +129,7 @@ void vertex() {
 	box = vec4(UV, UV2);
 }
 
-float web(vec2 p) {
-	float c = textureLod(caustic_tex, p, 0.0).r;
-	return pow(1.0 - smoothstep(0.0, 0.18, c), 2.0);
-}
+// CAUSTICS_GLSL
 
 void fragment() {
 	// (both faces of the box can cover a pixel: only the one facing away does)
@@ -156,16 +160,18 @@ void fragment() {
 		n = -n;
 	}
 	float facing = clamp(0.8 - 0.65 * n.y, 0.0, 1.0);
-	// the web, drawn out along the wall and stretched upward as the light
-	// fans out off the curved ripples, running and writhing as they do
-	vec2 p = vec2(wp.x + wp.z * 0.7, wp.y * 2.2 - wp.z * 0.3);
-	float w = max(web(p / 7.0 + vec2(water_time * 0.05, water_time * 0.035)), web(p / 5.2 - vec2(water_time * 0.035, -water_time * 0.06)));
-	float fade = smoothstep(0.02, 0.12, above) * (1.0 - smoothstep(0.3, 2.4, above)) * smoothstep(0.01, 0.15, near);
+	// the same net the bed shows (WaterView.CAUSTICS_GLSL), from the water just
+	// in front of the surface, so the two move as one; the higher up, the
+	// farther the light has fanned out off the curved ripples: broader and dimmer
+	vec2 out_dir = normalize(n.xz + vec2(0.0001));
+	float w = caustic_light(wp.xz + out_dir * (0.4 + above * 0.8), clamp(0.25 + above / 1.6, 0.0, 1.0), 0.0);
+	float fade = smoothstep(0.02, 0.12, above) * (1.0 - smoothstep(0.2, 2.2, above)) * smoothstep(0.01, 0.15, near);
 	// the surface's own colour, at a set brightness: the light off the water is
 	// sunlight, as bright on a hull in its own shade as in the sun (brighter to
 	// the eye there), so it mustn't scale with how lit the surface already is
 	vec3 col = textureLod(screen_tex, SCREEN_UV, 0.0).rgb;
 	vec3 hue = col / max(dot(col, vec3(0.3, 0.59, 0.11)), 0.04);
-	ALBEDO = min(hue, vec3(3.0)) * 0.12 * w * fade * facing * strength;
+	vec3 tint = sun_col / max(max(sun_col.r, sun_col.g), max(sun_col.b, 0.001));
+	ALBEDO = min(hue, vec3(3.0)) * tint * 0.14 * w * fade * facing * strength;
 }
 """

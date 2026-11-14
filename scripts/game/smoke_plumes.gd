@@ -113,7 +113,7 @@ func tick(dt: float, on: bool) -> void:
 		v.size = Vector3(length, height, width)
 		v.position = Vector3(src.x, gy, src.z) + w3 * (drift + length * 0.5 - 3.0) + Vector3(0, height * 0.5 - 1.0, 0)
 		var k := float(pl[6]) * smoothstep(0.0, 2.5, age) * pow(1.0 - age / life, 1.4)
-		(pl[1] as ShaderMaterial).set_shader_parameter("density", 0.26 * k * _debug_k)
+		(pl[1] as ShaderMaterial).set_shader_parameter("density", 0.2 * k * _debug_k)
 		(pl[1] as ShaderMaterial).set_shader_parameter("spread", clampf(age / 20.0, 0.0, 1.0))
 
 
@@ -162,7 +162,7 @@ uniform vec2 wind = vec2(0.92, 0.38);
 uniform float density = 0.0;
 uniform float spread = 0.0;  // how far it has opened out (0 new, 1 old)
 // (sRGB) a neutral grey with a little of the sky in it; lit, near white
-uniform vec3 shade_col : source_color = vec3(0.52, 0.55, 0.6);
+uniform vec3 shade_col : source_color = vec3(0.4, 0.42, 0.46);
 uniform vec3 lit_col : source_color = vec3(0.93, 0.92, 0.9);
 
 void fog() {
@@ -177,7 +177,7 @@ void fog() {
 	vec3 p = WORLD_POSITION;
 	float n1 = texture(wisps, p * 0.045 - vec3(wind.x, -0.25, wind.y) * TIME * 0.04).r;
 	float n2 = texture(wisps, p * 0.13 + vec3(0.0, -TIME * 0.06, 0.0)).r;
-	float rags = smoothstep(0.42, 0.78, n1 * 0.8 + n2 * 0.5 - spread * 0.1);
+	float rags = smoothstep(0.48, 0.82, n1 * 0.8 + n2 * 0.5 - spread * 0.1);
 	DENSITY = density * body * rags * 2.0;
 	ALBEDO = mix(shade_col, lit_col, smoothstep(cy - r * 0.9, cy + r * 0.6, u.y));
 }

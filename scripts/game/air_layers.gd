@@ -25,7 +25,7 @@ extends Node3D
 const MOOD := {
 	"day": [2.5, 0.0002, 0.8, 0.35],
 	"golden": [3.0, 0.0005, 1.6, 0.6],
-	"dawn": [4.0, 0.0006, 1.8, 0.62],
+	"dawn": [6.0, 0.0006, 1.8, 0.62],
 	"dusk": [3.5, 0.0005, 1.6, 0.6],
 	"overcast": [4.0, 0.0003, 0.5, 0.3],
 	"night": [3.5, 0.0004, 0.9, 0.5],
@@ -35,7 +35,7 @@ const MOOD := {
 ## Densities (a metre) where the grid's channel is full: mist at the ground
 ## (a thin, dense band), and the far field's smoke, dust and rain (close up
 ## the smoke is SmokePlumes').
-const MIST_D := 0.16
+const MIST_D := 0.1
 const SMOKE_D := 0.012
 const DUST_D := 0.005
 const RAIN_D := 0.003
@@ -294,9 +294,10 @@ func apply_env(env: Environment) -> void:
 		env.fog_light_color = fog.lerp(tint, clampf(murk * 0.8, 0.0, 0.6))
 	else:
 		env.volumetric_fog_length = clampf(world.cam.dist * 2.4, LENGTH.x, LENGTH.y)
-	# the mist lying along the valley floor
-	# (drawn per pixel, this band stays a few metres thick however far off it
-	# lies, where the volume's cells have grown too coarse to hold it)
+	# without the volume, the mist lying along the valley floor (a height fog:
+	# with the volume it would lie over the whole low ground as one flat sheet)
+	if vol:
+		return
 	var valley: float = float((WeatherGrid.MOOD_AIR.get(_mood, WeatherGrid.MOOD_AIR.day) as Array)[1]) + grid.wet * 0.25
 	var hd := valley * 0.12 * s * grid.relief
 	if hd > env.fog_height_density:
@@ -361,7 +362,8 @@ void fog() {
 			+ terrain_height(deform_tex, uv + vec2(0.0, o)) + terrain_height(deform_tex, uv - vec2(0.0, o))) * 0.25;
 		float hollow = clamp((around - g) / 5.0, 0.0, 1.0);
 		float lie = 0.12 + 1.4 * max(hollow, texture(water_near, uv).a);
-		mist = mist_d * w.r * lie * exp(-h / mist_h) * wisp;
+		// (thinning upward with a soft top, not cut off at a height)
+		mist = mist_d * w.r * lie * exp(-h / mist_h) * smoothstep(mist_h * 5.0, mist_h * 1.5, h) * wisp;
 	}
 	float haze = haze_d * smoothstep(8.0, 40.0, h) * exp(-max(h - 40.0, 0.0) / 220.0) * (0.6 + 0.8 * n1);
 	float smoke = smoke_d * w.a * exp(-h / 14.0) * (0.05 + wisp * 0.3 + rag * 1.3);

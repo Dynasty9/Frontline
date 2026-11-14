@@ -5,11 +5,11 @@ kind = "improved"
 
 [[screenshots]]
 file = "mist-off-on.jpg"
-caption = "Off and on: the band of mist glowing in the low ground toward the dawn sun"
+caption = "Off and on: mist lying in the low ground, glowing toward the dawn sun"
 
 [[screenshots]]
 file = "plume-off-on.jpg"
-caption = "Off and on: the plume a barrage leaves, lit by a low sun"
+caption = "Off and on: the grey pall a barrage leaves, drifting off downwind"
 
 [[screenshots]]
 file = "net-off-on.jpg"
@@ -63,7 +63,7 @@ caption = "A barrage's plume drifting off downwind and breaking up."
   dust from dry ground.
 - It all eases off as you zoom out, so it never hides the fighting you're watching. It's scenery only: it doesn't
   change who can see whom.
-- **Caustics**: a bright net of light, focused by the ripples, slowly re-forms across the sand and mud in the
-  shallows, crisp in the first metre or so and softening deeper down (from Medium water quality, finer from High).
+- **Caustics**: a net of thin, sun-tinted lines of light, brightest where they meet, slowly re-forms across the
+  sand and mud in the shallows, crisp in the first metre or so and softening deeper down (from Medium water quality, finer from High).
   From High it's also thrown back up onto hulls, piers and banks just above the water.
 - The browser version gets a lighter version of the mist and smoke through its distance fog, and the simpler caustics.
