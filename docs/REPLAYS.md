@@ -32,17 +32,29 @@ matchmaker. The viewer uses WebGL 2, the Compatibility renderer, and no threads.
 `/game/viewer.json` identifies the supported recording format and network protocol.
 Absent or incompatible builds show an explanation instead of an unusable launch.
 
-Mount a persistent volume on the matchmaker and set `REPLAY_DIR` to its directory
-(for example `/data/replays`). Without this setting the API reports recording
-disabled. The same single matchmaker instance serves recordings through HTTP;
-no WebSocket dependency or account/database migration is needed. Requests and
-chunks are bounded; uploads require a public active lobby's host token, then a
-separate recording token. Neither token is returned by public read endpoints.
+The matchmaker keeps recordings in one of two places (`matchmaker/src/replays.js`):
 
-Public storage is limited to 500 recordings, 5 GiB total, 256 MiB per recording,
-and four hours per battle. Recordings expire after seven days. Expiration is
-applied at startup and when recordings are listed or created. Retention and
-capacity are deliberately fixed for this first implementation. Local files are
+- **A Supabase Storage bucket** (optional hosted storage): set `REPLAY_BUCKET=replays` on the matchmaker,
+  beside the `SUPABASE_URL` and `SUPABASE_SECRET_KEY` it has for accounts. A migration creates the bucket
+  (`20261111234500_replay_bucket.sql`): private, JSON files of at most 16 MB, no policies, so only the
+  matchmaker's secret key reaches it and viewers get recordings through the matchmaker. Nothing else to set up.
+- **A folder on a persistent volume**: set `REPLAY_DIR` to its directory (for example `/data/replays`).
+
+With neither, the API reports recording disabled (and `GET /health` says `"recordings": "off"`, else
+`"supabase"` or `"folder"`). The same single matchmaker instance serves recordings through HTTP; no WebSocket
+dependency is needed. Requests and chunks are bounded; uploads require a public active lobby's host token, then a
+separate recording token. Neither token is returned by public read endpoints. Writes to one recording happen one
+at a time, chunk before index, so the index never names a chunk that isn't stored. The newest chunks (up to
+64 MB) are kept in memory, since everyone watching a live broadcast asks for the same one, and a published chunk
+is sent with a day's `immutable` caching: a bucket charges for each download, and a viewer's browser keeps what
+it has.
+
+Public storage is limited to 500 recordings, 256 MiB per recording, four hours per battle, and in total 5 GiB in
+a folder or 900 MiB in a bucket, inside the Supabase free plan's 1 GB of storage (`REPLAY_STORAGE_MB` sets
+another total). Watching counts towards the plan's monthly downloads (5 GB, and 5 GB more from its cache, shared
+with accounts): a full 20-minute battle is very roughly 60 to 100 MB, at about 3 MB a minute early on. Recordings
+expire after seven days. Expiration is applied at startup and when recordings are listed or created, and removes
+the recording's files through the Storage API (never SQL, which would leave them in the bucket). Local files are
 not automatically deleted; each local recording has the same size/duration cap.
 
 ## Format and seeking
