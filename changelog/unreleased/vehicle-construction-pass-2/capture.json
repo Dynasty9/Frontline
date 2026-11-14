@@ -1,0 +1,72 @@
+{
+  "before_ref": "fd7d58061310e3673af7072e2f4afbca64694d2c",
+  "after_ref": "the change that adds this entry",
+  "engine": "Godot 4.7.2 stable",
+  "renderer": "forward_plus",
+  "team": 0,
+  "seed": 3,
+  "source_size": [
+    1600,
+    900
+  ],
+  "sheet_size": [
+    1600,
+    3600
+  ],
+  "composition": "Uncropped source renders resized to 800x450, before left, after right, short labels. JPEG quality 82.",
+  "command": "godot --path <checkout> tools/showcase/vehicle-surfaces.tscn -- --surface-single --surface-kinds=<model> --surface-focus=<focus> --surface-size=<size> [--surface-rear] --surface-out=<outside-repo-directory>",
+  "note": "The before revision predates the removal of unreachable VmPlane builders (67acc170), which changes no built model.",
+  "shots": [
+    {
+      "model": "a10",
+      "focus": "1.1,2.0,1.6",
+      "size": 2.2,
+      "label": "A-10: engine fan face in the intake"
+    },
+    {
+      "model": "old_tank",
+      "focus": "0.4,1.25,-2.75",
+      "size": 2.6,
+      "label": "T-55: splash board and track links on the glacis"
+    },
+    {
+      "model": "ifv",
+      "focus": "-1.0,2.25,-0.6",
+      "size": 2.6,
+      "rear": true,
+      "label": "Bradley: TOW launcher box"
+    },
+    {
+      "model": "hemtt_repair",
+      "focus": "-1.2,2.2,1.6",
+      "size": 4.6,
+      "rear": true,
+      "label": "HEMTT repair body: shutters, door, ladder"
+    },
+    {
+      "model": "zamak_repair",
+      "focus": "-1.1,2.0,2.2",
+      "size": 3.2,
+      "rear": true,
+      "label": "Zamak repair body: shutter, ladder"
+    },
+    {
+      "model": "humvee",
+      "focus": "0,1.05,-2.0",
+      "size": 2.4,
+      "label": "Humvee: grille, lamps and guards"
+    },
+    {
+      "model": "offroad_hmg",
+      "focus": "0,1.65,1.5",
+      "size": 2.0,
+      "label": "Offroad: pedestal mount and gun shield"
+    },
+    {
+      "model": "jet",
+      "focus": "4.6,0.95,1.2",
+      "size": 2.6,
+      "label": "F-16: missiles and stores under the wing"
+    }
+  ]
+}

@@ -13,6 +13,7 @@ The collision and cover a structure gives (`Structure._define_parts`) never depe
 | `scripts/game/building_openings.gd` | `BuildingOpenings` | Windows, sills, heads, shutters, doorways, door leaves, roller shutters, louvres, ribbon glazing |
 | `scripts/game/building_roofs.gd` | `BuildingRoofs` | Gables, hipped roofs (and pyramids), flat roofs with parapets (and their wear), single-pitch roofs, canopies, north lights; `underside` for seating things on a slope |
 | `scripts/game/building_fittings.gd` | `BuildingFittings` | Gutters, hoppers, downpipes, chimneys, flues, stacks, pipe runs, plant, masts, aerials, flagpoles, lamps, drums, crates, pallets |
+| `scripts/game/building_fences.gd` | `BuildingFences` | Fence bays in nine styles (picket, post-and-rail, railings, close-board, paling, chain-link, bow-top, military security, mesh panels) and their gates |
 | `scripts/game/building_wire.gd` | `BuildingWire` | Catenary spans, cables, guys with anchors, insulators, barbed strands, wall-top wire |
 | `scripts/game/building_weathering.gd` | `BuildingWeathering` | Ivy, weeds at the foot of walls, the fallen-in roof on a ruin's floor, roof tarps and holes; stains that fade into a wall (soot, rain streaks, scorch), shell scars, bullet strikes, boarded and sandbagged windows |
 | `scripts/game/building_furnishings.gd` | `BuildingFurnishings` | Curtains, blinds, nets, window boxes, door lanterns, TV aerials; inside: linings and skirting, radiators, pictures, mirrors, clocks, shelves, rugs |

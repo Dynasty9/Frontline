@@ -59,7 +59,9 @@ func _d(kind: String, p: Vector3, yaw := 0.0, extra = null) -> void:
 		var count := ceili(size.x / 2.2)
 		var length := size.x / count
 		for i in count:
-			_d(kind, p + Basis(Vector3.UP, yaw).x * ((i + 0.5) * length - size.x * 0.5), yaw, Vector3(length, size.y, size.z))
+			# (every bay but the last shares its end post with the next)
+			var linked := BuildingFences.LINKED if i < count - 1 else 0
+			_d(kind, p + Basis(Vector3.UP, yaw).x * ((i + 0.5) * length - size.x * 0.5), yaw, Vector3(length, size.y, int(size.z) | linked))
 		return
 	# Store world heights once so clients, replay and breakage agree on the same positions.
 	p.y += world.terrain.landform.height(p)
@@ -554,18 +556,18 @@ func _lot_house(front: Vector3, n: Vector3, d: Vector3, W: float, shop: bool) ->
 			mg._try("low_wall", bp, yaw_d, -1, {"size": Vector3(sl, 1.0, 0.5), "variant": 1})
 		elif kind < 0.88:
 			mg._try("low_wall", bp, yaw_d, -1, {"size": Vector3(sl, 1.0, 0.5), "variant": 0})
-	var style := rng.randi() % 3
+	var fences := _house_fences(front, rng.randi() % 3)
 	for e: float in [-1.0, 1.0]:
 		var sp := front + d * (W * 0.5 * e) + n * (_depth * 0.5 + (setback + dep) * 0.5)
 		var flen := _depth - (setback + dep)
 		var key := _key(sp)
 		if flen > 1.5 and not _fence_keys.has(key):
 			_fence_keys[key] = true
-			_d("fence", sp, yaw_along(n), Vector3(flen - 0.6, 1.1, style))
+			_d("fence", sp, yaw_along(n), Vector3(flen - 0.6, fences[3], fences[2]))
 	if not shop:
 		# a low front fence with a gate, a mailbox, a tree or a vegetable patch behind
 		if rng.randf() < 0.55:
-			_front_fence(front, n, d, W, gate, drive_x, style)
+			_front_fence(front, n, d, W, gate, drive_x, fences[0], fences[1])
 		if rng.randf() < 0.4:
 			_d("mailbox", front + n * 0.5 + d * (W * 0.5 - 1.2), axis)
 		var yard := _depth - setback - dep
@@ -717,7 +719,32 @@ func _approach(front: Vector3, n: Vector3, d: Vector3, door: Vector3, side: floa
 	return gate
 
 
-func _front_fence(front: Vector3, n: Vector3, d: Vector3, width: float, gate: float, drive: float, style: int) -> void:
+## The fences a house puts up, from its `family` (picket, rustic, iron) and its
+## own look (drawn apart from the map's numbers, so the map is the same with
+## them or without): [front code, front height, side code, side height]. The
+## sides, behind the house, are taller: the back garden is private.
+func _house_fences(front: Vector3, family: int) -> Array:
+	var look := RandomNumberGenerator.new()
+	look.seed = int(absf(front.x) * 7.0) * 15485863 + int(absf(front.z) * 7.0) * 92821 + 5
+	var timber := look.randi() % 4 + (4 if look.randf() < 0.4 else 0)
+	match family:
+		0:
+			var paint := look.randi() % BuildingFences.PICKET_PAINT.size()
+			if look.randf() < 0.3:
+				return [BuildingFences.code(BuildingFences.PICKET, paint), 0.9, BuildingFences.code(BuildingFences.PICKET, paint), 1.15]
+			return [BuildingFences.code(BuildingFences.PICKET, paint), 0.9, BuildingFences.code(BuildingFences.CLOSE_BOARD, timber), 1.8]
+		1:
+			if look.randf() < 0.5:
+				return [BuildingFences.code(BuildingFences.PALING, look.randi() % 4), 0.95, BuildingFences.code(BuildingFences.PALING, look.randi() % 4), 1.25]
+			return [BuildingFences.code(BuildingFences.PALING, look.randi() % 4), 0.95, BuildingFences.code(BuildingFences.CLOSE_BOARD, timber), 1.8]
+		_:
+			var iron := look.randi() % BuildingFences.RAIL_PAINT.size()
+			if look.randf() < 0.5:
+				return [BuildingFences.code(BuildingFences.RAILINGS, iron), 0.85, BuildingFences.code(BuildingFences.CHAIN_LINK, look.randi() % BuildingFences.LINK_COLOURS.size()), 1.4]
+			return [BuildingFences.code(BuildingFences.RAILINGS, iron), 0.85, BuildingFences.code(BuildingFences.CLOSE_BOARD, timber), 1.8]
+
+
+func _front_fence(front: Vector3, n: Vector3, d: Vector3, width: float, gate: float, drive: float, style: int, height := 0.85) -> void:
 	var openings := [Vector2(gate - 0.8, gate + 0.8)]
 	if is_finite(drive):
 		openings.append(Vector2(drive - 1.4, drive + 1.4))
@@ -727,8 +754,16 @@ func _front_fence(front: Vector3, n: Vector3, d: Vector3, width: float, gate: fl
 	for gap: Vector2 in openings:
 		var end := clampf(gap.x, -width * 0.5, width * 0.5)
 		if end - start > 0.15:
-			_d("fence", front + n * 0.35 + d * ((start + end) * 0.5), yaw_along(d), Vector3(end - start, 0.85, style))
+			_d("fence", front + n * 0.35 + d * ((start + end) * 0.5), yaw_along(d), Vector3(end - start, height, style))
 		start = maxf(start, gap.y)
+	# the garden gate in its opening (put with the yard dressing, after the
+	# rest of the decor, so every older piece keeps its look)
+	if absf(gate) < width * 0.5 - 0.85 and (not is_finite(drive) or absf(drive - gate) > 2.4):
+		var main_decor := decor
+		decor = _yard_decor
+		_d("fence", front + n * 0.35 + d * gate, yaw_along(d), Vector3(1.6, height, style | BuildingFences.GATE))
+		_yard_decor = decor
+		decor = main_decor
 
 
 func _square(c: Vector3, q: Vector3) -> void:
@@ -776,11 +811,12 @@ func _playground(front: Vector3, n: Vector3, d: Vector3, W: float) -> void:
 	_reserve(c, Vector2(W * 0.5, _depth * 0.5), yaw)
 	_d("soft", c, yaw, Vector3(W - 1.0, 0, _depth - 1.0))
 	# a green railing all round, with the gate on the street
-	_d("fence", front + n * 0.3 + d * (-W * 0.25 - 0.5), yaw, Vector3(W * 0.5 - 1.6, 1.0, 2))
-	_d("fence", front + n * 0.3 + d * (W * 0.25 + 0.5), yaw, Vector3(W * 0.5 - 1.6, 1.0, 2))
-	_d("fence", front + n * (_depth - 0.3), yaw, Vector3(W - 0.4, 1.0, 2))
+	var bow := BuildingFences.BOW_TOP
+	_d("fence", front + n * 0.3 + d * (-W * 0.25 - 0.5), yaw, Vector3(W * 0.5 - 1.6, 1.0, bow))
+	_d("fence", front + n * 0.3 + d * (W * 0.25 + 0.5), yaw, Vector3(W * 0.5 - 1.6, 1.0, bow))
+	_d("fence", front + n * (_depth - 0.3), yaw, Vector3(W - 0.4, 1.0, bow))
 	for e: float in [-1.0, 1.0]:
-		_d("fence", front + d * (W * 0.5 - 0.3) * e + n * _depth * 0.5, yaw_along(n), Vector3(_depth - 0.6, 1.0, 2))
+		_d("fence", front + d * (W * 0.5 - 0.3) * e + n * _depth * 0.5, yaw_along(n), Vector3(_depth - 0.6, 1.0, bow))
 	var lx := W * 0.5 - 3.2
 	_d("swing", c + d * (-lx + 0.8) + n * 3.5, yaw)
 	_d("slide", c + d * (lx - 1.2) + n * 3.2, yaw_along(n) + PI)
@@ -843,7 +879,8 @@ func _allotment(front: Vector3, n: Vector3, d: Vector3, W: float) -> void:
 	_reserve(c, Vector2(W * 0.5, _depth * 0.5), yaw)
 	for i in 2:
 		_d("garden", c + n * (-3.0 + i * 5.0) + d * rng.randf_range(-1, 1), yaw, Vector3(W - 3.0, 0, 3.6))
-	_d("fence", front + n * 0.3, yaw, Vector3(W - 0.6, 1.0, 1))
+	# allotment holders keep the street out with chain-link
+	_d("fence", front + n * 0.3, yaw, Vector3(W - 0.6, 1.5, BuildingFences.code(BuildingFences.CHAIN_LINK, int(absf(front.x + front.z)) % 2)))
 	mg._try("crates", c + d * (W * 0.5 - 1.8) + n * (_depth * 0.5 - 1.5), yaw, -1, {"variant": 0})
 	if rng.randf() < 0.6:
 		mg._try("tree", c - d * (W * 0.5 - 1.8) + n * (_depth * 0.5 - 1.8), 0.0, -1)
@@ -1120,7 +1157,7 @@ func farms(k: int) -> void:
 		_fronts.append(hc - n * 4.0 + Vector3(0, 2.85, 0))
 		var no_doors: Array[Vector3] = []
 		mg._house(bc, 13.0, 10.0, axis, 1.0, false, 0.35, no_doors, true)
-		_d("fence", base - n * 2.0 + t * 1.0, yaw_along(t), Vector3(30.0, 1.1, 1))
+		_d("fence", base - n * 2.0 + t * 1.0, yaw_along(t), Vector3(30.0, 1.1, BuildingFences.code(BuildingFences.POST_RAIL, int(absf(base.x)) % 2)))
 		for j in rng.randi_range(2, 4):
 			var hp := base + n * rng.randf_range(12.0, 15.0) + t * (rng.randf_range(-4, 4))
 			var hy := yaw_along(t) + rng.randf_range(-0.3, 0.3)
@@ -1227,6 +1264,66 @@ func roadside(cars: int, wrecks: int) -> void:
 
 ## Keep the scattered scenery out of town and off the roads; hand the street
 ## furniture to the world.
+## The military's own fences: a security fence across the back of each HQ (the
+## Rebels' an improvised one),
+## along the map's edge where the stores and vehicle park are, and a screen of
+## mesh panels hung with scrim round the back of the town's supply dump. Put
+## after the rest of the decor, so every older piece keeps its look.
+func military_fences(depots: Array, dumps: Array) -> void:
+	for dp in depots:
+		var st: Structure = dp
+		var b := Basis(Vector3.UP, st.yaw)
+		var c := st.position
+		# the Coalition's is put up by engineers to a standard; the Rebels' from
+		# stakes, wire and whatever the town gave up
+		var sec := BuildingFences.code(BuildingFences.SECURITY if st.team == Defs.ARMY else BuildingFences.IMPROVISED)
+		var high := 2.4 if st.team == Defs.ARMY else 1.7
+		# (only the back and its corners: the supply tracks, laid later and
+		# relaid as FOBs go up, leave by the front and the sides)
+		_fence_line(c + b * Vector3(-15.0, 0, 4.5), c + b * Vector3(-15.0, 0, 8.5), high, sec)
+		_fence_line(c + b * Vector3(-15.0, 0, 8.5), c + b * Vector3(15.0, 0, 8.5), high, sec)
+		_fence_line(c + b * Vector3(15.0, 0, 8.5), c + b * Vector3(15.0, 0, 4.5), high, sec)
+	var panels := BuildingFences.code(BuildingFences.PANELS)
+	for dp in dumps:
+		var st: Structure = dp
+		var b := Basis(Vector3.UP, st.yaw)
+		var c := st.position
+		_fence_line(c + b * Vector3(-3.3, 0, -0.5), c + b * Vector3(-3.3, 0, 2.5), 2.0, panels)
+		_fence_line(c + b * Vector3(-3.3, 0, 2.5), c + b * Vector3(3.3, 0, 2.5), 2.0, panels)
+		_fence_line(c + b * Vector3(3.3, 0, 2.5), c + b * Vector3(3.3, 0, -0.5), 2.0, panels)
+
+
+## A fence from `a` to `b` in bays, left open wherever a road or track runs
+## through (a fence is put up beside a road, not across it).
+func _fence_line(a: Vector3, b: Vector3, height: float, c: int) -> void:
+	var length := Defs.flat(b - a).length()
+	var count := ceili(length / 2.2)
+	var bay := length / count
+	var dir := Defs.flat(b - a).normalized()
+	var keep: Array[bool] = []
+	for i in count:
+		keep.append(_road_width_at(a + dir * ((i + 0.5) * bay)) > 1.2)
+	for i in count:
+		if not keep[i]:
+			continue
+		var linked := BuildingFences.LINKED if i < count - 1 and keep[i + 1] else 0
+		_d("fence", a + dir * ((i + 0.5) * bay), yaw_along(dir), Vector3(bay, height, c | linked))
+
+
+## How far `p` is from the edge of the nearest road or track of any kind
+## (negative on it).
+func _road_width_at(p: Vector3) -> float:
+	var best := 1e9
+	var q := Vector3(p.x, 0, p.z)
+	for k in world.roads.size():
+		var half: float = [4.5, 3.5, 3.0, 2.5][mini(k, 3)]
+		for poly in world.roads[k]:
+			var pts: PackedVector3Array = poly
+			for i in range(0, pts.size() - 1):
+				best = minf(best, Defs.dist_point_segment(q, pts[i], pts[i + 1]) - half)
+	return best
+
+
 func finish(build_view := true) -> void:
 	mg._keep_clear([rect.get_center(), REACH + 4.0])
 	for hm in hamlets:

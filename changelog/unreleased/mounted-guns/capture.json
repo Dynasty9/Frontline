@@ -1,0 +1,14 @@
+{
+  "stage": "mounted-guns",
+  "fixture": "tests/fixtures/mounted-gun-clips.tscn",
+  "before_ref": "2e9e94f5 (PR #209 on main) merged with origin/main eb81260e: this branch's base without its own commits",
+  "after_ref": "739341dc",
+  "engine": "Godot 4.7.2.stable, Forward+, 1280x720, --fixed-fps 30, showroom battlefield seed 712, High preset, day",
+  "commands": [
+    "godot --position -10000,-10000 --fixed-fps 30 --rendering-method forward_plus --audio-driver Dummy --resolution 1280x720 --path . res://tests/fixtures/mounted-gun-clips.tscn -- --clip=mounted-guns --label=BEFORE|AFTER --frames=DIR",
+    "godot ... res://tests/fixtures/mounted-gun-clips.tscn -- --clip=mounted-guns-stills --label=BEFORE|AFTER --frames=DIR"
+  ],
+  "comparison": "rows: firing-line frames 545 (ZU-23 on a hovering helicopter), 800 (Ghost Hawk door gun, truck to the right), 130 (Bradley 25 mm, the frame with the brightest muzzle flash in each build's IFV shot), and the motorboat-a stills; before left, after right, 800x450 each",
+  "video": "frames 120-299 (Bradley, Marshall), 480-584 (ZU-23), 675-839 (motorboat, Ghost Hawk) of both 28 s firing-line runs, before above after at 854x480 each, VP9 crf 40, 30 fps, silent; poster is frame 560",
+  "note": "Muzzle flashes, smoke and brass are drawn with the effects' own unseeded randomness, so individual flashes differ between the two runs; vehicles, targets, aim and timing are the same."
+}

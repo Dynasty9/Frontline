@@ -580,13 +580,25 @@ const LOD_FADE := 8.0
 
 ## Moving vehicle parts keep their pivots, but distant paint needs one surface.
 static func add_distance_lod(root: Node3D, distance: float, keep: Array = []) -> void:
+	var lod := distance_lod_parts(root, keep)
+	if not lod.is_empty():
+		attach_distance_lod(root, distance, lod[1], _bake_groups(lod[0]))
+
+
+## What add_distance_lod makes the distant mesh of: [groups, the meshes it
+## stands in for], or [] for nothing. (In two halves for a model made over
+## several frames, its distant mesh worked out on a worker meanwhile.)
+static func distance_lod_parts(root: Node3D, keep: Array = []) -> Array:
 	var groups := {}
 	var originals := []
 	_collect(root, Transform3D.IDENTITY, groups, originals, keep, false, true, true)
-	if groups.is_empty():
-		return
+	return [] if groups.is_empty() else [groups, originals]
+
+
+## The distant mesh under root, from `distance` out, where the originals end.
+static func attach_distance_lod(root: Node3D, distance: float, originals: Array, mesh: ArrayMesh) -> void:
 	var coarse := MeshInstance3D.new()
-	coarse.mesh = _bake_groups(groups)
+	coarse.mesh = mesh
 	coarse.visibility_range_begin = distance
 	coarse.visibility_range_begin_margin = LOD_FADE
 	coarse.visibility_range_fade_mode = GeometryInstance3D.VISIBILITY_RANGE_FADE_SELF
@@ -613,6 +625,44 @@ const BAKED_KEEP := 1024
 ## mesh is made once, and a part with the same triangles, colours and paint
 ## shares it.
 static func _bake_groups(groups: Dictionary) -> ArrayMesh:
+	var key := _bake_key(groups)
+	var known: ArrayMesh = _baked.get(key)
+	if known != null:
+		return known
+	var importer := ImporterMesh.new()
+	_make_distant(_distant_arrays(groups), importer, distant_material())
+	return _keep_baked(key, importer)
+
+
+## The same, started on a worker thread: welding and simplifying a car took
+## 25-65 ms in one call, too long for a frame. Poll bake_done(job), then
+## bake_result(job), both on the main thread.
+static func bake_groups_later(groups: Dictionary) -> Dictionary:
+	var key := _bake_key(groups)
+	var known: ArrayMesh = _baked.get(key)
+	if known != null:
+		return {"key": key, "mesh": known}
+	var importer := ImporterMesh.new()
+	var arrays := _distant_arrays(groups)
+	if OS.has_feature("web"):
+		_make_distant(arrays, importer, distant_material())  # (no threads in a browser)
+		return {"key": key, "mesh": _keep_baked(key, importer)}
+	# (the task touches nothing but its own arrays and importer: see AGENTS.md on workers)
+	return {"key": key, "importer": importer, "task": WorkerThreadPool.add_task(_make_distant.bind(arrays, importer, distant_material()), false, "distant mesh")}
+
+
+static func bake_done(job: Dictionary) -> bool:
+	return job.has("mesh") or WorkerThreadPool.is_task_completed(int(job.task))
+
+
+static func bake_result(job: Dictionary) -> ArrayMesh:
+	if not job.has("mesh"):
+		WorkerThreadPool.wait_for_task_completion(int(job.task))
+		job["mesh"] = _keep_baked(job.key, job.importer)
+	return job.mesh
+
+
+static func _bake_key(groups: Dictionary) -> PackedInt64Array:
 	var key := PackedInt64Array()
 	for group: Dictionary in groups.values():
 		key.append((group.mat as ShaderMaterial).get_instance_id())
@@ -620,17 +670,19 @@ static func _bake_groups(groups: Dictionary) -> ArrayMesh:
 		key.append(hash((group.n as PackedVector3Array).to_byte_array()))
 		key.append(hash((group.c as PackedColorArray).to_byte_array()))
 		key.append((group.v as PackedVector3Array).size())
-	var known: ArrayMesh = _baked.get(key)
-	if known != null:
-		return known
-	var made := _bake_groups_now(groups)
+	return key
+
+
+static func _keep_baked(key: PackedInt64Array, importer: ImporterMesh) -> ArrayMesh:
+	var made := importer.get_mesh()
 	if _baked.size() >= BAKED_KEEP:
 		_baked.clear()  # (a long battle's worth of kinds and paints: start again)
 	_baked[key] = made
 	return made
 
 
-static func _bake_groups_now(groups: Dictionary) -> ArrayMesh:
+## The groups as one surface, each in its material's own colour.
+static func _distant_arrays(groups: Dictionary) -> Array:
 	var vertices := PackedVector3Array()
 	var normals := PackedVector3Array()
 	var colors := PackedColorArray()
@@ -653,22 +705,30 @@ static func _bake_groups_now(groups: Dictionary) -> ArrayMesh:
 	arrays[Mesh.ARRAY_VERTEX] = vertices
 	arrays[Mesh.ARRAY_NORMAL] = normals
 	arrays[Mesh.ARRAY_COLOR] = colors
-	# At this distance cloth weave and metal wear are subpixel. Keep the
-	# uniform, skin, equipment and vehicle paint colours in one surface.
+	return arrays
+
+
+## What distant meshes are drawn with. At this distance cloth weave and metal
+## wear are subpixel: the uniform, skin, equipment and vehicle paint colours
+## keep to one surface.
+static func distant_material() -> ShaderMaterial:
 	if _distant_material == null:
 		_distant_material = ShaderMaterial.new()
 		_distant_material.shader = CloudShadow.make(DISTANT_SHADER)
-	# Hundreds of instances share this mesh. Weld identical vertex attributes
-	# once so the GPU can reuse transformed vertices without changing the pose.
-	# (Welded from the arrays themselves: a mesh read back from the graphics
-	# card waits on it.)
+	return _distant_material
+
+
+## The surface welded and simplified onto `importer`. Hundreds of instances
+## share the mesh, so identical vertex attributes are welded once and the GPU
+## reuses transformed vertices without changing the pose. (Welded from the
+## arrays themselves: a mesh read back from the graphics card waits on it.)
+## Run on a worker by bake_groups_later: method calls only, on its own objects.
+static func _make_distant(arrays: Array, importer: ImporterMesh, material: ShaderMaterial) -> void:
 	var tool := SurfaceTool.new()
 	tool.create_from_arrays(arrays)
 	tool.index()
-	var importer := ImporterMesh.new()
-	importer.add_surface(Mesh.PRIMITIVE_TRIANGLES, tool.commit_to_arrays(), [], {}, _distant_material)
+	importer.add_surface(Mesh.PRIMITIVE_TRIANGLES, tool.commit_to_arrays(), [], {}, material)
 	importer.generate_lods(25.0, 60.0, [])
-	return importer.get_mesh()
 
 
 ## A surface as an unindexed triangle list [verts, normals, colours or null].
@@ -921,6 +981,30 @@ static func netting_tent() -> ShaderMaterial:
 	return _netting_tent
 
 
+static var _wire_mesh := {}
+
+
+## Wire mesh on a fence: chain-link's diamonds or a welded panel's grid,
+## drawn on a flat sheet (Res.quad) as antialiased wires, so the posts and the
+## ground show through and the mesh greys into a haze with distance as it does.
+static func wire_mesh(welded: bool) -> ShaderMaterial:
+	if not _wire_mesh.has(welded):
+		var m := ShaderMaterial.new()
+		m.shader = _wire_mesh_shader()
+		m.set_shader_parameter("welded", welded)
+		_wire_mesh[welded] = m
+	return _wire_mesh[welded]
+
+
+static var _wire_mesh_sh: Shader
+
+
+static func _wire_mesh_shader() -> Shader:
+	if _wire_mesh_sh == null:
+		_wire_mesh_sh = CloudShadow.make(code(WIRE_MESH_SHADER))
+	return _wire_mesh_sh
+
+
 static func _preset(kind: String) -> Dictionary:
 	if kind.begins_with("vehicle/"):
 		return VehicleMaterials.preset(kind)
@@ -982,6 +1066,12 @@ static func _preset(kind: String) -> Dictionary:
 			return {"pattern": WEATHERED_PHOTO, "photo_mean": PHOTO_MEAN.get_meta("concrete_floor_01"), "col_a": Color(0.52, 0.5, 0.47), "rough": 0.95, "bump": 0.0, "grime": 0.0, "scale": 0.5, "local_space": true, "weathering": 1.0, "photo_color": preload("res://assets/town/concrete_floor_01_color.jpg"), "photo_surface": preload("res://assets/town/concrete_floor_01_surface.png")}
 		"fence_wood", "fence_rail":
 			return {"pattern": WEATHERED_PHOTO, "photo_mean": PHOTO_MEAN.get_meta("weathered_planks"), "col_a": Color(0.5, 0.43, 0.33), "rough": 0.94, "bump": 0.0, "grime": 0.0, "scale": 0.5, "grain_horizontal": kind == "fence_rail", "weathering": 0.5, "photo_color": preload("res://assets/town/weathered_planks_color.jpg"), "photo_surface": preload("res://assets/town/weathered_planks_surface.png")}
+		"fence_painted":
+			# boards under paint gone chalky and thin: the grain shows through
+			return {"pattern": WEATHERED_PHOTO, "photo_mean": PHOTO_MEAN.get_meta("weathered_planks"), "col_a": Color(0.8, 0.79, 0.74), "rough": 0.78, "bump": 0.0, "grime": 0.7, "scale": 0.5, "weathering": 0.55, "photo_color": preload("res://assets/town/weathered_planks_color.jpg"), "photo_surface": preload("res://assets/town/weathered_planks_surface.png")}
+		"galvanised":
+			# hot-dip galvanised tube and wire: dull spangled zinc, white rust in spots
+			return {"pattern": PAINT, "col_a": Color(0.55, 0.56, 0.55), "col_b": Color(0.68, 0.68, 0.65), "rough": 0.55, "metal": 0.35, "bump": 0.2, "grime": 0.4, "rust": 0.12, "scale": 2.5}
 		"fence_metal":
 			return {"pattern": PAINT, "col_a": Color(0.6, 0.6, 0.6), "col_b": Color(0.28, 0.25, 0.21), "rough": 0.82, "metal": 0.35, "bump": 0.3, "grime": 0.65, "rust": 0.7, "scale": 1.7}
 		"corrugated":
@@ -1000,7 +1090,11 @@ static func _preset(kind: String) -> Dictionary:
 		"metal_dark":
 			return {"pattern": PAINT, "col_a": Color(0.17, 0.17, 0.17), "col_b": Color(0.35, 0.33, 0.3), "rough": 0.5, "metal": 0.6, "bump": 0.5, "grime": 0.3}
 		"burnt":
-			return {"pattern": PAINT, "col_a": Color(0.085, 0.08, 0.075), "col_b": Color(0.2, 0.17, 0.15), "rough": 0.9, "metal": 0.25, "bump": 1.2, "grime": 0.2, "rust": 0.3, "scale": 1.6}
+			# (the rust is a dull brown bloom, not flecks bright enough to read as embers)
+			return {"pattern": PAINT, "col_a": Color(0.085, 0.08, 0.075), "col_b": Color(0.2, 0.17, 0.15), "rough": 0.9, "metal": 0.25, "bump": 1.2, "grime": 0.2, "rust": 0.12, "scale": 1.6}
+		"burnt_debris":
+			# torn-off skin and kit lying round a burnt-out vehicle: charred, rust-brown at the edges
+			return {"pattern": PAINT, "col_a": Color(0.05, 0.045, 0.04), "col_b": Color(0.15, 0.09, 0.055), "rough": 0.95, "metal": 0.2, "bump": 1.0, "grime": 0.3, "rust": 0.1, "scale": 2.0}
 		"abrams_scorched":
 			# Ash catches on the hull plates while the steel fittings and rubber stay dark.
 			return {"pattern": CAMO, "col_a": Color("383530"), "col_b": Color("51483f"), "col_c": Color("262628"), "col_d": Color("62594f"), "scale": 0.86, "rough": 0.87, "metal": 0.26, "bump": 0.72, "grime": 0.38, "local_space": true}
@@ -1046,8 +1140,14 @@ static func _preset(kind: String) -> Dictionary:
 		"rust_steel":
 			return {"pattern": PAINT, "col_a": Color(0.32, 0.2, 0.12), "col_b": Color(0.22, 0.2, 0.18), "rough": 0.85, "metal": 0.35, "bump": 1.0, "grime": 0.5, "rust": 1.0}
 		"wire":
-			# galvanised barbed and razor wire, dulled and spotted with rust
-			return {"pattern": PAINT, "col_a": Color(0.44, 0.44, 0.42), "col_b": Color(0.56, 0.55, 0.52), "rough": 0.42, "metal": 0.75, "bump": 0.0, "grime": 0.2, "rust": 0.35, "scale": 4.0}
+			# new galvanised barbed and razor wire: bright zinc, a little dulled
+			return {"pattern": PAINT, "col_a": Color(0.52, 0.53, 0.51), "col_b": Color(0.64, 0.64, 0.61), "rough": 0.5, "metal": 0.7, "bump": 0.0, "grime": 0.15, "rust": 0.06, "scale": 4.0}
+		"wire_rust":
+			# wire left out for years: the zinc gone, rusted through to a flaky brown
+			return {"pattern": PAINT, "col_a": Color(0.31, 0.17, 0.09), "col_b": Color(0.43, 0.27, 0.15), "rough": 0.88, "metal": 0.2, "bump": 0.0, "grime": 0.3, "rust": 1.0, "scale": 4.0}
+		"wire_military":
+			# the armies' issue wire: dull dark zinc, weathered grey, flecked with rust
+			return {"pattern": PAINT, "col_a": Color(0.36, 0.37, 0.34), "col_b": Color(0.45, 0.46, 0.42), "rough": 0.6, "metal": 0.5, "bump": 0.0, "grime": 0.3, "rust": 0.18, "scale": 4.0}
 		"bag":
 			return {"pattern": CANVAS, "col_a": Color(0.5, 0.45, 0.33), "col_b": Color(0.4, 0.36, 0.26), "scale": 1.6, "rough": 0.97, "bump": 0.8, "grime": 0.7, "local_space": true, "use_vcolor": true}
 		"canvas_l":
@@ -1792,6 +1892,58 @@ void fragment() {
 """
 
 
+const WIRE_MESH_SHADER := """
+shader_type spatial;
+render_mode cull_disabled;
+instance uniform vec4 tint : source_color = vec4(0.58, 0.59, 0.58, 1.0);
+uniform bool use_vcolor = false;
+uniform bool welded = false;
+// CLOUD_SHADOW
+varying vec3 wp;
+varying vec3 wn;
+void vertex() {
+	wp = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
+	wn = normalize((MODEL_MATRIX * vec4(NORMAL, 0.0)).xyz);
+}
+// How much of a pixel the wires at every whole x cover, `duty` the wire's
+// share of the spacing: sharp lines up close, their average once they're
+// finer than a pixel (so a run of fence doesn't shimmer into moire).
+float wires(float x, float duty) {
+	float fw = max(fwidth(x), 1e-5);
+	float d = abs(fract(x + 0.5) - 0.5);
+	float sharp = 1.0 - smoothstep(duty * 0.5 - fw * 0.5, duty * 0.5 + fw * 0.5, d);
+	// (the far average is drawn heavier than the wire's true share: a run of
+	// chain-link reads at range as a grey veil, the light caught on every wire)
+	return mix(sharp, min(1.0, duty * 2.6), smoothstep(0.18, 0.5, fw));
+}
+void fragment() {
+	vec3 along = cross(vec3(0.0, 1.0, 0.0), wn);
+	along = length(along) > 0.01 ? normalize(along) : vec3(1.0, 0.0, 0.0);
+	float u = dot(wp, along);
+	float v = wp.y;
+	float cover;
+	if (welded) {
+		// 4 mm wire welded on a 75 x 225 mm grid
+		cover = max(wires(u / 0.075, 0.06), wires(v / 0.225, 0.02));
+	} else {
+		// 50 mm diamonds of 3 mm wire (drawn a little heavy to read at range)
+		float a = wires((u + v) / 0.0707, 0.085);
+		float b = wires((u - v) / 0.0707, 0.085);
+		cover = a + b - a * b;
+	}
+	if (cover < 0.01) { discard; }
+	vec3 c = use_vcolor ? COLOR.rgb : tint.rgb;
+	if (OUTPUT_IS_SRGB) { c = mix(c / 12.92, pow((c + 0.055) / 1.055, vec3(2.4)), step(vec3(0.04045), c)); }
+	ALBEDO = c;
+	if (OUTPUT_IS_SRGB) { ALBEDO = mix(ALBEDO * 12.92, 1.055 * pow(max(ALBEDO, vec3(0.0)), vec3(1.0 / 2.4)) - 0.055, step(vec3(0.0031308), ALBEDO)); }
+	ALPHA = clamp(cover, 0.0, 1.0);
+	METALLIC = 0.55;
+	ROUGHNESS = 0.5;
+	// CLOUD_FRAGMENT cloud_sun(wp)
+}
+"""
+
+
 const NETTING_SHADER := """
 shader_type spatial;
 render_mode cull_disabled;
@@ -1816,12 +1968,18 @@ void fragment() {
 	float g = vn(p * 13.0);
 	vec2 u = UV * 2.0 - 1.0;
 	float edge = max(abs(u.x), abs(u.y));
-	if (n + g * 0.3 < 0.47 + smoothstep(0.8, 1.0, edge) * 0.3) { discard; }
+	float scraps = step(0.47 + smoothstep(0.8, 1.0, edge) * 0.3, n + g * 0.3);
+	// Garnish is tied to a fine diamond cord mesh, visible through the larger gaps.
+	vec2 weave = vec2(p.x + p.y, p.x - p.y) * 7.0;
+	vec2 cord_distance = abs(fract(weave) - 0.5);
+	float cord = 1.0 - smoothstep(0.025, 0.045, min(cord_distance.x, cord_distance.y));
+	if (max(scraps, cord) < 0.5) discard;
 	vec3 c = tint.rgb * (0.65 + 0.55 * g);
 	c = mix(c, c * vec3(1.25, 1.05, 0.7), step(0.62, vn(p * 3.1 + 9.0)) * 0.6);
 	// the garnish: darker brown and near-black scraps knotted in, breaking it up
 	c = mix(c, c * vec3(0.62, 0.5, 0.38), step(0.6, vn(p * 2.3 + 31.0)) * 0.75);
 	c = mix(c, c * 0.35, step(0.7, vn(p * 4.1 + 57.0)) * 0.6);
+	c = mix(tint.rgb * 0.45, c, scraps);
 	ALBEDO = c;
 	ROUGHNESS = 0.95;
 	BACKLIGHT = c * 0.5;

@@ -157,68 +157,159 @@ static func pit_floor(model: Node3D, r: float) -> void:
 ## `half` from its middle, `h` high (up to the slits) and running out `depth`
 ## from the wall, rounded over and dying away at the corners. `all_sides`:
 ## round the back too, either side of the door.
-static func berms(model: Node3D, half: float, h: float, depth: float, all_sides: bool) -> void:
-	var full := _bank_mesh(h, depth, half * 2.0 + depth * 1.2)
-	var part := _bank_mesh(h, depth, half + 0.2)
-	var col := Color(0.29, 0.27, 0.17)
-	for a in 4:
-		var n := Basis(Vector3.UP, PI + a * PI * 0.5) * Vector3(0, 0, 1)
-		var rot := Vector3(0, PI + a * PI * 0.5, 0)
-		if a == 2:
-			if not all_sides:
+static func berms(model: Node3D, half: float, h: float, depth: float, all_sides: bool, structure = null) -> void:
+	var terrain_world = null
+	if structure != null and structure.world != null and not structure.world.terrain.landform.heights.is_empty():
+		terrain_world = structure.world
+	var foundation := Transform3D(Basis(Vector3.UP, structure.yaw), structure.position) if structure != null else Transform3D.IDENTITY
+	var bank := _mk(model, _bank_mesh(half, h, depth, all_sides, terrain_world, foundation), "bank", Vector3.ZERO, Vector3.ZERO, Color(0.29, 0.27, 0.17))
+	bank.material_override = TrenchNet.bank_material(structure != null and structure.world != null)
+
+
+## Furnish only ground that remains outside the combined excavation.
+static func trench_backed(st, local_point: Vector3, half_span := 0.0) -> bool:
+	if st.world == null:
+		return true
+	var basis := Basis(Vector3.UP, st.yaw)
+	for offset in [-half_span, 0.0, half_span]:
+		var point: Vector3 = st.position + basis * (local_point + Vector3.RIGHT * offset)
+		# Clear the whole joining footprint when digging starts, including its shallow ramps.
+		for other in st.world._trenches_at(point):
+			if other != st and not other.gone and other.trench_depth() > 0.15 and TrenchNet.inside(other, point):
+				return false
+	return true
+
+
+## Boards hold loose soil behind the posts; gaps leave intact clay cuts exposed.
+static func trench_shoring(st, parent: Node3D, rng: RandomNumberGenerator) -> void:
+	var count := maxi(1, floori(st.size.x / 1.8))
+	var basis := Basis(Vector3.UP, st.yaw)
+	for side in [-1.0, 1.0]:
+		for i in count:
+			var x: float = -st.size.x * 0.5 + 0.7 + i * 1.8
+			if TrenchNet.has_recess(st) and side == -st._enemy_side() and absf(x) < 0.85:
 				continue
-			for sx in [-1.0, 1.0]:
-				_mk(model, part, "bank", n * half + Vector3(sx * (half * 0.5 + 0.85), 0, 0), rot, col)
-			continue
-		_mk(model, full, "bank", n * half, rot, col)
+			if not trench_backed(st, Vector3(x, 0, side * (TrenchNet.HALF_W + 0.25))):
+				continue
+			var point: Vector3 = st.position + basis * Vector3(x, 0, side * TrenchNet.HALF_W)
+			var edge := _shoring_edge(point, basis.x)
+			var grade: float = st.world.terrain.landform.height(point) - st.position.y if st.world else 0.0
+			var height := rng.randf_range(0.97, 1.15)
+			_mk(parent, Res.box(Vector3(0.1, height, 0.12)), "wood", Vector3(x, grade - 1.18 + height * 0.5, side * edge), Vector3(0, 0, rng.randf_range(-0.035, 0.035)), Color(0.36, 0.31, 0.24), false)
+			if i == count - 1 or (i + st.eid + int(side)) % 3 == 0:
+				continue
+			var middle := x + 0.9
+			if TrenchNet.has_recess(st) and side == -st._enemy_side() and absf(middle) < 1.55:
+				continue
+			if not trench_backed(st, Vector3(middle, 0, side * (TrenchNet.HALF_W + 0.25)), 0.9):
+				continue
+			var end: Vector3 = st.position + basis * Vector3(x + 1.8, 0, side * TrenchNet.HALF_W)
+			var end_edge := _shoring_edge(end, basis.x)
+			var end_grade: float = st.world.terrain.landform.height(end) - st.position.y if st.world else 0.0
+			for row in 4:
+				var y := -0.94 + row * 0.185 + (grade + end_grade) * 0.5
+				var tilt := atan2(end_grade - grade, 1.8) + rng.randf_range(-0.012, 0.012)
+				var yaw := -atan2(side * (end_edge - edge), 1.8)
+				_mk(parent, Res.box(Vector3(1.89, rng.randf_range(0.15, 0.175), 0.055)), "fence_rail", Vector3(middle, y, side * ((edge + end_edge) * 0.5 + 0.075)), Vector3(0, yaw, tilt), Color(0.30, 0.27, 0.22), false)
 
 
-## A bank of earth `length` long (along local x), `h` high against a wall at
-## z = 0, rounding over and down to the ground `depth` out along +z, falling
-## away to nothing at both ends. Smooth normals, a few lumps.
-static func _bank_mesh(h: float, depth: float, length: float) -> ArrayMesh:
-	var key := "bank%.2f,%.2f,%.2f" % [h, depth, length]
+## A straight panel must clear the closest clod anywhere between its posts.
+static func _shoring_edge(point: Vector3, along: Vector3) -> float:
+	var erosion := 0.11
+	for sample in 9:
+		erosion = minf(erosion, TrenchNet.edge_erosion(point + along * (sample * 0.45 - 1.8)))
+	return TrenchNet.HALF_W + erosion - 0.21
+
+
+## Soil dumped over roof logs settles into an uneven cap rather than a perfect dome.
+static func roof_soil_height(p: Vector2, variant: int) -> float:
+	var radius := pow(pow(absf(p.x) / 2.95, 4.0) + pow(absf(p.y) / 3.10, 4.0), 0.25)
+	var edge := 1.0 - smoothstep(0.68, 1.0, radius)
+	var phase := variant * 2.3
+	var clods := 0.07 * sin(p.x * 2.7 + sin(p.y * 1.9 + phase)) + 0.035 * sin(p.y * 5.4 - p.x * 3.1)
+	return -0.14 + edge * (0.58 + clods + 0.08 * sin(p.x * 0.8 + phase))
+
+
+static func roof_soil(variant: int) -> ArrayMesh:
+	var key := "roof_soil%d" % variant
 	if _meshes.has(key):
 		return _meshes[key]
-	var nu := maxi(6, int(length / 0.35))
-	var ns := 8
-	var hl := length * 0.5
-	var pos: Array = []
-	for j in ns + 1:
-		var row: Array = []
-		for i in nu + 1:
-			var u := -hl + length * float(i) / nu
-			var t := float(j) / ns
-			var taper := smoothstep(hl, hl - depth * 1.1, absf(u))
-			var y := h * pow(cos(t * PI * 0.5), 1.25) * taper
-			y += 0.035 * sin(u * 3.1 + t * 2.0) * sin(t * PI) * taper
-			# the toe runs out a little further where the bank is highest
-			row.append(Vector3(u, maxf(y, 0.0) - 0.02, t * depth * (0.75 + 0.25 * taper)))
-		pos.append(row)
-	var nrm: Array = []
-	for j in ns + 1:
-		var row2: Array = []
-		for i in nu + 1:
-			var du: Vector3 = pos[j][mini(i + 1, nu)] - pos[j][maxi(i - 1, 0)]
-			var dt: Vector3 = pos[mini(j + 1, ns)][i] - pos[maxi(j - 1, 0)][i]
-			var nn := dt.cross(du).normalized()
-			if nn.y < 0.0:
-				nn = -nn
-			row2.append(nn)
-		nrm.append(row2)
-	var v := PackedVector3Array()
-	var n := PackedVector3Array()
-	for j in ns:
-		for i in nu:
-			var q := [[i, j], [i + 1, j], [i + 1, j + 1], [i, j + 1]]
-			for tri in [[0, 1, 2], [0, 2, 3]]:
-				var a: Array = q[tri[0]]
-				var b: Array = q[tri[1]]
-				var c: Array = q[tri[2]]
-				_tri(v, n, pos[a[1]][a[0]], pos[b[1]][b[0]], pos[c[1]][c[0]], nrm[a[1]][a[0]], nrm[b[1]][b[0]], nrm[c[1]][c[0]])
-	var m := _commit(v, n)
-	_meshes[key] = m
-	return m
+	var vertices := PackedVector3Array()
+	var normals := PackedVector3Array()
+	for z in 20:
+		for x in 20:
+			var points := []
+			var directions := []
+			for offset in [Vector2.ZERO, Vector2.RIGHT, Vector2.ONE, Vector2.DOWN]:
+				var p: Vector2 = (Vector2(x, z) + offset) * Vector2(0.30, 0.315) - Vector2(3.0, 3.15)
+				points.append(Vector3(p.x, roof_soil_height(p, variant), p.y))
+				var dx := (roof_soil_height(p + Vector2(0.04, 0), variant) - roof_soil_height(p - Vector2(0.04, 0), variant)) / 0.08
+				var dz := (roof_soil_height(p + Vector2(0, 0.04), variant) - roof_soil_height(p - Vector2(0, 0.04), variant)) / 0.08
+				directions.append(Vector3(-dx, 1, -dz).normalized())
+			if (points[0] as Vector3).y <= -0.139 and (points[1] as Vector3).y <= -0.139 and (points[2] as Vector3).y <= -0.139 and (points[3] as Vector3).y <= -0.139:
+				continue
+			for triangle in [[0, 1, 2], [0, 2, 3]]:
+				_tri(vertices, normals, points[triangle[0]], points[triangle[1]], points[triangle[2]], directions[triangle[0]], directions[triangle[1]], directions[triangle[2]])
+	var mesh := _commit(vertices, normals)
+	_meshes[key] = mesh
+	return mesh
+
+
+## One continuous bank avoids four overlapping soil skirts at the corners.
+static func _bank_point(angle: float, t: float, half: float, h: float, depth: float, all_sides: bool) -> Vector3:
+	var direction := Vector2(sin(angle), cos(angle))
+	var inner := direction * (half / maxf(absf(direction.x), absf(direction.y)))
+	var door := 1.0
+	if direction.y > 0.0:
+		door = smoothstep(0.85, 1.45, absf(inner.x)) if all_sides else 1.0 - smoothstep(0.6, 0.8, direction.y)
+	var reach := depth * (0.9 + 0.1 * sin(angle * 5.0 + 0.7) + 0.06 * sin(angle * 13.0))
+	var point := inner + direction * t * reach
+	var y := h * pow(1.0 - t, 1.3)
+	y += sin(t * PI) * (0.13 * sin(point.x * 2.3 + point.y) + 0.06 * sin(point.y * 5.1))
+	return Vector3(point.x, maxf(0.0, y * door) - 0.025, point.y)
+
+
+## Foundations follow immutable geology, so trench spawn order cannot change their shape.
+## The shared cut mask removes bank material wherever a new passage is excavated.
+static func _bank_ground_point(angle: float, t: float, half: float, h: float, depth: float, all_sides: bool, world, foundation: Transform3D) -> Vector3:
+	var point := _bank_point(angle, t, half, h, depth, all_sides)
+	if world != null:
+		var ground: float = world.terrain.landform.height(foundation * point) - foundation.origin.y
+		point.y += ground * smoothstep(0.0, 1.0, t)
+	return point
+
+
+static func _bank_mesh(half: float, h: float, depth: float, all_sides: bool, world = null, foundation := Transform3D.IDENTITY) -> ArrayMesh:
+	var key := "bank%.2f,%.2f,%.2f,%s" % [half, h, depth, all_sides]
+	if world == null and _meshes.has(key):
+		return _meshes[key]
+	var points := []
+	var normals := []
+	for ring in 9:
+		var row := []
+		var directions := []
+		var t := ring / 8.0
+		for i in 65:
+			var angle := (i % 64) * TAU / 64.0
+			var point := _bank_ground_point(angle, t, half, h, depth, all_sides, world, foundation)
+			var along := _bank_ground_point(angle + 0.01, t, half, h, depth, all_sides, world, foundation) - _bank_ground_point(angle - 0.01, t, half, h, depth, all_sides, world, foundation)
+			var across := _bank_ground_point(angle, minf(t + 0.01, 1.0), half, h, depth, all_sides, world, foundation) - _bank_ground_point(angle, maxf(t - 0.01, 0.0), half, h, depth, all_sides, world, foundation)
+			row.append(point)
+			directions.append(across.cross(along).normalized())
+		points.append(row)
+		normals.append(directions)
+	var vertices := PackedVector3Array()
+	var directions := PackedVector3Array()
+	for ring in 8:
+		for i in 64:
+			if _bank_point(i * TAU / 64.0, ring / 8.0, half, h, depth, all_sides).y <= -0.024 and _bank_point((i + 1) * TAU / 64.0, ring / 8.0, half, h, depth, all_sides).y <= -0.024:
+				continue
+			_tri(vertices, directions, points[ring][i], points[ring][i + 1], points[ring + 1][i + 1], normals[ring][i], normals[ring][i + 1], normals[ring + 1][i + 1])
+			_tri(vertices, directions, points[ring][i], points[ring + 1][i + 1], points[ring + 1][i], normals[ring][i], normals[ring + 1][i + 1], normals[ring + 1][i])
+	var mesh := _commit(vertices, directions)
+	if world == null:
+		_meshes[key] = mesh
+	return mesh
 
 
 # --- the watchtower --------------------------------------------------------------------
@@ -292,17 +383,22 @@ static func _concertina(L: float, v: int) -> ArrayMesh:
 			# the loops lean along the run as it's pulled out, and the coil sags
 			# a little between the points where it's pegged down
 			var sag := 0.035 * sin(t * PI * 2.0 * maxf(1.0, L / 2.5)) if ci == 2 else 0.0
-			pts.append(Vector3(x + 0.05 * sin(a), c.y + rr * sin(a) * 0.92 - sag, c.z + rr * cos(a)))
-		_wire_tube(vv, nn, pts, 0.0105)
-		_barbs(vv, nn, pts, 0.085, 0.028, rng)
+			# concertina's loops are clipped to their neighbours at four points
+			# round the coil, so pulled out they lean alternately one way and the
+			# other and cross: from the side, a chain of diamonds, not a spring
+			var lean := 0.09 * sin(a - ph) * (1.0 if int(floor((a - ph) / TAU)) % 2 == 0 else -1.0)
+			pts.append(Vector3(x + lean, c.y + rr * sin(a) * 0.92 - sag, c.z + rr * cos(a)))
+		# razor tape: a 2.5 mm core wire with steel tape crimped round it, the
+		# tape punched into blades in clusters every few centimetres
+		_wire_tube(vv, nn, pts, 0.0068)
+		_barbs(vv, nn, pts, 0.045, 0.022, rng)
 	# the strained strands along the picket rows
 	for sz in [-0.62, 0.62]:
 		var pts2 := PackedVector3Array()
 		for i in 33:
 			var t := float(i) / 32.0
 			pts2.append(Vector3(-L * 0.5 + 0.1 + t * (L - 0.2), 1.02 - 0.03 * sin(t * PI * 2.0), sz))
-		_wire_tube(vv, nn, pts2, 0.006)
-		_barbs(vv, nn, pts2, 0.12, 0.02, rng)
+		BuildingWire.barbed_wire(vv, nn, pts2, 0.11, rng)
 	var m := _commit(vv, nn)
 	_meshes[key] = m
 	return m
@@ -312,8 +408,8 @@ static func _wire(model: Node3D, L: float, rebel: bool, rng: RandomNumberGenerat
 	var coil := MeshInstance3D.new()
 	coil.mesh = _concertina(L, rng.randi() % 3)
 	model.add_child(coil)
-	# new galvanised wire for the Coalition; the Rebels' has been out in the rain
-	Mats.apply(coil, "wire", Color(0.82, 0.74, 0.62) if rebel else Color(1, 1, 1))
+	# the Coalition's dull issue wire; the Rebels' has been out in the rain for years
+	Mats.apply(coil, "wire_rust" if rebel else "wire_military")
 	coil.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
 	# pickets along both rows, staggered: steel U-pickets (or cut stakes),
 	# driven in at a slight lean, the strand wired to their tops
