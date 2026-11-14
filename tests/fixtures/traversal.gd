@@ -12,6 +12,7 @@ func _ready() -> void:
 	HNav.C = 16
 	HNav.NC = 4
 	var w := World.new()
+	w.srv = true
 	w.settings = {"seed": 3}
 	w.terrain = TerrainMap.new(w)
 	w.water = WaterMap.new(w)
@@ -64,6 +65,7 @@ func _ready() -> void:
 
 func _water() -> void:
 	var w := World.new()
+	w.srv = true
 	w.settings = {"seed": 3}
 	w.terrain = TerrainMap.new(w)
 	w.water = WaterMap.new(w)
@@ -150,6 +152,7 @@ func _regions() -> void:
 
 func _footprint() -> void:
 	var w := World.new()
+	w.srv = true
 	w.settings = {"seed": 1}
 	w.terrain = TerrainMap.new(w)
 	w.water = WaterMap.new(w)

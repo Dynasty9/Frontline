@@ -1,7 +1,7 @@
 // --gpu-bench: what each graphics setting costs the graphics card
 // (scripts/test/gpu_bench.gd). Headless there is no GPU time to read, so this
-// checks the run itself: it holds the battle, prices every setting the
-// Cinematic preset turns on, writes its report, puts every setting back, and
+// checks the run itself: it holds the battle, accounts for every Cinematic
+// setting (without pricing moving-clock work), writes its report, restores them, and
 // never saves the player's settings.
 import test from "node:test";
 import assert from "node:assert/strict";
@@ -11,6 +11,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { ROOT } from "./lib/game.mjs";
+import { assertCinematicCoverage } from "./lib/gpu-bench-report.mjs";
 
 // where Godot keeps user:// for this project on each system
 const userDir = () => {
@@ -19,7 +20,7 @@ const userDir = () => {
   return path.join(process.env.XDG_DATA_HOME ?? path.join(os.homedir(), ".local", "share"), "godot", "app_userdata", "Frontline");
 };
 
-test("the GPU benchmark prices every Cinematic setting and puts the settings back", async () => {
+test("the stationary GPU benchmark accounts for every Cinematic setting and restores settings", async () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "gpu-bench-"));
   const out = path.join(dir, "report.json");
   const settings = path.join(userDir(), "settings.cfg");
@@ -34,10 +35,7 @@ test("the GPU benchmark prices every Cinematic setting and puts the settings bac
     assert.doesNotMatch(stdout + stderr, /SCRIPT ERROR|Parse Error/);
     assert.match(stdout, /GPUBENCH done/);
     const report = JSON.parse(fs.readFileSync(out, "utf8"));
-    const priced = new Set(report.settings.map((s) => s.key));
-    for (const key of [...report.cinematic_keys, "cloud_shadows", "scale"]) {
-      assert.ok(priced.has(key), `${key} was priced`);
-    }
+    assertCinematicCoverage(report);
     for (const s of report.settings) {
       assert.equal(s.pairs.length, 2, `${s.key} was switched off and on twice`);
     }
