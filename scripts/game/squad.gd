@@ -59,6 +59,7 @@ var pre_order: Array = []  # what it was doing before it displaced: [order, pos,
 var dugout_cd := 0.0
 var dugout_spots := {}  # eid -> where each man was before he went down the dugout
 var dugout_st = null  # the trench section whose dugout it is sheltering in (Structure)
+var dugout_held := false  # sent below by its commander: it stays there until told otherwise
 var ammo_t := 0.0
 var bt_path := ""
 var bt_cd := {}
@@ -591,6 +592,10 @@ func order_board(v: Vehicle) -> void:
 
 func order_enter(st: Structure) -> void:
 	_regroup()
+	if st.skind == "trench":
+		if TrenchNet.has_dugout(st):
+			SquadBrain.shelter(self, st, true)
+		return
 	if st.skind == "tunnel":
 		order = "tunnel"
 		for m in members:

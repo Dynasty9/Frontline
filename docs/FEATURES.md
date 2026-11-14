@@ -510,7 +510,9 @@ Ambush Alley autoplay can call its existing mortar support against spotted, stop
   20 m goes down its stairs instead, all but a sentry (the man furthest forward) and any gun crews, and stays
   below until the barrage lifts, the sentry sees enemy infantry within 90 m, or it is given an order - then
   "Stand to!" and everyone is back on the fire step. A dugout holds nine; men below can't be hit, but a shell
-  that brings the section in buries the stairs and they dig themselves out hurt. *Break contact*: a squad losing its nerve (or, for the AI, cut up and
+  that brings the section in buries the stairs and they dig themselves out hurt. Right-click a dugout's doorway
+  with a squad selected to send it below yourself: it stays there, barrage or not, until you give it another
+  order or the sentry sees them coming, then mans the line by the dugout. *Break contact*: a squad losing its nerve (or, for the AI, cut up and
   outnumbered) throws smoke and pulls back by bounds to a rally point, one team firing while the other moves,
   then counts off and checks its ammunition; crews on their guns and squads holding their own base don't.
   *Lying in wait*: a squad set to defend somewhere the enemy doesn't know about holds its fire until they're

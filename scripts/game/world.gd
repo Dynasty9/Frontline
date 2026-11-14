@@ -610,7 +610,7 @@ func dugout_for(p: Vector3, r: float) -> Structure:
 	var best: Structure = null
 	var bd := r
 	for st in structures_near(p, r + 4.0):
-		if not TrenchNet.has_dugout(st) or st.inside.size() >= TrenchNet.DUGOUT_ROOM:
+		if not TrenchNet.has_dugout(st) or TrenchNet.dugout_room(st) <= 0:
 			continue
 		var d := Defs.flat(TrenchNet.dugout_door(st) - p).length()
 		if d < bd:

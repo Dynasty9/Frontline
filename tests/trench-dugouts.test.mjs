@@ -87,3 +87,36 @@ test("an order calls the men up out of the dugout", async () => {
   assert.ok(men.every((s) => s.life !== "HIDDEN"), "everyone came up");
   assert.ok(men.filter((s) => s.life === "ALIVE").length >= 2, "and they are moving off");
 });
+
+test("sent below by its commander, a squad stays down until ordered out", async () => {
+  await game.load({ scenario: "trenches", seed: 3, static: true });
+  await game.step(10);
+  // find a dugout the way a player would: shell a squad, note where it goes, then try again by order
+  await shellTheLine();
+  await game.step(14);
+  const { squads } = await game.query("squads", { team: 1 });
+  const sq = squads.find((s) => s.drill === "dugout");
+  assert.ok(sq, "a squad found a dugout");
+  const { structures } = await game.query("structures", { kind: "trench" });
+  // order it out, wait for the shelling to end, then send it back down by hand
+  await game.order(1, "defend", { squads: [sq.id], pos: v3(sq.pos[0], sq.pos[1]), face: v3(0, 1) });
+  await game.step(30);
+  let entered = 0;
+  for (const st of structures) {
+    await game.order(1, "enter", { squads: [sq.id], target: st.id });
+    await game.step(0.5);
+    const { squads: now } = await game.query("squads", { ids: [sq.id] });
+    if (now[0].drill === "dugout") {
+      entered = st.id;
+      break;
+    }
+  }
+  assert.ok(entered, "an enter order on a dugout section sends it below");
+  await game.step(40);
+  const { squads: still } = await game.query("squads", { ids: [sq.id] });
+  assert.equal(still[0].drill, "dugout", "with no shells falling it stays below");
+  await game.order(1, "move", { squads: [sq.id], pos: v3(sq.pos[0], sq.pos[1] - 20) });
+  await game.step(2);
+  const { soldiers } = await game.query("soldiers", { team: 1 });
+  assert.ok(soldiers.filter((s) => s.squad === sq.id).every((s) => s.life !== "HIDDEN"), "an order brings them up");
+});

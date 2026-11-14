@@ -4036,7 +4036,7 @@ func order_dugout(st: Structure) -> void:
 
 func _dugout_tick(dt: float) -> void:
 	var st := task_ent as Structure
-	if st == null or not TrenchNet.has_dugout(st) or st.inside.size() >= TrenchNet.DUGOUT_ROOM or squad == null or squad.drill != "dugout":
+	if st == null or not TrenchNet.has_dugout(st) or TrenchNet.dugout_room(st) <= 0 or squad == null or squad.drill != "dugout":
 		task = ""
 		return
 	var door := TrenchNet.dugout_door(st)

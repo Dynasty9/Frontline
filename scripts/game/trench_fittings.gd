@@ -368,6 +368,9 @@ static func _dugout(st, done: Node3D, rng: RandomNumberGenerator, rear: float, b
 	# the stairway: dark beyond the frame, a step catching the light at the door
 	var dark := Res.mi(done, Res.box(Vector3(0.98, 1.4, 0.03)), Res.mat(Color(0.012, 0.011, 0.009), 1.0, 0.0, true), Vector3(0, g - 0.5, door_z + rear * 0.09), Vector3.ZERO, false)
 	dark.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	# lamplight from the bottom of the stairs, catching the last steps
+	var glow := Res.mi(done, Res.box(Vector3(0.7, 0.32, 0.02)), Res.mat(Color(0.3, 0.17, 0.07), 1.0, 0.0, true), Vector3(0, g - 1.0, door_z + rear * 0.07), Vector3.ZERO, false)
+	glow.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	WorksModels._mk(done, Res.box(Vector3(0.95, 0.06, 0.3)), "wood_dark", Vector3(0, g - 1.13, door_z - rear * 0.12), Vector3.ZERO, wood.darkened(0.1), false)
 	# the gas blanket, rolled and tied over the door, a corner hanging loose
 	WorksModels._mk(done, Res.cyl(0.075, 0.075, 1.0, 8), "canvas", Vector3(0, g + 0.13, door_z - rear * 0.11), Vector3(0, 0, PI * 0.5), Color(0.32, 0.3, 0.22), false)

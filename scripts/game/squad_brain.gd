@@ -306,10 +306,13 @@ static func can_shelter(q: Squad) -> bool:
 
 
 ## Down the dugouts, all but one: the man furthest forward stays at the
-## parapet as sentry, and gun crews stay on their guns.
-static func shelter(q: Squad) -> int:
+## parapet as sentry, and gun crews stay on their guns. `held`: its commander
+## sent it below, so it stays there, barrage or no, until he says otherwise
+## (or the sentry sees them coming).
+static func shelter(q: Squad, st: Structure = null, held := false) -> int:
 	var c := q.centroid()
-	var st: Structure = q.world.dugout_for(c, DUGOUT_REACH)
+	if st == null:
+		st = q.world.dugout_for(c, DUGOUT_REACH)
 	if st == null:
 		return BT.FAIL
 	var alive := q.alive_members()
@@ -321,8 +324,10 @@ static func shelter(q: Squad) -> int:
 		if m.task == "" and f > front:
 			front = f
 			sentry = m
-	var room: int = TrenchNet.DUGOUT_ROOM - st.inside.size()
+	var room: int = TrenchNet.dugout_room(st)
 	q.pre_order = [q.order, q.order_pos, q.facing, q.move_mode_ord]
+	if held:
+		q.pre_order = ["defend", TrenchNet.dugout_door(st), Basis(Vector3.UP, st.yaw) * Vector3(0, 0, st._enemy_side()), 0]
 	q.dugout_spots.clear()
 	var sent := 0
 	for m in alive:
@@ -335,6 +340,7 @@ static func shelter(q: Squad) -> int:
 		return BT.FAIL
 	q.drill = "dugout"
 	q.dugout_st = st
+	q.dugout_held = held
 	q.drill_t = q.world.time
 	q.drill_pos = TrenchNet.dugout_door(st)
 	q.shown_order = "dugout"
@@ -349,7 +355,7 @@ static func shelter(q: Squad) -> int:
 static func dugout_tick(q: Squad) -> int:
 	var t := q.world.time
 	var coming := _enemies_near(q, STAND_TO) > 0
-	var lifted := t - q.drill_t > 8.0 and q.world.impacts_near(q.drill_pos, 35.0, 10.0) == 0
+	var lifted := not q.dugout_held and t - q.drill_t > 8.0 and q.world.impacts_near(q.drill_pos, 35.0, 10.0) == 0
 	var st = q.dugout_st
 	var open: bool = st != null and is_instance_valid(st) and TrenchNet.has_dugout(st)
 	var below := 0
@@ -358,11 +364,11 @@ static func dugout_tick(q: Squad) -> int:
 			continue
 		if (m.life == Soldier.Life.HIDDEN and m.hidden_reason == "dugout") or m.task == "dugout":
 			below += 1
-		elif open and m.life == Soldier.Life.ALIVE and m.task == "" and q.dugout_spots.has(m.eid) and st.inside.size() < TrenchNet.DUGOUT_ROOM:
+		elif open and m.life == Soldier.Life.ALIVE and m.task == "" and q.dugout_spots.has(m.eid) and TrenchNet.dugout_room(st) > 0:
 			# threw himself flat as a shell came in: up and on down the stairs
 			m.order_dugout(st)
 			below += 1
-	if not open or coming or lifted or t - q.drill_t > 150.0 or (below == 0 and t - q.drill_t > 3.0):
+	if not open or coming or lifted or (t - q.drill_t > 150.0 and not q.dugout_held) or (below == 0 and t - q.drill_t > 3.0):
 		stand_to(q, coming)
 	return BT.OK
 
@@ -373,6 +379,7 @@ static func stand_to(q: Squad, urgent: bool) -> void:
 			m.leave_dugout()
 	q.drill = ""
 	q.shown_order = ""
+	q.dugout_held = false
 	q.dugout_cd = q.world.time + 25.0
 	# what fell while they were below has passed over them: no running from it now
 	q.impacts.clear()

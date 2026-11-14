@@ -3240,7 +3240,7 @@ func _build_model() -> void:
 			_mg_model(rng, bags)
 			if variant != 1:
 				WorksModels.apron(model, foot.x + 0.3, foot.y + 0.3)
-			else:
+			elif world != null:
 				# the trench it's dug into clears its own parapet and kit from the bay
 				for other in world.structures_near(position, 8.0):
 					if other.skind == "trench" and not other.gone and other.model != null:

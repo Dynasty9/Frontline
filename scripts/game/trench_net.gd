@@ -266,6 +266,15 @@ static func has_dugout(st) -> bool:
 	return st.skind == "trench" and not st.gone and st.built and has_recess(st) and recess_kind(st) == RECESS_DUGOUT and st.trench_depth() >= 0.85
 
 
+## How many more the dugout takes: men freed or no longer below don't count.
+static func dugout_room(st) -> int:
+	var n := 0
+	for s in st.inside:
+		if is_instance_valid(s) and not s.gone and s.hidden_reason == "dugout":
+			n += 1
+	return DUGOUT_ROOM - n
+
+
 ## Where men go down: the floor of the recess, in front of the door.
 static func dugout_door(st) -> Vector3:
 	var rear: Vector3 = Basis(Vector3.UP, st.yaw) * Vector3(0, 0, -st._enemy_side())
