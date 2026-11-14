@@ -1,0 +1,73 @@
+{
+  "before_ref": "54823975 with construction passes 2 and 3 applied: an intermediate state of the change that adds this entry",
+  "after_ref": "the change that adds this entry",
+  "engine": "Godot 4.7.2 stable",
+  "renderer": "forward_plus",
+  "team": 0,
+  "seed": 3,
+  "source_size": [
+    1600,
+    900
+  ],
+  "sheet_size": [
+    1600,
+    3600
+  ],
+  "composition": "Uncropped source renders resized to 800x450, before left, after right, short labels. JPEG quality 82.",
+  "command": "godot --path <checkout> tools/showcase/vehicle-surfaces.tscn -- --surface-single --surface-kinds=<model> --surface-focus=<focus> --surface-size=<size> [--surface-rear] --surface-out=<outside-repo-directory>",
+  "shots": [
+    {
+      "model": "old_tank",
+      "focus": "0,1.5,3.3",
+      "size": 2.6,
+      "rear": true,
+      "label": "T-55: 200-litre drums on the rear plate"
+    },
+    {
+      "model": "zamak_cargo",
+      "focus": "-0.86,2.3,0.45",
+      "size": 1.8,
+      "label": "Zamak cargo: oil drums"
+    },
+    {
+      "model": "futura",
+      "focus": "0,1.3,3.6",
+      "size": 3.0,
+      "rear": true,
+      "label": "Futura: rear exhaust grille, fender tanks"
+    },
+    {
+      "model": "m35",
+      "focus": "0,1.9,1.2",
+      "size": 5.0,
+      "rear": true,
+      "label": "M35: canvas tilt on bows, axles"
+    },
+    {
+      "model": "xian",
+      "focus": "1.5,1.9,-1.2",
+      "size": 3.6,
+      "label": "Xian: fitted troop doors and windows"
+    },
+    {
+      "model": "caesar",
+      "focus": "0,1.55,-0.1",
+      "size": 3.0,
+      "label": "Caesar: gull-wing door seams on the skin"
+    },
+    {
+      "model": "hunter",
+      "focus": "0,1.6,2.9",
+      "size": 2.4,
+      "rear": true,
+      "label": "Hunter: swing-out spare carrier"
+    },
+    {
+      "model": "ifrit",
+      "focus": "-0.5,1.62,3.3",
+      "size": 2.0,
+      "rear": true,
+      "label": "Ifrit: spare on its hub carrier"
+    }
+  ]
+}

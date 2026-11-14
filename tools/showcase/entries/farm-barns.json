@@ -1,0 +1,20 @@
+{
+  "entry": "changelog/unreleased/farm-barns.md",
+  "summary": "Barns are weatherboarded under corrugated roofs with loft doors; houses on slopes stand level.",
+  "medium": "still",
+  "stage": "tools/showcase/building-surfaces.tscn; tests/fixtures/environment-views.gd (farmstead)",
+  "rationale": "Appearance change: a matched studio barn from both sides shows every part, and a farmstead in the game shows two barns at the game's own scale, standing level on their slope.",
+  "source_ref": "9113d2b115b8bedb3a38274759bd99ecc9808add",
+  "before_ref": "c7773eaf0178bdf330f8846ee995057e31f47261",
+  "sources": [
+    {
+      "file": "changelog/unreleased/farm-barns/comparison.jpg",
+      "sha256": "f3b03b05f014dbd8b1f2965071dc331842ab0530a3c7af601821ab4d0c970dcf"
+    },
+    {
+      "file": "changelog/unreleased/farm-barns/capture.json",
+      "sha256": "6bc08b48d0357dcdeb0a1da78d005a26219e394b789b4aa6b2a40d630ec4c67b"
+    }
+  ],
+  "output": null
+}

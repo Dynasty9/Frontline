@@ -1,0 +1,20 @@
+{
+  "entry": "changelog/unreleased/vehicle-construction-pass-4.md",
+  "summary": "Oil drums and spare-wheel carriers become shared builders, and a sweep moves the remaining hand-built windows, doors, hatches, sights, tanks and gun mounts onto the shared ones.",
+  "medium": "still",
+  "stage": "tools/showcase/vehicle-surfaces.tscn",
+  "rationale": "Static construction change: one matched close-up sheet of eight representative vehicles. Per-agent review captures stay outside Git; much of the added hardware is small at gameplay distance.",
+  "source_ref": "54823975 with construction passes 2 and 3 applied: an intermediate state of the change that adds this entry",
+  "before_ref": "54823975 with construction passes 2 and 3 applied: an intermediate state of the change that adds this entry",
+  "sources": [
+    {
+      "file": "changelog/unreleased/vehicle-construction-pass-4/comparison.jpg",
+      "sha256": "e7b0a0001c22f6efba7bd601d6667d1815a30e1d9b4aab98b1735a61e00cebb1"
+    },
+    {
+      "file": "changelog/unreleased/vehicle-construction-pass-4/capture.json",
+      "sha256": "50c66553dd92089be41cb97d9e3e00bbed4f1f7f27e2b838e774bf117c8d714d"
+    }
+  ],
+  "output": null
+}

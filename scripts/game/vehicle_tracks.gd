@@ -55,8 +55,49 @@ static func shoes(k: VehicleModels, parent: Node3D, x: float, width: float, outl
 		# Hinge ends show at the edges without filling the guide-tooth gap.
 		var hinge := q + tangent * spacing * 0.44
 		var pin_radius := minf(0.018, thickness * 0.225)
-		k._cyl(parent, pin_radius, pin_radius, width + pin_radius * 1.4, Vector3(x, hinge.y, hinge.x), VehicleWheels.AXLE, "gunmetal_w", null, 6, false)
+		k._add(parent, VehicleWheels.drum(pin_radius, pin_radius, width + pin_radius * 1.4, 6), "gunmetal_w", null, Vector3(x, hinge.y, hinge.x), VehicleWheels.AXLE, Vector3.ONE, false)
 
 		if guides:
 			var tooth := q - normal * (thickness * 0.5 + 0.035)
 			k._add(parent, _shoe, "track", null, Vector3(x, tooth.y, tooth.x), rot, Vector3(width * 0.10, 0.07, spacing * 0.35), false)
+
+
+## Spare track links stowed in a row on a plate (a glacis, a turret side, a
+## hull side), as crews carry them for repairs and for the little armour they
+## add. `center` is the face point under the middle of the row, `along` the
+## row's direction and `normal` the face's outward normal, in the parent's
+## axes. `size` is one old link box: x its length along the row (the track's
+## pitch), y its width across the track, z its thickness off the face; `count`
+## links sit `pitch` apart (zero: size.x + 1.5 cm). Each is a cast shoe in the
+## track's own steel: the plate (0.6 of the thickness), the grouser across its
+## outer face standing to 1.35 of it, and the hinge barrels along both pitch
+## edges. `retainer` crosses the row with two flat bars bolted to welded lugs
+## past its end links (2 cm beyond them, 8 mm over the grousers). Static: the
+## live belt and VehicleTracks.shoes are not involved.
+static func spare_links(k: VehicleModels, parent: Node3D, center: Vector3, along: Vector3, normal: Vector3, count: int, size: Vector3, pitch := 0.0, retainer := true, mat := "track") -> void:
+	var n := normal.normalized()
+	var x := (along - n * along.dot(n)).normalized()
+	if count <= 0 or n.is_zero_approx() or x.is_zero_approx():
+		return
+	var mount := k._pivot(parent, center)
+	# Local X along the row, Y across the track, Z out of the face.
+	mount.basis = Basis(x, n.cross(x), n)
+	var step := pitch if pitch > 0.0 else size.x + 0.015
+	var plate := size.z * 0.6
+	var grouser := size.z * 1.35
+	var barrel := size.z * 0.36
+	for i in count:
+		var cx := (i - (count - 1) * 0.5) * step
+		k._add(mount, Res.box(Vector3(size.x * 0.8, size.y * 0.96, plate)), mat, null, Vector3(cx, 0, plate * 0.5))
+		k._add(mount, Res.box(Vector3(size.x * 0.28, size.y * 0.9, grouser - plate)), mat, null, Vector3(cx, 0, (plate + grouser) * 0.5))
+		for edge: float in [-1.0, 1.0]:
+			k._add(mount, VehicleWheels.drum(barrel, barrel, size.y * 0.94, 6), mat, null, Vector3(cx + edge * (size.x * 0.5 - barrel), 0, barrel), Vector3.ZERO, Vector3.ONE, false)
+	if retainer:
+		var reach := (count - 1) * step * 0.5 + size.x * 0.5 + 0.02
+		var lug := grouser + 0.008
+		for y: float in [-size.y * 0.3, size.y * 0.3]:
+			k._box(mount, Vector3(reach * 2.0 - 0.02, 0.035, 0.008), Vector3(0, y, grouser + 0.004), "gunmetal_w", null, Vector3.ZERO, false)
+			for e: float in [-1.0, 1.0]:
+				k._box(mount, Vector3(0.02, 0.045, lug), Vector3(e * (reach - 0.01), y, lug * 0.5), "gunmetal_w")
+				VehicleBody.fastener(k, mount, Vector3(e * (reach - 0.01), y, lug + 0.002), Vector3.BACK, 0.008)
+	k._fold(mount)
