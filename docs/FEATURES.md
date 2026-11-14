@@ -379,11 +379,13 @@ sets one up as a listed battle, and friends join it from the server browser). Ea
 | Mission | Side | What it shows off |
 |---|---|---|
 | **Boot Camp** | Coalition | The tutorial, listed first and offered on a first launch: a step at a time behind the lines, from the camera to the XO (below). |
-| **Bridgehead** | Coalition | Clear a riverside village house by house, seize its bridge, hold it against infantry, a BTR and mortars coming over the bridge and the ford. 155 mm artillery on call. |
-| **Beachhead** | Coalition | RHIBs land a party on the beach under a patrol ship's guns while enemy boats come out; kill two AA trucks, then a Blackfoot and a Ghost Hawk full of reinforcements come in from the sea. |
-| **Sky Hook** | Coalition | Hook a Nyx tank destroyer under a Mohawk, fly it over the river to a cut-off outpost and stop the armoured column coming for it. |
-| **Ambush Alley** | Rebels | Get into the woods above a lane before a convoy leaves, let the IED open the ambush, destroy the convoy, then break contact before the QRF (and its helicopter) arrives. |
-| **Kingpin** | Coalition | A night raid: a checkpoint on the main street, a barred house, a Rebel commander to kill or capture, and a run back to the Hunters before the town cuts the road. |
+| **Bridgehead** | Coalition | Clear the village, seize the bridge, then use a twenty-second regroup window to cover the crossing and ford. Armour and mortar warnings give time to react; neutralising the optional observer team stops further mortar salvos. Hold until Lancer's relief tanks reach the cleared bridgehead. Two 155 mm missions on call, three minutes apart. |
+| **Beachhead** | Coalition | Land under Neptune's guns, destroy the AA trucks to unlock helicopters and an A-10 strike, then capture the harbour. The ninety-second defence starts on capture, with two inland counterattack waves and radio warnings; victory also requires a clear quay, with a CLEAR AREA prompt if enemies remain after the timer. Reserves exist from the start and can be weakened before their advance. Keep Neptune afloat as an optional objective. Co-op allocates whole boatloads to commanders, keeping each landing party with its transport. |
+| **Sky Hook** | Coalition | Race the eighty-second vanguard countdown to sling the Nyx to Kilo. Delivery and destroying the technical and both BTRs are required; radio prompts infantry spotting and a clear firing position if the fight drags on. The grounded Nyx counts on elevated terrain too. Keep the Mohawk flying as an optional objective. |
+| **Ambush Alley** | Rebels | Set up above the lane and destroy at least three convoy vehicles. First damage starts a visible forty-five-second QRF clock; further hits do not reset it. Its Hunter enters on the village road, then advances toward the ambush. Destroying the fourth convoy vehicle is optional; three unlock extraction. Extract sixty percent of surviving fighters before the escape deadline. |
+| **Kingpin** | Coalition | Clear the checkpoint, raid Kassem's house, and pursue him using sighted last-known-position updates. Searching his reported position prompts a street search if he has left, without revealing hidden targets. Extract three quarters of survivors, with ninety- and thirty-second warnings. Keep a Hunter intact as an optional objective. |
+
+The mission report records optional objectives separately from required completion. Hover over the optional count to inspect each result.
 
 - **Objectives** sit top right with the mission clock: each has a letter, and the same letter marks it on the
   ground (a ring round the area and a marker over it that waits at the screen edge when it's off screen) and on
@@ -696,6 +698,7 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   Optional alpine haze adds atmospheric depth; cached terrain reflections exclude moving units and refresh with lighting.
   Standard-battle woods are denser and share spatial bark and foliage batches; changed trees recover their individual models.
   Campaign missions retain their previous geology and woodland layout to preserve authored routes and cover.
+- Tree canopies build a continuous leaf-and-moss soil layer, with less meadow grass in shade. The grass stream places scanned ferns, bracken, nettles, shrubs, young pines, fallen trunks, stumps and mossy stones, plus loose leaves, small brown fungi and occasional daylight butterflies. A separate seeded generator leaves gameplay randomness untouched; weather and Wildlife settings preserve plant and debris placement. Moisture limits ferns and fungi; roads, floors, water and barren slopes exclude the details. Terrain displacement, trench masks and blast scars keep them attached to changing ground. These are cosmetic, streamed with grass quality and culled at 65 m (95 m for larger wood, rocks and saplings), with no added cover or collision. The soil remains when grass is disabled; butterflies also respect Wildlife being off. Scanned understory meshes retain distance LODs and mipmapped colour, normal, occlusion and roughness maps; mature trees retain the existing spatial batching path.
   Infantry and vehicles follow the ground, slow on slopes, and route around faces too steep to cross.
   Infantry, wheels and tracks have separate traversal limits (about 40, 26 and 33 degrees). Vehicle slopes
   use an eight-metre envelope so a flat centre cannot conceal a cliff under the hull. Routes favour roads;
@@ -712,6 +715,18 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
 - A town square on one corner of the crossroads (fountain or statue, benches, planters, a flagpole, market
   stalls, bollards), a fenced playground (swings, slide, climbing frame, sandbox, seesaw, roundabout), a small
   park, allotments, a car park, a bombed-out lot and a water tower on the edge of town.
+- Fences are built as the real ones are (`BuildingFences`), one bay between two posts, climbing with the ground.
+  A house keeps one look: white or painted pickets, chestnut paling, or iron railings with spear heads on a dwarf
+  brick wall at the front, with a gate shut or left swinging; featheredge close-board (on timber or concrete posts,
+  over a gravel board), paling, pickets or chain-link down the sides of the back garden. Farms run post-and-rail
+  along the road, allotments chain-link, playgrounds bow-top railings. The Coalition's HQ has a 2.4 m security fence
+  across its back (chain-link on posts set in concrete, Y-arm outriggers with barbed strands and a razor coil,
+  warning signs, floodlights), the Rebels' an improvised one (stakes, slack rusty wire, roofing sheets and pallets), and the town's supply dump a screen of mesh panels in concrete feet, some hung with scrim.
+  Weeds grow at their feet, paint chalks, the odd picket or board is gone. Chain-link and welded mesh are drawn
+  as antialiased wire on a sheet (`Mats.wire_mesh`) that greys into a veil with distance.
+- Barbed wire (`BuildingWire.barbed`) is two twisted line wires with four-point barbs every 11 cm, in three
+  finishes: new galvanised (compound walls), rusted and slack (farms, the Rebels), and the Coalition's dull issue
+  wire. Concertina is razor tape whose clipped loops cross as it is pulled out.
 - Street lights down every street (they light up at dusk and at night), wooden utility poles carrying sagging
   power lines with a drop to each house, fire hydrants, stop signs where side streets meet the main road, the
   town's name on the way in and a bus stop. Power lines also run along the country roads.
@@ -751,7 +766,8 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   sides), and on the west the lanes run on over the river - each on its own bridge - to farming villages on
   the far bank: three bridges and two fords across the river in all.
 - Country roads come in from both HQs and both edges of the map and join the main streets. Villages sit on the
-  cross road either side of town and on the road between each HQ and the town; farmsteads (farmhouse and barn round a yard, hay bales, a fenced road frontage, an orchard) and
+  cross road either side of town and on the road between each HQ and the town; farmsteads (farmhouse and barn round a yard, hay bales, a fenced road frontage, an orchard; the barn weatherboarded
+  under a corrugated sheet roof with loft doors in its gables, straw on its floor) and
   hedged fields lie along the roads; abandoned cars on the verges, burnt-out armour off the road.
 - **The town and every village have a name and a supply dump** (crated stores on a pallet, fuel drums and a
   flagpole): the town's on its square where the flagpole stood, a village's on the verge of its main street.
@@ -763,27 +779,37 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   painted window frames with mullion and transom, panes whole, cracked to shards or shot out, louvred or boarded
   shutters on their hinges, door frames, steps, now and then a hood over the door, and double doors hanging open.
   Pitched roofs bear on the walls with a fascia, barge boards, gutters and downpipes, a round-tiled ridge and
-  often a chimney with its pots; flat roofs have a coped parapet, scuppers with a hopper and downpipe, and the
+  often a chimney with its pots; they're pitched differently, about a third are hipped (pyramids over square
+  houses), and some are mended with a creased tarp weighted down with tyres and tied to the eave, holed, or have a skylight; moss and lichen
+  grow on the tiles, and flat roofs carry rain stains, patched membrane, moss along a parapet and vent pipes; flat roofs have a coped parapet, scuppers with a hopper and downpipe, and the
   water tanks, air conditioners and dishes on them. Garden walls have saddleback stone copings, or brick-on-edge
   over a blue-brick base. Houses look lived in: drapes, blinds and nets in the windows, flowers in window boxes,
   lanterns by front doors, TV aerials on the roofs, and inside (seen when the roof hides for the men in there, or
   in a ruin) painted walls with skirting, radiators, pictures, mirrors, clocks, shelves of books and rugs, all
   hung flat or laid flat so nothing stands where a man does. At dusk and at night a lamp is on behind about a
   third of the windows, in the barracks and the research post, under the factory's north lights and in the door
-  lanterns (brightest at night, a glimmer on a dark day). Weeds grow at the foot of walls and ivy up some of
+  lanterns (a gleam at night, a glimmer on a dark day); a ruin's lamps are out, and so are a house's once it's
+  shelled, loses a wall or its roof catches fire. Weeds grow at the foot of walls and ivy up some of
   them (most often on old stone), and a ruin's floor carries its fallen roof: soot, charred rafters, broken
-  tiles, plaster and glass. Round the houses are what the people in them keep: wheelie bins at a front corner,
+  tiles, plaster and glass; where a wall has come down, a heap of broken masonry with brick lumps, plaster slabs,
+  a charred joist and bent rods sticking out. The war shows on the walls: bullet strikes, the odd shell hit blown through the render
+  to the brick, soot over a window or door where a fire was, rain streaks under the sills, and windows taped,
+  boarded across or sandbagged along the sill. Round the houses are what the people in them keep: wheelie bins at a front corner,
   pots of flowers by the door, a bicycle against a side wall, and out the back a woodpile and chopping block, a
-  table and chairs (under a parasol now and then) and the odd kennel, all set dressing that a blast or a truck
-  knocks over. All of it, and the military buildings' weatherboard, sheeting, roller shutters, north
+  table and chairs (under a parasol now and then), the odd kennel, a shed at the bottom of many gardens and here
+  and there a trampoline, all set dressing that a blast or a truck
+  knocks over. On the walls are a house's services and the things by its door: meter boxes, outside taps
+  with a hose on a hook, air conditioners on brackets or on a pad, satellite dishes on arms, and at the front
+  door the house's number, a letterbox and a mat on the step. The shops by the square have fronts: a fascia with the shop's name, a striped awning, and on the
+  pavement what each kind of shop puts out (a greengrocer's produce, a cafe's tables, a newsagent's paper rack). All of it, and the military buildings' weatherboard, sheeting, roller shutters, north
   lights, masts and guys, drums, crates and pallets, comes from shared building components (see
   [building-components.md](building-components.md)).
 - Walls, hedges, trees, cars and crates are all real cover. Street furniture is set dressing generated on the
   server and built on each client, and it breaks: a blast or a vehicle driving through knocks lamps, utility poles
   (their wires come down with them), signs, benches, bins, fences and playground kit over, and the pieces fall and
   lie where they land. Broken street lights stay dark at night.
-- Trees are broadleaves (a flared trunk forking into limbs that carry clumps of leaves, darker underneath),
-  spruces (many overlapping tiers of boughs) and small orchard trees; foliage has ragged, leafy edges and throws
+- Trees are broadleaves and two mature fir shapes with scanned trunks and branches, plus small orchard trees.
+  Branch cards follow the scanned canopy envelopes; foliage has ragged, leafy edges and throws
   dappled shadows. A tree that is shelled or run over falls away from what hit it and stays down.
 
 **Terrain** (`terrain.gd`, `mapgen.gd`)
@@ -1048,7 +1074,12 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   and plans again. (Trucks are slower on the road than they were, so each load carries more.)
 - **Vehicle gun handling.** Old tanks, modern MBTs, IFVs, AA mounts, artillery and aircraft
   have distinct traverse, acceleration and braking profiles ([rates and complete roster audit](VEHICLE_HANDLING.md)).
-  Mounted machine guns must traverse onto the bearing before firing. Vehicle and gunship shots leave the
+  Mounted machine guns must traverse onto the bearing before firing. Machine guns, autocannon and AA guns sit in
+  cradles of their own that the crew lay on the target: they elevate onto it (twin AA guns climb steeply after
+  aircraft, a helicopter's guns depress onto the ground), door guns and hull pintles swing out to it within an arc
+  on their own side, a coaxial gun keeps to the main gun's travel, and each round runs the gun back on its cradle
+  with a jump at the muzzle. The host sends where each vehicle's guns are laid, so a client (and a solo battle,
+  whose view is a client of its own simulation) lays them too, main guns included. Vehicle and gunship shots leave the
   actual model barrels, including separately positioned gunship guns. Tank drivers build into turns. Turrets accelerate into a traverse and brake onto
   the target, holding their world bearing as the hull turns underneath. The gunner holds a steady aim
   for 0.3 seconds before firing, and reacquires when switching targets. Without a target, the turret
@@ -1114,12 +1145,19 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   gone (or too low to settle) she winds up into a spin against the rotor's torque and corkscrews in, still carrying
   her speed; with only the engines gone she autorotates, gliding steeply nose-down and flaring into a heavy landing.
   Where she hits, her fuel goes up (blast damage, a crater and fire, credited to whoever shot her down), how hard
-  she hit decides who aboard walks away, and the burnt-out helicopter lies there, on her side after a spin-in. Over
-  deep water she ditches and sinks. The kill, its stats and the messages count at the moment she's hit.
+  she hit decides who aboard walks away, and she burns out where she lies, the fire spreading from her engines (see
+  wrecks, below): rolled on her side with her nose dug in after a spin-in, slumped on her belly after a heavy
+  landing. Her blades are broken (stubs at the hub, snapped and bent into the ground, some flung clear), the tail
+  rotor is usually gone, and broken blade and torn panels lie strewn round her. Over deep water she ditches and sinks. The kill, its stats and the messages count at the moment she's hit.
 - **Boarding:** select infantry and right-click your truck, APC, Slammer or a landed helicopter: they climb in
   (as many as fit) and ride until they dismount or it arrives.
 - Tanks smash through walls, trees and cars. Small arms ricochet off them. Frontal rockets can bounce,
   and a blown track leaves the tank stranded until engineers repair it. Destroyed vehicles become wrecks you can use as cover.
+  A destroyed vehicle burns out: over the best part of a minute the fire spreads across the hull from where it took
+  hold (the engine deck, a helicopter's engines), leaving charred steel, rust running down the sides, soot streaks and
+  ash on the tops, with a few islands of blistered paint; embers glow in the seams while it burns. Tyres and canvas
+  burn away and a wheeled hull settles on its rims, the grass round it is burnt flat and the ground blackened, and
+  torn-off pieces lie round it.
 - Coalition: battle tank, **IFV** (tracked, 25 mm with airburst rounds, carries a four-man fire team), **Humvee**
   (.50 cal), supply helicopter, **attack helicopter** (circles its target with a 30 mm chain gun firing explosive
   rounds, plus rocket salvos).
@@ -1209,7 +1247,14 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
     scaled by length, with compacted roadbeds taking 50% longer. Repair orders clear collapsed earth.
   - **Shape and materials:** floors and individual duckboard slats follow local terrain. Open ends ramp
     to the surface; connected ends stay continuous. Earth fire steps run along the walls, leaving the
-    centre route clear. Soil layers, roots, uneven spoil, damp ground and boot marks break up the surfaces.
+    centre route clear. Uneven cuts expose dark organic topsoil, lighter subsoil and stony pockets,
+    with scanned surface detail and damp litter below. Retaining boards brace loose cuts; weathered
+    duckboards rest on bearers above the mud. Rain darkens the earth and expands puddles. Bunker banks
+    use the same materials, form one continuous mound around the corners, and leave the doorway clear.
+    An uneven soil cap rests over the roof logs. Banks meet sloping ground and clear new excavations;
+    joined cuts remove retaining boards and parapet bags where their supporting ground is gone.
+    Placing or removing a bunker refreshes the vegetation around its earth banks.
+    The trenches scenario includes a rear bunker route, covered ammunition, sandbags and anti-tank obstacles.
   - **Rear bays:** occasional long sections include a recessed supply shelf or a timber-roofed resting
     bay, with kit kept off the through route. The timber roof is physical cover, not a bombproof bunker.
     Moving soldiers yield and sidestep inside narrow passages; crossing a high lip takes a slower climb.
@@ -1294,6 +1339,29 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
     mood had them, and the copy the battlefield is lit and reflects by is nearly half way to a warm grey so shade
     turns cool without going cyan. The sun's direction is passed in, not read from the light: a reflection probe draws
     the sky with no light. Midday keeps its photographed sky; overcast, rain and night their painted ones.
+  - **Time passes** (`time_of_day.gd`, on in Cinematic): the battle's light moves on as it goes. The battle opens at
+    its mood's hour (dawn 07:00, midday 13:00, golden hour 16:30, dusk 18:30, night 01:00) and the clock runs six
+    times as fast as life, so golden hour reaches full night in about forty minutes and a night battle sees the sky
+    pale towards dawn after an hour and a half. The sun follows a smooth path (Catmull-Rom through each daylight mood's
+    own sun, on round below the horizon) and each mood blends into the next; twilight goes with the sun's depth below
+    the horizon, not the clock (night from 12 degrees down). Below dusk's own sun the sunlight reddens as it sets;
+    after sunset comes a blue hour (sky, air and land go blue with the sun 4 to 7 degrees down), and the exposure
+    opens up over the dark gap before the moon is up, more under the physical sky, which darkens faster. The sun's
+    light fades out and the moon's in, handing over only while neither lights the ground. With Physical sky on, the
+    scattered sky carries dusk on past sunset (its battlefield light going from warm grey to the clear sky's blue)
+    and fades into the painted night (stars and moon) as the sun sinks from 4 to 11 degrees down; midday's
+    photograph fades in and out either side of 13:00, the scattered midday sky calibrated to its brightness
+    (`tools/sky_calibration.py`). Lamps in windows, street lights, the night's flares, stars, the eye's night vision,
+    sun shafts, water, smoke, fire light, mountain clouds, cloud shadows and the fog of war's shade all follow the
+    blend (`Atmosphere.by_mood`). The light is a pure function of the battle's time (`World.time`, the host's) and
+    the mood it began in, applied in two-second steps: every player with it on sees the same sky at the same
+    moment, a replay or seed brings it back, and the sky's lighting is re-rendered only once a step (measured: no
+    extra GPU time in the frames after a step). The hills' baked sun shadows follow the sun once it has moved two
+    degrees (re-baked a few hundred cells a frame), and the mountains' reflection is re-captured every three quarters
+    of an hour of clock. The meadows keep drying on the slopes facing the sun the battle began with. Rain, overcast
+    and haze are weather and hold, and night stays looks only: nothing in the simulation reads it. Photo mode's time
+    of day still overrides the light while it's open. `FL_DEBUG_TOD=1` prints each step and the GPU time after it;
+    `FL_DEBUG_TOD_AT=S` and `FL_DEBUG_TOD_PACE=N` light a battle as it will be S seconds in, N times as fast.
   - **Camera and lens** (Settings > Lighting & Look): compute passes run on the HDR scene just before it is
     tonemapped (a `CompositorEffect`, Forward+ only), at a quarter of the resolution except the final composite.
     Sun shafts are a radial blur of the open sky near the sun (Mitchell, GPU Gems 3, 2007). Lens flare and glare:
@@ -1320,6 +1388,27 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
     noise carried up the source's axis in the world, and the bend is sized in metres at the hot air, so nearer haze
     bends more and haze too small on screen to read is left out. The composite then bends only what lies behind the
     hot air, and never pulls in the sky or anything in front of it. With Reduce motion on, the air holds still.
+  - **Motion blur** (Camera and lens: Off / Objects / Objects + camera; Cinematic: Objects): the reconstruction
+    filter of McGuire, Hennessy, Bukowski and Osman ("A Reconstruction Filter for Plausible Motion Blur", I3D 2012)
+    with Jimenez's refinements (SIGGRAPH 2014), four more passes in `cinematic_fx.gd`. Each pixel's movement comes
+    from the engine's velocity buffer (drawn only while the blur is on: `needs_motion_vectors`); the camera's share
+    is found by reprojecting the pixel's depth with last frame's camera and taken out, so on Objects a commander's
+    pan stays sharp while rotor blades, flung bodies and debris still smear (Objects + camera puts 60% of the pan
+    back, none with Reduce motion). The blur is half a frame long (a 180-degree shutter), at most 32 pixels: the
+    longest blur in each 32-pixel tile and its neighbours tells each pixel how far to look, and 14 jittered samples
+    along it are weighed by depth and speed, so a blurred foreground smears over the background and not the reverse.
+    Godot's velocity buffer holds where each pixel was less where it is, in uv (measured: `FL_DEBUG_CINE_VIEW=7`).
+- **Rain on everything** (`Mats.SURFACE_SHADER`, the `rain_wet` global; `Atmosphere._wet_tick`): in the rain the
+  vehicles, buildings, sandbags and gear standing out in it take a film of water, as the ground and streets
+  already did (after Lagarde, "Water drop 2b: dynamic rain and its effects", 2013). Rough, porous stuff (cloth,
+  timber, concrete) darkens as water fills its pores and gains little gloss; paint and metal barely darken but
+  take a glossy film. Upturned faces soak most, faces turned down stay drier, and water runs down walls and hulls
+  in streaks. A battle that opens in the rain starts soaked; rain that sets in mid-battle wets things over 30 s,
+  and they dry over three minutes once it stops. It costs a few instructions per pixel, so every preset has it,
+  the browser too.
+- **Level-of-detail cross-fades**: a vehicle and its distant single-mesh stand-in (`Mats.add_distance_lod`), cab
+  glass, the street's fine stones and distant blast clouds dissolve into each other over a few metres (Godot's
+  dithered visibility-range fade) instead of popping as the camera zooms.
 - **Wildlife** (`wildlife.gd`), drawn only on each player's own screen and never simulated or sent by the server,
   so it can't change a battle or its seed. Flocks of sparrows and starlings (pigeons about the town) feed on bare
   ground - tracks, yards, pavements, mud, shell holes, where the grass doesn't hide them - hopping and pecking,
@@ -1393,7 +1482,7 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   Reaching it wins the encounter and triggers the finishing impact. A camera beside the ridge holds on the struck vehicle before and after the hit. The film uses the same tank knockout event, fuel burst and burning-vehicle particles as a match. The short flash stays on the hull above the ground, and the hull settles on its suspension. Fuel smoke uses the baked directional lighting maps, with motion-vector interpolation in close views. A fuel vent releases billows at a steady rate as the smoke thickens or thins. The closing camera frames the surviving tank from the side of its turret, keeping the barrel in view as the hull turns.
   The T-55A has a grainier finish on its cast turret and rolled rims on its painted rear drums.
   In a match, hard hits can bend the skirt on the struck side. A complete repair straightens it.
-  In a match, both the Abrams and the T-55A keep their last turret bearing on destruction and carry visible plate damage onto the wreck. Soot spreads over the original paint from the engine deck. Cannon hits land on the battle clock when the tracer reaches its destination. A hull contact produces a metal strike, and nearby soft terrain takes paired tread prints. Select either tank and press F10 to cycle to its periscope.
+  In a match, both the Abrams and the T-55A keep their last turret bearing on destruction and carry visible plate damage onto the wreck. The burn spreads over the original paint from the engine deck until the whole hull is burnt out. Cannon hits land on the battle clock when the tracer reaches its destination. A hull contact produces a metal strike, and nearby soft terrain takes paired tread prints. Select either tank and press F10 to cycle to its periscope.
   Its wreck rests on the grade beneath the front and rear of both tracks.
 - **Shared vehicle finishes** (`vehicle_materials.gd`, `assets/vehicles/surfaces/`): armor paint, aircraft
   coatings, civilian clearcoat, marine paint, rubber, canvas, exposed metal, glass, nonslip decks and charred
@@ -1437,11 +1526,37 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
 - **Shared guns and turret fittings** (`vehicle_weapons.gd`, `VehicleMounts`, `VehicleFittings`): heavy,
   medium and grenade machine guns, autocannon, coaxial ports, rotary barrel clusters and missile launch
   tubes each have one builder, used by every family that carries them; muzzle markers and turret pivots
-  stay where they were. Turret race rings, sight heads, commander's cupolas, reactive armour bricks,
+  stay where they were. Autocannon tubes step down from a thick chamber end, carry a barrel clamp and end in a
+  ported brake; machine-gun belts show their rounds, the .50 its feed-cover latch and retracting handle. Each
+  builder notes its gun, so the finished model lifts the machine gun onto a cradle the crew can lay. Turret race rings, sight heads, commander's cupolas, reactive armour bricks,
   rectangular hatches and bore evacuators are shared across the armour; helicopters share rotor masts and
   turbine exhausts, and aircraft and boats share red/green sidelights and dome lights. Trucks share fender
   sheets and saddle fuel tanks; rolled tarps are common stowage. See "Twenty shared components" in
   [the component guide](vehicle-components.md).
+- **Second construction pass** (shared builders across `vehicle_cargo.gd`, `vehicle_aircraft.gd`,
+  `vehicle_fittings.gd` and others): engine-deck grilles, track skirts and return rollers, smoke banks and
+  lamp units are shared across the armour; trucks share cargo beds, box bodies with doors, roller shutters
+  and ladders, pedestal gun mounts, roll cages, bull bars and wheel-well tubs. Box missile launchers show
+  their tube mouths. Aircraft share missiles, store pods, engine intake faces (the A-10's fans now show),
+  stub-wing pylons, rotor hub caps, whips and sensor necks. See "Second pass" in
+  [the component guide](vehicle-components.md).
+- **Third construction pass** (shared builders across `vehicle_mounts.gd`, `vehicle_equipment.gd`,
+  `vehicle_aircraft.gd`, `vehicle_markings.gd` and others): track guards, tow cables with eyes, muzzle brakes,
+  muzzle sensors, machine-gun pintles, travel locks and hydraulic rams are shared across the armour; wheeled
+  vehicles share wishbone suspension, exhaust runs and silencers, air cleaners, searchlights, light bars,
+  number plates, door levers and crew benches; trucks share cranes, crate stacks, roof racks, tanker walkways,
+  pump cabinets and gas bottles. Helicopters share trailing-arm gear and tailwheels, aircraft share bombs,
+  chin turrets, flare dispensers, formation lights and refuelling receptacles, and boats share bow eyes and
+  fenders. See "Third pass" in [the component guide](vehicle-components.md).
+- **Fourth construction pass** (`VehicleEquipment.drum`, `VehicleWheels.carrier` and a sweep of every family):
+  200-litre drums and spare-wheel carriers are shared, and the remaining hand-built vision blocks, door
+  windows, door and gear leaves, hatches, sights, radar panels, fuel tanks, bumpers, pintles and cannon barrels
+  moved onto the shared builders. See "Fourth pass" in [the component guide](vehicle-components.md).
+- **Lighter shared hardware** (`tools/vehicles/builder-profile.tscn` charges the roster's vertices to the
+  builders that make them): tyres, bolts, hinges, lamps, shackles, dischargers and lockers draw only what can be
+  seen, one band of cylinder sides, joints only at sharp bends. About 45% less vehicle geometry and 38% faster
+  model builds (each vehicle, air-strike plane and wreck builds its model as it appears), with the same look.
+  See "Fifth pass" in [the component guide](vehicle-components.md).
 - Explosions are layered GPU particles: a flash and light burst, a rolling fireball that cools from the edges in
   until it's dark smoke, a lit smoke column that drifts with the wind, a dirt plume, sparks and debris that
   bounce on the ground, a rolling dust ring, a faint heat-shimmer shockwave and a scorch mark. Heavy rounds
@@ -1480,10 +1595,12 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   a .50's a forearm's, an autocannon's a man's height - a hot core and a short jet split into petals by the flash
   hider (thrown out sideways by a heavy gun's muzzle brake), with a moment's light on everything round it
   (striking at night). The gas that follows the round out glows for an instant and cools into a breath of smoke,
-  and the case spins out of the ejection port to lie in the grass (brass piles up round a machine gun). However
+  and the case spins out of the ejection port to lie in the grass (brass piles up round a machine gun). A vehicle's
+  gun throws its cases from its receiver, and a belt-fed one its links too; a coaxial gun keeps them inside the
+  turret. 25 and 30 mm cannon (the Bradley's Bushmaster, the chain guns, the ZU-23) flash and bark as cannon. However
   small, a flash never shrinks below a few pixels, so you can still see who's firing from high up. The weapon
-  kicks with each shot: the rifle back into the shoulder and the muzzle up, the mounted gun on its pintle, the
-  turret back on its ring when the main gun fires. One round in so many is a tracer, red for the Coalition and
+  kicks with each shot: the rifle back into the shoulder and the muzzle up, the mounted gun on its pintle or its
+  vehicle cradle, the main gun back in its mantlet. One round in so many is a tracer, red for the Coalition and
   green for the Rebels (Soviet-pattern ammunition): a thin bright thread at night, fainter and shorter by day,
   with distance-dependent dimming and a short ignition delay for small-arms tracers. What a round hits decides what flies, small and quick as in real footage: a
   crown of dust and soil thrown up out of the ground, a puff of stone dust and chips off a wall, a dry burst of

@@ -85,7 +85,8 @@ Ultra with all of the cinematic lighting on top) and every option on its own, la
   flares, rain and thunder; applies live), colour grading (natural, cinematic, vivid, warm film, cold steel,
   bleached war film, black & white), tonemapper (AgX / ACES / Filmic / Reinhard), brightness, contrast, bloom,
   film grain, tilt-shift depth of field; and the camera and lens: lens flare and glare, sun shafts, local exposure,
-  eye adaptation, the film look and heat haze (`cinematic_fx.gd`, compute passes on the HDR scene; Forward+ only).
+  eye adaptation, the film look, heat haze and motion blur (`cinematic_fx.gd`, compute passes on the HDR scene;
+  Forward+ only).
 - **Display:** window mode (windowed / borderless / exclusive fullscreen), window size (applied at launch; a
   size too big for the screen maximises the window instead; test runs keep the project's window or the size
   `--resolution` asks for), VSync, frame-rate cap, field of view, performance overlay.
@@ -221,6 +222,22 @@ the calling system's time; do not add it to the total. Headless FPS is zero beca
 frames are rendered. The overlay's game-logic bar is time per rendered frame, which can
 contain several simulation ticks; its system table is time per tick.
 
+`--gpu-bench[=out.json]` prices each graphics setting on the graphics card. Windowed (it reads the renderer's
+GPU time, which headless runs don't have), `--gpu-bench-at` seconds into the battle (8) it holds the battle still,
+hides the interface, turns vsync and the frame cap off, and switches each setting that's on off and on again in
+short blocks (off, on, off, on, ... off: `--gpu-bench-cycles` pairs, 10, of `--gpu-bench-frames` frames, 20, after a
+settle of two fifths of that, at least 6, longer for global illumination, water and grass). Other work on the card only ever adds
+time, so each block counts by the frame a fifth of the way up from its quickest, and each on block is set against
+the average of the off blocks either side of it, which cancels load that rises or fades steadily. A setting's cost
+is the median of those differences and its spread their middle half; render scale (100% against 50%) is the control
+and the run says whether it stood clear of the noise. It prints a table (`GPUBENCH` lines), writes the report as
+JSON, puts every setting back and never saves them. Start it on the settings to price (`--preset=cinematic` prices
+them all) with `--gpu-bench-only=key,key` for a few, e.g.
+`godot --path . --resolution 1920x1080 -- --offscreen --nohud --perf=0 --scenario=roster --seed=3 --mood=golden
+--preset=cinematic --focus=-84,24 --zoom=34 --gpu-bench=costs.json --gpu-bench-at=10`. Other programs drawing on
+the same card widen the spread (several game windows rendering at once made it several milliseconds); keep the
+machine quiet for small settings.
+
 Run `godot --headless --path . res://tests/structure_index_test.tscn` for building-index
 lifecycle checks and a same-process FOB lookup comparison with 1,000 scenery objects.
 See [simulation scaling](SIMULATION_SCALING.md) for the performance investigation and
@@ -271,6 +288,9 @@ Scenarios, AI-vs-AI battles and missions run offline: they take no port, so any 
 --report-at=SECONDS                                   (client) ask the host for the statistics then; a headless client
                                                       prints a CLIENT report line for each it gets
 --perf-at=480 [--perf-shot=path.png]                  fast-forward, then measure real FPS and server tick cost
+--gpu-bench[=out.json] [--gpu-bench-at=8]             (windowed) what each graphics setting costs the GPU: each switched off
+  [--gpu-bench-only=a,b --gpu-bench-frames=20          and on in turn on the held battle; a table and a JSON report
+   --gpu-bench-cycles=10]                               (see "Automated test modes")
 --focus-vehicle=tank --vehicle-view=Tracks             record from the selected vehicle’s named in-game camera mount
 --screenshot=out.png --shot-at=30 --focus=X,Z --zoom=40 [--shots=N --shot-every=0.5]
 --mood=golden --perf=3 --preset=ultra                 lighting, overlay level and graphics preset for screenshots
@@ -384,11 +404,16 @@ FL_DEBUG_TOWNS=1 (env)                                print each town and villag
 FL_DEBUG_ECON=1 (env)                                 print every supply truck HQ sends (its road's length, its load) and every load delivered
 FL_DEBUG_HPA=1 (env)                                  benchmark hierarchical vs flat paths at start-up
 FL_DEBUG_DECOR=1 (env)                                print the street-furniture chunk and mesh counts
+FL_DEBUG_MODELS=1 (env)                               print each parked car's and wreck's model as it's made (built, copied from
+                                                      one with its look, or queued to build piecewise) and each frame's piece
 FL_DEBUG_CINE=1 (env)                                 say once that the cinematic lighting passes run, and which (windowed);
                                                       every 5 s, how many heat sources the heat haze has in view
 FL_DEBUG_CINE_VIEW=N (env)                            show one cinematic buffer instead of the scene: 1 sun shafts, 2 lens flare
                                                       and glare, 3 local exposure (red lifted, blue tamed), 4 the bright pass,
-                                                      5 the heat haze (blue the hot air, red and green how far it bends)
+                                                      5 the heat haze (blue the hot air, red and green how far it bends),
+                                                      6 the motion blur's per-pixel blur (px / 16), 7 its velocity check
+                                                      (red: the engine's velocity less the camera's reprojection, ~0 on
+                                                      still ground while the camera pans)
 FL_DEBUG_WILDLIFE=1 (env)                             every 5 s: the wildlife's cost, how many of each are drawn, what took
                                                       fright at what, and where one of each is (the first time, the water too)
 FL_WILDLIFE_FOLLOW=KIND (env)                         the camera keeps on one animal (birds, ducks, soarer, bat, rat, hare, fish,

@@ -307,3 +307,312 @@ nodes, meshes and wheel/rotor registrations are unchanged; mesh surfaces rise 2.
 (27.1 M to 28.6 M), mostly from guns with sealed ammunition cans and reactive armour on the heaviest
 tanks. Reactive bricks keep a plain cover plate because they repeat by the hundred. These are geometry
 measurements of near and far meshes together, not frame-rate claims.
+
+### Second pass: twenty improvements by impact
+
+The second pass ranked parts by how much a player sees them (top-down decks and track sides from the RTS
+camera, truck beds, aircraft stores) times how many vehicles carry them, then built or extended a shared
+builder for each and moved every compatible site onto it. Counts are builder groups and model keys from the
+construction index, before and after the pass.
+
+| # | Improvement | API | Groups | Models |
+| ---: | --- | --- | ---: | ---: |
+| 1 | Engine-deck, radiator and exhaust grilles | `VehicleFittings.grille` / `vent` (migration) | 8 → 39 | 25 → 77 |
+| 2 | Track skirts and raked bow panels | `VehicleEquipment.skirt`, new `skirt_bow` | 10 → 16, 11 | 11 → 18, 12 |
+| 3 | Track return rollers | `VehicleWheels.roller` | 11 | 15 |
+| 4 | Truck cargo beds | `VehicleCargo.flatbed` | 5 | 21 |
+| 5 | Box missile launchers | `VehicleWeapons.missile_box` / `missile_face` | 6 / 8 | 9 / 17 |
+| 6 | Air-launched missiles | `VehicleAircraft.missile` | 11 | 11 |
+| 7 | Smoke discharger banks | `VehicleFittings.smoke_bank` | 24 | 35 |
+| 8 | Rotor hub caps | `VehicleRotors.hub_cap` | 9 | 11 |
+| 9 | Helicopter stub-wing pylons | `VehicleAircraft.hardpoint` (material, rise, braces) | 10 → 17 | 10 → 19 |
+| 10 | Closed bins and toolboxes | `VehicleEquipment.storage` (migration) | 15 → 26 | 23 → 50 |
+| 11 | Door and ramp leaves | `VehicleDoors.leaf` (migration) | 19 → 28 | 38 → 55 |
+| 12 | Truck box bodies, doors, shutters, ladders | `VehicleCargo.shelter` / `body_door` / `roller_shutter` / `rung_ladder` | 4 | 20 |
+| 13 | Lamp units | `VehicleFittings.lamp_unit` | 37 | 73 |
+| 14 | Aircraft engine intake faces | `VehicleAircraft.intake_face` | 9 | 9 |
+| 15 | Pedestal gun mounts | `VehicleMounts.pedestal` (+ `gun_shield`, `ring_mount`) | 5 | 15 |
+| 16 | Roll cages and bull bars | `VehicleFrames.roll_bar` / `bull_bar` | 4 / 5 | 11 / 10 |
+| 17 | Wheel-well tubs | `VehicleWheelArches.tub` | 8 | 18 |
+| 18 | Aircraft store pods | `VehicleAircraft.pod` | 4 | 4 |
+| 19 | Aircraft and boat whips | `VehicleFittings.antenna` ("whip" style) | 35 → 50 | 68 → 88 |
+| 20 | Sensor balls on necks | `VehicleEquipment.sensor` (neck, windows) | 7 → 12 | 14 → 20 |
+
+Contracts follow the first pass: each builder takes the old geometry's own centre, size, bounds or
+endpoints, folds into its parent and registers nothing; muzzle markers, turret, rotor and wheel pivots stay
+with the families (the socket fixture checks every armed model). Extended APIs keep their old output for old
+arguments, and the hull fixture compares them part by part with copies of the previous functions.
+Notes for callers:
+
+- **Grilles on a deck** sit their centre 3 cm above the deck: the recessed core is 2.5 cm deep, and a flush
+  core flickers against the deck. Sloped faces need the face's outward normal (two families gained small
+  helpers, `_zy_grille` and `_glacis_grille`, that lay a grille along a slope).
+- **`smoke_bank`** takes the family's own tube transforms, so the four discharger layouts are unchanged.
+- **`antenna`** with `style = "whip"` builds a boss or white insulator foot, ferrule, tapered rod and ball tip
+  with no sway registration; ground whips keep the boot, spring and motion.
+- **`roller_shutter`** without a colour keeps its material's own finish: pass the body's camouflage material
+  for a painted shutter. **`shelter`**'s bottom rail stands 2.8 cm proud, past a door leaf's 2 cm, so doors
+  hung to the floor sit behind it like a sill.
+- **`VehicleDoors.hinge`** straps reach about two radii either side of the hinge line; hinge a ramp on a face
+  it lies against, not across a free edge.
+- **`lamp_unit`** steps each extra insert slightly further out for overlapping clusters, so light bars of
+  side-by-side lenses stay authored.
+
+Fixes found along the way:
+- The A-10's intakes were closed by a solid cowling disc ahead of the fan; it is now a ring, so the fan shows.
+- Old missile "nose cones" were mounted wide end forward.
+- The T-55, Bradley and BTR-80 laid glacis parts (the T-55 splash board, the BTR windows) along an inward
+  normal, inside the hull.
+- The Stalker's glacis grille sat 4 cm inside the plate.
+
+Validate with `tests/vehicle-parts-hull.test.mjs`, `vehicle-parts-trucks.test.mjs` and
+`vehicle-parts-aircraft.test.mjs` (fold, envelope, wreck-glass and compatibility checks for every builder;
+`FL_DEBUG_PART_BOUNDS=1` prints bounds and vertex counts) with the socket fixture and the vehicle tests above.
+
+Across 135 models, nodes, meshes and wheel/rotor registrations are unchanged; mesh surfaces rise 0.6% and
+vertices 7.6% (28.6 M to 30.8 M), most on the Tigris and Kamysh launchers and the small Fenghuang UAV (about
++30% each). Beyond 100 m the model draws one merged, welded mesh whose detail levels the engine generates
+(`Mats.add_distance_lod`), so the added parts cost far less there than these unwelded near-mesh counts. These
+are geometry measurements, not frame-rate claims.
+
+### Third pass: running gear, crew fittings, cranes and aircraft details
+
+The third pass took the parts that three or more families still assemble from primitives, ranked as before by how
+much the RTS camera sees them and how many vehicles carry them. Counts are builder groups and model keys
+from the construction index after the pass (an arrow marks an existing builder's growth).
+
+| # | Improvement | API | Groups | Models |
+| ---: | --- | --- | ---: | ---: |
+| 1 | Track guards and mudguards | `VehicleBody.track_guard` | 6 | 7 |
+| 2 | Wishbone suspension | `VehicleRunningGear.wishbone` | 6 | 11 |
+| 3 | Tow cables with eyes and clips | `VehicleFittings.tow_cable` | 8 | 10 |
+| 4 | Exhaust runs and silencers | `VehicleFittings.exhaust_run` / `silencer` | 10 / 12 | 22 / 30 |
+| 5 | Air cleaners | `VehicleFittings.air_cleaner` | 3 | 14 |
+| 6 | Searchlights | `VehicleFittings.searchlight` | 10 | 14 |
+| 7 | Emergency and work light bars | `VehicleFittings.light_bar` | 4 | 11 |
+| 8 | Crew benches | `VehicleCab.bench` | 8 | 23 |
+| 9 | Mirrors (shell material and colour) | `VehicleFittings.mirror` (migration) | 10 → 17 | 34 → 49 |
+| 10 | Seats | `VehicleCab.seat` (migration) | 10 → 13 | 35 → 39 |
+| 11 | Number plates | `VehicleMarkings.plate` | 10 | 27 |
+| 12 | Red crosses | `VehicleMarkings.cross` | 4 | 21 |
+| 13 | Stencil lettering | `VehicleMarkings.digit_strokes` / `stroke_rects` | 17 / 12 | 34 / 29 |
+| 14 | Door levers | `VehicleDoors.lever` | 14 | 22 |
+| 15 | Sliding-door rails | `VehicleDoors.slide_rail` | 5 | 7 |
+| 16 | Bow eyes and boat fenders | `VehicleMarine.bow_eye` / `fender` | 4 / 3 | 5 / 3 |
+| 17 | Muzzle brakes | `VehicleWeapons.muzzle_brake` | 4 | 5 |
+| 18 | Muzzle reference sensors | `VehicleWeapons.muzzle_sensor` | 6 | 9 |
+| 19 | Cranes | `VehicleMounts.crane` | 5 | 23 |
+| 20 | Gun travel locks | `VehicleMounts.travel_lock` | 3 | 3 |
+| 21 | Machine-gun pintles | `VehicleMounts.pintle` | 5 | 8 |
+| 22 | Trim vanes | `VehicleMounts.trim_vane` | 3 | 4 |
+| 23 | Hydraulic rams | `VehicleFrames.ram` | 8 | 26 |
+| 24 | Sensor masts | `VehicleMounts.mast_segment` (migration) | 5 → 7 | 11 → 14 |
+| 25 | Roof racks | `VehicleCargo.roof_rack` | 3 | 9 |
+| 26 | Crate stacks | `VehicleCargo.crate_stack` | 5 | 23 |
+| 27 | Tanker walkways, manholes and rails | `VehicleEquipment.tanker_top` | 3 | 18 |
+| 28 | Pump cabinets | `VehicleEquipment.pump_cabinet` | 3 | 18 |
+| 29 | Gas bottles in racks | `VehicleEquipment.gas_bottle` | 3 | 16 |
+| 30 | Helicopter main gear | `VehicleAircraft.trailing_gear` | 5 | 6 |
+| 31 | Tailwheels | `VehicleAircraft.tailwheel` | 5 | 6 |
+| 32 | Countermeasure dispensers | `VehicleAircraft.dispenser` | 4 | 5 |
+| 33 | Formation lights | `VehicleAircraft.formation_light` | 6 | 7 |
+| 34 | Refuelling receptacles | `VehicleAircraft.refuel_receptacle` | 4 | 4 |
+| 35 | Bombs | `VehicleAircraft.bomb` | 8 | 8 |
+| 36 | Chin turrets | `VehicleAircraft.chin_turret` | 4 | 4 |
+| 37 | Pitot probes | `VehicleAircraft.pitot` (migration) | 12 → 15 | 15 → 19 |
+| 38 | Spare track links, piano hinges | `VehicleTracks.spare_links`, `VehicleDoors.piano_hinge` | 1, 1 | 1, 2 |
+
+The last row's builders have one family each so far and stay out of the assembly registry until two more
+use them. Contracts are the first pass's: each builder takes the old geometry's centre, size or endpoints,
+folds into its parent and registers nothing, wheels, rotors, turrets and muzzle markers stay with the
+families, and wrecks lose their glass and lenses. Notes for callers:
+
+- **`muzzle_brake`** runs from the sleeve's back to the old brake's front along any axis and returns the
+  front; stop the family's `VehicleFittings.barrel` inside the sleeve. Its front face carries the barrel's
+  crown ring round the bore, so a closed brake still reads as an open muzzle.
+- **`trailing_gear`** and **`tailwheel`** draw the legs and beams to the caller's own `k._wheel` pivot (call
+  the wheel first and pass its pivot as `hub` where there is a hub cover).
+- **`crane`** draws ring, post, boom, lift ram, sheave and hook; families keep their own extra booms,
+  outriggers and rests. **`pintle`** takes the receiver centre passed to `hmg` or `mmg`.
+- **`searchlight`** turns its yoke with the lamp; a lead runs from the lamp's gland into the pedestal or
+  post. Small boat and nose lamps pass no mount.
+- **`bench`** lays wood as slats on bearers and anything else as a piped cushion; `wall` hinges it on the
+  body behind it, as troop seats on a dropside or bulwark.
+- **`plate`** embosses registration text derived from the plate's position unless given one, so two
+  vehicles of a kind carry the same registration.
+- Civilian car aerials use the static `"whip"` antenna; the sprung, swaying whip with its boot and spring is
+  military radio fit and adds a node of its own.
+
+Fixes found along the way:
+- The Merkava loader's machine gun floated above the roof; it stands on a pintle.
+- Every shared seat's back leaned toward its sitter; it leans away, headrest and all.
+- Lamp lenses no longer survive on wrecked dome lights, and sealed-beam headlamps cost half the ribs.
+
+Validate with `tests/vehicle-parts-gear.test.mjs`, `vehicle-parts-cabin.test.mjs`, `vehicle-parts-trim.test.mjs`,
+`vehicle-parts-arms.test.mjs` and `vehicle-parts-airframe.test.mjs` (fold, envelope and wreck checks for
+every builder; `FL_DEBUG_PART_BOUNDS=1` prints bounds and vertex counts) with the socket fixture and the
+vehicle tests above.
+
+Across 135 models, nodes, meshes and wheel/rotor registrations are unchanged; mesh surfaces rise 1.2% and
+near-mesh vertices 5.3% (30.7 M to 32.3 M). Small boats rise most (the SDV about 55%, the SURC speedboats
+about a third) because a pair of searchlights or eight cushioned benches weighs a lot against a small hull.
+These are geometry measurements, not frame-rate claims.
+
+### Fourth pass: sweeping the rest onto shared builders
+
+The fourth pass made two builders and then swept every family file for parts still assembled from primitives
+although a shared builder already makes them, reading each catalog candidate (most are comment matches, lofted
+hulls or authored designs) and moving the sites whose old geometry fits a builder's contract. Counts are builder
+groups and model keys from the construction index, before and after.
+
+| Builder | Groups | Models |
+| --- | ---: | ---: |
+| `VehicleEquipment.drum` (new: 200-litre drums, standing or lying, hoops, bungs, straps) | 3 | 14 |
+| `VehicleWheels.carrier` (new: hub, swing-out, cradle and strap carriers for `spare`) | 11 | 40 |
+| `VehicleGlazing.rectangle` (sealed vision blocks and door windows) | 11 → 27 | 29 → 53 |
+| `VehicleDoors.leaf` / `closed` / `slide_rail` | 30 → 37 / 9 → 10 / 5 → 6 | 58 → 70 / 29 → 30 / 7 → 10 |
+| `VehicleMounts.sight`, `radar_array`, `pintle`, `pedestal`, `radome`, `bumper` | 29 → 33, 5 → 7, 5 → 7, 5 → 6, 4 → 5, 11 → 13 | 45 → 55, 9 → 12, 8 → 10, 15 → 17, 5 → 6, 35 → 45 |
+| `VehicleRunningGear.fuel_tank`, `VehicleEquipment.vessel`, `VehicleFittings.filler` | 6 → 10, 6 → 10, 12 → 18 | 23 → 27, 23 → 27, 32 → 40 |
+| `VehicleWeapons.autocannon`, `launch_tube`, `gmg` | 16 → 20, 4 → 5, 14 → 15 | 24 → 28, 11 → 12, 23 → 25 |
+| `VehicleFittings.panel_hatch`, `VehicleEquipment.storage` | 16 → 19, 26 → 29 | 26 → 29, 50 → 53 |
+| `VehicleAircraft.pitot`, `gear_leg`, `turbine_exhaust` | 15 → 18, 7 → 10, 10 → 11 | 19 → 22, 9 → 12, 14 → 15 |
+| `VehicleFittings.mirror`, `light_bar`, `parked_wiper`, `VehicleMarkings.plate` | 17 → 18, 4 → 5, 5 → 6, 10 → 11 | 49 → 54, 11 → 16, 12 → 15, 27 → 32 |
+
+Smaller moves: hatches, turret rings, crate stacks, bags, axles, canvas tilts, roll bars, mooring bitts, grilles,
+lamp units and markers. Notes for callers, from the sites that didn't fit:
+
+- **`grille`** and **`vent`** recess their core 2.5 cm behind the centre, which assumes an opening in the face.
+  On a solid face stand the centre 3 cm proud, as the deck grilles do, or the core vanishes into the plate.
+- **`marker`** turns its lens in quarter turns from +Z: 2 faces forward, as on cab roofs.
+- **`exhaust`** registers its mouth for the engine's heat haze and smoke; pipes that never breathed stay authored.
+- **`panel_hatch`** and **`fuel_tank`** take no rotation: build them in a pivot tilted to the face and fold it.
+- **`VehicleDoors.leaf`** puts its sealed face toward local +X; a mirrored pair needs a mirrored frame
+  (`VmFighter._gear_door` fits a leaf through a gear door's four corners).
+- **`hitch`** builds jaws and a pin only; tow balls stay authored. **`tow_shackle`** is always gunmetal.
+- **`storage`** and **`panel_hatch`** cost about 6k vertices each once merged, mostly hinges and fasteners;
+  small lockers on ships and hull vents on the SDV stayed authored for that reason.
+
+Fixes found along the way:
+- The HEMTT repair truck's tool lockers sat inside its tandem wheels; they hang between the axles now.
+- Spare wheels floated: the HEMTT's 25 cm over its rails, the Qilin's half above its deck, and the Prowler's
+  cross bar ran through the tyre. Each now hangs on a carrier.
+- The Xian's troop-door seams and windows stood 3 to 24 cm off its flank, and the Caesar's gull-wing door seams
+  about 20 cm at their tops; they lie on the skin.
+- The Mohawk's rescue-hoist cable was drawn as a pitot boom; it hangs a cable and hook block.
+- The Sochor's turret vents stood 6 cm off the leaning side, and the SURC's roof grab rail overhung its posts.
+
+Validate with `tests/vehicle-parts-stowage.test.mjs` (drums and carriers at every site, live and wrecked), the
+socket fixture and the vehicle tests above.
+
+Across 135 models, nodes, meshes and wheel/rotor registrations are unchanged; near-mesh vertices rise 2.3%
+(32.3 M to 33.1 M). The Xian (fitted doors, +21%), the patrol ship and gun trawler (lockers, hatches and
+pintles, +15%) and the SURC and RHIB (+12%) rise most.
+
+### Fifth pass: lighter shared hardware
+
+The passes above made the parts more detailed; the fifth made the shared builders cheaper without changing what
+they draw. `tools/vehicles/builder-profile.tscn` charges every part's vertices to the outermost shared builder
+that made it, across all 135 models, so the heaviest builders could be found and trimmed once for every vehicle.
+Near-mesh vertices fell from 23.8 M to 12.9 M (-46%); counting the distance meshes, construction-metrics' total
+fell from 33.1 M to 18.5 M. Nodes, meshes, surfaces and wheel/rotor registrations are unchanged, and matched wide
+shots of every family differ on at most 0.03% of pixels.
+
+| Builder | Before | After |
+| --- | ---: | ---: |
+| `VehicleWheels.pneumatic` (every tyre) | 7.23 M | 3.34 M |
+| `VehicleWheels.road` | 1.35 M | 0.70 M |
+| `VehicleFittings.tow_shackle` | 1.03 M | 0.23 M |
+| `VehicleFittings.smoke_bank` | 0.72 M | 0.24 M |
+| `VehicleWheels.spare` | 0.66 M | 0.29 M |
+| `VehicleEquipment.storage` | 0.59 M | 0.23 M |
+| `VehicleFittings.lamp_unit` | 0.58 M | 0.34 M |
+| `VehicleFittings.antenna` | 0.46 M | 0.21 M |
+| `VehicleFittings.jerrycan`, `grille`, `exhaust`, `hatch` | 1.08 M | 0.43 M |
+| `VehicleBody.fastener` (charged to every builder that bolts) | ≈ 1.97 M | ≈ 0.63 M |
+
+What changed, in every builder at once:
+
+- **One band of sides.** `Res.cyl`'s middle ring splits a straight side in two and adds triangles, not shape.
+  `VehicleBody.drum` is the shared ringless cylinder, cached by size with only the caps that show; `k._cyl`,
+  `VehicleFrames.tube`/`rod_mesh`, `VehicleWheels.drum` and `VehicleEquipment._cylinder` all draw through it, at
+  `Res.cyl`'s exact sizes.
+- **Joints only where a bend opens.** `VehicleFrames.path` put a ball at every joint, even on a smooth 13-point
+  arc. Gentle bends now run the pieces into each other; balls stay only at sharp corners (`VehicleBody.bead` does
+  the same for seams and hoses).
+- **Nothing that can't be seen.** Caps inside bosses and collars, tread faces under the shoulder, the inner 60°
+  of a tyre's carcass inside the rim, screws hidden in a pull's standoff, bore discs behind a rocket pod's face.
+- **Segments to size.** A 2 cm rod has 6 sides, a bolt head 6, a tyre lip 6 round a 32-sided rim; rings
+  (`VehicleFittings._ring`) pick 12, 16 or 20 by size.
+- **Tread as one mesh.** A tyre's 72 or 96 bevelled lug boxes are one cached mesh per tyre size, plain blocks at
+  the old positions.
+
+New parameters (old output by default): `panel_hatch(rotation)`, `tow_shackle(mat, col)`,
+`VehicleFrames.railing(lean)`, `tube`/`path(caps)`, `VehicleRunningGear.fuel_tank(rotation)`,
+`VehicleMounts.hitch(style = "ball")`, `VehicleEquipment.sensor(lens)`, `VehicleCloth.canopy(closed_back)`,
+`VehicleCloth.panel(hems)`, `VehicleMounts.mast_segment(rake)`, `VehicleWeapons.launch_tube(forward, up)`,
+`VehicleDoors.leaf(facing)` and `VehicleDoors.hinge(mirror)`.
+
+One visible fix: the searchlight's solid collar hid its lens, so only rib tips showed; it is an open band now.
+
+Profile a change with
+`godot --headless --path . tools/vehicles/builder-profile.tscn -- --builder-profile-out=<file>` before and after.
+
+### Sixth pass: the sites the new parameters unlock
+
+The fifth pass's new parameters let three agents replace workarounds and move the sites that had stayed authored
+for want of them. Nodes, meshes and wheel/rotor registrations are unchanged; vertices rise 0.4%.
+
+- **Sloped hatches** (`panel_hatch(rotation)`): the Abrams driver's hatch (its tilted pivot is gone), the
+  Merkava and Namer glacis access panels (`VmNato._zy_hatch`), and the RHIB's and patrol ship's deck hatches,
+  pitched to their decks instead of burying one edge.
+- **Tilted tanks** (`fuel_tank(rotation)`): the T-55's dented fender tanks lose their folded pivots.
+- **Tow balls** (`hitch(style = "ball")`) on the Offroad and the technical; **painted tow hooks**
+  (`tow_shackle(mat, col)`) on the MB 4WD and the civilian truck.
+- **Closed tilt** (`canopy(closed_back)`): the M35's back flap is part of its canopy.
+- **Raked mast** (`mast_segment(rake)`) on the Stomper; **sensor lens** (`sensor(lens)`) on the Vorona sight;
+  **angled launch tubes** (`launch_tube(forward)`) for the Angara's Afghanit dischargers.
+- **Door leaves facing out** (`leaf(facing)`): the left-hand doors of the BTR, the Sochor's crew doors and the
+  A-10, Wipeout, AC-130 and Blackfish gear doors showed their inner face outboard; the Scorcher, trawler and
+  `VmFighter._gear_door` workarounds became the parameter with the same output.
+- **Mirrored hinges** (`hinge(mirror)`): the MB 4WD's and the van's left-hand hinges were the right-hand ones
+  turned round, straps on the cowl. `VehicleDoors.closed` (and `rectangle`) now mirror each hinge so its outer
+  straps reach toward the handle, onto the leaf, for every fitted door at once.
+
+Fixes found in review: `VehicleAircraft.trailing_gear(hull)` runs the pivot and strut fittings in to the
+fuselage skin (`|x|` at each, probed on the built model), so the Ghost Hawk's, Black Hawk's, Apache's and
+Kajman's gear no longer ends in mid-air; `VehicleWeapons._bore` is the barrel builder's near-black, not a
+dark paint the sun lights grey, so every muzzle reads as a hole; VmCsat's `_arch(inner)` folds the three
+arch plates into one mitred band from inside the hull, with a dark well face; the Zamak repair crane's
+column stands 22 cm taller so the folded boom clears the roof; the Xian's rack tubes are four
+`launch_tube`s packed under the rack plate on strap cradles.
+
+Left for later: `railing` always lays a foot plate (the motorboat helm and RHIB seat rails end inside cushions)
+and puts a post under every point (the motorboat bow rail has posts at only four of seven); round hatches
+(`VehicleFittings.hatch`) take no rotation.
+
+### Gun mounts: laying, recoil and the guns themselves
+
+The gun builders (`coax`, `autocannon`, `hmg`, `mmg`, `gmg`, `rotary`) end with `k._gun(m, muzzle)` instead of
+folding their pivot: the assembly is noted (its parent, origin, muzzle and parts) and then folded as before.
+A hand-built gun on a pivot of its own at its receiver notes itself with `k.gun_assembly(pivot, muzzle)`
+(VmCore's DShK). When the model is assembled, `_mount_guns()` finds the assembly whose muzzle is `k.mg_tip`
+(on the same parent, laid along its -Z) and lifts its parts and nodes onto a new pivot at its origin, square
+to the parent; the marker goes with it, and a twin beside it at the same height and depth (the other barrel of
+a twin AA gun) gets a pivot of its own. A cradle the family made itself, already laid a little under the
+turret (the ZU-23s' `el`), is the mount as it stands, receivers, boxes and all. Each mount lands in
+`k.mg_mounts` with its rest pose in `k.mg_rests`; `k.mg_free` is set when it rides on no turret (door guns,
+hull pintles). At rest nothing moves, so the sockets fixture and every part's place are unchanged. Wrecks and
+fixed-wing aircraft get no mounts.
+
+`Vehicle._lay_guns` (view) lays each mount on `aim_point()`: the target on the host, the replicated aim on a
+client. Elevation runs -0.3 to 0.85 rad (to 1.3 for AA weapons, from -1.1 for a helicopter in the air; a coax
+keeps to the main gun's -0.16 to 0.31); a free mount also traverses within `mg_arc` (1.2 rad), out of its own
+side only. `mg_kick` runs the gun back along its axis by `Fx.MOUNT_KICK` per round with a little muzzle jump,
+and `breech_world()` is where its brass and links leave. Each mount is a holder of its own in the merge: a
+handful of draw calls per armed vehicle.
+
+The autocannon tube now steps down from a thick chamber end, carries one barrel clamp with a pinch bolt (when
+the family asks for no bands) and ends in a brake with dark side ports in two rows and a lip; `_belt` lays a
+linked belt with brass rounds from an ammo can's mouth to the feed tray (`hmg`, `mmg`); the `hmg` has its
+feed-cover latch and retracting handle, the `mmg` its cover hinge and rear sight. The armed motorboat carries
+its PKM on a pintle in the foredeck (it had a gun only in its definition).
