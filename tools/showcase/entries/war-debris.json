@@ -1,0 +1,20 @@
+{
+  "entry": "changelog/unreleased/war-debris.md",
+  "summary": "Debris round ruined and shelled houses, glass under shot-out windows.",
+  "medium": "still",
+  "stage": "tools/showcase/building-surfaces.tscn",
+  "rationale": "Appearance change: the same studio ruin from the same camera, whole and close up, shows the debris at the walls' feet.",
+  "source_ref": "5571931751bb832e8a54921216d0c63c18f70ccf",
+  "before_ref": "e09de96a9eca5c266d1aa1327aaa3a0f4a185d5f",
+  "sources": [
+    {
+      "file": "changelog/unreleased/war-debris/comparison.jpg",
+      "sha256": "d84da4c6f5a49308e1fe7b5805d7c92eb028f6ac077cd0a619eb5a1ceeeaa029"
+    },
+    {
+      "file": "changelog/unreleased/war-debris/capture.json",
+      "sha256": "3c5fa1246f32d46bf3aa9db9a70da9c77aad9d9702459bea6e1f8935aeb36dea"
+    }
+  ],
+  "output": null
+}

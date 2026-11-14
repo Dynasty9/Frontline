@@ -585,6 +585,22 @@ func _ready() -> void:
 		ds.free()
 	check(dark_storeys >= 5, "some floors above have a lamp on (%d of 40)" % dark_storeys)
 
+	# What a ruined or shelled house sheds lies flat on the ground in front of
+	# the wall it came off, within its length and a metre and a half of it;
+	# and a dark wall carries it while a lit one doesn't.
+	for s in 10:
+		var spk := kit()
+		spk.rng.seed = s
+		BuildingWeathering.spill(spk, 2.8, Color(0.8, 0.75, 0.7), spk.rng)
+		BuildingWeathering.shards(spk, 0.0, 1.3, spk.rng)
+		var spb := _bounds(spk.sink.root, Transform3D.IDENTITY)
+		check(spb.position.y >= -0.04 and spb.end.y <= 0.2 and spb.position.x >= -1.55 and spb.end.x <= 1.55 and spb.position.z >= 0.0 and spb.end.z <= 1.85, "debris lies flat by its wall (%s)" % spb)
+		spk.sink.root.free()
+	var lit_wall := Structure.preview_model("house_wall", -1, 0, Vector3(2.8, 1.0, 0.4), false, 31)
+	var dark_wall := Structure.preview_model("house_wall", -1, 0, Vector3(2.8, 1.0, 0.4), false, 31, true)
+	check(_bounds(dark_wall, Transform3D.IDENTITY).end.z > _bounds(lit_wall, Transform3D.IDENTITY).end.z + 0.5, "a dark house's wall has its debris in front of it")
+	lit_wall.free()
+	dark_wall.free()
 	# What stands against a wall keeps its reach out from it and in from its
 	# ends (so two walls meeting in a corner never put things in each other's
 	# way), on the floor and under the ceiling; the table and chairs keep to

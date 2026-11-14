@@ -456,6 +456,42 @@ static func hole(k: BuildingKit, rng: RandomNumberGenerator) -> void:
 		k.plate(Vector3(0.2, 0.014, 0.14), Vector3(cos(a) * size.x * 0.52, 0.01, sin(a) * size.y * 0.52), "paint", Color(0.48, 0.22, 0.14), Vector3(rng.randf_range(-0.3, 0.3), a, 0))
 
 
+## What a ruined or shelled house sheds at the foot of a wall `length` long,
+## in its face kit (+z out, y = 0 the ground): lumps of brick and render,
+## flakes of plaster, shards of roof tile, splinters of timber and glass,
+## thickest near the wall and thinning out to a metre and a half from it,
+## all lying flat (a man walks over it, nothing stands where he would).
+## `wall` is the wall's own colour, for the render that came off it.
+static func spill(k: BuildingKit, length: float, wall: Color, rng: RandomNumberGenerator) -> void:
+	var hx := length * 0.5 - 0.15
+	var near := func() -> float: return 0.15 + pow(rng.randf(), 1.8) * 1.4
+	for i in rng.randi_range(7, 12):
+		var s := rng.randf_range(0.07, 0.15)
+		k.box(Vector3(s * 1.5, s * 0.8, s), Vector3(rng.randf_range(-hx, hx), s * 0.35, near.call()), "rubble" if i % 3 != 0 else "brick",
+			Color(0.58, 0.55, 0.5).darkened(rng.randf_range(0.0, 0.3)) if i % 3 != 0 else Color(0.55, 0.3, 0.22), Vector3(rng.randf_range(-0.3, 0.3), rng.randf() * TAU, 0), false)
+	for i in rng.randi_range(4, 8):
+		k.plate(Vector3(rng.randf_range(0.1, 0.32), 0.018, rng.randf_range(0.08, 0.2)), Vector3(rng.randf_range(-hx, hx), 0.012, near.call()), "plaster",
+			wall.lerp(Color(0.8, 0.78, 0.72), 0.4).darkened(rng.randf_range(0.0, 0.2)), Vector3(rng.randf_range(-0.1, 0.1), rng.randf() * TAU, rng.randf_range(-0.1, 0.1)))
+	for i in rng.randi_range(4, 9):
+		k.plate(Vector3(rng.randf_range(0.1, 0.22), 0.014, rng.randf_range(0.08, 0.16)), Vector3(rng.randf_range(-hx, hx), 0.01, near.call()), "paint",
+			Color(0.5, 0.24, 0.16).darkened(rng.randf_range(0.0, 0.35)), Vector3(rng.randf_range(-0.15, 0.15), rng.randf() * TAU, rng.randf_range(-0.15, 0.15)))
+	for i in rng.randi_range(0, 2):
+		var ln := rng.randf_range(0.5, 1.2)
+		# (lying roughly along the wall, as it fell from it)
+		k.box(Vector3(0.06, 0.04, ln), Vector3(rng.randf_range(-hx, hx) * 0.55, 0.02, near.call() + 0.3), "wood_dark" if rng.randf() < 0.5 else "burnt",
+			Color(0.36, 0.27, 0.18) if rng.randf() < 0.5 else CHAR, Vector3(0, PI * 0.5 + rng.randf_range(-0.45, 0.45), 0), false)
+	for i in rng.randi_range(3, 6):
+		k.plate(Vector3(rng.randf_range(0.04, 0.1), 0.004, rng.randf_range(0.03, 0.08)), Vector3(rng.randf_range(-hx, hx), 0.006, near.call() * 0.6), "glass", BuildingOpenings.GLASS, Vector3(0, rng.randf() * TAU, 0))
+
+
+## Broken glass on the ground under a shot-out window `w` wide at `x`, in the
+## wall's face kit: shards out to most of a metre from the wall.
+static func shards(k: BuildingKit, x: float, w: float, rng: RandomNumberGenerator) -> void:
+	for i in rng.randi_range(5, 10):
+		k.plate(Vector3(rng.randf_range(0.04, 0.12), 0.004, rng.randf_range(0.03, 0.09)), Vector3(x + rng.randf_range(-w * 0.55, w * 0.55), 0.006, 0.12 + pow(rng.randf(), 1.5) * 0.7),
+			"glass", BuildingOpenings.GLASS, Vector3(0, rng.randf() * TAU, 0))
+
+
 ## The floor of a house that burned and fell in, `size` its footprint, its
 ## top at `top`: soot where the fire was, rafters lying charred across it,
 ## broken tiles, lumps of plaster and brick, glass.
