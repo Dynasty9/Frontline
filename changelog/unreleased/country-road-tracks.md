@@ -17,6 +17,7 @@ caption = "A country road from afar and close up, the edge of town and a town st
 - **At the edge of town** the asphalt crumbles away into the gravel, and the track runs full width where everything going in and out wears it.
 - **In the rain** streets go dark and glossy with standing water in the dips, the same across every junction.
 - **Junctions** no longer show faint outlines or gutter lines where their paving meets the road.
+- **Gutters** collect dead leaves against the kerb in some stretches.
 - **Sidewalk joints** hold grit, and moss where they stay damp.
 - **Car parks** are kerbed on their three open sides instead of a bare slab dropped on the grass.
 - **Cracks in town asphalt** run along and across the streets, sealed with tar, instead of curly lines.

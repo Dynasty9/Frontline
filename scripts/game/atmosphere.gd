@@ -3002,6 +3002,16 @@ void fragment() {
 		asph = mix(asph, asph * 1.14 + 0.004, wheel * 0.45);
 		asph = mix(asph, vec3(0.115, 0.105, 0.09) * (0.75 + 0.5 * n), gutter * 0.5);
 		asph *= 1.0 - (1.0 - smoothstep(0.02, 0.09, kerb)) * 0.35;
+		// Dead leaves and litter drift into the gutter against the kerb, thick
+		// in some stretches and swept clean in others. (Each leaf is a few
+		// centimetres: they fade to their average once smaller than a pixel.)
+		float leaf_px = clamp(0.05 / max(fwidth(wpos.x) + fwidth(wpos.z), 0.0001), 0.0, 1.0);
+		float drift_bank = smoothstep(0.42, 0.66, texture(street_noise, vec2(along * 0.05, x * 0.5) + 0.9).r);
+		float leaf_bed = (1.0 - smoothstep(0.08, 0.45 + 0.25 * drift_bank, kerb)) * drift_bank;
+		float leaf_shape = texture(street_noise, wpos.xz * 1.6 + 0.47).r;
+		float leaves = leaf_bed * mix(0.3, smoothstep(0.55, 0.62, leaf_shape + leaf_bed * 0.08), leaf_px);
+		vec3 leaf_col = mix(vec3(0.075, 0.05, 0.026), vec3(0.14, 0.095, 0.045), texture(street_noise, wpos.xz * 3.1 + 0.2).r);
+		asph = mix(asph, leaf_col, leaves * 0.75);
 		// a drain grate in the gutter every 32 m, the sides taking turns
 		float stretch = floor(along / 32.0);
 		float from_grate = abs(along - stretch * 32.0 - 16.0);
@@ -3044,7 +3054,7 @@ void fragment() {
 		vec3 normal = surface.rgb * 2.0 - 1.0;
 		normal.xy *= 0.18 * (1.0 - metal_part) * (1.0 - dash * 0.5) * (1.0 - pud2);
 		NORMAL = normalize(mix(NORMAL, (VIEW_MATRIX * vec4(ground_basis * normal, 0.0)).xyz, paved));
-		float asphalt_rough = clamp(surface.a, 0.65, 1.0) - wheel * 0.1 - tar * 0.3 + gutter * 0.05;
+		float asphalt_rough = clamp(surface.a, 0.65, 1.0) - wheel * 0.1 - tar * 0.3 + gutter * 0.05 + leaves * 0.15;
 		asphalt_rough = mix(asphalt_rough, 0.58, dash);
 		asphalt_rough = mix(asphalt_rough, mix(0.5, 0.8, slot), metal_part);
 		ROUGHNESS = mix(ROUGHNESS, mix(mix(asphalt_rough, 0.3, rain.x), 0.03, pud2), paved);
