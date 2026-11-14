@@ -1,0 +1,46 @@
+{
+  "before_ref": "e09de96a9eca5c266d1aa1327aaa3a0f4a185d5f",
+  "source_ref": "5571931751bb832e8a54921216d0c63c18f70ccf",
+  "engine": "Godot 4.7.2 stable ed1daf0bf",
+  "stage": "tools/showcase/building-surfaces.tscn",
+  "command": "godot --path CHECKOUT --resolution 1600x900 tools/showcase/building-surfaces.tscn -- --building-out=OUTPUT --offscreen FLAGS",
+  "comparisons": [
+    {
+      "subjects": [
+        "house_ruin"
+      ],
+      "flags": [
+        "--building-single",
+        "--building-kinds=house_ruin"
+      ],
+      "after_flags": [
+        "--building-match=BEFORE/capture.json"
+      ],
+      "cameras": {
+        "house_ruin": [
+          0.247636795043945,
+          1.25,
+          0.000959873199462891,
+          9.41915416717529,
+          42.3277130126953
+        ]
+      },
+      "crops": [
+        [
+          180,
+          60,
+          1420,
+          820
+        ],
+        [
+          760,
+          380,
+          1300,
+          720
+        ]
+      ]
+    }
+  ],
+  "notes": "Both sides render the studio stage's house_ruin, whose walls are built dark (a ruin's) where Structure can. The baseline is the house plans branch, which this builds on.",
+  "composition": "PIL: matched rows, 792 px halves, JPEG quality 82"
+}
