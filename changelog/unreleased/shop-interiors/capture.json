@@ -1,0 +1,43 @@
+{
+  "before_ref": "326d3a4bed2c34b913aeb0b2326526518f007377",
+  "source_ref": "8281842aa8e2a5e997aac775c3273d2fdba866fa",
+  "engine": "Godot 4.7.2 stable ed1daf0bf",
+  "stage": "tools/showcase/building-surfaces.tscn",
+  "command": "godot --path CHECKOUT --resolution 3200x1800 tools/showcase/building-surfaces.tscn -- --building-out=OUTPUT --offscreen FLAGS",
+  "comparisons": [
+    {
+      "subjects": [
+        "shop_rooms"
+      ],
+      "flags": [
+        "--building-single",
+        "--building-kinds=shop_rooms"
+      ],
+      "before_flags": [
+        "--building-match=AFTER/capture.json"
+      ],
+      "crops": [
+        [
+          240,
+          224,
+          2928,
+          1600
+        ],
+        [
+          608,
+          672,
+          1728,
+          1152
+        ],
+        [
+          1600,
+          320,
+          2880,
+          896
+        ]
+      ]
+    }
+  ],
+  "notes": "Both sides render the source_ref studio stage (its shop_rooms subject gives a shop's floor variant 3 where BuildingInteriors.shop exists, else the house floor shops had before). The baseline is the landing branch this builds on (house plans, furniture, street furniture over main).",
+  "composition": "PIL: matched rows, 792 px halves, JPEG quality 82"
+}

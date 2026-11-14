@@ -687,8 +687,8 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   Houses stand on lots facing the street with their door to it, some on two floors and some with a wing out of
   the back (an L or a T); behind them, gardens closed off by hedges or
   walls, fences down the sides, vegetable patches, washing lines and trees; some have a drive with the car on it.
-  Inside, the rooms are furnished (a wardrobe, a bookcase, a kitchen, a settee, a table and chairs), seen when
-  the roof lifts as men go in. Shops with awnings line the main street near the middle, most with flats over them. The floor above a ground
+  Inside, the rooms are furnished (a wardrobe, a bookcase, a kitchen, a settee, a table and chairs) and the shops
+  fitted out (shelving stocked with goods, a counter and till), seen when the roof lifts as men go in. Shops with awnings line the main street near the middle, most with flats over them. The floor above a ground
   floor is looks only: it lifts off with the roof when men go in, and comes down when a wall under it is blown in.
 - A town square on one corner of the crossroads (fountain or statue, benches, planters, a flagpole, market
   stalls, bollards), a fenced playground (swings, slide, climbing frame, sandbox, seesaw, roundabout), a small
