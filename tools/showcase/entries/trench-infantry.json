@@ -13,7 +13,27 @@
     {
       "file": "changelog/unreleased/trench-infantry/comparison.mp4",
       "sha256": "74032321abd214c31fbdfdfd2a00c26b54d11193c9bec86313a746e7c19c31cb"
+    },
+    {
+      "file": "changelog/unreleased/trench-infantry/comparison.webm",
+      "sha256": "c79e56262df14cc5308371d74f3c1b7ff4851e058aa5109741935c0d967aa916"
     }
   ],
-  "output": null
+  "output": null,
+  "transcode": {
+    "source_ref": "2f56735107fa5e5cea6fc2ce882f5f9765f8ec91",
+    "source_file": "changelog/unreleased/trench-infantry/comparison.mp4",
+    "source_sha256": "74032321abd214c31fbdfdfd2a00c26b54d11193c9bec86313a746e7c19c31cb",
+    "command": "ffmpeg -i comparison.mp4 -map 0:v:0 -map 0:a? -c:v libvpx-vp9 -crf 26 -b:v 0 -row-mt 1 -threads 2 -pix_fmt yuv420p -c:a libopus -b:a 128k comparison.webm",
+    "frames": 154,
+    "fps": 30,
+    "dimensions": [
+      1280,
+      360
+    ],
+    "duration_seconds": 5.133,
+    "audio": "No audio in source or output.",
+    "changes": "Format conversion only; no crop, retiming, new capture or generated frames."
+  },
+  "evidence_limitations": "Foliage partly hides foot placement. The dark, distant character view does not establish close-up animation or equipment quality."
 }
