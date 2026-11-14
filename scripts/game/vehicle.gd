@@ -136,7 +136,7 @@ var _mg_lay := PackedVector2Array()  # (view) each machine-gun mount's traverse 
 var _mg_rate := PackedVector2Array()  # (view) and how fast each is moving
 var _mg_recoil := 0.0  # (view) how far the machine gun has run back on its cradle
 var _mg_climb := 0.0  # (view) how far its muzzle has jumped with the last rounds
-var _gunners: Array = []  # (view) the man on each crew-served mount (a SoldierModel), null where none
+var _gunners: Array = []  # (view) the man on each crew-served mount (a SoldierModel; true: not made yet), null where none
 var _gunner_fire := 0.0  # (view) seconds since the mounted gun last fired, for its gunner
 var _gunner_skip := 0  # (view) frames since the gunners were last posed
 var _mg_heat := 0.0  # (view) how hot the mounted gun's barrel is from its last bursts
@@ -2779,6 +2779,8 @@ func _barrel_smoke(dt: float) -> void:
 ## turret, a door gun, a boat's bow gun - his hands on the grips wherever it's
 ## laid, standing behind it (kneeling at a boat's bow or crouched in a
 ## helicopter's door) and turning with it, his shoulders working when it fires.
+## (Each is made the first time the vehicle comes near enough to see him, so
+## one never seen costs nothing.)
 func _build_gunners() -> void:
 	_gunners.clear()
 	if team < 0 or _vm.mg_mounts.is_empty():
@@ -2786,18 +2788,20 @@ func _build_gunners() -> void:
 	var any := false
 	for i in _vm.mg_mounts.size():
 		var hands: Array = _vm.mg_hands[i]
-		if hands.size() < 2:
-			_gunners.append(null)
-			continue
-		var g := SoldierModel.new()
-		g.host_world = world
-		model.add_child(g)
-		g.build("rifleman" if team == 0 else "fighter", team, eid * 13 + i)
-		g.crew = true
-		_gunners.append(g)
-		any = true
+		_gunners.append(true if hands.size() >= 2 else null)
+		any = any or hands.size() >= 2
 	if not any:
 		_gunners.clear()
+
+
+func _make_gunner(i: int) -> SoldierModel:
+	var g := SoldierModel.new()
+	g.host_world = world
+	model.add_child(g)
+	g.build("rifleman" if team == 0 else "fighter", team, eid * 13 + i)
+	g.crew = true
+	_gunners[i] = g
+	return g
 
 
 func _pose_gunners(dt: float) -> void:
@@ -2808,8 +2812,12 @@ func _pose_gunners(dt: float) -> void:
 	var camera := get_viewport().get_camera_3d()
 	var cd := camera.global_position.distance_to(global_position) if camera else 0.0
 	var shown := cd < 260.0
-	for g in _gunners:
-		if g != null and is_instance_valid(g) and (g as Node3D).visible != shown:
+	for i in _gunners.size():
+		var g: Variant = _gunners[i]
+		if g is bool and shown:
+			_make_gunner(i)
+			_gunner_skip = 99  # (posed at once: never seen standing at the model's origin)
+		elif g is SoldierModel and is_instance_valid(g) and (g as Node3D).visible != shown:
 			(g as Node3D).visible = shown
 	if not shown:
 		return
@@ -2823,8 +2831,10 @@ func _pose_gunners(dt: float) -> void:
 	var posture: int = Soldier.Post.CROUCH if low else Soldier.Post.STAND
 	var act: int = Soldier.Act.SHOOT if _gunner_fire < 0.6 else Soldier.Act.IDLE
 	for i in _gunners.size():
+		if not _gunners[i] is SoldierModel:
+			continue
 		var g: SoldierModel = _gunners[i]
-		if g == null or not is_instance_valid(g):
+		if not is_instance_valid(g):
 			continue
 		var mount: Node3D = _vm.mg_mounts[i]
 		var hands: Array = _vm.mg_hands[i]
