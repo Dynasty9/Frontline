@@ -1141,13 +1141,13 @@ static func _preset(kind: String) -> Dictionary:
 			return {"pattern": PAINT, "col_a": Color(0.32, 0.2, 0.12), "col_b": Color(0.22, 0.2, 0.18), "rough": 0.85, "metal": 0.35, "bump": 1.0, "grime": 0.5, "rust": 1.0}
 		"wire":
 			# new galvanised barbed and razor wire: bright zinc, a little dulled
-			return {"pattern": PAINT, "col_a": Color(0.52, 0.53, 0.51), "col_b": Color(0.64, 0.64, 0.61), "rough": 0.5, "metal": 0.7, "bump": 0.0, "grime": 0.15, "rust": 0.06, "scale": 4.0}
+			return {"pattern": PAINT, "col_a": Color(0.5, 0.51, 0.49), "col_b": Color(0.58, 0.58, 0.55), "rough": 0.58, "metal": 0.6, "bump": 0.0, "grime": 0.15, "rust": 0.06, "scale": 4.0}
 		"wire_rust":
 			# wire left out for years: the zinc gone, rusted through to a flaky brown
-			return {"pattern": PAINT, "col_a": Color(0.31, 0.17, 0.09), "col_b": Color(0.43, 0.27, 0.15), "rough": 0.88, "metal": 0.2, "bump": 0.0, "grime": 0.3, "rust": 1.0, "scale": 4.0}
+			return {"pattern": PAINT, "col_a": Color(0.25, 0.14, 0.08), "col_b": Color(0.36, 0.21, 0.11), "rough": 0.9, "metal": 0.15, "bump": 0.0, "grime": 0.3, "rust": 1.0, "scale": 4.0}
 		"wire_military":
-			# the armies' issue wire: dull dark zinc, weathered grey, flecked with rust
-			return {"pattern": PAINT, "col_a": Color(0.36, 0.37, 0.34), "col_b": Color(0.45, 0.46, 0.42), "rough": 0.6, "metal": 0.5, "bump": 0.0, "grime": 0.3, "rust": 0.18, "scale": 4.0}
+			# the armies' issue wire: dull, dark and olive-grey, no shine to give it away
+			return {"pattern": PAINT, "col_a": Color(0.31, 0.32, 0.27), "col_b": Color(0.38, 0.38, 0.32), "rough": 0.72, "metal": 0.3, "bump": 0.0, "grime": 0.3, "rust": 0.18, "scale": 4.0}
 		"bag":
 			return {"pattern": CANVAS, "col_a": Color(0.5, 0.45, 0.33), "col_b": Color(0.4, 0.36, 0.26), "scale": 1.6, "rough": 0.97, "bump": 0.8, "grime": 0.7, "local_space": true, "use_vcolor": true}
 		"canvas_l":
