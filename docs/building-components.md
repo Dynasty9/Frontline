@@ -226,6 +226,29 @@ door to the house) and some lawns with room for it a trampoline; these are drawn
 They're set dressing (Decor, appended after the rest so the town's other dressing keeps its looks): no cover,
 and a blast or a truck knocks them over. Render them with `--building-kinds=house_yard` in the studio stage.
 
+## The parish church
+
+A skirmish town has a parish church, built as a house is so men can go in (`MapGen._church`): `TownGen.church`
+stands it back from one of the roads into the town with its west tower to the road, first where its whole
+churchyard has room, from a stream of its own after the town and its villages are laid out and before the farms.
+The tower is solid (Structure "church": rendered, stone quoins long and short up its corners, string courses, a
+west lancet, a clock on two faces, louvred belfry lancets, battlements, pinnacles, a matte slate spire with a
+gilded cross). The nave and the chancel are each a floor (variant 3: flagstones, pews either side of the aisle
+and the font in the nave; the altar on its step behind a rail in the chancel), house walls in the "church"
+material (limewashed render over a dressed stone plinth) laid by `Structure.church_walls` (bays with a lancet in
+each, the door in the nave's south side, the nave's ends either side of the tower and of the chancel arch), and a
+roof that draws the walls on up to the eaves by the same plan (`_church_roof`: the rest of each two-light lancet
+and its pointed heads, a string course, stepped buttresses) under a 50 degree slate roof. A window's sill is
+chest high, so men inside fire from it; the roofs lift off when they go in, and a wall knocked down leaves rubble
+as a house's does. Render it with `--building-kinds=church` (and `church_open`, its roofs off) in the studio
+stage.
+
+Round it `TownGen._churchyard` lays out the churchyard from the same stream: a low stone wall all round
+(Structure "low_wall", cover as a garden wall is) with a gap in front for the path up to the west door, rows of
+graves either side of the nave and behind the chancel (Decor "graves": `BuildingYards.graves`, headstones with
+round or pointed tops, the odd cross, some leaning, a few kerbed plots), a dark conifer at each front corner;
+then the yard is reserved, so nothing the map puts down after it lands among the graves.
+
 ## Wall fittings
 
 What's fixed to a house's walls comes from `BuildingFittings` (`meter_box`, `tap`, `wall_unit`, `wall_dish`,

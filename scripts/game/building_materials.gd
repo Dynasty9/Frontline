@@ -26,6 +26,9 @@ const PROFILES := {
 		"trim": "concrete", "sill": "concrete", "head": "concrete", "base": "concrete", "base_tone": -0.12, "cap": "concrete"},
 	"precast": {"surface": "precast", "color": Color(0.56, 0.55, 0.52), "finish": "panels", "joints": 2.0,
 		"trim": "precast", "sill": "precast", "head": "precast", "base": "precast", "base_tone": -0.1, "cap": "precast"},
+	"church": {"surface": "plaster", "color": Color(0.78, 0.73, 0.62), "finish": "render",
+		"trim": "stone", "sill": "stone", "head": "stone", "base": "stone", "base_tone": -0.2, "cap": "stone",
+		"trim_color": Color(0.74, 0.7, 0.62)},
 	"timber": {"surface": "wood_painted", "color": Color(0.3, 0.34, 0.22), "finish": "boards", "boards": 0.24,
 		"trim": "wood_dark", "sill": "wood_dark", "head": "wood_dark", "base": "concrete", "base_tone": 0.0, "cap": "wood_dark"},
 	"corrugated": {"surface": "corrugated", "color": Color(0.45, 0.46, 0.44), "finish": "sheet", "sheets": 1.05,
@@ -45,9 +48,10 @@ const PROFILES := {
 ## The materials a house can be built of, by its colour index (see
 ## Structure.HOUSE_COLORS): most are rendered and painted, the red-brown ones
 ## are bare brick, the grey-brown ones rough stone.
-## A house's material by its colour index (the town draws 0 to 4); a barn's
-## is the last, weatherboarding (see MapGen._house).
-const HOUSE := ["plaster", "plaster", "brick", "plaster", "stone", "timber"]
+## A house's material by its colour index (the town draws 0 to 4); then the
+## parish church's limewashed render (see MapGen._church), and last a barn's
+## weatherboarding (see MapGen._house).
+const HOUSE := ["plaster", "plaster", "brick", "plaster", "stone", "church", "timber"]
 
 
 static func profile(material: String) -> Dictionary:
@@ -86,6 +90,9 @@ static func house_color(ci: int, paint: Color) -> Color:
 			return [Color(0.56, 0.3, 0.21), Color(0.5, 0.29, 0.22), Color(0.6, 0.36, 0.25)][posmod(ci / HOUSE.size(), 3)]
 		"stone":
 			return [Color(0.6, 0.57, 0.51), Color(0.55, 0.53, 0.49), Color(0.62, 0.58, 0.5)][posmod(ci / HOUSE.size(), 3)]
+		"church":
+			# limewash over the render: warm cream, ochre, or pale grey
+			return [Color(0.8, 0.75, 0.63), Color(0.76, 0.68, 0.53), Color(0.72, 0.7, 0.65)][posmod(ci / HOUSE.size(), 3)]
 		"timber":
 			# a barn's boards: barn red, weathered grey, or dark green
 			return [Color(0.46, 0.15, 0.11), Color(0.45, 0.43, 0.39), Color(0.22, 0.29, 0.21)][posmod(ci / HOUSE.size(), 3)]

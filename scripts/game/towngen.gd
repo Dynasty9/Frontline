@@ -42,6 +42,8 @@ var square_flag: Array = []  # the flagpole on it (decor; the town's supply dump
 ## Yard dressing (see _yard_life), kept apart and put after the rest of the
 ## decor, so every older piece keeps its place in the list and so its look.
 var _yard_decor: Array = []
+var church_at := Vector3.INF  # where the parish church stands (none: INF)
+var _church_decor: Array = []  # its churchyard's dressing (decor, after everything else)
 var _shop_decor: Array = []  # what the shops put out (decor, after the yards'; see _shop_wares)
 
 
@@ -1023,6 +1025,98 @@ func farms(k: int) -> void:
 		made += 1
 
 
+## The parish church: on the edge of the town where one of its roads comes
+## in, standing back from it with its tower to the road. From a stream of its
+## own, after the town and its villages are laid out (so they stand where
+## they did) and before the farms, which settle round it; a map with no room
+## for it has none.
+func church() -> void:
+	var cr := RandomNumberGenerator.new()
+	cr.seed = int(absf(center.x) * 13.0) * 7919 + int(absf(center.z) * 13.0) * 31 + 71
+	var size := Vector3(8.0, 6.5, 23.0)
+	# (first where its whole churchyard has room; failing that, wherever the
+	# church itself has, its wall laid where it fits)
+	for whole: bool in [true, false]:
+		for attempt in 160:
+			var poly: PackedVector3Array = main_road if cr.randf() < 0.5 else cross_road
+			if poly.size() < 7:
+				continue
+			var i := cr.randi_range(3, poly.size() - 4)
+			var p := poly[i]
+			var out := cr.randf() < 0.5
+			var dc := Defs.flat(p - center).length()
+			if dc < REACH - 6.0 or dc > REACH + 70.0:
+				continue
+			var t := TrenchNet.snap_dir(poly[i + 2] - poly[i - 2])
+			var n := _perp(t) * (1.0 if out else -1.0)
+			var c := TrenchNet.snap_pos(p + n * (size.z * 0.5 + 7.5))
+			var axis := atan2(n.x, n.z)
+			if not Defs.in_map(c, size.z * 0.5 + 6.0) or _road_dist(c, size.z * 0.5 + 4.0) < size.z * 0.5 + 3.5:
+				continue
+			if whole and not mg._is_free(c + n * CHURCHYARD.z, Vector2(size.x * 0.5 + CHURCHYARD.x + 0.5, size.z * 0.5 + CHURCHYARD.y + 0.5), axis, 0.3, true, 1.5):
+				continue
+			var ci := BuildingMaterials.HOUSE.find("church") + BuildingMaterials.HOUSE.size() * (cr.randi() % 3)
+			if mg._church(c, axis, ci, size):
+				church_at = c
+				var main_decor := decor
+				decor = _church_decor
+				_churchyard(c, axis, size, cr, whole)
+				_church_decor = decor
+				decor = main_decor
+				return
+
+
+## How far the churchyard's wall stands out from the church: x either side,
+## y the mean of the front and back (from the church's middle), z how far
+## its middle is behind the church's.
+const CHURCHYARD := Vector3(5.0, 3.6, 0.85)
+
+
+## The churchyard round the church at `c` (its tower to local -z, toward the
+## road): a low stone wall round it (cover, as a garden wall is) with a gap
+## in front for the path up to the west door, rows of graves either side of
+## the nave and behind the chancel, a dark conifer at each front corner.
+## (Where the church was put with room for all this, `whole`, the wall is
+## laid whole over whatever lie the ground has; else where it fits.) Then
+## the yard is kept clear of whatever the map puts down after it.
+func _churchyard(c: Vector3, axis: float, size: Vector3, cr: RandomNumberGenerator, whole: bool) -> void:
+	var b := Basis(Vector3.UP, axis)
+	var hx := size.x * 0.5 + CHURCHYARD.x
+	var front := -size.z * 0.5 - (CHURCHYARD.y - CHURCHYARD.z)
+	var back := size.z * 0.5 + CHURCHYARD.y + CHURCHYARD.z
+	var at := func(x: float, z: float) -> Vector3: return c + b * Vector3(x, 0, z)
+	var wall_at := func(p: Vector3, yaw: float, team: int, extra: Dictionary) -> void:
+		if whole:
+			mg._spawn("low_wall", p, yaw, team, extra)
+		else:
+			mg._try("low_wall", p, yaw, team, extra)
+	# the wall: along the front either side of the gate, down the sides, across the back
+	for side: float in [-1.0, 1.0]:
+		var run := hx - 1.3
+		var n := maxi(1, int(round(run / 3.6)))
+		for i in n:
+			wall_at.call(at.call(side * (1.3 + (i + 0.5) * run / n), front), axis, -1, {"size": Vector3(run / n, 1.0, 0.5), "variant": 0})
+		var len := back - front
+		var m := maxi(1, int(round(len / 3.8)))
+		for i in m:
+			wall_at.call(at.call(side * hx, front + (i + 0.5) * len / m), axis + PI * 0.5, -1, {"size": Vector3(len / m, 1.0, 0.5), "variant": 0})
+	var k := maxi(1, int(round(hx * 2.0 / 3.8)))
+	for i in k:
+		wall_at.call(at.call(-hx + (i + 0.5) * hx * 2.0 / k, back), axis, -1, {"size": Vector3(hx * 2.0 / k, 1.0, 0.5), "variant": 0})
+	# the path from the gate to the door
+	_d("path", at.call(0.0, front + 0.9), axis, Vector3(1.6, 0, 2.6))
+	# rows of graves either side of the nave, more behind the chancel
+	for side: float in [-1.0, 1.0]:
+		for i in 7:
+			if cr.randf() < 0.18:
+				continue
+			_d("graves", at.call(side * (size.x * 0.5 + 3.4), -size.z * 0.5 + 2.0 + i * 2.6), axis, cr.randi_range(2, 3))
+	_d("graves", at.call(cr.randf_range(-1.0, 1.0), size.z * 0.5 + 1.5), axis, cr.randi_range(4, 6))
+	for side: float in [-1.0, 1.0]:
+		mg._try("tree", at.call(side * (hx - 1.6), front + 1.8), cr.randf() * TAU, -1, {"variant": 2})
+	_reserve(at.call(0.0, (front + back) * 0.5), Vector2(hx, (back - front) * 0.5), axis)
+
+
 ## A power line along each country road on the verge, pole every ~34 m.
 func country_power() -> void:
 	for poly in [main_road, cross_road]:
@@ -1123,5 +1217,7 @@ func finish(build_view := true) -> void:
 	decor.append_array(_shop_decor)
 	_yard_decor = []
 	_shop_decor = []
+	decor.append_array(_church_decor)
+	_church_decor = []
 	if build_view:
 		world.set_decor(decor, rect)

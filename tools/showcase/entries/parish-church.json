@@ -1,0 +1,20 @@
+{
+  "entry": "changelog/unreleased/parish-church.md",
+  "summary": "A parish church men can go into, in a walled churchyard, on the edge of skirmish towns.",
+  "medium": "still",
+  "stage": "tests/fixtures/environment-views.gd (town); tools/showcase/building-surfaces.tscn",
+  "rationale": "New landmark building: the same camera on the same map before and after shows it in place; studio views from behind and with its roofs off show its build and its interior.",
+  "source_ref": "2c5106d92daee29849e1767abb72f8b927c791bf",
+  "before_ref": "e09de96a9eca5c266d1aa1327aaa3a0f4a185d5f",
+  "sources": [
+    {
+      "file": "changelog/unreleased/parish-church/comparison.jpg",
+      "sha256": "6a9010c349665e4045c9cca84e5f75ec24f7ce9e85dbe52f0b557455aa8c0834"
+    },
+    {
+      "file": "changelog/unreleased/parish-church/capture.json",
+      "sha256": "47701891fd1f5f3fabf74ca4bb55c6e37535bc25fca0985599bafa16f23d7767"
+    }
+  ],
+  "output": null
+}

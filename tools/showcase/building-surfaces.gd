@@ -190,6 +190,12 @@ func _subject(kind: String) -> Node3D:
 			if kind == "house_yard" and ClassDB.class_exists("Node") and ResourceLoader.exists("res://scripts/game/building_yards.gd"):
 				_yard(yard, 9.0, 7.6)
 			return yard
+		"church", "church_open":
+			# the parish church as the town builds it (where Structure has one);
+			# open, its roofs off, as when men are inside
+			if (load("res://scripts/game/structure.gd") as Script).get_script_method_list().any(func(m: Dictionary) -> bool: return m.name == "church_walls"):
+				return _church(kind == "church")
+			return Node3D.new()
 		"roofscape":
 			# four houses' roofs as the town draws them (their ids pick the
 			# form and wear): a hipped roof mended with a tarp and with a
@@ -226,7 +232,7 @@ func _subject(kind: String) -> Node3D:
 		"barn":
 			# a farm's barn as the farmsteads build it (weatherboarded, where
 			# the material exists; before it, a house of the colour it drew)
-			return _house(13.0, 10.0, 5 if BuildingMaterials.HOUSE.size() > 5 else 0, false)
+			return _house(13.0, 10.0, maxi(0, BuildingMaterials.HOUSE.find("timber")), false)
 		"rubble":
 			# rubble as a fallen wall leaves it, and a heap inside a ruin
 			var heaps := Node3D.new()
@@ -477,6 +483,41 @@ func _yard(root: Node3D, w: float, d: float) -> void:
 		yards.call("shed", k.at_point(Vector3(w * 0.5 - 1.3, 0, d * 0.5 + 4.4), Vector3(0, PI, 0)), yards.get("SHEDS")[0], rng)
 		yards.call("trampoline", k.at_point(Vector3(-1.2, 0, d * 0.5 + 5.4)), yards.get("PADS")[0])
 	Mats.merge_static(root)
+
+
+## The parish church as MapGen._church lays it out (its tower to -z): the
+## tower, then the nave and the chancel, each a floor, its walls and its roof.
+func _church(roofed := true) -> Node3D:
+	var root := Node3D.new()
+	var script: Script = load("res://scripts/game/structure.gd")
+	var consts := script.get_script_constant_map()
+	var tw: float = consts["CHURCH_TOWER"]
+	var cl: float = consts["CHURCH_CHANCEL"]
+	var ci := BuildingMaterials.HOUSE.find("church")
+	var size := Vector3(8.0, 6.5, 23.0)
+	var z0 := -size.z * 0.5
+	var nl := size.z - tw - cl
+	var tower := Structure.preview_model("church", -1, ci, Vector3(tw, consts["CHURCH_TOWER_H"], tw), false, 1)
+	tower.position.z = z0 + tw * 0.5
+	root.add_child(tower)
+	var id := 400
+	for body: Array in [[z0 + tw + nl * 0.5, size.x, nl, size.y - 0.3, false], [size.z * 0.5 - cl * 0.5, size.x - 2.4, cl, size.y - 1.5, true]]:
+		var bc := Vector3(0, 0, body[0])
+		var fl := Structure.preview_model("floor", -1, 3, Vector3(body[1], 0.06, body[2]), false, id)
+		fl.position = bc
+		root.add_child(fl)
+		for e: Array in script.call("church_walls", body[1], body[2], body[4]):
+			id += 1
+			var p: Vector2 = e[0]
+			var wall := Structure.preview_model("house_wall", -1, e[3], Vector3(e[2], float(ci), 0.4), int(e[3]) == 2, id)
+			wall.position = bc + Vector3(p.x, 0, p.y)
+			wall.rotation.y = e[1]
+			root.add_child(wall)
+		if roofed:
+			var roof := Structure.preview_model("roof", -1, ci * 2, Vector3(body[1], body[3], body[2]), false, id + 50)
+			roof.position = bc
+			root.add_child(roof)
+	return root
 
 
 func _bounds(node: Node3D, parent: Transform3D) -> AABB:
