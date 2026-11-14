@@ -1,5 +1,5 @@
 class_name TrenchFittings
-## What a finished fire trench is built with, after the digging (view only).
+## Fittings for a finished fire trench, after the digging (view only).
 ##
 ## A dug trench is only a ditch until it is fitted out. Field manuals from 1916
 ## to the trenches round Bakhmut describe the same work: the cut walls are
