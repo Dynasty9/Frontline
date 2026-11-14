@@ -6,6 +6,11 @@ extends RefCounted
 ## menu can list them without compiling the whole game they're played in.
 
 const LIST := [
+	{"key": "bootcamp", "title": "Boot Camp", "op": "Basic Training", "side": 0, "seed": 1, "mood": "day", "mins": 8, "tutorial": true,
+		"blurb": "New to Frontline? Learn the controls a step at a time, from the camera to calling in artillery.",
+		"force": "Two rifle squads and an engineer team, with 155 mm artillery on call",
+		"area": "The Coalition's home FOB, well behind the lines",
+		"brief": "Sergeant Hale walks you through command, one step at a time: each waits until you've done it, and names the key to press (rebind one in Settings and the instructions follow). The camera, selecting and moving into cover, picking out one soldier, building, calling fire support, attack-move and defend, then handing a squad to your XO, the order of battle and the tactical map. A few Rebels will turn up to practise on."},
 	{"key": "bridgehead", "title": "Bridgehead", "op": "Operation Broken Crossing", "side": 0, "seed": 1, "mood": "dawn", "mins": 5,
 		"blurb": "Clear a riverside village, seize its bridge and hold it against the counterattack.",
 		"force": "Two rifle squads, an MG team, an AT team and an AMV-7 Marshall",

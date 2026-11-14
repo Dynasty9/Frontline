@@ -400,6 +400,35 @@ func label(id: String, both := false) -> String:
 	return a if a != "" else b
 
 
+## Text with the keys in it: each {action} becomes that action's key as this
+## player has bound it ("{orbat}" -> "O"), so a mission's instructions (which
+## the server writes without knowing anyone's bindings) follow a rebinding.
+## An action with no key says so; braces round anything else are left alone.
+func fill(s: String) -> String:
+	if not "{" in s:
+		return s
+	var out := ""
+	var i := 0
+	while i < s.length():
+		var a := s.find("{", i)
+		if a < 0:
+			out += s.substr(i)
+			break
+		var b := s.find("}", a)
+		if b < 0:
+			out += s.substr(i)
+			break
+		var id := s.substr(a + 1, b - a - 1)
+		out += s.substr(i, a - i)
+		if has(id):
+			var k := label(id)
+			out += k.to_upper() if k != "" else "(unbound: %s)" % title(id)
+		else:
+			out += s.substr(a, b - a + 1)
+		i = b + 1
+	return out
+
+
 func title(id: String) -> String:
 	return String(_info.get(id, ["", id])[1])
 

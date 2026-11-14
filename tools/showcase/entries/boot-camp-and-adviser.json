@@ -1,0 +1,31 @@
+{
+  "entry": "changelog/unreleased/boot-camp-and-adviser.md",
+  "summary": "Boot Camp teaches command a step at a time; Play vs AI's adviser suggests the nearest towns and nudges when supply or squads sit idle.",
+  "medium": "still",
+  "stage": "game capture, off-screen 1600x900, --perf=0: --mission=bootcamp --play --shot-at=10; --mission=bootcamp --play --autoplay --bind=support:V --shot-at=30 --shots=5 --shot-every=8 (frame 3); --host --team=0 --seed=4 --timescale=3 --shot-at=170 and --shot-at=93 --shots=4 --shot-every=4 (frame 1); --menu-shot --set=boot_camp_offer:true --shot-at=18 (cropped to the top right)",
+  "rationale": "Both features are interface: what the panel says and where it marks the ground. Player-view stills show the objectives, the keys as bound (one rebound) and the adviser's word; motion adds nothing.",
+  "source_ref": "a6286684 + working tree",
+  "sources": [
+    {
+      "file": "changelog/unreleased/boot-camp-and-adviser/adviser-suggestions.jpg",
+      "sha256": "a01b424d830b506179f3f6d3588a2581064ce37759e39bdff0e8632c1c4fa257"
+    },
+    {
+      "file": "changelog/unreleased/boot-camp-and-adviser/adviser-word.jpg",
+      "sha256": "997119fafc03bb1ec55c4543f2d33d1b35234a62ca1a0fbf978b82d9c7d18157"
+    },
+    {
+      "file": "changelog/unreleased/boot-camp-and-adviser/boot-camp-first-step.jpg",
+      "sha256": "140672ea1fef947555ae86f3d57bc43b81de4571e1edd32f915ce3837d3103cc"
+    },
+    {
+      "file": "changelog/unreleased/boot-camp-and-adviser/boot-camp-offer.jpg",
+      "sha256": "8cd88424f8e554e227f5e5b8d29c87db7bea08a6039d174e757d039c25c6a924"
+    },
+    {
+      "file": "changelog/unreleased/boot-camp-and-adviser/boot-camp-rebound-key.jpg",
+      "sha256": "9c898fe557013810058c0e181c2ade4ef9c82b76759e99481eb9786e2be383a6"
+    }
+  ],
+  "output": null
+}

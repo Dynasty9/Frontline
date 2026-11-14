@@ -152,6 +152,7 @@ func _ready() -> void:
 		["note", "ui_note", "", null, ""],
 		["check", "labels", "Unit activity labels", null, "Close up: each soldier's name and what he's doing. Further out: a status icon per man."],
 		["check", "bubbles", "Speech bubbles", null, "Shouts, radio calls and the men's banter."],
+		["check", "adviser", "Adviser", null, "In Play vs AI: suggested objectives (the nearest towns to take) and a quiet word when supply sits unspent, squads stand idle or a FOB is under attack. It stops suggesting once you hold a few towns."],
 		["check", "cover_preview", "Cover preview", null, "Pips under the cursor showing the cover each man will take (green heavy, yellow light, red exposed)."],
 		["check", "coop_show", "Co-commanders' views and cursors", null, "In co-op: where the other commanders on your side are looking, their cursors, what they've selected and what they're lining up, in their colours. (Pings and the Command Net show either way.)"],
 		["check", "reduce_motion", "Reduce motion", null, "Panels cut straight in instead of typing or counting on, and warnings don't flicker."],

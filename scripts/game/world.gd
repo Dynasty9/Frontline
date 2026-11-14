@@ -64,6 +64,7 @@ var delegation: Delegation = null  # (server) units handed to the XO with an int
 var battle: BattleStats = null  # (server) the record the after-action report is made from
 var report: Dictionary = {}  # the latest after-action report this peer may see (BattleStats.report)
 var mission: MissionDirector = null  # (server) the mission being played, if it is one
+var adviser: Adviser = null  # (the player's view, Play vs AI) suggestions and nudges for a new commander
 var mission_info: Dictionary = {}  # the mission's state as the HUD shows it (every peer)
 var mission_rx_t := 0.0  # world time mission_info arrived (its clocks run on from there)
 var team_info: Array = [{}, {}]
@@ -278,6 +279,8 @@ func build() -> void:
 		photo.world = self
 		add_child(photo)
 		_try_focus()
+	if Adviser.wanted(self):
+		adviser = Adviser.new(self)
 	if not srv and not settings.get("replay", false):
 		_client_ready.rpc_id(1)
 	if _staged:
@@ -726,6 +729,8 @@ func _physics_process(dt: float) -> void:
 	while _simulation_pending + 1e-9 >= step:
 		_simulation_pending = maxf(0.0, _simulation_pending - step)
 		_simulate(step)
+	if adviser and (srv or loaded):
+		adviser.tick()  # (the player's own: on the host and on a client alike; it paces itself)
 
 
 func simulation_fraction() -> float:
@@ -1666,10 +1671,11 @@ func _show_msg(m: Array) -> void:
 		return
 	if not has_view:
 		if settings.get("verbose", false):
-			print("[%s] %s" % [m[1], m[2]])
+			print("[%s] %s" % [m[1], Keys.fill(String(m[2]))])
 		return
 	if hud:
-		hud.add_message(m[1], m[2])
+		# (a mission's instructions name keys as {action}: this player's own)
+		hud.add_message(m[1], Keys.fill(String(m[2])))
 	if m[3] != null:
 		pings.append([m[3], time + 30.0, m[1]])
 
@@ -2109,14 +2115,18 @@ func execute_cmd(peer: int, d: Dictionary) -> void:
 			sqs.erase(sq)
 			if peer > 0:
 				send_msg_to(peer, "alert", "%s is routing - it won't take orders until it rallies." % sq.display_name())
-	if not t in ["unit", "dismount", "stance", "roe", "prio", "pop_smoke"]:
+	if not t in ["unit", "dismount", "stance", "roe", "prio", "pop_smoke", "drill"]:
 		for sq in sqs:
 			sq.order_n += 1
+	# a mission watching for this (Boot Camp's drills); building and fire
+	# support count only once they've gone through (below)
+	if mission and not t in ["build", "build_many", "support"]:
+		mission.noted(team, t, d)
 	# any order of your own to a delegated unit takes it back from the XO,
 	# and he says so on the net (building and fire missions as much as moves);
 	# standing orders (stance, fire discipline, target priority) and popping
 	# smoke are only how they fight, and leave them with him
-	if delegation and peer > 0 and not t in ["delegate", "take_back", "stance", "roe", "prio", "pop_smoke"]:
+	if delegation and peer > 0 and not t in ["delegate", "take_back", "stance", "roe", "prio", "pop_smoke", "drill"]:
 		delegation.release(sqs, vehs, "back under your command")
 	match t:
 		"delegate":
@@ -2237,9 +2247,13 @@ func execute_cmd(peer: int, d: Dictionary) -> void:
 				var f := rules.nearest_fob(team, v.position)
 				if f:
 					v.order_move(f.position + Vector3(rng.randf_range(-8, 8), 0, rng.randf_range(-8, 8)))
+		"drill":
+			pass  # (only ever for the mission: noted above)
 		"build":
 			if rules.try_place(peer, team, String(d.kind), d.pos, float(d.get("yaw", 0.0)), sqs) != null:
 				coop.deed(peer, "Placed %s" % String(Defs.BUILDINGS[String(d.kind)].name), d.pos)
+				if mission:
+					mission.noted(team, "build", d)
 		"build_many":
 			var first := true
 			var laid := 0
@@ -2254,6 +2268,8 @@ func execute_cmd(peer: int, d: Dictionary) -> void:
 					at = it[0]
 			if laid > 0:
 				coop.deed(peer, "Laid %d × %s" % [laid, String(Defs.BUILDINGS[String(d.kind)].name)], at)
+				if mission:
+					mission.noted(team, "build", d)
 		"fire_mission":
 			var kind := String(d.get("kind", "he"))
 			var pit = entities.get(int(d.get("building", 0)))
@@ -2305,6 +2321,8 @@ func execute_cmd(peer: int, d: Dictionary) -> void:
 		"support":
 			if rules.call_support(peer, team, String(d.get("kind", "")), d.pos, d.get("dir", Vector3.ZERO)):
 				coop.deed(peer, "Called in %s" % String(Defs.SUPPORT[String(d.kind)].name), d.pos, true)
+				if mission:
+					mission.noted(team, "support", d)
 		"train", "research", "cancel", "rally", "tunnel_exit":
 			var st = entities.get(int(d.get("building", 0)))
 			if not (st is Structure) or st.team != team:
