@@ -127,7 +127,7 @@ func _stills() -> void:
 			camera.look_at(s[1])
 			caption.text = "%s · %s · %s" % [label, v.display_name().to_upper(), String(s[2])]
 			await _settle()
-			_save("%s-%s" % [kind, "ab"[i]])
+			_save("%s-%s" % [kind, "abc"[i]])
 		_report(kind, v)
 		field.despawn(v)
 		await _settle()
@@ -152,6 +152,14 @@ func _framings(v: Vehicle) -> Array:
 	elif vm.mg_tip:
 		out.append(_frame(vm.mg_tip.global_position, -vm.mg_tip.global_basis.z, mg_len, 1.0, centre, mg))
 		out.append(_frame(vm.mg_tip.global_position, -vm.mg_tip.global_basis.z, mg_len, -1.0, centre, mg))
+		# and the receiver and barrel close to, from the side
+		var axis := (-vm.mg_tip.global_basis.z).normalized()
+		var at := vm.mg_tip.global_position - axis * mg_len * 0.62
+		var side := axis.cross(Vector3.UP).normalized()
+		var out_side := -1.0 if side.dot(at - centre) < 0.0 else 1.0
+		if absf(side.dot(at - centre)) < 0.3:
+			out_side = -1.0
+		out.append([at + (side * out_side * 0.85 + Vector3.UP * 0.32 + axis * 0.25).normalized() * (mg_len * 0.55 + 0.25), at, mg + " CLOSE"])
 	else:
 		out.append([centre + Vector3(8, 4, 8), centre, "NO GUN"])
 	return out

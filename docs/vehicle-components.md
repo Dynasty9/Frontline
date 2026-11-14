@@ -616,3 +616,24 @@ the family asks for no bands) and ends in a brake with dark side ports in two ro
 linked belt with brass rounds from an ammo can's mouth to the feed tray (`hmg`, `mmg`); the `hmg` has its
 feed-cover latch and retracting handle, the `mmg` its cover hinge and rear sight. The armed motorboat carries
 its PKM on a pintle in the foredeck (it had a gun only in its definition).
+
+### Gunners, door guns and the weapon finish
+
+A builder passes where a gunner's hands go when it notes its gun: `_gun(m, muzzle, hands)` and
+`gun_assembly(pivot, muzzle, hands)` take `[right, left]` in the pivot's space (`hmg` with grips: the spade
+grips; `mmg` with a stock: the pistol grip and the stock's wrist; VmCore's DShK; a door minigun's spade grips).
+`_mount_guns()` carries them into each mount's space as `k.mg_hands`, aligned with `mg_mounts` (empty for a
+remote or turret gun). A free mount on an aircraft more than half a metre off the centreline is a door gun: its
+`k.mg_stow` traverse is 1.05 rad outboard, so at rest it points out of its door with its gunner inside.
+VmHeli's `_minigun` is one assembly now (housing, motor, barrels, and with `door` the spade grips, trigger and
+feed chute), so a door gun swings whole.
+
+`Vehicle._build_gunners` gives every mount with hands a `SoldierModel` of the vehicle's side ("rifleman" or
+"fighter"), its `host_world` set so it wears the skinned character like the infantry; `_pose_gunners` stands it
+behind the grips each frame (crouched for helicopters and boats) with its hands IK'd onto them, posing close ones
+every frame and distant ones every few, and hiding them past 260 m. The gunners are view-only, part of the
+model, and go with it.
+
+Gun parts use the `weapon` finish (`VehicleWeapons.STEEL`; a family's plain `gunmetal_w` on a gun becomes it,
+painted tubes keep their paint): phosphated steel, near black, matte with scuffed wear. `_holes` pierces a round
+jacket with staggered rings of dark cooling holes; `_rivets` sets a row of rivet heads on a face.

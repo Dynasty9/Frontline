@@ -136,6 +136,12 @@ var _mg_lay := PackedVector2Array()  # (view) each machine-gun mount's traverse 
 var _mg_rate := PackedVector2Array()  # (view) and how fast each is moving
 var _mg_recoil := 0.0  # (view) how far the machine gun has run back on its cradle
 var _mg_climb := 0.0  # (view) how far its muzzle has jumped with the last rounds
+var _gunners: Array = []  # (view) the man on each crew-served mount (a SoldierModel), null where none
+var _gunner_fire := 0.0  # (view) seconds since the mounted gun last fired, for its gunner
+var _gunner_skip := 0  # (view) frames since the gunners were last posed
+var _mg_heat := 0.0  # (view) how hot the mounted gun's barrel is from its last bursts
+var _smoke_t := 0.0  # (view) until its next wisp of barrel smoke
+var _gunner_dt := 0.0
 var _turret_rest := Vector3.INF
 var _vel_s := Vector3.ZERO
 var _vel_prev := Vector3.ZERO
@@ -2672,6 +2678,8 @@ func mg_kick(k: float) -> bool:
 		return false
 	_mg_recoil = minf(_mg_recoil + k, k * 2.4)
 	_mg_climb = minf(_mg_climb + k * randf_range(0.15, 0.6), 0.045)
+	_gunner_fire = 0.0
+	_mg_heat = minf(_mg_heat + k * 3.0, 2.0)
 	return true
 
 
@@ -2703,7 +2711,7 @@ func _lay_guns(dt: float) -> void:
 		_mg_lay.resize(mounts.size())
 		_mg_rate.resize(mounts.size())
 		for i in mounts.size():
-			_mg_lay[i] = Vector2(0.0, _vm.mg_rests[i].basis.get_euler().x)
+			_mg_lay[i] = Vector2(_vm.mg_stow[i], _vm.mg_rests[i].basis.get_euler().x)
 	var aim := aim_point()
 	var w: Dictionary = Defs.WEAPONS.get(String(vdef.mg), {})
 	var high := 1.3 if w.get("aa", false) else 0.85
@@ -2719,7 +2727,7 @@ func _lay_guns(dt: float) -> void:
 	for i in mounts.size():
 		var mount := mounts[i]
 		var rest: Transform3D = _vm.mg_rests[i]
-		var want := Vector2(0.0, rest.basis.get_euler().x)
+		var want := Vector2(_vm.mg_stow[i], rest.basis.get_euler().x)
 		if aim.is_finite():
 			var frame := (mount.get_parent() as Node3D).global_basis.orthonormalized()
 			var local := frame.inverse() * (aim - mount.global_position)
@@ -2739,6 +2747,102 @@ func _lay_guns(dt: float) -> void:
 		var xf := Transform3D(pose, rest.origin + pose.z * _mg_recoil)
 		if mount.transform != xf:
 			mount.transform = xf
+	if not _gunners.is_empty():
+		_pose_gunners(dt)
+	if _mg_heat > 0.02:
+		_barrel_smoke(dt)
+
+
+## A barrel hot from a burst smokes (view): once the firing stops, thin
+## wisps of burnt propellant and oil curl up off the muzzle and drift away on
+## the wind for a few seconds, thicker after a long burst and from a cannon.
+func _barrel_smoke(dt: float) -> void:
+	_mg_heat *= exp(-dt / 4.5)
+	_smoke_t -= dt
+	if _gunner_fire < 0.18 or _smoke_t > 0.0 or _vm.mg_tip == null or world.fx == null or world.fx.gunfx == null:
+		return
+	var heat := minf(_mg_heat, 1.5)
+	_smoke_t = lerpf(0.42, 0.1, heat / 1.5)
+	var camera := get_viewport().get_camera_3d()
+	var muzzle := _vm.mg_tip.global_position
+	if camera == null or camera.global_position.distance_to(muzzle) > 140.0 or randf() > Settings.fx_mult():
+		return
+	var axis := -_vm.mg_tip.global_basis.z
+	var size := clampf(_mg_heat * 0.5, 0.25, 1.0)
+	var at := muzzle - axis * randf_range(0.0, 0.25) + GunFx._jit(0.02)
+	var col := Color(GunFx.SMOKE.r, GunFx.SMOKE.g, GunFx.SMOKE.b, 0.07 + 0.12 * minf(heat, 1.0))
+	world.fx.gunfx.puff(at, Vector3(0, randf_range(0.25, 0.45), 0) + GunFx._jit(0.06), 0.015 * size + 0.01, (0.1 + 0.16 * size) * randf_range(0.8, 1.25), randf_range(1.6, 2.6), col, 1.6, 0.35, 0.0, 1.0)
+
+
+## The crew on the crew-served guns (view): a man of the vehicle's side, in
+## its kit, on each gun with grips - a technical's DShK, a Humvee's .50 in its
+## turret, a door gun, a boat's bow gun - his hands on the grips wherever it's
+## laid, standing behind it (kneeling at a boat's bow or crouched in a
+## helicopter's door) and turning with it, his shoulders working when it fires.
+func _build_gunners() -> void:
+	_gunners.clear()
+	if team < 0 or _vm.mg_mounts.is_empty():
+		return
+	var any := false
+	for i in _vm.mg_mounts.size():
+		var hands: Array = _vm.mg_hands[i]
+		if hands.size() < 2:
+			_gunners.append(null)
+			continue
+		var g := SoldierModel.new()
+		g.host_world = world
+		model.add_child(g)
+		g.build("rifleman" if team == 0 else "fighter", team, eid * 13 + i)
+		g.crew = true
+		_gunners.append(g)
+		any = true
+	if not any:
+		_gunners.clear()
+
+
+func _pose_gunners(dt: float) -> void:
+	_gunner_fire += dt
+	# Close ones are posed every frame, distant ones every few; far off the
+	# gun reads on its own and the man is left out.
+	_gunner_dt += dt
+	var camera := get_viewport().get_camera_3d()
+	var cd := camera.global_position.distance_to(global_position) if camera else 0.0
+	var shown := cd < 260.0
+	for g in _gunners:
+		if g != null and is_instance_valid(g) and (g as Node3D).visible != shown:
+			(g as Node3D).visible = shown
+	if not shown:
+		return
+	_gunner_skip += 1
+	if _gunner_skip < (1 if cd < 60.0 else (2 if cd < 120.0 else 4)):
+		return
+	_gunner_skip = 0
+	dt = _gunner_dt
+	_gunner_dt = 0.0
+	var low := is_heli() or is_boat()
+	var posture: int = Soldier.Post.CROUCH if low else Soldier.Post.STAND
+	var act: int = Soldier.Act.SHOOT if _gunner_fire < 0.6 else Soldier.Act.IDLE
+	for i in _gunners.size():
+		var g: SoldierModel = _gunners[i]
+		if g == null or not is_instance_valid(g):
+			continue
+		var mount: Node3D = _vm.mg_mounts[i]
+		var hands: Array = _vm.mg_hands[i]
+		var xf := mount.global_transform
+		var right: Vector3 = xf * (hands[0] as Vector3)
+		var left: Vector3 = xf * (hands[1] as Vector3)
+		var fwd := Defs.flat(-xf.basis.z)
+		if fwd.length_squared() < 0.0001:
+			continue
+		fwd = fwd.normalized()
+		var mid := (right + left) * 0.5
+		# behind the grips at arm's length, the grips at his chest standing
+		# (lower, kneeling or crouched), feet on whatever he stands on
+		var feet := mid - fwd * (0.42 if not low else 0.38) - Vector3(0, 1.1 if not low else 0.78, 0)
+		g.global_transform = Transform3D(Basis(Vector3.UP, atan2(-fwd.x, -fwd.z)), feet)
+		g.crew_r = right
+		g.crew_l = left
+		g.pose(dt, Soldier.Life.ALIVE, posture, act, 0.0, false, act == Soldier.Act.SHOOT)
 
 
 ## The main gun's kick rocks the hull back from the shot.
@@ -3506,6 +3610,7 @@ func _build_model() -> void:
 			helm.position = k.helm_seat
 	turret = k.turret
 	_vm = k
+	_build_gunners()
 	if bent_skirts:
 		k.pose_skirts(bent_skirts)
 	_belt_yaw = rotation.y

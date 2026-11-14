@@ -59,6 +59,12 @@ var mg_mounts: Array[Node3D] = []
 var mg_rests: Array[Transform3D] = []  # each mount's rest pose on its parent
 var mg_free := false
 var mg_arc := 1.2
+## Where a gunner's hands go on each mount, in its own space: [right, left],
+## or empty for a gun worked from inside or by remote control.
+var mg_hands: Array = []
+## Each mount's traverse at rest: a door gun is left pointing out of its door
+## (its gunner inside behind it), everything else straight ahead.
+var mg_stow: Array[float] = []
 ## Every gun assembly a shared builder made (VehicleWeapons): {parent, origin,
 ## muzzle (both in the parent's space), parts, nodes}, so build() can put the
 ## machine gun's on a mount of its own once the model is done.
@@ -701,18 +707,22 @@ func _fold(pv: Node3D) -> void:
 ## A shared gun builder's assembly `m` is done, its muzzle at `muzzle` in its
 ## parent's space: noted down (see _guns), then folded into the parent like
 ## any other construction pivot.
-func _gun(m: Node3D, muzzle: Vector3) -> void:
+## `hands` are where a gunner holds it, in `m`'s own space ([right, left]).
+func _gun(m: Node3D, muzzle: Vector3, hands: Array = []) -> void:
 	var parent := m.get_parent() as Node3D
 	var parts: Array = (_parts.get(m, []) as Array).duplicate()
 	var nodes: Array = m.get_children()
-	_guns.append({"parent": parent, "origin": m.position, "muzzle": muzzle, "parts": parts, "nodes": nodes})
+	var held: Array = []
+	for h: Vector3 in hands:
+		held.append(m.transform * h)
+	_guns.append({"parent": parent, "origin": m.position, "muzzle": muzzle, "parts": parts, "nodes": nodes, "hands": held})
 	_fold(m)
 
 
 ## A hand-built gun assembly on its own pivot `m` (at its trunnion, square
 ## to its parent), noted down as the shared builders' are.
-func gun_assembly(m: Node3D, muzzle_local: Vector3) -> void:
-	_gun(m, m.transform * muzzle_local)
+func gun_assembly(m: Node3D, muzzle_local: Vector3, hands: Array = []) -> void:
+	_gun(m, m.transform * muzzle_local, hands)
 
 
 ## The model is built: the machine gun (and a twin beside it, laid as one) is
@@ -738,7 +748,7 @@ func _mount_guns() -> void:
 	for g: Dictionary in _guns:
 		# (a gun laid along its carrier's -Z: a cradle elevates about X)
 		var axis: Vector3 = (g.muzzle as Vector3) - (g.origin as Vector3)
-		if g.parent == parent and is_instance_valid(parent) and axis.normalized().dot(Vector3.FORWARD) > 0.95:
+		if is_instance_valid(g.parent) and g.parent == parent and axis.normalized().dot(Vector3.FORWARD) > 0.95:
 			var d := (g.muzzle as Vector3).distance_to(mg_tip.position)
 			if d < nearest:
 				nearest = d
@@ -748,18 +758,18 @@ func _mount_guns() -> void:
 		return
 	var mount := _lift(best)
 	_onto(mg_tip, mount)
-	_add_mount(mount)
+	_add_mount(mount, best)
 	# A twin beside it (the other barrel of a twin AA gun) is laid with it.
 	var at: Vector3 = best.origin
 	var tip: Vector3 = best.muzzle
 	for g: Dictionary in _guns:
-		if g == best or g.parent != parent:
+		if g == best or not is_instance_valid(g.parent) or g.parent != parent:
 			continue
 		var o: Vector3 = g.origin
 		var t: Vector3 = g.muzzle
 		if absf(o.x - at.x) > 0.1 and absf(o.y - at.y) < 0.05 and absf(o.z - at.z) < 0.08 and absf(t.y - tip.y) < 0.05 and absf(t.z - tip.z) < 0.08:
 			var twin := _lift(g)
-			_add_mount(twin)
+			_add_mount(twin, g)
 			# (a twin's own muzzle marker, where it has one, goes with it)
 			if gun_tip and gun_tip.get_parent() == parent and gun_tip.position.distance_to(t) < 0.3:
 				_onto(gun_tip, twin)
@@ -795,9 +805,16 @@ func _onto(n: Node3D, mount: Node3D) -> void:
 	n.transform = xf
 
 
-func _add_mount(mount: Node3D) -> void:
+func _add_mount(mount: Node3D, g: Dictionary = {}) -> void:
 	mg_mounts.append(mount)
 	mg_rests.append(mount.transform)
+	var hands: Array = []
+	for h: Vector3 in g.get("hands", []):
+		hands.append(h - mount.position)
+	mg_hands.append(hands)
+	var free := turret == null or not turret.is_ancestor_of(mount)
+	var door := free and surface_family == "aircraft" and absf(mount.position.x) > 0.5
+	mg_stow.append(-signf(mount.position.x) * 1.05 if door else 0.0)
 	mg_free = turret == null or not turret.is_ancestor_of(mount)
 
 
