@@ -757,7 +757,9 @@ float caustic_net(vec2 x, float t, float soft) {
 	for (int j = -1; j <= 1; j++) {
 		for (int i = -1; i <= 1; i++) {
 			vec2 g = vec2(float(i), float(j));
-			vec2 o = 0.5 + 0.26 * sin(t + 6.2831 * caustic_hash(n + g));
+			// (a centre anywhere in its cell, wandering about it: no rows or columns)
+			vec2 h = caustic_hash(n + g);
+			vec2 o = 0.5 + 0.5 * sin(t * (0.6 + 0.8 * h.yx) + 6.2831 * h);
 			float d = length(g + o - f);
 			if (d < f1) {
 				f3 = f2;
@@ -785,10 +787,16 @@ float caustic_net(vec2 x, float t, float soft) {
 // brightest (the min), the rest of each net fainter; `split` shifts it for a
 // colour's own fringe
 float caustic_light(vec2 p, float soft, float split) {
-	vec2 warp = texture(chop_tex, p / 9.0 + vec2(water_time * 0.012, -water_time * 0.009)).xy - 0.5;
-	vec2 q = p + warp * 0.5 + split;
-	float a = caustic_net(q / 0.6 + vec2(water_time * 0.05, water_time * 0.02), water_time * 0.5, soft);
-	float b = caustic_net(q / 0.45 - vec2(water_time * 0.03, -water_time * 0.045) + 3.1, water_time * 0.6 + 1.0, soft);
+	// warped by the slow swell of the chop at two scales, so no line runs straight
+	vec2 warp = texture(chop_tex, p / 23.0 + vec2(water_time * 0.008, -water_time * 0.006)).xy - 0.5;
+	warp += (texture(chop_tex, p / 7.3 - vec2(water_time * 0.011, water_time * 0.007)).xy - 0.5) * 0.5;
+	vec2 q = p + warp * 1.1 + split;
+	// the two nets turned against each other (37 and -21 degrees) at scales
+	// that never line up
+	vec2 qa = mat2(vec2(0.7986, 0.6018), vec2(-0.6018, 0.7986)) * q;
+	vec2 qb = mat2(vec2(0.9336, -0.3584), vec2(0.3584, 0.9336)) * q;
+	float a = caustic_net(qa / 0.6 + vec2(water_time * 0.05, water_time * 0.02), water_time * 0.5, soft);
+	float b = caustic_net(qb / 0.437 - vec2(water_time * 0.03, -water_time * 0.045) + 3.1, water_time * 0.6 + 1.0, soft);
 	return min(a, b) * 1.6 + (a + b) * 0.3;
 }
 """

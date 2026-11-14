@@ -26,12 +26,12 @@
     },
     {
       "file": "changelog/unreleased/layered-air-and-caustics/caustics-poster.jpg",
-      "sha256": "70ef48f424c118d835e563bbf8dab36b526d2efeefae2ea68c71781edfa17790",
+      "sha256": "49019436af869911e93d7ffc6f72cbb6f7e4c528412fe5e3efa60caf9ea94614",
       "caption": "Middle frame of the caustics clip."
     },
     {
       "file": "changelog/unreleased/layered-air-and-caustics/caustics.webm",
-      "sha256": "d6e42e59c0147e93c538a9418593475a01687476db8fbd431226d70e030d6852",
+      "sha256": "3b4ec87ce95e55470a353c62131fa448fe893fe330e8ad8ba98a83b647cb3714",
       "caption": "Last 7 s of a 1280x720 movie, --preset=ultra --scenario=naval --seed=3 --set=mood:day --focus=356,58 --zoom=10 --pitch=-45."
     },
     {
@@ -51,32 +51,32 @@
     },
     {
       "file": "changelog/unreleased/layered-air-and-caustics/net-flicker-poster.jpg",
-      "sha256": "a1598a06a7bfeb3c75235cb4501ae285846f6356927a7aba8d08caae4edba320",
+      "sha256": "91faf3a5c81f93763c1a773c609c81dbaa0cf7495e67818822426a42ad5e4308",
       "caption": "ON frame of the caustic-net flicker."
     },
     {
       "file": "changelog/unreleased/layered-air-and-caustics/net-flicker.webm",
-      "sha256": "cd1f39580f0896069775fb18a2219c431f788000ab72a00e5da5860f9723c7ef",
+      "sha256": "cf26c7a797501980f4aced95f8464dc185b2eeaa393ea18c43b1ae1d65111c0a",
       "caption": "The same frozen frame flipping OFF/ON every 30 frames (FL_DEBUG_AIR_FLIP=4), 8 s at 30 fps."
     },
     {
       "file": "changelog/unreleased/layered-air-and-caustics/net-off-on.jpg",
-      "sha256": "ca1fc523abbdcac8c76568c9699b2c17264890160e004463d791ff0352fabcb1",
+      "sha256": "5f90459ec010c4f6dff06d75750cd4933670ad1ae51d9f9d8f2f497405035572",
       "caption": "OFF over ON, frozen at 4 s of --scenario=naval --seed=3 --set=mood:day --focus=356,58 --zoom=10 --pitch=-45, cropped to x500-1500 y350-900."
     },
     {
       "file": "changelog/unreleased/layered-air-and-caustics/piles-flicker-poster.jpg",
-      "sha256": "b166dd5a886756b1ac0b0c55bb25d1496bb8b49f9dcf0dfad6b92147ce9563fd",
+      "sha256": "68340e3a2ba0d9af88f6391402a0c2518a210501006812335f178fe181c5ec00",
       "caption": "ON frame of the pier flicker."
     },
     {
       "file": "changelog/unreleased/layered-air-and-caustics/piles-flicker.webm",
-      "sha256": "25d34276fd7308114ab0c3bd24f2ecde5795c66b21dc74c67f92007871941753",
+      "sha256": "5e28630aaf41577cdc4963122e1dfa1edd609fdaeaab899d004b4319bde7023b",
       "caption": "The same frozen frame flipping OFF/ON every 30 frames (FL_DEBUG_AIR_FLIP=4), 8 s at 30 fps."
     },
     {
       "file": "changelog/unreleased/layered-air-and-caustics/piles-off-on.jpg",
-      "sha256": "6448d72641b95eb0b1d541d8b565f52246db5539296df1a1fd13fa8a4ea82477",
+      "sha256": "ba607e39115904e7fd3994a4c5d004a2ef85400a8626245a524a57853bc9c01c",
       "caption": "OFF over ON, frozen at 4 s of --scenario=naval --seed=3 --set=mood:day --focus=352,70 --zoom=16 --pitch=-14 --cam-yaw=0, cropped to x0-1400 y500-900."
     },
     {
@@ -98,6 +98,11 @@
       "file": "changelog/unreleased/layered-air-and-caustics/mist-command-view-off-on.jpg",
       "sha256": "f1e2eedc0ce3f1605a7c9f3bfd4520cdfa1ca186a16ba1dba6f3551d3275fb62",
       "caption": "OFF over ON, frozen at 8 s of --aivai --seed=3 --set=mood:dawn --focus=0,0 --zoom=55 --cam-yaw=4.5 (default command pitch), full frame."
+    },
+    {
+      "file": "changelog/unreleased/layered-air-and-caustics/caustics-command-view.jpg",
+      "sha256": "1e9e6537e4784d349b049b2cf9d67861b1552d8a6321f3b067beee94334de6f4",
+      "caption": "--preset=high --scenario=naval --seed=3 --set=mood:day --focus=360,40 --zoom=55 (default command pitch) --shot-at=4."
     }
   ],
   "output": null

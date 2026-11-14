@@ -20,6 +20,10 @@ file = "piles-off-on.jpg"
 caption = "Off and on: sunlight thrown up off the water onto the pier's shaded side"
 
 [[screenshots]]
+file = "caustics-command-view.jpg"
+caption = "The shallows at the usual command view: the net is an even shimmer, with no pattern repeating"
+
+[[screenshots]]
 file = "mist-command-view-off-on.jpg"
 caption = "Off and on at the usual command view: the mist stays light, so the battle stays clear"
 
