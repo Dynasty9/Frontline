@@ -109,6 +109,11 @@ func _draw_content() -> void:
 			["FOB", str((ti.get("fobs", []) as Array).size()), ""]]
 		if _town_count(w) > 0:
 			items.append(["Towns", "%d/%d" % [tl.size(), _town_count(w)], ""])
+		# the score so far: men killed and lost, then vehicles (only once there are any)
+		var ty: Array = ti.get("tally", [])
+		if ty.size() >= 4:
+			items.append(["Kills", str(int(ty[0])), ("· %d VEH" % int(ty[2])) if int(ty[2]) > 0 else "", UiKit.FAINT])
+			items.append(["Lost", str(int(ty[1])), ("· %d VEH" % int(ty[3])) if int(ty[3]) > 0 else "", UiKit.FAINT])
 		var ai := ai_code(w, lt)
 		if ai != "":
 			items.append(["AI", ai, ""])
@@ -117,7 +122,8 @@ func _draw_content() -> void:
 			x += _caps(x, y0, it[0], 11, UiKit.FAINT) + 6.0
 			x += _mono(x, y0 + 1, it[1], 15, UiKit.TEXT)
 			if it[2] != "":
-				x += 6.0 + _mono(x + 6.0, y0 + 1, it[2], 12, UiKit.GOOD if int(ti.get("inc", 0)) > 0 else UiKit.FAINT)
+				var sc: Color = it[3] if it.size() > 3 else (UiKit.GOOD if int(ti.get("inc", 0)) > 0 else UiKit.FAINT)
+				x += 6.0 + _mono(x + 6.0, y0 + 1, it[2], 12, sc)
 			x += 14.0
 		x += _sep(x) + 14.0
 		var wtot := x + _mono(x, y0 + 1, clock, 15, UiKit.TEXT)

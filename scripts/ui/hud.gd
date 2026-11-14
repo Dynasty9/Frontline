@@ -99,6 +99,8 @@ var obs_faster: Button
 var _log_head: Label  # the log's header text
 var _log_key: Label  # and, after it, the key that closes it
 var toasts: HudToasts
+var moments: HudMoments  # the battle's turning points, top centre
+var watch: HudWatch  # idle squads, and squads under fire off screen
 var objectives: HudObjectives
 var log_panel: PanelContainer
 var log_box: RichTextLabel
@@ -156,7 +158,9 @@ var _inspect_t := 0.0
 var _msgs: Array = []
 var _scrims := {}  # edge -> UiScrim: the HUD sits on the scene with no boxes (docs/UI.md, Scrim)
 var _fires_open := false  # the fire support list showing every mission, not just the ready ones
-var _fires_more: Button  # its last row: how many more are cooling down (click to show them)
+var _fires_more: Button  # its last row: how many more there are (click to show them)
+var _fires_count: Label  # its header's figure: ready / on call
+const FIRES_FOLDED := 3  # ready missions listed while the list is folded
 var _menu_clock: Label  # the pause dialog's battle clock
 var _menu_ctx: Label  # ...and what battle this is
 
@@ -308,6 +312,28 @@ func _ready() -> void:
 	support_box.grow_vertical = Control.GROW_DIRECTION_BEGIN
 	support_box.add_theme_constant_override("separation", 0)
 	root.add_child(support_box)
+
+	# idle squads: a line above the fire missions
+	watch = HudWatch.new()
+	watch.hud = self
+	watch.size = Vector2(300, 22)
+	watch.mouse_filter = Control.MOUSE_FILTER_STOP
+	watch.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	watch.visible = false
+	root.add_child(watch)
+
+	# the battle's turning points, under the status line
+	moments = HudMoments.new()
+	moments.hud = self
+	moments.anchor_left = 0.5
+	moments.anchor_right = 0.5
+	moments.offset_left = -360
+	moments.offset_right = 360
+	moments.offset_top = 46
+	moments.offset_bottom = 46 + 2 * (HudMoments.LINE_H + HudMoments.GAP)
+	moments.mouse_filter = Control.MOUSE_FILTER_STOP
+	moments.visible = false
+	root.add_child(moments)
 
 	chat_edit = LineEdit.new()
 	chat_edit.anchor_top = 1.0
@@ -615,7 +641,7 @@ func _build_help() -> void:
 		[["Camera", [[_kk(["cam_up", "cam_left", "cam_down", "cam_right"]), "Pan (or the screen's edge)"], [_kk(["cam_fast"]), "Pan faster"],
 			[_kk(["cam_zoom_in", "cam_zoom_out"]), "Zoom (or the wheel)"], [_kk(["cam_turn_left", "cam_turn_right"]), "Turn"], [_kk(["cam_tilt_up", "cam_tilt_down"]), "Tilt"],
 			[["MMB"], "Turn and tilt (Alt: grab)"], [_kk(["cam_reset"]), "Square the view up"], [_kk(["cam_follow"]), "Follow the selection"], [_kk(["cam_mount"]), "Cycle object cameras"],
-			[_kr("view_save_1", "view_save_4"), "Save a view"], [_kr("view_go_1", "view_go_4"), "Go to a view"], [_kk(["cycle_fob"]), "Cycle your FOBs"], [_kk(["jump_alert"]), "Last alert or ping"]]],
+			[_kr("view_save_1", "view_save_4"), "Save a view"], [_kr("view_go_1", "view_go_4"), "Go to a view"], [_kk(["cycle_fob"]), "Cycle your FOBs"], [_kk(["jump_alert"]), "Last alert or ping"], [_kk(["next_idle"]), "Next idle squad"]]],
 		 ["Command", [[["LMB"], "Select · drag a box"], [["2× LMB"], "Every squad of that type"], [["RMB"], "Move · attack · build · enter"], [["SHIFT+RMB"], "Run there"],
 			[["ALT+LMB"], "Command one man"], [_kr("group_set_1", "group_set_9"), "Set a group"], [_kr("group_1", "group_9"), "Recall a group (twice: go there)"],
 			[_kk(["tactical"]), "Tactical map (hold: statistics)"], [_kk(["orbat"]), "Order of battle"]]]],
@@ -1524,6 +1550,10 @@ func _view_process(dt: float) -> void:
 	var limit := minimap_panel.position.y - 10.0
 	if support_box.get_child_count() > 0:
 		limit = support_box.global_position.y - 10.0
+	watch.tick(rdt)
+	if watch.visible:
+		watch.position = Vector2(14, limit - 18.0)
+		limit -= 30.0
 	var want := HudOrbat.HEAD_H if not orbat.open else orbat.content_h()
 	orbat.size = Vector2(HudOrbat.W, clampf(want, HudOrbat.HEAD_H, maxf(HudOrbat.HEAD_H, limit - orbat.position.y)))
 	# on a narrow screen (a big interface scale) the command card gives up
@@ -1612,6 +1642,7 @@ func _view_process(dt: float) -> void:
 			toasts.offset_top = ty
 			toasts.offset_bottom = tb
 	toasts.tick(rdt)
+	moments.tick(rdt)
 	minimap.refresh_layers()
 	if world.cam:
 		overlay.refresh_for_view(rdt, world.cam.cam)
@@ -1636,8 +1667,10 @@ static func fire_short(name: String) -> String:
 
 
 ## FIRES (docs/UI.md, Layout): the fire missions on call, a row each above the
-## minimap. The ready ones are listed; the ones cooling down fold into a last
-## row (+9 ON COOLDOWN · NEXT 81S) that opens them.
+## minimap. A commander with a dozen on call wants the next one to hand, not a
+## wall of READY: folded, the list shows the first three that are ready (the
+## first is Z's) and a last row for the rest (+9 MORE · 6 RDY) that opens them
+## all, cooling down or not.
 func _update_support() -> void:
 	var kinds: Array = Defs.supports_for(world.local_team) if world.local_team >= 0 else []
 	if not world.mission_info.is_empty():
@@ -1651,7 +1684,9 @@ func _update_support() -> void:
 			c.queue_free()
 		_support_btns.clear()
 		if not kinds.is_empty():
-			support_box.add_child(UiKit.header("Fires", "%02d" % kinds.size()))
+			var hd := UiKit.header("Fires", "%02d" % kinds.size())
+			support_box.add_child(hd)
+			_fires_count = hd.get_node("Count")
 		for k in kinds:
 			var kk: String = k
 			var b := _fire_row(fire_short(String(Defs.SUPPORT[k].name)), "%s\n%s" % [Defs.SUPPORT[k].name, Defs.SUPPORT[k].desc], func():
@@ -1659,12 +1694,13 @@ func _update_support() -> void:
 				world.input.ability = "support:" + kk)
 			support_box.add_child(b)
 			_support_btns[k] = b
-		_fires_more = _fire_row("", "Show every fire mission", func(): _fires_open = not _fires_open)
+		_fires_more = _fire_row("", "Show every fire mission, or fold the list again", func(): _fires_open = not _fires_open)
 		support_box.add_child(_fires_more)
 	if kinds.is_empty():
 		return
 	var sup: Dictionary = world.team_info[world.local_team].get("sup", {}) if world.local_team >= 0 else {}
 	var first := true
+	var ready := []
 	var cooling := []
 	for k in kinds:
 		var b: Button = _support_btns.get(k)
@@ -1682,22 +1718,39 @@ func _update_support() -> void:
 			state.add_theme_color_override("font_color", UiKit.GOOD)
 			nm.add_theme_color_override("font_color", UiKit.TEXT)
 			first = false
-			b.visible = true
+			ready.append(b)
 		else:
 			state.text = "%dS" % int(ceil(left))
 			_fire_key(b, "")
 			state.add_theme_color_override("font_color", UiKit.DIM)
 			nm.add_theme_color_override("font_color", UiKit.DIM)
 			cooling.append([left, b])
-	# the ones cooling down: shown when opened, or a couple when few are ready
+	if _fires_count:
+		_fires_count.text = "%02d/%02d RDY" % [ready.size(), kinds.size()]
+	# folded: the first few ready ones, and while few are ready the next to come off cooldown
 	cooling.sort_custom(func(a, c): return float(a[0]) < float(c[0]))
-	var show_n := cooling.size() if _fires_open else maxi(0, 2 - (kinds.size() - cooling.size()))
+	var show_r := ready.size() if _fires_open else mini(ready.size(), FIRES_FOLDED)
+	var show_c := cooling.size() if _fires_open else maxi(0, 2 - ready.size())
+	for i in ready.size():
+		(ready[i] as Button).visible = i < show_r
 	for i in cooling.size():
-		(cooling[i][1] as Button).visible = i < show_n
-	var hidden := cooling.size() - show_n
-	_fires_more.visible = hidden > 0 or (_fires_open and cooling.size() > 0)
-	(_fires_more.get_meta("name") as Label).text = ("+%d on cooldown" % hidden) if hidden > 0 else "Fold the list"
-	(_fires_more.get_meta("state") as Label).text = ("NEXT %dS" % int(ceil(float(cooling[show_n][0])))) if hidden > 0 else ""
+		(cooling[i][1] as Button).visible = i < show_c
+	var hid_r := ready.size() - show_r
+	var hid_c := cooling.size() - mini(show_c, cooling.size())
+	_fires_more.visible = hid_r + hid_c > 0 or (_fires_open and ready.size() + cooling.size() > FIRES_FOLDED)
+	var more_nm: Label = _fires_more.get_meta("name")
+	var more_st: Label = _fires_more.get_meta("state")
+	if hid_r + hid_c == 0:
+		more_nm.text = "Fold the list"
+		more_st.text = ""
+	else:
+		more_nm.text = "+%d more" % (hid_r + hid_c)
+		if hid_r > 0:
+			more_st.text = "%d RDY" % hid_r
+			more_st.add_theme_color_override("font_color", UiKit.GOOD)
+		else:
+			more_st.text = "NEXT %dS" % int(ceil(float(cooling[mini(show_c, cooling.size() - 1)][0])))
+			more_st.add_theme_color_override("font_color", UiKit.DIM)
 
 
 ## Shows a key in a fire row's key box, or hides the box ("").

@@ -309,7 +309,7 @@ func _query(w: World, req: Dictionary) -> Dictionary:
 		"soldiers":
 			for s in w.soldiers:
 				if (team == -9 or s.team == team) and (kind == "" or s.utype == kind) and (ids.is_empty() or ids.has(s.eid)):
-					out.append({"id": s.eid, "type": s.utype, "team": s.team, "squad": s.sid, "life": Soldier.Life.keys()[s.life],
+					out.append({"id": s.eid, "type": s.utype, "name": s.sname, "team": s.team, "squad": s.sid, "life": Soldier.Life.keys()[s.life],
 						"hp": snappedf(s.hp, 0.1), "pos": _xz(s.position), "posture": Soldier.Post.keys()[s.posture], "task": s.task,
 						"riding": s.riding.eid if is_instance_valid(s.riding) else 0, "stance": s.stance, "roe": s.roe})
 		"vehicles":

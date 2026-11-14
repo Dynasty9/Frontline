@@ -2569,7 +2569,7 @@ func _bail_out(overkill: float) -> void:
 		var off := Defs.dir_of(rotation.y + PI * 0.5) * (1.7 if i % 2 == 0 else -1.7) + Defs.dir_of(rotation.y) * (i - 1) * 1.3
 		var sp := world.nav.nearest_walkable(position + off)
 		var s: Soldier = world.spawn("soldier", {"utype": "crewman" if team == 0 else "r_crewman", "team": team, "owner": owner_peer, "pos": sp,
-			"yaw": rotation.y, "squad": sq.sid, "name": world.rules.random_name(team)})
+			"yaw": rotation.y, "squad": sq.sid, "name": world.rules.random_name(team, Rules.names_in(sq))})
 		sq.add(s)
 		s.hp = s.max_hp * world.rng.randf_range(0.35, 0.85)  # burnt, cut, concussed
 	if sq == null:

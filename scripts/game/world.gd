@@ -1644,6 +1644,39 @@ func send_msg(team: int, kind: String, text: String, ping = null) -> void:
 			rpc_id(p, "_rpc_msg", m)
 
 
+## A turn of the battle a commander should feel (an enemy vehicle burning, a
+## squad wiped out, a town or a FOB changing hands), for one side: tone "gain"
+## or "loss". The HUD sets it under the status line, where it happened goes on
+## the map as a ping (the jump key goes there), and a battle that's only
+## watched hears none, since good news for one side is bad for the other.
+func send_moment(team: int, tone: String, text: String, pos: Vector3) -> void:
+	if team < 0 or team > 1:
+		return
+	stat("moment_" + tone)
+	var m := [team, tone, text, pos]
+	_show_moment(m)
+	for p in ready_peers:
+		if team_of_peer(p) == team:
+			rpc_id(p, "_rpc_moment", m)
+
+
+@rpc("authority", "call_remote", "reliable")
+func _rpc_moment(m: Array) -> void:
+	_show_moment(m)
+
+
+func _show_moment(m: Array) -> void:
+	if int(m[0]) != local_team:
+		return
+	if not has_view:
+		if settings.get("verbose", false):
+			print("[%s] %s" % [m[1], m[2]])
+		return
+	if hud:
+		hud.moments.push(String(m[1]), String(m[2]), m[3])
+	pings.append([m[3], time + 30.0, "moment_" + String(m[1])])
+
+
 func send_msg_to(peer: int, kind: String, text: String) -> void:
 	var m := [-1, kind, text, null]
 	if peer == local_peer:
@@ -1663,7 +1696,9 @@ func _show_msg(m: Array) -> void:
 	if hud:
 		hud.add_message(m[1], m[2])
 	if m[3] != null:
-		pings.append([m[3], time + 30.0, m[1]])
+		# (a moment at the same spot has just pinged it)
+		if pings.is_empty() or not (pings.back()[0] is Vector3) or (pings.back()[0] as Vector3).distance_to(m[3]) > 1.0 or float(pings.back()[1]) < time + 29.0:
+			pings.append([m[3], time + 30.0, m[1]])
 
 
 func set_roads(team: int, polys: Array) -> void:

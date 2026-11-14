@@ -104,6 +104,7 @@ Every key below is a default: change any of them in **Settings → Controls**. A
 | Save a view / go back to it | Ctrl + F5 to F8 / F5 to F8 |
 | Look somewhere else | Click or drag on the minimap |
 | Jump to your bases | Home |
+| Next idle squad | . |
 | Jump to the latest alert or ping | Space |
 
 Prefer the middle mouse to pan rather than turn? Swap them in **Settings → Interface**, where you'll also find the minimap's size and an option to turn it with the camera.

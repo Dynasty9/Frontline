@@ -9,6 +9,7 @@ var team := 0
 var owner := 0
 var kind := ""
 var members: Array = []
+var last_pos := Vector3.INF  # where the last of it fell (set as it's struck off)
 var known := {}  # eid -> {"e": Entity, "pos": Vector3, "t": float}
 var _combat_cache_t := -1.0
 var _combat_cache := false
@@ -784,6 +785,9 @@ func tick(dt: float) -> void:
 		# on with, ordering every squad in it when it ends - finds nobody here.
 		if plan != null:
 			world.stat("plan_squad_lost")
+		for m in members:
+			if is_instance_valid(m):
+				last_pos = m.position
 		for m in members:
 			m.squad = null
 		members = []

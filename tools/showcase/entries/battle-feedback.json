@@ -1,0 +1,28 @@
+{
+  "entry": "changelog/unreleased/battle-feedback.md",
+  "summary": "Battle moments, a kill and loss tally, idle squads and under-fire alerts, a compact fire mission list, readable squad cards and unique names.",
+  "medium": "still",
+  "stage": "game capture, 1920x1080 player view, off-screen window, --perf=0: --host --team=0 --seed=4 --select-first --timescale=6 --shot-at=25 --shot-every=215 --shots=3 (before on f302f20e, after on this branch); --scenario=roster --play --seed=1 --focus=-84,24 --zoom=60 --shot-at=8 --shot-every=3 (moments)",
+  "rationale": "A HUD layout change: matched before/after frames of the same battle at three times show the fire list, idle readout, tally and squad card; a busy tank fight shows moments as they land.",
+  "source_ref": "claude/battle-feedback",
+  "before_ref": "f302f20e",
+  "sources": [
+    {
+      "file": "changelog/unreleased/battle-feedback/before-after-timeline.jpg",
+      "sha256": "3c42ca185a6d29ad9cd45488317f5142204551423f4d9cb5fdd1816edaf04f5a"
+    },
+    {
+      "file": "changelog/unreleased/battle-feedback/moments-in-battle.jpg",
+      "sha256": "bfa0d583eba8c3ea3ac42c5efcc1082f759fcd6681dbd113f6cd79c5177f96f4"
+    },
+    {
+      "file": "changelog/unreleased/battle-feedback/fires-before-after.jpg",
+      "sha256": "ac3258caa971232dcf700b671dfc71d41c270c086c6a9a8108fc560f2761905c"
+    },
+    {
+      "file": "changelog/unreleased/battle-feedback/squad-card-before-after.jpg",
+      "sha256": "07a232547f9af6dbfd03f70552a1b5f2ddf39bf57a529e843651a8cb7addc6ef"
+    }
+  ],
+  "output": null
+}

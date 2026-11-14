@@ -55,7 +55,7 @@ changes any of them:
 | Observer | C director camera, V whose eyes to watch through, P pause, [ ] speed, F2 hide the interface. **Fire support** (observer bar) launches any air or artillery support anywhere to watch it |
 | Photo mode | **F9** opens and closes it (Esc closes it too). WASD fly the way the lens looks (Shift faster, Ctrl slower), E / Q up and down, Z / C roll (Backspace levels it), hold a mouse button and drag to look, the wheel zooms, Space takes the picture, F2 hides the panel |
 | Command view | Tab tactical map (**hold Tab**: battle statistics), O order of battle (click a unit to select it and look at it, double-click to zoom in), the buttons beside the minimap turn map layers on and off (unit symbols, orders and attack plans, intelligence, fog of war, weapon ranges, soldier labels) |
-| Other | Home cycles FOBs, Space jumps to the last alert or ping (both glide there), Enter chats (Shift+Enter: team), L message history, F1 help, F3 performance overlay, **F4 field manual**, **` (or ~) the console**, Esc menu |
+| Other | Home cycles FOBs, Space jumps to the last alert or ping (both glide there), . selects the next idle squad, Enter chats (Shift+Enter: team), L message history, F1 help, F3 performance overlay, **F4 field manual**, **` (or ~) the console**, Esc menu |
 
 ## Watching the AI
 
@@ -1572,9 +1572,14 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   drifting cloud over the target. Smoke is shaded like a volume (sun, sky, self-shadowing) and fades
   softly where it meets the ground. Burning wrecks burn, then smoulder (see Fire). Smoke screens are real volumetric fog when
   volumetric fog is on. All effect shaders are compiled during loading, so the first explosion doesn't hitch.
-- A minimal HUD: the status line along the top, the order of battle and the ready fire missions down the left,
-  the latest radio lines top right, a terrain minimap, and the selection and its orders along the bottom only when
-  something is selected. Zoom in and every soldier shows what he's doing ("Bandaging Doyle",
+- A minimal HUD: the status line along the top (with the men and vehicles each side has killed and lost), the
+  order of battle and the ready fire missions down the left (three at most; the rest fold into one line), the
+  latest radio lines top right, a terrain minimap, and the selection and its orders along the bottom only when
+  something is selected. The battle's turning points (an enemy vehicle destroyed, a squad wiped out, a town or FOB
+  taken or lost) show for a few seconds under the status line, in green or red; the jump key or a click goes
+  there. Squads of yours standing about with nothing to do are counted above the fire missions (`.` selects the
+  next), and one that comes under fire off screen is reported once, with a ping. No two men of a squad share a
+  name. Zoom in and every soldier shows what he's doing ("Bandaging Doyle",
   "Pinned down", "Manning the .50 Cal Nest", "Dragging Hakim to safety"); hover one for a small card.
 - The main menu sits over a live 3D scene: a .50 cal crew at golden hour with a burning wreck and shelling on the horizon.
 
