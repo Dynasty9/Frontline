@@ -946,6 +946,28 @@ func _house_wall_detail(rng: RandomNumberGenerator) -> void:
 		BuildingWeathering.weeds(k, L, gaps, wear)
 	if variant == 0 and wear.randf() < (0.3 if material == "stone" else 0.12):
 		BuildingWeathering.ivy(k, wear.randf_range(-L * 0.25, L * 0.25), wear.randf_range(1.0, 1.8), 2.8, wear)
+	# rain run off the sill, and the war: bullet strikes, the odd shell hit,
+	# soot up from a window or door where a fire was; at the windows tape on
+	# the glass, boards across, sandbags along the sill. A stream of its own
+	# again, so nothing else about the wall changes.
+	var war := RandomNumberGenerator.new()
+	war.seed = rng.seed ^ 0x3b0a7c55
+	var surf := BuildingMaterials.surface(material)
+	var tone := Callable(self, "_tone")
+	# (strikes and shell hits are chunks out of the face, in its own
+	# material and colour: they show by how the light falls in them)
+	if variant == 1 and war.randf() < 0.55:
+		BuildingWeathering.streaks(k, 0.0, 1.0, 1.3, surf, tone, war)
+	if variant != 0 and war.randf() < 0.07:
+		BuildingWeathering.soot(k, 0.0, 2.0 if variant == 1 else 2.2, 1.3 if variant == 1 else 1.9, 2.85, surf, tone, war, L * 0.5 - 0.05)
+	if war.randf() < 0.22:
+		BuildingWeathering.pocks(k, Vector2(war.randf_range(-L * 0.35, L * 0.35), war.randf_range(1.0, 2.2)), war.randf_range(0.5, 1.1), war.randi_range(8, 20), surf, tone, war, gaps, L * 0.5)
+	if variant == 0 and war.randf() < 0.07:
+		var r := war.randf_range(0.32, 0.45)
+		var room_x := L * 0.5 - r * 1.9 - 0.05
+		if room_x > 0.0:
+			BuildingWeathering.scar(k, Vector2(war.randf_range(-room_x, room_x), war.randf_range(1.25, 1.9)), r, surf, tone, war, gaps, L * 0.5)
+	var at_window := war.randf()
 	# inside: the room's paint and skirting, what hangs on its walls
 	var room := _kit(life).at_point(Vector3(0, 0, -0.2), Vector3(0, PI, 0))
 	# (a wall doesn't know which house it is, so the paint follows the house's
@@ -965,7 +987,8 @@ func _house_wall_detail(rng: RandomNumberGenerator) -> void:
 			opts["curtain"] = BuildingFurnishings.FABRICS[life.randi() % BuildingFurnishings.FABRICS.size()]
 			# (and a house still lived in keeps its glass; its lamps are out
 			# once it's a ruin, or hit)
-			if life.randf() < 0.35:
+			var lived := life.randf() < 0.35
+			if lived:
 				if not dark:
 					opts["lit"] = true
 					_lit_glass = true
@@ -977,8 +1000,19 @@ func _house_wall_detail(rng: RandomNumberGenerator) -> void:
 				for i in 2:
 					open.append(rng.randf_range(0.0, 0.2) if rng.randf() < 0.85 else null)
 				opts["open"] = open
+			# (tape on the glass of a house still lived in; boards or sandbags
+			# where the war has been)
+			if at_window < 0.3 and lived:
+				opts["tape"] = true
 			BuildingOpenings.window(k, Vector3(0, 1.5, 0), Vector2(1.3, 1.0), opts)
-			if not opts.has("shutters") and life.randf() < 0.25:
+			var bagged := at_window >= 0.38 and at_window < 0.44
+			var boarded := not opts.has("shutters") and at_window >= 0.3 and at_window < 0.38
+			if boarded:
+				BuildingWeathering.boards(k, Vector3(0, 1.5, 0), Vector2(1.3, 1.0), war)
+			elif bagged:
+				BuildingWeathering.sill_bags(k, Vector3(0, 1.5, 0), Vector2(1.3, 1.0), war)
+			# (no flowers under boards or sandbags)
+			if not opts.has("shutters") and life.randf() < 0.25 and not bagged and not boarded:
 				BuildingFurnishings.window_box(k, 0.0, 1.0, 1.1, [Color(0.75, 0.12, 0.12), Color(0.85, 0.45, 0.6), Color(0.9, 0.75, 0.2), Color(0.55, 0.3, 0.7)][life.randi() % 4])
 		2:
 			var w := 1.9
@@ -1002,6 +1036,20 @@ func _house_wall_detail(rng: RandomNumberGenerator) -> void:
 				model.add_child(pv)
 				BuildingOpenings.leaf(BuildingKit.nodes(pv, rng), Vector2(0.88, 2.06), "panelled", dc, -sx)
 				_door_leaves.append([pv, a])
+
+
+## Each part of a house wall's body as drawn: [its rect in the face (x, y),
+## its tint], so a stain can fade into exactly the wall it lies on.
+var _body: Array = []
+
+
+## The tint of a house wall's face at `p` (face x and y), as its body was drawn.
+func _tone(p: Vector2) -> Color:
+	var best: Color = _body[0][1] if not _body.is_empty() else Color(1, 1, 1)
+	for b: Array in _body:
+		if (b[0] as Rect2).grow(0.001).has_point(p):
+			return b[1]
+	return best
 
 
 ## The house's painted woodwork (window frames, door frames, fascias and barge
@@ -2525,6 +2573,7 @@ func _build_model() -> void:
 	model = Node3D.new()
 	add_child(model)
 	_bake = Mats.Bake.new() if skind in BAKED else null
+	_body = []
 	var rng := RandomNumberGenerator.new()
 	rng.seed = eid * 7919 + variant
 	var bags: Array = []
@@ -2542,6 +2591,10 @@ func _build_model() -> void:
 			col = BuildingMaterials.house_color(int(size.y), col)
 		if skind in ["house_wall", "rubble", "crates"]:
 			col = Res.vary(col, 0.05, rng)
+		if skind == "house_wall":
+			# (what it was tinted, for stains to fade into: see _tone)
+			var drawn := Res.mat(col).albedo_color
+			_body.append([Rect2(p.p.x - p.s.x * 0.5, p.p.y - p.s.y * 0.5, p.s.x, p.s.y), Mats.tint_for(_surf_kind(drawn, null), drawn)])
 		_bx(p.p, p.s, col, p.r, skind != "floor")
 	var tc := _flag_color()
 	match skind:

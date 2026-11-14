@@ -202,6 +202,21 @@ func _subject(kind: String) -> Node3D:
 				h.position = spec[0]
 				block.add_child(h)
 			return block
+		"house_war":
+			# a house the war has been past, its walls picked (by id) to show
+			# the marks: soot over the door, a shell hit and bullet strikes,
+			# taped glass, boards, sandbags on a sill, rain under the sills
+			return _house(9.0, 7.6, 1, false, true, false, 0, {0: 13, 1: 2, 2: 12, 30: 41, 31: 7, 32: 2})
+		"shops":
+			# a parade of shops as the town builds them, their fronts to the
+			# street at -z: a greengrocer, a cafe and a newsagent
+			var parade := Node3D.new()
+			for i in 3:
+				var shop := _house(7.4, 9.0, [1, 2, 3][i], true)
+				shop.position.x = (i - 1) * 7.8
+				parade.add_child(shop)
+				_shop_front(shop, 7.4, 9.0, [0, 1, 4][i], i)
+			return parade
 		"house_open":
 			# the roof hidden, as when men are inside: the room as they see it
 			return _house(9.0, 7.6, 1, false, false)
@@ -278,7 +293,7 @@ func _wall(v: int, sz: Vector3, shut: bool, id: int, dark: bool) -> Node3D:
 	return Structure.preview_model("house_wall", -1, v, sz, shut, id)
 
 
-func _house(w: float, d: float, color: int, flat: bool, roofed := true, ruined := false, roof_id := 0) -> Node3D:
+func _house(w: float, d: float, color: int, flat: bool, roofed := true, ruined := false, roof_id := 0, wall_ids := {}) -> Node3D:
 	var root := Node3D.new()
 	var floor := Structure.preview_model("floor", -1, 1 if ruined else 0, Vector3(w, 0.06, d), false, 7)
 	root.add_child(floor)
@@ -304,7 +319,7 @@ func _house(w: float, d: float, color: int, flat: bool, roofed := true, ruined :
 				heap.rotation.y = yaw
 				root.add_child(heap)
 				continue
-			var wall := _wall(variant, Vector3(seg_len, float(color), 0.4), variant == 2, 100 + si * 10 + k, ruined)
+			var wall := _wall(variant, Vector3(seg_len, float(color), 0.4), variant == 2, wall_ids.get(si * 10 + k, 100 + si * 10 + k), ruined)
 			wall.position = lp
 			wall.rotation.y = yaw
 			root.add_child(wall)
@@ -312,6 +327,27 @@ func _house(w: float, d: float, color: int, flat: bool, roofed := true, ruined :
 		var roof := Structure.preview_model("roof", -1, color * 2 + (1 if flat else 0), Vector3(w, 3.0, d), false, roof_id)
 		root.add_child(roof)
 	return root
+
+
+## A shop's front on a house `w` wide and `d` deep (its door in the middle of
+## the front): BuildingShops' fascia, awning and wares where that exists, else
+## what the town drew before it (a plain awning and a dark board), for a
+## matched comparison.
+func _shop_front(root: Node3D, w: float, d: float, kind: int, i: int) -> void:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 40 + i
+	var k := BuildingKit.nodes(root, rng).at_point(Vector3(0, 0, -d * 0.5))
+	if ResourceLoader.exists("res://scripts/game/building_shops.gd"):
+		var shops: GDScript = load("res://scripts/game/building_shops.gd")
+		shops.call("front", k, w - 0.6, kind, rng)
+		for x: float in [-(w * 0.5 - 1.1), w * 0.5 - 1.1]:
+			shops.call("wares", k.at_point(Vector3(x, 0, 0)), kind, rng)
+	else:
+		var col: Color = Decor.CANVAS[kind % Decor.CANVAS.size()]
+		k.box(Vector3(w - 0.6, 0.05, 1.3), Vector3(0, 2.45, -0.78), "fabric", col, Vector3(-0.3, 0, 0))
+		k.box(Vector3(w - 0.6, 0.24, 0.02), Vector3(0, 2.15, -1.4), "fabric", col)
+		k.box(Vector3((w - 0.6) * 0.6, 0.4, 0.05), Vector3(0, 2.78, -0.25), "paint", Color(0.15, 0.17, 0.2))
+	Mats.merge_static(root)
 
 
 ## The yard dressing round a 9 x 7.6 house, front (the street) at -z: bins at

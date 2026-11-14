@@ -48,6 +48,245 @@ static func weeds(k: BuildingKit, length: float, gaps: Array, rng: RandomNumberG
 			_leaves(k, Vector3(x, h * 0.6, z), Vector3(rng.randf_range(0.14, 0.3), h, 0.09), WEEDS[rng.randi() % WEEDS.size()])
 
 
+## A stain on a wall face, in a face kit (+z out, x along it, y up): a patch
+## of the wall's own surface laid 3 mm proud over `rect` (face x and y), each
+## point the colour `tone` gives for the wall there (as its body was tinted:
+## see Structure._tone) times `mul` as far as `amount` says (a Callable of u
+## across and v up the patch's unit square, 0 to 1), and the wall's own colour
+## all round its rim. So it fades into the wall with no edge: soot over a
+## window that burned, rain stains under a sill, the scorch round a shell hit.
+## `edges` says which rims fade out (1 left, 2 right, 4 bottom, 8 top): leave
+## one open where something proud of the wall (a head, a sill) hides the seam.
+static func stain(k: BuildingKit, rect: Rect2, surface: String, tone: Callable, mul: Color, amount: Callable, cols := 8, rows := 8, edges := 15) -> void:
+	var at := PackedVector3Array()
+	var shade := PackedColorArray()
+	for j in rows + 1:
+		for i in cols + 1:
+			var u := float(i) / cols
+			var v := float(j) / rows
+			var p := Vector2(rect.position.x + u * rect.size.x, rect.position.y + v * rect.size.y)
+			var a := 0.0
+			var rim := (i == 0 and (edges & 1) != 0) or (i == cols and (edges & 2) != 0) or (j == 0 and (edges & 4) != 0) or (j == rows and (edges & 8) != 0)
+			if not rim:
+				a = clampf(float(amount.call(u, v)), 0.0, 1.0)
+			var base: Color = tone.call(p)
+			var c := Color(base.r * lerpf(1.0, mul.r, a), base.g * lerpf(1.0, mul.g, a), base.b * lerpf(1.0, mul.b, a))
+			# (as a baked part's tint is packed: linear light outside the
+			# browser, and scaled down for the merged material to restore)
+			if not Mats.per_material:
+				c = c.srgb_to_linear()
+			at.append(Vector3(p.x, p.y, 0.003))
+			shade.append(Color(c.r / Mats.VC_K, c.g / Mats.VC_K, c.b / Mats.VC_K))
+	var v3 := PackedVector3Array()
+	var n3 := PackedVector3Array()
+	var c3 := PackedColorArray()
+	for j in rows:
+		for i in cols:
+			var a0 := j * (cols + 1) + i
+			# two triangles a cell, wound to face +z
+			for tri: Array in [[a0, a0 + cols + 2, a0 + 1], [a0, a0 + cols + 1, a0 + cols + 2]]:
+				for q: int in tri:
+					v3.append(at[q])
+					c3.append(shade[q])
+					n3.append(Vector3.BACK)
+	var arrays := []
+	arrays.resize(Mesh.ARRAY_MAX)
+	arrays[Mesh.ARRAY_VERTEX] = v3
+	arrays[Mesh.ARRAY_NORMAL] = n3
+	arrays[Mesh.ARRAY_COLOR] = c3
+	var mesh := ArrayMesh.new()
+	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+	Mats.keep_arrays(mesh, arrays)
+	k.part_with(mesh, Mats.vc_variant(Mats.get_mat(surface)), Transform3D.IDENTITY, Color(1, 1, 1), false)
+
+
+## Soot from a fire inside, licked up the wall from an opening whose top is
+## `head` high and `w` wide at `x`: densest at the head, widening and thinning
+## as it climbs to `top`.
+## (`reach` keeps it on the face: no further than that from the middle.)
+static func soot(k: BuildingKit, x: float, head: float, w: float, top: float, surface: String, tone: Callable, rng: RandomNumberGenerator, reach := INF) -> void:
+	var lean := rng.randf_range(-0.12, 0.12)
+	var ph := rng.randf() * TAU
+	var x0 := maxf(x - w * 0.5 - 0.5, -reach)
+	var rect := Rect2(x0, head, minf(x + w * 0.5 + 0.5, reach) - x0, maxf(0.5, top - head))
+	stain(k, rect, surface, tone, Color(0.06, 0.055, 0.05), func(u: float, v: float) -> float:
+		var wide := lerpf(0.7, 1.0, v)
+		var off := absf((u - 0.5 - lean * v) * 2.0) / wide
+		var body := clampf(1.0 - pow(off, 2.5), 0.0, 1.0)
+		var wisp := 0.85 + 0.15 * sin(u * 17.0 + v * 6.0 + ph)
+		return body * pow(1.0 - v, 0.45) * wisp * 1.5, 12, 8, 11)
+
+
+## Rain off a sill run down the wall under its ends: two pale-dark streaks
+## below a sill `w` wide at `x`, `y` high.
+static func streaks(k: BuildingKit, x: float, y: float, w: float, surface: String, tone: Callable, rng: RandomNumberGenerator) -> void:
+	for sx: float in [-1.0, 1.0]:
+		var length := rng.randf_range(0.55, minf(1.2, y - 0.4))
+		var sw := rng.randf_range(0.18, 0.3)
+		var cx := x + sx * (w * 0.5 - sw * 0.2)
+		var strength := rng.randf_range(0.6, 0.95)
+		stain(k, Rect2(cx - sw * 0.5, y - 0.06 - length, sw, length), surface, tone, Color(0.5, 0.48, 0.45), func(u: float, v: float) -> float:
+			var across := 1.0 - absf(u * 2.0 - 1.0)
+			return across * pow(v, 0.7) * strength, 4, 6, 7)
+
+
+## Where a shell burst against a wall: a broken hollow blown out of the face
+## round `c`, chunks gone from its edge, scorched round and spattered with
+## strikes. All of it in the face's own material (`surface`, tinted as `tone`
+## gives the wall), shown by how the light falls on it: no colour of its own
+## but the dark of its depths.
+static func scar(k: BuildingKit, c: Vector2, r: float, surface: String, tone: Callable, rng: RandomNumberGenerator, gaps: Array = [], reach := INF) -> void:
+	var ph := rng.randf() * TAU
+	var area := Rect2(c.x - r * 1.9, c.y - r * 1.6, r * 3.8, r * 3.4)
+	var burn := Color(0.4, 0.38, 0.36)
+	var scorch := func(u: float, v: float) -> float:
+		var q := Vector2((u - 0.5) * 2.0, (v - 0.47) * 2.0)
+		# (ragged: the blast throws it further one way than another)
+		var d := q.length() * (1.0 + 0.12 * sin(q.angle() * 3.0 + ph) + 0.06 * sin(q.angle() * 7.0 - ph))
+		return pow(clampf(1.0 - d, 0.0, 1.0), 1.1) * 1.05
+	stain(k, area, surface, tone, burn, scorch, 14, 14)
+	# (what's broken out of the face is scorched as the face round it was,
+	# though less: it was blown off the face that took the flash)
+	var burnt := func(p: Vector2) -> Color:
+		var uv := (p - area.position) / area.size
+		var t := clampf(float(scorch.call(uv.x, uv.y)), 0.0, 1.0) * 0.55 if Rect2(0, 0, 1, 1).has_point(uv) else 0.0
+		var base: Color = tone.call(p)
+		return Color(base.r * lerpf(1.0, burn.r, t), base.g * lerpf(1.0, burn.g, t), base.b * lerpf(1.0, burn.b, t))
+	# the face blown out, deepest in the middle where it punched into the
+	# wall, its edge broken back in chunks
+	var rim := PackedFloat32Array()
+	for i in 18:
+		rim.append(rng.randf_range(0.5, 1.0) * (1.0 + 0.12 * sin(TAU * i / 18.0 * 3.0 + ph)))
+	_hollow(k, c, r * 0.85, 0.88, r * 0.45, surface, burnt, rim, ph, [1.0, 0.78, 0.5, 0.24, 0.0], [0.0, 0.4, 0.75, 0.94, 1.0], 0.22, 0.45, rng, 0.004)
+	pocks(k, c, r * 2.6, rng.randi_range(10, 18), surface, burnt, rng, gaps, reach)
+
+
+## Bullet strikes on a face: `count` of them round `c` within `spread`, each a
+## chunk knocked out of the face (see _hollow: in its own material, shown by
+## its shading, dark where the round went in); none in the openings (`gaps`)
+## or further than `reach` from the middle.
+static func pocks(k: BuildingKit, c: Vector2, spread: float, count: int, surface: String, tone: Callable, rng: RandomNumberGenerator, gaps: Array = [], reach := INF) -> void:
+	for i in count:
+		var p := c + Vector2(rng.randfn(0.0, spread * 0.45), rng.randfn(0.0, spread * 0.35))
+		var s := rng.randf_range(0.05, 0.1)
+		var inside := p.y < 0.4 or p.y > 2.8 or absf(p.x) > reach - s
+		for g: Rect2 in gaps:
+			inside = inside or g.grow(s).has_point(p)
+		if inside:
+			continue
+		# (three draws a strike, so whatever's drawn on the wall after them
+		# stays as it was; its ragged edge from a generator of its own)
+		var turn := rng.randf() * TAU
+		var squash := rng.randf_range(0.7, 1.0)
+		var grain := RandomNumberGenerator.new()
+		grain.seed = int(rng.randf_range(0.0, 0.15) * 1.0e9) + i
+		var rim := PackedFloat32Array()
+		for j in 8:
+			rim.append(grain.randf_range(0.6, 1.0))
+		_hollow(k, p, s * 0.65, squash, s * 0.45, surface, tone, rim, turn, [1.0, 0.55, 0.0], [0.0, 0.62, 1.0], 0.25, 0.58, grain, 0.005)
+
+
+## A chunk knocked out of a face, drawn flat on it in its own material
+## (`surface`, tinted as `tone` gives the wall) but lit as a hollow: its normals
+## those of a bowl `depth` deep (roughened, as broken render and brick are), so
+## the side under its upper lip faces down into shade and the side above its
+## lower lip up into the light; and darker in its depths (`dark` at the
+## bottom) and under the upper lip, where the lip shades it. `r` across
+## (`squash` its height to its width, turned by `turn`), `rim` its ragged
+## outline (a radius a point, 0..1), `rings` how far in each ring of points
+## lies and `sinks` how deep, `rough` how far the broken surface wanders from a
+## smooth bowl; `z` its offset off the face, so one drawn over another stays in
+## front of it.
+static func _hollow(k: BuildingKit, c: Vector2, r: float, squash: float, depth: float, surface: String, tone: Callable, rim: PackedFloat32Array,
+		turn: float, rings: Array, sinks: Array, rough: float, dark: float, rng: RandomNumberGenerator, z: float) -> void:
+	var n := rim.size()
+	var spin := Transform2D(turn, Vector2.ZERO)
+	var pts: Array[PackedVector3Array] = []
+	var nrm: Array[PackedVector3Array] = []
+	var shade: Array[PackedColorArray] = []
+	for j in rings.size():
+		var f: float = rings[j]
+		var sink: float = sinks[j]
+		var fp := PackedVector3Array()
+		var np := PackedVector3Array()
+		var sc := PackedColorArray()
+		for i in (n if f > 0.0 else 1):
+			var a := TAU * i / n
+			var wob := 1.0 if j == 0 or f == 0.0 else rng.randf_range(1.0 - rough, 1.0 + rough)
+			var off: Vector2 = spin * (Vector2(cos(a), sin(a) * squash) * r * rim[i] * f * wob)
+			var p := c + off
+			fp.append(Vector3(p.x, p.y, z))
+			# the slope of the bowl here (steepest at the lip), broken up
+			var g := off / maxf(r * rim[i], 0.001) * (2.0 * depth / r)
+			var tilt := Vector2(rng.randf_range(-rough, rough), rng.randf_range(-rough, rough)) * (2.0 * depth / r) * (0.0 if j == 0 else 1.0)
+			np.append(Vector3(-g.x + tilt.x, -g.y + tilt.y, 1.0).normalized().lerp(Vector3(0, 0, 1), 0.5).normalized())
+			# the broken material darker the deeper it goes, and under the
+			# upper lip, whose shade falls in it
+			var base: Color = tone.call(p)
+			var grey := base.get_luminance()
+			var lip := clampf(off.y / r + 0.2, 0.0, 1.0) * 0.3 * (0.0 if j == 0 else 1.0)
+			var col := base.lerp(Color(grey, grey, grey), 0.12 * sink) * lerpf(1.0 if j == 0 else 0.93, dark, pow(sink, 1.5)) * (1.0 - lip)
+			if not Mats.per_material:
+				col = col.srgb_to_linear()
+			sc.append(Color(col.r / Mats.VC_K, col.g / Mats.VC_K, col.b / Mats.VC_K))
+		pts.append(fp)
+		nrm.append(np)
+		shade.append(sc)
+	# ring by ring, each [ring, point] thrice, wound clockwise seen from the
+	# front (as Godot draws a face)
+	var corners: Array[Vector2i] = []
+	for j in rings.size() - 1:
+		for i in n:
+			var i2 := (i + 1) % n
+			if pts[j + 1].size() == 1:
+				corners.append_array([Vector2i(j, i), Vector2i(j + 1, 0), Vector2i(j, i2)])
+			else:
+				corners.append_array([Vector2i(j, i), Vector2i(j + 1, i2), Vector2i(j, i2), Vector2i(j, i), Vector2i(j + 1, i), Vector2i(j + 1, i2)])
+	var v3 := PackedVector3Array()
+	var n3 := PackedVector3Array()
+	var c3 := PackedColorArray()
+	for at in corners:
+		v3.append(pts[at.x][at.y])
+		n3.append(nrm[at.x][at.y])
+		c3.append(shade[at.x][at.y])
+	var arrays := []
+	arrays.resize(Mesh.ARRAY_MAX)
+	arrays[Mesh.ARRAY_VERTEX] = v3
+	arrays[Mesh.ARRAY_NORMAL] = n3
+	arrays[Mesh.ARRAY_COLOR] = c3
+	var mesh := ArrayMesh.new()
+	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+	Mats.keep_arrays(mesh, arrays)
+	k.part_with(mesh, Mats.vc_variant(Mats.get_mat(surface)), Transform3D.IDENTITY, Color(1, 1, 1), false)
+
+
+## Planks nailed across a window from outside (`c` its middle, `size` the
+## opening), weathered grey: two or three with gaps between, so it's still a
+## window a man can see and shoot through.
+static func boards(k: BuildingKit, c: Vector3, size: Vector2, rng: RandomNumberGenerator) -> void:
+	var wood := Color(0.47, 0.4, 0.32).darkened(rng.randf_range(0.0, 0.25))
+	var n := rng.randi_range(2, 3)
+	for i in n:
+		var y := c.y + size.y * (0.32 if i == 0 else (-0.3 if i == 1 else 0.0))
+		var tilt := rng.randf_range(-0.07, 0.07) if i < 2 else rng.randf_range(0.42, 0.55) * (1.0 if rng.randf() < 0.5 else -1.0)
+		var ln := (size.x + 0.26) / cos(tilt) if i < 2 else size.y / sin(absf(tilt)) * 0.9
+		k.plate(Vector3(ln, rng.randf_range(0.15, 0.2), 0.026), Vector3(c.x, y, 0.035 + i * 0.027), "wood", wood.lightened(rng.randf_range(-0.05, 0.08)), Vector3(0, 0, tilt), true)
+
+
+## Sandbags laid along a window's sill (`c` the window's middle, `size` its
+## opening), two courses: a firing position somebody made of it.
+static func sill_bags(k: BuildingKit, c: Vector3, size: Vector2, rng: RandomNumberGenerator) -> void:
+	var y := c.y - size.y * 0.5
+	var col := Color(0.55, 0.49, 0.34)
+	var per := maxi(2, int(size.x / 0.42))
+	for row in 2:
+		var count := per if row == 0 else per - 1
+		for i in count:
+			var x := c.x + (float(i) - (count - 1) * 0.5) * size.x / per
+			k.box(Vector3(size.x / per + 0.02, 0.14, 0.24), Vector3(x, y + 0.07 + row * 0.13, 0.0), "sandbag",
+				col.darkened(rng.randf_range(0.0, 0.18)), Vector3(rng.randf_range(-0.04, 0.04), rng.randf_range(-0.08, 0.08), 0))
+
+
 ## A tarpaulin's colours: blue and grey-blue sheet, green, brown, orange, all
 ## faded by the sun.
 const TARPS := [Color(0.22, 0.38, 0.6), Color(0.3, 0.42, 0.55), Color(0.29, 0.36, 0.25), Color(0.47, 0.42, 0.32), Color(0.62, 0.38, 0.16)]

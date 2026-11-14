@@ -1,0 +1,20 @@
+{
+  "entry": "changelog/unreleased/war-worn-walls.md",
+  "summary": "Bullet strikes, shell hits, soot, rain streaks and taped, boarded or sandbagged windows on town walls.",
+  "medium": "still",
+  "stage": "tools/showcase/building-surfaces.tscn; tests/fixtures/environment-views.gd (town)",
+  "rationale": "Appearance change: a matched studio house shows every mark at a readable size, a close camera how strikes and a shell hit are knocked out of the wall's own plaster and the scorch fades into it, and a town view the marks at the game's own scale.",
+  "source_ref": "16219bfba9eba708b86177e3485d928f68149dd0",
+  "before_ref": "7b0d05a06f797254f2f387013cbf34e5c0d210be",
+  "sources": [
+    {
+      "file": "changelog/unreleased/war-worn-walls/comparison.jpg",
+      "sha256": "2eb7541a23e787a9e54603282d3ab579648fa50efb4ac3c380b1d8a5940b122f"
+    },
+    {
+      "file": "changelog/unreleased/war-worn-walls/capture.json",
+      "sha256": "3eb891e9a832ad490a27e6d271979122c848c5285d8eb3ff3fbfc7d6e4b095d3"
+    }
+  ],
+  "output": null
+}

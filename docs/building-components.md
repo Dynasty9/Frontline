@@ -14,8 +14,9 @@ The collision and cover a structure gives (`Structure._define_parts`) never depe
 | `scripts/game/building_roofs.gd` | `BuildingRoofs` | Gables, hipped roofs (and pyramids), flat roofs with parapets, single-pitch roofs, canopies, north lights; `underside` for seating things on a slope |
 | `scripts/game/building_fittings.gd` | `BuildingFittings` | Gutters, hoppers, downpipes, chimneys, flues, stacks, pipe runs, plant, masts, aerials, flagpoles, lamps, drums, crates, pallets |
 | `scripts/game/building_wire.gd` | `BuildingWire` | Catenary spans, cables, guys with anchors, insulators, barbed strands, wall-top wire |
-| `scripts/game/building_weathering.gd` | `BuildingWeathering` | Ivy, weeds at the foot of walls, the fallen-in roof on a ruin's floor |
+| `scripts/game/building_weathering.gd` | `BuildingWeathering` | Ivy, weeds at the foot of walls, the fallen-in roof on a ruin's floor, roof tarps and holes; stains that fade into a wall (soot, rain streaks, scorch), shell scars, bullet strikes, boarded and sandbagged windows |
 | `scripts/game/building_furnishings.gd` | `BuildingFurnishings` | Curtains, blinds, nets, window boxes, door lanterns, TV aerials; inside: linings and skirting, radiators, pictures, mirrors, clocks, shelves, rugs |
+| `scripts/game/building_shops.gd` | `BuildingShops` | Shop fronts: fascia boards with lettering, blade signs, striped awnings, and the wares a shop puts out (produce stands, cafe tables, sandwich boards, a hardware shop's stock, paper racks) |
 | `scripts/game/building_yards.gd` | `BuildingYards` | What people keep round a house: wheelie bins, a woodpile and chopping block, a garden table and chairs (a parasol over some), a kennel, a bicycle, pots of flowers |
 
 ## The kit
@@ -108,6 +109,34 @@ lumps of plaster and brick, glass. Like furnishings these keep out of a man's wa
 breadth of the wall and below the eaves, a ruin's debris inside the room and no higher than an ankle; the
 fixture checks both over ten seeds. Lived-in and weathering choices each draw from a stream of their own
 (seeded from the structure's), so adding either never changes a house's chimney, shutters, panes or doors.
+
+Rain and the war mark the house walls too, each wall drawing from a stream of its own. Under about half the
+window sills rain has run down the wall in two streaks; above one window or door in fourteen a fire inside has
+licked soot up the face; one wall in five has taken a burst of bullet strikes (chunks knocked out of the face,
+missing the openings); about one plain wall in fourteen has a shell hit: a ragged hollow blown out of the face,
+scorched round, spattered with strikes. Strikes and shell hits are `BuildingWeathering._hollow`: drawn flat on the
+face in its own material and colour, but with the normals of a hollow, so the light falls in them as in a chunk
+knocked out (shade under the upper lip, light above the lower) and they darken toward the bottom; no colour of
+their own. At the windows, the glass of some lived-in houses
+is taped in crosses against the blast, some windows are boarded across (with gaps: a window a man can still see
+and shoot through) and some have sandbags laid along the sill. Soot, streaks and scorch are
+`BuildingWeathering.stain`: a patch of the wall's own surface 3 mm proud, its vertex colours running from the
+stain to exactly the tint the wall's body was drawn in (`Structure._tone`), so it fades into the wall with no
+edge; the fixture checks the rim comes back to the wall's colour. Everything stays within a hand's breadth of the
+face, so cover is unchanged.
+
+## Shop fronts
+
+The town's shops (near the square) each have a front from `BuildingShops`, decided by the kind of shop the town
+already drew for it: a greengrocer, a cafe, a baker, a hardware shop or a newsagent. A painted fascia board over
+the windows carries the shop's name in raised letters (letter shapes from a small set, so a name reads as a name
+from the street, though not in any language), and about half have a sign standing out from the wall on a bracket.
+Under the fascia a striped canvas awning on its arms, its scalloped edge no lower than 1.88 m. On the pavement,
+clear of the door, one or two lots of what the shop puts out: crates of fruit and vegetables on a stand, a table
+and chairs, a sandwich board and tubs of flowers, sacks on a pallet with gas bottles and buckets, a paper rack.
+The wares are breakable set dressing, placed from a stream of their own after every other piece of decor, so the
+town is otherwise the same. Render a parade of three with `--building-kinds=shops` in the studio stage; the town
+views include a shop front.
 
 ## Roofscapes
 
