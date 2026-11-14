@@ -13,6 +13,24 @@ func _ready() -> void:
 	var world := World.new()
 	world.srv = false
 	world.has_view = false
+	var stages: Array = []
+	world.build_stage.connect(func(text: String, frac: float): stages.append([text, frac]))
+	LocalServer.pid = 1
+	LocalServer.build_progress = {"text": "Laying out the town", "frac": 0.26}
+	world._load_tick()
+	var town: float = stages[-1][1]
+	LocalServer.build_progress = {"text": "Deploying forces", "frac": 0.7}
+	world._load_tick()
+	check(stages[-1][0] == "Deploying forces" and stages[-1][1] > town, "Local generation must advance the loading screen")
+	check(is_equal_approx(stages[-1][1], 0.4), "Local generation must reserve progress for client construction")
+	world._join_ground = true
+	world._load_stage("Moving in", 0.5)
+	check(is_equal_approx(stages[-1][1], 0.56), "Local client construction must follow generation without moving backwards")
+	LocalServer.pid = -1
+	LocalServer.build_progress.clear()
+	world._load_stage("Moving in", 0.5)
+	check(is_equal_approx(stages[-1][1], 0.43), "Remote joins must retain their own progress range")
+	world._join_ground = false
 	world.terrain = TerrainMap.new(world)
 	var batch := []
 	for id in range(1, 19):

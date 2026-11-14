@@ -1,0 +1,10 @@
+{
+  "entry": "changelog/unreleased/battle-loading-progress.md",
+  "summary": "Report local map-generation stages and skip client-only duplicate navigation preparation.",
+  "medium": "text",
+  "stage": "text",
+  "rationale": "Progress reporting and removal of redundant work are verified by regression tests; no edited footage or whole-load speed claim.",
+  "source_ref": "bd4f1b59",
+  "sources": [],
+  "output": null
+}
