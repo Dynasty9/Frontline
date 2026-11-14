@@ -79,10 +79,31 @@ func build(w, entries: Array) -> void:
 			if not _hash.has(hk):
 				_hash[hk] = []
 			_hash[hk].append(i)
+	var t0 := Time.get_ticks_usec()
 	for key in _chunk_items:
 		_build_chunk(key)
+	if OS.has_environment("FL_DEBUG_DECOR"):
+		print("DECOR built in %.1f ms" % ((Time.get_ticks_usec() - t0) / 1000.0))
 	_build_wires()
 	_apply_mood()
+	if OS.has_environment("FL_DEBUG_FENCES"):
+		# where to find a few bays of each kind of fence (and gates), to frame them
+		var seen := {}
+		for e in _entries:
+			if e[0] == "fence" and e[3] is Vector3:
+				var c := int((e[3] as Vector3).z)
+				var key := "%d%s" % [BuildingFences.style_of(c), "g" if c & BuildingFences.GATE else ""]
+				seen[key] = seen.get(key, 0) + 1
+				if seen[key] <= 3:
+					print("FENCE %s at %s yaw %.2f" % [key, str((e[1] as Vector3).round()), float(e[2])])
+		var steep: Array = []
+		for e in _entries:
+			if e[0] == "fence" and e[3] is Vector3:
+				var ax := Basis(Vector3.UP, float(e[2])).x * (e[3] as Vector3).x * 0.5
+				var rise := absf(world.terrain.landform.height((e[1] as Vector3) + ax) - world.terrain.landform.height((e[1] as Vector3) - ax))
+				if steep.is_empty() or rise > float(steep[0]):
+					steep = [rise, e[1], e[2], (e[3] as Vector3).z]
+		print("FENCES %s steepest %s" % [seen, str(steep)])
 	if OS.has_environment("FL_DEBUG_DECOR"):
 		var mis := 0
 		var surfs := 0
@@ -664,38 +685,17 @@ func _bench(o: Vector3) -> void:
 		_m(Res.box(Vector3(1.9, 0.1, 0.035)), "wood", o + Vector3(0, 0.62 + k * 0.17, 0.22), null, Vector3(-0.15, 0, 0), false)
 
 
-## Fence styles: 0 white pickets, 1 plank fence, 2 painted railings.
+## A bay of fence (BuildingFences: the style, its run's variant and flags are
+## packed in extra.z), climbing with the ground between its two posts.
 func _fence(ex) -> void:
 	var f: Vector3 = ex
-	var L := f.x
-	var ht := f.y
-	var style := int(f.z)
-	var posts := maxi(1, int(ceil(L / 2.2)))
-	match style:
-		0:
-			var white := Res.vary(Color(0.69, 0.68, 0.63), 0.18, rng)
-			for i in posts + 1:
-				_m(Res.box(Vector3(0.08, ht, 0.08)), "fence_metal", Vector3(-L * 0.5 + i * L / posts, ht * 0.5, 0), white)
-			for y in [ht * 0.3, ht * 0.75]:
-				_m(Res.box(Vector3(L, 0.05, 0.03)), "fence_metal", Vector3(0, y, 0.02), white, Vector3.ZERO, false)
-			var n := int(L / 0.24)
-			for i in n:
-				_m(Res.box(Vector3(0.07, ht * 0.92, 0.02)), "fence_metal", Vector3(-L * 0.5 + (i + 0.5) * L / n, ht * 0.46, -0.03), white, Vector3.ZERO, false)
-		1:
-			var timber := Res.vary(Color(0.5, 0.43, 0.33), 0.24, rng)
-			for i in posts + 1:
-				_m(Res.box(Vector3(0.1, ht + 0.05, 0.1)), "fence_wood", Vector3(-L * 0.5 + i * L / posts, (ht + 0.05) * 0.5, 0), timber)
-			for y in [0.25, 0.55, 0.85]:
-				_m(Res.box(Vector3(L, 0.12, 0.025)), "fence_rail", Vector3(0, ht * y, -0.06), timber.darkened(0.2 if y < 0.3 else 0.0))
-		_:
-			var green := Res.vary(Color(0.22, 0.30, 0.23), 0.25, rng)
-			for i in posts + 1:
-				_m(Res.box(Vector3(0.06, ht, 0.06)), "fence_metal", Vector3(-L * 0.5 + i * L / posts, ht * 0.5, 0), green)
-			for y in [0.12, ht - 0.03]:
-				_m(Res.box(Vector3(L, 0.045, 0.045)), "fence_metal", Vector3(0, y, 0), green, Vector3.ZERO, false)
-			var n2 := int(L / 0.3)
-			for i in n2:
-				_m(Res.box(Vector3(0.022, ht - 0.15, 0.022)), "fence_metal", Vector3(-L * 0.5 + (i + 0.5) * L / n2, ht * 0.5, 0), green, Vector3.ZERO, false)
+	var y0 := 0.0
+	var y1 := 0.0
+	if _at != Transform3D.IDENTITY:  # (not a bay knocked down and falling)
+		var geology: Landform = world.terrain.landform
+		y0 = geology.height(_at * Vector3(-f.x * 0.5, 0, 0)) - _at.origin.y
+		y1 = geology.height(_at * Vector3(f.x * 0.5, 0, 0)) - _at.origin.y
+	BuildingFences.bay(BuildingKit.baked(_bake, rng, _at), f.x, f.y, int(f.z), y0, y1)
 
 
 # --- wires ----------------------------------------------------------------------------

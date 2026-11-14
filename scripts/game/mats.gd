@@ -981,6 +981,30 @@ static func netting_tent() -> ShaderMaterial:
 	return _netting_tent
 
 
+static var _wire_mesh := {}
+
+
+## Wire mesh on a fence: chain-link's diamonds or a welded panel's grid,
+## drawn on a flat sheet (Res.quad) as antialiased wires, so the posts and the
+## ground show through and the mesh greys into a haze with distance as it does.
+static func wire_mesh(welded: bool) -> ShaderMaterial:
+	if not _wire_mesh.has(welded):
+		var m := ShaderMaterial.new()
+		m.shader = _wire_mesh_shader()
+		m.set_shader_parameter("welded", welded)
+		_wire_mesh[welded] = m
+	return _wire_mesh[welded]
+
+
+static var _wire_mesh_sh: Shader
+
+
+static func _wire_mesh_shader() -> Shader:
+	if _wire_mesh_sh == null:
+		_wire_mesh_sh = CloudShadow.make(code(WIRE_MESH_SHADER))
+	return _wire_mesh_sh
+
+
 static func _preset(kind: String) -> Dictionary:
 	if kind.begins_with("vehicle/"):
 		return VehicleMaterials.preset(kind)
@@ -1042,6 +1066,12 @@ static func _preset(kind: String) -> Dictionary:
 			return {"pattern": WEATHERED_PHOTO, "photo_mean": PHOTO_MEAN.get_meta("concrete_floor_01"), "col_a": Color(0.52, 0.5, 0.47), "rough": 0.95, "bump": 0.0, "grime": 0.0, "scale": 0.5, "local_space": true, "weathering": 1.0, "photo_color": preload("res://assets/town/concrete_floor_01_color.jpg"), "photo_surface": preload("res://assets/town/concrete_floor_01_surface.png")}
 		"fence_wood", "fence_rail":
 			return {"pattern": WEATHERED_PHOTO, "photo_mean": PHOTO_MEAN.get_meta("weathered_planks"), "col_a": Color(0.5, 0.43, 0.33), "rough": 0.94, "bump": 0.0, "grime": 0.0, "scale": 0.5, "grain_horizontal": kind == "fence_rail", "weathering": 0.5, "photo_color": preload("res://assets/town/weathered_planks_color.jpg"), "photo_surface": preload("res://assets/town/weathered_planks_surface.png")}
+		"fence_painted":
+			# boards under paint gone chalky and thin: the grain shows through
+			return {"pattern": WEATHERED_PHOTO, "photo_mean": PHOTO_MEAN.get_meta("weathered_planks"), "col_a": Color(0.8, 0.79, 0.74), "rough": 0.78, "bump": 0.0, "grime": 0.7, "scale": 0.5, "weathering": 0.55, "photo_color": preload("res://assets/town/weathered_planks_color.jpg"), "photo_surface": preload("res://assets/town/weathered_planks_surface.png")}
+		"galvanised":
+			# hot-dip galvanised tube and wire: dull spangled zinc, white rust in spots
+			return {"pattern": PAINT, "col_a": Color(0.55, 0.56, 0.55), "col_b": Color(0.68, 0.68, 0.65), "rough": 0.55, "metal": 0.35, "bump": 0.2, "grime": 0.4, "rust": 0.12, "scale": 2.5}
 		"fence_metal":
 			return {"pattern": PAINT, "col_a": Color(0.6, 0.6, 0.6), "col_b": Color(0.28, 0.25, 0.21), "rough": 0.82, "metal": 0.35, "bump": 0.3, "grime": 0.65, "rust": 0.7, "scale": 1.7}
 		"corrugated":
@@ -1106,8 +1136,14 @@ static func _preset(kind: String) -> Dictionary:
 		"rust_steel":
 			return {"pattern": PAINT, "col_a": Color(0.32, 0.2, 0.12), "col_b": Color(0.22, 0.2, 0.18), "rough": 0.85, "metal": 0.35, "bump": 1.0, "grime": 0.5, "rust": 1.0}
 		"wire":
-			# galvanised barbed and razor wire, dulled and spotted with rust
-			return {"pattern": PAINT, "col_a": Color(0.44, 0.44, 0.42), "col_b": Color(0.56, 0.55, 0.52), "rough": 0.42, "metal": 0.75, "bump": 0.0, "grime": 0.2, "rust": 0.35, "scale": 4.0}
+			# new galvanised barbed and razor wire: bright zinc, a little dulled
+			return {"pattern": PAINT, "col_a": Color(0.52, 0.53, 0.51), "col_b": Color(0.64, 0.64, 0.61), "rough": 0.5, "metal": 0.7, "bump": 0.0, "grime": 0.15, "rust": 0.06, "scale": 4.0}
+		"wire_rust":
+			# wire left out for years: the zinc gone, rusted through to a flaky brown
+			return {"pattern": PAINT, "col_a": Color(0.31, 0.17, 0.09), "col_b": Color(0.43, 0.27, 0.15), "rough": 0.88, "metal": 0.2, "bump": 0.0, "grime": 0.3, "rust": 1.0, "scale": 4.0}
+		"wire_military":
+			# the armies' issue wire: dull dark zinc, weathered grey, flecked with rust
+			return {"pattern": PAINT, "col_a": Color(0.36, 0.37, 0.34), "col_b": Color(0.45, 0.46, 0.42), "rough": 0.6, "metal": 0.5, "bump": 0.0, "grime": 0.3, "rust": 0.18, "scale": 4.0}
 		"bag":
 			return {"pattern": CANVAS, "col_a": Color(0.5, 0.45, 0.33), "col_b": Color(0.4, 0.36, 0.26), "scale": 1.6, "rough": 0.97, "bump": 0.8, "grime": 0.7, "local_space": true, "use_vcolor": true}
 		"canvas_l":
@@ -1848,6 +1884,58 @@ void fragment() {
 		NORMAL = normalize(abs(det) * NORMAL - grad * 0.06);
 	}
 	// CLOUD_FRAGMENT cloud_sun(lpos)
+}
+"""
+
+
+const WIRE_MESH_SHADER := """
+shader_type spatial;
+render_mode cull_disabled;
+instance uniform vec4 tint : source_color = vec4(0.58, 0.59, 0.58, 1.0);
+uniform bool use_vcolor = false;
+uniform bool welded = false;
+// CLOUD_SHADOW
+varying vec3 wp;
+varying vec3 wn;
+void vertex() {
+	wp = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
+	wn = normalize((MODEL_MATRIX * vec4(NORMAL, 0.0)).xyz);
+}
+// How much of a pixel the wires at every whole x cover, `duty` the wire's
+// share of the spacing: sharp lines up close, their average once they're
+// finer than a pixel (so a run of fence doesn't shimmer into moire).
+float wires(float x, float duty) {
+	float fw = max(fwidth(x), 1e-5);
+	float d = abs(fract(x + 0.5) - 0.5);
+	float sharp = 1.0 - smoothstep(duty * 0.5 - fw * 0.5, duty * 0.5 + fw * 0.5, d);
+	// (the far average is drawn heavier than the wire's true share: a run of
+	// chain-link reads at range as a grey veil, the light caught on every wire)
+	return mix(sharp, min(1.0, duty * 2.6), smoothstep(0.18, 0.5, fw));
+}
+void fragment() {
+	vec3 along = cross(vec3(0.0, 1.0, 0.0), wn);
+	along = length(along) > 0.01 ? normalize(along) : vec3(1.0, 0.0, 0.0);
+	float u = dot(wp, along);
+	float v = wp.y;
+	float cover;
+	if (welded) {
+		// 4 mm wire welded on a 75 x 225 mm grid
+		cover = max(wires(u / 0.075, 0.06), wires(v / 0.225, 0.02));
+	} else {
+		// 50 mm diamonds of 3 mm wire (drawn a little heavy to read at range)
+		float a = wires((u + v) / 0.0707, 0.085);
+		float b = wires((u - v) / 0.0707, 0.085);
+		cover = a + b - a * b;
+	}
+	if (cover < 0.01) { discard; }
+	vec3 c = use_vcolor ? COLOR.rgb : tint.rgb;
+	if (OUTPUT_IS_SRGB) { c = mix(c / 12.92, pow((c + 0.055) / 1.055, vec3(2.4)), step(vec3(0.04045), c)); }
+	ALBEDO = c;
+	if (OUTPUT_IS_SRGB) { ALBEDO = mix(ALBEDO * 12.92, 1.055 * pow(max(ALBEDO, vec3(0.0)), vec3(1.0 / 2.4)) - 0.055, step(vec3(0.0031308), ALBEDO)); }
+	ALPHA = clamp(cover, 0.0, 1.0);
+	METALLIC = 0.55;
+	ROUGHNESS = 0.5;
+	// CLOUD_FRAGMENT cloud_sun(wp)
 }
 """
 
