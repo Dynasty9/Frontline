@@ -275,16 +275,26 @@ func build(utype: String, team: int, seed: int) -> void:
 	_skin(self, {dark: "gunmetal", steel: "gunmetal", wood: "wood_l", fde: "plain", pack: "canvas_l"})
 	# one mesh per joint (a surface per material): animation is untouched and
 	# each body part is a single render instance to move
+	# (and where on the bolt of cloth his uniform was cut from: each man's
+	# camouflage falls differently on him)
+	var cut := Vector3(rng.randf_range(-40.0, 40.0), rng.randf_range(-40.0, 40.0), rng.randf_range(-40.0, 40.0))
 	for j in [root, hips, torso, head, tails, thigh_l, shin_l, thigh_r, shin_r, arm_l, arm_r, forearm_l, forearm_r, gun, pistol, tube, back_item, stretcher, medical_pack, medical_band]:
 		if j:
 			Mats.merge_static(j, [], false, false, true)
+			if not Mats.per_material:
+				for c in j.get_children():
+					if c is MeshInstance3D:
+						(c as MeshInstance3D).set_instance_shader_parameter(&"pofs", cut)
 	var use_skin := utype == "rifleman" or ((medical_band != null or utype in ["mortar_gunner", "fighter"]) and InfantryAssets.gameplay_model == InfantryAssets.SWAT)
 	if use_skin and is_inside_tree() and get_parent() is Soldier and not InfantryAssets.gameplay_model.is_empty():
 		skinned = SkinnedRifleman.new()
 		skinned.model_asset = InfantryAssets.gameplay_model
 		add_child(skinned)
 		var role_prop := gun if medical_band or utype == "fighter" else null
-		if skinned.build(MocapCharacter.CLIPS, role_prop, k.top.lightened(0.35) if team == 1 else Color.WHITE):
+		skinned.camo_pattern = k.swat_pattern
+		skinned.camo_gear = k.swat_gear
+		skinned.camo_seed = Vector2(float(seed % 101) * 0.37, float(seed % 89) * 0.53)
+		if skinned.build(MocapCharacter.CLIPS, role_prop):
 			skinned.bind_procedural(self)
 			skinned.ground_height = get_parent().world.ground_y
 			if skinned.model_asset == InfantryAssets.SWAT:
@@ -338,6 +348,12 @@ func _palette(team: int, is_crew: bool, rng: RandomNumberGenerator) -> Dictionar
 	k.rolled = false
 	k.top_kind = "suit"
 	k.pants_kind = "suit"
+	k.swat_pattern = ""
+	k.swat_gear = null
+	# what he's printed in comes from a generator of its own, so the rest of
+	# his looks stay as they were
+	var crng := RandomNumberGenerator.new()
+	crng.seed = rng.seed ^ 0x5ca3f1
 	if team == 0:
 		# FOXHOUND: a slate-grey sneaking suit, its armour a shade darker,
 		# black webbing and gloves
@@ -348,18 +364,37 @@ func _palette(team: int, is_crew: bool, rng: RandomNumberGenerator) -> Dictionar
 		k.pouch = Color(0.24, 0.26, 0.26)
 		k.glove = Color(0.1, 0.1, 0.1)
 		k.glove_kind = "boot"
+		# the suit printed in its own slate, broken up in shades of itself
+		k.top_kind = "camo/slate"
+		k.pants_kind = k.top_kind
+		k.top = Res.vary(Color(Camo.PATTERNS["slate"].cols[0]), 0.015, crng)
+		k.pants = k.top
+		k.swat_pattern = "slate_digital"
 	elif team == 1:
 		# Genome and Gurlukovich soldiers: field jackets and trousers that don't
 		# match, a chest rig over them, some in camouflage
 		k.top = Res.vary([Color(0.4, 0.38, 0.27), Color(0.48, 0.42, 0.31), Color(0.36, 0.29, 0.21), Color(0.31, 0.33, 0.27), Color(0.22, 0.22, 0.21)][rng.randi() % 5], 0.05, rng)
-		if rng.randf() < 0.15:
-			k.top_kind = "camo_rebel"
+		rng.randf()  # (once whether he wore the old camouflage)
 		k.pants = Res.vary([Color(0.22, 0.22, 0.2), Color(0.32, 0.31, 0.23), Color(0.4, 0.36, 0.27), Color(0.2, 0.21, 0.23)][rng.randi() % 4], 0.04, rng)
+		# surplus from every army: a jacket in one pattern or plain, trousers
+		# to match it (an issued set), in another pattern, or plain
+		var jacket := Camo.pick(Camo.REBEL_TOPS, crng)
+		var trousers := jacket if crng.randf() < 0.45 else Camo.pick(Camo.REBEL_TOPS, crng)
+		if jacket != "":
+			k.top_kind = "camo/" + jacket
+			# faded by the sun and the wash, a little differently on each
+			k.top = Res.vary(Color(Camo.PATTERNS[jacket].cols[0]), 0.03, crng).lightened(crng.randf_range(0.0, 0.08))
+		if trousers != "":
+			k.pants_kind = "camo/" + trousers
+			k.pants = Res.vary(Color(Camo.PATTERNS[trousers].cols[0]), 0.03, crng).lightened(crng.randf_range(0.0, 0.08))
+		k.swat_pattern = jacket if jacket != "" else (trousers if trousers != "" else "woodland")
 		k.armor = Res.vary([Color(0.33, 0.32, 0.23), Color(0.42, 0.37, 0.27), Color(0.25, 0.26, 0.21)][rng.randi() % 3], 0.05, rng)
 		k.web = Color(0.2, 0.19, 0.15)
 		k.pouch = (k.armor as Color).darkened(0.08)
 		k.boot = Color(0.12, 0.1, 0.08)
 		k.rolled = rng.randf() < 0.35
+		# the imported character's webbing: his chest rig's colour
+		k.swat_gear = (k.armor as Color).darkened(0.35)
 		if rng.randf() < 0.35:
 			k.glove = Color(0.14, 0.13, 0.11)
 			k.glove_kind = "boot"
@@ -789,16 +824,21 @@ func _goggles(xf: Transform3D, strap: bool) -> void:
 
 
 ## A combat helmet, sat well down, its rim a lip round the edge, a band
-## round it; goggles on the front (or he's wearing them).
+## round it; goggles on the front (or he's wearing them). Its cover is
+## printed like his uniform, a shade darker.
 func _helmet(k: Dictionary, goggles_up: bool) -> void:
 	var hc: Color = (k.armor as Color).lightened(0.08)
+	var shell := "armor"
+	if String(k.top_kind).begins_with("camo/"):
+		shell = k.top_kind
+		hc = Color(Camo.PATTERNS[String(k.top_kind).substr(5)].cols[0]).darkened(0.12)
 	var tilt := 0.16
 	var piv := Vector3(0, 0.2, 0)
 	var b := Basis(Vector3.RIGHT, tilt)
 	var off := piv - b * piv
 	var rot := Vector3(tilt, 0, 0)
 	_p(head, BodyMesh.loft([_rg(0.118, 0.116, 0.126, 0.134, 2.2, 0, 0.008), _rg(0.135, 0.112, 0.122, 0.13, 2.2, 0, 0.008), _rg(0.19, 0.106, 0.114, 0.122, 2.1, 0, 0.008),
-		_rg(0.24, 0.088, 0.094, 0.102, 2.0, 0, 0.01), _rg(0.272, 0.055, 0.058, 0.064, 2.0, 0, 0.01), _rg(0.287, 0.02, 0.02, 0.024, 2.0, 0, 0.01)], 16), "armor", hc, off, rot)
+		_rg(0.24, 0.088, 0.094, 0.102, 2.0, 0, 0.01), _rg(0.272, 0.055, 0.058, 0.064, 2.0, 0, 0.01), _rg(0.287, 0.02, 0.02, 0.024, 2.0, 0, 0.01)], 16), shell, hc, off, rot)
 	_p(head, BodyMesh.loft([_rg(0.112, 0.121, 0.131, 0.139, 2.2, 0, 0.008), _rg(0.13, 0.12, 0.13, 0.138, 2.2, 0, 0.008)], 16), "armor", hc.darkened(0.2), off, rot)
 	_p(head, BodyMesh.loft([_rg(0.168, 0.112, 0.12, 0.128, 2.1, 0, 0.008), _rg(0.19, 0.109, 0.117, 0.125, 2.1, 0, 0.008)], 16), "webbing", k.web, off, rot)
 	if goggles_up:

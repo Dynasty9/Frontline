@@ -1,0 +1,29 @@
+{
+  "entry": "changelog/unreleased/camouflage.md",
+  "title": "Real camouflage on soldiers, bases and nets",
+  "version": "unreleased",
+  "kind": "improved",
+  "summary": "Uniforms are printed in proper camouflage patterns, base buildings are painted in disruptive blotches, and camouflage nets look like cut garnish on a cord mesh.",
+  "medium": "still",
+  "stage": "game capture flags",
+  "rationale": "An appearance change: matched before/after stills of the same men, buildings and nets show it best.",
+  "source_ref": "Before: eb81260e. After: this branch. Soldiers: --soldier-sheet --sheet-unit=fighter --sheet-seeds=6 --sheet-pose=idle at 1600x900. Base: --scenario=showroom --shot-at=6 --focus=-12,-22 --zoom=30 --pitch=-28 --cam-yaw=0.4 --set=dof:false --nohud --perf=0. Nets: photo mode, --scenario=showroom --static --photo-at=4 --focus=42,-34 --zoom=10 --cam-yaw=0.5 --photo=blur:0,fov:45,aim:14:5.0 and --scenario=cache --static --photo-at=3 --focus=-6,-22 --zoom=10 --cam-yaw=0.5 --photo=blur:0,fov:40,aim:10:3.0, cropped clear of the photo panel. Forward+, off-screen windowed runs on Windows.",
+  "sources": [
+    {
+      "file": "changelog/unreleased/camouflage/soldiers.jpg",
+      "sha256": "27dce59a481c2756010926b07572eca6e8c475a9237b3853688990b140b0c3da",
+      "caption": "Six Rebel fighters, same seeds, before and after."
+    },
+    {
+      "file": "changelog/unreleased/camouflage/base.jpg",
+      "sha256": "4a08c5db40a2203f04d41b660f6392e0718712bbd002ae1c58d72b1441af213c",
+      "caption": "The showroom's Coalition base, same camera, before and after."
+    },
+    {
+      "file": "changelog/unreleased/camouflage/nets.jpg",
+      "sha256": "3bff6a4aaf9042781a3e2239bd51a2264855ec4f6a99eb9dd84cb085acfa52d0",
+      "caption": "The Coalition FOB's net and a Rebel camouflage net, before and after."
+    }
+  ],
+  "output": null
+}

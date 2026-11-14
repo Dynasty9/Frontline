@@ -936,9 +936,9 @@ static func _tarp(model: Node3D, p: Vector3, col: Color) -> void:
 ## for the Coalition, the Rebels' a faded desert pattern on cut poles.
 static func _camo_net(model: Node3D, rebel: bool, rng: RandomNumberGenerator) -> Array:
 	var net := MeshInstance3D.new()
-	net.mesh = _net_mesh(rng.randi() % 2)
+	net.mesh = net_mesh(rng.randi() % 2)
 	net.material_override = Mats.netting_tent()
-	Mats.set_inst(net, &"tint", Color(0.42, 0.37, 0.26) if rebel else Color(0.23, 0.27, 0.15))
+	Camo.dress_net(net, 1 if rebel else 0)
 	model.add_child(net)
 	var pk := "wood_dark" if rebel else "steel"
 	var pc = null if rebel else Color(0.45, 0.46, 0.42)
@@ -954,16 +954,15 @@ static func _camo_net(model: Node3D, rebel: bool, rng: RandomNumberGenerator) ->
 	return [net]
 
 
-## The net's shape: a square 7.2 m across, high in the middle over the centre
-## pole, sagging between the corner poles and draped down to knee height at
-## its edges. UV runs 0..1 corner to corner (the netting shader frays its edge).
-static func _net_mesh(v: int) -> ArrayMesh:
-	var key := "net%d" % v
+## The net's shape: a square 2S across (7.2 m), `top` high in the middle
+## over the centre pole, held at `eave` by corner poles `pole` out, sagging
+## between them and draped down to `hem` (knee height) at its edges. UV runs
+## 0..1 corner to corner (the netting shader frays its edge).
+static func net_mesh(v: int, S := 3.6, pole := 2.5, top := 2.6, eave := 1.8, hem := 0.35) -> ArrayMesh:
+	var key := "net%d|%s|%s|%s|%s|%s" % [v, S, pole, top, eave, hem]
 	if _meshes.has(key):
 		return _meshes[key]
-	var N := 20
-	var S := 3.6
-	var pole := 2.5
+	var N := int(clampf(S * 5.5, 20.0, 32.0))
 	var pos: Array = []
 	for j in N + 1:
 		var row: Array = []
@@ -976,10 +975,10 @@ static func _net_mesh(v: int) -> ArrayMesh:
 			var y := 0.0
 			if d < pole:
 				var f := d / pole
-				y = lerpf(2.6, 1.8, pow(f, 0.8)) - 0.32 * f * mid
+				y = lerpf(top, eave, pow(f, 0.8)) - 0.32 * f * mid
 			else:
 				var g := (d - pole) / (S - pole)
-				y = lerpf(1.8 - 0.32 * mid, 0.35 + 0.25 * mid, pow(g, 0.7))
+				y = lerpf(eave - 0.32 * mid, hem + 0.25 * mid, pow(g, 0.7))
 			y += 0.08 * sin(x * 2.1 + v * 1.7) * sin(z * 1.7 - v) + 0.04 * sin(x * 5.3 + z * 4.1 + v)
 			row.append(Vector3(x, y, z))
 		pos.append(row)

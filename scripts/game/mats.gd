@@ -114,7 +114,7 @@ static var _cache := {}
 
 static func shader() -> Shader:
 	if _shader == null:
-		_shader = CloudShadow.make(code(TerrainTexture.shader(SURFACE_SHADER.replace("// STREET_SURFACE", ASPHALT_SHADER))), CloudShadow.CLEARCOAT)
+		_shader = CloudShadow.make(code(TerrainTexture.shader(SURFACE_SHADER.replace("// STREET_SURFACE", ASPHALT_SHADER).replace("// CAMO_PRINT", Camo.GLSL))), CloudShadow.CLEARCOAT)
 	return _shader
 
 
@@ -693,6 +693,10 @@ static func _distant_arrays(groups: Dictionary) -> Array:
 		var base: Color = material.get_shader_parameter("col_a")
 		if int(material.get_shader_parameter("pattern")) == CAMO:
 			base = base.lerp(material.get_shader_parameter("col_b"), 0.35)
+			# the old two-colour camo never sets a style: unset reads back null
+			var style: Variant = material.get_shader_parameter("camo_style")
+			if style != null and int(style) > 0:
+				base = material.get_shader_parameter("camo_mean")
 		if not per_material:
 			base = base.srgb_to_linear()
 		var scale := VC_K
@@ -969,16 +973,19 @@ static func netting() -> ShaderMaterial:
 	return _netting
 
 
-static var _netting_tent: ShaderMaterial
+static var _netting_tent := {}
 
 
 ## The same netting for a net whose mesh is already shaped (pitched over a
-## pole, draped to the ground): no sag of its own.
-static func netting_tent() -> ShaderMaterial:
-	if _netting_tent == null:
-		_netting_tent = netting().duplicate() as ShaderMaterial
-		_netting_tent.set_shader_parameter("sag", 0.0)
-	return _netting_tent
+## pole, draped to the ground): no sag of its own; its UV runs 0..1 over
+## `span` metres.
+static func netting_tent(span := 7.2) -> ShaderMaterial:
+	if not _netting_tent.has(span):
+		var m := netting().duplicate() as ShaderMaterial
+		m.set_shader_parameter("sag", 0.0)
+		m.set_shader_parameter("uv_m", span)
+		_netting_tent[span] = m
+	return _netting_tent[span]
 
 
 static var _wire_mesh := {}
@@ -1008,6 +1015,10 @@ static func _wire_mesh_shader() -> Shader:
 static func _preset(kind: String) -> Dictionary:
 	if kind.begins_with("vehicle/"):
 		return VehicleMaterials.preset(kind)
+	if kind.begins_with("camo/"):
+		return Camo.cloth_preset(kind.substr(5))
+	if kind.begins_with("paint") and kind.find(":") == 6:
+		return Camo.paint_preset(kind, _preset(kind.substr(7)))
 	match kind:
 		"steel":
 			return {"pattern": PAINT, "col_a": Color(0.25, 0.26, 0.27), "col_b": Color(0.4, 0.38, 0.35), "rough": 0.6, "metal": 0.6, "bump": 0.8, "grime": 0.4, "rust": 0.3}
@@ -1270,6 +1281,7 @@ float tfbm(vec2 p) { float v = 0.0; float a = 0.5; for (int i = 0; i < 4; i++) {
 // How much of a feature `period` units across survives at this pixel
 // footprint: 1 when it spans 5+ pixels, 0 when it's under 1.5.
 float keep(float period, float px) { return smoothstep(1.5, 5.0, period / max(px, 1e-5)); }
+// CAMO_PRINT
 
 // The atlas contains the hull and the rotating turret in their own local frames.
 vec3 armour_slice(vec2 xy, float z) {
@@ -1431,6 +1443,14 @@ void fragment() {
 		col = mix(col_b, col_a, grain) * (0.85 + 0.25 * mix(0.5, h12(vec2(row, off.y)), keep(pw, px)));
 		col *= 0.5 + 0.5 * gap;
 		h = gap * (0.8 + grain * 0.2);
+	} else if (pattern == 6 && camo_style > 0) {
+		// a printed pattern (Camo): in motifs, round the part's own shape
+		// (each man's pattern is placed by his own pofs)
+		vec3 cw = pow(abs(normalize(tn)), vec3(4.0));
+		cw /= max(cw.x + cw.y + cw.z, 0.0001);
+		vec3 cp = tp * scale;
+		col = camo_print(cp, cw, length(fwidth(cp)) * 0.7);
+		h = 0.5 + (tnoise(uv * 40.0) - 0.5) * 0.3 * keep(0.025, px);
 	} else if (pattern == 6) {
 		vec2 camo_uv = vehicle_surface ? uv * 2.4 : uv;
 		float c1 = tfbm(camo_uv * 1.0 + off);
@@ -1661,6 +1681,10 @@ void fragment() {
 	}
 	col *= tint.rgb;
 	if (use_vcolor) { col *= COLOR.rgb * vcolor_k; }
+	if (paint_on) {
+		vec3 meant = col_a * tint.rgb * (use_vcolor ? COLOR.rgb * vcolor_k : vec3(1.0));
+		col = camo_paint(col, meant, wpos, tn, wpos.y - ground_y);
+	}
 	// Rust is an oxide, not reflective steel tinted orange. Apply after the
 	// part tint so corroded fittings retain their mineral color.
 	col = mix(col, mix(vec3(0.09, 0.032, 0.012), vec3(0.28, 0.12, 0.035), corrosion), corrosion);
@@ -1947,8 +1971,13 @@ void fragment() {
 const NETTING_SHADER := """
 shader_type spatial;
 render_mode cull_disabled;
+// the garnish's four colours (Camo.NETS): the ground, then the blotches printed over it
 instance uniform vec4 tint : source_color = vec4(0.3, 0.34, 0.2, 1.0);
+instance uniform vec4 net_b : source_color = vec4(0.2, 0.24, 0.15, 1.0);
+instance uniform vec4 net_c : source_color = vec4(0.3, 0.25, 0.17, 1.0);
+instance uniform vec4 net_d : source_color = vec4(0.1, 0.1, 0.09, 1.0);
 uniform float sag = 0.45;  // a flat net slung between poles sags in the middle
+uniform float uv_m = 7.2;  // metres the net's UV runs 0..1 across, along its surface
 // CLOUD_SHADOW
 varying vec3 wp;
 float h12(vec2 p) { vec3 p3 = fract(vec3(p.xyx) * 0.1031); p3 += dot(p3, p3.yzx + 33.33); return fract((p3.x + p3.y) * p3.z); }
@@ -1963,26 +1992,59 @@ void vertex() {
 	wp = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
 }
 void fragment() {
-	vec2 p = wp.xz;
-	float n = vn(p * 1.9) * 0.55 + vn(p * 5.3) * 0.45;
-	float g = vn(p * 13.0);
+	// in metres along the net itself, so the garnish keeps its size where
+	// the net hangs down the sides
+	vec2 p = UV * uv_m;
 	vec2 u = UV * 2.0 - 1.0;
 	float edge = max(abs(u.x), abs(u.y));
-	float scraps = step(0.47 + smoothstep(0.8, 1.0, edge) * 0.3, n + g * 0.3);
-	// Garnish is tied to a fine diamond cord mesh, visible through the larger gaps.
+	// The garnish: a sheet cut into leaves about 14 cm long, every leaf
+	// turned its own way, tied to a diamond cord mesh. It is thicker in
+	// some places than others, gappy in strips, and frays out at the edge.
+	vec2 g = mat2(vec2(0.8, 0.6), vec2(-0.6, 0.8)) * p / 0.14;
+	vec2 cell = floor(g);
+	float r1 = h12(cell);
+	float r2 = h12(cell + 7.1);
+	float r3 = h12(cell + 13.7);
+	float r4 = h12(cell + 21.3);
+	vec2 f = fract(g) - 0.5 - (vec2(h12(cell + 3.3), h12(cell + 9.9)) - 0.5) * 0.3;
+	float a = r1 * 6.2832;
+	vec2 dir = vec2(cos(a), sin(a));
+	vec2 l = vec2(dot(f, dir), dot(f, vec2(-dir.y, dir.x)));
+	float thick = vn(p * 0.8) * 0.55 + vn(p * 2.6 + 5.0) * 0.45 - smoothstep(0.8, 1.0, edge) * 0.4;
+	float thin = 1.0 - smoothstep(0.35, 0.7, thick);
+	// each cut a leaf shape, pointed at both ends: long or short, a sliver
+	// or opened wide where the garnish is thin, and some leaves never cut
+	float len = 0.24 + 0.24 * r2;
+	float t = clamp(l.x / len, -1.0, 1.0);
+	float wid = (0.03 + 0.13 * r3 * (0.5 + thin)) * (1.0 - t * t);
+	float cut = step(abs(l.y), wid) * step(abs(l.x), len) * step(r4, 0.45 + 0.45 * thin);
+	// leaves smaller than a few pixels: their cuts would only shimmer, so
+	// they close up, and only the gaps between strips stay open
+	vec2 gw = fwidth(g);
+	float near = smoothstep(0.45, 0.18, max(gw.x, gw.y));
+	float garnish = (1.0 - cut * near) * step(0.3, thick);
 	vec2 weave = vec2(p.x + p.y, p.x - p.y) * 7.0;
 	vec2 cord_distance = abs(fract(weave) - 0.5);
-	float cord = 1.0 - smoothstep(0.025, 0.045, min(cord_distance.x, cord_distance.y));
-	if (max(scraps, cord) < 0.5) discard;
-	vec3 c = tint.rgb * (0.65 + 0.55 * g);
-	c = mix(c, c * vec3(1.25, 1.05, 0.7), step(0.62, vn(p * 3.1 + 9.0)) * 0.6);
-	// the garnish: darker brown and near-black scraps knotted in, breaking it up
-	c = mix(c, c * vec3(0.62, 0.5, 0.38), step(0.6, vn(p * 2.3 + 31.0)) * 0.75);
-	c = mix(c, c * 0.35, step(0.7, vn(p * 4.1 + 57.0)) * 0.6);
-	c = mix(tint.rgb * 0.45, c, scraps);
+	float cord = (1.0 - smoothstep(0.025, 0.045, min(cord_distance.x, cord_distance.y))) * near;
+	if (max(garnish, cord) < 0.5) discard;
+	// printed in big blotches like a uniform: the ground colour, a second
+	// shade, a third, and a few near-black
+	float b1 = vn(p * 0.55 + 3.0) * 0.7 + vn(p * 1.7 + 11.0) * 0.3;
+	float b2 = vn(p * 0.62 + 17.0) * 0.7 + vn(p * 1.9 + 3.0) * 0.3;
+	float b3 = vn(p * 0.9 + 31.0) * 0.7 + vn(p * 2.3 + 23.0) * 0.3;
+	vec3 c = tint.rgb;
+	c = mix(c, net_b.rgb, step(0.5, b1));
+	c = mix(c, net_c.rgb, step(0.57, b2));
+	c = mix(c, net_d.rgb, step(0.66, b3));
+	// each leaf faded and catching the light a little differently
+	c *= 0.93 + 0.14 * r3 + (l.x / len) * 0.05;
+	c = mix(tint.rgb * 0.4, c, garnish);
 	ALBEDO = c;
 	ROUGHNESS = 0.95;
-	BACKLIGHT = c * 0.5;
+	BACKLIGHT = c * 0.45;
+	// the leaves curl off the cord: each one's own slant
+	vec3 tilt = vec3(r2 - 0.5, 0.0, r3 - 0.5) * 0.5 * garnish * near;
+	NORMAL = normalize(NORMAL + (VIEW_MATRIX * vec4(tilt, 0.0)).xyz);
 	// CLOUD_FRAGMENT cloud_sun(wp)
 }
 """
