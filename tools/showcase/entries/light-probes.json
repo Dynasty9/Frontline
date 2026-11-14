@@ -5,43 +5,43 @@
   "kind": "new",
   "summary": "Rooms under a roof, wall feet and gaps between houses lose skylight; open ground is unchanged.",
   "medium": "motion",
-  "stage": "--scenario=breach --seed=3, overcast and day, --fixed-fps 30. Room: --focus=0,-30 --zoom=8 --pitch=-62 at 5 s, roof lifted by the defenders inside. Gap between houses: --focus=7.5,-27 --zoom=4.5 --pitch=-14 at 12 s. Destruction: day, --focus=12,-31 --zoom=14 --pitch=-50 --blast-at=14,-29,3,6, 60 frames every 0.1 s.",
-  "rationale": "The probes shade only skylight, a small share of daylight, so a whole-scene before/after reads as identical. Each sheet is four consecutive frames of one run (FL_DEBUG_PROBES_AB=cycle: off, on, the probe term, the bent normal), cropped tight on where probes matter, so the debug panels show what the grid contributes even where the final image changes a little. The flicker clip alternates off/on on one frame; the destruction clip pairs the game with the probe term from a second, identical fixed-fps run (FL_DEBUG_PROBES_VIEW=1).",
+  "stage": "--scenario=breach --seed=3 --mood=day --fixed-fps 30. Room: --focus=0,-30 --zoom=8 --pitch=-62 at 5 s, roof lifted by the defenders inside. Gap between houses: --focus=7.5,-27 --zoom=4.5 --pitch=-14 at 12 s. Destruction: --focus=12,-31 --zoom=14 --pitch=-50 --blast-at=14,-29,3,6, 60 frames every 0.1 s.",
+  "rationale": "Each sheet is cropped tight on where probes matter. OFF is a --set=light_probes:0 run; ON, the probe term and the bent normal are consecutive frames of a --set=light_probes:2 run cycling them (FL_DEBUG_PROBES_AB=cycle). The scenario is deterministic at a fixed frame rate, so OFF and ON are the same moment (only smoke differs). The flicker clip alternates them on one frame; the destruction clip pairs the game with the probe term from a second identical run (FL_DEBUG_PROBES_VIEW=1).",
   "capture": {
     "provenance": "Recaptured off-screen from this branch (Forward+, RTX 3090, High preset) with the commands in stage; panels are consecutive frames of one fixed-fps run, so they share camera, units and smoke.",
     "comparison": "Sheets: top left probes off, bottom left on, top right the probe term (sky share on grey, bounce amplified), bottom right the bent normal. Flicker: off and on alternate each second on one frame. Destruction: the game and the probe term from two identical fixed-fps runs.",
-    "limits": "The final-image change is modest (about 4 to 5 levels in these crops, 12 to 21% of pixels darker by more than 8): the probes shade skylight only, and sunlight dominates. Interiors are seen with the roof lifted, which lets real sunlight in. Trenches are narrower than the 2 m grid and are not shown. No performance claim is made from these files."
+    "limits": "Measured in the crops: the room falls to 0.69 of its brightness (sunlit floor 0.57, shaded floor 0.47); between the houses the shaded wall and its foot to 0.94-0.95; the sunlit roof and open grass stay at 1.00. Smoke differs between the OFF and ON runs. Trenches are narrower than the 2 m grid and are not shown. The Compatibility renderer (browser) gets the skylight shading but not the indoor sun cut."
   },
-  "source_ref": "dines/probe-grid-gi-0571ca after 43c99b22 (the debug cycle mode, trench mask and covered-surface bounce of the following commit).",
+  "source_ref": "dines/probe-grid-gi-0571ca: the daylight tuning commit after 34bac81a.",
   "sources": [
     {
       "file": "changelog/unreleased/light-probes/room-under-roof.jpg",
-      "sha256": "11dbde1498b2d1943bc27be273dc0940f4b4e3a6200336c3195b85b8118e7d0c",
-      "caption": "OFF/ON, probe term and bent normal of one room, overcast."
+      "sha256": "d45d0092dbd31cdf47e523eedcfe4840fb518d0c63f9f5549edc1ef933436b58",
+      "caption": "OFF/ON, probe term and bent normal of one room at midday."
     },
     {
       "file": "changelog/unreleased/light-probes/between-houses.jpg",
-      "sha256": "964789c937dd91ddbd8a9755e63fde7a505645b96843dae1449aabc0d587c841",
-      "caption": "OFF/ON, probe term and bent normal between two houses, overcast."
+      "sha256": "1dc2897bab90bab27163838a5e4c28a52e899a05c15656129fadc96fc6ef6f7d",
+      "caption": "OFF/ON, probe term and bent normal between two houses at midday."
     },
     {
       "file": "changelog/unreleased/light-probes/room-flicker.webm",
-      "sha256": "54665ed0e779b953c6b849fd86b2ce0122d0c861cf8d0d342b64e67956847e28",
+      "sha256": "67490e182654396e413e321362640207033df13a91af327dc4b6dc765d7807fc",
       "caption": "Probes off/on every second on one frame, 8 s, VP9."
     },
     {
       "file": "changelog/unreleased/light-probes/room-flicker.jpg",
-      "sha256": "9aed445d72df5e4f3468bb03d11031dad4fa1cbca354a50a5a8977e7d947ae02",
+      "sha256": "eab37fe85a94ba940687f99b520c366dddcbdfbb3483809f0587457ed5b6ba13",
       "caption": "Poster: the ON frame."
     },
     {
       "file": "changelog/unreleased/light-probes/destroyed-house.webm",
-      "sha256": "e25b80f6e6db4f6b91ef0d2b7d8289dd8a17fc866318b0ba79320fc173e7cd91",
+      "sha256": "1fef65d5f9f2c146b04467903b527cada491d76bb32374135d14bff1e4764287",
       "caption": "Game and probe term as a house is blown down, 7 s, VP9."
     },
     {
       "file": "changelog/unreleased/light-probes/destroyed-house.jpg",
-      "sha256": "2b944f5c5ef110e8fcfeef50559f59c5ff2cc9eea490dd9ab2eef3483fa9e8a8",
+      "sha256": "d228178ff2ce393acad2d144465b8b5150b179a2c6c2d4c83daee412ba5b3c46",
       "caption": "Poster: after the blast."
     }
   ],

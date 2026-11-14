@@ -640,11 +640,10 @@ static func inject(src: String) -> String:
 ## Low does. High hands the same eight numbers, its normal and where it stands
 ## between the probes to a tiny network (10 inputs, 16 hidden, 1 out: 176
 ## multiply-adds and 16 tanh a pixel) trained offline against sky occlusion
-## traced from every pixel itself: on two towns it hadn't seen it came within
-## 0.08 of the traced answer where the formula came within 0.13, closer than
-## the formula does from probes twice as dense (see the pull request). Its
-## weights are below, fitted with numpy on dumps of the
-## cubes (FL_DEBUG_PROBES_TILES). What a pixel doesn't see is lit by the
+## traced from every pixel itself (ground, wall faces and roof tops): on two
+## towns it hadn't seen it came within 0.09 of the traced answer where the
+## formula came within 0.12 (see the pull request). Its weights are below,
+## fitted with numpy on dumps of the cubes (FL_DEBUG_PROBES_TILES). What a pixel doesn't see is lit by the
 ## bounce, the mean light off whatever is in the way. Reads are offset 0.6 of a
 ## probe out along the normal (the air in front of a wall, not the wall), and
 ## fade out above the top probes and at the map's edge.
@@ -652,11 +651,25 @@ const PIXEL := """
 global uniform sampler2D probe_atlas : filter_linear, repeat_disable;
 global uniform vec4 probe_grid;  // map half-size, probe spacing, quality (0 off, 1 low, 2 high)
 global uniform vec4 probe_mix;  // how far the sky is shut out, how much bounce comes back, debug view
+// the share of sky this pixel sees, for light() (CloudShadow.LIGHT, the ground's own):
+// the cool fill light opposite the sun stands for skylight too, so it's shut out
+// with it; and somewhere shut in all round, a room, the sun is cut to PROBE_ROOM_SUN.
+// A room is seen with its roof lifted off to show the men in it, and with the roof
+// went its shadow: this gives a room back its indoors, without hiding the men.
+// Wall feet and narrow streets see far more sky than a room and keep their sun.
+#define PROBE_LIGHT
+#define PROBE_ROOM_SUN 0.4
+#define PROBE_MIN_SKY 0.3
+varying float probe_fill;
+varying float probe_room;  // how surely this is indoors: the probes see little sky in any direction
+float probe_sun() {
+	return mix(1.0, PROBE_ROOM_SUN, probe_room);
+}
 
-const float PROBE_W1[160] = float[160](-0.34115, 0.59463, 7.41159, -7.57962, -1.65540, -4.43343, 2.42593, 0.43647, -0.51720, 0.16805, 1.98253, 0.30646, 33.85116, 5.60881, 0.94415, -0.58237, 0.39510, -0.07296, -0.67169, -0.10212, 1.81543, -0.73037, 0.26733, 5.53789, 0.30678, -1.82469, 0.51796, 0.39529, -0.79183, -0.08490, 0.05339, 23.79072, 37.14708, 10.58335, -4.26974, 1.59772, 10.87560, -2.44424, -5.50589, 0.21478, -2.23437, -8.07771, -0.69088, -4.02103, 0.65147, 0.70595, 1.24203, 2.32539, -0.32077, -0.11191, 4.75058, 2.75394, -33.70576, -1.64853, 0.80046, 3.45982, 3.50304, -0.28085, 3.53338, -0.39625, -0.45626, 2.77583, -4.05925, -3.52512, 1.03019, -0.43330, 0.48198, 0.25550, -0.45801, -0.04977, 0.44428, 6.81782, 65.43001, 11.81844, 2.66430, -0.65926, 2.48422, 0.41144, -0.52693, -0.38543, 0.01191, -3.05404, 21.96171, 3.96039, -2.42013, -2.99996, 1.22487, 0.00461, -1.03447, 0.51088, 1.70249, -1.15754, -11.31601, 2.97831, 0.22574, 2.05025, 1.49544, -0.27370, -1.31674, 0.45732, -5.65615, -16.39887, -46.52639, -7.89839, 6.70929, 5.07787, 1.00519, -1.21541, 0.74920, -0.57723, 1.86588, -3.02073, -7.23745, 5.77726, 0.02432, -0.27721, 1.16917, -0.10342, -0.53743, 0.74436, -2.37073, -3.97871, -3.45995, -5.60392, 1.00018, -0.00244, 1.42845, -1.45780, 0.79167, -0.07837, 0.11456, -0.33218, 68.86202, 13.83017, 0.71601, -0.26657, 0.22765, -0.17386, -1.56872, -0.27696, 1.63907, -2.89064, -3.52652, -5.36765, 0.95201, -1.03973, 1.10329, -0.17026, -0.10640, 0.43318, 1.52519, 18.48795, 9.22931, 5.00968, -0.54710, 0.20953, -1.35280, -4.38298, 0.57061, 0.70628);
-const float PROBE_B1[16] = float[16](1.75814, -1.36098, -0.83073, -1.48206, 0.31049, -5.64665, 0.08652, -1.33732, 1.10659, -1.63574, 0.76282, -1.70935, 1.80304, -0.28505, -0.53898, 0.71955);
-const float PROBE_W2[16] = float[16](1.19216, 1.85324, 1.15446, -0.48165, -0.90306, 0.58065, -1.50234, -0.66945, -1.11564, 1.19264, -0.45014, -1.00855, -0.81659, -0.78570, 1.49789, -0.35214);
-const float PROBE_B2 = -0.10534;
+const float PROBE_W1[160] = float[160](16.35525, 0.10844, 28.88235, -2.50913, -8.36765, -7.18285, 8.20931, -0.02737, 1.27300, -0.04152, 0.93147, -1.06860, 1.24206, 1.01093, 2.06359, 1.01021, 0.19069, 0.20271, 0.55991, 0.09771, 1.07381, -5.36421, 59.69660, -2.93629, 2.39840, -8.19777, 2.23443, 0.53418, -4.64796, -0.09692, 0.77911, -0.09140, -4.15199, 1.99062, -0.44229, 1.91695, -0.51150, 0.15265, -0.76393, 0.11769, -5.92241, -13.67315, -9.21620, -2.94765, 1.11997, 2.49735, 0.01493, 8.74274, 0.22183, -0.30535, 2.99622, 1.70974, -31.26694, 0.24131, -0.87645, 0.54767, -1.02470, -0.25322, 2.81158, 0.09491, -4.82721, -5.84184, 1.20522, 3.77991, 1.01497, -2.06145, 4.68222, -0.55579, 0.32749, 0.20654, -1.52604, 2.51795, 20.27398, 6.82618, -0.70514, -0.25224, 5.22872, -0.01829, -3.61851, 0.10440, 5.80822, -7.76106, 5.02818, -1.01288, -1.03239, -1.40084, 5.76114, -0.81005, -2.01921, 0.36415, 2.43261, -1.59774, 19.59061, -4.98993, 1.13411, -0.04590, 8.29156, 0.43931, 3.09562, 0.23350, 0.20121, 11.80478, -13.29959, -1.19729, 1.57075, -2.57847, -4.15368, 0.63121, 1.03794, -0.23792, 0.37964, -0.78130, -20.54515, -0.27646, 0.55419, -0.54864, 2.49967, -0.37236, 3.93901, -0.00392, -4.26408, -2.72323, -3.84717, -9.54619, 2.36277, 3.62349, 4.12894, 0.07387, 0.06237, 0.12890, -1.07686, -6.03024, -5.12329, 10.08467, 2.00806, -2.55980, -1.52165, -0.44789, 1.27632, 0.19301, 4.15344, 4.21593, -4.08457, -4.10686, 2.01011, -1.26974, 1.40246, 0.04337, 0.08968, -0.07673, 1.10335, 0.42318, -14.94356, 14.34088, -2.67636, -2.63678, -0.27415, -0.10558, 1.16046, 0.34143);
+const float PROBE_B1[16] = float[16](-9.64967, -1.20780, -0.05285, 0.17979, -0.54329, -2.44557, 3.51397, 0.69315, -2.42715, -5.27203, 1.43680, -0.01863, 0.66606, 3.16735, -2.25713, 0.69506);
+const float PROBE_W2[16] = float[16](3.01186, 2.44531, 0.89847, 2.15907, -0.22687, 1.06772, -1.07449, -1.21392, -0.59297, 0.63017, -0.65081, -1.31305, -0.77455, 0.91361, 1.42401, -0.68120);
+const float PROBE_B2 = 0.39591;
 
 vec4 probe_read(vec2 col, float layer, float block) {
 	vec2 c = clamp(col, vec2(0.5), vec2(511.5));
@@ -677,7 +690,10 @@ float probe_decode(float m0, vec3 m1, vec3 n, vec3 fr) {
 	return 1.0 / (1.0 + exp(-o));
 }
 
-vec4 probe_light(vec3 wp, vec3 wn) {
+// m0: the share of the whole sky the probes round here see, whichever way the
+// surface faces. A room sees a few percent of it; a wall foot, a roof top or a
+// narrow street about half, so this tells indoors apart where the facing can't
+vec4 probe_light(vec3 wp, vec3 wn, out float m0) {
 	float ps = probe_grid.y;
 	vec3 p = wp + wn * ps * 0.6;
 	vec2 col = (p.xz + probe_grid.x) / ps;
@@ -695,17 +711,26 @@ vec4 probe_light(vec3 wp, vec3 wn) {
 		vec3 b = mix(probe_read(col, l0, 1.0).rgb, probe_read(col, l0 + 1.0, 1.0).rgb, t);
 		lb = b * b * 4.0;
 		seen = probe_decode(a.a, a.rgb * 2.0 - 1.0, wn, vec3(fract(col.x - 0.5), t, fract(col.y - 0.5)));
+		m0 = mix(1.0, a.a, fade);
 	} else {
 		vec4 a = probe_read(col, clamp(floor(lf + 0.5), 0.0, 7.0), 0.0);
 		seen = clamp(a.a + 2.0 * dot(a.rgb * 2.0 - 1.0, wn), 0.0, 1.0);
+		m0 = mix(1.0, a.a, fade);
 	}
 	float k = fade * probe_mix.x;
-	return vec4(mix(1.0, seen, k), lb * (1.0 - seen) * fade * probe_mix.y);
+	// never darker than PROBE_MIN_SKY of the skylight: a corner of a room is dark,
+	// not black, and a man's surroundings stay readable however shut in he is
+	return vec4(mix(1.0, max(seen, PROBE_MIN_SKY), k), lb * (1.0 - seen) * fade * probe_mix.y);
 }
 """
 
-const PIXEL_USE := """if (probe_grid.z > 0.5) {
-		vec4 probe_k = probe_light((INV_VIEW_MATRIX * vec4(VERTEX, 1.0)).xyz, normalize((INV_VIEW_MATRIX * vec4(NORMAL, 0.0)).xyz));
+const PIXEL_USE := """probe_fill = 1.0;
+	probe_room = 0.0;
+	if (probe_grid.z > 0.5) {
+		float probe_m0;
+		vec4 probe_k = probe_light((INV_VIEW_MATRIX * vec4(VERTEX, 1.0)).xyz, normalize((INV_VIEW_MATRIX * vec4(NORMAL, 0.0)).xyz), probe_m0);
+		probe_fill = probe_k.x;
+		probe_room = smoothstep(0.3, 0.12, probe_m0) * probe_mix.x;
 		AO *= probe_k.x;
 		EMISSION += ALBEDO * probe_k.yzw;
 		if (probe_mix.z > 0.5) {

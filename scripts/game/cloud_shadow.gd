@@ -241,7 +241,15 @@ void light() {
 	if (LIGHT_IS_DIRECTIONAL && cloud_is_sun(LIGHT, VIEW_MATRIX)) {
 		att *= cloud_k;
 		A = cloud_sun_disc.w;
+#ifdef PROBE_LIGHT
+		att *= probe_sun();  // indoors, under a lifted roof (LightProbes)
+#endif
 	}
+#ifdef PROBE_LIGHT
+	else if (LIGHT_IS_DIRECTIONAL) {
+		att *= probe_fill;  // the sky's fill light, shut out as the sky is (LightProbes)
+	}
+#endif
 	float cNdotL = clamp(A + dot(NORMAL, LIGHT), 0.0, 1.0);
 	float cNdotV = max(dot(NORMAL, VIEW), 1e-4);
 	vec3 H = normalize(VIEW + LIGHT);

@@ -1261,9 +1261,12 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   are also its bent normal, and the bounce), and every surface shader that opts in rebuilds its own light from the
   probes round it in five filtered reads. On Low its cosine-weighted share of sky is the exact two-band formula
   m0 + 2 m1.n; on High a tiny network with baked weights (10 inputs, 16 hidden, 176 multiply-adds a pixel), trained
-  offline against sky occlusion traced from every pixel, reads it from the same numbers with about 40% less error
-  on towns it never saw, better than the formula from probes twice as dense. It multiplies the skylight (AO); what
-  it doesn't see comes back lit by the bounce. Open ground under
+  offline against sky occlusion traced from every pixel (ground, walls and roof tops), reads it from the same numbers
+  with about 28% less error on towns it never saw. It multiplies the skylight (AO) and the cool fill light opposite
+  the sun, which stands for skylight too; what it doesn't see comes back lit by the bounce. Where the probes see
+  little sky in any direction, a room, the sun is cut to 40%: a roof lifted off to show the men inside takes its
+  shadow with it, and this gives the room back its indoors without hiding them (wall feet, roof tops and narrow
+  streets see about half the sky and keep their sun). Open ground under
   open sky counts as seen (the sky's lower half already stands for it), so open fields look as they did. Only what
   changes is redone: a structure built, destroyed or burnt marks its tile, which is laid again on the CPU and its
   probes traced again, two tiles a frame nearest the camera first; craters retrace the tiles round them, and trenches too (their mask cuts them into the ground the probes trace and

@@ -2467,7 +2467,15 @@ void light() {
 	float cloud = 1.0;
 	if (LIGHT_IS_DIRECTIONAL && cloud_is_sun(LIGHT, VIEW_MATRIX)) {
 		cloud = cloud_sun(wpos);
+#ifdef PROBE_LIGHT
+		cloud *= probe_sun();  // indoors, under a lifted roof (LightProbes)
+#endif
 	}
+#ifdef PROBE_LIGHT
+	else if (LIGHT_IS_DIRECTIONAL) {
+		cloud = probe_fill;  // the sky's fill light, shut out as the sky is (LightProbes)
+	}
+#endif
 	if (LIGHT_IS_DIRECTIONAL && dot(LIGHT, normalize((VIEW_MATRIX * vec4(sun_direction, 0.0)).xyz)) > 0.95) {
 		cloud *= terrain_sun;
 	}

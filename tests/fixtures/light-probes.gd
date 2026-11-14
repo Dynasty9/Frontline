@@ -66,11 +66,15 @@ func _check_shaders() -> void:
 	for on in [false, true]:
 		var s := CloudShadow.shader(Mats.SURFACE_SHADER, CloudShadow.CLEARCOAT | CloudShadow.PROBES, on)
 		assert(s.contains("vec4 probe_light(") and s.contains("AO *= probe_k.x;") and s.contains("EMISSION += ALBEDO * probe_k.yzw;"))
+		# the fill light opposite the sun is shut out with the sky, in the shared light model
+		assert(s.contains("#define PROBE_LIGHT") and s.contains("probe_fill = probe_k.x;"))
+		if on and not CloudShadow.vertex_lit():
+			assert(s.contains("att *= probe_fill;"), "the shared light model dims the fill light")
 		assert(not s.contains("// CLOUD_"), "every mark filled in")
 		var g := CloudShadow.shader(Atmosphere.GROUND_SHADER, CloudShadow.OWN_LIGHT | CloudShadow.PROBES, on)
 		assert(g.contains("probe_light(") and g.count("void light()") == 1)
 		var grass := CloudShadow.shader(Grass.GRASS_SHADER, CloudShadow.BACKLIGHT | CloudShadow.NO_SPECULAR | CloudShadow.FOLD, on)
-		assert(not grass.contains("probe_"), "grass doesn't read the probes")
+		assert(not grass.contains("probe_light(") and not grass.contains("#define PROBE_LIGHT"), "grass doesn't read the probes")
 	assert(LightProbes.BAKE_SHADER.contains("shader_type canvas_item;"))
 	# the atlas layout the pixels read is the one the bake writes
 	assert(LightProbes.ATLAS == Vector2i(4096, 1536))
