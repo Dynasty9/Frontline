@@ -169,7 +169,7 @@ static func _loop_y(pairs: Array, y: float) -> Array:
 ## plates; their raised edge and weld are what a turret roof's breakup reads
 ## as from above.
 static func _cover(k: VehicleModels, p: Node3D, key: String, outline: Array, y: float, t: float, mat: String, col = null) -> void:
-	k._add(p, VehicleModels.loft(key, outline, outline, y - 0.004, y + t), mat, col, Vector3.ZERO)
+	k._add(p, VehicleModels.loft(key, outline, outline, y - 0.004, y + t, 0.01), mat, col, Vector3.ZERO)
 	_weld(k, p, _loop_y(outline, y), mat, col, minf(0.012, t * 0.6))
 
 
@@ -477,7 +477,9 @@ static func _abrams(k: VehicleModels, team: int, seed: int) -> void:
 	var u0 := _oct(-1.62, 1.62, -3.52, 3.5, 0.06)
 	var u1 := _oct(-1.62, 1.62, -3.46, 3.5, 0.06)
 	var u2 := _oct(-1.6, 1.6, -1.78, 3.48, 0.05)
-	k._add(m, VehicleModels.solid(_rings([u0, u1, u2], [0.98, 1.08, roof]), "core_m1_up"), cam, null, Vector3.ZERO)
+	# (the roof's edge ground off 22 mm all round: no more, so the welds
+	# across its ends still sit in the cut)
+	k._add(m, VehicleModels.solid(_rings([u0, u1, u2], [0.98, 1.08, roof]), "core_m1_up", false, 0.022), cam, null, Vector3.ZERO)
 	# the welds where the glacis and the back plate meet the deck
 	_weld(k, m, [Vector3(-1.55, roof, -1.78), Vector3(1.55, roof, -1.78)], cam)
 	_weld(k, m, [Vector3(-1.55, roof, 3.48), Vector3(1.55, roof, 3.48)], cam)
@@ -626,14 +628,14 @@ static func _abrams(k: VehicleModels, team: int, seed: int) -> void:
 	# --- the roof: the gunner's primary sight doghouse front right with its
 	# armoured doors, the commander's independent thermal viewer front left
 	k.periscope = Vector3(0.81, tr + 0.22, -1.65)
-	k._add(t, VehicleModels.loft("core_m1_gps", _oct(0.5, 1.12, -1.62, -0.8, 0.05), _oct(0.54, 1.08, -1.48, -0.84, 0.05), tr, tr + 0.42), cam, null, Vector3.ZERO)
+	k._add(t, VehicleModels.loft("core_m1_gps", _oct(0.5, 1.12, -1.62, -0.8, 0.05), _oct(0.54, 1.08, -1.48, -0.84, 0.05), tr, tr + 0.42, 0.025), cam, null, Vector3.ZERO)
 	for sx: float in [0.63, 0.99]:
 		# (turned about Y so the leaf's finished face looks forward)
 		VehicleDoors.leaf(k, t, Vector3(0.24, 0.26, 0.04), Vector3(sx, tr + 0.24, -1.56), cam, null, Vector3(-0.3, PI, 0), 2)
 	if not k.burnt:
 		_bx(k, t, Vector3(0.4, 0.14, 0.02), Vector3(0.81, tr + 0.22, -1.6), "glass", null, Vector3(0.3, 0, 0), false)
 	k._cyl(t, 0.2, 0.22, 0.24, Vector3(-0.78, tr + 0.12, -0.95), Vector3.ZERO, "gunmetal_w", null, 14)
-	k._add(t, VehicleModels.loft("core_m1_citv", _oct(-0.98, -0.58, -1.18, -0.74, 0.06), _oct(-0.95, -0.61, -1.12, -0.77, 0.05), tr + 0.24, tr + 0.58), cam, null, Vector3.ZERO)
+	k._add(t, VehicleModels.loft("core_m1_citv", _oct(-0.98, -0.58, -1.18, -0.74, 0.06), _oct(-0.95, -0.61, -1.12, -0.77, 0.05), tr + 0.24, tr + 0.58, 0.02), cam, null, Vector3.ZERO)
 	if not k.burnt:
 		_bx(k, t, Vector3(0.26, 0.16, 0.02), Vector3(-0.78, tr + 0.42, -1.16), "glass", null, Vector3.ZERO, false)
 	# the commander's station on the right: the cupola ring with its vision
@@ -751,6 +753,10 @@ static var _roll_mesh: ArrayMesh
 
 
 static func _bedroll(k: VehicleModels, parent: Node3D, center: Vector3, length: float, radius: float, cloth: Color) -> void:
+	# Whose bedroll it is: each crew's are their own issue and colour.
+	var rng := VehicleCargo.kit(k, parent, center, 2)
+	if rng != null:
+		cloth = VehicleCargo.kit_colour(rng, cloth, VehicleCargo.KIT_CLOTH, 0.4)
 	if _roll_mesh == null:
 		var fabric := SurfaceTool.new()
 		fabric.begin(Mesh.PRIMITIVE_TRIANGLES)
@@ -1972,7 +1978,7 @@ static func _truck(k: VehicleModels, team: int) -> void:
 	# the bonnet with the radiator grille in its nose, the flat wings over the
 	# front wheels with the headlights on them, the brush guard, the bumper
 	# and its tow hooks (the grilles lean with the bonnet's faces)
-	k._add(m, VehicleModels.loft("core_trk_hood", [-0.56, -3.22, 0.56, -3.22, 0.56, -1.85, -0.56, -1.85], [-0.5, -3.16, 0.5, -3.16, 0.52, -1.85, -0.52, -1.85], 0.95, 1.66), "paint", col, Vector3.ZERO)
+	k._add(m, VehicleModels.loft("core_trk_hood", [-0.56, -3.22, 0.56, -3.22, 0.56, -1.85, -0.56, -1.85], [-0.5, -3.16, 0.5, -3.16, 0.52, -1.85, -0.52, -1.85], 0.95, 1.66, 0.025), "paint", col, Vector3.ZERO)
 	VehicleFittings.grille(k, m, Vector3(0, 1.35, -3.215), Vector2(0.4, 0.6), Vector3(-0.084, PI, 0), "paint", col, 4, true)
 	for s: float in [-1.0, 1.0]:
 		VehicleBody.fender(k, m, Vector3(s * 0.86, 1.24, -2.42), Vector3(0.6, 0.04, 1.6), s, "paint", col)
@@ -2016,7 +2022,7 @@ static func _truck(k: VehicleModels, team: int) -> void:
 	for s: float in [-1.0, 1.0]:
 		VehicleFittings.mudflap(k, m, Vector3(s * 0.95, 0.5, 3.15), Vector2(0.36, 0.4))
 		_taillight(k, m, Vector3(s * 0.9, 1.1, 3.08))
-	var tarp := col.lightened(0.08)
+	var tarp := VehicleCargo.tilt_colour(k, m, col.lightened(0.08))
 	# The tilt's section: straight walls 0.9 m high, then a half-ellipse roof
 	# 1.16 m to each side and 0.49 m high; the cloth hangs between the bows.
 	var section := [Vector2(-1.16, 1.8)]

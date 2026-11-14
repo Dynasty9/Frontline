@@ -2431,7 +2431,12 @@ func _burn_view() -> void:
 ## (view) While it burns it chars, and the char glows with embers.
 func _fire_view(dt: float) -> void:
 	if burn > 0.0:
-		_char = minf(1.0, _char + dt * burn / 32.0)
+		# A wreck (or a car the fire has already gutted) was built burnt out:
+		# rust and ash with soot along its flanks. The fire on it only
+		# blackens it in patches, where its embers glow, instead of painting
+		# the whole shell black again.
+		var most := 0.3 if skind == "wreck" or (skind == "car" and burnt) else 1.0
+		_char = minf(most, _char + dt * burn / 32.0)
 	if not _wreck_soot and (absf(_char - _char_set) > 0.02 or absf(burn - _glow_set) > 0.04):
 		_apply_char(burn)
 	if burn <= 0.0 and _fire_fx == null and team < 0 and not skind in SMOKE_KINDS and skind != "roof":

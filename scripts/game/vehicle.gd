@@ -138,6 +138,8 @@ var turret: Node3D
 var tail_rotor: Node3D
 var blades: Node3D
 var blur: MeshInstance3D
+var _tail_blades: Node3D  # the tail rotor's blades and the disc shown for them at flight speed
+var _tail_blur: Node3D
 var wheels: Array = []
 var always_animate_tracks := false  # Long-lens footage also needs distant shoe contact.
 var _belt_yaw := 0.0
@@ -2985,19 +2987,23 @@ func _view_process(dt: float) -> void:
 			_rotor_snd.pitch_scale = (0.55 + 0.45 * rpm) * (1.0 + load * 0.08)
 			_rotor_snd.volume_db = _rotor_vol + (rpm - 1.0) * 9.0 + load * 6.0
 		rotor.rotation.y += dt * _rotor_spd
+		var fast := _rotor_spd > 18.0
 		if tail_rotor:
 			tail_rotor.rotation.x += dt * _rotor_spd * 2.6
+			# (the tail rotor's blades turn 2.6 times as fast: they blur with the main ones)
+			if _tail_blur:
+				_tail_blur.visible = fast
+				_tail_blades.visible = not fast
 		for i in _vm.rotors.size():
 			var xr: Node3D = _vm.rotors[i]
 			xr.rotation.y += dt * _rotor_spd * (-1.0 if i % 2 == 0 else 1.0)
 			var xb := xr.get_node_or_null("Blur")
 			if xb:
-				xb.visible = _rotor_spd > 18.0
+				xb.visible = fast
 				var xbl := xr.get_node_or_null("Blades")
 				if xbl:
 					xbl.visible = not xb.visible
 		if blur:
-			var fast := _rotor_spd > 18.0
 			blur.visible = fast
 			blades.visible = not fast
 	if not rotor and _vm and not _vm.rotors.is_empty():
@@ -3408,8 +3414,23 @@ func _build_model() -> void:
 	_last_pos = position
 	rotor = k.rotor
 	tail_rotor = k.tail_rotor
+	if tail_rotor:
+		# (an old-style tail rotor has neither: it stays as it is)
+		_tail_blades = tail_rotor.get_node_or_null("Blades") as Node3D
+		_tail_blur = tail_rotor.get_node_or_null("Blur") as Node3D
+		if _tail_blades == null:
+			_tail_blur = null
 	blades = k.blades
 	blur = k.blur
+	# A drone's rotors (it has no main rotor) turn at flight speed from the
+	# start: their blur discs stand in for the blades, which would strobe.
+	if not rotor:
+		for xr: Node3D in k.rotors:
+			var xb := xr.get_node_or_null("Blur") as Node3D
+			var xbl := xr.get_node_or_null("Blades") as Node3D
+			if xb and xbl:
+				xb.visible = true
+				xbl.visible = false
 	wheels = k.wheels
 	if not k.belts.is_empty() and Sfx.enabled:
 		var abrams: bool = vdef.get("model", vkind) == "tank"

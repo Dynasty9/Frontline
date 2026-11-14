@@ -429,10 +429,10 @@ static func _hunter(k: VehicleModels, team: int, arm: String, seed := 0) -> void
 			VehicleRunningGear.wishbone(k, m, Vector3(s * 0.302, 0.485, z), Vector3(s * 0.798, 0.555, z), Vector3(s * 0.322, 0.868, z - 0.04), Vector3(s * 0.778, 0.813, z - 0.04), Vector2(0.16, 0.07), Vector2(0.14, 0.07), Vector3(s * 0.453, 1.133, z + 0.24), Vector3(s * 0.667, 0.627, z + 0.24), 0.075)
 	# --- bonnet over the engine, fenders over the front wheels, the grille
 	var bon := [-2.95, 1.24, -0.94, 1.24, -0.94, 1.8, -2.45, 1.71, -2.97, 1.5]
-	k._add(m, VehicleModels.extrude_x("nato_matv_bonnet", bon, -0.84, 0.84), cam, null, Vector3.ZERO)
+	k._add(m, VehicleModels.extrude_x("nato_matv_bonnet", bon, -0.84, 0.84, 0.035), cam, null, Vector3.ZERO)
 	var fen := [-2.94, 1.22, -0.94, 1.22, -0.94, 1.66, -2.4, 1.6, -2.95, 1.44]
 	for s in [-1.0, 1.0]:
-		k._add(m, VehicleModels.extrude_x("nato_matv_fender", fen, -0.2, 0.2), cam, null, Vector3(s * 1.04, 0, 0))
+		k._add(m, VehicleModels.extrude_x("nato_matv_fender", fen, -0.2, 0.2, 0.03), cam, null, Vector3(s * 1.04, 0, 0))
 		# the wheel arch lip and mud flap behind the front wheel
 		VehicleBody.fender(k, m, Vector3(s * 1.04, 1.22, fz), Vector3(0.42, 0.05, 1.36), s, "gunmetal_w")
 		VehicleFittings.mudflap(k, m, Vector3(s * 1.0, 0.98, -1.22), Vector2(0.36, 0.5))
@@ -441,7 +441,7 @@ static func _hunter(k: VehicleModels, team: int, arm: String, seed := 0) -> void
 	VehicleFittings.grille(k, m, Vector3(0, 1.4, -3.04), Vector2(1.3, 0.38), Vector3(0, PI, 0), cam, null, 9, true)
 	k._box(m, Vector3(1.36, 0.05, 0.06), Vector3(0, 1.6, -2.97), cam)
 	# the hood's centre bulge and its latches
-	k._add(m, VehicleModels.loft("nato_matv_bulge", [-0.44, -2.4, 0.44, -2.4, 0.44, -1.0, -0.44, -1.0], [-0.34, -2.3, 0.34, -2.3, 0.34, -1.0, -0.34, -1.0], 0.0, 0.07), cam, null, Vector3(0, 1.73, 0), Vector3(-0.062, 0, 0))
+	k._add(m, VehicleModels.loft("nato_matv_bulge", [-0.44, -2.4, 0.44, -2.4, 0.44, -1.0, -0.44, -1.0], [-0.34, -2.3, 0.34, -2.3, 0.34, -1.0, -0.34, -1.0], 0.0, 0.07, 0.015), cam, null, Vector3(0, 1.73,0), Vector3(-0.062, 0, 0))
 	for s in [-1.0, 1.0]:
 		k._box(m, Vector3(0.05, 0.1, 0.06), Vector3(s * 0.74, 1.56, -2.62), "gunmetal_w", null, Vector3.ZERO, false)
 	# bumper with tow shackles and a recovery winch
@@ -542,7 +542,7 @@ static func _prowler(k: VehicleModels, team: int, arm: String) -> void:
 			VehicleRunningGear.wishbone(k, m, Vector3(s * 0.321, 0.402, z), Vector3(s * 0.679, 0.438, z), Vector3(s * 0.321, 0.678, z), Vector3(s * 0.679, 0.642, z), Vector2(0.12, 0.06), Vector2(0.12, 0.06), Vector3(s * 0.391, 1.025, z + dz), Vector3(s * 0.609, 0.575, z + dz), 0.05)
 	# --- the flat bonnet, its fenders and the nose
 	var bon := [-2.24, 0.62, -0.92, 0.62, -0.92, 1.1, -2.1, 1.06, -2.26, 0.94]
-	k._add(m, VehicleModels.extrude_x("nato_dagor_bonnet", bon, -0.66, 0.66), cam, null, Vector3.ZERO)
+	k._add(m, VehicleModels.extrude_x("nato_dagor_bonnet", bon, -0.66, 0.66, 0.035), cam, null, Vector3.ZERO)
 	for s in [-1.0, 1.0]:
 		# each fender sloping down outboard, the front one with a raked lip
 		VehicleBody.fender(k, m, Vector3(s * 0.8, 0.98, fz), Vector3(0.36, 0.035, 1.1), s, cam, null, Vector3(0, 0, -s * 0.06))
@@ -1471,7 +1471,7 @@ static func _hemtt_chassis(k: VehicleModels, team: int, paint: Color, detailed :
 	else:
 		k._add(m, VehicleModels.solid([VehicleModels.ring_y(VehicleModels._v2(cb), 1.36), VehicleModels.ring_y(VehicleModels._v2(cb), 1.95), VehicleModels.ring_y(VehicleModels._v2([-1.14, -4.34, 1.14, -4.34, 1.14, -2.88, -1.14, -2.88]), 2.86)], "nato_hemtt_cab"), cab, null, Vector3.ZERO)
 	var nose := [-5.12, 0.96, -4.45, 0.96, -4.45, 1.98, -4.88, 1.92, -5.12, 1.74]
-	k._add(m, VehicleModels.extrude_x("nato_hemtt_nose", nose, -1.1, 1.1), cab, null, Vector3.ZERO)
+	k._add(m, VehicleModels.extrude_x("nato_hemtt_nose", nose, -1.1, 1.1, 0.03), cab, null, Vector3.ZERO)
 	# the big grille, the bumper with the headlights in its ends, tow eyes,
 	# the towing pintle
 	VehicleFittings.grille(k, m, Vector3(0, 1.4, -5.19), Vector2(1.86, 0.66), Vector3(0, PI, 0), cab, null, 12)
@@ -1593,12 +1593,13 @@ static func _hemtt(k: VehicleModels, team: int, body: String, seed := 0) -> void
 			_hemtt_tail(k, paint, 5.05)
 			if body == "troop":
 				# the canvas tilt over its bows, the back rolled up over the benches
-				VehicleCloth.canopy(k, m, [Vector2(-1.22, 1.98), Vector2(-1.22, 2.55), Vector2(-0.98, 2.86), Vector2(0.98, 2.86), Vector2(1.22, 2.55), Vector2(1.22, 1.98)], [-2.35, -2.2, -0.78, 0.64, 2.06, 3.48, 4.9, 4.95], paint.lightened(0.08))
+				var tilt := VehicleCargo.tilt_colour(k, m, paint.lightened(0.08))
+				VehicleCloth.canopy(k, m, [Vector2(-1.22, 1.98), Vector2(-1.22, 2.55), Vector2(-0.98, 2.86), Vector2(0.98, 2.86), Vector2(1.22, 2.55), Vector2(1.22, 1.98)], [-2.35, -2.2, -0.78, 0.64, 2.06, 3.48, 4.9, 4.95], tilt)
 				for i in 6:
 					var z := -2.2 + i * 1.42
 					k._add(m, _extrude_z("nato_hemtt_bow", [-1.24, 1.98, 1.24, 1.98, 1.24, 2.56, 0.99, 2.88, -0.99, 2.88, -1.24, 2.56], -0.04, 0.04), "canvas_white", paint.darkened(0.12), Vector3(0, 0, z))
 				k._box(m, Vector3(2.3, 0.82, 0.02), Vector3(0, 2.38, 4.965), "plain_dark", null, Vector3.ZERO, false)
-				VehicleCloth.roll(k, m, Vector3(0, 2.7, 5.0), 0.12, 2.4, Vector3(0, 0, PI / 2), paint.lightened(0.04), "canvas_white")
+				VehicleCloth.roll(k, m, Vector3(0, 2.7, 5.0), 0.12, 2.4, Vector3(0, 0, PI / 2), tilt.darkened(0.04), "canvas_white")
 				for s in [-1.0, 1.0]:
 					# the troop benches facing in, on folding legs, hinged to the sides
 					VehicleCab.bench(k, m, Vector3(s * 0.88, 1.85, 1.3), Vector3(0.38, 0.08, 6.6), Vector3(-s, 0, 0), Vector3(0.06, 0.3, 0.06), "wood_dark", null, 0.43, true)

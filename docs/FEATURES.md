@@ -1494,6 +1494,12 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   rubber pads with end connectors and centre guides. Vehicle glass reflects the sky, and helicopter rotors
   blur into a soft disc with ghost blades that don't strobe. See "Eighth pass" in
   [the component guide](vehicle-components.md).
+- **Rotor discs, wrecks, edges and kit** (ninth pass): a helicopter's rotor reads from above as a soft dark
+  disc in its blades' paint rather than a pale ring, and tail rotors, ducted fans, drones' rotors and
+  propellers blur too. Burnt-out vehicles are rust, ash and soot with tyres burnt to the wire, not black
+  shapes. Every crew's load is its own: crate stacks, tarps, bags, bedrolls, cans and canvas tilts vary by
+  seed, so a column of one kind isn't stamped from one mould. Bonnets, roofs, consoles and deckhouses have
+  chamfered edges that catch the light. See "Ninth pass" in [the component guide](vehicle-components.md).
 - Explosions are layered GPU particles: a flash and light burst, a rolling fireball that cools from the edges in
   until it's dark smoke, a lit smoke column that drifts with the wind, a dirt plume, sparks and debris that
   bounce on the ground, a rolling dust ring, a faint heat-shimmer shockwave and a scorch mark. Heavy rounds

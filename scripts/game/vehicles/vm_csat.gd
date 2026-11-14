@@ -291,7 +291,7 @@ static func _smoke(k: VehicleModels, p: Node3D, pos: Vector3, s: float, n := 3, 
 static func _rcws(k: VehicleModels, p: Node3D, pos: Vector3, gun: String, mat := CAM) -> Node3D:
 	var t := k._pivot(p, pos)
 	VehicleMounts.turret_ring(k, t, Vector3(0, 0.05, 0), 0.3, 0.34, 0.1, "gunmetal_w", null, 16)
-	k._add(t, VehicleModels.loft("csat_rcws_ped", [-0.2, -0.22, 0.2, -0.22, 0.2, 0.26, -0.2, 0.26], [-0.16, -0.16, 0.16, -0.16, 0.16, 0.22, -0.16, 0.22], 0.1, 0.36), mat, null, Vector3.ZERO)
+	k._add(t, VehicleModels.loft("csat_rcws_ped", [-0.2, -0.22, 0.2, -0.22, 0.2, 0.26, -0.2, 0.26], [-0.16, -0.16, 0.16, -0.16, 0.16, 0.22, -0.16, 0.22], 0.1, 0.36, 0.015), mat, null, Vector3.ZERO)
 	# the trunnion arms either side of the cradle
 	for sx in [-0.17, 0.17]:
 		VehicleMounts.mantlet(k, t, Vector3(0.05, 0.22, 0.24), Vector3(sx, 0.44, 0.0), mat)
@@ -443,7 +443,7 @@ static func _qilin(k: VehicleModels, team: int, arm: String) -> void:
 	k._box(m, Vector3(1.38, 0.1, 3.3), Vector3(0, 0.55, 0.75), c)
 	for s in [-1.0, 1.0]:
 		k._box(m, Vector3(0.06, 0.42, 1.6), Vector3(s * 0.69, 0.76, -0.15), c)
-	k._add(m, VehicleModels.loft("csat_qil_deck", [-0.72, 0.8, 0.72, 0.8, 0.72, 2.42, -0.72, 2.42], [-0.7, 0.85, 0.7, 0.85, 0.7, 2.36, -0.7, 2.36], 0.5, 0.96), c, null, Vector3.ZERO)
+	k._add(m, VehicleModels.loft("csat_qil_deck", [-0.72, 0.8, 0.72, 0.8, 0.72, 2.42, -0.72, 2.42], [-0.7, 0.85, 0.7, 0.85, 0.7, 2.36, -0.7, 2.36], 0.5, 0.96, 0.03), c, null, Vector3.ZERO)
 	# the dash under the screen frame, the steering wheel, the seats
 	VehicleCab.dashboard(k, m, Vector3(1.3, 0.22, 0.3), Vector3(0, 0.98, -0.82), "plain_dark")
 	_tube(k, m, Vector3(-0.36, 0.85, -0.72), Vector3(-0.36, 1.02, -0.58), 0.025, "gunmetal_w", null, 6, false)
@@ -1254,7 +1254,7 @@ static func _typhoon(k: VehicleModels, team: int) -> void:
 		VehicleDoors.rectangle(k, m, Vector3(side * 1.275, 1.75, -3.24), Vector2(1.30, 0.44), Vector3(0, side * PI / 2, 0), c)
 	VehicleCab.upper(k, Vector2(1.27, 1.14), Vector2(2.1, 3.12), Vector2(-4.44, -4.15), -2.27, c)
 	# the bumper block under the cab's nose
-	k._add(m, VehicleModels.loft("csat_typh_bump", [-1.18, -4.6, 1.18, -4.6, 1.18, -3.75, -1.18, -3.75], [-1.22, -4.66, 1.22, -4.66, 1.22, -3.72, -1.22, -3.72], 0.72, 1.34), c, null, Vector3.ZERO)
+	k._add(m, VehicleModels.loft("csat_typh_bump", [-1.18, -4.6, 1.18, -4.6, 1.18, -3.75, -1.18, -3.75], [-1.22, -4.66, 1.22, -4.66, 1.22, -3.72, -1.22, -3.72], 0.72, 1.34, 0.03), c, null, Vector3.ZERO)
 	# the windscreen: two big flat panes, a pillar between them
 	var wu := Vector3(0, 1.07, 0.3).normalized()
 	var wn := Vector3(0, 0.3, -1.07).normalized()
@@ -1372,15 +1372,16 @@ static func _tempest(k: VehicleModels, team: int, kind: String) -> void:
 		_:
 			# troops: armoured sides, the canvas cover on its bows
 			_tempest_flatbed(k, 0.62)
-			VehicleCloth.canopy(k, m, [Vector2(-1.25, 2.1), Vector2(-1.12, 3.2), Vector2(-0.95, 3.3), Vector2(0.95, 3.3), Vector2(1.12, 3.2), Vector2(1.25, 2.1)], [-2.0, -1.6, -0.42, 0.76, 1.94, 3.12, 4.30, 4.38], CANVAS_TAN)
-			var strap := CANVAS_TAN.darkened(0.25)
+			var tilt := VehicleCargo.tilt_colour(k, m, CANVAS_TAN)
+			VehicleCloth.canopy(k, m, [Vector2(-1.25, 2.1), Vector2(-1.12, 3.2), Vector2(-0.95, 3.3), Vector2(0.95, 3.3), Vector2(1.12, 3.2), Vector2(1.25, 2.1)], [-2.0, -1.6, -0.42, 0.76, 1.94, 3.12, 4.30, 4.38], tilt)
+			var strap := tilt.darkened(0.25)
 			for i in 6:
 				var z := -1.6 + i * 1.18
 				k._box(m, Vector3(1.92, 0.03, 0.08), Vector3(0, 3.31, z), "canvas_white", strap, Vector3.ZERO, false)
 				for s in [-1.0, 1.0]:
 					_plate(k, m, Vector3(s * 1.262, 2.1, z), Vector3(s * 1.132, 3.2, z), 0.08, 0.03, "canvas_white", strap, Vector3.BACK, false)
 					_plate(k, m, Vector3(s * 1.135, 3.2, z), Vector3(s * 0.95, 3.31, z), 0.08, 0.03, "canvas_white", strap, Vector3.BACK, false)
-			k._box(m, Vector3(2.1, 0.9, 0.04), Vector3(0, 2.62, 4.4), "canvas_white", CANVAS_TAN.darkened(0.12))
+			k._box(m, Vector3(2.1, 0.9, 0.04), Vector3(0, 2.62, 4.4), "canvas_white", tilt.darkened(0.12))
 			for s in [-1.0, 1.0]:
 				k._box(m, Vector3(0.06, 0.08, 0.02), Vector3(s * 0.7, 2.15, 4.43), "gunmetal_w", null, Vector3.ZERO, false)
 			# the boarding ladder hung on the tailgate, its stiles toward the truck

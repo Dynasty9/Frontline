@@ -18,6 +18,9 @@ static func pneumatic(k: VehicleModels, parent: Node3D, pos: Vector3, r: float, 
 	var fine := r >= 0.18
 	if r < 0.18 or w > r * 1.2:
 		k._add(pv, drum(r, r, w, 24), "rubber", null, Vector3.ZERO, AXLE)
+	elif k.burnt:
+		# Burnt out: the rubber is gone, leaving the steel belt (see _belt).
+		k._add(pv, _belt(r, w), "steel", null, Vector3(0, -r * 0.05, 0))
 	else:
 		k._add(pv, _carcass(), "rubber", Color(0.17, 0.18, 0.17), Vector3.ZERO, AXLE, Vector3(r, w / 0.50, r))
 		if profile != "aircraft":
@@ -62,7 +65,10 @@ static func _car_wheel(k: VehicleModels, parent: Node3D, pos: Vector3, r: float,
 	var dark := hub_kind != "steel"
 	var trim := not dark and r < 0.36
 	var rr := r * (0.70 if dark and r < 0.36 else 0.63)
-	k._add(pv, _car_tyre(r, w, rr), "rubber", Color(0.17, 0.18, 0.17), Vector3.ZERO)
+	if k.burnt:
+		k._add(pv, _belt(r, w), "steel", null, Vector3(0, -r * 0.05, 0))
+	else:
+		k._add(pv, _car_tyre(r, w, rr), "rubber", Color(0.17, 0.18, 0.17), Vector3.ZERO)
 	var faces: Array = [signf(pos.x) if pos.x != 0.0 else 1.0] if register else [-1.0, 1.0]
 	for side: float in faces:
 		var turn := Vector3(0, PI, 0) if side < 0.0 else Vector3.ZERO
@@ -122,6 +128,43 @@ static func _car_tyre(r: float, w: float, rr: float) -> ArrayMesh:
 	for i in range(half.size() - 1, -1, -1):
 		section.append(Vector2(-half[i].x, half[i].y))
 	_meshes[key] = _lathe(section, 32)
+	return _meshes[key]
+
+
+## What a tyre leaves when it burns: the rubber of its sidewalls and tread goes
+## up, and the steel belt that ran under the crown is left as a ragged band of
+## wire round where the crown was, so the rim shows inside it and the dark of
+## the arch between. Placed 5% of the radius low on the axle, the band sags
+## onto the ground under the rim it no longer holds up. A few millimetres of
+## wire, wavering a little round the wheel (the surface shader draws it as
+## rusted wire and ash: see the char finish). Cached by size.
+static func _belt(r: float, w: float) -> ArrayMesh:
+	var key := "belt_%.3f_%.3f" % [r, w]
+	if _meshes.has(key):
+		return _meshes[key]
+	var verts := PackedVector3Array()
+	var norms := PackedVector3Array()
+	var idx := PackedInt32Array()
+	var around := 24
+	var hw := w * 0.36
+	var th := maxf(0.006, r * 0.025)
+	var mid: Array[Vector3] = []
+	for i in around:
+		var t := TAU * i / float(around)
+		var out := Vector3(0, cos(t), sin(t))
+		mid.append(out * r * (0.935 + 0.02 * sin(t * 3.0 + 1.3) + 0.012 * sin(t * 7.0 + 0.4)))
+	for i in around:
+		var a: Vector3 = mid[i]
+		var b: Vector3 = mid[(i + 1) % around]
+		var na := a.normalized() * th * 0.5
+		var nb := b.normalized() * th * 0.5
+		var x := Vector3(hw, 0, 0)
+		var out := (a + b).normalized()
+		_quad(verts, norms, idx, out, a + na - x, a + na + x, b + nb + x, b + nb - x)
+		_quad(verts, norms, idx, -out, a - na - x, b - nb - x, b - nb + x, a - na + x)
+		_quad(verts, norms, idx, Vector3.RIGHT, a - na + x, b - nb + x, b + nb + x, a + na + x)
+		_quad(verts, norms, idx, Vector3.LEFT, a - na - x, a + na - x, b + nb - x, b - nb - x)
+	_meshes[key] = _mesh(verts, norms, idx)
 	return _meshes[key]
 
 

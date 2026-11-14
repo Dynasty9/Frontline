@@ -621,8 +621,8 @@ the biggest. Nodes, meshes and wheel/rotor registrations are unchanged; vertices
   seams and lifting eyes, exhaust soot on the Namer, Merkava and Bradley, bonnet shut lines and black trim on
   cars.
 
-Left for later (shared builders the family agents didn't own): a chamfered end ring in
-`VehicleModels.loft` / `solid` so lofts need no hand welds. The eighth pass took the rest.
+The shared builders the family agents didn't own went to the next passes: the eighth took most, the
+ninth the chamfered end ring in `VehicleModels.loft` / `solid`.
 
 ### Eighth pass: mud, stencils, wheels, tracks and rotors
 
@@ -666,6 +666,48 @@ up to 14% for their new links and the cars falling 16-24% for lighter wheels.
   soot behind the A-10's engines; VmFighter's wing insignia point at the nose; the NATO Blackfish carries its
   stars and fin serials.
 
-Left for later: a tail-rotor blur disc (a node and a mesh per helicopter); the same disc for
-`VehiclePropellers.disc_material`; soot with a soft alpha edge (layered paint steps in close-ups); the
-loft chamfer ring above.
+Left for later: soot with a soft alpha edge (layered paint steps in close-ups). The ninth pass took the
+tail-rotor and propeller discs and the loft chamfer ring.
+
+### Ninth pass: rotor discs, wrecks, edges and kit
+
+Four agents judged from the battle camera (30-60 m, from above, noon) first and close-ups second. Nodes and
+meshes change only on helicopters (+2 to +4 nodes, +1 to +3 meshes: the tail rotor's "Blades" and "Blur",
+and the ducted fans' on the Blackfoot and Orca); vertices rise 0.23% across the roster, at most 2.3% (the
+Merkava and Scorcher, for their split rolls and bags).
+
+- **Rotor and propeller discs** (`VehicleRotors.BLUR_SHADER`, built by `VehicleModels._blur_mat` and
+  `VehiclePropellers.disc_material`): one lit shader for every rotor and propeller, a nearly black disc
+  tinted by the blades' paint at about a quarter opacity, a little thinner over the cabin, with a soft
+  darker band near the tips instead of the pale ring that read as a selection circle from above. The ghost
+  blades keep a sharp leading edge and a short smear and stay laid out against the world. One shader for
+  all propellers (its blade count and hub material values); `VehicleRotors.tail` and `VmHeli._fan` put
+  their blades in "Blades" beside a "Blur" disc facing along x, which `Vehicle` swaps at the main rotor's
+  speed threshold. A drone's rotors (no main rotor) show their discs from the start, and an aircraft's
+  propellers in flight (`Projectile._blur_props`) show only theirs. The studio stage's `--surface-flight`
+  shows a model's rotors as they look turning, from above.
+- **Wrecks** (the surface shader's char branch, `surface_finish == 6`, with `VehicleMaterials.CHAR`'s
+  per-family heights): a burnt model's parts read as rust that runs from dark brown to orange with grey
+  scale and pitting, a grainy ash film on upward faces, paint only scorched below a family height (armour
+  0.55 m, cars 0.28 m), soot along that line and streaked up the sides, and grey-black with white ash on
+  aircraft. Parts tinted darker than 0.6 in a channel (exhaust and muzzle mouths, and a burnt vehicle's
+  glass and lamps, which `_add` tints 0.3) keep the old sooty black. Burnt tyres (`VehicleWheels._belt`)
+  are a ragged steel-wire band hung on the rim; tracked road wheels' rubber turns to ash. A wreck or a
+  gutted car that burns again chars to 30% at most (`Structure._fire_view`), so its rust shows between the
+  blackened patches. Buildings' "burnt" preset is unchanged.
+- **Chamfered lofts** (`VehicleModels.loft` / `solid` `bevel` and `bevel_bottom`, `extrude_x` `bevel`):
+  the end ring moved in by the width within its own plane and a new ring that far back, so the cap keeps its
+  plane and the mesh its bounds; capped at 40% of the end segment and 30% of the ring's half-width, halved
+  where an edge would turn over, cached under its own key. On 39 sites: bonnets (Hunter, Prowler, M35), the
+  HEMTT's nose, sight boxes, the Abrams' hull roof (kept narrow under its welds), consoles, the ships'
+  deckhouses and wheelhouse roofs, the civilian tractor's roof. Welded roof edges keep their beads; section
+  hulls (`_sec`, `_extrude_z`) are outside its reach.
+- **Each crew's own kit** (`VehicleModels.kit_seed`, set in `start` from the seed for team vehicles that
+  aren't burnt; scenery and wrecks keep one load so `look`/`stock` still share them): `VehicleCargo.kit`
+  draws a generator from the kit seed, a salt and the item's model-space place rounded to 2 cm, and
+  `kit_colour` picks the issue colour or another depot's from a palette (`KIT_CLOTH`, `KIT_PAINT`,
+  `KIT_TARP`, `KIT_STRAP`), a shade newer or faded. `crate_stack` may have issued its top layer (straps
+  cinched down) and lots differ box to box; `bag` holds one, two or three bags, a bedroll, or a gap, each
+  full or slumped, some with pockets; `roll` may split in two; `load_cover` varies its tarp, folds and
+  lashings; jerrycans and ammo cans vary their paint; `VehicleCargo.tilt_colour` gives each truck's canvas
+  tilt one shade for its cloth, bows' lashing and rolled flap; `VmCore._bedroll` draws its colour too.

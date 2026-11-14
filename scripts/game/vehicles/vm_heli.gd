@@ -410,10 +410,27 @@ static func _ray_hit(c: Vector2, d: Vector2, poly: PackedVector2Array) -> Vector
 static func _fan(k: VehicleModels, p: Node3D, pos: Vector3, nb: int, r: float, c: float) -> Node3D:
 	var tr := k._pivot(p, pos)
 	k._cyl(tr, r * 0.3, r * 0.3, 0.22, Vector3.ZERO, Vector3(0, 0, PI / 2), "gunmetal_w", null, 12)
+	# The blades go in a "Blades" node that the blur disc replaces at flight
+	# speed, as on an open tail rotor: a fan in its duct turns faster still,
+	# and its blades would strobe. The hub stays: it barely turns to the eye.
+	var bl := k._pivot(tr, Vector3.ZERO)
+	bl.name = "Blades"
 	for i in nb:
 		# unevenly spaced, as on the real fans (it spreads the noise)
 		var bs := Basis.from_euler(Vector3(TAU * float(i) / float(nb) + sin(float(i) * 2.3) * 0.08, 0, 0))
-		_rbox(k, tr, bs, Vector3(0.02, r * 0.68, c), Vector3(0, r * 0.62, 0), "aircraft", Color(0.17, 0.17, 0.18), Vector3(0, 0.35, 0))
+		_rbox(k, bl, bs, Vector3(0.02, r * 0.68, c), Vector3(0, r * 0.62, 0), "aircraft", Color(0.17, 0.17, 0.18), Vector3(0, 0.35, 0))
+	if not k.burnt:
+		var blur := MeshInstance3D.new()
+		blur.name = "Blur"
+		var disc := PlaneMesh.new()
+		disc.size = Vector2(r, r) * 1.92  # (inside the duct's lip)
+		disc.orientation = PlaneMesh.FACE_X
+		blur.mesh = disc
+		blur.material_override = VehicleModels._blur_mat()
+		Mats.set_inst(blur, &"blade_count", float(nb))
+		blur.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		blur.visible = false
+		tr.add_child(blur)
 	k.tail_rotor = tr
 	return tr
 
@@ -1564,6 +1581,8 @@ static func _prop(k: VehicleModels, p: Node3D, pos: Vector3, r: float, nb := 2, 
 		blur.mesh = disc
 		blur.material_override = VehicleModels._blur_mat()
 		Mats.set_inst(blur, &"blade_count", float(nb))
+		# (the disc in the blades' own plastic)
+		Mats.set_inst(blur, &"blade_tint", col)
 		blur.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		blur.position = Vector3(0, r * 0.08, 0)
 		blur.visible = false

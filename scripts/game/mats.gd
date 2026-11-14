@@ -1340,6 +1340,12 @@ uniform vec3 surface_mud_col : source_color = vec3(0.30, 0.25, 0.19);
 uniform vec3 surface_dust_col : source_color = vec3(0.55, 0.49, 0.39);
 // Vehicle glass: how far its reflection turns up toward the sky (see below).
 uniform float surface_glaze = 0.0;
+// Burnt-out wrecks (the char finish): what the bare metal burns to, the pale
+// ash and heat scale where it burned hottest, and how high up the hull the
+// fire only scorched the paint (VehicleMaterials.CHAR).
+uniform vec3 surface_char_rust : source_color = vec3(0.36, 0.25, 0.19);
+uniform vec3 surface_char_ash : source_color = vec3(0.44, 0.43, 0.41);
+uniform float surface_char_low = 0.55;
 uniform bool use_vcolor = false;
 uniform float vcolor_k = 1.0;  // merged parts: the vertex colour is stored scaled down (Mats.VC_K)
 // paving (Mats.paving): a shell hole or a trench punches through it, as through the roads
@@ -1765,9 +1771,77 @@ void fragment() {
 				h += (fibres - 0.5) * surface_grain * keep(0.04, pixel);
 				col *= 0.88 + 0.24 * fibres;
 			} else if (surface_finish == 6) {
-				// Char maps have no alpha channel: height supplies their ash variation.
-				col *= 0.68 + 0.70 * detail.r;
-				h += (grain - 0.5) * surface_grain * 0.18;
+				// (the colour the part was given, in its vertex colours once merged)
+				vec3 given = use_vcolor ? COLOR.rgb * vcolor_k : tint.rgb;
+				if (min(given.r, min(given.g, given.b)) < 0.6) {
+					// Soot inside a live vehicle's exhaust or muzzle, tinted near black.
+					// Char maps have no alpha channel: height supplies their ash variation.
+					col *= 0.68 + 0.70 * detail.r;
+					h += (grain - 0.5) * surface_grain * 0.18;
+				} else {
+					// A burnt-out wreck: VehicleModels leaves every part of one
+					// untinted. The fire burned inside and rose, so up top the
+					// paint burned right off and the bare steel went to rust,
+					// dark brown shading to orange, under grey-white ash and pale
+					// heat scale where it burned hottest (most on the faces turned
+					// up, where the ash settles too). Lower down the fire only
+					// scorched the paint, dark and blistered. Soot lies black
+					// along the line between the two, where the flames licked
+					// but never burned it clean again, and streaks up the sides.
+					// A tyre burns away to its steel wire and grey ash, round a
+					// rim that went through the hottest fire of all. All of it is
+					// matte: the profile's roughness and specular stand.
+					vec3 n = normalize(tn);
+					// Patches a metre or so across and a third of that, their
+					// edges broken by a hand's-width noise and the map's own
+					// grain (a few centimetres), so none runs smooth. (Read in a
+					// plane skewed through the height, so they lie as round on
+					// a side as on top.)
+					vec2 sk = vec2(tp.x + tp.y * 0.7, tp.z - tp.y * 0.6);
+					float fine = detail.r - 0.5;
+					float rag = tnoise(sk * 9.0 + 5.1) - 0.5;
+					float grit = tnoise(sk * 31.0 + 9.3) - 0.5;
+					float big = tnoise(sk * 1.1 + 3.7) + rag * 0.25;
+					float mid = tnoise(sk * 3.1 + 11.0) + rag * 0.35;
+					// (a wheel's parts are measured out from its axle: see `above`)
+					bool wheel = ground_y > 0.0 && ground_y < 1.0;
+					float tyre = wheel ? smoothstep(0.76, 0.82, length(part.yz) / ground_y) : 0.0;
+					float heat = wheel ? 0.85 + (big - 0.5) * 0.4
+						: smoothstep(0.1, surface_char_low * 2.0, above) + n.y * 0.22 + (big - 0.5) * 0.8;
+					// Rust is one brown, varying slowly in shade and finely grained:
+					// a crust, not a pattern of patches. Char mottles it, thickest
+					// where the fire burned cooler than round about (where it was
+					// hottest it burned the steel clean).
+					float oxide = clamp(0.5 + (big - 0.5) * 0.5 + (mid - 0.5) * 0.3 + fine * 0.9 + rag * 0.6 + grit * 0.4 + (heat - 0.8) * 0.2, 0.0, 1.0);
+					vec3 steel = mix(surface_char_rust * vec3(0.45, 0.42, 0.4), surface_char_rust, oxide);
+					// (in places the steel is still grey-brown under its scale,
+					// and everywhere pitted dark where flakes of it came away)
+					steel = mix(steel, vec3(dot(steel, vec3(0.3, 0.5, 0.2))) * 1.15, clamp((mid - 0.45) * 1.4, 0.0, 0.5));
+					steel *= 1.0 - detail.b * 0.4;
+					steel = mix(steel, vec3(0.012, 0.011, 0.01), clamp((0.62 - big) * 0.9 + (0.55 - mid) * 0.5 - fine * 0.4, 0.0, 0.7) * (1.0 - upward * 0.75));
+					// The ash is a powder: a film over whatever faces up, thickest
+					// where it burned hottest, hardly any on the sides, and thin
+					// enough everywhere that the rust shows through its grain.
+					float ash = clamp(upward * (0.42 + (big - 0.5) * 0.5) + 0.04 + (heat - 1.0) * 0.12 + fine * 0.8 + rag * 0.3 + grit * 0.4, 0.0, 0.8);
+					vec3 bare = mix(steel, surface_char_ash * (0.82 + 0.36 * detail.r), ash);
+					// (the Abrams' own scorched camouflage, where it has one)
+					vec3 scorched = (pattern == 6 ? col * 0.7 : vec3(0.05, 0.043, 0.032)) * (0.75 + 0.5 * detail.r);
+					scorched = mix(scorched, steel * 0.7, smoothstep(0.6, 0.85, mid + fine * 0.3) * 0.5);
+					vec3 c = mix(scorched, bare, smoothstep(0.3, 0.55, heat));
+					// Soot: the tide line, streaks rising up the sides, and the
+					// faces turned down, which the flames licked from below.
+					float tide = 1.0 - smoothstep(0.0, 0.16, abs(heat - 0.45 + (mid - 0.5) * 0.3));
+					// (`grain_uv` runs across a side face and up it; the streaks
+					// gather where the fire ran cooler, as the char does)
+					float rise = smoothstep(0.52, 0.8, tnoise(vec2(grain_uv.x * 4.0 + rag * 0.6 + 2.0, tp.y * 0.5 - 3.0)) + (mid - 0.5) * 0.3)
+						* (1.0 - upward) * smoothstep(0.4, 0.9, heat) * smoothstep(0.7, 0.35, big);
+					float under = smoothstep(-0.2, -0.7, n.y);
+					float soot = clamp(tide * 0.75 + rise * 0.9 + under * 0.7, 0.0, 1.0);
+					c = mix(c, vec3(0.006, 0.0055, 0.005) * (0.7 + 0.8 * detail.r), soot);
+					vec3 wire = mix(vec3(0.008), surface_char_ash * 0.55, smoothstep(0.4, 0.7, mid + fine * 0.8));
+					wire = mix(wire, surface_char_rust * 0.45, smoothstep(0.55, 0.75, detail.g) * 0.6);
+					col = mix(c, wire, tyre);
+				}
 			}
 			// Sparse scuffs use a threshold, not a grey metallic wash over paint.
 			float worn = smoothstep(0.74, 0.91, detail.r) * surface_wear;

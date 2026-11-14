@@ -439,7 +439,7 @@ static func _mk38(k: VehicleModels, m: Node3D, pos: Vector3, col: Color) -> Node
 	k._cyl(m, 0.53, 0.53, 0.03, pos + Vector3(0, 0.56, 0), Vector3.ZERO, "gunmetal_w", null, 20, false)
 	var tv := k._pivot(m, pos + Vector3(0, 0.57, 0))
 	# the carriage: a low chamfered box on the turntable, the trunnion arms
-	k._add(tv, VehicleModels.loft("ship_mk38_carr", VmBoat._rr(1.0, 1.05, 0.08, 0.22, 0.12), VmBoat._rr(0.9, 0.9, 0.1, 0.16, 0.08), 0.0, 0.2), cm, col, Vector3.ZERO)
+	k._add(tv, VehicleModels.loft("ship_mk38_carr", VmBoat._rr(1.0, 1.05, 0.08, 0.22, 0.12), VmBoat._rr(0.9, 0.9, 0.1, 0.16, 0.08), 0.0, 0.2, 0.03), cm, col, Vector3.ZERO)
 	for sx in [-1.0, 1.0]:
 		k._add(tv, VehicleModels.extrude_x("ship_mk38_arm", [-0.28, 0.18, 0.32, 0.18, 0.22, 0.66, -0.12, 0.66], -0.05, 0.05), cm, col, Vector3(sx * 0.37, 0, 0))
 		k._cyl(tv, 0.09, 0.09, 0.06, Vector3(sx * 0.43, 0.58, 0.04), Vector3(0, 0, PI / 2), "gunmetal_w", null, 12, false)
@@ -454,7 +454,7 @@ static func _mk38(k: VehicleModels, m: Node3D, pos: Vector3, col: Color) -> Node
 	VehicleWeapons.autocannon(k, tv, Vector3(0, 0.58, -0.63), Vector3(0, 0.58, -2.64), Vector2(0.08, 0.3), Vector2(0.03, 0.042), Vector2(0.045, 0.16))
 	# the electro-optical sight on the left, its windows forward
 	_bx(k, tv, Vector3(0.08, 0.1, 0.3), Vector3(-0.34, 0.6, -0.1), cm, col)
-	k._add(tv, VehicleModels.loft("ship_mk38_eos", VmBoat._rr(0.28, 0.46, 0.0, 0.06, 0.04), VmBoat._rr(0.24, 0.4, 0.02, 0.05, 0.03), 0.0, 0.4), cm, col, Vector3(-0.53, 0.44, -0.12))
+	k._add(tv, VehicleModels.loft("ship_mk38_eos", VmBoat._rr(0.28, 0.46, 0.0, 0.06, 0.04), VmBoat._rr(0.24, 0.4, 0.02, 0.05, 0.03), 0.0, 0.4, 0.02), cm, col, Vector3(-0.53, 0.44, -0.12))
 	_bx(k, tv, Vector3(0.16, 0.1, 0.012), Vector3(-0.53, 0.72, -0.35), "glass", null, Vector3.ZERO, false)
 	_bx(k, tv, Vector3(0.1, 0.08, 0.012), Vector3(-0.53, 0.58, -0.35), "glass", null, Vector3.ZERO, false)
 	_bx(k, tv, Vector3(0.3, 0.02, 0.2), Vector3(-0.53, 0.855, -0.3), cm, col, Vector3(-0.12, 0, 0), false)
@@ -636,7 +636,7 @@ static func _patrol_ship(k: VehicleModels, team: int, seed: int) -> void:
 	var ab := [-2.12, -0.6, 2.12, -0.6, 2.12, 4.0, 1.85, 4.5, -1.85, 4.5, -2.12, 4.0]
 	var at := [-1.98, -0.6, 1.98, -0.6, 1.98, 3.92, 1.73, 4.38, -1.73, 4.38, -1.98, 3.92]
 	var ya := 4.55
-	k._add(m, VehicleModels.solid([VmBoat._ry(ab, y0), VmBoat._ry(at, ya)], "ship_pb_after"), "plain", sup, Vector3.ZERO)
+	k._add(m, VehicleModels.solid([VmBoat._ry(ab, y0), VmBoat._ry(at, ya)], "ship_pb_after", false, 0.04), "plain", sup, Vector3.ZERO)
 	# the window band: dark surrounds, then the panes, pillars between them
 	var inside := Vector3(0, 4.3, -2.0)
 	var wband := Color(0.13, 0.13, 0.14)
@@ -664,7 +664,7 @@ static func _patrol_ship(k: VehicleModels, team: int, seed: int) -> void:
 		VehicleFittings.wiper(k, m, Vector3(bx, y1 + 0.12, -4.66), Vector3(bx + 0.08, y1 + 0.75, -4.24), Vector3.RIGHT, Vector3(0, 0.42, -0.63), 0.52)
 	# the roof, its visor over the windscreen, a coaming round its edge
 	var rc := VmBoat._scale_xz(roof, 1.04, -2.2)
-	k._add(m, VehicleModels.solid([VmBoat._ry(rc, y2 - 0.02), VmBoat._ry(rc, y2 + 0.1)], "ship_pb_roof"), "plain", sup, Vector3.ZERO)
+	k._add(m, VehicleModels.solid([VmBoat._ry(rc, y2 - 0.02), VmBoat._ry(rc, y2 + 0.1)], "ship_pb_roof", false, 0.035, 0.02), "plain", sup, Vector3.ZERO)
 	for f in [[5, 0], [0, 1], [1, 2]]:
 		var a := VmBoat._pt(rc, f[0], y2 + 0.06)
 		var b := VmBoat._pt(rc, f[1], y2 + 0.06)
@@ -729,7 +729,7 @@ static func _patrol_ship(k: VehicleModels, team: int, seed: int) -> void:
 	_bx(k, m, Vector3(0.6, 0.3, 0.5), Vector3(0.3, ya + 0.15, 0.2), "plain", sup.darkened(0.04))
 	# --- the pilothouse roof: the raked mast with the radar, searchlights, the
 	# EO ball, the horn, whips
-	k._add(m, VehicleModels.loft("ship_pb_mast", VmBoat._rr(0.62, 1.1, -1.35, 0.14, 0.22), VmBoat._rr(0.26, 0.4, -1.12, 0.05, 0.08), y2 + 0.08, 7.45), "plain", sup, Vector3.ZERO)
+	k._add(m, VehicleModels.loft("ship_pb_mast", VmBoat._rr(0.62, 1.1, -1.35, 0.14, 0.22), VmBoat._rr(0.26, 0.4, -1.12, 0.05, 0.08), y2 + 0.08, 7.45, 0.03), "plain", sup, Vector3.ZERO)
 	_bx(k, m, Vector3(1.0, 0.06, 0.9), Vector3(0, 6.55, -1.55), "plain", sup)
 	for s in [-1.0, 1.0]:
 		_rod(k, m, Vector3(s * 0.45, 6.55, -1.95), Vector3(s * 0.28, 6.05, -1.5), 0.025, "plain", sup, 6, true)
@@ -966,7 +966,7 @@ static func _gun_trawler(k: VehicleModels, team: int, seed: int) -> void:
 	var hr := 4.85
 	var dh := [-1.7, -0.35, 1.7, -0.35, 1.92, 0.15, 1.92, 4.2, 1.78, 4.6, -1.78, 4.6, -1.92, 4.2, -1.92, 0.15]
 	k._add(m, VehicleModels.solid([VmBoat._ry(dh, hb), VmBoat._ry(dh, hr)], "ship_tr_house"), "plain", white, Vector3.ZERO)
-	k._add(m, VehicleModels.solid([VmBoat._ry(VmBoat._scale_xz(dh, 1.035, 2.1), hr - 0.03), VmBoat._ry(VmBoat._scale_xz(dh, 1.035, 2.1), hr + 0.08)], "ship_tr_house_roof"), "plain", white.darkened(0.08), Vector3.ZERO)
+	k._add(m, VehicleModels.solid([VmBoat._ry(VmBoat._scale_xz(dh, 1.035, 2.1), hr - 0.03), VmBoat._ry(VmBoat._scale_xz(dh, 1.035, 2.1), hr + 0.08)], "ship_tr_house_roof", false, 0.035, 0.02), "plain", white.darkened(0.08), Vector3.ZERO)
 	var wb := [-1.38, 0.18, 1.38, 0.18, 1.55, 0.5, 1.55, 3.2, -1.55, 3.2, -1.55, 0.5]
 	var ws := [-1.4, 0.06, 1.4, 0.06, 1.56, 0.4, 1.56, 3.2, -1.56, 3.2, -1.56, 0.4]
 	var wr := [-1.46, -0.2, 1.46, -0.2, 1.6, 0.18, 1.6, 3.2, -1.6, 3.2, -1.6, 0.18]
@@ -975,7 +975,7 @@ static func _gun_trawler(k: VehicleModels, team: int, seed: int) -> void:
 	var wy2 := wy1 + 0.95
 	k._add(m, VehicleModels.solid([VmBoat._ry(wb, wy0), VmBoat._ry(ws, wy1), VmBoat._ry(wr, wy2)], "ship_tr_wheel"), "plain", white.lightened(0.03), Vector3.ZERO)
 	var wroof := VmBoat._scale_xz(wr, 1.06, 1.5)
-	k._add(m, VehicleModels.solid([VmBoat._ry(wroof, wy2 - 0.02), VmBoat._ry(wroof, wy2 + 0.1)], "ship_tr_wroof"), "plain", blue.lightened(0.05), Vector3.ZERO)
+	k._add(m, VehicleModels.solid([VmBoat._ry(wroof, wy2 - 0.02), VmBoat._ry(wroof, wy2 + 0.1)], "ship_tr_wroof", false, 0.035, 0.02), "plain", blue.lightened(0.05), Vector3.ZERO)
 	var win := Vector3(0, wy1, 1.6)
 	for f in [[0, 1, 4], [1, 2, 1], [5, 0, 1], [2, 3, 3], [4, 5, 3], [3, 4, 2]]:
 		var a: int = f[0]
@@ -1079,7 +1079,7 @@ static func _gun_trawler(k: VehicleModels, team: int, seed: int) -> void:
 	var gy := _dk(p, gz)
 	_bx(k, m, Vector3(2.4, 0.05, 2.4), Vector3(0, gy + 0.025, gz), "steel", Color(0.3, 0.29, 0.26))
 	var ph := 0.8
-	k._add(m, VehicleModels.loft("ship_tr_plinth", VmBoat._rr(1.6, 1.6, 0.0, 0.32, 0.32), VmBoat._rr(1.3, 1.3, 0.0, 0.26, 0.26), 0.0, ph), "steel", Color(0.33, 0.31, 0.27), Vector3(0, gy + 0.05, gz))
+	k._add(m, VehicleModels.loft("ship_tr_plinth", VmBoat._rr(1.6, 1.6, 0.0, 0.32, 0.32), VmBoat._rr(1.3, 1.3, 0.0, 0.26, 0.26), 0.0, ph, 0.04), "steel", Color(0.33, 0.31, 0.27), Vector3(0, gy + 0.05, gz))
 	_bx(k, m, Vector3(1.36, 0.03, 1.36), Vector3(0, gy + 0.05 + ph + 0.015, gz), "steel", Color(0.3, 0.29, 0.26))
 	for i in 2:
 		_bx(k, m, Vector3(0.6, 0.05, 0.28), Vector3(0.0, gy + 0.3 + i * 0.27, gz + 0.98 - i * 0.12), "steel", Color(0.3, 0.29, 0.26))

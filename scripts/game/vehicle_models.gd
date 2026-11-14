@@ -46,6 +46,10 @@ var rotors: Array = []
 ## as numbers, not nodes, so a fitting still folds away into its parent; the
 ## pipes sit on parts that never move against the model.
 var exhausts: Array[Transform3D] = []
+## The seed the crew's own load is drawn from (VehicleCargo.kit): the vehicle's
+## seed, so a seed lays its stowage out exactly and two of a kind differ; -1
+## (scenery and wrecks, which look() shares by kind) the builders' one load.
+var kit_seed := -1
 
 
 ## Notes an exhaust's mouth at `pos` on `parent`, the gas leaving along `dir`.
@@ -83,6 +87,7 @@ static func start(kind: String, team: int, seed: int, is_burnt := false) -> Buil
 	var k := VehicleModels.new()
 	k.root = Node3D.new()
 	k.burnt = is_burnt
+	k.kit_seed = seed if team >= 0 and not is_burnt else -1
 	k._baking = true
 	return Build.new(k, _assemble.bind(k, kind, team, seed))
 
@@ -465,12 +470,37 @@ static func _tri(st: SurfaceTool, a: Vector3, b: Vector3, c: Vector3, inside: Ve
 
 
 ## Lofts between successive convex rings (same point count) and caps both ends.
-static func solid(rings: Array, key: String, smooth := false) -> ArrayMesh:
+## `bevel` chamfers the edge round the last ring (a hull's roof, a turret's
+## top, a box's lid) by about that many metres, `bevel_bottom` the first
+## ring's: armour plate is flame-cut and welded or cast, and its broken edge
+## is a narrow facet that catches the light along the hull from the RTS
+## camera, where a two-ring loft meets its cap at a dead-sharp CG edge. The
+## cap keeps its plane, so whatever stands on it stays where it was; the side
+## and cap keep their flat normals and the chamfer gets its own. Without
+## either the mesh is exactly what it always was.
+static func solid(rings: Array, key: String, smooth := false, bevel := 0.0, bevel_bottom := 0.0) -> ArrayMesh:
+	key = _bevel_key(key, bevel, bevel_bottom)
 	if _cache.has(key):
 		return _cache[key]
+	# the chamfers are rings of their own (see _chamfered); n0/n1 count the
+	# strips that are chamfers at each end
+	var n0 := 0
+	var n1 := 0
+	if bevel > 0.0:
+		var c: Array = _chamfered(rings, bevel, true)
+		n1 = c.size() - rings.size()
+		rings = c
+	if bevel_bottom > 0.0:
+		var c: Array = _chamfered(rings, bevel_bottom, false)
+		n0 = c.size() - rings.size()
+		rings = c
 	var st := SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
 	for k in rings.size() - 1:
+		if smooth and n0 + n1 > 0:
+			# a rolled edge on a rounded solid: smooth round the ring, but a
+			# crease where it meets the side
+			st.set_smooth_group(2 if (k < n0 or k >= rings.size() - 1 - n1) else 0)
 		var r0: PackedVector3Array = rings[k]
 		var r1: PackedVector3Array = rings[k + 1]
 		var cen := (_centroid(r0) + _centroid(r1)) * 0.5
@@ -499,17 +529,131 @@ static func solid(rings: Array, key: String, smooth := false) -> ArrayMesh:
 	return m
 
 
-static func loft(key: String, bottom: Array, top: Array, y0: float, y1: float) -> ArrayMesh:
-	if _cache.has(key):
-		return _cache[key]
-	return solid([ring_y(_v2(bottom), y0), ring_y(_v2(top), y1)], key)
+## Two level outlines (x, z pairs, convex, same count) lofted from y0 to y1;
+## `bevel` / `bevel_bottom` chamfer the top / bottom edge as in solid.
+static func loft(key: String, bottom: Array, top: Array, y0: float, y1: float, bevel := 0.0, bevel_bottom := 0.0) -> ArrayMesh:
+	if _cache.has(_bevel_key(key, bevel, bevel_bottom)):
+		return _cache[_bevel_key(key, bevel, bevel_bottom)]
+	return solid([ring_y(_v2(bottom), y0), ring_y(_v2(top), y1)], key, false, bevel, bevel_bottom)
 
 
-static func extrude_x(key: String, profile: Array, x0: float, x1: float) -> ArrayMesh:
-	if _cache.has(key):
-		return _cache[key]
+## A side profile ((z, y) pairs, convex) extruded across x0..x1; `bevel`
+## chamfers both side faces' edges all round, the roof's and glacis's edges
+## among them, as in solid.
+static func extrude_x(key: String, profile: Array, x0: float, x1: float, bevel := 0.0) -> ArrayMesh:
+	if _cache.has(_bevel_key(key, bevel, bevel)):
+		return _cache[_bevel_key(key, bevel, bevel)]
 	var p := _v2(profile)
-	return solid([ring_x(p, x0), ring_x(p, x1)], key)
+	return solid([ring_x(p, x0), ring_x(p, x1)], key, false, bevel, bevel)
+
+
+## A chamfered mesh is another mesh: it is cached under its own key.
+static func _bevel_key(key: String, top: float, bottom: float) -> String:
+	if top <= 0.0 and bottom <= 0.0:
+		return key
+	return "%s|bevel%.3f,%.3f" % [key, top, bottom]
+
+
+## `rings` with the edge round one end ring (the last if `top`) cut back by
+## about b along both faces: a new ring b in from the end on the way to it,
+## and the end ring moved in by b within its own plane, each edge parallel to
+## its old self. b is kept under 40% of the end segment's length and 30% of
+## the ring's half-width, so a thin plate or a narrow rail gets a smaller
+## chamfer rather than a folded one; the rings come back unchanged if the
+## end is degenerate (a point, a line) or no chamfer fits.
+static func _chamfered(rings: Array, b: float, top: bool) -> Array:
+	var n := rings.size()
+	if n < 2:
+		return rings
+	var e: PackedVector3Array = rings[n - 1] if top else rings[0]
+	var nb: PackedVector3Array = rings[n - 2] if top else rings[1]
+	var nrm := _ring_normal(e)
+	if nrm == Vector3.ZERO or nb.size() != e.size():
+		return rings
+	var c := _centroid(e)
+	var h := absf((c - _centroid(nb)).dot(nrm))
+	var reach := INF  # the nearest edge to the centre, in the ring's plane
+	for i in e.size():
+		var a := e[i]
+		var q := e[(i + 1) % e.size()]
+		if a.distance_squared_to(q) < 1e-10:
+			continue
+		var side := nrm.cross(q - a).normalized()
+		reach = minf(reach, absf((c - a).dot(side)))
+	b = minf(b, minf(h * 0.4, reach * 0.3))
+	var cut := PackedVector3Array()
+	for _attempt in 3:
+		if b < 0.003:
+			return rings
+		cut = _inset_ring(e, nrm, c, b)
+		if not cut.is_empty():
+			break
+		b *= 0.5
+	if cut.is_empty():
+		return rings
+	var mid := PackedVector3Array()
+	var t := b / h
+	for i in e.size():
+		mid.append(e[i].lerp(nb[i], t))
+	var out := rings.duplicate()
+	if top:
+		out[n - 1] = mid
+		out.append(cut)
+	else:
+		out[0] = mid
+		out.insert(0, cut)
+	return out
+
+
+## The normal of a planar ring (Newell's method), or zero for a point or a line.
+static func _ring_normal(r: PackedVector3Array) -> Vector3:
+	var s := Vector3.ZERO
+	for i in r.size():
+		var p := r[i]
+		var q := r[(i + 1) % r.size()]
+		s += Vector3((p.y - q.y) * (p.z + q.z), (p.z - q.z) * (p.x + q.x), (p.x - q.x) * (p.y + q.y))
+	if s.length_squared() < 1e-12:
+		return Vector3.ZERO
+	return s.normalized()
+
+
+## A convex ring in the plane normal to `nrm`, centred on c, moved in by d,
+## each edge parallel to its old self (mitred; repeated points move as one);
+## empty if an edge shorter than its corners' cut would turn over.
+static func _inset_ring(r: PackedVector3Array, nrm: Vector3, c: Vector3, d: float) -> PackedVector3Array:
+	var m := r.size()
+	var out := PackedVector3Array()
+	for i in m:
+		var p := r[i]
+		var a := r[_distinct(r, i, -1)]
+		var q := r[_distinct(r, i, 1)]
+		var n0 := nrm.cross(p - a).normalized()
+		var n1 := nrm.cross(q - p).normalized()
+		if n0.dot(c - (a + p) * 0.5) < 0.0:
+			n0 = -n0
+		if n1.dot(c - (p + q) * 0.5) < 0.0:
+			n1 = -n1
+		var dir := n0 + n1
+		dir = n0 if dir.length_squared() < 1e-8 else dir.normalized()
+		out.append(p + dir * d / maxf(0.35, dir.dot(n0)))
+	for i in m:
+		var j := (i + 1) % m
+		var was := r[j] - r[i]
+		if was.length_squared() > 1e-10 and (out[j] - out[i]).dot(was) <= 0.0:
+			return PackedVector3Array()
+	return out
+
+
+## The index of the nearest point before (step -1) or after (step 1) point i
+## of ring r that isn't at the same place.
+static func _distinct(r: PackedVector3Array, i: int, step: int) -> int:
+	var m := r.size()
+	var j := i
+	for _k in m - 1:
+		j = (j + step + m) % m
+		if r[j].distance_squared_to(r[i]) > 1e-10:
+			return j
+	return j
 
 
 static func _capsule(r: float, h: float) -> CapsuleMesh:
@@ -538,6 +682,11 @@ func _add(parent: Node3D, mesh: Mesh, kind: String, col, pos: Vector3, rot := Ve
 		k = "abrams_scorched" if kind in ["abrams_olive", "abrams_sand"] else "burnt"
 	k = VehicleMaterials.key(k, surface_family)
 	var t := Mats.tint_for(k, col) if col is Color and not burnt else Color(1, 1, 1)
+	if burnt and kind in ["glass", "headlamp", "signal_lens"]:
+		# A burnt-out vehicle's windows and lamps have cracked out in the heat:
+		# what's left is a sooty empty frame, not rusted steel (the char shader
+		# leaves anything this dark black with soot).
+		t = Color(0.3, 0.3, 0.3)
 	if not burnt and VehicleMaterials.profile(kind, surface_family) in ["armor", "aircraft", "marine"]:
 		mesh = VehicleBody.paint_mesh(mesh)
 	var pt := [mesh, Mats.get_mat(k), t, shadow, pos, rot, scl, null, null]
@@ -1351,66 +1500,13 @@ static var _blur: ShaderMaterial
 
 
 ## The disc a rotor's blades sweep at flight speed, on a plane mesh the size
-## of the rotor (UV 0..1 across it), turning with the hub. What the eye and a
-## camera see of a real rotor: a translucent disc in the blades' own colour,
-## densest inboard (a blade covers chord / 2 pi r of each circle, so more of
-## the circle near the hub), the hub's own parts showing through a soft
-## centre, and the tips' paint smeared into a thin pale ring round the tip
-## path. Seen edge-on the blades overlap and the disc thickens. A few soft
-## ghost blades - each a crisp leading edge trailing a smear - drift slowly
-## round: they are laid out in the disc's plane against the world, not the
-## turning mesh, so the hub's 30 rad/s never strobes them backwards. Lit like
-## the blades (the sun's side bright, the underside in shade), so it holds
-## its tone from noon to dusk. `blade_count` and the blades' colour
-## (`blade_tint`) are per rotor.
+## of the rotor, turning with the hub: one material for every rotor, its
+## blade count and colour per rotor (see VehicleRotors.BLUR_SHADER, which the
+## propellers' discs share).
 static func _blur_mat() -> ShaderMaterial:
 	if _blur == null:
 		var sh := Shader.new()
-		sh.code = Mats.code("""
-shader_type spatial;
-render_mode blend_mix, cull_disabled, depth_draw_never, shadows_disabled;
-instance uniform float blade_count = 4.0;
-instance uniform vec4 blade_tint : source_color = vec4(0.15, 0.155, 0.16, 1.0);
-varying vec2 disc_xy;
-void vertex() {
-	// the disc's plane against a fixed world direction: the hub's spin
-	// drops out
-	vec3 n = normalize((MODEL_MATRIX * vec4(NORMAL, 0.0)).xyz);
-	vec3 e1 = normalize(cross(n, abs(n.z) < 0.9 ? vec3(0.0, 0.0, 1.0) : vec3(1.0, 0.0, 0.0)));
-	vec3 d = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz - MODEL_MATRIX[3].xyz;
-	disc_xy = vec2(dot(d, e1), dot(d, cross(n, e1)));
-}
-void fragment() {
-	vec2 p = UV * 2.0 - 1.0;
-	float r = length(p);
-	float aa = fwidth(r) + 0.002;
-	// the blades start beyond the grips, about an eighth of the way out
-	float body = smoothstep(0.07, 0.17, r) * (1.0 - smoothstep(0.985 - aa, 0.985, r));
-	float cover = 0.19 + 0.08 / max(r, 0.12);
-	float a = atan(disc_xy.y, disc_xy.x);
-	float ph = fract((a * blade_count - r * 1.3 - TIME * 1.7) * 0.15915494);
-	float ghost = smoothstep(0.0, 0.05, ph) * exp(-ph * 6.0);
-	cover *= 0.55 + 1.7 * ghost * smoothstep(0.25, 0.65, r);
-	// the tip panels' smear, a thin ring just inside the tip path: soft
-	// inboard, its outer edge crisp
-	float ring = smoothstep(0.93, 0.975, r) * (1.0 - smoothstep(0.985 - aa, 0.985, r));
-	float alpha = min(cover * body + 0.06 * ring, 0.95);
-	// a layer of blades seen at a slant: they overlap, the disc thickens
-	float mu = clamp(abs(dot(NORMAL, VIEW)), 0.35, 1.0);
-	float cover_seen = 1.0 - pow(1.0 - alpha, 1.0 / mu);
-#if CURRENT_RENDERER == RENDERER_COMPATIBILITY
-	// (blended after tonemapping, in display space, a dark layer shows about
-	// twice as dense: what keeps the linear blend's look)
-	cover_seen = 1.0 - pow(1.0 - cover_seen, 0.4545);
-#endif
-	ALPHA = clamp(cover_seen, 0.0, 0.7);
-	// (the smear shows the blades' shaded edges and undersides as much as
-	// their lit tops: darker than a blade at rest, as on film)
-	ALBEDO = mix(blade_tint.rgb * 0.45, vec3(0.16, 0.15, 0.1), ring);
-	ROUGHNESS = 0.9;
-	SPECULAR = 0.05;
-}
-""")
+		sh.code = Mats.code(VehicleRotors.BLUR_SHADER)
 		_blur = ShaderMaterial.new()
 		_blur.shader = sh
 	return _blur

@@ -391,7 +391,13 @@ static func _mirror_glass(size: Vector2) -> ArrayMesh:
 
 ## Pressed 20-litre fuel can. Center is the body center, broad faces along X.
 ## Rotate the complete assembly so the cap, handle and ribs stay attached.
+## On a vehicle with a load of its own (VehicleCargo.kit) a crew's cans come
+## from wherever it filled them: mostly the colour given, a shade newer or
+## more faded, now and then another army's olive or sand.
 static func jerrycan(k: VehicleModels, parent: Node3D, center: Vector3, col: Color, rotation := Vector3.ZERO, width := 0.17, size := Vector3.ZERO) -> void:
+	var rng := VehicleCargo.kit(k, parent, center, 3)
+	if rng != null:
+		col = VehicleCargo.kit_colour(rng, col, VehicleCargo.KIT_PAINT, 0.6)
 	var mount := k._pivot(parent, center)
 	mount.rotation = rotation
 	if size != Vector3.ZERO:
@@ -426,7 +432,12 @@ static func jerrycan(k: VehicleModels, parent: Node3D, center: Vector3, col: Col
 
 
 ## Sealed ammunition can; feed boxes and wooden ammunition crates are separate.
+## On a vehicle with a load of its own (VehicleCargo.kit) each can is from its
+## own lot: a shade apart, now and then a sand or dark green one.
 static func ammo_can(k: VehicleModels, parent: Node3D, center: Vector3, col: Color, rotation := Vector3.ZERO, size := Vector3(0.16, 0.2, 0.3)) -> void:
+	var rng := VehicleCargo.kit(k, parent, center, 4)
+	if rng != null:
+		col = VehicleCargo.kit_colour(rng, col, VehicleCargo.KIT_PAINT, 0.75)
 	var mount := k._pivot(parent, center)
 	mount.rotation = rotation
 	mount.scale = size / Vector3(0.16, 0.2, 0.3)

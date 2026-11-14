@@ -42,6 +42,21 @@ const DIRT := {
 	"aircraft": {"grime": 0.0, "mud": 0.0, "splash": 0.0, "mud_col": Color(0.3, 0.25, 0.19), "dust_col": Color(0.55, 0.49, 0.39)},
 }
 
+## Burnt-out wrecks by family (the surface shader's char finish): the colour
+## the bare metal goes once the paint has burned off it, the pale ash and heat
+## scale where it burned hottest, and how high (metres) the fire only scorched
+## the paint before it burned it off. Armour plate rusts to orange-brown, and
+## its lower hull, skirts and running gear, below the fighting compartment,
+## keep their scorched paint; a car's thin sheet goes more orange, and burns
+## to the sills; a boat's steel rusts a little darker; an aircraft's aluminium
+## doesn't rust, it burns to dull grey and black under white ash.
+const CHAR := {
+	"armor": {"rust": Color(0.36, 0.25, 0.19), "ash": Color(0.44, 0.43, 0.41), "low": 0.55},
+	"automotive": {"rust": Color(0.42, 0.27, 0.18), "ash": Color(0.5, 0.48, 0.45), "low": 0.28},
+	"marine": {"rust": Color(0.33, 0.24, 0.18), "ash": Color(0.42, 0.41, 0.39), "low": 0.3},
+	"aircraft": {"rust": Color(0.22, 0.215, 0.21), "ash": Color(0.48, 0.47, 0.45), "low": 0.15},
+}
+
 static var _presets := {}
 static var _maps := {}
 
@@ -133,5 +148,10 @@ static func preset(material_key: String) -> Dictionary:
 	p["surface_splash"] = dirt.splash
 	p["surface_mud_col"] = dirt.mud_col
 	p["surface_dust_col"] = dirt.dust_col
+	if finish == "burnt":
+		var burnt: Dictionary = CHAR.get(vehicle_family, CHAR.armor)
+		p["surface_char_rust"] = burnt.rust
+		p["surface_char_ash"] = burnt.ash
+		p["surface_char_low"] = burnt.low
 	_presets[material_key] = p
 	return p

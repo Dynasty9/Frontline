@@ -340,7 +340,7 @@ static func _rcws(k: VehicleModels, p: Node3D, pos: Vector3, gmg: bool, cam: Str
 	var t := k._pivot(p, pos)
 	k.turret = t
 	VehicleMounts.turret_ring(k, t, Vector3(0, 0.04, 0) * sc, 0.32 * sc, 0.35 * sc, 0.08 * sc, "gunmetal_w", null, 16)
-	k._add(t, VehicleModels.loft("indep_rcws_base", _oct(-0.26, 0.26, -0.28, 0.3, 0.06), _oct(-0.22, 0.22, -0.2, 0.26, 0.05), 0.0, 0.2), cam, col, Vector3(0, 0.08, 0) * sc, Vector3.ZERO, Vector3.ONE * sc)
+	k._add(t, VehicleModels.loft("indep_rcws_base", _oct(-0.26, 0.26, -0.28, 0.3, 0.06), _oct(-0.22, 0.22, -0.2, 0.26, 0.05), 0.0, 0.2, 0.015), cam, col, Vector3(0, 0.08, 0) * sc, Vector3.ZERO, Vector3.ONE * sc)
 	for s: float in [-1.0, 1.0]:
 		k._box(t, Vector3(0.06, 0.3, 0.26) * sc, Vector3(s * 0.2, 0.38, 0.0) * sc, cam, col)
 	k._cyl(t, 0.05 * sc, 0.05 * sc, 0.46 * sc, Vector3(0, 0.44, 0) * sc, Z90, "gunmetal_w", null, 10, false)
@@ -858,7 +858,7 @@ static func _zamak(k: VehicleModels, team: int, kind: String, seed: int) -> void
 	match kind:
 		"zamak":
 			_zamak_bed(k, cam, col, 0.55)
-			_zamak_tilt(k, tarp)
+			_zamak_tilt(k, VehicleCargo.tilt_colour(k, k.root, tarp))
 		"zamak_cargo":
 			_zamak_bed(k, cam, col, 0.55)
 			_zamak_cargo(k, tarp, seed)

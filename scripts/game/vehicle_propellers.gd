@@ -2,31 +2,26 @@ class_name VehiclePropellers
 extends RefCounted
 ## Shared profiled blades, ogive spinners and feathered blur.
 static var _discs := {}
+static var _disc_shader: Shader
 
-static func disc_material(nb: int, hub: float) -> ShaderMaterial:
-	var key := "%d_%.2f" % [nb, hub]
+## The blur disc of a propeller or fan of `nb` blades, from `hub` (its
+## spinner or boss, a fraction of the radius) out, in the blades' colour
+## `tint`: the rotors' own disc (VehicleRotors.BLUR_SHADER), lit, soft-edged
+## and with its ghost blades held still against the world, so a propeller
+## turning 40 rad/s doesn't strobe. Its per-rotor values are made the
+## material's own here (the callers set no per-object values), one shader
+## for every propeller and a material per count, hub and colour.
+static func disc_material(nb: int, hub: float, tint := Color(0.15, 0.155, 0.16)) -> ShaderMaterial:
+	var key := "%d_%.2f_%s" % [nb, hub, tint.to_html(false)]
 	if _discs.has(key):
 		return _discs[key]
-	var sh := Shader.new()
-	sh.code = """
-shader_type spatial;
-render_mode unshaded, cull_disabled, depth_draw_never, shadows_disabled;
-uniform float nb = 4.0;
-uniform float hub = 0.2;
-void fragment() {
-	vec2 p = UV * 2.0 - 1.0;
-	float r = length(p);
-	float a = atan(p.y, p.x);
-	float disc = smoothstep(1.0, 0.86, r) * smoothstep(hub * 0.8, hub + 0.1, r);
-	float dens = mix(1.0, 0.45, smoothstep(0.3, 1.0, r));
-	float ghost = pow(0.5 + 0.5 * cos(a * nb - TIME * 9.0 + r * 1.5), 8.0);
-	ALBEDO = vec3(0.075, 0.075, 0.08);
-	ALPHA = disc * dens * (0.065 + 0.07 * ghost);
-}
-"""
+	if _disc_shader == null:
+		_disc_shader = Shader.new()
+		_disc_shader.code = VehicleRotors.BLUR_SHADER.replace("instance uniform ", "uniform ")
 	var m := ShaderMaterial.new()
-	m.shader = sh
-	m.set_shader_parameter("nb", float(nb))
+	m.shader = _disc_shader
+	m.set_shader_parameter("blade_count", float(nb))
+	m.set_shader_parameter("blade_tint", tint)
 	m.set_shader_parameter("hub", hub)
 	_discs[key] = m
 	return m
@@ -89,7 +84,7 @@ static func build(k: VehicleModels, p: Node3D, key: String, pos: Vector3, rot: V
 		pm.size = Vector2(r, r) * 2.0
 		pm.orientation = PlaneMesh.FACE_Z
 		disc.mesh = pm
-		disc.material_override = disc_material(nb, spin_r / r)
+		disc.material_override = disc_material(nb, spin_r / r, bcol)
 		disc.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		pv.add_child(disc)
 	k.wheels.append(pv)

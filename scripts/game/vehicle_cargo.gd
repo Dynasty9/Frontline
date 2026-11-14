@@ -5,6 +5,63 @@ extends RefCounted
 
 const X90 := Vector3(PI / 2, 0, 0)
 
+## What crews' own bags, bedrolls and tarps come in besides the issue colour a
+## family gives them: olive drab, ranger green, coyote brown, khaki, foliage
+## grey and black. A platoon's kit is never one colour.
+const KIT_CLOTH: Array[Color] = [Color(0.30, 0.32, 0.22), Color(0.23, 0.26, 0.19), Color(0.43, 0.35, 0.24), Color(0.50, 0.45, 0.33), Color(0.34, 0.36, 0.28), Color(0.11, 0.11, 0.10)]
+## Painted cans and boxes from other depots: olive, dark green, sand and a
+## faded grey-green.
+const KIT_PAINT: Array[Color] = [Color(0.30, 0.32, 0.22), Color(0.21, 0.25, 0.17), Color(0.46, 0.40, 0.28), Color(0.33, 0.35, 0.30)]
+## Tarpaulins thrown over a load: olive, faded green, khaki and dark green.
+const KIT_TARP: Array[Color] = [Color(0.30, 0.32, 0.23), Color(0.36, 0.38, 0.29), Color(0.44, 0.40, 0.30), Color(0.24, 0.27, 0.20)]
+## Ratchet-strap webbing: olive, tan and black.
+const KIT_STRAP: Array[Color] = [Color(0.28, 0.26, 0.2), Color(0.47, 0.41, 0.29), Color(0.1, 0.1, 0.09)]
+
+
+## The crew's own load. Every crew stows its kit its own way: whose rucksack
+## went in which basket, which depot a tarp or a can came from, how many boxes
+## are left. A generator drawn from the vehicle's kit seed
+## (VehicleModels.kit_seed) and the item's place on the model, so a seed lays
+## a vehicle's load out exactly, on every peer alike, and the next vehicle of
+## its kind carries another; null where the model carries the builders' one
+## load (scenery and wrecks, which are shared by kind). `salt` keeps two
+## builders at one place apart. The place is rounded to 2 cm, so a peer's last
+## bit of rounding can't pick another load.
+static func kit(k: VehicleModels, parent: Node3D, at: Vector3, salt: int) -> RandomNumberGenerator:
+	if k.kit_seed < 0:
+		return null
+	var p := at
+	var n := parent
+	while n != null and n != k.root:
+		p = n.transform * p
+		n = n.get_parent() as Node3D
+	var rng := RandomNumberGenerator.new()
+	rng.seed = hash([k.kit_seed, salt, roundi(p.x * 50.0), roundi(p.y * 50.0), roundi(p.z * 50.0)])
+	return rng
+
+
+## A colour for one item of a crew's load: by `keep` the chance, the issue
+## colour `col`, else one of `palette`; either a shade lighter or darker than
+## the next item's (newer, or sun-faded toward a pale grey-khaki). A colour
+## that isn't a drab (a red civilian can) only changes shade.
+static func kit_colour(rng: RandomNumberGenerator, col: Color, palette: Array[Color], keep := 0.5) -> Color:
+	var drab := col.s < 0.55 and (col.h > 0.06 and col.h < 0.36 or col.s < 0.12)
+	var c := col if not drab or rng.randf() < keep else palette[rng.randi_range(0, palette.size() - 1)]
+	var shade := rng.randf_range(-0.08, 0.08)
+	c = c.lightened(shade) if shade > 0.0 else c.darkened(-shade)
+	return c.lerp(Color(0.55, 0.53, 0.46), rng.randf_range(0.0, 0.12)) if drab else c
+
+
+## A truck's canvas tilt: the same issue shade on most, but a tilt is replaced
+## when it's torn, so some trucks in a column wear a newer or another depot's,
+## and the old ones fade. One colour for the whole tilt (its cloth, its bows'
+## lashing, its rolled flap), drawn once by the family; `col` where the model
+## carries the builders' one load.
+static func tilt_colour(k: VehicleModels, parent: Node3D, col: Color) -> Color:
+	var rng := kit(k, parent, Vector3.ZERO, 9)
+	return kit_colour(rng, col, KIT_TARP, 0.6) if rng != null else col
+
+
 static func pallet(k: VehicleModels, parent: Node3D, base: Vector3, size: Vector2, height := 0.1) -> void:
 	for side: float in [-1.0, 0.0, 1.0]:
 		for z: float in [-0.37, 0.0, 0.37]:
@@ -13,7 +70,14 @@ static func pallet(k: VehicleModels, parent: Node3D, base: Vector3, size: Vector
 	for i in 5:
 		k._box(parent, Vector3(size.x, height * 0.35, size.y * 0.17), base + Vector3(0, height * 0.825, lerpf(-size.y * 0.4, size.y * 0.4, i / 4.0)), "wood")
 
+## Ratchet straps over a load: `base` the middle of its foot, `size` the load,
+## one strap at each z of `offsets`. A crew lashes with whatever straps it
+## has: on a vehicle with a load of its own (VehicleCargo.kit) they may be
+## olive, tan or black.
 static func restraints(k: VehicleModels, parent: Node3D, base: Vector3, size: Vector3, offsets: Array, width := 0.045, col := Color(0.28, 0.26, 0.2)) -> void:
+	var rng := kit(k, parent, base, 5)
+	if rng != null:
+		col = kit_colour(rng, col, KIT_STRAP, 0.5)
 	for z: float in offsets:
 		k._box(parent, Vector3(size.x + 0.008, 0.007, width), base + Vector3(0, size.y + 0.004, z), "canvas_white", col, Vector3.ZERO, false)
 		for side: float in [-1.0, 1.0]:
@@ -444,7 +508,13 @@ static func roof_rack(k: VehicleModels, parent: Node3D, base: Vector3, size: Vec
 ## base. Stays within `size` but for 1.1 cm of handles and 0.8 cm of battens
 ## at its sides, and the straps' 1 cm over the top and 3 cm of buckles at the
 ## sides.
+## On a vehicle with a load of its own (kit) the stack is the crew's: a stack
+## of layers may have had its top layer issued already (its straps cinched
+## down onto the next), an unstrapped one some of its top boxes; boxes come
+## from other lots (a shade apart, now and then another depot's colour), and
+## a loose wooden crate stands a little out of line within its gaps.
 static func crate_stack(k: VehicleModels, parent: Node3D, base: Vector3, size: Vector3, grid := Vector3i.ONE, mat := "paint", col = null, pallet_height := 0.0, straps: Array = [], shade := 0.12, strap := Color(0.28, 0.26, 0.2), yaw := 0.0) -> void:
+	var rng := kit(k, parent, base, 6)
 	var m := k._pivot(parent, base)
 	m.rotation.y = yaw
 	var nx := maxi(1, grid.x)
@@ -466,13 +536,48 @@ static func crate_stack(k: VehicleModels, parent: Node3D, base: Vector3, size: V
 	var reach := minf(0.011, (gz if ends_z else gx) * 0.45)
 	var handle := Vector3(minf(0.08, bw * 0.4), 0.02, reach) if ends_z else Vector3(reach, 0.02, minf(0.08, bd * 0.4))
 	var band := minf(0.06, ph * 0.18)
-	for l in ny:
+	# The crew's stack: the layers and top boxes still there, each box's lot.
+	var layers := ny
+	var taken := {}
+	var wood_col := Color(1, 1, 1)
+	if rng != null:
+		if ny > 1 and rng.randf() < 0.35:
+			layers = ny - 1
+		elif straps.is_empty() and nx * nz > 1:
+			for c in nx * nz:
+				if rng.randf() < 0.3:
+					taken[c] = true
+			if taken.size() == nx * nz:
+				taken.erase(rng.randi_range(0, nx * nz - 1))
+		if wood and not col is Color:
+			wood_col = VehicleMaterials.preset(VehicleMaterials.key(mat, k.surface_family)).get("col_a", Color(0.5, 0.37, 0.23))
+	for l in layers:
 		for i in nx:
 			for j in nz:
+				if l == layers - 1 and taken.has(i * nz + j):
+					continue
 				var at := Vector3(-size.x * 0.5 + px * (i + 0.5), lift + ph * (l + 0.5), -size.z * 0.5 + pz * (j + 0.5))
 				var tint: Variant = col
 				if col is Color and ((i + j + l) & 1) == 1:
 					tint = (col as Color).darkened(shade) if shade >= 0.0 else (col as Color).lightened(-shade)
+				if rng != null:
+					# Each box from its own lot: a shade apart, now and then
+					# another depot's paint, or a fresher or greyer crate.
+					var lot := rng.randf_range(-0.06, 0.06)
+					if tint is Color:
+						tint = kit_colour(rng, col, KIT_PAINT, 0.0) if rng.randf() < 0.12 else tint
+						tint = (tint as Color).lightened(lot) if lot > 0.0 else (tint as Color).darkened(-lot)
+					elif wood:
+						tint = wood_col.lightened(lot * 2.0) if lot > 0.0 else wood_col.darkened(-lot * 2.0)
+					if wood and straps.is_empty():
+						# A loose crate is set down a little out of line, within
+						# a fifth of its gaps (between two crates their battens
+						# take 1.6 cm of the gap). Painted boxes stay squared up:
+						# their handles reach across the gaps and families
+						# stencil their outer faces.
+						var sx := rng.randf_range(-0.2, 0.2) * (maxf(0.0, gx - 0.016) if nx > 1 else gx)
+						var sz := rng.randf_range(-0.2, 0.2) * (maxf(0.0, gz - 0.016) if nz > 1 else gz)
+						at += Vector3(sx, 0, sz)
 				k._box(m, Vector3(bw, ph, bd), at, mat, tint)
 				if wood:
 					for e: float in [-1.0, 1.0]:
@@ -483,5 +588,5 @@ static func crate_stack(k: VehicleModels, parent: Node3D, base: Vector3, size: V
 						var out := Vector3(0, 0, e * (bd + reach) * 0.5) if ends_z else Vector3(e * (bw + reach) * 0.5, 0, 0)
 						k._box(m, handle, at + out + Vector3(0, ph * 0.2, 0), "gunmetal_w", null, Vector3.ZERO, false)
 	if not straps.is_empty():
-		restraints(k, m, Vector3(0, lift, 0), Vector3(size.x - gx, size.y - lift, size.z), straps, 0.045, strap)
+		restraints(k, m, Vector3(0, lift, 0), Vector3(size.x - gx, ph * layers, size.z), straps, 0.045, strap)
 	k._fold(m)
