@@ -113,7 +113,7 @@ func tick(dt: float, on: bool) -> void:
 		v.size = Vector3(length, height, width)
 		v.position = Vector3(src.x, gy, src.z) + w3 * (drift + length * 0.5 - 3.0) + Vector3(0, height * 0.5 - 1.0, 0)
 		var k := float(pl[6]) * smoothstep(0.0, 2.5, age) * pow(1.0 - age / life, 1.4)
-		(pl[1] as ShaderMaterial).set_shader_parameter("density", 0.2 * k * _debug_k)
+		(pl[1] as ShaderMaterial).set_shader_parameter("density", 0.34 * k * _debug_k)
 		(pl[1] as ShaderMaterial).set_shader_parameter("spread", clampf(age / 20.0, 0.0, 1.0))
 
 
@@ -167,18 +167,24 @@ uniform vec3 lit_col : source_color = vec3(0.93, 0.92, 0.9);
 
 void fog() {
 	vec3 u = UVW;
-	float along = u.x;
-	float r = mix(0.22, 0.5, sqrt(along)) * mix(0.8, 1.0, spread);
-	float cy = mix(0.22, 0.55, along);
-	vec2 d = vec2((u.z - 0.5) / r, (u.y - cy) / (r * 0.85));
-	float body = exp(-dot(d, d) * 2.0);
-	// thickest near where it rose, thinning out downwind, rooted on the ground
-	body *= smoothstep(0.0, 0.06, along) * (1.0 - smoothstep(mix(0.45, 0.7, spread), 1.0, along)) * smoothstep(0.0, 0.05, u.y);
 	vec3 p = WORLD_POSITION;
 	float n1 = texture(wisps, p * 0.045 - vec3(wind.x, -0.25, wind.y) * TIME * 0.04).r;
 	float n2 = texture(wisps, p * 0.13 + vec3(0.0, -TIME * 0.06, 0.0)).r;
-	float rags = smoothstep(0.48, 0.82, n1 * 0.8 + n2 * 0.5 - spread * 0.1);
-	DENSITY = density * body * rags * 2.0;
-	ALBEDO = mix(shade_col, lit_col, smoothstep(cy - r * 0.9, cy + r * 0.6, u.y));
+	float along = u.x;
+	float r = mix(0.2, 0.4, sqrt(along)) * mix(0.8, 1.0, spread);
+	float cy = mix(0.22, 0.5, along);
+	// the tube's edge wavers with the noise, so its outline is ragged, not a curve
+	vec2 d = vec2((u.z - 0.5) / r, (u.y - cy) / (r * 0.85)) * (0.75 + 0.5 * n1);
+	float body = exp(-dot(d, d) * 3.0);
+	// thickest near where it rose, thinning out downwind and upward, rooted on
+	// the ground, and nothing at all by the box's sides and top (a volume's
+	// bounds must never show)
+	body *= smoothstep(0.0, 0.06, along) * (1.0 - smoothstep(mix(0.35, 0.6, spread), 0.95, along)) * smoothstep(0.0, 0.05, u.y);
+	body *= smoothstep(0.0, 0.18, u.z) * smoothstep(1.0, 0.82, u.z) * smoothstep(1.0, 0.7, u.y) * mix(1.0, 0.55, smoothstep(cy, 1.0, u.y));
+	// puffs: the rising pall breaks into billows along its length
+	float puffs = 0.55 + 0.45 * sin(along * 18.0 - TIME * 0.4 + n1 * 5.0);
+	float rags = smoothstep(0.45, 0.8, n1 * 0.8 + n2 * 0.5 - spread * 0.1) * puffs;
+	DENSITY = density * body * rags * 2.2;
+	ALBEDO = mix(shade_col, lit_col, smoothstep(cy - r * 0.8, cy + r * 0.7, u.y));
 }
 """

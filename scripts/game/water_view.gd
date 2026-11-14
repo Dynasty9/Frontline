@@ -757,7 +757,7 @@ float caustic_net(vec2 x, float t, float soft) {
 	for (int j = -1; j <= 1; j++) {
 		for (int i = -1; i <= 1; i++) {
 			vec2 g = vec2(float(i), float(j));
-			vec2 o = 0.5 + 0.36 * sin(t + 6.2831 * caustic_hash(n + g));
+			vec2 o = 0.5 + 0.26 * sin(t + 6.2831 * caustic_hash(n + g));
 			float d = length(g + o - f);
 			if (d < f1) {
 				f3 = f2;
@@ -771,18 +771,25 @@ float caustic_net(vec2 x, float t, float soft) {
 			}
 		}
 	}
-	float w = mix(0.04, 0.12, soft);
+	// (never thinner than a pixel: far off, finer than that, it fades out
+	// rather than sparkle)
+	float px = length(fwidth(x));
+	float w = max(mix(0.05, 0.14, soft), px * 1.2);
 	float line = 1.0 - smoothstep(0.0, w, f2 - f1);
 	float node = 1.0 - smoothstep(0.0, w * 3.0, f3 - f1);
-	return (line * line * 0.85 + node * node * 1.7) * mix(1.0, 0.45, soft);
+	return (line * line * 0.85 + node * node * 2.2) * mix(1.0, 0.45, soft) * (1.0 - smoothstep(0.25, 0.6, px));
 }
 
-// the light at p (m): one net about 2.4 m across, and a fainter finer one
-// drifting through it; `split` shifts it for a colour's own fringe
+// the light at p (m): two nets of cells about 0.6 and 0.45 m across,
+// scrolling different ways, where both are bright the light comes together
+// brightest (the min), the rest of each net fainter; `split` shifts it for a
+// colour's own fringe
 float caustic_light(vec2 p, float soft, float split) {
-	vec2 warp = texture(chop_tex, p / 16.0 + vec2(water_time * 0.012, -water_time * 0.009)).xy - 0.5;
-	vec2 q = p / 2.4 + warp * 0.9 + vec2(water_time * 0.012, water_time * 0.006) + split;
-	return caustic_net(q, water_time * 0.32, soft) + caustic_net(q * 1.7 + 3.1, water_time * 0.41 + 1.0, soft) * 0.22;
+	vec2 warp = texture(chop_tex, p / 9.0 + vec2(water_time * 0.012, -water_time * 0.009)).xy - 0.5;
+	vec2 q = p + warp * 0.5 + split;
+	float a = caustic_net(q / 0.6 + vec2(water_time * 0.05, water_time * 0.02), water_time * 0.5, soft);
+	float b = caustic_net(q / 0.45 - vec2(water_time * 0.03, -water_time * 0.045) + 3.1, water_time * 0.6 + 1.0, soft);
+	return min(a, b) * 1.6 + (a + b) * 0.3;
 }
 """
 

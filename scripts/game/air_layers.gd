@@ -192,6 +192,9 @@ func _process(dt: float) -> void:
 		if vol:
 			mat.set_shader_parameter("drift", grid.drift)
 			mat.set_shader_parameter("strength", strength() * _debug_k)
+			if world.cam and world.cam.cam:
+				mat.set_shader_parameter("cam_pos", world.cam.cam.global_position)
+				mat.set_shader_parameter("reach", atmo.env.volumetric_fog_length)
 	if plumes:
 		plumes.tick(dt, volume != null and volume.visible)
 	if world:
@@ -293,7 +296,7 @@ func apply_env(env: Environment) -> void:
 		var tint: Color = SMOKE_COL.lerp(DUST_COL, air.z / maxf(murk, 0.001))
 		env.fog_light_color = fog.lerp(tint, clampf(murk * 0.8, 0.0, 0.6))
 	else:
-		env.volumetric_fog_length = clampf(world.cam.dist * 2.4, LENGTH.x, LENGTH.y)
+		env.volumetric_fog_length = clampf(world.cam.dist * 4.0, LENGTH.x, LENGTH.y)
 	# without the volume, the mist lying along the valley floor (a height fog:
 	# with the volume it would lie over the whole low ground as one flat sheet)
 	if vol:
@@ -328,6 +331,8 @@ uniform float smoke_d = 0.03;
 uniform float dust_d = 0.028;
 uniform float rain_d = 0.003;
 uniform float edge = 60.0;
+uniform vec3 cam_pos = vec3(0.0);
+uniform float reach = 260.0;  // how far the volumetric fog reaches from the camera
 uniform vec3 mist_col : source_color = vec3(0.9);
 uniform vec3 haze_col : source_color = vec3(0.8);
 uniform vec3 smoke_col : source_color = vec3(0.3);
@@ -371,7 +376,10 @@ void fog() {
 	float rain = rain_d * w.g * exp(-h / 150.0);
 	float total = mist + haze + smoke + dust + rain;
 	vec2 inside = vec2(__MAP_HALF__ + edge) - abs(p.xz);
-	DENSITY = total * strength * clamp(min(inside.x, inside.y) / edge, 0.0, 1.0);
+	// (thinning out before the fog's reach ends, so its far end is never a line
+	// across the view; the plain fog carries on beyond)
+	float far = 1.0 - smoothstep(reach * 0.5, reach * 0.95, distance(p, cam_pos));
+	DENSITY = total * strength * far * clamp(min(inside.x, inside.y) / edge, 0.0, 1.0);
 	vec3 col = (mist_col * mist + haze_col * haze + smoke_col * smoke + dust_col * dust + rain_col * rain) / max(total, 1e-6);
 	// under a cloud the air isn't sunlit: follow the sun's ray down to the
 	// ground's shadow pattern, so the clouds cast shafts through the haze

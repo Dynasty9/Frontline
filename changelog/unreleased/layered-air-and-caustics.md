@@ -20,6 +20,10 @@ file = "piles-off-on.jpg"
 caption = "Off and on: sunlight thrown up off the water onto the pier's shaded side"
 
 [[screenshots]]
+file = "mist-command-view-off-on.jpg"
+caption = "Off and on at the usual command view: the mist stays light, so the battle stays clear"
+
+[[screenshots]]
 file = "browser-shallows.jpg"
 caption = "The browser version's simpler caustics"
 
@@ -63,7 +67,7 @@ caption = "A barrage's plume drifting off downwind and breaking up."
   dust from dry ground.
 - It all eases off as you zoom out, so it never hides the fighting you're watching. It's scenery only: it doesn't
   change who can see whom.
-- **Caustics**: a net of thin, sun-tinted lines of light, brightest where they meet, slowly re-forms across the
-  sand and mud in the shallows, crisp in the first metre or so and softening deeper down (from Medium water quality, finer from High).
+- **Caustics**: a fine, even net of thin, sun-tinted lines of light, brightest where they meet, slowly re-forms
+  across the sand and mud in the shallows, crisp in the first metre or so and softening deeper down (from Medium water quality, finer from High).
   From High it's also thrown back up onto hulls, piers and banks just above the water.
 - The browser version gets a lighter version of the mist and smoke through its distance fog, and the simpler caustics.
