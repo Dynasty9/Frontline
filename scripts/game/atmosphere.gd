@@ -71,6 +71,7 @@ var wildlife: Wildlife
 var _d := {}
 var _mood_asked := ""  # the Time of day setting as the battle began: changing it mid-battle switches the mood live
 var cine: CinematicFx  # the lens and eye passes (Settings > Lighting & Look > Camera and lens), once one is on
+var ssgi: SsgiFx  # bounce light (Settings > Graphics > Bounce light), once it is on
 var heat := HeatHaze.new()  # what the heat haze bends the view over (only gathered while it's on)
 var _heat_t := 0.0
 var _phys_sky: ShaderMaterial
@@ -1070,6 +1071,7 @@ func apply_settings() -> void:
 	elif _use_phys_sky() != _phys_on:
 		_apply_sky()
 	_apply_cinematic()
+	_apply_ssgi()
 	RenderingServer.environment_set_volumetric_fog_volume_size(128 if sh >= 3 else 96, 96 if sh >= 3 else 64)
 	post_layer.visible = s.get_v("post")
 	cam_attr.dof_blur_far_enabled = s.get_v("dof")
@@ -1429,6 +1431,7 @@ func _view_process(_dt: float) -> void:
 	_fit_shadows()
 	_light_shadows_tick(real_dt)
 	_cine_tick(real_dt)
+	_ssgi_tick()
 	if _cine_ab_on:
 		_cine_ab(real_dt)
 	if not Settings.get_v("dof"):
@@ -1581,10 +1584,7 @@ func _apply_cinematic() -> void:
 		or bool(look_v("heat_haze")) or blur > 0
 	if want and cine == null and world.has_view and CinematicFx.supported():
 		cine = CinematicFx.new()
-		var effects: Array[CompositorEffect] = [cine]
-		var comp := Compositor.new()
-		comp.compositor_effects = effects
-		we.compositor = comp
+		_add_effect(cine)
 	if cine == null:
 		return
 	if bool(look_v("eye_adapt")) and not cine.eye:
@@ -1605,6 +1605,92 @@ func _apply_cinematic() -> void:
 	if not heat.on:
 		heat.clear()
 		cine.heat = PackedFloat32Array()
+
+
+## A compositor pass joins the view's compositor (made on first use). Bounce
+## light goes first: it lights the scene the lens and the eye then see.
+func _add_effect(fx: CompositorEffect) -> void:
+	if we.compositor == null:
+		we.compositor = Compositor.new()
+	var effects: Array[CompositorEffect] = we.compositor.compositor_effects
+	if fx is SsgiFx:
+		effects.push_front(fx)
+	else:
+		effects.append(fx)
+	we.compositor.compositor_effects = effects
+
+
+## Bounce light: a compositor pass, so Forward+ only (the browser draws without it).
+func _apply_ssgi() -> void:
+	if OS.has_environment("FL_DEBUG_GI_CYCLE") and get_node_or_null("GiCompare") == null:
+		var cmp: Node = load("res://scripts/test/gi_compare.gd").new()
+		cmp.name = "GiCompare"
+		cmp.set("world", world)
+		add_child(cmp)
+	var q := int(Settings.get_v("ssgi"))
+	if q > 0 and ssgi == null and world.has_view and SsgiFx.supported():
+		ssgi = SsgiFx.new()
+		_add_effect(ssgi)
+	if ssgi == null:
+		return
+	ssgi.quality = q
+	ssgi.enabled = q > 0
+
+
+## How far a ray looks for a surface to light it (m), and how strongly what it
+## finds lights it. 1 would be physical (a surface sends out its colour's
+## share), but the rays only see what is on screen and stop at a few metres,
+## so they miss much of the light a real street would gather: twice makes up
+## for it (measured: shade beside a sunlit wall comes up by about a fifth of
+## the sunlit side, as in a path-traced street).
+const SSGI_REACH := 8.0
+const SSGI_STRENGTH := 2.0
+## Seen from further than SSGI_FAR.x (m) and fully past SSGI_FAR.y, rays
+## reach SSGI_FAR_REACH times as far and the light is laid on SSGI_FAR_STRENGTH
+## times as strong: from the command height a wall is a few pixels tall and a
+## lift of a few levels in its shade goes unseen.
+const SSGI_FAR := Vector2(25.0, 90.0)
+const SSGI_FAR_REACH := 2.0
+const SSGI_FAR_STRENGTH := 2.0
+## How much more saturated the gathered light is laid on (1 as gathered).
+const SSGI_BLEED := 1.6
+## The brightest a surface's estimated colour may be (a white wall's ~0.8).
+const SSGI_ALBEDO_CAP := 0.8
+
+
+## The sky light a surface gets, for telling its colour from its lighting:
+## the sky's zenith and horizon in between, at the ambient's strength.
+func _ssgi_tick() -> void:
+	if ssgi == null or not ssgi.enabled:
+		return
+	var p := PackedFloat32Array()
+	p.resize(SsgiFx.PARAMS)
+	var sky := ((_d.zenith as Color).srgb_to_linear().lerp((_d.horizon as Color).srgb_to_linear(), 0.5))
+	var amb := sky * env.ambient_light_energy * env.ambient_light_sky_contribution
+	p[4] = maxf(amb.r, 0.002)
+	p[5] = maxf(amb.g, 0.002)
+	p[6] = maxf(amb.b, 0.002)
+	p[7] = SSGI_ALBEDO_CAP
+	p[8] = SSGI_REACH
+	p[9] = SSGI_STRENGTH
+	p[14] = float(OS.get_environment("FL_DEBUG_SSGI_VIEW")) if OS.has_environment("FL_DEBUG_SSGI_VIEW") else 0.0
+	p[15] = 0.5  # how deep behind a surface a ray still counts as hitting it (share of how far it has gone)
+	p[16] = SSGI_FAR.x
+	p[17] = SSGI_FAR.y
+	p[18] = SSGI_FAR_REACH
+	p[19] = SSGI_FAR_STRENGTH
+	var to_sun := sun.global_transform.basis.z
+	p[20] = to_sun.x
+	p[21] = to_sun.y
+	p[22] = to_sun.z
+	p[23] = SSGI_BLEED
+	# (the engine's lights carry pi in their energy, so a white surface
+	# square to the sun shows its colour times its energy)
+	var sc := sun.light_color.srgb_to_linear() * sun.light_energy * (1.0 if sun.visible else 0.0)
+	p[24] = sc.r
+	p[25] = sc.g
+	p[26] = sc.b
+	ssgi.params = p
 
 
 ## FL_DEBUG_CINE_AB=passes (or =light_shadows): what the lens and eye passes
