@@ -10,9 +10,22 @@ const COLUMN = 576 // half the pages' column (max-w-6xl), in CSS pixels: the map
 const QUIET = 0.5 // by this much
 const CLOUDS = 0.7
 const MAX_PIXELS = 2_600_000
-const FPS = 30 // it drifts slowly: thirty frames a second is plenty, but a click's ring gets every frame
+const FPS = 30 // it drifts slowly: thirty frames a second is plenty, but a click's ring, or the sheet gliding, gets every frame
 const START = 4 // seconds into the menu's clock: its colours start at the brass, as the site does
-const SCROLL = 0.12 // how far the sheet moves as the page scrolls, against the page
+const SCROLL = 0.06 // how far the sheet moves as the page scrolls, against the page
+// A jump in the scroll bigger than this (a fraction of the window) in one go is
+// the page changing, or a link to a section: the map isn't scrolled by it, so a
+// new page opens on the same map the last one left, not one that lurches
+const JUMP = 0.6
+const SETTLE = 400 // a new page's first milliseconds are its own, whatever scrolls
+const SETTLE_MAX = 1500 // and it can go on settling, scroll after scroll, this long at most
+const GLIDE = 3 // how quickly the sheet catches up with the scroll (per second): it eases, never steps
+// The map is one sheet across the whole site: a page that loads afresh (a
+// refresh, a new tab, a link from the game) picks it up exactly where the last
+// one left it (its clock, where it had scrolled to, how it leant after the
+// cursor) rather than starting the drift over, so there's no jump between them
+const KEPT = "frontline.map"
+const LONGEST = 12 * 3600 // seconds of drift before it starts over (the sheet's sums stay exact on the GPU well past this)
 
 /**
  * The game's menu backdrop, a living topographic map, behind every page. It
@@ -21,8 +34,16 @@ const SCROLL = 0.12 // how far the sheet moves as the page scrolls, against the 
  * acceleration, where even one frame of it is slow), it isn't drawn, and the
  * page keeps its plain ground.
  */
-export function TopoBackdrop({ className }: { className?: string }) {
+export function TopoBackdrop({ className, page }: { className?: string; page?: string }) {
   const canvas = useRef<HTMLCanvasElement>(null)
+  // since when (the page's clock) scrolling has been the new page settling, not the reader
+  const opened = useRef(-1e9)
+
+  // a new page: whatever it scrolls to as it opens (its top, its section, where
+  // you'd left it, however slowly it gets there) doesn't move the map
+  useEffect(() => {
+    opened.current = performance.now()
+  }, [page])
 
   useEffect(() => {
     const el = canvas.current
@@ -41,9 +62,41 @@ export function TopoBackdrop({ className }: { className?: string }) {
     let lost = true // until the shaders are ready
     let waiting = 0
     let scale = 1
+    let resumed = false
+    let keptAt = 0
+    let settled = -1e9 // the last scroll put down to a new page settling
     const mouse = { x: 0.5, y: 0.5, toX: 0.5, toY: 0.5, on: 0, inside: false, moved: false }
+    // where the sheet is for the scroll: `to` gathers each small scroll the
+    // reader makes (and none of a page change's jump), `at` eases after it
+    const sheet = { at: 0, to: 0, y: window.scrollY }
     const taps: { x: number; y: number; at: number }[] = []
     const tapData = new Float32Array(12)
+
+    // where the last page left the map (not for a still map: that's the same picture every time)
+    const resume = () => {
+      if (still()) return false
+      try {
+        const kept = JSON.parse(localStorage.getItem(KEPT) ?? "null") as Kept | null
+        if (!kept || !(kept.clock >= START && kept.clock < LONGEST)) return false
+        clock = kept.clock
+        sheet.at = sheet.to = kept.sheet || 0
+        mouse.x = mouse.toX = kept.x ?? 0.5
+        mouse.y = mouse.toY = kept.y ?? 0.5
+        mouse.on = kept.on || 0
+        return true
+      } catch {
+        return false
+      }
+    }
+    const keep = () => {
+      if (lost || still()) return
+      try {
+        const kept: Kept = { clock, sheet: sheet.at, x: mouse.x, y: mouse.y, on: mouse.on }
+        localStorage.setItem(KEPT, JSON.stringify(kept))
+      } catch {
+        // (no storage: the next page starts the drift over)
+      }
+    }
 
     const resize = () => {
       const w = Math.max(1, el.clientWidth)
@@ -57,7 +110,7 @@ export function TopoBackdrop({ className }: { className?: string }) {
       if (lost) return
       const aspect = el.width / el.height
       const on = still() ? 0 : mouse.on
-      const scroll = still() ? 0 : (window.scrollY / Math.max(1, window.innerHeight)) * SCROLL
+      const scroll = still() ? 0 : sheet.at
       for (let i = 0; i < 4; i++) {
         const tap = taps[i]
         tapData.set(tap ? [tap.x, tap.y, clock - tap.at] : [0.5, 0.5, 99], i * 3)
@@ -82,7 +135,8 @@ export function TopoBackdrop({ className }: { className?: string }) {
 
     const frame = (now: number) => {
       raf = requestAnimationFrame(frame)
-      const busy = taps.some((t) => clock - t.at < TAP_LIFE)
+      const gliding = Math.abs(sheet.to - sheet.at) > 1e-5
+      const busy = gliding || taps.some((t) => clock - t.at < TAP_LIFE)
       if (!busy && now - drawn < 1000 / FPS - 4) return
       // the clock runs while the page is on screen, a tenth of a second at most a frame
       const dt = last ? Math.min((now - last) / 1000, 0.1) : 0
@@ -91,17 +145,24 @@ export function TopoBackdrop({ className }: { className?: string }) {
       clock += dt
       // the map follows the cursor lazily, never snaps
       const target = mouse.inside && mouse.moved ? 1 : 0
-      mouse.on += Math.max(-dt * 0.8, Math.min(dt * 0.8, target - mouse.on))
-      const k = 1 - Math.exp(-dt * 2)
+      mouse.on += Math.max(-dt * 0.4, Math.min(dt * 0.4, target - mouse.on))
+      const k = 1 - Math.exp(-dt * 0.8)
       mouse.x += (mouse.toX - mouse.x) * k
       mouse.y += (mouse.toY - mouse.y) * k
+      sheet.at += (sheet.to - sheet.at) * (1 - Math.exp(-dt * GLIDE))
       while (taps.length && clock - taps[0].at > TAP_LIFE) taps.shift()
       draw()
+      // noted every second, so a page opened in another tab meanwhile starts where this one is
+      if (now - keptAt > 1000) {
+        keptAt = now
+        keep()
+      }
     }
 
     const start = () => {
       cancelAnimationFrame(raf)
       last = 0
+      if (document.hidden) keep()
       if (still()) draw()
       else if (!document.hidden) raf = requestAnimationFrame(frame)
     }
@@ -112,6 +173,23 @@ export function TopoBackdrop({ className }: { className?: string }) {
       mouse.inside = true
       mouse.toX = e.clientX / Math.max(1, window.innerWidth)
       mouse.toY = e.clientY / Math.max(1, window.innerHeight)
+    }
+    const onScroll = () => {
+      const y = window.scrollY
+      const step = (y - sheet.y) / Math.max(1, window.innerHeight)
+      sheet.y = y
+      // a new page is settling for its first moments, and for as long after as
+      // it keeps on scrolling without a break (a slow page's scroll to its top)
+      const now = performance.now()
+      if (now - opened.current < SETTLE) {
+        settled = now
+        return
+      }
+      if (now - settled < 200 && settled - opened.current < SETTLE_MAX) {
+        settled = now
+        return
+      }
+      if (Math.abs(step) < JUMP) sheet.to += step * SCROLL
     }
     const onLeave = () => {
       mouse.inside = false
@@ -143,6 +221,13 @@ export function TopoBackdrop({ className }: { className?: string }) {
           return
         }
         if (!link(gl, map)) return
+        // (the first time only: a context lost and restored keeps the map it had)
+        if (!resumed) {
+          resumed = true
+          // carrying on from the last page, the map's already there: it only
+          // has to settle in, not fade up from the plain ground
+          if (resume()) el.style.transitionDuration = "150ms"
+        }
         lost = false
         resize()
         draw() // the first frame at once, then the clock runs
@@ -160,18 +245,23 @@ export function TopoBackdrop({ className }: { className?: string }) {
     load()
     window.addEventListener("pointermove", onMove, { passive: true })
     window.addEventListener("pointerdown", onDown, { passive: true })
+    window.addEventListener("scroll", onScroll, { passive: true })
     document.documentElement.addEventListener("pointerleave", onLeave)
     window.addEventListener("blur", onLeave)
     document.addEventListener("visibilitychange", start)
+    window.addEventListener("pagehide", keep)
     motion.addEventListener("change", start)
     el.addEventListener("webglcontextlost", onLost)
     el.addEventListener("webglcontextrestored", onRestored)
     return () => {
+      keep()
       cancelAnimationFrame(raf)
+      window.removeEventListener("pagehide", keep)
       window.clearTimeout(waiting)
       observer.disconnect()
       window.removeEventListener("pointermove", onMove)
       window.removeEventListener("pointerdown", onDown)
+      window.removeEventListener("scroll", onScroll)
       document.documentElement.removeEventListener("pointerleave", onLeave)
       window.removeEventListener("blur", onLeave)
       document.removeEventListener("visibilitychange", start)
@@ -216,6 +306,9 @@ const ATTRIBUTES: WebGLContextAttributes = {
   preserveDrawingBuffer: false,
   failIfMajorPerformanceCaveat: true,
 }
+
+/** The map as a page left it (KEPT): its clock, the scroll's offset, and the cursor's lean. */
+type Kept = { clock: number; sheet: number; x: number; y: number; on: number }
 
 const UNIFORMS = ["res", "clock", "lean", "cam", "taps", "keys", "ink", "column", "clouds", "grain"] as const
 

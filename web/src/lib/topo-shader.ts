@@ -21,7 +21,7 @@ export const BRASS = [
   [0.35, 0.92, 0.68],
 ]
 
-export const LEAN = 0.04 // how far the sheet follows the cursor (screen heights, with it at the edge)
+export const LEAN = 0.012 // how far the sheet follows the cursor (screen heights, with it at the edge): a hint, not a sway
 export const PAN = 0.007 // how fast the view pans to the right over the sheet (screen heights a second)
 export const TAP_LIFE = 1.6 // seconds a click's ring is on the map
 
@@ -251,7 +251,7 @@ void main() {
 	// the view pans and lean further after the cursor, and each casts a soft
 	// shadow a little below and to the right of itself
 	if (clouds > 0.0) {
-		vec2 c = ((p - lean * 1.8) + vec2(t * (PAN * 2.4 + 0.006), t * 0.0025) + vec2(0.0, cam.y * 1.6)) * 1.6;
+		vec2 c = ((p - lean * 1.3) + vec2(t * (PAN * 2.4 + 0.006), t * 0.0025) + vec2(0.0, cam.y * 1.6)) * 1.6;
 		float cloud = smoothstep(0.45, 0.7, cover(c, t));
 		float shadow = smoothstep(0.44, 0.71, cover(c - vec2(0.1, 0.065), t));
 		float a_cloud = cloud * 0.085 * clouds;
