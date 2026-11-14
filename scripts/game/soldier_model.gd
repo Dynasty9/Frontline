@@ -8,6 +8,9 @@ extends Node3D
 const H0 := 0.95
 
 var skinned: SkinnedRifleman
+## The battle a model belongs to when no Soldier carries it (a vehicle's
+## gunner): set before build() and it may wear the skinned character too.
+var host_world: World = null
 var rifle_driver: RefCounted
 var _native_locomotion := false
 var _native_prone := false
@@ -279,14 +282,15 @@ func build(utype: String, team: int, seed: int) -> void:
 		if j:
 			Mats.merge_static(j, [], false, false, true)
 	var use_skin := utype == "rifleman" or ((medical_band != null or utype in ["mortar_gunner", "fighter"]) and InfantryAssets.gameplay_model == InfantryAssets.SWAT)
-	if use_skin and is_inside_tree() and get_parent() is Soldier and not InfantryAssets.gameplay_model.is_empty():
+	var skin_world: World = host_world if host_world != null else (get_parent().world if get_parent() is Soldier else null)
+	if use_skin and is_inside_tree() and skin_world != null and not InfantryAssets.gameplay_model.is_empty():
 		skinned = SkinnedRifleman.new()
 		skinned.model_asset = InfantryAssets.gameplay_model
 		add_child(skinned)
 		var role_prop := gun if medical_band or utype == "fighter" else null
 		if skinned.build(MocapCharacter.CLIPS, role_prop, k.top.lightened(0.35) if team == 1 else Color.WHITE):
 			skinned.bind_procedural(self)
-			skinned.ground_height = get_parent().world.ground_y
+			skinned.ground_height = skin_world.ground_y
 			if skinned.model_asset == InfantryAssets.SWAT:
 				MixamoClips.install(skinned, true)
 				var driver := load("res://scripts/game/rifle_animation_controller.gd")
@@ -294,7 +298,7 @@ func build(utype: String, team: int, seed: int) -> void:
 					rifle_driver = driver.new()
 					rifle_driver.setup(skinned)
 					if utype == "rifleman":
-						get_parent().world.stat("native_riflemen")
+						skin_world.stat("native_riflemen")
 			if is_mortar:
 				_attach_kit(tube, "Spine2")
 			if medical_band:

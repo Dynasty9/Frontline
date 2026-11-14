@@ -1,0 +1,27 @@
+{
+  "entry": "changelog/unreleased/gun-crews.md",
+  "summary": "Crew-served vehicle guns have their gunners, mounted guns get a phosphated finish and their real details, and hot barrels smoke after a burst.",
+  "medium": "motion",
+  "stage": "mounted-guns (tools/showcase/stages.json): tests/fixtures/mounted-gun-clips.tscn, showroom battlefield seed 712, fixed 30 Hz, Forward+",
+  "rationale": "The gunners and the barrel smoke move with the firing, so a matched before/after of the same firing line carries them; the still sheet shows the gunners at rest and a .50 close up for the new detail and finish.",
+  "source_ref": "6ef8490a",
+  "sources": [
+    {
+      "file": "changelog/unreleased/gun-crews/comparison.jpg",
+      "sha256": "6a238a5d45b5be8ab213609f5a818ef8242ac2731c3de37f6a1c4f1e01007b84"
+    },
+    {
+      "file": "changelog/unreleased/gun-crews/gun-crews.webm",
+      "sha256": "88654b3f662ecc5527a204e773eab4f3d3463d5ae8d1ea4adbc58b29a71a6bc8"
+    },
+    {
+      "file": "changelog/unreleased/gun-crews/gun-crews.jpg",
+      "sha256": "2ed7c0fd1c887c235373e64f11657962a17e4068264005e69bb46826ae026fb2"
+    },
+    {
+      "file": "changelog/unreleased/gun-crews/capture.json",
+      "sha256": "d28531df7af27cf2546bd078d3d13833512053d507ad7d64b11a41fdffb7ca03"
+    }
+  ],
+  "output": null
+}
