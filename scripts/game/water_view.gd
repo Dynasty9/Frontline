@@ -179,6 +179,13 @@ func _set_waves(rot: float) -> void:
 
 
 ## The moving waves for height_at, flat and scaled for the sea running now.
+static func _by(weights: Dictionary, table: Dictionary, other: float) -> float:
+	var v := 0.0
+	for m in weights:
+		v += float(weights[m]) * float(table.get(m, other))
+	return v
+
+
 func _pack() -> void:
 	_wf.clear()
 	for i in MOVING:
@@ -437,23 +444,36 @@ static func scenery_river_tips(rivers: Array, half: float) -> PackedVector4Array
 
 ## Lighting follows the time of day (Atmosphere's moods).
 func apply_mood(d: Dictionary, mood: String) -> void:
+	apply_light(d, {mood: 1.0})
+
+
+## The water under a light that's a blend of moods (mood -> share, as
+## Atmosphere.weights: one mood at 1.0 while time stands still).
+func apply_light(d: Dictionary, weights: Dictionary) -> void:
 	if mat == null:
 		return
-	var cloudy := 1.0 if mood in ["overcast", "rain"] else 0.55
+	var cloudy := _by(weights, {"overcast": 1.0, "rain": 1.0}, 0.55)
 	for m in [mat, wake_mat]:
 		m.set_shader_parameter("zenith", d.zenith)
 		m.set_shader_parameter("horizon", d.horizon)
 		m.set_shader_parameter("ambient", float(d.ambient))
 	mat.set_shader_parameter("clouds", cloudy)
-	mat.set_shader_parameter("cloud_color", Color(0.06, 0.06, 0.06).linear_to_srgb() if mood == "night" else Color.WHITE)
+	var night := _by(weights, {"night": 1.0}, 0.0)
+	mat.set_shader_parameter("cloud_color", Color.WHITE.lerp(Color(0.06, 0.06, 0.06).linear_to_srgb(), night) if night < 1.0 else Color(0.06, 0.06, 0.06).linear_to_srgb())
 	# (under cloud there's no glitter, only a sheen)
-	mat.set_shader_parameter("sun_k", {"overcast": 0.1, "rain": 0.06, "hazy": 0.55}.get(mood, 1.0))
-	mat.set_shader_parameter("rain", 1.0 if mood == "rain" else 0.0)
+	mat.set_shader_parameter("sun_k", _by(weights, {"overcast": 0.1, "rain": 0.06, "hazy": 0.55}, 1.0))
+	mat.set_shader_parameter("rain", _by(weights, {"rain": 1.0}, 0.0))
 	# rain and a grey sky: a darker, duller sea
-	var dull := 1.0 if mood in ["overcast", "rain", "night"] else 0.0
+	var dull := _by(weights, {"overcast": 1.0, "rain": 1.0, "night": 1.0}, 0.0)
 	mat.set_shader_parameter("sea_tint", Color(0.025, 0.14, 0.21).lerp(Color(0.08, 0.15, 0.17), dull))
-	# the sea the weather brings: glassy at dawn, a storm sea in the rain
-	sea = SEA_STATE.get(mood, SEA_STATE.day)
+	# the sea the weather brings: glassy at dawn, a storm sea in the rain (and
+	# the breeze getting up through the morning while time passes)
+	sea = Vector2.ZERO
+	for m in weights:
+		sea += (SEA_STATE.get(m, SEA_STATE.day) as Vector2) * float(weights[m])
+	if weights.size() <= 1:
+		for m in weights:
+			sea = SEA_STATE.get(m, SEA_STATE.day)
 	_pack()
 	for m in [mat, wake_mat, patch_mat]:
 		Mats.set_shared(m, "sea", sea)

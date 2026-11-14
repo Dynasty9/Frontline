@@ -1306,6 +1306,29 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
     mood had them, and the copy the battlefield is lit and reflects by is nearly half way to a warm grey so shade
     turns cool without going cyan. The sun's direction is passed in, not read from the light: a reflection probe draws
     the sky with no light. Midday keeps its photographed sky; overcast, rain and night their painted ones.
+  - **Time passes** (`time_of_day.gd`, on in Cinematic): the battle's light moves on as it goes. The battle opens at
+    its mood's hour (dawn 07:00, midday 13:00, golden hour 16:30, dusk 18:30, night 01:00) and the clock runs six
+    times as fast as life, so golden hour reaches full night in about forty minutes and a night battle sees the sky
+    pale towards dawn after an hour and a half. The sun follows a smooth path (Catmull-Rom through each daylight mood's
+    own sun, on round below the horizon) and each mood blends into the next; twilight goes with the sun's depth below
+    the horizon, not the clock (night from 12 degrees down). Below dusk's own sun the sunlight reddens as it sets;
+    after sunset comes a blue hour (sky, air and land go blue with the sun 4 to 7 degrees down), and the exposure
+    opens up over the dark gap before the moon is up, more under the physical sky, which darkens faster. The sun's
+    light fades out and the moon's in, handing over only while neither lights the ground. With Physical sky on, the
+    scattered sky carries dusk on past sunset (its battlefield light going from warm grey to the clear sky's blue)
+    and fades into the painted night (stars and moon) as the sun sinks from 4 to 11 degrees down; midday's
+    photograph fades in and out either side of 13:00, the scattered midday sky calibrated to its brightness
+    (`tools/sky_calibration.py`). Lamps in windows, street lights, the night's flares, stars, the eye's night vision,
+    sun shafts, water, smoke, fire light, mountain clouds, cloud shadows and the fog of war's shade all follow the
+    blend (`Atmosphere.by_mood`). The light is a pure function of the battle's time (`World.time`, the host's) and
+    the mood it began in, applied in two-second steps: every player with it on sees the same sky at the same
+    moment, a replay or seed brings it back, and the sky's lighting is re-rendered only once a step (measured: no
+    extra GPU time in the frames after a step). The hills' baked sun shadows follow the sun once it has moved two
+    degrees (re-baked a few hundred cells a frame), and the mountains' reflection is re-captured every three quarters
+    of an hour of clock. The meadows keep drying on the slopes facing the sun the battle began with. Rain, overcast
+    and haze are weather and hold, and night stays looks only: nothing in the simulation reads it. Photo mode's time
+    of day still overrides the light while it's open. `FL_DEBUG_TOD=1` prints each step and the GPU time after it;
+    `FL_DEBUG_TOD_AT=S` and `FL_DEBUG_TOD_PACE=N` light a battle as it will be S seconds in, N times as fast.
   - **Camera and lens** (Settings > Lighting & Look): compute passes run on the HDR scene just before it is
     tonemapped (a `CompositorEffect`, Forward+ only), at a quarter of the resolution except the final composite.
     Sun shafts are a radial blur of the open sky near the sun (Mitchell, GPU Gems 3, 2007). Lens flare and glare:
