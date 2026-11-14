@@ -717,8 +717,11 @@ func _leader_marks(men: Array, a: float) -> void:
 			draw_polyline(pts, Color(tc.r, tc.g, tc.b, a), 1.8, true)
 		var o: Array = hud.orders.get(s.sid, [])
 		if not o.is_empty() and int(o[5]) >= 0 and now - int(o[5]) < 3500:
-			var blink := 0.6 + 0.4 * sin(now / 90.0)
-			MapSymbols.glyph(self, "radio", sp + Vector2(13, -2), 6.5, Color(0.6, 1.0, 0.7), a * blink)
+			# the order lands with a flicker (on, off, on), then holds steady
+			# (docs/UI.md, Motion: nothing pulses)
+			var since := now - int(o[5])
+			if UiMotion.reduced() or since < 60 or since >= 120:
+				MapSymbols.glyph(self, "radio", sp + Vector2(13, -2), 6.5, Color(0.6, 1.0, 0.7), a)
 
 static func _talk_kind(e: Entity, t: String) -> String:
 	var lo := t.to_lower()

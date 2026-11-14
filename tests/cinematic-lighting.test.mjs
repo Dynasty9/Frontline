@@ -8,6 +8,6 @@ test("cinematic lighting presets, shadow fit, light shadows and sky moods", asyn
   const { stdout, stderr } = await promisify(execFile)(process.env.GODOT || "godot", [
     "--headless", "--path", ROOT, "res://tests/fixtures/cinematic-lighting.tscn",
   ], { timeout: 120_000 });
-  assert.doesNotMatch(stdout + stderr, /SCRIPT ERROR|SHADER ERROR|Parse Error|Assertion failed/);
+  assert.doesNotMatch(stdout + stderr, /SCRIPT ERROR|SHADER ERROR|Parse Error|Assertion failed|is_inside_tree/);
   assert.match(stdout, /CINEMATIC LIGHTING passed/);
 });

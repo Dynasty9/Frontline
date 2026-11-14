@@ -122,6 +122,38 @@ stain to exactly the tint the wall's body was drawn in (`Structure._tone`), so i
 edge; the fixture checks the rim comes back to the wall's colour. Everything stays within a hand's breadth of the
 face, so cover is unchanged.
 
+## Furniture
+
+A house's room is furnished (`BuildingInteriors`): against each wall with no window or door in it
+(`Structure._house_wall_detail`, from a stream of its own) a wardrobe, a bookcase, a dresser with the television
+or a lamp on it, a settee, a kitchen run (cupboards, the sink, the cooker, wall cupboards) or a desk with its
+chair; pictures and a shelf hang only over the low ones. Everything keeps `REACH` (0.65 m) out from its wall and
+in from its ends, so two walls meeting in a corner never put things in each other's way. A floor big enough has a
+table in the middle with its chairs (one knocked over now and then). It is looks only, in the walls' own
+world-space materials so a town's walls still draw together; a chair and a table are one cached shape each, and
+books stand in runs. Render three rooms with `--building-kinds=house_rooms`.
+
+## House plans and storeys
+
+A house is more than four walls when the town plans it so (`TownGen._plan`, from a stream of its own seeded from
+where the lot is, so the streets and lots are laid out as they were). Many of the bigger houses, most of the
+shops near the middle (flats over the shop) and most farmhouses have a floor over the ground floor:
+`BuildingStoreys.upper`, drawn with the roof (its eaves 2.8 m higher), with walls on the ground floor's lines,
+windows in most bays, curtains and a lamp on in some rooms, a string course at the floor and a band under the
+eaves. It is looks only, like the roof: the ground floor's walls are the cover men fight from, the floor above
+lifts off with the roof when men go in, and when a wall under it is knocked out (`Structure._bring_down_floors`)
+it comes down with the roof rather than stand on air.
+
+A wide house with the garden for it may have a wing out of the back, over whole bays of the back wall: at its
+left end (an L; the back downpipe is at the right) or in the middle (a T). `MapGen._house` lays the back wall's
+bays as it always did, the same random numbers, only out at the wing's far end; the wing's sides, floor and roof
+are spawned after everything else on the map (`MapGen._late`), so the wing itself renumbers nothing (a yard tree
+that would stand in it moves or goes, which does). The middle bay of its far end is a back door out to the garden
+(the way in for a squad clearing it). On one floor a wing is no deeper than it is wide, so its ridge runs with
+the house's; its roof takes the house roof's looks (`Structure.look`: the same covering, tint and pitch). The
+garden keeps clear of it (`TownGen._in_wing`). Render four with `--building-kinds=house_plans` (`--building-rear`
+for the wings); `--scenario=storeys` blows in a wall under a floor.
+
 ## Rubble
 
 A heap of rubble (where the map has a house wall down, or where one is brought down in a fight) is
@@ -187,6 +219,21 @@ In a garden deep enough, about two in five have a shed at the bottom (in the cor
 door to the house) and some lawns with room for it a trampoline; these are drawn last, so the rest stays as it was.
 They're set dressing (Decor, appended after the rest so the town's other dressing keeps its looks): no cover,
 and a blast or a truck knocks them over. Render them with `--building-kinds=house_yard` in the studio stage.
+
+## Wall fittings
+
+What's fixed to a house's walls comes from `BuildingFittings` (`meter_box`, `tap`, `wall_unit`, `wall_dish`,
+`house_number`, `letterbox`, `doormat`), placed by `Structure._wall_fixtures` from a stream of its own, so
+nothing else about a wall changes. About one plain wall in four carries something: the cabinet the mains come in
+at (low on the wall with the duct its cable comes up in, or on the ground for the gas), an outside tap on its
+copper pipe (a hose coiled on a hook by about half), an air conditioner's outdoor unit on angle brackets with its
+pipes in white trunking and its drain run down, or on a concrete pad at the wall's foot, or a satellite dish on
+an arm below the gutter with its cable clipped down the wall. By a front door are the house's number on an enamel
+or painted plate (seven-segment figures) and often a letterbox, on the side the lamp isn't, and a mat on the step
+in half of them. Each keeps within the room `_wall_fixtures` gives it, 0.6 m clear of a wall's ends (where the
+downpipes come down), and none goes on a wall with ivy; a barn gets only its meter and tap. The fixture checks
+each one's reach and that some plain walls carry one. Render a house showing them with
+`--building-kinds=house_fixtures` in the studio stage.
 
 ## Openings stay open
 

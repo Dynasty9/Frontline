@@ -18,7 +18,12 @@
 
 Unicode true
 ManifestDPIAware true
-SetCompressor /SOLID lzma
+; zlib, not LZMA. Nearly all of the game is one executable holding data that is
+; already compressed (textures, baked smoke), which LZMA shrinks hardly better
+; than zlib (288 MB against 301) but unpacks many times slower: LZMA left
+; players watching a stuck progress bar for a minute or more, zlib unpacks it in
+; seconds. Not solid, either, so the details line counts up as the game unpacks.
+SetCompressor zlib
 
 !include "MUI2.nsh"
 !include "FileFunc.nsh"
