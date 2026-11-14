@@ -64,6 +64,14 @@ const BRICK := TILE / 2  # probe columns across a tile
 ## bounce, and below them the height the columns stand on (for the pixels).
 const ATLAS := Vector2i(P * LAYERS, P * 3)
 
+## A roof's cubes: as solid as any to the sky (two of them pass under half a
+## percent), but marked, so the sun trace lets ROOF_SUN through them. The game
+## lifts a roof off to show the men inside and cuts the sun in the room to as
+## much (PROBE_ROOM_SUN): the probes see the same sunlit patch on the floor the
+## player does, and bounce it into the room's shade.
+const ROOF := 14.0 / 15.0
+const ROOF_SUN := 0.4
+
 ## How far rays reach (in voxels, BAKE_SHADER's 18 steps of 0.9): a tile's
 ## probes see into the next tile but no further.
 const REACH := 16.0
@@ -276,7 +284,7 @@ func _build() -> void:
 	_vp.render_target_update_mode = SubViewport.UPDATE_DISABLED
 	add_child(_vp)
 	var sh := Shader.new()
-	sh.code = BAKE_SHADER.replace("__TILE__", "%d.0" % TerrainTexture.TILE)
+	sh.code = BAKE_SHADER.replace("__TILE__", "%d.0" % TerrainTexture.TILE).replace("__ROOF_SUN__", "%.2f" % ROOF_SUN)
 	_bake_mat = ShaderMaterial.new()
 	_bake_mat.shader = sh
 	_fill_mat = ShaderMaterial.new()
@@ -462,14 +470,15 @@ func _boxes(st: Structure) -> Array:
 	match st.skind:
 		"roof":
 			var h := st.size.y
-			out.append([xf * Transform3D(Basis(), Vector3(0, h + 0.15, 0)), Vector3(st.size.x * 0.5 + 0.3, 0.2, st.size.z * 0.5 + 0.3), 1.0, 0.18])
+			# (marked ROOF: the sun trace lets some through, as the game does under a lifted roof)
+			out.append([xf * Transform3D(Basis(), Vector3(0, h + 0.15, 0)), Vector3(st.size.x * 0.5 + 0.3, 0.2, st.size.z * 0.5 + 0.3), ROOF, 0.18])
 			if st.variant % 2 == 0:
 				# pitched: the attic's wedge, as a box two thirds as wide and a third as high
 				var long_x := st.size.x >= st.size.z
 				var w := minf(st.size.x, st.size.z)
 				var rise := w * 0.5 * tan(deg_to_rad(28.0))
 				var half := Vector3(st.size.x * 0.5, rise / 3.0, w / 3.0) if long_x else Vector3(w / 3.0, rise / 3.0, st.size.z * 0.5)
-				out.append([xf * Transform3D(Basis(), Vector3(0, h + 0.35 + rise / 3.0, 0)), half, 1.0, 0.18])
+				out.append([xf * Transform3D(Basis(), Vector3(0, h + 0.35 + rise / 3.0, 0)), half, ROOF, 0.18])
 			return out
 		"tree":
 			if not st.burnt:
@@ -789,6 +798,8 @@ uniform vec3 sun_dir = vec3(0.0, 1.0, 0.0);
 uniform vec3 sun_col = vec3(1.0);
 uniform vec3 sky_col = vec3(0.4);
 uniform vec3 ground_albedo = vec3(0.15, 0.14, 0.1);
+// what floors under roofs are, near enough: tiles, boards and flags, lighter than the field
+uniform vec3 floor_albedo = vec3(0.36, 0.3, 0.24);
 
 varying vec2 px;
 
@@ -839,6 +850,7 @@ bool covered(vec2 xz, float geo) {
 // how much sunlight reaches o
 float sunlit(vec3 o) {
 	float T = 1.0;
+	bool roof = false;  // through a roof: as much sun as the game lets in under a lifted one
 	for (int i = 0; i < 18; i++) {
 		vec3 q = o + sun_dir * (float(i) * 0.9 + 0.5) * vsz;
 		vec2 h = ground_at(q.xz);
@@ -849,12 +861,17 @@ float sunlit(vec3 o) {
 			break;
 		}
 		float a;
-		T *= 1.0 - cube(q, h.y, a);
+		float dn = cube(q, h.y, a);
+		if (abs(dn - 14.0 / 15.0) < 0.01) {
+			roof = true;
+		} else {
+			T *= 1.0 - dn;
+		}
 		if (T < 0.03) {
 			return 0.0;
 		}
 	}
-	return T;
+	return roof ? T * __ROOF_SUN__ : T;
 }
 
 void fragment() {
@@ -905,7 +922,7 @@ void fragment() {
 			float ph = float(i) * 2.39996323;
 			vec3 d = vec3(cos(ph) * r, y, sin(ph) * r);
 			float T = 1.0;
-			int kind = 0;  // 0: out to the sky (or the open ground), 1: a solid cube, 2: the ground, in the way
+			int kind = 0;  // 0: out to the sky (or the open ground), 1: a solid cube, 2: the ground, in the way, 3: a floor under a roof
 			vec3 hit = o;
 			float halb = 0.0;
 			float palb = 0.0;
@@ -916,7 +933,10 @@ void fragment() {
 				}
 				vec2 h = ground_at(q.xz);
 				if (q.y < h.x) {
-					if (d.y > 0.05 || covered(q.xz, h.y)) {
+					if (covered(q.xz, h.y)) {
+						kind = 3;  // a floor under a roof
+						hit = vec3(q.x, h.x, q.z);
+					} else if (d.y > 0.05) {
 						kind = 2;
 						hit = vec3(q.x, h.x, q.z);
 					}
@@ -949,7 +969,9 @@ void fragment() {
 				} else {
 					vec3 nh = vec3(0.0, 1.0, 0.0);
 					vec3 alb3 = ground_albedo;
-					if (kind == 1) {
+					if (kind == 3) {
+						alb3 = floor_albedo;
+					} else if (kind == 1) {
 						// the face of the cube the ray went in by
 						vec3 ad = abs(d);
 						nh = ad.x > ad.y && ad.x > ad.z ? vec3(-sign(d.x), 0.0, 0.0) : (ad.y > ad.z ? vec3(0.0, -sign(d.y), 0.0) : vec3(0.0, 0.0, -sign(d.z)));

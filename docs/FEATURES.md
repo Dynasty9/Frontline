@@ -1266,7 +1266,9 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   the sun, which stands for skylight too; what it doesn't see comes back lit by the bounce. Where the probes see
   little sky in any direction, a room, the sun is cut to 40%: a roof lifted off to show the men inside takes its
   shadow with it, and this gives the room back its indoors without hiding them (wall feet, roof tops and narrow
-  streets see about half the sky and keep their sun). Open ground under
+  streets see about half the sky and keep their sun). The probes' trace lets the same 40% of sun through roofs, so they see
+  the sunlit patch the player sees and bounce it, warm and floor-coloured, into the room's shade; skylight and fill
+  never fall below 30%, so a room's corners are dim, not black. Open ground under
   open sky counts as seen (the sky's lower half already stands for it), so open fields look as they did. Only what
   changes is redone: a structure built, destroyed or burnt marks its tile, which is laid again on the CPU and its
   probes traced again, two tiles a frame nearest the camera first; craters retrace the tiles round them, and trenches too (their mask cuts them into the ground the probes trace and
