@@ -40,6 +40,7 @@ var _mood_opt: OptionButton
 var _seats_seg: UiSeg
 var _fill_seg: UiSeg
 var _ally_seg: UiSeg
+var _ai_seg: UiSeg  # how good the AI commanders are (Defs.AI_LEVELS)
 var _drop_seg: UiSeg
 var _list_seg: UiSeg
 var _invite_btn: Button
@@ -275,6 +276,15 @@ func _settings_panel() -> Control:
 	_set_row(v, "seats", "Seats", _seats_seg)
 	_fill_seg = _switch(v, "fill", "AI fills empty side", "The AI takes a side nobody plays.", func(on: bool): Net.set_setting("ai_fill", on))
 	_ally_seg = _switch(v, "ally", "AI with the players", "An AI commander fights alongside the players too.", func(on: bool): Net.set_setting("ai_allies", on))
+	var lv := []
+	for k in Defs.AI_LEVEL_KEYS:
+		lv.append(String(Defs.AI_LEVELS[k].name))
+	_ai_seg = UiSeg.make(lv, 1)
+	for i in Defs.AI_LEVEL_KEYS.size():
+		(_ai_seg.get_child(i) as Button).tooltip_text = String(Defs.AI_LEVELS[Defs.AI_LEVEL_KEYS[i]].blurb)
+	_ai_seg.changed.connect(func(i: int): Net.set_setting("ai_difficulty", String(Defs.AI_LEVEL_KEYS[i])))
+	_set_row(v, "ai", "AI difficulty", _ai_seg)
+	(_set_rows.ai as Control).tooltip_text = "How good the AI commanders are, the enemy's and any fighting beside you."
 	_drop_seg = _switch(v, "drop", "Join mid-battle", "Players can join a battle that's already under way.", func(on: bool): Net.set_setting("drop_in", on))
 	_list_seg = _switch(v, "list", "Listed online", "In the server browser, for anyone to find.", func(on: bool):
 		if on:
@@ -689,6 +699,10 @@ func _refresh_settings(host: bool, mode: String, mk: String) -> void:
 	_on_off("fill", _fill_seg, bool(s.get("ai_fill", true)))
 	(_set_rows.ally as Control).visible = not mission
 	_on_off("ally", _ally_seg, bool(s.get("ai_allies", false)))
+	var lvl := Defs.ai_level(s.get("ai_difficulty", "regular"))
+	(_set_rows.ai as Control).visible = not mission
+	_ai_seg.select(Defs.AI_LEVEL_KEYS.find(lvl))
+	(_set_codes.ai as Label).text = String(Defs.AI_LEVELS[lvl].name).to_upper()
 	_on_off("drop", _drop_seg, bool(s.get("drop_in", true)))
 	(_set_rows.list as Control).visible = host and Online.hosting()
 	_on_off("list", _list_seg, Online.want_listed)

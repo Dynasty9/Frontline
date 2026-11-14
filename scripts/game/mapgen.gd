@@ -150,6 +150,7 @@ func generate() -> void:
 	if String(world.settings.get("mission", "")) == "":
 		_foothill_woods(area)
 		_alpine_scatter(tg.decor, area)
+	_spawn_late()
 	world.set_decor(tg.decor, tg.rect)
 
 	world.terrain.release_nav()
@@ -946,6 +947,20 @@ func scenario(sname: String) -> void:
 				for sq in sqb:
 					ids2.append(sq.sid)
 				world.execute_cmd(a, {"t": "assault", "squads": ids2, "pos": Vector3(0, 0, -30), "face": Vector3(0, 0, -1)})
+		"storeys":
+			# a house on two floors with a wing out of the back (as the town
+			# plans the bigger ones), and a charge that blows in one of its
+			# front walls: the floor above comes down with the roof over it,
+			# the wing, on one floor, stands
+			var plan := {"storeys": 2, "wing": [0, 2, 4.4, false], "seed": 7}
+			var ent: Array[Vector3] = []
+			_house(Vector3(0, 0, -30), 11.2, 8.0, 0.0, 1.0, false, 0.0, ent, false, plan)
+			_spawn_late()
+			r.spawn_squad("rifle_squad", 0, a, Vector3(0, 0, 10))
+			r.spawn_squad("fighter_cell", 1, b, Vector3(0, 0, -160))
+			world.get_tree().create_timer(3.0, true, true).timeout.connect(func():
+				if is_instance_valid(world):
+					world.combat.explode(Vector3(-4.2, 0.6, -34.6), {"dmg": 500.0, "radius": 1.6, "struct_mult": 3.0, "size": 1.2, "team": -1}))
 		"gdrill":
 			# grenade drill: frags with all sorts of fuses land among a squad
 			# crowded round a wounded man (the reflexes, over and over)
@@ -1125,11 +1140,35 @@ func _smooth(pts: Array) -> PackedVector3Array:
 ## Returns false if there's no room.
 ## (`barn`: a farm's barn, weatherboarded under a sheet roof with a bare
 ## floor; it draws the same random numbers as a house.)
-func _house(c: Vector3, w: float, d: float, axis: float, street_side: float, yard := true, ruin_p := 0.35, entrances: Array[Vector3] = [], barn := false) -> bool:
+## `plan` (TownGen._plan) makes more of it: "storeys" 2 for a floor over the
+## ground floor (drawn with the roof: BuildingStoreys), "wing" [first bay,
+## bays, depth, flat] for a wing out of the back over whole bays of the back
+## wall, its walls and roof drawn from the plan's own "seed". Where the wing
+## went is left in it as "built_wing" [centre, half size, yaw], so the yard
+## keeps clear of it.
+func _house(c: Vector3, w: float, d: float, axis: float, street_side: float, yard := true, ruin_p := 0.35, entrances: Array[Vector3] = [], barn := false, plan := {}) -> bool:
 	var half := Vector2(w * 0.5 + 0.3, d * 0.5 + 0.3)
 	if not _is_free(c, half, axis, 1.0):
 		return false
 	var b := Basis(Vector3.UP, axis)
+	# the wing: the bays of the back wall it spans are laid as they always
+	# were (the same random numbers), only out at its far end; its sides, its
+	# floor and its roof come after everything else on the map, so nothing
+	# else is numbered differently
+	var wing: Array = plan.get("wing", [])
+	var bays := maxi(1, int(round(w / 2.8)))
+	var bay := w / bays
+	var wk0 := 0
+	var wk := 0
+	var wd := 0.0
+	var wc := c
+	if not wing.is_empty() and street_side > 0.0 and not barn:
+		wk0 = wing[0]
+		wk = wing[1]
+		wd = wing[2]
+		wc = c + b * Vector3(-w * 0.5 + (wk0 + wk * 0.5) * bay, 0, d * 0.5 + wd * 0.5)
+		if wk < 1 or wk0 + wk > bays or wd < 2.0 or not _is_free(wc, Vector2(wk * bay * 0.5 + 0.3, wd * 0.5 + 0.3), axis, 0.6):
+			wk = 0
 	var color := rng.randi() % Structure.HOUSE_COLORS.size()
 	if barn:
 		# (the weatherboarded material, in one of its three colours)
@@ -1140,6 +1179,9 @@ func _house(c: Vector3, w: float, d: float, axis: float, street_side: float, yar
 	_spawn("floor", c, axis, -1, {"size": Vector3(w, 0.06, d), "variant": 1 if ruined else (2 if barn else 0)})
 	_unplace_last()
 	_place([Vector2(c.x, c.z), half, axis])
+	if wk > 0:
+		_place([Vector2(wc.x, wc.z), Vector2(wk * bay * 0.5 + 0.3, wd * 0.5 + 0.3), axis])
+		plan["built_wing"] = [Vector2(wc.x, wc.z), Vector2(wk * bay * 0.5, wd * 0.5), axis]
 	# four walls: front faces the street
 	var sides := [
 		[Vector3(0, 0, -d * 0.5), w, 0.0],
@@ -1163,6 +1205,8 @@ func _house(c: Vector3, w: float, d: float, axis: float, street_side: float, yar
 		for k in segs:
 			var local_off := (k + 0.5) * seg_len - L * 0.5
 			var lp: Vector3 = s[0] + (Vector3(local_off, 0, 0) if s[2] == 0.0 else Vector3(0, 0, local_off))
+			if si == 1 and k >= wk0 and k < wk0 + wk:
+				lp.z += wd  # (out at the wing's far end)
 			var wp: Vector3 = c + b * lp
 			# turned so the wall's local +z faces out of the house (the model
 			# dresses that face: sills, frames, shutters, the door step)
@@ -1177,15 +1221,29 @@ func _house(c: Vector3, w: float, d: float, axis: float, street_side: float, yar
 				entrances.append(wp)
 			elif seg_len > 2.0 and rng.randf() < 0.5:
 				variant = 1
+			if si == 1 and wk > 0 and k == wk0 + (wk >> 1):
+				# the wing's back door, out to the garden (a way in for whoever
+				# clears it, as the front door is for the house)
+				variant = 2
+				entrances.append(wp)
 			# most front doors are shut (decided from where it stands: the map's
 			# random numbers stay as they were)
 			var shut := variant == 2 and (doors_shut == 1 or (doors_shut < 0 and posmod(int(absf(wp.x) * 7.3 + absf(wp.z) * 13.1), 10) < 7))
 			# (a ruin's lamps are long out)
 			world.spawn("structure", {"skind": "house_wall", "pos": Vector3(wp.x, level, wp.z), "yaw": yaw, "variant": variant, "size": Vector3(seg_len, float(color), 0.4), "door": shut, "dark": ruined})
-	# a roof on every house still standing: tiled and pitched, or flat
+	# a roof on every house still standing: tiled and pitched, or flat (over
+	# a storey above the ground floor, where it has one)
+	var flat := false
+	var roof_id := 0
 	if not ruined:
-		var flat := rng.randf() < 0.4
-		world.spawn("structure", {"skind": "roof", "pos": c, "yaw": axis, "size": Vector3(w, 3.0, d), "variant": color * 2 + (1 if flat and not barn else 0)})
+		flat = rng.randf() < 0.4
+		var eaves := BuildingStoreys.GROUND + (BuildingStoreys.STOREY if int(plan.get("storeys", 1)) > 1 and not barn else 0.0)
+		roof_id = world.spawn("structure", {"skind": "roof", "pos": c, "yaw": axis, "size": Vector3(w, eaves, d), "variant": color * 2 + (1 if flat and not barn else 0)}).eid
+	if not ruined and int(plan.get("storeys", 1)) > 1 and not barn:
+		world.stat("house_two_storeys")
+	if wk > 0:
+		world.stat("house_wing")
+		_wing(c, b, axis, w, d, wk0, wk, bays, wd, level, color, ruined, flat or bool(wing[3]), int(plan.get("seed", 0)), roof_id)
 	if rng.randf() < 0.5:
 		var ip := c + b * Vector3(rng.randf_range(-w * 0.25, w * 0.25), 0, rng.randf_range(-d * 0.2, d * 0.2))
 		world.spawn("structure", {"skind": "crates", "pos": ip, "yaw": axis + rng.randf_range(-0.4, 0.4), "variant": 0})
@@ -1203,6 +1261,53 @@ func _house(c: Vector3, w: float, d: float, axis: float, street_side: float, yar
 			var lp2 := Vector3((k + 0.5) * 4.0 - segs2 * 2.0, 0, 0)
 			_try("low_wall", yc + b * lp2, axis, -1, {"size": Vector3(4.0, 1.0, 0.5), "variant": 0 if rng.randf() < 0.7 else 2})
 	return true
+
+
+
+## What's spawned after everything else on the map (a house's wing: see
+## _house), so all the rest keeps the numbers, and the looks, it had.
+var _late: Array[Dictionary] = []
+
+
+func _spawn_late() -> void:
+	for props in _late:
+		world.spawn("structure", props)
+	_late.clear()
+
+
+## A house's wing out of its back over bays `k0` to `k0 + n` of the back wall
+## (each `bay` long, of `bays`), `wd` deep: its side walls (from the corner of
+## the house where it's flush with an end, else from the back wall), its
+## floor and its roof (flat, or pitched like the house's: its looks from the
+## house's roof, `roof_id`), all at the house's `level`. Its far end is the
+## bays it spans, already laid by _house.
+func _wing(c: Vector3, b: Basis, axis: float, w: float, d: float, k0: int, n: int, bays: int, wd: float, level: float, color: int, ruined: bool, flat: bool, seed: int, roof_id: int) -> void:
+	var pr := RandomNumberGenerator.new()
+	pr.seed = seed
+	var bay := w / bays
+	var x0 := -w * 0.5 + k0 * bay
+	var x1 := x0 + n * bay
+	for e in 2:
+		var x := x0 if e == 0 else x1
+		var flush := (e == 0 and k0 == 0) or (e == 1 and k0 + n == bays)
+		var z0 := d * 0.5 - 0.2 if flush else d * 0.5 + 0.2
+		var z1 := d * 0.5 + wd - 0.2
+		var L := z1 - z0
+		var segs := maxi(1, int(round(L / 2.8)))
+		var seg_len := L / segs
+		var yaw := axis + PI * 0.5 + (PI if e == 0 else 0.0)
+		for k in segs:
+			var wp := c + b * Vector3(x, 0, z0 + (k + 0.5) * seg_len)
+			if ruined and pr.randf() < 0.3:
+				if pr.randf() < 0.6:
+					_late.append({"skind": "rubble", "pos": Vector3(wp.x, level, wp.z), "yaw": yaw + pr.randf_range(-0.2, 0.2), "size": Vector3(seg_len * 0.9, 0, 1.2)})
+				continue
+			var variant := 1 if seg_len > 2.0 and pr.randf() < 0.5 else 0
+			_late.append({"skind": "house_wall", "pos": Vector3(wp.x, level, wp.z), "yaw": yaw, "variant": variant, "size": Vector3(seg_len, float(color), 0.4), "door": false, "dark": ruined})
+	var wc := c + b * Vector3((x0 + x1) * 0.5, 0, d * 0.5 + wd * 0.5)
+	_late.append({"skind": "floor", "pos": Vector3(wc.x, level, wc.z), "yaw": axis, "team": -1, "size": Vector3(x1 - x0, 0.06, wd), "variant": 1 if ruined else 0})
+	if not ruined:
+		_late.append({"skind": "roof", "pos": Vector3(wc.x, level, wc.z), "yaw": axis, "size": Vector3(x1 - x0, BuildingStoreys.GROUND, wd), "variant": color * 2 + (1 if flat else 0), "look": roof_id})
 
 
 func _hedgerow() -> void:

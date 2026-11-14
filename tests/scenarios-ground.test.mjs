@@ -42,6 +42,23 @@ scenarioTests([
     },
   },
   {
+    scenario: "storeys",
+    seed: 1,
+    secs: 8,
+    does: "a charge blows in a front wall of a house on two floors: the floor above comes down with its roof, the wing stands",
+    begin: async (f) => {
+      const roofs = await f.structures({ kind: "roof" });
+      assert.equal(roofs.length, 2, "the house has its roof and the wing its own");
+    },
+    check: async (f) => {
+      f.atLeast("house_two_storeys", 1, "the house was built on two floors");
+      f.atLeast("house_wing", 1, "with a wing out of the back");
+      f.atLeast("storey_fell", 1, "the floor above came down when the wall under it went");
+      const roofs = await f.structures({ kind: "roof" });
+      assert.equal(roofs.length, 1, "the wing's roof still stands");
+    },
+  },
+  {
     scenario: "fire",
     seed: 4,
     // Allow staggered ignition and randomized fuel loads to finish burning.

@@ -122,6 +122,38 @@ stain to exactly the tint the wall's body was drawn in (`Structure._tone`), so i
 edge; the fixture checks the rim comes back to the wall's colour. Everything stays within a hand's breadth of the
 face, so cover is unchanged.
 
+## Furniture
+
+A house's room is furnished (`BuildingInteriors`): against each wall with no window or door in it
+(`Structure._house_wall_detail`, from a stream of its own) a wardrobe, a bookcase, a dresser with the television
+or a lamp on it, a settee, a kitchen run (cupboards, the sink, the cooker, wall cupboards) or a desk with its
+chair; pictures and a shelf hang only over the low ones. Everything keeps `REACH` (0.65 m) out from its wall and
+in from its ends, so two walls meeting in a corner never put things in each other's way. A floor big enough has a
+table in the middle with its chairs (one knocked over now and then). It is looks only, in the walls' own
+world-space materials so a town's walls still draw together; a chair and a table are one cached shape each, and
+books stand in runs. Render three rooms with `--building-kinds=house_rooms`.
+
+## House plans and storeys
+
+A house is more than four walls when the town plans it so (`TownGen._plan`, from a stream of its own seeded from
+where the lot is, so the streets and lots are laid out as they were). Many of the bigger houses, most of the
+shops near the middle (flats over the shop) and most farmhouses have a floor over the ground floor:
+`BuildingStoreys.upper`, drawn with the roof (its eaves 2.8 m higher), with walls on the ground floor's lines,
+windows in most bays, curtains and a lamp on in some rooms, a string course at the floor and a band under the
+eaves. It is looks only, like the roof: the ground floor's walls are the cover men fight from, the floor above
+lifts off with the roof when men go in, and when a wall under it is knocked out (`Structure._bring_down_floors`)
+it comes down with the roof rather than stand on air.
+
+A wide house with the garden for it may have a wing out of the back, over whole bays of the back wall: at its
+left end (an L; the back downpipe is at the right) or in the middle (a T). `MapGen._house` lays the back wall's
+bays as it always did, the same random numbers, only out at the wing's far end; the wing's sides, floor and roof
+are spawned after everything else on the map (`MapGen._late`), so the wing itself renumbers nothing (a yard tree
+that would stand in it moves or goes, which does). The middle bay of its far end is a back door out to the garden
+(the way in for a squad clearing it). On one floor a wing is no deeper than it is wide, so its ridge runs with
+the house's; its roof takes the house roof's looks (`Structure.look`: the same covering, tint and pitch). The
+garden keeps clear of it (`TownGen._in_wing`). Render four with `--building-kinds=house_plans` (`--building-rear`
+for the wings); `--scenario=storeys` blows in a wall under a floor.
+
 ## Rubble
 
 A heap of rubble (where the map has a house wall down, or where one is brought down in a fight) is
