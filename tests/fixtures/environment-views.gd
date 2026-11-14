@@ -114,7 +114,7 @@ func capture() -> void:
 				if key == "dugout":
 					var rear: float = -st._enemy_side()
 					views.append(["dugout-eye", st.position, 5.0, -30.0, 0.35])
-					eyes["dugout-eye"] = [st.position + b * Vector3(1.7, -0.25, -rear * 0.45), st.position + b * Vector3(0, -0.55, rear * 1.7)]
+					eyes["dugout-eye"] = [st.position + b * Vector3(0.75, -0.2, -rear * 0.5), st.position + b * Vector3(0, -0.5, rear * 1.75)]
 				if key == "mg-bay":
 					views.append(["mg-front", st.position, 5.0, -30.0, 0.35])
 					eyes["mg-front"] = [st.position + b * Vector3(1.6, 0.9, -7.0), st.position + b * Vector3(0, 0.3, -1.3)]

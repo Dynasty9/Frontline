@@ -160,7 +160,8 @@ static var _wattle_mesh: ArrayMesh
 
 
 ## A hurdle: hazel withies woven in and out of a row of stakes, PANEL long and
-## a metre high, its face at z = 0 (stakes behind, at +z).
+## a metre high, its face at z = 0 (stakes behind, at +z). The earth hides the
+## back, so each withy is a ribbon bent round the stakes, not a full rod.
 static func _hurdle() -> ArrayMesh:
 	if _wattle_mesh != null:
 		return _wattle_mesh
@@ -170,17 +171,33 @@ static func _hurdle() -> ArrayMesh:
 	var gap := PANEL / float(stakes - 1)
 	for i in stakes:
 		var x := -PANEL * 0.5 + i * gap
-		BuildingWire.strand(v, n, PackedVector3Array([Vector3(x, -0.52, 0.035), Vector3(x + 0.006, 0.0, 0.03), Vector3(x - 0.004, 0.56, 0.035)]), 0.026)
-	for row in 22:
-		var y := -0.48 + row * 0.045
-		var pts := PackedVector3Array()
+		BuildingWire.strand(v, n, PackedVector3Array([Vector3(x, -0.52, 0.035), Vector3(x - 0.004, 0.56, 0.035)]), 0.026)
+	var segments := (stakes - 1) * 2
+	for row in 14:
+		var y := -0.47 + row * 0.07
+		var half := 0.03 + 0.004 * sin(row * 2.3)
 		var phase := PI if row % 2 == 1 else 0.0
-		for j in 25:
-			var x := -PANEL * 0.5 + PANEL * j / 24.0
-			pts.append(Vector3(x, y + 0.008 * sin(x * 5.0 + row * 1.7), 0.035 + 0.026 * sin(x / gap * PI + phase)))
-		BuildingWire.strand(v, n, pts, 0.021 + 0.004 * sin(row * 2.3))
+		var prev := Vector3.ZERO
+		for j in segments + 1:
+			var x := -PANEL * 0.5 + PANEL * j / float(segments)
+			var p := Vector3(x, y + 0.008 * sin(x * 5.0 + row * 1.7), 0.035 + 0.028 * sin(x / gap * PI + phase))
+			if j > 0:
+				var along := (p - prev).normalized()
+				var out := Vector3.UP.cross(along).normalized()
+				if out.z > 0.0:
+					out = -out
+				var up := Vector3.UP * half
+				_tri_pair(v, n, prev - up, prev + up, p + up, p - up, (out + Vector3.UP * 0.3).normalized(), (out - Vector3.UP * 0.3).normalized())
+			prev = p
 	_wattle_mesh = WorksModels._commit(v, n)
 	return _wattle_mesh
+
+
+## A quad (a b c d round its edge), lit across its width: the top edge turned
+## up a little and the bottom down, so a flat ribbon shades like a round withy.
+static func _tri_pair(v: PackedVector3Array, n: PackedVector3Array, a: Vector3, b: Vector3, c: Vector3, d: Vector3, top: Vector3, bottom: Vector3) -> void:
+	WorksModels._tri(v, n, a, b, c, bottom, top, top)
+	WorksModels._tri(v, n, a, c, d, bottom, top, bottom)
 
 
 ## Wattle hurdles: cheap, light to carry up at night, and they hold a clay cut.
@@ -417,8 +434,8 @@ static func mg_bay(model: Node3D, st, heavy: bool, rng: RandomNumberGenerator, b
 	for x in [-1.1, 1.1]:
 		# the rear posts stand on the trench floor, the front ones behind the bags
 		WorksModels._mk(model, Res.box(Vector3(0.14, roof_y + 1.2, 0.14)), "wood_dark", Vector3(x, (roof_y - 1.2) * 0.5, back), Vector3.ZERO, wood)
-		WorksModels._mk(model, Res.box(Vector3(0.14, roof_y, 0.14)), "wood_dark", Vector3(x, roof_y * 0.5, front), Vector3.ZERO, wood)
-	for z in [back, front]:
+		WorksModels._mk(model, Res.box(Vector3(0.14, roof_y, 0.14)), "wood_dark", Vector3(x, roof_y * 0.5, front + 0.3), Vector3.ZERO, wood)
+	for z in [back, front + 0.3]:
 		WorksModels._mk(model, Res.cyl(0.08, 0.08, 2.5, 7), "bark", Vector3(0, roof_y - 0.02, z), Vector3(0, 0, PI * 0.5), wood.darkened(0.1))
 	var logs := 9
 	for i in logs:
