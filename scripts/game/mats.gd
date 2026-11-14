@@ -29,6 +29,7 @@ const PAVEMENT := 19
 const TURF := 20
 const WEATHERED_PHOTO := 21
 const ROAD_PAINT := 22
+const RUBBER_CRUMB := 23
 const PHOTO_MEAN := preload("res://assets/town/material_means.tres")
 
 # One world-space surface keeps junction overlays continuous with street ribbons.
@@ -42,14 +43,24 @@ mat3 ground_surface_basis(vec3 position) {
 	return mat3(across, -normalize(cross(across, up)), up);
 }
 
-// Thin lines where value noise crosses its middle: a meandering network like
-// the cracks road crews fill with tar. Each is about 4 cm wide; with distance a
-// line covers less of a pixel, so it fades out rather than crawl.
-float street_crack_line(sampler2D noise, vec2 p) {
-	float n = texture(noise, p * 0.028 + 0.37).r + (texture(noise, p * 0.11 + 0.71).r - 0.5) * 0.22 - 0.5;
+// Asphalt cracks along and across the way it was laid: town streets run on
+// the world's axes, so two families of lines, each stretched along one
+// axis, give long cracks down a street and shorter ones across it. They are
+// drawn where value noise crosses its middle, about 3 cm wide; with distance
+// a line covers less of a pixel, so it fades rather than crawl.
+float street_crack_family(sampler2D noise, vec2 q, vec2 wiggle) {
+	float n = texture(noise, q).r + (texture(noise, wiggle).r - 0.5) * 0.08 - 0.5;
 	float w = max(fwidth(n), 0.00001);
-	float half_width = 0.006;
+	float half_width = 0.005;
 	return (1.0 - smoothstep(half_width - w, half_width + w, abs(n))) * clamp(half_width * 2.0 / w, 0.0, 1.0);
+}
+float street_crack_line(sampler2D noise, vec2 p) {
+	float along_x = street_crack_family(noise, p * vec2(0.006, 0.034) + 0.37, p * 0.05 + 0.71);
+	float along_z = street_crack_family(noise, p * vec2(0.034, 0.006) + 0.11, p * 0.05 + 0.29);
+	// each family only in stretches, so a street isn't netted all over
+	along_x *= smoothstep(0.5, 0.62, texture(noise, p * vec2(0.004, 0.02) + 0.53).r);
+	along_z *= smoothstep(0.5, 0.62, texture(noise, p * vec2(0.02, 0.004) + 0.17).r);
+	return max(along_x, along_z);
 }
 
 // Where rain stands on a street: the dips in its surface, the same for the
@@ -57,6 +68,13 @@ float street_crack_line(sampler2D noise, vec2 p) {
 // puddle runs on across both.
 float street_puddle(sampler2D noise, vec2 p) {
 	return texture(noise, p * 0.012 + 0.5).r * 0.8 + (texture(noise, p * 0.05 + 0.2).r - 0.5) * 0.3;
+}
+
+// How rain lies on a street, given its puddle field (street_puddle plus
+// whatever lowers the surface there): a glossy dark film everywhere, more of
+// it where water runs, and standing water in the dips. Returns (film, pool).
+vec2 street_wetness(float wet_amount, float field) {
+	return vec2(wet_amount * (0.6 + 0.4 * smoothstep(0.25, 0.5, field)), wet_amount * smoothstep(0.52, 0.64, field));
 }
 
 // tar: how much of this point is tar (sealed cracks, the seams round patches),
@@ -96,9 +114,9 @@ vec3 street_surface(sampler2D tex, sampler2D noise, vec2 p, out float tar) {
 	float age = fract(variation.x * 7.31);
 	vec3 patched = aggregate * mix(0.74, 0.96, age) * (0.9 + 0.2 * weather);
 	base = mix(base, patched, repair);
-	float cracks = street_crack_line(noise, p) * smoothstep(0.52, 0.68, texture(noise, p * 0.012 + 0.83).r) * (1.0 - repair);
+	float cracks = street_crack_line(noise, p) * (1.0 - repair);
 	tar = max(seam, cracks);
-	base = mix(base, aggregate * 0.34, tar * 0.85);
+	base = mix(base, aggregate * 0.42, tar * 0.6);
 	base *= 1.0 - stains * 0.16;
 	// Compatibility reads sRGB samples; blend in linear light, then return its expected output.
 	if (OUTPUT_IS_SRGB) {
@@ -282,7 +300,9 @@ static func paving(kind: String) -> ShaderMaterial:
 		var sh := Shader.new()
 		sh.code = m.shader.code.replace("ALBEDO = col;", "ALBEDO = col; ALPHA = 1.0;")
 		m.shader = sh
-		m.render_priority = -1 if kind == "asphalt" else 0
+		# (above the ribbons, so their gutters and edges never show through a
+		# junction; paint above both)
+		m.render_priority = 0 if kind == "asphalt" else 1
 	m.set_shader_parameter("crater_cut", true)
 	m.set_shader_parameter("crater_half", MapDims.HALF)
 	if _crater_tex:
@@ -1102,6 +1122,9 @@ static func _preset(kind: String) -> Dictionary:
 			return {"pattern": PLAIN, "col_a": Color(0.55, 0.55, 0.55), "rough": 0.85, "bump": 0.2, "grime": 0.3}
 		"plain_dark":
 			return {"pattern": PLAIN, "col_a": Color(0.18, 0.18, 0.18), "rough": 0.8, "bump": 0.2, "grime": 0.2}
+		"rubber_crumb":
+			# Playground safety surface; decor picks the colour of the pour.
+			return {"pattern": RUBBER_CRUMB, "col_a": Color(0.45, 0.2, 0.15), "col_b": Color(0.7, 0.55, 0.45), "rough": 0.92, "bump": 0.6, "grime": 0.0, "scale": 1.0}
 		"rubber":
 			return {"pattern": PLAIN, "col_a": Color(0.07, 0.07, 0.07), "rough": 0.85, "bump": 0.3, "grime": 0.4}
 		"glass":
@@ -1354,6 +1377,22 @@ void fragment() {
 	} else if (pattern == 18) {
 		col = street_surface(photo_color, noise_tex, wpos.xz, street_tar);
 		h = 0.5;
+	} else if (pattern == 23) {
+		// Poured rubber crumb under the swings: granules a few millimetres
+		// across, flecked paler, laid in one pour. The sun fades it in broad
+		// patches and feet pack it dark and smooth where they land. The grain
+		// is far finer than a pixel at any distance but the closest, so it
+		// fades to its average tone rather than shimmer.
+		float grain = mix(0.5, tnoise(uv * 140.0), keep(0.007, px));
+		float fleck = step(0.74, tnoise(uv * 95.0 + 7.3)) * keep(0.01, px);
+		col = col_a * (0.82 + 0.36 * grain);
+		col = mix(col, col_b, fleck * 0.55);
+		float faded = smoothstep(0.4, 0.75, tfbm(uv * 0.35 + off));
+		col = mix(col, col * 1.12 + vec3(0.015), faded * 0.5);
+		float trodden = smoothstep(0.55, 0.78, tfbm(uv * 0.6 + 11.0));
+		col *= 1.0 - trodden * 0.22;
+		r = mix(rough, rough - 0.2, trodden);
+		h = grain;
 	} else if (pattern == 22) {
 		// Road paint is a thin film laid on the asphalt: it takes the stone's
 		// grain, and tyres wear it through to the road beneath, most where they
@@ -1396,6 +1435,15 @@ void fragment() {
 			// footfall polishes the middle of the way, grit gathers at the edges
 			float trodden = smoothstep(0.45, 0.75, tfbm(wpos.xz * 0.6 + 41.0));
 			col *= 1.0 - trodden * 0.06;
+			// The joints between slabs fill with grit, and where it stays damp,
+			// moss and the odd weed: a thin dark line, greened in patches. (Only
+			// where a joint is wide enough on screen to draw.)
+			vec2 in_slab = vec2(fract(uv.x * 3.0 + 0.5 - mod(course, 2.0) * 0.5), fract(uv.y * 6.0));
+			vec2 to_joint = min(in_slab, 1.0 - in_slab) / vec2(3.0, 6.0);  // in pattern units
+			float joint_w = 0.004;
+			float joint = (1.0 - smoothstep(joint_w * 0.5, joint_w + px, min(to_joint.x, to_joint.y))) * keep(0.02, px);
+			float mossy = smoothstep(0.5, 0.7, tfbm(wpos.xz * 0.35 + 7.0));
+			col = mix(col, mix(col * 0.55, vec3(0.06, 0.075, 0.035), mossy * 0.8), joint * 0.7);
 		}
 		h = 0.5;
 	} else if (pattern == 3) {
@@ -1685,7 +1733,7 @@ void fragment() {
 	float macro = tfbm(weather_pos.xz * 0.11 + weather_pos.y * 0.07 + off * 0.2);
 	if (vehicle_surface) { col *= 0.96 + 0.08 * macro; }
 	else if (pattern == 21) { col *= mix(1.0, 0.88 + 0.24 * macro, weathering); }
-	else if (pattern != 18 && pattern != 22) { col *= 0.88 + 0.24 * macro; }
+	else if (pattern != 18 && pattern != 22 && pattern != 23) { col *= 0.88 + 0.24 * macro; }
 	// grime and dust toward the ground
 	float low = 1.0 - smoothstep(0.0, 0.9, weather_pos.y - ground_y);
 	float gn = tnoise(uv * 2.0 + off);
@@ -1725,13 +1773,16 @@ void fragment() {
 		// as the road ribbons do it: darkened by the rain, puddles in the dips
 		vec3 soaked = ALBEDO;
 		if (OUTPUT_IS_SRGB) { soaked = mix(soaked / 12.92, pow((soaked + 0.055) / 1.055, vec3(2.4)), step(vec3(0.04045), soaked)); }
-		float pud = wet * smoothstep(0.55, 0.75, street_puddle(noise_tex, wpos.xz));
-		soaked *= 1.0 - wet * 0.3;
-		soaked = mix(soaked, soaked * 0.4, pud);
+		vec2 rain = street_wetness(wet, street_puddle(noise_tex, wpos.xz));
+		float pud = rain.y;
+		soaked *= 1.0 - rain.x * 0.45;
+		soaked = mix(soaked, soaked * 0.5, pud);
 		if (OUTPUT_IS_SRGB) { soaked = mix(soaked * 12.92, 1.055 * pow(max(soaked, vec3(0.0)), vec3(1.0 / 2.4)) - 0.055, step(vec3(0.0031308), soaked)); }
 		ALBEDO = soaked;
-		ROUGHNESS = mix(ROUGHNESS - wet * 0.3, 0.06, pud);
-		SPECULAR = mix(0.3, 0.55, pud);
+		ROUGHNESS = mix(mix(ROUGHNESS, 0.3, rain.x), 0.03, pud);
+		SPECULAR = mix(0.4, 0.5, pud);
+		// standing water lies flat over the stone
+		NORMAL = normalize(mix(NORMAL, (VIEW_MATRIX * vec4(ground_surface_basis(wpos)[2], 0.0)).xyz, pud));
 	}
 	CLEARCOAT = vehicle_surface ? surface_coat : 0.0;
 	CLEARCOAT_ROUGHNESS = vehicle_surface ? surface_coat_roughness : 0.22;
@@ -1754,7 +1805,8 @@ void fragment() {
 		vec3 grad = sign(det) * (dhx * r1 + dhy * r2);
 		NORMAL = normalize(abs(det) * NORMAL - grad * bump * 0.02);
 	}
-	if (rain_wet > 0.0) {
+	// (street asphalt and its paint take the rain as the road ribbons do, above)
+	if (rain_wet > 0.0 && pattern != 18 && pattern != 22) {
 		// Out in the rain everything takes a film of water (after Lagarde,
 		// "Water drop 2b: dynamic rain and its effects", 2013). Rough, porous
 		// stuff (cloth, timber, concrete, earth on a track) soaks it up and

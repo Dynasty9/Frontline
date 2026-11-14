@@ -266,9 +266,11 @@ func _blocked_job() -> BlockedJob:
 			j.boxes.append([Vector2(st.position.x, st.position.z), cleared, float(st.yaw)])
 	# sidewalks, squares, gardens and the like
 	for e in w.decor:
-		if not String(e[0]) in ["walk", "walk_crossing", "pave", "junction", "soft", "lot_pave", "drive", "path", "garden", "yard"]:
+		if not String(e[0]) in ["walk", "walk_corner", "walk_crossing", "pave", "junction", "soft", "lot_pave", "drive", "path", "garden", "yard"]:
 			continue
 		var s3: Vector3 = e[3][0] if e[0] == "walk_crossing" else e[3]
+		if e[0] == "walk_corner":
+			s3 = Vector3(absf(s3.x), 0.12, absf(s3.z))  # (the signs say which corner)
 		var c3: Vector3 = e[1]
 		j.boxes.append([Vector2(c3.x, c3.z), Vector2(s3.x * 0.5 + 0.2, s3.z * 0.5 + 0.2), float(e[2])])
 	# the water, and the sand and mud along its shores
@@ -318,8 +320,9 @@ class BlockedJob:
 					var p := a.lerp(b, float(k) / steps)
 					for dx in range(-4, 5):
 						for dz in range(-4, 5):
-							# Include the grass clump radius beyond the 2.9 m carriageway.
-							if dx * dx + dz * dz <= 16:
+							# Keep clumps from overhanging the 2.9 m carriageway; past
+							# it they grow into a track's soil shoulder.
+							if dx * dx + dz * dz <= 10:
 								_mark(floori(p.x) + dx, floori(p.z) + dz)
 		var n := MapDims.N >> 1
 		var half := float(MapDims.N) * 0.5
@@ -347,6 +350,13 @@ class BlockedJob:
 ## floors, the water's edge. Before the grass is laid out, nowhere is.
 func bare(p: Vector3) -> bool:
 	return level == 0 or (not _blocked.is_empty() and _is_blocked(p))
+
+
+func _near_bare(p: Vector3, r: float) -> bool:
+	for d: Vector3 in [Vector3(r, 0, 0), Vector3(-r, 0, 0), Vector3(0, 0, r), Vector3(0, 0, -r)]:
+		if _is_blocked(p + d):
+			return true
+	return false
 
 
 func _is_blocked(p: Vector3) -> bool:
@@ -423,7 +433,9 @@ func _build_chunk(c: Vector2i) -> void:
 		xf.append(Transform3D(basis, p))
 		cd.append(Color(g, rng.randf(), m, 0))
 		if rng.randf() < 0.035 and g > 0.6 and _shrub_noise.get_noise_2d(p.x, p.z) > 0.08:
-			bushes.append(p)
+			# grass grows up to a track's edge; a shrub would be cut back from it
+			if not _near_bare(p, 1.5):
+				bushes.append(p)
 		elif rng.randf() < 0.003:
 			stones.append(p)
 	var nodes := []

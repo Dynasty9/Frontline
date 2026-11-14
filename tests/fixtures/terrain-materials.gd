@@ -208,13 +208,28 @@ void fragment() { float tar; ALBEDO = street_surface(scan, noise, vec2(0.0), tar
 	var noise_texture := ImageTexture.create_from_image(flat_noise)
 	track_material.set_shader_parameter("detail_tex", noise_texture)
 	track_material.set_shader_parameter("street_noise", noise_texture)
+	var flat_soil := Image.create(4, 4, false, Image.FORMAT_RGB8)
+	flat_soil.fill(Color(0.4, 0.4, 0.4))
+	track_material.set_shader_parameter("soil_color", ImageTexture.create_from_image(flat_soil))
+	var flat_trail := Image.create(4, 4, false, Image.FORMAT_RGB8)
+	flat_trail.fill(Color(1, 1, 1))
+	track_material.set_shader_parameter("trail_color", ImageTexture.create_from_image(flat_trail))
+	track_material.set_shader_parameter("wear_color", ImageTexture.create_from_image(flat_trail))
 	var flat_ground := TerrainTexture.new(Image.create(MapDims.N, MapDims.N, false, Image.FORMAT_RGF))
 	track_material.set_shader_parameter("deform_tex", flat_ground.texture)
 	mesh.material_override = track_material
 	for frame in 3:
 		await RenderingServer.frame_post_draw
 	var track := view.get_texture().get_image().get_pixel(32, 32).srgb_to_linear()
-	var track_expected := Color(0.115, 0.09, 0.0615) * lerpf(0.65, 1.2, smoothstep(0.25, 0.70, 0.5))
+	# a troops' earth track, mid-road: the soil scan greyed, half toward the base earth, then the broad wear
+	# a troops' earth track, mid-road: the meadow's soil as the ground draws its mud
+	# (a flat 0.4 sRGB scan is the scan's mean, 0.1329), its grain from the trail
+	# scan (flat white: 6x the mean, clamped to 2), then the broad wear
+	var soil_light := Color(0.4, 0.4, 0.4).srgb_to_linear().r / 0.1329
+	var meadow_soil := Color(0.084, 0.07, 0.049) * pow(clampf(soil_light, 0.3, 1.6), 0.6)
+	# (mid-road, off the ruts: the tread streaks' dim floor, 0.9)
+	var earth := meadow_soil * 0.95 * lerpf(1.0, pow(2.0, 0.4), 0.5) * 0.9
+	var track_expected := earth * lerpf(0.9, 1.08, smoothstep(0.25, 0.70, 0.5))
 	assert(Vector3(track.r, track.g, track.b).distance_to(Vector3(track_expected.r, track_expected.g, track_expected.b)) < 0.008, "Country tracks must blend dirt and wear in linear light in both renderers: %s" % track)
 	for kind in ["roof_tile", "roof_concrete", "wood_dark", "bark"]:
 		var photographed := Mats.get_mat(kind).duplicate() as ShaderMaterial

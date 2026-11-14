@@ -1,0 +1,16 @@
+{
+  "entry": "changelog/unreleased/playground-rubber.md",
+  "summary": "Playground safety surfaces are poured rubber crumb in a real colour instead of flat grey.",
+  "medium": "still",
+  "stage": "game capture, matched: --fixed-fps 30 -- --aivai --seed=3 --set=dof:false --focus=-22,10 --cam-yaw=0 --zoom=24 --pitch=-45 --shot-at=6 (1600x900, --nohud --perf=0, off-screen window; before from origin/main)",
+  "rationale": "A surface material change: one matched before/after frame of the same playground shows it.",
+  "source_ref": "eb81260ed35dfa63fdb0f0198ac22298441db2c4 + working tree",
+  "before_ref": "eb81260ed35dfa63fdb0f0198ac22298441db2c4",
+  "sources": [
+    {
+      "file": "changelog/unreleased/playground-rubber/comparison.jpg",
+      "sha256": "615213d0bbd7a3f336c0e86190ba2f24893b513250e3b18013c9316eee0f1771"
+    }
+  ],
+  "output": null
+}

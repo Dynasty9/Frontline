@@ -553,7 +553,7 @@ func _valid_map(value: Dictionary) -> bool:
 			return false
 		if not item[1].is_finite() or item[1].length() > 100000 or not is_finite(item[2]):
 			return false
-		if item[0] in ["walk", "curb", "junction", "drop", "awning", "fence", "garden", "soft", "drive", "path", "pave", "lot_pave"] and not item[3] is Vector3:
+		if item[0] in ["walk", "walk_corner", "curb", "junction", "drop", "awning", "fence", "garden", "soft", "drive", "path", "pave", "lot_pave"] and not item[3] is Vector3:
 			return false
 		if item[0] in ["zebra", "stall", "hay"] and item[3] != null and not (item[3] is int or item[3] is float):
 			return false
