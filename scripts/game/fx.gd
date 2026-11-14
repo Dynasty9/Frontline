@@ -218,6 +218,12 @@ func _muzzle_of(ev: Array, idx: int, fallback: Vector3, main_gun: bool) -> Vecto
 	return mp
 
 
+## How far each kind of mounted gun runs back on its cradle per round, metres:
+## a machine gun's receiver barely moves, a .50's buffer a couple of
+## centimetres, an autocannon's barrel and recoil sleeve several.
+const MOUNT_KICK := {"mg": 0.012, "minigun": 0.004, "hmg": 0.026, "gmg": 0.032, "ac": 0.07}
+
+
 ## How heavy a round each gun fires, for what it does where it lands.
 const CAL := {"pistol": 0.6, "smg": 0.75, "rifle": 1.0, "minigun": 0.9, "mg": 1.1, "hmg": 1.8, "gmg": 1.3, "ac": 2.4}
 
@@ -246,7 +252,17 @@ func _cam_d(p: Vector3) -> float:
 ## A round fired from `from` (the muzzle on this screen) to `to`, where it
 ## struck `impact` (HIT_*): its recoil on whoever fired it, the flash and
 ## smoke at the gun, the round in flight, and what it does when it gets there.
-func _shot(from: Vector3, to: Vector3, impact: int, snd: String, src) -> void:
+func _shot(from: Vector3, to: Vector3, impact: int, sound: String, src) -> void:
+	# A vehicle's gun may look and sound heavier than the class it fires as:
+	# a 25 or 30 mm cannon barks and flashes like a cannon (its weapon's "look").
+	var snd := sound
+	var breech := Vector3.INF
+	var brass := true
+	if src is Vehicle:
+		var v: Vehicle = src
+		snd = String(Defs.WEAPONS.get(String(v.vdef.mg), {}).get("look", sound))
+		breech = v.breech_world()
+		brass = String(v.vdef.mg) != "coax"  # (a coax spits its cases inside the turret)
 	_kick(src, snd)
 	var cd_from := _cam_d(from)
 	var cd_to := _cam_d(to)
@@ -258,7 +274,7 @@ func _shot(from: Vector3, to: Vector3, impact: int, snd: String, src) -> void:
 		return
 	var dir := span.normalized()
 	if cd_from <= 230.0:
-		gunfx.muzzle(from, dir, snd, cd_from)
+		gunfx.muzzle(from, dir, snd, cd_from, breech, brass)
 	var team: int = src.team if src is Entity else -1
 	var t := gunfx.round_flight(from, to, snd, team, minf(cd_from, cd_to))
 	if impact <= 0 or cd_to > 230.0:
@@ -294,8 +310,11 @@ func _kick(src, snd: String) -> void:
 			s.model.fire_kick(0.3)
 		else:
 			s.model.fire_kick(float(m[7]))
-	elif src is Vehicle and snd == "ac":
-		(src as Vehicle).gun_kick(0.035)
+	elif src is Vehicle:
+		# the gun runs back on its cradle; an autocannon with no cradle of its
+		# own still jolts its turret
+		if not (src as Vehicle).mg_kick(float(MOUNT_KICK.get(snd, 0.012))) and snd == "ac":
+			(src as Vehicle).gun_kick(0.035)
 
 
 ## Other code's tracers and flashes (aircraft guns).

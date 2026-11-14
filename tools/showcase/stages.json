@@ -476,5 +476,22 @@
       "mood": "day"
     },
     "cue": "Two Ghost Hawks cross the view at 16 m and are both shot down 2.5 s in: the near one loses its tail rotor and spins in, the far one autorotates to a heavy landing; their paths are traced."
+  },
+  "mounted-guns": {
+    "scene": "tests/fixtures/mounted-gun-clips.tscn",
+    "seconds": 28,
+    "fps": 30,
+    "simulation_hz": 30,
+    "engine_fixed_fps": 30,
+    "timeout": 3000,
+    "seed": 712,
+    "crf": 34,
+    "renderer": "forward_plus",
+    "render_settings": {
+      "preset": "high",
+      "dof": false,
+      "mood": "day"
+    },
+    "cue": "A firing line in the showroom battlefield engages trucks downrange and helicopters overhead; the camera holds on each mounted gun in turn (tank main gun, 25 and 40 mm cannon, RWS .50 on a helicopter, technical's DShK, ZU-23 on a helicopter, GMG, motorboat PKM, Ghost Hawk door gun to the side)."
   }
 }

@@ -1046,7 +1046,12 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   and plans again. (Trucks are slower on the road than they were, so each load carries more.)
 - **Vehicle gun handling.** Old tanks, modern MBTs, IFVs, AA mounts, artillery and aircraft
   have distinct traverse, acceleration and braking profiles ([rates and complete roster audit](VEHICLE_HANDLING.md)).
-  Mounted machine guns must traverse onto the bearing before firing. Vehicle and gunship shots leave the
+  Mounted machine guns must traverse onto the bearing before firing. Machine guns, autocannon and AA guns sit in
+  cradles of their own that the crew lay on the target: they elevate onto it (twin AA guns climb steeply after
+  aircraft, a helicopter's guns depress onto the ground), door guns and hull pintles swing out to it within an arc
+  on their own side, a coaxial gun keeps to the main gun's travel, and each round runs the gun back on its cradle
+  with a jump at the muzzle. The host sends where each vehicle's guns are laid, so a client (and a solo battle,
+  whose view is a client of its own simulation) lays them too, main guns included. Vehicle and gunship shots leave the
   actual model barrels, including separately positioned gunship guns. Tank drivers build into turns. Turrets accelerate into a traverse and brake onto
   the target, holding their world bearing as the hull turns underneath. The gunner holds a steady aim
   for 0.3 seconds before firing, and reacquires when switching targets. Without a target, the turret
@@ -1463,11 +1468,37 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
 - **Shared guns and turret fittings** (`vehicle_weapons.gd`, `VehicleMounts`, `VehicleFittings`): heavy,
   medium and grenade machine guns, autocannon, coaxial ports, rotary barrel clusters and missile launch
   tubes each have one builder, used by every family that carries them; muzzle markers and turret pivots
-  stay where they were. Turret race rings, sight heads, commander's cupolas, reactive armour bricks,
+  stay where they were. Autocannon tubes step down from a thick chamber end, carry a barrel clamp and end in a
+  ported brake; machine-gun belts show their rounds, the .50 its feed-cover latch and retracting handle. Each
+  builder notes its gun, so the finished model lifts the machine gun onto a cradle the crew can lay. Turret race rings, sight heads, commander's cupolas, reactive armour bricks,
   rectangular hatches and bore evacuators are shared across the armour; helicopters share rotor masts and
   turbine exhausts, and aircraft and boats share red/green sidelights and dome lights. Trucks share fender
   sheets and saddle fuel tanks; rolled tarps are common stowage. See "Twenty shared components" in
   [the component guide](vehicle-components.md).
+- **Second construction pass** (shared builders across `vehicle_cargo.gd`, `vehicle_aircraft.gd`,
+  `vehicle_fittings.gd` and others): engine-deck grilles, track skirts and return rollers, smoke banks and
+  lamp units are shared across the armour; trucks share cargo beds, box bodies with doors, roller shutters
+  and ladders, pedestal gun mounts, roll cages, bull bars and wheel-well tubs. Box missile launchers show
+  their tube mouths. Aircraft share missiles, store pods, engine intake faces (the A-10's fans now show),
+  stub-wing pylons, rotor hub caps, whips and sensor necks. See "Second pass" in
+  [the component guide](vehicle-components.md).
+- **Third construction pass** (shared builders across `vehicle_mounts.gd`, `vehicle_equipment.gd`,
+  `vehicle_aircraft.gd`, `vehicle_markings.gd` and others): track guards, tow cables with eyes, muzzle brakes,
+  muzzle sensors, machine-gun pintles, travel locks and hydraulic rams are shared across the armour; wheeled
+  vehicles share wishbone suspension, exhaust runs and silencers, air cleaners, searchlights, light bars,
+  number plates, door levers and crew benches; trucks share cranes, crate stacks, roof racks, tanker walkways,
+  pump cabinets and gas bottles. Helicopters share trailing-arm gear and tailwheels, aircraft share bombs,
+  chin turrets, flare dispensers, formation lights and refuelling receptacles, and boats share bow eyes and
+  fenders. See "Third pass" in [the component guide](vehicle-components.md).
+- **Fourth construction pass** (`VehicleEquipment.drum`, `VehicleWheels.carrier` and a sweep of every family):
+  200-litre drums and spare-wheel carriers are shared, and the remaining hand-built vision blocks, door
+  windows, door and gear leaves, hatches, sights, radar panels, fuel tanks, bumpers, pintles and cannon barrels
+  moved onto the shared builders. See "Fourth pass" in [the component guide](vehicle-components.md).
+- **Lighter shared hardware** (`tools/vehicles/builder-profile.tscn` charges the roster's vertices to the
+  builders that make them): tyres, bolts, hinges, lamps, shackles, dischargers and lockers draw only what can be
+  seen, one band of cylinder sides, joints only at sharp bends. About 45% less vehicle geometry and 38% faster
+  model builds (each vehicle, air-strike plane and wreck builds its model as it appears), with the same look.
+  See "Fifth pass" in [the component guide](vehicle-components.md).
 - Explosions are layered GPU particles: a flash and light burst, a rolling fireball that cools from the edges in
   until it's dark smoke, a lit smoke column that drifts with the wind, a dirt plume, sparks and debris that
   bounce on the ground, a rolling dust ring, a faint heat-shimmer shockwave and a scorch mark. Heavy rounds
@@ -1506,10 +1537,12 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   a .50's a forearm's, an autocannon's a man's height - a hot core and a short jet split into petals by the flash
   hider (thrown out sideways by a heavy gun's muzzle brake), with a moment's light on everything round it
   (striking at night). The gas that follows the round out glows for an instant and cools into a breath of smoke,
-  and the case spins out of the ejection port to lie in the grass (brass piles up round a machine gun). However
+  and the case spins out of the ejection port to lie in the grass (brass piles up round a machine gun). A vehicle's
+  gun throws its cases from its receiver, and a belt-fed one its links too; a coaxial gun keeps them inside the
+  turret. 25 and 30 mm cannon (the Bradley's Bushmaster, the chain guns, the ZU-23) flash and bark as cannon. However
   small, a flash never shrinks below a few pixels, so you can still see who's firing from high up. The weapon
-  kicks with each shot: the rifle back into the shoulder and the muzzle up, the mounted gun on its pintle, the
-  turret back on its ring when the main gun fires. One round in so many is a tracer, red for the Coalition and
+  kicks with each shot: the rifle back into the shoulder and the muzzle up, the mounted gun on its pintle or its
+  vehicle cradle, the main gun back in its mantlet. One round in so many is a tracer, red for the Coalition and
   green for the Rebels (Soviet-pattern ammunition): a thin bright thread at night, fainter and shorter by day,
   with distance-dependent dimming and a short ignition delay for small-arms tracers. What a round hits decides what flies, small and quick as in real footage: a
   crown of dust and soil thrown up out of the ground, a puff of stone dust and chips off a wall, a dry burst of
