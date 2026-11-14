@@ -1,0 +1,20 @@
+{
+  "entry": "changelog/unreleased/vehicle-construction-pass-3.md",
+  "summary": "Forty more shared vehicle parts: track guards, suspension, exhausts, searchlights, benches, tanker fittings, cranes, gun mounts, muzzle brakes, helicopter gear, bombs and markings.",
+  "medium": "still",
+  "stage": "tools/showcase/vehicle-surfaces.tscn",
+  "rationale": "Static construction change: one matched close-up sheet of eight representative vehicles. Per-part review captures stay outside Git; much of the added hardware is small at gameplay distance.",
+  "source_ref": "54823975 with the second construction pass applied: an intermediate state of the change that adds this entry, which carries passes 2 to 6",
+  "before_ref": "54823975 with the second construction pass applied: an intermediate state of the change that adds this entry, which carries passes 2 to 6",
+  "sources": [
+    {
+      "file": "changelog/unreleased/vehicle-construction-pass-3/comparison.jpg",
+      "sha256": "7da8961b165857908f45922040478715bcf8060a1211b50358548f10ebcfce5d"
+    },
+    {
+      "file": "changelog/unreleased/vehicle-construction-pass-3/capture.json",
+      "sha256": "940e81c7cfe06ceaa77447ac78f7266ccc5c49d8d81ed7f8ee149da62d9de318"
+    }
+  ],
+  "output": null
+}

@@ -33,6 +33,19 @@ const MOODS := {
 	"hazy": [5.0, 12.0, 0.35],
 }
 
+## Midday's air, for Time passes only: a battle at midday keeps its
+## photographed sky, but one that passes through midday on the clock is
+## scattered on either side of it (Atmosphere._apply_clock_sky). Its sky
+## energy makes the scattered sky as bright over the dome as the photograph,
+## so the hand-over neither brightens nor dims (tools/sky_calibration.py).
+const CLOCK_MOODS := {
+	"day": [1.6, 7.36, 0.3],
+}
+
+## How far toward a warm grey the battlefield's light from the sky goes in
+## the deepest of the blue hour (0.45 by day).
+const BLUE_HOUR_GREY := 0.12
+
 static var _shader: Shader
 
 
@@ -40,7 +53,7 @@ static func make(mood: String) -> ShaderMaterial:
 	var m := ShaderMaterial.new()
 	if _shader == null:
 		_shader = Shader.new()
-		_shader.code = SHADER
+		_shader.code = Atmosphere.with_photo(with_night(SHADER))
 	m.shader = _shader
 	apply(m, mood)
 	return m
@@ -53,6 +66,49 @@ static func set_sun(m: ShaderMaterial, sun: DirectionalLight3D) -> void:
 	var basis := sun.global_transform.basis if sun.is_inside_tree() else sun.basis
 	m.set_shader_parameter("sun_direction", basis.z.normalized())
 	m.set_shader_parameter("sun_energy", sun.light_energy)
+
+
+## The sky for a moment of Time passes' clock (TimeOfDay.light): the air of
+## the daylight moods either side, and the sun where it really is, up or down
+## (the dusk sky goes on glowing after the light has gone from the ground).
+static func apply_clock(m: ShaderMaterial, st: Dictionary) -> void:
+	var sm: Array = st.sun_moods
+	var a := _params(String(sm[0]))
+	var b := _params(String(sm[1]))
+	var k := float(sm[2])
+	m.set_shader_parameter("turbidity", lerpf(float(a[0]), float(b[0]), k))
+	m.set_shader_parameter("sky_energy", lerpf(float(a[1]), float(b[1]), k))
+	m.set_shader_parameter("cloudiness", lerpf(float(a[2]), float(b[2]), k))
+	var sp: Vector2 = st.sun
+	# once the sun is down the sky's light is the blue of the clear sky
+	# overhead, and the battlefield takes it so: the blue hour
+	m.set_shader_parameter("warm_grey", lerpf(0.45, BLUE_HOUR_GREY, TimeOfDay.blue_hour(sp.x)))
+	m.set_shader_parameter("sun_direction", TimeOfDay.toward(sp.x, sp.y))
+	m.set_shader_parameter("sun_energy", float(st.sun_energy))
+
+
+## The physical sky with the painted night to fade into after dusk (and out
+## of before dawn): `night` 0..1, the painted sky's own uniforms, and
+## `night_light` toward the moon. At 0 it draws exactly as before.
+static func with_night(code: String) -> String:
+	var start := code.find("void sky()")
+	var at := code.rfind("COLOR = col;")
+	assert(at > start and start > 0)
+	return code.substr(0, start) + Atmosphere.PAINTED_SKY + NIGHT_UNIFORMS + code.substr(start, at - start) + NIGHT_MIX + code.substr(at)
+
+
+const NIGHT_UNIFORMS := """uniform float night = 0.0;
+uniform vec3 night_light = vec3(0.0, 1.0, 0.0);
+
+"""
+const NIGHT_MIX := """if (night > 0.0) {
+		col = mix(col, painted_sky(d, night_light, 0.0), night);
+	}
+	"""
+
+
+static func _params(mood: String) -> Array:
+	return MOODS.get(mood, CLOCK_MOODS.get(mood, MOODS.golden))
 
 
 static func apply(m: ShaderMaterial, mood: String) -> void:
@@ -73,6 +129,8 @@ uniform float sun_disk = 1.0;
 uniform vec3 sun_direction = vec3(0.0, 0.42, 0.9);
 uniform float sun_energy = 2.0;
 uniform vec3 ground_albedo = vec3(0.09, 0.085, 0.06);
+// how far the light the battlefield takes from the sky goes to a warm grey
+uniform float warm_grey = 0.45;
 
 // kilometres, and per kilometre
 const float RG = 6360.0;
@@ -108,8 +166,8 @@ vec3 sun_light(vec3 p, vec3 l) {
 	float r = length(p);
 	float mu = dot(p, l) / r;
 	// the earth's shadow, softened over the sun's own width
-	float horizon = -sqrt(max(0.0, 1.0 - (RG * RG) / (r * r)));
-	float lit = smoothstep(horizon - 0.012, horizon + 0.004, mu);
+	float rim = -sqrt(max(0.0, 1.0 - (RG * RG) / (r * r)));
+	float lit = smoothstep(rim - 0.012, rim + 0.004, mu);
 	if (lit <= 0.0) {
 		return vec3(0.0);
 	}
@@ -211,7 +269,7 @@ void sky() {
 	if (AT_CUBEMAP_PASS) {
 		// what the battlefield is lit and reflects by: nearly half way to a
 		// warm grey, so the shade under a low sun is cool without going cyan
-		col = mix(col, dot(col, vec3(0.2126, 0.7152, 0.0722)) * vec3(1.12, 1.0, 0.84), 0.45) * 1.2;
+		col = mix(col, dot(col, vec3(0.2126, 0.7152, 0.0722)) * vec3(1.12, 1.0, 0.84), warm_grey) * 1.2;
 	}
 	COLOR = col;
 }

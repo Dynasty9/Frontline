@@ -1,0 +1,11 @@
+{
+  "entry": "changelog/unreleased/vehicle-construction-pass-6.md",
+  "summary": "Doors, gear doors, hinges and hatches fit their vehicles; tow balls, painted hooks and launch tubes.",
+  "medium": "text",
+  "stage": "tools/showcase/vehicle-surfaces.tscn",
+  "rationale": "Small fit-and-finish fixes across many vehicles, each a few centimetres at gameplay distance: text names them better than a sheet of close-ups. Matched before/after renders stay outside Git.",
+  "source_ref": "54823975 with construction passes 2 to 5 applied: an intermediate state of the change that adds this entry",
+  "before_ref": "54823975 with construction passes 2 to 5 applied: an intermediate state of the change that adds this entry",
+  "sources": [],
+  "output": null
+}

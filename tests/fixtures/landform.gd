@@ -71,6 +71,7 @@ func _ready() -> void:
 	HNav.C = 16
 	HNav.NC = 4
 	var world := World.new()
+	world.srv = true
 	world.settings = {"seed": 3}
 	world.terrain = TerrainMap.new(world)
 	world.water = WaterMap.new(world)
@@ -363,6 +364,7 @@ func _ready() -> void:
 	assert(truck.position.x <= -12.0, "Supply trucks cannot bypass an impassable mountain slope")
 	# Give the hull a real elevated plateau, rather than a knife-edge ridge.
 	var plateau := World.new()
+	plateau.srv = true
 	plateau.settings = {"seed": 3}
 	plateau.terrain = TerrainMap.new(plateau)
 	plateau.water = WaterMap.new(plateau)

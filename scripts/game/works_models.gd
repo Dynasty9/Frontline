@@ -383,17 +383,22 @@ static func _concertina(L: float, v: int) -> ArrayMesh:
 			# the loops lean along the run as it's pulled out, and the coil sags
 			# a little between the points where it's pegged down
 			var sag := 0.035 * sin(t * PI * 2.0 * maxf(1.0, L / 2.5)) if ci == 2 else 0.0
-			pts.append(Vector3(x + 0.05 * sin(a), c.y + rr * sin(a) * 0.92 - sag, c.z + rr * cos(a)))
-		_wire_tube(vv, nn, pts, 0.0105)
-		_barbs(vv, nn, pts, 0.085, 0.028, rng)
+			# concertina's loops are clipped to their neighbours at four points
+			# round the coil, so pulled out they lean alternately one way and the
+			# other and cross: from the side, a chain of diamonds, not a spring
+			var lean := 0.09 * sin(a - ph) * (1.0 if int(floor((a - ph) / TAU)) % 2 == 0 else -1.0)
+			pts.append(Vector3(x + lean, c.y + rr * sin(a) * 0.92 - sag, c.z + rr * cos(a)))
+		# razor tape: a 2.5 mm core wire with steel tape crimped round it, the
+		# tape punched into blades in clusters every few centimetres
+		_wire_tube(vv, nn, pts, 0.0068)
+		_barbs(vv, nn, pts, 0.045, 0.022, rng)
 	# the strained strands along the picket rows
 	for sz in [-0.62, 0.62]:
 		var pts2 := PackedVector3Array()
 		for i in 33:
 			var t := float(i) / 32.0
 			pts2.append(Vector3(-L * 0.5 + 0.1 + t * (L - 0.2), 1.02 - 0.03 * sin(t * PI * 2.0), sz))
-		_wire_tube(vv, nn, pts2, 0.006)
-		_barbs(vv, nn, pts2, 0.12, 0.02, rng)
+		BuildingWire.barbed_wire(vv, nn, pts2, 0.11, rng)
 	var m := _commit(vv, nn)
 	_meshes[key] = m
 	return m
@@ -403,8 +408,8 @@ static func _wire(model: Node3D, L: float, rebel: bool, rng: RandomNumberGenerat
 	var coil := MeshInstance3D.new()
 	coil.mesh = _concertina(L, rng.randi() % 3)
 	model.add_child(coil)
-	# new galvanised wire for the Coalition; the Rebels' has been out in the rain
-	Mats.apply(coil, "wire", Color(0.82, 0.74, 0.62) if rebel else Color(1, 1, 1))
+	# the Coalition's dull issue wire; the Rebels' has been out in the rain for years
+	Mats.apply(coil, "wire_rust" if rebel else "wire_military")
 	coil.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
 	# pickets along both rows, staggered: steel U-pickets (or cut stakes),
 	# driven in at a slight lean, the strand wired to their tops

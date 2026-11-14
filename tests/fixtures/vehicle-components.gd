@@ -203,7 +203,7 @@ func _bounds(parts: Array) -> AABB:
 	var bounds := AABB()
 	var first := true
 	for part: Array in parts:
-		var basis: Basis = part[7] if part[7] is Basis else Basis.from_euler(part[5]).scaled(part[6])
+		var basis: Basis = part[7] if part[7] is Basis else Basis.from_euler(part[5]) * Basis.from_scale(part[6])
 		var transformed: AABB = Transform3D(basis, part[4]) * (part[0] as Mesh).get_aabb()
 		assert(transformed.position.is_finite() and transformed.size.is_finite())
 		bounds = transformed if first else bounds.merge(transformed)

@@ -517,11 +517,34 @@ func bake_surface(sun_direction := Vector3.UP) -> Image:
 					if distance == 16.0:
 						basin += rise
 				occlusion += horizon / sqrt(1.0 + horizon * horizon)
-			var sun_horizon := 0.0
-			for distance in [8.0, 16.0, 32.0, 48.0, 64.0, 96.0, 128.0, 192.0, 256.0, 384.0, 512.0]:
-				sun_horizon = maxf(sun_horizon, (height(p + toward_sun * distance) - h - 0.5) / distance)
-			var sunlight := 1.0 - smoothstep(sun_slope - 0.035, sun_slope + 0.035, sun_horizon)
+			var sunlight := _sunlight(p, h, toward_sun, sun_slope)
 			var flow := 0.0 if drainage.is_empty() else drainage[(z * 2 + 1) * n + x * 2 + 1]
 			img.set_pixel(x, z, Color(1.0 - occlusion / 8.0 * 0.75, clampf(0.5 + basin / 128.0, 0.0, 1.0), sunlight, flow))
 	img.generate_mipmaps()
 	return img
+
+
+## Whether the sun clears the hills between it and p (1) or not (0), soft
+## over the sun's own width.
+func _sunlight(p: Vector3, h: float, toward_sun: Vector3, sun_slope: float) -> float:
+	var sun_horizon := 0.0
+	for distance in [8.0, 16.0, 32.0, 48.0, 64.0, 96.0, 128.0, 192.0, 256.0, 384.0, 512.0]:
+		sun_horizon = maxf(sun_horizon, (height(p + toward_sun * distance) - h - 0.5) / distance)
+	return 1.0 - smoothstep(sun_slope - 0.035, sun_slope + 0.035, sun_horizon)
+
+
+## bake_surface's sunlight (blue) again for cells [from, to) of its image, row
+## by row, for a sun that has moved on: Atmosphere re-bakes it a few hundred
+## cells a frame while time passes. The rest of the bake doesn't hang on the sun.
+func bake_sunlight(img: Image, sun_direction: Vector3, from: int, to: int) -> void:
+	var size := img.get_width()
+	var toward_sun := Vector3(sun_direction.x, 0, sun_direction.z)
+	var sun_slope := sun_direction.y / maxf(toward_sun.length(), 0.001)
+	toward_sun = toward_sun.normalized()
+	for i in range(from, to):
+		var z := floori(float(i) / float(size))
+		var x := i - z * size
+		var p := Vector3((x + 0.5) * 8.0 - half, 0, (z + 0.5) * 8.0 - half)
+		var c := img.get_pixel(x, z)
+		c.b = _sunlight(p, height(p), toward_sun, sun_slope)
+		img.set_pixel(x, z, c)

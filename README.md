@@ -23,11 +23,11 @@ Frontline is a real-time strategy game about modern infantry combat. You command
 
 Your soldiers take cover behind real walls and wrecks, keep their heads down under fire, drag their wounded to safety and throw enemy grenades back. Squads leapfrog forward one team at a time, clear houses room by room, set ambushes on the roads, and break and run when a fight goes badly. Tanks pop smoke when a missile is fired at them. Shellfire sets woods, hedgerows, roofs and cars alight, and the fire spreads with the wind and drives men out of their cover. Life goes on round the fighting: birds feed in the fields until the shooting sends them up, rats run along the walls in town, ducks paddle on the ponds and dolphins roll through the swell offshore. The towns look lived in, with curtains in the windows, flowers on the sills and pictures on the walls inside, and after dark lamps glow behind a third of the windows. Boats land raiding parties on the beach, and helicopters carry vehicles to the front on a cable. Helicopters fly like the real thing: the nose dips as they gather speed, they bank round turns, climb away from the pad and come down a glide path into a low hover, throwing up dust as they set down. Shot down, they spin in or autorotate to a crash.
 
-Grenades burst into dust and fast fragments, shells throw dense fans of earth and falling clods, and vehicle fuel burns in rolling fireballs. Animated smoke and dust catch the sun and spread across the ground. At night, illumination flares drift down under parachutes and tracers streak across the fighting. The Cinematic graphics preset adds a sky worked out from how sunlight scatters in the air, shadows thrown by fires and flares, sun shafts, lens flare, eye adaptation, a film look, heat haze shimmering over fires, wrecks and engines, and motion blur on rotors and flying debris. In the rain, vehicles, buildings and gear turn dark and glossy with water.
+Grenades burst into dust and fast fragments, shells throw dense fans of earth and falling clods, and vehicle fuel burns in rolling fireballs. Animated smoke and dust catch the sun and spread across the ground. At night, illumination flares drift down under parachutes and tracers streak across the fighting. The Cinematic graphics preset adds a sky worked out from how sunlight scatters in the air, shadows thrown by fires and flares, sun shafts, lens flare, eye adaptation, a film look, heat haze shimmering over fires, wrecks and engines, motion blur on rotors and flying debris, and time that passes: the sun crosses the sky and golden hour fades through a blue dusk into moonlit night as the battle goes on (Settings > Lighting & Look > Time passes). In the rain, vehicles, buildings and gear turn dark and glossy with water.
 
 You can play alone against the computer, team up with friends against it, or fight each other online. Desktop skirmishes offer 1,024, 2,048 and 3,072 metre square battlefields. Single-player simulation runs in its own local process so combat does not block drawing the battlefield. Seeded mountain belts, snowy peaks and mossy valleys surround towns, forests, roads and river crossings. Slopes shape movement and construction, and ridges screen troops from observation and fire. Larger maps need more memory; see the measured workloads in [simulation scaling](docs/SIMULATION_SCALING.md).
 
-The landscape, models, music and most sound effects are generated in code. Tracked vehicles mix field recordings of heavy engines, running gear and gunfire ([sound credits](assets/audio/tracked/LICENSE.md)), and their paint carries photographed surface wear ([texture credit](assets/vehicles/LICENSE.md)). Explosion clouds use baked CC0 fluid simulations from JangaFX ([credits](assets/vfx/LICENSE.md)); moss, rock and town surfaces use bundled CC0 photographs from Poly Haven ([terrain credits](assets/terrain/LICENSE.md), [town material credits](assets/town/LICENSE.md), [foliage credits](assets/foliage/LICENSE.md)). Even the menus sit on a living topographic map, in your choice of five themes (Settings > Interface): Field Brass, Night Vision, Thermal, Arctic or Dusk.
+The landscape, unit models, music and most sound effects are generated in code. Woodland trees, shrubs, ferns, deadwood and mossy stones use reduced CC0 scans, with leaf-covered soil and small butterflies beneath the canopy ([foliage credits](assets/foliage/LICENSE.md)). Tracked vehicles mix field recordings of heavy engines, running gear and gunfire ([sound credits](assets/audio/tracked/LICENSE.md)), and their paint carries photographed surface wear ([texture credit](assets/vehicles/LICENSE.md)). Explosion clouds use baked CC0 fluid simulations from JangaFX ([credits](assets/vfx/LICENSE.md)); moss, rock and town surfaces use bundled CC0 photographs from Poly Haven ([terrain credits](assets/terrain/LICENSE.md), [town material credits](assets/town/LICENSE.md)). Even the menus sit on a living topographic map, in your choice of five themes (Settings > Interface): Field Brass, Night Vision, Thermal, Arctic or Dusk.
 
 ## Screenshots
 
@@ -72,13 +72,13 @@ Press **F1** at any time for help, and **F4** for the Field Manual. Hold **Tab**
 
 Want something shorter, with a story? **Missions** on the main menu has five-minute operations you can play alone or with friends:
 
-- **Bridgehead**: clear a village and seize the bridge behind it, then hold it against the counterattack.
-- **Beachhead**: land from the sea, knock out the harbour's anti-aircraft guns and take the harbour.
+- **Bridgehead**: clear a village, silence the mortar observers or brave their fire, then hold the bridge until Lancer's tanks reach you.
+- **Beachhead**: land from the sea, knock out the anti-aircraft guns to bring in air support, then take the harbour and repel the inland counterattack.
 - **Sky Hook**: carry a tank destroyer to a cut-off outpost under a helicopter, then stop the armour coming for it.
 - **Ambush Alley**: play the Rebels, ambush a Coalition convoy and vanish before the reaction force arrives.
-- **Kingpin**: a night raid into the town to take down a Rebel commander.
+- **Kingpin**: raid the town at night, pursue a fleeing Rebel commander and withdraw before the road out closes.
 
-Each has objectives on screen and marked on the map. Choose **Host Co-op** to play one with friends: it's listed in the server browser for them to join.
+Objectives are marked on screen and on the map, and radio warnings announce major threats. Coalition missions also have optional goals for preserving key vehicles. Choose **Host Co-op** to play one with friends: it's listed in the server browser for them to join.
 
 | | |
 |---|---|
@@ -225,7 +225,7 @@ Signed in, every battle you fight earns XP (a win more), and you climb 50 ranks 
 
 Frontline is free and open source under the [MIT License](LICENSE). © 2026 Alexander Dines.
 
-Many vehicle names nod to the fictional vehicles of Bohemia Interactive's *Arma 3*. Frontline is an independent fan project. It is not affiliated with or endorsed by Bohemia Interactive, and all its models are original, built in code from real-world references.
+Many vehicle names nod to the fictional vehicles of Bohemia Interactive's *Arma 3*. Frontline is an independent fan project. It is not affiliated with or endorsed by Bohemia Interactive, and its vehicle models are original, built in code from real-world references.
 
 ### Watch and replay
 
