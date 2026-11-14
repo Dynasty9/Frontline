@@ -182,10 +182,12 @@ func ours_in(c: Vector3, r: float) -> int:
 	var n := 0
 	for s in world.soldiers:
 		if s.team == side and s.owner_peer in owners and (s.life == Soldier.Life.ALIVE or (s.life == Soldier.Life.HIDDEN and s.riding != null)):
+			if is_instance_valid(s.riding) and s.riding.position.y - world.ground_y(s.riding.position) >= 3.0:
+				continue
 			if Defs.flat(where(s) - c).length() <= r:
 				n += 1
 	for v in world.vehicles:
-		if v.team == side and v.owner_peer in owners and not v.gone and v.hp > 0.0 and v.position.y < 3.0:
+		if v.team == side and v.owner_peer in owners and not v.gone and v.hp > 0.0 and v.position.y - world.ground_y(v.position) < 3.0:
 			if Defs.flat(v.position - c).length() <= r:
 				n += 1
 	return n
@@ -207,10 +209,12 @@ func foes_in(c: Vector3, r: float) -> int:
 	var n := 0
 	for s in world.soldiers:
 		if s.team == foe and (s.life == Soldier.Life.ALIVE or s.life == Soldier.Life.HIDDEN):
+			if is_instance_valid(s.riding) and s.riding.position.y - world.ground_y(s.riding.position) >= 3.0:
+				continue
 			if Defs.flat(where(s) - c).length() <= r:
 				n += 1
 	for v in world.vehicles:
-		if v.team == foe and not v.gone and v.hp > 0.0 and v.position.y < 3.0 and not v.is_auto():
+		if v.team == foe and not v.gone and v.hp > 0.0 and v.position.y - world.ground_y(v.position) < 3.0 and not v.is_auto():
 			if Defs.flat(v.position - c).length() <= r:
 				n += 1
 	return n
@@ -277,7 +281,9 @@ func _evaluate(dt: float) -> void:
 					if float(o.lost_t) >= float(o.grace):
 						_failed(o)
 						continue
-				if float(o.prog) >= float(o.secs) and f > e:
+				# Some defences secure a landing area: a friendly majority is not
+				# enough while attackers are still fighting inside it.
+				if float(o.prog) >= float(o.secs) and f > e and (not o.get("clear_end", false) or e == 0):
 					_complete(o)
 			"guard":
 				# held until the content says otherwise; lost if the enemy has
@@ -331,7 +337,7 @@ func _evaluate(dt: float) -> void:
 					_failed(o)
 					continue
 				var v: Vehicle = world.entities[id0]
-				if v.slung_by == null and v.position.y < 1.0 and Defs.flat(v.position - c).length() <= r:
+				if v.slung_by == null and v.position.y - world.ground_y(v.position) < 1.0 and Defs.flat(v.position - c).length() <= r:
 					_complete(o)
 			"extract":
 				var tot := 0
@@ -534,6 +540,8 @@ func _prog_text(o: Dictionary) -> String:
 	match String(o.kind):
 		"hold":
 			var left := maxf(0.0, float(o.secs) - float(o.prog))
+			if int(o.state) == ACTIVE and left <= 0.0 and o.get("clear_end", false) and int(o.have) > 0:
+				return "clear area"
 			var t := "%d:%02d" % [int(left) / 60, int(left) % 60]
 			if int(o.state) == ACTIVE and int(o.have) > 0:
 				t += "  contested"

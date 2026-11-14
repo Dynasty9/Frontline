@@ -1,0 +1,29 @@
+{
+  "source_ref": "12bf17ec (with the uncommitted wreck changes this capture ships with)",
+  "before_ref": "1c6e13a7 (main, with this branch's stage files)",
+  "engine": "4.7.2",
+  "renderer": "forward_plus",
+  "scenario": "showroom",
+  "seed": 712,
+  "mood": "day",
+  "preset": "high (depth of field off)",
+  "resolution": "1280x720 per still",
+  "burnt-out.jpg": {
+    "stage": "tests/fixtures/vehicle-wreck-clips.tscn (tools/showcase/README.md: Vehicle wrecks)",
+    "command": "godot --path . --fixed-fps 30 --audio-driver Dummy --position -10000,-10000 --resolution 1280x720 res://tests/fixtures/vehicle-wreck-clips.tscn -- --label=BEFORE|AFTER --frames=DIR",
+    "stills": "out-slammer.png, out-technical.png, out-ghosthawk.png: 116 s after all seven vehicles were knocked out together",
+    "sheet": "each still cropped to rows 60-720, scaled to 640x330, labelled (Arial Bold 20), 3 columns x 2 rows (BEFORE, AFTER), then 1600x550 JPEG q84",
+    "result": "Before: flat black models with ember specks all over long after the fire. After: built in their own paint and burnt out end to end - char, rust down the sides, soot streaks, ash on top - tyres burnt off, debris round them, the helicopter broken up."
+  },
+  "helicopter-crash.jpg": {
+    "stage": "helicopters-wrecks (tools/showcase/stages.json): tests/fixtures/helicopter-world-clips.tscn",
+    "command": "godot --path . --fixed-fps 30 --audio-driver Dummy --position -10000,-10000 --resolution 1280x720 res://tests/fixtures/helicopter-world-clips.tscn -- --clip=helicopters-wrecks --frames=DIR --shot-times=8,10,11.5,13.5,15.5",
+    "stills": {
+      "spin-in, close": 8.0,
+      "heavy landing, close": 11.5,
+      "commander's view": 15.5
+    },
+    "sheet": "BEFORE row kept from the earlier capture of f302f20e; AFTER row: each still cropped to rows 60-720, scaled to 640x330, labelled (Arial Bold 20), 3 columns, scaled to 1600x275; stacked to 1600x550 JPEG q84",
+    "result": "Before: flat black, intact rotors, the spin-in half in the ground, the heavy landing on its wheels. After: broken or drooping blades, debris, rolled on its side or slumped on its belly, the burn spreading from the engines over its own paint."
+  }
+}

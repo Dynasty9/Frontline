@@ -1,0 +1,78 @@
+{
+  "before_ref": "c7773eaf0178bdf330f8846ee995057e31f47261",
+  "source_ref": "9113d2b115b8bedb3a38274759bd99ecc9808add",
+  "engine": "Godot 4.7.2 stable ed1daf0bf",
+  "stage": "tools/showcase/building-surfaces.tscn; tests/fixtures/environment-views.gd",
+  "command": "godot --path CHECKOUT --resolution 1600x900 tools/showcase/building-surfaces.tscn -- --building-out=OUTPUT --offscreen FLAGS",
+  "comparisons": [
+    {
+      "subjects": [
+        "barn"
+      ],
+      "flags": [
+        "--building-single",
+        "--building-kinds=barn"
+      ],
+      "after_flags": [
+        "--building-match=BEFORE/capture.json"
+      ],
+      "cameras": {
+        "barn": [
+          0.0,
+          3.69959330558777,
+          -0.0590000152587891,
+          15.3036050796509,
+          58.2516059875488
+        ]
+      },
+      "crop": [
+        200,
+        80,
+        1400,
+        860
+      ]
+    },
+    {
+      "subjects": [
+        "barn"
+      ],
+      "flags": [
+        "--building-single",
+        "--building-kinds=barn",
+        "--building-rear"
+      ],
+      "after_flags": [
+        "--building-match=BEFORE/capture.json"
+      ],
+      "cameras": {
+        "barn": [
+          0.0,
+          3.69959330558777,
+          -0.0590000152587891,
+          15.3036060333252,
+          58.2516021728516
+        ]
+      },
+      "crop": [
+        200,
+        80,
+        1400,
+        860
+      ]
+    },
+    {
+      "subjects": [
+        "farm"
+      ],
+      "command": "godot --path CHECKOUT --resolution 1600x900 --script tests/fixtures/environment-views.gd -- --aivai --seed=3 --offscreen --nohud --set=perf:0 --preset=high --mood=day --focus=0,0 --capture-set=town",
+      "crop": [
+        180,
+        0,
+        1340,
+        620
+      ]
+    }
+  ],
+  "notes": "Both sides render the source_ref studio stage and environment views fixture (the barn subject draws colour index 0, a plain house, on the baseline: what the barn drew before; the town views gained a farmstead). The baseline is the weathered roofs change this builds on.",
+  "composition": "PIL: matched rows, 792 px halves, JPEG quality 82"
+}

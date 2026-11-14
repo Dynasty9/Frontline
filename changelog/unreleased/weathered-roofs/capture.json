@@ -1,0 +1,77 @@
+{
+  "before_ref": "7196b16c6588e0003924fb53cde9cba1ef77cfcf",
+  "source_ref": "4b63688060d4ced4ae57fc9fdda51f5b54592a33",
+  "engine": "Godot 4.7.2 stable ed1daf0bf",
+  "stage": "tools/showcase/building-surfaces.tscn; tests/fixtures/environment-views.gd",
+  "command": "godot --path CHECKOUT --resolution 1600x900 tools/showcase/building-surfaces.tscn -- --building-out=OUTPUT --offscreen FLAGS",
+  "comparisons": [
+    {
+      "subjects": [
+        "roofscape"
+      ],
+      "flags": [
+        "--building-single",
+        "--building-kinds=roofscape"
+      ],
+      "after_flags": [
+        "--building-match=BEFORE/capture.json"
+      ],
+      "cameras": {
+        "roofscape": [
+          -0.152000427246094,
+          3.70172762870789,
+          0.0409994125366211,
+          20.0917091369629,
+          89.7695236206055
+        ]
+      },
+      "crop": [
+        280,
+        140,
+        1320,
+        660
+      ]
+    },
+    {
+      "subjects": [
+        "shops"
+      ],
+      "flags": [
+        "--building-single",
+        "--building-kinds=shops"
+      ],
+      "after_flags": [
+        "--building-match=BEFORE/capture.json"
+      ],
+      "cameras": {
+        "shops": [
+          0.0479307174682617,
+          1.91957211494446,
+          -0.591325283050537,
+          16.2558135986328,
+          79.610237121582
+        ]
+      },
+      "crop": [
+        100,
+        100,
+        1480,
+        620
+      ]
+    },
+    {
+      "subjects": [
+        "town"
+      ],
+      "command": "godot --path CHECKOUT --resolution 1600x900 --script tests/fixtures/environment-views.gd -- --aivai --seed=3 --offscreen --nohud --set=perf:0 --preset=high --mood=day --focus=0,0 --capture-set=town",
+      "crop": [
+        300,
+        120,
+        1300,
+        700
+      ]
+    }
+  ],
+  "notes": "Both sides render the source_ref studio stage and environment views fixture. The baseline is the shop fronts change this builds on.",
+  "composition": "PIL: matched rows, 792 px halves, JPEG quality 82"
+}

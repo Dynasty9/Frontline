@@ -14,7 +14,7 @@ func bounds(k: VehicleModels) -> AABB:
 	var box := AABB()
 	var first := true
 	for part: Array in k._parts.get(k.root, []):
-		var basis: Basis = part[7] if part[7] is Basis else Basis.from_euler(part[5]).scaled(part[6])
+		var basis: Basis = part[7] if part[7] is Basis else Basis.from_euler(part[5]) * Basis.from_scale(part[6])
 		var aabb := Transform3D(basis, part[4]) * (part[0] as Mesh).get_aabb()
 		box = aabb if first else box.merge(aabb)
 		first = false

@@ -2,7 +2,8 @@ class_name BuildingYards
 extends RefCounted
 ## What people keep round a house: wheelie bins at a front corner, a woodpile
 ## against the back wall, a table and chairs out the back (a parasol over some),
-## a dog's kennel, a bicycle leaning on the wall, pots of flowers by the door.
+## a dog's kennel, a bicycle leaning on the wall, pots of flowers by the door,
+## a garden shed at the bottom of the garden, a trampoline on the lawn.
 ## Decor builds them (they're set dressing: no cover, and a blast or a truck
 ## knocks them over) in a kit at the piece's own origin, standing on y = 0,
 ## facing +z.
@@ -11,6 +12,8 @@ const BIN_COLS := [Color(0.16, 0.3, 0.18), Color(0.26, 0.28, 0.3), Color(0.15, 0
 const BIKE_COLS := [Color(0.62, 0.12, 0.1), Color(0.16, 0.28, 0.5), Color(0.15, 0.15, 0.15), Color(0.24, 0.42, 0.26), Color(0.75, 0.72, 0.66)]
 const PARASOLS := [Color(0.78, 0.22, 0.16), Color(0.86, 0.82, 0.7), Color(0.22, 0.4, 0.55), Color(0.36, 0.5, 0.3)]
 const TERRACOTTA := Color(0.62, 0.32, 0.2)
+const SHEDS := [Color(0.42, 0.3, 0.2), Color(0.3, 0.38, 0.3), Color(0.55, 0.5, 0.42), Color(0.28, 0.32, 0.38)]
+const PADS := [Color(0.15, 0.32, 0.6), Color(0.2, 0.5, 0.25), Color(0.75, 0.2, 0.15)]
 
 
 ## A wheelie bin or two side by side, lids shut, handles to the back.
@@ -106,6 +109,58 @@ static func bicycle(k: BuildingKit, col: Color) -> void:
 		b.bar(pair[0], pair[1], 0.028, 0.028, "car_paint", col, false)
 	b.plate(Vector3(0.22, 0.04, 0.09), seat + Vector3(-0.02, 0.06, 0), "plain_dark", Color(0.1, 0.1, 0.1))
 	b.bar(head + Vector3(0, 0.08, -0.24), head + Vector3(0, 0.08, 0.24), 0.025, 0.025, "metal_dark", Color(0.55, 0.55, 0.55), false)
+
+
+## A garden shed (its door to +z): a boarded body on bearers, a felted apex
+## roof over its eaves, a ledged door with a hasp, a small window on one side.
+static func shed(k: BuildingKit, col: Color, rng: RandomNumberGenerator) -> void:
+	var w := rng.randf_range(1.8, 2.4)
+	var dp := rng.randf_range(1.4, 1.8)
+	var h := 1.8
+	var base := 0.08
+	for sz: float in [-1.0, 1.0]:
+		k.box(Vector3(w, 0.08, 0.08), Vector3(0, 0.04, sz * (dp * 0.5 - 0.1)), "wood_dark", Color(0.26, 0.2, 0.14))
+	k.box(Vector3(w, h, dp), Vector3(0, base + h * 0.5, 0), "wood_painted", col)
+	# the boards' laps on each face, and the gables over the side walls
+	for face: Array in [[Vector3(0, 0, dp * 0.5), 0.0, w], [Vector3(0, 0, -dp * 0.5), PI, w], [Vector3(w * 0.5, 0, 0), PI * 0.5, dp], [Vector3(-w * 0.5, 0, 0), -PI * 0.5, dp]]:
+		var fk := k.at_point(face[0] + Vector3(0, base, 0), Vector3(0, face[1], 0))
+		var gaps: Array = [Rect2(0.15, 0.0, 0.75, 1.68)] if face[1] == 0.0 else []
+		BuildingWalls.boards(fk, face[2], h, 0.0, "timber", col, gaps)
+	var rise := 0.36
+	for sx: float in [-1.0, 1.0]:
+		k.prism(Vector3(dp, rise, 0.04), Vector3(sx * (w * 0.5 - 0.02), base + h + rise * 0.5, 0), "wood_painted", col, Vector3(0, PI * 0.5, 0))
+	# the roof: two felted slopes, a ridge
+	var ang := atan2(rise, dp * 0.5)
+	var slope := sqrt(rise * rise + dp * dp * 0.25) + 0.15
+	var felt := Color(0.16, 0.16, 0.15)
+	for sz: float in [-1.0, 1.0]:
+		k.plate(Vector3(w + 0.24, 0.035, slope), Vector3(0, base + h + rise * 0.5 + 0.02, sz * (dp * 0.25 + 0.03)), "plain_dark", felt, Vector3(sz * ang, 0, 0), true)
+	k.box(Vector3(w + 0.26, 0.05, 0.08), Vector3(0, base + h + rise + 0.02, 0), "plain_dark", felt.darkened(0.2))
+	# the door, a hasp on it; a window in one side
+	var door := k.at_point(Vector3(0.52, base, dp * 0.5 + 0.012))
+	door.plate(Vector3(0.75, 1.68, 0.025), Vector3(0, 0.84, 0), "wood_painted", col.darkened(0.25))
+	for y: float in [0.25, 1.4]:
+		door.plate(Vector3(0.75, 0.1, 0.02), Vector3(0, y, 0.02), "wood_painted", col.darkened(0.35))
+	door.plate(Vector3(0.1, 1.3, 0.02), Vector3(0, 0.82, 0.024), "wood_painted", col.darkened(0.35), Vector3(0, 0, 0.5))
+	door.plate(Vector3(0.12, 0.04, 0.02), Vector3(-0.3, 1.0, 0.04), "metal_dark", Color(0.3, 0.3, 0.3))
+	var side := 1.0 if rng.randf() < 0.5 else -1.0
+	var win := k.at_point(Vector3(side * (w * 0.5 + 0.012), base + 1.15, 0), Vector3(0, side * PI * 0.5, 0))
+	win.plate(Vector3(0.6, 0.45, 0.02), Vector3.ZERO, "wood_painted", col.darkened(0.3))
+	win.plate(Vector3(0.5, 0.35, 0.01), Vector3(0, 0, 0.012), "glass", BuildingOpenings.GLASS)
+
+
+## A trampoline on the lawn: a ring frame on bowed legs, the black mat, the
+## coloured pad over its springs.
+static func trampoline(k: BuildingKit, col: Color) -> void:
+	var r := 1.55
+	var y := 0.82
+	k.cyl(r - 0.12, r - 0.12, 0.012, Vector3(0, y - 0.01, 0), "rubber", Color(0.06, 0.06, 0.06), Vector3.ZERO, 20, false)
+	k.part(BuildingKit.ring(r - 0.16, r + 0.08), "canvas", Transform3D(Basis.from_scale(Vector3(1.0, 0.25, 1.0)), Vector3(0, y + 0.01, 0)), col)
+	k.part(BuildingKit.ring(r + 0.02, r + 0.09), "metal_dark", Transform3D(Basis.from_scale(Vector3(1.0, 0.4, 1.0)), Vector3(0, y - 0.04, 0)), Color(0.55, 0.56, 0.57), false)
+	for i in 6:
+		var a := TAU * i / 6.0
+		var p := Vector3(cos(a), 0, sin(a)) * (r + 0.05)
+		k.bar(p + Vector3(0, y - 0.05, 0), p * 0.92, 0.04, 0.04, "metal_dark", Color(0.55, 0.56, 0.57), false)
 
 
 ## Pots of flowers in a row by a door.

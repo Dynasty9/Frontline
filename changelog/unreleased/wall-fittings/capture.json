@@ -1,0 +1,59 @@
+{
+  "before_ref": "969bdef62f7d3db514878aaaaa36bbc749fcfd02",
+  "source_ref": "091b91e9f0085e135081f3687acbc67ad8f50f0c",
+  "engine": "Godot 4.7.2 stable ed1daf0bf",
+  "stage": "tools/showcase/building-surfaces.tscn; tests/fixtures/environment-views.gd",
+  "command": "godot --path CHECKOUT --resolution 1600x900 tools/showcase/building-surfaces.tscn -- --building-out=OUTPUT --offscreen FLAGS",
+  "comparisons": [
+    {
+      "subjects": [
+        "house_fixtures"
+      ],
+      "flags": [
+        "--building-single",
+        "--building-kinds=house_fixtures"
+      ],
+      "after_flags": [
+        "--building-match=BEFORE/capture.json"
+      ],
+      "cameras": {
+        "house_fixtures": [
+          0.0,
+          3.07628345489502,
+          -0.116476535797119,
+          13.1379776000977,
+          45.5884208679199
+        ]
+      },
+      "crops": [
+        [
+          140,
+          90,
+          1460,
+          860
+        ],
+        [
+          760,
+          420,
+          1260,
+          760
+        ]
+      ]
+    },
+    {
+      "subjects": [
+        "town"
+      ],
+      "command": "godot --path CHECKOUT --resolution 1600x900 --script tests/fixtures/environment-views.gd -- --aivai --seed=3 --offscreen --nohud --set=perf:0 --preset=high --mood=day --focus=0,0 --capture-set=town",
+      "view": "driveway",
+      "crop": [
+        0,
+        0,
+        1000,
+        560
+      ]
+    }
+  ],
+  "notes": "Both sides render the source_ref studio stage: house_fixtures picks its walls by id (518 a meter box, 384 the door with its number, letterbox and mat, 809 an air conditioner on brackets; round the side 517 a dish, 98 a tap with its hose, 596 an air conditioner on a pad) and makes those plain. The baseline is the barns branch with the roofscapes review fixes merged, which this builds on.",
+  "composition": "PIL: matched rows, 792 px halves, JPEG quality 82"
+}
