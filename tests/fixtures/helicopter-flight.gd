@@ -415,8 +415,18 @@ func _crashes() -> void:
 				wreck = st
 		_check("her wreck lies where she hit, not under where she was shot (mode %d)" % mode, wreck != null)
 		if wreck:
-			_check("a spin-in leaves her on her side, a heavy landing upright (mode %d)" % mode, absf(wreck.tilt.y) > 0.4 if mode == Vehicle.CRASH_SPIN else absf(wreck.tilt.y) < 0.2)
+			_check("a spin-in leaves her on her side, a heavy landing slumped upright (mode %d)" % mode, absf(wreck.tilt.y) > 1.1 if mode == Vehicle.CRASH_SPIN else absf(wreck.tilt.y) < 0.3)
+			_check("her wreck keeps her paint, to burn and blacken (mode %d)" % mode, not wreck.wreck_finish.is_empty())
 			field.despawn(wreck)
+	# a wreck's rotor keeps each blade apart, so it can be broken up; a flying
+	# helicopter's blades are one part
+	var wreck_model := VehicleModels.build("ghosthawk", 0, 3, false, true)
+	var flying_model := VehicleModels.build("ghosthawk", 0, 3)
+	var apart := wreck_model.blades.get_children().filter(func(n): return n is Node3D and not n is MeshInstance3D).size()
+	var together := flying_model.blades.get_children().filter(func(n): return n is Node3D and not n is MeshInstance3D).size()
+	_check("a wreck's rotor blades are separate parts, a flying one's are not", apart == 4 and together == 0)
+	wreck_model.root.free()
+	flying_model.root.free()
 	var low := _vehicle("ghosthawk", 0.15, true)
 	low.eid = 950
 	low.take_damage(low.max_hp * 2.0, null)

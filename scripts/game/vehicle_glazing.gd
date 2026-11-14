@@ -3,18 +3,100 @@ extends RefCounted
 ## Pane outlines and seals are shared. Clear glazing is opt-in: a solid hull
 ## still needs opaque glazing until its builder provides an actual opening.
 
+static var _frames := {}
+static var _panes := {}
+
+## The rubber seal round the pane is one moulded frame, chamfered front and
+## back along its edges as its four separate strips were. The pane's own
+## edges sit inside it, so an opaque pane is just its two faces.
 static func rectangle(k: VehicleModels, parent: Node3D, size: Vector2, pos: Vector3, rot: Vector3, clear := false, col = null, thickness := 0.02) -> Variant:
-	var basis := Basis.from_euler(rot)
 	var border := minf(0.025, minf(size.x, size.y) * 0.08)
-	for side in [-1.0, 1.0]:
-		k._box(parent, Vector3(border, size.y + border, thickness + 0.015), pos + basis * Vector3(side * size.x * 0.5, 0, 0), "rubber", null, rot, false)
-		k._box(parent, Vector3(size.x, border, thickness + 0.015), pos + basis * Vector3(0, side * size.y * 0.5, 0), "rubber", null, rot, false)
+	k._add(parent, _frame(size, border, thickness + 0.015), "rubber", null, pos, rot, Vector3.ONE, false)
 	if clear:
 		var mesh := QuadMesh.new()
 		mesh.size = size
 		VehicleCab.mesh_glass(k, parent, mesh, pos, rot)
 		return null
-	return k._box(parent, Vector3(size.x, size.y, thickness), pos, "glass", col, rot, false)
+	return k._add(parent, _pane(size, thickness), "glass", col, pos, rot, Vector3.ONE, false)
+
+
+## A rectangular seal frame in local XY, `depth` through along Z: outside
+## size + border, its opening size - border. Each face's outer and inner edges
+## are chamfered as Res.box chamfers a strip that size. Cached by size.
+static func _frame(size: Vector2, border: float, depth: float) -> ArrayMesh:
+	var key := "%.4f,%.4f,%.4f,%.4f" % [size.x, size.y, border, depth]
+	if _frames.has(key):
+		return _frames[key]
+	var outer := (size + Vector2(border, border)) * 0.5
+	var inner := (size - Vector2(border, border)) * 0.5
+	var chamfer := 0.0 if minf(border, depth) < 0.012 else clampf(minf(border, depth) * 0.16, 0.0025, 0.035)
+	chamfer = minf(chamfer, border * 0.3)
+	var hz := depth * 0.5
+	var c := Vector2(chamfer, chamfer)
+	var vs := PackedVector3Array()
+	var ns := PackedVector3Array()
+	var corners := [Vector2(-1, -1), Vector2(1, -1), Vector2(1, 1), Vector2(-1, 1)]
+	for i in 4:
+		var q0: Vector2 = corners[i]
+		var q1: Vector2 = corners[(i + 1) % 4]
+		# this side's outward direction in the frame's plane
+		var out3 := Vector3((q0 + q1).x * 0.5, (q0 + q1).y * 0.5, 0)
+		for z: float in [-1.0, 1.0]:
+			var face := Vector3(0, 0, z)
+			var o0 := _at(q0 * (outer - c), hz * z)
+			var o1 := _at(q1 * (outer - c), hz * z)
+			var i0 := _at(q0 * (inner + c), hz * z)
+			var i1 := _at(q1 * (inner + c), hz * z)
+			_quad(vs, ns, o0, o1, i1, i0, face)
+			if chamfer > 0.0:
+				var oe0 := _at(q0 * outer, (hz - chamfer) * z)
+				var oe1 := _at(q1 * outer, (hz - chamfer) * z)
+				var ie0 := _at(q0 * inner, (hz - chamfer) * z)
+				var ie1 := _at(q1 * inner, (hz - chamfer) * z)
+				_quad(vs, ns, oe0, oe1, o1, o0, (out3 + face).normalized())
+				_quad(vs, ns, i0, i1, ie1, ie0, (face - out3).normalized())
+		var hz0 := hz - chamfer
+		_quad(vs, ns, _at(q0 * outer, -hz0), _at(q1 * outer, -hz0), _at(q1 * outer, hz0), _at(q0 * outer, hz0), out3)
+		_quad(vs, ns, _at(q0 * inner, -hz0), _at(q1 * inner, -hz0), _at(q1 * inner, hz0), _at(q0 * inner, hz0), -out3)
+	var mesh := _flat(vs, ns)
+	_frames[key] = mesh
+	return mesh
+
+
+## An opaque pane's front and back faces (its edges are inside the frame).
+static func _pane(size: Vector2, thickness: float) -> ArrayMesh:
+	var key := "%.4f,%.4f,%.4f" % [size.x, size.y, thickness]
+	if _panes.has(key):
+		return _panes[key]
+	var vs := PackedVector3Array()
+	var ns := PackedVector3Array()
+	var h := size * 0.5
+	for z: float in [-1.0, 1.0]:
+		var t := thickness * 0.5 * z
+		_quad(vs, ns, Vector3(-h.x, -h.y, t), Vector3(h.x, -h.y, t), Vector3(h.x, h.y, t), Vector3(-h.x, h.y, t), Vector3(0, 0, z))
+	var mesh := _flat(vs, ns)
+	_panes[key] = mesh
+	return mesh
+
+
+static func _at(q: Vector2, z: float) -> Vector3:
+	return Vector3(q.x, q.y, z)
+
+
+static func _quad(vs: PackedVector3Array, ns: PackedVector3Array, a: Vector3, b: Vector3, c: Vector3, d: Vector3, normal: Vector3) -> void:
+	VehicleProfiles._tri(vs, ns, a, b, c, normal, normal, normal, normal)
+	VehicleProfiles._tri(vs, ns, a, c, d, normal, normal, normal, normal)
+
+
+static func _flat(vs: PackedVector3Array, ns: PackedVector3Array) -> ArrayMesh:
+	var arrays := []
+	arrays.resize(Mesh.ARRAY_MAX)
+	arrays[Mesh.ARRAY_VERTEX] = vs
+	arrays[Mesh.ARRAY_NORMAL] = ns
+	var mesh := ArrayMesh.new()
+	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+	Mats.keep_arrays(mesh, arrays)
+	return mesh
 
 
 static func quad(k: VehicleModels, parent: Node3D, _key: String, corners: Array, inside: Vector3, region: Rect2, lift: float, thickness: float, mat: String, col = null, clear := false) -> Variant:
@@ -34,7 +116,14 @@ static func polygon(k: VehicleModels, parent: Node3D, surface: VehicleSurface, o
 	var seal := minf(0.014, shortest * 0.045)
 	VehicleBody.boundary(k, parent, surface, outline, lift + thickness, seal, false, divisions)
 	# The thin painted retaining bead gives the rubber a distinct attachment.
-	VehicleBody.boundary(k, parent, surface, outline, lift + thickness - seal, seal * 0.42, false, divisions, "metal_dark")
+	# Where its inner half lies inside an opaque pane's edge (as it does at the
+	# usual 2 cm thickness and full 14 mm seal), only its outer faces are built.
+	var bead := seal * 0.42
+	var faces := VehicleBody.SEAL_ALL
+	var middle := lift + thickness - seal
+	if not clear and middle + bead <= lift + thickness * 0.6 + 0.0002 and middle - bead >= lift - 0.0002:
+		faces = VehicleBody.SEAL_UPPER_OUT | VehicleBody.SEAL_LOWER_OUT
+	VehicleBody._seal(k, parent, surface, outline, middle, bead, divisions, "metal_dark", null, faces)
 	var mesh: Mesh = authored_mesh if authored_mesh != null else surface.patch(outline, lift + thickness * 0.6, 0.0 if clear else thickness * 0.6, divisions)
 	if clear:
 		VehicleCab.mesh_glass(k, parent, mesh)

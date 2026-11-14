@@ -1,0 +1,10 @@
+{
+  "entry": "changelog/unreleased/gpu-benchmark-scope.md",
+  "summary": "Distinguish stationary GPU measurements from the unmeasured cost of an advancing battle clock.",
+  "medium": "text",
+  "stage": "text",
+  "rationale": "This is a diagnostic reporting and regression fix, not a visual change or performance gain. No motion or benchmark numbers are claimed.",
+  "source_ref": "690053683a3d4cc4fb92236ed37e95391a2baf4f",
+  "sources": [],
+  "output": null
+}

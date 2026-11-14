@@ -1,0 +1,41 @@
+{
+  "before_ref": "54823975 with construction passes 2 to 4 applied: an intermediate state of the change that adds this entry",
+  "after_ref": "the change that adds this entry",
+  "engine": "Godot 4.7.2 stable",
+  "machine": "one Windows 11 desktop; before and after run back to back, nothing else running",
+  "geometry": {
+    "command": "godot --headless --path . tools/vehicles/construction-metrics.tscn -- --vehicle-metrics-out=<file>",
+    "models": 135,
+    "team": 0,
+    "seed": 3,
+    "vertices_before": 33076168,
+    "vertices_after": 18497136,
+    "build_seconds_before": [
+      26.37,
+      26.4
+    ],
+    "build_seconds_after": [
+      16.36,
+      16.28
+    ],
+    "note": "Vertices count every mesh surface, near and distance meshes; build time is cold, in sorted model order. Nodes, meshes, surfaces, wheels and rotors unchanged on every model."
+  },
+  "builder_profile": {
+    "command": "godot --headless --path . tools/vehicles/builder-profile.tscn -- --builder-profile-out=<file>",
+    "near_vertices_before": 23797926,
+    "near_vertices_after": 12938634
+  },
+  "gpu_frame_time": {
+    "command": "godot --path <copy> -- --scenario=roster --seed=3 --nohud --perf-at=25 --perf-duration=25 --quit-after=70",
+    "window": "off-screen window, Forward+",
+    "render_gpu_p50_ms_before": [
+      17.76,
+      13.76
+    ],
+    "render_gpu_p50_ms_after": [
+      13.82,
+      13.14
+    ],
+    "note": "The first before run includes warm-up; the matched second rounds differ by less than run-to-run noise."
+  }
+}
