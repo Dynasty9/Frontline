@@ -4031,7 +4031,7 @@ func order_dugout(st: Structure) -> void:
 	_clear_task()
 	task = "dugout"
 	task_ent = st
-	go_to(TrenchNet.dugout_door(st), "task", 1)
+	go_to(TrenchNet.dugout_door(st), "task", 2)
 
 
 func _dugout_tick(dt: float) -> void:
@@ -4044,7 +4044,7 @@ func _dugout_tick(dt: float) -> void:
 		_choose_act(true)
 		return
 	if Defs.flat(door - position).length() > 1.8:
-		go_to(door, "task", 1)
+		go_to(door, "task", 2)
 		return
 	task = ""
 	hide_in("dugout", 9999.0, st)

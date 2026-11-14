@@ -320,9 +320,55 @@ func formation(center: Vector3, face: Vector3, n: int, wide := false) -> Array:
 		# a fighting position stays exactly where it is (it's beside a wall
 		# by design); anything else is nudged onto open ground
 		var fp: bool = sl.size() > 2 and not (sl[2] as Dictionary).is_empty()
-		out.append(sl[0] if fp else world.nav.nearest_walkable(sl[0]))
+		var p: Vector3 = sl[0] if fp else world.nav.nearest_walkable(sl[0])
+		if not fp and world.terrain.trench[world.terrain.idx_of(p)] > 0:
+			p = world.onto_fire_step(p, face)
+		out.append(p)
 	if stamp:
 		world.detail("squad formation", stamp)
+	return out
+
+
+## A squad told to hold a trench line mans it: a man to every pace and a half
+## of fire step along the bays that face `face` near `pos`, nearest first, in
+## the trench rather than spread in a ring on the ground round it. Clear of a
+## gun bay's own crew. Fewer than n when the line there is short.
+func trench_spots(pos: Vector3, face: Vector3, n: int) -> Array:
+	var found := []
+	for st in world.structures_near(pos, 12.0):
+		if st.skind != "trench" or st.trench_depth() < 0.85:
+			continue
+		var sg := TrenchNet.seg_of(st)
+		var a := Defs.flat(sg[0])
+		var ab := Defs.flat(sg[1]) - a
+		var length := ab.length()
+		if length < 2.4:
+			continue
+		var dir := ab / length
+		var side := Vector3(-dir.z, 0, dir.x)
+		if absf(side.dot(face)) < 0.7:
+			continue  # running towards the enemy: nobody fires over its side
+		if side.dot(face) < 0.0:
+			side = -side
+		var guns := TrenchFittings.gun_bays(st)
+		var k := 0
+		while 0.8 + k * Cover.SPACING * 1.2 <= length - 0.8:
+			var t := 0.8 + k * Cover.SPACING * 1.2
+			k += 1
+			var q := a + dir * t + side * (TrenchNet.HALF_W - 0.34)
+			var local := t - length * 0.5
+			var clear := true
+			for span in guns:
+				if local > span[0] - 0.4 and local < span[1] + 0.4:
+					clear = false
+			if clear and Defs.flat(q - pos).length() < 10.0 and world.trench_depth(q) >= 0.6:
+				found.append([Defs.flat(q - pos).length(), q])
+	found.sort_custom(func(x: Array, y: Array) -> bool: return x[0] < y[0])
+	var out := []
+	for f in found:
+		if out.size() >= n:
+			break
+		out.append(f[1])
 	return out
 
 
@@ -603,7 +649,10 @@ func order_defend(pos: Vector3, face: Vector3, direct := false) -> void:
 			mems.append(m)
 	if mems.is_empty():
 		return
-	var slots := _assign(formation(pos, facing, mems.size(), true), mems)
+	var spots := trench_spots(pos, facing, mems.size())
+	if spots.size() < mems.size():
+		spots.append_array(formation(pos, facing, mems.size() - spots.size(), true))
+	var slots := _assign(spots, mems)
 	for i in mems.size():
 		mems[i].cmd_move(slots[i], 0, facing)
 		mems[i].leash = 7.0

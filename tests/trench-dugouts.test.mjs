@@ -28,6 +28,15 @@ async function shellTheLine() {
   return line;
 }
 
+test("a squad told to hold the trench line mans its fire steps", async () => {
+  await game.load({ scenario: "trenches", seed: 3, static: true });
+  await game.step(10);
+  const { soldiers } = await game.query("soldiers", { team: 1 });
+  const riflemen = soldiers.filter((s) => s.life === "ALIVE" && s.task === "");
+  const down = riflemen.filter((s) => s.in_trench);
+  assert.ok(down.length >= riflemen.length - 1, `${down.length} of ${riflemen.length} are down in the trench`);
+});
+
 test("shelled, a squad goes down its dugout and stands to when the barrage lifts", async () => {
   await game.load({ scenario: "trenches", seed: 3, static: true });
   await game.step(8);
