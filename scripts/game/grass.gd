@@ -562,7 +562,9 @@ void fragment() {
 	float cured = clamp((1.0 - wet) * 0.8 + (1.0 - g) * 0.4 + (rnd - 0.7) * 0.6 - 0.08, 0.0, 0.9);
 	col = mix(col, dry_col, cured * smoothstep(0.2, 1.0, h));
 	col *= mix(1.0, 0.86, wet) * (0.85 + 0.3 * rnd);
-	col = mix(col, vec3(0.09, 0.075, 0.05), burnt * 0.85);
+	// scorched brown at the edge of a scar, burnt to black stubble where it burnt through
+	vec3 scorched = mix(vec3(0.09, 0.075, 0.05), vec3(0.026, 0.024, 0.021), smoothstep(0.55, 1.0, burnt));
+	col = mix(col, scorched, burnt * 0.9);
 	ALBEDO = col;
 	ROUGHNESS = 0.85;
 	BACKLIGHT = vec3(0.35, 0.4, 0.15) * h * (1.0 - burnt);

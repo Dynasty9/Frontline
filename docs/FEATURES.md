@@ -1128,10 +1128,12 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
 - Tanks smash through walls, trees and cars. Small arms ricochet off them. Frontal rockets can bounce,
   and a blown track leaves the tank stranded until engineers repair it. Destroyed vehicles become wrecks you can use as cover.
   A destroyed vehicle burns out: over the best part of a minute the fire spreads across the hull from where it took
-  hold (the engine deck, a helicopter's engines), leaving charred steel, rust running down the sides, soot streaks and
-  ash on the tops, with a few islands of blistered paint; embers glow in the seams while it burns. Tyres and canvas
-  burn away and a wheeled hull settles on its rims, the grass round it is burnt flat and the ground blackened, and
-  torn-off pieces lie round it.
+  hold (the engine deck, a helicopter's engines), leaving charred black steel, the paint burnt to a pale grey film
+  where it burnt hottest, rust running down the sides, soot streaks and ash on the tops, with a few islands of
+  blistered paint; embers glow in the seams while it burns. Tyres and canvas burn away and a wheeled hull settles on
+  its rims, the grass is burnt flat and the ground blackened a couple of metres out all round it, and torn-off pieces
+  lie round it. A tank or IFV whose ammunition goes up (more likely the harder it was hit) has its turret blown clean
+  off: it lies a few metres away, upside down, on its side or dug in, its gun bent, a black hole where it sat.
 - Coalition: battle tank, **IFV** (tracked, 25 mm with airburst rounds, carries a four-man fire team), **Humvee**
   (.50 cal), supply helicopter, **attack helicopter** (circles its target with a 30 mm chain gun firing explosive
   rounds, plus rocket salvos).
