@@ -13,11 +13,16 @@ static func rectangle(k: VehicleModels, parent: Node3D, size: Vector2, pos: Vect
 	var border := minf(0.025, minf(size.x, size.y) * 0.08)
 	k._add(parent, _frame(size, border, thickness + 0.015), "rubber", null, pos, rot, Vector3.ONE, false)
 	if clear:
-		var mesh := QuadMesh.new()
-		mesh.size = size
-		VehicleCab.mesh_glass(k, parent, mesh, pos, rot)
+		VehicleCab.mesh_glass(k, parent, _pane(size, 0.0), pos, rot)
 		return null
 	return k._add(parent, _pane(size, thickness), "glass", col, pos, rot, Vector3.ONE, false)
+
+
+## How far a pane's shading normals lean out toward its edges (the tangent of
+## the lean at its farthest corner): glass is pressed to a gentle curve, so
+## from above the sky slides down a window from a bright edge to a dark one
+## instead of lying on it as one flat tone, which read as a painted panel.
+const CROWN := 0.3
 
 
 ## A rectangular seal frame in local XY, `depth` through along Z: outside
@@ -63,7 +68,9 @@ static func _frame(size: Vector2, border: float, depth: float) -> ArrayMesh:
 	return mesh
 
 
-## An opaque pane's front and back faces (its edges are inside the frame).
+## An opaque pane's front and back faces (its edges are inside the frame),
+## crowned (CROWN); zero thickness is a clear pane's single sheet, facing +Z
+## as a QuadMesh does.
 static func _pane(size: Vector2, thickness: float) -> ArrayMesh:
 	var key := "%.4f,%.4f,%.4f" % [size.x, size.y, thickness]
 	if _panes.has(key):
@@ -71,12 +78,54 @@ static func _pane(size: Vector2, thickness: float) -> ArrayMesh:
 	var vs := PackedVector3Array()
 	var ns := PackedVector3Array()
 	var h := size * 0.5
-	for z: float in [-1.0, 1.0]:
+	for z: float in ([1.0] if thickness <= 0.0 else [-1.0, 1.0]):
 		var t := thickness * 0.5 * z
-		_quad(vs, ns, Vector3(-h.x, -h.y, t), Vector3(h.x, -h.y, t), Vector3(h.x, h.y, t), Vector3(-h.x, h.y, t), Vector3(0, 0, z))
+		var c := [Vector3(-h.x, -h.y, t), Vector3(h.x, -h.y, t), Vector3(h.x, h.y, t), Vector3(-h.x, h.y, t)]
+		var n := []
+		for q: Vector3 in c:
+			n.append((Vector3(0, 0, z) + Vector3(q.x, q.y, 0) / h.length() * CROWN).normalized())
+		var face := Vector3(0, 0, z)
+		VehicleProfiles._tri(vs, ns, c[0], c[1], c[2], n[0], n[1], n[2], face)
+		VehicleProfiles._tri(vs, ns, c[0], c[2], c[3], n[0], n[2], n[3], face)
 	var mesh := _flat(vs, ns)
 	_panes[key] = mesh
 	return mesh
+
+
+## The fitted pane `mesh` (a VehicleSurface patch) with its faces crowned as
+## _pane's are: each face vertex's normal leans out from the pane's middle in
+## proportion to its distance from it. The edge strips keep theirs.
+static func _crowned(mesh: ArrayMesh) -> ArrayMesh:
+	var src: Array = mesh.get_meta(&"src") if mesh.has_meta(&"src") else mesh.surface_get_arrays(0)
+	var vs: PackedVector3Array = src[Mesh.ARRAY_VERTEX]
+	var ns: PackedVector3Array = (src[Mesh.ARRAY_NORMAL] as PackedVector3Array).duplicate()
+	if vs.is_empty():
+		return mesh
+	var facing := ns[0]
+	var middle := Vector3.ZERO
+	var count := 0
+	for i in vs.size():
+		if absf(ns[i].dot(facing)) > 0.9:
+			middle += vs[i]
+			count += 1
+	middle /= maxf(1.0, count)
+	var reach := 0.0
+	for i in vs.size():
+		if absf(ns[i].dot(facing)) > 0.9:
+			var d := vs[i] - middle
+			reach = maxf(reach, (d - ns[i] * d.dot(ns[i])).length())
+	if reach < 0.001:
+		return mesh
+	for i in vs.size():
+		if absf(ns[i].dot(facing)) > 0.9:
+			var d := vs[i] - middle
+			ns[i] = (ns[i] + (d - ns[i] * d.dot(ns[i])) / reach * CROWN).normalized()
+	var arrays := src.duplicate()
+	arrays[Mesh.ARRAY_NORMAL] = ns
+	var result := ArrayMesh.new()
+	result.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+	Mats.keep_arrays(result, arrays)
+	return result
 
 
 static func _at(q: Vector2, z: float) -> Vector3:
@@ -124,7 +173,7 @@ static func polygon(k: VehicleModels, parent: Node3D, surface: VehicleSurface, o
 	if not clear and middle + bead <= lift + thickness * 0.6 + 0.0002 and middle - bead >= lift - 0.0002:
 		faces = VehicleBody.SEAL_UPPER_OUT | VehicleBody.SEAL_LOWER_OUT
 	VehicleBody._seal(k, parent, surface, outline, middle, bead, divisions, "metal_dark", null, faces)
-	var mesh: Mesh = authored_mesh if authored_mesh != null else surface.patch(outline, lift + thickness * 0.6, 0.0 if clear else thickness * 0.6, divisions)
+	var mesh: Mesh = authored_mesh if authored_mesh != null else _crowned(surface.patch(outline, lift + thickness * 0.6, 0.0 if clear else thickness * 0.6, divisions))
 	if clear:
 		VehicleCab.mesh_glass(k, parent, mesh)
 		return null

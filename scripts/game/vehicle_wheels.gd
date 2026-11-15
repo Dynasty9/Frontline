@@ -7,12 +7,17 @@ static var _meshes := {}  # carcasses, tread bands, rim lips and drums, shared b
 const AXLE := Vector3(0, 0, PI / 2)
 
 static func pneumatic(k: VehicleModels, parent: Node3D, pos: Vector3, r: float, w: float, hub_kind := "gunmetal_w", hub_col = null, profile := "offroad", register := true) -> Node3D:
+	# A car's road wheel is a car wheel, not a truck's: see _car_wheel. Trucks
+	# and tractors pass painted rims, quad bikes' tyres are fatter than a
+	# car's, and military vehicles keep their steel and beadlock rims.
+	if profile == "road" and k.surface_family == "automotive" and hub_kind in ["steel", "gunmetal_w"] and r >= 0.3 and r < 0.42 and w <= r * 0.75:
+		return _car_wheel(k, parent, pos, r, w, hub_kind, hub_col, register)
 	var pv := k._pivot(parent, pos)
 	# Rounded shoulders and recessed rims share meshes at every wheel size.
 	# Tiny trolley wheels and broad tracked road wheels retain their solid discs.
 	var fine := r >= 0.18
 	if k.wreck:
-		pass  # (burnt away: only the rim is left)
+		pass  # (burnt away: only the rim is left, and the hull sits down on it: Structure._ruin)
 	elif r < 0.18 or w > r * 1.2:
 		k._add(pv, drum(r, r, w, 24), "rubber", null, Vector3.ZERO, AXLE)
 	else:
@@ -37,6 +42,237 @@ static func pneumatic(k: VehicleModels, parent: Node3D, pos: Vector3, r: float, 
 		k._fold(pv)
 		return parent
 	return pv
+
+
+## A car's wheel: a low-profile tyre with two grooves round its crown, on a
+## rim two thirds of its radius (a truck's is half), the polished flange
+## standing just inside the sidewall's bulge. What fills the rim is what a
+## car of that kind wears, chosen by the caller's rim:
+## - a dark rim (`gunmetal_w`): a painted alloy, five twin spokes on a small
+##   car (the sport hatchback), five broad ones on a big one (the 4WD);
+## - a bright steel rim of 36 cm or more (the SUV, the pickups): a six-spoke
+##   alloy on six studs;
+## - a smaller bright steel rim (the plain hatchback, the van, parked cars):
+##   a pressed steel wheel under a domed plastic trim with its vent slots.
+## Alloys show the dark wheel well and the brake disc between their spokes,
+## and five or six wheel nuts round a centre cap. A running wheel details its
+## outer face only (the inner one faces the chassis); a spare details both,
+## and a carrier's stud runs through its centre to either face of the old hub.
+## About half the vertices of the truck wheel it replaces.
+static func _car_wheel(k: VehicleModels, parent: Node3D, pos: Vector3, r: float, w: float, hub_kind: String, hub_col, register: bool) -> Node3D:
+	var pv := k._pivot(parent, pos)
+	var dark := hub_kind != "steel"
+	var trim := not dark and r < 0.36
+	var rr := r * (0.70 if dark and r < 0.36 else 0.63)
+	if k.burnt:
+		# a gutted car stands on what its tyres left (see _belt)
+		k._add(pv, _belt(r, w), "steel", null, Vector3(0, -r * 0.05, 0))
+	elif not k.wreck:
+		k._add(pv, _car_tyre(r, w, rr), "rubber", Color(0.17, 0.18, 0.17), Vector3.ZERO)
+	# (a wreck's tyres burn away and its hull sits down on the rims: Structure._ruin)
+	var faces: Array = [signf(pos.x) if pos.x != 0.0 else 1.0] if register else [-1.0, 1.0]
+	for side: float in faces:
+		var turn := Vector3(0, PI, 0) if side < 0.0 else Vector3.ZERO
+		var out := Vector3(0, 0, -side * PI / 2)  # a drum's +Y (its cap) facing out
+		k._add(pv, _car_rim(w, rr), hub_kind, hub_col, Vector3.ZERO, turn, Vector3.ONE, false)
+		if trim:
+			k._add(pv, _car_trim(w, rr), hub_kind, hub_col, Vector3.ZERO, turn, Vector3.ONE, false)
+			# The trim's vent slots, dark against the silver, and its badge.
+			for i in 8:
+				var a := TAU * (i + 0.5) / 8.0
+				k._box(pv, Vector3(0.006, rr * 0.24, rr * 0.12), Vector3(side * w * 0.416, sin(a) * rr * 0.62, cos(a) * rr * 0.62), "rubber", Color(0.03, 0.03, 0.03), Vector3(PI / 2 - a, 0, 0), false)
+			k._add(pv, drum(rr * 0.11, rr * 0.11, 0.008, 12, false), hub_kind, Color(0.2, 0.2, 0.21), Vector3(side * w * 0.447, 0, 0), out, Vector3.ONE, false)
+			continue
+		# The dark wheel well and the brake disc, seen between the spokes.
+		k._add(pv, drum(rr * 0.93, rr * 0.93, 0.01, 16, false), "rubber", Color(0.04, 0.04, 0.04), Vector3(side * w * 0.12, 0, 0), out, Vector3.ONE, false)
+		k._add(pv, drum(rr * 0.74, rr * 0.74, w * 0.05, 20, false), "steel", Color(0.36, 0.35, 0.33), Vector3(side * w * 0.2, 0, 0), out, Vector3.ONE, false)
+		var spokes := 5 if dark else 6
+		k._add(pv, _car_spokes(w, rr, spokes, dark and r < 0.36), hub_kind, hub_col, Vector3.ZERO, turn, Vector3.ONE, false)
+		# The hub boss, its centre cap and the wheel nuts round it.
+		k._add(pv, drum(rr * 0.34, rr * 0.34, w * 0.12, 16, false), hub_kind, hub_col, Vector3(side * w * 0.305, 0, 0), out, Vector3.ONE, false)
+		k._add(pv, drum(rr * 0.15, rr * 0.16, w * 0.03, 12, false), hub_kind, Color(0.55, 0.56, 0.56) if dark else Color(0.12, 0.12, 0.13), Vector3(side * w * 0.375, 0, 0), out, Vector3.ONE, false)
+		var nut := drum(maxf(0.008, r * 0.026), maxf(0.008, r * 0.026), 0.016, 6, false)
+		for i in spokes:
+			var a := TAU * (i + 0.5) / float(spokes)
+			k._add(pv, nut, "steel", Color(0.52, 0.53, 0.52), Vector3(side * w * 0.37, cos(a) * rr * 0.23, sin(a) * rr * 0.23), out, Vector3.ONE, false)
+	if register:
+		# The tyre's inner opening closed in the dark of the wheel arch.
+		var back: float = -float(faces[0])
+		k._add(pv, drum(rr * 1.04, rr * 1.04, 0.01, 16, false), "rubber", Color(0.04, 0.04, 0.04), Vector3(back * w * 0.3, 0, 0), Vector3(0, 0, -back * PI / 2), Vector3.ONE, false)
+	else:
+		# A spare's carrier stud, through the centre to either face of the old hub.
+		k._add(pv, drum(rr * 0.12, rr * 0.12, w * 0.89, 8), hub_kind, hub_col, Vector3.ZERO, AXLE, Vector3.ONE, false)
+		k._fold(pv)
+		return parent
+	k.wheels.append(pv)
+	return pv
+
+
+## A car tyre's section, round the outside from the outer bead to the inner:
+## the bead tucked under the rim's flange, the sidewall bulging past it, a
+## rounded shoulder and a flat crown with two grooves. Cached by size.
+static func _car_tyre(r: float, w: float, rr: float) -> ArrayMesh:
+	var key := "car_tyre_%.3f_%.3f_%.3f" % [r, w, rr]
+	if _meshes.has(key):
+		return _meshes[key]
+	var wall := r - rr
+	var half: Array[Vector2] = [Vector2(0.39 * w, rr * 1.03), Vector2(0.462 * w, rr + wall * 0.32), Vector2(0.475 * w, rr + wall * 0.64),
+		Vector2(0.44 * w, r - wall * 0.07), Vector2(0.37 * w, r)]
+	var section := PackedVector2Array()
+	for p in half:
+		section.append(p)
+	# Grooves steep enough that their edges stay crisp (see _lathe).
+	for c: float in [0.17, -0.17]:
+		section.append(Vector2((c + 0.025) * w, r))
+		section.append(Vector2(c * w, r - minf(0.012, wall * 0.1)))
+		section.append(Vector2((c - 0.025) * w, r))
+	for i in range(half.size() - 1, -1, -1):
+		section.append(Vector2(-half[i].x, half[i].y))
+	_meshes[key] = _lathe(section, 32)
+	return _meshes[key]
+
+
+## What a tyre leaves when it burns: the rubber of its sidewalls and tread goes
+## up, and the steel belt that ran under the crown is left as a ragged band of
+## wire round where the crown was, so the rim shows inside it and the dark of
+## the arch between. Placed 5% of the radius low on the axle, the band sags
+## onto the ground under the rim it no longer holds up. A few millimetres of
+## wire, wavering a little round the wheel (the surface shader draws it as
+## rusted wire and ash: see the char finish). Cached by size.
+static func _belt(r: float, w: float) -> ArrayMesh:
+	var key := "belt_%.3f_%.3f" % [r, w]
+	if _meshes.has(key):
+		return _meshes[key]
+	var verts := PackedVector3Array()
+	var norms := PackedVector3Array()
+	var idx := PackedInt32Array()
+	var around := 24
+	var hw := w * 0.36
+	var th := maxf(0.006, r * 0.025)
+	var mid: Array[Vector3] = []
+	for i in around:
+		var t := TAU * i / float(around)
+		var out := Vector3(0, cos(t), sin(t))
+		mid.append(out * r * (0.935 + 0.02 * sin(t * 3.0 + 1.3) + 0.012 * sin(t * 7.0 + 0.4)))
+	for i in around:
+		var a: Vector3 = mid[i]
+		var b: Vector3 = mid[(i + 1) % around]
+		var na := a.normalized() * th * 0.5
+		var nb := b.normalized() * th * 0.5
+		var x := Vector3(hw, 0, 0)
+		var out := (a + b).normalized()
+		_quad(verts, norms, idx, out, a + na - x, a + na + x, b + nb + x, b + nb - x)
+		_quad(verts, norms, idx, -out, a - na - x, b - nb - x, b - nb + x, a - na + x)
+		_quad(verts, norms, idx, Vector3.RIGHT, a - na + x, b - nb + x, b + nb + x, a + na + x)
+		_quad(verts, norms, idx, Vector3.LEFT, a - na - x, a + na - x, b + nb - x, b - nb - x)
+	_meshes[key] = _mesh(verts, norms, idx)
+	return _meshes[key]
+
+
+## The rim's visible steel: the barrel inside the spokes rising to the
+## polished flange, whose rolled lip runs into the tyre's bead.
+static func _car_rim(w: float, rr: float) -> ArrayMesh:
+	var key := "car_rim_%.3f_%.3f" % [w, rr]
+	if not _meshes.has(key):
+		_meshes[key] = _lathe(PackedVector2Array([Vector2(0.12 * w, rr * 0.93), Vector2(0.3 * w, rr * 0.93), Vector2(0.38 * w, rr * 0.95),
+			Vector2(0.42 * w, rr * 0.975), Vector2(0.43 * w, rr * 1.02), Vector2(0.4 * w, rr * 1.06)]), 32)
+	return _meshes[key]
+
+
+## A plain car's wheel trim: a domed disc from the badge to the flange, a
+## dished ring where the vent slots are and a raised rim round its edge.
+static func _car_trim(w: float, rr: float) -> ArrayMesh:
+	var key := "car_trim_%.3f_%.3f" % [w, rr]
+	if not _meshes.has(key):
+		_meshes[key] = _lathe(PackedVector2Array([Vector2(0.445 * w, 0.0), Vector2(0.44 * w, rr * 0.2), Vector2(0.405 * w, rr * 0.42),
+			Vector2(0.42 * w, rr * 0.8), Vector2(0.437 * w, rr * 0.9), Vector2(0.415 * w, rr * 0.985)]), 32)
+	return _meshes[key]
+
+
+## An alloy's spokes as one mesh: each runs from the hub boss out to the
+## barrel, its face sloping back into the dish and ridged down its middle so
+## one half catches the light; `twin` splits each into a pair that part
+## toward the rim. Only what shows is drawn: the faces and the sides.
+static func _car_spokes(w: float, rr: float, count: int, twin: bool) -> ArrayMesh:
+	var key := "car_spokes_%.3f_%.3f_%d_%s" % [w, rr, count, twin]
+	if _meshes.has(key):
+		return _meshes[key]
+	var verts := PackedVector3Array()
+	var norms := PackedVector3Array()
+	var idx := PackedInt32Array()
+	var inner := rr * 0.3
+	var outer := rr * 0.96
+	var half_in := rr * (0.05 if twin else (0.11 if count == 5 else 0.09))
+	var half_out := rr * (0.055 if twin else (0.16 if count == 5 else 0.13))
+	var depth := w * 0.08
+	for i in count:
+		var a := TAU * i / float(count)
+		for split: float in ([-0.14, 0.14] if twin else [0.0]):
+			var ai := Vector3(0, cos(a), sin(a))
+			var ao := Vector3(0, cos(a + split), sin(a + split))
+			var ti := Vector3(0, -sin(a), cos(a))
+			var to := Vector3(0, -sin(a + split), cos(a + split))
+			var ci := ai * inner + Vector3.RIGHT * w * 0.36
+			var co := ao * outer + Vector3.RIGHT * w * 0.31
+			var ridge := Vector3.RIGHT * depth * 0.18
+			for s: float in [-1.0, 1.0]:
+				var ei := ci + ti * half_in * s
+				var eo := co + to * half_out * s
+				_quad_toward(verts, norms, idx, Vector3.RIGHT, ei, eo, co + ridge, ci + ridge)
+				_quad_toward(verts, norms, idx, ti * s, ei, eo, eo - Vector3.RIGHT * depth, ei - Vector3.RIGHT * depth)
+	_meshes[key] = _mesh(verts, norms, idx)
+	return _meshes[key]
+
+
+## A flat face of four corners, its normal from their cross product turned
+## to the side `hint` points to.
+static func _quad_toward(verts: PackedVector3Array, norms: PackedVector3Array, idx: PackedInt32Array, hint: Vector3, p0: Vector3, p1: Vector3, p2: Vector3, p3: Vector3) -> void:
+	var n := (p1 - p0).cross(p3 - p0).normalized()
+	if n.dot(hint) < 0.0:
+		n = -n
+	_quad(verts, norms, idx, n, p0, p1, p2, p3)
+
+
+## A solid of revolution about the X axis (the axle): `section` runs (x,
+## radius) round the outside of the part, its outward side on the right of
+## the direction it runs in, and is turned through `around` steps. Normals
+## are smooth across gentle bends and break at corners sharper than 50
+## degrees, so a sidewall shades round while a groove's edge stays crisp.
+static func _lathe(section: PackedVector2Array, around: int) -> ArrayMesh:
+	var verts := PackedVector3Array()
+	var norms := PackedVector3Array()
+	var idx := PackedInt32Array()
+	var bends: Array[Vector2] = []
+	for i in section.size() - 1:
+		var d := (section[i + 1] - section[i]).normalized()
+		bends.append(Vector2(d.y, -d.x))
+	for i in bends.size():
+		var na := bends[i]
+		var nb := bends[i]
+		if i > 0 and bends[i - 1].dot(bends[i]) > 0.64:
+			na = (bends[i - 1] + bends[i]).normalized()
+		if i < bends.size() - 1 and bends[i + 1].dot(bends[i]) > 0.64:
+			nb = (bends[i + 1] + bends[i]).normalized()
+		var a := section[i]
+		var b := section[i + 1]
+		var base := verts.size()
+		for j in around:
+			var t := TAU * j / float(around)
+			var c := cos(t)
+			var s := sin(t)
+			verts.append(Vector3(a.x, a.y * c, a.y * s))
+			norms.append(Vector3(na.x, na.y * c, na.y * s))
+			verts.append(Vector3(b.x, b.y * c, b.y * s))
+			norms.append(Vector3(nb.x, nb.y * c, nb.y * s))
+		for j in around:
+			var p := base + j * 2
+			var q := base + ((j + 1) % around) * 2
+			var face := (norms[p] + norms[p + 1]).normalized()
+			if b.y > 0.0001:
+				_tri(idx, verts, face, p, p + 1, q + 1)
+			if a.y > 0.0001:
+				_tri(idx, verts, face, p, q + 1, q)
+	return _mesh(verts, norms, idx)
 
 
 ## Cached unit rings keep rounded tyres and rim lips affordable across the roster.

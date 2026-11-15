@@ -101,6 +101,13 @@ static func build(holder: Node3D, kind: String) -> void:
 			# clean at the bottom, rusted in the middle, military at the top
 			for i in 3:
 				BuildingWire.barbed(k, Vector3(-1.5, 0.4 + i * 0.4, 0.04), Vector3(1.5, 0.4 + i * 0.4, 0.04), 0.03, 0.11, ["clean", "rust", "military"][i])
+		"wire_close":
+			# half a metre of each finish, drawn four times life size so the
+			# studio's camera (which frames no less than 1.2 m) shows the barbs
+			var big := k.moved(Transform3D(Basis.from_scale(Vector3.ONE * 4.0), Vector3.ZERO))
+			for i in 3:
+				var y := 0.1 + i * 0.06
+				BuildingWire.barbed(big, Vector3(-0.25, y, 0), Vector3(0.25, y, 0), 0.002, 0.11, ["clean", "rust", "military"][i])
 		"wire_topping":
 			k.box(Vector3(4.0, 2.6, 0.5), Vector3(0, 1.3, 0), "concrete", Color(0.5, 0.49, 0.46))
 			var top := BuildingWalls.coping(k, 4.0, 0.5, 2.6, "concrete", Color(0.5, 0.49, 0.46))
