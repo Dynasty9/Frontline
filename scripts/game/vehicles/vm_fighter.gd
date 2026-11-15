@@ -456,15 +456,6 @@ static func _rect2(c: Vector2, s: Vector2) -> Array:
 	return [c + Vector2(-s.x, -s.y) * 0.5, c + Vector2(s.x, -s.y) * 0.5, c + Vector2(s.x, s.y) * 0.5, c + Vector2(-s.x, s.y) * 0.5]
 
 
-## A five-pointed star, a point up.
-static func _star2(ro: float, ri: float) -> Array:
-	var o := []
-	for i in 10:
-		var a := PI / 2.0 + TAU * float(i) / 10.0
-		o.append(Vector2(cos(a), sin(a)) * (ro if i % 2 == 0 else ri))
-	return o
-
-
 ## A flat marking just proud of a surface: the 2D outline pts laid out at o,
 ## x along ax, y along n x ax, facing n. `proj` lays its corners onto a curved
 ## skin (see _project).
@@ -550,51 +541,44 @@ static func _msecs(secs: Array) -> Array:
 	return o
 
 
-## The national marking at o facing n, ax across it, radius r: the
-## low-visibility US star-and-bar (dark disc and bars, the star in the
-## paint) for the Coalition; a plain two-tone roundel for anyone else.
-static func _insignia(k: VehicleModels, p: Node3D, key: String, o: Vector3, n: Vector3, ax: Vector3, r: float, team: int, dark: Color, light: Color, proj := []) -> void:
+## A painted face of the airframe for VehicleAircraft.paint: metres along ax
+## (projected into the face) and across it about o, facing n, laid on the
+## skin by `proj` (see _project; [] keeps it flat).
+static func _face(o: Vector3, n: Vector3, ax: Vector3, proj := []) -> VehicleSurface:
+	var nn := n.normalized()
+	if proj.is_empty():
+		return VehicleAircraft.face(o, nn, ax)
+	return VehicleAircraft.face(o, nn, ax, func(q: Vector3) -> Vector3: return _project(q, nn, 0.0, proj))
+
+
+## The national marking at o facing n, ax across it, radius r, in the shared
+## paint (VehicleAircraft.insignia): the low-visibility US star-and-bar (dark
+## disc and bars, the star in the paint) for the Coalition; CSAT's red star,
+## bordered white, for the other side, as its helicopters and jets wear it.
+## `key` is kept for the callers (the paint builds its own meshes).
+static func _insignia(k: VehicleModels, p: Node3D, _key: String, o: Vector3, n: Vector3, ax: Vector3, r: float, team: int, dark: Color, light: Color, proj := []) -> void:
 	if team < 0:
 		return
-	if team == 1:
-		_decal(k, p, key + "_a", _circle2(r), o, n, ax, dark, 0.006, proj)
-		_decal(k, p, key + "_b", _circle2(r * 0.55), o, n, ax, light, 0.009, proj)
-		_decal(k, p, key + "_c", _circle2(r * 0.22, 12), o, n, ax, dark, 0.012, proj)
-		return
-	_decal(k, p, key + "_d", _circle2(r), o, n, ax, dark, 0.006, proj)
-	_decal(k, p, key + "_br", _rect2(Vector2(1.45 * r, 0.06 * r), Vector2(r * 1.1, r * 0.5)), o, n, ax, dark, 0.006, proj)
-	_decal(k, p, key + "_bl", _rect2(Vector2(-1.45 * r, 0.06 * r), Vector2(r * 1.1, r * 0.5)), o, n, ax, dark, 0.006, proj)
-	_decal(k, p, key + "_s", _star2(r * 0.96, r * 0.37), o, n, ax, light, 0.009, proj)
+	var style := VehicleAircraft.INSIGNIA_STAR if team == 1 else VehicleAircraft.INSIGNIA_US
+	# (the star's fan of long triangles is split once to follow a curved skin)
+	VehicleAircraft.paint(k, p, _face(o, n, ax, proj), VehicleAircraft.insignia(style, r, dark, light), "aircraft", 1 if style == VehicleAircraft.INSIGNIA_STAR else 0)
 
 
 ## Painted text (a tail code, a serial) h tall, its baseline centred on o,
-## reading along ax on the face n, in VehicleMarkings' stroke lettering;
-## `proj` as for _decal. One merged mesh.
-static func _text(k: VehicleModels, p: Node3D, key: String, txt: String, o: Vector3, n: Vector3, ax: Vector3, h: float, col: Color, proj := []) -> void:
-	if k.burnt:
-		return
-	var kk := "ft_tx_" + key
-	if not _mc.has(kk):
-		var nn := n.normalized()
-		var x := (ax - nn * ax.dot(nn)).normalized()
-		var y := nn.cross(x)
-		var w := h * 0.13
-		var vs := PackedVector3Array()
-		var ns := PackedVector3Array()
-		for sg: Array in VehicleMarkings.digit_strokes(txt, h, Vector2(0, h * 0.5), "stroke"):
-			var u: Vector2 = sg[0]
-			var v: Vector2 = sg[1]
-			var a := o + x * u.x + y * u.y
-			var b := o + x * v.x + y * v.y
-			var d := (b - a).normalized()
-			var s := nn.cross(d) * (w * 0.5)
-			a -= d * w * 0.5
-			b += d * w * 0.5
-			var q := [_project(a - s, nn, 0.007, proj), _project(b - s, nn, 0.007, proj), _project(b + s, nn, 0.007, proj), _project(a + s, nn, 0.007, proj)]
-			_tri(vs, ns, q[0], q[1], q[2], nn, nn, nn, nn)
-			_tri(vs, ns, q[0], q[2], q[3], nn, nn, nn, nn)
-		_mc[kk] = _mesh(vs, ns)
-	_put(k, p, _mc[kk], "aircraft", col, Vector3.ZERO, Vector3.ZERO, false)
+## reading along ax on the face n, in VehicleMarkings' stroke lettering
+## through the shared paint; `proj` as for _decal.
+static func _text(k: VehicleModels, p: Node3D, _key: String, txt: String, o: Vector3, n: Vector3, ax: Vector3, h: float, col: Color, proj := []) -> void:
+	var nn := n.normalized()
+	var x := (ax - nn * ax.dot(nn)).normalized()
+	# (lettering is centred on its middle: half a height above the baseline)
+	VehicleAircraft.paint(k, p, _face(o + nn.cross(x) * h * 0.5, nn, ax, proj), [[VehicleAircraft.lettering(txt, h, "stroke"), col]])
+
+
+## Gun gas or exhaust soot streaking `length` aft from o on the face n (the
+## skin laid by `proj`), `width` at its broadest: VehicleAircraft.soot in the
+## skin's own paint `col`, only darker.
+static func _soot(k: VehicleModels, p: Node3D, o: Vector3, n: Vector3, length: float, width: float, col: Color, proj := []) -> void:
+	VehicleAircraft.paint(k, p, _face(o, n, Vector3.BACK, proj), VehicleAircraft.soot(length, width, "aircraft", col), "aircraft")
 
 
 ## Panel lines: thin dark strips [a, b, n] (n the face's outward normal),
@@ -792,6 +776,8 @@ static func _f16(k: VehicleModels, team: int) -> void:
 	var gn := Vector3(-0.6, 0.8, 0)
 	var gun := _project(Vector3(-0.55, y0 + 0.1, z0 + 6.0), gn, 0.0, hp)
 	_decal(k, m, "f16_gun", _rect2(Vector2.ZERO, Vector2(0.32, 0.1)), gun, gn, Vector3(0, 0, 1), Color(0.12, 0.12, 0.12), 0.006, hp)
+	# the gun gas every burst blows back along the left side from the port
+	_soot(k, m, gun + Vector3(0, 0, 0.12), gn, 1.5, 0.24, top, hp)
 	k.mg_tip = k._tip(m, gun + Vector3(0, 0, -0.2))
 	k.gun_tip = k.mg_tip
 	# The receptacle door sits on the crown of the dorsal spine (about y0 + 0.728
@@ -860,10 +846,14 @@ static func _f16(k: VehicleModels, team: int) -> void:
 		if team == 0:
 			_text(k, m, "f16_tc" + L, "WW", Vector3(0, y0 + 1.25, z0 + 12.1), Vector3(sd, 0, 0), Vector3(0, 0, -sd), 0.42, dark, fp)
 			_text(k, m, "f16_sn" + L, "0068", Vector3(0, y0 + 1.04, z0 + 12.1), Vector3(sd, 0, 0), Vector3(0, 0, -sd), 0.12, dark, fp)
+	# (upright toward the nose, seen from above or below: the US star on top of
+	# the left wing and under the right, CSAT's above and below both)
 	var iw := VmPlane.surf_at(ws, 3.2)
 	var ile: Vector3 = iw[0]
-	_insignia(k, m, "f16_wins", Vector3(-3.2, ile.y, ile.z + float(iw[1]) * 0.5), Vector3.UP, Vector3(0, 0, -1), 0.3, team, dark, top, ["surf", _msecs(ws)])
-	_insignia(k, m, "f16_wins2", Vector3(3.2, ile.y, ile.z + float(iw[1]) * 0.5), Vector3.DOWN, Vector3(0, 0, -1), 0.3, team, dark, bot, ["surf", ws])
+	for sd in ([-1.0, 1.0] if team == 1 else [-1.0]):
+		var wp := ["surf", _msecs(ws) if sd < 0.0 else ws]
+		_insignia(k, m, "f16_wins", Vector3(sd * 3.2, ile.y, ile.z + float(iw[1]) * 0.5), Vector3.UP, Vector3.RIGHT, 0.3, team, dark, top, wp)
+		_insignia(k, m, "f16_wins2", Vector3(-sd * 3.2, ile.y, ile.z + float(iw[1]) * 0.5), Vector3.DOWN, Vector3.LEFT, 0.3, team, dark, bot, ["surf", ws if sd < 0.0 else _msecs(ws)])
 	VmPlane.wing_marks(k, m, team, ws, 3.95, 0.35)
 
 	# --- landing gear (shown on the ground): the short nose leg behind the
@@ -1056,6 +1046,8 @@ static func _blackwasp(k: VehicleModels, team: int) -> void:
 	var gn := Vector3(0.5, 0.87, 0)
 	var gun := _project(Vector3(1.02, y0 + 0.2, -2.2), gn, 0.0, hp)
 	_decal(k, m, "bw_gun", _rect2(Vector2.ZERO, Vector2(0.11, 0.42)), gun, gn, Vector3(1, 0, 0), Color(0.1, 0.1, 0.1), 0.006, hp)
+	# gun gas streaked aft over the LEX from the port's after end
+	_soot(k, m, gun + Vector3(0, 0, 0.18), gn, 1.6, 0.22, top, hp)
 	k.mg_tip = k._tip(m, gun + Vector3(0, 0.02, -0.25))
 	k.gun_tip = k.mg_tip
 	var eo := []
@@ -1154,8 +1146,9 @@ static func _blackwasp(k: VehicleModels, team: int) -> void:
 			_text(k, m, "bw_mx" + L, "100", Vector3(sd * 0.6, y0 + 0.18, -5.0), Vector3(sd * 0.73, 0.68, 0), Vector3(0, 0, -sd), 0.2, dark, hp)
 	var iw := VmPlane.surf_at(ws, 3.6)
 	var ile: Vector3 = iw[0]
-	_insignia(k, m, "bw_wins", Vector3(-3.6, ile.y, ile.z + float(iw[1]) * 0.45), Vector3.UP, Vector3(0, 0, -1), 0.32, team, dark, top, ["surf", _msecs(ws)])
-	_insignia(k, m, "bw_wins2", Vector3(3.6, ile.y, ile.z + float(iw[1]) * 0.45), Vector3.DOWN, Vector3(0, 0, -1), 0.32, team, dark, low, ["surf", ws])
+	for sd in ([-1.0, 1.0] if team == 1 else [-1.0]):
+		_insignia(k, m, "bw_wins", Vector3(sd * 3.6, ile.y, ile.z + float(iw[1]) * 0.45), Vector3.UP, Vector3.RIGHT, 0.32, team, dark, top, ["surf", _msecs(ws) if sd < 0.0 else ws])
+		_insignia(k, m, "bw_wins2", Vector3(-sd * 3.6, ile.y, ile.z + float(iw[1]) * 0.45), Vector3.DOWN, Vector3.LEFT, 0.32, team, dark, low, ["surf", ws if sd < 0.0 else _msecs(ws)])
 	VmPlane.wing_marks(k, m, team, ws, 5.0, 0.45)
 
 	# --- landing gear (shown on the ground): twin nose wheels with the

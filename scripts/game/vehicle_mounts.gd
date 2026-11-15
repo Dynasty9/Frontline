@@ -435,6 +435,38 @@ static func era_brick(k: VehicleModels, parent: Node3D, center: Vector3, size: V
 	k._fold(mount)
 
 
+## A bolt-on armour module: the appliqué plates hung over a modern hull's
+## sides and roof, a turret's modular cheeks, the cover plate welded over an
+## armour cavity. The old plate's centre, size and rotation, local +Z outward.
+## Real modules are thick slabs with flame-cut, ground edges, so the slab's
+## chamfer is wide (up to 2.5 cm, under half its thickness) and catches the
+## light all round it; that edge, and the shadow under it, are what keep a
+## big flat hull side from reading as one blank face from the RTS camera.
+## `bolts` (columns, rows) of heavy bolt heads stand in from its edges (zero:
+## none, as on a welded cover plate); `lugs` welds that many lifting lugs
+## along its top edge (+Y) for the crane that hangs it. Grids, seams and gaps
+## between modules stay with the family.
+static func applique(k: VehicleModels, parent: Node3D, center: Vector3, size: Vector3, rotation: Vector3, mat: String, col = null, bolts := Vector2i(2, 2), lugs := 0) -> void:
+	var mount := _mount(k, parent, center, rotation)
+	var bevel := clampf(minf(size.x, size.y) * 0.05, 0.006, minf(0.025, size.z * 0.45))
+	k._add(mount, _bevel(size, bevel), mat, col, Vector3.ZERO)
+	var face := size.z * 0.5
+	if bolts.x > 0 and bolts.y > 0:
+		var head := clampf(minf(size.x, size.y) * 0.03, 0.01, 0.024)
+		var inset := Vector2(minf(0.08, size.x * 0.14), minf(0.08, size.y * 0.16)) + Vector2(bevel, bevel)
+		for i in bolts.x:
+			for j in bolts.y:
+				var u := 0.0 if bolts.x == 1 else lerpf(-size.x * 0.5 + inset.x, size.x * 0.5 - inset.x, float(i) / (bolts.x - 1))
+				var v := 0.0 if bolts.y == 1 else lerpf(-size.y * 0.5 + inset.y, size.y * 0.5 - inset.y, float(j) / (bolts.y - 1))
+				VehicleBody.fastener(k, mount, Vector3(u, v, face + 0.002), Vector3.BACK, head)
+	for i in lugs:
+		# a welded plate lug, its eye across the module's top edge
+		var u := lerpf(-size.x * 0.3, size.x * 0.3, (i + 0.5) / lugs) if lugs > 1 else 0.0
+		var lug := Vector3(0.05, 0.05, minf(0.03, size.z * 0.6))
+		k._box(mount, lug, Vector3(u, size.y * 0.5 + lug.y * 0.35, face - lug.z * 0.5), mat, col, Vector3.ZERO, false)
+	k._fold(mount)
+
+
 ## Vehicle crane (a loader's knuckle-boom crane, a recovery crane, a pickup's
 ## davit) in the parent's coordinates, posed by the caller. Stacked up from
 ## `base`, its foot on the deck: the slewing ring, `ring` = (top radius,
