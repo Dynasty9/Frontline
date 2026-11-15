@@ -354,7 +354,7 @@ func check_ground_grime() -> void:
 			assert(shared.get_shader_parameter("crater_tex") == heights, "Ground weathering must follow new maps in shared, batched and Compatibility materials")
 		var debug := material.duplicate() as ShaderMaterial
 		var shader := Shader.new()
-		shader.code = material.shader.code.replace("render_mode specular_schlick_ggx;", "render_mode unshaded;").replace("ALBEDO = col;", "ALBEDO = vec3(low); if (OUTPUT_IS_SRGB) { ALBEDO = mix(ALBEDO * 12.92, 1.055 * pow(ALBEDO, vec3(1.0 / 2.4)) - 0.055, step(vec3(0.0031308), ALBEDO)); }")
+		shader.code = material.shader.code.replace("render_mode specular_schlick_ggx;", "render_mode unshaded;").replace("void fragment() {", "void fragment() { float grime_low = 0.0;").replace("dirt = low * grime * (0.6 + 0.4 * gn);", "dirt = low * grime * (0.6 + 0.4 * gn); grime_low = low;").replace("ALBEDO = col;", "ALBEDO = vec3(grime_low); if (OUTPUT_IS_SRGB) { ALBEDO = mix(ALBEDO * 12.92, 1.055 * pow(ALBEDO, vec3(1.0 / 2.4)) - 0.055, step(vec3(0.0031308), ALBEDO)); }")
 		debug.shader = shader
 		mesh.material_override = debug
 		for above in [0.1, 0.45, 1.2]:
