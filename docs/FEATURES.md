@@ -1302,8 +1302,14 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   (`Vehicle._snow_view`, the `snow_k` instance value) keeps it only on its flat tops (deck, turret roof, fenders,
   stowage), in patches of its own, while the glacis and sides shed it and the warm engine deck stays bare and wet;
   standing still it gathers a full load, and driving or swinging its turret shakes most of it off, faster the
-  faster it goes, so a parked or wrecked hull carries far more than one in the fight. Running gear, glass, charred
-  hulls and floors indoors take none, and men only a dusting. A
+  faster it goes, so a parked or wrecked hull carries far more than one in the fight. Its engine deck's bare patch
+  spreads the longer the engine runs, a gun that has fired is bare until its barrel cools, and a vehicle on fire
+  melts all of it off. Heat melts it (`SnowMelt`, fed by the fires and engines the heat haze knows): a fire thaws
+  the ground round it to bare, wet earth with a rim of grey slush, and melts the snow off whatever is burning, roof,
+  wreck or tree; a vehicle standing with its engine running works the snow under it to a damp, dark slush. The
+  ground and roads take the thaws nearest the camera as a list (no extra texture), the grass has them painted into
+  its scar map. Thawed ground stays thawed once the fire is out and whitens again only slowly, while the snow keeps
+  falling. Running gear, glass, charred hulls and floors indoors take none, and men only a dusting. A
   battle that opens in snow starts covered; snow that sets in mid-battle settles over four minutes, in the hollows
   first, and thaws over a quarter of an hour. The deep snow hushes the wind and the distant battle. A random
   battle's weather is snow about one time in twenty (a second draw from the seed, so no other seed's weather

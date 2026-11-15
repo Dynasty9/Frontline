@@ -1,6 +1,6 @@
 +++
 title = "Snow"
-summary = "A new weather: snow falls past the camera, lies white over the battlefield and gathers on roofs, hulls and trees, and every shell hole and track churns it into dark mud and slush."
+summary = "A new weather: snow falls past the camera, lies white over the battlefield and gathers on roofs, hulls and trees; every shell hole and track churns it into dark mud and slush, and fires and engines melt it back to wet earth."
 kind = "new"
 
 [[screenshots]]
@@ -10,6 +10,10 @@ caption = "A town in falling snow: white roofs and fields, slushy streets, trees
 [[screenshots]]
 file = "tank-in-snow.jpg"
 caption = "A tank that has been fighting carries snow only in patches on its flat tops: it has slid off the glacis and sides, the warm engine deck is bare and wet, and its colours show through."
+
+[[screenshots]]
+file = "melt-in-snow.jpg"
+caption = "Heat melts it: a burning wreck has thawed the ground round it to dark, wet earth, a burning hedgerow has left a band of flattened winter grass, and the tank idling beside them has worked the snow behind its engine to slush and cleared its own engine deck."
 
 [[screenshots]]
 file = "comparison.jpg"
@@ -22,5 +26,6 @@ caption = "The same town and the same tank battle under an overcast sky and in s
 - **The ground** lies white on the flat and stays dark on steep slopes. Shell holes and the earth they throw up show as dark mud and grey slush, and tracks leave dark lines through it. Dirt roads become slush lanes between white verges; town streets keep black wheel paths and heaped white gutters.
 - **Everything standing in it** gathers snow on its upper faces: roofs, window ledges, sandbags, camouflage nets, trench spoil, trees, bushes and grass. It never lies evenly: the wind scours streaks and open rises thin so the grass shows through, one roof holds more than the next, and trees hold it in lumps on their boughs.
 - **Vehicles** keep snow only on their flat tops (the deck, turret roof, fenders and stowage), in patches of their own; it slides off the glacis and sides, and the warm engine deck stays bare and wet. A vehicle standing still gathers a full load, and driving or swinging its turret shakes most of it off, so a parked or wrecked tank is far whiter than one in the fight.
+- **Heat melts it.** A fire thaws the ground round it to bare, wet earth with a rim of grey slush, and melts the snow off whatever is burning: a roof, a wreck, a tree. A vehicle that stands with its engine running leaves a damp, dark patch under it, and the bare patch on its engine deck spreads the longer it runs. A gun that has fired sheds the snow off its barrel until it cools. Thawed ground stays bare after the fire is out and only whitens again slowly while the snow keeps falling.
 - Snow that starts mid-battle settles over a few minutes and thaws slowly when it stops. The deep snow muffles the wind and the distant battle.
 - It's looks only: nothing sees, moves or burns any differently in snow. It works in the browser too.

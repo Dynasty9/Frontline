@@ -1035,6 +1035,12 @@ func heat_sources(hh: HeatHaze) -> void:
 			hh.add_fire(h.global_position, h.get_meta("ext", Vector3(0.5, 0.4, 0.5)), f)
 
 
+## The fires (each holder with its strength, "fire", and size, "ext"), for
+## the snow melting round them (SnowMelt).
+func burning() -> Array:
+	return _burners
+
+
 ## A fire made by make_fire at strength f (0..1): its smoke goes on thinly
 ## even as it dies down.
 func set_fire(h: Node3D, f: float) -> void:

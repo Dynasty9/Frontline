@@ -1414,6 +1414,7 @@ func _wet_tick(dt: float) -> void:
 const SNOW_IN := 240.0
 const THAW := 900.0
 var snow_cover := -1.0
+var snow_melt: SnowMelt
 
 
 func _snow_tick(dt: float) -> void:
@@ -1427,6 +1428,11 @@ func _snow_tick(dt: float) -> void:
 		snow_cover = maxf(want, snow_cover - dt / THAW)
 	if snow_cover != was:
 		RenderingServer.global_shader_parameter_set(&"snow_cover", snow_cover)
+	# the heat of fires and engines melting it (looks only)
+	if snow_cover > 0.0 and world and world.has_view and world.loaded:
+		if snow_melt == null:
+			snow_melt = SnowMelt.new(self)
+		snow_melt.tick(dt)
 
 
 ## The exposure the time of day and the player's brightness give.
@@ -2324,7 +2330,7 @@ uniform sampler2DArray deform_tex : filter_linear, repeat_disable;
 // TERRAIN_TEXTURE_HELPER
 uniform sampler2D water_mask : hint_default_transparent, filter_linear, repeat_disable;
 uniform float sea_x = 1e9;
-// CLOUD_SHADOW
+""" + SnowMelt.GLSL + """// CLOUD_SHADOW
 
 varying vec3 wpos;
 varying float puddle;
@@ -2789,6 +2795,7 @@ void fragment() {
 	// and wheels have worked. (The tracks' own prints draw over it: Vfx.tread_print.)
 	float fall = 0.0;
 	float slush = 0.0;
+	float thawed = 0.0;
 	if (snow_cover > 0.0) {
 		float settled = snow_cover * 1.3 - 0.3 + (d1 - 0.5) * 0.4 + cavity * 0.25 + (macro - 0.5) * 0.3;
 		// The wind (Fires.WIND) scours it thin in long streaks, and on the open
@@ -2805,6 +2812,16 @@ void fragment() {
 		fall = smoothstep(0.0, 0.35, settled) * lies * (1.0 - wm.a) * (1.0 - wet_sand);
 		slush = fall * churned * smoothstep(0.3, 0.75, d2 * 0.6 + d3 * 0.4);
 		fall *= 1.0 - churned;
+		// Heat melts it (SnowMelt): round a fire down to bare, wet earth with
+		// a rim of grey slush, under an idling engine to a damp, dark patch.
+		if (melt_n > 0) {
+			float melted = snow_melted(p, (d2 - 0.5) * 0.3 + (d3 - 0.5) * 0.12);
+			float bare = smoothstep(0.55, 0.8, melted);
+			float thin = smoothstep(0.1, 0.5, melted);
+			slush = max(slush * (1.0 - bare), fall * thin * (1.0 - bare) * (0.6 + 0.4 * d2));
+			fall *= 1.0 - thin;
+			thawed = bare * lies * (1.0 - wm.a) * min(1.0, snow_cover * 4.0);
+		}
 		snow = max(snow, fall);
 	}
 	// Wind ripples are resolved only while they cover several pixels.
@@ -2827,6 +2844,9 @@ void fragment() {
 	col = mix(col, snow_color * (0.94 + d3 * 0.06 + snow_ripple * 0.018), snow);
 	// (linear: wet grey slush over the dark of the churned earth)
 	col = mix(col, vec3(0.16, 0.165, 0.17) * (0.8 + 0.4 * d3), slush * 0.65);
+	// (the thawed ground soaked dark, the grass under it flattened and gone to
+	// a dull winter brown: not a summer lawn)
+	col = mix(col, vec3(dot(col, vec3(0.3, 0.5, 0.2))) * vec3(1.05, 0.9, 0.7), thawed * 0.75) * (1.0 - thawed * 0.4);
 	vec2 material_data = mix(moss_data, rock_data, exposed);
 	// Combine photographic crevices with broad shelter; do not bake a second direct-light shadow.
 	float crevice = clamp(rock_data.x * mix(1.0, 0.72, shelter), 0.25, 1.0);
@@ -2854,6 +2874,7 @@ void fragment() {
 	ROUGHNESS = mix(ROUGHNESS, 0.45, max(wm.a * 0.8, wet_sand * 0.6));
 	ROUGHNESS = mix(ROUGHNESS, 0.16, puddle);
 	ROUGHNESS = mix(ROUGHNESS, 0.5, slush);
+	ROUGHNESS = mix(ROUGHNESS, 0.42, thawed);
 	SPECULAR = mix(0.25, 0.38, wet);
 	float e = 0.12;
 	float hc = hgt(p);
@@ -2916,7 +2937,7 @@ uniform sampler2D street_noise : filter_linear_mipmap_anisotropic, repeat_enable
 uniform sampler2D gravel_color : source_color, filter_linear_mipmap_anisotropic, repeat_enable;
 uniform sampler2D gravel_surface : filter_linear_mipmap_anisotropic, repeat_enable;
 uniform sampler2D paving_surface : filter_linear_mipmap_anisotropic, repeat_enable;
-// CLOUD_SHADOW
+""" + SnowMelt.GLSL + """// CLOUD_SHADOW
 // STREET_SURFACE
 varying vec3 wpos;
 void vertex() {
@@ -2964,6 +2985,10 @@ void fragment() {
 	float rut_slush = 0.0;
 	if (snow_cover > 0.0) {
 		lying = smoothstep(0.0, 0.35, snow_cover * 1.3 - 0.3 + (n2 - 0.5) * 0.4);
+		// (melted off round a fire or under an idling engine: SnowMelt)
+		float melted = melt_n > 0 ? snow_melted(wpos.xz, (n2 - 0.5) * 0.3 + (n - 0.5) * 0.1) : 0.0;
+		lying *= 1.0 - smoothstep(0.1, 0.6, melted);
+		col *= 1.0 - smoothstep(0.55, 0.8, melted) * 0.3;
 		rut_slush = lying * clamp(ruts * 1.2, 0.0, 1.0);
 		float cover = lying * mix(0.6, 1.0, max(verge, grass)) * (1.0 - rut_slush * 0.9);
 		vec3 trodden = mix(vec3(0.3, 0.3, 0.31), vec3(0.62, 0.64, 0.67), smoothstep(0.3, 0.8, n * 0.6 + n3 * 0.4));

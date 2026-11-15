@@ -130,6 +130,52 @@ func _check_snow() -> void:
 	assert(Vehicle.snow_carry(0.1, 1.0, 5.0, 0.0, 10.0) == 0.1, "none gathers on the move")
 	assert(Vehicle.snow_carry(1.0, 1.0, 0.0, 0.5, 10.0) < 1.0, "a swinging turret throws some off")
 	assert(Vehicle.snow_carry(1.0, 1.0, 9.0, 0.0, 1.0) < Vehicle.snow_carry(1.0, 1.0, 3.0, 0.0, 1.0), "faster sheds faster")
+	# the warm patch on an engine deck spreads the longer the engine runs
+	assert(Vehicle.engine_spread(0.0) == 0.0 and Vehicle.engine_spread(Vehicle.ENGINE_WARM * 0.5) == 2.0)
+	assert(Vehicle.engine_spread(Vehicle.ENGINE_WARM * 9.0) == 4.0, "as far as it goes")
+	_check_snow_melt()
+
+
+## Heat melts the snow (SnowMelt): a fire thaws the ground round it down to
+## the earth, with slush at the rim; an idling engine only gets it to slush;
+## and thawed ground stays thawed once the fire is out, whitening again only
+## slowly, and only while it snows. The shaders read it without a texture of
+## their own (the ground keeps to its sampler budget).
+func _check_snow_melt() -> void:
+	for code in [Atmosphere.GROUND_SHADER, Atmosphere.ROAD_SHADER]:
+		assert(String(code).contains("uniform vec4 melt_spots[") and String(code).contains("snow_melted("))
+	assert(not SnowMelt.GLSL.contains("sampler"))
+	assert(Grass.GRASS_SHADER.contains("thawed"), "the grass stands up where it's thawed")
+	var melt := SnowMelt.new()
+	var fire: Array = []
+	for i in int(SnowMelt.FIRE_MELT * 2.0 / SnowMelt.STEP):
+		fire = melt.warm(1, Vector3(5, 0, 5), 8.0, 3.0, SnowMelt.STEP / SnowMelt.FIRE_MELT, 1.0)
+		melt.settle(true)
+	assert(is_equal_approx(float(fire[3]), 1.0), "a fire melts it down to the earth")
+	assert(float(fire[2]) > 3.0 and float(fire[2]) <= 8.0, "and the thaw spreads out from it")
+	assert(SnowMelt.amount(0.0, 8.0, 1.0) == 1.0 and SnowMelt.amount(8.0, 8.0, 1.0) == 0.0)
+	var rim := SnowMelt.amount(6.5, 8.0, 1.0)
+	assert(rim > 0.05 and rim < 0.55, "bare in the middle, slush at the rim (%s)" % rim)
+	# out: it stays thawed, and whitens only while it snows
+	for i in int(60.0 / SnowMelt.STEP):
+		melt.settle(true)
+	assert(float(fire[3]) > 0.9 and float(fire[3]) < 1.0, "a minute after the fire's out the ground is still bare")
+	var held := float(fire[3])
+	for i in int(60.0 / SnowMelt.STEP):
+		melt.settle(false)
+	assert(float(fire[3]) == held, "with no snow falling it stays as it is")
+	for i in int(SnowMelt.REFREEZE / SnowMelt.STEP):
+		melt.settle(true)
+	assert(melt.spots.is_empty(), "white again after REFREEZE of falling snow")
+	# an engine idling works it to slush, no further
+	var idle: Array = []
+	for i in int(SnowMelt.IDLE_MELT * 2.0 / SnowMelt.STEP):
+		idle = melt.warm(-2, Vector3(40, 0, 5), 3.0, 1.0, SnowMelt.STEP / SnowMelt.IDLE_MELT, SnowMelt.IDLE_MAX)
+		melt.settle(true)
+	assert(is_equal_approx(float(idle[3]), SnowMelt.IDLE_MAX), "an idling engine gets it only to slush")
+	# it drives off and stops again: the old thaw is left behind, a new one starts
+	var moved := melt.warm(-2, Vector3(60, 0, 5), 3.0, 1.0, SnowMelt.STEP / SnowMelt.IDLE_MELT, SnowMelt.IDLE_MAX)
+	assert(moved != idle and melt.spots.size() == 2 and int(idle[5]) == 0, "a thaw left behind where it stood")
 	# the snowfall follows the effects setting, and the browser gets fewer flakes
 	var saved := int(Settings.v.effects)
 	var counts := []

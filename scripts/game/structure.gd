@@ -2556,11 +2556,24 @@ func _burn_view() -> void:
 			_fire_fx = world.fx.vfx.make_fire(box[1], smoke, skind == "wreck" and _wreck_engine_deck.is_finite())
 			world.fx.vfx.add_child(_fire_fx)
 			_fire_fx.global_transform = Transform3D(Basis(Vector3.UP, yaw), to_global(box[0]))
+			_fire_fx.set_meta(&"melts", self)  # (its heat melts the snow off it: SnowMelt)
 		world.fx.vfx.set_fire(_fire_fx, burn)
 	elif _fire_fx and was > 0:
 		# out: it smoulders a while, then the smoke thins away
 		world.fx.vfx.smoulder(_fire_fx, 150.0 if skind == "wreck" else (45.0 if skind in ["rubble", "car"] else 30.0))
 		_fire_fx = null
+
+
+## (view) In the snow, the heat of its own fire melting the snow off it
+## (`melted` 1: all of it): a burning roof or wreck goes bare, and whitens
+## again only slowly, as the ground round it does (SnowMelt).
+func melt_snow(melted: float) -> void:
+	if model == null or not is_inside_tree():
+		return
+	if world and world.structure_view:
+		world.structure_view.unbatch(self)
+	for mi in Mats.snow_parts(model):
+		Mats.set_inst(mi, &"snow_k", Vector4(1.0 - melted, 0.0, 10000.0, 10000.0))
 
 
 ## (view) While it burns it chars, and the char glows with embers.

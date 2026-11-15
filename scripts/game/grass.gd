@@ -38,7 +38,8 @@ func _ready() -> void:
 	stone = _make_stone()
 	woodland = Woodland.new()
 	woodland.setup()
-	scar_img = Image.create(MapDims.N, MapDims.N, false, Image.FORMAT_L8)
+	# (red: blast scars and burnt grass; green: snow melted off it, SnowMelt)
+	scar_img = Image.create(MapDims.N, MapDims.N, false, Image.FORMAT_RG8)
 	scar_tex = ImageTexture.create_from_image(scar_img)
 	mat = ShaderMaterial.new()
 	# (the clouds' shade, CloudShadow.FOLD: in the albedo with Cloud shadows off)
@@ -83,9 +84,14 @@ func scar(p: Vector3, r: float, strength := 1.0) -> void:
 			if d > r:
 				continue
 			var v := strength * clampf(1.2 - d / r, 0.0, 1.0)
-			var cur := scar_img.get_pixel(x, z).r
-			if v > cur:
-				scar_img.set_pixel(x, z, Color(v, v, v))
+			var cur := scar_img.get_pixel(x, z)
+			if v > cur.r:
+				scar_img.set_pixel(x, z, Color(v, cur.g, 0.0))
+	_scar_dirty = true
+
+
+## The scar map's been painted (SnowMelt): upload it with the next frame.
+func scar_changed() -> void:
 	_scar_dirty = true
 
 
@@ -555,6 +561,7 @@ varying float rnd;
 varying float wet;
 varying float burnt;
 varying float drifted;  // (snow) deep in a drift 1, scoured thin by the wind 0
+varying float thawed;  // (snow) melted off by a fire or an engine (SnowMelt)
 #ifdef CLOUD_PATTERN
 varying float cloud_v;  // the sunlight the clouds let through at the blade
 #endif
@@ -569,7 +576,9 @@ void vertex() {
 	cloud_v = cloud_sun(o);
 #endif
 	// shell holes and blast scars flatten and scorch the grass
-	burnt = texture(scar, (o.xz + __MAP_HALF__) / __MAP_SIZE__).r;
+	vec2 marks = texture(scar, (o.xz + __MAP_HALF__) / __MAP_SIZE__).rg;
+	burnt = marks.r;
+	thawed = marks.g;
 	// nothing grows in a trench
 	if (trench_disturbed(trench_mask, (o.xz + __MAP_HALF__) / __MAP_SIZE__, 0.85 / __MAP_SIZE__) > 0.1) {
 		VERTEX *= 0.0;
@@ -581,7 +590,8 @@ void vertex() {
 	float along = dot(o.xz, vec2(0.924, 0.382));
 	float across = dot(o.xz, vec2(-0.382, 0.924));
 	drifted = clamp(0.5 + 0.32 * sin(across * 0.29 + sin(along * 0.043) * 2.6) + 0.22 * sin(o.x * 0.093 + sin(o.z * 0.117) * 1.9), 0.0, 1.0);
-	VERTEX.y *= 1.0 - snow_cover * mix(0.2, 0.75, drifted);
+	// (and where a fire or an engine has thawed it, the grass stands up again)
+	VERTEX.y *= 1.0 - snow_cover * (1.0 - thawed) * mix(0.2, 0.75, drifted);
 	// stand on the ground as it is now (shell holes, rims)
 	VERTEX.y += terrain_height(deform_tex, (o.xz + __MAP_HALF__) / __MAP_SIZE__) / max(0.05, length(MODEL_MATRIX[1].xyz));
 	float t = TIME * 1.7 + o.x * 0.21 + o.z * 0.13;
@@ -610,11 +620,12 @@ void fragment() {
 	if (snow_cover > 0.0) {
 		col = mix(col, dry_col * 0.8, snow_cover * 0.6);
 		vec3 snow = vec3(0.8, 0.83, 0.88);
-		col = mix(col, snow, snow_cover * mix(mix(0.55, 1.0, drifted), mix(0.2, 0.6, drifted), smoothstep(0.3, 0.85, h)) * (1.0 - burnt));
+		col = mix(col, snow, snow_cover * mix(mix(0.55, 1.0, drifted), mix(0.2, 0.6, drifted), smoothstep(0.3, 0.85, h)) * (1.0 - burnt) * (1.0 - thawed));
+		col *= 1.0 - thawed * snow_cover * 0.3;  // (wet with the melt)
 	}
 	ALBEDO = col;
 	ROUGHNESS = 0.85;
-	BACKLIGHT = vec3(0.35, 0.4, 0.15) * h * (1.0 - burnt) * (1.0 - snow_cover * 0.7);
+	BACKLIGHT = vec3(0.35, 0.4, 0.15) * h * (1.0 - burnt) * (1.0 - snow_cover * (1.0 - thawed) * 0.7);
 	AO = mix(0.78, 1.0, h);
 	AO_LIGHT_AFFECT = 0.6;
 	// CLOUD_FRAGMENT cloud_v

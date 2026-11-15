@@ -224,6 +224,26 @@ static func set_shared(m: ShaderMaterial, param: StringName, value: Variant) -> 
 			d.set_shader_parameter(param, value)
 
 
+## The parts of `root` drawn with the surface shader, so the ones that take its
+## snow_k (Vehicle._snow_view, Structure.melt_snow).
+static func snow_parts(root: Node) -> Array[MeshInstance3D]:
+	var out: Array[MeshInstance3D] = []
+	var surface := shader()
+	var stack: Array[Node] = [root]
+	while not stack.is_empty():
+		var n: Node = stack.pop_back()
+		stack.append_array(n.get_children())
+		var mi := n as MeshInstance3D
+		if mi == null or mi.mesh == null or mi.has_meta(&"shadow_proxy"):
+			continue
+		for si in maxi(1, mi.get_surface_override_material_count()):
+			var m := base_of(mi.material_override if mi.material_override else mi.get_active_material(si)) as ShaderMaterial
+			if m and m.shader == surface:
+				out.append(mi)
+				break
+	return out
+
+
 ## Close enough to share a material: a 1/128 step of colour, a centimetre.
 static func _round(v: Variant) -> Variant:
 	match typeof(v):
@@ -1255,8 +1275,11 @@ uniform sampler2D noise_tex : filter_linear_mipmap_anisotropic, repeat_enable;
 instance uniform vec4 tint : source_color = vec4(1.0);
 instance uniform vec3 pofs = vec3(0.0);
 // A vehicle's own snow (Vehicle._snow_view): how much it carries (a parked or
-// wrecked hull all of it, one on the move far less), a seed so no two match,
-// and where its warm engine deck lies (x, z in the hull's frame).
+// wrecked hull all of it, one on the move far less), a seed so no two match
+// (the fraction) and how long its engine has run (the whole part, in quarters
+// of Vehicle.ENGINE_WARM), and where its warm engine deck lies (x, z in the
+// hull's frame). A burning structure's carry falls as its fire melts the snow
+// off it (Structure.melt_snow).
 instance uniform vec4 snow_k = vec4(1.0, 0.0, 10000.0, 10000.0);
 // CLOUD_SHADOW
 
@@ -1790,12 +1813,17 @@ void fragment() {
 		// differ (one roof or wreck holds more than the next). On a vehicle only
 		// the flat tops hold it, the deck, turret roof, fenders and stowage, and
 		// it slides off the glacis and the sides but for their ledges; the engine
-		// deck is warm and stays bare and wet, and a hull on the move shakes and
-		// blows most of it off (Vehicle._snow_view: snow_k). The pattern rides
-		// with the hull, so its snow keeps its place. (Running gear churns it
-		// straight off, glass is wiped or warm, a burnt hull is still too hot.)
+		// deck is warm and stays bare and wet, the warmth spreading the longer the
+		// engine runs, and a hull on the move shakes and blows most of it off
+		// (Vehicle._snow_view: snow_k). The pattern rides with the hull, so its
+		// snow keeps its place. (Running gear churns it straight off, glass is
+		// wiped or warm, a burnt hull is still too hot; a burning roof or wreck
+		// melts its own, SnowMelt and Structure.melt_snow.)
 		vec3 wn = normalize((INV_VIEW_MATRIX * vec4(NORMAL, 0.0)).xyz);
-		vec2 so = vec2(snow_k.y * 13.7, snow_k.y * 7.9);
+		// (snow_k.y: a hull's seed in its fraction, how long its engine has run in quarters)
+		float snow_seed = fract(snow_k.y);
+		float engine_run = floor(snow_k.y) * 0.25;
+		vec2 so = vec2(snow_seed * 13.7, snow_seed * 7.9);
 		float carry = snow_k.x;
 		if (snow_k.y == 0.0 && snow_hold > 0.5) {
 			carry *= mix(0.6, 1.12, smoothstep(0.3, 0.7, tnoise(wpos.xz * 0.021 + 3.7)));
@@ -1820,7 +1848,7 @@ void fragment() {
 		}
 		float warm = 0.0;
 		if (vehicle_surface) {
-			warm = 1.0 - smoothstep(0.8, 1.5, distance(tp.xz, snow_k.zw));
+			warm = 1.0 - smoothstep(mix(0.8, 1.7, engine_run), mix(1.5, 3.0, engine_run), distance(tp.xz, snow_k.zw));
 			settled *= 1.0 - warm;
 		}
 		if (pattern == 18 || pattern == 19 || pattern == 22) {
@@ -1934,9 +1962,10 @@ void fragment() {
 		EMISSION = vec3(1.0, 0.32, 0.05) * embers * edge * (0.9 + 0.6 * sin(TIME * 7.0 + lpos.x * 3.0 + lpos.y * 5.0));
 	}
 	// Snow lies on the tops of the boughs and the upper leaves, in clumps the
-	// branches hold, while the undersides stay dark (not on a tree that's burning).
+	// branches hold, while the undersides stay dark (melting off a tree that's
+	// caught fire).
 	float snowed = 0.0;
-	if (snow_cover > 0.0 && scorch < 0.5) {
+	if (snow_cover > 0.0 && scorch < 0.3) {
 		float up = (INV_VIEW_MATRIX * vec4(NORMAL, 0.0)).y;
 		float clump = mix(0.5, n3(lpos * 2.6 + 3.1), smoothstep(1.5, 5.0, (1.0 / 2.6) / px));
 		// (the boughs hold it in lumps, the green showing between, and one tree
@@ -1944,6 +1973,7 @@ void fragment() {
 		float lump = smoothstep(0.36, 0.66, clump);
 		float tree = n3(lpos * 0.09 + 11.0);
 		snowed = smoothstep(0.0, 0.16, up * 1.1 + shade * 0.45 - (leaf_cards ? 1.12 : 0.97) + (lump - 0.5) * 1.5 + (tree - 0.5) * 0.6 - (1.0 - snow_cover) * 1.4);
+		snowed *= 1.0 - scorch / 0.3;
 		c = mix(c, vec3(0.74, 0.77, 0.82) * (0.92 + 0.1 * clump), snowed * 0.92);
 	}
 	ALBEDO = c * (0.55 + 0.45 * mix(shade, 1.0, snowed * 0.6));
