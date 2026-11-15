@@ -136,6 +136,9 @@ var _mg_lay := PackedVector2Array()  # (view) each machine-gun mount's traverse 
 var _mg_rate := PackedVector2Array()  # (view) and how fast each is moving
 var _mg_recoil := 0.0  # (view) how far the machine gun has run back on its cradle
 var _mg_climb := 0.0  # (view) how far its muzzle has jumped with the last rounds
+## A standing gunner: his grips at his chest, his body this far behind them.
+const GUNNER_CHEST := 1.3
+const GUNNER_REACH := 0.32
 var _gunners: Array = []  # (view) the man on each crew-served mount (a SoldierModel; true: not made yet), null where none
 var _gunner_fire := 0.0  # (view) seconds since the mounted gun last fired, for its gunner
 var _gunner_skip := 0  # (view) frames since the gunners were last posed
@@ -2783,7 +2786,7 @@ func _barrel_smoke(dt: float) -> void:
 ## one never seen costs nothing.)
 func _build_gunners() -> void:
 	_gunners.clear()
-	if team < 0 or _vm.mg_mounts.is_empty():
+	if team < 0 or _vm.mg_mounts.is_empty() or _vm.gunner_seated:
 		return
 	var any := false
 	for i in _vm.mg_mounts.size():
@@ -2848,11 +2851,48 @@ func _pose_gunners(dt: float) -> void:
 		var mid := (right + left) * 0.5
 		# behind the grips at arm's length, the grips at his chest standing
 		# (lower, kneeling or crouched), feet on whatever he stands on
-		var feet := mid - fwd * (0.42 if not low else 0.38) - Vector3(0, 1.1 if not low else 0.78, 0)
+		var feet := mid - fwd * (0.42 if not low else 0.38) - Vector3(0, GUNNER_CHEST if not low else 0.78, 0)
+		if i == 0 and not _vm.gunner_floor.is_empty():
+			feet = _gunner_feet(_vm.gunner_floor, mid, fwd)
 		g.global_transform = Transform3D(Basis(Vector3.UP, atan2(-fwd.x, -fwd.z)), feet)
 		g.crew_r = right
 		g.crew_l = left
 		g.pose(dt, Soldier.Life.ALIVE, posture, act, 0.0, false, act == Soldier.Act.SHOOT)
+
+
+## Where a standing gunner's feet go on the floor his builder gave him
+## (VehicleModels.gunner_floor): in a hatch, on its one spot; in a bed, behind
+## the grips at arm's length (`mid` their middle, `fwd` the gun's flat
+## heading, both world), kept on the floor. Where the floor runs out behind
+## the grips - the gun swung back over his spot - he steps round the receiver
+## to its side instead of standing in front of the muzzle.
+func _gunner_feet(st: Dictionary, mid: Vector3, fwd: Vector3) -> Vector3:
+	var on: Node3D = st.on
+	var xf := on.global_transform
+	var area: Rect2 = st.area
+	var y: float = st.y
+	if area.size == Vector2.ZERO:
+		return xf * Vector3(area.position.x, y, area.position.y)
+	var grips := xf.affine_inverse() * mid
+	var f3 := xf.basis.inverse() * fwd
+	var f := Vector2(f3.x, f3.z)
+	if f.length_squared() < 0.0001:
+		return xf * Vector3(area.get_center().x, y, area.get_center().y)
+	var at := gunner_spot(area, Vector2(grips.x, grips.z), f.normalized())
+	return xf * Vector3(at.x, y, at.y)
+
+
+## Where on the floor `area` a standing gunner goes, in its x and z: behind
+## the grips `g` at arm's length along the gun's heading `f`, kept on the
+## floor - or, where the floor runs out behind them, beside the receiver on
+## the roomier side, out of the gun's line.
+static func gunner_spot(area: Rect2, g: Vector2, f: Vector2) -> Vector2:
+	var at := (g - f * GUNNER_REACH).clamp(area.position, area.end)
+	if (at - g).dot(f) > -GUNNER_REACH * 0.6:
+		var side := Vector2(-f.y, f.x)
+		var room := (area.get_center() - g).dot(side)
+		at = (g - f * 0.12 + side * (0.45 if room >= 0.0 else -0.45)).clamp(area.position, area.end)
+	return at
 
 
 ## The main gun's kick rocks the hull back from the shot.

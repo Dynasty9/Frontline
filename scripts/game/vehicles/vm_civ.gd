@@ -405,21 +405,27 @@ static func _offroad(k: VehicleModels, team: int, seed: int, v: String) -> void:
 			_off_repair(k, team)
 
 
-## An M2 on a pedestal in the bed, behind a gunner's shield.
+## An M2 on a tall pedestal in the bed, its bore half a metre over the cab
+## roof so it fires forward over the cab, behind a gunner's shield; the
+## gunner on the bed floor behind it, the grips at his chest. The kit is in
+## the bed's back corners, clear of where he stands.
 static func _off_hmg(k: VehicleModels, team: int) -> void:
 	var m := k.root
-	# ammo cans and a spare box by the gunner's feet
-	for i in 3:
-		VehicleFittings.ammo_can(k, m, Vector3(-0.55 + i * 0.16, 1.08, 2.2), OD, Vector3.ZERO, Vector3(0.14, 0.19, 0.3))
-	VehicleCargo.crate_stack(k, m, Vector3(0.45, 0.975, 2.15), Vector3(0.6, 0.25, 0.35), Vector3i.ONE, "wood")
-	k.turret = k._pivot(m, Vector3(0, 1.62, 1.5))
+	var floor_y := 0.993
+	var base := Vector3(0, floor_y, 1.35)
+	var pivot := Vector3(0, 1.94, 1.35)
+	for i in 2:
+		VehicleFittings.ammo_can(k, m, Vector3(-0.6, floor_y + 0.095 + i * 0.19, 2.25), OD, Vector3(0, PI / 2, 0), Vector3(0.14, 0.19, 0.3))
+	VehicleCargo.crate_stack(k, m, Vector3(0.58, floor_y, 2.24), Vector3(0.38, 0.25, 0.3), Vector3i.ONE, "wood")
+	k.turret = k._pivot(m, pivot)
 	var t := k.turret
 	# the pintle post braced on its bolted plate, the swivel and cradle on top
-	VehicleMounts.pedestal(k, m, Vector3(0, 0.98, 1.5), Vector3(0, 1.62, 1.5), t)
+	VehicleMounts.pedestal(k, m, base, pivot, t, "gunmetal_w", null, 0.46, Vector2(0.048, 0.056))
 	var tip := _m2(k, t, 0.36)
 	k.mg_tip = k._tip(t, tip)
-	# the shield: a flat plate with the barrel slot, angled wings, a vision slit
-	VehicleMounts.gun_shield(k, t, Vector3(0, 0.38, -0.42), Vector2(0.62, 0.52), "paint", Color(0.2, 0.21, 0.19))
+	# the shield: a plate with the barrel's slot, wings wrapped back, a vision slit
+	VehicleMounts.gun_shield(k, t, Vector3(0, 0.388, -0.42), Vector2(0.62, 0.46), "paint", Color(0.2, 0.21, 0.19), 0.1, Vector2(0.2, -0.45), Vector2(0.11, 0.17), 0.02)
+	k.gunner_floor = {"on": m, "y": floor_y, "area": Rect2(Vector2(-0.6, 0.62), Vector2(1.2, 1.68))}
 	_team_side(k, team)
 
 
@@ -619,9 +625,9 @@ static func _mb_top(k: VehicleModels) -> void:
 static func _mb_gun(k: VehicleModels, team: int, at: bool) -> void:
 	var m := k.root
 	_rod(k, m, Vector3(-0.72, 1.76, 1.15), Vector3(0.72, 1.76, 1.15), 0.035, "gunmetal_w", null, 8)
-	# ammunition stowed in the back
-	for i in 2:
-		VehicleFittings.ammo_can(k, m, Vector3(0.45 - i * 0.17, 1.08, 1.6), OD, Vector3.ZERO, Vector3(0.14, 0.19, 0.3))
+	# ammunition stowed in the back corners, clear of the gunner's feet
+	for s in [-1.0, 1.0]:
+		VehicleFittings.ammo_can(k, m, Vector3(s * 0.58, 0.715, 1.84), OD, Vector3(0, PI / 2, 0), Vector3(0.14, 0.19, 0.3))
 	k.turret = k._pivot(m, Vector3(0, 1.94, 1.15))
 	var t := k.turret
 	# the post clamped to the bar; the recoilless rifle's cradle is the
@@ -634,6 +640,8 @@ static func _mb_gun(k: VehicleModels, team: int, at: bool) -> void:
 	else:
 		var tip := _lmg(k, t, 0.17)
 		k.mg_tip = k._tip(t, tip)
+		# the gunner on the tub floor behind the bench, the gun at his chest
+		k.gunner_floor = {"on": m, "y": 0.62, "area": Rect2(Vector2(-0.5, 1.3), Vector2(1.0, 0.55))}
 	_team_side(k, team, 0.85, 0.82, -0.3)
 
 

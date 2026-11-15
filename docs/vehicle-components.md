@@ -634,6 +634,23 @@ behind the grips each frame (crouched for helicopters and boats) with its hands 
 every frame and distant ones every few, and hiding them past 260 m. The gunners are view-only, part of the
 model, and go with it.
 
+A builder says where its gunner stands with `k.gunner_floor = {on, y, area}`: `on` the node his floor belongs to,
+`y` his feet's height in its space, `area` a Rect2 over its x and z. On a floor (a pickup's bed, a jeep's tub) he
+stands `Vehicle.GUNNER_REACH` behind the grips, the grips `GUNNER_CHEST` above his feet, clamped to the area, and
+where the area runs out behind the grips (the gun swung back over his spot) he steps round the receiver to its
+roomier side. An area of no size is one spot on `on`: a man in a hatch (the Humvee's turret, the Prowler's ring),
+turning with it. Without one he stands behind the grips at arm's length, wherever they are. A gun worked from a
+seat (the Prowler AT's passenger swing-arm gun) sets `k.gunner_seated` and gets no figure, as there's no seated
+pose. `tests/fixtures/gun-crews.tscn` holds every land vehicle with a gunner to having a floor for him.
+
+Pedestal guns stand tall: the technical's DShK, the Offroad's and the Prowler's .50 carry their bores 0.4 to 0.5 m
+over the cab roof (or the cage), the grips 1.3 to 1.4 m over the floor the gunner stands on. The Humvee's gunner's
+turret is an O-GPK on a hatch ring (`VmCore._hatch_ring`, an open `_annulus` race and deck over the dark hatch):
+seven faces of an octagon (`_shield_face`: a steel plate cut round its holes, a ballistic glass block in a bolted
+frame in each window, the front face's gun slot open), posts at the corners, open at the back. The M2 sits on a
+cradle at the ring's front (bracket, post, and a cradle that elevates with the gun about its trunnion pin, the can
+on its tray on the left), its barrel through the front slot a metre out, and the whole turret traverses with it.
+
 Gun parts use the `weapon` finish (`VehicleWeapons.STEEL`; a family's plain `gunmetal_w` on a gun becomes it,
 painted tubes keep their paint): phosphated steel, near black, matte with scuffed wear. `_holes` pierces a round
 jacket with staggered rings of dark cooling holes; `_rivets` sets a row of rivet heads on a face.
