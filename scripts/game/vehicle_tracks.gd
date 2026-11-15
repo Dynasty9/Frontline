@@ -3,7 +3,9 @@ extends RefCounted
 ## Individual shoes follow the vehicle's own wheel envelope. Uniform distance
 ## spacing continues around corners, instead of stretching one plate per edge.
 
-static var _shoe: BoxMesh
+static var _links := {}
+## The longest unsupported return run `shoes` lets sag (see there).
+const SAG_SPAN := 2.5
 
 static func wheel_envelope(circles: Array, thickness: float, segments := 16) -> PackedVector2Array:
 	var points := PackedVector2Array()
@@ -14,10 +16,22 @@ static func wheel_envelope(circles: Array, thickness: float, segments := 16) -> 
 	return Geometry2D.convex_hull(points)
 
 
+## The links round `outline`, one every `pitch` or so, each turned to the run
+## it lies on. Two kinds of track, as armies fit them:
+## - `pads`: a western double-pin track (Abrams, Merkava, Leopard 2,
+##   Warrior): a steel body with two rubber pads on its ground face, an end
+##   connector clamping the next shoe's pins at each edge (a chain of them
+##   down each side of the track) and, with `guides`, a centre guide on the
+##   connector between the shoes.
+## - no pads: a Russian single-pin track (T-72, T-14, BMP): a cast steel link
+##   with a grouser across its ground face, the hinge lugs at each end that
+##   interleave with the next link's on one pin, and the guide horn standing
+##   up the middle of every link (the track is steered by them between the
+##   twin road wheels, so `guides` is implied).
+## Each link is a few parts of cached meshes; its pad is placed on its ground
+## face. The links keep the old shoe's extent: the body reaches half the
+## thickness either side of the line, a pad the old pad's depth beyond it.
 static func shoes(k: VehicleModels, parent: Node3D, x: float, width: float, outline: PackedVector2Array, thickness := 0.08, pitch := 0.20, pads := true, guides := false, inset := 0.0) -> void:
-	if _shoe == null:
-		_shoe = BoxMesh.new()
-		_shoe.size = Vector3.ONE
 	var points := outline.duplicate()
 	if points.size() > 1 and points[0].is_equal_approx(points[-1]):
 		points.remove_at(points.size() - 1)
@@ -33,6 +47,8 @@ static func shoes(k: VehicleModels, parent: Node3D, x: float, width: float, outl
 		return
 	var count := maxi(3, int(ceil(lengths[-1] / pitch)))
 	var spacing := lengths[-1] / float(count)
+	var pad_depth := minf(0.018, thickness * 0.225)
+	var link: Array = _link(width, thickness, spacing, pads, pad_depth)
 	var edge := 0
 	for i in count:
 		var distance := (i + 0.5) * spacing
@@ -41,25 +57,130 @@ static func shoes(k: VehicleModels, parent: Node3D, x: float, width: float, outl
 		var a := points[edge]
 		var b := points[(edge + 1) % points.size()]
 		var tangent := (b - a).normalized()
-		var q := a.lerp(b, (distance - lengths[edge]) / maxf(lengths[edge + 1] - lengths[edge], 0.0001))
+		var span := lengths[edge + 1] - lengths[edge]
+		var along := (distance - lengths[edge]) / maxf(span, 0.0001)
+		var q := a.lerp(b, along)
 		var normal := Vector2(tangent.y, -tangent.x)
 		if normal.dot(q - center) < 0:
 			normal = -normal
+		# The return run hangs between the rollers or wheels it rests on, as
+		# much as 2 cm a metre. A run longer than SAG_SPAN has rollers the
+		# outline leaves out, so it stays straight.
+		if normal.y > 0.9 and span > 0.3 and span < SAG_SPAN:
+			var bend := sin(PI * along)
+			q.y -= 0.02 * span * bend * bend
+			tangent = (tangent + Vector2(0, -0.02 * PI * sin(TAU * along))).normalized()
+			normal = Vector2(-tangent.y, tangent.x)
+			if normal.y < 0.0:
+				normal = -normal
 		q -= normal * inset
-		var rot := Vector3(atan2(-tangent.y, tangent.x), 0, 0)
-		k._add(parent, _shoe, "track", null, Vector3(x, q.y, q.x), rot, Vector3(width, thickness, spacing * 0.92))
+		# The link's +Y is its inner face (toward the wheels); a half turn
+		# about the run puts it there whichever way the outline winds.
+		var inner_up := Vector2(-tangent.y, tangent.x).dot(normal) < 0.0
+		var rot := Vector3(atan2(-tangent.y, tangent.x), 0, 0.0 if inner_up else PI)
+		var at := Vector3(x, q.y, q.x)
+		k._add(parent, link[0], "track", null, at, rot)
 		if pads:
-			var pad_depth := minf(0.018, thickness * 0.225)
 			var face := q + normal * (thickness * 0.5 + pad_depth * 0.5)
-			k._add(parent, _shoe, "rubber", Color(0.18, 0.18, 0.17), Vector3(x, face.y, face.x), rot, Vector3(width * 0.65, pad_depth, spacing * 0.66), false)
-		# Hinge ends show at the edges without filling the guide-tooth gap.
-		var hinge := q + tangent * spacing * 0.44
-		var pin_radius := minf(0.018, thickness * 0.225)
-		k._add(parent, VehicleWheels.drum(pin_radius, pin_radius, width + pin_radius * 1.4, 6), "gunmetal_w", null, Vector3(x, hinge.y, hinge.x), VehicleWheels.AXLE, Vector3.ONE, false)
+			k._add(parent, link[1], "rubber", Color(0.18, 0.18, 0.17), Vector3(x, face.y, face.x), rot, Vector3.ONE, false)
+		k._add(parent, link[2], "gunmetal_w" if pads else "track", null, at, rot, Vector3.ONE, false)
+		if guides and pads:
+			k._add(parent, link[3], "track", null, at, rot, Vector3.ONE, false)
 
-		if guides:
-			var tooth := q - normal * (thickness * 0.5 + 0.035)
-			k._add(parent, _shoe, "track", null, Vector3(x, tooth.y, tooth.x), rot, Vector3(width * 0.10, 0.07, spacing * 0.35), false)
+
+## One link's meshes for `shoes`, centred on its line, +Z along the run to
+## the next link, +Y to its inner face: [body, pads (centred on their own
+## depth), hinge hardware, centre guide]. Cached by size and kind.
+static func _link(width: float, thickness: float, spacing: float, pads: bool, pad_depth: float) -> Array:
+	var key := "%.3f_%.3f_%.4f_%s" % [width, thickness, spacing, pads]
+	if _links.has(key):
+		return _links[key]
+	var t := thickness
+	var s := spacing
+	var parts: Array = []
+	if pads:
+		# The body casting round both pins, narrower than the track so the
+		# end connectors stand at its edges.
+		parts.append(_solid([[Vector3.ZERO, Vector3(width * 0.4, t * 0.5, s * 0.43), 0]]))
+		# Two pads either side of the centre, a groove between them.
+		var half := Vector3(width * 0.17, pad_depth * 0.5, s * 0.35)
+		parts.append(_solid([[Vector3(width * 0.205, 0, 0), half, UP], [Vector3(-width * 0.205, 0, 0), half, UP]]))
+		# The end connectors over the hinge to the next shoe (their inner
+		# faces against the bodies).
+		parts.append(_solid([[Vector3(width * 0.455, 0, s * 0.5), Vector3(width * 0.05, t * 0.36, s * 0.3), LEFT], [Vector3(-width * 0.455, 0, s * 0.5), Vector3(width * 0.05, t * 0.36, s * 0.3), RIGHT]]))
+		# The centre guide, on the centre connector between the shoes.
+		parts.append(_horn(Vector3(0, t * 0.5, s * 0.5), PackedVector2Array([Vector2(width * 0.05, s * 0.2), Vector2(width * 0.03, s * 0.12)]), 0.07))
+	else:
+		# The cast plate with its grouser across the ground face.
+		parts.append(_solid([[Vector3(0, t * 0.06, 0), Vector3(width * 0.47, t * 0.32, s * 0.31), 0], [Vector3(0, -t * 0.37, 0), Vector3(width * 0.43, t * 0.13, s * 0.085), UP]]))
+		parts.append(null)
+		# The hinge lugs on the pin line at each end, the middle one forward
+		# and the two outer ones aft (the next link's fill between them), and
+		# the guide horn up the middle of the inner face.
+		var tool := SurfaceTool.new()
+		tool.begin(Mesh.PRIMITIVE_TRIANGLES)
+		# Four-sided: a lug is a few centimetres across.
+		var lug := VehicleBody.drum(t * 0.3, t * 0.3, width * 0.44, 4, false, false)
+		var end := VehicleBody.drum(t * 0.3, t * 0.3, width * 0.22, 4, true, false)
+		tool.append_from(lug, 0, Transform3D(Basis(Vector3.FORWARD, PI / 2), Vector3(0, t * 0.06, s * 0.47)))
+		for side: float in [-1.0, 1.0]:
+			# A drum's +Y (its capped end) turned outboard.
+			tool.append_from(end, 0, Transform3D(Basis(Vector3.FORWARD, side * PI / 2), Vector3(side * width * 0.36, t * 0.06, -s * 0.47)))
+		tool.append_from(_horn(Vector3(0, t * 0.38, 0), PackedVector2Array([Vector2(minf(0.036, width * 0.065), s * 0.27), Vector2(minf(0.014, width * 0.025), s * 0.11)]), t * 0.8), 0, Transform3D.IDENTITY)
+		parts.append(tool.commit())
+	_links[key] = parts
+	return parts
+
+
+## Faces a box in _solid can leave out, buried in what it stands against.
+const LEFT := 1
+const RIGHT := 2
+const UP := 8
+
+## Boxes as one mesh: each [centre, half size, the faces to leave out (a sum
+## of LEFT, RIGHT, UP, or 0)]. Flat faces.
+static func _solid(boxes: Array) -> ArrayMesh:
+	var verts := PackedVector3Array()
+	var norms := PackedVector3Array()
+	var idx := PackedInt32Array()
+	for box: Array in boxes:
+		var c: Vector3 = box[0]
+		var h: Vector3 = box[1]
+		var buried: int = box[2]
+		for axis in 3:
+			for face: float in [-1.0, 1.0]:
+				if buried & (1 << (axis * 2 + (1 if face > 0.0 else 0))):
+					continue
+				var n := Vector3.ZERO
+				n[axis] = face
+				var u := Vector3.ZERO
+				u[(axis + 1) % 3] = h[(axis + 1) % 3]
+				var v := Vector3.ZERO
+				v[(axis + 2) % 3] = h[(axis + 2) % 3]
+				var f := c + n * h[axis]
+				VehicleWheels._quad(verts, norms, idx, n, f - u - v, f + u - v, f + u + v, f - u + v)
+	return VehicleWheels._mesh(verts, norms, idx)
+
+
+## A guide horn or tooth standing `height` up from `base` (its foot on the
+## link's inner face): a tapered block, `size` its half width and half
+## length at the foot ([0]) and at the tip ([1]). No underside.
+static func _horn(base: Vector3, size: PackedVector2Array, height: float) -> ArrayMesh:
+	var verts := PackedVector3Array()
+	var norms := PackedVector3Array()
+	var idx := PackedInt32Array()
+	var top := base + Vector3.UP * height
+	var feet: Array[Vector3] = []
+	var tips: Array[Vector3] = []
+	for c: Vector2 in [Vector2(-1, -1), Vector2(1, -1), Vector2(1, 1), Vector2(-1, 1)]:
+		feet.append(base + Vector3(c.x * size[0].x, 0, c.y * size[0].y))
+		tips.append(top + Vector3(c.x * size[1].x, 0, c.y * size[1].y))
+	for i in 4:
+		var j := (i + 1) % 4
+		var out := (feet[i] + feet[j]) * 0.5 - base
+		VehicleWheels._quad_toward(verts, norms, idx, out, feet[i], feet[j], tips[j], tips[i])
+	VehicleWheels._quad(verts, norms, idx, Vector3.UP, tips[0], tips[1], tips[2], tips[3])
+	return VehicleWheels._mesh(verts, norms, idx)
 
 
 ## Spare track links stowed in a row on a plate (a glacis, a turret side, a
