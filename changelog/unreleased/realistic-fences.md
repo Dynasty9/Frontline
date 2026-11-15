@@ -16,8 +16,12 @@ file = "hq-perimeter.jpg"
 caption = "The security fence behind an HQ: chain-link on posts set in concrete, barbed wire and a razor coil on Y-arms, floodlights"
 
 [[screenshots]]
+file = "barbed-wire.jpg"
+caption = "Barbed wire up close (four times life size): the armies' issue wire, rusted wire, new galvanised"
+
+[[screenshots]]
 file = "wire-and-military.jpg"
-caption = "Barbed wire new, rusted and military; the Coalition's security fence and the Rebels' improvised one; concertina obstacles for each side; wire along a compound wall"
+caption = "The three wire finishes, strung on posts and along a farm's rails; the Rebels' improvised HQ fence; concertina obstacles, the Coalition's and the Rebels'"
 
 [[screenshots]]
 file = "supply-dump-screen.jpg"
@@ -37,7 +41,8 @@ caption = "Six of the garden and field fences, each with its gate"
   with what they had: crooked stakes, slack rusty wire, roofing sheets and pallets wired into the gaps, a rusty coil
   dragged along the outside. The town's supply dump is screened with mesh panels in concrete feet, some hung with
   scrim and weighted with sandbags.
-- **Barbed wire** is made as the real thing is: two twisted strands with four-point barbs wrapped on every 11 cm.
+- **Barbed wire** is made as the real thing is: two strands twisted tight, and every 11 cm a barb of two short
+  wires coiled round them, their four cut ends standing out as sharp points at odd angles.
   It comes bright and new along compound walls, rusted brown and slack on farms and the Rebels' wire, and in the
   Coalition's dull issue finish. Concertina obstacles are pulled out so their loops cross, as clipped coils do.
 - Fences have grass growing up through their feet, paint gone chalky, a picket missing here, a board kicked out
