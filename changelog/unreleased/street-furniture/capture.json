@@ -1,0 +1,63 @@
+{
+  "before_ref": "3a30105f34acc92c943cea52730cc202e18abebb",
+  "source_ref": "9f7c640cc8083a266f9a4c9ed5f1f00a7ef8d926",
+  "engine": "Godot 4.7.2 stable ed1daf0bf",
+  "stage": "tests/fixtures/environment-views.gd; tools/showcase/building-surfaces.tscn",
+  "command": "godot --path CHECKOUT --resolution 1600x900 --script tests/fixtures/environment-views.gd -- --aivai --seed=3 --offscreen --nohud --set=perf:0 --preset=high --mood=day --focus=0,0 --capture-set=town",
+  "comparisons": [
+    {
+      "subjects": [
+        "crossroads"
+      ],
+      "crop": [
+        260,
+        60,
+        1460,
+        760
+      ]
+    },
+    {
+      "subjects": [
+        "square"
+      ],
+      "crop": [
+        380,
+        60,
+        1580,
+        700
+      ]
+    },
+    {
+      "subjects": [
+        "street"
+      ],
+      "crop": [
+        520,
+        330,
+        1400,
+        830
+      ]
+    },
+    {
+      "subjects": [
+        "street_kit"
+      ],
+      "command": "godot --path CHECKOUT --resolution 1600x900 tools/showcase/building-surfaces.tscn -- --building-out=OUTPUT --offscreen FLAGS",
+      "flags": [
+        "--building-single",
+        "--building-kinds=street_kit"
+      ],
+      "before_flags": [
+        "--building-match=AFTER/capture.json"
+      ],
+      "crop": [
+        160,
+        100,
+        1560,
+        840
+      ]
+    }
+  ],
+  "notes": "Both sides render the source_ref environment views fixture (it gained the crossroads and square views) and studio stage (its street_kit subject draws the bare pavement where BuildingStreet does not exist). The town views are the same seed and camera, and the town is as it was: the street furniture is laid last from its own stream into its own decor list. The baseline is the furnished houses change this builds on.",
+  "composition": "PIL: matched rows, 792 px halves, JPEG quality 82"
+}

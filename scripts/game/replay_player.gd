@@ -436,6 +436,7 @@ func _valid_props(kind: String, values: Dictionary, full: bool) -> bool:
 			prototype.free()
 		prop_types.structure["zc"] = Vector3.ZERO
 		prop_types.structure["zr"] = 0.0
+		prop_types.structure["look"] = 0  # (a wing's roof: the roof whose looks it shares)
 	var schema: Dictionary = prop_types.get(kind, {})
 	for key in values:
 		if key == "toss":

@@ -684,9 +684,12 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   including backward seeks; older recordings and dedicated flat test scenarios remain supported.
 - A town in the middle, laid out on a street grid: two main streets crossing at the centre, side streets closing
   some of the blocks, asphalt with a dashed centre line, curbs and sidewalks, zebra crossings at the crossroads.
-  Houses stand on lots facing the street with their door to it; behind them, gardens closed off by hedges or
+  Houses stand on lots facing the street with their door to it, some on two floors and some with a wing out of
+  the back (an L or a T); behind them, gardens closed off by hedges or
   walls, fences down the sides, vegetable patches, washing lines and trees; some have a drive with the car on it.
-  Shops with awnings line the main street near the middle.
+  Inside, the rooms are furnished (a wardrobe, a bookcase, a kitchen, a settee, a table and chairs), seen when
+  the roof lifts as men go in. Shops with awnings line the main street near the middle, most with flats over them. The floor above a ground
+  floor is looks only: it lifts off with the roof when men go in, and comes down when a wall under it is blown in.
 - A town square on one corner of the crossroads (fountain or statue, benches, planters, a flagpole, market
   stalls, bollards), a fenced playground (swings, slide, climbing frame, sandbox, seesaw, roundabout), a small
   park, allotments, a car park, a bombed-out lot and a water tower on the edge of town.
@@ -704,7 +707,10 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   wire. Concertina is razor tape whose clipped loops cross as it is pulled out.
 - Street lights down every street (they light up at dusk and at night), wooden utility poles carrying sagging
   power lines with a drop to each house, fire hydrants, stop signs where side streets meet the main road, the
-  town's name on the way in and a bus stop. Power lines also run along the country roads.
+  town's name on the way in and a bus stop; traffic lights at the central crossroads (dark, the power's off), a
+  telephone box, post boxes, an advertising column on the square, hoardings over car parks and bombed-out lots,
+  street names at the junctions, and belongings dropped on the pavements by people fleeing the fighting. Power
+  lines also run along the country roads.
 - **1 x 1 km** (`map_dims.gd`: every size, grid, mask and texture derives from one constant). The HQs sit
   at the north and south edges, their starting FOBs some 940 m apart, so a battle has room to move: fights for
   the villages, farms, woods and river line on the way in, then the town.
@@ -741,7 +747,7 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   sides), and on the west the lanes run on over the river - each on its own bridge - to farming villages on
   the far bank: three bridges and two fords across the river in all.
 - Country roads come in from both HQs and both edges of the map and join the main streets. Villages sit on the
-  cross road either side of town and on the road between each HQ and the town; farmsteads (farmhouse and barn round a yard, hay bales, a fenced road frontage, an orchard; the barn weatherboarded
+  cross road either side of town and on the road between each HQ and the town; farmsteads (a farmhouse, most on two floors with a wing, and a barn round a yard, hay bales, a fenced road frontage, an orchard; the barn weatherboarded
   under a corrugated sheet roof with loft doors in its gables, straw on its floor) and
   hedged fields lie along the roads; abandoned cars on the verges, burnt-out armour off the road.
 - **The town and every village have a name and a supply dump** (crated stores on a pallet, fuel drums and a
@@ -1419,6 +1425,32 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   in streaks. A battle that opens in the rain starts soaked; rain that sets in mid-battle wets things over 30 s,
   and they dry over three minutes once it stops. It costs a few instructions per pixel, so every preset has it,
   the browser too.
+- **Falling rain** (`Mats.RAIN_DROPS`, the `rain_fx` global; `Atmosphere._rain_fx_tick`): while it's still
+  coming down, drops land on everything (after Lagarde's "Water drop 2a/2b", 2012-13, procedurally rather than
+  from flipbooks). In puddles, ruts and gutters, and faintly on wet soil and asphalt, each lands as a ring that runs
+  out 10 to 21 cm, a packet of crests 6 cm apart, sized and timed by its own drop. On roofs, decks and helmets each
+  bursts as a crown of spray a centimetre or two across for a few hundredths of a second. Down walls and hull
+  sides water runs in rivulets along the rain streaks, beads sliding down at their own pace and catching the sky
+  on their swollen heads; a vehicle carries its rivulets with it. All of it is laid out in world cells, one drop
+  to a cell per period, so a pixel looks at one cell; it fades as it shrinks under a pixel (where puddles keep a
+  rougher face in its place), so from the command camera's height nothing shimmers. Effects Medium has the rings
+  and crowns, High adds a third layer of rings, denser crowns and the rivulets; Low has none of it. The browser
+  lights the ground per vertex, so there it has the crowns only.
+- **Lightning** (`lightning.gd`): every half a minute or so a strike lands somewhere ahead of the camera, a few
+  hundred metres to a couple of kilometres out. The channel is a stepped leader's random walk down from the cloud
+  base, kinked again at finer scales and forking as it goes, drawn as ribbons that face the camera, stay a few
+  pixels wide at any range and glow far past white, so the glow blooms them; it grows down in a frame, then two to
+  four return strokes flicker it over a few tenths of a second. The cloud base lights up round it (the sky shader's
+  `flash`), the rim light swings round to shine from the bolt's side, and on Forward+ a light low on the channel
+  lights the ground beneath. A near strike lights the field far more than a far one (falling off as 500 m over the
+  distance). A third of the flashes stay in the cloud as a dimmer crawler along its base. The thunder comes as late
+  as the nearest part of the channel is far (343 m/s), from its direction, a crack close by and a low, quieter
+  rumble from kilometres off. `FL_LIGHTNING_EVERY=S` strikes every S seconds; `FL_DEBUG_LIGHTNING=1` prints each
+  strike and its thunder.
+- **Rain on the lens** (Camera and lens > Lens flare; the composite pass in `cinematic_fx.gd`): when the camera
+  faces into the rain, drops gather on the front glass, sit a few seconds and dry, and now and then one runs down it
+  leaving beads behind. Each is a small lens showing the scene behind it flipped, shrunk and out of focus, darker
+  at its rim. Looking down from the command camera, the glass stays dry.
 - **Level-of-detail cross-fades**: a vehicle and its distant single-mesh stand-in (`Mats.add_distance_lod`), cab
   glass, the street's fine stones and distant blast clouds dissolve into each other over a few metres (Godot's
   dithered visibility-range fade) instead of popping as the camera zooms.

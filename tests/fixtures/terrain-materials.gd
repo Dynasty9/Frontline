@@ -200,7 +200,7 @@ void fragment() { float tar; ALBEDO = street_surface(scan, noise, vec2(0.0), tar
 	var road := view.get_texture().get_image().get_pixel(32, 32)
 	assert(absf(road.r - 0.3065) < 0.008, "Street blending must use linear scan values in both renderers: %s" % road)
 	var track_shader := Shader.new()
-	track_shader.code = Mats.code(MapDims.shader(Atmosphere.ROAD_SHADER.replace("// STREET_SURFACE", Mats.ASPHALT_SHADER))).replace("render_mode blend_mix, depth_draw_opaque, specular_schlick_ggx;", "render_mode unshaded;")
+	track_shader.code = Mats.code(MapDims.shader(Atmosphere.ROAD_SHADER.replace("// STREET_SURFACE", Mats.ASPHALT_SHADER).replace("// RAIN_DROPS", Mats.RAIN_DROPS))).replace("render_mode blend_mix, depth_draw_opaque, specular_schlick_ggx;", "render_mode unshaded;")
 	var track_material := ShaderMaterial.new()
 	track_material.shader = track_shader
 	var flat_noise := Image.create(4, 4, false, Image.FORMAT_RF)
