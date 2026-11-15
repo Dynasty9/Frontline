@@ -1316,11 +1316,15 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   staying black. A pixel brighter than the sky light alone could make it is taken to be in the sun and its colour is
   read against sky and sun together, so sunlit surfaces aren't veiled. The bounce is laid on at twice physical
   strength, to make up for what the rays can't see off screen and past 8 m, and its colour is brought back towards
-  the wall it came from (mixed over many rays it greys). From the usual command height (past 25 m, fully by 90 m) the
-  rays reach twice as far and the light is laid on twice as strong again: there a wall is a few pixels tall, and a
-  lift of a few levels in its shade went unseen. Measured at golden hour and overcast, shade where bounce lands comes
-  up by about a fifth to a quarter (linear) from 30 to 85 m, but from the command height so little of the frame is
-  wall that it stays subtle; up close and at midday it is plain. Godot's
+  the wall it came from (mixed over many rays it greys). Further off (past 15 m, fully by 50 m, so
+  the usual 55 m command height gets all of it) the rays reach twice as far and the light is laid on two and a half
+  times as strong again: there a wall is a few pixels tall, and a lift of a few levels in its shade went unseen (the
+  first ramp ran out to 90 m and gave the command height less than half). From 55 m at midday, yards, wall feet and
+  roofless floors lift plainly while open grass, lit by the sky alone, is untouched (it has nothing near to gather
+  from); sunlit surfaces in the frame's brightest fifth gain about 5-7% (linear) on average. However strong it is laid on,
+  the light a surface gathers never comes out brighter than the surfaces its rays hit (a yard walled in on every
+  side gets its walls' own light, no more), and from afar it is laid on a quarter greyer, so a yard is tinted by its
+  wall rather than painted it. Under cloud the walls have little light to throw, so there it stays subtle. Godot's
   own SSIL (the Indirect light setting) and SDFGI (Global illumination) stay as options, but on the RTS camera
   neither shows colour bleed: SSIL mostly darkens corners (over the town it lowered the frame's mean by half a
   level and added nothing visible), and SDFGI lifts the whole frame evenly (its cells are too coarse for a street

@@ -1648,10 +1648,12 @@ const SSGI_STRENGTH := 2.0
 ## Seen from further than SSGI_FAR.x (m) and fully past SSGI_FAR.y, rays
 ## reach SSGI_FAR_REACH times as far and the light is laid on SSGI_FAR_STRENGTH
 ## times as strong: from the command height a wall is a few pixels tall and a
-## lift of a few levels in its shade goes unseen.
-const SSGI_FAR := Vector2(25.0, 90.0)
+## lift of a few levels in its shade goes unseen. (Full by 50 m, so the usual
+## command height, about 55 m off, gets all of it: ramped out to 90 m, it got
+## less than half, and the light there was too faint to see.)
+const SSGI_FAR := Vector2(15.0, 50.0)
 const SSGI_FAR_REACH := 2.0
-const SSGI_FAR_STRENGTH := 2.0
+const SSGI_FAR_STRENGTH := 2.5
 ## How much more saturated the gathered light is laid on (1 as gathered).
 const SSGI_BLEED := 1.6
 ## The brightest a surface's estimated colour may be (a white wall's ~0.8).
@@ -1679,6 +1681,11 @@ func _ssgi_tick() -> void:
 	p[17] = SSGI_FAR.y
 	p[18] = SSGI_FAR_REACH
 	p[19] = SSGI_FAR_STRENGTH
+	# FL_DEBUG_SSGI_FAR="from,full,reach,strength": the far view's weights, for tuning
+	if OS.has_environment("FL_DEBUG_SSGI_FAR"):
+		var f := OS.get_environment("FL_DEBUG_SSGI_FAR").split(",")
+		for i in mini(f.size(), 4):
+			p[16 + i] = float(f[i])
 	var to_sun := sun.global_transform.basis.z
 	p[20] = to_sun.x
 	p[21] = to_sun.y

@@ -451,7 +451,9 @@ void main() {
 			vec3 again = clean(textureLod(prev_filt_tex, puv, 0.0).rgb);
 			// (at most physical strength, and a little under: a closed room
 			// would otherwise feed its own light back without end)
-			c += receiver_albedo(c, wn) * again * min(P.gi.y, 1.0) * 0.8;
+			// (it was laid on stronger than physical, see gather: taken back out)
+			float gain = P.gi.y * mix(1.0, P.far.w, smoothstep(P.far.x, P.far.y, -v.z));
+			c += receiver_albedo(c, wn) * again * 0.8 / max(gain, 1.0);
 		}
 	}
 	// (fires and muzzle flashes are far brighter than any wall: kept in
@@ -499,6 +501,7 @@ void main() {
 	// start a little off the surface, more far away (where a depth step is coarser)
 	vec3 start = pos + n * (0.05 + g.w * 0.002);
 	vec3 sum = vec3(0.0);
+	float hit = 0.0;
 	for (int i = 0; i < rays; i++) {
 		// cosine-weighted directions (Malley's method on a spun, stratified disc):
 		// each ray stands for an equal share of the light the surface can see
@@ -532,12 +535,23 @@ void main() {
 				vec3 sn = normalize(to_view * sg.xyz);
 				float facing = clamp(-dot(sn, d) * 4.0, 0.0, 1.0);
 				sum += texelFetch(rad_tex, qp, 0).rgb * facing;
+				hit += facing;
 				break;
 			}
 		}
 	}
-	vec3 e = clean(sum / float(rays));
-	imageStore(raw_img, h, vec4(e, 1.0));
+	// laid on stronger than physical (the rays miss what is off screen, and
+	// from afar a wall is a few pixels tall), but never brighter than what the
+	// rays hit: a surface walled in by its source on every side gets that
+	// source's own light, no more, so a yard can't outshine the wall lighting it
+	vec3 e = sum / float(rays) * P.gi.y * mix(1.0, P.far.w, far_k);
+	vec3 src = sum / max(hit, 1e-4);
+	float el = dot(e, vec3(0.2126, 0.7152, 0.0722));
+	float sl = dot(src, vec3(0.2126, 0.7152, 0.0722));
+	if (el > sl && el > 1e-6) {
+		e *= sl / el;
+	}
+	imageStore(raw_img, h, vec4(clean(e), 1.0));
 }
 """,
 	# last frame's answer, found again through last frame's camera
@@ -705,26 +719,27 @@ void main() {
 	// what a wall throws carries its own colour, but mixed over many rays and
 	// a surface's own tint, it greys: brought back a little, so the green of
 	// a wall reads in the tiles beside it
+	// (from afar the opposite: a wall's colour over a whole yard reads as a
+	// tint laid on, so there it is laid on a quarter greyer than gathered)
+	float far_k = smoothstep(P.far.x, P.far.y, z);
 	float el = dot(e, vec3(0.2126, 0.7152, 0.0722));
-	e = max(vec3(el) + (e - vec3(el)) * P.sun.w, vec3(0.0));
+	e = max(vec3(el) + (e - vec3(el)) * mix(P.sun.w, 0.75, far_k), vec3(0.0));
 	vec3 c = clean(col.rgb);
 	vec3 alb = receiver_albedo(c, wn);
-	// (and further off it is laid on a little stronger: from the command
-	// height a lift of a few levels in a wall's shade is lost)
-	float strength = P.gi.y * mix(1.0, P.far.w, smoothstep(P.far.x, P.far.y, z));
-	vec3 outc = c + alb * e * strength;
+	// (the gathered light already carries its strength: see gather)
+	vec3 outc = c + alb * e;
 	if (view_mode == 1) {
 		outc = e;  // the bounce light alone
 	} else if (view_mode == 2) {
 		outc = alb;  // the colour estimated for each surface
 	} else if (view_mode == 3) {
-		outc = alb * e * strength * 4.0;  // what is added, four times over
+		outc = alb * e * 4.0;  // what is added, four times over
 	} else if (view_mode == 4) {
 		outc = textureLod(rad_tex, uv, 0.0).rgb;  // the light each surface sends out
 	} else if (view_mode == 5) {
 		outc = texelFetch(gbuf_tex, ivec2(hp), 0).xyz * 0.5 + 0.5;  // facing (world)
 	} else if (view_mode == 6) {
-		outc = textureLod(raw_tex, uv, 0.0).rgb * 4.0;  // this frame's rays alone, four times over
+		outc = textureLod(raw_tex, uv, 0.0).rgb;  // this frame's rays alone
 	} else if (view_mode == 7) {
 		outc = vec3(textureLod(hist_tex, uv, 0.0).a / P.misc.y, texelFetch(gbuf_tex, ivec2(hp), 0).w / 200.0, 0.0);  // history length; distance
 	}

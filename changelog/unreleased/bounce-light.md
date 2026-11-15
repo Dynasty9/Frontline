@@ -13,7 +13,7 @@ caption = "The same, bounce light only (on minus off, four times brighter): it c
 
 [[screenshots]]
 file = "golden.jpg"
-caption = "Golden hour, from 30 m: the shaded floor and the far wall of a ruin lift"
+caption = "Golden hour, from 30 m: the shaded walls and the floor of a ruin lift"
 
 [[screenshots]]
 file = "golden-light.jpg"
@@ -21,16 +21,24 @@ caption = "Golden hour, bounce light only (four times brighter)"
 
 [[screenshots]]
 file = "overcast.jpg"
-caption = "Overcast, from 30 m: the floor and the walls' feet lift, lit by the paler ground round them"
+caption = "Overcast, from 30 m: with no sun the walls have little light to throw, so it is subtle: a doorway lifts a little"
 
 [[screenshots]]
 file = "overcast-light.jpg"
 caption = "Overcast, bounce light only (four times brighter)"
 
+[[screenshots]]
+file = "command-height.jpg"
+caption = "From the usual 55 m command height, midday: the yards between the houses warm with light off their sunlit walls"
+
+[[screenshots]]
+file = "command-height-light.jpg"
+caption = "The same, bounce light only (four times brighter): yards and wall feet, while open grass stays as it was"
+
 [[videos]]
 file = "flicker.webm"
 poster = "flicker.jpg"
-caption = "Off and on in turn, a second each, on the same frozen frames: midday, golden hour and overcast (the last view, from the usual command height, shows how faint it is from up there)."
+caption = "Off and on in turn, a second each, on the same frozen frames: midday, golden hour, overcast, and from the usual 55 m command height."
 
 [[videos]]
 file = "pan.webm"
@@ -43,6 +51,8 @@ caption = "The bounce light alone (brightened) while the camera pans fast: it st
   own walls, and light carries on from there, so shadows beside furniture and rubble are lifted rather than
   black. Sunlit floors light the foot of the walls above them, fading up the wall, and a coloured wall tints
   what lies beside it. Open ground, lit by the sky alone, looks as before, and sunlit surfaces aren't veiled.
+- **From the usual command height too:** further off, the rays reach further and the light is laid on stronger,
+  so yards, wall feet and roofless rooms still lift where a player usually looks from.
 - **It holds still while you pan and zoom:** the light is kept from frame to frame and moves with the world,
   and nothing moving drags a smear behind it.
 - **Settings > Graphics > Lighting > Bounce light:** Off, Medium or High (High casts more rays, for less grain).
