@@ -1017,6 +1017,10 @@ static func _preset(kind: String) -> Dictionary:
 			return {"pattern": PAINT, "col_a": Color(0.5, 0.5, 0.5), "col_b": Color(0.35, 0.33, 0.3), "rough": 0.38, "metal": 0.3, "bump": 0.4, "grime": 0.9, "rust": 0.45}
 		"wood_painted":
 			return {"pattern": WOOD, "col_a": Color(0.3, 0.34, 0.22), "col_b": Color(0.22, 0.25, 0.16), "rough": 0.8, "bump": 1.0, "grime": 0.7}
+		"weapon":
+			# a gun's phosphated steel: near black with a grey-green cast,
+			# matte where it's dry and sheened where the oil lies
+			return {"pattern": PAINT, "col_a": Color(0.072, 0.075, 0.07), "col_b": Color(0.16, 0.165, 0.155), "rough": 0.5, "metal": 0.5, "bump": 0.3, "grime": 0.12}
 		"gunmetal_w":
 			return {"pattern": PAINT, "col_a": Color(0.14, 0.14, 0.135), "col_b": Color(0.34, 0.33, 0.31), "rough": 0.52, "metal": 0.55, "bump": 0.35, "grime": 0.2}
 		"plaster":

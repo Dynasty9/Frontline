@@ -365,12 +365,26 @@ static func _gear(k: VehicleModels, p: Node3D, top: Vector3, axle: Vector3, r: f
 # --- weapons ---------------------------------------------------------------------
 
 ## An M134 minigun pointing -Z with its breech at pos; returns the muzzle.
-static func _minigun(k: VehicleModels, p: Node3D, pos: Vector3, ln := 0.75) -> Vector3:
-	k._box(p, Vector3(0.15, 0.17, 0.34), pos + Vector3(0, 0, 0.1), "gunmetal_w")
-	k._cyl(p, 0.04, 0.04, 0.16, pos + Vector3(0.09, 0.07, 0.12), Vector3(PI / 2, 0, 0), "metal_dark", null, 8, false)
+static func _minigun(k: VehicleModels, p: Node3D, pos: Vector3, ln := 0.75, door := false) -> Vector3:
+	# (on a pivot of its own at the housing: whoever lays it swings it whole)
+	var g := k._pivot(p, pos)
+	k._box(g, Vector3(0.15, 0.17, 0.34), Vector3(0, 0, 0.1), VehicleWeapons.STEEL)
+	k._cyl(g, 0.04, 0.04, 0.16, Vector3(0.09, 0.07, 0.12), Vector3(PI / 2, 0, 0), "metal_dark", null, 8, false)
 	# the six barrels from the rotor at the housing's face, clamped past
 	# mid-length and just behind the muzzles
-	VehicleWeapons.rotary(k, p, pos + Vector3(0, 0, -0.1), pos + Vector3(0, 0, -0.1 - ln), 6, 0.042, 0.013, [0.62, 1.0 - 0.03 / ln])
+	VehicleWeapons.rotary(k, g, Vector3(0, 0, -0.1), Vector3(0, 0, -0.1 - ln), 6, 0.042, 0.013, [0.62, 1.0 - 0.03 / ln])
+	var hands: Array = []
+	if door:
+		# a door gunner's spade grips behind the housing, the trigger
+		# between them, and the flexible chute dropping away to the
+		# ammunition box on the cabin floor
+		for side: float in [-1.0, 1.0]:
+			_tube(k, g, Vector3(side * 0.05, 0.0, 0.27), Vector3(side * 0.1, 0.0, 0.34), 0.012, VehicleWeapons.STEEL, null, 6)
+			k._cyl(g, 0.02, 0.02, 0.15, Vector3(side * 0.1, 0.0, 0.35), Vector3.ZERO, "rubber", null, 6, false)
+		k._box(g, Vector3(0.08, 0.03, 0.025), Vector3(0, 0.02, 0.33), "metal_dark", null, Vector3.ZERO, false)
+		_path(k, g, [Vector3(-0.08, -0.02, 0.05), Vector3(-0.13, -0.12, 0.12), Vector3(-0.12, -0.32, 0.22), Vector3(-0.05, -0.5, 0.3)], 0.035, "rubber", null, 6)
+		hands = [Vector3(0.1, 0.0, 0.35), Vector3(-0.1, 0.0, 0.35)]
+	k.gun_assembly(g, Vector3(0, 0, -0.12 - ln), hands)
 	return pos + Vector3(0, 0, -0.12 - ln)
 
 
@@ -602,8 +616,7 @@ static func _ghost_hawk(k: VehicleModels, team: int, stub: bool) -> void:
 	# door guns: miniguns on pintles in the gunners' windows
 	for s in [-1.0, 1.0]:
 		_tube(k, m, Vector3(s * 1.0, 1.45, -3.2), Vector3(s * 1.3, 1.55, -3.15), 0.035, "gunmetal_w", null, 6)
-		var tip := _minigun(k, m, Vector3(s * 1.34, 1.62, -3.05), 0.7)
-		_path(k, m, [Vector3(s * 1.3, 1.55, -2.92), Vector3(s * 1.2, 1.4, -2.85), Vector3(s * 1.0, 1.35, -2.95)], 0.035, "rubber", null, 6)
+		var tip := _minigun(k, m, Vector3(s * 1.34, 1.62, -3.05), 0.7, true)
 		if s > 0.0:
 			k.mg_tip = k._tip(m, tip)
 	if stub:

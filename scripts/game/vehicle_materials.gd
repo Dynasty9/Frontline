@@ -17,6 +17,7 @@ const PROFILES := {
 	"plastic": {"surface_normal_strength": 0.28, "surface_finish": 7, "surface_weather": 0.10, "surface_grain": 0.35, "surface_roughness": 0.30, "surface_specular": 0.30, "map": "rubber", "rough": 0.63, "metal": 0.0, "bump": 0.025, "grime": 0.12, "surface_scale": 5.0},
 	"canvas": {"surface_normal_strength": 0.75, "surface_finish": 2, "surface_weather": 0.30, "surface_grain": 0.70, "surface_roughness": 0.25, "surface_specular": 0.16, "map": "canvas", "rough": 0.96, "metal": 0.0, "bump": 0.10, "grime": 0.18, "surface_scale": 3.0, "surface_tone": 0.28},
 	"steel": {"surface_normal_strength": 0.4, "surface_finish": 3, "surface_weather": 0.10, "surface_grain": 0.70, "surface_roughness": 0.62, "map": "metal", "rough": 0.36, "metal": 0.9, "bump": 0.012, "grime": 0.1, "surface_scale": 1.0, "surface_tone": 0.1},
+	"weapon": {"surface_normal_strength": 0.25, "surface_finish": 7, "surface_weather": 0.05, "surface_grain": 0.3, "surface_wear": 0.35, "surface_roughness": 0.7, "map": "metal", "rough": 0.5, "metal": 0.5, "bump": 0.02, "grime": 0.05, "surface_scale": 4.0, "surface_tone": 0.16},
 	"gunmetal": {"surface_normal_strength": 0.35, "surface_finish": 3, "surface_weather": 0.15, "surface_grain": 0.42, "surface_roughness": 0.55, "map": "metal", "rough": 0.43, "metal": 0.8, "bump": 0.025, "grime": 0.08, "surface_scale": 2.0, "surface_tone": 0.18},
 	"track": {"surface_normal_strength": 0.5, "surface_finish": 3, "surface_weather": 0.40, "surface_grain": 0.26, "surface_wear": 0.35, "surface_roughness": 0.65, "map": "metal", "rough": 0.69, "metal": 0.65, "bump": 0.16, "grime": 0.4, "surface_scale": 3.0},
 	"glass": {"surface_normal_strength": 0.0, "surface_finish": 8, "surface_weather": 0.0, "surface_grain": 0.0, "surface_roughness": 0.0, "rough": 0.045, "metal": 0.0, "bump": 0.0, "grime": 0.0, "surface_detail": false, "surface_specular": 0.5},
@@ -44,7 +45,7 @@ static func key(kind: String, vehicle_family: String) -> String:
 
 static func profile(kind: String, vehicle_family: String) -> String:
 	match kind:
-		"rubber", "glass", "mirror", "headlamp", "signal_lens", "track", "burnt", "steel", "gunmetal", "nonslip", "tread", "rotor":
+		"rubber", "glass", "mirror", "headlamp", "signal_lens", "track", "burnt", "steel", "gunmetal", "nonslip", "tread", "rotor", "weapon":
 			return kind
 		"abrams_scorched":
 			return "burnt"
