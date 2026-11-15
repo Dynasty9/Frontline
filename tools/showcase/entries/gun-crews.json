@@ -1,26 +1,26 @@
 {
   "entry": "changelog/unreleased/gun-crews.md",
-  "summary": "Crew-served vehicle guns have their gunners, mounted guns get a phosphated finish and their real details, and hot barrels smoke after a burst.",
+  "summary": "Crew-served vehicle guns have their gunners, standing where a real crewman stands; pickup guns stand tall over the cab, the Humvee has an O-GPK turret that turns whole with its .50, guns get a phosphated finish and their real details, and hot barrels smoke after a burst.",
   "medium": "motion",
   "stage": "mounted-guns (tools/showcase/stages.json): tests/fixtures/mounted-gun-clips.tscn, showroom battlefield seed 712, fixed 30 Hz, Forward+",
-  "rationale": "The gunners and the barrel smoke move with the firing, so a matched before/after of the same firing line carries them; the still sheet shows the gunners at rest and a .50 close up for the new detail and finish.",
-  "source_ref": "6ef8490a",
+  "rationale": "The gunners, the turning Humvee turret and the barrel smoke move with the firing, so a matched before/after of the same firing line carries them; the still sheet shows a technical side-on for the gun's height over the cab, the gun close up, the Humvee's turret from the front and from behind with its gunner, and the gunner gone round the pedestal as the gun swings.",
+  "source_ref": "5fd31072",
   "sources": [
     {
       "file": "changelog/unreleased/gun-crews/comparison.jpg",
-      "sha256": "6a238a5d45b5be8ab213609f5a818ef8242ac2731c3de37f6a1c4f1e01007b84"
+      "sha256": "57938b7010b52c005c5b548ea706600550a439bdb5ba73cce0500468a34b6351"
     },
     {
       "file": "changelog/unreleased/gun-crews/gun-crews.webm",
-      "sha256": "88654b3f662ecc5527a204e773eab4f3d3463d5ae8d1ea4adbc58b29a71a6bc8"
+      "sha256": "64cad98cc40c3d9f2cdcc95d36a803054e04ba4986b834cd9f800afb89f57712"
     },
     {
       "file": "changelog/unreleased/gun-crews/gun-crews.jpg",
-      "sha256": "2ed7c0fd1c887c235373e64f11657962a17e4068264005e69bb46826ae026fb2"
+      "sha256": "a86840fed31c98fdde5dc0d9b7067142f0dd7335abebaf7f5587c7fedcd26904"
     },
     {
       "file": "changelog/unreleased/gun-crews/capture.json",
-      "sha256": "d28531df7af27cf2546bd078d3d13833512053d507ad7d64b11a41fdffb7ca03"
+      "sha256": "ef07c9a7b61ad9822327f822451a959530d0887669cae3cc7baccac7df88c54b"
     }
   ],
   "output": null
