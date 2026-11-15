@@ -1298,7 +1298,10 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   tops of trees and bushes, and the grass, which goes to winter straw with only its tips showing), while walls stay
   bare. It never lies as an even coat: the wind scours long streaks and the open rises thin, so the grass shows
   through, and heaps drifts in the hollows; on a roof or a wall top a thin fall lies in the grooves first, one roof
-  holds more than the next, and trees hold it in lumps on their boughs, one tree more than its neighbour. A vehicle
+  holds more than the next, and trees hold it in lumps on their boughs, one tree more than its neighbour. Under
+  the trees (`Woodland`) the leaf litter, toadstools and root flares are buried, ferns and nettles go to winter brown
+  with snow in clumps on their upper fronds (the pine saplings keep their green), and deadwood and mossy stones
+  carry it on their tops. A vehicle
   (`Vehicle._snow_view`, the `snow_k` instance value) keeps it only on its flat tops (deck, turret roof, fenders,
   stowage), in patches of its own, while the glacis and sides shed it and the warm engine deck stays bare and wet;
   standing still it gathers a full load, and driving or swinging its turret shakes most of it off, faster the

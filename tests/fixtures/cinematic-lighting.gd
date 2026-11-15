@@ -111,7 +111,7 @@ func _check_snow() -> void:
 	RenderingServer.global_shader_parameter_set(&"snow_cover", 0.0)
 	# what stands out in it reads the cover
 	for code in [Atmosphere.GROUND_SHADER, Atmosphere.ROAD_SHADER, Mats.SURFACE_SHADER, Mats.FOLIAGE_SHADER, Mats.NETTING_SHADER,
-			Grass.GRASS_SHADER, Grass.BUSH_SHADER, DistantForest.SHADER, TrenchNet.BERM_SHADER]:
+			Grass.GRASS_SHADER, Grass.BUSH_SHADER, DistantForest.SHADER, TrenchNet.BERM_SHADER, Woodland.SHADER]:
 		assert(String(code).contains("global uniform float snow_cover;"))
 	assert(ProjectSettings.has_setting("shader_globals/snow_cover"), "snow_cover is a project shader global")
 	# a floor indoors and a windscreen hold none; a man only a dusting

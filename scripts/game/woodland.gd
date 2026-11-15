@@ -16,6 +16,7 @@ func setup() -> void:
 		var material := ShaderMaterial.new()
 		material.shader = shader
 		material.set_shader_parameter("kind", types[i])
+		material.set_shader_parameter("evergreen", i in [13, 15])  # (the pine saplings' needles keep their green in winter)
 		if scans[i] != "":
 			material.set_shader_parameter("surface", load("res://assets/foliage/woodland/%s-color.png" % scans[i]))
 			material.set_shader_parameter("surface_map", load("res://assets/foliage/woodland/%s-surface.png" % scans[i]))
@@ -244,13 +245,29 @@ uniform sampler2DArray deform_tex : filter_linear, repeat_disable;
 uniform sampler2D trench_mask : hint_default_black, filter_linear, repeat_disable;
 uniform sampler2D scar : hint_default_black, filter_linear, repeat_disable;
 uniform int kind = 0;
+uniform bool evergreen = false;
+global uniform float snow_cover;  // how deep the snow weather lies (Atmosphere._snow_tick)
 // TERRAIN_TEXTURE_HELPER
 // CLOUD_SHADOW
 varying vec3 wpos;
 varying float variation;
 varying float damp;
 varying float burnt;
+varying float thawed;  // (snow) melted off by a fire or an engine (SnowMelt)
+varying float rise;  // metres above its root
 varying float root_light;
+// (a hash without sin, so it holds steady at the map's far corners)
+float wood_hash(vec2 p) {
+	vec3 q = fract(vec3(p.xyx) * 0.1031);
+	q += dot(q, q.yzx + 33.33);
+	return fract((q.x + q.y) * q.z);
+}
+float wood_noise(vec2 p) {
+	vec2 i = floor(p);
+	vec2 f = fract(p);
+	f = f * f * (3.0 - 2.0 * f);
+	return mix(mix(wood_hash(i), wood_hash(i + vec2(1.0, 0.0)), f.x), mix(wood_hash(i + vec2(0.0, 1.0)), wood_hash(i + vec2(1.0, 1.0)), f.x), f.y);
+}
 void vertex() {
 	root_light = smoothstep(0.0, 0.35, VERTEX.y);
 	variation = INSTANCE_CUSTOM.r;
@@ -276,7 +293,13 @@ void vertex() {
 	wpos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
 	vec2 uv = (wpos.xz + __MAP_HALF__) / __MAP_SIZE__;
 	float height = terrain_height(deform_tex, uv);
-	burnt = textureLod(scar, uv, 0.0).r;
+	vec2 marks = textureLod(scar, uv, 0.0).rg;
+	burnt = marks.r;
+	thawed = marks.g;
+	rise = VERTEX.y * scale;
+	// In snow the leaf litter, the toadstools and the root flares on the
+	// woodland floor are buried (until a fire or an engine thaws them out again).
+	if ((kind == 2 || kind == 3 || (kind == 6 && INSTANCE_CUSTOM.a > 0.5)) && snow_cover * (1.0 - thawed) > 0.3) VERTEX *= 0.0;
 	if (textureLod(trench_mask, uv, 0.0).r > 0.3 || height - terrain_geology(deform_tex, uv) < -0.12 || (kind == 4 && burnt > 0.1)) VERTEX *= 0.0;
 	VERTEX.y += height / scale;
 	wpos.y += height;
@@ -309,6 +332,30 @@ void fragment() {
 		col = mix(vec3(0.012, 0.009, 0.006), wing, COLOR.r);
 	}
 	col *= 1.0 - burnt * 0.85;
+	// Snow (the snow weather): ferns and nettles die back to winter brown, the
+	// saplings' needles keep their green. The stems' feet stand buried; on
+	// deadwood, stumps and mossy stones it lies on the tops with crisp edges,
+	// and the plants hold it in clumps on their upper leaves, one more than the
+	// next. Not where it has burnt or thawed.
+	float snowed = 0.0;
+	if (snow_cover > 0.0 && kind != 4) {
+		float lies = snow_cover * (1.0 - thawed) * (1.0 - burnt);
+		if ((kind == 0 || kind == 5) && !evergreen) {
+			col = mix(col, vec3(dot(col, vec3(0.3, 0.5, 0.2))) * vec3(1.15, 0.95, 0.68), snow_cover * 0.65);
+		}
+		vec3 up_n = (INV_VIEW_MATRIX * vec4(NORMAL, 0.0)).xyz;
+		float clump = wood_noise(wpos.xz * 1.9 + wpos.y * 1.3) * 0.65 + wood_noise(wpos.xz * 5.3 - wpos.y * 2.1) * 0.35;
+		float plant = wood_noise(wpos.xz * 0.37 + 5.1);
+		float buried = 1.0 - smoothstep(0.04, 0.12 + 0.08 * clump, rise);
+		float top = 0.0;
+		if (kind == 1 || kind == 6) {
+			top = smoothstep(0.0, 0.08, (up_n.y - 0.5) * 2.4 + (clump - 0.5) * 1.3 + (plant - 0.5) * 0.4 - (1.0 - lies) * 1.6);
+		} else {
+			top = smoothstep(0.0, 0.14, abs(up_n.y) * 0.8 + (clump - 0.5) * 1.6 + (plant - 0.5) * 0.8 - 0.84 - (1.0 - lies) * 1.6);
+		}
+		snowed = max(top, buried * lies);
+		col = mix(col, vec3(0.8, 0.83, 0.88) * (0.92 + 0.08 * clump), snowed);
+	}
 	if (OUTPUT_IS_SRGB) col = mix(col * 12.92, 1.055 * pow(max(col,vec3(0.0)),vec3(1.0/2.4)) - 0.055, step(vec3(0.0031308),col));
 	ALBEDO = col;
 	ROUGHNESS = 0.95;
@@ -320,7 +367,8 @@ void fragment() {
 		AO = detail.b * mix(0.75, 1.0, root_light);
 		AO_LIGHT_AFFECT = 0.5;
 	}
-	BACKLIGHT = kind == 0 || kind == 5 ? vec3(0.05,0.08,0.02) : vec3(0.0);
+	ROUGHNESS = mix(ROUGHNESS, 0.85, snowed);
+	BACKLIGHT = kind == 0 || kind == 5 ? vec3(0.05,0.08,0.02) * (1.0 - snowed) : vec3(0.0);
 	if (kind == 0 || kind == 2 || kind == 4 || kind == 5) {
 		vec3 normal = (INV_VIEW_MATRIX * vec4(NORMAL, 0.0)).xyz;
 		normal.y = abs(normal.y);
