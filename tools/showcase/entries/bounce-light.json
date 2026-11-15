@@ -1,0 +1,51 @@
+{
+  "entry": "changelog/unreleased/bounce-light.md",
+  "summary": "Bounce light: screen-space GI that lets sunlit walls, paving and roofs light what faces them in their colours.",
+  "medium": "still",
+  "stage": "game capture at 1600x900, --offscreen --perf=0 --nohud: --host --team=0 --seed=3 --preset=high with FL_DEBUG_GI_CYCLE (frozen frame, off then High) at --mood=day (FL_DEBUG_GI_POSES ruin:ruin:14:-58:0.4) and --mood=golden / overcast (ruin30:ruin:30:auto:0.4; rts55:town:55:auto:0.6, the game's own pitch); each shot cropped tight (640x360 at 2x) on the window with the most added light, off stacked over on with labels, an arrow and a 'look at' caption, plus the same crop as on-minus-off x4; flicker clip: the same crops alternating off/on each second; pan clip: --fixed-fps 30 with FL_DEBUG_GI_PAN=0,-20,75 FL_DEBUG_GI_MODES=view_added --mood=day (the added light alone, gamma-brightened)",
+  "rationale": "Bounce light is a change in shade, so each shot is cropped tight on exactly where it lands, off stacked over on so the same pixels sit one above the other, with an arrow and a one-line caption naming what to look at, and a bounce-only panel showing where the light lands and its colour. It is shown at its strongest (midday) and then in the moods and from the camera height a player usually has (golden hour and overcast from 30 m); from the 55 m command height the change is too faint to show in a still, so no still claims it (the flicker clip's last view shows it as it is). A flicker clip toggles off/on in place; a pan clip of the added light answers whether it smears in motion.",
+  "source_ref": "working tree after 4033d818 (distance-aware reach and strength, sun-aware albedo, bleed)",
+  "sources": [
+    {
+      "file": "changelog/unreleased/bounce-light/midday.jpg",
+      "sha256": "e457abf90db1c20512c9120c3b8911886296898f155a2369405568b223f7810d"
+    },
+    {
+      "file": "changelog/unreleased/bounce-light/midday-light.jpg",
+      "sha256": "c58e4732b7f7e4a47d4cfd4aff44c4833c51aeeecd21812f74f02a04380cf879"
+    },
+    {
+      "file": "changelog/unreleased/bounce-light/golden.jpg",
+      "sha256": "3b914ca8267fe7ae4b2f4f90b49f95f2624372e0cc3647bbcdd708a08c7a0a1f"
+    },
+    {
+      "file": "changelog/unreleased/bounce-light/golden-light.jpg",
+      "sha256": "2a762096ed5fb81474d7fdc6f513ef3d807e3e9db50754f6aef73eeed52d39e6"
+    },
+    {
+      "file": "changelog/unreleased/bounce-light/overcast.jpg",
+      "sha256": "4df337196c4dae3fbf572fd5b0162702d36622b43d9cc7cb7962a5b405d342cb"
+    },
+    {
+      "file": "changelog/unreleased/bounce-light/overcast-light.jpg",
+      "sha256": "3e99bd0c501fc06ba05cce75965c405ca040a3d4341f20482defbce0b9898699"
+    },
+    {
+      "file": "changelog/unreleased/bounce-light/flicker.webm",
+      "sha256": "68ae30dcbe8ad3d21ac0b25194c224585feba92dd1163081bc3897d6c683ca8d"
+    },
+    {
+      "file": "changelog/unreleased/bounce-light/flicker.jpg",
+      "sha256": "a4eb0fe469df4b8e4d887243b22b440174959fb8cc09e4ec0fa663c0177f5a83"
+    },
+    {
+      "file": "changelog/unreleased/bounce-light/pan.webm",
+      "sha256": "920117f9af90bb20195c3c94bc54d775ebc6862a4e400cc22ff5f62ad2d5dee2"
+    },
+    {
+      "file": "changelog/unreleased/bounce-light/pan.jpg",
+      "sha256": "fc9b83eff4d36246b6d11d0eb70fe45d1eff0cfe695752f94193af21fdd1860c"
+    }
+  ],
+  "output": null
+}

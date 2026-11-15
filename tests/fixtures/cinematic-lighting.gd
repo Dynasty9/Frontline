@@ -28,6 +28,7 @@ func check() -> void:
 		await _check_passes()
 	else:
 		assert(not CinematicFx.supported())
+		assert(not SsgiFx.supported())
 	print("CINEMATIC LIGHTING passed: presets, saved settings, shadow fit, light shadows, sky, heat haze, rain, motion blur")
 	get_tree().quit()
 
@@ -87,8 +88,15 @@ func _check_presets() -> void:
 		if k != "shadow_fit":
 			assert(not bool(ultra[k]), "Ultra already has %s" % k)
 	# the browser build hides what its renderer can't draw
-	for k in ["light_shadows", "phys_sky", "lens", "shafts", "local_exp", "eye_adapt", "film", "heat_haze", "motion_blur"]:
+	for k in ["light_shadows", "phys_sky", "lens", "shafts", "local_exp", "eye_adapt", "film", "heat_haze", "motion_blur", "ssgi"]:
 		assert(k in SettingsPanel.NOT_ON_WEB)
+	# bounce light: off up to Medium, then more of it the higher the preset
+	var last := -1
+	for p in Settings.PRESET_KEYS:
+		var q := int(Settings.PRESETS[p].ssgi)
+		assert(q >= last and q <= 2, "bounce light goes up with the presets (%s: %d)" % [p, q])
+		last = q
+	assert(int(Settings.PRESETS.medium.ssgi) == 0 and int(Settings.PRESETS.high.ssgi) == 1 and int(Settings.PRESETS.ultra.ssgi) == 2)
 
 
 ## A settings file from before the cinematic lighting takes its preset's.
@@ -108,6 +116,18 @@ func _check_saved_settings() -> void:
 		DirAccess.remove_absolute(ProjectSettings.globalize_path(path))
 		for k in Settings.CINEMATIC_KEYS:
 			assert(Settings.v[k] == Settings.PRESETS[preset][k], "a saved %s setup gets %s = %s" % [preset, k, Settings.v[k]])
+	# a setup saved before bounce light takes its preset's; a custom one stays without
+	for preset in ["high", "ultra", "custom"]:
+		var cf := ConfigFile.new()
+		cf.set_value("main", "preset", preset)
+		cf.set_value("main", "cfg_version", 2)
+		var path := "user://bounce_light_test.cfg"
+		cf.save(path)
+		Settings.v.ssgi = 2
+		Settings._load(path)
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(path))
+		var want: int = int(Settings.PRESETS[preset].ssgi) if Settings.PRESETS.has(preset) else 0
+		assert(int(Settings.v.ssgi) == want, "a saved %s setup gets bounce light %d" % [preset, int(Settings.v.ssgi)])
 	Settings.v = saved
 	Settings.preset = saved_preset
 

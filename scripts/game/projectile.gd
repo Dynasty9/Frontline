@@ -511,6 +511,7 @@ func _build_model() -> void:
 		"jet":
 			_vm = VehicleModels.build(mk if mk != "" else "jet", team if team >= 0 else 0, eid)
 			model.add_child(_vm.root)
+			_blur_props(_vm)
 			if _vm.wheels.is_empty():
 				var exhaust := Sfx.make_loop_player("jet_engine", 42.0, -1.0)
 				exhaust.max_distance = 570.0
@@ -565,6 +566,7 @@ func _build_model() -> void:
 		"ac130":
 			_vm = VehicleModels.build(mk if mk != "" else "ac130", team if team >= 0 else 0, eid)
 			model.add_child(_vm.root)
+			_blur_props(_vm)
 			_drone = AudioStreamPlayer.new()
 			_drone.bus = &"Effects"
 			if Sfx.enabled:
@@ -826,6 +828,16 @@ func muzzle_world(weapon: String) -> Vector3:
 		return Vector3.INF
 	var tip: Node3D = _vm.weapon_tips.get(weapon, _vm.mg_tip if weapon == "ac25" else _vm.gun_tip)
 	return tip.global_position if tip else Vector3.INF
+
+
+## (view) An aircraft's propellers turn at full speed the whole time it's in
+## sight, faster than the frame rate can show a blade: each shows its blur
+## disc alone, as the eye sees a running propeller (the blades would strobe).
+static func _blur_props(vm: VehicleModels) -> void:
+	for pv in vm.wheels:
+		var blades := (pv as Node3D).get_node_or_null("Blades") as Node3D
+		if blades and (pv as Node3D).get_node_or_null("Blur") != null:
+			blades.visible = false
 
 
 func _ac130_view(dt: float) -> void:

@@ -76,14 +76,19 @@ static func _clip(p: PackedVector2Array, f: Array, nrm: Vector2, c: float, cut: 
 
 ## A convex side profile (z, y) extruded from x0 to x1, its outer edges (flag
 ## true) chamfered by ch at both ends. rnd [zmin, zmax, front length, front
-## inset, rear length, rear inset] rounds the corners off in plan.
-static func _xprism(k: VehicleModels, parent: Node3D, key: String, p: PackedVector2Array, f: Array, x0: float, x1: float, ch: float, mat: String, col = null, rnd: Array = []) -> Variant:
+## inset, rear length, rear inset] rounds the corners off in plan. `roll` > 0
+## shades it as pressed sheet metal rather than a cut block: normals are
+## averaged across every edge flatter than `roll` degrees (the chamfers into
+## the roof and bonnet, the gentle bends of the profile, the corners rounded
+## in plan), so a car's shoulders and bumpers roll over instead of breaking at
+## a hard line; the flat sides keep their own normal. Same vertices either way.
+static func _xprism(k: VehicleModels, parent: Node3D, key: String, p: PackedVector2Array, f: Array, x0: float, x1: float, ch: float, mat: String, col = null, rnd: Array = [], roll := 0.0) -> Variant:
 	var d := []
 	for fl in f:
 		d.append(ch if fl else 0.0)
 	var pin := _inset(p, d)
-	var mesh := VehicleModels.solid([_xring(pin, x0, 1.0, rnd), _xring(p, x0 + ch, 1.0, rnd),
-		_xring(p, x1 - ch, -1.0, rnd), _xring(pin, x1, -1.0, rnd)], key)
+	var rings := [_xring(pin, x0, 1.0, rnd), _xring(p, x0 + ch, 1.0, rnd), _xring(p, x1 - ch, -1.0, rnd), _xring(pin, x1, -1.0, rnd)]
+	var mesh: ArrayMesh = VehicleProfiles.loft(rings, roll) if roll > 0.0 else VehicleModels.solid(rings, key)
 	return k._add(parent, mesh, mat, col, Vector3.ZERO)
 
 
@@ -115,8 +120,8 @@ static func _taper(z: float, rnd: Array) -> float:
 ## A body panel: a convex side profile (z, y pairs) from x0 to x1 with
 ## chamfered edges and round wheel arches [zc, yc, r] cut out of its underside.
 ## rnd [front length, front inset, rear length, rear inset] rounds the corners
-## off in plan.
-static func _xbody(k: VehicleModels, parent: Node3D, key: String, prof: Array, x0: float, x1: float, ch: float, arches: Array, mat: String, col = null, segs := 8, rnd: Array = []) -> void:
+## off in plan; `roll` shades its edges as rolled sheet metal (see _xprism).
+static func _xbody(k: VehicleModels, parent: Node3D, key: String, prof: Array, x0: float, x1: float, ch: float, arches: Array, mat: String, col = null, segs := 8, rnd: Array = [], roll := 0.0) -> void:
 	var p := VehicleModels._v2(prof)
 	var zmin := INF
 	var zmax := -INF
@@ -176,7 +181,7 @@ static func _xbody(k: VehicleModels, parent: Node3D, key: String, prof: Array, x
 				poly = r2[0]
 				fl = r2[1]
 		if poly.size() >= 3:
-			_xprism(k, parent, "%s_%d" % [key, i], poly, fl, x0, x1, ch, mat, col, rr)
+			_xprism(k, parent, "%s_%d" % [key, i], poly, fl, x0, x1, ch, mat, col, rr, roll)
 
 
 ## A wheel-arch flare: a band round the arch from angle a0 to a1 (0 is the
