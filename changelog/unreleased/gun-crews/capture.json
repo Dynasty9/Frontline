@@ -2,7 +2,7 @@
   "stage": "mounted-guns",
   "fixture": "tests/fixtures/mounted-gun-clips.tscn",
   "before_ref": "origin/main 69005368 (after #237, before gunners)",
-  "after_ref": "5fd31072",
+  "after_ref": "d23d03a2",
   "engine": "Godot 4.7.2.stable, Forward+, 1280x720, --fixed-fps 30, showroom battlefield seed 712, High preset, day",
   "commands": [
     "godot --position -10000,-10000 --fixed-fps 30 --rendering-method forward_plus --audio-driver Dummy --resolution 1280x720 --path . res://tests/fixtures/mounted-gun-clips.tscn -- --clip=mounted-guns-stills --label=BEFORE --crew-views --kinds=technical,humvee,offroad_hmg,prowler_hmg,mb4wd_lmg --frames=DIR",

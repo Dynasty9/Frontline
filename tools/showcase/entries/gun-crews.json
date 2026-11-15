@@ -4,7 +4,7 @@
   "medium": "motion",
   "stage": "mounted-guns (tools/showcase/stages.json): tests/fixtures/mounted-gun-clips.tscn, showroom battlefield seed 712, fixed 30 Hz, Forward+",
   "rationale": "The gunners, the turning Humvee turret and the barrel smoke move with the firing, so a matched before/after of the same firing line carries them; the still sheet shows a technical side-on for the gun's height over the cab, the gun close up, the Humvee's turret from the front and from behind with its gunner, and the gunner gone round the pedestal as the gun swings.",
-  "source_ref": "5fd31072",
+  "source_ref": "d23d03a2",
   "sources": [
     {
       "file": "changelog/unreleased/gun-crews/comparison.jpg",
@@ -20,7 +20,7 @@
     },
     {
       "file": "changelog/unreleased/gun-crews/capture.json",
-      "sha256": "ef07c9a7b61ad9822327f822451a959530d0887669cae3cc7baccac7df88c54b"
+      "sha256": "4293013abc908b0577d6ae976c4a3a2fd560bd656222d9028c2775573c7435e1"
     }
   ],
   "output": null
