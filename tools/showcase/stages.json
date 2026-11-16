@@ -484,7 +484,7 @@
     "simulation_hz": 24,
     "engine_fixed_fps": 24,
     "renderer": "forward_plus",
-    "cue": "Rings running out across a puddle, drops bursting on a tank's deck, water running down a hut's wall, then two lightning strikes from a low camera, the second much nearer.",
+    "cue": "Rings running out across a puddle, drops bursting on a tank's deck, a hut's wall dry under its eaves but splashed at its foot, then two lightning strikes from a low camera, the second much nearer.",
     "timeout": 1500,
     "crf": 32,
     "seed": 712,
