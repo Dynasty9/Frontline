@@ -72,6 +72,7 @@ var wildlife: Wildlife
 var _d := {}
 var _mood_asked := ""  # the Time of day setting as the battle began: changing it mid-battle switches the mood live
 var cine: CinematicFx  # the lens and eye passes (Settings > Lighting & Look > Camera and lens), once one is on
+var ssgi: SsgiFx  # bounce light (Settings > Graphics > Bounce light), once it is on
 var heat := HeatHaze.new()  # what the heat haze bends the view over (only gathered while it's on)
 var _heat_t := 0.0
 var _phys_sky: ShaderMaterial
@@ -578,7 +579,7 @@ func _build_ground() -> void:
 	ground = MeshInstance3D.new()
 	ground.mesh = _ground_ring(GROUND_HALF, MapDims.HALF + 1800.0)
 	ground_mat = ShaderMaterial.new()
-	ground_mat.shader = CloudShadow.make(MapDims.shader(GROUND_SHADER.replace("// BACKDROP_HEIGHT", BACKDROP_HEIGHT)), CloudShadow.OWN_LIGHT | CloudShadow.PROBES)
+	ground_mat.shader = CloudShadow.make(MapDims.shader(GROUND_SHADER.replace("// BACKDROP_HEIGHT", BACKDROP_HEIGHT).replace("// RAIN_DROPS", Mats.RAIN_DROPS)), CloudShadow.OWN_LIGHT | CloudShadow.PROBES)
 	ground_mat.set_shader_parameter("vertex_lit", ProjectSettings.get_setting_with_override("rendering/shading/overrides/force_vertex_shading"))
 	ground_mat.set_shader_parameter("biome_tex", biome_tex)
 	ground_mat.set_shader_parameter("detail_tex", detail_tex)
@@ -630,7 +631,7 @@ func _build_ground() -> void:
 	trench_net = TrenchNet.new(world)
 	add_child(trench_net)
 	road_mat = ShaderMaterial.new()
-	road_mat.shader = CloudShadow.make(Mats.code(MapDims.shader(ROAD_SHADER.replace("// STREET_SURFACE", Mats.ASPHALT_SHADER))), CloudShadow.PROBES)
+	road_mat.shader = CloudShadow.make(Mats.code(MapDims.shader(ROAD_SHADER.replace("// STREET_SURFACE", Mats.ASPHALT_SHADER).replace("// RAIN_DROPS", Mats.RAIN_DROPS))), CloudShadow.PROBES)
 	road_mat.set_shader_parameter("detail_tex", detail_tex)
 	road_mat.set_shader_parameter("paving_noise", preload("res://assets/town/aerial_asphalt_01_color.jpg"))
 	road_mat.set_shader_parameter("street_detail", preload("res://assets/town/road_damaged_clean_color.jpg"))
@@ -667,9 +668,9 @@ func _build_post() -> void:
 var _rain: GeometryInstance3D  # (GPU or CPU particles: see Vfx.part)
 var _splash: GeometryInstance3D
 var _rain_snd: AudioStreamPlayer
+var lightning: Lightning
 var _bolt_t := 12.0
-var _flash := 0.0
-var _thunder_t := -1.0
+var _flashing := false
 
 
 func _setup_rain() -> void:
@@ -683,6 +684,10 @@ func _setup_rain() -> void:
 		if _rain_snd:
 			_rain_snd.queue_free()
 			_rain_snd = null
+		if lightning:
+			lightning.queue_free()
+			lightning = null
+			_flash_light(0.0)
 		return
 	if _rain:
 		return
@@ -750,6 +755,10 @@ func _setup_rain() -> void:
 	if Sfx.enabled:
 		_rain_snd = Sfx.make_ambience("rain", -11.0)
 		add_child(_rain_snd)
+	lightning = Lightning.new(world)
+	add_child(lightning)
+	if OS.has_environment("FL_LIGHTNING_EVERY"):
+		_bolt_t = float(OS.get_environment("FL_LIGHTNING_EVERY"))
 
 
 func _rain_tick(dt: float) -> void:
@@ -760,24 +769,46 @@ func _rain_tick(dt: float) -> void:
 	var nearby := world.cam.cam.global_position.distance_to(Vector3(f.x, world.ground_y(f), f.z)) < 140.0
 	Vfx.set_emitting(_splash, nearby)
 	_splash.visible = nearby
-	# lightning: a double flash lighting the clouds, thunder a moment later
+	# lightning every half a minute or so (FL_LIGHTNING_EVERY=S for a look at it)
 	_bolt_t -= dt
 	if _bolt_t <= 0.0:
-		_bolt_t = randf_range(14.0, 38.0)
-		_flash = 1.0
-		_thunder_t = randf_range(0.6, 2.8)
-	if _flash > 0.0:
-		_flash = maxf(0.0, _flash - dt * 4.0)
-		var k := _flash * (0.6 + 0.4 * sin(_flash * 40.0))
-		sun.light_energy = float(_d.energy) + k * 3.5
-		env.background_energy_multiplier = 1.0 + k * 2.5
-	elif sun.light_energy != float(_d.energy):
-		sun.light_energy = float(_d.energy)
-		env.background_energy_multiplier = 1.0
-	if _thunder_t > 0.0:
-		_thunder_t -= dt
-		if _thunder_t <= 0.0 and world.cam:
-			Sfx.play("thunder", world.cam.cam.global_position + Vector3(randf_range(-40, 40), 30, randf_range(-40, 40)), 6.0, 1.0, &"Ambience")
+		var every := float(OS.get_environment("FL_LIGHTNING_EVERY")) if OS.has_environment("FL_LIGHTNING_EVERY") else 0.0
+		_bolt_t = every if every > 0.0 else randf_range(14.0, 38.0)
+		lightning.haze = env.fog_density * 0.6
+		lightning.strike_somewhere()
+	lightning.tick(dt)
+	_flash_light(lightning.flash)
+
+
+## The light a strike throws over the battlefield while it flickers (0 puts
+## things back): the clouds round the bolt light from within, the whole sky
+## brightens, and the rim light swings round to shine from the bolt's side,
+## cold and sharp, catching every wet face turned towards it. A near strike
+## lights the field far more than one over the hills.
+func _flash_light(k: float) -> void:
+	if k <= 0.0:
+		if _flashing:
+			_flashing = false
+			sun.light_energy = float(_d.energy)
+			env.background_energy_multiplier = 1.0
+			rim.rotation_degrees = Vector3(-25.0, float(_d.azim) + 180.0, 0)
+			rim.light_color = Color(0.6, 0.72, 0.95)
+			rim.light_energy = 0.28 if mood != "overcast" else 0.12
+			rim.light_specular = 0.3
+			sky_mat.set_shader_parameter("flash", Vector4(0, 1, 0, 0))
+		return
+	_flashing = true
+	var near := lightning.flash_near
+	var from := lightning.flash_dir
+	sun.light_energy = float(_d.energy) + k * near * 0.4
+	env.background_energy_multiplier = 1.0 + k * (0.15 + 0.45 * near)
+	# (light from the bolt travels towards the camera's side of it, and down)
+	var travel := Vector3(-from.x, -maxf(from.y, 0.25), -from.z).normalized()
+	rim.global_transform.basis = Basis.looking_at(travel, Vector3.UP if absf(travel.y) < 0.98 else Vector3.FORWARD)
+	rim.light_color = Lightning.TINT
+	rim.light_energy = k * (0.3 + 1.4 * near)
+	rim.light_specular = 0.6
+	sky_mat.set_shader_parameter("flash", Vector4(from.x, from.y, from.z, k))
 
 
 const RAIN_SHADER := """
@@ -1078,6 +1109,7 @@ func apply_settings() -> void:
 	elif _use_phys_sky() != _phys_on:
 		_apply_sky()
 	_apply_cinematic()
+	_apply_ssgi()
 	RenderingServer.environment_set_volumetric_fog_volume_size(128 if sh >= 3 else 96, 96 if sh >= 3 else 64)
 	post_layer.visible = s.get_v("post")
 	cam_attr.dof_blur_far_enabled = s.get_v("dof")
@@ -1357,6 +1389,7 @@ func apply_grade(look_i: int, contrast_mul: float, saturation_mul := 1.0) -> voi
 func _exit_tree() -> void:
 	CloudShadow.set_strength(0.0)  # no clouds over the menu, or the next battle's loading
 	RenderingServer.global_shader_parameter_set(&"rain_wet", 0.0)  # nor rain on the Field Manual's models
+	RenderingServer.global_shader_parameter_set(&"rain_fx", Vector4.ZERO)
 
 
 ## How soaked everything standing out in the weather is (the `rain_wet` global
@@ -1380,6 +1413,36 @@ func _wet_tick(dt: float) -> void:
 		rain_wet = maxf(want, rain_wet - dt / DRY_OUT)
 	if rain_wet != was:
 		RenderingServer.global_shader_parameter_set(&"rain_wet", rain_wet)
+
+
+## The rain as it falls on things (the `rain_fx` global, Mats.RAIN_DROPS): it
+## eases in and out over a couple of seconds as the weather changes (a battle
+## that opens in the rain opens with it falling), and the Effects setting
+## decides how much of it is drawn: none of it on Low; rings in the puddles and
+## drops bursting on roofs, decks and helmets on Medium; more of both, and
+## water running down the walls, on High. The browser lights the ground per
+## vertex, where a ring's slope would never show, so there it has only the drops.
+var _fall := -1.0
+var _rain_clock := 0.0
+
+
+func _rain_fx_tick(dt: float) -> void:
+	var want := 1.0 if mood == "rain" and world.has_view else 0.0
+	var was := _fall
+	_fall = want if _fall < 0.0 else move_toward(_fall, want, dt / 2.0)
+	if _fall <= 0.0:
+		if was != 0.0:
+			RenderingServer.global_shader_parameter_set(&"rain_fx", Vector4.ZERO)
+		return
+	# (the clock wraps at a whole number of every period the drops keep)
+	_rain_clock = fmod(_rain_clock + dt, 600.0)
+	RenderingServer.global_shader_parameter_set(&"rain_fx", rain_fx_for(_fall, int(Settings.get_v("effects")), CloudShadow.vertex_lit(), _rain_clock))
+
+
+## The `rain_fx` global for rain falling this hard (0..1) at this Effects
+## setting: rings, crowns, the High extras and the clock (Mats.RAIN_DROPS).
+static func rain_fx_for(fall: float, effects: int, vertex_lit: bool, clock: float) -> Vector4:
+	return Vector4(fall if effects >= 1 and not vertex_lit else 0.0, fall if effects >= 1 else 0.0, fall if effects >= 2 else 0.0, clock)
 
 
 ## The exposure the time of day and the player's brightness give.
@@ -1434,9 +1497,11 @@ func _view_process(_dt: float) -> void:
 		_rain_tick(_dt / maxf(0.0001, Engine.time_scale) if Engine.time_scale > 0.001 else 0.016)
 	_apply_haze(world.cam.dist)
 	var real_dt := _dt / maxf(0.0001, Engine.time_scale) if Engine.time_scale > 0.001 else 0.016
+	_rain_fx_tick(real_dt)
 	_fit_shadows()
 	_light_shadows_tick(real_dt)
 	_cine_tick(real_dt)
+	_ssgi_tick()
 	if _cine_ab_on:
 		_cine_ab(real_dt)
 	if not Settings.get_v("dof"):
@@ -1589,10 +1654,7 @@ func _apply_cinematic() -> void:
 		or bool(look_v("heat_haze")) or blur > 0
 	if want and cine == null and world.has_view and CinematicFx.supported():
 		cine = CinematicFx.new()
-		var effects: Array[CompositorEffect] = [cine]
-		var comp := Compositor.new()
-		comp.compositor_effects = effects
-		we.compositor = comp
+		_add_effect(cine)
 	if cine == null:
 		return
 	if bool(look_v("eye_adapt")) and not cine.eye:
@@ -1613,6 +1675,92 @@ func _apply_cinematic() -> void:
 	if not heat.on:
 		heat.clear()
 		cine.heat = PackedFloat32Array()
+
+
+## A compositor pass joins the view's compositor (made on first use). Bounce
+## light goes first: it lights the scene the lens and the eye then see.
+func _add_effect(fx: CompositorEffect) -> void:
+	if we.compositor == null:
+		we.compositor = Compositor.new()
+	var effects: Array[CompositorEffect] = we.compositor.compositor_effects
+	if fx is SsgiFx:
+		effects.push_front(fx)
+	else:
+		effects.append(fx)
+	we.compositor.compositor_effects = effects
+
+
+## Bounce light: a compositor pass, so Forward+ only (the browser draws without it).
+func _apply_ssgi() -> void:
+	if OS.has_environment("FL_DEBUG_GI_CYCLE") and get_node_or_null("GiCompare") == null:
+		var cmp: Node = load("res://scripts/test/gi_compare.gd").new()
+		cmp.name = "GiCompare"
+		cmp.set("world", world)
+		add_child(cmp)
+	var q := int(Settings.get_v("ssgi"))
+	if q > 0 and ssgi == null and world.has_view and SsgiFx.supported():
+		ssgi = SsgiFx.new()
+		_add_effect(ssgi)
+	if ssgi == null:
+		return
+	ssgi.quality = q
+	ssgi.enabled = q > 0
+
+
+## How far a ray looks for a surface to light it (m), and how strongly what it
+## finds lights it. 1 would be physical (a surface sends out its colour's
+## share), but the rays only see what is on screen and stop at a few metres,
+## so they miss much of the light a real street would gather: twice makes up
+## for it (measured: shade beside a sunlit wall comes up by about a fifth of
+## the sunlit side, as in a path-traced street).
+const SSGI_REACH := 8.0
+const SSGI_STRENGTH := 2.0
+## Seen from further than SSGI_FAR.x (m) and fully past SSGI_FAR.y, rays
+## reach SSGI_FAR_REACH times as far and the light is laid on SSGI_FAR_STRENGTH
+## times as strong: from the command height a wall is a few pixels tall and a
+## lift of a few levels in its shade goes unseen.
+const SSGI_FAR := Vector2(25.0, 90.0)
+const SSGI_FAR_REACH := 2.0
+const SSGI_FAR_STRENGTH := 2.0
+## How much more saturated the gathered light is laid on (1 as gathered).
+const SSGI_BLEED := 1.6
+## The brightest a surface's estimated colour may be (a white wall's ~0.8).
+const SSGI_ALBEDO_CAP := 0.8
+
+
+## The sky light a surface gets, for telling its colour from its lighting:
+## the sky's zenith and horizon in between, at the ambient's strength.
+func _ssgi_tick() -> void:
+	if ssgi == null or not ssgi.enabled:
+		return
+	var p := PackedFloat32Array()
+	p.resize(SsgiFx.PARAMS)
+	var sky := ((_d.zenith as Color).srgb_to_linear().lerp((_d.horizon as Color).srgb_to_linear(), 0.5))
+	var amb := sky * env.ambient_light_energy * env.ambient_light_sky_contribution
+	p[4] = maxf(amb.r, 0.002)
+	p[5] = maxf(amb.g, 0.002)
+	p[6] = maxf(amb.b, 0.002)
+	p[7] = SSGI_ALBEDO_CAP
+	p[8] = SSGI_REACH
+	p[9] = SSGI_STRENGTH
+	p[14] = float(OS.get_environment("FL_DEBUG_SSGI_VIEW")) if OS.has_environment("FL_DEBUG_SSGI_VIEW") else 0.0
+	p[15] = 0.5  # how deep behind a surface a ray still counts as hitting it (share of how far it has gone)
+	p[16] = SSGI_FAR.x
+	p[17] = SSGI_FAR.y
+	p[18] = SSGI_FAR_REACH
+	p[19] = SSGI_FAR_STRENGTH
+	var to_sun := sun.global_transform.basis.z
+	p[20] = to_sun.x
+	p[21] = to_sun.y
+	p[22] = to_sun.z
+	p[23] = SSGI_BLEED
+	# (the engine's lights carry pi in their energy, so a white surface
+	# square to the sun shows its colour times its energy)
+	var sc := sun.light_color.srgb_to_linear() * sun.light_energy * (1.0 if sun.visible else 0.0)
+	p[24] = sc.r
+	p[25] = sc.g
+	p[26] = sc.b
+	ssgi.params = p
 
 
 ## FL_DEBUG_CINE_AB=passes (or =light_shadows): what the lens and eye passes
@@ -1705,6 +1853,11 @@ func _cine_tick(dt: float) -> void:
 	p[24] = 2.6
 	p[25] = 0.7
 	p[26] = 0.12
+	# rain on the lens, while it's falling and the camera faces into it: looking
+	# down on the field from the command camera, the glass stays dry
+	var ahead := -c.global_transform.basis.z
+	p[32] = maxf(_fall, 0.0) * smoothstep(-0.45, -0.1, ahead.y)
+	p[33] = _rain_clock
 	cine.params = p
 	if cine.heat_haze:
 		_heat_tick(c, dt)
@@ -2071,6 +2224,7 @@ uniform vec3 sun_col : source_color;
 uniform vec3 night_cloud : source_color;
 uniform float cloud_cover = 0.5;
 uniform float stars = 0.0;
+uniform vec4 flash = vec4(0.0, 1.0, 0.0, 0.0);  // lightning: towards it (xyz), how bright (w)
 
 // d: the view direction; L: toward the light (sun or moon); time: for the stars' twinkle
 vec3 painted_sky(vec3 d, vec3 L, float time) {
@@ -2121,6 +2275,16 @@ float fbm(vec2 p) { float v = 0.0; float a = 0.5; for (int i = 0; i < 5; i++) { 
 """ + PAINTED_SKY + """
 void sky() {
 	vec3 col = painted_sky(EYEDIR, LIGHT0_DIRECTION, TIME);
+	vec3 d = EYEDIR;
+	float h = d.y;
+	if (flash.w > 0.0) {
+		// lightning lights the cloud base from within, brightest round the bolt,
+		// and the denser cloud scatters most of it
+		float toward = max(dot(d, flash.xyz), 0.0);
+		float lit = pow(toward, 24.0) * 1.0 + pow(toward, 4.0) * 0.2 + 0.03;
+		float cloud = smoothstep(0.35, 0.75, fbm(d.xz / (abs(h) + 0.18) * 1.9 + 3.7));
+		col += vec3(0.78, 0.84, 1.0) * flash.w * lit * mix(0.2, 1.0, cloud) * smoothstep(-0.05, 0.12, h);
+	}
 	COLOR = col;
 }
 """
@@ -2273,6 +2437,7 @@ uniform sampler2DArray deform_tex : filter_linear, repeat_disable;
 uniform sampler2D water_mask : hint_default_transparent, filter_linear, repeat_disable;
 uniform float sea_x = 1e9;
 // CLOUD_SHADOW
+// RAIN_DROPS
 
 varying vec3 wpos;
 varying float puddle;
@@ -2793,6 +2958,15 @@ void fragment() {
 	n = surface_relief(n, snow_ripple * 0.065 + scree_sample.a * 0.025, snow);
 	n = normalize(mix(n, shore_normal, shore_stone));
 	n = normalize(mix(n, vec3(0.0, 1.0, 0.0), puddle * 0.9));
+	// The rain rings the standing water and, faintly, wet bare soil. Further
+	// off the rings are too fine to draw, but they still roughen the water.
+	float ring_on = max(puddle, wet * dirt_m * 0.3 * (1.0 - smoothstep(0.08, 0.25, slope)));
+	if (rain_fx.x > 0.0 && ring_on > 0.001) {
+		float footprint = length(fwidth(p));
+		vec2 ring = rain_rings(p, footprint, ring_on);
+		n = normalize(n - vec3(ring.x, 0.0, ring.y));
+		ROUGHNESS = mix(ROUGHNESS, max(ROUGHNESS, 0.24), rain_far(footprint) * puddle);
+	}
 	NORMAL = normalize((VIEW_MATRIX * vec4(n, 0.0)).xyz);
 	// CLOUD_FRAGMENT cloud_sun(wpos)
 }
@@ -2844,6 +3018,7 @@ uniform sampler2D gravel_surface : filter_linear_mipmap_anisotropic, repeat_enab
 uniform sampler2D paving_surface : filter_linear_mipmap_anisotropic, repeat_enable;
 // CLOUD_SHADOW
 // STREET_SURFACE
+// RAIN_DROPS
 varying vec3 wpos;
 void vertex() {
 	wpos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
@@ -2898,6 +3073,7 @@ void fragment() {
 	float distance = min(inside.x, inside.y);
 	float broken_edge = (texture(street_noise, wpos.xz * 0.65).r - 0.5) * 0.6;
 	float paved = smoothstep(-0.3, 0.35, distance + broken_edge) * country * step(1.0, town.z - town.x);
+	float pud2 = 0.0;
 	if (paved > 0.001) {
 		float tar = 0.0;
 		vec3 asph = street_surface(paving_noise, street_noise, wpos.xz, tar);
@@ -2951,7 +3127,7 @@ void fragment() {
 		dash *= (1.0 - paint_wear * 0.85) * smoothstep(0.6, 0.95, paved) * (1.0 - metal_part);
 		asph = mix(asph, vec3(0.74, 0.73, 0.68) * (0.8 + 0.25 * n3), dash);
 		// rain lies in the wheel ruts and the gutters first
-		float pud2 = wet * smoothstep(0.55, 0.75, street_puddle(street_noise, wpos.xz) + wheel * 0.12 + gutter * 0.3) * (1.0 - metal_part);
+		pud2 = wet * smoothstep(0.55, 0.75, street_puddle(street_noise, wpos.xz) + wheel * 0.12 + gutter * 0.3) * (1.0 - metal_part);
 		asph *= 1.0 - wet * 0.3;
 		ALBEDO = mix(col, mix(asph, asph * 0.4, pud2), paved);
 		vec4 surface = texture(paving_surface, wpos.xz / 2.2);
@@ -2965,6 +3141,14 @@ void fragment() {
 		SPECULAR = mix(SPECULAR, mix(0.3, 0.55, pud2), paved);
 		METALLIC = metal_part * 0.45 * paved;
 		ALPHA = mix(edge, 1.0, paved);
+	}
+	// the rain rings the puddles, and faintly the wet film on the road
+	float ring_on = mix(max(pud, wet * 0.2), max(pud2, wet * 0.25), paved);
+	if (rain_fx.x > 0.0 && ring_on > 0.001) {
+		float footprint = length(fwidth(wpos.xz));
+		vec2 ring = rain_rings(wpos.xz, footprint, ring_on);
+		NORMAL = normalize(NORMAL - (VIEW_MATRIX * vec4(ring.x, 0.0, ring.y, 0.0)).xyz);
+		ROUGHNESS = mix(ROUGHNESS, max(ROUGHNESS, 0.22), rain_far(footprint) * mix(pud, pud2, paved));
 	}
 	if (OUTPUT_IS_SRGB) { ALBEDO = mix(ALBEDO * 12.92, 1.055 * pow(max(ALBEDO, vec3(0.0)), vec3(1.0 / 2.4)) - 0.055, step(vec3(0.0031308), ALBEDO)); }
 	// CLOUD_FRAGMENT cloud_sun(wpos)

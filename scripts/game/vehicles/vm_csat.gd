@@ -35,21 +35,21 @@ static func build(k: VehicleModels, key: String, team: int, seed: int) -> bool:
 		"qilin_at":
 			_qilin(k, team, "at")
 		"marid":
-			_marid(k, team)
+			_marid(k, team, seed)
 		"kamysh":
-			_kamysh(k, team)
+			_kamysh(k, team, seed)
 		"tigris":
-			_tigris(k, team)
+			_tigris(k, team, seed)
 		"varsuk":
-			_varsuk(k, team)
+			_varsuk(k, team, seed)
 		"futura":
-			_futura(k, team)
+			_futura(k, team, seed)
 		"sochor":
-			_sochor(k, team)
+			_sochor(k, team, seed)
 		"angara":
-			_angara(k, team, false)
+			_angara(k, team, false, seed)
 		"angara_k":
-			_angara(k, team, true)
+			_angara(k, team, true, seed)
 		"tempest":
 			_tempest(k, team, "")
 		"tempest_ammo":
@@ -74,6 +74,72 @@ static func build(k: VehicleModels, key: String, team: int, seed: int) -> bool:
 static func _sec(z: float, bw: float, y0: float, cw: float, yc: float, ww: float, yw: float, rw: float, yr: float) -> PackedVector3Array:
 	return PackedVector3Array([Vector3(-bw, y0, z), Vector3(bw, y0, z), Vector3(cw, yc, z), Vector3(ww, yw, z),
 		Vector3(rw, yr, z), Vector3(-rw, yr, z), Vector3(-ww, yw, z), Vector3(-cw, yc, z)])
+
+
+## _sec's sections with each roof edge cut back `b` along both faces: a welded
+## hull's top edge is a chamfered plate, not a knife edge, and the narrow
+## facet it leaves catches the light along the hull from any camera.
+static func _bevelled(sections: Array, b: float) -> Array:
+	var out := []
+	for sec: PackedVector3Array in sections:
+		var r := PackedVector3Array()
+		for i in sec.size():
+			if i == 4 or i == 5:
+				var p := sec[i]
+				var before := sec[i - 1]
+				var after := sec[i + 1]
+				r.append(p + (before - p).normalized() * minf(b, (before - p).length() * 0.4))
+				r.append(p + (after - p).normalized() * minf(b, (after - p).length() * 0.4))
+			else:
+				r.append(sec[i])
+		out.append(r)
+	return out
+
+
+## A loft whose top edge is chamfered `b` all round (the top ring inset by b,
+## a ring b below it at the top's outline): the cast or welded edge of a turret
+## roof, which a plain two-ring loft leaves dead sharp. Outlines as for
+## VehicleModels.loft, convex, x and z pairs.
+static func _chamfer_loft(key: String, bottom: Array, top: Array, y0: float, y1: float, b: float) -> ArrayMesh:
+	var lo := VehicleModels._v2(bottom)
+	var hi := VehicleModels._v2(top)
+	var t := 1.0 - b / (y1 - y0)
+	var mid := PackedVector2Array()
+	for i in hi.size():
+		mid.append(lo[i].lerp(hi[i], t))
+	return VehicleModels.solid([VehicleModels.ring_y(lo, y0), VehicleModels.ring_y(mid, y1 - b), VehicleModels.ring_y(_inset(hi, b), y1)], key)
+
+
+## A convex outline moved in by d, each edge parallel to its old self (mitred).
+static func _inset(pts: PackedVector2Array, d: float) -> PackedVector2Array:
+	var n := pts.size()
+	var c := Vector2.ZERO
+	for p in pts:
+		c += p
+	c /= float(n)
+	var out := PackedVector2Array()
+	for i in n:
+		var a := pts[(i + n - 1) % n]
+		var p := pts[i]
+		var b := pts[(i + 1) % n]
+		var n0 := Vector2(-(p - a).y, (p - a).x).normalized()
+		var n1 := Vector2(-(b - p).y, (b - p).x).normalized()
+		if n0.dot(c - (a + p) * 0.5) < 0.0:
+			n0 = -n0
+		if n1.dot(c - (p + b) * 0.5) < 0.0:
+			n1 = -n1
+		var m := (n0 + n1).normalized()
+		out.append(p + m * d / maxf(0.35, m.dot(n0)))
+	return out
+
+
+## The three-figure tactical number a crew paints on its vehicle: battalion,
+## company, then the vehicle in it (Russian practice, which CSAT follows),
+## drawn from the vehicle's own seed by VehicleMarkings.tactical_number, so
+## two tanks of a kind differ and the same tank reads the same on every peer.
+## They are painted in heavy stencil bars on the flanks
+## (VehicleMarkings.side_number) in chalked white enamel.
+const TAC := ["123", "1234", "0123456789"]
 
 
 ## XZ outline pairs mirrored to the -x side.
@@ -225,7 +291,7 @@ static func _smoke(k: VehicleModels, p: Node3D, pos: Vector3, s: float, n := 3, 
 static func _rcws(k: VehicleModels, p: Node3D, pos: Vector3, gun: String, mat := CAM) -> Node3D:
 	var t := k._pivot(p, pos)
 	VehicleMounts.turret_ring(k, t, Vector3(0, 0.05, 0), 0.3, 0.34, 0.1, "gunmetal_w", null, 16)
-	k._add(t, VehicleModels.loft("csat_rcws_ped", [-0.2, -0.22, 0.2, -0.22, 0.2, 0.26, -0.2, 0.26], [-0.16, -0.16, 0.16, -0.16, 0.16, 0.22, -0.16, 0.22], 0.1, 0.36), mat, null, Vector3.ZERO)
+	k._add(t, VehicleModels.loft("csat_rcws_ped", [-0.2, -0.22, 0.2, -0.22, 0.2, 0.26, -0.2, 0.26], [-0.16, -0.16, 0.16, -0.16, 0.16, 0.22, -0.16, 0.22], 0.1, 0.36, 0.015), mat, null, Vector3.ZERO)
 	# the trunnion arms either side of the cradle
 	for sx in [-0.17, 0.17]:
 		VehicleMounts.mantlet(k, t, Vector3(0.05, 0.22, 0.24), Vector3(sx, 0.44, 0.0), mat)
@@ -274,7 +340,7 @@ static func _ifrit(k: VehicleModels, team: int, arm: String) -> void:
 		_sec(-0.45, 0.88, 0.98, 1.0, 1.03, 1.22, 1.5, 0.8, 2.5),
 		_sec(2.98, 0.88, 0.98, 1.0, 1.03, 1.22, 1.5, 0.8, 2.5),
 		_sec(3.16, 0.84, 1.02, 0.96, 1.06, 1.15, 1.5, 0.75, 2.44)]
-	k._add(m, VehicleModels.solid(body, "csat_ifr_body"), c, null, Vector3.ZERO)
+	k._add(m, VehicleModels.solid(_bevelled(body, 0.035), "csat_ifr_body"), c, null, Vector3.ZERO)
 	# the lower nose (grille and bumper) and the tail below the rear door
 	k._add(m, VehicleModels.loft("csat_ifr_nose", [-0.78, -3.04, 0.78, -3.04, 0.78, -2.45, -0.78, -2.45], [-0.84, -3.19, 0.84, -3.19, 0.84, -2.42, -0.84, -2.42], 0.55, 1.03), c, null, Vector3.ZERO)
 	k._add(m, VehicleModels.loft("csat_ifr_tail", [-0.86, 2.5, 0.86, 2.5, 0.86, 3.05, -0.86, 3.05], [-1.0, 2.45, 1.0, 2.45, 1.0, 3.15, -1.0, 3.15], 0.6, 1.03), c, null, Vector3.ZERO)
@@ -377,7 +443,7 @@ static func _qilin(k: VehicleModels, team: int, arm: String) -> void:
 	k._box(m, Vector3(1.38, 0.1, 3.3), Vector3(0, 0.55, 0.75), c)
 	for s in [-1.0, 1.0]:
 		k._box(m, Vector3(0.06, 0.42, 1.6), Vector3(s * 0.69, 0.76, -0.15), c)
-	k._add(m, VehicleModels.loft("csat_qil_deck", [-0.72, 0.8, 0.72, 0.8, 0.72, 2.42, -0.72, 2.42], [-0.7, 0.85, 0.7, 0.85, 0.7, 2.36, -0.7, 2.36], 0.5, 0.96), c, null, Vector3.ZERO)
+	k._add(m, VehicleModels.loft("csat_qil_deck", [-0.72, 0.8, 0.72, 0.8, 0.72, 2.42, -0.72, 2.42], [-0.7, 0.85, 0.7, 0.85, 0.7, 2.36, -0.7, 2.36], 0.5, 0.96, 0.03), c, null, Vector3.ZERO)
 	# the dash under the screen frame, the steering wheel, the seats
 	VehicleCab.dashboard(k, m, Vector3(1.3, 0.22, 0.3), Vector3(0, 0.98, -0.82), "plain_dark")
 	_tube(k, m, Vector3(-0.36, 0.85, -0.72), Vector3(-0.36, 1.02, -0.58), 0.025, "gunmetal_w", null, 6, false)
@@ -502,9 +568,10 @@ static func _rwheel(k: VehicleModels, p: Node3D, pos: Vector3, r: float, w: floa
 	return VehicleWheels.road(k, p, pos, r, w, "paint", col)
 
 
-## A toothed drive sprocket spinning about x.
+## A toothed drive sprocket spinning about x: twin toothed rings, as on a
+## T-72 or BMP, the single-pin track's guide horns running between them.
 static func _sprocket(k: VehicleModels, p: Node3D, pos: Vector3, r: float, w: float, col := WHEEL_PAINT) -> Node3D:
-	return VehicleWheels.sprocket(k, p, pos, r, w, "paint", col)
+	return VehicleWheels.sprocket(k, p, pos, r, w, "paint", col, 8, true)
 
 
 
@@ -564,7 +631,7 @@ static func _era(k: VehicleModels, p: Node3D, c: Vector3, n: Vector3, ay: Vector
 ## that runs the length of the hull, the lower hull narrowing into a V between
 ## six evenly spaced wheels, the rear ramp with its door and the water jets,
 ## and twin remote weapon stations (12.7 mm and 40 mm) side by side on the roof.
-static func _marid(k: VehicleModels, team: int) -> void:
+static func _marid(k: VehicleModels, team: int, seed := 0) -> void:
 	var m := k.root
 	var c := CAM
 	var hull := [
@@ -573,7 +640,7 @@ static func _marid(k: VehicleModels, team: int) -> void:
 		_sec(-2.0, 0.8, 0.5, 0.98, 1.2, 1.45, 1.42, 1.15, 2.2),
 		_sec(3.3, 0.8, 0.5, 0.98, 1.2, 1.45, 1.42, 1.15, 2.2),
 		_sec(3.5, 0.76, 0.58, 0.94, 1.22, 1.4, 1.42, 1.1, 2.14)]
-	k._add(m, VehicleModels.solid(hull, "csat_marid_hull"), c, null, Vector3.ZERO)
+	k._add(m, VehicleModels.solid(_bevelled(hull, 0.05), "csat_marid_hull"), c, null, Vector3.ZERO)
 	# the glacis plane (for things mounted on it)
 	var gu := Vector3(0, 0.5, 0.85).normalized()
 	var gn := Vector3(0, 0.85, -0.5).normalized()
@@ -632,12 +699,15 @@ static func _marid(k: VehicleModels, team: int) -> void:
 	k._bag(m, Vector3(0.7, 0.26, 0.5), Vector3(-0.3, 2.37, 2.95), "canvas", Color(0.33, 0.33, 0.24), Vector3(0, 0.1, 0))
 	k._box(m, Vector3(0.45, 0.22, 0.4), Vector3(0.35, 2.35, 3.0), "paint", OLIVE)
 	k._team_mark(m, team, Vector3(0, 2.235, 0.85), Vector3(0.7, 0.02, 0.5))
+	# the tactical number low on each upper side, between the exhaust and the
+	# first firing port
+	VehicleMarkings.side_number(k, m, VehicleMarkings.tactical_number(seed, TAC), 0.18, Vector3(1.45, 1.42, 3.3), Vector3(1.45, 1.42, -2.0), Vector3(1.15, 2.2, -2.0), Vector3(1.15, 2.2, 3.3), Vector2(0.585, 0.23))
 	# twin remote weapon stations on one ring: the 12.7 mm on the left, the
 	# 40 mm on the right, the sight head between them
 	var t := k._pivot(m, Vector3(0, 2.2, -0.45))
 	k.turret = t
 	VehicleMounts.turret_ring(k, t, Vector3(0, 0.05, 0), 0.52, 0.56, 0.1, "gunmetal_w", null, 18)
-	k._add(t, VehicleModels.loft("csat_marid_rws", [-0.42, -0.36, 0.42, -0.36, 0.46, 0.3, -0.46, 0.3], [-0.36, -0.28, 0.36, -0.28, 0.4, 0.24, -0.4, 0.24], 0.1, 0.34), c, null, Vector3.ZERO)
+	k._add(t, _chamfer_loft("csat_marid_rws", [-0.42, -0.36, 0.42, -0.36, 0.46, 0.3, -0.46, 0.3], [-0.36, -0.28, 0.36, -0.28, 0.4, 0.24, -0.4, 0.24], 0.1, 0.34, 0.04), c, null, Vector3.ZERO)
 	var y := 0.52
 	VehicleMounts.sight(k, t, Vector3(0, y + 0.02, -0.08), Vector3(0.26, 0.3, 0.36), [Rect2(Vector2(-0.06, 0.03), Vector2(0.09, 0.09)), Rect2(Vector2(0.07, 0.03), Vector2(0.07, 0.07))], c)
 	for s in [-1.0, 1.0]:
@@ -655,7 +725,7 @@ static func _marid(k: VehicleModels, team: int) -> void:
 ## glacis over the front engine, upper sides leaning in hard over the side
 ## skirts, the rear door - on six road wheels a side, the sprocket at the
 ## front. Returns the turret ring's centre.
-static func _stalker(k: VehicleModels, team: int) -> Vector3:
+static func _stalker(k: VehicleModels, team: int, seed := 0) -> Vector3:
 	var m := k.root
 	var c := CAM
 	var hull := [
@@ -664,7 +734,7 @@ static func _stalker(k: VehicleModels, team: int) -> Vector3:
 		_sec(-2.3, 1.02, 0.42, 1.08, 0.95, 1.7, 1.1, 1.24, 1.72),
 		_sec(3.5, 1.02, 0.42, 1.08, 0.95, 1.7, 1.1, 1.24, 1.72),
 		_sec(3.86, 0.98, 0.58, 1.06, 0.95, 1.62, 1.1, 1.16, 1.6)]
-	k._add(m, VehicleModels.solid(hull, "csat_stalker_hull"), c, null, Vector3.ZERO)
+	k._add(m, VehicleModels.solid(_bevelled(hull, 0.05), "csat_stalker_hull"), c, null, Vector3.ZERO)
 	_running_gear(k, m, 1.36, 0.56, Vector3(-3.32, 0.58, 0.27), Vector3(3.3, 0.56, 0.27), [-2.45, -1.45, -0.45, 0.55, 1.55, 2.55], 0.33, true, [-1.95, 0.05, 2.05])
 	# side skirts in bolted sections, the front one angled up toward the sprocket
 	for s in [-1.0, 1.0]:
@@ -710,20 +780,24 @@ static func _stalker(k: VehicleModels, team: int) -> Vector3:
 	# roof: the troop compartment's hatches behind the turret
 	for s in [-1.0, 1.0]:
 		VehicleFittings.panel_hatch(k, m, Vector3(s * 0.48, 1.74, 2.4), Vector3(0.6, 0.05, 0.75), c)
+	# the section's camouflage net rolled and strapped across the roof behind them
+	VehicleCloth.roll(k, m, Vector3(0, 1.84, 2.95), 0.12, 1.3, Vector3(0, 0, PI / 2), Color(0.36, 0.35, 0.26))
 	k._team_mark(m, team, Vector3(0, 1.735, 3.3), Vector3(0.7, 0.02, 0.4))
+	# the tactical number on each upper side, between the bins and the vision blocks
+	VehicleMarkings.side_number(k, m, VehicleMarkings.tactical_number(seed, TAC), 0.24, Vector3(1.7, 1.1, 3.5), Vector3(1.7, 1.1, -2.3), Vector3(1.24, 1.72, -2.3), Vector3(1.24, 1.72, 3.5), Vector2(0.61, 0.52))
 	return Vector3(0, 1.72, -0.35)
 
 
 ## BTR-K Kamysh: the Stalker with a Samson RCWS-30 style unmanned turret - a
 ## low faceted box with the 30 mm cannon, the sight heads on its roof and a
 ## twin Titan launcher on each side.
-static func _kamysh(k: VehicleModels, team: int) -> void:
+static func _kamysh(k: VehicleModels, team: int, seed := 0) -> void:
 	var c := CAM
-	var t := k._pivot(k.root, _stalker(k, team))
+	var t := k._pivot(k.root, _stalker(k, team, seed))
 	k.turret = t
 	VehicleMounts.turret_ring(k, t, Vector3(0, 0.05, 0), 0.95, 1.0, 0.1, c, null, 20)
-	k._add(t, VehicleModels.loft("csat_kam_tur", [-0.62, -1.15, 0.62, -1.15, 0.95, -0.6, 0.95, 1.05, -0.95, 1.05, -0.95, -0.6],
-		[-0.5, -0.88, 0.5, -0.88, 0.8, -0.45, 0.8, 0.92, -0.8, 0.92, -0.8, -0.45], 0.08, 0.62), c, null, Vector3.ZERO)
+	k._add(t, _chamfer_loft("csat_kam_tur", [-0.62, -1.15, 0.62, -1.15, 0.95, -0.6, 0.95, 1.05, -0.95, 1.05, -0.95, -0.6],
+		[-0.5, -0.88, 0.5, -0.88, 0.8, -0.45, 0.8, 0.92, -0.8, 0.92, -0.8, -0.45], 0.08, 0.62, 0.06), c, null, Vector3.ZERO)
 	# the bustle box at the back
 	k._box(t, Vector3(1.5, 0.42, 0.42), Vector3(0, 0.33, 1.15), c)
 	# mantlet, the 30 mm with its barrel jacket and muzzle brake, the coax
@@ -745,13 +819,13 @@ static func _kamysh(k: VehicleModels, team: int) -> void:
 ## ZSU-39 Tigris: the Stalker with a Marconi Marksman turret - a big boxy
 ## turret with a 35 mm cannon on each side, the tracking radar between them at
 ## the front, the search radar on its mast at the back, missile boxes on top.
-static func _tigris(k: VehicleModels, team: int) -> void:
+static func _tigris(k: VehicleModels, team: int, seed := 0) -> void:
 	var c := CAM
-	var t := k._pivot(k.root, _stalker(k, team))
+	var t := k._pivot(k.root, _stalker(k, team, seed))
 	k.turret = t
 	VehicleMounts.turret_ring(k, t, Vector3(0, 0.05, 0), 1.0, 1.05, 0.1, c, null, 20)
-	k._add(t, VehicleModels.loft("csat_tig_tur", [-0.95, -1.35, 0.95, -1.35, 1.2, -0.95, 1.2, 1.35, -1.2, 1.35, -1.2, -0.95],
-		[-0.8, -0.95, 0.8, -0.95, 1.05, -0.7, 1.05, 1.2, -1.05, 1.2, -1.05, -0.7], 0.08, 1.05), c, null, Vector3.ZERO)
+	k._add(t, _chamfer_loft("csat_tig_tur", [-0.95, -1.35, 0.95, -1.35, 1.2, -0.95, 1.2, 1.35, -1.2, 1.35, -1.2, -0.95],
+		[-0.8, -0.95, 0.8, -0.95, 1.05, -0.7, 1.05, 1.2, -1.05, 1.2, -1.05, -0.7], 0.08, 1.05, 0.07), c, null, Vector3.ZERO)
 	# the guns: a 35 mm in a cradle on each side, ammunition feed fairings
 	for s in [-1.0, 1.0]:
 		var gx: float = s * 1.42
@@ -799,7 +873,7 @@ static func _t100(k: VehicleModels, team: int) -> Vector3:
 		_sec(-2.2, 1.04, 0.42, 1.08, 0.95, 1.62, 1.02, 1.58, 1.5),
 		_sec(3.55, 1.04, 0.42, 1.08, 0.95, 1.62, 1.02, 1.58, 1.5),
 		_sec(3.75, 1.0, 0.6, 1.06, 0.95, 1.6, 1.02, 1.55, 1.36)]
-	k._add(m, VehicleModels.solid(hull, "csat_t100_hull"), c, null, Vector3.ZERO)
+	k._add(m, VehicleModels.solid(_bevelled(hull, 0.05), "csat_t100_hull"), c, null, Vector3.ZERO)
 	_running_gear(k, m, 1.33, 0.58, Vector3(-3.3, 0.55, 0.27), Vector3(3.36, 0.56, 0.29), [-2.55, -1.7, -0.85, 0.0, 0.85, 1.7, 2.55], 0.33, false, [-2.1, -0.42, 1.27])
 	# the glacis: a chevron of reactive armour plates, the driver's hatch and
 	# periscope at its top, headlights at its corners, tow hooks on the nose
@@ -815,6 +889,9 @@ static func _t100(k: VehicleModels, team: int) -> Vector3:
 		# the track guards on their gussets, the front mudguards raked down
 		# over the idlers
 		VehicleBody.track_guard(k, m, Vector3(s * 1.7, 1.03, 0.05), Vector3(0.24, 0.05, 7.4), s, c, null, 6, 0.0, Vector2(0.3, 0.23))
+		# a tow cable stowed along each guard beside the hull, its eyes flat on
+		# the guard over their pegs: Soviet-lineage tanks carry one a side
+		VehicleFittings.tow_cable(k, m, [Vector3(s * 1.71, 1.077, -2.6), Vector3(s * 1.71, 1.077, 1.15)], 0.022, 0.0, -1, Vector3.UP)
 	_onface(k, m, g0 + gu * 1.45, gn, gu, Vector3(0.7, 0.24, 0.05), c)
 	_hatch(k, m, Vector3(0, 1.5, -2.02), 0.27)
 	_periscope(k, m, Vector3(0, 1.5, -2.36))
@@ -875,15 +952,15 @@ static func _cupola_mg(k: VehicleModels, p: Node3D, pos: Vector3, mat := CAM) ->
 ## its cheeks, the enormous box bustle of the autoloader behind it, Drozd
 ## launchers on its flanks, the commander's cupola with its 12.7 mm, the long
 ## 125 mm with its fume extractor.
-static func _varsuk(k: VehicleModels, team: int) -> void:
+static func _varsuk(k: VehicleModels, team: int, seed := 0) -> void:
 	var c := CAM
 	var t := k._pivot(k.root, _t100(k, team))
 	k.turret = t
 	VehicleMounts.turret_ring(k, t, Vector3(0, 0.05, 0), 1.12, 1.16, 0.1, c, null, 22)
-	k._add(t, VehicleModels.loft("csat_var_tur", [-0.7, -1.55, 0.7, -1.55, 1.38, -0.95, 1.42, 0.95, 1.2, 1.2, -1.2, 1.2, -1.42, 0.95, -1.38, -0.95],
-		[-0.58, -1.38, 0.58, -1.38, 1.22, -0.82, 1.27, 0.88, 1.08, 1.1, -1.08, 1.1, -1.27, 0.88, -1.22, -0.82], 0.06, 0.78), c, null, Vector3.ZERO)
+	k._add(t, _chamfer_loft("csat_var_tur", [-0.7, -1.55, 0.7, -1.55, 1.38, -0.95, 1.42, 0.95, 1.2, 1.2, -1.2, 1.2, -1.42, 0.95, -1.38, -0.95],
+		[-0.58, -1.38, 0.58, -1.38, 1.22, -0.82, 1.27, 0.88, 1.08, 1.1, -1.08, 1.1, -1.27, 0.88, -1.22, -0.82], 0.06, 0.78, 0.07), c, null, Vector3.ZERO)
 	# the bustle: a long box hung off the turret's back
-	k._add(t, VehicleModels.loft("csat_var_bus", [-1.1, 1.0, 1.1, 1.0, 1.05, 2.9, -1.05, 2.9], [-1.05, 1.0, 1.05, 1.0, 1.0, 2.82, -1.0, 2.82], 0.14, 0.74), c, null, Vector3.ZERO)
+	k._add(t, _chamfer_loft("csat_var_bus", [-1.1, 1.0, 1.1, 1.0, 1.05, 2.9, -1.05, 2.9], [-1.05, 1.0, 1.05, 1.0, 1.0, 2.82, -1.0, 2.82], 0.14, 0.74, 0.05), c, null, Vector3.ZERO)
 	for s in [-1.0, 1.0]:
 		k._box(t, Vector3(0.5, 0.03, 0.36), Vector3(s * 0.5, 0.755, 2.4), "gunmetal_w", null, Vector3.ZERO, false)
 		k._box(t, Vector3(0.7, 0.05, 0.5), Vector3(s * 0.45, 0.76, 1.55), c)
@@ -912,8 +989,12 @@ static func _varsuk(k: VehicleModels, team: int) -> void:
 		_smoke(k, t, Vector3(s * 1.3, 0.7, 0.35), s, 4, 0.9)
 		# antennas at the bustle's back corners
 		_antenna(k, t, Vector3(s * 0.8, 0.76, 2.6), 2.0 if s < 0 else 1.5)
+	# the tactical number on the turret's flanks, under the smoke dischargers
+	VehicleMarkings.side_number(k, t, VehicleMarkings.tactical_number(seed, TAC), 0.26, Vector3(1.42, 0.06, 0.95), Vector3(1.38, 0.06, -0.95), Vector3(1.22, 0.78, -0.82), Vector3(1.27, 0.78, 0.88), Vector2(0.26, 0.36))
 	# stowage on the bustle's back, a wind sensor mast
 	k._bag(t, Vector3(1.6, 0.36, 0.3), Vector3(0, 0.5, 3.02), "canvas", Color(0.33, 0.33, 0.24))
+	# the crew's tarpaulin rolled and strapped across the back of the bustle roof
+	VehicleCloth.roll(k, t, Vector3(0, 0.91, 2.62), 0.14, 1.3, Vector3(0, 0, PI / 2), Color(0.36, 0.35, 0.26))
 	VehicleMounts.mast_segment(k, t, Vector3(0.2, 0.95, 1.2), 0.35, 0.015, "gunmetal_w", null)
 	k._team_mark(t, team, Vector3(1.09, 0.45, 1.95), Vector3(0.03, 0.24, 0.7))
 	k._team_mark(t, team, Vector3(-1.09, 0.45, 1.95), Vector3(0.03, 0.24, 0.7))
@@ -922,15 +1003,15 @@ static func _varsuk(k: VehicleModels, team: int) -> void:
 ## T-100X Futura: the Varsuk's hull under an experimental turret - two faceted
 ## wedge tiers, low and sharp-nosed, the railgun's twin flat rails in a boxy
 ## shroud with spacer bands, a capacitor bank at the back.
-static func _futura(k: VehicleModels, team: int) -> void:
+static func _futura(k: VehicleModels, team: int, seed := 0) -> void:
 	var c := CAM
 	var t := k._pivot(k.root, _t100(k, team))
 	k.turret = t
 	VehicleMounts.turret_ring(k, t, Vector3(0, 0.05, 0), 1.12, 1.16, 0.1, c, null, 22)
 	k._add(t, VehicleModels.loft("csat_fut_tur", [-0.45, -1.95, 0.45, -1.95, 1.42, -0.75, 1.48, 1.4, 1.15, 2.35, -1.15, 2.35, -1.48, 1.4, -1.42, -0.75],
 		[-0.32, -1.62, 0.32, -1.62, 1.14, -0.55, 1.2, 1.3, 0.92, 2.15, -0.92, 2.15, -1.2, 1.3, -1.14, -0.55], 0.06, 0.6), c, null, Vector3.ZERO)
-	k._add(t, VehicleModels.loft("csat_fut_top", [-0.3, -1.55, 0.3, -1.55, 1.06, -0.5, 1.12, 1.25, 0.86, 2.05, -0.86, 2.05, -1.12, 1.25, -1.06, -0.5],
-		[-0.16, -0.95, 0.16, -0.95, 0.68, -0.25, 0.74, 1.0, 0.56, 1.7, -0.56, 1.7, -0.74, 1.0, -0.68, -0.25], 0.6, 0.86), c, null, Vector3.ZERO)
+	k._add(t, _chamfer_loft("csat_fut_top", [-0.3, -1.55, 0.3, -1.55, 1.06, -0.5, 1.12, 1.25, 0.86, 2.05, -0.86, 2.05, -1.12, 1.25, -1.06, -0.5],
+		[-0.16, -0.95, 0.16, -0.95, 0.68, -0.25, 0.74, 1.0, 0.56, 1.7, -0.56, 1.7, -0.74, 1.0, -0.68, -0.25], 0.6, 0.86, 0.04), c, null, Vector3.ZERO)
 	# seams of the panels on the faceted roof
 	for s in [-1.0, 1.0]:
 		_plate(k, t, Vector3(s * 0.46, 0.75, -1.2), Vector3(s * 0.9, 0.74, -0.3), 0.025, 0.02, "gunmetal_w", null, Vector3.UP, false)
@@ -954,6 +1035,7 @@ static func _futura(k: VehicleModels, team: int) -> void:
 		VehicleFittings.grille(k, t, Vector3(s * 0.48, 0.45, 2.86), Vector2(0.5, 0.2), Vector3.ZERO, "gunmetal_w", null, 4)
 		_smoke(k, t, Vector3(s * 1.18, 0.55, 0.6), s, 4, 1.0)
 		_antenna(k, t, Vector3(s * 0.7, 0.75, 1.9), 1.8 if s < 0 else 1.3)
+	VehicleMarkings.side_number(k, t, VehicleMarkings.tactical_number(seed, TAC), 0.24, Vector3(1.48, 0.06, 1.4), Vector3(1.42, 0.06, -0.75), Vector3(1.14, 0.6, -0.55), Vector3(1.2, 0.6, 1.3), Vector2(0.43, 0.44))
 	# sights: the gunner's block, the commander's panoramic head, a remote MG
 	VehicleMounts.sight(k, t, Vector3(-0.42, 0.98, -0.25), Vector3(0.36, 0.26, 0.4), [Rect2(Vector2(0, 0.02), Vector2(0.26, 0.12))], c)
 	VehicleMounts.sight(k, t, Vector3(0.45, 1.25, 0.6), Vector3(0.3, 0.22, 0.3), [Rect2(Vector2(0, 0.01), Vector2(0.18, 0.1))], c, null, Vector3(0.08, 0.1, 0.41))
@@ -965,15 +1047,15 @@ static func _futura(k: VehicleModels, team: int) -> void:
 ## Koalitsiya-like) with the long 152 mm overhanging the nose, its muzzle brake
 ## and fume extractor, a remote 12.7 mm on the roof, a travel lock folded on
 ## the glacis. The barrel rides k.elev (pivot at the trunnions).
-static func _sochor(k: VehicleModels, team: int) -> void:
+static func _sochor(k: VehicleModels, team: int, seed := 0) -> void:
 	var c := CAM
 	var m := k.root
 	var ring := _t100(k, team)
 	var t := k._pivot(m, ring + Vector3(0, 0, 0.5))
 	k.turret = t
 	VehicleMounts.turret_ring(k, t, Vector3(0, 0.05, 0), 1.2, 1.25, 0.1, c, null, 22)
-	k._add(t, VehicleModels.loft("csat_sch_tur", [-1.5, -2.0, 1.5, -2.0, 1.62, -1.5, 1.62, 2.75, -1.62, 2.75, -1.62, -1.5],
-		[-1.3, -1.45, 1.3, -1.45, 1.46, -1.1, 1.48, 2.62, -1.48, 2.62, -1.46, -1.1], 0.06, 1.28), c, null, Vector3.ZERO)
+	k._add(t, _chamfer_loft("csat_sch_tur", [-1.5, -2.0, 1.5, -2.0, 1.62, -1.5, 1.62, 2.75, -1.62, 2.75, -1.62, -1.5],
+		[-1.3, -1.45, 1.3, -1.45, 1.46, -1.1, 1.48, 2.62, -1.48, 2.62, -1.46, -1.1], 0.06, 1.28, 0.08), c, null, Vector3.ZERO)
 	# flat sides: a crew door, stowage boxes, vents; the ammunition door at the back
 	for s in [-1.0, 1.0]:
 		# each crew door's sealed face looks out of its own side
@@ -986,6 +1068,14 @@ static func _sochor(k: VehicleModels, team: int) -> void:
 		VehicleFittings.grille(k, t, Vector3(s * 1.505, 0.95, -0.6), Vector2(0.5, 0.3), lean, "gunmetal_w", null, 4)
 		_smoke(k, t, Vector3(s * 1.42, 1.02, -1.25), s, 4, 0.6)
 		_antenna(k, t, Vector3(s * 1.2, 1.28, 2.4), 2.0 if s < 0 else 1.5)
+	# grab handles along each flank's top, which the crew climb by and hold
+	# when riding on the roof, and the tarpaulin rolled across the roof's back
+	for s in [-1.0, 1.0]:
+		for hz: float in [-0.25, 0.9, 1.7, 2.35]:
+			VehicleDoors.pull(k, t, Vector3(s * 1.497, 1.15, hz), Vector3(s * cos(0.11), sin(0.11), 0), Vector3.BACK, 0.3, 0.014)
+	VehicleCloth.roll(k, t, Vector3(-0.72, 1.41, 2.36), 0.13, 1.0, Vector3(0, 0, PI / 2), Color(0.36, 0.35, 0.26))
+	# the tactical number on the turret's flanks ahead of the crew doors
+	VehicleMarkings.side_number(k, t, VehicleMarkings.tactical_number(seed, TAC), 0.28, Vector3(1.62, 0.06, 2.75), Vector3(1.62, 0.06, -1.5), Vector3(1.46, 1.28, -1.1), Vector3(1.48, 1.28, 2.62), Vector2(0.776, 0.36))
 	VehicleDoors.leaf(k, t, Vector3(1.0, 0.7, 0.04), Vector3(0.45, 0.6, 2.69), c, null, Vector3.ZERO, 2)
 	VehicleDoors.pull(k, t, Vector3(0.0, 0.6, 2.71), Vector3.BACK, Vector3.UP, 0.16)
 	# roof: hatches, the commander's panoramic sight, the remote 12.7 mm
@@ -1038,7 +1128,7 @@ static func _t14(k: VehicleModels, team: int) -> Vector3:
 		_sec(-2.75, 1.04, 0.45, 1.1, 1.0, 1.68, 1.1, 1.64, 1.85),
 		_sec(4.1, 1.04, 0.45, 1.1, 1.0, 1.68, 1.1, 1.64, 1.85),
 		_sec(4.35, 1.0, 0.7, 1.06, 1.0, 1.62, 1.1, 1.58, 1.65)]
-	k._add(m, VehicleModels.solid(hull, "csat_t14_hull"), c, null, Vector3.ZERO)
+	k._add(m, VehicleModels.solid(_bevelled(hull, 0.06), "csat_t14_hull"), c, null, Vector3.ZERO)
 	_running_gear(k, m, 1.38, 0.6, Vector3(-3.9, 0.6, 0.28), Vector3(3.92, 0.6, 0.29), [-3.0, -2.0, -1.0, 0.0, 1.0, 2.0, 3.0], 0.36, false, [-2.5, -0.5, 1.5])
 	# the glacis: a grid of reactive armour blocks, the lights, tow hooks; the
 	# track guards on their gussets, the front mudguards raked over the idlers
@@ -1050,6 +1140,8 @@ static func _t14(k: VehicleModels, team: int) -> Vector3:
 		_headlight(k, m, Vector3(s * 1.45, 1.25, -3.95))
 		_tow(k, m, Vector3(s * 0.8, 0.88, -4.36), -1.0)
 		VehicleBody.track_guard(k, m, Vector3(s * 1.72, 1.12, 0.05), Vector3(0.24, 0.05, 8.3), s, c, null, 7, 0.0, Vector2(0.4, 0.3))
+		# the tow cable along each guard, ahead of the slat cages
+		VehicleFittings.tow_cable(k, m, [Vector3(s * 1.76, 1.165, -3.3), Vector3(s * 1.76, 1.165, 1.0)], 0.02, 0.0, -1, Vector3.UP)
 	# the crew capsule: three hatches abreast, periscopes ahead of each
 	for i in 3:
 		var hx := (i - 1) * 0.82
@@ -1085,14 +1177,14 @@ static func _t14(k: VehicleModels, team: int) -> Vector3:
 ## Afghanit launch tubes round its base and smoke launchers on its roof, the
 ## gunner's and commander's sights, radar panels on its corners and a remote
 ## 12.7 mm (or, for the command tank, a remote 30 mm turret) on top.
-static func _angara(k: VehicleModels, team: int, command: bool) -> void:
+static func _angara(k: VehicleModels, team: int, command: bool, seed := 0) -> void:
 	var c := CAM
 	var t := k._pivot(k.root, _t14(k, team))
 	k.turret = t
 	VehicleMounts.turret_ring(k, t, Vector3(0, 0.05, 0), 1.2, 1.25, 0.1, c, null, 22)
-	k._add(t, VehicleModels.loft("csat_ang_tur", [-0.55, -1.85, 0.55, -1.85, 1.35, -1.15, 1.45, 1.4, 1.15, 2.1, -1.15, 2.1, -1.45, 1.4, -1.35, -1.15],
-		[-0.42, -1.55, 0.42, -1.55, 1.12, -1.0, 1.2, 1.3, 0.95, 1.9, -0.95, 1.9, -1.2, 1.3, -1.12, -1.0], 0.06, 0.74), c, null, Vector3.ZERO)
-	k._add(t, VehicleModels.loft("csat_ang_top", [-0.9, -0.6, 0.9, -0.6, 0.95, 1.6, -0.95, 1.6], [-0.8, -0.4, 0.8, -0.4, 0.85, 1.5, -0.85, 1.5], 0.74, 0.86), c, null, Vector3.ZERO)
+	k._add(t, _chamfer_loft("csat_ang_tur", [-0.55, -1.85, 0.55, -1.85, 1.35, -1.15, 1.45, 1.4, 1.15, 2.1, -1.15, 2.1, -1.45, 1.4, -1.35, -1.15],
+		[-0.42, -1.55, 0.42, -1.55, 1.12, -1.0, 1.2, 1.3, 0.95, 1.9, -0.95, 1.9, -1.2, 1.3, -1.12, -1.0], 0.06, 0.74, 0.05), c, null, Vector3.ZERO)
+	k._add(t, _chamfer_loft("csat_ang_top", [-0.9, -0.6, 0.9, -0.6, 0.95, 1.6, -0.95, 1.6], [-0.8, -0.4, 0.8, -0.4, 0.85, 1.5, -0.85, 1.5], 0.74, 0.86, 0.04), c, null, Vector3.ZERO)
 	# the gun slot and mask, the 125 mm, the coax
 	k._box(t, Vector3(0.5, 0.42, 0.3), Vector3(0, 0.42, -1.82), c)
 	k._box(t, Vector3(0.3, 0.3, 0.04), Vector3(0, 0.42, -1.98), "plain_dark", null, Vector3.ZERO, false)
@@ -1119,13 +1211,15 @@ static func _angara(k: VehicleModels, team: int, command: bool) -> void:
 			tubes.append(Transform3D(Basis.from_euler(Vector3(-0.8, s * -0.3, 0)), Vector3(s * (0.7 + i * 0.13), 0.95, -0.62 + i * 0.05 * s)))
 		VehicleFittings.smoke_bank(k, t, Vector3(s * 0.85, 0.84, -0.55), Vector3(0.5, 0.18, 0.34), Vector3(0, s * -0.3, 0), tubes, 0.045, 0.2)
 		_antenna(k, t, Vector3(s * 0.85, 0.74, 1.75), 2.0 if s < 0 else 1.5)
+	# the tactical number high on the casing's flanks, behind the Afghanit housings
+	VehicleMarkings.side_number(k, t, VehicleMarkings.tactical_number(seed, TAC), 0.26, Vector3(1.45, 0.06, 1.4), Vector3(1.35, 0.06, -1.15), Vector3(1.12, 0.74, -1.0), Vector3(1.2, 0.74, 1.3), Vector2(0.235, 0.62))
 	# the gunner's sight (front left) and the commander's panoramic sight
 	VehicleMounts.sight(k, t, Vector3(-0.5, 1.0, -0.2), Vector3(0.44, 0.34, 0.5), [Rect2(Vector2(0, 0.03), Vector2(0.3, 0.16))], c)
 	VehicleMounts.sight(k, t, Vector3(0.55, 1.4, 0.5), Vector3(0.4, 0.3, 0.4), [Rect2(Vector2(0, 0.02), Vector2(0.26, 0.14))], c, null, Vector3(0.12, 0.14, 0.54))
 	# the remote weapon on top: a 12.7 mm, or the command tank's 30 mm turret
 	if command:
 		var rw := k._pivot(t, Vector3(-0.1, 0.86, 0.95))
-		k._add(rw, VehicleModels.loft("csat_ang_k30", [-0.4, -0.45, 0.4, -0.45, 0.45, 0.45, -0.45, 0.45], [-0.32, -0.32, 0.32, -0.32, 0.38, 0.38, -0.38, 0.38], 0.04, 0.42), c, null, Vector3.ZERO)
+		k._add(rw, _chamfer_loft("csat_ang_k30", [-0.4, -0.45, 0.4, -0.45, 0.45, 0.45, -0.45, 0.45], [-0.32, -0.32, 0.32, -0.32, 0.38, 0.38, -0.38, 0.38], 0.04, 0.42, 0.04), c, null, Vector3.ZERO)
 		k._box(rw, Vector3(0.22, 0.22, 0.36), Vector3(0, 0.26, -0.55), c)
 		VehicleWeapons.autocannon(k, rw, Vector3(0, 0.26, -0.65), Vector3(0, 0.26, -2.625), Vector2(0.06, 0.4), Vector2(0.04, 0.035), Vector2(0.055, 0.15))
 		VehicleMounts.sight(k, rw, Vector3(0.32, 0.52, -0.1), Vector3(0.22, 0.2, 0.26), [Rect2(Vector2(0, 0.01), Vector2(0.14, 0.08))], c)
@@ -1160,7 +1254,7 @@ static func _typhoon(k: VehicleModels, team: int) -> void:
 		VehicleDoors.rectangle(k, m, Vector3(side * 1.275, 1.75, -3.24), Vector2(1.30, 0.44), Vector3(0, side * PI / 2, 0), c)
 	VehicleCab.upper(k, Vector2(1.27, 1.14), Vector2(2.1, 3.12), Vector2(-4.44, -4.15), -2.27, c)
 	# the bumper block under the cab's nose
-	k._add(m, VehicleModels.loft("csat_typh_bump", [-1.18, -4.6, 1.18, -4.6, 1.18, -3.75, -1.18, -3.75], [-1.22, -4.66, 1.22, -4.66, 1.22, -3.72, -1.22, -3.72], 0.72, 1.34), c, null, Vector3.ZERO)
+	k._add(m, VehicleModels.loft("csat_typh_bump", [-1.18, -4.6, 1.18, -4.6, 1.18, -3.75, -1.18, -3.75], [-1.22, -4.66, 1.22, -4.66, 1.22, -3.72, -1.22, -3.72], 0.72, 1.34, 0.03), c, null, Vector3.ZERO)
 	# the windscreen: two big flat panes, a pillar between them
 	var wu := Vector3(0, 1.07, 0.3).normalized()
 	var wn := Vector3(0, 0.3, -1.07).normalized()
@@ -1278,15 +1372,16 @@ static func _tempest(k: VehicleModels, team: int, kind: String) -> void:
 		_:
 			# troops: armoured sides, the canvas cover on its bows
 			_tempest_flatbed(k, 0.62)
-			VehicleCloth.canopy(k, m, [Vector2(-1.25, 2.1), Vector2(-1.12, 3.2), Vector2(-0.95, 3.3), Vector2(0.95, 3.3), Vector2(1.12, 3.2), Vector2(1.25, 2.1)], [-2.0, -1.6, -0.42, 0.76, 1.94, 3.12, 4.30, 4.38], CANVAS_TAN)
-			var strap := CANVAS_TAN.darkened(0.25)
+			var tilt := VehicleCargo.tilt_colour(k, m, CANVAS_TAN)
+			VehicleCloth.canopy(k, m, [Vector2(-1.25, 2.1), Vector2(-1.12, 3.2), Vector2(-0.95, 3.3), Vector2(0.95, 3.3), Vector2(1.12, 3.2), Vector2(1.25, 2.1)], [-2.0, -1.6, -0.42, 0.76, 1.94, 3.12, 4.30, 4.38], tilt)
+			var strap := tilt.darkened(0.25)
 			for i in 6:
 				var z := -1.6 + i * 1.18
 				k._box(m, Vector3(1.92, 0.03, 0.08), Vector3(0, 3.31, z), "canvas_white", strap, Vector3.ZERO, false)
 				for s in [-1.0, 1.0]:
 					_plate(k, m, Vector3(s * 1.262, 2.1, z), Vector3(s * 1.132, 3.2, z), 0.08, 0.03, "canvas_white", strap, Vector3.BACK, false)
 					_plate(k, m, Vector3(s * 1.135, 3.2, z), Vector3(s * 0.95, 3.31, z), 0.08, 0.03, "canvas_white", strap, Vector3.BACK, false)
-			k._box(m, Vector3(2.1, 0.9, 0.04), Vector3(0, 2.62, 4.4), "canvas_white", CANVAS_TAN.darkened(0.12))
+			k._box(m, Vector3(2.1, 0.9, 0.04), Vector3(0, 2.62, 4.4), "canvas_white", tilt.darkened(0.12))
 			for s in [-1.0, 1.0]:
 				k._box(m, Vector3(0.06, 0.08, 0.02), Vector3(s * 0.7, 2.15, 4.43), "gunmetal_w", null, Vector3.ZERO, false)
 			# the boarding ladder hung on the tailgate, its stiles toward the truck
