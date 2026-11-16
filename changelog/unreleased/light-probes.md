@@ -13,7 +13,7 @@ caption = "The same room in the rain. Without the probes its wet tiles mirror th
 
 [[screenshots]]
 file = "wood-edge.jpg"
-caption = "The edge of a wood at midday. Under the trees the ground and the men on it sit in a dimmer, greener shade: the probes see the crowns as leaves, and light that comes through or off them is green."
+caption = "The edge of a wood at midday, time frozen so only the light changes. Under the trees the ground, the ferns and the men sit in a dimmer, greener shade; the open meadow beside them is unchanged."
 
 [[screenshots]]
 file = "fire-glow-night.jpg"
@@ -40,7 +40,7 @@ caption = "A house blown down, the game beside the probe term: within a second t
   dark corners are dim, not black.
 - **Reflections know what's overhead:** wet floors indoors, under eaves and in trenches no longer mirror the bright
   sky they can't see; they reflect the room round them instead.
-- **Woods:** under the trees the ground and soldiers sit in a dimmer, green-tinted shade.
+- **Woods:** under the trees the ground, the grass and ferns on it and the soldiers sit in a dimmer, green-tinted shade.
 - **Fires and street lamps** throw a little warm light on the walls and ground round them, past where their own
   light reaches, but not through walls. In the browser, which has no fire lights, this is the glow fires give.
 - **No light through walls:** the floor along a wall indoors and the top of a wall no longer pick up light from

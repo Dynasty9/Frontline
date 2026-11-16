@@ -76,7 +76,14 @@ func _check_shaders() -> void:
 		var g := CloudShadow.shader(Atmosphere.GROUND_SHADER, CloudShadow.OWN_LIGHT | CloudShadow.PROBES, on)
 		assert(g.contains("probe_light(") and g.count("void light()") == 1)
 		var grass := CloudShadow.shader(Grass.GRASS_SHADER, CloudShadow.BACKLIGHT | CloudShadow.NO_SPECULAR | CloudShadow.FOLD, on)
-		assert(not grass.contains("probe_light(") and not grass.contains("#define PROBE_LIGHT"), "grass doesn't read the probes")
+		assert(not grass.contains("probe_light(") and not grass.contains("#define PROBE_LIGHT"), "plain grass doesn't read the probes")
+		# the meadow's and the wood's grass and undergrowth read them once a vertex
+		var vgrass := CloudShadow.shader(Grass.GRASS_SHADER, CloudShadow.BACKLIGHT | CloudShadow.NO_SPECULAR | CloudShadow.FOLD | CloudShadow.PROBES_VERTEX, on)
+		assert(vgrass.contains("probe_v_k = probe_vk.x;") and vgrass.contains("AO *= probe_v_k;") and not vgrass.contains("AO *= probe_k.x;"), "grass reads the probes per vertex")
+		assert(vgrass.find("probe_v_k = probe_vk.x;") < vgrass.find("void fragment()"), "in vertex()")
+		var fern := CloudShadow.shader(Woodland.SHADER, CloudShadow.BACKLIGHT | CloudShadow.NO_SPECULAR | CloudShadow.FOLD | CloudShadow.PROBES_VERTEX, on)
+		assert(fern.contains("AO *= probe_v_k;"), "the wood's undergrowth reads them too")
+		assert(not vgrass.contains("__LOCAL__") and not s.contains("__LOCAL__"), "every placeholder filled in")
 	var px := LightProbes.PIXEL
 	# reflections shut in with the sky: the probes' bands in the reflected direction
 	# take the sky out of a reflection (RADIANCE), the room's own light in its place

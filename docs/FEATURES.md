@@ -1336,9 +1336,10 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   reflected direction, m0 + 3 m1.r for a glossy surface easing to the cosine's m0 + 2 m1.n for a rough one, and the
   rest of the reflection shows the room's own bounce instead (Godot's RADIANCE), so wet floors indoors, under eaves
   and in trenches stop mirroring the bright sky. Tree crowns are laid as leaves, sized to the tree the game grows (a
-  fir's cone in two tiers, a field tree's dome, an orchard tree's small one), a third of the light stopped a cube;
-  the trace tells them apart and what comes through or off them is green, so a wood's floor and the men in it sit in
-  a dimmer, greener shade. Light leaks: a pixel on a floor by a wall sits between a probe in the room and one outside,
+  fir's cone in two tiers, a field tree's dome, an orchard tree's small one), two fifths of the light stopped a
+  cube; the trace tells them apart and what comes through or off them is green, so a wood's floor and the men in it
+  sit in a dimmer, greener shade. Grass, ferns and undergrowth (which cover most of a wood's floor) read the probes
+  too, once a vertex rather than a pixel (`CloudShadow.PROBES_VERTEX`), each blade as if it faced up. Light leaks: a pixel on a floor by a wall sits between a probe in the room and one outside,
   so on High it reads the cubes halfway to the probes on either side of it, each way (six reads), and leaves out any
   with a wall or roof between (a cheap stand-in for DDGI's per-probe depth). Fires and lamps (lights in the
   `probe_light` group) light the probes round them: the 16 nearest the camera, at their steady brightness rather

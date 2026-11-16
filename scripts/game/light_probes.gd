@@ -72,11 +72,12 @@ const ATLAS := Vector2i(P * LAYERS, P * 3)
 const ROOF := 14.0 / 15.0
 const ROOF_SUN := 0.4
 
-## A tree crown's cubes: a third of the light stopped each (a crown's 4 m of
-## them pass a fifth), and marked, so the tracer knows them for leaves: light
+## A tree crown's cubes: three fifths of the light stopped each (a crown's 4 m of
+## them pass a fortieth: a wood's floor sees its sky through the gaps between
+## crowns), and marked, so the tracer knows them for leaves: light
 ## that comes through or off them comes out green (LEAF in BAKE_SHADER), and a
 ## wood's floor sits in a dim green shade. No other box is laid at this.
-const FOLIAGE := 5.0 / 15.0
+const FOLIAGE := 9.0 / 15.0
 
 ## How far rays reach (in voxels, BAKE_SHADER's 18 steps of 0.9): a tile's
 ## probes see into the next tile but no further.
@@ -144,6 +145,7 @@ var _local_t := 0.0
 var _lights := {}  # instance id -> [position, steady energy, colour, reach, clear radius]
 var _light_ema := {}  # instance id -> energy, averaged over the flicker
 var lit_bricks := 0  # tiles whose fire light was traced (tests, diagnostics)
+var _freeze := -1  # FL_DEBUG_PROBES_FREEZE: frames into the frozen capture
 
 static var _globals := false
 
@@ -245,7 +247,12 @@ func _process(dt: float) -> void:
 		_bench()
 	if OS.get_environment("FL_DEBUG_PROBES_AB") == "cycle" and _vp:
 		# FL_DEBUG_PROBES_AB=cycle: off, on, the probes' term, the bent normal, three
-		# frames each, round and round: four panels of one moment from frames in a row
+		# frames each, round and round: four panels of one moment from frames in a row.
+		# With FL_DEBUG_PROBES_FREEZE=<dir> (and _AT=<seconds>), time stops there (no
+		# sway, no flicker, no smoke drifting) and the four are saved to <dir> as
+		# off.png, on.png, term.png, bent.png: the same instant, lit four ways.
+		if OS.has_environment("FL_DEBUG_PROBES_FREEZE") and _freeze_step():
+			return
 		var phase := (_cycle / 3) % 4
 		_cycle += 1
 		RenderingServer.global_shader_parameter_set("probe_grid", Vector4(MapDims.HALF, _vsz * 2.0, 0.0 if phase == 0 else float(quality), 0.0))
@@ -268,6 +275,30 @@ func _process(dt: float) -> void:
 	while not _tile_queue.is_empty() and Time.get_ticks_usec() - t0 < LAY_BUDGET_US:
 		_lay(_tile_queue.pop_front())
 	_bake_some()
+
+
+## FL_DEBUG_PROBES_FREEZE: once the world reaches FL_DEBUG_PROBES_FREEZE_AT, time
+## stops and each of the four views is drawn for a few frames (everything else
+## settles) and the last of them saved. True while it has the frame.
+func _freeze_step() -> bool:
+	if _freeze < 0:
+		if world.time < float(OS.get_environment("FL_DEBUG_PROBES_FREEZE_AT")):
+			return false
+		_freeze = 0
+		Engine.time_scale = 0.0
+	var phase := _freeze / 4
+	if phase >= 4:
+		get_tree().quit()
+		return true
+	RenderingServer.global_shader_parameter_set("probe_grid", Vector4(MapDims.HALF, _vsz * 2.0, 0.0 if phase == 0 else float(quality), 0.0))
+	RenderingServer.global_shader_parameter_set("probe_mix", Vector4(AO_STRENGTH, BOUNCE_STRENGTH, [0.0, 0.0, 1.0, 3.0][phase], _leak_test()))
+	if _freeze % 4 == 3:
+		var path := OS.get_environment("FL_DEBUG_PROBES_FREEZE").path_join(["off", "on", "term", "bent"][phase] + ".png")
+		RenderingServer.frame_post_draw.connect(func() -> void:
+			get_viewport().get_texture().get_image().save_png(path)
+			print("PROBES frozen %s" % path), CONNECT_ONE_SHOT)
+	_freeze += 1
+	return true
 
 
 ## FL_DEBUG_PROBES_BENCH=<frames> (with FL_DEBUG_PROBES_AB=1, or =ssil to
@@ -860,8 +891,59 @@ static func skin_material(m: StandardMaterial3D) -> ShaderMaterial:
 ## the use at the end of its fragment(), with the albedo and normal final.
 static func inject(src: String) -> String:
 	_ensure_globals()
-	var out := src.replace("// CLOUD_SHADOW", PIXEL.replace("__LOCAL__", "%.2f" % LOCAL_STRENGTH) + "\n// CLOUD_SHADOW")
+	var out := src.replace("// CLOUD_SHADOW", _pixel() + "\n// CLOUD_SHADOW")
 	return out.replace("// CLOUD_FRAGMENT ", PIXEL_USE + "\t// CLOUD_FRAGMENT ")
+
+
+## The same for grass, ferns and undergrowth, once a vertex: they cover most of
+## a wood's floor and a field, drawn many times over, so a per-pixel read
+## would cost far more than it shows. Each blade takes the probes' term at its
+## own position, as if it faced up (a meadow's blades see the sky over it):
+## under the crowns they're shaded and tinted green like the ground under them.
+const VERTEX_USE := """
+	probe_v_k = 1.0;
+	probe_v_e = vec3(0.0);
+	if (probe_grid.z > 0.5) {
+		float probe_vm0;
+		vec4 probe_vsh;
+		vec3 probe_vlb;
+		vec4 probe_vk = probe_light((MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz, vec3(0.0, 1.0, 0.0), probe_vm0, probe_vsh, probe_vlb);
+		probe_v_k = probe_vk.x;
+		probe_v_e = probe_vk.yzw;
+	}
+"""
+const VERTEX_FRAGMENT := """probe_fill = probe_v_k;
+	probe_room = 0.0;
+	AO *= probe_v_k;
+	EMISSION += ALBEDO * probe_v_e;
+"""
+
+
+static func _pixel() -> String:
+	return PIXEL.replace("__LOCAL__", "%.2f" % LOCAL_STRENGTH)
+
+
+static func inject_vertex(src: String) -> String:
+	_ensure_globals()
+	var out := src.replace("// CLOUD_SHADOW", _pixel() + "varying float probe_v_k;
+varying vec3 probe_v_e;
+// CLOUD_SHADOW")
+	# at the end of vertex(), where the blade stands where it's drawn
+	var at := out.find("void vertex() {")
+	assert(at >= 0, "a shader reading the probes per vertex has a vertex()")
+	var depth := 0
+	var i := out.find("{", at)
+	while i < out.length():
+		var ch := out[i]
+		if ch == "{":
+			depth += 1
+		elif ch == "}":
+			depth -= 1
+			if depth == 0:
+				break
+		i += 1
+	out = out.substr(0, i) + VERTEX_USE + out.substr(i)
+	return out.replace("// CLOUD_FRAGMENT ", VERTEX_FRAGMENT + "	// CLOUD_FRAGMENT ")
 
 
 ## What a pixel does with the probes round it. A probe keeps the share of sky
@@ -1136,7 +1218,7 @@ vec2 ground_at(vec2 xz) {
 const vec3 LEAF = vec3(0.06, 0.2, 0.02);
 
 bool leafy(float dn) {
-	return abs(dn - 5.0 / 15.0) < 0.01;
+	return abs(dn - 9.0 / 15.0) < 0.01;
 }
 
 // how much the cube at q stops, and its albedo
