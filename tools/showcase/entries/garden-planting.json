@@ -1,19 +1,23 @@
 {
   "entry": "changelog/unreleased/garden-planting.md",
-  "summary": "Town gardens planted with shrubs, clipped hedges and beds of flowers.",
+  "summary": "Town gardens planted with shrubs of real kinds, clipped hedges and beds of flowers in their own colours.",
   "medium": "still",
-  "stage": "tools/showcase/building-surfaces.tscn; tests/fixtures/environment-views.gd (town)",
-  "rationale": "Appearance change: a matched studio garden shows the pieces at a readable size; the town's street and driveway views show them in front gardens at the game's own camera.",
-  "source_ref": "4297b1632d70c57347afaf1e23388ba5a2213c48",
-  "before_ref": "e09de96a9eca5c266d1aa1327aaa3a0f4a185d5f",
+  "stage": "tools/showcase/building-surfaces.tscn (house_garden, planting); tests/fixtures/environment-views.gd (town: garden, driveway)",
+  "rationale": "Appearance change: the town's garden view shows a planted front garden at the game's own camera, a matched studio garden shows the pieces at a readable size, the driveway view a bed under the windows, and the planting stage every plant side by side.",
+  "source_ref": "34f5f8dad154dad745df08d8cf403f4e74795c49",
+  "before_ref": "aba7d654b920a349a43f22b66e2dfccd4306858e",
   "sources": [
     {
       "file": "changelog/unreleased/garden-planting/comparison.jpg",
-      "sha256": "fde46a929ebd66096162e3139a8d8454f6ed205d60a9ad78a616027e949156b1"
+      "sha256": "958f7166b6ed404af641b8965971c1f9795bfd46d08c202955e2cb337d4599af"
+    },
+    {
+      "file": "changelog/unreleased/garden-planting/planting.jpg",
+      "sha256": "2c848887f30fa72d3a3f10527f0012dbad0ed34990b08a62d40155e8f39ee927"
     },
     {
       "file": "changelog/unreleased/garden-planting/capture.json",
-      "sha256": "44c63ccd11b1e23f2edf6a25a25604853e3481f3e52304d6ceaf4d6440946e19"
+      "sha256": "ec929262d15ef7731fdd75f02d7c8c3c2f14322dea5f0ce79a76e10a592a3017"
     }
   ],
   "output": null

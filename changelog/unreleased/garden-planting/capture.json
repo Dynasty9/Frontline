@@ -1,10 +1,24 @@
 {
-  "before_ref": "e09de96a9eca5c266d1aa1327aaa3a0f4a185d5f",
-  "source_ref": "4297b1632d70c57347afaf1e23388ba5a2213c48",
+  "before_ref": "aba7d654b920a349a43f22b66e2dfccd4306858e",
+  "source_ref": "34f5f8dad154dad745df08d8cf403f4e74795c49",
   "engine": "Godot 4.7.2 stable ed1daf0bf",
   "stage": "tools/showcase/building-surfaces.tscn; tests/fixtures/environment-views.gd",
   "command": "godot --path CHECKOUT --resolution 1600x900 tools/showcase/building-surfaces.tscn -- --building-out=OUTPUT --offscreen FLAGS",
   "comparisons": [
+    {
+      "subjects": [
+        "town"
+      ],
+      "command": "godot --path CHECKOUT --resolution 1600x900 --script tests/fixtures/environment-views.gd -- --aivai --seed=3 --offscreen --nohud --set=perf:0 --preset=high --mood=day --focus=0,0 --capture-set=town",
+      "view": "garden",
+      "before_env": "FL_ONLY_VIEW=garden,-380.5016,190.8693,13.0,-45.0,3.64159265358979",
+      "crop": [
+        300,
+        130,
+        1500,
+        790
+      ]
+    },
     {
       "subjects": [
         "house_garden"
@@ -18,31 +32,18 @@
       ],
       "cameras": {
         "house_garden": [
-          -0.27400016784668,
+          -0.0889992713928223,
           2.97118353843689,
           2.85474443435669,
-          15.5725002288818,
-          61.6516761779785
+          15.6677932739258,
+          62.2481727600098
         ]
       },
       "crop": [
-        200,
-        160,
-        1400,
-        860
-      ]
-    },
-    {
-      "subjects": [
-        "town"
-      ],
-      "command": "godot --path CHECKOUT --resolution 1600x900 --script tests/fixtures/environment-views.gd -- --aivai --seed=3 --offscreen --nohud --set=perf:0 --preset=high --mood=day --focus=0,0 --capture-set=town",
-      "view": "street",
-      "crop": [
-        0,
         300,
-        1100,
-        900
+        300,
+        1450,
+        880
       ]
     },
     {
@@ -57,8 +58,34 @@
         1000,
         520
       ]
+    },
+    {
+      "subjects": [
+        "planting"
+      ],
+      "file": "planting.jpg",
+      "flags": [
+        "--building-single",
+        "--building-kinds=planting"
+      ],
+      "after_only": true,
+      "cameras": {
+        "planting": [
+          0.0,
+          1.26517426967621,
+          -0.5,
+          8.4769926071167,
+          41.1478271484375
+        ]
+      },
+      "crop": [
+        80,
+        80,
+        1540,
+        800
+      ]
     }
   ],
-  "notes": "Both sides render the source_ref studio stage: house_garden is a house with its yard, and where BuildingPlanting exists the planting TownGen lays out (studio hedge 0.7 m so the camera sees over it). The baseline is the house plans branch (with the town realism stack), which this builds on.",
-  "composition": "PIL: matched rows, 792 px halves, JPEG quality 82"
+  "notes": "Both sides render the source_ref studio stage (copied into the baseline checkout): house_garden is a house with its yard and, where BuildingPlanting exists, the planting TownGen lays out (studio hedge 0.7 m so the camera sees over it). The town's garden view is chosen by the source_ref fixture (a clipped hedge with flowering hydrangeas or roses behind it, at a house still lived in); the baseline has no planting, so it renders that camera through FL_ONLY_VIEW. The planting stage exists only after: every shrub kind in and out of flower, a hedge of each green, two beds, and ivy up a stone wall. The baseline is the house plans branch (with the town realism stack and the war debris), which this builds on.",
+  "composition": "PIL: matched rows, 792 px halves, JPEG quality 82; the planting stage cropped and scaled to 1600 px, JPEG quality 84"
 }
