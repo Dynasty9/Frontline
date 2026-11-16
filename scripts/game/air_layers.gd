@@ -27,9 +27,9 @@ extends Node3D
 ## down off the ridges)].
 const MOOD := {
 	"day": [2.5, 0.0002, 0.8, 0.35, 0.0002],
-	"golden": [3.0, 0.0005, 3.0, 0.62, 0.0035],
-	"dawn": [6.0, 0.0006, 3.4, 0.66, 0.0055],
-	"dusk": [3.5, 0.0005, 3.0, 0.62, 0.0035],
+	"golden": [3.0, 0.0005, 2.6, 0.76, 0.0007],
+	"dawn": [6.0, 0.0006, 3.0, 0.78, 0.0012],
+	"dusk": [3.5, 0.0005, 2.6, 0.76, 0.0007],
 	"overcast": [4.0, 0.0003, 0.5, 0.3, 0.0],
 	"night": [3.5, 0.0004, 0.9, 0.5, 0.0004],
 	"rain": [4.0, 0.0006, 0.4, 0.3, 0.0],
@@ -162,11 +162,18 @@ func apply_mood(m: String) -> void:
 	_mist_h = float(a[0])
 	_haze = float(a[1])
 	atmo.sun.light_volumetric_fog_energy = float(a[2])
+	if plumes:
+		# (smoke is sooty, far darker than mist: where the sun is turned up for
+		# the thin air's shafts it mustn't make a plume toward the sun glare)
+		plumes.set_sun(float(a[2]))
 	atmo.env.volumetric_fog_anisotropy = float(a[3])
 	# (the skylight in the air too: turned from the sun the mist is lit blue-grey
-	# by the sky rather than going dark; less of it under a low sun, so the air
-	# in a house's or a ridge's shadow stands dark against the sunlit air)
-	atmo.env.volumetric_fog_ambient_inject = 0.12 if float(a[4]) > 0.003 else 0.3
+	# by the sky rather than going dark. Under a low sun hardly any: the low
+	# haze throws the sun's light almost straight on (anisotropy ~0.8), so it's
+	# all but clear looking across or away from the sun and bright only toward
+	# it, where the air in a house's, a tree's or a ridge's shadow, lit by
+	# nothing else, stands out dark between the sunlit rays)
+	atmo.env.volumetric_fog_ambient_inject = 0.04 if float(a[4]) > 0.001 else 0.3
 	if mat == null:
 		return
 	var fog: Color = atmo._d.fog

@@ -31,6 +31,7 @@ var _fire_t := 0.0
 var _flash_at := Vector3.ZERO
 var _flash_size := 0.0
 var _flash_age := 9.0
+var _sun_k := 1.0
 var glow_k := 1.0  # (FL_DEBUG_AIR_FLIP_GLOW turns the light in the smoke off and on)
 var _debug_k := float(OS.get_environment("FL_DEBUG_PLUMES")) if OS.has_environment("FL_DEBUG_PLUMES") else 1.0  # thicken them, to see where they hang
 
@@ -98,6 +99,9 @@ func tick(dt: float, on: bool) -> void:
 	visible = on
 	if not on:
 		return
+	var cam := Vector3.ZERO
+	if world.get("cam") and world.cam.cam:
+		cam = world.cam.cam.global_position
 	_fire_t -= dt
 	if _fire_t <= 0.0:
 		_fire_t = 1.0
@@ -123,11 +127,13 @@ func tick(dt: float, on: bool) -> void:
 		var drift := 0.0 if pl[7] else WeatherGrid.DRIFT * age
 		var length := 14.0 + 7.0 * size + (24.0 if pl[7] else WeatherGrid.DRIFT * age * 0.8)
 		var width := 9.0 + 5.0 * size + age * 0.35
-		var height := 8.0 + 6.0 * size + age * 0.5
+		var height := 8.0 + 6.0 * size + (6.0 if pl[7] else age * 0.5)
 		var w3 := Vector3(_wind.x, 0.0, _wind.y)
 		var gy: float = world.ground_y(src)
+		# (a fire's column rises from the flames, on a roof as on the ground)
+		var base := maxf(gy, src.y - 1.5) if pl[7] else gy
 		v.size = Vector3(length, height, width)
-		v.position = Vector3(src.x, gy, src.z) + w3 * (drift + length * 0.5 - 3.0) + Vector3(0, height * 0.5 - 1.0, 0)
+		v.position = Vector3(src.x, base, src.z) + w3 * (drift + length * 0.5 - 3.0) + Vector3(0, height * 0.5 - 1.0, 0)
 		# (a blast's thins away over its life; a fire's stands as long as it
 		# burns, its life pushed on at every look, and thins out once it's out)
 		var fade := smoothstep(0.0, 5.0, life - age) if pl[7] else pow(1.0 - age / life, 1.4)
@@ -137,6 +143,11 @@ func tick(dt: float, on: bool) -> void:
 		m.set_shader_parameter("spread", clampf(age / 20.0, 0.0, 1.0))
 		# a fire lights its own smoke from below; a burst close by lights the lot
 		m.set_shader_parameter("glow", float(pl[8]) * glow_k if pl[7] else 0.0)
+		m.set_shader_parameter("fire", 1.0 if pl[7] else 0.0)
+		m.set_shader_parameter("cam_pos", cam)
+		if pl[7]:
+			m.set_shader_parameter("fire_at", src)
+			m.set_shader_parameter("fire_r", 1.5 + 0.6 * size)
 		var fk := 0.0
 		if flash > 0.0:
 			fk = flash * clampf(1.0 - Defs.flat(_flash_at - v.position).length() / (30.0 + length * 0.5), 0.0, 1.0)
@@ -170,6 +181,15 @@ func _fires() -> void:
 			_start(at, big, 8.0, k, true)[8] = heat
 
 
+## The sun's strength in the fog (AirLayers' mood): the smoke's own
+## brightness is scaled against it, so a plume looks the same grey whatever
+## the thin air needs.
+func set_sun(energy: float) -> void:
+	_sun_k = clampf(0.9 / maxf(energy, 0.01), 0.25, 1.0)
+	for pl in _p:
+		(pl[1] as ShaderMaterial).set_shader_parameter("sun_k", _sun_k)
+
+
 ## How many plumes are hanging (for --stats).
 func count() -> int:
 	var n := 0
@@ -193,7 +213,13 @@ uniform float spread = 0.0;  // how far it has opened out (0 new, 1 old)
 // (sRGB) a neutral grey with a little of the sky in it; lit, near white
 uniform vec3 shade_col : source_color = vec3(0.4, 0.42, 0.46);
 uniform vec3 lit_col : source_color = vec3(0.93, 0.92, 0.9);
+global uniform vec4 cloud_sun_disc;  // toward the sun
+uniform vec3 cam_pos = vec3(0.0);
+uniform float sun_k = 1.0;  // the smoke's brightness against the sun's strength in the fog
+uniform float fire = 0.0;  // 1 over a fire (the column rising off it)
 uniform float glow = 0.0;  // the fire under it (0 none, 1 roaring)
+uniform vec3 fire_at = vec3(0.0);  // where it burns
+uniform float fire_r = 3.0;  // how wide its light reaches into the smoke (m)
 uniform float flash = 0.0;  // a burst close by, this instant
 uniform vec3 flash_at = vec3(0.0);
 
@@ -216,13 +242,24 @@ void fog() {
 	// puffs: the rising pall breaks into billows along its length
 	float puffs = 0.55 + 0.45 * sin(along * 18.0 - TIME * 0.4 + n1 * 5.0);
 	float rags = smoothstep(0.45, 0.8, n1 * 0.8 + n2 * 0.5 - spread * 0.1) * puffs;
-	DENSITY = density * body * rags * 2.2;
-	ALBEDO = mix(shade_col, lit_col, smoothstep(cy - r * 0.8, cy + r * 0.7, u.y));
-	// the fire's light on the smoke over it: orange on the underside close
-	// above the flames, dying away up the column and downwind (the fog gives
-	// off what EMISSION says wherever it is, so it follows the smoke's density)
-	float low = exp(-u.y * 7.0) * exp(-along * 4.0);
-	vec3 e = vec3(1.0, 0.4, 0.1) * glow * low * 30.0;
+	// over a fire, the column rising straight off the flames before the wind
+	// lays it over: thick and torn just above them, opening out as it climbs
+	vec3 rel = p - fire_at;
+	float up = max(rel.y, 0.0);
+	vec2 side = rel.xz - wind * up * 0.35;
+	float near = exp(-dot(side, side) / (fire_r * fire_r * (1.0 + up * 0.12)));
+	float root = fire > 0.5 ? near * smoothstep(-1.0, 1.0, rel.y) * exp(-up / 14.0) * smoothstep(0.3, 0.75, n2 * 0.7 + n1 * 0.5) : 0.0;
+	DENSITY = density * (body * rags * 2.2 + root * 4.0);
+	// (looking through it toward a low sun the fog throws nearly all the sun's
+	// light at the eye: thick soot passes far less, so it's held back there,
+	// or a plume against the sun would glare white)
+	float into_sun = dot(normalize(p - cam_pos), cloud_sun_disc.xyz);
+	ALBEDO = mix(shade_col, lit_col, smoothstep(cy - r * 0.8, cy + r * 0.7, u.y)) * sun_k * mix(1.0, 0.2, smoothstep(0.5, 0.95, into_sun));
+	// the fire's light on that smoke: brightest just above the flames, dying
+	// away with height and to either side, and only where there's smoke to
+	// catch it (the fog gives off what EMISSION says wherever it is, so it's
+	// scaled by the smoke's own density)
+	vec3 e = vec3(1.0, 0.36, 0.07) * glow * near * exp(-up / fire_r) * smoothstep(-1.5, 0.5, rel.y) * 22.0;
 	// a burst's flash, falling off from where it went up
 	float fd = distance(p, flash_at);
 	e += vec3(1.0, 0.78, 0.5) * flash * 60.0 / (1.0 + fd * fd * 0.01);

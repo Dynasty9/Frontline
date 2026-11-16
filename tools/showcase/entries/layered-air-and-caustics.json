@@ -51,17 +51,17 @@
     },
     {
       "file": "changelog/unreleased/layered-air-and-caustics/glow-flicker-poster.jpg",
-      "sha256": "826151bbbf460aa4a302541632ef6e65098acd966087057879c6ccf2fe0edf6b",
+      "sha256": "4b8832db7e2a6212bcdca9e2f4fddc0442b68cd501f1d03993aaaf61929d050f",
       "caption": "An ON frame of the glow flicker."
     },
     {
       "file": "changelog/unreleased/layered-air-and-caustics/glow-flicker.webm",
-      "sha256": "a83a7d0c10ec4cb1399519067541a7bfda46f8e9f4b740be292e7611eebe4016",
+      "sha256": "1b72a8b54fc668facb095b71ae195aee688fcf221d1e08805dc1fae0971ec6ac",
       "caption": "The same fire frame, the glow flipped every 30 frames."
     },
     {
       "file": "changelog/unreleased/layered-air-and-caustics/glow-off-on.jpg",
-      "sha256": "02a8fa51dad42b444ddaf72545957ddd88d2a69a4d113d0e628b355d28a29913",
+      "sha256": "f067202284d11a431d952942438d51e0339dded2941141ae79e639b56a0bc403",
       "caption": "OFF over ON crop: --scenario=fire --seed=3 --set=mood:dusk --focus=26,-38 --zoom=30 --pitch=-10 --cam-yaw=0, FL_DEBUG_AIR_FLIP=25 with FL_DEBUG_AIR_FLIP_GLOW (only the light in the smoke flips)."
     },
     {
@@ -131,18 +131,18 @@
     },
     {
       "file": "changelog/unreleased/layered-air-and-caustics/shafts-flicker-poster.jpg",
-      "sha256": "81a7891ee0638e6ba2e7decf741c09729c7ff6765b0986a924da293442460a6e",
+      "sha256": "426fe0ccc39e0282f906685914135adb8f8ee8c0eabdcc48f3d1b4fcd899cc8c",
       "caption": "An ON frame of the dawn flicker."
     },
     {
       "file": "changelog/unreleased/layered-air-and-caustics/shafts-flicker.webm",
-      "sha256": "d67188367c0be8e944f576206156db6506351517d68031e997dafbaca93e72e0",
+      "sha256": "c92715a18ec0bdf3504037717e50437c788adc7cec6bd01dadaacbc69b1c708c",
       "caption": "The same dawn frame, the layers flipped every 30 frames."
     },
     {
       "file": "changelog/unreleased/layered-air-and-caustics/shafts-off-on.jpg",
-      "sha256": "8525c5fa2b9c55cdc975688c50377a4dc8c56ec379709aa3f011897652befebe",
-      "caption": "OFF over ON crop of one frozen dawn frame: --aivai --seed=3 --set=mood:dawn --focus-town --zoom=70 --pitch=-8 --cam-yaw=4.5, FL_DEBUG_AIR_FLIP=8."
+      "sha256": "f8d6f6eeeda330638576777b6f1bf6ff02fe0fe7b6eb9689bf74906333e7fc37",
+      "caption": "OFF over ON of one frozen dawn frame: --aivai --seed=3 --set=mood:dawn --focus-town --zoom=70 --pitch=-3 --cam-yaw=4.5, FL_DEBUG_AIR_FLIP=8."
     }
   ],
   "output": null

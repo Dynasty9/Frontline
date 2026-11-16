@@ -1316,13 +1316,14 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   ground as it dries after rain), thinning upward to a soft top so the ridges behind stand out as silhouettes. A haze lies aloft, lit by the sun, so a cloud's shadow falls through it as a shaft;
   at a low sun the air throws its light forward (the fog's anisotropy follows the mood), so looking toward the sun the
   mist glows, and turned from it the sky lights it blue-grey. At dawn, golden hour and dusk a faint low haze fills the
-  first tens of metres over the whole field, with less skylight in it, so the sun's shafts show: the fog reads the
-  sun's shadow map for houses and trees, and the air shader marches the sun's ray a few times over the ground's height
-  for the ridges. Close up, the smoke a barrage or a fire leaves is a plume
+  first tens of metres with the fog's anisotropy near 0.8 and little skylight in it, so it glows close around a low sun
+  and stays clear across and away from it, and the air in shadow stays dark: the fog reads the sun's shadow map for
+  houses and trees, and the air shader marches the sun's ray a few times over the ground's height for the ridges. Close up, the smoke a barrage or a fire leaves is a plume
   of its own (`smoke_plumes.gd`, up to 16 fog volumes laid along the wind): dense where it rose, drawn out, climbing and
   breaking into rags downwind, lit on top and grey underneath, until it thins away; shells landing close together feed
-  one plume. A plume over a burning house or wreck stands as long as the fire burns and is lit orange from below by
-  it (the fog's own emission, following the smoke's density), and a shell burst flashes the pall around it for a
+  one plume. A plume over a burning house or wreck stands as long as the fire burns and is lit orange just above the
+  flames, fading upward and leaning with the wind (the fog's own emission, scaled by the smoke's density; the plume
+  carries a thick root column over the fire for it to light), and a shell burst flashes the pall around it for a
   frame or two. Over that, a coarse weather grid sized from the map (32 cells
   across a 1 km map, 64 on the bigger ones) holds the mist, rain, dust and smoke over each patch of ground: rain
   comes over in heavier and lighter bands, shells on dry ground and vehicles on dry tracks raise dust, and barrages,

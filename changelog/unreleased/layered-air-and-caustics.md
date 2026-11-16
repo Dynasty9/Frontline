@@ -9,11 +9,11 @@ caption = "Off and on: mist lying in the low ground, glowing toward the dawn sun
 
 [[screenshots]]
 file = "shafts-off-on.jpg"
-caption = "Off and on at dawn, looking toward the sun: the low haze glows, with soft darker streaks in the shadows of the trees"
+caption = "Off and on at dawn, looking toward the sun: the air glows close around the sun, with softer shadowed air below the ridges, while the town stays clear"
 
 [[screenshots]]
 file = "glow-off-on.jpg"
-caption = "Off and on: a burning house lighting its own smoke orange from below"
+caption = "Off and on: a burning house lighting the smoke just above its flames"
 
 [[screenshots]]
 file = "plume-off-on.jpg"
@@ -89,10 +89,10 @@ caption = "A barrage's plume drifting off downwind and breaking up."
   off wet ground after rain, torn into wisps by the wind. Look toward a low sun and it glows. A **haze** lies higher
   up; the sun lights it, so clouds throw shafts of shadow through it.
 - **Smoke that hangs**: a barrage or a burning building leaves a plume, dense where it rose, drawn out downwind,
-  lit on top and grey underneath, breaking up and thinning away. A burning house or wreck lights its own smoke orange
-  from below for as long as it burns, and each shell burst flashes the smoke hanging round it.
-- **Sun shafts**: at dawn, golden hour and dusk a faint haze lies over the field, and toward a low sun the air in the
-  shadow of a house, a wood or a ridge stands dark against the sunlit air beside it.
+  lit on top and grey underneath, breaking up and thinning away. A burning house or wreck lights the smoke rising just
+  above its flames orange for as long as it burns, and each shell burst flashes the smoke hanging round it.
+- **Low sun**: at dawn, golden hour and dusk the air throws the sun's light forward, so it glows close around a low
+  sun while looking across or away from it stays clear, and the air in the shadow of houses, woods and ridges stays dark.
 - **The weather varies across the map**: rain comes over in heavier and lighter bands, and shells and vehicles raise
   dust from dry ground.
 - It all eases off as you zoom out, so it never hides the fighting you're watching. It's scenery only: it doesn't
