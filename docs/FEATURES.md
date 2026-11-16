@@ -1321,7 +1321,23 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   of day or weather retraces it all (the bounce follows the sun); tiles with nothing in reach are written as open
   sky without tracing. Map size comes from `MapDims` (2 m and 3 m cubes on the larger maps, the same grid). It's
   light only (no gameplay reads it, no RNG, never on the server) and a graphics setting: High (from the High preset),
-  Low (sky shade only, two reads, no bounce: the Medium preset and the browser) or Off.
+  Low (sky shade only, two reads, no bounce: the Medium preset and the browser) or Off. Reflections are shut in with
+  the sky too (specular occlusion, after Frostbite): the probes' two bands give the share of sky seen in the
+  reflected direction, m0 + 3 m1.r for a glossy surface easing to the cosine's m0 + 2 m1.n for a rough one, and the
+  rest of the reflection shows the room's own bounce instead (Godot's RADIANCE), so wet floors indoors, under eaves
+  and in trenches stop mirroring the bright sky. Tree crowns are laid as leaves, sized to the tree the game grows (a
+  fir's cone in two tiers, a field tree's dome, an orchard tree's small one), a third of the light stopped a cube;
+  the trace tells them apart and what comes through or off them is green, so a wood's floor and the men in it sit in
+  a dimmer, greener shade. Light leaks: a pixel on a floor by a wall sits between a probe in the room and one outside,
+  so on High it reads the cubes halfway to the probes on either side of it, each way (six reads), and leaves out any
+  with a wall or roof between (a cheap stand-in for DDGI's per-probe depth). Fires and lamps (lights in the
+  `probe_light` group) light the probes round them: the 16 nearest the camera, at their steady brightness rather
+  than their flicker, are traced from every probe within 1.6 times their range (20 m at most) through the cubes,
+  so walls keep the glow in (the burning thing's own cubes aside: the flames fill its box), into the atlas's bottom
+  block beside the heights; a light that comes, goes, moves a metre or changes by a quarter retraces only its own
+  tiles, four a frame. It reaches the browser too, which has no fire lights of its own. The skinned riflemen, whose
+  imported material can't read the probes, get a small shader that does what it did plus the probes' terms, so a
+  man in a room or a wood takes its shade.
 - **Cinematic lighting** (`atmosphere.gd`, `cinematic_fx.gd`, `physical_sky.gd`), each part its own setting and all
   of it on the **Cinematic** preset (Ultra plus everything below; for a fast graphics card, screenshots and replays).
   None of it reaches the simulation, so it can't change a battle or its seed.

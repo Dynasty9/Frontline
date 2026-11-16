@@ -2,8 +2,9 @@ extends Node
 ## The light probes without a battle: the setting and its presets, saved
 ## settings taking it up, the probe reads going into the shaders that should
 ## have them (and only those), the structures' boxes laid into cubes (thin
-## walls filled, windows left open), and a structure changing queueing the
-## tiles round it.
+## walls filled, windows left open, crowns marked as leaves), a structure
+## changing queueing the tiles round it, and fires and lamps queueing the
+## tiles their glow reaches when they come, go, move or change.
 
 
 func _ready() -> void:
@@ -17,7 +18,8 @@ func check() -> void:
 	_check_shaders()
 	_check_cubes()
 	_check_changes()
-	print("LIGHT PROBES passed: presets, saved settings, shaders, cubes, changes")
+	_check_local_lights()
+	print("LIGHT PROBES passed: presets, saved settings, shaders, cubes, changes, local lights")
 	get_tree().quit()
 
 
@@ -75,6 +77,25 @@ func _check_shaders() -> void:
 		assert(g.contains("probe_light(") and g.count("void light()") == 1)
 		var grass := CloudShadow.shader(Grass.GRASS_SHADER, CloudShadow.BACKLIGHT | CloudShadow.NO_SPECULAR | CloudShadow.FOLD, on)
 		assert(not grass.contains("probe_light(") and not grass.contains("#define PROBE_LIGHT"), "grass doesn't read the probes")
+	var px := LightProbes.PIXEL
+	# reflections shut in with the sky: the probes' bands in the reflected direction
+	# take the sky out of a reflection (RADIANCE), the room's own light in its place
+	var use := LightProbes.PIXEL_USE
+	assert(use.contains("RADIANCE = vec4(probe_lb * PROBE_SPEC_ROOM, 1.0 - probe_so);") and use.contains("reflect(-probe_v, probe_n)"))
+	# light leaks: a pixel leaves out the probes with a wall between, on High
+	assert(px.contains("global uniform sampler2DArray probe_voxels") and px.contains("col = probe_side(col, p, base, ps, t_lo, t_hi);"))
+	# the fires' glow, from the atlas's bottom block
+	assert(px.contains("ll = lc * lc * 8.0;") and LightProbes.BAKE_SHADER.contains("vec3 local_light(vec3 o)"))
+	# leaves: the crowns' cubes are told apart and send on green light
+	assert(LightProbes.BAKE_SHADER.contains("bool leafy(float dn)") and LightProbes.BAKE_SHADER.contains("lh = LEAF * "))
+	# the skinned soldiers read the probes too, through their own copy of the imported material
+	var skin_src := LightProbes.SKIN_SHADER
+	var skin := LightProbes.inject(skin_src)
+	assert(skin.contains("vec4 probe_light(") and skin.contains("AO *= probe_k.x;") and skin.contains("RADIANCE = vec4("))
+	var std := StandardMaterial3D.new()
+	std.albedo_color = Color(0.5, 0.6, 0.7)
+	var sm := LightProbes.skin_material(std)
+	assert(sm.get_shader_parameter("albedo") == Color(0.5, 0.6, 0.7), "the soldier keeps his colour")
 	assert(LightProbes.BAKE_SHADER.contains("shader_type canvas_item;"))
 	# the atlas layout the pixels read is the one the bake writes
 	assert(LightProbes.ATLAS == Vector2i(4096, 1536))
@@ -112,6 +133,25 @@ func _check_cubes() -> void:
 	bytes.fill(0)
 	lp._rasterize([Transform3D(Basis(Vector3.UP, PI * 0.5), Vector3(10.0, 1.5, 10.0)), Vector3(2.0, 1.5, 0.2), 1.0, 0.4], 0.0, 0.0, geo, bytes)
 	assert(at.call(10, 1, 8) != 0 and at.call(10, 1, 11) != 0 and at.call(12, 1, 10) == 0)
+	# a tree's crown is laid as leaves (the tracer tints what comes through it green),
+	# a wall never is
+	var tree := Structure.new()
+	tree.skind = "tree"
+	tree.position = Vector3(20.0, 0.0, 20.0)
+	tree.variant = 0
+	var crown: Array = lp._boxes(tree)
+	assert(not crown.is_empty(), "a tree has a crown")
+	for box: Array in crown:
+		if (box[0] as Transform3D).origin.y > 3.0:
+			assert(is_equal_approx(float(box[2]), LightProbes.FOLIAGE), "a crown is leaves")
+	bytes.fill(0)
+	for box: Array in crown:
+		lp._rasterize(box, 0.0, 0.0, geo, bytes)
+	assert(at.call(20, 4, 20) >> 4 == roundi(LightProbes.FOLIAGE * 15.0) and at.call(20, 0, 20) == 0, "leaves up in the crown, none at the foot")
+	assert(roundi(LightProbes.FOLIAGE * 15.0) != 15 and roundi(LightProbes.FOLIAGE * 15.0) != roundi(LightProbes.ROOF * 15.0))
+	tree.burnt = true
+	assert(lp._boxes(tree).is_empty(), "a burnt tree has no leaves")
+	tree.free()
 	lp.free()
 
 
@@ -130,4 +170,64 @@ func _check_changes() -> void:
 	# it stands just inside tile (1, 0), within reach of tile (0, 0)
 	assert(Array(lp._tile_queue) == [0, 1], "queued %s" % [lp._tile_queue])
 	st.free()
+	lp.free()
+
+
+## A fire's light (an OmniLight3D in the probe_light group) queues the tiles its
+## glow reaches; the same fire flickering on queues nothing more; moved, it
+## queues them again; put out, it queues them once more (to clear them), and
+## then it's gone from the tracer's list.
+func _check_local_lights() -> void:
+	var lp := LightProbes.new()
+	lp._vsz = MapDims.SIZE / LightProbes.NV
+	lp._ready_size = 0
+	lp._local_mat = ShaderMaterial.new()
+	lp._local_dirty.resize(LightProbes.TILES * LightProbes.TILES)
+	lp.world = null
+	add_child(lp)
+	var tw := LightProbes.TILE * lp._vsz
+	# in the middle of tile (3, 2), 4 m range: its glow stays in the tile
+	var fire := OmniLight3D.new()
+	fire.omni_range = 4.0
+	fire.light_energy = 3.0
+	fire.add_to_group(&"probe_light")
+	add_child(fire)
+	fire.global_position = Vector3(-MapDims.HALF + tw * 3.5, 1.0, -MapDims.HALF + tw * 2.5)
+	var tile := 2 * LightProbes.TILES + 3
+	lp._gather_lights()
+	assert(Array(lp._local_queue) == [tile], "the fire's tile queued: %s" % [lp._local_queue])
+	assert(int(lp._local_mat.get_shader_parameter("light_count")) == 1)
+	lp._local_queue.clear()
+	lp._local_dirty.fill(0)
+	# flicker: a tenth up and down, nothing to trace again
+	for e in [3.3, 2.7, 3.2, 2.9]:
+		fire.light_energy = e
+		lp._gather_lights()
+	assert(lp._local_queue.is_empty(), "a flicker traces nothing again")
+	# moved a whole tile east: the old tile (to clear it) and the new
+	fire.global_position += Vector3(tw, 0, 0)
+	lp._gather_lights()
+	assert(Array(lp._local_queue) == [tile, tile + 1], "moved: %s" % [lp._local_queue])
+	lp._local_queue.clear()
+	lp._local_dirty.fill(0)
+	# put out: its steady glow fades below the mark and its tile is cleared
+	fire.light_energy = 0.0
+	for i in 12:
+		lp._gather_lights()
+	assert(Array(lp._local_queue) == [tile + 1], "put out: %s" % [lp._local_queue])
+	assert(int(lp._local_mat.get_shader_parameter("light_count")) == 0)
+	# lights past LOCAL_MAX: only the nearest count
+	var many: Array[OmniLight3D] = []
+	for i in LightProbes.LOCAL_MAX + 4:
+		var l := OmniLight3D.new()
+		l.light_energy = 2.0
+		l.add_to_group(&"probe_light")
+		add_child(l)
+		l.global_position = Vector3(i * 3.0, 1.0, 0.0)
+		many.append(l)
+	lp._gather_lights()
+	assert(int(lp._local_mat.get_shader_parameter("light_count")) == LightProbes.LOCAL_MAX)
+	for l in many:
+		l.free()
+	fire.free()
 	lp.free()

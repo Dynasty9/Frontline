@@ -3,36 +3,51 @@
   "title": "Rooms and narrow spaces take their skylight from the world round them",
   "version": "unreleased",
   "kind": "new",
-  "summary": "Rooms under a roof, wall feet and gaps between houses lose skylight; open ground is unchanged.",
+  "summary": "Rooms, wall feet, woods and gaps between houses lose skylight; reflections indoors lose the sky; fires glow on their surroundings; open ground is unchanged.",
   "medium": "motion",
-  "stage": "--scenario=breach --seed=3 --fixed-fps 30. Midday room: --mood=day --focus=0,-30 --zoom=8 --pitch=-62 at 5 s. Golden-hour room: --mood=golden --focus=0,-30 --zoom=12 --pitch=-40 --cam-yaw=0.5 at 5 s. Between houses (review): --mood=golden --focus=7,-31 --zoom=12 --pitch=-10 at 12 s. Destruction: --mood=day --focus=12,-31 --zoom=14 --pitch=-50 --blast-at=14,-29,3,6, 60 frames every 0.1 s. The roof over the room is lifted by the defenders inside.",
+  "stage": "--scenario=breach --seed=3 --fixed-fps 30. Midday room: --mood=day --focus=0,-30 --zoom=8 --pitch=-62 at 5 s; the same in the rain: --mood=rain. Golden-hour room: --mood=golden --focus=0,-30 --zoom=12 --pitch=-40 --cam-yaw=0.5 at 5 s. Leaks (review): FL_DEBUG_PROBES_AB=leak FL_DEBUG_PROBES_VIEW=4, midday room. --scenario=fire --seed=3: wood edge --mood=day --focus=-18,-30 --zoom=12 --pitch=-55 at 5 s; night fires --mood=night --focus=-6,-22 --zoom=14 --pitch=-50 at 8 s. Between houses (review): --mood=golden --focus=7,-31 --zoom=12 --pitch=-10 at 12 s. Destruction: --mood=day --focus=12,-31 --zoom=14 --pitch=-50 --blast-at=14,-29,3,6, 60 frames every 0.1 s.",
   "rationale": "Each sheet is cropped tight on where probes matter. OFF and ON are adjacent frames (1/30 s apart) of one probes-on run that cycles the probes off, on, their term and the bent normal three frames each (FL_DEBUG_PROBES_AB=cycle), so smoke and men barely move between them; the probe term comes from the same run. The difference panel is ON minus OFF x4 around mid grey. The flicker clip alternates OFF and ON; the destruction clip pairs the game with the probe term from a second identical fixed-fps run (FL_DEBUG_PROBES_VIEW=1).",
   "capture": {
     "provenance": "Recaptured off-screen from this branch (Forward+, RTX 3090, High preset) with the commands in stage; panels are consecutive frames of one fixed-fps run, so they share camera, units and smoke.",
     "comparison": "Player sheets: top left probes off, bottom left on, top right the probe term (sky share on grey, bounce amplified), bottom right ON minus OFF x4 on mid grey. Review sheets (PR only) show the bent normal instead of the difference. Flicker: off and on alternate each second on one frame. Destruction: the game and the probe term from two identical fixed-fps runs.",
-    "limits": "Measured: the midday room falls to 0.75 of its brightness (sunlit floor 0.61, shaded floor 0.73); its shade is 0.22 of the sunlit floor in linear light. At golden hour the grass in the house's shade by its walls darkens (0.82 at the wall foot, 0.86 four metres out) and far grass stays at 1.00; outdoors in sun the change is small. Fast debris still moves between the two frames and speckles the difference. Trenches are narrower than the 2 m grid and are not shown. The destruction clip predates the floor-bounce change. The Compatibility renderer (browser) gets the skylight shading and bounce but not the indoor sun cut."
+    "limits": "Measured (linear light): the midday room falls to 0.75 of its brightness; its shade is 0.22 of the sunlit floor. In the rain the wet floor indoors falls to 0.29 as the sky leaves its reflection. Under the wood the ground is 9-14% dimmer and loses 20-28% of its blue. Round the night fires the ground is up to half as bright again. Light-leak fix: visible on wall tops, sills and door leaves; room floors were already held at the 30% skylight floor. Fast debris and flames move between the two frames and speckle the difference. Trenches are narrower than the 2 m grid and are not shown. The destruction clip predates this pass. The Compatibility renderer (browser) gets the skylight shading, reflections and fire glow but not the indoor sun cut."
   },
-  "source_ref": "dines/probe-grid-gi-0571ca: the warm-bounce commit after edadf5ca.",
+  "source_ref": "dines/probe-grid-gi-0571ca: the specular-occlusion, canopy, leak and fire-glow pass after 0b2ac192.",
   "sources": [
     {
       "file": "changelog/unreleased/light-probes/room-under-roof.jpg",
       "caption": "Midday room: OFF/ON, probe term and the difference x4.",
-      "sha256": "0652686a3b0d5f48b386fa717c648d44232411084ea1e994dfa8de99f2b223d7"
+      "sha256": "768b19afc1c9c7feccfd2b0f33a539ec330504d0c179c6b020058ff22ce3cc8c"
+    },
+    {
+      "file": "changelog/unreleased/light-probes/wet-room-rain.jpg",
+      "caption": "The same room in the rain: OFF/ON (specular occlusion), probe term and the difference x4.",
+      "sha256": "336b80c70aa47a9b981bab9733e82ac65f6da25b786003ffe0786c01260a1e16"
+    },
+    {
+      "file": "changelog/unreleased/light-probes/wood-edge.jpg",
+      "caption": "Wood edge at midday: OFF/ON, probe term (green bounce under the crowns) and the difference x4.",
+      "sha256": "57ece4c560cd5efaa5c03916aca60ccf528e6616adeb96d9b87fa05ca7302145"
+    },
+    {
+      "file": "changelog/unreleased/light-probes/fire-glow-night.jpg",
+      "caption": "Night fires (a hedge and a grass patch): OFF/ON, probe term (the fire's injected glow) and the difference x4.",
+      "sha256": "9b3df47de8dcf82633e1083d3e8252c706c85fcd2e3b292edeb6ce8f1202402d"
     },
     {
       "file": "changelog/unreleased/light-probes/room-golden-hour.jpg",
       "caption": "Golden-hour room: OFF/ON, probe term and the difference x4.",
-      "sha256": "e0997650ca6fce906e357ece7f04704393055bc9e21bbb9d5d1758df8e1abe75"
+      "sha256": "198efc0b9fcf021f296ddd1feff3eebe1abf01f9f919b64d361e5a0a548930e4"
     },
     {
       "file": "changelog/unreleased/light-probes/room-flicker.webm",
       "caption": "Probes off/on every second on one frame of the midday room, 8 s, VP9.",
-      "sha256": "051423d731821556b072858f196a0b446e17c0371da6b0e4b6249ec5f50831bb"
+      "sha256": "47292d3635f66d2875b6bf362a2f64c21c667b7126f22220d57c9e228a25499a"
     },
     {
       "file": "changelog/unreleased/light-probes/room-flicker.jpg",
       "caption": "Poster: the ON frame.",
-      "sha256": "5d5c069bd3ca3671c8880abfa69e238fe52b267f87e8add73b15db694efb2598"
+      "sha256": "2475afa3da93061c352a6176b77099e4a381252ee27e7d54f02320ca5087c06e"
     },
     {
       "file": "changelog/unreleased/light-probes/destroyed-house.webm",
@@ -47,17 +62,22 @@
     {
       "file": "changelog/unreleased/light-probes/review/pr-room-bent.jpg",
       "caption": "Review only (PR): midday room with the bent-normal panel.",
-      "sha256": "e2a197ebacd574a269af563e163c6d6dabc8f4ebf70f14bb5e2412458f3732ef"
+      "sha256": "ce8e7d4b8466de67cc070d6f87a2fae7211db9a668ee83bb20977ad8898c368d"
     },
     {
       "file": "changelog/unreleased/light-probes/review/pr-golden-bent.jpg",
       "caption": "Review only (PR): golden-hour room with the bent-normal panel.",
-      "sha256": "f0827f9719d5de4ada3fe36aaeb58c50efa9b6503188abf4922a9fe9fa781232"
+      "sha256": "5182026294a9606c95e4512f4cf1ad0b0b4d1817a7e906959896677262ea230d"
     },
     {
       "file": "changelog/unreleased/light-probes/review/pr-between-houses.jpg",
       "caption": "Review only (PR): golden hour between two houses, where outdoors the probes change little.",
       "sha256": "a81bf07a51bf556c423c74d99b29451d7d76f2a73948a5019805df09296dfff9"
+    },
+    {
+      "file": "changelog/unreleased/light-probes/review/pr-leak.jpg",
+      "caption": "Review only (PR): the light-leak wall test off and on, sky-share view, adjacent frames, and the difference x4.",
+      "sha256": "63b1dc111abeb49923c00552c09941a9dd451ad8f735fb494b8e9fa77a90473e"
     }
   ],
   "output": null

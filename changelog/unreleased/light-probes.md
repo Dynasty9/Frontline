@@ -1,11 +1,23 @@
 +++
 title = "Rooms and narrow spaces take their skylight from the world round them"
-summary = "A grid of light probes over the battlefield works out how much sky every room, wall foot and gap between houses can see. Rooms stay dim indoors even with their roof lifted to show the men inside, shut-in corners lose skylight, and open ground looks as before."
+summary = "Light probes work out how much sky every room, wall foot, wood and street can see. Rooms stay dim indoors with their roof lifted, wet floors under a roof stop mirroring the sky, woods sit in a green shade, fires glow on the ground round them, and open ground looks as before."
 kind = "new"
 
 [[screenshots]]
 file = "room-under-roof.jpg"
 caption = "Midday, a room seen through its lifted roof. Left, without and with the probes: with them the room reads as indoors, and its sunlit patch bounces warm light into the shade. Right, what the probes see (the share of sky each surface sees; dark is shut in) and the difference they make, four times over (darker where they take light, warmer where the bounce adds it)."
+
+[[screenshots]]
+file = "wet-room-rain.jpg"
+caption = "The same room in the rain. Without the probes its wet tiles mirror the grey sky over the roof; with them a reflection shows the sky only where the sky can be seen, so the floor indoors goes dark and wet."
+
+[[screenshots]]
+file = "wood-edge.jpg"
+caption = "The edge of a wood at midday. Under the trees the ground and the men on it sit in a dimmer, greener shade: the probes see the crowns as leaves, and light that comes through or off them is green."
+
+[[screenshots]]
+file = "fire-glow-night.jpg"
+caption = "Fires at night: a burning hedge and a grass fire. With the probes their light reaches past their own glow, warming the ground several metres round them (about half as bright again round the grass fire); walls keep it in."
 
 [[screenshots]]
 file = "room-golden-hour.jpg"
@@ -26,6 +38,13 @@ caption = "A house blown down, the game beside the probe term: within a second t
   so they take less skylight and less of the cool fill light. Open fields and roof tops look as before.
 - **Bounced light:** a sunlit patch on a floor or wall throws warm light into the shade round it, so a room's
   dark corners are dim, not black.
+- **Reflections know what's overhead:** wet floors indoors, under eaves and in trenches no longer mirror the bright
+  sky they can't see; they reflect the room round them instead.
+- **Woods:** under the trees the ground and soldiers sit in a dimmer, green-tinted shade.
+- **Fires and street lamps** throw a little warm light on the walls and ground round them, past where their own
+  light reaches, but not through walls. In the browser, which has no fire lights, this is the glow fires give.
+- **No light through walls:** the floor along a wall indoors and the top of a wall no longer pick up light from
+  the other side.
 - **It keeps up with the battle:** houses blown down, trees felled, trenches dug and new craters change the
   probes round them within a moment, and a new time of day or weather relights everything.
 - **Rooms read as indoors:** when soldiers go in and the roof lifts away, the room no longer stands in full
