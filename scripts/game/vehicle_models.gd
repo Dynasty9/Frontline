@@ -72,6 +72,17 @@ var mg_hands: Array = []
 ## Each mount's traverse at rest: a door gun is left pointing out of its door
 ## (its gunner inside behind it), everything else straight ahead.
 var mg_stow: Array[float] = []
+## Where the man on the first crew-served gun stands, as its builder sets it
+## (empty: behind the grips at arm's length, wherever they are). "on" is the
+## node his floor belongs to - the hull for a pickup's bed, the turret for a
+## hatch that turns with the gun - "y" his feet's height in its space and
+## "area" (x, z in its space) the floor he may stand on: he keeps behind the
+## grips as the gun turns but never steps off it. An area of no size is one
+## spot he stands on, turning with "on" (a gunner in a hatch).
+var gunner_floor: Dictionary = {}
+## The gun is worked from a seat (a passenger's swing-arm gun): no gunner is
+## drawn on it, as there's no seated pose for him.
+var gunner_seated := false
 ## Every gun assembly a shared builder made (VehicleWeapons): {parent, origin,
 ## muzzle (both in the parent's space), parts, nodes}, so build() can put the
 ## machine gun's on a mount of its own once the model is done.
