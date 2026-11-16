@@ -17,7 +17,9 @@ extends CompositorEffect
 ## - prep: at half resolution, each pixel's place in the world, its facing,
 ##   and the light it sends out. All of it bounces, the sky's share too: the
 ##   engine's sky light comes from the open sky, so the sky light a wall
-##   throws onto the street is a bounce it never counted. Last frame's
+##   throws onto the street is a bounce it never counted. So does what
+##   burns or shines: a burning car, a street lamp, a shell's flash light the
+##   walls and ground round them in their colour. Last frame's
 ##   bounce light is added too, so light goes one bounce further each frame.
 ## - gather: a few rays per pixel leave the surface in cosine-weighted
 ##   directions and are marched a few metres through the depth buffer. A ray
@@ -502,6 +504,13 @@ void main() {
 	vec3 start = pos + n * (0.05 + g.w * 0.002);
 	vec3 sum = vec3(0.0);
 	float hit = 0.0;
+	// rays that leave the screen (or pass behind the camera): what lies there,
+	// the frame doesn't know. Most are rays that rose into the open sky (from
+	// up close, nearly every one that climbs), so they count as misses, left
+	// to the engine's sky light like any other, never darker than that. (They
+	// are counted for the debug view: taking them as unknown instead, and
+	// letting the rest stand for them, lit open ground three times over.)
+	float lost = 0.0;
 	for (int i = 0; i < rays; i++) {
 		// cosine-weighted directions (Malley's method on a spun, stratified disc):
 		// each ray stands for an equal share of the light the surface can see
@@ -515,12 +524,14 @@ void main() {
 			float dist = len * f * f;
 			vec3 q = start + d * dist;
 			if (q.z > -0.05) {
-				break;  // behind the camera
+				lost += 1.0;  // behind the camera
+				break;
 			}
 			vec4 c = C.proj * vec4(q, 1.0);
 			vec2 quv = c.xy / c.w * 0.5 + 0.5;
 			if (quv.x < 0.0 || quv.y < 0.0 || quv.x > 1.0 || quv.y > 1.0) {
-				break;  // left the screen: what's there, the frame doesn't know
+				lost += 1.0;  // left the screen
+				break;
 			}
 			ivec2 qp = clamp(ivec2(quv * P.size.zw), ivec2(0), hs - 1);
 			vec4 sg = texelFetch(gbuf_tex, qp, 0);
@@ -529,7 +540,13 @@ void main() {
 			}
 			float behind = -q.z - sg.w;
 			// the ray has gone behind a surface, and not so far that it passed
-			// behind it unseen: it hit that surface
+			// behind it unseen: it hit that surface. (How deep counts grows with
+			// how far the ray has gone, for steps that lengthen and walls seen
+			// at a slant from afar. It would let a post or a man catch rays
+			// that pass behind him, but that has been looked for and doesn't
+			// show: what such a thin thing catches is little, and only its own
+			// colour, the same as it throws anyway. Holding it to each step's
+			// own depth instead lost a third of the light off real walls.)
 			if (behind > 0.02 && behind < max(0.4, dist * P.misc.w)) {
 				// a surface lights the ray's start only with its front
 				vec3 sn = normalize(to_view * sg.xyz);
@@ -544,6 +561,7 @@ void main() {
 	// from afar a wall is a few pixels tall), but never brighter than what the
 	// rays hit: a surface walled in by its source on every side gets that
 	// source's own light, no more, so a yard can't outshine the wall lighting it
+	float seen = float(rays) - lost;
 	vec3 e = sum / float(rays) * P.gi.y * mix(1.0, P.far.w, far_k);
 	vec3 src = sum / max(hit, 1e-4);
 	float el = dot(e, vec3(0.2126, 0.7152, 0.0722));
@@ -551,7 +569,8 @@ void main() {
 	if (el > sl && el > 1e-6) {
 		e *= sl / el;
 	}
-	imageStore(raw_img, h, vec4(clean(e), 1.0));
+	// (alpha: how much of it the rays could see)
+	imageStore(raw_img, h, vec4(clean(e), seen / float(rays)));
 }
 """,
 	# last frame's answer, found again through last frame's camera
@@ -613,6 +632,11 @@ void main() {
 			if (pg.w > 0.0 && abs(pg.w - pz) < pz * 0.04 + 0.05 && dot(pg.xyz, g.xyz) > 0.85) {
 				vec4 ph = textureLod(prev_hist_tex, puv, 0.0);
 				n = min(ph.a + 1.0, P.misc.y);
+				// (the clipping is also what lets a flash show: a gun or a shell
+				// bursting lights the walls round it the frame it goes off, as
+				// this frame's rays lift the window the memory is held to, and
+				// it goes out as fast. Cutting the memory short where the rays
+				// jumped was tried: it added nothing to that, only shimmer)
 				outc = mix(clamp(ph.rgb, lo, hi), cur, 1.0 / n);
 			}
 		}
@@ -692,7 +716,13 @@ void main() {
 	}
 	vec2 uv = (vec2(p) + 0.5) / P.size.xy;
 	float z = -view_at(uv, d).z;
-	vec3 wn = normalize(mat3(C.cam) * normalize(texelFetch(normal_tex, p, 0).xyz * 2.0 - 1.0));
+	vec4 nr = texelFetch(normal_tex, p, 0);
+	vec3 vn = normalize(nr.xyz * 2.0 - 1.0);
+	vec3 wn = normalize(mat3(C.cam) * vn);
+	// (the renderer keeps the roughness in alpha's low seven bits; the top
+	// one marks things that move)
+	float rough = nr.a > 0.5 ? 1.0 - nr.a : nr.a;
+	rough = clamp(rough / (127.0 / 255.0), 0.0, 1.0);
 	// the four half-resolution pixels round this one, weighed by distance on
 	// screen and by how alike their surface is
 	vec2 hp = uv * P.size.zw - 0.5;
@@ -728,12 +758,26 @@ void main() {
 	vec3 alb = receiver_albedo(c, wn);
 	// (the gathered light already carries its strength: see gather)
 	vec3 outc = c + alb * e;
+	// and a surface gives some back as a sheen, more at a glancing look: a
+	// wet road or a polished hull in shade picks up the colour of the walls
+	// round it as well as the sky's. A rough sheen spreads wide, much as the
+	// bounce light comes in, so the gathered light stands for what it
+	// reflects; a mirror-smooth one shows a sharp picture of the world,
+	// which is the screen-space reflections' work, so it fades out there
+	// (Karis's fit of the split sum for a dielectric's 4%, "Physically Based
+	// Shading on Mobile", 2014)
+	float nv = clamp(dot(vn, -normalize(view_at(uv, d))), 0.0, 1.0);
+	vec4 rr = rough * vec4(-1.0, -0.0275, -0.572, 0.022) + vec4(1.0, 0.0425, 1.04, -0.04);
+	float a004 = min(rr.x * rr.x, exp2(-9.28 * nv)) * rr.x + rr.y;
+	vec2 ab = vec2(-1.04, 1.04) * a004 + rr.zw;
+	vec3 sheen = e * (0.04 * ab.x + ab.y) * smoothstep(0.1, 0.3, rough);
+	outc += sheen;
 	if (view_mode == 1) {
 		outc = e;  // the bounce light alone
 	} else if (view_mode == 2) {
 		outc = alb;  // the colour estimated for each surface
 	} else if (view_mode == 3) {
-		outc = alb * e * 4.0;  // what is added, four times over
+		outc = (alb * e + sheen) * 4.0;  // what is added, four times over
 	} else if (view_mode == 4) {
 		outc = textureLod(rad_tex, uv, 0.0).rgb;  // the light each surface sends out
 	} else if (view_mode == 5) {
@@ -742,6 +786,10 @@ void main() {
 		outc = textureLod(raw_tex, uv, 0.0).rgb;  // this frame's rays alone
 	} else if (view_mode == 7) {
 		outc = vec3(textureLod(hist_tex, uv, 0.0).a / P.misc.y, texelFetch(gbuf_tex, ivec2(hp), 0).w / 200.0, 0.0);  // history length; distance
+	} else if (view_mode == 8) {
+		outc = sheen * 16.0;  // the sheen alone, sixteen times over
+	} else if (view_mode == 9) {
+		outc = vec3(1.0 - textureLod(raw_tex, uv, 0.0).a, rough, 0.0);  // share of rays lost off screen; roughness
 	}
 	imageStore(color_img, p, vec4(clean(outc), col.a));
 }

@@ -35,6 +35,14 @@ caption = "From the usual 55 m command height, midday: the yards between the hou
 file = "command-height-light.jpg"
 caption = "The same, bounce light only (four times brighter): yards and wall feet, while open grass stays as it was"
 
+[[screenshots]]
+file = "fire-night.jpg"
+caption = "Night: round a burning car, the grass and the ruin's floor warm with the fire's light thrown off the walls"
+
+[[screenshots]]
+file = "fire-night-light.jpg"
+caption = "The same, bounce light only (four times brighter): the fire's colour on the ground and walls round it"
+
 [[videos]]
 file = "flicker.webm"
 poster = "flicker.jpg"
@@ -43,7 +51,7 @@ caption = "Off and on in turn, a second each, on the same frozen frames: midday,
 [[videos]]
 file = "pan.webm"
 poster = "pan.jpg"
-caption = "The bounce light alone (brightened) while the camera pans fast: it stays on what it lights, with no smears or trails."
+caption = "The bounce light alone (brightened) while the camera pans fast: it stays on what it lights, with no smears or trails, and no dark bands or pops at the frame's edges."
 +++
 
 - **What you'll see:** shaded walls facing a sunlit street glow with its colour, plinths, benches and kerbs
@@ -53,9 +61,14 @@ caption = "The bounce light alone (brightened) while the camera pans fast: it st
   what lies beside it. Open ground, lit by the sky alone, looks as before, and sunlit surfaces aren't veiled.
 - **From the usual command height too:** further off, the rays reach further and the light is laid on stronger,
   so yards, wall feet and roofless rooms still lift where a player usually looks from.
+- **Fires, flashes and lamps throw it too:** a burning car or house, or a street lamp, lights
+  the walls and ground round it in its colour, and a shell's flash is thrown about the frame it bursts.
+- **A sheen in the shade:** wet roads and smooth surfaces in shade pick up a faint sheen of the colours round them,
+  as well as the sky's.
 - **It holds still while you pan and zoom:** the light is kept from frame to frame and moves with the world,
-  and nothing moving drags a smear behind it.
+  and nothing moving drags a smear behind it. At the frame's edges, where the light's source has gone
+  off screen, it falls back to the sky's light rather than going dark.
 - **Settings > Graphics > Lighting > Bounce light:** Off, Medium or High (High casts more rays, for less grain).
   It's on Medium in the High preset and on High in Ultra and Cinematic, and costs well under a millisecond a frame
-  on a fast graphics card (at 1600x900 on an RTX 3090, about a third of a millisecond on High; Medium less).
+  on a fast graphics card (at 1600x900 on an RTX 3090, about a third of a millisecond on High, and no more on Medium).
 - The browser version draws without it.

@@ -16,7 +16,10 @@ extends Node
 ## of those camera poses in turn (pictures named <pose>_<mode>.png). Where is
 ## x,z on the map, or found on it: "town" (the town's centre), "ruin" (the
 ## roofless house nearest it, open to the sky) or "alley" (the narrowest gap
-## between two houses near it, looked along; yaw then turns from there).
+## between two houses near it, looked along; yaw then turns from there) or
+## "car" (the car nearest it with a house wall close by, looked at from the
+## far side so the wall stands behind it; FL_DEBUG_GI_IGNITE=heat sets it
+## alight a second into the battle, to see a fire's light thrown about).
 ## Pitch "auto" leaves the camera's own pitch for that zoom.
 ##
 ## FL_DEBUG_GI_AB=mode,mode,...: instead of pictures, what each mode costs the
@@ -28,6 +31,7 @@ extends Node
 ## first mode, the camera pans at (vx, vz) m/s while the battle runs on, and
 ## every frame is saved (DIR/pan_000.png...): run it with --fixed-fps 30 for
 ## frames 1/30 s apart, to see the light hold (or smear) while the view moves.
+## FL_DEBUG_GI_BLAST=frame bursts a shell where it looks on that frame.
 
 const MODES := {
 	"none": {"ssil": false, "gi": false, "ssgi": 0},
@@ -45,8 +49,11 @@ const MODES := {
 	"view_normal": {"ssil": false, "gi": false, "ssgi": 2, "view": 5},
 	"view_raw": {"ssil": false, "gi": false, "ssgi": 2, "view": 6},
 	"view_hist": {"ssil": false, "gi": false, "ssgi": 2, "view": 7},
+	"view_sheen": {"ssil": false, "gi": false, "ssgi": 2, "view": 8},
+	"view_lost": {"ssil": false, "gi": false, "ssgi": 2, "view": 9},
 }
 const HOLD := 90  # frames each mode is held (SDFGI takes a while to converge)
+const SETTLE := 60  # and frames a new pose is given first, for the camera to glide there
 
 var world: Node
 var _dir := OS.get_environment("FL_DEBUG_GI_CYCLE")
@@ -68,6 +75,7 @@ var _ab_on := false
 var _ab_round := 0
 var _ab_sum := [0.0, 0.0]
 var _ab_n := [0, 0]
+var _lit := false
 var _pan: PackedStringArray = OS.get_environment("FL_DEBUG_GI_PAN").split(",", false)
 
 
@@ -78,6 +86,13 @@ func _ready() -> void:
 
 func _process(_dt: float) -> void:
 	if _i < 0:
+		if world != null and not _lit and OS.has_environment("FL_DEBUG_GI_IGNITE") and float(world.get("time")) > 1.0:
+			_lit = true
+			_set_pose(_poses[0])  # (a fire is drawn only where the camera looks)
+			var car: Node = _find("car")[2]
+			if car != null:
+				print("GICMP ignite %s at %.1f,%.1f: %s" % [car.get("skind"), (car as Node3D).position.x, (car as Node3D).position.z,
+					world.get("fires").call("ignite", car, float(OS.get_environment("FL_DEBUG_GI_IGNITE")))])
 		if world == null or float(world.get("time")) < _at:
 			return
 		DirAccess.make_dir_recursive_absolute(_dir)
@@ -100,6 +115,9 @@ func _process(_dt: float) -> void:
 	if _pan.size() == 3:
 		_pan_tick()
 		return
+	# held there every frame: nothing (a key, the mouse at the window's edge)
+	# may nudge the view between one mode's picture and the next
+	_set_pose(_poses[_pose], true)
 	var vp := get_viewport().get_viewport_rid()
 	_frames += 1
 	if _frames > HOLD >> 1:
@@ -129,11 +147,12 @@ func _next() -> void:
 			return
 	if _i == 0:
 		_set_pose(_poses[_pose])
+		_frames = -SETTLE  # (the camera glides to a new pose: let it get there)
 	RenderingServer.viewport_set_measure_render_time(get_viewport().get_viewport_rid(), true)
 	_apply(_modes[_i])
 
 
-func _set_pose(pose: String) -> void:
+func _set_pose(pose: String, quiet := false) -> void:
 	var f := pose.split(":")
 	var cam: Node = world.get("cam")
 	if f.size() < 5 or cam == null:
@@ -153,7 +172,8 @@ func _set_pose(pose: String) -> void:
 	# "auto": the pitch the game itself gives that zoom, as a player sees it
 	cam.set("pitch_deg", NAN if f[3] == "auto" else float(f[3]))
 	cam.set("yaw", yaw)
-	print("GICMP pose %s at %.1f,%.1f yaw %.2f" % [f[0], at.x, at.z, yaw])
+	if not quiet:
+		print("GICMP pose %s at %.1f,%.1f yaw %.2f" % [f[0], at.x, at.z, yaw])
 
 
 ## A place on the map worth looking at, and the heading to look at it from.
@@ -162,6 +182,7 @@ func _find(what: String) -> Array:
 	var roofs: Array[Vector3] = []
 	var floors: Array[Vector3] = []
 	var walls: Array[Vector3] = []
+	var cars: Array[Node3D] = []
 	for st: Node3D in world.get("structures"):
 		match String(st.get("skind")):
 			"town":
@@ -172,7 +193,10 @@ func _find(what: String) -> Array:
 				floors.append(st.position)
 			"house_wall":
 				walls.append(st.position)
+			"car":
+				cars.append(st)
 	var best := town
+	var best_st: Node3D = null
 	var best_yaw := 0.0
 	var best_d := INF
 	if what == "ruin":
@@ -204,7 +228,20 @@ func _find(what: String) -> Array:
 					best = (a + b) * 0.5
 					var dir := gap.normalized()
 					best_yaw = atan2(dir.y, -dir.x)
-	return [Vector3(best.x, 0.0, best.z), best_yaw]
+	elif what == "car":
+		for c in cars:
+			for w in walls:
+				var gap := Vector2(w.x - c.position.x, w.z - c.position.z)
+				if gap.length() > 5.0:
+					continue
+				var d := c.position.distance_to(town) + gap.length() * 6.0
+				if d < best_d:
+					best_d = d
+					best = c.position
+					best_st = c
+					var dir := gap.normalized()
+					best_yaw = atan2(dir.y, -dir.x)
+	return [Vector3(best.x, 0.0, best.z), best_yaw, best_st]
 
 
 func _apply(mode: String) -> void:
@@ -251,6 +288,10 @@ func _pan_tick() -> void:
 	var cam: Node = world.get("cam")
 	var fp: Vector3 = cam.get("focus_pos")
 	cam.call("focus", fp + Vector3(float(_pan[0]), 0.0, float(_pan[1])) / 30.0)
+	# FL_DEBUG_GI_BLAST=frame: a shell bursts where the camera looks on that
+	# frame, to see how soon its flash is thrown about (and how soon it goes)
+	if OS.has_environment("FL_DEBUG_GI_BLAST") and _frames == int(OS.get_environment("FL_DEBUG_GI_BLAST")):
+		world.call("fx_event", [1, cam.get("focus_pos"), 1.0, "he"])  # (Fx.EXPLODE)
 	# (the first frames settle the history from scratch: they're kept too)
 	get_viewport().get_texture().get_image().save_png(_dir.path_join("pan_%03d.png" % _frames))
 	_frames += 1

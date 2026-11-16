@@ -2,9 +2,9 @@
   "entry": "changelog/unreleased/bounce-light.md",
   "summary": "Bounce light: screen-space GI that lets sunlit walls, paving and roofs light what faces them in their colours.",
   "medium": "still",
-  "stage": "game capture at 1600x900, --offscreen --perf=0 --nohud: --host --team=0 --seed=3 --preset=high with FL_DEBUG_GI_CYCLE (frozen frame, off then High) at --mood=day (FL_DEBUG_GI_POSES ruin:ruin:14:-58:0.4) and --mood=golden / overcast (ruin30:ruin:30:auto:0.4; rts55:town:55:auto:0.6, the game's own pitch; and rts55 at --mood=day for the command-height shot); each shot cropped tight (960x540, or 640x360 at 2x) on the window with the most added light, off stacked over on with labels, an arrow and a 'look at' caption, plus the same crop as on-minus-off x4; flicker clip: the same crops alternating off/on each second; pan clip: --fixed-fps 30 with FL_DEBUG_GI_POSES=p:town:40:-40:1.57 FL_DEBUG_GI_PAN=6,-6,75 FL_DEBUG_GI_MODES=view_added --mood=day (the added light alone, gamma-brightened)",
-  "rationale": "Bounce light is a change in shade, so each shot is cropped tight on exactly where it lands, off stacked over on so the same pixels sit one above the other, with an arrow and a one-line caption naming what to look at, and a bounce-only panel showing where the light lands and its colour. It is shown at its strongest (midday) and then in the moods and from the camera height a player usually has (golden hour and overcast from 30 m), and from the 55 m command height, where the far-distance weights now make yards and wall feet lift visibly. A flicker clip toggles off/on in place; a pan clip of the added light answers whether it smears in motion.",
-  "source_ref": "working tree after 7bbda2db (far weights full by 50 m; gathered light capped at its source, greyer from afar)",
+  "stage": "game capture at 1600x900, --offscreen --perf=0 --nohud: --host --team=0 --seed=3 --preset=high with FL_DEBUG_GI_CYCLE (frozen frame, off then High) at --mood=day (FL_DEBUG_GI_POSES ruin:ruin:14:-58:0.4) and --mood=golden / overcast (ruin30:ruin:30:auto:0.4; rts55:town:55:auto:0.6, the game's own pitch; and rts55 at --mood=day for the command-height shot; at --mood=night, FL_DEBUG_GI_POSES car16:car:16:auto:0.5 with FL_DEBUG_GI_IGNITE=0.9 FL_DEBUG_STEADY_FIRE=1 FL_DEBUG_GI_AT=14 for the burning car beside a wall); each shot cropped tight (960x540, or 640x360 at 2x) on the window with the most added light, off stacked over on with labels, an arrow and a 'look at' caption, plus the same crop as on-minus-off x4; flicker clip: the same crops alternating off/on each second; pan clip: --fixed-fps 30 with FL_DEBUG_GI_POSES=p:town:40:-40:1.57 FL_DEBUG_GI_PAN=6,-6,75 FL_DEBUG_GI_MODES=view_added --mood=day (the added light alone, gamma-brightened)",
+  "rationale": "Bounce light is a change in shade, so each shot is cropped tight on exactly where it lands, off stacked over on so the same pixels sit one above the other, with an arrow and a one-line caption naming what to look at, and a bounce-only panel showing where the light lands and its colour. It is shown at its strongest (midday) and then in the moods and from the camera height a player usually has (golden hour and overcast from 30 m), and from the 55 m command height, where the far-distance weights now make yards and wall feet lift visibly. A flicker clip toggles off/on in place; a pan clip of the added light answers whether it smears in motion. A night shot of a burning car beside a ruin shows that what burns or shines bounces too, and the pan clip shows the frame's edges holding steady.",
+  "source_ref": "working tree after 915aa9d1 (fire and lamp bounce shown; off-screen rays fall back to the sky light; rough sheen)",
   "sources": [
     {
       "file": "changelog/unreleased/bounce-light/midday.jpg",
@@ -39,6 +39,14 @@
       "sha256": "8f445f7304f30ec1d026c87d15df6ca3f4af2aad869eb69072fb35adf392f7a8"
     },
     {
+      "file": "changelog/unreleased/bounce-light/fire-night.jpg",
+      "sha256": "00f53ef0b1042e1cdb7852f003cf1e4b55ea9a99592c8b63e2c167af77593fe5"
+    },
+    {
+      "file": "changelog/unreleased/bounce-light/fire-night-light.jpg",
+      "sha256": "77c4bf571bb8154504535bc40480815a70f1d5a93bd949ec062dfa8805f21802"
+    },
+    {
       "file": "changelog/unreleased/bounce-light/flicker.webm",
       "sha256": "437bd954d49359f8a43c22b8820ea34334ac4e1ec5bde1d1eef234ad4913a3b1"
     },
@@ -48,11 +56,11 @@
     },
     {
       "file": "changelog/unreleased/bounce-light/pan.webm",
-      "sha256": "1bb50b65720d4b5e840b8fd66e50f7516c108c3b25dcae4235ef61241f85bf12"
+      "sha256": "a182c1de0235305486d39d90450c2bd66d7e13615baa10829eae28f26bfffa38"
     },
     {
       "file": "changelog/unreleased/bounce-light/pan.jpg",
-      "sha256": "b8b99bfc96373c6aa3a965e5d3eccd92ce5eb3681cd3333321e703ea35a0802e"
+      "sha256": "aa7991049c85c385df985b7b51c559e0eb9d53e28ff4b47dabde5aa9c6d4ed00"
     }
   ],
   "output": null

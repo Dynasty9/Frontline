@@ -1324,15 +1324,27 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   from); sunlit surfaces in the frame's brightest fifth gain about 5-7% (linear) on average. However strong it is laid on,
   the light a surface gathers never comes out brighter than the surfaces its rays hit (a yard walled in on every
   side gets its walls' own light, no more), and from afar it is laid on a quarter greyer, so a yard is tinted by its
-  wall rather than painted it. Under cloud the walls have little light to throw, so there it stays subtle. Godot's
+  wall rather than painted it. Under cloud the walls have little light to throw, so there it stays subtle. Fires,
+  lamps and flashes bounce the same way, since the pass reads the lit frame, flames and all: a burning car throws its
+  orange onto the wall and grass beside it, and a shell's flash is thrown about the frame it bursts (the history is
+  clipped to what this frame's rays see, so it comes and goes with the flash; cutting the history short on a jump
+  was tried and only added shimmer). Rays that leave the screen count as misses, falling back to the sky light like
+  any other (taking them as unknown instead, and letting the rest stand for them, lit open ground three times over
+  up close, where most rising rays leave the frame): over twelve headings the outer 2% of the frame gets about as much
+  as the band inside it, and in a fast pan the edge bands change no faster than the rest. Posts, trunks, foliage and
+  soldiers were looked over for leaks and halos and show none; holding each ray's hit to its own step's depth, to
+  keep thin things from catching rays that pass behind them, cost a third of the light off real walls and was left
+  out. A rough surface also gives the gathered light back as a dielectric's sheen (Karis's split-sum fit), fading
+  out on mirror-smooth ones, which the screen-space reflections handle: a few percent of the bounce on rough
+  ground, a little more on wet patches seen at a slant. Godot's
   own SSIL (the Indirect light setting) and SDFGI (Global illumination) stay as options, but on the RTS camera
   neither shows colour bleed: SSIL mostly darkens corners (over the town it lowered the frame's mean by half a
   level and added nothing visible), and SDFGI lifts the whole frame evenly (its cells are too coarse for a street
   seen from 30 m) and sees only static geometry. Measured at 1600x900 on an RTX 3090, interleaved on the same frozen
-  frame, median of five runs: High 0.34 ms, SSIL 0.27 ms, SDFGI 0.83 ms; Medium is below what a shared card can
-  resolve (its runs ranged -1.3 to +0.35 ms). `FL_DEBUG_GI_CYCLE=DIR` saves the
+  frame: SSIL 0.27 ms and SDFGI 0.83 ms (median of five runs), bounce light on High 0.32 ms (median of three, on
+  the final shader); Medium is below what a shared card can resolve (its runs ranged from 0.26 to 0.46 ms). `FL_DEBUG_GI_CYCLE=DIR` saves the
   same frozen frame with each (`scripts/test/gi_compare.gd`), `FL_DEBUG_GI_AB=mode,...` measures what each costs
-  the graphics card, and `FL_DEBUG_SSGI_VIEW=1..7` shows the pass's buffers.
+  the graphics card, and `FL_DEBUG_SSGI_VIEW=1..9` shows the pass's buffers.
 - **Cinematic lighting** (`atmosphere.gd`, `cinematic_fx.gd`, `physical_sky.gd`), each part its own setting and all
   of it on the **Cinematic** preset (Ultra plus everything below; for a fast graphics card, screenshots and replays).
   None of it reaches the simulation, so it can't change a battle or its seed.
