@@ -903,17 +903,21 @@ static func inject(src: String) -> String:
 const VERTEX_USE := """
 	probe_v_k = 1.0;
 	probe_v_e = vec3(0.0);
+	probe_v_t = vec3(1.0);
 	if (probe_grid.z > 0.5) {
 		float probe_vm0;
 		vec4 probe_vsh;
 		vec3 probe_vlb;
-		vec4 probe_vk = probe_light((MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz, vec3(0.0, 1.0, 0.0), probe_vm0, probe_vsh, probe_vlb);
+		float probe_vleaf;
+		vec4 probe_vk = probe_light((MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz, vec3(0.0, 1.0, 0.0), probe_vm0, probe_vsh, probe_vlb, probe_vleaf);
 		probe_v_k = probe_vk.x;
 		probe_v_e = probe_vk.yzw;
+		probe_v_t = probe_canopy(probe_vk.x, probe_vleaf);
 	}
 """
 const VERTEX_FRAGMENT := """probe_fill = probe_v_k;
 	probe_room = 0.0;
+	ALBEDO *= probe_v_t;
 	AO *= probe_v_k;
 	EMISSION += ALBEDO * probe_v_e;
 """
@@ -927,6 +931,7 @@ static func inject_vertex(src: String) -> String:
 	_ensure_globals()
 	var out := src.replace("// CLOUD_SHADOW", _pixel() + "varying float probe_v_k;
 varying vec3 probe_v_e;
+varying vec3 probe_v_t;
 // CLOUD_SHADOW")
 	# at the end of vertex(), where the blade stands where it's drawn
 	var at := out.find("void vertex() {")
@@ -978,6 +983,9 @@ global uniform sampler2DArray probe_voxels : filter_nearest, repeat_disable;
 #define PROBE_MIN_SKY 0.3
 #define PROBE_SPEC_ROOM 0.5
 #define PROBE_LOCAL __LOCAL__
+// the light through leaves, (0.35, 0.55, 0.2) scaled to the brightness of grey
+const vec3 PROBE_CANOPY = vec3(0.35, 0.55, 0.2) / 0.484;
+const float PROBE_CANOPY_K = 1.5;
 varying float probe_fill;
 varying float probe_room;  // how surely this is indoors: the probes see little sky in any direction
 float probe_sun() {
@@ -1051,7 +1059,7 @@ vec2 probe_side(vec2 col, vec3 p, float base, float ps, out float t_lo, out floa
 // m0: the share of the whole sky the probes round here see, whichever way the
 // surface faces. A room sees a few percent of it; a wall foot, a roof top or a
 // narrow street about half, so this tells indoors apart where the facing can't
-vec4 probe_light(vec3 wp, vec3 wn, out float m0, out vec4 sh, out vec3 lb_raw) {
+vec4 probe_light(vec3 wp, vec3 wn, out float m0, out vec4 sh, out vec3 lb_raw, out float leaf) {
 	float ps = probe_grid.y;
 	vec3 p = wp + wn * ps * 0.6;
 	vec2 col = (p.xz + probe_grid.x) / ps;
@@ -1063,6 +1071,7 @@ vec4 probe_light(vec3 wp, vec3 wn, out float m0, out vec4 sh, out vec3 lb_raw) {
 	float seen;
 	vec3 lb = vec3(0.0);
 	vec3 ll;
+	leaf = 0.0;
 	if (probe_grid.z > 1.5) {
 		float l0 = clamp(floor(lf), 0.0, 6.0);
 		float t = clamp(lf - l0, 0.0, 1.0);
@@ -1073,8 +1082,10 @@ vec4 probe_light(vec3 wp, vec3 wn, out float m0, out vec4 sh, out vec3 lb_raw) {
 			t = t_lo > t_hi ? 1.0 : (t_hi > t_lo ? 0.0 : t);
 		}
 		vec4 a = mix(probe_read(col, l0, 0.0), probe_read(col, l0 + 1.0, 0.0), t);
-		vec3 b = mix(probe_read(col, l0, 1.0).rgb, probe_read(col, l0 + 1.0, 1.0).rgb, t);
+		vec4 b4 = mix(probe_read(col, l0, 1.0), probe_read(col, l0 + 1.0, 1.0), t);
+		vec3 b = b4.rgb;
 		lb = b * b * 4.0;
+		leaf = b4.a * fade * probe_mix.x;
 		float l1 = min(l0, 5.0);
 		vec3 lc = mix(probe_read(col, l1 + 1.0, 2.0).rgb, probe_read(col, l1 + 2.0, 2.0).rgb, clamp(lf - l1, 0.0, 1.0));
 		ll = lc * lc * 8.0;
@@ -1098,6 +1109,16 @@ vec4 probe_light(vec3 wp, vec3 wn, out float m0, out vec4 sh, out vec3 lb_raw) {
 	// everything near them)
 	return vec4(mix(1.0, max(seen, PROBE_MIN_SKY), k), (lb * (1.0 - seen) * probe_mix.y + ll * PROBE_LOCAL) * fade);
 }
+
+// Light under a wood comes through the leaves, and a leaf passes on the green it
+// reflects (about its albedo squared) and drinks the red and blue. The skylight
+// the probes take away (1 - fill) is grey; the part of it the crowns took comes
+// back as a tint, of the same brightness, so a wood's shade is greener as well
+// as darker. It's laid on the albedo, since the ambient is one grey factor here;
+// in a crown's shade the sun is shadowed anyway, so it's the shade that tints.
+vec3 probe_canopy(float fill, float leaf) {
+	return mix(vec3(1.0), PROBE_CANOPY, clamp(leaf * (1.0 - fill) * PROBE_CANOPY_K, 0.0, 1.0));
+}
 """
 
 const PIXEL_USE := """probe_fill = 1.0;
@@ -1107,8 +1128,10 @@ const PIXEL_USE := """probe_fill = 1.0;
 		vec4 probe_sh;
 		vec3 probe_lb;
 		vec3 probe_n = normalize((INV_VIEW_MATRIX * vec4(NORMAL, 0.0)).xyz);
-		vec4 probe_k = probe_light((INV_VIEW_MATRIX * vec4(VERTEX, 1.0)).xyz, probe_n, probe_m0, probe_sh, probe_lb);
+		float probe_leaf;
+		vec4 probe_k = probe_light((INV_VIEW_MATRIX * vec4(VERTEX, 1.0)).xyz, probe_n, probe_m0, probe_sh, probe_lb, probe_leaf);
 		probe_fill = probe_k.x;
+		ALBEDO *= probe_canopy(probe_k.x, probe_leaf);
 		probe_room = smoothstep(0.3, 0.12, probe_m0) * probe_mix.x;
 		AO *= probe_k.x;
 		EMISSION += ALBEDO * probe_k.yzw;
@@ -1214,8 +1237,10 @@ vec2 ground_at(vec2 xz) {
 	return vec2(min(h.x, h.y + trench_floor * cut), h.y);
 }
 
-// leaves, linear: what a sunlit leaf sends on, through it and off it, all told
-const vec3 LEAF = vec3(0.06, 0.2, 0.02);
+// leaves, linear: the light a leaf lets through, about its albedo squared (a leaf
+// passes on the green it reflects and drinks the red and blue), so a wood's shade
+// is greener than the light the crowns take from it, not just darker
+const vec3 LEAF = vec3(0.35, 0.55, 0.2) * 0.6;
 
 bool leafy(float dn) {
 	return abs(dn - 9.0 / 15.0) < 0.01;
@@ -1356,13 +1381,14 @@ void fragment() {
 		float hi = floor(g / 256.0);
 		COLOR = vec4(hi / 255.0, (g - hi * 256.0) / 255.0, 0.0, 1.0);
 	} else if (mode < 0.5 || (block == 1 && !bounce)) {
-		COLOR = block == 0 ? vec4(0.5, 0.5, 0.5, 1.0) : vec4(0.0, 0.0, 0.0, 1.0);
+		COLOR = block == 0 ? vec4(0.5, 0.5, 0.5, 1.0) : vec4(0.0);
 	} else {
 		vec3 o = probe_pos(xz, float(layer), h0, ps);
 		float seen = 0.0;
 		vec3 m1 = vec3(0.0);
 		vec3 lsum = vec3(0.0);
 		float wsum = 0.0;
+		float fsum = 0.0;  // how much of what's in the way is leaves
 		int n = int(rays);
 		for (int i = 0; i < n; i++) {
 			// an even spread of directions over the sphere (a Fibonacci spiral)
@@ -1417,7 +1443,7 @@ void fragment() {
 				if (leaf && kind < 2) {
 					// leaves, in the way or let through: green light, the sky's and the
 					// sun's sent on through and off them (a crown's top and sides sunlit)
-					lh = LEAF * (sky_col * 0.6 + sun_col * 0.6 * max(sun_dir.y, 0.0));
+					lh = LEAF * (sky_col + sun_col * 0.5 * max(sun_dir.y, 0.0));
 				} else if (kind == 0) {
 					// through netting: lit from all round, a little sun through it
 					lh = vec3(palb) * vec3(0.9, 1.0, 0.8) * (sky_col * 0.5 + sun_col * 0.2);
@@ -1440,6 +1466,7 @@ void fragment() {
 				}
 				lsum += lh * (1.0 - vis);
 				wsum += 1.0 - vis;
+				fsum += leaf && kind < 2 ? 1.0 - vis : 0.0;
 			}
 		}
 		seen /= rays;
@@ -1448,7 +1475,7 @@ void fragment() {
 			COLOR = vec4(clamp(m1 * 0.5 + 0.5, 0.0, 1.0), seen);
 		} else {
 			vec3 lb = lsum / max(wsum, 0.001);
-			COLOR = vec4(sqrt(clamp(lb / 4.0, 0.0, 1.0)), 1.0);
+			COLOR = vec4(sqrt(clamp(lb / 4.0, 0.0, 1.0)), fsum / max(wsum, 0.001));
 		}
 	}
 }

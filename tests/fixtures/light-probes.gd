@@ -95,6 +95,11 @@ func _check_shaders() -> void:
 	assert(px.contains("ll = lc * lc * 8.0;") and LightProbes.BAKE_SHADER.contains("vec3 local_light(vec3 o)"))
 	# leaves: the crowns' cubes are told apart and send on green light
 	assert(LightProbes.BAKE_SHADER.contains("bool leafy(float dn)") and LightProbes.BAKE_SHADER.contains("lh = LEAF * "))
+	# the crowns' share of what shuts a probe in goes in the bounce block's alpha,
+	# and the shade it makes comes back green, per pixel and per blade
+	assert(LightProbes.BAKE_SHADER.contains("fsum / max(wsum, 0.001)"))
+	assert(LightProbes.PIXEL.contains("vec3 probe_canopy(float fill, float leaf)"))
+	assert(LightProbes.PIXEL_USE.contains("ALBEDO *= probe_canopy(") and LightProbes.VERTEX_FRAGMENT.contains("ALBEDO *= probe_v_t;"))
 	# the skinned soldiers read the probes too, through their own copy of the imported material
 	var skin_src := LightProbes.SKIN_SHADER
 	var skin := LightProbes.inject(skin_src)

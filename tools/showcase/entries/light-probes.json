@@ -10,7 +10,7 @@
   "capture": {
     "provenance": "Recaptured off-screen from this branch (Forward+, RTX 3090, High preset) with the commands in stage; panels are consecutive frames of one fixed-fps run, so they share camera, units and smoke.",
     "comparison": "Player sheets: top left probes off, bottom left on, top right the probe term (sky share on grey, bounce amplified), bottom right ON minus OFF x4 on mid grey. Review sheets (PR only) show the bent normal instead of the difference. Flicker: off and on alternate each second on one frame. Destruction: the game and the probe term from two identical fixed-fps runs.",
-    "limits": "Measured (linear light): the midday room falls to 0.75 of its brightness; its shade is 0.22 of the sunlit floor. In the rain the wet floor indoors falls to 0.29 as the sky leaves its reflection. Under the crowns the probes' sky term is 0.5-0.75 of open ground; in final pixels the ground round and under the crowns is 15-32% darker and greener, the men under them 16%, open ground 0-3% (bounce and screen-space light keep part of the shade). Round the night fires the ground is up to half as bright again. Light-leak fix: visible on wall tops, sills and door leaves; room floors were already held at the 30% skylight floor. Fast debris and flames move between the two frames and speckle the difference. Trenches are narrower than the 2 m grid and are not shown. The destruction clip predates this pass. The Compatibility renderer (browser) gets the skylight shading, reflections and fire glow but not the indoor sun cut."
+    "limits": "Measured (linear light): the midday room falls to 0.75 of its brightness; its shade is 0.22 of the sunlit floor. In the rain the wet floor indoors falls to 0.29 as the sky leaves its reflection. Under the crowns the probes' sky term is 0.5-0.75 of open ground; in final pixels the ground under and round the crowns is about 19% darker, and greener (green to red 0.95 to 1.10, as the crowns' share of the lost skylight comes back through the leaves), the men under them 20% dimmer; open ground changes under 5%. Round the night fires the ground is up to half as bright again. Light-leak fix: visible on wall tops, sills and door leaves; room floors were already held at the 30% skylight floor. Fast debris and flames move between the two frames and speckle the difference. Trenches are narrower than the 2 m grid and are not shown. The destruction clip predates this pass. The Compatibility renderer (browser) gets the skylight shading, reflections and fire glow but not the indoor sun cut."
   },
   "source_ref": "dines/probe-grid-gi-0571ca: the specular-occlusion, canopy, leak and fire-glow pass after 0b2ac192.",
   "sources": [
@@ -27,7 +27,7 @@
     {
       "file": "changelog/unreleased/light-probes/wood-edge.jpg",
       "caption": "Wood edge at midday, time frozen (FL_DEBUG_PROBES_FREEZE): OFF/ON of one instant, probe term and the difference x4.",
-      "sha256": "5601a82cf3fb241814767fdb878fa39b03d2d7bcaab28b30583de6c57366b789"
+      "sha256": "fd5c6995b5fc1f19235e6baec41380c86b8634e755d5671fcec14163daf3f8e4"
     },
     {
       "file": "changelog/unreleased/light-probes/fire-glow-night.jpg",
