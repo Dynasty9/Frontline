@@ -108,13 +108,110 @@ vec3 street_surface(sampler2D tex, sampler2D noise, vec2 p, out float tar) {
 }
 """
 
+# The rain as it falls on things, shared by the ground, the roads and every
+# surface here (after Lagarde, "Water drop 2a/2b: dynamic rain and its effects",
+# 2012-13): rings running out where drops land in standing water, crowns of
+# spray where they strike what stands in the rain, and water running down walls
+# and hulls in rivulets. Each is drawn from cells laid out in the world, one
+# drop to a cell each period at a spot of its own, kept clear of the cell's
+# edges, so a pixel only ever looks at its own cell. Everything fades out as it
+# shrinks under a pixel: from the command camera's height none of it is fine
+# enough to draw, and a pattern finer than its pixels would crawl and shimmer.
+const RAIN_DROPS := """
+global uniform vec4 rain_fx;  // x rings, y crowns, z rivulets and the denser rain (Effects High), w the rain's clock (s); Atmosphere._rain_fx_tick
+float rain_hash(vec2 p) { vec3 q = fract(vec3(p.xyx) * 0.1031); q += dot(q, q.yzx + 33.33); return fract((q.x + q.y) * q.z); }
+
+// One layer of rings: the water's slope (dh/dx, dh/dz) at p, in metres. A drop
+// lands in each 55 cm cell every period (most of them: some miss), and its ring
+// runs out at a capillary wave's pace, a packet of crests 6 cm apart, dying
+// away as it spreads: 10 to 21 cm and as strong as the drop was big.
+vec2 rain_ring_layer(vec2 p, float t, float salt) {
+	vec2 q = p / 0.55;
+	vec2 cell = floor(q);
+	float phase = rain_hash(cell + salt);
+	float cycle = floor(t + phase);
+	float age = t + phase - cycle;
+	vec2 at = vec2(rain_hash(cell + cycle * 0.37 + salt), rain_hash(cell.yx + cycle * 0.61 + 7.7));
+	vec2 d = (q - cell - 0.33 - 0.34 * at) * 0.55;
+	float r = length(d);
+	float big = mix(0.6, 1.25, rain_hash(cell.yx * 1.3 + cycle * 0.83 + salt));
+	float x = r - age * 0.17 * big;
+	float fade = pow(1.0 - age, 1.5) * big * step(0.3, rain_hash(cell * 1.7 + cycle + salt));
+	float env = exp(-x * x * 494.0) * fade;  // (a Gaussian packet 4.5 cm wide)
+	float slope = 0.0045 * env * (104.7 * cos(104.7 * x) - 988.0 * x * sin(104.7 * x));
+	return d / max(r, 0.0001) * slope;
+}
+
+// The rings at p on standing water (`amount` 0..1: how much of it), faded as
+// they shrink under the pixel (`footprint`, the metres it spans).
+vec2 rain_rings(vec2 p, float footprint, float amount) {
+	float keep = amount * rain_fx.x * (1.0 - smoothstep(0.012, 0.03, footprint));
+	if (keep <= 0.0) { return vec2(0.0); }
+	float t = rain_fx.w * 1.35;
+	// further layers are turned against the first, so no grid lines up
+	mat2 turn = mat2(vec2(0.8, 0.6), vec2(-0.6, 0.8));
+	vec2 s = rain_ring_layer(p, t, 0.0);
+	s += rain_ring_layer(turn * p + 0.29, t * 1.13 + 0.5, 11.0) * turn;
+	if (rain_fx.z > 0.0) {
+		s += rain_ring_layer(turn * turn * p + 0.71, t * 0.91 + 0.25, 23.0) * turn * turn * rain_fx.z;
+	}
+	return s * keep;
+}
+
+// How much of the rings' roughening stands in for the rings themselves, where
+// they're too fine to draw (0..1).
+float rain_far(float footprint) { return rain_fx.x * smoothstep(0.012, 0.03, footprint); }
+
+// Drops striking an upturned face at p: a crown of spray bursting out to two
+// or three centimetres and gone in a few hundredths of a second (0..1). Below
+// a pixel a crown is spread over the pixel and dimmed to match, then fades out
+// altogether.
+float rain_crowns(vec2 p, float footprint, float amount) {
+	float keep = amount * rain_fx.y * (1.0 - smoothstep(0.025, 0.05, footprint));
+	if (keep <= 0.0) { return 0.0; }
+	float t = rain_fx.w * 2.0;
+	vec2 q = p / 0.14;
+	vec2 cell = floor(q);
+	float phase = rain_hash(cell);
+	float cycle = floor(t + phase);
+	float age = (t + phase - cycle) / 0.15;
+	float live = step(mix(0.6, 0.45, rain_fx.z), rain_hash(cell * 1.3 + cycle * 2.9)) * step(age, 1.0);
+	vec2 at = vec2(rain_hash(cell + cycle * 0.37), rain_hash(cell.yx + cycle * 0.61 + 7.7));
+	float r = length((q - cell - 0.25 - 0.5 * at) * 0.14);
+	float size = mix(0.008, 0.03, sqrt(age)) * mix(0.7, 1.2, rain_hash(cell.yx + cycle));
+	float spread = max(size, footprint * 0.7);
+	// (the spray thins from the middle out as the crown opens)
+	float crown = (1.0 - smoothstep(spread * 0.5, spread, r)) * mix(1.0, smoothstep(spread * 0.2, spread * 0.75, r), age);
+	return crown * live * (1.0 - age * 0.5) * keep * size * size / (spread * spread);
+}
+
+// Water running down a wall or a hull's side (u across it, y up it, metres):
+// rivulets 2 to 5 cm wide, about half the lanes running, each carrying beads
+// of water down at its own pace. Returns how much water runs here (x) and how
+// much of it is a bead's swollen head (y: its top bulges out to the sky).
+vec2 rain_rivulets(float u, float y, float footprint) {
+	float keep = rain_fx.z * (1.0 - smoothstep(0.02, 0.05, footprint));
+	if (keep <= 0.0) { return vec2(0.0); }
+	float lane = u * 9.0;
+	float id = floor(lane);
+	float across = abs(fract(lane) - 0.5) * 2.0;
+	float width = mix(0.18, 0.42, rain_hash(vec2(id, 3.1)));
+	float channel = 1.0 - smoothstep(width * 0.5, width, across);
+	float bead = fract(y * 1.4 + rain_fx.w * mix(0.5, 1.2, rain_hash(vec2(id, 9.7))) + rain_hash(vec2(id, 1.3)) * 9.0);
+	float flow = smoothstep(0.0, 0.05, bead) * (1.0 - smoothstep(0.05, 0.4, bead));
+	float head = smoothstep(0.0, 0.04, bead) * (1.0 - smoothstep(0.06, 0.16, bead));
+	float run = channel * step(0.4, rain_hash(vec2(id, 5.5))) * keep;
+	return vec2(run * mix(0.35, 1.0, flow), run * head);
+}
+"""
+
 static var _shader: Shader
 static var _cache := {}
 
 
 static func shader() -> Shader:
 	if _shader == null:
-		_shader = CloudShadow.make(code(TerrainTexture.shader(SURFACE_SHADER.replace("// STREET_SURFACE", ASPHALT_SHADER))), CloudShadow.CLEARCOAT)
+		_shader = CloudShadow.make(code(TerrainTexture.shader(SURFACE_SHADER.replace("// STREET_SURFACE", ASPHALT_SHADER).replace("// RAIN_DROPS", RAIN_DROPS))), CloudShadow.CLEARCOAT)
 	return _shader
 
 
@@ -332,9 +429,21 @@ static func apply(mi: GeometryInstance3D, kind: String, tint := Color(1, 1, 1)) 
 
 
 ## Tint that turns the preset's base colour into `c` (keeps per-part colours).
+## A tint is held to 0.25-2.5 of the base (what a merged mesh's vertex colours
+## can carry: see VC_K), a channel at a time. On a vehicle, a colour darker
+## than that in every channel (exhaust soot, a black fitting on pale paint) is
+## lifted as a whole instead, keeping its hue: clamped a channel at a time it
+## came out as the paint's own hue, darkened (olive soot on a grey jet went
+## blue-grey, near purple beside the camouflage). Colours partly in range, and
+## buildings and kit (whose darkest parts, a roof hole's loft, want only to be
+## dark), clamp as before.
 static func tint_for(kind: String, c: Color) -> Color:
 	var b: Color = _preset(kind).get("col_a", Color(0.6, 0.6, 0.6))
-	return Color(clampf(c.r / maxf(b.r, 0.02), 0.25, 2.5), clampf(c.g / maxf(b.g, 0.02), 0.25, 2.5), clampf(c.b / maxf(b.b, 0.02), 0.25, 2.5))
+	var t := Vector3(c.r / maxf(b.r, 0.02), c.g / maxf(b.g, 0.02), c.b / maxf(b.b, 0.02))
+	var lo := minf(t.x, minf(t.y, t.z))
+	if lo > 0.0 and maxf(t.x, maxf(t.y, t.z)) < 0.25 and kind.begins_with("vehicle/"):
+		t *= 0.25 / lo
+	return Color(clampf(t.x, 0.25, 2.5), clampf(t.y, 0.25, 2.5), clampf(t.z, 0.25, 2.5))
 
 
 static var _foliage: ShaderMaterial
@@ -591,8 +700,14 @@ static func add_distance_lod(root: Node3D, distance: float, keep: Array = []) ->
 static func distance_lod_parts(root: Node3D, keep: Array = []) -> Array:
 	var groups := {}
 	var originals := []
-	_collect(root, Transform3D.IDENTITY, groups, originals, keep, false, true, true)
-	return [] if groups.is_empty() else [groups, originals]
+	_collect(root, Transform3D.IDENTITY, groups, originals, keep, false, true, true, true)
+	if groups.is_empty():
+		return []
+	# (how high the holder sits on its model, for the mud: see _distant_dirt)
+	var lift := _lift(root)
+	for group: Dictionary in groups.values():
+		group["lift"] = lift
+	return [groups, originals]
 
 
 ## The distant mesh under root, from `distance` out, where the originals end.
@@ -698,14 +813,57 @@ static func _distant_arrays(groups: Dictionary) -> Array:
 		var scale := VC_K
 		if material.get_shader_parameter("use_vcolor") == true:
 			scale = float(material.get_shader_parameter("vcolor_k"))
+		# (a vehicle part's mud and dust: the paint shows through by `keep`,
+		# under what the dirt adds)
+		var dirt := _distant_dirt(group, material)
+		var keep: float = scale * float(dirt[0])
+		var add: Color = dirt[1]
 		for tint: Color in group.c:
-			colors.append(Color(base.r * tint.r * scale, base.g * tint.g * scale, base.b * tint.b * scale, 1.0))
+			colors.append(Color(base.r * tint.r * keep + add.r, base.g * tint.g * keep + add.g, base.b * tint.b * keep + add.b, 1.0))
 	var arrays := []
 	arrays.resize(Mesh.ARRAY_MAX)
 	arrays[Mesh.ARRAY_VERTEX] = vertices
 	arrays[Mesh.ARRAY_NORMAL] = normals
 	arrays[Mesh.ARRAY_COLOR] = colors
 	return arrays
+
+
+## A vehicle part's mud and dust (see the surface shader's surface_mud) in its
+## distant mesh's flat colours: how much of the part lies in the mud and the
+## dust above it, from a sample of its vertices, spread over the whole part, so
+## a muddy wheel or a dusty hull doesn't come clean as it crosses into the
+## distance. [how much of the paint still shows, the colour the dirt adds].
+static func _distant_dirt(group: Dictionary, material: ShaderMaterial) -> Array:
+	if material.get_shader_parameter("vehicle_surface") != true:
+		return [1.0, Color(0, 0, 0)]
+	var grime := float(material.get_shader_parameter("grime"))
+	var line := float(material.get_shader_parameter("surface_mud"))
+	if grime <= 0.0 or line <= 0.0:
+		return [1.0, Color(0, 0, 0)]
+	var splash := float(material.get_shader_parameter("surface_splash"))
+	var lift: float = group.get("lift", 0.0)
+	var wheel := lift > 0.0 and lift < 1.0
+	var v: PackedVector3Array = group.v
+	var step := maxi(1, v.size() / 48)
+	var dust := 0.0
+	var mud := 0.0
+	var n := 0
+	for i in range(0, v.size(), step):
+		var p := v[i]
+		var above: float = lift - Vector2(p.y, p.z).length() if wheel else p.y + lift
+		var depth := 1.0 - above / line
+		dust += smoothstep(-0.8, 0.2, depth)
+		mud += smoothstep(0.35 * splash, 0.35 * splash + lerpf(0.06, 0.4, splash), depth)
+		n += 1
+	# (the shader's amounts, its noise and the faces' tilt taken at their means)
+	dust *= grime * 0.45 * 0.82 / n
+	mud *= grime * 0.85 * 0.7 / n
+	var dust_col: Color = material.get_shader_parameter("surface_dust_col")
+	var mud_col: Color = material.get_shader_parameter("surface_mud_col")
+	if not per_material:
+		dust_col = dust_col.srgb_to_linear()
+		mud_col = mud_col.srgb_to_linear()
+	return [(1.0 - dust) * (1.0 - mud), dust_col * (dust * (1.0 - mud)) + mud_col * mud]
 
 
 ## What distant meshes are drawn with. At this distance cloth weave and metal
@@ -833,7 +991,9 @@ static func _byte(v: float) -> int:
 	return 0 if is_nan(v) else int(clampf(v * 255.0, 0.0, 255.0))
 
 
-static func _collect(node: Node, xf: Transform3D, groups: Dictionary, victims: Array, keep: Array, deep := true, remerge := false, single := false) -> void:
+## `distant`: gathering a distant mesh (distance_lod_parts), where a merged
+## mesh may carry a surface with a shader of its own (see below).
+static func _collect(node: Node, xf: Transform3D, groups: Dictionary, victims: Array, keep: Array, deep := true, remerge := false, single := false, distant := false) -> void:
 	for c in node.get_children():
 		if c in keep or not (c is Node3D):
 			continue
@@ -852,20 +1012,31 @@ static func _collect(node: Node, xf: Transform3D, groups: Dictionary, victims: A
 			# every surface must be one of ours (the override, or each surface's own material)
 			var mats := []
 			var ok := true
+			var foreign := 0
 			for si0 in mi.mesh.get_surface_count():
 				var m0 = mi.material_override if mi.material_override else mi.get_active_material(si0)
 				var sm0 := base_of(m0) as ShaderMaterial
 				var vc0: bool = sm0 != null and sm0.get_shader_parameter("use_vcolor") == true
 				if sm0 == null or not (sm0.shader == shader() or sm0 == _foliage or (vc0 and (sm0.shader == shader() or sm0.shader == foliage().shader))) or (vc0 and not remerge):
+					# A vehicle's merged mesh can hold one part drawn with a shader
+					# of its own (a fighter's tinted canopy): far off it's a few
+					# dark pixels, so the distant mesh draws it as glass, rather
+					# than the whole hull staying at full detail at every range.
+					if distant:
+						mats.append(get_mat("glass"))
+						foreign += 1
+						continue
 					ok = false
 					break
 				mats.append(sm0)
+			if foreign == mats.size():
+				ok = false  # (nothing of ours in it: it draws itself, near and far)
 			if ok and not mats.is_empty():
 				_append(groups, mi.mesh, mats, shadow_of(mi), get_inst(mi, &"tint"), cx, single)
 				victims.append(mi)
 				continue
 		if deep:
-			_collect(c, cx, groups, victims, keep, deep, remerge, single)
+			_collect(c, cx, groups, victims, keep, deep, remerge, single, distant)
 
 
 ## One part onto the merged meshes: each surface of `mesh` (under its material
@@ -880,6 +1051,7 @@ static func _append(groups: Dictionary, mesh: Mesh, mats: Array, shadow: int, ti
 	for si in mesh.get_surface_count():
 		var sm: ShaderMaterial = mats[si]
 		var vc: bool = sm.get_shader_parameter("use_vcolor") == true
+		var vehicle: bool = sm.get_shader_parameter("vehicle_surface") == true
 		var key := str(sm.get_instance_id()) if single else "%d|%d" % [sm.get_instance_id(), shadow]
 		if not groups.has(key):
 			groups[key] = {"mat": sm, "shadow": shadow, "v": PackedVector3Array(), "n": PackedVector3Array(), "c": PackedColorArray(), "uv": PackedVector2Array()}
@@ -892,7 +1064,7 @@ static func _append(groups: Dictionary, mesh: Mesh, mats: Array, shadow: int, ti
 		var verts: PackedVector3Array = fa[0]
 		g.v.append_array(cx * verts)
 		g.n.append_array(nb * (fa[1] as PackedVector3Array))
-		if sm.get_shader_parameter("vehicle_surface") == true:
+		if vehicle:
 			if fa[3] != null:
 				g.uv.append_array(fa[3])
 			else:
@@ -905,6 +1077,8 @@ static func _append(groups: Dictionary, mesh: Mesh, mats: Array, shadow: int, ti
 			g.uv.append_array(fa[3])
 		if vc and fa[2] != null and (fa[2] as PackedColorArray).size() == verts.size():
 			g.c.append_array(fa[2])
+			if vehicle:
+				g["runs"] = null  # (colours of its own: see _lift_groups)
 		else:
 			# in the scale the merged material reads it back at (see VC_K)
 			var fk := 1.0
@@ -915,8 +1089,16 @@ static func _append(groups: Dictionary, mesh: Mesh, mats: Array, shadow: int, ti
 				fk = 1.0 / VC_K
 			var cols := PackedColorArray()
 			cols.resize(verts.size())
-			cols.fill(Color(col.r * fk, col.g * fk, col.b * fk, col.a))
+			var fill := Color(col.r * fk, col.g * fk, col.b * fk, col.a)
+			cols.fill(fill)
 			g.c.append_array(cols)
+			if vehicle and (not g.has("runs") or g.runs is PackedInt32Array):
+				# each part's colour, run by run (see _lift_groups)
+				if not g.has("runs"):
+					g["runs"] = PackedInt32Array()
+					g["run_c"] = PackedColorArray()
+				g.runs.append(verts.size())
+				g.run_c.append(fill)
 
 
 ## Parts written straight into merged meshes, for a model that knows as it goes
@@ -948,8 +1130,55 @@ class Bake:
 
 	## The merged meshes, added under `root` (as merge_static adds them).
 	func commit(root: Node3D) -> void:
+		Mats._lift_groups(groups, Mats._lift(root))
 		Mats._emit(root, groups, single)
 		groups = {}
+
+
+## How high a holder (a vehicle's turret, a wheel, a gun: a moving part with
+## a pivot of its own) sits on its model: its position's height added up to
+## the model's root, which is built off the scene tree (0 for the root itself,
+## or for anything already in the tree).
+static func _lift(holder: Node3D) -> float:
+	if holder.is_inside_tree():
+		return 0.0
+	var y := 0.0
+	var n := holder
+	while n.get_parent() != null:
+		y += n.position.y
+		n = n.get_parent() as Node3D
+		if n == null:
+			return 0.0
+	return maxf(y, 0.0)
+
+
+## The surface shader measures a vehicle's mud from the ground it stands on,
+## so a part on a holder of its own has to know how high the holder sits. Its
+## merged mesh carries that in its vertex colours' alpha, which nothing else
+## uses (the tint is in the colour): 1 for the hull, a step down for every
+## centimetre, 0 at 2.55 m and up (high above any mud). An object's own shader
+## value would cost the browser's renderer a copy of every material for every
+## wheel and turret (see per_material): two dozen vehicles drew several times
+## slower there. Each part's colour is set again run by run, as _append noted
+## them; a group that brought colours of its own keeps them.
+static func _lift_groups(groups: Dictionary, lift: float) -> void:
+	if lift <= 0.0:
+		return
+	var a := float(255 - clampi(roundi(lift * 100.0), 0, 255)) / 255.0
+	for g: Dictionary in groups.values():
+		if not (g.get("runs") is PackedInt32Array):
+			continue
+		var runs: PackedInt32Array = g.runs
+		var run_c: PackedColorArray = g.run_c
+		var c := PackedColorArray()
+		var chunk := PackedColorArray()
+		for i in runs.size():
+			chunk.resize(runs[i])
+			var rc := run_c[i]
+			chunk.fill(Color(rc.r, rc.g, rc.b, a))
+			c.append_array(chunk)
+		if c.size() == (g.c as PackedColorArray).size():
+			g.c = c
 
 
 ## A node's transform from its position, rotation and scale, worked out as
@@ -1017,6 +1246,10 @@ static func _preset(kind: String) -> Dictionary:
 			return {"pattern": PAINT, "col_a": Color(0.5, 0.5, 0.5), "col_b": Color(0.35, 0.33, 0.3), "rough": 0.38, "metal": 0.3, "bump": 0.4, "grime": 0.9, "rust": 0.45}
 		"wood_painted":
 			return {"pattern": WOOD, "col_a": Color(0.3, 0.34, 0.22), "col_b": Color(0.22, 0.25, 0.16), "rough": 0.8, "bump": 1.0, "grime": 0.7}
+		"weapon":
+			# a gun's phosphated steel: near black with a grey-green cast,
+			# matte where it's dry and sheened where the oil lies
+			return {"pattern": PAINT, "col_a": Color(0.072, 0.075, 0.07), "col_b": Color(0.16, 0.165, 0.155), "rough": 0.5, "metal": 0.5, "bump": 0.3, "grime": 0.12}
 		"gunmetal_w":
 			return {"pattern": PAINT, "col_a": Color(0.14, 0.14, 0.135), "col_b": Color(0.34, 0.33, 0.31), "rough": 0.52, "metal": 0.55, "bump": 0.35, "grime": 0.2}
 		"plaster":
@@ -1141,13 +1374,13 @@ static func _preset(kind: String) -> Dictionary:
 			return {"pattern": PAINT, "col_a": Color(0.32, 0.2, 0.12), "col_b": Color(0.22, 0.2, 0.18), "rough": 0.85, "metal": 0.35, "bump": 1.0, "grime": 0.5, "rust": 1.0}
 		"wire":
 			# new galvanised barbed and razor wire: bright zinc, a little dulled
-			return {"pattern": PAINT, "col_a": Color(0.52, 0.53, 0.51), "col_b": Color(0.64, 0.64, 0.61), "rough": 0.5, "metal": 0.7, "bump": 0.0, "grime": 0.15, "rust": 0.06, "scale": 4.0}
+			return {"pattern": PAINT, "col_a": Color(0.5, 0.51, 0.49), "col_b": Color(0.58, 0.58, 0.55), "rough": 0.58, "metal": 0.6, "bump": 0.0, "grime": 0.15, "rust": 0.06, "scale": 4.0}
 		"wire_rust":
 			# wire left out for years: the zinc gone, rusted through to a flaky brown
-			return {"pattern": PAINT, "col_a": Color(0.31, 0.17, 0.09), "col_b": Color(0.43, 0.27, 0.15), "rough": 0.88, "metal": 0.2, "bump": 0.0, "grime": 0.3, "rust": 1.0, "scale": 4.0}
+			return {"pattern": PAINT, "col_a": Color(0.25, 0.14, 0.08), "col_b": Color(0.36, 0.21, 0.11), "rough": 0.9, "metal": 0.15, "bump": 0.0, "grime": 0.3, "rust": 1.0, "scale": 4.0}
 		"wire_military":
-			# the armies' issue wire: dull dark zinc, weathered grey, flecked with rust
-			return {"pattern": PAINT, "col_a": Color(0.36, 0.37, 0.34), "col_b": Color(0.45, 0.46, 0.42), "rough": 0.6, "metal": 0.5, "bump": 0.0, "grime": 0.3, "rust": 0.18, "scale": 4.0}
+			# the armies' issue wire: dull, dark and olive-grey, no shine to give it away
+			return {"pattern": PAINT, "col_a": Color(0.31, 0.32, 0.27), "col_b": Color(0.38, 0.38, 0.32), "rough": 0.72, "metal": 0.3, "bump": 0.0, "grime": 0.3, "rust": 0.18, "scale": 4.0}
 		"bag":
 			return {"pattern": CANVAS, "col_a": Color(0.5, 0.45, 0.33), "col_b": Color(0.4, 0.36, 0.26), "scale": 1.6, "rough": 0.97, "bump": 0.8, "grime": 0.7, "local_space": true, "use_vcolor": true}
 		"canvas_l":
@@ -1239,6 +1472,21 @@ uniform float surface_weather = 0.0;
 uniform float surface_paint_wear = 0.0;
 uniform float surface_grain = 0.0;
 uniform float surface_coat_roughness = 0.22;
+// Vehicles: how high mud is thrown up the hull (metres above where it stands;
+// a boat's waterline), how ragged its edge is (flung mud 1, still water 0), the
+// wet mud low down and the drier dust carried above it (VehicleMaterials.preset).
+uniform float surface_mud = 0.0;
+uniform float surface_splash = 1.0;
+uniform vec3 surface_mud_col : source_color = vec3(0.30, 0.25, 0.19);
+uniform vec3 surface_dust_col : source_color = vec3(0.55, 0.49, 0.39);
+// Vehicle glass: how far its reflection turns up toward the sky (see below).
+uniform float surface_glaze = 0.0;
+// Burnt-out wrecks (the char finish): what the bare metal burns to, the pale
+// ash and heat scale where it burned hottest, and how high up the hull the
+// fire only scorched the paint (VehicleMaterials.CHAR).
+uniform vec3 surface_char_rust : source_color = vec3(0.36, 0.25, 0.19);
+uniform vec3 surface_char_ash : source_color = vec3(0.44, 0.43, 0.41);
+uniform float surface_char_low = 0.55;
 uniform bool use_vcolor = false;
 uniform float vcolor_k = 1.0;  // merged parts: the vertex colour is stored scaled down (Mats.VC_K)
 // paving (Mats.paving): a shell hole or a trench punches through it, as through the roads
@@ -1261,6 +1509,7 @@ varying float ground_y;
 varying mat3 vehicle_normal_basis;
 
 // STREET_SURFACE
+// RAIN_DROPS
 float h12(vec2 p) { vec3 p3 = fract(vec3(p.xyx) * 0.1031); p3 += dot(p3, p3.yzx + 33.33); return fract((p3.x + p3.y) * p3.z); }
 // Value noise with one feature per unit, read from a mipmapped tileable
 // texture: the GPU filters it, so fine detail averages out with distance
@@ -1284,6 +1533,13 @@ void vertex() {
 	if (terrain_bound && !local_space && grime > 0.0) {
 		ground_y = terrain_height(crater_tex, (wpos.xz + crater_half) / (crater_half * 2.0));
 	}
+	if (vehicle_surface) {
+		// (a vehicle is never on the ground map: it carries its own frame. For
+		// one, ground_y is how high this part's pivot sits on the model instead:
+		// its vertex colours' alpha (Mats._lift_groups), or pofs for a part
+		// merged as a node.)
+		ground_y = (1.0 - COLOR.a) * 2.55 + pofs.y;
+	}
 	// Moving through the world must not change camouflage or wear.
 	seed = (vehicle_surface || local_space) ? vec3(0.0) : MODEL_MATRIX[3].xyz;
 	if (local_space) {
@@ -1303,6 +1559,15 @@ void fragment() {
 		}
 	}
 	vec3 an = abs(tn);
+	// A vehicle's height above where it stands, in its own frame, so its dust
+	// and mud ride with it and keep their line however the hull pitches and
+	// rolls: the part's own height on its pivot plus how high that pivot sits
+	// on the model (ground_y, for a vehicle: zero for the hull). A pivot under
+	// a metre is running gear turning on its axle (x): its mud is measured out
+	// from the axle, the rim and tread as low as the ground and the hub higher,
+	// the same all the way round as the wheel turns.
+	vec3 part = tp - pofs;
+	float above = (ground_y > 0.0 && ground_y < 1.0) ? ground_y - length(part.yz) : ground_y + part.y;
 	vec2 uv;
 	if (an.y > an.x && an.y > an.z) { uv = tp.xz; }
 	else if (an.x > an.z) { uv = vec2(tp.z, tp.y); }
@@ -1449,7 +1714,7 @@ void fragment() {
 			float runoff = smoothstep(0.26, 0.35, texture(wear_tex, uv * vec2(4.1,0.42) + off).r);
 			col *= mix(1.0, mix(0.91, 1.02, runoff), 1.0-abs(tn.y));
 			float recess = 1.0 - smoothstep(0.18, 0.48, wear);
-			float dust = smoothstep(0.28, 0.70, wear) * (1.0 - smoothstep(0.2, 1.6, tp.y));
+			float dust = smoothstep(0.28, 0.70, wear) * (1.0 - smoothstep(0.2, 1.6, above));
 			col *= mix(0.85, 1.09, wear);
 			col = mix(col, vec3(0.055,0.041,0.027), recess * 0.22);
 			col = mix(col, vec3(0.19,0.145,0.086), dust * 0.25);
@@ -1648,9 +1913,77 @@ void fragment() {
 				h += (fibres - 0.5) * surface_grain * keep(0.04, pixel);
 				col *= 0.88 + 0.24 * fibres;
 			} else if (surface_finish == 6) {
-				// Char maps have no alpha channel: height supplies their ash variation.
-				col *= 0.68 + 0.70 * detail.r;
-				h += (grain - 0.5) * surface_grain * 0.18;
+				// (the colour the part was given, in its vertex colours once merged)
+				vec3 given = use_vcolor ? COLOR.rgb * vcolor_k : tint.rgb;
+				if (min(given.r, min(given.g, given.b)) < 0.6) {
+					// Soot inside a live vehicle's exhaust or muzzle, tinted near black.
+					// Char maps have no alpha channel: height supplies their ash variation.
+					col *= 0.68 + 0.70 * detail.r;
+					h += (grain - 0.5) * surface_grain * 0.18;
+				} else {
+					// A burnt-out wreck: VehicleModels leaves every part of one
+					// untinted. The fire burned inside and rose, so up top the
+					// paint burned right off and the bare steel went to rust,
+					// dark brown shading to orange, under grey-white ash and pale
+					// heat scale where it burned hottest (most on the faces turned
+					// up, where the ash settles too). Lower down the fire only
+					// scorched the paint, dark and blistered. Soot lies black
+					// along the line between the two, where the flames licked
+					// but never burned it clean again, and streaks up the sides.
+					// A tyre burns away to its steel wire and grey ash, round a
+					// rim that went through the hottest fire of all. All of it is
+					// matte: the profile's roughness and specular stand.
+					vec3 n = normalize(tn);
+					// Patches a metre or so across and a third of that, their
+					// edges broken by a hand's-width noise and the map's own
+					// grain (a few centimetres), so none runs smooth. (Read in a
+					// plane skewed through the height, so they lie as round on
+					// a side as on top.)
+					vec2 sk = vec2(tp.x + tp.y * 0.7, tp.z - tp.y * 0.6);
+					float fine = detail.r - 0.5;
+					float rag = tnoise(sk * 9.0 + 5.1) - 0.5;
+					float grit = tnoise(sk * 31.0 + 9.3) - 0.5;
+					float big = tnoise(sk * 1.1 + 3.7) + rag * 0.25;
+					float mid = tnoise(sk * 3.1 + 11.0) + rag * 0.35;
+					// (a wheel's parts are measured out from its axle: see `above`)
+					bool wheel = ground_y > 0.0 && ground_y < 1.0;
+					float tyre = wheel ? smoothstep(0.76, 0.82, length(part.yz) / ground_y) : 0.0;
+					float heat = wheel ? 0.85 + (big - 0.5) * 0.4
+						: smoothstep(0.1, surface_char_low * 2.0, above) + n.y * 0.22 + (big - 0.5) * 0.8;
+					// Rust is one brown, varying slowly in shade and finely grained:
+					// a crust, not a pattern of patches. Char mottles it, thickest
+					// where the fire burned cooler than round about (where it was
+					// hottest it burned the steel clean).
+					float oxide = clamp(0.5 + (big - 0.5) * 0.5 + (mid - 0.5) * 0.3 + fine * 0.9 + rag * 0.6 + grit * 0.4 + (heat - 0.8) * 0.2, 0.0, 1.0);
+					vec3 steel = mix(surface_char_rust * vec3(0.45, 0.42, 0.4), surface_char_rust, oxide);
+					// (in places the steel is still grey-brown under its scale,
+					// and everywhere pitted dark where flakes of it came away)
+					steel = mix(steel, vec3(dot(steel, vec3(0.3, 0.5, 0.2))) * 1.15, clamp((mid - 0.45) * 1.4, 0.0, 0.5));
+					steel *= 1.0 - detail.b * 0.4;
+					steel = mix(steel, vec3(0.012, 0.011, 0.01), clamp((0.62 - big) * 0.9 + (0.55 - mid) * 0.5 - fine * 0.4, 0.0, 0.7) * (1.0 - upward * 0.75));
+					// The ash is a powder: a film over whatever faces up, thickest
+					// where it burned hottest, hardly any on the sides, and thin
+					// enough everywhere that the rust shows through its grain.
+					float ash = clamp(upward * (0.42 + (big - 0.5) * 0.5) + 0.04 + (heat - 1.0) * 0.12 + fine * 0.8 + rag * 0.3 + grit * 0.4, 0.0, 0.8);
+					vec3 bare = mix(steel, surface_char_ash * (0.82 + 0.36 * detail.r), ash);
+					// (the Abrams' own scorched camouflage, where it has one)
+					vec3 scorched = (pattern == 6 ? col * 0.7 : vec3(0.05, 0.043, 0.032)) * (0.75 + 0.5 * detail.r);
+					scorched = mix(scorched, steel * 0.7, smoothstep(0.6, 0.85, mid + fine * 0.3) * 0.5);
+					vec3 c = mix(scorched, bare, smoothstep(0.3, 0.55, heat));
+					// Soot: the tide line, streaks rising up the sides, and the
+					// faces turned down, which the flames licked from below.
+					float tide = 1.0 - smoothstep(0.0, 0.16, abs(heat - 0.45 + (mid - 0.5) * 0.3));
+					// (`grain_uv` runs across a side face and up it; the streaks
+					// gather where the fire ran cooler, as the char does)
+					float rise = smoothstep(0.52, 0.8, tnoise(vec2(grain_uv.x * 4.0 + rag * 0.6 + 2.0, tp.y * 0.5 - 3.0)) + (mid - 0.5) * 0.3)
+						* (1.0 - upward) * smoothstep(0.4, 0.9, heat) * smoothstep(0.7, 0.35, big);
+					float under = smoothstep(-0.2, -0.7, n.y);
+					float soot = clamp(tide * 0.75 + rise * 0.9 + under * 0.7, 0.0, 1.0);
+					c = mix(c, vec3(0.006, 0.0055, 0.005) * (0.7 + 0.8 * detail.r), soot);
+					vec3 wire = mix(vec3(0.008), surface_char_ash * 0.55, smoothstep(0.4, 0.7, mid + fine * 0.8));
+					wire = mix(wire, surface_char_rust * 0.45, smoothstep(0.55, 0.75, detail.g) * 0.6);
+					col = mix(c, wire, tyre);
+				}
 			}
 			// Sparse scuffs use a threshold, not a grey metallic wash over paint.
 			float worn = smoothstep(0.74, 0.91, detail.r) * surface_wear;
@@ -1687,12 +2020,38 @@ void fragment() {
 	else if (pattern == 21) { col *= mix(1.0, 0.88 + 0.24 * macro, weathering); }
 	else if (pattern != 18 && pattern != 22) { col *= 0.88 + 0.24 * macro; }
 	// grime and dust toward the ground
-	float low = 1.0 - smoothstep(0.0, 0.9, weather_pos.y - ground_y);
-	float gn = tnoise(uv * 2.0 + off);
-	float dirt = low * grime * (0.6 + 0.4 * gn);
-	col = mix(col, vehicle_surface ? vec3(0.12, 0.095, 0.065) : col * 0.62 + vec3(0.05, 0.04, 0.02), dirt);
+	float dirt = 0.0;
+	if (vehicle_surface) {
+		if (grime > 0.0 && surface_mud > 0.0) {
+			// Tracks and tyres throw mud up the lower hull: a wet crust low down,
+			// its edge wandering in lobes and splashes along the side, and above
+			// it a drier, paler dust that thins out higher up and settles most on
+			// whatever faces up. (A boat's still waterline keeps a level edge.)
+			// (one noise read for the splashes; the surface's own relief, h,
+			// breaks them up finer and lets mud fill its recesses first)
+			float blot = tnoise(vec2(tp.x + tp.z, tp.y * 1.4) * 3.4 + 5.3);
+			float fleck = clamp(h, 0.0, 1.0);
+			// how far down into the mud this point is: 1 at the ground, 0 at the line
+			float depth = 1.0 - above / surface_mud + (0.5 - h) * 0.25;
+			float rag = ((blot - 0.5) * 1.8 + (fleck - 0.5) * 0.6) * surface_splash;
+			float from = 0.35 * surface_splash;
+			float mud = smoothstep(from, from + mix(0.06, 0.4, surface_splash), depth + rag) * grime * (0.7 + 0.3 * fleck);
+			float dust = smoothstep(-0.8, 0.2, depth + rag * 0.6) * grime * 0.45
+				* (0.65 + 0.35 * smoothstep(-0.2, 0.7, tn.y));
+			col = mix(col, surface_dust_col * (0.9 + 0.2 * blot), dust);
+			col = mix(col, surface_mud_col * (0.75 + 0.5 * fleck), mud * 0.7);
+			dirt = max(mud, dust);
+			// dried mud is matte, and hides the clear coat and bare metal under it
+			r = mix(r, 0.94, dirt);
+		}
+	} else {
+		float low = 1.0 - smoothstep(0.0, 0.9, weather_pos.y - ground_y);
+		float gn = tnoise(uv * 2.0 + off);
+		dirt = low * grime * (0.6 + 0.4 * gn);
+		col = mix(col, col * 0.62 + vec3(0.05, 0.04, 0.02), dirt);
+	}
 	ALBEDO = col;
-	ROUGHNESS = clamp(r + (macro - 0.5) * (vehicle_surface ? 0.04 : 0.12) + (vehicle_surface ? dirt * 0.15 : 0.0), 0.05, 1.0);
+	ROUGHNESS = clamp(r + (macro - 0.5) * (vehicle_surface ? 0.04 : 0.12), 0.05, 1.0);
 	if ((pattern >= 18 && pattern <= 20 || pattern == 22) && an.y > 0.5) {
 		vec2 puv = wpos.xz / 2.2;
 		if (pattern == 19 || pattern == 20) { puv = uv; }
@@ -1732,8 +2091,12 @@ void fragment() {
 		ALBEDO = soaked;
 		ROUGHNESS = mix(ROUGHNESS - wet * 0.3, 0.06, pud);
 		SPECULAR = mix(0.3, 0.55, pud);
+		// the rain rings the puddles and, faintly, the wet film on the stone
+		vec2 ring = rain_rings(wpos.xz, length(fwidth(wpos.xz)), max(pud, wet * 0.25));
+		NORMAL = normalize(NORMAL - (VIEW_MATRIX * vec4(ring.x, 0.0, ring.y, 0.0)).xyz);
+		ROUGHNESS = mix(ROUGHNESS, max(ROUGHNESS, 0.22), rain_far(length(fwidth(wpos.xz))) * pud);
 	}
-	CLEARCOAT = vehicle_surface ? surface_coat : 0.0;
+	CLEARCOAT = vehicle_surface ? surface_coat * (1.0 - dirt) : 0.0;
 	CLEARCOAT_ROUGHNESS = vehicle_surface ? surface_coat_roughness : 0.22;
 	// lamplight in a window by dusk and night, brighter in some rooms than
 	// others (a hash of where the window is, so a batch keeps each one's)
@@ -1754,6 +2117,14 @@ void fragment() {
 		vec3 grad = sign(det) * (dhx * r1 + dhy * r2);
 		NORMAL = normalize(abs(det) * NORMAL - grad * bump * 0.02);
 	}
+	if (vehicle_surface && surface_glaze > 0.0) {
+		// From the commander's height a window mostly mirrors the ground beside
+		// the vehicle, and read as a flat dark panel. Real panes are faintly
+		// curved and laminated, and in games and photographs alike glass reads
+		// by the sky in it: so its reflection leans up toward the sky, and the
+		// dark cab shows through where the eye looks straight in.
+		NORMAL = normalize(NORMAL + (VIEW_MATRIX * vec4(0.0, surface_glaze, 0.0, 0.0)).xyz);
+	}
 	if (rain_wet > 0.0) {
 		// Out in the rain everything takes a film of water (after Lagarde,
 		// "Water drop 2b: dynamic rain and its effects", 2013). Rough, porous
@@ -1772,6 +2143,26 @@ void fragment() {
 		ALBEDO *= OUTPUT_IS_SRGB ? pow(darken, 1.0 / 2.2) : darken;
 		// (water stands as a film on paint and metal; cloth and timber drink most of it)
 		ROUGHNESS = mix(ROUGHNESS, mix(0.34, 0.12, smoothstep(0.4, 0.9, wn.y)), soak * mix(0.85, 0.35, porous));
+		// While it's still coming down, drops burst on every roof, deck and
+		// helmet near the camera, and water runs down the walls and hull sides
+		// in rivulets along the streaks. A vehicle carries its rivulets with it
+		// (they're laid out in its own frame); the drops fall in the world's.
+		if (rain_fx.y > 0.0) {
+			float footprint = length(fwidth(wpos)) * 0.7;
+			float near = rain_wet * (1.0 - smoothstep(25.0, 40.0, distance(CAMERA_POSITION_WORLD, wpos)));
+			float crown = rain_crowns(wpos.xz, footprint, near * smoothstep(0.55, 0.85, wn.y));
+			ALBEDO = mix(ALBEDO, OUTPUT_IS_SRGB ? vec3(0.66) : vec3(0.4), crown * 0.7);
+			ROUGHNESS = mix(ROUGHNESS, 0.08, crown);
+			float side = 1.0 - smoothstep(0.3, 0.6, abs(wn.y));
+			if (rain_fx.z > 0.0 && side * near > 0.0) {
+				vec3 lp = vehicle_surface ? (wpos - MODEL_MATRIX[3].xyz) * mat3(MODEL_MATRIX) : wpos;
+				vec2 run = rain_rivulets(lp.x + lp.z, lp.y, footprint) * side * near * mix(0.4, 1.0, streak);
+				ALBEDO *= 1.0 - run.x * mix(0.15, 0.3, porous);
+				ROUGHNESS = mix(ROUGHNESS, 0.04, run.x * 0.9);
+				// (a bead's top turns up to the sky and catches its light)
+				NORMAL = normalize(NORMAL + (VIEW_MATRIX * vec4(0.0, 1.0, 0.0, 0.0)).xyz * run.y * 0.9);
+			}
+		}
 	}
 	// CLOUD_FRAGMENT cloud_sun(wpos)
 }
