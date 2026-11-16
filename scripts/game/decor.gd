@@ -4,7 +4,9 @@ extends Node3D
 ## the list the server generated: sidewalks and curbs, street lights, utility
 ## poles and their sagging wires, benches, bins, hydrants, signs, a bus stop,
 ## the square's fountain or statue and market stalls, playground kit, fences,
-## vegetable patches, washing lines, hay bales, a water tower.
+## vegetable patches, washing lines, hay bales, a water tower, what a farm
+## keeps round its yard (troughs, ploughs and harrows, churn stands, hen
+## houses, barrows).
 ##
 ## Parts are baked into merged meshes per 32 m chunk (so they still cull), the
 ## wires are drawn as lines and the lamp lenses glow; at dusk and at night the
@@ -34,6 +36,9 @@ const BREAKABLE := {
 	"traffic_light": [Vector3(0.5, 3.4, 0.5), 120.0], "phone_box": [Vector3(1.0, 2.6, 1.0), 300.0],
 	"post_box": [Vector3(0.55, 1.4, 0.55), 200.0], "ad_column": [Vector3(1.4, 2.9, 1.4), 600.0],
 	"hoarding": [Vector3(5.0, 3.8, 0.6), 150.0], "street_name": [Vector3(0.9, 2.6, 0.9), 20.0],
+	"trough": [Vector3(2.0, 0.75, 0.62), 150.0], "plough": [Vector3(2.5, 1.2, 1.2), 300.0],
+	"harrow": [Vector3(2.4, 0.3, 1.6), 200.0], "churn_stand": [Vector3(2.5, 1.7, 1.0), 80.0],
+	"hen_house": [Vector3(3.6, 1.6, 3.0), 40.0], "barrow": [Vector3(0.7, 0.7, 1.5), 20.0],
 }
 
 var world
@@ -600,6 +605,22 @@ func _make(h: Node3D, kind: String, ex) -> void:
 					BuildingStreet.street_name(sk, rng)
 				"belongings":
 					BuildingStreet.belongings(sk, rng)
+		"trough", "plough", "harrow", "churn_stand", "hen_house", "barrow":
+			# a farmyard's kit (BuildingFarm)
+			var fk := BuildingKit.baked(_bake, rng, _at)
+			match kind:
+				"trough":
+					BuildingFarm.trough(fk, rng)
+				"plough":
+					BuildingFarm.plough(fk, rng)
+				"harrow":
+					BuildingFarm.harrow(fk, rng)
+				"churn_stand":
+					BuildingFarm.churn_stand(fk, rng)
+				"hen_house":
+					BuildingFarm.hen_house(fk, rng)
+				"barrow":
+					BuildingFarm.barrow(fk, int(ex) if ex != null else 0)
 		"mailbox":
 			_m(Res.box(Vector3(0.07, 1.0, 0.07)), "wood_dark", Vector3(0, 0.5, 0), null, Vector3.ZERO, false)
 			_m(Res.box(Vector3(0.26, 0.24, 0.42)), "paint", Vector3(0, 1.1, 0), [Color(0.2, 0.35, 0.25), Color(0.6, 0.15, 0.12), Color(0.15, 0.25, 0.45), Color(0.12, 0.12, 0.12)][rng.randi() % 4], Vector3.ZERO, false)
@@ -674,11 +695,8 @@ func _make(h: Node3D, kind: String, ex) -> void:
 			_beam(Vector3(2.75, 0, 0.25), Vector3(2.4, 12.4, 0.25), 0.05, "metal_dark")
 			_beam(Vector3(2.75, 0, -0.25), Vector3(2.4, 12.4, -0.25), 0.05, "metal_dark")
 		"hay":
-			var n2 := int(ex) if ex != null else 1
-			for i in n2:
-				_m(Res.cyl(0.65, 0.65, 1.2, 14), "fabric", Vector3((i - (n2 - 1) * 0.5) * 1.35, 0.65, 0), Color(0.75, 0.64, 0.32), Vector3(0, 0, PI * 0.5))
-			if n2 >= 3:
-				_m(Res.cyl(0.65, 0.65, 1.2, 14), "fabric", Vector3(0, 1.85, 0), Color(0.72, 0.62, 0.3), Vector3(0, 0, PI * 0.5))
+			# round bales (BuildingFarm): straw, or wrapped for silage
+			BuildingFarm.round_bales(BuildingKit.baked(_bake, rng, _at), int(ex) if ex != null else 1, rng)
 		"drive":
 			var d2: Vector3 = ex
 			_m(Res.box(Vector3(d2.x, 0.03, d2.z)), "concrete_floor", Vector3(0, 0.015, 0), Color(0.46, 0.45, 0.42), Vector3.ZERO, false, true)

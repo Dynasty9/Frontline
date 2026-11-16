@@ -285,6 +285,50 @@ func _subject(kind: String) -> Node3D:
 				hs.position.x = (i - 0.5) * 11.0
 				shops.add_child(hs)
 			return shops
+		"barn_rooms":
+			# two barns with their roofs off, as when men are inside, their
+			# back and left walls (the ones seen from inside) without windows:
+			# what a farm keeps in its barn, the tools hung on its walls
+			# (where it does: before, a bare floor strewn with straw)
+			var barns := Node3D.new()
+			for i in 2:
+				var ids := {}
+				var plain := {}
+				for key in [10, 11, 12, 13, 14, 20, 21, 22]:
+					ids[key] = 760 + i * 40 + key
+					plain[key] = 0
+				var bn := _house(13.0, 10.0, [5, 11][i] if BuildingMaterials.HOUSE.size() > 5 else 0, false, false, false, 0, ids, plain, 2, 40 + i * 6)
+				bn.position.x = (i - 0.5) * 14.5
+				barns.add_child(bn)
+			return barns
+		"farm_kit":
+			# what a farm keeps round its yard (BuildingFarm, loaded by path so
+			# the stage still runs where there's none): round bales of straw
+			# and wrapped for silage, the tractor, a hen house and its run; a
+			# water trough, a plough, a harrow, a churn stand, a wheelbarrow
+			var yard := Node3D.new()
+			if not ResourceLoader.exists("res://scripts/game/building_farm.gd"):
+				return yard
+			var farm: GDScript = load("res://scripts/game/building_farm.gd")
+			var r := RandomNumberGenerator.new()
+			r.seed = 5
+			var fk := BuildingKit.nodes(yard, r)
+			for i in 3:
+				farm.round_bale(fk, Vector3(-8.6 + i * 1.35, 0.65, 3.2), false, Color.WHITE, r)
+			farm.round_bale(fk, Vector3(-7.25, 1.85, 3.2), false, Color.WHITE, r)
+			for i in 2:
+				farm.round_bale(fk, Vector3(-4.3 + i * 1.35, 0.65, 3.4), true, Color(0.06, 0.06, 0.06), r)
+			var tractor := Structure.preview_model("car", -1, 5, Vector3.ZERO, false, 7)
+			tractor.position = Vector3(0.6, 0, 3.0)
+			tractor.rotation.y = PI * 0.5
+			yard.add_child(tractor)
+			farm.hen_house(fk.at_point(Vector3(6.2, 0, 3.0)), r)
+			farm.trough(fk.at_point(Vector3(-7.6, 0, -1.8)), r)
+			farm.plough(fk.at_point(Vector3(-4.2, 0, -1.8)), r)
+			farm.harrow(fk.at_point(Vector3(-0.8, 0, -1.8)), r)
+			farm.churn_stand(fk.at_point(Vector3(2.8, 0, -1.8)), r)
+			farm.barrow(fk.at_point(Vector3(5.6, 0, -1.8), Vector3(0, 0.6, 0)), 0)
+			return yard
 		"house_rooms":
 			# three houses with their roofs off, as when men are inside, their
 			# back and left walls (the ones seen from inside) without windows:

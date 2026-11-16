@@ -1,0 +1,66 @@
+{
+  "before_ref": "a4b686e48fdf562ec168a98525765c14a285651b",
+  "source_ref": "93ec2b443bf3db70479273810a122ec219317b10",
+  "engine": "Godot 4.7.2 stable ed1daf0bf",
+  "stage": "tools/showcase/building-surfaces.tscn; tests/fixtures/environment-views.gd",
+  "command": "godot --path CHECKOUT --resolution 3200x1800 tools/showcase/building-surfaces.tscn -- --building-out=OUTPUT --offscreen FLAGS",
+  "comparisons": [
+    {
+      "subjects": [
+        "barn_rooms"
+      ],
+      "flags": [
+        "--building-single",
+        "--building-kinds=barn_rooms"
+      ],
+      "before_flags": [
+        "--building-match=AFTER/capture.json"
+      ],
+      "crops": [
+        [
+          200,
+          280,
+          2960,
+          1580
+        ],
+        [
+          1500,
+          300,
+          2940,
+          1060
+        ]
+      ]
+    },
+    {
+      "subjects": [
+        "farm"
+      ],
+      "command": "godot --path CHECKOUT --resolution 1600x900 --script tests/fixtures/environment-views.gd -- --aivai --seed=3 --offscreen --nohud --set=perf:0 --preset=high --mood=day --focus=0,0 --capture-set=town",
+      "crop": [
+        0,
+        0,
+        1600,
+        900
+      ]
+    },
+    {
+      "subjects": [
+        "farm_kit"
+      ],
+      "flags": [
+        "--building-single",
+        "--building-kinds=farm_kit"
+      ],
+      "after_only": true,
+      "crop": [
+        180,
+        300,
+        2920,
+        1560
+      ],
+      "output": "farm-kit.jpg"
+    }
+  ],
+  "notes": "Both sides render the source_ref studio stage (its barn_rooms subject gives a barn's floor, variant 2, and windowless back and end walls; before, that floor is bare concrete strewn with straw and the walls hang nothing) and the source_ref town views at seed 3, where the farm view frames a farmstead from behind its barn: the map is laid as it was, the farmyards' kit last of all from its own stream. The baseline is the shop interiors change this builds on (its later commit, cheaper shelf goods, draws the same). farm-kit.jpg shows the yard's pieces on their own (after only: there were none).",
+  "composition": "PIL: matched rows, 792 px halves, JPEG quality 82; farm-kit.jpg a 1600 px crop"
+}

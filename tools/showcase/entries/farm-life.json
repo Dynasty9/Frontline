@@ -1,0 +1,24 @@
+{
+  "entry": "changelog/unreleased/farm-life.md",
+  "summary": "Barns fitted out inside (hay, stalls, a cart, a workbench, tools on the walls) and farmyards with a tractor, a trough, implements, a churn stand and a hen house.",
+  "medium": "still",
+  "stage": "tools/showcase/building-surfaces.tscn",
+  "rationale": "Appearance change seen when a barn's roof lifts and round every farm: matched studio rows of two barns with their roofs off and one closer, the farmstead in the seed-3 town views, and the yard's new pieces on their own.",
+  "source_ref": "93ec2b443bf3db70479273810a122ec219317b10",
+  "before_ref": "a4b686e48fdf562ec168a98525765c14a285651b",
+  "sources": [
+    {
+      "file": "changelog/unreleased/farm-life/comparison.jpg",
+      "sha256": "cead1938e8ad438caf208cbdbcda20dd2a2a3002c60134f715f921a8f92ec542"
+    },
+    {
+      "file": "changelog/unreleased/farm-life/farm-kit.jpg",
+      "sha256": "ac780ba324fbf24e1687b3133669b3a3bb94e93f2a9e48e8c650d2fd54c6d666"
+    },
+    {
+      "file": "changelog/unreleased/farm-life/capture.json",
+      "sha256": "b0a2049a36c00662c1e8712b014cedaa8edb341703950a274e1e7bb14320e101"
+    }
+  ],
+  "output": null
+}

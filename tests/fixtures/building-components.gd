@@ -81,6 +81,17 @@ func _bounds(node: Node3D, parent: Transform3D) -> AABB:
 	return box
 
 
+## (every part's box under `node`, in `parent`'s frame)
+func _part_boxes(node: Node3D, parent: Transform3D, out: Array[AABB]) -> void:
+	var xf := parent * node.transform
+	var mi := node as MeshInstance3D
+	if mi != null and mi.mesh != null:
+		out.append(xf * mi.mesh.get_aabb())
+	for child in node.get_children():
+		if child is Node3D:
+			_part_boxes(child, xf, out)
+
+
 func kit() -> BuildingKit:
 	var root := Node3D.new()
 	add_child(root)
@@ -286,6 +297,16 @@ func _ready() -> void:
 			BuildingStreet.hoarding(k.at_point(Vector3(10, 0, 0)), 5.6, k.rng)
 			BuildingStreet.street_name(k.at_point(Vector3(14, 0, 0)), k.rng)
 			BuildingStreet.belongings(k.at_point(Vector3(16, 0, 0)), k.rng),
+		"farm": func(k: BuildingKit):
+			BuildingFarm.barn(k, Vector3(13.0, 0.06, 10.0), 0, k.rng)
+			BuildingFarm.wall_tools(k.at_point(Vector3(0, 0, 8)), 3.2, k.rng)
+			BuildingFarm.round_bales(k.at_point(Vector3(0, 0, 12)), 3, k.rng)
+			BuildingFarm.trough(k.at_point(Vector3(4, 0, 12)), k.rng)
+			BuildingFarm.plough(k.at_point(Vector3(8, 0, 12)), k.rng)
+			BuildingFarm.harrow(k.at_point(Vector3(12, 0, 12)), k.rng)
+			BuildingFarm.churn_stand(k.at_point(Vector3(4, 0, 16)), k.rng)
+			BuildingFarm.hen_house(k.at_point(Vector3(9, 0, 16)), k.rng)
+			BuildingFarm.barrow(k.at_point(Vector3(13, 0, 16)), 1),
 		"inside": func(k: BuildingKit):
 			BuildingFurnishings.lining(k, 2.8, 3.0, [Rect2(-0.65, 1.0, 1.3, 1.0)], Color(0.8, 0.8, 0.7))
 			BuildingFurnishings.radiator(k, 0.0, 1.0)
@@ -488,8 +509,11 @@ func _ready() -> void:
 		var bb := _bounds(br, Transform3D.IDENTITY)
 		check(br.get_child_count() > 0 and bb.end.y < 3.0 + 5.2 * tan(deg_to_rad(40.5)) + 0.3, "a barn's roof builds, no chimney over it (%s)" % bb)
 		br.free()
+	# (and its floor is fitted out as a barn's: straw over it, the hay
+	# stacked, the stalls, under its roof)
 	var bf := Structure.preview_model("floor", -1, 2, Vector3(13.0, 0.06, 10.0), false, 3)
-	check(bf.get_child_count() > 0 and _bounds(bf, Transform3D.IDENTITY).end.y < 0.12, "a barn's straw lies flat")
+	var bfb := _bounds(bf, Transform3D.IDENTITY)
+	check(bf.get_child_count() > 0 and bfb.end.y > 1.0 and bfb.end.y < 3.0, "a barn's floor is fitted out under its roof (%s)" % bfb)
 	bf.free()
 
 	# A second storey is drawn with the roof over it: the roof the same, a
@@ -655,6 +679,58 @@ func _ready() -> void:
 		var bb := _bounds(bk.sink.root, Transform3D.IDENTITY)
 		check(bb.position.y >= -0.02 and bb.end.y <= 1.1 and bb.size.x <= 3.4 and bb.size.z <= 3.4, "what was dropped lies on the pavement in a heap (%s)" % bb)
 		bk.sink.root.free()
+
+	# A barn's fittings keep inside it and clear of the wall its door is in,
+	# whichever wall that is; what stands within reach of a wall keeps under
+	# the tools hung on it, and they keep above it, out from their wall's ends.
+	for s6 in 32:
+		var entry := s6 % 4
+		var size6: Vector3 = [Vector3(13.0, 0.06, 10.0), Vector3(12.0, 0.06, 9.0)][(s6 >> 2) % 2]
+		var bnk := kit()
+		bnk.rng.seed = s6
+		BuildingFarm.barn(bnk, size6, entry, bnk.rng)
+		var bhx := size6.x * 0.5 - 0.2
+		var bhz := size6.z * 0.5 - 0.2
+		var whole := _bounds(bnk.sink.root, Transform3D.IDENTITY)
+		check(whole.position.y >= 0.0 and whole.end.y <= 2.9 and whole.position.x >= -bhx - 0.02 and whole.end.x <= bhx + 0.02 and whole.position.z >= -bhz - 0.02 and whole.end.z <= bhz + 0.02, "a barn's fittings stand inside its walls (%s, %s)" % [size6, whole])
+		var clear: float = [whole.position.z + bhz, bhz - whole.end.z, whole.position.x + bhx, bhx - whole.end.x][entry]
+		check(clear >= 2.25, "they keep clear of the wall its door is in (%d, %s, %.2f)" % [entry, size6, clear])
+		var boxes: Array[AABB] = []
+		_part_boxes(bnk.sink.root, Transform3D.IDENTITY, boxes)
+		for pb in boxes:
+			var off := minf(minf(pb.position.x + bhx, bhx - pb.end.x), minf(pb.position.z + bhz, bhz - pb.end.z))
+			if off < 0.65:
+				check(pb.end.y <= BuildingFarm.LOW + BuildingFarm.FLOOR + 0.02, "what stands by a barn's wall keeps under its tools (%s, %.2f m out)" % [pb, off])
+		bnk.sink.root.free()
+	for s7 in 30:
+		var L7: float = [2.6, 3.2, 2.33][s7 % 3]
+		var wtk := kit()
+		wtk.rng.seed = s7
+		BuildingFarm.wall_tools(wtk, L7, wtk.rng)
+		var wtb := _bounds(wtk.sink.root, Transform3D.IDENTITY)
+		check(wtb.position.y >= BuildingFarm.TOOLS - 0.01 and wtb.end.y <= 2.6 and wtb.position.z >= -0.01 and wtb.end.z <= 0.25, "a barn's tools hang on its wall above what stands against it (%.2f: %s)" % [L7, wtb])
+		check(wtb.position.x >= -L7 * 0.5 + 0.63 and wtb.end.x <= L7 * 0.5 - 0.63, "they keep in from the wall's ends (%.2f: %s)" % [L7, wtb])
+		wtk.sink.root.free()
+	# The farmyard's kit stands on the ground inside the box a vehicle or a
+	# blast knocks it down as.
+	var farm_kits := {
+		"trough": func(k: BuildingKit): BuildingFarm.trough(k, k.rng),
+		"plough": func(k: BuildingKit): BuildingFarm.plough(k, k.rng),
+		"harrow": func(k: BuildingKit): BuildingFarm.harrow(k, k.rng),
+		"churn_stand": func(k: BuildingKit): BuildingFarm.churn_stand(k, k.rng),
+		"hen_house": func(k: BuildingKit): BuildingFarm.hen_house(k, k.rng),
+		"barrow": func(k: BuildingKit): BuildingFarm.barrow(k, k.rng.randi()),
+	}
+	for kind: String in farm_kits:
+		var fsize: Vector3 = Decor.BREAKABLE[kind][0]
+		for s8 in 12:
+			var fyk := kit()
+			fyk.rng.seed = s8
+			(farm_kits[kind] as Callable).call(fyk)
+			var fb := _bounds(fyk.sink.root, Transform3D.IDENTITY)
+			check(fb.position.y >= -0.02 and fb.end.y <= fsize.y + 0.2, "a %s stands on the ground, no taller than it falls (%s)" % [kind, fb])
+			check(maxf(absf(fb.position.x), absf(fb.end.x)) <= fsize.x * 0.5 + 0.3 and maxf(absf(fb.position.z), absf(fb.end.z)) <= fsize.z * 0.5 + 0.3, "a %s keeps inside its own box (%s)" % [kind, fb])
+			fyk.sink.root.free()
 
 	# Every building and every kind of scenery still builds a model.
 	var kinds: Array = Defs.BUILDINGS.keys()
