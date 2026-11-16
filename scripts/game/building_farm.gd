@@ -62,7 +62,7 @@ static func barn(k: BuildingKit, size: Vector3, entry: int, rng: RandomNumberGen
 	if rng.randf() < 0.6:
 		var sp := Vector3(mx - e * rng.randf_range(0.6, 1.2), 0.012, hz - md - rng.randf_range(0.4, 1.0))
 		for i in 3:
-			s.plate(Vector3(rng.randf_range(0.6, 1.1), 0.02, rng.randf_range(0.4, 0.7)), sp + Vector3(rng.randf_range(-0.3, 0.3), i * 0.008, rng.randf_range(-0.2, 0.2)), "canvas", STRAW.darkened(rng.randf_range(0.0, 0.15)), Vector3(0, rng.randf() * TAU, 0))
+			s.block(Vector3(rng.randf_range(0.6, 1.1), 0.02, rng.randf_range(0.4, 0.7)), sp + Vector3(rng.randf_range(-0.3, 0.3), i * 0.008, rng.randf_range(-0.2, 0.2)), "canvas", STRAW.darkened(rng.randf_range(0.0, 0.15)), Vector3(0, rng.randf() * TAU, 0), false)
 	if rng.randf() < 0.45:
 		# (in the step below the top layer, out of reach of the walls)
 		var fp := Vector3(mx + rng.randf_range(-0.25, 0.25) * mw - e * 0.2, (layers - 1) * BALE.y - 0.15, hz - md + (layers - 2) * 0.45 + 0.2)
@@ -135,10 +135,10 @@ static func hay_stack(k: BuildingKit, w: float, d: float, rng: RandomNumberGener
 static func bale(k: BuildingKit, p: Vector3, yaw: float, on_side: bool, twine: bool, rng: RandomNumberGenerator) -> void:
 	var b := k.at_point(p, Vector3(0, yaw, 0))
 	var sz := Vector3(BALE.x, BALE.z, BALE.y) if on_side else BALE
-	b.box(sz, Vector3(0, sz.y * 0.5, 0), "canvas", STRAW.darkened(rng.randf_range(0.0, 0.16)))
+	b.block(sz, Vector3(0, sz.y * 0.5, 0), "canvas", STRAW.darkened(rng.randf_range(0.0, 0.16)))
 	if twine:
 		for t: float in [-0.24, 0.24]:
-			b.plate(Vector3(0.02, 0.006, sz.z + 0.008), Vector3(t, sz.y + 0.002, 0), "paint", TWINE)
+			b.block(Vector3(0.02, 0.006, sz.z + 0.008), Vector3(t, sz.y + 0.002, 0), "paint", TWINE, Vector3.ZERO, false)
 
 
 ## A hay fork from `a` (its tines, in the hay) to the end of its handle `b`.
@@ -173,7 +173,7 @@ static func stall(k: BuildingKit, cx: float, hz: float, sw: float, pd: float, e:
 	if rng.randf() < 0.5:
 		k.cyl(0.14, 0.12, 0.3, Vector3(cx + rng.randf_range(-0.4, 0.4) * sw, 0.15, hz - rng.randf_range(0.7, 1.2)), "galvanised", GALV, Vector3.ZERO, 12)
 	for i in 2:
-		k.plate(Vector3(rng.randf_range(0.7, 1.1), 0.02, rng.randf_range(0.45, 0.7)), Vector3(cx + rng.randf_range(-0.15, 0.15) * sw, 0.012 + i * 0.006, hz - rng.randf_range(0.8, pd - 0.5)), "canvas", STRAW.darkened(rng.randf_range(0.05, 0.25)), Vector3(0, rng.randf() * TAU, 0))
+		k.block(Vector3(rng.randf_range(0.7, 1.1), 0.02, rng.randf_range(0.45, 0.7)), Vector3(cx + rng.randf_range(-0.15, 0.15) * sw, 0.012 + i * 0.006, hz - rng.randf_range(0.8, pd - 0.5)), "canvas", STRAW.darkened(rng.randf_range(0.05, 0.25)), Vector3(0, rng.randf() * TAU, 0), false)
 
 
 ## (a stall's partition `pd` long: its post at the front, -z; the boards
