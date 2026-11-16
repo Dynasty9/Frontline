@@ -1187,16 +1187,36 @@ func farms(k: int) -> void:
 ## wheelbarrow at the barn door. (In the farm's own frame: `t` along the road,
 ## `n` away from it, the farmhouse at -t, the barn at +t: see farms().)
 func farmyards() -> void:
+	# the scenery about each farm, in one pass over the map's (filed by 84 m
+	# square: a farm's 42 m round touches at most four)
+	var cells := {}
+	var near_of: Array = []
 	for fs: Dictionary in farmsteads:
+		var base: Vector3 = fs.base
+		var list: Array = []
+		near_of.append(list)
+		for cx in range(floori((base.x - 42.0) / 84.0), floori((base.x + 42.0) / 84.0) + 1):
+			for cz in range(floori((base.z - 42.0) / 84.0), floori((base.z + 42.0) / 84.0) + 1):
+				var key := Vector2i(cx, cz)
+				if not cells.has(key):
+					cells[key] = []
+				(cells[key] as Array).append([base, list])
+	if not cells.is_empty():
+		for e: Array in decor:
+			var p: Vector3 = e[1]
+			var here = cells.get(Vector2i(floori(p.x / 84.0), floori(p.z / 84.0)))
+			if here != null:
+				for f: Array in here:
+					if Defs.flat(p - (f[0] as Vector3)).length() < 42.0:
+						(f[1] as Array).append(e)
+	for fi in farmsteads.size():
+		var fs: Dictionary = farmsteads[fi]
 		var base: Vector3 = fs.base
 		var t: Vector3 = fs.t
 		var n: Vector3 = fs.n
 		var fr := RandomNumberGenerator.new()
 		fr.seed = int(absf(base.x) * 13.0) * 7919 + int(absf(base.z) * 13.0) * 31 + 977
-		var near: Array = []
-		for e: Array in decor:
-			if Defs.flat((e[1] as Vector3) - base).length() < 42.0:
-				near.append(e)
+		var near: Array = near_of[fi]
 		var mine: Array = []  # [kind, pos, yaw, extra] of what's set out here
 		# the tractor: a parked civilian vehicle (Structure "car", variant 5)
 		if fr.randf() < 0.7:
@@ -1246,6 +1266,10 @@ func farmyards() -> void:
 		for e: Array in mine:
 			if e[0] != "tractor":
 				_d(e[0], e[1], e[2], e[3])
+				# (and the farms still to come keep clear of it)
+				for fj in range(fi + 1, farmsteads.size()):
+					if Defs.flat((e[1] as Vector3) - (farmsteads[fj].base as Vector3)).length() < 42.0:
+						(near_of[fj] as Array).append(decor[-1])
 
 
 ## (for farmyards: whether a piece `half` across, turned `yaw`, has room at `p`:
