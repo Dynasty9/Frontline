@@ -1,0 +1,14 @@
+{
+  "stage": "mounted-guns",
+  "fixture": "tests/fixtures/mounted-gun-clips.tscn",
+  "before_ref": "origin/main 69005368",
+  "after_ref": "6ef8490a",
+  "engine": "Godot 4.7.2.stable, Forward+, 1280x720, --fixed-fps 30, showroom battlefield seed 712, High preset, day",
+  "commands": [
+    "godot --position -10000,-10000 --fixed-fps 30 --rendering-method forward_plus --audio-driver Dummy --resolution 1280x720 --path . res://tests/fixtures/mounted-gun-clips.tscn -- --clip=mounted-guns-stills --label=BEFORE|AFTER --kinds=technical,offroad_hmg,humvee,hunter_hmg,motorboat,ghosthawk,ifv,aa_tech,prowler_hmg,mb4wd_lmg --frames=DIR",
+    "godot ... res://tests/fixtures/mounted-gun-clips.tscn -- --clip=mounted-guns --label=BEFORE|AFTER --frames=DIR"
+  ],
+  "comparison": "stills technical-a, humvee-b, ghosthawk-b, hunter_hmg-c (the close shot); before left, after right, 800x450 each",
+  "video": "firing-line frames 390-479 (technical), 480-584 (ZU-23), 675-749 (motorboat), 120-209 (Bradley) of both 28 s runs, before above after at 854x480 each, VP9 crf 40, 30 fps, silent; poster is frame 440",
+  "note": "Muzzle flashes, smoke and brass use the effects' own unseeded randomness, so individual puffs differ between runs; vehicles, targets, aim and timing are the same."
+}

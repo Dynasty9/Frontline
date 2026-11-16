@@ -883,9 +883,12 @@ The rendered `tests/fixtures/terrain-materials.tscn` also compares tinted roofs 
 batching in both renderers; packed tints retain the renderer's colour space and their full bright range.
 The scaling runner includes this scene alongside the navigation and AI regressions.
 Benchmark JSON includes loading-stage timings, route-cache hits and path queue
-waiting time. `--require-target` makes the benchmark fail when any measured rendered
-frame exceeds 16.67 ms or any simulation tick exceeds 33.33 ms; ordinary runs retain
-these budget results without treating an unfinished optimization as a harness error.
+waiting time. `--require-target` requires `--rendered` and nonempty frame and simulation
+tick measurements. It fails when either measurement is absent, any rendered frame exceeds
+16.67 ms, or any simulation tick exceeds 33.33 ms. Headless runs leave render budgets
+unmeasured (`null`) and cannot pass this acceptance gate. Ordinary runs without
+`--require-target` retain diagnostic reports and budget results without treating an
+unfinished optimization as a harness error.
 
 ## Generated elevation
 
