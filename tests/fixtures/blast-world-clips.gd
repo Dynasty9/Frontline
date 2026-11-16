@@ -306,7 +306,7 @@ func _heat_haze(camera: Camera3D, caption: Label) -> void:
 
 
 ## Rain falling on the showroom: rings running out across a puddle, drops
-## bursting on a tank's deck, water running down a hut's wall, then a low look
+## bursting on a tank's deck, a hut's wall dry under its eaves, then a low look
 ## across the field as lightning strikes twice, the second time much nearer.
 ## The strikes are placed rather than left to chance; the rain is the game's
 ## own, at normal speed.
@@ -314,8 +314,8 @@ func _rain(camera: Camera3D, caption: Label) -> void:
 	field.atmo._bolt_t = 1e9  # (no strikes but the two placed here)
 	var shots := [
 		[0.0, _ground(-18, 3.5), Vector3(1.6, 2.6, 4.2), 0.0, "RINGS IN THE PUDDLES"],
-		[4.0, _ground(-14, 0) + Vector3(0, 2.2, 0), Vector3(3.5, 2.6, 5.0), 0.0, "DROPS ON THE DECK, WATER DOWN THE HULL"],
-		[7.5, _ground(-20, -17.6) + Vector3(0, 1.4, 0), Vector3(2.5, 0.6, 6.5), 0.0, "WATER RUNNING DOWN THE WALL"],
+		[4.0, _ground(-14, 0) + Vector3(0, 2.2, 0), Vector3(3.5, 2.6, 5.0), 0.0, "DROPS BURSTING ON THE DECK"],
+		[7.5, _ground(-20, -17.6) + Vector3(0, 1.8, 0), Vector3(3.0, 0.9, 7.0), 0.0, "DRY UNDER THE EAVES, SPLASHED AT THE FOOT"],
 		[10.5, _ground(0, -300) + Vector3(0, 60, 0), Vector3(0, -54, 340), 0.0, "LIGHTNING, THUNDER BY ITS DISTANCE"],
 	]
 	var strikes := [[11.4, Vector3(-260, 0, -1100)], [14.2, Vector3(150, 0, -520)]]

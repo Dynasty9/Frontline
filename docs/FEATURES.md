@@ -638,7 +638,7 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   steeper in the gullies than on the spurs, and take the same distance haze as the ground beneath them.
 - Distant scenery composes surveyed Mont Blanc, Matterhorn and Jungfrau ridge shapes into seeded fictional mountain groups and low passes, with floating-point heights and a finer indexed mesh at Medium/Far detail. Coastal scenery continues into an irregular shoreline and a coarse ocean surface beyond the detailed battlefield water. Boundary rivers extend into curved scenery pools with matching beds and banks; these extensions leave authoritative water shapes and navigation unchanged. Reusable cliff forms have uneven shoulders and irregular drainage cuts before erosion.
 - Coastal scenery continues through a broad water channel to outer islands, with gentler foothills and a coarse ocean horizon beyond the terrain. The channel is entirely outside the playable boundary; inland maps keep their land backdrop. Shared shoreline masks, seed phase and beach/seabed profiles keep scenery ground and water continuous across the playable edge.
-- Distant mountain groups lose contrast into sky-coloured haze while nearby ground retains its detail. Localized 3D cloud banks and thin trailing ridge mist sit beyond the playable boundary, with shaded bases, soft edges and lighting matched to the weather. A baked 64³ R8 noise volume avoids runtime generation; scene-depth termination prevents clouds behind mountains showing through them. Stronger aerial perspective is masked to distant scenery, preserving foreground contrast. Mountain clouds have independent Off/Low/Medium/High/Ultra settings (8/12/20/32 samples), work in Compatibility, and stop drifting with reduced motion. They do not affect visibility rules.
+- Distant mountain groups lose contrast into sky-coloured haze while nearby ground retains its detail. Localized 3D cloud banks and thin trailing ridge mist sit beyond the playable boundary, with shaded bases, soft edges and lighting matched to the weather. A baked 64Â³ R8 noise volume avoids runtime generation; scene-depth termination prevents clouds behind mountains showing through them. Stronger aerial perspective is masked to distant scenery, preserving foreground contrast. Mountain clouds have independent Off/Low/Medium/High/Ultra settings (8/12/20/32 samples), work in Compatibility, and stop drifting with reduced motion. They do not affect visibility rules.
 - Rock beds catch light along their ledges instead of appearing only as painted colour bands.
 - Broad cliff fractures and smaller joint patterns break up recognisable repeated rock tiles.
 - Sheltered lower slopes collect pale loose stone while exposed walls retain darker bedrock.
@@ -1063,7 +1063,10 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   with a jump at the muzzle. A crew-served gun has its gunner on it (a technical's DShK, a Humvee's .50 in its
   turret, a light vehicle's pintle gun, a boat's bow gun, a Ghost Hawk's door guns): one of the infantry in his
   side's kit, standing behind it (kneeling at a boat's bow, crouched in a helicopter's door) with his hands on its
-  grips, turning with it as it's laid; door guns rest pointing out of their doors with the gunner inside. Remote
+  grips, turning with it as it's laid; door guns rest pointing out of their doors with the gunner inside. A
+  pickup's gunner stands on the bed floor and walks round the pedestal as the gun swings, never off the bed; a
+  Humvee's stands in the hatch inside its O-GPK turret, which traverses whole with the gun. Pedestal guns stand
+  tall enough to fire forward over the cab. Remote
   weapon stations and turret guns have none. The host sends where each vehicle's guns are laid, so a client (and a solo battle,
   whose view is a client of its own simulation) lays them too, main guns included. Vehicle and gunship shots leave the
   actual model barrels, including separately positioned gunship guns. Tank drivers build into turns. Turrets accelerate into a traverse and brake onto
@@ -1426,13 +1429,22 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   in streaks. A battle that opens in the rain starts soaked; rain that sets in mid-battle wets things over 30 s,
   and they dry over three minutes once it stops. It costs a few instructions per pixel, so every preset has it,
   the browser too.
+- **Under a roof** (`rain_cover.gd`, `Mats.RAIN_COVER`): rain falls near enough straight down, so a roof (a
+  house's, or the one on a barracks, factory or research post) keeps it off what's under it. Its walls stay dry up to the eaves, and its gable ends up under the barge
+  boards, but for a ragged band about half a metre high at the foot of each outside wall that the drops splash
+  back onto; the rooms, floors and furniture inside stay dry, and no drops burst or run there. A ruin with its roof
+  fallen in takes the rain like the street. One float texture holds it: 4 m squares across the map, each naming
+  the (up to four) roofs over it, then each roof's middle, axes, wall faces, eaves, floor, pitch and form (as
+  its model was built), so the dry edge follows the roof's own underside (`BuildingRoofs.underside`) out to its
+  eaves whatever the squares. It's rebuilt when a roof comes down.
 - **Falling rain** (`Mats.RAIN_DROPS`, the `rain_fx` global; `Atmosphere._rain_fx_tick`): while it's still
   coming down, drops land on everything (after Lagarde's "Water drop 2a/2b", 2012-13, procedurally rather than
   from flipbooks). In puddles, ruts and gutters, and faintly on wet soil and asphalt, each lands as a ring that runs
   out 10 to 21 cm, a packet of crests 6 cm apart, sized and timed by its own drop. On roofs, decks and helmets each
-  bursts as a crown of spray a centimetre or two across for a few hundredths of a second. Down walls and hull
-  sides water runs in rivulets along the rain streaks, beads sliding down at their own pace and catching the sky
-  on their swollen heads; a vehicle carries its rivulets with it. All of it is laid out in world cells, one drop
+  bursts as a crown of spray a centimetre or two across for a few hundredths of a second. Here and there down a
+  hull's side or a wall with no roof over it, about one a metre, a rivulet runs, a bead sliding down it every two
+  metres or so at its own slow pace with a wet trail behind, catching the sky on its swollen head; a vehicle
+  carries its rivulets with it. All of it is laid out in world cells, one drop
   to a cell per period, so a pixel looks at one cell; it fades as it shrinks under a pixel (where puddles keep a
   rougher face in its place), so from the command camera's height nothing shimmers. Effects Medium has the rings
   and crowns, High adds a third layer of rings, denser crowns and the rivulets; Low has none of it. The browser
@@ -1914,7 +1926,7 @@ Alpine stone clusters combine slabs, blocks and small fragments in shared batche
 
 Daylight uses a bundled CC0 photographic cloud panorama, aligned with the sun and cached for sky lighting and reflections. Other lighting moods retain their procedural skies.
 
-Generated towns have distinct garden plots, narrow foundation aprons and paths leading to their generated front or side doors. Front fences leave pedestrian and driveway openings. Driveway aprons continue across sidewalks through lowered kerbs with sloping shoulders; grass stays out of the crossing. Paving follows immutable terrain elevation and retains crater cutouts; street furniture and both wire endpoints carry authoritative ground heights. Long fences are broken into short, independently destructible sections. Streets and junctions share scanned asphalt; sidewalks, drives and door paths use scanned paving slabs. CC0 photographs include mipmapped normal and roughness maps, with source credits in assets/town/LICENSE.md. Meadow and garden turf combines photographic soil/blade detail with moisture variation from sheltered soil and exposed patches. Grass uses thirty narrow pointed blades at the previous ninety-triangle clump cost, with shorter clumps in towns; grass stays outside the carriageway.
+Generated towns have distinct garden plots, narrow foundation aprons and paths leading to their generated front or side doors. Front fences leave pedestrian and driveway openings. Driveway aprons continue across sidewalks through lowered kerbs with sloping shoulders; grass stays out of the crossing. Paving follows immutable terrain elevation and retains crater cutouts; street furniture and both wire endpoints carry authoritative ground heights. Long fences are broken into short, independently destructible sections. Streets and junctions share scanned asphalt; sidewalks, drives and door paths use scanned paving slabs. CC0 photographs include mipmapped normal and roughness maps, with source credits in assets/town/LICENSE.md. Meadow and garden turf combines photographic soil/blade detail with moisture variation from sheltered soil and exposed patches. Grass uses thirty pointed blades per ninety-triangle clump, with shorter clumps in towns; grass stays outside the carriageway. Blades are drawn a little broader and taller than real grass, and meadow shrubs are dense balls of leaf cards rather than the open scanned shrubs of the woods: anything finer falls below a pixel from the battle camera and the meadow reads as bare ground (tests/grass_stream_test.gd holds both to that).
 
 Town entrances blend gravel into asphalt through irregular edges. Local repair patches, staining, aged tile roofs, concrete roof slabs and weathered timber fences use bundled CC0 scans with mipmapped relief; metal fences retain rust and worn paint.
 
