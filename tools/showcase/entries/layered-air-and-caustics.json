@@ -26,12 +26,12 @@
     },
     {
       "file": "changelog/unreleased/layered-air-and-caustics/burst-flash-poster.jpg",
-      "sha256": "773acabba6bae2bd967b02f797612e6f87a8d771243f99e90d98c85b66775e87",
+      "sha256": "9eec89b37c77700133b973b5ee5e20ed2dc277b7e5149fea2c34b0e42fab410e",
       "caption": "Middle frame of the burst clip."
     },
     {
       "file": "changelog/unreleased/layered-air-and-caustics/burst-flash.webm",
-      "sha256": "f6a7a58decb99b6df3afbcbd084117a0131c57513667decc4bed9d30b902ebfd",
+      "sha256": "b12d0563bb7a111e578622ac1a43b53969f4a4560fc346cc9a1dbe43bb9cfad7",
       "caption": "Seconds 20-30 of a 1600x900 movie: --scenario=support --seed=3 --set=mood:dusk --focus=50,35 --zoom=70 --pitch=-16 --cam-yaw=3.77."
     },
     {
@@ -51,18 +51,18 @@
     },
     {
       "file": "changelog/unreleased/layered-air-and-caustics/glow-flicker-poster.jpg",
-      "sha256": "4b8832db7e2a6212bcdca9e2f4fddc0442b68cd501f1d03993aaaf61929d050f",
+      "sha256": "f05d7a8ae52558e392d322f144de9b69d703d15efa832c1b076884fe660c3197",
       "caption": "An ON frame of the glow flicker."
     },
     {
       "file": "changelog/unreleased/layered-air-and-caustics/glow-flicker.webm",
-      "sha256": "1b72a8b54fc668facb095b71ae195aee688fcf221d1e08805dc1fae0971ec6ac",
+      "sha256": "b09618edc927e9c4890805339e201615251815cb71a5d066a616965a046c2a7f",
       "caption": "The same fire frame, the glow flipped every 30 frames."
     },
     {
       "file": "changelog/unreleased/layered-air-and-caustics/glow-off-on.jpg",
-      "sha256": "f067202284d11a431d952942438d51e0339dded2941141ae79e639b56a0bc403",
-      "caption": "OFF over ON crop: --scenario=fire --seed=3 --set=mood:dusk --focus=26,-38 --zoom=30 --pitch=-10 --cam-yaw=0, FL_DEBUG_AIR_FLIP=25 with FL_DEBUG_AIR_FLIP_GLOW (only the light in the smoke flips)."
+      "sha256": "ceed4b4583d13d1186288ea6325d6172bae3094c763f49f7bbb3c2ee7ae26235",
+      "caption": "OFF over ON crop: --scenario=fire --seed=3 --set=mood:dusk --focus=26,-38 --zoom=30 --pitch=-10 --cam-yaw=0, FL_DEBUG_AIR_FLIP=25 with FL_DEBUG_AIR_FLIP_GLOW (only the fire light on its smoke and the burst flash flip)."
     },
     {
       "file": "changelog/unreleased/layered-air-and-caustics/mist-command-view-off-on.jpg",

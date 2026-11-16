@@ -78,7 +78,7 @@ var _ab_switches := 0
 var _flip_at := float(OS.get_environment("FL_DEBUG_AIR_FLIP")) if OS.has_environment("FL_DEBUG_AIR_FLIP") else -1.0
 var _flip_frame := -1
 ## FL_DEBUG_AIR_FLIP_GLOW: the flip leaves the layers on and turns only the
-## fire's and the bursts' light in the smoke off and on.
+## fires' light on their smoke and the bursts' flash in the pall off and on.
 var _flip_glow := OS.has_environment("FL_DEBUG_AIR_FLIP_GLOW")
 var _debug_k := float(OS.get_environment("FL_DEBUG_AIR")) if OS.has_environment("FL_DEBUG_AIR") else 1.0  # thicken it all, to see where it lies
 
@@ -240,6 +240,8 @@ func _show(state: int) -> void:
 	if _flip_glow and _flip_frame >= 0:
 		if plumes:
 			plumes.glow_k = float(state)
+		if world.fx and world.fx.vfx:
+			world.fx.vfx.set_fire_glow(float(state))
 		return
 	_ab_state = state
 	var wv: WaterView = atmo.water_view

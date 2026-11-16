@@ -13,7 +13,7 @@ caption = "Off and on at dawn, looking toward the sun: the air glows close aroun
 
 [[screenshots]]
 file = "glow-off-on.jpg"
-caption = "Off and on: a burning house lighting the smoke just above its flames"
+caption = "Off and on: a burning house at dusk, the billows nearest its flames lit dull orange"
 
 [[screenshots]]
 file = "plume-off-on.jpg"
@@ -89,8 +89,8 @@ caption = "A barrage's plume drifting off downwind and breaking up."
   off wet ground after rain, torn into wisps by the wind. Look toward a low sun and it glows. A **haze** lies higher
   up; the sun lights it, so clouds throw shafts of shadow through it.
 - **Smoke that hangs**: a barrage or a burning building leaves a plume, dense where it rose, drawn out downwind,
-  lit on top and grey underneath, breaking up and thinning away. A burning house or wreck lights the smoke rising just
-  above its flames orange for as long as it burns, and each shell burst flashes the smoke hanging round it.
+  lit on top and grey underneath, breaking up and thinning away. Over a burning house or wreck the billows nearest the
+  flames glow a dull orange, darkening to grey as they climb, and each shell burst flashes the smoke hanging round it.
 - **Low sun**: at dawn, golden hour and dusk the air throws the sun's light forward, so it glows close around a low
   sun while looking across or away from it stays clear, and the air in the shadow of houses, woods and ridges stays dark.
 - **The weather varies across the map**: rain comes over in heavier and lighter bands, and shells and vehicles raise

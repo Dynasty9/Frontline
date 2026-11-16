@@ -1321,9 +1321,9 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   houses and trees, and the air shader marches the sun's ray a few times over the ground's height for the ridges. Close up, the smoke a barrage or a fire leaves is a plume
   of its own (`smoke_plumes.gd`, up to 16 fog volumes laid along the wind): dense where it rose, drawn out, climbing and
   breaking into rags downwind, lit on top and grey underneath, until it thins away; shells landing close together feed
-  one plume. A plume over a burning house or wreck stands as long as the fire burns and is lit orange just above the
-  flames, fading upward and leaning with the wind (the fog's own emission, scaled by the smoke's density; the plume
-  carries a thick root column over the fire for it to light), and a shell burst flashes the pall around it for a
+  one plume. A plume over a burning house or wreck stands as long as the fire burns and keeps its smoke lit: each puff of the fire's
+  smoke leaves the flames lit a dull orange-red and darkens to grey as it climbs (the smoke particles' own light,
+  set from the fire's strength), so the undersides of the billows nearest the fire glow, mottled as the smoke is, and a shell burst flashes the pall around it for a
   frame or two. Over that, a coarse weather grid sized from the map (32 cells
   across a 1 km map, 64 on the bigger ones) holds the mist, rain, dust and smoke over each patch of ground: rain
   comes over in heavier and lighter bands, shells on dry ground and vehicles on dry tracks raise dust, and barrages,

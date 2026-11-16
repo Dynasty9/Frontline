@@ -141,13 +141,8 @@ func tick(dt: float, on: bool) -> void:
 		(pl[1] as ShaderMaterial).set_shader_parameter("density", 0.34 * k * _debug_k)
 		var m: ShaderMaterial = pl[1]
 		m.set_shader_parameter("spread", clampf(age / 20.0, 0.0, 1.0))
-		# a fire lights its own smoke from below; a burst close by lights the lot
-		m.set_shader_parameter("glow", float(pl[8]) * glow_k if pl[7] else 0.0)
-		m.set_shader_parameter("fire", 1.0 if pl[7] else 0.0)
 		m.set_shader_parameter("cam_pos", cam)
-		if pl[7]:
-			m.set_shader_parameter("fire_at", src)
-			m.set_shader_parameter("fire_r", 1.5 + 0.6 * size)
+		# a burst close by lights the pall round it
 		var fk := 0.0
 		if flash > 0.0:
 			fk = flash * clampf(1.0 - Defs.flat(_flash_at - v.position).length() / (30.0 + length * 0.5), 0.0, 1.0)
@@ -216,10 +211,6 @@ uniform vec3 lit_col : source_color = vec3(0.93, 0.92, 0.9);
 global uniform vec4 cloud_sun_disc;  // toward the sun
 uniform vec3 cam_pos = vec3(0.0);
 uniform float sun_k = 1.0;  // the smoke's brightness against the sun's strength in the fog
-uniform float fire = 0.0;  // 1 over a fire (the column rising off it)
-uniform float glow = 0.0;  // the fire under it (0 none, 1 roaring)
-uniform vec3 fire_at = vec3(0.0);  // where it burns
-uniform float fire_r = 3.0;  // how wide its light reaches into the smoke (m)
 uniform float flash = 0.0;  // a burst close by, this instant
 uniform vec3 flash_at = vec3(0.0);
 
@@ -242,27 +233,18 @@ void fog() {
 	// puffs: the rising pall breaks into billows along its length
 	float puffs = 0.55 + 0.45 * sin(along * 18.0 - TIME * 0.4 + n1 * 5.0);
 	float rags = smoothstep(0.45, 0.8, n1 * 0.8 + n2 * 0.5 - spread * 0.1) * puffs;
-	// over a fire, the column rising straight off the flames before the wind
-	// lays it over: thick and torn just above them, opening out as it climbs
-	vec3 rel = p - fire_at;
-	float up = max(rel.y, 0.0);
-	vec2 side = rel.xz - wind * up * 0.35;
-	float near = exp(-dot(side, side) / (fire_r * fire_r * (1.0 + up * 0.12)));
-	float root = fire > 0.5 ? near * smoothstep(-1.0, 1.0, rel.y) * exp(-up / 14.0) * smoothstep(0.3, 0.75, n2 * 0.7 + n1 * 0.5) : 0.0;
-	DENSITY = density * (body * rags * 2.2 + root * 4.0);
+	DENSITY = density * body * rags * 2.2;
 	// (looking through it toward a low sun the fog throws nearly all the sun's
 	// light at the eye: thick soot passes far less, so it's held back there,
 	// or a plume against the sun would glare white)
 	float into_sun = dot(normalize(p - cam_pos), cloud_sun_disc.xyz);
 	ALBEDO = mix(shade_col, lit_col, smoothstep(cy - r * 0.8, cy + r * 0.7, u.y)) * sun_k * mix(1.0, 0.2, smoothstep(0.5, 0.95, into_sun));
-	// the fire's light on that smoke: brightest just above the flames, dying
-	// away with height and to either side, and only where there's smoke to
-	// catch it (the fog gives off what EMISSION says wherever it is, so it's
-	// scaled by the smoke's own density)
-	vec3 e = vec3(1.0, 0.36, 0.07) * glow * near * exp(-up / fire_r) * smoothstep(-1.5, 0.5, rel.y) * 22.0;
-	// a burst's flash, falling off from where it went up
+	vec3 e = vec3(0.0);
+	// a burst's flash on the pall round it, falling off quickly from where it
+	// went up (the fire's own light on its smoke is the smoke particles':
+	// Vfx._smoke_glow)
 	float fd = distance(p, flash_at);
-	e += vec3(1.0, 0.78, 0.5) * flash * 60.0 / (1.0 + fd * fd * 0.01);
+	e += vec3(1.0, 0.7, 0.42) * flash * 40.0 / (1.0 + fd * fd * 0.04);
 	EMISSION = e * DENSITY;
 }
 """

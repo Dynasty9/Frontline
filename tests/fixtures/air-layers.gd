@@ -132,7 +132,7 @@ func _check_plumes() -> void:
 		pl.tick(1.0, true)
 	assert(pl.count() == 0, "they clear once they've thinned away (%d left)" % pl.count())
 	# a fire's plume stands as long as it burns (each look pushes its life on),
-	# lit from below by it, and a burst close by flashes it
+	# and a burst close by flashes it
 	var fire: Array = pl._start(Vector3(50, 0, 50), 1.5, 8.0, 0.4, true)
 	fire[8] = 0.8
 	for i in 40:
@@ -140,7 +140,6 @@ func _check_plumes() -> void:
 		pl.tick(1.0, true)
 	var m: ShaderMaterial = fire[1]
 	assert(float(m.get_shader_parameter("density")) > 0.1, "a fire's plume hasn't faded while it burns (%s)" % m.get_shader_parameter("density"))
-	assert(float(m.get_shader_parameter("glow")) > 0.5, "and its fire lights it")
 	pl.blast(Vector3(60, 0, 52), 1.0)
 	pl.tick(1.0 / 30.0, true)
 	assert(float(m.get_shader_parameter("flash")) > 0.1, "a burst close by flashes the pall")

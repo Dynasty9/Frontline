@@ -1241,6 +1241,36 @@ func make_trail() -> GeometryInstance3D:
 	return part(t)
 
 
+## How much the flames light their own smoke (1; FL_DEBUG_AIR_FLIP_GLOW
+## turns it off and on for comparisons).
+var fire_glow_k := 1.0
+## The flames' light on the smoke rising off them (sRGB-ish multiplier on the
+## smoke's own colour): a dull orange-red, at most what the flames give.
+const FIRE_SMOKE_GLOW := Vector3(0.95, 0.28, 0.06)
+
+
+## The fire's light on its own smoke: each puff is lit dull orange as it
+## leaves the flames and goes dark grey as it climbs away from them (the smoke
+## shader fades it with the puff's age), so the undersides of the billows near
+## the fire glow, mottled as the smoke is, and only where there's smoke.
+func _smoke_glow(h: Node3D, fire: float) -> void:
+	var s := h.get_node_or_null("Smoke") as GeometryInstance3D
+	if s == null:
+		return
+	# (a fuel fire's smoke is lit from its vent alone; a burning house or wood
+	# puts a whole roof of flame under its darker smoke)
+	var k := 1.0 if s.has_meta(&"fuel_smoke") else 2.6 * clampf(fire * 1.2, 0.0, 1.0)
+	Mats.set_inst(s, &"local_light", FIRE_SMOKE_GLOW * k * fire_glow_k)
+
+
+## Every fire's light on its smoke at once (for the off/on comparison).
+func set_fire_glow(k: float) -> void:
+	fire_glow_k = k
+	for b in _burners:
+		if is_instance_valid(b):
+			_smoke_glow(b, float(b.get_meta("fire", 0.0)))
+
+
 func set_burning(h: Node3D, fire: float, smoke: float) -> void:
 	if h == null or not is_instance_valid(h):
 		return
@@ -1277,6 +1307,7 @@ func set_burning(h: Node3D, fire: float, smoke: float) -> void:
 		elif fire <= 0.02 and snd.playing:
 			snd.stop()
 	h.set_meta("fire", fire)
+	_smoke_glow(h, fire)
 	if is_emitting(f) or is_emitting(s):
 		f.visible = true
 		e.visible = true
