@@ -186,22 +186,85 @@ float rain_crowns(vec2 p, float footprint, float amount) {
 }
 
 // Water running down a wall or a hull's side (u across it, y up it, metres):
-// rivulets 2 to 5 cm wide, about half the lanes running, each carrying beads
-// of water down at its own pace. Returns how much water runs here (x) and how
-// much of it is a bead's swollen head (y: its top bulges out to the sky).
+// here and there a rivulet 2 to 5 cm wide (one 20 cm lane in five, about one
+// a metre), a bead running down it every two metres or so at its own slow
+// pace with a wet trail behind it. Returns how much water runs here (x) and
+// how much of it is a bead's swollen head (y: its top bulges out to the sky).
 vec2 rain_rivulets(float u, float y, float footprint) {
 	float keep = rain_fx.z * (1.0 - smoothstep(0.02, 0.05, footprint));
 	if (keep <= 0.0) { return vec2(0.0); }
-	float lane = u * 9.0;
+	float lane = u * 5.0;
 	float id = floor(lane);
 	float across = abs(fract(lane) - 0.5) * 2.0;
-	float width = mix(0.18, 0.42, rain_hash(vec2(id, 3.1)));
+	float width = mix(0.1, 0.25, rain_hash(vec2(id, 3.1)));
 	float channel = 1.0 - smoothstep(width * 0.5, width, across);
-	float bead = fract(y * 1.4 + rain_fx.w * mix(0.5, 1.2, rain_hash(vec2(id, 9.7))) + rain_hash(vec2(id, 1.3)) * 9.0);
-	float flow = smoothstep(0.0, 0.05, bead) * (1.0 - smoothstep(0.05, 0.4, bead));
-	float head = smoothstep(0.0, 0.04, bead) * (1.0 - smoothstep(0.06, 0.16, bead));
-	float run = channel * step(0.4, rain_hash(vec2(id, 5.5))) * keep;
-	return vec2(run * mix(0.35, 1.0, flow), run * head);
+	float bead = fract(y * 0.5 + rain_fx.w * mix(0.12, 0.3, rain_hash(vec2(id, 9.7))) + rain_hash(vec2(id, 1.3)) * 9.0);
+	float trail = smoothstep(0.0, 0.02, bead) * (1.0 - smoothstep(0.02, 0.25, bead));
+	float head = smoothstep(0.0, 0.006, bead) * (1.0 - smoothstep(0.012, 0.024, bead));
+	float run = channel * step(0.8, rain_hash(vec2(id, 5.5))) * keep;
+	return vec2(run * mix(0.12, 1.0, trail), run * head);
+}
+"""
+
+# What keeps the rain off (RainCover): the roofs over each 4 m square of the
+# map, and each roof's own lines. Rain falls near enough straight down, so
+# under a roof it reaches only what stands out past the eaves; what it does
+# reach is the foot of an outside wall, splashed back from the ground.
+const RAIN_COVER := """
+global uniform sampler2D rain_cover;  // RainCover.build: the squares, then three texels a roof
+global uniform vec4 rain_cover_map;  // xy the map's corner, z a square's size (m), w squares across (0: nothing covered)
+
+// One roof over p: x how far under its cover p is (0 out in the rain, 1
+// under it), y how much splashes back onto it (the foot of an outside wall,
+// `foot` metres of it), z whether it's well inside (a room, not a wall).
+vec3 rain_roof(float id, vec3 p, float foot) {
+	int n = int(rain_cover_map.w);
+	int per_row = n / 3;
+	int i = int(id) - 1;
+	int row = i / per_row;
+	ivec2 at = ivec2((i - row * per_row) * 3, n + row);
+	vec4 a = texelFetch(rain_cover, at, 0);  // the middle, the roof's x axis
+	vec4 b = texelFetch(rain_cover, at + ivec2(1, 0), 0);  // the walls' half-size, the eaves, the floor
+	vec2 form = texelFetch(rain_cover, at + ivec2(2, 0), 0).xy;  // tan(pitch); flat, gabled, hipped
+	vec2 d = p.xz - a.xy;
+	vec2 l = vec2(dot(d, a.zw), dot(d, vec2(-a.w, a.z)));
+	// metres in from the walls' outer faces, either way (less than 0 outside)
+	vec2 in2 = b.xy + 0.2 - abs(l);
+	float inside = min(in2.x, in2.y);
+	// the roof's underside (BuildingRoofs.underside): it rises from the eaves
+	// along the long sides to the ridge (from every side under a hip), and
+	// runs on past the walls to the eaves' and barge boards' edges
+	float run = b.x >= b.y ? in2.y : in2.x;
+	run = form.y > 1.5 ? inside : run;
+	float ceiling = b.z + run * form.x;
+	float reach = form.y > 0.5 ? 0.35 : 0.05;
+	float under = smoothstep(-reach - 0.08, -reach, inside) * (1.0 - smoothstep(ceiling - 0.07, ceiling - 0.02, p.y));
+	float outside = 1.0 - smoothstep(0.08, 0.28, inside);
+	float splash = under * outside * (1.0 - smoothstep(foot * 0.55, foot, p.y - b.w));
+	return vec3(under, splash, under * smoothstep(0.3, 0.5, inside));
+}
+
+// How the roofs keep the rain off p: x how much of it still reaches p (1 out
+// in the open, 0 under cover), y how much splashes back onto it.
+vec2 rain_reach(vec3 p, float foot) {
+	if (rain_cover_map.w <= 0.0) { return vec2(1.0, 0.0); }
+	ivec2 cell = ivec2(floor((p.xz - rain_cover_map.xy) / rain_cover_map.z));
+	int n = int(rain_cover_map.w);
+	if (cell.x < 0 || cell.y < 0 || cell.x >= n || cell.y >= n) { return vec2(1.0, 0.0); }
+	vec4 ids = texelFetch(rain_cover, cell, 0);
+	vec3 c = vec3(0.0);
+	if (ids.x > 0.0) {
+		c = max(c, rain_roof(ids.x, p, foot));
+		if (ids.y > 0.0) {
+			c = max(c, rain_roof(ids.y, p, foot));
+			if (ids.z > 0.0) {
+				c = max(c, rain_roof(ids.z, p, foot));
+				if (ids.w > 0.0) { c = max(c, rain_roof(ids.w, p, foot)); }
+			}
+		}
+	}
+	// (a wall's foot inside a wing built on behind it is a room's, and dry)
+	return vec2(1.0 - c.x, c.y * (1.0 - c.z));
 }
 """
 
@@ -211,7 +274,7 @@ static var _cache := {}
 
 static func shader() -> Shader:
 	if _shader == null:
-		_shader = CloudShadow.make(code(TerrainTexture.shader(SURFACE_SHADER.replace("// STREET_SURFACE", ASPHALT_SHADER).replace("// RAIN_DROPS", RAIN_DROPS))), CloudShadow.CLEARCOAT)
+		_shader = CloudShadow.make(code(TerrainTexture.shader(SURFACE_SHADER.replace("// STREET_SURFACE", ASPHALT_SHADER).replace("// RAIN_DROPS", RAIN_DROPS + RAIN_COVER))), CloudShadow.CLEARCOAT)
 	return _shader
 
 
@@ -2133,23 +2196,27 @@ void fragment() {
 		// back out; smooth paint and metal barely change colour. Either way the
 		// film is smooth, so it all turns glossy, upturned faces most. Faces
 		// turned down stay drier, and the water runs down walls and hulls in
-		// streaks rather than evenly.
+		// streaks rather than evenly. Under a roof none of it reaches: a
+		// house's walls stay dry but for the foot the drops splash back onto
+		// (a ragged band about half a metre high), and the rooms inside stay dry.
 		vec3 wn = normalize((INV_VIEW_MATRIX * vec4(NORMAL, 0.0)).xyz);
 		float exposed = mix(0.25, 1.0, smoothstep(-0.6, 0.3, wn.y));
 		float streak = smoothstep(0.35, 0.8, tnoise(vec2((wpos.x + wpos.z) * 5.0, wpos.y * 0.3)));
-		float soak = rain_wet * exposed * mix(0.55 + 0.6 * streak, 1.0, smoothstep(0.5, 0.9, abs(wn.y)));
+		vec2 reach = rain_reach(wpos, mix(0.4, 0.75, tnoise(vec2((wpos.x + wpos.z) * 2.5, 3.7))));
+		float soak = rain_wet * mix(reach.y * 0.85, exposed * mix(0.55 + 0.6 * streak, 1.0, smoothstep(0.5, 0.9, abs(wn.y))), reach.x);
 		float porous = clamp((ROUGHNESS - 0.35) * 1.8, 0.0, 1.0) * (1.0 - METALLIC);
 		float darken = 1.0 - soak * (0.08 + 0.47 * porous);
 		ALBEDO *= OUTPUT_IS_SRGB ? pow(darken, 1.0 / 2.2) : darken;
 		// (water stands as a film on paint and metal; cloth and timber drink most of it)
 		ROUGHNESS = mix(ROUGHNESS, mix(0.34, 0.12, smoothstep(0.4, 0.9, wn.y)), soak * mix(0.85, 0.35, porous));
 		// While it's still coming down, drops burst on every roof, deck and
-		// helmet near the camera, and water runs down the walls and hull sides
-		// in rivulets along the streaks. A vehicle carries its rivulets with it
-		// (they're laid out in its own frame); the drops fall in the world's.
+		// helmet near the camera out in the open, and here and there a
+		// rivulet runs down a hull's side or a wall with no roof over it. A
+		// vehicle carries its rivulets with it (they're laid out in its own
+		// frame); the drops fall in the world's.
 		if (rain_fx.y > 0.0) {
 			float footprint = length(fwidth(wpos)) * 0.7;
-			float near = rain_wet * (1.0 - smoothstep(25.0, 40.0, distance(CAMERA_POSITION_WORLD, wpos)));
+			float near = rain_wet * reach.x * (1.0 - smoothstep(25.0, 40.0, distance(CAMERA_POSITION_WORLD, wpos)));
 			float crown = rain_crowns(wpos.xz, footprint, near * smoothstep(0.55, 0.85, wn.y));
 			ALBEDO = mix(ALBEDO, OUTPUT_IS_SRGB ? vec3(0.66) : vec3(0.4), crown * 0.7);
 			ROUGHNESS = mix(ROUGHNESS, 0.08, crown);
@@ -2157,8 +2224,8 @@ void fragment() {
 			if (rain_fx.z > 0.0 && side * near > 0.0) {
 				vec3 lp = vehicle_surface ? (wpos - MODEL_MATRIX[3].xyz) * mat3(MODEL_MATRIX) : wpos;
 				vec2 run = rain_rivulets(lp.x + lp.z, lp.y, footprint) * side * near * mix(0.4, 1.0, streak);
-				ALBEDO *= 1.0 - run.x * mix(0.15, 0.3, porous);
-				ROUGHNESS = mix(ROUGHNESS, 0.04, run.x * 0.9);
+				ALBEDO *= 1.0 - run.x * mix(0.1, 0.2, porous);
+				ROUGHNESS = mix(ROUGHNESS, 0.04, run.x * 0.8);
 				// (a bead's top turns up to the sky and catches its light)
 				NORMAL = normalize(NORMAL + (VIEW_MATRIX * vec4(0.0, 1.0, 0.0, 0.0)).xyz * run.y * 0.9);
 			}

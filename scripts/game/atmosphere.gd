@@ -1382,6 +1382,7 @@ func _exit_tree() -> void:
 	CloudShadow.set_strength(0.0)  # no clouds over the menu, or the next battle's loading
 	RenderingServer.global_shader_parameter_set(&"rain_wet", 0.0)  # nor rain on the Field Manual's models
 	RenderingServer.global_shader_parameter_set(&"rain_fx", Vector4.ZERO)
+	RenderingServer.global_shader_parameter_set(&"rain_cover_map", Vector4.ZERO)
 
 
 ## How soaked everything standing out in the weather is (the `rain_wet` global
@@ -1416,9 +1417,22 @@ func _wet_tick(dt: float) -> void:
 ## vertex, where a ring's slope would never show, so there it has only the drops.
 var _fall := -1.0
 var _rain_clock := 0.0
+var _cover: RainCover
+var _cover_t := 0.0
 
 
 func _rain_fx_tick(dt: float) -> void:
+	# what the roofs keep dry, for as long as anything's wet (RainCover)
+	if rain_wet > 0.0 and world.has_view:
+		_cover_t -= dt
+		if _cover_t <= 0.0:
+			_cover_t = 1.0
+			if _cover == null:
+				_cover = RainCover.new()
+			_cover.refresh(world)
+	elif _cover:
+		_cover.clear()
+		_cover = null
 	var want := 1.0 if mood == "rain" and world.has_view else 0.0
 	var was := _fall
 	_fall = want if _fall < 0.0 else move_toward(_fall, want, dt / 2.0)
