@@ -8,6 +8,14 @@ file = "mist-off-on.jpg"
 caption = "Off and on: mist lying in the low ground, glowing toward the dawn sun"
 
 [[screenshots]]
+file = "shafts-off-on.jpg"
+caption = "Off and on at dawn, looking toward the sun: the low haze glows, with soft darker streaks in the shadows of the trees"
+
+[[screenshots]]
+file = "glow-off-on.jpg"
+caption = "Off and on: a burning house lighting its own smoke orange from below"
+
+[[screenshots]]
 file = "plume-off-on.jpg"
 caption = "Off and on: the grey pall a barrage leaves, drifting off downwind"
 
@@ -35,6 +43,21 @@ caption = "The browser version's simpler caustics"
 file = "mist-flicker.webm"
 poster = "mist-flicker-poster.jpg"
 caption = "The same frozen dawn moment, mist off and on every second."
+
+[[videos]]
+file = "shafts-flicker.webm"
+poster = "shafts-flicker-poster.jpg"
+caption = "The same frozen dawn moment, the layered air off and on every second."
+
+[[videos]]
+file = "glow-flicker.webm"
+poster = "glow-flicker-poster.jpg"
+caption = "A burning house at dusk, the fire's light in its smoke off and on every second."
+
+[[videos]]
+file = "burst-flash.webm"
+poster = "burst-flash-poster.jpg"
+caption = "Shells bursting at dusk flash the smoke hanging round them."
 
 [[videos]]
 file = "plume-flicker.webm"
@@ -66,7 +89,10 @@ caption = "A barrage's plume drifting off downwind and breaking up."
   off wet ground after rain, torn into wisps by the wind. Look toward a low sun and it glows. A **haze** lies higher
   up; the sun lights it, so clouds throw shafts of shadow through it.
 - **Smoke that hangs**: a barrage or a burning building leaves a plume, dense where it rose, drawn out downwind,
-  lit on top and grey underneath, breaking up and thinning away.
+  lit on top and grey underneath, breaking up and thinning away. A burning house or wreck lights its own smoke orange
+  from below for as long as it burns, and each shell burst flashes the smoke hanging round it.
+- **Sun shafts**: at dawn, golden hour and dusk a faint haze lies over the field, and toward a low sun the air in the
+  shadow of a house, a wood or a ridge stands dark against the sunlit air beside it.
 - **The weather varies across the map**: rain comes over in heavier and lighter bands, and shells and vehicles raise
   dust from dry ground.
 - It all eases off as you zoom out, so it never hides the fighting you're watching. It's scenery only: it doesn't

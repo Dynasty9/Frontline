@@ -21,16 +21,19 @@ extends Node3D
 
 ## Each mood's air: [mist's scale height (m), haze aloft (density a metre),
 ## how hard the sun lights the fog (its shafts), how much of the light the air
-## throws on forward (fog anisotropy: low sun glows through the mist)].
+## throws on forward (fog anisotropy: low sun glows through the mist), the
+## faint low haze over the whole field in the first tens of metres (density a
+## metre: what a low sun's shafts show up in, between the houses and trees and
+## down off the ridges)].
 const MOOD := {
-	"day": [2.5, 0.0002, 0.8, 0.35],
-	"golden": [3.0, 0.0005, 1.6, 0.6],
-	"dawn": [6.0, 0.0006, 1.8, 0.62],
-	"dusk": [3.5, 0.0005, 1.6, 0.6],
-	"overcast": [4.0, 0.0003, 0.5, 0.3],
-	"night": [3.5, 0.0004, 0.9, 0.5],
-	"rain": [4.0, 0.0006, 0.4, 0.3],
-	"hazy": [3.5, 0.0012, 1.4, 0.6],
+	"day": [2.5, 0.0002, 0.8, 0.35, 0.0002],
+	"golden": [3.0, 0.0005, 3.0, 0.62, 0.0035],
+	"dawn": [6.0, 0.0006, 3.4, 0.66, 0.0055],
+	"dusk": [3.5, 0.0005, 3.0, 0.62, 0.0035],
+	"overcast": [4.0, 0.0003, 0.5, 0.3, 0.0],
+	"night": [3.5, 0.0004, 0.9, 0.5, 0.0004],
+	"rain": [4.0, 0.0006, 0.4, 0.3, 0.0],
+	"hazy": [3.5, 0.0012, 1.4, 0.6, 0.002],
 }
 ## Densities (a metre) where the grid's channel is full: mist at the ground
 ## (a thin, dense band), and the far field's smoke, dust and rain (close up
@@ -74,6 +77,9 @@ var _ab_switches := 0
 ## "AIR FLIP on|off <frame>".
 var _flip_at := float(OS.get_environment("FL_DEBUG_AIR_FLIP")) if OS.has_environment("FL_DEBUG_AIR_FLIP") else -1.0
 var _flip_frame := -1
+## FL_DEBUG_AIR_FLIP_GLOW: the flip leaves the layers on and turns only the
+## fire's and the bursts' light in the smoke off and on.
+var _flip_glow := OS.has_environment("FL_DEBUG_AIR_FLIP_GLOW")
 var _debug_k := float(OS.get_environment("FL_DEBUG_AIR")) if OS.has_environment("FL_DEBUG_AIR") else 1.0  # thicken it all, to see where it lies
 
 
@@ -158,8 +164,9 @@ func apply_mood(m: String) -> void:
 	atmo.sun.light_volumetric_fog_energy = float(a[2])
 	atmo.env.volumetric_fog_anisotropy = float(a[3])
 	# (the skylight in the air too: turned from the sun the mist is lit blue-grey
-	# by the sky rather than going dark)
-	atmo.env.volumetric_fog_ambient_inject = 0.3
+	# by the sky rather than going dark; less of it under a low sun, so the air
+	# in a house's or a ridge's shadow stands dark against the sunlit air)
+	atmo.env.volumetric_fog_ambient_inject = 0.12 if float(a[4]) > 0.003 else 0.3
 	if mat == null:
 		return
 	var fog: Color = atmo._d.fog
@@ -223,6 +230,10 @@ func _ab(real_dt: float) -> void:
 ## With (1) or without (0) everything this adds: the volume and plumes, the
 ## water's caustics, and (for the flip) the fog settings as they were before.
 func _show(state: int) -> void:
+	if _flip_glow and _flip_frame >= 0:
+		if plumes:
+			plumes.glow_k = float(state)
+		return
 	_ab_state = state
 	var wv: WaterView = atmo.water_view
 	if wv and wv.mat:
@@ -327,6 +338,7 @@ uniform float strength = 1.0;  // how much of it the camera's distance lets thro
 uniform float mist_d = 0.03;
 uniform float mist_h = 6.0;
 uniform float haze_d = 0.0005;
+uniform float low_d = 0.0;
 uniform float smoke_d = 0.03;
 uniform float dust_d = 0.028;
 uniform float rain_d = 0.003;
@@ -371,6 +383,8 @@ void fog() {
 		mist = mist_d * w.r * lie * exp(-h / mist_h) * smoothstep(mist_h * 5.0, mist_h * 1.5, h) * wisp;
 	}
 	float haze = haze_d * smoothstep(8.0, 40.0, h) * exp(-max(h - 40.0, 0.0) / 220.0) * (0.6 + 0.8 * n1);
+	// (and the low haze a low sun's shafts show in, thinning upward)
+	haze += low_d * exp(-h / 22.0) * (0.7 + 0.6 * n1);
 	float smoke = smoke_d * w.a * exp(-h / 14.0) * (0.05 + wisp * 0.3 + rag * 1.3);
 	float dust = dust_d * w.b * exp(-h / 8.0) * (0.05 + wisp * 0.3 + rag * 1.3);
 	float rain = rain_d * w.g * exp(-h / 150.0);
@@ -385,6 +399,20 @@ void fog() {
 	// ground's shadow pattern, so the clouds cast shafts through the haze
 	vec3 to_sun = cloud_sun_disc.xyz;
 	float shade = cloud_sun(p - to_sun * (h / max(to_sun.y, 0.2)));
+	// and where a ridge stands between this air and a low sun: up the sun's ray
+	// over the ground a few times, out to a couple of hundred metres (the
+	// houses' and trees' shadows the sun's own shadow map gives the fog)
+	if (total > 1e-5 && to_sun.y < 0.5 && to_sun.y > 0.0) {
+		vec2 dir = normalize(to_sun.xz);
+		float rise = to_sun.y / max(length(to_sun.xz), 0.05);
+		float lit = 1.0;
+		for (int i = 1; i <= 6; i++) {
+			float d = float(i * i) * 6.0;
+			float gy = terrain_height(deform_tex, (p.xz + dir * d + __MAP_HALF__) / __MAP_SIZE__);
+			lit = min(lit, smoothstep(2.5, -1.0, gy - (p.y + rise * d)));
+		}
+		shade *= mix(1.0, lit, smoothstep(0.5, 0.25, to_sun.y));
+	}
 	ALBEDO = col * mix(1.0, shade, 0.75);
 }
 """

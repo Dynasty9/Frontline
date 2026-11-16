@@ -3,7 +3,7 @@
   "title": "Mist in the hollows, smoke that drifts, light under the water",
   "version": "unreleased",
   "kind": "improved",
-  "summary": "Layered mist and haze, smoke plumes that drift downwind, weather that varies across the map, and caustics in the shallows and on hulls and piers.",
+  "summary": "Layered mist and haze with low-sun shafts, smoke plumes that drift downwind and glow over fires, weather that varies across the map, and caustics in the shallows and on hulls and piers.",
   "medium": "motion",
   "stage": "game scenarios (--aivai, --scenario=support, --scenario=naval) off-screen at 1600x900, frozen and flipped with FL_DEBUG_AIR_FLIP",
   "rationale": "Atmosphere and caustics are a few percent of a wide frame, so each effect gets a tight crop of one frozen moment with OFF stacked over ON, an arrow and a caption, plus a flicker clip of the same frame toggling every second; two motion clips show the caustics running and a plume drifting.",
@@ -25,6 +25,21 @@
       "caption": "--rendering-method gl_compatibility --preset=medium, --scenario=naval --seed=3 --set=mood:day --focus=356,58 --zoom=10 --pitch=-45 --shot-at=4."
     },
     {
+      "file": "changelog/unreleased/layered-air-and-caustics/burst-flash-poster.jpg",
+      "sha256": "773acabba6bae2bd967b02f797612e6f87a8d771243f99e90d98c85b66775e87",
+      "caption": "Middle frame of the burst clip."
+    },
+    {
+      "file": "changelog/unreleased/layered-air-and-caustics/burst-flash.webm",
+      "sha256": "f6a7a58decb99b6df3afbcbd084117a0131c57513667decc4bed9d30b902ebfd",
+      "caption": "Seconds 20-30 of a 1600x900 movie: --scenario=support --seed=3 --set=mood:dusk --focus=50,35 --zoom=70 --pitch=-16 --cam-yaw=3.77."
+    },
+    {
+      "file": "changelog/unreleased/layered-air-and-caustics/caustics-command-view.jpg",
+      "sha256": "1e9e6537e4784d349b049b2cf9d67861b1552d8a6321f3b067beee94334de6f4",
+      "caption": "--preset=high --scenario=naval --seed=3 --set=mood:day --focus=360,40 --zoom=55 (default command pitch) --shot-at=4."
+    },
+    {
       "file": "changelog/unreleased/layered-air-and-caustics/caustics-poster.jpg",
       "sha256": "49019436af869911e93d7ffc6f72cbb6f7e4c528412fe5e3efa60caf9ea94614",
       "caption": "Middle frame of the caustics clip."
@@ -33,6 +48,26 @@
       "file": "changelog/unreleased/layered-air-and-caustics/caustics.webm",
       "sha256": "3b4ec87ce95e55470a353c62131fa448fe893fe330e8ad8ba98a83b647cb3714",
       "caption": "Last 7 s of a 1280x720 movie, --preset=ultra --scenario=naval --seed=3 --set=mood:day --focus=356,58 --zoom=10 --pitch=-45."
+    },
+    {
+      "file": "changelog/unreleased/layered-air-and-caustics/glow-flicker-poster.jpg",
+      "sha256": "826151bbbf460aa4a302541632ef6e65098acd966087057879c6ccf2fe0edf6b",
+      "caption": "An ON frame of the glow flicker."
+    },
+    {
+      "file": "changelog/unreleased/layered-air-and-caustics/glow-flicker.webm",
+      "sha256": "a83a7d0c10ec4cb1399519067541a7bfda46f8e9f4b740be292e7611eebe4016",
+      "caption": "The same fire frame, the glow flipped every 30 frames."
+    },
+    {
+      "file": "changelog/unreleased/layered-air-and-caustics/glow-off-on.jpg",
+      "sha256": "02a8fa51dad42b444ddaf72545957ddd88d2a69a4d113d0e628b355d28a29913",
+      "caption": "OFF over ON crop: --scenario=fire --seed=3 --set=mood:dusk --focus=26,-38 --zoom=30 --pitch=-10 --cam-yaw=0, FL_DEBUG_AIR_FLIP=25 with FL_DEBUG_AIR_FLIP_GLOW (only the light in the smoke flips)."
+    },
+    {
+      "file": "changelog/unreleased/layered-air-and-caustics/mist-command-view-off-on.jpg",
+      "sha256": "f1e2eedc0ce3f1605a7c9f3bfd4520cdfa1ca186a16ba1dba6f3551d3275fb62",
+      "caption": "OFF over ON, frozen at 8 s of --aivai --seed=3 --set=mood:dawn --focus=0,0 --zoom=55 --cam-yaw=4.5 (default command pitch), full frame."
     },
     {
       "file": "changelog/unreleased/layered-air-and-caustics/mist-flicker-poster.jpg",
@@ -95,14 +130,19 @@
       "caption": "OFF over ON, frozen at 22 s of --scenario=support --seed=3 --set=mood:day --focus=40,30 --zoom=60 --pitch=-15 --cam-yaw=3.77, full frame."
     },
     {
-      "file": "changelog/unreleased/layered-air-and-caustics/mist-command-view-off-on.jpg",
-      "sha256": "f1e2eedc0ce3f1605a7c9f3bfd4520cdfa1ca186a16ba1dba6f3551d3275fb62",
-      "caption": "OFF over ON, frozen at 8 s of --aivai --seed=3 --set=mood:dawn --focus=0,0 --zoom=55 --cam-yaw=4.5 (default command pitch), full frame."
+      "file": "changelog/unreleased/layered-air-and-caustics/shafts-flicker-poster.jpg",
+      "sha256": "81a7891ee0638e6ba2e7decf741c09729c7ff6765b0986a924da293442460a6e",
+      "caption": "An ON frame of the dawn flicker."
     },
     {
-      "file": "changelog/unreleased/layered-air-and-caustics/caustics-command-view.jpg",
-      "sha256": "1e9e6537e4784d349b049b2cf9d67861b1552d8a6321f3b067beee94334de6f4",
-      "caption": "--preset=high --scenario=naval --seed=3 --set=mood:day --focus=360,40 --zoom=55 (default command pitch) --shot-at=4."
+      "file": "changelog/unreleased/layered-air-and-caustics/shafts-flicker.webm",
+      "sha256": "d67188367c0be8e944f576206156db6506351517d68031e997dafbaca93e72e0",
+      "caption": "The same dawn frame, the layers flipped every 30 frames."
+    },
+    {
+      "file": "changelog/unreleased/layered-air-and-caustics/shafts-off-on.jpg",
+      "sha256": "8525c5fa2b9c55cdc975688c50377a4dc8c56ec379709aa3f011897652befebe",
+      "caption": "OFF over ON crop of one frozen dawn frame: --aivai --seed=3 --set=mood:dawn --focus-town --zoom=70 --pitch=-8 --cam-yaw=4.5, FL_DEBUG_AIR_FLIP=8."
     }
   ],
   "output": null

@@ -24,8 +24,14 @@ var _shader: Shader
 var _wisps: Texture3D
 var _wind := Vector2.ONE
 var _yaw := 0.0
-var _p: Array = []  # [volume, material, source, size, age, life, strength, fire]
+var _p: Array = []  # [volume, material, source, size, age, life, strength, fire, heat]
 var _fire_t := 0.0
+## The last blast's flash: where, how big, how long ago (s). The pall close by
+## lights up with it for a frame or two.
+var _flash_at := Vector3.ZERO
+var _flash_size := 0.0
+var _flash_age := 9.0
+var glow_k := 1.0  # (FL_DEBUG_AIR_FLIP_GLOW turns the light in the smoke off and on)
 var _debug_k := float(OS.get_environment("FL_DEBUG_PLUMES")) if OS.has_environment("FL_DEBUG_PLUMES") else 1.0  # thicken them, to see where they hang
 
 
@@ -42,6 +48,11 @@ func setup(w, wisps: Texture3D) -> void:
 ## A blast of `size` (an effect event's) at p: a new plume, or more smoke in a
 ## young one close by.
 func blast(p: Vector3, size: float) -> void:
+	if size < 0.4:
+		return
+	_flash_at = p
+	_flash_size = size
+	_flash_age = 0.0
 	if size < 0.7:
 		return
 	for pl in _p:
@@ -64,7 +75,7 @@ func _start(p: Vector3, size: float, life: float, strength: float, fire: bool) -
 		v.material = m
 		v.rotation.y = _yaw
 		add_child(v)
-		pl = [v, m, p, size, 0.0, life, strength, fire]
+		pl = [v, m, p, size, 0.0, life, strength, fire, 0.0]
 		_p.append(pl)
 	else:
 		# (all in use: the one nearest its end goes)
@@ -78,6 +89,7 @@ func _start(p: Vector3, size: float, life: float, strength: float, fire: bool) -
 		pl[5] = life
 		pl[6] = strength
 		pl[7] = fire
+		pl[8] = 0.0
 	(pl[0] as FogVolume).visible = true
 	return pl
 
@@ -90,6 +102,10 @@ func tick(dt: float, on: bool) -> void:
 	if _fire_t <= 0.0:
 		_fire_t = 1.0
 		_fires()
+	_flash_age += dt
+	# (a burst's light is gone in a tenth of a second; the fog's blending over
+	# frames draws it out a little more)
+	var flash := _flash_size * exp(-_flash_age * 22.0) if _flash_age < 0.3 else 0.0
 	for pl in _p:
 		var v: FogVolume = pl[0]
 		if not v.visible:
@@ -112,9 +128,21 @@ func tick(dt: float, on: bool) -> void:
 		var gy: float = world.ground_y(src)
 		v.size = Vector3(length, height, width)
 		v.position = Vector3(src.x, gy, src.z) + w3 * (drift + length * 0.5 - 3.0) + Vector3(0, height * 0.5 - 1.0, 0)
-		var k := float(pl[6]) * smoothstep(0.0, 2.5, age) * pow(1.0 - age / life, 1.4)
+		# (a blast's thins away over its life; a fire's stands as long as it
+		# burns, its life pushed on at every look, and thins out once it's out)
+		var fade := smoothstep(0.0, 5.0, life - age) if pl[7] else pow(1.0 - age / life, 1.4)
+		var k := float(pl[6]) * smoothstep(0.0, 2.5, age) * fade
 		(pl[1] as ShaderMaterial).set_shader_parameter("density", 0.34 * k * _debug_k)
-		(pl[1] as ShaderMaterial).set_shader_parameter("spread", clampf(age / 20.0, 0.0, 1.0))
+		var m: ShaderMaterial = pl[1]
+		m.set_shader_parameter("spread", clampf(age / 20.0, 0.0, 1.0))
+		# a fire lights its own smoke from below; a burst close by lights the lot
+		m.set_shader_parameter("glow", float(pl[8]) * glow_k if pl[7] else 0.0)
+		var fk := 0.0
+		if flash > 0.0:
+			fk = flash * clampf(1.0 - Defs.flat(_flash_at - v.position).length() / (30.0 + length * 0.5), 0.0, 1.0)
+		m.set_shader_parameter("flash", fk * glow_k)
+		if fk > 0.0:
+			m.set_shader_parameter("flash_at", _flash_at)
 
 
 ## Whatever's alight keeps a plume over it while it burns.
@@ -127,7 +155,7 @@ func _fires() -> void:
 		var big := float(f[2])
 		# (a small fire's smoke is its own particles' alone; a burning house or
 		# a wreck lays a plume)
-		if heat < 0.25 or big < 0.9:
+		if heat < 0.25 or big < 0.6:
 			continue
 		var k := (0.2 + 0.4 * heat) * minf(big, 2.0) * 0.5
 		var found := false
@@ -135,10 +163,11 @@ func _fires() -> void:
 			if pl[7] and (pl[0] as FogVolume).visible and Defs.flat(at - (pl[2] as Vector3)).length() < 5.0:
 				pl[5] = float(pl[4]) + 6.0  # (burning on: it lasts a while past the last look)
 				pl[6] = k
+				pl[8] = heat
 				found = true
 				break
 		if not found:
-			_start(at, big, 8.0, k, true)
+			_start(at, big, 8.0, k, true)[8] = heat
 
 
 ## How many plumes are hanging (for --stats).
@@ -164,6 +193,9 @@ uniform float spread = 0.0;  // how far it has opened out (0 new, 1 old)
 // (sRGB) a neutral grey with a little of the sky in it; lit, near white
 uniform vec3 shade_col : source_color = vec3(0.4, 0.42, 0.46);
 uniform vec3 lit_col : source_color = vec3(0.93, 0.92, 0.9);
+uniform float glow = 0.0;  // the fire under it (0 none, 1 roaring)
+uniform float flash = 0.0;  // a burst close by, this instant
+uniform vec3 flash_at = vec3(0.0);
 
 void fog() {
 	vec3 u = UVW;
@@ -186,5 +218,14 @@ void fog() {
 	float rags = smoothstep(0.45, 0.8, n1 * 0.8 + n2 * 0.5 - spread * 0.1) * puffs;
 	DENSITY = density * body * rags * 2.2;
 	ALBEDO = mix(shade_col, lit_col, smoothstep(cy - r * 0.8, cy + r * 0.7, u.y));
+	// the fire's light on the smoke over it: orange on the underside close
+	// above the flames, dying away up the column and downwind (the fog gives
+	// off what EMISSION says wherever it is, so it follows the smoke's density)
+	float low = exp(-u.y * 7.0) * exp(-along * 4.0);
+	vec3 e = vec3(1.0, 0.4, 0.1) * glow * low * 30.0;
+	// a burst's flash, falling off from where it went up
+	float fd = distance(p, flash_at);
+	e += vec3(1.0, 0.78, 0.5) * flash * 60.0 / (1.0 + fd * fd * 0.01);
+	EMISSION = e * DENSITY;
 }
 """
