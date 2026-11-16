@@ -233,6 +233,79 @@ static func foliage_cards(conifer: bool) -> ArrayMesh:
 	return mesh
 
 
+## Single leaves cut from the broadleaf photo (assets/foliage/broadleaf.png,
+## 273 by 512): their rectangles in pixels, the leaf's length along x.
+const SINGLE_LEAVES := [Rect2(153, 279, 114, 60), Rect2(157, 392, 91, 53), Rect2(36, 427, 85, 51)]
+
+
+## A ball of single leaves about the origin (radius 1): `cards` of them, each
+## `size` long, facing out and tilted every way a little, none underneath
+## (where it sits on the ground). Scaled, it's the shorn skin of a box ball,
+## the leafy skin of a shrub, a head of flowers (Mats.leaf_cards_tinted).
+static func leaf_ball(cards: int, size: float) -> ArrayMesh:
+	var key := "leaf_ball_%d_%.3f" % [cards, size]
+	if _meshes.has(key):
+		return _meshes[key]
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 4241 + cards
+	for i in cards:
+		var y := 1.0 - 2.0 * (i + 0.5) / cards
+		if y < -0.95:
+			break
+		var rad := sqrt(1.0 - y * y)
+		var out := Vector3(cos(i * 2.399963) * rad, y, sin(i * 2.399963) * rad)
+		var facing := (out + Vector3(rng.randf_range(-0.45, 0.45), rng.randf_range(-0.15, 0.45), rng.randf_range(-0.45, 0.45))).normalized()
+		_leaf(st, out * rng.randf_range(0.9, 1.02), facing, rng.randf() * TAU, size, rng.randi() % SINGLE_LEAVES.size())
+	_meshes[key] = _commit_leaves(st)
+	return _meshes[key]
+
+
+## A square of single leaves (x and y from -0.5 to 0.5) facing +z, tilted a
+## little every way: scaled, a clipped hedge's face or top, a strip of
+## bedding flowers.
+static func leaf_patch(cards: int, size: float) -> ArrayMesh:
+	var key := "leaf_patch_%d_%.3f" % [cards, size]
+	if _meshes.has(key):
+		return _meshes[key]
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 5843 + cards
+	var g := ceili(sqrt(float(cards)))
+	var rows := ceili(float(cards) / g)
+	for i in cards:
+		var p := Vector3((float(i % g) + rng.randf()) / g - 0.5, (floorf(float(i) / g) + rng.randf()) / rows - 0.5, rng.randf_range(-0.02, 0.02))
+		var facing := Vector3(rng.randf_range(-0.5, 0.5), rng.randf_range(-0.3, 0.5), 1.0).normalized()
+		_leaf(st, p, facing, rng.randf() * TAU, size, rng.randi() % SINGLE_LEAVES.size())
+	_meshes[key] = _commit_leaves(st)
+	return _meshes[key]
+
+
+static func _leaf(st: SurfaceTool, c: Vector3, normal: Vector3, spin: float, size: float, which: int) -> void:
+	var px: Rect2 = SINGLE_LEAVES[which]
+	var uv := Rect2(px.position / Vector2(273, 512), px.size / Vector2(273, 512))
+	var across := normal.cross(Vector3.UP if absf(normal.y) < 0.95 else Vector3.RIGHT).normalized().rotated(normal, spin)
+	var up := normal.cross(across)
+	var half := across * size * 0.5
+	var wide := up * size * 0.5 * px.size.y / px.size.x
+	var quad := [c - half - wide, c + half - wide, c + half + wide, c - half + wide]
+	var coords := [Vector2(uv.position.x, uv.end.y), uv.end, Vector2(uv.end.x, uv.position.y), uv.position]
+	for j in [0, 2, 1, 0, 3, 2]:
+		st.set_normal(normal)
+		st.set_uv(coords[j])
+		st.add_vertex(quad[j])
+
+
+static func _commit_leaves(st: SurfaceTool) -> ArrayMesh:
+	var arrays := st.commit_to_arrays()
+	var mesh := ArrayMesh.new()
+	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+	Mats.keep_arrays(mesh, arrays)
+	return mesh
+
+
 ## A handful of fractured blocks share meshes across the decorative scree batches.
 static func alpine_stone(variant: int) -> ArrayMesh:
 	var key := "alpine_stone_%d" % posmod(variant, 4)

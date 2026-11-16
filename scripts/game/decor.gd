@@ -543,9 +543,9 @@ func _make(h: Node3D, kind: String, ex) -> void:
 			var v: Vector3 = ex
 			match kind:
 				"shrub":
-					BuildingPlanting.shrub(pk, v.x, BuildingPlanting.GREENS[int(v.y) % BuildingPlanting.GREENS.size()], BuildingPlanting.BLOOMS[int(v.z)] if v.z >= 0.0 else null, rng)
+					BuildingPlanting.shrub(pk, v.x, int(v.y), int(v.z), rng)
 				"hedge_trim":
-					BuildingPlanting.hedge(pk, v.x, v.y, 0.55, BuildingPlanting.GREENS[int(v.z) % BuildingPlanting.GREENS.size()], rng)
+					BuildingPlanting.hedge(pk, v.x, v.y, 0.55, BuildingPlanting.HEDGES[int(v.z) % BuildingPlanting.HEDGES.size()], rng)
 				"bed":
 					BuildingPlanting.bed(pk, v.x, v.y, rng)
 		"bins", "pots", "woodpile", "garden_set", "kennel", "bike", "shed", "trampoline":

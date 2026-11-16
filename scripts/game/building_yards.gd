@@ -169,5 +169,5 @@ static func pots(k: BuildingKit, count: int, rng: RandomNumberGenerator) -> void
 		var p := Vector3((float(i) - (count - 1) * 0.5) * 0.42, 0, rng.randf_range(-0.06, 0.06))
 		var r := rng.randf_range(0.12, 0.2)
 		k.cyl(r, r * 0.75, r * 1.5, p + Vector3(0, r * 0.75, 0), "paint", TERRACOTTA.darkened(rng.randf_range(0.0, 0.2)), Vector3.ZERO, 8)
-		k.part_with(Res.foliage_cards(false), Mats.leaf_cards(false), Transform3D(Basis.from_scale(Vector3(r * 1.3, r * 1.4, r * 1.3)), p + Vector3(0, r * 2.1, 0)),
+		k.part_with(Res.foliage_cards(false), Mats.leaf_cards_tinted(), Transform3D(Basis.from_scale(Vector3(r * 1.3, r * 1.4, r * 1.3)), p + Vector3(0, r * 2.1, 0)),
 			[Color(0.75, 0.15, 0.15), Color(0.86, 0.5, 0.65), Color(0.3, 0.45, 0.2), Color(0.9, 0.78, 0.25)][rng.randi() % 4], false)

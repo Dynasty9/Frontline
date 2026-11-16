@@ -378,6 +378,20 @@ static func leaf_cards(conifer: bool) -> ShaderMaterial:
 	return _leaf_cards[conifer]
 
 
+static var _leaf_tinted: ShaderMaterial
+
+## The broadleaf cards in each part's own colour rather than the photo's
+## green, its light and shade kept: a flower's petals, a clipped privet's or a
+## golden shrub's leaves. (Plain leaf cards take only a hint of the tint.)
+static func leaf_cards_tinted() -> ShaderMaterial:
+	if _leaf_tinted == null:
+		_leaf_tinted = leaf_cards(false).duplicate() as ShaderMaterial
+		_leaf_tinted.set_shader_parameter("leaf_tint", 1.0)
+		# (a rustle, not a tree's sway: a clipped shell of leaves stays on its core)
+		_leaf_tinted.set_shader_parameter("wind", 0.25)
+	return _leaf_tinted
+
+
 static var _vc_cache := {}
 ## Merged parts carry their tint as vertex colour, which is stored 8 bits per
 ## channel and clamps at 1: a tint brighter than the material's base (a sand
@@ -1687,6 +1701,9 @@ uniform float wind = 1.0;
 uniform bool leaf_cards = false;
 uniform bool vertex_lit = false;
 uniform float leaf_tone = 1.0;
+// leaf cards in the part's own colour, the photo's light and shade over it
+// (flowers, a clipped hedge: see Mats.leaf_cards_tinted)
+uniform float leaf_tint = 0.0;
 uniform sampler2D leaf_texture : source_color, filter_linear_mipmap_anisotropic, repeat_disable;
 uniform bool use_vcolor = false;
 // on fire (a burning tree's own copy, see Structure._apply_char): the leaves
@@ -1756,7 +1773,12 @@ void fragment() {
 		vec4 photo = texture(leaf_texture, UV);
 		if (photo.a < 0.22) { discard; }
 		if (OUTPUT_IS_SRGB) { photo.rgb = mix(photo.rgb / 12.92, pow((photo.rgb + 0.055) / 1.055, vec3(2.4)), step(vec3(0.04045), photo.rgb)); }
+		vec3 own = c;
 		c = photo.rgb * leaf_tone * mix(vec3(0.75), vec3(1.15), clamp(c * 12.0, vec3(0.0), vec3(1.0)));
+		if (leaf_tint > 0.0) {
+			// (0.12: the photo's mean brightness, in linear light)
+			c = mix(c, own * clamp(dot(photo.rgb, vec3(0.2126, 0.7152, 0.0722)) / 0.12, 0.35, 1.8), leaf_tint);
+		}
 	}
 	c = mix(c, c * vec3(1.15, 1.1, 0.7), smoothstep(0.55, 0.8, gaps) * 0.5);
 	if (scorch > 0.0) {

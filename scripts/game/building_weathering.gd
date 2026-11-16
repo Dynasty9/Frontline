@@ -12,7 +12,7 @@ extends RefCounted
 ## no higher than a man's ankle. Everything is a world-space surface or leaf
 ## cards, so batched scenery stays batched.
 
-const IVY := [Color(0.16, 0.27, 0.11), Color(0.2, 0.3, 0.12), Color(0.13, 0.22, 0.1)]
+const IVY := [Color(0.21, 0.34, 0.13), Color(0.25, 0.37, 0.15), Color(0.18, 0.3, 0.12)]
 const WEEDS := [Color(0.34, 0.42, 0.16), Color(0.42, 0.44, 0.2), Color(0.3, 0.38, 0.17)]
 const CHAR := Color(0.09, 0.085, 0.08)
 
@@ -22,17 +22,48 @@ static func _leaves(k: BuildingKit, c: Vector3, half: Vector3, col: Color) -> vo
 
 
 ## Ivy up a face from its foot at `x`, `width` across at the bottom and no
-## higher than `height`: clumps narrowing and wandering as it climbs.
+## higher than `height`: a mat of leaves flat to the wall, in the ivy's own
+## dark green (Mats.leaf_cards_tinted), narrowing and wandering as it climbs.
 static func ivy(k: BuildingKit, x: float, width: float, height: float, rng: RandomNumberGenerator) -> void:
 	var y := 0.0
 	var w := width
 	var col: Color = IVY[rng.randi() % IVY.size()]
+	# (its ragged edges from a stream of its own, so the wall's draws stay as they were)
+	var rag := RandomNumberGenerator.new()
+	rag.seed = rng.state ^ 0x1e1fa11
 	while y < height - 0.3 and w > 0.3:
 		var h := minf(rng.randf_range(0.55, 0.85), height - y)
-		_leaves(k, Vector3(x, y + h * 0.5, 0.07), Vector3(w * 0.5, h * 0.5, 0.07), col.lightened(rng.randf_range(0.0, 0.08)))
+		_mat(k, Rect2(x - w * 0.5, y + 0.04, w, h - 0.08), col.lightened(rng.randf_range(0.0, 0.08)), rag)
 		y += h * 0.7
 		w *= rng.randf_range(0.62, 0.86)
 		x += rng.randf_range(-0.22, 0.22)
+
+
+## A mat of leaves over `rect` of a face (x along it, y up), laid in squares
+## of about 0.4 m so the leaves keep their shape, its edges ragged: the squares
+## at its sides shrunk and wandering, the odd one at a top corner left out,
+## and sprigs reaching out past its sides.
+static func _mat(k: BuildingKit, rect: Rect2, col: Color, rag: RandomNumberGenerator) -> void:
+	var nx := maxi(1, ceili(rect.size.x / 0.4))
+	var ny := maxi(1, ceili(rect.size.y / 0.4))
+	var tile := rect.size / Vector2(nx, ny)
+	var patch := Res.leaf_patch(60, 0.2)
+	for i in nx:
+		for j in ny:
+			var edge := i == 0 or i == nx - 1
+			if edge and j == ny - 1 and nx > 2 and rag.randf() < 0.5:
+				continue
+			var c := rect.position + tile * Vector2(i + 0.5, j + 0.5)
+			var s := rag.randf_range(0.7, 1.0) if edge else 1.08
+			if edge:
+				c.x -= (1.0 - s) * tile.x * 0.5 * (1.0 if i == 0 else -1.0)
+				c.y += rag.randf_range(-0.05, 0.05)
+			k.part_with(patch, Mats.leaf_cards_tinted(), Transform3D(Basis.from_scale(Vector3(tile.x * s, tile.y * s, 1.0)), Vector3(c.x, c.y, 0.05)), col.lightened(rag.randf_range(-0.03, 0.04)), false)
+	for side: float in [-1.0, 1.0]:
+		if rag.randf() < 0.6:
+			var sy := rect.position.y + rect.size.y * rag.randf_range(0.2, 0.8)
+			var sx := rect.position.x + (rect.size.x if side > 0.0 else 0.0) + side * 0.1
+			k.part_with(patch, Mats.leaf_cards_tinted(), Transform3D(Basis.from_scale(Vector3(0.26, 0.2, 1.0)), Vector3(sx, sy, 0.05)), col.lightened(0.04), false)
 
 
 ## Weeds along the foot of a face `length` long, in tufts, stopping at the

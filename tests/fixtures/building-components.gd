@@ -270,9 +270,9 @@ func _ready() -> void:
 			BuildingFittings.letterbox(k, Vector3(-3, 1.15, 0), BuildingFittings.LETTERBOXES[0])
 			BuildingFittings.doormat(k, Vector3(-5, 0.14, 0.3), BuildingFittings.MATS[0]),
 		"planting": func(k: BuildingKit):
-			BuildingPlanting.shrub(k, 0.8, BuildingPlanting.GREENS[0], BuildingPlanting.BLOOMS[0], k.rng)
-			BuildingPlanting.shrub(k.at_point(Vector3(2, 0, 0)), 1.1, BuildingPlanting.GREENS[1], null, k.rng)
-			BuildingPlanting.hedge(k.at_point(Vector3(0, 0, 3)), 2.2, 0.9, 0.55, BuildingPlanting.GREENS[2], k.rng)
+			BuildingPlanting.shrub(k, 0.8, BuildingPlanting.HYDRANGEA, 0, k.rng)
+			BuildingPlanting.shrub(k.at_point(Vector3(2, 0, 0)), 1.1, BuildingPlanting.LAUREL, -1, k.rng)
+			BuildingPlanting.hedge(k.at_point(Vector3(0, 0, 3)), 2.2, 0.9, 0.55, BuildingPlanting.HEDGES[2], k.rng)
 			BuildingPlanting.bed(k.at_point(Vector3(0, 0, -3)), 2.4, 0.7, k.rng),
 		"furniture": func(k: BuildingKit):
 			BuildingInteriors.wardrobe(k, 0.0, BuildingInteriors.WOODS[0], k.rng)
@@ -590,19 +590,28 @@ func _ready() -> void:
 		ds.free()
 	check(dark_storeys >= 5, "some floors above have a lamp on (%d of 40)" % dark_storeys)
 
-	# What grows round a house keeps to the room the town gives it: a shrub
-	# within its spread and under a window's sill, a hedge to its length and
-	# height, a bed flat on the ground within its strip.
-	for s in 8:
+	# What grows round a house keeps to the room the town gives it: a shrub of
+	# every kind within its spread and under a window's sill, a hedge to its
+	# length and height, a bed flat on the ground within its strip; and the
+	# flowers are their own colour, not the leaves' green.
+	for s in 12:
+		var kind := s % BuildingPlanting.KINDS.size()
 		var pk := kit()
 		pk.rng.seed = s
-		BuildingPlanting.shrub(pk, 0.9, BuildingPlanting.GREENS[s % 5], BuildingPlanting.BLOOMS[s % 6] if s % 2 == 0 else null, pk.rng)
+		BuildingPlanting.shrub(pk, 0.9, kind, s % 4 if s < 6 else -1, pk.rng)
 		var sb := _bounds(pk.sink.root, Transform3D.IDENTITY)
-		check(sb.position.y >= -0.01 and sb.end.y <= 1.02 and absf(sb.get_center().x) < 0.2 and sb.size.x <= 1.05 and sb.size.z <= 1.05, "a shrub keeps to its spread (%s)" % sb)
+		check(sb.position.y >= -0.01 and sb.end.y <= 1.02 and absf(sb.get_center().x) < 0.2 and sb.size.x <= 1.1 and sb.size.z <= 1.1, "a shrub keeps to its spread (%d: %s)" % [kind, sb])
+		var petals := 0
+		for child in pk.sink.root.get_children():
+			var tint: Variant = Mats.get_inst(child as GeometryInstance3D, &"tint")
+			if Mats.base_of((child as MeshInstance3D).material_override) == Mats.leaf_cards_tinted() and tint is Color and ((tint as Color).r > (tint as Color).g or (tint as Color).b > (tint as Color).g):
+				petals += 1
+		var blooms: Array = BuildingPlanting.KINDS[kind]["blooms"]
+		check((petals > 0) == (s < 6 and not blooms.is_empty()), "a flowering shrub's flowers are their own colour (%d: %d)" % [kind, petals])
 		pk.sink.root.free()
 		var hk2 := kit()
 		hk2.rng.seed = s
-		BuildingPlanting.hedge(hk2, 2.2, 0.9, 0.55, BuildingPlanting.GREENS[0], hk2.rng)
+		BuildingPlanting.hedge(hk2, 2.2, 0.9, 0.55, BuildingPlanting.HEDGES[s % BuildingPlanting.HEDGES.size()], hk2.rng)
 		var hb := _bounds(hk2.sink.root, Transform3D.IDENTITY)
 		check(hb.size.x <= 2.35 and hb.end.y <= 0.98 and hb.size.z <= 0.65, "a hedge keeps to its length and height (%s)" % hb)
 		hk2.sink.root.free()
@@ -610,7 +619,7 @@ func _ready() -> void:
 		bk3.rng.seed = s
 		BuildingPlanting.bed(bk3, 2.4, 0.7, bk3.rng)
 		var bb2 := _bounds(bk3.sink.root, Transform3D.IDENTITY)
-		check(bb2.size.x <= 2.6 and bb2.position.z >= -0.15 and bb2.end.z <= 0.85 and bb2.end.y <= 0.6, "a bed keeps to its strip (%s)" % bb2)
+		check(bb2.size.x <= 2.6 and bb2.position.z >= -0.15 and bb2.end.z <= 0.85 and bb2.end.y <= 0.7, "a bed keeps to its strip, under a window's sill (%s)" % bb2)
 		bk3.sink.root.free()
 
 	# What a ruined or shelled house sheds lies flat on the ground in front of

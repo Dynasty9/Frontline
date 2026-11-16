@@ -200,6 +200,11 @@ func _subject(kind: String) -> Node3D:
 			if ResourceLoader.exists("res://scripts/game/building_planting.gd"):
 				_planting(garden, 9.0, 7.6)
 			return garden
+		"planting":
+			# every shrub BuildingPlanting grows, a hedge of each green, two beds
+			var rows := Node3D.new()
+			_plant_rows(rows)
+			return rows
 		"roofscape":
 			# four houses' roofs as the town draws them (their ids pick the
 			# form and wear): a hipped roof mended with a tarp and with a
@@ -496,17 +501,48 @@ func _planting(root: Node3D, w: float, d: float) -> void:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 11
 	var k := BuildingKit.nodes(root, rng)
-	var greens: Array = plants.get("GREENS")
-	var blooms: Array = plants.get("BLOOMS")
 	var face := -(d * 0.5 + 0.6)
 	plants.call("bed", k.at_point(Vector3(-3.1, 0, face), Vector3(0, PI, 0)), 2.0, 0.6, rng)
-	plants.call("shrub", k.at_point(Vector3(2.55, 0, face - 0.42)), 0.75, greens[1], blooms[1], rng)
+	var kinds := plants.get_script_constant_map().has("KINDS")
+	if kinds:
+		# (a box ball by the door, a hydrangea and lavender at the back corners)
+		plants.call("shrub", k.at_point(Vector3(2.55, 0, face - 0.42)), 0.75, 0, -1, rng)
+	else:
+		plants.call("shrub", k.at_point(Vector3(2.55, 0, face - 0.42)), 0.75, plants.get("GREENS")[1], plants.get("BLOOMS")[1], rng)
 	for x: float in [-2.5, 2.5]:
 		for i in 2:
 			var cx := x * 0.5 + signf(x) * (0.25 + i * 2.3) + (0.75 if x > 0.0 else -0.75)
-			plants.call("hedge", k.at_point(Vector3(cx, 0, -(d * 0.5 + 1.85))), 2.2, 0.7, 0.55, greens[2], rng)
-	plants.call("shrub", k.at_point(Vector3(-5.4, 0, d * 0.5 + 1.0)), 1.0, greens[0], null, rng)
-	plants.call("shrub", k.at_point(Vector3(5.4, 0, d * 0.5 + 1.0)), 0.9, greens[3], blooms[0], rng)
+			var green: Color = plants.get("HEDGES")[0] if kinds else plants.get("GREENS")[2]
+			plants.call("hedge", k.at_point(Vector3(cx, 0, -(d * 0.5 + 1.85))), 2.2, 0.7, 0.55, green, rng)
+	if kinds:
+		plants.call("shrub", k.at_point(Vector3(-5.4, 0, d * 0.5 + 1.0)), 1.0, 1, 0, rng)
+		plants.call("shrub", k.at_point(Vector3(5.4, 0, d * 0.5 + 1.0)), 0.9, 2, 1, rng)
+	else:
+		plants.call("shrub", k.at_point(Vector3(-5.4, 0, d * 0.5 + 1.0)), 1.0, plants.get("GREENS")[0], null, rng)
+		plants.call("shrub", k.at_point(Vector3(5.4, 0, d * 0.5 + 1.0)), 0.9, plants.get("GREENS")[3], plants.get("BLOOMS")[0], rng)
+	Mats.merge_static(root)
+
+
+## Every kind of shrub in flower (and out of it), a clipped hedge of each
+## green and two beds, in rows on a lawn.
+func _plant_rows(root: Node3D) -> void:
+	var plants: GDScript = load("res://scripts/game/building_planting.gd")
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 5
+	var k := BuildingKit.nodes(root, rng)
+	k.plate(Vector3(10.0, 0.02, 9.0), Vector3(0, -0.01, -0.5), "plain", Color(0.3, 0.42, 0.18), Vector3.ZERO, false)
+	for i in 6:
+		plants.call("shrub", k.at_point(Vector3(-3.75 + i * 1.5, 0, -2.2)), 0.9, i, i % 4, rng)
+		plants.call("shrub", k.at_point(Vector3(-3.75 + i * 1.5, 0, -0.6)), 0.7, i, -1 if i % 2 == 0 else (i + 1) % 4, rng)
+	for i in 4:
+		plants.call("hedge", k.at_point(Vector3(-3.6 + i * 2.4, 0, 1.0)), 2.2, 0.9, 0.55, plants.get("HEDGES")[i], rng)
+	for i in 2:
+		plants.call("bed", k.at_point(Vector3(-2.4 + i * 4.8, 0, -3.7)), 2.4, 0.75, rng)
+	# ivy up a garden wall at the back
+	var wall := k.at_point(Vector3(0, 0, 2.6), Vector3(0, PI, 0))
+	wall.box(Vector3(9.0, 2.6, 0.3), Vector3(0, 1.3, -0.15), "stone", Color(0.6, 0.57, 0.52))
+	for x: float in [-2.6, 2.2]:
+		BuildingWeathering.ivy(wall, x, 1.7, 2.5, rng)
 	Mats.merge_static(root)
 
 

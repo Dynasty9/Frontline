@@ -228,16 +228,30 @@ and a blast or a truck knocks them over. Render them with `--building-kinds=hous
 
 ## Planting
 
-`BuildingPlanting` builds what grows round a house from the trees' photographed leaf cards round a dark core, so
-a bush has no see-through gaps and bakes with the rest of the scenery: `shrub` (a mound of clumps, flower heads
-on a flowering one), `hedge` (clipped, its top level) and `bed` (turned earth edged with bricks on end, plants
-and flowers in two or three colours). `TownGen._planting` places them after everything else, from a stream of its
-own seeded from where the lot is: along a house's front, outside the paved apron and clear of the fence, a bed or
-a few shrubs in each stretch clear of the door, the bins and the pots (it draws the yard's stream as
+`BuildingPlanting` builds what grows round a house from the trees' photographed leaves, each plant in its own
+colour (`Mats.leaf_cards_tinted`: the photo's light and shade over the part's tint, where plain leaf cards take only
+a hint of it). A plant is a skin of single leaves cut from the photo, facing out over a dark core
+(`Res.leaf_ball`, `Res.leaf_patch`), so it is dense with no see-through gaps, and it bakes with the rest of the
+scenery:
+- `shrub` (r across, of a kind in `KINDS`): a box ball shorn smooth; a hydrangea under big round heads of florets;
+  a rose bush with small flowers all over; lavender, a low silver-green dome under purple spikes; a laurel; a
+  golden privet. One that isn't clipped grows lumpy, lobes of leaves out of its sides and loose sprays out of its
+  shoulders.
+- `hedge`: clipped, its faces, ends and top shorn flat, the faces leaning in a little as a hedge is cut, the top
+  lighter with new growth; a hedge's greens are `HEDGES`.
+- `bed`: turned earth edged with bricks on end, planted in rows, spires of flowers at the back, cushions of
+  flowers in the middle and a low edging in front, in two or three colours and white.
+
+The core casts the plant's shadow, so its leaves needn't. `TownGen._planting` places them after everything else,
+from a stream of its own seeded from where the lot is: along a house's front, outside the paved apron and clear of
+the fence, a bed or a row of shrubs of one kind (`FRONT_SHRUBS`) in each stretch clear of the door, the bins and
+the pots (it draws the yard's stream as
 `_place_yard_life` does to know where they are); a clipped hedge along the front of nearly half the unfenced
-gardens, with gaps for the path, the drive and the mailbox; and a shrub or two behind the house at its corners,
-never in a wing or on the drive's side. They're Decor (`shrub`, `hedge_trim`, `bed`): no cover, and a blast or a
-truck flattens them. Render a planted garden with `--building-kinds=house_garden` in the studio stage.
+gardens, with gaps for the path, the drive and the mailbox; and a shrub or two behind the house at its corners
+(`BACK_SHRUBS`, laurels among them), never in a wing or on the drive's side. They're Decor (`shrub`,
+`hedge_trim`, `bed`): no cover, and a blast or a truck flattens them. The flowers in window boxes and pots by
+the door take their own colours the same way. Render a planted garden with `--building-kinds=house_garden` in the
+studio stage, and every plant in rows with `--building-kinds=planting`.
 
 ## Wall fittings
 

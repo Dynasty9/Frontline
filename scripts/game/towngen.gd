@@ -680,8 +680,16 @@ func _place_yard_life(front: Vector3, n: Vector3, d: Vector3, W: float, hc: Vect
 		_d_clear("trampoline", back + n * (yard * 0.5), 0.0, life.randi() % BuildingYards.PADS.size(), 1.7)
 
 
+## The shrubs a front garden is planted with, by how often (BuildingPlanting
+## kinds): box balls, hydrangeas, roses, lavender, now and then a golden
+## privet; and behind the house, where there's room for something bigger,
+## laurels too.
+const FRONT_SHRUBS := [0, 0, 1, 1, 2, 2, 3, 3, 5]
+const BACK_SHRUBS := [4, 4, 1, 1, 2, 5, 0]
+
+
 ## What grows round a house (BuildingPlanting): along its front wall a bed of
-## flowers or a few shrubs either side of the door (clear of the bins and the
+## flowers or a row of shrubs of one kind either side of the door (clear of the bins and the
 ## pots by it), a clipped hedge along the front of a garden with no fence
 ## (gaps for the path, the drive and the mailbox), and a shrub or two behind
 ## the house at its corners. From a stream of its own seeded from where the
@@ -725,12 +733,17 @@ func _planting(front: Vector3, n: Vector3, d: Vector3, W: float, hc: Vector3, w:
 		if roll < 0.45:
 			_d("bed", face + d * mid, axis + PI, Vector3(len - 0.1, minf(0.75, room), 0))
 		elif roll < 0.85:
+			# a row of one kind, as a gardener plants them
 			var count := maxi(1, int(len / 1.3))
+			var kind: int = FRONT_SHRUBS[pl.randi() % FRONT_SHRUBS.size()]
+			var bloom := pl.randi() % 4 if pl.randf() < 0.85 else -1
 			for i in count:
-				var r := minf(pl.randf_range(0.55, 0.9), room + 0.15)
-				var bloom := pl.randi() % BuildingPlanting.BLOOMS.size() if pl.randf() < 0.4 else -1
+				# (no wider than the room left before the hedge or fence: that
+				# stands 0.75 m into the lot, `room` is measured from 1.35 m)
+				var r := minf(pl.randf_range(0.55, 0.9), room - 0.15)
 				var x := span.x + (i + 0.5) * len / count + pl.randf_range(-0.15, 0.15)
-				_d("shrub", face - n * (r * 0.5 + 0.12) + d * x, pl.randf() * TAU, Vector3(r, pl.randi() % BuildingPlanting.GREENS.size(), bloom))
+				if r >= 0.3:
+					_d("shrub", face - n * (r * 0.5 + 0.12) + d * x, pl.randf() * TAU, Vector3(r, kind, bloom))
 	# a clipped hedge along the front of an unfenced garden
 	if not fenced and pl.randf() < 0.45:
 		var gaps: Array[Vector2] = [Vector2(gate - 0.75, gate + 0.75)]
@@ -739,7 +752,7 @@ func _planting(front: Vector3, n: Vector3, d: Vector3, W: float, hc: Vector3, w:
 		if mailbox:
 			gaps.append(Vector2(W * 0.5 - 1.6, W * 0.5 - 0.8))
 		var h := pl.randf_range(0.75, 1.05)
-		var green := pl.randi() % BuildingPlanting.GREENS.size()
+		var green := pl.randi() % BuildingPlanting.HEDGES.size()
 		for span: Vector2 in _clear_spans(-W * 0.5 + 0.25, W * 0.5 - 0.25, gaps):
 			var len := span.y - span.x
 			if len < 0.6:
@@ -757,9 +770,9 @@ func _planting(front: Vector3, n: Vector3, d: Vector3, W: float, hc: Vector3, w:
 			if pl.randf() < 0.45:
 				var r := pl.randf_range(0.7, 1.1)
 				var p := front + n * (setback + dep + 1.0) + d * e * (W * 0.5 - 0.6)
-				var bloom := pl.randi() % BuildingPlanting.BLOOMS.size() if pl.randf() < 0.5 else -1
+				var bloom := pl.randi() % 4 if pl.randf() < 0.7 else -1
 				if not _in_wing(p, r):
-					_d("shrub", p, pl.randf() * TAU, Vector3(r, pl.randi() % BuildingPlanting.GREENS.size(), bloom))
+					_d("shrub", p, pl.randf() * TAU, Vector3(r, BACK_SHRUBS[pl.randi() % BACK_SHRUBS.size()], bloom))
 
 
 ## The stretches of [a, b] clear of `keep` (each [from, to]), in order.

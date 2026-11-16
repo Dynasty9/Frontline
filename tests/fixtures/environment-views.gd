@@ -69,7 +69,28 @@ func capture() -> void:
 			if piece[0] == "hay":
 				views.append(["farm", piece[1], 34.0, -42.0, 0.7])
 				break
+		# a planted front garden from the street: a clipped hedge with
+		# hydrangeas or roses in flower behind it, at a house still lived in
+		# (a ruined or shelled one has had its garden flattened)
+		var flowering: Array[Vector3] = []
+		for piece: Array in world.decor:
+			if piece[0] == "shrub" and piece[3] is Vector3 and int((piece[3] as Vector3).y) in [1, 2] and (piece[3] as Vector3).z >= 0.0:
+				flowering.append(piece[1])
+		for piece: Array in world.decor:
+			if piece[0] != "hedge_trim":
+				continue
+			var hedge: Vector3 = piece[1]
+			var near := flowering.filter(func(p: Vector3) -> bool: return p.distance_to(hedge) < 4.0)
+			var lived: bool = world.structures_near(hedge, 7.0).all(func(st) -> bool: return st.skind != "house_wall" or not st.dark)
+			if near.size() >= 2 and lived:
+				views.append(["garden", (hedge + near[0]) * 0.5, 13.0, -45.0, float(piece[2]) + PI + 0.5])
+				break
 		print("CAPTURE town bounds=", town)
+	# (FL_ONLY_VIEW="name,x,z,distance,pitch,yaw": just that view, to match a
+	# camera another revision chose)
+	if OS.has_environment("FL_ONLY_VIEW"):
+		var f := OS.get_environment("FL_ONLY_VIEW").split(",")
+		views = [[f[0], Vector3(float(f[1]), 0, float(f[2])), float(f[3]), float(f[4]), float(f[5])]]
 	if "--capture-set=trenches" in OS.get_cmdline_user_args():
 		views = [["trenches", Vector3(0, 0, -28), 24.0, -48.0, 0.5]]
 	var settle_frames := 90
