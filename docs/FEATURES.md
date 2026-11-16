@@ -1320,8 +1320,14 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   melts all of it off. Heat melts it (`SnowMelt`, fed by the fires and engines the heat haze knows): a fire thaws
   the ground round it to bare, wet earth with a rim of grey slush, and melts the snow off whatever is burning, roof,
   wreck or tree; a vehicle standing with its engine running works the snow under it to a damp, dark slush. The
-  ground and roads take the thaws nearest the camera as a list (no extra texture), the grass has them painted into
-  its scar map. Thawed ground stays thawed once the fire is out and whitens again only slowly, while the snow keeps
+  ground and roads take the 24 thaws nearest the camera as a list (no extra texture), everything standing round
+  a fire (paving, yards, the neighbours' roofs) the nearest eight as global shader values (`snow_thaw_0..7`), and
+  the grass has them painted into its scar map. The wind heaps it against whatever stands in its way (`SnowDrift`): every wall, house,
+  hedge, fence, wreck and car drifts a bank deepest against its lee face and thinning out a few metres downwind
+  (farther behind a tall wall, farther still behind a hedge or fence the wind half passes through), with a smaller
+  bank on the windward face, and none inside a roofed house. Each view stamps the drifts from the structures
+  standing into a 2 m map (so every peer gets the same ones) and lays raised snow over the ground where there are
+  any; the grass in a drift is buried, a wall knocked down takes its drift with it, and a thaw or a scorch clears it. Thawed ground stays thawed once the fire is out and whitens again only slowly, while the snow keeps
   falling. Running gear, glass, charred hulls and floors indoors take none, and men only a dusting. A
   battle that opens in snow starts covered; snow that sets in mid-battle settles over four minutes, in the hollows
   first, and thaws over a quarter of an hour. The deep snow hushes the wind and the distant battle. A random

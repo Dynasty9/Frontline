@@ -1413,7 +1413,7 @@ func _exit_tree() -> void:
 	CloudShadow.set_strength(0.0)  # no clouds over the menu, or the next battle's loading
 	RenderingServer.global_shader_parameter_set(&"rain_wet", 0.0)  # nor rain on the Field Manual's models
 	RenderingServer.global_shader_parameter_set(&"snow_cover", 0.0)  # nor snow
-
+	Mats.set_melt(PackedVector4Array())  # nor its thaws
 	RenderingServer.global_shader_parameter_set(&"rain_fx", Vector4.ZERO)
 
 
@@ -1449,6 +1449,7 @@ const SNOW_IN := 240.0
 const THAW := 900.0
 var snow_cover := -1.0
 var snow_melt: SnowMelt
+var snow_drift: SnowDrift
 
 
 func _snow_tick(dt: float) -> void:
@@ -1467,6 +1468,13 @@ func _snow_tick(dt: float) -> void:
 		if snow_melt == null:
 			snow_melt = SnowMelt.new(self)
 		snow_melt.tick(dt)
+		# and the wind heaping it against walls and hedges
+		if snow_drift == null:
+			snow_drift = SnowDrift.new()
+			add_child(snow_drift)
+			snow_drift.setup(self)
+		snow_drift.tick(dt)
+
 
 ## The rain as it falls on things (the `rain_fx` global, Mats.RAIN_DROPS): it
 ## eases in and out over a couple of seconds as the weather changes (a battle

@@ -10,9 +10,10 @@ extends RefCounted
 ##
 ## Each patch is a spot: a centre, how far it reaches and how far it has
 ## melted (1 down to the earth). The ground and the roads are handed the
-## SHOWN spots nearest the camera (melt_spots[], read by snow_melted() below),
-## the grass has them painted into its scar map (green), and a burning
-## structure's spot melts the snow off the structure itself (melt_snow).
+## SHOWN spots nearest the camera (melt_spots[], read by snow_melted()), and
+## everything standing the nearest few (Mats.set_melt); the grass has them
+## painted into its scar map (green), and a burning structure's spot melts the snow off the structure
+## itself (melt_snow).
 
 const SHOWN := 24  # (melt_spots[] in the ground and road shaders)
 const MAX := 96
@@ -30,34 +31,20 @@ const IDLE_AFTER := 10.0
 ## How fast a thaw spreads out to its full reach (m/s).
 const SPREAD := 0.08
 
-## The shaders' side: how far the snow at `p` has melted, 0 (lying) to 1
-## (bare), its edge broken up by `rag`. A thaw is softest at its rim.
-const GLSL := """
-uniform vec4 melt_spots[24];  // x, z, reach, melt (SnowMelt)
-uniform int melt_n = 0;
-float snow_melted(vec2 p, float rag) {
-	float m = 0.0;
-	for (int i = 0; i < melt_n; i++) {
-		vec4 s = melt_spots[i];
-		vec2 d = p - s.xy;
-		float dd = dot(d, d);
-		if (dd < s.z * s.z) {
-			m = max(m, s.w * (1.0 - smoothstep(0.45, 1.0, sqrt(dd) / s.z + rag)));
-		}
-	}
-	return m;
-}
-"""
+## The shaders' side (Mats.MELT_GLSL): snow_melted(p, rag), how far the snow
+## at `p` has melted, 0 (lying) to 1 (bare).
+const GLSL := Mats.MELT_GLSL
 
 var atmo  # Atmosphere (null in a test)
 ## [x, z, reach, melt, reach it spreads to, key (0: left behind), owner, warmed
-## this step, as drawn on its owner, as painted on the grass (melt, reach)]
+## this step, as drawn on its owner, as painted on the grass (melt, reach), core]
 var spots: Array = []
 var _keyed := {}  # key -> spot
 var _idle := {}  # vehicle eid -> [where it stood, how long]
 var _t := 0.0
 var _shown := PackedVector4Array()
 var _paint: Array = []  # spots to repaint on the grass
+var _paved := PackedVector4Array()  # as everything standing has them (Mats.set_melt)
 
 
 func _init(a = null) -> void:
@@ -86,7 +73,8 @@ func tick(dt: float) -> void:
 			# (the wind carries the warm air off downwind)
 			var at := hn.global_position + Fires.WIND.normalized() * (0.15 * r + 0.4)
 			var who: Variant = hn.get_meta(&"melts") if hn.has_meta(&"melts") else null
-			warm(hn.get_instance_id(), at, r * 1.15 + 1.5 + 1.5 * f, r * 0.8 + 1.0, (0.4 + 0.6 * f) * STEP / FIRE_MELT, 1.0, who)
+			# (a big fire's heat reaches farther: bare from its own edge outward, then slush)
+			warm(hn.get_instance_id(), at, r + 2.0 + 2.0 * f + 0.3 * r, r * 0.8 + 1.0, (0.4 + 0.6 * f) * STEP / FIRE_MELT, 1.0, who, r)
 	for v in world.vehicles:
 		_idling(v)
 	settle(atmo.mood == "snow")
@@ -111,13 +99,14 @@ func _idling(v: Vehicle) -> void:
 	var at := p
 	if v._vm and v._vm.engine_deck.is_finite():
 		at = v.model.global_transform * (v._vm.engine_deck * Vector3(1, 0, 1))
-	warm(-1 - v.eid, at, maxf(hs.x, hs.z) * 0.55, maxf(hs.x, hs.z) * 0.3, STEP / IDLE_MELT, IDLE_MAX, null)
+	warm(-1 - v.eid, at, maxf(hs.x, hs.z) * 0.55, maxf(hs.x, hs.z) * 0.3, STEP / IDLE_MELT, IDLE_MAX, null, 0.0)
 
 
 ## Heat on the snow at `at` this step, from the source `key`: its thaw spreads
-## from `start` out to `reach` (m) and melts `rate` further, as far as `cap`.
+## from `start` out to `reach` (m), bare across `core` (m) as it melts, and
+## melts `rate` further, as far as `cap`.
 ## A source that has moved on leaves its old thaw behind and starts another.
-func warm(key: int, at: Vector3, reach: float, start: float, rate: float, cap: float, who: Variant = null) -> Array:
+func warm(key: int, at: Vector3, reach: float, start: float, rate: float, cap: float, who: Variant = null, core := 0.0) -> Array:
 	var s: Array = _keyed.get(key, [])
 	if not s.is_empty() and Vector2(at.x - float(s[0]), at.z - float(s[1])).length() > 1.5 + 0.3 * float(s[2]):
 		s[5] = 0
@@ -126,10 +115,11 @@ func warm(key: int, at: Vector3, reach: float, start: float, rate: float, cap: f
 	if s.is_empty():
 		if spots.size() >= MAX:
 			_drop_one()
-		s = [at.x, at.z, minf(start, reach), 0.0, reach, key, who, false, -1.0, -1.0, 0.0]
+		s = [at.x, at.z, minf(start, reach), 0.0, reach, key, who, false, -1.0, -1.0, 0.0, 0.0]
 		spots.append(s)
 		_keyed[key] = s
 	s[4] = maxf(float(s[4]), reach)
+	s[11] = clampf(maxf(float(s[11]), core), 0.0, 30.0)
 	s[2] = minf(float(s[4]), float(s[2]) + SPREAD * STEP)
 	if float(s[3]) < cap:
 		s[3] = minf(cap, float(s[3]) + rate)
@@ -210,13 +200,24 @@ func _show(world: World) -> void:
 	out.resize(SHOWN)
 	for i in pick.size():
 		var s: Array = pick[i]
-		out[i] = Vector4(s[0], s[1], s[2], s[3])
+		out[i] = Vector4(s[0], s[1], s[2], floorf(minf(float(s[11]), float(s[2]))) + float(s[3]) * 0.99)
 	if out != _shown:
 		_shown = out
 		for m: ShaderMaterial in [atmo.ground_mat, atmo.road_mat]:
 			if m:
 				m.set_shader_parameter("melt_spots", out)
 				m.set_shader_parameter("melt_n", pick.size())
+	# (and everything standing, the THAWS nearest: Mats.set_melt)
+	var near := pick.duplicate()
+	near.sort_custom(func(a: Array, b: Array) -> bool:
+		return c.distance_squared_to(Vector2(a[0], a[1])) - float(a[2]) * float(a[2]) < c.distance_squared_to(Vector2(b[0], b[1])) - float(b[2]) * float(b[2]))
+	var few := PackedVector4Array()
+	for i in mini(Mats.THAWS, near.size()):
+		var s: Array = near[i]
+		few.append(Vector4(s[0], s[1], s[2], floorf(minf(float(s[11]), float(s[2]))) + float(s[3]) * 0.99))
+	if few != _paved:
+		_paved = few
+		Mats.set_melt(few)
 	if not _paint.is_empty() and atmo.grass:
 		for s in _paint:
 			_paint_grass(atmo.grass, s)
@@ -248,14 +249,14 @@ func _paint_grass(grass: Grass, s: Array) -> void:
 			for o in near:
 				var d := Vector2(px - float(o[0]), pz - float(o[1])).length()
 				if d < float(o[2]):
-					m = maxf(m, amount(d, float(o[2]), float(o[3]), rag))
+					m = maxf(m, amount(d, float(o[2]), float(o[3]), rag, floorf(minf(float(o[11]), float(o[2])))))
 			var cur := img.get_pixel(x, z)
 			if absf(cur.g - m) > 0.01:
 				img.set_pixel(x, z, Color(cur.r, m, 0.0))
 	grass.scar_changed()
 
 
-## How far a thaw reaching `reach` and melted `melt` has melted the snow `d`
-## from its centre (as snow_melted() in the shaders).
-static func amount(d: float, reach: float, melt: float, rag := 0.0) -> float:
-	return melt * (1.0 - smoothstep(0.45, 1.0, d / reach + rag))
+## How far a thaw reaching `reach`, bare across `core`, and melted `melt` has
+## melted the snow `d` from its centre (as snow_melted() in the shaders).
+static func amount(d: float, reach: float, melt: float, rag := 0.0, core := 0.0) -> float:
+	return melt * (1.0 - smoothstep(0.45, 1.0, maxf(0.0, d - core) / maxf(reach - core, 0.5) + rag))

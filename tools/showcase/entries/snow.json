@@ -3,7 +3,7 @@
   "summary": "A snow weather: falling flakes, a white battlefield with wind-scoured drifts and churned mud, patchy snow on roofs, trees and the flat tops of vehicles, and thaws round fires and idling engines.",
   "medium": "still",
   "stage": "game capture flags (--screenshot, --offscreen, --fixed-fps 30)",
-  "rationale": "Snow is above all a change of appearance. A wide view over a town in falling snow shows the whole look at once (flakes, drifted ground, roofs that differ, trees holding it in lumps, mountains in the haze); a close-up shows how a tank that has been fighting carries it (patches on the flat tops, a bare engine deck); and one matched sheet shows the same town and the same moment of a tank battle under the overcast sky and in snow. A third still shows heat melting it: a burning wreck, a burning hedgerow and an idling tank in one frame. The flakes' drift, the shedding as a vehicle drives, a fired barrel going bare and the slow re-whitening once a fire is out are described in text.",
+  "rationale": "Snow is above all a change of appearance. A wide view over a town in falling snow shows the whole look at once (flakes, drifted ground, roofs that differ, trees holding it in lumps, mountains in the haze); a close-up shows how a tank that has been fighting carries it (patches on the flat tops, a bare engine deck); and one matched sheet shows the same town and the same moment of a tank battle under the overcast sky and in snow. A third still shows heat melting it, a fourth the drifts against a hedge and a wall: a burning wreck, a burning hedgerow and an idling tank in one frame. The flakes' drift, the shedding as a vehicle drives, a fired barrel going bare and the slow re-whitening once a fire is out are described in text.",
   "source_ref": "bd4f1b598ae80c6543cd4816e3f49a6ead730876",
   "before_ref": "bd4f1b598ae80c6543cd4816e3f49a6ead730876",
   "capture": {
@@ -13,7 +13,8 @@
     "note": "Each capture scaled to 798x448 and laid out 2x2 with OVERCAST / SNOW labels. The battle can differ slightly run to run. Compatibility renderer checked separately (--rendering-method gl_compatibility with forced vertex shading, the town and the tank close-up); not in the sheet.",
     "wide": "--aivai --seed=3 --mood=snow --nohud --focus-struct=town --zoom=220 --pitch=-22 --shot-at=15",
     "tank": "--fixed-fps 30 -- --scenario=roster --seed=1 --mood=snow --nohud --focus=-84,24 --focus-vehicle=tank --focus-vehicle-at=9 --zoom=12 --pitch=-34 --shot-at=10",
-    "melt": "--fixed-fps 30 -- --scenario=fire --seed=1 --mood=snow --nohud --focus=9,-6 --zoom=15 --pitch=-36 --shot-at=90, from a scratch copy whose fire scenario adds a burning wreck (variant 6 at 4,-6, given 600 s of fuel) and a stopped tank (13,-5); rendered on 51dfff0e plus the melt commit; the before/after for the pull request is the same setup from c0043fca. Compatibility checked with --rendering-method gl_compatibility (OpenGL 3.3)"
+    "melt": "--fixed-fps 30 -- --scenario=fire --seed=1 --mood=snow --nohud --focus=9,-6 --zoom=15 --pitch=-36 --shot-at=90, from a scratch copy whose fire scenario adds a burning wreck (variant 6 at 4,-6, given 600 s of fuel) and a stopped tank (13,-5); rendered on 51dfff0e plus the melt commit; the before/after for the pull request is the same setup from c0043fca. Compatibility checked with --rendering-method gl_compatibility (OpenGL 3.3)",
+    "drifts": "--fixed-fps 30 -- --scenario=fire --seed=1 --mood=snow --nohud --focus=2,15 --zoom=26 --pitch=-48 --shot-at=20, from a scratch copy whose fire scenario adds a hedgerow (4 low_wall variant 1) and a stone wall (3 low_wall variant 0) at yaw 1.178, across Fires.WIND; the pull request also shows a burning town house (--aivai --seed=3, roof at 2.6,30 lit at once) before/after"
   },
   "sources": [
     {
@@ -27,6 +28,10 @@
     {
       "file": "changelog/unreleased/snow/melt-in-snow.jpg",
       "sha256": "1f1983e73f26efb113ca5d4381ab8d0fbb7ae3f04fa4f3cf6178b5969c2bb0cf"
+    },
+    {
+      "file": "changelog/unreleased/snow/drifts-in-snow.jpg",
+      "sha256": "443dac049fc86f0f4fd35008a04bbec81735016a992d8600aefc0f091e7088f2"
     },
     {
       "file": "changelog/unreleased/snow/comparison.jpg",

@@ -135,6 +135,50 @@ func _check_snow() -> void:
 	assert(Vehicle.engine_spread(0.0) == 0.0 and Vehicle.engine_spread(Vehicle.ENGINE_WARM * 0.5) == 2.0)
 	assert(Vehicle.engine_spread(Vehicle.ENGINE_WARM * 9.0) == 4.0, "as far as it goes")
 	_check_snow_melt()
+	_check_snow_drift()
+
+
+## The wind heaps the snow against walls, buildings and hedges (SnowDrift):
+## deepest in the lee against the wall, thinning out to its reach, a smaller
+## bank on the windward face, none off its ends; a thin wall's foot is filled,
+## a building's inside isn't, and nothing drifts under a roof. The grass in a
+## drift is buried, and a thaw or a scorch clears the drift.
+func _check_snow_drift() -> void:
+	# a wall 4 m long across the wind (its length along local x, the wind along local z)
+	var near := SnowDrift.drift_at(0.0, 1.0, 0.0, 1.0, 2.0, 0.3, 5.0, 1.5, true)
+	var far := SnowDrift.drift_at(0.0, 4.0, 0.0, 1.0, 2.0, 0.3, 5.0, 1.5, true)
+	assert(near > far and far > 0.0, "deepest against the wall, thinning downwind")
+	assert(SnowDrift.drift_at(0.0, 5.5, 0.0, 1.0, 2.0, 0.3, 5.0, 1.5, true) == 0.0, "none beyond its reach")
+	var face := SnowDrift.drift_at(0.0, -0.8, 0.0, 1.0, 2.0, 0.3, 5.0, 1.5, true)
+	assert(face > 0.0 and face < near, "a smaller bank on the windward face")
+	assert(SnowDrift.drift_at(0.0, -2.5, 0.0, 1.0, 2.0, 0.3, 5.0, 1.5, true) == 0.0)
+	assert(SnowDrift.drift_at(3.0, 1.0, 0.0, 1.0, 2.0, 0.3, 5.0, 1.5, true) == 0.0, "nothing off its ends")
+	assert(SnowDrift.drift_at(0.0, 0.0, 0.0, 1.0, 2.0, 0.3, 5.0, 1.5, true) == 1.0, "a wall's foot is filled")
+	assert(SnowDrift.drift_at(0.0, 0.0, 0.0, 1.0, 4.0, 4.0, 5.0, 1.5, false) == 0.0, "a building's inside isn't")
+	# stamped into the map, nothing under a roof
+	var d := SnowDrift.new()
+	d.n = int(round(MapDims.SIZE / SnowDrift.CELL))
+	d.data.resize(d.n * d.n)
+	d.roofed.resize(d.n * d.n)
+	var mid := d.n / 2
+	var rect := Rect2i(mid - 6, mid - 6, 12, 12)
+	# (its length along its own x; at this yaw that lies across Fires.WIND)
+	var yaw := PI * 0.5 - atan2(SnowDrift.WIND.y, SnowDrift.WIND.x)
+	var sp := [0.0, 0.0, cos(yaw), sin(yaw), 2.0, 0.3, 1.0, 5.0, true, rect, 1.5, 1]
+	d.stamp(sp, rect)
+	var lee := Vector2(SnowDrift.WIND) * 2.0
+	var at := func(p: Vector2) -> int:
+		return d.data[int(floor((p.y + MapDims.HALF) / SnowDrift.CELL)) * d.n + int(floor((p.x + MapDims.HALF) / SnowDrift.CELL))]
+	assert(at.call(lee) > 0, "a drift in the wall's lee")
+	assert(at.call(-SnowDrift.WIND * 4.0) == 0, "none far upwind")
+	d.data.fill(0)
+	for i in d.roofed.size():
+		d.roofed[i] = 1
+	d.stamp(sp, rect)
+	assert(at.call(lee) == 0, "nothing drifts under a roof")
+	d.free()
+	assert(Grass.GRASS_SHADER.contains("drift_tex"), "the grass in a drift is buried")
+	assert(SnowDrift.DRIFT_SHADER.contains("global uniform float snow_cover;") and SnowDrift.DRIFT_SHADER.contains("marks.g"), "a drift reads the cover and the thaws")
 
 
 ## Heat melts the snow (SnowMelt): a fire thaws the ground round it down to
@@ -156,6 +200,14 @@ func _check_snow_melt() -> void:
 	assert(float(fire[2]) > 3.0 and float(fire[2]) <= 8.0, "and the thaw spreads out from it")
 	assert(SnowMelt.amount(0.0, 8.0, 1.0) == 1.0 and SnowMelt.amount(8.0, 8.0, 1.0) == 0.0)
 	var rim := SnowMelt.amount(6.5, 8.0, 1.0)
+	# a big fire is bare from its own edge outward (its core), not just at its middle
+	assert(SnowMelt.amount(5.0, 10.0, 1.0, 0.0, 4.0) == 1.0 and SnowMelt.amount(5.0, 10.0, 1.0) < 1.0)
+	# everything standing round a fire (the paving, the yards, the roofs) takes
+	# the nearest thaws, as globals every material and copy reads
+	assert(Mats.SURFACE_SHADER.contains("surface_thaw("))
+	for i in Mats.THAWS:
+		assert(Mats.SURFACE_SHADER.contains("global uniform vec4 snow_thaw_%d;" % i))
+		assert(ProjectSettings.has_setting("shader_globals/snow_thaw_%d" % i), "snow_thaw_%d is a project global" % i)
 	assert(rim > 0.05 and rim < 0.55, "bare in the middle, slush at the rim (%s)" % rim)
 	# out: it stays thawed, and whitens only while it snows
 	for i in int(60.0 / SnowMelt.STEP):

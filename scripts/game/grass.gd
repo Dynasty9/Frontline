@@ -65,6 +65,11 @@ func set_deform(t: Texture2DArray) -> void:
 			material.set_shader_parameter("deform_tex", t)
 
 
+## Snow drifted against walls and hedges (SnowDrift): the grass in a drift is buried.
+func set_drift(t: Texture2D) -> void:
+	mat.set_shader_parameter("drift_tex", t)
+
+
 func set_trench_mask(t: Texture2D) -> void:
 	mat.set_shader_parameter("trench_mask", t)
 	bush_mat.set_shader_parameter("trench_mask", t)
@@ -548,6 +553,7 @@ uniform vec3 tip_col : source_color = vec3(0.38, 0.45, 0.23);
 uniform vec3 dry_col : source_color = vec3(0.55, 0.49, 0.3);
 uniform float wind = 0.11;
 uniform sampler2D scar : hint_default_black, filter_linear, repeat_disable;
+uniform sampler2D drift_tex : hint_default_black, filter_linear, repeat_disable;  // (SnowDrift)
 uniform sampler2D trench_mask : hint_default_black, filter_linear, repeat_disable;
 #include "res://scripts/game/trench_vegetation.gdshaderinc"
 uniform sampler2DArray deform_tex : filter_linear, repeat_disable;
@@ -590,8 +596,10 @@ void vertex() {
 	float along = dot(o.xz, vec2(0.924, 0.382));
 	float across = dot(o.xz, vec2(-0.382, 0.924));
 	drifted = clamp(0.5 + 0.32 * sin(across * 0.29 + sin(along * 0.043) * 2.6) + 0.22 * sin(o.x * 0.093 + sin(o.z * 0.117) * 1.9), 0.0, 1.0);
-	// (and where a fire or an engine has thawed it, the grass stands up again)
-	VERTEX.y *= 1.0 - snow_cover * (1.0 - thawed) * mix(0.2, 0.75, drifted);
+	// (and where a fire or an engine has thawed it, the grass stands up again;
+	// heaped against a wall or a hedge, SnowDrift, it's buried altogether)
+	float banked = smoothstep(0.08, 0.4, texture(drift_tex, (o.xz + __MAP_HALF__) / __MAP_SIZE__).r) * (1.0 - burnt);
+	VERTEX.y *= 1.0 - snow_cover * (1.0 - thawed) * mix(mix(0.2, 0.75, drifted), 1.0, banked);
 	// stand on the ground as it is now (shell holes, rims)
 	VERTEX.y += terrain_height(deform_tex, (o.xz + __MAP_HALF__) / __MAP_SIZE__) / max(0.05, length(MODEL_MATRIX[1].xyz));
 	float t = TIME * 1.7 + o.x * 0.21 + o.z * 0.13;
