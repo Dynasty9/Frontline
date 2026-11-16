@@ -97,6 +97,9 @@ var bent_skirts := 0
 ## (a roof over a house's wing) the roof whose looks it shares, so its
 ## covering, tint and pitch match the house's: that roof's eid (0: its own)
 var look := 0
+## (a barn's floor) which of its walls the door is in: 0 the front (-z), 1
+## the back, 2 the -x end, 3 the +x end; -1 not known. It's laid out from it.
+var entry := -1
 var door_shut := false  # (a house's doorway) its doors are shut: the first man through kicks them in, or just opens them
 var _door_kicked := false
 var _door_leaves: Array = []  # (view) the door leaves: [hinge pivot, how far it swings open]
@@ -196,6 +199,8 @@ func apply_props(d: Dictionary) -> void:
 		door_shut = d.door
 	if d.has("look"):
 		look = d.look
+	if d.has("entry"):
+		entry = d.entry
 	if d.has("zc"):
 		zone_c = d.zc
 		zone_r = d.zr
@@ -234,6 +239,8 @@ func get_props() -> Dictionary:
 		d["zr"] = zone_r
 	if look > 0:
 		d["look"] = look
+	if entry >= 0:
+		d["entry"] = entry
 	if is_finite(wreck_turret_yaw):
 		d["wreck_turret_yaw"] = wreck_turret_yaw
 		if not wreck_finish.is_empty():
@@ -1010,6 +1017,12 @@ func _house_wall_detail(rng: RandomNumberGenerator) -> void:
 					BuildingFurnishings.wall_things(room, L)
 			1:
 				BuildingFurnishings.radiator(room, 0.0, 1.0)
+	elif variant == 0:
+		# (a barn's: the tools hung up over what's stood against it, from a
+		# stream of their own)
+		var tools := RandomNumberGenerator.new()
+		tools.seed = rng.seed ^ 0x6a2b07
+		BuildingFarm.wall_tools(room, L, tools)
 	match variant:
 		1:
 			var opts := {"material": material, "wall": wall, "frame": trim}
@@ -3035,6 +3048,10 @@ func _build_model() -> void:
 			# a shop's: its shelving, its counter, its stock
 			if variant == 3:
 				BuildingInteriors.shop(_kit(home), size, home)
+			# a barn's: the hay, the stalls, the cart, the bench (clear of the
+			# wall its door is in)
+			if variant == 2:
+				BuildingFarm.barn(_kit(home), size, entry, home)
 		"bridge":
 			_bridge_model(rng)
 		"dock":
@@ -3048,7 +3065,8 @@ func _build_model() -> void:
 				_bx(p.p + Vector3(0, p.s.y * 0.5 + 0.01, 0), Vector3(p.s.x * 0.9, 0.04, p.s.z * 0.9), C_WOOD.darkened(0.3), p.r)
 		"car":
 			# parked cars: the island's own (hatchbacks, SUVs, pickups, 4x4s)
-			var civ_key: String = ["hatchback", "suv", "offroad", "mb4wd", "hatchback_sport"][variant % 5]
+			# (variant 5: a farm's tractor, parked in its yard; 6 on, burnt out)
+			var civ_key: String = "tractor" if variant % 6 == 5 else ["hatchback", "suv", "offroad", "mb4wd", "hatchback_sport"][variant % 5]
 			if civ_key in VmCiv.KEYS:
 				_vehicle_model(civ_key, -1, eid, variant >= 6)
 			else:

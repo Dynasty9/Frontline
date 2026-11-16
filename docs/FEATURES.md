@@ -748,7 +748,10 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   the far bank: three bridges and two fords across the river in all.
 - Country roads come in from both HQs and both edges of the map and join the main streets. Villages sit on the
   cross road either side of town and on the road between each HQ and the town; farmsteads (a farmhouse, most on two floors with a wing, and a barn round a yard, hay bales, a fenced road frontage, an orchard; the barn weatherboarded
-  under a corrugated sheet roof with loft doors in its gables, straw on its floor) and
+  under a corrugated sheet roof with loft doors in its gables; inside, hay stacked in a corner, stalls with mangers
+  and hay racks, a cart, a workbench and churns, tools hung on its walls; round the yard a parked tractor, a water
+  trough, a plough and a harrow, a churn stand at the gate, a hen house and its run, round bales of straw or wrapped
+  in plastic) and
   hedged fields lie along the roads; abandoned cars on the verges, burnt-out armour off the road.
 - **The town and every village have a name and a supply dump** (crated stores on a pallet, fuel drums and a
   flagpole): the town's on its square where the flagpole stood, a village's on the verge of its main street.

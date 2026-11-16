@@ -152,6 +152,8 @@ func generate() -> void:
 		_alpine_scatter(tg.decor, area)
 		var dumps := world.rules.town_list.filter(func(t: Structure) -> bool: return t.variant == 1)
 		tg.military_fences(r.depots, dumps)
+	# (the farmyards' kit last of all: everything before it lies as it did)
+	tg.farmyards()
 	_spawn_late()
 	world.set_decor(tg.decor, tg.rect)
 
@@ -1184,10 +1186,19 @@ func _house(c: Vector3, w: float, d: float, axis: float, street_side: float, yar
 		# (the weatherboarded material, in one of its three colours)
 		color = BuildingMaterials.HOUSE.size() - 1 + BuildingMaterials.HOUSE.size() * (color % 3)
 	var ruined := rng.randf() < ruin_p
+	# the door: in the front, mostly, else in one end (drawn here, before the
+	# floor, so a barn's floor knows where it is: what's in a barn keeps clear
+	# of its doorway)
+	var door_side := 0 if street_side > 0 else 1
+	if rng.randf() < 0.3:
+		door_side = 2 + rng.randi() % 2
 	# (a ruin's floor is marked, so it's drawn with the roof fallen in on it;
-	# a barn's, so it's bare and strewn with straw)
+	# a barn's, so it's bare and strewn with straw, and fitted out as a barn)
 	# (a shop's, so it's fitted out as one: TownGen._plan)
-	_spawn("floor", c, axis, -1, {"size": Vector3(w, 0.06, d), "variant": 1 if ruined else (2 if barn else (3 if plan.get("shop", false) else 0))})
+	var fp := {"size": Vector3(w, 0.06, d), "variant": 1 if ruined else (2 if barn else (3 if plan.get("shop", false) else 0))}
+	if barn and not ruined:
+		fp["entry"] = door_side
+	_spawn("floor", c, axis, -1, fp)
 	_unplace_last()
 	_place([Vector2(c.x, c.z), half, axis])
 	if wk > 0:
@@ -1200,9 +1211,6 @@ func _house(c: Vector3, w: float, d: float, axis: float, street_side: float, yar
 		[Vector3(-w * 0.5, 0, 0), d - 0.4, PI * 0.5],
 		[Vector3(w * 0.5, 0, 0), d - 0.4, PI * 0.5],
 	]
-	var door_side := 0 if street_side > 0 else 1
-	if rng.randf() < 0.3:
-		door_side = 2 + rng.randi() % 2
 	# every wall stands at the house's own level (its middle's ground, as the
 	# floor and roof do), so on a slope none pokes up through the roof; the
 	# foundation under each (Structure) fills the downhill side
