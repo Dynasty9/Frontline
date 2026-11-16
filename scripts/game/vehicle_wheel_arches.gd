@@ -76,14 +76,19 @@ static func _clip(p: PackedVector2Array, f: Array, nrm: Vector2, c: float, cut: 
 
 ## A convex side profile (z, y) extruded from x0 to x1, its outer edges (flag
 ## true) chamfered by ch at both ends. rnd [zmin, zmax, front length, front
-## inset, rear length, rear inset] rounds the corners off in plan.
-static func _xprism(k: VehicleModels, parent: Node3D, key: String, p: PackedVector2Array, f: Array, x0: float, x1: float, ch: float, mat: String, col = null, rnd: Array = []) -> Variant:
+## inset, rear length, rear inset] rounds the corners off in plan. `roll` > 0
+## shades it as pressed sheet metal rather than a cut block: normals are
+## averaged across every edge flatter than `roll` degrees (the chamfers into
+## the roof and bonnet, the gentle bends of the profile, the corners rounded
+## in plan), so a car's shoulders and bumpers roll over instead of breaking at
+## a hard line; the flat sides keep their own normal. Same vertices either way.
+static func _xprism(k: VehicleModels, parent: Node3D, key: String, p: PackedVector2Array, f: Array, x0: float, x1: float, ch: float, mat: String, col = null, rnd: Array = [], roll := 0.0) -> Variant:
 	var d := []
 	for fl in f:
 		d.append(ch if fl else 0.0)
 	var pin := _inset(p, d)
-	var mesh := VehicleModels.solid([_xring(pin, x0, 1.0, rnd), _xring(p, x0 + ch, 1.0, rnd),
-		_xring(p, x1 - ch, -1.0, rnd), _xring(pin, x1, -1.0, rnd)], key)
+	var rings := [_xring(pin, x0, 1.0, rnd), _xring(p, x0 + ch, 1.0, rnd), _xring(p, x1 - ch, -1.0, rnd), _xring(pin, x1, -1.0, rnd)]
+	var mesh: ArrayMesh = VehicleProfiles.loft(rings, roll) if roll > 0.0 else VehicleModels.solid(rings, key)
 	return k._add(parent, mesh, mat, col, Vector3.ZERO)
 
 
@@ -115,8 +120,8 @@ static func _taper(z: float, rnd: Array) -> float:
 ## A body panel: a convex side profile (z, y pairs) from x0 to x1 with
 ## chamfered edges and round wheel arches [zc, yc, r] cut out of its underside.
 ## rnd [front length, front inset, rear length, rear inset] rounds the corners
-## off in plan.
-static func _xbody(k: VehicleModels, parent: Node3D, key: String, prof: Array, x0: float, x1: float, ch: float, arches: Array, mat: String, col = null, segs := 8, rnd: Array = []) -> void:
+## off in plan; `roll` shades its edges as rolled sheet metal (see _xprism).
+static func _xbody(k: VehicleModels, parent: Node3D, key: String, prof: Array, x0: float, x1: float, ch: float, arches: Array, mat: String, col = null, segs := 8, rnd: Array = [], roll := 0.0) -> void:
 	var p := VehicleModels._v2(prof)
 	var zmin := INF
 	var zmax := -INF
@@ -176,7 +181,7 @@ static func _xbody(k: VehicleModels, parent: Node3D, key: String, prof: Array, x
 				poly = r2[0]
 				fl = r2[1]
 		if poly.size() >= 3:
-			_xprism(k, parent, "%s_%d" % [key, i], poly, fl, x0, x1, ch, mat, col, rr)
+			_xprism(k, parent, "%s_%d" % [key, i], poly, fl, x0, x1, ch, mat, col, rr, roll)
 
 
 ## A wheel-arch flare: a band round the arch from angle a0 to a1 (0 is the
@@ -190,6 +195,58 @@ static func _flare(k: VehicleModels, parent: Node3D, key: String, zc: float, yc:
 			Vector2(zc + r1 * cos(t1), yc + r1 * sin(t1)), Vector2(zc + r1 * cos(t0), yc + r1 * sin(t0))])
 		_xprism(k, parent, "%s_%d" % [key, i], q, [true, i == segs - 1, true, i == 0], x0, x1, minf(0.012, (x1 - x0) * 0.3), mat, col)
 
+
+
+## A moulded wheel-well liner (wheel tub) inside the old dark well box: `center`
+## and `size` are that box in the parent's axes (X across the vehicle, Y up, Z
+## along it). Its roof arches over the tyre on a half-ellipse inscribed in the
+## box's side profile, springing from the box's floor line; its open edge
+## thickens into a rolled lip held by push clips, and a flat wall closes it on
+## the inboard side. `side` -1 or +1: one wheel's tub, open toward that side of
+## X across the box's whole width. `side` 0: the box spans the vehicle between
+## a pair of wheels (a civilian frame's well block): a tub opens at each end
+## and the middle between their walls stays empty. The arch-following band of
+## a cut body or flare stays `liner`. Nothing is registered.
+static func tub(k: VehicleModels, parent: Node3D, center: Vector3, size: Vector3, side := 0.0, mat := "plain_dark", col = null, segments := 8) -> void:
+	var mount := k._pivot(parent, center)
+	var hx := size.x * 0.5
+	var ends: Array = [-1.0, 1.0] if side == 0.0 else [signf(side)]
+	var depth := minf(hx, 0.34) if side == 0.0 else size.x
+	var a := size.z * 0.5
+	var b := size.y
+	var floor_y := -size.y * 0.5
+	var shell := minf(0.012, minf(a, b) * 0.06)
+	var lip := minf(0.016, minf(a, b) * 0.08)
+	for e: float in ends:
+		var xo: float = e * hx
+		var xi: float = xo - e * depth
+		var lw: float = minf(0.03, depth * 0.2)
+		# One ring per station round the arch: the shell's section, thicker at the
+		# open edge where the lip rolls toward the tyre.
+		var rings: Array = []
+		var wall := PackedVector3Array()
+		for i in segments + 1:
+			var t := PI * float(i) / segments
+			var c := cos(t)
+			var s := sin(t)
+			var outer := Vector2(a * c, floor_y + b * s)
+			var inner := Vector2((a - shell) * c, floor_y + (b - shell) * s)
+			var rolled := Vector2((a - shell - lip) * c, floor_y + (b - shell - lip) * s)
+			rings.append(PackedVector3Array([Vector3(xi, inner.y, inner.x), Vector3(xi, outer.y, outer.x), Vector3(xo, outer.y, outer.x), Vector3(xo, rolled.y, rolled.x), Vector3(xo - e * lw, rolled.y, rolled.x)]))
+			wall.append(Vector3(0, outer.y, outer.x))
+		k._add(mount, VehicleProfiles.loft(rings, 40.0), mat, col, Vector3.ZERO)
+		# The inboard wall: a D of the arch and its floor chord.
+		var thick := minf(0.012, depth * 0.1)
+		var near := PackedVector3Array()
+		var far := PackedVector3Array()
+		for q: Vector3 in wall:
+			near.append(Vector3(xi, q.y, q.z))
+			far.append(Vector3(xi + e * thick, q.y, q.z))
+		k._add(mount, VehicleProfiles.loft([near, far], 30.0), mat, col, Vector3.ZERO)
+		for t: float in [0.18, 0.5, 0.82]:
+			var r := Vector2((a - shell - lip * 0.5) * cos(PI * t), floor_y + (b - shell - lip * 0.5) * sin(PI * t))
+			VehicleBody.fastener(k, mount, Vector3(xo + e * 0.002, r.y, r.x), Vector3.RIGHT * e, minf(0.008, lip * 0.45))
+	k._fold(mount)
 
 
 ## Wheel-well liner follows the authored arch radius, outside tyre clearance.

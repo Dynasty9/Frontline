@@ -12,6 +12,7 @@ var resume_frame := 0
 var cloud_shader := ""
 var capture_failed := false
 var haze := true  # (heat-haze) --no-haze records the same shots without it
+var captioned := true  # --no-caption: clean frames for stills
 
 func _ready() -> void:
 	TestRun.watch()
@@ -24,6 +25,7 @@ func _ready() -> void:
 		if arg.begins_with("--resume-frame="): resume_frame = maxi(0, int(arg.get_slice("=", 1)))
 		if arg.begins_with("--cloud-shader="): cloud_shader = arg.get_slice("=", 1)
 		if arg == "--no-haze": haze = false
+		if arg == "--no-caption": captioned = false
 	if mode == "heat-haze-off":
 		mode = "heat-haze"
 		haze = false
@@ -38,6 +40,9 @@ func _ready() -> void:
 	Settings.v.effects = 2
 	Settings.v.post = false
 	Settings.v.decals = true
+	if mode == "rain":
+		Settings.v.dof = false  # (the tilt-shift would blur the far lightning)
+		Settings.v.lens = true  # (rain gathers on the glass in the low shot)
 	if mode == "heat-haze":
 		# the heat haze alone of the cinematic lighting, so it's all that differs
 		for k in Settings.CINEMATIC_KEYS:
@@ -45,7 +50,8 @@ func _ready() -> void:
 		Settings.v.heat_haze = haze
 		Settings.v.reduce_motion = false
 	field = World.new()
-	field.settings = {"scenario": "showroom", "seed": 712, "mood": "day", "map_size": 1024, "players": {}, "ai_teams": []}
+	# (the rain's map seed lays its puddles beside the tanks)
+	field.settings = {"scenario": "showroom", "seed": 3 if mode == "rain" else 712, "mood": "rain" if mode == "rain" else "day", "map_size": 1024, "players": {}, "ai_teams": []}
 	add_child(field)
 	await field.build()
 	while field.cam == null or field.building:
@@ -84,6 +90,7 @@ func _ready() -> void:
 	caption.add_theme_constant_override("shadow_offset_y", 2)
 	caption.text = label + " / " + ("RTS CAMERA" if mode == "blast-rts" else "GROUND BURST") + "\nControlled HE effect in the game world · 24 fps, normal speed"
 	canvas.add_child(caption)
+	caption.visible = captioned
 	print("BLAST_WORLD_WARMUP")
 	# Drain prewarm effects and let the terrain/grass upload before recording.
 	for i in 48:
@@ -104,6 +111,10 @@ func _ready() -> void:
 		return
 	if mode == "heat-haze":
 		await _heat_haze(camera, caption)
+		_finish()
+		return
+	if mode == "rain":
+		await _rain(camera, caption)
 		_finish()
 		return
 	for frame in 192:
@@ -290,5 +301,34 @@ func _heat_haze(camera: Camera3D, caption: Label) -> void:
 				_frame_subject(camera, (tank + wreck_at) * 0.5, Vector3(13, 22, 27), 0.5)
 			caption.text = label + " / " + ("HEAT HAZE " + ("ON" if haze else "OFF")) + " / " + ("ENGINE DECK, CLOSE" if close else "BURNING WRECK AND IDLING TANKS")
 			caption.text += "\nActual battlefield · the game's own fire and engines · normal speed"
+		await RenderingServer.frame_post_draw
+		get_viewport().get_texture().get_image().save_png(output.path_join("%04d.png" % frame))
+
+
+## Rain falling on the showroom: rings running out across a puddle, drops
+## bursting on a tank's deck, water running down a hut's wall, then a low look
+## across the field as lightning strikes twice, the second time much nearer.
+## The strikes are placed rather than left to chance; the rain is the game's
+## own, at normal speed.
+func _rain(camera: Camera3D, caption: Label) -> void:
+	field.atmo._bolt_t = 1e9  # (no strikes but the two placed here)
+	var shots := [
+		[0.0, _ground(-18, 3.5), Vector3(1.6, 2.6, 4.2), 0.0, "RINGS IN THE PUDDLES"],
+		[4.0, _ground(-14, 0) + Vector3(0, 2.2, 0), Vector3(3.5, 2.6, 5.0), 0.0, "DROPS ON THE DECK, WATER DOWN THE HULL"],
+		[7.5, _ground(-20, -17.6) + Vector3(0, 1.4, 0), Vector3(2.5, 0.6, 6.5), 0.0, "WATER RUNNING DOWN THE WALL"],
+		[10.5, _ground(0, -300) + Vector3(0, 60, 0), Vector3(0, -54, 340), 0.0, "LIGHTNING, THUNDER BY ITS DISTANCE"],
+	]
+	var strikes := [[11.4, Vector3(-260, 0, -1100)], [14.2, Vector3(150, 0, -520)]]
+	var shot := -1
+	for frame in 18 * capture_fps:
+		var t := float(frame) / capture_fps
+		while shot + 1 < shots.size() and t >= float(shots[shot + 1][0]):
+			shot += 1
+			var sh: Array = shots[shot]
+			_frame_subject(camera, sh[1], sh[2], sh[3])
+			caption.text = label + " / " + String(sh[4]) + "\nActual battlefield · the game's own rain · normal speed"
+		for s in strikes:
+			if absf(t - float(s[0])) < 0.5 / capture_fps:
+				field.atmo.lightning.strike(s[1])
 		await RenderingServer.frame_post_draw
 		get_viewport().get_texture().get_image().save_png(output.path_join("%04d.png" % frame))

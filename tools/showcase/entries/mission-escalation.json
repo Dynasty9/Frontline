@@ -1,0 +1,10 @@
+{
+  "entry": "changelog/unreleased/mission-escalation.md",
+  "summary": "Mission escalation follows player progress, with clearer warnings and complete victory conditions.",
+  "medium": "text",
+  "stage": "text",
+  "rationale": "These are changes to mission sequencing, information and victory requirements. Text states the rules; automated playthroughs check completion rather than making a subjective claim about fun.",
+  "source_ref": "bd4f1b59 plus mission-pacing changes",
+  "sources": [],
+  "output": null
+}

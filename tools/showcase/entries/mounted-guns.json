@@ -1,0 +1,27 @@
+{
+  "entry": "changelog/unreleased/mounted-guns.md",
+  "summary": "Vehicle machine guns, autocannon and AA guns elevate onto their targets, door guns swing out, every round kicks the gun on its mount, and 25-30 mm cannon fire like cannon.",
+  "medium": "motion",
+  "stage": "mounted-guns (tools/showcase/stages.json): tests/fixtures/mounted-gun-clips.tscn, showroom battlefield seed 712, fixed 30 Hz, Forward+",
+  "rationale": "The change is mostly motion (laying, traverse, recoil, flashes and brass), so a matched before/after clip of the same firing line carries it; one still sheet shows the clearest frames (ZU-23 laid on a helicopter, a door gun swung out, the Bushmaster's cannon flash, the motorboat's new gun) for readers who don't play it.",
+  "source_ref": "739341dc",
+  "sources": [
+    {
+      "file": "changelog/unreleased/mounted-guns/comparison.jpg",
+      "sha256": "1fc3ae19f95ac11bbdc042c2f13a62e0f50771575b7c210828009d2419c16de1"
+    },
+    {
+      "file": "changelog/unreleased/mounted-guns/mounted-guns.webm",
+      "sha256": "5c12611743c07f9e942f2d6561d09cdf3a19c1ed242ec8628612db8762218e1d"
+    },
+    {
+      "file": "changelog/unreleased/mounted-guns/mounted-guns.jpg",
+      "sha256": "89c67a003a6fefc5547d48328a97b824e5e202d7259a94b0a6bd78b6f331001a"
+    },
+    {
+      "file": "changelog/unreleased/mounted-guns/capture.json",
+      "sha256": "4bbf69cd30b95cc8977696210e37969bfba8bc942e2cbd03c08ed52b7cd5bf26"
+    }
+  ],
+  "output": null
+}

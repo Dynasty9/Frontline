@@ -28,6 +28,7 @@ const TRACER_COLS := [Color(1.0, 0.2, 0.07, 9.0), Color(0.28, 1.0, 0.2, 8.0)]
 const TRACER_HOT := Color(1.0, 0.45, 0.14, 8.5)
 const HOT := Color(1.0, 0.58, 0.24, 1.0)
 const BRASS := Color(0.74, 0.52, 0.2, 1.0)
+const LINK := Color(0.2, 0.2, 0.19, 1.0)  # a belt's steel links, blackened
 
 var world: World
 var vfx: Vfx
@@ -359,8 +360,10 @@ const SOIL_GRIT := Color(0.3, 0.25, 0.18)
 ## sideways by a heavy gun's muzzle brake) - the burning gas that follows the
 ## round out, glowing for an instant and cooling to a breath of smoke, a
 ## moment's light on what's round it, the case spinning out of the ejection
-## port, and dust blown up off the ground under a gun fired low.
-func muzzle(p: Vector3, dir: Vector3, kind: String, cam_d: float) -> void:
+## port, and dust blown up off the ground under a gun fired low. A mounted
+## gun passes its receiver (`breech`), where its cases and, belt-fed, their
+## links leave it; `brass` false keeps them inside (a coaxial gun's).
+func muzzle(p: Vector3, dir: Vector3, kind: String, cam_d: float, breech := Vector3.INF, brass := true) -> void:
 	shots += 1
 	var m: Array = MUZZLE.get(kind, MUZZLE.rifle)
 	var fx := Settings.fx_mult()
@@ -401,10 +404,19 @@ func muzzle(p: Vector3, dir: Vector3, kind: String, cam_d: float) -> void:
 		fd = fd.normalized()
 		puff(Vector3(p.x, gy + 0.08, p.z) + fd * 0.4 * sqrt(s), fd * randf_range(1.5, 3.0) * sqrt(s) + Vector3(0, 0.2, 0), 0.06 + 0.06 * s, (0.35 + 0.5 * s) * randf_range(0.8, 1.2), randf_range(1.4, 2.2), Color(SOIL.r, SOIL.g, SOIL.b, 0.22), 2.6, 0.1)
 	var bs: float = m[6]
-	if bs > 0.0 and cam_d < 48.0 and randf() < fx:
+	if bs > 0.0 and brass and cam_d < (48.0 if not breech.is_finite() else 60.0 + 12.0 * bs) and randf() < fx:
 		var right := side
 		var bv := right * randf_range(1.8, 3.0) + Vector3(0, randf_range(1.6, 2.6), 0) - dir * randf_range(0.2, 0.9)
-		chunk(p - dir * (0.35 + 0.1 * bs) + right * 0.05, bv, Vector3(0.011, 0.011, 0.04) * bs, randf_range(16.0, 26.0), BRASS, gy, 26.0, 0.4, 0.0, true)
+		var port := p - dir * (0.35 + 0.1 * bs) + right * 0.05
+		if breech.is_finite():
+			# out of the receiver's port, kicked clear to the right and up (a
+			# heavy gun's cases drop out underneath and tumble off the deck)
+			port = breech + right * 0.06 * bs
+			bv = (right * randf_range(1.4, 2.6) + Vector3(0, randf_range(0.8, 2.0), 0)) / sqrt(bs) - dir * randf_range(0.1, 0.5)
+		chunk(port, bv, Vector3(0.011, 0.011, 0.04) * bs, randf_range(16.0, 26.0), BRASS, gy, 26.0 / sqrt(bs), 0.4, 0.0, true)
+		if breech.is_finite() and kind in ["mg", "hmg"] and randf() < 0.6:
+			# the belt's link, freed as its round is stripped, falls out the left
+			chunk(breech - right * 0.05 * bs, -right * randf_range(0.6, 1.4) + Vector3(0, randf_range(0.2, 0.8), 0), Vector3(0.02, 0.004, 0.012) * bs, randf_range(12.0, 20.0), LINK, gy, 18.0, 0.5, 0.0, true)
 
 
 ## 0 by day, 1 at night (from how much a fire lights up its surroundings).

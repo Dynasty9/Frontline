@@ -1,0 +1,20 @@
+{
+  "entry": "changelog/unreleased/weathered-roofs.md",
+  "summary": "Moss and lichen on tiled roofs; rain rings, patches, moss and vents on flat roofs.",
+  "medium": "still",
+  "stage": "tools/showcase/building-surfaces.tscn; tests/fixtures/environment-views.gd (town)",
+  "rationale": "Appearance change: matched studio rows of tiled and flat roofs show the stains at a readable size; the town from above shows them at the game's own camera, where roofs are most of what you see.",
+  "source_ref": "4b63688060d4ced4ae57fc9fdda51f5b54592a33",
+  "before_ref": "7196b16c6588e0003924fb53cde9cba1ef77cfcf",
+  "sources": [
+    {
+      "file": "changelog/unreleased/weathered-roofs/comparison.jpg",
+      "sha256": "745b00eda5a99a4cfac6041925a66ccdf8f4b654dc6d8e719040e7581b1ea380"
+    },
+    {
+      "file": "changelog/unreleased/weathered-roofs/capture.json",
+      "sha256": "d152ce88855b4de9dd0dcd194d759a8ddccfae604a248fefdcb6411897ff560c"
+    }
+  ],
+  "output": null
+}

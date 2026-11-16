@@ -12,7 +12,11 @@ static var _cache := {}
 var root: Node3D
 var sling_eye := Vector3(0, 0.7, 0)  # underside of the fuselage, in model space
 var helm_seat := Vector3.INF  # hip position of the driver at an open helm
-var burnt := false
+var burnt := false:
+	set(v):
+		burnt = v
+		wreck = wreck or v  # (a burnt hulk is a wreck, whoever builds it)
+var wreck := false  # built for a wreck: paint and tyres are gone, a rotor keeps every blade a part of its own, to be broken
 var surface_family := "armor"
 var turret: Node3D
 var mg_tip: Node3D  # the machine gun's muzzle (shots start here)
@@ -46,6 +50,32 @@ var rotors: Array = []
 ## as numbers, not nodes, so a fitting still folds away into its parent; the
 ## pipes sit on parts that never move against the model.
 var exhausts: Array[Transform3D] = []
+## The seed the crew's own load is drawn from (VehicleCargo.kit): the vehicle's
+## seed, so a seed lays its stowage out exactly and two of a kind differ (and a
+## battle wreck, built from its vehicle's seed, keeps what of the load didn't
+## burn); -1 (scenery and burnt hulks, which look() shares by kind) the
+## builders' one load.
+var kit_seed := -1
+
+## The cradles the machine gun (or autocannon, or twin guns) is laid in, each
+## at its gun's trunnion with the gun's parts on it: they elevate to the target
+## and run back when the gun fires (Vehicle._lay_guns). A mount on no turret
+## (a door gun, a pintle on a hull) also traverses by itself, within mg_arc of
+## its rest.
+var mg_mounts: Array[Node3D] = []
+var mg_rests: Array[Transform3D] = []  # each mount's rest pose on its parent
+var mg_free := false
+var mg_arc := 1.2
+## Where a gunner's hands go on each mount, in its own space: [right, left],
+## or empty for a gun worked from inside or by remote control.
+var mg_hands: Array = []
+## Each mount's traverse at rest: a door gun is left pointing out of its door
+## (its gunner inside behind it), everything else straight ahead.
+var mg_stow: Array[float] = []
+## Every gun assembly a shared builder made (VehicleWeapons): {parent, origin,
+## muzzle (both in the parent's space), parts, nodes}, so build() can put the
+## machine gun's on a mount of its own once the model is done.
+var _guns: Array[Dictionary] = []
 
 
 ## Notes an exhaust's mouth at `pos` on `parent`, the gas leaving along `dir`.
@@ -71,11 +101,99 @@ static func build_car(variant: int, col: Color, is_burnt := false) -> VehicleMod
 	return k
 
 
-static func build(kind: String, team: int, seed: int, is_burnt := false) -> VehicleModels:
+static func build(kind: String, team: int, seed: int, is_burnt := false, is_wreck := false) -> VehicleModels:
+	var b := start(kind, team, seed, is_burnt, is_wreck)
+	b.step(-1)
+	return b.k
+
+
+## The model build() makes, made a piece at a time: Build.step() does the next
+## pieces each frame (see Build).
+static func start(kind: String, team: int, seed: int, is_burnt := false, is_wreck := false) -> Build:
 	var k := VehicleModels.new()
 	k.root = Node3D.new()
 	k.burnt = is_burnt
+	k.wreck = is_wreck or is_burnt
+	k.kit_seed = seed if team >= 0 and not is_burnt else -1
 	k._baking = true
+	return Build.new(k, _assemble.bind(k, kind, team, seed))
+
+
+## Finished models kept to copy, by look (see look()). Every parked car of a
+## kind and paint is the same model, and every burnt-out tank on the map the
+## same hulk: a copy, sharing the meshes, takes a millisecond or two where
+## building one took a fifth of a second.
+static var _stock := {}
+const STOCK_KEEP := 96
+
+
+## What a model will look like, as a key for the stock: "" when that can't be
+## told without building it (a kind whose seed does more than pick a paint,
+## a team's own markings).
+static func look(kind: String, team: int, seed: int, is_burnt := false) -> String:
+	if team >= 0:
+		return ""
+	var civ := VmCiv.look(kind, seed, is_burnt)
+	if civ != "":
+		return civ
+	if is_burnt and kind in ["tank", "old_tank"]:
+		return kind + "/burnt"  # (a hulk's paint is gone: nothing tells two apart)
+	return ""
+
+
+## A copy of the model with that look, or null if none is kept yet.
+static func stocked(look_key: String) -> VehicleModels:
+	var kept: VehicleModels = _stock.get(look_key)
+	return kept.copy() if kept != null else null
+
+
+## Keeps a copy of a finished model to copy for its look.
+static func stock(look_key: String, k: VehicleModels) -> void:
+	if look_key == "" or _stock.has(look_key):
+		return
+	if _stock.size() >= STOCK_KEEP:
+		for kept: VehicleModels in _stock.values():
+			kept.root.free()
+		_stock.clear()  # (a long run's worth of looks: start again)
+	_stock[look_key] = k.copy()
+
+
+## A copy to stand as scenery (a parked car, a hulk) sharing this one's meshes
+## and materials: its root and the moving parts scenery poses (the turret, the
+## gun, the rotor), not the wheels, skirts or plates a driven vehicle works.
+func copy() -> VehicleModels:
+	var c := VehicleModels.new()
+	c.root = root.duplicate() as Node3D
+	c.burnt = burnt
+	c.wreck = wreck
+	c.surface_family = surface_family
+	c.sling_eye = sling_eye
+	c.engine_deck = engine_deck
+	c.engine_vent = engine_vent
+	c.turret = _same_in(c.root, turret)
+	c.gun_mount = _same_in(c.root, gun_mount)
+	c.rotor = _same_in(c.root, rotor)
+	return c
+
+
+## The node in `other` (a copy of root) where `part` is in root: found by
+## its place among its siblings, since a copy names nodes made unnamed afresh.
+func _same_in(other: Node3D, part: Node3D) -> Node3D:
+	if part == null:
+		return null
+	var places: Array[int] = []
+	var n: Node = part
+	while n != root:
+		places.push_front(n.get_index())
+		n = n.get_parent()
+	var found: Node = other
+	for i in places:
+		found = found.get_child(i)
+	return found as Node3D
+
+
+## Every part of the model noted down (see _add), for the merge to make into meshes.
+static func _assemble(k: VehicleModels, kind: String, team: int, seed: int) -> void:
 	# a vehicle may share another's model (a variant), named in its definition
 	var mk := kind
 	if Defs.VEHICLES.has(kind):
@@ -84,9 +202,8 @@ static func build(kind: String, team: int, seed: int, is_burnt := false) -> Vehi
 	# the aircraft builders in scripts/game/vehicles/ come first: until one of
 	# them builds a key, the older model below stands
 	if VmCore.build(k, mk, team, seed) or VmGunship.build(k, mk, team, seed) or VmAttack.build(k, mk, team, seed) or VmFighter.build(k, mk, team, seed):
-		k._merge_parts(k.root, Vector3.ZERO)
-		k._baked()
-		return k
+		k._mount_guns()
+		return
 	match mk:
 		"tank":
 			k._tank(team)
@@ -122,9 +239,7 @@ static func build(kind: String, team: int, seed: int, is_burnt := false) -> Vehi
 					or VmCiv.build(k, mk, team, seed) or VmHeli.build(k, mk, team, seed) or VmPlane.build(k, mk, team, seed)
 					or VmBoat.build(k, mk, team, seed) or VmShips.build(k, mk, team, seed)):
 				k._truck(team)
-	k._merge_parts(k.root, Vector3.ZERO)
-	k._baked()
-	return k
+	k._mount_guns()
 
 
 func scorch_finish() -> ShaderMaterial:
@@ -137,9 +252,12 @@ func scorch_finish() -> ShaderMaterial:
 	return soot
 
 
-static func spread_soot(soot: ShaderMaterial, origin: Vector3, age: float) -> void:
+## The burn creeps outwards over the half minute the fire takes hold
+## (BURN_SPREAD), as far as `reach` times 2.56 m from where it started.
+const BURN_SPREAD := 45.0
+static func spread_soot(soot: ShaderMaterial, origin: Vector3, age: float, reach := 1.0) -> void:
 	soot.set_shader_parameter("source_world", origin)
-	soot.set_shader_parameter("extent", 0.46 + 2.1 * (1.0 - exp(-maxf(0.0, age) * 0.64)))
+	soot.set_shader_parameter("extent", (0.46 + 2.1 * (1.0 - exp(-maxf(0.0, age) * 0.11))) * reach)
 
 
 func make_impact_plate(side: float, layers := 2) -> ImpactPlate:
@@ -195,17 +313,26 @@ static func plane_keys() -> Array[String]:
 ## surface per material: the detail costs vertices, not draw calls. The
 ## camouflage stays continuous across the parts.
 func _merge_parts(n: Node3D, off: Vector3) -> void:
+	Build.new(self, Callable(), n, off).step(-1)
+
+
+## The holders _merge_parts merges, in its order: the ones under a holder first.
+func _merge_order(n: Node3D, off: Vector3, nodes: Array, offs: Array) -> void:
 	for c in n.get_children():
 		if c is Node3D and not (c is MeshInstance3D):
-			_merge_parts(c, off + (c as Node3D).position)
-	if _parts.has(n):
-		# the parts made for it, straight into its mesh (see _add)
-		var bake := Mats.Bake.new(true)
-		for pt: Array in _parts[n]:
-			var xf: Transform3D = Transform3D(pt[7], pt[4]) if pt[7] is Basis else Mats.place(pt[4], pt[5], pt[6])
-			bake.part(pt[0], pt[8] if pt[8] is ShaderMaterial else pt[1], xf, pt[2] if pt[2] != Color(1, 1, 1) else null, pt[3])
-		_parts.erase(n)
-		bake.commit(n)
+			_merge_order(c, off + (c as Node3D).position, nodes, offs)
+	nodes.append(n)
+	offs.append(off)
+
+
+## A noted part into the holder's mesh (see _add).
+static func _bake_part(bake: Mats.Bake, pt: Array) -> void:
+	var xf: Transform3D = Transform3D(pt[7], pt[4]) if pt[7] is Basis else Mats.place(pt[4], pt[5], pt[6])
+	bake.part(pt[0], pt[8] if pt[8] is ShaderMaterial else pt[1], xf, pt[2] if pt[2] != Color(1, 1, 1) else null, pt[3])
+
+
+## A holder's parts made as nodes merged in with its meshes.
+func _merge_holder(n: Node3D, off: Vector3) -> void:
 	var before := n.get_child_count()
 	Mats.merge_static(n, [blur] if blur else [], false, false, true)
 	for i in range(before, n.get_child_count()):
@@ -216,8 +343,113 @@ func _merge_parts(n: Node3D, off: Vector3) -> void:
 		for child in n.get_children():
 			if child is MeshInstance3D and (child as MeshInstance3D).mesh is ArrayMesh and not child.has_meta(&"shadow_proxy"):
 				Mats.set_inst(child, &"armour_section", 0.0 if n == root else 1.0)
-	if not burnt:
-		Mats.add_distance_lod(n, 100.0, [blur] if blur else [])
+
+
+## A model built a piece at a time. A parked car took 100-250 ms to build, a
+## tank wreck about 200: a hitch each time one came into view. step() does the
+## next pieces for up to `budget_us` (at least one) and says whether the model
+## is done; the slow welding and simplifying of its distant mesh goes to a
+## worker meanwhile. With no budget (-1) it all happens at once, as build()
+## does. Each holder's noted parts go into its mesh, its nodes are merged in,
+## and (unless burnt) it gets its distant mesh, as _merge_parts always did.
+class Build:
+	var k: VehicleModels
+	var done := false
+	var _make: Callable  # notes down the model's parts (or nothing: they're noted already)
+	var _top: Node3D
+	var _top_off: Vector3
+	var _nodes: Array = []
+	var _offs: Array = []
+	var _at := -1  # the holder being merged (-1: not assembled yet)
+	var _stage := 0  # its next piece: 0 its parts, 1 its merge, 2 its distant mesh, 3 waiting for that
+	var _part := 0
+	var _bake: Mats.Bake
+	var _lod: Array = []
+	var _job: Dictionary = {}
+
+	func _init(model: VehicleModels, assemble: Callable, top: Node3D = null, off := Vector3.ZERO) -> void:
+		k = model
+		_make = assemble
+		_top = top if top != null else model.root
+		_top_off = off
+
+	func step(budget_us: int) -> bool:
+		var started := Time.get_ticks_usec()
+		while not done:
+			if not _next(budget_us < 0):
+				return false  # (its distant mesh isn't ready yet)
+			if budget_us >= 0 and Time.get_ticks_usec() - started >= budget_us:
+				break
+		return done
+
+	## The next piece of work: false if it has to wait.
+	func _next(now: bool) -> bool:
+		if _at < 0:
+			if _make.is_valid():
+				_make.call()
+			k._merge_order(_top, _top_off, _nodes, _offs)
+			_at = 0
+			_holder_done(false)
+			return true
+		var n: Node3D = _nodes[_at]
+		match _stage:
+			0:
+				var pts: Array = k._parts.get(n, [])
+				if _part < pts.size():
+					if _bake == null:
+						_bake = Mats.Bake.new(true)
+					VehicleModels._bake_part(_bake, pts[_part])
+					_part += 1
+				else:
+					_stage = 1
+			1:
+				if k._parts.has(n):
+					k._parts.erase(n)
+					if _bake == null:
+						_bake = Mats.Bake.new(true)
+					_bake.commit(n)
+				_bake = null
+				k._merge_holder(n, _offs[_at])
+				_stage = 2
+				if k.burnt:
+					_holder_done(true)
+			2:
+				_lod = Mats.distance_lod_parts(n, [k.blur] if k.blur else [])
+				if _lod.is_empty():
+					_holder_done(true)
+				elif now:
+					Mats.attach_distance_lod(n, 100.0, _lod[1], Mats._bake_groups(_lod[0]))
+					_holder_done(true)
+				else:
+					_job = Mats.bake_groups_later(_lod[0])
+					_stage = 3
+			3:
+				if not Mats.bake_done(_job):
+					return false
+				Mats.attach_distance_lod(n, 100.0, _lod[1], Mats.bake_result(_job))
+				_holder_done(true)
+		return true
+
+	## Stops where it is (waiting out a distant mesh in the works, if any).
+	func abandon() -> void:
+		if _stage == 3:
+			Mats.bake_result(_job)
+		done = true
+		if is_instance_valid(k.root):
+			k.root.free()
+
+	## On to the next holder (`advance`), or the first; the model is done after the last.
+	func _holder_done(advance: bool) -> void:
+		if advance:
+			_at += 1
+		_stage = 0
+		_part = 0
+		_lod = []
+		_job = {}
+		if _at >= _nodes.size():
+			if _make.is_valid():
+				k._baked()
+			done = true
 
 
 # --- mesh helpers ----------------------------------------------------------------
@@ -271,12 +503,37 @@ static func _tri(st: SurfaceTool, a: Vector3, b: Vector3, c: Vector3, inside: Ve
 
 
 ## Lofts between successive convex rings (same point count) and caps both ends.
-static func solid(rings: Array, key: String, smooth := false) -> ArrayMesh:
+## `bevel` chamfers the edge round the last ring (a hull's roof, a turret's
+## top, a box's lid) by about that many metres, `bevel_bottom` the first
+## ring's: armour plate is flame-cut and welded or cast, and its broken edge
+## is a narrow facet that catches the light along the hull from the RTS
+## camera, where a two-ring loft meets its cap at a dead-sharp CG edge. The
+## cap keeps its plane, so whatever stands on it stays where it was; the side
+## and cap keep their flat normals and the chamfer gets its own. Without
+## either the mesh is exactly what it always was.
+static func solid(rings: Array, key: String, smooth := false, bevel := 0.0, bevel_bottom := 0.0) -> ArrayMesh:
+	key = _bevel_key(key, bevel, bevel_bottom)
 	if _cache.has(key):
 		return _cache[key]
+	# the chamfers are rings of their own (see _chamfered); n0/n1 count the
+	# strips that are chamfers at each end
+	var n0 := 0
+	var n1 := 0
+	if bevel > 0.0:
+		var c: Array = _chamfered(rings, bevel, true)
+		n1 = c.size() - rings.size()
+		rings = c
+	if bevel_bottom > 0.0:
+		var c: Array = _chamfered(rings, bevel_bottom, false)
+		n0 = c.size() - rings.size()
+		rings = c
 	var st := SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
 	for k in rings.size() - 1:
+		if smooth and n0 + n1 > 0:
+			# a rolled edge on a rounded solid: smooth round the ring, but a
+			# crease where it meets the side
+			st.set_smooth_group(2 if (k < n0 or k >= rings.size() - 1 - n1) else 0)
 		var r0: PackedVector3Array = rings[k]
 		var r1: PackedVector3Array = rings[k + 1]
 		var cen := (_centroid(r0) + _centroid(r1)) * 0.5
@@ -305,17 +562,131 @@ static func solid(rings: Array, key: String, smooth := false) -> ArrayMesh:
 	return m
 
 
-static func loft(key: String, bottom: Array, top: Array, y0: float, y1: float) -> ArrayMesh:
-	if _cache.has(key):
-		return _cache[key]
-	return solid([ring_y(_v2(bottom), y0), ring_y(_v2(top), y1)], key)
+## Two level outlines (x, z pairs, convex, same count) lofted from y0 to y1;
+## `bevel` / `bevel_bottom` chamfer the top / bottom edge as in solid.
+static func loft(key: String, bottom: Array, top: Array, y0: float, y1: float, bevel := 0.0, bevel_bottom := 0.0) -> ArrayMesh:
+	if _cache.has(_bevel_key(key, bevel, bevel_bottom)):
+		return _cache[_bevel_key(key, bevel, bevel_bottom)]
+	return solid([ring_y(_v2(bottom), y0), ring_y(_v2(top), y1)], key, false, bevel, bevel_bottom)
 
 
-static func extrude_x(key: String, profile: Array, x0: float, x1: float) -> ArrayMesh:
-	if _cache.has(key):
-		return _cache[key]
+## A side profile ((z, y) pairs, convex) extruded across x0..x1; `bevel`
+## chamfers both side faces' edges all round, the roof's and glacis's edges
+## among them, as in solid.
+static func extrude_x(key: String, profile: Array, x0: float, x1: float, bevel := 0.0) -> ArrayMesh:
+	if _cache.has(_bevel_key(key, bevel, bevel)):
+		return _cache[_bevel_key(key, bevel, bevel)]
 	var p := _v2(profile)
-	return solid([ring_x(p, x0), ring_x(p, x1)], key)
+	return solid([ring_x(p, x0), ring_x(p, x1)], key, false, bevel, bevel)
+
+
+## A chamfered mesh is another mesh: it is cached under its own key.
+static func _bevel_key(key: String, top: float, bottom: float) -> String:
+	if top <= 0.0 and bottom <= 0.0:
+		return key
+	return "%s|bevel%.3f,%.3f" % [key, top, bottom]
+
+
+## `rings` with the edge round one end ring (the last if `top`) cut back by
+## about b along both faces: a new ring b in from the end on the way to it,
+## and the end ring moved in by b within its own plane, each edge parallel to
+## its old self. b is kept under 40% of the end segment's length and 30% of
+## the ring's half-width, so a thin plate or a narrow rail gets a smaller
+## chamfer rather than a folded one; the rings come back unchanged if the
+## end is degenerate (a point, a line) or no chamfer fits.
+static func _chamfered(rings: Array, b: float, top: bool) -> Array:
+	var n := rings.size()
+	if n < 2:
+		return rings
+	var e: PackedVector3Array = rings[n - 1] if top else rings[0]
+	var nb: PackedVector3Array = rings[n - 2] if top else rings[1]
+	var nrm := _ring_normal(e)
+	if nrm == Vector3.ZERO or nb.size() != e.size():
+		return rings
+	var c := _centroid(e)
+	var h := absf((c - _centroid(nb)).dot(nrm))
+	var reach := INF  # the nearest edge to the centre, in the ring's plane
+	for i in e.size():
+		var a := e[i]
+		var q := e[(i + 1) % e.size()]
+		if a.distance_squared_to(q) < 1e-10:
+			continue
+		var side := nrm.cross(q - a).normalized()
+		reach = minf(reach, absf((c - a).dot(side)))
+	b = minf(b, minf(h * 0.4, reach * 0.3))
+	var cut := PackedVector3Array()
+	for _attempt in 3:
+		if b < 0.003:
+			return rings
+		cut = _inset_ring(e, nrm, c, b)
+		if not cut.is_empty():
+			break
+		b *= 0.5
+	if cut.is_empty():
+		return rings
+	var mid := PackedVector3Array()
+	var t := b / h
+	for i in e.size():
+		mid.append(e[i].lerp(nb[i], t))
+	var out := rings.duplicate()
+	if top:
+		out[n - 1] = mid
+		out.append(cut)
+	else:
+		out[0] = mid
+		out.insert(0, cut)
+	return out
+
+
+## The normal of a planar ring (Newell's method), or zero for a point or a line.
+static func _ring_normal(r: PackedVector3Array) -> Vector3:
+	var s := Vector3.ZERO
+	for i in r.size():
+		var p := r[i]
+		var q := r[(i + 1) % r.size()]
+		s += Vector3((p.y - q.y) * (p.z + q.z), (p.z - q.z) * (p.x + q.x), (p.x - q.x) * (p.y + q.y))
+	if s.length_squared() < 1e-12:
+		return Vector3.ZERO
+	return s.normalized()
+
+
+## A convex ring in the plane normal to `nrm`, centred on c, moved in by d,
+## each edge parallel to its old self (mitred; repeated points move as one);
+## empty if an edge shorter than its corners' cut would turn over.
+static func _inset_ring(r: PackedVector3Array, nrm: Vector3, c: Vector3, d: float) -> PackedVector3Array:
+	var m := r.size()
+	var out := PackedVector3Array()
+	for i in m:
+		var p := r[i]
+		var a := r[_distinct(r, i, -1)]
+		var q := r[_distinct(r, i, 1)]
+		var n0 := nrm.cross(p - a).normalized()
+		var n1 := nrm.cross(q - p).normalized()
+		if n0.dot(c - (a + p) * 0.5) < 0.0:
+			n0 = -n0
+		if n1.dot(c - (p + q) * 0.5) < 0.0:
+			n1 = -n1
+		var dir := n0 + n1
+		dir = n0 if dir.length_squared() < 1e-8 else dir.normalized()
+		out.append(p + dir * d / maxf(0.35, dir.dot(n0)))
+	for i in m:
+		var j := (i + 1) % m
+		var was := r[j] - r[i]
+		if was.length_squared() > 1e-10 and (out[j] - out[i]).dot(was) <= 0.0:
+			return PackedVector3Array()
+	return out
+
+
+## The index of the nearest point before (step -1) or after (step 1) point i
+## of ring r that isn't at the same place.
+static func _distinct(r: PackedVector3Array, i: int, step: int) -> int:
+	var m := r.size()
+	var j := i
+	for _k in m - 1:
+		j = (j + step + m) % m
+		if r[j].distance_squared_to(r[i]) > 1e-10:
+			return j
+	return j
 
 
 static func _capsule(r: float, h: float) -> CapsuleMesh:
@@ -339,20 +710,67 @@ static func _capsule(r: float, h: float) -> CapsuleMesh:
 ## straight into its piece's merged mesh without making a node of it (a tank
 ## is four hundred parts). Otherwise it's made as a node, and that returned.
 func _add(parent: Node3D, mesh: Mesh, kind: String, col, pos: Vector3, rot := Vector3.ZERO, scl := Vector3.ONE, shadow := true) -> Variant:
+	if wreck and kind in ["canvas", "cloth", "fabric"]:
+		# burnt away (the note is still handed back, so callers can treat it as made)
+		return [mesh, null, Color(1, 1, 1), shadow, pos, rot, scl, null, null]
 	var k := kind
 	if burnt:
 		k = "abrams_scorched" if kind in ["abrams_olive", "abrams_sand"] else "burnt"
 	k = VehicleMaterials.key(k, surface_family)
 	var t := Mats.tint_for(k, col) if col is Color and not burnt else Color(1, 1, 1)
+	if burnt and kind in ["glass", "headlamp", "signal_lens"]:
+		# A burnt-out vehicle's windows and lamps have cracked out in the heat:
+		# what's left is a sooty empty frame, not rusted steel (the char shader
+		# leaves anything this dark black with soot).
+		t = Color(0.3, 0.3, 0.3)
 	if not burnt and VehicleMaterials.profile(kind, surface_family) in ["armor", "aircraft", "marine"]:
 		mesh = VehicleBody.paint_mesh(mesh)
 	var pt := [mesh, Mats.get_mat(k), t, shadow, pos, rot, scl, null, null]
+	if profiling:
+		_profile(mesh)
 	if not _baking:
 		return _add_node(parent, pt)
 	if not _parts.has(parent):
 		_parts[parent] = []
 	(_parts[parent] as Array).append(pt)
 	return pt
+
+
+## tools/vehicles/builder-profile.tscn: while set, every part's triangle-list
+## vertex count is charged to the outermost shared builder that made it (or to
+## the family function that added it itself), so a pass can see where a
+## roster's geometry goes. Needs script backtraces: development builds only.
+static var profiling := false
+static var profile := {}
+
+
+func _profile(mesh: Mesh) -> void:
+	var n := 0
+	for i in mesh.get_surface_count():
+		var arrays: Array = mesh.surface_get_arrays(i)
+		var index: Variant = arrays[Mesh.ARRAY_INDEX]
+		if index is PackedInt32Array and (index as PackedInt32Array).size() > 0:
+			n += (index as PackedInt32Array).size()
+		else:
+			n += (arrays[Mesh.ARRAY_VERTEX] as PackedVector3Array).size()
+	var owner := "?"
+	for trace: ScriptBacktrace in Engine.capture_script_backtraces():
+		var started := false
+		for f in trace.get_frame_count():
+			var file := trace.get_frame_file(f)
+			var here := file.get_file().get_basename() + "." + trace.get_frame_function(f)
+			# Skip this class's own primitives (_add, _box, _cyl ...) first.
+			if not started:
+				if file.ends_with("vehicle_models.gd"):
+					continue
+				started = true
+			if file.contains("/vehicles/vm_") or file.ends_with("vehicle_models.gd"):
+				if owner == "?":
+					owner = here
+				break
+			owner = here
+		break
+	profile[owner] = int(profile.get(owner, 0)) + n
 
 
 var _baking := false  # build(): parts are noted down for _merge_parts (see _add)
@@ -438,6 +856,120 @@ func _fold(pv: Node3D) -> void:
 	pv.free()
 
 
+## A shared gun builder's assembly `m` is done, its muzzle at `muzzle` in its
+## parent's space: noted down (see _guns), then folded into the parent like
+## any other construction pivot.
+## `hands` are where a gunner holds it, in `m`'s own space ([right, left]).
+func _gun(m: Node3D, muzzle: Vector3, hands: Array = []) -> void:
+	var parent := m.get_parent() as Node3D
+	var parts: Array = (_parts.get(m, []) as Array).duplicate()
+	var nodes: Array = m.get_children()
+	var held: Array = []
+	for h: Vector3 in hands:
+		held.append(m.transform * h)
+	_guns.append({"parent": parent, "origin": m.position, "muzzle": muzzle, "parts": parts, "nodes": nodes, "hands": held})
+	_fold(m)
+
+
+## A hand-built gun assembly on its own pivot `m` (at its trunnion, square
+## to its parent), noted down as the shared builders' are.
+func gun_assembly(m: Node3D, muzzle_local: Vector3, hands: Array = []) -> void:
+	_gun(m, m.transform * muzzle_local, hands)
+
+
+## The model is built: the machine gun (and a twin beside it, laid as one) is
+## lifted off whatever carries it onto a cradle of its own at its trunnion, so
+## the crew can lay it and it can recoil. Its parts move with it unchanged, so
+## at rest the model, its muzzle marker and the authority's sockets are exactly
+## as built. Wrecks keep their guns where they fell.
+func _mount_guns() -> void:
+	# (a fixed-wing aircraft's guns are fixed in its nose or its side)
+	var fixed_wing := surface_family == "aircraft" and rotor == null and rotors.is_empty()
+	if burnt or fixed_wing or mg_tip == null or mg_tip == gun_tip:
+		_guns.clear()
+		return
+	var parent := mg_tip.get_parent() as Node3D
+	if parent != turret and parent != root and turret and turret.is_ancestor_of(parent) and absf(parent.rotation.x) > 0.001 and absf(parent.rotation.y) < 0.001 and absf(parent.rotation.z) < 0.001:
+		# The builder made the cradle itself, already laid a little (a twin
+		# AA gun's, receivers, boxes and all): it is the mount.
+		_add_mount(parent)
+		_guns.clear()
+		return
+	var best: Dictionary = {}
+	var nearest := 0.3
+	for g: Dictionary in _guns:
+		# (a gun laid along its carrier's -Z: a cradle elevates about X)
+		var axis: Vector3 = (g.muzzle as Vector3) - (g.origin as Vector3)
+		if is_instance_valid(g.parent) and g.parent == parent and axis.normalized().dot(Vector3.FORWARD) > 0.95:
+			var d := (g.muzzle as Vector3).distance_to(mg_tip.position)
+			if d < nearest:
+				nearest = d
+				best = g
+	if best.is_empty():
+		_guns.clear()
+		return
+	var mount := _lift(best)
+	_onto(mg_tip, mount)
+	_add_mount(mount, best)
+	# A twin beside it (the other barrel of a twin AA gun) is laid with it.
+	var at: Vector3 = best.origin
+	var tip: Vector3 = best.muzzle
+	for g: Dictionary in _guns:
+		if g == best or not is_instance_valid(g.parent) or g.parent != parent:
+			continue
+		var o: Vector3 = g.origin
+		var t: Vector3 = g.muzzle
+		if absf(o.x - at.x) > 0.1 and absf(o.y - at.y) < 0.05 and absf(o.z - at.z) < 0.08 and absf(t.y - tip.y) < 0.05 and absf(t.z - tip.z) < 0.08:
+			var twin := _lift(g)
+			_add_mount(twin, g)
+			# (a twin's own muzzle marker, where it has one, goes with it)
+			if gun_tip and gun_tip.get_parent() == parent and gun_tip.position.distance_to(t) < 0.3:
+				_onto(gun_tip, twin)
+	_guns.clear()
+
+
+## A cradle at the assembly's origin with its parts and nodes moved onto it.
+func _lift(g: Dictionary) -> Node3D:
+	var parent: Node3D = g.parent
+	var mount := _pivot(parent, g.origin)
+	var noted: Array = _parts.get(parent, [])
+	for pt: Array in g.parts:
+		var i := noted.find(pt)
+		if i < 0:
+			continue
+		noted.remove_at(i)
+		pt[4] = (pt[4] as Vector3) - mount.position
+		if not _parts.has(mount):
+			_parts[mount] = []
+		(_parts[mount] as Array).append(pt)
+	for n: Node in g.nodes:
+		if is_instance_valid(n) and n.get_parent() == parent:
+			_onto(n as Node3D, mount)
+	return mount
+
+
+## Moves `n` from its parent onto `mount`, a child of that parent, where it
+## already is (the model isn't in the scene tree yet: no global transforms).
+func _onto(n: Node3D, mount: Node3D) -> void:
+	var xf := mount.transform.affine_inverse() * n.transform
+	n.get_parent().remove_child(n)
+	mount.add_child(n)
+	n.transform = xf
+
+
+func _add_mount(mount: Node3D, g: Dictionary = {}) -> void:
+	mg_mounts.append(mount)
+	mg_rests.append(mount.transform)
+	var hands: Array = []
+	for h: Vector3 in g.get("hands", []):
+		hands.append(h - mount.position)
+	mg_hands.append(hands)
+	var free := turret == null or not turret.is_ancestor_of(mount)
+	var door := free and surface_family == "aircraft" and absf(mount.position.x) > 0.5
+	mg_stow.append(-signf(mount.position.x) * 1.05 if door else 0.0)
+	mg_free = turret == null or not turret.is_ancestor_of(mount)
+
+
 ## Every noted part on surface `from` put on `to`.
 func _swap_noted(from: Material, to: Material) -> void:
 	for parent: Node3D in _parts:
@@ -463,8 +995,10 @@ func _box(parent: Node3D, s: Vector3, pos: Vector3, kind: String, col = null, ro
 func _bag(parent: Node3D, s: Vector3, pos: Vector3, kind: String, col = null, rot := Vector3.ZERO, shadow := true) -> Variant:
 	return VehicleCloth.bag(self, parent, s, pos, kind, col, rot, shadow)
 
+## Res.cyl's cylinder at the same size, but with one band of sides: its middle
+## ring splits a straight side in two and adds triangles, not shape.
 func _cyl(parent: Node3D, r0: float, r1: float, h: float, pos: Vector3, rot: Vector3, kind: String, col = null, segs := 12, shadow := true) -> Variant:
-	return _add(parent, Res.cyl(r0, r1, h, segs), kind, col, pos, rot, Vector3.ONE, shadow)
+	return _add(parent, VehicleFrames.rod_mesh(r0, r1, h, segs), kind, col, pos, rot, Vector3.ONE, shadow)
 
 
 ## An empty marker at a muzzle.
@@ -489,7 +1023,7 @@ func _wheel(parent: Node3D, pos: Vector3, r: float, w: float, hub_kind := "gunme
 
 
 func _team_mark(parent: Node3D, team: int, pos: Vector3, s: Vector3) -> void:
-	if burnt or team < 0:
+	if wreck or team < 0:  # (burnt off a wreck with the paint)
 		return
 	var mi := MeshInstance3D.new()
 	mi.mesh = Res.box(s)
@@ -736,31 +1270,35 @@ func _car(v: int, col: Color) -> void:
 			var panes := 1 if v == 2 else 2
 			for pane in panes:
 				VehicleGlazing.quad(self, m, key + "side_%s_%d" % [side, pane], face, inside, Rect2(0.06 + pane * 0.46, 0.13, 0.88 if panes == 1 else 0.42, 0.74), 0.012, 0.012, "glass")
-			VehicleFrames.tube(self, m, Vector3(side * hw, fy + 0.10, fz + 0.25), Vector3(side * (w + 0.14), fy + 0.13, fz + 0.22), 0.025, "rubber")
-			_box(m, Vector3(0.09, 0.13, 0.21), Vector3(side * (w + 0.14), fy + 0.16, fz + 0.22), "rubber")
-			_box(m, Vector3(0.025, 0.035, 0.15), Vector3(side * (w + 0.01), fy - 0.07, (fz + bz) * 0.5), "steel")
-	# bumpers, lights, plate
+			# the wing mirror on its arm from the window's front corner, the door handle
+			VehicleFittings.mirror(self, m, Vector3(side * (w + 0.14), fy + 0.16, fz + 0.22), Vector2(0.09, 0.13), 0.0, [Vector3(side * hw, fy + 0.10, fz + 0.25)], "rubber", null)
+			VehicleDoors.pull(self, m, Vector3(side * (w + 0.001), fy - 0.07, (fz + bz) * 0.5), Vector3(side, 0, 0), Vector3.BACK, 0.15, 0.006, "steel")
+	# moulded bumpers, lights, plate
 	var front: float = body[0] if v != 2 else body[0]
 	var bf: float = minf(body[0], body[body.size() - 2])
 	var bb: float = maxf(body[2], body[4])
-	_box(m, Vector3(w * 2.0 + 0.04, 0.16, 0.12), Vector3(0, 0.42, bf - 0.02), "rubber")
-	_box(m, Vector3(w * 2.0 + 0.04, 0.16, 0.12), Vector3(0, 0.42, bb + 0.02), "rubber")
+	for z: float in [bf - 0.02, bb + 0.02]:
+		VehicleMounts.bumper(self, m, Vector3(w * 2.0 + 0.04, 0.16, 0.12), Vector3(0, 0.42, z), "rubber", null, Vector3.ZERO, true)
 	if not burnt:
 		for s in [-1.0, 1.0]:
 			_add(m, Res.box(Vector3(0.3, 0.1, 0.04)), "paint", Color(0.92, 0.9, 0.8), Vector3(s * (w - 0.24), 0.68, bf - 0.01), Vector3.ZERO, Vector3.ONE, false)
 			_add(m, Res.box(Vector3(0.24, 0.12, 0.04)), "paint", Color(0.62, 0.06, 0.05), Vector3(s * (w - 0.2), 0.74, bb + 0.01), Vector3.ZERO, Vector3.ONE, false)
-		_add(m, Res.box(Vector3(0.42, 0.11, 0.02)), "paint", Color(0.9, 0.88, 0.8), Vector3(0, 0.5, bb + 0.09), Vector3.ZERO, Vector3.ONE, false)
+		VehicleMarkings.plate(self, m, Vector3(0, 0.5, bb + 0.09), Vector2(0.42, 0.11), Vector3.BACK, 0.0, "", 0.02, Color(0.9, 0.88, 0.8))
 	if v == 2:
-		# the bed: sides and tailgate
+		# the bed: its sides, the ribbed tailgate between them, the rubber mat
 		for s in [-1.0, 1.0]:
 			_box(m, Vector3(0.06, 0.38, 1.95), Vector3(s * (w - 0.03), 1.2, 1.4), "car_paint", col)
-		_box(m, Vector3(w * 2.0, 0.38, 0.06), Vector3(0, 1.2, 2.38), "car_paint", col)
+		VehicleCargo.sideboard(self, m, Vector3(w * 2.0, 0.38, 0.06), Vector3(0, 1.2, 2.38), "car_paint", col, Vector3.ZERO, 2)
 		_box(m, Vector3(w * 2.0 - 0.1, 0.04, 1.9), Vector3(0, 1.03, 1.4), "rubber")
-	# wheels in dark arches
+	# wheels under black plastic arch trims: a band round the top of each tyre,
+	# a few centimetres proud of the side so the arch reads from above without
+	# hiding the wheel (a flat slab here sat over it like a mud flap)
 	var wz := [bf + 0.75, bb - 0.75]
-	for s in [-1.0, 1.0]:
-		for z in wz:
-			_box(m, Vector3(0.05, 0.5, 0.86), Vector3(s * (w - 0.01), 0.52, z), "rubber", null, Vector3.ZERO, false)
+	for s: float in [-1.0, 1.0]:
+		for z: float in wz:
+			var x0 := w - 0.03 if s > 0.0 else -(w + 0.012)
+			var x1 := w + 0.012 if s > 0.0 else -(w - 0.03)
+			VehicleWheelArches._flare(self, m, "%sarch_%d_%d" % [key, int(s), roundi(z * 100.0)], z, 0.33, 0.345, 0.41, x0, x1, 0.0, PI, "rubber", null, 6)
 			_wheel(m, Vector3(s * (w - 0.1), 0.33, z), 0.33, 0.22, "steel", Color(0.62, 0.63, 0.62))
 
 
@@ -1111,25 +1649,14 @@ func _heli(team: int, attack: bool) -> void:
 static var _blur: ShaderMaterial
 
 
+## The disc a rotor's blades sweep at flight speed, on a plane mesh the size
+## of the rotor, turning with the hub: one material for every rotor, its
+## blade count and colour per rotor (see VehicleRotors.BLUR_SHADER, which the
+## propellers' discs share).
 static func _blur_mat() -> ShaderMaterial:
 	if _blur == null:
 		var sh := Shader.new()
-		sh.code = Mats.code("""
-shader_type spatial;
-render_mode unshaded, cull_disabled, depth_draw_never, shadows_disabled;
-instance uniform float blade_count = 4.0;
-void fragment() {
-	vec2 p = UV * 2.0 - 1.0;
-	float r = length(p);
-	float a = atan(p.y, p.x);
-	// The mesh turns with the hub. Each blade sweeps an arc during an exposure.
-	float sweep = pow(0.5 + 0.5 * cos(a * blade_count + r * 0.7), 3.6);
-	float disc = smoothstep(0.07, 0.13, r) * (1.0 - smoothstep(0.95, 1.0, r));
-	float tip = smoothstep(0.92, 0.95, r);
-	ALBEDO = mix(vec3(0.034, 0.038, 0.04), vec3(0.42, 0.40, 0.32), tip);
-	ALPHA = disc * (0.028 + (0.50 - 0.16 * r) * sweep);
-}
-""")
+		sh.code = Mats.code(VehicleRotors.BLUR_SHADER)
 		_blur = ShaderMaterial.new()
 		_blur.shader = sh
 	return _blur

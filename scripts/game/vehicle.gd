@@ -131,6 +131,17 @@ var _rotor_want := false
 var _sus := Vector3.ZERO
 var _sus_v := Vector3.ZERO
 var _gun_kick := 0.0  # (view) how far the turret is jolted back by its own gun
+var aim_offset := Vector3.INF  # (replicated) where the crew lay their guns, from the vehicle (INF: nowhere), so a client's view lays them too
+var _mg_lay := PackedVector2Array()  # (view) each machine-gun mount's traverse and elevation
+var _mg_rate := PackedVector2Array()  # (view) and how fast each is moving
+var _mg_recoil := 0.0  # (view) how far the machine gun has run back on its cradle
+var _mg_climb := 0.0  # (view) how far its muzzle has jumped with the last rounds
+var _gunners: Array = []  # (view) the man on each crew-served mount (a SoldierModel; true: not made yet), null where none
+var _gunner_fire := 0.0  # (view) seconds since the mounted gun last fired, for its gunner
+var _gunner_skip := 0  # (view) frames since the gunners were last posed
+var _mg_heat := 0.0  # (view) how hot the mounted gun's barrel is from its last bursts
+var _smoke_t := 0.0  # (view) until its next wisp of barrel smoke
+var _gunner_dt := 0.0
 var _turret_rest := Vector3.INF
 var _vel_s := Vector3.ZERO
 var _vel_prev := Vector3.ZERO
@@ -138,6 +149,8 @@ var turret: Node3D
 var tail_rotor: Node3D
 var blades: Node3D
 var blur: MeshInstance3D
+var _tail_blades: Node3D  # the tail rotor's blades and the disc shown for them at flight speed
+var _tail_blur: Node3D
 var wheels: Array = []
 var always_animate_tracks := false  # Long-lens footage also needs distant shoe contact.
 var _belt_yaw := 0.0
@@ -1937,16 +1950,18 @@ func _wreck_out(hard := 0.0) -> void:
 	var hs := _hull_size()
 	var props := {"skind": "wreck", "pos": p, "yaw": y, "vk": vkind, "size": Vector3(hs.x, maxf(hs.y, 1.2), hs.z),
 		"variant": 9 if heli else (6 if weight() >= 2 else 8)}
+	# every wreck is built in its own paint and burnt out over it (Structure._ruin)
+	props["wreck_finish"] = {"team": team, "seed": eid, "since": world.time}
 	if heli:
-		# a helicopter's wreck lies where she hit, on her side after a spin-in
+		# a helicopter's wreck lies where she hit, on her side after a spin-in,
+		# in her own paint with the fire's soot spreading over it (and broken
+		# up: Structure._break_up)
 		props["tilt"] = _crash_tilt if crashing != 0 else Vector2(world.rng.randf_range(-0.04, 0.04), world.rng.randf_range(-0.06, 0.06))
 	else:
 		var plan := _toss_plan(p, y)
 		if has_tank_model():
 			props["bent_skirts"] = bent_skirts
 			props["wreck_turret_yaw"] = turret_yaw
-		if has_tank_model() or vdef.get("model", vkind) in ["technical", "aa_tech"]:
-			props["wreck_finish"] = {"team": team, "seed": eid, "since": world.time}
 		props["pos"] = plan[0]
 		props["yaw"] = plan[1]
 		props["tilt"] = plan[2]
@@ -2045,9 +2060,11 @@ func _crash_tick(dt: float) -> void:
 		position.y = ground + 0.3
 		var hard := clampf((-velocity.y + speed * 0.25) / 12.0, 0.15, 1.5)
 		if crashing == CRASH_SPIN:
-			_crash_tilt = Vector2(world.rng.randf_range(-0.15, 0.08), (1.0 if world.rng.randf() < 0.5 else -1.0) * world.rng.randf_range(0.5, 1.35))
+			# rolled right over onto her side, nose dug in
+			_crash_tilt = Vector2(world.rng.randf_range(-0.25, 0.0), (1.0 if world.rng.randf() < 0.5 else -1.0) * world.rng.randf_range(1.2, 1.5))
 		else:
-			_crash_tilt = Vector2(world.rng.randf_range(-0.12, 0.02), world.rng.randf_range(-0.12, 0.12))
+			# slumped where the undercarriage gave way, nose down
+			_crash_tilt = Vector2(world.rng.randf_range(-0.16, -0.04), (1.0 if world.rng.randf() < 0.5 else -1.0) * world.rng.randf_range(0.08, 0.22))
 		world.stat("heli_crashed")
 		if world.water != null and world.terrain != null and world.water.deep_at(position) and not world.water.on_deck(position):
 			_ditch(hard)
@@ -2654,6 +2671,192 @@ func impact_react(direction: Vector3, strength: float) -> void:
 	impact_response.kick(Vector3(local.z, -local.x, 0.0) * strength * resistance * 2.0)
 
 
+## A mounted machine gun or autocannon fired a round (view): the gun runs back
+## `k` metres on its cradle and its muzzle jumps; the cradle's buffer runs it
+## out again before the next round. Without a cradle of its own an autocannon
+## still jolts its turret, as before.
+func mg_kick(k: float) -> bool:
+	if _vm == null or _vm.mg_mounts.is_empty():
+		return false
+	_mg_recoil = minf(_mg_recoil + k, k * 2.4)
+	_mg_climb = minf(_mg_climb + k * randf_range(0.15, 0.6), 0.045)
+	_gunner_fire = 0.0
+	_mg_heat = minf(_mg_heat + k * 3.0, 2.0)
+	return true
+
+
+## Where the crew are laying their guns (view): on the target, as the host
+## knows it or sends it to a client. INF with nothing to shoot at.
+func aim_point() -> Vector3:
+	if srv:
+		return target.center_point() if _target_ok() else Vector3.INF
+	return position + aim_offset if aim_offset.is_finite() else Vector3.INF
+
+
+## Where the machine gun's receiver is right now (view), for the brass it
+## throws out: its cradle's trunnion. INF without one.
+func breech_world() -> Vector3:
+	if _vm == null or _vm.mg_mounts.is_empty() or model == null or not model.is_visible_in_tree():
+		return Vector3.INF
+	return _vm.mg_mounts[0].global_position
+
+
+## The crew lay the machine gun (view): its cradle elevates to what the
+## vehicle is shooting at - a pintle or door gun on no turret also swings to
+## it, within its arc - at a gunner's or a remote station's pace, easing
+## into the lay and settling, and goes back to its rest with nothing to
+## shoot. AA guns climb steeply; a helicopter's guns depress well down. Each
+## round's recoil and muzzle jump ride on top.
+func _lay_guns(dt: float) -> void:
+	var mounts: Array[Node3D] = _vm.mg_mounts
+	if _mg_lay.size() != mounts.size():
+		_mg_lay.resize(mounts.size())
+		_mg_rate.resize(mounts.size())
+		for i in mounts.size():
+			_mg_lay[i] = Vector2(_vm.mg_stow[i], _vm.mg_rests[i].basis.get_euler().x)
+	var aim := aim_point()
+	var w: Dictionary = Defs.WEAPONS.get(String(vdef.mg), {})
+	var high := 1.3 if w.get("aa", false) else 0.85
+	var low := -1.1 if is_air() else -0.3
+	if String(vdef.mg) == "coax":
+		# (laid with the main gun, within its mantlet's travel)
+		high = 0.31
+		low = -0.16
+	var arc := _vm.mg_arc if _vm.mg_free else 0.0
+	if _mg_recoil > 0.0 or _mg_climb > 0.0:
+		_mg_recoil = maxf(0.0, _mg_recoil * exp(-dt * 26.0) - dt * 0.004)
+		_mg_climb = maxf(0.0, _mg_climb * exp(-dt * 9.0) - dt * 0.002)
+	for i in mounts.size():
+		var mount := mounts[i]
+		var rest: Transform3D = _vm.mg_rests[i]
+		var want := Vector2(_vm.mg_stow[i], rest.basis.get_euler().x)
+		if aim.is_finite():
+			var frame := (mount.get_parent() as Node3D).global_basis.orthonormalized()
+			var local := frame.inverse() * (aim - mount.global_position)
+			# a gun in a side door swings out of its own side, never back
+			# across the cabin (positive yaw turns it to the left)
+			if _vm.mg_free:
+				var side := signf(rest.origin.x) if absf(rest.origin.x) > 0.3 else 0.0
+				want.x = clampf(atan2(-local.x, -local.z), -arc if side >= 0.0 else -0.15, arc if side <= 0.0 else 0.15)
+			want.y = clampf(atan2(local.y, Vector2(local.x, local.z).length()), low, high)
+		var lay := _mg_lay[i]
+		var rate := _mg_rate[i]
+		var yaw := VehicleMotion.slew(lay.x, rate.x, want.x, 1.5, 7.0, dt, false)
+		var pitch := VehicleMotion.slew(lay.y, rate.y, want.y, 1.1, 6.0, dt, false)
+		_mg_lay[i] = Vector2(yaw.x, pitch.x)
+		_mg_rate[i] = Vector2(yaw.y, pitch.y)
+		var pose := Basis.from_euler(Vector3(pitch.x + _mg_climb, yaw.x, 0.0))
+		var xf := Transform3D(pose, rest.origin + pose.z * _mg_recoil)
+		if mount.transform != xf:
+			mount.transform = xf
+	if not _gunners.is_empty():
+		_pose_gunners(dt)
+	if _mg_heat > 0.02:
+		_barrel_smoke(dt)
+
+
+## A barrel hot from a burst smokes (view): once the firing stops, thin
+## wisps of burnt propellant and oil curl up off the muzzle and drift away on
+## the wind for a few seconds, thicker after a long burst and from a cannon.
+func _barrel_smoke(dt: float) -> void:
+	_mg_heat *= exp(-dt / 4.5)
+	_smoke_t -= dt
+	if _gunner_fire < 0.18 or _smoke_t > 0.0 or _vm.mg_tip == null or world.fx == null or world.fx.gunfx == null:
+		return
+	var heat := minf(_mg_heat, 1.5)
+	_smoke_t = lerpf(0.42, 0.1, heat / 1.5)
+	var camera := get_viewport().get_camera_3d()
+	var muzzle := _vm.mg_tip.global_position
+	if camera == null or camera.global_position.distance_to(muzzle) > 140.0 or randf() > Settings.fx_mult():
+		return
+	var axis := -_vm.mg_tip.global_basis.z
+	var size := clampf(_mg_heat * 0.5, 0.25, 1.0)
+	var at := muzzle - axis * randf_range(0.0, 0.25) + GunFx._jit(0.02)
+	var col := Color(GunFx.SMOKE.r, GunFx.SMOKE.g, GunFx.SMOKE.b, 0.07 + 0.12 * minf(heat, 1.0))
+	world.fx.gunfx.puff(at, Vector3(0, randf_range(0.25, 0.45), 0) + GunFx._jit(0.06), 0.015 * size + 0.01, (0.1 + 0.16 * size) * randf_range(0.8, 1.25), randf_range(1.6, 2.6), col, 1.6, 0.35, 0.0, 1.0)
+
+
+## The crew on the crew-served guns (view): a man of the vehicle's side, in
+## its kit, on each gun with grips - a technical's DShK, a Humvee's .50 in its
+## turret, a door gun, a boat's bow gun - his hands on the grips wherever it's
+## laid, standing behind it (kneeling at a boat's bow or crouched in a
+## helicopter's door) and turning with it, his shoulders working when it fires.
+## (Each is made the first time the vehicle comes near enough to see him, so
+## one never seen costs nothing.)
+func _build_gunners() -> void:
+	_gunners.clear()
+	if team < 0 or _vm.mg_mounts.is_empty():
+		return
+	var any := false
+	for i in _vm.mg_mounts.size():
+		var hands: Array = _vm.mg_hands[i]
+		_gunners.append(true if hands.size() >= 2 else null)
+		any = any or hands.size() >= 2
+	if not any:
+		_gunners.clear()
+
+
+func _make_gunner(i: int) -> SoldierModel:
+	var g := SoldierModel.new()
+	g.host_world = world
+	model.add_child(g)
+	g.build("rifleman" if team == 0 else "fighter", team, eid * 13 + i)
+	g.crew = true
+	_gunners[i] = g
+	return g
+
+
+func _pose_gunners(dt: float) -> void:
+	_gunner_fire += dt
+	# Close ones are posed every frame, distant ones every few; far off the
+	# gun reads on its own and the man is left out.
+	_gunner_dt += dt
+	var camera := get_viewport().get_camera_3d()
+	var cd := camera.global_position.distance_to(global_position) if camera else 0.0
+	var shown := cd < 260.0
+	for i in _gunners.size():
+		var g: Variant = _gunners[i]
+		if g is bool and shown:
+			_make_gunner(i)
+			_gunner_skip = 99  # (posed at once: never seen standing at the model's origin)
+		elif g is SoldierModel and is_instance_valid(g) and (g as Node3D).visible != shown:
+			(g as Node3D).visible = shown
+	if not shown:
+		return
+	_gunner_skip += 1
+	if _gunner_skip < (1 if cd < 60.0 else (2 if cd < 120.0 else 4)):
+		return
+	_gunner_skip = 0
+	dt = _gunner_dt
+	_gunner_dt = 0.0
+	var low := is_heli() or is_boat()
+	var posture: int = Soldier.Post.CROUCH if low else Soldier.Post.STAND
+	var act: int = Soldier.Act.SHOOT if _gunner_fire < 0.6 else Soldier.Act.IDLE
+	for i in _gunners.size():
+		if not _gunners[i] is SoldierModel:
+			continue
+		var g: SoldierModel = _gunners[i]
+		if not is_instance_valid(g):
+			continue
+		var mount: Node3D = _vm.mg_mounts[i]
+		var hands: Array = _vm.mg_hands[i]
+		var xf := mount.global_transform
+		var right: Vector3 = xf * (hands[0] as Vector3)
+		var left: Vector3 = xf * (hands[1] as Vector3)
+		var fwd := Defs.flat(-xf.basis.z)
+		if fwd.length_squared() < 0.0001:
+			continue
+		fwd = fwd.normalized()
+		var mid := (right + left) * 0.5
+		# behind the grips at arm's length, the grips at his chest standing
+		# (lower, kneeling or crouched), feet on whatever he stands on
+		var feet := mid - fwd * (0.42 if not low else 0.38) - Vector3(0, 1.1 if not low else 0.78, 0)
+		g.global_transform = Transform3D(Basis(Vector3.UP, atan2(-fwd.x, -fwd.z)), feet)
+		g.crew_r = right
+		g.crew_l = left
+		g.pose(dt, Soldier.Life.ALIVE, posture, act, 0.0, false, act == Soldier.Act.SHOOT)
+
+
 ## The main gun's kick rocks the hull back from the shot.
 func recoil(dir: Vector3) -> void:
 	_cradle_age = 0.0
@@ -2897,6 +3100,17 @@ func write_state(b: StreamPeerBuffer) -> void:
 	b.put_u32(sling_eid)
 	put_ang(b, flight_pitch)
 	put_ang(b, flight_roll)
+	# where the guns are laid, to the decimetre (what's shot at may be hidden
+	# from a client, but the turret's bearing already gives that away)
+	var aim := target.center_point() - position if _target_ok() else Vector3.INF
+	if aim.is_finite() and aim.length() < 3000.0:
+		b.put_16(roundi(aim.x * 10.0))
+		b.put_16(roundi(aim.y * 10.0))
+		b.put_16(roundi(aim.z * 10.0))
+	else:
+		b.put_16(-32768)
+		b.put_16(0)
+		b.put_16(0)
 
 
 func read_state(b: StreamPeerBuffer) -> void:
@@ -2910,6 +3124,10 @@ func read_state(b: StreamPeerBuffer) -> void:
 	sling_eid = b.get_u32()
 	flight_pitch = wrapf(get_ang(b), -PI, PI)
 	flight_roll = wrapf(get_ang(b), -PI, PI)
+	var ax := b.get_16()
+	var ay := b.get_16()
+	var az := b.get_16()
+	aim_offset = Vector3(ax, ay, az) * 0.1 if ax != -32768 else Vector3.INF
 
 
 func health_frac() -> float:
@@ -2943,8 +3161,9 @@ func _view_process(dt: float) -> void:
 			var mount := _vm.gun_mount
 			var cradle := turret.global_basis
 			var direction := Defs.dir_of(rotation.y + turret_yaw)
-			if _target_ok():
-				direction = target.center_point() - mount.global_position
+			var aim := aim_point()
+			if aim.is_finite():
+				direction = aim - mount.global_position
 			var local := cradle.inverse() * direction
 			var pitch := clampf(atan2(local.y, Vector2(local.x, local.z).length()), -0.16, 0.31)
 			# The cradle eases into a change of elevation and brakes as it settles.
@@ -2962,6 +3181,8 @@ func _view_process(dt: float) -> void:
 				if _turret_rest == Vector3.INF:
 					_turret_rest = turret.position
 				turret.position = _turret_rest + Basis(Vector3.UP, turret_yaw) * Vector3(0, 0, _gun_kick)
+	if _vm and not _vm.mg_mounts.is_empty() and _vis:
+		_lay_guns(dt)
 	if _vm and _vm.elev:
 		# laid for indirect fire: the barrel (or the launcher) goes up
 		var want_e := float(vdef.get("elev", 0.6)) if (flags & F_ELEV) != 0 else 0.0
@@ -2985,19 +3206,23 @@ func _view_process(dt: float) -> void:
 			_rotor_snd.pitch_scale = (0.55 + 0.45 * rpm) * (1.0 + load * 0.08)
 			_rotor_snd.volume_db = _rotor_vol + (rpm - 1.0) * 9.0 + load * 6.0
 		rotor.rotation.y += dt * _rotor_spd
+		var fast := _rotor_spd > 18.0
 		if tail_rotor:
 			tail_rotor.rotation.x += dt * _rotor_spd * 2.6
+			# (the tail rotor's blades turn 2.6 times as fast: they blur with the main ones)
+			if _tail_blur:
+				_tail_blur.visible = fast
+				_tail_blades.visible = not fast
 		for i in _vm.rotors.size():
 			var xr: Node3D = _vm.rotors[i]
 			xr.rotation.y += dt * _rotor_spd * (-1.0 if i % 2 == 0 else 1.0)
 			var xb := xr.get_node_or_null("Blur")
 			if xb:
-				xb.visible = _rotor_spd > 18.0
+				xb.visible = fast
 				var xbl := xr.get_node_or_null("Blades")
 				if xbl:
 					xbl.visible = not xb.visible
 		if blur:
-			var fast := _rotor_spd > 18.0
 			blur.visible = fast
 			blades.visible = not fast
 	if not rotor and _vm and not _vm.rotors.is_empty():
@@ -3401,6 +3626,7 @@ func _build_model() -> void:
 			helm.position = k.helm_seat
 	turret = k.turret
 	_vm = k
+	_build_gunners()
 	if bent_skirts:
 		k.pose_skirts(bent_skirts)
 	_belt_yaw = rotation.y
@@ -3408,8 +3634,23 @@ func _build_model() -> void:
 	_last_pos = position
 	rotor = k.rotor
 	tail_rotor = k.tail_rotor
+	if tail_rotor:
+		# (an old-style tail rotor has neither: it stays as it is)
+		_tail_blades = tail_rotor.get_node_or_null("Blades") as Node3D
+		_tail_blur = tail_rotor.get_node_or_null("Blur") as Node3D
+		if _tail_blades == null:
+			_tail_blur = null
 	blades = k.blades
 	blur = k.blur
+	# A drone's rotors (it has no main rotor) turn at flight speed from the
+	# start: their blur discs stand in for the blades, which would strobe.
+	if not rotor:
+		for xr: Node3D in k.rotors:
+			var xb := xr.get_node_or_null("Blur") as Node3D
+			var xbl := xr.get_node_or_null("Blades") as Node3D
+			if xb and xbl:
+				xb.visible = true
+				xbl.visible = false
 	wheels = k.wheels
 	if not k.belts.is_empty() and Sfx.enabled:
 		var abrams: bool = vdef.get("model", vkind) == "tank"

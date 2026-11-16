@@ -332,6 +332,13 @@ func _shader_mat(code: String) -> ShaderMaterial:
 	return m
 
 
+## How much of the sun and the sky lights smoke, and how far a fire lights
+## its surroundings, by mood (far more at night).
+const SMOKE_SUN := {"night": 0.45}
+const SMOKE_SKY := {"night": 0.6}
+const FIRE_LIGHT := {"night": 2.6, "dusk": 1.5, "dawn": 1.5, "rain": 1.5, "overcast": 1.5}
+
+
 ## Copies the scene's sun / sky light into the smoke shader.
 func apply_lighting() -> void:
 	var at: Atmosphere = world.atmo if world else null
@@ -341,20 +348,21 @@ func apply_lighting() -> void:
 	# smoke takes the light's colour only partly: fully tinted it goes navy at
 	# night and brick red at sunset
 	var sc := _desat(at.sun.light_color, 0.45)
-	var hz: Color = at.MOODS[at.mood].horizon
-	var zn: Color = at.MOODS[at.mood].zenith
+	# (the light as it is now: a mood's own, or one blending into the next while time passes)
+	var mood: Dictionary = at._d if not at._d.is_empty() else at.MOODS[at.mood]
+	var hz: Color = mood.horizon
+	var zn: Color = mood.zenith
 	var amb := _desat(hz.lerp(zn, 0.4), 0.55)
-	var night := at.mood == "night"
 	# (and the copies of it carrying a smoke's own density, in the browser build)
 	for material in [smoke_mat, flare_smoke_mat]:
 		Mats.set_shared(material, &"sun_dir", sd)
 		Mats.set_shared(material, &"sun_col", sc)
-		Mats.set_shared(material, &"sun_energy", at.sun.light_energy * (0.45 if night else 0.75))
+		Mats.set_shared(material, &"sun_energy", at.sun.light_energy * at.by_mood(SMOKE_SUN, 0.75))
 		Mats.set_shared(material, &"amb_col", amb)
-		Mats.set_shared(material, &"amb_energy", float(at.MOODS[at.mood].ambient) * (0.6 if night else 1.1))
+		Mats.set_shared(material, &"amb_energy", float(mood.ambient) * at.by_mood(SMOKE_SKY, 1.1))
 
-	fragment_light = sc * at.sun.light_energy * 0.45 + amb * float(at.MOODS[at.mood].ambient) * 0.7
-	fire_light = 2.6 if night else (1.5 if at.mood in ["dusk", "dawn", "rain", "overcast"] else 0.8)
+	fragment_light = sc * at.sun.light_energy * 0.45 + amb * float(mood.ambient) * 0.7
+	fire_light = at.by_mood(FIRE_LIGHT, 0.8)
 	if blasts:
 		blasts.apply_lighting()
 	if world.fx and world.fx.gunfx:

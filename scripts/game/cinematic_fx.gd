@@ -46,6 +46,10 @@ extends CompositorEffect
 ##   sideways by it, more the nearer the hot air (in the spirit of the
 ##   screen-space refraction of Sousa, "Generic Refraction Simulation", GPU
 ##   Gems 2, 2005, with the distortion worked out per source, not drawn).
+## - Rain on the lens (with the lens on, in the rain): drops gather on the
+##   front glass while the camera faces into the rain, sit a few seconds and
+##   dry, and now and then one runs down it. Each is a small lens of its own,
+##   showing the scene behind it upside down, shrunk and out of focus.
 ##
 ## - Motion blur: what moves while the shutter is open smears along its path
 ##   (McGuire, Hennessy, Bukowski and Osman, "A Reconstruction Filter for
@@ -64,7 +68,7 @@ extends CompositorEffect
 ## it reaches the simulation.
 
 const CTX := &"frontline_cinematic"
-const PARAMS := 32  # floats in the parameter block (eight vec4s, std140)
+const PARAMS := 36  # floats in the parameter block (nine vec4s, std140)
 const USAGE := RenderingDevice.TEXTURE_USAGE_SAMPLING_BIT | RenderingDevice.TEXTURE_USAGE_STORAGE_BIT
 const RGBA16F := RenderingDevice.DATA_FORMAT_R16G16B16A16_SFLOAT
 ## The heat haze's sources: at most this many, each this many floats (three
@@ -224,7 +228,8 @@ func _render_callback(callback_type: int, render_data: RenderData) -> void:
 	use_blur = use_blur and velocity.is_valid()
 	# the sharpening and the haze read the scene's neighbours: from a copy of it
 	# (or from the blurred scene, which the motion blur writes there instead)
-	var need_src := sharpen or use_haze or use_blur
+	var drops := use_lens and p[32] > 0.0
+	var need_src := sharpen or use_haze or use_blur or drops
 	var tex := _textures(buffers, size, qs, need_src, use_blur)
 	var key := [color, depth, velocity, size, need_src, use_blur, tex["bright"]]
 	if key != _set_key:
@@ -247,6 +252,8 @@ func _render_callback(callback_type: int, render_data: RenderData) -> void:
 	if not use_eye:
 		p[21] = 0.0
 	p[27] = 1.0 if use_haze else 0.0
+	if not drops:
+		p[32] = 0.0
 	rd.buffer_update(_ubo, 0, PARAMS * 4, p.to_byte_array())
 	if reset_adaptation:
 		reset_adaptation = false
@@ -497,6 +504,7 @@ layout(set = 0, binding = 0, std140) uniform Params {
 	vec4 film;     // halation, night vision, sharpening, debug view (FL_DEBUG_CINE_VIEW)
 	vec4 adapt;    // rate towards brighter, towards darker, long-term (1 / s); heat haze (0 or 1)
 	vec4 flags;    // shafts, lens, local exposure, eye adaptation (0 or 1)
+	vec4 rain;     // drops on the lens: how many (0..1), the rain's clock (s)
 } P;
 
 float luma(vec3 c) {
@@ -1214,6 +1222,74 @@ float base_at(vec2 uv, float guide) {
 	return sum / ws;
 }
 
+float drop_hash(vec2 p) {
+	vec3 q = fract(vec3(p.xyx) * 0.1031);
+	q += dot(q, q.yzx + 33.33);
+	return fract((q.x + q.y) * q.z);
+}
+
+// One drop on the glass at `at` (screen heights), `radius` across, sagging a
+// little below its middle (the image's rows run down): keeps the nearest.
+void lens_drop(vec2 p, vec2 at, float radius, inout vec4 best) {
+	vec2 d = p - at;
+	d.y *= d.y > 0.0 ? 0.8 : 1.05;
+	float r = length(d) / max(radius, 1e-5);
+	// (a hand's breadth from the lens, a drop is itself out of focus: soft-edged)
+	float cover = 1.0 - smoothstep(0.62, 1.0, r);
+	if (cover > best.z) {
+		// the drop shows what's behind it flipped and shrunk, five times over
+		best = vec4(-d * 5.0, cover, r);
+	}
+}
+
+// The drops on the lens at uv: where each shows the scene from (an offset in
+// screen heights), how much of one covers the pixel, and how far out on it the
+// pixel lies (0 its middle, 1 its rim). Beads in two sizes appear, sit four to
+// nine seconds and dry; in lanes down the glass a heavier drop now and then
+// runs from top to bottom, wobbling, leaving a few beads in its wake.
+vec4 lens_drops(vec2 uv) {
+	vec2 p = uv * vec2(P.sun.w, 1.0);
+	float t = P.rain.y;
+	vec4 best = vec4(0.0, 0.0, 0.0, 1.0);
+	for (int layer = 0; layer < 2; layer++) {
+		float cell = layer == 0 ? 0.11 : 0.06;
+		vec2 shift = float(layer) * vec2(0.37, 0.61);
+		vec2 q = p / cell + shift;
+		vec2 id = floor(q);
+		float h = drop_hash(id + float(layer) * 17.0);
+		float life = mix(4.0, 9.0, drop_hash(id.yx + 3.1));
+		float cycle = floor(t / life + h);
+		float age = t / life + h - cycle;
+		if (drop_hash(id * 1.37 + cycle * 0.71) > 1.0 - P.rain.x * (layer == 0 ? 0.1 : 0.03)) {
+			float grow = smoothstep(0.0, 0.06, age) * (1.0 - smoothstep(0.75, 1.0, age));
+			vec2 at = (id + 0.3 + 0.4 * vec2(drop_hash(id + cycle), drop_hash(id.yx + cycle + 5.3)) - shift) * cell;
+			lens_drop(p, at, cell * mix(0.1, 0.24, drop_hash(id + cycle * 1.9)) * grow, best);
+		}
+	}
+	float lane_w = 0.09;
+	float lane = floor(p.x / lane_w);
+	float h = drop_hash(vec2(lane, 41.0));
+	float run = t * mix(0.1, 0.24, drop_hash(vec2(lane, 7.0))) / 1.6 + h;
+	float cycle = floor(run);
+	if (drop_hash(vec2(lane, cycle + 0.5)) < P.rain.x * 0.12) {
+		float y = (run - cycle) * 1.6 - 0.3;
+		float wobble = 0.22 * sin(y * 9.0 + h * 6.28) + 0.1 * sin(y * 23.0 + h * 3.1);
+		float radius = mix(0.012, 0.02, h);
+		lens_drop(p, vec2((lane + 0.5 + wobble) * lane_w, y), radius, best);
+		// the beads it leaves behind
+		float since = y - p.y;
+		if (since > 0.02 && since < 0.3) {
+			float slot = floor(p.y / 0.035);
+			float sy = (slot + 0.5) * 0.035;
+			float sw = 0.22 * sin(sy * 9.0 + h * 6.28) + 0.1 * sin(sy * 23.0 + h * 3.1);
+			float keep = step(0.45, drop_hash(vec2(lane, slot + cycle * 13.0)));
+			lens_drop(p, vec2((lane + 0.5 + sw) * lane_w, sy), radius * 0.35 * keep * (1.0 - since / 0.3), best);
+		}
+	}
+	best.xy /= vec2(P.sun.w, 1.0);
+	return best;
+}
+
 void main() {
 	ivec2 p = ivec2(gl_GlobalInvocationID.xy);
 	if (p.x >= int(P.size.x) || p.y >= int(P.size.y)) {
@@ -1245,6 +1321,21 @@ void main() {
 					c = mix(c, clean(textureLod(src_tex, suv, 0.0).rgb), smoothstep(0.03, 0.3, len));
 				}
 			}
+		}
+	}
+	if (P.rain.x > 0.0) {
+		vec4 drop = lens_drops(uv);
+		if (drop.z > 0.0) {
+			// out of focus (the glass is a hand's breadth from the lens), darker
+			// towards its rim, where light leaves the water at a glancing angle
+			vec2 suv = uv + drop.xy;
+			vec3 seen = vec3(0.0);
+			for (int k = 0; k < 6; k++) {
+				vec2 o = vec2(cos(float(k) * 1.047), sin(float(k) * 1.047)) * 5.0 * P.size.y / 1080.0 / P.size.xy;
+				seen += clean(textureLod(src_tex, clamp(suv + o, vec2(0.0), vec2(1.0)), 0.0).rgb);
+			}
+			seen *= (1.0 / 6.0) * (1.0 - 0.55 * smoothstep(0.55, 1.0, drop.w));
+			c = mix(c, seen, drop.z);
 		}
 	}
 	float e = P.tone.z;

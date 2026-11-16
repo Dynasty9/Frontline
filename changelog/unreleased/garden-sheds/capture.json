@@ -1,0 +1,47 @@
+{
+  "before_ref": "789d1d95afea8b716c5fa5464e87ed4f6edd6f3d",
+  "source_ref": "8476852fcfa79e09e83d84dcf268890d69c03a98",
+  "engine": "Godot 4.7.2 stable ed1daf0bf",
+  "stage": "tools/showcase/building-surfaces.tscn",
+  "command": "godot --path CHECKOUT --resolution 1600x900 tools/showcase/building-surfaces.tscn -- --building-out=OUTPUT --offscreen FLAGS",
+  "comparisons": [
+    {
+      "subjects": [
+        "house_yard"
+      ],
+      "flags": [
+        "--building-single",
+        "--building-kinds=house_yard",
+        "--building-rear"
+      ],
+      "before_flags": [
+        "--building-match=AFTER/capture.json"
+      ],
+      "cameras": {
+        "house_yard": [
+          -0.27400016784668,
+          2.97118353843689,
+          2.85474443435669,
+          15.5724992752075,
+          61.6516723632813
+        ]
+      },
+      "crops": [
+        [
+          300,
+          160,
+          1500,
+          860
+        ],
+        [
+          820,
+          420,
+          1440,
+          800
+        ]
+      ]
+    }
+  ],
+  "notes": "Both sides render the source_ref studio stage (its yard adds a shed and a trampoline only where BuildingYards has them). The after side was framed first and the baseline matched to it, so the new pieces stay in frame. The baseline is the rubble change this builds on.",
+  "composition": "PIL: matched rows, 792 px halves, JPEG quality 82"
+}

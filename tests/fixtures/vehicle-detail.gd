@@ -8,7 +8,7 @@ func kit() -> VehicleModels:
 
 func occupied(k: VehicleModels, point: Vector3) -> bool:
 	for part: Array in k._parts[k.root]:
-		var basis: Basis = part[7] if part[7] is Basis else Basis.from_euler(part[5]).scaled(part[6])
+		var basis: Basis = part[7] if part[7] is Basis else Basis.from_euler(part[5]) * Basis.from_scale(part[6])
 		var local := Transform3D(basis, part[4]).affine_inverse() * point
 		if (part[0] as Mesh).get_aabb().has_point(local):
 			return true
@@ -18,7 +18,7 @@ func bounds(k: VehicleModels) -> AABB:
 	var result := AABB()
 	var first := true
 	for part: Array in k._parts[k.root]:
-		var basis: Basis = part[7] if part[7] is Basis else Basis.from_euler(part[5]).scaled(part[6])
+		var basis: Basis = part[7] if part[7] is Basis else Basis.from_euler(part[5]) * Basis.from_scale(part[6])
 		var box: AABB = Transform3D(basis, part[4]) * (part[0] as Mesh).get_aabb()
 		assert(box.position.is_finite() and box.size.is_finite())
 		result = box if first else result.merge(box)

@@ -1,0 +1,10 @@
+{
+  "entry": "changelog/unreleased/smooth-parked-cars.md",
+  "summary": "Parked cars and wrecks no longer freeze the frame when they come into view.",
+  "medium": "text",
+  "stage": "text",
+  "rationale": "A performance fix with nothing new on screen: models are unchanged (tests/fixtures/vehicle-stock.gd checks them piece by piece), so the entry gives the measured frame costs from an off-screen solo battle (seed 3, camera panned across the town) instead of a picture.",
+  "source_ref": "dines/lucid-jones-1bf316",
+  "sources": [],
+  "output": null
+}
