@@ -90,7 +90,7 @@ static func bookcase(k: BuildingKit, x: float, wood: Color, rng: RandomNumberGen
 			var bw := minf(rng.randf_range(0.1, 0.3), x + w * 0.5 - 0.04 - bx)
 			var bh := rng.randf_range(0.18, 0.28)
 			var col: Color = BuildingFurnishings.BOOKS[rng.randi() % BuildingFurnishings.BOOKS.size()]
-			k.box(Vector3(bw, bh, rng.randf_range(0.17, 0.22)), Vector3(bx + bw * 0.5, y + 0.0125 + bh * 0.5, d * 0.5), "paint", col.darkened(rng.randf_range(0.0, 0.25)), Vector3.ZERO, false)
+			k.block(Vector3(bw, bh, rng.randf_range(0.17, 0.22)), Vector3(bx + bw * 0.5, y + 0.0125 + bh * 0.5, d * 0.5), "paint", col.darkened(rng.randf_range(0.0, 0.25)), Vector3.ZERO, false)
 			bx += bw + rng.randf_range(0.005, 0.08)
 
 
@@ -301,7 +301,7 @@ static func shop(k: BuildingKit, size: Vector3, rng: RandomNumberGenerator) -> v
 			k.part(Res.sphere(0.24, 8), "canvas", Transform3D(Basis.from_scale(Vector3(1.0, 1.4, 0.8)), p + Vector3(0, 0.32, 0)), Color(0.78, 0.72, 0.58).darkened(rng.randf_range(0.0, 0.2)), false)
 		else:
 			var bs := Vector3(rng.randf_range(0.35, 0.55), rng.randf_range(0.25, 0.4), rng.randf_range(0.3, 0.42))
-			k.box(bs, p + Vector3(0, bs.y * 0.5 + (0.0 if i < 3 else 0.4), 0), "wood", Color(0.6, 0.48, 0.32).darkened(rng.randf_range(0.0, 0.2)), Vector3(0, rng.randf_range(-0.4, 0.4), 0))
+			k.block(bs, p + Vector3(0, bs.y * 0.5 + (0.0 if i < 3 else 0.4), 0), "wood", Color(0.6, 0.48, 0.32).darkened(rng.randf_range(0.0, 0.2)), Vector3(0, rng.randf_range(-0.4, 0.4), 0))
 
 
 ## A run of shelving `length` long (along x, both faces stocked): the plinth,
@@ -318,7 +318,7 @@ static func gondola(k: BuildingKit, length: float, bare: bool, rng: RandomNumber
 	for side: float in [-1.0, 1.0]:
 		for i in 4:
 			var y := 0.12 + i * 0.34
-			k.box(Vector3(length - 0.04, 0.025, d * 0.5 - 0.05), Vector3(0, y, side * d * 0.25), "paint", white.darkened(0.08), Vector3.ZERO, false)
+			k.block(Vector3(length - 0.04, 0.025, d * 0.5 - 0.05), Vector3(0, y, side * d * 0.25), "paint", white.darkened(0.08), Vector3.ZERO, false)
 			var x := -length * 0.5 + 0.05
 			while x < length * 0.5 - 0.12:
 				var w := minf(rng.randf_range(0.2, 0.55), length * 0.5 - 0.05 - x)
@@ -327,5 +327,5 @@ static func gondola(k: BuildingKit, length: float, bare: bool, rng: RandomNumber
 					continue  # (a gap where it's been taken)
 				var gh := rng.randf_range(0.12, 0.26)
 				var col: Color = GOODS[rng.randi() % GOODS.size()]
-				k.box(Vector3(w, gh, d * 0.5 - 0.12), Vector3(x + w * 0.5, y + 0.0125 + gh * 0.5, side * (d * 0.25 + 0.02)), "paint", col.darkened(rng.randf_range(0.0, 0.25)), Vector3.ZERO, false)
+				k.block(Vector3(w, gh, d * 0.5 - 0.12), Vector3(x + w * 0.5, y + 0.0125 + gh * 0.5, side * (d * 0.25 + 0.02)), "paint", col.darkened(rng.randf_range(0.0, 0.25)), Vector3.ZERO, false)
 				x += w + rng.randf_range(0.01, 0.05)
