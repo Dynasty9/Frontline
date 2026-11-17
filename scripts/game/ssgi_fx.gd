@@ -533,7 +533,7 @@ void main() {
 	}
 	imageStore(gbuf_img, h, vec4(wn, -v.z));
 	vec3 c = sum * 0.25;
-	// whether the sun reaches it: a few steps towards the sun through the
+	// whether the sun reaches it: steps towards the sun through the
 	// depth buffer, as far as a house's shadow falls. (The engine's shadow
 	// maps aren't open to this pass. Only what is on screen can cast here,
 	// and a grass blade's own shadow is too fine to see at half resolution,
@@ -544,9 +544,11 @@ void main() {
 		sunvis = 1.0;
 		vec3 from = v + n * (0.05 - v.z * 0.002);
 		float jit = ign(vec2(h) + vec2(31.0, 7.0), P.misc.x);
-		for (int s = 1; s <= 8; s++) {
-			float f = (float(s) - 0.5 + jit * 0.5) / 8.0;
-			float dist = 12.0 * f * f;
+		// (steps close enough not to step over a wall's thickness near the
+		// pixel, where the shadows that matter here are cast)
+		for (int s = 1; s <= 16; s++) {
+			float f = (float(s) - 0.5 + jit * 0.5) / 16.0;
+			float dist = 10.0 * f * sqrt(f);
 			vec3 q = from + lv * dist;
 			if (q.z > -0.05) {
 				break;
@@ -561,7 +563,9 @@ void main() {
 				continue;  // the sky
 			}
 			float behind = -q.z + view_at(quv, dq).z;
-			if (behind > 0.05 && behind < max(0.5, dist * 0.5)) {
+			// (deeper than a ray of bounce light may pass: under a table the
+			// step is most of a metre behind the table top the camera sees)
+			if (behind > 0.05 && behind < max(1.5, dist * 0.7)) {
 				sunvis = 0.0;
 				break;
 			}

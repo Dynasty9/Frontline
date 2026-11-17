@@ -1,16 +1,49 @@
 +++
-title = "Bounce light: in the shade, under smoke, round fires"
-summary = "Bounce light now lifts what stands in shade (a tank's shaded side, the ground in its shadow) and leaves sunlit grass and decks as they were, stays hidden behind smoke and dust, goes round a room more than once, and still shows from the command height and round a fire at night."
+title = "Bounce light: in the shade, behind smoke, round fires"
+summary = "Bounce light now lifts what stands in shade, such as a tank's shaded side and the ground in its shadow, and leaves sunlit grass and decks as they were. It stays hidden behind smoke and dust, and goes round a room more than once."
 kind = "improved"
+
+[[screenshots]]
+file = "tank.jpg"
+caption = "A tank on sunlit grass: its shaded side and skirts pick up the grass's light (off above, on below)"
+
+[[screenshots]]
+file = "tank-light.jpg"
+caption = "The same, bounce light only (four times brighter): on the shaded hull side, while the sunlit deck and lawn stay dark"
+
+[[screenshots]]
+file = "dust.jpg"
+caption = "Dust in front of a tank: laid over the dust, the hull's bounce light showed through it; now the dust hides it as it hides the hull"
+
+[[screenshots]]
+file = "golden.jpg"
+caption = "Golden hour, from 30 m: the shaded side of a ruin lifts with light off its sunlit walls"
+
+[[screenshots]]
+file = "golden-light.jpg"
+caption = "Golden hour, bounce light only (four times brighter)"
+
+[[screenshots]]
+file = "fire-night.jpg"
+caption = "Night: a burning car's light thrown onto the wall and ground beside it"
+
+[[screenshots]]
+file = "fire-night-light.jpg"
+caption = "The same, bounce light only (four times brighter)"
+
+[[videos]]
+file = "pan.webm"
+poster = "pan.jpg"
+caption = "The bounce light alone (brightened) while the camera pans: it stays on what it lights, with no smears or trails."
 +++
 
-- **Where it belongs:** sunlit grass, roads and hulls no longer take a yellowish lift; the light lands in the shade
-  beside them, where real bounce light shows. A tank's shaded side and skirts warm with the grass below them.
-- **Behind smoke and dust:** a dust cloud in front of a hull or a wall hides its bounce light as it hides the hull,
+- **Where it belongs:** sunlit grass, roads, roofs and hulls no longer take a yellowish lift. The light lands in the
+  shade beside them, where bounce light really shows. A tank's shaded side and skirts pick up the green of the grass
+  below them, and the ground in its shadow warms with the light off its hull.
+- **Behind smoke and dust:** a dust cloud in front of a hull or a wall hides its bounce light, as it hides the hull,
   instead of the light showing through.
 - **Light goes round more than once:** what one wall throws onto the floor is thrown on again, into the corners of
   a room, and settles in a second or two.
-- **From the command height:** further off, the rays reach further and the light is laid on stronger, so yards and
-  wall feet still lift from 55 m.
 - **Fires and lamps throw it too:** a burning car lights the wall and ground beside it in its colour.
-- **Steady at the frame's edges,** and a faint sheen of the colours round it on wet roads and smooth surfaces in shade.
+- **Steady at the frame's edges.** Wet roads and smooth surfaces in shade also pick up a faint sheen of the colours
+  round them.

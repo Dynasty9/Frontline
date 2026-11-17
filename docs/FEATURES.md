@@ -1353,7 +1353,17 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   out. A rough surface also gives the gathered light back as a dielectric's sheen (Karis's split-sum fit), fading
   out on mirror-smooth ones, which the screen-space reflections handle: a few percent of the bounce on rough
   ground, a little more on wet patches seen at a slant. Vehicles and soldiers standing on sunlit ground take its
-  light from below like anything else (a tank's shaded side and skirts gain about a fifth on grass at midday).
+  light from below like anything else: a tank's shaded side and skirts gain about 15% (linear) in the green of the
+  grass at midday. In the sun the bounce is a few percent of a surface's light at most, and the short rays overstate
+  it (from a lawn they run into the next sunlit blades, whose faces turn every way), so where a pixel's light is the
+  sun's it is laid on at 0.15: sunlit lawn, decks and roofs gain under 1.5% while the shade beside them gains 11-16%.
+  Which pixels the sun reaches can't be read from brightness (a dark lawn in the sun is no brighter than a pale wall
+  in shade, and read as shade it was given a yellow near-white colour that tinted the light laid on it orange): the
+  engine's shadow maps aren't open to the pass, so at half resolution each pixel facing the sun takes 16 steps
+  towards it through the depth buffer, up to 10 m, as far as a house's or a tank's shadow falls on screen (a grass
+  blade's own shadow is too fine to see, so a lawn reads as in the sun). Its sunlight is taken as at least what
+  level ground of its facing gets, and the shade's light counts Atmosphere's fill light from the side away from the
+  sun, which lights shaded faces turned to it as strongly as the sky does.
   Smoke, dust and flames are drawn over the lit world, and the pass needs them drawn (a flame is a light it
   throws), so it runs after them; with MSAA anything written before them is lost again when they are resolved. A
   picture of the world taken just before them tells it where they are: where they moved a pixel's brightness, the
@@ -1373,7 +1383,7 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   with a heavier town and a busier machine (a frame without it 13-17 ms), High read 0.88-1.51 ms (median 1.04) and
   the same without the picture taken before the smoke 0.74-1.65 ms: its cost is lost in that noise. `FL_DEBUG_GI_CYCLE=DIR` saves the
   same frozen frame with each (`scripts/test/gi_compare.gd`), `FL_DEBUG_GI_AB=mode,...` measures what each costs
-  the graphics card, and `FL_DEBUG_SSGI_VIEW=1..12` shows the pass's buffers.
+  the graphics card, and `FL_DEBUG_SSGI_VIEW=1..13` shows the pass's buffers (13: the sun's share, whether the sun reaches it).
 - **Cinematic lighting** (`atmosphere.gd`, `cinematic_fx.gd`, `physical_sky.gd`), each part its own setting and all
   of it on the **Cinematic** preset (Ultra plus everything below; for a fast graphics card, screenshots and replays).
   None of it reaches the simulation, so it can't change a battle or its seed.
