@@ -10,9 +10,9 @@
   "capture": {
     "provenance": "Recaptured off-screen from this branch (Forward+, RTX 3090, High preset) with the commands in stage; panels are consecutive frames of one fixed-fps run, so they share camera, units and smoke.",
     "comparison": "Player sheets: top left probes off, bottom left on, top right the probe term (sky share on grey, bounce amplified), bottom right ON minus OFF x4 on mid grey. Review sheets (PR only) show the bent normal instead of the difference. Flicker: off and on alternate each second on one frame. Destruction: the game and the probe term from two identical fixed-fps runs.",
-    "limits": "Measured (linear light): the midday room falls to 0.75 of its brightness; its shade is 0.22 of the sunlit floor. In the rain the wet floor indoors falls to 0.29 as the sky leaves its reflection. Under the crowns the ground is about 19% darker and greener (green to red 0.95 to 1.10). Round the night fires the ground is up to half as bright again. Beside parked hulls the ground is 15-45% darker overcast, 8-40% in sun; a crater bowl about 4% darker than the field round it. Timelapse at 60x: from one frame to the next half the probe term changes under 0.3%, nine tenths under 1%, the worst frame 4% (at sunset); in play the clock runs 60 times slower. The flares the AI fires after dark (from about 19:30) light the room in the timelapse runs at different moments; the clip stops before them. The room-flicker clip is from an earlier pass. The Compatibility renderer (browser) gets the skylight shading, reflections, fire glow and footprints but not the indoor sun cut."
+    "limits": "Measured (linear light): the midday room falls to 0.75 of its brightness; its shade is 0.22 of the sunlit floor. In the rain the wet floor indoors falls to 0.29 as the sky leaves its reflection. Under the crowns the ground is about 19% darker and greener (green to red 0.95 to 1.10). Round the night fires the ground is up to half as bright again. Round parked hulls the ground is up to 39% darker overcast (darkest at the contact line, gone 1-1.5 m out), up to 26% in sun; a crater bowl about 6% darker than the field round it. Timelapse at 60x: from one frame to the next half the probe term changes under 0.3%, nine tenths under 1%, the worst frame 4% (at sunset); in play the clock runs 60 times slower. The flares the AI fires after dark (from about 19:30) light the room in the timelapse runs at different moments; the clip stops before them. The room-flicker clip is from an earlier pass. The Compatibility renderer (browser) gets the skylight shading, reflections, fire glow and footprints but not the indoor sun cut."
   },
-  "source_ref": "dines/probe-grid-gi-0571ca: the time-of-day, vehicle and man occlusion and battle-damage pass after 94966ca2.",
+  "source_ref": "dines/probe-grid-gi-0571ca: the time-of-day, vehicle and man occlusion and battle-damage pass, with rounded footprints and dusk fill, after 94966ca2.",
   "sources": [
     {
       "file": "changelog/unreleased/light-probes/room-under-roof.jpg",
@@ -36,13 +36,13 @@
     },
     {
       "file": "changelog/unreleased/light-probes/tank-shade.jpg",
-      "caption": "Parked vehicles on an overcast day, time frozen: OFF/ON, probe term (their footprints) and the difference x4.",
-      "sha256": "3efbf390be0027b2d6650f3820e0575b5a6d7c6d8c9365d12bf499b21c89d17a"
+      "caption": "Parked vehicles on an overcast day, time frozen: OFF/ON, probe term (their rounded footprints) and the difference x4.",
+      "sha256": "1442cde762ee10455f5103c689bf28c7b80ea00fa7a367780114754c0a4b0cde"
     },
     {
       "file": "changelog/unreleased/light-probes/crater.jpg",
       "caption": "A fresh shell crater, overcast, time frozen: OFF/ON, probe term and the difference x4.",
-      "sha256": "1ef120c91711252250e67470c71280475d35c7fd3f5af37a7459c6e99eeafbd4"
+      "sha256": "b0e5e6a8353ac829cf26c1641544557d1fefb9a4375dfb22fb27369396c34bd6"
     },
     {
       "file": "changelog/unreleased/light-probes/room-golden-hour.jpg",
@@ -62,12 +62,12 @@
     {
       "file": "changelog/unreleased/light-probes/dusk-timelapse.webm",
       "caption": "Time passes at 60x, 16:30 to 19:25: the breach room (roof lifted) beside the street, probes on, 96 frames at 24 fps, VP9.",
-      "sha256": "7534f41614ea8369cb856c11dbf64232769088f5cf96c942eacbbec7902fe115"
+      "sha256": "09447b4eeb60bc5a4b8845042b15da51267176a761e1c2b2f8a812a12754670f"
     },
     {
       "file": "changelog/unreleased/light-probes/dusk-timelapse.jpg",
       "caption": "Poster: about 18:00.",
-      "sha256": "dc14b6360ed0dc9f8fa18d1a1df827f8e80f45c84b6b511f86c4c23c72ed3df8"
+      "sha256": "83d0478645d5c0ee59ac53af2e1d032d7d5b3ca225a0c7d8b07115a11cacc86a"
     },
     {
       "file": "changelog/unreleased/light-probes/destroyed-house.webm",
@@ -102,7 +102,7 @@
     {
       "file": "changelog/unreleased/light-probes/review/pr-tank-sun.jpg",
       "caption": "Review only (PR): the parked vehicles in sun, time frozen: the pools are fainter where the sun dominates.",
-      "sha256": "7119489aba13566a869b29e10412105d294cd73b2b2a3fa72d94a3ee0bf75fde"
+      "sha256": "4c87661c3d524b57ed0d8b624e6832dffa531f5f4ac0f4d436a29d835f2d77b6"
     },
     {
       "file": "changelog/unreleased/light-probes/review/pr-men.jpg",

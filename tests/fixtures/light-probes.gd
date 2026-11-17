@@ -327,13 +327,13 @@ func _check_damage() -> void:
 ## pixels read the map.
 func _check_occluders() -> void:
 	var tank := LightProbes.vehicle_print(Vector3(3.6, 2.4, 7.5), 0.0)
-	assert(not tank.is_empty() and (tank[0] as Vector2).x > 1.8 + 0.6 and (tank[0] as Vector2).y > 3.75 + 0.6)
+	assert(not tank.is_empty() and (tank[0] as Vector2).x >= 1.8 + 1.0 and (tank[0] as Vector2).y <= 3.75 + 1.5)
 	assert(is_equal_approx(float(tank[1]), LightProbes.OCC_VEHICLE))
 	assert((tank[2] as Vector2).x < 1.0 and (tank[2] as Vector2).y < 1.0, "a soft edge round the hull")
 	assert(LightProbes.vehicle_print(Vector3(3, 3, 12), 20.0).is_empty(), "a helicopter in the air shades nothing")
 	assert(float(LightProbes.vehicle_print(Vector3(3, 3, 12), 2.0)[1]) < float(tank[1]), "less off the ground")
 	assert(float(LightProbes.man_print(false, false)[1]) > float(LightProbes.man_print(true, false)[1]))
 	assert(float(LightProbes.man_print(false, false)[1]) < float(tank[1]), "a man's pool is fainter than a tank's")
-	assert(LightProbes.OCC_SHADER.contains("blend_mul"))
+	assert(LightProbes.OCC_SHADER.contains("blend_mul") and LightProbes.OCC_SHADER.contains("exp(-3.0 * d)"), "rounded, darkest at the contact line")
 	var px := LightProbes._pixel()
 	assert(px.contains("probe_occ_rect") and px.contains("#define PROBE_OCC_HEIGHT %.2f" % LightProbes.OCC_HEIGHT) and not px.contains("__OCC_HEIGHT__"))

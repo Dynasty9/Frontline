@@ -21,7 +21,7 @@ caption = "Fires at night: a burning hedge and a grass fire. With the probes the
 
 [[screenshots]]
 file = "tank-shade.jpg"
-caption = "Parked vehicles on an overcast day. With the probes each sits in a soft dark pool where its hull shuts out the sky round its tracks and wheels; the deck and roof still see it."
+caption = "Parked vehicles on an overcast day. With the probes each sits in a soft contact shadow, darkest under its tracks and wheels and fading out a metre or so round it; the deck and roof still see the sky."
 
 [[screenshots]]
 file = "crater.jpg"
@@ -61,7 +61,7 @@ caption = "A house blown down, the game beside the probe term: within a second t
 - **It keeps up with the battle:** houses blown down, trees felled or burnt, doors flung open, trenches dug and
   new craters change the probes round them within a moment. A fresh crater's bowl sits in a little shade of its own.
 - **Follows the time of day:** with Time passes on, the light bounced round rooms and streets dims and reddens with
-  the evening and follows the sun across the sky, smoothly, with no visible steps.
+  the evening and follows the sun across the sky, smoothly, with no visible steps. Rooms at dusk stay dim, not black.
 - **Vehicles and soldiers shade the ground:** a parked tank or truck sits in a soft dark pool of its own, and a
   standing soldier in a faint one.
 - **Rooms read as indoors:** when soldiers go in and the roof lifts away, the room no longer stands in full

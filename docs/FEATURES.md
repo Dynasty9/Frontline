@@ -1326,11 +1326,12 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   shadow with it, and this gives the room back its indoors without hiding them (wall feet, roof tops and narrow
   streets see about half the sky and keep their sun). The probes' trace lets the same 40% of sun through roofs, so they see
   the sunlit patch the player sees and bounce it, warm and floor-coloured, into the room's shade; skylight and fill
-  never fall below 30%, so a room's corners are dim, not black. Open ground under
+  never fall below 30%, so a room's corners are dim, not black (50% once the sun is low, below about 9 degrees and
+  easing in from 27, when it no longer reaches a room's floor to bounce: dusk interiors stay dim, not crushed). Open ground under
   open sky counts as seen (the sky's lower half already stands for it), so open fields look as they did. Only what
   changes is redone: a structure built, destroyed or burnt marks its tile, which is laid again on the CPU and its
   probes traced again, two tiles a frame nearest the camera first; craters retrace the tiles round them (out in the open too: a crater's tile is traced from then on, and a pixel
-  whose column stands below the ground 3 m round it, a shell crater's bowl, loses up to a tenth of its sky), and trenches too (their mask cuts them into the ground the probes trace and
+  whose column stands below the ground 3 m round it, a shell crater's bowl, loses up to about a quarter of its sky at the floor, less up its sides), and trenches too (their mask cuts them into the ground the probes trace and
   stand on, though 1.4 m trenches are narrower than the 2 m grid, so trench floors stay mostly SSAO's); the bounce is
   kept relative to the light it was traced in (the sun at its height, never below a quarter, plus the sky), so as
   Time passes dims and reddens the evening it follows every frame with nothing traced; once the sun has swung 2
@@ -1361,8 +1362,9 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   tiles, four a frame. It reaches the browser too, which has no fire lights of its own. The skinned riflemen, whose
   imported material can't read the probes, get a small shader that does what it did plus the probes' terms, so a
   man in a room or a wood takes its shade. Vehicles and men shut out a little sky round their feet (after Unreal's
-  capsule and Frostbite's box occlusion): every frame their footprints, soft boxes for hulls with a pad of shade
-  growing with their height (to 1.8 m) and faint discs for men (fainter crouched, a longer patch lying down), are
+  capsule and Frostbite's box occlusion): every frame their footprints, rounded boxes for hulls (half-metre
+  corners), darkest along the contact line under tracks and wheels and fading out over a pad of 1 to 1.5 m that
+  grows with their height, and faint discs for men (fainter crouched, a longer patch lying down), are
   drawn into a 256-texel map over 96 m round the camera that a pixel reads once and fades out over 1.8 m above the
   ground, so a parked tank sits in a soft dark pool, a man in a faint one, and a hull's deck and a man's head still
   see the sky; a helicopter in the air casts none.

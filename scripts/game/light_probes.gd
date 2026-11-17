@@ -177,6 +177,7 @@ var _light_queue: Array[int] = []  # bricks whose bounce alone is traced again (
 var _baked_sun := Vector3.ZERO  # where the sun was, and its share of the light, when the bounce was last queued
 var _baked_share := -1.0
 var _ref := Vector3.ONE  # the light the bounce is kept relative to, now
+var _ref_sun_y := 2.0  # (and the sun's height, for the rooms' least skylight)
 var relit := 0  # bricks whose bounce was traced again for the light (tests, diagnostics)
 var _tile_dug := PackedByteArray()  # 1: cratered or dug: the ground itself shuts out sky there
 var _occ_vp: SubViewport
@@ -235,9 +236,10 @@ func relight() -> void:
 func _follow_light() -> void:
 	var l := _light_now()
 	var ref: Vector3 = l[3]
-	if not ref.is_equal_approx(_ref):
+	if not ref.is_equal_approx(_ref) or not is_equal_approx((l[0] as Vector3).y, _ref_sun_y):
+		_ref_sun_y = (l[0] as Vector3).y
 		_ref = ref
-		RenderingServer.global_shader_parameter_set("probe_ref", Vector4(ref.x, ref.y, ref.z, 0.0))
+		RenderingServer.global_shader_parameter_set("probe_ref", Vector4(ref.x, ref.y, ref.z, (l[0] as Vector3).y))
 	var to_sun: Vector3 = l[0]
 	if _baked_share < 0.0 or rad_to_deg(to_sun.angle_to(_baked_sun)) > RELIGHT_DEG or absf(float(l[4]) - _baked_share) > RELIGHT_SHARE:
 		if OS.has_environment("FL_DEBUG_PROBES_RELIGHT"):
@@ -885,13 +887,13 @@ func _draw_occluders() -> void:
 
 ## A hull's footprint, its size (x wide, y high, z long) standing `up` metres
 ## off the ground: [half the box drawn (metres), how much it shuts out, the
-## hull's share of the box]. Its pad of soft shade grows with its height (a
-## tank's reaches a metre and a half past its tracks); one off the ground shades less, and
+## hull's share of the box]. Its pad of soft shade grows with its height, from
+## a metre round a car to a metre and a half round a tank; one off the ground shades less, and
 ## a helicopter in the air none ([]).
 static func vehicle_print(size: Vector3, up: float) -> Array:
 	if up > 4.0:
 		return []
-	var pad := clampf(size.y * 0.6, 0.8, 1.8)
+	var pad := clampf(size.y * 0.5, 1.0, 1.5)
 	var hb := Vector2(size.x * 0.5 + pad, size.z * 0.5 + pad)
 	return [hb, OCC_VEHICLE * (1.0 - maxf(up, 0.0) / 4.0), Vector2(size.x * 0.5, size.z * 0.5) / hb]
 
@@ -901,7 +903,7 @@ static func vehicle_print(size: Vector3, up: float) -> Array:
 static func man_print(lying: bool, crouched: bool) -> Array:
 	if lying:
 		return [Vector2(0.75, 1.4), OCC_MAN * 0.7, Vector2(0.33, 0.64)]
-	return [Vector2(0.85, 0.85), OCC_MAN * (0.8 if crouched else 1.0), Vector2(0.3, 0.3)]
+	return [Vector2(0.85, 0.85), OCC_MAN * (0.8 if crouched else 1.0), Vector2(0.25, 0.25)]
 
 
 ## Draws the footprints it's given: each a box (UV 0..1 over it) the shader
@@ -924,17 +926,25 @@ class _Occ extends Node2D:
 		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
 
-## Multiplied into the white map: 1 - strength inside the footprint, easing to
-## 1 at the edge of the box drawn (the footprint's pad of soft shade round it).
+## Multiplied into the white map: 1 - strength under the footprint, the
+## footprint a rounded box (corners of half a metre or so, a man's a disc), its
+## shade darkest along the contact line under tracks, wheels and boots and
+## falling away smoothly across its pad, so from the camera it reads as a soft
+## contact shadow, not a decal. Worked in pads: the pad is the unit across the
+## box both ways, whatever its size.
 const OCC_SHADER := """
 shader_type canvas_item;
 render_mode blend_mul;
 
 void fragment() {
-	vec2 q = abs(UV * 2.0 - 1.0);
-	vec2 f = COLOR.gb;
-	float d = length(max(q - f, vec2(0.0)) / max(vec2(1.0) - f, vec2(0.001)));
-	float w = 1.0 - smoothstep(0.0, 1.0, d);
+	vec2 f = COLOR.gb;  // the footprint's share of the box drawn, each way
+	vec2 pad = max(vec2(1.0) - f, vec2(0.001));
+	vec2 p = abs(UV * 2.0 - 1.0) / pad;  // from the middle, in pads
+	vec2 h = f / pad;  // the footprint's half size, in pads
+	float r = min(0.4, min(h.x, h.y));  // its corners' radius
+	vec2 q = p - h + r;
+	float d = length(max(q, vec2(0.0))) + min(max(q.x, q.y), 0.0) - r;  // out from its edge, in pads
+	float w = d <= 0.0 ? 1.0 : exp(-3.0 * d) * (1.0 - smoothstep(0.6, 1.0, d));
 	COLOR = vec4(vec3(1.0 - COLOR.r * w), 1.0);
 }
 """
@@ -1073,7 +1083,7 @@ static func _ensure_globals() -> void:
 	var arr := Texture2DArray.new()
 	arr.create_from_images([blank])
 	RenderingServer.global_shader_parameter_add(&"probe_voxels", RenderingServer.GLOBAL_VAR_TYPE_SAMPLER2DARRAY, arr)
-	RenderingServer.global_shader_parameter_add(&"probe_ref", RenderingServer.GLOBAL_VAR_TYPE_VEC4, Vector4(1, 1, 1, 0))
+	RenderingServer.global_shader_parameter_add(&"probe_ref", RenderingServer.GLOBAL_VAR_TYPE_VEC4, Vector4(1, 1, 1, 1))
 	var white := Image.create(1, 1, false, Image.FORMAT_RGBA8)
 	white.fill(Color.WHITE)
 	RenderingServer.global_shader_parameter_add(&"probe_occ", RenderingServer.GLOBAL_VAR_TYPE_SAMPLER2D, ImageTexture.create_from_image(white))
@@ -1208,7 +1218,7 @@ global uniform sampler2D probe_atlas : filter_linear, repeat_disable;
 global uniform vec4 probe_grid;  // map half-size, probe spacing, quality (0 off, 1 low, 2 high)
 global uniform vec4 probe_mix;  // how far the sky is shut out, how much bounce comes back, debug view, wall test
 global uniform sampler2DArray probe_voxels : filter_nearest, repeat_disable;
-global uniform vec4 probe_ref;  // the light the bounce was kept relative to, now (LightProbes._light_now)
+global uniform vec4 probe_ref;  // the light the bounce was kept relative to, now, and the sun's height (LightProbes._light_now)
 global uniform sampler2D probe_occ : filter_linear, repeat_disable;  // vehicles' and men's footprints round the camera
 global uniform vec4 probe_occ_rect;  // its centre (x, z), 1 / its span, on
 // the share of sky this pixel sees, for light() (CloudShadow.LIGHT, the ground's own):
@@ -1220,11 +1230,15 @@ global uniform vec4 probe_occ_rect;  // its centre (x, z), 1 / its span, on
 #define PROBE_LIGHT
 #define PROBE_ROOM_SUN 0.4
 #define PROBE_MIN_SKY 0.3
+// ...and more once the sun is low (from about 27 degrees, all of it below 9):
+// it no longer reaches a room's floor to bounce, and at the floor alone the room
+// would go black at dusk where the eye sees it dim
+#define PROBE_MIN_SKY_DIM 0.5
 #define PROBE_SPEC_ROOM 0.5
 #define PROBE_LOCAL __LOCAL__
 #define PROBE_OCC_HEIGHT __OCC_HEIGHT__
 const float PROBE_DIP_R = 3.0;  // how far round a pixel the ground is looked at for a hollow, metres
-const float PROBE_DIP_K = 0.5;
+const float PROBE_DIP_K = 0.9;
 // the light through leaves, (0.35, 0.55, 0.2) scaled to the brightness of grey
 const vec3 PROBE_CANOPY = vec3(0.35, 0.55, 0.2) / 0.484;
 const float PROBE_CANOPY_K = 1.5;
@@ -1340,13 +1354,16 @@ vec4 probe_light(vec3 wp, vec3 wn, out float m0, out vec4 sh, out vec3 lb_raw, o
 		seen = probe_decode(a.a, a.rgb * 2.0 - 1.0, wn, vec3(fract(col.x - 0.5), t, fract(col.y - 0.5)));
 		// a hollow narrower than the probes can see (a shell crater's bowl, a ditch):
 		// the ground PROBE_DIP_R round sits above this column's, and shuts out the
-		// sky low down. A bowl a metre deep and six across loses about a tenth at
-		// its floor, as its rim's horizon would take; a mound loses nothing.
+		// sky low down. A bowl a metre deep and six across loses about a quarter at
+		// its floor (a little more than its rim's horizon alone would take, so it
+		// reads as a hollow from the camera); its sides less; a mound nothing.
 		{
 			float dr = PROBE_DIP_R / ps;
 			vec4 h4 = vec4(probe_height(col + vec2(dr, 0.0)), probe_height(col - vec2(dr, 0.0)), probe_height(col + vec2(0.0, dr)), probe_height(col - vec2(0.0, dr)));
 			float dip = dot(h4, vec4(0.25)) - base;
-			seen *= 1.0 - clamp(dip / PROBE_DIP_R * PROBE_DIP_K, 0.0, 0.3);
+			// (squared past the lip, so the floor of the bowl reads darker than its sides)
+			float dk = clamp(dip / PROBE_DIP_R * PROBE_DIP_K, 0.0, 0.35);
+			seen *= 1.0 - dk * smoothstep(0.0, 0.25, dk);
 		}
 		m0 = mix(1.0, a.a, fade);
 		sh = vec4(a.rgb * 2.0 - 1.0, a.a);
@@ -1375,7 +1392,8 @@ vec4 probe_light(vec3 wp, vec3 wn, out float m0, out vec4 sh, out vec3 lb_raw, o
 		float of = (1.0 - smoothstep(0.0, PROBE_OCC_HEIGHT, wp.y - base - 0.1)) * (1.0 - smoothstep(0.85, 1.0, max(oe.x, oe.y)));
 		occ = mix(1.0, o, of * probe_mix.x);
 	}
-	return vec4(mix(1.0, max(seen, PROBE_MIN_SKY), k) * occ, (lb * (1.0 - seen) * probe_mix.y + ll * PROBE_LOCAL) * fade * occ);
+	float floor_sky = mix(PROBE_MIN_SKY_DIM, PROBE_MIN_SKY, smoothstep(0.15, 0.45, probe_ref.w));
+	return vec4(mix(1.0, max(seen, floor_sky), k) * occ, (lb * (1.0 - seen) * probe_mix.y + ll * PROBE_LOCAL) * fade * occ);
 }
 
 // Light under a wood comes through the leaves, and a leaf passes on the green it
