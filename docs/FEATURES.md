@@ -1329,9 +1329,15 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   never fall below 30%, so a room's corners are dim, not black. Open ground under
   open sky counts as seen (the sky's lower half already stands for it), so open fields look as they did. Only what
   changes is redone: a structure built, destroyed or burnt marks its tile, which is laid again on the CPU and its
-  probes traced again, two tiles a frame nearest the camera first; craters retrace the tiles round them, and trenches too (their mask cuts them into the ground the probes trace and
-  stand on, though 1.4 m trenches are narrower than the 2 m grid, so trench floors stay mostly SSAO's); a new time
-  of day or weather retraces it all (the bounce follows the sun); tiles with nothing in reach are written as open
+  probes traced again, two tiles a frame nearest the camera first; craters retrace the tiles round them (out in the open too: a crater's tile is traced from then on, and a pixel
+  whose column stands below the ground 3 m round it, a shell crater's bowl, loses up to a tenth of its sky), and trenches too (their mask cuts them into the ground the probes trace and
+  stand on, though 1.4 m trenches are narrower than the 2 m grid, so trench floors stay mostly SSAO's); the bounce is
+  kept relative to the light it was traced in (the sun at its height, never below a quarter, plus the sky), so as
+  Time passes dims and reddens the evening it follows every frame with nothing traced; once the sun has swung 2
+  degrees or its share of the light changed by 0.12, the bounce alone (not the cubes or the sky share) of every tile
+  with something in it is traced again, one a frame after anything the battle changed, so a tile's step is a degree
+  or two of sun; a doorway's leaf swung open, a tree burnt to a snag or a car thrown across the street lays its tile
+  again on host and client alike; tiles with nothing in reach are written as open
   sky without tracing. Map size comes from `MapDims` (2 m and 3 m cubes on the larger maps, the same grid). It's
   light only (no gameplay reads it, no RNG, never on the server) and a graphics setting: High (from the High preset),
   Low (sky shade only, two reads, no bounce: the Medium preset and the browser) or Off. Reflections are shut in with
@@ -1339,9 +1345,12 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   reflected direction, m0 + 3 m1.r for a glossy surface easing to the cosine's m0 + 2 m1.n for a rough one, and the
   rest of the reflection shows the room's own bounce instead (Godot's RADIANCE), so wet floors indoors, under eaves
   and in trenches stop mirroring the bright sky. Tree crowns are laid as leaves, sized to the tree the game grows (a
-  fir's cone in two tiers, a field tree's dome, an orchard tree's small one), two fifths of the light stopped a
+  fir's cone in two tiers, a field tree's dome, an orchard tree's small one), three fifths of the light stopped a
   cube; the trace tells them apart and what comes through or off them is green, so a wood's floor and the men in it
-  sit in a dimmer, greener shade. Grass, ferns and undergrowth (which cover most of a wood's floor) read the probes
+  sit in a dimmer, greener shade. The occlusion itself is one grey factor on the ambient, which would take away
+  more green than red (the sky's light is greener than the sun's left behind), so the bake also keeps how much of
+  what shuts a probe in is leaves, and the share of skylight the crowns took comes back tinted toward the light
+  through leaves, (0.35, 0.55, 0.2) at grey's brightness, about their albedo squared. Grass, ferns and undergrowth (which cover most of a wood's floor) read the probes
   too, once a vertex rather than a pixel (`CloudShadow.PROBES_VERTEX`), each blade as if it faced up. Light leaks: a pixel on a floor by a wall sits between a probe in the room and one outside,
   so on High it reads the cubes halfway to the probes on either side of it, each way (six reads), and leaves out any
   with a wall or roof between (a cheap stand-in for DDGI's per-probe depth). Fires and lamps (lights in the
@@ -1351,7 +1360,12 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   block beside the heights; a light that comes, goes, moves a metre or changes by a quarter retraces only its own
   tiles, four a frame. It reaches the browser too, which has no fire lights of its own. The skinned riflemen, whose
   imported material can't read the probes, get a small shader that does what it did plus the probes' terms, so a
-  man in a room or a wood takes its shade.
+  man in a room or a wood takes its shade. Vehicles and men shut out a little sky round their feet (after Unreal's
+  capsule and Frostbite's box occlusion): every frame their footprints, soft boxes for hulls with a pad of shade
+  growing with their height (to 1.8 m) and faint discs for men (fainter crouched, a longer patch lying down), are
+  drawn into a 256-texel map over 96 m round the camera that a pixel reads once and fades out over 1.8 m above the
+  ground, so a parked tank sits in a soft dark pool, a man in a faint one, and a hull's deck and a man's head still
+  see the sky; a helicopter in the air casts none.
 - **Bounce light** (`ssgi_fx.gd`; Settings > Graphics > Lighting: Off / Medium / High; Medium on High, High on Ultra and
   Cinematic): sunlight thrown back off walls, roofs and roads lights what faces them, in their colours, so a sunlit
   wall warms the pavement and the shaded wall across from it, a statue's plinth glows from the square round it and

@@ -3,45 +3,55 @@
   "title": "Rooms and narrow spaces take their skylight from the world round them",
   "version": "unreleased",
   "kind": "new",
-  "summary": "Rooms, wall feet, woods and gaps between houses lose skylight; reflections indoors lose the sky; fires glow on their surroundings; open ground is unchanged.",
+  "summary": "Rooms, wall feet, woods and gaps between houses lose skylight; reflections indoors lose the sky; fires glow on their surroundings; vehicles and men shade the ground round them; the bounce follows the time of day; open ground is unchanged.",
   "medium": "motion",
-  "stage": "--scenario=breach --seed=3 --fixed-fps 30. Midday room: --mood=day --focus=0,-30 --zoom=8 --pitch=-62 at 5 s; the same in the rain: --mood=rain. Golden-hour room: --mood=golden --focus=0,-30 --zoom=12 --pitch=-40 --cam-yaw=0.5 at 5 s. Leaks (review): FL_DEBUG_PROBES_AB=leak FL_DEBUG_PROBES_VIEW=4, midday room. --scenario=fire --seed=3: wood edge --mood=day --focus=-16,-27 --zoom=20 --pitch=-55, time frozen at 5 s (FL_DEBUG_PROBES_AB=cycle FL_DEBUG_PROBES_FREEZE=<dir> FL_DEBUG_PROBES_FREEZE_AT=5); night fires --mood=night --focus=-6,-22 --zoom=14 --pitch=-50 at 8 s. Between houses (review): --mood=golden --focus=7,-31 --zoom=12 --pitch=-10 at 12 s. Destruction: --mood=day --focus=12,-31 --zoom=14 --pitch=-50 --blast-at=14,-29,3,6, 60 frames every 0.1 s.",
+  "stage": "Frozen A/B captures (FL_DEBUG_PROBES_AB=cycle FL_DEBUG_PROBES_FREEZE=<dir> FL_DEBUG_PROBES_FREEZE_AT=<s>, --fixed-fps 30, --set=light_probes:2). --scenario=breach --seed=3: midday room --mood=day --focus=0,-30 --zoom=8 --pitch=-62 at 5 s; rain the same with --mood=rain; golden --mood=golden --focus=0,-30 --zoom=12 --pitch=-40 --cam-yaw=0.5 at 5 s. --scenario=fire --seed=3: wood edge --mood=day --focus=-16,-27 --zoom=20 --pitch=-55 at 5 s; night fires --mood=night --focus=-6,-22 --zoom=14 --pitch=-50 at 8 s. --scenario=showroom --static --seed=3: vehicles --mood=overcast (and day) --focus=-1,0 --zoom=13 --pitch=-50 at 8 s; crater --mood=overcast --focus=0,7 --zoom=9 --pitch=-45 --blast-at=0,7,3,3 at 10 s. --scenario=lean --static: men --mood=overcast --focus=0,-6 --zoom=9 --pitch=-55 at 8 s. Timelapse: --scenario=breach --static --seed=3 --mood=golden --set=light_probes:2,time_passes:true,eye_adapt:false FL_DEBUG_TOD_PACE=60 FL_DEBUG_TOD_AT=0, 96 shots every 0.25 s from 5 s; room --focus=0,-30 --zoom=8 --pitch=-62, street --focus=7,-31 --zoom=12 --pitch=-10. Destruction: --mood=day --focus=12,-31 --zoom=14 --pitch=-50 --blast-at=14,-29,3,6, 60 frames every 0.1 s from 5.5 s.",
   "rationale": "Each sheet is cropped tight on where probes matter. OFF and ON are adjacent frames (1/30 s apart) of one probes-on run that cycles the probes off, on, their term and the bent normal three frames each (FL_DEBUG_PROBES_AB=cycle), so smoke and men barely move between them; the probe term comes from the same run. The difference panel is ON minus OFF x4 around mid grey. The flicker clip alternates OFF and ON; the destruction clip pairs the game with the probe term from a second identical fixed-fps run (FL_DEBUG_PROBES_VIEW=1).",
   "capture": {
     "provenance": "Recaptured off-screen from this branch (Forward+, RTX 3090, High preset) with the commands in stage; panels are consecutive frames of one fixed-fps run, so they share camera, units and smoke.",
     "comparison": "Player sheets: top left probes off, bottom left on, top right the probe term (sky share on grey, bounce amplified), bottom right ON minus OFF x4 on mid grey. Review sheets (PR only) show the bent normal instead of the difference. Flicker: off and on alternate each second on one frame. Destruction: the game and the probe term from two identical fixed-fps runs.",
-    "limits": "Measured (linear light): the midday room falls to 0.75 of its brightness; its shade is 0.22 of the sunlit floor. In the rain the wet floor indoors falls to 0.29 as the sky leaves its reflection. Under the crowns the probes' sky term is 0.5-0.75 of open ground; in final pixels the ground under and round the crowns is about 19% darker, and greener (green to red 0.95 to 1.10, as the crowns' share of the lost skylight comes back through the leaves), the men under them 20% dimmer; open ground changes under 5%. Round the night fires the ground is up to half as bright again. Light-leak fix: visible on wall tops, sills and door leaves; room floors were already held at the 30% skylight floor. Fast debris and flames move between the two frames and speckle the difference. Trenches are narrower than the 2 m grid and are not shown. The destruction clip predates this pass. The Compatibility renderer (browser) gets the skylight shading, reflections and fire glow but not the indoor sun cut."
+    "limits": "Measured (linear light): the midday room falls to 0.75 of its brightness; its shade is 0.22 of the sunlit floor. In the rain the wet floor indoors falls to 0.29 as the sky leaves its reflection. Under the crowns the ground is about 19% darker and greener (green to red 0.95 to 1.10). Round the night fires the ground is up to half as bright again. Beside parked hulls the ground is 15-45% darker overcast, 8-40% in sun; a crater bowl about 4% darker than the field round it. Timelapse at 60x: from one frame to the next half the probe term changes under 0.3%, nine tenths under 1%, the worst frame 4% (at sunset); in play the clock runs 60 times slower. The flares the AI fires after dark (from about 19:30) light the room in the timelapse runs at different moments; the clip stops before them. The room-flicker clip is from an earlier pass. The Compatibility renderer (browser) gets the skylight shading, reflections, fire glow and footprints but not the indoor sun cut."
   },
-  "source_ref": "dines/probe-grid-gi-0571ca: the specular-occlusion, canopy, leak and fire-glow pass after 0b2ac192.",
+  "source_ref": "dines/probe-grid-gi-0571ca: the time-of-day, vehicle and man occlusion and battle-damage pass after 94966ca2.",
   "sources": [
     {
       "file": "changelog/unreleased/light-probes/room-under-roof.jpg",
-      "caption": "Midday room: OFF/ON, probe term and the difference x4.",
-      "sha256": "768b19afc1c9c7feccfd2b0f33a539ec330504d0c179c6b020058ff22ce3cc8c"
+      "caption": "Midday room, time frozen: OFF/ON, probe term and the difference x4.",
+      "sha256": "cf9a0a3c315a9f4211fe29a4d680a039798d79c06d760abb1524280b894bcfde"
     },
     {
       "file": "changelog/unreleased/light-probes/wet-room-rain.jpg",
-      "caption": "The same room in the rain: OFF/ON (specular occlusion), probe term and the difference x4.",
-      "sha256": "336b80c70aa47a9b981bab9733e82ac65f6da25b786003ffe0786c01260a1e16"
+      "caption": "The same room in the rain, time frozen: OFF/ON (specular occlusion), probe term and the difference x4.",
+      "sha256": "7935d30d73dea755fa7e9952c23aabb149e9c608908122b6150ca2a9a3fd0ca0"
     },
     {
       "file": "changelog/unreleased/light-probes/wood-edge.jpg",
       "caption": "Wood edge at midday, time frozen (FL_DEBUG_PROBES_FREEZE): OFF/ON of one instant, probe term and the difference x4.",
-      "sha256": "fd5c6995b5fc1f19235e6baec41380c86b8634e755d5671fcec14163daf3f8e4"
+      "sha256": "56c9c97898205bf8df25291d03f546da60e81ff5a498f15f098b75be5cb65092"
     },
     {
       "file": "changelog/unreleased/light-probes/fire-glow-night.jpg",
-      "caption": "Night fires (a hedge and a grass patch): OFF/ON, probe term (the fire's injected glow) and the difference x4.",
-      "sha256": "9b3df47de8dcf82633e1083d3e8252c706c85fcd2e3b292edeb6ce8f1202402d"
+      "caption": "Night fires (a hedge and a grass patch), time frozen: OFF/ON, probe term (the fire's injected glow) and the difference x4.",
+      "sha256": "ab487c15ddcfc3e5c9cd92be58d0b91af06bf54714db204520d30b9805c6c6e6"
+    },
+    {
+      "file": "changelog/unreleased/light-probes/tank-shade.jpg",
+      "caption": "Parked vehicles on an overcast day, time frozen: OFF/ON, probe term (their footprints) and the difference x4.",
+      "sha256": "3efbf390be0027b2d6650f3820e0575b5a6d7c6d8c9365d12bf499b21c89d17a"
+    },
+    {
+      "file": "changelog/unreleased/light-probes/crater.jpg",
+      "caption": "A fresh shell crater, overcast, time frozen: OFF/ON, probe term and the difference x4.",
+      "sha256": "1ef120c91711252250e67470c71280475d35c7fd3f5af37a7459c6e99eeafbd4"
     },
     {
       "file": "changelog/unreleased/light-probes/room-golden-hour.jpg",
-      "caption": "Golden-hour room: OFF/ON, probe term and the difference x4.",
-      "sha256": "198efc0b9fcf021f296ddd1feff3eebe1abf01f9f919b64d361e5a0a548930e4"
+      "caption": "Golden-hour room, time frozen: OFF/ON, probe term and the difference x4.",
+      "sha256": "d9ab9bddde4b2b57db7b848635b90f9f5a547e024001a30fb64098e9b8275a90"
     },
     {
       "file": "changelog/unreleased/light-probes/room-flicker.webm",
-      "caption": "Probes off/on every second on one frame of the midday room, 8 s, VP9.",
+      "caption": "Probes off/on every second on one frame of the midday room, 8 s, VP9 (from an earlier pass).",
       "sha256": "47292d3635f66d2875b6bf362a2f64c21c667b7126f22220d57c9e228a25499a"
     },
     {
@@ -50,24 +60,34 @@
       "sha256": "2475afa3da93061c352a6176b77099e4a381252ee27e7d54f02320ca5087c06e"
     },
     {
+      "file": "changelog/unreleased/light-probes/dusk-timelapse.webm",
+      "caption": "Time passes at 60x, 16:30 to 19:25: the breach room (roof lifted) beside the street, probes on, 96 frames at 24 fps, VP9.",
+      "sha256": "7534f41614ea8369cb856c11dbf64232769088f5cf96c942eacbbec7902fe115"
+    },
+    {
+      "file": "changelog/unreleased/light-probes/dusk-timelapse.jpg",
+      "caption": "Poster: about 18:00.",
+      "sha256": "dc14b6360ed0dc9f8fa18d1a1df827f8e80f45c84b6b511f86c4c23c72ed3df8"
+    },
+    {
       "file": "changelog/unreleased/light-probes/destroyed-house.webm",
       "caption": "Game and probe term as a house is blown down, 7 s, VP9.",
-      "sha256": "1fef65d5f9f2c146b04467903b527cada491d76bb32374135d14bff1e4764287"
+      "sha256": "156e5bd00b18a707bfc68e50f302d2e51e34cac1223bff3fa740968a51c0a26b"
     },
     {
       "file": "changelog/unreleased/light-probes/destroyed-house.jpg",
       "caption": "Poster: after the blast.",
-      "sha256": "d228178ff2ce393acad2d144465b8b5150b179a2c6c2d4c83daee412ba5b3c46"
+      "sha256": "b5129e73d9498fbfefda68072c5761dcc7323a55ee130f86f7523d665a841f71"
     },
     {
       "file": "changelog/unreleased/light-probes/review/pr-room-bent.jpg",
       "caption": "Review only (PR): midday room with the bent-normal panel.",
-      "sha256": "ce8e7d4b8466de67cc070d6f87a2fae7211db9a668ee83bb20977ad8898c368d"
+      "sha256": "b9a47862c364eab14f3f6ffc885fdcc34d4446498e5185589bad2b9ae0ce0032"
     },
     {
       "file": "changelog/unreleased/light-probes/review/pr-golden-bent.jpg",
       "caption": "Review only (PR): golden-hour room with the bent-normal panel.",
-      "sha256": "5182026294a9606c95e4512f4cf1ad0b0b4d1817a7e906959896677262ea230d"
+      "sha256": "349bf7c44ec325122ef07b3978bef9084ca25a9433e3a6381eea70765c557507"
     },
     {
       "file": "changelog/unreleased/light-probes/review/pr-between-houses.jpg",
@@ -78,6 +98,16 @@
       "file": "changelog/unreleased/light-probes/review/pr-leak.jpg",
       "caption": "Review only (PR): the light-leak wall test off and on, sky-share view, adjacent frames, and the difference x4.",
       "sha256": "63b1dc111abeb49923c00552c09941a9dd451ad8f735fb494b8e9fa77a90473e"
+    },
+    {
+      "file": "changelog/unreleased/light-probes/review/pr-tank-sun.jpg",
+      "caption": "Review only (PR): the parked vehicles in sun, time frozen: the pools are fainter where the sun dominates.",
+      "sha256": "7119489aba13566a869b29e10412105d294cd73b2b2a3fa72d94a3ee0bf75fde"
+    },
+    {
+      "file": "changelog/unreleased/light-probes/review/pr-men.jpg",
+      "caption": "Review only (PR): a rifle squad standing by a wall, overcast, time frozen: a faint pool round each man.",
+      "sha256": "328f51cc94186327c7ad4f2f17819efaa51a57a28217f9aa7217e7c1f32becf2"
     }
   ],
   "output": null

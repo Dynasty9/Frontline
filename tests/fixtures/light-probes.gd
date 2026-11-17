@@ -19,6 +19,9 @@ func check() -> void:
 	_check_cubes()
 	_check_changes()
 	_check_local_lights()
+	_check_relight()
+	_check_damage()
+	_check_occluders()
 	print("LIGHT PROBES passed: presets, saved settings, shaders, cubes, changes, local lights")
 	get_tree().quit()
 
@@ -243,3 +246,94 @@ func _check_local_lights() -> void:
 		l.free()
 	fire.free()
 	lp.free()
+
+
+class _Atmo extends Node:
+	var sun := DirectionalLight3D.new()
+	var _d := {"sun": Color(1.0, 0.9, 0.8), "energy": 1.0, "zenith": Color(0.3, 0.5, 0.9), "horizon": Color(0.7, 0.8, 0.9), "ambient": 0.6}
+
+
+## The light moving on: a new mood queues the bounce alone of the bricks with
+## something in reach (not their cubes or sky share); the sun swinging a degree
+## queues nothing, two and a half queue them again; the light dimming as a whole
+## only changes the reference the bounce is read against.
+func _check_relight() -> void:
+	LightProbes._ensure_globals()
+	var lp := LightProbes.new()
+	var atmo := _Atmo.new()
+	lp.atmo = atmo
+	lp._vsz = MapDims.SIZE / LightProbes.NV
+	lp._ready_size = 0
+	lp._bake_mat = ShaderMaterial.new()
+	for a: PackedByteArray in [lp._tile_full, lp._tile_dug, lp._light_dirty, lp._brick_dirty]:
+		a.resize(LightProbes.TILES * LightProbes.TILES)
+	atmo.sun.rotation_degrees = Vector3(-30.0, 40.0, 0.0)
+	var t := 5 * LightProbes.TILES + 5
+	lp._tile_full[t] = 1  # a house in tile (5, 5): the 3 x 3 bricks round it are in reach
+	lp.relight()
+	assert(lp._light_queue.size() == 9 and lp._light_queue.has(t) and lp._brick_queue.is_empty(), "relight queues bounce only: %s" % [lp._light_queue])
+	assert(is_equal_approx(lp._baked_share, float(lp._light_now()[4])))
+	lp._light_queue.clear()
+	lp._light_dirty.fill(0)
+	atmo.sun.rotation_degrees = Vector3(-31.0, 40.0, 0.0)
+	lp._follow_light()
+	assert(lp._light_queue.is_empty(), "a degree of sun traces nothing again")
+	atmo.sun.rotation_degrees = Vector3(-32.5, 40.0, 0.0)
+	lp._follow_light()
+	assert(lp._light_queue.size() == 9, "two and a half degrees trace the bounce again")
+	lp._light_queue.clear()
+	lp._light_dirty.fill(0)
+	var was: Vector3 = lp._ref
+	atmo._d.energy = 0.5
+	atmo._d.ambient = 0.3
+	lp._follow_light()
+	assert(lp._light_queue.is_empty(), "the light dimming as a whole traces nothing again")
+	assert(lp._ref.is_equal_approx(was * 0.5), "the bounce dims with it: %s -> %s" % [was, lp._ref])
+	assert(LightProbes.BAKE_SHADER.contains("lb / light_ref") and LightProbes.PIXEL.contains("probe_ref.rgb"))
+	atmo.sun.free()
+	atmo.free()
+	lp.free()
+
+
+## Battle damage: a crater out in the open makes its tile one the tracer traces
+## (its bowl shuts out some sky) and queues it once its heights are in; an open
+## door's leaf stops being a wall.
+func _check_damage() -> void:
+	var lp := LightProbes.new()
+	lp._vsz = MapDims.SIZE / LightProbes.NV
+	lp._ready_size = 0
+	for a: PackedByteArray in [lp._tile_full, lp._tile_dug, lp._brick_dirty]:
+		a.resize(LightProbes.TILES * LightProbes.TILES)
+	var t := 7 * LightProbes.TILES + 3
+	assert(not lp._in_reach(t), "open ground: nothing to trace")
+	var m := TerrainMap.DN / float(LightProbes.NV)
+	var cell := Vector2i(roundi((3.5 * LightProbes.TILE) * m), roundi((7.5 * LightProbes.TILE) * m))
+	lp.terrain_changed(Rect2i(cell, Vector2i(4, 4)))
+	assert(lp._tile_dug[t] == 1 and lp._in_reach(t) and lp._in_reach(t + 1), "a crater's tile and its neighbours are traced")
+	assert(lp._late.size() == 1 and int(lp._late[0][1]) == t, "queued once its heights are in")
+	var st := Structure.new()
+	st.skind = "house_wall"
+	st.parts = [{"p": Vector3(0, 1.5, 0), "s": Vector3(4.0, 3.0, 0.3)}, {"p": Vector3(0, 1.0, 0.1), "s": Vector3(0.9, 2.0, 0.05), "door": true}]
+	st.door_shut = true
+	assert(lp._boxes(st).size() == 2)
+	st.door_shut = false
+	assert(lp._boxes(st).size() == 1, "an open door's leaf lets the light through")
+	st.free()
+	lp.free()
+
+
+## Vehicles and men: a tank's footprint reaches past its hull, a helicopter in
+## the air casts none, a man standing shades more than one lying, and the
+## pixels read the map.
+func _check_occluders() -> void:
+	var tank := LightProbes.vehicle_print(Vector3(3.6, 2.4, 7.5), 0.0)
+	assert(not tank.is_empty() and (tank[0] as Vector2).x > 1.8 + 0.6 and (tank[0] as Vector2).y > 3.75 + 0.6)
+	assert(is_equal_approx(float(tank[1]), LightProbes.OCC_VEHICLE))
+	assert((tank[2] as Vector2).x < 1.0 and (tank[2] as Vector2).y < 1.0, "a soft edge round the hull")
+	assert(LightProbes.vehicle_print(Vector3(3, 3, 12), 20.0).is_empty(), "a helicopter in the air shades nothing")
+	assert(float(LightProbes.vehicle_print(Vector3(3, 3, 12), 2.0)[1]) < float(tank[1]), "less off the ground")
+	assert(float(LightProbes.man_print(false, false)[1]) > float(LightProbes.man_print(true, false)[1]))
+	assert(float(LightProbes.man_print(false, false)[1]) < float(tank[1]), "a man's pool is fainter than a tank's")
+	assert(LightProbes.OCC_SHADER.contains("blend_mul"))
+	var px := LightProbes._pixel()
+	assert(px.contains("probe_occ_rect") and px.contains("#define PROBE_OCC_HEIGHT %.2f" % LightProbes.OCC_HEIGHT) and not px.contains("__OCC_HEIGHT__"))

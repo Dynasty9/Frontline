@@ -20,6 +20,14 @@ file = "fire-glow-night.jpg"
 caption = "Fires at night: a burning hedge and a grass fire. With the probes their light reaches past their own glow, warming the ground several metres round them (about half as bright again round the grass fire); walls keep it in."
 
 [[screenshots]]
+file = "tank-shade.jpg"
+caption = "Parked vehicles on an overcast day. With the probes each sits in a soft dark pool where its hull shuts out the sky round its tracks and wheels; the deck and roof still see it."
+
+[[screenshots]]
+file = "crater.jpg"
+caption = "A fresh shell crater: its bowl sees a little less of the sky than the field round it, so it reads as a hollow."
+
+[[screenshots]]
 file = "room-golden-hour.jpg"
 caption = "The same room at golden hour: the low sun across the far wall is cut back, the shaded walls and floor warm with its bounce, and the grass in the house's shade by its walls darkens a little. The difference panel, four times over around mid grey (grey is no change), shows all three."
 
@@ -27,6 +35,11 @@ caption = "The same room at golden hour: the low sun across the far wall is cut 
 file = "room-flicker.webm"
 poster = "room-flicker.jpg"
 caption = "The same frame with the probes switched off and on every second: the room goes indoors, its shade lifted by warm bounce."
+
+[[videos]]
+file = "dusk-timelapse.webm"
+poster = "dusk-timelapse.jpg"
+caption = "With Time passes on, a room and a street from late afternoon into dusk, the clock run sixty times over: the light bounced into the room dims and reddens with the evening, smoothly, with no steps as the probes follow the sun."
 
 [[videos]]
 file = "destroyed-house.webm"
@@ -45,8 +58,12 @@ caption = "A house blown down, the game beside the probe term: within a second t
   light reaches, but not through walls. In the browser, which has no fire lights, this is the glow fires give.
 - **No light through walls:** the floor along a wall indoors and the top of a wall no longer pick up light from
   the other side.
-- **It keeps up with the battle:** houses blown down, trees felled, trenches dug and new craters change the
-  probes round them within a moment, and a new time of day or weather relights everything.
+- **It keeps up with the battle:** houses blown down, trees felled or burnt, doors flung open, trenches dug and
+  new craters change the probes round them within a moment. A fresh crater's bowl sits in a little shade of its own.
+- **Follows the time of day:** with Time passes on, the light bounced round rooms and streets dims and reddens with
+  the evening and follows the sun across the sky, smoothly, with no visible steps.
+- **Vehicles and soldiers shade the ground:** a parked tank or truck sits in a soft dark pool of its own, and a
+  standing soldier in a faint one.
 - **Rooms read as indoors:** when soldiers go in and the roof lifts away, the room no longer stands in full
   sunlight. The probes know it's a room and keep it dim, lit by its windows, door and the light bouncing in.
 - **Light probes** in Settings › Graphics: **High** (from the High preset up), **Low** (only the shade from the
