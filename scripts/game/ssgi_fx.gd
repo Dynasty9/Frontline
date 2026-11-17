@@ -41,7 +41,8 @@ extends CompositorEffect
 ##   and the sun together where the sky alone couldn't make it that bright.
 ##   Further off, where a wall is a few pixels tall, the rays reach further
 ##   and the light is laid on stronger, so it still shows from the command
-##   height.
+##   height. Smoke and dust drawn in front of a hull or a wall hide its
+##   bounce light as they hide it (see Snap).
 ##
 ## Only Forward+ can run it: the browser build's OpenGL renderer has no
 ## compositor, so there the setting does nothing. Atmosphere fills `params`
@@ -49,7 +50,7 @@ extends CompositorEffect
 ## looks only: nothing here reaches the simulation.
 
 const CTX := &"frontline_ssgi"
-const PARAMS := 28  # floats in the parameter block (seven vec4s, std140)
+const PARAMS := 32  # floats in the parameter block (eight vec4s, std140)
 const CAM_FLOATS := 84  # five matrices and a vec4 (CAM_DECL)
 const USAGE := RenderingDevice.TEXTURE_USAGE_SAMPLING_BIT | RenderingDevice.TEXTURE_USAGE_STORAGE_BIT
 const RGBA16F := RenderingDevice.DATA_FORMAT_R16G16B16A16_SFLOAT
@@ -63,6 +64,8 @@ const HISTORY := 16.0
 # --- set by Atmosphere on the main thread ------------------------------------
 var params := PackedFloat32Array()  # ambient (rgb, albedo cap), radius, strength, debug view
 var quality := 1  # 1 Medium, 2 High
+var reset := false  # forget every view's history (to watch it build up again)
+var snap: Snap  # goes into the compositor beside this, and on and off with it
 
 # --- render thread only ---------------------------------------------------------
 var rd: RenderingDevice
@@ -77,6 +80,7 @@ var _views := {}  # render buffers' instance id -> [last frame's view-projection
 var _sets := {}
 var _set_key := []
 var _said := false
+var _snapped := false  # whether this frame's opaque picture was taken
 
 
 func _init() -> void:
@@ -87,7 +91,28 @@ func _init() -> void:
 	access_resolved_depth = true
 	needs_normal_roughness = true
 	params.resize(PARAMS)
+	snap = Snap.new()
+	snap.of = weakref(self)
 	RenderingServer.call_on_render_thread(_setup)
+
+
+## The world as drawn just before smoke, dust, flames and water are laid over
+## it. The bounce light belongs under them: laid on after them (the pass needs
+## them drawn, a flame being a light it throws), it showed through a dust
+## cloud in front of a sunlit tank. With MSAA, nothing written before they
+## are drawn survives (the image is resolved again after them), so the pass
+## runs after them, and this picture tells it where they are.
+class Snap extends CompositorEffect:
+	var of: WeakRef
+
+	func _init() -> void:
+		effect_callback_type = EFFECT_CALLBACK_TYPE_PRE_TRANSPARENT
+		access_resolved_color = true
+
+	func _render_callback(callback_type: int, render_data: RenderData) -> void:
+		var fx: SsgiFx = of.get_ref() if of != null else null
+		if fx != null and callback_type == EFFECT_CALLBACK_TYPE_PRE_TRANSPARENT:
+			fx._snap(render_data)
 
 
 ## Whether this renderer can run the passes at all (Forward+ with a device).
@@ -166,9 +191,12 @@ func _render_callback(callback_type: int, render_data: RenderData) -> void:
 	var hs := Vector2i((size.x + 1) >> 1, (size.y + 1) >> 1)
 	var color: RID = buffers.get_color_layer(0)
 	var depth: RID = buffers.get_depth_layer(0)
-	var tex := _textures(buffers, hs)
+	var tex := _textures(buffers, hs, size)
 	# this view's history: which of the two buffers holds last frame's
 	var id := buffers.get_instance_id()
+	if reset:
+		reset = false
+		_views.clear()
 	if not _views.has(id) and _views.size() >= 8:
 		_views.clear()  # (views come and go with resizes: forget the old ones)
 	var view: Array = _views.get(id, [])
@@ -191,6 +219,8 @@ func _render_callback(callback_type: int, render_data: RenderData) -> void:
 	p[11] = float(STEPS[q])
 	p[12] = float(frame & 1023)
 	p[13] = HISTORY
+	p[31] = 1.0 if _snapped else 0.0
+	_snapped = false
 	rd.buffer_update(_ubo, 0, PARAMS * 4, p.to_byte_array())
 	var hg := Vector2i((hs.x + 7) >> 3, (hs.y + 7) >> 3)
 	var fg := Vector2i((size.x + 7) >> 3, (size.y + 7) >> 3)
@@ -255,17 +285,40 @@ func _run(pass_name: String, groups: Vector2i) -> void:
 const IMAGES := ["gbuf_0", "gbuf_1", "rad", "raw", "hist_0", "hist_1", "filt"]
 
 
-func _textures(buffers: RenderSceneBuffersRD, hs: Vector2i) -> Dictionary:
-	if buffers.has_texture(CTX, "rad"):
-		var f: RDTextureFormat = buffers.get_texture_format(CTX, "rad")
-		if int(f.width) != hs.x or int(f.height) != hs.y:
+func _textures(buffers: RenderSceneBuffersRD, hs: Vector2i, size: Vector2i) -> Dictionary:
+	if buffers.has_texture(CTX, "opaque"):
+		var f: RDTextureFormat = buffers.get_texture_format(CTX, "opaque")
+		if int(f.width) != size.x or int(f.height) != size.y:
 			buffers.clear_context(CTX)
 	var out := {}
 	for n: String in IMAGES:
 		if not buffers.has_texture(CTX, n):
 			buffers.create_texture(CTX, n, RGBA16F, USAGE, RenderingDevice.TEXTURE_SAMPLES_1, hs, 1, 1, true, false)
 		out[n] = buffers.get_texture(CTX, n)
+	if not buffers.has_texture(CTX, "opaque"):
+		buffers.create_texture(CTX, "opaque", RGBA16F, USAGE, RenderingDevice.TEXTURE_SAMPLES_1, size, 1, 1, true, false)
+	out["opaque"] = buffers.get_texture(CTX, "opaque")
 	return out
+
+
+## (render thread, before the transparent things are drawn: see Snap)
+func _snap(render_data: RenderData) -> void:
+	if not _ready_rd or not enabled:
+		return
+	var buffers := render_data.get_render_scene_buffers() as RenderSceneBuffersRD
+	if buffers == null:
+		return
+	var size: Vector2i = buffers.get_internal_size()
+	if size.x < 16 or size.y < 16:
+		return
+	var tex := _textures(buffers, Vector2i((size.x + 1) >> 1, (size.y + 1) >> 1), size)
+	var us := _uniforms("snap", [_smp(1, buffers.get_color_layer(0), true), _img(2, tex["opaque"])])
+	var cl := rd.compute_list_begin()
+	rd.compute_list_bind_compute_pipeline(cl, _pipes["snap"])
+	rd.compute_list_bind_uniform_set(cl, us, 0)
+	rd.compute_list_dispatch(cl, (size.x + 7) >> 3, (size.y + 7) >> 3, 1)
+	rd.compute_list_end()
+	_snapped = true
 
 
 func _build_sets(color: RID, depth: RID, normal: RID, t: Dictionary) -> void:
@@ -284,7 +337,8 @@ func _build_sets(color: RID, depth: RID, normal: RID, t: Dictionary) -> void:
 			_smp(4, hist_prev, false), _img(5, hist)])
 		_sets["denoise_" + cur] = _uniforms("denoise", [_smp(1, gb, true), _smp(2, hist, true), _img(3, t["filt"])])
 		_sets["composite_" + cur] = _uniforms("composite", [_img(1, color), _smp(2, depth, true), _smp(3, normal, true),
-			_smp(4, gb, true), _smp(5, t["filt"], true), _smp(6, t["rad"], true), _smp(7, t["raw"], true), _smp(8, hist, true)])
+			_smp(4, gb, true), _smp(5, t["filt"], true), _smp(6, t["rad"], true), _smp(7, t["raw"], true), _smp(8, hist, true),
+			_smp(9, t["opaque"], true)])
 
 
 func _uniforms(shader: String, uniforms: Array[RDUniform]) -> RID:
@@ -329,6 +383,7 @@ layout(set = 0, binding = 0, std140) uniform Params {
 	vec4 far;   // distance (m) the far view starts and is full at; reach and strength there (multipliers)
 	vec4 sun;   // towards the sun (world); how much more saturated the gathered light is laid on
 	vec4 sun_col;  // the sun's light on a surface square to it (rgb, scene units)
+	vec4 opt;   // share of last frame's bounce fed back; upsample search (0/1); -; opaque picture taken (0/1)
 } P;
 layout(set = 0, binding = 10, std430) restrict readonly buffer Cam {
 	mat4 inv_proj;   // this frame's projection as drawn, inverted
@@ -396,6 +451,19 @@ float ign(vec2 p, float frame) {
 """
 
 const PASSES := {
+	# the world before the transparent things are drawn over it
+	"snap": """
+layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
+layout(set = 0, binding = 1) uniform sampler2D color_tex;
+layout(rgba16f, set = 0, binding = 2) uniform restrict writeonly image2D opaque_img;
+
+void main() {
+	ivec2 p = ivec2(gl_GlobalInvocationID.xy);
+	if (p.x < int(P.size.x) && p.y < int(P.size.y)) {
+		imageStore(opaque_img, p, vec4(clean(texelFetch(color_tex, p, 0).rgb), 1.0));
+	}
+}
+""",
 	# each half-resolution pixel's surface (world facing, distance) and the
 	# light it sends out
 	"prep": """
@@ -451,11 +519,12 @@ void main() {
 		vec2 puv = was.xy / max(was.w, 1e-6) * 0.5 + 0.5;
 		if (was.w > 0.0 && puv.x >= 0.0 && puv.y >= 0.0 && puv.x <= 1.0 && puv.y <= 1.0) {
 			vec3 again = clean(textureLod(prev_filt_tex, puv, 0.0).rgb);
-			// (at most physical strength, and a little under: a closed room
-			// would otherwise feed its own light back without end)
-			// (it was laid on stronger than physical, see gather: taken back out)
-			float gain = P.gi.y * mix(1.0, P.far.w, smoothstep(P.far.x, P.far.y, -v.z));
-			c += receiver_albedo(c, wn) * again * 0.8 / max(gain, 1.0);
+			// (as bright as it is laid on, so a surface throws on the light it
+			// shows, and a little under that: each round is weaker by the
+			// surface's colour and this share, and gather holds what comes back
+			// to the light of what the rays hit, so a closed room settles
+			// instead of feeding its own light back without end)
+			c += receiver_albedo(c, wn) * again * P.opt.x;
 		}
 	}
 	// (fires and muzzle flashes are far brighter than any wall: kept in
@@ -699,6 +768,7 @@ layout(set = 0, binding = 5) uniform sampler2D filt_tex;
 layout(set = 0, binding = 6) uniform sampler2D rad_tex;
 layout(set = 0, binding = 7) uniform sampler2D raw_tex;
 layout(set = 0, binding = 8) uniform sampler2D hist_tex;
+layout(set = 0, binding = 9) uniform sampler2D opaque_tex;
 
 void main() {
 	ivec2 p = ivec2(gl_GlobalInvocationID.xy);
@@ -731,6 +801,7 @@ void main() {
 	ivec2 hm = ivec2(P.size.zw) - 1;
 	vec3 sum = vec3(0.0);
 	float wsum = 0.0;
+	float best = 0.0;  // how alike the likest of them is
 	for (int i = 0; i < 4; i++) {
 		ivec2 o = ivec2(i & 1, i >> 1);
 		ivec2 q = clamp(base + o, ivec2(0), hm);
@@ -739,11 +810,39 @@ void main() {
 			continue;
 		}
 		vec2 bw = mix(1.0 - fr, fr, vec2(o));
-		float w = bw.x * bw.y + 1e-3;
-		w *= exp(-abs(g.w - z) / (z * 0.02 + 0.02));
-		w *= pow(clamp(dot(g.xyz, wn), 0.0, 1.0), 8.0) + 1e-4;
+		float like = exp(-abs(g.w - z) / (z * 0.02 + 0.02)) * (pow(clamp(dot(g.xyz, wn), 0.0, 1.0), 8.0) + 1e-4);
+		float w = (bw.x * bw.y + 1e-3) * like;
+		best = max(best, like);
 		sum += texelFetch(filt_tex, q, 0).rgb * w;
 		wsum += w;
+	}
+	// none of the four is this surface: a pixel at the edge of something thin
+	// (a man, a post, a barrel's rim) whose half-resolution pixels all went to
+	// whatever stands in front. Weighed as they are, it would take that
+	// thing's light, a halo round it; it takes its own surface's from a pixel
+	// further out instead
+	if (best < 0.2 && P.opt.y > 0.5) {
+		vec3 s2 = vec3(0.0);
+		float w2 = 0.0;
+		float b2 = 0.0;
+		for (int y = -1; y <= 2; y++) {
+			for (int x = -1; x <= 2; x++) {
+				ivec2 q = clamp(base + ivec2(x, y), ivec2(0), hm);
+				vec4 g = texelFetch(gbuf_tex, q, 0);
+				if (g.w <= 0.0) {
+					continue;
+				}
+				float like = exp(-abs(g.w - z) / (z * 0.02 + 0.02)) * pow(clamp(dot(g.xyz, wn), 0.0, 1.0), 8.0);
+				float w = like * like;
+				b2 = max(b2, like);
+				s2 += texelFetch(filt_tex, q, 0).rgb * w;
+				w2 += w;
+			}
+		}
+		if (b2 > best && w2 > 1e-5) {
+			sum = s2;
+			wsum = w2;
+		}
 	}
 	vec3 e = wsum > 1e-5 ? sum / wsum : vec3(0.0);
 	// what a wall throws carries its own colour, but mixed over many rays and
@@ -755,9 +854,26 @@ void main() {
 	float el = dot(e, vec3(0.2126, 0.7152, 0.0722));
 	e = max(vec3(el) + (e - vec3(el)) * mix(P.sun.w, 0.75, far_k), vec3(0.0));
 	vec3 c = clean(col.rgb);
+	// smoke, dust or a flame drawn over this pixel: the bounce light lands on
+	// the world behind them, and shows only as much as they let through. How
+	// much that is isn't kept, but how far they moved the pixel from the
+	// world behind says it near enough: a thin haze leaves most, a thick
+	// cloud over a dark hull next to none, and the fog of war's shade (a
+	// multiply) exactly its own share. Level ground is left alone: roads,
+	// paving and floors are drawn among the see-through things too (their
+	// edges fade into the verges), so a road over grass would read as a
+	// cloud, and a lift laid flat on the ground doesn't give away what is
+	// behind the smoke the way a hull's or a wall's outline does
+	float through = 1.0;
+	if (P.opt.w > 0.5) {
+		vec3 o = clean(texelFetch(opaque_tex, p, 0).rgb);
+		float lc = dot(c, vec3(0.2126, 0.7152, 0.0722));
+		float lo = dot(o, vec3(0.2126, 0.7152, 0.0722));
+		through = mix(min(lc, lo) / max(max(lc, lo), 1e-5), 1.0, smoothstep(0.6, 0.85, wn.y));
+	}
 	vec3 alb = receiver_albedo(c, wn);
 	// (the gathered light already carries its strength: see gather)
-	vec3 outc = c + alb * e;
+	vec3 outc = c + alb * e * through;
 	// and a surface gives some back as a sheen, more at a glancing look: a
 	// wet road or a polished hull in shade picks up the colour of the walls
 	// round it as well as the sky's. A rough sheen spreads wide, much as the
@@ -770,14 +886,14 @@ void main() {
 	vec4 rr = rough * vec4(-1.0, -0.0275, -0.572, 0.022) + vec4(1.0, 0.0425, 1.04, -0.04);
 	float a004 = min(rr.x * rr.x, exp2(-9.28 * nv)) * rr.x + rr.y;
 	vec2 ab = vec2(-1.04, 1.04) * a004 + rr.zw;
-	vec3 sheen = e * (0.04 * ab.x + ab.y) * smoothstep(0.1, 0.3, rough);
+	vec3 sheen = e * (0.04 * ab.x + ab.y) * smoothstep(0.1, 0.3, rough) * through;
 	outc += sheen;
 	if (view_mode == 1) {
 		outc = e;  // the bounce light alone
 	} else if (view_mode == 2) {
 		outc = alb;  // the colour estimated for each surface
 	} else if (view_mode == 3) {
-		outc = (alb * e + sheen) * 4.0;  // what is added, four times over
+		outc = (alb * e * through + sheen) * 4.0;  // what is added, four times over
 	} else if (view_mode == 4) {
 		outc = textureLod(rad_tex, uv, 0.0).rgb;  // the light each surface sends out
 	} else if (view_mode == 5) {
@@ -790,6 +906,12 @@ void main() {
 		outc = sheen * 16.0;  // the sheen alone, sixteen times over
 	} else if (view_mode == 9) {
 		outc = vec3(1.0 - textureLod(raw_tex, uv, 0.0).a, rough, 0.0);  // share of rays lost off screen; roughness
+	} else if (view_mode == 10) {
+		outc = vec3(best < 0.2 ? 1.0 : 0.0, e.g * 4.0, 0.0);  // where the upsample looked further out; the light
+	} else if (view_mode == 11) {
+		outc = vec3(1.0 - through, e.g * 4.0, 0.0);  // where smoke or a flame hides it; the light
+	} else if (view_mode == 12) {
+		outc = texelFetch(opaque_tex, p, 0).rgb;  // the world before the see-through things
 	}
 	imageStore(color_img, p, vec4(clean(outc), col.a));
 }

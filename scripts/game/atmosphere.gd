@@ -1691,6 +1691,7 @@ func _add_effect(fx: CompositorEffect) -> void:
 	var effects: Array[CompositorEffect] = we.compositor.compositor_effects
 	if fx is SsgiFx:
 		effects.push_front(fx)
+		effects.push_front((fx as SsgiFx).snap)
 	else:
 		effects.append(fx)
 	we.compositor.compositor_effects = effects
@@ -1711,6 +1712,7 @@ func _apply_ssgi() -> void:
 		return
 	ssgi.quality = q
 	ssgi.enabled = q > 0
+	ssgi.snap.enabled = q > 0 and not OS.has_environment("FL_DEBUG_SSGI_NOSNAP")  # (to time it)
 
 
 ## How far a ray looks for a surface to light it (m), and how strongly what it
@@ -1773,6 +1775,15 @@ func _ssgi_tick() -> void:
 	p[24] = sc.r
 	p[25] = sc.g
 	p[26] = sc.b
+	# how much of last frame's bounce light goes round again (under all of
+	# it, so a closed room settles), and whether the upsample looks further
+	# out at thin edges. FL_DEBUG_SSGI_BOUNCES=1 (one bounce only) and
+	# FL_DEBUG_SSGI_NOFIX (the plain upsample) compare them. (Medium casting
+	# half its rays where a pixel's history already held was tried: it saved
+	# nothing measurable and lost a fifth of the light, since what is gathered
+	# is capped at what its rays hit, and fewer rays a frame cap it lower.)
+	p[28] = 0.0 if OS.get_environment("FL_DEBUG_SSGI_BOUNCES") == "1" else 0.8
+	p[29] = 0.0 if OS.has_environment("FL_DEBUG_SSGI_NOFIX") else 1.0
 	ssgi.params = p
 
 

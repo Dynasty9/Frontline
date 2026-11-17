@@ -20,6 +20,7 @@ extends Node
 ## "car" (the car nearest it with a house wall close by, looked at from the
 ## far side so the wall stands behind it; FL_DEBUG_GI_IGNITE=heat sets it
 ## alight a second into the battle, to see a fire's light thrown about).
+## "tank" is the tank nearest where the camera starts (yaw then as given).
 ## Pitch "auto" leaves the camera's own pitch for that zoom.
 ##
 ## FL_DEBUG_GI_AB=mode,mode,...: instead of pictures, what each mode costs the
@@ -51,8 +52,24 @@ const MODES := {
 	"view_hist": {"ssil": false, "gi": false, "ssgi": 2, "view": 7},
 	"view_sheen": {"ssil": false, "gi": false, "ssgi": 2, "view": 8},
 	"view_lost": {"ssil": false, "gi": false, "ssgi": 2, "view": 9},
+	"view_edge": {"ssil": false, "gi": false, "ssgi": 2, "view": 10},
+	"view_through": {"ssil": false, "gi": false, "ssgi": 2, "view": 11},
+	"view_opaque": {"ssil": false, "gi": false, "ssgi": 2, "view": 12},
+	# the same with one of the bounce light's parts left out (see
+	# Atmosphere._ssgi_tick): one bounce only, the plain upsample, and the
+	# bounce light laid over smoke and dust (no picture of the world before them)
+	"ssgi2_1b": {"ssil": false, "gi": false, "ssgi": 2, "env": "FL_DEBUG_SSGI_BOUNCES"},
+	"view_added_1b": {"ssil": false, "gi": false, "ssgi": 2, "view": 3, "env": "FL_DEBUG_SSGI_BOUNCES"},
+	"view_light_1b": {"ssil": false, "gi": false, "ssgi": 2, "view": 1, "env": "FL_DEBUG_SSGI_BOUNCES"},
+	"ssgi2_nofix": {"ssil": false, "gi": false, "ssgi": 2, "env": "FL_DEBUG_SSGI_NOFIX"},
+	"view_added_nofix": {"ssil": false, "gi": false, "ssgi": 2, "view": 3, "env": "FL_DEBUG_SSGI_NOFIX"},
+	"ssgi2_nosnap": {"ssil": false, "gi": false, "ssgi": 2, "env": "FL_DEBUG_SSGI_NOSNAP"},
+	"view_light1": {"ssil": false, "gi": false, "ssgi": 1, "view": 1},
+	"view_added1": {"ssil": false, "gi": false, "ssgi": 1, "view": 3},
 }
-const HOLD := 90  # frames each mode is held (SDFGI takes a while to converge)
+const ENV := ["FL_DEBUG_SSGI_BOUNCES", "FL_DEBUG_SSGI_NOFIX", "FL_DEBUG_SSGI_NOSNAP"]
+## frames each mode is held (SDFGI takes a while to converge); FL_DEBUG_GI_HOLD sets it
+var HOLD := int(OS.get_environment("FL_DEBUG_GI_HOLD")) if OS.has_environment("FL_DEBUG_GI_HOLD") else 90
 const SETTLE := 60  # and frames a new pose is given first, for the camera to glide there
 
 var world: Node
@@ -77,6 +94,11 @@ var _ab_sum := [0.0, 0.0]
 var _ab_n := [0, 0]
 var _lit := false
 var _pan: PackedStringArray = OS.get_environment("FL_DEBUG_GI_PAN").split(",", false)
+## FL_DEBUG_GI_SERIES=N: each mode starts from no history at all, and every
+## Nth frame of its hold is saved (<mode>_f<frame>.png), to watch the bounce
+## light build up and settle on a still view
+var _series := int(OS.get_environment("FL_DEBUG_GI_SERIES"))
+var _found := {}
 
 
 func _ready() -> void:
@@ -119,6 +141,16 @@ func _process(_dt: float) -> void:
 	# may nudge the view between one mode's picture and the next
 	_set_pose(_poses[_pose], true)
 	var vp := get_viewport().get_viewport_rid()
+	if _series > 0:
+		if _frames == 0:
+			var fx: Object = get_parent().get("ssgi")
+			if fx != null:
+				fx.set("reset", true)
+		elif _frames > 0 and _frames % _series == 0:
+			var sm := _modes[_i]
+			if _poses[_pose].get_slice(":", 0) != "":
+				sm = _poses[_pose].get_slice(":", 0) + "_" + sm
+			get_viewport().get_texture().get_image().save_png(_dir.path_join("%s_f%03d.png" % [sm, _frames]))
 	_frames += 1
 	if _frames > HOLD >> 1:
 		_sum += RenderingServer.viewport_get_measured_render_time_gpu(vp)
@@ -166,18 +198,25 @@ func _set_pose(pose: String, quiet := false) -> void:
 		var found: Array = _find(where)
 		at = found[0]
 		yaw += float(found[1])
-	cam.call("focus", at)
 	cam.set("target_dist", float(f[2]))
 	cam.set("dist", float(f[2]))
 	# "auto": the pitch the game itself gives that zoom, as a player sees it
 	cam.set("pitch_deg", NAN if f[3] == "auto" else float(f[3]))
 	cam.set("yaw", yaw)
+	cam.call("focus", at)  # (last: it places the camera with the zoom and heading just set)
 	if not quiet:
 		print("GICMP pose %s at %.1f,%.1f yaw %.2f" % [f[0], at.x, at.z, yaw])
 
 
-## A place on the map worth looking at, and the heading to look at it from.
+## A place on the map worth looking at, and the heading to look at it from
+## (found once: what is nearest may change as the camera gets there).
 func _find(what: String) -> Array:
+	if not _found.has(what):
+		_found[what] = _search(what)
+	return _found[what]
+
+
+func _search(what: String) -> Array:
 	var town := Vector3.ZERO
 	var roofs: Array[Vector3] = []
 	var floors: Array[Vector3] = []
@@ -199,6 +238,15 @@ func _find(what: String) -> Array:
 	var best_st: Node3D = null
 	var best_yaw := 0.0
 	var best_d := INF
+	if what == "tank":
+		# the tank nearest where the camera starts (the player's own, on open
+		# ground), looked at with the yaw as given
+		var from: Vector3 = world.get("cam").get("focus_pos")
+		for v: Node3D in world.get("vehicles"):
+			if is_instance_valid(v) and String(v.get("vkind")).contains("tank") and v.position.distance_to(from) < best_d:
+				best_d = v.position.distance_to(from)
+				best = v.position
+				best_st = v
 	if what == "ruin":
 		for fl in floors:
 			var roofed := false
@@ -247,8 +295,13 @@ func _find(what: String) -> Array:
 func _apply(mode: String) -> void:
 	var want: Dictionary = MODES.get(mode, {})
 	OS.set_environment("FL_DEBUG_SSGI_VIEW", str(want.get("view", 0)))
+	for e: String in ENV:
+		if e == String(want.get("env", "")):
+			OS.set_environment(e, "1")
+		else:
+			OS.unset_environment(e)
 	for k in want:
-		if k != "view":
+		if k != "view" and k != "env":
 			Settings.v[k] = want[k]
 	Settings.changed.emit()
 

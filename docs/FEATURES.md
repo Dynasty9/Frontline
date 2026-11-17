@@ -1317,8 +1317,11 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   Nowrouzezahrai and Luebke, "Deep G-Buffers for Stable Global Illumination Approximation", HPG 2016) and bring
   back the light of the first surface facing them; rays that escape bring nothing, since the engine's sky light
   already covers the open sky. Last frame's bounce light, reprojected, is added to what each surface sends out,
-  so light carries one bounce further every frame (a wall lit by the street lights the floor beside it in turn;
-  the feedback is held under physical strength so a closed room can't run away). The answer is accumulated over up to 16 frames by reprojecting each pixel through
+  so light carries one bounce further every frame (a wall lit by the street lights the floor beside it in turn).
+  What goes round again is the light each surface shows, at 0.8 of it, so each round is weaker by the surface's
+  colour and that share, and the gather's cap (below) holds it to what its rays hit: on a still view of a ruin the
+  further bounces add about a fifth to the first one's light, gathered in the room's inner corners and wall feet,
+  and settle within two seconds with no creep after. The answer is accumulated over up to 16 frames by reprojecting each pixel through
   last frame's camera (so a pan or zoom keeps it), kept only where the same surface was there (depth and facing
   agree) and clipped to this frame's neighbourhood (Salvi's variance clipping, GDC 2016), so moving units and newly
   uncovered ground never trail a ghost; then an edge-aware blur and a joint bilateral upsample (Kopf et al. 2007)
@@ -1349,15 +1352,28 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   keep thin things from catching rays that pass behind them, cost a third of the light off real walls and was left
   out. A rough surface also gives the gathered light back as a dielectric's sheen (Karis's split-sum fit), fading
   out on mirror-smooth ones, which the screen-space reflections handle: a few percent of the bounce on rough
-  ground, a little more on wet patches seen at a slant. Godot's
+  ground, a little more on wet patches seen at a slant. Vehicles and soldiers standing on sunlit ground take its
+  light from below like anything else (a tank's shaded side and skirts gain about a fifth on grass at midday).
+  Smoke, dust and flames are drawn over the lit world, and the pass needs them drawn (a flame is a light it
+  throws), so it runs after them; with MSAA anything written before them is lost again when they are resolved. A
+  picture of the world taken just before them tells it where they are: where they moved a pixel's brightness, the
+  bounce light is laid on only in that ratio, so a dust cloud in front of a sunlit tank hides the tank's bounce
+  light as it hides the tank (laid on regardless, the hull's outline showed through the cloud), and the fog of
+  war's shade, a multiply, darkens it by exactly its own share. Level ground is spared: roads and paving are drawn
+  among the see-through things too (their edges fade into the verges), so a road over grass would read as a cloud.
+  At the edges of thin things (a man, a post) where all four half-resolution pixels belong to what stands in front,
+  the upsample looks a pixel further out for one of the pixel's own surface; at 3x, soldiers against walls and
+  grass showed no halo either way. Godot's
   own SSIL (the Indirect light setting) and SDFGI (Global illumination) stay as options, but on the RTS camera
   neither shows colour bleed: SSIL mostly darkens corners (over the town it lowered the frame's mean by half a
   level and added nothing visible), and SDFGI lifts the whole frame evenly (its cells are too coarse for a street
   seen from 30 m) and sees only static geometry. Measured at 1600x900 on an RTX 3090, interleaved on the same frozen
   frame: SSIL 0.27 ms and SDFGI 0.83 ms (median of five runs), bounce light on High 0.32 ms (median of three, on
-  the final shader); Medium is below what a shared card can resolve (its runs ranged from 0.26 to 0.46 ms). `FL_DEBUG_GI_CYCLE=DIR` saves the
+  the final shader); Medium is below what a shared card can resolve (its runs ranged from 0.26 to 0.46 ms). Later,
+  with a heavier town and a busier machine (a frame without it 13-17 ms), High read 0.88-1.51 ms (median 1.04) and
+  the same without the picture taken before the smoke 0.74-1.65 ms: its cost is lost in that noise. `FL_DEBUG_GI_CYCLE=DIR` saves the
   same frozen frame with each (`scripts/test/gi_compare.gd`), `FL_DEBUG_GI_AB=mode,...` measures what each costs
-  the graphics card, and `FL_DEBUG_SSGI_VIEW=1..9` shows the pass's buffers.
+  the graphics card, and `FL_DEBUG_SSGI_VIEW=1..12` shows the pass's buffers.
 - **Cinematic lighting** (`atmosphere.gd`, `cinematic_fx.gd`, `physical_sky.gd`), each part its own setting and all
   of it on the **Cinematic** preset (Ultra plus everything below; for a fast graphics card, screenshots and replays).
   None of it reaches the simulation, so it can't change a battle or its seed.

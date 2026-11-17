@@ -2,65 +2,77 @@
   "entry": "changelog/unreleased/bounce-light.md",
   "summary": "Bounce light: screen-space GI that lets sunlit walls, paving and roofs light what faces them in their colours.",
   "medium": "still",
-  "stage": "game capture at 1600x900, --offscreen --perf=0 --nohud: --host --team=0 --seed=3 --preset=high with FL_DEBUG_GI_CYCLE (frozen frame, off then High) at --mood=day (FL_DEBUG_GI_POSES ruin:ruin:14:-58:0.4) and --mood=golden / overcast (ruin30:ruin:30:auto:0.4; rts55:town:55:auto:0.6, the game's own pitch; and rts55 at --mood=day for the command-height shot; at --mood=night, FL_DEBUG_GI_POSES car16:car:16:auto:0.5 with FL_DEBUG_GI_IGNITE=0.9 FL_DEBUG_STEADY_FIRE=1 FL_DEBUG_GI_AT=14 for the burning car beside a wall); each shot cropped tight (960x540, or 640x360 at 2x) on the window with the most added light, off stacked over on with labels, an arrow and a 'look at' caption, plus the same crop as on-minus-off x4; flicker clip: the same crops alternating off/on each second; pan clip: --fixed-fps 30 with FL_DEBUG_GI_POSES=p:town:40:-40:1.57 FL_DEBUG_GI_PAN=6,-6,75 FL_DEBUG_GI_MODES=view_added --mood=day (the added light alone, gamma-brightened)",
-  "rationale": "Bounce light is a change in shade, so each shot is cropped tight on exactly where it lands, off stacked over on so the same pixels sit one above the other, with an arrow and a one-line caption naming what to look at, and a bounce-only panel showing where the light lands and its colour. It is shown at its strongest (midday) and then in the moods and from the camera height a player usually has (golden hour and overcast from 30 m), and from the 55 m command height, where the far-distance weights now make yards and wall feet lift visibly. A flicker clip toggles off/on in place; a pan clip of the added light answers whether it smears in motion. A night shot of a burning car beside a ruin shows that what burns or shines bounces too, and the pan clip shows the frame's edges holding steady.",
-  "source_ref": "working tree after 915aa9d1 (fire and lamp bounce shown; off-screen rays fall back to the sky light; rough sheen)",
+  "stage": "game capture at 1600x900, --offscreen --perf=0 --nohud: --host --team=0 --seed=3 --preset=high with FL_DEBUG_GI_CYCLE (frozen frame, off then High) at --mood=day (FL_DEBUG_GI_POSES ruin:ruin:14:-58:0.4 and rts55:town:55:auto:0.6 for the command height), --mood=golden / overcast (ruin30:ruin:30:auto:0.4, the game's own pitch) and --mood=night (car16:car:16:auto:0.5 with FL_DEBUG_GI_IGNITE=0.9 FL_DEBUG_STEADY_FIRE=1 FL_DEBUG_GI_AT=14, a car set alight beside a wall); the tank: --scenario=tank --static --seed=3 --mood=day with FL_DEBUG_GI_AT=3 FL_DEBUG_GI_POSES=t3:tank:12:auto:4.71, and the dust comparison the same at t2:tank:12:auto:3.14 before and after the opaque picture (Snap); each shot cropped (640x360 at 2x, or 960x540) on the window with the most added light, off stacked over on with labels, an arrow and a 'look at' caption, plus the same crop as on-minus-off x4; flicker clip: the same crops alternating off/on each second; pan clip: --fixed-fps 30 with FL_DEBUG_GI_POSES=p:town:40:-40:1.57 FL_DEBUG_GI_PAN=6,-6,75 FL_DEBUG_GI_MODES=view_added --mood=day (the added light alone, gamma-brightened)",
+  "rationale": "Bounce light is a change in shade, so each shot is cropped tight on exactly where it lands, off stacked over on so the same pixels sit one above the other, with an arrow and a one-line caption naming what to look at, and a bounce-only panel showing where the light lands and its colour. It is shown at its strongest (midday), in golden hour and overcast from 30 m, from the 55 m command height, at night beside a burning car, and on a tank standing on sunlit grass (what this pass adds for vehicles). A three-way crop shows the dust fix (off, before, now) in one look, since it is about what must not show. A flicker clip toggles off/on in place; a pan clip of the added light answers whether it smears in motion. Every shot was re-rendered for this pass, since the fog of war's shade now darkens the bounce light under it.",
+  "source_ref": "working tree after the main merge on dines/ssgi-a648db (multi-bounce feedback as shown, opaque picture before smoke, upsample edge search)",
   "sources": [
     {
       "file": "changelog/unreleased/bounce-light/midday.jpg",
-      "sha256": "cd8900fe6620f8e06b27ba7e0b862526d6b9c1c2cee8e572e9f54ba729d036eb"
+      "sha256": "1781570c03740bfc79d28c8bc56487faf418908e690465efcedb68bc6d940ded"
     },
     {
       "file": "changelog/unreleased/bounce-light/midday-light.jpg",
-      "sha256": "4d1aa4dc9136d7b0b223ffdeeb2f51be395cb91b417f384da7f692430cdf4e8b"
+      "sha256": "e5c2460b93806222961b05a95bf5253a20040dcbbbab2d37b68de0cfaac4f198"
     },
     {
       "file": "changelog/unreleased/bounce-light/golden.jpg",
-      "sha256": "6fc378f466f3f99c3b6c63ac3afe7cdfae7ecd27deba3a86ea5f69ac9a9fb40b"
+      "sha256": "493850cfa2aa39550ae8ab42acb98f88eaac1ed2b3790f09c3233c3a4d3d7c7d"
     },
     {
       "file": "changelog/unreleased/bounce-light/golden-light.jpg",
-      "sha256": "ff725120d178fb82d11036f4863d6e3c9844d00251f8f01b372173241115e3db"
+      "sha256": "2df634834a85005904c1f83c0dd7093e82aed8a5b7c0c92f605fcc404cd7cf42"
     },
     {
       "file": "changelog/unreleased/bounce-light/overcast.jpg",
-      "sha256": "d326fdf79a3b643f487b5f2768228d8ea83c7147a3949d7e24b8caba7ac0b584"
+      "sha256": "a37a2f6a878bc3b110196e5617b79a77b609d92d3e536492ea79cbc6acd511ea"
     },
     {
       "file": "changelog/unreleased/bounce-light/overcast-light.jpg",
-      "sha256": "dfb8906c0e1716ac1abba389ee74579a71f7eca8b4ad6bbf16688d45f15d360f"
+      "sha256": "b347c8e72e1400087a7661c1a13a987c45be200bd6b4bb247fec58172c05395e"
     },
     {
       "file": "changelog/unreleased/bounce-light/command-height.jpg",
-      "sha256": "cf3eefd0d4393a7e185e0a9e96c1a08ba38b2133384f53a6af4aa0a961f4ade3"
+      "sha256": "39e21d0feb7aaf59a39fdcaba6a85d501c8ff10e56e0d037f3aac6d1037c0ce4"
     },
     {
       "file": "changelog/unreleased/bounce-light/command-height-light.jpg",
-      "sha256": "8f445f7304f30ec1d026c87d15df6ca3f4af2aad869eb69072fb35adf392f7a8"
+      "sha256": "9be0b25dc5d9f7c7c7a05f54430d606bdd1b4855dfa13add43a31281add41349"
     },
     {
       "file": "changelog/unreleased/bounce-light/fire-night.jpg",
-      "sha256": "00f53ef0b1042e1cdb7852f003cf1e4b55ea9a99592c8b63e2c167af77593fe5"
+      "sha256": "44184d8bc053088585f513210f1b3f0beb414be7d1ec11b7d9c781e0cb95d077"
     },
     {
       "file": "changelog/unreleased/bounce-light/fire-night-light.jpg",
-      "sha256": "77c4bf571bb8154504535bc40480815a70f1d5a93bd949ec062dfa8805f21802"
+      "sha256": "4b19196261918ea87572dd8213f4ce1597c4a8bc67d688c1eb219e178cd45dda"
+    },
+    {
+      "file": "changelog/unreleased/bounce-light/tank.jpg",
+      "sha256": "574684a3fdc00ad21237e5dd4decde92ec14d8300153fe37590aaab5a98ab9e1"
+    },
+    {
+      "file": "changelog/unreleased/bounce-light/tank-light.jpg",
+      "sha256": "20177aaa4a312ffc82014396cd552556e11120e3edb8337c752217761beb521c"
+    },
+    {
+      "file": "changelog/unreleased/bounce-light/dust.jpg",
+      "sha256": "72dcba73ff8246a5b2e3d78ef3e87d88416604003cbced227da33c8fa59666f4"
     },
     {
       "file": "changelog/unreleased/bounce-light/flicker.webm",
-      "sha256": "437bd954d49359f8a43c22b8820ea34334ac4e1ec5bde1d1eef234ad4913a3b1"
+      "sha256": "ed8a82fe272ff76ef1282d09268cd7c5f1672c4f260d05fc6f0685c94d1b4728"
     },
     {
       "file": "changelog/unreleased/bounce-light/flicker.jpg",
-      "sha256": "7564c357f767d8148fe1aeb0bdc6544b6e1cb60633ecaa94a69b498f29a8ea74"
+      "sha256": "74518727def1b2620cbee3be26c211e846a0d5b79444afc6d655c4dba4d22b15"
     },
     {
       "file": "changelog/unreleased/bounce-light/pan.webm",
-      "sha256": "a182c1de0235305486d39d90450c2bd66d7e13615baa10829eae28f26bfffa38"
+      "sha256": "1201d5db0924eb4688d9fd8157bed2fcc57a3ca720b54be7817da437c22dabc9"
     },
     {
       "file": "changelog/unreleased/bounce-light/pan.jpg",
-      "sha256": "aa7991049c85c385df985b7b51c559e0eb9d53e28ff4b47dabde5aa9c6d4ed00"
+      "sha256": "c5bca954a918b8175463d39b8e3d14e386b485ad4a6f1d5bac7f3cfaf5770a01"
     }
   ],
   "output": null
