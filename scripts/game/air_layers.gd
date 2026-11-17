@@ -24,14 +24,16 @@ extends Node3D
 ## throws on forward (fog anisotropy: low sun glows through the mist), the
 ## faint low haze over the whole field in the first tens of metres (density a
 ## metre: what a low sun's shafts show up in, between the houses and trees and
-## down off the ridges)].
+## down off the ridges; at night the damp air low over the ground that the
+## street lights, headlights, flares and flashes glow in, with the moon too
+## weak to light it)].
 const MOOD := {
 	"day": [2.5, 0.0002, 0.8, 0.35, 0.0002],
 	"golden": [3.0, 0.0005, 2.6, 0.76, 0.0007],
 	"dawn": [6.0, 0.0006, 3.0, 0.78, 0.0012],
 	"dusk": [3.5, 0.0005, 2.6, 0.76, 0.0007],
 	"overcast": [4.0, 0.0003, 0.5, 0.3, 0.0],
-	"night": [3.5, 0.0004, 0.9, 0.5, 0.0004],
+	"night": [3.5, 0.0004, 0.35, 0.6, 0.0045],
 	"rain": [4.0, 0.0006, 0.4, 0.3, 0.0],
 	"hazy": [3.5, 0.0012, 1.4, 0.6, 0.002],
 }
@@ -45,6 +47,8 @@ const RAIN_D := 0.003
 ## (sRGB) smoke a neutral grey with a little sky in it, dust a pale earth
 const SMOKE_COL := Color(0.66, 0.67, 0.7)
 const DUST_COL := Color(0.78, 0.73, 0.64)
+## How heavy the far showers are, by mood.
+const RAIN_CURTAINS := {"rain": 1.0}
 ## The volume reaches this far past the map's edge, thinning out to nothing.
 const EDGE := 60.0
 ## How far the volumetric fog reaches from the camera (m): a little beyond
@@ -55,6 +59,9 @@ var atmo: Atmosphere
 var world
 var grid: WeatherGrid
 var plumes: SmokePlumes  # the smoke hanging close up (volumetric fog only)
+var trails: DustTrails  # the dust vehicles raise close up (volumetric fog only)
+var curtains: RainCurtains  # under rain, the showers further off (both renderers)
+var headlights: Headlights  # after dark, the beams of the vehicles driving near the camera (not in the browser)
 var volume: FogVolume
 var mat: ShaderMaterial
 var _mood := ""
@@ -88,8 +95,14 @@ func setup(a: Atmosphere) -> void:
 	world = a.world
 	name = "AirLayers"
 	grid = WeatherGrid.new(world)
+	curtains = RainCurtains.new()
+	add_child(curtains)
+	curtains.setup(world, atmo)
 	if not Vfx.gl:
 		_build_volume()
+		headlights = Headlights.new()
+		add_child(headlights)
+		headlights.setup(world)
 	apply_mood(atmo.mood)
 
 
@@ -115,6 +128,9 @@ func _build_volume() -> void:
 	plumes = SmokePlumes.new()
 	add_child(plumes)
 	plumes.setup(world, wisps)
+	trails = DustTrails.new()
+	add_child(trails)
+	trails.setup(world, wisps)
 	mat.set_shader_parameter("weather", grid.tex)
 	mat.set_shader_parameter("wind", Vector2(Fires.WIND.x, Fires.WIND.z).normalized())
 	mat.set_shader_parameter("mist_d", MIST_D)
@@ -182,7 +198,9 @@ func apply_mood(m: String) -> void:
 	# colour of dry earth)
 	var night := m == "night"
 	mat.set_shader_parameter("mist_col", Color(0.42, 0.48, 0.6) if night else fog.lerp(Color(0.95, 0.96, 0.98), 0.6))
-	mat.set_shader_parameter("haze_col", fog.lerp(Color(0.92, 0.92, 0.92), 0.35))
+	# (at night the damp air is pale: the moon barely lights it, so it shows only
+	# round the lamps and beams, and they light it near white)
+	mat.set_shader_parameter("haze_col", Color(0.8, 0.82, 0.86) if night else fog.lerp(Color(0.92, 0.92, 0.92), 0.35))
 	mat.set_shader_parameter("smoke_col", SMOKE_COL)
 	mat.set_shader_parameter("dust_col", DUST_COL)
 	mat.set_shader_parameter("rain_col", Color(0.55, 0.58, 0.62))
@@ -211,6 +229,15 @@ func _process(dt: float) -> void:
 				mat.set_shader_parameter("reach", atmo.env.volumetric_fog_length)
 	if plumes:
 		plumes.tick(dt, volume != null and volume.visible)
+	if trails:
+		if grid.dust_fresh:
+			grid.dust_fresh = false
+			trails.feed(grid.vehicle_dust)
+		trails.tick(dt, volume != null and volume.visible)
+	curtains.level = atmo.by_mood(RAIN_CURTAINS, 0.0)
+	curtains.tick(dt)
+	if headlights:
+		headlights.level = atmo.by_mood(Atmosphere.LAMPLIGHT, 0.0)
 	if world:
 		world.vp("air layers", t0)
 
@@ -244,12 +271,25 @@ func _show(state: int) -> void:
 			world.fx.vfx.set_fire_glow(float(state))
 		return
 	_ab_state = state
+	curtains.enabled = state == 1
 	var wv: WaterView = atmo.water_view
 	if wv and wv.mat:
 		wv.mat.set_shader_parameter("caustic_k", wv._caustic_k * state)
 		if wv.caustics:
 			wv.caustics.visible = state == 1 and wv._caustic_k > 0.0 and int(Settings.get_v("water")) >= 2
 	if _flip_frame >= 0:
+		# (the lamps, flashes and flares back to the fog's default glow, as they
+		# were, and no headlights)
+		for l in get_tree().get_nodes_in_group(&"fx_light"):
+			if not l is Light3D:
+				continue
+			if state == 0:
+				l.set_meta(&"fog_e", l.light_volumetric_fog_energy)
+				l.light_volumetric_fog_energy = 1.0
+			elif l.has_meta(&"fog_e"):
+				l.light_volumetric_fog_energy = float(l.get_meta(&"fog_e"))
+		if headlights:
+			headlights.visible = state == 1
 		if state == 1:
 			apply_mood(_mood)
 		else:
@@ -331,7 +371,7 @@ func apply_env(env: Environment) -> void:
 ## The --stats line: how much is in the air.
 func stats_text() -> String:
 	var t := grid.totals()
-	return "AIR mist=%.2f rain=%.2f dust=%.3f smoke=%.3f plumes=%d" % [t.x, t.y, t.z, t.w, plumes.count() if plumes else 0]
+	return "AIR mist=%.2f rain=%.2f dust=%.3f smoke=%.3f plumes=%d trails=%d" % [t.x, t.y, t.z, t.w, plumes.count() if plumes else 0, trails.count() if trails else 0]
 
 
 const AIR_SHADER := """

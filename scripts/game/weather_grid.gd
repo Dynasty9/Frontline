@@ -33,8 +33,9 @@ const SMOKE := 3
 const DRIFT := 2.2
 ## Frames a sweep of the whole grid is spread over.
 const SWEEP_FRAMES := 10
-## Half-lives (s) of what isn't topped up: dust settles quickly, smoke hangs.
-const DUST_LIFE := 14.0
+## Half-lives (s) of what isn't topped up: dust settles over a few tens of
+## seconds (a column's route stays marked for a while), smoke hangs longer.
+const DUST_LIFE := 22.0
 const SMOKE_LIFE := 55.0
 ## How quickly mist and rain settle toward what the weather and the ground
 ## make of each cell (s).
@@ -78,6 +79,13 @@ var _air_t := 0.0  # total drift (m) along the wind, for the rain's bands
 var _row := 0  # the next row the sweep does
 var _sweep_dt := 0.0  # the time the sweep under way covers
 var _src_t := 0.0
+## (a peer isn't sent the vehicles' speeds: how fast each goes comes from
+## where it was at the last look)
+var _was := {}  # eid -> where it was half a second ago
+## The vehicles raising dust at the last look: [where, where it was, how much
+## (0..1)], for the dust trails close up (DustTrails).
+var vehicle_dust: Array = []
+var dust_fresh := false  # (vehicle_dust is new since DustTrails last took it)
 
 
 func _init(w) -> void:
@@ -284,12 +292,48 @@ func _sources(dt: float) -> void:
 	for p in world.smoke_projectiles:
 		if is_instance_valid(p) and p.smoke_r > 0.8:
 			add(SMOKE, p.position, 0.06 * dt * p.smoke_r / 6.5, p.smoke_r * 1.6)
-	if wet > 0.6 or mood == "rain":
-		return
+	vehicle_dust.clear()
+	dust_fresh = true
+	var seen := {}
 	for v in world.vehicles:
-		if not is_instance_valid(v) or v.is_air() or v.is_boat() or v.speed < 4.0:
+		if not is_instance_valid(v) or v.is_air() or v.is_boat():
 			continue
-		add(DUST, v.position, 0.012 * dt * minf(v.speed, 18.0) * (1.0 - wet), 9.0)
+		var p: Vector3 = v.position
+		var was: Vector3 = _was.get(v.eid, p)
+		_was[v.eid] = p
+		seen[v.eid] = true
+		var speed := Defs.flat(p - was).length() / dt
+		if speed < 3.0 or wet > 0.6 or mood == "rain":
+			continue
+		var k := dust_of(p) * (1.0 - wet) * clampf((speed - 3.0) / 9.0, 0.0, 1.0) * (1.3 if v.weight() >= 2 else 1.0)
+		if k < 0.05:
+			continue
+		add(DUST, p, 0.09 * dt * k, 10.0)
+		vehicle_dust.append([p, was, minf(k, 1.0)])
+	for eid in _was.keys():
+		if not seen.has(eid):
+			_was.erase(eid)
+
+
+## How much dust a vehicle throws up driving over the ground at p (0..1): most
+## off a dirt road or bare, churned earth, a little off a paved street or the
+## leaf litter in a wood, hardly any off thick grass, none off mud or out of
+## the water. (Rain and the ground's wetness are the caller's.)
+func dust_of(p: Vector3) -> float:
+	var t = world.terrain
+	if t == null:
+		return 0.0
+	match int(t.kind_at(p)):
+		TerrainMap.WATER, TerrainMap.SHALLOW, TerrainMap.MUD, TerrainMap.TRENCH:
+			return 0.0
+		TerrainMap.ROAD:
+			return 0.25 if world.town_rect.has_point(Vector2(p.x, p.z)) else 1.0
+		TerrainMap.CRATER, TerrainMap.RUBBLE:
+			return 0.8
+		TerrainMap.WOODS:
+			return 0.1
+	var grass: float = world.atmo.grass_amount(p) if world.atmo and world.atmo.biome_img else 0.5
+	return 0.7 * (1.0 - grass) * (1.0 - grass)
 
 
 ## One row of the sweep: mist and rain settle toward the weather's, dust and

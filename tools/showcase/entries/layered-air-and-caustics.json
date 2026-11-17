@@ -3,9 +3,9 @@
   "title": "Mist in the hollows, smoke that drifts, light under the water",
   "version": "unreleased",
   "kind": "improved",
-  "summary": "Layered mist and haze with low-sun shafts, smoke plumes that drift downwind and glow over fires, weather that varies across the map, and caustics in the shallows and on hulls and piers.",
+  "summary": "Layered mist and haze with low-sun shafts, smoke plumes that drift downwind and glow over fires, lamps and headlights glowing in the night air, dust trails behind vehicles, far rain curtains, weather that varies across the map, and caustics in the shallows and on hulls and piers.",
   "medium": "motion",
-  "stage": "game scenarios (--aivai, --scenario=support, --scenario=naval) off-screen at 1600x900, frozen and flipped with FL_DEBUG_AIR_FLIP",
+  "stage": "game scenarios (--aivai, --scenario=support, --scenario=naval, --scenario=convoy) off-screen, frozen and flipped with FL_DEBUG_AIR_FLIP where an OFF/ON is shown",
   "rationale": "Atmosphere and caustics are a few percent of a wide frame, so each effect gets a tight crop of one frozen moment with OFF stacked over ON, an arrow and a caption, plus a flicker clip of the same frame toggling every second; two motion clips show the caustics running and a plume drifting.",
   "source_ref": "78ff2411 plus the presentation commit on dines/volumetrics-weather-738062 (High preset unless noted, Godot 4.7.2 Forward+, Windows). Crops and labels: PIL; WebM: VP9 via Playwright ffmpeg.",
   "sources": [
@@ -50,6 +50,16 @@
       "caption": "Last 7 s of a 1280x720 movie, --preset=ultra --scenario=naval --seed=3 --set=mood:day --focus=356,58 --zoom=10 --pitch=-45."
     },
     {
+      "file": "changelog/unreleased/layered-air-and-caustics/convoy-dust-poster.jpg",
+      "sha256": "480ad008ecd2ae2d66a538755ebac739e571ea366373c973e410269691ed100d",
+      "caption": "Middle frame of the convoy dust clip."
+    },
+    {
+      "file": "changelog/unreleased/layered-air-and-caustics/convoy-dust.webm",
+      "sha256": "3ad3d6212d62adca8e476c88ecd078f3e48f5b88e5ca3331dcc1bddbc0e67aef",
+      "caption": "Seconds 6-36 of a 1280x720 movie: --scenario=convoy --seed=1 --set=mood:day --focus=0,10 --zoom=80 --pitch=-16 --cam-yaw=1.2."
+    },
+    {
       "file": "changelog/unreleased/layered-air-and-caustics/glow-flicker-poster.jpg",
       "sha256": "f05d7a8ae52558e392d322f144de9b69d703d15efa832c1b076884fe660c3197",
       "caption": "An ON frame of the glow flicker."
@@ -63,6 +73,16 @@
       "file": "changelog/unreleased/layered-air-and-caustics/glow-off-on.jpg",
       "sha256": "ceed4b4583d13d1186288ea6325d6172bae3094c763f49f7bbb3c2ee7ae26235",
       "caption": "OFF over ON crop: --scenario=fire --seed=3 --set=mood:dusk --focus=26,-38 --zoom=30 --pitch=-10 --cam-yaw=0, FL_DEBUG_AIR_FLIP=25 with FL_DEBUG_AIR_FLIP_GLOW (only the fire light on its smoke and the burst flash flip)."
+    },
+    {
+      "file": "changelog/unreleased/layered-air-and-caustics/headlights-poster.jpg",
+      "sha256": "9e131351c951f23ef1ff24655f864379edddde9a18d9862acb42d980ceae2f3d",
+      "caption": "Middle frame of the headlights clip."
+    },
+    {
+      "file": "changelog/unreleased/layered-air-and-caustics/headlights.webm",
+      "sha256": "7552d8afbd875c2e374bc24368ed397e374ac71d6ac8543f0459d6d6c1df98d1",
+      "caption": "Seconds 2-14 of a 1280x720 movie: --scenario=convoy --seed=1 --set=mood:night --focus=0,20 --zoom=60 --pitch=-12 --cam-yaw=1.2."
     },
     {
       "file": "changelog/unreleased/layered-air-and-caustics/mist-command-view-off-on.jpg",
@@ -100,6 +120,21 @@
       "caption": "OFF over ON, frozen at 4 s of --scenario=naval --seed=3 --set=mood:day --focus=356,58 --zoom=10 --pitch=-45, cropped to x500-1500 y350-900."
     },
     {
+      "file": "changelog/unreleased/layered-air-and-caustics/night-flicker-poster.jpg",
+      "sha256": "09fdc9a970ca04b6d1a06d050389aa3a38ff8f22c20c3d1f265c6c75875fc08d",
+      "caption": "A frame of the night flicker clip."
+    },
+    {
+      "file": "changelog/unreleased/layered-air-and-caustics/night-flicker.webm",
+      "sha256": "555bc40485116e69a54cffe4317892df0962b3835bc62ffda71f674883369815",
+      "caption": "The same frozen night frame flipping off and on every second."
+    },
+    {
+      "file": "changelog/unreleased/layered-air-and-caustics/night-off-on.jpg",
+      "sha256": "efdf50bb5ada34a46b64327feaed6ba4dabf87e0729a1335f96138fec8267ff2",
+      "caption": "OFF over ON of one frozen night moment (FL_DEBUG_AIR_FLIP=10; OFF puts every light's fog glow back to the default and hides the headlights): --aivai --seed=3 --set=mood:night --focus-town --zoom=40 --pitch=-6 --cam-yaw=0."
+    },
+    {
       "file": "changelog/unreleased/layered-air-and-caustics/piles-flicker-poster.jpg",
       "sha256": "68340e3a2ba0d9af88f6391402a0c2518a210501006812335f178fe181c5ec00",
       "caption": "ON frame of the pier flicker."
@@ -128,6 +163,21 @@
       "file": "changelog/unreleased/layered-air-and-caustics/plume-off-on.jpg",
       "sha256": "d49a23d6fd216dfa730773e95edec594cdd2545987ab371179544068b49e43c1",
       "caption": "OFF over ON, frozen at 22 s of --scenario=support --seed=3 --set=mood:day --focus=40,30 --zoom=60 --pitch=-15 --cam-yaw=3.77, full frame."
+    },
+    {
+      "file": "changelog/unreleased/layered-air-and-caustics/rain-flicker-poster.jpg",
+      "sha256": "6a791206966bdf01df2d4fb8f5b2e2ea3c977ce9220f5d80a8154a243dd77db0",
+      "caption": "A frame of the rain flicker clip."
+    },
+    {
+      "file": "changelog/unreleased/layered-air-and-caustics/rain-flicker.webm",
+      "sha256": "a5bcf9e127829b98d77e715eaa5ec5246826ad1d5a16cebeb3203046d17041b3",
+      "caption": "The same frozen rain frame flipping off and on every second."
+    },
+    {
+      "file": "changelog/unreleased/layered-air-and-caustics/rain-off-on.jpg",
+      "sha256": "ead97ed91da4d6331eeeb057296b36398dc4d1190d3126f308a15c9dddb7a0c4",
+      "caption": "OFF over ON of one frozen moment under rain at the command view (FL_DEBUG_AIR_FLIP=8): --aivai --seed=3 --set=mood:rain --focus=0,0 --zoom=300 --pitch=-12."
     },
     {
       "file": "changelog/unreleased/layered-air-and-caustics/shafts-flicker-poster.jpg",

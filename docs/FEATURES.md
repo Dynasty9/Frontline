@@ -1326,17 +1326,30 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   set from the fire's strength), so the undersides of the billows nearest the fire glow, mottled as the smoke is, and a shell burst flashes the pall around it for a
   frame or two. Over that, a coarse weather grid sized from the map (32 cells
   across a 1 km map, 64 on the bigger ones) holds the mist, rain, dust and smoke over each patch of ground: rain
-  comes over in heavier and lighter bands, shells on dry ground and vehicles on dry tracks raise dust, and barrages,
+  comes over in heavier and lighter bands, shells on dry ground and vehicles on dry tracks raise dust (by the ground
+  under them, `WeatherGrid.dust_of`: most off a dirt road or bare, churned earth, a little off a paved street or the
+  leaf litter in a wood, none off thick grass or mud, out of the water, or in the rain; how fast each goes comes from
+  where it was half a second before, since a peer isn't sent the vehicles' speeds), and barrages,
   burning buildings and smoke screens leave a pall (the far field's smoke, behind the close-up plumes). The grid drifts with the wind as a whole (a sub-cell offset the
   shader reads, the grid shifting a cell downwind once it reaches one), mist and rain settle toward what the weather
-  makes of each cell, and dust and smoke thin away (half-lives of about 20 s and 55 s); it's swept a few rows a frame
+  makes of each cell, and dust and smoke thin away (half-lives of 22 s and 55 s); it's swept a few rows a frame
   and uploaded once a sweep. With volumetric fog it's one fog volume over the map with its own fog shader (ground
   height from the terrain tiles, the grid, a drifting noise, the cloud pattern); without it, and in the browser, the
   plain fog takes the air at the camera's focus and a height fog lays the mist in the low ground below it. All of it
   thins as the camera pulls back, so it never veils the battle you're looking at. It's looks only: who can see whom
   is the host's own smoke (`Combat.smoke_blocks`), so the grid runs on every peer from what it already has (the
   mood, the rain's wetness, replicated fires, smoke rounds and vehicles, the blasts' effect events), sends nothing
-  and never touches the battle's seed.
+  and never touches the battle's seed. Close up, a vehicle's dust is a trail of its own (`dust_trails.gd`, up to 20
+  fog volumes, each a stretch of the route up to 36 m long): a low, pale bank that billows up behind it, spreads,
+  drifts off downwind and settles over about half a minute, so a column's route stays marked; a vehicle behind on the
+  same road thickens the stretch rather than laying another. After dark the air lights up round the lights: at night
+  a damp low haze lies over the field that the moon barely lights, and the street lamps, the flares, the muzzle and
+  burst flashes (each light's `light_volumetric_fog_energy`) and the headlights of the vehicles driving near the
+  camera (`headlights.gd`, six shadowless spot lights shared out among the nearest on the move, none in the browser)
+  glow in it: soft halos round the lamps, the beams down the road ahead, a brief bloom with each flash. Under rain the
+  showers further off hang as grey curtains from the cloud base (`rain_curtains.gd`, 24 camera-facing quads scattered
+  over a 3.6 km tile that drifts with the clouds and wraps round the camera, none within 360 m, where the falling
+  streaks are): streaked, in folds, some trailing off before they reach the ground, under both renderers.
 - **Bounce light** (`ssgi_fx.gd`; Settings > Graphics > Lighting: Off / Medium / High; Medium on High, High on Ultra and
   Cinematic): sunlight thrown back off walls, roofs and roads lights what faces them, in their colours, so a sunlit
   wall warms the pavement and the shaded wall across from it, a statue's plinth glows from the square round it and

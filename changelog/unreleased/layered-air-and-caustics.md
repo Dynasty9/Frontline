@@ -16,6 +16,14 @@ file = "glow-off-on.jpg"
 caption = "Off and on: a burning house at dusk, the billows nearest its flames lit dull orange"
 
 [[screenshots]]
+file = "night-off-on.jpg"
+caption = "Off and on at night: the street lamps glow in the damp air over the town"
+
+[[screenshots]]
+file = "rain-off-on.jpg"
+caption = "Off and on under rain at the command view: far showers hang as grey curtains below the clouds"
+
+[[screenshots]]
 file = "plume-off-on.jpg"
 caption = "Off and on: the grey pall a barrage leaves, drifting off downwind"
 
@@ -60,6 +68,26 @@ poster = "burst-flash-poster.jpg"
 caption = "Shells bursting at dusk flash the smoke hanging round them."
 
 [[videos]]
+file = "night-flicker.webm"
+poster = "night-flicker-poster.jpg"
+caption = "The same frozen night moment, the air off and on every second."
+
+[[videos]]
+file = "convoy-dust.webm"
+poster = "convoy-dust-poster.jpg"
+caption = "A column on a dirt road: its dust hangs along the route, drifts off downwind and settles."
+
+[[videos]]
+file = "headlights.webm"
+poster = "headlights-poster.jpg"
+caption = "The same column at night, its headlights in the dust and the damp air."
+
+[[videos]]
+file = "rain-flicker.webm"
+poster = "rain-flicker-poster.jpg"
+caption = "Under rain at the command view, the far showers off and on every second."
+
+[[videos]]
 file = "plume-flicker.webm"
 poster = "plume-flicker-poster.jpg"
 caption = "The same frozen moment after a barrage, plume off and on every second."
@@ -95,6 +123,13 @@ caption = "A barrage's plume drifting off downwind and breaking up."
   sun while looking across or away from it stays clear, and the air in the shadow of houses, woods and ridges stays dark.
 - **The weather varies across the map**: rain comes over in heavier and lighter bands, and shells and vehicles raise
   dust from dry ground.
+- **Dust behind a column**: vehicles on a dirt road or bare earth leave a pale bank of dust along their route that
+  drifts off downwind and settles over half a minute or so. A paved street gives little, and grass, mud, water and rain
+  give none.
+- **Lights in the night air**: after dark a damp haze lies low over the field, so street lamps glow with soft halos,
+  vehicles driving near you show their headlight beams, and flares, muzzle flashes and shell bursts bloom in it.
+- **Rain far off**: under rain, distant showers hang as grey, streaked curtains from the clouds and drift across the
+  valley, instead of the distance just turning to haze.
 - It all eases off as you zoom out, so it never hides the fighting you're watching. It's scenery only: it doesn't
   change who can see whom.
 - **Caustics**: a fine, even net of thin, sun-tinted lines of light, brightest where they meet, slowly re-forms

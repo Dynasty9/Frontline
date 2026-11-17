@@ -607,6 +607,20 @@ func scenario(sname: String) -> void:
 			t2.order_move(Vector3(2, 0, -45))
 			r.spawn_squad("rpg_team", 1, b, Vector3(-30, 0, -50))
 			r.spawn_squad("fighter_cell", 1, b, Vector3(20, 0, -55))
+		"convoy":
+			# a column of four driving down a dirt road and on across the field: the
+			# dust it raises and leaves hanging along its route by day, its
+			# headlights in the night's damp air after dark (--set=mood:night)
+			var track := PackedVector3Array()
+			for i in 30:
+				track.append(Vector3(0, 0, 150 - i * 12.0))
+			world.roads[2] = [track]
+			world._rebuild_roads()
+			var kinds := ["humvee", "ifv", "ifv", "humvee"]
+			for i in kinds.size():
+				var cv: Vehicle = world.spawn("vehicle", {"vkind": kinds[i], "team": 0, "owner": a, "pos": Vector3(0, 0, 50 + i * 16.0), "yaw": 0.0})
+				if not world.settings.get("static", false):
+					cv.order_move(Vector3(0, 0, -140))
 		"mounted":
 			# two IFVs halted with men aboard: one its own mech team, the other an MG
 			# team and an AT team. Unless static, the first drops a fire team and the

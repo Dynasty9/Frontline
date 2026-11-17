@@ -70,6 +70,7 @@ func _ready() -> void:
 		l.omni_range = 14.0
 		l.light_energy = 0.0
 		l.shadow_enabled = false
+		l.light_volumetric_fog_energy = 40.0  # (a burst's flash blooms in mist, haze and smoke)
 		l.add_to_group(&"fx_light")  # (Atmosphere may lend it a shadow: Shadows from fire and flares)
 		add_child(l)
 		_lights.append(l)

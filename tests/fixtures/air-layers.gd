@@ -2,8 +2,10 @@ extends Node
 ## The weather grid without a battle: sized from MapDims, mist pooling in the
 ## hollows and along the water, rain in bands, a blast's smoke and dust (and
 ## none of the dust off wet ground), everything drifting downwind as a whole
-## and thinning away, close-up smoke plumes merging and clearing, and the air
-## layers' shaders carrying what they need.
+## and thinning away, close-up smoke plumes merging and clearing, vehicles'
+## dust by the ground they drive on and the trails it leaves, headlights after
+## dark, the far rain's curtains, and the air layers' shaders carrying what
+## they need.
 
 
 ## A stand-in for the World the grid reads: a valley running north-south
@@ -14,9 +16,56 @@ class FakeWorld:
 	var fx = null
 	var smoke_projectiles: Array = []
 	var vehicles: Array = []
+	var terrain = null
+	var atmo = null
+	var cam = null
+	var town_rect := Rect2(200, -100, 100, 200)
 
 	func ground_y(p: Vector3) -> float:
 		return -20.0 if absf(p.x + 200.0) < 60.0 else 0.0
+
+
+## Ground for the dust: a dirt road down x = 0 (paved through the town at
+## x 200..300), mud west of x = -100, thick grass everywhere else.
+class FakeTerrain:
+	extends RefCounted
+
+	func kind_at(p: Vector3) -> int:
+		if absf(p.x) < 4.0 or (p.x > 200.0 and p.x < 300.0):
+			return TerrainMap.ROAD
+		return TerrainMap.MUD if p.x < -100.0 else TerrainMap.GROUND
+
+
+class FakeAtmo:
+	extends RefCounted
+	var biome_img := Image.create(1, 1, false, Image.FORMAT_R8)
+	var _d := {"fog": Color(0.6, 0.62, 0.66)}
+
+	func grass_amount(_p: Vector3) -> float:
+		return 1.0
+
+
+class FakeVehicle:
+	extends Node3D
+	var eid := 0
+	var vdef := {}
+
+	func is_air() -> bool:
+		return false
+
+	func is_boat() -> bool:
+		return false
+
+	func weight() -> int:
+		return 1
+
+	func health_frac() -> float:
+		return 1.0
+
+
+class FakeCam:
+	extends RefCounted
+	var cam: Camera3D
 
 
 func _ready() -> void:
@@ -30,9 +79,13 @@ func check() -> void:
 	_check_blast()
 	_check_drift()
 	_check_plumes()
+	_check_vehicle_dust()
+	_check_trails()
+	_check_headlights()
+	_check_curtains()
 	_check_shaders()
 	MapDims.configure(1024)
-	print("AIR LAYERS passed: size, hollows, rain bands, blasts, drift, plumes, shaders")
+	print("AIR LAYERS passed: size, hollows, rain bands, blasts, drift, plumes, vehicle dust, trails, headlights, rain curtains, shaders")
 	get_tree().quit()
 
 
@@ -149,12 +202,146 @@ func _check_plumes() -> void:
 	pl.queue_free()
 
 
+## A vehicle driving down a dry dirt road raises dust (and the trails are told
+## of it); a paved street far less; none off the mud or thick grass, none in
+## the rain, none parked.
+func _check_vehicle_dust() -> void:
+	var dirt := 0.0
+	for case in [[Vector3(0, 0, 0), "day", 1.0], [Vector3(250, 0, 0), "day", 0.5], [Vector3(-200, 0, 0), "day", 0.0], [Vector3(60, 0, 0), "day", 0.0], [Vector3(0, 0, 0), "rain", 0.0]]:
+		var w := FakeWorld.new()
+		w.terrain = FakeTerrain.new()
+		w.atmo = FakeAtmo.new()
+		var g := WeatherGrid.new(w)
+		g.mood = case[1]
+		g.survey()
+		var v := FakeVehicle.new()
+		v.eid = 7
+		v.position = case[0]
+		w.vehicles = [v]
+		var before := g.totals().z
+		for i in 10:
+			v.position += Vector3(0, 0, -6)  # (12 m/s)
+			g._sources(0.5)
+		var raised := g.totals().z - before
+		var want := float(case[2])
+		if want >= 1.0:
+			assert(raised > 0.0003 and not g.vehicle_dust.is_empty(), "a vehicle on a dirt road raises dust (%.4f)" % raised)
+			dirt = raised
+		elif want > 0.0:
+			assert(raised > 0.0 and raised < dirt * 0.4, "a paved street far less (%.4f, dirt %.4f)" % [raised, dirt])
+		else:
+			assert(raised < 0.0001 and g.vehicle_dust.is_empty(), "none at %s in %s (%.4f)" % [case[0], case[1], raised])
+		v.free()
+	var w2 := FakeWorld.new()
+	w2.terrain = FakeTerrain.new()
+	var g2 := WeatherGrid.new(w2)
+	g2.mood = "day"
+	var v2 := FakeVehicle.new()
+	w2.vehicles = [v2]
+	for i in 4:
+		g2._sources(0.5)
+	assert(g2.vehicle_dust.is_empty(), "a parked vehicle raises none")
+	v2.free()
+
+
+## A vehicle lays a trail along its route in stretches; one behind it on the
+## same road thickens that trail rather than starting more; it settles away.
+func _check_trails() -> void:
+	var tr := DustTrails.new()
+	add_child(tr)
+	tr.setup(FakeWorld.new(), NoiseTexture3D.new())
+	var lead := Vector3(0, 0, 100)
+	for i in 20:
+		tr.feed([[lead + Vector3(0, 0, -6), lead, 1.0]])
+		lead += Vector3(0, 0, -6)
+		tr.tick(0.5, true)
+	var laid := tr.count()
+	assert(laid >= 3 and laid <= 5, "120 m of road in a few stretches (%d)" % laid)
+	var back := Vector3(0, 0, 100)
+	for i in 20:
+		tr.feed([[back + Vector3(0, 0, -6), back, 1.0]])
+		back += Vector3(0, 0, -6)
+		tr.tick(0.5, true)
+	assert(tr.count() == laid, "the next along the same road thickens the trail (%d, was %d)" % [tr.count(), laid])
+	for i in 50:
+		tr.tick(1.0, true)
+	assert(tr.count() == 0, "it settles away (%d left)" % tr.count())
+	tr.queue_free()
+
+
+## After dark the vehicles on the move near the camera get headlights; a
+## parked one, or any by day, none.
+func _check_headlights() -> void:
+	var w := FakeWorld.new()
+	var cam := Camera3D.new()
+	add_child(cam)
+	cam.position = Vector3(0, 20, 40)
+	w.cam = FakeCam.new()
+	w.cam.cam = cam
+	var moving := FakeVehicle.new()
+	moving.eid = 1
+	var parked := FakeVehicle.new()
+	parked.eid = 2
+	parked.position = Vector3(10, 0, 0)
+	add_child(moving)
+	add_child(parked)
+	w.vehicles = [moving, parked]
+	var hl := Headlights.new()
+	add_child(hl)
+	hl.setup(w)
+	hl.level = 1.0
+	for i in 8:
+		moving.position += Vector3(0, 0, -2)
+		hl._process(0.25)
+	assert(hl._on.count(moving) == 1 and hl._on.count(parked) == 0, "the one driving has its lights on, the parked one not")
+	var lit := hl._lights[hl._on.find(moving)]
+	assert(lit.visible and lit.light_energy > 0.0 and lit.light_volumetric_fog_energy > 0.0, "a beam that shows in the air")
+	assert(lit.global_position.z < moving.position.z, "on its front")
+	hl.level = 0.0
+	hl._process(0.3)
+	assert(hl._on.count(null) == Headlights.SLOTS, "none by day")
+	for n in [hl, moving, parked, cam]:
+		n.queue_free()
+
+
+## Under rain the far showers hang as curtains: several round about, none close
+## to the camera; none when it isn't raining.
+func _check_curtains() -> void:
+	var w := FakeWorld.new()
+	w.atmo = FakeAtmo.new()
+	var cam := Camera3D.new()
+	add_child(cam)
+	cam.position = Vector3(0, 80, 0)
+	w.cam = FakeCam.new()
+	w.cam.cam = cam
+	var rc := RainCurtains.new()
+	add_child(rc)
+	rc.setup(w, w.atmo)
+	rc.level = 1.0
+	rc.tick(0.1)
+	var shown := 0
+	for q in rc._q:
+		if q.visible:
+			shown += 1
+			var d := Vector2(q.global_position.x, q.global_position.z).length()
+			assert(d >= RainCurtains.NEAR and d <= RainCurtains.FAR, "a curtain only far off (%.0f m)" % d)
+	assert(shown >= 4, "several hang round about (%d)" % shown)
+	rc.level = 0.0
+	rc.tick(0.1)
+	for q in rc._q:
+		assert(not q.visible, "none without the rain")
+	rc.queue_free()
+	cam.queue_free()
+
+
 func _check_shaders() -> void:
 	var air := MapDims.shader(AirLayers.AIR_SHADER.replace("// CLOUD_SHADOW", CloudShadow.PATTERN))
 	assert(air.begins_with("\nshader_type fog;") and air.contains("float terrain_height(") and air.contains("float cloud_sun("), "the air's fog shader has its helpers")
 	assert(not air.contains("__MAP_"), "the map's size is filled in")
 	assert(SmokePlumes.SHADER.contains("shader_type fog;") and SmokePlumes.SHADER.contains("UVW") and SmokePlumes.SHADER.contains("EMISSION"), "the plumes' fog shader, glowing")
 	assert(air.contains("low_d") and air.contains("terrain_height(deform_tex, (p.xz + dir * d"), "the low haze and the ridges' shafts")
+	assert(DustTrails.SHADER.contains("shader_type fog;") and DustTrails.SHADER.contains("UVW"), "the dust trails' fog shader")
+	assert(RainCurtains.SHADER.contains("shader_type spatial;") and not RainCurtains.SHADER.contains("hint_depth_texture"), "the curtains draw the same under both renderers")
 	var c := MapDims.shader(Caustics.SHADER)
 	assert(c.contains("hint_depth_texture") and c.contains("NDC_Z") and not c.contains("__MAP_"), "the thrown-back caustics read depth both renderers' way")
 	for wq in 4:
