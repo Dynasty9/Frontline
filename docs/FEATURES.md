@@ -1236,17 +1236,15 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
     joined cuts remove retaining boards and parapet bags where their supporting ground is gone.
     Placing or removing a bunker refreshes the vegetation around its earth banks.
     The trenches scenario includes a rear bunker route, covered ammunition, sandbags and anti-tank obstacles.
-  - **Fitting out** (`trench_fittings.gd`): a finished fire bay (one running across the enemy's front) has a
-    parapet of sandbags along its front lip, two bags high with a top course broken by loopholes, every other one
-    behind a tilted steel loophole plate, and on some bays a single course of bags at the back as a parados. Each
-    section's walls are revetted one of three ways, neighbours differing as they would where a line was revetted
-    bay by bay: planks behind posts, lapped corrugated-iron sheets on round pickets, or woven wattle hurdles. Along
-    the bays: a scaling ladder against the front wall, ammunition boxes on the fire step, the sentry's box periscope
-    showing over the bags, a water can, and the field telephone line pegged along the back wall. Communication
-    trenches get the line and a few bags, not a parapet.
+  - **Fitting out** (`trench_fittings.gd`): kept deliberately plain. A finished fire bay (one running across the
+    enemy's front) has a low parapet of sandbags along its front lip, two bags high, all one earth-caked hessian
+    so it reads as part of the ground. Walls are revetted with planks behind posts, every third section with
+    corrugated-iron sheets on round pickets instead. Along the bays: a scaling ladder against the front wall on
+    some, ammunition boxes on the fire step, and the field telephone line along the back wall. Communication
+    trenches get just the line.
   - **Rear bays:** occasional long sections include a recess off the through route: a dugout entrance (a
-    timber door frame under a roof of logs and earth, the stairs going down into the dark, a gas blanket rolled
-    over the door), a timber-roofed funk hole or a supply shelf. Squads shelter in the dugouts under shellfire
+    timber door frame in the back wall, the stairs going down into the dark, a gas blanket rolled over the door;
+    the dugout is mined deep under the ground behind, so nothing of it shows above), a timber-roofed funk hole or a supply shelf. Squads shelter in the dugouts under shellfire
     (see *Take shelter*); the funk hole's roof is physical cover, not a bombproof bunker.
     Moving soldiers yield and sidestep inside narrow passages; crossing a high lip takes a slower climb.
   - **Damage:** a trench remains excavated after bombardment. Damage affects one section's depth,
@@ -1256,9 +1254,8 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   its tripod for the Rebels, on a platform of bags behind a front wall low enough to fire over. The gunner kneels
   behind it with both hands on it; it traverses to where he aims within its arc, bucks as it fires and the
   tracers leave its muzzle. **Placed on a trench it becomes a gun bay**: the tripod on the front lip behind a low
-  wall of bags, roofed over with logs, earth and a row of bags on posts, closed at the sides and open only in a
-  long embrasure at the front, a strip of hessian hung under the roof's edge; the gunner stands on the fire step
-  under the back of the roof. The bay's own parapet and kit give way to it. The AI sites its guns in its trench
+  wall of bags, the gunner standing on the fire step, the trench left open. The bay's own parapet and kit give
+  way to it. The AI sites its guns in its trench
   lines.
 - **.50 cal nest** (M2HB on the M3 tripod / DShKM with a gun shield; also as a trench bay): 100 m range and crushing suppression. Its armour-piercing rounds shred trucks, technicals,
   helicopters and drones (they still bounce off tanks).

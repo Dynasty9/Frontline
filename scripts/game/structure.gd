@@ -783,7 +783,6 @@ func _mg_model(rng: RandomNumberGenerator, bags: Array) -> void:
 		# dug into the trench's front lip: tripod feet on the parapet, ammo
 		# at the gunner's elbow
 		WeaponModels.ammo_dump(model, Vector3(0.8, 0.0, -(TrenchNet.HALF_W + 0.3)), heavy, rng)
-		TrenchFittings.mg_bay(model, self, heavy, rng, bags)
 	else:
 		# the gun sits on a platform of filled bags behind the front wall
 		var ph := 0.45 if heavy else 0.5
@@ -3437,6 +3436,14 @@ const BAG_COLS := [
 	[[Color(1.0, 1.0, 1.0), 0.5], [Color(0.92, 0.8, 0.66), 0.3], [Color(1.36, 1.44, 1.72), 0.2]],
 ]
 const BAG_CLOTH := Color(0.5, 0.45, 0.33)  # the "bag" surface's own colour
+## Bags filled from a trench's own spoil and left out in it: all one hessian,
+## caked in the same earth, so a parapet reads as part of the ground.
+const TRENCH_BAGS := [[Color(0.86, 0.82, 0.76), 1.0]]
+
+
+## Bags laid in a trench line (its parapet, a gun bay dug into it).
+func _trench_bags() -> bool:
+	return skind in ["trench", "bunker"] or (skind in ["mg_nest", "hmg_nest"] and variant == 1)
 
 
 ## Stacks individual sandbags to fill each part box the way they're laid in
@@ -3448,6 +3455,8 @@ func _bag_walls(list: Array, rng: RandomNumberGenerator, parent: Node3D = null) 
 	if _bag_mesh == null:
 		_bag_mesh = _pillow()
 	var pal: Array = BAG_COLS[team] if team >= 0 and team <= 1 else BAG_COLS[2]
+	if _trench_bags():
+		pal = TRENCH_BAGS
 	var lot := rng.randi() % pal.size()  # most of a wall's bags come from one lot
 	var xf: Array[Transform3D] = []
 	var cols: Array[Color] = []
@@ -3518,9 +3527,10 @@ func _bag(xf: Array[Transform3D], cols: Array[Color], p: Dictionary, pb: Basis, 
 				pick = i
 				break
 	var c: Color = pal[pick][0]
-	if skind in ["trench", "bunker"]:
-		c = c.lerp(C_DIRT, 0.22 if top else 0.38)
 	var k := rng.randf_range(0.86, 1.06) + (0.06 if top else 0.0)
+	if _trench_bags():
+		c = c.lerp(C_DIRT * 1.5, 0.4 if top else 0.55)
+		k = rng.randf_range(0.9, 1.0) + (0.04 if top else 0.0)
 	var want := Color(clampf(BAG_CLOTH.r * c.r * k, 0.0, 1.0), clampf(BAG_CLOTH.g * c.g * k, 0.0, 1.0), clampf(BAG_CLOTH.b * c.b * k, 0.0, 1.0)).srgb_to_linear()
 	var base := BAG_CLOTH.srgb_to_linear()
 	cols.append(Color(want.r / base.r, want.g / base.g, want.b / base.b))

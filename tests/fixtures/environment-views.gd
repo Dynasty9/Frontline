@@ -100,13 +100,13 @@ func capture() -> void:
 				if net.has_recess(st):
 					key = ["dugout", "funk-hole", "shelf"][fittings.recess(st)]
 				else:
-					key = ["timber", "iron", "wattle"][fittings.revetment(st)]
+					key = ["timber", "iron"][fittings.revetment(st)]
 			elif st.skind in ["mg_nest", "hmg_nest"] and st.variant == 1:
 				key = "mg-bay"
 			if key != "" and not found.has(key):
 				found[key] = st
 		views = []
-		for key in ["dugout", "funk-hole", "timber", "iron", "wattle", "mg-bay"]:
+		for key in ["dugout", "funk-hole", "timber", "iron", "mg-bay"]:
 			if found.has(key):
 				var st = found[key]
 				views.append([key, st.position + Vector3(0, -0.4, 0), 7.5, -34.0, 0.35])

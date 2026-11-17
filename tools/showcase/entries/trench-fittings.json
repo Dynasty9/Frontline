@@ -1,26 +1,26 @@
 {
   "entry": "changelog/unreleased/trench-fittings.md",
-  "summary": "Fitted-out fire trenches (parapets, revetment, kit, dugout entrances, roofed gun bays) and squads sheltering in dugouts under shellfire.",
+  "summary": "Fitted-out fire trenches (a low sandbag parapet, plank or iron revetment, ladders, ammunition, dugout entrances) and squads sheltering in dugouts under shellfire.",
   "medium": "motion",
   "stage": "tests/fixtures/environment-views.gd --capture-set=fortifications | trench-fittings | dugout-shelter",
-  "rationale": "Matched uncropped before/after stills show the fittings; a close-up sheet shows the dugout entrance and roofed gun bay; a short clip shows the shelter-and-stand-to behaviour, which a still cannot.",
+  "rationale": "Matched uncropped before/after stills show the fittings; a close-up sheet shows the dugout entrance, a gun bay and the revetment; a short clip shows the shelter-and-stand-to behaviour, which a still cannot.",
   "source_ref": "this branch (realistic-trench-design) on 99b8723d",
   "sources": [
     {
       "file": "changelog/unreleased/trench-fittings/comparison.jpg",
-      "sha256": "3eaf6959e24305a12d5a21d412a3a45c425da8ca3a2c4625670876ec59f311cf"
+      "sha256": "6475526065c48e309696b7cec317d2ee4278296af7eb770825cb02e077f132d5"
     },
     {
       "file": "changelog/unreleased/trench-fittings/details.jpg",
-      "sha256": "5e465539cd4733985bdb257e39e8fe6379e7f0a92df8db7c13fedb6aa6bc2b05"
+      "sha256": "481593f918f79bdb3e99ee82ef5067f00d4eb4a4e4ffeb4af704d9501decc8ed"
     },
     {
       "file": "changelog/unreleased/trench-fittings/dugout.webm",
-      "sha256": "5fc50996e51de405a16617702394bb871db513cc5966a00937e6b1f76965575c"
+      "sha256": "78cb0f2918559382fb3f6857b373ce21e68cc262c9267623376913e3b848a61c"
     },
     {
       "file": "changelog/unreleased/trench-fittings/dugout.jpg",
-      "sha256": "06dc0f857d290c117488a2f9609e405e6cbe9c972915d7a84cdd40cdd8fb1f0b"
+      "sha256": "7e9f0af9bc2446aa0d41ae36cc15bc87a46546e9ef19d38b945f76ea75ce657d"
     }
   ],
   "output": "changelog/unreleased/trench-fittings/comparison.jpg",
@@ -53,6 +53,6 @@
       "godot --path . --position -10000,-10000 --fixed-fps 30 --resolution 1280x720 --script tests/fixtures/environment-views.gd -- --scenario=trenches --static --seed=3 --offscreen --nohud --set=perf:0 --preset=high --mood=day --capture-set=dugout-shelter --capture-prefix=<scratch>/d"
     ],
     "clip_command_note": "JPEG frames piped to ffmpeg: -f image2pipe -framerate 15 -c:v mjpeg -i pipe:0 -vf format=yuv420p -c:v libvpx-vp9 -crf 36 -b:v 0 -row-mt 1 -g 60 -an",
-    "review": "Inspected native Forward+ and Compatibility (line, dugout entrance, gun bay). The mortar barrage in the clip is an observer demonstration (no side fired it)."
+    "review": "Inspected native Forward+ (line, dugout entrance, gun bay, fire bays). Pared back after review: no wattle, loophole plates, periscopes, parados or gun-bay roof; trench bags all one earth-caked hessian. The mortar barrage in the clip is an observer demonstration (no side fired it)."
   }
 }
