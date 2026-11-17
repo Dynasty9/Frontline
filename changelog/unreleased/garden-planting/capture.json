@@ -1,6 +1,6 @@
 {
   "before_ref": "aba7d654b920a349a43f22b66e2dfccd4306858e",
-  "source_ref": "34f5f8dad154dad745df08d8cf403f4e74795c49",
+  "source_ref": "c69e181f65d30bc21e9f52dcffd2f8d95fdde534",
   "engine": "Godot 4.7.2 stable ed1daf0bf",
   "stage": "tools/showcase/building-surfaces.tscn; tests/fixtures/environment-views.gd",
   "command": "godot --path CHECKOUT --resolution 1600x900 tools/showcase/building-surfaces.tscn -- --building-out=OUTPUT --offscreen FLAGS",
@@ -17,6 +17,20 @@
         130,
         1500,
         790
+      ]
+    },
+    {
+      "subjects": [
+        "town"
+      ],
+      "command": "godot --path CHECKOUT --resolution 1600x900 --script tests/fixtures/environment-views.gd -- --aivai --seed=3 --offscreen --nohud --set=perf:0 --preset=high --mood=day --focus=0,0 --capture-set=town",
+      "view": "backyard",
+      "before_env": "FL_ONLY_VIEW=backyard,-33.51431,12.21684,14.0,-50.0,0.6",
+      "crop": [
+        150,
+        100,
+        1350,
+        800
       ]
     },
     {
@@ -73,19 +87,19 @@
         "planting": [
           0.0,
           1.26517426967621,
-          -0.5,
-          8.4769926071167,
-          41.1478271484375
+          -3.0,
+          10.3583555221558,
+          52.231632232666
         ]
       },
       "crop": [
-        80,
-        80,
-        1540,
-        800
+        60,
+        60,
+        1560,
+        860
       ]
     }
   ],
-  "notes": "Both sides render the source_ref studio stage (copied into the baseline checkout): house_garden is a house with its yard and, where BuildingPlanting exists, the planting TownGen lays out (studio hedge 0.7 m so the camera sees over it). The town's garden view is chosen by the source_ref fixture (a clipped hedge with flowering hydrangeas or roses behind it, at a house still lived in); the baseline has no planting, so it renders that camera through FL_ONLY_VIEW. The planting stage exists only after: every shrub kind in and out of flower, a hedge of each green, two beds, and ivy up a stone wall. The baseline is the house plans branch (with the town realism stack and the war debris), which this builds on.",
+  "notes": "Both sides render the source_ref studio stage (copied into the baseline checkout): house_garden is a house with its yard and, where BuildingPlanting exists, the planting TownGen lays out (studio hedge 0.7 m so the camera sees over it). The town's garden view (a clipped hedge with flowering hydrangeas or roses behind it, at a house still lived in) and backyard view (a vegetable plot at a house still lived in) are chosen by the source_ref fixture; the baseline renders those cameras through FL_ONLY_VIEW. The planting stage exists only after: every shrub kind in and out of flower, a hedge of each green, two beds, two vegetable plots (one with beans), a line of washing and ivy up a stone wall. The baseline is the house plans branch (with the town realism stack and the war debris), which this builds on.",
   "composition": "PIL: matched rows, 792 px halves, JPEG quality 82; the planting stage cropped and scaled to 1600 px, JPEG quality 84"
 }
