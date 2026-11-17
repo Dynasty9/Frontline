@@ -4,19 +4,19 @@
   "medium": "still",
   "stage": "game capture at 1600x900, --offscreen --perf=0 --nohud, FL_DEBUG_GI_CYCLE holding one frozen frame for off and High: tank: --scenario=tank --static --seed=3 --mood=day, FL_DEBUG_GI_AT=3, FL_DEBUG_GI_POSES=t5:tank:10:auto:2.4 (its shaded side to the camera); dust: the same at t2:tank:12:auto:3.14 with modes none, ssgi2_nosnap (no picture before the smoke) and ssgi2; golden hour: --host --team=0 --seed=3 --preset=high --mood=golden, ruin30:ruin:30:auto:0.4; night: --mood=night car16:car:16:auto:0.5 with FL_DEBUG_GI_IGNITE=0.9 FL_DEBUG_STEADY_FIRE=1 FL_DEBUG_GI_AT=14; each cropped (640x360 at 2x, or 960x540) on the window with the most added light, off over on with labels, an arrow and a caption, plus on-minus-off x4; pan: --fixed-fps 30, FL_DEBUG_GI_POSES=p:town:40:-40:1.57 FL_DEBUG_GI_PAN=6,-6,75 FL_DEBUG_GI_MODES=view_added --mood=day, gamma-brightened",
   "rationale": "The change is about where bounce light lands, so the tank is shot with its shaded side to the camera and the bounce-only panel shows the light on the hull side and skirts while the sunlit deck and lawn stay dark. The dust fix is about what must not show, so one three-way crop from a single run (off, laid over the dust, now) shows it at a glance. Golden hour and a night fire show it where it is strongest in a town; the pan clip answers whether it smears in motion. Midday and the 55 m command height were rendered too but are now faint, since sunlit ground no longer lifts, so they are not claimed.",
-  "source_ref": "dines/ssgi-a648db after the v2.0.1 merge (screen-space sun test, rim light in the shade estimate)",
+  "source_ref": "dines/ssgi-a648db: prep reads the world before smoke and flames; level ground brightened by dust is masked",
   "sources": [
     {
       "file": "changelog/unreleased/bounce-light-shade/tank.jpg",
-      "sha256": "b6b113075ad092cbd3b20a8ea27c98ba2e029a83bd597546abf52506dbad1d9b"
+      "sha256": "17eec3a545001ca25bb3e04afaf7781c02cf0f0ac03fab154d85572812127523"
     },
     {
       "file": "changelog/unreleased/bounce-light-shade/tank-light.jpg",
-      "sha256": "bac663b88c6321cffaa8bf94cf83b6380248e0e79adff040aa313a4e9b14dcdb"
+      "sha256": "d21b5c858904de37e6df8561a6771dc9cc10acff4064ee6518ff0610b35ef9b5"
     },
     {
       "file": "changelog/unreleased/bounce-light-shade/dust.jpg",
-      "sha256": "b3ce9d8e2a4d493844236167aeb843efb1ae2cea9ad05e775a09c56088d1a817"
+      "sha256": "ee1ff7f44be9f331e09e2edd34e635434f28114c5137e898bd8074eb72b5c78e"
     },
     {
       "file": "changelog/unreleased/bounce-light-shade/golden.jpg",
@@ -28,11 +28,11 @@
     },
     {
       "file": "changelog/unreleased/bounce-light-shade/fire-night.jpg",
-      "sha256": "1114d644da0210d6745490e270cda09044da3a4f30ecd758cd305dd458087295"
+      "sha256": "36e519fc3ca1b8ba0365813c12f8d59daf7fce6ac6f5d44b0947928c08da547b"
     },
     {
       "file": "changelog/unreleased/bounce-light-shade/fire-night-light.jpg",
-      "sha256": "3d8d2d6e4549bae2bc99273d829213a8dd283a96ef89ae41a0dd5215da0b4a3b"
+      "sha256": "12f392c0bdd8e30ec0fe0b2d58219172d80c6aa1ac0b18f77f104c184a341ed5"
     },
     {
       "file": "changelog/unreleased/bounce-light-shade/pan.webm",

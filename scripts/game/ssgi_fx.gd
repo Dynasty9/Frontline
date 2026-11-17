@@ -331,7 +331,7 @@ func _build_sets(color: RID, depth: RID, normal: RID, t: Dictionary) -> void:
 		var hist: RID = t["hist_" + cur]
 		var hist_prev: RID = t["hist_" + prev]
 		_sets["prep_" + cur] = _uniforms("prep", [_smp(1, color, true), _smp(2, depth, true), _smp(3, normal, true),
-			_img(4, gb), _img(5, t["rad"]), _smp(6, t["filt"], false)])
+			_img(4, gb), _img(5, t["rad"]), _smp(6, t["filt"], false), _smp(7, t["opaque"], true)])
 		_sets["gather_" + cur] = _uniforms("gather", [_smp(1, gb, true), _smp(2, t["rad"], true), _img(3, t["raw"])])
 		_sets["temporal_" + cur] = _uniforms("temporal", [_smp(1, gb, true), _smp(2, t["raw"], true), _smp(3, gb_prev, true),
 			_smp(4, hist_prev, false), _img(5, hist)])
@@ -499,6 +499,7 @@ layout(set = 0, binding = 3) uniform sampler2D normal_tex;
 layout(rgba16f, set = 0, binding = 4) uniform restrict writeonly image2D gbuf_img;
 layout(rgba16f, set = 0, binding = 5) uniform restrict writeonly image2D rad_img;
 layout(set = 0, binding = 6) uniform sampler2D prev_filt_tex;
+layout(set = 0, binding = 7) uniform sampler2D opaque_tex;
 
 void main() {
 	ivec2 h = ivec2(gl_GlobalInvocationID.xy);
@@ -518,7 +519,12 @@ void main() {
 			bd = d;
 			best = f;
 		}
-		sum += clean(texelFetch(color_tex, f, 0).rgb);
+		// (the world before smoke, dust and flames, where it was taken: a
+		// muzzle flash's or a flame's sprite isn't a surface, and read as one
+		// it lit the gun barrel it hung in front of. Fires and flashes still
+		// throw their light, through the lights they bring, off the walls and
+		// ground those light)
+		sum += clean(P.opt.w > 0.5 ? texelFetch(opaque_tex, f, 0).rgb : texelFetch(color_tex, f, 0).rgb);
 	}
 	if (bd <= 1e-7) {
 		imageStore(gbuf_img, h, vec4(0.0, 0.0, 0.0, 0.0));  // the sky: nothing to light, nothing to bounce
@@ -937,7 +943,10 @@ void main() {
 		vec3 o = clean(texelFetch(opaque_tex, p, 0).rgb);
 		float lc = dot(c, vec3(0.2126, 0.7152, 0.0722));
 		float lo = dot(o, vec3(0.2126, 0.7152, 0.0722));
-		through = mix(min(lc, lo) / max(max(lc, lo), 1e-5), 1.0, smoothstep(0.6, 0.85, wn.y));
+		// (the roads drawn among them are asphalt, darker than the ground
+		// under them: level ground made brighter is under dust or smoke)
+		float level = smoothstep(0.6, 0.85, wn.y) * (lc <= lo * 1.05 ? 1.0 : 0.0);
+		through = mix(min(lc, lo) / max(max(lc, lo), 1e-5), 1.0, level);
 	}
 	float sunny;
 	vec3 alb = receiver_albedo(c, wn, sunvis, sunny);

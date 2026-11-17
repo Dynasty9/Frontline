@@ -1369,8 +1369,12 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   picture of the world taken just before them tells it where they are: where they moved a pixel's brightness, the
   bounce light is laid on only in that ratio, so a dust cloud in front of a sunlit tank hides the tank's bounce
   light as it hides the tank (laid on regardless, the hull's outline showed through the cloud), and the fog of
-  war's shade, a multiply, darkens it by exactly its own share. Level ground is spared: roads and paving are drawn
-  among the see-through things too (their edges fade into the verges), so a road over grass would read as a cloud.
+  war's shade, a multiply, darkens it by exactly its own share. Level ground is spared where they darkened it: roads are drawn
+  among the see-through things too (their edges fade into the verges), and the asphalt is darker than the ground
+  under it, so a road over grass would otherwise read as a cloud; level ground they brightened is under dust or
+  smoke. The light each surface sends out is read from that same picture, so a muzzle flash's or a flame's sprite
+  doesn't light the gun barrel it hangs in front of; fires and flashes still throw their light off the walls and
+  ground their own lights reach.
   At the edges of thin things (a man, a post) where all four half-resolution pixels belong to what stands in front,
   the upsample looks a pixel further out for one of the pixel's own surface; at 3x, soldiers against walls and
   grass showed no halo either way. Godot's
