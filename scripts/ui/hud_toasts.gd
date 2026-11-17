@@ -10,6 +10,7 @@ const LIFE := 7.0  # seconds a line stays (alerts and intel longer)
 const TIME_W := 46.0
 const FROM_W := 92.0
 const MERGE_S := 4.0  # how soon the same report from another unit joins the line already up
+const MERGE_KINDS := ["info", "alert", "warn"]  # units' reports (not players' comings and goings)
 
 var hud: Hud
 var items: Array = []  # [kind, text, age, life, time stamp(, who, what: a merged report)]
@@ -24,7 +25,7 @@ func push(kind: String, text: String) -> void:
 	# several units reporting the same thing at once ("Bravo 1 is moving out of
 	# the shellfire", then Charlie 1, then Delta 1) is one event: say it once,
 	# naming them, rather than filling the log with the same line
-	var said := _subject_split(text)
+	var said := _subject_split(text) if kind in MERGE_KINDS else []
 	if not said.is_empty():
 		for it in items:
 			if it[0] == kind and float(it[2]) < MERGE_S and it.size() > 5 and String(it[6]) == String(said[1]):

@@ -80,7 +80,9 @@ func hovered() -> Array:
 ## of ammunition or carrying wounded. The rest are quiet, and their rows step
 ## back so the ones that matter catch the eye without a word being read.
 static func needs_you(st: Dictionary, code: String) -> bool:
-	return bool(st.contact) or bool(st.pinned) or bool(st.low_ammo) or int(st.wounded) > 0 		or int(st.get("mstate", 0)) >= 2 or code.begins_with("ROUTING") or code.contains("FALL BACK") 		or code.begins_with("CONTACT") or code.begins_with("ATK") or code.contains("ASLT") or code.contains("ASSAULT")
+	return bool(st.contact) or bool(st.pinned) or bool(st.low_ammo) or int(st.wounded) > 0 \
+		or int(st.get("mstate", 0)) >= 2 or code.begins_with("ROUTING") or code.contains("FALL BACK") \
+		or code.begins_with("CONTACT") or code.begins_with("ATK") or code.contains("ASLT") or code.contains("ASSAULT")
 
 
 func toggle() -> void:
@@ -321,13 +323,15 @@ func _vehicle_row(y: float, v, top: float, bottom: float) -> float:
 	var sel: bool = v.eid in w.input.sel_vehicles
 	_rows.append([r, "veh", v.eid, mine])
 	_row_bg(r, sel, idx)
+	# a vehicle holding or on the move, and not badly hurt, is quiet like a squad
+	var hf: float = v.health_frac()
+	var vquiet: bool = not sel and idx != _hover and (v.flags & (Vehicle.F_TRACK | Vehicle.F_FIRE)) == 0 and hf >= 0.4
 	var vs: Array = MapSymbols.vehicle_symbol(v.vkind)
-	MapSymbols.nato(self, Vector2(11, y + ROW_H * 0.5), 17.0, v.team == w.local_team or w.local_team < 0, v.team, vs[0], "", 1.0)
+	MapSymbols.nato(self, Vector2(11, y + ROW_H * 0.5), 17.0, v.team == w.local_team or w.local_team < 0, v.team, vs[0], "", 0.55 if vquiet else 1.0)
 	var by := int(w.coop.sel_veh.get(v.eid, 0)) if w.coop else 0
 	if by != 0:
 		draw_rect(Rect2(0, y + 3, 2, ROW_H - 6), Net.player_color(by))
-	var x := 26.0 + UiKit.caps_at(self, Vector2(26, y + 17), String(v.display_name()), 13, UiKit.ACCENT if sel else UiKit.TEXT)
-	var hf: float = v.health_frac()
+	var x := 26.0 + UiKit.caps_at(self, Vector2(26, y + 17), String(v.display_name()), 13, UiKit.ACCENT if sel else (UiKit.DIM if vquiet else UiKit.TEXT))
 	UiKit.steps(self, Vector2(W - 40, y + 8), hf * 6.0, 6, UiKit.GOOD if hf > 0.6 else (UiKit.WARN if hf > 0.3 else UiKit.BAD), 5.0, 9.0)
 	var code := "HOLD"
 	var col := UiKit.ACCENT if sel else UiKit.DIM
@@ -342,7 +346,7 @@ func _vehicle_row(y: float, v, top: float, bottom: float) -> float:
 		col = UiKit.BAD
 	elif Defs.flat(v.position - v._last_pos).length() > 0.02:
 		code = "MOVING"
-	if code in ["HOLD", "MOVING"] and not sel and idx != _hover:
+	if vquiet:
 		col = UiKit.FAINT  # nothing wrong and nothing to do: it steps back
 	UiKit.mono_at(self, Vector2(maxf(x + 12.0, 128.0), y + 17), code, 12, col)
 	return y + ROW_H
