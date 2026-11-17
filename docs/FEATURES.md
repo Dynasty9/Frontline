@@ -1346,8 +1346,10 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   a damp low haze lies over the field that the moon barely lights, and the street lamps, the flares, the muzzle and
   burst flashes (each light's `light_volumetric_fog_energy`) and the headlights of the vehicles driving near the
   camera (`headlights.gd`, a pair of narrow shadowless spot lights each for the six nearest on the move, none in the
-  browser) glow in it: soft halos round the lamps, the beams lighting the air and the dust ahead, a brief bloom with
-  each flash. A column's dust shows thinner after dark, when only the headlights light it. Under rain the
+  browser) glow in it: soft halos round the lamps, a brief bloom with each flash. The fog's grid can't hold a beam's
+  edge, so each headlight draws its own: a glare spot on the lamp and a cone mesh whose shader follows the view ray
+  through the cone (24 steps, stopped at the depth buffer) and adds up the light thrown back along it, bright by the
+  lamp and falling away over about 25 m, with a firm edge; the spot light lays the pool on the road. A column's dust shows thinner after dark, when only the headlights light it. Under rain the
   showers further off hang as grey curtains from the cloud base (`rain_curtains.gd`, 24 camera-facing quads scattered
   over a 3.6 km tile that drifts with the clouds and wraps round the camera, none within 360 m, where the falling
   streaks are): soft veils, uneven across, feathered into the cloud base and slanted by the wind, some trailing off

@@ -273,6 +273,8 @@ func _show(state: int) -> void:
 		return
 	_ab_state = state
 	curtains.enabled = state == 1
+	if headlights:
+		headlights.visible = state == 1
 	var wv: WaterView = atmo.water_view
 	if wv and wv.mat:
 		wv.mat.set_shader_parameter("caustic_k", wv._caustic_k * state)
@@ -289,8 +291,6 @@ func _show(state: int) -> void:
 				l.light_volumetric_fog_energy = 1.0
 			elif l.has_meta(&"fog_e"):
 				l.light_volumetric_fog_energy = float(l.get_meta(&"fog_e"))
-		if headlights:
-			headlights.visible = state == 1
 		if state == 1:
 			apply_mood(_mood)
 		else:

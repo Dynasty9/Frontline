@@ -80,7 +80,7 @@ caption = "A column on a dirt road: its dust hangs along the route, drifts off d
 [[videos]]
 file = "headlights.webm"
 poster = "headlights-poster.jpg"
-caption = "The same column at night, its headlights in the dust and the damp air."
+caption = "The same column at night, side-on: each vehicle's pair of headlight beams in its dust and the damp air."
 
 [[videos]]
 file = "rain-flicker.webm"

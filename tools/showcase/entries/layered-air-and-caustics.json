@@ -76,13 +76,13 @@
     },
     {
       "file": "changelog/unreleased/layered-air-and-caustics/headlights-poster.jpg",
-      "sha256": "19fd8a36ba907e07a99791bb24eee22638a5a999365774681fef4417238b7272",
+      "sha256": "609c93d017b91562b12125a13b122a2a1f73626079253d7f61cdf084de90b630",
       "caption": "Middle frame of the headlights clip."
     },
     {
       "file": "changelog/unreleased/layered-air-and-caustics/headlights.webm",
-      "sha256": "d5b0c2bba604893322b54aea77868c973825abfbc1ce38273bb5d4560c1191f2",
-      "caption": "Seconds 2-14 of a 1280x720 movie: --scenario=convoy --seed=1 --set=mood:night --focus=0,20 --zoom=60 --pitch=-12 --cam-yaw=1.2."
+      "sha256": "439f1d90360bd5caebcfd506fc59980ba175e17a9a77cdf9c50eda69b3b2d3cd",
+      "caption": "Seconds 2-12 of a 1280x720 movie, low and side-on: --scenario=convoy --seed=1 --set=mood:night --focus=0,30 --zoom=38 --pitch=-6 --cam-yaw=1.57."
     },
     {
       "file": "changelog/unreleased/layered-air-and-caustics/mist-command-view-off-on.jpg",
