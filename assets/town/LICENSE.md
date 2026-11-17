@@ -17,7 +17,6 @@ CC0 1.0 assets from [Poly Haven](https://polyhaven.com/license):
 - [Tree Bark 03](https://polyhaven.com/a/tree_bark_03), Rob Tuytel.
 - [Gravelly Sand](https://polyhaven.com/a/gravelly_sand), Dario Barresi.
 - [Rocky Trail 02](https://polyhaven.com/a/rocky_trail_02), Amal Kumar; 2 m scan.
-- [Dirt Aerial 03](https://polyhaven.com/a/dirt_aerial_03), Rob Tuytel; 25 m scan.
 
 `tools/bake_town_assets.py` verifies original 2K JPEG source checksums from
 `sources.json`, caches downloads under `build/terrain/town-source`, and packs
@@ -32,10 +31,9 @@ with Road Damaged Clean at 2.2 m for fine aggregate and normal/roughness detail.
 The fine scan is desaturated toward charcoal in the shader; repaired patches
 retain the same aggregate scale. The normal maps follow the actual road slope.
 
-Country roads are the trail scan at 2 m (its height packed in the colour alpha), its grit and stones underfoot, shaded
-by the aerial dirt at 25 m for broad scuffs and wheel marks (colour only). Their
-shoulders and troops' tracks use the meadow's own rutted-soil scan (assets/terrain),
-so a track's edge is the same earth as the ground it fades into.
+Country tracks are drawn by the terrain itself: the trail scan (its height
+packed in the colour alpha) is a layer of the terrain's material arrays, and
+its shoulders blend into the meadow's own rutted-soil scan (assets/terrain).
 
 The baker also measures each packed photograph's average linear albedo in
 `material_means.tres`. Building materials use those values to preserve their

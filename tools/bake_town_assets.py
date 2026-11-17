@@ -26,9 +26,9 @@ def mean_colour(image):
     return result
 
 
-NAMES = ["aerial_asphalt_01", "concrete_pavement", "leafy_grass", "roof_tiles", "weathered_planks", "concrete_floor_01", "asphalt_02", "brick_wall_001", "plastered_wall", "tree_bark_03", "gravelly_sand", "road_damaged_clean", "rocky_trail_02", "dirt_aerial_03"]
-COLOUR_ONLY = {"asphalt_02", "dirt_aerial_03"}  # repair patches share the road relief; the aerial dirt only shades the trail
-WITH_HEIGHT = {"rocky_trail_02"}  # its height rides in the colour's alpha, for height-blending the track into the meadow
+NAMES = ["aerial_asphalt_01", "concrete_pavement", "leafy_grass", "roof_tiles", "weathered_planks", "concrete_floor_01", "asphalt_02", "brick_wall_001", "plastered_wall", "tree_bark_03", "gravelly_sand", "road_damaged_clean", "rocky_trail_02"]
+COLOUR_ONLY = {"asphalt_02"}  # repair patches share the road relief
+WITH_HEIGHT = {"rocky_trail_02"}  # its height rides in the colour's alpha: the terrain's track layer height-blends by it
 
 
 def main(only=None):

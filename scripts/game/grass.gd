@@ -336,7 +336,7 @@ class BlockedJob:
 					var index := z * n + x
 					canopy[index] = mini(255, canopy[index] + int(weight * 215.0))
 		if is_instance_valid(biome):
-			biome = Grass.pack_biome(biome, Image.create_from_data(n, n, false, Image.FORMAT_R8, canopy))
+			biome = Grass.pack_biome(biome, Image.create_from_data(n, n, false, Image.FORMAT_R8, canopy), Grass.road_field(roads, biome.get_width()))
 
 	func _mark(x: int, z: int) -> void:
 		var ix := x + MapDims.N / 2
@@ -366,8 +366,37 @@ func _is_blocked(p: Vector3) -> bool:
 	return _blocked[iz * MapDims.N + ix] == 1
 
 
-## Share a sampler with biome noise without changing its red channel or CPU image.
-static func pack_biome(source: Image, canopy: Image) -> Image:
+## How near each texel of a size-by-size map grid is to the middle of a road,
+## 1 on it and falling to 0 at ROAD_REACH metres (the ground shader draws the
+## tracks from it: see Atmosphere.GROUND_SHADER).
+const ROAD_REACH := 4.5
+static func road_field(polys: Array, size: int) -> PackedByteArray:
+	var field := PackedByteArray()
+	field.resize(size * size)
+	var half := float(size) * 0.5
+	var scale := float(size) / MapDims.SIZE
+	for poly in polys:
+		var pts: PackedVector3Array = poly
+		for i in pts.size() - 1:
+			var a := Vector2(pts[i].x, pts[i].z)
+			var b := Vector2(pts[i + 1].x, pts[i + 1].z)
+			var lo := (a.min(b) - Vector2.ONE * ROAD_REACH) * scale + Vector2.ONE * half
+			var hi := (a.max(b) + Vector2.ONE * ROAD_REACH) * scale + Vector2.ONE * half
+			for z in range(maxi(0, floori(lo.y)), mini(size, ceili(hi.y) + 1)):
+				for x in range(maxi(0, floori(lo.x)), mini(size, ceili(hi.x) + 1)):
+					var q := (Vector2(x, z) + Vector2.ONE * 0.5 - Vector2.ONE * half) / scale
+					var d := Geometry2D.get_closest_point_to_segment(q, a, b).distance_to(q)
+					if d < ROAD_REACH:
+						var near := int(round((1.0 - d / ROAD_REACH) * 255.0))
+						var at := z * size + x
+						if near > field[at]:
+							field[at] = near
+	return field
+
+
+## Share a sampler with biome noise without changing its red channel or CPU
+## image: the canopy in green, the roads (road_field) in blue.
+static func pack_biome(source: Image, canopy: Image, roads := PackedByteArray()) -> Image:
 	var noise: Image = source.duplicate()
 	noise.convert(Image.FORMAT_R8)
 	var mask: Image = canopy.duplicate()
@@ -375,11 +404,19 @@ static func pack_biome(source: Image, canopy: Image) -> Image:
 	var red := noise.get_data()
 	var green := mask.get_data()
 	var packed := PackedByteArray()
-	packed.resize(red.size() * 2)
+	if roads.size() != red.size():
+		packed.resize(red.size() * 2)
+		for i in red.size():
+			packed[i << 1] = red[i]
+			packed[(i << 1) + 1] = green[i]
+		return Image.create_from_data(noise.get_width(), noise.get_height(), false, Image.FORMAT_RG8, packed)
+	packed.resize(red.size() * 3)
 	for i in red.size():
-		packed[i << 1] = red[i]
-		packed[(i << 1) + 1] = green[i]
-	return Image.create_from_data(noise.get_width(), noise.get_height(), false, Image.FORMAT_RG8, packed)
+		var at := i * 3
+		packed[at] = red[i]
+		packed[at + 1] = green[i]
+		packed[at + 2] = roads[i]
+	return Image.create_from_data(noise.get_width(), noise.get_height(), false, Image.FORMAT_RGB8, packed)
 
 
 func canopy_at(p: Vector3) -> float:

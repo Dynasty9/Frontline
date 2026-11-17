@@ -7,15 +7,16 @@ func _ready() -> void:
 	assert(arrays[0] == Atmosphere.terrain_materials()[0], "Map reloads must reuse the material allocation")
 	for channel in 2:
 		var array := arrays[channel]
-		assert(array.get_layers() == 6 + Atmosphere.MEADOW_MATERIALS.size() + Atmosphere.DETAIL_MATERIALS.size() and array.get_width() == 1024 and array.get_height() == 1024)
+		assert(array.get_layers() == 6 + Atmosphere.MEADOW_MATERIALS.size() + Atmosphere.DETAIL_MATERIALS.size() + Atmosphere.TRACK_MATERIALS.size() and array.get_width() == 1024 and array.get_height() == 1024)
 		assert(array.has_mipmaps() and array.get_format() == Image.FORMAT_RGBA8, "All packed channels and distant filtering must survive import")
-		var names: Array = Atmosphere.TERRAIN_MATERIALS + [""] + Atmosphere.MEADOW_MATERIALS + Atmosphere.DETAIL_MATERIALS
+		var names: Array = Atmosphere.TERRAIN_MATERIALS + [""] + Atmosphere.MEADOW_MATERIALS + Atmosphere.DETAIL_MATERIALS + Atmosphere.TRACK_MATERIALS
 		for layer in names.size():
 			var name: String = names[layer]
 			if name == "":
 				continue  # (the shore gravel, checked below)
 			var suffix := "color_height" if channel == 0 else "surface"
-			var path := "res://assets/terrain/%s_%s.png" % [name, suffix]
+			var folder := "town" if name in Atmosphere.TRACK_MATERIALS else "terrain"
+			var path := "res://assets/%s/%s_%s.png" % [folder, name, suffix]
 			var original := Image.new()
 			assert(original.load_png_from_buffer(FileAccess.get_file_as_bytes(path)) == OK)
 			var texture: Texture2D = load(path)
@@ -208,29 +209,20 @@ void fragment() { float tar; ALBEDO = street_surface(scan, noise, vec2(0.0), tar
 	var noise_texture := ImageTexture.create_from_image(flat_noise)
 	track_material.set_shader_parameter("detail_tex", noise_texture)
 	track_material.set_shader_parameter("street_noise", noise_texture)
-	var flat_soil := Image.create(4, 4, false, Image.FORMAT_RGB8)
-	flat_soil.fill(Color(0.4, 0.4, 0.4))
-	track_material.set_shader_parameter("soil_color", ImageTexture.create_from_image(flat_soil))
-	var flat_trail := Image.create(4, 4, false, Image.FORMAT_RGB8)
-	flat_trail.fill(Color(1, 1, 1))
-	track_material.set_shader_parameter("trail_color", ImageTexture.create_from_image(flat_trail))
-	track_material.set_shader_parameter("wear_color", ImageTexture.create_from_image(flat_trail))
 	var flat_ground := TerrainTexture.new(Image.create(MapDims.N, MapDims.N, false, Image.FORMAT_RGF))
 	track_material.set_shader_parameter("deform_tex", flat_ground.texture)
 	mesh.material_override = track_material
 	for frame in 3:
 		await RenderingServer.frame_post_draw
-	var track := view.get_texture().get_image().get_pixel(32, 32).srgb_to_linear()
-	# a troops' earth track, mid-road: the soil scan greyed, half toward the base earth, then the broad wear
-	# a troops' earth track, mid-road: the meadow's soil as the ground draws its mud
-	# (a flat 0.4 sRGB scan is the scan's mean, 0.1329), its grain from the trail
-	# scan (flat white: 6x the mean, clamped to 2), then the broad wear
-	var soil_light := Color(0.4, 0.4, 0.4).srgb_to_linear().r / 0.1329
-	var meadow_soil := Color(0.084, 0.07, 0.049) * pow(clampf(soil_light, 0.3, 1.6), 0.6)
-	# (mid-road, off the ruts: the tread streaks' dim floor, 0.9)
-	var earth := meadow_soil * 0.95 * lerpf(1.0, pow(2.0, 0.4), 0.5) * 0.9
-	var track_expected := earth * lerpf(0.9, 1.08, smoothstep(0.25, 0.70, 0.5))
-	assert(Vector3(track.r, track.g, track.b).distance_to(Vector3(track_expected.r, track_expected.g, track_expected.b)) < 0.008, "Country tracks must blend dirt and wear in linear light in both renderers: %s" % track)
+	var track := view.get_texture().get_image().get_pixel(32, 32)
+	mesh.visible = false
+	for frame in 3:
+		await RenderingServer.frame_post_draw
+	var bare := view.get_texture().get_image().get_pixel(32, 32)
+	mesh.visible = true
+	# Outside town the ground itself draws the tracks (GROUND_SHADER, from
+	# Grass.road_field); the ribbon draws only the town's asphalt.
+	assert(track.is_equal_approx(bare), "Outside town the road ribbon leaves the ground to draw the track: %s vs %s" % [track, bare])
 	for kind in ["roof_tile", "roof_concrete", "wood_dark", "bark"]:
 		var photographed := Mats.get_mat(kind).duplicate() as ShaderMaterial
 		assert(photographed.get_shader_parameter("pattern") == Mats.WEATHERED_PHOTO)

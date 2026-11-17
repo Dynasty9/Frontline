@@ -1,6 +1,6 @@
 +++
 title = "Country roads worn into the land"
-summary = "Roads outside town are photographed dirt and gravel tracks now, not smooth orange bands, and they fade into the meadow through its own bare soil instead of stopping at a hard edge."
+summary = "Country tracks are part of the ground now, not a strip laid on it: worn earth with wandering wheel ruts, drawn by the terrain itself and taken back by the meadow stone by stone."
 kind = "improved"
 
 [[screenshots]]
@@ -8,12 +8,10 @@ file = "comparison.jpg"
 caption = "A country road from afar and close up, the edge of town and a town street, from the same cameras before and after"
 +++
 
-- **The surface** is photographed: trail grit and small stones underfoot, with broad scuffs and wheel marks from an aerial survey of worn dirt, in this country's dull grey-brown.
-- **The edges blend into the meadow.** Over the last metre or two the gravel gives way to the ground's own bare soil, then to grass growing through it in tufts, and the grass now grows into the shoulder.
-- **Wheel lines** are pressed smoother and darker, and a broken line of grass holds on down the middle.
-- **The track is shaped**: wheel ruts pressed into it, a crown between them, and shoulders that roll off into the grass.
-- **Potholes** sit in the wheel lines and fill with water in the rain.
-- **Tracks worn in by the troops** are the meadow's own earth, rutted darker.
+- **Drawn by the ground itself**: a track is the terrain's own soil where wheels have worn the turf away, lit and shaded like the meadow round it, so it no longer looks laid on top.
+- **Edges by height**: the grass comes back in tufts between the stones, then thickens into the meadow, instead of stopping at a line.
+- **Wheel ruts** wander, widen and fade along the track, with a crown of grass between them in places and shoulders that roll off into the turf.
+- **In the rain** water stands in the ruts.
 - **At the edge of town** the asphalt crumbles away into the gravel, and the track runs full width where everything going in and out wears it.
 - **In the rain** streets go dark and glossy with standing water in the dips, the same across every junction.
 - **Junctions** no longer show faint outlines or gutter lines where their paving meets the road.
