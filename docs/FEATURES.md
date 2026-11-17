@@ -1637,6 +1637,11 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   burnt to the wire), not black shapes. Every crew's load is its own: crate stacks, tarps, bags, bedrolls, cans and canvas tilts vary by
   seed, so a column of one kind isn't stamped from one mould. Bonnets, roofs, consoles and deckhouses have
   chamfered edges that catch the light. See "Ninth pass" in [the component guide](vehicle-components.md).
+- **Nets, bolted armour and weather** (tenth pass): crews camouflage about half the armour and trucks with nets
+  and cut branches; armour edges are chamfered and welded, with bolted modules, stowage baskets, walkways and
+  gun covers; paint varies plate to plate and gathers dust and grime at a size the battle camera sees; car
+  roofs show their paint; helicopter tails are aerofoils and cowlings carry panels; boats are wet at the
+  waterline. See "Tenth pass" in [the component guide](vehicle-components.md).
 - Explosions are layered GPU particles: a flash and light burst, a rolling fireball that cools from the edges in
   until it's dark smoke, a lit smoke column that drifts with the wind, a dirt plume, sparks and debris that
   bounce on the ground, a rolling dust ring, a faint heat-shimmer shockwave and a scorch mark. Heavy rounds

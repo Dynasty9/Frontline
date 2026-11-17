@@ -102,26 +102,51 @@ static func _slats(k: VehicleModels, parent: Node3D, surface: VehicleSurface, in
 			k._add(parent, angled.patch(clipped, 0.0, depth), material, col, Vector3.ZERO)
 
 
+## How a mudflap hangs, each (its lower edge kicked back, its lean from the
+## clamp): straight, pushed back by the wheel's spray, and leaning either way
+## where a bracket was bent.
+const FLAP_HANG: Array[Vector2] = [Vector2(0.045, 0.0), Vector2(0.03, 0.05), Vector2(0.075, -0.02), Vector2(0.06, 0.03)]
+
 ## A clamped rubber flap with a gently kicked lower edge and reinforcing ribs.
+## On a vehicle with a load of its own (VehicleCargo.kit) each flap hangs as
+## the road has left it: kicked back further or leaning off its bracket (see
+## FLAP_HANG), now and then with a lower corner torn away on a kerb or a
+## track, so no two vehicles' flaps hang alike. Stays within its old box but
+## for up to 5 cm more lean or kick at its lower edge.
 static func mudflap(k: VehicleModels, parent: Node3D, center: Vector3, size: Vector2, rotation := Vector3.ZERO) -> void:
+	var hang := FLAP_HANG[0]
+	var torn := 0
+	var rng := VehicleCargo.kit(k, parent, center, 16)
+	if rng != null:
+		hang = FLAP_HANG[rng.randi_range(0, FLAP_HANG.size() - 1)]
+		if rng.randf() < 0.3:
+			torn = 1 if rng.randf() < 0.5 else -1
 	var mount := k._pivot(parent, center)
 	mount.rotation = rotation
+	var bend := func(t: float) -> float: return t * t * hang.x + t * hang.y * size.y
 	var rings: Array = []
 	for i in 5:
 		var t := float(i) / 4
 		var y := size.y * (0.5 - t)
-		var bend := t * t * 0.045
-		rings.append(PackedVector3Array([Vector3(-size.x / 2, y, bend - 0.012), Vector3(size.x / 2, y, bend - 0.012), Vector3(size.x / 2, y, bend + 0.012), Vector3(-size.x / 2, y, bend + 0.012)]))
-	k._add(mount, VehicleModels.solid(rings, "shared_mudflap_%s" % str(size)), "rubber", null, Vector3.ZERO)
+		var z: float = bend.call(t)
+		# A torn corner: the lower edge cut up toward that side, a third of the
+		# flap's height at its corner.
+		var lift: float = [0.0, 0.0, 0.0, 0.06, 0.33][i] * size.y
+		var yl := y + (lift if torn < 0 else 0.0)
+		var yr := y + (lift if torn > 0 else 0.0)
+		rings.append(PackedVector3Array([Vector3(-size.x / 2, yl, z - 0.012), Vector3(size.x / 2, yr, z - 0.012), Vector3(size.x / 2, yr, z + 0.012), Vector3(-size.x / 2, yl, z + 0.012)]))
+	var key := "shared_mudflap_%s" % str(size) + ("" if hang == FLAP_HANG[0] and torn == 0 else "_%s_%d" % [str(hang), torn])
+	k._add(mount, VehicleModels.solid(rings, key), "rubber", null, Vector3.ZERO)
 	k._box(mount, Vector3(size.x, 0.04, 0.018), Vector3(0, size.y / 2 - 0.025, 0.026), "gunmetal", Color(0.22, 0.23, 0.21))
 	for side in [-1.0, 0.0, 1.0]:
 		VehicleBody.fastener(k, mount, Vector3(side * size.x * 0.36, size.y / 2 - 0.025, 0.038), Vector3.BACK, 0.009)
-	# Each rib is one moulded bead following the kick.
-	for side in [-1.0, 1.0]:
+	# Each rib is one moulded bead following the kick, ending short of a tear.
+	for side: float in [-1.0, 1.0]:
 		var rib := []
-		for i in 5:
+		var steps := 3 if torn != 0 and signf(side) == float(torn) else 5
+		for i in steps:
 			var t := float(i) / 4
-			rib.append(Vector3(side * size.x * 0.36, size.y * (0.5 - t), t * t * 0.045 + 0.016))
+			rib.append(Vector3(side * size.x * 0.36, size.y * (0.5 - t), float(bend.call(t)) + 0.016))
 		VehicleFrames.path(k, mount, rib, 0.006, "rubber", Color(0.10, 0.11, 0.10), 5, false)
 	k._fold(mount)
 

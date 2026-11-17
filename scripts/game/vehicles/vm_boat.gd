@@ -371,6 +371,19 @@ static func _tube_kit(k: VehicleModels, parent: Node3D, ax: Array, r: float, cz:
 		k._box(parent, Vector3(0.05, 0.04, 0.2), inner[i], "rubber", null, Vector3.ZERO, false)
 
 
+## `text` painted along the topsides of side s (+-1) in VehicleMarkings'
+## hull lettering, `height` tall, centred at z `zc` and `below` under the
+## sheer, following it up toward the bow; it reads toward the bow on the right
+## side and aft on the left, as from a boat alongside.
+static func _lettering(k: VehicleModels, m: Node3D, p: Dictionary, s: float, text: String, zc: float, below: float, height: float, col: Color) -> void:
+	var project := func(q: Vector2) -> Vector3:
+		var z := zc - s * q.x
+		var st := _station(p, _u(p, z))
+		var y := _sheer(p, _u(p, z)) - below + q.y
+		return Vector3(s * (_hw(st[1], y) + 0.004), y, z)
+	VehicleMarkings.digits(k, m, text, height, project, Vector3(s, 0, 0), col, Vector2.ZERO, "hull", "paint", true, 0)
+
+
 ## A thin panel laid on the quad face p0-p1-p2-p3 (a window, a hatch, a
 ## door), `inset` in from its edges, `t` thick, standing `lift` proud of the
 ## face (outward = away from `inside`).
@@ -684,16 +697,11 @@ static func _motorboat(k: VehicleModels, seed: int) -> void:
 	_rod(k, m, Vector3(-0.39, 1.04, -0.05), Vector3(-0.42, 2.45, 0.12), 0.011, "plain", Color(0.85, 0.85, 0.82), 5)
 	# the bow eye and the registration number on both bows
 	VehicleMarine.bow_eye(k, m, Vector3(0, 0.56, _stem(p, 0.56) - 0.03), 0.022, 0.045, Vector3.FORWARD, Vector3.RIGHT, "steel", STAINLESS)
+	# (a state's letters and her number, three inches high: on a wreck the
+	# paint has burned off with it)
+	var reg := VehicleMarkings.craft_number(seed, 2, 4)
 	for s in [-1.0, 1.0]:
-		for i in 7:
-			if i == 2:
-				continue
-			var z := -1.45 - i * 0.085
-			var st := _station(p, _u(p, z))
-			var side: Array = st[1]
-			var y := _top(st) - 0.1
-			var fl := atan2(float(side[4]) - float(side[2]), float(side[5]) - float(side[3]))
-			k._box(m, Vector3(0.006, 0.1, 0.055), Vector3(s * (_hw(side, y) + 0.004), y, z), "paint", stripe.darkened(0.3), Vector3(0, 0, -s * fl), false)
+		_lettering(k, m, p, s, reg, -1.72, 0.1, 0.076, stripe.darkened(0.3))
 	# 115 hp outboard on the transom notch
 	_bake(k, _outboard(k, m, Vector3(0, 0.71, zt + 0.04), 0.92, 0.66, "plain", Color(0.86, 0.86, 0.84), "plain", Color(0.7, 0.7, 0.69), "boat_mb_ob"))
 	# the PKM it's armed with: on a pintle stepped into the foredeck, where the

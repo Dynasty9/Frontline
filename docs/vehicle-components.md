@@ -714,6 +714,57 @@ Merkava and Scorcher, for their split rolls and bags).
   lashings; jerrycans and ammo cans vary their paint; `VehicleCargo.tilt_colour` gives each truck's canvas
   tilt one shade for its cloth, bows' lashing and rolled flap; `VmCore._bedroll` draws its colour too.
 
+### Tenth pass: nets, bolted armour and weather the battle camera sees
+
+Six agents each took one area (NATO, CSAT and independent, core and civilian, aircraft, running gear and
+kit, materials and boats) and closed nine or ten gaps against current AAA RTS vehicles, judged from the battle
+camera first. Nodes, meshes, wheels and rotors are unchanged on every model; vertices rise 1.3% across the
+roster at seed 3, at most 8.7% (the Ghost Hawk). A few models gain one surface (the non-skid coat, a gun's
+canvas boot, a camouflage net's cloth where the seed camouflages a vehicle that had no canvas).
+
+- **Camouflage** (`VehicleCloth.camouflage`, `net`, `branch`): how heavily a crew has camouflaged its vehicle,
+  0 to 1 from `k.kit_seed` (none, some or heavy), for armour-family vehicles only, never a wreck, and 0 for
+  scenery. `VehicleCloth.bag` may stuff a net into a basket place and `VehicleEquipment.storage` throw one on
+  a level bin lid or lay a branch along it; `roll` may tuck a branch along its top. Nets are a lumpy heap
+  under scrim leaves in woodland or desert colours chosen by the hull's paint (`_net_colours`); branches are
+  a stem with cached leaf sprays (`_spray`) in one cutting's shade. Both rest only on level places
+  (`_upright`).
+- **Armour edges**: `VehicleBody.armour(rings, key, top, bottom, corner, turn)` breaks every lengthwise corner
+  that turns more than `turn` degrees (`_broken_corners`, capped at a third of the shorter edge) and hands the
+  end chamfers to `VehicleModels.solid`; `VmCsat._chamfer_loft` and `VmIndep._armour` use it, and
+  `VmCsat._hull` / the families' `_block` break section hulls and the blocks under them. NATO's lofts take a
+  3-5 cm `bevel` and `VmNato._seated` sets each weld in the middle of the chamfer facet (`VehicleModels._chamfered`,
+  so the cut matches); `VmCore._seated` sets core roof welds into their joints. `VmNato._extrude_z` takes an
+  appended `bevel`.
+- **Armour fittings**: `VehicleMounts.mantlet` takes `boot` (a pleated canvas cover, left off wrecks);
+  `VmNato._bustle_basket` (an open basket with kit-seeded bags), `_walkway` (the `nonslip` coat),
+  `_shelter_roof` and `_roof_unit` (HEMTT shelter panels, lifting eyes and AC units). `VmCsat._era` draws
+  about one brick in seven in a replacement colour (`ERA_SPARE`) from the kit seed. `VehicleBody.soot` lays
+  three graded films behind an exhaust.
+- **Cars**: `VmCiv._yloft` rolls a top edge over in a quarter round and crowns the top (`roofed`, `crown`,
+  default `CROWN`); `_glasshouse` rolls its roof from the pillars; `_rolled` gives bed rails and roof pods the
+  same top.
+- **Helicopters**: `VmHeli._tailplane` (an aerofoil, swept and tapered, a free tip rounded), `_cowl_top`
+  (panel joints, with refitted panels from `_patchwork`), `_number` (serials from the kit seed, a fixed one
+  for scenery and wrecks), `_weep` (oil streaks pulled aft). Fairings, cowls, masts, pylons and fins take the
+  loft bevel. `VmPlane.prop` tints its disc by the blades and leaves it off wrecks.
+- **Running gear**: `VehicleWheels._lugs` (chevron mud lugs from `_tread`, over the shoulder);
+  `VehicleWheels.sprocket` cuts each toothed ring as one plate (`_gear`); `pneumatic` adds a tyre-inflation
+  seal and hose to military wheels of 0.4 m and up. `VehicleTracks.spare_links` hangs short runs with gaps;
+  `VehicleFittings.mudflap` hangs each flap its own way (`FLAP_HANG`) and tears some; `crate_stack` stencils
+  top lids; `VehicleCloth._panel_mesh` slacks a tilt between its bows; `TrackBelt._part` rubs the links' inner
+  faces bright.
+- **Surface shader** (vehicle branch only): `plate`, a tone per flat face read from its plane, stronger on
+  service paint than car paint; dust drifts about a metre across on upward faces and grime runs down the
+  sides, both scaled by `surface_weather`; curvature from the change in the shading normal across the pixel
+  polishes rolled edges (`rim`) and darkens hollows (`cavity`), fading out on edges a few pixels wide;
+  non-skid decks wear pale along walkways. Boats get a wet band measured from the water (`surface_sea`,
+  `surface_wet`, from `VehicleMaterials.WET`). About 0.05 ms with vehicles filling the screen, less in a
+  battle frame.
+- **Boats and ships**: `VehicleMarkings.craft_number` (registrations from the seed, lettered along the sheer
+  by `VmBoat._lettering`); `VmShips._streak`, `_wall_streak`, `_drip`, `_stain` and `_coat` (rust runs in
+  three graded coats tinting the paint they cross), `_funnel_soot`, and `_digits`' `shade` (a drop shadow).
+
 ### Gun mounts: laying, recoil and the guns themselves
 
 The gun builders (`coax`, `autocannon`, `hmg`, `mmg`, `gmg`, `rotary`) end with `k._gun(m, muzzle)` instead of
