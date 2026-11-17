@@ -1431,6 +1431,8 @@ func _roof_model(rng: RandomNumberGenerator) -> void:
 			pitch += 4.0
 		var fx := L * 0.5 + 0.2
 		var fz := W * 0.5 + 0.2
+		roof_pitch = pitch
+		roof_hipped = hipped
 		var ropts := {"gable_material": material, "gable_col": wall_col, "trim": trim, "gable_inset": -0.07, "gutters": true,
 			"downpipes": [[end, 1.0], [-end, -1.0]], "wall_face": fz, "wall_face_x": fx}
 		var rise := BuildingRoofs.hip(k, L, W, h, pitch, 0.35, covering, tint, ropts) if hipped else BuildingRoofs.gable(k, L, W, h, pitch, 0.35, covering, tint, ropts)
@@ -1526,6 +1528,7 @@ func _roof_model(rng: RandomNumberGenerator) -> void:
 		# (years of weather on it, from a stream of its own)
 		var flat_wear := RandomNumberGenerator.new()
 		flat_wear.seed = rng.seed ^ 0x6a7e5d
+		roof_pitch = 0.0
 		BuildingRoofs.flat(k, L, W, h, {"material": material, "col": wall_col, "wall_face": W * 0.5 + 0.2, "hatch": rng.randf() < 0.3, "wear": flat_wear})
 		var top := h + 0.2
 		# what's up there: a water tank, an air conditioner, a dish
@@ -1539,6 +1542,11 @@ func _roof_model(rng: RandomNumberGenerator) -> void:
 
 
 var _roof_t := 0.0
+## A house roof's form as its model was built, for what it keeps dry
+## (RainCover): its pitch (degrees; 0 flat, -1 not built yet) and whether
+## it's hipped rather than gabled.
+var roof_pitch := -1.0
+var roof_hipped := false
 
 
 ## A roof is hidden while anyone is inside (so you can see your men), and

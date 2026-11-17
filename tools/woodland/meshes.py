@@ -52,7 +52,7 @@ def canopy_cards(obj, samples=None):
     obj.data = mesh
     bpy.data.meshes.remove(source_mesh)
 
-for name, budget, scale, variants in [('dead_tree_trunk_02', 3500, 1, [0]), ('tree_stump_01', 2200, 1, [0]), ('fern_02', 1600, 1, [0, 1]), ('nettle_plant', 1600, 4, [0, 4]), ('rock_moss_set_01', 1500, 1, [0, 2]), ('grass_medium_01', 700, 3, [3, 4]), ('shrub_02', 1800, 1, [0, 1])]:
+for name, budget, scale, variants in [('dead_tree_trunk_02', 3500, 1, [0]), ('tree_stump_01', 2200, 1, [0]), ('fern_02', 1600, 1, [0, 1]), ('nettle_plant', 1600, 4, [0, 4]), ('rock_moss_set_01', 1500, 1, [0, 2]), ('grass_medium_01', 700, 3, [3, 4]), ('shrub_02', 1800, 1, [1])]:
     if '--trees-only' in sys.argv or '--fir-only' in sys.argv:
         continue
     if '--shrubs-only' in sys.argv and name != 'shrub_02':

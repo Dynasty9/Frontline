@@ -484,7 +484,7 @@
     "simulation_hz": 24,
     "engine_fixed_fps": 24,
     "renderer": "forward_plus",
-    "cue": "Rings running out across a puddle, drops bursting on a tank's deck, water running down a hut's wall, then two lightning strikes from a low camera, the second much nearer.",
+    "cue": "Rings running out across a puddle, drops bursting on a tank's deck, a hut's wall dry under its eaves but splashed at its foot, then two lightning strikes from a low camera, the second much nearer.",
     "timeout": 1500,
     "crf": 32,
     "seed": 712,
@@ -567,7 +567,7 @@
   },
   "mounted-guns": {
     "scene": "tests/fixtures/mounted-gun-clips.tscn",
-    "seconds": 28,
+    "seconds": 31,
     "fps": 30,
     "simulation_hz": 30,
     "engine_fixed_fps": 30,
@@ -580,6 +580,6 @@
       "dof": false,
       "mood": "day"
     },
-    "cue": "A firing line in the showroom battlefield engages trucks downrange and helicopters overhead; the camera holds on each mounted gun in turn (tank main gun, 25 and 40 mm cannon, RWS .50 on a helicopter, technical's DShK, ZU-23 on a helicopter, GMG, motorboat PKM, Ghost Hawk door gun to the side)."
+    "cue": "A firing line in the showroom battlefield engages trucks downrange and helicopters overhead; the camera holds on each mounted gun in turn (tank main gun, 25 and 40 mm cannon, RWS .50 on a helicopter, technical's DShK, Humvee's .50 in its turret, ZU-23 on a helicopter, GMG, motorboat PKM, Ghost Hawk door gun to the side)."
   }
 }

@@ -609,15 +609,19 @@ static func _prowler(k: VehicleModels, team: int, arm: String) -> void:
 	VehicleMounts.pintle(k, m, Vector3(0.6, 1.08, pz), Vector3(0.6, 1.45, pz - 0.1), "gunmetal_w", null, Vector2(0.025, 0.03), Vector2(0.08, 0.13))
 	var ptip := VehicleWeapons.mmg(k, m, Vector3(0.6, 1.45, pz - 0.1), Vector3(0.6, 1.46, pz - 1.12), 1.0, 1.0, true, "gunmetal_w", STOW)
 	# the ring mount on the cage roof, turning whole with the gun: the ring,
-	# the carriage bar across it under the post, the post clamped to the bar
+	# the carriage bar across its front under the post, the post clamped to
+	# the bar; the gunner stands in the ring behind the gun, on the rear seats'
+	# floor, turning with it
 	var t := k._pivot(m, Vector3(0, ry + 0.02, 0.58))
 	k.turret = t
-	VehicleMounts.ring_mount(k, t, Vector3.ZERO, 0.48, 0.03, "gunmetal_w", null, [], t, -0.12)
-	VehicleMounts.pedestal(k, t, Vector3(0, 0, -0.12), Vector3(0, 0.365, -0.12), null, "gunmetal_w", null, 0.0, Vector2(0.05, 0.06), 0, Vector3(0.1, 0.3, 0.16), 0.0255)
+	var bar := -0.34
+	VehicleMounts.ring_mount(k, t, Vector3.ZERO, 0.48, 0.03, "gunmetal_w", null, [], t, bar)
+	VehicleMounts.pedestal(k, t, Vector3(0, 0, bar), Vector3(0, 0.365, bar), null, "gunmetal_w", null, 0.0, Vector2(0.05, 0.06), 0, Vector3(0.1, 0.3, 0.16), 0.0255)
 	if arm == "hmg":
-		var tip := _m2(k, t, Vector3(0, 0.42, -0.12), true)
-		k._box(t, Vector3(0.22, 0.26, 0.36), Vector3(0.2, 0.36, -0.1), "paint", STOW)
+		var tip := _m2(k, t, Vector3(0, 0.42, bar), true)
+		k._box(t, Vector3(0.22, 0.26, 0.36), Vector3(0.2, 0.36, bar + 0.02), "paint", STOW)
 		k.mg_tip = k._tip(t, tip)
+		k.gunner_floor = {"on": t, "y": 0.45 - 1.3, "area": Rect2(Vector2(0, bar + 0.4 + 0.3), Vector2.ZERO)}
 		# the pintle gun is the second gun, decoration here
 	else:
 		# Titan launcher: the tube, the sight/command unit, the grip
@@ -631,6 +635,8 @@ static func _prowler(k: VehicleModels, team: int, arm: String) -> void:
 			VehicleWeapons.launch_tube(k, m, Vector3(x, 1.12, 1.85), 0.08, 1.2, "paint", Color(0.33, 0.35, 0.27))
 	if k.mg_tip == null:
 		k.mg_tip = k._tip(m, ptip)
+		# the front passenger works it from his seat
+		k.gunner_seated = true
 
 
 # --- 8x8s: Marshall (Patria AMV), Rhino (Rooikat MTTD) ---------------------------------
