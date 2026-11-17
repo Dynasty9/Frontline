@@ -138,7 +138,7 @@ per-frame updates. Construction mounts fold into their supplied hull/turret pare
 | --- | --- | --- | --- |
 | 1 | Round headlights / Hunter | Zamak, Qilin | `headlamp`; coverage above, plus MB4WD round lamps and matching civilian fog lamps found during the final roster audit |
 | 2 | Jerrycans / Hunter | Prowler, Marshall | `jerrycan`: pressed ribs, seam, three open handles, filler cap. All five ground-family jerrycan helpers delegate here, including civilian repair pickups. |
-| 3 | Sealed ammo cans / Prowler | Abrams, Humvee | `ammo_can`: gasket, lid, latches, open handle and wall ribs; `open` swings the lid back for a can feeding a gun. NATO/core helpers and loose cans in offroad/MB4WD gun vehicles; wooden crates and gun-specific feed boxes keep their construction. |
+| 3 | Sealed ammo cans / Prowler | Abrams, Humvee | `ammo_can`: gasket, lid, latches, open handle and wall ribs; `open` leaves the lid off a can feeding a gun. NATO/core helpers and loose cans in offroad/MB4WD gun vehicles; wooden crates and gun-specific feed boxes keep their construction. |
 | 4 | Tow shackles / Hunter | Prowler, Marshall | `tow_shackle`: open forged bow, pin and attached mounting lug. Core/NATO/CSAT helpers plus the independent Strider, Mora, Kuma, Gorgon and Zamak fittings. |
 | 5 | Smoke tubes / Marshall | Rhino, Slammer | `smoke_tube`: reuses the hollow barrel mesh and adds a mounting collar. All four ground-family smoke banks retain their counts, spacing, pitch and yaw. |
 | 6 | Periscope heads / Abrams | T-55, Bradley | `periscope`: fitted glass, seal, protective lip and fasteners. Core/CSAT helpers plus the matching NATO and independent driver/crew heads. Panoramic sight towers and flush vision ports retain their shapes. |

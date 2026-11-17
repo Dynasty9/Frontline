@@ -210,7 +210,7 @@ func _gun_feed() -> void:
 		kit.root = Node3D.new()
 		kit._baking = true
 		VehicleFittings.ammo_can(kit, kit.root, Vector3.ZERO, Color.OLIVE, Vector3.ZERO, Vector3(0.16, 0.2, 0.3), open)
-		assert(kit.root.get_child_count() == 0, "An open can's lid must fold into the bake")
+		assert(kit.root.get_child_count() == 0, "A can must fold into the bake")
 		var covered := false
 		for part: Array in kit._parts[kit.root]:
 			covered = covered or _bounds([part]).intersects(mouth)
