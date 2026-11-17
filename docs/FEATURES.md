@@ -637,7 +637,7 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   steeper in the gullies than on the spurs, and take the same distance haze as the ground beneath them.
 - Distant scenery composes surveyed Mont Blanc, Matterhorn and Jungfrau ridge shapes into seeded fictional mountain groups and low passes, with floating-point heights and a finer indexed mesh at Medium/Far detail. Coastal scenery continues into an irregular shoreline and a coarse ocean surface beyond the detailed battlefield water. Boundary rivers extend into curved scenery pools with matching beds and banks; these extensions leave authoritative water shapes and navigation unchanged. Reusable cliff forms have uneven shoulders and irregular drainage cuts before erosion.
 - Coastal scenery continues through a broad water channel to outer islands, with gentler foothills and a coarse ocean horizon beyond the terrain. The channel is entirely outside the playable boundary; inland maps keep their land backdrop. Shared shoreline masks, seed phase and beach/seabed profiles keep scenery ground and water continuous across the playable edge.
-- Distant mountain groups lose contrast into sky-coloured haze while nearby ground retains its detail. Localized 3D cloud banks and thin trailing ridge mist sit beyond the playable boundary, with shaded bases, soft edges and lighting matched to the weather. A baked 64³ R8 noise volume avoids runtime generation; scene-depth termination prevents clouds behind mountains showing through them. Stronger aerial perspective is masked to distant scenery, preserving foreground contrast. Mountain clouds have independent Off/Low/Medium/High/Ultra settings (8/12/20/32 samples), work in Compatibility, and stop drifting with reduced motion. They do not affect visibility rules.
+- Distant mountain groups lose contrast into sky-coloured haze while nearby ground retains its detail. Localized 3D cloud banks and thin trailing ridge mist sit beyond the playable boundary, with shaded bases, soft edges and lighting matched to the weather. A baked 64Â³ R8 noise volume avoids runtime generation; scene-depth termination prevents clouds behind mountains showing through them. Stronger aerial perspective is masked to distant scenery, preserving foreground contrast. Mountain clouds have independent Off/Low/Medium/High/Ultra settings (8/12/20/32 samples), work in Compatibility, and stop drifting with reduced motion. They do not affect visibility rules.
 - Rock beds catch light along their ledges instead of appearing only as painted colour bands.
 - Broad cliff fractures and smaller joint patterns break up recognisable repeated rock tiles.
 - Sheltered lower slopes collect pale loose stone while exposed walls retain darker bedrock.
@@ -684,9 +684,12 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   including backward seeks; older recordings and dedicated flat test scenarios remain supported.
 - A town in the middle, laid out on a street grid: two main streets crossing at the centre, side streets closing
   some of the blocks, asphalt with a dashed centre line, curbs and sidewalks, zebra crossings at the crossroads.
-  Houses stand on lots facing the street with their door to it; behind them, gardens closed off by hedges or
+  Houses stand on lots facing the street with their door to it, some on two floors and some with a wing out of
+  the back (an L or a T); behind them, gardens closed off by hedges or
   walls, fences down the sides, vegetable patches, washing lines and trees; some have a drive with the car on it.
-  Shops with awnings line the main street near the middle.
+  Inside, the rooms are furnished (a wardrobe, a bookcase, a kitchen, a settee, a table and chairs), seen when
+  the roof lifts as men go in. Shops with awnings line the main street near the middle, most with flats over them. The floor above a ground
+  floor is looks only: it lifts off with the roof when men go in, and comes down when a wall under it is blown in.
 - A town square on one corner of the crossroads (fountain or statue, benches, planters, a flagpole, market
   stalls, bollards), a fenced playground (swings, slide, climbing frame, sandbox, seesaw, roundabout), a small
   park, allotments, a car park, a bombed-out lot and a water tower on the edge of town.
@@ -704,7 +707,10 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   wire. Concertina is razor tape whose clipped loops cross as it is pulled out.
 - Street lights down every street (they light up at dusk and at night), wooden utility poles carrying sagging
   power lines with a drop to each house, fire hydrants, stop signs where side streets meet the main road, the
-  town's name on the way in and a bus stop. Power lines also run along the country roads.
+  town's name on the way in and a bus stop; traffic lights at the central crossroads (dark, the power's off), a
+  telephone box, post boxes, an advertising column on the square, hoardings over car parks and bombed-out lots,
+  street names at the junctions, and belongings dropped on the pavements by people fleeing the fighting. Power
+  lines also run along the country roads.
 - **1 x 1 km** (`map_dims.gd`: every size, grid, mask and texture derives from one constant). The HQs sit
   at the north and south edges, their starting FOBs some 940 m apart, so a battle has room to move: fights for
   the villages, farms, woods and river line on the way in, then the town.
@@ -741,7 +747,7 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   sides), and on the west the lanes run on over the river - each on its own bridge - to farming villages on
   the far bank: three bridges and two fords across the river in all.
 - Country roads come in from both HQs and both edges of the map and join the main streets. Villages sit on the
-  cross road either side of town and on the road between each HQ and the town; farmsteads (farmhouse and barn round a yard, hay bales, a fenced road frontage, an orchard; the barn weatherboarded
+  cross road either side of town and on the road between each HQ and the town; farmsteads (a farmhouse, most on two floors with a wing, and a barn round a yard, hay bales, a fenced road frontage, an orchard; the barn weatherboarded
   under a corrugated sheet roof with loft doors in its gables, straw on its floor) and
   hedged fields lie along the roads; abandoned cars on the verges, burnt-out armour off the road.
 - **The town and every village have a name and a supply dump** (crated stores on a pallet, fuel drums and a
@@ -1053,7 +1059,14 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   cradles of their own that the crew lay on the target: they elevate onto it (twin AA guns climb steeply after
   aircraft, a helicopter's guns depress onto the ground), door guns and hull pintles swing out to it within an arc
   on their own side, a coaxial gun keeps to the main gun's travel, and each round runs the gun back on its cradle
-  with a jump at the muzzle. The host sends where each vehicle's guns are laid, so a client (and a solo battle,
+  with a jump at the muzzle. A crew-served gun has its gunner on it (a technical's DShK, a Humvee's .50 in its
+  turret, a light vehicle's pintle gun, a boat's bow gun, a Ghost Hawk's door guns): one of the infantry in his
+  side's kit, standing behind it (kneeling at a boat's bow, crouched in a helicopter's door) with his hands on its
+  grips, turning with it as it's laid; door guns rest pointing out of their doors with the gunner inside. A
+  pickup's gunner stands on the bed floor and walks round the pedestal as the gun swings, never off the bed; a
+  Humvee's stands in the hatch inside its O-GPK turret, which traverses whole with the gun. Pedestal guns stand
+  tall enough to fire forward over the cab. Remote
+  weapon stations and turret guns have none. The host sends where each vehicle's guns are laid, so a client (and a solo battle,
   whose view is a client of its own simulation) lays them too, main guns included. Vehicle and gunship shots leave the
   actual model barrels, including separately positioned gunship guns. Tank drivers build into turns. Turrets accelerate into a traverse and brake onto
   the target, holding their world bearing as the hull turns underneath. The gunner holds a steady aim
@@ -1431,6 +1444,41 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   in streaks. A battle that opens in the rain starts soaked; rain that sets in mid-battle wets things over 30 s,
   and they dry over three minutes once it stops. It costs a few instructions per pixel, so every preset has it,
   the browser too.
+- **Under a roof** (`rain_cover.gd`, `Mats.RAIN_COVER`): rain falls near enough straight down, so a roof (a
+  house's, or the one on a barracks, factory or research post) keeps it off what's under it. Its walls stay dry up to the eaves, and its gable ends up under the barge
+  boards, but for a ragged band about half a metre high at the foot of each outside wall that the drops splash
+  back onto; the rooms, floors and furniture inside stay dry, and no drops burst or run there. A ruin with its roof
+  fallen in takes the rain like the street. One float texture holds it: 4 m squares across the map, each naming
+  the (up to four) roofs over it, then each roof's middle, axes, wall faces, eaves, floor, pitch and form (as
+  its model was built), so the dry edge follows the roof's own underside (`BuildingRoofs.underside`) out to its
+  eaves whatever the squares. It's rebuilt when a roof comes down.
+- **Falling rain** (`Mats.RAIN_DROPS`, the `rain_fx` global; `Atmosphere._rain_fx_tick`): while it's still
+  coming down, drops land on everything (after Lagarde's "Water drop 2a/2b", 2012-13, procedurally rather than
+  from flipbooks). In puddles, ruts and gutters, and faintly on wet soil and asphalt, each lands as a ring that runs
+  out 10 to 21 cm, a packet of crests 6 cm apart, sized and timed by its own drop. On roofs, decks and helmets each
+  bursts as a crown of spray a centimetre or two across for a few hundredths of a second. Here and there down a
+  hull's side or a wall with no roof over it, about one a metre, a rivulet runs, a bead sliding down it every two
+  metres or so at its own slow pace with a wet trail behind, catching the sky on its swollen head; a vehicle
+  carries its rivulets with it. All of it is laid out in world cells, one drop
+  to a cell per period, so a pixel looks at one cell; it fades as it shrinks under a pixel (where puddles keep a
+  rougher face in its place), so from the command camera's height nothing shimmers. Effects Medium has the rings
+  and crowns, High adds a third layer of rings, denser crowns and the rivulets; Low has none of it. The browser
+  lights the ground per vertex, so there it has the crowns only.
+- **Lightning** (`lightning.gd`): every half a minute or so a strike lands somewhere ahead of the camera, a few
+  hundred metres to a couple of kilometres out. The channel is a stepped leader's random walk down from the cloud
+  base, kinked again at finer scales and forking as it goes, drawn as ribbons that face the camera, stay a few
+  pixels wide at any range and glow far past white, so the glow blooms them; it grows down in a frame, then two to
+  four return strokes flicker it over a few tenths of a second. The cloud base lights up round it (the sky shader's
+  `flash`), the rim light swings round to shine from the bolt's side, and on Forward+ a light low on the channel
+  lights the ground beneath. A near strike lights the field far more than a far one (falling off as 500 m over the
+  distance). A third of the flashes stay in the cloud as a dimmer crawler along its base. The thunder comes as late
+  as the nearest part of the channel is far (343 m/s), from its direction, a crack close by and a low, quieter
+  rumble from kilometres off. `FL_LIGHTNING_EVERY=S` strikes every S seconds; `FL_DEBUG_LIGHTNING=1` prints each
+  strike and its thunder.
+- **Rain on the lens** (Camera and lens > Lens flare; the composite pass in `cinematic_fx.gd`): when the camera
+  faces into the rain, drops gather on the front glass, sit a few seconds and dry, and now and then one runs down it
+  leaving beads behind. Each is a small lens showing the scene behind it flipped, shrunk and out of focus, darker
+  at its rim. Looking down from the command camera, the glass stays dry.
 - **Level-of-detail cross-fades**: a vehicle and its distant single-mesh stand-in (`Mats.add_distance_lod`), cab
   glass, the street's fine stones and distant blast clouds dissolve into each other over a few metres (Godot's
   dithered visibility-range fade) instead of popping as the camera zooms.
@@ -1552,7 +1600,10 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   medium and grenade machine guns, autocannon, coaxial ports, rotary barrel clusters and missile launch
   tubes each have one builder, used by every family that carries them; muzzle markers and turret pivots
   stay where they were. Autocannon tubes step down from a thick chamber end, carry a barrel clamp and end in a
-  ported brake; machine-gun belts show their rounds, the .50 its feed-cover latch and retracting handle. Each
+  ported brake; machine-gun belts show their rounds, the .50 its feed-cover latch and retracting handle, the cooling
+  holes through its barrel support, its trunnion block and side-plate rivets and a flash hider flaring to the
+  muzzle; the 7.62s a slotted flash hider and front sight. The guns themselves are phosphated steel, near black and
+  matte, scuffed where hands and belts wear them. Each
   builder notes its gun, so the finished model lifts the machine gun onto a cradle the crew can lay. Turret race rings, sight heads, commander's cupolas, reactive armour bricks,
   rectangular hatches and bore evacuators are shared across the armour; helicopters share rotor masts and
   turbine exhausts, and aircraft and boats share red/green sidelights and dome lights. Trucks share fender
@@ -1582,6 +1633,26 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   seen, one band of cylinder sides, joints only at sharp bends. About 45% less vehicle geometry and 38% faster
   model builds (each vehicle, air-strike plane and wreck builds its model as it appears), with the same look.
   See "Fifth pass" in [the component guide](vehicle-components.md).
+- **Markings and finish** (seventh pass): tanks and armoured vehicles carry tactical numbers (on CSAT and
+  independent armour drawn from the vehicle's seed, so neighbours differ), chamfered or welded hull and turret
+  edges, bolt-on armour modules (`VehicleMounts.applique`), tow cables, deck tarps and exhaust soot. Aircraft
+  wear national insignia, serials and bort numbers, panel joints and exhaust soot (`VehicleAircraft.paint`).
+  Car glass is tinted with a cabin behind it, bodies shade like pressed metal, and opaque panes reflect the
+  sky. See "Seventh pass" in [the component guide](vehicle-components.md).
+- **Mud, stencils, wheels and tracks** (eighth pass): armour and trucks carry wet mud low on the hull and
+  running gear with paler dust above (cars road dust, boats a waterline stain), measured in the model's own
+  frame so it stays put on a turning wheel. Every vehicle's tactical number comes from its seed in heavy
+  stencil bars, and US vehicles wear battalion and company bumper codes. Cars roll on alloys or plastic
+  trims; Russian-style tracks have single-pin links with guide horns between twin sprockets, Western ones
+  rubber pads with end connectors and centre guides. Vehicle glass reflects the sky, and helicopter rotors
+  blur into a soft disc with ghost blades that don't strobe. See "Eighth pass" in
+  [the component guide](vehicle-components.md).
+- **Rotor discs, wrecks, edges and kit** (ninth pass): a helicopter's rotor reads from above as a soft dark
+  disc in its blades' paint rather than a pale ring, and tail rotors, ducted fans, drones' rotors and
+  propellers blur too. Burnt-out hulks on the map and gutted cars are rust, ash and soot (a car's tyres
+  burnt to the wire), not black shapes. Every crew's load is its own: crate stacks, tarps, bags, bedrolls, cans and canvas tilts vary by
+  seed, so a column of one kind isn't stamped from one mould. Bonnets, roofs, consoles and deckhouses have
+  chamfered edges that catch the light. See "Ninth pass" in [the component guide](vehicle-components.md).
 - Explosions are layered GPU particles: a flash and light burst, a rolling fireball that cools from the edges in
   until it's dark smoke, a lit smoke column that drifts with the wind, a dirt plume, sparks and debris that
   bounce on the ground, a rolling dust ring, a faint heat-shimmer shockwave and a scorch mark. Heavy rounds
@@ -1622,7 +1693,9 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   (striking at night). The gas that follows the round out glows for an instant and cools into a breath of smoke,
   and the case spins out of the ejection port to lie in the grass (brass piles up round a machine gun). A vehicle's
   gun throws its cases from its receiver, and a belt-fed one its links too; a coaxial gun keeps them inside the
-  turret. 25 and 30 mm cannon (the Bradley's Bushmaster, the chain guns, the ZU-23) flash and bark as cannon. However
+  turret. 25 and 30 mm cannon (the Bradley's Bushmaster, the chain guns, the ZU-23) flash and bark as cannon. A
+  mounted gun hot from its bursts goes on smoking when it stops: thin wisps curl up off the muzzle and drift away,
+  thicker after a long burst and from a cannon. However
   small, a flash never shrinks below a few pixels, so you can still see who's firing from high up. The weapon
   kicks with each shot: the rifle back into the shoulder and the muzzle up, the mounted gun on its pintle or its
   vehicle cradle, the main gun back in its mantlet. One round in so many is a tracer, red for the Coalition and
@@ -1855,7 +1928,7 @@ Alpine stone clusters combine slabs, blocks and small fragments in shared batche
 
 Daylight uses a bundled CC0 photographic cloud panorama, aligned with the sun and cached for sky lighting and reflections. Other lighting moods retain their procedural skies.
 
-Generated towns have distinct garden plots, narrow foundation aprons and paths leading to their generated front or side doors. Front fences leave pedestrian and driveway openings. Driveway aprons continue across sidewalks through lowered kerbs with sloping shoulders; grass stays out of the crossing. Paving follows immutable terrain elevation and retains crater cutouts; street furniture and both wire endpoints carry authoritative ground heights. Long fences are broken into short, independently destructible sections. Streets and junctions share scanned asphalt; sidewalks, drives and door paths use scanned paving slabs. CC0 photographs include mipmapped normal and roughness maps, with source credits in assets/town/LICENSE.md. Meadow and garden turf combines photographic soil/blade detail with moisture variation from sheltered soil and exposed patches. Grass uses thirty narrow pointed blades at the previous ninety-triangle clump cost, with shorter clumps in towns; grass stays outside the carriageway.
+Generated towns have distinct garden plots, narrow foundation aprons and paths leading to their generated front or side doors. Front fences leave pedestrian and driveway openings. Driveway aprons continue across sidewalks through lowered kerbs with sloping shoulders; grass stays out of the crossing. Paving follows immutable terrain elevation and retains crater cutouts; street furniture and both wire endpoints carry authoritative ground heights. Long fences are broken into short, independently destructible sections. Streets and junctions share scanned asphalt; sidewalks, drives and door paths use scanned paving slabs. CC0 photographs include mipmapped normal and roughness maps, with source credits in assets/town/LICENSE.md. Meadow and garden turf combines photographic soil/blade detail with moisture variation from sheltered soil and exposed patches. Grass uses thirty pointed blades per ninety-triangle clump, with shorter clumps in towns; grass stays outside the carriageway. Blades are drawn a little broader and taller than real grass, and meadow shrubs are dense balls of leaf cards rather than the open scanned shrubs of the woods: anything finer falls below a pixel from the battle camera and the meadow reads as bare ground (tests/grass_stream_test.gd holds both to that).
 
 Town entrances blend gravel into asphalt through irregular edges. Local repair patches, staining, aged tile roofs, concrete roof slabs and weathered timber fences use bundled CC0 scans with mipmapped relief; metal fences retain rust and worn paint.
 
