@@ -1784,6 +1784,16 @@ func _ssgi_tick() -> void:
 	# is capped at what its rays hit, and fewer rays a frame cap it lower.)
 	p[28] = 0.0 if OS.get_environment("FL_DEBUG_SSGI_BOUNCES") == "1" else 0.8
 	p[29] = 0.0 if OS.has_environment("FL_DEBUG_SSGI_NOFIX") else 1.0
+	var to_rim := rim.global_transform.basis.z
+	var rc := rim.light_color.srgb_to_linear() * rim.light_energy * (1.0 if rim.visible else 0.0)
+	p[32] = to_rim.x
+	p[33] = to_rim.y
+	p[34] = to_rim.z
+	p[36] = rc.r
+	p[37] = rc.g
+	p[38] = rc.b
+	if OS.has_environment("FL_DEBUG_SSGI") and Engine.get_process_frames() % 300 == 0:
+		print("SSGI sky light %s, to the sun %s, sun %s" % [Vector3(p[4], p[5], p[6]), to_sun, Vector3(p[24], p[25], p[26])])
 	ssgi.params = p
 
 

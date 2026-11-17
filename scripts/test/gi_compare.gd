@@ -55,6 +55,7 @@ const MODES := {
 	"view_edge": {"ssil": false, "gi": false, "ssgi": 2, "view": 10},
 	"view_through": {"ssil": false, "gi": false, "ssgi": 2, "view": 11},
 	"view_opaque": {"ssil": false, "gi": false, "ssgi": 2, "view": 12},
+	"view_sun": {"ssil": false, "gi": false, "ssgi": 2, "view": 13},
 	# the same with one of the bounce light's parts left out (see
 	# Atmosphere._ssgi_tick): one bounce only, the plain upsample, and the
 	# bounce light laid over smoke and dust (no picture of the world before them)

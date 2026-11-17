@@ -50,7 +50,7 @@ extends CompositorEffect
 ## looks only: nothing here reaches the simulation.
 
 const CTX := &"frontline_ssgi"
-const PARAMS := 32  # floats in the parameter block (eight vec4s, std140)
+const PARAMS := 40  # floats in the parameter block (ten vec4s, std140)
 const CAM_FLOATS := 84  # five matrices and a vec4 (CAM_DECL)
 const USAGE := RenderingDevice.TEXTURE_USAGE_SAMPLING_BIT | RenderingDevice.TEXTURE_USAGE_STORAGE_BIT
 const RGBA16F := RenderingDevice.DATA_FORMAT_R16G16B16A16_SFLOAT
@@ -384,6 +384,8 @@ layout(set = 0, binding = 0, std140) uniform Params {
 	vec4 sun;   // towards the sun (world); how much more saturated the gathered light is laid on
 	vec4 sun_col;  // the sun's light on a surface square to it (rgb, scene units)
 	vec4 opt;   // share of last frame's bounce fed back; upsample search (0/1); -; opaque picture taken (0/1)
+	vec4 rim;   // towards the fill light (world)
+	vec4 rim_col;  // the fill light on a surface square to it (rgb, scene units)
 } P;
 layout(set = 0, binding = 10, std430) restrict readonly buffer Cam {
 	mat4 inv_proj;   // this frame's projection as drawn, inverted
@@ -407,8 +409,16 @@ vec3 view_at(vec2 uv, float d) {
 // a surface's own colour, estimated from how it looks against the sky light
 // on it: exact in shade; in the sun it would come out too bright, so it is
 // capped (keeping its hue)
-vec3 albedo_of(vec3 c) {
-	vec3 a = c / max(P.amb.rgb, vec3(1e-4));
+// the light a surface out of the sun gets: the sky's, and the cool fill
+// light from the side away from the sun (Atmosphere's rim light), which
+// lights shade as strongly as the sky does on what faces it. (Left out, a
+// shaded face turned to it read twice as pale as it is.)
+vec3 shade_light(vec3 wn) {
+	return P.amb.rgb + P.rim_col.rgb * max(dot(wn, P.rim.xyz), 0.0);
+}
+
+vec3 albedo_of(vec3 c, vec3 wn) {
+	vec3 a = c / max(shade_light(wn), vec3(1e-4));
 	float m = max(a.r, max(a.g, a.b));
 	return m > P.amb.a ? a * (P.amb.a / m) : a;
 }
@@ -419,18 +429,30 @@ vec3 albedo_of(vec3 c) {
 // time: there the colour is held to what a dull real surface reflects
 // (a quarter of the light; asphalt and bark are darker, but little that
 // stands in a street is), keeping the pixel's own hue
-vec3 receiver_albedo(vec3 c, vec3 wn) {
-	vec3 a = albedo_of(c);
-	// a pixel brighter than the sky light alone could make it is in the sun:
-	// its colour is what it shows against the sky and the sun together (or
-	// a dark, sunlit road would be taken for a white wall in the shade, and
-	// the bounce light would lay a milky veil over everything in the sun)
-	vec3 raw = c / max(P.amb.rgb, vec3(1e-4));
-	float lit = max(dot(wn, P.sun.xyz), 0.0);
-	if (max(raw.r, max(raw.g, raw.b)) > P.amb.a && lit > 0.0) {
-		vec3 b = c / max(P.amb.rgb + P.sun_col.rgb * lit, vec3(1e-4));
+vec3 receiver_albedo(vec3 c, vec3 wn, float sunvis, out float sunny) {
+	vec3 a = albedo_of(c, wn);
+	vec3 shade = shade_light(wn);
+	sunny = 0.0;
+	// a pixel in the sun (nothing stands between it and the sun on screen,
+	// see prep; or brighter than the shade's light alone could make it) is
+	// lit by the sky and the sun together, and its colour is read against
+	// both (or a dark, sunlit road or lawn would be taken for a white wall in
+	// the shade, and the bounce light would lay a veil over everything in the
+	// sun: brightness alone can't tell them apart).
+	// How much sun it gets is read from its facing, but no less than level
+	// ground of that facing gets: a grass blade's own facing often turns from
+	// the sun, and against too little sun a sunlit lawn read as a yellow
+	// near-white, which tinted the light laid on it orange
+	vec3 raw = c / max(shade, vec3(1e-4));
+	float lit = max(max(dot(wn, P.sun.xyz), 0.0), max(P.sun.y, 0.0) * clamp(wn.y, 0.0, 1.0));
+	if ((sunvis > 0.5 || max(raw.r, max(raw.g, raw.b)) > P.amb.a) && lit > 0.0) {
+		vec3 b = c / max(shade + P.sun_col.rgb * lit, vec3(1e-4));
 		float mb = max(b.r, max(b.g, b.b));
 		a = mb > P.amb.a ? b * (P.amb.a / mb) : b;
+		// and the share of its light that is the sun's
+		vec3 lum = vec3(0.2126, 0.7152, 0.0722);
+		float ls = dot(P.sun_col.rgb, lum) * lit;
+		sunny = ls / max(ls + dot(shade, lum), 1e-5);
 	}
 	float l = dot(a, vec3(0.2126, 0.7152, 0.0722));
 	if (l >= 0.25) {
@@ -441,6 +463,9 @@ vec3 receiver_albedo(vec3 c, vec3 wn) {
 	hue = mix(vec3(1.0), hue, smoothstep(0.0, 0.05, l));
 	return min(hue * 0.25, vec3(P.amb.a));
 }
+
+// how much of the bounce light is laid on where all of a pixel's light is the sun's
+#define SUNLIT 0.15
 
 // a little noise that differs from pixel to pixel and frame to frame, but is
 // even across the screen (Jimenez, interleaved gradient noise, 2014)
@@ -508,6 +533,40 @@ void main() {
 	}
 	imageStore(gbuf_img, h, vec4(wn, -v.z));
 	vec3 c = sum * 0.25;
+	// whether the sun reaches it: a few steps towards the sun through the
+	// depth buffer, as far as a house's shadow falls. (The engine's shadow
+	// maps aren't open to this pass. Only what is on screen can cast here,
+	// and a grass blade's own shadow is too fine to see at half resolution,
+	// which is as wanted: the lawn reads as in the sun.)
+	float sunvis = 0.0;
+	vec3 lv = normalize(transpose(mat3(C.cam)) * P.sun.xyz);
+	if (dot(n, lv) > 0.0 && P.sun.y > 0.0) {
+		sunvis = 1.0;
+		vec3 from = v + n * (0.05 - v.z * 0.002);
+		float jit = ign(vec2(h) + vec2(31.0, 7.0), P.misc.x);
+		for (int s = 1; s <= 8; s++) {
+			float f = (float(s) - 0.5 + jit * 0.5) / 8.0;
+			float dist = 12.0 * f * f;
+			vec3 q = from + lv * dist;
+			if (q.z > -0.05) {
+				break;
+			}
+			vec4 cq = C.proj * vec4(q, 1.0);
+			vec2 quv = cq.xy / cq.w * 0.5 + 0.5;
+			if (quv.x < 0.0 || quv.y < 0.0 || quv.x > 1.0 || quv.y > 1.0) {
+				break;
+			}
+			float dq = texelFetch(depth_tex, clamp(ivec2(quv * P.size.xy), ivec2(0), m), 0).r;
+			if (dq <= 1e-7) {
+				continue;  // the sky
+			}
+			float behind = -q.z + view_at(quv, dq).z;
+			if (behind > 0.05 && behind < max(0.5, dist * 0.5)) {
+				sunvis = 0.0;
+				break;
+			}
+		}
+	}
 	// light bounces more than once: a wall lit by the sunlit street lights
 	// the floor beside it in turn. Last frame's bounce light, found again
 	// through last frame's camera, is added to what each surface sends out,
@@ -524,13 +583,15 @@ void main() {
 			// surface's colour and this share, and gather holds what comes back
 			// to the light of what the rays hit, so a closed room settles
 			// instead of feeding its own light back without end)
-			c += receiver_albedo(c, wn) * again * P.opt.x;
+			float sunny;
+			vec3 ra = receiver_albedo(c, wn, sunvis, sunny);
+			c += ra * again * P.opt.x * mix(1.0, SUNLIT, sunny);
 		}
 	}
 	// (fires and muzzle flashes are far brighter than any wall: kept in
 	// bounds so a single hot pixel can't light the street)
 	vec3 r = min(c, vec3(8.0));
-	imageStore(rad_img, h, vec4(r, 1.0));
+	imageStore(rad_img, h, vec4(r, sunvis));
 }
 """,
 	# a few rays from each pixel through the depth buffer
@@ -802,6 +863,7 @@ void main() {
 	vec3 sum = vec3(0.0);
 	float wsum = 0.0;
 	float best = 0.0;  // how alike the likest of them is
+	float vis = 0.0;  // and whether the sun reaches them
 	for (int i = 0; i < 4; i++) {
 		ivec2 o = ivec2(i & 1, i >> 1);
 		ivec2 q = clamp(base + o, ivec2(0), hm);
@@ -814,8 +876,10 @@ void main() {
 		float w = (bw.x * bw.y + 1e-3) * like;
 		best = max(best, like);
 		sum += texelFetch(filt_tex, q, 0).rgb * w;
+		vis += texelFetch(rad_tex, q, 0).a * w;
 		wsum += w;
 	}
+	float sunvis = wsum > 1e-5 ? vis / wsum : 0.0;
 	// none of the four is this surface: a pixel at the edge of something thin
 	// (a man, a post, a barrel's rim) whose half-resolution pixels all went to
 	// whatever stands in front. Weighed as they are, it would take that
@@ -871,8 +935,16 @@ void main() {
 		float lo = dot(o, vec3(0.2126, 0.7152, 0.0722));
 		through = mix(min(lc, lo) / max(max(lc, lo), 1e-5), 1.0, smoothstep(0.6, 0.85, wn.y));
 	}
-	vec3 alb = receiver_albedo(c, wn);
-	// (the gathered light already carries its strength: see gather)
+	float sunny;
+	vec3 alb = receiver_albedo(c, wn, sunvis, sunny);
+	// (the gathered light already carries its strength: see gather.) In the
+	// shade it is much of what lights a surface; in the sun, a few percent at
+	// most. There the short rays overstate it: from a lawn they run into the
+	// next sunlit blades of grass, whose faces turn every way, and a sunlit
+	// lawn and a tank's deck came out a fifth brighter, tinted, while the
+	// shade beside them is what should lift. So it is laid on only in part as
+	// far as the pixel's light is the sun's
+	e *= mix(1.0, SUNLIT, sunny);
 	vec3 outc = c + alb * e * through;
 	// and a surface gives some back as a sheen, more at a glancing look: a
 	// wet road or a polished hull in shade picks up the colour of the walls
@@ -910,6 +982,9 @@ void main() {
 		outc = vec3(best < 0.2 ? 1.0 : 0.0, e.g * 4.0, 0.0);  // where the upsample looked further out; the light
 	} else if (view_mode == 11) {
 		outc = vec3(1.0 - through, e.g * 4.0, 0.0);  // where smoke or a flame hides it; the light
+	} else if (view_mode == 13) {
+		vec3 rw = c / max(shade_light(wn), vec3(1e-4));
+		outc = vec3(sunny, max(rw.r, max(rw.g, rw.b)) * 0.1, sunvis);  // the sun's share of its light; brightness against the shade's light / 10; whether the sun reaches it
 	} else if (view_mode == 12) {
 		outc = texelFetch(opaque_tex, p, 0).rgb;  // the world before the see-through things
 	}
