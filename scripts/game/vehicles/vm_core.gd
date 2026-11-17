@@ -849,8 +849,10 @@ static func _dshk(k: VehicleModels, p: Node3D, pos: Vector3) -> Vector3:
 	VehicleMounts.receiver(k, g, Vector3(0.13, 0.15, 0.56), Vector3(0, 0, 0.1), VehicleWeapons.STEEL)
 	_bx(k, g, Vector3(0.14, 0.05, 0.26), Vector3(0, 0.09, 0.0), VehicleWeapons.STEEL)
 	_bx(k, g, Vector3(0.14, 0.15, 0.03), Vector3(0, 0.0, 0.39), VehicleWeapons.STEEL)
+	# the wooden spade grips, swelling to the palm and rounded off on top
 	for sx: float in [-0.08, 0.08]:
-		k._cyl(g, 0.022, 0.022, 0.14, Vector3(sx, 0.06, 0.47), Vector3.ZERO, "wood_dark", null, 6, false)
+		k._cyl(g, 0.019, 0.023, 0.13, Vector3(sx, 0.055, 0.47), Vector3.ZERO, "wood_dark", null, 8, false)
+		k._add(g, Res.sphere(0.019, 8), "wood_dark", null, Vector3(sx, 0.12, 0.47), Vector3.ZERO, Vector3(1.0, 0.7, 1.0), false)
 	k._cyl(g, 0.028, 0.028, 1.06, Vector3(0, 0, -0.71), X90, VehicleWeapons.STEEL, null, 8)
 	for i in 8:
 		k._cyl(g, 0.052, 0.052, 0.016, Vector3(0, 0, -0.24 - i * 0.05), X90, VehicleWeapons.STEEL, null, 10, false)
@@ -862,9 +864,9 @@ static func _dshk(k: VehicleModels, p: Node3D, pos: Vector3) -> Vector3:
 	# the 50-round box on its bracket on the left, the belt rising out of it
 	# into the feed; the rear sight's leaf on the cover, the charging handle
 	# on the right, the butterfly trigger between the grips
-	VehicleFittings.ammo_can(k, g, Vector3(-0.15, -0.07, 0.04), OD, Vector3.ZERO, Vector3(0.1, 0.17, 0.24))
-	VehicleWeapons._belt(k, g, Vector3(-0.13, 0.03, 0.03), Vector3(-0.07, 0.06, 0.01), 0.011, 0.13, 3)
-	_bx(k, g, Vector3(0.05, 0.05, 0.012), Vector3(0, 0.14, 0.19), VehicleWeapons.STEEL, null, Vector3(-0.2, 0, 0), false)
+	VehicleFittings.ammo_can(k, g, Vector3(-0.15, -0.07, 0.04), OD, Vector3.ZERO, Vector3(0.1, 0.17, 0.24), true)
+	VehicleWeapons._belt(k, g, Vector3(-0.15, -0.07, 0.04), Vector3(0.1, 0.17, 0.24), Vector3(-0.068, 0.06, 0.01), 0.011, 0.147)
+	_bx(k, g, Vector3(0.05, 0.05, 0.012), Vector3(0, 0.14, 0.11), VehicleWeapons.STEEL, null, Vector3(-0.2, 0, 0), false)
 	_tube(k, g, Vector3(0.065, -0.02, 0.16), Vector3(0.11, -0.02, 0.16), 0.008, "steel", null, 6, false)
 	k._cyl(g, 0.015, 0.015, 0.03, Vector3(0.115, -0.02, 0.16), Z90, "metal_dark", null, 6, false)
 	_bx(k, g, Vector3(0.07, 0.025, 0.02), Vector3(0, 0.06, 0.43), VehicleWeapons.STEEL, null, Vector3.ZERO, false)

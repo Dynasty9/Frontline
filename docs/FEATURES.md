@@ -1584,7 +1584,8 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   medium and grenade machine guns, autocannon, coaxial ports, rotary barrel clusters and missile launch
   tubes each have one builder, used by every family that carries them; muzzle markers and turret pivots
   stay where they were. Autocannon tubes step down from a thick chamber end, carry a barrel clamp and end in a
-  ported brake; machine-gun belts show their rounds, the .50 its feed-cover latch and retracting handle, the cooling
+  ported brake; a machine gun's ammunition can stands open beside it, its lid hung back, and the belt (brass
+  rounds in blackened links) lies in the can's mouth and rises over the lip into the feedway; the .50 has its feed-cover latch and retracting handle, the cooling
   holes through its barrel support, its trunnion block and side-plate rivets and a flash hider flaring to the
   muzzle; the 7.62s a slotted flash hider and front sight. The guns themselves are phosphated steel, near black and
   matte, scuffed where hands and belts wear them. Each
