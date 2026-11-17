@@ -23,6 +23,9 @@ var _shader: Shader
 var _wisps: Texture3D
 var _wind := Vector2.ONE
 var _s: Array = []  # [volume, material, from, to, age, amount]
+## How thick the dust shows (AirLayers: thinner after dark, when nothing but
+## headlights lights it, so the bank doesn't stand dark across the ground).
+var light_k := 1.0
 var _debug_k := float(OS.get_environment("FL_DEBUG_DUST")) if OS.has_environment("FL_DEBUG_DUST") else 1.0  # thicken them, to see where they lie
 
 
@@ -136,10 +139,13 @@ func tick(dt: float, on: bool) -> void:
 		var gy: float = world.ground_y(mid)
 		v.rotation.y = yaw
 		v.size = Vector3(ln + 10.0, height, width + 4.0)
-		v.position = Vector3(mid.x, gy + height * 0.5 - 0.6, mid.z) + w3 * (WeatherGrid.DRIFT * 0.6 * age)
+		# (dust low over the ground drifts far slower than the air aloft)
+		v.position = Vector3(mid.x, gy + height * 0.5 - 0.6, mid.z) + w3 * (WeatherGrid.DRIFT * 0.3 * age)
 		var fade := pow(1.0 - age / LIFE, 1.6)
 		var m: ShaderMaterial = sg[1]
-		m.set_shader_parameter("density", 0.22 * float(sg[5]) * rise * fade * _debug_k)
+		# (densest just thrown up, low behind the wheels; thinning as it rises and spreads)
+		var young := lerpf(1.1, 0.55, smoothstep(0.0, LIFE * 0.6, age))
+		m.set_shader_parameter("density", 0.24 * float(sg[5]) * rise * fade * young * light_k * _debug_k)
 		m.set_shader_parameter("settle", age / LIFE)
 
 
@@ -170,19 +176,23 @@ uniform vec3 lit_col : source_color = vec3(0.95, 0.9, 0.8);
 void fog() {
 	vec3 u = UVW;
 	vec3 p = WORLD_POSITION;
-	float n1 = texture(wisps, p * 0.05 - vec3(wind.x, -0.12, wind.y) * TIME * 0.05).r;
-	float n2 = texture(wisps, p * 0.16 + vec3(0.0, -TIME * 0.04, 0.0)).r;
+	// billows a few metres across, rolling and rising, and finer curls that eat
+	// into them
+	float n1 = texture(wisps, p * vec3(0.045, 0.08, 0.045) - vec3(wind.x, 0.12, wind.y) * TIME * 0.05).r;
+	float n2 = texture(wisps, p * 0.2 + vec3(0.0, -TIME * 0.06, 0.0)).r;
 	// across: thick down the middle of the route, ragged at the sides
-	float c = (u.z - 0.5) * 2.0 * (0.8 + 0.5 * n1);
+	float c = (u.z - 0.5) * 2.0 * (0.7 + 0.7 * n1);
 	float body = exp(-c * c * 2.6);
-	// up: thickest low down, thinning to a ragged top that sinks as it settles
-	float top = mix(0.85, 0.45, settle) * (0.75 + 0.5 * n2);
-	body *= smoothstep(top, top * 0.3, u.y) * smoothstep(0.0, 0.08, u.y);
+	// up: densest low down; a lumpy top, each billow standing up on its own,
+	// lower once it's settling
+	float top = mix(0.9, 0.5, settle) * (0.5 + 0.85 * n1);
+	body *= smoothstep(top, top * 0.25, u.y) * smoothstep(0.0, 0.06, u.y) * mix(1.4, 0.7, u.y);
 	// the ends soft (a volume's bounds must never show), the sides too
 	body *= smoothstep(0.0, 0.14, u.x) * smoothstep(1.0, 0.86, u.x);
 	body *= smoothstep(0.0, 0.12, u.z) * smoothstep(1.0, 0.88, u.z);
-	float rags = smoothstep(0.4, 0.8, n1 * 0.75 + n2 * 0.55);
-	DENSITY = density * body * (0.08 + rags * 1.6);
+	// eroded into puffs, the more so as it ages
+	float puffs = smoothstep(0.48 + 0.1 * settle, 0.7, n1 * 0.75 + n2 * 0.4);
+	DENSITY = density * body * (0.04 + puffs * 1.8);
 	ALBEDO = mix(shade_col, lit_col, smoothstep(0.1, 0.7, u.y));
 }
 """

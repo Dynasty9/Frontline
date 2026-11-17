@@ -87,7 +87,7 @@ func tick(dt: float) -> void:
 	var right := cam.global_basis.x
 	# (the rain slants with the wind: as seen from here, sideways by how much the
 	# wind blows across the view)
-	_mat.set_shader_parameter("slant", clampf(Vector2(right.x, right.z).dot(wind), -1.0, 1.0) * 0.12)
+	_mat.set_shader_parameter("slant", clampf(Vector2(right.x, right.z).dot(wind), -1.0, 1.0) * 0.28)
 	var fog: Color = atmo._d.fog
 	_mat.set_shader_parameter("col", fog.darkened(0.3))
 	for i in COUNT:
@@ -118,9 +118,10 @@ func tick(dt: float) -> void:
 		mi.visible = true
 
 
-## A curtain: folds across it, thick along the cloud base and thinning toward
-## the ground, a ragged foot (some showers trail off before they reach it), fine
-## streaks falling through it, its edges soft so it's never a card.
+## A curtain: a soft veil, uneven across (a few heavy shafts, thin gaps), its
+## top lost in the cloud base, its foot fading out (some showers stop short of
+## the ground), slanted by the wind, broad streaks falling through it, every
+## edge feathered so it's never a card.
 const SHADER := """
 shader_type spatial;
 render_mode unshaded, blend_mix, depth_draw_never, cull_disabled, shadows_disabled;
@@ -136,22 +137,27 @@ void fragment() {
 	float x = UV.x * dims.x;
 	float yn = 1.0 - UV.y;  // 0 at its foot, 1 at the cloud base
 	float y = yn * dims.y;
-	float xs = x + y * slant;
-	// the folds: heavier and lighter columns across it, slowly changing
-	float folds = texture(noise_tex, vec2(xs * 0.0025 + seed, TIME * 0.002 + seed * 0.3)).r;
-	float body = smoothstep(0.3, 0.7, folds);
-	// soft sides
-	body *= smoothstep(0.0, 0.3, UV.x) * smoothstep(1.0, 0.7, UV.x);
-	// a ragged foot: in places the rain stops short of the ground (virga)
-	float foot = texture(noise_tex, vec2(xs * 0.006 + seed * 2.0, 0.37)).r;
-	float stop = smoothstep(0.45, 0.85, foot) * 0.45;
-	body *= smoothstep(stop, stop + 0.18, yn) * smoothstep(0.0, 0.1, yn);
-	// thickest under the cloud base, merging up into it
-	body *= mix(0.55, 1.0, smoothstep(0.1, 0.8, yn)) * smoothstep(1.0, 0.86, yn);
-	// streaks: fine noise drawn out downward, falling
-	float streak = texture(noise_tex, vec2(xs * 0.22 + seed * 5.0, y * 0.002 + TIME * 0.12)).r;
-	streak = smoothstep(0.3, 0.8, streak);
-	ALBEDO = col * (0.94 + 0.12 * streak);
-	ALPHA = clamp(k * body * (0.7 + 0.45 * streak) * 0.85, 0.0, 0.72);
+	// (blown aside as it falls: the foot trails downwind of where it leaves the cloud)
+	float xs = x + (dims.y - y) * slant;
+	// the body: broad, uneven density across it, a few heavy shafts and thin gaps,
+	// from two scales that never line up, slowly changing
+	float f1 = texture(noise_tex, vec2(xs * 0.0019 + seed, TIME * 0.0015 + seed * 0.3)).r;
+	float f2 = texture(noise_tex, vec2(xs * 0.0053 + seed * 3.1, y * 0.0007 + TIME * 0.002)).r;
+	float body = smoothstep(0.38, 0.78, f1 * 0.65 + f2 * 0.45);
+	// feathered sides
+	body *= smoothstep(0.0, 0.42, UV.x) * smoothstep(1.0, 0.58, UV.x);
+	// the top lost in the cloud base, unevenly; the foot fading out, in places
+	// well short of the ground (virga), elsewhere into it
+	float top = 0.6 + 0.3 * f2;
+	body *= smoothstep(1.0, top, yn);
+	float stop = smoothstep(0.4, 0.85, texture(noise_tex, vec2(xs * 0.0041 + seed * 2.0, 0.37)).r) * 0.5;
+	body *= smoothstep(stop, stop + 0.35, yn);
+	// streaks: soft, broad falls drawn out downward (two scales again, so no
+	// spacing repeats across it)
+	float s1 = texture(noise_tex, vec2(xs * 0.013 + seed * 5.0, y * 0.0005 + TIME * 0.035)).r;
+	float s2 = texture(noise_tex, vec2(xs * 0.0071 + seed * 7.0, y * 0.0003 + TIME * 0.025)).r;
+	float streak = smoothstep(0.25, 0.85, s1 * 0.5 + s2 * 0.6);
+	ALBEDO = col * (0.95 + 0.1 * streak);
+	ALPHA = clamp(k * body * (0.55 + 0.6 * streak) * 0.8, 0.0, 0.62);
 }
 """

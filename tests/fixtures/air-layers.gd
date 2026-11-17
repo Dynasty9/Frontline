@@ -294,7 +294,7 @@ func _check_headlights() -> void:
 		moving.position += Vector3(0, 0, -2)
 		hl._process(0.25)
 	assert(hl._on.count(moving) == 1 and hl._on.count(parked) == 0, "the one driving has its lights on, the parked one not")
-	var lit := hl._lights[hl._on.find(moving)]
+	var lit := hl._lights[hl._on.find(moving) * 2]
 	assert(lit.visible and lit.light_energy > 0.0 and lit.light_volumetric_fog_energy > 0.0, "a beam that shows in the air")
 	assert(lit.global_position.z < moving.position.z, "on its front")
 	hl.level = 0.0

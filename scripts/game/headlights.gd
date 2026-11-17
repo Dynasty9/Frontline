@@ -1,10 +1,10 @@
 class_name Headlights
 extends Node3D
 ## (view) After dark the vehicles driving about near the camera have their
-## headlights on: a cone of light down the road ahead, lighting the ground and
+## headlights on: a pair of cones down the road ahead, lighting the ground and
 ## showing in the night's low mist and haze (AirLayers), the way a car's beams
 ## do on a damp night. A few lights (SLOTS) are shared out among the nearest
-## vehicles on the move a few times a second, so however big the column the
+## vehicles on the move (a pair each) a few times a second, so however big the column the
 ## cost stays the same. None by day, and none in the browser (its renderer
 ## compiles shaders again for every new light, a hitch mid-battle). Looks only.
 
@@ -31,21 +31,23 @@ var _moved := {}  # eid -> _t it last moved
 func setup(w) -> void:
 	world = w
 	name = "Headlights"
-	for i in SLOTS:
+	# (a pair a vehicle: two narrow cones, bright at the lamp and gone in 20-odd m)
+	for i in SLOTS * 2:
 		var l := SpotLight3D.new()
-		l.light_color = Color(0.95, 0.95, 1.0)  # (the cool white of a halogen lamp)
-		l.spot_range = 40.0
-		l.spot_angle = 30.0
-		l.spot_angle_attenuation = 1.6
-		l.spot_attenuation = 1.1
+		l.light_color = Color(1.0, 0.96, 0.86)  # (the cool white-yellow of a halogen lamp)
+		l.spot_range = 24.0
+		l.spot_angle = 16.0
+		l.spot_angle_attenuation = 1.4
+		l.spot_attenuation = 1.6
 		l.light_specular = 0.4
 		l.shadow_enabled = false
 		# (the beam shows in the air: the night's low haze, the mist in the
 		# hollows, the dust a column raises)
-		l.light_volumetric_fog_energy = 15.0
+		l.light_volumetric_fog_energy = 60.0
 		l.visible = false
 		add_child(l)
 		_lights.append(l)
+	for i in SLOTS:
 		_on.append(null)
 
 
@@ -56,19 +58,23 @@ func _process(dt: float) -> void:
 	if _pick_t <= 0.0:
 		_pick_t = 0.25
 		_pick(on)
+	var energy := 4.0 * clampf((level - 0.4) / 0.4, 0.0, 1.0)
 	for i in SLOTS:
 		var v = _on[i]
-		var l := _lights[i]
 		if v == null or not is_instance_valid(v):
 			_on[i] = null
-			l.visible = false
+			_lights[i * 2].visible = false
+			_lights[i * 2 + 1].visible = false
 			continue
 		var size: Vector3 = v.vdef.get("size", Vector3(2.3, 2.6, 6.0))
-		# (low on the front of the hull, dipped a little toward the road)
-		var at: Transform3D = (v as Node3D).global_transform * Transform3D(Basis(Vector3.RIGHT, -0.13), Vector3(0.0, size.y * 0.38, -size.z * 0.5 - 0.15))
-		l.global_transform = Transform3D(at.basis.orthonormalized(), at.origin)
-		l.light_energy = 3.2 * clampf((level - 0.4) / 0.4, 0.0, 1.0)
-		l.visible = true
+		var xf: Transform3D = (v as Node3D).global_transform
+		for side in 2:
+			var l := _lights[i * 2 + side]
+			# (low on the front of the hull either side, dipped a little toward the road)
+			var at: Transform3D = xf * Transform3D(Basis(Vector3.RIGHT, -0.1), Vector3(size.x * (0.32 if side == 0 else -0.32), size.y * 0.36, -size.z * 0.5 - 0.15))
+			l.global_transform = Transform3D(at.basis.orthonormalized(), at.origin)
+			l.light_energy = energy
+			l.visible = true
 
 
 ## The nearest vehicles on the move get the lights.

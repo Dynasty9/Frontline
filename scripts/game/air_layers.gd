@@ -230,6 +230,7 @@ func _process(dt: float) -> void:
 	if plumes:
 		plumes.tick(dt, volume != null and volume.visible)
 	if trails:
+		trails.light_k = 1.0 - 0.7 * clampf(atmo.by_mood(Atmosphere.LAMPLIGHT, 0.0), 0.0, 1.0)
 		if grid.dust_fresh:
 			grid.dust_fresh = false
 			trails.feed(grid.vehicle_dust)

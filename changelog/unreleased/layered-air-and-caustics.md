@@ -21,7 +21,7 @@ caption = "Off and on at night: the street lamps glow in the damp air over the t
 
 [[screenshots]]
 file = "rain-off-on.jpg"
-caption = "Off and on under rain at the command view: far showers hang as grey curtains below the clouds"
+caption = "Off and on under rain at the command view: far showers hang as soft grey veils below the clouds"
 
 [[screenshots]]
 file = "plume-off-on.jpg"
@@ -128,8 +128,8 @@ caption = "A barrage's plume drifting off downwind and breaking up."
   give none.
 - **Lights in the night air**: after dark a damp haze lies low over the field, so street lamps glow with soft halos,
   vehicles driving near you show their headlight beams, and flares, muzzle flashes and shell bursts bloom in it.
-- **Rain far off**: under rain, distant showers hang as grey, streaked curtains from the clouds and drift across the
-  valley, instead of the distance just turning to haze.
+- **Rain far off**: under rain, distant showers hang as soft grey veils from the clouds, slanted by the wind, and
+  drift across the valley, instead of the distance just turning to haze.
 - It all eases off as you zoom out, so it never hides the fighting you're watching. It's scenery only: it doesn't
   change who can see whom.
 - **Caustics**: a fine, even net of thin, sun-tinted lines of light, brightest where they meet, slowly re-forms

@@ -1345,11 +1345,13 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   same road thickens the stretch rather than laying another. After dark the air lights up round the lights: at night
   a damp low haze lies over the field that the moon barely lights, and the street lamps, the flares, the muzzle and
   burst flashes (each light's `light_volumetric_fog_energy`) and the headlights of the vehicles driving near the
-  camera (`headlights.gd`, six shadowless spot lights shared out among the nearest on the move, none in the browser)
-  glow in it: soft halos round the lamps, the beams down the road ahead, a brief bloom with each flash. Under rain the
+  camera (`headlights.gd`, a pair of narrow shadowless spot lights each for the six nearest on the move, none in the
+  browser) glow in it: soft halos round the lamps, the beams lighting the air and the dust ahead, a brief bloom with
+  each flash. A column's dust shows thinner after dark, when only the headlights light it. Under rain the
   showers further off hang as grey curtains from the cloud base (`rain_curtains.gd`, 24 camera-facing quads scattered
   over a 3.6 km tile that drifts with the clouds and wraps round the camera, none within 360 m, where the falling
-  streaks are): streaked, in folds, some trailing off before they reach the ground, under both renderers.
+  streaks are): soft veils, uneven across, feathered into the cloud base and slanted by the wind, some trailing off
+  before they reach the ground, under both renderers.
 - **Bounce light** (`ssgi_fx.gd`; Settings > Graphics > Lighting: Off / Medium / High; Medium on High, High on Ultra and
   Cinematic): sunlight thrown back off walls, roofs and roads lights what faces them, in their colours, so a sunlit
   wall warms the pavement and the shaded wall across from it, a statue's plinth glows from the square round it and
