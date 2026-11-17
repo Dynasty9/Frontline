@@ -234,24 +234,146 @@ static func _surf(p: Dictionary, s: float, z: float, y: float) -> Transform3D:
 
 
 ## A painted patch (w along, h up, t proud) on the hull's side s, centred at (z, y).
-static func _decal(k: VehicleModels, m: Node3D, p: Dictionary, s: float, z: float, y: float, w: float, h: float, kind: String, col, t := 0.006, tilt := 0.0) -> void:
+## `shape`, when given, is its outline instead of the rectangle, in the same
+## units (the rectangle's corners at +-w, +-h); `divisions` as in
+## VehicleMarkings.polygons.
+static func _decal(k: VehicleModels, m: Node3D, p: Dictionary, s: float, z: float, y: float, w: float, h: float, kind: String, col, t := 0.006, tilt := 0.0, shape := PackedVector2Array(), divisions := 1) -> void:
 	var tf := _surf(p, s, z, y)
 	var b := tf.basis * Basis(Vector3(0, 0, 1), tilt)
-	var outline := PackedVector2Array([Vector2(-w, -h), Vector2(w, -h), Vector2(w, h), Vector2(-w, h)])
+	var outline := shape if shape.size() >= 3 else PackedVector2Array([Vector2(-w, -h), Vector2(w, -h), Vector2(w, h), Vector2(-w, h)])
 	VehicleMarkings.polygons(k, m, [outline], func(q: Vector2) -> Vector3:
 		var at := tf.origin + b * Vector3(q.x * 0.5, q.y * 0.5, 0)
 		var frame := _surf(p, s, at.z, at.y)
-		return frame.origin + frame.basis.z * (t + 0.002), tf.basis.z, col, kind, false)
+		return frame.origin + frame.basis.z * (t + 0.002), tf.basis.z, col, kind, false, divisions)
 
 
 ## A number painted on the hull's side s: digits h tall in VehicleMarkings'
 ## hull lettering (square bars, the 1 a single upright), centred at (zc, yc),
-## each bar its own patch on the plating.
-static func _digits(k: VehicleModels, m: Node3D, p: Dictionary, s: float, text: String, zc: float, yc: float, h: float, col: Color) -> void:
-	for r: Rect2 in VehicleMarkings.stroke_rects(VehicleMarkings.digit_strokes(text, h, Vector2.ZERO, "hull"), h * 0.16):
+## each bar its own patch on the plating. With a `shade` colour each bar casts
+## a painted drop shadow down and to the right of it, as a navy shades the
+## numbers on a grey hull so they stand out from the plating at any distance
+## and in any light.
+static func _digits(k: VehicleModels, m: Node3D, p: Dictionary, s: float, text: String, zc: float, yc: float, h: float, col: Color, shade = null) -> void:
+	var bars := VehicleMarkings.stroke_rects(VehicleMarkings.digit_strokes(text, h, Vector2.ZERO, "hull"), h * 0.16)
+	if shade is Color:
+		var off := h * 0.06
+		for r: Rect2 in bars:
+			var c := r.get_center() + Vector2(off, -off)
+			_decal(k, m, p, s, zc - s * c.x, yc + c.y, r.size.x, r.size.y, "paint", shade, 0.006)
+	for r: Rect2 in bars:
 		# the side reads toward the bow on the right (-z), aft on the left
 		var c := r.get_center()
-		_decal(k, m, p, s, zc - s * c.x, yc + c.y, r.size.x, r.size.y, "paint", col, 0.008)
+		_decal(k, m, p, s, zc - s * c.x, yc + c.y, r.size.x, r.size.y, "paint", col, 0.008 if shade == null else 0.01)
+
+
+## How strongly each coat of a rust streak stains the paint under it, the
+## long pale tail first, the dark core under the weep last.
+const STREAK_STAIN := [0.5, 0.78, 1.0]
+
+## A rust streak's coats (see _coat) on the trawler's steel topsides and on
+## her painted bulwarks and deckhouse.
+const ON_STEEL := ["steel", "steel", "rust_steel"]
+const ON_PAINT := ["plain", "plain", "rust_steel"]
+
+
+## Paint `base` stained by rust water of colour `col`, `amount` of the way:
+## the stain filters the paint (blue topsides go a dark brown under it, white
+## a dirty orange) and darkens it a little, as a wash would.
+static func _stain(col: Color, base: Color, amount: float) -> Color:
+	var peak := maxf(col.r, maxf(col.g, col.b))
+	var filt := Color(1, 1, 1).lerp(Color(col.r / peak, col.g / peak, col.b / peak), amount)
+	var c := Color(base.r * filt.r, base.g * filt.g, base.b * filt.b) * (1.0 - 0.18 * amount)
+	return c.lerp(col, amount * amount * 0.6)
+
+
+## The finish a stain's coat is laid in: a dark one (soot, the rust under a
+## weep) is matte, where on gloss paint it would have shone like wet tar;
+## a pale wash keeps the paint's own sheen. `kinds`, when given, names each
+## coat's finish instead: the plating's own for the thin coats, so a stain on
+## steel topsides shades as they do, and rust for the crust under the weep.
+static func _coat(c: Color, kinds: Array, i: int) -> String:
+	if i < kinds.size():
+		return kinds[i]
+	return "plain_dark" if c.get_luminance() < 0.3 else "paint"
+
+
+## A rust streak run down the hull's side s from a weep (a scupper, a hawse, a
+## pinhole in the plating) at (z, top): w wide where it leaves it and h long,
+## narrowing as it wanders a little to one side (`lean`, -1 to 1), darkest
+## near its source, where the water carrying the rust first spreads, and
+## thinning toward `base` (the paint it runs over) further down. `tilt` turns
+## it off the vertical (radians, toward the bow on the side's own right): an
+## exhaust's soot blown aft along the hull by the boat's own way.
+static func _streak(k: VehicleModels, m: Node3D, p: Dictionary, s: float, z: float, top: float, w: float, h: float, col: Color, base: Color, lean := 0.0, t := 0.004, tilt := 0.0, kinds := []) -> void:
+	var coats := _drip(w, h, lean)
+	# (the patch's centre, half its length from the source along its run; a
+	# step along the side is a step of -s in z)
+	var run := Vector2(sin(tilt), -cos(tilt)) * h * 0.5
+	for i in coats.size():
+		# (in _decal's units: twice the real size, about the patch's centre)
+		var shape := PackedVector2Array()
+		for q: Vector2 in coats[i]:
+			shape.append(q * 2.0 + Vector2(0, h))
+		var c := _stain(col, base, STREAK_STAIN[i])
+		_decal(k, m, p, s, z - s * run.x, top + run.y, w, h, _coat(c, kinds, i), c, t + i * 0.0012, tilt, shape, 0)
+
+
+## The same streak on a flat wall facing +-x (`s`) at x, from (z, top): a
+## deckhouse's side under a porthole or a leaking gutter.
+static func _wall_streak(k: VehicleModels, m: Node3D, s: float, x: float, z: float, top: float, w: float, h: float, col: Color, base: Color, lean := 0.0, kinds := []) -> void:
+	var coats := _drip(w, h, lean)
+	var wall := VehicleSurface.plane(Vector3(x, top, z), Vector3(0, 0, -s), Vector3.UP)
+	for i in coats.size():
+		var at := Vector3(s * 0.0012 * (i + 1), 0, 0)
+		var c := _stain(col, base, STREAK_STAIN[i])
+		VehicleMarkings.polygons(k, m, [coats[i]], func(q: Vector2) -> Vector3: return wall.sample.call(q) + at,
+			Vector3(s, 0, 0), c, _coat(c, kinds, i), false, 0)
+
+
+## Soot on the trawler's funnel (round, 0.3 m in radius at `top`, its upper
+## end, swelling to 0.33 m 2.3 m below), under its black top band, whose foot
+## is at `at` on its axis: the smoke curls down round the stack in the boat's
+## own wake and leaves a grimy collar, its lower edge ragged, reaching `h`
+## down on the after side and a third of that forward, in two coats graded
+## from a grey film over `base` to soot black under the band.
+static func _funnel_soot(k: VehicleModels, m: Node3D, at: Vector3, top: float, h: float, base: Color) -> void:
+	for i in 2:
+		var depth := h * (1.0 if i == 0 else 0.4)
+		var lift := 0.006 + i * 0.0012
+		var c := _stain(Color(0.06, 0.055, 0.05), base, 0.45 if i == 0 else 1.0)
+		# (a strip of narrow panels round the stack, so none cuts a chord
+		# into it, in three sectors each laid facing its own middle; an
+		# outline's x is the angle round from aft)
+		var foot := func(a: float) -> float:
+			return -depth * (0.66 + 0.34 * cos(a) + 0.12 * sin(a * 5.0 + 1.3 + i) + 0.07 * sin(a * 9.0 + 0.4))
+		for sector in 3:
+			var a0 := -PI + sector * TAU / 3.0
+			var strips := []
+			for j in 6:
+				var a := a0 + TAU / 18.0 * j
+				var b := a + TAU / 18.0
+				strips.append(PackedVector2Array([Vector2(a, 0.0), Vector2(b, 0.0), Vector2(b, foot.call(b)), Vector2(a, foot.call(a))]))
+			var mid := a0 + PI / 3.0
+			VehicleMarkings.polygons(k, m, strips, func(q: Vector2) -> Vector3:
+				var y := at.y + q.y
+				var r := 0.3 + 0.03 * (top - y) / 2.3 + lift
+				return Vector3(at.x + sin(q.x) * r, y, at.z + cos(q.x) * r),
+				Vector3(sin(mid), 0.0, cos(mid)), c, _coat(c, ["plain", "plain_dark"], i), false, 0)
+
+
+## A rust streak's coats as outlines (metres, x across, y up, its top edge at
+## y = 0), one inside the next: each a tongue `w` wide at the top narrowing to
+## a blunt end, the long pale tail running all `h` down, the core under the
+## source a third of it, each one's end drifting off to the side by `lean`.
+static func _drip(w: float, h: float, lean: float) -> Array:
+	var out := []
+	for c: Vector2 in [Vector2(1.0, 1.0), Vector2(0.8, 0.62), Vector2(0.55, 0.3)]:
+		var a := w * 0.5 * c.x
+		var l := h * c.y
+		var lx := lean * a * 0.8
+		out.append(PackedVector2Array([Vector2(-a, 0), Vector2(a, 0), Vector2(a * 0.88 + lx * 0.3, -l * 0.35), Vector2(a * 0.6 + lx * 0.7, -l * 0.75),
+			Vector2(a * 0.22 + lx, -l), Vector2(-a * 0.22 + lx, -l), Vector2(-a * 0.6 + lx * 0.7, -l * 0.75), Vector2(-a * 0.88 + lx * 0.3, -l * 0.35)]))
+	return out
 
 
 ## A bar of w x d section swept along a path in the y-z plane (a keel and
@@ -619,8 +741,10 @@ static func _patrol_ship(k: VehicleModels, team: int, seed: int) -> void:
 		for z in [9.6, 10.4]:
 			var tf := _surf(p, s, z, 1.75)
 			k._cyl(m, 0.11, 0.11, 0.05, tf.origin, (tf.basis * Basis(Vector3.RIGHT, PI / 2)).get_euler(), "plain_dark", Color(0.05, 0.05, 0.05), 12, false)
-			_decal(k, m, p, s, z + 0.32, 1.8, 0.55, 0.16, "plain", Color(0.3, 0.31, 0.31), 0.004)
-		_digits(k, m, p, s, str(1 + seed % 12), -6.9, 2.25, 0.9, Color(0.06, 0.06, 0.06))
+			# the diesel's soot, blown aft along the hull from the outlet and
+			# sagging a little as it goes
+			_streak(k, m, p, s, z + 0.08, 1.75, 0.24, 1.1 if z < 10.0 else 0.75, Color(0.07, 0.07, 0.068), HAZE, 0.3, 0.004, -s * (PI * 0.5 - 0.12), ["plain", "plain", "plain_dark"])
+		_digits(k, m, p, s, str(1 + seed % 12), -6.9, 2.28, 1.0, Color(0.86, 0.86, 0.83), Color(0.06, 0.06, 0.06))
 		# draft marks at the stem and stern
 		for i in 4:
 			var y := 0.6 + i * 0.3
@@ -935,17 +1059,26 @@ static func _gun_trawler(k: VehicleModels, team: int, seed: int) -> void:
 			var fz := -3.6 + i * 1.75
 			var fy := _dk(p, fz) + 0.14
 			_decal(k, m, p, s, fz, fy, 0.5, 0.22, "plain_dark", Color(0.04, 0.04, 0.04))
-			_decal(k, m, p, s, fz + rng.randf_range(-0.12, 0.12), fy - 0.55, 0.07 + rng.randf() * 0.06, 0.8 + rng.randf() * 0.5, "paint", rust.lerp(blue, 0.25), 0.004)
+			# the rust the water carries out of each port, from its sill down
+			var sz := fz + rng.randf_range(-0.12, 0.12)
+			var sw := 0.07 + rng.randf() * 0.06
+			var sh := 0.8 + rng.randf() * 0.5
+			_streak(k, m, p, s, sz, fy - 0.1, sw * 2.2, sh + 0.3, rust.lerp(blue, 0.12), blue, fposmod(sz * 3.7, 2.0) - 1.0, 0.004, 0.0, ON_STEEL)
 		for i in 14:
 			var rz := rng.randf_range(-6.5, 7.5)
 			var ry := rng.randf_range(2.2, _dk(p, rz) + 0.6)
-			_decal(k, m, p, s, rz, ry, rng.randf_range(0.05, 0.12), rng.randf_range(0.4, 1.1), "paint", rust.lerp(Color(0.25, 0.2, 0.17), rng.randf() * 0.4), 0.004)
+			var rw := rng.randf_range(0.05, 0.12)
+			var rh := rng.randf_range(0.4, 1.1)
+			var on_bulwark := ry > _dk(p, rz)
+			_streak(k, m, p, s, rz, ry + rh * 0.5, rw * 1.6, rh, rust.lerp(Color(0.25, 0.2, 0.17), rng.randf() * 0.4), white if on_bulwark else blue, fposmod(rz * 5.3, 2.0) - 1.0,
+				0.004, 0.0, ON_PAINT if on_bulwark else ON_STEEL)
 		for i in 2:
 			var rz := rng.randf_range(-5.0, 6.5)
 			_decal(k, m, p, s, rz, _dk(p, rz) + rng.randf_range(0.3, 0.8), rng.randf_range(0.3, 0.9), rng.randf_range(0.2, 0.45), "rust_steel", rust, 0.005, rng.randf_range(-0.2, 0.2))
 		_decal(k, m, p, s, 1.6 * s, 2.6, 1.5, 0.75, "steel", Color(0.48, 0.48, 0.46) if s > 0 else Color(0.45, 0.2, 0.13), 0.008)
 		_decal(k, m, p, s, -1.4, _dk(p, -1.4) + 0.55, 1.1, 0.7, "steel", Color(0.56, 0.55, 0.52), 0.008)
-		_digits(k, m, p, s, str(140 + seed % 60), -5.3, _dk(p, -5.3) - 0.42, 0.5, Color(0.85, 0.84, 0.78))
+		# her fishing number: her port's letters and her number in it
+		_digits(k, m, p, s, VehicleMarkings.craft_number(seed, 2, 0) + " " + str(140 + seed % 60), -5.1, _dk(p, -5.1) - 0.42, 0.46, Color(0.85, 0.84, 0.78))
 		# the hawse pipe with the anchor in it and rust bleeding down
 		var hz := zs + 1.6
 		var tf := _surf(p, s, hz, _dk(p, hz) - 0.45)
@@ -954,7 +1087,7 @@ static func _gun_trawler(k: VehicleModels, team: int, seed: int) -> void:
 		_bx(k, m, Vector3(0.6, 0.12, 0.1), tf.origin + tf.basis.z * 0.08 - tf.basis.y * 0.82, "rust_steel", Color(0.2, 0.19, 0.18), tf.basis.get_euler())
 		for sx in [-1.0, 1.0]:
 			_bx(k, m, Vector3(0.12, 0.38, 0.1), tf.origin + tf.basis.z * 0.09 - tf.basis.y * 0.68 + tf.basis.x * sx * 0.27, "rust_steel", Color(0.2, 0.19, 0.18), (tf.basis * Basis(Vector3(0, 0, 1), sx * 0.3)).get_euler())
-		_decal(k, m, p, s, hz + 0.15, _dk(p, hz) - 1.6, 0.16, 1.2, "paint", rust, 0.004)
+		_streak(k, m, p, s, hz + 0.15, _dk(p, hz) - 0.62, 0.3, 1.55, rust, blue, -0.4 * s, 0.004, 0.0, ON_STEEL)
 		# tyres hung over the side as fenders
 		for tz in [-3.2, -0.4, 2.3, 5.0, 7.2]:
 			var ty := _dk(p, tz) - 0.25
@@ -1000,10 +1133,18 @@ static func _gun_trawler(k: VehicleModels, team: int, seed: int) -> void:
 		for z2 in [2.3, 3.2, 4.0]:
 			k._add(m, _torus(0.12, 0.17), "steel", Color(0.5, 0.42, 0.25), Vector3(s * 1.93, 3.9, z2), Vector3(0, 0, PI / 2))
 			k._cyl(m, 0.125, 0.125, 0.02, Vector3(s * 1.925, 3.9, z2), Vector3(0, 0, PI / 2), "glass", Color(0.1, 0.12, 0.12), 12, false)
-			_bx(k, m, Vector3(0.008, 0.6 + rng.randf() * 0.4, 0.05), Vector3(s * 1.925, 3.35 - rng.randf() * 0.1, z2 + rng.randf_range(-0.05, 0.05)), "paint", rust, Vector3.ZERO, false)
+			# rust weeping from the porthole's rim, down from its lower edge
+			var ph := 0.6 + rng.randf() * 0.4
+			var py := 3.35 - rng.randf() * 0.1
+			var pz: float = z2 + rng.randf_range(-0.05, 0.05)
+			_wall_streak(k, m, s, s * 1.92, pz, py + 0.42, 0.11, ph, rust, white, fposmod(pz * 4.1, 2.0) - 1.0, ON_PAINT)
 		for i in 5:
+			# and from under the roof's edge, where the gutter leaks
 			var rz := rng.randf_range(0.2, 4.4)
-			_bx(k, m, Vector3(0.008, rng.randf_range(0.3, 0.9), rng.randf_range(0.04, 0.1)), Vector3(s * 1.925, hr - 0.45 - rng.randf() * 0.3, rz), "paint", rust.lerp(white, 0.3), Vector3.ZERO, false)
+			var rh := rng.randf_range(0.3, 0.9)
+			var rw := rng.randf_range(0.04, 0.1)
+			var ry := hr - 0.45 - rng.randf() * 0.3
+			_wall_streak(k, m, s, s * 1.92, minf(rz, 4.1), hr - 0.03 - (hr - 0.45 - ry), rw * 1.7, rh, rust.lerp(white, 0.3), white, fposmod(rz * 6.7, 2.0) - 1.0, ON_PAINT)
 		# sidelights in their screens on the wheelhouse's shoulders
 		_bx(k, m, Vector3(0.24, 0.3, 0.5), Vector3(s * 1.72, wy1 + 0.25, 0.75), "steel", blue.darkened(0.2))
 		VehicleFittings.nav_light(k, m, Vector3(s * 1.86, wy1 + 0.25, 0.7), Vector3(0.08, 0.14, 0.18), s)
@@ -1023,7 +1164,8 @@ static func _gun_trawler(k: VehicleModels, team: int, seed: int) -> void:
 	k._cyl(m, 0.3, 0.33, 2.3, Vector3(0.95, hr + 1.2, 4.0), Vector3.ZERO, "plain", white.darkened(0.05), 14)
 	k._cyl(m, 0.31, 0.31, 0.45, Vector3(0.95, hr + 2.15, 4.0), Vector3.ZERO, "plain_dark", Color(0.08, 0.08, 0.08), 14)
 	k._cyl(m, 0.12, 0.12, 0.35, Vector3(0.95, hr + 2.5, 4.0), Vector3.ZERO, "plain_dark", Color(0.06, 0.06, 0.06), 10)
-	_bx(k, m, Vector3(0.012, 0.9, 0.2), Vector3(0.95 + 0.3, hr + 1.6, 4.0), "plain_dark", Color(0.1, 0.09, 0.08), Vector3(0, 0, 0.0), false)
+	# soot stains the funnel's white under its black top, heaviest aft
+	_funnel_soot(k, m, Vector3(0.95, hr + 1.925, 4.0), hr + 2.35, 0.75, white.darkened(0.05))
 	_liferaft(k, m, Vector3(-0.85, hr + 0.08, 3.9), 0.18, rust.lerp(white, 0.4))
 	VehicleEquipment.storage(k, m, Vector3(0.2, hr + 0.33, 3.55), Vector3(0.8, 0.5, 0.5), "plain", white.darkened(0.12))
 	# --- the wheelhouse roof: the DShK, radar mast with its scanner, a

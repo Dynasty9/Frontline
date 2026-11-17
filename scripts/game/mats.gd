@@ -1550,6 +1550,11 @@ uniform float surface_glaze = 0.0;
 uniform vec3 surface_char_rust : source_color = vec3(0.36, 0.25, 0.19);
 uniform vec3 surface_char_ash : source_color = vec3(0.44, 0.43, 0.41);
 uniform float surface_char_low = 0.55;
+// Boats: the water's surface in the world (WaterMap.LEVEL) and how high above
+// it the hull is wet from the bow wave and the slop alongside (0: never
+// afloat; VehicleMaterials.WET).
+uniform float surface_sea = -0.45;
+uniform float surface_wet = 0.0;
 uniform bool use_vcolor = false;
 uniform float vcolor_k = 1.0;  // merged parts: the vertex colour is stored scaled down (Mats.VC_K)
 // paving (Mats.paving): a shell hole or a trench punches through it, as through the roads
@@ -1900,6 +1905,10 @@ void fragment() {
 	float paint_edge = 0.0;
 	float paint_chip = 0.0;
 	float paint_stain = 0.0;
+	float rim = 0.0;
+	float cavity = 0.0;
+	float plate = 0.5;
+	float grime_run = 0.0;
 	if (vehicle_surface) {
 		// Paint is a dielectric coating. Only the sparse exposed chips become
 		// metallic; rubber, fabric and glass retain their own response.
@@ -1944,11 +1953,49 @@ void fragment() {
 				paint_stain = smoothstep(0.60, 0.78, runs) * (1.0 - abs(normalize(tn).y)) * surface_paint_wear;
 				r += paint_stain * 0.18;
 			}
+			// Edges that catch the light. Where a part's skin turns over (a
+			// rolled edge, a fender's lip, a rounded turret's shoulder, a car's
+			// wing line) its shading normal swings round within a few
+			// centimetres; the paint there is rubbed thin and polished by
+			// boots, hands and brush, and the curve throws a hard little
+			// highlight. How fast the normal turns per metre across this pixel
+			// is that curvature (one over the edge's radius): flat-shaded plate
+			// has none, a hollow turns the other way and holds dirt instead, and
+			// an edge narrower than a few pixels fades out rather than sparkle.
+			vec3 sn = normalize(tn);
+			vec3 dpx = dFdx(tp);
+			vec3 dpy = dFdy(tp);
+			float lx = max(dot(dpx, dpx), 1e-10);
+			float ly = max(dot(dpy, dpy), 1e-10);
+			float curve = 0.5 * (dot(dFdx(sn), dpx) / lx + dot(dFdy(sn), dpy) / ly);
+			float foot = sqrt(max(lx, ly));
+			// (a tube or a barrel turns over all the way round, and isn't worn
+			// all over: the rubbing breaks up along it, with the map's own wear)
+			rim = smoothstep(8.0, 30.0, curve) * keep(1.6 / max(curve, 0.1), foot) * smoothstep(0.3, 0.6, detail.g);
+			cavity = smoothstep(4.0, 16.0, -curve) * keep(1.6 / max(-curve, 0.1), foot);
+			// No two plates of a hull hold quite the same paint: each was
+			// sprayed, touched up and faded on its own, so neighbouring panels
+			// sit a shade apart. A flat face keeps one tone (read from its plane:
+			// which way it faces and how far out from the model's middle), a
+			// curved skin drifts slowly across it, and a moving turret keeps
+			// its own. (A tube or a drum turns its normal right round within
+			// a hand's breadth: there the tone would band like a reflection
+			// down it, so anything that round keeps the one coat.)
+			plate = mix(tnoise(vec2(dot(sn, vec3(2.3, 3.1, 1.7)), dot(sn, tp) * 1.9) + 7.3), 0.5, smoothstep(0.4, 2.0, abs(curve)));
 			float broad = tnoise(tp.xz * 18.0 + tp.y * 3.7);
 			float streak = tnoise(vec2((tp.x + tp.z) * 130.0, tp.y * 9.0));
 			float upward = smoothstep(0.15, 0.8, normalize(tn).y);
 			finish_film = surface_weather * (0.20 + 0.50 * broad) * (0.45 + 0.55 * upward);
 			finish_fade = surface_weather * (broad - 0.45) * 0.35;
+			// From the battle camera that fine film averages out to one even
+			// coat. Real dust lies in drifts a hand to a metre across, thick in
+			// the lee of whatever stands on a deck and swept thin where the
+			// crew walk, and rain and spray run the grime down the sides in
+			// streaks a few centimetres wide: sizes the camera still resolves.
+			float drift = tnoise(tp.xz * 1.1 + tp.y * 0.4 + 2.9);
+			finish_film *= mix(1.0, 0.2 + 1.7 * smoothstep(0.3, 0.72, drift), upward);
+			float run = tnoise(vec2((tp.x + tp.z) * 9.0, tp.y * 0.8 + 1.3)) + (drift - 0.5) * 0.5;
+			grime_run = surface_weather * smoothstep(0.55, 0.85, run) * (1.0 - upward);
 			r += surface_weather * (streak - 0.5) * (1.0 - upward) * 0.16;
 			vec2 grain_uv = an.y > an.x && an.y > an.z ? tp.xz : (an.x > an.z ? tp.zy : tp.xy);
 			float pixel = max(length(dFdx(grain_uv)), length(dFdy(grain_uv)));
@@ -1971,6 +2018,15 @@ void fragment() {
 			} else if (surface_finish == 1 || surface_finish == 7 || surface_finish == 4) {
 				h += (grain - 0.5) * surface_grain * keep(0.025, pixel);
 				r += (grain - 0.5) * surface_grain * 0.15;
+				if (surface_finish == 4) {
+					// A non-skid deck wears unevenly: boots polish its grit pale
+					// and smoother along the ways the crew walk, and oil, fuel
+					// and spent brass stain it dark round the guns and hatches,
+					// in patches a metre or two across that read from above.
+					float worn_way = tnoise(tp.xz * 0.45 + 3.7) + (drift - 0.5) * 0.4;
+					col *= mix(0.8, 1.2, smoothstep(0.3, 0.75, worn_way));
+					r = mix(r, r * 0.82, smoothstep(0.55, 0.8, worn_way));
+				}
 			} else if (surface_finish == 5) {
 				float fibres = tnoise(grain_uv * vec2(3.0, 180.0));
 				h += (fibres - 0.5) * surface_grain * keep(0.04, pixel);
@@ -2074,6 +2130,15 @@ void fragment() {
 		col = mix(col, col * 0.72 + vec3(0.10, 0.085, 0.06), finish_film);
 		r = mix(r, 0.92, finish_film);
 		m *= 1.0 - finish_film;
+		// Paint takes a plate's own tone (a service coat more than a car's
+		// factory finish) and wears bright on its rolled edges; paint, bare
+		// metal and moulded plastic polish there; dirt packs into hollows.
+		float paint = surface_finish == 0 ? 1.0 : 0.0;
+		col *= 1.0 + (plate - 0.5) * (0.06 + 0.1 * surface_paint_wear) * paint;
+		col = mix(col, col * 1.3 + vec3(0.02), rim * paint * 0.6);
+		r = mix(r, r * 0.5, (surface_finish == 0 || surface_finish == 3 || surface_finish == 7) ? rim : 0.0);
+		col *= 1.0 - cavity * 0.2;
+		col *= 1.0 - grime_run * 0.38;
 	}
 	// broad, soft variation across a surface (sun-bleached, weathered, damp
 	// patches): large enough never to alias, it keeps big walls from looking flat
@@ -2106,6 +2171,21 @@ void fragment() {
 			dirt = max(mud, dust);
 			// dried mud is matte, and hides the clear coat and bare metal under it
 			r = mix(r, 0.94, dirt);
+		}
+		if (surface_wet > 0.0) {
+			// A boat afloat is wet for a hand or two above the water all along
+			// her side, where the slop alongside laps and the spray runs back
+			// down, its top edge drying in uneven tongues. Wet paint goes a
+			// shade darker and the stain on it darker still, and all of it
+			// glossy. It's measured in the world, from the water's surface, so
+			// it rides on the hull as she heaves and rolls; a boat hauled out on
+			// a beach or a trailer stands clear of it and stays dry.
+			float sea = wpos.y - surface_sea;
+			float tongue = tnoise(vec2((tp.x + tp.z) * 1.3, tp.y * 0.2 + 4.7));
+			float top = surface_wet * (0.45 + 0.9 * tongue);
+			float awash = 1.0 - smoothstep(top * 0.55, top, sea);
+			col *= 1.0 - awash * (0.16 + 0.3 * dirt);
+			r = mix(r, 0.14, awash * 0.85);
 		}
 	} else {
 		float low = 1.0 - smoothstep(0.0, 0.9, weather_pos.y - ground_y);
