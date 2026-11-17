@@ -763,8 +763,8 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   table and chairs (under a parasol now and then), the odd kennel, a shed at the bottom of many gardens and here
   and there a trampoline, all set dressing that a blast or a truck
   knocks over. Front gardens are planted with rows of shrubs (box balls, hydrangeas, roses, lavender) and beds of
-  flowers, clipped hedges run along many unfenced fronts, and shrubs (laurels among them) grow at the backs of the
-  houses. On the walls are a house's services and the things by its door: meter boxes, outside taps
+  flowers, clipped hedges run along many unfenced fronts and between the gardens, and shrubs (laurels among them)
+  grow at the backs of the houses, with vegetable plots in rows and washing out on the line. On the walls are a house's services and the things by its door: meter boxes, outside taps
   with a hose on a hook, air conditioners on brackets or on a pad, satellite dishes on arms, and at the front
   door the house's number, a letterbox and a mat on the step. The shops by the square have fronts: a fascia with the shop's name, a striped awning, and on the
   pavement what each kind of shop puts out (a greengrocer's produce, a cafe's tables, a newsagent's paper rack). All of it, and the military buildings' weatherboard, sheeting, roller shutters, north

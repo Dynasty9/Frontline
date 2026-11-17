@@ -85,6 +85,14 @@ func capture() -> void:
 			if near.size() >= 2 and lived:
 				views.append(["garden", (hedge + near[0]) * 0.5, 13.0, -45.0, float(piece[2]) + PI + 0.5])
 				break
+		# a back garden with its vegetable plot, at a house still lived in
+		for piece: Array in world.decor:
+			if piece[0] != "garden":
+				continue
+			var plot: Vector3 = piece[1]
+			if world.structures_near(plot, 9.0).all(func(st) -> bool: return st.skind != "house_wall" or not st.dark):
+				views.append(["backyard", plot, 14.0, -50.0, float(piece[2]) + 0.6])
+				break
 		print("CAPTURE town bounds=", town)
 	# (FL_ONLY_VIEW="name,x,z,distance,pitch,yaw": just that view, to match a
 	# camera another revision chose)

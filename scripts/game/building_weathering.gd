@@ -47,7 +47,7 @@ static func _mat(k: BuildingKit, rect: Rect2, col: Color, rag: RandomNumberGener
 	var nx := maxi(1, ceili(rect.size.x / 0.4))
 	var ny := maxi(1, ceili(rect.size.y / 0.4))
 	var tile := rect.size / Vector2(nx, ny)
-	var patch := Res.leaf_patch(60, 0.2)
+	var patch := Res.leaf_patch(96, 0.19)
 	for i in nx:
 		for j in ny:
 			var edge := i == 0 or i == nx - 1

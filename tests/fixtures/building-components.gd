@@ -621,6 +621,27 @@ func _ready() -> void:
 		var bb2 := _bounds(bk3.sink.root, Transform3D.IDENTITY)
 		check(bb2.size.x <= 2.6 and bb2.position.z >= -0.15 and bb2.end.z <= 0.85 and bb2.end.y <= 0.7, "a bed keeps to its strip, under a window's sill (%s)" % bb2)
 		bk3.sink.root.free()
+	# A garden's hedge (low_wall variant 4) is clipped within the hedge's own
+	# box (1.15 m high, 0.9 thick), its lowest leaves tucked into the ground.
+	for s in 4:
+		var gh := Structure.preview_model("low_wall", -1, 4, Vector3(3.6, 1.0, 0.5), false, 40 + s)
+		var ghb := _bounds(gh, Transform3D.IDENTITY)
+		check(gh.get_child_count() > 0 and ghb.size.x <= 3.8 and ghb.end.y <= 1.2 and ghb.size.z <= 0.95 and ghb.position.y >= -0.12, "a garden's hedge is clipped within its box (%s)" % ghb)
+		gh.free()
+	# A vegetable plot keeps inside its edging (its potato ridges half sunk in
+	# the earth), its bean canes (on most plots deep enough for them) no taller
+	# than a man.
+	var bean_plots := 0
+	for s in 10:
+		var vk := kit()
+		vk.rng.seed = s
+		BuildingPlanting.veg_patch(vk, 4.3, 2.6, vk.rng)
+		var vb := _bounds(vk.sink.root, Transform3D.IDENTITY)
+		check(vb.size.x <= 4.45 and vb.size.z <= 2.75 and vb.position.y >= -0.08 and vb.end.y <= 1.85, "a vegetable plot keeps to its edging (%s)" % vb)
+		if vb.end.y > 1.0:
+			bean_plots += 1
+		vk.sink.root.free()
+	check(bean_plots >= 4 and bean_plots <= 9, "most vegetable plots have a row of beans (%d of 10)" % bean_plots)
 
 	# What a ruined or shelled house sheds lies flat on the ground in front of
 	# the wall it came off, within its length and a metre and a half of it;

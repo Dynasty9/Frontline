@@ -2777,7 +2777,11 @@ func _build_model() -> void:
 	match skind:
 		"low_wall":
 			var p: Dictionary = parts[0]
-			if variant % 3 == 1:
+			if variant == 4:
+				# a garden's hedge, kept clipped (BuildingPlanting): its faces and
+				# top shorn flat, in one of a hedge's greens
+				BuildingPlanting.hedge(_kit(rng), p.s.x, p.s.y - 0.05, p.s.z - 0.1, BuildingPlanting.HEDGES[rng.randi() % BuildingPlanting.HEDGES.size()], rng, false)
+			elif variant % 3 == 1:
 				# a hedge: one continuous mass of overlapping leaf lumps, a little
 				# uneven along the top, the odd shoot sticking up
 				var n := maxi(3, int(size.x / 0.45))

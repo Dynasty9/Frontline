@@ -550,7 +550,8 @@ func _lot_house(front: Vector3, n: Vector3, d: Vector3, W: float, shop: bool) ->
 			continue
 		var bp := back + d * ((k + 0.5) * sl - W * 0.5) - n * 0.5
 		if kind < 0.7:
-			mg._try("low_wall", bp, yaw_d, -1, {"size": Vector3(sl, 1.0, 0.5), "variant": 1})
+			# (a garden's hedge, kept clipped: Structure's low_wall variant 4)
+			mg._try("low_wall", bp, yaw_d, -1, {"size": Vector3(sl, 1.0, 0.5), "variant": 4})
 		elif kind < 0.88:
 			mg._try("low_wall", bp, yaw_d, -1, {"size": Vector3(sl, 1.0, 0.5), "variant": 0})
 	var style := rng.randi() % 3
@@ -931,7 +932,7 @@ func _park(front: Vector3, n: Vector3, d: Vector3, W: float) -> void:
 	for k in segs:
 		if k == segs / 2:
 			continue
-		mg._try("low_wall", front + n * 0.5 + d * ((k + 0.5) * W / segs - W * 0.5), yaw, -1, {"size": Vector3(W / segs, 1.0, 0.5), "variant": 1})
+		mg._try("low_wall", front + n * 0.5 + d * ((k + 0.5) * W / segs - W * 0.5), yaw, -1, {"size": Vector3(W / segs, 1.0, 0.5), "variant": 4})
 	_d("bin", front + n * 1.0 + d * 1.6)
 
 

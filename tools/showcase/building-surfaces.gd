@@ -317,6 +317,16 @@ func _subject(kind: String) -> Node3D:
 			return Structure.preview_model("low_wall", -1, 0, Vector3(4.0, 1.0, 0.5))
 		"low_wall_brick":
 			return Structure.preview_model("low_wall", -1, 2, Vector3(4.0, 1.0, 0.5))
+		"garden_hedges":
+			# hedges between gardens as the town grows them: three lengths of the
+			# garden hedge (low_wall variant 4, kept clipped where Structure
+			# knows it), and a field hedge (variant 1) for comparison
+			var row := Node3D.new()
+			for i in 4:
+				var h := Structure.preview_model("low_wall", -1, 1 if i == 3 else 4, Vector3(3.6, 1.0, 0.5), false, 7 + i)
+				h.position = Vector3(-5.6 + i * 3.75, 0, 0)
+				row.add_child(h)
+			return row
 		"tall_wall":
 			return Structure.preview_model("tall_wall", -1, 0, Vector3(4.0, 2.6, 0.5))
 		"bridge":
@@ -530,7 +540,7 @@ func _plant_rows(root: Node3D) -> void:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 5
 	var k := BuildingKit.nodes(root, rng)
-	k.plate(Vector3(10.0, 0.02, 9.0), Vector3(0, -0.01, -0.5), "plain", Color(0.3, 0.42, 0.18), Vector3.ZERO, false)
+	k.plate(Vector3(10.0, 0.02, 14.0), Vector3(0, -0.01, -3.0), "plain", Color(0.3, 0.42, 0.18), Vector3.ZERO, false)
 	for i in 6:
 		plants.call("shrub", k.at_point(Vector3(-3.75 + i * 1.5, 0, -2.2)), 0.9, i, i % 4, rng)
 		plants.call("shrub", k.at_point(Vector3(-3.75 + i * 1.5, 0, -0.6)), 0.7, i, -1 if i % 2 == 0 else (i + 1) % 4, rng)
@@ -538,6 +548,24 @@ func _plant_rows(root: Node3D) -> void:
 		plants.call("hedge", k.at_point(Vector3(-3.6 + i * 2.4, 0, 1.0)), 2.2, 0.9, 0.55, plants.get("HEDGES")[i], rng)
 	for i in 2:
 		plants.call("bed", k.at_point(Vector3(-2.4 + i * 4.8, 0, -3.7)), 2.4, 0.75, rng)
+	if plants.get_script_method_list().any(func(m: Dictionary) -> bool: return m["name"] == "veg_patch"):
+		# (one plot with a row of beans, one without)
+		for spec: Array in [[-2.45, 0], [2.45, 2]]:
+			var vr := RandomNumberGenerator.new()
+			vr.seed = spec[1]
+			plants.call("veg_patch", k.at_point(Vector3(spec[0], 0, -5.6)), 4.3, 2.6, vr)
+	# a clothesline with the washing out, beyond the vegetable plots
+	var yards: GDScript = load("res://scripts/game/building_yards.gd")
+	if yards.get_script_method_list().any(func(m: Dictionary) -> bool: return m["name"] == "laundry"):
+		var line := k.at_point(Vector3(0, 0, -8.4))
+		for x: float in [-2.0, 2.0]:
+			line.box(Vector3(0.07, 1.9, 0.07), Vector3(x, 0.95, 0), "wood")
+			line.box(Vector3(0.06, 0.06, 0.9), Vector3(x, 1.85, 0), "wood")
+		for z: float in [-0.35, 0.35]:
+			BuildingWire.cable(line, Vector3(-2.0, 1.85, z), Vector3(2.0, 1.85, z), 0.15)
+			var lr := RandomNumberGenerator.new()
+			lr.seed = 3 if z < 0.0 else 8
+			yards.call("laundry", line.at_point(Vector3(0, 0, z)), 2.0, 1.85, 0.15, lr)
 	# ivy up a garden wall at the back
 	var wall := k.at_point(Vector3(0, 0, 2.6), Vector3(0, PI, 0))
 	wall.box(Vector3(9.0, 2.6, 0.3), Vector3(0, 1.3, -0.15), "stone", Color(0.6, 0.57, 0.52))

@@ -250,8 +250,21 @@ the pots (it draws the yard's stream as
 gardens, with gaps for the path, the drive and the mailbox; and a shrub or two behind the house at its corners
 (`BACK_SHRUBS`, laurels among them), never in a wing or on the drive's side. They're Decor (`shrub`,
 `hedge_trim`, `bed`): no cover, and a blast or a truck flattens them. The flowers in window boxes and pots by
-the door take their own colours the same way. Render a planted garden with `--building-kinds=house_garden` in the
-studio stage, and every plant in rows with `--building-kinds=planting`.
+the door take their own colours the same way.
+
+The back of a garden is kept too:
+- The hedge along its back, a `low_wall` of variant 4, is a garden's hedge kept clipped, drawn by
+  `BuildingPlanting.hedge` with its leaves a little coarser for the number of them. In play it is the same as a
+  field hedge (variant 1): every rule reads `variant % 3`.
+- A vegetable plot (Decor `garden`, `BuildingPlanting.veg_patch`) is turned earth in a board edging, a crop to a row:
+  cabbages, lettuces, potatoes earthed up, carrots, and on most plots runner beans up crossed canes along its far
+  edge.
+- On a washing line (Decor `clothesline`, `BuildingYards.laundry`) hang sheets folded over it, shirts, towels and
+  trousers, pegged along its sag.
+
+Render a planted garden with `--building-kinds=house_garden` in the studio stage, every plant in rows (with the
+vegetable plots and a line of washing) with `--building-kinds=planting`, and the garden hedges with
+`--building-kinds=garden_hedges`.
 
 ## Wall fittings
 

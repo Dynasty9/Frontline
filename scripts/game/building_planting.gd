@@ -48,9 +48,9 @@ static func clump(k: BuildingKit, c: Vector3, half: Vector3, col: Color, shadow 
 
 
 ## A skin of `cards` single leaves (each `leaf` of its radius long) over the
-## ellipsoid `radii` about `c`.
-static func skin(k: BuildingKit, c: Vector3, radii: Vector3, col: Color, cards: int, leaf: float) -> void:
-	k.part_with(Res.leaf_ball(cards, leaf), Mats.leaf_cards_tinted(), Transform3D(Basis.from_scale(radii), c), col, false)
+## ellipsoid `radii` about `c` (turned by `turn`).
+static func skin(k: BuildingKit, c: Vector3, radii: Vector3, col: Color, cards: int, leaf: float, turn := Basis.IDENTITY) -> void:
+	k.part_with(Res.leaf_ball(cards, leaf), Mats.leaf_cards_tinted(), Transform3D(turn * Basis.from_scale(radii), c), col, false)
 
 
 ## A shrub `r` across of a `kind` (KINDS), with flowers (`bloom` an index
@@ -105,7 +105,7 @@ static func shrub(k: BuildingKit, r: float, kind: int, bloom: int, rng: RandomNu
 ## long); one that isn't clipped (`sprays` above 0) grows lumpy, with lobes
 ## of leaves out of its sides and sprays out of its shoulders.
 static func _mound(k: BuildingKit, r: float, h: float, leaf: Color, cards: int, size: float, sprays: int, rng: RandomNumberGenerator) -> void:
-	k.part(Res.sphere(0.5, 8), "plain", Transform3D(Basis.from_scale(Vector3(r * 0.84, h * 0.9, r * 0.84)), Vector3(0, h * 0.46, 0)), leaf.darkened(0.35), true)
+	k.part(Res.sphere(0.5, 8), "plain", Transform3D(Basis.from_scale(Vector3(r * 0.74, h * 0.84, r * 0.74)), Vector3(0, h * 0.44, 0)), leaf.darkened(0.3), true)
 	if sprays == 0:
 		skin(k, Vector3(0, h * 0.48, 0), Vector3(r * 0.45, h * 0.48, r * 0.45), leaf, cards, size)
 		return
@@ -132,15 +132,17 @@ static func _on_dome(rw: float, cy: float, rh: float, a: float, up: float) -> Ve
 ## A clipped hedge `length` long, `h` high and `depth` thick, centred on x:
 ## a dark core (casting its shadow), its faces, ends and top shorn flat in
 ## leaves, the faces leaning in a little (a hedge is cut narrower at the top
-## so its foot gets the light), the top a shade lighter with new growth.
-static func hedge(k: BuildingKit, length: float, h: float, depth: float, col: Color, rng: RandomNumberGenerator) -> void:
-	k.box(Vector3(length - 0.06, h - 0.05, depth - 0.1), Vector3(0, (h - 0.05) * 0.5, 0), "plain", col.darkened(0.3), Vector3.ZERO, true)
+## so its foot gets the light), the top a shade lighter with new growth. A
+## long hedge between gardens (`fine` false) is leaved a little coarser, for
+## the number of them.
+static func hedge(k: BuildingKit, length: float, h: float, depth: float, col: Color, rng: RandomNumberGenerator, fine := true) -> void:
+	var lean := 0.06
+	k.box(Vector3(length - 0.16, h - 0.1, depth - 0.16 - 2.0 * h * lean), Vector3(0, (h - 0.1) * 0.5, 0), "plain", col.darkened(0.3), Vector3.ZERO, true)
 	var n := maxi(1, int(round(length / 0.55)))
 	var seg := length / n
 	var rows := maxi(1, int(round(h / 0.45)))
 	var row := h / rows
-	var lean := 0.06
-	var patch := Res.leaf_patch(130, 0.13)
+	var patch := Res.leaf_patch(130, 0.13) if fine else Res.leaf_patch(60, 0.19)
 	var mat := Mats.leaf_cards_tinted()
 	for side: float in [-1.0, 1.0]:
 		var face := Basis(Vector3.UP, 0.0 if side > 0.0 else PI) * Basis(Vector3.RIGHT, -lean)
@@ -198,3 +200,69 @@ static func bed(k: BuildingKit, length: float, depth: float, rng: RandomNumberGe
 	for i in e:
 		var x := -length * 0.5 + (i + 0.5) * length / e
 		skin(k, Vector3(x, 0.06, depth - 0.14), Vector3(0.11, 0.06, 0.07), edge.lightened(rng.randf_range(-0.05, 0.05)), 20, 0.8)
+
+
+## A vegetable plot `length` by `depth` at the bottom of a garden (x along
+## it): turned earth inside a board edging, and across it rows of what a
+## household grows, a crop to a row: cabbages, lettuces, potatoes earthed up
+## in ridges, a feathery row of carrots, and runner beans up a row of crossed
+## canes, in flower.
+static func veg_patch(k: BuildingKit, length: float, depth: float, rng: RandomNumberGenerator) -> void:
+	k.plate(Vector3(length, 0.04, depth), Vector3(0, 0.02, 0), "earth", Color(0.3, 0.22, 0.15), Vector3.ZERO, false)
+	for side: float in [-1.0, 1.0]:
+		k.box(Vector3(length + 0.06, 0.12, 0.03), Vector3(0, 0.06, side * (depth * 0.5 + 0.015)), "wood", Color(0.42, 0.33, 0.22), Vector3.ZERO, false)
+		k.box(Vector3(0.03, 0.12, depth), Vector3(side * (length * 0.5 + 0.015), 0.06, 0), "wood", Color(0.42, 0.33, 0.22), Vector3.ZERO, false)
+	var rows := maxi(1, int(depth / 0.65))
+	var gap := depth / rows
+	# (the low crops in turn, and the beans, being tall, along the far edge)
+	var low := [0, 1, 2, 3]
+	var first := rng.randi() % low.size()
+	var beans := rows >= 3 and rng.randf() < 0.7
+	for r in rows:
+		var z := -depth * 0.5 + (r + 0.5) * gap
+		match 4 if beans and r == rows - 1 else low[(first + r) % low.size()]:
+			0:
+				# cabbages: tight blue-green heads in a ruff of outer leaves
+				var n := maxi(1, int(length / 0.45))
+				for i in n:
+					var x := -length * 0.5 + (i + 0.5) * length / n
+					var s := rng.randf_range(0.13, 0.16)
+					skin(k, Vector3(x, 0.07, z), Vector3(s * 1.7, 0.06, s * 1.7), Color(0.36, 0.5, 0.38), 24, 0.8)
+					skin(k, Vector3(x, s, z), Vector3(s, s * 0.9, s), Color(0.5, 0.62, 0.5).lightened(rng.randf_range(-0.04, 0.04)), 40, 0.6)
+			1:
+				# lettuces: bright rosettes
+				var n := maxi(1, int(length / 0.32))
+				for i in n:
+					var x := -length * 0.5 + (i + 0.5) * length / n
+					skin(k, Vector3(x, 0.08, z), Vector3(0.12, 0.08, 0.12), Color(0.55, 0.72, 0.28).lightened(rng.randf_range(-0.05, 0.05)), 28, 0.7)
+			2:
+				# potatoes: an earthed-up ridge, leafy tops along it
+				k.part(Res.cyl(0.5, 0.5, 1.0, 6), "earth", Transform3D(Basis(Vector3.FORWARD, PI * 0.5) * Basis.from_scale(Vector3(0.2, length - 0.1, 0.32)), Vector3(0, 0.03, z)), Color(0.33, 0.25, 0.17), false)
+				var n := maxi(1, int(length / 0.42))
+				for i in n:
+					var x := -length * 0.5 + (i + 0.5) * length / n
+					skin(k, Vector3(x, 0.24, z), Vector3(0.19, 0.13, 0.17), Color(0.3, 0.46, 0.18).lightened(rng.randf_range(-0.04, 0.05)), 36, 0.6)
+			3:
+				# carrots: a low feathery row
+				var n := maxi(1, int(length / 0.3))
+				for i in n:
+					var x := -length * 0.5 + (i + 0.5) * length / n
+					skin(k, Vector3(x, 0.1, z), Vector3(0.14, 0.1, 0.07), Color(0.38, 0.6, 0.22), 18, 0.9)
+			4:
+				# runner beans: crossed canes, the vines up them, scarlet flowers
+				var n := maxi(1, int(length / 0.5))
+				var top := 1.75
+				k.bar(Vector3(-length * 0.5 + 0.1, top - 0.08, z), Vector3(length * 0.5 - 0.1, top - 0.08, z), 0.02, 0.02, "wood", Color(0.62, 0.52, 0.34), false)
+				for i in n:
+					var x := -length * 0.5 + (i + 0.5) * length / n
+					for side: float in [-1.0, 1.0]:
+						var foot := Vector3(x, 0.0, z + side * 0.28)
+						var head := Vector3(x, top, z - side * 0.06)
+						k.bar(foot, head, 0.018, 0.018, "wood", Color(0.62, 0.52, 0.34), false)
+						# the vine up the cane, thinning and stopping short of its top
+						var climb := rng.randf_range(0.65, 0.92)
+						var mid := foot.lerp(head, climb * 0.5)
+						var lean := Basis(Vector3.RIGHT, -side * atan2(0.34, top))
+						skin(k, mid, Vector3(0.12, top * climb * 0.5, 0.12), Color(0.25, 0.42, 0.16).lightened(rng.randf_range(-0.03, 0.05)), 56, 0.45, lean)
+						if rng.randf() < 0.8:
+							skin(k, foot.lerp(head, rng.randf_range(0.35, climb)) + Vector3(0, 0, side * 0.04), Vector3(0.03, 0.03, 0.03), Color(0.9, 0.16, 0.1), 8, 1.0)
