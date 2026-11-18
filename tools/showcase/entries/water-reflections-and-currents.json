@@ -1,10 +1,10 @@
 {
   "entry": "changelog/unreleased/water-reflections-and-currents.md",
   "summary": "Rivers, ponds and the sea reflect the banks, trees, bridges and boats around them, and rivers run downstream round their bends.",
-  "medium": "still",
-  "stage": "Off-screen game renders (main.gd --screenshot), matched before/after: --aivai --seed=3 --mood=day river view and --mission=beachhead --play beach view",
-  "rationale": "Preserve the original matched stills for reflection appearance and river depth. Stills cannot establish downstream motion, camera-pan stability, or off-screen fallback; a matched gameplay WebM remains required for those claims.",
-  "source_ref": "b054bb01 (before) and cef1f8b7 (after), Godot 4.7.2 Forward+, RTX 3090",
+  "medium": "motion",
+  "stage": "Off-screen game renders (main.gd --screenshot), matched before/after: --aivai --seed=3 --mood=day river view and --mission=beachhead --play beach view; follow-up real naval scenario shoreline comparison and current-build higher river pan",
+  "rationale": "Preserve original matched stills and add a matched real-game shoreline camera pan for the hit-validation follow-up. The subtle difference is regression evidence, not proof of a dramatic visual improvement or GPU performance.",
+  "source_ref": "b054bb01 (before) and cef1f8b7 (after), Godot 4.7.2 Forward+, RTX 3090 (original stills); 92e3102865483158496805bd3c62355237a8b5ab and 1778b864fe648bcbbd4247de5c92b402b95a6702 (follow-up motion)",
   "before_ref": "Clean copy of b054bb01 rendered with the same commands; only the water view differs between the two trees.",
   "capture": {
     "renderer": "Godot 4.7.2 Forward+, High preset with --set=dof:false, 1600x900, --fixed-fps 30, shot at 8 s game time",
@@ -16,15 +16,17 @@
     "Headless --scenario=naval seed 3: exit 0, no script errors",
     "Off-screen renders on Low, Medium, High and Ultra water, and gl_compatibility on High and Low: no shader or script errors",
     "Historical RTX 3090 High-minus-Low samples are recorded in the PR; competing processes and sample spreads prevent a reliable cost bound.",
-    "python .github/scripts/changelog.py check passed"
+    "python .github/scripts/changelog.py check passed",
+    "Follow-up matched shoreline: 60 frames per revision at 15 fps / 30 Hz simulation; 1280x396 VP9 comparison, 5.067 s with brief endpoint holds; full decode and beginning/action/result sampled-frame review passed.",
+    "Follow-up higher river: 60 frames, 640x360 VP9, 5.067 s with brief endpoint holds; full decode and representative frame review passed. Naval renders report no resource/script/shader errors; scenery-water regression test passes after asset recovery."
   ],
   "limitations": [
     "Reflections show only what is on screen and opaque; flames and smoke are not mirrored.",
     "GPU timings were taken on a machine shared with other Godot runs; spreads of 0.3 to 1.6 ms.",
-    "No clip of the current's motion.",
     "The stills predate the reflection hit-validation follow-up; they do not validate that change.",
-    "Follow-up: Compatibility shader compilation of the exact reflection functions passed on Godot 4.7 / Mesa llvmpipe for 11 and 16 steps. Full game rendering was blocked by incomplete asset retrieval; Forward+ has no Vulkan device/driver in this cloud workspace.",
-    "Hit validation adds an initial depth lookup and a refined-hit lookup, and rejected candidates can continue marching. No same-scene GPU cost has been measured for this follow-up."
+    "Hit validation adds an initial depth lookup and a refined-hit lookup, and rejected candidates can continue marching. No same-scene GPU cost has been measured for this follow-up.",
+    "Follow-up motion uses Godot 4.7 Compatibility on Mesa llvmpipe in an actual Xorg window at 640x360 per view; High water, reduced shadows and AA disabled. Forward+ remains unavailable. The sparse cloud checkout cannot run the full website disclosure/media-control review.",
+    "The higher river clip is current-build-only; flow lanes are faint. Neither clip establishes a true horizon view or Forward+ rendering quality."
   ],
   "sources": [
     {
@@ -42,7 +44,90 @@
     {
       "file": "changelog/unreleased/water-reflections-and-currents/beach-before.jpg",
       "sha256": "848537e60b2faafbbf9b45dea5768c3689a12a3dfb9c4d0c2e56a66322045829"
+    },
+    {
+      "file": "changelog/unreleased/water-reflections-and-currents/shore-pan-comparison.webm",
+      "sha256": "c0bc6647c924286899ef60b21b883647e985dc93e59d341c51a180a4665b2fab"
+    },
+    {
+      "file": "changelog/unreleased/water-reflections-and-currents/shore-pan-poster.jpg",
+      "sha256": "bb3f998b5a71b2f53f1df59c00dcfe70fad1664a51edee0127b0fdc9c08c613b"
+    },
+    {
+      "file": "changelog/unreleased/water-reflections-and-currents/river-pan-compatibility.webm",
+      "sha256": "a5ca222db8c3a5c5b4c6eab315a0613eaab2cc31d11a348d6da74b62f6f496b9"
+    },
+    {
+      "file": "changelog/unreleased/water-reflections-and-currents/river-pan-poster.jpg",
+      "sha256": "1373dc958e74f71bf1528f2b2dc6e8ed04c04b0bdfaef2e228685fb82798cf5e"
     }
   ],
-  "output": null
+  "output": null,
+  "followup_capture": {
+    "repository": "Dynasty9/Frontline",
+    "pr": 261,
+    "before_ref": "92e3102865483158496805bd3c62355237a8b5ab",
+    "after_ref": "1778b864fe648bcbbd4247de5c92b402b95a6702",
+    "godot": "4.7.stable.official.5b4e0cb0f",
+    "renderer": "gl_compatibility",
+    "device": "Mesa llvmpipe (LLVM 19.1.7, 256 bits), OpenGL 4.5 Mesa 25.0.7-2+deb13u1",
+    "display": "Xorg dummy :261, actual rendered window",
+    "resolution": [
+      640,
+      360
+    ],
+    "simulation_fps": 30,
+    "capture_fps": 15,
+    "performance_measurement": false,
+    "scenario": "naval",
+    "seed": 3,
+    "mood": "day",
+    "preset": "high",
+    "overrides": {
+      "dof": false,
+      "shadows": 0,
+      "aa": 0
+    },
+    "water_quality": 2,
+    "shore": {
+      "focus": [
+        365,
+        65
+      ],
+      "zoom": 30,
+      "pitch": -25,
+      "pan": [
+        6,
+        0
+      ],
+      "shot_at": 2,
+      "shot_every": 0.066666667,
+      "shots": 60,
+      "encoded_duration_seconds": 5.067,
+      "edit": "0.5 second holds on each end; source playback 15 fps at simulation speed; no audio"
+    },
+    "source_assets": "57 exact repository dependency files recovered from raw.githubusercontent.com at 1778b864 and verified against Git blob hashes; no replacement assets.",
+    "limitations": [
+      "Compatibility evidence only; Forward+ VK_KHR_surface unavailable.",
+      "Software capture with low shadow resolution and AA disabled; not final High-preset presentation or GPU-cost evidence.",
+      "Original denied PR-description correction remains untouched."
+    ],
+    "river": {
+      "focus": [
+        -210,
+        4
+      ],
+      "zoom": 55,
+      "pitch": -45,
+      "pan": [
+        0,
+        3
+      ],
+      "shot_at": 2,
+      "shot_every": 0.066666667,
+      "shots": 60,
+      "status": "60 frames complete, full encoded decode and sampled-frame review passed",
+      "encoded_duration_seconds": 5.067
+    }
+  }
 }
