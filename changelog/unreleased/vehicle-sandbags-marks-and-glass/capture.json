@@ -1,0 +1,135 @@
+{
+  "before_ref": "944d37f3cc92404b6bdd46204b956614f6c96722",
+  "after_ref": "the change that adds this entry",
+  "engine": "Godot 4.7.2 stable",
+  "renderer": "forward_plus",
+  "seed": 3,
+  "source_size": [
+    1600,
+    900
+  ],
+  "sheet_size": [
+    1600,
+    10350
+  ],
+  "composition": "Uncropped source renders resized to 800x450, before left, after right, short labels. JPEG quality 82. Both columns rendered from checkouts of before_ref (round 9's code), the after column with this change's files copied in (rounds 10 to 12).",
+  "command": "godot --path <checkout> tools/showcase/vehicle-surfaces.tscn -- --surface-single --surface-kinds=<model> [--surface-flight] [--surface-rear] --surface-seed=<seed> [--surface-focus=<focus> --surface-size=<size>] --surface-out=<outside-repo-directory>",
+  "shots": [
+    {
+      "model": "offroad_hmg",
+      "rear": true,
+      "label": "Armed pickup: sandbags along the bed rails"
+    },
+    {
+      "model": "aa_tech",
+      "rear": true,
+      "label": "AA technical: a sandbag wall behind the gun"
+    },
+    {
+      "model": "technical",
+      "seed": 2,
+      "label": "Technical, seed 2: plate over the rear doors, a roped spare"
+    },
+    {
+      "model": "motorboat",
+      "seed": 16,
+      "label": "Motorboat, seed 16: a bimini, an ensign, a line made off"
+    },
+    {
+      "model": "patrol_ship",
+      "rear": true,
+      "focus": "0,3.0,7.0",
+      "size": 4.5,
+      "label": "Patrol ship: a slack ensign, life rings and a liferaft"
+    },
+    {
+      "model": "btr",
+      "flight": true,
+      "label": "BTR from above: two intakes and a hatch on the engine deck"
+    },
+    {
+      "model": "varsuk",
+      "flight": true,
+      "focus": "0,1.5,-2.8",
+      "size": 2.6,
+      "label": "Varsuk: a chevron of reactive armour on the glacis"
+    },
+    {
+      "model": "marid",
+      "flight": true,
+      "label": "Marid from above: a painted chevron instead of a dark box"
+    },
+    {
+      "model": "buzzard",
+      "flight": true,
+      "label": "Buzzard from above: wing chevrons painted on the skin"
+    },
+    {
+      "model": "hemtt",
+      "rear": true,
+      "label": "HEMTT: the back open on its benches, no black board"
+    },
+    {
+      "model": "tempest",
+      "rear": true,
+      "label": "Tempest: a canvas back flap, a canvas-coloured tilt"
+    },
+    {
+      "model": "hemtt_ammo",
+      "flight": true,
+      "label": "HEMTT ammunition load: varied crates and stencils"
+    },
+    {
+      "model": "mohawk",
+      "flight": true,
+      "label": "Mohawk from above: a soft rotor shimmer, a smooth fuselage"
+    },
+    {
+      "model": "blackfoot",
+      "focus": "0,1.8,-2.0",
+      "size": 3.0,
+      "label": "Blackfoot: the crew behind clear canopy glass"
+    },
+    {
+      "model": "van_transport",
+      "label": "Van: a see-through cab with seats, dash and wheel"
+    },
+    {
+      "model": "tractor",
+      "label": "Tractor: a glass cab with its seat and levers"
+    },
+    {
+      "model": "technical",
+      "label": "Technical: camouflage brushed on, a black running board"
+    },
+    {
+      "model": "slammer",
+      "flight": true,
+      "focus": "0,2.2,1.5",
+      "size": 3.0,
+      "label": "Slammer's deck: louvres instead of zebra stripes"
+    },
+    {
+      "model": "ifrit",
+      "label": "Ifrit: framed armoured glass, hinges, bins and rails"
+    },
+    {
+      "model": "old_tank",
+      "focus": "0,2.3,-3.2",
+      "size": 1.8,
+      "label": "T-55: the gun boot pleated in canvas duck"
+    },
+    {
+      "model": "hunter",
+      "label": "M-ATV: thick, dark armoured glass instead of blue tiles"
+    },
+    {
+      "model": "kamysh",
+      "label": "Kamysh: a louvred exhaust outlet instead of a black slab"
+    },
+    {
+      "model": "rhib",
+      "label": "RHIB: a real radome, Hypalon tubes and vinyl seats"
+    }
+  ]
+}
