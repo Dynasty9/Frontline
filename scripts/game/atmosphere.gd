@@ -3112,17 +3112,13 @@ void fragment() {
 		snow_data = surface_data(3.0, snow_uv, weights, geometric, snow_n);
 		vec2 snow_uv2 = mat2(vec2(0.8, 0.6), vec2(-0.6, 0.8)) * p / 3.1 + 0.37;
 		float swap = smoothstep(0.35, 0.65, texture(detail_tex, p / 13.0 + 0.61).r) * weights.y;
-		if (swap > 0.001) {
-			vec4 other = texture(material_colors, vec3(snow_uv2, 3.0));
-			if (OUTPUT_IS_SRGB) {
-				other.rgb = mix(other.rgb / 12.92, pow((other.rgb + 0.055) / 1.055, vec3(2.4)), step(vec3(0.04045), other.rgb));
-			}
-			powder = mix(powder, other, swap);
-			vec4 other_s = texture(material_surfaces, vec3(snow_uv2, 3.0));
-			vec2 on = other_s.rg * 2.0 - 1.0;
-			snow_n = normalize(mix(snow_n, vec3(geometric.x + on.x, geometric.y * sqrt(max(0.0, 1.0 - dot(on, on))), geometric.z + on.y), swap));
-			snow_data = mix(snow_data, other_s.ba, swap);
+		// (its colour only, unbranched: the GI and shadow passes run this shader too,
+		// and a branch with a second normal read there cost several milliseconds)
+		vec4 other = texture(material_colors, vec3(snow_uv2, 3.0));
+		if (OUTPUT_IS_SRGB) {
+			other.rgb = mix(other.rgb / 12.92, pow((other.rgb + 0.055) / 1.055, vec3(2.4)), step(vec3(0.04045), other.rgb));
 		}
+		powder = mix(powder, other, swap);
 		// (and its dimples softened: pressed into a whole field they read as a pattern)
 		float grain = min(dot(powder.rgb, vec3(0.2126, 0.7152, 0.0722)) * 2.0, 1.0);
 		snow_color = vec3(0.9) * mix(1.0, grain, 0.45) * mix(vec3(0.82, 0.90, 1.0), vec3(1.0), smoothstep(-0.3, 0.6, lee + macro));
