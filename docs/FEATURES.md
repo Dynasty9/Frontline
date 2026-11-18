@@ -1667,10 +1667,15 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   medium and grenade machine guns, autocannon, coaxial ports, rotary barrel clusters and missile launch
   tubes each have one builder, used by every family that carries them; muzzle markers and turret pivots
   stay where they were. Autocannon tubes step down from a thick chamber end, carry a barrel clamp and end in a
-  ported brake; a machine gun's ammunition can stands open beside it, its lid off, and the belt (brass
+  ported brake, a plain crown where the real gun has none (the M242), or a conical flash hider (the ZU-23, the
+  KPVT); a machine gun's ammunition can stands open beside it, its lid off, and the belt (brass
   rounds in blackened links) lies in the can's mouth and rises over the lip into the feedway; the .50 has its feed-cover latch and retracting handle, the cooling
   holes through its barrel support, its trunnion block and side-plate rivets and a flash hider flaring to the
-  muzzle; the 7.62s a slotted flash hider and front sight. The guns themselves are phosphated steel, near black and
+  muzzle, and spade grips that loop off its back plate round the butterfly trigger; the 7.62s are cut to an M240's
+  slim proportions, with a slotted flash hider and front sight, the gas block and the bipod folded under it; the
+  DShK carries its anti-aircraft ring sight. Gun shields with ballistic windows (the Humvee's O-GPK, the Abrams
+  loader's) hold their glass as real ones do, a block a hand thick clamped behind the plate, dark and green. The
+  guns themselves are phosphated steel, near black and
   matte, scuffed where hands and belts wear them. Each
   builder notes its gun, so the finished model lifts the machine gun onto a cradle the crew can lay. Turret race rings, sight heads, commander's cupolas, reactive armour bricks,
   rectangular hatches and bore evacuators are shared across the armour; helicopters share rotor masts and
