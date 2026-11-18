@@ -1794,9 +1794,10 @@ static func _btr80(k: VehicleModels, team: int, seed := 0) -> void:
 	VehicleMounts.mantlet(k, t, Vector3(0.42, 0.32, 0.36), Vector3(0, gy, -0.56), cam)
 	k._cyl(t, 0.13, 0.15, 0.2, Vector3(0, gy, -0.82), X90, cam, null, 12)
 	# the KPVT: the heavy jacket over its rear third, the bare barrel, the
-	# muzzle brake; the coaxial PKT's port to its right
-	VehicleWeapons.autocannon(k, t, Vector3(0, gy, -0.89), Vector3(0, gy, -2.9), Vector2(0.065, 0.62), Vector2(0.034, 0.032), Vector2(0.045, 0.12))
-	k.mg_tip = k._tip(t, Vector3(0, gy, -2.92))
+	# conical flash hider on its muzzle; the coaxial PKT's port to its right
+	VehicleWeapons.autocannon(k, t, Vector3(0, gy, -0.89), Vector3(0, gy, -2.9), Vector2(0.065, 0.62), Vector2(0.034, 0.032), Vector2(0.032, 0.001))
+	VehicleWeapons.cone_hider(k, t, Vector3(0, gy, -2.9), 0.032, 0.052, 0.2)
+	k.mg_tip = k._tip(t, Vector3(0, gy, -2.93))
 	VehicleWeapons.coax(k, t, Vector3(0.2, gy - 0.04, -0.85), 0.4, 0.02)
 	# the gunner's sight on the left of the roof, a vision block right, the hatch
 	VehicleMounts.sight(k, t, Vector3(-0.2, 0.62, -0.25), Vector3(0.16, 0.2, 0.2), [Rect2(Vector2(0, 0.02), Vector2(0.1, 0.08))], "gunmetal_w")
@@ -1945,7 +1946,8 @@ static func _bradley(k: VehicleModels, team: int, seed := 0) -> void:
 	# the 25 mm in its mantlet, the coax to its right
 	var gy := 0.4
 	VehicleMounts.mantlet(k, t, Vector3(0.44, 0.4, 0.4), Vector3(-0.05, gy, -1.1), cam)
-	VehicleWeapons.autocannon(k, t, Vector3(-0.05, gy, -1.23), Vector3(-0.05, gy, -3.54), Vector2(0.11, 0.3), Vector2(0.045, 0.04), Vector2(0.065, 0.24))
+	# (the M242 carries no muzzle brake: its barrel ends plain)
+	VehicleWeapons.autocannon(k, t, Vector3(-0.05, gy, -1.23), Vector3(-0.05, gy, -3.54), Vector2(0.11, 0.3), Vector2(0.045, 0.04), Vector2(0.041, 0.001))
 	k.mg_tip = k._tip(t, Vector3(-0.05, gy, -3.56))
 	VehicleWeapons.coax(k, t, Vector3(0.28, gy - 0.05, -1.25), 0.32, 0.022)
 	# the TOW launcher box on its arm on the left

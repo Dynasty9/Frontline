@@ -127,8 +127,9 @@ static func autocannon(k: VehicleModels, parent: Node3D, breech: Vector3, muzzle
 	var thick := minf(barrel.x * 1.24, root.x * 0.8)
 	_z(k, m, root_end + 0.01, root_end - chamber, thick, thick, mat, col, 10, true, Vector2.ZERO, false)
 	_z(k, m, root_end - chamber, root_end - chamber - 0.03, thick, barrel.x, mat, col, 10, false, Vector2.ZERO, false, false)
-	# (the tube's ends are in the chamber step and the brake)
-	_z(k, m, root_end - chamber - 0.03, brake_start - 0.01, barrel.x, barrel.y, mat, col, 10, true, Vector2.ZERO, false, false)
+	# (the tube's ends are in the chamber step and the brake, or the crown)
+	var tube_end := brake_start - 0.01 if brake.y >= 0.01 else -length + 0.012
+	_z(k, m, root_end - chamber - 0.03, tube_end, barrel.x, barrel.y, mat, col, 10, true, Vector2.ZERO, false, false)
 	var clamps := bands if bands > 0 else 1
 	for i in clamps:
 		var f := (i + 1.0) / (clamps + 1.0) if bands > 0 else 0.38
@@ -137,6 +138,13 @@ static func autocannon(k: VehicleModels, parent: Node3D, breech: Vector3, muzzle
 		_z(k, m, z + 0.018, z - 0.018, r * 1.35, r * 1.35, "metal_dark", null, 10, false)
 		# the clamp's pinch bolt on top
 		k._box(m, Vector3(r * 0.5, r * 0.5, 0.03), Vector3(0, r * 1.45, z), "metal_dark", null, Vector3.ZERO, false)
+	if brake.y < 0.01:
+		# No brake (the M242's barrel ends plain; a flash hider the caller
+		# puts on, VehicleWeapons.cone_hider): the barrel's crown closes it.
+		_z(k, m, -length + 0.012, -length, barrel.y, barrel.y * 0.97, mat, col, 10, false, Vector2.ZERO, false, true)
+		_bore(k, m, -length, barrel.y * 0.75)
+		k._gun(m, muzzle)
+		return muzzle
 	# Muzzle brake: a body with its front lip, the side ports cut through it in
 	# two rows (dark slots either side, where the gas turns out and blackens
 	# the steel), the crown and bore in its face.
