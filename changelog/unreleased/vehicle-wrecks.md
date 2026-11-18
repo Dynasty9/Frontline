@@ -26,3 +26,5 @@ caption = "The same two shoot-downs before (top) and after (bottom): a spin-in a
 - **Crashed helicopters:** the blades shatter as they hit the ground: stubs at the hub, others snapped and bent into
   the dirt, some flung clear, and the tail rotor is usually gone. A helicopter that spun in lies rolled onto its side
   with its nose dug in; one that autorotated to a heavy landing sits slumped on its belly.
+
+The original battle tank and old tank now participate in cannon-ammunition cook-offs too. Cook-offs now lift the turret through a short arc before a low rebound and settling beside the hull. The pose follows recorded battle time, so seeking or reopening a battle restores the same stage of the motion. Wreck paint and detached-turret properties are explicitly accepted and checked by the replay reader.

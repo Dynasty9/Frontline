@@ -1134,7 +1134,11 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   blistered paint; embers glow in the seams while it burns. Tyres and canvas burn away and a wheeled hull settles on
   its rims, the grass is burnt flat and the ground blackened a couple of metres out all round it, and torn-off pieces
   lie round it. A tank or IFV whose ammunition goes up (more likely the harder it was hit) has its turret blown clean
-  off: it lies a few metres away, upside down, on its side or dug in, its gun bent, a black hole where it sat.
+  off: it rises through a 1.6-second arc and settles for 0.7 seconds a few metres away, upside down, on its side
+  or dug in, its gun bent, a black hole where it sat. This visual motion uses the battle clock and recorded
+  destruction time, so late model builds and replay seeks reconstruct the same pose. The seeded resting pose
+  remains authoritative; the animation adds no rigid-body simulation. Replay validation covers the conditional
+  wreck paint, turret and skirt fields.
 - Coalition: battle tank, **IFV** (tracked, 25 mm with airburst rounds, carries a four-man fire team), **Humvee**
   (.50 cal), supply helicopter, **attack helicopter** (circles its target with a 30 mm chain gun firing explosive
   rounds, plus rocket salvos).

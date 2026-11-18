@@ -94,6 +94,11 @@ var wreck_turret_yaw := INF
 var wreck_finish := {}
 var turret_off := false  # (a wreck) its ammunition went up and blew the turret off (_blow_turret)
 var _wreck_soot: ShaderMaterial
+var _loose_turret: Node3D
+var _turret_seat := Transform3D.IDENTITY
+var _turret_rest := Transform3D.IDENTITY
+const TURRET_FLIGHT := 1.6
+const TURRET_SETTLE := 0.7
 var bent_skirts := 0
 var door_shut := false  # (a house's doorway) its doors are shut: the first man through kicks them in, or just opens them
 var _door_kicked := false
@@ -1805,12 +1810,38 @@ func _blow_turret(wk: VehicleModels, rng: RandomNumberGenerator) -> void:
 	var turn := Basis(Vector3.UP, rotation.y)
 	spot.y = world.ground_y(position + turn * spot) - position.y - lo - 0.18  # (bedded into the ground a little)
 	t.transform = Transform3D(b, spot)
+	_loose_turret = t
+	_turret_seat = debris.transform.affine_inverse() * wk.root.transform * seat
+	_turret_rest = t.transform
 	# the burn reaches it where it lies
 	var from := _burn_source if _burn_source.is_finite() else _wreck_engine_deck
 	if from.is_finite() and _wreck_soot:
 		var lie := (debris.transform * t.transform).origin  # (in the model's space, as `from` is)
 		var reach := ((lie - from) * Vector3(1.0, 0.74, 1.0)).length() + box.size.length() * 0.5
 		_wreck_reach = maxf(_wreck_reach, clampf(reach * 1.12 / 2.56, 1.0, 4.5))
+
+	_update_turret_pose()
+
+
+## Evaluate from recorded battle time, so rewinding and late model builds
+## reconstruct the same pose without replaying a physics simulation.
+func _update_turret_pose() -> void:
+	if not is_instance_valid(_loose_turret):
+		return
+	var age := maxf(0.0, world.time - float(wreck_finish.get("since", -100.0)))
+	if age >= TURRET_FLIGHT + TURRET_SETTLE:
+		_loose_turret.transform = _turret_rest
+		return
+	var u := clampf(age / TURRET_FLIGHT, 0.0, 1.0)
+	var pose := _turret_seat.interpolate_with(_turret_rest, u)
+	# A short heavy arc clears the ring, then the hull. A single low rebound
+	# loses its energy quickly rather than making armour look weightless.
+	pose.origin.y += 4.0 * 3.2 * u * (1.0 - u)
+	if age > TURRET_FLIGHT:
+		var settle := (age - TURRET_FLIGHT) / TURRET_SETTLE
+		pose.origin.y += sin(settle * PI) * 0.22 * (1.0 - settle)
+		pose.basis = _turret_rest.basis * Basis(Vector3.FORWARD, sin(settle * TAU) * 0.12 * (1.0 - settle))
+	_loose_turret.transform = pose
 
 
 ## The clients fly the model from where it was to where it is now.
@@ -2429,6 +2460,7 @@ func _process(_dt: float) -> void:
 func _view_process(_dt: float) -> void:
 	if not world.has_view or not view_active or model == null:
 		return
+	_update_turret_pose()
 	if _wreck_soot and world.time - float(wreck_finish.since) < VehicleModels.BURN_SPREAD:
 		_update_wreck_soot()
 	if burn > 0.0 or _fire_fx:

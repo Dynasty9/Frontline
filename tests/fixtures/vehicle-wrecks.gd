@@ -104,6 +104,18 @@ func _brew_up() -> void:
 	_check("the turret lies among the debris, off the hull", wk.turret != null and debris != null and wk.turret.get_parent() == debris)
 	if wk.turret == null or debris == null:
 		return
+	field.time = float(wreck.wreck_finish.since) + 0.8
+	wreck._update_turret_pose()
+	var airborne := wk.turret.transform
+	_check("turret rises clear of its ring", airborne.origin.y > wreck._turret_seat.origin.y + 1.0)
+	field.time += 3.0
+	wreck._update_turret_pose()
+	_check("turret settles exactly at its resting pose", wk.turret.transform.is_equal_approx(wreck._turret_rest))
+	field.time = float(wreck.wreck_finish.since) + 0.8
+	wreck._update_turret_pose()
+	_check("rewinding reconstructs the airborne pose", wk.turret.transform.is_equal_approx(airborne))
+	field.time += 3.0
+	wreck._update_turret_pose()
 	var box := Structure._bounds_in(wk.turret)
 	var lowest := INF
 	var highest := -INF

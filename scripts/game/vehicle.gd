@@ -1954,7 +1954,7 @@ func _wreck_out(hard := 0.0) -> void:
 		if has_tank_model():
 			props["bent_skirts"] = bent_skirts
 			props["wreck_turret_yaw"] = turret_yaw
-		if String(vdef.get("cat", "")) == "armour" and bool(vdef.get("cannon", false)):
+		if (has_tank_model() or String(vdef.get("cat", "")) == "armour") and bool(vdef.get("cannon", false)):
 			# A hit that sets her ammunition off lifts the turret clean off its
 			# ring and throws it down beside her (Structure._blow_turret): the
 			# harder she was hit, the likelier.
