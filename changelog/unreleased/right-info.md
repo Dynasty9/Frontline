@@ -6,6 +6,11 @@ kind = "improved"
 [[screenshots]]
 file = "comparison.jpg"
 caption = "The same moments before and after: a busy fight (order of battle and log) and a quiet advance (order of battle and the map)"
+
+[[videos]]
+file = "scroll-and-reports.webm"
+poster = "scroll-and-reports.jpg"
+caption = "Before, then after: scrolling points to the visible row; quiet squads recede and a later repeated report gets its own line. Actual gameplay with cued input and reports, at normal speed (Compatibility)."
 +++
 
 - **Order of battle:** squads moving or holding with nothing wrong are drawn quieter. The ones in contact, pinned, breaking, low on ammunition, attacking or carrying wounded stay bright, so they stand out without reading every line.
