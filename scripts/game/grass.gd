@@ -723,6 +723,9 @@ void fragment() {
 	// snow caps the top of a bush in lumps on the leaves that face the sky,
 	// one bush more than the next
 	if (snow_cover > 0.0) {
+		// (most of them have dropped their leaves or browned: in winter a
+		// thicket is a brown-grey tangle, a few evergreen among them)
+		col = mix(col, vec3(dot(col, vec3(0.3, 0.5, 0.2))) * vec3(1.0, 0.82, 0.6), snow_cover * step(0.3, fract(rnd * 3.7)) * 0.75);
 		float facing = abs((INV_VIEW_MATRIX * vec4(NORMAL, 0.0)).y);
 		float lit = dot(photograph.rgb, vec3(0.2126, 0.7152, 0.0722)) * 6.0;
 		float snowed = smoothstep(0.0, 0.18, up * 0.9 + facing * 0.5 + (lit - 0.5) * 0.6 + (fract(rnd * 7.13) - 0.5) * 0.5 - 0.9 - (1.0 - snow_cover) * 1.4);

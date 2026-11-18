@@ -3050,13 +3050,14 @@ void fragment() {
 		// (a fresh fall fills the hollows first)
 		float depth = lie * snow_cover;
 		float clump = smoothstep(0.4, 0.8, d2 * 0.65 + d1 * 0.35 + meadow_turf * 0.12 + wood_floor * 0.25);
-		float tussock = d3 * 0.65 + texture(detail_tex, p / 0.55 + 0.13).r * 0.35;
+		float tussock = d3 * 0.4 + texture(detail_tex, p / 0.55 + 0.13).r * 0.6;
 		float poke = tussock * mix(0.3, 1.5, clump);
 		float lies = 1.0 - smoothstep(0.32, 0.95, slope + (patch - 0.5) * 0.3);
 		// (a bog shows wet only in spots, where the water stands through)
 		float boggy = mud_cover * smoothstep(0.62, 0.8, d2 * 0.5 + d1 * 0.3 + d3 * 0.2) * smoothstep(1.3, 0.6, lie);
 		float churned = smoothstep(0.25, 0.6, bowl * 1.3 + lip * 1.2 + boggy * 0.7 + (d3 - 0.5) * 0.3);
-		fall = smoothstep(0.0, 0.1, depth - poke * 0.85) * lies * (1.0 - wm.a) * (1.0 - wet_sand);
+		// (dusted at the edges, not cut out)
+		fall = smoothstep(-0.04, 0.2, depth - poke * 0.85) * lies * (1.0 - wm.a) * (1.0 - wet_sand);
 		slush = fall * churned * smoothstep(0.3, 0.75, d2 * 0.6 + d3 * 0.4);
 		fall *= 1.0 - churned;
 		// Heat melts it (SnowMelt): round a fire down to bare, wet earth with
@@ -3072,7 +3073,11 @@ void fragment() {
 		snow = max(snow, fall);
 		// (under the snow the grass has died back to a dull winter brown: where
 		// it shows through, it's straw and dead stalks, not a summer lawn)
-		col = mix(col, vec3(dot(col, vec3(0.3, 0.5, 0.2))) * vec3(1.05, 0.9, 0.7), snow_cover * mix(0.7, 0.95, wood_floor) * (1.0 - exposed * clean));
+		// (and in the open, bleached pale: dead straw stands out of snow light
+		// and warm, not as dark holes)
+		vec3 winter = vec3(dot(col, vec3(0.3, 0.5, 0.2))) * vec3(1.05, 0.9, 0.7);
+		winter = mix(winter, vec3(0.2, 0.165, 0.1) * (0.75 + 0.5 * d3), 0.75 * (1.0 - wood_floor));
+		col = mix(col, winter, snow_cover * mix(0.75, 0.95, wood_floor) * (1.0 - exposed * clean));
 	}
 	// Wind ripples are resolved only while they cover several pixels.
 	float snow_phase = dot(p, vec2(0.8, 0.6)) * 1.3 + (macro - 0.5) * 7.0 + patch * 9.0;
