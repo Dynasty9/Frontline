@@ -78,6 +78,7 @@ func check() -> void:
 	_check_rain()
 	_check_blast()
 	_check_drift()
+	_check_texture_drift()
 	_check_plumes()
 	_check_vehicle_dust()
 	_check_trails()
@@ -164,6 +165,25 @@ func _check_drift() -> void:
 	assert(there > left * 2.0, "after a minute the smoke is downwind (%.3f) not where it was (%.3f)" % [there, left])
 	assert(there < start * 0.8, "and thinner (%.3f, from %.3f)" % [there, start])
 	assert(g.drift.x >= 0.0 and g.drift.x < g.cell and g.drift.y >= 0.0 and g.drift.y < g.cell, "the drift stays under a cell")
+
+
+## A whole-cell drift must move the texture in the same frame as its offset.
+## CPU samples alone miss a stale texture, which makes the rendered air jump
+## back one cell until the staggered sweep reaches its last row.
+func _check_texture_drift() -> void:
+	for wind in [Vector2.RIGHT, Vector2.LEFT, Vector2.DOWN, Vector2.UP]:
+		var g := _grid("day")
+		g.blast(Vector3.ZERO, 3.0, false, 0.0)
+		g._upload_all()
+		g._wind = wind
+		g.drift = wind * (g.cell - 0.01)
+		g.tick(0.02)  # crosses the boundary on the first row batch, not the last
+		var image := g._img
+		for z in g.n:
+			for x in g.n:
+				var expected: float = g._c[WeatherGrid.SMOKE][z * g.n + x]
+				assert(absf(image.get_pixel(x, z).a - expected) <= 1.0 / 255.0 + 0.00001,
+					"weather upload lags its drift offset: direction %s, cell %d,%d" % [wind, x, z])
 
 
 ## Shells falling close together feed one plume; one far off starts another;

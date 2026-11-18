@@ -220,7 +220,9 @@ func tick(dt: float) -> void:
 	var step := _wind * DRIFT * dt
 	_air_t += DRIFT * dt
 	drift += step
+	var unwrapped := drift
 	_shift()
+	var shifted := drift != unwrapped
 	_sweep_dt += dt
 	_src_t -= dt
 	if _src_t <= 0.0:
@@ -233,6 +235,10 @@ func tick(dt: float) -> void:
 	if _row >= n:
 		_row = 0
 		_sweep_dt = 0.0
+		_upload_all()
+	elif shifted:
+		# The shader gets the wrapped offset this frame. Its texture must
+		# move with it, or the air jumps a cell until the sweep finishes.
 		_upload_all()
 
 

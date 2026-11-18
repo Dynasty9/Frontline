@@ -136,3 +136,10 @@ caption = "A barrage's plume drifting off downwind and breaking up."
   across the sand and mud in the shallows, crisp in the first metre or so and softening deeper down (from Medium water quality, finer from High).
   From High it's also thrown back up onto hulls, piers and banks just above the water.
 - The browser version gets a lighter version of the mist and smoke through its distance fog, and the simpler caustics.
+
+### Weather drift at cell boundaries
+
+The weather texture now shifts in the same frame as its sampling offset when the
+air crosses a grid cell. Previously the old texture could stay in place until the
+next row sweep finished, briefly moving the fog or smoke back by a whole cell.
+The change keeps the existing densities, cloud lighting and caustic strengths.
