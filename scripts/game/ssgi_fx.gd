@@ -331,7 +331,7 @@ func _build_sets(color: RID, depth: RID, normal: RID, t: Dictionary) -> void:
 		var hist: RID = t["hist_" + cur]
 		var hist_prev: RID = t["hist_" + prev]
 		_sets["prep_" + cur] = _uniforms("prep", [_smp(1, color, true), _smp(2, depth, true), _smp(3, normal, true),
-			_img(4, gb), _img(5, t["rad"]), _smp(6, t["filt"], false), _smp(7, t["opaque"], true)])
+			_img(4, gb), _img(5, t["rad"]), _smp(6, t["filt"], false), _smp(7, t["opaque"], true), _smp(8, gb_prev, true)])
 		_sets["gather_" + cur] = _uniforms("gather", [_smp(1, gb, true), _smp(2, t["rad"], true), _img(3, t["raw"])])
 		_sets["temporal_" + cur] = _uniforms("temporal", [_smp(1, gb, true), _smp(2, t["raw"], true), _smp(3, gb_prev, true),
 			_smp(4, hist_prev, false), _img(5, hist)])
@@ -500,6 +500,31 @@ layout(rgba16f, set = 0, binding = 4) uniform restrict writeonly image2D gbuf_im
 layout(rgba16f, set = 0, binding = 5) uniform restrict writeonly image2D rad_img;
 layout(set = 0, binding = 6) uniform sampler2D prev_filt_tex;
 layout(set = 0, binding = 7) uniform sampler2D opaque_tex;
+layout(set = 0, binding = 8) uniform sampler2D prev_gbuf_tex;
+
+// Reprojection can land on a surface uncovered by a moving hull or camera.
+// Validate each bilinear tap: checking only the nearest depth still lets a
+// bright neighbour bleed across a silhouette and feed the next bounce.
+vec3 previous_bounce(vec2 uv, float depth, vec3 normal) {
+	vec2 pixel = uv * P.size.zw - 0.5;
+	ivec2 base = ivec2(floor(pixel));
+	vec2 f = fract(pixel);
+	vec3 sum = vec3(0.0);
+	float weight = 0.0;
+	for (int i = 0; i < 4; i++) {
+		ivec2 offset = ivec2(i & 1, i >> 1);
+		ivec2 tap = clamp(base + offset, ivec2(0), ivec2(P.size.zw) - 1);
+		vec4 surface = texelFetch(prev_gbuf_tex, tap, 0);
+		if (surface.w <= 0.0 || abs(surface.w - depth) >= depth * 0.04 + 0.05 || dot(surface.xyz, normal) <= 0.85) {
+			continue;
+		}
+		vec2 weights = mix(1.0 - f, f, vec2(offset));
+		float w = weights.x * weights.y;
+		sum += clean(texelFetch(prev_filt_tex, tap, 0).rgb) * w;
+		weight += w;
+	}
+	return weight > 1e-5 ? sum / weight : vec3(0.0);
+}
 
 void main() {
 	ivec2 h = ivec2(gl_GlobalInvocationID.xy);
@@ -587,7 +612,8 @@ void main() {
 		vec4 was = C.prev_vp * world;
 		vec2 puv = was.xy / max(was.w, 1e-6) * 0.5 + 0.5;
 		if (was.w > 0.0 && puv.x >= 0.0 && puv.y >= 0.0 && puv.x <= 1.0 && puv.y <= 1.0) {
-			vec3 again = clean(textureLod(prev_filt_tex, puv, 0.0).rgb);
+			float previous_depth = -(C.prev_view * world).z;
+			vec3 again = previous_bounce(puv, previous_depth, wn);
 			// (as bright as it is laid on, so a surface throws on the light it
 			// shows, and a little under that: each round is weaker by the
 			// surface's colour and this share, and gather holds what comes back
