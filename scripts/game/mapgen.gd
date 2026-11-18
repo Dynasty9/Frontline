@@ -1184,6 +1184,13 @@ func _house(c: Vector3, w: float, d: float, axis: float, street_side: float, yar
 	if barn:
 		# (the weatherboarded material, in one of its three colours)
 		color = BuildingMaterials.HOUSE.size() - 1 + BuildingMaterials.HOUSE.size() * (color % 3)
+	else:
+		# which of its material's three colours (BuildingMaterials.house_color),
+		# from a stream of its own seeded from where the house is, so the map's
+		# random numbers stay as they were
+		var paint := RandomNumberGenerator.new()
+		paint.seed = int(absf(c.x) * 13.0) * 7919 + int(absf(c.z) * 13.0) * 31 + 7
+		color += BuildingMaterials.HOUSE.size() * (paint.randi() % 3)
 	plan["color"] = color  # (for what dresses the house from outside: a shop's fascia)
 	var ruined := rng.randf() < ruin_p
 	# (a ruin's floor is marked, so it's drawn with the roof fallen in on it;

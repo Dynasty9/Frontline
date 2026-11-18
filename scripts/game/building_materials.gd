@@ -112,10 +112,25 @@ static func house(ci: int) -> String:
 	return HOUSE[posmod(ci, HOUSE.size())]
 
 
+## The colours a rendered house is painted, three to each of the rendered
+## colour indices (0, 1 and 3; which of the three is ci / HOUSE.size(), as
+## for brick and stone): limewash and cream, a pale ochre, warm white; beige,
+## a faded pink, grey render; off-white, a dull sage, a pale yellow. All of
+## them old paint, a little dirty, none of them bright.
+const RENDERS := [Color(0.72, 0.66, 0.55), Color(0.74, 0.66, 0.51), Color(0.78, 0.76, 0.7),
+	Color(0.66, 0.6, 0.52), Color(0.72, 0.61, 0.55), Color(0.62, 0.61, 0.58),
+	Color(0.75, 0.72, 0.66), Color(0.61, 0.63, 0.54), Color(0.77, 0.72, 0.59)]
+
+
 ## The colour its walls show: rendered walls take the house's paint, bare
 ## brick and stone their own (a little different from house to house).
 static func house_color(ci: int, paint: Color) -> Color:
 	match house(ci):
+		"plaster":
+			var slot: int = [0, 1, 0, 2, 0, 0][posmod(ci, HOUSE.size())]
+			if posmod(ci, HOUSE.size()) in [0, 1, 3]:
+				return RENDERS[slot * 3 + posmod(ci / HOUSE.size(), 3)]
+			return paint
 		"brick":
 			# (old brick: red-brown, a darker purple-brown, a sandier red;
 			# never a new brick's orange)

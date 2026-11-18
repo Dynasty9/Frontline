@@ -81,7 +81,9 @@ tile photograph carries the tile-to-tile variation, the tint only the roof's age
 surface) is coursed rubble: three course heights in turn, a stone length per course, a shade per stone, in pale
 lime mortar. A flat roof's deck is covered in one of `FLAT_DECKS` (`deck_color`:
 bitumen felt, mineral felt, bare concrete, old asphalt; its own stream), and its stains and patches are of the
-same stuff.
+same stuff. A house's colour index says its material (`ci % 6`, `BuildingMaterials.HOUSE`) and
+which of that material's three colours it is (`ci / 6`): MapGen draws the second from a stream of its own seeded
+from where the house is, so rendered houses come in the nine `RENDERS` and brick and stone in three shades each.
 
 ## Lived-in houses and lamplight
 

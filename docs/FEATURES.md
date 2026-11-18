@@ -769,7 +769,7 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   Nobody holds them at the start. They are the supply worth fighting over: see *Towns* under Base building and
   supply. (Missions don't have them; the dumps use their own random numbers, so a seed's map is otherwise
   unchanged.)
-- Houses are rendered and painted, bare brick or rough stone, and dressed as they're built: a darker plinth and a
+- Houses are rendered and painted (nine old paint colours, from limewash to a faded pink or sage), bare brick or rough stone (three shades of each), and dressed as they're built: a darker plinth and a
   band under the eaves, sills and lintels in render, concrete or dressed stone (a keystone over stone windows),
   painted window frames with mullion and transom, panes whole, cracked to shards or shot out, louvred or boarded
   shutters on their hinges, door frames, steps, now and then a hood over the door, and double doors hanging open.
