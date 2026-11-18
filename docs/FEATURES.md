@@ -1736,6 +1736,11 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   are pierced steel, tracks show their pins, bolts and hatches stop glinting, soot fades into the paint, and
   the M35 and FIA truck have cabs you can see into. See "Twelfth pass" in
   [the component guide](vehicle-components.md).
+- **Canvas, kit, seats and covers** (thirteenth and fourteenth passes): truck tilts drape over their hoops with
+  laced hems and rolled curtains, bags and bedrolls look packed and strapped, webbing, nylon, vinyl and rope each
+  have their own finish, cockpits and cabs have real seats, helicopter doors open on troop seats, and some
+  vehicles carry air-recognition panels and covers. See "Thirteenth pass" and "Fourteenth pass" in
+  [the component guide](vehicle-components.md).
 - Explosions are layered GPU particles: a flash and light burst, a rolling fireball that cools from the edges in
   until it's dark smoke, a lit smoke column that drifts with the wind, a dirt plume, sparks and debris that
   bounce on the ground, a rolling dust ring, a faint heat-shimmer shockwave and a scorch mark. Heavy rounds
