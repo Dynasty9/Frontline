@@ -12,6 +12,10 @@ extends RefCounted
 ## a town's few hundred windows share a handful of meshes, each one part.
 
 const GLASS := Color(0.08, 0.1, 0.12)
+## A house's window glass by day: old glass, a little dirty, catching the sky
+## and the street across from it rather than showing a black hole (the lit
+## glass keeps GLASS, so a lamp's glow stays as it was).
+const PANE := Color(0.15, 0.17, 0.19)
 const IRON := Color(0.17, 0.16, 0.15)
 
 
@@ -155,7 +159,7 @@ static func panes(k: BuildingKit, fp: Vector3, size: Vector2, mullions: int, tra
 			var mid := fp + Vector3((x0 + x1) * 0.5, (float(r[0]) + float(r[1])) * 0.5, 0)
 			var roll := k.rng.randf()
 			if roll < whole:
-				k.plate(Vector3(cell.x, cell.y, 0.012), mid, glass, GLASS)
+				k.plate(Vector3(cell.x, cell.y, 0.012), mid, glass, PANE if glass == "glass" else GLASS)
 				if tape:
 					# taped against the blast: a cross of paper tape corner to corner
 					var ang := atan2(cell.y, cell.x)

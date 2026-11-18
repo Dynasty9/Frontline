@@ -16,4 +16,5 @@ caption = "Before (left) and after (right): a shop from the far kerb, a rendered
   plinth. Here and there a dark run comes down from a gutter. This covers the storeys over the ground floor too.
 - The joints between the panels a wall was built from no longer show as lines every few metres, so a rendered
   wall reads as one surface.
+- House windows by day are old glass catching a little of the sky, not black holes.
 - Men fight from a shop window as from any other, and its riser is cover for a man kneeling.
