@@ -43,12 +43,11 @@ func _ready() -> void:
 	scar_tex = ImageTexture.create_from_image(scar_img)
 	mat = ShaderMaterial.new()
 	# (the clouds' shade, CloudShadow.FOLD: in the albedo with Cloud shadows off)
-	mat.shader = CloudShadow.make(MapDims.shader(GRASS_SHADER), CloudShadow.BACKLIGHT | CloudShadow.NO_SPECULAR | CloudShadow.FOLD)
+	mat.shader = CloudShadow.make(MapDims.shader(GRASS_SHADER), CloudShadow.BACKLIGHT | CloudShadow.NO_SPECULAR | CloudShadow.FOLD | CloudShadow.PROBES_VERTEX)
 	mat.set_shader_parameter("scar", scar_tex)
 	bush_mat = ShaderMaterial.new()
-	bush_mat.shader = CloudShadow.make(MapDims.shader(BUSH_SHADER), CloudShadow.BACKLIGHT | CloudShadow.NO_SPECULAR | CloudShadow.FOLD)
-	bush_mat.set_shader_parameter("leaf_texture", preload("res://assets/foliage/woodland/shrub_02-color.png"))
-	bush_mat.set_shader_parameter("leaf_surface", preload("res://assets/foliage/woodland/shrub_02-surface.png"))
+	bush_mat.shader = CloudShadow.make(MapDims.shader(BUSH_SHADER), CloudShadow.BACKLIGHT | CloudShadow.NO_SPECULAR | CloudShadow.FOLD | CloudShadow.PROBES_VERTEX)
+	bush_mat.set_shader_parameter("leaf_texture", preload("res://assets/foliage/broadleaf.png"))
 	# (a shader, not a StandardMaterial3D, so that the stones go into cloud shade too)
 	stone_mat = ShaderMaterial.new()
 	stone_mat.shader = CloudShadow.make(STONE_SHADER)
@@ -515,15 +514,17 @@ func _make_clump() -> ArrayMesh:
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 4242
-	# More narrow, pointed blades keep the previous clump's 90-triangle budget.
+	# Blades are drawn a little broader and taller than real grass: seen from a
+	# commander's height a true 5 mm blade is thinner than a pixel, and the meadow
+	# reads as bare ground (as it did after the woodland scans, PR #232).
 	for blade in 30:
 		var angle := rng.randf() * TAU
 		var radius := sqrt(rng.randf()) * 0.32
 		var base := Vector3(cos(angle) * radius, 0, sin(angle) * radius)
 		var yaw := rng.randf() * TAU
-		var side := Vector3(cos(yaw), 0, sin(yaw)) * rng.randf_range(0.003, 0.008)
-		var lean := Vector3(cos(angle), 0, sin(angle)) * rng.randf_range(0.1, 0.3)
-		var height := rng.randf_range(0.12, 0.42)
+		var side := Vector3(cos(yaw), 0, sin(yaw)) * rng.randf_range(0.008, 0.016)
+		var lean := Vector3(cos(angle), 0, sin(angle)) * rng.randf_range(0.06, 0.22)
+		var height := rng.randf_range(0.18, 0.55)
 		var middle := base + lean * 0.25 + Vector3(0, height * 0.5, 0)
 		var points := [base - side, base + side, middle - side * 0.65, middle + side * 0.65, base + lean + Vector3(0, height, 0)]
 		var heights := [0.0, 0.0, 0.5, 0.5, 1.0]
@@ -534,8 +535,32 @@ func _make_clump() -> ArrayMesh:
 	return st.commit()
 
 
+## A meadow shrub: a dense ball of leaf cards. (The scanned woodland shrub is
+## an open spray of twigs, lovely underfoot but invisible at battle range, so
+## it stays in the woods' understory.)
 func _make_bush() -> ArrayMesh:
-	return preload("res://assets/foliage/woodland/shrub_02-0.res")
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 55127
+	for i in 80:
+		var angle := rng.randf() * TAU
+		var up := rng.randf_range(0.12, 1.15)
+		var radius := sqrt(rng.randf()) * 0.62 * sqrt(maxf(0.1, 1.0 - pow((up - 0.65) / 0.75, 2.0)))
+		var center := Vector3(cos(angle) * radius, up - 0.65, sin(angle) * radius)
+		var along := Vector3(cos(angle) * 0.6, rng.randf_range(0.4, 0.9), sin(angle) * 0.6).normalized()
+		var side := Vector3(-sin(angle), 0, cos(angle)).rotated(along, rng.randf_range(-0.7, 0.7))
+		var width := rng.randf_range(0.08, 0.15)
+		var length := rng.randf_range(0.15, 0.25)
+		var normal := side.cross(along).normalized()
+		var points := [center - side * width - along * length, center + side * width - along * length,
+			center + side * width + along * length, center - side * width + along * length]
+		var uv := [Vector2(0, 1), Vector2(1, 1), Vector2(1, 0), Vector2(0, 0)]
+		for j in [0, 2, 1, 0, 3, 2]:
+			st.set_normal(normal)
+			st.set_uv(uv[j])
+			st.add_vertex(points[j])
+	return st.commit()
 
 
 func _make_stone() -> ArrayMesh:
@@ -593,13 +618,16 @@ void vertex() {
 	VERTEX.xz *= 1.0 + burnt * 0.4;
 	// snow buries the blades and weighs the rest down: deep in the drifts,
 	// which run with the wind (Fires.WIND), hardly where it has blown thin
-	float along = dot(o.xz, vec2(0.924, 0.382));
-	float across = dot(o.xz, vec2(-0.382, 0.924));
-	drifted = clamp(0.5 + 0.32 * sin(across * 0.29 + sin(along * 0.043) * 2.6) + 0.22 * sin(o.x * 0.093 + sin(o.z * 0.117) * 1.9), 0.0, 1.0);
-	// (and where a fire or an engine has thawed it, the grass stands up again;
-	// heaped against a wall or a hedge, SnowDrift, it's buried altogether)
-	float banked = smoothstep(0.08, 0.4, texture(drift_tex, (o.xz + __MAP_HALF__) / __MAP_SIZE__).r) * (1.0 - burnt);
-	VERTEX.y *= 1.0 - snow_cover * (1.0 - thawed) * mix(mix(0.2, 0.75, drifted), 1.0, banked);
+	drifted = 0.0;
+	if (snow_cover > 0.0) {
+		float along = dot(o.xz, vec2(0.924, 0.382));
+		float across = dot(o.xz, vec2(-0.382, 0.924));
+		drifted = clamp(0.5 + 0.32 * sin(across * 0.29 + sin(along * 0.043) * 2.6) + 0.22 * sin(o.x * 0.093 + sin(o.z * 0.117) * 1.9), 0.0, 1.0);
+		// (and where a fire or an engine has thawed it, the grass stands up again;
+		// heaped against a wall or a hedge, SnowDrift, it's buried altogether)
+		float banked = smoothstep(0.08, 0.4, texture(drift_tex, (o.xz + __MAP_HALF__) / __MAP_SIZE__).r) * (1.0 - burnt);
+		VERTEX.y *= 1.0 - snow_cover * (1.0 - thawed) * mix(mix(0.2, 0.75, drifted), 1.0, banked);
+	}
 	// stand on the ground as it is now (shell holes, rims)
 	VERTEX.y += terrain_height(deform_tex, (o.xz + __MAP_HALF__) / __MAP_SIZE__) / max(0.05, length(MODEL_MATRIX[1].xyz));
 	float t = TIME * 1.7 + o.x * 0.21 + o.z * 0.13;
@@ -643,7 +671,6 @@ void fragment() {
 const BUSH_SHADER := """
 shader_type spatial;
 uniform sampler2D leaf_texture : source_color, filter_linear_mipmap, repeat_disable;
-uniform sampler2D leaf_surface : hint_normal, filter_linear_mipmap, repeat_disable;
 uniform float wind = 0.03;
 render_mode specular_disabled, cull_disabled;
 varying float plant_height;
@@ -698,11 +725,8 @@ void fragment() {
 		col = mix(col * 12.92, 1.055 * pow(max(col, vec3(0.0)), vec3(1.0 / 2.4)) - 0.055, step(vec3(0.0031308), col));
 	}
 	ALBEDO = col;
-	vec4 detail = texture(leaf_surface, UV);
-	NORMAL_MAP = vec3(detail.rg, 1.0);
-	NORMAL_MAP_DEPTH = 0.4;
-	ROUGHNESS = clamp(detail.a, 0.65, 1.0);
-	AO = detail.b * (0.6 + 0.4 * up);
+	ROUGHNESS = 0.95;
+	AO = 0.6 + 0.4 * up;
 	AO_LIGHT_AFFECT = 0.5;
 	// Keep the engine's two-sided normal, with both leaf faces receiving skylight.
 	vec3 leaf_normal = (INV_VIEW_MATRIX * vec4(NORMAL, 0.0)).xyz;

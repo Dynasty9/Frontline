@@ -38,7 +38,7 @@ const WIND := Vector2(0.924, 0.382)  # (Fires.WIND, flat and normalised)
 var atmo  # Atmosphere
 var n := 0  # texels across the map
 var data := PackedByteArray()
-var roofed := PackedByteArray()  # texels under a roof: nothing drifts there
+var roofed := PackedInt32Array()  # roof count per texel: overlapping roofs stay covered
 var img: Image
 var tex: ImageTexture
 var _obst := {}  # eid -> drift spec (see _spec)
@@ -97,9 +97,16 @@ func _look() -> void:
 			continue
 		if st.skind == "roof":
 			roofs[st.eid] = true
+			var roof := _spec(st, 0.0)
 			if not _roofs.has(st.eid):
-				_roofs[st.eid] = _spec(st, 0.0)
-				_cover(_roofs[st.eid])
+				_roofs[st.eid] = roof
+				_cover(roof)
+			elif not _same(_roofs[st.eid], roof):
+				var previous: Array = _roofs[st.eid]
+				_uncover(previous)
+				_clear.append(previous[9])
+				_roofs[st.eid] = roof
+				_cover(roof)
 			continue
 		var k := _kind(st)
 		if k <= 0.0:
@@ -204,7 +211,7 @@ func _cover(sp: Array) -> void:
 
 
 func _uncover(sp: Array) -> void:
-	_mark_roof(sp, 0)
+	_mark_roof(sp, -1)
 
 
 func _mark_roof(sp: Array, v: int) -> void:
@@ -217,7 +224,7 @@ func _mark_roof(sp: Array, v: int) -> void:
 			var lx := dx * float(sp[2]) - dz * float(sp[3])
 			var lz := dx * float(sp[3]) + dz * float(sp[2])
 			if absf(lx) <= float(sp[4]) and absf(lz) <= float(sp[5]):
-				roofed[z * n + x] = v
+				roofed[z * n + x] = maxi(0, roofed[z * n + x] + v)
 
 
 ## Stamps and clears within the frame's budget.
@@ -248,6 +255,9 @@ func _work() -> void:
 			_mark_tiles(r)
 		elif not _stamp.is_empty():
 			var sp: Array = _stamp.pop_back()
+			# A removed or moved obstacle may still be waiting behind the clears.
+			if not _obst.has(sp[11]) or _obst[sp[11]] != sp:
+				continue
 			stamp(sp, sp[9])
 			_mark_tiles(sp[9])
 		else:

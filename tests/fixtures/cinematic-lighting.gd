@@ -176,6 +176,41 @@ func _check_snow_drift() -> void:
 		d.roofed[i] = 1
 	d.stamp(sp, rect)
 	assert(at.call(lee) == 0, "nothing drifts under a roof")
+	# A demolished wall can disappear while its first stamp is still queued.
+	d.roofed.fill(0)
+	d.data.fill(0)
+	d._stamp.append(sp)
+	d._clear.append(rect)
+	while not d._stamp.is_empty() or not d._clear.is_empty():
+		d._work()
+	assert(at.call(lee) == 0, "queued stamps cannot restore a demolished wall")
+	# Reusing the same entity with a new footprint invalidates its old stamp.
+	var moved: Array = sp.duplicate()
+	moved[0] = 100.0
+	d._obst[sp[11]] = moved
+	d._stamp.append(sp)
+	while not d._stamp.is_empty() or not d._clear.is_empty():
+		d._work()
+	assert(at.call(lee) == 0, "queued stamps cannot restore a moved wall")
+	# A current stamp still runs after invalid entries have been discarded.
+	d._obst[sp[11]] = sp
+	d._stamp.append(sp)
+	while not d._stamp.is_empty() or not d._clear.is_empty():
+		d._work()
+	assert(at.call(lee) > 0, "current stamps survive removal and requeue")
+	# Removing either of two overlapping roofs must leave the other shelter intact.
+	var roof: Array = sp.duplicate()
+	roof[4] = 5.0
+	roof[5] = 5.0
+	d._cover(roof)
+	d._cover(roof)
+	d._uncover(roof)
+	d.data.fill(0)
+	d.stamp(sp, rect)
+	assert(at.call(lee) == 0, "remaining overlapping roof still shelters the ground")
+	d._uncover(roof)
+	d.stamp(sp, rect)
+	assert(at.call(lee) > 0, "snow can drift once the last roof is removed")
 	d.free()
 	assert(Grass.GRASS_SHADER.contains("drift_tex"), "the grass in a drift is buried")
 	assert(SnowDrift.DRIFT_SHADER.contains("global uniform float snow_cover;") and SnowDrift.DRIFT_SHADER.contains("marks.g"), "a drift reads the cover and the thaws")

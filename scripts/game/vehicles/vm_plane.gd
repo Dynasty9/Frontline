@@ -384,14 +384,15 @@ static func prop(k: VehicleModels, p: Node3D, key: String, pos: Vector3, r: floa
 		k._add(bl, VehiclePropellers.blade("%s_b%d" % [key, i], direction, spin_r * 0.6, r, prof, 0.9, 0.28, 0.14, dz), "paint", bcol, Vector3.ZERO, srot)
 		if tipcol is Color:
 			k._add(bl, VehiclePropellers.blade("%s_t%d" % [key, i], direction, r * 0.9, r * 1.004, [0.0, chord * 0.64, 1.0, chord * 0.45], 0.32, 0.28, 0.15, dz), "paint", tipcol, Vector3.ZERO, srot)
-	if not k.burnt:
+	if not k.wreck:
 		var disc := MeshInstance3D.new()
 		disc.name = "Blur"
 		var pm := PlaneMesh.new()
 		pm.size = Vector2(r, r) * 2.0
 		pm.orientation = PlaneMesh.FACE_Y if as_rotor else PlaneMesh.FACE_Z
 		disc.mesh = pm
-		disc.material_override = VehiclePropellers.disc_material(nb, spin_r / r)
+		# (the disc in the blades' own paint, as the rotors' are)
+		disc.material_override = VehiclePropellers.disc_material(nb, spin_r / r, bcol)
 		disc.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		disc.visible = not as_rotor
 		pv.add_child(disc)

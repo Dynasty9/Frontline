@@ -18,7 +18,7 @@ lead artifact; original notes and supporting media remain under **Explore this c
 | Helicopter flight in the world | A real Ghost Hawk flight (lift-off, climb-out, banked turn, approach, landing) over the showroom battlefield on the High preset, path traced | `helicopters` / `helicopters-chase` / `helicopters-crash` / `helicopters-wrecks` (close-ups of the wrecks): `tests/fixtures/helicopter-world-clips.tscn`, seed 712, fixed 30 Hz, Forward+ (`--renderer forward_plus`) |
 | Vehicle wrecks | One of each hull (tank, tracked IFV, 8x8, MRAP, technical, truck, helicopter) knocked out together on the showroom battlefield, High preset: the row and each wreck close up while burning (14 s) and burnt out (116 s) | `tests/fixtures/vehicle-wreck-clips.tscn`: `--frames=DIR` (`burning-*.png`, `out-*.png`), `--label`, `--kinds=a,b`; seed 712, `--fixed-fps 30`, off-screen window |
 | Helicopter flight, flat field | The same flight on a plain test field, for quick checks | `tests/fixtures/helicopter-flight-visual.tscn`: `--camera=wide\|chase`, `--cam`/`--look`, `--caption`, `--seconds`; record with `--fixed-fps 30 --write-movie` |
-| Mounted guns in the world | Every vehicle's mounted guns: models close up, then laid and fired | `mounted-guns`: `tests/fixtures/mounted-gun-clips.tscn`, a firing line in the showroom battlefield, seed 712, fixed 30 Hz, Forward+. Stills: run the scene with `--clip=mounted-guns-stills --frames=DIR [--kinds=a,b]` for two close-ups of each armed vehicle, alone on the same spot |
+| Mounted guns in the world | Every vehicle's mounted guns: models close up, then laid and fired | `mounted-guns`: `tests/fixtures/mounted-gun-clips.tscn`, a firing line in the showroom battlefield, seed 712, fixed 30 Hz, Forward+. Stills: run the scene with `--clip=mounted-guns-stills --frames=DIR [--kinds=a,b]` for close-ups of each armed vehicle alone on the same spot, and where a man works its gun the vehicle side-on, him from behind and the gun swung left and back (`--crew-views` frames those on a build from before gunners) |
 | Armament effects | Grenade, HE, fuel, tracer and impact timing | `armaments`: real effect pools, seed 712, 10 m ground marks, fixed 30 Hz |
 | Audible explosions | Separate grenade, HE and fuel reports | `explosions`: real explosion events at 1, 5 and 9 seconds; use `--write-movie` for audio |
 | Material impact close-ups | Dirt, stone and metal debris without obscuring fuel smoke | `impacts`: four seconds per material, fixed 30 Hz, normal speed |
@@ -84,7 +84,12 @@ godot --path . --resolution 1600x900 --script tests/fixtures/environment-views.g
 ```
 
 Add `--capture-set=town` for street detail, the town entrance, an overview and a
-residential driveway. `--capture-set=foliage` frames the same broadleaf tree from
+residential driveway. `--capture-set=roads` frames country shoulders close and
+at tactical distance, followed by the town entrance. `--capture-set=road-types`
+captures gravel, asphalt, the town entrance, a supply track, a concrete driveway
+and the road bridge at larger review scales. It rebuilds the starting supply
+network after navigation is ready. Use the identical fixture for both revisions;
+`--mood=rain` checks the same surfaces wet. `--capture-set=foliage` frames the same broadleaf tree from
 both sides and at stand distance, with wind held still. Captures wait for scenery
 residency and batching to settle. `--capture-set=river-boundary` frames seed 3's
 northern river crossing close up and across the valley. Both revisions must use

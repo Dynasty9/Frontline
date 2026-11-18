@@ -149,6 +149,9 @@ func is_player_building() -> bool:
 
 func apply_props(d: Dictionary) -> void:
 	var old_depth := trench_depth() if skind == "trench" else 0.0
+	var light := d.has("burnt") or d.has("door") or d.has("pos") or d.has("yaw") or d.has("size") or d.has("variant") or d.has("toss")
+	if light:
+		_probes_changed()  # (where it was)
 	if world and world.structure_view:
 		world.structure_view.unbatch(self)
 	if d.has("skind"):
@@ -222,6 +225,15 @@ func apply_props(d: Dictionary) -> void:
 		dark = d.dark
 		if dark and not was_dark and model and _lit_glass:
 			_rebuild_model()  # the same walls with the lamps out
+	if light:
+		_probes_changed()  # (and where it is, as it is now)
+
+
+## The light probes round it trace again: burnt to a snag, a door flung open,
+## thrown somewhere else (LightProbes). Only where there's a view to light.
+func _probes_changed() -> void:
+	if world and world.has_view and world.atmo and world.atmo.light_probes:
+		world.atmo.light_probes.structure_changed(self)
 
 
 func get_props() -> Dictionary:
@@ -506,7 +518,7 @@ func _define_parts() -> void:
 				for side in [-1.0, 1.0]:
 					parts.append(_part(Vector3(side * (L + 1.5) * 0.25, y, rear * 1.2), Vector3((L - 1.5) * 0.5, h, 0.95), Nav.LOW, Nav.LOW, true, true, C_DIRT))
 				parts.append(_part(Vector3(0, y, rear * 2.4), Vector3(1.5, h, 0.85), Nav.LOW, Nav.LOW, true, true, C_DIRT))
-				if built and trench_depth() >= 0.85 and eid % 2 == 1:
+				if built and trench_depth() >= 0.85 and TrenchFittings.recess(self) != TrenchFittings.Recess.SHELF:
 					parts.append(_part(Vector3(0, 0.3, rear * 1.4), Vector3(1.5, 0.12, 1.1), Nav.FREE, Nav.FREE, true, true, C_WOOD))
 			else:
 				parts.append(_part(Vector3(0, y, rear * 1.2), Vector3(L, h, 0.95), Nav.LOW, Nav.LOW, true, true, C_DIRT))
@@ -1146,7 +1158,6 @@ func _bridge_model(rng: RandomNumberGenerator) -> void:
 	var L := size.z
 	var conc := Color(0.6, 0.58, 0.54)
 	var dark := Color(0.42, 0.41, 0.39)
-	var asphalt := Color(0.16, 0.16, 0.16)
 	if variant == 1:
 		# the quay: a block of concrete from the seabed up, a lip round the top
 		_mk(Res.box(Vector3(W, 3.5, L)), "concrete", Vector3(0, -1.72, 0), Vector3.ZERO, conc)
@@ -1170,7 +1181,7 @@ func _bridge_model(rng: RandomNumberGenerator) -> void:
 		return
 	# the deck: a thick slab, asphalt down the middle between kerbed footways
 	_mk(Res.box(Vector3(W, 0.55, L)), "concrete", Vector3(0, -0.25, 0), Vector3.ZERO, conc)
-	_mk(Res.box(Vector3(W - 2.0, 0.02, L)), "concrete_floor", Vector3(0, 0.035, 0), Vector3.ZERO, asphalt, false)
+	_mk(Res.box(Vector3(W - 2.0, 0.02, L)), "asphalt", Vector3(0, 0.035, 0), Vector3.ZERO, null, false)
 	for sx in [-1.0, 1.0]:
 		_mk(Res.box(Vector3(0.62, 0.16, L)), "concrete", Vector3(sx * (W * 0.5 - 0.67), 0.08, 0), Vector3.ZERO, conc.lightened(0.05), false)
 		# parapet wall with its coping, drain holes along the foot
@@ -1179,7 +1190,7 @@ func _bridge_model(rng: RandomNumberGenerator) -> void:
 		# the girder under the edge, stained by the weather
 		_mk(Res.box(Vector3(0.5, 0.75, L)), "concrete", Vector3(sx * (W * 0.5 - 0.9), -0.88, 0), Vector3.ZERO, dark)
 		# a white line along the edge of the carriageway
-		_mk(Res.box(Vector3(0.12, 0.01, L)), "paint", Vector3(sx * (W * 0.5 - 1.15), 0.048, 0), Vector3.ZERO, Color(0.8, 0.79, 0.74), false)
+		_mk(Res.box(Vector3(0.12, 0.01, L)), "road_paint", Vector3(sx * (W * 0.5 - 1.15), 0.048, 0), Vector3.ZERO, Color(0.8, 0.79, 0.74), false)
 	# the piers: a wall of concrete under the deck, a cutwater upstream and down
 	var spans := maxi(2, int(round(L / 9.0)))
 	for i in range(1, spans):
@@ -1190,6 +1201,7 @@ func _bridge_model(rng: RandomNumberGenerator) -> void:
 			_mk(Res.cyl(0.55, 0.55, 2.6, 8), "concrete", Vector3(sx * W * 0.41, -2.0, z), Vector3.ZERO, dark)
 	# the abutments, into the banks at either end
 	for sz in [-1.0, 1.0]:
+		_mk(Res.box(Vector3(W - 2.0, 0.008, 0.06)), "metal_dark", Vector3(0, 0.048, sz * (L * 0.5 - 0.4)), Vector3.ZERO, null, false)
 		_mk(Res.box(Vector3(W + 0.8, 1.6, 1.4)), "concrete", Vector3(0, -0.85, sz * (L * 0.5 - 0.6)), Vector3.ZERO, dark)
 		for sx in [-1.0, 1.0]:
 			_mk(Res.box(Vector3(0.5, 1.1, 0.5)), "concrete", Vector3(sx * (W * 0.5 - 0.18), 0.55, sz * (L * 0.5 - 0.25)), Vector3.ZERO, conc.lightened(0.04))
@@ -1218,6 +1230,7 @@ func open_door(by: Entity, kicked: bool) -> void:
 	for i in range(parts.size() - 1, -1, -1):
 		if parts[i].get("door", false):
 			parts.remove_at(i)
+	_probes_changed()  # (the doorway lets the sky in)
 	if body:
 		var dn := body.get_node_or_null("Door")
 		if dn:
@@ -1431,6 +1444,8 @@ func _roof_model(rng: RandomNumberGenerator) -> void:
 			pitch += 4.0
 		var fx := L * 0.5 + 0.2
 		var fz := W * 0.5 + 0.2
+		roof_pitch = pitch
+		roof_hipped = hipped
 		var ropts := {"gable_material": material, "gable_col": wall_col, "trim": trim, "gable_inset": -0.07, "gutters": true,
 			"downpipes": [[end, 1.0], [-end, -1.0]], "wall_face": fz, "wall_face_x": fx}
 		var rise := BuildingRoofs.hip(k, L, W, h, pitch, 0.35, covering, tint, ropts) if hipped else BuildingRoofs.gable(k, L, W, h, pitch, 0.35, covering, tint, ropts)
@@ -1526,6 +1541,7 @@ func _roof_model(rng: RandomNumberGenerator) -> void:
 		# (years of weather on it, from a stream of its own)
 		var flat_wear := RandomNumberGenerator.new()
 		flat_wear.seed = rng.seed ^ 0x6a7e5d
+		roof_pitch = 0.0
 		BuildingRoofs.flat(k, L, W, h, {"material": material, "col": wall_col, "wall_face": W * 0.5 + 0.2, "hatch": rng.randf() < 0.3, "wear": flat_wear})
 		var top := h + 0.2
 		# what's up there: a water tank, an air conditioner, a dish
@@ -1539,6 +1555,11 @@ func _roof_model(rng: RandomNumberGenerator) -> void:
 
 
 var _roof_t := 0.0
+## A house roof's form as its model was built, for what it keeps dry
+## (RainCover): its pitch (degrees; 0 flat, -1 not built yet) and whether
+## it's hipped rather than gabled.
+var roof_pitch := -1.0
+var roof_hipped := false
 
 
 ## A roof is hidden while anyone is inside (so you can see your men), and
@@ -2496,6 +2517,7 @@ func char_out() -> void:
 	net_dirty = true
 	world.push_props(self, {"burnt": true, "variant": variant})
 	world.stat("burnt_out")
+	_probes_changed()  # (a tree's crown gone: the sky comes through)
 	if world.has_view and model:
 		_rebuild_model()
 
@@ -3317,6 +3339,11 @@ func _build_model() -> void:
 			_mg_model(rng, bags)
 			if variant != 1:
 				WorksModels.apron(model, foot.x + 0.3, foot.y + 0.3)
+			elif world != null:
+				# the trench it's dug into clears its own parapet and kit from the bay
+				for other in world.structures_near(position, 8.0):
+					if other.skind == "trench" and not other.gone and other.model != null:
+						other.refresh_trench_furnishings()
 		"mortar_pit":
 			# the floor dug out and trodden flat inside the ring of bags
 			WorksModels.pit_floor(model, 1.7)
@@ -3429,6 +3456,8 @@ func _trench_neighbors_key() -> String:
 	for other in world.structures_near(position, size.x * 0.5 + 5.0):
 		if other != self and other.skind == "trench" and not other.gone and other.trench_depth() > 0.15:
 			ids.append(other.eid)
+		elif other.skind in ["mg_nest", "hmg_nest"] and other.variant == 1 and not other.gone:
+			ids.append(-other.eid)  # a gun bay dug into the line takes the place of the bay's own kit
 	ids.sort()
 	return str(ids)
 
@@ -3456,37 +3485,9 @@ func _make_trench_furnishings() -> void:
 	var done := Node3D.new()
 	done.name = "Done"
 	model.add_child(done)
-	var fsgn := _enemy_side()
-	# kit only along fire bays, kept clear of the corners where the traverses join
-	var kx := size.x * 0.5 - 1.2
-	# a few filled bags along the parapet (rests for the rifles)
-	var kit_bags: Array = []
-	for i in (rng.randi_range(2, 4) if kx > 0.8 else 0):
-		var bx := rng.randf_range(-kx, kx)
-		var bag := {"p": Vector3(bx, 0.2, fsgn * 1.05), "s": Vector3(0.55 * rng.randi_range(1, 2), 0.19, 0.36), "r": rng.randf_range(-0.2, 0.2)}
-		if WorksModels.trench_backed(self, bag.p, bag.s.x * 0.5):
-			kit_bags.append(bag)
+	var kit_bags := TrenchFittings.furnish(self, done, rng)
 	if not kit_bags.is_empty():
 		_bag_walls(kit_bags, rng, done)
-	WorksModels.trench_shoring(self, done, rng)
-	if TrenchNet.has_recess(self):
-		var rear := -fsgn
-		var wood := Res.mat(C_WOOD.darkened(0.25))
-		# Alternating supply shelves and roofed resting bays share the same excavation.
-		Res.mi(done, Res.box(Vector3(1.2, 0.1, 0.48)), wood, Vector3(0, -0.7, rear * 1.55), Vector3.ZERO, false)
-		if eid % 2 == 0:
-			for x in [-0.33, 0.3]:
-				Res.mi(done, Res.box(Vector3(0.45, 0.26, 0.3)), Res.mat(Color(0.25, 0.28, 0.2)), Vector3(x, -0.52, rear * 1.55), Vector3.ZERO, false)
-		else:
-			for x in [-0.66, 0.66]:
-				Res.mi(done, Res.box(Vector3(0.09, 1.35, 0.09)), wood, Vector3(x, -0.42, rear * 1.7), Vector3.ZERO, false)
-			for board in 8:
-				Res.mi(done, Res.box(Vector3(0.18, 0.1, 1.1)), Mats.get_mat("wood"), Vector3(-0.66 + board * 0.19, 0.3 + rng.randf_range(-0.018, 0.018), rear * 1.4), Vector3(0, rng.randf_range(-0.025, 0.025), 0.04), false)
-			for x in [-0.55, 0.55]:
-				Res.mi(done, Res.box(Vector3(0.12, 0.13, 1.18)), wood, Vector3(x, 0.18, rear * 1.4), Vector3.ZERO, false)
-			Res.mi(done, Res.box(Vector3(0.9, 0.12, 0.4)), Res.mat(Color(0.29, 0.31, 0.23)), Vector3(0, -0.59, rear * 1.55), Vector3.ZERO, false)
-		for i in 3:
-			Res.mi(done, Res.box(Vector3(0.13, 0.025, 0.18)), Res.mat(Color(0.31, 0.27, 0.19)), Vector3(rng.randf_range(-0.5, 0.5), -1.13, rear * rng.randf_range(1.0, 1.6)), Vector3(0, rng.randf() * TAU, 0), false)
 	_trench_furnishing_key = _trench_neighbors_key()
 
 static var _bag_mesh: ArrayMesh
@@ -3535,6 +3536,14 @@ const BAG_COLS := [
 	[[Color(1.0, 1.0, 1.0), 0.5], [Color(0.92, 0.8, 0.66), 0.3], [Color(1.36, 1.44, 1.72), 0.2]],
 ]
 const BAG_CLOTH := Color(0.5, 0.45, 0.33)  # the "bag" surface's own colour
+## Bags filled from a trench's own spoil and left out in it: all one hessian,
+## caked in the same earth, so a parapet reads as part of the ground.
+const TRENCH_BAGS := [[Color(0.86, 0.82, 0.76), 1.0]]
+
+
+## Bags laid in a trench line (its parapet, a gun bay dug into it).
+func _trench_bags() -> bool:
+	return skind in ["trench", "bunker"] or (skind in ["mg_nest", "hmg_nest"] and variant == 1)
 
 
 ## Stacks individual sandbags to fill each part box the way they're laid in
@@ -3546,6 +3555,8 @@ func _bag_walls(list: Array, rng: RandomNumberGenerator, parent: Node3D = null) 
 	if _bag_mesh == null:
 		_bag_mesh = _pillow()
 	var pal: Array = BAG_COLS[team] if team >= 0 and team <= 1 else BAG_COLS[2]
+	if _trench_bags():
+		pal = TRENCH_BAGS
 	var lot := rng.randi() % pal.size()  # most of a wall's bags come from one lot
 	var xf: Array[Transform3D] = []
 	var cols: Array[Color] = []
@@ -3616,9 +3627,10 @@ func _bag(xf: Array[Transform3D], cols: Array[Color], p: Dictionary, pb: Basis, 
 				pick = i
 				break
 	var c: Color = pal[pick][0]
-	if skind in ["trench", "bunker"]:
-		c = c.lerp(C_DIRT, 0.22 if top else 0.38)
 	var k := rng.randf_range(0.86, 1.06) + (0.06 if top else 0.0)
+	if _trench_bags():
+		c = c.lerp(C_DIRT * 1.5, 0.4 if top else 0.55)
+		k = rng.randf_range(0.9, 1.0) + (0.04 if top else 0.0)
 	var want := Color(clampf(BAG_CLOTH.r * c.r * k, 0.0, 1.0), clampf(BAG_CLOTH.g * c.g * k, 0.0, 1.0), clampf(BAG_CLOTH.b * c.b * k, 0.0, 1.0)).srgb_to_linear()
 	var base := BAG_CLOTH.srgb_to_linear()
 	cols.append(Color(want.r / base.r, want.g / base.g, want.b / base.b))

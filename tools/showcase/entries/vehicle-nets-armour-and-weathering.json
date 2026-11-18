@@ -1,0 +1,20 @@
+{
+  "entry": "changelog/unreleased/vehicle-nets-armour-and-weathering.md",
+  "summary": "Camouflage nets and branches, chamfered and welded armour with bolted modules and stowage, plate-to-plate paint and battle-camera weathering, car roofs without glare, shaped helicopter tails and panelled cowlings, wet waterlines and rust runs on boats.",
+  "medium": "still",
+  "stage": "tools/showcase/vehicle-surfaces.tscn",
+  "rationale": "Geometry, surface and colour changes across many families: one matched studio sheet shows a representative of each area. Camouflage is shown on one vehicle at a seed whose crew carries it, since which vehicles are camouflaged comes from each vehicle's seed.",
+  "source_ref": "69a4ad05884aa852005e7be99ed2ee976be344fb",
+  "before_ref": "69a4ad05884aa852005e7be99ed2ee976be344fb",
+  "sources": [
+    {
+      "file": "changelog/unreleased/vehicle-nets-armour-and-weathering/comparison.jpg",
+      "sha256": "d608a6b66bb120a722029ce9a6b4e82b739fe8f3d32ec5ebebdd7292954fe39f"
+    },
+    {
+      "file": "changelog/unreleased/vehicle-nets-armour-and-weathering/capture.json",
+      "sha256": "5e45ac327f3b0ab72bd1bd9d768cb26c10db4c78999aed4923528aabdf1534b6"
+    }
+  ],
+  "output": null
+}
