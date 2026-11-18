@@ -1,5 +1,5 @@
 extends SceneTree
-## Two-process ENet check of properties produced by actual vehicle destruction.
+## Two-process ENet check after actual vehicle destruction.
 func _initialize() -> void:
 	run.call_deferred()
 
