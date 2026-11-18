@@ -14,6 +14,11 @@ caption = "Three men, probes off over on: a gunner in a room takes its dim, warm
 [[screenshots]]
 file = "wall-down.jpg"
 caption = "One wall of a house knocked down, before and after, the game and what the probes see. The probes are laid again on the frame it goes; with the roof still on, what comes in is the sun through the gap and its bounce, not the open sky."
+
+[[videos]]
+file = "alley-rain-pan.webm"
+poster = "alley-rain-pan.jpg"
+caption = "Same rain pan with probes enabled in both: v2.0.2 renderer (66fcc404, same alley fixture backported) and #263 (f885d98). The sheltered car window reflects less sky and the crew takes the shade. Both already include #253: covered floors stay dry. Matching camera, sky, seed and High settings; normal-speed Forward+ software-Vulkan capture, without grading."
 +++
 
 - **Reflections know what's overhead, now for real:** hulls under the eaves, windows across an alley and wet
@@ -23,3 +28,6 @@ caption = "One wall of a house knocked down, before and after, the game and what
   and the distant men too, take the dim, tinted light of the room, alley or wood they stand in, and the sun is cut
   for them indoors as it is for the walls round them.
 - **A new test scene,** `--scenario=alley`: two houses across a narrow alley with a car parked in it.
+
+The matched motion capture and its source revisions are recorded in `probe-reflections-and-soldiers/alley-rain-pan-capture.json`.
+The v2.0.2 comparison already includes rain shelter (#253): floors under roofs stay dry in both builds. This pass corrects specular probe occlusion and soldier lighting, not indoor floor wetness.
