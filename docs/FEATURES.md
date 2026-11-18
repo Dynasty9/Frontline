@@ -1342,7 +1342,9 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   the ground along the water and leaving the rises clear, torn into wisps by the wind (thickest at dawn, rising off wet ground as it
   dries after rain), and a hill rises out of it rather than wearing it up its flanks; it takes little of the sun
   straight through it and is lit mostly by the sky, evenly (an emission in its fog shader), so it reads as a pale sheet
-  rather than flaring into a glowing band toward a low sun, thinning upward to a soft top so the ridges behind stand out as silhouettes. A haze lies aloft, lit by the sun, so a cloud's shadow falls through it as a shaft;
+  rather than flaring into a glowing band toward a low sun, thinning upward to a soft top so the ridges behind stand out as silhouettes.
+  Open water has a smaller extra pooling weight than enclosed hollows: the weather grid already makes it humid,
+  and applying both full weights had hidden nearby boats behind an opaque coastal band. A haze lies aloft, lit by the sun, so a cloud's shadow falls through it as a shaft;
   at a low sun the air throws its light forward (the fog's anisotropy follows the mood), so looking toward the sun the
   mist glows, and turned from it the sky lights it blue-grey. At dawn, golden hour and dusk a faint low haze fills the
   first tens of metres with the fog's anisotropy near 0.7-0.8 and little skylight in it, so it glows close around a low sun
@@ -1362,7 +1364,8 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   burning buildings and smoke screens leave a pall (the far field's smoke, behind the close-up plumes). The grid drifts with the wind as a whole (a sub-cell offset the
   shader reads, the grid shifting a cell downwind once it reaches one), mist and rain settle toward what the weather
   makes of each cell, and dust and smoke thin away (half-lives of 22 s and 55 s); it's swept a few rows a frame
-  and uploaded once a sweep. With volumetric fog it's one fog volume over the map with its own fog shader (ground
+  and uploaded once a sweep, plus immediately when a whole-cell drift wraps so the texture and sampling offset
+  move together. With volumetric fog it's one fog volume over the map with its own fog shader (ground
   height from the terrain tiles, the grid, a drifting noise, the cloud pattern); without it, and in the browser, the
   plain fog takes the air at the camera's focus and a height fog lays the mist in the low ground below it. All of it
   thins as the camera pulls back, so it never veils the battle you're looking at. It's looks only: who can see whom

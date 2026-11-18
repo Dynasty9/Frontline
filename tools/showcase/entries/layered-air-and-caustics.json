@@ -193,7 +193,20 @@
       "file": "changelog/unreleased/layered-air-and-caustics/shafts-off-on.jpg",
       "sha256": "f8d6f6eeeda330638576777b6f1bf6ff02fe0fe7b6eb9689bf74906333e7fc37",
       "caption": "OFF over ON of one frozen dawn frame: --aivai --seed=3 --set=mood:dawn --focus-town --zoom=70 --pitch=-3 --cam-yaw=4.5, FL_DEBUG_AIR_FLIP=8."
+    },
+    {
+      "file": "changelog/unreleased/layered-air-and-caustics/weather-boundary.webm",
+      "sha256": "99f10455558b65925d22038b85b847cd2642646ebb63d8be5253eafa76c9ea41"
+    },
+    {
+      "file": "changelog/unreleased/layered-air-and-caustics/weather-boundary.jpg",
+      "sha256": "bdf6804a4e97a2ffbc526f172cc2455f0aa1df3dba4e211c8ceb13112584f9d3"
     }
   ],
-  "output": null
+  "output": null,
+  "supplemental_capture": {
+    "file": "changelog/unreleased/layered-air-and-caustics/weather-boundary-capture.json",
+    "scope": "Actual naval shoreline: freeze battle after one simulated second, finish scenery queues with drawing disabled, fix weather sweep phase, initialize drift half a metre before boundary, settle20 rendered frames, step weather60 frames. 2048-pixel shadows and AA off; volumetric fog and cloud shadows retained. After includes synchronized grid upload and reduced duplicate open-water pooling; enclosed terrain hollows retain their original weighting.",
+    "caption": "Coastal mist and weather-cell boundary, before and after: the actual dawn shoreline with the same camera and exposure. The weather starts near a cell boundary; the battle is frozen while the weather advances. Forward+ diagnostic: 2048-pixel shadows, AA off."
+  }
 }

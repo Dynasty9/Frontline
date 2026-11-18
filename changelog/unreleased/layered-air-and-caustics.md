@@ -111,6 +111,11 @@ caption = "The caustic net re-forming across the sand as the ripples run (Ultra 
 file = "barrage-drift.webm"
 poster = "barrage-drift-poster.jpg"
 caption = "A barrage's plume drifting off downwind and breaking up."
+
+[[videos]]
+file = "weather-boundary.webm"
+poster = "weather-boundary.jpg"
+caption = "Coastal mist and weather-cell boundary, before and after: the actual dawn shoreline with the same camera and exposure. The weather starts near a cell boundary; the battle is frozen while the weather advances. Forward+ diagnostic: 2048-pixel shadows, AA off."
 +++
 
 - **Ground mist** lies level in the valley, the hollows and along the water, a pale sheet at dawn with the hills
@@ -148,5 +153,9 @@ The change keeps the existing densities, cloud lighting and caustic strengths.
 
 Open water no longer receives the same extra pooling weight as an enclosed
 terrain hollow. The weather grid already makes the shore humid; stacking both
-weights had turned dawn mist into an opaque band over nearby boats. Valley
-pooling, cloud lighting, caustic strength and exposure stay unchanged.
+weights had turned dawn mist into an opaque band over nearby boats. The terrain-hollow
+weighting, cloud lighting, caustic strength and exposure stay unchanged.
+
+The matched clip is a software-Vulkan capture at 30 fixed simulation frames per
+second. It demonstrates the in-game view, not hardware speed. Source revisions,
+camera settings and renderer setup are recorded in `layered-air-and-caustics/weather-boundary-capture.json`.
