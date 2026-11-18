@@ -1400,6 +1400,12 @@ static func _preset(kind: String) -> Dictionary:
 			return {"pattern": PLAIN, "col_a": Color(0.18, 0.18, 0.18), "rough": 0.8, "bump": 0.2, "grime": 0.2}
 		"rubber":
 			return {"pattern": PLAIN, "col_a": Color(0.07, 0.07, 0.07), "rough": 0.85, "bump": 0.3, "grime": 0.4}
+		"straw":
+			# baled straw: the fibres streaked round the roll, gold and paler
+			return {"pattern": BARK, "col_a": Color(0.76, 0.64, 0.38), "col_b": Color(0.56, 0.45, 0.25), "scale": 2.2, "rough": 0.97, "bump": 1.4, "grime": 0.3, "local_space": true}
+		"film":
+			# stretched plastic film (silage wrap): smooth, a soft sheen
+			return {"pattern": PLAIN, "col_a": Color(0.08, 0.08, 0.08), "rough": 0.38, "bump": 0.1, "grime": 0.35}
 		"glass":
 			return {"pattern": PLAIN, "col_a": Color(0.08, 0.1, 0.12), "rough": 0.08, "metal": 0.4, "bump": 0.0, "grime": 0.0}
 		"window_lit":
