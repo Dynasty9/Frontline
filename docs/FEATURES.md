@@ -1331,6 +1331,66 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   graphics setting (Cloud shadows on everything; on from High, and in Cinematic; off, the grass and bushes fold the
   shade into their colour instead), works in both renderers and is drawn only on each screen, never simulated.
   Vehicle windows and the opt-in mocap soldiers still take full sun.
+- **Light probes** (`light_probes.gd`): a grid of probes over the whole battlefield, one every 2 m at eight heights
+  2 m apart following the ground, records how much sky each point sees, from which way, and the mean light off
+  whatever hides the rest. Streets, courtyards, trench floors and the foot of walls take less skylight than open
+  ground; a room under its roof is dim and lit from its windows (seen when soldiers go in and the roof lifts away);
+  a sunlit wall throws some of its colour onto the shaded one across the street. The scene as the probes see it is
+  a block model: every structure's boxes (and roofs, tree crowns and nets, half see-through; floor slabs and kerbs
+  count as ground) laid into 1 m cubes up to 16 m above the ground in 64 m tiles, over the terrain's own heights. The GPU traces 32 rays a probe through it
+  (a 2D pass into a 4096x1536 atlas, 8 bytes a probe: the first two spherical-harmonic bands of what it sees, which
+  are also its bent normal, and the bounce), and every surface shader that opts in rebuilds its own light from the
+  probes round it in five filtered reads. On Low its cosine-weighted share of sky is the exact two-band formula
+  m0 + 2 m1.n; on High a tiny network with baked weights (10 inputs, 16 hidden, 176 multiply-adds a pixel), trained
+  offline against sky occlusion traced from every pixel (ground, walls and roof tops), reads it from the same numbers
+  with about 28% less error on towns it never saw. It multiplies the skylight (AO) and the cool fill light opposite
+  the sun, which stands for skylight too; what it doesn't see comes back lit by the bounce. Where the probes see
+  little sky in any direction, a room, the sun is cut to 40%: a roof lifted off to show the men inside takes its
+  shadow with it, and this gives the room back its indoors without hiding them (wall feet, roof tops and narrow
+  streets see about half the sky and keep their sun). The probes' trace lets the same 40% of sun through roofs, so they see
+  the sunlit patch the player sees and bounce it, warm and floor-coloured, into the room's shade; skylight and fill
+  never fall below 30%, so a room's corners are dim, not black (50% once the sun is low, below about 9 degrees and
+  easing in from 27, when it no longer reaches a room's floor to bounce: dusk interiors stay dim, not crushed). Open ground under
+  open sky counts as seen (the sky's lower half already stands for it), so open fields look as they did. Only what
+  changes is redone: a structure built, destroyed or burnt marks its tile, which is laid again on the CPU and its
+  probes traced again, two tiles a frame nearest the camera first; craters retrace the tiles round them (out in the open too: a crater's tile is traced from then on, and a pixel
+  whose column stands below the ground 3 m round it, a shell crater's bowl, loses up to about a quarter of its sky at the floor, less up its sides), and trenches too (their mask cuts them into the ground the probes trace and
+  stand on, though 1.4 m trenches are narrower than the 2 m grid, so trench floors stay mostly SSAO's); the bounce is
+  kept relative to the light it was traced in (the sun at its height, never below a quarter, plus the sky), so as
+  Time passes dims and reddens the evening it follows every frame with nothing traced; once the sun has swung 2
+  degrees or its share of the light changed by 0.12, the bounce alone (not the cubes or the sky share) of every tile
+  with something in it is traced again, one a frame after anything the battle changed, so a tile's step is a degree
+  or two of sun; a doorway's leaf swung open, a tree burnt to a snag or a car thrown across the street lays its tile
+  again on host and client alike; tiles with nothing in reach are written as open
+  sky without tracing. Map size comes from `MapDims` (2 m and 3 m cubes on the larger maps, the same grid). It's
+  light only (no gameplay reads it, no RNG, never on the server) and a graphics setting: High (from the High preset),
+  Low (sky shade only, two reads, no bounce: the Medium preset and the browser) or Off. Reflections are shut in with
+  the sky too (specular occlusion, after Frostbite): the probes' two bands give the share of sky seen in the
+  reflected direction, m0 + 3 m1.r for a glossy surface easing to the cosine's m0 + 2 m1.n for a rough one, and the
+  rest of the reflection shows the room's own bounce instead (Godot's RADIANCE), so wet floors indoors, under eaves
+  and in trenches stop mirroring the bright sky. Tree crowns are laid as leaves, sized to the tree the game grows (a
+  fir's cone in two tiers, a field tree's dome, an orchard tree's small one), three fifths of the light stopped a
+  cube; the trace tells them apart and what comes through or off them is green, so a wood's floor and the men in it
+  sit in a dimmer, greener shade. The occlusion itself is one grey factor on the ambient, which would take away
+  more green than red (the sky's light is greener than the sun's left behind), so the bake also keeps how much of
+  what shuts a probe in is leaves, and the share of skylight the crowns took comes back tinted toward the light
+  through leaves, (0.35, 0.55, 0.2) at grey's brightness, about their albedo squared. Grass, ferns and undergrowth (which cover most of a wood's floor) read the probes
+  too, once a vertex rather than a pixel (`CloudShadow.PROBES_VERTEX`), each blade as if it faced up. Light leaks: a pixel on a floor by a wall sits between a probe in the room and one outside,
+  so on High it reads the cubes halfway to the probes on either side of it, each way (six reads), and leaves out any
+  with a wall or roof between (a cheap stand-in for DDGI's per-probe depth). Fires and lamps (lights in the
+  `probe_light` group) light the probes round them: the 16 nearest the camera, at their steady brightness rather
+  than their flicker, are traced from every probe within 1.6 times their range (20 m at most) through the cubes,
+  so walls keep the glow in (the burning thing's own cubes aside: the flames fill its box), into the atlas's bottom
+  block beside the heights; a light that comes, goes, moves a metre or changes by a quarter retraces only its own
+  tiles, four a frame. It reaches the browser too, which has no fire lights of its own. The skinned riflemen, whose
+  imported material can't read the probes, get a small shader that does what it did plus the probes' terms, so a
+  man in a room or a wood takes its shade. Vehicles and men shut out a little sky round their feet (after Unreal's
+  capsule and Frostbite's box occlusion): every frame their footprints, rounded boxes for hulls (half-metre
+  corners), darkest along the contact line under tracks and wheels and fading out over a pad of 1 to 1.5 m that
+  grows with their height, and faint discs for men (fainter crouched, a longer patch lying down), are
+  drawn into a 256-texel map over 96 m round the camera that a pixel reads once and fades out over 1.8 m above the
+  ground, so a parked tank sits in a soft dark pool, a man in a faint one, and a hull's deck and a man's head still
+  see the sky; a helicopter in the air casts none.
 - **Bounce light** (`ssgi_fx.gd`; Settings > Graphics > Lighting: Off / Medium / High; Medium on High, High on Ultra and
   Cinematic): sunlight thrown back off walls, roofs and roads lights what faces them, in their colours, so a sunlit
   wall warms the pavement and the shaded wall across from it, a statue's plinth glows from the square round it and

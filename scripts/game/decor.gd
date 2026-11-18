@@ -848,5 +848,6 @@ func _apply_mood_chunk(key: Vector2i) -> void:
 		l.shadow_enabled = false
 		l.position = p
 		l.add_to_group(&"fx_light")
+		l.add_to_group(&"probe_light")  # (its glow lights the probes round it: LightProbes)
 		add_child(l)
 		_light_nodes[key].append(l)

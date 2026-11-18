@@ -149,6 +149,9 @@ func is_player_building() -> bool:
 
 func apply_props(d: Dictionary) -> void:
 	var old_depth := trench_depth() if skind == "trench" else 0.0
+	var light := d.has("burnt") or d.has("door") or d.has("pos") or d.has("yaw") or d.has("size") or d.has("variant") or d.has("toss")
+	if light:
+		_probes_changed()  # (where it was)
 	if world and world.structure_view:
 		world.structure_view.unbatch(self)
 	if d.has("skind"):
@@ -222,6 +225,15 @@ func apply_props(d: Dictionary) -> void:
 		dark = d.dark
 		if dark and not was_dark and model and _lit_glass:
 			_rebuild_model()  # the same walls with the lamps out
+	if light:
+		_probes_changed()  # (and where it is, as it is now)
+
+
+## The light probes round it trace again: burnt to a snag, a door flung open,
+## thrown somewhere else (LightProbes). Only where there's a view to light.
+func _probes_changed() -> void:
+	if world and world.has_view and world.atmo and world.atmo.light_probes:
+		world.atmo.light_probes.structure_changed(self)
 
 
 func get_props() -> Dictionary:
@@ -1218,6 +1230,7 @@ func open_door(by: Entity, kicked: bool) -> void:
 	for i in range(parts.size() - 1, -1, -1):
 		if parts[i].get("door", false):
 			parts.remove_at(i)
+	_probes_changed()  # (the doorway lets the sky in)
 	if body:
 		var dn := body.get_node_or_null("Door")
 		if dn:
@@ -2504,6 +2517,7 @@ func char_out() -> void:
 	net_dirty = true
 	world.push_props(self, {"burnt": true, "variant": variant})
 	world.stat("burnt_out")
+	_probes_changed()  # (a tree's crown gone: the sky comes through)
 	if world.has_view and model:
 		_rebuild_model()
 

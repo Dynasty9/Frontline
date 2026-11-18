@@ -1006,6 +1006,7 @@ func make_fire(ext: Vector3, smoke_kind := SMOKE_WOOD, engine_grille := false) -
 	l.shadow_enabled = false
 	l.name = "Glow"
 	l.add_to_group(&"fx_light")
+	l.add_to_group(&"probe_light")  # (its glow lights the probes round it: LightProbes)
 	h.add_child(l)
 	var audible_radius := (6.0 + 3.0 * k) if smoke_kind == SMOKE_FUEL else (3.0 + 2.0 * k)
 	var snd := Sfx.make_loop_player("fire", audible_radius, -40.0)
