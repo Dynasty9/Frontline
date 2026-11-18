@@ -608,6 +608,7 @@ static func _minigun(k: VehicleModels, p: Node3D, pos: Vector3, ln := 0.75, door
 	# mid-length and just behind the muzzles
 	VehicleWeapons.rotary(k, g, Vector3(0, 0, -0.1), Vector3(0, 0, -0.1 - ln), 6, 0.042, 0.013, [0.62, 1.0 - 0.03 / ln])
 	var hands: Array = []
+	var path: Array[Vector3] = chute.duplicate()
 	if door:
 		# a door gunner's spade grips behind the housing, the trigger
 		# between them, and the flexible chute dropping away to the
@@ -626,20 +627,20 @@ static func _minigun(k: VehicleModels, p: Node3D, pos: Vector3, ln := 0.75, door
 		k._cyl(g, 0.018, 0.018, 0.09, Vector3(0, -0.135, 0.0), Vector3.ZERO, VehicleWeapons.STEEL, null, 8, false)
 		# the chute out of the feeder's foot dropping away to the ammunition
 		# box on the cabin floor
-		if chute.is_empty():
+		if path.is_empty():
 			for c: Vector3 in [Vector3(-0.1, -0.07, 0.1), Vector3(-0.13, -0.18, 0.14), Vector3(-0.12, -0.36, 0.22), Vector3(-0.06, -0.52, 0.3)]:
-				chute.append(Vector3(c.x * fs, c.y, c.z))
+				path.append(Vector3(c.x * fs, c.y, c.z))
 		hands = [Vector3(0.1, 0.0, 0.35), Vector3(-0.1, 0.0, 0.35)]
 	else:
 		# a fixed gun throws its cases and links down and back out of the
 		# chute under the housing, clear of the airframe
 		k._box(g, Vector3(0.05, 0.11, 0.045), Vector3(0, -0.12, 0.05), VehicleWeapons.STEEL, null, Vector3(-0.35, 0, 0), false)
-	if not chute.is_empty():
+	if not path.is_empty():
 		# the feed chute (ribbed where its links hinge)
-		_path(k, g, chute, 0.034, "metal_dark", null, 8)
-		for i in chute.size() - 1:
-			var a := chute[i]
-			var b := chute[i + 1]
+		_path(k, g, path, 0.034, "metal_dark", null, 8)
+		for i in path.size() - 1:
+			var a := path[i]
+			var b := path[i + 1]
 			for f: float in [0.3, 0.75]:
 				k._add(g, Res.torus(0.03, 0.041), "metal_dark", null, a.lerp(b, f), VehicleFrames.aim(b - a).get_euler(), Vector3.ONE, false)
 	k.gun_assembly(g, Vector3(0, 0, -0.12 - ln), hands)

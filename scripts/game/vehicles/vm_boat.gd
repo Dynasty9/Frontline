@@ -1086,7 +1086,7 @@ static func _surc(k: VehicleModels, team: int, csat: bool) -> void:
 		VehicleWeapons.hmg(k, rg, Vector3(0, 0.3, 0.24), Vector3(0, 0.3, -1.12), 1.0, -1.0, true, "gunmetal_w", Color(0.3, 0.32, 0.22))
 	else:
 		# M134 minigun: the door gun's housing, feeder, motor and spade grips;
-		# its chute curls down from the feeder into the 1,500-round box hung
+		# its chute curls down from the feeder into the ammunition box hung
 		# on the mount's left, so the gun swings with its ammunition
 		var box := Vector3(-0.34, 0.12, 0.12)
 		var chute: Array[Vector3] = [Vector3(-0.1, -0.07, 0.1), Vector3(-0.19, -0.05, 0.1), Vector3(-0.3, -0.03, 0.12)]
